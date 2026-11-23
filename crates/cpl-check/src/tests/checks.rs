@@ -809,7 +809,7 @@ fn make_seq(k: Int) -> (domain P, [P]Int):
 fn make_pair(a: Int, b: Int) -> (domain A, domain B, [A]Int, [B]Int):
     domain X = 0..a
     domain Y = 0..b
-    (X, Y, [X] i => i.to_idx, [Y] j => j.to_idx)
+    (X, Y, [X] i => i.ord, [Y] j => j.ord)
 
 domain V = read(1..=100)
 let m: 0..=100 = read()

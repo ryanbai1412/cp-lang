@@ -33,8 +33,8 @@ fn lb(target: Int) -> Int:
     lo
 
 fn sweep(arr: [Pos]Int, prefer_first: Bool, is_rev: Bool):
-    var pl: [U]Int = [U] u => u.to_idx
-    var pr: [U]Int = [U] u => u.to_idx
+    var pl: [U]Int = [U] u => u.ord
+    var pr: [U]Int = [U] u => u.ord
     var occ: [U]List<Int> = [U] _ => []
     var head: [U]Int = [U] _ => 0
 
@@ -58,19 +58,19 @@ fn sweep(arr: [Pos]Int, prefer_first: Bool, is_rev: Bool):
     for p in Pos:
         let x = arr[p]
         let u = U(lb(x))
-        occ[u].push(p.to_idx)
+        occ[u].push(p.ord)
         sum_r += x
 
     var sum_l = 0
     for p in Pos:
-        let i = p.to_idx
+        let i = p.ord
         let x = arr[p]
         let u = U(lb(x))
         sum_r -= x
         head[u] += 1
         if head[u] == occ[u].len:
-            pl[u] = u.to_idx - 1
-            pr[u] = u.to_idx + 1
+            pl[u] = u.ord - 1
+            pr[u] = u.ord + 1
 
         if not is_rev:
             consider(abs(sum_l - sum_r), i, -1)
@@ -97,7 +97,7 @@ fn sweep(arr: [Pos]Int, prefer_first: Bool, is_rev: Bool):
         sum_l += x
 
 sweep(a, true, false)
-let rev_a: [Pos]Int = [Pos] p => a[Pos.nth(n - 1 - p.to_idx)]
+let rev_a: [Pos]Int = [Pos] p => a[Pos.nth(n - 1 - p.ord)]
 sweep(rev_a, false, true)
 
 let b = best ?? (d: 0, i1: 0, i2: -1)

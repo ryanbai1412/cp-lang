@@ -68,26 +68,26 @@ pub struct SegTree<D, T, F = Int>(m: Monoid<T>):
             return SegTree<D, T, F>.build_lazy(m, a, fill, resolved)
 
     fn build(m: Monoid<T>, a: ?[D]T, fill: ?T) -> SegTree<D, T, F>:
-        let size = bit_ceil(D.K)
+        let size = bit_ceil(D.count)
         var t = List.filled(2 * size, m.id)
         if let init = a:
             assert fill == None, "pass either `a` or `fill`, not both"
-            for i in D: t[size + i.to_idx] = init[i]
+            for i in D: t[size + i.ord] = init[i]
         elif let v = fill:
-            for i in 0..D.K: t[size + i] = v
+            for i in 0..D.count: t[size + i] = v
         for p in (1..size).rev: t[p] = m.op(t[2 * p], t[2 * p + 1])
         SegTree(m, t, [], [], [], size, 0, None, None)
 
     fn build_lazy(m: Monoid<T>, a: ?[D]T, fill: ?T, resolved: Action<T, F>) -> SegTree<D, T, F>:
-        let size = bit_ceil(D.K)
+        let size = bit_ceil(D.count)
         var t = List.filled(2 * size, m.id)
         var span = List.filled(2 * size, 0)
-        for i in 0..D.K: span[size + i] = 1
+        for i in 0..D.count: span[size + i] = 1
         if let init = a:
             assert fill == None, "pass either `a` or `fill`, not both"
-            for i in D: t[size + i.to_idx] = init[i]
+            for i in D: t[size + i.ord] = init[i]
         elif let v = fill:
-            for i in 0..D.K: t[size + i] = v
+            for i in 0..D.count: t[size + i] = v
         for p in (1..size).rev:
             t[p] = m.op(t[2 * p], t[2 * p + 1])
             span[p] = span[2 * p] + span[2 * p + 1]
@@ -169,7 +169,7 @@ pub struct SegTree<D, T, F = Int>(m: Monoid<T>):
     /// example: `var s = SegTree(+, [1, 2, 3], act: add); s.apply_all(1); s.all == 9`
     pub fn apply_all(mut self, f: F):
         assert act != None, "apply_all requires `act:` on SegTree"
-        if D.K > 0: self.put(1, f)
+        if D.count > 0: self.put(1, f)
 
     /// The fold of the values in `r`, left to right: `op(op(a[l], a[l + 1]), ...)`.
     ///
@@ -207,7 +207,7 @@ pub struct SegTree<D, T, F = Int>(m: Monoid<T>):
     /// example: `SegTree(+, [1, 2, 3, 4]).right_while((0..0).r, s => s <= 100) == (0..4).r`
     pub fn right_while(self, from: Cut<D>, ok: T -> Bool) -> Cut<D>:
         assert ok(m.id), "`ok` must hold on the identity"
-        let n = D.K
+        let n = D.count
         if from.ord == n: return from
         var l = from.ord + size
         if act != None: self.open(l, l + 1)
@@ -301,7 +301,7 @@ pub struct SegTree<D, T, F = Int>(m: Monoid<T>):
     /// example: `SegTree(+, [4, 5, 6]).get(1) == 5`
     /// example: `var s = SegTree(act: assign, a: [1, 2, 3]); s.apply(0..2, Some(9)); s.get(1) == 9`
     pub fn get(self, i: D) -> T:
-        let p = size + i.to_idx
+        let p = size + i.ord
         if act != None:
             for k in (1..=log).rev: self.push(p >> k)
         t[p]
@@ -312,7 +312,7 @@ pub struct SegTree<D, T, F = Int>(m: Monoid<T>):
     /// traps: when `i` is outside `D`
     /// example: `var s = SegTree(+, [1, 2, 3]); s.set(0, 10); s.all == 15`
     pub fn set(mut self, i: D, x: T):
-        let p = size + i.to_idx
+        let p = size + i.ord
         if act != None:
             for k in (1..=log).rev: self.push(p >> k)
         t[p] = x
@@ -325,14 +325,14 @@ pub struct SegTree<D, T, F = Int>(m: Monoid<T>):
     /// traps: when `i` is outside `D`
     /// example: `var s = SegTree(+, [1, 2, 3]); s.at(0) += 5; s.all == 11`
     pub fn at(mut self, i: D) -> lends mut T:
-        let p = size + i.to_idx
+        let p = size + i.ord
         if act != None:
             for k in (1..=log).rev: self.push(p >> k)
         lend mut t[p]
         self.pull(i)
 
     fn pull(mut self, i: D):
-        var p = i.to_idx + size
+        var p = i.ord + size
         unchecked:
             while p > 1:
                 p /= 2
@@ -384,7 +384,7 @@ pub struct SegTree<D, T, F = Int>(m: Monoid<T>):
     /// example: `var s = SegTree(+, [1, 2, 3]); s.clear(fill: 2); s.all == 6`
     pub fn clear(mut self, fill: ?T = None):
         let v = fill ?? m.id
-        for i in 0..size: t[size + i] = if i < D.K: v else: m.id
+        for i in 0..size: t[size + i] = if i < D.count: v else: m.id
         for p in (1..size).rev: t[p] = m.op(t[2 * p], t[2 * p + 1])
 
     /// The values of the canonical nodes that exactly cover `r`: the maximal aligned blocks of the
@@ -424,7 +424,7 @@ fn folds_match_a_plain_array():
         a[i] = rand(-20, 20)
         st.set(i, a[i])
         let l = V.nth(rand(0, 10))
-        let r = V.nth(rand(l.to_idx, 10))
+        let r = V.nth(rand(l.ord, 10))
         assert st.fold(l..=r) == [a[v] for v in l..=r].max()!
     assert st.all == [a[v] for v in V].max()!
     assert st.fold(V(3)..V(3)) == Int.MIN
@@ -446,14 +446,14 @@ fn at_is_a_writable_leaf():
             a[i] = max(a[i], x)
             st.at(i) max= x
         let l = V.nth(rand(0, 8))
-        let r = V.nth(rand(l.to_idx, 8))
+        let r = V.nth(rand(l.ord, 8))
         assert st.fold(l..=r) == sum(a[v] for v in l..=r)
     assert st.all == a.sum()
 
 @test
 fn every_bare_operator_folds():
     domain V = 0..6
-    let a = [V] v => [12, 18, 6, 30, 7, 9][v.to_idx]
+    let a = [V] v => [12, 18, 6, 30, 7, 9][v.ord]
     assert SegTree<V, Int>(+, a).all == 82
     assert SegTree<V, Int>(min, a).all == 6
     assert SegTree<V, Int>(gcd, a).fold(V(0)..=V(3)) == 6
@@ -515,7 +515,7 @@ fn right_while_and_left_while_binary_search():
 @test
 fn update_changes_one_value_in_place():
     domain V = 0..6
-    var st = SegTree<V, Int>(+, [V] v => v.to_idx)
+    var st = SegTree<V, Int>(+, [V] v => v.ord)
     st.update(V(2), x => x + 10)
     st.update(V(5), x => x * 2)
     assert st.get(V(2)) == 12 and st.get(V(5)) == 10 and st.all == 15 + 10 + 5
@@ -546,13 +546,13 @@ pub struct MergeSortTree<D, T>:
     /// traps: never
     /// example: `MergeSortTree([3, 1, 4, 1, 5]).count_lt(0..5, 3) == 2`
     pub fn new(a: [D]T) -> MergeSortTree<D, T>:
-        let size = bit_ceil(D.K)
+        let size = bit_ceil(D.count)
         var data: List<T> = []
         var beg: List<0..=2_000_000_000> = List.filled(2 * size, 0)
         var fin: List<0..=2_000_000_000> = List.filled(2 * size, 0)
         unchecked:
             for i in D:
-                let p = size + i.to_idx
+                let p = size + i.ord
                 beg[p] = data.len
                 data.push(a[i])
                 fin[p] = data.len
@@ -727,7 +727,7 @@ pub struct SegTree2D<R, C, T>(m: Monoid<T>):
     t: List<T>
 
     fn fold_row(self, i: Int, cl: Int, ch: Int) -> T:
-        let w = C.K
+        let w = C.count
         var (l, h) = (cl + w, ch + w)
         var (left, right) = (m.id, m.id)
         while l < h:
@@ -752,12 +752,12 @@ pub struct SegTree2D<R, C, T>(m: Monoid<T>):
     /// example: `SegTree2D<0..3, 0..3, Int>(+, fill: 1).all == 9`
     pub fn new<M>(op: M, a: ?[R, C]T = None, fill: ?T = None) -> SegTree2D<R, C, T>:
         let m = Monoid<T>.of(op)
-        let (h, w) = (R.K, C.K)
+        let (h, w) = (R.count, C.count)
         var g = SegTree2D<R, C, T>(m, List.filled(4 * h * w, m.id))
         if let init = a:
             assert fill == None, "pass either `a:` or `fill:`, not both"
             for r in R:
-                for c in C: g.t[(h + r.to_idx) * 2 * w + w + c.to_idx] = init[r, c]
+                for c in C: g.t[(h + r.ord) * 2 * w + w + c.ord] = init[r, c]
         elif let v = fill:
             for i in h..2 * h:
                 for j in w..2 * w: g.t[i * 2 * w + j] = v
@@ -779,7 +779,7 @@ pub struct SegTree2D<R, C, T>(m: Monoid<T>):
     /// traps: when `r` is outside `R` or `c` is outside `C`
     /// example: `var g = SegTree2D<0..3, 0..3, Int>(+, fill: 1); g.set(1, 2, 7); g.get(1, 2) == 7`
     pub fn get(self, r: R, c: C) -> T:
-        t[(R.K + r.to_idx) * 2 * C.K + C.K + c.to_idx]
+        t[(R.count + r.ord) * 2 * C.count + C.count + c.ord]
 
     /// Make cell `(r, c)` hold `x`.
     ///
@@ -787,9 +787,9 @@ pub struct SegTree2D<R, C, T>(m: Monoid<T>):
     /// traps: when `r` is outside `R` or `c` is outside `C`
     /// example: `var g = SegTree2D<0..3, 0..3, Int>(+, fill: 1); g.set(0, 0, 5); g.all == 13`
     pub fn set(mut self, r: R, c: C, x: T):
-        let (h, w) = (R.K, C.K)
-        var i = h + r.to_idx
-        let j0 = w + c.to_idx
+        let (h, w) = (R.count, C.count)
+        var i = h + r.ord
+        let j0 = w + c.ord
         t[i * 2 * w + j0] = x
         var j = j0 / 2
         while j >= 1:
@@ -821,7 +821,7 @@ pub struct SegTree2D<R, C, T>(m: Monoid<T>):
     pub fn fold(self, rows: Range<R>, cols: Range<C>) -> T:
         let (rl, rh) = rows.ends
         let (cl, ch) = cols.ends
-        var (l, hh) = (rl + R.K, rh + R.K)
+        var (l, hh) = (rl + R.count, rh + R.count)
         var (left, right) = (m.id, m.id)
         while l < hh:
             if l % 2 == 1:
@@ -841,7 +841,7 @@ pub struct SegTree2D<R, C, T>(m: Monoid<T>):
     /// traps: never
     /// example: `var g = SegTree2D<0..2, 0..2, Int>(max, fill: 0); g.set(1, 0, 8); g.all == 8`
     @get pub fn all(self) -> T:
-        if R.K == 0 or C.K == 0: m.id else: t[2 * C.K + 1]
+        if R.count == 0 or C.count == 0: m.id else: t[2 * C.count + 1]
 
 /// \(O(\lvert D \rvert \log V)\) build and memory. Wavelet matrix over non-negative integer values:
 /// \(O(\log V)\) range k-th smallest, frequency, value-range count, predecessor/successor, and quantile sum.
@@ -1062,11 +1062,11 @@ pub struct DynamicOrderTree<D, T>:
     /// example: `DynamicOrderTree([3, 1, 4]).count_lt(0..3, 4) == 2`
     pub fn new(a: [D]T) -> DynamicOrderTree<D, T>:
         var t = DynamicOrderTree<D, T>(
-            D.K,
+            D.count,
             [a[i] for i in D],
-            [SortedBag<T>.new() for _ in 0..D.K + 1],
+            [SortedBag<T>.new() for _ in 0..D.count + 1],
         )
-        for i in 0..D.K: t.bump(i, t.val[i], true)
+        for i in 0..D.count: t.bump(i, t.val[i], true)
         t
 
     /// Make position `i` hold `x`.

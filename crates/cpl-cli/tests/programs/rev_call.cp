@@ -12,7 +12,7 @@ for i in (0..10).step(3).rev: print(i)
 print(sum(i * 10 ** k for (k, i) in [(0, 1), (1, 2)]), xs.rev, xs.rev, "abc".rev, "abc".rev)
 let n = 5
 domain V = 1..=n
-let a: [V]Int = [V] v => v.to_idx
+let a: [V]Int = [V] v => v.ord
 for v in V.rev: print(v)
 for x in a.rev: print(x)
 for i in (0..n).rev.rev: print(i)

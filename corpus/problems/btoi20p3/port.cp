@@ -106,5 +106,5 @@ fn dnc(l_lo: Int, l_hi: Int, r_lo: Int, r_hi: Int):
 dnc(1, m, 1, m)
 for qi in Q:
     let ql = queries[qi].l
-    let qr = queries[qi].r.to_idx + 1
+    let qr = queries[qi].r.ord + 1
     print(if qr < limit[ql]: "YES" else: "NO")

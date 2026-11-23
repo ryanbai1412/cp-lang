@@ -29,7 +29,7 @@ pub struct BeatsSegTree<D>:
     /// example: `BeatsSegTree([5, 1, 4]).all_sum == 10`
     /// example: `BeatsSegTree<0..3>(fill: 2).all_sum == 6`
     pub fn new(a: ?[D]Int = None, fill: ?Int = None) -> BeatsSegTree<D>:
-        let n = D.K
+        let n = D.count
         let sz = max(1, 4 * n)
         var st = BeatsSegTree(
             List.filled(sz, 0),
@@ -382,7 +382,7 @@ pub struct HistoricBeatsSegTree<D>:
     /// traps: when both `a` and `fill` are given
     /// example: `var t = HistoricBeatsSegTree([1, 2]); t.hist_sum(0..2) == 3`
     pub fn new(a: ?[D]Int = None, fill: ?Int = None) -> HistoricBeatsSegTree<D>:
-        let n = D.K
+        let n = D.count
         let sz = max(1, 4 * n)
         var t = HistoricBeatsSegTree<D>(
             n,

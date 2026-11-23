@@ -25,7 +25,7 @@ var last = 0
 for _ in 0..q:
     let v0: V = read()
     let p0: 0..=s = read()
-    let v = V.nth((v0.to_idx + k * last) % n)
+    let v = V.nth((v0.ord + k * last) % n)
     let p = (p0 + k * last) % (s + 1)
     last = least[kt.reach(v, desc(p + 1))]
     print(last)

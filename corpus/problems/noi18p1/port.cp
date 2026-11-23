@@ -28,14 +28,14 @@ for _ in 0..t_cases:
     var alt: [KNode]Int = [KNode] _ => inf
     var best_d: [KNode]Int = [KNode] _ => inf
     for v in V:
-        best_d[KNode(v.to_idx)] = dist[v] ?? inf
+        best_d[KNode(v.ord)] = dist[v] ?? inf
 
     var dsu = Dsu<V>.new()
-    var comp_root: [V]KNode = [V] v => KNode(v.to_idx)
+    var comp_root: [V]KNode = [V] v => KNode(v.ord)
     var parent: [KNode]?KNode = [KNode] _ => None
     var next_id = n
 
-    let order = sorted([(-edges[e].alt, e.to_idx) for e in E])
+    let order = sorted([(-edges[e].alt, e.ord) for e in E])
     for pair in order:
         let e = E(pair.1)
         let ru = dsu.find(edges[e].u)
@@ -56,7 +56,7 @@ for _ in 0..t_cases:
     var up: List<List<Int>> = []
     var row0: List<Int> = []
     for u in KNode:
-        if let p = parent[u]: row0.push(p.to_idx)
+        if let p = parent[u]: row0.push(p.ord)
         else: row0.push(-1)
     up.push(row0)
     for b in 1..log_n:

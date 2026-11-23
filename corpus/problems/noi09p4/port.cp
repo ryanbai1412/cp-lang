@@ -26,8 +26,8 @@ for r in Row:
             let (pr, pc): (Row, Col) = read()
             dep[r, c].push((r: pr, c: pc))
             indeg[pr, pc] += 1
-        if c.to_idx + 1 < m:
-            let right = Col(c.to_idx + 1)
+        if c.ord + 1 < m:
+            let right = Col(c.ord + 1)
             dep[r, right].push((r:, c:))
             indeg[r, c] += 1
 
@@ -57,7 +57,7 @@ while head < qr.len:
 domain Node = 0..(n * m + 2)
 let src = Node(n * m)
 let sink = Node(n * m + 1)
-fn id(r: Row, c: Col) -> Node = Node(r.to_idx * m + c.to_idx)
+fn id(r: Row, c: Col) -> Node = Node(r.ord * m + c.ord)
 
 var fg = FlowGraph<Node>.new()
 var pos_sum = 0

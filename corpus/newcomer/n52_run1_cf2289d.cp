@@ -16,6 +16,6 @@ else:
     var inv = 0
     for i in I:
         let id = comp.at(s[i])
-        inv += i.to_idx - bit.prefix(id.r)
+        inv += i.ord - bit.prefix(id.r)
         bit.add(id, 1)
     print(inv)

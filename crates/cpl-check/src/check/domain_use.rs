@@ -7,7 +7,7 @@ use cpl_syntax::ast::{self, ExprKind, FnBody, StmtKind, Type, TypeKind};
 use cpl_syntax::visit::{walk_block, walk_expr, Visitor};
 
 /// The members only a domain has, read off a type parameter as `R.at(i)`.
-const MEMBERS: [&str; 7] = ["at", "count", "cuts", "nth", "wrap", "ranges", "K"];
+const MEMBERS: [&str; 6] = ["at", "count", "cuts", "nth", "wrap", "ranges"];
 
 /// `f`'s declared bounds, plus `Domain` on each type parameter it uses as one.
 pub(crate) fn body_bounds(f: &ast::FnDecl) -> Vec<(String, Vec<String>)> {

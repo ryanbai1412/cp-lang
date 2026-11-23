@@ -837,7 +837,7 @@ pub struct Dsu<V>:
     parts: Int
 
     pub fn new() -> Dsu<V>:
-        Dsu([V] v => v, V.K)
+        Dsu([V] v => v, V.count)
 
     pub fn find(mut self, v: V) -> V:
         if up[v] != v: up[v] = self.find(up[v])

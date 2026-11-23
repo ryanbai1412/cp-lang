@@ -12,21 +12,21 @@ fn sum_dom<D>(a: [D]Int) -> Int:
 fn make_seq(k: Int) -> (domain P, [P]Int):
     domain Local = 0..k
     var a: [Local]Int = 0
-    for i in Local: a[i] = i.to_idx * 3 + 1
+    for i in Local: a[i] = i.ord * 3 + 1
     (Local, a)
 
 fn make_pair(a: Int, b: Int) -> (domain A, domain B, [A]Int, [B]Int):
     domain X = 0..a
     domain Y = 0..b
-    let xs = [X] i => i.to_idx + 1
-    let ys = [Y] j => (j.to_idx + 1) * 10
+    let xs = [X] i => i.ord + 1
+    let ys = [Y] j => (j.ord + 1) * 10
     (X, Y, xs, ys)
 
 fn rec_sum(k: Int) -> Int:
     if k <= 0: return 0
     domain Local = 0..k
     var a: [Local]Int = 0
-    for i in Local: a[i] = i.to_idx + 1
+    for i in Local: a[i] = i.ord + 1
     let sub = rec_sum(k - 1)
     sum_dom(a) + sub
 

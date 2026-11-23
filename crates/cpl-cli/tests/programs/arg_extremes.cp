@@ -6,6 +6,6 @@ domain I = 0..3
 var t: [I]?Int = None
 print(argmax(t[i] for i in I))
 t[I(1)] = 7
-print(argmax(t[i] for i in I), argmin(i.to_idx for i in I if t[i] == None))
+print(argmax(t[i] for i in I), argmin(i.ord for i in I if t[i] == None))
 let xs = [3, 9, 2, 9]
 print(argmax(xs[i] for i in 0..4), argmin(xs[i] for i in 0..4))

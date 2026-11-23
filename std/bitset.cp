@@ -14,7 +14,7 @@ pub struct Bitset<D>:
     /// traps: never
     /// example: `domain D = 0..10; Bitset<D>().len == 0`
     pub fn new() -> Bitset<D>:
-        Bitset(List.filled((D.K + 63) / 64, U64(0)), 0)
+        Bitset(List.filled((D.count + 63) / 64, U64(0)), 0)
 
     /// The empty set, matching `Subset<D>.empty` (a call here: it is \(O(K / 64)\)); the same as `new()`.
     ///
@@ -24,13 +24,13 @@ pub struct Bitset<D>:
     pub fn empty() -> Bitset<D> = Bitset<D>.new()
 
     /// The full set containing every position of `D`, matching `Subset<D>.full`. No bit past the last
-    /// position is ever set, so `len` is `D.K`.
+    /// position is ever set, so `len` is `D.count`.
     ///
     /// cost: \(O(K / 64)\) time and space
     /// traps: never
     /// example: `domain D = 0..10; Bitset<D>.full().len == 10`
     pub fn full() -> Bitset<D>:
-        var b = Bitset(List.filled((D.K + 63) / 64, ~U64(0)), D.K)
+        var b = Bitset(List.filled((D.count + 63) / 64, ~U64(0)), D.count)
         b.trim()
         b
 
@@ -72,7 +72,7 @@ pub struct Bitset<D>:
     /// cost: \(O(1)\)
     /// traps: never
     /// example: `domain D = 0..10; let b = Bitset<D>.single(D(4)); b.contains(D(4)) and not b.contains(D(5))`
-    pub fn contains(self, i: D) -> Bool = ((w[i.to_idx / 64] >> (i.to_idx % 64)) & U64(1)) == U64(1)
+    pub fn contains(self, i: D) -> Bool = ((w[i.ord / 64] >> (i.ord % 64)) & U64(1)) == U64(1)
 
     /// Set the bit at position `i`; returns `true` if `i` was not already set (matches `Set.add`).
     ///
@@ -81,7 +81,7 @@ pub struct Bitset<D>:
     /// example: `domain D = 0..10; var b = Bitset<D>(); let x = b.add(D(2)); let y = b.add(D(2)); x and not y and b.len == 1`
     pub fn add(mut self, i: D) -> Bool:
         if self.contains(i): return false
-        w[i.to_idx / 64] |= bit(i.to_idx % 64)
+        w[i.ord / 64] |= bit(i.ord % 64)
         n += 1
         true
 
@@ -92,7 +92,7 @@ pub struct Bitset<D>:
     /// example: `domain D = 0..10; var b = Bitset<D>.single(D(2)); let x = b.remove(D(2)); let y = b.remove(D(2)); x and not y and b.is_empty`
     pub fn remove(mut self, i: D) -> Bool:
         if not self.contains(i): return false
-        w[i.to_idx / 64] &= ~bit(i.to_idx % 64)
+        w[i.ord / 64] &= ~bit(i.ord % 64)
         n -= 1
         true
 
@@ -103,7 +103,7 @@ pub struct Bitset<D>:
     /// example: `domain D = 0..10; var b = Bitset<D>.single(D(2)); b.toggle(D(2)); b.toggle(D(5)); b.each().collect() == [D(5)]`
     pub fn toggle(mut self, i: D):
         n += if self.contains(i): -1 else: 1
-        w[i.to_idx / 64] ^= bit(i.to_idx % 64)
+        w[i.ord / 64] ^= bit(i.ord % 64)
 
     /// A copy of `self` with `i` added; `self` is unchanged.
     ///
@@ -141,7 +141,7 @@ pub struct Bitset<D>:
     /// traps: never
     /// example: `domain D = 0..10; Bitset<D>.of([D(1), D(3), D(8)]).complement().len == 7`
     pub fn complement(self) -> Bitset<D>:
-        var out = Bitset([~x for x in w], D.K - n)
+        var out = Bitset([~x for x in w], D.count - n)
         out.trim()
         out
 
@@ -391,8 +391,8 @@ pub struct Bitset<D>:
     /// example: `domain D = 0..10; Bitset<D>.of([D(1), D(3), D(8)]).next(D(4)) == Some(D(8))`
     /// example: `domain D = 0..10; Bitset<D>.of([D(1), D(3), D(8)]).next(D(9)) == None`
     pub fn next(self, i: D) -> ?D:
-        var k = i.to_idx / 64
-        var x = w[k] & ~low(i.to_idx % 64)
+        var k = i.ord / 64
+        var x = w[k] & ~low(i.ord % 64)
         while true:
             if x != 0: return D.nth(64 * k + ctz(x))
             k += 1
@@ -408,7 +408,7 @@ pub struct Bitset<D>:
     /// example: `domain D = 0..10; Bitset<D>.of([D(1), D(3), D(8)]).prev(D(2)) == Some(D(1))`
     /// example: `domain D = 0..10; Bitset<D>.of([D(1), D(3), D(8)]).prev(D(0)) == None`
     pub fn prev(self, i: D) -> ?D:
-        let idx = i.to_idx
+        let idx = i.ord
         var k = idx / 64
         var x = w[k] & low(idx % 64 + 1)
         while true:
@@ -424,15 +424,15 @@ pub struct Bitset<D>:
     /// traps: never
     /// example: `domain D = 0..10; Bitset<D>.of([D(1), D(3), D(8)]).count_below(D(8)) == 2`
     pub fn count_below(self, i: D) -> Int:
-        let idx = i.to_idx
+        let idx = i.ord
         let (words, bits) = (idx / 64, idx % 64)
         var ans = sum(popcount(w[k]) for k in 0..words)
         if bits > 0 and words < w.len: ans += popcount(w[words] & low(bits))
         ans
 
-    /// All subset sums in `0..D.K` reachable from non-negative `weights`: the position with ordinal `s`
+    /// All subset sums in `0..D.count` reachable from non-negative `weights`: the position with ordinal `s`
     /// is set exactly when some sub-multiset of `weights` sums to `s`. The empty sub-multiset makes `0`
-    /// reachable; sums of `D.K` or more are dropped.
+    /// reachable; sums of `D.count` or more are dropped.
     /// Groups duplicate weights with binary carries so the work is \(O(K \sqrt{S} / 64)\).
     ///
     /// cost: \(O(K \sqrt{S} / 64)\) time, where S is the sum of `weights`; \(O(K / 64)\) space
@@ -441,17 +441,17 @@ pub struct Bitset<D>:
     /// example: `domain S = 0..=10; Bitset<S>.subset_sums([3, 5, 5]).each().map(s => Int(s)).collect() == [0, 3, 5, 8, 10]`
     pub fn subset_sums(weights: List<Int>) -> Bitset<D>:
         var reach = Bitset<D>.new()
-        if D.K == 0: return reach
+        if D.count == 0: return reach
         reach.add(D.nth(0))
-        var cnt = List.filled(D.K, 0)
+        var cnt = List.filled(D.count, 0)
         for w in weights:
-            if 0 < w < D.K: cnt[w] += 1
-        for w in 1..D.K:
+            if 0 < w < D.count: cnt[w] += 1
+        for w in 1..D.count:
             let c = cnt[w]
             if c > 2:
                 let carry = (c - 1) / 2
                 cnt[w] -= 2 * carry
-                if 2 * w < D.K: cnt[2 * w] += carry
+                if 2 * w < D.count: cnt[2 * w] += carry
             for _ in 0..cnt[w]: reach.or_shifted(w)
         reach.trim()
         reach.recount()
@@ -476,7 +476,7 @@ pub struct Bitset<D>:
     /// example: `domain D = 0..10; Bitset<D>.of([D(1), D(3), D(8)]).count_range(1..8) == 2`
     pub fn count_range(self, r: Range<D>) -> Int:
         var c = 0
-        let (lo, hi) = (r.l.to_idx, r.r.to_idx)
+        let (lo, hi) = (r.l.ord, r.r.ord)
         if lo >= hi: return 0
         for k in lo / 64..=(hi - 1) / 64: c += popcount(w[k] & span(k, lo, hi))
         c
@@ -489,7 +489,7 @@ pub struct Bitset<D>:
     /// example: `domain D = 0..10; var b = Bitset<D>.of([D(1), D(3), D(8)]); b.set_range(2..5); b.len == 5`
     /// example: `domain D = 0..10; var b = Bitset<D>.of([D(1), D(3), D(8)]); b.set_range(0..4, on: false); b.each().collect() == [D(8)]`
     pub fn set_range(mut self, r: Range<D>, on: Bool = true):
-        let (lo, hi) = (r.l.to_idx, r.r.to_idx)
+        let (lo, hi) = (r.l.ord, r.r.ord)
         if lo >= hi: return
         for k in lo / 64..=(hi - 1) / 64:
             let m = span(k, lo, hi)
@@ -504,7 +504,7 @@ pub struct Bitset<D>:
     /// traps: never
     /// example: `domain D = 0..10; var b = Bitset<D>.of([D(1), D(3), D(8)]); b.flip_range(0..4); b.each().collect() == [D(0), D(2), D(8)]`
     pub fn flip_range(mut self, r: Range<D>):
-        let (lo, hi) = (r.l.to_idx, r.r.to_idx)
+        let (lo, hi) = (r.l.ord, r.r.ord)
         if lo >= hi: return
         for k in lo / 64..=(hi - 1) / 64:
             let m = span(k, lo, hi)
@@ -563,10 +563,10 @@ pub struct Bitset<D>:
                 w[words] |= w[0] << bits
 
     fn trim(mut self):
-        let full_words = (D.K + 63) / 64
+        let full_words = (D.count + 63) / 64
         for k in full_words..w.len: w[k] = U64(0)
-        if D.K % 64 != 0 and full_words > 0:
-            w[full_words - 1] &= low(D.K % 64)
+        if D.count % 64 != 0 and full_words > 0:
+            w[full_words - 1] &= low(D.count % 64)
 
 /// Runtime-sized 64-bit word bitset over `0..cap` when the width is computed dynamically without a domain.
 /// Single-bit ops are \(O(1)\); word-parallel ops are \(O(\mathit{cap} / 64)\).
@@ -1232,7 +1232,7 @@ fn single_bits_across_word_borders():
     b.remove(P(63))
     b.toggle(P(65))
     b.toggle(P(0))
-    assert [p.to_idx for p in b.each()] == [1, 62, 64, 65, 127, 128, 199]
+    assert [p.ord for p in b.each()] == [1, 62, 64, 65, 127, 128, 199]
     assert b.next(P(2)) == P(62) and b.next(P(129)) == P(199) and b.next(P(64)) == P(64)
     b.remove(P(199))
     assert b.next(P(129)) == None
@@ -1268,7 +1268,7 @@ fn shifted_matches_moving_each_position():
     for k in [0, 1, 7, 63, 64, 65, 128, 189, 190, 400]:
         let s = b.shifted(k)
         for p in P:
-            let from = p.to_idx - k
+            let from = p.ord - k
             assert s.contains(p) == (from >= 0 and x[P.nth(max(from, 0))])
 
 @test
@@ -1289,8 +1289,8 @@ fn membership_and_a_signed_shift():
     assert D(64) in s and D(65) not in s and s.len == 4
     s.toggle(D(3))
     s.toggle(D(5))
-    assert [i.to_idx for i in s.shifted(-3).each()] == [2, 61, 126]
-    assert [i.to_idx for i in s.shifted(2).each()] == [2, 7, 66]
+    assert [i.ord for i in s.shifted(-3).each()] == [2, 61, 126]
+    assert [i.ord for i in s.shifted(2).each()] == [2, 7, 66]
 
 @test
 fn full_contains_every_position_and_nothing_past_end():
@@ -1320,12 +1320,12 @@ fn nav_helpers_and_in_place_shifts():
     assert b.count_below(P(194)) == 5
     assert b.with(P(5)).contains(P(5)) and not b.contains(P(5))
     assert not b.without(P(64)).contains(P(64)) and b.contains(P(64))
-    assert b.find(x => x.to_idx > 100) == Some(P(127))
-    assert b.find(x => x.to_idx > 200) == None
+    assert b.find(x => x.ord > 100) == Some(P(127))
+    assert b.find(x => x.ord > 200) == None
     for k in [1, 7, 63, 64, 65, 128, 194, 300]:
         let s = b.shifted(-k)
         for p in P:
-            let src = p.to_idx + k
+            let src = p.ord + k
             assert s.contains(p) == (src < 195 and b.contains(P(src)))
     var u = Bitset<P>.new()
     for idx in [0, 1, 63, 64, 129]: u.add(P(idx))
@@ -1364,5 +1364,5 @@ fn subset_parity_constructors_and_complement():
     assert c.len == 69 and P(64) not in c and P(0) in c and P(69) in c
     let s2 = s.with(P(3)).without(P(64))
     assert s2.len == 1 and P(3) in s2 and P(64) not in s2
-    let evens = Bitset<P>.of([p for p in P if p.to_idx % 2 == 0])
+    let evens = Bitset<P>.of([p for p in P if p.ord % 2 == 0])
     assert evens.len == 35 and P(0) in evens and P(1) not in evens and P(68) in evens

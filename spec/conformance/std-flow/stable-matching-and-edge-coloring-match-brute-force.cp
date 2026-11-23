@@ -43,7 +43,7 @@ fn stable_matchings_are_stable_and_proposer_optimal():
         let base = R.count + 1
         for code in 0..base ** L.count:
             let other: [L]?R = [L] l => do:
-                let d = code / base ** l.to_idx % base
+                let d = code / base ** l.ord % base
                 if d == R.count: None else: Some(R.nth(d))
             if not is_stable(other, rl, rr): continue
             for l in L:

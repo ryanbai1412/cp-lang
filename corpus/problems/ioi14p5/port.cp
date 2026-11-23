@@ -20,7 +20,7 @@ var with_: [P]Int = copy(conf)  // best of the group with its person picked
 var without: [P]Int = 0
 for u in P.rev:
     if u == P.first: break
-    let (h, how) = joins[u.to_idx - 1]
+    let (h, how) = joins[u.ord - 1]
     let either = max(with_[u], without[u])
     if how == 0:  // friends with the host: not both
         (with_[h], without[h]) = (with_[h] + without[u], without[h] + either)

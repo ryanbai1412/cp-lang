@@ -14,4 +14,4 @@ let v3 = V(3)
 print(pre[v3.r] - pre[v3.l(2)], pre[v3.r(2)] - pre[v3.l], pre[v3.r(1)] - pre[v3.l(1)])
 
 // the Index surface of a domain
-print(V.len, v3.to_idx, yes(V.at(0) == V.first))
+print(V.len, v3.ord, yes(V.at(0) == V.first))

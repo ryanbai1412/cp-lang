@@ -1286,10 +1286,10 @@ pub fn farthest_pair<D>(pts: [D]Pt) -> (a: D, b: D, dist2: Int):
     if h.len == 1: return (keys[0], keys[1], 0)
     var best = (d: -1, a: h[0], b: h[0])
     let consider = (i: D, j: D) =>
-        let (x, y) = if i.to_idx < j.to_idx: (i, j) else: (j, i)
+        let (x, y) = if i.ord < j.ord: (i, j) else: (j, i)
         let d = pts[x].dist2(pts[y])
         if d > best.d or (
-            d == best.d and (x.to_idx < best.a.to_idx or (x == best.a and y.to_idx < best.b.to_idx))
+            d == best.d and (x.ord < best.a.ord or (x == best.a and y.ord < best.b.ord))
         ):
             best = (d:, a: x, b: y)
     let n = h.len
@@ -2697,7 +2697,7 @@ fn cover(
 pub fn planar_faces<V>(pts: [V]Pt, edges: List<(V, V)>) -> List<List<V>>:
     with lint(unproven_list_index: allow)
     let keys = [k for k in pts.keys]
-    let walk = planar_walk([pts[k] for k in keys], [(a.to_idx, b.to_idx) for (a, b) in edges])
+    let walk = planar_walk([pts[k] for k in keys], [(a.ord, b.ord) for (a, b) in edges])
     [[keys[i] for i in f] for f in walk.faces]
 
 struct PlanarWalk:
@@ -2782,7 +2782,7 @@ fn least_rotation(cyc: List<Int>) -> List<Int>:
 /// example: `point_location_planar([Pt(0, 0), Pt(4, 0), Pt(0, 4)], [(0, 1), (1, 2), (2, 0)], [Pt(1, 1), Pt(0, 0), Pt(5, 5)]) == [Some(0), None, None]`
 pub fn point_location_planar<V>(pts: [V]Pt, edges: List<(V, V)>, queries: List<Pt>) -> List<?Int>:
     let keys = [k for k in pts.keys]
-    locate_planar([pts[k] for k in keys], [(a.to_idx, b.to_idx) for (a, b) in edges], queries)
+    locate_planar([pts[k] for k in keys], [(a.ord, b.ord) for (a, b) in edges], queries)
 
 struct SweepSeg(a: Pt, b: Pt, id: Int)
 
@@ -4245,13 +4245,13 @@ fn planar_faces_cover_each_side_once_and_satisfy_euler():
         let k = rand(1, 4)
         let n = k * k
         domain G = 0..n
-        let pts = [G] g => Pt(g.to_idx % k, g.to_idx / k)
+        let pts = [G] g => Pt(g.ord % k, g.ord / k)
         var edges: List<(Int, Int)> = []
         for i in 0..n:
             if i % k + 1 < k and rand(0, 2) > 0: edges.push((i, i + 1))
             if i + k < n and rand(0, 2) > 0: edges.push((i + k, i))
         let faces = [
-            [g.to_idx for g in f] for f in planar_faces(pts, [(G(u), G(v)) for (u, v) in edges])
+            [g.ord for g in f] for f in planar_faces(pts, [(G(u), G(v)) for (u, v) in edges])
         ]
         assert faces.map(f => f.len).sum() == 2 * edges.len
         var sides: List<(Int, Int)> = []
@@ -4335,7 +4335,7 @@ fn point_location_planar_matches_the_least_enclosing_face():
         let k = rand(2, 5)
         let n = k * k
         domain G = 0..n
-        let pts = [G] g => Pt(2 * (g.to_idx % k), 2 * (g.to_idx / k))
+        let pts = [G] g => Pt(2 * (g.ord % k), 2 * (g.ord / k))
         var edges: List<(Int, Int)> = []
         for i in 0..n:
             let (x, y) = (i % k, i / k)
@@ -4346,7 +4346,7 @@ fn point_location_planar_matches_the_least_enclosing_face():
                 if pick == 1: edges.push((i, i + k + 1))
                 if pick == 2: edges.push((i + 1, i + k))
         let keyed = [(G(u), G(v)) for (u, v) in edges]
-        let faces = [[g.to_idx for g in f] for f in planar_faces(pts, keyed)]
+        let faces = [[g.ord for g in f] for f in planar_faces(pts, keyed)]
         let qs = [Pt(rand(-1, 2 * k - 1), rand(-1, 2 * k - 1)) for _ in 0..30]
         let got = point_location_planar(pts, keyed, qs)
         let ps = [pts[G(i)] for i in 0..n]

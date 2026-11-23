@@ -25,7 +25,7 @@ var deltas: Map<Int, Int> = Map()
 for z in I:
     let cur = a[z]
     let v = vals[cur]
-    let pos = inv_b[cur].to_idx
+    let pos = inv_b[cur].ord
     tot += v
     deltas[pos] -= v
     while let cur_val = deltas.get(pos) and cur_val < 0:

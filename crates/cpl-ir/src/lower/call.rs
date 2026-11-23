@@ -668,9 +668,9 @@ impl<'a> Lowerer<'a> {
                         None => self.err_expr(span),
                     };
                 }
-                // `V.from_idx(i)` is the inverse of `v.to_idx`, and `none`
+                // `V.try_at(i)` is the inverse of `v.ord`, and `none`
                 // outside the domain.
-                "try_at" | "from_idx" => {
+                "try_at" => {
                     return match self.one_arg(&name.text, args, &Ty::Int, span) {
                         Some(value) => self.mk(
                             ExprKind::Builtin(Builtin::PosTryOrd(id), vec![value]),

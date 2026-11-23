@@ -4,14 +4,14 @@ domain D3 = 0..3
 domain D2 = 0..2
 domain K = 0..8
 let p3 = [Pt(0, 0), Pt(1, 1), Pt(3, 0)]
-let fp = farthest_pair([D3] i => p3[i.to_idx])
+let fp = farthest_pair([D3] i => p3[i.ord])
 print(yes(fp.a == D3(0) and fp.b == D3(2) and fp.dist2 == 9))
 print(yes(hull_line_intersect([Pt(0, 0), Pt(2, 0), Pt(2, 2), Pt(0, 2)], Pt(-1, 1), Pt(3, 1)) == Some((1, 3))))
 print(yes(hull_line_intersect([Pt(0, 0), Pt(2, 0), Pt(2, 2), Pt(0, 2)], Pt(-1, 5), Pt(3, 5)) == None))
 let p5 = [Pt(0, 0), Pt(1, 1), Pt(5, 5)]
-print(yes(manhattan_mst([D3] i => p5[i.to_idx]).any(e => e.u == D3(0) and e.v == D3(1) and e.w == 2)))
+print(yes(manhattan_mst([D3] i => p5[i.ord]).any(e => e.u == D3(0) and e.v == D3(1) and e.w == 2)))
 let p2 = [Pt(0, 0), Pt(2, 0)]
-let m2 = manhattan_mst([D2] i => p2[i.to_idx])
+let m2 = manhattan_mst([D2] i => p2[i.ord])
 print(yes(m2.len == 1 and m2[0].u == D2(0) and m2[0].v == D2(1) and m2[0].w == 2))
 var seed = 7
 fn rnd(mut seed: Int, n: Int) -> Int:
@@ -23,7 +23,7 @@ var okl = true
 for _ in 0..80:
     let n = 8
     let ps = [Pt(rnd(mut seed, 9) - 4, rnd(mut seed, 9) - 4) for _ in 0..n]
-    let kp = [K] i => ps[i.to_idx]
+    let kp = [K] i => ps[i.ord]
     var bd = -1
     var ba = 0
     var bb = 0
@@ -34,7 +34,7 @@ for _ in 0..80:
                 ba = i
                 bb = j
     let f = farthest_pair(kp)
-    if f.a.to_idx != ba or f.b.to_idx != bb or f.dist2 != bd: okf = false
+    if f.a.ord != ba or f.b.ord != bb or f.dist2 != bd: okf = false
     var inn = List.filled(n, false)
     var dist = List.filled(n, Int.MAX)
     dist[0] = 0
@@ -54,8 +54,8 @@ for _ in 0..80:
         r
     var got = 0
     for e in manhattan_mst(kp):
-        let a = root(comp, e.u.to_idx)
-        let b = root(comp, e.v.to_idx)
+        let a = root(comp, e.u.ord)
+        let b = root(comp, e.v.ord)
         if a != b:
             comp[a] = b
             got += e.w

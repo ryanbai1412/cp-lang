@@ -32,13 +32,13 @@ fn leave(p: Paper):
 
 let block = max(1, isqrt(n))
 fn mo_key(a: Ask) -> (Int, Int):
-    let (b, r) = (asks[a].l.to_idx / block, asks[a].r.to_idx)
+    let (b, r) = (asks[a].l.ord / block, asks[a].r.ord)
     (b, if b % 2 == 0: r else: -r)
 
 var answer: [Ask]Int = 0
 var (lo, hi) = (0, 0)  // the window is the papers at offsets lo..hi
 for a in sorted(Ask, by: mo_key):
-    let (l, r) = (asks[a].l.to_idx, asks[a].r.to_idx + 1)
+    let (l, r) = (asks[a].l.ord, asks[a].r.ord + 1)
     while hi < r:
         enter(Paper.nth(hi))
         hi += 1

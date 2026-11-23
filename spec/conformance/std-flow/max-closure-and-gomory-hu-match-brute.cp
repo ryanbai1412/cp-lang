@@ -11,8 +11,8 @@ fn mc():
             var closed = true
             for u in V:
                 for v in before[u]:
-                    if (m >> v.to_idx) & 1 == 1 and (m >> u.to_idx) & 1 == 0: closed = false
-            if closed: best max= sum(p[v] for v in V if (m >> v.to_idx) & 1 == 1)
+                    if (m >> v.ord) & 1 == 1 and (m >> u.ord) & 1 == 0: closed = false
+            if closed: best max= sum(p[v] for v in V if (m >> v.ord) & 1 == 1)
         assert got.value == best
         assert sum(p[v] for v in V if got.take[v]) == best
         for u in V:
@@ -42,8 +42,8 @@ fn gh():
                 if a == b: continue
                 var cut = Int.MAX
                 for m in 0..64:
-                    if (m >> a.to_idx) & 1 == 1 and (m >> b.to_idx) & 1 == 0:
-                        cut min= sum(e.w for e in es if ((m >> e.u.to_idx) & 1) != ((m >> e.v.to_idx) & 1))
+                    if (m >> a.ord) & 1 == 1 and (m >> b.ord) & 1 == 0:
+                        cut min= sum(e.w for e in es if ((m >> e.u.ord) & 1) != ((m >> e.v.ord) & 1))
                 assert seen[b] and light[b] == cut
 
 mc()

@@ -29,7 +29,7 @@ for v in t.at:
     if let a = above:
         open[v] = open[a]
         k[v] = k[a]
-    if s[v.to_idx] == '(':
+    if s[v.ord] == '(':
         open[v] = v
     elif let j = open[v]:
         ending[v] = 1

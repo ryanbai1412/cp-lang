@@ -16,7 +16,7 @@ var pos = Map<Int, List<Int>>()
 for i in I:
     let x = a[i]
     if x not in pos: pos[x] = []
-    pos[x].push(i.to_idx)
+    pos[x].push(i.ord)
 
 fn first_ge(xs: List<Int>, target: Int) -> Int:
     let lo = xs.first_ge(target) ?? xs.len
@@ -29,7 +29,7 @@ for i in I:
         if k == 0:
             ans += xs.len
         else:
-            let idx = i.to_idx
+            let idx = i.ord
             ans += first_ge(xs, idx - k + 1)
             ans += xs.len - first_ge(xs, idx + k)
 

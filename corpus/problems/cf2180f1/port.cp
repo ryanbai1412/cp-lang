@@ -36,7 +36,7 @@ for i in I:
     for j in J:
         let w = ways[j]
         let (open, walled, shut) = (w.open + side.open, w.walled + side.walled, w.shut + side.shut)
-        run += (walled + shut + 4 * (w.boxed + side.boxed)) * weight[i.to_idx + j.to_idx]
+        run += (walled + shut + 4 * (w.boxed + side.boxed)) * weight[i.ord + j.ord]
         let falls = open + walled
         ways[j] = state(falls, falls, floor: 3, wall: 2)
         let slides = open + 2 * shut

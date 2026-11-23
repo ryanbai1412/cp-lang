@@ -10,4 +10,4 @@ let s = mk(V(1), 4)
 let t = mk(V(2), 2)
 print(s.at.len, t.at.len)
 for p in s.P:
-    if p.to_idx == 0 or p.to_idx == 3: print(p, s.at[p])
+    if p.ord == 0 or p.ord == 3: print(p, s.at[p])

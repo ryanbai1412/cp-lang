@@ -1047,7 +1047,7 @@ impl<'a> Lowerer<'a> {
                 }
                 None => self.err_expr(span),
             },
-            (Ty::DomainVal | Ty::Pos(_), "nth" | "at" | "from_idx") => {
+            (Ty::DomainVal | Ty::Pos(_), "nth" | "at") => {
                 let Some(idx_expr) = self.one_arg(method, args, &Ty::Int, span) else {
                     return self.err_expr(span);
                 };

@@ -58,9 +58,9 @@ fn dijkstra_subtree(root: Int, init_w: Int):
     relax(root, init_w)
     while let (d, u) = pq.pop():
         if dist[u] != d: continue
-        let ui = u.to_idx + 1
+        let ui = u.ord + 1
         if ui > 1: relax(ui / 2, d + w_par[u])
-        for (v, w) in g[u]: relax(v.to_idx + 1, d + w)
+        for (v, w) in g[u]: relax(v.ord + 1, d + w)
 
 fn dfs(o: Int, depth: Int, d_w: Int):
     save_subtree(o, depth)

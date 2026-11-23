@@ -27,7 +27,7 @@ for ch in moves:
     else:
         for i in Row:
             for j in Col:
-                if abs(i.to_idx - r.to_idx) + abs(j.to_idx - c.to_idx) < k: g[i, j] = ch
+                if abs(i.ord - r.ord) + abs(j.ord - c.ord) < k: g[i, j] = ch
 for i in Row:
     var line = ""
     for j in Col: line.push(g[i, j])

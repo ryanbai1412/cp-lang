@@ -242,7 +242,7 @@ fn destructured_domain_in_scope_for_nested_fns() {
     let ok = "\
 fn make(k: Int) -> (domain P, [P]Int):
     domain L = 0..k
-    (L, [L] i => i.to_idx)
+    (L, [L] i => i.ord)
 
 let (domain C, comp) = make(3)
 var total = 0

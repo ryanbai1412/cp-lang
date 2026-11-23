@@ -4,10 +4,10 @@ fn vertexless_closure_graphs_with_turbofish():
     domain V = 0..6
     // arcs u -> u + 1 and u -> u + 2, given only as a closure
     let order = peel<V>(
-        u => [v for v in V if v.to_idx == u.to_idx + 1 or v.to_idx == u.to_idx + 2]
+        u => [v for v in V if v.ord == u.ord + 1 or v.ord == u.ord + 2]
     )
     assert order == [V(0), V(1), V(2), V(3), V(4), V(5)]
-    assert peel<V>(u => [V.nth((u.to_idx + 1) % 6)]) == []
+    assert peel<V>(u => [V.nth((u.ord + 1) % 6)]) == []
 fn fixed_cost_paths_match_dijkstra_on_the_same_moves():
     domain S = 0..20
     let moves = [1, 3, -2, 5]
@@ -16,10 +16,10 @@ fn fixed_cost_paths_match_dijkstra_on_the_same_moves():
         var es: List<(u: S, v: S, w: Int)> = []
         for s in S:
             for j in 0..4:
-                let t = s.to_idx + moves[j]
+                let t = s.ord + moves[j]
                 if 0 <= t < 20: es.push((u: s, v: S.nth(t), w: price[j]))
         domain E = 0..es.len
-        let ea: [E](u: S, v: S, w: Int) = [E] e => es[e.to_idx]
+        let ea: [E](u: S, v: S, w: Int) = [E] e => es[e.ord]
         let src = S.nth(rand(0, 19))
         let want = dijkstra(Graph.directed(ea), from: [(src, 0)])
         let got = fixed_cost_paths(
@@ -29,7 +29,7 @@ fn fixed_cost_paths_match_dijkstra_on_the_same_moves():
             step: (
                 j,
                 s,
-            ) => if s.to_idx + moves[j] >= 0 and s.to_idx + moves[j] < 20: Some(S.nth(s.to_idx + moves[j])) else: None,
+            ) => if s.ord + moves[j] >= 0 and s.ord + moves[j] < 20: Some(S.nth(s.ord + moves[j])) else: None,
         )
         for s in S: assert got[s] == want[s]
 fn until_stops_at_the_target_with_its_exact_distance():

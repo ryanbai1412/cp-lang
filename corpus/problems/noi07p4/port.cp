@@ -68,7 +68,7 @@ for _ in 0..q:
         let (i, j, x): (Int, Int, Int) = read()
         var (l, r) = (phys(i), phys(j))
         if dir == -1: swap(mut l, mut r)
-        if l.to_idx <= r.to_idx:
+        if l.ord <= r.ord:
             st.apply(l..=r, x)
         else:
             st.apply(l.., x)
@@ -82,7 +82,7 @@ for _ in 0..q:
         var (l, r) = (phys(i), phys(j))
         if dir == -1: swap(mut l, mut r)
         var res = run_monoid.id
-        if l.to_idx <= r.to_idx:
+        if l.ord <= r.ord:
             res = st.fold(l..=r)
         else:
             res = run_monoid.op(st.fold(l..), st.fold(..=r))

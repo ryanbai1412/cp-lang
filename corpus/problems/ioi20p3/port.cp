@@ -23,7 +23,7 @@ var prize = 0
 for c in Colour:
     for j in 0..k:
         prize -= x[c, Ticket(j)]
-        ups.push((-(x[c, Ticket(m - 1 - j)] + x[c, Ticket(k - 1 - j)]), c.to_idx, j))
+        ups.push((-(x[c, Ticket(m - 1 - j)] + x[c, Ticket(k - 1 - j)]), c.ord, j))
 ups.sort()
 
 var plus: [Colour]Int = 0
@@ -38,7 +38,7 @@ var hi: [Colour]Int = m - 1
 for r in 0..k:
     var by_plus: List<(Int, Int)> = []
     for c in Colour:
-        by_plus.push((-plus[c], c.to_idx))
+        by_plus.push((-plus[c], c.ord))
     by_plus.sort()
     for rank in 0..n:
         let c = Colour(by_plus[rank].1)

@@ -15,18 +15,18 @@ impl<'a> Lowerer<'a> {
     /// range has a list's too), the record's fields and every fn in reach that takes `self`.
     pub(super) fn member_typo(&mut self, ty: &Ty, name: &str, span: Span) {
         use cpl_check::Receiver;
-        const POS_MEMBERS: [&str; 19] = [
+        const POS_MEMBERS: [&str; 18] = [
             "after", "ahead", "back", "before", "count", "cyc", "first", "idx", "is_empty",
-            "label", "len", "next", "offset", "ord", "prev", "rank", "to_idx", "with", "without",
+            "label", "len", "next", "offset", "ord", "prev", "rank", "with", "without",
         ];
         const BOUND_EXTRA: [&str; 4] = ["l", "left", "r", "right"];
         const RANGE_MEMBERS: [&str; 10] = [
             "end", "first", "halves", "is_empty", "last", "mid", "rev", "sorted", "start", "step",
         ];
-        const DOMAIN_MEMBERS: [&str; 24] = [
-            "after", "all", "any", "at", "before", "bounds", "count", "cuts", "first", "from_idx",
-            "is_empty", "last", "len", "mask", "max", "min", "nth", "rev", "size", "sort",
-            "sorted", "subsets", "sum", "windows",
+        const DOMAIN_MEMBERS: [&str; 23] = [
+            "after", "all", "any", "at", "before", "bounds", "count", "cuts", "first", "is_empty",
+            "last", "len", "mask", "max", "min", "nth", "rev", "size", "sort", "sorted", "subsets",
+            "sum", "windows",
         ];
         const SEQ_EXTRA: [&str; 6] = [
             "adjacent", "inverse", "items", "resized", "reverse", "reversed",
@@ -34,7 +34,7 @@ impl<'a> Lowerer<'a> {
         const STR_EXTRA: [&str; 6] = [
             "adjacent", "count", "items", "reverse", "reversed", "to_str",
         ];
-        const INT_MEMBERS: [&str; 6] = ["abs", "idx", "isqrt", "ord", "sqrt", "to_idx"];
+        const INT_MEMBERS: [&str; 5] = ["abs", "idx", "isqrt", "ord", "sqrt"];
         const FLOAT_MEMBERS: [&str; 6] = ["abs", "ceil", "floor", "round", "sqrt", "trunc"];
         let receiver = match ty {
             Ty::Str | Ty::StrView => Some(Receiver::Str),

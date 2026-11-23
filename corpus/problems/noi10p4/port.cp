@@ -32,7 +32,7 @@ let order = topo<Plane>(p => after[p])!
 for p in order.rev:
     for a in after[p]: due[p] min= due[a.to] - 1
 
-print(line([p.to_idx + 1 for p in sorted([p for p in Plane], by: p => due[p])]))
+print(line([p.ord + 1 for p in sorted([p for p in Plane], by: p => due[p])]))
 
 fn earliest(u: Plane) -> Int:
     var first: [Plane]Bool = false  // u and everything that must precede it
@@ -50,7 +50,7 @@ fn earliest(u: Plane) -> Int:
     var waiting = 0
     for slot in Slot.rev:
         waiting += due_at[slot]
-        if waiting == 0: return slot.to_idx + 1
+        if waiting == 0: return slot.ord + 1
         waiting -= 1
     assert false
     0

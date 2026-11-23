@@ -28,5 +28,5 @@ for q in Query:
         2 => rope.reverse(..=decode_pos(b))
         3 => alive[decode_query(b)] = false
     let ans = rope.query_path(decode_pos(c), seg => seg.first_alive(id => alive[id]))
-    last = if let v = ans: v.to_idx + 1 else: 0
+    last = if let v = ans: v.ord + 1 else: 0
     print(last)

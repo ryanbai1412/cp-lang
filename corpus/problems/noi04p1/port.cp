@@ -24,7 +24,7 @@ for c in Cmd:
 let bases = seen.sorted()
 domain Slot = 0..bases.len
 var slot = Map<Int, Slot>()
-for s in Slot: slot[bases[s.to_idx]] = s
+for s in Slot: slot[bases[s.ord]] = s
 
 var staff = Fenwick<Slot, Int>()
 var (size, left) = (0, 0)
@@ -41,7 +41,7 @@ for c in Cmd:
         raise -= x
         while size > 0:
             let lowest = staff.first_ge(1)!.left!
-            if bases[lowest.to_idx] + raise >= floor: break
+            if bases[lowest.ord] + raise >= floor: break
             let leaving = staff.fold(lowest..=lowest)
             staff.add(lowest, -leaving)
             size -= leaving
@@ -50,5 +50,5 @@ for c in Cmd:
         print(-1)
     else:
         let kth = staff.first_ge(size - x + 1)!.left!
-        print(bases[kth.to_idx] + raise)
+        print(bases[kth.ord] + raise)
 print(left)

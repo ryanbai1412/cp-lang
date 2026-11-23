@@ -16,7 +16,7 @@ for i in City:
     if i == City.first: continue
     let row: Str = read()
     for j in ..i:
-        red[i, j] = row[j.to_idx] == 'R'
+        red[i, j] = row[j.ord] == 'R'
         red[j, i] = red[i, j]
 
 for s in City:
@@ -47,5 +47,5 @@ for s in City:
             first.push(b)
             first.push(u)
     print(n)
-    for c in second: print(c.to_idx + 1)
-    while let c = first.pop(): print(c.to_idx + 1)
+    for c in second: print(c.ord + 1)
+    while let c = first.pop(): print(c.ord + 1)

@@ -6,7 +6,7 @@ use std.seq.{ends}
 /// A total partition of domain `D` into maximal contiguous half-open runs,
 /// each carrying a value of type `T`.
 /// Adjacent runs always have distinct values (`==` runs coalesce automatically).
-/// `new` is \(O(1)\); `from` is \(O(D.K)\); `at`, `run_at`, and `assign_point` are
+/// `new` is \(O(1)\); `from` is \(O(D.count)\); `at`, `run_at`, and `assign_point` are
 /// \(O(\log \mathit{runs})\); `assign` is amortized \(O((1 + \mathit{overwritten}) \log \mathit{runs})\);
 /// `each` is \(O(\mathit{runs})\); `runs` is \(O(1)\).
 pub struct IntervalMap<D, T>:
@@ -20,7 +20,7 @@ pub struct IntervalMap<D, T>:
     /// example: `IntervalMap<0..5, Int>(0).runs == 1`
     pub fn new(init: T) -> IntervalMap<D, T>:
         var m = Map<Int, (hi: Int, val: T)>()
-        if D.K > 0: m[0] = (hi: D.K, val: init)
+        if D.count > 0: m[0] = (hi: D.count, val: init)
         IntervalMap(m)
 
     /// The map holding `a[i]` at every position `i`, stored as maximal runs of equal values.
@@ -32,16 +32,16 @@ pub struct IntervalMap<D, T>:
     /// example: `IntervalMap.from([1, 1, 2]).runs == 2`
     pub fn from(a: [D]T) -> IntervalMap<D, T>:
         var m = Map<Int, (hi: Int, val: T)>()
-        if D.K == 0: return IntervalMap(m)
+        if D.count == 0: return IntervalMap(m)
         var lo = 0
         var cur = a[D.nth(0)]
-        for idx in 1..D.K:
+        for idx in 1..D.count:
             let v = a[D.nth(idx)]
             if v != cur:
                 m[lo] = (hi: idx, val: cur)
                 lo = idx
                 cur = v
-        m[lo] = (hi: D.K, val: cur)
+        m[lo] = (hi: D.count, val: cur)
         IntervalMap(m)
 
     /// The number of maximal runs, i.e. one more than the number of adjacent positions whose
@@ -59,7 +59,7 @@ pub struct IntervalMap<D, T>:
     /// traps: when `i` is outside `D`
     /// example: `IntervalMap.from([1, 1, 2]).get(2) == 2`
     pub fn get(self, i: D) -> T:
-        segs.last_le(i.to_idx)!.1.val
+        segs.last_le(i.ord)!.1.val
 
     /// The maximal run containing position `i` and its value.
     ///
@@ -69,7 +69,7 @@ pub struct IntervalMap<D, T>:
     /// example: `IntervalMap.from([1, 1, 2]).run_at(1).range == 0..2`
     /// example: `IntervalMap.from([1, 1, 2]).run_at(1).val == 1`
     pub fn run_at(self, i: D) -> (range: Range<D>, val: T):
-        let (lo, seg) = segs.last_le(i.to_idx)!
+        let (lo, seg) = segs.last_le(i.ord)!
         (range: D.nth(lo).l..D.nth(seg.hi - 1).r, val: seg.val)
 
     /// Give every position of `r` the value `val`, then merge it with equal neighbouring runs so all
@@ -196,7 +196,7 @@ pub struct IntervalMap<D, T>:
     /// traps: never
     /// example: `IntervalMap.from([1, 1, 2]).each_rev().map(p => p.val).collect() == [2, 1]`
     pub fn each_rev(self) -> yields (range: Range<D>, val: T):
-        var pos = D.K
+        var pos = D.count
         while pos > 0:
             let (sl, seg) = segs.last_lt(pos)!
             yield (range: D.nth(sl).l..D.nth(seg.hi - 1).r, val: seg.val)
@@ -213,7 +213,7 @@ pub struct IntervalMap<D, T>:
     /// example: `IntervalMap.from([1, 1, 2]).first_where((0..3).r, v => true) == None`
     pub fn first_where(self, from: Cut<D>, ok: T -> Bool) -> ?D:
         var pos = from.ord
-        while pos < D.K:
+        while pos < D.count:
             let (sl, seg) = segs.last_le(pos)!
             if ok(seg.val): return Some(D.nth(pos))
             pos = seg.hi
@@ -286,7 +286,7 @@ pub struct IntervalSet<D>:
     /// traps: when `i` is outside `D`
     /// example: `var s = IntervalSet<0..10>(); s.add(2..4); s.contains(3) and not s.contains(4)`
     pub fn contains(self, i: D) -> Bool:
-        let x = i.to_idx
+        let x = i.ord
         if let (_, h) = segs.last_le(x): return x < h
         false
 
@@ -311,7 +311,7 @@ pub struct IntervalSet<D>:
     /// example: `var s = IntervalSet<0..10>(); s.add(2..4); s.run_at(3) == Some(2..4)`
     /// example: `var s = IntervalSet<0..10>(); s.add(2..4); s.run_at(4) == None`
     pub fn run_at(self, i: D) -> ?Range<D>:
-        let x = i.to_idx
+        let x = i.ord
         if let (l, h) = segs.last_le(x):
             if x < h: return Some(D.nth(l).l..D.nth(h - 1).r)
         None
@@ -323,7 +323,7 @@ pub struct IntervalSet<D>:
     /// example: `var s = IntervalSet<0..10>(); s.add(5..7); s.next_covered(2) == Some(5)`
     /// example: `var s = IntervalSet<0..10>(); s.add(5..7); s.next_covered(7) == None`
     pub fn next_covered(self, from: D) -> ?D:
-        let x = from.to_idx
+        let x = from.ord
         if self.contains(from): return Some(from)
         if let (l, _) = segs.first_gt(x): return Some(D.nth(l))
         None
@@ -336,11 +336,11 @@ pub struct IntervalSet<D>:
     /// example: `var s = IntervalSet<0..10>(); s.add(0..3); s.next_gap(1) == Some(3)`
     /// example: `var s = IntervalSet<0..10>(); s.add(5..10); s.next_gap(6) == None`
     pub fn next_gap(self, from: D) -> ?D:
-        let x = from.to_idx
+        let x = from.ord
         var g = x
         if let (_, h) = segs.last_le(x):
             if x < h: g = h
-        if g < D.K: Some(D.nth(g)) else: None
+        if g < D.count: Some(D.nth(g)) else: None
 
     /// The number of positions in the set.
     ///
@@ -505,7 +505,7 @@ fn interval_map_from_and_empty_domain():
     let seen = sum(1 for _ in em.each())
     assert seen == 0
     domain P = 0..6
-    let a: [P]Int = [P] i => [1, 1, 2, 2, 2, 1][i.to_idx]
+    let a: [P]Int = [P] i => [1, 1, 2, 2, 2, 1][i.ord]
     let m = IntervalMap<P, Int>.from(a)
     assert m.runs == 3
     for i in P: assert m.get(i) == a[i]
@@ -525,7 +525,7 @@ fn interval_map_matches_dense_array():
         m.assign(P(l)..=P(r), v, on_old: (rg, old_v) => over.push((range: rg, val: old_v)))
         for (rg, old_v) in over:
             for i in rg:
-                assert i.to_idx + 1 == pos
+                assert i.ord + 1 == pos
                 assert ref_a[i] == old_v
                 ref_a[i] = v
                 pos += 1

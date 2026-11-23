@@ -126,7 +126,7 @@ pub struct Prefix<D, T: Add + Sub>:
     pub fn filling(order: FillOrder = FillOrder.Forward) -> FillPrefix<D, T>:
         let rev = order == FillOrder.Reverse
         let p: [D.cuts]T = T.zero
-        FillPrefix(p, rev, if rev: D.K - 1 else: 0)
+        FillPrefix(p, rev, if rev: D.count - 1 else: 0)
 
     /// The sum of everything left of boundary `b`: zero at the first cut, `all` at the last.
     ///
@@ -159,7 +159,7 @@ pub struct Prefix<D, T: Add + Sub>:
         if r.len == 0: return T.zero
         let (s, e) = (r.start, r.end)
         if s.ord <= e.ord: return self.p[e.r] - self.p[s.l]
-        (self.p[D.cuts.nth(D.K)] - self.p[s.l]) + (self.p[e.r] - self.p[D.cuts.nth(0)])
+        (self.p[D.cuts.nth(D.count)] - self.p[s.l]) + (self.p[e.r] - self.p[D.cuts.nth(0)])
 
     /// `p[c]`: the sum of everything left of cut `c`, the same as `prefix(c)`; at a position `v`,
     /// `p[v]` is the sum through `v`, the same as `p[v.r]` (R07.1.6). On `Int` keys an index is the
@@ -186,7 +186,7 @@ pub struct Prefix<D, T: Add + Sub>:
     /// traps: never
     /// example: `domain D = 0..3; let p = Prefix<D, Int>([D] v => 1 + Int(v)); p.all == 6`
     @get pub fn all(self) -> T:
-        self.p[D.cuts.nth(D.K)]
+        self.p[D.cuts.nth(D.count)]
 
     /// The first boundary `b` with `prefix(b) >= target`, or `None` when even `all` is smaller.
     ///
@@ -202,7 +202,7 @@ pub struct Prefix<D, T: Add + Sub>:
     /// example: `[2, 0, 3].scan(+).first_ge(6) == None`
     pub fn first_ge(self, target: T) -> ?Cut<D>:
         if self.all < target: return None
-        let lo = (0..D.K).first_true(mid => self.p[D.cuts.nth(mid)] >= target) ?? D.K
+        let lo = (0..D.count).first_true(mid => self.p[D.cuts.nth(mid)] >= target) ?? D.count
         Some(D.cuts.nth(lo))
 
     /// The first boundary `b` with `prefix(b) > target`, or `None` when `all <= target`.
@@ -217,7 +217,7 @@ pub struct Prefix<D, T: Add + Sub>:
     /// example: `[2, 0, 3].scan(+).first_gt(5) == None`
     pub fn first_gt(self, target: T) -> ?Cut<D>:
         if self.all <= target: return None
-        let lo = (0..D.K).first_true(mid => self.p[D.cuts.nth(mid)] > target) ?? D.K
+        let lo = (0..D.count).first_true(mid => self.p[D.cuts.nth(mid)] > target) ?? D.count
         Some(D.cuts.nth(lo))
 
 /// Internal append-only 2-D prefix/suffix sum table returned by `Prefix<R, C, T>.filling(...)`.
@@ -233,7 +233,7 @@ pub struct _FillPrefix2 <R, C, T: Add + Sub>:
     /// traps: when `(r, c)` is not the next cell in fill order
     /// example: `domain R = 0..2; domain C = 0..2; var f = Prefix<R, C, Int>.filling(); f.set(0, 0, 1); f.set(0, 1, 2); f.prefix(1, 2) == 3`
     pub fn set(mut self, r: R, c: C, x: T):
-        let in_order = r.ord * C.K + c.ord == next
+        let in_order = r.ord * C.count + c.ord == next
         assert in_order
         if rev:
             p[r.l, c.l] = x + p[r.r, c.l] + p[r.l, c.r] - p[r.r, c.r]
@@ -250,7 +250,7 @@ pub struct _FillPrefix2 <R, C, T: Add + Sub>:
     /// example: `domain R = 0..2; domain C = 0..2; var f = Prefix<R, C, Int>.filling(); f.set(0, 0, 1); f.set(0, 1, 2); f.set(1, 0, 3); f.prefix(2, 1) == 4`
     pub fn prefix(self, r: Cut<R>, c: Cut<C>) -> T:
         if r.ord == 0 or c.ord == 0: return T.zero
-        let in_filled = if rev: next < 0 else: (r.ord - 1) * C.K + (c.ord - 1) < next
+        let in_filled = if rev: next < 0 else: (r.ord - 1) * C.count + (c.ord - 1) < next
         assert in_filled
         let r0 = R.cuts.nth(0)
         let c0 = C.cuts.nth(0)
@@ -272,7 +272,7 @@ pub struct _FillPrefix2 <R, C, T: Add + Sub>:
     pub fn fold(self, rows: Range<R>, cols: Range<C>) -> T:
         if rows.is_empty or cols.is_empty: return T.zero
         if rev:
-            let in_filled = rows.l.ord * C.K + cols.l.ord > next
+            let in_filled = rows.l.ord * C.count + cols.l.ord > next
             assert in_filled
             return self.p[
                 rows.l,
@@ -315,7 +315,7 @@ pub struct _Prefix2 <R, C, T: Add + Sub>:
     pub fn filling(order: FillOrder = FillOrder.Forward) -> FillPrefix<R, C, T>:
         let rev = order == FillOrder.Reverse
         let p: [R.cuts, C.cuts]T = T.zero
-        _FillPrefix2(p, rev, if rev: R.K * C.K - 1 else: 0)
+        _FillPrefix2(p, rev, if rev: R.count * C.count - 1 else: 0)
 
     /// The sum of everything above row boundary `r` and left of column boundary `c`; zero when
     /// either cut is the first.
@@ -455,7 +455,7 @@ pub fn prefix_fold<D, T, M>(op: M, a: [D]T) -> [D.cuts]T:
     p
 
 /// Suffix monoid folds of `a`, indexed by `Cut<D>`: `s[b]` is the fold of `b..`,
-/// with `s[D.cuts.nth(D.K)] == m.id`. With `prefix_fold`, the fold outside `r` is
+/// with `s[D.cuts.nth(D.count)] == m.id`. With `prefix_fold`, the fold outside `r` is
 /// `m.op(pref[r.start], suff[r.end])`. \(O(n)\).
 ///
 /// Each suffix keeps the elements' left-to-right order, `s[c] == op(a[c.r], s[c.next])`, so
@@ -751,7 +751,7 @@ fn diff_1d_and_2d_match_brute():
     var d1 = Diff<V, Int>()
     for _ in 0..40:
         let l = V.nth(rand(0, 8))
-        let r = V.nth(rand(l.to_idx, 8))
+        let r = V.nth(rand(l.ord, 8))
         let x = rand(-7, 7)
         for i in l..=r: plain[i] += x
         d1.add(l..=r, x)
@@ -765,9 +765,9 @@ fn diff_1d_and_2d_match_brute():
     var d2 = Diff<R, C, Int>()
     for _ in 0..40:
         let r1 = R.nth(rand(0, 3))
-        let r2 = R.nth(rand(r1.to_idx, 3))
+        let r2 = R.nth(rand(r1.ord, 3))
         let c1 = C.nth(rand(0, 4))
-        let c2 = C.nth(rand(c1.to_idx, 4))
+        let c2 = C.nth(rand(c1.ord, 4))
         let x = rand(-5, 5)
         for r in r1..=r2:
             for c in c1..=c2: g[r, c] += x
@@ -841,7 +841,7 @@ fn scan_folds_every_prefix():
 @test
 fn suffix_scan_matches_right_to_left_fold():
     domain V = 1..=4
-    let a = [V] i => [2, 3, 5, 7][i.to_idx]
+    let a = [V] i => [2, 3, 5, 7][i.ord]
     let sf = suffix_fold(*, a)
     assert [sf[c] for c in V.cuts] == [210, 105, 35, 7, 1]
     let p = a.scan(+)

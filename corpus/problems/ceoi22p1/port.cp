@@ -25,7 +25,7 @@ var stk: List<Int> = []
 var idx = n - 1
 while idx >= 0:
     let p = Pos.nth(idx)
-    while stk.len > 0 and deck[Pos.nth(stk.last!)].to_idx < deck[p].to_idx:
+    while stk.len > 0 and deck[Pos.nth(stk.last!)].ord < deck[p].ord:
         stk.pop()
     if stk.len > 0:
         nxt_gt[p] = stk.last!
@@ -49,7 +49,7 @@ fn insert_runs(lo_idx: Int, hi_idx: Int):
 
 insert_runs(0, n - 1)
 
-let order = sorted([(qs[qi].t, qi.to_idx) for qi in Q])
+let order = sorted([(qs[qi].t, qi.ord) for qi in Q])
 let half = n / 2
 var cur_t = 0
 var fixed = false
@@ -70,14 +70,14 @@ for pair in order:
             let cut_delta = full_len - keep
             run_len[leader] = keep
             bit.add(leader, -cut_delta)
-            let start_idx = pos_of[leader].to_idx
+            let start_idx = pos_of[leader].ord
             insert_runs(start_idx + keep, start_idx + full_len - 1)
         cur_t += 1
 
-    let pos1 = qs[qi].i.to_idx + 1
+    let pos1 = qs[qi].i.ord + 1
     let b = bit.first_ge(pos1)!
     let leader = b.left!
     let off = pos1 - bit.prefix(leader.l) - 1
-    ans[qi] = deck[Pos.nth(pos_of[leader].to_idx + off)].to_idx + 1
+    ans[qi] = deck[Pos.nth(pos_of[leader].ord + off)].ord + 1
 
 for qi in Q: print(ans[qi])

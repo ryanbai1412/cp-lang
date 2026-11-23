@@ -28,7 +28,7 @@ domain Node = 0..(2 * sz)
 var tree: [Node]Int = [Node] _ => 0
 
 for i in I:
-    tree[Node(sz + i.to_idx)] = a[i]
+    tree[Node(sz + i.ord)] = a[i]
 for o in (1..sz).rev:
     tree[Node(o)] = max(tree[Node(2 * o)], tree[Node(2 * o + 1)])
 

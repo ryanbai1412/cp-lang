@@ -24,8 +24,8 @@ let tree = Rooted(u => g.out(u), V.first!)
 
 var fact: [Deg]Z = 1
 for d in Deg:
-    if d.to_idx > 0:
-        fact[d] = fact[Deg(d.to_idx - 1)] * Z(d.to_idx)
+    if d.ord > 0:
+        fact[d] = fact[Deg(d.ord - 1)] * Z(d.ord)
 
 var memo0: [V]List<Z> = [V] _ => []
 var memo1: [V]List<Z> = [V] _ => []
@@ -44,7 +44,7 @@ for u in tree.at.rev:
             let c1 = memo1[v]
             var nxt: [Deg]List<Z> = [Deg] _ => [Z.zero for _ in 0..=sz_u]
             for d in Deg:
-                let di = d.to_idx
+                let di = d.ord
                 for i in 0..=csum:
                     let stay = cur[d][i]
                     let prev_d = if di > 0: cur[Deg(di - 1)][i] else: Z.zero

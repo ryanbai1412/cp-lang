@@ -29,18 +29,18 @@ let arg_max = Monoid<Peak>(
     ): a else: b,
 )
 
-let init_peaks = [I] i => Peak(true, init_a[i], i.to_idx)
+let init_peaks = [I] i => Peak(true, init_a[i], i.ord)
 var val_st = SegTree<I, Peak>(arg_max, init_peaks)
 var pair_st = SegTree<I, Int>(max)
 
 fn left_best(p: I) -> Peak:
-    let pi = p.to_idx
+    let pi = p.ord
     if pi == 0: return empty_peak
     let lo = max(0, pi - k + 1)
     val_st.fold(I.nth(lo)..p)
 
 fn right_best(p: I) -> Peak:
-    let pi = p.to_idx
+    let pi = p.ord
     if pi + 1 >= n: return empty_peak
     let hi = min(n - 1, pi + k - 1)
     val_st.fold(I.nth(pi + 1)..=I.nth(hi))
@@ -61,7 +61,7 @@ for qi in Q:
     let x = upds[qi].x
     let old_l = left_best(pos)
     let old_r = right_best(pos)
-    val_st.set(pos, Peak(true, x, pos.to_idx))
+    val_st.set(pos, Peak(true, x, pos.ord))
     refresh(pos)
     if old_l.has: refresh(I.nth(old_l.idx))
     if old_r.has: refresh(I.nth(old_r.idx))

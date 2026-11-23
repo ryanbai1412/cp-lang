@@ -21,7 +21,7 @@ var kids: [Node]List<Node> = [Node] _ => []
 // alive[p] = 1 while the group whose leftmost starting position is p is
 // still in; `head[p]` is the tree node that group has become
 var alive = Fenwick<Pos, Int>([Pos] _ => 1)
-var head: [Pos]Node = [Pos] p => Node(p.to_idx)
+var head: [Pos]Node = [Pos] p => Node(p.ord)
 for round in 0..c:
     let (s, e): (Int, Int) = read()
     let node = Node(n + round)
@@ -41,8 +41,8 @@ var top: [Node]Int = -1
 var inner: [Node]Int = -1
 var wins: [Node]Int = 0
 for v in Node:
-    if v.to_idx < n:
-        if v.to_idx < n - 1: top[v] = rank[Gap(v.to_idx)]
+    if v.ord < n:
+        if v.ord < n - 1: top[v] = rank[Gap(v.ord)]
         continue
     for i in 0..kids[v].len:
         let k = kids[v][i]
@@ -50,8 +50,8 @@ for v in Node:
         inner[v] max= if i + 1 < kids[v].len: top[k] else: inner[k]
 var best = (wins: -1, at: 0)
 for v in Node.rev:
-    if v.to_idx < n:
-        if wins[v] >= best.wins: best = (wins: wins[v], at: v.to_idx)
+    if v.ord < n:
+        if wins[v] >= best.wins: best = (wins: wins[v], at: v.ord)
         continue
     for k in kids[v]: wins[k] = wins[v] + Int(r > inner[v])
 print(best.at)

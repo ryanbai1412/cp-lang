@@ -15,8 +15,8 @@ let ops: [Q](l: Int, r: Int, k: Int) = read()
 var top = n
 for i in Q: top = max(top, max(ops[i].l, max(ops[i].r, ops[i].k)))
 domain Node = 0..=(top + 1)
-var next: [Node]Int = [Node] v => v.to_idx + 1
-var prev: [Node]Int = [Node] v => v.to_idx - 1
+var next: [Node]Int = [Node] v => v.ord + 1
+var prev: [Node]Int = [Node] v => v.ord - 1
 
 fn link(a: Int, b: Int):
     next[Node(a)] = b

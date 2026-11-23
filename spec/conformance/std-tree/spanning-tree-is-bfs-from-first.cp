@@ -8,7 +8,7 @@ for trial in 0..30:
     for _ in 0..rand(0, 6): es.push((u: V(rand(0, 8)), v: V(rand(0, 8))))
     shuffle(mut es)
     domain E = 0..es.len
-    let arr: [E](u: V, v: V) = [E] e => es[e.to_idx]
+    let arr: [E](u: V, v: V) = [E] e => es[e.ord]
     let g = Graph.undirected(arr)
     let t = g.spanning_tree()
     var adj: [V]List<V> = []

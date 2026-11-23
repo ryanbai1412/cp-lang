@@ -848,7 +848,7 @@ impl<'a> Lowerer<'a> {
         }
         match &e.kind {
             ast::ExprKind::Field { base, name }
-                if matches!(name.text.as_str(), "count" | "K" | "len" | "size") =>
+                if matches!(name.text.as_str(), "count" | "len" | "size") =>
             {
                 if let ast::ExprKind::Name(dname) = &base.kind {
                     let is_dom = matches!(self.gen_env.get(dname), Some(GenArg::Domain(_)))

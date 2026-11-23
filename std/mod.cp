@@ -503,7 +503,7 @@ fn mod_values_work_in_generic_structures():
     assert laws_hold(Monoid<M>.of(*), xs)
     domain V = 0..5
     var f = Fenwick<V, M>()
-    for v in V: f.add(v, M(10) ** (9 + v.to_idx))
+    for v in V: f.add(v, M(10) ** (9 + v.ord))
     assert f.fold(V(0)..=V(4)) == M(1000000000) * M(11111)
 
 @test

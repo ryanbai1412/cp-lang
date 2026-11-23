@@ -525,7 +525,7 @@ domain Bug = 0..4
 let bs = List(Bug)
 var total = 0
 for i in Bug:
-    total += bs[i.to_idx].ord
+    total += bs[i.ord].ord
 let pairs = [10, 20, 35, 35]
 print(total, pairs.adjacent.count((a, b) => a != b))
 var known: [Bool]List<Int> = []

@@ -36,10 +36,10 @@ fn power(x: Mat, e: Int) -> Mat:
 // One round from i differing places: c of the m flips land on them.
 var step: Mat = [Off, Off] (i, j) => Z.zero
 for i in Off:
-    for c in 0..=min(i.to_idx, m):
-        if let j = Off.at(i.to_idx - c + (m - c)):
-            step[i, j] += comb.choose(i.to_idx, c) * comb.choose(
-                n - i.to_idx,
+    for c in 0..=min(i.ord, m):
+        if let j = Off.at(i.ord - c + (m - c)):
+            step[i, j] += comb.choose(i.ord, c) * comb.choose(
+                n - i.ord,
                 m - c,
             ) / comb.choose(n, m)
 

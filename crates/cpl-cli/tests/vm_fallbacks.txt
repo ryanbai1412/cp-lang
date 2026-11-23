@@ -45,7 +45,6 @@ traced fn:m1_get_or_insert_with_Str_D1_P(part)
 traced fn:m6_get_or_insert_with_Int_Int(part)
 traced fn:m6_get_or_insert_with_Str_Int(part)
 traced fn:swap(part)
-traced no-stats
 traced stmt:Assert
 traced stmt:Assign(Global,Binary(Add))
 traced stmt:Assign(Global,Binary(Div))

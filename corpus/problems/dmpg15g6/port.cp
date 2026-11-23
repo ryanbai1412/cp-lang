@@ -36,7 +36,7 @@ fn check_ok(len: Int) -> Bool:
 
 fn add_pos(idx: Int):
     let fl = a[I.nth(idx)]
-    let fid = fl.to_idx
+    let fid = fl.ord
     log_f.push(fid)
     log_v.push(freq[fl])
     let c = freq[fl] + 1
@@ -74,15 +74,15 @@ for _ in 0..num_blk:
     by_blk.push([])
 
 for qi in Q:
-    let l = qs[qi].l.to_idx
-    let r = qs[qi].r.to_idx
+    let l = qs[qi].l.ord
+    let r = qs[qi].r.ord
     if r - l <= blk:
         let mk = log_f.len
         for p in l..=r: add_pos(p)
         ans[qi] = check_ok(r - l + 1)
         rollback(mk, -1, 0, -1, 0)
     else:
-        by_blk[l / blk].push((r:, qi: qi.to_idx))
+        by_blk[l / blk].push((r:, qi: qi.ord))
 
 for b in 0..num_blk:
     if by_blk[b].len == 0: continue
@@ -92,8 +92,8 @@ for b in 0..num_blk:
     var cur_r = border - 1
     for item in bucket:
         let qi = Q(item.qi)
-        let l = qs[qi].l.to_idx
-        let r = qs[qi].r.to_idx
+        let l = qs[qi].l.ord
+        let r = qs[qi].r.ord
         while cur_r < r:
             cur_r += 1
             add_pos(cur_r)

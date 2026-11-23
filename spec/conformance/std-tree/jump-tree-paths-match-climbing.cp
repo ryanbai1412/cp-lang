@@ -32,8 +32,8 @@ for a in V:
     let ca = chain(par, a)
     for limit in 0..40:
         var want: ?V = None
-        for u in ca: if u.to_idx >= limit: want = Some(u)
-        if j.jump_while(a, u => u.to_idx >= limit) != want: ok = false
+        for u in ca: if u.ord >= limit: want = Some(u)
+        if j.jump_while(a, u => u.ord >= limit) != want: ok = false
     for b in V:
         let p = path(par, a, b)
         if p == None:

@@ -20,7 +20,7 @@ pub struct SparseTable<D, T>(op: (T, T) -> T):
     /// traps: never (a non-idempotent or non-associative `op` gives unspecified folds; check with `idempotent`)
     /// example: `SparseTable(min, [3, 1, 4]).fold(0..3) == 1`
     pub fn new(op: (T, T) -> T, a: [D]T) -> SparseTable<D, T>:
-        let n = D.K
+        let n = D.count
         if n == 0: return SparseTable(op, 0, [])
         let levels = bit_width(n)
         var table = List.filled(levels * n, a[D.first!])
@@ -120,7 +120,7 @@ pub struct DisjointSparseTable<D, T>(op: (T, T) -> T):
     /// traps: never (a non-associative `op` gives unspecified folds)
     /// example: `DisjointSparseTable((a, b) => a + b, [3, 1, 4]).fold(0..3) == 8`
     pub fn new(op: (T, T) -> T, a: [D]T) -> DisjointSparseTable<D, T>:
-        let n = D.K
+        let n = D.count
         if n == 0: return DisjointSparseTable(op, 0, [])
         let levels = if n <= 1: 1 else: bit_width(n - 1)
         var table = List.filled(levels * n, a[D.first!])
@@ -225,12 +225,12 @@ pub struct SparseTable2D<R, C, T>(op: (T, T) -> T):
     /// traps: never (a non-idempotent `op` gives unspecified folds)
     /// example: `SparseTable2D(max, [2, 2] (r, c) => r * 2 + c).fold(0..2, 0..2) == 3`
     pub fn new(op: (T, T) -> T, a: [R, C]T) -> SparseTable2D<R, C, T>:
-        let (h, w) = (R.K, C.K)
+        let (h, w) = (R.count, C.count)
         if h == 0 or w == 0: return SparseTable2D(op, [], h, w, 0, 0)
         let (lr, lc) = (bit_width(h), bit_width(w))
         var s = SparseTable2D(op, List.filled(lr * lc * h * w, a[R.first!, C.first!]), h, w, lr, lc)
         for r in R:
-            for c in C: s.table[r.to_idx * w + c.to_idx] = a[r, c]
+            for c in C: s.table[r.ord * w + c.ord] = a[r, c]
         for kr in 0..lr:
             for kc in 0..lc:
                 if kr == 0 and kc == 0: continue
@@ -284,7 +284,7 @@ pub struct SparseTable2D<R, C, T>(op: (T, T) -> T):
     /// traps: when `r` is outside `R` or `c` is outside `C`
     /// example: `SparseTable2D(min, [2, 2] (r, c) => r * 2 + c).get(1, 0) == 2`
     pub fn get(self, r: R, c: C) -> T:
-        table[r.to_idx * w + c.to_idx]
+        table[r.ord * w + c.ord]
 
 /// \(O(\lvert D \rvert)\) build and memory; \(O(1)\) range min/max query via block-of-64 bitmask RMQ (Four Russians).
 /// Useful for \(O(1)\) LCA and memory-tight static RMQ where \(O(n \log n)\) space is too large.
@@ -365,7 +365,7 @@ pub struct LinearRmq<D, T>(before: (T, T) -> Bool):
     /// traps: when `r` is empty or reaches outside `D`
     /// example: `LinearRmq([3, 1, 4], before: (x, y) => x > y).best(0..3) == 4`
     pub fn best(self, r: Range<D>) -> T:
-        vals[self.argbest(r).to_idx]
+        vals[self.argbest(r).ord]
 
     /// The value of the best element of `r` like `best`, or `None` when `r` is empty.
     ///
@@ -393,13 +393,13 @@ fn range_min_matches_brute_force():
 @test
 fn gcd_max_bitwise_and_custom_semigroup_tables():
     domain V = 0..6
-    let a = [V] v => [12, 18, 6, 30, 7, 9][v.to_idx]
+    let a = [V] v => [12, 18, 6, 30, 7, 9][v.ord]
     assert SparseTable<V, Int>(gcd, a).fold(V(0)..=V(3)) == 6
     assert SparseTable<V, Int>(max, a).fold(V(2)..=V(5)) == 30
     assert SparseTable<V, Int>(&, a).fold(V(0)..=V(3)) == (12 & 18 & 6 & 30)
     assert SparseTable<V, Int>(|, a).fold(V(4)..=V(5)) == (7 | 9)
     // An idempotent semigroup with no identity at all: pick the entry with smaller key, tie-breaking by value
-    let pairs = [V] v => (a[v], v.to_idx)
+    let pairs = [V] v => (a[v], v.ord)
     let pick = SparseTable<V, (Int, Int)>((x, y) => if x < y: x else: y, pairs)
     assert pick.fold(V(0)..=V(3)) == (6, 2)
     assert pick.fold(V(3)..=V(3)) == (30, 3)
@@ -419,7 +419,7 @@ fn disjoint_sparse_table_handles_non_idempotent_non_commutative_folds():
         for r in l..=V.last!:
             assert st_sum.fold(l..=r) == sum(a[v] for v in l..=r)
     domain P = 0..7
-    let words = [P] p => ["a", "b", "c", "d", "e", "f", "g"][p.to_idx]
+    let words = [P] p => ["a", "b", "c", "d", "e", "f", "g"][p.ord]
     let st_cat = DisjointSparseTable<P, Str>((x, y) => x + y, words)
     assert st_cat.fold(P(0)..=P(6)) == "abcdefg"
     assert st_cat.fold(P(2)..=P(4)) == "cde"

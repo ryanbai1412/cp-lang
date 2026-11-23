@@ -50,7 +50,7 @@ for _ in 0..t:
     var paths: Mat = [[Z(Int(i == j)) for j in 0..size[Layer.first!]] for i in 0..size[Layer.first!]]
     for g in Gap:
         var step = [
-            [Z.zero for _ in 0..size[Layer(g.to_idx + 1)]] for _ in 0..size[Layer(g.to_idx)]
+            [Z.zero for _ in 0..size[Layer(g.ord + 1)]] for _ in 0..size[Layer(g.ord)]
         ]
         for _ in 0..edges[g]:
             let (u, v): (Int, Int) = read()

@@ -32,4 +32,4 @@ for w in worth.rev:
 
 let totals = reach[Open.first!]
 print(totals.len)
-for t in totals.each(): print(t.to_idx - whole)
+for t in totals.each(): print(t.ord - whole)

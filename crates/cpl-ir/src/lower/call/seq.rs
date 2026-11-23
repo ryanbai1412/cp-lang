@@ -433,7 +433,7 @@ impl<'a> Lowerer<'a> {
             ));
         }
         match name.text.as_str() {
-            "len" | "size" | "K" | "count" => len,
+            "len" | "size" | "count" => len,
             "empty" if self.subset_base(id).is_some() => {
                 let zero = self.int_lit(0, span);
                 self.cast(Cast::Trust, zero, Ty::Pos(id))

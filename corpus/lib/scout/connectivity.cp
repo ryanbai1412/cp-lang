@@ -32,7 +32,7 @@ pub fn two_edge_components<V, A>(adj: V -> Iter<A>) -> (domain C, comp: [V]C):
             if i < out[u].len:
                 frames.last! = (u, i + 1, pe)
                 let a = out[u][i]
-                let eid = a.e.to_idx
+                let eid = a.e.ord
                 if pe == Some(eid): continue
                 let v = a.to
                 if tin[v] == None:
@@ -169,10 +169,10 @@ fn bridges_and_parallel_edges():
     domain E = 0..6
     // 0-1-2 triangle, bridge 2-3, double edge 3-4
     let raw = [(0, 1), (1, 2), (2, 0), (2, 3), (3, 4), (3, 4)]
-    let edges = [E] e => (u: V(raw[e.to_idx].0), v: V(raw[e.to_idx].1))
+    let edges = [E] e => (u: V(raw[e.ord].0), v: V(raw[e.ord].1))
     let g = Graph<V, E>.undirected(edges)
     let (C, comp) = two_edge_components<V>(u => g.out(u))
-    assert C.K == 2
+    assert C.count == 2
     assert comp[V(0)] == comp[V(1)] and comp[V(1)] == comp[V(2)]
     assert comp[V(3)] == comp[V(4)] and comp[V(2)] != comp[V(3)]
     let tree = condense(u => g.out(u), comp)
@@ -184,7 +184,7 @@ fn cut_vertices_with_root_and_leaf():
     domain E = 0..6
     // bowtie: 0-1-2-0 and 2-3-4-2; only vertex 2 is an articulation point
     let raw = [(0, 1), (1, 2), (2, 0), (2, 3), (3, 4), (4, 2)]
-    let edges = [E] e => (u: V(raw[e.to_idx].0), v: V(raw[e.to_idx].1))
+    let edges = [E] e => (u: V(raw[e.ord].0), v: V(raw[e.ord].1))
     let g = Graph<V, E>.undirected(edges)
     let cut = articulation_points<V>(u => g.out(u))
     assert [cut[v] for v in V] == [false, false, true, false, false]
@@ -194,8 +194,8 @@ fn coloring_and_bipartite_dsu_rollback():
     domain V = 0..4
     domain E = 0..3
     let edges = [E] e => (
-        u: V([(0, 1), (1, 2), (2, 3)][e.to_idx].0),
-        v: V([(0, 1), (1, 2), (2, 3)][e.to_idx].1),
+        u: V([(0, 1), (1, 2), (2, 3)][e.ord].0),
+        v: V([(0, 1), (1, 2), (2, 3)][e.ord].1),
     )
     let g = Graph<V, E>.undirected(edges)
     let col = two_color<V>(u => g.out(u))!
@@ -220,7 +220,7 @@ fn bcc_sizes():
     domain E = 0..7
     // 0-1-2 triangle, bridge 2-3, triangle 3-4-5
     let raw = [(0, 1), (1, 2), (2, 0), (2, 3), (3, 4), (4, 5), (5, 3)]
-    let edges = [E] e => (u: V(raw[e.to_idx].0), v: V(raw[e.to_idx].1))
+    let edges = [E] e => (u: V(raw[e.ord].0), v: V(raw[e.ord].1))
     let g = Graph<V, E>.undirected(edges)
     let blocks = biconnected_components<V>(u => g.out(u))
     var sizes = [b.len for b in blocks]

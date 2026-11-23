@@ -22,7 +22,7 @@ let fests: [Fest](day: Int, city: City, bonus: Int) = read()
 type Mat = [State, State]Int
 type Row = [State]Int
 
-fn at(c: City, wait: Int) -> State = State(c.to_idx * 5 + wait)
+fn at(c: City, wait: Int) -> State = State(c.ord * 5 + wait)
 
 fn mul(a: Mat, b: Mat) -> Mat:
     var c: Mat = [State, State] (i, j) => NONE

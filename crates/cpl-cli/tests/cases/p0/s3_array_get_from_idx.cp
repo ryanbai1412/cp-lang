@@ -1,4 +1,4 @@
-// Synthesis #3 Leap 3: optional-accepting `a.get(?I)` (1D, 2D, List) and trapping `D.from_idx(i) -> D`.
+// Synthesis #3 Leap 3: optional-accepting `a.get(?I)` (1D, 2D, List) and trapping `D.nth(i) -> D`.
 let n, m: 1..=10 = read()
 domain I = 1..=n
 domain R = 1..=2
@@ -28,10 +28,10 @@ let l3 = xs.get(oi) ?? -1
 let ni: ?Int = None
 let l4 = xs.get(ni) ?? -1
 
-// Trapping `I.from_idx(i) -> I` (no `!`) + fallible `I.try_from_idx(i) -> ?I`
-let f0: I = I.from_idx(0)
-let flast: I = I.from_idx(n - 1)
-let is_oob = I.try_from_idx(n) == None
-let neg_idx = I.try_from_idx(-1) == None
+// Trapping `I.nth(i) -> I` (no `!`) + fallible `I.try_at(i) -> ?I`
+let f0: I = I.nth(0)
+let flast: I = I.nth(n - 1)
+let is_oob = I.try_at(n) == None
+let neg_idx = I.try_at(-1) == None
 
 print(acc, g1, g2, g3, l1, l2, l3, l4, Int(f0), Int(flast), Int(is_oob), Int(neg_idx))

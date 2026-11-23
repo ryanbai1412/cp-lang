@@ -30,8 +30,8 @@ for _ in 0..((m - 1) * n / 2):
 let k: Int = read()
 var out: List<Int> = []
 for g in Group:
-    groups[g].sort(by: t => (-pts[t], t.to_idx))
-    out.push(groups[g][k - 1].to_idx + 1)
+    groups[g].sort(by: t => (-pts[t], t.ord))
+    out.push(groups[g][k - 1].ord + 1)
 
 var line = ""
 for i in 0..out.len:

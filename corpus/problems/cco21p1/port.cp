@@ -17,7 +17,7 @@ let a: [Pos]Val = read()
 let swaps: [Query]Int = read()
 
 var occ: [Val]List<Int> = [Val] _ => []
-for i in Pos: occ[a[i]].push(i.to_idx)
+for i in Pos: occ[a[i]].push(i.ord)
 
 fn count_before(xs: List<Int>, ys: List<Int>) -> Int:
     if xs.len <= ys.len:
@@ -42,15 +42,15 @@ for qi in Query:
     let j = Val(swaps[qi])
     let j1 = Val(swaps[qi] + 1)
     let (x, y) = (order[j], order[j1])
-    let (lo, hi) = if x.to_idx < y.to_idx: (x, y) else: (y, x)
-    let key = lo.to_idx * k + hi.to_idx
+    let (lo, hi) = if x.ord < y.ord: (x, y) else: (y, x)
+    let key = lo.ord * k + hi.ord
     var before_lo_hi = 0
     if let val = cache.get(key):
         before_lo_hi = val
     else:
         before_lo_hi = count_before(occ[lo], occ[hi])
         cache[key] = before_lo_hi
-    let before_xy = if x.to_idx < y.to_idx: before_lo_hi else: occ[x].len * occ[y].len - before_lo_hi
+    let before_xy = if x.ord < y.ord: before_lo_hi else: occ[x].len * occ[y].len - before_lo_hi
     inv += 2 * before_xy - occ[x].len * occ[y].len
     order.swap(j, j1)
     print(inv)

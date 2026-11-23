@@ -107,13 +107,13 @@ for r in I:
     while stk_a.len > 0 and a[I.nth(stk_a.last!)] <= a[r]:
         stk_a.pop()
     let la = if stk_a.len == 0: 0 else: stk_a.last! + 1
-    stk_a.push(r.to_idx)
+    stk_a.push(r.ord)
     st.apply(I.nth(la)..=r, HistTag(true, U64(a[r]), false, Z, Z, Z, Z, Z))
 
     while stk_b.len > 0 and b[I.nth(stk_b.last!)] <= b[r]:
         stk_b.pop()
     let lb = if stk_b.len == 0: 0 else: stk_b.last! + 1
-    stk_b.push(r.to_idx)
+    stk_b.push(r.ord)
     st.apply(I.nth(lb)..=r, HistTag(false, Z, true, U64(b[r]), Z, Z, Z, Z))
 
     st.apply(..=r, HistTag(false, Z, false, Z, U64(1), Z, Z, Z))

@@ -25,7 +25,7 @@ fn slow():
     for mask in 0..(1 << n):
         var s = 0
         for i in I:
-            if (mask >> i.to_idx) & 1 == 1: s += 1 << a[i]
+            if (mask >> i.ord) & 1 == 1: s += 1 << a[i]
         best max= s * (total - s)
     debug("piles", best, total)
     print(best)

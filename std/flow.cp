@@ -264,7 +264,7 @@ pub struct FlowGraph<V>:
     pub fn push_relabel(mut self, s: V, t: V) -> Int:
         assert s != t
         cut_from = s
-        let n = V.K
+        let n = V.count
         var height: [V]Int = 0
         var excess: [V]Int = 0
         var next: [V]Int = 0
@@ -623,23 +623,23 @@ pub struct CostFlow<V>:
 /// ties: the smallest optimal closure (contained in every other)
 /// order: `take` keyed by `V`
 /// traps: never
-/// example: `domain V = 0..3; let before: [V]List<V> = [[], [0], []]; let p = [3, -1, -5]; max_closure(before, profit: v => p[v.to_idx]) == (value: 2, take: [true, true, false])`
+/// example: `domain V = 0..3; let before: [V]List<V> = [[], [0], []]; let p = [3, -1, -5]; max_closure(before, profit: v => p[v.ord]) == (value: 2, take: [true, true, false])`
 /// example: `domain V = 0..1; let before: [V]List<V> = [[]]; max_closure(before, profit: _ => 0) == (value: 0, take: [false])`
 pub fn max_closure<V, G: Next<V>>(before: G, profit: V -> Int) -> (value: Int, take: [V]Bool):
-    domain N = 0..V.K + 2
-    let (s, t) = (N(V.K), N(V.K + 1))
+    domain N = 0..V.count + 2
+    let (s, t) = (N(V.count), N(V.count + 1))
     var g = FlowGraph<N>()
     var gain = 0
     for v in V:
         let p = profit(v)
         if p > 0:
-            g.add(s, N(v.to_idx), p)
+            g.add(s, N(v.ord), p)
             gain += p
-        elif p < 0: g.add(N(v.to_idx), t, -p)
-        for a in before.out(v): g.add(N(a.to.to_idx), N(v.to_idx), cap: None)
+        elif p < 0: g.add(N(v.ord), t, -p)
+        for a in before.out(v): g.add(N(a.to.ord), N(v.ord), cap: None)
     let lost = g.max_flow(s, t)
     let side = g.min_cut(s)
-    (value: gain - lost, take: [V] v => side[N(v.to_idx)])
+    (value: gain - lost, take: [V] v => side[N(v.ord)])
 
 /// A maximum matching between `L` and `R`, where `adj[l]` lists the partners `l` may take: its
 /// `size`, and the partner of each vertex on either side (`None` when unmatched).
@@ -806,7 +806,7 @@ pub fn min_weight_matching<L, R>(weight: (L, R) -> Int) -> (total: Int, mate: [L
 /// Minimum-cost assignment of rows `L` into columns `R` with potentials `u`, `v`; row and
 /// column 0 are the sentinel of the e-maxx formulation, so indices are 1-based inside.
 fn hungarian<L, R>(cost: (L, R) -> Int) -> [L]R:
-    let (n, m) = (L.K, R.K)
+    let (n, m) = (L.count, R.count)
     assert n <= m
     var u = List.filled(n + 1, 0)
     var v = List.filled(m + 1, 0)
@@ -851,7 +851,7 @@ fn hungarian<L, R>(cost: (L, R) -> Int) -> [L]R:
     var col = List.filled(n, 0)
     for j in 1..=m:
         if p[j] != 0: col[p[j] - 1] = j - 1
-    [L] i => R.nth(col[i.to_idx])
+    [L] i => R.nth(col[i.ord])
 
 /// A maximum matching in the undirected graph `adj` (each edge listed from both ends): its
 /// `size` and each vertex's partner, `None` when unmatched.
@@ -874,8 +874,8 @@ fn hungarian<L, R>(cost: (L, R) -> Int) -> [L]R:
 /// general_matching(adj).size == 1
 /// ```
 pub fn general_matching<V>(adj: [V]List<V>) -> (size: Int, mate: [V]?V):
-    let n = V.K
-    let nb = [[w.to_idx for w in adj[V.nth(i)]] for i in 0..n]
+    let n = V.count
+    let nb = [[w.ord for w in adj[V.nth(i)]] for i in 0..n]
     var mate = List.filled(n, -1)
     var size = 0
     unchecked:
@@ -953,7 +953,7 @@ pub fn general_matching<V>(adj: [V]List<V>) -> (size: Int, mate: [V]?V):
                 mate[y] = x
                 mate[x] = y
                 y = next
-    (size:, mate: [V] v => if mate[v.to_idx] == -1: None else: V.nth(mate[v.to_idx]))
+    (size:, mate: [V] v => if mate[v.ord] == -1: None else: V.nth(mate[v.ord]))
 
 /// Weighted blossom state over vertices 1..=n and blossoms n+1..=2n; index 0 is "None".
 /// Edge cells are a (2n+1)^2 table: cell k = u * m + v holds the original edge (eu, ev, ew)
@@ -1192,7 +1192,7 @@ struct Blossom:
 pub fn max_weight_general_matching<V, E>(
     edges: [E](u: V, v: V, w: Int)
 ) -> (total: Int, mate: [V]?V):
-    let n = V.K
+    let n = V.count
     let m = 2 * n + 1
     var eu = List.filled(m * m, 0)
     var ev = List.filled(m * m, 0)
@@ -1203,7 +1203,7 @@ pub fn max_weight_general_matching<V, E>(
             ev[u * m + v] = v
     var top = 0
     for e in E:
-        let (a, b, w) = (edges[e].u.to_idx + 1, edges[e].v.to_idx + 1, edges[e].w)
+        let (a, b, w) = (edges[e].u.ord + 1, edges[e].v.ord + 1, edges[e].w)
         if a != b and w > ew[a * m + b]:
             ew[a * m + b] = w
             ew[b * m + a] = w
@@ -1235,7 +1235,7 @@ pub fn max_weight_general_matching<V, E>(
     let total = sum(g.ew[u * m + g.mate[u]] for u in 1..=n if g.mate[u] > u)
     (
         total:,
-        mate: [V] v => if g.mate[v.to_idx + 1] == 0: None else: V.nth(g.mate[v.to_idx + 1] - 1),
+        mate: [V] v => if g.mate[v.ord + 1] == 0: None else: V.nth(g.mate[v.ord + 1] - 1),
     )
 
 /// A flow `f` with `lo <= f[e] <= hi` on every arc that is conserved at every vertex, or `None`
@@ -1318,11 +1318,11 @@ fn bounded_flow<V, E>(
     ends: ?(V, V),
     sense: Int,
 ) -> ?(value: Int, flow: [E]Int):
-    domain N = 0..V.K + 2
-    let (ss, tt) = (N(V.K), N(V.K + 1))
+    domain N = 0..V.count + 2
+    let (ss, tt) = (N(V.count), N(V.count + 1))
     var g = FlowGraph<N>()
     var excess: [V]Int = 0
-    let ids = [E] e => g.add(N(arcs[e].u.to_idx), N(arcs[e].v.to_idx), arcs[e].hi - arcs[e].lo)
+    let ids = [E] e => g.add(N(arcs[e].u.ord), N(arcs[e].v.ord), arcs[e].hi - arcs[e].lo)
     for e in E:
         assert 0 <= arcs[e].lo <= arcs[e].hi
         excess[arcs[e].v] += arcs[e].lo
@@ -1330,14 +1330,14 @@ fn bounded_flow<V, E>(
     var demand = 0
     for v in V:
         if excess[v] > 0:
-            g.add(ss, N(v.to_idx), excess[v])
+            g.add(ss, N(v.ord), excess[v])
             demand += excess[v]
         elif excess[v] < 0:
-            g.add(N(v.to_idx), tt, -excess[v])
-    let back: ?Arc = if let (s, t) = ends: g.add(N(t.to_idx), N(s.to_idx), cap: None) else: None
+            g.add(N(v.ord), tt, -excess[v])
+    let back: ?Arc = if let (s, t) = ends: g.add(N(t.ord), N(s.ord), cap: None) else: None
     if g.max_flow(ss, tt) != demand: return None
     if let (s, t) = ends:
-        let (ns, nt) = (N(s.to_idx), N(t.to_idx))
+        let (ns, nt) = (N(s.ord), N(t.ord))
         let back = back!
         let base = g.flow(back)
         g.close(back)
@@ -1395,11 +1395,11 @@ pub fn gomory_hu<V, E>(edges: [E](u: V, v: V, w: Int)) -> List<(u: V, v: V, w: I
 /// global_min_cut(es) == (w: 2, side: [false, true, true])
 /// ```
 pub fn global_min_cut<V, E>(edges: [E](u: V, v: V, w: Int)) -> (w: Int, side: [V]Bool):
-    let n = V.K
+    let n = V.count
     assert n >= 2
     var mat = List.filled(n * n, 0)
     for e in E:
-        let (a, b) = (edges[e].u.to_idx, edges[e].v.to_idx)
+        let (a, b) = (edges[e].u.ord, edges[e].v.ord)
         assert edges[e].w >= 0
         if a != b:
             mat[a * n + b] += edges[e].w
@@ -1515,7 +1515,7 @@ fn hungarian_matches_brute_force_on_random_matrices():
             best max= sum(w[L(i)][R(p[i])] for i in 0..4)
             if not next_permutation(mut p): break
         assert h.total == best
-        assert sorted([h.mate[i].to_idx for i in L]) == [0, 1, 2, 3]
+        assert sorted([h.mate[i].ord for i in L]) == [0, 1, 2, 3]
 
 @test
 fn push_relabel_agrees_with_dinic_and_leaves_a_valid_flow():
@@ -1553,12 +1553,12 @@ fn flow_over_a_product_domain_matches_flat_numbering():
             let (a, b) = (P.nth(rand(0, 11)), P.nth(rand(0, 11)))
             let c = rand(0, 5)
             g.add(a, b, c)
-            h.add(N(a.to_idx), N(b.to_idx), c)
+            h.add(N(a.ord), N(b.ord), c)
         let (s, t) = (P.first!, P.last!)
         assert g.max_flow(s, t) == h.max_flow(N(0), N(11))
         let side = g.min_cut(s)
         let flat = h.min_cut(N(0))
-        for p in P: assert side[p] == flat[N(p.to_idx)]
+        for p in P: assert side[p] == flat[N(p.ord)]
 
 @test
 fn an_arc_without_a_capacity_is_never_cut():
@@ -1614,11 +1614,11 @@ fn min_cost_flow_agrees_with_hungarian_and_its_slope_is_convex():
         let h = min_weight_matching<L, R>((i, j) => w[i][j])
         let (s, t) = (Node(8), Node(9))
         var net = CostFlow<Node>()
-        for i in L: net.add(s, Node(i.to_idx), 1, cost: 0)
-        for j in R: net.add(Node(4 + j.to_idx), t, 1, cost: 0)
+        for i in L: net.add(s, Node.nth(i.ord), 1, cost: 0)
+        for j in R: net.add(Node.nth(4 + j.ord), t, 1, cost: 0)
         var arcs = List<Arc>()
         for i in L:
-            for j in R: arcs.push(net.add(Node(i.to_idx), Node(4 + j.to_idx), 1, cost: w[i][j]))
+            for j in R: arcs.push(net.add(Node.nth(i.ord), Node.nth(4 + j.ord), 1, cost: w[i][j]))
         let curve = net.slope(s, t)
         assert curve.first! == (flow: 0, cost: 0) and curve.last! == (flow: 4, cost: h.total)
         for k in 2..curve.len:
@@ -1650,8 +1650,8 @@ fn max_closure_matches_brute_force():
             var closed = true
             for u in V:
                 for v in before[u]:
-                    if m.bit(v.to_idx) and not m.bit(u.to_idx): closed = false
-            if closed: best max= sum(p[v] for v in V if m.bit(v.to_idx))
+                    if m.bit(v.ord) and not m.bit(u.ord): closed = false
+            if closed: best max= sum(p[v] for v in V if m.bit(v.ord))
         assert got.value == best
         assert sum(p[v] for v in V if got.take[v]) == best
         for u in V:
@@ -1670,7 +1670,7 @@ fn max_matching_matches_brute_force_and_the_cover_proves_it():
             var next = best.clone()
             for mask in 0..32:
                 for r in adj[l]:
-                    let bit = 1 << r.to_idx
+                    let bit = 1 << r.ord
                     if mask & bit != 0: next[mask] max= best[mask ^ bit] + 1
             best = next
         assert m.size == best[31]
@@ -1701,7 +1701,7 @@ fn rectangular_assignment_matches_brute_force_both_ways():
                     big max= s
         assert lo.total == small and hi.total == big
         assert lo.total == sum(w[i][lo.mate[i]] for i in L)
-        assert sorted([lo.mate[i].to_idx for i in L]).len == 3
+        assert sorted([lo.mate[i].ord for i in L]).len == 3
 
 @test
 fn general_matching_matches_brute_force():
@@ -1723,8 +1723,8 @@ fn general_matching_matches_brute_force():
             let rest = mask ^ (1 << low)
             best[mask] = best[rest]
             for v in V:
-                if rest.bit(v.to_idx) and edge[V(low)][v]:
-                    best[mask] max= best[rest ^ (1 << v.to_idx)] + 1
+                if rest.bit(v.ord) and edge[V(low)][v]:
+                    best[mask] max= best[rest ^ (1 << v.ord)] + 1
         assert got.size == best[255]
         assert sum(1 for v in V if got.mate[v] != None) == 2 * got.size
         for v in V:
@@ -1753,14 +1753,14 @@ fn weighted_general_matching_matches_brute_force():
             let rest = mask ^ (1 << low)
             best[mask] = best[rest]
             for v in V:
-                if rest.bit(v.to_idx) and wt[V(low)][v] >= 0:
-                    best[mask] max= best[rest ^ (1 << v.to_idx)] + wt[V(low)][v]
+                if rest.bit(v.ord) and wt[V(low)][v] >= 0:
+                    best[mask] max= best[rest ^ (1 << v.ord)] + wt[V(low)][v]
         assert got.total == best[63]
         var total = 0
         for v in V:
             if let u = got.mate[v]:
                 assert got.mate[u] == Some(v) and wt[u][v] >= 0
-                if u.to_idx < v.to_idx: total += wt[u][v]
+                if u.ord < v.ord: total += wt[u][v]
         assert total == got.total
 
 fn all_bounded_flows<V, E>(
@@ -1775,15 +1775,15 @@ fn all_bounded_flows<V, E>(
     while true:
         var net: [V]Int = 0
         for e in E:
-            net[arcs[e].u] -= f[e.to_idx]
-            net[arcs[e].v] += f[e.to_idx]
+            net[arcs[e].u] -= f[e.ord]
+            net[arcs[e].v] += f[e.ord]
         if V.all(v => net[v] == 0 or Some(v) == s or Some(v) == t):
             out.push((if let x = s: -net[x] else: 0, f.clone()))
         var i = 0
-        while i < E.K and f[i] == arcs[E.nth(i)].hi:
+        while i < E.count and f[i] == arcs[E.nth(i)].hi:
             f[i] = arcs[E.nth(i)].lo
             i += 1
-        if i == E.K: break
+        if i == E.count: break
         f[i] += 1
     out
 
@@ -1843,9 +1843,9 @@ fn gomory_hu_tree_gives_every_pairwise_min_cut():
                 if a == b: continue
                 var cut = Int.MAX
                 for m in 0..64:
-                    if m.bit(a.to_idx) and not m.bit(b.to_idx):
+                    if m.bit(a.ord) and not m.bit(b.ord):
                         cut min= sum(
-                            e.w for e in es if ((m >> e.u.to_idx) & 1) != ((m >> e.v.to_idx) & 1)
+                            e.w for e in es if ((m >> e.u.ord) & 1) != ((m >> e.v.ord) & 1)
                         )
                 assert seen[b] and light[b] == cut
 
@@ -1859,7 +1859,7 @@ fn global_min_cut_matches_brute_force():
         let got = global_min_cut(es)
         var best = Int.MAX
         for m in 1..63:
-            best min= sum(e.w for e in es if ((m >> e.u.to_idx) & 1) != ((m >> e.v.to_idx) & 1))
+            best min= sum(e.w for e in es if ((m >> e.u.ord) & 1) != ((m >> e.v.ord) & 1))
         assert got.w == best
         assert V.any(v => got.side[v]) and V.any(v => not got.side[v])
         assert sum(e.w for e in es if got.side[e.u] != got.side[e.v]) == best
@@ -2056,13 +2056,13 @@ pub fn best_matching<L, R, E>(
     // each pair also costs 1 under a weight scale above any pair count: fewest pairs among best totals
     let scale = L.count + 1
     var g = CostFlow<N>()
-    for u in L: g.add(s, N(u.to_idx), Some(1), 0)
-    for v in R: g.add(N(L.count + v.to_idx), t, Some(1), 0)
+    for u in L: g.add(s, N.nth(u.ord), Some(1), 0)
+    for v in R: g.add(N.nth(L.count + v.ord), t, Some(1), 0)
     var arc: List<Arc> = []
     for e in E:
         let w = if min: edges[e].w else: -edges[e].w
         arc.push(
-            g.add(N(edges[e].l.to_idx), N(L.count + edges[e].r.to_idx), Some(1), w * scale + 1)
+            g.add(N.nth(edges[e].l.ord), N.nth(L.count + edges[e].r.ord), Some(1), w * scale + 1)
         )
     if size == None: g.add(s, t, None, 0)
     let want = size ?? L.count
@@ -2071,7 +2071,7 @@ pub fn best_matching<L, R, E>(
     var used: [E]Bool = false
     var total = 0
     for e in E:
-        if g.flow(arc[e.to_idx]) > 0:
+        if g.flow(arc[e.ord]) > 0:
             used[e] = true
             mate[edges[e].l] = Some(edges[e].r)
             total += edges[e].w
@@ -2230,7 +2230,7 @@ fn stable_matchings_are_stable_and_proposer_optimal():
         let base = R.count + 1
         for code in 0..base ** L.count:
             let other: [L]?R = [L] l => do:
-                let d = code / base ** l.to_idx % base
+                let d = code / base ** l.ord % base
                 if d == R.count: None else: Some(R.nth(d))
             if not is_stable(other, rl, rr): continue
             for l in L:
@@ -2353,7 +2353,7 @@ pub struct GraphicMatroid<V, E>:
         GraphicMatroid(
             edges,
             [E] _ => false,
-            [V] v => v.to_idx,
+            [V] v => v.ord,
             [V] _ => 0,
             [V] _ => 0,
             [E] _ => None,
@@ -2372,7 +2372,7 @@ impl Matroid<E> for GraphicMatroid<V, E>:
         for r in V:
             if seen[r]: continue
             seen[r] = true
-            comp[r] = r.to_idx
+            comp[r] = r.ord
             tin[r] = clock
             clock += 1
             var stack: List<(V, Int)> = [(r, 0)]
@@ -2385,7 +2385,7 @@ impl Matroid<E> for GraphicMatroid<V, E>:
                 let y = if edges[e].u == x: edges[e].v else: edges[e].u
                 if seen[y]: continue
                 seen[y] = true
-                comp[y] = r.to_idx
+                comp[y] = r.ord
                 below[e] = Some(y)
                 tin[y] = clock
                 clock += 1
@@ -2472,7 +2472,7 @@ pub fn min_cost_circulation<V, E>(
         up.push(g.add(arcs[e].u, arcs[e].v, Some(arcs[e].hi - base[e]), arcs[e].cost))
         down.push(g.add(arcs[e].v, arcs[e].u, Some(base[e] - arcs[e].lo), -arcs[e].cost))
     g.cancel_cycles()
-    let flow = [E] e => base[e] + g.flow(up[e.to_idx]) - g.flow(down[e.to_idx])
+    let flow = [E] e => base[e] + g.flow(up[e.ord]) - g.flow(down[e.ord])
     var cost = 0
     for e in E: cost += flow[e] * arcs[e].cost
     Some((cost:, flow:))
@@ -2490,7 +2490,7 @@ fn matroid_intersections_match_brute_force():
         var best_n = -1
         var best_w = 0
         for mask in 0..1 << E.count:
-            let s: [E]Bool = [E] e => mask.bit(e.to_idx)
+            let s: [E]Bool = [E] e => mask.bit(e.ord)
             var d = Dsu<V>()
             var used: [C]Int = 0
             var ok = true
@@ -2547,7 +2547,7 @@ fn min_cost_circulations_match_brute_force():
             var ok = true
             var net: [V]Int = 0
             for e in E:
-                f[e] = es[e].lo + code / 3 ** e.to_idx % 3
+                f[e] = es[e].lo + code / 3 ** e.ord % 3
                 if f[e] > es[e].hi: ok = false
                 net[es[e].u] -= f[e]
                 net[es[e].v] += f[e]

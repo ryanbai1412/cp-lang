@@ -26,12 +26,12 @@ for t in Trail:
         if best[f] == None: best[f] = t
         elif second[f] == None: second[f] = t
 
-fn state(f: F, by_best: Bool) -> State = State(2 * f.to_idx + Int(by_best))
+fn state(f: F, by_best: Bool) -> State = State(2 * f.ord + Int(by_best))
 
 fn next(s: State) -> State:
-    let f = F(s.to_idx / 2)
-    let t = if s.to_idx % 2 == 1: second[f] ?? best[f]! else: best[f]!
-    let to = if ends[t.to_idx].a == f: ends[t.to_idx].b else: ends[t.to_idx].a
+    let f = F(s.ord / 2)
+    let t = if s.ord % 2 == 1: second[f] ?? best[f]! else: best[f]!
+    let to = if ends[t.ord].a == f: ends[t.ord].b else: ends[t.ord].a
     state(to, best[to]! == t)
 
 var back: [State]List<(to: State)> = []
@@ -55,7 +55,7 @@ for by_best in Bool:
     let lap = (dist[next(goal)] ?? -1) + 1  // 0 when the goal is not on a cycle
     if lap > 0:
         for d in Len:
-            if d.to_idx >= lap: starts[d] += starts[Len(d.to_idx - lap)]
+            if d.ord >= lap: starts[d] += starts[Len(d.ord - lap)]
     for i in 0..q:
         let k = lengths[i]
         if k <= 2 * n: ans[i] += starts[Len(k)]

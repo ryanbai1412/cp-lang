@@ -8,8 +8,8 @@ fn walk(k: Int, steps: List<Int>) -> Paths:
     var dist: [V]Int = 0
     var back: [V]?(from: V, step: Int) = None
     for v in V:
-        dist[v] = k * v.to_idx
-        back[v] = (from: v, step: steps[v.to_idx])
+        dist[v] = k * v.ord
+        back[v] = (from: v, step: steps[v.ord])
     Paths(dist, back)
 
 let k = read<Int>()

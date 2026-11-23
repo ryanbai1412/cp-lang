@@ -163,17 +163,17 @@ pub struct Graph<V: Domain, A: Target<V>>:
         E,
         R> -> B = a => a,
     ) -> Graph<V, B>:
-        let n = V.K
+        let n = V.count
         var deg: [V]Int = 0
         for e in E:
             deg[edges[e].u] += 1
         var start: [V.cuts]Int = 0
         var acc = 0
         for v in V:
-            start[v.to_idx] = acc
+            start[v.ord] = acc
             acc += deg[v]
         start[n] = acc
-        var cur: [V]Int = [V] v => start[v.to_idx]
+        var cur: [V]Int = [V] v => start[v.ord]
         var arcs = List<B>()
         if acc > 0:
             let first_e = E.first!
@@ -205,7 +205,7 @@ pub struct Graph<V: Domain, A: Target<V>>:
         E,
         R> -> B = a => a,
     ) -> Graph<V, B>:
-        let n = V.K
+        let n = V.count
         var deg: [V]Int = 0
         for e in E:
             let r = edges[e]
@@ -214,10 +214,10 @@ pub struct Graph<V: Domain, A: Target<V>>:
         var start: [V.cuts]Int = 0
         var acc = 0
         for v in V:
-            start[v.to_idx] = acc
+            start[v.ord] = acc
             acc += deg[v]
         start[n] = acc
-        var cur: [V]Int = [V] v => start[v.to_idx]
+        var cur: [V]Int = [V] v => start[v.ord]
         var arcs = List<B>()
         if acc > 0:
             let first_e = E.first!
@@ -244,7 +244,7 @@ pub struct Graph<V: Domain, A: Target<V>>:
     /// traps: never
     /// example: `domain V = 0..2; let g = Graph.of([(from: V(1), arc: V(0)), (from: V(0), arc: V(1)), (from: V(1), arc: V(1))]); g.next(1).collect() == [0, 1]`
     pub fn of(arcs: Seq<(from: V, arc: A)>) -> Graph<V, A>:
-        let n = V.K
+        let n = V.count
         var deg: [V]Int = 0
         var pairs = List<(from: V, arc: A)>()
         for p in arcs:
@@ -253,10 +253,10 @@ pub struct Graph<V: Domain, A: Target<V>>:
         var start: [V.cuts]Int = 0
         var acc = 0
         for v in V:
-            start[v.to_idx] = acc
+            start[v.ord] = acc
             acc += deg[v]
         start[n] = acc
-        var cur: [V]Int = [V] v => start[v.to_idx]
+        var cur: [V]Int = [V] v => start[v.ord]
         var out = List<A>()
         if acc > 0:
             let dummy = pairs[0].arc
@@ -277,7 +277,7 @@ pub struct Graph<V: Domain, A: Target<V>>:
     /// order: the arcs in input order
     /// traps: never
     /// example: `domain V = 0..3; domain E = 0..2; let es: [E](u: V, v: V) = [(u: 0, v: 2), (u: 0, v: 1)]; let g = Graph.directed(es); g[0].len == 2 and g[1].len == 0`
-    pub fn at(self, u: V) -> lends Slice<A> = arcs[start[u.to_idx]..start[u.to_idx + 1]]
+    pub fn at(self, u: V) -> lends Slice<A> = arcs[start[u.ord]..start[u.ord + 1]]
 
     /// The arcs out of `u`, lazily: the `Next` implementation.
     ///
@@ -287,7 +287,7 @@ pub struct Graph<V: Domain, A: Target<V>>:
     /// example: `domain V = 0..3; domain E = 0..2; let es: [E](u: V, v: V) = [(u: 0, v: 2), (u: 0, v: 1)]; Graph.directed(es).out(0).collect() == [(to: 2, e: 0), (to: 1, e: 1)]`
     pub fn out(self, u: V) -> yields A:
         unchecked:
-            for i in start[u.to_idx]..start[u.to_idx + 1]:
+            for i in start[u.ord]..start[u.ord + 1]:
                 yield arcs[i]
 
     /// The weight matrix: `d[u, v]` is the least `.w` over the arcs `u -> v`, `None` without
@@ -301,7 +301,7 @@ pub struct Graph<V: Domain, A: Target<V>>:
     pub fn matrix<W: Ord>(self) -> [V, V]?W where A: Weighted<W>:
         var d: [V, V]?W = None
         for u in V:
-            for i in start[u.to_idx]..start[u.to_idx + 1]:
+            for i in start[u.ord]..start[u.ord + 1]:
                 let a = arcs[i]
                 let v = a.to
                 let w = a.w
@@ -316,7 +316,7 @@ pub struct Graph<V: Domain, A: Target<V>>:
     /// cost: \(O(1)\)
     /// traps: never
     /// example: `domain V = 0..3; domain E = 0..2; let es: [E](u: V, v: V) = [(u: 0, v: 1), (u: 1, v: 2)]; Graph.undirected(es).deg(1) == 2`
-    pub fn deg(self, u: V) -> Int = start[u.to_idx + 1] - start[u.to_idx]
+    pub fn deg(self, u: V) -> Int = start[u.ord + 1] - start[u.ord]
 
     /// Where `u`'s arcs lead: `out(u)` mapped to `.to`, repeats kept.
     ///
@@ -326,7 +326,7 @@ pub struct Graph<V: Domain, A: Target<V>>:
     /// example: `domain V = 0..3; domain E = 0..2; let es: [E](u: V, v: V) = [(u: 0, v: 2), (u: 0, v: 1)]; Graph.directed(es).next(0).collect() == [2, 1]`
     pub fn next(self, u: V) -> yields V:
         unchecked:
-            for i in start[u.to_idx]..start[u.to_idx + 1]:
+            for i in start[u.ord]..start[u.ord + 1]:
                 yield arcs[i].to
 
     /// The induced view on the vertices `keep` accepts: arcs from or to a rejected vertex are
@@ -356,7 +356,7 @@ pub struct Graph<V: Domain, A: Target<V>>:
     /// traps: never
     /// example: `domain V = 0..3; domain E = 0..2; let es: [E](u: V, v: V) = [(u: 0, v: 2), (u: 0, v: 1)]; let g = Graph.directed(es); g.has(0, 2) and not g.has(2, 0)`
     pub fn has(self, u: V, v: V) -> Bool:
-        for i in start[u.to_idx]..start[u.to_idx + 1]:
+        for i in start[u.ord]..start[u.ord + 1]:
             if arcs[i].to == v: return true
         false
 
@@ -368,7 +368,7 @@ pub struct Graph<V: Domain, A: Target<V>>:
     /// traps: never
     /// example: `domain V = 0..3; domain E = 0..2; let es: [E](u: V, v: V) = [(u: 0, v: 2), (u: 0, v: 1)]; Graph.directed(es).lists()[0] == [2, 1]`
     pub fn lists(self) -> [V]List<V>:
-        [V] u => [arcs[i].to for i in start[u.to_idx]..start[u.to_idx + 1]]
+        [V] u => [arcs[i].to for i in start[u.ord]..start[u.ord + 1]]
 
     /// The fewest arcs between every ordered pair, by a BFS from each vertex; `0` on the
     /// diagonal. A graph with unreachable pairs wants `bfs`.
@@ -387,12 +387,12 @@ pub struct Graph<V: Domain, A: Target<V>>:
                 let u = q[head]
                 head += 1
                 let d = out[s, u] + 1
-                for i in start[u.to_idx]..start[u.to_idx + 1]:
+                for i in start[u.ord]..start[u.ord + 1]:
                     let v = arcs[i].to
                     if out[s, v] < 0:
                         out[s, v] = d
                         q.push(v)
-            assert head == V.K, "hops: graph is not strongly connected"
+            assert head == V.count, "hops: graph is not strongly connected"
         out
 
     /// Every edge once, as `Edge(e, u, v)`. A directed graph gives the ends as built; an
@@ -408,7 +408,7 @@ pub struct Graph<V: Domain, A: Target<V>>:
         var us: [E]?V = None
         var vs: [E]?V = None
         for u in V:
-            for i in start[u.to_idx]..start[u.to_idx + 1]:
+            for i in start[u.ord]..start[u.ord + 1]:
                 let a = arcs[i]
                 let eid = a.e
                 if not seen[eid]:
@@ -430,7 +430,7 @@ pub struct Graph<V: Domain, A: Target<V>>:
         var indeg: [V]Int = 0
         var removed: [V]Bool = false
         for u in V:
-            for i in start[u.to_idx]..start[u.to_idx + 1]:
+            for i in start[u.ord]..start[u.ord + 1]:
                 indeg[arcs[i].to] += 1
         var q = List<V>()
         for u in V:
@@ -446,7 +446,7 @@ pub struct Graph<V: Domain, A: Target<V>>:
         while head < q.len:
             let u = q[head]
             head += 1
-            for i in start[u.to_idx]..start[u.to_idx + 1]:
+            for i in start[u.ord]..start[u.ord + 1]:
                 let a = arcs[i]
                 let v = a.to
                 indeg[v] -= 1
@@ -472,18 +472,18 @@ pub struct Graph<V: Domain, A: Target<V>>:
     pub fn transpose(self) -> Graph<V, A>:
         var indeg: [V]Int = 0
         for u in V:
-            for i in start[u.to_idx]..start[u.to_idx + 1]:
+            for i in start[u.ord]..start[u.ord + 1]:
                 indeg[arcs[i].to] += 1
         var tstart: [V.cuts]Int = 0
         var acc = 0
         for v in V:
-            tstart[v.to_idx] = acc
+            tstart[v.ord] = acc
             acc += indeg[v]
-        tstart[V.K] = acc
-        var cur: [V]Int = [V] v => tstart[v.to_idx]
+        tstart[V.count] = acc
+        var cur: [V]Int = [V] v => tstart[v.ord]
         var tarcs = arcs.clone()
         for u in V:
-            for i in start[u.to_idx]..start[u.to_idx + 1]:
+            for i in start[u.ord]..start[u.ord + 1]:
                 let a = arcs[i]
                 let v = a.to
                 let pos = cur[v]
@@ -572,7 +572,7 @@ pub fn topo<V>(g: Next<V>) -> ?List<V>:
         for a in g.out(u):
             indeg[a.to] -= 1
             if indeg[a.to] == 0: order.push(a.to)
-    if order.len == V.K: order else: None
+    if order.len == V.count: order else: None
 
 // blocked: generic `V` of a `Next<V>` free fn is bound to `Int` (GAPS.md graph free fns)
 /// The strongly connected components, as a fresh domain `C` and each vertex's component.
@@ -856,7 +856,7 @@ fn csr_keeps_edge_ids_and_order():
         (u: V(1), v: V(3)),
         (u: V(3), v: V(2)),
         (u: V(4), v: V(1)),
-    ][e.to_idx]
+    ][e.ord]
     let g = Graph.directed(edges)
     assert [a.to.label for a in g.out(V(1))] == [2, 3]
     assert [a.e.label for a in g.out(V(1))] == [1, 2]
@@ -872,7 +872,7 @@ fn csr_keeps_edge_ids_and_order():
 fn bfs_over_a_stored_graph_and_over_a_lambda():
     domain V = 0..10
     let next = [V] v => [
-        V.nth(x) for x in [v.to_idx + 1, v.to_idx * 2, v.to_idx - 3] if 0 <= x < 10
+        V.nth(x) for x in [v.ord + 1, v.ord * 2, v.ord - 3] if 0 <= x < 10
     ]
     let es = [(v, w) for v in V for w in next[v]]
     let stored = bfs(Graph.directed(es), from: [V(1)])
@@ -907,23 +907,23 @@ fn dijkstra_matches_brute_relaxation():
 @test
 fn topo_orders_a_dag_and_rejects_a_cycle():
     domain V = 0..6
-    let out = [V] v => [V(x) for x in [[1, 2], [3], [3], [4], [], [0]][v.to_idx]]
+    let out = [V] v => [V(x) for x in [[1, 2], [3], [3], [4], [], [0]][v.ord]]
     let order = topo<V>(v => out[v])!
     var pos: [V]Int = 0
     for (i, v) in [(i, order[i]) for i in 0..order.len]: pos[v] = i
     for u in V:
         for v in out[u]: assert pos[u] < pos[v]
     assert topo<V>(v => [v.cyc(1)]) == None
-    let stuck = [V] v => [V(x) for x in [[1, 2], [3], [3], [4], [3], [0]][v.to_idx]]
+    let stuck = [V] v => [V(x) for x in [[1, 2], [3], [3], [4], [3], [0]][v.ord]]
     assert topo<V>(v => stuck[v]) == None
 
 @test
 fn peel_leaves_what_a_cycle_reaches():
     // 0 -> 1 -> 2 -> 3 -> 2 (a cycle) -> 4, and 5 -> 0
     domain V = 0..6
-    let out = [V] v => [V(x) for x in [[1], [2], [3], [2, 4], [], [0]][v.to_idx]]
+    let out = [V] v => [V(x) for x in [[1], [2], [3], [2, 4], [], [0]][v.ord]]
     assert peel<V>(v => out[v]) == [V(5), V(0), V(1)]
-    let dag = [V] v => [V(x) for x in [[1, 2], [3], [3], [4], [], [0]][v.to_idx]]
+    let dag = [V] v => [V(x) for x in [[1, 2], [3], [3], [4], [], [0]][v.ord]]
     assert peel<V>(v => dag[v]) == topo<V>(v => dag[v])!
     domain E = 0..6
     let edges = [E] e => [
@@ -933,7 +933,7 @@ fn peel_leaves_what_a_cycle_reaches():
         (u: V(3), v: V(2)),
         (u: V(3), v: V(4)),
         (u: V(5), v: V(0)),
-    ][e.to_idx]
+    ][e.ord]
     assert peel(Graph.directed(edges)) == [V(5), V(0), V(1)]
 
 @test
@@ -970,7 +970,7 @@ fn components_of_an_undirected_graph():
             for b in V: assert (comp[a] == comp[b]) == d.same(a, b)
 
 fn random_edges<V, E>() -> [E](u: V, v: V):
-    [E] e => (u: V.nth(rand(0, V.K - 1)), v: V.nth(rand(0, V.K - 1)))
+    [E] e => (u: V.nth(rand(0, V.count - 1)), v: V.nth(rand(0, V.count - 1)))
 
 /// Are `a` and `b` connected when edge `skip` and vertex `gone` are removed?
 fn linked<V, E>(edges: [E](u: V, v: V), a: V, b: V, skip: ?E, gone: ?V) -> Bool:
@@ -1038,7 +1038,7 @@ fn two_color_finds_a_colouring_or_an_odd_cycle():
             es.push((u, v))
         var any = false
         for m in 0..128:
-            if es.all(e => ((m >> e.0.to_idx) & 1) != ((m >> e.1.to_idx) & 1)): any = true
+            if es.all(e => ((m >> e.0.ord) & 1) != ((m >> e.1.ord) & 1)): any = true
         let got = two_color(adj)
         assert (got != None) == any
         if let side = got:
@@ -1049,18 +1049,18 @@ fn vertexless_closure_graphs_with_turbofish():
     domain V = 0..6
     // arcs u -> u + 1 and u -> u + 2, given only as a closure
     let order = peel<V>(
-        u => [v for v in V if v.to_idx == u.to_idx + 1 or v.to_idx == u.to_idx + 2]
+        u => [v for v in V if v.ord == u.ord + 1 or v.ord == u.ord + 2]
     )
     assert order == [V(0), V(1), V(2), V(3), V(4), V(5)]
-    assert peel<V>(u => [V.nth((u.to_idx + 1) % 6)]) == []
+    assert peel<V>(u => [V.nth((u.ord + 1) % 6)]) == []
 
 @test
 fn a_plain_edge_list_needs_no_edge_domain():
     domain V = 1..=4
     let g = Graph.undirected([(V(1), V(2)), (V(2), V(3))])
-    assert [[v.to_idx for v in g[u]] for u in V] == [[1], [0, 2], [1], []]
+    assert [[v.ord for v in g[u]] for u in V] == [[1], [0, 2], [1], []]
     let d = Graph.directed([(V(1), V(2), 5), (V(1), V(4), 7)])
-    assert [(v.to_idx, w) for (v, w) in d[V(1)]] == [(1, 5), (3, 7)]
+    assert [(v.ord, w) for (v, w) in d[V(1)]] == [(1, 5), (3, 7)]
     assert d[V(2)].is_empty
 
 /// \(O(n)\) memory.
@@ -1384,7 +1384,7 @@ pub fn bellman_ford<V, W: Add + Ord, G: WeightedNext<V, W>>(
         if dist[s] == None or d0 < dist[s]!:
             dist[s] = Some(d0)
             back[s] = None
-    for round in 0..V.K:
+    for round in 0..V.count:
         var changed = false
         for u in V:
             if let du = dist[u]:
@@ -1395,7 +1395,7 @@ pub fn bellman_ford<V, W: Add + Ord, G: WeightedNext<V, W>>(
                         back[a.to] = Some((from: u, via: a))
                         changed = true
         if not changed: break
-        if round == V.K - 1: return None
+        if round == V.count - 1: return None
     var placed: [V]Bool = false
     var order = List<V>()
     for v in V:
@@ -1611,7 +1611,7 @@ pub fn euler_walk<V, E>(edges: [E](u: V, v: V), directed: Bool) -> ?Walk<V, E>:
     if opens > (if directed: 1 else: 2): return None
     if start == None: start = first(v for v in V if g.deg(v) > 0)
     if start == None:
-        if V.K > 0: return Walk(V.first!, List<(to: V, e: E)>())
+        if V.count > 0: return Walk(V.first!, List<(to: V, e: E)>())
         else: return None
     let out = [V] v => [a for a in g.out(v)]
     var at: [V]Int = 0
@@ -1627,7 +1627,7 @@ pub fn euler_walk<V, E>(edges: [E](u: V, v: V), directed: Bool) -> ?Walk<V, E>:
             stack.push((v: a.to, came: a))
         else:
             if let a = stack.pop()!.came: arcs.push(a)
-    if arcs.len != E.K: return None
+    if arcs.len != E.count: return None
     reverse(mut arcs)
     Walk(start!, arcs)
 
@@ -1645,7 +1645,7 @@ pub struct Lit<X>(pub x: X, pub value: Bool):
 /// to add; `solve` is \(O(\lvert X \rvert + \mathit{clauses})\).
 pub struct TwoSat<X>:
     /// Implications between literal nodes: node `2 * i` is "variable i is false",
-    /// `2 * i + 1` "is true"; variables past `X.K` are helpers of `at_most_one`.
+    /// `2 * i + 1` "is true"; variables past `X.count` are helpers of `at_most_one`.
     pub imp: List<List<Int>>
 
     /// An instance with no clauses over the variables of `X`; every assignment satisfies it.
@@ -1654,7 +1654,7 @@ pub struct TwoSat<X>:
     /// traps: never
     /// example: `domain X = 0..2; TwoSat<X>().solve() != None`
     pub fn new() -> TwoSat<X>:
-        TwoSat([[] for _ in 0..2 * X.K])
+        TwoSat([[] for _ in 0..2 * X.count])
 
     /// Adds the clause "at least one of `a`, `b` holds".
     ///
@@ -1732,18 +1732,18 @@ pub struct TwoSat<X>:
     /// example: `domain X = 0..1; var s = TwoSat<X>(); s.implies(Lit(X(0), true), Lit(X(0), false)); s.solve() == Some([false])`
     pub fn solve(self) -> ?[X]Bool:
         domain N = 0..imp.len
-        let (C, comp) = scc<N>(u => [N(v) for v in imp[u.to_idx]])
+        let (C, comp) = scc<N>(u => [N(v) for v in imp[u.ord]])
         // components are in topological order: a literal is true when it comes after
         // its negation
         for i in 0..imp.len / 2:
             if comp[N(2 * i)] == comp[N(2 * i + 1)]: return None
-        [X] x => comp[N(2 * x.to_idx + 1)] > comp[N(2 * x.to_idx)]
+        [X] x => comp[N(2 * x.ord + 1)] > comp[N(2 * x.ord)]
 
     fn clause(mut self, a: Int, b: Int):
         imp[a ^ 1].push(b)
         imp[b ^ 1].push(a)
 
-fn lit_node<X>(l: Lit<X>) -> Int = 2 * l.x.to_idx + Int(l.value)
+fn lit_node<X>(l: Lit<X>) -> Int = 2 * l.x.ord + Int(l.value)
 
 @test
 fn paths_witness_their_distances():
@@ -1777,10 +1777,10 @@ fn fixed_cost_paths_match_dijkstra_on_the_same_moves():
         var es: List<(u: S, v: S, w: Int)> = []
         for s in S:
             for j in 0..4:
-                let t = s.to_idx + moves[j]
+                let t = s.ord + moves[j]
                 if 0 <= t < 20: es.push((u: s, v: S.nth(t), w: price[j]))
         domain E = 0..es.len
-        let ea: [E](u: S, v: S, w: Int) = [E] e => es[e.to_idx]
+        let ea: [E](u: S, v: S, w: Int) = [E] e => es[e.ord]
         let src = S.nth(rand(0, 19))
         let want = dijkstra(Graph.directed(ea), from: [(src, 0)])
         let got = fixed_cost_paths(
@@ -1790,7 +1790,7 @@ fn fixed_cost_paths_match_dijkstra_on_the_same_moves():
             step: (
                 j,
                 s,
-            ) => if s.to_idx + moves[j] >= 0 and s.to_idx + moves[j] < 20: Some(S.nth(s.to_idx + moves[j])) else: None,
+            ) => if s.ord + moves[j] >= 0 and s.ord + moves[j] < 20: Some(S.nth(s.ord + moves[j])) else: None,
         )
         for s in S: assert got[s] == want[s]
 
@@ -2107,7 +2107,7 @@ pub fn dial<V, G: WeightedNext<V, Int>>(
 /// example: `domain V = 0..2; domain E = 0..2; let es: [E](u: V, v: V, w: Int) = [(u: 0, v: 1, w: 1), (u: 1, v: 0, w: -2)]; johnson(Graph.directed(es)) == None`
 pub fn johnson<V, W: Add + Sub>(g: WeightedNext<V, W>) -> ?[V, V]?W:
     var h: [V]W = W.zero
-    for round in 0..V.K:
+    for round in 0..V.count:
         var changed = false
         for u in V:
             for a in g.out(u):
@@ -2116,7 +2116,7 @@ pub fn johnson<V, W: Add + Sub>(g: WeightedNext<V, W>) -> ?[V, V]?W:
                     h[a.to] = nd
                     changed = true
         if not changed: break
-        if round == V.K - 1: return None
+        if round == V.count - 1: return None
     var res: [V, V]?W = None
     for s in V:
         var dist: [V]?W = None
@@ -2202,7 +2202,7 @@ pub fn negative_cycle<V, W: Add, G: WeightedNext<V, W>>(g: G) -> ?List<G.Arc>:
     var par: [V]?V = None
     var par_arc: [V]?G.Arc = None
     var last: ?V = None
-    for _ in 0..V.K:
+    for _ in 0..V.count:
         last = None
         for u in V:
             for a in g.out(u):
@@ -2214,7 +2214,7 @@ pub fn negative_cycle<V, W: Add, G: WeightedNext<V, W>>(g: G) -> ?List<G.Arc>:
                     if last == None: last = Some(a.to)
         if last == None: return None
     var cur = last!
-    for _ in 0..V.K: cur = par[cur]!
+    for _ in 0..V.count: cur = par[cur]!
     let start = cur
     var cyc = List<G.Arc>()
     var v = start
@@ -2236,7 +2236,7 @@ pub fn negative_cycle<V, W: Add, G: WeightedNext<V, W>>(g: G) -> ?List<G.Arc>:
 /// example: `domain V = 0..2; domain E = 0..3; let es: [E](u: V, v: V, w: Int) = [(u: 0, v: 1, w: 1), (u: 1, v: 0, w: 3), (u: 1, v: 1, w: 5)]; min_mean_cycle(Graph.directed(es)) == Some((sum: 4, len: 2))`
 /// example: `domain V = 0..2; domain E = 0..3; let es: [E](u: V, v: V, w: Int) = [(u: 0, v: 0, w: 2), (u: 0, v: 1, w: 1), (u: 1, v: 0, w: 3)]; min_mean_cycle(Graph.directed(es)) == Some((sum: 2, len: 1))`
 pub fn min_mean_cycle<V>(g: WeightedNext<V, Int>) -> ?(sum: Int, len: Int):
-    let n = V.K
+    let n = V.count
     if n == 0: return None
     var dp: List<[V]?Int> = []
     var init: [V]?Int = Some(0)
@@ -2340,7 +2340,7 @@ pub fn smallest_topo<V>(g: Next<V>) -> ?List<V>:
         for a in g.out(u):
             indeg[a.to] -= 1
             if indeg[a.to] == 0: ready.push(a.to)
-    if order.len == V.K: order else: None
+    if order.len == V.count: order else: None
 
 // blocked: generic `V` of a `Next<V>` free fn is bound to `Int` (GAPS.md graph free fns)
 /// DP over a DAG in topological order. Each vertex starts at `init(v)`; then, for `u` in
@@ -2412,8 +2412,8 @@ pub fn reach_sets<V>(g: Next<V>) -> [V]Bitset<V>:
 /// example: `domain V = 0..3; domain E = 0..4; let es: [E](u: V, v: V) = [(u: 0, v: 1), (u: 1, v: 2), (u: 2, v: 0), (u: 2, v: 1)]; scc_times(es) == [Some(2), Some(2), Some(2), Some(3)]`
 /// example: `domain V = 0..2; domain E = 0..1; let es: [E](u: V, v: V) = [(u: 0, v: 1)]; scc_times(es) == [None]`
 pub fn scc_times<V, E>(arcs: [E](u: V, v: V)) -> [E]?Int:
-    let n = V.K
-    let m = E.K
+    let n = V.count
+    let m = E.count
     var ans: [E]?Int = None
     if m == 0: return ans
 
@@ -2459,16 +2459,16 @@ pub fn scc_times<V, E>(arcs: [E](u: V, v: V)) -> [E]?Int:
         if es.len == 0: return
         if l == r:
             for e in es:
-                let ei = e.to_idx
+                let ei = e.ord
                 let t = if l > ei: l else: ei
                 ans[e] = Some(t)
             return
         let mid = (l + r) / 2
         used.clear()
         for e in es:
-            if e.to_idx <= mid:
-                let ru = find(arcs[e].u.to_idx)
-                let rv = find(arcs[e].v.to_idx)
+            if e.ord <= mid:
+                let ru = find(arcs[e].u.ord)
+                let rv = find(arcs[e].v.ord)
                 if ru != rv:
                     if adj[ru].len == 0 and tin[ru] == -1:
                         tin[ru] = -2
@@ -2528,11 +2528,11 @@ pub fn scc_times<V, E>(arcs: [E](u: V, v: V)) -> [E]?Int:
         var to_merge_u = List<Int>()
         var to_merge_v = List<Int>()
         for e in es:
-            let ru = find(arcs[e].u.to_idx)
-            let rv = find(arcs[e].v.to_idx)
+            let ru = find(arcs[e].u.ord)
+            let rv = find(arcs[e].v.ord)
             if ru == rv:
                 left_es.push(e)
-            elif e.to_idx <= mid and comp[ru] != -1 and comp[ru] == comp[rv]:
+            elif e.ord <= mid and comp[ru] != -1 and comp[ru] == comp[rv]:
                 left_es.push(e)
                 to_merge_u.push(ru)
                 to_merge_v.push(rv)
@@ -2552,14 +2552,14 @@ pub fn scc_times<V, E>(arcs: [E](u: V, v: V)) -> [E]?Int:
     var all_es = List<E>()
     for e in E:
         if arcs[e].u == arcs[e].v:
-            ans[e] = Some(e.to_idx)
+            ans[e] = Some(e.ord)
         else:
             all_es.push(e)
     // Filter to edges whose endpoints are in the same SCC after all m arcs.
     if all_es.len > 0:
         for e in all_es:
-            let u = arcs[e].u.to_idx
-            let v = arcs[e].v.to_idx
+            let u = arcs[e].u.ord
+            let v = arcs[e].v.ord
             adj[u].push(v)
         var timer = 0
         var ccnt = 0
@@ -2604,7 +2604,7 @@ pub fn scc_times<V, E>(arcs: [E](u: V, v: V)) -> [E]?Int:
                         low[p] min= low[u]
         var active = List<E>()
         for e in all_es:
-            if comp[arcs[e].u.to_idx] == comp[arcs[e].v.to_idx]:
+            if comp[arcs[e].u.ord] == comp[arcs[e].v.ord]:
                 active.push(e)
         for u in 0..n:
             adj[u].clear()
@@ -2684,7 +2684,7 @@ pub fn block_cut_tree<V>(g: Next<V>) -> (domain B, links: List<(b: B, v: V)>):
     domain B = 0..raw_blocks.len
     var links = List<(b: B, v: V)>()
     for bi in B:
-        for v in raw_blocks[bi.to_idx]:
+        for v in raw_blocks[bi.ord]:
             if is_cut[v]:
                 links.push((b: bi, v: v))
     (B:, links: links)
@@ -3003,12 +3003,12 @@ pub fn max_clique<V: Ord>(adj: [V]Bitset<V>) -> List<V>:
 /// example: `domain V = 0..3; let adj: [V]Bitset<V> = [Bitset.of([V(1), V(2)]), Bitset.of([V(0), V(2)]), Bitset.of([V(0), V(1)])]; chromatic_number(adj) == 3`
 /// example: `domain V = 0..3; let adj: [V]Bitset<V> = [Bitset.empty(), Bitset.empty(), Bitset.empty()]; chromatic_number(adj) == 1`
 pub fn chromatic_number<V>(adj: [V]Bitset<V>) -> Int:
-    let n = V.K
+    let n = V.count
     if n == 0: return 0
     assert n <= 30, "`chromatic_number` needs at most 30 vertices"
     var nb = List.filled(n, 0)
     for v in V:
-        for u in adj[v].each(): nb[v.to_idx] |= 1 << u.to_idx
+        for u in adj[v].each(): nb[v.ord] |= 1 << u.ord
     let full = (1 << n) - 1
     var ind = List.filled(1 << n, 0)
     ind[0] = 1
@@ -3090,9 +3090,9 @@ pub fn prim<V, W>(w: [V, V]?W) -> ?(total: W, parent: [V]?V):
     var best: [V]?W = None
     var done: [V]Bool = false
     var total = W.zero
-    if V.K == 0: return Some((total:, parent:))
+    if V.count == 0: return Some((total:, parent:))
     var at = V.first!
-    for _ in 0..V.K:
+    for _ in 0..V.count:
         done[at] = true
         for v in V:
             if done[v]: continue
@@ -3134,9 +3134,9 @@ pub fn boruvka<V, C, W>(
 ) -> (total: W, edges: List<(u: V, v: V)>):
     var total = W.zero
     var edges = List<(u: V, v: V)>()
-    if V.K <= 1: return (total: total, edges: edges)
+    if V.count <= 1: return (total: total, edges: edges)
     var dsu = Dsu<V>()
-    var num_comps = V.K
+    var num_comps = V.count
     while num_comps > 1:
         var comp_id: [V]Int = -1
         var comp: [V]Int = 0
@@ -3174,9 +3174,9 @@ pub fn arborescence<V, E, W: Add + Sub, R: (u: V, v: V, w: W, ..)>(edges: [E]R, 
     total: W,
     parent: [V]?E,
 ):
-    let n0 = V.K
+    let n0 = V.count
     var cur_n = n0
-    var cur_root = root.to_idx
+    var cur_root = root.ord
     var cur_u = List<Int>()
     var cur_v = List<Int>()
     var cur_w = List<W>()
@@ -3184,8 +3184,8 @@ pub fn arborescence<V, E, W: Add + Sub, R: (u: V, v: V, w: W, ..)>(edges: [E]R, 
     for e in E:
         let r = edges[e]
         if r.u != r.v and r.v != root:
-            cur_u.push(r.u.to_idx)
-            cur_v.push(r.v.to_idx)
+            cur_u.push(r.u.ord)
+            cur_v.push(r.v.ord)
             cur_w.push(r.w)
             cur_orig.push(e)
 
@@ -3535,7 +3535,7 @@ pub struct IncrementalBridges<V>:
     /// traps: never
     /// example: `domain V = 0..2; var b = IncrementalBridges<V>(); not b.same(V(0), V(1))`
     pub fn new() -> IncrementalBridges<V>:
-        let n = V.K
+        let n = V.count
         IncrementalBridges<V>(
             bridges: 0,
             _par: [-1 for _ in 0..n],
@@ -3553,8 +3553,8 @@ pub struct IncrementalBridges<V>:
     /// traps: never
     /// example: `domain V = 0..2; var b = IncrementalBridges<V>(); b.add(V(0), V(1)); b.add(V(0), V(1)); b.two_edge_same(V(0), V(1))`
     pub fn add(mut self, u: V, v: V):
-        var a = self._find_ecc(u.to_idx)
-        var b = self._find_ecc(v.to_idx)
+        var a = self._find_ecc(u.ord)
+        var b = self._find_ecc(v.ord)
         if a == b: return
         var ca = self._find_cc(a)
         var cb = self._find_cc(b)
@@ -3610,7 +3610,7 @@ pub struct IncrementalBridges<V>:
     /// traps: never
     /// example: `domain V = 0..3; var b = IncrementalBridges<V>(); b.add(V(0), V(1)); b.add(V(1), V(2)); let before = b.two_edge_same(V(0), V(2)); b.add(V(2), V(0)); not before and b.two_edge_same(V(0), V(2))`
     pub fn two_edge_same(mut self, u: V, v: V) -> Bool =
-        self._find_ecc(u.to_idx) == self._find_ecc(v.to_idx)
+        self._find_ecc(u.ord) == self._find_ecc(v.ord)
 
     /// Are `u` and `v` connected?
     ///
@@ -3618,7 +3618,7 @@ pub struct IncrementalBridges<V>:
     /// traps: never
     /// example: `domain V = 0..3; var b = IncrementalBridges<V>(); b.add(V(0), V(1)); b.add(V(1), V(2)); b.same(V(0), V(2))`
     pub fn same(mut self, u: V, v: V) -> Bool =
-        self._find_cc(u.to_idx) == self._find_cc(v.to_idx)
+        self._find_cc(u.ord) == self._find_cc(v.ord)
 
 /// \(O(1)\): one edge of a `Graph`: its id and its ends (as built for a directed graph, first in
 /// `V` order for an undirected one).
@@ -3689,10 +3689,10 @@ pub struct Only<V, G>(g: G, keep: V -> Bool, from: V -> Bool):
         var tstart: [V.cuts]Int = 0
         var acc = 0
         for v in V:
-            tstart[v.to_idx] = acc
+            tstart[v.ord] = acc
             acc += indeg[v]
-        tstart[V.K] = acc
-        var cur: [V]Int = [V] v => tstart[v.to_idx]
+        tstart[V.count] = acc
+        var cur: [V]Int = [V] v => tstart[v.ord]
         var tarcs = List<G.Arc>()
         if acc > 0:
             var filled = false

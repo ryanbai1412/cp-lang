@@ -19,7 +19,7 @@ struct Affine(mul: Z, add: Z)
 
 // position i ends a product run in 2 * 3^(n-2-i) of the sign choices after it
 fn leaf(i: I) -> Affine:
-    let at = i.to_idx
+    let at = i.ord
     let closes = if at == n - 1: Z(1) else: 2 * Z(3) ** (n - 2 - at)
     Affine(Z(a[i]), Z(a[i]) * closes)
 

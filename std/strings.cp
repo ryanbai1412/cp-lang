@@ -666,10 +666,10 @@ pub struct KmpAutomaton<A>:
     /// example: `KmpAutomaton<Char>("aba").len == 4`
     pub fn new<S: Seq>(pat: S) -> KmpAutomaton<A>:
         with lint(unproven_list_index: allow)
-        let k = A.K
+        let k = A.count
         var p: List<Int> = []
         for a in pat:
-            let c = a.to_idx
+            let c = a.ord
             assert 0 <= c < k, "KmpAutomaton: character outside alphabet"
             p.push(c)
         let m = p.len
@@ -706,7 +706,7 @@ pub struct KmpAutomaton<A>:
     pub fn step(self, state: Int, a: A) -> Int:
         with lint(unproven_list_index: allow)
         assert 0 <= state < pi.len, "KmpAutomaton.step: state out of range"
-        let c = a.to_idx
+        let c = a.ord
         assert 0 <= c < alpha, "KmpAutomaton.step: character outside alphabet"
         goto[state * alpha + c]
 
@@ -737,7 +737,7 @@ pub struct KmpAutomaton<A>:
             var pos = 0
             yield 0
             for a in text:
-                let c = a.to_idx
+                let c = a.ord
                 assert 0 <= c < alpha, "KmpAutomaton.find_all: character outside alphabet"
                 pos += 1
                 yield pos
@@ -745,7 +745,7 @@ pub struct KmpAutomaton<A>:
         var state = 0
         var pos = 0
         for a in text:
-            let c = a.to_idx
+            let c = a.ord
             assert 0 <= c < alpha, "KmpAutomaton.find_all: character outside alphabet"
             state = goto[state * alpha + c]
             pos += 1
@@ -1690,25 +1690,25 @@ pub struct Hash2D<R, C>(bases: (Int, Int)):
     /// cost: \(O(\lvert R \rvert \cdot \lvert C \rvert)\)
     /// empty: an empty `R` or `C` gives a hash whose only rectangle is empty
     /// traps: when a given base is outside `2..M`
-    /// example: `domain R = 0..2; domain C = 0..4; let h = Hash2D<R, C>((r, c) => c.to_idx % 2); h.rect(R(0)..=R(1), C(0)..=C(1)) == h.rect(R(0)..=R(1), C(2)..=C(3))`
+    /// example: `domain R = 0..2; domain C = 0..4; let h = Hash2D<R, C>((r, c) => c.ord % 2); h.rect(R(0)..=R(1), C(0)..=C(1)) == h.rect(R(0)..=R(1), C(2)..=C(3))`
     pub fn new(code: (R, C) -> Int, bases: ?(Int, Int) = None) -> Hash2D<R, C>:
         with lint(unproven_list_index: allow)
         let (br1, bc1) = bases ?? (rand(1 << 20, 1 << 29), rand(1 << 20, 1 << 29))
         let br2 = (br1 ^ 324508639) % (RH_M2 - 2) + 2
         let bc2 = (bc1 ^ 715827883) % (RH_M2 - 2) + 2
-        let rows = R.K
-        let cols = C.K
+        let rows = R.count
+        let cols = C.count
         let stride = cols + 1
         var pre1: List<0..=1_000_000_009> = List.filled((rows + 1) * stride, 0)
         var pre2: List<0..=1_000_000_009> = List.filled((rows + 1) * stride, 0)
         let brc1 = br1 * bc1 % RH_M1
         let brc2 = br2 * bc2 % RH_M2
         for r in R:
-            let i = r.to_idx
+            let i = r.ord
             let row0 = i * stride
             let row1 = row0 + stride
             for c in C:
-                let j = c.to_idx
+                let j = c.ord
                 let v = code(r, c)
                 let v1 = v % (RH_M1 - 1) + 1
                 let v2 = v % (RH_M2 - 1) + 1
@@ -1739,7 +1739,7 @@ pub struct Hash2D<R, C>(bases: (Int, Int)):
     /// cost: \(O(1)\)
     /// empty: an empty `rows` or `cols` gives `HashVal(0, 0)`
     /// traps: never (the ranges are typed by `R` and `C`)
-    /// example: `domain R = 0..2; domain C = 0..4; let h = Hash2D<R, C>((r, c) => r.to_idx); h.rect(R(0)..=R(0), C(0)..=C(1)) != h.rect(R(1)..=R(1), C(0)..=C(1))`
+    /// example: `domain R = 0..2; domain C = 0..4; let h = Hash2D<R, C>((r, c) => r.ord); h.rect(R(0)..=R(0), C(0)..=C(1)) != h.rect(R(1)..=R(1), C(0)..=C(1))`
     pub fn rect(self, rows: Range<R>, cols: Range<C>) -> HashVal:
         with lint(unproven_list_index: allow)
         if rows.is_empty or cols.is_empty: return HashVal(0, 0)
@@ -1999,7 +1999,7 @@ pub struct DynamicHash<D>:
             i += 1
         h
 
-    /// The number of hashed positions, `D.K`.
+    /// The number of hashed positions, `D.count`.
     ///
     /// cost: \(O(1)\)
     /// traps: never
@@ -2124,7 +2124,7 @@ pub struct SuffixAutomaton<A>:
     /// traps: never
     /// example: `SuffixAutomaton<Char>().len == 1`
     pub fn new() -> SuffixAutomaton<A>:
-        let k = A.K
+        let k = A.count
         let lts: List<?A> = [None for _ in 0..k]
         SuffixAutomaton(k, List.filled(k, -1), [-1], [0], [-1], [false], 0, lts)
 
@@ -2171,7 +2171,7 @@ pub struct SuffixAutomaton<A>:
     /// example: `var m = SuffixAutomaton<Char>(); m.push('a'); m.push('b'); m.distinct() == 3`
     pub fn push(mut self, a: A):
         with lint(unproven_list_index: allow)
-        let c = a.to_idx
+        let c = a.ord
         letters[c] = Some(a)
         let cur = self.add_empty_state(max_len[last] + 1, true)
         unchecked:
@@ -2216,7 +2216,7 @@ pub struct SuffixAutomaton<A>:
     /// example: `let m = SuffixAutomaton<Char>.of("abb"); m.step(0, 'b') == Some(4) and m.step(1, 'a') == None`
     pub fn step(self, state: Int, a: A) -> ?Int:
         with lint(unproven_list_index: allow)
-        let t = next[state * alpha + a.to_idx]
+        let t = next[state * alpha + a.ord]
         if t == -1: None else: t
 
     /// The suffix link of `state`: the state of its longest suffix that lies in another state;
@@ -2271,7 +2271,7 @@ pub struct SuffixAutomaton<A>:
         with lint(unproven_list_index: allow)
         var at = 0
         for a in word:
-            let t = next[at * alpha + a.to_idx]
+            let t = next[at * alpha + a.ord]
             if t == -1: return None
             at = t
         at
@@ -2349,7 +2349,7 @@ pub struct SuffixAutomaton<A>:
         with lint(unproven_list_index: allow)
         var (v, l, best_len, best_end, i) = (0, 0, 0, 0, 0)
         for a in other:
-            let c = a.to_idx
+            let c = a.ord
             while v != 0 and next[v * alpha + c] == -1:
                 v = links[v]
                 l = max_len[v]
@@ -2520,7 +2520,7 @@ pub struct PalindromicTree<A>:
     /// traps: never
     /// example: `PalindromicTree<Char>().len == 2`
     pub fn new() -> PalindromicTree<A>:
-        let k = A.K
+        let k = A.count
         PalindromicTree(
             k,
             List.filled(2 * k, -1),
@@ -2559,7 +2559,7 @@ pub struct PalindromicTree<A>:
     /// example: `var t = PalindromicTree<Char>(); t.push('a'); t.push('a') == 3`
     pub fn push(mut self, a: A) -> Int:
         with lint(unproven_list_index: allow)
-        let c = a.to_idx
+        let c = a.ord
         let pos = self.size()
         chars.push(a)
         unchecked:
@@ -2650,7 +2650,7 @@ pub struct PalindromicTree<A>:
     /// example: `let t = PalindromicTree<Char>.of("aba"); t.step(3, 'a') == Some(4) and t.step(1, 'a') == None`
     pub fn step(self, state: Int, a: A) -> ?Int:
         with lint(unproven_list_index: allow)
-        let t = next[state * alpha + a.to_idx]
+        let t = next[state * alpha + a.ord]
         if t == -1: None else: t
 
     /// The difference `pal_len(state) - pal_len(link(state))`, the period that groups
@@ -2697,7 +2697,7 @@ pub struct PalindromicTree<A>:
     /// traps: never (`a` is an `A`)
     /// example: `var t = PalindromicTree<Char>.of("ba"); t.push_front('a') == 4`
     pub fn push_front(mut self, a: A) -> Int:
-        let c = a.to_idx
+        let c = a.ord
         front.push(a)
         barrier = undo.len
         let n = self.size()
@@ -2770,11 +2770,11 @@ pub struct PalindromicTree<A>:
             if not is_palindrome(w): return false
             var at = if m % 2 == 1: 0 else: 1
             for i in ((m - 1) / 2 + 1..m):
-                let t = next[at * alpha + w[i].to_idx]
+                let t = next[at * alpha + w[i].ord]
                 if t == -1: return false
                 at = t
             if m % 2 == 1:
-                let t = next[w[(m - 1) / 2].to_idx]
+                let t = next[w[(m - 1) / 2].ord]
                 if t == -1: return false
         true
 
@@ -2816,7 +2816,7 @@ pub struct Trie<A>:
     /// traps: never
     /// example: `Trie<Char>().len == 1`
     pub fn new() -> Trie<A>:
-        let k = A.K
+        let k = A.count
         Trie(k, List.filled(k, -1), [0], [0])
 
     /// The root node, for the empty word: always `0`.
@@ -2848,7 +2848,7 @@ pub struct Trie<A>:
     /// example: `var t = Trie<Char>(); t.add("ab"); t.step(0, 'a') == Some(1) and t.step(1, 'z') == None`
     pub fn step(self, node: Int, a: A) -> ?Int:
         with lint(unproven_list_index: allow)
-        let t = next[node * alpha + a.to_idx]
+        let t = next[node * alpha + a.ord]
         if t == -1: None else: t
 
     /// The node of `word`, or `None` when no stored word starts with `word`
@@ -2863,7 +2863,7 @@ pub struct Trie<A>:
         with lint(unproven_list_index: allow)
         var at = 0
         for a in word:
-            let t = next[at * alpha + a.to_idx]
+            let t = next[at * alpha + a.ord]
             if t == -1: return None
             at = t
         at
@@ -2880,7 +2880,7 @@ pub struct Trie<A>:
         var at = 0
         pass[0] += 1
         for a in word:
-            let idx = at * alpha + a.to_idx
+            let idx = at * alpha + a.ord
             if next[idx] == -1:
                 let nw = ends.len
                 for _ in 0..alpha: next.push(-1)
@@ -2906,7 +2906,7 @@ pub struct Trie<A>:
         var at = 0
         pass[0] -= 1
         for a in word:
-            at = next[at * alpha + a.to_idx]
+            at = next[at * alpha + a.ord]
             pass[at] -= 1
         ends[at] -= 1
         true
@@ -2990,7 +2990,7 @@ pub struct Trie<A>:
                 let child = next[node * alpha + c]
                 if child == -1: continue
                 if left < pass[child]:
-                    word.push(A.from_idx(c)!)
+                    word.push(A.try_at(c)!)
                     node = child
                     break
                 left -= pass[child]
@@ -3008,7 +3008,7 @@ pub struct Trie<A>:
         unchecked:
             for a in word:
                 total += ends[at]
-                let c = a.to_idx
+                let c = a.ord
                 for d in 0..c:
                     let t = next[at * alpha + d]
                     if t != -1: total += pass[t]
@@ -3038,7 +3038,7 @@ pub struct AhoCorasick<A>:
     /// example: `AhoCorasick<Char>(["a", "ab", "b"]).len == 4`
     pub fn new<S: Seq>(patterns: List<S>) -> AhoCorasick<A>:
         with lint(unproven_list_index: allow)
-        let k = A.K
+        let k = A.count
         var goto: List<-1..=2_000_000_000> = List.filled(k, -1)
         var ends: List<List<0..=2_000_000_000>> = [[]]
         var lens: List<0..=2_000_000_000> = List.filled(patterns.len, 0)
@@ -3047,7 +3047,7 @@ pub struct AhoCorasick<A>:
             var at = 0
             var plen = 0
             for a in patterns[i]:
-                let idx = at * k + a.to_idx
+                let idx = at * k + a.ord
                 if goto[idx] == -1:
                     let nw = ends.len
                     for _ in 0..k: goto.push(-1)
@@ -3103,7 +3103,7 @@ pub struct AhoCorasick<A>:
     /// example: `let ac = AhoCorasick<Char>(["a", "ab", "b"]); ac.step(2, 'b') == 3 and ac.step(1, 'a') == 1`
     pub fn step(self, state: Int, a: A) -> Int:
         with lint(unproven_list_index: allow)
-        return goto[state * alpha + a.to_idx]
+        return goto[state * alpha + a.ord]
 
     /// The failure link of `state`: the state of its longest proper suffix that is a pattern
     /// prefix; `0` at the root.
@@ -3154,7 +3154,7 @@ pub struct AhoCorasick<A>:
         var state = 0
         var i = 0
         for a in text:
-            state = goto[state * alpha + a.to_idx]
+            state = goto[state * alpha + a.ord]
             i += 1
             var at = state
             while at != -1:
@@ -3174,7 +3174,7 @@ pub struct AhoCorasick<A>:
         var visits = List.filled(fail.len, 0)
         var state = 0
         for a in text:
-            state = goto[state * alpha + a.to_idx]
+            state = goto[state * alpha + a.ord]
             visits[state] += 1
         for i in (1..order.len).rev: visits[fail[order[i]]] += visits[order[i]]
         var total = List.filled(lens.len, 0)
@@ -3226,7 +3226,7 @@ pub struct DynamicAhoCorasick<A>:
     /// traps: never
     /// example: `DynamicAhoCorasick<Char>().is_empty`
     pub fn new() -> DynamicAhoCorasick<A> = DynamicAhoCorasick<A>(
-        A.K,
+        A.count,
         0,
         Trie<A>(),
         AcBuckets<A>([], [], []),
@@ -3405,7 +3405,7 @@ fn rolling_hash_over_str_list_and_domain_arrays():
             assert h.combine(h.get(..mid), h.get(mid..s.len), s.len - mid) == h.all
     // 2. Domain-indexed [D]Int array (including negative values and zeros)
     domain D = 1..=8
-    let arr = [D] i => [0, 0, -5, 7, 0, 0, -5, 7][i.to_idx]
+    let arr = [D] i => [0, 0, -5, 7, 0, 0, -5, 7][i.ord]
     let hd = RollingHash(arr)
     assert hd.get(D(1)..=D(4)) == hd.get(D(5)..=D(8))
     assert hd.get(D(1)..=D(1)) != hd.get(D(1)..=D(2))  // [0] vs [0, 0] never collide
@@ -3419,7 +3419,7 @@ fn rolling_hash_over_str_list_and_domain_arrays():
     // 4. Nested 2D hashing: [R]HashVal fed into a second RollingHash with independent salted bases
     domain R = 0..3
     domain C = 0..3
-    let g = [R, C] (r, c) => [[1, 2, 3], [4, 5, 6], [7, 8, 9]][r.to_idx][c.to_idx]
+    let g = [R, C] (r, c) => [[1, 2, 3], [4, 5, 6], [7, 8, 9]][r.ord][c.ord]
     let gt = [C, R] (c, r) => g[r, c]
     let row_b = RollingHash([g[R(0), c] for c in C]).bases
     let row_hashes = [R] r => RollingHash([g[r, c] for c in C], bases: row_b).all
@@ -3951,7 +3951,7 @@ fn dynamic_hash_matches_rolling_hash_after_updates():
             assert h.rev_get(l..r) == rh.hash_of(back)
             assert h.is_palindrome(l..r) == (back == [s[k] for k in l..r])
     domain P = 0..6
-    let g = DynamicHash<P>([P] p => p.to_idx % 2)
+    let g = DynamicHash<P>([P] p => p.ord % 2)
     assert g.len == 6 and g.get(P(0)..P(2)) == g.get(P(2)..P(4))
     assert g.is_palindrome(P(1)..P(4)) and not g.is_palindrome(P(0)..P(2))
 

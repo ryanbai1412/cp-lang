@@ -25,8 +25,8 @@ for v in V:
         bad_odd = true
         break
     if cyc.len == 2:
-        let a = if cyc[0].to_idx < cyc[1].to_idx: cyc[0] else: cyc[1]
-        let b = if cyc[0].to_idx < cyc[1].to_idx: cyc[1] else: cyc[0]
+        let a = if cyc[0].ord < cyc[1].ord: cyc[0] else: cyc[1]
+        let b = if cyc[0].ord < cyc[1].ord: cyc[1] else: cyc[0]
         base[a] = 1
         base[b] = -1
     else:

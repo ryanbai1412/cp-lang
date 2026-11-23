@@ -32,20 +32,20 @@ fn above<R, C>(garden: [R, C]Int) -> [R]?Int:
             var inside = 0
             for left in 0..C.len:
                 while right < C.len and inside < k:
-                    inside += strip[C.from_idx(right)!]
+                    inside += strip[C.try_at(right)!]
                     right += 1
                 if inside == k: least min= 2 * (bottom - top + 1 + right - left)
-                inside -= strip[C.from_idx(left)!]
+                inside -= strip[C.try_at(left)!]
         best[bottom] = least
     best
 
 // The two rectangles are split by a line between two rows.
 fn split<R, C>(garden: [R, C]Int) -> ?Int:
     let up = above(garden)
-    let down = above([R, C] (r, c) => garden[R.from_idx(R.len - 1 - r.idx)!, c])  // WISH G2: garden.flipped
+    let down = above([R, C] (r, c) => garden[R.try_at(R.len - 1 - r.idx)!, c])  // WISH G2: garden.flipped
     var least: ?Int = None
     for cut in 1..R.len:
-        if let a = up[R.from_idx(cut - 1)!] and let b = down[R.from_idx(R.len - 1 - cut)!]: least min= a + b
+        if let a = up[R.try_at(cut - 1)!] and let b = down[R.try_at(R.len - 1 - cut)!]: least min= a + b
     least
 
 let across = split(count)

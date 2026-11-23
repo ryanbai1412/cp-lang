@@ -29,7 +29,7 @@ var members: [Region]List<V> = [Region] _ => []
 var spots: [Region]List<Int> = [Region] _ => []
 for v in t.at:
     members[home[v]].push(v)
-    spots[home[v]].push(t.pos(v).to_idx)
+    spots[home[v]].push(t.pos(v).ord)
 
 // how many employees of region x sit at preorder positions < p
 // WISH TR4: `(0..w.len).first_true(i => w[i] >= p)` is on the cheat sheet

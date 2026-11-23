@@ -51,7 +51,7 @@ for i in Q:
     if is_add[i]:
         let nid = st_t.len
         st_p.push(head.get(ky) ?? -1)
-        st_t.push(i.to_idx)
+        st_t.push(i.ord)
         st_v.push(ky)
         head[ky] = nid
     else:
@@ -59,7 +59,7 @@ for i in Q:
         let s = st_t[nid]
         head[ky] = st_p[nid]
         closed[Q(s)] = true
-        if s <= i.to_idx - 1: add_span(1, 0, q - 1, s, i.to_idx - 1, ky)
+        if s <= i.ord - 1: add_span(1, 0, q - 1, s, i.ord - 1, ky)
 
 for nid in 0..st_t.len:
     let s = st_t[nid]

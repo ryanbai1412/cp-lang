@@ -20,13 +20,13 @@ pub struct Fenwick<D, T: Add + Sub>:
     /// example: `Fenwick([1, 2, 3]).all == 6`
     /// example: `Fenwick<0..3, Int>().all == 0`
     pub fn new(a: ?[D]T = None) -> Fenwick<D, T>:
-        var t = List.filled(D.K + 1, T.zero)
+        var t = List.filled(D.count + 1, T.zero)
         if let init = a:
             for i in D:
-                let p = i.to_idx + 1
+                let p = i.ord + 1
                 t[p] = t[p] + init[i]
                 let q = p + (p & -p)
-                if q <= D.K: t[q] = t[q] + t[p]
+                if q <= D.count: t[q] = t[q] + t[p]
         Fenwick(t)
 
     /// Add `x` to the value at position `i`: `a[i] += x`.
@@ -35,7 +35,7 @@ pub struct Fenwick<D, T: Add + Sub>:
     /// traps: when `i` is outside `D`
     /// example: `var f = Fenwick([1, 2, 3]); f.add(0, 5); f.fold(0..2) == 8`
     pub fn add(mut self, i: D, x: T):
-        var p = i.to_idx + 1
+        var p = i.ord + 1
         while p < t.len:
             t[p] += x
             p += p & -p
@@ -80,16 +80,16 @@ pub struct Fenwick<D, T: Add + Sub>:
         if target <= 0: return D.cuts.nth(0)
         var p = 0
         var rest = target
-        var step = bit_ceil(D.K + 1) / 2
+        var step = bit_ceil(D.count + 1) / 2
         while step > 0:
-            if p + step <= D.K:
+            if p + step <= D.count:
                 // The walk is a binary search, so it is wrong once a block sums below zero.
                 assert t[p + step] >= 0, "`first_ge` and `kth` need non-negative values"
                 if t[p + step] < rest:
                     p += step
                     rest -= t[p]
             step /= 2
-        if p == D.K: None else: D.cuts.nth(p + 1)
+        if p == D.count: None else: D.cuts.nth(p + 1)
 
     /// The `k`-th item counting from 1, when position `d` holds `a[d]` items: the first `d` with
     /// `prefix(d.r) >= k`, or `None` when fewer than `k` items exist in total. Positions with value
@@ -130,7 +130,7 @@ pub struct Fenwick<D, T: Add + Sub>:
     /// traps: never
     /// example: `Fenwick([1, 2, 3]).all == 6`
     @get pub fn all(self) -> T:
-        self.prefix(D.cuts.nth(D.K))
+        self.prefix(D.cuts.nth(D.count))
 
     /// The sum of every position right of the boundary `b`: `all - prefix(b)`. The end cut gives zero.
     ///
@@ -153,15 +153,15 @@ pub struct Fenwick<D, T: Add + Sub>:
         if target < 0: return D.cuts.nth(0)
         var p = 0
         var rest = target
-        var step = bit_ceil(D.K + 1) / 2
+        var step = bit_ceil(D.count + 1) / 2
         while step > 0:
-            if p + step <= D.K:
+            if p + step <= D.count:
                 assert t[p + step] >= 0, "`first_gt` needs non-negative values"
                 if t[p + step] <= rest:
                     p += step
                     rest -= t[p]
             step /= 2
-        if p == D.K: None else: D.cuts.nth(p + 1)
+        if p == D.count: None else: D.cuts.nth(p + 1)
 
     /// Reset every value to zero, keeping the domain and the allocation.
     ///
@@ -181,7 +181,7 @@ pub struct Fenwick2D<R, C, T: Add + Sub>:
     /// cost: \(O(\lvert R \rvert \lvert C \rvert)\) time; memory (|R| + 1)(|C| + 1) values
     /// traps: never
     /// example: `Fenwick2D<0..2, 0..2, Int>().fold(0..2, 0..2) == 0`
-    pub fn new() -> Fenwick2D<R, C, T> = Fenwick2D(List.filled((R.K + 1) * (C.K + 1), T.zero))
+    pub fn new() -> Fenwick2D<R, C, T> = Fenwick2D(List.filled((R.count + 1) * (C.count + 1), T.zero))
 
     /// Add `x` to the cell `(r, c)`: `a[r, c] += x`.
     ///
@@ -189,11 +189,11 @@ pub struct Fenwick2D<R, C, T: Add + Sub>:
     /// traps: when `r` is outside `R` or `c` is outside `C`
     /// example: `var f = Fenwick2D<0..2, 0..2, Int>(); f.add(1, 0, 5); f.fold(1..2, 0..1) == 5`
     pub fn add(mut self, r: R, c: C, x: T):
-        var p = r.to_idx + 1
-        while p <= R.K:
-            var q = c.to_idx + 1
-            while q <= C.K:
-                t[p * (C.K + 1) + q] += x
+        var p = r.ord + 1
+        while p <= R.count:
+            var q = c.ord + 1
+            while q <= C.count:
+                t[p * (C.count + 1) + q] += x
                 q += q & -q
             p += p & -p
 
@@ -203,7 +203,7 @@ pub struct Fenwick2D<R, C, T: Add + Sub>:
         while p > 0:
             var q = c
             while q > 0:
-                acc = acc + t[p * (C.K + 1) + q]
+                acc = acc + t[p * (C.count + 1) + q]
                 q -= q & -q
             p -= p & -p
         acc
@@ -236,8 +236,8 @@ pub struct Fenwick2D<R, C, T: Add + Sub>:
     /// traps: when `r` is outside `R` or `c` is outside `C`
     /// example: `var f = Fenwick2D<0..2, 0..2, Int>(); f.add(1, 1, 2); f.get(1, 1) == 2`
     pub fn get(self, r: R, c: C) -> T:
-        let p = r.to_idx
-        let q = c.to_idx
+        let p = r.ord
+        let q = c.ord
         self.corner(
             p + 1,
             q + 1,
@@ -266,16 +266,16 @@ pub struct DualFenwick<D, T: Add + Sub>:
     /// traps: never
     /// example: `DualFenwick([1, 2, 3]).get(2) == 3`
     pub fn new(a: ?[D]T = None) -> DualFenwick<D, T>:
-        var f = DualFenwick(List.filled(D.K + 1, T.zero))
+        var f = DualFenwick(List.filled(D.count + 1, T.zero))
         if let init = a:
             var prev = T.zero
             for i in D:
                 let diff = init[i] - prev
                 prev = init[i]
-                let p = i.to_idx + 1
+                let p = i.ord + 1
                 f.t[p] += diff
                 let q = p + (p & -p)
-                if q <= D.K: f.t[q] += f.t[p]
+                if q <= D.count: f.t[q] += f.t[p]
         f
 
     fn add_at(mut self, p0: Int, x: T):
@@ -295,7 +295,7 @@ pub struct DualFenwick<D, T: Add + Sub>:
         let (lo, hi) = r.ends
         if lo == hi: return
         self.add_at(lo + 1, x)
-        if hi < D.K: self.add_at(hi + 1, T.zero - x)
+        if hi < D.count: self.add_at(hi + 1, T.zero - x)
 
     /// The current value at position `i`: its initial value plus every `x` added over a range
     /// containing `i`.
@@ -304,7 +304,7 @@ pub struct DualFenwick<D, T: Add + Sub>:
     /// traps: when `i` is outside `D`
     /// example: `var d = DualFenwick([1, 2, 3]); d.add(1..3, 5); d.get(1) == 7`
     pub fn get(self, i: D) -> T:
-        var p = i.to_idx + 1
+        var p = i.ord + 1
         var acc = T.zero
         while p > 0:
             acc = acc + t[p]
@@ -337,14 +337,14 @@ pub struct RangeFenwick<D>:
     /// example: `RangeFenwick([1, 2, 3]).fold(0..3) == 6`
     /// example: `RangeFenwick<0..3>().fold(0..3) == 0`
     pub fn new(a: ?[D]Int = None) -> RangeFenwick<D>:
-        var base = List.filled(D.K + 1, 0)
+        var base = List.filled(D.count + 1, 0)
         if let init = a:
-            for i in D: base[i.to_idx + 1] = base[i.to_idx] + init[i]
-        RangeFenwick(base, List.filled(D.K + 1, 0), List.filled(D.K + 1, 0))
+            for i in D: base[i.ord + 1] = base[i.ord] + init[i]
+        RangeFenwick(base, List.filled(D.count + 1, 0), List.filled(D.count + 1, 0))
 
     fn bump(mut self, p0: Int, x: Int):
         var p = p0 + 1
-        while p <= D.K:
+        while p <= D.count:
             b1[p] += x
             b2[p] += x * p0
             p += p & -p
@@ -361,7 +361,7 @@ pub struct RangeFenwick<D>:
         let hi = r.r.ord
         if lo >= hi: return
         self.bump(lo, x)
-        if hi < D.K: self.bump(hi, -x)
+        if hi < D.count: self.bump(hi, -x)
 
     /// The sum of every position left of the boundary `b`, adds included.
     ///
@@ -414,13 +414,13 @@ pub struct XorFenwick<D, T>:
     /// traps: never
     /// example: `XorFenwick([1, 2, 4]).xor(0..3) == 7`
     pub fn new(a: ?[D]T = None) -> XorFenwick<D, T>:
-        var t = List.filled(D.K + 1, T.zero)
+        var t = List.filled(D.count + 1, T.zero)
         if let init = a:
             for i in D:
-                let p = i.to_idx + 1
+                let p = i.ord + 1
                 t[p] ^= init[i]
                 let q = p + (p & -p)
-                if q <= D.K: t[q] = t[q] ^ t[p]
+                if q <= D.count: t[q] = t[q] ^ t[p]
         XorFenwick(t)
 
     /// Xor `x` into the value at position `i`: `a[i] ^= x`.
@@ -429,7 +429,7 @@ pub struct XorFenwick<D, T>:
     /// traps: when `i` is outside `D`
     /// example: `var f = XorFenwick([1, 2, 4]); f.flip(1, 2); f.xor(0..3) == 5`
     pub fn flip(mut self, i: D, x: T):
-        var p = i.to_idx + 1
+        var p = i.ord + 1
         while p < t.len:
             t[p] ^= x
             p += p & -p

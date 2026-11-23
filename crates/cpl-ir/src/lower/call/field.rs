@@ -122,7 +122,7 @@ impl<'a> Lowerer<'a> {
         if let ast::ExprKind::Name(n) = &base.kind {
             if self.lookup(n).is_none()
                 && (n == "Char" || matches!(self.gen_env.get(n), Some(GenArg::Ty(Ty::Char))))
-                && matches!(name.text.as_str(), "K" | "len" | "size" | "count")
+                && matches!(name.text.as_str(), "len" | "size" | "count")
             {
                 return self.int_lit(128, span);
             }
@@ -133,7 +133,7 @@ impl<'a> Lowerer<'a> {
             if self.lookup(n).is_none() {
                 if let Some(GenArg::Ty(Ty::Bound(d))) = self.gen_env.get(n).cloned() {
                     match name.text.as_str() {
-                        "K" | "len" | "size" | "count" => {
+                        "len" | "size" | "count" => {
                             let len = self.mk(ExprKind::DomainLen(d), Ty::Int, span);
                             return self.int_add(len, 1);
                         }
@@ -335,10 +335,8 @@ impl<'a> Lowerer<'a> {
                     self.bind_method_closure(fn_id, value, span)
                 }
             }
-            (Ty::Pos(_) | Ty::Bound(_), "ord" | "to_idx" | "idx") => {
-                self.cast(Cast::Ord, value, Ty::Int)
-            }
-            (Ty::Int, "ord" | "to_idx" | "idx" | "r" | "right") => value,
+            (Ty::Pos(_) | Ty::Bound(_), "ord" | "idx") => self.cast(Cast::Ord, value, Ty::Int),
+            (Ty::Int, "ord" | "idx" | "r" | "right") => value,
             (Ty::Int, "l" | "left") => self.int_add(value, -1),
             (Ty::Pos(d), "label") => self.cast(Cast::Label(*d), value, Ty::Int),
             (Ty::Pos(_), "rank") => {
@@ -476,7 +474,7 @@ impl<'a> Lowerer<'a> {
                     false => end,
                 }
             }
-            (Ty::DomainVal, "len" | "size" | "K" | "count") => {
+            (Ty::DomainVal, "len" | "size" | "count") => {
                 // If this is `xs.D.K` where `xs` is a struct holding a `[D]`-indexed array field,
                 // read the instance's own array length so multiple instances of `compress` don't alias one global domain length.
                 if let ast::ExprKind::Field {
@@ -822,7 +820,7 @@ impl<'a> Lowerer<'a> {
                 let map_expr = self.mk(ExprKind::Field(Box::new(value), 0), map_ty, span);
                 self.len_of(map_expr, span)
             }
-            (Ty::Char, "ord" | "to_idx" | "idx") => self.cast(Cast::CharToInt, value, Ty::Int),
+            (Ty::Char, "ord" | "idx") => self.cast(Cast::CharToInt, value, Ty::Int),
             (Ty::Char, "is_digit") => {
                 let ord = self.cast(Cast::CharToInt, value, Ty::Int);
                 let lo = self.int_lit(b'0' as i64, span);
@@ -1130,7 +1128,7 @@ impl<'a> Lowerer<'a> {
                     out.push(Stmt::Give(res));
                 })
             }
-            (Ty::Pos(d), "K" | "len" | "count") => self.mk(ExprKind::DomainLen(*d), Ty::Int, span),
+            (Ty::Pos(d), "len" | "count") => self.mk(ExprKind::DomainLen(*d), Ty::Int, span),
             (Ty::DomainVal, "first") => {
                 let dom_id = match value.kind {
                     ExprKind::DomainVal(id) => Some(id),

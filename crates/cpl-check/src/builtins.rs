@@ -391,7 +391,7 @@ pub(crate) const DOMAIN_MEMBERS: &[&str] = &[
     "sort",
 ];
 pub(crate) const POS_MEMBERS: &[&str] = &[
-    "ord", "to_idx", "idx", "label", "prev", "next", "offset", "ahead", "back",
+    "ord", "idx", "label", "prev", "next", "offset", "ahead", "back",
 ];
 
 #[cfg(test)]

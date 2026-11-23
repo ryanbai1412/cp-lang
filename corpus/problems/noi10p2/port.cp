@@ -15,7 +15,7 @@ let a: [I]Int = read()
 
 var pre: [B]Int = [B] _ => 0
 for i in I:
-    let idx = i.to_idx
+    let idx = i.ord
     pre[B(idx + 1)] = pre[B(idx)] + a[i]
 
 struct Pair:
@@ -24,7 +24,7 @@ struct Pair:
 
 let rmq = SparseTable<B, Pair>(
     (x, y) => if x.val >= y.val: x else: y,
-    [B] b => Pair(pre[b], b.to_idx),
+    [B] b => Pair(pre[b], b.ord),
 )
 
 struct Cand:

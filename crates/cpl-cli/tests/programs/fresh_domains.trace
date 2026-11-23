@@ -20,5 +20,5 @@
 {"id":19,"line":40,"label":"let g = Graph.undirected([(e.u, e.v) for e in edges])","stage":"main","values":{"stdout":[],"m":2,"edges":[{"u":0,"v":1,"w":0},{"u":2,"v":3,"w":2}],"by_w":[[{"u":0,"v":1}],[],[{"u":2,"v":3}]]},"locals":{"edges":[[0,1],[2,3]],"deg":[1,1,1,1],"u":2,"v":3,"adj":[[],[],[],[]],"v":2},"frames":[{"fn":"undirected_of_pairs","line":40},{"fn":"main","line":40}]},
 {"id":20,"line":40,"label":"let g = Graph.undirected([(e.u, e.v) for e in edges])","stage":"main","values":{"stdout":[],"m":2,"edges":[{"u":0,"v":1,"w":0},{"u":2,"v":3,"w":2}],"by_w":[[{"u":0,"v":1}],[],[{"u":2,"v":3}]]},"locals":{"edges":[[0,1],[2,3]],"deg":[1,1,1,1],"u":2,"v":3,"adj":[[],[],[],[]],"v":2},"frames":[{"fn":"undirected_of_pairs","line":40},{"fn":"main","line":40}]},
 {"id":21,"line":40,"label":"let g = Graph.undirected([(e.u, e.v) for e in edges])","stage":"main","values":{"stdout":[],"m":2,"edges":[{"u":0,"v":1,"w":0},{"u":2,"v":3,"w":2}],"by_w":[[{"u":0,"v":1}],[],[{"u":2,"v":3}]]},"locals":{"edges":[[0,1],[2,3]],"deg":[1,1,1,1],"u":2,"v":3,"adj":[[],[],[],[]],"v":3},"frames":[{"fn":"undirected_of_pairs","line":40},{"fn":"main","line":40}]},
-... 1408 more lines, 126442 bytes, fnv64 7c4361eb6519345f
+... 1408 more lines, 126319 bytes, fnv64 ec22e4069440e21f
 stderr:

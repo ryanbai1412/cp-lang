@@ -12,8 +12,8 @@ let (n, q): (Int, Int) = read()
 domain Pos = 1..=n
 domain Val = 1..=n
 
-var perm: [Pos]Val = [Pos] p => Val(p.to_idx + 1)
-var inv: [Val]Pos = [Val] v => Pos(v.to_idx + 1)
+var perm: [Pos]Val = [Pos] p => Val(p.ord + 1)
+var inv: [Val]Pos = [Val] v => Pos(v.ord + 1)
 
 fn swap_pos(i: Pos, j: Pos):
     if i == j: return
@@ -39,6 +39,6 @@ for _ in 0..q:
         let target: [Pos]Int = read()
         var out = ""
         for v in Val:
-            if v.to_idx > 0: out += " "
+            if v.ord > 0: out += " "
             out += "{target[inv[v]]}"
         print(out)

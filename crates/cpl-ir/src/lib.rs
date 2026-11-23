@@ -885,7 +885,7 @@ pub enum Builtin {
     /// `v.next`, `v.prev`: optional position.
     PosNext,
     PosPrev,
-    /// `V.from_idx(ord)` -> `?V`.
+    /// `V.try_at(ord)` -> `?V`.
     PosTryOrd(DomainId),
     /// Triangular packed index for `[Sym<V>]T`: `(a, b) -> hi * (hi + 1) / 2 + lo`.
     SymIdx,

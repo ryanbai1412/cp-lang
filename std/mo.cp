@@ -216,13 +216,13 @@ pub fn mo_rollback<D, M, R>(
 ) -> List<R>:
     let q = queries.len
     if q == 0: return []
-    let b = max(1, D.K / max(1, isqrt(q)))
+    let b = max(1, D.count / max(1, isqrt(q)))
     var keyed: List<(Int, Int)> = []
     for i in 0..q:
         let (l, r) = queries[i].ends
         let blk = l / b
-        let inside = r <= min((blk + 1) * b, D.K)
-        keyed.push((blk * (D.K + 2) + (if inside: 0 else: r + 1), i))
+        let inside = r <= min((blk + 1) * b, D.count)
+        keyed.push((blk * (D.count + 2) + (if inside: 0 else: r + 1), i))
     keyed.sort()
     var res: List<?R> = [None for _ in 0..q]
     var cur = -1
@@ -231,7 +231,7 @@ pub fn mo_rollback<D, M, R>(
     for (_, i) in keyed:
         let (l, r) = queries[i].ends
         let blk = l / b
-        let be = min((blk + 1) * b, D.K)
+        let be = min((blk + 1) * b, D.count)
         if blk != cur:
             cur = blk
             if dirty:

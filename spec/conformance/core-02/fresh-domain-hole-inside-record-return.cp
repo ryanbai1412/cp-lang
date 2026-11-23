@@ -8,4 +8,4 @@ fn mk<V>(r: V, k: Int) -> (s: S<V, _>, k: Int):
     (s: S([P] _ => r), k:)
 domain V = 0..5
 let m = mk(V(2), 3)
-print(m.s.at.len, m.s.at[m.s.at.keys.first!].to_idx)
+print(m.s.at.len, m.s.at[m.s.at.keys.first!].ord)

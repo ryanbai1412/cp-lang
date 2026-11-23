@@ -64,7 +64,7 @@ let m_cell = Monoid<?Cell>(None, merge_cell)
 let act_cell = Action<?Cell, Op>(Op(false, 0, 1, 0, 0), compose_op, apply_op, over: m_cell)
 var st = SegTree(
     act_cell.over,
-    [U] u => Some(Cell(uniq[u.to_idx], uniq[u.to_idx], uniq[u.to_idx], uniq[u.to_idx])),
+    [U] u => Some(Cell(uniq[u.ord], uniq[u.ord], uniq[u.ord], uniq[u.ord])),
     act: act_cell,
 )
 

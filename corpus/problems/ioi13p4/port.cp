@@ -43,7 +43,7 @@ struct Judge(open: [Switch]Pos, door: Perm<Switch, Door>):
         let free = [w for w in Switch if door[w] == None]
         fn opens(flip: List<Switch>, to: Pos) -> Bool:
             var s = [Switch] w => if door[w] != None: open[w] elif flip.contains(w): to else: other(to)
-            (judge.try_combination(s) ?? Door.K) > d
+            (judge.try_combination(s) ?? Door.count) > d
         // Which position opens door d, then which free switch carries it.
         let to = if opens(free, Up): Up else: Down
         let at = first_where(1..=free.len, k => opens(free[..k], to))

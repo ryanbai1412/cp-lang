@@ -105,7 +105,7 @@ else:
     var id_mat = List.filled(c_cnt * c_cnt, inf)
     for i in 0..c_cnt: id_mat[i * c_cnt + i] = 0
     let mat_monoid = Monoid<List<Int>>(id: id_mat, op: (a, b) => combine_monge(a, b))
-    let init = [Blk] b => build_block(blk_lo(b.to_idx), blk_hi(b.to_idx))
+    let init = [Blk] b => build_block(blk_lo(b.ord), blk_hi(b.ord))
     var st = SegTree<Blk, List<Int>>(mat_monoid, init)
     // queries outnumber updates 400 to 1, so keep the whole product instead of folding per query
     var top = st.fold(Blk.all)

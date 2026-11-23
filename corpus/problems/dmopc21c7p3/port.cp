@@ -25,7 +25,7 @@ for e in E:
     let u = V(w.0 - 1)
     let v = V(w.1 - 1)
     nxt[e] = head[u]
-    head[u] = e.to_idx
+    head[u] = e.ord
     after[v] = after[v] ^ lit[u]
 
 // DFS colours over what the lit lamps reach: 1 = on the stack, 2 = done
@@ -37,7 +37,7 @@ for s in V:
     if lit[s] == 1 and colour[s] == 0:
         colour[s] = 1
         edge[s] = head[s]
-        stack.push(s.to_idx)
+        stack.push(s.ord)
         while stack.len > 0:
             let u = V(stack.last!)
             let e = edge[u]
@@ -52,7 +52,7 @@ for s in V:
                 elif colour[v] == 0:
                     colour[v] = 1
                     edge[v] = head[v]
-                    stack.push(v.to_idx)
+                    stack.push(v.ord)
 
 if cyclic:
     print(-1)

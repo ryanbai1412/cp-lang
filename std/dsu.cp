@@ -815,7 +815,7 @@ fn potential_dsu_and_rollback_array():
     assert d.consistent and d.components == 4 and d.diff(V(0), V(3)) == None
     assert d.diff(V(0), V(2)) == 3
 
-    var ra = RollbackArray<V, Int>(v => v.to_idx)
+    var ra = RollbackArray<V, Int>(v => v.ord)
     let m0 = ra.mark()
     ra.set(V(1), 99)
     ra.set(V(1), 42)
@@ -840,7 +840,7 @@ fn unite_and_find():
 fn agrees_with_labels_on_random_unions():
     domain V = 0..12
     var d = Dsu<V>()
-    var label = [V] v => v.to_idx
+    var label = [V] v => v.ord
     for _ in 0..40:
         let a = V.nth(rand(0, 11))
         let b = V.nth(rand(0, 11))

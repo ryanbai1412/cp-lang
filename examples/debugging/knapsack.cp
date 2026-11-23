@@ -17,7 +17,7 @@ fn every_subset():
     for mask in 0..(1 << n):
         var (w, v) = (0, 0)
         for i in Item:
-            if (mask >> i.to_idx) & 1 == 1:
+            if (mask >> i.ord) & 1 == 1:
                 w += items[i].w
                 v += items[i].v
         if w <= cap: answer max= v

@@ -2,4 +2,4 @@
 // rule: 02.1.1
 use std.strings.{AhoCorasick}
 let ac = AhoCorasick<Char>(["ab", "ba"])
-print(Char.K, 'a'.to_idx, ac.len)
+print(Char.count, 'a'.ord, ac.len)

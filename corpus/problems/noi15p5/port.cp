@@ -22,8 +22,8 @@ let (sa, lcp) = (suffixes.sa, suffixes.lcp)
 
 // Glass is reused for places in sorted order; group data lives at the root.
 var groups = Dsu<Glass>.new()
-var lo: [Glass]Int = [Glass] j => score[Glass.nth(sa[j.to_idx])]
-var hi: [Glass]Int = [Glass] j => score[Glass.nth(sa[j.to_idx])]
+var lo: [Glass]Int = [Glass] j => score[Glass.nth(sa[j.ord])]
+var hi: [Glass]Int = [Glass] j => score[Glass.nth(sa[j.ord])]
 var pairs = 0
 var best: ?Int = None
 

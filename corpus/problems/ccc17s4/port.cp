@@ -13,7 +13,7 @@ let (n, m, d): (Int, Int, Int) = read()
 domain House = 1..=n
 domain Pipe = 0..m
 let pipes: [Pipe](u: House, v: House, cost: Int) = read()
-fn is_old(p: Pipe) -> Bool = p.to_idx < n - 1
+fn is_old(p: Pipe) -> Bool = p.ord < n - 1
 let cheapest_first = sorted(Pipe, by: p => (pipes[p].cost, not is_old(p)))
 
 var plan = Dsu<House>()

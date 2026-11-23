@@ -2437,7 +2437,7 @@ impl<'a> Checker<'a> {
                 }
                 if args.is_empty() && self.finite_index_enum_size(type_name).is_some() {
                     match name.text.as_str() {
-                        "ord" | "to_idx" | "idx" | "label" => return Ty::Int,
+                        "ord" | "idx" | "label" => return Ty::Int,
                         "prev" | "next" => return Ty::Optional(Box::new(base_ty.clone())),
                         "offset" | "ahead" | "back" => {
                             return Ty::Fn {
@@ -2668,14 +2668,14 @@ impl<'a> Checker<'a> {
                 };
             }
             Ty::Char => {
-                if matches!(name.text.as_str(), "ord" | "to_idx" | "idx") {
+                if matches!(name.text.as_str(), "ord" | "idx") {
                     return Ty::Int;
                 }
                 return Ty::Unknown;
             }
             Ty::Pos(domain) => {
                 match name.text.as_str() {
-                    "ord" | "to_idx" | "idx" | "label" => return Ty::Int,
+                    "ord" | "idx" | "label" => return Ty::Int,
                     "prev" | "next" => return Ty::Optional(Box::new(Ty::Pos(domain.clone()))),
                     "offset" | "ahead" | "back" => {
                         return Ty::Fn {
@@ -2723,7 +2723,7 @@ impl<'a> Checker<'a> {
                         return Def::variant_value(type_name, fields);
                     }
                 }
-                if type_name == "Char" && matches!(name.text.as_str(), "count" | "len" | "K") {
+                if type_name == "Char" && matches!(name.text.as_str(), "count" | "len") {
                     return Ty::Int;
                 }
                 if self.finite_index_enum_size(type_name).is_some() {
@@ -2732,7 +2732,7 @@ impl<'a> Checker<'a> {
                         args: Vec::new(),
                     };
                     match name.text.as_str() {
-                        "count" | "len" | "K" if !self.in_call_callee => return Ty::Int,
+                        "count" | "len" if !self.in_call_callee => return Ty::Int,
                         "at" => {
                             return Ty::Fn {
                                 params: vec![crate::ty::Param {

@@ -31,7 +31,6 @@ pub(crate) const DOMAIN_MEMBERS: &[(&str, &str)] = &[
 ];
 pub(crate) const POS_MEMBERS: &[(&str, &str)] = &[
     ("ord", "the 0-based rank of the position"),
-    ("to_idx", "the position as a raw 0-based index"),
     ("idx", "the position as a raw 0-based index"),
     ("label", "the value the position stands for"),
     ("l", "the boundary before the position"),

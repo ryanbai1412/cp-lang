@@ -62,7 +62,7 @@ fn coord(x: Int) -> Int:
     lo
 
 domain Seg = 0..(xs.len - 1)
-let init = [Seg] i => SegVal(0, 0, xs[i.to_idx + 1] - xs[i.to_idx])
+let init = [Seg] i => SegVal(0, 0, xs[i.ord + 1] - xs[i.ord])
 var st = SegTree(assign_slope.over, init, act: assign_slope)
 
 for i in 0..tags.len:
@@ -74,7 +74,7 @@ for i in 0..tags.len:
         let h = ca[i]
         // the first segment where the car's height would pass h
         if let seg_i = Seg.first_true(s => st.fold(..=s).max_pre > h):
-            let lo = seg_i.to_idx
+            let lo = seg_i.ord
             let cur = if lo == 0: 0 else: st.fold(..seg_i).total
             let node = st.get(seg_i)
             let slope = node.total / node.len

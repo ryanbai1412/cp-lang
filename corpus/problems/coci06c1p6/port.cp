@@ -20,7 +20,7 @@ for r in Row:
     if let up = Row.at(r - 1): row_pow[r] = row_pow[up] * 131 % P
 for c in Col:
     if let left = Col.at(c - 1): col_pow[c] = col_pow[left] * 137 % P
-fn flip<D>(i: D) -> D = D.nth(D.K - 1 - i.ord)
+fn flip<D>(i: D) -> D = D.nth(D.count - 1 - i.ord)
 fn weight(r: Row, c: Col, ch: Char) -> Int: (ch - '0' + 1) * row_pow[r] % P * col_pow[c] % P
 let seen = prefix([Row, Col] (r, c) => weight(r, c, g[r, c]))
 let turned = prefix([Row, Col] (r, c) => weight(r, c, g[flip(r), flip(c)]))

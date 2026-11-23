@@ -13,7 +13,7 @@ fn matroid_intersections_match_brute_force():
         var best_n = -1
         var best_w = 0
         for mask in 0..1 << E.count:
-            let s: [E]Bool = [E] e => (mask >> e.to_idx) & 1 == 1
+            let s: [E]Bool = [E] e => (mask >> e.ord) & 1 == 1
             var d = Dsu<V>()
             var used: [C]Int = 0
             var ok = true
@@ -69,7 +69,7 @@ fn min_cost_circulations_match_brute_force():
             var ok = true
             var net: [V]Int = 0
             for e in E:
-                f[e] = es[e].lo + code / 3 ** e.to_idx % 3
+                f[e] = es[e].lo + code / 3 ** e.ord % 3
                 if f[e] > es[e].hi: ok = false
                 net[es[e].u] -= f[e]
                 net[es[e].v] += f[e]

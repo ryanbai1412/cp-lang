@@ -337,10 +337,10 @@ for i in I:
         ways[j] = (6 * falls, 3 * falls, 2 * falls, falls)
         let slides = open + 2 * shut
         side = (3 * slides, slides, 3 * shut, shut)
-        suf[P(i.to_idx), P(j.to_idx)] = -falls + suf[P(i.to_idx + 1), P(j.to_idx)]
+        suf[P(i.ord), P(j.ord)] = -falls + suf[P(i.ord + 1), P(j.ord)]
 
 var order_sum = 0
-let ord_arr = [I] i => i.to_idx
+let ord_arr = [I] i => i.ord
 for v in ord_arr.rev:
     order_sum = order_sum * 10 + v
 print(ways[I.last!].open, ways[I.last!].boxed, rect(0, n, 0, n), order_sum)
@@ -356,7 +356,7 @@ fn vm_from_label_out_of_range_traps_with_domain_info() {
 let n = read(1..=10)
 domain P = 0..=n
 let bad = P(n + 1)
-print(bad.to_idx)
+print(bad.ord)
 ";
     let (_, trap) = outcome(source, "3\n");
     let msg = trap.expect("expected out-of-range trap");

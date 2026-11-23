@@ -6,7 +6,7 @@ let g = Graph.undirected(es)
 print(g[V(2)].len, g[V(4)].len)
 var total = 0
 for (to: u, ..) in g[V(2)]:
-    total += u.to_idx
+    total += u.ord
 print(total)
 fn deg(v: V) -> Int = g[v].len
 print(V.all.map(deg))

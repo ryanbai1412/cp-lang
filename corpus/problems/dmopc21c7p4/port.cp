@@ -31,7 +31,7 @@ domain Item = 0..n
 var all_entries: List<(key: Int, tag: Int, a: Int, b: Int)> = []
 for i in Item:
     let (a, b): (Int, Int) = read()
-    all_entries.push((key: -(a - b), tag: i.to_idx, a:, b:))
+    all_entries.push((key: -(a - b), tag: i.ord, a:, b:))
 
 let q: Int = read()
 var q_kind: List<Int> = []
@@ -60,7 +60,7 @@ var init: [Slot]Node = [Slot] _ => Node.empty()
 var pos_count = 0
 
 for s in Slot:
-    let e = all_entries[s.to_idx]
+    let e = all_entries[s.ord]
     slot_of[Tag(e.tag)] = s
     if e.a - e.b > 0: pos_count += 1
     if e.tag < n:
@@ -99,6 +99,6 @@ for qi in 0..q:
         let item = Item(q_arg[qi])
         st.set(cur_slot[item], Node.empty())
         let ns = slot_of[Tag(n + qi)]
-        let e = all_entries[ns.to_idx]
+        let e = all_entries[ns.ord]
         st.set(ns, Node.leaf(e.a, e.b))
         cur_slot[item] = ns

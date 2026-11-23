@@ -46,6 +46,6 @@ for i in T:
             cur = (cur | ((guess >> low) << low)) ^ (1 << low)
     found.push(cur)
 
-for i in T: assert found[i.to_idx] == hidden[i]
+for i in T: assert found[i.ord] == hidden[i]
 assert queries < 32000
 for x in found: print(x)

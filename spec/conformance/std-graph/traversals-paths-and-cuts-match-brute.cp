@@ -3,7 +3,7 @@
 use std.graph.{components, cut_vertices, bridges, two_color, bellman_ford, euler_walk}
 
 fn random_edges<V, E>() -> [E](u: V, v: V):
-    [E] e => (u: V.nth(rand(0, V.K - 1)), v: V.nth(rand(0, V.K - 1)))
+    [E] e => (u: V.nth(rand(0, V.count - 1)), v: V.nth(rand(0, V.count - 1)))
 
 fn linked<V, E>(edges: [E](u: V, v: V), a: V, b: V, skip: ?E, gone: ?V) -> Bool:
     var d = Dsu<V>()
@@ -135,7 +135,7 @@ fn two_color_finds_a_colouring_or_an_odd_cycle():
             es.push((u, v))
         var any = false
         for m in 0..128:
-            if es.all(e => ((m >> e.0.to_idx) & 1) != ((m >> e.1.to_idx) & 1)): any = true
+            if es.all(e => ((m >> e.0.ord) & 1) != ((m >> e.1.ord) & 1)): any = true
         let got = two_color(adj)
         assert (got != None) == any
         if let side = got:
@@ -176,7 +176,7 @@ fn at_most_one_forbids_every_pair_and_allows_each_single():
 
 fn bfs_over_a_stored_graph_and_over_a_lambda():
     domain V = 0..10
-    let next = [V] v => [V.nth(x) for x in [v.to_idx + 1, v.to_idx * 2, v.to_idx - 3] if 0 <= x < 10]
+    let next = [V] v => [V.nth(x) for x in [v.ord + 1, v.ord * 2, v.ord - 3] if 0 <= x < 10]
     let es = [(v, w) for v in V for w in next[v]]
     let stored = bfs(Graph.directed(es), from: [V(1)])
     let lambda = bfs<V>(v => next[v], from: [V(1)])

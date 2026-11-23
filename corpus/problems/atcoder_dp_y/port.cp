@@ -32,7 +32,7 @@ fn paths(a: Cell, b: Cell) -> Z:
     fact[F(down + right)] * inv_fact[F(down)] * inv_fact[F(right)]
 
 let by_pos = walls.sorted()
-let order: [W]Cell = [W] i => by_pos[i.to_idx]
+let order: [W]Cell = [W] i => by_pos[i.ord]
 var clean: [W]Z = 0
 for i in W:
     clean[i] = paths(start, order[i]) - sum(clean[j] * paths(order[j], order[i]) for j in ..i)

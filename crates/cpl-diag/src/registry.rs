@@ -345,7 +345,7 @@ pub const REGISTRY: &[CodeInfo] = &[
         code: Code("E0306"),
         title: "Invalid arithmetic on domain position (reserved)",
         summary: "Reserved diagnostic code for disallowed arithmetic on domain positions (currently reported via `E0309` and lint `L0101`).",
-        explanation: "Use `v + k` / `v - k` to step by an `Int` offset (returning `?V`), `b - a` for signed distance, or `v.to_idx` for a `0..V.count` integer.",
+        explanation: "Use `v + k` / `v - k` to step by an `Int` offset (returning `?V`), `b - a` for signed distance, or `v.ord` for a `0..V.count` integer.",
         trigger: "",
         fix: "domain V = 1..=3\nlet x = V.last - V.first\nprint(x)\n",
         mode: "reserved",

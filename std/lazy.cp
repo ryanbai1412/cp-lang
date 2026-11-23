@@ -99,7 +99,7 @@ fn the_stock_actions_match_brute_force():
         var b = a.clone()
         for _ in 0..60:
             let l = V.nth(rand(0, 9))
-            let r = V.nth(rand(l.to_idx, 9))
+            let r = V.nth(rand(l.ord, 9))
             if rand(0, 1) == 0:
                 let x = rand(-5, 5)
                 for v in l..=r:
@@ -125,7 +125,7 @@ fn at_writes_through_pending_tags():
     var st = SegTree(+, a.clone(), act: add)
     for _ in 0..60:
         let l = V.nth(rand(0, 9))
-        let r = V.nth(rand(l.to_idx, 9))
+        let r = V.nth(rand(l.ord, 9))
         let x = rand(-5, 5)
         if rand(0, 1) == 0:
             for v in l..=r: a[v] += x
@@ -194,7 +194,7 @@ fn an_action_of_your_own():
     var st = SegTree(count_max, [V] v => (0, 1), act: shift)
     for _ in 0..60:
         let l = V.nth(rand(0, 7))
-        let r = V.nth(rand(l.to_idx, 7))
+        let r = V.nth(rand(l.ord, 7))
         let x = rand(-3, 3)
         for v in l..=r: a[v] += x
         st.apply(l..=r, x)
@@ -208,7 +208,7 @@ fn right_while_and_left_while_see_pending_updates():
     var st = SegTree(+, a.clone(), act: add)
     for _ in 0..80:
         let l = V.nth(rand(0, 8))
-        let r = V.nth(rand(l.to_idx, 8))
+        let r = V.nth(rand(l.ord, 8))
         let x = rand(0, 3)
         for v in l..=r: a[v] += x
         st.apply(l..=r, x)
@@ -259,7 +259,7 @@ fn ccc02s4hard_dual_field_cross_overwrite_and_interleaved_point_set():
     for _ in 0..120:
         let kind = rand(0, 3)
         let l = V.nth(rand(0, 10))
-        let r = V.nth(rand(l.to_idx, 10))
+        let r = V.nth(rand(l.ord, 10))
         if kind == 0:
             let d = rand(-5, 5)
             for v in l..=r: a[v] += d
@@ -294,7 +294,7 @@ fn update_pushes_modifies_and_pulls_in_one_pass():
     for _ in 0..80:
         let kind = rand(0, 3)
         let l = V.nth(rand(0, 8))
-        let r = V.nth(rand(l.to_idx, 8))
+        let r = V.nth(rand(l.ord, 8))
         if kind == 0:
             let d = rand(-7, 7)
             for v in l..=r: a[v] += d
@@ -322,11 +322,11 @@ fn custom_clamp_action_with_update():
     )
     domain V = 0..6
     let init = [3, -4, 9, 0, 5, -2]
-    var a = [V] v => init[v.to_idx]
+    var a = [V] v => init[v.ord]
     var st = SegTree(max, a.clone(), act: clamp)
     for _ in 0..50:
         let l = V.nth(rand(0, 5))
-        let r = V.nth(rand(l.to_idx, 5))
+        let r = V.nth(rand(l.ord, 5))
         let lo = rand(-6, 4)
         let hi = rand(lo, 8)
         for v in l..=r: a[v] = min(max(a[v], lo), hi)
@@ -349,7 +349,7 @@ fn fill_and_affine_sum_match_brute():
     var st = SegTree<V, Int, (Int, Int)>(+, a.clone(), act: affine)
     for _ in 0..50:
         let l = V.nth(rand(0, 6))
-        let r = V.nth(rand(l.to_idx, 6))
+        let r = V.nth(rand(l.ord, 6))
         let mul = rand(-2, 3)
         let k = rand(-4, 4)
         for v in l..=r: a[v] = a[v] * mul + k
@@ -370,7 +370,7 @@ fn dual_segtree_non_commutative_tags_match_brute():
     for _ in 0..100:
         let kind = rand(0, 3)
         let l = V.nth(rand(0, 10))
-        let r = V.nth(rand(l.to_idx, 10))
+        let r = V.nth(rand(l.ord, 10))
         if kind <= 1:
             let (m, b) = (rand(-2, 2), rand(-6, 6))
             for v in l..=r: a[v] = m * a[v] + b

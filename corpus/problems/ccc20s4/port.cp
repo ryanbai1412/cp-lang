@@ -16,7 +16,7 @@ domain Group = 0..3
 var before: [Group]List<Int> = [Group] _ => [0]
 for i in 0..2 * n:
     for g in Group:
-        before[g].push(before[g][i] + Int(s[i % n].ord - 'A'.ord == g.to_idx))
+        before[g].push(before[g][i] + Int(s[i % n].ord - 'A'.ord == g.ord))
 fn among(g: Group, from: Int, len: Int) -> Int = before[g][from + len] - before[g][from]
 fn size(g: Group) -> Int = among(g, 0, n)
 

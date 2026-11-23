@@ -79,7 +79,7 @@ for qi in 0..q:
     buckets[Pass(p)].push((x, qi))
 
 var by_pass: [Pass]List<Step> = [Pass] _ => []
-for s in Step: by_pass[Pass(born[s.to_idx])].push(s)
+for s in Step: by_pass[Pass(born[s.ord])].push(s)
 
 var bit = Fenwick<Step, Int>.new()
 var ans = List.filled(q, 0)
@@ -90,6 +90,6 @@ for p in Pass:
             ans[qi] = 1
         else:
             let pos = bit.first_ge(x)!.left!
-            ans[qi] = tour_node[pos.to_idx].to_idx + 1
+            ans[qi] = tour_node[pos.ord].ord + 1
 
 for a in ans: print(a)

@@ -1,8 +1,9 @@
-"variables":{},"runs":{"fast":{"label":"cpl run","steps":[]}}}
+"variables":{"stdout":{"name":"stdout","type":"what the program printed, a line at a time","kind":"json"},"xs":{"name":"xs","type":"List\u003cInt>","kind":"array"},"down":{"name":"down","type":"Bool","kind":"scalar"},"a":{"name":"a","type":"[Int]Int","kind":"array"},"ws":{"name":"ws","type":"List\u003cStr>","kind":"array"}},"runs":{"fast":{"label":"cpl run","steps":[{"id":0,"line":2,"label":"var xs = [3, 1, 2, 5]","stage":"main","values":{"stdout":[],"xs":[3,1,2,5]},"locals":{},"frames":[{"fn":"main","line":2}]},
+{"id":1,"line":4,"label":"let down = true","stage":"main","values":{"stdout":[],"xs":[3,1,2,5],"down":true},"locals":{},"frames":[{"fn":"main","line":4}]},
+{"id":2,"line":5,"label":"var a: [0..4]Int = [4, 9, 1, 7]","stage":"main","values":{"stdout":[],"xs":[3,1,2,5],"down":true,"a":[4,9,1,7]},"locals":{},"frames":[{"fn":"main","line":5}]},
+{"id":3,"line":7,"label":"print → 5 3 2 1 1 2 3 5 5 3 2 1 9 7 4 1","stage":"main","values":{"stdout":["5 3 2 1 1 2 3 5 5 3 2 1 9 7 4 1"],"xs":[3,1,2,5],"down":true,"a":[4,9,1,7]},"locals":{},"checkpoint":"print 1","frames":[{"fn":"main","line":7}]},
+{"id":4,"line":8,"label":"var ws = [\"bb\", \"a\", \"ccc\"]","stage":"main","values":{"stdout":["5 3 2 1 1 2 3 5 5 3 2 1 9 7 4 1"],"xs":[3,1,2,5],"down":true,"a":[4,9,1,7],"ws":["bb","a","ccc"]},"locals":{},"frames":[{"fn":"main","line":8}]},
+{"id":5,"line":10,"label":"print → ccc bb a a bb ccc ccc bb a","stage":"main","values":{"stdout":["5 3 2 1 1 2 3 5 5 3 2 1 9 7 4 1","ccc bb a a bb ccc ccc bb a"],"xs":[3,1,2,5],"down":true,"a":[4,9,1,7],"ws":["bb","a","ccc"]},"locals":{"w":"ccc","w":"a","w":"a"},"checkpoint":"print 2","frames":[{"fn":"main","line":10}]},
+{"id":6,"line":12,"label":"print → 5 3 2 1","stage":"main","values":{"stdout":["5 3 2 1 1 2 3 5 5 3 2 1 9 7 4 1","ccc bb a a bb ccc ccc bb a","5 3 2 1"],"xs":[3,1,2,5],"down":true,"a":[4,9,1,7],"ws":["bb","a","ccc"]},"locals":{"w":"ccc","w":"a","w":"a"},"checkpoint":"print 3","frames":[{"fn":"main","line":12}]},
+{"id":7,"line":12,"label":"the program ended","stage":"main","values":{"stdout":["5 3 2 1 1 2 3 5 5 3 2 1 9 7 4 1","ccc bb a a bb ccc ccc bb a","5 3 2 1"],"xs":[3,1,2,5],"down":true,"a":[4,9,1,7],"ws":["bb","a","ccc"]},"locals":{"w":"ccc","w":"a","w":"a"},"checkpoint":"end","frames":[{"fn":"main","line":12}]}]}}}
 stderr:
-this is a cpl bug: run `cpl report --last`
-error[R0001]: the interpreter itself failed; this is a bug in cpl
-  --> batch20_sort_desc.cp:1:1
-  |
-1 | // `desc: true` on `sort` and `sorted`, alone and after a key.
-  | ^

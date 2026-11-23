@@ -25,13 +25,13 @@ var credit = 0
 var stay: [V]Int = 0
 var (fresh, best) = (0, 0)
 for i in R:
-    for j in [i.to_idx - 1, i.to_idx + 1]:
+    for j in [i.ord - 1, i.ord + 1]:
         if j in R:
             for (v, c) in cnt[R(j)]:
                 stay[v] = max(stay[v], fresh) + c * blank[i]
                 best max= stay[v]
-    if i.to_idx + 1 in R:
-        let next = R(i.to_idx + 1)
+    if i.ord + 1 in R:
+        let next = R(i.ord + 1)
         credit += blank[i] * blank[next] + sum(c * (cnt[next].get(v) ?? 0) for (v, c) in cnt[i])
         fresh max= best - blank[i] * blank[next]
 print(credit + max(fresh, best))

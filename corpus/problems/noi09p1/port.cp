@@ -15,8 +15,8 @@ domain Val = 0..n
 
 let dist: [Pos]Int = read()
 let ends: [Pos](Val, Val) = [Pos] i => (
-    Val((i.to_idx - dist[i]) % n),
-    Val((i.to_idx + dist[i]) % n),
+    Val((i.ord - dist[i]) % n),
+    Val((i.ord + dist[i]) % n),
 )
 
 var adj: [Val]List<(to: Val, edge: Pos)> = []
@@ -82,6 +82,6 @@ if impossible:
 else:
     var line = ""
     for i in Pos:
-        if i.to_idx > 0: line += " "
-        line += "{ans[i]!.to_idx}"
+        if i.ord > 0: line += " "
+        line += "{ans[i]!.ord}"
     print(line)

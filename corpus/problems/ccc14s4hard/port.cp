@@ -24,8 +24,8 @@ for i in 0..ys.len: first_strip[ys[i]] = i
 
 let size = max(1, isqrt(Strip.len))
 domain Block = 0..(Strip.len + size - 1) / size
-fn strips(b: Block) -> Range<Strip> = Strip.nth(b.to_idx * size)..=Strip.nth(
-    min(Strip.len, (b.to_idx + 1) * size) - 1
+fn strips(b: Block) -> Range<Strip> = Strip.nth(b.ord * size)..=Strip.nth(
+    min(Strip.len, (b.ord + 1) * size) - 1
 )
 
 var tint: [Strip]Int = 0
@@ -35,7 +35,7 @@ var darkest: [Block]List<(tint: Int, height: Int)> = [Block] b => []  // darkest
 fn rebuild(b: Block):
     var (rows, height) = ([], 0)
     for s in strips(b).sorted(by: s => -tint[s]):
-        height += ys[s.to_idx + 1] - ys[s.to_idx]
+        height += ys[s.ord + 1] - ys[s.ord]
         rows.push((tint: tint[s], height:))
     darkest[b] = rows
 
@@ -48,7 +48,7 @@ fn tinted(b: Block) -> Int:
 // Add t to the strips at offsets l..r.
 fn add(l: Int, r: Int, t: Int):
     for b in Block:
-        let (from, to) = (max(l, strips(b).first!.to_idx), min(r, strips(b).last!.to_idx + 1))
+        let (from, to) = (max(l, strips(b).first!.ord), min(r, strips(b).last!.ord + 1))
         if to - from == strips(b).len:
             pending[b] += t
         elif from < to:

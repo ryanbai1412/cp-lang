@@ -863,7 +863,7 @@ pub fn compress<S: Seq, T: Ord>(all: S) -> (domain C, Compressed<C, T>):
     for x in raw:
         if uniq.is_empty or uniq.last != x: uniq.push(x)
     domain C = 0..uniq.len
-    let vals = [C] i => uniq[i.to_idx]
+    let vals = [C] i => uniq[i.ord]
     (C, Compressed(vals))
 
 /// Split a range at cuts: `let (domain P, piece) = D.pieces(cuts: cs)` binds a fresh domain of the
@@ -895,7 +895,7 @@ pub fn pieces<D: Ord, S: Seq>(self: Range<D>, cuts: S) -> (domain P, [P]Range<D>
         if uniq.is_empty or uniq.last != x: uniq.push(x)
     let m = uniq.len - 1
     domain P = 0..m
-    let ps = [P] i => uniq[i.to_idx]..uniq[i.to_idx + 1]
+    let ps = [P] i => uniq[i.ord]..uniq[i.ord + 1]
     (P, ps)
 
 /// The range of pieces exactly covering `r`, whose ends must be among the cuts the pieces were
@@ -962,7 +962,7 @@ pub fn find<S: Seq, T>(self: S, p: T -> Bool) -> ?T:
 /// example: `let (domain I, xs) = [7, 8].with_domain(); xs[I.first!] == 7`
 pub fn with_domain<T>(self: List<T>) -> (domain I, [I]T):
     domain I = 0..self.len
-    (I, [I] i => self[i.to_idx])
+    (I, [I] i => self[i.ord])
 
 /// The cycle of a permutation through `from`: `from`, `perm[from]`, ... until it
 /// returns to `from`. \(O(1)\) to make, \(O(\text{cycle length})\) to walk.
@@ -1115,8 +1115,8 @@ pub fn bsearch<D>(self: Range<D>, ok: D -> Bool, last: Bool = false) -> Cut<D>:
 /// traps: never; unsorted input gives an unspecified key
 /// example: `[1, 3, 3, 5].first_gt(3) == Some(3)`
 pub fn first_gt<D, T, K>(self: [D]T, target: K, by: T -> K = x => x) -> ?D:
-    let lo = (0..D.K).first_true(m => by(self[D.nth(m)]) > target) ?? D.K
-    if lo < D.K: Some(D.nth(lo)) else: None
+    let lo = (0..D.count).first_true(m => by(self[D.nth(m)]) > target) ?? D.count
+    if lo < D.count: Some(D.nth(lo)) else: None
 
 /// Last index in sorted `self` with `by(self[i]) < target`, or `None`.
 ///
@@ -1126,7 +1126,7 @@ pub fn first_gt<D, T, K>(self: [D]T, target: K, by: T -> K = x => x) -> ?D:
 /// traps: never; unsorted input gives an unspecified key
 /// example: `[1, 3, 3, 5].last_lt(3) == Some(0)`
 pub fn last_lt<D, T, K>(self: [D]T, target: K, by: T -> K = x => x) -> ?D:
-    let lo = (0..D.K).first_true(m => by(self[D.nth(m)]) >= target) ?? D.K
+    let lo = (0..D.count).first_true(m => by(self[D.nth(m)]) >= target) ?? D.count
     if lo > 0: Some(D.nth(lo - 1)) else: None
 
 // ---- Permutations, monotone stack, and sliding-window extrema
@@ -1914,7 +1914,7 @@ pub fn span<D>(lo: Cut<D>, hi: Cut<D>) -> Range<D>:
 /// example: `[1, 3, 5].partition_point(x => x > 2).r == 1`
 /// ties: none: a monotone `ok` has one flip
 pub fn partition_point<D, T>(self: [D]T, ok: T -> Bool) -> Cut<D>:
-    let lo = (0..D.K).first_true(m => ok(self[D.nth(m)])) ?? D.K
+    let lo = (0..D.count).first_true(m => ok(self[D.nth(m)])) ?? D.count
     D.cuts.nth(lo)
 
 /// \(O(\log n)\). Contiguous range of elements in sorted `self` with `by(x) == target` (empty at insertion cut if absent).
@@ -1925,8 +1925,8 @@ pub fn partition_point<D, T>(self: [D]T, ok: T -> Bool) -> Cut<D>:
 /// traps: never; unsorted input gives an unspecified range
 /// example: `[1, 3, 3, 5].equal_range(3) == 1..3`
 pub fn equal_range<D, T, K>(self: [D]T, target: K, by: T -> K = x => x) -> Range<D>:
-    let lo = (0..D.K).first_true(m => by(self[D.nth(m)]) >= target) ?? D.K
-    let a = (lo..D.K).first_true(m => by(self[D.nth(m)]) > target) ?? D.K
+    let lo = (0..D.count).first_true(m => by(self[D.nth(m)]) >= target) ?? D.count
+    let a = (lo..D.count).first_true(m => by(self[D.nth(m)]) > target) ?? D.count
     D.cuts.nth(lo)..D.cuts.nth(a)
 
 /// \(O(\lvert a \rvert + \lvert b \rvert)\), \(O(\lvert a \rvert + \lvert b \rvert)\) memory. Sorted deduplicated union of two sorted sequences.
@@ -2115,7 +2115,7 @@ pub fn is_subsequence<S: Seq, N: Indexed, T>(self: S, of: N) -> Bool:
 /// traps: when `|V| > 20`; debug traps when `p` is not a permutation
 /// example: `perm_rank([1, 0, 2]) == 2`
 pub fn perm_rank<V>(p: [V]V) -> Int:
-    let n = V.K
+    let n = V.count
     var bit: List<Int> = List.filled(n + 1, 0)
     var rank = 0
     var fact = 1
@@ -2141,7 +2141,7 @@ pub fn perm_rank<V>(p: [V]V) -> Int:
 /// traps: when `rank` is not in `0..|V|!`
 /// example: `domain V = 0..3; perm_unrank<V>(2) == [1, 0, 2]`
 pub fn perm_unrank<V>(rank: Int) -> [V]V:
-    let n = V.K
+    let n = V.count
     var digits: List<Int> = List.filled(n, 0)
     var r = rank
     for k in 1..=n:
@@ -2609,7 +2609,7 @@ fn sorted_lookup_and_linear_search():
     assert xs.last_le(3) == 2 and xs.last_le(0) == None and xs.last_le(99) == 4
     assert xs.find(7) == 3 and xs.find(8) == None
     domain V = 1..=5
-    let a = [V] v => xs[v.to_idx]
+    let a = [V] v => xs[v.ord]
     assert a.first_ge(4) == V(4) and a.last_le(3) == V(3) and a.find(10) == V(5)
     assert first(x for x in xs if x > 3) == 7 and first(x for x in xs if x > 10) == None
     let words = ["pear", "fig", "banana", "kiwi"]
@@ -2666,7 +2666,7 @@ fn reorder_and_permutations_in_place():
 fn compress_gives_the_values_their_own_domain():
     let ys = [40, -7, 40, 1_000_000_000, 3]
     let xs = compress(ys)
-    assert xs.len == 4 and xs.D.K == 4
+    assert xs.len == 4 and xs.D.count == 4
     assert [xs[i] for i in xs.D] == [-7, 3, 40, 1_000_000_000]
     var cnt: [xs.D]Int = 0
     for y in ys: cnt[xs.at(y)] += 1
@@ -2674,7 +2674,7 @@ fn compress_gives_the_values_their_own_domain():
     assert xs.first_ge(4) == xs.at(40) and xs.first_ge(2_000_000_000) == None
     assert xs.last_le(4) == xs.at(3) and xs.last_le(-100) == None
     let other = compress([5, 6])
-    assert other.D.K == 2 and xs.D.K == 4
+    assert other.D.count == 2 and xs.D.count == 4
     // Compressed range slicing
     let blk = xs.D.first..=xs.D.nth(2)
     assert xs.slice(blk) == [-7, 3, 40]
@@ -2717,7 +2717,7 @@ fn range_bounds_and_keyed_sorted_lookup():
 @test
 fn list_insert_remove_take_and_swap_at():
     domain I = 0..4
-    var a = [I] i => i.to_idx * 10
+    var a = [I] i => i.ord * 10
     a.swap_at(I(1), I(3))
     a.swap_at(I(2), I(2))
     assert [a[i] for i in I] == [0, 30, 20, 10]
@@ -2952,7 +2952,7 @@ fn chunk_by_run_ranges_buckets_and_chunks():
     assert [p for p in [1, 2].cyclic_pairs()] == [(1, 2), (2, 1)]
     domain V = 1..=5
     domain K = 0..3
-    let keys = [V] i => K([2, 0, 2, 1, 0][i.to_idx])
+    let keys = [V] i => K([2, 0, 2, 1, 0][i.ord])
     let b = keys.buckets()
     assert b[K(0)] == [V(2), V(5)] and b[K(1)] == [V(4)] and b[K(2)] == [V(1), V(3)]
 
@@ -2971,7 +2971,7 @@ fn first_gt_and_last_lt_match_linear_scan():
     assert pairs.first_gt(3, by: p => p.0) == Some(3)
     assert pairs.last_lt(3, by: p => p.0) == Some(0)
     domain V = 1..=5
-    let va = [V] i => xs[i.to_idx]
+    let va = [V] i => xs[i.ord]
     assert va.first_gt(3) == V(4) and va.last_lt(3) == V(1)
     assert xs[1..4].first_gt(3) == Some(2) and xs[1..4].last_lt(3) == None
     assert xs[0..4].last_lt(3) == Some(0) and xs[0..4].first_gt(7) == None
@@ -2988,12 +2988,12 @@ fn first_gt_and_last_lt_match_linear_scan():
 @test
 fn permutations_and_inversions():
     domain I = 1..=5
-    let p = [I] i => I([3, 5, 4, 1, 2][i.to_idx])
+    let p = [I] i => I([3, 5, 4, 1, 2][i.ord])
     let inv = p.inverse()
     for i in I:
         assert inv[p[i]] == i and p[inv[i]] == i
     domain P = 0..5
-    let q = [P] i => I([3, 5, 4, 1, 2][i.to_idx])
+    let q = [P] i => I([3, 5, 4, 1, 2][i.ord])
     let inv_q = q.inverse()
     for i in P:
         assert inv_q[q[i]] == i and q[inv_q[q[i]]] == q[i]
@@ -3251,7 +3251,7 @@ pub struct Ring<D, T>(pub src: [D]T):
     /// cost: \(O(1)\)
     /// traps: never
     /// example: `[1, 2, 3].ring.step(0, -1) == 2`
-    pub fn step(self, i: D, d: Int) -> D = D.nth(((i.ord + d) % D.K + D.K) % D.K)
+    pub fn step(self, i: D, d: Int) -> D = D.nth(((i.ord + d) % D.count + D.count) % D.count)
 
     /// The position after `i`, wrapping.
     ///
@@ -3275,7 +3275,7 @@ pub struct Ring<D, T>(pub src: [D]T):
     /// traps: never
     /// example: `[1, 2, 3].ring.from(1).collect() == [1, 2, 0]`
     pub fn from(self, i: D) -> yields D:
-        for k in 0..D.K: yield self.step(i, k)
+        for k in 0..D.count: yield self.step(i, k)
 
     /// The `len` positions from `start` on, wrapping (`len <= n`).
     ///
@@ -3284,7 +3284,7 @@ pub struct Ring<D, T>(pub src: [D]T):
     /// traps: when `len` is not in `0..=n`
     /// example: `[1, 2, 3].ring.span(2, 2).end == 0`
     pub fn span(self, start: D, len: Int) -> RingRange<D>:
-        assert 0 <= len <= D.K
+        assert 0 <= len <= D.count
         RingRange<D>(at: Some(start), n: len)
 
     /// The n windows of `k` elements, one starting at each position, wrapping. \(O(n)\) to walk.
@@ -3295,7 +3295,7 @@ pub struct Ring<D, T>(pub src: [D]T):
     /// traps: when `k` is not in `1..=n`
     /// example: `[1, 2, 3].ring.windows(2).count() == 3`
     pub fn windows(self, k: Int) -> yields RingSlice<D, T>:
-        assert 1 <= k <= D.K
+        assert 1 <= k <= D.count
         for i in D: yield RingSlice<D, T>(rr: self.span(i, k))
 
     /// Two pointers round the cycle: for each position as the last element, the longest
@@ -3309,7 +3309,7 @@ pub struct Ring<D, T>(pub src: [D]T):
     /// example: `[1, 1, 2].ring.maximal(state: Counter<Int, Int>(0), ok: c => c.len <= 2).map(w => w.len) == [3, 3, 3]`
     /// ties: none: each last element has one longest piece
     pub fn maximal<St>(self, state: St, ok: St -> Bool) -> [D]RingSlice<D, T>:
-        let n = D.K
+        let n = D.count
         var st = state
         var out: List<RingSlice<D, T>> = []
         var l = 0
@@ -3331,7 +3331,7 @@ pub struct Ring<D, T>(pub src: [D]T):
     /// example: `[2, 0, 1].ring.minimal(state: track(0, (mut s, x) => s += x, (mut s, x) => s -= x), ok: w => w.state >= 3).map(w => w.map(.len)) == [Some(2), Some(3), Some(3)]`
     /// ties: none: each last element has one shortest piece
     pub fn minimal<St>(self, state: St, ok: St -> Bool) -> [D]?RingSlice<D, T>:
-        let n = D.K
+        let n = D.count
         var st = state
         var out: [D]?RingSlice<D, T> = [D] _ => None
         var l = 0
@@ -3377,7 +3377,7 @@ pub struct RingRange<D>():
     /// cost: \(O(1)\)
     /// traps: on an empty span
     /// example: `[1, 2, 3].ring.span(2, 2).end == 0`
-    @get pub fn end(self) -> D = D.nth((at!.ord + n - 1) % D.K)
+    @get pub fn end(self) -> D = D.nth((at!.ord + n - 1) % D.count)
 
     /// \(O(1)\) to make. Its positions in ring order.
     ///
@@ -3386,7 +3386,7 @@ pub struct RingRange<D>():
     /// traps: never
     /// example: `[1, 2, 3].ring.span(2, 2).keys.collect() == [2, 0]`
     @get pub fn keys(self) -> yields D:
-        for k in 0..n: yield D.nth((at!.ord + k) % D.K)
+        for k in 0..n: yield D.nth((at!.ord + k) % D.count)
 
     ///
     ///
@@ -3395,7 +3395,7 @@ pub struct RingRange<D>():
     /// example: `[1, 2, 3].ring.span(2, 2).contains(0) == true`
     pub fn contains(self, i: D) -> Bool:
         if n == 0: return false
-        (i.ord - at!.ord + D.K) % D.K < n
+        (i.ord - at!.ord + D.count) % D.count < n
 
 /// A contiguous piece of a ring, possibly wrapping past the end, at most n elements.
 pub struct RingSlice<D, T>():
@@ -3448,7 +3448,7 @@ pub struct RingSlice<D, T>():
 /// traps: never
 /// example: `[3, 1, 2, 5].valleys().collect() == [1..2, 1..3]`
 pub fn valleys<D, T>(self: [D]T) -> yields Range<D>:
-    let n = D.K
+    let n = D.count
     var ends: List<List<Int>> = [[] for _ in 0..n]
     var st: List<Int> = []
     for j in 0..n:
@@ -3474,7 +3474,7 @@ pub fn spans<D, T, K>(self: [D]T, by: T -> K = x => x) -> [D]Range<D>:
     let left = self.prev_smaller(by:, strict: false)
     let right = self.next_smaller(by:, strict: true)
     [D] i => (if let l = left[i]: l.r else: D.cuts.nth(0))..(
-        if let r = right[i]: r.l else: D.cuts.nth(D.K)
+        if let r = right[i]: r.l else: D.cuts.nth(D.count)
     )
 
 /// Nearest earlier position with a smaller key (`strict: false`: smaller or equal).
@@ -3508,7 +3508,7 @@ pub fn prev_smaller<D, T, K>(self: [D]T, by: T -> K = x => x, strict: Bool = tru
 pub fn next_smaller<D, T, K>(self: [D]T, by: T -> K = x => x, strict: Bool = true) -> [D]?D:
     var out: [D]?D = None
     var st: List<D> = []
-    for k in (0..D.K).rev:
+    for k in (0..D.count).rev:
         let i = D.nth(k)
         while st.len > 0 and (
             if strict: by(self[st.last!]) >= by(self[i]) else: by(self[st.last!]) > by(self[i])
@@ -3544,7 +3544,7 @@ pub fn prev_same<D, T, K>(self: [D]T, by: T -> K = x => x) -> [D]?D:
 pub fn next_same<D, T, K>(self: [D]T, by: T -> K = x => x) -> [D]?D:
     var out: [D]?D = None
     var seen = HashMap<K, D>()
-    for j in (0..D.K).rev:
+    for j in (0..D.count).rev:
         let i = D.nth(j)
         let k = by(self[i])
         out[i] = seen.get(k)

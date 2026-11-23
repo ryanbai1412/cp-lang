@@ -18,7 +18,7 @@ for (a, b, c) in ch:
 print(yes(ch.len == 12 and corners.all(v => cube[v].x % 2 == 0 and cube[v].y % 2 == 0 and cube[v].z % 2 == 0)))
 domain D4 = 0..4
 let tet = [Pt3(0, 0, 0), Pt3(1, 0, 0), Pt3(0, 1, 0), Pt3(0, 0, 1)]
-let hi = convex_hull_3d_idx([D4] i => tet[i.to_idx])
+let hi = convex_hull_3d_idx([D4] i => tet[i.ord])
 print(yes(hi.len == 4 and hi[0].0 == D4(0) and hi[0].1 == D4(1) and hi[0].2 == D4(3)))
 print(yes(circle_polygon_area(Circle(Vec(0.0, 0.0), 10.0), [Vec(0.0, 0.0), Vec(1.0, 0.0), Vec(1.0, 1.0), Vec(0.0, 1.0)]) == 1.0))
 print(yes(circle_polygon_area(Circle(Vec(0.0, 0.0), 10.0), [Vec(0.0, 0.0), Vec(0.0, 1.0), Vec(1.0, 1.0), Vec(1.0, 0.0)]) == -1.0))
@@ -28,9 +28,9 @@ let ch2 = circle_polygon_area(Circle(Vec(1.0, 0.0), 1.0), [Vec(1.0, -5.0), Vec(5
 print(yes(1.5707963 < ch2 < 1.5707964))
 domain S2 = 0..2
 let sg = [(a: Pt(0, 0), b: Pt(1, 1)), (a: Pt(1, 1), b: Pt(2, 0))]
-let m = any_segments_meet_idx([S2] i => sg[i.to_idx])
+let m = any_segments_meet_idx([S2] i => sg[i.ord])
 print(yes(m != None and m!.0 == S2(0) and m!.1 == S2(1)))
-print(yes(any_segments_meet_idx([S2] i => sg[i.to_idx], strict: true) == None))
+print(yes(any_segments_meet_idx([S2] i => sg[i.ord], strict: true) == None))
 fn rnd(mut s: Int, m: Int) -> Int:
     s = (s * 1103515245 + 12345) % 2147483648
     (s / 65536) % m

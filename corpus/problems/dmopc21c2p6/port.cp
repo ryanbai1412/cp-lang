@@ -91,7 +91,7 @@ var idx_bit = Fenwick<Pos, Int>.new()
 
 fn set_val(p: Pos, sgn: Int):
     cnt_bit.add(p, sgn)
-    idx_bit.add(p, sgn * p.to_idx)
+    idx_bit.add(p, sgn * p.ord)
 
 fn sum_arith(l: Int, r: Int) -> Int:
     if l > r: 0 else: (l + r) * (r - l + 1) / 2

@@ -14,8 +14,8 @@ fn walk(k: Int, steps: List<Int>) -> Paths:
     var back: [V]?(from: V, step: Int) = None
     var order = List<V>()
     for v in V:
-        dist[v] = k * v.to_idx
-        back[v] = (from: v, step: steps[v.to_idx])
+        dist[v] = k * v.ord
+        back[v] = (from: v, step: steps[v.ord])
         order.push(v)
     Paths(dist, back, order)
 

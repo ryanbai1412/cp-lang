@@ -467,6 +467,18 @@ impl Checker<'_> {
     /// A member that another version or language has and CP Lang spells
     /// differently: reported, with the fix where there is one.
     pub(super) fn member_advice(&mut self, base_ty: &Ty, name: &cpl_syntax::ast::Name) -> bool {
+        if let Some(new) = super::library_domain::index_rename(&name.text) {
+            if self.index_like(base_ty, &name.text) {
+                // `from_idx` gave an optional; `try_at` keeps that, `nth` traps instead.
+                let fix = if new == "nth" { "try_at" } else { new };
+                let message = format!("`{}` was renamed to `{new}` in 0.3", name.text);
+                if let Some(diag) = self.error(codes::REMOVED_SYNTAX, name.span, message) {
+                    diag.help = Some("a domain reads `D.count`, `x.ord` and `D.nth(k)`, which traps outside `0..D.count`; `D.try_at(k)` gives an optional (R04.2.26)".to_string());
+                    diag.fix(format!("write `{fix}`"), name.span, fix);
+                }
+                return true;
+            }
+        }
         if name.text == "bounds" && matches!(base_ty, Ty::Domain(_)) {
             let message = "`D.bounds` was renamed to `D.cuts`".to_string();
             self.error(codes::REMOVED_SYNTAX, name.span, message);
@@ -862,4 +874,24 @@ pub(crate) fn same_place(
         "compute the right side {first}: otherwise the order the two sides run in decides the result"
     );
     (message, help)
+}
+
+impl Checker<'_> {
+    /// A core domain, a position, an enum index, `Int`, `Char` or a type parameter: the
+    /// types whose pre-0.3 `K`, `to_idx` and `from_idx` are now `count`, `ord` and `nth`.
+    fn index_like(&mut self, ty: &Ty, member: &str) -> bool {
+        match ty {
+            Ty::Int | Ty::Char | Ty::Pos(_) | Ty::Domain(_) => true,
+            Ty::Param(p) => !self
+                .row_bounds
+                .get(p)
+                .is_some_and(|row| row.iter().any(|(field, _)| field == member)),
+            Ty::TypeName(n) | Ty::Named { name: n, .. } => {
+                n == "Char"
+                    || self.finite_index_enum_size(n).is_some()
+                    || self.param_bounds.iter().any(|(p, _)| p == n)
+            }
+            _ => false,
+        }
+    }
 }

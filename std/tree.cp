@@ -214,7 +214,7 @@ pub struct Rooted<V, Pre>:
             heavy,
             top,
             [V] v => Order.nth(tin[v]),
-            [Order] p => order[p.to_idx],
+            [Order] p => order[p.ord],
         )
 
     // blocked: `Rooted` resolves to a compiler built-in (GAPS.md tree `Rooted`)
@@ -726,7 +726,7 @@ pub struct Rooted<V, Pre>:
                         cur = p
                         continue
                 return Some(h)
-            let i = (tin[h].to_idx + 1..=tin[cur].to_idx).first_true(i => pred(at[Pre.nth(i)]))!
+            let i = (tin[h].ord + 1..=tin[cur].ord).first_true(i => pred(at[Pre.nth(i)]))!
             return Some(at[Pre.nth(i)])
         None
 
@@ -1017,10 +1017,10 @@ pub struct Rooted<V, Pre>:
             fill[dep[v]] += 1
         domain Level = 0..V.count
         Layers<V, Level>(
-            [Level] b => order[b.to_idx],
+            [Level] b => order[b.ord],
             [V] v => Level.nth(slot[v]),
             start,
-            [V] v => tin[v].to_idx,
+            [V] v => tin[v].ord,
             [V] v => sz[v],
             [V] v => dep[v],
         )
@@ -1041,9 +1041,9 @@ pub struct Rooted<V, Pre>:
             if let u = par[at[p]]: jt.add(at[p], u)
         var tour: List<Visit<V, V>> = []
         for e in self.tour: tour.push(e)
-        let ent = [V] v => 2 * tin[v].to_idx - dep[v]
+        let ent = [V] v => 2 * tin[v].ord - dep[v]
         Events<V, Ev>(
-            [Ev] i => tour[i.to_idx],
+            [Ev] i => tour[i.ord],
             [V] v => Ev.nth(ent[v]),
             [V] v => Ev.nth(ent[v] + 2 * sz[v] - 1),
             jt,
@@ -1285,7 +1285,7 @@ fn random_tree<V>(any: V) -> [V]List<V>:
     var adj: [V]List<V> = []
     var label = [v for v in V]
     shuffle(mut label)
-    for i in 1..V.K:
+    for i in 1..V.count:
         let (c, p) = (label[i], label[rand(0, i - 1)])
         adj[c].push(p)
         adj[p].push(c)
@@ -1363,15 +1363,15 @@ fn path_folds_keep_the_order_from_a_to_b():
     let adj = random_tree(V.first!)
     let r = Rooted(adj, V.first!)
     let words = Monoid<Word>(id: Word(""), op: (x, y) => Word(x.s + y.s))
-    let seg = SegTree(words, r.reorder([V] v => Word(Str(v.to_idx))))
+    let seg = SegTree(words, r.reorder([V] v => Word(Str(v.ord))))
     for a in V:
         for b in V:
             let p = slow_path(r, a, b)
             var all = ""
             var cut = ""
             for v in p:
-                all = all + Str(v.to_idx)
-                if v != r.lca(a, b): cut = cut + Str(v.to_idx)
+                all = all + Str(v.ord)
+                if v != r.lca(a, b): cut = cut + Str(v.ord)
             assert r.fold_path(a, b, seg) == Word(all)
             assert r.fold_path(a, b, seg, edges: true) == Word(cut)
 
@@ -1431,11 +1431,11 @@ fn excl_fold_folds_the_other_children():
     for v in V:
         let kids = r.children(v).collect()
         var i = 0
-        for e in r.excl_fold(v, words, c => Str(c.to_idx)):
+        for e in r.excl_fold(v, words, c => Str(c.ord)):
             assert e.c == kids[i]
             var want = ""
             for j in 0..kids.len:
-                if j != i: want = want + Str(kids[j].to_idx)
+                if j != i: want = want + Str(kids[j].ord)
             assert e.rest == want
             i += 1
         assert i == kids.len
@@ -1453,19 +1453,19 @@ fn rerooting_counts_connected_sets_through_every_vertex():
         var start: ?V = None
         var size = 0
         for v in V:
-            if mask.bit(v.to_idx):
+            if mask.bit(v.ord):
                 size += 1
                 if start == None: start = Some(v)
-        var seen = 1 << start!.to_idx
+        var seen = 1 << start!.ord
         var st = [start!]
         while let u = st.pop():
             for w in adj[u]:
-                if mask.bit(w.to_idx) and not seen.bit(w.to_idx):
-                    seen |= 1 << w.to_idx
+                if mask.bit(w.ord) and not seen.bit(w.ord):
+                    seen |= 1 << w.ord
                     st.push(w)
         if seen == mask:
             for v in V:
-                if mask.bit(v.to_idx): count[v] += 1
+                if mask.bit(v.ord): count[v] += 1
     for v in V: assert all[v] == count[v]
 
 @test
@@ -1476,9 +1476,9 @@ fn orders_lifting_and_the_virtual_tree():
     let up: [V]?(
         V,
         Word,
-    ) = [V] v => if let p = r.parent(v): Some((p, Word(Str(v.to_idx)))) else: None
+    ) = [V] v => if let p = r.parent(v): Some((p, Word(Str(v.ord)))) else: None
     let l = Lift(up, op: (x, y) => Word(x.s + y.s), identity: Word(""))
-    let cost: [V]?(V, Int) = [V] v => if let p = r.parent(v): Some((p, v.to_idx + 1)) else: None
+    let cost: [V]?(V, Int) = [V] v => if let p = r.parent(v): Some((p, v.ord + 1)) else: None
     let lc = Lift(cost, op: (x, y) => x + y, identity: 0)
     for a in V:
         assert l.parent(a) == r.parent(a) and l.depth(a) == r.depth(a)
@@ -1492,8 +1492,8 @@ fn orders_lifting_and_the_virtual_tree():
                 for x in r.ancestors(a):
                     if lc.fold(a, up_to: x) <= lim: want = x
                 if lim >= 0: assert lc.climb_while(a, s => s <= lim) == want
-            word = word + Str(u.to_idx)
-            sum += u.to_idx + 1
+            word = word + Str(u.ord)
+            sum += u.ord + 1
         for t in 0..r.depth(a) + 1:
             let c = l.climb(a, u => r.depth(u) >= t)
             assert c.at == r.ancestor(
@@ -1536,7 +1536,7 @@ fn a_tree_from_a_stored_graph():
         (u: V(2), v: V(4)),
         (u: V(2), v: V(5)),
         (u: V(5), v: V(6)),
-    ][e.to_idx]
+    ][e.ord]
     let g = Graph.undirected(edges)
     let r = Rooted(g, root: V(1))
     assert r.lca(V(4), V(6)) == V(2) and r.dist(V(4), V(6)) == 3 and r.size(V(2)) == 4
@@ -1698,7 +1698,7 @@ fn reroot_matches_up_from_every_root():
     let r = Rooted(adj, V.first!)
     let p = 1_000_003
     let lift = (x: Int, c: V, u: V) => (x * x + 3) % p
-    let finish = (s: Int, v: V) => (s + v.to_idx + 1) % p
+    let finish = (s: Int, v: V) => (s + v.ord + 1) % p
     let all = r.reroot(+, lift:, finish:)
     for v in V: assert all[v] == Rooted(adj, v).up(+, lift:, finish:)[v]
 
@@ -2661,7 +2661,7 @@ pub struct LazyLinkCut<V, T, F>(act: Action<T, F>):
 @test
 fn link_cut_follows_a_changing_forest():
     domain V = 1..=6
-    var lct = LinkCut<V, Int>.new(+, [V] v => v.to_idx + 1)
+    var lct = LinkCut<V, Int>.new(+, [V] v => v.ord + 1)
     lct.link(V(1), V(2))
     lct.link(V(2), V(3))
     lct.link(V(4), V(3))
@@ -2783,7 +2783,7 @@ fn lazy_link_cut_keeps_path_order_under_assignment():
     )
     var lct = LazyLinkCut<V, MaxSub, ?Int>.new(
         paint,
-        [V] v => MaxSub.of([3, -1, 4, -1, 5, -9][v.to_idx]),
+        [V] v => MaxSub.of([3, -1, 4, -1, 5, -9][v.ord]),
     )
     for v in 2..=6: lct.link(V(v), V(v - 1))
     lct.apply_path(V(2), V(3), Some(-2))
@@ -3269,7 +3269,7 @@ pub struct LongPaths<V, L>:
     /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); let lp = t.long_paths(); lp.slot(1, 1) == lp.slot(3, 0) and lp.slot(0, 1) == lp.slot(1, 0)`
     pub fn slot(self, v: V, d: Int) -> L:
         assert (0 <= d <= height[v])
-        L.nth(pos[v].to_idx + d)
+        L.nth(pos[v].ord + d)
 
 /// Lowest common ancestors in \(O(1)\) after \(O(n \log n)\) preprocessing, by a sparse table over the
 /// Euler tour: for many queries on a fixed tree when `Rooted.lca` is the bottleneck.
@@ -3307,7 +3307,7 @@ pub struct LcaTable<V>:
                 else: tab.push(tab[off + i])
             off += n
             w *= 2
-        LcaTable<V>(n, [V] v => t.pos(v).to_idx, [V] v => t.parent(v), dep, far, tab)
+        LcaTable<V>(n, [V] v => t.pos(v).ord, [V] v => t.parent(v), dep, far, tab)
 
     /// The lowest common ancestor of `a` and `b`.
     ///
@@ -3334,7 +3334,7 @@ pub struct LcaTable<V>:
 /// \(O(\log n)\).
 pub struct EulerTourTree<V, T>(m: Monoid<T>):
     val: [V]T
-    // One splay node per vertex (node `v.to_idx`) and per arc of a tree edge; each tree is the
+    // One splay node per vertex (node `v.ord`) and per arc of a tree edge; each tree is the
     // sequence of its tour. `agg` folds the vertex nodes below, `cnt` counts them.
     lc: List<?Int>
     rc: List<?Int>
@@ -3493,7 +3493,7 @@ pub struct EulerTourTree<V, T>(m: Monoid<T>):
     /// example: `domain V = 0..4; let vals: [V]Int = [1, 2, 3, 4]; var et = EulerTourTree(+, a: Some(vals)); et.link(0, 1); et.link(1, 2); et.connected(0, 2) and et.len(2) == 3`
     pub fn link(mut self, u: V, v: V):
         assert not self.connected(u, v)
-        let (a, b) = (u.to_idx, v.to_idx)
+        let (a, b) = (u.ord, v.ord)
         self.reroot(a)
         self.reroot(b)
         let ab = self.arc_node()
@@ -3512,7 +3512,7 @@ pub struct EulerTourTree<V, T>(m: Monoid<T>):
     /// traps: when there is no edge `u`-`v`
     /// example: `domain V = 0..4; let vals: [V]Int = [1, 2, 3, 4]; var et = EulerTourTree(+, a: Some(vals)); et.link(0, 1); et.link(1, 2); et.cut(1, 2); not et.connected(0, 2) and et.len(0) == 2`
     pub fn cut(mut self, u: V, v: V):
-        let (a, b) = (u.to_idx, v.to_idx)
+        let (a, b) = (u.ord, v.ord)
         let (ab, ba) = self.arcs(a, b)
         self.splay(ab)
         let x = self.cut_left(ab)
@@ -3532,7 +3532,7 @@ pub struct EulerTourTree<V, T>(m: Monoid<T>):
     /// traps: never
     /// example: `domain V = 0..4; let vals: [V]Int = [1, 2, 3, 4]; var et = EulerTourTree(+, a: Some(vals)); et.link(0, 1); et.link(1, 2); et.connected(0, 2) and not et.connected(0, 3)`
     pub fn connected(mut self, a: V, b: V) -> Bool:
-        self.first(a.to_idx) == self.first(b.to_idx)
+        self.first(a.ord) == self.first(b.ord)
 
     /// The number of vertices in `v`'s tree.
     ///
@@ -3540,8 +3540,8 @@ pub struct EulerTourTree<V, T>(m: Monoid<T>):
     /// traps: never
     /// example: `domain V = 0..4; let vals: [V]Int = [1, 2, 3, 4]; var et = EulerTourTree(+, a: Some(vals)); et.link(0, 1); et.link(1, 2); et.len(0) == 3 and et.len(3) == 1`
     pub fn len(mut self, v: V) -> Int:
-        self.splay(v.to_idx)
-        cnt[v.to_idx]
+        self.splay(v.ord)
+        cnt[v.ord]
 
     /// The value at `v`.
     ///
@@ -3556,9 +3556,9 @@ pub struct EulerTourTree<V, T>(m: Monoid<T>):
     /// traps: never
     /// example: `domain V = 0..4; let vals: [V]Int = [1, 2, 3, 4]; var et = EulerTourTree(+, a: Some(vals)); et.link(0, 1); et.link(1, 2); et.set(0, 10); et.fold_tree(2) == 15`
     pub fn set(mut self, v: V, x: T):
-        self.splay(v.to_idx)
+        self.splay(v.ord)
         val[v] = x
-        self.pull(v.to_idx)
+        self.pull(v.ord)
 
     /// The fold of every value in `v`'s tree.
     ///
@@ -3566,8 +3566,8 @@ pub struct EulerTourTree<V, T>(m: Monoid<T>):
     /// traps: never
     /// example: `domain V = 0..4; let vals: [V]Int = [1, 2, 3, 4]; var et = EulerTourTree(+, a: Some(vals)); et.link(0, 1); et.link(1, 2); et.fold_tree(0) == 6 and et.fold_tree(3) == 4`
     pub fn fold_tree(mut self, v: V) -> T:
-        self.splay(v.to_idx)
-        agg[v.to_idx]
+        self.splay(v.ord)
+        agg[v.ord]
 
     /// The fold over `v`'s side of the edge `v`-`away`: what `v`'s tree would hold were the edge
     /// cut.
@@ -3576,9 +3576,9 @@ pub struct EulerTourTree<V, T>(m: Monoid<T>):
     /// traps: when there is no edge `v`-`away`
     /// example: `domain V = 0..4; let vals: [V]Int = [1, 2, 3, 4]; var et = EulerTourTree(+, a: Some(vals)); et.link(0, 1); et.link(1, 2); et.fold_sub(1, 2) == 3 and et.fold_sub(2, 1) == 3`
     pub fn fold_sub(mut self, v: V, away: V) -> T:
-        let y = self.side(away.to_idx, v.to_idx)
+        let y = self.side(away.ord, v.ord)
         let s = agg[y]
-        self.splay(v.to_idx)
+        self.splay(v.ord)
         s
 
 /// `EulerTourTree` with updates to whole trees and subtrees under an action.
@@ -3769,7 +3769,7 @@ pub struct LazyEulerTourTree<V, T, F>(act: Action<T, F>):
     /// example: `domain V = 0..4; let vals: [V]Int = [1, 2, 3, 4]; var et = LazyEulerTourTree(Action<Int, Int>(apply: (d, x, n) => x + d * n), a: Some(vals)); et.link(0, 1); et.link(1, 2); et.connected(0, 2) and et.len(2) == 3`
     pub fn link(mut self, u: V, v: V):
         assert not self.connected(u, v)
-        let (a, b) = (u.to_idx, v.to_idx)
+        let (a, b) = (u.ord, v.ord)
         self.reroot(a)
         self.reroot(b)
         let ab = self.arc_node()
@@ -3788,7 +3788,7 @@ pub struct LazyEulerTourTree<V, T, F>(act: Action<T, F>):
     /// traps: when there is no edge `u`-`v`
     /// example: `domain V = 0..4; let vals: [V]Int = [1, 2, 3, 4]; var et = LazyEulerTourTree(Action<Int, Int>(apply: (d, x, n) => x + d * n), a: Some(vals)); et.link(0, 1); et.link(1, 2); et.cut(1, 2); not et.connected(0, 2)`
     pub fn cut(mut self, u: V, v: V):
-        let (a, b) = (u.to_idx, v.to_idx)
+        let (a, b) = (u.ord, v.ord)
         let (ab, ba) = self.arcs(a, b)
         self.splay(ab)
         let x = self.cut_left(ab)
@@ -3808,7 +3808,7 @@ pub struct LazyEulerTourTree<V, T, F>(act: Action<T, F>):
     /// traps: never
     /// example: `domain V = 0..4; let vals: [V]Int = [1, 2, 3, 4]; var et = LazyEulerTourTree(Action<Int, Int>(apply: (d, x, n) => x + d * n), a: Some(vals)); et.link(0, 1); et.link(1, 2); not et.connected(0, 3)`
     pub fn connected(mut self, a: V, b: V) -> Bool:
-        self.first(a.to_idx) == self.first(b.to_idx)
+        self.first(a.ord) == self.first(b.ord)
 
     /// The number of vertices in `v`'s tree.
     ///
@@ -3816,8 +3816,8 @@ pub struct LazyEulerTourTree<V, T, F>(act: Action<T, F>):
     /// traps: never
     /// example: `domain V = 0..4; let vals: [V]Int = [1, 2, 3, 4]; var et = LazyEulerTourTree(Action<Int, Int>(apply: (d, x, n) => x + d * n), a: Some(vals)); et.link(0, 1); et.link(1, 2); et.len(1) == 3`
     pub fn len(mut self, v: V) -> Int:
-        self.splay(v.to_idx)
-        cnt[v.to_idx]
+        self.splay(v.ord)
+        cnt[v.ord]
 
     /// The value at `v`, with every update to a tree or side holding it applied.
     ///
@@ -3825,7 +3825,7 @@ pub struct LazyEulerTourTree<V, T, F>(act: Action<T, F>):
     /// traps: never
     /// example: `domain V = 0..4; let vals: [V]Int = [1, 2, 3, 4]; var et = LazyEulerTourTree(Action<Int, Int>(apply: (d, x, n) => x + d * n), a: Some(vals)); et.link(0, 1); et.link(1, 2); et.apply_tree(0, 10); et.get(2) == 13 and et.get(3) == 4`
     pub fn get(mut self, v: V) -> T:
-        self.splay(v.to_idx)
+        self.splay(v.ord)
         val[v]
 
     /// Replaces the value at `v`, discarding earlier updates there.
@@ -3834,9 +3834,9 @@ pub struct LazyEulerTourTree<V, T, F>(act: Action<T, F>):
     /// traps: never
     /// example: `domain V = 0..4; let vals: [V]Int = [1, 2, 3, 4]; var et = LazyEulerTourTree(Action<Int, Int>(apply: (d, x, n) => x + d * n), a: Some(vals)); et.link(0, 1); et.link(1, 2); et.set(0, 10); et.fold_tree(2) == 15`
     pub fn set(mut self, v: V, x: T):
-        self.splay(v.to_idx)
+        self.splay(v.ord)
         val[v] = x
-        self.pull(v.to_idx)
+        self.pull(v.ord)
 
     /// The fold of every value in `v`'s tree.
     ///
@@ -3844,8 +3844,8 @@ pub struct LazyEulerTourTree<V, T, F>(act: Action<T, F>):
     /// traps: never
     /// example: `domain V = 0..4; let vals: [V]Int = [1, 2, 3, 4]; var et = LazyEulerTourTree(Action<Int, Int>(apply: (d, x, n) => x + d * n), a: Some(vals)); et.link(0, 1); et.link(1, 2); et.fold_tree(0) == 6`
     pub fn fold_tree(mut self, v: V) -> T:
-        self.splay(v.to_idx)
-        agg[v.to_idx]
+        self.splay(v.ord)
+        agg[v.ord]
 
     /// The fold over `v`'s side of the edge `v`-`away`.
     ///
@@ -3853,9 +3853,9 @@ pub struct LazyEulerTourTree<V, T, F>(act: Action<T, F>):
     /// traps: when there is no edge `v`-`away`
     /// example: `domain V = 0..4; let vals: [V]Int = [1, 2, 3, 4]; var et = LazyEulerTourTree(Action<Int, Int>(apply: (d, x, n) => x + d * n), a: Some(vals)); et.link(0, 1); et.link(1, 2); et.fold_sub(1, 2) == 3`
     pub fn fold_sub(mut self, v: V, away: V) -> T:
-        let y = self.side(away.to_idx, v.to_idx)
+        let y = self.side(away.ord, v.ord)
         let s = agg[y]
-        self.splay(v.to_idx)
+        self.splay(v.ord)
         s
 
     /// Applies `f` to every value in `v`'s tree.
@@ -3864,8 +3864,8 @@ pub struct LazyEulerTourTree<V, T, F>(act: Action<T, F>):
     /// traps: never
     /// example: `domain V = 0..4; let vals: [V]Int = [1, 2, 3, 4]; var et = LazyEulerTourTree(Action<Int, Int>(apply: (d, x, n) => x + d * n), a: Some(vals)); et.link(0, 1); et.link(1, 2); et.apply_tree(0, 10); et.fold_tree(2) == 36 and et.get(3) == 4`
     pub fn apply_tree(mut self, v: V, f: F):
-        self.splay(v.to_idx)
-        self.put(v.to_idx, f)
+        self.splay(v.ord)
+        self.put(v.ord, f)
 
     /// Applies `f` to every value on `v`'s side of the edge `v`-`away`.
     ///
@@ -3873,7 +3873,7 @@ pub struct LazyEulerTourTree<V, T, F>(act: Action<T, F>):
     /// traps: when there is no edge `v`-`away`
     /// example: `domain V = 0..4; let vals: [V]Int = [1, 2, 3, 4]; var et = LazyEulerTourTree(Action<Int, Int>(apply: (d, x, n) => x + d * n), a: Some(vals)); et.link(0, 1); et.link(1, 2); et.apply_sub(1, 2, 10); et.get(0) == 11 and et.get(2) == 3 and et.fold_tree(0) == 26`
     pub fn apply_sub(mut self, v: V, away: V, f: F):
-        let y = self.side(away.to_idx, v.to_idx)
+        let y = self.side(away.ord, v.ord)
         self.put(y, f)
         self.splay(y)
 
@@ -3990,7 +3990,7 @@ pub fn kruskal_tree<V, E, W, R: (u: V, v: V, ..)>(edges: [E]R, w: E -> W) -> (
     var order = [e for e in E]
     order.sort(by: e => w(e))
     var dsu = Dsu<V>()
-    var top: [V]Int = [V] v => v.to_idx
+    var top: [V]Int = [V] v => v.ord
     var par: List<Int> = [-1 for _ in V]
     var weight: List<?W> = [None for _ in V]
     var key: List<Int> = [-1 for _ in V]
@@ -4004,14 +4004,14 @@ pub fn kruskal_tree<V, E, W, R: (u: V, v: V, ..)>(edges: [E]R, w: E -> W) -> (
             par[b] = x
             par.push(-1)
             weight.push(Some(w(e)))
-            key.push(e.to_idx)
+            key.push(e.ord)
             top[dsu.find(r.u)] = x
     domain N = 0..par.len
     var up: [N]?(N, Int) = None
     for x in N:
-        if par[x.to_idx] >= 0: up[x] = Some((N.nth(par[x.to_idx]), 0))
+        if par[x.ord] >= 0: up[x] = Some((N.nth(par[x.ord]), 0))
     let lift = Lift(up, op: (a, b) => a + b, identity: 0)
-    (N, KruskalTree<V, N, W>([V] v => N.nth(v.to_idx), [N] x => weight[x.to_idx], [N] x => key[x.to_idx], lift))
+    (N, KruskalTree<V, N, W>([V] v => N.nth(v.ord), [N] x => weight[x.ord], [N] x => key[x.ord], lift))
 
 /// The Prüfer code of a tree on `V`: repeatedly remove the least leaf and record its neighbour,
 /// until two vertices remain. `V.count - 2` vertices, in bijection with the labelled trees.
@@ -4043,7 +4043,7 @@ pub fn prufer<V, E, R: (u: V, v: V, ..)>(edges: [E]R) -> List<V>:
             if deg[x] > 0: nb = x
         out.push(nb)
         deg[nb] -= 1
-        if deg[nb] == 1 and nb.to_idx < at: leaf = nb
+        if deg[nb] == 1 and nb.ord < at: leaf = nb
         else:
             at += 1
             while deg[V.nth(at)] != 1: at += 1
@@ -4069,7 +4069,7 @@ pub fn from_prufer<V>(code: List<V>) -> Tree<V>:
         out.push((u: leaf, v: x))
         deg[leaf] = 0
         deg[x] -= 1
-        if deg[x] == 1 and x.to_idx < at: leaf = x
+        if deg[x] == 1 and x.ord < at: leaf = x
         else:
             at += 1
             while deg[V.nth(at)] != 1: at += 1
@@ -4078,5 +4078,5 @@ pub fn from_prufer<V>(code: List<V>) -> Tree<V>:
     var last = leaf
     for v in V:
         if deg[v] == 1: last = v
-    if leaf.to_idx < last.to_idx: out.push((u: leaf, v: last)) else: out.push((u: last, v: leaf))
+    if leaf.ord < last.ord: out.push((u: leaf, v: last)) else: out.push((u: last, v: leaf))
     [0..V.count - 1] i => out[i]

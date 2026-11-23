@@ -25,7 +25,7 @@ var need: List<Int> = [0, 0]
 var diff: List<[S]Int> = [[S] _ => 0, [S] _ => 0]
 
 for i in I:
-    let par = i.to_idx % 2
+    let par = i.ord % 2
     let x = top[i] + bot[i]
     if top[i] == 0 and bot[i] == 0:
         blank[par] += 1

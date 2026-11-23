@@ -36,7 +36,7 @@ var done: [V]?Int = [V] _ => None
 var push: [V]?Int = [V] _ => None
 
 for u in tree.at.rev:
-    let is_y = init_s[u.to_idx] == 'Y'
+    let is_y = init_s[u.ord] == 'Y'
 
     var sum_done: ?Int = 0
     var sum_any: ?Int = 0

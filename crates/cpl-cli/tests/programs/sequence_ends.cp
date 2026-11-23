@@ -25,10 +25,10 @@ print(zs)
 let from_one: [1..=3]Int = [1..=3] i => i * 10
 print(from_one, from_one.first, from_one.last)
 domain I = 0..n
-let by_domain: [I]Int = [I] i => i.to_idx + 10
+let by_domain: [I]Int = [I] i => i.ord + 10
 domain R = 0..2
 domain C = 0..3
-let g: [R, C]Int = [R, C] (r, c) => r.to_idx * 3 + c.to_idx
+let g: [R, C]Int = [R, C] (r, c) => r.ord * 3 + c.ord
 domain Z = 0..0
 let e: [Z]Int = [Z] z => 0
 print(by_domain.first, by_domain.last, g.first, g.last, e.first, e.last)

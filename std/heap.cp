@@ -399,7 +399,7 @@ pub struct IndexedHeap<D, K>:
     fn before(self, a: D, b: D) -> Bool:
         let ka = keys[a]!
         let kb = keys[b]!
-        ka < kb or (not (kb < ka) and a.to_idx < b.to_idx)
+        ka < kb or (not (kb < ka) and a.ord < b.ord)
 
     fn swap_at(mut self, i: Int, j: Int):
         let a = heap[i]

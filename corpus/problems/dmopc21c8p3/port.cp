@@ -29,7 +29,7 @@ else:
     var offsets: [Val]Int = [Val] _ => 0
     var rem = k
     for v in Val:
-        let tot = n - v.to_idx
+        let tot = n - v.ord
         if rem <= ways[tot - 1]:
             offsets[v] = 0
         elif tot == 5 and rem == 4:
@@ -46,7 +46,7 @@ else:
     for v in Val:
         let b = bit.first_ge(offsets[v] + 1)!
         let p = b.left!
-        perm[p] = v.to_idx + 1
+        perm[p] = v.ord + 1
         bit.add(p, -1)
 
     print(perm, sep: " ")

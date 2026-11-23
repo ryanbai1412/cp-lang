@@ -19,7 +19,7 @@ var slot: [V]Int = 0
 for v in V:
     pile.push(MinHeap<(Int, Int)>())
     lift.push(0)
-    slot[v] = v.to_idx
+    slot[v] = v.ord
 
 var total = 0
 for u in V.rev:

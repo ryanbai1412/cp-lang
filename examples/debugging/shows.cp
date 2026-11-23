@@ -23,7 +23,7 @@ print(most_watched())
 fn every_subset():
     var best = 0
     for mask in 0..(1 << n):
-        let picked = [i for i in I if (mask >> i.to_idx) & 1 == 1]
+        let picked = [i for i in I if (mask >> i.ord) & 1 == 1]
         var fits = true
         for a in picked:
             for b in picked:

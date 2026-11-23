@@ -37,12 +37,12 @@ impl Lowerer<'_> {
         if let Some(fn_id) = found {
             return Some(self.user_call(fn_id, None, args, span));
         }
-        if ty == Ty::Char && matches!(name.text.as_str(), "from_idx" | "try_at") {
+        if ty == Ty::Char && name.text == "try_at" {
             let value = match self.one_arg(&name.text, args, &Ty::Int, span) {
                 Some(value) => value,
                 None => return Some(self.err_expr(span)),
             };
-            return Some(self.char_from_idx(value, span));
+            return Some(self.char_try_at(value, span));
         }
         let to = match (&ty, name.text.as_str()) {
             (Ty::Int, "from_int") => "Int",
@@ -58,8 +58,8 @@ impl Lowerer<'_> {
         Some(self.convert(to, value, span))
     }
 
-    /// `Char.from_idx(i)`: the `i`th of the 128 chars `Char.K` counts, `None` outside them.
-    fn char_from_idx(&mut self, value: Expr, span: Span) -> Expr {
+    /// `Char.try_at(i)`: the `i`th of the 128 chars `Char.count` counts, `None` outside them.
+    fn char_try_at(&mut self, value: Expr, span: Span) -> Expr {
         let mut stmts = Vec::new();
         let i = self.hold(value, &mut stmts);
         let zero = self.int_lit(0, span);

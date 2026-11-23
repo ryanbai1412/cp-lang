@@ -18,7 +18,7 @@ let grid: [Row]Str = read()
 var stars: [Row]Subset<Col> = Subset<Col>.empty
 for r in Row:
     for c in Col:
-        if grid[r][c.to_idx] == '1': stars[r] = stars[r].with(c)
+        if grid[r][c.ord] == '1': stars[r] = stars[r].with(c)
 var ways: [0..=n][0..=n][Subset<Col>]Z = 0
 var galaxies: [0..=n][0..=n][Subset<Col>]Z = 0
 for hi in 0..=n:

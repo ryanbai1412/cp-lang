@@ -26,7 +26,7 @@ for c in C:
         if solved[c, t] == 1:
             score += worth[t]
             tasks += 1
-    ranking.push((-score, -tasks, c.to_idx + 1))
+    ranking.push((-score, -tasks, c.ord + 1))
 ranking.sort()
 
 for r in 0..n:

@@ -5,4 +5,4 @@ struct S<V, P>:
     at: [P]V
 fn mk<V>(r: V, k: Int) -> (s: S<V, _>, xs: List<Int>):
     domain P = 0..k
-    (s: S([P] _ => r), xs: [P] p => p.to_idx)
+    (s: S([P] _ => r), xs: [P] p => p.ord)

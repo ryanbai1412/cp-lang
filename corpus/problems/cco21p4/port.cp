@@ -46,7 +46,7 @@ fn drain_peel():
                 peel.push(u)
 
 drain_peel()
-let order = sorted([(-roads[e].r, e.to_idx) for e in E])
+let order = sorted([(-roads[e].r, e.ord) for e in E])
 for pair in order:
     let e = E(pair.1)
     if removed[e]: continue

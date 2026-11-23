@@ -9,13 +9,13 @@ for _ in 0..200:
             var first: ?Int = None
             var last: ?Int = None
             for p in P:
-                if Int(piece[p].l) == a: first = Some(p.to_idx)
-                if Int(piece[p].r) == b: last = Some(p.to_idx + 1)
+                if Int(piece[p].l) == a: first = Some(p.ord)
+                if Int(piece[p].r) == b: last = Some(p.ord + 1)
             if a == b and P.count > 0 and a == Int(piece[P.last!].r): first = Some(P.count)
             if a == b and P.count > 0 and a == Int(piece[P.first!].l): last = Some(0)
             if let i = first:
                 if let j = last:
                     let got = piece.covering(a..b)
                     assert got.len == j - i
-                    for p in got: assert i <= p.to_idx and p.to_idx < j
+                    for p in got: assert i <= p.ord and p.ord < j
 print(yes(true))

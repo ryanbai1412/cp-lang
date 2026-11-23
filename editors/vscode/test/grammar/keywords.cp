@@ -138,7 +138,7 @@ let t = f::<Int>()
 //          ^^^ support.type.builtin.cp
 //             ^ punctuation.definition.generic.end.cp
 
-if const D.K <= 64:
+if const D.count <= 64:
 // ^^^^^ storage.modifier.const.cp
 //       ^ entity.name.type.cp
 //         ^ entity.name.type.cp
