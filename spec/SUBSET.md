@@ -9,8 +9,8 @@ unaided. Each rule section of `core/` and `tools/` is one row:
 - *documented*: specified, not promised for the milestone; it may work.
 - *gap*: not usable yet as a whole; the note names the owner.
 
-`scripts/conformance-subset.py --check --board <scoreboard>` holds this file
-to the suite: a failing case in a supported section must be a known gap, and
+`scripts/conformance-subset.py --check` (it runs `cpl-conform`;
+`--board <scoreboard>` reuses a run) holds this file to the suite: a failing case in a supported section must be a known gap, and
 a known gap that starts passing must be dropped. `--draft` regenerates the
 table and the list; statuses and owner notes are kept.
 

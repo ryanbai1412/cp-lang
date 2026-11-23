@@ -13,14 +13,17 @@ R04.4.*, `Rcli` is Rcli.*), its heading, a status and a note:
 case citing a supported section fails without a known-gap line, when a
 known-gap line names no owner or a case that passes, or a gap no owner.
 --draft prints a table from today's results to seed or refresh the file.
-Results come from a scoreboard JSON written by
+Results come from a fresh `cpl-conform conformance` run, or from
+`--board <path>`, a scoreboard JSON written by
 `cpl-conform conformance --write --scoreboard <path>`.
 """
 
 import argparse
 import json
 import re
+import subprocess
 import sys
+import tempfile
 from collections import defaultdict
 from pathlib import Path
 
@@ -98,18 +101,25 @@ def owner_of(case):
     return {"diagnostics": "diagnostics", "lints": "lint-fmt"}.get(top, "compiler")
 
 
+def fresh_board():
+    out = Path(tempfile.mkdtemp()) / "scoreboard.json"
+    cmd = ["cargo", "run", "-q", "-p", "cpl-conform", "--", "conformance"]
+    subprocess.run([*cmd, "--write", "--scoreboard", str(out)], cwd=ROOT, check=False, stdout=subprocess.DEVNULL)
+    return str(out)
+
+
 def key_order(k):
     return (0, k.split(".")[0].zfill(3), int(k.split(".")[1])) if "." in k else (1, k, 0)
 
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--board", default=str(ROOT / "research/scoreboard.json"))
+    ap.add_argument("--board", help="scoreboard JSON; default: run cpl-conform now")
     ap.add_argument("--check", action="store_true")
     ap.add_argument("--draft", action="store_true")
     args = ap.parse_args()
     secs = sections()
-    status = results(args.board)
+    status = results(args.board or fresh_board())
     tally = defaultdict(lambda: [0, []])
     for case, rids in case_rules().items():
         for key in {section_of(r) for r in rids}:
