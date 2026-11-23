@@ -671,6 +671,14 @@ pub fn undirected_of_pairs<V>(edges: List<(V, V)>) -> [V]List<V>:
         adj[v].push(u)
     adj
 
+/// The number of arcs out of `u` in an adjacency list, as `Graph.deg` is for a `Graph`.
+/// `Graph.undirected` over a plain range of edges (`[0..m](u: V, v: V)`) gives one.
+///
+/// cost: \(O(1)\)
+/// traps: never
+/// example: `domain V = 0..3; let g: [V]List<V> = [[1, 2], [2], []]; g.deg(0) == 2 and g.deg(2) == 0`
+pub fn deg<V, A>(self: [V]List<A>, u: V) -> Int = self[u].len
+
 // blocked: generic `V` of a `Next<V>` free fn is bound to `Int` (GAPS.md graph free fns)
 /// The connected components of an undirected graph, as a fresh domain `C` and each vertex's
 /// component.
