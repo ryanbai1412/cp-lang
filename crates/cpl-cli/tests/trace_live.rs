@@ -19,6 +19,35 @@ fn get(base: &str, path: &str) -> String {
     response.split_once("\r\n\r\n").unwrap().1.to_string()
 }
 
+/// Starts `cpl run --trace --live` with `args` and waits for its serving
+/// line, the last it prints before taking requests. Returns the server, its
+/// address and what it printed before. Standard error is closed after: the
+/// server must keep serving and logging without anyone reading it.
+#[allow(clippy::zombie_processes, reason = "the caller kills and waits for it")]
+fn serve(args: &[&std::ffi::OsStr]) -> (std::process::Child, String, String) {
+    let mut server = Command::new(env!("CARGO_BIN_EXE_cpl"))
+        .args(["run", "--trace", "--live"])
+        .args(args)
+        .stdin(Stdio::null())
+        .stderr(Stdio::piped())
+        .spawn()
+        .unwrap();
+    let mut stderr = BufReader::new(server.stderr.take().unwrap());
+    let mut before = String::new();
+    loop {
+        let mut line = String::new();
+        if stderr.read_line(&mut line).unwrap_or(0) == 0 {
+            let ended = server.wait().unwrap();
+            panic!("no serving line ({ended}): {before}");
+        }
+        if line.contains("serving the trace") {
+            let base = line.split_whitespace().last().unwrap().to_string();
+            return (server, base, before);
+        }
+        before.push_str(&line);
+    }
+}
+
 fn until(base: &str, wanted: &str) -> String {
     let start = Instant::now();
     loop {
@@ -38,18 +67,7 @@ fn live_trace_records_each_save_on_the_pinned_input() {
     let file = dir.join("live.cp");
     std::fs::write(&file, SOURCE).unwrap();
     std::fs::write(dir.join("live.tests/stress-1.in"), "4\n").unwrap();
-    let mut server = Command::new(env!("CARGO_BIN_EXE_cpl"))
-        .args(["run", "--trace", "--live"])
-        .arg(&file)
-        .stdin(Stdio::null())
-        .stderr(Stdio::piped())
-        .spawn()
-        .unwrap();
-    let mut stderr = BufReader::new(server.stderr.take().unwrap());
-    let (mut serving, mut input) = (String::new(), String::new());
-    stderr.read_line(&mut serving).unwrap();
-    stderr.read_line(&mut input).unwrap();
-    let base = serving.split_whitespace().last().unwrap().to_string();
+    let (mut server, base, input) = serve(&[file.as_os_str()]);
     assert!(input.contains("stress-1.in"), "{input}");
 
     assert_eq!(get(&base, "/live"), r#"{"version":1,"error":null}"#);
@@ -147,19 +165,7 @@ fn a_live_trace_of_an_interactive_file_runs_it_against_its_judge() {
             .unwrap();
         steps(&String::from_utf8_lossy(&out.stdout))
     };
-    let mut server = Command::new(env!("CARGO_BIN_EXE_cpl"))
-        .args(["run", "--trace", "--live"])
-        .arg(&file)
-        .arg(&input)
-        .stdin(Stdio::null())
-        .stderr(Stdio::piped())
-        .spawn()
-        .unwrap();
-    let mut serving = String::new();
-    BufReader::new(server.stderr.take().unwrap())
-        .read_line(&mut serving)
-        .unwrap();
-    let base = serving.split_whitespace().last().unwrap().to_string();
+    let (mut server, base, _) = serve(&[file.as_os_str(), input.as_os_str()]);
     let whole = get(&base, "/trace.json");
     let window = get(&base, "/trace.json?from=6");
     server.kill().unwrap();

@@ -34,7 +34,7 @@ pub fn serve(path: &str, input: &[u8], input_note: &str, record: Record) -> u8 {
     let first = match record(None) {
         Ok(document) => document,
         Err(error) => {
-            eprint!("{error}");
+            say(format_args!("{error}"));
             return crate::EXIT_FAILED;
         }
     };
@@ -48,13 +48,18 @@ pub fn serve(path: &str, input: &[u8], input_note: &str, record: Record) -> u8 {
     {
         Ok(listener) => listener,
         Err(error) => {
-            eprintln!("cpl: can't serve the trace: {error}");
+            say(format_args!("cpl: can't serve the trace: {error}\n"));
             return crate::EXIT_USAGE;
         }
     };
     let port = listener.local_addr().map_or(0, |a| a.port());
-    eprintln!("cpl: serving the trace of {path} at http://127.0.0.1:{port}/");
-    eprintln!("cpl: input: {input_note}; save the file to record it again (Ctrl-C stops)");
+    say(format_args!(
+        "cpl: input: {input_note}; save the file to record it again (Ctrl-C stops)\n"
+    ));
+    // The last line before serving: a client may connect once it has read it.
+    say(format_args!(
+        "cpl: serving the trace of {path} at http://127.0.0.1:{port}/\n"
+    ));
     let served = Arc::clone(&shown);
     let run = Arc::new(Run {
         path: path.to_string(),
@@ -69,6 +74,12 @@ pub fn serve(path: &str, input: &[u8], input_note: &str, record: Record) -> u8 {
         });
         watch(path, &shown, record)
     })
+}
+
+/// Writes to standard error, which the server outlives: an editor or test
+/// that has read the serving line may close the pipe.
+fn say(text: std::fmt::Arguments) {
+    let _ = std::io::stderr().write_fmt(text);
 }
 
 fn watch(path: &str, shown: &Mutex<Shown>, record: Record) -> ! {
@@ -87,10 +98,13 @@ fn watch(path: &str, shown: &Mutex<Shown>, record: Record) -> ! {
                 shown.version += 1;
                 shown.document = document;
                 shown.error = None;
-                eprintln!("cpl: recorded the edit (version {})", shown.version);
+                say(format_args!(
+                    "cpl: recorded the edit (version {})\n",
+                    shown.version
+                ));
             }
             Err(error) => {
-                eprint!("{error}");
+                say(format_args!("{error}"));
                 shown.error = Some(error.trim().to_string());
             }
         }
