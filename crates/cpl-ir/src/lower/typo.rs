@@ -116,7 +116,26 @@ impl<'a> Lowerer<'a> {
                     .map(|(_, m)| m.text.as_str()),
             );
         }
-        let Some(s) = cpl_check::closest(name, names.into_iter()) else {
+        // A std `fn f(self: T)` whose `T` this receiver isn't would only
+        // trade this error for a mismatch (errors/R7).
+        let heads: &[&str] = match ty {
+            Ty::List(_) | Ty::ListView(..) | Ty::MutView(_) | Ty::Keyed(..) => &["List"],
+            Ty::Array { .. } => &["["],
+            Ty::Str | Ty::StrView => &["Str"],
+            Ty::Int | Ty::I128 | Ty::U64 => &["Int"],
+            Ty::Float => &["Float"],
+            Ty::Char => &["Char"],
+            Ty::Range(_) => &["Range"],
+            _ => &[],
+        };
+        let fits = |m: &str| {
+            heads.is_empty()
+                || cpl_check::std_self_heads().get(m).is_none_or(|all| {
+                    all.iter()
+                        .any(|h| h.as_deref().is_none_or(|h| heads.contains(&h)))
+                })
+        };
+        let Some(s) = cpl_check::closest(name, names.into_iter().filter(|m| fits(m))) else {
             return;
         };
         let auto = cpl_check::std_methods().iter().any(|(_, m)| m.text == s);
@@ -170,10 +189,15 @@ impl<'a> Lowerer<'a> {
         let at = self.span(base.span);
         let edit = self.span(name.span);
         let whole = self.source(base.span);
+        let member = self.span(name.span);
         let last = self.diags.last_mut().filter(|d| {
-            d.code == codes::TYPE_MISMATCH && d.span == at && d.message.ends_with("found `Str`")
+            (d.code == codes::TYPE_MISMATCH && d.span == at && d.message.ends_with("found `Str`"))
+                || (d.code == codes::UNKNOWN_FIELD
+                    && d.span == member
+                    && d.message.starts_with("a `Str` has no method"))
         });
         if let Some(d) = last {
+            d.fixes.clear();
             d.help = Some(format!(
                 "`{}` is a `Char` getter; a whole `Str` is `{whole}.{own}()`",
                 name.text
@@ -200,13 +224,18 @@ impl<'a> Lowerer<'a> {
             self.source(sep.value.span),
             self.source(base.span)
         );
+        let member = self.span(name.span);
         let last = self.diags.last_mut().filter(|d| {
-            d.code == codes::TYPE_MISMATCH
+            (d.code == codes::TYPE_MISMATCH
                 && d.span == at
                 && (d.message.starts_with("expected `Str`")
-                    || d.message.starts_with("this method is called on a `Str`"))
+                    || d.message.starts_with("this method is called on a `Str`")))
+                || (d.code == codes::UNKNOWN_FIELD
+                    && d.span == member
+                    && d.message.starts_with("a `List<"))
         });
         if let Some(d) = last {
+            d.fixes.clear();
             d.help = Some(format!("`join` is called on the separator: `{new}`"));
             d.fix(format!("write `{new}`"), edit, new);
         }

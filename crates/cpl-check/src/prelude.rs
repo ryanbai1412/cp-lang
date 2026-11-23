@@ -163,6 +163,7 @@ pub fn std_self_heads() -> &'static std::collections::HashMap<String, Vec<Option
         let mut heads: std::collections::HashMap<String, Vec<Option<String>>> = Default::default();
         for (_, text) in crate::modules::std_modules() {
             for line in text.lines() {
+                let line = line.strip_prefix("@get ").unwrap_or(line);
                 let Some(rest) = line.strip_prefix("pub fn ") else {
                     continue;
                 };
@@ -179,8 +180,28 @@ pub fn std_self_heads() -> &'static std::collections::HashMap<String, Vec<Option
                 let Some(ty) = rest.strip_prefix("self: ") else {
                     continue;
                 };
+                let own_param = |t: &str| {
+                    let t = t.trim();
+                    generics
+                        .split(',')
+                        .any(|g| g.split(':').next().unwrap_or("").trim() == t)
+                };
+                // `[I]E`: `[` takes any list; `[=` has an index or element
+                // of a set type (`[P]Range<D>`, `[Pair<V>]T`), which a list
+                // of anything may not be.
                 let head: String = match ty.strip_prefix('[') {
-                    Some(_) => "[".into(),
+                    Some(arr) => {
+                        let (index, rest) = arr.split_once(']').unwrap_or((arr, ""));
+                        let elem: String = rest
+                            .chars()
+                            .take_while(|c| c.is_alphanumeric() || *c == '_')
+                            .collect();
+                        if own_param(index) && own_param(&elem) {
+                            "[".into()
+                        } else {
+                            "[=".into()
+                        }
+                    }
                     None => ty
                         .chars()
                         .take_while(|c| c.is_alphanumeric() || *c == '_')

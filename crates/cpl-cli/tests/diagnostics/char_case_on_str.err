@@ -1,15 +1,15 @@
-error[E0302]: expected `Char`, found `Str`
-  --> char_case_on_str.cp:2:7
+error[E0203]: a `Str` has no method `upper`
+  --> char_case_on_str.cp:2:9
   |
 2 | print(s.upper(), s.lower())
-  |       ^
+  |         ^^^^^
   = help: `upper` is a `Char` getter; a whole `Str` is `s.to_upper()`
 
-error[E0302]: expected `Char`, found `Str`
-  --> char_case_on_str.cp:2:18
+error[E0203]: a `Str` has no method `lower`
+  --> char_case_on_str.cp:2:20
   |
 2 | print(s.upper(), s.lower())
-  |                  ^
+  |                    ^^^^^
   = help: `lower` is a `Char` getter; a whole `Str` is `s.to_lower()`
 
 char_case_on_str.cp: 2 errors

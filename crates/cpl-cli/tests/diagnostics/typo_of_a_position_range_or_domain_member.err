@@ -26,6 +26,6 @@ error[E0203]: a `domain R` has no method `bound`
   |
 7 | print(R.bound)
   |         ^^^^^
-  = help: did you mean `count`, from `std.seq`?
+  = help: did you mean `count`?
 
 typo_of_a_position_range_or_domain_member.cp: 4 errors
