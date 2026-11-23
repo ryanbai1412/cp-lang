@@ -3236,7 +3236,6 @@ pub struct Functional<V>:
     _cycles: List<List<Int>>
     _up: List<List<Int>>
 
-impl<V> Functional<V>:
     /// The functional graph `v -> next[v]` (every vertex has one out-arc), with its cycles,
     /// tails and binary-lifting tables built.
     ///
