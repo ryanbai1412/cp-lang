@@ -2514,8 +2514,7 @@ impl<'a> Checker<'a> {
         let outer_bounds = self.param_bounds.len();
         self.generics
             .extend(f.generics.iter().map(|g| g.text.clone()));
-        self.param_bounds
-            .extend(super::types::extract_bounds(&f.bounds));
+        self.param_bounds.extend(super::domain_use::body_bounds(f));
         self.bounds_exist(&f.bounds);
         self.in_fn += 1;
         // A move is a fact about one body: a later fn may name a field or global again.
