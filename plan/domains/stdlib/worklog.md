@@ -331,3 +331,4 @@ Newest first: what landed (commit), evidence, next, blocked, requests from other
   - `std/README.md` is stale against `std/seq.cp` and R04.4/R07: `bsearch_first(r, ok) -> ?I` (spec: `r.bsearch(ok)` / `r.first_true(ok)`), `windows` on `List` yielding `List<T>` copies (R07.7.9: views), `xs.first(p)` and `find(x)` as an index (R07.9.5: `find(p) -> ?T`).
   - `read_all = todo` in `std/io.cp`, while R10.1 and R10.2.7 are in a supported subset row (`core-10/read-all-to-eof.cp`).
   - the `desc: Bool` flag (decision 290, line 13 above) misled the reader too: `by: desc, desc: true` sorts ascending with no error.
+- From tech-debt (2026-11-22, Milestone 1): `std-prefix/first-ge-negative-element-traps.cp` expects R0401 in checked builds, but `Prefix.first_ge` (std/prefix.cp) never checks its documented non-negative requirement, so `[2, -1, 3].scan(+).first_ge(2)` silently answers. Yours to decide how a checked build verifies it without breaking the O(log n) cost.

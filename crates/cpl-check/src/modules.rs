@@ -144,6 +144,14 @@ fn nearest_std(module: &[String]) -> Option<String> {
         .map(|m| format!("std.{m}"))
 }
 
+/// `HOME`, or `USERPROFILE` on Windows, where `HOME` is usually unset.
+fn home_dir() -> Option<PathBuf> {
+    let var = |name| std::env::var_os(name).filter(|v| !v.is_empty());
+    var("HOME")
+        .or_else(|| var("USERPROFILE"))
+        .map(PathBuf::from)
+}
+
 /// The folder of the library `name`: the one a `cp.toml` above `start`
 /// gives it under `[libs]`, or else the nearest folder above `start`
 /// whose `lib.toml` names the library.
@@ -153,7 +161,7 @@ fn library_root(start: &Path, name: &str) -> Option<PathBuf> {
         let config = std::fs::read_to_string(dir.join("cp.toml")).ok()?;
         let path = configured_library(&config, name)?;
         let path = match path.strip_prefix("~/") {
-            Some(below_home) => PathBuf::from(std::env::var_os("HOME")?).join(below_home),
+            Some(below_home) => home_dir()?.join(below_home),
             None => dir.join(path),
         };
         path.is_dir().then_some(path)
@@ -279,5 +287,22 @@ mod tests {
             loaded.map(|(_, text)| text).as_deref(),
             Some("fn two() -> Int: 2\n")
         );
+    }
+
+    #[test]
+    fn a_home_library_path_uses_userprofile_without_home() {
+        let root = std::env::temp_dir().join(format!("cpl home {}", std::process::id()));
+        std::fs::create_dir_all(root.join("contest")).unwrap();
+        std::fs::create_dir_all(root.join("kit")).unwrap();
+        std::fs::write(root.join("contest/cp.toml"), "[libs]\nlib = \"~/kit\"\n").unwrap();
+        let home = std::env::var_os("HOME");
+        std::env::remove_var("HOME");
+        std::env::set_var("USERPROFILE", &root);
+        let found = library_root(&root.join("contest"), "lib");
+        if let Some(home) = home {
+            std::env::set_var("HOME", home);
+        }
+        std::fs::remove_dir_all(&root).unwrap();
+        assert_eq!(found.map(|p| p.ends_with("kit")), Some(true));
     }
 }
