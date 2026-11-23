@@ -279,6 +279,13 @@ def _git_ignored(root: Path, paths: list[str]) -> set[str]:
     return {p.rstrip("/") for p in r.stdout.split()} if r.returncode in (0, 1) else set()
 
 
+def decision_dup_numbers(root: Path) -> list[str]:
+    """Decision numbers used by more than one `## N.` heading in decisions.md."""
+    path = root / "decisions.md"
+    nums = re.findall(r"^##\s+(\d+)\.", path.read_text() if path.exists() else "", re.M)
+    return sorted({n for n in nums if nums.count(n) > 1}, key=int)
+
+
 def stale_arch_paths(root: Path) -> list[str]:
     """Backticked repo paths in ARCHITECTURE docs that do not exist.
 
@@ -318,6 +325,7 @@ COUNTERS = {
     "v02_port_files": ("v0.2 corpus port.cp files", v02_port_files, True),
     "direct_python": ("direct python3 calls in gate/justfile", direct_python, True),
     "unrun_script_tests": ("script tests the gate never runs", unrun_script_tests, True),
+    "decision_dup_numbers": ("decision numbers headed twice in decisions.md", decision_dup_numbers, True),
     "stale_arch_paths": ("missing paths cited by ARCHITECTURE docs", stale_arch_paths, False),
     "crate_edges": ("shipped crate edges", crate_edges, False),
     "dev_crate_edges": ("test-only crate edges", dev_crate_edges, False),

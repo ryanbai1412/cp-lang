@@ -7147,3 +7147,13 @@ delete the six records and `rules/hand_loops.rs`, and restore
 
 `S: Indexed<K, T>` (also `Keyed`, `IndexedMut`) now binds `K` to the key `S` is indexed by, a domain for `[D]T`, and `T` to its element, so generic std code returns the caller's keys (`manacher`, `z_function`, `min_rotation` on a `[Pos]Char`, cf1943b). `.at` takes the receiver's key type, and a keyed view covering all of `D` (`cells.rekey(s.keys)`) is a `[D]T`, trapping if shorter. This grew the capped `crates/cpl-ir/src/lower/mono.rs` (4450 -> 4488) and `lower/mod.rs` (5976 -> 6016); baselines raised with `--update rs_over_cap`. Reverse: drop the bound pass in `mono.rs` and the coercion in `mod.rs`; generic std code then returns `Int` keys, and `[D]T` callers convert.
 - **326.4 Intra-doc links are rustdoc's: [`up`], [`Rooted.up`], or [`text`](Rooted.up).** `cpl doc` resolves each from the documented item's scope (the owner type's members, then the module, then every module), writes the targets into its JSON (`links`) and its HTML, and exits 1 on a link that names no item. Plain `up` is never a link: guessing every code span would link words like `n` or `op` that aren't items. Reverse: drop `links::unresolved` from `cpl doc`'s exit code.
+
+## 327. Decision numbers may not collide: the debt ratchet gates them (tech-debt, 2026-11-22)
+
+Lanes pushing directly each took `max + 1`, so twelve numbers now head two
+or three decisions (230, 27, 314, 317-322, 324-326). `debt-ratchet.py`
+counts them as `decision_dup_numbers` (12, shrink-only), and its `--check`
+already runs before every push, after the rebase: a lane whose rebase lands
+on a taken number renumbers its own entry with `just next-decision`. Old
+duplicates keep their numbers, because commit bodies cite them. Reverse by
+removing the counter.

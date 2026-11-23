@@ -115,6 +115,8 @@ class DebtRatchetTest(unittest.TestCase):
             self.assertEqual(dr.ir_builtin_names(root), ["prefix", "sum"])
             self.assertEqual(dr.backend_std_names(root), ["crates/cpl-codegen/src/a.rs:1 Bitset"])
             self.assertEqual(dr.edition_refs(root), ["crates/cpl-codegen/src/a.rs:1"])
+            self._write(root, "decisions.md", "## 9. a\n## 10. b\n## 9. c\n### 10. not a decision\n")
+            self.assertEqual(dr.decision_dup_numbers(root), ["9"])
             self.assertEqual(len(dr.dup_fn_bodies(root)), 1)
             self.assertEqual(dr.crate_edges(root), ["cpl-lint -> cpl-check", "cpl-lint -> cpl-prover"])
             self.assertEqual(dr.dev_crate_edges(root), ["cpl-lint -> cpl-cli"])

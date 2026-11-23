@@ -106,5 +106,6 @@
     "cpl-wasm -> cpl-lint",
     "cpl-wasm -> cpl-lsp",
     "cpl-wasm -> cpl-stress"
-  ]
+  ],
+  "decision_dup_numbers": 12
 }
