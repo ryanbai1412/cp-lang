@@ -2111,7 +2111,42 @@ fn edge_colorings_use_max_degree_proper_colours():
 /// order: keyed by `E`
 /// traps: never
 /// example: `let es: [0..3](u: 0..3, v: 0..3) = [(u: 0, v: 1), (u: 1, v: 2), (u: 0, v: 2)]; let col: [0..3]0..2 = [0, 0, 1]; let lim: [0..2]Int = [1, 1]; matroid_intersection(GraphicMatroid(es), ColorMatroid(col, lim)) == [true, false, true]`
-pub fn matroid_intersection<E, A: Matroid<E>, B: Matroid<E> >(a: A, b: B, weight: ?(E -> Int) = None) -> [E]Bool = todo
+pub fn matroid_intersection<E, A: Matroid<E>, B: Matroid<E> >(a: A, b: B, weight: ?(E -> Int) = None) -> [E]Bool:
+    var (ma, mb) = (a, b)
+    var take: [E]Bool = false
+    let w = weight ?? (_ => 0)
+    loop:
+        ma.rebuild(take)
+        mb.rebuild(take)
+        // Vertex cost: `-w(x)` to bring `x` in, `w(y)` to take `y` out; shortest by (cost, length).
+        var dist: [E]?(Int, Int) = None
+        var prev: [E]?E = None
+        for x in E:
+            if not take[x] and ma.can_add(x): dist[x] = Some((-w(x), 0))
+        var changed = true
+        while changed:
+            changed = false
+            for p in E:
+                let Some((dc, dl)) = dist[p] else: continue
+                for q in E:
+                    if take[p] == take[q]: continue
+                    let arc = if take[p]: ma.can_swap(p, q) else: mb.can_swap(q, p)
+                    if not arc: continue
+                    let nd = (dc + (if take[q]: w(q) else: -w(q)), dl + 1)
+                    if dist[q] == None or nd < dist[q]!:
+                        dist[q] = Some(nd)
+                        prev[q] = Some(p)
+                        changed = true
+        var end: ?E = None
+        for x in E:
+            if take[x] or not mb.can_add(x) or dist[x] == None: continue
+            if end == None or dist[x]! < dist[end!]!: end = Some(x)
+        let Some(t) = end else: break
+        var cur: ?E = Some(t)
+        while let x = cur:
+            take[x] = not take[x]
+            cur = prev[x]
+    take
 
 /// An independence oracle for `matroid_intersection`. `rebuild(take)` sets the current
 /// independent set; `can_add(e)` asks whether `take + e` stays independent, and
@@ -2125,17 +2160,67 @@ pub trait Matroid<E>:
 /// O(E α) per rebuild. Independent sets are forests of the edges' endpoints.
 pub struct GraphicMatroid<V, E>:
     edges: [E](u: V, v: V)
+    var take: [E]Bool
+    comp: [V]Int
+    tin: [V]Int
+    tout: [V]Int
+    below: [E]?V
     /// The graphic matroid of `edges`: a set of edges is independent when it is a forest on `V`.
     ///
     /// cost: O(1); each `rebuild` is O(E alpha(V))
     /// traps: never
     /// example: `let es: [0..3](u: 0..3, v: 0..3) = [(u: 0, v: 1), (u: 1, v: 2), (u: 0, v: 2)]; var m = GraphicMatroid(es); m.rebuild([true, true, false]); not m.can_add(2) and m.can_swap(0, 2)`
-    pub fn new(edges: [E](u: V, v: V)) -> GraphicMatroid<V, E> = todo
+    pub fn new(edges: [E](u: V, v: V)) -> GraphicMatroid<V, E> =
+        GraphicMatroid(edges, [E] _ => false, [V] v => v.to_idx, [V] _ => 0, [V] _ => 0, [E] _ => None)
+
+impl Matroid<E> for GraphicMatroid<V, E>:
+    fn rebuild(mut self, take: [E]Bool):
+        self.take = take
+        var adj: [V]List<E> = [V] _ => []
+        for e in E:
+            if take[e]:
+                adj[edges[e].u].push(e)
+                adj[edges[e].v].push(e)
+        var seen: [V]Bool = false
+        var clock = 0
+        for r in V:
+            if seen[r]: continue
+            seen[r] = true
+            comp[r] = r.to_idx
+            tin[r] = clock
+            clock += 1
+            var stack: List<(V, Int)> = [(r, 0)]
+            while let (x, i) = stack.pop():
+                if i == adj[x].len:
+                    tout[x] = clock
+                    continue
+                stack.push((x, i + 1))
+                let e = adj[x][i]
+                let y = if edges[e].u == x: edges[e].v else: edges[e].u
+                if seen[y]: continue
+                seen[y] = true
+                comp[y] = r.to_idx
+                below[e] = Some(y)
+                tin[y] = clock
+                clock += 1
+                stack.push((y, 0))
+
+    fn can_add(self, e: E) -> Bool = not take[e] and comp[edges[e].u] != comp[edges[e].v]
+
+    fn can_swap(self, out: E, e: E) -> Bool:
+        if not take[out] or take[e]: return false
+        let (u, v) = (edges[e].u, edges[e].v)
+        if comp[u] != comp[v]: return true
+        let c = below[out]!
+        let inside = (x: V) => tin[c] <= tin[x] and tin[x] < tout[c]
+        inside(u) != inside(v)
 
 /// O(E) per rebuild. Independent sets take at most `limit[c]` elements of each colour.
 pub struct ColorMatroid<E, C>:
     color: [E]C
     limit: [C]Int
+    var take: [E]Bool
+    used: [C]Int
     /// The partition matroid of `color`: a set is independent when it holds at most `limit[c]`
     /// elements of each colour `c`.
     ///
@@ -2143,15 +2228,126 @@ pub struct ColorMatroid<E, C>:
     /// empty: with no elements only the empty set exists and every query is `false`
     /// traps: when some `limit[c]` is negative
     /// example: `let col: [0..3]0..2 = [0, 0, 1]; let lim: [0..2]Int = [1, 1]; var m = ColorMatroid(col, lim); m.rebuild([true, false, false]); not m.can_add(1) and m.can_add(2)`
-    pub fn new(color: [E]C, limit: [C]Int) -> ColorMatroid<E, C> = todo
+    pub fn new(color: [E]C, limit: [C]Int) -> ColorMatroid<E, C>:
+        for c in C: assert limit[c] >= 0, "`ColorMatroid` needs every `limit[c] >= 0`"
+        ColorMatroid(color, limit, [E] _ => false, [C] _ => 0)
+
+impl Matroid<E> for ColorMatroid<E, C>:
+    fn rebuild(mut self, take: [E]Bool):
+        self.take = take
+        for c in C: used[c] = 0
+        for e in E:
+            if take[e]: used[color[e]] += 1
+
+    fn can_add(self, e: E) -> Bool = not take[e] and used[color[e]] < limit[color[e]]
+
+    fn can_swap(self, out: E, e: E) -> Bool =
+        take[out] and not take[e] and (color[out] == color[e] or used[color[e]] < limit[color[e]])
 
 /// The minimum-cost circulation of arcs with lower and upper bounds and costs, negative cycles
-/// included (cost scaling); `None` when no circulation meets the bounds.
+/// included; `None` when no circulation meets the bounds.
 ///
-/// cost: O(V² E) worst case, like `max_flow`
-/// ties: among cheapest circulations, the one cost scaling finds
+/// Finds any circulation with `circulation`, then cancels negative cycles of its residual network
+/// with `CostFlow.cancel_cycles`.
+///
+/// cost: one `circulation`, then one `cancel_cycles` on V vertices and 2E arcs
+/// ties: among cheapest circulations, the one `cancel_cycles` finds
 /// order: `flow` keyed by `E`
 /// traps: when some `lo > hi`
 /// example: `let es: [0..2](u: 0..2, v: 0..2, lo: Int, hi: Int, cost: Int) = [(u: 0, v: 1, lo: 0, hi: 2, cost: -3), (u: 1, v: 0, lo: 0, hi: 5, cost: 1)]; min_cost_circulation(es) == Some((cost: -4, flow: [2, 2]))`
 /// example: `let es: [0..1](u: 0..2, v: 0..2, lo: Int, hi: Int, cost: Int) = [(u: 0, v: 1, lo: 1, hi: 1, cost: 0)]; min_cost_circulation(es) == None`
-pub fn min_cost_circulation<V, E>(arcs: [E](u: V, v: V, lo: Int, hi: Int, cost: Int)) -> ?(cost: Int, flow: [E]Int) = todo
+pub fn min_cost_circulation<V, E>(arcs: [E](u: V, v: V, lo: Int, hi: Int, cost: Int)) -> ?(cost: Int, flow: [E]Int):
+    let base = circulation([E] e => (u: arcs[e].u, v: arcs[e].v, lo: arcs[e].lo, hi: arcs[e].hi)) ?? return None
+    var g = CostFlow<V>()
+    var up: List<Arc> = []
+    var down: List<Arc> = []
+    for e in E:
+        up.push(g.add(arcs[e].u, arcs[e].v, Some(arcs[e].hi - base[e]), arcs[e].cost))
+        down.push(g.add(arcs[e].v, arcs[e].u, Some(base[e] - arcs[e].lo), -arcs[e].cost))
+    g.cancel_cycles()
+    let flow = [E] e => base[e] + g.flow(up[e.to_idx]) - g.flow(down[e.to_idx])
+    var cost = 0
+    for e in E: cost += flow[e] * arcs[e].cost
+    Some((cost:, flow:))
+
+@test
+fn matroid_intersections_match_brute_force():
+    domain V = 0..4
+    domain E = 0..7
+    domain C = 0..3
+    for _ in 0..120:
+        let es: [E](u: V, v: V) = [E] _ => (u: V.nth(rand(0, 3)), v: V.nth(rand(0, 3)))
+        let col: [E]C = [E] _ => C.nth(rand(0, 2))
+        let lim: [C]Int = [C] _ => rand(0, 2)
+        let wt: [E]Int = [E] _ => rand(-3, 5)
+        var best_n = -1
+        var best_w = 0
+        for mask in 0..1 << E.count:
+            let s: [E]Bool = [E] e => (mask >> e.to_idx) & 1 == 1
+            var d = Dsu<V>()
+            var used: [C]Int = 0
+            var ok = true
+            var n = 0
+            var tw = 0
+            for e in E:
+                if not s[e]: continue
+                if not d.unite(es[e].u, es[e].v): ok = false
+                used[col[e]] += 1
+                if used[col[e]] > lim[col[e]]: ok = false
+                n += 1
+                tw += wt[e]
+            if not ok: continue
+            if n > best_n or (n == best_n and tw > best_w):
+                best_n = n
+                best_w = tw
+        for weighted in [false, true]:
+            let got = matroid_intersection(
+                GraphicMatroid(es),
+                ColorMatroid(col, lim),
+                weight: if weighted: Some((e: E) => wt[e]) else: None,
+            )
+            var d = Dsu<V>()
+            var used: [C]Int = 0
+            var n = 0
+            var tw = 0
+            for e in E:
+                if not got[e]: continue
+                assert d.unite(es[e].u, es[e].v)
+                used[col[e]] += 1
+                assert used[col[e]] <= lim[col[e]]
+                n += 1
+                tw += wt[e]
+            assert n == best_n
+            if weighted: assert tw == best_w
+
+@test
+fn min_cost_circulations_match_brute_force():
+    domain V = 0..4
+    domain E = 0..5
+    for _ in 0..150:
+        let es: [E](u: V, v: V, lo: Int, hi: Int, cost: Int) = [E] _ => do:
+            let lo = rand(0, 1)
+            (u: V.nth(rand(0, 3)), v: V.nth(rand(0, 3)), lo:, hi: lo + rand(0, 2), cost: rand(-4, 4))
+        var best: ?Int = None
+        var f: [E]Int = 0
+        for code in 0..3 ** E.count:
+            var ok = true
+            var net: [V]Int = 0
+            for e in E:
+                f[e] = es[e].lo + code / 3 ** e.to_idx % 3
+                if f[e] > es[e].hi: ok = false
+                net[es[e].u] -= f[e]
+                net[es[e].v] += f[e]
+            if not ok or [v for v in V if net[v] != 0].len > 0: continue
+            var c = 0
+            for e in E: c += f[e] * es[e].cost
+            if best == None or c < best!: best = Some(c)
+        let got = min_cost_circulation(es)
+        assert (got?.cost) == best
+        if let r = got:
+            var net: [V]Int = 0
+            for e in E:
+                assert es[e].lo <= r.flow[e] and r.flow[e] <= es[e].hi
+                net[es[e].u] -= r.flow[e]
+                net[es[e].v] += r.flow[e]
+            for v in V: assert net[v] == 0
