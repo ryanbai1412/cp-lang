@@ -1,6 +1,6 @@
 //! `cpl fmt`.
 
-use crate::{format, FormatError};
+use crate::{format, format_with, FormatError, Style};
 use cpl_diag::LineIndex;
 use std::io::Write;
 use std::path::{Path, PathBuf};
@@ -109,6 +109,7 @@ pub fn run_with(
     files.dedup();
 
     let (mut changed, mut failed) = (0usize, 0usize);
+    let mut reported = std::collections::HashSet::new();
     let mut reports = Vec::new();
     for file in &files {
         let name = file.display().to_string();
@@ -125,7 +126,15 @@ pub fn run_with(
             Err(e) => entry.error = Some(format!("can't read {name}: {e}")),
         }
         if entry.error.is_none() {
-            match format(&entry.src) {
+            let (style, read) = Style::discover(file);
+            if let Some((toml, errors)) = read {
+                if reported.insert(toml.clone()) {
+                    for error in errors {
+                        let _ = writeln!(stderr, "{}: {error}", toml.display());
+                    }
+                }
+            }
+            match format_with(&entry.src, &style) {
                 Ok(out) if out == entry.src => entry.ok = true,
                 Ok(out) => {
                     entry.changed = true;

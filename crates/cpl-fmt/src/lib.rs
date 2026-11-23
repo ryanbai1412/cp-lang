@@ -1,4 +1,5 @@
-//! Source formatter: one canonical style, no options.
+//! Source formatter: one opinionated style; a project may change only the
+//! indent and line widths ([`Style`], `cp.toml [fmt]`).
 //!
 //! [`format`] works on the token stream and the comments the lexer keeps,
 //! not on the syntax tree, so it formats code the parser cannot read yet
@@ -7,15 +8,18 @@
 //! both before it returns: the laid-out text is lexed again and compared
 //! token by token with the input, and sorting may only move whole lines.
 //!
-//! The style: four spaces per level, at most 100 columns, one blank line
+//! The style: four spaces per level, at most 100 columns (both [`Style`]), one blank line
 //! at most between statements, a bracketed list either on one line or one
 //! element per line with a trailing comma.
 
 mod imports;
 mod layout;
 mod spacing;
+mod style;
 
 pub mod cli;
+
+pub use style::{Style, StyleError};
 
 #[cfg(test)]
 mod tests;
@@ -26,10 +30,11 @@ use cpl_syntax::{Token, TokenKind};
 /// Name of this crate.
 pub const NAME: &str = env!("CARGO_PKG_NAME");
 
-/// Spaces per indentation level.
+/// Spaces per indentation level, by default.
 pub const INDENT: usize = 4;
 
-/// Lines are broken to stay within this many columns where a break is legal.
+/// Lines are broken to stay within this many columns where a break is legal,
+/// by default.
 pub const MAX_WIDTH: usize = 100;
 
 /// Why a file was not formatted.
@@ -80,13 +85,18 @@ pub(crate) struct Comment<'a> {
     pub blank_before: bool,
 }
 
-/// Formats a file.
+/// Formats a file in the default style.
 pub fn format(src: &str) -> Result<String, FormatError> {
+    format_with(src, &Style::default())
+}
+
+/// Formats a file in `style`.
+pub fn format_with(src: &str, style: &Style) -> Result<String, FormatError> {
     let lexed = cpl_syntax::lex(src);
     if !lexed.diagnostics.is_empty() {
         return Err(FormatError::Lex(lexed.diagnostics));
     }
-    let out = layout::render(src, &lexed);
+    let out = layout::render(src, &lexed, style);
     verify(src, &lexed.tokens, &out)?;
     let sorted = imports::sort_use_runs(&out);
     imports::verify(&out, &sorted)?;

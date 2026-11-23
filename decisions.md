@@ -6704,3 +6704,20 @@ delete `scripts/gen.py`.
 - **Reverse.** Add the stamp in `crates/cpl-fmt` and run `cpl fmt` over the
   formatted set, as was done for decisions.md 276.
 
+## 297. `cp.toml [fmt]` sets the indent and line widths, and nothing else (2026-11-22)
+
+- **Decision.** `cpl fmt` reads `indent_width` (2 to 8, default 4) and
+  `line_width` (40 to 200, default 100) from the nearest `cp.toml [fmt]`.
+  Every other layout choice stays fixed. A bad line is reported with its
+  line number, and the good lines still apply. `cpl_fmt::format` keeps the
+  default style; `format_with(src, &Style)` takes a project's style.
+- **Why.** Ryan's v0.3 target is for fmt to "just work", be configurable,
+  and have very opinionated defaults. Indent and width are the two choices
+  teams most often differ on, and neither changes what a program means. The
+  formatter re-checks the tokens of every result whatever the style. With
+  more options, corpus files and docs would stop looking alike.
+  `spec/tools/fmt-lint.md` still says "no options"; spec was asked to amend
+  it (`plan/domains/spec/worklog.md`).
+- **Reverse.** Delete `crates/cpl-fmt/src/style.rs`, and make `format_with`
+  private again.
+

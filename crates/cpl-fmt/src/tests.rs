@@ -653,3 +653,47 @@ fn sorts_use_lines_inside_a_block() {
     let want = "fn f():\n    use std.dsu\n    use std.seq\n    print(1)\n";
     assert_eq!(fmt(src), want);
 }
+
+#[test]
+fn cp_toml_sets_the_indent_and_line_widths() {
+    let (style, errors) = Style::from_toml(
+        "[lints]\nindent_width = 9\n\n[fmt]\nindent_width = 2  # narrow\nline_width = 60\n",
+    );
+    assert_eq!(errors, []);
+    assert_eq!(
+        style,
+        Style {
+            indent: 2,
+            line_width: 60
+        }
+    );
+    let (style, errors) =
+        Style::from_toml("[fmt]\nindent_width = 1\ntabs = true\nline_width = 80\n");
+    let lines: Vec<usize> = errors.iter().map(|e| e.line).collect();
+    assert_eq!(lines, [2, 3]);
+    assert_eq!(
+        errors[0].to_string(),
+        "line 2: `indent_width` is a number from 2 to 8, not `1`"
+    );
+    // The good line still applies.
+    assert_eq!(style.line_width, 80);
+    assert_eq!(style.indent, INDENT);
+}
+
+#[test]
+fn a_style_changes_only_the_widths() {
+    let src = "fn f(a: Int) -> Int:\n    if a > 0:\n        return g(alpha_value_one, beta_value_two, gamma_value_three)\n    a\n";
+    let narrow = Style {
+        indent: 2,
+        line_width: 40,
+    };
+    let out = format_with(src, &narrow).unwrap();
+    assert_eq!(
+        out,
+        "fn f(a: Int) -> Int:\n  if a > 0:\n    return g(\n      alpha_value_one,\n      beta_value_two,\n      gamma_value_three,\n    )\n  a\n"
+    );
+    assert_eq!(format_with(&out, &narrow).unwrap(), out);
+    // Back to the default style gives the default layout.
+    assert_eq!(format(&out).unwrap(), fmt(src));
+    assert!(cpl_syntax::parse_file(&out).diagnostics.is_empty());
+}

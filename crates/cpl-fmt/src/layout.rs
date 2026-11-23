@@ -7,7 +7,7 @@
 //! one element per line, and the same rule is applied to each element.
 
 use crate::spacing::{self, Role};
-use crate::{Comment, Tok, INDENT, MAX_WIDTH};
+use crate::{Comment, Style, Tok};
 use cpl_syntax::{Lexed, TokenKind as K};
 
 /// A bracket with no commas in it is opened up only when what it holds is
@@ -32,7 +32,8 @@ struct OutLine {
     blank_before: bool,
 }
 
-pub(crate) fn render(src: &str, lexed: &Lexed) -> String {
+pub(crate) fn render(src: &str, lexed: &Lexed, style: &Style) -> String {
+    let indent = style.indent;
     let lines = logical_lines(src, lexed);
     let mut out: Vec<OutLine> = Vec::new();
     // Source column of the open block at each depth, to place a comment
@@ -43,7 +44,7 @@ pub(crate) fn render(src: &str, lexed: &Lexed) -> String {
         for comment in &line.leading {
             let depth = comment_depth(comment.col, line.depth, prev_depth, &widths);
             out.push(OutLine {
-                indent: depth * INDENT,
+                indent: depth * indent,
                 code: String::new(),
                 comment: Some(comment.text.trim_end().to_string()),
                 blank_before: comment.blank_before,
@@ -64,15 +65,17 @@ pub(crate) fn render(src: &str, lexed: &Lexed) -> String {
             toks: &line.toks,
             roles: &roles,
             out: &mut out,
-            base_indent: line.depth * INDENT,
-            cont: line.depth * INDENT,
+            base_indent: line.depth * indent,
+            cont: line.depth * indent,
+            indent,
+            width: style.line_width,
             pending: None,
             at_line_start: true,
             prev: None,
         };
-        emitter.start_line(line.depth * INDENT, line.blank_before);
+        emitter.start_line(line.depth * indent, line.blank_before);
         let nodes = tree(&line.toks);
-        emitter.seq(&nodes, line.depth * INDENT);
+        emitter.seq(&nodes, line.depth * indent);
         emitter.flush_pending();
         if let Some(comment) = line.trailing {
             out.last_mut().unwrap().comment = Some(comment.trim_end().to_string());
@@ -338,6 +341,10 @@ struct Emitter<'a, 'b> {
     base_indent: usize,
     /// Indentation of a line started in the middle of an element.
     cont: usize,
+    /// Spaces per level.
+    indent: usize,
+    /// The column limit.
+    width: usize,
     /// A trailing comment waiting for the comma that may follow its token.
     pending: Option<&'b str>,
     at_line_start: bool,
@@ -351,7 +358,7 @@ impl<'a, 'b> Emitter<'a, 'b> {
                 .prev
                 .is_some_and(|p| self.toks[p].kind.continues_line())
         {
-            self.cont + INDENT
+            self.cont + self.indent
         } else {
             self.cont
         }
@@ -523,7 +530,7 @@ impl<'a, 'b> Emitter<'a, 'b> {
         let forced = nodes.iter().position(|n| self.must_break(n));
         if forced.is_none() {
             let mut prev = if self.at_line_start { None } else { self.prev };
-            if self.column() + self.flat_width(nodes, &mut prev) <= MAX_WIDTH {
+            if self.column() + self.flat_width(nodes, &mut prev) <= self.width {
                 return self.flat(nodes);
             }
         }
@@ -560,7 +567,7 @@ impl<'a, 'b> Emitter<'a, 'b> {
     /// Writes a bracket pair with one element per line.
     fn broken(&mut self, open: usize, items: &[Node], close: usize, indent: usize) {
         let outer_cont = self.cont;
-        let inner = indent + INDENT;
+        let inner = indent + self.indent;
         self.tok(open);
         self.cont = inner;
         let elements: Vec<&[Node]> = items
