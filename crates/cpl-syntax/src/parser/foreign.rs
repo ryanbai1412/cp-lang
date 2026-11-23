@@ -298,6 +298,22 @@ impl<'a> Parser<'a> {
         );
     }
 
+    /// `*it`, `*max_element(..)`: C's dereference. One error with the fix
+    /// that drops the `*`; the value after it is read as written.
+    pub(super) fn c_deref(&mut self) {
+        let star = self.span();
+        self.bump();
+        self.recovered(
+            Diagnostic::error(
+                codes::REMOVED_SYNTAX,
+                star,
+                "CP Lang has no pointers: a value is used as it is, without `*`",
+            )
+            .with_help("drop the `*`")
+            .with_fix("drop the `*`", star, ""),
+        );
+    }
+
     /// `(long long)n`, `(double)x`: a C cast. One error, with the
     /// conversion call: `Int(n)`, `F64(x)`.
     pub(super) fn c_cast(&mut self) -> Option<Expr> {

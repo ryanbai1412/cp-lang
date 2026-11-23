@@ -943,6 +943,9 @@ pub(super) fn foreign_call(name: &str) -> Option<&'static str> {
         }
         "input" | "cin" | "scanf" => Some("read the input with `read`: `let n: Int = read()`"),
         "cout" | "printf" | "puts" => Some("write the output with `print`: `print(a, b)`"),
+        "max_element" | "min_element" => {
+            Some("a list's largest and smallest values are `a.max()!` and `a.min()!`")
+        }
         "memset" => Some("a list is filled with its `fill`: `a.fill(0)`"),
         "make_pair" | "make_tuple" => Some("a tuple is written in parentheses: `(a, b)`"),
         "endl" => Some("`print` ends the line itself: `print(a, b)` writes `a b` and a newline"),
@@ -999,7 +1002,7 @@ pub(super) fn foreign_method(name: &str) -> Option<&'static str> {
     )
 }
 
-/// `sort(a.begin(), a.end())` as `a.sort()`.
+/// `sort(a.begin(), a.end())` as `a.sort()`, `max_element(..)` as `a.max()!`.
 pub(super) fn iterator_pair_fix(src: &str, base: Span, name: Span) -> Option<Fix> {
     let x = src.get(base.start as usize..base.end as usize)?;
     let tail = format!("(), {x}.end())");
@@ -1007,11 +1010,16 @@ pub(super) fn iterator_pair_fix(src: &str, base: Span, name: Span) -> Option<Fix
         return None;
     }
     let head = src.get(..base.start as usize)?;
-    let f = ["sort", "reverse"]
-        .into_iter()
-        .find(|f| head.ends_with(&format!("{f}(")))?;
+    let (f, ours) = [
+        ("sort", "sort()"),
+        ("reverse", "reverse()"),
+        ("max_element", "max()!"),
+        ("min_element", "min()!"),
+    ]
+    .into_iter()
+    .find(|(f, _)| head.ends_with(&format!("{f}(")))?;
     let start = base.start - f.len() as u32 - 1;
-    let new = format!("{x}.{f}()");
+    let new = format!("{x}.{ours}");
     Some(Fix {
         title: format!("write `{new}`"),
         edits: vec![(Span::new(start, name.end + tail.len() as u32), new)],
