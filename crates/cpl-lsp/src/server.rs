@@ -247,7 +247,8 @@ impl Server {
                             analysis: &analysis,
                             offset,
                         };
-                        complete::member_hover(&cursor, &mut self.std)
+                        crate::syntax_hover::hover(&analysis, offset)
+                            .or_else(|| complete::member_hover(&cursor, &mut self.std))
                     }
                 };
                 let Some(mut hover) = hover else {

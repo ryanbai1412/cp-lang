@@ -15,6 +15,7 @@ mod imports;
 mod outline;
 mod rename;
 mod server;
+pub mod syntax_hover;
 pub mod transport;
 mod uri;
 

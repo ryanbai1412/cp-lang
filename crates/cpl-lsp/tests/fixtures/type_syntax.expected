@@ -1,0 +1,27 @@
+== diagnostics
+(none)
+
+== hover @ 3:8
+```cp
+`[0..n]Int`: an array of `Int` with one cell for each `Int` in `0..n`; an index of that type is in bounds by its type
+```
+
+== hover @ 4:17
+```cp
+`?Int`: a value of type `Int`, or `None`
+```
+
+== hover @ 5:12
+```cp
+`[n]`: an array with one cell for each index in `0..n`; `[n]T` is its type
+```
+
+== hover @ 6:13
+```cp
+`[n]`: an array with one cell for each index in `0..n`; `[n]T` is its type
+```
+
+== hover @ 7:19
+```cp
+`0..n`: an `Int` known to lie in `0..n` (the upper end excluded)
+```
