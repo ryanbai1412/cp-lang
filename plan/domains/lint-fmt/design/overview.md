@@ -15,22 +15,30 @@ line-1 stamp, each with its own verification.
 **Lint.** One engine, two kinds of lint, data-driven:
 
 ```text
-source --parse--> syntax tree --check--> typed IR + facts --> lint engine --> findings + fixes
+source --parse--> syntax tree --check--> checked tree + facts --> lint engine --> findings + fixes
                     |                         |                 ^
                     +---- syntactic lints ----+                 |
                                     lint records + @lint (data) +
 ```
 - **Syntactic lints** (spellings, removed syntax) run on the tree, need no types.
-- **Semantic lints** run on typed IR and read the checker's **fact table**
+- **Semantic lints** run on the checked tree and read the checker's **fact table**
   (ranges, proven indexes, domain sizes, trip counts, call costs), the same
   table LSP hints and `cpl explain` read. The linter does no analysis of its own.
-- **Shape recognizers** classify loops once per file (fold, search, build,
+  Compiler owns the table's type in `cpl-check`; lint-fmt drives its content
+  and keeps the contract tests (`src/fact_tests.rs`, `src/facts.rs`). Each fact
+  records whether it needed `cpl-prover`, which is native-only. A lint that
+  needs something only IR has asks compiler for a `cpl-check` query; there is no
+  `cpl-lint -> cpl-ir` edge.
+- **Loop forms** classify loops once per file (fold, search, build,
   scan, bisect, window, union-find, sieve, lifting, copy-writeback, sentinel,
-  index-space); lints match shapes, so `for i in 0..n` and `while` agree.
-- **Libraries declare lints:** `@lint(name, from: <shape or pattern>, to:
+  index-space); lints match forms, so `for i in 0..n` and `while` agree.
+  Forms LSP or `cpl explain` show are facts in the `cpl-check` table.
+  ("Shapes" already means grid shapes in `cpl-check`.)
+- **Libraries declare lints:** `@lint(name, from: <form or pattern>, to:
   "<replacement>", tier: fix)` beside the API; user libraries get the same.
-- **One record per lint** in `spec/lints/<name>/` (`lint.toml`, `before.cp`,
-  `after.cp`, `near_miss.cp`, `README.md`); the Rust registry, the lint table in
+- **One record per lint** in `spec/lints/<name>/` (`before.cp`, `after.cp`,
+  `near_miss.cp`, `explain.md`, plus `lint.toml` for code, level and tier when
+  the generator lands, migrating all records in that commit); the Rust registry, the lint table in
   `spec/diagnostics.md`, site pages and `cpl explain` are generated from it.
 - **Fix tiers:** `fix` (applied by `--fix`), `fix?` (review), `warn`, `doc`.
   A fix is kept only if the fixed file checks; tests require before/after to
@@ -63,8 +71,10 @@ source --parse--> syntax tree --check--> typed IR + facts --> lint engine --> fi
    (the ratchet only goes down).
 5. Registry, `spec/diagnostics.md` and records agree (a test fails otherwise).
 6. A user-library `@lint` fires and fixes in a test; `crates/cpl-lint` names no
-   stdlib API.
-7. Same findings from CLI, LSP and wasm on the corpus.
+   stdlib API (a shrink-only `lint_std_names` ratchet, 42 literals today, tech-debt's count).
+7. Same findings from CLI, LSP and wasm on the corpus; wasm is compared on the
+   prover-free facts. CLI = LSP holds today on `spec/std`
+   (`corpus_tests::the_cli_and_the_editor_read_the_same_facts`).
 8. Lint and fmt of the largest corpus file each under 50 ms.
 
 ## Deep dives
