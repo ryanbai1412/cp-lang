@@ -9,6 +9,7 @@ use crate::conformance::{self, Expect};
 use crate::corpus;
 use crate::runner::{self, CompileError};
 use crate::scoreboard::{CaseOutcome, SuiteReport};
+use crate::variants;
 
 #[derive(Clone, Debug)]
 enum DiffTarget {
@@ -20,6 +21,12 @@ enum DiffTarget {
         id: String,
         spec_path: PathBuf,
         tests: Vec<PathBuf>,
+    },
+    /// A corpus `port.cp` with side-effect probes (`variants`), on its smallest input.
+    Variant {
+        id: String,
+        port_path: PathBuf,
+        input: PathBuf,
     },
 }
 
@@ -62,6 +69,30 @@ fn discover(root: &Path, filter: Option<&str>) -> Vec<DiffTarget> {
             spec_path: prob.spec_path,
             tests: prob.tests.into_iter().map(|(inp, _)| inp).collect(),
         });
+    }
+
+    for prob in corpus::discover_file(root, None, "port.cp") {
+        let id = format!("variant/{}", prob.id);
+        if filter.is_some_and(|f| !id.contains(f)) {
+            continue;
+        }
+        let smallest = prob
+            .tests
+            .into_iter()
+            .map(|(inp, _)| inp)
+            .min_by_key(|inp| {
+                (
+                    std::fs::metadata(inp).map(|m| m.len()).unwrap_or(u64::MAX),
+                    inp.clone(),
+                )
+            });
+        if let Some(input) = smallest {
+            targets.push(DiffTarget::Variant {
+                id,
+                port_path: prob.spec_path,
+                input,
+            });
+        }
     }
 
     targets
@@ -286,6 +317,33 @@ fn run_one(db: &mut Database, cache_dir: &Path, target: &DiffTarget) -> (String,
             }
             (id.clone(), spec_path.clone(), inps, true)
         }
+        DiffTarget::Variant {
+            id,
+            port_path,
+            input,
+        } => match std::fs::read(input) {
+            Ok(bytes) => (
+                id.clone(),
+                port_path.clone(),
+                vec![(
+                    input
+                        .file_name()
+                        .map(|n| n.to_string_lossy().to_string())
+                        .unwrap_or_default(),
+                    bytes,
+                )],
+                true,
+            ),
+            Err(e) => {
+                return (
+                    id.clone(),
+                    CaseOutcome {
+                        status: "error".into(),
+                        detail: format!("cannot read the input: {e}"),
+                    },
+                );
+            }
+        },
     };
 
     let text = match std::fs::read_to_string(&path) {
@@ -301,6 +359,26 @@ fn run_one(db: &mut Database, cache_dir: &Path, target: &DiffTarget) -> (String,
         }
     };
     let path_str = path.to_string_lossy();
+    let text = if matches!(target, DiffTarget::Variant { .. }) {
+        let skip = |detail: &str| CaseOutcome {
+            status: "skip".into(),
+            detail: detail.into(),
+        };
+        if runner::compile_program(db, &path_str, &text).is_err() {
+            return (id, skip("the port does not compile yet"));
+        }
+        let Some((variant, _)) = variants::build(db, &path_str, &text) else {
+            return (id, skip("no probe checks"));
+        };
+        // Kept for reproducing a mismatch: `cpl run` it next to the port.
+        let dir = cache_dir.join("variants");
+        let _ = std::fs::create_dir_all(&dir).and_then(|_| {
+            std::fs::write(dir.join(format!("{}.cp", id.replace('/', "_"))), &variant)
+        });
+        variant
+    } else {
+        text
+    };
     let compiled = match runner::compile_program(db, &path_str, &text) {
         Ok(c) => c,
         Err(CompileError::Diagnostics(_)) => {
@@ -449,7 +527,9 @@ pub fn run(root: &Path, filter: Option<&str>) -> SuiteReport {
         }))
         .unwrap_or_else(|_| {
             let id = match target {
-                DiffTarget::Conformance { id, .. } | DiffTarget::Corpus { id, .. } => id.clone(),
+                DiffTarget::Conformance { id, .. }
+                | DiffTarget::Corpus { id, .. }
+                | DiffTarget::Variant { id, .. } => id.clone(),
             };
             (
                 id,

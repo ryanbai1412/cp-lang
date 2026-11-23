@@ -6,6 +6,7 @@ mod lsp;
 pub mod runner;
 pub mod scoreboard;
 pub mod spec_blocks;
+pub mod variants;
 
 use std::path::{Path, PathBuf};
 

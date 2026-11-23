@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-23
+- `cpl-conform diff` runs `variant/<problem>`: each corpus `port.cp` with tests, on its smallest input, plus probes that print every top-level `var` after each top-level loop and write it through a `mut` parameter, a closure capture, a `mut` place and a copy (`crates/cpl-conform/src/variants.rs`; probes the checker rejects are dropped). 368 variants, 230 pass, 4 mismatch, 1 cxx_err, 3 interpreter timeouts (the base ports time out too), 130 skip. Bugs, routed to compiler: printing a `HashMap` (cf2066c, cf2053f, cco20p5) or an `Interner` (ucup4s25c) gives a different order in the interpreter and the C++; printing a `SortedSet` shows its treap internals in the interpreter and does not compile in C++ (`const std::vector<long long>&` from `std::vector<int>`, cf2262b). The base ports agree; only the probed variants diverge. Reproduce with the variant `cpl-conform diff` writes under `target/conform-cxx/variants/`.
 - Ratchet (decision 411): `near_dup_fns` 10 (cross-crate fn pairs at >= 0.75 shingle similarity; 3 are `collect` copies of `crates/cpl-cli/src/migrate.rs`), `consumer_rederived` 61 (tool lines comparing text against a type name, 15 in `crates/cpl-lint/src/typed.rs`, 12 in `crates/cpl-stress/src/spec/build.rs`), and `rs_near_cap` (14 files) now fails a file entering the band. `crate_edges` already refused unlisted edges. `python3 -m unittest scripts/test_debt_ratchet.py`: 22 OK.
 
 ## 2026-11-22

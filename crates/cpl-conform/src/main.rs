@@ -14,7 +14,8 @@ suites:
   corpus          corpus/problems/<id>/spec.cp on tests/*.in vs *.ans
   docs            /// example: lines in std/*.cp
   spec-blocks     fenced cp blocks in spec/core/*.md and spec/lib/*.md
-  diff            interpreter vs g++ -O2 -std=c++17 differential
+  diff            interpreter vs g++ -O2 -std=c++17 differential, with
+                  side-effect variants of corpus ports (variant/*)
   all             all five suites (default if no suite is named)
 
 options:

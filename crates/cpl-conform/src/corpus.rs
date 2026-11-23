@@ -13,6 +13,11 @@ pub struct CorpusProblem {
 }
 
 pub fn discover(root: &Path, filter: Option<&str>) -> Vec<CorpusProblem> {
+    discover_file(root, filter, "spec.cp")
+}
+
+/// Problems with a `file` (`spec.cp`, `port.cp`) program; `spec_path` is that file.
+pub fn discover_file(root: &Path, filter: Option<&str>, file: &str) -> Vec<CorpusProblem> {
     let dir = root.join("corpus").join("problems");
     let Ok(entries) = std::fs::read_dir(&dir) else {
         return Vec::new();
@@ -21,7 +26,7 @@ pub fn discover(root: &Path, filter: Option<&str>) -> Vec<CorpusProblem> {
         .flatten()
         .filter_map(|e| {
             let name = e.file_name().to_string_lossy().to_string();
-            let spec_path = e.path().join("spec.cp");
+            let spec_path = e.path().join(file);
             if spec_path.is_file() {
                 if let Some(f) = filter {
                     if !name.contains(f) {
@@ -39,7 +44,7 @@ pub fn discover(root: &Path, filter: Option<&str>) -> Vec<CorpusProblem> {
     ids.into_iter()
         .map(|id| {
             let prob_dir = dir.join(&id);
-            let spec_path = prob_dir.join("spec.cp");
+            let spec_path = prob_dir.join(file);
             let tests_dir = prob_dir.join("tests");
             let tests = runner::walk_files(&tests_dir, "in")
                 .into_iter()
