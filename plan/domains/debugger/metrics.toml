@@ -11,31 +11,31 @@ target = "every seeded bug, one or more per P0 class"
 [[metric]]
 name = "seeded_bugs_median_s"
 command = "cargo test --release -p cpl-cli --test seeded_bugs -- --nocapture"
-today = "0.72 s median, 1.29 s max (midpoint-overflow); printed, not asserted"
+today = "0.23 s median over 24 seeded bugs (2026-11-22); printed, not asserted"
 target = "median < 1 s, asserted"
 
 [[metric]]
 name = "stress_budget"
 command = "python3 bench/stress/budget.py"
-today = "3/3 pass, max 0.60 s"
+today = "3/3 pass, max 0.67 s"
 target = "every problem < 10 s"
 
 [[metric]]
 name = "ten_million_budget_test"
 command = "cargo test --release -p cpl-interp --test trace_log ten_million -- --ignored --nocapture"
-today = "FAIL on overhead only (all demos compile): scalar 8.48x, array 9.69x untraced; 1.09 s / 1.65 s recorded"
+today = "FAIL on overhead only: scalar 6.10x, array 6.01x untraced; 693 ms / 1.06 s recorded (2026-11-22)"
 target = "pass"
 
 [[metric]]
 name = "trace_overhead_vs_untraced"
 command = "cargo test --release -p cpl-interp --test trace_log ten_million -- --ignored --nocapture"
-today = "scalar 6.65x (150 ms -> 996 ms), array 8.28x (183 ms -> 1.51 s), knapsack demo 1.18x"
+today = "scalar 6.10x (114 ms -> 693 ms), array 6.01x (176 ms -> 1.06 s); demos knapsack 1.15x, shortest_path 1.89x, shows 1.10x; a line-only recorder measured 2.56x / 2.53x (design/trace-replay.md)"
 target = "<= 3x (see plan/QUESTIONS.md: debugger, the 3x bar)"
 
 [[metric]]
 name = "trace_recording_vs_observed"
 command = "cargo test --release -p cpl-interp --test trace_log ten_million -- --ignored --nocapture"
-today = "1.67x scalar, 1.67x array (observed-only alone is 3.98x / 4.95x untraced)"
+today = "2.36x scalar, 2.23x array (observed alone 2.59x / 2.70x untraced)"
 target = "<= 1.5x"
 
 [[metric]]
@@ -47,7 +47,7 @@ target = "< 500 MB"
 [[metric]]
 name = "step_back_max"
 command = "cargo test --release -p cpl-interp --test trace_log ten_million -- --ignored --nocapture"
-today = "20.5 us scalar, 74.7 us array"
+today = "18.6 us scalar, 68.0 us array"
 target = "< 50 ms"
 
 [[metric]]
@@ -71,13 +71,13 @@ target = "pass"
 [[metric]]
 name = "viewer_unit"
 command = "node tools/trace/trace.test.cjs && node tools/trace/state.test.cjs"
-today = "62/62 pass, in scripts/check.sh since 10a551247; browser test crates/cpl-cli/tests/trace_browser.rs passes the 3 demos in 1.18 s, skipped where no Chrome is found (CI today)"
+today = "63/63 pass (39 trace + 24 state), in scripts/check.sh; browser test crates/cpl-cli/tests/trace_browser.rs passes 3 tests on CI (run 45092808001) and fails instead of skipping when CI has no Chrome"
 target = "pass, plus a browser test, both in the gate"
 
 [[metric]]
 name = "debug_demos_compile"
 command = "for f in examples/debugging/*.cp; do target/release/cpl check $f; done"
-today = "3/3; all 3 still spell @brute, not @alt(program)"
+today = "3/3, all spell @alt(program) (2026-11-22)"
 target = "3/3, v0.3 spellings"
 
 [[metric]]
