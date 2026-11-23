@@ -99,6 +99,9 @@ pub fn foreign_member(receiver: Receiver, name: &str) -> Option<&'static str> {
     let own = match name {
         "append" | "push_back" | "add" => "push",
         "pop_back" => "pop",
+        "front" => "first",
+        "back" => "last",
+        "empty" | "isEmpty" => "is_empty",
         "size" | "length" => "len",
         "contains_key" | "containsKey" | "has_key" | "has" | "includes" | "count_of" => "contains",
         "erase" | "discard" | "delete" => "remove",
