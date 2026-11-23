@@ -23,5 +23,5 @@
  "difficulty": "easy",
  "dream": "draft",
  "spec": "draft",
- "notes": "Wire, then print/read"
+ "notes": "Wire, then print/read. tests/NN.in/.ans are transcripts of spec.cp against interactor.py on tests/NN.case."
 }
