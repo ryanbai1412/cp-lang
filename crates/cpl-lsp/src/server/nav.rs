@@ -25,6 +25,22 @@ impl Server {
                     defs.iter().map(|def| self.location(&uri, def)).collect(),
                 ))
             }),
+            "textDocument/linkedEditingRange" => self.position(params).map(|(uri, offset)| {
+                // Only a name declared in this file is safe to edit as one.
+                let Some((target, spans)) = crate::rename::references(&mut self.db, &uri, offset)
+                else {
+                    return Reply::default();
+                };
+                let analysis = self.db.analyze(&uri).expect("references imply an analysis");
+                if !crate::rename::same_file(&target.path, &uri) || spans.len() < 2 {
+                    return Reply::default();
+                }
+                let ranges = spans
+                    .iter()
+                    .map(|&span| range_json(span, &analysis.text, &analysis.lines))
+                    .collect::<Vec<_>>();
+                Reply::result(obj([("ranges", ranges.into())]))
+            }),
             "textDocument/documentLink" => super::uri_of(params).map(|uri| {
                 let uri = uri.to_string();
                 Reply::result(Value::Array(self.use_links(&uri)))

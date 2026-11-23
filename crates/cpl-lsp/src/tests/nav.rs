@@ -181,3 +181,71 @@ fn organize_imports_is_a_source_action() {
     );
     assert_eq!(edits[0].at(&["range", "end"]), &pos(2, 0));
 }
+
+#[test]
+fn linked_editing_covers_a_local_name_and_nothing_else() {
+    let src = "fn f(n: Int) -> Int = n * n\nprint(f(2))\n";
+    let (mut server, _) = open(src);
+    let linked = at(&mut server, "textDocument/linkedEditingRange", 0, 5);
+    let ranges = linked.at(&["ranges"]).as_array().unwrap_or(&[]).to_vec();
+    let columns: Vec<_> = ranges
+        .iter()
+        .map(|r| r.at(&["start", "character"]).clone())
+        .collect();
+    assert_eq!(columns, vec![5.into(), 22.into(), 26.into()], "{linked:?}");
+    // `print` is the prelude's: editing it here would not rename it.
+    assert_eq!(
+        at(&mut server, "textDocument/linkedEditingRange", 1, 2),
+        Value::Null
+    );
+}
+
+#[test]
+fn semantic_tokens_delta_sends_one_splice() {
+    let (mut server, _) = open("let a = 1\nlet b = a\n");
+    let tokens = |server: &mut Server, previous: Option<&str>| {
+        let reply = server.handle(&request(
+            9,
+            match previous {
+                Some(_) => "textDocument/semanticTokens/full/delta",
+                None => "textDocument/semanticTokens/full",
+            },
+            obj([
+                ("textDocument", doc()),
+                (
+                    "previousResultId",
+                    previous.map_or(Value::Null, Value::from),
+                ),
+            ]),
+        ));
+        reply[0].at(&["result"]).clone()
+    };
+    let full = tokens(&mut server, None);
+    let id = full.at(&["resultId"]).as_str().unwrap_or("").to_string();
+    server.handle(&did_change((1, 9), (1, 9), " + a"));
+    let delta = tokens(&mut server, Some(&id));
+    let edits = delta.at(&["edits"]).as_array().unwrap_or(&[]).to_vec();
+    assert_eq!(edits.len(), 1, "{delta:?}");
+    let mut data: Vec<Value> = full.at(&["data"]).as_array().unwrap_or(&[]).to_vec();
+    let start = edits[0].at(&["start"]).as_i64().unwrap_or(0) as usize;
+    let deleted = edits[0].at(&["deleteCount"]).as_i64().unwrap_or(0) as usize;
+    let inserted = edits[0].at(&["data"]).as_array().unwrap_or(&[]).to_vec();
+    data.splice(start..start + deleted, inserted);
+    let fresh = tokens(&mut server, None);
+    assert_eq!(Value::Array(data), fresh.at(&["data"]).clone());
+    // An unknown previous id gets the whole set.
+    assert!(tokens(&mut server, Some("nope"))
+        .at(&["data"])
+        .as_array()
+        .is_some());
+}
+
+#[test]
+fn a_token_edit_is_the_minimal_splice() {
+    use crate::server::tokens::edit;
+    assert_eq!(edit(&[1, 2, 3], &[1, 2, 3]), (3, 0, &[][..]));
+    assert_eq!(edit(&[1, 2, 3], &[1, 9, 3]), (1, 1, &[9][..]));
+    assert_eq!(edit(&[1, 2], &[1, 2, 2]), (2, 0, &[2][..]));
+    assert_eq!(edit(&[2, 2, 2], &[2]), (1, 2, &[][..]));
+    assert_eq!(edit(&[], &[4]), (0, 0, &[4][..]));
+}

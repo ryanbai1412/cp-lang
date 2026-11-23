@@ -25,6 +25,7 @@ mod diagnostics;
 pub(crate) mod format;
 mod nav;
 mod proven;
+pub(crate) mod tokens;
 use proven::Proven;
 
 const METHOD_NOT_FOUND: i32 = -32601;
@@ -47,6 +48,9 @@ pub struct Server {
     /// The client asked for run, stress and trace lenses
     /// (`initializationOptions.codeLens`); VS Code draws its own.
     lenses: bool,
+    /// The semantic tokens last sent for each document, with their result id.
+    tokens: HashMap<String, (u64, Vec<u32>)>,
+    token_ids: u64,
     shutdown: bool,
     exit: Option<i32>,
 }
@@ -67,6 +71,8 @@ impl Server {
             initialized: false,
             owed: None,
             lenses: false,
+            tokens: HashMap::new(),
+            token_ids: 0,
             shutdown: false,
             exit: None,
         }
@@ -418,20 +424,6 @@ impl Server {
                     })
                     .collect();
                 Ok(Reply::result(Value::Array(highlights)))
-            }
-            "textDocument/semanticTokens/full" => {
-                let uri = uri_of(params)?;
-                let Some(analysis) = self.db.analyze(uri) else {
-                    return Ok(Reply::result(obj([("data", Value::Array(Vec::new()))])));
-                };
-                Ok(Reply::result(obj([(
-                    "data",
-                    semantic_tokens(&analysis)
-                        .into_iter()
-                        .map(Value::from)
-                        .collect::<Vec<_>>()
-                        .into(),
-                )])))
             }
             "textDocument/foldingRange" => {
                 let uri = uri_of(params)?;
@@ -799,6 +791,7 @@ impl Server {
                 .navigate(method, params)
                 .or_else(|| self.calls(method, params))
                 .or_else(|| self.format_part(method, params))
+                .or_else(|| self.tokens(method, params))
                 .unwrap_or_else(|| Err((METHOD_NOT_FOUND, format!("`{method}` is not supported")))),
         }
     }
@@ -1051,7 +1044,7 @@ fn capabilities() -> Value {
                                 ),
                             ]),
                         ),
-                        ("full", true.into()),
+                        ("full", obj([("delta", true.into())])),
                     ]),
                 ),
                 ("documentFormattingProvider", true.into()),
@@ -1061,6 +1054,7 @@ fn capabilities() -> Value {
                     obj([("firstTriggerCharacter", "\n".into())]),
                 ),
                 ("inlayHintProvider", true.into()),
+                ("linkedEditingRangeProvider", true.into()),
                 (
                     "codeActionProvider",
                     obj([(

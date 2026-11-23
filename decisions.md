@@ -7468,3 +7468,7 @@ The spec has spelled optionals `Some(x)`/`None` since decision 157, but the chec
 
 Completion, hover and signature help on a type from another module (std included) offer only its `pub` methods and its documented fields; a type with no `pub` methods is plain data and shows every field. `SegTree` offered `m`, `t` and `lz` above `fold`. Methods rank before such a type's fields. The language has no `pub` on fields, and today `t.lz` and a non-`pub` `t.push(1)` still check (QUESTIONS: field visibility). Reason: completion lists what a contestant should call. Reverse: drop `Outline::offers` from `type_members` and the hover filter in `cpl-lsp`.
 
+
+## 352. Run and test stay client commands, not `workspace/executeCommand` (2026-11-23)
+
+`cpl lsp` does not advertise `executeCommandProvider`. Its run, test and stress lenses carry `cpl.exec` with the `cpl` arguments, and each editor runs that in its own terminal (VS Code, Neovim and JetBrains all register it). Reason: the output belongs in a terminal the contestant can read and type into, not in the server's log, and a server-advertised `cpl.exec` would collide with the command VS Code's extension already registers. Reverse: advertise `executeCommandProvider` with `cpl.run` and `cpl.test`, run them from the server and report through `window/showMessage`.
