@@ -143,7 +143,7 @@ The preferred-path half of a link-cut tree over a fixed rooted tree: every node 
 Fields: `lc: [V]?V`, `rc: [V]?V`, `pa: [V]?V`, `stk: List<V>`.
 
 - `fn new<P>(t: Rooted<V, P>) -> PreferredPaths<V>` — \(O(n)\); The preferred paths of `t` with every vertex its own path.
-- `fn access(mut self, v: V) -> yields (lost: ?V, gained: V)` — amortized \(O(\log n)\) switches; Makes the path from the root to `v` one preferred path, yielding each switch bottom-up: `gained` is the top vertex of the path just joined to its parent, `lost` the top vertex of the path that parent stopped preferring, if any.
+- `fn access(mut self, v: V) -> yields (lost: ?V, gained: ?V)` — amortized \(O(\log n)\) switches; Makes the path from the root to `v` one preferred path, yielding each switch bottom-up: `gained` is the top vertex of the path just joined to its parent, `lost` the top vertex of the path that parent stopped preferring, if any.
 - `fn top(self, x: V) -> Bool`
 
 ## `struct LazyLinkCut<V, T, F>(act: Action<T, F>)`
