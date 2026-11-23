@@ -17,16 +17,18 @@ Due about 09:30 PST 11/23, on edge; checkpoints every 2 h in the [worklog](workl
 - [x] A cold run on 3 problems written fresh for it (`bench/stress/cold-*.cp`: max subarray, pair sums, increasing runs): each WA found and shrunk to a minimal case in 0.54-0.70 s, `cpl test` fails on it, and after the one-line fix `cpl test` and `cpl stress` pass (about 1 s). Run by debugger, not a stranger; the stranger run is Milestone 2.
 - [x] The loop tests pass on Linux, macOS and Windows CI: paths, CRLF in saved cases, no `g++` or `sh` needed for a same-file brute (`.github/workflows/debugger-loop.yml`: 41 of 41 on each OS).
 - [x] Neovim (headless loop `editors/neovim/test/stress_loop.lua` green on ubuntu, macOS and Windows in `debugger-loop.yml`; Vim's `stress_loop_vim.sh` green on ubuntu and macOS): `:Cpl stress` (or the LSP Stress lens) then `:Cpl test` runs the loop from the documented one-step setup (`editors/neovim/plugin/cplang.lua`); Vim: `:!cpl stress %` then `:!cpl test %`, documented. Tools owns `editors/` and the LSP; debugger writes the scenario.
-- [x] JetBrains (`CpPluginSmokeTest`, headless IDE, Linux): a `cpl` run configuration with command `stress`, then `test` (`editors/jetbrains/src/main/kotlin/dev/cplang/ide/CplRun.kt`), runs the loop; its output names the saved case.
+- [x] JetBrains (`CpPluginSmokeTest` stress-loop test, headless IDE, green on ubuntu, macOS and Windows in `debugger-loop.yml`): a `cpl` run configuration with command `stress`, then `test` (`editors/jetbrains/src/main/kotlin/dev/cplang/ide/CplRun.kt`), runs the loop; its output names the saved case.
 - [x] VS Code (loop test in `editors/vscode/test/integration/suite.ts` passes on ubuntu, macOS and Windows in `debugger-loop.yml`): Stress lens shows the failing case, Run All Samples reruns `<file>.tests/`; wording is v0.3's (`@alt(program)`, `@check`).
 - [x] Traps name the rule, the place and the locals (all 12 R-codes in `runtime_errors.rs`).
 - [x] Stress guide (`web/content/docs/guides/stress.mdx`, site's) teaches the whole loop including the rerun (section "The loop"); its examples run (they do today).
 
 Milestone 1.5, started the moment the loop above works on all 3 OSes and in all 3 editors: replay (time travel, the +20% trace target) per [design/trace-replay.md](design/trace-replay.md), needing compiler's Interp snapshot/restore. Deferred past both: the `crates/cpl-trace` split, the VM in the browser, `gen<T>` generators beyond a row, DAP and viewer polish. What works stays working.
 
+Every criterion above passes, so Milestone 1.5 has started.
+
 Next:
-1. JetBrains loop green on macOS and Windows (`jetbrains` job in `debugger-loop.yml`).
-2. Milestone 1.5: time travel in every editor (nvim-dap done, `editors/neovim/test/dap_loop.lua`), then replay.
+1. Milestone 1.5: replay. Time travel already runs in every editor under test: VS Code and nvim-dap step back through `cpl dap` (`suite.ts`, `dap_loop.lua`), JetBrains through the trace view (`CpPluginSmokeTest`). Replay first goes from the start of the run to a trace window (compiler's option (a)); checkpoints wait for the VM's explicit frame stack.
+2. `@gen` interpreted when no C++ compiler exists (General fixes owed).
 
 ## Milestone 2
 
