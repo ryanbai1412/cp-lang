@@ -66,6 +66,14 @@ deliberately partial says so with `<!-- spec-only: why -->`, or with
 `<!-- given: ... -->` for the lines it assumes. Enforced by
 `cpl-conform spec-blocks --check`.
 
+### conformance/R8. The suite stays fast enough to run on every land
+
+Every land runs the conformance and spec-block suites, so their cost is
+paid many times a day. Their total CPU time has a budget of about twice
+today's; a case or harness change that doubles it is a regression to fix,
+not a new baseline. CPU time is the measure because wall time moves with
+machine load. Enforced by `scripts/conformance-speed.py`.
+
 ## Checklist
 
 - [ ] One rule per case, cited in `// rule:` (conformance/R1)
@@ -74,6 +82,7 @@ deliberately partial says so with `<!-- spec-only: why -->`, or with
 - [ ] The fix's case fails with the fix reverted (conformance/R4)
 - [ ] Cases over a space come from a table (conformance/R5)
 - [ ] Runs the same in both engines and under sanitizers (conformance/R6)
+- [ ] Keeps the suites within their CPU budget (conformance/R8)
 
 ## Changes
 
