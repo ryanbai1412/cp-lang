@@ -180,14 +180,27 @@ jobs:
           cache-dependency-path: editors/jetbrains/*.gradle*
       - name: JetBrains plugin
         working-directory: editors/jetbrains
-        run: ./gradlew --no-daemon buildPlugin
+        # A cold cache still downloads from Maven Central; back off on a 429.
+        run: |
+          for wait in 0 30 90 180; do
+            sleep "$wait"
+            ./gradlew --no-daemon buildPlugin && exit 0
+          done
+          exit 1
       - name: Collect
+        env:
+          VERSION: ${{ needs.plan.outputs.version }}
+        # Versioned names to keep, unversioned ones for the per-channel URL
+        # (releases/download/<edge|vX>/cp-lang.vsix) the site and docs link to.
         run: |
           mkdir -p dist
           cp editors/vscode/cp-lang.vsix dist/cp-lang.vsix
           zips=(editors/jetbrains/build/distributions/*.zip)
           test "${#zips[@]}" -eq 1
           cp "${zips[0]}" dist/cp-lang-jetbrains.zip
+          v=${VERSION//+/.}
+          cp dist/cp-lang.vsix "dist/cp-lang-$v.vsix"
+          cp dist/cp-lang-jetbrains.zip "dist/cp-lang-jetbrains-$v.zip"
           python3 scripts/release/editors.py dist
       - uses: actions/upload-artifact@v4
         with:
