@@ -24,7 +24,8 @@
 #            and cpl build writes at most 65,536 bytes of C++ for each
 #         6. the count of open known_traps (crates/cpl-cli/tests/known_traps.cp)
 #         7. the site's snippet gate (node web/scripts/gate.mjs): every
-#            program on the site is at least at its declared status
+#            program on the site is at least at its declared status,
+#            and the trace viewer's node tests (tools/trace/*.test.cjs)
 # --full  8. the prover's products fuzzer
 #         9. the budget tests and the front-end latency test, each alone
 #        10. the WebAssembly build and crates/cpl-wasm/tests/smoke.mjs
@@ -429,6 +430,12 @@ else
     CPL="$cpl" node web/scripts/gate.mjs || fail "site snippet gate failed; rerun: CPL=$cpl node web/scripts/gate.mjs"
     cache_save site_gate
 fi
+
+step "trace viewer tests (node tools/trace/*.test.cjs)"
+need node "the trace viewer's tests run on it"
+for t in tools/trace/trace.test.cjs tools/trace/state.test.cjs; do
+    node --test-reporter=dot "$t" || fail "trace viewer tests failed; rerun: node $t"
+done
 
 step "cpl-conform ratchet (all --check against research/scoreboard.json)"
 if [ "$scoreboard_cached" -eq 1 ]; then
