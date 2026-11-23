@@ -3,13 +3,14 @@
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
-/// `d` and `d.cp` both name the problem `d.cp`.
+/// `d` and `d.cp` both name the problem `d.cp`, even beside a built `d`.
 pub fn source_path(arg: &str) -> PathBuf {
     let path = PathBuf::from(arg);
-    if path.extension().is_some() || path.is_file() {
+    let source = path.with_extension("cp");
+    if path.extension().is_some() || (path.is_file() && !source.is_file()) {
         path
     } else {
-        path.with_extension("cp")
+        source
     }
 }
 
