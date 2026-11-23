@@ -587,7 +587,7 @@ fn every_judge_warns_over_24_kb_and_refuses_over_64_kb() {
 /// shrunk C++ prints what the interpreter does on its samples.
 #[test]
 fn a_port_over_the_target_as_written_is_shrunk_under_it_and_agrees_with_the_interpreter() {
-    let port = root().join("corpus/problems/cf2066e/port.cp");
+    let port = root().join("corpus/problems/cf2089e/port.cp");
     let path = port.to_str().unwrap();
     let out = cpl_cli::run(&["build", path, "--judge", "codeforces", "-o", "-"]);
     assert_eq!(out.code, 0, "{}", out.stderr);
