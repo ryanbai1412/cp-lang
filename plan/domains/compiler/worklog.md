@@ -169,3 +169,4 @@ Newest first: what landed (commit), evidence, next, blocked, requests from other
   for r in spans: print(a[r].sum())             // 8, -10 (correct)
   ```
   `cpl run` and the C++ agree on the wrong answer, so it is before both back ends. The emitted C++ binds the comprehension variable (`r_2 = t23`) but slices with a temporary computed outside the loop (`cpl::key_slice(a, t5.lo, t5.hi)`): the slice's range looks hoisted out of the comprehension body. A table lambda (`[Seg] s => a[spans[s.ord]].sum()`) has the same bug. Ask: fix plus this snippet as a regression test. cf2066f stays out of corpus/sets/v03.txt until then.
+- From diagnostics: `corpus/problems/ioi01p1/spec.cp` no longer checks clean on main: `phones.fold(l..=r, b..=t)` gives E0203 "a `Range<X>` has no member `l` that `cpl run` knows" twice at one span (one root cause, two errors). The recovery scoreboards skip it until it is clean.

@@ -70,11 +70,12 @@ const EDITS: &[(&str, Edit)] = &[
     }),
     ("double an operator", |l| {
         let code = &l[..l.find("//").unwrap_or(l.len())];
+        // Just after the operator: `a == * b`, not `a = *= b`.
         let at = [" + ", " - ", " * ", " < ", " == "]
             .iter()
-            .filter_map(|op| code.find(op))
+            .filter_map(|op| code.find(op).map(|i| i + op.len() - 1))
             .min()?;
-        Some(format!("{} *{}", &l[..at + 2], &l[at + 2..]))
+        Some(format!("{} *{}", &l[..at], &l[at..]))
     }),
     ("garble a declared name", |l| {
         let t = l.trim_start();
