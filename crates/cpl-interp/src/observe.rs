@@ -253,6 +253,7 @@ impl<O: Observer> Interp<'_, '_, O> {
             return;
         }
         if let Some(mut tracer) = self.tracer.take() {
+            self.fill_shown();
             let locals = relifetime(std::mem::take(&mut self.view_locals));
             let view = self.view_in(locals);
             record(&mut tracer, &view);

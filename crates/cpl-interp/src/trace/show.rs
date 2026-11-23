@@ -72,6 +72,27 @@ pub(super) fn field_tys(ty: &Ty, program: &Program) -> Vec<Ty> {
     }
 }
 
+/// A value's `show` fn and the value, to the text the fn gave.
+pub(crate) type ShowTexts = BTreeMap<(cpl_ir::FnId, Value), String>;
+
+/// `value` as `debug(...)` shows it.
+pub(crate) fn text_of(value: &Value, ty: &Ty, view: &View) -> String {
+    let mut out = String::new();
+    render(&mut out, value, ty, view, Mode::Text);
+    out
+}
+
+/// `value` as a JSON value.
+pub(crate) fn json_of(value: &Value, ty: &Ty, view: &View) -> String {
+    let mut out = String::new();
+    if cells(value) > MAX_CELLS {
+        string(&mut out, &format!("{} values", cells(value)));
+    } else {
+        render(&mut out, value, ty, view, Mode::Json);
+    }
+    out
+}
+
 /// Writes `value` of type `ty`.
 pub(super) fn render(out: &mut String, value: &Value, ty: &Ty, view: &View, mode: Mode) {
     let json = mode == Mode::Json;
@@ -89,6 +110,15 @@ pub(super) fn render(out: &mut String, value: &Value, ty: &Ty, view: &View, mode
         }
         out.push(close);
     };
+    if let Some(text) = (view.program.show_fn(ty)).and_then(|f| view.shown.get(&(f, value.clone())))
+    {
+        if json {
+            string(out, text);
+        } else {
+            out.push_str(text);
+        }
+        return;
+    }
     match (value, ty) {
         // A `U64` the VM keeps as an `Int` shows as one the tree-walker kept.
         (Value::Int(v), Ty::U64) => string(out, &(*v as u64).to_string()),

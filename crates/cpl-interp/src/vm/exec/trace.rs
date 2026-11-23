@@ -208,6 +208,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
             let mut path = std::mem::take(&mut self.trace_path);
             path.clear();
             path.extend(indices.iter().map(|&r| regs_i[r as usize].max(0) as usize));
+            self.fill_shown();
             let mut tracer = self.tracer.take().expect("traced");
             let view = crate::trace::View {
                 program: self.program,
@@ -217,6 +218,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 raw: Some(&raw),
                 depth: self.call_frames.len(),
                 call_frames: &self.call_frames,
+                shown: &self.trace_shown,
             };
             match &place.kind {
                 PlaceKind::Global(id) if tracer.raw_write(*id, &view, place.span, &[]) => {}

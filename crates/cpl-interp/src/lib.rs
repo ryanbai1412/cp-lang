@@ -415,6 +415,8 @@ fn run_from<O: Observer>(
         #[cfg(not(target_arch = "wasm32"))]
         vm_pool_v: Vec::new(),
         view_locals: Vec::new(),
+        trace_shown: trace::ShowTexts::new(),
+        trace_show_tys: HashMap::new(),
         trap_frame: None,
         #[cfg(not(target_arch = "wasm32"))]
         trace_indices: Vec::new(),
@@ -447,6 +449,7 @@ fn run_from<O: Observer>(
         let failed = trap.as_ref().map(|trap| (trap.message.as_str(), trap.span));
         let depth = interp.call_frames.len();
         let kept = (interp.trap_frame.take()).filter(|kept| failed.is_some() && kept.0 == depth);
+        interp.fill_shown();
         let mut view = interp.view();
         if let Some((_, locals)) = &kept {
             view.locals = locals
@@ -664,6 +667,10 @@ struct Interp<'p, 'o, O: Observer> {
     vm_pool_v: Vec<Vec<Value>>,
     /// The allocation [`Interp::view`] lists locals in, kept between steps.
     view_locals: Vec<(&'static str, &'static Ty, &'static Value)>,
+    /// The text of each value a trace shows through its `impl Show`.
+    trace_shown: trace::ShowTexts,
+    /// Whether a type holds a value with an `impl Show`, per type seen.
+    trace_show_tys: HashMap<Ty, bool>,
     /// The innermost call's locals when a traced run trapped, and its depth.
     trap_frame: Option<unwind::TrapFrame<'p>>,
     #[cfg(not(target_arch = "wasm32"))]
@@ -891,6 +898,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
             raw: None,
             depth: self.call_frames.len(),
             call_frames: &self.call_frames,
+            shown: &self.trace_shown,
         }
     }
 
@@ -2264,6 +2272,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 for arg in args {
                     values.push(self.eval(&arg.value)?);
                 }
+                self.fill_shown();
                 let view = self.view();
                 // A string literal names the checkpoint; without one the
                 // arguments as written do, and each value is shown by name.
@@ -3338,37 +3347,6 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
         }
         show(out, value, ty, digits, self.program, &self.domains);
         Ok(())
-    }
-
-    /// Stops the run before a call would overflow the interpreter's own
-    /// stack: the program's recursion is the interpreter's.
-    fn call_direct(&mut self, id: FnId, values: Vec<Value>, span: Span) -> Res<Value> {
-        let f = &self.program.fns[id];
-        self.stack_left(span, Some(&f.name))?;
-        let base = self.stack.len();
-        self.stack.extend(values);
-        self.stack.resize(base + f.locals.len(), Value::Unit);
-        let saved = std::mem::replace(&mut self.base, base);
-        self.frame_locals.push(&f.locals);
-        self.call_frames.push((f.name.as_str(), span));
-        let dom_mark = self.saved_domains.len();
-        for &d in &self.fn_guarded[id] {
-            self.saved_domains.push((d, self.domains[d]));
-        }
-        let flow = self.block(&f.body);
-        while self.saved_domains.len() > dom_mark {
-            let (id, prev) = self.saved_domains.pop().unwrap();
-            self.domains[id] = prev;
-        }
-        self.frame_locals.pop();
-        self.base = saved;
-        let flow = flow?;
-        self.call_frames.pop();
-        self.stack.truncate(base);
-        Ok(match flow {
-            Flow::Return(value) => value,
-            _ => Value::Unit,
-        })
     }
 
     fn builtin(&mut self, op: Builtin, args: &'p [Expr], e: &'p Expr) -> Res<Value> {

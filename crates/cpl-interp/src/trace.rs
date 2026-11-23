@@ -11,6 +11,7 @@ use crate::value::{OptVal, TupleVal, Value};
 use cpl_diag::{LineIndex, Span};
 use cpl_ir::{Dim, Program, Ty};
 use show::{field_names, field_tys, render, Mode};
+pub(crate) use show::{json_of, text_of, ShowTexts};
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::fmt::Write as _;
 use std::sync::Arc;
@@ -539,6 +540,8 @@ pub(crate) struct View<'a> {
     pub depth: usize,
     /// Active call frames `(fn_name, call_site_span)` from outermost to innermost.
     pub call_frames: &'a [(&'a str, Span)],
+    /// What each value of a type with an `impl Show` shows as.
+    pub shown: &'a ShowTexts,
 }
 
 impl Tracer {
@@ -1539,14 +1542,6 @@ fn bytes_text(bytes: &[u8]) -> String {
     bytes.iter().map(|b| *b as char).collect()
 }
 
-/// `value` as `debug(...)` shows it.
-pub(crate) fn text_of(value: &Value, ty: &Ty, view: &View) -> String {
-    let mut out = String::new();
-    render(&mut out, value, ty, view, Mode::Text);
-    out
-}
-
-/// `value` as a JSON value.
 /// The named `params` among the locals, as a JSON object.
 pub(crate) fn args_json(view: &View, params: &[&str]) -> String {
     let mut out = String::from("{");
@@ -1563,16 +1558,6 @@ pub(crate) fn args_json(view: &View, params: &[&str]) -> String {
         out.push_str(&json_of(value, ty, view));
     }
     out.push('}');
-    out
-}
-
-pub(crate) fn json_of(value: &Value, ty: &Ty, view: &View) -> String {
-    let mut out = String::new();
-    if cells(value) > MAX_CELLS {
-        string(&mut out, &format!("{} values", cells(value)));
-    } else {
-        render(&mut out, value, ty, view, Mode::Json);
-    }
     out
 }
 
