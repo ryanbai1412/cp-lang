@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Check R11.3.2: every pub fn in a spec/lib chapter's tables is a prelude name.
+Rule: handbook/process/quality.md#which-test-to-write.
 
 A table entry is a top-level `fn name` line in a fenced block of spec/lib/*.md,
 or a Markdown table row starting with a `name(...)` cell, whose name std declares as a top-level `pub fn`. Each must be imported by

@@ -589,6 +589,7 @@ def register_rows(root: Path) -> list[str]:
     return found
 
 GUIDELINE_CITE_RE = re.compile(r"handbook/([\w/-]+\.md)#([\w-]+)")
+CHECKLIST_ID_RE = re.compile(r"\b([a-z][a-z0-9-]*)/(R\d+)\b")
 
 
 def _anchors(path: Path) -> set[str]:
@@ -601,9 +602,21 @@ def _anchors(path: Path) -> set[str]:
     return out
 
 
+def _checklist_ids(path: Path) -> set[str]:
+    """Rule ids (`r12`) a checklist defines at the start of a heading, list item or table row."""
+    lines = _lines(path) if path.is_file() else []
+    return {m.group(1).lower() for line in lines
+            if (m := re.match(r"^\s*(?:#+|[-*]|\|)?\s*(?:\*\*|`)?(?:[a-z][a-z0-9-]*/)?(R\d+)\b", line))}
+
+
 def _cites_guideline(root: Path, text: str) -> bool:
-    return any(m.group(2) in _anchors(root / "handbook" / m.group(1))
-               for m in GUIDELINE_CITE_RE.finditer(text))
+    """Whether text cites a handbook heading, a checklist rule's anchor, or a rule id like `std-api/R12`."""
+    for m in GUIDELINE_CITE_RE.finditer(text):
+        doc = root / "handbook" / m.group(1)
+        if m.group(2) in _anchors(doc) or (doc.name.endswith("-checklist.md") and m.group(2) in _checklist_ids(doc)):
+            return True
+    return any(m.group(2).lower() in _checklist_ids(root / "handbook/guidelines" / f"{m.group(1)}-checklist.md")
+               for m in CHECKLIST_ID_RE.finditer(text))
 
 
 def uncited_rules(root: Path) -> list[str]:
@@ -611,7 +624,9 @@ def uncited_rules(root: Path) -> list[str]:
 
     A rule lives once, as an item in a handbook guideline or process doc; the
     lint (`spec/lints/<name>/lint.toml` or `explain.md`) or gate script (its
-    first 40 lines) that enforces it cites `handbook/<doc>.md#<heading>`.
+    first 40 lines) that enforces it cites `handbook/<doc>.md#<heading>`, a
+    checklist rule's anchor (`handbook/guidelines/<topic>-checklist.md#r12`)
+    or its id (`<topic>/R12`).
     """
     found = []
     for d in sorted((root / "spec/lints").glob("*/")):

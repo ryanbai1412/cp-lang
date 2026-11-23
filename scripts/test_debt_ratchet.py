@@ -215,10 +215,14 @@ class DebtRatchetTest(unittest.TestCase):
             self._write(root, "spec/lints/good/lint.toml", 'rule = "handbook/guidelines/lints.md#the-rules"\n')
             self._write(root, "spec/lints/bad/explain.md", "see handbook/guidelines/lints.md#gone\n")
             self._write(root, "spec/lints/none/lint.toml", "code = 1\n")
+            self._write(root, "handbook/guidelines/std-api-checklist.md", "# x\n- **std-api/R12** Searches return ?T.\n")
+            self._write(root, "spec/lints/byid/lint.toml", 'rule = "std-api/R12"\n')
+            self._write(root, "spec/lints/byanchor/explain.md", "handbook/guidelines/std-api-checklist.md#r12\n")
+            self._write(root, "spec/lints/noid/lint.toml", 'rule = "std-api/R13"\n')
             self._write(root, "scripts/check.sh", "python3 scripts/a.py\npython3 scripts/b.py scripts/test_x.py\n")
             self._write(root, "scripts/a.py", '"""Gate. Rule: handbook/guidelines/lints.md#the-rules."""\n')
             self._write(root, "scripts/b.py", '"""Gate."""\n')
-            self.assertEqual(dr.uncited_rules(root), ["lint bad", "lint none", "gate scripts/b.py"])
+            self.assertEqual(dr.uncited_rules(root), ["lint bad", "lint noid", "lint none", "gate scripts/b.py"])
 
     def test_upstream_on_a_fresh_tip_is_measured_except_in_ci(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

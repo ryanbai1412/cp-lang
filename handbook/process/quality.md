@@ -91,12 +91,16 @@ owns, and by asking how mature projects measure the same thing.
 
 ## Rules live in guidelines
 
-A rule is written once, as an item in a handbook guideline or checklist,
-with its reason and an example. Everything that enforces it points there.
+A rule is written once, with its reason and an example, and everything
+that enforces it points there. Rules come in pairs of documents
+([writing.md](../guidelines/writing.md#guidelines-and-checklists)): a prose
+guideline `handbook/guidelines/<topic>.md` explains the ideas, and an
+exhaustive `<topic>-checklist.md` states every rule under a stable id such
+as `std-api/R12`, with what enforces it.
 
 For example, "a search that can find nothing returns `?T`" is an item in
 the std API guideline. The lint that flags a `-1` sentinel return cites
-`handbook/guidelines/std-api.md#return-conventions` in its record, the test
+`std-api/R12` in its record, the test
 that checks every std search names the same heading, and the stdlib
 register row's Mechanism cell names the lint and the heading. Nobody restates
 the rule.
@@ -108,9 +112,11 @@ the rule.
 - **General items, not one-off rules.** Several narrow rules are usually
   one item stated generally ("absence is a type, never a sentinel" covers
   searches, lookups and parsers). Prefer that item to a list of cases.
-- **Enforcers cite the item.** A lint's record (`spec/lints/<name>/`), a
+- **Enforcers cite the rule.** A lint's record (`spec/lints/<name>/`), a
   gate script's opening docstring, or a test's name or doc comment carries
-  `handbook/<doc>.md#<heading>`. A lint is how a guideline is enforced.
+  the checklist id (`std-api/R12`), or failing that a heading
+  (`handbook/<doc>.md#<heading>`). A lint is how a checklist rule is
+  enforced.
 - **Measured.** `python3 scripts/debt-ratchet.py --list uncited_rules`
   lists lints and gates that cite no existing heading. The count is
   reported now and becomes a gate once domains have folded their rules.

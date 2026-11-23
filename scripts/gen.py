@@ -1,4 +1,5 @@
 """Regenerate every committed generated file in gen.toml, or check none is stale.
+Rule: handbook/design/sources-of-truth.md#generated-never-written.
 
     uv run python scripts/gen.py               rewrite the pre-commit and ci ones
     uv run python scripts/gen.py --check       fail if a pre-commit one is stale (commit tier)

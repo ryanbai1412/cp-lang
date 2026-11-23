@@ -187,6 +187,6 @@ milestone = "M2"
 [[metric]]
 name = "uncited_rules"
 command = "python3 scripts/debt-ratchet.py --list uncited_rules"
-today = 133
+today = 130
 target = "0"
 milestone = "M2"

@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Generate and check the bundled CP Lang v0.3 AI skill (`skills/cp-lang/`).
+Rule: handbook/design/sources-of-truth.md#generated-never-written.
 
 Usage:
   python3 scripts/skill-gen.py            # regenerate skills/cp-lang/stdlib/*.md
