@@ -7816,3 +7816,13 @@ lent slices was rejected by the checker (E0603, E0302). It matches `spans`
 and the ring forms' `RingSlice`; `.len`, `.first!`, `.last!` read the same and
 `a[w]` reads the piece. Reverse: a `lends` table of slices once the checker
 accepts one, in spec/lib/sequence-patterns.md and std/seq.cp.
+
+## 373. Rebuild-19 rulings: nested counted reads, bare match arms (2026-11-23)
+
+Rebuild round 19 (rated 1600-2100, 1400 stress inputs) found 15 holes before
+running (11 silent, 1 contradiction, 3 missing-stdlib) and every silent guess
+was what the compiler accepts. Written down: `[k][n]T` reads `k` rows of `n`
+row-major (R10.2.1); a match arm names a variant bare, std enums included, and
+`()` is the arm that does nothing (R01.7.3). Confirmed with cases: annotated
+lambda parameters, a shared lambda capturing a shared `Comb` from each test.
+Reverse: edit R10.2.1 / R01.7.3 and their cases.

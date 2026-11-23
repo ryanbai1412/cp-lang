@@ -286,7 +286,9 @@ match d: L => -1, R => 1            // one-line match
 - `match` is exhaustive over enums, literal unions, `Bool` and `?T`.
   Arms may have guards `pat if cond =>`; a guarded arm never counts
   toward exhaustiveness. There are no custom patterns:
-  a view is a method returning an enum (decision 132). (R01.7.3)
+  a view is a method returning an enum (decision 132). An arm names a
+  variant bare (`Enter(v, p) =>`) since the matched enum is known, std
+  enums included; `()` is the arm that does nothing. (R01.7.3)
 - Loops over library generators support `break`, `continue`, `return`,
   labels and `else` exactly like built-in loops (decision 126). (R01.7.4)
 - `@!multitest` on its own line is the multitest divider: code above it
