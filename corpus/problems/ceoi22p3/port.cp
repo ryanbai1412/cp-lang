@@ -1,8 +1,9 @@
 // Source: CEOI 2022 P3 (Prize), https://dmoj.ca/problem/ceoi22p3
-// Problem: interactive. Two rooted trees on the same N <= 1e6 labels with hidden positive edge
-//   weights. Choose K <= 1e5 labels, ask Q questions (a, b), each answered by the distances of a
-//   and b to their LCA in both trees; then answer T <= 1e5 questions (p, q) on chosen labels with
-//   both distances. Full score needs Q = K - 1 (subtasks allow 2K - 2 or identical trees).
+// Problem: interactive. Two rooted trees on the same 2 <= N <= 1e6 labels with hidden edge
+//   weights 1..=2000. Print 2 <= K <= 1e5 chosen labels on one line, ask Q questions (a, b),
+//   each answered by the distances of a and b to their LCA in both trees; then answer
+//   T <= min(K^2, 1e5) questions (p, q) on chosen labels with both distances, up to 2e9.
+//   Q = K - 1 here, the full-score scheme (subtasks allow 2K - 2 or identical trees).
 // Solution: choose the first K vertices of tree 1's preorder (closed under parents) and ask the
 //   K - 1 pairs adjacent in tree 2's preorder. Each answer ties a and b to their LCA by a known
 //   depth difference; in tree 2 those LCAs are the branch points of the chosen set's auxiliary
@@ -18,10 +19,9 @@ let one = Rooted.from_parents(read<[V]?V>(none: -1))
 let two = Rooted.from_parents(read<[V]?V>(none: -1))
 
 var picked: List<V> = [one.at[one.Pre.at(i)!] for i in 0..k]
-// CEOI '22 judge expects the k chosen vertices one per line before queries.
-for v in picked: print(v)
+print(picked)
 picked.sort(by: v => two.tin[v].ord)
-let ask_pairs = [(a, b) for (a, b) in picked.pairs]
+let ask_pairs = [(a, b) for (a, b) in picked.adjacent]
 for (a, b) in ask_pairs: print("?", a, b)
 print("!")
 
