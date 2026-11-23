@@ -23,7 +23,7 @@ var standing = SegTree<X, Int>(0, (a, b) => a + b)
 var crossings = 0
 for s in stops:
     if s.sweeps:
-        if let reach = col.last_le(s.x): crossings += standing.query(X.first, reach)
+        if let reach = col.last_le(s.x): crossings += standing.fold(X.first, reach)
     else:
         let at = col.first_ge(s.x)!
         standing.set(at, standing.get(at) + 1)

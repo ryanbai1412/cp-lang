@@ -143,7 +143,7 @@ fn solve():
             for _ in 0..k:
                 distr[j] = cur
                 cur = not cur
-                j = j.cyc(1)
+                j = K.wrap(j.ord + 1)
             if try_color(distr): return
         print("impossible")
         return
@@ -176,8 +176,8 @@ fn solve():
     var can: [K]Bool = false
     var ok_cnt = 0
     for i in K:
-        let a = i.cyc(-1)
-        let b = i.cyc(1)
+        let a = K.wrap(i.ord - 1)
+        let b = K.wrap(i.ord + 1)
         var cur: List<(Int, Int)> = [s for s in child[i]]
         cur.push((cl[a], cr[a]))
         cur.push((cl[b], cr[b]))
@@ -187,9 +187,9 @@ fn solve():
 
     for i in K:
         let a = i
-        let b = i.cyc(1)
-        let c = i.cyc(2)
-        let d = i.cyc(3)
+        let b = K.wrap(i.ord + 1)
+        let c = K.wrap(i.ord + 2)
+        let d = K.wrap(i.ord + 3)
         var ccnt = ok_cnt
         if can[b]: ccnt -= 1
         if can[c]: ccnt -= 1
@@ -205,7 +205,7 @@ fn solve():
         for _ in 0..k:
             distr[u] = cb
             cb = not cb
-            u = u.cyc(1)
+            u = K.wrap(u.ord + 1)
         if try_color(distr): return
     print("impossible")
 

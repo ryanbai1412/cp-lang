@@ -4,17 +4,17 @@
 // original: corpus/submissions/3927923.cpp
 
 struct Node:
-    is_e: Bool
-    sz: Int
+    var is_e: Bool
+    var sz: Int
     pri: Int
-    flip: Bool
-    rev: Bool
-    a00: Int
-    a01: Int
-    a10: Int
-    a11: Int
-    lc: Int
-    rc: Int
+    var flip: Bool
+    var rev: Bool
+    var a00: Int
+    var a01: Int
+    var a10: Int
+    var a11: Int
+    var lc: Int
+    var rc: Int
 
 const MODV = 998_244_353
 var g_nodes: List<Node> = []

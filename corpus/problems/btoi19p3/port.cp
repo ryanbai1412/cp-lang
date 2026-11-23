@@ -52,7 +52,7 @@ for v in tree.at:
         let (u, w, _) = roads[asks[a].closed]
         let cut = if tree.parent(u) == w: u else: w
         if tree.is_anc(cut, v):
-            if let t = best_turn.query(Depth(tree.depth(cut)), here): nearest[a] = far[v] + t
+            if let t = best_turn.fold(Depth(tree.depth(cut)), here): nearest[a] = far[v] + t
         else:
             escaped[a] = true
 

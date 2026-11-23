@@ -27,7 +27,7 @@ fn solve_s1():
         if tin[root] != None or ans: continue
         frames.push((root, 0, None))
         while not frames.is_empty and not ans:
-            let (u, i, p) = frames.last
+            let (u, i, p) = frames.last!
             if i == 0:
                 tin[u] = timer
                 timer += 1
@@ -89,7 +89,7 @@ fn solve_s3():
         if tin[root] != None: continue
         frames.push((root, 0, None))
         while not frames.is_empty:
-            let (u, i, p) = frames.last
+            let (u, i, p) = frames.last!
             if i == 0:
                 tin[u] = timer
                 timer += 1

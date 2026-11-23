@@ -34,9 +34,9 @@ var mx = n
 for i in 0..n:
     let need = arr[i] - 1
     let cut = (base - 1..=n + 1).first_where(
-        mid => st.query(Slot(base - 1), Slot(mid)).siz >= need
+        mid => st.fold(Slot(base - 1), Slot(mid)).siz >= need
     ) ?? (n + 1)
-    let cur = st.query(Slot(base - 1), Slot(cut))
+    let cur = st.fold(Slot(base - 1), Slot(cut))
     let extra = cur.siz - need
     let cost = cur.sm - cut * extra + need * (1 - base)
     if cost <= kv:

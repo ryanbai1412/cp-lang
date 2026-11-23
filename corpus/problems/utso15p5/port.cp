@@ -50,8 +50,8 @@ else:
         let peak = tree.sub(tree.lca(u, v)).l
         var path: Top = (0, 0)
         for (l, r) in tree.chains(u, v):
-            if l != peak: path = both(path, above.query(l, r))
-            elif let below = l + 1 and l != r: path = both(path, above.query(below, r))
+            if l != peak: path = both(path, above.fold(l, r))
+            elif let below = l + 1 and l != r: path = both(path, above.fold(below, r))
         let out = if path.hi < cost: path.hi else: path.lo
         if out != 0: best min= base + cost - out
     print(best ?? -1)

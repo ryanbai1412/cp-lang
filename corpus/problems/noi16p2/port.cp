@@ -66,7 +66,7 @@ fn is_disconnected(n: Int, m: Int, blocked: List<(Int, Int)>) -> Bool:
     if seg_adj.len <= 1: return false
     domain Seg = 0..seg_adj.len
     let (C, _) = components::<Seg>(u => [(to: Seg(v)) for v in seg_adj[u.to_idx]])
-    C.K > 1
+    C.count > 1
 
 /// Check whether blocking one white cell disconnects the white region.
 fn has_cut_cell(n: Int, m: Int, blocked: List<(Int, Int)>) -> Bool:

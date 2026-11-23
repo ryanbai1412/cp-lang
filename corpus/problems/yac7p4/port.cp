@@ -81,10 +81,10 @@ for v in V:
     st.set(Pre(tin[v]), tin[v])
 
 fn has_active_sub(u: V) -> Bool:
-    st.query(Pre(tin[u]), Pre(tout[u] - 1)) < INF
+    st.fold(Pre(tin[u]), Pre(tout[u] - 1)) < INF
 
 fn closest_edge(u: V) -> (V, V):
-    let top_tin = st.query(Pre(0), Pre(n - 1))
+    let top_tin = st.fold(Pre(0), Pre(n - 1))
     let top = ord[top_tin]
     if not is_anc(top, u):
         return (top, par[top]!)

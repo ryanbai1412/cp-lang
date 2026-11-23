@@ -23,7 +23,7 @@ pub fn two_edge_components<V, A>(adj: V -> Iter<A>) -> (domain C, comp: [V]C):
         if tin[root] != none: continue
         frames.push((root, 0, none))
         while not frames.is_empty:
-            let (u, i, pe) = frames.last
+            let (u, i, pe) = frames.last!
             if i == 0:
                 tin[u] = timer
                 low[u] = timer
@@ -68,7 +68,7 @@ pub fn articulation_points<V, A>(adj: V -> Iter<A>) -> [V]Bool:
         if tin[root] != none: continue
         frames.push((root, 0, none))
         while not frames.is_empty:
-            let (u, i, p) = frames.last
+            let (u, i, p) = frames.last!
             if i == 0:
                 tin[u] = timer
                 low[u] = timer
@@ -110,7 +110,7 @@ pub fn biconnected_components<V, A>(adj: V -> Iter<A>) -> List<List<V>>:
         if tin[root] != none: continue
         frames.push((root, 0, none))
         while not frames.is_empty:
-            let (u, i, p) = frames.last
+            let (u, i, p) = frames.last!
             if i == 0:
                 tin[u] = timer
                 low[u] = timer

@@ -99,7 +99,7 @@ fn solve_dom(blocks: List<Block>) -> Int:
             st.set(y, cur[y])
         else:
             let y = Y(bsearch_idx(ys, b.x - b.yr))
-            let got = st.query(y, Y.last)
+            let got = st.fold(y, Y.last)
             if got != -1: ans max= got - b.x
     return ans
 
@@ -135,7 +135,7 @@ fn main_solve():
             var blocks: List<Block> = []
             var pref = NP(true, 0, 0, 0, 0)
             fn add_gap(ql: Int, qr: Int):
-                let seg = st.query(Pre(ql), Pre(qr - 1))
+                let seg = st.fold(Pre(ql), Pre(qr - 1))
                 blocks.push(Block(seg.yl + pref.y, seg.yr + pref.y, pref.x + seg.x))
                 pref = np_merge(pref, seg)
             add_gap(0, pos[v][0] + 1)
