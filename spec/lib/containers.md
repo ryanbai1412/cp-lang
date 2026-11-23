@@ -409,9 +409,9 @@ Already ships `Mark`, `Dsu<V>`, `DsuOf<V, T>`, and `ParityDsu<V>`. Additions:
 ```cp
 // Existing: Mark, Dsu<V>, DsuOf<V, T>, ParityDsu<V>
 // New in std.dsu:
-struct PotentialDsu<V, W = Int>                     // O(alpha(n)), O(log n) after mark
-    fn new<G>(op: G = (+)) -> PotentialDsu<V, W>    // O(n); op: +, ^, or a commutative Group<W>
-    fn find(mut self, v: V) -> (root: V, pot: W)    // pot(v) - pot(root)
+struct PotentialDsu<V, W = Int>                   // O(alpha(n)), O(log n) after mark
+    fn new<G>(op: G = (+)) -> PotentialDsu<V, W>  // O(n); op: +, ^, or a commutative Group<W>
+    fn find(mut self, v: V) -> (root: V, pot: W)  // pot(v) - pot(root)
     fn unite(mut self, a: V, b: V, diff: W) -> Bool
     // Records pot(b) - pot(a) == diff; false on contradiction
     fn diff(mut self, a: V, b: V) -> ?Int  // pot(b) - pot(a), or None
