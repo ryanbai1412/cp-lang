@@ -119,7 +119,11 @@ pub struct Mod<P>(v: 0..P):
         out
 
 impl Add for Mod<P>:
-    fn add(a, b) = Mod(if a.v + b.v >= P: a.v + b.v - P else: a.v + b.v)
+    // Reduce first and test the sign: one sum and a select, where comparing the sum
+    // against `P` recomputes it on both arms.
+    fn add(a, b):
+        let r = a.v + b.v - P
+        Mod(if r < 0: r + P else: r)
 
 impl Sub for Mod<P>:
     fn sub(a, b) = Mod(if a.v >= b.v: a.v - b.v else: a.v - b.v + P)

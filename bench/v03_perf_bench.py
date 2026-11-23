@@ -554,8 +554,9 @@ def main():
 
     rows = []
     unmatched = load_unmatched()
-    out_p = os.path.join(args.cache, "out_p.txt")
-    out_o = os.path.join(args.cache, "out_o.txt")
+    # Per process: two benches sharing a cache must not compare each other's output.
+    out_p = os.path.join(args.cache, f"out_p.{os.getpid()}.txt")
+    out_o = os.path.join(args.cache, f"out_o.{os.getpid()}.txt")
     for b in built:
         if b["status"] != "built":
             rows.append(b)
@@ -600,7 +601,7 @@ def main():
                 tt, s_t, _ = run_once(b["tbin"], b["inp"], out_p, args.timeout)
                 if s_t != "ok" or not same_tokens(open(out_p, errors="replace").read(), open(out_o, errors="replace").read()):
                     ts_t = []
-                    tuned = {"tuned_error": f"tuned {s_t if s_t != 'ok' else 'output differs'}"}
+                    tuned = {"tuned_error": f"tuned {s_t if s_t != 'ok' else 'output differs'} on {b['inp']}"}
                     break
                 ts_t.append(tt)
             if ts_t and med_o > 0:

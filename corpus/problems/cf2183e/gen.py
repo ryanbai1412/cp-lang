@@ -1,5 +1,10 @@
 import sys, random
 
+if sys.argv[1] == "--max":
+    # One test at the limit (the sum of m over tests is at most 3000): n = m = 3000,
+    # every value unknown but the first, so the whole DP runs.
+    print(1); print(3000, 3000); print(" ".join(["1"] + ["0"] * 2999))
+    sys.exit()
 seed, S = int(sys.argv[1]), int(sys.argv[2])
 r = random.Random(seed)
 full = S >= 8 and seed % 64 == 7
