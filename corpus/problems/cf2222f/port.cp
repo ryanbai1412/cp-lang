@@ -48,5 +48,5 @@ fn solve(lo: W, hi: W):
     solve(right, hi)
     conn.undo_to(snap)
 
-solve(W.first, W.last)
+solve(W.first!, W.last!)
 print(if links == need: ans else: -1)

@@ -74,16 +74,16 @@ let pts = [C] i => Pt(charges[i.ord].x, charges[i.ord].q, i.ord)
 
 domain Node = 0..=n
 let pin = Node.at(n)
-fn node_of(i: C) -> Node = Node.at(i.ord)
+fn node_of(i: C) -> Node = Node.at(i.ord)!
 var colour = ParityDsu<Node>()
 let pinned = [i for i in C if charges[i.ord].pin == 'A' or charges[i.ord].pin == 'B']
-for i in pinned: let _ = colour.unite(node_of(i), pin, differ: charges[i.ord].pin == 'A')
-if pinned.is_empty: let _ = colour.unite(node_of(C.first), pin, differ: false)
+for i in pinned: let _ = colour.unite(node_of(i), pin!, differ: charges[i.ord].pin == 'A')
+if pinned.is_empty: let _ = colour.unite(node_of(C.first!), pin!, differ: false)
 
 fn link(i: C, j: C):
     if not colour.same(node_of(i), node_of(j)): let _ = colour.unite(node_of(i), node_of(j))
 
-while not all(colour.same(node_of(i), node_of(C.first)) for i in C):
+while not C.all(i => colour.same(node_of(i), node_of(C.first!))):
     let roots = [u for u in Node if colour.find(u).root == u]
     var comp: [Node]Int = 0
     for (k, r) in roots.items: comp[r] = k
@@ -106,9 +106,9 @@ while not all(colour.same(node_of(i), node_of(C.first)) for i in C):
             for node in path: hit = weaker(hit, hulls[node ^ 1].query(x), x)
             if let h = hit:
                 let j = C.at(h.id)
-                let cand = gap(pts[j], pts[i])
+                let cand = gap(pts[j!], pts[i])
                 let wins = if let cur = best[cc]: weaker_gap(cand, cur.gap) else: true
-                if wins: best[cc] = some((cand, i, j))
+                if wins: best[cc] = some((cand, i, j!))
             for node in path: hulls[node].add(Pt(x, pts[i].q, i.ord))
     sweep([i for i in C], 1)
     sweep([i for i in C.rev], -1)
@@ -117,7 +117,7 @@ while not all(colour.same(node_of(i), node_of(C.first)) for i in C):
 var weakest: ?(num: Int, den: Int) = none
 for side in [false, true]:
     var hull = Hull.new()
-    for i in C if (colour.diff(node_of(i), pin) == some(false)) == side:
+    for i in C if (colour.diff(node_of(i), pin!) == some(false)) == side:
         let p = pts[i]
         if let prev = hull.query(p.x):
             let g = gap(prev, p)

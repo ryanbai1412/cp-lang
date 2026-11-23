@@ -20,6 +20,6 @@ var dp: [0..=n]?Int = none
 dp[0] = 0
 for i in 0..n if let cur = dp[i]:
     for j in i + 1..=n by 2:
-        if pref_lt.sum(i..j) <= (j - i) / 2 < pref_le.sum(i..j):
+        if pref_lt.fold(i..j) <= (j - i) / 2 < pref_le.fold(i..j):
             dp[j] max= cur + 1
 print(dp[n]!)

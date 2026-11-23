@@ -33,8 +33,8 @@ fn cyclic_window_sum(ways: [Pos]Z, len: Int) -> [Pos]Z:
     let doubled = List(ways) + List(ways)
     let pref = prefix(doubled)
     let (full, rem) = (len / n, len % n)
-    let total = pref.sum(0..n)
-    [Pos] p => total * full + pref.sum(p.ord + n + 1 - rem..p.ord + n + 1)
+    let total = pref.fold(0..n)
+    [Pos] p => total * full + pref.fold(p.ord + n + 1 - rem..p.ord + n + 1)
 
 var dp: [0..=k_max, Pos]Z = 0
 for i in 1..=l + k_max:

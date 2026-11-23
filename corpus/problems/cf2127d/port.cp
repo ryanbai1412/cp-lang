@@ -37,7 +37,7 @@ for (u, v) in edges if deg[u] > 1 and deg[v] > 1:
     deg2[v] += 1
     spine_edges += 1
 
-if any(deg2[v] >= 3 for v in V):
+if V.any(v => deg2[v] >= 3):
     print(0)
     return
 

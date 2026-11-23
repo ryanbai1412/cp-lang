@@ -2,7 +2,7 @@
 let n: 2..=200_000 = read()
 domain V = 1..=n
 let g = Graph.undirected(read<[n - 1](V, V)>())
-let t = Rooted(g, V.first)
+let t = Rooted(g, V.first!)
 
 let greedy = t.reroot(
     Monoid(

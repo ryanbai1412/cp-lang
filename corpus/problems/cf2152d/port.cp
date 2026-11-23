@@ -19,4 +19,4 @@ let cnt_trade = prefix([if x == 2: 1 else: bit_width(x - 2) for x in a])
 
 for _ in 0..q:
     let (l, r): (Pos, Pos) = read()
-    print((cnt_trade.sum(l.ord..r.ord + 1) + cnt_ops.sum(l.ord..r.ord + 1)) / 2)
+    print((cnt_trade.fold(l.ord..r.ord + 1) + cnt_ops.fold(l.ord..r.ord + 1)) / 2)

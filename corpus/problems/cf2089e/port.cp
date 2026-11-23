@@ -55,7 +55,7 @@ for t in V.rev if t != V.first:
     let next = t.next
     let (moving, stop): (List<Z>, V) = match next:
         some(s) => (dp[s], parent[s]!)
-        none => ([0, 1], V.first)
+        none => ([0, 1], V.first!)
     dp[t] = add(dp[t], moving)
     let chain = tree.path(t, stop)
     var ways: List<Z> = [1]
@@ -65,11 +65,11 @@ for t in V.rev if t != V.first:
         ways = plus_integral(ways)
     if let s = next: dp[s] = []
 
-    let up = tree.path(t, V.first)
+    let up = tree.path(t, V.first!)
     var carry: List<Z> = []
     for (prev, p) in up.with_prev:
         if let prev = prev: carry = transposed_mul(carry, before[prev])
         let lifted: List<Z> = [0] + [x * (k + 1) for (k, x) in dp[p].items]
         (dp[p], carry) = (add(lifted, carry), add(carry, dp[p]))
-    ans.push(dp[V.first].first ?? 0)
+    ans.push(dp[V.first!].first ?? 0)
 print(ans)

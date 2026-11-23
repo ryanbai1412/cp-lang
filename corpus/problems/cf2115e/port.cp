@@ -18,7 +18,7 @@ let next = Graph.directed(arcs)
 let q: 1..=200_000 = read()
 let queries: [0..q](at: V, budget: 1..=1e9) = read()
 
-let cap = max(item[v].cost for v in V)! ** 2
+let cap = V.map(v => item[v].cost).max()! ** 2
 var small: [V, 0..=cap]Int = 0
 for v in V:
     let (c, w) = item[v]
@@ -33,7 +33,7 @@ for p in V:
     let (pc, pw) = item[p]
     var reach: [V]Bool = false
     var best: [V, 0..pc]Int = 0
-    reach[V.first] = true
+    reach[V.first!] = true
     for v in V if reach[v]:
         let (c, w) = item[v]
         // Unbounded copies of (c, w) on the residue cycle: walking each of the

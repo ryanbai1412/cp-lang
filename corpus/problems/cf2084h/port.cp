@@ -17,7 +17,7 @@ domain Parity = 0..2
 // each round (`lift`), so tops are stored minus the lift and never rewritten.
 struct Staircase:
     steps: List<(top: Int, v: M)>
-    lift: Int
+    var lift: Int
     hidden: M
 
     fn push(mut self, height: Int, v: M):
