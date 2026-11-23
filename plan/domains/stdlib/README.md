@@ -39,22 +39,24 @@ Not covered (owner instead):
 
 ## Milestone 1 (plan/product/MILESTONE-1.md)
 
-What it needs from stdlib: the foundational containers, algorithms and math for representative contests (steps 4 Solve and 7 Compete), and documentation examples that work (step 1 and "Documentation examples must actually work").
+Due about 09:30 PST 2026-11-23 (12 hours); checkpoints every 2 hours in [worklog.md](worklog.md). Ships on edge. Codeforces is the target judge, checked against the local `codeforces` profile (`cpl judges`), not real submissions.
 
-The **core set** is 20 modules: `seq io math mod heap deque hashmap bag dsu fenwick segtree lazy graph strings prefix search bitset grid ntt sparse`. Today 1618/1700 of their doc examples pass (`cpl-conform docs <m>.cp`, 2026-11-22; the filter is a substring, so the `.cp` matters); all 40 modules 2533/2765; std conformance 909/918.
+What it needs from stdlib: the foundational containers, algorithms and math for representative contests (steps 4 Solve and 7 Compete), and documentation examples that work (step 1, "Documentation examples must actually work").
+
+The **core set** is 20 modules: `seq io math mod heap deque hashmap bag dsu fenwick segtree lazy graph strings prefix search bitset grid ntt sparse`. Today 1635/1700 of their doc examples pass (`cpl-conform docs <m>.cp`; the filter is a substring, so the `.cp` matters); all 40 modules 2552/2765.
 
 Exit criteria:
-1. Every doc example in the core set passes `cpl-conform docs` (1700/1700), in the interpreter and in C++.
-2. No `todo` body is reachable from a core-set public fn (`cpl-conform docs` R0402 count 0 for the core set).
-3. Every std gap the idioms acceptance runs and writable-from-docs runs hit (a missing or wrong std call) is fixed or has a GAPS.md line with an open compiler request; none left untriaged.
-4. Matched C++ time for core containers is not a contest disadvantage: no core std fn above 1.5x its builtin or hand-written C++ on the perf gate.
+1. Every core-set doc example passes `cpl-conform docs` (1700/1700).
+2. Every std miss in the idioms acceptance runs (every 2 hours) and `research/writable-from-docs.md` is fixed, or has a GAPS.md line and an open compiler request; none untriaged.
+3. A program using each core module builds with `cpl build --judge codeforces`, compiles with that profile's g++ flags and agrees with the interpreter (`cpl-conform diff`); std code keeps solutions under 32 KB.
+4. Input reads the same with CRLF line endings as with LF (Windows, Codeforces); checked today for `read<Int>`, `read_all`, `read<Str>`.
 
-Deferred (milestone "what can wait"): breadth beyond the core set (`geometry`, `flow`, `tree`, `persistent`, `poly`, `subset`, `mo`, `slope`, ...) unless an acceptance run needs it; the 1.2x Library Checker target; builtin-to-body moves that don't fix a user-visible bug (Q3 ratchet work continues only when cheap); prelude trimming; the 12/40 standalone `cpl check` metric.
+Deferred (milestone "what can wait"; continues in parallel only when cheap): breadth beyond the core set (`geometry`, `flow`, `tree`, `persistent`, `poly`, `subset`, `mo`, ...) unless an acceptance run needs it; the 1.2x Library Checker target; builtin-to-body moves (Q3) that fix nothing a user sees; prelude trimming; standalone `cpl check` of every std file.
 
 Top 3 next steps:
-1. `seq` (19 failing) and `graph` (17): the most-used modules with the most failures.
-2. Triage the std misses in the idioms acceptance runs and `research/writable-from-docs.md` (49/55 full pass) into fixes or compiler requests.
-3. Clear the rest of the core set: `bag` (12), `fenwick` (7), `strings` (7), `segtree`, `ntt`, `sparse` (4-5 each).
+1. `seq` (17 failing) and the last `graph` 7: the most-used modules.
+2. Triage the latest idioms acceptance run and writable-from-docs misses into fixes or compiler requests.
+3. Clear the rest of the core set: `bag` (12), `fenwick` (7), `ntt` and `sparse` (5 each), `segtree` (4).
 
 ## Milestones
 

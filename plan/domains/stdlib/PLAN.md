@@ -11,14 +11,15 @@ The detail behind [README.md](README.md). Numbers are from the runs in [metrics.
 - **Surface.** Prelude 192 names (`check.sh` still warns above 80, a budget decision 150 dropped; usage in `prelude-usage.md`); 32 public fns lack a doc label; 13 `spec-stub --check` problems (e.g. `ternary_max` is in no chapter).
 - **Privilege.** The builtin count, agreed with tech-debt, is `ir_builtin_names` (`scripts/debt-ratchet.py`): 89 distinct names string-matched in match arms of `cpl-ir/src/lower/call.rs`; 40 of them are public std names (`measure.py privilege`).
 
-## Milestone 1 order (from 2026-11-22)
+## Milestone 1 order (from 2026-11-22, due 09:30 PST 2026-11-23)
 
-Milestone 1 (`plan/product/MILESTONE-1.md`) sets the order; the workstreams below serve it. Work that unblocks a step of the acceptance scenario comes first:
+Milestone 1 (`plan/product/MILESTONE-1.md`) sets the order, in hours: a 2-hour checkpoint in the worklog; the workstreams below serve it. Work that unblocks a step of the acceptance scenario comes first:
 
 1. **Core-set examples** (README "Milestone 1"): `seq` and `graph` first, then `bag`, `fenwick`, `strings`, the rest of the core set. Each failure is a std bug fixed here or a compiler gap filed with a contract test (W2 + W3, restricted to the core set).
 2. **Acceptance-run misses**: every std call an idioms acceptance run or writable-from-docs run reached for and didn't find, or found wrong. Fix, or GAPS.md + compiler request.
-3. **Core perf floor**: core containers within 1.5x of builtin/hand C++ (the `sort` body, generator streaming for `sum`/`count`/`all`/`any`), only where a builtin isn't already serving the call.
-4. Then the rest, unchanged: W3 bodies outside the core set, W4 labels, W5 prelude, W6 privilege moves, breadth modules. These are "what can wait" unless cheap or a hard gate.
+3. **Judge path**: each core module through `cpl build --judge codeforces` and `cpl-conform diff`; CRLF input.
+4. **Core perf floor**: core containers within 1.5x of builtin/hand C++ (the `sort` body, generator streaming for `sum`/`count`/`all`/`any`), only where a builtin isn't already serving the call.
+5. Then the rest, unchanged: W3 bodies outside the core set, W4 labels, W5 prelude, W6 privilege moves, breadth modules. These are "what can wait" unless cheap or a hard gate.
 
 ## Workstreams, in order
 
