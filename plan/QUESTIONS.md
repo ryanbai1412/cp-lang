@@ -248,7 +248,7 @@ Meanwhile: B.
 - C. Ship as is and fix the spec to match.
 Recommendation: B. It answers "why is this slow/big" and keeps one source of truth; A depends on queries the compiler does not have yet.
 How to reverse it: sections are independent records in `explain --json`; adding one later changes no other.
-Meanwhile: B; sections without data print `not shown yet`.
+Meanwhile: B is applied as far as the data exists: `cpl explain <file>` lists the four sections under `Not shown yet:` until the compiler query lands.
 
 ### tools: which exit codes does `cpl` use (tools-4)
 `spec/tools/cli.md` says 0 success, 1 program or test failure, 2 compile error, 3 usage error. The binary (`crates/cpl-cli/src/lib.rs`, `EXIT_ERRORS`/`EXIT_USAGE`/`EXIT_FAILED`) uses 1 compile error, 2 usage error, 3 the program failed: `cpl run` on `print(xs[5])` exits 3 (`run_exits_3_where_the_program_fails_and_keeps_what_it_printed`), `cpl judges a b` exits 2, the emitted C++ exits 3 on a failed `assert`.
