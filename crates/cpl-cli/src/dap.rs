@@ -9,7 +9,9 @@
 
 use crate::{compile_side, render_trap, Side};
 use cpl_diag::Shown;
-use cpl_interp::trace::{first_change, string as json_str, Change, Recording, Replay, TraceConfig};
+use cpl_interp::trace::{
+    first_change, first_change_in, string as json_str, Change, Recording, Replay, TraceConfig,
+};
 pub(crate) use cpl_json::Value as Json;
 use std::collections::{BTreeMap, HashSet};
 use std::io::{self, BufRead, BufReader, Write};
@@ -557,37 +559,65 @@ impl Session {
                         }
                     }
                 }
-                // On a long run the place is the step's number: visits count from the window.
+                // On a long run the place counts visits from the window's first step.
                 let (at, base) = (self.base + self.cursor, self.base);
-                let place = (base == 0)
-                    .then(|| self.recording.place(self.cursor))
-                    .flatten();
+                let place = self.recording.place(self.cursor);
                 let before = std::mem::take(&mut self.recording);
+                let (pager, config) = (self.pager.take(), self.config.clone());
                 if let Err(msg) = self.record(writer)? {
-                    (self.recording, self.base) = (before, base);
+                    (self.recording, self.base, self.pager) = (before, base, pager);
                     let msg = format!("{msg}\nkept the last good recording");
                     self.send_response(writer, req_seq, command, false, Some(&msg), None)?;
                     return Ok(false);
                 }
-                self.cursor = place.map_or(at, |p| self.recording.find(p, at));
-                if self.cursor >= self.recording.len() && !self.goto(at) {
+                let before = match &pager {
+                    Some(pager) if base > 0 => {
+                        let first = TraceConfig {
+                            from_step: Some(0),
+                            max_steps: Some(PAGE),
+                            ..config
+                        };
+                        pager.window(first).recording.unwrap_or_default()
+                    }
+                    _ => before,
+                };
+                // Two runs longer than what is kept compare over what both keep.
+                let same_steps = (before.truncated && self.recording.truncated)
+                    .then(|| before.len().min(self.recording.len()));
+                self.change = match same_steps {
+                    Some(n) => first_change_in(&before, 0..n, &self.recording, 0..n),
+                    None => first_change(&before, &self.recording),
+                };
+                if base == 0 {
+                    self.cursor = place.map_or(0, |p| self.recording.find(p, at));
+                } else if self.goto(base) {
+                    self.cursor = place.map_or(0, |p| self.recording.find(p, at - base));
+                } else {
                     self.cursor = self.recording.len().saturating_sub(1);
                 }
-                self.change = (base == 0)
-                    .then(|| first_change(&before, &self.recording))
-                    .flatten();
                 self.send_response(writer, req_seq, command, true, None, None)?;
                 if self.recording.is_empty() {
                     self.send_terminated(writer)?;
                     return Ok(false);
                 }
                 let note = match &self.change {
-                    None => "re-ran: every value and every print is the same as before".to_string(),
+                    None => match same_steps {
+                        Some(steps) => format!(
+                            "re-ran: every value and every print of the first {steps} steps is the same as before"
+                        ),
+                        None => "re-ran: every value and every print is the same as before".to_string(),
+                    },
                     Some(change) => format!("re-ran: {}", describe_change(change)),
                 };
                 self.send_output(writer, "console", &format!("{note}\n"))?;
                 let line = self.recording.line(self.cursor).unwrap_or(0);
                 let kept = match place {
+                    Some(_) if self.base > 0 => {
+                        format!(
+                            "kept your place: line {line}, step {}",
+                            self.base + self.cursor + 1
+                        )
+                    }
                     Some(p) if p.line == line => {
                         format!("kept your place: line {line}, visit {}", p.visit)
                     }

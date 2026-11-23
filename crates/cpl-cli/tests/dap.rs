@@ -602,6 +602,18 @@ print(i / d)
     dap.send("stackTrace", Some("{\"threadId\":1}"));
     let frame = dap.recv_until("\"command\":\"stackTrace\"");
     assert!(frame.contains("\"line\":6"), "{frame}");
+    // Recorded again unchanged, it keeps the place past the first recording.
+    dap.send("restart", Some("{\"arguments\":{}}"));
+    let note = dap.recv_until("re-ran");
+    assert!(
+        note.contains("of the first 1000000 steps is the same"),
+        "{note}"
+    );
+    let kept = dap.recv_until("\"event\":\"stopped\"");
+    assert!(kept.contains("kept your place: line 6"), "{kept}");
+    dap.send("evaluate", Some("{\"expression\":\"i\"}"));
+    let i = dap.recv_until("\"command\":\"evaluate\"");
+    assert!(i.contains("\"result\":\"15000000\""), "{i}");
     // Back through every window to the first step.
     dap.send("reverseContinue", Some("{\"threadId\":1}"));
     let _ = dap.recv_until("\"event\":\"stopped\"");
