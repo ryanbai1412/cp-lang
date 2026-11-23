@@ -1,14 +1,12 @@
-// Codeforces 2129 F1: Top-K Everywhere (easy version, interactive).
-// Assign each value v in 1..=845 a distinct subset `masks[v]` of 30 queries.
-// Query 0 (type 4) returns up to 300 positions; queries 1..30 (type 2) each
-// return up to 60 positions. As long as each query q holds at most `room_of[q]`
-// values, it returns all of their positions, so every position p collects its
-// exact value's mask `sig[p]` and `value_of[sig[p]]` recovers the permutation.
-//
-// Room check: all 1 + 30 + C(30, 2) = 466 masks of size <= 2 plus 379 triples
-// total 845 masks using 30 + 2 * 435 + 3 * 379 = 2037 bit-slots, within the
-// 300 + 29 * 60 = 2040 total capacity. Taking each triple on the three queries
-// with the most remaining room fills all 845 without exhausting any query.
+// Source: Codeforces 2129F1 (Top-K Tracker, easy), https://codeforces.com/contest/2129/problem/F1
+// Problem: interactive, multitest (t <= 40): find a hidden permutation p of n <= 845. A query
+//   names distinct indices and gets back the largest min(60, m) of their p values (type 1) or pos
+//   values (type 2); types 3 and 4 return min(300, m). At most 30 queries, one of type 3/4.
+// Solution: give each value its own subset of the 30 queries: the empty set, 30 singletons, all
+//   435 pairs and 379 triples placed greedily on the queries with the most room, so query 0 (type
+//   4) holds at most 300 values and each other (type 2) at most 60 (2037 of 2040 slots). A query
+//   asks for the positions of its values; holding no more than it returns, it returns them all, so
+//   each position collects its value's subset, which a map inverts. 30 queries, O(30 n) work.
 
 @!interactive
 domain Query = 0..30

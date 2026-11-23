@@ -1,11 +1,11 @@
-// CCO 2019 P2, Sirtet: rigid shapes of '#' cells (connected by sides) fall
-// straight down and come to rest on the floor or on each other. Print the
-// final picture.
-//
-// A shape can fall as far as the floor lets it, and no further than the
-// shape directly below any of its cells plus the gap between them: shortest
-// distances from the floor over those gap edges.
-// Runnable on proto/cpc today.
+// Source: CCO 2019 P2 (Sirtet), https://dmoj.ca/problem/cco19p2
+// Problem: an N x M grid (NM <= 1e6) of '.' and '#'; side-connected '#' cells form rigid objects
+//   that all fall straight down at the same speed, each stopping on the bottom row or on top of
+//   another object. Print the final grid.
+// Solution: label objects by flood fill. In each column, consecutive '#' cells from the bottom
+//   give an edge from the object below (the floor is node 0) to the one above, weighted by the
+//   empty cells between them. An object falls by its shortest distance from the floor
+//   (Dijkstra): O(NM log NM).
 // original: corpus/submissions/3613676.cpp
 let n: 1..=1e6 = read()
 let m: 1..=1e6 = read()

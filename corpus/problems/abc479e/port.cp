@@ -1,5 +1,9 @@
-// ABC479 E — Cut and Add
-// Tree problem: Graph.undirected + Rooted + subtree diff propagation + @brute(main)
+// Source: AtCoder ABC479 E (Cut and Add), https://atcoder.jp/contests/abc479/tasks/abc479_e
+// Problem: a tree with an odd number N <= 2e5 of vertices, edges numbered 1..N-1. For each edge
+//   i, removing it splits the tree; add i to x_v for every v in the larger part. Print x_1..x_N.
+// Solution: root at 1. The edge above child c adds i to sub(c) when size(c) > N - size(c), else to
+//   everything outside sub(c): add i to a base and -i at c. Pushing the offsets down in preorder
+//   gives every x in O(N); the @brute redoes each cut by DFS in O(N^2).
 
 let n: 3..=2e5 = read()
 domain V = 1..=n

@@ -1,16 +1,13 @@
-// Codeforces 2137 G: Cry Me a River.
-// Two players alternate moving a token along a DAG; Cry (first) wins by
-// reaching a sink without touching a red vertex, River (second) wins by
-// forcing the token onto a red vertex.
-// Each vertex has one of four outcomes `(cry_as_first, cry_as_second)`:
-//   - `BothCry`    (T, T): Cry wins regardless of turn (e.g. non-red sink).
-//   - `FirstWins`  (T, F): mover wins (has a `SecondWins` out-neighbor, or both
-//                          a `BothCry` and a `BothRiver` out-neighbor).
-//   - `SecondWins` (F, T): mover loses (every out-neighbor is `FirstWins`).
-//   - `BothRiver`  (F, F): River wins regardless of turn (red vertex, or only
-//                          `FirstWins`/`BothRiver` neighbors with >= 1 `BothRiver`).
-// Painting vertices red can only flip each player's win bit `true -> false`, so
-// every vertex changes outcome at most twice, bounding `propagate` to O(n + m).
+// Source: Codeforces 2137G (Cry Me a River), https://codeforces.com/contest/2137/problem/G
+// Problem: a DAG with n, m <= 2e5, all nodes blue. Cry (first) and River alternately move a token
+//   along an edge; Cry wins when it reaches a node with no out-edges, River when it reaches a red
+//   node (red sinks go to River). q <= 2e5 queries: paint u red, or ask whether Cry wins from u.
+//   Multitest, sums of n, m, q <= 2e5.
+// Solution: a node's outcome is the pair (Cry wins moving first, Cry wins moving second), one of
+//   four classes, decided by how many out-neighbours fall in each class (`freq`); compute them in
+//   reverse topological order. Painting red only turns win bits from true to false, so each node
+//   changes class at most twice; `propagate` re-evaluates the in-neighbours of a changed node and
+//   recurses, O(n + m + q) in total.
 
 enum Outcome: BothCry | FirstWins | SecondWins | BothRiver
 

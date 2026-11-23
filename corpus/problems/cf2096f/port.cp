@@ -1,16 +1,13 @@
-// Codeforces 2096 F: Wonderful Impostors.
-// Statements l..r can all be true iff every "some impostor" interval keeps a viewer
-// no "no impostor" interval covers: then make every uncovered viewer an impostor.
-// That only gets easier as the window shrinks, so two pointers give, for each r, the
-// smallest l that still fits, and a query l r asks whether l reaches it.
-// - A "no impostor" interval [a, b] merges the covered run around it into the gap
-//   between the nearest uncovered viewers; it fits iff no live "some impostor"
-//   interval lies inside that gap.
-// - A "some impostor" interval fits iff it has an uncovered viewer.
-// `cover` counts the live "no impostor" intervals over each viewer (min 0 means one
-// is uncovered). The live "some impostor" intervals starting at v are a sliding
-// window over the statements, so `ends[v]` keeps their shortest right end, and
-// `shortest` is a min tree over those.
+// Source: Codeforces 2096F (Wonderful Impostors), https://codeforces.com/contest/2096/problem/F
+// Problem: n viewers, each crewmate or impostor; m <= 2e5 statements, each "no impostor in
+//   [a, b]" or "at least one impostor in [a, b]". q <= 2e5 questions l r: can statements l..r all
+//   be true? Multitest, sums of n, m, q <= 2e5.
+// Solution: statements fit iff every "some" interval has a viewer no "no" interval covers (make
+//   those impostors). Fitting survives shrinking, so two pointers find the smallest fitting l for
+//   each r and a question checks l >= first_fit[r]. A "some" interval fits iff its min cover is 0
+//   (range-add min SegTree); a "no" interval fits iff no live "some" interval lies inside the
+//   covered run it creates (left_while/right_while), via a min SegTree of the shortest live end
+//   per start (a sliding Window each): O((m + q) log n).
 @!multitest
 let (n, m): (1..=200_000, 1..=200_000) = read()
 domain V = 1..=n

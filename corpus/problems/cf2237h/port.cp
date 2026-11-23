@@ -1,14 +1,14 @@
-// Codeforces 2237 H.
-// Each query paints the path `cur -> c` with timestamp `t_now`. Every vertex on
-// the path whose last paint was `t_old` demands 1 unit of slime from some
-// non-empty supply bucket `u <= t_old`; unmatched demand increases `missing`,
-// and all matched slime moves into bucket `t_now`.
-//
-// Greedy optimality (exchange argument): a supply unit at timestamp `u <= t_old`
-// can serve any future demand with threshold `>= u`, so older buckets are
-// strictly more flexible than newer ones. Processing chunks in decreasing
-// `t_old` order and draining the newest eligible bucket `<= t_old` always leaves
-// the most flexible supply behind for tighter demands.
+// Source: Codeforces 2237H (Slime and Queries), https://codeforces.com/contest/2237/problem/H
+// Problem: a tree with n <= 1e5 vertices and a slime on m connected vertices; a Move frees one
+//   occupied vertex and occupies a new one, staying connected. Food appears at c_1..c_q in order
+//   (forced online: c_i is decoded with ans_{i-1}); for each i print the fewest Moves to eat
+//   c_1..c_i in order. Multitest, sums of n and q <= 1e5.
+// Solution: walk the food path cur -> c and stamp it with the query time in an IntervalMap over
+//   HLD preorder. Slime cells sit in buckets keyed by when they last moved; a path vertex last
+//   stamped at t_old is free if a cell that last moved at or before t_old is matched to it, else
+//   it costs a Move (`missing`, the answer). Chunks in decreasing t_old take from the newest
+//   eligible bucket (older cells serve more vertices, so this is optimal by exchange) and matched
+//   cells move to bucket t_now: about O((n + q) log^2 n).
 
 @!multitest
 let (n, m, q): (2..=100_000, 2..=100_000, 1..=100_000) = read()

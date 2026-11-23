@@ -1,20 +1,14 @@
-// Codeforces 2089 C2: Key of Like (Hard Version).
-// `n` players take turns picking uniformly from `i` remaining locks (`k`
-// counterfeit, `i - k` real), as `i` grows from 1 to `l + k_max`.
-// `dp[k, p]` is the expected number of real locks opened by the player `p`
-// steps after the current turn.
-//
-// For `i > 1` and `k < i`, the next lock/key draw splits into `(i - 1)`
-// lock-first outcomes (`p_lock`) and `(i - k - 1)` key-first outcomes
-// (`p_key`), out of `(i - 1) + (i - k - 1) = 2i - k - 2` equally likely
-// outcomes:
-//   - Opening a real lock (`k < i`) scores +1 for `Pos.first` and shifts the
-//     turn uniformly by `1..=i` (weight `p_lock / i`) or `1..=i - k` (weight
-//     `p_key / i`), summed via `cyclic_window_sum`.
-//   - Opening a counterfeit lock (`k > 0`) transitions `k -> k - 1` with
-//     weight `k * p_key / i` and rotates by `i - k`.
-// Iterating `k` downward lets row `k` read row `k - 1` from round `i - 1` in
-// place without a second table.
+// Source: Codeforces 2089C2 (Key of Like, hard), https://codeforces.com/contest/2089/problem/C2
+// Problem: n <= 100 members take turns trying one key on one lock, always a pair most likely to
+//   match given all past tries (ties uniform), until all l <= 5000 locks are open; there are
+//   l + k keys, k <= 25 of them fake. Print each member's expected number of successful matches
+//   mod 1e9+7. Multitest, sum l <= 5000.
+// Solution: with i unused keys, k of them fake, play settles one key or one lock at a time: a lock
+//   tried key by key opens after a uniform 1..i tries, a key tried lock by lock opens after a
+//   uniform 1..i - k tries or, if fake, is dropped after i - k misses (k - 1 left); the two modes
+//   mix as (i - 1) : (i - k - 1). dp[k, p] = expected matches of the player p turns after the
+//   mover; rows grow with i, k downward so row k - 1 is still the previous round, and each
+//   uniform turn shift is a cyclic window sum over a doubled prefix array: O((l + k) k n).
 
 type Z = Mod<1_000_000_007>
 let comb = Comb<Z>()

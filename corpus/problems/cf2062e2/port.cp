@@ -1,18 +1,14 @@
-// Codeforces 2062 E2: The Game (Hard Version).
-//
-// Cirno opens with u; Daiyousei must answer with a heavier x outside sub(u),
-// and if he can't, he wins. Cirno wins iff such an x exists and every one of
-// them leaves her stuck: nothing heavier than x outside sub(u) and sub(x).
-// Deeper play never changes the outcome (a game-tree brute force agrees for
-// every tree with n <= 9).
-//
-// Let above(x) be the nodes heavier than x outside sub(x), and g(x) their
-// lca. A reply x strands Cirno iff above(x) is empty or sub(u) contains
-// g(x). Call x dangerous when above(x) is nonempty. So u wins iff some
-// heavier node lies outside sub(u) and no dangerous heavier x has both x and
-// g(x) outside sub(u). Sweep weights downward: sub(u) is a preorder range,
-// "x and g(x) both inside" is "lca(x, g(x)) inside", and inclusion-exclusion
-// turns the condition into three range counts. O(n log n).
+// Source: Codeforces 2062E2 (The Game, hard), https://codeforces.com/contest/2062/problem/E2
+// Problem: a tree of n <= 4e5 nodes rooted at 1 with values w_i <= n. Players alternately delete
+//   the subtree of a remaining node heavier than the opponent's last pick (Cirno's first pick is
+//   free); whoever cannot move wins. Print how many first picks win for Cirno and list them.
+//   Multitest, sum n <= 4e5.
+// Solution: u wins iff some heavier node lies outside sub(u) and every heavier reply x outside it
+//   strands Cirno. With above(x) = nodes heavier than x outside sub(x) and g(x) their lca, x
+//   strands her iff above(x) is empty or g(x) is in sub(u). Sweep weights downward: a SortedSet of
+//   heavier preorder positions gives g(x) (lca of the first and last outside sub(x)); Fenwicks
+//   over preorder mark x, g(x) and lca(x, g(x)) so inclusion-exclusion counts dangerous replies
+//   with both outside sub(u). O(n log n).
 
 use std.seq.{buckets}
 enum Mark: Reply | Target | Meet

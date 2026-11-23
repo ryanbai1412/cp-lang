@@ -1,15 +1,14 @@
-// Codeforces 2150 F: Cycle Closing.
-// Take any spanning tree T of diameter D, and let L = ceil(D / 2).
-// Two operations close every missing edge into a cycle:
-//   - Operation 1 (path length 3): join the ends of every tree path j - i - k,
-//     making all vertices at tree distance 2 adjacent (one step can skip a vertex).
-//   - Operation 2 (path length L + 1): connect each remaining pair (i, j) by an
-//     L-step path. If `dist = t.dist(i, j) >= L`, skip `skip = dist - L`
-//     vertices by taking every other vertex on `p[..2 * skip]` then `p[2 * skip..]`.
-//     If `dist < L`, let `far` be the diameter end farther from `i` (so
-//     `dist(i, far) >= L`) and `m = t.median(i, j, far)`. Replace `m` with a
-//     detour over the first `stem_len = L - dist + 1` vertices of `m..far`:
-//     out on every other vertex, back on the rest.
+// Source: Codeforces 2150F (Cycle Closing), https://codeforces.com/contest/2150/problem/F
+// Problem: a connected simple graph, n <= 200 (sum n^2 <= 4e4). An operation picks k, prints
+//   simple paths of k vertices, then adds the edge joining each path's ends (usable only by later
+//   operations). Make the graph complete, each edge exactly once, in at most 2 operations; print
+//   them. Multitest.
+// Solution: take a DSU spanning tree T with diameter D and let L = ceil(D / 2). Operation 1
+//   (k = 3) joins j and k through each tree vertex i of which both are neighbours, if not already
+//   adjacent, so all pairs at tree distance <= 2 become adjacent. Operation 2 (k = L + 1) gives
+//   every other pair an L-edge path: if dist >= L, walk the tree path skipping every other vertex
+//   over its first 2(dist - L) steps; else, at the median of i, j and the far diameter end, detour
+//   towards that end and back to pad to L edges. O(n^3) with LCA tree paths.
 
 @!multitest
 let n: 3..=200 = read()

@@ -1,14 +1,14 @@
-// Codeforces 2229 G.
-//
-// Start at house X at time 0 and walk left or right; road i opens at
-// road_d[i], so `d` is the earliest arrival along each side. It only pays to
-// move on to a house worth more, so each side keeps its prefix records by
-// value, met in order of increasing v across both sides. A record's `val` makes
-// v * t + val the best total by time t >= d while staying at it. A record is
-// reached from the previous record on its own side, or from an already-met
-// record on the other side by walking back through X (whose value both prefix
-// sums count once each, hence `- v[x]`); either way every house passed is
-// collected once.
+// Source: Codeforces 2229G (Roadworks), https://codeforces.com/contest/2229/problem/G
+// Problem: n <= 2e5 houses in a row with h_i <= 1e9; road i (between i and i + 1) is built on day
+//   d_i. Start at house x; on each day 1..k (k <= 1e9) roads due open, you may step to a
+//   neighbour over a built road, then gain h of your house. Print the maximum total. Multitest,
+//   sum n <= 2e5.
+// Solution: d is the earliest arrival day along each side of x, and it only pays to settle at a
+//   house worth more than any passed on its side, so each side keeps its prefix records by value.
+//   val[r] makes v * t + val the best total by day t >= d staying at record r. Records are met in
+//   increasing value across both sides (merge_sorted); r is reached from the previous record on
+//   its side or from an already-met record on the other side through x (whose value both prefix
+//   sums count, hence - v[x]); a pointer per side visits each candidate once: O(n).
 use std.seq.{merge_sorted}
 
 enum Side: Left | Right
