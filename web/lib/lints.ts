@@ -59,9 +59,9 @@ function toml(text: string): Record<string, string> {
   return out;
 }
 
-// Families and practices come from the idioms lane's catalog: a row in
-// spec/idioms/lints.md marks a lint with `✓name` under its family heading and
-// names the practices it serves (`#2`), titled in spec/idioms/principles.md.
+// Each lint record's lint.toml names its family (`family = "S.seq: reductions"`,
+// a subfamily of the catalog heading `## S. ...`) and the practices it serves
+// (`practice = "#2 #7"`), titled in spec/idioms/principles.md.
 const idioms = join(process.cwd(), '../spec/idioms');
 
 export function principles(): Principle[] {
@@ -69,30 +69,16 @@ export function principles(): Principle[] {
   return [...text.matchAll(/^\*\*(\d+)\. ([^*]+?)\.?\*\*/gm)].map((m) => ({ n: Number(m[1]), title: m[2] }));
 }
 
-function catalog() {
-  const byNumber = new Map(principles().map((p) => [p.n, p]));
-  const out = new Map<string, { family: string; subfamily?: string; principles: Principle[] }>();
-  let family = '';
-  let subfamily: string | undefined;
-  for (const line of readFileSync(join(idioms, 'lints.md'), 'utf8').split('\n')) {
-    if (line.startsWith('## '))
-      [family, subfamily] = [
-        line
-          .slice(3)
-          .replace(/\s*\(.*\)\s*$/, '')
-          .trim(),
-        undefined,
-      ];
-    else if (line.startsWith('### ')) subfamily = line.slice(4).trim();
-    else if (line.startsWith('|')) {
-      const cells = line.split('|').map((c) => c.trim());
-      const served = cells.find((c) => /^#\d+(,\s*#\d+)*$/.test(c)) ?? '';
-      const ps = [...served.matchAll(/#(\d+)/g)].flatMap((m) => byNumber.get(Number(m[1])) ?? []);
-      for (const m of line.matchAll(/✓(\w+)/g))
-        if (!out.has(m[1])) out.set(m[1], { family, subfamily, principles: ps });
-    }
-  }
-  return out;
+const headings = () =>
+  readFileSync(join(idioms, 'lints.md'), 'utf8')
+    .split('\n')
+    .filter((l) => l.startsWith('## '))
+    .map((l) => l.slice(3).replace(/\s*\(.*\)\s*$/, '').trim());
+
+function placed(value: string | undefined, families: string[]): { family?: string; subfamily?: string } {
+  const sub = value && /^([A-Z])\.\S/.exec(value);
+  if (!sub) return { family: value };
+  return { family: families.find((h) => h.startsWith(`${sub[1]}. `)) ?? value, subfamily: value };
 }
 
 let cache: Lint[] | null = null;
@@ -113,7 +99,8 @@ function runs(src: string, input: string): boolean {
 }
 
 export function lints(): Lint[] {
-  const cat = catalog();
+  const families = headings();
+  const byNumber = new Map(principles().map((p) => [p.n, p]));
   cache ??= roots
     .flatMap((root) =>
       existsSync(join(repoRoot, root))
@@ -134,9 +121,8 @@ export function lints(): Lint[] {
         title: t.title,
         summary: t.summary,
         practice: t.practice,
-        family: cat.get(e.name)?.family,
-        subfamily: cat.get(e.name)?.subfamily,
-        principles: cat.get(e.name)?.principles ?? [],
+        ...placed(t.family, families),
+        principles: [...(t.practice ?? '').matchAll(/#(\d+)/g)].flatMap((m) => byNumber.get(Number(m[1])) ?? []),
         explain: file('explain.md'),
         before: file('before.cp'),
         after: file('after.cp'),
