@@ -486,7 +486,7 @@ impl<'a> Parser<'a> {
             }
             None
         };
-        let step = self.eat_ident("by").then(|| Box::new(self.bit_or()));
+        let step = (self.eat_ident("by") || self.foreign_step()).then(|| Box::new(self.bit_or()));
         Expr {
             kind: ExprKind::Range {
                 lo,

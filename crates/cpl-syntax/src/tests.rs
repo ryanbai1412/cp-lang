@@ -1940,3 +1940,11 @@ fn an_is_pattern_is_not_read_as_a_python_comparison() {
     let d = parse_file("if x is some(v):\n    print(v)\n").diagnostics;
     assert!(d.is_empty(), "{d:?}");
 }
+
+#[test]
+fn a_range_step_word_is_one_error_with_the_by_fix() {
+    let d =
+        parse_file("for i in 0..10 step 2:\n    print(i)\nlet step = 3\nprint(step)\n").diagnostics;
+    let fixed: Vec<_> = d.iter().map(|d| d.fixes[0].edits[0].1.as_str()).collect();
+    assert_eq!(fixed, ["by"], "{d:?}");
+}

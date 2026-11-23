@@ -3,6 +3,26 @@
 use super::*;
 
 impl<'a> Parser<'a> {
+    /// `0..10 step 2`: the stride is `by` in CP Lang. One error with the
+    /// fix, read as `by`.
+    pub(super) fn foreign_step(&mut self) -> bool {
+        if !self.at_ident("step") || !matches!(self.peek_n(1), T::Int | T::Ident | T::LParen) {
+            return false;
+        }
+        let span = self.span();
+        self.recovered(
+            Diagnostic::error(
+                codes::EXPECTED_TOKEN,
+                span,
+                "a range's stride is `by` in CP Lang, not `step`",
+            )
+            .with_help("write `0..10 by 2`")
+            .with_fix("write `by`", span, "by"),
+        );
+        self.bump();
+        true
+    }
+
     /// Python's `is None` or `is not None`; any other `is` is a pattern test.
     pub(super) fn at_python_is(&self) -> bool {
         let none_at = if self.peek_n(1) == T::Not { 2 } else { 1 };
