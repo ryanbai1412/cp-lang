@@ -7,12 +7,12 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 2389 (995 passing). Rules: 558.
+Cases: 2393 (995 passing). Rules: 558.
 
 ## Summary per chapter
 
 - R01 (01-lexical-grammar.md): 52 rules, 112 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R02 (02-values-types.md): 52 rules, 115 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R02 (02-values-types.md): 52 rules, 118 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R03 (03-numbers-layout.md): 24 rules, 61 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04 (04-indices.md): 66 rules, 107 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04a (04a-identity-vs-offset.md): 39 rules, 53 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -22,7 +22,7 @@ Cases: 2389 (995 passing). Rules: 558.
 - R07 (07-sequences.md): 88 rules, 113 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R08 (08-traits-generics.md): 29 rules, 78 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R09 (09-contexts-checks.md): 26 rules, 55 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R10 (10-io.md): 18 rules, 76 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R10 (10-io.md): 18 rules, 77 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R11 (11-modules-prelude.md): 15 rules, 38 cases; 0 uncovered, 0 happy-path only, 1 negative only
 - R12 (12-powers.md): 17 rules, 36 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R13 (13-lowering.md): 22 rules, 27 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -46,7 +46,7 @@ negative case. Complete: rules with no gap in `rule-gaps.txt`.
 | Chapter | Rules | Accept | Forbidding | Reject | Complete |
 |---|---|---|---|---|---|
 | R01 | 52 | 52 (100%) | 27 | 27 (100%) | 52 (100%) |
-| R02 | 52 | 52 (100%) | 27 | 27 (100%) | 52 (100%) |
+| R02 | 52 | 52 (100%) | 28 | 28 (100%) | 52 (100%) |
 | R03 | 24 | 24 (100%) | 13 | 13 (100%) | 24 (100%) |
 | R04 | 66 | 66 (100%) | 16 | 16 (100%) | 66 (100%) |
 | R04a | 39 | 39 (100%) | 3 | 3 (100%) | 39 (100%) |
@@ -67,7 +67,7 @@ negative case. Complete: rules with no gap in `rule-gaps.txt`.
 | Rlint | 2 | 2 (100%) | 2 | 2 (100%) | 2 (100%) |
 | Rlsp | 5 | 0 (0%) | 2 | 0 (0%) | 0 (0%) |
 | Rstress | 1 | 1 (100%) | 0 | 0 (0%) | 1 (100%) |
-| all | 558 | 552 (98%) | 215 | 212 (98%) | 551 (98%) |
+| all | 558 | 552 (98%) | 216 | 213 (98%) | 551 (98%) |
 
 ## Rules
 
@@ -154,7 +154,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R02.5.5 [2+ 1-]: A record pattern names fields: `(u: a, v: b)` binds `a` and `b`, and `(u:, v:)` is shortha...
 - R02.6.1 [1+ 1-]: Fields are fixed after construction unless declared `var`; assigning a non-`var` field is ...
 - R02.6.2 [2+ 1-]: Constructors are generated: `Edge(a, b, 5)` or `Edge(u: a, v: b, w: 5)`; fields with defau...
-- R02.6.3 [1+ 1-]: **Two kinds of constructor, one rule each.** A generated constructor (`Edge(a, b, 5)`, a s...
+- R02.6.3 [3+ 2-]: **Two kinds of constructor, one rule each.** A generated constructor (`Edge(a, b, 5)`, a s...
 - R02.6.4 [1+ 1-]: `struct List<T>` with no body is opaque: its fields are private to its module. A struct bo...
 - R02.6.5 [1+ 1-]: Named structs satisfy traits only through `impl`, including field traits (`impl Target<V> ...
 - R02.6.6 [1+ 1-]: `@get` on a read-only method whose other parameters all have defaults lets it be called wi...
@@ -583,7 +583,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R10.1.3 [1+ 0-]: IOI-style tasks mark entry points with `@grader`, `@grader(interactive)` or `@grader(two_p...
 - R10.2.1 [5+ 1-]: `read<T>()` dispatches on the expected type, so `let n: 1..=2e5 = read()` and `read<[n]Int...
 - R10.2.2 [7+ 1-]: Range types read with their contract. A domain written with explicit ends (`1..=n`, `0..n`...
-- R10.2.3 [11+ 3-]: Arrays `[D]T` read `D.count` values; `[R, C]Char` reads rows of characters with no separat...
+- R10.2.3 [12+ 3-]: Arrays `[D]T` read `D.count` values; `[R, C]Char` reads rows of characters with no separat...
 - R10.2.4 [3+ 0-]: `s.parse<T>()` reads a `T` from a string by these same rules, `None` on a bad or leftover ...
 - R10.2.5 [1+ 1-]: Graphs are built from an edge list read as records, `read<[E](u: V, v: V)>()`, then `Graph...
 - R10.2.6 [1+ 4-]: A bad token traps with the input position and the expected type.
@@ -738,7 +738,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0307 Condition is not `Bool`: 1 case(s)
 - E0308 Ordering comparison on optional: 2 case(s)
 - E0309 Incompatible operands for operator: 1 case(s)
-- E0310 Unknown named argument: 1 case(s)
+- E0310 Unknown named argument: 2 case(s)
 - E0311 Invalid `@memo` function: 2 case(s)
 - E0312 Mutating expression inside `debug(...)`: 1 case(s)
 - E0313 Fresh domain escapes its declaring block: 1 case(s)

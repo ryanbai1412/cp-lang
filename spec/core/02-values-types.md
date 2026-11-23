@@ -161,7 +161,9 @@ struct Tally:
   parameters are lent for the call and its result is owned unless the
   signature says `lends` (chapter 5, decision 147). The cost rule tells
   them apart: a custom constructor that keeps data copies it (O(n),
-  documented) or says `lends`. (R02.6.3)
+  documented) or says `lends`. When a type declares a static `new`,
+  `T(args)` always calls it, so `Mod<7>(10)` reduces to `3` and the
+  field form `Mod<7>(v: 3)` is E0310. (R02.6.3)
 - `struct List<T>` with no body is opaque: its fields are private to its
   module. A struct body may hold methods with `self` or `mut self`. (R02.6.4)
 - Named structs satisfy traits only through `impl`, including field
