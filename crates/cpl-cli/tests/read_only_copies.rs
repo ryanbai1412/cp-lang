@@ -64,7 +64,7 @@ const BOUNDS: [Bound; 5] = [
     ("entry_copies", entry_copies, 0),
     // Measured when the ratchet began: snapshots taken before a change
     // (`old_s = self.state`) and temporaries copied out of places.
-    ("deep_copies", deep_copies, 48),
+    ("deep_copies", deep_copies, 46),
     ("std_functions", std_functions, 176),
 ];
 

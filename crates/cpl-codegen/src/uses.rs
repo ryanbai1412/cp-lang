@@ -250,11 +250,17 @@ pub(crate) fn dead_after(program: &Program, block: &Block, k: usize, slot: usize
     let declared = block.stmts[..k]
         .iter()
         .any(|stmt| matches!(stmt, Stmt::Let(s, _) if *s == slot));
+    declared && unread_after(program, block, k, slot)
+}
+
+/// True when nothing after statement `k` of `block`, nor a closure in it,
+/// reads `slot`.
+pub(crate) fn unread_after(program: &Program, block: &Block, k: usize, slot: usize) -> bool {
     let mut closure = false;
     walk::deep_exprs(block, &mut |e| {
         closure |= matches!(e.kind, ExprKind::Closure(_))
     });
-    declared && !closure && !mentions(program, &block.stmts[k + 1..], slot).any
+    !closure && !mentions(program, &block.stmts[k + 1..], slot).any
 }
 
 /// Why the place a lent `let` reads may change while the name lives.
@@ -401,9 +407,19 @@ impl crate::emit::Emitter<'_> {
             // Nor may it read the local whole: that read could move it.
             false if named_local => changed(effects.locals.contains(&root), SOURCE_SET)
                 .or(changed(tail.whole.contains(&root), SOURCE_READ_WHOLE)),
-            // A parameter may be another name for a global a call writes.
-            false => changed(effects.locals.contains(&root), SOURCE_SET)
-                .or(changed(tail.calls, SOURCE_CALLED)),
+            // A parameter may be another name for a global a call writes,
+            // or for another parameter a store sets.
+            false => changed(
+                effects.locals.iter().any(|l| *l == root || *l < params),
+                SOURCE_SET,
+            )
+            .or(changed(
+                effects.calls.iter().any(|f| {
+                    let e = self.uses.effects(*f);
+                    !e.writes.is_empty() || e.unknown_call
+                }),
+                SOURCE_CALLED,
+            )),
         }
     }
 
@@ -445,4 +461,42 @@ pub(crate) fn last_read(program: &Program, block: &Block, k: usize) -> bool {
         return false;
     };
     walk::root(place) != (false, *slot) && dead_after(program, block, k, *slot)
+}
+
+/// Value parameters whose one read copies them into a local the body
+/// changes, `var l = limbs`: taken by value, the copy moves in instead, and
+/// a caller at its last use moves its own value in.
+pub(crate) fn copied_once(f: &cpl_ir::Function) -> BTreeSet<usize> {
+    let stored = walk::Effects::of_block(&f.body).locals;
+    let mut reads = vec![0usize; f.params.len()];
+    walk::deep_exprs(&f.body, &mut |e| {
+        if let ExprKind::Local(s) = e.kind {
+            if s < reads.len() {
+                reads[s] += 1;
+            }
+        }
+    });
+    f.body
+        .stmts
+        .iter()
+        .filter_map(|stmt| match stmt {
+            Stmt::Let(
+                to,
+                Some(Expr {
+                    kind: ExprKind::Local(p),
+                    ty,
+                    ..
+                }),
+            ) if *p < f.params.len()
+                && reads[*p] == 1
+                && !f.params[*p].mutable
+                && !ty.is_scalar()
+                && !matches!(ty, Ty::Fn(..))
+                && stored.contains(to) =>
+            {
+                Some(*p)
+            }
+            _ => None,
+        })
+        .collect()
 }

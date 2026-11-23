@@ -490,6 +490,7 @@ pub(crate) fn sunk_params(program: &Program) -> Vec<BTreeSet<usize>> {
                     }
                 }
             });
+            sunk.extend(crate::uses::copied_once(f));
             sunk
         })
         .collect()

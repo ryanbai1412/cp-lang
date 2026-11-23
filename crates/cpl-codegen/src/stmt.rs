@@ -32,11 +32,28 @@ impl<'p> Emitter<'p> {
     pub fn block(&mut self, block: &Block, out: &mut String) {
         for k in 0..block.stmts.len() {
             self.tail = self.tail_at(&block.stmts, k);
-            self.moves_last = crate::uses::last_read(self.program, block, k);
+            self.moves_last =
+                crate::uses::last_read(self.program, block, k) || self.takes_sunk_param(block, k);
             self.stmt_presized(&block.stmts, k, out);
             self.moves_last = false;
         }
         self.tail = None;
+    }
+
+    /// `let l = limbs` in a fn's body, where `limbs` is a parameter taken by
+    /// value (see [`crate::scope::sunk_params`]) that nothing reads after.
+    fn takes_sunk_param(&self, block: &Block, k: usize) -> bool {
+        let (Stmt::Let(_, Some(init)), Some(id)) = (&block.stmts[k], self.fn_id) else {
+            return false;
+        };
+        let ExprKind::Local(p) = init.kind else {
+            return false;
+        };
+        std::ptr::eq(block, &self.program.fns[id].body)
+            && self.sunk[id].contains(&p)
+            && !init.ty.is_scalar()
+            && !matches!(init.ty, Ty::Fn(..))
+            && crate::uses::unread_after(self.program, block, k, p)
     }
 
     /// Writes the statements of a value block in line and gives back the
