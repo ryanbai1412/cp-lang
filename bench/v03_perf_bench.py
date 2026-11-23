@@ -19,8 +19,8 @@ of each run (emitted / original) and g++ time on the emitted C++ (taken while
 `--jobs` builds run at once, so compare runs made with the same `--jobs`).
 Every pair that does not reach a ratio is listed with its reason.
 
-Each program may keep a tuned in-language variant next to it (`tuned.cp`
-beside a corpus `port.cp`, else `<stem>.tuned.cp`): widths, `unchecked:`,
+Each program may keep a tuned in-language variant next to it (`perf.cp`
+beside a corpus `port.cp`, as `cpl bench --corpus` reads it, else `<stem>.perf.cp`): widths, `unchecked:`,
 layout, no inline C++ beyond the documented escape. Its tuned ratio is the
 better of the two; the summary prints the tuned max against the 1.1x bar
 (AGENTS.md goal 3) and the outliers left above it. Compiled C++ originals and
@@ -393,7 +393,7 @@ def collect_items(suites, only, cache_dir):
             open(empty_in, "w").close()
         for sub in ("containers", "flow", "math", "ranges", "seq", "strings"):
             for cp in sorted(glob.glob(os.path.join(ROOT, "bench", sub, "*.cp"))):
-                if cp.endswith(".tuned.cp"):
+                if cp.endswith(".perf.cp"):
                     continue
                 stem = os.path.basename(cp)[:-3]
                 name = f"{sub}/{stem}"
@@ -412,7 +412,7 @@ TUNED_BAR = 1.1
 def tuned_path(cp):
     """The tuned in-language variant kept next to `cp`, if there is one."""
     d, base = os.path.split(cp)
-    t = os.path.join(d, "tuned.cp") if base == "port.cp" else cp[:-3] + ".tuned.cp"
+    t = os.path.join(d, "perf.cp") if base == "port.cp" else cp[:-3] + ".perf.cp"
     return t if os.path.exists(t) else None
 
 
@@ -621,7 +621,7 @@ def main():
         print(f"=== {s} (n={st['measured_ge_min_ms']} >= {args.min_ms}ms, ok={st['total_ok']}/{len(sub)}) ===")
         print(
             f"  p50={st['p50']:.3f}x  p90={st['p90']:.3f}x  p95={st['p95']:.3f}x  max={st['max']:.3f}x  "
-            f"(>1.1x: {st['gt_1_1']}, >1.5x: {st['gt_1_5']})"
+            f"(>1.1x: {st['gt_1_1']}, >1.5x: {st['gt_1_5']}); tuned max={st['tuned_max']:.3f}x (bar <= {TUNED_BAR}x)"
         )
         measured = [r for r in sub if r.get("status") == "ok" and max(r["port_ms"], r["orig_ms"]) >= args.min_ms]
         print(
@@ -642,7 +642,7 @@ def main():
     print(f"=== OVERALL (n={overall['measured_ge_min_ms']} >= {args.min_ms}ms) ===")
     print(
         f"  p50={overall['p50']:.3f}x  p90={overall['p90']:.3f}x  p95={overall['p95']:.3f}x  max={overall['max']:.3f}x  "
-        f"(>1.1x: {overall['gt_1_1']}, >1.5x: {overall['gt_1_5']})"
+        f"(>1.1x: {overall['gt_1_1']}, >1.5x: {overall['gt_1_5']}); tuned max={overall['tuned_max']:.3f}x (bar <= {TUNED_BAR}x)"
     )
     print_tuned(overall)
     measured = [r for r in rows if r.get("status") == "ok" and max(r["port_ms"], r["orig_ms"]) >= args.min_ms]

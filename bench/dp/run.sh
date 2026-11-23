@@ -38,5 +38,5 @@ done
 python3 - "$tmp/ratios" <<'PY'
 import statistics, sys
 r = sorted(float(x) for x in open(sys.argv[1]))
-print(f"p50 {statistics.median(r):.2f}x (target <= 1.1x), max {r[-1]:.2f}x (target <= 1.5x)")
+print(f"p50 {statistics.median(r):.2f}x (target <= 1.1x), max {r[-1]:.2f}x (target <= 1.5x idiomatic; tuned max <= 1.1x, none tuned here)")
 PY

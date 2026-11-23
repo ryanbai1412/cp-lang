@@ -3,7 +3,7 @@
 //! Compares every measurable problem under `corpus/problems/<id>/` against its
 //! original accepted C++ solution (both built with `g++ -O2 -std=c++17`),
 //! reports per-port ratio, p50 and p95, enforces:
-//!   - corpus p50 <= 1.0x, p95 <= 1.5x (over ports above the 10 ms floor)
+//!   - corpus p50 <= 1.1x, p95 <= 1.2x, max <= 1.5x (over ports above the 10 ms floor)
 //!   - when `perf.cp` exists beside `spec.cp`/`port.cp`, uses it as the tuned
 //!     variant, verifies it passes the problem's tests, and requires <= 1.1x
 //!
@@ -23,8 +23,9 @@ const DEFAULT_CORPUS_DIR: &str = "corpus/problems";
 const DEFAULT_OUT_JSON: &str = "research/perf/corpus-p95-results.json";
 const DEFAULT_RUNS: usize = 5;
 const FLOOR_S: f64 = 0.010;
-const BAR_P50: f64 = 1.0;
-const BAR_P95: f64 = 1.5;
+const BAR_P50: f64 = 1.1;
+const BAR_P95: f64 = 1.2;
+const BAR_MAX: f64 = 1.5;
 const BAR_TUNED: f64 = 1.1;
 const SIZE_LIMIT: usize = 64 * 1024;
 
@@ -697,8 +698,11 @@ pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u
         }
     }
 
-    let bars_ok =
-        dist.n > 0 && dist.median <= BAR_P50 && dist.p95 <= BAR_P95 && tuned_failures.is_empty();
+    let bars_ok = dist.n > 0
+        && dist.median <= BAR_P50
+        && dist.p95 <= BAR_P95
+        && dist.worst <= BAR_MAX
+        && tuned_failures.is_empty();
 
     let _ = writeln!(
         stdout,
@@ -710,7 +714,7 @@ pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u
     );
     let _ = writeln!(
         stdout,
-        "  p50={:.3}x (bar <= {BAR_P50:.1}x)  p90={:.3}x  p95={:.3}x (bar <= {BAR_P95:.1}x)  worst={:.3}x",
+        "  p50={:.3}x (bar <= {BAR_P50:.1}x)  p90={:.3}x  p95={:.3}x (bar <= {BAR_P95:.1}x)  worst={:.3}x (bar <= {BAR_MAX:.1}x; perf.cp bar <= {BAR_TUNED:.1}x)",
         dist.median, dist.p90, dist.p95, dist.worst
     );
     if !tuned_failures.is_empty() {
