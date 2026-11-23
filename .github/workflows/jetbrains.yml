@@ -1,0 +1,91 @@
+name: jetbrains
+
+# Called by ci.yml. The plugin's Gradle build and tests run only when the
+# plugin, its build inputs, `cpl lsp` or this file changed since main's last
+# green CI run; every OS still runs the handshake against its own cpl.
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  jetbrains:
+    name: jetbrains (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      actions: read
+    # Gradle is not cached: with three IDEs its home is 8+ GB of the repo's
+    # 10 GB and evicted the Rust target/ caches; cold runs resolve through the
+    # Maven mirror and back off on a 429.
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          filter: blob:none
+      - name: Does this change touch the plugin?
+        id: plugin
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT: ${{ github.event_name }}
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+        run: |
+          build=true
+          case $EVENT in
+            pull_request) base=$PR_BASE ;;
+            push) base=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/runs?branch=main&event=push&status=success&per_page=1" --jq '.workflow_runs[0].head_sha' 2>/dev/null || true) ;;
+            *) base= ;;
+          esac
+          if [ -n "$base" ] && files=$(git diff --name-only "$base" "$GITHUB_SHA") \
+            && ! printf '%s\n' "$files" | grep -qE '^(editors/jetbrains/|crates/cpl-lsp/|scripts/gradle-mirror|\.github/workflows/jetbrains\.yml)'; then
+            build=false
+          fi
+          echo "plugin build since ${base:-(none)}: $build"
+          echo "build=$build" >> "$GITHUB_OUTPUT"
+      - name: Install the pinned Rust toolchain
+        run: rustup show active-toolchain || rustup toolchain install
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: neovim
+      - uses: actions/setup-java@v4
+        if: steps.plugin.outputs.build == 'true'
+        with:
+          distribution: temurin
+          java-version: "21"
+      - name: Build cpl
+        run: cargo build -p cpl-cli
+      - name: Plugin build and tests
+        if: steps.plugin.outputs.build == 'true'
+        working-directory: editors/jetbrains
+        shell: bash
+        run: |
+          for wait in 0 30 90 180; do
+            sleep "$wait"
+            ./gradlew --no-daemon --init-script ../../scripts/gradle-mirror.init.gradle buildPlugin test && exit 0
+          done
+          exit 1
+      - name: Free IntelliJ IDEA gets a diagnostic and a completion through LSP4IJ
+        if: runner.os == 'Linux' && steps.plugin.outputs.build == 'true'
+        working-directory: editors/jetbrains
+        shell: bash
+        run: |
+          for wait in 0 30 90 180; do
+            sleep "$wait"
+            ./gradlew --no-daemon --init-script ../../scripts/gradle-mirror.init.gradle test -PfreeIde --tests dev.cplang.ide.CpLsp4ijTest && exit 0
+          done
+          exit 1
+      - name: Plugin verifies against IntelliJ IDEA Community and Ultimate
+        if: runner.os == 'Linux' && steps.plugin.outputs.build == 'true'
+        working-directory: editors/jetbrains
+        shell: bash
+        run: ./gradlew --no-daemon --init-script ../../scripts/gradle-mirror.init.gradle verifyPlugin
+      - name: The server handshake the plugin starts
+        run: python3 editors/lsp-smoke.py jetbrains target/debug/cpl lsp
