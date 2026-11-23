@@ -839,7 +839,6 @@ pub(super) fn is_place(e: &ast::Expr) -> bool {
 /// `?T`.
 pub(super) fn reads_none_as(spec: &mut Spec, absent: &Expr) -> bool {
     match spec {
-        Spec::Plain(_) | Spec::Int { .. } | Spec::Call(_) | Spec::Parse(..) | Spec::Line => false,
         Spec::Fields(_, fields) => {
             let mut any = false;
             for field in fields {
@@ -852,6 +851,7 @@ pub(super) fn reads_none_as(spec: &mut Spec, absent: &Expr) -> bool {
             *slot = Some(Box::new(absent.clone()));
             true
         }
+        _ => false,
     }
 }
 

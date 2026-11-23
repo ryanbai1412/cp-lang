@@ -49,6 +49,41 @@ impl<'a> Parser<'a> {
         }
     }
 
+    /// `Str of "01"`, `Str(len: 1..=n)`, or both, `Str(len: n..=n) of "01"`
+    /// (R02.3.2). `glued` when `(` follows `Str` directly.
+    fn constrained_str(&mut self, start: u32, glued: bool) -> Type {
+        let len = glued.then(|| {
+            self.bump();
+            if !(self.eat_ident("len") && self.eat(T::Colon)) {
+                let message = "a `Str(…)` type takes the range of its length, `Str(len: 1..=n)`";
+                self.error(Diagnostic::error(
+                    codes::EXPECTED_TYPE,
+                    self.error_span(),
+                    message,
+                ));
+            }
+            let len = self.ty();
+            if !matches!(len.kind, TypeKind::Range { .. } | TypeKind::Error) {
+                let message = "the length of a `Str(len: …)` is a range, such as `1..=n`";
+                self.error(Diagnostic::error(codes::EXPECTED_TYPE, len.span, message));
+            }
+            self.expect(T::RParen, "`)` after the length");
+            Box::new(len)
+        });
+        let alphabet = (self.at_ident("of") && self.peek_n(1) == T::Str).then(|| {
+            self.bump();
+            let raw = self.text();
+            let quoted = raw.strip_prefix('"').and_then(|s| s.strip_suffix('"'));
+            let alphabet = super::expr::unescape(quoted.unwrap_or(raw));
+            self.bump();
+            alphabet
+        });
+        Type {
+            kind: TypeKind::ConstrainedStr { alphabet, len },
+            span: self.span_from(start),
+        }
+    }
+
     fn ty_atom(&mut self) -> Type {
         if self.at_ident("dyn") && self.peek_n(1) == T::Ident {
             let span = self.span();
@@ -400,30 +435,16 @@ impl<'a> Parser<'a> {
                         span: arg_span,
                     });
                 }
-                // `Str(len: …)`, `Mint(mod: p)`: a type built from values.
-                if args.is_empty() && self.at(T::LParen) && self.span().start == name.span.end {
+                let glued = self.at(T::LParen) && self.span().start == name.span.end;
+                let of = self.at_ident("of") && self.peek_n(1) == T::Str;
+                if name.text == "Str" && args.is_empty() && (glued || of) {
+                    return self.constrained_str(start, glued);
+                }
+                // `Mint(mod: p)`: a type built from values.
+                if args.is_empty() && glued {
                     self.pos = after_group(self.tokens, self.pos);
                     let span = self.span_from(name.span.start);
-                    let planned = if name.text == "Str" {
-                        &crate::planned::BOUNDED_STR
-                    } else {
-                        &crate::planned::FRESH_TYPE
-                    };
-                    self.planned(span, planned);
-                }
-                if name.text == "Str" && self.at_ident("of") && self.peek_n(1) == T::Str {
-                    self.bump();
-                    let raw = self.text();
-                    let alphabet = raw
-                        .strip_prefix('"')
-                        .and_then(|s| s.strip_suffix('"'))
-                        .unwrap_or(raw)
-                        .to_string();
-                    self.bump();
-                    return Type {
-                        kind: TypeKind::ConstrainedStr(alphabet),
-                        span: self.span_from(start),
-                    };
+                    self.planned(span, &crate::planned::FRESH_TYPE);
                 }
                 TypeKind::Named { name, args }
             }

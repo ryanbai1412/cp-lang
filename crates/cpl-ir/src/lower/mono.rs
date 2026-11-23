@@ -4346,7 +4346,7 @@ fn type_names(ty: &ast::Type, name: &str) -> bool {
         ast::TypeKind::Range { .. }
         | ast::TypeKind::NewDomain
         | ast::TypeKind::DomainBinder(_)
-        | ast::TypeKind::ConstrainedStr(_)
+        | ast::TypeKind::ConstrainedStr { .. }
         | ast::TypeKind::LiteralUnion(_)
         | ast::TypeKind::Infer
         | ast::TypeKind::Error => false,

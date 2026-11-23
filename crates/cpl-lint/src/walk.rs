@@ -312,9 +312,10 @@ pub(crate) fn walk_ty(v: &mut dyn Visitor, ty: &Type) {
             walk_ty(v, ret);
         }
         TypeKind::Value(expr) => walk_expr(v, expr),
+        TypeKind::ConstrainedStr { len: Some(len), .. } => walk_ty(v, len),
         TypeKind::NewDomain
         | TypeKind::DomainBinder(_)
-        | TypeKind::ConstrainedStr(_)
+        | TypeKind::ConstrainedStr { len: None, .. }
         | TypeKind::LiteralUnion(_)
         | TypeKind::Infer
         | TypeKind::Error => {}

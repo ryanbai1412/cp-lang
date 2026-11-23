@@ -457,6 +457,14 @@ pub enum Spec {
         /// The range as written, for the message when input is outside it.
         text: String,
     },
+    /// `Str(len: lo..=hi) of "01"`: a word whose length is in the range and
+    /// whose characters are in the alphabet (R02.3.2).
+    Str {
+        lo: Option<Box<Expr>>,
+        hi: Option<Box<Expr>>,
+        alphabet: Option<String>,
+        text: String,
+    },
     /// A tuple, a record, or a struct, field by field.
     Fields(Ty, Vec<Spec>),
     Array {
@@ -515,7 +523,7 @@ impl Spec {
             Spec::Opt(inner, _) => Ty::opt(inner.ty()),
             Spec::Call(call) => call.ty.clone(),
             Spec::Parse(_, inner) => Ty::opt(inner.ty()),
-            Spec::Line => Ty::Str,
+            Spec::Line | Spec::Str { .. } => Ty::Str,
             Spec::List(each) => Ty::list(each.ty()),
         }
     }

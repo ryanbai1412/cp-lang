@@ -9,6 +9,7 @@
 //! Strings are byte vectors. Nothing here decodes or validates text.
 
 mod apply;
+mod bounded_read;
 mod builtin;
 pub mod checkpoint;
 mod closed_form;
@@ -99,7 +100,7 @@ impl Trap {
             codes::RANGE_STORE
         } else if m.starts_with("expected a number, found")
             || m.starts_with("the input ended")
-            || (m.starts_with("expected a `") && m.ends_with("variant in the input"))
+            || m.starts_with("expected a `")
         {
             codes::BAD_INPUT_TOKEN
         } else if m.starts_with("`todo` reached") {
@@ -3923,22 +3924,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 },
                 _ => Value::Unit,
             },
-            Spec::Int { lo, hi, text } => {
-                let (value, start) = self.input.int().map_err(fail)?;
-                let lo = match lo {
-                    Some(lo) => self.eval(lo)?.int(),
-                    None => cpl_ir::INT_MIN,
-                };
-                let hi = match hi {
-                    Some(hi) => self.eval(hi)?.int(),
-                    None => i64::MAX,
-                };
-                if value < lo || value > hi {
-                    let message = format!("{value} is outside `{text}`");
-                    return Err(fail(self.input.fail(start, message)));
-                }
-                Value::Int(value)
-            }
+            Spec::Int { .. } | Spec::Str { .. } => self.read_bounded(spec, fail)?,
             Spec::Call(call) => self.eval(call)?,
             Spec::Parse(text, inner) => {
                 let text = match self.eval(text)? {

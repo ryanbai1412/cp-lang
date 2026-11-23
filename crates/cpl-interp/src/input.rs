@@ -163,6 +163,39 @@ impl<'a> Input<'a> {
         Ok((&self.data[start..self.pos], start))
     }
 
+    /// A number in `lo..=hi`, the range written `text`.
+    pub fn int_in(&mut self, lo: i64, hi: i64, text: &str) -> Result<i64, InputError> {
+        let (value, start) = self.int()?;
+        if value < lo || value > hi {
+            return Err(self.fail(start, format!("{value} is outside `{text}`")));
+        }
+        Ok(value)
+    }
+
+    /// A word whose length is in `lo..=hi` and whose characters are all in
+    /// `alphabet`, the type written `text` (R02.3.2).
+    pub fn word_in(
+        &mut self,
+        (lo, hi): (i64, i64),
+        alphabet: Option<&str>,
+        text: &str,
+    ) -> Result<Vec<u8>, InputError> {
+        let (word, start) = self.token("a word")?;
+        let word = word.to_vec();
+        let len = word.len() as i64;
+        let found = format!("expected a `{text}`, found `{}`", lossy(&word));
+        let message = if len < lo || len > hi {
+            format!("{found}, of length {len}")
+        } else if let Some(&bad) =
+            alphabet.and_then(|a| word.iter().find(|b| !a.as_bytes().contains(b)))
+        {
+            format!("{found}: `{}` is not in its alphabet", char::from(bad))
+        } else {
+            return Ok(word);
+        };
+        Err(self.fail(start, message))
+    }
+
     pub fn int(&mut self) -> Result<(i64, usize), InputError> {
         let (token, start) = self.token("a number")?;
         let (negative, digits) = match token {

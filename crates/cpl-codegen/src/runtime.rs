@@ -338,6 +338,22 @@ inline std::string read_str() { std::string r; read_str_into(r); return r; }
 ",
     },
     Piece {
+        name: "read_str_in",
+        needs: &["read_str", "fail"],
+        code: "\
+inline std::string read_str_in(ll lo, ll hi, const char* alphabet) {
+    std::string r = read_str();
+    if ((ll)r.size() < lo || (ll)r.size() > hi) fail(\"a string in the input has a length outside its range\");
+    for (char c : r) {
+        const char* a = alphabet;
+        while (a && *a && *a != c) a++;
+        if (a && !*a) fail(\"a string in the input has a character outside its alphabet\");
+    }
+    return r;
+}
+",
+    },
+    Piece {
         name: "read_line",
         needs: &["in"],
         code: "\

@@ -46,6 +46,23 @@ impl<'a> Lowerer<'a> {
         });
         Spec::Call(Box::new(call))
     }
+
+    /// `Str(len: lo..=hi) of "01"`: the length's bounds, when `values`.
+    pub(super) fn str_spec(&mut self, ty: &ast::Type, values: bool) -> Spec {
+        let ast::TypeKind::ConstrainedStr { alphabet, len } = &ty.kind else {
+            return Spec::Plain(Ty::Str);
+        };
+        let (lo, hi) = match len.as_deref().map(|len| self.resolve(len, values)) {
+            Some(Spec::Int { lo, hi, .. }) => (lo, hi),
+            _ => (None, None),
+        };
+        Spec::Str {
+            lo,
+            hi,
+            alphabet: alphabet.clone(),
+            text: self.source(ty.span),
+        }
+    }
 }
 
 /// The type inside `spec` that has no input format, if any.
@@ -64,7 +81,7 @@ pub(super) fn unreadable(spec: &Spec) -> Option<Ty> {
             Ty::Range(inner) if matches!(**inner, Ty::Int | Ty::Pos(_)) => None,
             other => Some(other.clone()),
         },
-        Spec::Int { .. } | Spec::Call(_) | Spec::Line => None,
+        Spec::Int { .. } | Spec::Str { .. } | Spec::Call(_) | Spec::Line => None,
         Spec::Parse(_, inner) => unreadable(inner),
         Spec::Fields(_, fields) => fields.iter().find_map(unreadable),
         Spec::Array { elem, .. } | Spec::List(elem) => unreadable(elem),

@@ -362,6 +362,19 @@ impl<'p> Emitter<'p> {
             Spec::Plain(Ty::Char) => plain(self, "read_char"),
             Spec::Plain(Ty::Bool) => plain(self, "read_bool"),
             Spec::Plain(Ty::Str) => plain(self, "read_str"),
+            Spec::Str {
+                lo, hi, alphabet, ..
+            } => {
+                self.need("read_str_in");
+                let lo = lo.as_ref().map_or("0".to_string(), |e| self.expr(e).text);
+                let hi = hi
+                    .as_ref()
+                    .map_or("INT64_MAX".to_string(), |e| self.expr(e).text);
+                let alphabet = alphabet
+                    .as_ref()
+                    .map_or("nullptr".to_string(), |a| string_literal(a.as_bytes()));
+                Code::primary(format!("cpl::read_str_in({lo}, {hi}, {alphabet})"))
+            }
             Spec::Plain(Ty::Pos(d)) => {
                 // A position from the input is checked like `V(x)`: nothing
                 // later tests an index of its domain.

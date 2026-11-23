@@ -18,13 +18,6 @@ pub struct Planned {
     pub example: &'static str,
 }
 
-pub const BOUNDED_STR: Planned = Planned {
-    feature: "a string type with a bounded length, `Str(len: …)`",
-    see: Some("spec/core/02-values-types.md §2.3"),
-    now: "read a `Str` and check its `.len` where it is used",
-    example: "let s: Str(len: 1..=10) = read()\nprint(s.len)\n",
-};
-
 pub const FRESH_TYPE: Planned = Planned {
     feature: "a fresh type made from values, `type Z = Mint(mod: p)`",
     see: Some("spec/core/02-values-types.md §2.9"),
@@ -235,7 +228,6 @@ pub const OPERATOR_VALUE: Planned = Planned {
 };
 
 pub const PLANNED: &[&Planned] = &[
-    &BOUNDED_STR,
     &FRESH_TYPE,
     &WRAP_LINE,
     &VALUE_DECORATOR,

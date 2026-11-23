@@ -797,7 +797,7 @@ impl<'a> Checker<'a> {
                 let keyword = if *mutable { "var" } else { "let" };
                 let declared = ty.as_ref().map(|ty| self.resolve_type(ty));
                 if let (Some(ast_ty), Some(init_expr)) = (ty, init) {
-                    if let ast::TypeKind::ConstrainedStr(alphabet) = &ast_ty.kind {
+                    if let Some(alphabet) = ast_ty.kind.alphabet() {
                         if let ExprKind::Str(pieces) = &init_expr.kind {
                             for piece in pieces {
                                 if let cpl_syntax::ast::StrPiece::Text(text) = piece {

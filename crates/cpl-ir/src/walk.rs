@@ -155,7 +155,7 @@ macro_rules! walkers {
         fn $spec<$($lt)?>(s: &$($lt)? $($m)* Spec, f: &mut dyn FnMut(&$($lt)? $($m)* Expr)) {
             match s {
                 Spec::Plain(_) | Spec::Line => {}
-                Spec::Int { lo, hi, .. } => {
+                Spec::Int { lo, hi, .. } | Spec::Str { lo, hi, .. } => {
                     for bound in [lo, hi].into_iter().flatten() {
                         f(bound);
                     }

@@ -188,7 +188,7 @@ impl<'a> Checker<'a> {
                 args: vec![self.resolve_type(elem)],
             },
             TypeKind::DomainBinder(name) => Ty::Domain(name.text.clone()),
-            TypeKind::ConstrainedStr(_) => Ty::Str,
+            TypeKind::ConstrainedStr { len, .. } => self.bounded_str(len.as_deref()),
             TypeKind::Row(fields) => {
                 let mut fs: Vec<(String, Ty)> = fields
                     .iter()

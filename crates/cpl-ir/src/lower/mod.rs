@@ -2443,7 +2443,7 @@ impl<'a> Lowerer<'a> {
             ast::TypeKind::Value(_) => Spec::Plain(Ty::Int),
             ast::TypeKind::NewDomain | ast::TypeKind::DomainBinder(_) => Spec::Plain(Ty::DomainVal),
             ast::TypeKind::Yields(inner) => Spec::Plain(Ty::list(self.resolve_ty(inner))),
-            ast::TypeKind::ConstrainedStr(_) => Spec::Plain(Ty::Str),
+            ast::TypeKind::ConstrainedStr { .. } => self.str_spec(ty, values),
             ast::TypeKind::Row(_) => Spec::Plain(Ty::Error),
             ast::TypeKind::RowWithout {
                 prefix,
@@ -5629,7 +5629,7 @@ fn collect_spec_calls(spec: &Spec, out: &mut Vec<FnId>) {
             collect_expr_calls(text, out);
             collect_spec_calls(inner, out);
         }
-        Spec::Int { lo, hi, .. } => {
+        Spec::Int { lo, hi, .. } | Spec::Str { lo, hi, .. } => {
             if let Some(e) = lo {
                 collect_expr_calls(e, out);
             }

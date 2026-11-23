@@ -863,11 +863,25 @@ pub enum TypeKind {
         base: Box<Type>,
         removed: Vec<Name>,
     },
-    /// `Str of "01"`: string whose characters belong to the given alphabet.
-    ConstrainedStr(String),
+    /// `Str of "01"`, `Str(len: 1..=n)`, or both: a string whose characters
+    /// belong to the alphabet and whose length is in the range.
+    ConstrainedStr {
+        alphabet: Option<String>,
+        len: Option<Box<Type>>,
+    },
     /// `'+' | '-'`: finite union of literal values.
     LiteralUnion(Vec<String>),
     /// A field written `total = 0`: its type is its default's.
     Infer,
     Error,
+}
+
+impl TypeKind {
+    /// The alphabet of `Str of "…"`, when this is one.
+    pub fn alphabet(&self) -> Option<&str> {
+        match self {
+            TypeKind::ConstrainedStr { alphabet, .. } => alphabet.as_deref(),
+            _ => None,
+        }
+    }
 }
