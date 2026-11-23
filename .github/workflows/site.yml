@@ -32,6 +32,7 @@ jobs:
     timeout-minutes: 5
     outputs:
       sha: ${{ steps.pick.outputs.sha }}
+      since: ${{ steps.pick.outputs.since }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -85,3 +86,20 @@ jobs:
             code=$(curl -s -o /dev/null -w '%{http_code}' --retry 5 --retry-all-errors "https://cp-lang.org$path")
             echo "$path $code"; test "$code" = 200
           done
+  fresh:
+    # The alert for a stale site (ci/R25): on the schedule only, after the
+    # deploy, so it never holds one up. Red when a passing commit has waited
+    # more than 30 minutes and this run did not deploy it.
+    needs: [select, deploy]
+    if: always() && github.event_name == 'schedule' && needs.select.outputs.sha != '' && needs.deploy.result != 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: live site is current
+        env:
+          SHA: ${{ needs.select.outputs.sha }}
+          SINCE: ${{ needs.select.outputs.since }}
+        run: |
+          age=$(( ($(date +%s) - $(date -d "$SINCE" +%s)) / 60 ))
+          echo "$SHA passed its site jobs $age min ago and is not live"
+          if [ "$age" -gt 30 ]; then echo "::error::cp-lang.org is $age min behind $SHA (ci/R25)"; exit 1; fi

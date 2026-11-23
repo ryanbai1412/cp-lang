@@ -158,8 +158,8 @@ Each row is a quality a user can feel on the site, the metric, and the strongest
 | Docs agree with `spec/` | Language chapters that state a rule differently from the spec section they cite | [site/R8](../guidelines/site-checklist.md); Process: each rule links its spec section instead of restating it; **missing**: a check that cited rules exist with the same id | `web/scripts/facts.mjs` (citations exist) |
 | Citations resolve | cited spec headings or decision numbers that do not exist | Gate | `web/scripts/facts.mjs`, `web/scripts/links.mjs` |
 | No broken links | broken internal link targets; external links that 404 | [site/R5](../guidelines/site-checklist.md); Generated check over every built page | `web/scripts/links.mjs` in postbuild; **missing**: external links |
-| Generated pages are current | reference, lint, error, tool and release pages built from a stale `cpl` | [site/R3](../guidelines/site-checklist.md); Rebuilt every build from the `cpl` that ships; cache keyed on the binary | `web/scripts/gen-ref.mjs`, `gen-tools.mjs`, `releases.mjs` |
-| The live site is current | green main commits not live within 30 minutes | `/version.json` names the built commit | **missing**: an alert when it falls behind |
+| Generated pages are current | reference, lint, error, tool and release pages built from a stale `cpl` | [site/R3](../guidelines/site-checklist.md); Rebuilt every build from the `cpl` that ships; cache keyed on the binary; site scripts refuse a `cpl` older than `std/` or `crates/` | `web/scripts/cpl-bin.mjs`, `web/scripts/gen-ref.mjs`, `gen-tools.mjs`, `releases.mjs` |
+| The live site is current | green main commits not live within 30 minutes | [ci/R25](../guidelines/ci-checklist.md): version.json names the built commit; the scheduled site run goes red when a commit whose site jobs passed has waited over 30 min | `.github/workflows/site.yml` step `live site is current`, `scripts/test_workflows.py` |
 
 ### J1. Discover and evaluate
 

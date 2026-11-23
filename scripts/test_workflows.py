@@ -71,6 +71,18 @@ class WorkflowTest(unittest.TestCase):
         self.assertIn('.conclusion != "cancelled"', deployable)
         self.assertIn('[ "$sha" != "$live" ]', deployable)
 
+    def test_a_stale_live_site_turns_the_schedule_red(self):
+        # The alert for the site falling behind main (ci/R25) never blocks a
+        # deploy and costs no API call beyond the selection's.
+        with open(os.path.join(ROOT, ".github", "workflows", "site.yml"), encoding="utf-8") as f:
+            fresh = job_block(f.read(), "fresh")
+        self.assertIn("- name: live site is current", fresh)
+        self.assertIn("github.event_name == 'schedule'", fresh)
+        self.assertIn("needs: [select, deploy]", fresh)
+        self.assertIn("ci/R25", fresh)
+        with open(os.path.join(ROOT, "scripts", "site-deployable.sh"), encoding="utf-8") as f:
+            self.assertIn("updatedAt", f.read())
+
     def test_blocking_jobs_cover_every_os(self):
         with open(os.path.join(ROOT, ".github", "workflows", "ci.yml"), encoding="utf-8") as f:
             ci = f.read()

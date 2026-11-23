@@ -1,14 +1,16 @@
 #!/usr/bin/env bash
 # Prints the newest main commit whose `site build` and `site browser tests`
 # CI jobs passed, unless the live site already has it or a newer commit
-# (handbook/guidelines/ci-checklist.md ci/R25). Prints nothing then.
+# (handbook/guidelines/ci-checklist.md ci/R25). Prints nothing then. Under
+# Actions it also writes `since=<the run's updated_at>` to $GITHUB_OUTPUT, for
+# site.yml's `live site is current` step.
 set -euo pipefail
 repo=${GITHUB_REPOSITORY:?}
 live=$(curl -fsSL https://cp-lang.org/version.json 2>/dev/null | jq -r '.commit // empty' || true)
 gh run list -R "$repo" --workflow ci.yml --branch main --event push -L 60 \
-    --json databaseId,headSha,status,conclusion \
-    --jq '.[] | select(.status == "in_progress" or (.status == "completed" and .conclusion != "cancelled")) | "\(.databaseId) \(.headSha)"' |
-while read -r id sha; do
+    --json databaseId,headSha,status,conclusion,updatedAt \
+    --jq '.[] | select(.status == "in_progress" or (.status == "completed" and .conclusion != "cancelled")) | "\(.databaseId) \(.headSha) \(.updatedAt)"' |
+while read -r id sha updated; do
     # Superseded runs ran no job, and runs older than the live commit can't
     # move the site: skipping both keeps this to a few API calls (ci/R25).
     [ "$sha" != "$live" ] || { echo "site-deployable: the live site ($live) is the newest passing commit" >&2; exit 0; }
@@ -21,6 +23,7 @@ while read -r id sha; do
             echo "site-deployable: the live site ($live) already has $sha" >&2; exit 0
         fi
     fi
-    echo "site-deployable: $sha (run $id)" >&2
+    echo "site-deployable: $sha (run $id, finished $updated)" >&2
+    [ -z "${GITHUB_OUTPUT:-}" ] || echo "since=$updated" >>"$GITHUB_OUTPUT"
     echo "$sha"; exit 0
 done
