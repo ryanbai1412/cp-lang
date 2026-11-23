@@ -796,7 +796,7 @@ fn loop_reductions_from_cco23p4_and_powers() {
         .map(|d| d.help.unwrap())
         .collect();
     assert_eq!(helps, [
-        "write `a.sum()`",
+        "write `a.sum()`; one call says what the loop computes, with no starting value to get wrong",
         "write `a.max()`, or `max(0, a.max() ?? 0)` if `0` can win or the loop can run zero times",
         "write `(0..3).filter(i => a[i] > 1).map(i => a[i] * 2).min()`, or `min(9, (0..3).filter(i => a[i] > 1).map(i => a[i] * 2).min() ?? 9)` if `9` can win or the loop can run zero times",
     ]);

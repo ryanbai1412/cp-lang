@@ -105,7 +105,9 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
                 span,
                 format!("`{place}` keeps the {f} of itself and a value; this is `{f}=`"),
             )
-            .with_help(format!("write `{rewrite}`"));
+            .with_help(format!(
+                "write `{rewrite}`; `{f}=` names the place once, so the read and the write cannot drift apart"
+            ));
             diag.fixes.push(Fix {
                 title: format!("use `{f}=`"),
                 edits: vec![(
@@ -183,7 +185,9 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
                 ),
             )
             .with_label(target.span.shift(self.base), "the place it updates")
-            .with_help(format!("write `{rewrite}`"));
+            .with_help(format!(
+                "write `{rewrite}`; `{f}=` names the place once, so the read and the write cannot drift apart"
+            ));
             if !commented {
                 diag.fixes.push(Fix {
                     title: format!("use `{f}=`"),

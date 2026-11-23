@@ -898,7 +898,9 @@ impl<'a> Taste<'a> {
             self.pair_span(decl.span, next.span),
             format!("a loop that only pushes onto `{name}` is a comprehension"),
         )
-        .with_help(format!("write `{text}`"));
+        .with_help(format!(
+            "write `{text}`; the comprehension says what each item is, so no push is missed or doubled"
+        ));
         if let Some(edits) = self.fold(init, next, "", text) {
             diag.fixes.push(Fix {
                 title: "use a comprehension".into(),
@@ -1539,7 +1541,9 @@ impl<'a> Taste<'a> {
             format!("a loop that only accumulates `{name}` is one `{call}`"),
         )
         .with_help(match &text {
-            Some(text) => format!("write `{text}`"),
+            Some(text) => format!(
+                "write `{text}`; one call says what the loop computes, with no starting value to get wrong"
+            ),
             None if sentinel(i) => {
                 let seq = sequence(&it, &p, &v, c.as_deref());
                 format!("write `{seq}.{call}() ?? {i}`")
@@ -1595,14 +1599,18 @@ impl<'a> Taste<'a> {
             pat.span.to(iter.span),
             format!("`{index}` is only used as `{list}[{index}]`"),
         )
-        .with_help(format!("iterate the values: `for x in {list}:`"));
+        .with_help(format!(
+            "iterate the values: `for x in {list}:`; with no index there is none to get wrong"
+        ));
         if let Some(elem) = list
             .strip_suffix('s')
             .filter(|e| e.len() > 1 && !self.idents.contains(e))
         {
             let mut edits = vec![(pat.span, elem.to_string()), (iter.span, list.to_string())];
             edits.extend(uses.reads.iter().map(|r| (*r, elem.to_string())));
-            diag.help = Some(format!("iterate the values: `for {elem} in {list}:`"));
+            diag.help = Some(format!(
+                "iterate the values: `for {elem} in {list}:`; with no index there is none to get wrong"
+            ));
             diag.fixes.push(Fix {
                 title: format!("iterate `{list}`"),
                 edits,

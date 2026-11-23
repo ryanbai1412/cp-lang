@@ -16,7 +16,9 @@ pub(super) fn hand_rolled_range_trees(file: &File) -> Vec<Finding> {
             self.findings.push(Finding {
                 lint: &HAND_ROLLED_RANGE_TREE,
                 diag: Diagnostic::warning(HAND_ROLLED_RANGE_TREE.code, span.shift(self.base), msg)
-                    .with_help(help),
+                    .with_help(format!(
+                        "{help}; its index arithmetic is already right and its docs give each cost"
+                    )),
             });
         }
     }
