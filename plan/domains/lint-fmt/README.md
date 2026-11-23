@@ -44,11 +44,11 @@ after the above): M3 recognizers and library `@lint`, moving `bounds.rs` onto
 the fact table, sorted `use` and the line-1 stamp, catalog families with no
 port evidence, lint speed work.
 
-**Next 3** (in hours; status 2026-11-23 00:20 PST: newcomer 147/151, 97%)
-1. By 03:00: the 3 newcomer misses that need type or flow facts land with
-   diagnostics (int ids → domain ×2, found flag beside a value → `?T`).
-2. By 06:00: audit the top 10 port lints' messages and fixes, highest count
-   first, against `plan/domains/idioms/` principles.
+**Next 3** (in hours; status 2026-11-23 03:15 PST: newcomer 148/152, 97%; 109 lint records)
+1. With diagnostics: the 3 newcomer misses that need type or flow facts
+   (int ids → domain ×2, found flag beside a value → `?T`).
+2. Top-10 port lint audit done (34 sampled hits, all true positives); next,
+   precision on L0549/L0537 near misses as ports change.
 3. Until the deadline: more teaching lints by port and newcomer evidence,
    each with 0 port/std false positives and its near-miss shapes.
 
