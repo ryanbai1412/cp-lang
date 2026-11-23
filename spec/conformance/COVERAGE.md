@@ -7,7 +7,7 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 3102 (1092 passing). Rules: 583.
+Cases: 3103 (1092 passing). Rules: 583.
 
 ## Summary per chapter
 
@@ -17,7 +17,7 @@ Cases: 3102 (1092 passing). Rules: 583.
 - R04 (04-indices.md): 73 rules, 185 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04a (04a-identity-vs-offset.md): 39 rules, 54 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04b (04b-keys.md): 28 rules, 70 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R05 (05-ownership.md): 49 rules, 227 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R05 (05-ownership.md): 49 rules, 228 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R06 (06-control-functions.md): 25 rules, 114 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R07 (07-sequences.md): 90 rules, 209 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R08 (08-traits-generics.md): 29 rules, 92 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -369,7 +369,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R05.2.2 [3+ 4-]: **A range type to a wider one** (`1..=5` to `Int`, `0..=9` to `-5..=100`). Free. Arithmeti...
 - R05.8.3 [1+ 2-]: **Grids (F1).** A row keeps the column domain and a column keeps the row domain. On every ...
 - R05.2.1 [2+ 0-]: **R1. Plain values copy.** A value is plain when no part of it lives on the heap: `Int`, `...
-- R05.3.1 [2+ 2-]: `let x = e` binds `x` to `e`; `x` can't be reassigned or mutated.
+- R05.3.1 [2+ 3-]: `let x = e` binds `x` to `e`; `x` can't be reassigned or mutated.
 - R05.3.2 [2+ 0-]: `var x = e` binds a mutable variable: `x = e2`, `x.push(..)`, `x[i] = ..`.
 - R05.3.3 [1+ 0-]: A **place** is a variable, a field (`s.f`), an element (`a[i]`), a slice (`a[r]`) or any p...
 - R05.3.4 [1+ 1-]: `let p = mut a[i]` names a place: `p += 1` writes `a[i]`. `p` is a `mut` lend of `a` (R7).
@@ -772,7 +772,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0315 Not a token type: 1 case(s)
 - E0316 Field bound from input: 1 case(s)
 - E0317 Getter needs defaults: 1 case(s)
-- E0401 Assignment to immutable `let` binding: 4 case(s)
+- E0401 Assignment to immutable `let` binding: 5 case(s)
 - E0402 Missing `mut` at call site: 3 case(s)
 - E0403 `mut` of an immutable binding: 5 case(s)
 - E0404 top_level_var_in_fn *(retired)*: exempt (retired)
