@@ -743,6 +743,10 @@ fn search_loop_with_a_flag_becomes_any_or_all_from_noi09p1() {
     let more = "let grp = [1, 2]\nvar ok = true\nfor m in grp:\n    print(m)\n    if m < 0:\n        ok = false\n        break\nprint(ok)\n";
     let found = only(more);
     assert_eq!((found.code.0, found.fixes.len()), ("L0501", 0));
+    // corpus/problems/etsr23r4p1, noi09p1: a loop that also moves other state
+    // (a running sum, the walk's position) is not a search.
+    let walk = "let a = [1, -2]\nvar psum = 0\nvar ok = true\nfor x in a:\n    psum += x\n    if psum < 0:\n        ok = false\n        break\nprint(ok)\n";
+    assert!(!taste_codes(walk).contains(&"L0501"));
 }
 
 #[test]

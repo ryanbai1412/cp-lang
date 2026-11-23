@@ -815,6 +815,11 @@ impl<'a> Taste<'a> {
             return;
         }
         let exact = self.exact_search(name, init_text, pat, iter, body);
+        // A loop that also assigns other state (`psum += ..`, `tbl[r] = m`)
+        // is a walk with an early exit, not a search one call can say.
+        if exact.is_none() && !only_sets(&body.stmts, name) {
+            return;
+        }
         // A sentinel start is a search only in the exact `if c: x = e; break` shape.
         if sentinel && exact.is_none() {
             return;
@@ -1863,6 +1868,30 @@ fn var_decl(stmt: &Stmt) -> Option<(&str, &Expr)> {
         } => Some((name, init)),
         _ => None,
     }
+}
+
+/// `stmts` assign no place but `name`: calls (`print`, `seen.add(v)`) may
+/// run, but no other variable or table moves.
+fn only_sets(stmts: &[Stmt], name: &str) -> bool {
+    stmts.iter().all(|s| match &s.kind {
+        StmtKind::Assign { target, .. } => {
+            matches!(&target.kind, ExprKind::Name(n) if n == name)
+        }
+        StmtKind::Break(None) | StmtKind::Continue(None) => true,
+        StmtKind::Let { .. } => true,
+        StmtKind::Expr(Expr {
+            kind: ExprKind::If {
+                branches,
+                otherwise,
+            },
+            ..
+        }) => {
+            branches.iter().all(|(_, b)| only_sets(&b.stmts, name))
+                && otherwise.as_ref().is_none_or(|b| only_sets(&b.stmts, name))
+        }
+        StmtKind::Expr(_) => true,
+        _ => false,
+    })
 }
 
 /// Some block under `stmts` sets `name` and then breaks.
