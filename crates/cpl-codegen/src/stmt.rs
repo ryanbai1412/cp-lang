@@ -9,10 +9,6 @@ use cpl_ir::{
     SortBy, Spec, Stmt, Ty,
 };
 
-/// The most C++ a loop's copy without index checks may take; a larger
-/// body keeps one copy, with its checks.
-const VERSIONED_MAX: usize = 2500;
-
 /// A block with a value that is statements and then the value, with no
 /// other way out: it can be written in line.
 fn flat(e: &Expr) -> Option<(&[Stmt], &Expr)> {
@@ -416,38 +412,6 @@ impl<'p> Emitter<'p> {
         self.indent -= 1;
         self.line(out, "}");
         true
-    }
-
-    /// `for slot in iter: body` with the indexes `inside` covers unchecked.
-    fn covered_for(
-        &mut self,
-        id: LoopId,
-        slot: usize,
-        iter: &Iter,
-        body: &Block,
-        inside: Vec<crate::bounds::Inside>,
-        out: &mut String,
-    ) {
-        let pushed = inside.len();
-        self.inside.extend(inside);
-        let rows = self.loop_rows(slot, body);
-        let (start, mark) = (out.len(), self.row_ptrs.len());
-        self.row_ptrs.extend(rows);
-        self.for_stmt(id, slot, iter, body, out);
-        let rows = self.row_ptrs.split_off(mark);
-        if !rows.is_empty() {
-            self.need("lazy");
-            let lead = pad(self.indent);
-            let mut head = format!("{lead}{{\n");
-            for (_, name, code) in &rows {
-                head.push_str(&format!(
-                    "{lead}auto {name} = cpl::lazy([&] {{ return &{code}; }});\n"
-                ));
-            }
-            out.insert_str(start, &head);
-            self.line(out, "}");
-        }
-        self.inside.truncate(self.inside.len() - pushed);
     }
 
     pub(crate) fn for_stmt(
@@ -1530,34 +1494,7 @@ impl<'p> Emitter<'p> {
                 self.line(out, &format!("while ({cond}) {{"));
                 self.loop_body(*id, &[], body, out);
             }
-            Stmt::For(id, slot, iter, body) => {
-                let ahead = self.check_ahead(*slot, iter, body, out);
-                let mut slow = ahead.inside;
-                slow.extend(
-                    walk::inside_list(*slot, iter, body, self.locals())
-                        .map(|(l, i)| crate::bounds::Inside::List((false, l), i, 0, 0)),
-                );
-                let fast = ahead.version.and_then(|(guard, mut fast)| {
-                    fast.extend(slow.iter().cloned());
-                    let mut code = String::new();
-                    self.indent += 1;
-                    self.covered_for(*id, *slot, iter, body, fast, &mut code);
-                    self.indent -= 1;
-                    (code.len() <= VERSIONED_MAX).then_some((guard, code))
-                });
-                match fast {
-                    Some((guard, code)) => {
-                        self.line(out, &format!("if ({guard}) {{"));
-                        out.push_str(&code);
-                        self.line(out, "} else {");
-                        self.indent += 1;
-                        self.covered_for(*id, *slot, iter, body, slow, out);
-                        self.indent -= 1;
-                        self.line(out, "}");
-                    }
-                    None => self.covered_for(*id, *slot, iter, body, slow, out),
-                }
-            }
+            Stmt::For(id, slot, iter, body) => self.checked_for(*id, *slot, iter, body, out),
             Stmt::Return(None) if self.in_setup => self.line(out, "return false;"),
             Stmt::Return(None) => self.line(out, "return;"),
             Stmt::Return(Some(value)) | Stmt::Give(value) => {

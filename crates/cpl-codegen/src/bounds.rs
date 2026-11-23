@@ -10,10 +10,11 @@
 //! check covers is reached on every round. A list index that fails stops
 //! the program with the same message before the loop as during it.
 
-use crate::emit::Emitter;
+use crate::emit::{pad, Emitter};
 use crate::walk;
 use cpl_ir::{
-    Arg, BinOp, Block, Builtin, Cast, Expr, ExprKind, Iter, Place, PlaceKind, Stmt, Ty, UnOp,
+    Arg, BinOp, Block, Builtin, Cast, Expr, ExprKind, Iter, LoopId, Place, PlaceKind, Stmt, Ty,
+    UnOp,
 };
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -41,6 +42,10 @@ pub(crate) enum Dim {
     /// Proved by its type.
     Proven,
 }
+
+/// The most C++ a loop's copy without index checks may take; a larger
+/// body keeps one copy, with its checks.
+const VERSIONED_MAX: usize = 2500;
 
 fn is_grid(ty: &Ty) -> bool {
     matches!(ty, Ty::Array { dims, .. } if dims.len() > 1)
@@ -261,6 +266,76 @@ impl<'p> Emitter<'p> {
             inside,
             version: version.filter(|(_, c)| !c.is_empty()),
         }
+    }
+
+    /// `for slot in iter: body` with its index checks taken ahead where
+    /// they can be.
+    pub(crate) fn checked_for(
+        &mut self,
+        id: LoopId,
+        slot: usize,
+        iter: &Iter,
+        body: &Block,
+        out: &mut String,
+    ) {
+        let ahead = self.check_ahead(slot, iter, body, out);
+        let mut slow = ahead.inside;
+        slow.extend(
+            walk::inside_list(slot, iter, body, self.locals())
+                .map(|(l, i)| Inside::List((false, l), i, 0, 0)),
+        );
+        let fast = ahead.version.and_then(|(guard, mut fast)| {
+            fast.extend(slow.iter().cloned());
+            let mut code = String::new();
+            self.indent += 1;
+            self.covered_for(id, slot, iter, body, fast, &mut code);
+            self.indent -= 1;
+            (code.len() <= VERSIONED_MAX).then_some((guard, code))
+        });
+        match fast {
+            Some((guard, code)) => {
+                self.line(out, &format!("if ({guard}) {{"));
+                out.push_str(&code);
+                self.line(out, "} else {");
+                self.indent += 1;
+                self.covered_for(id, slot, iter, body, slow, out);
+                self.indent -= 1;
+                self.line(out, "}");
+            }
+            None => self.covered_for(id, slot, iter, body, slow, out),
+        }
+    }
+
+    /// `for slot in iter: body` with the indexes `inside` covers unchecked.
+    fn covered_for(
+        &mut self,
+        id: LoopId,
+        slot: usize,
+        iter: &Iter,
+        body: &Block,
+        inside: Vec<Inside>,
+        out: &mut String,
+    ) {
+        let pushed = inside.len();
+        self.inside.extend(inside);
+        let rows = self.loop_rows(slot, body);
+        let (start, mark) = (out.len(), self.row_ptrs.len());
+        self.row_ptrs.extend(rows);
+        self.for_stmt(id, slot, iter, body, out);
+        let rows = self.row_ptrs.split_off(mark);
+        if !rows.is_empty() {
+            self.need("lazy");
+            let lead = pad(self.indent);
+            let mut head = format!("{lead}{{\n");
+            for (_, name, code) in &rows {
+                head.push_str(&format!(
+                    "{lead}auto {name} = cpl::lazy([&] {{ return &{code}; }});\n"
+                ));
+            }
+            out.insert_str(start, &head);
+            self.line(out, "}");
+        }
+        self.inside.truncate(self.inside.len() - pushed);
     }
 
     /// Each cover with the C++ test that it fails, if it can.

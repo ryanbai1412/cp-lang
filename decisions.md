@@ -6020,8 +6020,6 @@ for `gcd` inside `mod` would be friction with no safety gain. Case:
 `spec/conformance/core-11/inline-mod-sees-prelude.cp`. Reverse: say inline
 modules are library modules and turn the case into an E0201 reject.
 
-||||||| parent of 4049afb74 (codegen: run a checked or unchecked loop copy for sometimes-reached indexes)
-
 ## 242. A loop whose indexes some rounds skip gets a checked and an unchecked copy (2026-11-22)
 A range loop's index checks move ahead of it only for indexes every round
 reaches, so `cost[k + 1, to] min= cost[k, from] + w` kept the check on the
