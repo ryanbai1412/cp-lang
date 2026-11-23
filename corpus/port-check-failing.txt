@@ -1,6 +1,5 @@
 btoi17p1
 btoi18p3
-coi06p2
 ioi13p4
 ioi18p1
 mccc4j5
