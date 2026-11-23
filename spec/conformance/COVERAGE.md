@@ -7,11 +7,11 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 2409 (995 passing). Rules: 559.
+Cases: 2413 (995 passing). Rules: 560.
 
 ## Summary per chapter
 
-- R01 (01-lexical-grammar.md): 52 rules, 113 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R01 (01-lexical-grammar.md): 53 rules, 114 cases; 0 uncovered, 1 happy-path only, 0 negative only
 - R02 (02-values-types.md): 52 rules, 118 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R03 (03-numbers-layout.md): 24 rules, 61 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04 (04-indices.md): 66 rules, 110 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -45,7 +45,7 @@ negative case. Complete: rules with no gap in `rule-gaps.txt`.
 
 | Chapter | Rules | Accept | Forbidding | Reject | Complete |
 |---|---|---|---|---|---|
-| R01 | 52 | 52 (100%) | 27 | 27 (100%) | 52 (100%) |
+| R01 | 53 | 53 (100%) | 28 | 27 (96%) | 52 (98%) |
 | R02 | 52 | 52 (100%) | 28 | 28 (100%) | 52 (100%) |
 | R03 | 24 | 24 (100%) | 13 | 13 (100%) | 24 (100%) |
 | R04 | 66 | 66 (100%) | 16 | 16 (100%) | 66 (100%) |
@@ -67,7 +67,7 @@ negative case. Complete: rules with no gap in `rule-gaps.txt`.
 | Rlint | 2 | 2 (100%) | 2 | 2 (100%) | 2 (100%) |
 | Rlsp | 5 | 0 (0%) | 2 | 0 (0%) | 0 (0%) |
 | Rstress | 1 | 1 (100%) | 0 | 0 (0%) | 1 (100%) |
-| all | 559 | 553 (98%) | 216 | 213 (98%) | 552 (98%) |
+| all | 560 | 554 (98%) | 217 | 213 (98%) | 552 (98%) |
 
 ## Rules
 
@@ -78,6 +78,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R01.1.1 [1+ 1-]: A source file is UTF-8. Bytes outside ASCII may appear only inside string literals and com...
 - R01.1.2 [1+ 1-]: `//` starts a comment that runs to the end of the line. There are no block comments. `#` i...
 - R01.1.3 [2+ 0-]: `///` starts a doc comment attached to the next item. Doc comments are Markdown; the first...
+- R01.1.4 [1+ 0-] *happy-path only*: A source line may end in `\n` or `\r\n` on every platform. The `\r` is part of the line en...
 - R01.2.1 [1+ 2-]: Indentation is spaces only; a tab in leading whitespace is an error. The width is free but...
 - R01.2.2 [1+ 2-]: A logical line ends at a newline outside brackets. Inside `( )`, `[ ]` and `{ }` newlines ...
 - R01.2.3 [1+ 2-]: A one-line body follows `:` or `=` on the same line. A deeper line after a one-line body i...
@@ -785,6 +786,13 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0904 memory_over_profile *(0.3)*: 1 case(s)
 - E9998 internal_unsupported *(retired)*: exempt (internal: a construct the compiler cannot lower)
 - E9999 Internal compiler error: exempt (internal compiler error)
+- L0540 manual_bit_test: **no case**
+- L0541 sort_desc_by_negation: **no case**
+- L0542 last_via_len: **no case**
+- L0543 manual_pair_loop: **no case**
+- L0544 manual_digit_loop: **no case**
+- L0545 hand_rolled_pow: **no case**
+- L0546 hand_rolled_gcd: **no case**
 - L0601 Right side changes the place it assigns: 2 case(s)
 - L0602 Lazy chain walked twice: 1 case(s)
 - L0603 `.map` view read many times by index: 1 case(s)
@@ -794,7 +802,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - L0607 Large array of padded elements: 1 case(s)
 - L0608 Parentheses do not match the cost: 1 case(s)
 - L0609 A `@cache` field written outside its type: 1 case(s)
-- R0001 Runtime trap: 4 case(s)
+- R0001 Runtime trap: 5 case(s)
 - R0101 Index out of range: 23 case(s)
 - R0102 Value outside a domain: 4 case(s)
 - R0201 Range store out of range: 8 case(s)
@@ -809,7 +817,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - W0101 Unused expression value: 1 case(s)
 - W0201 size_near_limit *(0.3)*: 1 case(s)
 
-1 of 101 testable codes have no negative case.
+8 of 108 testable codes have no negative case.
 
 ## Spec code blocks
 
@@ -822,7 +830,7 @@ prepends it.
 
 - 00-overview.md: 1 blocks, 1 with a case, 0 spec-only, 0 neither
 - 01-lexical-grammar.md: 5 blocks, 1 with a case, 3 spec-only, 1 neither
-  - line 98: `let var const fn struct enum domain type use pub if elif els`
+  - line 102: `let var const fn struct enum domain type use pub if elif els`
 - 02-values-types.md: 3 blocks, 2 with a case, 1 spec-only, 0 neither
 - 03-numbers-layout.md: 2 blocks, 2 with a case, 0 spec-only, 0 neither
 - 04-indices.md: 7 blocks, 3 with a case, 3 spec-only, 1 neither
@@ -891,7 +899,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **rand** (10/10 named by a case)
 - **search** (9/9 named by a case)
 - **segtree** (54/54 named by a case)
-- **seq** (204/215 named by a case)
+- **seq** (205/216 named by a case)
   - uncovered: `Compressed`, `Filtered`, `Mapped`, `Rev`, `Slice`, `Rebased`, `Keys`, `SubseqStep`, `Ring`, `RingRange`, `RingSlice`
 - **slope** (39/39 named by a case)
 - **sparse** (23/23 named by a case)
@@ -906,7 +914,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **window** (20/22 named by a case)
   - uncovered: `Tracked`, `Undo`
 
-2155 of 2283 std items are named by a case.
+2156 of 2284 std items are named by a case.
 
 ## Core cases without a `// rule:` line
 

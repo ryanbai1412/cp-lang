@@ -189,6 +189,7 @@ A contiguous piece of a ring, possibly wrapping past the end, at most n elements
 - `@get fn l<D>(self: Range<D>) -> Cut<D>` — O(1); Left boundary cut of a range (valid even when empty).
 - `@get fn r<D>(self: Range<D>) -> Cut<D>` — O(1); Right boundary cut of a range (valid even when empty).
 - `fn halve<D>(self: Range<D>) -> ?(Range<D>, Range<D>)` — O(1)
+- `@get fn splits<D>(self: Range<D>) -> yields (Range<D>, Range<D>)` — O(1) to make, O(1) per pair, nothing allocated; Every way to cut the range into two non-empty pieces, as `(left, right)` with `left.r == right.l`: one pair per cut strictly inside, so `len - 1` of them.
 - `@get fn mid<D>(self: Range<D>) -> Cut<D>` — O(1)
 - `fn clip<D>(self: Range<D>, other: Range<D>) -> Range<D>` — O(1)
 - `fn first_true<D>(self: Range<D>, ok: D -> Bool) -> ?D` — O(log n) calls of `ok`; O(log n) calls to `ok`.; traps: never in release; debug traps when `ok` is not false-then-true at the answer

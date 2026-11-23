@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- regen (the CI auto-fix job) never regenerated skill pages: it had no `cpl`, and a failing step (459a95a7b's R01.1.4 coverage drop) stopped the rest, so stale `seq.md` turned gate (checks) red. It now builds `cpl`, runs every step past a failure, and also refreshes `pnpm-lock.yaml`. R01.1.4 (CRLF line ends) has no reject case by nature, so it is recorded as a rule gap; `seq.md` regenerated. PLAN.md gains 'General fixes owed'.
 - CI job timeouts cut to 20 min (gate was 90, editors and cli 40) so a hung job can't hold main's concurrency slot for an hour; infra README gains its Milestone 2 section.
 - Compile gate: land.sh's clippy (`--all-targets -D warnings`) now covers the touched crates and every workspace crate that depends on them, so a lib change that breaks a dependent's tests (6d29c3bbd's cpl-lsp) is refused, and it prints its time. Warm timings: 3 s for `cpl-lint` plus its 5 dependents, 3 s for a `cpl-syntax` touch (whole workspace); `cargo test --workspace --no-run` took 23 s for the same `cpl-lint` touch, so clippy, which type-checks every test target without linking, is the gate.
 - CI starved: `os` (35+ min) and `debugger-loop` ran to completion on every main push and held the runners, so `ci` sat queued 10+ min per run. `os` now runs hourly on the newest main (plus PRs and dispatch); both cancel superseded runs.
