@@ -8,11 +8,11 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use cpl_ir::{Arg, Block, Expr, ExprKind, Iter, Program, Stmt, Ty};
+use cpl_ir::{Arg, Expr, ExprKind, Iter, Program, Stmt, Ty};
 
 use crate::devirt::Devirt;
 use crate::emit::{Code, Emitter};
-use crate::fuse::{producer, trap_free_stmts, trap_free_with, FusedPush};
+use crate::fuse::{producer, trap_free_stmts, FusedPush};
 use crate::walk;
 
 /// Each fn called with an inline list it can sink, and that list parameter.
@@ -84,67 +84,11 @@ fn sink_param(
     })
 }
 
-/// The fns that can neither trap, loop forever nor be seen: no mutable
-/// parameter, no global read, and a body of trap-free statements whose only
-/// calls are to such fns or to closures that are. Built bottom-up, so a
-/// recursive fn is never in it.
+/// [`cpl_ir::effects::pure_fns`], knowing the closures `devirt` resolves.
 pub(crate) fn pure_fns(program: &Program, devirt: &Devirt, traps: bool) -> BTreeSet<usize> {
-    let mut pure = BTreeSet::new();
-    loop {
-        let found: Vec<usize> = (0..program.fns.len())
-            .filter(|fid| !pure.contains(fid))
-            .filter(|&fid| {
-                let f = &program.fns[fid];
-                !f.params.iter().any(|p| p.mutable)
-                    && !program.judge_fns.contains(&fid)
-                    && !program.entry_fns.contains(&fid)
-                    && pure_body(&f.body, traps, &|e| {
-                        pure_call(program, devirt, &pure, Some(fid), traps, e)
-                    })
-            })
-            .collect();
-        if found.is_empty() {
-            return pure;
-        }
-        pure.extend(found);
-    }
+    cpl_ir::effects::pure_fns(program, traps, &|home, callee| devirt.target(home, callee))
 }
 
-/// Trap-free statements up to a `return` of a trap-free value, reading no
-/// global; of an `if` decided at compile time only the branch taken counts.
-fn pure_body(body: &Block, traps: bool, call_ok: &dyn Fn(&Expr) -> bool) -> bool {
-    let mut global = false;
-    walk::deep_exprs(body, &mut |e| {
-        global |= matches!(e.kind, ExprKind::Global(_))
-    });
-    !global && pure_stmts(&body.stmts, traps, call_ok)
-}
-
-fn pure_stmts(stmts: &[Stmt], traps: bool, call_ok: &dyn Fn(&Expr) -> bool) -> bool {
-    let Some((first, rest)) = stmts.split_first() else {
-        return true;
-    };
-    match first {
-        Stmt::Return(Some(r)) => trap_free_with(r, traps, call_ok),
-        Stmt::If(cond, then, otherwise) if crate::prune::known(cond).is_some() => {
-            let taken = if crate::prune::known(cond) == Some(true) {
-                then
-            } else {
-                otherwise
-            };
-            pure_stmts(&taken.stmts, traps, call_ok)
-                && (matches!(taken.stmts.last(), Some(Stmt::Return(_)))
-                    || pure_stmts(rest, traps, call_ok))
-        }
-        _ => {
-            trap_free_stmts(std::slice::from_ref(first), usize::MAX, traps, call_ok)
-                && pure_stmts(rest, traps, call_ok)
-        }
-    }
-}
-
-/// A call of a fn in `pure`, or of a closure known from `home` to capture
-/// nothing and have a pure body, with trap-free arguments.
 fn pure_call(
     program: &Program,
     devirt: &Devirt,
@@ -153,23 +97,8 @@ fn pure_call(
     traps: bool,
     e: &Expr,
 ) -> bool {
-    let inner = |x: &Expr| pure_call(program, devirt, pure, None, traps, x);
-    let (known, args) = match &e.kind {
-        ExprKind::Call(fid, args) => (pure.contains(fid), args),
-        ExprKind::CallExpr(callee, args) => {
-            let known = devirt.target(home, callee).is_some_and(|cid| {
-                let c = &program.closures[cid];
-                c.muts.is_empty() && c.captures.is_empty() && pure_body(&c.body, traps, &inner)
-            });
-            (known, args)
-        }
-        _ => return false,
-    };
-    let here = |x: &Expr| pure_call(program, devirt, pure, home, traps, x);
-    known
-        && args
-            .iter()
-            .all(|a| matches!(a, Arg::Value(v) if trap_free_with(v, traps, &here)))
+    let target = |h: Option<usize>, callee: &Expr| devirt.target(h, callee);
+    cpl_ir::effects::pure_call(program, &target, pure, home, traps, e)
 }
 
 /// The list argument is a producer and every other argument a constant,

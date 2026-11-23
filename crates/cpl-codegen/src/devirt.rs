@@ -11,6 +11,8 @@
 //! A call through such a field or parameter is emitted as a direct call
 //! of the closure, which the C++ compiler then inlines.
 
+pub(crate) use cpl_ir::effects::in_domain;
+use cpl_ir::effects::pure_path;
 use std::collections::{BTreeMap, BTreeSet};
 
 use cpl_ir::{
@@ -1312,18 +1314,6 @@ fn place_fields(place: &cpl_ir::Place, out: &mut BTreeSet<(usize, usize)>) {
     }
 }
 
-/// Indexing an array of type `ty` by `idxs` cannot trap: each index is a
-/// position of the domain its axis is over.
-pub(crate) fn in_domain(ty: &Ty, idxs: &[Expr]) -> bool {
-    let Ty::Array { dims, .. } = ty else {
-        return false;
-    };
-    dims.len() == idxs.len()
-        && dims.iter().zip(idxs).all(|(dim, idx)| {
-            matches!((dim, &idx.ty), (cpl_ir::Dim::Pos(d), Ty::Pos(e)) if d == e) && pure_path(idx)
-        })
-}
-
 /// A variable, its fields, and cells of its domain-indexed arrays at
 /// positions held in variables: naming it runs nothing and cannot trap.
 fn safe_place(place: &cpl_ir::Place) -> bool {
@@ -1434,14 +1424,6 @@ fn is_fn_or_opt_fn(ty: &Ty) -> bool {
     match ty {
         Ty::Fn(..) => true,
         Ty::Opt(inner) => matches!(**inner, Ty::Fn(..)),
-        _ => false,
-    }
-}
-
-fn pure_path(e: &Expr) -> bool {
-    match &e.kind {
-        ExprKind::Local(_) | ExprKind::Global(_) => true,
-        ExprKind::Field(base, _) => pure_path(base),
         _ => false,
     }
 }

@@ -5,9 +5,8 @@
 
 use crate::emit::{Emitter, Touch};
 use crate::walk;
-use cpl_ir::{
-    BinOp, Block, Cast, Expr, ExprKind, Iter, LoopId, Mutation, Place, PlaceKind, Stmt, Ty, UnOp,
-};
+pub(crate) use cpl_ir::effects::trap_free_stmts;
+use cpl_ir::{Block, Expr, ExprKind, Iter, LoopId, Mutation, Place, PlaceKind, Stmt, Ty};
 
 /// The consumer loop fused onto a producer's `push`.
 #[derive(Clone)]
@@ -409,80 +408,4 @@ fn writes_own(block: &Block) -> bool {
 /// Pushes onto `vec` count as nothing; the fused consumer is checked apart.
 fn trap_free_block(block: &Block, vec: usize, traps: bool) -> bool {
     trap_free_stmts(&block.stmts, vec, traps, &|_| false)
-}
-
-/// `trap_free_block` over `stmts`, where `call_ok` says which calls cannot trap.
-pub(crate) fn trap_free_stmts(
-    stmts: &[Stmt],
-    vec: usize,
-    traps: bool,
-    call_ok: &dyn Fn(&Expr) -> bool,
-) -> bool {
-    let free = |e: &Expr| trap_free_with(e, traps, call_ok);
-    let block_free = |b: &Block| trap_free_stmts(&b.stmts, vec, traps, call_ok);
-    stmts.iter().all(|stmt| match stmt {
-        Stmt::Let(_, init) => init.as_ref().is_none_or(free),
-        Stmt::Assign(place, _, val) => matches!(place.kind, PlaceKind::Local(_)) && free(val),
-        Stmt::Expr(e) => match &e.kind {
-            ExprKind::Mutate(Mutation::Push, place, args) if matches!(place.kind, PlaceKind::Local(s) if s == vec) => {
-                args.iter().all(free)
-            }
-            _ => free(e),
-        },
-        Stmt::If(cond, then, otherwise) => match crate::prune::known(cond) {
-            Some(taken) => block_free(if taken { then } else { otherwise }),
-            None => free(cond) && block_free(then) && block_free(otherwise),
-        },
-        Stmt::For(_, _, Iter::Range { lo, hi, step: None, .. }, body) => {
-            free(lo) && free(hi) && block_free(body)
-        }
-        Stmt::For(_, _, Iter::Seq(seq, _), body) => {
-            matches!(seq.kind, ExprKind::Local(_)) && block_free(body)
-        }
-        Stmt::Continue(None) => true,
-        _ => false,
-    })
-}
-
-/// True when `e` cannot trap: no checked index, call, unwrap or division by
-/// what may be zero. A build without `traps` (`--checks none`) checks no
-/// index and gives 0 for `/ 0`, so only calls and unwraps are left.
-pub(crate) fn trap_free_with(e: &Expr, traps: bool, call_ok: &dyn Fn(&Expr) -> bool) -> bool {
-    let free = |x: &Expr| trap_free_with(x, traps, call_ok);
-    match &e.kind {
-        ExprKind::Unit
-        | ExprKind::Int(_)
-        | ExprKind::Float(_)
-        | ExprKind::Bool(_)
-        | ExprKind::Char(_)
-        | ExprKind::None
-        | ExprKind::Local(_)
-        | ExprKind::Global(_) => true,
-        ExprKind::Some(x)
-        | ExprKind::Field(x, _)
-        | ExprKind::IsSome(x)
-        | ExprKind::IsVariant(x, _)
-        | ExprKind::Unwrap(x, false)
-        | ExprKind::Cast(Cast::IntToFloat, x) => free(x),
-        ExprKind::Unary(op, x) => *op != UnOp::Neg && free(x),
-        ExprKind::Binary(op, l, r) => {
-            let safe = match op {
-                BinOp::Div | BinOp::Rem => !traps || matches!(r.kind, ExprKind::Int(k) if k != 0),
-                BinOp::Pow | BinOp::Shl | BinOp::Shr => false,
-                _ => true,
-            };
-            safe && l.ty != Ty::Str && free(l) && free(r)
-        }
-        ExprKind::Cmp(_, l, r) => free(l) && free(r),
-        ExprKind::Tuple(items) | ExprKind::Variant(_, items) => items.iter().all(free),
-        ExprKind::If(c, t, f) => match crate::prune::known(c) {
-            Some(taken) => free(if taken { t } else { f }),
-            None => free(c) && free(t) && free(f),
-        },
-        ExprKind::Closure(_) => true,
-        ExprKind::Index(base, idxs) if !traps || crate::devirt::in_domain(&base.ty, idxs) => {
-            free(base) && idxs.iter().all(free)
-        }
-        _ => call_ok(e),
-    }
 }

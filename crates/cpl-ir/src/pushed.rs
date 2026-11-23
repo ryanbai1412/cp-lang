@@ -96,7 +96,7 @@ pub fn summarize(program: &Program) -> Vec<FnSummary> {
 }
 
 impl FnSummary {
-    fn merge(&mut self, other: &FnSummary) {
+    pub(crate) fn merge(&mut self, other: &FnSummary) {
         self.io |= other.io;
         self.opaque |= other.opaque;
         self.calls_values |= other.calls_values;

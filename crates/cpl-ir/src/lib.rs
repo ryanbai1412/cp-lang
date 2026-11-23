@@ -12,6 +12,7 @@
 //! literal with a character outside ASCII is an error here; nothing after
 //! this point knows about UTF-8.
 
+pub mod effects;
 pub mod fix;
 mod lower;
 /// How many decimals a `Float` is written with when none are asked for:

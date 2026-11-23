@@ -307,7 +307,6 @@ impl<'p> Emitter<'p> {
         emitter.uses = crate::uses::Uses::of(
             program,
             &emitter.devirt,
-            &emitter.summaries,
             emitter.target.checks != crate::Checks::None,
         );
         emitter.pushers = feeds.pushers;

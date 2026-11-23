@@ -9,8 +9,8 @@
 //! same field, so `if let f = self.lt` goes when no `Heap` ever gets an `lt`.
 
 use crate::walk::{deep_exprs, deep_stmts, path_root, Effects};
-use cpl_ir::{Arg, BinOp, Block, CmpOp, Expr, ExprKind, FnId, Place, PlaceKind};
-use cpl_ir::{Program, Slot, Stmt, Ty, UnOp};
+use cpl_ir::{Arg, Block, Expr, ExprKind, FnId, Place, PlaceKind};
+use cpl_ir::{Program, Slot, Stmt, Ty};
 use std::collections::{BTreeMap, BTreeSet};
 
 /// `asserts` is whether the build checks them; when it does not, they go
@@ -309,34 +309,7 @@ pub(crate) fn known(e: &Expr) -> Option<bool> {
 }
 
 fn known_in(e: &Expr, cx: Option<&Cx>) -> Option<bool> {
-    match &e.kind {
-        ExprKind::IsSome(x) if cx.is_some_and(|cx| cx.is_none(x)) => Some(false),
-        ExprKind::Bool(b) => Some(*b),
-        ExprKind::Cmp(op, a, b) => {
-            let (ExprKind::Int(a), ExprKind::Int(b)) = (&a.kind, &b.kind) else {
-                return None;
-            };
-            match op {
-                CmpOp::Eq => Some(a == b),
-                CmpOp::Ne => Some(a != b),
-                CmpOp::Lt => Some(a < b),
-                CmpOp::Le => Some(a <= b),
-                CmpOp::Gt => Some(a > b),
-                CmpOp::Ge => Some(a >= b),
-                _ => None,
-            }
-        }
-        ExprKind::Unary(UnOp::Not, x) => known_in(x, cx).map(|b| !b),
-        ExprKind::Binary(BinOp::And, a, b) => match known_in(a, cx)? {
-            false => Some(false),
-            true => known_in(b, cx),
-        },
-        ExprKind::Binary(BinOp::Or, a, b) => match known_in(a, cx)? {
-            true => Some(true),
-            false => known_in(b, cx),
-        },
-        _ => None,
-    }
+    cpl_ir::effects::known_where(e, &|x| cx.is_some_and(|cx| cx.is_none(x)))
 }
 
 fn block(b: &mut Block, asserts: bool, cx: &mut Cx) {

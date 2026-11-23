@@ -12,22 +12,7 @@ use crate::walk::{self, Effects as Stores};
 use cpl_ir::{Arg, Block, Builtin, Expr, ExprKind, FnId, Program, Stmt};
 use std::collections::{BTreeMap, BTreeSet};
 
-/// What a call of a fn can do, in the shape `cpl_ir::effects::Effects`
-/// will give; built here from the fn summaries and `sink::pure_fns` until
-/// that lands. Codegen reads `writes` today; the rest is the agreed shape.
-#[derive(Clone, Default, Debug)]
-#[allow(dead_code)]
-pub(crate) struct Effects {
-    /// The globals it may write, itself or through what it calls.
-    pub(crate) writes: BTreeSet<usize>,
-    /// It reads input or writes output.
-    pub(crate) io: bool,
-    /// It may trap in this build.
-    pub(crate) traps: bool,
-    /// It calls a fn value whose target is not known, which may write what
-    /// that value captured.
-    pub(crate) unknown_call: bool,
-}
+pub(crate) use cpl_ir::effects::Effects;
 
 /// Where a binding lives: top-level code (setup and main), a fn or a closure.
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
@@ -65,22 +50,11 @@ pub(crate) struct Uses {
 }
 
 impl Uses {
-    pub(crate) fn of(
-        program: &Program,
-        devirt: &crate::devirt::Devirt,
-        summaries: &[crate::emit::FnSummary],
-        traps: bool,
-    ) -> Uses {
-        let pure = crate::sink::pure_fns(program, devirt, traps);
-        let effects = summaries
-            .iter()
-            .enumerate()
-            .map(|(f, s)| Effects {
-                writes: s.writes.clone(),
-                io: s.io,
-                traps: !pure.contains(&f),
-                unknown_call: s.opaque || (s.calls_values && !pure.contains(&f)),
-            })
+    pub(crate) fn of(program: &Program, devirt: &crate::devirt::Devirt, traps: bool) -> Uses {
+        let target = |home: Option<FnId>, callee: &Expr| devirt.target(home, callee);
+        let table = cpl_ir::effects::Table::with_targets(program, traps, &target);
+        let effects = (0..program.fns.len())
+            .map(|f| table.effects(f).clone())
             .collect();
         let mut uses = Uses {
             bindings: BTreeMap::new(),
