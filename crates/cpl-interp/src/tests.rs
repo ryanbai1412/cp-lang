@@ -1277,3 +1277,15 @@ fn vm_applies_variants_tuples_casts_and_comparisons_to_registers() {
         include_str!("../../cpl-cli/tests/programs/vm_apply_operands.out")
     );
 }
+
+#[test]
+fn vm_applies_builtins_arithmetic_and_negation_to_registers() {
+    let out = vm_runs_alone(
+        include_str!("../../cpl-cli/tests/programs/vm_apply_builtins.cp"),
+        "",
+    );
+    assert_eq!(
+        out,
+        include_str!("../../cpl-cli/tests/programs/vm_apply_builtins.out")
+    );
+}

@@ -46,6 +46,9 @@ impl<'p, 'f> Compiler<'p, 'f> {
             .collect();
         let sync = match &expr.kind {
             ExprKind::Cmp(_, lhs, _) => !plain(&lhs.ty),
+            ExprKind::Builtin(..) | ExprKind::Binary(..) => {
+                !operands(expr).iter().all(|a| plain(&a.ty))
+            }
             _ => false,
         };
         self.applies_sync |= sync;

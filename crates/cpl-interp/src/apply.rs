@@ -11,8 +11,14 @@ use crate::*;
 pub(crate) fn operands(e: &Expr) -> Vec<&Expr> {
     match &e.kind {
         ExprKind::Cmp(_, lhs, rhs) => vec![lhs, rhs],
-        ExprKind::Cast(_, x) | ExprKind::IsVariant(x, _) | ExprKind::Payload(x, ..) => vec![x],
-        ExprKind::Tuple(items) | ExprKind::Variant(_, items) => items.iter().collect(),
+        ExprKind::Unary(_, x)
+        | ExprKind::Cast(_, x)
+        | ExprKind::IsVariant(x, _)
+        | ExprKind::Payload(x, ..) => vec![x],
+        ExprKind::Tuple(items) | ExprKind::Variant(_, items) | ExprKind::Builtin(_, items) => {
+            items.iter().collect()
+        }
+        ExprKind::Binary(op, lhs, rhs) if !lazy(*op) => vec![lhs, rhs],
         _ => Vec::new(),
     }
 }
@@ -21,13 +27,23 @@ pub(crate) fn operands(e: &Expr) -> Vec<&Expr> {
 pub(crate) fn applies(e: &Expr) -> bool {
     matches!(
         e.kind,
-        ExprKind::Cmp(..)
+        ExprKind::Binary(op, ..) if !lazy(op)
+    ) || matches!(
+        e.kind,
+        ExprKind::Builtin(..)
+            | ExprKind::Unary(..)
+            | ExprKind::Cmp(..)
             | ExprKind::Cast(..)
             | ExprKind::Tuple(_)
             | ExprKind::Variant(..)
             | ExprKind::IsVariant(..)
             | ExprKind::Payload(..)
     )
+}
+
+/// Whether `op` evaluates its right operand only for some left ones.
+fn lazy(op: BinOp) -> bool {
+    matches!(op, BinOp::And | BinOp::Or | BinOp::Coalesce)
 }
 
 impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
@@ -152,6 +168,42 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 Value::Enum(actual, payload) if actual as usize == *tag => payload[*index].clone(),
                 _ => return trap(span, "internal: payload of another variant"),
             },
+            ExprKind::Unary(op, _) => match (op, vals.into_iter().next().unwrap()) {
+                (UnOp::Neg, Value::Int(v)) => match v.checked_neg() {
+                    Some(v) => Value::Int(v),
+                    None => {
+                        return trap(
+                            span,
+                            format!("integer overflow: `-{v}` does not fit in an `Int` (64 bits)"),
+                        )
+                    }
+                },
+                (UnOp::Neg, Value::I128(v)) => match v.checked_neg() {
+                    Some(v) => Value::I128(v),
+                    None => {
+                        return trap(
+                            span,
+                            format!(
+                                "integer overflow: `-{v}` does not fit in an `I128` (128 bits)"
+                            ),
+                        )
+                    }
+                },
+                (UnOp::Neg, Value::U64(v)) => Value::U64(v.wrapping_neg()),
+                (UnOp::Neg, Value::Float(v)) => Value::Float(-v),
+                (UnOp::Not, Value::Bool(v)) => Value::Bool(!v),
+                (UnOp::Pos, v) => v,
+                (UnOp::BitNot, Value::Int(v)) => Value::Int(!v),
+                (UnOp::BitNot, Value::I128(v)) => Value::I128(!v),
+                (UnOp::BitNot, Value::U64(v)) => Value::U64(!v),
+                (_, other) => other,
+            },
+            ExprKind::Builtin(op, args) => self.builtin_values(*op, args, e, vals)?,
+            ExprKind::Binary(op, ..) => {
+                let mut vals = vals.into_iter();
+                let (l, r) = (vals.next().unwrap(), vals.next().unwrap());
+                binary(*op, l, r, span)?
+            }
             _ => return trap(span, "internal: no shared evaluation for this expression"),
         })
     }

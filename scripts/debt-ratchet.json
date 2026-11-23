@@ -4,8 +4,8 @@
     "crates/cpl-ir/src/lower/stmt.rs": 6428,
     "crates/cpl-ir/src/lower/mod.rs": 5929,
     "crates/cpl-ir/src/lower/expr.rs": 5513,
-    "crates/cpl-interp/src/lib.rs": 5233,
     "crates/cpl-ir/src/lower/mono.rs": 4488,
+    "crates/cpl-interp/src/lib.rs": 4281,
     "crates/cpl-check/src/check/expr.rs": 4163,
     "crates/cpl-check/src/check/stmt.rs": 3174,
     "crates/cpl-check/src/check/lends.rs": 2811,
@@ -109,5 +109,5 @@
   "decision_dup_numbers": 28,
   "lint_dup_helpers": 10,
   "plan_delta_lines": 1627,
-  "vm_fallbacks": 204
+  "vm_fallbacks": 175
 }
