@@ -7,7 +7,7 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 3052 (1091 passing). Rules: 583.
+Cases: 3055 (1091 passing). Rules: 583.
 
 ## Summary per chapter
 
@@ -17,7 +17,7 @@ Cases: 3052 (1091 passing). Rules: 583.
 - R04 (04-indices.md): 73 rules, 181 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04a (04a-identity-vs-offset.md): 39 rules, 54 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04b (04b-keys.md): 28 rules, 70 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R05 (05-ownership.md): 49 rules, 225 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R05 (05-ownership.md): 49 rules, 227 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R06 (06-control-functions.md): 25 rules, 114 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R07 (07-sequences.md): 90 rules, 206 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R08 (08-traits-generics.md): 29 rules, 92 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -389,7 +389,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R05.7.3 [2+ 1-]: a generator value with a lent argument (`dfs(g, from: [s])`, `dfs(g, from: [s], seen: mut ...
 - R05.7.4 [2+ 6-]: a loop item, for the iteration (§9);
 - R05.7.5 [2+ 5-]: a closure or nested fn that captures a local `var`, a local heap value or a parameter (§10...
-- R05.7.6 [8+ 11-]: **Read lend:** the sources can be read, but not written, resized or moved.
+- R05.7.6 [8+ 13-]: **Read lend:** the sources can be read, but not written, resized or moved.
 - R05.7.7 [1+ 3-]: **`mut` lend:** the sources can't be touched at all except through it.
 - R05.7.8 [16+ 18-]: returned, except from a fn declared `lends` (§6);
 - R05.7.9 [1+ 3-]: stored into anything reached through a parameter (a `mut` parameter's storage belongs to t...
@@ -786,7 +786,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0504 Planned syntax, not implemented yet: 1 case(s)
 - E0505 Library lint that cannot be used: 6 case(s)
 - E0601 Aliased mutable lend: 14 case(s)
-- E0602 Variable mutated while lent: 42 case(s)
+- E0602 Variable mutated while lent: 44 case(s)
 - E0603 Lent value escapes its scope: 37 case(s)
 - E0604 Invalid `lends` projection: 1 case(s)
 - E0605 Invalid `Index` implementation: 2 case(s)
