@@ -833,3 +833,92 @@ print(get([0, 0, 0], k + 1))
         "got:\n{err}"
     );
 }
+
+/// Every runtime code in spec/diagnostics.md, on a program that traps with
+/// it: the code and the message its table shows, exit status 3.
+#[test]
+fn every_runtime_code_traps_with_the_message_the_spec_shows() {
+    let cases = [
+        (
+            "R0001",
+            "let s: Int = read()\nprint(1 << s)\n",
+            "70",
+            "a shift by 70 is outside 0..64",
+        ),
+        (
+            "R0101",
+            "let xs: List<Int> = [1, 2]\nlet i: Int = read()\nprint(xs[i])\n",
+            "5",
+            "index 5 is outside a list of length 2",
+        ),
+        (
+            "R0102",
+            "domain D = 0..=2\nlet x: Int = read()\nprint(D(x))\n",
+            "7",
+            "7 is not in `D`, which is 0..=2",
+        ),
+        (
+            "R0201",
+            "var r: 0..10 = 0\nlet x: Int = read()\nr = x\nprint(r)\n",
+            "14",
+            "14 is outside `0..10`",
+        ),
+        (
+            "R0202",
+            "let x: Int = read()\nprint(x * 3)\n",
+            "4000000000000000000",
+            "integer overflow: `4000000000000000000 * 3` does not fit in an `Int` (64 bits)",
+        ),
+        (
+            "R0203",
+            "let x: Int = read()\nprint(5 / x)\n",
+            "0",
+            "division by zero: `5 / 0`",
+        ),
+        (
+            "R0301",
+            "let x: ?Int = None\nprint(x!)\n",
+            "",
+            "`!` on `none`: there is no value here",
+        ),
+        (
+            "R0401",
+            "let k: Int = read()\nassert k > 2\nprint(k)\n",
+            "1",
+            "assertion failed: k > 2",
+        ),
+        (
+            "R0402",
+            "fn f() -> Int:\n    todo\nprint(f())\n",
+            "",
+            "`todo` reached",
+        ),
+        (
+            "R0501",
+            "let x: Int = read()\nprint(x)\n",
+            "abc",
+            "expected a number, found `abc` (input line 1, column 1)",
+        ),
+        (
+            "R0502",
+            "let x: 1..=5 = read()\nprint(x)\n",
+            "9",
+            "9 is outside `1..=5` (input line 1, column 1)",
+        ),
+        (
+            "R0601",
+            "fn f(x: Int) -> Int:\n    return f(x + 1) + 1\nprint(f(0))\n",
+            "",
+            "the stack ran out: `f` never stops calling itself?",
+        ),
+    ];
+    for (code, source, input, message) in cases {
+        let (status, err) = run_stderr(source, input);
+        let expected = format!("error[{code}]: {message}");
+        assert!(
+            err.contains(&expected),
+            "expected `{expected}`, got:\n{err}"
+        );
+        assert_eq!(status, 3, "{code}: {err}");
+    }
+}
