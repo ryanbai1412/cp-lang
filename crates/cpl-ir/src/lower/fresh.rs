@@ -137,6 +137,16 @@ impl<'a> Lowerer<'a> {
         if let ExprKind::DomainVal(dom_id) = probed.kind {
             return Some(DimSpec::Pos(dom_id));
         }
+        // `[a.keys]` for an `a: [D]T` is `[D]`.
+        if let (Ty::Range(key), ast::ExprKind::Field { base, name }) = (&probed.ty, &e.kind) {
+            if let (Ty::Pos(d), "keys") = (&**key, name.text.as_str()) {
+                if let Some(Ty::Array { dims, .. }) = self.probe_ty_silent(base) {
+                    if dims == [Dim::Pos(*d)] {
+                        return Some(DimSpec::Pos(*d));
+                    }
+                }
+            }
+        }
         if probed.ty != Ty::Range(Box::new(Ty::Int)) {
             return None;
         }

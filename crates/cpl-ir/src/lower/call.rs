@@ -10194,17 +10194,7 @@ impl<'a> Lowerer<'a> {
     ) -> Expr {
         let mut dims = Vec::new();
         for e in index {
-            let kind = match &e.kind {
-                ast::ExprKind::Name(n) => ast::TypeKind::Named {
-                    name: ast::Name {
-                        text: n.clone(),
-                        span: e.span,
-                    },
-                    args: Vec::new(),
-                },
-                _ => ast::TypeKind::Value(Box::new(e.clone())),
-            };
-            match self.dim(&ast::Type { kind, span: e.span }, true) {
+            match self.dim(&ast::Type::of_index(e), true) {
                 Some(d) => dims.push(d),
                 None => return self.err_expr(span),
             }

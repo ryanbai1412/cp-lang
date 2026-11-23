@@ -286,19 +286,7 @@ impl<'a> Checker<'a> {
             }
             let index = index
                 .iter()
-                .map(|e| {
-                    let kind = match &e.kind {
-                        ExprKind::Name(n) => cpl_syntax::ast::TypeKind::Named {
-                            name: cpl_syntax::ast::Name {
-                                text: n.clone(),
-                                span: e.span,
-                            },
-                            args: Vec::new(),
-                        },
-                        _ => cpl_syntax::ast::TypeKind::Value(Box::new(e.clone())),
-                    };
-                    self.resolve_type(&Type { kind, span: e.span })
-                })
+                .map(|e| self.resolve_type(&Type::of_index(e)))
                 .collect();
             let elem = self.infer(&value.value);
             return Some(Ty::Array {

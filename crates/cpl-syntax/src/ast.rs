@@ -648,6 +648,37 @@ pub struct Type {
     pub span: Span,
 }
 
+impl Type {
+    /// The index type an expression in `[e].filled(x)` stands for, read as
+    /// `[e]T` reads it: a capitalized name is a type (`[V]`), a field off one
+    /// is a value of it (`[V.cuts]`), anything else is counted, `0..e`
+    /// (`[n]`, `[w.keys]`).
+    pub fn of_index(e: &Expr) -> Type {
+        let capital = |n: &str| n.starts_with(|c: char| c.is_ascii_uppercase());
+        let kind = match &e.kind {
+            ExprKind::Name(n) if capital(n) => TypeKind::Named {
+                name: Name {
+                    text: n.clone(),
+                    span: e.span,
+                },
+                args: Vec::new(),
+            },
+            ExprKind::Field { base, .. } if matches!(&base.kind, ExprKind::Name(n) if capital(n)) => {
+                TypeKind::Value(Box::new(e.clone()))
+            }
+            _ => TypeKind::Range {
+                lo: Some(Box::new(Expr {
+                    kind: ExprKind::Int(0),
+                    span: Span::point(e.span.start),
+                })),
+                hi: Some(Box::new(e.clone())),
+                inclusive: false,
+            },
+        };
+        Type { kind, span: e.span }
+    }
+}
+
 #[derive(Clone, PartialEq, Debug)]
 pub enum TypeKind {
     /// `Int`, `List<Int>`, `V`.
