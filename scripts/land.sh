@@ -35,11 +35,12 @@ if [ -n "$changed" ]; then
     marks=$(git grep -nE '^(<{7}|>{7}|\|{7})( |$)' HEAD -- $changed ':!*.png' ':!*.gz' || true)
     [ -z "$marks" ] || { echo "land: merge conflict markers:"$'\n'"$marks" >&2; exit 1; }
 fi
-python3 scripts/debt-ratchet.py --check >/dev/null || { python3 scripts/debt-ratchet.py --check >&2; exit 1; }
+[ ! -f scripts/debt-ratchet.py ] || python3 scripts/debt-ratchet.py --check >/dev/null ||
+    { python3 scripts/debt-ratchet.py --check >&2; exit 1; }
 crates=$(printf '%s\n' "$changed" | sed -n 's|^crates/\([^/]*\)/.*\.rs$|-p \1|p' | sort -u | tr '\n' ' ')
 [ -z "$crates" ] || cargo fmt --check $crates >/dev/null 2>&1 ||
     { echo "land: not formatted; run: cargo fmt $crates" >&2; exit 1; }
-regen=$(scripts/regen.sh)
+regen=$([ ! -x scripts/regen.sh ] || scripts/regen.sh)
 if [ -n "$regen" ]; then
     git add -- $regen
     git commit -q --no-verify -m "factory: regenerate generated files" -m "Domain: $domain"

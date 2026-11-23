@@ -46,7 +46,7 @@ STAGES = {
         "README.md", "bench/*", "docs/*", "editors/*", "examples/*", "web/*",
         "corpus/*", "tools/*",
         "!corpus/problems/cf2115c/dream.cp", "!corpus/problems/cf2183f/dream.cp",
-        "!tools/trace/*",
+        "!tools/trace/*", "!editors/neovim/*", "!editors/tree-sitter-cp/queries/*",
     ],
     "nextest_doc": _TESTS,
     "recovery": _TESTS,
