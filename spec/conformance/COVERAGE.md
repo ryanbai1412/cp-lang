@@ -771,27 +771,20 @@ prepends it.
   - line 89: `let var const fn struct enum domain type use pub if elif els`
 - 02-values-types.md: 3 blocks, 2 with a case, 1 spec-only, 0 neither
 - 03-numbers-layout.md: 2 blocks, 2 with a case, 0 spec-only, 0 neither
-- 04-indices.md: 7 blocks, 1 with a case, 3 spec-only, 3 neither
-  - line 157: `for j in ..i:`
+- 04-indices.md: 7 blocks, 3 with a case, 3 spec-only, 1 neither
   - line 247: `let k = (0..=n).last_true(k => cost(k) <= budget) ?? -1`
-  - line 268: `fn inversions(r: Range<Pos>) -> Int:`
-- 04b-keys.md: 13 blocks, 5 with a case, 4 spec-only, 4 neither
-  - line 70: `fn solve(r: Range<V>) -> Int:`
-  - line 98: `let z = z_function(s[l..])`
-  - line 112: `for (i, x) in a[l..=r].items:`
+- 04b-keys.md: 13 blocks, 8 with a case, 4 spec-only, 1 neither
   - line 165: `let t = s[l..r].rebase`
-- 05-ownership.md: 56 blocks, 52 with a case, 2 spec-only, 2 neither
-  - line 517: `let d = build_dsu(edges)`
+- 05-ownership.md: 56 blocks, 53 with a case, 2 spec-only, 1 neither
   - line 980: `fn evens(xs: [V]Int) -> lends Filtered<[V]Int> = xs.filter(x`
 - 06-control-functions.md: 3 blocks, 0 with a case, 3 spec-only, 0 neither
-- 07-sequences.md: 7 blocks, 0 with a case, 6 spec-only, 1 neither
-  - line 196: `fn divisors(n: Int) -> yields Int:`
+- 07-sequences.md: 7 blocks, 1 with a case, 6 spec-only, 0 neither
 - 08-traits-generics.md: 4 blocks, 0 with a case, 4 spec-only, 0 neither
 - 09-contexts-checks.md: 3 blocks, 0 with a case, 3 spec-only, 0 neither
 - 10-io.md: 3 blocks, 1 with a case, 2 spec-only, 0 neither
 - 11-modules-prelude.md: 1 blocks, 0 with a case, 1 spec-only, 0 neither
 
-11 of 108 blocks have neither a case nor a spec-only reason.
+4 of 108 blocks have neither a case nor a spec-only reason.
 
 ## Standard library
 
