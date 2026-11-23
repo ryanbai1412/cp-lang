@@ -15,9 +15,9 @@ fn same<A, B>(a: A, b: B) -> Bool = a == b
 /// 2 * bit_ceil(n) values. The fold keeps the order of the positions, so
 /// non-commutative operations work.
 pub struct SegTree<D, T, F = Int>(m: Monoid<T>):
-    @cache t: List<T>
-    @cache lz: List<F>
-    @cache has_lz: List<Bool>
+    t: List<T>
+    lz: List<F>
+    has_lz: List<Bool>
     span: List<Int>
     size: Int
     log: Int
@@ -103,7 +103,7 @@ pub struct SegTree<D, T, F = Int>(m: Monoid<T>):
             None,
         )
 
-    fn put(self, p: Int, f: F):
+    fn put(mut self, p: Int, f: F):
         let a = act!
         unchecked:
             if span[p] == 0: return
@@ -112,7 +112,7 @@ pub struct SegTree<D, T, F = Int>(m: Monoid<T>):
                 lz[p] = a.compose(f, lz[p])
                 has_lz[p] = true
 
-    fn push(self, p: Int):
+    fn push(mut self, p: Int):
         let a = act!
         unchecked:
             if not has_lz[p]: return
@@ -121,12 +121,62 @@ pub struct SegTree<D, T, F = Int>(m: Monoid<T>):
             lz[p] = a.id
             has_lz[p] = false
 
-    fn open(self, l: Int, h: Int):
+    fn open(mut self, l: Int, h: Int):
         for i in (1..=log).rev:
             if ((l >> i) << i) != l: self.push(l >> i)
             if ((h >> i) << i) != h: self.push((h - 1) >> i)
 
-    fn pull_node(self, p: Int):
+    // Node `p`'s value with `pend`, the tags its ancestors hold, applied.
+    fn seen(self, pend: ?F, p: Int) -> T:
+        if let f = pend:
+            if span[p] > 0: return act!.apply(f, t[p], span[p])
+        t[p]
+
+    // The tags pending above `p`'s children: `pend`, after `p`'s own.
+    fn below(self, pend: ?F, p: Int) -> ?F:
+        if act == None or not has_lz[p]: return pend
+        let a = act!
+        if let f = pend: return Some(a.compose(f, lz[p]))
+        Some(lz[p])
+
+    // Walk right from `from` under node `p` (covering `nl..nr`): the first leaf where `ok` fails,
+    // or -1, and the fold so far. Reads pending tags on the way down instead of pushing them.
+    fn right_from(self, p: Int, nl: Int, nr: Int, from: Int, pend: ?F, acc: T, ok: T -> Bool) -> (Int, T):
+        if nr <= from: return (-1, acc)
+        if from <= nl:
+            let w = m.op(acc, self.seen(pend, p))
+            if ok(w): return (-1, w)
+            if p >= size: return (nl, acc)
+        let down = self.below(pend, p)
+        let mid = (nl + nr) / 2
+        let (at, x) = self.right_from(2 * p, nl, mid, from, down, acc, ok)
+        if at >= 0: return (at, x)
+        self.right_from(2 * p + 1, mid, nr, from, down, x, ok)
+
+    fn left_from(self, p: Int, nl: Int, nr: Int, to: Int, pend: ?F, acc: T, ok: T -> Bool) -> (Int, T):
+        if nl >= to: return (-1, acc)
+        if nr <= to:
+            let w = m.op(self.seen(pend, p), acc)
+            if ok(w): return (-1, w)
+            if p >= size: return (nr, acc)
+        let down = self.below(pend, p)
+        let mid = (nl + nr) / 2
+        let (at, x) = self.left_from(2 * p + 1, mid, nr, to, down, acc, ok)
+        if at >= 0: return (at, x)
+        self.left_from(2 * p, nl, mid, to, down, x, ok)
+
+    // `x`, folded over `n` leaves under node `p`, with the tags of `p`'s ancestors applied.
+    fn lift(self, x: T, n: Int, p: Int) -> T:
+        if n == 0: return x
+        let a = act!
+        var (v, q) = (x, p)
+        unchecked:
+            while q > 1:
+                q /= 2
+                if has_lz[q]: v = a.apply(lz[q], v, n)
+        v
+
+    fn pull_node(mut self, p: Int):
         unchecked:
             t[p] = m.op(t[2 * p], t[2 * p + 1])
             if has_lz[p]: t[p] = act!.apply(lz[p], t[p], span[p])
@@ -182,19 +232,38 @@ pub struct SegTree<D, T, F = Int>(m: Monoid<T>):
         let (lo, hi) = r.ends
         if lo >= hi: return m.id
         var (l, h) = (lo + size, hi + size)
-        if act != None: self.open(l, h)
         var (a, b) = (m.id, m.id)
+        if act == None:
+            unchecked:
+                while l < h:
+                    if l % 2 == 1:
+                        a = m.op(a, t[l])
+                        l += 1
+                    if h % 2 == 1:
+                        h -= 1
+                        b = m.op(t[h], b)
+                    l /= 2
+                    h /= 2
+            return m.op(a, b)
+        // `a` folds `na` leaves under node `l - 1`, `b` folds `nb` under node `h`; each takes the
+        // tags of the nodes it climbs through, so nothing is pushed.
+        let f = act!
+        var (na, nb) = (0, 0)
         unchecked:
             while l < h:
                 if l % 2 == 1:
                     a = m.op(a, t[l])
+                    na += span[l]
                     l += 1
                 if h % 2 == 1:
                     h -= 1
                     b = m.op(t[h], b)
+                    nb += span[h]
                 l /= 2
                 h /= 2
-        m.op(a, b)
+                if na > 0 and has_lz[l - 1]: a = f.apply(lz[l - 1], a, na)
+                if nb > 0 and has_lz[h]: b = f.apply(lz[h], b, nb)
+        m.op(self.lift(a, na, l - 1), self.lift(b, nb, h))
 
     /// The last cut `d` at or right of `from` such that `ok(fold(from..d))` holds. `ok` must be
     /// monotone (once false it stays false as `d` moves right) and true on the identity, so `from`
@@ -210,23 +279,8 @@ pub struct SegTree<D, T, F = Int>(m: Monoid<T>):
         assert ok(m.id), "`ok` must hold on the identity"
         let n = D.count
         if from.ord == n: return from
-        var l = from.ord + size
-        if act != None: self.open(l, l + 1)
-        var acc = m.id
-        while true:
-            while l % 2 == 0: l /= 2
-            if not ok(m.op(acc, t[l])):
-                while l < size:
-                    if act != None: self.push(l)
-                    l *= 2
-                    if ok(m.op(acc, t[l])):
-                        acc = m.op(acc, t[l])
-                        l += 1
-                return D.cuts.nth(l - size)
-            acc = m.op(acc, t[l])
-            l += 1
-            if l & -l == l: break
-        D.cuts.nth(n)
+        let (at, _) = self.right_from(1, 0, size, from.ord, None, m.id, ok)
+        D.cuts.nth(if at < 0: n else: at)
 
     /// The first cut `d` at or left of `to` such that `ok(fold(d..to))` holds. `ok` must be
     /// monotone (once false it stays false as `d` moves left) and true on the identity, so `to`
@@ -240,23 +294,8 @@ pub struct SegTree<D, T, F = Int>(m: Monoid<T>):
     pub fn left_while(self, to: Cut<D>, ok: T -> Bool) -> Cut<D>:
         assert ok(m.id), "`ok` must hold on the identity"
         if to.ord == 0: return to
-        var r = to.ord + size
-        if act != None: self.open(r - 1, r)
-        var acc = m.id
-        while true:
-            r -= 1
-            while r > 1 and r % 2 == 1: r /= 2
-            if not ok(m.op(t[r], acc)):
-                while r < size:
-                    if act != None: self.push(r)
-                    r = 2 * r + 1
-                    if ok(m.op(t[r], acc)):
-                        acc = m.op(t[r], acc)
-                        r -= 1
-                return D.cuts.nth(r + 1 - size)
-            acc = m.op(t[r], acc)
-            if r & -r == r: break
-        D.cuts.nth(0)
+        let (at, _) = self.left_from(1, 0, size, to.ord, None, m.id, ok)
+        D.cuts.nth(if at < 0: 0 else: at)
 
     /// A tree whose position `i` holds `f(i)`. `f` is kept: when something it reads changes,
     /// `refresh(i)` recomputes position `i`, so the formula is written once instead of at every
@@ -303,9 +342,13 @@ pub struct SegTree<D, T, F = Int>(m: Monoid<T>):
     /// example: `var s = SegTree(act: assign, a: [1, 2, 3]); s.apply(0..2, Some(9)); s.get(1) == 9`
     pub fn get(self, i: D) -> T:
         let p = size + i.ord
-        if act != None:
-            for k in (1..=log).rev: self.push(p >> k)
-        t[p]
+        if act == None: return t[p]
+        let a = act!
+        var v = t[p]
+        unchecked:
+            for k in 1..=log:
+                if has_lz[p >> k]: v = a.apply(lz[p >> k], v, 1)
+        v
 
     /// Make position `i` hold `x`, replacing any tags applied to it, and update its ancestors.
     ///
