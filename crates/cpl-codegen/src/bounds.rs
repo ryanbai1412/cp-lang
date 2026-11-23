@@ -154,7 +154,11 @@ impl<'p> Emitter<'p> {
         iter: &Iter,
         body: &Block,
         out: &mut String,
-    ) -> Vec<Inside> {
+    ) -> Ahead {
+        let none = Ahead {
+            inside: Vec::new(),
+            version: None,
+        };
         let Iter::Range {
             lo,
             hi,
@@ -163,10 +167,10 @@ impl<'p> Emitter<'p> {
             ..
         } = iter
         else {
-            return Vec::new();
+            return none;
         };
         if self.closure_id.is_some() || self.locals()[slot].ty != Ty::Int {
-            return Vec::new();
+            return none;
         }
         let mut scan = Scan {
             emitter: self,
@@ -174,49 +178,28 @@ impl<'p> Emitter<'p> {
             stored: BTreeSet::new(),
             every: BTreeMap::new(),
             every_grid: Vec::new(),
+            any: BTreeMap::new(),
+            any_grid: Vec::new(),
             lists: false,
             grids: false,
+            sometimes: false,
         };
-        // A list and a grid stop with different messages, so a check moved
-        // ahead could change which one a run prints.
-        if !scan.block(body, true) || (scan.lists && scan.grids) {
-            return Vec::new();
+        if !scan.block(body, true) {
+            return none;
         }
-        let (stored, every, every_grid) = (scan.stored, scan.every, scan.every_grid);
+        let Scan {
+            stored,
+            every,
+            every_grid,
+            any,
+            any_grid,
+            lists,
+            grids,
+            sometimes,
+            ..
+        } = scan;
         if stored.contains(&(false, slot)) || !end(lo, &stored) || !end(hi, &stored) {
-            return Vec::new();
-        }
-        let every: Vec<_> = every
-            .into_iter()
-            .filter(|(list, _)| !stored.contains(list))
-            .collect();
-        let mut moving = stored.clone();
-        moving.insert((false, slot));
-        let mut grids: Vec<(Var, Vec<Dim>)> = Vec::new();
-        for (grid, dims) in every_grid {
-            if stored.contains(&grid)
-                || dims
-                    .iter()
-                    .any(|d| matches!(d, Dim::Fixed(e) if !bound(e, &moving)))
-            {
-                continue;
-            }
-            match grids
-                .iter_mut()
-                .find(|(g, have)| *g == grid && same_shape(have, &dims))
-            {
-                Some((_, have)) => {
-                    for pair in have.iter_mut().zip(&dims) {
-                        if let (Dim::Slot(lo, hi), Dim::Slot(c, _)) = pair {
-                            (*lo, *hi) = ((*lo).min(*c), (*hi).max(*c));
-                        }
-                    }
-                }
-                None => grids.push((grid, dims)),
-            }
-        }
-        if every.is_empty() && grids.is_empty() {
-            return Vec::new();
+            return none;
         }
         let (lo, hi) = (self.expr(lo).text, self.expr(hi).text);
         let (run, last) = if *closed {
@@ -227,8 +210,68 @@ impl<'p> Emitter<'p> {
                 format!("(ll)({hi}) - 1"),
             )
         };
-        self.need("fail");
-        let mut covered = Vec::new();
+        let bounds = Bounds {
+            slot,
+            lo: &lo,
+            last: &last,
+        };
+        // A list and a grid stop with different messages, so a check moved
+        // ahead could change which one a run prints.
+        let mixed = lists && grids;
+        let mut inside = Vec::new();
+        if !mixed {
+            let lists = fixed_lists(every, &stored);
+            let grids = merge(every_grid, &stored, slot);
+            if !lists.is_empty() || !grids.is_empty() {
+                self.need("fail");
+            }
+            for (bad, cover) in self.covers(&bounds, lists, grids) {
+                let what = if matches!(cover, Inside::List(..)) {
+                    "list"
+                } else {
+                    "array"
+                };
+                if let Some(bad) = bad {
+                    self.line(
+                        out,
+                        &format!("if ({run} && ({bad})) cpl::fail(\"index outside the {what}\");"),
+                    );
+                }
+                inside.push(cover);
+            }
+        }
+        // Indexes only some rounds reach: one test before the loop picks a
+        // copy of it that skips their checks, or the copy that keeps them.
+        let version = (sometimes || (mixed && !any_grid.is_empty())).then(|| {
+            let lists = fixed_lists(any, &stored);
+            let grids = merge(any_grid, &stored, slot);
+            let covers = self.covers(&bounds, lists, grids);
+            let bad: Vec<_> = covers.iter().filter_map(|(b, _)| b.clone()).collect();
+            let guard = if bad.is_empty() {
+                "true".to_string()
+            } else {
+                format!("!({run} && ({}))", bad.join(" || "))
+            };
+            (
+                guard,
+                covers.into_iter().map(|(_, c)| c).collect::<Vec<_>>(),
+            )
+        });
+        Ahead {
+            inside,
+            version: version.filter(|(_, c)| !c.is_empty()),
+        }
+    }
+
+    /// Each cover with the C++ test that it fails, if it can.
+    fn covers(
+        &mut self,
+        b: &Bounds,
+        lists: Vec<(Var, (i64, i64))>,
+        grids: Vec<(Var, Vec<Dim>)>,
+    ) -> Vec<(Option<String>, Inside)> {
+        let (lo, last) = (b.lo, b.last);
+        let mut covers = Vec::new();
         for (grid, dims) in grids {
             let g = self.expr(&self.var_expr(grid)).text;
             let mut bad = Vec::new();
@@ -246,18 +289,10 @@ impl<'p> Emitter<'p> {
                     Dim::Proven => {}
                 }
             }
-            if !bad.is_empty() {
-                self.line(
-                    out,
-                    &format!(
-                        "if ({run} && ({})) cpl::fail(\"index outside the array\");",
-                        bad.join(" || ")
-                    ),
-                );
-            }
-            covered.push(Inside::Grid(grid, slot, dims));
+            let bad = (!bad.is_empty()).then(|| bad.join(" || "));
+            covers.push((bad, Inside::Grid(grid, b.slot, dims)));
         }
-        for (list, (min, max)) in every {
+        for (list, (min, max)) in lists {
             let of = self.var_expr(list);
             let len = self
                 .expr(&Expr {
@@ -266,17 +301,62 @@ impl<'p> Emitter<'p> {
                     span: Default::default(),
                 })
                 .text;
-            self.line(
-                out,
-                &format!(
-                    "if ({run} && ((ll)({lo}) + {min} < 0 || {last} + {max} >= (ll)({len}))) \
-                     cpl::fail(\"index outside the list\");"
-                ),
-            );
-            covered.push(Inside::List(list, slot, min, max));
+            let bad = format!("(ll)({lo}) + {min} < 0 || {last} + {max} >= (ll)({len})");
+            covers.push((Some(bad), Inside::List(list, b.slot, min, max)));
         }
-        covered
+        covers
     }
+}
+
+/// What `check_ahead` found: the covers its checks stand for, and, when
+/// some indexes are reached on only some rounds, the test that picks a
+/// copy of the loop with them covered too.
+pub(crate) struct Ahead {
+    pub inside: Vec<Inside>,
+    pub version: Option<(String, Vec<Inside>)>,
+}
+
+struct Bounds<'a> {
+    slot: usize,
+    lo: &'a str,
+    last: &'a str,
+}
+
+fn fixed_lists(lists: BTreeMap<Var, (i64, i64)>, stored: &BTreeSet<Var>) -> Vec<(Var, (i64, i64))> {
+    lists
+        .into_iter()
+        .filter(|(list, _)| !stored.contains(list))
+        .collect()
+}
+
+/// The cells of grids the body does not replace, one cover per shape.
+fn merge(cells: Vec<(Var, Vec<Dim>)>, stored: &BTreeSet<Var>, slot: usize) -> Vec<(Var, Vec<Dim>)> {
+    let mut moving = stored.clone();
+    moving.insert((false, slot));
+    let mut grids: Vec<(Var, Vec<Dim>)> = Vec::new();
+    for (grid, dims) in cells {
+        if stored.contains(&grid)
+            || dims
+                .iter()
+                .any(|d| matches!(d, Dim::Fixed(e) if !bound(e, &moving)))
+        {
+            continue;
+        }
+        match grids
+            .iter_mut()
+            .find(|(g, have)| *g == grid && same_shape(have, &dims))
+        {
+            Some((_, have)) => {
+                for pair in have.iter_mut().zip(&dims) {
+                    if let (Dim::Slot(lo, hi), Dim::Slot(c, _)) = pair {
+                        (*lo, *hi) = ((*lo).min(*c), (*hi).max(*c));
+                    }
+                }
+            }
+            None => grids.push((grid, dims)),
+        }
+    }
+    grids
 }
 
 /// `i`, `i + c` or `i - c`: the slot and `c`.
@@ -341,6 +421,11 @@ struct Scan<'e, 'p> {
     every: BTreeMap<Var, (i64, i64)>,
     /// Grid cells reached on every round, each index as a `Dim`.
     every_grid: Vec<(Var, Vec<Dim>)>,
+    /// The same for every index, reached on every round or not.
+    any: BTreeMap<Var, (i64, i64)>,
+    any_grid: Vec<(Var, Vec<Dim>)>,
+    /// Whether an index is reached on only some rounds.
+    sometimes: bool,
     /// Whether the body indexes a list, and a grid.
     lists: bool,
     grids: bool,
@@ -404,8 +489,9 @@ impl Scan<'_, '_> {
 
     fn cell(&mut self, grid: Var, at: &[Expr], every: bool) -> bool {
         self.grids = true;
-        if every {
-            let dims = at.iter().map(|e| {
+        let dims: Vec<_> = at
+            .iter()
+            .map(|e| {
                 if crate::expr::proven(std::slice::from_ref(e)) {
                     Dim::Proven
                 } else {
@@ -414,17 +500,28 @@ impl Scan<'_, '_> {
                         _ => Dim::Fixed(e.clone()),
                     }
                 }
-            });
-            self.every_grid.push((grid, dims.collect()));
+            })
+            .collect();
+        if every {
+            self.every_grid.push((grid, dims.clone()));
+        } else {
+            self.sometimes = true;
         }
+        self.any_grid.push((grid, dims));
         at.iter().all(|e| self.expr(e, every))
     }
 
     fn index(&mut self, list: Var, index: &Expr, every: bool) -> bool {
         self.lists = true;
-        if every {
-            if let Some((_, c)) = offset(index).filter(|&(at, _)| at == self.slot) {
-                let range = self.every.entry(list).or_insert((c, c));
+        if let Some((_, c)) = offset(index).filter(|&(at, _)| at == self.slot) {
+            let mut maps = vec![&mut self.any];
+            if every {
+                maps.push(&mut self.every);
+            } else {
+                self.sometimes = true;
+            }
+            for map in maps {
+                let range = map.entry(list).or_insert((c, c));
                 *range = (range.0.min(c), range.1.max(c));
             }
         }
@@ -661,11 +758,18 @@ mod tests {
     }
 
     #[test]
-    fn a_loop_over_a_grid_and_a_list_keeps_its_checks() {
+    fn a_loop_over_a_grid_and_a_list_checks_in_a_copy() {
         let code = cpp(&GRID
             .replace("var g:", "let w = [i for i in 0..n]\nvar g:")
             .replace("min(k, 3)", "w[k]"));
-        assert!(inner(&code).contains(".ck("), "{code}");
+        // Failing either check could print a different message first, so
+        // the loop keeps its checks in the copy a failed test picks.
+        let (fast, slow) = code.split_once("} else {").unwrap();
+        assert!(!inner(fast).contains(".ck("), "{code}");
+        assert!(
+            slow.contains("g.ck(y, k)") && slow.contains("cpl::at(w, k)"),
+            "{code}"
+        );
     }
 
     #[test]
@@ -708,8 +812,29 @@ mod tests {
         ));
         let body = &code[code.find("for (ll k").unwrap()..];
         assert!(body.contains("= g(k, from)"), "{code}");
-        // The store runs only when the new cost is smaller, so it keeps its check.
-        assert!(body.contains("g.ck(k + 1, to) = "), "{code}");
+        // The store runs only when the new cost is smaller: the copy of the
+        // loop picked when `k + 1` fits skips its check, the other keeps it.
+        let (fast, slow) = body.split_once("} else {").unwrap();
+        assert!(fast.contains("g(k + 1, to) = "), "{code}");
+        assert!(slow.contains("g.ck(k + 1, to) = "), "{code}");
+    }
+
+    #[test]
+    fn a_list_index_some_rounds_reach_picks_a_loop_copy() {
+        let code = cpp(concat!(
+            "let n: Int = read()\n",
+            "var a: List<Int> = read<[n]Int>()\n",
+            "for i in 0..n - 1:\n",
+            "    if a[i] > 0: a[i + 1] += a[i]\n",
+            "print(a)\n",
+        ));
+        let (fast, slow) = code.split_once("} else {").unwrap();
+        assert!(fast.contains("if (!("), "{code}");
+        assert!(
+            !fast[fast.rfind("for (ll i").unwrap()..].contains("cpl::at("),
+            "{code}"
+        );
+        assert!(slow.contains("cpl::at(a, i + 1)"), "{code}");
     }
 
     #[test]

@@ -6020,3 +6020,18 @@ for `gcd` inside `mod` would be friction with no safety gain. Case:
 `spec/conformance/core-11/inline-mod-sees-prelude.cp`. Reverse: say inline
 modules are library modules and turn the case into an E0201 reject.
 
+||||||| parent of 4049afb74 (codegen: run a checked or unchecked loop copy for sometimes-reached indexes)
+
+## 242. A loop whose indexes some rounds skip gets a checked and an unchecked copy (2026-11-22)
+A range loop's index checks move ahead of it only for indexes every round
+reaches, so `cost[k + 1, to] min= cost[k, from] + w` kept the check on the
+store it makes only sometimes. The C++ now tests once, before the loop,
+that every such index (`k + c`, a value the loop keeps, or one its type
+proves) fits for every `k`, and runs a copy without those checks when it
+does and the checked copy otherwise, so a failing run stops where and how
+it did. The unchecked copy is kept only when it is at most 2500 bytes of
+C++ (`VERSIONED_MAX` in `crates/cpl-codegen/src/stmt.rs`), which bounds
+the size cost against the 32 KB goal. cf2062f went from 1.94x to 1.29x of
+its C++ (`python3 bench/v03_perf_bench.py --suite corpus --only cf2062f
+--runs 5 --min-ms 10 --jobs 1`). Reverse: drop `version` from
+`check_ahead` in `crates/cpl-codegen/src/bounds.rs`.
