@@ -7,7 +7,7 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 2259 (995 passing). Rules: 533.
+Cases: 2260 (995 passing). Rules: 533.
 
 ## Summary per chapter
 
@@ -20,7 +20,7 @@ Cases: 2259 (995 passing). Rules: 533.
 - R05 (05-ownership.md): 43 rules, 147 cases; 0 uncovered, 3 happy-path only, 0 negative only
 - R06 (06-control-functions.md): 24 rules, 75 cases; 0 uncovered, 1 happy-path only, 0 negative only
 - R07 (07-sequences.md): 88 rules, 110 cases; 0 uncovered, 2 happy-path only, 0 negative only
-- R08 (08-traits-generics.md): 29 rules, 76 cases; 0 uncovered, 2 happy-path only, 1 negative only
+- R08 (08-traits-generics.md): 29 rules, 77 cases; 0 uncovered, 2 happy-path only, 0 negative only
 - R09 (09-contexts-checks.md): 25 rules, 51 cases; 0 uncovered, 5 happy-path only, 0 negative only
 - R10 (10-io.md): 17 rules, 69 cases; 0 uncovered, 1 happy-path only, 0 negative only
 - R11 (11-modules-prelude.md): 15 rules, 32 cases; 0 uncovered, 1 happy-path only, 1 negative only
@@ -44,13 +44,13 @@ negative case. Complete: rules with no gap in `rule-gaps.txt`.
 | R05 | 43 | 43 (100%) | 23 | 20 (86%) | 40 (93%) |
 | R06 | 24 | 24 (100%) | 17 | 16 (94%) | 23 (95%) |
 | R07 | 88 | 88 (100%) | 24 | 22 (91%) | 86 (97%) |
-| R08 | 29 | 28 (96%) | 15 | 13 (86%) | 26 (89%) |
+| R08 | 29 | 29 (100%) | 15 | 13 (86%) | 27 (93%) |
 | R09 | 25 | 25 (100%) | 18 | 13 (72%) | 20 (80%) |
 | R10 | 17 | 17 (100%) | 9 | 8 (88%) | 16 (94%) |
 | R11 | 15 | 14 (93%) | 9 | 8 (88%) | 13 (86%) |
 | R12 | 17 | 17 (100%) | 6 | 6 (100%) | 17 (100%) |
 | R13 | 22 | 22 (100%) | 7 | 5 (71%) | 20 (90%) |
-| all | 533 | 531 (99%) | 227 | 195 (85%) | 499 (93%) |
+| all | 533 | 532 (99%) | 227 | 195 (85%) | 500 (93%) |
 
 ## Rules
 
@@ -500,7 +500,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R08.1.5 [1+ 1-]: Operators are trait methods (`Add`, `Sub`, `Mul`, `Div`, `Rem` with `Rhs` and `Out`, `Neg`...
 - R08.1.6 [1+ 1-]: **Derived impls are structural**: tuples, records, structs and enums get `Eq`, `Ord` (lexi...
 - R08.1.7 [1+ 1-]: **Field traits**: a trait may require fields (`trait Target<V>: to: V`). Records satisfy f...
-- R08.1.8 [0+ 1-] *negative only*: Library-authored diagnostics: a trait may attach a message to "not implemented" and to eac...
+- R08.1.8 [1+ 1-]: Library-authored diagnostics: a trait may attach a message to "not implemented" and to eac...
 - R08.2.1 [2+ 1-]: Bounds go inline (`T: Ord + Hash`), in a `where` clause, or directly as a parameter type: ...
 - R08.2.2 [1+ 1-]: Generic bodies are checked once against their bounds, at definition; errors point at the g...
 - R08.2.3 [2+ 1-]: Everything is monomorphized; there are no vtables and no `dyn`.

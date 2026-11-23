@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- `core-08/trait-message-bound-holds.cp`, R08.1.8's accept case (33 rule gaps): fails, `#on_unimplemented` is E0004 (compiler). Spelling tension to settle with it: R01.9.1 makes decorators `@name` from a closed set, W12 spells library attributes `#lint`/`#on_unimplemented`.
 - `core-11/binary-min-beside-imported-seq-min.cp` (fails E0606; compiler): with seq's `min` imported, `min(3, 1)` is still the builtin. It is the program that reaches 701193ef's path, so bugcatch can catch it once the checker is fixed.
 - Decision 241: an inline `mod` in a program sees the prelude (R11.3.1 was silent); case fails E0201, routed to compiler.
 - R01.10.2 (underivable programs are E0103: `var x: Int`, `fn f() lends T`, `enum Dir: N, E`) and R10.3.7 (`?T` is not `Show`) written down, with one accept case each; 0 rule-less core cases left. `var-needs-initializer` still fails (no diagnostic; routed to compiler earlier).
