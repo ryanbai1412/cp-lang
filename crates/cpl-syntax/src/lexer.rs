@@ -67,10 +67,37 @@ pub fn lex(src: &str) -> Lexed {
     };
     lx.out.tokens.reserve(src.len() / 3);
     lx.run();
+    lx.lone_carriage_returns();
     lx.out
 }
 
 impl<'a> Lexer<'a> {
+    /// A `\r` is only ever half of a `\r\n` line end, in code, comments and
+    /// strings alike (R01.1.4).
+    fn lone_carriage_returns(&mut self) {
+        for (at, w) in self.bytes.windows(2).enumerate() {
+            if w[0] == b'\r' && w[1] != b'\n' {
+                self.lone_carriage_return(at);
+            }
+        }
+        if self.bytes.last() == Some(&b'\r') {
+            self.lone_carriage_return(self.bytes.len() - 1);
+        }
+    }
+
+    fn lone_carriage_return(&mut self, at: usize) {
+        let span = Span::new(at as u32, at as u32 + 1);
+        self.out.diagnostics.push(
+            Diagnostic::error(
+                codes::UNEXPECTED_TOKEN,
+                span,
+                "a carriage return that does not start a `\\r\\n` line end",
+            )
+            .with_help("lines end in `\\n` or `\\r\\n`; inside a string, write the escape `\\r`")
+            .with_fix("delete the carriage return", span, ""),
+        );
+    }
+
     fn peek(&self) -> u8 {
         self.bytes.get(self.pos).copied().unwrap_or(0)
     }
