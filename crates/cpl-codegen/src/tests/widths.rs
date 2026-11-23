@@ -18,3 +18,18 @@ print(b.s, b.t)
     );
     assert!(out.contains("int8_t t = 0;"), "{out}");
 }
+
+#[test]
+fn a_struct_array_over_a_range_alias_stays_inline() {
+    let out = cpp("type Sign = -1..=1
+struct T:
+    var n: [Sign]Int
+var t = T([4, 5, 6])
+t.n[-1] += 1
+print(t.n[-1])
+");
+    assert!(
+        out.contains("cpl::Row<ll, 3> n;"),
+        "`[Sign]Int` has 3 cells:\n{out}"
+    );
+}

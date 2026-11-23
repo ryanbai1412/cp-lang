@@ -776,6 +776,19 @@ impl<'a> Lowerer<'a> {
 
     /// The fields of `decl` that are a row of 1 to 64 cells, the count
     /// written as numbers: `kid: [0..2]?Int`, `cnt: [1..=26]Int`.
+    /// What a zero-argument alias declared in this module names: `Sign` in
+    /// `type Sign = -1..=1` is the range `-1..=1`.
+    fn local_alias_target(&self, ty: &ast::Type) -> Option<&'a ast::Type> {
+        let ast::TypeKind::Named { name, args } = &ty.kind else {
+            return None;
+        };
+        let Some(Sym::Alias(aid)) = self.mod_syms[self.cur_mod].get(&name.text) else {
+            return None;
+        };
+        let (m, aliased, _) = self.aliases[*aid];
+        (args.is_empty() && m == self.cur_mod).then_some(aliased)
+    }
+
     pub(super) fn fixed_rows(
         &self,
         decl: &ast::StructDecl,
@@ -785,15 +798,15 @@ impl<'a> Lowerer<'a> {
             let ast::TypeKind::Array { index, .. } = &field.ty.kind else {
                 continue;
             };
-            let [ast::Type {
-                kind:
-                    ast::TypeKind::Range {
-                        lo: Some(lo),
-                        hi: Some(hi),
-                        inclusive,
-                    },
-                ..
-            }] = index.as_slice()
+            let [index] = index.as_slice() else {
+                continue;
+            };
+            let index = self.local_alias_target(index).unwrap_or(index);
+            let ast::TypeKind::Range {
+                lo: Some(lo),
+                hi: Some(hi),
+                inclusive,
+            } = &index.kind
             else {
                 continue;
             };
@@ -861,14 +874,10 @@ impl<'a> Lowerer<'a> {
 
     pub(super) fn narrow_range_width(&self, ty: &ast::Type) -> Option<IntWidth> {
         // `type Sign = -1..=1`: a field of the alias narrows as its range would.
-        if let ast::TypeKind::Named { name, args } = &ty.kind {
-            let Some(Sym::Alias(aid)) = self.mod_syms[self.cur_mod].get(&name.text) else {
-                return None;
-            };
-            let (m, aliased, _) = self.aliases[*aid];
-            return (args.is_empty() && m == self.cur_mod)
-                .then(|| self.narrow_range_width(aliased))
-                .flatten();
+        if let ast::TypeKind::Named { .. } = &ty.kind {
+            return self
+                .local_alias_target(ty)
+                .and_then(|aliased| self.narrow_range_width(aliased));
         }
         let ast::TypeKind::Range {
             lo: Some(lo),
