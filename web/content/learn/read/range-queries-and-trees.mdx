@@ -1,0 +1,154 @@
+---
+title: "Range queries and trees"
+description: "SegTree, SparseTable and Fenwick over a domain, and Rooted trees: depth, lca, ancestor and subtree sizes."
+---
+
+From Div 2 C on, many problems ask the same question many times: the
+minimum of a range, the sum before a position, the distance between two
+tree vertices. Each answer should take O(log n), not O(n). The standard
+library has one structure per shape of question. Each is built from an
+array over a domain, takes the operation as a value (`min`, `gcd`, `+`),
+and is indexed by that domain, so a query can't mix up positions.
+
+## Point updates, range folds: `SegTree`
+
+`SegTree(min, a)` builds a segment tree over `a` in O(n). `t.set(i, x)`
+changes one element and `t.fold(l..=r)` combines a range, both in
+O(log n). The operation is any associative function, so `max`, `gcd` or
+`+` work the same way:
+
+```cp run input="5 4\n5 3 8 1 4\n2 1 5\n1 4 9\n2 3 5\n2 1 2\n"
+let (n, q): (1..=2e5, 1..=2e5) = read()
+domain V = 1..=n
+let a: [V]1..=1e9 = read()
+var t = SegTree(min, a)
+for _ in 0..q:
+    let kind: 1..=2 = read()
+    if kind == 1:
+        let (i, x): (V, 1..=1e9) = read()
+        t.set(i, x)
+    else:
+        let (l, r): (V, V) = read()
+        print(t.fold(l..=r))
+```
+
+The ranges are `l..=r` over `V`, the same inclusive bounds the
+statement uses, so there's no `r + 1` and no `-1` shift.
+
+## Range updates: `act:`
+
+When an update changes a whole range ("add x to every element of
+`[l, r]`"), give the tree the action as well: `SegTree(min, a, act: add)`.
+`t.apply(l..=r, x)` is then O(log n) too. This is the lazy segment tree,
+and the laziness is handled inside the library:
+
+```cp run input="4 4\n1 2 3 4\n2 1 4\n1 2 3 -5\n2 3 4\n2 1 1\n"
+let (n, q): (1..=2e5, 1..=2e5) = read()
+domain V = 1..=n
+let a: [V]-1e9..=1e9 = read()
+var t = SegTree(min, a, act: add)
+for _ in 0..q:
+    let kind: 1..=2 = read()
+    let (l, r): (V, V) = read()
+    if kind == 1:
+        let x: -1e9..=1e9 = read()
+        t.apply(l..=r, x)
+    else: print(t.fold(l..=r))
+```
+
+## No updates: `SparseTable`
+
+When the array never changes and the operation is idempotent
+(`min`, `max`, `gcd`: combining a value with itself changes nothing),
+`SparseTable(gcd, a)` answers each fold in O(1) after O(n log n)
+building. Here the statement's positions are 1-based and the array is
+0-based, so the conversion happens once, at the query:
+
+```cp run input="5 3\n12 18 24 6 9\n1 3\n2 5\n4 4\n"
+let (n, q): (1..=2e5, 1..=2e5) = read()
+domain I = 0..n
+let a: [I]1..=1e9 = read()
+let t = SparseTable(gcd, a)
+for _ in 0..q:
+    let (l, r): (1..=n, 1..=n) = read()
+    print(t.fold(I(l - 1)..=I(r - 1)))
+```
+
+## Prefix sums with updates: `Fenwick`
+
+`Fenwick<V, Int>.new()` starts at zero; `add(i, x)` and `fold(range)`
+are O(log n). Counting inversions is the classic use: for each value,
+count the larger values already seen.
+
+```cp run input="4\n3 1 4 2\n"
+let n: 1..=2e5 = read()
+domain V = 1..=n
+let a: [0..n]V = read()
+var seen = Fenwick<V, Int>.new()
+var count = 0
+for x in a:
+    count += seen.fold(x..)
+    seen.add(x, 1)
+print(count)
+```
+
+| Question | Updates | Structure | Query |
+|---|---|---|---|
+| any associative fold | points | `SegTree(op, a)` | O(log n) |
+| any associative fold | ranges | `SegTree(op, a, act: f)` | O(log n) |
+| idempotent fold | none | `SparseTable(op, a)` | O(1) |
+| sums | points | `Fenwick<V, Int>` | O(log n) |
+| sums | none | `a.scan(+)` ([Prefix](/learn/read/standard-library)) | O(1) |
+
+## Trees: `Rooted`
+
+A tree is a graph with n − 1 edges. `Rooted.new(g, root)` roots it once
+in O(n) and answers questions about it: `t.depth(v)`, `t.lca(a, b)` in
+O(log n), and `t.subtree_sizes`, a table over `V`. The distance between
+two vertices follows from those:
+
+```cp run input="5 3\n1 2\n1 3\n3 4\n3 5\n4 5\n2 4\n1 1\n"
+let (n, q): (1..=2e5, 1..=2e5) = read()
+domain V = 1..=n
+let es: [0..n - 1](u: V, v: V) = read()
+let t = Rooted.new(Graph.undirected(es), V(1))
+for _ in 0..q:
+    let (a, b): (V, V) = read()
+    print(t.depth(a) + t.depth(b) - 2 * t.depth(t.lca(a, b)))
+```
+
+`t.ancestor(v, k)` jumps k levels up in O(log n) and returns `?V`:
+`None` when v has fewer than k ancestors, so going past the root can't
+silently return vertex 0.
+
+```cp run input="5 3\n1 2\n1 3\n3 4\n3 5\n4 1\n4 2\n4 3\n"
+let (n, q): (1..=2e5, 1..=2e5) = read()
+domain V = 1..=n
+let es: [0..n - 1](u: V, v: V) = read()
+let t = Rooted.new(Graph.undirected(es), V(1))
+for _ in 0..q:
+    let (v, k): (V, 0..=2e5) = read()
+    if let p = t.ancestor(v, k): print(p)
+    else: print(-1)
+```
+
+## Why it's designed this way
+
+- **The operation is a value, not a template.** C++ libraries take the
+  operation as a functor type, which costs a struct per tree. Here
+  `SegTree(min, a)` passes `min` itself, the same way `sort(by:)` takes
+  a function, so there's one way to customize every structure.
+- **One structure per question, chosen by name.** The library never picks
+  a structure for you: `SparseTable` and `SegTree` have different costs,
+  and the name you write says which one you get.
+- **Queries take ranges over the domain.** A hand-written tree takes
+  `(l, r)` as plain integers, and half-open versus inclusive is the most
+  common bug in it. A range over `V` says which it is, and an index from
+  another domain doesn't type-check.
+
+Practice: [Range minimum with updates](/learn/practice/range-min),
+[Range add, range minimum](/learn/practice/range-add-min),
+[Range gcd](/learn/practice/range-gcd), [Inversions](/learn/practice/inversions),
+[Tree distance](/learn/practice/tree-distance),
+[Subtree sizes](/learn/practice/subtree-sizes) and
+[Ancestor jump](/learn/practice/ancestor-jump).
