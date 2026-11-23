@@ -689,3 +689,5 @@ on input `2 / 1 / 2` prints `7` once in `cpl run` and in the C++ (`cpl_main` cal
 - 2026-11-23 (group a): a `for` over a call or getter lends what the call reads (R05.9.1): any `lends` fn, generator, or fn whose declared result wraps a parameter type (`Filtered<S>`, `Slice<S>` of `self: S`), receiver included, through adapter chains (check/lends/walk.rs). No std names. Fixes core-05/{chunks,windows,runs,filter-map}-walk-lends-parent and the C++ heap-use-after-free they hid.
 
 2026-11-23: 63ba30573 flagged a constant domain over a `const` (`domain V = 1..=N + 1`) as used before set (`core-11/constant-domain-hoists-counted`). Constness now comes from one evaluator, `cpl_syntax::const_int`, which the lowerer's hoist and `eval_const_int` and the checker's E0205 scan all call, so a domain is reported only when the hoist would not define it early.
+
+2026-11-23: `List(s)` of a `Str` was a `List<Str>` and `List(xs)` of a list a `List<List<Int>>` in the checker, while the IR copies the elements. `prelude_call` now types a one-argument `List(w)` by what a `for` over `w` walks (`element_ty`) (R04b.3.2; `core-02/list-of-str-is-chars`).

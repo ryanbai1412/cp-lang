@@ -84,7 +84,12 @@ impl<'a> Checker<'a> {
                         list_args[0].clone()
                     }
                     Ty::Array { elem, .. } => (**elem).clone(),
-                    other => other.clone(),
+                    // `List(w)` copies what a `for` over `w` walks: a
+                    // `Str`'s `Char`s, a list's items (R04b.3.2).
+                    other => match self.element_ty(other) {
+                        Ty::Unknown => other.clone(),
+                        elem => elem,
+                    },
                 };
                 Some(Ty::Named {
                     name: "List".into(),
