@@ -840,7 +840,7 @@ impl<'a> Parser<'a> {
             };
         }
         if matches!(&pat.kind, PatternKind::Name(_)) && self.at(T::Comma) {
-            pat = self.bare_tuple_pattern(pat);
+            pat = self.bare_tuple_pattern(pat, T::Eq);
         }
         let shared_elem_ty = self.eat(T::Colon).then(|| self.ty());
         let ty = tuple_elem_tys.or_else(|| {
@@ -1114,7 +1114,10 @@ impl<'a> Parser<'a> {
         if !c_style {
             loop {
                 let paren = self.paren_for();
-                let pat = self.pattern();
+                let mut pat = self.pattern();
+                if matches!(&pat.kind, PatternKind::Name(_)) && self.at(T::Comma) {
+                    pat = self.bare_tuple_pattern(pat, T::In);
+                }
                 if !self.for_of() {
                     self.expect(T::In, "`in` after the loop variable");
                 }

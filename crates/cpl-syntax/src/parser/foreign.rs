@@ -82,14 +82,14 @@ impl<'a> Parser<'a> {
         true
     }
 
-    /// `let a, b = t`: Python's unpacking without parentheses. One error
+    /// `let a, b = t`, `for i, x in ...`: Python's unpacking without parentheses. One error
     /// with the fix that adds them, read as the tuple pattern.
-    pub(super) fn bare_tuple_pattern(&mut self, first: Pattern) -> Pattern {
+    pub(super) fn bare_tuple_pattern(&mut self, first: Pattern, end: T) -> Pattern {
         let mut n = 0;
         while self.peek_n(n) == T::Comma && self.peek_n(n + 1) == T::Ident {
             n += 2;
         }
-        if n == 0 || self.peek_n(n) != T::Eq {
+        if n == 0 || self.peek_n(n) != end {
             return first;
         }
         let start = first.span.start;
@@ -103,7 +103,11 @@ impl<'a> Parser<'a> {
             span,
             "unpacking a tuple takes parentheses in CP Lang",
         )
-        .with_help("write `let (a, b) = t`");
+        .with_help(if end == T::In {
+            "write `for (i, x) in xs.items:`"
+        } else {
+            "write `let (a, b) = t`"
+        });
         diag.fixes.push(cpl_diag::Fix {
             title: "add the parentheses".into(),
             edits: vec![

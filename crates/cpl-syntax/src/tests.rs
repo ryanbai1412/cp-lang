@@ -1862,7 +1862,7 @@ fn a_then_ending_a_header_is_one_error_with_the_colon_fix() {
 
 #[test]
 fn a_tuple_unpacked_without_parentheses_is_one_error_with_the_fix() {
-    let src = "let a, b = t\nlet n, m: Int = read()\nvar i, j = (0, 1)\n";
+    let src = "let a, b = t\nlet n, m: Int = read()\nvar i, j = (0, 1)\nfor i, x in xs.items:\n    print(i)\n";
     let d = parse_file(src).diagnostics;
     let fixed: Vec<_> = d
         .iter()
@@ -1874,7 +1874,7 @@ fn a_tuple_unpacked_without_parentheses_is_one_error_with_the_fix() {
                 .collect::<Vec<_>>()
         })
         .collect();
-    assert_eq!(fixed, [["(", ")"]; 2], "{d:?}");
+    assert_eq!(fixed, [["(", ")"]; 3], "{d:?}");
 }
 
 #[test]
