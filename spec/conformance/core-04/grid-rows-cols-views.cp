@@ -1,4 +1,4 @@
-// expect: ok, output "[3, 12]\n[3, 4, 5]\n4\n2"
+// expect: ok, output "3 12\n3 4 5\n4\n2"
 // rule: 04b.1.12
 // `g.rows` and `g.cols` are O(1) views of a grid's row and column views, keyed by `Row` and `Col`: `g.rows[r]` is `g[r]` and `g.cols[c]` is `g[.., c]`.
 domain Row = 0..2
