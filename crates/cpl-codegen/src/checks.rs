@@ -58,6 +58,10 @@ const TRAPS: &[(&str, &str)] = &[
     ),
     (r#"if (bad) fail("index outside the array"); "#, ""),
     (
+        r#"if (bad || sum < -(((S)1 << 63) - 1) || sum > ((S)1 << 63) - 1) fail("integer overflow: a range `sum` does not fit in an `Int` (64 bits)"); "#,
+        "",
+    ),
+    (
         r#"if ((unsigned long long)ord >= (unsigned long long)len) fail("outside the domain"); "#,
         "",
     ),

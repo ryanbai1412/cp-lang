@@ -8,6 +8,7 @@
 //!
 //! Strings are byte vectors. Nothing here decodes or validates text.
 
+mod closed_form;
 mod input;
 mod observe;
 pub mod profile;
@@ -4702,19 +4703,13 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 let Value::Range(lo, hi) = first else {
                     return Ok(Value::Int(0));
                 };
-                if hi <= lo {
-                    Value::Int(0)
-                } else {
-                    let span_u = (hi as u64).wrapping_sub(lo as u64).wrapping_sub(1);
-                    let cnt = (span_u / (by as u64)) as i64 + 1;
-                    let ans = if cnt & 1 == 0 {
-                        let last = lo.wrapping_add((cnt - 1).wrapping_mul(by));
-                        (cnt / 2).wrapping_mul(lo.wrapping_add(last))
-                    } else {
-                        let mid = lo.wrapping_add(((cnt - 1) / 2).wrapping_mul(by));
-                        cnt.wrapping_mul(mid)
-                    };
-                    Value::Int(ans)
+                match closed_form::range_sum(lo, hi, by) {
+                    Some(sum) => Value::Int(sum),
+                    None => {
+                        let why =
+                            format!("the `sum` of `{lo}..{hi}` does not fit in an `Int` (64 bits)");
+                        return trap(span, format!("integer overflow: {why}"));
+                    }
                 }
             }
             Builtin::RangeRev => match first {

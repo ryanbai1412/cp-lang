@@ -85,6 +85,8 @@ fn aliasing_and_sort_keys_agree_between_interp_and_sanitized_cpp() {
             "print_args_first",
             "range_int_sum",
             "range_int_sum_bad_step",
+            "range_int_sum_near_limit",
+            "range_int_sum_overflow",
             "rec_fn_param",
             "rec_local_closure",
             "same_domain_lengths",

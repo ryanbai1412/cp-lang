@@ -1248,11 +1248,12 @@ template <class T, int K> const T& at(const Row<T, K>& v, ll i) { if ((unsigned 
 inline ll steps(ll lo, ll hi, ll by, bool closed = false) { if (by <= 0) fail(\"a range steps forward: `by` is not positive\"); if (closed ? lo > hi : lo >= hi) return 0; return (ll)(((unsigned long long)hi - (unsigned long long)lo - !closed) / (unsigned long long)by) + 1; }
 ",
     },
+    // Exact in 128 bits; past an `Int` it traps, or wraps without UB when untrapped.
     Piece {
         name: "range_sum",
         needs: &["fail"],
         code: "\
-template <class R> inline ll range_sum(R r, ll by = 1) { if (by <= 0) fail(\"a range steps forward: `by` is not positive\"); if (r.lo >= r.hi) return 0; ll n = (ll)(((unsigned long long)r.hi - (unsigned long long)r.lo - 1) / (unsigned long long)by) + 1; return (n & 1) ? n * (r.lo + ((n - 1) / 2) * by) : (n / 2) * (r.lo + (r.lo + (n - 1) * by)); }
+template <class R> inline ll range_sum(R r, ll by = 1) { if (by <= 0) fail(\"a range steps forward: `by` is not positive\"); if (r.lo >= r.hi) return 0; typedef __int128 S; typedef unsigned __int128 U; U n = (U)(((unsigned long long)r.hi - (unsigned long long)r.lo - 1) / (unsigned long long)by) + 1; U tri = (n & 1) ? (n - 1) / 2 * n : n / 2 * (n - 1); S sum; bool bad = __builtin_mul_overflow((S)tri, (S)by, &sum); bad |= __builtin_add_overflow(sum, (S)n * (S)r.lo, &sum); if (bad || sum < -(((S)1 << 63) - 1) || sum > ((S)1 << 63) - 1) fail(\"integer overflow: a range `sum` does not fit in an `Int` (64 bits)\"); (void)bad; return (ll)(unsigned long long)(U)sum; }
 ",
     },
     Piece {

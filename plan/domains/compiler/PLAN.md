@@ -45,6 +45,14 @@ Contract tests run alongside all of it: each interface change adds or updates th
 | VM work blocked by perf's C++ choices or the trace format | IR changes go through the interface table and consumers' contract tests |
 | Two-core VM makes the full gate slow | `--fast` per commit; trains via `scripts/land.sh` |
 
+## General fixes owed
+
+Each local fix whose general mechanism is still owed: the instance, the general fix, the owner.
+
+- Range `sum` closed form (row 1 of `plan/domains/tech-debt/std-intercepts.md`: `try_range_int_sum` in `cpl-ir/src/lower/call.rs`, `cpl::range_sum` in `cpl-codegen/src/runtime.rs`, `closed_form::range_sum` in `cpl-interp`): both copies compute in 128 bits and trap past an `Int` (untrapped C++ wraps through unsigned). General: `sum` written in std, in CPL, with checked `Int` arithmetic, found by method lookup ahead of the generic `Seq.sum`; then delete `RangeSum`. Missing first: (1) `(lo..hi).step(k)` lowers to a materialized `List<Int>`, so std needs a stepped-range `Seq` type; (2) a type's own method before a same-name extension (spec is writing it; `fn` overloading is E0702 today); (3) std methods on the core `Range`. Owner: spec for (2), then compiler.
+- The other intercepts (rows 2-18 of `std-intercepts.md`): each row's general fix column is the move-to-std plan; delete a row when it lands. Owner: compiler, with stdlib where the row says.
+- `lo..=hi` lowers to `lo..hi + 1` in C++, so `(0..=big).step(big)` at `Int` max is signed overflow in the generated C++ while the interpreter traps. General: inclusive ranges carry `hi` and test `x <= hi`, in one lowering. Owner: compiler.
+
 ## Next actions
 
 1. `dmopc21c5p2`: bisect the first differing value between `cpl run` and the C++, fix, regression.
