@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- Landed: cf2183e on v0.3, `corpus/sets/v03.txt` 222 -> 223: `a[0] in [0, 1]` became `a[0] in 0..=1`, since `List` has no `Contains` (filed to stdlib earlier). Matches `orig.cpp` on 30 generated inputs.
 - Landed: cf2124d and cf2183d1 on v0.3, `corpus/sets/v03.txt` 220 -> 222. `a.filter(...)` is now a lazy `Filter` (no `.len`, not `Indexed`), so the port takes `.to_list()`; `D.group(by:)` now yields `(key, List<D>)` pairs, so the loop destructures `(_, layer)`. Both match `orig.cpp` on 30 generated inputs.
 - Landed: cf2115b on v0.3, `corpus/sets/v03.txt` 219 -> 220. Not a `!` fix: the port called `V.at(i.ord)` meaning "the position with ordinal k", but `V.at(x)` now maps the integer value (`spec/core/04-indices.md:35`), so on `domain V = 1..=n + q` it returned none and trapped. Now `V(i.ord + 1)`; matches `orig.cpp` on 30 generated inputs. Ports that check but use `.at` that way are silently wrong, so the 175 ports that already checked are being re-run against `orig.cpp` the same way.
 - Landed: mechanical v0.3 move, batch 6: `cf2150d cf2229e`, `corpus/sets/v03.txt` 217 -> 219 (`!` on `Cell.first`/`.last` and on `let root = V.last`). Same evidence as batch 5. Still held, compile but unverified: cf2096g cf2135b cf2129f2 (`gen.py` trips `orig.cpp`), cf2115b cf2147h cf2183f (disagree with `orig.cpp`), cf2211g cf2237i2 (no `gen.py`, no expected outputs).

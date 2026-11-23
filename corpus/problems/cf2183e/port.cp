@@ -8,7 +8,7 @@ let (n, m): (2..=3000, 2..=3000) = read()
 let a: [0..n]0..=m = read()
 var ways: [1..=m]Z = 0
 var next: [1..=m]Z = 0
-if a[0] in [0, 1]: ways[1] = 1
+if a[0] in 0..=1: ways[1] = 1
 for i in 1..n:
     next.fill(0)
     for d in 1..=m:
