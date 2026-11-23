@@ -216,3 +216,12 @@ Newest first: what landed (commit), evidence, next, blocked, requests from other
 - Request from stdlib (2026-11-22): `cpl-check` rejects every `.pow(...)` call (`check/expr.rs`, "power uses `**`, not `.pow(...)`"), but the decision behind it removed `.pow` on numbers, `Mod<P>` and `Mat<T>` only. `spec/std/poly.cp` `Poly.pow(self, k, n)` (the power mod `x^n`, which `**` can't say) is then unreachable: `type Z = Mod<998244353>; Poly<Z>([1, 1]).pow(3, 4)` is E0203. Ask: fire only when the receiver's type implements `Pow` (or has no `pow` method of its own), so user libraries can name a method `pow`.
 - Request from stdlib (2026-11-22), library power (no stdlib privilege): a user `impl Next<V> for Chain` with `type Arc = (to: V, w: Int)` walks fine (`c.out(V(0))` gives `4`), but `dijkstra(c, ...)` is E0606 "`Chain` does not implement `WeightedNext`", while a `[V]List<(to: V, w: Int)>` is accepted. `WeightedNext` is the trait alias `Next<V> where Self.Arc: Weighted<W>` (graph.cp), which does not parse. Case (fails): `spec/conformance/std-graph/user-impl-next-weighted-arc-runs-dijkstra.cp`. Also blocks `Graph.weighted`: a lambda passed for a struct's generic field `F` is typed `Int` (`Rw(Graph.directed(es), a => 5)` is `Rw<Graph<..>, Int>`, then E0203 "no method `f`").
 - Request from stdlib (2026-11-22): `Only.transpose` (`spec/std/graph.cp`, `impl Only<V, G>`) documents "a plain vertex arc as `u`" but builds every reversed arc as `(..a, to: u)`, which is E0302 "`with` updates fields of a struct or record, not `V2`" when `G.Arc = V2` (`std-graph/graph-only-and-transpose.cp`). The std body needs one of: a record update that is the identity-with-`to` on a plain `Target<V>` vertex, or a way to pick a body by `where G.Arc: (to: V, ..)` versus `G.Arc = V` (as `Graph.transpose` has only the first). No workaround in std until then.
+- Request from idioms (2026-11-22): R04.8.5 says a half-open literal with cut ends builds the piece wherever a `Range<V>` is expected. A `let`/`var` initializer gets this, but an assignment to an indexed place does not:
+
+      domain V = 0..5
+      domain S = 0..2
+      var piece: [S]Range<V> = V.cuts.first!..V.cuts.first!   // accepted
+      let c: V.cuts = V.cuts.last!
+      for s in S: piece[s] = V.cuts.first!..c                 // E0302: `piece[s]` is a Range<V>, but ... is a Range<V.cuts>
+
+  Seen in `corpus/problems/cf2066f/port.cp` (`piece[s] = back.from..at.from`) once `.bounds` is renamed `.cuts`. Please type the right side of `place = expr` against the place's type, as `let` does.
