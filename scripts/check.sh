@@ -301,9 +301,9 @@ if [ "$mode" = commit ]; then
     step "tech-debt ratchet (scripts/debt-ratchet.py --check)"
     uv run --quiet python scripts/debt-ratchet.py --check \
         || fail "tech-debt ratchet failed; see scripts/debt-ratchet.json"
-    step "bundled skill pages match spec/std (scripts/skill-gen.py --drift)"
-    uv run --quiet python scripts/skill-gen.py --drift \
-        || fail "bundled skill pages are stale; run: uv run python scripts/skill-gen.py"
+    step "generated files current: skill pages, COVERAGE.md, gap lists (scripts/gen.py --check)"
+    uv run --quiet python scripts/gen.py --check \
+        || fail "generated files are stale; run: just gen"
     if [ -n "$sel_packages" ]; then
         read -ra pkgs <<<"$sel_packages"
         step "cargo fmt --check of the touched crates"

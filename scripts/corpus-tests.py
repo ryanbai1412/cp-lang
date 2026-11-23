@@ -9,7 +9,15 @@ Running corpus acceptance tests now lives in `crates/cpl-conform`:
     cargo run -p cpl-conform -- corpus [filter]
 
 Usage:
-    python3 scripts/corpus-tests.py make [ids...] [--cases 8]
+    python3 scripts/corpus-tests.py make [ids...] [--cases 8] [--out DIR]
+    python3 scripts/corpus-tests.py verify [ids...]
+
+`--out DIR` writes `DIR/<id>/NN.in` and `NN.ans` instead of the problem's
+own `tests/`, so a fresh set can be compared with the committed one.
+
+`verify` reruns the accepted C++ on every committed `tests/*.in` and counts
+the answers it reproduces byte for byte: the evidence a committed answer is
+derivable (decisions.md 278).
 """
 import argparse, hashlib, inspect, json, os, random, subprocess, sys, tempfile
 
@@ -109,7 +117,7 @@ def make(args):
                 continue
             try:
                 exe = binary(cpp)
-                tests = os.path.join(PROBLEMS, p, "tests")
+                tests = os.path.join(args.out, p) if args.out else os.path.join(PROBLEMS, p, "tests")
                 os.makedirs(tests, exist_ok=True)
                 for i in range(1, args.cases + 1):
                     inp = generate(*gens[p], seed=1000 + i, idx=i, tmp=tmp)
@@ -126,13 +134,41 @@ def make(args):
     print(f"corpus-tests: tests for {made} of {len(ids)} problems")
 
 
+def verify(args):
+    total = {"same": 0, "differ": 0, "no accepted C++": 0}
+    derivable = []
+    for p in problems(args.ids):
+        tests = os.path.join(PROBLEMS, p, "tests")
+        ins = sorted(f for f in os.listdir(tests) if f.endswith(".in")) if os.path.isdir(tests) else []
+        cpp = accepted_cpp(p) if ins else None
+        if ins and not cpp:
+            total["no accepted C++"] += len(ins)
+            continue
+        same = 0
+        for f in ins:
+            ans = os.path.join(tests, f[:-3] + ".ans")
+            try:
+                r = subprocess.run([binary(cpp)], stdin=open(os.path.join(tests, f), "rb"),
+                                   capture_output=True, timeout=20)
+                ok = os.path.exists(ans) and r.stdout == open(ans, "rb").read()
+            except (RuntimeError, subprocess.TimeoutExpired):
+                ok = False
+            same += ok
+            total["same" if ok else "differ"] += 1
+        if ins and same == len(ins):
+            derivable.append(p)
+    print(f"corpus-tests: answers reproduced byte for byte: {total}")
+    print(f"corpus-tests: {len(derivable)} problems with every answer derivable")
+
+
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("cmd", choices=["make"])
+    ap.add_argument("cmd", choices=["make", "verify"])
     ap.add_argument("ids", nargs="*")
     ap.add_argument("--cases", type=int, default=8)
+    ap.add_argument("--out")
     args = ap.parse_args()
-    make(args)
+    (verify if args.cmd == "verify" else make)(args)
 
 
 if __name__ == "__main__":

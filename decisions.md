@@ -6645,3 +6645,37 @@ Reverse: `git push origin refs/archive/<name>:refs/heads/<name>`.
 - **Why.** Arity tells them apart and both are the name a contestant guesses;
   renaming the property (`V.size`) is a corpus-wide edit that removes no bug class.
 - **Reverse.** Rename the property with a `cpl fix` codemod.
+
+## 293. Corpus tests stay committed until every reader shares one answer cache (2026-11-22)
+
+Call: `corpus/problems/*/tests/` keeps its committed `.in` and `.ans` files.
+Inputs are not derivable: `scripts/corpus-tests.py make --cases 12 --out
+target/corpus-regen` reproduced 146 of 636 committed files (36 of 100
+problems generated), and a search of seeds 0-1299 x 18 sizes per `gen.py`
+matched 49 of 139 inputs and no problem in full; most were picked by hand or
+predate their `gen.py`. Answers are: `scripts/corpus-tests.py verify` reruns
+the accepted C++ and reproduces 532 of 542 answers byte for byte (10 differ),
+every answer of 64 problems. Those 64 drop their `.ans` only once
+`cpl-conform corpus`, `cpl test` (`cpl-contest/src/problem.rs` `cases_in`),
+the perf corpus bench (`cpl-contest/src/corpus_bench.rs`) and
+`cpl-cli/tests/stress_corpus.rs` read answers through one cache under
+`target/`; today a missing `.ans` turns a `cpl test` case into run-only,
+which would weaken the tests. New generated cases record their seeds.
+Reason: the brief requires the regenerated set to be byte-identical before
+anything is deleted; inputs fail that, answers pass it but have four readers.
+Reverse: with the shared cache in place, delete the 64 problems' `.ans` after
+`verify` reports all of them reproduced.
+
+## 294. One list of generated files, checked in the commit tier (2026-11-22)
+
+Call: `scripts/gen.py` lists every committed generated file's generator
+(skill pages, `COVERAGE.md` and `rule-gaps.txt`, matrix cases, trait, sig and
+prelude gaps); `just gen` rewrites them and `scripts/gen.py --check` replaces
+the commit tier's skill-only drift step (1.6 s; `conformance-coverage.py`
+went from 5.4 s to 1.1 s by scanning identifier tokens once instead of one
+regex per std item, with unchanged output). CI's `regen` job (decision 280)
+still repairs main after a push that skipped the hook.
+Reason: stale generated files were main's most common red, and the commit
+tier only checked skill pages, so the other five went stale unseen.
+Reverse: restore the `skill-gen.py --drift` step in `scripts/check.sh` and
+delete `scripts/gen.py`.

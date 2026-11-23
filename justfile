@@ -82,7 +82,11 @@ spec-check:
 
 # Refresh or check the conformance coverage table.
 conformance-coverage *args:
-    python3 scripts/conformance-coverage.py {{args}}
+    uv run python scripts/conformance-coverage.py {{args}}
+
+# Regenerate every committed generated file (`just gen --check`: fail if stale).
+gen *args:
+    uv run python scripts/gen.py {{args}}
 
 # Check the tech-debt ratchet (`--show` lists every counter).
 debt-ratchet *args:

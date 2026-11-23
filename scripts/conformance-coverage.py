@@ -127,13 +127,28 @@ def std_items():
     return items
 
 
+_WORDS = {}
+
+
+def words(corpus):
+    """Identifier tokens of `corpus`, and those right after a `.`; one scan
+    instead of one regex search per std item."""
+    key = id(corpus)
+    if key not in _WORDS:
+        _WORDS[key] = (set(re.findall(r"\w+", corpus)), set(re.findall(r"\.(\w+)", corpus)))
+    return _WORDS[key]
+
+
 def mentions(label, name, corpus):
-    if "." not in label:
-        return re.search(rf"(?<![\w]){re.escape(name)}(?![\w])", corpus) is not None
     owner = label.split(".")[0]
-    if name == "new":
+    if "." in label and name == "new":
         return re.search(rf"(?<![\w]){re.escape(owner)}(?:<[^>]*>)?(?:\.new)?\(", corpus) is not None
-    return re.search(rf"\.{re.escape(name)}(?![\w])", corpus) is not None
+    if not re.fullmatch(r"\w+", name):
+        if "." not in label:
+            return re.search(rf"(?<![\w]){re.escape(name)}(?![\w])", corpus) is not None
+        return re.search(rf"\.{re.escape(name)}(?![\w])", corpus) is not None
+    bare, dotted = words(corpus)
+    return name in (dotted if "." in label else bare)
 
 
 def fnv_id(text):
