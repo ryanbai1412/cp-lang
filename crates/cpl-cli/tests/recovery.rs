@@ -487,11 +487,13 @@ fn plan_blocks() -> Vec<(String, String)> {
     for doc in docs {
         let text = std::fs::read_to_string(&doc).unwrap();
         let name = doc.file_name().unwrap().to_string_lossy().to_string();
-        let mut block: Option<(usize, String)> = None;
+        // A fence of any language opens a block; only a bare or `cp` one is kept.
+        let mut block: Option<(usize, String, bool)> = None;
         for (i, line) in text.lines().enumerate() {
             if line.trim_start().starts_with("```") {
                 match block.take() {
-                    Some((start, body)) => {
+                    Some((_, _, false)) => {}
+                    Some((start, body, true)) => {
                         let code = body.lines().any(|l| {
                             let t = l.trim_start();
                             ["let ", "var ", "fn ", "for ", "print(", "domain "]
@@ -502,12 +504,12 @@ fn plan_blocks() -> Vec<(String, String)> {
                             out.push((format!("{name}:{}", start + 1), body));
                         }
                     }
-                    None if matches!(line.trim(), "```" | "```cp") => {
-                        block = Some((i, String::new()))
+                    None => {
+                        let kept = matches!(line.trim(), "```" | "```cp");
+                        block = Some((i, String::new(), kept))
                     }
-                    None => {}
                 }
-            } else if let Some((_, body)) = &mut block {
+            } else if let Some((_, body, _)) = &mut block {
                 body.push_str(line);
                 body.push('\n');
             }

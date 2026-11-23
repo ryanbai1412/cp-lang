@@ -57,7 +57,7 @@ milestone = "M2"
 name = "spec code blocks: first error a generic `expected ...`"
 # Signature-only blocks (API synopses, never programs) are skipped since decision 224.
 command = "cargo test -p cpl-cli --test recovery recovery_scoreboard -- --nocapture | grep 'spec/{core,lib}'"
-today = "11 of 68 failing blocks (84 blocks, 1154 errors, 92 cascaded); was 75 of 137 counting 70 API synopses"
+today = "6 of 56 failing blocks (78 blocks, 258 errors, 60 cascaded); was 41 of 100 while ```python quiz fences were read as cp"
 target = "<= 20"
 milestone = "M2"
 
