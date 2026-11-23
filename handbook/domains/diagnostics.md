@@ -86,7 +86,7 @@ with no real check yet. Targets and current values are in
 | The first error is on the line to edit | first error on the broken line, over every clean port broken 12 ways | generated suite, gated | `crates/cpl-cli/tests/recovery.rs` `recovery_scoreboard` |
 | One error per root cause | cascaded errors per broken file | design (`Sink` poisoning) plus generated suite; lowering in `cpl-ir` still bypasses `Sink` | `recovery.rs` |
 | No broken program checks clean | silent broken copies | generated suite, gated at 0 | `recovery.rs` |
-| The primary span is never inside `std/` | user-facing errors whose primary span is in `std/` | `missing` | — |
+| The primary span is never inside `std/` | user-facing errors whose primary span is in `std/` | gate over the goldens; `missing` over generated programs | `crates/cpl-cli/tests/diagnostics.rs` `no_golden_error_points_into_std` |
 | An error inside `std` names the std line and the user's call chain | chain present | hand-written | `crates/cpl-cli/tests/cli.rs` `an_error_inside_std_names_the_library_calls_that_led_there` |
 | Spans are right on CRLF and non-ASCII sources | span and fix differences between LF and CRLF copies | hand-written | `crates/cpl-cli/tests/lsp_parity.rs` |
 | Labels point at the other half (the declaration of a written `let`, the first of two borrows) | errors needing a second place that have a label | `missing` | — |
@@ -95,7 +95,7 @@ with no real check yet. Targets and current values are in
 
 | Quality | Metric | Mechanism | Where |
 |---|---|---|---|
-| Real mistakes get errors that name the place, the rule and a working fix | share of the real-mistake suite meeting all three | `missing`: goldens pin the text but nothing grades it | `crates/cpl-cli/tests/diagnostics.rs` (goldens only) |
+| Real mistakes get errors that name the place, the rule and a working fix | share of the real-mistake suite meeting all three | hand-written suite, graded on all three; its `FAILS_GRADE` list only shrinks | `crates/cpl-cli/tests/mistakes/`, `diagnostics.rs` `real_mistakes_name_the_place_the_rule_and_a_fix` |
 | C++, Python and Rust habits get the CP Lang way | habits on the practice solutions whose first error is on the line and whose fix makes the tests pass | generated suite, gated | `crates/cpl-cli/tests/newcomer.rs` |
 | Common mistakes (`&&`, `!x`, `let` for `var`, typos) get a fix | errors with a fix; fixes that restore the program | generated suite, gated | `recovery.rs` `fix_it_scoreboard` |
 | Messages use the spec's vocabulary, one spelling per idea | banned spellings in messages | `missing`: `scripts/spec-vocab.py` checks the spec only | — |
@@ -163,7 +163,7 @@ with no real check yet. Targets and current values are in
 
 | Tool | What it catches | Run it |
 |---|---|---|
-| Goldens | Any change to the text of an error on a known file | `cargo test -p cpl-cli --test diagnostics`; `BLESS=1` rewrites |
+| Goldens and real mistakes | Any change to the text of an error on a known file; a real mistake whose error misses the place, the help or a clean fix; a golden pointing into `std/` | `cargo test -p cpl-cli --test diagnostics`; `BLESS=1` rewrites |
 | Catalogue | Codes missing from `spec/diagnostics.md`, triggers that emit another code, fixes that don't clean | `cargo test -p cpl-cli --test catalogue` |
 | Recovery scoreboards | Errors off the broken line, cascades, silent copies, missing fixes | `cargo test -p cpl-cli --test recovery -- --nocapture` |
 | Newcomer habits | C++ and Python habits whose error or fix fails | `cargo test -p cpl-cli --test newcomer` |

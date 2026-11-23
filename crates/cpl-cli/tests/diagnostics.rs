@@ -229,3 +229,87 @@ fn every_golden_fix_names_something_that_exists() {
     );
     assert!(wrong.is_empty(), "{}", wrong.join("\n\n"));
 }
+
+/// An error points at the user's code, never into `std/`: a library gap is
+/// shown at the user's call, with the std line in a note.
+#[test]
+fn no_golden_error_points_into_std() {
+    let mut inside = Vec::new();
+    for entry in fs::read_dir(dir()).unwrap() {
+        let path = entry.unwrap().path();
+        if path.extension().is_none_or(|e| e != "err") {
+            continue;
+        }
+        for line in fs::read_to_string(&path).unwrap().lines() {
+            if let Some(at) = line.trim_start().strip_prefix("--> ") {
+                if at.starts_with("std/") || at.contains("/std/") {
+                    inside.push(format!("{}: {line}", path.display()));
+                }
+            }
+        }
+    }
+    assert!(
+        inside.is_empty(),
+        "primary span inside std:\n{}",
+        inside.join("\n")
+    );
+}
+
+/// Real mistakes, each `tests/mistakes/<name>.cp` with `// here: N` on the
+/// line to edit. Graded on three things: the first error points at line
+/// `N`, it says what to do (`help`), and `cpl fix` leaves a program that
+/// checks clean. `FAILS_GRADE` may only shrink.
+#[test]
+fn real_mistakes_name_the_place_the_rule_and_a_fix() {
+    const FAILS_GRADE: &[&str] = &["sort_by_takes_one_argument"];
+    let scratch = Path::new(env!("CARGO_TARGET_TMPDIR")).join("real-mistakes");
+    let _ = fs::remove_dir_all(&scratch);
+    fs::create_dir_all(&scratch).unwrap();
+    let cpl = |args: &[&str]| {
+        let out = Command::new(env!("CARGO_BIN_EXE_cpl"))
+            .args(args)
+            .current_dir(&scratch)
+            .env("NO_COLOR", "1")
+            .output()
+            .expect("cpl starts");
+        String::from_utf8_lossy(&out.stderr).to_string() + &String::from_utf8_lossy(&out.stdout)
+    };
+    let mistakes = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/mistakes");
+    let mut wrong = Vec::new();
+    for entry in fs::read_dir(mistakes).unwrap() {
+        let path = entry.unwrap().path();
+        let name = path.file_stem().unwrap().to_str().unwrap().to_string();
+        let src = fs::read_to_string(&path).unwrap();
+        let here: u32 = src
+            .lines()
+            .next()
+            .and_then(|l| l.strip_prefix("// here: "))
+            .and_then(|n| n.trim().parse().ok())
+            .unwrap_or_else(|| panic!("{name}: first line must be `// here: N`"));
+        let file = format!("{name}.cp");
+        fs::write(scratch.join(&file), &src).unwrap();
+        let shown = cpl(&["check", &file]);
+        let at = shown
+            .lines()
+            .find_map(|l| l.trim_start().strip_prefix("--> "))
+            .and_then(|l| l.rsplit(':').nth(1))
+            .and_then(|n| n.parse::<u32>().ok());
+        let mut misses = Vec::new();
+        if at != Some(here) {
+            misses.push(format!("points at line {at:?}, not {here}"));
+        }
+        if !shown.contains("= help") {
+            misses.push("no help".to_string());
+        }
+        cpl(&["fix", &file]);
+        if !cpl(&["check", &file]).contains("no errors") {
+            misses.push("`cpl fix` leaves errors".to_string());
+        }
+        match (misses.is_empty(), FAILS_GRADE.contains(&name.as_str())) {
+            (false, false) => wrong.push(format!("{name}: {}\n{shown}", misses.join(", "))),
+            (true, true) => wrong.push(format!("{name} passes now: drop it from FAILS_GRADE")),
+            _ => {}
+        }
+    }
+    assert!(wrong.is_empty(), "{}", wrong.join("\n"));
+}
