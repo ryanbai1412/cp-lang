@@ -194,7 +194,7 @@ impl<'a> Parser<'a> {
         };
         let copies = std::mem::take(&mut self.var_params);
         let unpacked = std::mem::take(&mut self.param_patterns);
-        let arrow = self.eat(T::Arrow);
+        let arrow = self.eat(T::Arrow) || self.colon_return_type();
         let ret = (arrow && !self.at(T::Lends)).then(|| self.ty());
         // `fn at(self, i: V) -> lends mut Int` or `fn pick(a, b) -> lends(a) List<Int>`.
         let lends = self.at(T::Lends).then(|| {

@@ -3,6 +3,32 @@
 use super::*;
 
 impl<'a> Parser<'a> {
+    /// `fn f(x: Int): Int = x`, TypeScript's return type: CP Lang writes
+    /// `->`. One error, then the type is read as the return type.
+    pub(super) fn colon_return_type(&mut self) -> bool {
+        let type_name = self.peek_n(1) == T::Ident
+            && self.tokens.get(self.pos + 1).is_some_and(|t| {
+                t.span
+                    .text(self.src)
+                    .starts_with(|c: char| c.is_ascii_uppercase())
+            });
+        if !(self.at(T::Colon) && type_name && matches!(self.peek_n(2), T::Eq | T::Colon | T::Lt)) {
+            return false;
+        }
+        let colon = self.span();
+        self.recovered(
+            Diagnostic::error(
+                codes::EXPECTED_TOKEN,
+                colon,
+                "a return type follows `->` in CP Lang, not `:`",
+            )
+            .with_help("write `fn f(x: Int) -> Int = x`")
+            .with_fix("write `->`", colon, " ->"),
+        );
+        self.bump();
+        true
+    }
+
     /// `P { x: 1 }` after a type's name: Rust's struct literal.
     pub(super) fn struct_literal_ahead(&self, callee: &Expr) -> bool {
         let fields = self.peek_n(1) == T::RBrace

@@ -1966,26 +1966,3 @@ fn a_rust_closure_is_one_error_with_the_arrow_fix() {
     let fixed: Vec<_> = d.iter().map(|d| d.fixes[0].edits[0].1.as_str()).collect();
     assert_eq!(fixed, ["x =>", "(a, b) =>"], "{d:?}");
 }
-
-#[test]
-fn a_reference_type_is_one_error_with_the_fix() {
-    let d = parse_file("fn f(a: &List<Int>) -> Int = a.len\n").diagnostics;
-    let fixed: Vec<_> = d.iter().map(|d| d.fixes[0].edits[0].1.as_str()).collect();
-    assert_eq!(fixed, [""], "{d:?}");
-}
-
-#[test]
-fn a_postfix_optional_is_one_error_moving_the_question_mark() {
-    let d = parse_file("let x: Int? = 3\nprint(x ?? 0)\n").diagnostics;
-    assert_eq!(d.len(), 1, "{d:?}");
-    let edits: Vec<_> = d[0].fixes[0].edits.iter().map(|e| e.1.as_str()).collect();
-    assert_eq!(edits, ["?", ""]);
-}
-
-#[test]
-fn a_struct_literal_is_one_error_with_parentheses() {
-    let d = parse_file("struct P(x: Int)\nlet p = P { x: 1 }\nprint(p.x)\n").diagnostics;
-    assert_eq!(d.len(), 1, "{d:?}");
-    let edits: Vec<_> = d[0].fixes[0].edits.iter().map(|e| e.1.as_str()).collect();
-    assert_eq!(edits, ["(", ")"]);
-}

@@ -1,0 +1,8 @@
+error[E0103]: a return type follows `->` in CP Lang, not `:`
+  --> colon_return_type.cp:1:17
+  |
+1 | fn twice(x: Int): Int = 2 * x
+  |                 ^
+  = help: write `fn f(x: Int) -> Int = x`
+
+colon_return_type.cp: 1 error
