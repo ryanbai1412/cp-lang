@@ -21,20 +21,22 @@ import { tmpdir } from 'node:os';
 const web = dirname(dirname(fileURLToPath(import.meta.url)));
 const repo = dirname(web);
 const cpl = process.env.CPL ?? join(repo, 'target/release/cpl');
-// A cpl older than the compiler sources (or still being rebuilt) reports
-// false failures, so rebuild it first; cargo waits for a build in flight.
+if (!existsSync(cpl)) execFileSync('cargo', ['build', '--release', '-q', '-p', 'cpl-cli'], { cwd: repo, stdio: 'inherit' });
+// A cpl older than the compiler sources (or still being rebuilt) can report
+// false failures; a failing run says so, without paying for a rebuild.
 function newest(dir) {
   let t = 0;
   for (const e of readdirSync(dir, { withFileTypes: true })) {
     if (e.name === 'target' || e.name.startsWith('.')) continue;
     const p = join(dir, e.name);
-    t = Math.max(t, e.isDirectory() ? newest(p) : /\.(rs|cp|toml)$/.test(e.name) ? statSync(p).mtimeMs : 0);
+    t = Math.max(t, e.isDirectory() ? newest(p) : e.name.endsWith('.rs') ? statSync(p).mtimeMs : 0);
   }
   return t;
 }
-if (!process.env.CPL && (!existsSync(cpl) || newest(join(repo, 'crates')) > statSync(cpl).mtimeMs)) {
-  execFileSync('cargo', ['build', '--release', '-q', '-p', 'cpl-cli'], { cwd: repo, stdio: 'inherit' });
-}
+process.on('exit', (code) => {
+  if (code && !process.env.CPL && newest(join(repo, 'crates')) > statSync(cpl).mtimeMs)
+    console.error(`gate: WARNING: ${relative(repo, cpl)} is older than crates/; these failures may be stale (cargo build --release -p cpl-cli)`);
+});
 
 const rank = { fails: 0, spec: 1, checks: 2, runs: 3 };
 const snippets = [];
