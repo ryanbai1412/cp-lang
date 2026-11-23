@@ -34,7 +34,7 @@ class CplTest {
         for (name in listOf("i10", "i2", "o2", "notes", "a.tests/3.in", "a.tests/3.out", "a.tests/12.in", "a.samples/1.in", "b.tests/1.in")) {
             File(dir, name).apply { parentFile.mkdirs(); writeText("") }
         }
-        val got = Cpl.samples(source).map { it.relativeTo(dir).path }
+        val got = Cpl.samples(source).map { it.relativeTo(dir).invariantSeparatorsPath }
         assertEquals(listOf("i2", "i10", "a.tests/3.in", "a.tests/12.in", "a.samples/1.in"), got)
     }
 

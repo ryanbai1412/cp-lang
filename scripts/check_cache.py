@@ -47,6 +47,7 @@ STAGES = {
         "corpus/*", "tools/*",
         "!corpus/problems/cf2115c/dream.cp", "!corpus/problems/cf2183f/dream.cp",
         "!tools/trace/*", "!editors/neovim/*", "!editors/tree-sitter-cp/queries/*",
+        "!editors/lsp-matrix.json",
     ],
     "nextest_doc": _TESTS,
     "recovery": _TESTS,
