@@ -4,7 +4,8 @@
 //
 // Range update `a[i] := c^(a[i])` and range sum mod `p` (runtime modulus).
 // Precompute the totient chain [p, phi(p), ..., 1] and each element's tower
-// up to stabilization, then serve range shifts with `LazySegTree`.
+// up to stabilization, then serve range shifts with a `SegTree` whose action shifts each node's
+// tower table.
 use std.math.{phi}
 
 fn pow_capped(base: Int, exp: Int, m: Int) -> (over: Bool, val: Int):
@@ -32,8 +33,8 @@ while true:
     if cur_m == 1: break
     cur_m = phi(cur_m)
 
-let K = phis.len + 1
-domain Slot = 0..K
+let slots = phis.len + 1
+domain Slot = 0..slots
 
 fn tower(steps: Int, x: Int, depth: Int) -> (over: Bool, val: Int):
     if steps == 0: return (x >= phis[depth], x % phis[depth])
@@ -43,23 +44,19 @@ fn tower(steps: Int, x: Int, depth: Int) -> (over: Bool, val: Int):
     let (cf, ans) = pow_capped(base, exp, phis[depth])
     (of or cf, ans)
 
-// FRICTION ET6: Fixed-length small array `[Slot]Z` stored inside a
-// `LazySegTree` node needs copy/value semantics for `Monoid` and `Action`,
-// and clamping shift `s + shift` into `Slot` drops to raw `.to_idx` math.
+// A node holds the sum of its towers at every depth shift; shifting by k reads
+// slot s + k, capped at the last slot where the tower has stabilised.
 let node_m = Monoid<[Slot]Z>([Slot] _ => Z.zero, (x, y) => [Slot] s => x[s] + y[s])
 let shift_act = Action<[Slot]Z, Int>(
     0,
-    (a, b) => min(a + b, K - 1),
-    (k, x, _) => [Slot] s => x[Slot(min(s.to_idx + k, K - 1))],
+    (a, b) => min(a + b, slots - 1),
+    (k, x, _) => [Slot] s => x[Slot.at(min(s.ord + k, slots - 1))!],
     over: node_m,
 )
 
-var st = LazySegTree<I, [Slot]Z, Int>(
-    shift_act,
-    [I] i => [Slot] s => Z(tower(s.to_idx, a[i], 0).val),
-)
+var st = SegTree<I, [Slot]Z, Int>(node_m, [I] i => [Slot] s => Z(tower(s.ord, a[i], 0).val), act: shift_act)
 
 for _ in 0..q:
     let (ty, l, r): (0..=1, I, I) = read()
     if ty == 0: st.apply(l..=r, 1)
-    else: print(st.fold(l..=r)[Slot.first])
+    else: print(st.fold(l..=r)[Slot.first!])

@@ -24,7 +24,6 @@ coi06p2
 dmopc20c7p5
 etsr23r3p1
 etsr23r3p3
-etsr23r4p2
 ioi05p2
 ioi05p6
 ioi07p2
