@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- cf1284e (1.55x) is unmatched: the port sorts the other points by angle around each centre (n sorts of n), orig sorts all pair directions once and sweeps a rotating line. Both are O(n^2 log n), but the work differs, so the ratio isn't codegen's. Added to `bench/unmatched.txt`.
 - `bench/v03_perf_bench.py` now takes each side's fastest CPU time (decision in decisions.md). ucup5s03f (1.62x) is all `fold(*, f(i) for i in .. if ..)` building its list: hand-fusing the fold into the loop gives 110.0 ms vs orig 109.3 ms, with every `cpl::at` kept (fastest of 40 pinned runs on its slowest derived input); removing only the checks gives 175.6 ms. Asked compiler for consumer fusion.
 - cf2124d (1.59x) is unmatched: the port sorts to find the (k-1)-th smallest, orig uses `std::nth_element`; `perf record` puts 23% in `std::sort`. Added to `bench/unmatched.txt`; asked stdlib for a linear select and idioms to use it.
 - `xs.extend([a, b])` keeps the literal in a stack array (`const ll t[] = {a, b}`) instead of a `std::vector` per call. cf2201b 2.06x to 1.58x of orig (`bench/v03_perf_bench.py --suite corpus --only cf2201b --runs 5`); the rest is printing a 600k list and the per-call lambda.
