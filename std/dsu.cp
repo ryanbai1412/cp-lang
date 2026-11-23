@@ -204,7 +204,7 @@ pub struct DsuOf<V, T>:
     /// cost: O(alpha(n)) amortized; O(log n) after the first `mark`
     /// ties: None; the representative is fixed by the merges (larger set's root, `a`'s root on equal sizes)
     /// traps: never
-    /// example: `var d = DsuOf<0..3, Int>(init: v => v, join: (x, y) => x + y); d.unite(1, 2); d.find(2) == 1`
+    /// example: `var d = DsuOf<0..3, Int>(init: v => Int(v), join: (x, y) => x + y); d.unite(1, 2); d.find(2) == 1`
     pub fn find(self, v: V) -> V:
         var x = v
         while up[x] != x:
@@ -226,7 +226,7 @@ pub struct DsuOf<V, T>:
     ///
     /// cost: O(alpha(n)) amortized; O(log n) after the first `mark`, plus one log entry
     /// traps: never
-    /// example: `var d = DsuOf<0..3, Int>(init: v => v, join: (x, y) => x + y); d.unite(0, 1); d.set(1, 7); d.get(0) == 7`
+    /// example: `var d = DsuOf<0..3, Int>(init: v => Int(v), join: (x, y) => x + y); d.unite(0, 1); d.set(1, 7); d.get(0) == 7`
     pub fn set(mut self, v: V, x: T):
         let r = self.find(v)
         if marked: log.push((r, r, val[r]))
@@ -240,8 +240,8 @@ pub struct DsuOf<V, T>:
     ///
     /// cost: as [`Dsu.unite`](Dsu.unite), plus one call of `join`
     /// traps: never
-    /// example: `var d = DsuOf<0..3, Int>(init: v => v, join: (_, y) => y); d.unite(2, 0); d.get(2) == 0`
-    /// example: `var d = DsuOf<0..3, Int>(init: v => v, join: (x, y) => x + y); d.unite(0, 1); not d.unite(1, 0) and d.get(0) == 1`
+    /// example: `var d = DsuOf<0..3, Int>(init: v => Int(v), join: (_, y) => y); d.unite(2, 0); d.get(2) == 0`
+    /// example: `var d = DsuOf<0..3, Int>(init: v => Int(v), join: (x, y) => x + y); d.unite(0, 1); not d.unite(1, 0) and d.get(0) == 1`
     pub fn unite(mut self, a: V, b: V) -> Bool:
         let ra = self.find(a)
         let rb = self.find(b)
@@ -260,7 +260,7 @@ pub struct DsuOf<V, T>:
     ///
     /// cost: as `unite`
     /// traps: never
-    /// example: `var d = DsuOf<0..3, Int>(init: v => v, join: (x, y) => x + y); d.merge(2, 1) == Some((kept: 2, merged: 1))`
+    /// example: `var d = DsuOf<0..3, Int>(init: v => Int(v), join: (x, y) => x + y); d.merge(2, 1) == Some((kept: 2, merged: 1))`
     pub fn merge(mut self, a: V, b: V) -> ?(kept: V, merged: V):
         let ra = self.find(a)
         let rb = self.find(b)
@@ -273,14 +273,14 @@ pub struct DsuOf<V, T>:
     ///
     /// cost: O(alpha(n)) amortized; O(log n) after the first `mark`
     /// traps: never
-    /// example: `var d = DsuOf<0..3, Int>(init: v => v, join: (x, y) => x + y); d.unite(0, 2); d.same(0, 2) and not d.same(1, 2)`
+    /// example: `var d = DsuOf<0..3, Int>(init: v => Int(v), join: (x, y) => x + y); d.unite(0, 2); d.same(0, 2) and not d.same(1, 2)`
     pub fn same(self, a: V, b: V) -> Bool = self.find(a) == self.find(b)
 
     /// The number of positions in `v`'s set, `v` included.
     ///
     /// cost: O(alpha(n)) amortized; O(log n) after the first `mark`
     /// traps: never
-    /// example: `var d = DsuOf<0..3, Int>(init: v => v, join: (x, y) => x + y); d.unite(0, 2); d.size(0) == 2`
+    /// example: `var d = DsuOf<0..3, Int>(init: v => Int(v), join: (x, y) => x + y); d.unite(0, 2); d.size(0) == 2`
     pub fn size(mut self, v: V) -> Int:
         let r = self.find(v)
         sz[r]
@@ -289,7 +289,7 @@ pub struct DsuOf<V, T>:
     ///
     /// cost: O(1)
     /// traps: never
-    /// example: `var d = DsuOf<0..3, Int>(init: v => v, join: (x, y) => x + y); d.unite(0, 2); d.components == 2`
+    /// example: `var d = DsuOf<0..3, Int>(init: v => Int(v), join: (x, y) => x + y); d.unite(0, 2); d.components == 2`
     @get pub fn components(self) -> Int = parts
 
     /// The representative of each set, once each, lazily.
@@ -298,7 +298,7 @@ pub struct DsuOf<V, T>:
     /// empty: yields nothing when `V` is empty
     /// order: increasing positions of `V`
     /// traps: never
-    /// example: `var d = DsuOf<0..3, Int>(init: v => v, join: (x, y) => x + y); d.unite(2, 0); d.roots().collect() == [1, 2]`
+    /// example: `var d = DsuOf<0..3, Int>(init: v => Int(v), join: (x, y) => x + y); d.unite(2, 0); d.roots().collect() == [1, 2]`
     pub fn roots(self) -> yields V:
         for v in V:
             if up[v] == v: yield v
@@ -320,7 +320,7 @@ pub struct DsuOf<V, T>:
     ///
     /// cost: O(1)
     /// traps: never
-    /// example: `var d = DsuOf<0..2, Int>(init: v => v, join: (x, y) => x + y); let m = d.mark(); d.unite(0, 1); d.undo_to(m); d.get(0) == 0`
+    /// example: `var d = DsuOf<0..2, Int>(init: v => Int(v), join: (x, y) => x + y); let m = d.mark(); d.unite(0, 1); d.undo_to(m); d.get(0) == 0`
     pub fn mark(mut self) -> Mark:
         marked = true
         Mark(log.len)
@@ -330,7 +330,7 @@ pub struct DsuOf<V, T>:
     ///
     /// cost: O(1) per undone change
     /// traps: when `snap` lies after the present (its changes were already undone)
-    /// example: `var d = DsuOf<0..2, Int>(init: v => v, join: (x, y) => x + y); let m = d.mark(); d.unite(0, 1); d.set(0, 9); d.undo_to(m); d.get(0) == 0 and d.get(1) == 1`
+    /// example: `var d = DsuOf<0..2, Int>(init: v => Int(v), join: (x, y) => x + y); let m = d.mark(); d.unite(0, 1); d.set(0, 9); d.undo_to(m); d.get(0) == 0 and d.get(1) == 1`
     pub fn undo_to(mut self, snap: Mark):
         assert snap.at <= log.len
         while log.len > snap.at:
@@ -347,7 +347,7 @@ pub struct DsuOf<V, T>:
     /// empty: `[]` when `V` is empty
     /// order: lists by their least position, positions increasing within each
     /// traps: never
-    /// example: `var d = DsuOf<0..3, Int>(init: v => v, join: (x, y) => x + y); d.unite(2, 0); d.groups() == [[0, 2], [1]]`
+    /// example: `var d = DsuOf<0..3, Int>(init: v => Int(v), join: (x, y) => x + y); d.unite(2, 0); d.groups() == [[0, 2], [1]]`
     pub fn groups(mut self) -> List<List<V>>:
         var gid: [V]Int = -1
         var out: List<List<V>> = []
@@ -620,14 +620,14 @@ pub struct RollbackArray<D, T>:
     ///
     /// cost: O(n) calls of `init`, for n = `D.count`
     /// traps: never
-    /// example: `let a = RollbackArray<0..3, Int>(init: i => i * i); a.get(2) == 4`
+    /// example: `let a = RollbackArray<0..3, Int>(init: i => Int(i) * Int(i)); a.get(2) == 4`
     pub fn new(init: D -> T) -> RollbackArray<D, T> = RollbackArray([D] i => init(i), [])
 
     /// The current value at `i`.
     ///
     /// cost: O(1)
     /// traps: never
-    /// example: `var a = RollbackArray<0..3, Int>(init: i => i); a.set(1, 7); a.get(1) == 7 and a.get(2) == 2`
+    /// example: `var a = RollbackArray<0..3, Int>(init: i => Int(i)); a.set(1, 7); a.get(1) == 7 and a.get(2) == 2`
     pub fn get(self, i: D) -> T = data[i]
 
     /// Sets `i` to `val`, logging the previous value so `undo_to` can restore it. Every `set` is
@@ -740,7 +740,7 @@ pub struct PersistentDsu<V>:
     /// ties: None; the representative is fixed by the merges (larger set's root, `a`'s root on equal sizes)
     /// traps: when `ver` is not a version handle of `self`
     /// example: `var d = PersistentDsu<0..3>(); let v1 = d.unite(d.base, 2, 1); d.find(v1, 1) == 2 and d.find(d.base, 1) == 1`
-    pub fn find(self, ver: Int, v: V) -> V = V.at(self.root_ord(ver, v.ord))
+    pub fn find(self, ver: Int, v: V) -> V = V.nth(self.root_ord(ver, v.ord))
 
     /// Whether `a` and `b` are in the same set in version `ver`.
     ///
