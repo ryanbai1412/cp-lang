@@ -51,7 +51,7 @@ The output is `14`.
 
 ## A contest, start to finish
 
-1. **Import the problem.** Install the [Competitive Companion](https://github.com/jmerle/competitive-companion) browser extension, run `cpl new --listen` in your contest folder, and click the extension's green plus on the problem page. You get `a.cp` (title, URL, limits and the input skeleton) and `a.tests/` with every sample. Clicked on a contest page, it creates every problem in a folder named after the contest.
+1. **Import the problem.** Install the [Competitive Companion](https://github.com/jmerle/competitive-companion) browser extension, run `cpl new --listen` in your contest folder, and click the extension's green plus on the problem page (if Chrome hides it, pin it from the puzzle-piece menu, or press its shortcut, Ctrl+Shift+U, ⌘⇧U on macOS). You get `a.cp` (title, URL, limits and the input skeleton) and `a.tests/` with every sample. Clicked on a contest page, it creates every problem in a folder named after the contest.
 2. **Write it**, then `cpl run a` runs every sample and judges each one. `cpl run a 2` runs only sample 2; `cpl run a < in.txt` runs once on your own input.
 3. **Add a case** you worry about: `cpl test a --add mine.in --expect mine.out` saves it as the next numbered case and runs it. `cpl t a` reruns them all.
 4. **Stress it** against a brute force kept in the same file:

@@ -364,7 +364,8 @@ const steps: { id: string; title: string; body: ReactNode }[] = [
           </a>{" "}
           browser extension, run <code>cpl new --listen</code>, and click the
           extension&apos;s green plus on the problem page (or on the contest
-          page, for every problem). <code>cpl run a.cp</code> then runs every
+          page, for every problem). If Chrome hides the icon, pin it from the
+          puzzle-piece menu, or press its shortcut, Ctrl+Shift+U (⌘⇧U on macOS). <code>cpl run a.cp</code> then runs every
           sample.
         </p>
       </>

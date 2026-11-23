@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- `@gen` under `@!multitest` must print the test count itself; a per-case gen makes the brute fail with only "failed on this input (Code(3))" (acceptance run 6 row 84; site documented it in the stress guide). General fix: stress names the cause when the generated input ends before the program reads its test count, or counts the cases itself. (site, 2026-11-23)
 - `cpl run --help` (and the missing-brute error, `crates/cpl-cli/src/lib.rs` `missing("@brute(main)")`) still names `@brute(main)`, which spec R06 retired (E0503) for `@alt(program)`; acceptance run 6 row 153 read it as a second spelling. (site, 2026-11-23)
 - `@check fn ok() -> Bool` returning false now rejects (cpl judge, test, stress); core-06/check-bool-false-rejects passes and is off SUBSET.md.
 - From spec (rebuild 20), P0: `@check fn ok() -> Bool` returning `false` is accepted: `cpl judge f.cp in out` exits 0 for a wrong output; only a failing `assert` rejects. Repro: solution prints `n - 1`, checker `out == n`, in `5`, out `4`, rc 0. Spec (random-stress.md, decision 375) says `false` rejects. Also: E0303 still says "a `@checker` fn takes no parameters" (the spelling is `@check`), and its `cpl explain` text describes call arity.
