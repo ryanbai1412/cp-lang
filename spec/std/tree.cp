@@ -1202,17 +1202,44 @@ fn slow_path<V, Pre>(r: Rooted<V, Pre>, a: V, b: V) -> List<V>:
     left + right.rev
 
 @test
-fn subtrees_and_chains_are_contiguous() = todo
+fn subtrees_and_chains_are_contiguous():
+    domain V = 0..14
+    let adj = random_tree(V.first!)
+    let r = Rooted(adj, V.first!)
+    for v in V:
+        var inside = 0
+        for p in r.sub(v):
+            assert r.is_anc(v, r.at[p])
+            inside += 1
+        assert inside == r.size(v) and r.at[r.pos(v)] == v and r.sub(v).first! == r.pos(v)
+        let ch = [r.at[p] for p in r.chain(v)]
+        assert ch.any(u => u == v) and ch.first! == r.top(v)
+        for k in 1..ch.len: assert r.parent(ch[k]) == Some(ch[k - 1])
 
 @test
 fn a_table_of_neighbour_lists_roots_like_the_fn_that_reads_it():
     domain V = 0..9
-    let adj = random_tree(V.first)
-    let (a, b) = (Rooted(adj, V.first), Rooted(v => adj[v], V.first))
+    let adj = random_tree(V.first!)
+    let (a, b) = (Rooted(adj, V.first!), Rooted(v => adj[v], V.first!))
     assert [v for v in a.at] == [v for v in b.at] and a.par == b.par and a.sz == b.sz
 
 @test
-fn lca_dist_ancestor_and_step_match_climbing() = todo
+fn lca_dist_ancestor_and_step_match_climbing():
+    domain V = 0..14
+    let adj = random_tree(V.first!)
+    let r = Rooted(adj, V.first!)
+    for a in V:
+        var up = [a]
+        while let p = r.parent(up.last!): up.push(p)
+        assert r.depth(a) == up.len - 1
+        for k in 0..up.len + 1:
+            assert r.ancestor(a, k) == (if k < up.len: Some(up[k]) else: None)
+        for b in V:
+            let p = slow_path(r, a, b)
+            assert r.dist(a, b) == p.len - 1
+            assert r.lca(a, b) == p.min(by: v => r.depth(v))!
+            for k in 0..p.len + 1:
+                assert r.jump(a, b, k) == (if k < p.len: Some(p[k]) else: None)
 
 @test
 fn weighted_dist_adds_the_lengths_on_the_path() = todo
@@ -1229,10 +1256,34 @@ impl Reversible for Word:
 fn path_updates_and_subtree_folds_over_one_lazy_tree() = todo
 
 @test
-fn centroids_leave_no_piece_over_half() = todo
+fn centroids_leave_no_piece_over_half():
+    for n in 1..=12:
+        domain V = 0..n
+        let adj = random_tree(V.first!)
+        let r = Rooted(adj, V.first!)
+        let cs = r.centroids()
+        assert cs.first! == r.centroid() and cs.len <= 2
+        for v in V:
+            let biggest = max(V.count - r.size(v), r.children(v).map(c => r.size(c)).max() ?? 0)
+            assert (2 * biggest <= V.count) == cs.any(c => c == v)
 
 @test
-fn excl_fold_folds_the_other_children() = todo
+fn excl_fold_folds_the_other_children():
+    domain V = 0..12
+    let adj = random_tree(V.first!)
+    let r = Rooted(adj, V.first!)
+    let words = Monoid<Str>(id: "", op: (x, y) => x + y)
+    for v in V:
+        let kids = r.children(v).collect()
+        var i = 0
+        for e in r.excl_fold(v, words, c => Str(c.to_idx)):
+            assert e.c == kids[i]
+            var want = ""
+            for j in 0..kids.len:
+                if j != i: want = want + Str(kids[j].to_idx)
+            assert e.rest == want
+            i += 1
+        assert i == kids.len
 
 @test
 fn rerooting_counts_connected_sets_through_every_vertex() = todo
@@ -1265,8 +1316,8 @@ fn weighted_rooted_bfs_tree_on_cyclic_graph() = todo
 @test
 fn lower_is_the_child_end_of_an_edge():
     domain V = 0..9
-    let adj = random_tree(V.first)
-    let r = Rooted(adj, V.first)
+    let adj = random_tree(V.first!)
+    let r = Rooted(adj, V.first!)
     for v in V:
         if let p = r.parent(v):
             assert r.lower(v, p) == v and r.lower(p, v) == v
@@ -1274,8 +1325,8 @@ fn lower_is_the_child_end_of_an_edge():
 @test
 fn path_and_diameter_match_pairwise_distances():
     domain V = 0..12
-    let adj = random_tree(V.first)
-    let r = Rooted(adj, V.first)
+    let adj = random_tree(V.first!)
+    let r = Rooted(adj, V.first!)
     let d = r.diameter()
     assert r.dist(d.u, d.v) == d.len
     for a in V:
@@ -1293,10 +1344,34 @@ fn heavy_light_and_subtree_cover_the_children() = todo
 fn a_forest_keeps_each_tree_in_one_range() = todo
 
 @test
-fn down_and_up_match_depth_size_and_height() = todo
+fn down_and_up_match_depth_size_and_height():
+    domain V = 0..14
+    let adj = random_tree(V.first!)
+    let r = Rooted(adj, V.first!)
+    let dep = r.down(-1, (d, v) => d + 1)
+    let sz = r.up(+, finish: (s, v) => s + 1)
+    let ht = r.up(Monoid<Int>(id: 0, op: max), lift: (h, c, p) => h + 1, finish: (h, v) => h)
+    for v in V:
+        assert dep[v] == r.depth(v) and sz[v] == r.size(v)
+        var (n, h) = (0, 0)
+        for u in V:
+            if r.is_anc(v, u):
+                n += 1
+                h = max(h, r.depth(u) - r.depth(v))
+        assert sz[v] == n and ht[v] == h
 
 @test
-fn reroot_matches_up_from_every_root() = todo
+fn reroot_matches_up_from_every_root():
+    // reroot folds the parent's side first, a fresh root its neighbours in list order, so the
+    // fold commutes; squaring in `lift` still tells shapes apart
+    domain V = 0..10
+    let adj = random_tree(V.first!)
+    let r = Rooted(adj, V.first!)
+    let p = 1_000_003
+    let lift = (x: Int, c: V, u: V) => (x * x + 3) % p
+    let finish = (s: Int, v: V) => (s + v.to_idx + 1) % p
+    let all = r.reroot(+, lift:, finish:)
+    for v in V: assert all[v] == Rooted(adj, v).up(+, lift:, finish:)[v]
 
 @test
 fn shapes_match_the_canonical_string() = todo
