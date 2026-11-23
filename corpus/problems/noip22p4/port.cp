@@ -89,7 +89,7 @@ for qi in Q:
     by_r[qs[qi].r].push(qi)
 
 let init = [I] _ => HistNode(1, 0, 0, 0, 0)
-var st = LazySegTree<I, HistNode, HistTag>(hist_action, init)
+var st = SegTree(hist_action.over, init, act: hist_action)
 
 var stk_a: List<Int> = []
 var stk_b: List<Int> = []

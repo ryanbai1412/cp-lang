@@ -15,14 +15,12 @@ cf2255e1
 cf2255e2
 coi06p2
 etsr23r3p1
-ioi05p2
 ioi05p6
 ioi11p2
 ioi13p4
 ioi14p6
 ioi18p1
 mccc4j5
-noi07p4
 noi15p5
 noi21p1
 noi21p3
@@ -30,7 +28,5 @@ noi21p4
 noip01p4
 noip19p5
 noip20p1
-noip22p4
-sdoi17r1p6
 ucup4s24f
 utso15p5

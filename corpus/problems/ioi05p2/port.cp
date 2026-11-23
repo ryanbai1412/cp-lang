@@ -56,7 +56,7 @@ fn coord(x: Int) -> Int:
 
 domain Seg = 0..(xs.len - 1)
 let init = [Seg] i => SegVal(0, 0, xs[i.to_idx + 1] - xs[i.to_idx])
-var st = LazySegTree<Seg, SegVal, ?Int>(assign_slope, init)
+var st = SegTree(assign_slope.over, init, act: assign_slope)
 
 for i in 0..tags.len:
     if tags[i] == 0:
@@ -65,17 +65,13 @@ for i in 0..tags.len:
         st.apply(l..=r, cd[i])
     else:
         let h = ca[i]
-        // LazySegTree lacks max_right, so binary search over segment count today:
-        if st.fold(Seg.all).max_pre <= h:
-            print(n)
-        else:
-            let lo = bsearch_first(
-                0..xs.len - 1,
-                mid => st.fold(..=Seg(mid)).max_pre > h,
-            ) ?? (xs.len - 1)
-            let seg_i = Seg(lo)
+        // the first segment where the car's height would pass h
+        if let seg_i = Seg.first_true(s => st.fold(..=s).max_pre > h):
+            let lo = seg_i.to_idx
             let cur = if lo == 0: 0 else: st.fold(..seg_i).total
             let node = st.get(seg_i)
             let slope = node.total / node.len
             let extra = (h - cur) / slope
             print(xs[lo] - 1 + extra)
+        else:
+            print(n)

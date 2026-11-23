@@ -62,10 +62,11 @@ let x: [Pos]Int = read()
 let y: [Pos]Int = read()
 let empty: Sums = (xy: 0, x: 0, y: 0, xx: 0, lo: 0, len: 0)
 let keep: Edit = (set: None, dx: 0, dy: 0)
-var tree = LazySegTree<Pos, Sums, Edit>(
-    Action<Sums,
-    Edit>(keep, then, edit, over: Monoid<Sums>(empty, join)),
+let edits = Action<Sums, Edit>(keep, then, edit, over: Monoid<Sums>(empty, join))
+var tree = SegTree(
+    edits.over,
     [Pos] i => (xy: x[i] * y[i], x: x[i], y: y[i], xx: x[i] * x[i], lo: i.label, len: 1),
+    act: edits,
 )
 
 for _ in 0..q:

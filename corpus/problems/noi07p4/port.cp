@@ -30,7 +30,7 @@ let paint_action = Action<Run, ?Int>(
 )
 
 let init = [Pos] p => Run(false, init_col[p], init_col[p], 1)
-var st = LazySegTree<Pos, Run, ?Int>(paint_action, init)
+var st = SegTree(paint_action.over, init, act: paint_action)
 
 var dir = 1
 var off = 0
