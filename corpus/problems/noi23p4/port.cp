@@ -50,8 +50,8 @@ fn h_push(d: Int, u: Int):
 
 fn h_pop() -> (Int, Int):
     let res = (g_hd[0], g_hu[0])
-    let ld = g_hd.pop()
-    let lu = g_hu.pop()
+    let ld = g_hd.pop()!
+    let lu = g_hu.pop()!
     if g_hd.len > 0:
         g_hd[0] = ld
         g_hu[0] = lu

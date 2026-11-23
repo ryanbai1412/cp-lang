@@ -47,7 +47,10 @@ domain Val = 1..=n
 domain Pos = 0..n
 let a: [Pos]Val = read()
 
-struct Run(head: Val, tail: Val, opp_below: Bool)
+struct Run:
+    head: Val
+    var tail: Val
+    var opp_below: Bool
 
 fn solve() -> ?Int:
     var pred: [Val]?Val = None

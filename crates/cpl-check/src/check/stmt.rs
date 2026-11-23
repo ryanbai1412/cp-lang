@@ -1606,10 +1606,10 @@ impl<'a> Checker<'a> {
                             if let Some(diag) =
                                 self.error(codes::ASSIGN_FIXED_FIELD, target.span, message)
                             {
-                                diag.help = Some(format!(
-                                    "declare `var {}` on `{sname}` or rebuild with `{base_text} with {}: ...`",
-                                    name.text, name.text
-                                ));
+                                diag.help = Some(match var_at {
+                                    Some(_) => format!("declare `var {}` on `{sname}` or rebuild with `{base_text} with {}: ...`", name.text, name.text),
+                                    None => format!("`var {}` goes on its own line in a block `struct {sname}:`; or rebuild with `{base_text} with {}: ...`", name.text, name.text),
+                                });
                                 if let Some(at) = var_at {
                                     diag.fix(format!("declare `var {}`", name.text), at, "var ");
                                 }

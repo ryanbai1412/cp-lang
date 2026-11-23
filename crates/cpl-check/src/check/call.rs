@@ -193,7 +193,7 @@ impl<'a> Checker<'a> {
             self.call_kind(call, callee, callee_ty.clone(), args)
         };
         if receiver.is_none() && matches!(ty, Ty::Unknown) {
-            if let Some(known) = self.catalog_ret(callee) {
+            if let Some(known) = self.catalog_ret(callee, args) {
                 ty = known;
             }
         }
@@ -1398,13 +1398,19 @@ impl Checker<'_> {
 
     /// What a built-in method returns when nothing more specific knows:
     /// its catalog row's type, e.g. the element for `a.sum()` on a `[V]Int`.
-    /// Optional returns (`?T` for `pop`) stay unknown: the checker still
-    /// takes them on trust as the element.
-    fn catalog_ret(&mut self, callee: &Expr) -> Option<Ty> {
+    /// `?T` for `xs.pop()`, so printing or adding it says `None` must be handled.
+    fn catalog_ret(&mut self, callee: &Expr, args: &[Arg]) -> Option<Ty> {
         let ExprKind::Field { base, name } = &callee.kind else {
             return None;
         };
         let (member, elem) = self.catalog_row(base, &name.text)?;
+        // `xs.find(x => x > 1)` is the element, not the row's index.
+        if args
+            .iter()
+            .any(|a| matches!(a.value.kind, ExprKind::Lambda { .. }))
+        {
+            return None;
+        }
         let ret = catalog_ty(member.ret, &elem)?;
         // `a[l..r].max()` is `?T`: a slice can be empty (R07.9.3).
         if matches!(name.text.as_str(), "max" | "min") && self.view_kind(base) == Some("slice") {
@@ -1440,6 +1446,9 @@ impl Checker<'_> {
 
 /// A catalog type string the checker can read without the row's generics.
 fn catalog_ty(text: &str, elem: &Option<Ty>) -> Option<Ty> {
+    if let Some(inner) = text.trim().strip_prefix('?') {
+        return Some(Ty::Optional(Box::new(catalog_ty(inner, elem)?)));
+    }
     match text.trim() {
         "T" => elem.clone(),
         "Char" => Some(Ty::Char),

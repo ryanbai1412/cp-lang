@@ -415,7 +415,7 @@ print(xs.len(), xs.is_empty(), xs.first(), xs.last(), xs.rev(), xs.items(), s.le
     }
     let ok = "\
 let xs = [1, 2, 3]
-print(xs.len, yes(xs.is_empty), xs.first, xs.last, xs.rev, xs.items, xs.first(x => x > 1) ?? 0, xs.last(1))
+print(xs.len, yes(xs.is_empty), xs.first, xs.last, xs.rev, xs.items, xs.first(x => x > 1) ?? 0, xs.last(1) ?? 0)
 ";
     assert!(
         check(ok).is_empty(),

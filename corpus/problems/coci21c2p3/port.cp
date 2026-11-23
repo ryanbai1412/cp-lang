@@ -14,7 +14,7 @@ for e in E:
 
 var label: [V]?Int = None
 label[V.first!] = 0
-var todo = [V.first]
+var todo = [V.first!]
 while let u = todo.pop():
     for (v, bit) in adj[u]:
         if label[v] == None:

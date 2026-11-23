@@ -27,7 +27,7 @@ for u in V:
     enqueue(u, false)
 
 while q.len > 0:
-    let u = q.pop()
+    let u = q.pop()!
     var res = true
     if out_deg[u] == 0:
         res = true

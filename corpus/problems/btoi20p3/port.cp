@@ -44,9 +44,9 @@ fn add_edge(u: V, v: V):
 fn rollback(h: Int, prev_odd: Int):
     odd_cycle = prev_odd
     while hist_child.len > h:
-        let c = hist_child.pop()
-        let p = hist_parent.pop()
-        let os = hist_sz.pop()
+        let c = hist_child.pop()!
+        let p = hist_parent.pop()!
+        let os = hist_sz.pop()!
         up[c] = c
         par[c] = false
         sz[p] = os

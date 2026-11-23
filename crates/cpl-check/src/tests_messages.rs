@@ -411,3 +411,29 @@ fn an_uncalled_method_is_called() {
         assert!(clean.is_empty(), "{clean:?}");
     }
 }
+
+#[test]
+fn a_builtin_that_may_give_nothing_is_optional() {
+    let d = check("var xs: List<Int> = []\nprint(xs.pop())\n");
+    assert_eq!(d.len(), 1, "{d:?}");
+    assert!(d[0].message.contains("`xs.pop()` has type `?Int`"), "{d:?}");
+    assert!(
+        d[0].help.as_deref().unwrap_or("").contains("xs.pop()!"),
+        "{d:?}"
+    );
+    let d = check("var s = \"ab\"\nlet c: Char = s.pop()\n");
+    assert!(d.iter().any(|d| d.message.contains("?Char")), "{d:?}");
+    let clean = check(
+        "var xs = [5, 6]\nlet k = xs.find(x => x > 5)!\nwhile let u = xs.pop():\n    print(u + k)\n",
+    );
+    assert!(clean.is_empty(), "{clean:?}");
+}
+
+#[test]
+fn a_header_field_is_made_var_in_a_block_struct() {
+    let d = check("struct P(x: Int)\nvar p = P(1)\np.x = 2\n");
+    assert_eq!(d.len(), 1, "{d:?}");
+    assert!(d[0].fixes.is_empty(), "{d:?}");
+    let help = d[0].help.as_deref().unwrap_or("");
+    assert!(help.contains("block `struct P:`"), "{help}");
+}

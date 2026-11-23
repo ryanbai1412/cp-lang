@@ -42,7 +42,7 @@ fn earliest(u: Plane) -> Int:
     var stack = [u]
     first[u] = true
     while not stack.is_empty:
-        let p = stack.pop()
+        let p = stack.pop()!
         for b in before[p]:
             if not first[b]:
                 first[b] = true
