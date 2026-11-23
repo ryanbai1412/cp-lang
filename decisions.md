@@ -6110,7 +6110,6 @@ constants and the `exit(3)` in the C++ runtime, and the sentence in
   undirected graph, for a method no port or spec chapter calls.
 - **Reverse.** Store each edge's `u` (or an orientation bit) in `Graph` at
   build, have `edges()` read it, and make the case expect `0 1 0`.
-||||||| parent of c8fb2c703 (cli: allocate with mimalloc)
 
 ## 249. The `cpl` binary allocates with mimalloc (2026-11-22)
 
