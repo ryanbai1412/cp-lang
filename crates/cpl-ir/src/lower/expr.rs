@@ -2390,6 +2390,10 @@ impl<'a> Lowerer<'a> {
                 let d = *d;
                 (self.cast(Cast::Label(d), l, Ty::Int), r, Ty::Int)
             }
+            (Ty::List(elem), Ty::Int) if op == Mul => {
+                let elem = (**elem).clone();
+                return self.list_repeat(l, r, elem, span);
+            }
             _ => {
                 let message = format!(
                     "`{}` can't be applied to `{}` and `{}`",
@@ -2398,11 +2402,6 @@ impl<'a> Lowerer<'a> {
                     self.show(&r.ty)
                 );
                 self.error(codes::BAD_OPERANDS, span, message);
-                if op == Mul && matches!(l.ty, Ty::List(_)) && r.ty == Ty::Int {
-                    if let Some(d) = self.diags.last_mut() {
-                        d.help = Some("`n` copies of `x` are `[n].filled(x)`".into());
-                    }
-                }
                 return self.err_expr(span);
             }
         };

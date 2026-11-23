@@ -649,4 +649,45 @@ impl<'a> Lowerer<'a> {
         }
         None
     }
+
+    /// `[x] * n`: `n` copies of the list, one after another (decision 135).
+    pub(in crate::lower) fn list_repeat(
+        &mut self,
+        xs: Expr,
+        n: Expr,
+        elem: Ty,
+        span: Span,
+    ) -> Expr {
+        let list_ty = Ty::list(elem);
+        self.do_expr(Some(&list_ty), span, |lw, out| {
+            let src = lw.temp(list_ty.clone());
+            out.push(Stmt::Let(src, Some(xs)));
+            let acc = lw.temp(list_ty.clone());
+            let empty = lw.mk(ExprKind::Tuple(Vec::new()), list_ty.clone(), span);
+            out.push(Stmt::Let(acc, Some(empty)));
+            let place = Place {
+                kind: PlaceKind::Local(acc),
+                ty: list_ty.clone(),
+                span: lw.span(span),
+            };
+            let copy = lw.local(src, span);
+            let extend = ExprKind::Mutate(Mutation::Extend, Box::new(place), vec![copy]);
+            let extend = lw.mk(extend, Ty::Unit, span);
+            let lid = lw.next_loop;
+            lw.next_loop += 1;
+            let walk = Iter::Range {
+                lo: lw.int_lit(0, span),
+                hi: n,
+                step: None,
+                rev: false,
+                closed: false,
+            };
+            let i = lw.temp(Ty::Int);
+            let body = Block {
+                stmts: vec![Stmt::Expr(extend)],
+            };
+            out.push(Stmt::For(lid, i, walk, body));
+            out.push(Stmt::Give(lw.local(acc, span)));
+        })
+    }
 }

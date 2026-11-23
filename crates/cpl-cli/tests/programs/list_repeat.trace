@@ -1,0 +1,11 @@
+"variables":{"stdout":{"name":"stdout","type":"what the program printed, a line at a time","kind":"json"},"zs":{"name":"zs","type":"List\u003cInt>","kind":"array"},"ab":{"name":"ab","type":"List\u003cInt>","kind":"array"},"n":{"name":"n","type":"Int","kind":"scalar"},"grid":{"name":"grid","type":"List\u003cList\u003cInt>>","kind":"json"}},"runs":{"fast":{"label":"cpl run","steps":[{"id":0,"line":2,"label":"let zs = [0] * 3","stage":"main","values":{"stdout":[],"zs":[0,0,0]},"locals":{},"frames":[{"fn":"main","line":2}]},
+{"id":1,"line":3,"label":"print → 0 0 0","stage":"main","values":{"stdout":["0 0 0"],"zs":[0,0,0]},"locals":{},"checkpoint":"print 1","frames":[{"fn":"main","line":3}]},
+{"id":2,"line":4,"label":"let ab = [1, 2] * 2","stage":"main","values":{"stdout":["0 0 0"],"zs":[0,0,0],"ab":[1,2,1,2]},"locals":{},"frames":[{"fn":"main","line":4}]},
+{"id":3,"line":5,"label":"print → 1 2 1 2 4","stage":"main","values":{"stdout":["0 0 0","1 2 1 2 4"],"zs":[0,0,0],"ab":[1,2,1,2]},"locals":{},"checkpoint":"print 2","frames":[{"fn":"main","line":5}]},
+{"id":4,"line":6,"label":"let n = 0","stage":"main","values":{"stdout":["0 0 0","1 2 1 2 4"],"zs":[0,0,0],"ab":[1,2,1,2],"n":0},"locals":{},"frames":[{"fn":"main","line":6}]},
+{"id":5,"line":7,"label":"print → 0","stage":"main","values":{"stdout":["0 0 0","1 2 1 2 4","0"],"zs":[0,0,0],"ab":[1,2,1,2],"n":0},"locals":{},"checkpoint":"print 3","frames":[{"fn":"main","line":7}]},
+{"id":6,"line":8,"label":"var grid = [[0] * 2] * 2","stage":"main","values":{"stdout":["0 0 0","1 2 1 2 4","0"],"zs":[0,0,0],"ab":[1,2,1,2],"n":0,"grid":[[0,0],[0,0]]},"locals":{},"frames":[{"fn":"main","line":8}]},
+{"id":7,"line":9,"label":"grid[0][1] = 5","stage":"main","values":{"stdout":["0 0 0","1 2 1 2 4","0"],"zs":[0,0,0],"ab":[1,2,1,2],"n":0,"grid":[[0,5],[0,0]]},"locals":{},"frames":[{"fn":"main","line":9}]},
+{"id":8,"line":10,"label":"print → 5 0","stage":"main","values":{"stdout":["0 0 0","1 2 1 2 4","0","5 0"],"zs":[0,0,0],"ab":[1,2,1,2],"n":0,"grid":[[0,5],[0,0]]},"locals":{},"checkpoint":"print 4","frames":[{"fn":"main","line":10}]},
+{"id":9,"line":10,"label":"the program ended","stage":"main","values":{"stdout":["0 0 0","1 2 1 2 4","0","5 0"],"zs":[0,0,0],"ab":[1,2,1,2],"n":0,"grid":[[0,5],[0,0]]},"locals":{},"checkpoint":"end","frames":[{"fn":"main","line":10}]}]}}}
+stderr:
