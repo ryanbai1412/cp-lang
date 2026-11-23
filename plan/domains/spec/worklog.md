@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- Bug-catch probe, full run at 6c5451460: **8 of 10 revertible compiler fixes caught (80%)**, 15 of 25 candidates no longer revert or build; table in plan/domains/spec/bugcatch.md, metric in metrics.toml. Missed: `701193ef` (2-arg min/max shadowing, expr-bodied yields fns) and `152ffd38` (isqrt on i64::MAX); cases for both are next.
 - Spec-block runner: a `given:` comment stacked above a `rejects:` one gives an error example its setup; core/05's 13 setup-needing error examples marked, each reports the code its text describes (E0601 may-alias, E0602 lent until last use, E0603 kept past its block). spec-blocks 52 -> 65/185 pass, errors 69 -> 56. Ratchet tests 8/8.
 - Trait table: stdlib's new `Matroid` impls (`GraphicMatroid`, `ColorMatroid`) had no cases, so `conformance-traits.py --check` failed on main; 6 cases added, all pass. traits: 116 methods over claims, 113 with a case, 3 gaps (the held range triples).
 - Silent hole (found running lib/strings): R10.3.2 now says `{x:6}` space-pads and `{x:04}` zero-pads after the sign, as `cpl run` does (`0007 -005 [    42] 123`); case `core-10/interpolation-width.cp`.

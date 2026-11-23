@@ -49,12 +49,12 @@ All values measured 2026-11-22 on `4b8f504f` with a release build; commands in [
 | Core cases with no `// rule:` | `conformance-coverage.py` | 10 | 0 | M1 |
 | Diagnostic codes with no reject case | `conformance-coverage.py` | 2/135 | 0 | M1 |
 | Std items named by a case | `conformance-coverage.py` | 2037/2245 | 2245 | M2 |
-| Spec code blocks passing | `cpl-conform spec-blocks` | 21/185 | all or spec-only | M2 |
+| Spec code blocks passing | `cpl-conform spec-blocks` | 65/185 (56 error, 64 skip) | all or spec-only | M2 |
 | Untagged code blocks (skipped) | `awk` in metrics.toml | 27 | 0 | M2 |
 | Matrix empty cells | `conformance-matrix.py --check` | 0 (gated) | 0 | M2 |
-| Trait methods without a case | `conformance-traits.py --check` | 3 of 110 (std and core claimers) | 0 | M2 |
+| Trait methods without a case | `conformance-traits.py --check` | 3 of 116 (held range triples) | 0 | M2 |
 | Rebuild holes (cold agent) | probe P1 | 21 (round 3; round 2 was 32) | < 5 | M3 |
-| Reverted compiler fixes caught | probe P2 | not measured | >= 90% | M3 |
+| Reverted compiler fixes caught | `conformance-bugcatch.py`, [bugcatch.md](bugcatch.md) | 8/10 revertible (80%); 15 of 25 no longer revert or build | >= 90% | M3 |
 | Banned spellings in spec | `spec-vocab.py` | 0 | 0 | - |
 | Suite wall time (2 cores) | `time cpl-conform conformance spec-blocks` | 8.7 s | < 20 s | - |
 
@@ -82,7 +82,7 @@ Probes (a cold agent attempts, pass/fail + time + files touched):
 4. Spec-block coverage: a `given` prelude so fragments run (166 of 185 fail today), tag the 27 untagged blocks, mark the rest spec-only.
 5. Spec vs std contradiction check (e.g. ch. 7 says descending is a key, `sort` has `desc:`); feed rebuild round 2's 32 holes.
 6. Rule ids for `spec/tools/` contracts and `spec/lib/` chapters (0 today), so tool and library behaviour is citable.
-7. Rebuild round 3 and the bug-catch probe as repeatable scripts.
+7. Rebuild round 3 as a repeatable script (bug-catch is `scripts/conformance-bugcatch.py`).
 
 ## Ryan's role
 
