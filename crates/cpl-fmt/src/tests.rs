@@ -564,6 +564,15 @@ fn formats_trailing_binary_operator_continuations() {
 }
 
 #[test]
+fn keeps_a_leading_operator_continuation_after_a_comment_line() {
+    let src = "let b = a\n    // note\n    - 3\nprint(b)\n";
+    assert_eq!(fmt(src), src);
+    let nested =
+        "fn f(a: Int) -> Int:\n    let b = a\n        // note\n        - 3\n    return b\n";
+    assert_eq!(fmt(nested), nested);
+}
+
+#[test]
 fn formats_punned_named_args_and_records() {
     let src = "let s = State(moves : , cost : , step : )\nlet r = (val : , prev : )\n";
     let want = "let s = State(moves:, cost:, step:)\nlet r = (val:, prev:)\n";

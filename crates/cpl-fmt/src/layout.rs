@@ -442,7 +442,11 @@ impl<'a, 'b> Emitter<'a, 'b> {
             self.start_line(self.continuation_indent(), false);
         }
         if !tok.leading.is_empty() && self.prev.is_some() {
-            let ind = self.continuation_indent();
+            // Outside brackets the line after the comments continues the
+            // statement only when it is deeper (R01.2.4).
+            let ind = self
+                .continuation_indent()
+                .max(self.base_indent + self.indent);
             for comment in &tok.leading {
                 self.comment_line(ind, comment);
             }
