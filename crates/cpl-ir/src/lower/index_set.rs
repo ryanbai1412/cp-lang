@@ -1,5 +1,6 @@
 //! W8 `IndexSet`: on a struct whose only place protocol is `set`, `x[k] = v` is `x.set(k, v)`
-//! and `x[k] op= v` is `x.set(k, x[k] op v)`, with `k` evaluated once.
+//! and `x[k] op= v` is `x.set(k, x[k] op v)`, with `k` evaluated once (held in a
+//! temporary when it is not a plain name).
 //! Also `d[p, q]` on `[P, P]T`: product positions spelled out as their factor indices.
 
 use super::call::is_place;
@@ -38,14 +39,34 @@ impl<'a> Lowerer<'a> {
             },
             span,
         };
+        // R01.6.4: `x[k] op= v` evaluates `k` once, so a key that is not a
+        // plain name is held in a temporary the rewrite reads twice.
+        let held = !matches!(op, ast::AssignOp::Set) && !pure(key);
+        let (key, target) = if held {
+            let value = self.expr(key, None);
+            let slot = self.temp(value.ty.clone());
+            out.push(Stmt::Let(slot, Some(value)));
+            let mut scope = HashMap::new();
+            scope.insert(HELD_KEY.to_string(), slot);
+            self.cx.scopes.push(scope);
+            let key = ast::Expr {
+                kind: ast::ExprKind::Name(HELD_KEY.into()),
+                span: key.span,
+            };
+            let target = ast::Expr {
+                kind: ast::ExprKind::Index {
+                    base: base.clone(),
+                    indices: vec![key.clone()],
+                },
+                span,
+            };
+            (key, target)
+        } else {
+            (key.clone(), target.clone())
+        };
+        let target = &target;
         let stored = match op {
             ast::AssignOp::Set => value.clone(),
-            _ if !pure(key) => {
-                let message =
-                    "this key would be computed twice for `set`: bind it with `let` first";
-                self.error(codes::NOT_INDEXABLE, key.span, message.to_string());
-                return true;
-            }
             ast::AssignOp::Binary(bin) => ast::Expr {
                 kind: ast::ExprKind::Binary {
                     op: bin,
@@ -70,15 +91,21 @@ impl<'a> Lowerer<'a> {
                     },
                     span,
                 }),
-                args: vec![arg(key.clone()), arg(stored)],
+                args: vec![arg(key), arg(stored)],
             },
             span,
         };
         let e = self.expr(&call, Some(&Ty::Unit));
+        if held {
+            self.cx.scopes.pop();
+        }
         out.push(Stmt::Expr(e));
         true
     }
 }
+
+/// The name a held `set` key goes by; no source name can spell it.
+const HELD_KEY: &str = "key held for set";
 
 fn arg(value: ast::Expr) -> ast::Arg {
     ast::Arg {

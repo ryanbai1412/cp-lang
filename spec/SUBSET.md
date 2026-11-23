@@ -169,7 +169,6 @@ documented. The stdlib's own gaps are in `std/GAPS.md`.
 
 ## Known gaps
 
-- core-01/compound-assign-key-evaluated-once.cp: compiler
 - core-01/stepped-range-is-a-value.cp: compiler
 - core-02/question-extent-let-stays-optional.cp: compiler
 - core-02/question-not-early-return.cp: compiler
