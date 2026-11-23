@@ -1856,29 +1856,34 @@ pub fn min_count<S: Seq, T, K>(self: S, by: T -> K = x => x) -> ?(val: T, count:
     if let (v, _) = best: Some((val: v, count:)) else: None
 
 /// The value held by more than half the elements, with its count, or `None`. Only `eq` is
-/// asked, never order or hashing, so it works with an equality oracle (Boyer-Moore: one
-/// pass to find the candidate, one to count it). \(O(n)\) `eq` calls, \(O(1)\) memory.
+/// asked, never order or hashing, so it works with an equality oracle (Fischer-Salzberg: one
+/// pass builds a chain with no two neighbours equal, a second counts its last value).
 ///
-/// cost: \(O(n)\) calls of `eq`, \(O(1)\) memory
+/// cost: at most \(\lfloor 3n/2 \rfloor\) calls of `eq`; \(O(n)\) memory
 /// empty: `None`
 /// traps: never
 /// example: `[2, 1, 2].majority() == Some((val: 2, count: 2))`
 pub fn majority<S: Seq, T>(self: S, eq: (T, T) -> Bool = (a, b) => a == b) -> ?(val: T, count: Int):
-    var cand: ?T = None
-    var votes = 0
-    var n = 0
+    var chain: List<T> = []
+    var same: List<T> = []
     for x in self:
-        n += 1
-        if votes == 0:
-            cand = Some(x)
-            votes = 1
-        elif eq(cand!, x): votes += 1
-        else: votes -= 1
-    let c = cand else: return None
-    var count = 0
-    for x in self:
-        if eq(c, x): count += 1
-    if 2 * count > n: Some((val: c, count:)) else: None
+        if chain.len == 0 or not eq(chain.last!, x):
+            chain.push(x)
+            if let y = same.pop(): chain.push(y)
+        else: same.push(x)
+    let c = chain.last else: return None
+    var spare = same.len
+    var count = same.len + 1
+    var i = chain.len - 3
+    while i >= 0:
+        if eq(c, chain[i]):
+            count += 1
+            i -= 2
+        elif spare == 0: return None
+        else:
+            spare -= 1
+            i -= 1
+    if 2 * count > chain.len + same.len: Some((val: c, count:)) else: None
 
 /// \(O(n)\) expected, \(O(\mathit{distinct})\) memory. How many times each key `by(x)` occurs across `self`, as a `Counter`, so a key that never occurs reads 0.
 ///
