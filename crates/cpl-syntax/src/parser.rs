@@ -9,6 +9,7 @@
 //! its body.
 
 mod expr;
+mod foreign;
 mod item;
 mod pattern;
 mod stmt;

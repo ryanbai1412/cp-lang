@@ -1762,3 +1762,22 @@ fn another_languages_type_name_is_one_error_with_ours() {
     let d = parse_file("let d: double = 1.5\n").diagnostics;
     assert_eq!(d[0].fixes[0].edits[0].1, "F64", "{d:?}");
 }
+
+#[test]
+fn a_c_for_header_is_one_error_with_a_range_fix() {
+    let src = "for (i = 0; i < n; i++):\n    print(i)\nfor (int j = 1; j <= n; ++j): print(j)\nfor (k = n; k > 0; k--): print(k)\n";
+    let d = parse_file(src).diagnostics;
+    let fixed: Vec<_> = d
+        .iter()
+        .map(|d| d.fixes.first().map(|f| f.edits[0].1.as_str()))
+        .collect();
+    assert_eq!(
+        fixed,
+        [Some("i in 0..n"), Some("j in 1..=n"), None],
+        "{d:?}"
+    );
+    assert_eq!(
+        codes("for a in xs, b in ys: print(a)\n"),
+        Vec::<&str>::new()
+    );
+}

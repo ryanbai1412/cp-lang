@@ -1104,7 +1104,11 @@ impl<'a> Parser<'a> {
             self.bump();
         }
         let mut clauses = Vec::new();
-        loop {
+        if let Some((pat, iter)) = self.c_for() {
+            clauses.push((pat, iter, None));
+        }
+        let c_style = !clauses.is_empty();
+        while !c_style {
             let pat = self.pattern();
             self.expect(T::In, "`in` after the loop variable");
             let iter = if self.at(T::Question) {
