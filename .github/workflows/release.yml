@@ -70,11 +70,12 @@ jobs:
               if [ "$RUN_CONCLUSION" != success ]; then
                 # Red or superseded CI: GitHub drops most hourly crons on this
                 # repo, so such a run ships the newest shippable commit instead
-                # (decision 408), at most once an hour and one at a time.
+                # (decision 408), at most once an hour; of runs going at once only the
+                # oldest selects, so two can't each wait for the other.
                 last=$(gh release view edge -R "$GITHUB_REPOSITORY" --json publishedAt --jq .publishedAt 2>/dev/null || true)
                 age=$(( $(date +%s) - $(date -d "${last:-1970-01-01T00:00:00Z}" +%s) ))
                 busy=$(gh run list -R "$GITHUB_REPOSITORY" --workflow release.yml --status in_progress \
-                  --json databaseId --jq "[.[] | select(.databaseId != $GITHUB_RUN_ID)] | length")
+                  --json databaseId --jq "[.[] | select(.databaseId < $GITHUB_RUN_ID)] | length")
                 if [ "$age" -lt 3600 ] || [ "$busy" != 0 ]; then
                   echo "edge is ${age}s old and $busy other release run(s) are going; skipping"; go=false
                 else
