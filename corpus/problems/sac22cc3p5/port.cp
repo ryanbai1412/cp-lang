@@ -25,6 +25,6 @@ let ac = AhoCorasick<Letter>.new(words)
 
 for _ in 0..m:
     var matched = Set<Int>()
-    for (_, id) in ac.matches(to_letters(read())):
+    for (_, id) in ac.find_all(to_letters(read())):
         matched.insert(id)
     print(matched.len)

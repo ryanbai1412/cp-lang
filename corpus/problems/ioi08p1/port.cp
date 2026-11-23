@@ -23,7 +23,7 @@ var longest = ""
 for w in Word:
     let word = words[w]
     trie.add([Letter(c) for c in word])
-    if word.len > longest.len: longest = word
+    if word.len > longest.len: longest = word.to_str()
 
 var on_longest: Set<Int> = Set()
 var at = trie.root

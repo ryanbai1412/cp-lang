@@ -18,8 +18,8 @@ fn cut(p: Int) -> Int:
         before += pieces[i].len
         i += 1
     if before == p: return i
-    let s = pieces[i]
-    pieces = pieces[0..i] + [s[0..p - before], s[p - before..s.len]] + pieces[i + 1..pieces.len]
+    let s = pieces[i].to_str()
+    pieces = pieces[0..i].to_list() + [s[0..p - before].to_str(), s[p - before..s.len].to_str()] + pieces[i + 1..pieces.len].to_list()
     i + 1
 
 for _ in 0..t:
@@ -46,6 +46,6 @@ for _ in 0..t:
             var (shown, at) = ("", 0)
             for s in pieces:
                 let (a, b) = (max(cursor, at), min(cursor + n, at + s.len))
-                if a < b: shown += s[a - at..b - at]
+                if a < b: shown += s[a - at..b - at].to_str()
                 at += s.len
             print(shown)
