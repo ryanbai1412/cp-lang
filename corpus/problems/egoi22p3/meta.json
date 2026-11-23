@@ -25,5 +25,5 @@
  "difficulty": null,
  "dream": "draft",
  "spec": "draft",
- "notes": ""
+ "notes": "Grader task played over stdin with a Wire (no local @grader stub). tests/NN.in/.ans are transcripts of spec.cp against interactor.py on tests/NN.case."
 }
