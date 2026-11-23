@@ -7,13 +7,13 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 2252 (995 passing). Rules: 531.
+Cases: 2254 (995 passing). Rules: 531.
 
 ## Summary per chapter
 
 - R01 (01-lexical-grammar.md): 50 rules, 104 cases; 0 uncovered, 2 happy-path only, 0 negative only
-- R02 (02-values-types.md): 51 rules, 102 cases; 0 uncovered, 7 happy-path only, 0 negative only
-- R03 (03-numbers-layout.md): 24 rules, 59 cases; 0 uncovered, 6 happy-path only, 0 negative only
+- R02 (02-values-types.md): 51 rules, 103 cases; 0 uncovered, 6 happy-path only, 0 negative only
+- R03 (03-numbers-layout.md): 24 rules, 60 cases; 0 uncovered, 5 happy-path only, 0 negative only
 - R04 (04-indices.md): 61 rules, 89 cases; 0 uncovered, 1 happy-path only, 0 negative only
 - R04a (04a-identity-vs-offset.md): 39 rules, 53 cases; 0 uncovered, 1 happy-path only, 0 negative only
 - R04b (04b-keys.md): 27 rules, 62 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -25,7 +25,7 @@ Cases: 2252 (995 passing). Rules: 531.
 - R10 (10-io.md): 16 rules, 66 cases; 0 uncovered, 1 happy-path only, 0 negative only
 - R11 (11-modules-prelude.md): 15 rules, 30 cases; 0 uncovered, 1 happy-path only, 1 negative only
 - R12 (12-powers.md): 17 rules, 36 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R13 (13-lowering.md): 22 rules, 25 cases; 0 uncovered, 3 happy-path only, 0 negative only
+- R13 (13-lowering.md): 22 rules, 26 cases; 0 uncovered, 2 happy-path only, 0 negative only
 
 ## Accept and reject coverage per chapter
 
@@ -36,8 +36,8 @@ negative case. Complete: rules with no gap in `rule-gaps.txt`.
 | Chapter | Rules | Accept | Forbidding | Reject | Complete |
 |---|---|---|---|---|---|
 | R01 | 50 | 50 (100%) | 28 | 26 (92%) | 48 (96%) |
-| R02 | 51 | 51 (100%) | 29 | 22 (75%) | 44 (86%) |
-| R03 | 24 | 24 (100%) | 17 | 11 (64%) | 18 (75%) |
+| R02 | 51 | 51 (100%) | 29 | 23 (79%) | 45 (88%) |
+| R03 | 24 | 24 (100%) | 17 | 12 (70%) | 19 (79%) |
 | R04 | 61 | 61 (100%) | 14 | 13 (92%) | 60 (98%) |
 | R04a | 39 | 39 (100%) | 4 | 3 (75%) | 38 (97%) |
 | R04b | 27 | 27 (100%) | 6 | 6 (100%) | 27 (100%) |
@@ -49,8 +49,8 @@ negative case. Complete: rules with no gap in `rule-gaps.txt`.
 | R10 | 16 | 16 (100%) | 8 | 7 (87%) | 15 (93%) |
 | R11 | 15 | 14 (93%) | 9 | 8 (88%) | 13 (86%) |
 | R12 | 17 | 17 (100%) | 6 | 6 (100%) | 17 (100%) |
-| R13 | 22 | 22 (100%) | 7 | 4 (57%) | 19 (86%) |
-| all | 531 | 529 (99%) | 225 | 190 (84%) | 494 (93%) |
+| R13 | 22 | 22 (100%) | 7 | 5 (71%) | 20 (90%) |
+| all | 531 | 529 (99%) | 225 | 193 (85%) | 497 (93%) |
 
 ## Rules
 
@@ -149,7 +149,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R02.8.2 [1+ 0-]: `List<T>` grows, is indexed by `0..len` positions, and its slices keep source positions.
 - R02.8.3 [2+ 1-]: `[D]T` arrays are built by tables (`[V] v => 0`), typed reads (`read<[V]Int>()`), comprehe...
 - R02.8.4 [1+ 0-]: `xs[i]` on a heap element lends it (`let row = rows[i]`); on a plain element it copies.
-- R02.8.5 [1+ 0-] *happy-path only*: Large arrays never live on the C++ stack (chapter 13).
+- R02.8.5 [2+ 1-]: Large arrays never live on the C++ stack (chapter 13).
 - R02.9.1 [1+ 1-]: Two fresh types are never equal, even from the same expression.
 - R02.9.2 [1+ 1-]: A fresh type is block-scoped. A value whose type mentions it cannot leave the block by `re...
 - R02.9.3 [2+ 0-]: A function may return a fresh type existentially: `fn components(...) -> (domain P, [V]P)`...
@@ -180,7 +180,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R03.2.4 [2+ 0-]: **One payload variant plus k unit variants** (`Option`-like: `Cell` with variants `Wall`, ...
 - R03.2.5 [1+ 0-]: **Several payload variants:** the largest variant (first on a tie) sets the layout. Every ...
 - R03.2.6 [1+ 0-] *happy-path only*: **Otherwise a tag byte** beside the largest payload, rounded up to alignment: when no fiel...
-- R03.2.7 [1+ 0-] *happy-path only*: `[V]?T` is `[V]T` with spares wherever `T` has one: the distance array `[V]?Int` is 8 byte...
+- R03.2.7 [2+ 1-]: `[V]?T` is `[V]T` with spares wherever `T` has one: the distance array `[V]?Int` is 8 byte...
 - R03.2.8 [1+ 0-] *happy-path only*: Storage order is chosen to minimize padding (largest alignment first, then declaration ord...
 - R03.3.1 [1+ 0-]: **Testing `None` is one compare** with the fixed pattern.
 - R03.3.2 [1+ 0-]: **`max=` on `?Int` is branch-free**: `INT64_MIN` is below every `Int`, so `None` is alread...
@@ -621,7 +621,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R13.2.6 [1+ 0-]: | `?T` without one | `T` plus a flag byte, aligned
 - R13.2.7 [1+ 0-]: | tuple, record, struct | a C++ struct, fields in storage order
 - R13.2.8 [1+ 0-]: | enum | niche-filled payload, or tag beside the largest payload
-- R13.2.9 [1+ 0-] *happy-path only*: | `[D]T` | pointer plus count, heap buffer; never a stack VLA
+- R13.2.9 [2+ 1-]: | `[D]T` | pointer plus count, heap buffer; never a stack VLA
 - R13.2.10 [1+ 0-]: | `List<T>`, `Str` | an owned growable buffer (`std::vector`-like runtime type)
 - R13.2.11 [1+ 0-]: | `Mod<P>` constant | `uint32_t` or `uint64_t` with Montgomery or Barrett constants folded
 - R13.2.12 [1+ 0-]: | `Mod(p)` runtime | the same plus constants in the fresh type's static slot
