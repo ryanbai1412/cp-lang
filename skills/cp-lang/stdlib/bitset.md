@@ -112,6 +112,19 @@ Runtime-sized 64-bit word bitset over `0..cap` when the width is computed dynami
 - `fn mex_xor(self, x: Int = 0) -> Int` — \(O(\mathit{bits})\); The smallest non-negative integer not present under XOR mask `x` (mex of `{y ^ x}`); `2^bits` when every value is present.; traps: when `x` is not in `0..2^bits`
 - `fn clear(mut self)` — \(O(1)\); Remove all elements and the global mask, keeping `bits` and the reserved pool.
 
+## `struct BitTrie<W>`
+
+\(O(W)\) per op.
+
+- `fn new() -> BitTrie<W>` — \(O(1)\); An empty `BitTrie<W>`.
+- `fn of(x: Int) -> BitTrie<W>` — \(O(W)\); The trie holding `x` once: one path of `W + 1` nodes.; traps: when `x` is not in `0..2^W`
+- `@get fn len(self) -> Int` — \(O(1)\); The number of stored integers, with multiplicity.
+- `@get fn is_empty(self) -> Bool` — \(O(1)\); True when the trie holds no integers.
+- `fn add(mut self, x: Int)` — \(O(W)\) time, up to `W` new nodes; Insert one copy of `x`.; traps: when `x` is not in `0..2^W`
+- `fn count(self, x: Int) -> Int` — \(O(W)\); The multiplicity of `x`; zero when absent or out of range.
+- `fn walk(self, x: Int) -> yields (bit: Int, count: Int)` — \(O(W)\) for the whole walk, \(O(1)\) per step; The path of `x` from the top bit down: for each bit `b` from `W - 1` to 0, while some stored `y` agrees with `x` on bits `b` and above, yields `b` and how many do.; traps: when `x` is not in `0..2^W`
+- `fn absorb(mut self, mut other: BitTrie<W>)` — \(O(\min(\mathit{nodes}(\mathit{self}), \mathit{nodes}(\mathit{other})))\); Add every integer of `other` into `self`, with multiplicity, leaving `other` empty.
+
 ## Example
 
 ```cp
