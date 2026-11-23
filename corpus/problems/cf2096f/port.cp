@@ -11,7 +11,6 @@
 // is uncovered). The live "some impostor" intervals starting at v are a sliding
 // window over the statements, so `ends[v]` keeps their shortest right end, and
 // `shortest` is a min tree over those.
-use std.window.{MonoDeque}
 @!multitest
 let (n, m): (1..=200_000, 1..=200_000) = read()
 domain V = 1..=n
@@ -19,34 +18,34 @@ domain S = 1..=m
 let st: [S](some: Bool, a: V, b: V) = read()
 
 var cover = SegTree<V, Int>(min, fill: 0, act: add)
-var ends: [V]MonoDeque<Int> = MonoDeque()
+var ends = [V] _ => Window(min)
 var shortest = SegTree<V, ?Int>(min, fill: None)
 
 fn fits(i: S) -> Bool:
     let s = st[i]
     if s.some: return cover.fold(s.a..=s.b) == 0
-    let lo = cover.min_left(to: s.a.l, ok: c => c > 0)
-    let hi = cover.max_right(from: s.b.r, ok: c => c > 0)
+    let lo = cover.left_while(s.a.l, c => c > 0)
+    let hi = cover.right_while(s.b.r, c => c > 0)
     shortest.fold(lo..hi).map(e => e >= hi.ord) ?? true
 
 fn take(i: S):
     let s = st[i]
     if s.some:
-        ends[s.a].push(at: i.ord, val: s.b.ord)
-        shortest.set(s.a, ends[s.a].best)
+        ends[s.a].push(s.b.ord)
+        shortest.set(s.a, ends[s.a].all)
     else:
         cover.apply(s.a..=s.b, 1)
 
 fn drop(i: S):
     let s = st[i]
     if s.some:
-        ends[s.a].drop_before(i.ord + 1)
-        shortest.set(s.a, ends[s.a].best)
+        ends[s.a].pop()  // statements leave in the order they came
+        shortest.set(s.a, ends[s.a].all)
     else:
         cover.apply(s.a..=s.b, -1)
 
 var first_fit: [S]S = S.first!
-var l = S.first
+var l = S.first!
 for r in S:
     while not fits(r):
         drop(l)
