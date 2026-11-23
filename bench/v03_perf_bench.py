@@ -441,8 +441,14 @@ def collect_items(suites, only, cache_dir):
                 if os.path.exists(os.path.join(prob_dir, "interactor.py")):
                     return []
                 ins = sorted(glob.glob(os.path.join(prob_dir, "tests", "*.in")))
-                scaled = scaled_gen_inputs(gen, cache_dir) if os.path.exists(gen) else []
-                return derived_inputs(os.path.join(prob_dir, "port.cp"), cache_dir) + scaled + (
+                # A problem's own gen.py knows its alphabet and invariants; inputs
+                # derived from `read()` types alone can break them (random letters
+                # for a string over "ab?"), so they stand in only without one.
+                if os.path.exists(gen):
+                    derived, scaled = [], scaled_gen_inputs(gen, cache_dir)
+                else:
+                    derived, scaled = derived_inputs(os.path.join(prob_dir, "port.cp"), cache_dir), []
+                return derived + scaled + (
                     [max(ins, key=os.path.getsize)] if ins else []
                 )
 
