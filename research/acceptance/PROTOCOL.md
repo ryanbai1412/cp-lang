@@ -10,8 +10,10 @@ run is one JSON file in `runs/`; `blockers.py` ranks the findings across runs in
   earlier CPL install. Every run covers Linux, macOS and Windows. The agent drives one
   OS end to end; CI runners on the others follow the site's install instructions word
   for word and run the CLI parts of `test` and `submit`. Each OS gets its own `os` entry.
-- **Editor:** Neovim, set up exactly as the site documents, plus a plain Vim setup.
-  VS Code is checked as well when there is time.
+- **Editors:** Neovim, set up exactly as the site documents, is the editor for every
+  step, plus a plain Vim setup. VS Code and a JetBrains IDE are installed and set up from
+  the site's instructions, and each is checked for highlighting, diagnostics, completion,
+  format and go-to-definition.
 - **Allowed sources:** https://cp-lang.org and every page it links, the installer it
   points to, the judge's problem pages, and general knowledge of C++ and competitive
   programming. Asking a person, reading the repo, or reading these protocol notes is
@@ -19,18 +21,21 @@ run is one JSON file in `runs/`; `blockers.py` ranks the findings across runs in
 - **Persona:** fluent in C++, solves Div2 A-D reliably, and impatient: stuck on the
   same thing for 10 minutes, it records a `blocker` and takes the cheapest way around.
 
-## The seven steps
-Steps follow MILESTONE-1.md section 5.1 (journeys from EXPERIENCE.md in brackets).
+## The eight steps
+Steps 1-7 follow MILESTONE-1.md section 5.1 (journeys from EXPERIENCE.md in brackets).
+Step 8 is Ryan's in-depth reader (2026-11-22): his friends are PL-curious and will read
+the advanced chapters to understand the model and the reasons behind it.
 
 | Step | Task | Passes when |
 |---|---|---|
 | `understand` (J1) | Open the site; say in 3 sentences what CPL is for and what it is better at; read the intro guide. | The summary matches VISION.md V1-V3, from the site alone, in under 30 minutes. |
 | `try` (J2) | In the browser playground, run and change an example, then solve 3 intro exercises. | 3/3 exercises give correct output in the browser, nothing installed. |
-| `install` (J3) | Install the CLI and the Neovim setup from the site's instructions. | On every OS `cpl --version` works. In Neovim a new `.cp` file shows diagnostics, completion, formatting and go-to-definition after the one documented setup step, and Vim gets highlighting. |
-| `solve` (J4, J5) | Solve the 10 held-out Div2 A-E problems (`problems/div2.txt`), reading statements on the judge. | At least 8/10 accepted by the local judge: the reference C++ and checker agree on the samples plus 200 generated cases. |
+| `install` (J3) | Install the CLI and the Neovim setup from the site's instructions. | On every OS `cpl --version` works. In Neovim a new `.cp` file shows diagnostics, completion, formatting and go-to-definition after the one documented setup step, and Vim gets highlighting. VS Code and JetBrains pass the same five features. |
+| `solve` (J4, J5) | Solve the 10 held-out Div2 A-E problems (`problems/div2.txt`), reading statements on the judge. | At least 8/10 accepted by the local judge (`judge.py`): the samples plus 200 small generated cases agree with an exhaustive `brute.py`, or pass `check.py` where answers aren't unique. Max-size timing tests are not built yet. |
 | `test` (J6, J7) | For each problem, run the samples and a custom test. For one problem, find a planted bug with the documented stress or debug workflow. | Samples and custom tests ran with the CLI; the planted bug was found from the docs. |
-| `submit` (J9) | `cpl build --judge codeforces` for every solved problem. | Every build compiles with `g++ -std=c++17 -O2` and is under 64 KB. There are no real judge submissions: the local judge stands in for Codeforces. |
+| `submit` (J9) | Build every solved problem to C++ the way the docs say. Load samples with Competitive Companion if the site documents it. | The C++ compiles with `g++ -std=c++17 -O2` and passes the local judge. No real judge submissions. |
 | `compete` (J5-J9) | A timed virtual Codeforces round: 5 unseen problems (`problems/contest.txt`), 2 hours, no pauses. | At least 4/5 solved in time, and no problem lost to missing ordinary functionality or a tool failure. |
+| `design` (J2, advanced) | As a PL-curious reader, read the ownership and mutation chapter and one other in-depth chapter. Predict the result (output, compile error or trap) of 5 probe snippets before running them. | At least 4/5 predictions right, and both chapters explain why each design was chosen, not just what it does. A wrong prediction the docs should have prevented, or a missing reason, is a `blocker`. |
 
 ## What the agent records
 One JSON object per run, saved as `runs/<YYYY-MM-DD>-<n>.json`:
@@ -55,10 +60,16 @@ One JSON object per run, saved as `runs/<YYYY-MM-DD>-<n>.json`:
 }
 ```
 
-- `steps` has all seven keys, each with `pass` and `minutes` (wall clock).
+- `steps` has all eight keys, each with `pass` and `minutes` (wall clock).
 - `kind`: `blocker` (the step could not pass without it), `workaround` (it passed
-  another way, such as a source outside the list or rewriting around a gap), or
-  `hesitation` (unsure for a minute or more about how CPL says something).
+  another way, such as a source outside the list or rewriting around a gap),
+  `non-idiomatic` (code the language pushed the friend into: an index juggle, a manual
+  loop for a missing library call, a type fight, a duplicated fact; quote it and what
+  they wanted to write), or `hesitation` (unsure for a minute or more about how CPL
+  says something).
+- The score is language quality, not pass/fail (Ryan, 2026-11-22). `BLOCKERS.md` ranks by
+  kind, then runs seen in, then minutes lost, and reports workarounds, non-idiomatic
+  code and hesitations per accepted problem.
 - `lane` is a folder under `plan/domains/`. `id` is a stable slug, so the same
   finding in later runs merges into one row; reuse ids from `BLOCKERS.md`.
 - Every finding needs evidence a lane can reproduce without the transcript.
