@@ -3,8 +3,8 @@
 //! - Reductions & extrema: `prod`, `is_sorted`, `min`/`max` (with `by:`), `argmax`/`argmin` (with `by:`).
 //! - Binary & unimodal search: moved to `std.search` (`bsearch_real`, `ternary_max`/`ternary_min`, `ternary_max_real`/`ternary_min_real`, `parallel_bsearch`).
 //! - Sorted lookup: `first_ge`/`first_gt`/`last_le`/`last_lt` (with optional `by:`), returning `?D` on `[D]T`, `?Int` on `List<T>`, and `?(K, V)` on `Map<K, V>`.
-//! - Runs, chunking & windows: `runs`, `run_ranges`, `chunk_by`, `buckets`, `windows`, `chunks`, `pairs`, `with_prev`, `cyclic_pairs`, `zip`.
-//! - Scans & folds: `scan`, `suffix_scan`, `excl_fold` (cut-indexed `prefix_fold`/`suffix_fold` live in `std.prefix`).
+//! - Runs, chunking & windows: `runs` (with `by:` or `link:`), `buckets`, `windows`, `chunks`, `adjacent`, `pairs`, `with_prev`, `cyclic_pairs`, `zip`.
+//! - Scans & folds: `scan` (`.rev.scan` for suffixes); folds over everything but one element are `prefix_fold`/`suffix_fold` in `std.prefix`.
 //! - Reordering & selection: `reverse`, `rotate_left`/`rotate_right`, `dedup`/`deduped`, `partition`, `select`, `merge_sorted`.
 //! - Permutations: `next_permutation`, `prev_permutation`, `inverse`, `compose`, `perm_cycles`, `perm_pow`, `inversions`.
 //! - Nearest smaller: `prev_smaller`/`next_smaller` (larger with `by: desc`), `prev_same`/`next_same`, `MonoStack`; sliding windows fold with `a.windows(k).fold(op)` or `Window(op)` (`std.window`).
@@ -2766,26 +2766,25 @@ fn reorder_and_permutations_in_place():
     assert not next_permutation(mut empty) and not prev_permutation(mut empty)
     var one = [42]
     assert not next_permutation(mut one) and not prev_permutation(mut one) and one == [42]
-    assert runs("aabccc") == [('a', 2), ('b', 1), ('c', 3)]
+    assert [(r[r.keys.first!], r.len) for r in "aabccc".runs()] == [('a', 2), ('b', 1), ('c', 3)]
 
 @test
 fn compress_gives_the_values_their_own_domain():
     let ys = [40, -7, 40, 1_000_000_000, 3]
-    let xs = compress(ys)
-    assert xs.len == 4 and xs.D.count == 4
-    assert [xs[i] for i in xs.D] == [-7, 3, 40, 1_000_000_000]
-    var cnt: [xs.D]Int = 0
+    let (domain C, xs) = compress(ys)
+    assert xs.len == 4 and C.count == 4
+    assert [xs[i] for i in C] == [-7, 3, 40, 1_000_000_000]
+    var cnt: [C]Int = 0
     for y in ys: cnt[xs.index_of(y)] += 1
-    assert [cnt[i] for i in xs.D] == [1, 1, 2, 1]
+    assert [cnt[i] for i in C] == [1, 1, 2, 1]
     assert xs.first_ge(4) == xs.index_of(40) and xs.first_ge(2_000_000_000) == None
     assert xs.last_le(4) == xs.index_of(3) and xs.last_le(-100) == None
-    let other = compress([5, 6])
-    assert other.D.count == 2 and xs.D.count == 4
+    let (domain O, other) = compress([5, 6])
+    assert O.count == 2 and other.len == 2 and C.count == 4
     // Compressed range slicing
-    let blk = xs.D.first..=xs.D.nth(2)
+    let blk = C.first!..=C.nth(2)
     assert xs.slice(blk) == [-7, 3, 40]
-    assert xs[blk] == [-7, 3, 40]
-    assert xs.slice(xs.D.nth(1)..xs.D.nth(1)) == []
+    assert xs.slice(C.nth(1)..C.nth(1)) == []
 
 @test
 fn min_max_by_tie_breaking():
@@ -2878,7 +2877,7 @@ fn map_entry_remove_and_four_lookups():
             let k = rand(-10, 10)
             let v = rand(0, 99)
             rm[k] = v
-            if not ks.any(k): ks.push(k)
+            if not ks.contains(k): ks.push(k)
         sort(mut ks)
         for q in -12..=12:
             let want_ge = first((k, rm[k]) for k in ks if k >= q)
@@ -2929,31 +2928,24 @@ fn update_starts_from_init_and_then_from_the_value():
 
 @test
 fn runs_with_by_groups_neighbours_with_the_same_key():
-    let rs = ["ab", "ac", "b", "ad"].runs(by: s => s[0])
+    let rs = [(r[r.keys.first!][0], r.len) for r in ["ab", "ac", "b", "ad"].runs(by: s => s[0])]
     assert rs == [('a', 2), ('b', 1), ('a', 1)]
     let none_yet: List<Int> = []
     assert none_yet.runs(by: x => x).len == 0
 
 @test
-fn excl_fold_folds_all_but_one():
-    assert [(x, rest) for (x, rest) in [2, 3, 5].excl_fold(*)] == [(2, 15), (3, 10), (5, 6)]
-    assert [
-        rest for (_, rest) in ["a", "b", "c"].excl_fold(Monoid("", (p, q) => p + q))
-    ] == ["bc", "ac", "ab"]
-    assert [rest for (_, rest) in [7].excl_fold(+)] == [0]
-
-@test
 fn windows_and_zip_walk_in_step():
-    assert ([1, 2, 3, 4].windows(2)).collect() == [[1, 2], [2, 3], [3, 4]]
-    assert ([1, 2].windows(2)).collect() == [[1, 2]] and ([1, 2].windows(3)).collect().len == 0
+    assert [w.to_list() for w in [1, 2, 3, 4].windows(2)] == [[1, 2], [2, 3], [3, 4]]
+    assert [w.to_list() for w in [1, 2].windows(2)] == [[1, 2]] and [1, 2].windows(3).count() == 0
     assert zip([1, 2, 3], ["a", "b"]) == [(1, "a"), (2, "b")] and zip([1], List<Int>()).len == 0
 
 @test
-fn pairs_and_with_prev_yield_neighbours():
-    assert ([10, 20, 30].pairs()).collect() == [(10, 20), (20, 30)]
-    assert ([7].pairs()).collect().len == 0
+fn adjacent_and_with_prev_yield_neighbours():
+    assert [10, 20, 30].adjacent.collect() == [(10, 20), (20, 30)]
+    assert [10, 20, 30].pairs().collect() == [(10, 20), (10, 30), (20, 30)]
+    assert [7].adjacent.count() == 0
     let empty: List<Int> = []
-    assert empty.pairs().collect().len == 0
+    assert empty.adjacent.count() == 0 and empty.pairs().count() == 0
     assert [(p ?? -1, x) for (p, x) in [10, 20, 30].with_prev()] == [(-1, 10), (10, 20), (20, 30)]
     assert [(p ?? -1, x) for (p, x) in [7].with_prev()] == [(-1, 7)]
     assert empty.with_prev().collect().len == 0
@@ -3071,11 +3063,11 @@ fn first_gt_and_last_lt_match_linear_scan():
     let xs = [1, 3, 3, 7, 10]
     assert xs.first_gt(3) == Some(3) and xs.first_gt(10) == None and xs.first_gt(0) == Some(0)
     assert xs.last_lt(3) == Some(0) and xs.last_lt(1) == None and xs.last_lt(99) == Some(4)
-    let c = compress([10, 3, 7, 3, 1])
+    let (domain C, c) = compress([10, 3, 7, 3, 1])
     assert c.contains(7) and not c.contains(5)
-    assert c.try_at(7) == c.at(7) and c.try_at(5) == None
-    assert c.first_gt(3) == c.at(7) and c.first_gt(10) == None
-    assert c.last_lt(3) == c.at(1) and c.last_lt(1) == None
+    assert c.try_index_of(7) == c.index_of(7) and c.try_index_of(5) == None
+    assert c.first_gt(3) == c.index_of(7) and c.first_gt(10) == None
+    assert c.last_lt(3) == c.index_of(1) and c.last_lt(1) == None
     // Keyed lookup and domain array lookup
     let pairs = [(1, "a"), (3, "b"), (3, "c"), (7, "d")]
     assert pairs.first_gt(3, by: p => p.0) == Some(3)
