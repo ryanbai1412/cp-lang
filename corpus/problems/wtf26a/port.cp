@@ -1,12 +1,14 @@
-// AtCoder WTF 2026 A.
-//
-// Kruskal over the edges by decreasing weight builds the reconstruction tree:
-// leaves are vertices, edge e becomes node `n + e`, and the two sets it joins
-// hang under it as `Cut`s. A cut keeps its own size and `w` times the other
-// side's size; summed from the root down, `total[v] * size` is v's cost, capped
-// at `max_w` (the heaviest edge times n - 1; compared by division so the
-// product never overflows). A second Kruskal over those costs, again by
-// decreasing weight, adds `cost * leaves(a) * leaves(b)` at each join.
+// Source: AtCoder World Tour Finals 2026 A (Min Cut of Graph of Min Weight),
+//   https://atcoder.jp/contests/awtf2026algo/tasks/awtf2026algo_a
+// Problem: a tree of N <= 2.5e5 vertices, weights C <= 1e12. G is the complete graph whose edge
+//   (i, j) has capacity min weight on the tree path i-j; print the sum over i < j of the min cut
+//   f(i, j) in G, mod 998244353. Multitest, S <= 1.25e5 cases, sum N <= 2.5e5.
+// Solution: Kruskal by decreasing weight builds the reconstruction tree; edge (i, j) of G has
+//   the weight at their join, so cutting a node's subtree costs size * the sum over its
+//   ancestor joins of w * (other side's size). These cuts suffice, so f(i, j) is the least cut
+//   on the tree path i-j: a second Kruskal over the cuts by decreasing cost adds
+//   cost * leaves * leaves per join. A leaf's cut is at most max weight * (n - 1), so capping
+//   costs there keeps every path minimum and avoids overflow. Two sorts and DSUs, O(N log N).
 
 type Z = Mod<998_244_353>
 

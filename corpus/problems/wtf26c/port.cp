@@ -1,14 +1,14 @@
-// AtCoder WTF 2026 C.
-//
-// For each g, `labelled[g]` counts the structures whose groups take labels
-// from a set of g. It is `dp[n, 0]` of a 2D DP over the sorted `a`: after
-// step `cur`, `dp[i, j]` has `i` closed and `j` open slots; a step either
-// keeps a slot (weight `cur + 1 - i` or `j + 1`) or, weighted `a[cur] + 1`,
-// joins the DP with the `claim` table of that g by a 2D convolution, where
-// `claim[i, j] = C(i + j, i) * sum_{k < g} k^i (k + 1)^j`.
-// Two binomial inversions then give the answer:
-//   exact[h] = labelled[h] - sum_{g < h} C(h, g) exact[g]
-//   ans[g]   = exact[g]    - sum_{h < g} C(n - h, g - h) ans[h]
+// Source: AtCoder World Tour Finals 2026 C (Count by Descents),
+//   https://atcoder.jp/contests/awtf2026algo/tasks/awtf2026algo_c
+// Problem: given strictly increasing A_1 < ... < A_N (N <= 80, A_i < 998244353), for each
+//   d = 0..N-1 sum prod (i + x_i) over the rearrangements x of A with exactly d descents,
+//   mod 998244353.
+// Solution: labelled[g] counts the arrangements whose groups take labels from a set of g:
+//   dp[i, j] over the sorted A, i closed and j open slots; each step keeps a slot (weight
+//   cur + 1 - i or j + 1) or, weighted A + 1, joins the claim table
+//   claim[i, j] = C(i + j, i) * sum_{k < g} k^i (k + 1)^j by a 2D convolution, flattened into one
+//   NTT. Two binomial inversions, exact[h] = labelled[h] - sum_{g < h} C(h, g) exact[g] and
+//   ans[g] = exact[g] - sum_{h < g} C(n - h, g - h) ans[h], give d = g - 1. O(N^4 log N).
 
 type Z = Mod<998_244_353>
 let comb = Comb<Z>()

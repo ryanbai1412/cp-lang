@@ -1,20 +1,12 @@
-// Codeforces 2187 B — Minimum Distance Disjoint-Bit Pair
-//
-// Find non-negative integers `(p, q)` with `p & q == 0` minimizing
-// `|p - x| + |q - y|`.
-//
-// Fixing both comparison directions `(ge_x, ge_y)` in `{false (<=), true (>=)}^2`
-// enforces `p >= x` (or `p <= x`) and `q >= y` (or `q <= y`) on every bit
-// transition. Because each sign choice is valid only when it matches the true
-// comparison, the linear signed objective equals `|p - x| + |q - y|` on every
-// reachable pair, and taking the minimum over all four sign choices covers all
-// pairs `(p, q)` exactly.
-//
-// Run a top-down digit DP over bits `30` down to `0` with `[Bool, Bool]` state
-// `(sep_x, sep_y)` tracking whether `p` / `q` has already strictly separated
-// from `x` / `y` in its chosen direction. One `step(sep, ge, v, bit)` helper
-// enforces the direction constraint and returns the updated `(sep', signed_diff)`
-// for both axes.
+// Source: Codeforces 2187B (Shortest Statement Ever),
+//   https://codeforces.com/contest/2187/problem/B
+// Problem: given x, y < 2^30, print p, q >= 0 with p & q = 0 minimising |x - p| + |y - q| (any
+//   optimal pair). t <= 1e4 tests. Multitest.
+// Solution: guess the signs of p - x and q - y (four cases); with them fixed the objective is
+//   linear, and a wrong guess only ever overestimates, so the minimum over the cases is exact.
+//   Per case a digit DP over bits 30..0 with state (p has left x, q has left y in the guessed
+//   direction) tries the bit pairs 00, 01, 10 and keeps the least (cost, p, q).
+//   O(4 * 31 * 4 * 3) per test.
 
 fn step(sep: Bool, ge: Bool, v: Bool, bit: Bool) -> ?(Bool, Int):
     if not sep and v != bit and v != ge: return None

@@ -1,6 +1,11 @@
-// IOI 2006 The Valley of Mexico: n cities stand on a circle and some pairs
-// trade. Find a route through every city once, along trading pairs, that
-// never crosses itself.
+// Source: IOI 2006 Day 2 (The Valley of Mexico), https://dmoj.ca/problem/ioi06p4
+// Problem: c <= 1000 cities numbered clockwise round a lake and n agreements (pairs of cities).
+//   Print a route that visits every city once, moving only between agreeing pairs along
+//   straight segments that never cross; print -1 if there is none.
+// Solution: a non-crossing route always covers a contiguous arc and grows it by one city at
+//   either end. finish(l, r, at_r), memoised: the arc l..r clockwise is done and the route stands
+//   at l or r; it returns the next city (cw(r) or ccw(l)) from which the rest can be finished.
+//   Try every start, then follow the choices. O(c^2) states, O(1) each.
 // original: corpus/submissions/5032736.cpp
 let n: 1..=1000 = read()
 let m: 0..=1e5 = read()

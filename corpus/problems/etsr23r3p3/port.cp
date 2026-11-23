@@ -1,5 +1,12 @@
-// ETSR '23 R3 P3 (CP Lang 0.2.2): Kruskal reconstruction tree + Dijkstra from 1
-// with `@multitest` and Tropical Optionals `?Int` (no `INF` sentinel).
+// Source: ETSR '23 R3 P3, NOI 2018 Day 1 P1 (Return), https://dmoj.ca/problem/etsr23r3p3
+// Problem: a connected undirected graph, n <= 2e5, m <= 4e5, edges with length l <= 1e4 and
+//   altitude a <= 1e9; home is vertex 1. Each of q <= 4e5 days gives start v and water level p:
+//   drive free over edges with a > p, leave the car anywhere and walk the rest; print the least
+//   walking length. Online: v, p are decoded with the last answer when K = 1. Multitest.
+// Solution: Dijkstra from 1 gives each vertex's walk home. A Kruskal reconstruction tree over
+//   the edges by decreasing altitude makes the vertices reachable by car above p one subtree:
+//   jump from leaf v up while the node's altitude > p, and each node keeps the least walk in its
+//   subtree. O((n + m) log + q log n).
 // original: corpus/submissions/5521298.cpp
 
 @multitest

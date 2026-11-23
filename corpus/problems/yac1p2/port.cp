@@ -1,4 +1,11 @@
-// YAC 1 P2 (today/ runnable subset) — original: corpus/submissions/4376253.cpp
+// Source: Yet Another Contest 1 P2 (A Boring Problem), https://dmoj.ca/problem/yac1p2
+// Problem: a tree of 3 <= n <= 2e5 nodes, each black (B) or white (W). Count the simple paths
+//   (unordered) that contain at least three nodes of the same colour.
+// Solution: count the complement: a path with at most two nodes of each colour. vals[u, a, b]
+//   counts downward paths from u with a blacks and b whites (both < 3); before merging child v
+//   into u, pair its paths with u's so far whose counts still sum below 3. The answer is all
+//   n + n(n-1)/2 paths minus those. O(81 n) after a BFS order.
+// original: corpus/submissions/4376253.cpp
 
 let n: 1..=200_000 = read()
 let s: [0..n]Char = read()

@@ -1,22 +1,13 @@
-// Codeforces 2261 D2 — XOR-Hashed Restriction Cuts
-//
-// Give every restriction `[l, r]` a random 62-bit key and XOR it over its
-// range via `diff`, so two positions share `hash` iff the exact same
-// restrictions cover both.
-//
-// Every pair `(a, b)` of equal-hash positions must be separated by at least
-// one cut. Sweeping `next[i]` (`?Int`, nearest later equal-hash partner,
-// propagated forward when no cut is placed at `i + 1`) greedily places cuts
-// at minimal positions.
-//
-// Pairing construction: we output `half = cuts.len / 2` intervals
-// `[cuts[i] + 1, cuts[i + half]]`. Because every cut `c` is either a left
-// boundary (`c + 1`) or a right boundary (`c`) of one of the `half` intervals,
-// any two positions separated by at least one cut lie on opposite sides of at
-// least one interval boundary, except possibly the outermost pair
-// `(first_bad, last_bad)` if every cut lies strictly between them and both sit
-// outside all intervals — so we prepend `0` when `hash[first_bad] == hash[last_bad]`,
-// and append `n` when `cuts.len` is odd to pair the cuts evenly.
+// Source: Codeforces 2261D2 (Come Be My Friend, Don't Be So Scared, Hard Version),
+//   https://codeforces.com/contest/2261/problem/D2
+// Problem: n spots in a row and m distinct detector segments [l, r], each reporting whether the
+//   hidden spot is inside it. Add the fewest segments so the reports always identify the spot;
+//   print the count and the segments. n, m <= 2e5 (sums over all tests). Multitest.
+// Solution: XOR a random 62-bit key per segment over its range: equal hashes mean equal covering
+//   sets, and each equal-hash pair needs a new boundary between them. Greedy stabbing from the
+//   left (carry the nearest later partner, cut where it is next door) gives the fewest cuts.
+//   Pair cut i with cut i + half as one segment, adding cut 0 when the outermost bad pair still
+//   collides and cut n to make the count even. O((n + m) log n).
 
 @!multitest
 let (n, m): (1..=2e5, 0..=2e5) = read()
