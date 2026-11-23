@@ -26,7 +26,7 @@ type M = Mod<998_244_353>
 
 let t: 1..=10_000 = read()
 let ns: [0..t](1..=20_000_000) = read()
-let lim = ns.max() + 2
+let lim = ns.max()! + 2
 let comb = Comb<M>(lim)
 
 // odd_div_sum(2^k * m) = 2^k * σ(m) for odd m.

@@ -7,20 +7,20 @@
 //
 // In H2 the closed form splits on the parity of d:
 // - Odd d: block reduction collapses the prefix to g_hi = len / d + ((len % d) & 1) + 1.
-//   The alternating bit-weight `popcount(g_hi) - 2 * popcount(g_hi & EVEN_BITS_FROM_2)`
+//   The alternating bit-weight `popcount(g_hi) - 2 * popcount(g_hi & even_bits_from_2)`
 //   tracks the net odd-minus-even 1-bits (above bit 0), indexing the 4-cycle
-//   ODD_D_GRUNDY = [0, 2, 3, 1].
+//   odd_d_grundy = [0, 2, 3, 1].
 // - Even d: even prefix lengths cancel to 0; odd lengths collapse to
 //   g = len / d + 2, giving 0 when ctz(g) is odd, else 2 (odd popcount) or 1.
 
-let EVEN_BITS_FROM_2 = 0x5555555555555554
-let ODD_D_GRUNDY = [0, 2, 3, 1]
+let even_bits_from_2 = 0x5555555555555554
+let odd_d_grundy = [0, 2, 3, 1]
 
 fn prefix_xor(len: Int, d: Int) -> Int:
     if d % 2 == 1:
         let g_hi = len / d + ((len % d) & 1) + 1
-        let alt = popcount(g_hi) - 2 * popcount(g_hi & EVEN_BITS_FROM_2)
-        ODD_D_GRUNDY[alt & 3]
+        let alt = popcount(g_hi) - 2 * popcount(g_hi & even_bits_from_2)
+        odd_d_grundy[alt & 3]
     elif len % 2 == 0:
         0
     else:
