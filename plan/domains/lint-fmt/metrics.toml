@@ -33,20 +33,20 @@ note = "checked by test every_lint_matches_the_spec_lint_list (cargo test -p cpl
 [[metric]]
 name = "lint_warnings_corpus_spec"
 command = "target/release/cpl lint corpus/problems/*/spec.cp | tail -1"
-today = "100 files checked, 43 warnings, 0 errors, 1 not linted"
+today = "100 files checked, 34 warnings, 0 errors, 1 not linted"
 target = "0 warnings, 0 not linted"
 
 [[metric]]
 name = "lint_warnings_spec_std"
 command = "target/release/cpl lint spec/std/*.cp | tail -1"
-today = "40 files checked, 269 warnings, 0 errors, 5 not linted"
+today = "40 files checked, 262 warnings, 0 errors, 5 not linted"
 target = "0 warnings, 0 not linted"
 note = "the 5 have syntax or check errors stdlib owns (algebra, geometry, graph, seq, strings); a rise in either set fails corpus_warnings_only_go_down"
 
 [[metric]]
 name = "lint_warnings_corpus_dream"
 command = "target/release/cpl lint corpus/problems/*/dream.cp | tail -1"
-today = "421 files checked, 80 warnings, 0 errors, 84 not linted"
+today = "421 files checked, 99 warnings, 0 errors, 84 not linted"
 target = "0 false positives among the warnings; not-linted files are syntax the parser does not have yet (compiler, corpus)"
 
 [[metric]]

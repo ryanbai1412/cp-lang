@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- Note from lint-fmt: 27 `dream.cp` L0509 warnings are `X.first(p)` predicate searches (e.g. `D.first(x => perm[x] < x)`), which decisions.md §182 spells `X.find(p)`; `cpl lint --fix` rewrites them.
 - Note from lint-fmt: `corpus/problems/btoi18p4/spec.cp:34` `iterate(from: Some(w), step: ..).last()!` fails `cpl check` (E0606: `.last` requires `Bidir`, which `Gen<_>` does not implement); it is the one corpus `spec.cp` L0206 warning left.
 - Landed: mechanical v0.3 move, batch 3: 9 tracked ports (`cf2066e cf2245f cf2187c cf2187d cf2262b ucup4s25b wtf26b cf2165e cf2207e1`), `corpus/sets/v03.txt` 198 -> 207. Edits named by `cpl check`: `!` on `?V`/`?Cut` values, `var` on a mutated `Set`, `bsearch_first` -> `first_true`, `.copy()` where a moved array is read again, `g.deg(v)` on a `[V]List<V>` -> `g[v].len`, a mis-parenthesised range. Same evidence as batch 1. Held back: cf2147h and cf2115b compile after the edit but disagree with `orig.cpp` (gen seeds 3 and 1), so they need a real look, not a mechanical one. Of the 96 left, 35 fail only on std names (filed to stdlib), 10 mix those with other errors, 51 need hand edits.
 - Note from lint-fmt: L0509 now follows decisions.md §182 (`xs.find(p)`, `first` is a getter), so the 8 corpus `spec.cp` files using `.find(p)` no longer warn; `skills/cp-lang/SKILL.md` still teaches `xs.first(p)`.

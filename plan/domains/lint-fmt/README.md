@@ -77,9 +77,9 @@ Measured 2026-11-22 on main (98618e1b5) with a release `cpl`; commands in full i
 | Lints with records + tests | `ls -d spec/lints/*/ \| wc -l` | 38 | = lints |
 | Spec lint codes emitted by nothing | `comm` of `--list` vs `spec/diagnostics.md`, then grep `cpl-check` | 0 (9 in `cpl-check`) | 0 |
 | Implemented codes missing from spec | test `every_lint_matches_the_spec_lint_list` | 0 | 0 |
-| Warnings on corpus `spec.cp` (100) | `cpl lint corpus/problems/*/spec.cp` | 43, 1 not linted | 0, 0 |
-| Warnings on `spec/std` (40) | `cpl lint spec/std/*.cp` | 269, 5 not linted | 0, 0 |
-| Warnings on `dream.cp` (421) | `cpl lint corpus/problems/*/dream.cp` | 80, 84 not linted | 0 false positives |
+| Warnings on corpus `spec.cp` (100) | `cpl lint corpus/problems/*/spec.cp` | 34, 1 not linted | 0, 0 |
+| Warnings on `spec/std` (40) | `cpl lint spec/std/*.cp` | 262, 5 not linted | 0, 0 |
+| Warnings on `dream.cp` (421) | `cpl lint corpus/problems/*/dream.cp` | 99, 84 not linted | 0 false positives |
 | Hard-coded stdlib names in rules | `grep -ohE '"[A-Z][A-Za-z]+"' rules/*.rs` | 16 | 0 |
 | Wasm-only gaps in cpl-lint | `git grep -c 'target_arch = "wasm32"'` | 8 | 0 |
 | Lint time, largest linted file (2,682 lines) | `time cpl lint spec/std/tree.cp` | 0.01 s | < 0.05 s |
