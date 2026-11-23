@@ -109,13 +109,16 @@ pub(crate) fn explain_file(
     let dropped = cpl_codegen::explain_dropped_fields(&compiled.program);
     const DROPPED: &str = "never read; it and its stores are left out";
     if json {
-        let _ = writeln!(stdout, "[");
-        for (i, entry) in entries.iter().enumerate() {
-            let comma = if i + 1 == entries.len() && dropped.is_empty() {
-                ""
-            } else {
-                ","
-            };
+        let row = |site: &str, lowering: &str, detail: &str| {
+            format!(
+                "  {{\"site\":{},\"lowering\":{},\"detail\":{}}}",
+                cpl_json::escape_string(site),
+                cpl_json::escape_string(lowering),
+                cpl_json::escape_string(detail),
+            )
+        };
+        let mut rows = Vec::new();
+        for entry in &entries {
             let (kind, detail) = match &entry.mode {
                 cpl_codegen::ClosureMode::StaticDirect { closure } => {
                     ("static_direct", format!("cpl_fn{closure}"))
@@ -131,24 +134,20 @@ pub(crate) fn explain_file(
                     ("dynamic_std_function", reason.clone())
                 }
             };
-            let _ = writeln!(
-                stdout,
-                "  {{\"site\":{},\"lowering\":{},\"detail\":{}}}{comma}",
-                cpl_json::escape_string(&entry.site),
-                cpl_json::escape_string(kind),
-                cpl_json::escape_string(&detail),
-            );
+            rows.push(row(&entry.site, kind, &detail));
         }
-        for (i, site) in dropped.iter().enumerate() {
-            let comma = if i + 1 == dropped.len() { "" } else { "," };
-            let _ = writeln!(
-                stdout,
-                "  {{\"site\":{},\"lowering\":\"dropped_field\",\"detail\":{}}}{comma}",
-                cpl_json::escape_string(site),
-                cpl_json::escape_string(DROPPED),
-            );
+        for site in &dropped {
+            rows.push(row(site, "dropped_field", DROPPED));
         }
-        let _ = writeln!(stdout, "]");
+        for (span, what, why) in cpl_codegen::explain_copies(&compiled.program) {
+            let (line, col) = cpl_codegen::explain::line_col(&compiled.text, span);
+            rows.push(row(
+                &format!("{line}:{col}"),
+                "copy",
+                &format!("{what}: {why}"),
+            ));
+        }
+        let _ = writeln!(stdout, "[\n{}\n]", rows.join(",\n"));
         return 0;
     }
     let _ = write!(

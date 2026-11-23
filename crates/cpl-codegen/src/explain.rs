@@ -178,7 +178,8 @@ fn explain_sunk(text: &str, program: &cpl_ir::Program) -> Vec<(usize, usize, Str
     sunk
 }
 
-fn line_col(text: &str, span: cpl_diag::Span) -> (usize, usize) {
+/// The 1-based line and column of `span` in `text`.
+pub fn line_col(text: &str, span: cpl_diag::Span) -> (usize, usize) {
     let off = (span.start as usize).min(text.len());
     let before = &text[..off];
     let line = before.bytes().filter(|&b| b == b'\n').count() + 1;

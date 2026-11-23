@@ -701,6 +701,33 @@ fn explain_shows_a_code_and_rejects_an_unknown_one() {
         .any(|e| e.at(&["code"]).as_str() == Some("E0302")));
 }
 
+/// `cpl explain --json` lists each heap copy left in the C++, with where and
+/// why it owns its value, as the text report does.
+#[test]
+fn explain_json_lists_each_copy_and_why() {
+    let dir = scratch("explain_json_copies");
+    std::fs::write(
+        dir.join("c.cp"),
+        "fn f(rows: List<List<Int>>) -> Int:\n    var own = rows[0]\n    own.push(5)\n    own.len\nprint(f([[1], [2]]))\n",
+    )
+    .unwrap();
+    let out = cpl(&dir, &["explain", "c.cp", "--json"]);
+    assert_eq!(out.status.code(), Some(0), "{}", text(&out.stderr));
+    let json = cpl_json::parse(&text(&out.stdout)).expect("JSON");
+    let copy = json
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|e| e.at(&["lowering"]).as_str() == Some("copy"))
+        .unwrap_or_else(|| panic!("{}", text(&out.stdout)));
+    assert_eq!(copy.at(&["site"]).as_str(), Some("2:15"));
+    assert!(copy
+        .at(&["detail"])
+        .as_str()
+        .unwrap()
+        .contains("changed later"));
+}
+
 /// A file's explanation names the representation sections it can't fill
 /// yet (plan/QUESTIONS.md tools-3), on a file with closures and on one
 /// with none.
