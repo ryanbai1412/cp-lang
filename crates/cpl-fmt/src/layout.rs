@@ -468,10 +468,10 @@ impl<'a, 'b> Emitter<'a, 'b> {
     }
 
     fn has_comment(&self, i: usize) -> bool {
-        // The line's own leading and trailing comments were taken off its
-        // first and last tokens' accounts by the caller.
+        // Only tokens inside a bracket are asked about, so `i` is never
+        // the line's first token, whose leading comments are the line's own.
         let tok = &self.toks[i];
-        (i > 0 && !tok.leading.is_empty()) || tok.trailing.is_some()
+        !tok.leading.is_empty() || tok.trailing.is_some()
     }
 
     /// A bracket with a comment inside cannot be written on one line.

@@ -811,6 +811,8 @@ fn a_comment_deep_in_brackets_keeps_them_open() {
         "let x = f(g(1,\n// two\n2), 3)\n",
         "let x = f(g(h(1),  // three\n2), 3)\n",
         "let x = f(g(  // four\n1, 2), 3)\n",
+        "let x = f(1,\n// five\n[2], 3)\n",
+        "let x = f(1,\n// six\n(2 + 1), 3)\n",
     ] {
         let out = fmt(src);
         let comment = src.split("//").nth(1).unwrap().split('\n').next().unwrap();
