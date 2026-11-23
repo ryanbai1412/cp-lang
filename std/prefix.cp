@@ -700,6 +700,9 @@ pub fn prefix_excl<D, T, M>(op: M, a: [D]T) -> [D]T:
     let m = Monoid<T>.of(op)
     [D] i => m.op(pre[i.l], suf[i.r])
 
+impl Show for Prefix<D, T>:
+    fn show(q): "{q.p}"
+
 @test
 fn one_d_sums_match_brute():
     domain V = 1..=9

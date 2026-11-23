@@ -1224,6 +1224,12 @@ print(Subset<B>.nth(5).items.map(b => Int(b)).collect())
 """
 out = "0 2"
 
+[case."Show/Prefix/show"]
+code = """
+print([3, 1, 4].scan(+))
+"""
+out = "0 3 4 8"
+
 [case."Show/SortedBag/show"]
 code = """
 use std.bag.{SortedBag}
