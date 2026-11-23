@@ -1,85 +1,34 @@
-// Universal Cup 5 Stage 5 (Chengdu) F: answer[k] = sum of choose(size, k) over
-// suffix-tree edges, bottom end minus top end. Since subtree sizes reach n^2,
-// take their power sums via the logarithmic derivative -x p'(x) / p(x) of
-// p(x) = prod(1 - s x), then convert power sums to binomial sums via transposed
-// multipoint evaluation:
-//   answer[k] = [x^k] (power_sums(x) * prod(1 - u x for u in 0..k)) / k!
-use std.poly.{inv, prod_linear}
-use std.strings.{suffix_array}
+// Universal Cup 5 Stage 5 (Chengdu) F: for every k in 1..=n, the sum over distinct substrings u
+// of choose(d(u), k), d(u) = number of distinct substrings starting with u; modulo 998244353.
+// Substrings are the points of the suffix tree. Along an edge d runs from top_size + 1 to
+// bottom_size, so its choose(d, k) telescope to choose(bottom_size, k) - choose(top_size, k).
+// Sizes reach n^2, so keep only their power sums p[j] = sum bottom^j - top^j for j <= n (a size
+// of 0 adds nothing for k >= 1), move them onto weights w at the points 0..=n with the same
+// power sums, and read sum_k answer[k] y^k = sum_m w[m] (1 + y)^m off a Taylor shift.
+use std.poly.{eval_all, power_sums, prod_linear, taylor_shift}
+use std.strings.{suffix_tree_edges}
 
 type Z = Mod<998_244_353>
 let comb = Comb<Z>()
 
-struct OpenNode(depth: Int, size: Int)
-
-// seg[node] = prod(1 - roots[i] x for i in lo..hi), cut to `keep` terms
-fn product(mut seg: List<List<Z>>, node: Int, lo: Int, hi: Int, roots: List<Z>, keep: Int):
-    if hi - lo == 1:
-        seg[node] = [Z(1), -roots[lo]]
-        return
-    let mid = (lo + hi) / 2
-    product(mut seg, 2 * node, lo, mid, roots, keep)
-    product(mut seg, 2 * node + 1, mid, hi, roots, keep)
-    let p = convolve(seg[2 * node], seg[2 * node + 1])
-    seg[node] = if p.len > keep: p[..keep] else: p
-
-// sum of s^j over the sizes, for j in 0..=deg (entry 0 is left at zero)
-fn power_sums(sizes: List<Z>, deg: Int) -> List<Z>:
-    let p = prod_linear(sizes).rev.to_list().resized(deg + 1, Z(0))
-    // -x p'(x) / p(x)
-    let r = convolve([-Z(i) * p[i] for i in 0..=deg], inv(p, deg + 1))
-    r[..deg + 1].to_list()
-
-// res[i] = [x^(hi - lo)] of c * prod(1 - u x for u in lo..=i); `c` has hi - lo + 1 terms
-fn descend(seg: List<List<Z>>, node: Int, lo: Int, hi: Int, c: List<Z>, mut res: List<Z>):
-    if hi - lo == 1:
-        res[lo] = c[1] - Z(lo) * c[0]
-        return
-    let mid = (lo + hi) / 2
-    descend(seg, 2 * node, lo, mid, List(c[..mid - lo + 1]), mut res)
-    let full = convolve(c, seg[2 * node])
-    descend(seg, 2 * node + 1, mid, hi, List(full[mid - lo..=hi - lo]), mut res)
-
-// Walk the suffix tree in LCP order, recording (top_size, bottom_size) per edge.
-fn suffix_tree_edges(s: Str) -> (below: List<Z>, above: List<Z>):
-    let n = s.len
-    let built = suffix_array(s)
-    let (sa, lcp) = (built.sa, built.lcp)
-    var below = List<Z>()
-    var above = List<Z>()
-    var open: List<OpenNode> = []
-    for i in 0..n:
-        let next = if i + 1 < n: lcp[i] else: 0
-        var (depth, size) = (n - sa[i], 0)
-        while let top = open.last and top.depth > next:
-            if depth > top.depth:
-                below.push(Z(size))
-                size += depth - top.depth
-                above.push(Z(size))
-            let prev = open.pop()!
-            depth = prev.depth
-            size += prev.size
-        if depth > next:
-            below.push(Z(size))
-            size += depth - next
-            above.push(Z(size))
-        if i + 1 < n:
-            if let top = open.last and top.depth == next:
-                open[open.len - 1] = OpenNode(top.depth, top.size + size)
-            else:
-                open.push(OpenNode(next, size))
-    (below, above)
+// sum_s (1 + y)^s mod y^p.len for the multiset whose power sums are p. With q = prod(x - m) over
+// the points m in 0..p.len, partial fractions of sum_m w[m] / (x - m) = sum_j p[j] / x^(j + 1)
+// give w[m] = num(m) / q'(m), num the polynomial part of q(x) * sum_j p[j] / x^(j + 1).
+fn binomial_sums(p: List<Z>) -> List<Z>:
+    let deg = p.len - 1
+    let points = [Z(m) for m in 0..=deg]
+    let q = prod_linear(points)
+    let num = convolve(q, p.rev.to_list())[deg + 1..].to_list()
+    let at = eval_all(num, points)
+    let sign = (m: Int) => if (deg - m) % 2 == 0: Z(1) else: -Z(1)
+    let w = [at[m] * sign(m) * comb.inv_fact(m) * comb.inv_fact(deg - m) for m in 0..=deg]
+    taylor_shift(w, Z(1))
 
 @!multitest
 let n: 1..=2e5 = read()
-let s: Str = read()
-let (below, above) = suffix_tree_edges(s)
-
-let top = power_sums(above, n)
-let bottom = power_sums(below, n)
-let sums = [top[j] - bottom[j] for j in 0..=n]
-var eval_tree = List.filled(4 * n, List<Z>())
-product(mut eval_tree, 1, 0, n, [Z(u) for u in 0..n], n + 1)
-var ans = List.filled(n, Z(0))
-descend(eval_tree, 1, 0, n, sums, mut ans)
-print([(ans[i] * comb.inv_fact(i + 1)).v for i in 0..n])
+let s: Str of "abcdefghijklmnopqrstuvwxyz" = read()
+let edges = suffix_tree_edges(s)
+let bottom = power_sums([Z(e.bottom_size) for e in edges], n)
+let top = power_sums([Z(e.top_size) for e in edges if e.top_size > 0], n)
+let answer = binomial_sums([bottom[j] - top[j] for j in 0..=n])
+print(answer[1..=n].map(a => a.v))
