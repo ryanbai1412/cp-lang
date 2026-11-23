@@ -266,9 +266,24 @@ impl Extractor<'_> {
     /// The statement up to (not including) `stop`, on one line.
     fn head(&self, stmt: &Stmt, stop: char) -> String {
         let text = self.text(self.code_span(stmt));
-        let first = text.lines().next().unwrap_or("");
-        let cut = first.rfind(stop).map_or(first, |at| &first[..at]);
-        squeeze(cut)
+        // The first line, continued while a bracket is open, up to its last
+        // `stop` outside brackets: `struct Id(raw: Int)` has no body.
+        let mut depth = 0i32;
+        let mut end = text.len();
+        let mut cut = None;
+        for (at, c) in text.char_indices() {
+            match c {
+                '(' | '[' | '{' => depth += 1,
+                ')' | ']' | '}' => depth -= 1,
+                '\n' if depth <= 0 => {
+                    end = at;
+                    break;
+                }
+                _ if c == stop && depth == 0 => cut = Some(at),
+                _ => {}
+            }
+        }
+        squeeze(&text[..cut.unwrap_or(end)])
     }
 
     /// The statement without its decorators.

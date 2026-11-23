@@ -127,6 +127,19 @@ fn signatures_are_the_declaration_without_its_body() {
 }
 
 #[test]
+fn a_one_line_struct_keeps_its_fields_in_the_signature() {
+    let module = extract(
+        "pub struct Mark(at: Int)\nstruct Block:\n    x: Int\npub enum Visit<V>: Enter(v: V), Again\npub struct Wide(\n    a: Int,\n    b: Int,\n)\n",
+        "m.cp",
+    );
+    let signature = |name: &str| find(&module, name).signature.clone();
+    assert_eq!(signature("Mark"), "pub struct Mark(at: Int)");
+    assert_eq!(signature("Block"), "struct Block");
+    assert_eq!(signature("Visit"), "pub enum Visit<V>");
+    assert_eq!(signature("Wide"), "pub struct Wide( a: Int, b: Int, )");
+}
+
+#[test]
 fn doc_comments_attach_to_the_declaration_below_them() {
     let module = lib();
     assert_eq!(
