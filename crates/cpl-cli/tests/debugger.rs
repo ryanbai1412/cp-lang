@@ -419,46 +419,74 @@ fn check_says_what_run_and_build_would() {
     }
 }
 
-#[test]
-fn a_wrong_answer_goes_from_stress_to_a_saved_case_to_a_green_rerun() {
-    // Milestone 1's loop: WA, `cpl stress` against the file's own brute, the
-    // shrunk case saved, the fix, then `cpl test` and `cpl stress` both pass.
-    let demo = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../examples/debugging/knapsack.cp");
-    let planted = std::fs::read_to_string(demo).unwrap();
-    let path = scratch("stress-loop", "knapsack.cp", &planted);
+/// Milestone 1's loop on one program: WA, `cpl stress` against the file's
+/// own brute, checker or interactor, the shrunk case saved, the fix, then
+/// `cpl test` and `cpl stress` both pass.
+fn stress_loop(test: &str, planted: &str, fixed: &str, saved: &[&str]) {
+    assert_ne!(fixed, planted);
+    let path = scratch(test, "p.cp", planted);
     let run = |args: &[&OsStr]| {
         let out = cpl(args, b"");
         (out.status.code(), text(&out.stdout) + &text(&out.stderr))
     };
+    let stress = [
+        "stress".as_ref(),
+        path.as_os_str(),
+        "--cases".as_ref(),
+        "200".as_ref(),
+    ];
+    let rerun = ["test".as_ref(), path.as_os_str()];
 
-    let (code, report) = run(&["stress".as_ref(), path.as_os_str()]);
+    let (code, report) = run(&stress);
     assert_eq!(code, Some(1), "{report}");
-    assert!(report.contains("expected `1`, got `2`"), "{report}");
-    let saved = path.with_file_name("knapsack.tests");
-    let mut cases: Vec<_> = std::fs::read_dir(&saved)
+    let tests = path.with_file_name("p.tests");
+    let mut cases: Vec<_> = std::fs::read_dir(&tests)
         .unwrap()
         .map(|e| e.unwrap().file_name().into_string().unwrap())
         .collect();
     cases.sort();
-    assert_eq!(cases, ["stress-3.in", "stress-3.out"], "{report}");
-    assert_eq!(
-        std::fs::read_to_string(saved.join("stress-3.out"))
-            .unwrap()
-            .trim(),
-        "1"
-    );
-
-    let (code, report) = run(&["test".as_ref(), path.as_os_str()]);
+    assert_eq!(cases, saved, "{report}");
+    let (code, report) = run(&rerun);
     assert_eq!(code, Some(1), "{report}");
-    assert!(report.contains("stress-3  WA"), "{report}");
+    assert!(report.contains("0/1 passed"), "{report}");
 
-    let fixed = planted.replace("for c in 0..=cap:", "for c in (0..=cap).rev:");
-    assert_ne!(fixed, planted);
     std::fs::write(&path, fixed).unwrap();
-    let (code, report) = run(&["test".as_ref(), path.as_os_str()]);
+    let (code, report) = run(&rerun);
     assert_eq!(code, Some(0), "{report}");
     assert!(report.contains("1/1 passed"), "{report}");
-    let (code, report) = run(&["stress".as_ref(), path.as_os_str()]);
+    let (code, report) = run(&stress);
     assert_eq!(code, Some(0), "{report}");
-    assert!(report.contains("cases agree"), "{report}");
+    assert!(report.contains("200 cases agree"), "{report}");
+}
+
+fn source(path: &str) -> String {
+    std::fs::read_to_string(Path::new(env!("CARGO_MANIFEST_DIR")).join(path)).unwrap()
+}
+
+#[test]
+fn a_wrong_answer_goes_from_stress_to_a_saved_case_to_a_green_rerun() {
+    let planted = source("../../examples/debugging/knapsack.cp");
+    let fixed = planted.replace("for c in 0..=cap:", "for c in (0..=cap).rev:");
+    stress_loop(
+        "loop-alt",
+        &planted,
+        &fixed,
+        &["stress-3.in", "stress-3.out"],
+    );
+    let path = Path::new(env!("CARGO_TARGET_TMPDIR")).join("loop-alt/p.tests/stress-3.out");
+    assert_eq!(std::fs::read_to_string(path).unwrap().trim(), "1");
+}
+
+#[test]
+fn the_loop_reruns_a_checked_multitest_through_the_files_checker() {
+    let planted = source("tests/debugger/cf2284b_planted.cp");
+    let fixed = source("tests/debugger/cf2284b.cp");
+    stress_loop("loop-check", &planted, &fixed, &["stress-1.in"]);
+}
+
+#[test]
+fn the_loop_reruns_an_interactive_multitest_through_the_files_interactor() {
+    let fixed = source("tests/debugger/guess_multitest.cp");
+    let planted = fixed.replace("else: lo = mid + 1", "else: lo = mid");
+    stress_loop("loop-interactor", &planted, &fixed, &["stress-1.in"]);
 }
