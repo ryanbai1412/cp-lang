@@ -137,8 +137,17 @@ impl<'p> Emitter<'p> {
             | ExprKind::Cast(Cast::Label(d) | Cast::FromLabel(d) | Cast::FromOrd(d), _) => {
                 touch.reads_domain.insert(*d);
             }
-            ExprKind::CallExpr(_, args) => {
-                touch.io = true;
+            ExprKind::CallExpr(callee, args) => {
+                match self.closure_touch(callee) {
+                    Some(t) => {
+                        touch.io |= t.io;
+                        touch.reads.extend(t.reads);
+                        touch.writes.extend(t.writes);
+                        touch.reads_domain.extend(t.reads_domain);
+                        touch.writes_domain.extend(t.writes_domain);
+                    }
+                    None => touch.io = true,
+                }
                 for arg in args {
                     if let Arg::Mut(place) = arg {
                         touch.writes.insert(walk::root(place));
@@ -180,6 +189,29 @@ impl<'p> Emitter<'p> {
             _ => {}
         });
         touch
+    }
+
+    /// What calling `callee` touches outside its own locals, when it can only
+    /// be one closure that captures nothing and calls no fn value.
+    fn closure_touch(&self, callee: &Expr) -> Option<Touch> {
+        let home = self.closure_id.map_or(self.fn_id, |_| None);
+        let cid = self.devirt.target(home, callee)?;
+        let c = &self.program.closures[cid];
+        let mut calls = false;
+        walk::deep_exprs(&c.body, &mut |e| {
+            calls |= matches!(e.kind, ExprKind::CallExpr(..))
+        });
+        if calls
+            || !c.captures.is_empty()
+            || !c.muts.is_empty()
+            || !crate::devirt::skippable(callee)
+        {
+            return None;
+        }
+        let mut t = self.block_touch(&c.body);
+        t.reads.retain(|&(global, _)| global);
+        t.writes.retain(|&(global, _)| global);
+        Some(t)
     }
 
     /// A lambda called on the spot: `[&]() -> ret { body }()`.

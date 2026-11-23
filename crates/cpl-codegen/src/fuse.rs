@@ -65,7 +65,7 @@ impl<'p> Emitter<'p> {
         t.io |= et.io;
     }
 
-    fn block_touch(&self, block: &Block) -> Touch {
+    pub(crate) fn block_touch(&self, block: &Block) -> Touch {
         let mut t = Touch::default();
         walk::deep_stmts(block, &mut |stmt| match stmt {
             Stmt::Let(slot, init) => {
@@ -133,16 +133,11 @@ impl<'p> Emitter<'p> {
         if self.hoisted.contains(vec_slot) {
             return false;
         }
-        let mut outer_escapes = false;
-        walk::deep_stmts(outer_body, &mut |stmt| match stmt {
-            Stmt::Break(t) | Stmt::Continue(t) if t.is_none() || *t == Some(outer_id) => {
-                outer_escapes = true;
-            }
-            _ => {}
-        });
-        if outer_escapes {
+        let mut outer_body = outer_body.clone();
+        let Some(stops) = retarget_breaks(&mut outer_body, outer_id, *inner_id, 0) else {
             return false;
-        }
+        };
+        let outer_body = &outer_body;
         let mut inner_touch = self.block_touch(inner_body);
         iter_exprs(inner_iter, &mut |e| {
             let et = self.touch(e);
@@ -164,6 +159,14 @@ impl<'p> Emitter<'p> {
         // other sees, and one of them can neither trap nor stop early.
         if !trap_free_block(inner_body, *vec_slot) && !trap_free_block(outer_body, usize::MAX) {
             return false;
+        }
+        // A `break` of the consumer skips the rest of the producer: fine when
+        // the rest can neither trap nor write anything but its own locals.
+        if stops && !(trap_free_block(inner_body, *vec_slot) && writes_own(inner_body)) {
+            return false;
+        }
+        if stops {
+            self.break_targets.insert(*inner_id);
         }
         self.fused_pushes.push((
             *vec_slot,
@@ -355,6 +358,48 @@ fn only_pushed_in_block(vec_slot: usize, block: &Block) -> bool {
     true
 }
 
+/// Points each `break` of loop `outer` in its body at loop `inner`
+/// instead; `Some(true)` when there is one. `None` when the body has a
+/// `continue` of `outer`, which the producer has no place for.
+fn retarget_breaks(b: &mut Block, outer: LoopId, inner: LoopId, depth: usize) -> Option<bool> {
+    let mut stops = false;
+    for stmt in &mut b.stmts {
+        match stmt {
+            Stmt::Break(t) if *t == Some(outer) || (t.is_none() && depth == 0) => {
+                *t = Some(inner);
+                stops = true;
+            }
+            Stmt::Continue(t) if *t == Some(outer) || (t.is_none() && depth == 0) => return None,
+            Stmt::If(_, then, otherwise) => {
+                stops |= retarget_breaks(then, outer, inner, depth)?;
+                stops |= retarget_breaks(otherwise, outer, inner, depth)?;
+            }
+            Stmt::While(_, _, body) | Stmt::For(_, _, _, body) => {
+                stops |= retarget_breaks(body, outer, inner, depth + 1)?;
+            }
+            _ => {}
+        }
+    }
+    Some(stops)
+}
+
+/// True when `block` assigns only locals it declares.
+fn writes_own(block: &Block) -> bool {
+    let mut own = std::collections::BTreeSet::new();
+    walk::deep_stmts(block, &mut |stmt| {
+        if let Stmt::Let(s, _) | Stmt::For(_, s, ..) = stmt {
+            own.insert(*s);
+        }
+    });
+    let mut ok = true;
+    walk::deep_stmts(block, &mut |stmt| {
+        if let Stmt::Assign(place, ..) = stmt {
+            ok &= matches!(place.kind, PlaceKind::Local(s) if own.contains(&s));
+        }
+    });
+    ok
+}
+
 /// True when running `block` can neither trap, stop early nor loop forever,
 /// so where it runs relative to other effect-free code cannot be seen.
 /// Pushes onto `vec` count as nothing; the fused consumer is checked apart.
@@ -425,6 +470,9 @@ pub(crate) fn trap_free_with(e: &Expr, call_ok: &dyn Fn(&Expr) -> bool) -> bool 
             None => free(c) && free(t) && free(f),
         },
         ExprKind::Closure(_) => true,
+        ExprKind::Index(base, idxs) if crate::devirt::in_domain(&base.ty, idxs) => {
+            free(base) && idxs.iter().all(free)
+        }
         _ => call_ok(e),
     }
 }

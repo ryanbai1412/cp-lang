@@ -1233,7 +1233,7 @@ fn place_fields(place: &cpl_ir::Place, out: &mut BTreeSet<(usize, usize)>) {
 
 /// Indexing an array of type `ty` by `idxs` cannot trap: each index is a
 /// position of the domain its axis is over.
-fn in_domain(ty: &Ty, idxs: &[Expr]) -> bool {
+pub(crate) fn in_domain(ty: &Ty, idxs: &[Expr]) -> bool {
     let Ty::Array { dims, .. } = ty else {
         return false;
     };

@@ -102,6 +102,7 @@ fn aliasing_and_sort_keys_agree_between_interp_and_sanitized_cpp() {
             "sort_key_one_traps",
             "sort_key_own_list",
             "sorted_ord",
+            "spliced_producer",
             "step_at_int_max",
             "step_not_positive",
             "str_rfind_in",

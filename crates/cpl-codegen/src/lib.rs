@@ -21,6 +21,7 @@ mod runtime;
 mod scope;
 mod show;
 mod sink;
+mod splice;
 mod stmt;
 mod unordered;
 mod walk;
@@ -172,6 +173,7 @@ fn prepared(program: &cpl_ir::Program, target: &Target) -> cpl_ir::Program {
     let mut program = program.clone();
     (program.unordered_maps, program.unordered_sets) = unordered::find(&program);
     prune::prune(&mut program, target.checks != Checks::None);
+    splice::splice(&mut program);
     program
 }
 
@@ -412,5 +414,7 @@ mod prune_tests;
 mod range_tests;
 #[cfg(test)]
 mod sink_tests;
+#[cfg(test)]
+mod splice_tests;
 #[cfg(test)]
 mod tests;
