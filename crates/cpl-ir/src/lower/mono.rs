@@ -3284,10 +3284,19 @@ impl<'a> Lowerer<'a> {
                 }
             }
             ast::TypeKind::Tuple(items) => {
-                if let Some(cfields) = concrete.fields() {
-                    for (p, c) in items.iter().zip(&cfields) {
-                        self.unify_ast_ty(p, c, tpl_mod, gen_names, env);
-                    }
+                let cfields = concrete.fields().or_else(|| match concrete {
+                    Ty::Pos(d) => self.product_grid(*d).map(|dims| {
+                        dims.into_iter()
+                            .filter_map(|dim| match dim {
+                                Dim::Pos(f) => Some(Ty::Pos(f)),
+                                _ => None,
+                            })
+                            .collect()
+                    }),
+                    _ => None,
+                });
+                for (p, c) in items.iter().zip(cfields.iter().flatten()) {
+                    self.unify_ast_ty(p, c, tpl_mod, gen_names, env);
                 }
             }
             ast::TypeKind::Record(fields) | ast::TypeKind::Row(fields) => {

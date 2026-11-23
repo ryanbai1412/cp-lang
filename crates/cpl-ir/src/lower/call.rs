@@ -5294,6 +5294,8 @@ impl<'a> Lowerer<'a> {
                     .or_else(|| field.parse::<usize>().ok().filter(|&i| i < factors.len()))
                 {
                     self.decode_product_field(d, value, idx, span)
+                } else if let Some(res) = self.try_ufcs_call(field, base, &[], span) {
+                    res
                 } else {
                     self.error(
                         codes::UNKNOWN_FIELD,

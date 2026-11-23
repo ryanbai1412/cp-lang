@@ -5202,9 +5202,9 @@ impl<'a> Lowerer<'a> {
                     Ok(self.mk(ExprKind::Do(Block { stmts }), Ty::Pos(d), span))
                 }
             }
+            // R04.2.10: a position of a product domain is a tuple of factor positions.
             (Ty::Tuple(ts), Ty::Pos(d))
-                if self.anon_product_domain_set.contains(d)
-                    && self
+                if self
                         .product_domains
                         .get(d)
                         .is_some_and(|fs| fs.len() == ts.len()) =>
