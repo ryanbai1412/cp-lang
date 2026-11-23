@@ -461,6 +461,35 @@ mod cli {
     }
 
     #[test]
+    fn json_needs_a_printer_and_reports_named_files() {
+        let dir = scratch("json");
+        let file = dir.join("a.cp");
+        std::fs::write(&file, "let x=1\n").unwrap();
+        let path = file.to_str().unwrap().to_string();
+        let (code, _, err) = fmt(&["--json", &path]);
+        assert_eq!(code, 2, "{err}");
+        let printer = |files: &[crate::cli::FileReport]| {
+            files
+                .iter()
+                .map(|f| format!("{} {}", f.path, f.changed))
+                .collect::<String>()
+        };
+        let args = ["--check".to_string(), "--json".to_string(), path.clone()];
+        let (mut out, mut err) = (Vec::new(), Vec::new());
+        let code = crate::cli::run_with(&args, &mut out, &mut err, Some(&printer));
+        let (out, err) = (
+            String::from_utf8(out).unwrap(),
+            String::from_utf8(err).unwrap(),
+        );
+        assert_eq!(
+            (code, out.trim()),
+            (1, format!("{path} true").as_str()),
+            "{err}"
+        );
+        assert_eq!(std::fs::read_to_string(&file).unwrap(), "let x=1\n");
+    }
+
+    #[test]
     fn rewrites_files_under_a_directory() {
         let dir = scratch("rewrite");
         std::fs::create_dir_all(dir.join("lib")).unwrap();
