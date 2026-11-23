@@ -56,8 +56,11 @@ impl<'p> Emitter<'p> {
                 Stmt::Let(_, Some(init)) if crate::lend::may_lend(init) => {
                     let rest = &block.stmts[k + 1..];
                     let tested = matches!(stmt, Stmt::Let(slot, _) if copied_at_test(*slot, rest));
+                    let lendable =
+                        matches!(stmt, Stmt::Let(slot, _) if self.lendable_reads(*slot, rest));
                     Some(Tail {
                         tested,
+                        lendable,
                         ..Tail::of(rest)
                     })
                 }
@@ -797,9 +800,10 @@ impl<'p> Emitter<'p> {
                     None => false,
                 };
                 let untouched = untouched_by_body(seq);
-                let lent = self
-                    .lent_coalesce(seq)
-                    .filter(|(m, _, _)| untouched_by_body(m));
+                let lent = self.lent_coalesce(seq).filter(|(from, _)| match from {
+                    crate::lend::Lender::Get(m, _) => untouched_by_body(m),
+                    crate::lend::Lender::Named(_) => true,
+                });
                 let is_map = matches!(seq.ty, Ty::Map(..) | Ty::HashMap(..));
                 let is_grid = matches!(&seq.ty, Ty::Array { dims, .. } if dims.len() > 1);
                 if !rev && self.sink_loop(id, seq, &var, &cpp, &first, body, out) {
@@ -857,8 +861,8 @@ impl<'p> Emitter<'p> {
                         ),
                     );
                     held
-                } else if let Some((map, key, default)) = lent {
-                    self.loop_over_lent(map, key, default, out)
+                } else if let Some((from, default)) = lent {
+                    self.loop_over_lent(from, default, out)
                 } else if opened {
                     self.line(out, "{");
                     self.indent += 1;
@@ -1418,8 +1422,14 @@ impl<'p> Emitter<'p> {
                     if self.let_lending_coalesce(*slot, init, at, tail.as_ref(), out) {
                         return;
                     }
+                    if self.let_copying_lent(&name, init, out) {
+                        return;
+                    }
                     if let Some([map, key]) = self.lent_map_get(*slot, init, tail.as_ref()) {
                         // `if let l = m.get(k)`: point at the entry, never copy it.
+                        if !self.locals()[*slot].name.is_empty() {
+                            self.lent.insert(*slot);
+                        }
                         self.need("map_lend");
                         let (m, k) = (self.expr(map).text, self.expr(key).text);
                         self.line(

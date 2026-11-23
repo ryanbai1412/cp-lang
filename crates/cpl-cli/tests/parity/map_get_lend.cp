@@ -39,3 +39,23 @@ for k in 0..2:
     for v in w.get(k) ?? [7]: t += v
 for v in w.get(0) ?? []: w[0] = [v * 10]
 print(t, w[0])
+fn named(m: Map<Int, List<Int>>, k: Int) -> Int:
+    let o = m.get(k)
+    var s = 0
+    if let l = o: s += l.len
+    for v in o ?? [9]: s += v
+    if o.is_some: s += 1
+    return s
+print(named(w, 0), named(w, 5))
+var z = Map<Int, List<Int>>()
+z[0] = [4]
+let held = z.get(0)
+z[0] = [5]
+print(held ?? [], held.is_some)
+fn changed() -> Int:
+    var z = Map<Int, List<Int>>()
+    z[0] = [4]
+    let held = z.get(0)
+    z[0] = [5]
+    return (held ?? []).sum
+print(changed())

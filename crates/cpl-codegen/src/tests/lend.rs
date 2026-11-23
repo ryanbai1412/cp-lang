@@ -133,3 +133,39 @@ fn for_over_map_get_or_default_walks_the_entry_unless_the_body_changes_the_map()
         "a changed map keeps the copy: {copied}"
     );
 }
+
+#[test]
+fn a_named_map_get_lends_when_every_read_takes_a_lent_entry() {
+    let src = |extra: &str| {
+        format!(
+            concat!(
+                "fn f(m: Map<Int, List<Int>>, k: Int) -> Int:\n",
+                "    let o = m.get(k)\n",
+                "    var s = 0\n",
+                "    if let l = o: s += l.len\n",
+                "    for v in o ?? [9]: s += v\n",
+                "    if o.is_some: s += 1\n",
+                "{}",
+                "    return s\n",
+                "var m = Map<Int, List<Int>>()\n",
+                "m[1] = [1, 2, 3]\n",
+                "print(f(m, 1), f(m, 2))\n",
+            ),
+            extra
+        )
+    };
+    let lent = cpp(&src(""));
+    assert!(
+        lent.contains("const auto o = cpl::map_lend(m_2, k);"),
+        "expected a lent entry: {lent}"
+    );
+    assert!(
+        !lent.contains("map_get("),
+        "reads that take a lent entry never copy it: {lent}"
+    );
+    let printed = cpp(&src("    print(o)\n"));
+    assert!(
+        printed.contains("cpl::map_get(m_2, k)"),
+        "a read that needs the optional itself keeps the copy: {printed}"
+    );
+}

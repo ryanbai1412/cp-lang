@@ -49,6 +49,8 @@ pub(crate) struct Tail {
     /// The `let` is the optional an `if let` tests, read only by that test
     /// and by the copies at the top of its branch (see [`copied_at_test`]).
     pub(crate) tested: bool,
+    /// Every read of the `let` works on a `cpl::Lent` (see [`Emitter::lendable_reads`]).
+    pub(crate) lendable: bool,
 }
 
 impl Tail {
@@ -70,6 +72,7 @@ impl Tail {
             calls,
             opaque,
             tested: false,
+            lendable: false,
         }
     }
 }
@@ -122,9 +125,10 @@ impl<'p> Emitter<'p> {
             _ => return None,
         };
         let pattern_temp = self.locals()[slot].name.is_empty();
+        let named = tail.is_some_and(|tail| tail.lendable);
         let plain = matches!(map.kind, ExprKind::Local(_) | ExprKind::Global(_));
         (self.closure_id.is_none()
-            && pattern_temp
+            && (pattern_temp || named)
             && plain
             && !value_ty.is_scalar()
             && !self.spent.contains(&slot)
@@ -273,16 +277,61 @@ impl<'p> Emitter<'p> {
     }
 }
 
+/// Where a lent optional comes from: `m.get(k)`, or a name already holding a `cpl::Lent`.
+pub(crate) enum Lender<'e> {
+    Get(&'e Expr, &'e Expr),
+    Named(&'e Expr),
+}
+
 impl<'p> Emitter<'p> {
-    /// `m.get(k) ?? d` over a plain map with a non-scalar value: the map, key and default.
-    pub(crate) fn lent_coalesce<'e>(
-        &self,
-        seq: &'e Expr,
-    ) -> Option<(&'e Expr, &'e Expr, &'e Expr)> {
+    /// Whether every read of the named optional `slot` in `rest` works on a
+    /// `cpl::Lent`: `o.is_some`, `o ?? d` with a plain default, and the
+    /// temporary an `if let l = o` tests, which then lends too.
+    pub(crate) fn lendable_reads(&self, slot: usize, rest: &[Stmt]) -> bool {
+        if self.locals()[slot].name.is_empty() {
+            return false;
+        }
+        let block = Block {
+            stmts: rest.to_vec(),
+        };
+        let local = |e: &Expr| matches!(e.kind, ExprKind::Local(s) if s == slot);
+        let (mut reads, mut lendable) = (0, 0);
+        walk::deep_exprs(&block, &mut |e| match &e.kind {
+            ExprKind::Local(s) if *s == slot => reads += 1,
+            ExprKind::IsSome(x) if local(x) => lendable += 1,
+            ExprKind::Binary(BinOp::Coalesce, x, _) if local(x) && x.ty != e.ty => lendable += 1,
+            _ => {}
+        });
+        walk::deep_stmts(&block, &mut |stmt| {
+            if let Stmt::Let(t, Some(x)) = stmt {
+                if local(x) && self.locals()[*t].name.is_empty() {
+                    lendable += 1;
+                }
+            }
+        });
+        reads == lendable
+    }
+
+    /// `let t = o` for the temporary an `if let` tests, where `o` holds a `cpl::Lent`.
+    pub(crate) fn let_copying_lent(&mut self, name: &str, init: &Expr, out: &mut String) -> bool {
+        if !matches!(init.kind, ExprKind::Local(s) if self.lent.contains(&s)) {
+            return false;
+        }
+        let o = self.expr(init).text;
+        self.line(out, &format!("const auto {name} = {o};"));
+        true
+    }
+
+    /// `m.get(k) ?? d` over a plain map with a non-scalar value, or `o ?? d`
+    /// where `o` holds a `cpl::Lent`: where the value comes from, and the default.
+    pub(crate) fn lent_coalesce<'e>(&self, seq: &'e Expr) -> Option<(Lender<'e>, &'e Expr)> {
         let ExprKind::Binary(BinOp::Coalesce, got, default) = &seq.kind else {
             return None;
         };
         match &got.kind {
+            ExprKind::Local(s) if self.lent.contains(s) && got.ty != seq.ty => {
+                Some((Lender::Named(got), &**default))
+            }
             ExprKind::Builtin(cpl_ir::Builtin::MapGet, args)
                 if self.closure_id.is_none()
                     && !seq.ty.is_scalar()
@@ -292,7 +341,7 @@ impl<'p> Emitter<'p> {
                         Some(ExprKind::Local(_) | ExprKind::Global(_))
                     ) =>
             {
-                Some((&args[0], &args[1], &**default))
+                Some((Lender::Get(&args[0], &args[1]), &**default))
             }
             _ => None,
         }
@@ -301,20 +350,26 @@ impl<'p> Emitter<'p> {
     /// Opens a scope holding `m.get(k) ?? d` by reference, so `for v in` walks the entry in place.
     pub(crate) fn loop_over_lent(
         &mut self,
-        map: &Expr,
-        key: &Expr,
+        from: Lender<'_>,
         default: &Expr,
         out: &mut String,
     ) -> String {
         self.line(out, "{");
         self.indent += 1;
-        self.need("map_lend");
-        let (m, k) = (self.expr(map).text, self.expr(key).text);
-        let (entry, own, held) = (self.temp(), self.temp(), self.temp());
-        self.line(
-            out,
-            &format!("const auto {entry} = cpl::map_lend({m}, {k});"),
-        );
+        let entry = match from {
+            Lender::Get(map, key) => {
+                self.need("map_lend");
+                let (m, k) = (self.expr(map).text, self.expr(key).text);
+                let entry = self.temp();
+                self.line(
+                    out,
+                    &format!("const auto {entry} = cpl::map_lend({m}, {k});"),
+                );
+                entry
+            }
+            Lender::Named(o) => self.expr(o).text,
+        };
+        let (own, held) = (self.temp(), self.temp());
         self.line(out, &format!("std::decay_t<decltype(*{entry})> {own};"));
         let d = self.expr(default).text;
         self.line(

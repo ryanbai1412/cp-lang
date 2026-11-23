@@ -174,6 +174,8 @@ pub(crate) struct Emitter<'p> {
     pub in_setup: bool,
     /// Tuple temporaries whose fields are moved out: see [`crate::scope::spent`].
     pub spent: BTreeSet<usize>,
+    /// Named `let o = m.get(k)` held as a `cpl::Lent`: see [`Emitter::lent_map_get`].
+    pub lent: BTreeSet<usize>,
     pub taken: BTreeSet<String>,
     pub fresh: usize,
     /// Loops that a `break` or `continue` names from an inner loop.
@@ -247,6 +249,7 @@ impl<'p> Emitter<'p> {
             tail: None,
             in_setup: false,
             spent: BTreeSet::new(),
+            lent: BTreeSet::new(),
             taken: BTreeSet::new(),
             fresh: 0,
             break_targets: BTreeSet::new(),
@@ -450,6 +453,7 @@ impl<'p> Emitter<'p> {
         self.hoisted = crate::scope::hoisted(body, params);
         self.reused = crate::scope::reused(self.program, fn_id, body);
         self.spent = crate::scope::spent(self.program, body);
+        self.lent.clear();
         self.break_targets.clear();
         self.continue_targets.clear();
         walk::deep_stmts(body, &mut |stmt| match stmt {
