@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- Rerun `cpl-conform conformance` on main 4f2d3b7fa: 2099/2262 pass (163 fail); metrics refreshed.
 - Rebuild round 4 started: a cold agent reads only `spec/` at f6ff5434d and writes ten new CSES problems (flood fill, knapsack, two pointers, Dijkstra, range min, LIS, subtree sizes, borders, DAG longest path, distinct values); its HOLES.md lands under `spec/delta/rebuild-4/` for M3.
 - `core-02/no-boxed-fn-type.cp` (passes): R02.1.3's reject, `Box<Int -> Int>` is E0204. 30 rule gaps, 29 forbidding rules without a reject.
 - `core-02/lends-not-in-types.cp` (passes): R02.1.4's reject, `let w: lends [V]Int` is E0105. 31 rule gaps, 30 forbidding rules without a reject.

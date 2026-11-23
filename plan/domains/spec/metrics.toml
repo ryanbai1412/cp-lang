@@ -7,7 +7,7 @@
 [[metric]]
 name = "conformance cases passing"
 command = "target/release/cpl-conform conformance | head -1"
-today = "1845/2030"
+today = "2099/2262"
 target = "1711/1711 (pass count owned by compiler; the suite is spec's)"
 
 [[metric]]
