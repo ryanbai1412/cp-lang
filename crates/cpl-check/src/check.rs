@@ -417,6 +417,7 @@ impl<'a> Checker<'a> {
     fn quietly<T>(&mut self, f: impl FnOnce(&mut Self) -> T) -> T {
         let (hovers, refs, typed) = (self.hovers.len(), self.refs.len(), self.typed_indexes.len());
         let (fixed, io, shapes) = (self.fixed_io.len(), self.io_costs.len(), self.shapes.len());
+        let conflicts = self.lends.conflicts.len();
         let sink = std::mem::replace(&mut self.sink, Sink::new());
         let out = f(self);
         self.sink = sink;
@@ -426,6 +427,7 @@ impl<'a> Checker<'a> {
         self.fixed_io.truncate(fixed);
         self.io_costs.truncate(io);
         self.shapes.truncate(shapes);
+        self.lends.conflicts.truncate(conflicts);
         out
     }
 

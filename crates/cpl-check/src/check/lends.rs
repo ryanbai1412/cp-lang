@@ -368,7 +368,7 @@ pub(crate) struct Lends {
     holds: Vec<Hold>,
     /// Uses already reported as conflicting with a hold: `xs.push(x)` is
     /// one conflict, not one for `xs` and another for `xs.push`.
-    conflicts: Vec<Span>,
+    pub(crate) conflicts: Vec<Span>,
     /// Receivers of an enclosing place expression: `a` in `a[i]` is not
     /// also a use of all of `a`.
     covered: HashSet<Span>,
