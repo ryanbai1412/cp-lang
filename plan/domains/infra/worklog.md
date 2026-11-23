@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- Sheriff: run 45104791170 red on `cpl-cli::cli a_statement_that_only_works_out_a_value_is_a_warning` (compiler 08acc1bd1 made `Subset.set` write its receiver; the test still expected a W0101). Moved `s.set` to the kept list; the test passes locally.
 - Sheriff: compiler 08acc1bd1 broke the debt ratchet (`lower/stmt.rs` 6400 -> 6421); moved `subset_set` to `lower/range.rs`. Caught locally before CI reported it. Compiler told.
 - Sheriff, run 45103905035: reverted stdlib f89b7fb27 (`Prefix` lost `Show`, so the differential parity test failed); `grid_parts_generic.cp` runs again. Stdlib told.
 - Sheriff, run 45103905035 (f89b7fb27): clippy `while_immutable_condition` from diagnostics e2542299e fixed directly; diagnostics told.

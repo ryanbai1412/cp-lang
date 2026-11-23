@@ -220,7 +220,6 @@ fn a_statement_that_only_works_out_a_value_is_a_warning() {
         "xs.rev",
         "xs.sorted()",
         "sorted(xs)",
-        "s.set(V(1), true)",
         "s.with(V(1))",
         "xs.deduped()",
         "xs.len",
@@ -236,6 +235,7 @@ fn a_statement_that_only_works_out_a_value_is_a_warning() {
         "heap.push(3)\nheap.pop()",
         "loud(3)",
         "xs.swap(0, 1)",
+        "s.set(V(1), true)",
         "let ys = xs.sorted()",
     ] {
         let stderr = check(kept);
