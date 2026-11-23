@@ -7,7 +7,7 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 2627 (995 passing). Rules: 568.
+Cases: 2628 (995 passing). Rules: 568.
 
 ## Summary per chapter
 
@@ -15,7 +15,7 @@ Cases: 2627 (995 passing). Rules: 568.
 - R02 (02-values-types.md): 52 rules, 143 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R03 (03-numbers-layout.md): 24 rules, 67 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04 (04-indices.md): 69 rules, 140 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R04a (04a-identity-vs-offset.md): 39 rules, 53 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R04a (04a-identity-vs-offset.md): 39 rules, 54 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04b (04b-keys.md): 27 rules, 66 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R05 (05-ownership.md): 43 rules, 155 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R06 (06-control-functions.md): 24 rules, 89 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -319,7 +319,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R04a.9.3 [1+ 1-]: | `.even`, `.step(k)` | source keys, strided | renumbered `0, 1, 2…`
 - R04a.9.4 [1+ 0-]: | `.map(f)` | source keys | renumbered
 - R04a.9.5 [1+ 1-]: | `.filter(p)`, generators | no keys (`Seq`) | no keys
-- R04a.9.6 [1+ 0-]: | `.keyed().items` | `(counter, x)`, counter from 0 | `(counter, x)`
+- R04a.9.6 [2+ 0-]: | `.keyed().items` | `(counter, x)`, counter from 0 | `(counter, x)`
 - R04a.9.7 [1+ 0-]: | `.items` | `(key, x)` | `(offset, x)`
 - R04a.11.1 [3+ 0-]: **Order-based pairing** for every operation that combines two sequences (group A).
 - R04a.11.2 [2+ 1-]: **`.items` gives keys; `.keyed().items` gives a 0-based counter.** Use `.items` when the i...
