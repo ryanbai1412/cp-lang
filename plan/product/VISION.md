@@ -1,8 +1,8 @@
-<!-- Ryan's text, 2026-11-22. Edit only with Ryan's say-so; propose changes in plan/QUESTIONS.md. -->
+<!-- Ryan's product doc. Frozen after the 2026-11-22 edit pass; change only with Ryan's say-so (propose in plan/QUESTIONS.md). -->
 
-# CPL — Product Vision v1
+# CPL — Product vision
 
-*Part I: Defining what we're trying to achieve*
+Who CPL is for, why it should exist, and how we decide. The experience it delivers is in [EXPERIENCE.md](EXPERIENCE.md); the current milestone is in [MILESTONE-1.md](MILESTONE-1.md). AGENTS.md turns this into measurable goals and design rules.
 
 ## 1. Who we're building for
 
@@ -104,7 +104,7 @@ This means:
 
 A significant failure in any of these areas can make the entire product unusable, regardless of how good the language feels.
 
-We should treat them as **hard product quality gates**, with precise measurable targets defined separately.
+We should treat them as **hard product quality gates**. The measurable targets are AGENTS.md goals 3 and 5 and each domain's `metrics.toml`.
 
 ## 5. Product principles
 

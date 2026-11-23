@@ -47,6 +47,8 @@ just feel like the pieces fit together beautifully and everything just works
 
 ## The goals
 
+These are the vision's value propositions made measurable (`plan/product/VISION.md`): V1 is goal 1, V2 is goal 2, V3 is goal 4, the trust foundation is goals 3 and 5, and J10 is goal 6.
+
 Five contest goals, one long-term goal, and one constraint on all of them.
 Each answers a different question, and a design can pass any one and fail the
 rest. Each has a test; a claim without a passing test is not a claim.

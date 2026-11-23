@@ -1,98 +1,60 @@
-<!-- Ryan's text, 2026-11-22. Edit only with Ryan's say-so; propose changes in plan/QUESTIONS.md. -->
+<!-- Ryan's product doc. Frozen after the 2026-11-22 edit pass; change only with Ryan's say-so (propose in plan/QUESTIONS.md). -->
 
 # Milestone 1 — Friend-testable, contest-capable CPL
 
-### The milestone
-
 **I can share CPL with an interested competitive programmer, and they can immediately start learning it, solving real problems, and competing with it.**
 
-This is stronger than a proof of concept, toy interpreter, or demo website.
+This is more than a proof of concept, a toy interpreter or a demo website. The friend uses CPL on their own for real competitive programming, including a real or realistically timed contest. The whole vision need not be done, but the supported end-to-end experience must be complete, polished enough to judge fairly, and trustworthy.
 
-The friend should be able to use CPL independently for real competitive programming, including an actual contest or realistic timed contest session.
+## Constraints (Ryan, 2026-11-22)
 
-We don't need the entire long-term product vision completed. But the supported end-to-end experience must be complete, polished enough to evaluate fairly, and trustworthy.
+- **Due:** about 12 hours, by 2026-11-23 09:30 PST. Plan in hours; checkpoints every 2 hours.
+- **Platforms:** Linux, macOS and Windows, all supported and all tested.
+- **Editors:** Neovim/Vim with a working LSP (the first friend's editor), plus VS Code.
+- **Judge:** Codeforces. We check submissions against a local Codeforces profile; agents never submit to real judges.
+- **Channel:** the edge release is enough. No stable release needed.
+- Deferred work continues in parallel, but milestone blockers come first.
 
-### 5.1. The acceptance scenario
+## The acceptance scenario
 
-Imagine sharing a link with a Codeforces 1500+ friend who has never used CPL.
+A Codeforces 1500+ friend who has never used CPL gets a link. Without help, they can:
 
-They should be able to:
+1. **Understand:** open the website, see the value proposition, and read a concise introductory guide.
+2. **Try:** run and modify CPL programs in the browser, completing a few introductory exercises.
+3. **Install:** set up CPL and their editor integration on Linux, macOS or Windows.
+4. **Solve:** implement several unfamiliar, real problems with the language and standard library.
+5. **Test:** run samples, add custom tests, and diagnose ordinary mistakes from the CLI and the editor.
+6. **Submit:** generate a Codeforces submission that gets accepted.
+7. **Compete:** take part in a real or virtual Codeforces round with CPL as their main language, never blocked by missing ordinary functionality or a tool failure.
 
-1. **Understand:** Open the website, understand the value proposition, and read a concise introductory guide.
-2. **Try:** Run and modify CPL programs directly in the browser, completing a few introductory competitive programming exercises.
-3. **Install:** Set up CPL and its editor integration on a supported machine without needing your help.
-4. **Solve:** Implement several unfamiliar, real competitive programming problems using the language and standard library.
-5. **Test:** Run samples, add custom tests, and diagnose ordinary mistakes using the CLI and editor.
-6. **Submit:** Generate judge-compatible code and receive accepted verdicts on supported online judges.
-7. **Compete:** Participate in a real or simulated contest using CPL as their primary implementation language, without being blocked by missing ordinary functionality or unexpected tool failures.
+Afterwards they can give meaningful feedback on expressiveness, correctness mechanisms, tooling and usability, and they have felt at least one compelling advantage over their current workflow.
 
-At the end, they should have enough experience to offer meaningful feedback about the language's expressiveness, correctness mechanisms, tooling, and overall usability.
+**Acceptance run:** an agent plays the friend on fresh Linux, macOS and Windows machines, using only the website and docs, every 2 hours. It records the steps passed (out of 7), the time per step, and every hesitation or workaround, and publishes a ranked blocker list. The idioms domain owns it.
 
-They should also have experienced at least one compelling advantage over their existing workflow.
+## What must be ready
 
-### 5.2. What must be ready
+- **Language and compiler:** a coherent, documented subset that handles representative real problems, including nontrivial algorithms and data structures. It is correct and identical across interpreter and C++; gaps are listed, never disguised.
+- **Standard library:** the foundational containers, algorithms, math and helpers. It need not be exhaustive, but ordinary solutions never require extensive workarounds.
+- **CLI and local testing:** reliable check, run, sample tests, custom tests, checkers and judge-ready builds; sample import through Competitive Companion.
+- **Editors:** Neovim/Vim and VS Code with highlighting, diagnostics, completion and formatting, so the user never switches between disconnected tools.
+- **Website and learning:** a credible site, a concise intro guide, searchable docs, runnable examples that actually work, and enough practice to teach the core language model.
+- **Submission:** a reliable self-contained C++17 file for Codeforces. Single-test and multitest problems work; other formats work where feasible and are clearly scoped where not.
+- **Debugging:** high-quality diagnostics and runtime errors, print debugging, assertions, and fast reproduction of failing cases. A basic integrated brute/stress workflow is the differentiator to show. Full time-travel debugging is not required.
+- **Release quality:** reproducible builds, installers tested on all three platforms, automated regression checks, and no known serious correctness or submission bugs in supported workflows.
 
-**Language and compiler**
+## What can wait
 
-A coherent, documented, sufficiently complete subset of CPL that supports representative real contest problems, including nontrivial algorithms and data structures.
-
-The supported subset must be correct and implemented consistently across execution modes. Gaps must be clearly identified rather than disguised.
-
-**Standard library**
-
-The foundational containers, algorithms, mathematical utilities, and helper functions needed for representative contests.
-
-We do not need an exhaustive library yet, but users should not regularly encounter situations where ordinary contest solutions are impossible or require extensive workarounds.
-
-**CLI and local testing**
-
-Reliable checking, execution, sample testing, custom tests, and judge-ready builds.
-
-Sample import through Competitive Companion or an equally smooth supported workflow should work.
-
-**Editor support**
-
-At least one polished, mainstream editor integration—VS Code is the natural initial target—with syntax highlighting, diagnostics, completion, and formatting.
-
-The user should be able to write CPL comfortably without switching between disconnected tools.
-
-**Website and learning**
-
-A credible website, a concise introductory guide, searchable documentation, runnable examples, and enough introductory practice to teach the fundamental language model.
-
-Documentation examples must actually work.
-
-**Contest submission**
-
-Reliable generation of self-contained C++17 submissions for the explicitly supported judges, including Codeforces and AtCoder as initial targets.
-
-Standard single-test and multitest problems must work. Other problem formats should be supported where feasible and clearly scoped where not.
-
-**Basic debugging**
-
-High-quality diagnostics, runtime errors, print debugging, assertions, and fast reproduction of failing cases.
-
-A basic integrated brute-force/stress-testing workflow would be particularly valuable because it demonstrates one of CPL's central differentiators.
-
-The complete time-travel debugging vision is not necessarily required for this milestone.
-
-**Release quality**
-
-Reproducible builds, tested installation paths, automated regression checks, and no known serious correctness or submission blockers in supported workflows.
-
-### 5.3. What can wait
-
-The following are valuable but should not block the first milestone unless testing reveals that they're essential:
+These don't block the milestone unless testing shows they are essential:
 
 - Comprehensive advanced standard-library coverage.
-- Fully polished time-travel debugging and trace visualization.
-- Sophisticated automated test generation and shrinking for arbitrary input structures.
+- Polished time-travel debugging and trace visualization.
+- Automatic generation and shrinking for arbitrary input structures.
 - Advanced static performance analysis and inline resource annotations.
-- Direct submission integrations with every major judge.
+- Direct submission to judges.
 - Comprehensive JetBrains support.
-- A sophisticated third-party package ecosystem.
-- Full backward compatibility across many future language versions.
-- Exhaustive tutorials for beginners.
-- World-class compiler optimizations beyond competitive parity.
+- A third-party package ecosystem.
+- Long-range backward compatibility across language versions.
+- Exhaustive beginner tutorials.
+- Compiler optimization beyond competitive parity.
 
-The scope should be determined by whether friends can realistically use CPL, not by whether every planned component is finished.
+Scope is set by whether friends can realistically use CPL, not by whether every planned component is finished.

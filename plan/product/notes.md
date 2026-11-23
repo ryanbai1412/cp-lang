@@ -1,3 +1,5 @@
+<!-- Raw source notes; frozen. -->
+
 # Ryan's working notes behind the product docs (2026-11-22)
 
 Raw thinking, kept for the detail the distilled docs leave out. VISION.md, EXPERIENCE.md and MILESTONE-1.md win where they differ.

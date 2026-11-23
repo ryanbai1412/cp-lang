@@ -1,20 +1,12 @@
-<!-- Ryan's text, 2026-11-22. Edit only with Ryan's say-so; propose changes in plan/QUESTIONS.md. -->
+<!-- Ryan's product doc. Frozen after the 2026-11-22 edit pass; change only with Ryan's say-so (propose in plan/QUESTIONS.md). -->
 
-# CPL — Product Experience v0
+# CPL — Product experience
 
-*Part II: What experiences do we want to deliver?*
+The user-facing experience we want to deliver, not the implementation architecture. Who it is for and why is in [VISION.md](VISION.md).
 
 ## 1. Overview
 
-Our goal is to make CPL an exceptionally pleasant and powerful environment for experienced competitive programmers.
-
-We're designing for people who use it as their primary language for contests, upsolving, and training. It should handle their entire workflow, from opening a problem to getting an accepted submission.
-
-The product should feel deeply integrated: the language, standard library, editor, documentation, testing tools, debugger, and contest management should work together naturally.
-
-We want users to spend their attention on algorithms, not on remembering syntax, searching through personal templates, diagnosing implementation bugs, or managing tooling.
-
-This document describes the ideal user-facing experience, not the implementation architecture.
+CPL handles the whole workflow of people who use it as their primary language for contests, upsolving and training, from opening a problem to an accepted submission. The language, standard library, editor, docs, testing tools, debugger and contest management work together, so attention goes to algorithms rather than syntax, personal templates, implementation bugs or tooling.
 
 ## 2. Major user journeys
 
@@ -155,7 +147,7 @@ The CLI should be fast, predictable, and pleasant even without editor integratio
 
 **Interactive problems should be first-class.**
 
-Users should be able to simulate the interaction themselves or write a local interactor with very little ceremony. Input/output behavior and flushing should work correctly by default.
+Users should be able to play the interactor themselves or write a local interactor with very little ceremony. Input/output behavior and flushing should work correctly by default.
 
 **The desired experience:** Testing a program or exploring an idea takes a single command or a few clicks, without setup overhead.
 
@@ -312,29 +304,10 @@ The journeys imply the following high-level capabilities. These are product-faci
 
 Each capability should eventually be given concrete behavioral requirements, quality standards, and acceptance tests.
 
-## 5. First product milestone
+## 5. Milestones
 
-**An experienced competitive programmer can independently try CPL, solve real problems, and form a meaningful opinion of whether they would prefer it to C++.**
-
-For this first milestone, we should prioritize a complete experience rather than trying to finish every ambitious capability.
-
-A user should be able to discover CPL, learn the basics, start programming, solve representative problems, run tests, debug ordinary mistakes, and generate accepted submissions without hand-holding.
-
-The experience must be sufficiently reliable, polished, and representative that their feedback tells us something meaningful about CPL's potential.
-
-We should validate this through real first-time users and use their feedback to improve the language, standard library, tooling, and learning experience together.
+The current milestone, its acceptance scenario and its scope are in [MILESTONE-1.md](MILESTONE-1.md).
 
 ## 6. Long-term standard
 
-The ultimate product test is whether experienced competitors **voluntarily prefer CPL over the C++ environments they've spent years optimizing**.
-
-We should aim for a product where:
-
-- Writing and revising solutions feels extraordinarily natural.
-- Implementation mistakes are substantially less common.
-- Experimenting and debugging are dramatically faster.
-- Performance is transparent and competitive.
-- Tools and workflows feel beautifully integrated.
-- The entire environment remains trustworthy under contest pressure.
-
-**The end state is a competitive programming environment where almost all unnecessary friction between algorithmic thinking and accepted solutions has disappeared.**
+See [VISION.md](VISION.md) §6 and §8. **The end state is a competitive programming environment where almost all unnecessary friction between algorithmic thinking and accepted solutions has disappeared.**
