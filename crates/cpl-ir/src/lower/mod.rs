@@ -358,13 +358,13 @@ impl Lowerer<'_> {
         let mut setup = std::mem::take(&mut lw.setup_body);
         let mut bodies = std::mem::take(&mut lw.bodies);
         let mut closures = std::mem::take(&mut lw.closures);
-        lw.size_library_domains(&mut main);
-        lw.size_library_domains(&mut setup);
+        lw.size_library_domains(&mut main, true);
+        lw.size_library_domains(&mut setup, true);
         for f in bodies.iter_mut().flatten() {
-            lw.size_library_domains(&mut f.body);
+            lw.size_library_domains(&mut f.body, false);
         }
         for c in &mut closures {
-            lw.size_library_domains(&mut c.body);
+            lw.size_library_domains(&mut c.body, false);
         }
         (lw.main_body, lw.setup_body, lw.bodies, lw.closures) = (main, setup, bodies, closures);
         // A mistake in the user's code often breaks the library code it asks
@@ -680,6 +680,15 @@ enum LibrarySize {
     /// The builtin `Subset<D>`: the `2^|D|` masks. It goes once `Subset`
     /// is std's own `impl Index`.
     Subsets(DomainId),
+}
+
+/// What a library domain's size reads: it is sized after a statement sets
+/// one of these, once each that its block sets has been set.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+enum SizeInput {
+    Domain(DomainId),
+    Local(Slot),
+    Global(GlobalId),
 }
 
 struct Lowerer<'a> {
@@ -2682,11 +2691,12 @@ impl<'a> Lowerer<'a> {
         subset
     }
 
-    /// Sizes the library domain `id` to `len`: after every definition of a
-    /// domain `len` reads, or once before `main` when it reads none.
+    /// Sizes the library domain `id` to `len`: after every statement that
+    /// sets a domain or variable `len` reads, or once before `main` when it
+    /// reads none.
     pub(super) fn size_library_domain(&mut self, id: DomainId, len: Expr) {
         let size = LibrarySize::Count(len);
-        if library_size_bases(&size).is_empty() {
+        if library_size_inputs(&size).is_empty() {
             let mut stmts = Vec::new();
             self.push_library_size(id, &size, size_span(&size), &mut stmts);
             self.preamble_stmts.extend(stmts);
@@ -2695,13 +2705,21 @@ impl<'a> Lowerer<'a> {
         }
     }
 
-    /// Sizes each library domain built on `base`, which a statement at
-    /// `span` just defined, and in turn those built on them.
-    fn library_sizing(&self, base: DomainId, span: Span, out: &mut Vec<Stmt>) {
+    /// Sizes each library domain that reads `input`, which a statement at
+    /// `span` just set, and in turn those built on them. A size waits for
+    /// the other inputs its block sets, so a later one is never read unset.
+    fn library_sizing(
+        &self,
+        input: SizeInput,
+        span: Span,
+        pending: &dyn Fn(SizeInput) -> bool,
+        out: &mut Vec<Stmt>,
+    ) {
         for (&id, size) in &self.library_sizes {
-            if library_size_bases(size).contains(&base) {
+            let inputs = library_size_inputs(size);
+            if inputs.contains(&input) && !inputs.iter().any(|&i| pending(i)) {
                 self.push_library_size(id, size, span, out);
-                self.library_sizing(id, span, out);
+                self.library_sizing(SizeInput::Domain(id), span, pending, out);
             }
         }
     }
@@ -2741,22 +2759,28 @@ impl<'a> Lowerer<'a> {
 
     /// Puts each library domain's sizing after every definition, in
     /// `block`, of a domain it reads.
-    fn size_library_domains(&self, block: &mut Block) {
+    /// Inserts the sizing of each library domain after the statements that
+    /// set what it reads. `locals` is whether this body's slots are the
+    /// ones top-level sizes read: true for `main` and the per-test setup.
+    fn size_library_domains(&self, block: &mut Block, locals: bool) {
         if self.library_sizes.is_empty() {
             return;
         }
         walk::blocks_mut(block, &mut |b| {
+            let sets: Vec<Option<SizeInput>> = b
+                .stmts
+                .iter()
+                .map(|st| size_input_set(st, locals))
+                .collect();
+            let mut seen = HashSet::new();
             let mut stmts = Vec::with_capacity(b.stmts.len());
-            for stmt in std::mem::take(&mut b.stmts) {
-                let defined = match &stmt {
-                    Stmt::DefDomain { id, .. } | Stmt::DefDomainFromVal { id, .. } => {
-                        Some((*id, stmt.span().unwrap_or_default()))
-                    }
-                    _ => None,
-                };
+            for (stmt, set) in std::mem::take(&mut b.stmts).into_iter().zip(&sets) {
+                let span = stmt.span().unwrap_or_default();
                 stmts.push(stmt);
-                if let Some((id, span)) = defined {
-                    self.library_sizing(id, span, &mut stmts);
+                if let Some(input) = *set {
+                    seen.insert(input);
+                    let pending = |i: SizeInput| !seen.contains(&i) && sets.contains(&Some(i));
+                    self.library_sizing(input, span, &pending, &mut stmts);
                 }
             }
             b.stmts = stmts;
@@ -5845,22 +5869,42 @@ fn type_has_hole(ty: &ast::Type) -> bool {
 }
 
 /// The domains a library domain's size reads.
-fn library_size_bases(size: &LibrarySize) -> Vec<DomainId> {
+fn library_size_inputs(size: &LibrarySize) -> Vec<SizeInput> {
     match size {
-        LibrarySize::Subsets(base) => vec![*base],
+        LibrarySize::Subsets(base) => vec![SizeInput::Domain(*base)],
         LibrarySize::Count(len) => {
-            let mut bases = Vec::new();
+            let mut inputs = Vec::new();
             walk::deep_expr(len, &mut |e| {
-                if let ExprKind::DomainLen(d) | ExprKind::DomainLo(d) | ExprKind::DomainVal(d) =
-                    e.kind
-                {
-                    if !bases.contains(&d) {
-                        bases.push(d);
+                let input = match e.kind {
+                    ExprKind::DomainLen(d) | ExprKind::DomainLo(d) | ExprKind::DomainVal(d) => {
+                        SizeInput::Domain(d)
                     }
+                    ExprKind::Local(slot) => SizeInput::Local(slot),
+                    ExprKind::Global(g) => SizeInput::Global(g),
+                    _ => return,
+                };
+                if !inputs.contains(&input) {
+                    inputs.push(input);
                 }
             });
-            bases
+            inputs
         }
+    }
+}
+
+/// What `stmt` sets that a library domain's size may read.
+fn size_input_set(stmt: &Stmt, locals: bool) -> Option<SizeInput> {
+    match stmt {
+        Stmt::DefDomain { id, .. } | Stmt::DefDomainFromVal { id, .. } => {
+            Some(SizeInput::Domain(*id))
+        }
+        Stmt::Let(slot, Some(_)) if locals => Some(SizeInput::Local(*slot)),
+        Stmt::Assign(place, ..) => match place.kind {
+            PlaceKind::Local(slot) if locals => Some(SizeInput::Local(slot)),
+            PlaceKind::Global(g) => Some(SizeInput::Global(g)),
+            _ => None,
+        },
+        _ => None,
     }
 }
 
