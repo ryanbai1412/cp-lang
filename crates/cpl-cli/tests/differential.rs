@@ -772,6 +772,27 @@ print(inv[V(2)]!.label)
     );
 }
 
+/// `with checks(asserts: on)` keeps its assert in the judge's default
+/// `--checks none` build, as in `run --release`. (R09.4.1)
+#[test]
+fn an_asserts_on_block_traps_in_the_judge_build_as_in_release() {
+    let path = concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../spec/conformance/core-09/asserts-on-block-traps-in-release.cp"
+    );
+    let ran = cpl_cli::run(&["run", "--release", path]);
+    assert_eq!(ran.code, 3, "{}", ran.stderr);
+    assert!(ran.stderr.contains("need 3, got 2"), "{}", ran.stderr);
+    let built = cpl_cli::run(&["build", path, "-o", "-"]);
+    assert_eq!(built.code, 0, "{}", built.stderr);
+    let binary = sanitized_binary(&built.stdout).unwrap();
+    let cpp = Command::new(&binary).output().unwrap();
+    let stderr = String::from_utf8_lossy(&cpp.stderr);
+    assert_eq!(cpp.status.code(), Some(3), "{stderr}");
+    assert!(stderr.contains("need 3, got 2"), "{stderr}");
+    assert!(cpp.stdout.is_empty());
+}
+
 /// A `[D]Char` read skips spaces between chars like one `read()` per cell,
 /// across the input's 64 KB reads, and fails the same way when chars run out.
 #[test]

@@ -127,6 +127,27 @@ mod tests {
     }
 
     #[test]
+    fn an_assert_under_checks_asserts_on_stays_at_every_level() {
+        let source = concat!(
+            "let a = [1, 2]\n",
+            "with checks(asserts: on):\n",
+            "    assert a.len == 3, \"kept\"\n",
+            "assert a.len == 4, \"dropped\"\n",
+            "print(a.len)\n",
+        );
+        let mut db = cpl_check::Database::new();
+        db.set_file("t.cp", source);
+        let program = cpl_ir::lower(&db.analyze("t.cp").expect("set")).expect("lowers");
+        let target = crate::Target {
+            checks: Checks::None,
+            ..crate::Target::default()
+        };
+        let cpp = crate::emit_for(&program, "t.cp", None, &target);
+        assert!(cpp.contains("kept"), "{cpp}");
+        assert!(!cpp.contains("dropped"), "{cpp}");
+    }
+
+    #[test]
     fn names_round_trip() {
         for name in Checks::NAMES {
             assert_eq!(Checks::parse(name).map(Checks::name), Some(name));

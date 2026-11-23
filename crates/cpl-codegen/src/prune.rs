@@ -57,7 +57,9 @@ fn keep_stores_of_asserts(program: &mut Program) {
     fn visit(b: &mut Block, stores: &dyn Fn(&Expr) -> bool) {
         for stmt in &mut b.stmts {
             match stmt {
-                Stmt::Assert { cond, .. } if stores(cond) => *stmt = Stmt::Expr(cond.clone()),
+                Stmt::Assert {
+                    cond, kept: false, ..
+                } if stores(cond) => *stmt = Stmt::Expr(cond.clone()),
                 Stmt::If(_, then, otherwise) => {
                     visit(then, stores);
                     visit(otherwise, stores);
@@ -339,7 +341,8 @@ fn known_in(e: &Expr, cx: Option<&Cx>) -> Option<bool> {
 
 fn block(b: &mut Block, asserts: bool, cx: &mut Cx) {
     if !asserts {
-        b.stmts.retain(|s| !matches!(s, Stmt::Assert { .. }));
+        b.stmts
+            .retain(|s| !matches!(s, Stmt::Assert { kept: false, .. }));
     }
     for stmt in &mut b.stmts {
         match stmt {

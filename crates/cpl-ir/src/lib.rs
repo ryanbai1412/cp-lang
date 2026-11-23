@@ -994,6 +994,8 @@ pub enum Stmt {
         text: String,
         line: u32,
         span: Span,
+        /// Under `with checks(asserts: on)`: checked in every build. (R09.4.1)
+        kept: bool,
     },
     /// `domain V = lo..=hi`: fixes the first label and the size.
     DefDomain {

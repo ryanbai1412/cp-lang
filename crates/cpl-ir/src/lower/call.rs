@@ -8623,6 +8623,7 @@ impl<'a> Lowerer<'a> {
                             text: "not (after != None and before != None)".into(),
                             line: lw.line(span),
                             span,
+                            kept: false,
                         });
                     }
                     let build_loop = |lw: &mut Lowerer<'_>, next_opt: Expr| -> Stmt {

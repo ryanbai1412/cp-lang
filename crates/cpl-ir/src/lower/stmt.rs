@@ -1584,12 +1584,16 @@ impl<'a> Lowerer<'a> {
                 let span = self.span(stmt.span);
                 let cond = self.expect(cond, &Ty::Bool);
                 let message = message.as_ref().map(|m| self.expect(m, &Ty::Str));
+                let kept = self
+                    .context("checks", "asserts")
+                    .is_some_and(|v| matches!(&v.kind, ast::ExprKind::Name(n) if n == "on"));
                 out.push(Stmt::Assert {
                     cond,
                     message,
                     text,
                     line,
                     span,
+                    kept,
                 });
             }
             ast::StmtKind::Unchecked(block) => {

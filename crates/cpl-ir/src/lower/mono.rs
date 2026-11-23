@@ -4202,6 +4202,7 @@ impl<'a> Lowerer<'a> {
                 text: format!("law {}", law.name),
                 line: self.line(law.body.span),
                 span: self.span(span),
+                kept: false,
             }];
         }
         let (pname, pool_slot, elem_ty) = &pools[idx];
