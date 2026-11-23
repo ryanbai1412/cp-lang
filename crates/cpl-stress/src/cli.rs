@@ -616,8 +616,11 @@ pub fn run_with(
     // The failing case again, both sides in the debug interpreter: the
     // `debug(...)`s they share, and with `--trace` the two traces.
     let in_file = own_brute.is_some() || (args.brute.is_none() && judge != Judge::Tokens);
+    // Not a case the solution never finished: the debug interpreter has no time limit.
+    let finished =
+        |failure: &crate::run::Failure| !matches!(failure.verdict, crate::Verdict::TimeLimit);
     let traced = match (&report.failure, tracer) {
-        (Some(failure), Some(tracer)) if args.fast.is_none() && in_file => {
+        (Some(failure), Some(tracer)) if args.fast.is_none() && in_file && finished(failure) => {
             Some(tracer(&args.file, &failure.input, args.explain))
         }
         _ => None,

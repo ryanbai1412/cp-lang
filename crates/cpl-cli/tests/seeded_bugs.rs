@@ -106,11 +106,17 @@ fn stress_finds_every_seeded_bug_and_shrinks_it_to_the_minimal_input() {
         let copy = scratch.join(bug.file_name().unwrap());
         std::fs::copy(bug, &copy).unwrap();
         let minimal = std::fs::read_to_string(bug.with_extension("min")).unwrap();
+        // A bug that never ends names a short limit, so each case it hangs on stops fast.
+        let source = std::fs::read_to_string(bug).unwrap();
+        let limit = (source.lines())
+            .find_map(|line| line.strip_prefix("// time-limit-ms: "))
+            .map(|ms| ["--time-limit", ms.trim()]);
         let start = Instant::now();
         let out = Command::new(env!("CARGO_BIN_EXE_cpl"))
             .arg("stress")
             .arg(&copy)
             .args(STRESS)
+            .args(limit.iter().flatten())
             .output()
             .expect("cpl runs");
         let took = start.elapsed();

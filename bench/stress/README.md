@@ -39,3 +39,7 @@ complexity is the linter's to warn about.
 
 A new bug is a new pair of files. A stress change that finds a smaller
 counterexample updates the `.min`, with the reason in the commit.
+
+A bug that never ends names a short per-run limit on a `// time-limit-ms:` line, so each case
+it hangs on stops quickly. `io-flush` has no seeded bug: `Wire` flushes before every read and at
+exit (`spec/core/10-io.md`), so a missing flush cannot be written.
