@@ -38,13 +38,13 @@ target = "tracked, not a gate: each failing dream is a logged gap in spec/delta/
 [[metric]]
 name = "ports_judge_proven"
 command = "cargo test --release -p cpl-cli --test judges -- --include-ignored every_ --nocapture  # every_v03_port_checks + the judges matrix"
-today = "275/305 tracked ports (corpus/sets/v03.txt) pass every_v03_port_checks; each was also validated against orig.cpp on samples and 30 generated cases (interactive ones through interactor.py)"
+today = "275/305 tracked ports (corpus/sets/v03.txt) pass every_v03_port_checks; 274 of them were also validated against orig.cpp on samples and/or 30 generated cases (interactive ones through interactor.py); ucup5s02f has no statement, gen or tests yet"
 target = "305/305 tracked ports compile with every judge's flags and pass their tests under the profile"
 
 [[metric]]
 name = "corpus_suite"
 command = "target/release/cpl-conform corpus"
-today = "14/100 pass (38 error, 1 trap, 46 untested, 1 wrong); research/scoreboard.json rewritten from this run"
+today = "15/100 pass (38 error, 2 trap, 44 untested, 1 wrong); research/scoreboard.json rewritten from this run"
 target = "100/100 hill-climb spec.cp pass; untested 0 (every problem has tests)"
 
 [[metric]]
