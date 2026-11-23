@@ -9,16 +9,16 @@ One canonical layout, no options: 4-space indents, 100 columns,
 `with` lines first in their block, sorted `use` lines, one blank line
 between items, trailing commas in multi-line brackets, the compiler
 stamp on line 1. Formatting never changes meaning; it is idempotent and
-fast enough to run on every save.
+fast enough to run on every save. (Rfmt.1)
 
 ## `cpl lint`
 
 Lints flag legal code that is probably wrong, slow or unidiomatic. They
 never block a build. Each has a stable code, a default level, a message
-that says what to write instead, and an autofix where possible. A lint
+that says what to write instead, and an autofix where possible. (Rlint.1) A lint
 is declared by the library that owns the names it mentions; the linter
 has no hard-coded stdlib names. Levels are set in `cp.toml [lints]` or
-in code with `with lint(name: allow)`.
+in code with `with lint(name: allow)`. (Rlint.2)
 
 The 0.3 set is catalogued in `../diagnostics.md` (codes `L....`),
 including: same-place read and write in one statement

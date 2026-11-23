@@ -7,7 +7,7 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 2354 (995 passing). Rules: 542.
+Cases: 2359 (995 passing). Rules: 545.
 
 ## Summary per chapter
 
@@ -27,6 +27,8 @@ Cases: 2354 (995 passing). Rules: 542.
 - R12 (12-powers.md): 17 rules, 36 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R13 (13-lowering.md): 22 rules, 27 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - Rcli (cli.md): 2 rules, 6 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- Rfmt (fmt-lint.md): 1 rules, 2 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- Rlint (fmt-lint.md): 2 rules, 3 cases; 0 uncovered, 0 happy-path only, 0 negative only
 
 26 rules match a forbidding word but only permit or define something;
 `permits.txt` lists them with the reason, so they need no reject case.
@@ -55,7 +57,9 @@ negative case. Complete: rules with no gap in `rule-gaps.txt`.
 | R12 | 17 | 17 (100%) | 6 | 6 (100%) | 17 (100%) |
 | R13 | 22 | 22 (100%) | 5 | 5 (100%) | 22 (100%) |
 | Rcli | 2 | 2 (100%) | 1 | 1 (100%) | 2 (100%) |
-| all | 542 | 541 (99%) | 208 | 208 (100%) | 541 (99%) |
+| Rfmt | 1 | 1 (100%) | 1 | 1 (100%) | 1 (100%) |
+| Rlint | 2 | 2 (100%) | 2 | 2 (100%) | 2 (100%) |
+| all | 545 | 544 (99%) | 211 | 211 (100%) | 544 (99%) |
 
 ## Rules
 
@@ -650,6 +654,15 @@ Each rule: positive / negative case counts, then the gap if any.
 
 - Rcli.1 [3+ 1-]: Output is plain text for people and `--json` (the same as `--format json`, on every comman...
 - Rcli.2 [2+ 1-]: `cpl check --json` prints `{"files": [{"path", "ok", "diagnostics"}]}`; each diagnostic ha...
+
+### Rfmt: fmt-lint.md
+
+- Rfmt.1 [2+ 1-]: One canonical layout, no options: 4-space indents, 100 columns, `with` lines first in thei...
+
+### Rlint: fmt-lint.md
+
+- Rlint.1 [1+ 1-]: Lints flag legal code that is probably wrong, slow or unidiomatic. They never block a buil...
+- Rlint.2 [1+ 1-]: A lint is declared by the library that owns the names it mentions; the linter has no hard-...
 
 ## Diagnostics
 
