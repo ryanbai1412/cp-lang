@@ -16,8 +16,8 @@ domain Step = 0..q
 domain V = 1..=n + q
 struct Op(x: Slot, y: Slot, z: Slot)
 
-fn initial(i: Slot) -> V = V.at(i.ord)
-fn version(t: Step) -> V = V.at(n + t.ord)
+fn initial(i: Slot) -> V = V(i.ord + 1)
+fn version(t: Step) -> V = V(n + t.ord + 1)
 
 let b: [Slot]Int = read()
 let ops: [Step]Op = read()
@@ -33,7 +33,7 @@ for t in Step:
 
 let g = Graph.directed(edges)
 let rev = Graph.directed([(v, u) for (u, v) in edges])
-var indeg: [V]Int = [V] u => rev.deg(u)
+var indeg: [V]Int = [V] u => rev[u].len
 var val_of: [V]?Int = none
 
 let targets = [(val: b[i], node: cur[i]) for i in Slot].sorted(by: e => e.val, desc: true)
