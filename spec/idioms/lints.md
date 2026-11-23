@@ -82,7 +82,7 @@ One sub-family per module. Each says: you rebuilt something the library has.
 | loop_product | `acc *= f(x)` loop | `xs.map(f).product()` | fix | #2 | loop | |
 | loop_xor_fold | `acc ^= x` loop | `xs.fold(Xor)` | fix | #2 | loop | |
 | loop_gcd_fold | `g = gcd(g, x)` loop | `xs.fold(gcd)` | fix | #2 | loop | |
-| loop_argmax | track best value and its index | `xs.argmax()`, `D.max(by: f)` | fix | #2 | loop | |
+| loop_argmax | track best value and its index | `xs.argmax()`, `D.max(by: f)` | fix | #2 | loop |✓loop_argmax |
 | loop_max_by_key | track the element with largest `f(x)` | `xs.max(by: f)` | fix | #2 | loop | |
 | max_then_count | `mx = xs.max()` then `xs.count(x == mx)` | `xs.max_count()` | fix | #1 | ty | |
 | loop_mean | sum then divide by len | `xs.mean()` | fix | #2 | loop | |
@@ -129,7 +129,7 @@ One sub-family per module. Each says: you rebuilt something the library has.
 |---|---|---|---|---|---|---|
 | comparator_by_key | `sort` with a comparator that compares `f(a)` to `f(b)` | `sort(by: f)` | fix | #13 | ty | |
 | negate_for_desc | `sort(by: x => -x)` / `(-a, b)` keys | `by: desc` / `(desc(a), b)` | fix | #13 | ty | |
-| argsort_loop | sort pairs `(value, index)` to get an order | `D.sorted(by: k => a[k])` | fix | #3 | ty | |
+| argsort_loop | sort pairs `(value, index)` to get an order | `D.sorted(by: k => a[k])` | fix | #3 | ty |✓argsort_loop |
 | copy_sort_writeback | copy `xs[l..r]`, sort, write back | sort `xs[l..r]` in place | fix | #10 | loop | ✓copy_sort_writeback |
 | hand_compress | sort, dedup, then `lower_bound` each value | `compress(xs)` | fix? | #3 | loop | |
 | rank_by_sort | position of each element in sorted order | `xs.compress()` / `perm_rank` | fix? | #1 | loop | |
@@ -150,7 +150,7 @@ One sub-family per module. Each says: you rebuilt something the library has.
 |---|---|---|---|---|---|---|
 | runs_loop | "start a new group when value changes" loop | `xs.runs(by:)` | fix | #1 | loop | |
 | rle_loop | run-length encode by hand | `[(r.first!, r.len) for r in s.runs()]` | fix | #1 | loop | |
-| group_into_map | `m[k].push(x)` loop | `xs.group(by: k)` | fix | #1 | loop | |
+| group_into_map | `m[k].push(x)` loop | `xs.group(by: k)` | fix | #1 | loop |✓group_into_map |
 | tally_loop | `cnt[x] += 1` over a Map | `xs.tally()` / `Counter` | fix | #1 | loop | |
 | bucket_loop | `[D]List` filled by key | `xs.map(k).buckets()` | fix | #1 | loop | |
 | dedup_adjacent_loop | skip if equal to previous | `xs.dedup()` | fix | #1 | loop | |
@@ -256,10 +256,10 @@ One sub-family per module. Each says: you rebuilt something the library has.
 | bellman_ford_by_hand | `n - 1` rounds of relaxing all edges / SPFA | `bellman_ford` | fix? | #1 | loop | |
 | floyd_by_hand | triple `k, i, j` loop | `floyd_warshall` | fix | #1 | loop | |
 | topo_by_hand | Kahn's indegree queue | `g.topo()` / `topo_order` | fix? | #1 | loop | |
-| cycle_by_colors | white/grey/black DFS for a cycle | `find_cycle` | fix? | #1 | loop | |
+| cycle_by_colors | white/grey/black DFS for a cycle | `find_cycle` | fix? | #1 | loop |✓cycle_by_colors |
 | scc_by_hand | Tarjan / Kosaraju | `scc` / `condense` | warn | #1 | loop | |
 | bridges_by_hand | low-link DFS | `bridges` / `cut_vertices` / `blocks` | warn | #1 | loop | |
-| components_by_dfs | visited loop labelling components | `components` | fix? | #1 | loop | |
+| components_by_dfs | visited loop labelling components | `components` | fix? | #1 | loop |✓components_by_dfs |
 | bipartite_by_hand | 2-colouring BFS/DFS | `two_color` | fix? | #1 | loop | |
 | kruskal_by_hand | sort edges + DSU | `kruskal` / `prim` / `boruvka` | fix? | #1 | loop | |
 | euler_path_by_hand | Hierholzer with edge pointers | `euler_walk` | warn | #1 | loop | |
@@ -280,7 +280,7 @@ One sub-family per module. Each says: you rebuilt something the library has.
 |---|---|---|---|---|---|---|
 | root_dfs_by_hand | DFS filling `parent`, `depth` | `Rooted(at:)`, `.parent`, `.depth` | fix? | #1 | loop | |
 | hand_rolled_binary_lifting | `up[k][v] = up[k-1][up[k-1][v]]` | `Lift` / `JumpTree` | warn | #1 | loop | ✓hand_rolled_binary_lifting |
-| lca_by_hand | depth-equalise then lift | `t.lca(u, v)` / `LcaTable` | fix? | #1 | loop | |
+| lca_by_hand | depth-equalise then lift | `t.lca(u, v)` / `LcaTable` | fix? | #1 | loop |✓lca_by_hand |
 | tree_dist_by_lca | `depth[u] + depth[v] - 2 * depth[lca]` | `t.dist(u, v)` | fix | #1 | ty | |
 | subtree_size_loop | postorder `sz[p] += sz[v]` | `t.size` | fix | #1 | loop | |
 | euler_tour_by_hand | `tin`/`tout` counters | `euler_tour` / `.span[v]` | fix? | #3 | loop | |
@@ -292,7 +292,7 @@ One sub-family per module. Each says: you rebuilt something the library has.
 | kth_ancestor_loop | climb parent `k` times | `ancestor(v, k)` / `jump` | fix | #10 | loop | |
 | virtual_tree_by_hand | sort by tin, add LCAs, stack | `VirtualTree` | warn | #1 | loop | |
 | children_from_parents | build child lists from a parent array | `from_parents` / `parent.fibers()` | fix | #1 | loop | |
-| small_to_large_by_hand | swap child sets by size | documented pattern, `MergeSeg` where it fits | doc | #1 | | |
+| small_to_large_by_hand | swap child sets by size | documented pattern, `MergeSeg` where it fits | doc | #1 | |✓small_to_large_by_hand |
 
 ### S.strings
 
@@ -341,8 +341,8 @@ One sub-family per module. Each says: you rebuilt something the library has.
 | manual_mod_reduce | `% MOD` after every op on `Int` | `type Z = Mod<P>` | fix? | #6 | ty | ✓manual_mod_reduce |
 | neg_mod_fixup | `(a - b + MOD) % MOD` | `Mod` subtraction | fix | #6 | syn | ✓neg_mod_fixup |
 | fermat_inverse | `pow(a, MOD - 2)` | `a.inv` | fix | #1 | ty | ✓fermat_inverse |
-| fact_tables_by_hand | `fact[]`, `inv_fact[]` arrays | `Comb<Z>` / `ModComb` | fix? | #1 | loop | |
-| binom_by_hand | `fact[n] * inv_fact[k] * inv_fact[n-k]` | `comb.choose(n, k)` | fix | #1 | ty | |
+| fact_tables_by_hand | `fact[]`, `inv_fact[]` arrays | `Comb<Z>` / `ModComb` | fix? | #1 | loop |✓fact_tables_by_hand |
+| binom_by_hand | `fact[n] * inv_fact[k] * inv_fact[n-k]` | `comb.choose(n, k)` | fix | #1 | ty |✓binom_by_hand |
 | inv_all_loop | batch inverse prefix trick by hand | `inv_all` | fix | #1 | loop | |
 | loop_invariant_mod_div | `Mod` division by a loop-invariant value | hoist `inv` | fix | #10 | flow | ✓loop_invariant_mod_div |
 | mixed_modulus | two `Mod<P>` types meet through `Int(...)` | one `Z`, or an explicit conversion | warn | #6 | ty | |
@@ -368,7 +368,7 @@ One sub-family per module. Each says: you rebuilt something the library has.
 
 | Lint | Catches | Write instead | Tier | P | Engine | Status |
 |---|---|---|---|---|---|---|
-| submask_loop | `for (s = m; s; s = (s - 1) & m)` | `m.submasks` / `bit_subsets` | fix | #1 | syn | |
+| submask_loop | `for (s = m; s; s = (s - 1) & m)` | `m.submasks` / `bit_subsets` | fix | #1 | syn |✓submask_loop |
 | set_bits_loop | `for b in 0..k: if m >> b & 1` | `for b in m` on a `Subset` | fix | #1 | loop | |
 | mask_as_int | `Int` mask with `1 << i` tests over a domain | `Subset<D>` | fix? | #3 | ty | |
 | bool_array_shift_dp | `[n]Bool` knapsack loop | `Bitset.shift_or` | fix? | #10 | loop | |
@@ -379,7 +379,7 @@ One sub-family per module. Each says: you rebuilt something the library has.
 
 | Lint | Catches | Write instead | Tier | P | Engine | Status |
 |---|---|---|---|---|---|---|
-| cross_by_hand | `x1 * y2 - x2 * y1` | `a.cross(b)` on `Vec` | fix | #1 | syn | |
+| cross_by_hand | `x1 * y2 - x2 * y1` | `a.cross(b)` on `Vec` | fix | #1 | syn |✓cross_by_hand |
 | tuple_points | `(Int, Int)` used as points with arithmetic | `Pt` / `Vec` | fix? | #3 | ty | ✓tuple_points |
 | hull_by_hand | monotone chain loop | `hull` / `OnlineHull` | warn | #1 | loop | |
 | shoelace_by_hand | area loop | `poly.area` | fix | #1 | loop | |
@@ -391,7 +391,7 @@ One sub-family per module. Each says: you rebuilt something the library has.
 
 | Lint | Catches | Write instead | Tier | P | Engine | Status |
 |---|---|---|---|---|---|---|
-| interval_dp_by_length | `for len in 2..=n: for l in ..: let r = l + len - 1` filling `dp[l, r]` | a table over `[I.ranges]` read in its order (Ryan, 2026-11-22: atcoder_dp_l) | fix? | #3 | loop | |
+| interval_dp_by_length | `for len in 2..=n: for l in ..: let r = l + len - 1` filling `dp[l, r]` | a table over `[I.ranges]` read in its order (Ryan, 2026-11-22: atcoder_dp_l) | fix? | #3 | loop |✓interval_dp_by_length |
 | memo_table_by_hand | `-1`-initialised table + recursive check | `@memo` | fix? | #1 | flow | |
 | memo_key_space | `@memo` table too big at the input bounds | `@memo(map)` / iterative DP | warn | #10 | bound | ✓memo_key_space |
 | inf_seeded_dp | DP seeded with `INF` / `-INF` | `?T` with `min=` / `max=` | fix? | #5 | ty | |
@@ -519,7 +519,7 @@ One sub-family per module. Each says: you rebuilt something the library has.
 | Lint | Catches | Write instead | Tier | P | Engine | Status |
 |---|---|---|---|---|---|---|
 | manual_heap_replace_top | `h.pop(); h.push(x)` back-to-back | `h.replace_top(x)` (`std.heap`) | fix | #10 | syn | |
-| manual_heap_drain | `while let x = h.pop(): body` when only consuming elements in order | `for x in h.drain(): body` (`std.heap`) | fix | #2 | loop | |
+| manual_heap_drain | `while let x = h.pop(): body` when only consuming elements in order | `for x in h.drain(): body` (`std.heap`) | fix | #2 | loop |✓manual_heap_drain |
 | manual_heap_push_all | `for x in xs: h.push(x)` on a fresh heap | `Heap.from(xs)` / `h.push_all(xs)` (`std.heap`) | fix | #10 | loop | |
 | hand_rolled_meld_heap | leftist/skew heap with `meld` pointers | `MeldHeap` (`std.heap`) | warn | #1 | ty | |
 | manual_settle_dijkstra | manual `dist` array + `Heap` + `if d > dist[u]: continue` boilerplate | `Settle` (`std.heap`) | fix? | #1 | loop | |
@@ -695,7 +695,7 @@ One sub-family per module. Each says: you rebuilt something the library has.
 | reverse_index | `xs[n - 1 - i]` | `xs.rev` / `D.mirror(i)` | fix | #3 | syn | ✓reverse_index |
 | mod_index_ring | `(i + 1) % n` on positions | ring domain / `xs.ring.next(i)` | fix? | #3 | syn | |
 | temp_swap | `let t = a; a = b; b = t` | `swap(mut a, mut b)` / `xs.swap(i, j)` | fix | #13 | flow | |
-| test_count_loop | `for _ in 0..read<Int>():` wrapping the solution | `@!multitest` | fix | #11 | syn | |
+| test_count_loop | `for _ in 0..read<Int>():` wrapping the solution | `@!multitest` | fix | #11 | syn |✓test_count_loop |
 | maxn_arrays | arrays sized by a literal bound | arrays over the declared domain | fix? | #6 | ty | |
 | nested_list_grid | `List<List<T>>` for a fixed rectangle | `[R, C]T` | fix? | #3 | ty | ✓nested_list_grid |
 | pair_first_second | `.0`/`.1` read far from construction | named record fields | warn | B6 | ty | |
@@ -720,9 +720,9 @@ One sub-family per module. Each says: you rebuilt something the library has.
 | xor_one_bool_toggle | `var turn = 0; ...; turn ^= 1` (C++ parity toggle for 2-state flag) | `var turn = false; ...; turn = not turn` | fix? | #3 | flow | |
 | count_down_while | `var i = n - 1; while i >= 0: ...; i -= 1` (from C++ `for (int i = n-1; i >= 0; i--)`) | `for i in (0..n).rev:` | fix | #2 | loop | |
 | char_minus_zero_digit | `Int(c) - Int('0')` or `Int(c) - Int('a')` for digit/alphabet indexing | `parse_int` (`std.strings`) or `domain D = 'a'..='z'` | fix? | #3 | syn | |
-| plus_mod_percent_mod | `((a - b) % P + P) % P` manual negative-modulo fixup | `Mod<P>` (`std.mod`) or `rem_euclid` (`needs stdlib: std.math.rem_euclid`) | fix? | #1 | syn | |
+| plus_mod_percent_mod | `((a - b) % P + P) % P` manual negative-modulo fixup | `(a - b) % P`: `%` already floors (R01.5.2), or `Mod<P>` (`std.mod`) | fix? | #1 | syn | |
 | cpp_edge_xor_one | storing undirected/residual edges at `2*i` and `2*i ^ 1` in a flat list | `Graph` / `FlowGraph` (`std.graph`, `std.flow`) | warn | #1 | loop | |
-| while_not_empty_pop | `while not q.is_empty: let x = q.pop()!` | `while let x = q.pop():` | fix | #5 | syn | |
+| while_not_empty_pop | `while not q.is_empty: let x = q.pop()!` | `while let x = q.pop():` | fix | #5 | syn |✓while_not_empty_pop |
 | check_then_insert_set | `if not seen.contains(x): seen.add(x); ...` (C++ `count` then `insert`) | `if seen.add(x): ...` (`std.marks`, `std.bitset`) | fix | #10 | flow | |
 | manual_sort2_swap | `if a > b: swap(mut a, mut b)` only to get ordered `(lo, hi)` | `Pair.new(a, b)` (`std.pair`) or `(min(a, b), max(a, b))` | fix? | #13 | syn | |
 | int_bool_increment | `if cond: ans += 1` inside a loop when `ans` is a counter | `xs.count(cond)` (`std.seq`) | fix | #2 | loop | |
@@ -793,7 +793,7 @@ One sub-family per module. Each says: you rebuilt something the library has.
 | option_match_is_none_or | `match x: None => true, Some(v) => p(v)` | `x.is_none_or(p)` (`std.opt`) | fix | #5 | syn | |
 | sentinel_char_or_empty_str | `'?'`, `'\0'`, or `""` stored in table to mean "unset" | `?[D]Char` / `?[D]Str` | warn | #5 | flow | |
 | sentinel_zero_for_unset | `0` used as "unvisited/unset" in array whose valid values can include `0` | `?[D]Int` | warn | #5 | bound | |
-| map_contains_then_index | `if m.contains(k): use(m[k])` (double hash lookup + trap risk) | `if let v = m.get(k): use(v)` | fix | #5 | flow | |
+| map_contains_then_index | `if m.contains(k): use(m[k])` (double hash lookup + trap risk) | `if let v = m.get(k): use(v)` | fix | #5 | flow |✓map_contains_then_index |
 | unwrap_on_possibly_empty | `xs.min()!`, `xs.max()!`, `xs.first!`, `xs.last!` when `xs.len` can be `0` from bounds | handle `None` or tighten `n: 1..=N` | warn | #5 | bound | |
 | option_assign_none_then_branch | `var res: ?T = None; ...; if res == None: return None; Some(res!)` | `return` directly or use `?` propagation | fix? | #5 | flow | |
 | option_unwrap_in_loop_invariant | `opt!` called on every iteration of a loop when `opt` is loop-invariant | unwrap once before loop: `let v = opt!` | fix | #5 | loop | |
@@ -965,9 +965,9 @@ One sub-family per module. Each says: you rebuilt something the library has.
 |---|---|---|---|---|---|---|
 | int_mul_overflow_at_bounds | `a * b` where `ProvenExpr` range exceeds `Int` (`i64`) bounds | widen to `Int128`, use `Mod<P>`, or reorder division | warn | #6 | bound | |
 | int_add_overflow_at_bounds | `a + b` or `sum` where `ProvenExpr` range exceeds target integer width | widen type or use `Mod<P>` | warn | #6 | bound | |
-| int_shift_overflow_at_bounds | `1 << k` where declared bound allows `k >= 63` (or `k < 0`) | guard `k`, use `Bitset` (`std.bitset`), or `pow_mod` (`std.math`) | warn | #6 | bound | |
+| int_shift_overflow_at_bounds | `1 << k` where declared bound allows `k >= 63` (or `k < 0`) | guard `k`, use `Bitset` (`std.bitset`), or `pow_mod` (`std.math`) | warn | #6 | bound |✓int_shift_overflow_at_bounds |
 | int_abs_min_overflow | `abs(x)` when `x`'s range includes `Int.MIN` | tighten range or widen before `abs` | warn | #6 | bound | |
-| int_div_possible_zero | `a / b` or `a % b` where `0` is inside `b`'s proven range | guard `b != 0` or tighten `b: 1..=N` | warn | #6 | bound | |
+| int_div_possible_zero | `a / b` or `a % b` where `0` is inside `b`'s proven range | guard `b != 0` or tighten `b: 1..=N` | warn | #6 | bound |✓int_div_possible_zero |
 | mod_literal_mismatch | two different prime-like moduli (e.g. `998244353` and `1000000007`, or typo `100000007`) in one file | declare one `type Z = Mod<P>` | warn | #6 | ty | |
 | mod_subtract_without_mod | `(a - b) % P` where `a - b` can be negative (remainder is negative in CP Lang) | `Mod<P>` (`std.mod`) | warn | #1 | bound |✗ not a bug here: `/` and `%` floor for a positive divisor (R01.5.2), so the C++ trap does not exist |
 | mod_pow_exponent_mod_p | reducing exponent of `pow_mod(a, e, P)` modulo `P` instead of `P - 1` (Fermat's little theorem bug) | reduce exponent mod `P - 1` (for prime `P`, `a != 0`) | warn | #6 | flow | |
@@ -988,7 +988,7 @@ One sub-family per module. Each says: you rebuilt something the library has.
 | mutate_while_iterating | push/remove on the sequence being walked | iterate a snapshot or use indices deliberately | warn | #8 | flow | |
 | swap_two_muts | `swap(mut a[i], mut a[j])` | `a.swap(i, j)` | fix | #8 | syn | |
 | captured_var_mutated | closure captures a `var` that changes after capture | pass it, or `let` a copy | warn | #8 | flow | |
-| compound_self_ref | `x = x + 1` | `x += 1` | fix | #13 | syn | |
+| compound_self_ref | `x = x + 1` | `x += 1` | fix | #13 | syn |✓compound_self_ref |
 | conditional_assign | `if c: x = a else: x = b` | `x = if c: a else: b` | fix | B6 | syn | |
 
 #### Additions (brainstorm, round 2)
@@ -1030,7 +1030,7 @@ One sub-family per module. Each says: you rebuilt something the library has.
 | Lint | Catches | Write instead | Tier | P | Engine | Status |
 |---|---|---|---|---|---|---|
 | unread_field | record field never read | drop it | warn | #7 | flow | ✓unread_field |
-| unused_binding | `let` never read | drop it | fix | #7 | flow | |
+| unused_binding | `let` never read | drop it | fix | #7 | flow |✓unused_binding |
 | unused_fn | top-level `fn` never called (outside test attributes) | drop it | warn | #7 | flow | |
 | bool_literal_branch | `if c: true else: false` | `c` | fix | B6 | syn | |
 | compare_to_bool | `x == true` | `x` | fix | B6 | syn | |
@@ -1041,7 +1041,7 @@ One sub-family per module. Each says: you rebuilt something the library has.
 | redundant_collect | `.collect()` before a `Seq` op | drop it | fix | #10 | ty | |
 | self_max | `max(a, a)`, `x min= x` | drop it | fix | #7 | syn | |
 | shadows_top_level | local name hides a top-level `let` | rename | warn | B6 | ty | ✓shadows_top_level |
-| unreachable_code | statements after `return` / `break` | drop them | fix | #7 | flow | |
+| unreachable_code | statements after `return` / `break` | drop them | fix | #7 | flow |✓unreachable_code |
 | redundant_prelude_import | importing what the prelude gives | drop it | fix | #13 | ty | ✓redundant_prelude_import |
 | redundant_annotation | type annotation equal to the inferred one on a local | drop it (judgment for docs value) | doc | B6 | | |
 
@@ -1187,7 +1187,7 @@ Three recurring lint groups above point to practices not directly named by `#1`�
 
 1. **`std.seq.is_sorted` / `is_strictly_sorted`**: contestants frequently write adjacent-pair loops to check monotonicity; `std.seq` has `sorted()` and `windows(2)` but no `is_sorted(by:)` / `is_strictly_sorted(by:)` predicate.
 2. **`std.seq.all_equal` / `has_dup`**: recurring 1-line contest checks currently require `xs.all(x => x == xs[0])` or `xs.sorted().deduped().len < xs.len`.
-3. **`std.math.rem_euclid`**: when contestants need non-negative Euclidean remainder modulo a dynamic `m` without `Mod<P>` (e.g. negative coordinate wrapping), they write `((a % m) + m) % m`; a `rem_euclid(a, m)` helper eliminates the C++ idiom.
+3. **`std.math.rem_euclid`**: when contestants need non-negative Euclidean remainder modulo a dynamic `m` without `Mod<P>` (e.g. negative coordinate wrapping), they write `((a % m) + m) % m`; a `rem_euclid(a, m)` helper eliminates the C++ idiom. (Not needed: `%` floors for a positive divisor, R01.5.2, so `a % m` is already non-negative.)
 4. **`std.graph.read_edges` / `Graph.read`**: nearly every graph problem repeats `for _ in 0..m: let (u, v) = read<(V, V)>(); g.add(u, v)`; a typed edge-list reader would let `read_graph_edges_loop` autofix cleanly.
 
 ### Spec/implementation gaps in `std/GAPS.md` that affect lints

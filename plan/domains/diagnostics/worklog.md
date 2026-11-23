@@ -492,3 +492,7 @@ Landed since 23:10: four type/flow lints from `spec/idioms/lints.md`, L0571 `neg
   clean and the E0303 fix no longer rewrites a generator into
   `s.map(..).max()!`; only `max(a)` on a list keeps E0303 with `a.max()!`.
   This fixed the LSP parity failure on that file.
+- lints.md Status column synced: 21 rows with a record under spec/lints/
+  were blank and now say ✓name. `plus_mod_percent_mod` now says
+  `(a - b) % P` is enough, since `%` floors; the `rem_euclid` stdlib wish
+  notes the same.
