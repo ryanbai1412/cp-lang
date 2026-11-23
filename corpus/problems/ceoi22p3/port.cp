@@ -21,7 +21,7 @@ domain Ask = 0..k - 1
 let one = Rooted.from_parents(read<[V]?V>(none: -1))
 let two = Rooted.from_parents(read<[V]?V>(none: -1))
 
-var picked: List<V> = [one.at[one.Pre.at(i)] for i in 0..k]
+var picked: List<V> = [one.at[one.Pre.at(i)!] for i in 0..k]
 // CEOI '22 judge expects the k chosen vertices one per line before queries.
 for v in picked: print(v)
 picked.sort(by: v => two.tin[v].ord)

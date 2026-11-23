@@ -21,8 +21,7 @@ for i in V.rev:
     suff[i] = mx
 let cap: [V]Int = [V] i => min(pref[i], suff[i])
 
-let hs = compress([h[i] for i in V])
-type H = hs.D
+let (domain H, hs) = compress([h[i] for i in V])
 var by_h: [H]List<V> = []
 for i in V: by_h[hs.at(h[i])].push(i)
 
@@ -35,7 +34,7 @@ var active = SortedBag<Int>()
 var ans: Z = 0
 var prev_h: ?Int = None
 
-for cid in hs.D:
+for cid in H:
     let cur_h = hs[cid]
     if let lo_h = prev_h:
         if not active.is_empty:
@@ -54,7 +53,7 @@ for cid in hs.D:
                 )
                 pq[first].push((lo_h, span))
                 sq[last].push((lo_h, span))
-                pq[V.last].push((lo_h, span))
+                pq[V.last!].push((lo_h, span))
     for v in by_h[cid]: active.add(v.idx)
     while let lo = active.first:
         if cur_h < cap[V(lo)]: break

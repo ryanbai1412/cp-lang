@@ -8,12 +8,12 @@ domain Rem = 0..d
 // below[r]: numbers strictly below the prefix of K read so far (same length,
 // leading zeros allowed) whose digit sum is r mod d. `own` is that of K's prefix.
 var below: [Rem]Z = 0
-var own = Rem.first
+var own = Rem.first!
 for c in k:
     var next: [Rem]Z = 0
     for r in Rem:
         for x in 0..=9: next[Rem.wrap(r.ord + x)] += below[r]
-    for x in 0..c - '0': next[own.cyc(x)] += 1
+    for x in 0..c - '0': next[Rem.wrap(own.ord + x)] += 1
     below = next
-    own = own.cyc(c - '0')
+    own = Rem.wrap(own.ord + (c - '0'))
 print(below[Rem.first!] - Int(own != Rem.first))  // K itself counts, zero does not

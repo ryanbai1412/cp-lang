@@ -14,7 +14,7 @@ for p in points: at[p] += 1
 // first spot going clockwise: the other two points are there too, or within
 // the next c / 2 spots.
 var bad = 0
-var ahead = sum(at[Spot.first.cyc(k)] for k in 1..=c / 2)
+var ahead = sum(at[Spot.wrap(k)] for k in 1..=c / 2)
 for p in Spot:
     bad += choose(at[p], 3) + choose(at[p], 2) * ahead + at[p] * choose(ahead, 2)
     ahead += at[Spot.wrap(p.ord + c / 2 + 1)] - at[Spot.wrap(p.ord + 1)]

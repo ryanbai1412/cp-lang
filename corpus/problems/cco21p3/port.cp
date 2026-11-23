@@ -89,7 +89,7 @@ for p in Pass:
         if x == 0:
             ans[qi] = 1
         else:
-            let pos = bit.first_ge(x)!.left
+            let pos = bit.first_ge(x)!.left!
             ans[qi] = tour_node[pos.to_idx].to_idx + 1
 
 for a in ans: print(a)

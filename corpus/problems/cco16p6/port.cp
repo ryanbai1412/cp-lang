@@ -16,10 +16,7 @@ struct Node:
     siz: Int
     sm: Int
 
-var st = SegTree<Slot, Node>(
-    Node(siz: 0, sm: 0),
-    (a, b) => Node(siz: a.siz + b.siz, sm: a.sm + b.sm),
-)
+var st = SegTree<Slot, Node>(Monoid(Node(siz: 0, sm: 0), (a, b) => Node(siz: a.siz + b.siz, sm: a.sm + b.sm)))
 
 fn set_slot(idx: Int, cnt: Int):
     st.set(Slot(idx), Node(siz: cnt, sm: idx * cnt))
@@ -34,9 +31,9 @@ var mx = n
 for i in 0..n:
     let need = arr[i] - 1
     let cut = (base - 1..=n + 1).find(
-        mid => st.fold(Slot(base - 1), Slot(mid)).siz >= need
+        mid => st.fold(Slot(base - 1)..=Slot(mid)).siz >= need
     ) ?? (n + 1)
-    let cur = st.fold(Slot(base - 1), Slot(cut))
+    let cur = st.fold(Slot(base - 1)..=Slot(cut))
     let extra = cur.siz - need
     let cost = cur.sm - cut * extra + need * (1 - base)
     if cost <= kv:
