@@ -219,6 +219,8 @@ documented. The stdlib's own gaps are in `std/GAPS.md`.
 - core-04/spec-block-split-by-search.cp: compiler
 - core-04/zip-keyed-by-first.cp: compiler
 - core-04/product-position-is-its-tuple.cp: compiler
+- core-04/cuts-domain-has-range.cp: compiler
+- core-04/rebased-str-indexes-from-zero.cp: stdlib
 - core-05/at-assign-needs-var.cp: compiler
 - core-05/closure-capture-blocks-push.cp: compiler
 - core-05/exercise-04-var-from-lent-param.cp: compiler

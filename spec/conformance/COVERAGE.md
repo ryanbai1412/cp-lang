@@ -7,16 +7,16 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 2513 (995 passing). Rules: 566.
+Cases: 2515 (995 passing). Rules: 566.
 
 ## Summary per chapter
 
 - R01 (01-lexical-grammar.md): 55 rules, 131 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R02 (02-values-types.md): 52 rules, 131 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R03 (03-numbers-layout.md): 24 rules, 62 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R04 (04-indices.md): 68 rules, 117 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R04 (04-indices.md): 68 rules, 119 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04a (04a-identity-vs-offset.md): 39 rules, 53 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R04b (04b-keys.md): 27 rules, 64 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R04b (04b-keys.md): 27 rules, 65 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R05 (05-ownership.md): 43 rules, 149 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R06 (06-control-functions.md): 24 rules, 87 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R07 (07-sequences.md): 90 rules, 132 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -221,8 +221,8 @@ Each rule: positive / negative case counts, then the gap if any.
 - R04.2.20 [4+ 1-]: | `V.find(f)`, `V.count(f)`, `V.filter(f)`, `V.min(by: f)` | a domain is a `Seq<V>` of its...
 - R04.2.21 [1+ 0-]: | `f(V)` where a `Range<V>` is expected | a range-backed domain named as a value is its wh...
 - R04.2.3 [2+ 3-]: | `V.first`, `V.last` | `?V`, `None` when `V` is empty; write `V.first!` when you know it ...
-- R04.2.4 [1+ 0-]: | `V.range` | the whole range, same as `..` (`a.keys` for an array's) | \(O(1)\)
-- R04.2.5 [1+ 0-]: | `V.cuts` | the domain of cuts (type `Cut<V>`): `V.cuts.first` is the start, `.last` the ...
+- R04.2.4 [2+ 0-]: | `V.range` | the whole range, same as `..` (`a.keys` for an array's) | \(O(1)\)
+- R04.2.5 [2+ 0-]: | `V.cuts` | the domain of cuts (type `Cut<V>`): `V.cuts.first` is the start, `.last` the ...
 - R04.2.6 [1+ 0-]: | `x in V` | is integer `x` a position | \(O(1)\)
 - R04.2.7 [1+ 1-]: | `V(x)` | integer to position, trapping outside `V` | \(O(1)\)
 - R04.2.8 [1+ 0-]: | `V.at(x)` | integer to position, `?V`: `None` outside `V` | \(O(1)\)
@@ -231,7 +231,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R04.2.19 [2+ 0-]: | `v.after`, `v.before` | the pieces `v.r..` and `..v.l` of `v`'s domain, so `for j in v.a...
 - R04.2.11 [5+ 0-]: | `a[p]`, `a[x, y]` | for `P = (A, B)`, `[P]T` and `[A, B]T` are the same type: a `p: P` i...
 - R04.2.12 [1+ 0-]: | `Pair<V>` | the unordered pairs `{u, v}` of distinct positions, `V.count * (V.count - 1)...
-- R04.2.13 [1+ 0-]: | `V.wrap(x)` | integer to position, mod `V.count`: rings and cyclic shifts | \(O(1)\)
+- R04.2.13 [2+ 0-]: | `V.wrap(x)` | integer to position, mod `V.count`: rings and cyclic shifts | \(O(1)\)
 - R04.2.14 [2+ 1-]: | `if let V(j) = i - 10:` | the pattern form of `V.at`: matches only inside `V` | \(O(1)\)
 - R04.2.15 [2+ 0-]: | `Int(v)` | position to its integer (for `1..=n`, that's 1..n) | free
 - R04.2.16 [5+ 1-]: | `Int(c)` | cut to its integer: the number of positions before it, 0..=n whatever the bas...
@@ -336,7 +336,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R04b.1.6 [4+ 0-]: To keep `w`'s keys, build a table over them: `[w.keys] k => w[k]`.
 - R04b.1.7 [6+ 3-]: `a.rekey(r)` is the inverse: the same cells re-keyed onto a range `r` of equal length, \(O...
 - R04b.1.8 [1+ 1-]: , so `a.sorted().rev[0]` is an error whose fix is `.nth(0)`.
-- R04b.1.9 [1+ 1-]: **Lint: 0-based counter used as a slice key** (`for k in 0..w.len: w[k]`). Suggests `w.ite...
+- R04b.1.9 [2+ 1-]: **Lint: 0-based counter used as a slice key** (`for k in 0..w.len: w[k]`). Suggests `w.ite...
 - R04b.1.10 [1+ 3-]: **Trap: an out-of-keys read.** The message names the key range, e.g. "`w` has keys 3..7 (i...
 - R04b.1.11 [4+ 1-]: **Compile error: a raw `Int` used to index a domain slice**, as before.
 - R04b.3.1 [1+ 1-]: make `f` generic as above, using `first`, `nth` and `items`;
