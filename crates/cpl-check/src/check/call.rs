@@ -224,6 +224,11 @@ impl<'a> Checker<'a> {
             ty = known;
         }
         if matches!(ty, Ty::Unknown) {
+            if let Some(known) = self.method_form_call(call, callee, args) {
+                ty = known;
+            }
+        }
+        if matches!(ty, Ty::Unknown) {
             if let Some(read) = self.read_ty(callee, args) {
                 ty = read;
             }

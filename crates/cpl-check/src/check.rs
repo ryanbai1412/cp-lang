@@ -15,6 +15,7 @@ mod expr;
 mod known;
 pub(crate) mod lends;
 mod library_domain;
+mod method_form;
 mod moves;
 mod mut_args;
 mod pattern;

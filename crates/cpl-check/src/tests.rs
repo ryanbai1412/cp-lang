@@ -1754,3 +1754,22 @@ fn an_index_with_no_key_does_not_crash_the_map_fold_check() {
         "var cnt: Map<Int, Int> = Map()\nfor x in [3, 1]:\n    cnt[]x = (cnt.get(x) ?? 0) + 1\n";
     assert!(!codes(src).is_empty());
 }
+
+#[test]
+fn a_library_fn_in_method_form_hovers_and_types_like_its_free_form() {
+    let src = "let s = \"aab\"\nprint(s.runs(by: c => c).count())\nprint(runs(s, by: c => c).count())\nlet a = read<[3]Int>()\nlet k = 1 - a.count(x => x > 0)\nprint(k)\n";
+    let method = hover(src, "runs(by");
+    assert!(method.starts_with("fn runs<S, T, K>(self: S"), "{method}");
+    assert_eq!(method, hover(src, "runs(s"));
+    assert_eq!(hover(src, "k = "), "k: Int");
+    let mut db = Database::new();
+    db.set_file("a.cp", src);
+    let an = db.analyze("a.cp").unwrap();
+    let call = src.find("s.runs").unwrap() as u32;
+    let (item, at) = an.item_at(call).unwrap();
+    let shape = item.check.shapes.iter().find(|(span, _)| span.start == at);
+    assert_eq!(
+        shape.map(|(_, ty)| ty.to_string()).as_deref(),
+        Some("Gen<Slice<Str>>")
+    );
+}
