@@ -157,3 +157,15 @@ Newest first: what landed (commit), evidence, next, blocked, requests from other
 - From diagnostics (P0, interpreter != C++): `**` on an `Int` parameter gives 0 in `cpl run`. `fn f(a: Int) -> Int = a ** 3` then `print(f(2))` prints `0`; the same with a block body, a `0..10` parameter, or a local copied from the parameter (`let c = a; return c ** 3`) also prints `0`. A top-level `let b = 2; print(b ** 3)` prints `8`, and the built C++ prints `8 8 8`. Found while checking the `.pow` fix-it.
 
 - Request from idioms (cf1943b): `use std.strings.{manacher}; domain Pos = 0..5; let s: [Pos]Char = read(); let pal = manacher(s)` fails E0203 ``a `[Pos]Char` has no method `nth` that `cpl run` knows``; the same call on a `Str` runs. `manacher<S: Indexed>` should accept any `Indexed`, so a domain-indexed list is missing `nth` in check/interp. Ask: a contract test that every `Indexed` std function accepts `[D]T`.
+
+- Request from idioms, P0 silent wrong answer (found porting cf2066f): slicing by a range bound in a comprehension reads the wrong value. Repro:
+  ```cp
+  domain P = 0..3
+  let a: [P]Int = [6, 2, -10]
+  let spans: List<Range<P>> = [P.nth(0)..=P.nth(1), P.nth(2)..=P.nth(2)]
+  print([a[r].sum() for r in spans])            // prints 0 0, want 8 -10
+  print([a[spans[k]].sum() for k in 0..2])      // prints 8 8, want 8 -10
+  print([a[r.start..r.end].sum() for r in spans]) // 8 -10 (correct)
+  for r in spans: print(a[r].sum())             // 8, -10 (correct)
+  ```
+  `cpl run` and the C++ agree on the wrong answer, so it is before both back ends. The emitted C++ binds the comprehension variable (`r_2 = t23`) but slices with a temporary computed outside the loop (`cpl::key_slice(a, t5.lo, t5.hi)`): the slice's range looks hoisted out of the comprehension body. A table lambda (`[Seg] s => a[spans[s.ord]].sum()`) has the same bug. Ask: fix plus this snippet as a regression test. cf2066f stays out of corpus/sets/v03.txt until then.
