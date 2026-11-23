@@ -8,7 +8,7 @@ use crate::{
     File, Finding, BY_TWIN, COPY_SORT_WRITEBACK, DISCARDED_RESULT, DOMAIN_SPELLING, FREE_FOLD,
     HAND_ROLLED_ANSWER_SEARCH, HAND_ROLLED_BINARY_LIFTING, HAND_ROLLED_DSU, HAND_ROLLED_PREFIX_SUM,
     HAND_ROLLED_RANGE_TREE, HAND_ROLLED_SIEVE, HAND_ROLLED_STRING_ALGO, INDEX_ONLY_LOOP,
-    LOOP_REDUCTION, NONE_CHECK_UNWRAP, PREFIX_TWIN, PUSH_LOOP, SEARCH_LOOP, SORTED_RANGE_METHOD,
+    LOOP_REDUCTION, NONE_CHECK_UNWRAP, PUSH_LOOP, SEARCH_LOOP, SORTED_RANGE_METHOD,
     SYMMETRIC_WRITE, TREE_ORDER,
 };
 use cpl_diag::{Diagnostic, Fix, Span};
@@ -85,7 +85,6 @@ struct Blocks<'a, 'b> {
 
 impl Visitor for Blocks<'_, '_> {
     fn stmt(&mut self, stmt: &Stmt) {
-        self.taste.prefix_use_twin(stmt);
         match &stmt.kind {
             StmtKind::Fn(FnDecl {
                 body: FnBody::Block(body),
@@ -101,16 +100,12 @@ impl Visitor for Blocks<'_, '_> {
             _ => {}
         }
     }
-    fn ty(&mut self, ty: &cpl_syntax::ast::Type) {
-        self.taste.prefix_type_twin(ty);
-    }
     fn expr(&mut self, expr: &Expr) {
         self.taste.none_check_unwrap(expr);
         self.taste.free_fold(expr);
         self.taste.by_twin(expr);
         self.taste.tree_order(expr);
         self.taste.domain_spelling(expr);
-        self.taste.prefix_twin(expr);
         self.taste.sorted_range_method(expr);
         match &expr.kind {
             ExprKind::Block(body) => self.taste.block(&body.stmts),
@@ -1340,161 +1335,6 @@ impl<'a> Taste<'a> {
                 }
             }
         }
-    }
-
-    /// `prefix1(a)`, `prefix2(a)`, `prefix_n(a)` -> `Prefix(a)`,
-    /// `Prefix1`/`Prefix2`/`PrefixN` -> `Prefix`, `Diff1`/`Diff2` -> `Diff`.
-    fn prefix_twin(&mut self, expr: &Expr) {
-        let (target_span, name, replacement) = match &expr.kind {
-            ExprKind::Call { callee, args } => {
-                if let ExprKind::Name(name) = &callee.kind {
-                    let one_arg = args.len() == 1 && args[0].name.is_none() && !args[0].mutable;
-                    if matches!(name.as_str(), "Prefix1" | "Prefix2" | "PrefixN")
-                        || (one_arg && matches!(name.as_str(), "prefix1" | "prefix2" | "prefix_n"))
-                    {
-                        (callee.span, name.as_str(), "Prefix")
-                    } else if matches!(name.as_str(), "Diff1" | "Diff2") {
-                        (callee.span, name.as_str(), "Diff")
-                    } else {
-                        return;
-                    }
-                } else {
-                    return;
-                }
-            }
-            ExprKind::Generic { base, .. } => {
-                if let ExprKind::Name(name) = &base.kind {
-                    if matches!(name.as_str(), "Prefix1" | "Prefix2" | "PrefixN") {
-                        (base.span, name.as_str(), "Prefix")
-                    } else if matches!(name.as_str(), "Diff1" | "Diff2") {
-                        (base.span, name.as_str(), "Diff")
-                    } else {
-                        return;
-                    }
-                } else {
-                    return;
-                }
-            }
-            _ => return,
-        };
-        if self.declared.contains(replacement) || self.declared.contains(name) {
-            return;
-        }
-        let mut diag = Diagnostic::warning(
-            PREFIX_TWIN.code,
-            target_span,
-            format!("use `{replacement}` instead of `{name}`"),
-        )
-        .with_help(
-            "`Prefix(a)` and `Diff` dispatch by shape across `[D]T`, `[R, C]T`, and `List<T>`",
-        );
-        diag.fixes.push(Fix {
-            title: format!("rename to `{replacement}`"),
-            edits: vec![(target_span, replacement.into())],
-        });
-        self.push(&PREFIX_TWIN, diag);
-    }
-
-    /// Type annotations `Prefix1`/`Prefix2`/`PrefixN` -> `Prefix`, `Diff1`/`Diff2` -> `Diff`.
-    fn prefix_type_twin(&mut self, ty: &cpl_syntax::ast::Type) {
-        let TypeKind::Named { name, .. } = &ty.kind else {
-            return;
-        };
-        let replacement = match name.text.as_str() {
-            "Prefix1" | "Prefix2" | "PrefixN" => "Prefix",
-            "Diff1" | "Diff2" => "Diff",
-            _ => return,
-        };
-        if self.declared.contains(replacement) || self.declared.contains(name.text.as_str()) {
-            return;
-        }
-        let mut diag = Diagnostic::warning(
-            PREFIX_TWIN.code,
-            name.span,
-            format!("use `{replacement}` instead of `{}`", name.text),
-        )
-        .with_help("`Prefix` and `Diff` dispatch by shape across `[D]T`, `[R, C]T`, and `List<T>`");
-        diag.fixes.push(Fix {
-            title: format!("rename to `{replacement}`"),
-            edits: vec![(name.span, replacement.into())],
-        });
-        self.push(&PREFIX_TWIN, diag);
-    }
-
-    /// `use std.prefix.{prefix1, Prefix2, Diff1, Diff2}` or `use std.prefix.Diff1` -> drop/rename.
-    fn prefix_use_twin(&mut self, stmt: &Stmt) {
-        let StmtKind::Use { path, names, .. } = &stmt.kind else {
-            return;
-        };
-        if path.len() == 3 && names.is_empty() && path[0].text == "std" && path[1].text == "prefix"
-        {
-            let replacement = match path[2].text.as_str() {
-                "prefix1" | "prefix2" | "prefix_n" => String::new(),
-                "Prefix1" | "Prefix2" | "PrefixN" => "use std.prefix.Prefix".into(),
-                "Diff1" | "Diff2" => "use std.prefix.Diff".into(),
-                _ => return,
-            };
-            let mut diag = Diagnostic::warning(
-                PREFIX_TWIN.code,
-                stmt.span,
-                "removed `std.prefix` arity-suffixed import",
-            )
-            .with_help("`prefix`, `Prefix`, and `Diff` are in the prelude and dispatch by shape");
-            diag.fixes.push(Fix {
-                title: "migrate `std.prefix` import".into(),
-                edits: vec![(stmt.span, replacement)],
-            });
-            self.push(&PREFIX_TWIN, diag);
-            return;
-        }
-        let is_std_prefix = path.len() == 2 && path[0].text == "std" && path[1].text == "prefix";
-        if !is_std_prefix || names.is_empty() {
-            return;
-        }
-        let has_old = names.iter().any(|n| {
-            matches!(
-                n.text.as_str(),
-                "prefix1"
-                    | "prefix2"
-                    | "prefix_n"
-                    | "Prefix1"
-                    | "Prefix2"
-                    | "PrefixN"
-                    | "Diff1"
-                    | "Diff2"
-            )
-        });
-        if !has_old {
-            return;
-        }
-        let mut kept: Vec<String> = Vec::new();
-        for n in names {
-            let mapped = match n.text.as_str() {
-                "prefix1" | "prefix2" | "prefix_n" => continue,
-                "Prefix1" | "Prefix2" | "PrefixN" => "Prefix",
-                "Diff1" | "Diff2" => "Diff",
-                other => other,
-            };
-            if !kept.iter().any(|k| k == mapped) {
-                kept.push(mapped.to_string());
-            }
-        }
-        let replacement = if kept.is_empty() {
-            String::new()
-        } else {
-            format!("use std.prefix.{{{}}}", kept.join(", "))
-        };
-        let mut diag = Diagnostic::warning(
-            PREFIX_TWIN.code,
-            stmt.span,
-            "removed `std.prefix` arity-suffixed import",
-        )
-        .with_help("`prefix`, `Prefix`, and `Diff` are in the prelude and dispatch by shape");
-        diag.fixes.push(Fix {
-            title: "migrate `std.prefix` import".into(),
-            edits: vec![(stmt.span, replacement)],
-        });
-        self.push(&PREFIX_TWIN, diag);
     }
 
     /// `s.first_ge(k)` / `first_gt(k)` / `last_le(k)` / `last_lt(k)` / `count_range(lo, hi)`

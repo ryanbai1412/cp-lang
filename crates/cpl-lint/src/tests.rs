@@ -1038,33 +1038,6 @@ let e = s.range(1..5).len
 }
 
 #[test]
-fn prefix_twin_becomes_prefix() {
-    let src = "\
-use std.prefix.{prefix1, Prefix2, Diff1, Diff2}
-let xs = [3, 1, 4]
-let a = prefix_n(xs)
-let b = prefix1([0..3] i => i)
-let c = prefix2([0..2, 0..2] (r, c) => r + c)
-let d1 = Diff1<V, Int>()
-let d2 = Diff2<R, C, Int>()
-fn f(p: Prefix1<V, Int>, q: Prefix2<R, C, Int>, r: PrefixN<Int>) -> Int = 0
-";
-    assert_eq!(taste_codes(src), ["L0513"; 9]);
-    assert_eq!(
-        fixed(src),
-        "\
-let xs = [3, 1, 4]
-let a = Prefix(xs)
-let b = Prefix([0..3] i => i)
-let c = Prefix([0..2, 0..2] (r, c) => r + c)
-let d1 = Diff<V, Int>()
-let d2 = Diff<R, C, Int>()
-fn f(p: Prefix<V, Int>, q: Prefix<R, C, Int>, r: Prefix<Int>) -> Int = 0
-"
-    );
-}
-
-#[test]
 fn hand_rolled_range_tree_flags_bit_and_segtree_without_false_positives() {
     let fenwick_add = "\
 var bit: [0..=8]Int = 0

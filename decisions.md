@@ -8227,3 +8227,8 @@ tag move fatal again.
 - **Routed to compiler.** `reroot` lambda inference of `?Int`; `cpl explain` scalar and phantom copy rows; `std::function` in the `reroot` combine (perf).
 - **Rebuild workflow.** The `plan_delta_lines` ratchet blocks new `plan/domains/spec/delta/rebuild-NN/` folders. Starting with round 32, a round writes to `research/rebuild-rounds/rebuild-NN/`, where finished runs belong anyway (tech-debt's direction).
 - **Reverse.** Raise the `plan_delta_lines` ratchet for each round.
+
+## 402. Retire L0513 `prefix_twin` for the checker's E0201/E0204 fixes (lint-fmt, 2026-11-23)
+
+- **Call.** `prefix1`/`prefix2`/`prefix_n`, `Prefix1`/`Prefix2`/`PrefixN` and `Diff1`/`Diff2` are E0201 (values, imports) or E0204 (types), "replaced by `prefix`/`Prefix`/`Diff`", and each carries the rename `cpl fix` applies. L0513 repeated those errors from syntax, so it is retired with its record, as L0206 was (decision 401).
+- **Reverse.** Restore `spec/lints/prefix_twin/` and the three `prefix_*twin` arms in `rules/taste/mod.rs`.

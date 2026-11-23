@@ -176,7 +176,7 @@ One sub-family per module. Each says: you rebuilt something the library has.
 |---|---|---|---|---|---|---|
 | hand_rolled_prefix_sum | `p[i + 1] = p[i] + x` | `Prefix(a)`, `.fold(l..r)` | fix | #1 | loop | ✓hand_rolled_prefix_sum |
 | prefix_2d_by_hand | inclusion–exclusion 2-D table | `Prefix` over `[R, C]`, `.fold(rows, cols)` | fix | #1 | loop | |
-| prefix_twin | `prefix1`/`Prefix2`/`Diff1` variants | one generic `Prefix` / `Diff` | fix | #13 | ty | ✓prefix_twin |
+| prefix_twin | `prefix1`/`Prefix2`/`Diff1` variants | one generic `Prefix` / `Diff` | fix | #13 | ty | ✓E0201 (checker, with fix) |
 | diff_array_by_hand | `d[l] += v; d[r + 1] -= v` then scan | `Diff` / `SweepAdd` | fix | #1 | loop | |
 | arith_diff_by_hand | second-order difference for arithmetic adds | `ArithDiff` | fix? | #1 | loop | |
 | scan_loop | running max/min/gcd stored per index | `xs.scan(op)` | fix | #2 | loop | |
