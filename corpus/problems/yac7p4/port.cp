@@ -74,17 +74,17 @@ fn kth_anc(u: V, steps: Int) -> V:
 // Min-SegTree over Euler order 0..n: active slot holds its tin, inactive holds INF
 const INF = 1_000_000_000
 domain Pre = 0..n
-var st = SegTree<Pre, Int>(INF, (a, b) => min(a, b))
+var st = SegTree<Pre, Int>(min, fill: INF)
 var active: [V]Bool = true
 var active_cnt = n
 for v in V:
     st.set(Pre(tin[v]), tin[v])
 
 fn has_active_sub(u: V) -> Bool:
-    st.fold(Pre(tin[u]), Pre(tout[u] - 1)) < INF
+    st.fold(Pre(tin[u])..=Pre(tout[u] - 1)) < INF
 
 fn closest_edge(u: V) -> (V, V):
-    let top_tin = st.fold(Pre(0), Pre(n - 1))
+    let top_tin = st.fold(Pre(0)..=Pre(n - 1))
     let top = ord[top_tin]
     if not is_anc(top, u):
         return (top, par[top]!)

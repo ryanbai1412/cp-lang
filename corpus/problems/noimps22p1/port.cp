@@ -12,7 +12,7 @@ let lines: [0..n]Str = [read_line() for _ in 0..n]
 fn is_ident(ch: Char) -> Bool =
     ('a' <= ch <= 'z') or ('A' <= ch <= 'Z') or ('0' <= ch <= '9') or ch == '_'
 
-var macros: Map<Str, Str> = {}
+var macros: Map<Str, Str> = Map()
 
 fn expand(line: Str, active: Set<Str>) -> Str:
     var out = ""
@@ -34,7 +34,7 @@ fn expand(line: Str, active: Set<Str>) -> Str:
         if tok not in active:
             if let body = macros.get(tok):
                 var next_active = active
-                next_active.insert(tok)
+                next_active.insert(tok.to_str())
                 out += expand(body, next_active)
                 continue
         out += tok
@@ -52,7 +52,7 @@ for line in lines:
         macros.remove(name)
         print("")
     else:
-        print(expand(line, {}))
+        print(expand(line, Set()))
 
 // WISH B19-3: stateful constructive `gen` for valid preprocessor programs (never `#undef`s an
 // undefined macro, exercises recursive/mutual macro cycles, multi-space indentation, and empty lines)

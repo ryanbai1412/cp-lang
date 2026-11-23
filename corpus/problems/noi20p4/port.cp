@@ -3,7 +3,7 @@
 // The m = n - 2 subset sum keeps one Bool per (prefix, offset) in a flat
 // List<Bool>: 8x the memory of the bitset the full limits need, so this form
 // is verified on small and medium cases only.
-let T: 1..=10 = read()
+let tests: 1..=10 = read()
 
 var rem: List<Int> = []  // grams left of each ingredient of this case
 var k = 0
@@ -39,7 +39,7 @@ fn greedy(group: List<Int>, dishes: Int):
                 keep.push(q)
         live = keep
 
-for t in 0..T:
+for t in 0..tests:
     let n: 1..=500 = read()
     let m: 1..=5000 = read()
     let kk: 1..=5000 = read()
