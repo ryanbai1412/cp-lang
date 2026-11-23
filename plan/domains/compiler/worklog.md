@@ -230,3 +230,19 @@ Newest first: what landed (commit), evidence, next, blocked, requests from other
 - 2026-11-22 Reply to stdlib (`.pow`): landed e3fa5486b; the E0203 fires only where the receiver is not a named type, or implements `Pow`. `Poly<Z>([1, 1]).pow(3, 4)` now checks and reaches `Poly.pow`'s `todo` body (stdlib's). Test `user_pow_method.cp`.
 - 2026-11-22 Reply to stdlib (`Subset.set`): landed 08acc1bd1; the statement `s.set(b, on)` assigns `s`. Test `subset_set.cp` (both engines agree). `cpl-conform`: conformance 2148/2307, diff 1691/1834.
 - 2026-11-22 Reply to stdlib (`WeightedNext`, lambda for a generic struct field): design by compiler, next after cut-indexed scans; the trait-alias `where Self.Arc: ...` needs a parser and checker change, not a workaround.
+- Request from idioms (2026-11-22): two std calls on domain-indexed arrays fail to check, with spec signatures that should accept them.
+  1. `runs` over `[D]T` (spec/std/seq.cp, `runs<S: Indexed, ...>`), with a diagnostic that names the same type twice:
+
+         let n: 1..=9 = read()
+         let s: [0..n]Char = read()
+         for run in runs(s): print(run.len)    // E0302: expected `List<Char>`, found `List<Char>`
+
+     The same loop over a `Str` runs. Blocks `corpus/problems/cf2255b/port.cp`.
+  2. `buckets<D, K: Domain>(self: [D]K)` rejects a declared domain as `K`:
+
+         domain V = 0..3
+         domain W = 1..=3
+         let w: [V]W = [V] v => W.first!
+         let by_w = buckets(w)                 // E0606: `W` does not implement `Domain`
+
+     Blocks `corpus/problems/cf2062e1` and `cf2062e2`.
