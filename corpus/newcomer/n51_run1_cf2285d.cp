@@ -7,7 +7,7 @@ let (n, m, q): (1..=2e5, 1..=2e5, 1..=2e5) = read()
 let a: [0..n]-1e9..=1e9 = read()
 var ps: List<Int> = [0]  // expect: hand_rolled_prefix_sum
 for x in a:
-    ps.push(ps[ps.len - 1] + x)  // expect: last_via_len
+    ps.push(ps[ps.len - 1] + x)
 fn diff(x: Int) -> Int = ps[x] - (ps[n] - ps[n - x])
 var pos: Map<Int, List<Int>> = Map()
 for x in 1..n:

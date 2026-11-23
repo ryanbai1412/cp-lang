@@ -230,3 +230,58 @@ fn one_item_proves_what_the_whole_file_proves_there() {
     }
     assert!(compared > 1000, "compared {compared} items");
 }
+
+/// Two lints that fire on one span either share a root cause (the inner one
+/// is in `SUPERSEDED_BY`, so only the wider is shown) or teach two things
+/// (listed here). A new pair has to be one or the other.
+/// The rewrite of the outer one keeps the inner code, so both still teach.
+const DISTINCT: &[(&str, &str)] = &[
+    ("L0415", "L0506"),
+    ("L0501", "L0549"),
+    ("L0504", "L0203"),
+    ("L0504", "L0415"),
+    ("L0504", "L0506"),
+    ("L0504", "L0540"),
+    ("L0507", "L0510"),
+    ("L0507", "L0540"),
+    ("L0531", "L0506"),
+    ("L0536", "L0506"),
+    ("L0549", "L0203"),
+    ("L0551", "L0506"),
+];
+
+#[test]
+fn nested_findings_are_one_cause_or_listed_distinct() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let mut found = std::collections::BTreeSet::new();
+    let sets = [
+        ("corpus/newcomer", ""),
+        (crate::STD_DIR, ""),
+        ("corpus/problems", "port.cp"),
+    ];
+    for (dir, leaf) in sets {
+        for file in files(&root, dir, leaf) {
+            let src = std::fs::read_to_string(&file).unwrap();
+            let (config, _) = Config::discover(&file);
+            let diags = lint(&src, &config);
+            for outer in &diags {
+                for inner in &diags {
+                    if outer.code != inner.code
+                        && outer.span != inner.span
+                        && outer.span.contains(inner.span)
+                    {
+                        found.insert((outer.code.0, inner.code.0));
+                    }
+                }
+            }
+        }
+    }
+    let new: Vec<_> = found
+        .into_iter()
+        .filter(|(o, i)| !DISTINCT.contains(&(*o, *i)))
+        .collect();
+    assert!(
+        new.is_empty(),
+        "lints nested in another's span; supersede the inner one or list the pair in DISTINCT: {new:?}"
+    );
+}
