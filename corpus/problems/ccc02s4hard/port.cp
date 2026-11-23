@@ -20,14 +20,14 @@ var dp_val: List<Int> = []
 var dp_idx: List<Int> = []
 var tot_val: List<Int> = []
 var tot_idx: List<Int> = []
-var lazy: List<Int> = []
+var pending: List<Int> = []
 for _ in 0..sz: arr_v.push(0)
 for _ in 0..2 * sz:
     dp_val.push(inf)
     dp_idx.push(0)
     tot_val.push(inf)
     tot_idx.push(0)
-    lazy.push(-1)
+    pending.push(-1)
 
 fn pull(o: Int):
     let lc = o * 2
@@ -47,16 +47,16 @@ fn pull(o: Int):
 
 fn apply_tag(o: Int, x: Int):
     if x >= 0:
-        lazy[o] = x
+        pending[o] = x
         tot_val[o] = dp_val[o] + x
         tot_idx[o] = dp_idx[o]
 
 fn push(o: Int):
-    let x = lazy[o]
+    let x = pending[o]
     if x >= 0:
         apply_tag(o * 2, x)
         apply_tag(o * 2 + 1, x)
-        lazy[o] = -1
+        pending[o] = -1
 
 fn build(o: Int, l: Int, r: Int):
     if l == r:
@@ -74,8 +74,8 @@ fn st_set(o: Int, l: Int, r: Int, pos: Int, val: Int):
     if l == r:
         dp_val[o] = val
         dp_idx[o] = pos
-        if lazy[o] >= 0:
-            tot_val[o] = val + lazy[o]
+        if pending[o] >= 0:
+            tot_val[o] = val + pending[o]
         else:
             tot_val[o] = val
         tot_idx[o] = pos
