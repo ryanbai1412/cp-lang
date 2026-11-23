@@ -26,8 +26,8 @@ fn ways(k: Int, rem: Int, mx: Int) -> Z:
 
 @!multitest
 let (n, m): (2..=200_000, 0..=200_000) = read()
-let inv_n1 = Z(n - 1).inv
-let inv_n2: Z = if n >= 3: Z(n - 2).inv else: 0
+let inv_n1 = Z(n - 1).inv()
+let inv_n2: Z = if n >= 3: Z(n - 2).inv() else: 0
 
 var ans: Z = 0
 for mx in 0..=m:

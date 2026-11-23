@@ -15,7 +15,7 @@
 type Z = Mod<998_244_353>
 
 struct SweepAdd:
-    cur: Z
+    var cur: Z
     diff: List<Z>
 
     fn advance(mut self, i: Int) -> Z:
@@ -45,11 +45,11 @@ repeat m:
 for d in Diag: bads[d].sort()
 
 fn next_bad(d: Diag, from: Cut) -> Cut:
-    if let k = bads[d].first_ge(from): bads[d][k] else: Cut.last
-fn wrap_limit(c: Cut) -> Cut = if c < Cut.last: next_bad(diag_of(c, 0), from: c) else: Cut.last
+    if let k = bads[d].first_ge(from): bads[d][k] else: Cut.last!
+fn wrap_limit(c: Cut) -> Cut = if c < Cut.last!: next_bad(diag_of(c, 0), from: c) else: Cut.last!
 
 var dp: [Cut]Z = 0
-dp[Cut.first] = 1
+dp[Cut.first!] = 1
 var overcount = SweepAdd(Z(0), [Z(0) for _ in 0..n + 2])
 var wrap = [0..n] _ => SweepAdd(Z(0), [Z(0) for _ in 0..n + 2])
 
@@ -59,8 +59,8 @@ for c in Cut:
     let wlim = wrap_limit(c)
     for x0 in 0..n:
         let v = wrap[x0].advance(i)
-        if let t = c + x0, t <= wlim: dp[t] += v
-    if c < Cut.last:
+        if let t = Cut.at(i + x0) and t <= wlim: dp[t] += v
+    if c < Cut.last!:
         for j in i + 2..=wlim.ord:
             let lim = min(2 * j - i - 1, wrap_limit(Cut(j)).ord)
             overcount.add(j + 1, lim, dp[c])
@@ -68,4 +68,4 @@ for c in Cut:
             let j_lim = min(n - x0, next_bad(diag_of(c, x0), from: c).ord)
             wrap[x0].add(i + 1, j_lim, dp[c])
 
-print(dp[Cut.last])
+print(dp[Cut.last!])

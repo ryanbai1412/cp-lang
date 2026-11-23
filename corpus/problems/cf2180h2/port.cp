@@ -13,8 +13,8 @@
 // - Even d: even prefix lengths cancel to 0; odd lengths collapse to
 //   g = len / d + 2, giving 0 when ctz(g) is odd, else 2 (odd popcount) or 1.
 
-let EVEN_BITS_FROM_2 = 0x5555555555555554
-let ODD_D_GRUNDY = [0, 2, 3, 1]
+const EVEN_BITS_FROM_2 = 0x5555555555555554
+const ODD_D_GRUNDY = [0, 2, 3, 1]
 
 fn prefix_xor(len: Int, d: Int) -> Int:
     if d % 2 == 1:
