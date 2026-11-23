@@ -548,3 +548,10 @@ Landed since 23:10: four type/flow lints from `spec/idioms/lints.md`, L0571 `neg
   declared range written from another name (`r: l + 1..=n`) now relates the
   two names for every bound lint, not only for this one. 0 hits on corpus,
   newcomer and std.
+- Lint L0306 `int_overflow_at_bounds` (lints.md `int_mul_overflow_at_bounds`
+  and `int_add_overflow_at_bounds`): the prover already found an input for
+  which `a * b` leaves `Int`, but only fact tests read it; now `cpl lint`
+  and the editor warn with that input and the innermost such expression.
+  0 hits on corpus, newcomer and std. Not in the playground: the wasm build
+  has no prover. lints.md: `wide_shift` and `empty_range_loop_at_bounds`
+  marked as covered by L0302 and L0303.

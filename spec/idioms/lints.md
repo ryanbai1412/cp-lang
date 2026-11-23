@@ -955,7 +955,7 @@ One sub-family per module. Each says: you rebuilt something the library has.
 | trunc_div_negative | `/` on values that may be negative where floor is meant | `div_floor` / `divmod` | warn | #3 | bound |✗ not a bug here: `/` and `%` floor for a positive divisor (R01.5.2), so the C++ trap does not exist |
 | overflow_before_mod | `a * b % m` on `Int` that can exceed 64 bits | `Mod` / `mul_mod` | warn | #3 | bound | |
 | float_for_integer | `Float` arithmetic on integer data (`pow`, `log2`) | integer ops (`**`, `bit_len`) | fix? | #3 | ty | |
-| wide_shift | `1 << k` where `k` can reach 63 | `bit(k)` on a wider type | warn | #3 | bound | |
+| wide_shift | `1 << k` where `k` can reach 63 | `bit(k)` on a wider type | warn | #3 | bound | ✓int_shift_overflow_at_bounds |
 | eps_magic | different `eps` literals in one file | one named `eps` | fix | #7 | syn | |
 | int_of_mod_math | `Int(z)` then arithmetic then back to `Mod` | stay in `Mod` | fix | #6 | ty | |
 
@@ -963,8 +963,8 @@ One sub-family per module. Each says: you rebuilt something the library has.
 
 | Lint | Catches | Write instead | Tier | P | Engine | Status |
 |---|---|---|---|---|---|---|
-| int_mul_overflow_at_bounds | `a * b` where `ProvenExpr` range exceeds `Int` (`i64`) bounds | widen to `Int128`, use `Mod<P>`, or reorder division | warn | #6 | bound | |
-| int_add_overflow_at_bounds | `a + b` or `sum` where `ProvenExpr` range exceeds target integer width | widen type or use `Mod<P>` | warn | #6 | bound | |
+| int_mul_overflow_at_bounds | `a * b` where `ProvenExpr` range exceeds `Int` (`i64`) bounds | widen to `Int128`, use `Mod<P>`, or reorder division | warn | #6 | bound | ✓int_overflow_at_bounds |
+| int_add_overflow_at_bounds | `a + b` or `sum` where `ProvenExpr` range exceeds target integer width | widen type or use `Mod<P>` | warn | #6 | bound | ✓int_overflow_at_bounds |
 | int_shift_overflow_at_bounds | `1 << k` where declared bound allows `k >= 63` (or `k < 0`) | guard `k`, use `Bitset` (`std.bitset`), or `pow_mod` (`std.math`) | warn | #6 | bound |✓int_shift_overflow_at_bounds |
 | int_abs_min_overflow | `abs(x)` when `x`'s range includes `Int.MIN` | tighten range or widen before `abs` | warn | #6 | bound | |
 | int_div_possible_zero | `a / b` or `a % b` where `0` is inside `b`'s proven range | guard `b != 0` or tighten `b: 1..=N` | warn | #6 | bound |✓int_div_possible_zero |
@@ -1049,7 +1049,7 @@ One sub-family per module. Each says: you rebuilt something the library has.
 
 | Lint | Catches | Write instead | Tier | P | Engine | Status |
 |---|---|---|---|---|---|---|
-| empty_range_loop_at_bounds | `for i in a..b:` where declared bounds prove `a >= b` (loop never runs) | fix bounds or remove dead loop | warn | #6 | bound | |
+| empty_range_loop_at_bounds | `for i in a..b:` where declared bounds prove `a >= b` (loop never runs) | fix bounds or remove dead loop | warn | #6 | bound | ✓reversed_range_literal |
 | always_true_bounds_check | `if x >= 0:` or `if i < n:` already proven true by `x`'s declared range or domain | remove redundant check | fix? | #6 | bound | |
 | redundant_min_max_at_bounds | `min(x, K)` where declared bounds prove `x <= K` (always returns `x`) | `x` (or fix typo in `K`) | warn | #6 | bound | |
 | dead_match_arm_at_bounds | `match` / `else if` branch unreachable under declared range constraints | remove dead arm or widen constraint | warn | #6 | bound | |

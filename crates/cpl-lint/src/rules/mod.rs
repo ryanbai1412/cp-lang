@@ -36,6 +36,7 @@ mod memo;
 mod mod_div;
 mod mod_reduce;
 mod neg_heap;
+mod overflow;
 mod pop_end;
 mod pops;
 mod proven;
@@ -106,6 +107,7 @@ pub(crate) fn run(file: &File, config: &Config) -> Vec<Finding> {
     findings.extend(wide_shift::check(file));
     findings.extend(empty_range::check(file));
     findings.extend(domain_first::check(file));
+    findings.extend(overflow::check(file));
     findings.extend(hand_graph::check(file));
     findings.extend(hand_ds::check(file));
     findings.extend(hand_input::check(file));
