@@ -6,6 +6,7 @@ import { test } from 'node:test';
 import {
     clip,
     counterexampleSummary,
+    divergenceLabel,
     diffOutput,
     firstDifference,
     liveLabel,
@@ -125,6 +126,43 @@ test('renderCounterexample lays out stage diffs and whole-program diffs', () => 
             '  saved as d.tests/stress-17.in',
         ].join('\n'),
     );
+});
+
+test('a stress report with a wrong part call shows that call', () => {
+    const json = JSON.stringify({
+        status: 'fail',
+        cases: 3,
+        counterexample: {
+            case: 3, seed: 1, input: 'k = 1', raw_input: '1\n', expected: '1\n', got: '0\n', verdict: 'WA', stages: [], saved: null, trace: null,
+            explain: {
+                divergence: {
+                    name: 'tri(k: 1)', nth: 1, call: true,
+                    fast: { line: 4, value: '0' }, brute: { line: 10, value: '1' },
+                    inside: [{ line: 5, locals: 'k: 1, s: 0' }],
+                },
+            },
+        },
+    });
+    const found = parseStressReport(json)!.counterexample!;
+    assert.deepEqual(found.divergence?.fast, { line: 3, value: '0' });
+    assert.equal(divergenceLabel(found.divergence!, 40), 'tri(k: 1) = 0  \u2260  brute 1  \u2190 first wrong call');
+    assert.equal(
+        renderCounterexample(found),
+        [
+            'FAIL at case 3 (seed 1) [WA], shrunk to:',
+            '  k = 1',
+            '  fast:  0',
+            '  brute: 1',
+            '  first wrong call: `tri(k: 1)`, the 1st call of `tri`',
+            '    solution tri(k: 1) = 0 at line 4',
+            '    brute    tri(k: 1) = 1 at line 10',
+            "    the solution's last steps in it:",
+            '      line 5: k: 1, s: 0',
+        ].join('\n'),
+    );
+    const none = JSON.parse(json);
+    none.counterexample.explain = { divergence: null };
+    assert.equal(parseStressReport(JSON.stringify(none))!.counterexample!.divergence, undefined);
 });
 
 test('labels are clipped to the configured length', () => {

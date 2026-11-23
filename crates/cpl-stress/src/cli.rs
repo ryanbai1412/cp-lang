@@ -363,9 +363,10 @@ pub fn report_json(
         None => String::new(),
         Some(Ok(None)) => ",\"explain\":{\"divergence\":null}".to_string(),
         Some(Ok(Some(d))) => format!(
-            ",\"explain\":{{\"divergence\":{{\"name\":{},\"nth\":{},\"fast\":{},\"brute\":{}{}}}}}",
+            ",\"explain\":{{\"divergence\":{{\"name\":{},\"nth\":{},\"call\":{},\"fast\":{},\"brute\":{}{}}}}}",
             json_string(&d.name),
             d.nth,
+            d.call,
             side(&d.fast),
             side(&d.brute),
             if d.inside.is_empty() {

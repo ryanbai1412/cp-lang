@@ -6,6 +6,8 @@ import * as vscode from 'vscode';
 import {
     Counterexample,
     counterexampleSummary,
+    divergenceLabel,
+    divergenceTitle,
     firstDifference,
     liveLabel,
     LiveValue,
@@ -239,6 +241,18 @@ export class Overlays implements vscode.Disposable {
                 hover.appendCodeblock(`${counterexample.input}\nfast  = ${stage.fast}\nbrute = ${stage.brute}`, 'cp');
                 // Later differences usually follow from the first, so only the first is marked.
                 (stage === first ? differs : agrees).push(after(stage.line, stageLabel(stage, max), hover));
+            }
+            const d = counterexample.divergence;
+            const at = d?.fast?.line;
+            if (d && at !== undefined && at < lineCount && !occupiedLines.has(at)) {
+                occupiedLines.add(at);
+                const hover = new vscode.MarkdownString(divergenceTitle(d));
+                const steps = d.inside.map(step => `line ${step.line !== undefined ? step.line + 1 : '?'}: ${step.locals}`);
+                hover.appendCodeblock(
+                    [counterexample.input, `fast  = ${d.fast?.value}`, `brute = ${d.brute?.value ?? 'nothing'}`, ...steps].join('\n'),
+                    'cp',
+                );
+                differs.push(after(at, divergenceLabel(d, max), hover));
             }
             if (lineCount > 0 && !stageLines.has(0) && !occupiedLines.has(0)) {
                 occupiedLines.add(0);

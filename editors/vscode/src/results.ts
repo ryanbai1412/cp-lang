@@ -26,6 +26,20 @@ export interface StageDiff {
     differs: boolean;
 }
 
+/** Where the solution and its alt first part ways on the counterexample. */
+export interface Divergence {
+    /** A part call, `tri(k: 1)`, or a value, `s`. */
+    name: string;
+    /** Which call of the part, or which value, from 1. */
+    nth: number;
+    call: boolean;
+    /** 0-based lines and values of each side; undefined when that side never gets there. */
+    fast?: { line?: number; value: string };
+    brute?: { line?: number; value: string };
+    /** The solution's last steps inside the wrong call. */
+    inside: { line?: number; locals: string }[];
+}
+
 export interface Counterexample {
     /** The shrunk input, as `cpl stress` prints it: `n = 2  a = [7, 7]`. */
     input: string;
@@ -38,6 +52,7 @@ export interface Counterexample {
     stages: StageDiff[];
     /** Where the case was saved, such as `i6` or `d.tests/stress-17.in`. */
     saved?: string;
+    divergence?: Divergence;
 }
 
 export interface StressReport {
@@ -181,9 +196,55 @@ export function parseStressReport(json: string): StressReport | undefined {
         if (str(found.raw_input) !== undefined) {
             counterexample.rawInput = str(found.raw_input);
         }
+        const divergence = isObject(found.explain) ? parseDivergence(found.explain.divergence) : undefined;
+        if (divergence) {
+            counterexample.divergence = divergence;
+        }
         report.counterexample = counterexample;
     }
     return report;
+}
+
+function parseDivergence(value: unknown): Divergence | undefined {
+    if (!isObject(value) || str(value.name) === undefined || typeof value.nth !== 'number') {
+        return undefined;
+    }
+    const side = (at: unknown) =>
+        isObject(at) && str(at.value) !== undefined ? { line: line(at.line), value: str(at.value)! } : undefined;
+    const inside = Array.isArray(value.inside)
+        ? value.inside.filter(isObject).map(step => ({ line: line(step.line), locals: str(step.locals) ?? '' }))
+        : [];
+    return {
+        name: str(value.name)!,
+        nth: value.nth,
+        // Older `cpl` builds name only part calls with arguments.
+        call: typeof value.call === 'boolean' ? value.call : str(value.name)!.includes('('),
+        fast: side(value.fast),
+        brute: side(value.brute),
+        inside,
+    };
+}
+
+/** `1st`, `2nd`, `3rd`, `11th`. */
+function ordinal(n: number): string {
+    const suffix = n % 100 >= 11 && n % 100 <= 13 ? 'th' : (['th', 'st', 'nd', 'rd'][n % 10] ?? 'th');
+    return `${n}${suffix}`;
+}
+
+/** The headline `cpl stress` prints for a divergence. */
+export function divergenceTitle(d: Divergence): string {
+    const f = d.name.split('(')[0];
+    return d.call
+        ? `first wrong call: \`${d.name}\`, the ${ordinal(d.nth)} call of \`${f}\``
+        : `first differing value: \`${d.name}\`, its ${ordinal(d.nth)} value`;
+}
+
+/** The text shown after the solution's line of the divergence. */
+export function divergenceLabel(d: Divergence, max: number): string {
+    const fast = d.fast ? clip(d.fast.value, max) : 'nothing';
+    const brute = d.brute ? clip(d.brute.value, max) : 'nothing';
+    const what = d.call ? 'first wrong call' : 'first differing value';
+    return `${d.name} = ${fast}  \u2260  brute ${brute}  \u2190 ${what}`;
 }
 
 function flat(text: string): string {
@@ -287,6 +348,23 @@ export function renderCounterexample(counterexample: Counterexample): string {
         }
         if (counterexample.expected !== undefined) {
             lines.push(`  brute: ${flat(counterexample.expected)}`);
+        }
+    }
+    const d = counterexample.divergence;
+    if (d) {
+        lines.push(`  ${divergenceTitle(d)}`);
+        for (const [who, side] of [['solution', d.fast], ['brute', d.brute]] as const) {
+            lines.push(
+                side
+                    ? `    ${who.padEnd(8)} ${d.name} = ${side.value}${side.line !== undefined ? ` at line ${side.line + 1}` : ''}`
+                    : `    ${who.padEnd(8)} never gives \`${d.name}\` a ${ordinal(d.nth)} value`,
+            );
+        }
+        if (d.inside.length > 0) {
+            lines.push("    the solution's last steps in it:");
+            for (const step of d.inside) {
+                lines.push(`      line ${step.line !== undefined ? step.line + 1 : '?'}: ${step.locals}`);
+            }
         }
     }
     if (counterexample.saved) {

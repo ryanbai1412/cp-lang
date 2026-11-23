@@ -311,7 +311,7 @@ fn stress_explain_names_the_first_value_the_solution_and_brute_give_differently(
     let report = text(&out.stdout);
     assert!(
         report.contains(
-            "\"explain\":{\"divergence\":{\"name\":\"s\",\"nth\":2,\"fast\":{\"line\":6,\"value\":\"4\"},\"brute\":{\"line\":12,\"value\":\"2\"}}}"
+            "\"explain\":{\"divergence\":{\"name\":\"s\",\"nth\":2,\"call\":false,\"fast\":{\"line\":6,\"value\":\"4\"},\"brute\":{\"line\":12,\"value\":\"2\"}}}"
         ),
         "{report}"
     );
