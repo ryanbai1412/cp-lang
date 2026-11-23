@@ -43,6 +43,10 @@ W2 runs before W3 because writing bodies whose examples fail for a compiler reas
 
 ## General fixes owed
 
+- **A generic bound only by a lambda parameter defaults to `Int`** (`window.cp#undoing`, 4 doc
+  examples): `undoing(Dsu<V>(..), (mut d, e: (V, V)) => ..)` binds `T` to `Int`, even with the
+  parameter annotated. General fix: unify `T` with an annotated lambda parameter's type. Owner: compiler.
+
 - **`.count()` on a `Bool` sequence counts every element** (P0 `count-of-bools-counts-all`):
   no-arg `count` is specced for walks (core 05, `walk.count()`), so making it count `true`s
   only for `Bool` would be a special case. General fix: a typed lint on `.count()` whose element

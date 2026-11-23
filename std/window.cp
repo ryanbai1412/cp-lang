@@ -188,7 +188,7 @@ pub struct Undoing<S: Undo, T>(pub state: S, add: (mut S, T) -> ()):
     ///
     /// cost: \(O(1)\) applications of `add` amortized
     /// traps: never (beyond what `add` traps on)
-    /// example: `domain V = 0..3; var u = undoing(Dsu<V>(rollback: true), (mut d, e) => d.unite(e.0, e.1)); u.push((V(0), V(1))); u.state.same(V(0), V(1))`
+    /// example: `domain V = 0..3; var u = undoing(Dsu<V>(rollback: true), (mut d, e: (V, V)) => d.unite(e.0, e.1)); u.push((V(0), V(1))); u.state.same(V(0), V(1))`
     pub fn push(mut self, x: T):
         self.push_entry(x, true)
 
@@ -198,7 +198,7 @@ pub struct Undoing<S: Undo, T>(pub state: S, add: (mut S, T) -> ()):
     ///
     /// cost: \(O(\log n)\) applications of `add` amortized
     /// traps: on an empty `Undoing`
-    /// example: `domain V = 0..3; var u = undoing(Dsu<V>(rollback: true), (mut d, e) => d.unite(e.0, e.1)); u.push((V(0), V(1))); u.push((V(1), V(2))); u.pop((V(0), V(1))); u.state.same(V(1), V(2)) and not u.state.same(V(0), V(1))`
+    /// example: `domain V = 0..3; var u = undoing(Dsu<V>(rollback: true), (mut d, e: (V, V)) => d.unite(e.0, e.1)); u.push((V(0), V(1))); u.push((V(1), V(2))); u.pop((V(0), V(1))); u.state.same(V(1), V(2)) and not u.state.same(V(0), V(1))`
     pub fn pop(mut self, x: T):
         assert not items.is_empty, "pop on empty Undoing"
         if a_cnt == 0:
@@ -242,7 +242,7 @@ pub struct Undoing<S: Undo, T>(pub state: S, add: (mut S, T) -> ()):
     ///
     /// cost: \(O(1)\)
     /// traps: never
-    /// example: `domain V = 0..3; let u = undoing(Dsu<V>(rollback: true), (mut d, e) => d.unite(e.0, e.1)); not u.state.same(V(0), V(1))`
+    /// example: `domain V = 0..3; let u = undoing(Dsu<V>(rollback: true), (mut d, e: (V, V)) => d.unite(e.0, e.1)); not u.state.same(V(0), V(1))`
     @get pub fn state(self) -> S = state
 
 /// `Undoing` over `state`, holding no elements; see there. `state` is taken as the base: the
@@ -250,7 +250,7 @@ pub struct Undoing<S: Undo, T>(pub state: S, add: (mut S, T) -> ()):
 ///
 /// cost: \(O(1)\)
 /// traps: never
-/// example: `domain V = 0..3; var u = undoing(Dsu<V>(rollback: true), (mut d, e) => d.unite(e.0, e.1)); u.push((V(0), V(2))); u.state.same(V(2), V(0))`
+/// example: `domain V = 0..3; var u = undoing(Dsu<V>(rollback: true), (mut d, e: (V, V)) => d.unite(e.0, e.1)); u.push((V(0), V(2))); u.state.same(V(2), V(0))`
 pub fn undoing<S: Undo, T>(state: S, add: (mut S, T) -> ()) -> Undoing<S, T> = Undoing(state, add)
 
 /// A movable interval over `D` feeding a `Track`, for Mo and divide-and-conquer DP. Moving
