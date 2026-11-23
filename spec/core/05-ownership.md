@@ -256,6 +256,11 @@ where it was made to its last use (not to the end of the block).
 - **Read lend:** the sources can be read, but not written, resized or moved. (R05.7.6)
 - **`mut` lend:** the sources can't be touched at all except through it. (R05.7.7)
 
+<!-- given:
+  domain V = 0..8
+  let l = V(2)
+  let r = V(5) -->
+<!-- rejects: E0602 -->
 ```python
 var a: [V]Int = 0
 let w = a[l..r]
@@ -283,6 +288,10 @@ sources or a block nested inside it, and after them. It may never be:
 let ws = read<[V]Int>()
 var st = SegTree((i, j) => if ws[i] <= ws[j]: i else: j, [V] v => v)   // fine: st dies before ws
 ```
+<!-- given:
+  var rows = List(List(1, 2), List(3))
+  let i = 0 -->
+<!-- rejects: E0603 -->
 ```python
 var best = List<Int>()
 for r in rows:
@@ -308,6 +317,12 @@ error unless the compiler proves them apart.**
 - A container's length can't change while any place in it is lent:
   `let x = mut xs[i]` then `xs.push(..)` is an error. (R05.8.4)
 
+<!-- given:
+  domain V = 0..8
+  var a: [V]Int = 0
+  let i = V(1)
+  let j = V(3) -->
+<!-- rejects: E0601 -->
 ```python
 swap(mut a[i], mut a[j])                // error: a[i] and a[j] may be the same element
 if i != j: swap(mut a[i], mut a[j])     // fine
@@ -320,10 +335,18 @@ conflict with each other (R9) or with live lends (R7). A capture is borrowed
 at each call, not for the closure's whole life, so a closure that writes
 `cnt` can be called, then `cnt` read, then the closure called again.
 
+<!-- given:
+  var xs = List(3, 1, 2) -->
+<!-- rejects: E0602 -->
 ```python
 xs.sort(by: x => xs.len - x)
 // error: sort holds xs `mut` for the call, and the closure reads xs
 ```
+<!-- given:
+  domain V = 0..8
+  let l = V(2)
+  let r = V(5) -->
+<!-- rejects: E0602 -->
 ```python
 var a: [V]Int = 0
 fn clobber(): a[V.first!] = 0
@@ -374,6 +397,9 @@ var seen: [V]Bool = false
 for step in dfs(g, from: [s], seen: mut seen):
     seen[s] = true          // error: seen is lent `mut` to the dfs for the whole loop
 ```
+<!-- given:
+  var xs = List(3, 1, 2) -->
+<!-- rejects: E0602 -->
 ```python
 for x in xs: xs.push(x)          // error: xs is read-lent to the loop
 for i in xs.keys: xs.push(xs[i]) // fine: xs.keys is a plain range, fixed before the loop
@@ -649,6 +675,12 @@ a[l] = 5
 <details><summary>Answer</summary>Yes. <code>w</code>'s last use is before the write (R7).</details>
 
 **7.**
+<!-- given:
+  domain V = 0..8
+  var a: [V]Int = 0
+  let l = V(2)
+  let r = V(5) -->
+<!-- rejects: E0602 -->
 ```python
 let w = a[l..r]
 a[l] = 5
@@ -657,6 +689,10 @@ print(w.sum())
 <details><summary>Answer</summary>No. <code>a</code> is read-lent to <code>w</code> until line 3 (R7).</details>
 
 **8.**
+<!-- given:
+  var rows = List(List(1, 2), List(3))
+  let i = 0 -->
+<!-- rejects: E0602 -->
 ```python
 let row = rows[i]
 rows.push(List())
@@ -665,6 +701,10 @@ print(row.len)
 <details><summary>Answer</summary>No. <code>row</code> is a lend of <code>rows</code> (§6), and pushing resizes a source (R7). Fix: <code>rows[i].clone()</code>, or print first.</details>
 
 **9.**
+<!-- given:
+  var rows = List(List(1, 2), List(3))
+  let i = 0 -->
+<!-- rejects: E0603 -->
 ```python
 var longest = List<Int>()
 for row in rows:
@@ -673,6 +713,10 @@ for row in rows:
 <details><summary>Answer</summary>No. <code>row</code> is lent for one iteration and <code>longest</code> outlives it (R8, R12). Fix: <code>longest = row.clone()</code>, or keep the index with <code>rows.argmax(by: r => r.len)</code>.</details>
 
 **10.**
+<!-- given:
+  var rows = List(List(1, 2), List(3))
+  let i = 0 -->
+<!-- rejects: E0602 -->
 ```python
 for x in rows[i]: rows[i].push(x)
 ```
@@ -688,6 +732,12 @@ for k in rows[i].keys: rows[i].push(rows[i][k])
 <details><summary>Answer</summary>Yes. <code>.keys</code> is a plain range taken before the loop; each statement's lends end with it (R11).</details>
 
 **12.**
+<!-- given:
+  domain V = 0..8
+  var a: [V]Int = 0
+  let i = V(1)
+  let j = V(3) -->
+<!-- rejects: E0601 -->
 ```python
 swap(mut a[i], mut a[j])
 ```
@@ -707,6 +757,12 @@ solve(mut a[l..m], mut a[m..r])
 <details><summary>Answer</summary>Yes. The ranges meet at <code>m</code> and can't overlap (R9).</details>
 
 **14.**
+<!-- given:
+  domain V = 0..8
+  var a: [V]Int = 0
+  let i = V(1)
+  let j = V(3) -->
+<!-- rejects: E0602 -->
 ```python
 let p = mut a[i]
 p += 1
@@ -785,6 +841,12 @@ xs.sort(by: x => xs.len - x)
 <details><summary>Answer</summary>No. <code>sort</code> holds <code>xs</code> <code>mut</code> for the call, and the closure argument reads <code>xs</code> (R10).</details>
 
 **22.**
+<!-- given:
+  domain V = 0..8
+  var a: [V]Int = 0
+  let l = V(2)
+  let r = V(5) -->
+<!-- rejects: E0602 -->
 ```python
 fn clobber(): a[l] = 0
 let part = a[l..r]

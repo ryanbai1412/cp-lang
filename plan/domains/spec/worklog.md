@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- Spec-block runner: a `given:` comment stacked above a `rejects:` one gives an error example its setup; core/05's 13 setup-needing error examples marked, each reports the code its text describes (E0601 may-alias, E0602 lent until last use, E0603 kept past its block). spec-blocks 52 -> 65/185 pass, errors 69 -> 56. Ratchet tests 8/8.
 - Trait table: stdlib's new `Matroid` impls (`GraphicMatroid`, `ColorMatroid`) had no cases, so `conformance-traits.py --check` failed on main; 6 cases added, all pass. traits: 116 methods over claims, 113 with a case, 3 gaps (the held range triples).
 - Silent hole (found running lib/strings): R10.3.2 now says `{x:6}` space-pads and `{x:04}` zero-pads after the sign, as `cpl run` does (`0007 -005 [    42] 123`); case `core-10/interpolation-width.cp`.
 - core/04b, core/07, lib/search-dp, lib/strings: 4 blocks given setup, `f".."` -> `".."` in a strings example (there is no f prefix); spec-blocks 50 -> 52/185, errors 71 -> 69. Three given blocks fail on compiler disagreements (E0603 on R8-legal slices, `n.isqrt()`), in compiler/worklog.md.
