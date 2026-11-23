@@ -5940,3 +5940,13 @@ red tip by hand, so `revert-on-red.yml` and the pre-push stamp are gone. A
 semantic conflict between two green commits can now reach main for one CI
 run. Reverse: restore `scripts/land.sh`, `.github/workflows/revert-on-red.yml`
 and `scripts/revert-on-red.sh` from before this decision's commit.
+
+## 235. Lint's overflow prover stays out of the playground (2026-11-22)
+`cpl-lint` asks `cpl-prover` for an input that overflows `Int`
+(`Bounds::overflow` in `crates/cpl-lint/src/rules/bounds.rs`). On wasm32 the
+dependency is left out and `overflow` returns `None`, because the prover adds
+about 105 KB gzipped to `cpl.wasm` (lint-fmt worklog, 2026-11-22). The
+playground still shows the overflow lint; it only lacks the counterexample
+(`n = 55110`). Every other lint, including the checker-backed ones, runs on
+wasm32. Reverse: move `cpl-prover` to `[dependencies]` in
+`crates/cpl-lint/Cargo.toml` and delete the two `cfg` arms in `bounds.rs`.

@@ -81,7 +81,7 @@ Measured 2026-11-22 on main (98618e1b5) with a release `cpl`; commands in full i
 | Warnings on `spec/std` (40) | `cpl lint spec/std/*.cp` | 262, 5 not linted | 0, 0 |
 | Warnings on `dream.cp` (421) | `cpl lint corpus/problems/*/dream.cp` | 99, 84 not linted | 0 false positives |
 | Hard-coded stdlib names in rules | `grep -ohE '"[A-Z][A-Za-z]+"' rules/*.rs` | 16 | 0 |
-| Wasm-only gaps in cpl-lint | `git grep -c 'target_arch = "wasm32"'` | 4 | 0 |
+| Wasm-only gaps in cpl-lint | `git grep -c 'target_arch = "wasm32"'` | 4 (all the prover) | 4 (decisions.md 235) |
 | Fixed files with more checker errors (std + corpus spec) | test `fixes_never_add_checker_errors` | 0 | 0 |
 | Lint time, largest linted file (2,682 lines) | `time cpl lint spec/std/tree.cp` | 0.01 s | < 0.05 s |
 | Fmt time, same file | `time cpl fmt --check spec/std/tree.cp` | 0.00 s | < 0.05 s |
