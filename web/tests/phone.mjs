@@ -8,7 +8,8 @@ const routes = ['/', '/docs/guides/tour', '/docs/ref/std/algebra', '/learn', '/l
   '/learn/language/domains-and-index-spaces',
   '/learn/language/optionals',
   '/learn/language/multitest-state',
-  '/learn/language/checked-operations', '/trace.html'];
+  '/learn/language/checked-operations',
+  '/learn/language/types-widths-proofs', '/trace.html'];
 const { page, errors } = await open();
 await page.setViewportSize({ width: 390, height: 844 });
 let bad = 0;

@@ -20,13 +20,13 @@ const headings = (file: string) =>
     .split('\n')
     .flatMap((l) => (/^#{1,6} /.test(l) ? [l.replace(/^#+ /, '').replace(/`/g, '').trim()] : []));
 
-export function Decision({ n }: { n: number }) {
+export function Decision({ n, children }: { n: number; children?: React.ReactNode }) {
   const heading = headings('decisions.md').find((h) => h.startsWith(`${n}. `));
   if (!heading) throw new Error(`<Decision n={${n}}>: decisions.md has no "## ${n}." entry`);
   const title = heading.slice(`${n}. `.length).replace(/\s*\([^)]*\d{4}-\d\d-\d\d[^)]*\)$/, '');
   return (
     <a href={`${blob}/decisions.md#${slug(heading)}`} title={title}>
-      decision {n}
+      {children ?? `decision ${n}`}
     </a>
   );
 }

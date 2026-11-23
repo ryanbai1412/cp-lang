@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- Landed `site(learn): language chapter on types, widths and proofs`: four number types, range types as contracts, storage widths, proved and unproved stores, Euclidean division, `Mod<P>`; 6 examples (2 traps the gate verifies), citing decisions 1 (rows 1.7 and 1.9), 100 and 149.
 - Landed `site(learn): language chapter on checked operations`: checked vs release builds, proved vs unproven operations, `with checks(...)`, `unchecked:`; 5 examples, 2 of them traps the gate now verifies (`rejects=R####`: the program checks and `cpl run` stops with that code). Cites decisions 148 and 180 and notes the judge-build traps question still with Ryan.
 - Landed `site(learn): language chapter on multitest state`: the `@!multitest` divider, per-case scope (fresh `var`s, domains and `@memo` caches), explicit sharing above the divider, top-level `return`; 4 examples you can run with multi-case input, citing decision 20.
 - Landed `site(learn): language chapter on optionals`: `?T` and the ways back to `T`, lifted arithmetic, `min=` skipping `None`, no `<` on `?T` (rejected example, E0308), postfix `?`, niche layout; 4 examples you can run, citing decisions 1 (row 1.3) and 129. Filed in the diagnostics worklog: `depth!` on `[V]?Int` doesn't name the first gap.

@@ -1,0 +1,123 @@
+---
+title: "Types, widths and proofs"
+description: "Four number types, range types from the statement, storage widths, Euclidean division, Mod<P>, and what the compiler proves from them."
+---
+
+A C++ solution picks `int` or `long long` per variable and gets it wrong in one of two ways:
+`int` where a product overflows, or `long long` arrays that hit the memory limit. CP Lang
+separates the two questions. **Values compute in 64 bits; storage takes the fewest bytes the type
+allows**, and the type that decides is the constraint you copy from the statement anyway. The
+normative rules are <Spec file="core/03-numbers-layout" section="1. Where widths come from">numbers and layout §1</Spec>
+and <Spec file="core/02-values-types">values and types</Spec>.
+
+## Four number types and range types
+
+There are four number types: `Int` (64-bit, symmetric), `U64` (wrapping, for hashes and bit
+tricks), `I128` (for products past 64 bits) and `F64`. There is no `I32`, `U32` or `U8`. A narrow
+slot is a **range type** instead: `0..=1e9`, `1..=n`, `0..7`.
+
+A range type is a contract. Reading into one validates the input, and storing into one checks
+the value in every checked build:
+
+```cp run input="9\n" rejects=R0502
+let n: 1..=5 = read()
+print(n)
+```
+
+The read stops at the value that broke the statement's bound, naming the line and column, so a
+misread format shows up on the first sample instead of as a wrong answer.
+
+## Where widths come from
+
+| Written | Stored as |
+|---|---|
+| `Int` | 8 bytes |
+| `lo..=hi` with static ends | the narrowest of 1, 2, 4 or 8 bytes that holds it |
+| a domain position `V` | the narrowest that holds `V.count + 1` values |
+| `Mod<P>` | 4 bytes when `P < 2^31` |
+| `Bool`, `Char` | 1 byte |
+
+So `[V]0..=1e9` is 4 bytes per element and `[V]V` parents with `n: 1..=2e5` are 4 bytes each,
+with no annotation. **Locals never narrow**: a `let x: 0..=1e9` lives in a 64-bit register, where
+width is free. **Loads widen, stores check**: reading `a[i]` from a `[V]0..=1e9` gives an `Int`,
+so `a[i] * a[j]` can't overflow 32 bits, and writing back into the array checks the range unless
+it's proved.
+
+## What the compiler proves
+
+Proofs are interval arithmetic on the ranges you declared, within one function. A store the
+proof covers costs nothing. `a[v] % 7` is always in `0..7`, because `%` is Euclidean (below):
+
+```cp run input="3\n-1 15 8\n"
+let n: 1..=10 = read()
+domain V = 1..=n
+let a: [V]Int = read()
+var r: [V]0..7 = 0
+for v in V:
+    r[v] = a[v] % 7
+print(r)
+```
+
+A store the proof doesn't cover is checked. `a[v] + 1` can be `1e9 + 1`, and the checked build
+stops on the element that doesn't fit, with the local values:
+
+```cp run input="2\n1 1000000000\n" rejects=R0201
+let n: 1..=10 = read()
+domain V = 1..=n
+let a: [V]0..=1e9 = read()
+var b: [V]0..=1e9 = 0
+for v in V:
+    b[v] = a[v] + 1
+print(b)
+```
+
+The same proofs remove overflow checks: `0..=1e9` times `0..=1e9` provably fits in `Int`, so it
+compiles to a plain multiplication. When the proof shows an expression fits in 32 bits, the C++
+computes it in 32 bits, which never changes the answer and doubles the lanes when a loop
+vectorizes. What each build does with an unproven check is the
+[checked operations](/learn/language/checked-operations) chapter.
+
+## Division and modular numbers
+
+Integer division is **Euclidean**: `a % b` is never negative, for any sign of `a` or `b`, and
+`a == (a / b) * b + a % b`. Where the compiler proves `a >= 0` and `b > 0`, it emits C++'s
+native `/` and `%` with no extra code.
+
+```cp run input="-7 3\n"
+let a: Int = read()
+let k: 1..=1e9 = read()
+print(a % k, a / k)
+```
+
+C++ prints `-1 -2` here. A modulus is a type, `Mod<P>`, so every operation on it reduces, and a
+missing `% MOD` can't be written:
+
+```cp run input="20\n"
+let n: 1..=1e6 = read()
+var f: Mod<1_000_000_007> = 1
+for i in 1..=n:
+    f *= i
+print(f)
+```
+
+## Why it's designed this way
+
+**Width from the types you already write.** <Decision n={149} /> adopts the numbers and layout
+chapter: the statement's constraints, written once as types, give storage widths, input
+validation and overflow proofs at the same time. Choosing a width is automatic only because the
+choice never loses: same operations, never more bytes, never slower. The rejected alternative,
+narrowing locals, saves nothing in a register and costs conversions.
+
+**No second integer family.** Decision 1.7 in the <Decision n={1}>data-modeling table</Decision>
+keeps four number types. A range already says how many bytes a slot needs, so `I32` and `U8`
+would only add casts and a second, narrower place to overflow.
+
+**Range stores are checked.** <Decision n={100} /> made every store into a range-typed place
+go through one check. Before it, a narrowed field silently truncated in C++ while `cpl run`
+printed the full value, so the interpreter and the judge disagreed. Now the checked build traps,
+and valid programs pay nothing on the judge.
+
+**Euclidean `/` and `%`.** C++'s truncating `%` gives negative remainders for negative inputs,
+the source of the `((a % m) + m) % m` idiom and of the bugs where it was forgotten. Euclidean
+division removes the idiom, and the proof-based lowering keeps the common non-negative case at
+C++ speed (row 1.9 of the same table).
