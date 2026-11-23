@@ -562,8 +562,9 @@ impl Program {
             (out.join().unwrap(), err.join().unwrap(), exit, peak)
         });
         Ok(Outcome {
-            stdout: String::from_utf8_lossy(&out).into_owned(),
-            stderr: String::from_utf8_lossy(&err).into_owned(),
+            // LF everywhere: a Windows program's `\r\n` never reaches a compare, report or saved case.
+            stdout: String::from_utf8_lossy(&out).replace("\r\n", "\n"),
+            stderr: String::from_utf8_lossy(&err).replace("\r\n", "\n"),
             exit,
             elapsed: start.elapsed(),
             peak_kb,
@@ -635,6 +636,14 @@ pub(crate) fn kill_group(pid: u32) {
 #[cfg(test)]
 mod tests {
     use super::{peak_memory, starts_with_std};
+
+    #[cfg(unix)]
+    #[test]
+    fn a_program_s_output_reaches_stress_with_lf_line_ends() {
+        let crlf = super::Program::command("crlf", &["printf", "1 2\\r\\n3\\r\\n"]);
+        let ran = crlf.run("", std::time::Duration::from_secs(5)).unwrap();
+        assert_eq!(ran.stdout, "1 2\n3\n");
+    }
 
     #[test]
     fn a_child_that_has_not_exec_d_yet_has_no_peak_of_its_own() {

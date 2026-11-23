@@ -17,7 +17,7 @@ Due about 09:30 PST 11/23, on edge; checkpoints every 2 h in the [worklog](workl
 - [x] The loop tests pass on Linux, macOS and Windows CI: paths, CRLF in saved cases, no `g++` or `sh` needed for a same-file brute (`.github/workflows/debugger-loop.yml`: 41 of 41 on each OS).
 - [ ] Neovim (headless loop `editors/neovim/test/stress_loop.lua` green on Linux and macOS CI, Windows pending): `:Cpl stress` (or the LSP Stress lens) then `:Cpl test` runs the loop from the documented one-step setup (`editors/neovim/plugin/cplang.lua`); Vim: `:!cpl stress %` then `:!cpl test %`, documented. Tools owns `editors/` and the LSP; debugger writes the scenario.
 - [x] JetBrains (`CpPluginSmokeTest`, headless IDE, Linux): a `cpl` run configuration with command `stress`, then `test` (`editors/jetbrains/src/main/kotlin/dev/cplang/ide/CplRun.kt`), runs the loop; its output names the saved case.
-- [ ] VS Code (loop test in `editors/vscode/test/integration/suite.ts` passes on Linux; 3-OS CI result pending): Stress lens shows the failing case, Run All Samples reruns `<file>.tests/`; wording is v0.3's (`@alt(program)`, `@check`).
+- [x] VS Code (loop test in `editors/vscode/test/integration/suite.ts` passes on ubuntu, macOS and Windows in `debugger-loop.yml`): Stress lens shows the failing case, Run All Samples reruns `<file>.tests/`; wording is v0.3's (`@alt(program)`, `@check`).
 - [x] Traps name the rule, the place and the locals (all 12 R-codes in `runtime_errors.rs`).
 - [ ] Stress guide (`web/content/docs/guides/stress.mdx`, site's) teaches the whole loop including the rerun; its examples run (they do today).
 
