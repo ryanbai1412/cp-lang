@@ -1,11 +1,10 @@
-// CCC 2001 S5 Post's Correspondence Problem: m, n, then words a1..an and
-// b1..bn (n <= 40, m <= 40, each word at most 20 letters). Find k < m and a
-// list i1..ik, repeats allowed, with a[i1] + ... + a[ik] equal to
-// b[i1] + ... + b[ik]. Print k and then the list, one number to a line, or
-// "No solution." if there is none.
-//
-// Depth-first over lists, keeping only the part by which one row is ahead
-// of the other; a list whose rows already disagree is dropped at once.
+// Source: CCC 2001 S5 (Post's Correspondence Problem), https://dmoj.ca/problem/ccc01s5
+// Problem: words a_1..a_n and b_1..b_n of at most 20 letters, m * n <= 40. Find indices
+//   i_1..i_k, 0 < k < m, repeats allowed, with a_i1 ... a_ik = b_i1 ... b_ik. Print k and the
+//   list, one number to a line, or "No solution.".
+// Solution: depth-first over lists, keeping only the part by which one row is ahead of the
+//   other; a pick whose rows disagree is dropped at once, and lists stop at m - 1 words.
+//   Exponential in the worst case, but m * n <= 40 keeps it small.
 // original: corpus/submissions/5025769.cpp
 let (m, n): (Int, Int) = read()
 domain Pair = 1..=n

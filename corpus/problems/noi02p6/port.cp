@@ -1,5 +1,12 @@
-// Runnable today/ port of NOI '02 P6 (Robot M) for real Rust `cpl build`.
-// Stdin: n, then n pairs (p_i, e_i). Prints independent, odd-prime-parity, dependent counts mod 10000.
+// Source: NOI 2002 P6 (Robot No. M), https://dmoj.ca/problem/noi02p6
+// Problem: m = prod p_i^e_i is given factored (k <= 1000 primes < 1e4, e_i <= 1e6). Robot m's
+//   teachers are its divisors other than 1 and m; robot d's independence number counts the
+//   smaller robots sharing no teacher with it. Over m and its teachers, sum that number for d
+//   a product of an even count of distinct odd primes, of an odd count, and the rest, mod 1e4.
+// Solution: the independence number of d is phi(d). The first two classes are squarefree odd
+//   d, where phi(d) = prod (p - 1): track the even- and odd-count sums over the odd primes
+//   (d = 1 counts as even, so take it off). phi summed over all divisors is m, so the rest is
+//   m - even - odd. O(k log e).
 // original: corpus/submissions/3754486.cpp
 
 fn main_solve():

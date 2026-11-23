@@ -1,14 +1,12 @@
-// Codeforces 2115 D — Gellyfish and Forget-Me-Not
-//
-// Starting from `x = XOR_i a[i]`, at each turn i = 0..n - 1 player `c[i]`
-// ('1' maximizes, '0' minimizes) may optionally XOR `x` by `d[i] = a[i] ^ b[i]`.
-//
-// Process turns backward from n - 1 down to 0, maintaining a reduced row-echelon
-// XOR basis of all later moves. Reducing `d[i]` against later basis vectors
-// leaves either 0 (later players can completely undo turn i, so turn i has no
-// effect) or a new pivot vector `v` with highest bit `bit`: reducing existing
-// basis vectors by `v` makes `bit` unique to `v`, so player `c[i]` uniquely
-// decides bit `bit` of the final XOR (`max` for '1', `min` for '0').
+// Source: Codeforces 2115D (Gellyfish and Forget-Me-Not),
+//   https://codeforces.com/contest/2115/problem/D
+// Problem: x = 0; in round i = 1..n player c_i (0 minimises, 1 maximises the final x) sets
+//   x ^= a_i or x ^= b_i, with a_i, b_i < 2^60. Print the final x under optimal play.
+//   Multitest, sum n <= 1e5.
+// Solution: start from x = xor of all a_i; round i may also xor in d_i = a_i ^ b_i. Go back
+//   from the last round with a reduced XOR basis of later d's: if d_i reduces to 0, later
+//   players can undo it; else its new pivot bit is touched by no other basis vector, so player
+//   c_i alone sets that bit. Then apply each pivot vector iff it helps its owner: O(60 n).
 
 @!multitest
 let n: 1..=100_000 = read()

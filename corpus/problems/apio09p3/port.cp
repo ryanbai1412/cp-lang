@@ -1,10 +1,9 @@
-// APIO 2009 ATM: one-way roads, an ATM with some cash at every
-// intersection, robbed at most once however often it is passed. Start at
-// `start`, end at any pub, take as much as possible.
-//
-// Inside a strongly connected component everything can be taken, so the
-// components form a DAG with a loot each, and the answer is its best path
-// to a component with a pub.
+// Source: APIO 2009 P3 (The Great ATM Robbery), https://dmoj.ca/problem/apio09p3
+// Problem: a directed graph, N, M <= 5e5, with cash <= 4000 at each vertex, taken on the first
+//   visit only. Walk from S to any of the P pubs (one is reachable); print the most cash taken.
+// Solution: a strongly connected component can be robbed whole, so condense to a DAG with each
+//   component's total cash; best[c] = loot[c] + the max best of its successors (0 at a pub
+//   component), filled in reverse topological order. O(N + M).
 
 let (n, m): (Int, Int) = read()
 domain Spot = 1..=n

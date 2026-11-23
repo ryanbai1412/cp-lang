@@ -1,12 +1,11 @@
-// BOI 2019 Necklace: find the longest block of s that is a block of t after
-// turning it round (a rotation) and maybe flipping it over (a reversal).
-// Print its length, then where it starts in s and in t.
-//
-// A rotation of XY is YX. Cut s at every place: X is what ends at the cut
-// and Y what starts there. In t they meet at some j the other way round, Y
-// ending at j and X starting there. `prefix_matches` (KMP run
-// over a text) gives the longest Y for every j, and on the reversed strings
-// the longest X. The flip is the same search with t reversed.
+// Source: BOI 2019 Day 2 P2 (Necklace), https://dmoj.ca/problem/btoi19p5
+// Problem: strings s and t of length n <= 3000. Find the longest block of s that equals a
+//   block of t after a rotation and maybe a reversal; print its length and its starts in s
+//   and in t. Full marks need 4 MB of memory.
+// Solution: a rotation of XY is YX. Cut s at every place: X ends at the cut, Y starts there; in
+//   t they meet at some j, Y ending at j and X starting there. KMP (`prefix_matches`) gives
+//   the longest Y for every j, and on the reversed strings the longest X. The flip is the same
+//   search on t reversed: O(n^2) time, O(n) memory.
 // original: corpus/submissions/4456167.cpp
 use std.strings.{prefix_matches}
 

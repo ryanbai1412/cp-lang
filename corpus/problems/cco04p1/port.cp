@@ -1,4 +1,8 @@
-// CCO '04 P1 — Scribble (today form for proto/cpc)
+// Source: CCO 2004 Stage 2 Day 1 P1 (Scribble), https://dmoj.ca/problem/cco04p1
+// Problem: 7 tiles as k letters, each with a score <= 26 and a count. Of N <= 1e5 words, print
+//   the best score (sum of its letters' scores) of one spelled from the tiles, or 0 if none.
+// Solution: count each word's letters; it is playable iff no count exceeds that letter's
+//   tiles, and then it scores the sum of its letters. O(total length).
 // original: corpus/submissions/5430016.cpp
 let m: 0..=26 = read()
 domain Alpha = 0..256

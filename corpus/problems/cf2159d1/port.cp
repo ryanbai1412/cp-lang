@@ -1,19 +1,12 @@
-// Codeforces 2159 D1 — Prefix Partition with Quotient Costs
-//
-// Partition `a[0..n]` into contiguous blocks where a block ending at `i` with
-// minimum `v` costs `ceil(a[i] / v)`. Maintain a strictly increasing monotone
-// stack `stk` of `(val: a[j], dist: dp[j])` over prefix minima:
-// - Popping `top.val >= x` leaves the nearest smaller element `stk.last` (so
-//   starting a cost-1 block at `i` gives `dist = 1 + stk.last.dist`, or `1`
-//   if `stk` is empty).
-// - A last block of cost `l >= 2` can start right after any `stk[lo]` with
-//   `stk[lo].val < ceil_div(x, l)` (the skipped suffix has minimum
-//   `>= ceil_div(x, l)`), giving `dist min= prev + l` where `prev = stk[lo].dist`
-//   (or `0` when no such `lo` exists, meaning the whole prefix `0..=i` forms one
-//   block).
-// - Only `l in 2..=min(dist, 3)` needs checking: any block of cost `l >= 4`
-//   can be split into two blocks of total cost `<= 2 + (l - 2) = l` since
-//   `2 * (l - 2) >= l` for `l >= 4`.
+// Source: Codeforces 2159D1 (Inverse Minimum Partition, Easy Version),
+//   https://codeforces.com/contest/2159/problem/D1
+// Problem: split a_1..a_n (n <= 4e5, a_i <= 1e18) into contiguous blocks, a block costing
+//   ceil(last / min). Print the least total cost. Multitest, sum n <= 4e5.
+// Solution: a block of cost l >= 4 splits into two of total cost <= l, so only costs 1..3
+//   matter. Keep a stack of strictly increasing prefix values, each with its dp. Ending a
+//   block at x: cost 1 starts after the nearest smaller value; cost l in 2..=3 starts after the
+//   last stack entry below ceil(x / l), found by binary search (none: the whole prefix is one
+//   block). O(n log n).
 
 @!multitest
 let n: 1..=400_000 = read()

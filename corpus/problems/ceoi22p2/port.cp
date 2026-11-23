@@ -1,4 +1,10 @@
-// CEOI 2022 P2, Homework (recursive expression-tree string I/O, buildable today-form)
+// Source: CEOI 2022 P2 (Homework), https://dmoj.ca/problem/ceoi22p2
+// Problem: an expression of min(A, B), max(A, B) and N <= 1e6 question marks. The marks get a
+//   permutation of 1..N; print how many different values the expression can take.
+// Solution: per subtree keep (lo, hi), the fewest leaves that must be smaller and larger than
+//   its value: min gives (min lo, hi_A + hi_B + 1), max gives (lo_A + lo_B + 1, min hi). The
+//   values lo + 1 ..= N - hi are all reachable, so print N - lo - hi. One pass over the string
+//   with a stack: O(N).
 // original: corpus/submissions/4727898.cpp
 let s: [domain I]Char = read()
 

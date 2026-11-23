@@ -1,8 +1,10 @@
-// cp: 0.1 c217120+dirty
-// CCC 2021 S4 Daily Commute: one-way walkways take a minute each; a subway
-// starts at station 1 and reaches the i-th stop of its line after i - 1
-// minutes. Each day two stops of the line are swapped; print that day's
-// fastest trip from station 1 to station n.
+// Source: CCC 2021 S4 (Daily Commute), https://dmoj.ca/problem/ccc21s4
+// Problem: N, W, D <= 2e5. One-way walkways take a minute each; a train leaves station 1 along
+//   the route S_1..S_N and is at S_i after i - 1 minutes. Each day two route positions (not
+//   the first) are swapped; print that day's least minutes from station 1 to station N.
+// Solution: the best trip rides to some S_i, gets off and walks: (i - 1) + dist(S_i, N), with
+//   dist from one BFS from N over reversed walkways. A min SegTree over route positions
+//   refreshes the two swapped ones each day: O(N + W + D log N).
 use std.graph.{bfs}
 
 let n: 3..=2e5 = read()
