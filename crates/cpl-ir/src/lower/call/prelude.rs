@@ -743,7 +743,7 @@ impl<'a> Lowerer<'a> {
                 self.convert(name, value, span)
             }
             _ => {
-                let message = format!("`cpl run` doesn't know a fn named `{name}`");
+                let message = format!("no fn named `{name}` here");
                 self.error(codes::UNRESOLVED_NAME, span, message);
                 self.err_expr(span)
             }

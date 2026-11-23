@@ -18,10 +18,14 @@ impl Checker<'_> {
         if let Some((at, how)) = end {
             let name = &f.name.text;
             let message = format!("{how}, and then `{name}` ends without a value");
+            let value = ret.with_article();
+            let help = if how.contains("`if`") {
+                format!("give `{name}` {value} on every path: an `else:` for the other case, or a value after the `if`")
+            } else {
+                format!("give `{name}` {value} for when the loop ends, after it")
+            };
             if let Some(diag) = self.error(codes::FN_FALLS_THROUGH, at, message) {
-                diag.help = Some(
-                    "give a value, `return` or trap (`unreachable`) on every path".to_string(),
-                );
+                diag.help = Some(format!("{help}; `todo` stands for a value not written yet"));
             }
         }
         if plain {
