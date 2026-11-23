@@ -769,12 +769,9 @@ fn a_whole_contest_from_the_extension_gets_its_own_folder() {
 #[test]
 fn listen_takes_a_problem_posted_by_the_extension() {
     use std::io::{Read, Write};
-    // A free port: bind to 0, read the port, release it.
-    let port = std::net::TcpListener::bind("127.0.0.1:0")
-        .unwrap()
-        .local_addr()
-        .unwrap()
-        .port();
+    // Port 0, held from bind to accept, so no other test can take it between.
+    let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+    let port = listener.local_addr().unwrap().port();
     let client = std::thread::spawn(move || {
         let mut stream = loop {
             match std::net::TcpStream::connect(("127.0.0.1", port)) {
@@ -798,7 +795,7 @@ fn listen_takes_a_problem_posted_by_the_extension() {
     });
     let mut got = Vec::new();
     let mut notes = Vec::new();
-    crate::new::listen(port, &mut notes, &mut |text| {
+    crate::new::listen_on(listener, &mut notes, &mut |text| {
         got.push(Scaffold::from_companion(text)?);
         Ok(())
     })

@@ -107,6 +107,17 @@ pub fn listen(
 ) -> Result<(), String> {
     let listener = std::net::TcpListener::bind(("127.0.0.1", port))
         .map_err(|e| format!("can't listen on 127.0.0.1:{port}: {e}"))?;
+    listen_on(listener, stderr, each)
+}
+
+/// [`listen`] on a socket already bound, so a caller holds its port from
+/// bind to accept (a test binds port 0 and nothing can take it between).
+pub fn listen_on(
+    listener: std::net::TcpListener,
+    stderr: &mut dyn Write,
+    each: &mut dyn FnMut(&str) -> Result<(), String>,
+) -> Result<(), String> {
+    let port = listener.local_addr().map_or(0, |a| a.port());
     let _ = writeln!(
         stderr,
         "waiting for Competitive Companion on 127.0.0.1:{port}: open the problem and click the extension"
