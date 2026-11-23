@@ -493,6 +493,7 @@ const FIX_ALL_DIFFERS: &[&str] = &[
     "if_let_on_position_offset.cp",
     "index_old_names.cp",
     "int_condition_compares_with_zero.cp",
+    "max_by_is_max_with_by.cp",
     "member_typos.cp",
     "move_while_captured.cp",
     "names_and_mutation.cp",
