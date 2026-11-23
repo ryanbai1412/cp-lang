@@ -8,7 +8,7 @@ platform and `\` on Windows too; `d.tests/` sits beside `d.cp`.
 | Command | Does |
 |---|---|
 | `cpl new d` | creates `d.cp` from the template and `d.tests/`; `--json` prints `{"path", "created", "tests", "samples"}` as `cpl fetch --json` does |
-| `cpl fetch <url> [d]` | downloads the samples of a Codeforces, AtCoder or CSES problem page into `d.tests/`, and creates `d.cp` with the title and limits if it is new; `--html` reads a page saved from the browser (Codeforces refuses scripts) |
+| `cpl fetch <url> [d]` | downloads the samples of a Codeforces, AtCoder or CSES problem page into `d.tests/`, and creates `d.cp` with the title and limits if it is new; `--html` reads a page saved from the browser (Codeforces refuses scripts); a contest's page fetches each problem it lists into a folder named after the contest (`abc300/a.cp`, ...), `--json` printing `{"contest", "folder", "problems"}` |
 | `cpl check d...` | every error in the files: names, types, borrows, input ranges; nothing runs |
 | `cpl fix d...` | applies each error's suggested fix and reports what is left |
 | `cpl run d [files]` | checked build in the interpreter, on files or stdin; with neither (stdin a terminal) it runs every sample in `d.tests/` as `cpl test d` does, and `cpl run d 2` runs the sample `2`; compares with `.out` files if present; `--release` runs the judge's C++ (`--checks` as for `build`; traps by default); `--trace` writes the HTML trace (`tools/trace-debug.md`); `--time-limit MS` stops the run after MS milliseconds; on a file with an `@interactor` it runs the program against it |

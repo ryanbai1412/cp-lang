@@ -28,6 +28,10 @@ Codeforces, AtCoder and CSES problem pages; for other judges, use `cpl new
 problem's letter unless given: `a` for `A. Watermelon`, `cses1068` for
 CSES task 1068.
 
+A contest's page (`atcoder.jp/contests/abc300`, `codeforces.com/contest/1950`)
+fetches every problem it lists into a folder named after the contest, or
+[name]: abc300/a.cp, abc300/b.cp, ...
+
 options:
   --html FILE   read the page from FILE, saved from the browser, instead of
                 downloading it (Codeforces refuses scripts)
@@ -83,6 +87,77 @@ pub fn contest_of(url: &str) -> Option<String> {
     id.chars()
         .all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_')
         .then(|| id.to_string())
+}
+
+/// The contest whose own page `url` is, rather than one of its problems':
+/// `abc300` for `atcoder.jp/contests/abc300` and its `/tasks` list, `1950`
+/// for `codeforces.com/contest/1950`.
+pub fn contest_page(url: &str) -> Option<String> {
+    let contest = contest_of(url)?;
+    let rest = url.split_once("://").map_or(url, |(_, rest)| rest);
+    let path: Vec<&str> = rest.split(['?', '#']).next()?.split('/').skip(1).collect();
+    let after = path.iter().position(|part| *part == contest)? + 1;
+    let tail: Vec<&str> = path[after..]
+        .iter()
+        .copied()
+        .filter(|p| !p.is_empty())
+        .collect();
+    let list = match judge_of(url)? {
+        Judge::AtCoder => "tasks",
+        _ => "problems",
+    };
+    matches!(tail.as_slice(), [] | [_]).then_some(())?;
+    (tail.is_empty() || tail == [list]).then_some(contest)
+}
+
+/// The origin and the path up to the contest id of a contest's url:
+/// (`https://atcoder.jp`, `/contests/abc300`).
+fn contest_root(url: &str, contest: &str) -> Option<(String, String)> {
+    let rest = url.split_once("://").map_or(url, |(_, rest)| rest);
+    let rest = rest.split(['?', '#']).next()?;
+    let (host, path) = rest.split_once('/')?;
+    let end = path.split('/').position(|part| part == contest)?;
+    let prefix: Vec<&str> = path.split('/').take(end + 1).collect();
+    Some((format!("https://{host}"), format!("/{}", prefix.join("/"))))
+}
+
+/// The page that lists a contest's problems.
+fn contest_list_url(judge: Judge, url: &str, contest: &str) -> Option<String> {
+    let (origin, root) = contest_root(url, contest)?;
+    Some(match judge {
+        Judge::AtCoder => format!("{origin}{root}/tasks"),
+        _ => format!("{origin}{root}"),
+    })
+}
+
+/// The problem pages a contest's page links to, in its order, each once.
+pub fn problem_urls(judge: Judge, url: &str, contest: &str, html: &str) -> Vec<String> {
+    let Some((origin, root)) = contest_root(url, contest) else {
+        return Vec::new();
+    };
+    let marker = match judge {
+        Judge::AtCoder => format!("href=\"{root}/tasks/"),
+        Judge::Codeforces => format!("href=\"{root}/problem/"),
+        Judge::Cses => return Vec::new(),
+    };
+    let mut found: Vec<String> = Vec::new();
+    for piece in html.split(marker.as_str()).skip(1) {
+        let id: String = piece
+            .chars()
+            .take_while(|c| c.is_ascii_alphanumeric() || *c == '_' || *c == '-')
+            .collect();
+        if id.is_empty() || !piece[id.len()..].starts_with('"') {
+            continue;
+        }
+        let page = match judge {
+            Judge::AtCoder => format!("{origin}{root}/tasks/{id}"),
+            _ => format!("{origin}{root}/problem/{id}"),
+        };
+        if !found.contains(&page) {
+            found.push(page);
+        }
+    }
+    found
 }
 
 /// The title, limits and samples on a problem page.
@@ -401,6 +476,9 @@ pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u
             return 2;
         }
     };
+    if let Some(contest) = contest_page(&url) {
+        return fetch_contest(judge, &url, &contest, name, &args, stdout, stderr);
+    }
     let fetched = match args.value("--html") {
         Some(path) => std::fs::read_to_string(path).map_err(|e| format!("can't read {path}: {e}")),
         None => download(&url),
@@ -451,6 +529,116 @@ pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u
         let _ = writeln!(stdout, "  wrote {count} to {}/", tests.shown());
     }
     0
+}
+
+/// `cpl fetch` on a contest's page: every problem it lists, each as `cpl
+/// fetch` on that problem's page makes it, in one folder.
+fn fetch_contest(
+    judge: Judge,
+    url: &str,
+    contest: &str,
+    name: Option<String>,
+    args: &Args,
+    stdout: &mut dyn Write,
+    stderr: &mut dyn Write,
+) -> u8 {
+    let listed = contest_list_url(judge, url, contest)
+        .ok_or_else(|| format!("can't tell the contest's page from {url}"))
+        .and_then(|list| match args.value("--html") {
+            Some(path) => {
+                std::fs::read_to_string(path).map_err(|e| format!("can't read {path}: {e}"))
+            }
+            None => download(&list),
+        })
+        .map(|html| problem_urls(judge, url, contest, &html));
+    let problems = match listed {
+        Ok(problems) if problems.is_empty() => {
+            let _ = writeln!(stderr, "cpl: found no problems on the page for {url}");
+            return 1;
+        }
+        Ok(problems) => problems,
+        Err(message) => {
+            let _ = writeln!(stderr, "cpl: {message}");
+            return 1;
+        }
+    };
+    let folder_name = name.unwrap_or_else(|| contest.to_string());
+    let cwd = std::env::current_dir().unwrap_or_default();
+    let folder = if cwd.file_name().and_then(|n| n.to_str()) == Some(folder_name.as_str()) {
+        PathBuf::new()
+    } else {
+        PathBuf::from(&folder_name)
+    };
+    let json = args.has("--json");
+    let (mut rows, mut failed, mut first) = (Vec::new(), 0, None);
+    for (index, page) in problems.iter().enumerate() {
+        if index > 0 {
+            // One page a second, as a person clicking through would.
+            std::thread::sleep(Duration::from_secs(1));
+        }
+        let fetched = download(page)
+            .and_then(|html| parse(judge, page, &html))
+            .and_then(|scaffold| {
+                let id = page.rsplit('/').next().unwrap_or("p");
+                let short = scaffold.short_name().unwrap_or_else(|| id.to_string());
+                let source = folder.join(source_path(&short));
+                if !folder.as_os_str().is_empty() {
+                    std::fs::create_dir_all(&folder)
+                        .map_err(|e| format!("can't create {}: {e}", folder.shown()))?;
+                }
+                let created = write(&scaffold, &source)?;
+                Ok((source, created, scaffold.samples.len()))
+            });
+        match fetched {
+            Ok((source, created, samples)) => {
+                let tests = tests_dir(&source);
+                first.get_or_insert_with(|| source.clone());
+                if json {
+                    rows.push(format!(
+                        "{{\"url\":{},\"path\":{},\"created\":{created},\"tests\":{},\"samples\":{samples}}}",
+                        cpl_json::escape_string(page),
+                        cpl_json::escape_string(&source.shown()),
+                        cpl_json::escape_string(&tests.shown()),
+                    ));
+                } else {
+                    let count = match samples {
+                        1 => "1 sample".to_string(),
+                        n => format!("{n} samples"),
+                    };
+                    let did = if created { "created" } else { "updated" };
+                    let _ = writeln!(stdout, "  {did} {} ({count})", source.shown());
+                }
+            }
+            Err(message) => {
+                failed += 1;
+                if json {
+                    rows.push(format!(
+                        "{{\"url\":{},\"error\":{}}}",
+                        cpl_json::escape_string(page),
+                        cpl_json::escape_string(&message)
+                    ));
+                } else {
+                    let _ = writeln!(stderr, "cpl: {page}: {message}");
+                }
+            }
+        }
+    }
+    if json {
+        let _ = writeln!(
+            stdout,
+            "{{\"contest\":{},\"folder\":{},\"problems\":[{}]}}",
+            cpl_json::escape_string(contest),
+            cpl_json::escape_string(&folder.shown()),
+            rows.join(",")
+        );
+    } else if let Some(first) = first {
+        let _ = writeln!(
+            stdout,
+            "  next: write them; `cpl test {}` runs its samples",
+            first.shown()
+        );
+    }
+    u8::from(failed > 0)
 }
 
 fn download(url: &str) -> Result<String, String> {
@@ -518,6 +706,62 @@ fn write(scaffold: &Scaffold, source: &Path) -> Result<bool, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_contest_page_lists_its_problems_once_each() {
+        for (url, contest) in [
+            ("https://atcoder.jp/contests/abc300", Some("abc300")),
+            ("https://atcoder.jp/contests/abc300/tasks", Some("abc300")),
+            ("atcoder.jp/contests/abc300/", Some("abc300")),
+            ("https://codeforces.com/contest/1950", Some("1950")),
+            ("https://codeforces.com/gym/104/problems", Some("104")),
+            ("https://atcoder.jp/contests/abc300/tasks/abc300_a", None),
+            ("https://codeforces.com/contest/1950/problem/A", None),
+            ("https://atcoder.jp/contests/abc300/standings", None),
+            ("https://cses.fi/problemset/task/1068", None),
+        ] {
+            assert_eq!(contest_page(url).as_deref(), contest, "{url}");
+        }
+        let atcoder = r#"<td><a href="/contests/abc300/tasks/abc300_a">A</a></td>
+            <td><a href="/contests/abc300/tasks/abc300_a">N-choice question</a></td>
+            <td><a href="/contests/abc300/tasks/abc300_h">Ex</a></td>
+            <a href="/contests/abc300/tasks/abc300_a?lang=ja">ja</a>"#;
+        assert_eq!(
+            problem_urls(
+                Judge::AtCoder,
+                "atcoder.jp/contests/abc300",
+                "abc300",
+                atcoder
+            ),
+            [
+                "https://atcoder.jp/contests/abc300/tasks/abc300_a",
+                "https://atcoder.jp/contests/abc300/tasks/abc300_h"
+            ]
+        );
+        let gym = r#"<a href="/gym/104/problem/A">A</a><a href="/gym/104/problem/B1">B1</a>
+            <a href="/contest/104/problem/C">elsewhere</a>"#;
+        assert_eq!(
+            problem_urls(
+                Judge::Codeforces,
+                "https://codeforces.com/gym/104",
+                "104",
+                gym
+            ),
+            [
+                "https://codeforces.com/gym/104/problem/A",
+                "https://codeforces.com/gym/104/problem/B1"
+            ]
+        );
+        assert_eq!(
+            contest_list_url(
+                Judge::AtCoder,
+                "https://atcoder.jp/contests/abc300",
+                "abc300"
+            )
+            .as_deref(),
+            Some("https://atcoder.jp/contests/abc300/tasks")
+        );
+    }
 
     #[test]
     fn a_page_is_known_by_its_host() {
