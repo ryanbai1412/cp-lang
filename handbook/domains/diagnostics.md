@@ -87,11 +87,11 @@ check behind it, and marks the ones with none as `missing`.
 | Owns | Does not own (owner) |
 |---|---|
 | `crates/cpl-diag`: `Diagnostic`, `Span`, `Fix`, `Sink`, rendering, `REGISTRY` (the source of `cpl explain`) | What is an error: the language rules (spec, compiler) |
-| `spec/diagnostics.md`: every E, W, L and R code, its name and example message | The checks themselves at error sites in `cpl-syntax`, `cpl-check`, `cpl-ir` (compiler); diagnostics edits their messages, spans, fixes and suppression |
+| `spec/diagnostics.md`: every E, W, L and R code, its name and example message | The checks themselves at error sites in the parser, checker and lowering (compiler); diagnostics edits their messages, spans, fixes and suppression |
 | Message wording, spans, labels, help and fixes at every error site | Style and idiom lints and their wording (lint-fmt); codes still go in the catalogue |
 | The one fix applier, `cpl_ir::fix`, used by `cpl fix`, the editor's quick fixes and fix-all, and the playground | How the editor shows a diagnostic (tools, editors) |
 | Checker lints (`L06xx`, `spec/checker-lints/`) and bound lints over declared ranges (`L03xx`, `crates/cpl-lint/src/rules/proven/`) | Conformance cases that pin a code (spec) |
-| Runtime trap messages (`Trap::to_diagnostic` in `cpl-interp`) | Trap detection in the built C++ (codegen); the trace and debugger views (debugger) |
+| Runtime trap messages (`Trap::to_diagnostic` in the interpreter) | Trap detection in the built C++ (codegen); the trace and debugger views (debugger) |
 | Error-quality suites: goldens, recovery scoreboards, newcomer habits, the catalogue test | Error pages on the web site (site) |
 
 ## Interfaces

@@ -809,6 +809,18 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0904 memory_over_profile *(0.3)*: 1 case(s)
 - E9998 internal_unsupported *(retired)*: exempt (internal: a construct the compiler cannot lower)
 - E9999 Internal compiler error: exempt (internal compiler error)
+- L0001 unknown_lint: 2 case(s)
+- L0101 position_arithmetic: 1 case(s)
+- L0201 var_never_reassigned: 2 case(s)
+- L0202 unread_field: 1 case(s)
+- L0203 shadows_top_level: 1 case(s)
+- L0204 turbofish_type_args: 1 case(s)
+- L0207 is_in_cond_header: 1 case(s)
+- L0208 redundant_prelude_import: 1 case(s)
+- L0209 redundant_arg_name: 1 case(s)
+- L0210 compound_self_ref: **no case**
+- L0211 state_above_multitest: **no case**
+- L0301 float_equality: 1 case(s)
 - L0302 int_shift_overflow_at_bounds: **no case**
 - L0303 reversed_range_literal: **no case**
 - L0304 domain_empty_first_last: **no case**
@@ -816,6 +828,44 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - L0306 int_overflow_at_bounds: **no case**
 - L0307 always_true_bounds_check: **no case**
 - L0308 noop_mod_reduce: **no case**
+- L0412 domain_keyed_map: 1 case(s)
+- L0413 memo_key_space: 1 case(s)
+- L0414 unproven_list_index: 1 case(s)
+- L0415 loop_invariant_mod_div: 1 case(s)
+- L0501 search_loop: 1 case(s)
+- L0502 discarded_result: 1 case(s)
+- L0503 symmetric_write: 1 case(s)
+- L0504 loop_reduction: 1 case(s)
+- L0505 index_only_loop: 1 case(s)
+- L0506 repeated_literal: 1 case(s)
+- L0507 push_loop: 1 case(s)
+- L0508 none_check_unwrap: 1 case(s)
+- L0509 free_fold: 1 case(s)
+- L0511 tree_order: 1 case(s)
+- L0512 domain_spelling: 1 case(s)
+- L0514 hand_rolled_range_tree: 1 case(s)
+- L0516 hand_rolled_string_algo: 1 case(s)
+- L0517 hand_rolled_dsu: 1 case(s)
+- L0518 hand_rolled_sieve: 1 case(s)
+- L0519 hand_rolled_binary_lifting: 1 case(s)
+- L0520 hand_rolled_answer_search: 1 case(s)
+- L0521 hand_rolled_prefix_sum: 1 case(s)
+- L0522 copy_sort_writeback: 1 case(s)
+- L0523 chmin_chmax_if: **no case**
+- L0524 bool_ternary_print: **no case**
+- L0525 peek_then_pop: **no case**
+- L0526 ceil_div_formula: **no case**
+- L0527 neg_mod_fixup: **no case**
+- L0528 reverse_index: **no case**
+- L0529 float_sqrt_for_int: **no case**
+- L0530 sentinel_table: **no case**
+- L0531 manual_mod_reduce: **no case**
+- L0532 nested_list_grid: **no case**
+- L0534 grid_neighbour_step: **no case**
+- L0535 grid_bounds_check: **no case**
+- L0536 sentinel_scalar: **no case**
+- L0537 manual_adjacency_list: **no case**
+- L0539 dx_dy_arrays: **no case**
 - L0540 manual_bit_test: **no case**
 - L0541 sort_desc_by_negation: **no case**
 - L0542 last_via_len: **no case**
@@ -829,6 +879,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - L0550 queue_head_index: **no case**
 - L0551 split_range_check: **no case**
 - L0552 contains_then_add: **no case**
+- L0553 stale_entry_skip: **no case**
 - L0554 memo_by_hand: **no case**
 - L0555 lca_by_hand: **no case**
 - L0556 cross_by_hand: **no case**
@@ -838,6 +889,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - L0560 components_by_dfs: **no case**
 - L0561 trial_division: **no case**
 - L0562 count_until: **no case**
+- L0563 map_as_multiset: **no case**
 - L0564 read_loop: **no case**
 - L0565 cycle_by_colors: **no case**
 - L0566 sliding_min_by_hand: **no case**
@@ -845,6 +897,12 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - L0568 small_to_large_by_hand: **no case**
 - L0569 inversions_by_fenwick: **no case**
 - L0570 interval_dp_by_length: **no case**
+- L0571 negated_heap: **no case**
+- L0572 sort_for_extreme: **no case**
+- L0573 fermat_inverse: **no case**
+- L0574 char_offset_index: **no case**
+- L0575 push_pop_pair: **no case**
+- L0576 pop_min_loop: **no case**
 - L0577 query_index_shift: **no case**
 - L0578 tuple_points: **no case**
 - L0579 counter_by_map: **no case**
@@ -893,7 +951,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - W0101 Unused expression value: 1 case(s)
 - W0201 Submission near the size limit: 1 case(s)
 
-61 of 162 testable codes have no negative case.
+86 of 220 testable codes have no negative case.
 
 ## Spec code blocks
 

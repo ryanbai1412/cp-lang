@@ -12,7 +12,7 @@ fn codes(src: &str, config: &Config) -> Vec<&'static str> {
 
 #[test]
 fn checker_lints_match_the_spec_table() {
-    let doc = include_str!("../../../spec/diagnostics.md");
+    let doc = include_str!("../../../spec/lints.md");
     let mut spec = Vec::new();
     for row in doc.lines().filter(|l| l.starts_with("| L06")) {
         let cells: Vec<&str> = row.split('|').map(str::trim).collect();
@@ -20,10 +20,12 @@ fn checker_lints_match_the_spec_table() {
             spec.push((cells[1].to_string(), name.trim().to_string()));
         }
     }
-    let ours: Vec<_> = CHECKER_LINTS
+    let mut ours: Vec<_> = CHECKER_LINTS
         .iter()
         .map(|l| (l.code.0.to_string(), l.name.to_string()))
         .collect();
+    ours.sort();
+    spec.sort();
     assert_eq!(ours, spec);
 }
 

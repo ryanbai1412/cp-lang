@@ -44,12 +44,12 @@ fn every_lint_record_directory_belongs_to_a_lint() {
     }
 }
 
-/// `Lnnnn name` pairs `spec/diagnostics.md` lists for the lints `cpl-lint`
+/// `Lnnnn name` pairs `spec/lints.md` lists for the lints `cpl-lint`
 /// owns (below L0600): its table rows `| L0201 | var_never_reassigned | .. |`
 /// and the "Emitted by 0.2.x" paragraph, expanding `La-Lb prefix_{x, y}`
 /// ranges there.
 fn spec_lints() -> Vec<(u32, String)> {
-    let doc = include_str!("../../../spec/diagnostics.md");
+    let doc = include_str!("../../../spec/lints.md");
     let mut out: Vec<(u32, String)> = doc
         .lines()
         .filter_map(|row| {
@@ -110,8 +110,8 @@ fn every_lint_matches_the_spec_lint_list() {
     let extra: Vec<_> = spec.iter().filter(|e| !ours.contains(e)).collect();
     assert!(
         missing.is_empty() && extra.is_empty(),
-        "lints not in spec/diagnostics.md: {missing:?} (add a row `| Lnnnn | name | fires on |` \
-         to its Lints section); listed there but not lints: {extra:?}"
+        "lints not in spec/lints.md: {missing:?} (run scripts/gen-lint-table.py); \
+         listed there but not lints: {extra:?}"
     );
 }
 

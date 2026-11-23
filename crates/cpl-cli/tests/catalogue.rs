@@ -20,7 +20,9 @@ fn root() -> PathBuf {
 
 /// The rows of the catalogue's tables: code and whether it is emitted.
 fn catalogue() -> Vec<(String, bool)> {
-    let text = std::fs::read_to_string(root().join("spec/diagnostics.md")).unwrap();
+    let text = ["spec/diagnostics.md", "spec/lints.md"]
+        .map(|f| std::fs::read_to_string(root().join(f)).unwrap())
+        .concat();
     let mut out = Vec::new();
     for line in text.lines() {
         let cells: Vec<&str> = line.split('|').map(str::trim).collect();
@@ -116,7 +118,7 @@ fn every_defined_code_is_catalogued() {
     let missing: Vec<String> = defined().difference(&listed).cloned().collect();
     assert!(
         missing.is_empty(),
-        "defined but not in spec/diagnostics.md: {missing:?}"
+        "defined but not in spec/diagnostics.md or spec/lints.md: {missing:?}"
     );
 }
 

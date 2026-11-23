@@ -94,7 +94,7 @@ def diag_codes():
         codes.setdefault(m.group(1), m.group(2))
     for m in re.finditer(r'"(L\d{4})"', lint):
         codes.setdefault(m.group(1), "")
-    catalogue = (SPEC / "diagnostics.md").read_text()
+    catalogue = (SPEC / "diagnostics.md").read_text() + (SPEC / "lints.md").read_text()
     for line in catalogue.split("\n"):
         m = re.match(r"\| ([ELRW]\d{4})(?:-([ELRW]\d{4}))? \| ([^|]*)\|", line)
         if not m:

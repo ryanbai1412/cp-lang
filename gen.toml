@@ -36,9 +36,17 @@ tier = "pre-commit"
 [[gen]]
 name = "coverage"
 files = ["spec/conformance/COVERAGE.md", "spec/conformance/rule-gaps.txt"]
-inputs = ["spec/core/*.md", "spec/lib/*.md", "std/*.cp", "spec/conformance/**/*.cp"]
+inputs = ["spec/core/*.md", "spec/lib/*.md", "std/*.cp", "spec/conformance/**/*.cp", "spec/lints.md"]
 write = ["scripts/conformance-coverage.py"]
 check = ["scripts/conformance-coverage.py", "--check"]
+tier = "pre-commit"
+
+[[gen]]
+name = "lints"
+files = ["spec/lints.md"]
+inputs = ["spec/lints/*/lint.toml", "spec/checker-lints/*/lint.toml"]
+write = ["scripts/gen-lint-table.py"]
+check = ["scripts/gen-lint-table.py", "--check"]
 tier = "pre-commit"
 
 [[gen]]
