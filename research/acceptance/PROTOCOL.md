@@ -1,6 +1,6 @@
 # Milestone 1 acceptance run
 
-Owner: idioms. This run tests [plan/product/MILESTONE-1.md](../../plan/product/MILESTONE-1.md)
+Owner: idioms. This run tests [handbook/product/milestones.md](../../handbook/product/milestones.md)
 end to end. A cold agent plays a Codeforces 1500+ friend who has never used CPL. Each
 run is one JSON file in `runs/`; `blockers.py` ranks the findings across runs into
 `plan/product/BLOCKERS.md`. Domain metrics are means; this run is the end.
@@ -79,7 +79,7 @@ One JSON object per run, saved as `runs/<YYYY-MM-DD>-<n>.json`:
 - Every finding needs evidence a lane can reproduce without the transcript.
 
 ## Milestone 2 runs
-[MILESTONE-2](../../plan/product/MILESTONE-2.md) runs the same eight steps on each release
+[MILESTONE-2](../../handbook/product/milestones.md) runs the same eight steps on each release
 candidate, on Linux, macOS and Windows, with these changes:
 - **A fresh held-out set per run.** `problems/sets/<set>.txt` lists 10 Div2, 5 Div1 and a
   5-problem timed round, each newer than the corpus's newest contest and never used by an

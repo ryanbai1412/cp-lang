@@ -8,7 +8,7 @@ The site works: build, gate, typecheck, unit tests and both browser smokes pass,
 
 ## Workstreams, in order
 
-Ordered by [Milestone 1](../../product/MILESTONE-1.md): work that blocks steps 1-2 of its scenario (Understand, Try) or the way into step 3 (Install) comes first.
+Ordered by [Milestone 1](../../../handbook/product/milestones.md): work that blocks steps 1-2 of its scenario (Understand, Try) or the way into step 3 (Install) comes first.
 
 1. **30-minute intro (step 1). Landed.** One page, `/learn/intro`, built from `web/content/docs/guides/tour.mdx` and the cheat sheet: syntax, typed input, domains, optionals, the std, and testing, ≤ 4,500 words, every example a live runner. It ends at Practice and Install. The homepage's first call to action points to it.
 2. **Language section (step 1, in depth; parallel to 1 and 3).** `/learn/language/`, 8 chapters: values, ownership and mutation (`mut`, aliasing, invalidation); domains, ranges and index spaces (range keys); types, widths and proofs; optionals; multitest state; checked operations and build profiles; stdlib design; the C++ and the judge model. Each one states its rules precisely in site prose that links the `spec/` section it follows (no copied spec text), has gate-run examples that run in place, and ends with "Why it's designed this way", citing `decisions.md` and the alternatives they rejected. The gate checks every cited spec heading and decision number, so a renamed section fails the build instead of drifting.

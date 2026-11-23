@@ -20,7 +20,7 @@ The submitted C++ is as fast and as small as the C++ a strong contestant writes 
 
 ## Milestone 1
 
-[Milestone 1](../../product/MILESTONE-1.md), due about 09:30 PST 2026-11-23, needs perf for step 6 (Submit) and step 7 (Compete): what CPL submits is one C++17 file that compiles under a standard g++, stays well under the judges' 64 KB, and is never slower than the C++ the friend would write. Ryan: language quality over judge-specific features, so no new Milestone 1 time goes into judge profiles; the existing profiles and their tests keep working. Checkpoints go in [worklog.md](worklog.md) every 2 hours.
+[Milestone 1](../../../handbook/product/milestones.md), due about 09:30 PST 2026-11-23, needs perf for step 6 (Submit) and step 7 (Compete): what CPL submits is one C++17 file that compiles under a standard g++, stays well under the judges' 64 KB, and is never slower than the C++ the friend would write. Ryan: language quality over judge-specific features, so no new Milestone 1 time goes into judge profiles; the existing profiles and their tests keep working. Checkpoints go in [worklog.md](worklog.md) every 2 hours.
 
 Exit criteria, each one command:
 1. **Fits.** Every program that builds is under 32 KB (`python3 bench/sizes.py --judge generic --check`). Today (debug `cpl` at `058ce6f3f`): 753 programs build; 2 are over, `ucup5s05f/port.cp` at 37,078 B and `noi17p2/spec.cp` at 34,484 B.
@@ -101,7 +101,7 @@ Probes (cold agent, pass/fail + time + files touched):
 
 ## Milestone 2
 
-[Milestone 2](../../product/MILESTONE-2.md), the stable release. The most ambitious complete version of perf: what CPL emits is never the reason to write C++ instead. Idiomatic code runs at the speed of the C++ a strong contestant writes, a tuned program matches the best hand-written C++, every solution is small and fast to compile, and `cpl explain` shows each choice the compiler made.
+[Milestone 2](../../../handbook/product/milestones.md), the stable release. The most ambitious complete version of perf: what CPL emits is never the reason to write C++ instead. Idiomatic code runs at the speed of the C++ a strong contestant writes, a tuned program matches the best hand-written C++, every solution is small and fast to compile, and `cpl explain` shows each choice the compiler made.
 
 Exit criteria:
 - Perf set, every corpus port with a matched reference: idiomatic p50 <= 1.1x, p95 <= 1.2x, max <= 1.5x, and tuned max <= 1.1x (`runtime_tuned_max`); every gap left is a logged language gap with an owner.

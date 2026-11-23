@@ -8,7 +8,7 @@ Every program the spec defines means exactly what the spec says, in the interpre
 
 ## Milestone 1
 
-[Milestone 1](../../product/MILESTONE-1.md) sets the order: a CF 1500+ friend solves, tests, submits and competes in CPL without help. Its steps 4-7 rest on the compiler for one thing: **the supported subset is correct and identical in the interpreter and the C++, and what isn't supported says so.** Divergences and silent wrong answers come before VM, speed and cleanup work. Deadline about 09:30 PST 2026-11-23, on edge; Codeforces is checked against a local profile (no real submissions); Linux, macOS and Windows. Measured 2026-11-22 on main `67abd688a`:
+[Milestone 1](../../../handbook/product/milestones.md) sets the order: a CF 1500+ friend solves, tests, submits and competes in CPL without help. Its steps 4-7 rest on the compiler for one thing: **the supported subset is correct and identical in the interpreter and the C++, and what isn't supported says so.** Divergences and silent wrong answers come before VM, speed and cleanup work. Deadline about 09:30 PST 2026-11-23, on edge; Codeforces is checked against a local profile (no real submissions); Linux, macOS and Windows. Measured 2026-11-22 on main `67abd688a`:
 
 | Exit criterion | Command | Today | Exit |
 |---|---|---|---|
@@ -32,7 +32,7 @@ Order of work (hours, not days): divergences, then wrong outputs, then traps and
 
 ## Milestone 2
 
-[Milestone 2](../../product/MILESTONE-2.md), the stable release, which starts once the Milestone 1 table passes. The most ambitious complete compiler: every program the spec defines runs and means the same thing in the interpreter and the C++. Every program it rejects gets one error naming the rule and the fix. There is one front end and one interpreter engine, std has no privilege in the compiler, and the shared core answers every editor query from the incremental database.
+[Milestone 2](../../../handbook/product/milestones.md), the stable release, which starts once the Milestone 1 table passes. The most ambitious complete compiler: every program the spec defines runs and means the same thing in the interpreter and the C++. Every program it rejects gets one error naming the rule and the fix. There is one front end and one interpreter engine, std has no privilege in the compiler, and the shared core answers every editor query from the incremental database.
 
 Exit criteria:
 - `cpl-conform corpus` has 0 wrong, trapping or erroring programs with a compiler cause (conformance 100% and diff with 0 skips moved to Milestone 1).

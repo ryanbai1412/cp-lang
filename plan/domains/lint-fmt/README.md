@@ -13,7 +13,7 @@ slow or unidiomatic, says why in source terms, and offers only fixes that are
 verified to check and to print the same output. Both are gated on the
 idiomatic corpus, so a finding there is a bug in the lint, not the port.
 
-## Milestone 1 (plan/product/MILESTONE-1.md; due ~09:30 PST 2026-11-23)
+## Milestone 1 (handbook/product/milestones.md; due ~09:30 PST 2026-11-23)
 Lint is passive teaching (J2, J5): a 1500+ newcomer's C++-shaped code gets the
 CPL spelling, in the editor (Neovim/Vim first, VS Code too) and in the browser
 playground. Format on save just works on Linux, macOS and Windows. Lint and
@@ -52,7 +52,7 @@ port evidence, lint speed work.
 3. Until the deadline: more teaching lints by port and newcomer evidence,
    each with 0 port/std false positives and its near-miss shapes.
 
-## Milestone 2 (plan/product/MILESTONE-2.md; stable release, no date)
+## Milestone 2 (handbook/product/milestones.md; stable release, no date)
 
 **Most ambitious complete version.** Lint is the teacher a newcomer never
 needs: every C++ habit and every stdlib idiom in `spec/idioms/lints.md` has a

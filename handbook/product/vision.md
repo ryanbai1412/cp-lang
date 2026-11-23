@@ -1,8 +1,13 @@
-<!-- Ryan's product doc. Frozen after the 2026-11-22 edit pass; change only with Ryan's say-so (propose in plan/QUESTIONS.md). -->
+# Product vision
 
-# CPL — Product vision
+| | |
+|---|---|
+| Kind | Product |
+| Owner | Ryan, kept by the coordinator |
+| Changes | Fix errors directly; anything that changes direction is an RFC marked `Ryan to review` |
 
-Who CPL is for, why it should exist, and how we decide. The experience it delivers is in [EXPERIENCE.md](EXPERIENCE.md); the current milestone is in [MILESTONE-1.md](MILESTONE-1.md). AGENTS.md turns this into measurable goals and design rules.
+
+Who CPL is for, why it should exist, and how we decide. The experience it delivers is in [journeys.md](journeys.md); the current milestone is in [milestones.md](milestones.md). AGENTS.md turns this into measurable goals and design rules.
 
 ## 1. Who we're building for
 

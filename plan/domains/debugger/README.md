@@ -11,7 +11,7 @@ The loop Ryan reviews: **WA -> `cpl stress` -> minimal input -> trap or first di
 
 ## Milestone 1
 
-Due about 09:30 PST 11/23, on edge; checkpoints every 2 h in the [worklog](worklog.md). What [MILESTONE-1](../../product/MILESTONE-1.md) needs from this domain: the loop **WA → `cpl stress` with a brute in the same file → minimized counterexample in seconds → fix → rerun**, smooth from the CLI, Neovim/Vim, VS Code and JetBrains, on Linux, macOS and Windows. Exit criteria:
+Due about 09:30 PST 11/23, on edge; checkpoints every 2 h in the [worklog](worklog.md). What [MILESTONE-1](../../../handbook/product/milestones.md) needs from this domain: the loop **WA → `cpl stress` with a brute in the same file → minimized counterexample in seconds → fix → rerun**, smooth from the CLI, Neovim/Vim, VS Code and JetBrains, on Linux, macOS and Windows. Exit criteria:
 - [x] The loop passes end to end on the CLI for `@alt(program)`, `@check` and `@interactor` multitests (`cargo nextest run -p cpl-cli --test debugger`: `stress_loop` tests).
 - [x] Every seeded bug (`bench/stress/`, 29) found and shrunk; median < 1 s, max < 5 s (`cargo nextest run -p cpl-cli --test seeded_bugs --no-capture`: median 0.24 s, 11 of 11 P0 classes).
 - [x] A cold run on 3 problems written fresh for it (`bench/stress/cold-*.cp`: max subarray, pair sums, increasing runs): each WA found and shrunk to a minimal case in 0.54-0.70 s, `cpl test` fails on it, and after the one-line fix `cpl test` and `cpl stress` pass (about 1 s). Run by debugger, not a stranger; the stranger run is Milestone 2.
@@ -32,7 +32,7 @@ Next:
 
 ## Milestone 2
 
-The most ambitious complete version ([MILESTONE-2](../../product/MILESTONE-2.md)): any doubt becomes evidence in seconds, in every editor and OS, for strangers. Exit criteria:
+The most ambitious complete version ([MILESTONE-2](../../../handbook/product/milestones.md)): any doubt becomes evidence in seconds, in every editor and OS, for strangers. Exit criteria:
 - [ ] Time travel: any step of any run (single, multitest, interactive) is reachable backwards and forwards in the CLI, the viewer and DAP (VS Code, JetBrains, nvim-dap), via replay; trace overhead at most +20% over the interpreter, which is itself within 5x of C++ (`trace_budget` test, ungated today).
 - [ ] Inputs of any structure are generated and shrunk: trees, graphs, strings, permutations, queries, via `gen<T>` for user types with no std privilege (`core-06/gen-*` 6 of 6 conformance).
 - [ ] "Where do they first disagree": stress reports the first diverging line and value between solution and `@alt`, not just outputs. Today: `cpl stress --explain` names the first differing value (`@alt(program)`) or the first call of a part its `@alt(f)` answers differently, with its arguments, innermost in a recursion, and the solution's last own steps in it with their locals (`stress_explain_names_the_first_call_of_a_part_its_alt_answers_differently`, `..._innermost_wrong_call_of_a_recursive_part`); not yet a line-by-line match against the alt's steps, which have no common lines.

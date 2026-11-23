@@ -11,7 +11,7 @@ Main does not meet its own recovery bars: both scoreboards in
 not claimed here until rerun on the rebased tip.
 
 ## Workstreams, in order
-Milestone 1 (`plan/product/MILESTONE-1.md`) orders the work: step 5,
+Milestone 1 (`handbook/product/milestones.md`) orders the work: step 5,
 "diagnose ordinary mistakes", for a newcomer bringing C++ habits. M1 of
 the old list (gated recovery) has landed; M2/M3 numbers are means now.
 1. **Newcomer mistakes (Milestone 1).** Mine the first-attempt failures

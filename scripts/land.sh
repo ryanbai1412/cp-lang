@@ -7,7 +7,7 @@
 # behind most red mains, in a few seconds: conflict markers in the changed
 # files, the debt ratchet, `cargo fmt --check` and clippy on the touched crates, and
 # generated files (regenerated and committed, as CI's regen job would).
-# It also says when AGENTS.md or plan/product/ changed since this worktree's
+# It also says when AGENTS.md, handbook/ or plan/product/ changed since this worktree's
 # last land, so product direction reaches every lane.
 # Each landing appends one JSON line (domain, seconds, tries) to
 # .git/cpl-land.log; scripts/land_stats.py reads it.
@@ -46,8 +46,8 @@ pull
 changed=$(git diff --name-only --diff-filter=ACMR FETCH_HEAD HEAD)
 seen="$(git rev-parse --git-dir)/cpl-last-land"
 if [ -s "$seen" ] && git cat-file -e "$(cat "$seen")^{commit}" 2>/dev/null; then
-    product=$(git diff --stat "$(cat "$seen")" FETCH_HEAD -- AGENTS.md plan/product)
-    [ -z "$product" ] || printf 'land: product direction changed since your last land; read it:\n%s\n' "$product"
+    product=$(git diff --stat "$(cat "$seen")" FETCH_HEAD -- AGENTS.md handbook plan/product)
+    [ -z "$product" ] || printf 'land: product direction or the handbook changed since your last land; read it:\n%s\n' "$product"
 fi
 if [ -n "$changed" ]; then
     marks=$(git grep -nE '^(<{7}|>{7}|\|{7})( |$)' HEAD -- $changed ':!*.png' ':!*.gz' || true)

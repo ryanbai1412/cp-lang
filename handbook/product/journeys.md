@@ -1,8 +1,13 @@
-<!-- Ryan's product doc. Frozen after the 2026-11-22 edit pass; change only with Ryan's say-so (propose in plan/QUESTIONS.md). -->
+# User journeys
 
-# CPL — Product experience
+| | |
+|---|---|
+| Kind | Product |
+| Owner | Ryan, kept by the coordinator |
+| Changes | Fix errors directly; anything that changes direction is an RFC marked `Ryan to review` |
 
-The user-facing experience we want to deliver, not the implementation architecture. Who it is for and why is in [VISION.md](VISION.md).
+
+The user-facing experience we want to deliver, not the implementation architecture. Who it is for and why is in [vision.md](vision.md).
 
 ## 1. Overview
 
@@ -306,8 +311,8 @@ Each capability should eventually be given concrete behavioral requirements, qua
 
 ## 5. Milestones
 
-The current milestone, its acceptance scenario and its scope are in [MILESTONE-1.md](MILESTONE-1.md).
+The current milestone, its acceptance scenario and its scope are in [milestones.md](milestones.md).
 
 ## 6. Long-term standard
 
-See [VISION.md](VISION.md) §6 and §8. **The end state is a competitive programming environment where almost all unnecessary friction between algorithmic thinking and accepted solutions has disappeared.**
+See [vision.md](vision.md) §6 and §8. **The end state is a competitive programming environment where almost all unnecessary friction between algorithmic thinking and accepted solutions has disappeared.**

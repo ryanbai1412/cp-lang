@@ -2,7 +2,7 @@
 
 Dated 2026-11-22. Numbers cite `metrics.toml`.
 
-## Milestone 1 order (2026-11-22, `plan/product/MILESTONE-1.md`)
+## Milestone 1 order (2026-11-22, `handbook/product/milestones.md`)
 
 Milestone 1 sets the order; the workstreams below are means to it.
 

@@ -11,7 +11,7 @@ One error per root cause, naming the place, the rule and the fix, so a
 broken program costs the contestant one read and (where the fix is
 obvious) one keystroke. Runtime traps name source values and locations.
 
-## Milestone 1 (plan/product/MILESTONE-1.md, step 5 "Test"; due 2026-11-23 09:30 PST)
+## Milestone 1 (handbook/product/milestones.md, step 5 "Test"; due 2026-11-23 09:30 PST)
 A 1500+ Codeforces newcomer writes C++ and Python habits into CPL; each
 error or trap tells them the CPL way, in one read, in the CLI, VS Code
 and Neovim, on Linux, macOS and Windows. Exit criteria:
@@ -37,7 +37,7 @@ Next, in hours: (1) `auto x =` and the other worst newcomer rows, one
 commit each (2-4 h); (2) CRLF test and fixes (1 h); (3) traps on the
 practice problems (2 h); worklog checkpoint every 2 hours.
 
-## Milestone 2 (plan/product/MILESTONE-2.md, stable; after M1 passes)
+## Milestone 2 (handbook/product/milestones.md, stable; after M1 passes)
 The complete version: whatever a contestant writes, from any language
 habit, a stranger's typo or a half-finished idea, the first thing CPL says
 is the one root cause, at the place they wrote it, in the spec's words, with

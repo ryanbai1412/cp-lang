@@ -13,7 +13,7 @@ The detail behind [README.md](README.md). Numbers are from the runs in [metrics.
 
 ## Milestone 1 order (from 2026-11-22, due 09:30 PST 2026-11-23)
 
-Milestone 1 (`plan/product/MILESTONE-1.md`) sets the order, in hours: a 2-hour checkpoint in the worklog; the workstreams below serve it. Work that unblocks a step of the acceptance scenario comes first:
+Milestone 1 (`handbook/product/milestones.md`) sets the order, in hours: a 2-hour checkpoint in the worklog; the workstreams below serve it. Work that unblocks a step of the acceptance scenario comes first:
 
 1. **Core-set examples** (README "Milestone 1"): `seq` and `graph` first, then `bag`, `fenwick`, `strings`, the rest of the core set. Each failure is a std bug fixed here or a compiler gap filed with a contract test (W2 + W3, restricted to the core set).
 2. **Acceptance-run misses**: every std call an idioms acceptance run or writable-from-docs run reached for and didn't find, or found wrong. Fix, or GAPS.md + compiler request.

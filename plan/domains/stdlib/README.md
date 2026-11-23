@@ -37,7 +37,7 @@ Not covered (owner instead):
 5. Prelude matches the chapter tables (decisions 150, 281); std modules acyclic.
 6. Probes: a cold agent writes unseen problems from the docs alone with std calls that compile first time.
 
-## Milestone 1 (plan/product/MILESTONE-1.md)
+## Milestone 1 (handbook/product/milestones.md)
 
 Due about 09:30 PST 2026-11-23 (12 hours); checkpoints every 2 hours in [worklog.md](worklog.md). Ships on edge. Codeforces is the target judge, checked against the local `codeforces` profile (`cpl judges`), not real submissions.
 

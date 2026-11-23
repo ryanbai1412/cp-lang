@@ -22,7 +22,7 @@ Spec writes cases, never compiler code: a failing case goes to the owning domain
 
 ## Milestone 1
 
-`plan/product/MILESTONE-1.md`, due about 09:30 PST 2026-11-23 on edge: a Codeforces 1500+ friend learns CPL, solves unfamiliar problems, tests and competes unaided, on Linux, macOS or Windows, from Neovim/Vim or VS Code. Ryan: language quality over judge-specific features; the site's in-depth chapters (ownership, mutation, design decisions) draw on spec's rationale. From spec: "a coherent, documented, sufficiently complete subset ... gaps clearly identified rather than disguised", and "documentation examples must actually work".
+`handbook/product/milestones.md`, due about 09:30 PST 2026-11-23 on edge: a Codeforces 1500+ friend learns CPL, solves unfamiliar problems, tests and competes unaided, on Linux, macOS or Windows, from Neovim/Vim or VS Code. Ryan: language quality over judge-specific features; the site's in-depth chapters (ownership, mutation, design decisions) draw on spec's rationale. From spec: "a coherent, documented, sufficiently complete subset ... gaps clearly identified rather than disguised", and "documentation examples must actually work".
 
 Exit criteria (each checkable):
 1. **Subset frozen.** Done: `spec/SUBSET.md` tags every core and tool rule section; each failing case in a *supported* section is a known gap with its owner; `conformance-subset.py --check` passes (119 supported, 21 documented, 133 known-gap cases; `core-09/deep-recursion-trap.cp` times out only under a loaded suite, owed by compiler as an interpreter recursion limit). Keep it passing, and shrink the list.
@@ -42,7 +42,7 @@ Next, in hours (checkpoint in worklog.md every 2 hours):
 
 ## Milestone 2
 
-`plan/product/MILESTONE-2.md`, the stable release. Spec's complete version: the whole language is normative, every rule is tested independently of the compiler, and a stranger can learn it, trust it and read why it is shaped this way, from `spec/` alone. Spec work on it starts once the Milestone 1 criteria above pass.
+`handbook/product/milestones.md`, the stable release. Spec's complete version: the whole language is normative, every rule is tested independently of the compiler, and a stranger can learn it, trust it and read why it is shaped this way, from `spec/` alone. Spec work on it starts once the Milestone 1 criteria above pass.
 
 Exit criteria (each checkable):
 1. **Whole language supported.** `spec/SUBSET.md` has 0 *documented* and 0 *gap* sections, and covers `lib/` as well as core and tools (today 95 supported, 3 documented, 0 gap, 91 known-gap cases: `scripts/conformance-subset.py --check`).

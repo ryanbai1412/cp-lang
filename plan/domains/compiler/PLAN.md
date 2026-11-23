@@ -8,7 +8,7 @@ Conformance 1617/1711 with 47 distinct causes; the top two (18 wrong outputs, 16
 
 ## Workstreams, in order
 
-Ordered by [Milestone 1](../../product/MILESTONE-1.md) (deadline about 09:30 PST 2026-11-23): what blocks the friend's solve/test/submit/compete steps comes first, the metric milestones below after. Done since the packet: `wip-split-vm` and `wip-conformance-queue` landed; `Seq.max()` on a slice is `?T` and the `compress()` wrapper case passes; the two P0 wrong answers (`**` on an `Int` parameter, a comprehension's stale range bound) landed with diff regressions.
+Ordered by [Milestone 1](../../../handbook/product/milestones.md) (deadline about 09:30 PST 2026-11-23): what blocks the friend's solve/test/submit/compete steps comes first, the metric milestones below after. Done since the packet: `wip-split-vm` and `wip-conformance-queue` landed; `Seq.max()` on a slice is `?T` and the `compress()` wrapper case passes; the two P0 wrong answers (`**` on an `Int` parameter, a comprehension's stale range bound) landed with diff regressions.
 
 1. **Interpreter == C++ (Milestone 1).** `cpl-conform diff` to 0 mismatches: `corpus/dmopc21c5p2` first. Each fix adds a `crates/cpl-cli/tests/programs/` pair that both back ends run.
 2. **No silent wrong answers (Milestone 1).** The 11 `wrong output` causes in `--causes`, `corpus/aac5p4`. A construct that can't be made right in the time gets a named error instead (spec R-rule: compile-time error, then trap, never wrong).

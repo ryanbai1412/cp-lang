@@ -4,7 +4,7 @@ Segment: C. Design, then build. One page; detail in [PLAN.md](PLAN.md), the code
 Owns: `crates/cpl-cli`, `crates/cpl-contest`, `crates/cpl-doc`, `crates/cpl-json`, `crates/cpl-lsp`, `editors/`, `spec/tools/{cli,bundle,explain}.md`.
 Status (2026-11-22, late): every spec command exists (0 mismatches); `new --companion/--listen`, `fetch`, `test`, `stress`, `locate`, `submit --copy` work end to end on Codeforces-shaped samples; VS Code has diagnostics, completion, formatting, lenses and `CP: Submit`.
 
-## Milestone 1 (plan/product/MILESTONE-1.md): what it needs from tools
+## Milestone 1 (handbook/product/milestones.md): what it needs from tools
 Deadline about 09:30 PST 2026-11-23; ships on edge. Steps 3-6 of the acceptance scenario (install, solve, test, submit) run through this lane. Priorities follow it; the metrics below are means to it. No real judge submissions. `cpl b` gives one portable C++17 file; judge profiles stay working but get no new milestone time (Ryan, 21:38). Linux, macOS and Windows are all supported and tested.
 
 Exit criteria, each checked by a test or a recorded cold run:
@@ -24,7 +24,7 @@ Top 3 next steps (setup for all three editors, the contest-flow golden test, VS 
 2. Prove editor formatting and go-to-definition in the JetBrains smoke, not only that the LSP server is registered.
 3. A cold run of the scenario from `editors/README.md` and `cpl --help` alone, on a fresh machine.
 
-## Milestone 2 (plan/product/MILESTONE-2.md): the complete toolchain
+## Milestone 2 (handbook/product/milestones.md): the complete toolchain
 The most ambitious version: from the first Companion click to an accepted, understood submission, every step is one guessable command or one editor action, on every platform and editor a contestant uses, and each answers faster than the C++ setup it replaces.
 
 Exit criteria:

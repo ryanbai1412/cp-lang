@@ -4,7 +4,7 @@ Segment: D. Taste and co-design. Owns: bundled skill, principles, idiom catalog,
 Packet: [PLAN.md](PLAN.md) (detail), [metrics.toml](metrics.toml) (commands + today's values), [ARCHITECTURE.md](ARCHITECTURE.md) (code as it is), [worklog.md](worklog.md).
 
 ## Milestone 1 (priority over everything below; due about 09:30 PST 2026-11-23)
-[plan/product/MILESTONE-1.md](../../product/MILESTONE-1.md): a Codeforces 1500+ friend who has never used CPL understands it, tries it in the browser, installs it, solves unfamiliar problems, tests them, builds them for Codeforces, and competes, all without help. Idioms owns the **acceptance run** that says whether this works, grown out of the blind skill evals. The run ships on edge, needs no stable v0.3.0, and makes no real judge submissions.
+[Milestone 1](../../../handbook/product/milestones.md): a Codeforces 1500+ friend who has never used CPL understands it, tries it in the browser, installs it, solves unfamiliar problems, tests them, builds them for Codeforces, and competes, all without help. Idioms owns the **acceptance run** that says whether this works, grown out of the blind skill evals. The run ships on edge, needs no stable v0.3.0, and makes no real judge submissions.
 
 **What the milestone needs from idioms (exit criteria)**
 - **Protocol and harness** (done, `c325c1b05`). [research/acceptance/PROTOCOL.md](../../../research/acceptance/PROTOCOL.md) defines the run: a cold agent plays the friend using only https://cp-lang.org, the pages it links and Codeforces statements, with Neovim as the editor. Each run writes `research/acceptance/runs/<date>-<n>.json` with pass or fail per step, minutes per step, the OS, and every blocker, workaround and hesitation, each tagged with its lane.
@@ -24,7 +24,7 @@ Packet: [PLAN.md](PLAN.md) (detail), [metrics.toml](metrics.toml) (commands + to
 3. A CI job on Linux, macOS and Windows that follows the site's install and CLI steps and writes its results into the run.
 
 ## Milestone 2 (after the Milestone 1 exit criteria pass)
-[plan/product/MILESTONE-2.md](../../product/MILESTONE-2.md): stable, for strangers. The most ambitious version of idioms: **every CPL program a model or a person writes from the docs is correct, idiomatic and fast on the first try, and we can prove it on every release.**
+[Milestone 2](../../../handbook/product/milestones.md): stable, for strangers. The most ambitious version of idioms: **every CPL program a model or a person writes from the docs is correct, idiomatic and fast on the first try, and we can prove it on every release.**
 - **Acceptance for strangers.** The run covers J1-J10 on all three OSes for each release candidate. It uses several personas: beginner, Codeforces 1500+, an elite contestant, and a PL-curious reader. Each run gets a fresh unseen set: 10 Div2, 5 Div1, plus a timed round. Stable is promoted only when every step passes on every OS and BLOCKERS.md has no P0.
 - **Idiomatic corpus.** All 305 ports are re-ported from `dream.cp`. Taste-review median is at least 4, with none under 3. Contestant tokens: median at most 0.6x C++, none above 1.0x. Every port is judge-covered and checks byte for byte across releases, with pins and codemods. The corpus reaches 100/100 on `cpl-conform corpus`.
 - **Performance, on the corpus.** Idiomatic code runs at p50 <= 1.1x, p95 <= 1.2x and max <= 1.5x of matched C++. Tuned code runs at max <= 1.1x. Every solution is under 32 KB.

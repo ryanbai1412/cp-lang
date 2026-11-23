@@ -4,7 +4,7 @@ The detail behind [README.md](README.md). Target design:
 [design/overview.md](design/overview.md). Numbers: [metrics.toml](metrics.toml).
 
 ## Workstreams, in order
-Milestone 1 (`plan/product/MILESTONE-1.md`) sets the order: what a newcomer
+Milestone 1 (`handbook/product/milestones.md`) sets the order: what a newcomer
 meets in the browser and the editor (Neovim/Vim, VS Code) first,
 architecture after. Deadline ~09:30 PST 2026-11-23; hours, not days.
 

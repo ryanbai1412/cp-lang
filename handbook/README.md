@@ -81,9 +81,9 @@ number. *Fix the remaining failures* is in the domain's plan.
 
 | File | What it answers | Owner | Absorbs |
 |---|---|---|---|
-| `product/vision.md` | Who CP Lang is for, what it should feel like, what success looks like | coordinator | `plan/product/VISION.md` |
-| `product/journeys.md` | The user journeys end to end: install, first program, learning through docs and lints, a contest, debugging, the editor, submitting | coordinator | `plan/product/EXPERIENCE.md` |
-| `product/milestones.md` | What a milestone is, and each one's bar per journey and per domain: Milestone 1 (edge), Milestone 2 (stable) | coordinator | `plan/product/MILESTONE-1.md`, `MILESTONE-2.md`, `README.md` |
+| `product/vision.md` | Who CP Lang is for, what it should feel like, what success looks like | coordinator | `handbook/product/vision.md` |
+| `product/journeys.md` | The user journeys end to end: install, first program, learning through docs and lints, a contest, debugging, the editor, submitting | coordinator | `handbook/product/journeys.md` |
+| `product/milestones.md` | What a milestone is, and each one's bar per journey and per domain: Milestone 1 (edge), Milestone 2 (stable) | coordinator | `handbook/product/milestones.md`, `MILESTONE-2.md`, `README.md` |
 
 How far along each milestone is, and what blocks it, stays in `plan/`.
 
@@ -177,7 +177,8 @@ The domain's `PLAN.md`, `metrics.toml` and `worklog.md` stay in
   the only normative source becomes the rule above.
 - `plan/OPERATING.md`, `plan/DOMAINS.md`, `plan/LAYOUT.md`, `REPO.md`,
   `plan/PORTING.md` and `plan/ARCHITECTURE.md` Part A are folded in.
-- `plan/product/` moves here, except `BLOCKERS.md` and `notes.md`.
+- `plan/product/` has moved to `product/`; `BLOCKERS.md` and `notes.md` stay
+  in `plan/product/`.
 - `plan/agent-context.md` (Ryan's own words) moves to
   `research/design-history/` as background; its durable points go into
   `principles.md` and `product/`.

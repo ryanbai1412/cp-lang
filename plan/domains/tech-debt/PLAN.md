@@ -5,7 +5,7 @@ The detail behind [README.md](README.md). Dated 2026-11-22.
 ## Workstreams, in order
 
 0. **Milestone 1 first (2026-11-22).** Ordered by what blocks the
-   [acceptance scenario](../../product/MILESTONE-1.md):
+   [acceptance scenario](../../../handbook/product/milestones.md):
    (a) builtin divergence: for each name in `ir_builtin_names` and
    `backend_std_names`, find its interpreter and C++ implementations, add
    `cpl-conform diff` cases at the edges, fix behaviour-free mismatches or

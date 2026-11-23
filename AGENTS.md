@@ -9,8 +9,8 @@ when to write an RFC, and the escape hatch (process over 10% of your time
 may be skipped). Its sections land one at a time; until a section lands, the
 files below remain authoritative.
 
-Start with `plan/product/`: `VISION.md` (who CP Lang is for and why),
-`EXPERIENCE.md` (the journeys we owe them) and `MILESTONE-1.md` (the
+Start with `handbook/product/`: `vision.md` (who CP Lang is for and why),
+`journeys.md` (the journeys we owe them) and `milestones.md` (the
 milestone every lane works toward). Product docs say what users get, `spec/`
 says what the language is. When choosing what to do next, unblock a step of
 the milestone's acceptance scenario first.
@@ -55,7 +55,7 @@ just feel like the pieces fit together beautifully and everything just works
 
 ## The goals
 
-These are the vision's value propositions made measurable (`plan/product/VISION.md`): V1 is goal 1, V2 is goal 2, V3 is goal 4, the trust foundation is goals 3 and 5, and J10 is goal 6.
+These are the vision's value propositions made measurable (`handbook/product/vision.md`): V1 is goal 1, V2 is goal 2, V3 is goal 4, the trust foundation is goals 3 and 5, and J10 is goal 6.
 
 Five contest goals, one long-term goal, and one constraint on all of them.
 Each answers a different question, and a design can pass any one and fail the

@@ -14,7 +14,7 @@ ratchet and counts: `scripts/debt-ratchet.py` (`--show`, `--list NAME`; 0.4 s, i
 
 ## Milestone 1
 
-[Milestone 1](../../product/MILESTONE-1.md) is the priority: a Codeforces
+[Milestone 1](../../../handbook/product/milestones.md) is the priority: a Codeforces
 1500+ friend understands, tries, installs, solves, tests, submits and competes
 with CPL without help. Debt that causes a milestone bug comes first; cosmetic
 debt waits. Constraints (Ryan, 2026-11-22): due about 09:30 PST 2026-11-23,
