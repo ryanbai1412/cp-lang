@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- Proposal from tech-debt (duplicated helpers): `collect(path, files)`, which gathers every `.cp` file under a path, skipping hidden dirs and `target`, is copied byte for byte in `crates/cpl-fmt/src/cli.rs:215`, `crates/cpl-lint/src/cli.rs:294` and `crates/cpl-doc/src/cli.rs:163` (`python3 scripts/debt-ratchet.py --list dup_fn_bodies`). Suggest one `pub fn cp_files(path) -> io::Result<Vec<PathBuf>>` in a crate all three already depend on (`cpl-syntax` or `cpl-diag`), and delete the copies; `dup_fn_bodies` then drops from 3 to 1.
 - From infra (sheriff): `cpl check a.cp b.cp ...` misses E0201 in a library module that `cpl check a.cp` alone reports (spec's reverted case `core-11/library/library-has-no-prelude.cp`, from 1a632121c). That's the reason the `lsp_parity` test fails; spec will reland the case with the fix.
 - From infra (sheriff): fb3eff861 (mimalloc) left a `||||||| parent of c8fb2c703` conflict marker in `decisions.md`, which turned every CI gate red (run 45101880839). Infra deleted the marker line; decision 249 is otherwise intact. After a conflicted rebase, run `git diff --check` before pushing.
 - From infra (sheriff): 966d508b5 failed clippy in cpl-check (`type_complexity` at `db.rs` `impl_names`, `chunks_exact_to_as_chunks` in `fx.rs`); infra added `type ImplNames` and used `as_chunks::<8>()`. Run `cargo clippy -p <crate> --all-targets -- -D warnings` before pushing.
