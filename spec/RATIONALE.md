@@ -36,29 +36,15 @@ Questions from site or any reader: add them to
 
 ## Control flow and functions (`core/06-control-functions.md`)
 
-- Decisions 60, 98, 125, 126, 127, 129, 130.
-- Lost: `_by` twins (60; one `by:` option). `enumerate` (60; `.items`).
-  `++` and unary `+` (98). Compound assignment as an expression (129).
-  Mixed-direction comparison chains (130).
+See [`handbook/language/control-and-functions.md`](../handbook/language/control-and-functions.md).
 
 ## Sequences (`core/07-sequences.md`, "Key decisions")
 
-- Decisions 53, 142, 143, 326, 354.
-- Lost: free-function folds and sorts (53; methods, so completion finds
-  them). One iterator trait (142; six capabilities say exactly what a
-  view supports, so an \(O(n)\) read never hides behind `s[k]`).
-  Compiler-recognised closed forms such as `(a..b).step(k).sum()` (326;
-  cost belongs to the receiver's type through ordinary method resolution,
-  so `Range.sum` is closed form and a user type gets the same power).
-  Indexing a reversed view, either by source key or by walk position
-  (354; both readings looked right and one was silently wrong, so
-  `.rev[k]` is an error naming `.nth(k)` and `xs[i]`).
+See [`handbook/language/sequences.md`](../handbook/language/sequences.md).
 
 ## Traits and generics (`core/08-traits-generics.md`)
 
-- Decisions 3, 132, 146.
-- Lost: arcs stored in a side table (146; rarely worth it, `Next` carries
-  arc capabilities instead).
+See [`handbook/language/traits-and-generics.md`](../handbook/language/traits-and-generics.md).
 
 ## Contexts, build modes and checks (`core/09-contexts-checks.md`)
 
@@ -89,7 +75,7 @@ Questions from site or any reader: add them to
 
 ## The library (`lib/`)
 
-- Range structures: decision 42, `lib/rationale/ranges.md`; 316 retires
+- Range structures: decision 42, `handbook/language/sequences.md`; 316 retires
   `RangeFenwick` and `DualFenwick` for `SegTree(act:)`.
 - Containers: 103, 231 (`Map` is the default table; `HashMap` is spelled
   out when hashing is wanted).
