@@ -710,13 +710,13 @@ fn compile_text(path: &str, text: String, side: Side, stderr: &mut String) -> Re
         }),
         Side::Brute => match cpl_ir::brute(&analysis) {
             Some((name, _)) => cpl_ir::lower_brute(&analysis, &name).map(|program| (program, None)),
-            None => return Err(missing("@brute(main)", stderr)),
+            None => return Err(missing("@alt(program)", stderr)),
         },
         Side::Checker => match cpl_ir::checker(&analysis) {
             Some((name, _)) => {
                 cpl_ir::lower_checker(&analysis, &name).map(|program| (program, None))
             }
-            None => return Err(missing("@checker", stderr)),
+            None => return Err(missing("@check", stderr)),
         },
     };
     match lowered {

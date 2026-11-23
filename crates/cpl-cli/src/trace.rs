@@ -125,9 +125,9 @@ pub fn versus(
     )
 }
 
-/// Runs the solution and the `@brute(main)` of the file at `path` on
+/// Runs the solution and the `@alt(program)` of the file at `path` on
 /// `input` in the debug interpreter: what `cpl stress` shows of a
-/// failing case. A file judged by its `@checker` alone has no brute to
+/// failing case. A file judged by its `@check` alone has no brute to
 /// line up with, and its trace is the solution's own run. With `explain`,
 /// every value each run gives a variable is logged too, for the first one
 /// they give differently.

@@ -251,7 +251,7 @@ fn judge_runs_the_checker_on_an_output() {
     let dir = scratch("judge");
     std::fs::write(
         dir.join("echo.cp"),
-        "let n: 1..=5 = read()\nprint(n)\n@checker\nfn check():\n    let x: Int = read_output()\n    assert x == n\n",
+        "let n: 1..=5 = read()\nprint(n)\n@check\nfn check():\n    let x: Int = read_output()\n    assert x == n\n",
     )
     .unwrap();
     std::fs::write(dir.join("in.txt"), "3\n").unwrap();

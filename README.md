@@ -88,7 +88,7 @@ prints `3` for the input `3 11` / `1 5 7`.
 - **`@memo`.** Write the recurrence as a function. The compiler uses a
   flat table when the parameters are small indices and a salted hash table
   otherwise.
-- **`@checker` and `@interactor`.** A validator for multi-answer problems
+- **`@check` and `@interactor`.** A validator for multi-answer problems
   and a local judge for interactive ones sit in the same `.cp` file as
   the solution, next to `@brute` and `@gen` for stress testing.
 - **7 core traits**, all derived automatically: `Index`, `Seq`, `Eq`,

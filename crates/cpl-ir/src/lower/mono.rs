@@ -220,7 +220,7 @@ impl<'a> Lowerer<'a> {
         let aside = self.aside;
         analysis.items.iter().flat_map(move |item| {
             let offset = item.offset;
-            // A `@checker`, an `@interactor` and a `@brute(main)` are
+            // A `@check`, an `@interactor` and a `@alt(program)` are
             // each a program of their own: checked, run by `cpl stress`,
             // and no part of the solution a judge gets.
             item.syntax

@@ -93,8 +93,8 @@ ea53b36a10	s8_assume_assert_debug,s8_brute_main,s8_checker,s8_gen_fn,s8_grader,s
 1a71293e16	s8_grader	// captures immutable outer `let`s; permits `ask(...)` & extern `@grader fn` (1 call per arg)
 0a4a4de802	s8_gen_fn,s8_read_gen,s8_read_none,s8_read_until	let (k, walls) = read(gen: () => gen_walls(pts)) // typed gen: with optional `witness val`
 0ce48b5678	s8_gen_fn,s8_read_gen	@gen fn make_case(size: Int): ... // whole-input generator (choice-stream shrinking)
-5aa89b1123	s8_brute_main	@brute(main) fn slow(): ... // default oracle for `cpl stress` (stripped on judge)
-564ad26273	s8_assume_assert_debug,s8_checker,s8_read_gen,s8_read_none,s8_read_until	@checker fn check(): ... // reads solution stdout via read_output(), validates with assert
+5aa89b1123	s8_brute_main	@alt(program) fn slow(): ... // default oracle for `cpl stress` (stripped on judge)
+564ad26273	s8_assume_assert_debug,s8_checker,s8_read_gen,s8_read_none,s8_read_until	@check fn check(): ... // reads solution stdout via read_output(), validates with assert
 8efbcd08da	s8_interactor,s8_read_gen,s8_read_none,s8_read_until	@interactor fn judge(sol: Interactor): // read() = hidden test; sol.recv() = sol stdout; sol.send(x) = sol std
 e1c4629566	s8_assume_assert_debug,s8_brute_main,s8_checker,s8_gen_fn,s8_grader,s8_interactor,s8_memo,s8_memo_override,s8_multitest_count,s8_multitest_eof,s8_multitest_file,s8_read_gen,s8_read_none,s8_read_until,s8_tags	... // pairs with `ask("?", x, limit: K)` (auto-flushes all print())
 75fd5205ad	s8_grader	// Stateful @grader: top-level `var` (or `@grader struct`); bodyless `@grader fn` = extern oracle
@@ -102,7 +102,7 @@ b7a7ed0e21	s8_read_none	var state: ?State = none
 2e2f435776	s8_grader	@grader fn get_distance(i: Int, j: Int) -> Int
 80eb9335c8	s8_grader	@grader fn init(n: Int, a: [0..n]Int): state = State(a)
 26bec58cb6	s8_grader	@grader fn query(x: Int) -> Int: ...
-0b69152c13	s8_assume_assert_debug,s8_brute_main,s8_checker,s8_interactor,s8_multitest_file	- **`cpl stress`:** Uses in-file `@brute`/`@checker`/`@interactor`, escalates sizes (`1..=20`; `--max-vals`), 
+0b69152c13	s8_assume_assert_debug,s8_brute_main,s8_checker,s8_interactor,s8_multitest_file	- **`cpl stress`:** Uses in-file `@brute`/`@check`/`@interactor`, escalates sizes (`1..=20`; `--max-vals`), 
 8330ddaa0b	s9_deque,s9_heap_desc,s9_list,s9_list_first_last,s9_set,s9_set_algebra,s9_set_rank_nth,s9_sortedbag	Every container uses `.len`, `.is_empty`, `.clear()`, and `.take()` (O(1) move-out leaving empty). Discarding 
 41a44753d8	s9_list,s9_list_first_last	- **`List<T>`:** `var xs: List<T> = []`, `[expr for x in it if c]`, `List.filled(n, v)`, `.push(x)`, `.push_id
 6a1373fbb7	s9_deque,s9_list_first_last	- **`Deque<T>`:** `var q: Deque<T> = []`, `.push(x)`, `.pop() -> ?T`, `.push_front(x)`, `.pop_front() -> ?T`, 

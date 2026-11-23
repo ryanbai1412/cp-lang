@@ -61,7 +61,7 @@ while i < fwd.len or j < back.len:
 print(moves.len)
 print(moves, sep: "\n")
 
-@checker
+@check
 fn check():
     // the least count from the original's closed form; the moves are replayed on the board
     var least = n / 2

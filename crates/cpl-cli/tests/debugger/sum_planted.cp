@@ -6,7 +6,7 @@ var s = 0
 for x in a: s += x * x
 print(s)
 
-@brute(main)
+@alt(program)
 fn slow():
     var s = 0
     for x in a: s += x

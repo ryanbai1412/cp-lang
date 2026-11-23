@@ -62,7 +62,7 @@ cpl test d --checker checker.cpp        # checker <input> <output> <answer>
 cpl test d --interactor interactor.cpp  # interactor <input>, piped to the solution
 ```
 
-Both accept by exiting 0. A file that declares `@checker` or
+Both accept by exiting 0. A file that declares `@check` or
 `@interactor` is never compared token by token: until the compiler can
 build the co-located judge, `cpl test` asks for it built.
 

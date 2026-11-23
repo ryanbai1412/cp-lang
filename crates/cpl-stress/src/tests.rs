@@ -431,13 +431,13 @@ fn an_accepted_interactive_solution_finishing_slowly_is_not_killed_as_re() {
 
 #[test]
 fn declared_judges_are_found_with_their_lines() {
-    let src = "@checker(output: Int)\nfn valid(out: Int) -> Bool:\n    out > 0\n\n@interactor(Guess)\nfn judge():\n    0\nfn plain() = 1\n";
+    let src = "@check\nfn valid():\n    let out: Int = read_output()\n    assert out > 0\n\n@interactor(Guess)\nfn judge():\n    0\nfn plain() = 1\n";
     let found = declared(src);
     let seen: Vec<(&str, &str, u32)> = found
         .iter()
         .map(|d| (d.kind, d.name.as_str(), d.line))
         .collect();
-    assert_eq!(seen, [("checker", "valid", 2), ("interactor", "judge", 6)]);
+    assert_eq!(seen, [("checker", "valid", 2), ("interactor", "judge", 7)]);
     assert_eq!(declared(SRC), []);
 }
 
@@ -640,7 +640,9 @@ mod cli {
         let file = dir.join("d.cp");
         std::fs::write(
             &file,
-            format!("{SRC}@checker(output: Int)\nfn valid(out: Int) -> Bool:\n    out > 0\n"),
+            format!(
+                "{SRC}@check\nfn valid():\n    let out: Int = read_output()\n    assert out > 0\n"
+            ),
         )
         .unwrap();
         let file = file.to_str().unwrap();

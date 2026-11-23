@@ -35,7 +35,7 @@ for u in t.at:
 
 print(ans)
 
-@brute(main)
+@alt(program)
 fn slow():
     var adj: [V]List<(V, Int)> = []
     for e in E:

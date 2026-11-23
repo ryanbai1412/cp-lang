@@ -47,7 +47,7 @@ while not groups.is_empty:
 let out = [ans[v] for v in V if v != V.first!]
 print(out, sep: "\n")
 
-@brute(main)
+@alt(program)
 fn slow():
     var best_len: [V]?Int = None
     var best_str: [V]Str = ""

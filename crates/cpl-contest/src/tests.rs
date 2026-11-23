@@ -457,7 +457,7 @@ fn the_test_command_judges_with_a_checker_or_an_interactor() {
     );
 
     // A declared judge is the judge: `cpl judge <file>` runs it.
-    let declared = "let n: 1..=5 = read()\n@checker\nfn valid():\n    let out: Int = read_output()\n    assert out > 0\n";
+    let declared = "let n: 1..=5 = read()\n@check\nfn valid():\n    let out: Int = read_output()\n    assert out > 0\n";
     match cpl_stress::cli::select_judge(declared, path, None, None).unwrap() {
         Judge::Checker(program) => {
             assert_eq!(program.argv[1..], ["judge".to_string(), path.to_string()])

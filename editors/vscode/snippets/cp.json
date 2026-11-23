@@ -155,25 +155,25 @@
     ],
     "description": "Niche-packed ?Int table with tropical min= updates and ?? fallback"
   },
-  "Brute-force oracle (@brute)": {
-    "prefix": ["@brute", "brute"],
+  "Brute-force oracle (@alt)": {
+    "prefix": ["@alt", "alt", "brute"],
     "body": [
-      "@brute(${1:main})",
+      "@alt(${1:program})",
       "fn ${2:slow}():",
       "    ${0}"
     ],
-    "description": "Co-located @brute oracle for cpl stress (stripped from judge build)"
+    "description": "Co-located @alt(program) oracle for cpl stress (stripped from judge build)"
   },
-  "Constructive @checker": {
-    "prefix": ["checker", "@checker"],
+  "Constructive @check": {
+    "prefix": ["checker", "@check"],
     "body": [
-      "@checker",
+      "@check",
       "fn check():",
       "    let ${1:ans}: ${2:Int} = read_output()",
       "    assert ${3:ok(ans)}",
       "    ${0}"
     ],
-    "description": "Co-located @checker validating solution stdout with read_output() and assert"
+    "description": "Co-located @check validating solution stdout with read_output() and assert"
   },
   "Interactive @interactor": {
     "prefix": ["interactor", "@interactor"],
@@ -197,18 +197,18 @@
     ],
     "description": "Co-located @interactor using explicit sol: Interactor (sol.recv / sol.send)"
   },
-  "Stress test with gen: and @brute(main)": {
+  "Stress test with gen: and @alt(program)": {
     "prefix": ["stress", "gen"],
     "body": [
       "let ${1:n}: ${2:1..=20} = read()",
       "domain ${3:V} = 1..=${1:n}",
       "let ${4:a}: [${3:V}]Int = read(gen: () => [${3:V}] _ => rand(1..=10))",
       "",
-      "@brute(main)",
+      "@alt(program)",
       "fn slow():",
       "    ${0}"
     ],
-    "description": "Typed read(gen: ...) + @brute(main) stress-test setup"
+    "description": "Typed read(gen: ...) + @alt(program) stress-test setup"
   },
   "Whole-input @gen": {
     "prefix": ["atgen", "@gen"],

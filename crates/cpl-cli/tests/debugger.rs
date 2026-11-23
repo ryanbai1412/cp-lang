@@ -1,6 +1,6 @@
 //! The debugger end to end, through the `cpl` binary: `debug(...)`,
 //! `cpl run --trace`, and `cpl stress` with a file's own `@brute`,
-//! `@checker` and `@interactor` under `@!multitest`.
+//! `@check` and `@interactor` under `@!multitest`.
 //!
 //! The programs in `tests/debugger/` are Codeforces Round 1132 solutions
 //! from `research/archive/blind-evals/blind-contest-sim-2.md`, two of them with a bug planted;

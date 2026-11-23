@@ -320,6 +320,19 @@ impl<'a> Parser<'a> {
                         "read the count and loop: `for _ in 0..tests:`",
                     )
                 }),
+            "alt" | "brute"
+                if matches!(args.as_slice(), [arg] if arg.name.is_none()
+                    && matches!(&arg.value.kind, ExprKind::Name(f) if f == "main")) =>
+            {
+                Some((
+                    format!("`@{}(main)` was removed in CP Lang 0.3; write `@alt(program)`", name.text),
+                    "`@alt(program)` marks a whole alternative program for `cpl stress`",
+                ))
+            }
+            "checker" => Some((
+                "`@checker` was removed in CP Lang 0.3; write `@check`".to_string(),
+                "`@check` marks the fn that judges an output",
+            )),
             "grader" if self.at(T::Const) => Some((
                 "`@grader const` was removed in CP Lang 0.2.2".to_string(),
                 "take the value as a parameter of the `@grader fn`",

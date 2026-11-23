@@ -28,7 +28,7 @@ for s in Subset<I>:
 
 print(m - dp[Subset<I>.full])
 
-@brute(main)
+@alt(program)
 fn slow():
     let tgt = sum(a[i] for i in I) / m
     var ssum: [Subset<I>]Int = 0

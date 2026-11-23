@@ -224,7 +224,7 @@
               },
               "brute": {
                 "type": "boolean",
-                "description": "Debug the file's `@brute(main)` function instead of the solution.",
+                "description": "Debug the file's `@alt(program)` function instead of the solution.",
                 "default": false
               }
             }
@@ -285,7 +285,7 @@
         "cp.codeLens.enabled": {
           "type": "boolean",
           "default": true,
-          "description": "Show Run, Stress and Trace lenses above the file, its samples and its `@brute`/`@checker`/`@interactor` functions."
+          "description": "Show Run, Stress and Trace lenses above the file, its samples and its `@brute`/`@check`/`@interactor` functions."
         },
         "cp.inlayHints.enabled": {
           "type": "boolean",

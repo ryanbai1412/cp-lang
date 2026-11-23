@@ -2951,7 +2951,7 @@ impl<'a> Lowerer<'a> {
             }
             return Some(self.read(spec, init.span));
         }
-        // `let b: [0..n]Int = read_output()` in a `@checker`: the same
+        // `let b: [0..n]Int = read_output()` in a `@check`: the same
         // layout, read from what the solution printed.
         if is_read_output_call(init) && self.aside == Some(Aside::Checker) {
             return Some(self.read_printed(spec, init.span));
