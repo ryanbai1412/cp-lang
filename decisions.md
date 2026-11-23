@@ -6821,7 +6821,6 @@ restore the hand-written REPO.md, and give `gen.py` back its list.
   from the checker rather than by name.
 - **Reverse.** Delete `crates/cpl-lint/src/rules/pops.rs` and
   `spec/lints/peek_then_pop/`, and lower the ratchet.
-||||||| parent of eb05131aa (check: a comprehension's hoisted range bounds stay inside its loop)
 
 ## 305. Comprehension and table lowering is its own module (2026-11-22)
 
