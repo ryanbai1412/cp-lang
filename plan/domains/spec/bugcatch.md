@@ -108,3 +108,7 @@ Keyed views through generic params and struct fields, nested generators with ear
 ## Sanitizer sweep (2026-11-23)
 
 Every runnable `ok` case built at `-O1` under ASan, UBSan and `_GLIBCXX_DEBUG` and compared with `cpl run`. Bug: `r.min()`/`r.max()` on a range lower to a full walk in C++ (R07.9.6 says O(1)); at -O2 gcc folds it, so only the sanitizer build timed out (compiler). Case: `core-07/range-min-max-compile-without-walk`.
+
+## Adversarial round A4 (2026-11-23)
+
+New commits: 6347f91fb (leading-operator continuation), 084b5e680 (VM skips proven FromOrd checks), 1a4e53f33 (typed `read_output` in `@check`), ea9a2324a (E0316/E0317). 18 probes under ASan, UBSan and `_GLIBCXX_DEBUG`, release and `--checks traps`. The FromOrd skip held: `Sub.nth(16)`, `Sub(s.bits + 1)`, a `0..=count` walk and a helper fn all trap in the interpreter and in the traps build. Bug: a blank or comment line between a line and its continuation gives E0006 (compiler; R01.2.4 now says they are skipped). Continuation with `.`, `??`, `and`/`or`, `>>`, `-1`, inside a lambda and after `yield` agrees. 1 case added.

@@ -58,7 +58,8 @@ fn dist(a: P, b: P) -> Int:
   continuation line (below), which extends that body. (R01.2.3)
 - **Continuation.** A line indented deeper than the previous logical
   line, where that line does not end in `:`, continues it when its first
-  token is `.`, `??`, `and`, `or` or a binary operator. This is how
+  token is `.`, `??`, `and`, `or` or a binary operator; blank and
+  comment-only lines between are skipped, as they are for blocks. This is how
   method chains and fallbacks wrap without brackets: (R01.2.4)
 
   ```

@@ -885,7 +885,7 @@ prepends it.
 
 - 00-overview.md: 1 blocks, 1 with a case, 0 spec-only, 0 neither
 - 01-lexical-grammar.md: 5 blocks, 1 with a case, 3 spec-only, 1 neither
-  - line 105: `let var const fn struct enum domain type use pub if elif els`
+  - line 106: `let var const fn struct enum domain type use pub if elif els`
 - 02-values-types.md: 3 blocks, 2 with a case, 1 spec-only, 0 neither
 - 03-numbers-layout.md: 2 blocks, 2 with a case, 0 spec-only, 0 neither
 - 04-indices.md: 8 blocks, 1 with a case, 3 spec-only, 4 neither
