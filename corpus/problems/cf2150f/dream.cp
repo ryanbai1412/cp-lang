@@ -33,8 +33,7 @@ fn route(i: V, j: V) -> List<V>:
         let skip = dist - half
         return [x for x in p[..2 * skip].even] + p[2 * skip..]
     let far = [d.u, d.v].max(by: f => t.dist(i, f))!
-    let meets = [t.lca(i, j), t.lca(i, far), t.lca(j, far)]
-    let mid = meets.max(by: x => t.depth(x))!
+    let mid = t.meet(i, j, far)
     let stem_len = half - dist + 1
     let stem = t.path(mid, far)[..stem_len]
     let out = if mid == j: 1 else: 0
