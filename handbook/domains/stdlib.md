@@ -85,6 +85,10 @@ Owned:
   `design/std-mechanisms.md`, `language/std.md`.
 - `plan/domains/stdlib/` (plan, metrics, worklog, `measure.py`).
 
+Decided with Ryan, through `plan/QUESTIONS.md`: API shape, naming, and what
+belongs in std and in the prelude, judged on real ports. Everything else is
+decided in this domain and logged in `decisions.md`.
+
 Not owned:
 
 | Not here | Owner |
@@ -97,6 +101,56 @@ Not owned:
 | Site reference pages generated from std | site |
 | `cpl-conform` itself | infra, spec |
 
+### Modules
+
+Each module is one file, and its opening `//!` line is the source of truth
+for its purpose; this table copies those lines.
+
+| Module | Purpose |
+|---|---|
+| `algebra` | Operations as values: what a range structure folds with. |
+| `bag` | Ordered multiset and set with order statistics, range views, and cursors: `SortedBag<K>`, `SortedSet<K>`. |
+| `beats` | Segment Tree Beats (Ji Driver) for range chmin, chmax, add, sum, min, and max. |
+| `bitset` | A dense set of positions of a domain, 64 per word. |
+| `deque` | Double-ended queue: `Deque<T>`. |
+| `derive` | The `Eq`, `Ord`, `Show` and `Hash` a struct gets field by field, as library code on |
+| `dp` | The DP toolkit: the structures and optimizations a DP calls by name. |
+| `dsu` | Disjoint sets over a domain, with optional values per set, parities, and rollback. |
+| `fenwick` | Fenwick tree (binary indexed tree) over a domain: point add, range sum. |
+| `flow` | Flows, cuts and matchings: Dinic's max flow and min cut, min-cost flow, maximum |
+| `geometry` | Plane and 3D geometry on exact integer points (`Pt`, `Pt3`) and careful |
+| `graph` | Graphs: one stored representation and the algorithms over "what comes after v". |
+| `grid` | Grids: a cell is the pair `(Row, Col)` and there is no grid type. `[Row, Col]T` is the grid, |
+| `hashmap` | Open-addressing hash map for `Int` keys with splitmix64 salting. |
+| `heap` | Binary heaps (round 5): `Heap<T>(by:)` pops the smallest key first and `Heap(by: desc)` the |
+| `interval` | Interval partition map (ODT / Chtholly tree): `IntervalMap<D, T>`. |
+| `io` | Answer words for yes/no problems. `print`, `read` and the `io` context are core |
+| `lazy` | Range-update helpers that are not segment trees |
+| `marks` | Opt-in generation-stamped mark table: `add`, `in`, `remove`, and `clear` are all \(O(1)\). |
+| `math` | Number theory on plain `Int`s. |
+| `matrix` | Dense matrices, exact and floating-point Gaussian elimination, and GF(2) XOR bases. |
+| `mo` | Mo's algorithm: offline ordering and window stepping over `Range<D>`. |
+| `mod` | Modular arithmetic and counting. |
+| `ntt` | Number-theoretic transform, exact and modular convolution, SOS, and bitwise transforms. |
+| `opt` | Methods of optionals (`?T`, core 2.4). The operators (`??`, `!`, |
+| `pair` | Unordered pairs of distinct positions: the domain of data given once per pair. |
+| `persistent` | Persistent segment tree and static range k-th smallest queries. |
+| `poly` | Formal power series operations over NTT-friendly `Mod<P>`. |
+| `prefix` | Prefix sums, prefix/suffix monoid folds, and offline difference arrays. |
+| `prelude` | The prelude: the names of the standard library every program has |
+| `rand` | Random numbers from a seed: the same seed gives the same numbers in `cpl run` |
+| `search` | Search on answers: binary, exponential, ternary and parallel searches, |
+| `segtree` | Segment tree over a domain, for any associative operation. |
+| `seq` | Sequences: reductions, scans, runs, searching, permutations, monotone stacks, and compression. |
+| `slope` | Integer-indexed concave and convex functions as sorted slopes (slope trick). |
+| `sparse` | Sparse table: \(O(1)\) range folds of a fixed array. |
+| `spec` | Checking observations on small cases: is a table monotone, convex, unimodal or Monge, does a |
+| `strings` | String algorithms. They only compare elements, so they work on a `Str` |
+| `subset` | Subsets of a small domain as one machine word: the mask of mask DP with its domain kept. |
+| `timetree` | Offline segment tree over time (divide-and-conquer on life intervals). |
+| `tree` | Rooted trees: parents, subtree ranges, LCA, and path folds over one range structure. |
+| `window` | Sliding-window folds and stateful windows (round 7, `lib/sequence-patterns.md`). |
+
 ## Interfaces
 
 Provides:
@@ -108,6 +162,10 @@ Provides:
 | Doc comments | `cpl doc --format json std` | site reference, LSP hover, `scripts/spec-stub.py` |
 | `/// example:` lines as tests | `crates/cpl-conform/src/docs.rs` | `cpl-conform docs`, the scoreboard |
 | Algebra laws | `std/algebra.cp` | `crates/cpl-prover/src/laws.rs` |
+| Names the compiler binds to std (`BUILT_ON`, `INTERNAL_BUILT_ON`, `std_module`) | `crates/cpl-check/src/prelude.rs` | checker, `cpl fix` import edits |
+| Module names for `use std.` completion | `crates/cpl-lsp/build.rs` | LSP |
+| Conformance cases, one directory per module | `spec/conformance/std-<m>/` | `cpl-conform conformance`, `cpl-conform diff` |
+| Modules that pass a standalone `cpl check` | `SPEC_STD` in `crates/cpl-cli/tests/corpus.rs` | `cargo test -p cpl-cli` |
 
 Needs:
 
@@ -221,6 +279,32 @@ and `cargo-semver-checks`. Targets and today's numbers are in
 | Old solutions keep building | corpus ports broken by a std change | corpus in `cpl-conform all --check` |
 | Lint-clean std | lint hits in std (`L0301` float equality and others) | `cpl-lint` baselines, shrink-only; each kept hit is marked `with lint(...: allow)` |
 
+## Review rubric
+
+A reviewer who has not seen the module samples 10 public fns and scores each
+1 to 5 on five questions, with a reason. The trend matters more than any one
+score.
+
+1. **Guessable.** Knowing only its neighbours, would you have guessed this
+   name, its argument order and its options? (`std-api/R1`, `std-api/R8`)
+2. **Cost honest.** Does the body do what `cost:` says, and does anything
+   O(n) or allocating look like it? (`std-api/R16`, `std-docs/R3`)
+3. **One way.** Is this the only std call for its job? (`std-api/R11`)
+4. **Teaches.** Would a contestant learn the algorithm from the body, as from
+   KACTL or ACL?
+5. **No privilege.** Could a user library have written this module?
+   (`std-api/R19`)
+
+Probes, run by a reader with only the docs (pass or fail, time, files touched):
+
+- **Write from the docs.** Solve 5 unseen problems with std calls that
+  compile and run first try.
+- **Add a std fn.** Follow `std-api` and `std-docs`; the gate is green first
+  try and at most 3 files change.
+- **Copy a module.** Copy `std.fenwick` into a user library and run its cases
+  from there.
+- **Audit costs.** Given 10 bodies, find the one with a planted wrong `cost:`.
+
 ## Suites and tools
 
 | Tool | Catches | Run |
@@ -245,3 +329,4 @@ Land with `CPL_LANE=stdlib scripts/land.sh`.
 - 2026-11-23: first charter, from `plan/domains/stdlib/README.md` and `ARCHITECTURE.md`.
 - 2026-11-23: register made exhaustive across journeys and users.
 - 2026-11-23: overview first; register rows cite the std-api, std-docs and errors checklists.
+- 2026-11-23: module map, review rubric and probes moved in from the plan folder.

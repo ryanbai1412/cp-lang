@@ -73,6 +73,13 @@ Each one is logged as debt and counted by
   other std modules.
 - If std needs a new power, it becomes a core feature for every library, or
   the module waits. A std-only special case is a bug in this page.
+- One list of prelude names, `std/prelude.cp`. Only the program being
+  checked gets the prelude; a library module, std's included, `use`s what it
+  needs.
+- Std imports are acyclic (`std_checks`).
+- Old spellings are not kept as aliases; a rename ships a codemod and a
+  checker error instead (`std-api/R20`).
+- The `todo` count in std bodies only goes down (`scripts/debt-ratchet.py`).
 - A std module copied into a user project must behave the same. The
   copy-a-module test that checks it is `missing` in
   [the stdlib register](../domains/stdlib.md).
