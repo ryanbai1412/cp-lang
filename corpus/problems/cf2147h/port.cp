@@ -15,8 +15,7 @@ let (n, m): (1..=50, 0..=1225) = read()
 domain V = 1..=n
 let edges = read<[m](u: V, v: V, w: 1..=1_000_000)>()
 
-var g = 0
-for e in gomory_hu(edges): g = gcd(g, e.w)
+let g = gomory_hu(edges).map(e => e.w).fold(gcd)
 
 let colors: List<Bitset<V>> = if g != 1:
     [V.all]
