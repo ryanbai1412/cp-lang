@@ -456,17 +456,20 @@ pub fn find_all<S: Indexed, P: Indexed, K>(self: S, pat: P) -> yields K:
             k = p[k - 1]
 
 /// The length of the longest common prefix of `self` and `other`, comparing values in order
-/// from the first key of each. Works on any `Indexed` pair.
+/// from the first key of each. `other` is only walked, so it can be any `Seq` (`s.rev`, a
+/// generator); `self` is `Indexed`.
 ///
 /// cost: \(O(\min(\lvert \mathit{self} \rvert, \lvert \mathit{other} \rvert))\)
 /// empty: `0` when either is empty
 /// traps: never
 /// example: `"abcd".common_prefix_len("abxd") == 2`
-pub fn common_prefix_len<A: Indexed, B: Indexed>(self: A, other: B) -> Int:
+/// example: `"abcx".common_prefix_len("xcba".rev) == 4`
+pub fn common_prefix_len<A: Indexed, B: Seq>(self: A, other: B) -> Int:
     with lint(unproven_list_index: allow)
-    let lim = min(self.len, other.len)
     var i = 0
-    while i < lim and self.nth(i) == other.nth(i): i += 1
+    for y in other:
+        if i == self.len or self.nth(i) != y: break
+        i += 1
     i
 
 /// The length of the longest common suffix of `self` and `other`, comparing values in order
