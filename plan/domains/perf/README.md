@@ -21,8 +21,8 @@ The submitted C++ is as fast and as small as the C++ a strong contestant writes 
 ## Success criteria for v0.3
 
 1. Zero-cost: every `bench/zero-cost` pair <= 1.05x against both `direct.cp` and `hand.cpp` (7/7).
-2. Matched C++ on the perf set (v0.3 dry runs with a matched `_ref.cpp`, `bench/<area>/*.cp`, corpus `spec.cp` ports; both sides >= 10 ms at max-N): p50 <= 1.1x, max <= 1.5x.
-3. Every v0.3 program builds under 32 KB for every judge profile; none over 64 KB.
+2. Matched C++ on the perf set (v0.3 dry runs with a matched `_ref.cpp`, `bench/<area>/*.cp`, corpus `spec.cp` ports; both sides >= 10 ms at max-N): p50 < 1.1x, p95 < 1.2x, max < 1.5x, and max < 1.1x after constant-factor tuning (decision 269).
+3. Every program in the corpus builds under 32 KB for every judge profile; none over 64 KB.
 4. Every port reachable to <= 1.1x by tuning in the language, shown on the 5 worst.
 5. All of it measured by one command per metric and ratcheted, so no landing makes a number worse.
 
@@ -30,7 +30,7 @@ The submitted C++ is as fast and as small as the C++ a strong contestant writes 
 
 - **M1 Measured and ratcheted** — zero-cost 7/7 build on v0.3; `devin/wip-codegen-perf` and `devin/wip-cpp-size-main` landed; `scripts/sizes.py --check` in the gate; one perf-set runner whose JSON feeds `metrics.toml`; a perf ratchet file that a regression > 10% fails. Exit: `cpl bench --zero-cost` exits 0 on build errors = 0; `scripts/check.sh --fast` runs sizes.
 - **M2 Abstractions are free** — exit: `cpl bench --zero-cost bench/zero-cost --reps 11` 7/7 pass both bars; shape tests in `src/tests.rs` show zero `std::function` for `let f = mon.op; f(a, b)`, zero `cpl::at` for `for i in 0..n` over `[0; n]`, zero intermediate vectors for `filter.map.sum`.
-- **M3 Parity with matched C++** — exit: perf set p50 <= 1.1x and max <= 1.5x (5 runs, median); `ranges/mo`, `cf2178h`, `p10_matching` each <= 1.5x; front end < 500 ms on the largest v0.3 program.
+- **M3 Parity with matched C++** — exit: perf set p50 < 1.1x, p95 < 1.2x and max < 1.5x (5 runs, median); `ranges/mo`, `cf2178h`, `p10_matching` each <= 1.5x; front end < 500 ms on the largest v0.3 program.
 
 ## Metrics
 
@@ -43,6 +43,7 @@ Today = measured on main `4b8f504fc`, 8-core VM, g++ 11.4 `-O2`, release `cpl`; 
 | Worst zero-cost vs direct.cp | same | iterators 5.00x | <= 1.05x | M2 |
 | optionals vs hand.cpp | same | 1.26x | <= 1.05x | M2 |
 | Perf set p50 | `bench/v03_perf_bench.py` (branch) | 0.987x (n=48); 1.028x on `bench/` alone | <= 1.1x | M3 |
+| Perf set p95 | same | 1.697x (n=137, 2026-11-22 full run) | < 1.2x | M3 |
 | Perf set max | same | 2.431x (`ranges/mo`) | <= 1.5x | M3 |
 | Perf set programs > 1.5x | same | 3: `ranges/mo` 2.43x, `cf2178h` 1.76x, `p10_matching` 1.53x | 0 | M3 |
 | Largest emitted C++ | `bench/sizes.py --check` | 21.7 KB (v0.3 dry runs, 35/35 build) | < 32 KB | M1 |
@@ -85,8 +86,6 @@ Signs off the targets and the perf set once (Q1). Hears only about trade-offs: r
 
 ## Decisions needed from Ryan
 
-Filed in [plan/QUESTIONS.md](../../QUESTIONS.md):
+Still with Ryan, in [plan/QUESTIONS.md](../../QUESTIONS.md): does the judge build trap on a bad index, `/ 0` and `assert`? Default: keep the traps.
 
-1. **Which set and which tail bar define the v0.3 runtime target?** Recommend: the v0.3 perf set above, p50 <= 1.1x and max <= 1.5x (as AGENTS.md says; this README said p95). The 0.2 343-port sweep (p95 2.61x, `bench/corpus-p95-report.md`) is retired with the 0.2 ports.
-2. **Does Euclidean `%` on an unbounded `Int` count as abstraction cost?** `optionals` is 1.01x vs direct but 1.26x vs `hand.cpp`, all of it `cpl::emod`. Recommend: no; the bench declares its real input range (`0..10^9`), making `%` plain C++.
-3. **To fit 32 KB, minify the C++ before dropping the CP Lang source from the header?** Recommend: yes (comments, indentation, spaces, numbered names go first; the source last), as `devin/wip-cpp-size-main` does.
+Decided by their recommendations (decisions.md 269-271): the perf set and its bars, floored `%` as semantics (optionals declares its ranges), minify before dropping the source header.

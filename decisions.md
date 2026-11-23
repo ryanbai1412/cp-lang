@@ -6374,3 +6374,40 @@ constants and the `exit(3)` in the C++ runtime, and the sentence in
   `plan/QUESTIONS.md`.
 - **Why.** Twelve parallel lanes ignore warnings.
 - **Reverse.** Make the ratchet step warn-only in `scripts/check.sh`.
+||||||| parent of 158a7eb97 (plan(perf): decide the three perf questions by their recommendations)
+
+## 269. The v0.3 runtime bar is the perf set at p50 < 1.1x, p95 < 1.2x, max < 1.5x (perf-1) (2026-11-22)
+
+- **Decision.** The runtime target is measured on the v0.3 perf set: dry
+  runs with a matched `_ref.cpp`, `bench/<area>/*.cp` and corpus ports,
+  both sides >= 10 ms at max-N, unmatched pairs (`bench/unmatched.txt`)
+  left out. Bars, as Ryan set them: p50 < 1.1x, p95 < 1.2x, max < 1.5x,
+  and max < 1.1x after constant-factor tuning in the language. The 0.2
+  343-port sweep (`bench/corpus-p95-report.md`) is no longer a target.
+  Option (a) of the perf question, taken by its recommendation.
+- **Why.** The worst program is the one a contestant hits; the 0.2 sweep
+  measures ports that are being deleted.
+- **Reverse.** Change the bars in `plan/domains/perf/metrics.toml`;
+  `bench/v03_perf_bench.py` reports p50, p95 and max either way.
+
+## 270. Floored `%` on an `Int` is semantics, not abstraction cost (perf-2) (2026-11-22)
+
+- **Decision.** `bench/zero-cost/optionals` declares the ranges its input
+  has (`a: [0..n]0..10_000`, `reps: 0..=1000`, `step(x: 0..=1e9, m:
+  1..=1e9)`), in `abstract.cp` and `direct.cp` alike, so the pair measures
+  the optional, not Euclidean `%` on a value that could be negative.
+  Option (a), taken by its recommendation.
+- **Why.** `%` floors by the language's definition; the range is the fact
+  a contestant writes anyway, and with it the C++ is plain `%`.
+- **Reverse.** Restore the `Int` declarations in both files.
+
+## 271. Fitting 32 KB minifies the C++ before it drops the source header (perf-3) (2026-11-22)
+
+- **Decision.** When a build is over its judge's aim, comments,
+  indentation, needless spaces and numbered names go first and the CP Lang
+  source in the header goes last (`crates/cpl-codegen/src/compact.rs`).
+  Option taken by its recommendation.
+- **Why.** The source is what a reader of the submission wants; the C++ is
+  for the judge.
+- **Reverse.** The order is one list in `crates/cpl-codegen/src/lib.rs`.
+

@@ -33,14 +33,21 @@ milestone = "M2"
 [[metric]]
 name = "perf set p50 runtime vs matched C++"
 command = "E python3 bench/v03_perf_bench.py --suite dryrun,corpus,bench --runs 5 --min-ms 10 --jobs 1 --json-out /tmp/perf.json"
-target = "<= 1.1"
+target = "< 1.1"
 today = "0.948 (2026-11-22 on main 88a62fca8, n=118 >= 10 ms both sides, 238 ok rows); bench/ 1.040 (n=38), corpus 0.879 (n=70), dryrun 0.910 (n=10)"
+milestone = "M3"
+
+[[metric]]
+name = "perf set p95 runtime vs matched C++"
+command = "same as perf set p50"
+target = "< 1.2"
+today = "1.697 (2026-11-22 on 29b9bd9a, n=137 >= 10 ms both sides, 258 ok rows; p50 0.830, max 6.123 p06_labyrinth)"
 milestone = "M3"
 
 [[metric]]
 name = "perf set max runtime vs matched C++"
 command = "same as perf set p50"
-target = "<= 1.5"
+target = "< 1.5 (< 1.1 after constant-factor tuning)"
 today = "6.027 (dryrun p06_labyrinth); bench/ max 1.749 (containers/bitset)"
 milestone = "M3"
 
