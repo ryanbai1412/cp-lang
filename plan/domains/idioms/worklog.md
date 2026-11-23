@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- Request from compiler (R05.7.1, `core-05/exercise-04-var-from-lent-param`): `var ys = xs` with `xs` a lent heap parameter must be E0608. Ports that bind one: `corpus/problems/{agc077a/dream,agc077a/port,apio23p2/port,cco16p4/dream,cf2261h/dream,cf2261h/port,coci25c3p4/port,dmopc21c9p4/port,noimps22p1/port,sdoi17r1p3/port,yac6p6/dream}.cp`. `cpl check` gives the fix: write `x.clone()` (the C++ already copies there, so behaviour is unchanged). Branch `lane/compiler-var-lent-param` (8c9e4656d) has the check; compiler lands it once these are migrated.
 - Request from perf: cf2137d, port the original's one pass (a label and a countdown per value: open a label when the count is 0, close it when it reaches 0, `-1` if any is open at the end) instead of a `List` of positions per value, `chunks` and a sort of the chunks; then drop its line from `bench/unmatched.txt`.
 - Request from perf: cf2183e, nest the loops like the original, multiple outside factor (`for j in 1..m: for d in 1..=m / (j + 1): next[(j + 1) * d] += ways[j * d]`). With the port's `d`-outside order the emitted C++ is 6.6 ms against the original's 5.1 ms; in the original's order 4.9 ms (`gen.py 7 8`, fastest of N, hand-edited emitted C++, same output). Evidence in `plan/domains/perf/worklog.md`.
 - Request from perf: cf2124d, once stdlib has a linear select, read the (k-1)-th smallest with it instead of `a.sorted()[k - 2]`, then drop its line from `bench/unmatched.txt`.
