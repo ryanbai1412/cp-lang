@@ -133,6 +133,9 @@ Whole-graph algorithms (SCC, components, bridges) also need `V: Domain`.
 
 ### Customizing: a lambda over `g.out(u)`
 
+Any closure from a vertex to its arcs is a graph. The vertex type comes
+from `from:`, so the lambda's parameter needs no annotation.
+
 <!-- spec-only: fragment over an unnamed graph and grid; call forms, not a program -->
 ```python
 dijkstra(u => g.out(u).filter(a => not banned[a.e]), from: [(s, 0)])  // arcs keep .w, .e

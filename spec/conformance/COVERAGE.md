@@ -7,12 +7,12 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 2279 (995 passing). Rules: 535.
+Cases: 2281 (995 passing). Rules: 535.
 
 ## Summary per chapter
 
 - R01 (01-lexical-grammar.md): 52 rules, 110 cases; 0 uncovered, 3 happy-path only, 0 negative only
-- R02 (02-values-types.md): 51 rules, 110 cases; 0 uncovered, 4 happy-path only, 0 negative only
+- R02 (02-values-types.md): 51 rules, 111 cases; 0 uncovered, 4 happy-path only, 0 negative only
 - R03 (03-numbers-layout.md): 24 rules, 60 cases; 0 uncovered, 5 happy-path only, 0 negative only
 - R04 (04-indices.md): 62 rules, 94 cases; 0 uncovered, 2 happy-path only, 0 negative only
 - R04a (04a-identity-vs-offset.md): 39 rules, 53 cases; 0 uncovered, 1 happy-path only, 0 negative only
@@ -147,7 +147,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R02.7.4 [1+ 2-]: `match` is exhaustive. Patterns match only the stored shape; there are no user-defined pat...
 - R02.7.6 [4+ 0-]: A record pattern names the fields it binds, `(to: u, w: c)`, and `..` skips the rest; `(to...
 - R02.7.5 [1+ 0-] *happy-path only*: Layout uses niche filling, so `Ev` is 8 bytes with no tag when `V` positions are 4 bytes (...
-- R02.8.1 [2+ 2-]: `[D]T` is a fixed-size array indexed by domain `D` (positions of `D`, never raw `Int`; an ...
+- R02.8.1 [3+ 2-]: `[D]T` is a fixed-size array indexed by domain `D` (positions of `D`, never raw `Int`; an ...
 - R02.8.2 [1+ 0-]: `List<T>` grows, is indexed by `0..len` positions, and its slices keep source positions.
 - R02.8.3 [2+ 1-]: `[D]T` arrays are built by tables (`[V] v => 0`), typed reads (`read<[V]Int>()`), comprehe...
 - R02.8.4 [1+ 0-]: `xs[i]` on a heap element lends it (`let row = rows[i]`); on a plain element it copies.
