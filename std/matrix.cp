@@ -138,8 +138,8 @@ pub struct Mat<T: Add + Sub + Mul + Div>:
     /// The flat offset of `(r, c)`, trapping unless `r` is in `0..rows` and `c` in `0..cols`:
     /// every accessor goes through it, so no row spills into the next.
     fn cell(self, r: Int, c: Int) -> Int:
-        assert 0 <= r and r < rows, "row {r} is outside 0..{rows}"
-        assert 0 <= c and c < cols, "column {c} is outside 0..{cols}"
+        assert 0 <= r < rows, "row {r} is outside 0..{rows}"
+        assert 0 <= c < cols, "column {c} is outside 0..{cols}"
         r * cols + c
 
     /// The transpose, a new `cols x rows` matrix with entry `(c, r)` equal to `self`'s `(r, c)`.
