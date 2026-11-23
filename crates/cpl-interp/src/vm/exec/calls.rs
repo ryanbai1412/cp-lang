@@ -1074,23 +1074,9 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
             Op::ConstNoneV { dst_v } => {
                 regs_v[dst_v as usize] = Value::Opt(OptVal::None);
             }
-            Op::SeqLastV { dst_v, seq_v } => {
-                let opt = match &regs_v[seq_v as usize] {
-                    Value::List(items) => items.last().cloned(),
-                    Value::ListView(view) => {
-                        view.len.checked_sub(1).and_then(|i| view.get(i)).cloned()
-                    }
-                    Value::Str(bytes) => bytes.last().copied().map(Value::Char),
-                    Value::StrView(view) => view
-                        .len
-                        .checked_sub(1)
-                        .and_then(|i| view.get(i))
-                        .map(Value::Char),
-                    Value::Array(arr) => arr.last(),
-                    Value::Range(lo, hi) => (lo < hi).then_some(Value::Int(*hi - 1)),
-                    Value::Range128(lo, hi) => (lo < hi).then_some(Value::I128(*hi - 1)),
-                    _ => None,
-                };
+            Op::SeqLastV { dst_v, seq_v } | Op::SeqFirstV { dst_v, seq_v } => {
+                let last = matches!(op, Op::SeqLastV { .. });
+                let opt = self.seq_end(&regs_v[seq_v as usize], last, spans[cur_pc])?;
                 if seq_v as usize >= chunk.num_local_v {
                     regs_v[seq_v as usize] = Value::Unit;
                 }
@@ -1100,85 +1086,16 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 dst_val,
                 dst_some,
                 seq_v,
-            } => {
-                let (v, s) = match &regs_v[seq_v as usize] {
-                    Value::List(items) => match items.last() {
-                        Some(x) => (ScalarKind::unbox_val(x), 1),
-                        None => (0, 0),
-                    },
-                    Value::ListView(view) => {
-                        match view.len.checked_sub(1).and_then(|i| view.get(i)) {
-                            Some(x) => (ScalarKind::unbox_val(x), 1),
-                            None => (0, 0),
-                        }
-                    }
-                    Value::Str(bytes) => match bytes.last() {
-                        Some(&b) => (i64::from(b), 1),
-                        None => (0, 0),
-                    },
-                    Value::StrView(view) => {
-                        match view.len.checked_sub(1).and_then(|i| view.get(i)) {
-                            Some(b) => (i64::from(b), 1),
-                            None => (0, 0),
-                        }
-                    }
-                    Value::Array(arr) => match arr.last() {
-                        Some(x) => (ScalarKind::unbox_val(&x), 1),
-                        None => (0, 0),
-                    },
-                    Value::Range(lo, hi) if lo < hi => (*hi - 1, 1),
-                    _ => (0, 0),
-                };
-                if seq_v as usize >= chunk.num_local_v {
-                    regs_v[seq_v as usize] = Value::Unit;
-                }
-                regs_i[dst_val as usize] = v;
-                regs_i[dst_some as usize] = s;
             }
-            Op::SeqFirstV { dst_v, seq_v } => {
-                let opt = match &regs_v[seq_v as usize] {
-                    Value::List(items) => items.first().cloned(),
-                    Value::ListView(view) => view.get(0).cloned(),
-                    Value::Str(bytes) => bytes.first().copied().map(Value::Char),
-                    Value::StrView(view) => view.get(0).map(Value::Char),
-                    Value::Array(arr) => arr.first(),
-                    Value::Range(lo, hi) => (lo < hi).then_some(Value::Int(*lo)),
-                    Value::Range128(lo, hi) => (lo < hi).then_some(Value::I128(*lo)),
-                    _ => None,
-                };
-                if seq_v as usize >= chunk.num_local_v {
-                    regs_v[seq_v as usize] = Value::Unit;
-                }
-                regs_v[dst_v as usize] = Value::Opt(OptVal::from_option(opt));
-            }
-            Op::SeqFirstOptI {
+            | Op::SeqFirstOptI {
                 dst_val,
                 dst_some,
                 seq_v,
             } => {
-                let (v, s) = match &regs_v[seq_v as usize] {
-                    Value::List(items) => match items.first() {
-                        Some(x) => (ScalarKind::unbox_val(x), 1),
-                        None => (0, 0),
-                    },
-                    Value::ListView(view) => match view.get(0) {
-                        Some(x) => (ScalarKind::unbox_val(x), 1),
-                        None => (0, 0),
-                    },
-                    Value::Str(bytes) => match bytes.first() {
-                        Some(&b) => (i64::from(b), 1),
-                        None => (0, 0),
-                    },
-                    Value::StrView(view) => match view.get(0) {
-                        Some(b) => (i64::from(b), 1),
-                        None => (0, 0),
-                    },
-                    Value::Array(arr) => match arr.first() {
-                        Some(x) => (ScalarKind::unbox_val(&x), 1),
-                        None => (0, 0),
-                    },
-                    Value::Range(lo, hi) if lo < hi => (*lo, 1),
-                    _ => (0, 0),
+                let last = matches!(op, Op::SeqLastOptI { .. });
+                let (v, s) = match self.seq_end(&regs_v[seq_v as usize], last, spans[cur_pc])? {
+                    Some(x) => (ScalarKind::unbox_val(&x), 1),
+                    None => (0, 0),
                 };
                 if seq_v as usize >= chunk.num_local_v {
                     regs_v[seq_v as usize] = Value::Unit;

@@ -824,24 +824,9 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     }
                     _ => return trap(spans[cur_pc], "internal: expected array or list"),
                 };
-                let (v, s) = match inner_val {
-                    Value::List(list) => {
-                        let opt = if is_last { list.last() } else { list.first() };
-                        match opt {
-                            Some(el) => (ScalarKind::unbox_val(el), 1),
-                            None => (0, 0),
-                        }
-                    }
-                    Value::Array(arr) => {
-                        let len = arr.dims[0] as usize;
-                        if len == 0 {
-                            (0, 0)
-                        } else {
-                            let at = if is_last { len - 1 } else { 0 };
-                            (read_array_i(arr, at), 1)
-                        }
-                    }
-                    _ => (0, 0),
+                let (v, s) = match self.seq_end(inner_val, is_last, spans[cur_pc])? {
+                    Some(x) => (ScalarKind::unbox_val(&x), 1),
+                    None => (0, 0),
                 };
                 regs_i[dst_val as usize] = v;
                 regs_i[dst_some as usize] = s;

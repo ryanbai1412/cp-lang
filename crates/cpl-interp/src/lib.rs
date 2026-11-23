@@ -1552,6 +1552,34 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
         Some(value)
     }
 
+    /// The first or last element of any sequence value, `None` when it is empty.
+    /// Anything else is an internal error, never a silent `None`.
+    pub(crate) fn seq_end(&self, seq: &Value, last: bool, span: Span) -> Res<Option<Value>> {
+        let pick = |len: usize| len.checked_sub(1).map(|l| if last { l } else { 0 });
+        Ok(match seq {
+            Value::List(items) => pick(items.len()).map(|i| items[i].clone()),
+            Value::ListView(view) => pick(view.len).and_then(|i| view.get(i)).cloned(),
+            Value::MutView(mv) => match pick(mv.len) {
+                Some(i) => Some(self.mut_view_get(mv, i, span)?),
+                None => None,
+            },
+            Value::Str(bytes) => pick(bytes.len()).map(|i| Value::Char(bytes[i])),
+            Value::StrView(view) => pick(view.len).and_then(|i| view.get(i)).map(Value::Char),
+            Value::Array(array) => {
+                if last {
+                    array.last()
+                } else {
+                    array.first()
+                }
+            }
+            Value::Range(lo, hi) => (lo < hi).then(|| Value::Int(if last { hi - 1 } else { *lo })),
+            Value::Range128(lo, hi) => {
+                (lo < hi).then(|| Value::I128(if last { hi - 1 } else { *lo }))
+            }
+            other => return trap(span, format!("internal: `first`/`last` of {other:?}")),
+        })
+    }
+
     fn mut_view_get(&self, mv: &MutViewVal, idx: usize, span: Span) -> Res<Value> {
         if idx >= mv.len {
             return trap(
@@ -3899,113 +3927,15 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 Value::DomainVal(_, len) => *len,
                 _ => 0,
             }),
-            Builtin::First => match &first {
-                Value::List(items) => optional(items.first().cloned()),
-                Value::ListView(view) => optional(view.get(0).cloned()),
-                Value::MutView(mv) => optional(if mv.len > 0 {
-                    Some(self.mut_view_get(mv, 0, span)?)
-                } else {
-                    None
-                }),
-                Value::Str(bytes) => optional(bytes.first().copied().map(Value::Char)),
-                Value::StrView(view) => optional(view.get(0).map(Value::Char)),
-                Value::Array(array) => optional(array.first()),
-                Value::Range(lo, hi) => optional((lo < hi).then_some(Value::Int(*lo))),
-                Value::Range128(lo, hi) => optional((lo < hi).then_some(Value::I128(*lo))),
-                _ => Value::Opt(OptVal::None),
-            },
-            Builtin::Last => match &first {
-                Value::List(items) => optional(items.last().cloned()),
-                Value::ListView(view) => {
-                    optional(view.len.checked_sub(1).and_then(|i| view.get(i)).cloned())
-                }
-                Value::MutView(mv) => optional(match mv.len.checked_sub(1) {
-                    Some(i) => Some(self.mut_view_get(mv, i, span)?),
-                    None => None,
-                }),
-                Value::Str(bytes) => optional(bytes.last().copied().map(Value::Char)),
-                Value::StrView(view) => optional(
-                    view.len
-                        .checked_sub(1)
-                        .and_then(|i| view.get(i))
-                        .map(Value::Char),
-                ),
-                Value::Array(array) => optional(array.last()),
-                Value::Range(lo, hi) => optional((lo < hi).then_some(Value::Int(*hi - 1))),
-                Value::Range128(lo, hi) => optional((lo < hi).then_some(Value::I128(*hi - 1))),
-                _ => Value::Opt(OptVal::None),
-            },
-            Builtin::FirstVal => match &first {
-                Value::List(items) => match items.first() {
-                    Some(v) => v.clone(),
-                    None => return trap(span, "the list is empty"),
-                },
-                Value::ListView(view) => match view.get(0) {
-                    Some(v) => v.clone(),
-                    None => return trap(span, "the list is empty"),
-                },
-                Value::MutView(mv) => {
-                    if mv.len > 0 {
-                        self.mut_view_get(mv, 0, span)?
-                    } else {
-                        return trap(span, "the list is empty");
-                    }
-                }
-                Value::Str(bytes) => match bytes.first() {
-                    Some(b) => Value::Char(*b),
-                    None => return trap(span, "the string is empty"),
-                },
-                Value::StrView(view) => match view.get(0) {
-                    Some(b) => Value::Char(b),
-                    None => return trap(span, "the string is empty"),
-                },
-                Value::Array(array) => match array.first() {
+            Builtin::First | Builtin::Last => {
+                optional(self.seq_end(&first, matches!(op, Builtin::Last), span)?)
+            }
+            Builtin::FirstVal | Builtin::LastVal => {
+                match self.seq_end(&first, matches!(op, Builtin::LastVal), span)? {
                     Some(v) => v,
-                    None => return trap(span, "the array is empty"),
-                },
-                Value::Range(lo, hi) => {
-                    if lo < hi {
-                        Value::Int(*lo)
-                    } else {
-                        return trap(span, "the range is empty");
-                    }
+                    None => return trap(span, format!("the {} is empty", seq_noun(&first))),
                 }
-                _ => return trap(span, "the list is empty"),
-            },
-            Builtin::LastVal => match &first {
-                Value::List(items) => match items.last() {
-                    Some(v) => v.clone(),
-                    None => return trap(span, "the list is empty"),
-                },
-                Value::ListView(view) => match view.len.checked_sub(1).and_then(|i| view.get(i)) {
-                    Some(v) => v.clone(),
-                    None => return trap(span, "the list is empty"),
-                },
-                Value::MutView(mv) => match mv.len.checked_sub(1) {
-                    Some(i) => self.mut_view_get(mv, i, span)?,
-                    None => return trap(span, "the list is empty"),
-                },
-                Value::Str(bytes) => match bytes.last() {
-                    Some(b) => Value::Char(*b),
-                    None => return trap(span, "the string is empty"),
-                },
-                Value::StrView(view) => match view.len.checked_sub(1).and_then(|i| view.get(i)) {
-                    Some(b) => Value::Char(b),
-                    None => return trap(span, "the string is empty"),
-                },
-                Value::Array(array) => match array.last() {
-                    Some(v) => v,
-                    None => return trap(span, "the array is empty"),
-                },
-                Value::Range(lo, hi) => {
-                    if lo < hi {
-                        Value::Int(*hi - 1)
-                    } else {
-                        return trap(span, "the range is empty");
-                    }
-                }
-                _ => return trap(span, "the list is empty"),
-            },
+            }
             Builtin::Contains => {
                 let needle = values.next().unwrap_or_default();
                 let key_needle = args
@@ -5391,3 +5321,13 @@ fn combine(op: AssignOp, old: Value, new: Value, span: Span) -> Res<Value> {
 
 #[cfg(test)]
 mod tests;
+
+/// What an empty `seq` is called in a trap.
+fn seq_noun(seq: &Value) -> &'static str {
+    match seq {
+        Value::Str(_) | Value::StrView(_) => "string",
+        Value::Array(_) => "array",
+        Value::Range(..) | Value::Range128(..) => "range",
+        _ => "list",
+    }
+}
