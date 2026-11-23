@@ -396,7 +396,9 @@
       "lane": "perf",
       "summary": "`at.get(d) ?? []` on a Map<Int, List<Int>> copies the whole list (cpl::map_get returns std::optional<std::vector>), and each partition_point call copies it again, so 2285D's 2e5 queries over one 2e5-long list did not finish in 70 s.",
       "minutes_lost": 6,
-      "evidence": "cf2285D.cpp (cpl build --judge codeforces): std::optional<std::vector<ll>> t2 = cpl::map_get(at, d); return t2.has_value() ? *t2 : std::vector<ll>(); ... m5_partition_point(...[&]() -> std::vector<ll> { ...; return ps; }(), ...)"
+      "evidence": "cf2285D.cpp (cpl build --judge codeforces): std::optional<std::vector<ll>> t2 = cpl::map_get(at, d); return t2.has_value() ? *t2 : std::vector<ll>(); ... m5_partition_point(...[&]() -> std::vector<ll> { ...; return ps; }(), ...)",
+      "status": "fixed",
+      "recheck": "Recheck on main after 1b76f05c4/d8b6c672d/68903ae2e: the draft shape (solutions/2026-11-23-5/repro/cf2285D-map-get.cp), cpl build --judge codeforces, judge.py AC with max input 0.12 s; edge ae6edeb2 TLE (> 4 s)."
     },
     {
       "id": "partition-point-copies-list",
@@ -405,7 +407,9 @@
       "lane": "perf",
       "summary": "`xs.partition_point(ok)` on a top-level List copies the whole vector into the call every time (generated lambda `return keyed;` by value), making the documented O(log n) search O(n); rewriting as `(0..len).first_true(i => keyed[i] > (d, hi)) ?? len` ran the 2e5x2e5 test in 0.12 s.",
       "minutes_lost": 5,
-      "evidence": "cf2285D.cp variant `keyed.partition_point(p => p > (d, hi))`; cpl build --judge codeforces -> cf2285D.cpp lines 226-227 `D_0_len = ...keyed.size(); return keyed;`; >20 s on n=q=2e5 all-equal input"
+      "evidence": "cf2285D.cp variant `keyed.partition_point(p => p > (d, hi))`; cpl build --judge codeforces -> cf2285D.cpp lines 226-227 `D_0_len = ...keyed.size(); return keyed;`; >20 s on n=q=2e5 all-equal input",
+      "status": "fixed",
+      "recheck": "Recheck on main after 1b76f05c4/d8b6c672d/68903ae2e: the draft (solutions/2026-11-23-5/repro/cf2285D-partition-point.cp), cpl build --judge codeforces, judge.py AC with max input 0.08 s; edge ae6edeb2 TLE (> 4 s)."
     },
     {
       "id": "inversions-documented-not-implemented",

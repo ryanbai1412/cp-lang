@@ -31,7 +31,7 @@ the advanced chapters to understand the model and the reasons behind it.
 | `understand` (J1) | Open the site; say in 3 sentences what CPL is for and what it is better at; read the intro guide. | The summary matches VISION.md V1-V3, from the site alone, in under 30 minutes. |
 | `try` (J2) | In the browser playground, run and change an example, then solve 3 intro exercises. | 3/3 exercises give correct output in the browser, nothing installed. |
 | `install` (J3) | Install the CLI and the Neovim setup from the site's instructions. | On every OS `cpl --version` works. In Neovim a new `.cp` file shows diagnostics, completion, formatting and go-to-definition after the one documented setup step, and Vim gets highlighting. VS Code and JetBrains pass the same five features. |
-| `solve` (J4, J5) | Solve the 10 held-out Div2 A-E problems (`problems/div2.txt`), reading statements on the judge. | At least 8/10 accepted by the local judge (`judge.py`): the samples plus 200 small generated cases agree with an exhaustive `brute.py`, or pass `check.py` where answers aren't unique. Max-size timing tests are not built yet. |
+| `solve` (J4, J5) | Solve the 10 held-out Div2 A-E problems (`problems/div2.txt`), reading statements on the judge. | At least 8/10 accepted by the local judge (`judge.py`): the samples plus 200 small generated cases agree with an exhaustive `brute.py`, or pass `check.py` where answers aren't unique. The `max.py` input must finish within 2x `tl`. |
 | `test` (J6, J7) | For each problem, run the samples and a custom test. For one problem, find a planted bug with the documented stress or debug workflow. | Samples and custom tests ran with the CLI; the planted bug was found from the docs. |
 | `submit` (J9) | Build every solved problem to C++ the way the docs say. Load samples with Competitive Companion if the site documents it. | The C++ compiles with `g++ -std=c++17 -O2` and passes the local judge. No real judge submissions. |
 | `compete` (J5-J9) | A timed virtual Codeforces round: 5 unseen problems (`problems/contest.txt`), 2 hours, no pauses. | At least 4/5 solved in time, and no problem lost to missing ordinary functionality or a tool failure. |
@@ -81,8 +81,12 @@ One JSON object per run, saved as `runs/<YYYY-MM-DD>-<n>.json`:
 ## After a run
 1. Add the JSON, run `research/acceptance/blockers.py`, and commit both with the
    run's transcript summary in `runs/<date>-<n>.md`.
-2. Append each lane's new or changed rows to its `worklog.md` as a request.
-3. Record the headline (steps passed, minutes per step) in the idioms `metrics.toml`.
+2. Copy the judged solutions to `solutions/<run>/<os>/<id>.cp`, and any draft that exposed a
+   blocker to `solutions/<run>/repro/<id>-<what>.cp`. `regress.py` rebuilds them all with
+   `--judge codeforces` and judges them, so a later change that breaks one shows up; a
+   blocker is marked fixed (`"status": "fixed"` plus a `recheck` note) only once its repro is AC.
+3. Append each lane's new or changed rows to its `worklog.md` as a request.
+4. Record the headline (steps passed, minutes per step) in the idioms `metrics.toml`.
 
 Cadence: a run every 2 hours until the milestone passes (due about 09:30 PST
 2026-11-23), each followed by the step score and the ranked list in the idioms worklog.

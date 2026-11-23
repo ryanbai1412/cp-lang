@@ -24,9 +24,9 @@ def ids(name):
     return [l.split()[0] for l in (HERE / "problems" / name).read_text().split("\n") if l and not l.startswith("#")]
 
 
-def verdict(cpl, src, pid, tmp):
+def verdict(cpl, src, pid, tmp, judge=None):
     cpp, exe = Path(tmp, pid + ".cpp"), Path(tmp, pid)
-    r = subprocess.run([cpl, "build", str(src), "-o", str(cpp)], capture_output=True, text=True)
+    r = subprocess.run([cpl, "build", *(["--judge", judge] if judge else []), str(src), "-o", str(cpp)], capture_output=True, text=True)
     if r.returncode != 0:
         return "CE (cpl build): " + (r.stdout + r.stderr).strip().split("\n")[0]
     r = subprocess.run(["g++", "-std=c++17", "-O2", str(cpp), "-o", str(exe)], capture_output=True, text=True)
