@@ -3,6 +3,102 @@
 use super::*;
 
 impl<'a> Lowerer<'a> {
+    /// `(R, C)` naming factor domains: the factors of that inline product.
+    fn inline_product_factors(
+        &self,
+        e: &ast::Expr,
+    ) -> Option<Vec<(Option<String>, ProductFactor)>> {
+        let ast::ExprKind::Tuple(items) = &e.kind else {
+            return None;
+        };
+        if items.len() < 2 {
+            return None;
+        }
+        items
+            .iter()
+            .map(|it| self.expr_to_product_factor(it).map(|f| (None, f)))
+            .collect()
+    }
+
+    /// The inline product domain `(R, C)` names, once interned (R04.2.20).
+    pub(super) fn inline_product_sym(&self, e: &ast::Expr) -> Option<Sym> {
+        let factors = self.inline_product_factors(e)?;
+        self.anon_product_domains
+            .get(&factors)
+            .map(|&d| Sym::Domain(d))
+    }
+
+    /// Intern and define the inline product `e` names, so `(R, C).count(…)`
+    /// reads it as a domain, like a named `domain P = (R, C)` (R04.2.20).
+    pub(super) fn intern_inline_product(&mut self, e: &ast::Expr, span: Span) -> Option<DomainId> {
+        let factors = self.inline_product_factors(e)?;
+        let d = self.intern_anon_product_domain(factors);
+        let mut defs = Vec::new();
+        self.def_anon_product_domain(d, span, &mut defs);
+        self.cx.pending.extend(defs);
+        Some(d)
+    }
+
+    /// `(R, C)` in value position: the inline product domain over those
+    /// factors, a domain value. A wanted tuple keeps it a tuple of domains.
+    pub(super) fn inline_product_value(
+        &mut self,
+        e: &ast::Expr,
+        want: Option<&Ty>,
+    ) -> Option<Expr> {
+        if matches!(want, Some(Ty::Tuple(_) | Ty::Record(_))) {
+            return None;
+        }
+        let d = self.intern_inline_product(e, e.span)?;
+        Some(self.mk(ExprKind::DomainVal(d), Ty::DomainVal, e.span))
+    }
+
+    /// R04.2.10: `type Cell = (Row, Col)` names the product of its factor domains.
+    pub(super) fn alias_factors(
+        &mut self,
+        name: &str,
+    ) -> Option<Vec<(Option<String>, ProductFactor)>> {
+        let Some(Sym::Alias(aid)) = self.get_sym(name) else {
+            return None;
+        };
+        let (m, ty_ast, offset) = self.aliases[aid];
+        let sm = std::mem::replace(&mut self.cur_mod, m);
+        let so = std::mem::replace(&mut self.offset, offset);
+        let resolved = self.resolve_ty(ty_ast);
+        self.cur_mod = sm;
+        self.offset = so;
+        let Ty::Tuple(items) = resolved else {
+            return None;
+        };
+        let factors: Vec<_> = items
+            .iter()
+            .map(|t| self.ty_to_product_factor(t).map(|f| (None, f)))
+            .collect::<Option<_>>()?;
+        (factors.len() > 1).then_some(factors)
+    }
+
+    /// A walk over every position of the product of `factors`.
+    pub(super) fn product_walk(
+        &mut self,
+        factors: Vec<(Option<String>, ProductFactor)>,
+        span: Span,
+    ) -> (Iter, Ty) {
+        let d = self.intern_anon_product_domain(factors);
+        let mut defs = Vec::new();
+        self.def_anon_product_domain(d, span, &mut defs);
+        self.cx.pending.extend(defs);
+        let lo = self.int_lit(0, span);
+        let hi = self.mk(ExprKind::DomainLen(d), Ty::Int, span);
+        let walk = Iter::Range {
+            lo,
+            hi,
+            step: None,
+            rev: false,
+            closed: false,
+        };
+        (walk, Ty::Pos(d))
+    }
+
     /// `P((r, c))`: a tuple of factor positions or integers, each integer
     /// checked into its factor (R04.2.10).
     pub(super) fn product_from_tuple(&mut self, id: DomainId, v: Expr, span: Span) -> Expr {

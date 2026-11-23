@@ -427,6 +427,9 @@ impl<'a> Lowerer<'a> {
                 self.mk(ExprKind::Unit, Ty::Unit, span)
             }
             ast::ExprKind::Tuple(items) => {
+                if let Some(v) = self.inline_product_value(e, inner_hint) {
+                    return v;
+                }
                 let hints = inner_hint
                     .and_then(Ty::fields)
                     .filter(|f| f.len() == items.len());
@@ -4260,49 +4263,6 @@ impl<'a> Lowerer<'a> {
                 }],
             },
         })
-    }
-
-    /// R04.2.10: `type Cell = (Row, Col)` names the product of its factor domains.
-    fn alias_factors(&mut self, name: &str) -> Option<Vec<(Option<String>, ProductFactor)>> {
-        let Some(Sym::Alias(aid)) = self.get_sym(name) else {
-            return None;
-        };
-        let (m, ty_ast, offset) = self.aliases[aid];
-        let sm = std::mem::replace(&mut self.cur_mod, m);
-        let so = std::mem::replace(&mut self.offset, offset);
-        let resolved = self.resolve_ty(ty_ast);
-        self.cur_mod = sm;
-        self.offset = so;
-        let Ty::Tuple(items) = resolved else {
-            return None;
-        };
-        let factors: Vec<_> = items
-            .iter()
-            .map(|t| self.ty_to_product_factor(t).map(|f| (None, f)))
-            .collect::<Option<_>>()?;
-        (factors.len() > 1).then_some(factors)
-    }
-
-    /// A walk over every position of the product of `factors`.
-    fn product_walk(
-        &mut self,
-        factors: Vec<(Option<String>, ProductFactor)>,
-        span: Span,
-    ) -> (Iter, Ty) {
-        let d = self.intern_anon_product_domain(factors);
-        let mut defs = Vec::new();
-        self.def_anon_product_domain(d, span, &mut defs);
-        self.cx.pending.extend(defs);
-        let lo = self.int_lit(0, span);
-        let hi = self.mk(ExprKind::DomainLen(d), Ty::Int, span);
-        let walk = Iter::Range {
-            lo,
-            hi,
-            step: None,
-            rev: false,
-            closed: false,
-        };
-        (walk, Ty::Pos(d))
     }
 
     pub(super) fn iter(&mut self, e: &ast::Expr) -> (Iter, Ty) {

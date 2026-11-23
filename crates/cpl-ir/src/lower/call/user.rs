@@ -113,6 +113,7 @@ impl<'a> Lowerer<'a> {
                 self.get_sym(name)
             }
             ast::ExprKind::Field { base, name } => self.rebased_sym(base, &name.text),
+            ast::ExprKind::Tuple(_) => self.inline_product_sym(e),
             _ => None,
         }
     }

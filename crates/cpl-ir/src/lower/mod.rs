@@ -1284,7 +1284,7 @@ impl<'a> Lowerer<'a> {
         }
     }
 
-    pub(super) fn expr_to_product_factor(&mut self, e: &ast::Expr) -> Option<ProductFactor> {
+    pub(super) fn expr_to_product_factor(&self, e: &ast::Expr) -> Option<ProductFactor> {
         match &e.kind {
             ast::ExprKind::Paren(inner) => self.expr_to_product_factor(inner),
             ast::ExprKind::Name(name) if name == "Bool" && self.lookup(name).is_none() => {

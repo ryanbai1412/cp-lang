@@ -38,6 +38,7 @@ impl<'a> Lowerer<'a> {
         hint: Option<&Ty>,
     ) -> Expr {
         let span = whole.span;
+        self.intern_inline_product(base, span);
         // `x.inv()`: a `@get` method reads the same with empty parentheses.
         if args.is_empty() {
             if let Some(Ty::Struct(id)) = self.probe_ty_silent(base) {

@@ -1,0 +1,7 @@
+"variables":{"stdout":{"name":"stdout","type":"what the program printed, a line at a time","kind":"json"},"g":{"name":"g","type":"[R, C]Int","kind":"dp","rowLabels":[0,1],"rowDomain":"R","colLabels":[0,1,2],"colDomain":"C"}},"runs":{"fast":{"label":"cpl run","steps":[{"id":0,"line":6,"label":"let g: [R, C]Int = [R, C] (r, c) => Int(r) * 3 + Int(c)","stage":"main","values":{"stdout":[],"g":[[0,1,2],[3,4,5]]},"locals":{"r":1,"c":2},"frames":[{"fn":"main","line":6}]},
+{"id":1,"line":7,"label":"print → 3 6","stage":"main","values":{"stdout":["3 6"],"g":[[0,1,2],[3,4,5]]},"locals":{"r":1,"c":2,"p":5},"checkpoint":"print 1","frames":[{"fn":"main","line":7}]},
+{"id":2,"line":8,"label":"print → 6","stage":"main","values":{"stdout":["3 6","6"],"g":[[0,1,2],[3,4,5]]},"locals":{"r":1,"c":2,"p":5,"p":7},"checkpoint":"print 2","frames":[{"fn":"main","line":8}]},
+{"id":3,"line":9,"label":"let d = (R, C)","stage":"main","values":{"stdout":["3 6","6"],"g":[[0,1,2],[3,4,5]]},"locals":{"r":1,"c":2,"p":5,"p":7},"frames":[{"fn":"main","line":9}]},
+{"id":4,"line":10,"label":"print → 6","stage":"main","values":{"stdout":["3 6","6","6"],"g":[[0,1,2],[3,4,5]]},"locals":{"r":1,"c":2,"p":5,"p":7},"checkpoint":"print 3","frames":[{"fn":"main","line":10}]},
+{"id":5,"line":10,"label":"the program ended","stage":"main","values":{"stdout":["3 6","6","6"],"g":[[0,1,2],[3,4,5]]},"locals":{"r":1,"c":2,"p":5,"p":7},"checkpoint":"end","frames":[{"fn":"main","line":10}]}]}}}
+stderr:
