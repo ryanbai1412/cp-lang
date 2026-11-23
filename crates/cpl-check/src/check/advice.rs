@@ -1047,6 +1047,40 @@ pub(super) fn foreign_method(name: &str) -> Option<&'static str> {
     )
 }
 
+/// Python's `a.index(x)` on a list: a value's first position is
+/// `a.find(x)`, `None` when it isn't there, so `a.find(x)!`.
+pub(super) fn index_of(src: &str, base: Span, name: &Name, ty: &Ty) -> Option<(String, Fix)> {
+    let list = matches!(ty, Ty::Named { name, .. } if name == "List");
+    if name.text != "index" || !list {
+        return None;
+    }
+    let rest = src.get(name.span.end as usize..)?.strip_prefix('(')?;
+    let mut depth = 0;
+    let close = rest.char_indices().find_map(|(i, c)| {
+        match c {
+            '(' | '[' | '{' => depth += 1,
+            ')' if depth == 0 => return Some(Some(i)),
+            ')' | ']' | '}' => depth -= 1,
+            ',' | '\n' if depth == 0 => return Some(None),
+            _ => {}
+        }
+        None
+    })??;
+    let x = rest[..close].trim();
+    let b = src.get(base.start as usize..base.end as usize)?;
+    if x.is_empty() {
+        return None;
+    }
+    let new = format!("{b}.find({x})!");
+    let end = name.span.end + 1 + close as u32 + 1;
+    let help = format!("a value's first position is `find`, `None` when it isn't there: `{new}`");
+    let fix = Fix {
+        title: format!("write `{new}`"),
+        edits: vec![(Span::new(base.start, end), new)],
+    };
+    Some((help, fix))
+}
+
 /// `sort(a.begin(), a.end())` as `a.sort()`, `max_element(..)` as `a.max()!`.
 pub(super) fn iterator_pair_fix(src: &str, base: Span, name: Span) -> Option<Fix> {
     let x = src.get(base.start as usize..base.end as usize)?;

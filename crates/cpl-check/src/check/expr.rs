@@ -1835,7 +1835,7 @@ impl<'a> Checker<'a> {
         {
             let message = Self::no_method(&base_ty, name);
             let suggestion = self.member_typo(&base_ty, &name.text).zip(Some(self.src));
-            let twin = self.method_twin(base, name);
+            let twin = self.method_twin(base, name, &base_ty);
             let in_place = super::advice::in_place_twin(&name.text, &self.quote(base.span));
             let pair = super::advice::iterator_pair_fix(self.src, base.span, name.span);
             if let Some(diag) = self.error(codes::UNKNOWN_FIELD, name.span, message) {

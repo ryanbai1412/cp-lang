@@ -41,7 +41,15 @@ impl Checker<'_> {
 
     /// The fix for an unknown method: its `_by` twin (`max_by`), or the free
     /// function it names (`mask.popcount()` is `popcount(mask)`).
-    pub(super) fn method_twin(&self, base: &Expr, name: &Name) -> Option<(String, cpl_diag::Fix)> {
+    pub(super) fn method_twin(
+        &self,
+        base: &Expr,
+        name: &Name,
+        base_ty: &Ty,
+    ) -> Option<(String, cpl_diag::Fix)> {
+        if let Some(found) = super::advice::index_of(self.src, base.span, name, base_ty) {
+            return Some(found);
+        }
         let twin = super::advice::by_twin(self.src, &name.text, name.span);
         let free = crate::builtins::prelude_names().iter().any(|(f, kind)| {
             *f == name.text
