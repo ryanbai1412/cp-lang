@@ -7,19 +7,19 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 2821 (995 passing). Rules: 575.
+Cases: 2823 (995 passing). Rules: 575.
 
 ## Summary per chapter
 
 - R01 (01-lexical-grammar.md): 56 rules, 169 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R02 (02-values-types.md): 52 rules, 149 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R03 (03-numbers-layout.md): 24 rules, 69 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R04 (04-indices.md): 73 rules, 175 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R04 (04-indices.md): 73 rules, 176 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04a (04a-identity-vs-offset.md): 39 rules, 54 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04b (04b-keys.md): 28 rules, 70 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R05 (05-ownership.md): 43 rules, 179 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R06 (06-control-functions.md): 24 rules, 104 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R07 (07-sequences.md): 90 rules, 177 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R07 (07-sequences.md): 90 rules, 178 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R08 (08-traits-generics.md): 29 rules, 92 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R09 (09-contexts-checks.md): 27 rules, 61 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R10 (10-io.md): 19 rules, 111 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -53,7 +53,7 @@ negative case. Complete: rules with no gap in `rule-gaps.txt`.
 | R04b | 28 | 28 (100%) | 7 | 7 (100%) | 28 (100%) |
 | R05 | 43 | 43 (100%) | 22 | 22 (100%) | 43 (100%) |
 | R06 | 24 | 24 (100%) | 16 | 16 (100%) | 24 (100%) |
-| R07 | 90 | 90 (100%) | 27 | 27 (100%) | 90 (100%) |
+| R07 | 90 | 90 (100%) | 26 | 26 (100%) | 90 (100%) |
 | R08 | 29 | 29 (100%) | 12 | 12 (100%) | 29 (100%) |
 | R09 | 27 | 27 (100%) | 15 | 15 (100%) | 27 (100%) |
 | R10 | 19 | 19 (100%) | 9 | 9 (100%) | 19 (100%) |
@@ -67,7 +67,7 @@ negative case. Complete: rules with no gap in `rule-gaps.txt`.
 | Rlint | 2 | 2 (100%) | 2 | 2 (100%) | 2 (100%) |
 | Rlsp | 5 | 5 (100%) | 1 | 1 (100%) | 5 (100%) |
 | Rstress | 1 | 1 (100%) | 0 | 0 (0%) | 1 (100%) |
-| all | 575 | 574 (99%) | 229 | 229 (100%) | 574 (99%) |
+| all | 575 | 574 (99%) | 228 | 228 (100%) | 574 (99%) |
 
 ## Rules
 
@@ -261,7 +261,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R04.4.24 [2+ 1-]: .
 - R04.4.25 [1+ 2-]: . For a domain with a runtime count (`domain V = 1..=n`, `n: 1..=2e5`), a literal outside ...
 - R04.4.26 [2+ 0-]: **Cut range to piece:** a literal `j..i` whose ends are cuts, where a `Range<V>` is expect...
-- R04.4.27 [2+ 1-]: **Scalar to array fill:** a value `x: T` where `[D]T` is expected is the array over `D` wi...
+- R04.4.27 [3+ 1-]: **Value to array fill:** a value `x: T` where `[D]T` is expected is the array over `D` wit...
 - R04.4.28 [4+ 0-]: **`Int` to `Mod<P>`:** an integer (a literal or any `Int` value) where a `Mod<P>` is expec...
 - R04.4.30 [7+ 0-]: **Integer ranges as domains.** An integer range `lo..hi` (or `lo..=hi`, or a counted `[n]`...
 - R04.4.12 [1+ 0-]: | `r.len`, `r.is_empty`, `x in r` | count of positions; membership of a position | count o...
@@ -439,6 +439,7 @@ Each rule: positive / negative case counts, then the gap if any.
 ### R07: 07-sequences.md
 
 - R07.5.3 [1+ 1-]: **Lint: literal index into a slice** (`w[0]`, `w[1]` on a slice whose keys start elsewhere...
+- R07.3.5 [2+ 2-]: Both work unchanged on `a` and on `a[l..=r]`, and their results index the source. A revers...
 - R07.1.1 [1+ 1-]: **Generators are the only iterator.** `-> yields T`, no `next()`; values are pushed into t...
 - R07.1.2 [2+ 1-]: **Six capabilities.** `Seq` walks; `Keyed` walks `(key, x)`; `Sized` has \(O(1)\) `.len`; ...
 - R07.1.3 [2+ 1-]: **Laziness is explicit.** A chain reruns on every walk. Allocation happens only at `.colle...
@@ -466,7 +467,6 @@ Each rule: positive / negative case counts, then the gap if any.
 - R07.3.2 [3+ 0-]: | `Keyed<D, T>` | `Seq` + `s.items` walks `(key, x)`; keys survive `filter` | everything `...
 - R07.3.3 [2+ 0-]: | `Sized` | \(O(1)\) `s.len` | collections, ranges, `Indexed` views, sets, maps
 - R07.3.4 [1+ 0-]: | `Bidir<T>` | `s.rev` walks backwards; `s.last` is \(O(1)\) | everything `Indexed`, sorte...
-- R07.3.5 [2+ 2-]: | `Indexed<D, T>` | `Keyed` + `Sized` + `Bidir` + `s[i]` for `i: D` in \(O(1)\), `s.keys: ...
 - R07.3.6 [1+ 0-]: | `IndexedMut<D, T>` | `Indexed` + `s[i]` is a place: `sort()`, `swap`, slice assignment |...
 - R07.4.1 [2+ 0-]: **Keys in, keys out.** Library functions answer in the keys they were given: `s[l..].searc...
 - R07.4.2 [1+ 0-]: **Combining two sequences pairs them by walk order**: `==`, `<`, `starts_with`, `+`, slice...
@@ -499,7 +499,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R07.7.1 [1+ 0-]: | `s.map(f)` | `Indexed` if `s` is, else `Seq` | `f` runs on every read
 - R07.7.2 [1+ 1-]: | `s.filter(p)`, `s.take_while(p)`, `s.skip_while(p)` | `Seq` |
 - R07.7.3 [3+ 0-]: | `s.take(k)`, `s.drop(k)` | an \(O(1)\) view on an `Indexed`; a `Seq` otherwise | consumi...
-- R07.7.4 [2+ 1-]: | `chain(a, b)` | `Seq` |
+- R07.7.4 [3+ 1-]: | `chain(a, b, ...)` | `Seq` of each argument in turn, any number of them, as `min` and `m...
 - R07.7.5 [1+ 0-]: | `s.adjacent` | `Seq<(T, T)>`, adjacent pairs | `@get`, \(O(1)\) per step
 - R07.7.6 [1+ 0-]: | `s.pairs()` | `Seq<(T, T)>`, every pair `x` before `y` | \(O(n^2)\) to walk, so a call
 - R07.7.7 [1+ 0-]: | `s.with_prev` | `Seq<(?T, T)>`, starting `(None, first)` | path walks that treat the fir...
@@ -897,8 +897,8 @@ prepends it.
 - 04-indices.md: 8 blocks, 1 with a case, 3 spec-only, 4 neither
   - line 59: `struct Two(a: Int, b: Int)`
   - line 208: `for j in ..i:`
-  - line 304: `let k = (0..=n).last_true(k => cost(k) <= budget) ?? -1`
-  - line 325: `fn inversions(r: Range<Pos>) -> Int:`
+  - line 306: `let k = (0..=n).last_true(k => cost(k) <= budget) ?? -1`
+  - line 327: `fn inversions(r: Range<Pos>) -> Int:`
 - 04b-keys.md: 13 blocks, 3 with a case, 6 spec-only, 4 neither
   - line 72: `fn solve(r: Range<V>) -> Int:`
   - line 100: `let z = z_function(s[l..])`
