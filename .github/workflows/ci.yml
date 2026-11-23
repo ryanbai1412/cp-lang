@@ -202,6 +202,10 @@ jobs:
         with:
           distribution: temurin
           java-version: "21"
+          # Gradle's dependencies come from the cache, so a Maven Central
+          # 429 can't fail the plugin build.
+          cache: gradle
+          cache-dependency-path: editors/jetbrains/*.gradle*
       - name: Build cpl
         run: cargo build -p cpl-cli
       - name: Plugin build and tests
