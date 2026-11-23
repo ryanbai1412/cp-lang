@@ -1853,300 +1853,137 @@
     "corpus": {
       "cases": {
         "aac4p6": "pass",
-        "aac5p4": "wrong",
-        "apio09p2": "untested",
-        "apio09p3": "error",
-        "apio23p1": "untested",
-        "btoi15p3": "error",
-        "btoi17p2": "error",
-        "btoi17p6": "error",
-        "btoi18p4": "error",
-        "btoi20p3": "error",
-        "ccc02s4": "error",
+        "aac5p4": "pass",
+        "apio09p2": "pass",
+        "apio09p3": "pass",
+        "apio23p1": "pass",
+        "btoi15p3": "wrong",
+        "btoi17p2": "pass",
+        "btoi17p6": "pass",
+        "btoi18p4": "pass",
+        "btoi20p3": "pass",
+        "ccc02s4": "pass",
         "ccc03s4": "pass",
-        "ccc04s5": "error",
+        "ccc04s5": "pass",
         "ccc18s4": "pass",
         "ccc19s2": "pass",
-        "ccc20s4": "error",
-        "cco04p4": "untested",
-        "cco16p4": "untested",
-        "cco18p4": "untested",
+        "ccc20s4": "pass",
+        "cco04p4": "pass",
+        "cco16p4": "pass",
+        "cco18p4": "pass",
         "cco19p5": "pass",
-        "cco20p4": "error",
-        "cco20p5": "untested",
-        "cco21p2": "error",
+        "cco20p4": "pass",
+        "cco20p5": "pass",
+        "cco21p2": "pass",
         "cco21p4": "pass",
-        "cco21p5": "error",
+        "cco21p5": "pass",
         "cco24p1": "pass",
-        "ceoi17p2": "untested",
-        "ceoi18p1": "error",
+        "ceoi17p2": "pass",
+        "ceoi18p1": "pass",
         "ceoi19pp1": "pass",
-        "cheerio1s3": "error",
-        "cmt21r2ztr": "untested",
-        "coci20c6p3": "untested",
+        "cheerio1s3": "pass",
+        "cmt21r2ztr": "wrong",
+        "coci20c6p3": "pass",
         "coci21c1p1": "pass",
-        "coci21c2p4": "error",
-        "coci21c2p5": "error",
-        "coci21c4p4": "untested",
+        "coci21c2p4": "pass",
+        "coci21c2p5": "pass",
+        "coci21c4p4": "pass",
         "dmopc20c4p4": "pass",
         "dmopc21c2p1": "pass",
-        "dmopc21c4p1": "untested",
+        "dmopc21c4p1": "pass",
         "dmopc21c4p2": "pass",
         "dmopc21c5p2": "pass",
-        "dmopc21c9p1": "untested",
-        "dmpg16g2": "error",
-        "egoi22p3": "untested",
-        "egoi23p4": "untested",
-        "egoi23p7": "error",
+        "dmopc21c9p1": "trap",
+        "dmpg16g2": "pass",
+        "egoi22p3": "pass",
+        "egoi23p4": "pass",
+        "egoi23p7": "pass",
         "etsr23r1p4": "pass",
-        "etsr23r3p3": "error",
-        "etsr23r4p2": "trap",
+        "etsr23r3p3": "pass",
+        "etsr23r4p2": "pass",
         "ioi01p1": "pass",
-        "ioi05p2": "error",
-        "ioi09p3": "error",
-        "ioi09p6": "untested",
-        "ioi14p5io": "untested",
-        "ioi15p5": "untested",
-        "ioi15p6": "untested",
-        "ioi16p6": "untested",
+        "ioi05p2": "pass",
+        "ioi09p3": "pass",
+        "ioi09p6": "pass",
+        "ioi14p5io": "pass",
+        "ioi15p5": "pass",
+        "ioi15p6": "pass",
+        "ioi16p6": "pass",
         "ioi16p6io": "pass",
-        "ioi18p1": "untested",
-        "ioi19p1": "untested",
-        "ioi19p3": "untested",
-        "ioi19p5": "untested",
-        "ioi19p6": "untested",
-        "ioi22p5": "untested",
-        "ioi96p1": "untested",
+        "ioi18p1": "pass",
+        "ioi19p1": "pass",
+        "ioi19p3": "pass",
+        "ioi19p5": "pass",
+        "ioi19p6": "pass",
+        "ioi22p5": "pass",
+        "ioi96p1": "pass",
         "mccc4j1": "pass",
-        "mccc4j4": "error",
-        "nccc10s4": "trap",
+        "mccc4j4": "pass",
+        "nccc10s4": "pass",
         "nccc8s3": "pass",
-        "noi02p1": "untested",
-        "noi02p3": "error",
-        "noi05p4": "untested",
+        "noi02p1": "pass",
+        "noi02p3": "pass",
+        "noi05p4": "pass",
         "noi06p3": "pass",
-        "noi07p1": "error",
+        "noi07p1": "pass",
         "noi08p5": "pass",
         "noi09p4": "error",
-        "noi10p2": "untested",
-        "noi14p5": "error",
+        "noi10p2": "pass",
+        "noi14p5": "pass",
         "noi15p1": "pass",
-        "noi15p4": "untested",
-        "noi17p2": "error",
-        "noip09p4": "error",
-        "noip10p1": "error",
+        "noi15p4": "pass",
+        "noi17p2": "pass",
+        "noip09p4": "pass",
+        "noip10p1": "pass",
         "noip14p6": "pass",
-        "noip18p3": "error",
-        "noip20p3": "error",
+        "noip18p3": "pass",
+        "noip20p3": "pass",
         "noip99p1": "pass",
-        "sac22cc2p5": "error",
+        "sac22cc2p5": "pass",
         "sac22cc3jp2": "pass",
         "sac22cc3jp4": "pass",
         "sac22cc4jp2": "pass",
-        "sdoi17r1p2": "error",
-        "sdoi17r2p4": "untested",
-        "shoi16p1": "error",
+        "sdoi17r1p2": "pass",
+        "sdoi17r2p4": "pass",
+        "shoi16p1": "pass",
         "shoi16p3": "pass",
         "ucrpc21c": "pass",
-        "ucrpc21h": "error",
-        "yac6p3": "untested",
-        "yac6p4": "error",
+        "ucrpc21h": "pass",
+        "yac6p3": "pass",
+        "yac6p4": "pass",
         "yac7p3": "pass"
       },
       "causes": [
         {
-          "cause": "E0302: expected `<id>`, found `<id>`",
-          "count": 9,
-          "examples": [
-            "ccc20s4",
-            "cco21p5",
-            "cheerio1s3",
-            "coci21c2p5",
-            "ioi05p2"
-          ]
-        },
-        {
-          "cause": "E0203: a `<id>` has no method `<id>` that `<id>` knows",
-          "count": 6,
-          "examples": [
-            "btoi15p3",
-            "btoi17p2",
-            "noi07p1",
-            "noip09p4",
-            "sdoi17r1p2"
-          ]
-        },
-        {
-          "cause": "E0501: `<id>` and `<id>` can't handle a domain expression that does not produce a range, count, or index space yet",
+          "cause": "wrong output",
           "count": 2,
           "examples": [
-            "coci21c2p4",
+            "btoi15p3",
+            "cmt21r2ztr"
+          ]
+        },
+        {
+          "cause": "E0204: `<id>` (`<id>`) does not work on the types it was given here: `<id>` is not a type `<id>` knows",
+          "count": 1,
+          "examples": [
             "noi09p4"
           ]
         },
         {
-          "cause": "E0201: `<id>` doesn't know the name `<id>` here",
+          "cause": "R0202: integer overflow: range `<id>` span does not fit in an `<id>` (64 bits)",
           "count": 1,
           "examples": [
-            "cco21p2"
-          ]
-        },
-        {
-          "cause": "E0203: Range<n / m> has no `<id>` in the spec: no std module declares it",
-          "count": 1,
-          "examples": [
-            "mccc4j4"
-          ]
-        },
-        {
-          "cause": "E0203: a `<id>` has no member `<id>` that `<id>` knows",
-          "count": 1,
-          "examples": [
-            "etsr23r3p3"
-          ]
-        },
-        {
-          "cause": "E0204: `<id>` declares no domain `<id>`",
-          "count": 1,
-          "examples": [
-            "dmpg16g2"
-          ]
-        },
-        {
-          "cause": "E0204: an array is indexed by a domain or a length: `<id>`, `<id>`",
-          "count": 1,
-          "examples": [
-            "cco20p4"
-          ]
-        },
-        {
-          "cause": "E0301: `<id>` is indexed by C, but `<id>` is a 1..=n",
-          "count": 1,
-          "examples": [
-            "ioi09p3"
-          ]
-        },
-        {
-          "cause": "E0302: `<id>` requires elements of an index domain or bounded range, not `<id>`",
-          "count": 1,
-          "examples": [
-            "noi14p5"
-          ]
-        },
-        {
-          "cause": "E0302: a `<id>` can't be taken apart into 2 names",
-          "count": 1,
-          "examples": [
-            "btoi20p3"
-          ]
-        },
-        {
-          "cause": "E0302: can't compare a `<id>` with a `<id>`",
-          "count": 1,
-          "examples": [
-            "sac22cc2p5"
-          ]
-        },
-        {
-          "cause": "E0302: can't tell what this empty list holds",
-          "count": 1,
-          "examples": [
-            "shoi16p1"
-          ]
-        },
-        {
-          "cause": "E0302: can't tell which optional this `<id>` is",
-          "count": 1,
-          "examples": [
-            "ceoi18p1"
-          ]
-        },
-        {
-          "cause": "E0302: this block is used as a value, so it has to end with an expression",
-          "count": 1,
-          "examples": [
-            "ccc04s5"
-          ]
-        },
-        {
-          "cause": "E0309: `<id>` can't look inside a `<id>`",
-          "count": 1,
-          "examples": [
-            "noip10p1"
-          ]
-        },
-        {
-          "cause": "E0309: `<id>` gives a default for an optional, but the left side is a `<id>`",
-          "count": 1,
-          "examples": [
-            "apio09p3"
-          ]
-        },
-        {
-          "cause": "E0501: `<id>` and `<id>` can't handle an unbounded range value yet",
-          "count": 1,
-          "examples": [
-            "ccc02s4"
-          ]
-        },
-        {
-          "cause": "E0501: `<id>` is not in scope during lowering",
-          "count": 1,
-          "examples": [
-            "noi17p2"
-          ]
-        },
-        {
-          "cause": "E0504: not implemented yet: a fresh type made from values, `<id>` (see spec/core/02-values-types.md §2.9)",
-          "count": 1,
-          "examples": [
-            "btoi17p6"
-          ]
-        },
-        {
-          "cause": "E0606: `<id>` does not implement `<id>` required by `<id>`",
-          "count": 1,
-          "examples": [
-            "egoi23p7"
-          ]
-        },
-        {
-          "cause": "E0606: `<id>` requires `<id>`, which `<id>` does not implement",
-          "count": 1,
-          "examples": [
-            "btoi18p4"
-          ]
-        },
-        {
-          "cause": "R0001: internal: expected closure",
-          "count": 1,
-          "examples": [
-            "etsr23r4p2"
-          ]
-        },
-        {
-          "cause": "R0502: 1 is outside `<id>` (input line 1, column 1)",
-          "count": 1,
-          "examples": [
-            "nccc10s4"
-          ]
-        },
-        {
-          "cause": "wrong output",
-          "count": 1,
-          "examples": [
-            "aac5p4"
+            "dmopc21c9p1"
           ]
         }
       ],
       "counts": {
-        "error": 36,
-        "pass": 29,
-        "trap": 2,
-        "untested": 32,
-        "wrong": 1
+        "error": 1,
+        "pass": 96,
+        "trap": 1,
+        "wrong": 2
       },
-      "passed": 29,
+      "passed": 96,
       "total": 100
     },
     "diff": {
