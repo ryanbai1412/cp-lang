@@ -19,8 +19,8 @@ var (px, py) = (Coord(0), Coord(0))
 for (x, y) in lights:
     let (dx, dy) = (abs(x.ord - px.ord), abs(y.ord - py.ord))
     // leave a street by walking along it to the new lighthouse's other street
-    let turn_to_y = [w + abs(v.ord - y.ord) for v in Coord if let w = on_x[v]].min()!!
-    let turn_to_x = [w + abs(v.ord - x.ord) for v in Coord if let w = on_y[v]].min()!!
+    let turn_to_y = [w + abs(v.ord - y.ord) for v in Coord if let w = on_x[v]].min()!
+    let turn_to_x = [w + abs(v.ord - x.ord) for v in Coord if let w = on_y[v]].min()!
     for v in Coord:
         if let w = on_x[v]: on_x[v] = w + dx
         if let w = on_y[v]: on_y[v] = w + dy

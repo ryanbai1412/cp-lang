@@ -1,13 +1,16 @@
-// AtCoder DP N Slimes: merge adjacent slimes, paying the merged size, until
-// one is left. cost(l, r) = best split + total size of a[l..=r].
+// Source: AtCoder Educational DP Contest N (Slimes), https://atcoder.jp/contests/dp/tasks/dp_n
+// Problem: n <= 400 slimes in a row with sizes a_i <= 1e9. Merging two adjacent slimes costs
+//   the sum of their sizes and leaves one slime of that size. Print the least total cost to
+//   merge everything into one slime.
+// Solution: the last merge on a range r joins its two halves at some split, so
+//   cost[r] = min over splits (x, y) of cost[x] + cost[y], plus the total size of r.
+//   `I.ranges` goes by length, so the halves are done first: O(n^3).
 let n: 1..=400 = read()
 domain I = 1..=n
 let a: [I]1..=1e9 = read()
+let size = prefix(a)
 
-let pre = prefix(a)
-
-@memo
-fn cost(l: I, r: I) -> Int:
-    if l == r: return 0
-    [cost(l, m) + cost(m.next!, r) for m in l..r].min()!! + pre.sum(l..=r)
-print(cost(I.first!, I.last!))
+var cost: [I.ranges]Int = 0
+for r in I.ranges if r.len >= 2:
+    cost[r] = r.splits.map((x, y) => cost[x] + cost[y]).min()! + size.fold(r)
+print(cost[I.range])
