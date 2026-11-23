@@ -215,6 +215,10 @@ impl Timeline {
         limits: crate::Limits,
     ) -> Observed {
         let from = config.from_step.unwrap_or(0);
+        let config = TraceConfig {
+            stop_when_full: true,
+            ..config
+        };
         let mut ignored = std::io::sink();
         let Some(start) = self.taken.iter().rev().find(|c| c.steps <= from) else {
             let io = Io::fixed(input);

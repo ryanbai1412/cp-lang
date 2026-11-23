@@ -55,6 +55,9 @@ pub struct TraceConfig {
     pub max_steps: Option<usize>,
     /// Skip this many steps before keeping any: a window of a long run.
     pub from_step: Option<usize>,
+    /// End the run once the steps are full, when what follows them (its
+    /// output, a later trap) is not wanted.
+    pub stop_when_full: bool,
 }
 
 /// The message of the trap that ends a run at [`TraceConfig::stop_after_call`].
@@ -502,6 +505,7 @@ pub(crate) struct Tracer {
     stopping_at: Option<usize>,
     /// The call to stop after has returned.
     pub stopped: bool,
+    stop_when_full: bool,
     /// Steps still to skip before the window ([`TraceConfig::from_step`]).
     skip: usize,
     /// The line and stage of the declaration just skipped, if the last step skipped was one.
@@ -594,6 +598,7 @@ impl Tracer {
             stop_after_call: config.stop_after_call,
             stopping_at: None,
             stopped: false,
+            stop_when_full: config.stop_when_full,
             skip: config.from_step.unwrap_or(0),
             skipped_at: None,
         };
@@ -827,6 +832,7 @@ impl Tracer {
             }
             if len >= self.max_steps || bytes >= self.max_bytes {
                 self.rec.truncated = true;
+                self.stopped |= self.stop_when_full;
                 return;
             }
         }

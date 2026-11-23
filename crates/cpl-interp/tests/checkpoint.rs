@@ -272,3 +272,29 @@ fn a_timeline_keeps_checkpoints_across_the_whole_run() {
         timeline.steps
     );
 }
+
+#[test]
+fn a_window_stops_the_run_once_it_is_full() {
+    let source = "var s = 0\nfor i in 0..100000:\n    s = (s + i) % 1009\nassert s < 0\n";
+    let program = program(source);
+    let whole = observe_on_this_thread(
+        &program,
+        Io::fixed(b""),
+        &mut Vec::new(),
+        LIMITS,
+        Some(config(source)),
+    );
+    assert!(whole.trap.is_some(), "the whole run fails its assert");
+    let replay = cpl_interp::trace::Replay::start_every(program, Vec::new(), config(source), 64);
+    for from in [10, 5000, 50_000] {
+        let window = replay.window(TraceConfig {
+            from_step: Some(from),
+            max_steps: Some(50),
+            ..config(source)
+        });
+        assert!(window.trap.is_none(), "from {from}: {:?}", window.trap);
+        let rec = window.recording.unwrap();
+        assert!(rec.truncated, "from {from}");
+        assert_eq!((rec.skipped, rec.len()), (from, 50));
+    }
+}
