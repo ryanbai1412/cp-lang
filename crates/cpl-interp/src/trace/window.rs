@@ -183,6 +183,30 @@ fn tail_from(
     }
 }
 
+/// The untraced run talking to its judge through `io` and printing to
+/// `output`, and every byte the judge sent it.
+pub fn sent(program: &Program, io: Io, output: &mut (dyn Write + Send)) -> Vec<u8> {
+    let io = Mutex::new(Some(io));
+    let output = Mutex::new(output);
+    let sent = Mutex::new(Vec::new());
+    crate::on_interp_thread(&|limits| {
+        let mut output = output
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        let io = io
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .take()
+            .expect("only the thread that starts takes the input");
+        let (whole, _, read) =
+            record_live_on_this_thread(program, io, &mut **output, limits, u64::MAX, 1);
+        *sent.lock().unwrap_or_else(|poisoned| poisoned.into_inner()) = read;
+        whole
+    });
+    sent.into_inner()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+}
+
 /// The trace of an interactive run, which talks to its judge through `io`
 /// and prints to `output`. The run goes untraced, keeping what it was sent
 /// and, for `--last`, checkpoints; the steps kept are then traced again

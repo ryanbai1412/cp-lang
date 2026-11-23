@@ -1185,6 +1185,11 @@ fn run_live(args: &RunArgs, stdin: &mut (dyn FnMut() -> Vec<u8> + Send)) -> u8 {
     } else {
         Side::Solution
     };
+    // An interactive file's solution reads what its judge sent it.
+    let solution_input = |compiled: &Compiled| match &compiled.judge {
+        Some((_, judge)) => interact::transcript(&compiled.program, judge, &input),
+        None => input.clone(),
+    };
     // Windows of the file as last compiled replay from its checkpoints.
     let replay = std::sync::Mutex::new(None::<(String, cpl_interp::trace::Replay)>);
     let record = |from: Option<usize>| {
@@ -1206,7 +1211,7 @@ fn run_live(args: &RunArgs, stdin: &mut (dyn FnMut() -> Vec<u8> + Send)) -> u8 {
                     };
                     let started = cpl_interp::trace::Replay::start(
                         compiled.program.clone(),
-                        input.clone(),
+                        solution_input(&compiled),
                         counted,
                     );
                     *replay = Some((compiled.text.clone(), started));
@@ -1215,7 +1220,7 @@ fn run_live(args: &RunArgs, stdin: &mut (dyn FnMut() -> Vec<u8> + Send)) -> u8 {
                     Some((_, replay)) => replay.window(config),
                     None => traced(
                         &compiled.program,
-                        &input,
+                        &solution_input(&compiled),
                         &mut Vec::new(),
                         config,
                         args.full_trace,
@@ -1224,7 +1229,7 @@ fn run_live(args: &RunArgs, stdin: &mut (dyn FnMut() -> Vec<u8> + Send)) -> u8 {
             }
             None => traced(
                 &compiled.program,
-                &input,
+                &solution_input(&compiled),
                 &mut Vec::new(),
                 config,
                 args.full_trace,

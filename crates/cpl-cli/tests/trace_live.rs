@@ -115,3 +115,56 @@ fn trace_at_a_terminal_records_the_pinned_case() {
         "piped input wins over the pinned case"
     );
 }
+
+#[test]
+fn a_live_trace_of_an_interactive_file_runs_it_against_its_judge() {
+    let dir = std::path::PathBuf::from(env!("CARGO_TARGET_TMPDIR"))
+        .join(format!("trace_live_interactive_{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let file = dir.join("guess.cp");
+    std::fs::write(
+        &file,
+        "let n: 1..=100 = read()\nvar lo = 1\nvar hi = n\nwhile lo < hi:\n    let mid = (lo + hi) / 2\n    let r: Int = ask(\"?\", mid, limit: 7)\n    if r == 1: hi = mid\n    else: lo = mid + 1\nprint(\"!\", lo)\n\n\
+         @interactor fn judge(sol: Interactor):\n    let n: 1..=100 = read()\n    let x: 1..=n = read()\n    sol.send(n)\n    while true:\n        let (c, v): (Char, Int) = sol.recv()\n        if c == '!':\n            assert v == x, \"wrong answer\"\n            return\n        sol.send(if x <= v: 1 else: 0)\n",
+    )
+    .unwrap();
+    let input = dir.join("guess.in");
+    std::fs::write(&input, "100 37\n").unwrap();
+    let steps = |doc: &str| {
+        doc.split_once("\"steps\":")
+            .unwrap()
+            .1
+            .trim_end()
+            .to_string()
+    };
+    let traced = |flags: &[&str]| {
+        let out = Command::new(env!("CARGO_BIN_EXE_cpl"))
+            .args(["run", "--trace", "--format", "json"])
+            .args(flags)
+            .arg(&file)
+            .arg(&input)
+            .output()
+            .unwrap();
+        steps(&String::from_utf8_lossy(&out.stdout))
+    };
+    let mut server = Command::new(env!("CARGO_BIN_EXE_cpl"))
+        .args(["run", "--trace", "--live"])
+        .arg(&file)
+        .arg(&input)
+        .stdin(Stdio::null())
+        .stderr(Stdio::piped())
+        .spawn()
+        .unwrap();
+    let mut serving = String::new();
+    BufReader::new(server.stderr.take().unwrap())
+        .read_line(&mut serving)
+        .unwrap();
+    let base = serving.split_whitespace().last().unwrap().to_string();
+    let whole = get(&base, "/trace.json");
+    let window = get(&base, "/trace.json?from=6");
+    server.kill().unwrap();
+    server.wait().unwrap();
+    assert!(whole.contains("the program ended"), "{whole}");
+    assert_eq!(steps(&whole), traced(&[]));
+    assert_eq!(steps(&window), traced(&["--from", "6"]));
+}

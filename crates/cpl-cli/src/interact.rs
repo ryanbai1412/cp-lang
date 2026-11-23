@@ -255,6 +255,36 @@ pub fn run_traced(
     config: cpl_interp::trace::TraceConfig,
     full: bool,
 ) -> cpl_interp::Observed {
+    let (mut observed, rejected) = against(judge, input, stdout, |io, says| {
+        if full {
+            cpl_interp::run_observed(solution, io, says, Some(config))
+        } else {
+            cpl_interp::trace::interactive(solution, io, says, config)
+        }
+    });
+    if observed.trap.is_none() {
+        observed.trap = rejected;
+    }
+    observed
+}
+
+/// Everything the judge sent `solution` on the hidden test `input`: as its
+/// input, it runs the solution again without the judge.
+pub fn transcript(solution: &cpl_ir::Program, judge: &cpl_ir::Program, input: &[u8]) -> Vec<u8> {
+    against(judge, input, &mut std::io::sink(), |io, says| {
+        cpl_interp::trace::sent(solution, io, says)
+    })
+    .0
+}
+
+/// `side`, the solution's run on the `Io` it is given, against `judge` on
+/// the hidden test `input`, and why the judge rejected the run, if it did.
+fn against<T>(
+    judge: &cpl_ir::Program,
+    input: &[u8],
+    stdout: &mut (dyn Write + Send),
+    side: impl FnOnce(cpl_interp::Io, &mut (dyn Write + Send)) -> T,
+) -> (T, Option<cpl_interp::Trap>) {
     let wire = Arc::new(Wire::default());
     let end = |side| End {
         wire: Arc::clone(&wire),
@@ -279,16 +309,9 @@ pub fn run_traced(
             lines: 0,
         };
         let io = cpl_interp::Io::live(Box::new(|| solution_end.recv()));
-        let mut observed = if full {
-            cpl_interp::run_observed(solution, io, &mut says, Some(config))
-        } else {
-            cpl_interp::trace::interactive(solution, io, &mut says, config)
-        };
+        let ran = side(io, &mut says);
         solution_end.close();
-        if let (None, Some(trap)) = (&observed.trap, judging.join().unwrap_or(None)) {
-            observed.trap = Some(trap);
-        }
-        observed
+        (ran, judging.join().unwrap_or(None))
     })
 }
 
