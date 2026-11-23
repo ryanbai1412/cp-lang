@@ -86,8 +86,8 @@ def _lines(p: Path) -> list[str]:
     return p.read_text(encoding="utf-8").splitlines()
 
 
-def _git(root: Path, *args: str) -> list[str]:
-    out = subprocess.run(["git", *args], cwd=root, capture_output=True, text=True)
+def _git(root: Path, *args: str, env: dict[str, str] | None = None) -> list[str]:
+    out = subprocess.run(["git", *args], cwd=root, capture_output=True, text=True, env=env)
     return out.stdout.splitlines() if out.returncode == 0 else []
 
 
@@ -454,10 +454,11 @@ class UpstreamUnknown(Exception):
 
 
 def measure_upstream(root: Path, max_rs_lines: int, ref: str = "origin/main") -> dict | None:
-    """Measures `ref` in a scratch worktree; None when HEAD is `ref` (CI on main)
-    or `ref` is missing, so main's own debt still fails there."""
-    head, up = (_git(root, "rev-parse", "-q", "--verify", r) for r in ("HEAD", ref))
-    if not head or not up or head == up:
+    """Measures `ref` in a scratch worktree; None when `ref` is missing, or HEAD
+    is `ref` in CI (a run on main), so main's own debt still fails there. A
+    local commit on a fresh tip also has HEAD at `ref`, and its base is `ref`."""
+    head, up = (_git(root, "rev-parse", "-q", "--verify", r, env=_git_env()) for r in ("HEAD", ref))
+    if not head or not up or (head == up and os.environ.get("CI")):
         return None
     with tempfile.TemporaryDirectory() as tmp:
         wt = Path(tmp) / "main"

@@ -1,5 +1,6 @@
 import importlib.util
 import json
+import os
 import subprocess
 import tempfile
 import unittest
@@ -150,6 +151,25 @@ class DebtRatchetTest(unittest.TestCase):
             self._write(root, "plan/domains/x/ARCHITECTURE.md",
                         "`web/out` and `web/gone.ts`\n## Known debt\n- `scripts/deleted.py` is gone\n")
             self.assertEqual(dr.stale_arch_paths(root), ["plan/domains/x/ARCHITECTURE.md:1 web/gone.ts"])
+
+    def test_upstream_on_a_fresh_tip_is_measured_except_in_ci(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            env = dr._git_env()
+            subprocess.run(["git", "init", "-q", str(root)], check=True, env=env)
+            self._write(root, "crates/demo/src/a.rs", "fn a() {}\n")
+            for args in (["add", "-A"], ["-c", "user.name=t", "-c", "user.email=t@t",
+                                         "commit", "-qm", "x"]):
+                subprocess.run(["git", "-C", str(root), *args], check=True, env=env)
+            old = os.environ.pop("CI", None)
+            try:
+                self.assertIsNotNone(dr.measure_upstream(root, 20, ref="HEAD"))
+                os.environ["CI"] = "true"
+                self.assertIsNone(dr.measure_upstream(root, 20, ref="HEAD"))
+            finally:
+                os.environ.pop("CI", None)
+                if old is not None:
+                    os.environ["CI"] = old
 
     def test_a4_documented_edge_is_accepted(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
