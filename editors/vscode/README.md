@@ -42,14 +42,14 @@ Set `VSCODE_EXECUTABLE` if you want `test:integration` to use an existing VS Cod
 
 ```cp
 domain V = 1..=n
-let xs = compress(raw_vals)                      // Compressed<Int>
-var st = LazySegTree<V, Int>(AddSum, a)          // stdlib generic types
+let xs = compress(raw_vals)              // Compressed<Int>
+var st = LazySegTree<V, Int>(AddSum, a)  // stdlib generic types
 type Z = Mod<998_244_353>
-let comb = Comb<Z>()                             // interior-mutable combinatorics
+let comb = Comb<Z>()  // interior-mutable combinatorics
 
 for d in V:
     invariant d.l <= d.r
-    best min= cost[d] ?? break                   // diverging RHS on ??
+    best min= cost[d] ?? break  // diverging RHS on ??
     best max= gain[d]
 
 fn slice(self, s: Range<V>) lends mut [V]Int:
@@ -61,11 +61,11 @@ fn judge(sol: Interactor):
     let guess: Int = sol.recv()
     assert guess == secret
 
-let x = a.raw[i + 1]                             // escape hatches use unsafe scopes
+let x = a.raw[i + 1]  // escape hatches use unsafe scopes
 unchecked:
     total += a.raw[i]
 
-print("ans = {best}, avg = {avg:.6f}")           // interpolation + format specs
+print("ans = {best}, avg = {avg:.6f}")  // interpolation + format specs
 ```
 
 Highlights worth noting:

@@ -16,7 +16,7 @@ let a: [0..n]0..=k = read()
 var cnt: [0..=k]Int = 0
 for i in 0..n:
     cnt[a[i]] += 1
-cnt.fill(0)                     // reset the whole array in place
+cnt.fill(0)  // reset the whole array in place
 ```
 
 Structural range arrays unify across functions whenever their written bounds match (`[0..n]Int` matches `[0..n]Int`). Index an array using the **same bounds** it was declared with (`for i in 1..=n:` for `[1..=n]T`, `for i in 0..n:` for `[0..n]T`; indexing `[1..=n]T` at `0` traps at runtime). `for i in 0..n` binds `i: Int`, so `i + 1` is `Int`. Nominal domain values (`v: V`) are **not** `Int`: you cannot multiply or pass `v` where `Int` is expected, nor index `[V]T` with an `Int` — convert explicitly with `v.ord` / `v.to_idx` (to `Int`) or `V(k)` (from `Int`), or use a structural range array `[0..n]T` / `[1..=n]T` when you need integer arithmetic on indices. Generic stdlib structures (`Dsu<V>`, `DsuOf<V, ...>`, `Fenwick<V>`, `SegTree<V, ...>`, `Graph<V>`) require a **named `domain V = ...`**, never an inline range like `Dsu<1..=n>`. Neighbor properties `v.next` / `v.prev` and domain arithmetic `v + 1` / `v - 1` / `V.last - 1` return `?V` (they may step outside the domain — unwrap with `if let nxt = v.next:` or `??` before indexing or forming a range). Multi-dimensional `[R, C]T` arrays take comma-separated indices (`g[r, c]`) and accept a scalar fill (`var g: [R, C]T = 0`), whereas nested `[R][C]T` is an array of arrays and `[R]List<T>` is indexed as `adj[r][k]`. Unnamed grid cell tuples `(r, c): (Row, Col)` (not named records `(r: Row, c: Col)`) have built-in `.adj4` and `.adj8` neighbor properties without importing anything. Use `a.fill(x)` (or `seen.fill(none)` on `[D]?T`) to clear an array between test cases.
@@ -30,7 +30,7 @@ let n = read(1..=2e5)
 let m = read(1..=2e5)
 domain Row = 1..=n
 domain Col = 1..=m
-domain Bucket = 10              // counted domain: same as 0..10
+domain Bucket = 10  // counted domain: same as 0..10
 print(Row.count, Bucket.count)
 ```
 
@@ -56,10 +56,10 @@ Array endpoints are **values**, not domain indices: `a.first` and `a.last` retur
 domain V = 5..8
 let a: [V]Int = [V] v => 10 + v.to_idx
 let endpoints: (?Int, ?Int) = (a.first, a.last)
-print(V.first, V.last, endpoints.0!, endpoints.1!) // 5 7 10 12
+print(V.first, V.last, endpoints.0!, endpoints.1!)  // 5 7 10 12
 domain Empty = 0..0
 let empty: [Empty]Int = 0
-print(empty.first ?? -1, empty.last ?? -1) // -1 -1
+print(empty.first ?? -1, empty.last ?? -1)  // -1 -1
 ```
 
 ## Boundaries: `.l` and `.r`
@@ -108,9 +108,9 @@ Range data structures accept range arguments such as `st.fold(..h[i])` and `pre.
 
 ```cp
 let one: [1..=4]Int = [10, 20, 30, 40]
-print(one[2..=4].sum())          // 90 (1-based slice)
+print(one[2..=4].sum())  // 90 (1-based slice)
 let g: [1..=2, 1..=3]Int = [[1, 5, 2], [4, 3, 6]]
-print(argmax(g[.., 3])!)        // 2 (row index along the 1..=2 axis)
+print(argmax(g[.., 3])!)  // 2 (row index along the 1..=2 axis)
 ```
 
 An open-ended `Int` range `l..` also works in a loop. Unlike an open-ended slice, it has no container to supply its endpoint: stop explicitly rather than trying to collect an unbounded iteration.
@@ -119,7 +119,7 @@ An open-ended `Int` range `l..` also works in a loop. Unlike an open-ended slice
 let l = 3
 for i in l..:
     if i == 6: break
-    print(i) // 3, then 4, then 5
+    print(i)  // 3, then 4, then 5
 ```
 
 ## Grids and `Cell = (Row, Col)`
@@ -159,10 +159,10 @@ var bit = Fenwick<xs.D, Int>()
 var ans = 0
 
 for x in queries:
-    let id = xs.at(x)           // exact lookup -> xs.D
-    let original = xs[id]       // original value at id
+    let id = xs.at(x)      // exact lookup -> xs.D
+    let original = xs[id]  // original value at id
     bit.add(id, 1)
-    if let ge = xs.first_ge(x): // lower bound -> ?xs.D
+    if let ge = xs.first_ge(x):  // lower bound -> ?xs.D
         ans += bit.prefix(ge.l)
 print(ans)
 ```

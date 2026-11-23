@@ -107,26 +107,26 @@ arcs examined, and the cost of one call to a user closure counted as O(1).
 ### 3.1 Stored graphs
 
 ```cp
-trait Neighbours            // fn out(self, u) -> yields successor
-trait Target                // fn to(self) -> V; a bare V is its own target
-struct Graph<V, E>          // CSR: O(n + m) memory, arcs grouped by tail
-    fn directed(edges: [E](u: V, v: V)) -> Graph<V, E>     // O(n + m)
-    fn undirected(edges: [E](u: V, v: V)) -> Graph<V, E>   // O(n + m), 2 arcs per edge
-    fn out(self, u: V) -> yields (to: V, e: E)             // O(deg u)
-    fn get(self, u: V) -> List<(to: V, e: E)>              // g[u], O(deg u), allocates
-    fn deg(self, u: V) -> Int                              // O(1)
-    fn transpose(self) -> Graph<V, E>                      // O(n + m)
+trait Neighbours                                          // fn out(self, u) -> yields successor
+trait Target                                              // fn to(self) -> V; a bare V is its own target
+struct Graph<V, E>                                        // CSR: O(n + m) memory, arcs grouped by tail
+    fn directed(edges: [E](u: V, v: V)) -> Graph<V, E>    // O(n + m)
+    fn undirected(edges: [E](u: V, v: V)) -> Graph<V, E>  // O(n + m), 2 arcs per edge
+    fn out(self, u: V) -> yields (to: V, e: E)            // O(deg u)
+    fn get(self, u: V) -> List<(to: V, e: E)>             // g[u], O(deg u), allocates
+    fn deg(self, u: V) -> Int                             // O(1)
+    fn transpose(self) -> Graph<V, E>                     // O(n + m)
 // List-form hooks, never called by name: `Graph.directed(pairs)` with a plain
 // list resolves to `directed_of_pairs`, and a list of triples to
 // `directed_of_triples` (the general `<fn>_of_pairs`/`<fn>_of_triples` rule).
-fn directed_of_pairs<V>(edges: List<(V, V)>) -> Adj<V, V>                  // O(n + m)
-fn undirected_of_pairs<V>(edges: List<(V, V)>) -> Adj<V, V>                // O(n + m)
-fn directed_of_triples<V, W>(edges: List<(V, V, W)>) -> Adj<V, (V, W)>     // O(n + m)
-fn undirected_of_triples<V, W>(edges: List<(V, V, W)>) -> Adj<V, (V, W)>   // O(n + m)
-struct Adj<V, T>            // CSR like Graph, each entry the neighbour itself
-    fn out(self, u: V) -> yields T                         // O(deg u)
-    fn get(self, u: V) -> List<T>                          // g[u], O(deg u)
-    fn deg(self, u: V) -> Int                              // O(1)
+fn directed_of_pairs<V>(edges: List<(V, V)>) -> Adj<V, V>                 // O(n + m)
+fn undirected_of_pairs<V>(edges: List<(V, V)>) -> Adj<V, V>               // O(n + m)
+fn directed_of_triples<V, W>(edges: List<(V, V, W)>) -> Adj<V, (V, W)>    // O(n + m)
+fn undirected_of_triples<V, W>(edges: List<(V, V, W)>) -> Adj<V, (V, W)>  // O(n + m)
+struct Adj<V, T>                                                          // CSR like Graph, each entry the neighbour itself
+    fn out(self, u: V) -> yields T                                        // O(deg u)
+    fn get(self, u: V) -> List<T>                                         // g[u], O(deg u)
+    fn deg(self, u: V) -> Int                                             // O(1)
 ```
 
 One constructor per kind of graph, not a `directed: Bool` option. The
@@ -218,9 +218,9 @@ space is large; for arbitrary per-arc weights use `dijkstra` on a closure.
 ### 3.3 Order and cycles
 
 ```cp
-fn topo<V, N>(next: N) -> ?List<V>          // O(n + m) Kahn; None on a cycle
-fn peel<V, N>(next: N) -> List<V>           // O(n + m) repeatedly remove in-degree 0
-fn find_cycle<V, N>(next: N) -> ?List<V>    // O(n + m) one directed cycle, in order
+fn topo<V, N>(next: N) -> ?List<V>        // O(n + m) Kahn; None on a cycle
+fn peel<V, N>(next: N) -> List<V>         // O(n + m) repeatedly remove in-degree 0
+fn find_cycle<V, N>(next: N) -> ?List<V>  // O(n + m) one directed cycle, in order
 ```
 
 Laws: in `topo(g)!` every arc goes from an earlier vertex to a later one;
@@ -233,13 +233,13 @@ cycle `c = find_cycle(g)!`, each `c[i + 1]` is a successor of `c[i]` and
 ### 3.4 Connectivity
 
 ```cp
-fn components<V, N>(next: N) -> (domain C, comp: [V]C)          // O(n + m)
-fn scc<V, N>(next: N) -> (domain C, comp: [V]C)                 // O(n + m) Tarjan
-fn condense<V, N, C>(next: N, comp: [V]C) -> [C]List<(to: C)>   // O(n + m)
-fn two_edge_components<V, N>(next: N) -> (domain C, comp: [V]C) // O(n + m), arcs
-fn bridges<V, E, N>(next: N) -> [E]Bool                         // O(n + m), arcs
-fn articulation_points<V, N>(next: N) -> [V]Bool                // O(n + m)
-fn biconnected_components<V, N>(next: N) -> List<List<V>>       // O(n + m)
+fn components<V, N>(next: N) -> (domain C, comp: [V]C)           // O(n + m)
+fn scc<V, N>(next: N) -> (domain C, comp: [V]C)                  // O(n + m) Tarjan
+fn condense<V, N, C>(next: N, comp: [V]C) -> [C]List<(to: C)>    // O(n + m)
+fn two_edge_components<V, N>(next: N) -> (domain C, comp: [V]C)  // O(n + m), arcs
+fn bridges<V, E, N>(next: N) -> [E]Bool                          // O(n + m), arcs
+fn articulation_points<V, N>(next: N) -> [V]Bool                 // O(n + m)
+fn biconnected_components<V, N>(next: N) -> List<List<V>>        // O(n + m)
 ```
 
 Laws:
@@ -261,7 +261,7 @@ on a path of 10^6 vertices.
 ### 3.5 Bipartiteness
 
 ```cp
-fn two_color<V, N>(next: N) -> ?[V]Bool     // O(n + m); None iff an odd cycle
+fn two_color<V, N>(next: N) -> ?[V]Bool  // O(n + m); None iff an odd cycle
 ```
 
 Law: for every arc `u -> v`, `colour[u] != colour[v]`; within each component
@@ -275,9 +275,9 @@ constraints belong to the parity DSU in `std.dsu`.
 struct Walk<V, E>
     start: V
     arcs: List<(to: V, e: E)>
-    @get fn vertices(self) -> List<V>       // start then each arc's head, O(len)
+    @get fn vertices(self) -> List<V>  // start then each arc's head, O(len)
 fn euler_walk<V, E>(edges: [E](u: V, v: V), directed: Bool) -> ?Walk<V, E>
-    // O(n + m) Hierholzer; uses every edge once; None if no such walk
+// O(n + m) Hierholzer; uses every edge once; None if no such walk
 ```
 
 Laws: the walk uses every `e` in `E` exactly once, consecutive arcs share a
@@ -293,13 +293,13 @@ are not in one component.
 ```cp
 struct Lit<X>(x: X, value: Bool)
     @get fn flip(self) -> Lit<X>
-struct TwoSat<X>                            // O(|X| + clauses) memory
+struct TwoSat<X>  // O(|X| + clauses) memory
     fn new() -> TwoSat<X>
-    fn add_or(mut self, a: Lit<X>, b: Lit<X>)        // O(1)
-    fn implies(mut self, a: Lit<X>, b: Lit<X>)       // O(1)
-    fn must(mut self, a: Lit<X>)                     // O(1)
-    fn at_most_one(mut self, lits: List<Lit<X>>)     // O(k), prefix auxiliaries
-    fn solve(self) -> ?[X]Bool              // O(|X| + clauses), SCC
+    fn add_or(mut self, a: Lit<X>, b: Lit<X>)     // O(1)
+    fn implies(mut self, a: Lit<X>, b: Lit<X>)    // O(1)
+    fn must(mut self, a: Lit<X>)                  // O(1)
+    fn at_most_one(mut self, lits: List<Lit<X>>)  // O(k), prefix auxiliaries
+    fn solve(self) -> ?[X]Bool                    // O(|X| + clauses), SCC
 ```
 
 Laws: `solve()` is `None` iff no assignment satisfies every clause, and an
@@ -309,15 +309,15 @@ assignment satisfies every clause added. The variables are a domain `X`, so
 ### 3.8 Functional graphs
 
 ```cp
-struct Functional<V>                        // O(n log n) build (jump table)
+struct Functional<V>  // O(n log n) build (jump table)
     fn new(next: [V]V) -> Functional<V>
-    fn on_ring(self, v: V) -> Bool          // O(1)
-    fn ring_of(self, v: V) -> Int           // O(1)
-    fn steps_to_ring(self, v: V) -> Int     // O(1)
-    fn root(self, v: V) -> V                // O(1) first ring vertex reached
-    fn jump(self, v: V, k: Int) -> V        // O(log n), any k >= 0
-    fn dist(self, a: V, b: V) -> ?Int       // O(log n) steps from a to b
-    fn orbit(self, v: V) -> Int             // O(1) distinct vertices from v
+    fn on_ring(self, v: V) -> Bool       // O(1)
+    fn ring_of(self, v: V) -> Int        // O(1)
+    fn steps_to_ring(self, v: V) -> Int  // O(1)
+    fn root(self, v: V) -> V             // O(1) first ring vertex reached
+    fn jump(self, v: V, k: Int) -> V     // O(log n), any k >= 0
+    fn dist(self, a: V, b: V) -> ?Int    // O(log n) steps from a to b
+    fn orbit(self, v: V) -> Int          // O(1) distinct vertices from v
     fn jump_while(self, v: V, pred: V -> Bool, max_steps: Int = V.K) -> ?(V, Int)
 ```
 
@@ -399,7 +399,7 @@ enum Move:
 let x: [T]1..=5e5 = read()
 let (m, k): (2..=5e5, 1..=5e5) = read()
 domain R = Zmod(m)
-domain State = (r: R, s: Subset<T>)        // product domain: core lane
+domain State = (r: R, s: Subset<T>)  // product domain: core lane
 
 fn cost(mv: Move) -> Int = match mv:
     Create(t) => x[t]

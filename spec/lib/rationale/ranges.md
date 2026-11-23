@@ -133,20 +133,18 @@ until user traits gain associated constants. Bare operators (`+`, `*`,
 struct Monoid<T>(id: T, op: (T, T) -> T)
     law assoc(a: T, b: T, c: T) = op(op(a, b), c) == op(a, op(b, c))
     law ident(a: T) = op(id, a) == a and op(a, id) == a
-    fn of<M>(m: M) -> Monoid<T>                     // O(1)
+    fn of<M>(m: M) -> Monoid<T>  // O(1)
 
-struct Action<T, F>(id: F, compose: (F, F) -> F,
-                    apply: (F, T, Int) -> T, over: Monoid<T>)
+struct Action<T, F>(id: F, compose: (F, F) -> F, apply: (F, T, Int) -> T, over: Monoid<T>)
     law ident(a: T) = apply(id, a, 1) == a
     law composes(f: F, g: F, a: T) =
         apply(compose(f, g), a, 1) == apply(f, apply(g, a, 1), 1)
-    fn new<M>(id: F, compose: (F, F) -> F,
-              apply: (F, T, Int) -> T, over: M) -> Action<T, F>  // O(1)
+    fn new<M>(id: F, compose: (F, F) -> F, apply: (F, T, Int) -> T, over: M) -> Action<T, F>  // O(1)
 
 struct Desc<T>(x: T)
-fn desc<T>(x: T) -> Desc<T>                         // O(1)
+fn desc<T>(x: T) -> Desc<T>  // O(1)
 trait Reversible: fn rev(self) -> Self = self
-fn fold<T, M>(m: M, xs: List<T>) -> T               // O(n)
+fn fold<T, M>(m: M, xs: List<T>) -> T  // O(n)
 ```
 
 Addition to `std.algebra`: **`MaxSub`**, the Kadane maximum-subarray
@@ -160,12 +158,12 @@ monoid (closing `cf2255e2.md` and `EXEMPLARS-PORTS.md`). Storing
 /// `s * k` scales every value by non-negative `k`.
 /// `best` traps if empty; `try_best` returns `?Int`.
 struct MaxSub(has: Bool, best: Int, total: Int, pre: Int, suf: Int)
-    const empty: MaxSub                             // O(1), identity
-    fn of(v: Int) -> MaxSub                         // O(1), single element
-    fn join(a: MaxSub, b: MaxSub) -> MaxSub         // O(1), also `a + b`
-    fn scale(self, k: Int) -> MaxSub                // O(1), k >= 0; also `self * k`
-    @get fn try_best(self) -> ?Int                  // O(1)
-    fn monoid() -> Monoid<MaxSub>                   // O(1)
+    const empty: MaxSub                      // O(1), identity
+    fn of(v: Int) -> MaxSub                  // O(1), single element
+    fn join(a: MaxSub, b: MaxSub) -> MaxSub  // O(1), also `a + b`
+    fn scale(self, k: Int) -> MaxSub         // O(1), k >= 0; also `self * k`
+    @get fn try_best(self) -> ?Int           // O(1)
+    fn monoid() -> Monoid<MaxSub>            // O(1)
     // impl Reversible: swaps `pre` and `suf` for tree-path folds!
 ```
 
@@ -182,30 +180,30 @@ Static O(1) queries after O(n) or O(r * c) preprocessing, indexed by
 enum FillOrder = Forward | Reverse
 
 // Unified shape-dispatched Prefix family (static via `prefix(a)`, append-only via `.filling(...)` -> `FillPrefix`)
-struct Prefix<D, T>                                 // 1-D over [D]T (zero-overhead static table)
-    fn new(a: [D]T) -> Prefix<D, T>                 // O(|D|)
+struct Prefix<D, T>                                                       // 1-D over [D]T (zero-overhead static table)
+    fn new(a: [D]T) -> Prefix<D, T>                                       // O(|D|)
     fn filling(order: FillOrder = FillOrder.Forward) -> FillPrefix<D, T>  // O(|D|)
-    fn prefix(self, b: Cut<D>) -> T              // O(1)
-    fn sum(self, r: Range<D>) -> T                  // O(1)
+    fn prefix(self, b: Cut<D>) -> T                                       // O(1)
+    fn sum(self, r: Range<D>) -> T                                        // O(1)
 
-struct Prefix<R, C, T>                              // 2-D over [R, C]T (zero-overhead static table)
-    fn new(a: [R, C]T) -> Prefix<R, C, T>           // O(|R| * |C|)
+struct Prefix<R, C, T>                                                       // 2-D over [R, C]T (zero-overhead static table)
+    fn new(a: [R, C]T) -> Prefix<R, C, T>                                    // O(|R| * |C|)
     fn filling(order: FillOrder = FillOrder.Forward) -> FillPrefix<R, C, T>  // O(|R| * |C|)
-    fn prefix(self, r: Cut<R>, c: Cut<C>) -> T // O(1)
-    fn sum(self, rows: Range<R>, cols: Range<C>) -> T // O(1)
+    fn prefix(self, r: Cut<R>, c: Cut<C>) -> T                               // O(1)
+    fn sum(self, rows: Range<R>, cols: Range<C>) -> T                        // O(1)
 
-struct Prefix<T>                                    // List<T> / [0..n]T (zero-overhead static table)
-    fn new(a: List<T>) -> Prefix<T>                 // O(n)
+struct Prefix<T>                                                               // List<T> / [0..n]T (zero-overhead static table)
+    fn new(a: List<T>) -> Prefix<T>                                            // O(n)
     fn filling(n: Int, order: FillOrder = FillOrder.Forward) -> FillPrefix<T>  // O(n)
-    fn prefix(self, k: Int) -> T                    // O(1)
-    fn sum(self, r: Range<Int>) -> T                // O(1)
+    fn prefix(self, k: Int) -> T                                               // O(1)
+    fn sum(self, r: Range<Int>) -> T                                           // O(1)
 
-struct FillPrefix<D, T>                             // also FillPrefix<R, C, T> and FillPrefix<T>
-    fn set(mut self, i: D, x: T)                    // O(1), must follow fill order (row-major in 2D)
-    fn prefix(self, b: Cut<D>) -> T              // O(1), must lie in filled region
-    fn sum(self, r: Range<D>) -> T                  // O(1), must lie in filled region
+struct FillPrefix<D, T>              // also FillPrefix<R, C, T> and FillPrefix<T>
+    fn set(mut self, i: D, x: T)     // O(1), must follow fill order (row-major in 2D)
+    fn prefix(self, b: Cut<D>) -> T  // O(1), must lie in filled region
+    fn sum(self, r: Range<D>) -> T   // O(1), must lie in filled region
 
-fn prefix(a)                                        // dispatches on [D]T, [R, C]T, or List<T>
+fn prefix(a)  // dispatches on [D]T, [R, C]T, or List<T>
 ```
 
 Append-only `Prefix.filling(...)` covers DPs that compute each cell while
@@ -237,14 +235,14 @@ fn prefix_fold<D, T, M>(op: M, a: [D]T) -> [D.cuts]T  // O(n)
 fn suffix_fold<D, T, M>(op: M, a: [D]T) -> [D.cuts]T  // O(n)
 
 struct Diff<D, T>
-    fn new() -> Diff<D, T>                          // O(|D|)
-    fn add(mut self, r: Range<D>, x: T)             // O(1)
-    fn finish(self) -> [D]T                         // O(|D|)
+    fn new() -> Diff<D, T>               // O(|D|)
+    fn add(mut self, r: Range<D>, x: T)  // O(1)
+    fn finish(self) -> [D]T              // O(|D|)
 
 struct Diff<R, C, T>
-    fn new() -> Diff<R, C, T>                       // O(|R| * |C|)
+    fn new() -> Diff<R, C, T>                               // O(|R| * |C|)
     fn add(mut self, rows: Range<R>, cols: Range<C>, x: T)  // O(1)
-    fn finish(self) -> [R, C]T                      // O(|R| * |C|)
+    fn finish(self) -> [R, C]T                              // O(|R| * |C|)
 ```
 
 Matched C++17 benchmarks live in `bench/prefix/` (`Prefix` 1D/2D, `Diff` 1D/2D,
@@ -264,23 +262,23 @@ suffices.
 
 ```cp
 // Existing
-struct Fenwick<D, T>                                // point add, range sum
-    fn new(a: ?[D]T = None) -> Fenwick<D, T>        // O(n)
-    fn add(mut self, i: D, x: T)                    // O(log n)
-    fn prefix(self, b: Cut<D>) -> T              // O(log n)
-    fn sum(self, r: Range<D>) -> T                  // O(log n)
-    fn first_ge(self, target: Int) -> ?Cut<D> // O(log n), non-negative
-    fn kth(self, k: Int) -> ?D                      // O(log n), 1-based
+struct Fenwick<D, T>                           // point add, range sum
+    fn new(a: ?[D]T = None) -> Fenwick<D, T>   // O(n)
+    fn add(mut self, i: D, x: T)               // O(log n)
+    fn prefix(self, b: Cut<D>) -> T            // O(log n)
+    fn sum(self, r: Range<D>) -> T             // O(log n)
+    fn first_ge(self, target: Int) -> ?Cut<D>  // O(log n), non-negative
+    fn kth(self, k: Int) -> ?D                 // O(log n), 1-based
 
-struct XorFenwick<D, T>                             // point xor, range xor
-    fn new(a: ?[D]T = None) -> XorFenwick<D, T>     // O(n)
-    fn flip(mut self, i: D, x: T)                   // O(log n)
+struct XorFenwick<D, T>                          // point xor, range xor
+    fn new(a: ?[D]T = None) -> XorFenwick<D, T>  // O(n)
+    fn flip(mut self, i: D, x: T)                // O(log n)
     fn prefix(self, b: Cut<D>) -> T              // O(log n)
-    fn xor(self, r: Range<D>) -> T                  // O(log n)
+    fn xor(self, r: Range<D>) -> T               // O(log n)
 
-struct Fenwick2D<R, C, T>                           // point add, rect sum
-    fn new() -> Fenwick2D<R, C, T>                  // O(R * C)
-    fn add(mut self, r: R, c: C, x: T)              // O(log R * log C)
+struct Fenwick2D<R, C, T>                              // point add, rect sum
+    fn new() -> Fenwick2D<R, C, T>                     // O(R * C)
+    fn add(mut self, r: R, c: C, x: T)                 // O(log R * log C)
     fn sum(self, rows: Range<R>, cols: Range<C>) -> T  // O(log R * log C)
 ```
 
@@ -295,16 +293,16 @@ Additions to `std.fenwick`:
   far smaller constant factor than `LazySegTree<D, Int>(AddSum)`.
 
 ```cp
-struct DualFenwick<D, T>                            // range add, point get
-    fn new(a: ?[D]T = None) -> DualFenwick<D, T>    // O(n)
-    fn add(mut self, r: Range<D>, x: T)             // O(log n)
-    fn get(self, i: D) -> T                         // O(log n)
+struct DualFenwick<D, T>                          // range add, point get
+    fn new(a: ?[D]T = None) -> DualFenwick<D, T>  // O(n)
+    fn add(mut self, r: Range<D>, x: T)           // O(log n)
+    fn get(self, i: D) -> T                       // O(log n)
 
-struct RangeFenwick<D>                              // range add, range sum (Int)
-    fn new(a: ?[D]Int = None) -> RangeFenwick<D>    // O(n)
-    fn add(mut self, r: Range<D>, x: Int)           // O(log n)
-    fn prefix(self, b: Cut<D>) -> Int            // O(log n)
-    fn sum(self, r: Range<D>) -> Int                // O(log n)
+struct RangeFenwick<D>                            // range add, range sum (Int)
+    fn new(a: ?[D]Int = None) -> RangeFenwick<D>  // O(n)
+    fn add(mut self, r: Range<D>, x: Int)         // O(log n)
+    fn prefix(self, b: Cut<D>) -> Int             // O(log n)
+    fn sum(self, r: Range<D>) -> Int              // O(log n)
 ```
 
 ### 3.4 `std.segtree` — iterative point-update segment tree
@@ -315,16 +313,16 @@ left-to-right fold order for non-commutative monoids.
 ```cp
 struct SegTree<D, T>(m: Monoid<T>)
     fn new<M>(op: M, a: ?[D]T = None, fill: ?T = None) -> SegTree<D, T>  // O(n)
-    fn of<M>(op: M, f: D -> T) -> SegTree<D, T>     // O(n)
-    fn refresh(mut self, i: D)                      // O(log n)
-    fn get(self, i: D) -> T                         // O(1)
-    fn set(mut self, i: D, x: T)                    // O(log n)
-    fn update(mut self, i: D, f: T -> T)            // O(log n)
-    fn fold(self, r: Range<D>) -> T                 // O(log n)
-    @get fn all(self) -> T                          // O(1)
-    @get fn monoid(self) -> Monoid<T>               // O(1)
-    fn max_right(self, from: Cut<D>, ok: T -> Bool) -> Cut<D>  // O(log n)
-    fn min_left(self, to: Cut<D>, ok: T -> Bool) -> Cut<D>     // O(log n)
+    fn of<M>(op: M, f: D -> T) -> SegTree<D, T>                          // O(n)
+    fn refresh(mut self, i: D)                                           // O(log n)
+    fn get(self, i: D) -> T                                              // O(1)
+    fn set(mut self, i: D, x: T)                                         // O(log n)
+    fn update(mut self, i: D, f: T -> T)                                 // O(log n)
+    fn fold(self, r: Range<D>) -> T                                      // O(log n)
+    @get fn all(self) -> T                                               // O(1)
+    @get fn monoid(self) -> Monoid<T>                                    // O(1)
+    fn max_right(self, from: Cut<D>, ok: T -> Bool) -> Cut<D>            // O(log n)
+    fn min_left(self, to: Cut<D>, ok: T -> Bool) -> Cut<D>               // O(log n)
 ```
 
 Law for `max_right(from, ok)`: `ok(m.id)` must hold, and
@@ -341,41 +339,45 @@ range-apply + point-get with no monoid, no `pull`, and no `span` array
 
 ```cp
 struct LazySegTree<D, T, F>(act: Action<T, F>)
-    fn new(act: Action<T, F>, a: ?[D]T = None,
-           fill: ?T = None) -> LazySegTree<D, T, F> // O(n)
-    fn get(mut self, i: D) -> T                     // O(log n)
-    fn set(mut self, i: D, x: T)                    // O(log n)
-    fn update(mut self, i: D, f: T -> T)            // O(log n)
-    fn fold(mut self, r: Range<D>) -> T             // O(log n)
-    fn apply(mut self, r: Range<D>, f: F)           // O(log n)
-    @get fn all(self) -> T                          // O(1)
-    @get fn monoid(self) -> Monoid<T>               // O(1)
-    fn max_right(mut self, from: Cut<D>, ok: T -> Bool) -> Cut<D>  // O(log n)
-    fn min_left(mut self, to: Cut<D>, ok: T -> Bool) -> Cut<D>     // O(log n)
+    fn new(act: Action<T, F>, a: ?[D]T = None, fill: ?T = None) -> LazySegTree<D, T, F>  // O(n)
+    fn get(mut self, i: D) -> T                                                          // O(log n)
+    fn set(mut self, i: D, x: T)                                                         // O(log n)
+    fn update(mut self, i: D, f: T -> T)                                                 // O(log n)
+    fn fold(mut self, r: Range<D>) -> T                                                  // O(log n)
+    fn apply(mut self, r: Range<D>, f: F)                                                // O(log n)
+    @get fn all(self) -> T                                                               // O(1)
+    @get fn monoid(self) -> Monoid<T>                                                    // O(1)
+    fn max_right(mut self, from: Cut<D>, ok: T -> Bool) -> Cut<D>                        // O(log n)
+    fn min_left(mut self, to: Cut<D>, ok: T -> Bool) -> Cut<D>                           // O(log n)
 
 /// Range apply, point get — no fold monoid, no pulls, no span array.
 /// `compose(new_f, old_f)` applies `old_f` first, then `new_f`.
 /// Memory: `bit_ceil(n)` leaves + `bit_ceil(n)` internal tags.
 struct DualSegTree<D, T, F>
-    fn new(id: F, compose: (F, F) -> F, apply: (F, T) -> T,
-           a: ?[D]T = None, fill: ?T = None) -> DualSegTree<D, T, F>  // O(n)
-    fn apply(mut self, r: Range<D>, f: F)           // O(log n)
-    fn get(mut self, i: D) -> T                     // O(log n)
-    fn set(mut self, i: D, x: T)                    // O(log n)
-    fn update(mut self, i: D, f: T -> T)            // O(log n)
+    fn new(
+        id: F,
+        compose: (F, F) -> F,
+        apply: (F, T) -> T,
+        a: ?[D]T = None,
+        fill: ?T = None,
+    ) -> DualSegTree<D, T, F>              // O(n)
+    fn apply(mut self, r: Range<D>, f: F)  // O(log n)
+    fn get(mut self, i: D) -> T            // O(log n)
+    fn set(mut self, i: D, x: T)           // O(log n)
+    fn update(mut self, i: D, f: T -> T)   // O(log n)
 ```
 
 Stock actions in `std.lazy`:
 
 ```cp
-const AddSum: Action<Int, Int>                      // + over +
-const AddMin: Action<Int, Int>                      // + over min
-const AddMax: Action<Int, Int>                      // + over max
-const AssignSum: Action<Int, ?Int>                  // assign over +
-const AssignMin: Action<Int, ?Int>                  // assign over min
-const AssignMax: Action<Int, ?Int>                  // assign over max
-const AffineSum: Action<Int, (Int, Int)>            // (mul, add) over +
-fn affine_sum<T>() -> Action<T, (T, T)>             // generic (Int, Mod<P>)
+const AddSum: Action<Int, Int>            // + over +
+const AddMin: Action<Int, Int>            // + over min
+const AddMax: Action<Int, Int>            // + over max
+const AssignSum: Action<Int, ?Int>        // assign over +
+const AssignMin: Action<Int, ?Int>        // assign over min
+const AssignMax: Action<Int, ?Int>        // assign over max
+const AffineSum: Action<Int, (Int, Int)>  // (mul, add) over +
+fn affine_sum<T>() -> Action<T, (T, T)>   // generic (Int, Mod<P>)
 ```
 
 Note on **non-pushing / commutative dual trees**: when `compose` is
@@ -392,13 +394,13 @@ are always sound without a trap; commutative range-add belongs to
 // Existing: O(n log n) build, O(1) query; op must be associative and idempotent
 struct SparseTable<D, T>(op: (T, T) -> T)
     fn new(op: (T, T) -> T, a: [D]T) -> SparseTable<D, T>  // O(n log n)
-    fn fold(self, r: Range<D>) -> T                 // O(1); asserts non-empty
+    fn fold(self, r: Range<D>) -> T                        // O(1); asserts non-empty
 fn idempotent<T>(op: (T, T) -> T, xs: List<T>) -> Bool     // O(n)
 
 // New: O(n log n) build, O(1) query; any associative semigroup (no idempotence!)
 struct DisjointSparseTable<D, T>(op: (T, T) -> T)
     fn new(op: (T, T) -> T, a: [D]T) -> DisjointSparseTable<D, T>  // O(n log n)
-    fn fold(self, r: Range<D>) -> T                 // O(1); asserts non-empty
+    fn fold(self, r: Range<D>) -> T                                // O(1); asserts non-empty
 ```
 
 `DisjointSparseTable` divides the array recursively at midpoints, storing
@@ -416,23 +418,23 @@ Promoted from `examples/local-lib/ds/mono_deque.cp` and
 ```cp
 /// Sliding-window min or max over positions pushed in increasing order.
 struct MonoDeque<T>
-    fn new(pick: (T, T) -> T) -> MonoDeque<T>       // O(1); min or max
-    fn by(better: (T, T) -> Bool) -> MonoDeque<T>   // O(1); custom strict order
-    @get fn len(self) -> Int                        // O(1)
-    @get fn is_empty(self) -> Bool                  // O(1)
-    @get fn best(self) -> ?T                        // O(1)
-    fn clear(mut self)                              // O(1)
-    fn push(mut self, at: Int, val: T)              // amortized O(1)
-    fn drop_before(mut self, min_at: Int)           // amortized O(1)
+    fn new(pick: (T, T) -> T) -> MonoDeque<T>      // O(1); min or max
+    fn by(better: (T, T) -> Bool) -> MonoDeque<T>  // O(1); custom strict order
+    @get fn len(self) -> Int                       // O(1)
+    @get fn is_empty(self) -> Bool                 // O(1)
+    @get fn best(self) -> ?T                       // O(1)
+    fn clear(mut self)                             // O(1)
+    fn push(mut self, at: Int, val: T)             // amortized O(1)
+    fn drop_before(mut self, min_at: Int)          // amortized O(1)
 
 /// FIFO queue supporting O(1) monoid fold of all elements without inverses.
 struct WindowFold<T>(m: Monoid<T>)
-    fn new<M>(op: M) -> WindowFold<T>               // O(1)
-    @get fn len(self) -> Int                        // O(1)
-    @get fn is_empty(self) -> Bool                  // O(1)
-    @get fn fold(self) -> T                         // O(1)
-    fn push(mut self, x: T)                         // O(1)
-    fn pop(mut self) -> ?T                          // amortized O(1)
+    fn new<M>(op: M) -> WindowFold<T>  // O(1)
+    @get fn len(self) -> Int           // O(1)
+    @get fn is_empty(self) -> Bool     // O(1)
+    @get fn fold(self) -> T            // O(1)
+    fn push(mut self, x: T)            // O(1)
+    fn pop(mut self) -> ?T             // amortized O(1)
 ```
 
 ### 3.8 Advanced range structures (`std.ranges` / dedicated modules)
@@ -446,11 +448,11 @@ values inside a range:
 
 ```cp
 struct MergeSortTree<D, T>
-    fn new(a: [D]T) -> MergeSortTree<D, T>          // O(n log n)
-    fn count_lt(self, r: Range<D>, x: T) -> Int     // O(log^2 n)
-    fn count_le(self, r: Range<D>, x: T) -> Int     // O(log^2 n)
+    fn new(a: [D]T) -> MergeSortTree<D, T>               // O(n log n)
+    fn count_lt(self, r: Range<D>, x: T) -> Int          // O(log^2 n)
+    fn count_le(self, r: Range<D>, x: T) -> Int          // O(log^2 n)
     fn count_in(self, r: Range<D>, lo: T, hi: T) -> Int  // O(log^2 n), [lo, hi)
-    fn first_ge(self, r: Range<D>, x: T) -> ?T      // O(log^2 n)
+    fn first_ge(self, r: Range<D>, x: T) -> ?T           // O(log^2 n)
 ```
 
 **Dynamic / sparse segment tree (`SparseSegTree<T>`):** coordinate-free
@@ -460,10 +462,10 @@ point-update / range-fold over an integer interval `lo..hi` (up to
 ```cp
 struct SparseSegTree<T>(m: Monoid<T>, lo: Int, hi: Int)
     fn new<M>(op: M, lo: Int, hi: Int) -> SparseSegTree<T>  // O(1)
-    fn set(mut self, x: Int, v: T)                  // O(log W)
-    fn update(mut self, x: Int, f: T -> T)          // O(log W)
-    fn fold(self, r: Range<Int>) -> T               // O(log W)
-    @get fn nodes(self) -> Int                      // O(1)
+    fn set(mut self, x: Int, v: T)                          // O(log W)
+    fn update(mut self, x: Int, f: T -> T)                  // O(log W)
+    fn fold(self, r: Range<Int>) -> T                       // O(log W)
+    @get fn nodes(self) -> Int                              // O(1)
 ```
 
 **Persistent segment tree & range k-th (`std.persistent`):** uses a
@@ -476,15 +478,15 @@ struct Version(id: Int)
 
 struct PersistentSegTree<D, T>(m: Monoid<T>)
     fn new<M>(op: M, a: ?[D]T = None) -> (PersistentSegTree<D, T>, Version)  // O(n)
-    fn set(mut self, v: Version, i: D, x: T) -> Version     // O(log n) time & nodes
-    fn update(mut self, v: Version, i: D, f: T -> T) -> Version  // O(log n)
-    fn get(self, v: Version, i: D) -> T             // O(log n)
-    fn fold(self, v: Version, r: Range<D>) -> T     // O(log n)
+    fn set(mut self, v: Version, i: D, x: T) -> Version                      // O(log n) time & nodes
+    fn update(mut self, v: Version, i: D, f: T -> T) -> Version              // O(log n)
+    fn get(self, v: Version, i: D) -> T                                      // O(log n)
+    fn fold(self, v: Version, r: Range<D>) -> T                              // O(log n)
 
-struct RangeKth<D>                                  // static range order stats
-    fn new(a: [D]Int) -> RangeKth<D>                // O(n log n)
-    fn kth(self, r: Range<D>, k: Int) -> ?Int       // O(log n), 0-based
-    fn count_lt(self, r: Range<D>, x: Int) -> Int   // O(log n)
+struct RangeKth<D>                                 // static range order stats
+    fn new(a: [D]Int) -> RangeKth<D>               // O(n log n)
+    fn kth(self, r: Range<D>, k: Int) -> ?Int      // O(log n), 0-based
+    fn count_lt(self, r: Range<D>, x: Int) -> Int  // O(log n)
 ```
 
 **Li Chao tree (`std.lichao`):** promotes `examples/local-lib/ds/li_chao.cp`
@@ -493,20 +495,20 @@ and adds segment insertion (`add_segment`, O(log^2 W)) and optional
 
 ```cp
 struct Line(k: Int, m: Int)
-    fn at(self, x: Int) -> Int                      // O(1)
+    fn at(self, x: Int) -> Int  // O(1)
 
 struct LiChao(lo: Int, hi: Int)
-    fn new(lo: Int, hi: Int) -> LiChao              // O(1)
-    fn add(mut self, line: Line)                    // O(log W)
+    fn new(lo: Int, hi: Int) -> LiChao                   // O(1)
+    fn add(mut self, line: Line)                         // O(log W)
     fn add_segment(mut self, r: Range<Int>, line: Line)  // O(log^2 W)
-    fn min_at(self, x: Int) -> ?Int                 // O(log W)
+    fn min_at(self, x: Int) -> ?Int                      // O(log W)
 
 struct TaggedLine<V>(k: Int, m: Int, tag: V)
 struct LiChaoTag<V>(lo: Int, hi: Int)
-    fn new(lo: Int, hi: Int) -> LiChaoTag<V>        // O(1)
-    fn add(mut self, line: TaggedLine<V>)           // O(log W)
+    fn new(lo: Int, hi: Int) -> LiChaoTag<V>                      // O(1)
+    fn add(mut self, line: TaggedLine<V>)                         // O(log W)
     fn add_segment(mut self, r: Range<Int>, line: TaggedLine<V>)  // O(log^2 W)
-    fn min_at(self, x: Int) -> ?(Int, V)            // O(log W)
+    fn min_at(self, x: Int) -> ?(Int, V)                          // O(log W)
 ```
 
 **Segment-tree beats (`std.beats`):** promotes and generalizes
@@ -516,13 +518,13 @@ per operation, O(n) memory:
 
 ```cp
 struct BeatsSegTree<D>
-    fn new(a: [D]Int) -> BeatsSegTree<D>            // O(n)
-    fn chmin(mut self, r: Range<D>, x: Int)         // amortized O(log^2 n)
-    fn chmax(mut self, r: Range<D>, x: Int)         // amortized O(log^2 n)
-    fn add(mut self, r: Range<D>, x: Int)           // amortized O(log^2 n)
-    fn sum(mut self, r: Range<D>) -> Int            // O(log n)
-    fn min_in(mut self, r: Range<D>) -> ?Int        // O(log n)
-    fn max_in(mut self, r: Range<D>) -> ?Int        // O(log n)
+    fn new(a: [D]Int) -> BeatsSegTree<D>      // O(n)
+    fn chmin(mut self, r: Range<D>, x: Int)   // amortized O(log^2 n)
+    fn chmax(mut self, r: Range<D>, x: Int)   // amortized O(log^2 n)
+    fn add(mut self, r: Range<D>, x: Int)     // amortized O(log^2 n)
+    fn sum(mut self, r: Range<D>) -> Int      // O(log n)
+    fn min_in(mut self, r: Range<D>) -> ?Int  // O(log n)
+    fn max_in(mut self, r: Range<D>) -> ?Int  // O(log n)
 ```
 
 **Offline sweeps & Mo's algorithm (`std.mo`):** promotes
@@ -533,28 +535,23 @@ connectivity / rollback DSU problems (`cf2069f` pattern):
 ```cp
 /// Ordering of offline range queries in O((n + q) sqrt n) window moves.
 /// Returns query indices in traversal order.
-fn mo_order<D>(queries: List<Range<D>>) -> List<Int>         // O(q log q)
+fn mo_order<D>(queries: List<Range<D>>) -> List<Int>  // O(q log q)
 
 /// Generator yielding `(pos: D, entering: Bool)` moves from `from` to `to`.
 /// Expands before shrinking so the window is never inverted.
 fn mo_steps<D>(from: Range<D>, to: Range<D>) -> yields (pos: D, entering: Bool)
-                                                             // O(|dl| + |dr|)
+// O(|dl| + |dr|)
 
 /// In-place Mo driver: calls `add(pos)` / `remove(pos)` O((n + q) sqrt n)
 /// times and `answer(qi)` q times, returning results in original query order.
 /// Allocates only the traversal order and the results.
-fn mo<D, R>(
-    queries: List<Range<D>>,
-    add: D -> (),
-    remove: D -> (),
-    answer: Int -> R,
-) -> List<R>                                                 // O((n + q) sqrt n)
+fn mo<D, R>(queries: List<Range<D>>, add: D -> (), remove: D -> (), answer: Int -> R) -> List<R>  // O((n + q) sqrt n)
 
 /// Offline divide-and-conquer over time `0..q`: attach events active on
 /// `r: Range<T>` and walk leaves in O((q + e) log q) push/undo calls.
 struct TimeTree<T, E>
-    fn new() -> TimeTree<T, E>                               // O(q)
-    fn add(mut self, r: Range<T>, event: E)                  // O(log q)
+    fn new() -> TimeTree<T, E>                                   // O(q)
+    fn add(mut self, r: Range<T>, event: E)                      // O(log q)
     fn visit(self, enter: E -> (), leave: E -> (), at: T -> ())  // O((q + e) log q)
 ```
 

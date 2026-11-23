@@ -137,16 +137,16 @@ are named arguments (`bases:`). Container-like structures follow `plan/STDLIB.md
 
 <!-- spec-only: signatures and costs, not a program -->
 ```cp
-fn repeat(self: Str, n: Int) -> Str                 // O(n * self.len)
-fn starts_with(self: Str, p: Str, at: Int = 0) -> Bool  // O(p.len)
-fn ends_with(self: Str, p: Str) -> Bool             // O(p.len)
-fn search<P>(self: Str, p: P) -> ?Int               // O(self.len + p.len)
-fn rsearch<P>(self: Str, p: P) -> ?Int              // O(self.len + p.len)
-fn count(self: Str, c: Char) -> Int                 // O(self.len)
-@get fn lower(self: Char) -> Char                   // O(1)
-@get fn upper(self: Char) -> Char                   // O(1)
-@get fn digit(self: Char) -> Int                    // O(1); traps outside '0'..'9'
-fn is_palindrome<S: Indexed>(s: S) -> Bool          // O(n)
+fn repeat(self: Str, n: Int) -> Str                                     // O(n * self.len)
+fn starts_with(self: Str, p: Str, at: Int = 0) -> Bool                  // O(p.len)
+fn ends_with(self: Str, p: Str) -> Bool                                 // O(p.len)
+fn search<P>(self: Str, p: P) -> ?Int                                   // O(self.len + p.len)
+fn rsearch<P>(self: Str, p: P) -> ?Int                                  // O(self.len + p.len)
+fn count(self: Str, c: Char) -> Int                                     // O(self.len)
+@get fn lower(self: Char) -> Char                                       // O(1)
+@get fn upper(self: Char) -> Char                                       // O(1)
+@get fn digit(self: Char) -> Int                                        // O(1); traps outside '0'..'9'
+fn is_palindrome<S: Indexed>(s: S) -> Bool                              // O(n)
 fn common_prefix_len<A: Indexed, B: Indexed>(self: A, other: B) -> Int  // O(min)
 fn common_suffix_len<A: Indexed, B: Indexed>(self: A, other: B) -> Int  // O(min)
 ```
@@ -160,21 +160,21 @@ Laws:
 
 <!-- spec-only: signatures and costs, not a program -->
 ```cp
-fn z_function<S: Indexed<K, T>, K, T: Eq>(s: S) -> [K]Int       // O(n)
-fn prefix_function<S: Indexed<K, T>, K, T: Eq>(s: S) -> [K]Int  // O(n)
-fn find_all<S: Indexed, P: Indexed>(self: S, pat: P) -> yields Int // O(|self| + |pat|)
-fn period<S: Indexed>(s: S) -> Int                              // O(n)
-fn borders<S: Indexed>(s: S) -> yields Int                      // O(n); longest first
+fn z_function<S: Indexed<K, T>, K, T: Eq>(s: S) -> [K]Int           // O(n)
+fn prefix_function<S: Indexed<K, T>, K, T: Eq>(s: S) -> [K]Int      // O(n)
+fn find_all<S: Indexed, P: Indexed>(self: S, pat: P) -> yields Int  // O(|self| + |pat|)
+fn period<S: Indexed>(s: S) -> Int                                  // O(n)
+fn borders<S: Indexed>(s: S) -> yields Int                          // O(n); longest first
 fn prefix_matches<S: Indexed<K, T>, P: Indexed<J, T>, K, J, T: Eq>(self: S, pat: P) -> [K]Int
-    // O(|self| + |pat|); entry i is the longest prefix of pat ending at self[i]
+// O(|self| + |pat|); entry i is the longest prefix of pat ending at self[i]
 fn overlap<A: Indexed, B: Indexed>(a: A, b: B) -> Int
-    // O(|a| + |b|); longest suffix of a that is a prefix of b
+// O(|a| + |b|); longest suffix of a that is a prefix of b
 fn lyndon_factorization<S: Indexed>(s: S) -> List<Int>
-    // O(n) Duval; start indices of the unique non-increasing Lyndon factors
-fn min_rotation<S: Indexed, K>(s: S) -> ?K   // start key; None on empty
-    // O(n) Duval/Booth; start index of the lexicographically least cyclic shift
+// O(n) Duval; start indices of the unique non-increasing Lyndon factors
+fn min_rotation<S: Indexed, K>(s: S) -> ?K  // start key; None on empty
+// O(n) Duval/Booth; start index of the lexicographically least cyclic shift
 fn lyndon_runs<S: Indexed>(s: S) -> List<(l: Int, r: Int, period: Int)>
-    // O(n log n) Bannai runs theorem; all maximal periodic repetitions
+// O(n log n) Bannai runs theorem; all maximal periodic repetitions
 ```
 
 Laws:
@@ -199,24 +199,24 @@ Laws:
 <!-- spec-only: signatures and costs, not a program -->
 ```cp
 struct Palindromes(odd: List<Int>, even: List<Int>):
-    fn is_palindrome<R>(self, r: R) -> Bool          // O(1); Range<Int> or Range<D>
-    fn count(self) -> Int                            // O(n); total palindromic substrings
-    fn longest(self) -> (l: Int, r: Int)             // O(n); longest palindromic range
+    fn is_palindrome<R>(self, r: R) -> Bool  // O(1); Range<Int> or Range<D>
+    fn count(self) -> Int                    // O(n); total palindromic substrings
+    fn longest(self) -> (l: Int, r: Int)     // O(n); longest palindromic range
 
-fn manacher<S: Indexed>(s: S) -> Palindromes         // O(n)
+fn manacher<S: Indexed>(s: S) -> Palindromes  // O(n)
 
 struct PalindromicTree<A>:
-    fn new() -> PalindromicTree<A>                   // O(|A|)
-    fn of<S: Seq>(s: S) -> PalindromicTree<A>        // O(n * |A|) mem, O(n) time
-    fn push(mut self, a: A) -> Int                   // O(1) amortized; returns last state
-    @get fn len(self) -> Int                         // O(1); states incl. 2 roots
-    @get fn distinct(self) -> Int                    // O(1); len - 2
-    fn pal_len(self, state: Int) -> Int              // O(1)
-    fn link(self, state: Int) -> Int                 // O(1); longest proper pal suffix
-    fn step(self, state: Int, a: A) -> ?Int          // O(1); a + P + a
-    fn diff(self, state: Int) -> Int                 // O(1); pal_len - pal_len(link)
-    fn series_link(self, state: Int) -> Int          // O(1); nearest ancestor with other diff
-    fn occ_counts(self) -> List<Int>                 // O(n); total occurrences per state
+    fn new() -> PalindromicTree<A>             // O(|A|)
+    fn of<S: Seq>(s: S) -> PalindromicTree<A>  // O(n * |A|) mem, O(n) time
+    fn push(mut self, a: A) -> Int             // O(1) amortized; returns last state
+    @get fn len(self) -> Int                   // O(1); states incl. 2 roots
+    @get fn distinct(self) -> Int              // O(1); len - 2
+    fn pal_len(self, state: Int) -> Int        // O(1)
+    fn link(self, state: Int) -> Int           // O(1); longest proper pal suffix
+    fn step(self, state: Int, a: A) -> ?Int    // O(1); a + P + a
+    fn diff(self, state: Int) -> Int           // O(1); pal_len - pal_len(link)
+    fn series_link(self, state: Int) -> Int    // O(1); nearest ancestor with other diff
+    fn occ_counts(self) -> List<Int>           // O(n); total occurrences per state
 ```
 
 Laws:
@@ -235,22 +235,22 @@ Laws:
 <!-- spec-only: signatures and costs, not a program -->
 ```cp
 struct HashVal(h1: Int, h2: Int):
-    @get fn hash_token(self) -> Int                  // O(1)
+    @get fn hash_token(self) -> Int  // O(1)
 
 trait Hashable:
     @get fn hash_token(self) -> Int = Int(self)
 
 struct RollingHash:
-    fn new<S>(seq: S, bases: ?(Int, Int) = None) -> RollingHash       // O(n)
-    fn with_bases<S>(seq: S, bases: (Int, Int)) -> RollingHash        // O(n)
-    @get fn len(self) -> Int                                          // O(1)
-    @get fn all(self) -> HashVal                                      // O(1)
-    fn slice(self, l: Int, r: Int) -> HashVal                         // O(1)
-    fn get<R>(self, r: R) -> HashVal                                  // O(1)
-    fn combine(self, a: HashVal, b: HashVal, b_len: Int) -> HashVal   // O(1)
-    fn lcp(self, a: Int, b: Int) -> Int                               // O(log n)
-    fn lcs(self, a: Int, b: Int) -> Int                               // O(log n)
-    fn lcp_with(self, a: Int, other: RollingHash, b: Int) -> Int      // O(log n)
+    fn new<S>(seq: S, bases: ?(Int, Int) = None) -> RollingHash      // O(n)
+    fn with_bases<S>(seq: S, bases: (Int, Int)) -> RollingHash       // O(n)
+    @get fn len(self) -> Int                                         // O(1)
+    @get fn all(self) -> HashVal                                     // O(1)
+    fn slice(self, l: Int, r: Int) -> HashVal                        // O(1)
+    fn get<R>(self, r: R) -> HashVal                                 // O(1)
+    fn combine(self, a: HashVal, b: HashVal, b_len: Int) -> HashVal  // O(1)
+    fn lcp(self, a: Int, b: Int) -> Int                              // O(log n)
+    fn lcs(self, a: Int, b: Int) -> Int                              // O(log n)
+    fn lcp_with(self, a: Int, other: RollingHash, b: Int) -> Int     // O(log n)
 
 struct Hash2D<R, C>:
     fn new(code: (R, C) -> Int, bases: ?(Int, Int) = None) -> Hash2D<R, C>  // O(R * C)
@@ -271,7 +271,7 @@ Laws:
 
 <!-- spec-only: signatures and costs, not a program -->
 ```cp
-fn suffix_array<S: Indexed>(s: S) -> SuffixArray       // the `SuffixArray` below; `.sa`, `.lcp` (Kasai)
+fn suffix_array<S: Indexed>(s: S) -> SuffixArray  // the `SuffixArray` below; `.sa`, `.lcp` (Kasai)
 
 struct SuffixArray<T>:
     s: List<T>
@@ -279,33 +279,33 @@ struct SuffixArray<T>:
     rank: List<Int>
     lcp: List<Int>
 
-    fn new<S: Indexed>(s: S) -> SuffixArray<T>       // O(n log n) build (SA-IS + Kasai + RMQ)
-    @get fn len(self) -> Int                         // O(1)
-    fn lcp_between(self, i: Int, j: Int) -> Int      // O(1)
-    fn rank_range<P: Indexed>(self, pat: P) -> Range<Int> // O(|pat| log n); rank range lo..hi
-    fn count<P: Indexed>(self, pat: P) -> Int        // O(|pat| log n)
+    fn new<S: Indexed>(s: S) -> SuffixArray<T>             // O(n log n) build (SA-IS + Kasai + RMQ)
+    @get fn len(self) -> Int                               // O(1)
+    fn lcp_between(self, i: Int, j: Int) -> Int            // O(1)
+    fn rank_range<P: Indexed>(self, pat: P) -> Range<Int>  // O(|pat| log n); rank range lo..hi
+    fn count<P: Indexed>(self, pat: P) -> Int              // O(|pat| log n)
     fn lcp_range(self, i: Int, len: Int) -> Range<Int>
-        // O(log n); rank range whose LCP with suffix i is >= len
+    // O(log n); rank range whose LCP with suffix i is >= len
     fn compare(self, l1: Int, r1: Int, l2: Int, r2: Int) -> Int
-        // O(1); -1, 0, or 1 comparing s[l1..r1] vs s[l2..r2]
-    @get fn distinct(self) -> Int                    // O(n); distinct non-empty substrings
+    // O(1); -1, 0, or 1 comparing s[l1..r1] vs s[l2..r2]
+    @get fn distinct(self) -> Int  // O(n); distinct non-empty substrings
 
 struct SuffixAutomaton<A>:
-    fn new() -> SuffixAutomaton<A>                   // O(|A|)
-    fn of<S: Seq>(s: S) -> SuffixAutomaton<A>        // O(n * |A|) mem, O(n) time
-    fn push(mut self, a: A)                          // O(1) amortized
-    @get fn root(self) -> Int                        // O(1); 0
-    @get fn len(self) -> Int                         // O(1); <= max(2n - 1, 1)
-    fn step(self, state: Int, a: A) -> ?Int          // O(1)
-    fn link(self, state: Int) -> ?Int                // O(1)
-    fn longest(self, state: Int) -> Int              // O(1)
-    fn shortest(self, state: Int) -> Int             // O(1)
-    fn first_pos(self, state: Int) -> Int            // O(1); end index of first occurrence
-    fn find<S: Seq>(self, word: S) -> ?Int           // O(|word|)
-    fn contains<S: Seq>(self, word: S) -> Bool       // O(|word|)
-    @get fn distinct(self) -> Int                    // O(states)
-    fn topo_order(self) -> List<Int>                 // O(states); non-decreasing longest
-    fn occ_counts(self) -> List<Int>                 // O(states); endpos count per state
+    fn new() -> SuffixAutomaton<A>              // O(|A|)
+    fn of<S: Seq>(s: S) -> SuffixAutomaton<A>   // O(n * |A|) mem, O(n) time
+    fn push(mut self, a: A)                     // O(1) amortized
+    @get fn root(self) -> Int                   // O(1); 0
+    @get fn len(self) -> Int                    // O(1); <= max(2n - 1, 1)
+    fn step(self, state: Int, a: A) -> ?Int     // O(1)
+    fn link(self, state: Int) -> ?Int           // O(1)
+    fn longest(self, state: Int) -> Int         // O(1)
+    fn shortest(self, state: Int) -> Int        // O(1)
+    fn first_pos(self, state: Int) -> Int       // O(1); end index of first occurrence
+    fn find<S: Seq>(self, word: S) -> ?Int      // O(|word|)
+    fn contains<S: Seq>(self, word: S) -> Bool  // O(|word|)
+    @get fn distinct(self) -> Int               // O(states)
+    fn topo_order(self) -> List<Int>            // O(states); non-decreasing longest
+    fn occ_counts(self) -> List<Int>            // O(states); endpos count per state
 ```
 
 Laws:
@@ -337,15 +337,15 @@ struct Trie<A>:
 
 struct AhoCorasick<A>:
     fn new<S: Seq>(patterns: List<S>) -> AhoCorasick<A>  // O(sum |p| * |A|)
-    @get fn root(self) -> Int                          // O(1); 0
-    @get fn len(self) -> Int                           // O(1); states incl. root
-    fn step(self, state: Int, a: A) -> Int             // O(1); total DFA transition
-    fn link(self, state: Int) -> Int                   // O(1); failure link
-    fn hit(self, state: Int) -> Bool                   // O(1); any pattern ends here
-    fn words_at(self, state: Int) -> List<Int>         // O(output); longest first
+    @get fn root(self) -> Int                            // O(1); 0
+    @get fn len(self) -> Int                             // O(1); states incl. root
+    fn step(self, state: Int, a: A) -> Int               // O(1); total DFA transition
+    fn link(self, state: Int) -> Int                     // O(1); failure link
+    fn hit(self, state: Int) -> Bool                     // O(1); any pattern ends here
+    fn words_at(self, state: Int) -> List<Int>           // O(output); longest first
     fn find_all<S: Seq>(self, text: S) -> yields (at: Int, pattern: Int)
-        // O(|text| + output); ordered by end position
-    fn counts<S: Seq>(self, text: S) -> List<Int>      // O(|text| + states)
+    // O(|text| + output); ordered by end position
+    fn counts<S: Seq>(self, text: S) -> List<Int>  // O(|text| + states)
 ```
 
 Laws:
@@ -408,8 +408,8 @@ ranks from largest LCP down using `DsuOf`.
 ```cp
 // Two suffixes are r-alike iff every adjacent LCP between their ranks is >= r.
 // Sweep r downward, merging adjacent ranks and tracking each group's min/max score.
-use std.strings.{SuffixArray}
 use std.dsu.{DsuOf}
+use std.strings.{SuffixArray}
 
 struct Span(lo: Int, hi: Int)
 
@@ -452,8 +452,8 @@ multiple of `w`; its valid start range is determined by `lcs(q, q + w)` and
 // Every square AA of half-length w straddles a unique (q, q + w) with w | q.
 // lcs and lcp give the exact interval of starts; difference arrays accumulate
 // squares starting and ending at each position.
-use std.strings.{RollingHash}
 use std.prefix.{scan}
+use std.strings.{RollingHash}
 
 @!multitest
 let s: Str = read()

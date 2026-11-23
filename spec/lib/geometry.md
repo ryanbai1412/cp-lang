@@ -106,37 +106,37 @@ callers never lose point IDs or build `(p: Pt, id: Int)` wrapper structs:
 
 <!-- spec-only: signatures and costs, not a program -->
 ```cp
-struct Pt(x: Int, y: Int)              // Add, Sub, Neg, Eq, Ord (x, y), Hash, Read, Show ("x y")
-    @get fn norm2(self) -> Int         // O(1); x*x + y*y
-    @get fn len(self) -> F64           // O(1); sqrt(F64(norm2))
-    @get fn perp(self) -> Pt           // O(1); 90 deg CCW: Pt(-y, x)
-    @get fn perp_cw(self) -> Pt        // O(1); 90 deg CW: Pt(y, -x)
-    @get fn angle(self) -> F64         // O(1); atan2(y, x) in [-pi, pi]
-    @get fn unit_dir(self) -> Pt       // O(log min(|x|, |y|)); reduced by gcd, Pt(0, 0) for zero
-    @get fn to_vec(self) -> Vec        // O(1); Vec(F64(x), F64(y))
-    fn scale(self, k: Int) -> Pt       // O(1); Pt(x * k, y * k)
-    fn dot(self, o: Pt) -> Int         // O(1)
-    fn cross(self, o: Pt) -> Int       // O(1)
-    fn dist2(self, o: Pt) -> Int       // O(1)
-    fn dist(self, o: Pt) -> F64        // O(1)
+struct Pt(x: Int, y: Int)         // Add, Sub, Neg, Eq, Ord (x, y), Hash, Read, Show ("x y")
+    @get fn norm2(self) -> Int    // O(1); x*x + y*y
+    @get fn len(self) -> F64      // O(1); sqrt(F64(norm2))
+    @get fn perp(self) -> Pt      // O(1); 90 deg CCW: Pt(-y, x)
+    @get fn perp_cw(self) -> Pt   // O(1); 90 deg CW: Pt(y, -x)
+    @get fn angle(self) -> F64    // O(1); atan2(y, x) in [-pi, pi]
+    @get fn unit_dir(self) -> Pt  // O(log min(|x|, |y|)); reduced by gcd, Pt(0, 0) for zero
+    @get fn to_vec(self) -> Vec   // O(1); Vec(F64(x), F64(y))
+    fn scale(self, k: Int) -> Pt  // O(1); Pt(x * k, y * k)
+    fn dot(self, o: Pt) -> Int    // O(1)
+    fn cross(self, o: Pt) -> Int  // O(1)
+    fn dist2(self, o: Pt) -> Int  // O(1)
+    fn dist(self, o: Pt) -> F64   // O(1)
 
-fn dot(a: Pt, b: Pt) -> Int            // O(1); safe for |coords| <= 2e9
-fn cross(a: Pt, b: Pt) -> Int          // O(1); safe for |coords| <= 2e9
-fn dot128(a: Pt, b: Pt) -> I128        // O(1); safe for all Int
-fn cross128(a: Pt, b: Pt) -> I128      // O(1); safe for all Int
-fn dist2(a: Pt, b: Pt) -> Int          // O(1); (a - b).norm2
-fn dist(a: Pt, b: Pt) -> F64           // O(1); (a - b).len
-fn manhattan(a: Pt, b: Pt) -> Int      // O(1); |a.x - b.x| + |a.y - b.y|
-fn turn(a: Pt, b: Pt, c: Pt) -> Int    // O(1), I128; 1 CCW, -1 CW, 0 collinear
-fn same_dir(a: Pt, b: Pt) -> Bool      // O(1), I128; parallel and same ray
+fn dot(a: Pt, b: Pt) -> Int          // O(1); safe for |coords| <= 2e9
+fn cross(a: Pt, b: Pt) -> Int        // O(1); safe for |coords| <= 2e9
+fn dot128(a: Pt, b: Pt) -> I128      // O(1); safe for all Int
+fn cross128(a: Pt, b: Pt) -> I128    // O(1); safe for all Int
+fn dist2(a: Pt, b: Pt) -> Int        // O(1); (a - b).norm2
+fn dist(a: Pt, b: Pt) -> F64         // O(1); (a - b).len
+fn manhattan(a: Pt, b: Pt) -> Int    // O(1); |a.x - b.x| + |a.y - b.y|
+fn turn(a: Pt, b: Pt, c: Pt) -> Int  // O(1), I128; 1 CCW, -1 CW, 0 collinear
+fn same_dir(a: Pt, b: Pt) -> Bool    // O(1), I128; parallel and same ray
 ```
 
 ### 3.2 Angular sorting
 
 <!-- spec-only: signatures and costs, not a program -->
 ```cp
-struct ByAngle(p: Pt)                  // Ord: CCW in [0, 2*pi) from +x; zero first; I128
-struct ByAngleFrom(base: Pt, p: Pt)    // Ord: CCW in [base, base + 2*pi); zero first; I128
+struct ByAngle(p: Pt)                          // Ord: CCW in [0, 2*pi) from +x; zero first; I128
+struct ByAngleFrom(base: Pt, p: Pt)            // Ord: CCW in [base, base + 2*pi); zero first; I128
 fn angle_less(base: Pt, a: Pt, b: Pt) -> Bool  // O(1), I128; a precedes b CCW from base
 ```
 
@@ -150,9 +150,9 @@ wrapping the array twice.
 <!-- spec-only: signatures and costs, not a program -->
 ```cp
 fn on_segment(p: Pt, a: Pt, b: Pt) -> Bool
-    // O(1), I128; true iff p lies on the closed segment [a, b]
+// O(1), I128; true iff p lies on the closed segment [a, b]
 fn segments_meet(a: Pt, b: Pt, c: Pt, d: Pt, strict: Bool = false) -> Bool
-    // O(1), I128; closed segments share a point, or proper interior crossing when strict: true
+// O(1), I128; closed segments share a point, or proper interior crossing when strict: true
 ```
 
 ### 3.4 Convex hulls, chains, and Minkowski sums
@@ -160,17 +160,17 @@ fn segments_meet(a: Pt, b: Pt, c: Pt, d: Pt, strict: Bool = false) -> Bool
 <!-- spec-only: signatures and costs, not a program -->
 ```cp
 fn lower_hull(pts: List<Pt>, collinear: Bool = false) -> List<Pt>
-    // O(n) time, O(n) space; precondition: pts sorted by (x, y); lower chain left-to-right
+// O(n) time, O(n) space; precondition: pts sorted by (x, y); lower chain left-to-right
 fn upper_hull(pts: List<Pt>, collinear: Bool = false) -> List<Pt>
-    // O(n) time, O(n) space; precondition: pts sorted by (x, y); upper chain left-to-right
+// O(n) time, O(n) space; precondition: pts sorted by (x, y); upper chain left-to-right
 fn convex_hull(pts: List<Pt>, collinear: Bool = false) -> List<Pt>
-    // O(n log n) time, O(n) space; CCW from lowest-leftmost point, deduplicated
+// O(n log n) time, O(n) space; CCW from lowest-leftmost point, deduplicated
 fn convex_hull_idx<D>(pts: [D]Pt, collinear: Bool = false) -> List<D>
-    // O(n log n) time, O(n) space; CCW hull vertices as D handles
+// O(n log n) time, O(n) space; CCW hull vertices as D handles
 fn minkowski_sum(a: List<Pt>, b: List<Pt>) -> List<Pt>
-    // O(|a| + |b|); CCW convex hull of {p + q : p in a, q in b} for non-empty CCW hulls a, b
+// O(|a| + |b|); CCW convex hull of {p + q : p in a, q in b} for non-empty CCW hulls a, b
 fn minkowski_upper(a: List<Pt>, b: List<Pt>) -> List<Pt>
-    // O(|a| + |b|); upper convex chain of {p + q} for non-empty left-to-right upper chains a, b
+// O(|a| + |b|); upper convex chain of {p + q} for non-empty left-to-right upper chains a, b
 ```
 
 Keeping `lower_hull` and `upper_hull` O(n) on already x-sorted inputs is
@@ -182,20 +182,20 @@ essential for O(n log n) divide-and-conquer hulls (such as `ucup4s25e`).
 <!-- spec-only: signatures and costs, not a program -->
 ```cp
 fn area2(poly: List<Pt>) -> Int
-    // O(n); twice signed area (+ CCW, - CW)
+// O(n); twice signed area (+ CCW, - CW)
 enum Location = Inside | Boundary | Outside
 fn locate(poly: List<Pt>, p: Pt) -> Location
-    // O(n), I128; simple polygon (either winding)
+// O(n), I128; simple polygon (either winding)
 fn locate_convex(hull: List<Pt>, p: Pt) -> Location
-    // O(log n), I128; CCW convex polygon (no 3 collinear)
+// O(log n), I128; CCW convex polygon (no 3 collinear)
 fn diameter2(hull: List<Pt>) -> Int
-    // O(n), I128; max squared distance on a CCW convex hull (0 for < 2 points)
+// O(n), I128; max squared distance on a CCW convex hull (0 for < 2 points)
 fn hull_extreme(hull: List<Pt>, dir: Pt) -> Int
-    // O(log n), I128; index in 0..hull.len maximizing dot(hull[i], dir) on a CCW hull
+// O(log n), I128; index in 0..hull.len maximizing dot(hull[i], dir) on a CCW hull
 fn hull_tangents(hull: List<Pt>, p: Pt) -> (left: Int, right: Int)
-    // O(log n), I128; tangent vertex indices from strictly outside point p to CCW hull
+// O(log n), I128; tangent vertex indices from strictly outside point p to CCW hull
 fn min_bounding_box(hull: List<Pt>) -> (area: F64, perimeter: F64)
-    // O(n), I128 calipers; minimum-area and minimum-perimeter enclosing rectangle of a CCW hull
+// O(n), I128 calipers; minimum-area and minimum-perimeter enclosing rectangle of a CCW hull
 ```
 
 ### 3.6 Closest pair
@@ -203,9 +203,9 @@ fn min_bounding_box(hull: List<Pt>) -> (area: F64, perimeter: F64)
 <!-- spec-only: signatures and costs, not a program -->
 ```cp
 fn closest_pair2(pts: List<Pt>) -> Int
-    // O(n log n) time, O(n) space; min squared distance among pts (requires pts.len >= 2)
+// O(n log n) time, O(n) space; min squared distance among pts (requires pts.len >= 2)
 fn closest_pair<D>(pts: [D]Pt) -> (a: D, b: D, dist2: Int)
-    // O(n log n) time, O(n) space; closest distinct pair of D handles and squared distance
+// O(n log n) time, O(n) space; closest distinct pair of D handles and squared distance
 ```
 
 ### 3.7 Careful floating-point geometry and half-plane intersection
@@ -214,45 +214,52 @@ fn closest_pair<D>(pts: [D]Pt) -> (a: D, b: D, dist2: Int)
 ```cp
 const PI: F64 = 3.14159265358979323846
 
-fn close(a: F64, b: F64, eps: F64 = 1e-9) -> Bool      // O(1); |a - b| <= eps
-fn sign_eps(x: F64, eps: F64 = 1e-9) -> Int            // O(1); 1, 0, or -1 with tolerance eps
+fn close(a: F64, b: F64, eps: F64 = 1e-9) -> Bool  // O(1); |a - b| <= eps
+fn sign_eps(x: F64, eps: F64 = 1e-9) -> Int        // O(1); 1, 0, or -1 with tolerance eps
 
-struct Vec(x: F64, y: F64)                             // Add, Sub, Neg; intentionally no Show
-    @get fn norm2(self) -> F64                         // O(1)
-    @get fn len(self) -> F64                           // O(1)
-    @get fn unit(self) -> Vec                          // O(1); traps if len == 0
-    @get fn perp(self) -> Vec                          // O(1); Vec(-y, x)
-    @get fn perp_cw(self) -> Vec                       // O(1); Vec(y, -x)
-    @get fn angle(self) -> F64                         // O(1); atan2(y, x) in [-pi, pi]
-    fn scale(self, k: F64) -> Vec                      // O(1); Vec(x * k, y * k)
-    fn div(self, k: F64) -> Vec                        // O(1); Vec(x / k, y / k)
-    fn dot(self, o: Vec) -> F64                        // O(1)
-    fn cross(self, o: Vec) -> F64                      // O(1)
-    fn dist2(self, o: Vec) -> F64                      // O(1)
-    fn dist(self, o: Vec) -> F64                       // O(1)
-    fn rot(self, by: Vec) -> Vec                      // O(1); rotate by unit vector `by`
+struct Vec(x: F64, y: F64)         // Add, Sub, Neg; intentionally no Show
+    @get fn norm2(self) -> F64     // O(1)
+    @get fn len(self) -> F64       // O(1)
+    @get fn unit(self) -> Vec      // O(1); traps if len == 0
+    @get fn perp(self) -> Vec      // O(1); Vec(-y, x)
+    @get fn perp_cw(self) -> Vec   // O(1); Vec(y, -x)
+    @get fn angle(self) -> F64     // O(1); atan2(y, x) in [-pi, pi]
+    fn scale(self, k: F64) -> Vec  // O(1); Vec(x * k, y * k)
+    fn div(self, k: F64) -> Vec    // O(1); Vec(x / k, y / k)
+    fn dot(self, o: Vec) -> F64    // O(1)
+    fn cross(self, o: Vec) -> F64  // O(1)
+    fn dist2(self, o: Vec) -> F64  // O(1)
+    fn dist(self, o: Vec) -> F64   // O(1)
+    fn rot(self, by: Vec) -> Vec   // O(1); rotate by unit vector `by`
 
-fn polygon_area(poly: List<Vec>) -> F64                // O(n); signed area (+ CCW, - CW)
-fn project(p: Vec, a: Vec, b: Vec) -> Vec              // O(1); orthogonal projection onto line ab
-fn reflect(p: Vec, a: Vec, b: Vec) -> Vec              // O(1); reflection across line ab
-fn line_dist(p: Vec, a: Vec, b: Vec) -> F64            // O(1); perpendicular distance from p to line ab
+fn polygon_area(poly: List<Vec>) -> F64                      // O(n); signed area (+ CCW, - CW)
+fn project(p: Vec, a: Vec, b: Vec) -> Vec                    // O(1); orthogonal projection onto line ab
+fn reflect(p: Vec, a: Vec, b: Vec) -> Vec                    // O(1); reflection across line ab
+fn line_dist(p: Vec, a: Vec, b: Vec) -> F64                  // O(1); perpendicular distance from p to line ab
 fn seg_dist(p: Vec, a: Vec, b: Vec, eps: F64 = 1e-9) -> F64  // O(1); distance from p to segment [a, b]
 fn line_intersect(a: Vec, b: Vec, c: Vec, d: Vec, eps: F64 = 1e-9) -> ?Vec
-    // O(1); intersection of lines ab and cd, None if parallel
+// O(1); intersection of lines ab and cd, None if parallel
 fn polygon_cut(poly: List<Vec>, a: Vec, b: Vec, eps: F64 = 1e-9) -> List<Vec>
-    // O(n); Sutherland-Hodgman clip to left half-plane of directed line a -> b
+// O(n); Sutherland-Hodgman clip to left half-plane of directed line a -> b
 fn circle_line_intersect(c: Vec, r: F64, a: Vec, b: Vec, eps: F64 = 1e-9) -> List<Vec>
-    // O(1); 0, 1, or 2 intersection points of circle (c, r) with line ab
+// O(1); 0, 1, or 2 intersection points of circle (c, r) with line ab
 fn circle_intersect(c1: Vec, r1: F64, c2: Vec, r2: F64, eps: F64 = 1e-9) -> List<Vec>
-    // O(1); 0, 1, or 2 intersection points of two circles
+// O(1); 0, 1, or 2 intersection points of two circles
 fn circle_tangents(center: Vec, r: F64, p: Vec, eps: F64 = 1e-9) -> List<Vec>
-    // O(1); 0, 1, or 2 tangent points from p to circle (center, r)
-fn circle_circle_tangents(c1: Vec, r1: F64, c2: Vec, r2: F64, inner: Bool = false, eps: F64 = 1e-9) -> List<(Vec, Vec)>
-    // O(1); 0, 1, or 2 outer (or inner when inner: true) common tangent segments (on c1, on c2)
+// O(1); 0, 1, or 2 tangent points from p to circle (center, r)
+fn circle_circle_tangents(
+    c1: Vec,
+    r1: F64,
+    c2: Vec,
+    r2: F64,
+    inner: Bool = false,
+    eps: F64 = 1e-9,
+) -> List<(Vec, Vec)>
+// O(1); 0, 1, or 2 outer (or inner when inner: true) common tangent segments (on c1, on c2)
 fn circles_union_area(circles: List<(c: Vec, r: F64)>, eps: F64 = 1e-9) -> F64
-    // O(n^2 log n); total area of the union of disks via Green's theorem arc sweep
+// O(n^2 log n); total area of the union of disks via Green's theorem arc sweep
 fn circumcenter(a: Vec, b: Vec, c: Vec, eps: F64 = 1e-9) -> ?Vec
-    // O(1); circumcenter of triangle abc, None if collinear
+// O(1); circumcenter of triangle abc, None if collinear
 
 struct HalfPlane(p: Vec, dir: Vec)                     // left side of ray p + t*dir (t in R)
     fn through(a: Vec, b: Vec) -> HalfPlane            // O(1); keep left of a -> b
@@ -260,8 +267,8 @@ struct HalfPlane(p: Vec, dir: Vec)                     // left side of ray p + t
     fn side(self, q: Vec) -> F64                       // O(1); dir.cross(q - p)
 
 fn half_plane_intersect(planes: List<HalfPlane>, eps: F64 = 1e-9) -> List<Vec>
-    // O(n log n) time, O(n) space; CCW vertices of bounded intersection (empty if empty).
-    // Add a bounding box of four half-planes if the region may be unbounded.
+// O(n log n) time, O(n) space; CCW vertices of bounded intersection (empty if empty).
+// Add a bounding box of four half-planes if the region may be unbounded.
 ```
 
 ## 4. Laws and invariants
@@ -376,8 +383,13 @@ let pts: [Site]Pt = read()
 
 let hull = convex_hull_idx(pts, collinear: true)
 let off_diag: ?Site = if hull.len == 4:
-    first(s for s in Site if turn(pts[hull[0]], pts[hull[2]], pts[s]) != 0
-        and turn(pts[hull[1]], pts[hull[3]], pts[s]) != 0)
+    first(
+        s for s in Site if turn(pts[hull[0]], pts[hull[2]], pts[s]) != 0 and turn(
+            pts[hull[1]],
+            pts[hull[3]],
+            pts[s],
+        ) != 0
+    )
 else: None
 
 // Split hull into lower/upper x-monotone chains and test the local window.
@@ -433,8 +445,9 @@ else:
         for x in -64..=64:
             for y in -64..=64:
                 let c = Vec(F64(x) / 64.0, F64(y) / 64.0)
-                if (fits(c, p1) and fits(c, p2) and fits(c, start)
-                    and fits(c, t0) and fits(c, t1)): return c
+                if (
+                    fits(c, p1) and fits(c, p2) and fits(c, start) and fits(c, t0) and fits(c, t1)
+                ): return c
         p1
     let s = side()
     let a = draw(1, 2, s)

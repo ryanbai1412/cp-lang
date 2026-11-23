@@ -90,10 +90,10 @@ Memory is stated for constructors and anything that allocates.
 ```cp
 struct Rooted<V, Pre>
     // O(n) time and memory, iterative (no recursion depth limit)
-    fn new<N>(adj: N, root: V) -> Rooted<V, Pre>          // Rooted(adj, root: r)
-    fn weighted<N, A>(adj: N, root: V, len: A -> Int)     // edge lengths for far()
-    fn from_parents(par: [V]?V)                            // exactly one None
-    fn forest<N>(adj: N, roots: List<V>) [new]            // one tree per root
+    fn new<N>(adj: N, root: V) -> Rooted<V, Pre>       // Rooted(adj, root: r)
+    fn weighted<N, A>(adj: N, root: V, len: A -> Int)  // edge lengths for far()
+    fn from_parents(par: [V]?V)                        // exactly one None
+    fn forest<N>(adj: N, roots: List<V>)[new]          // one tree per root
 ```
 
 `adj` is anything with `Neighbours` (a `Graph`, `[V]List<V>`, a closure),
@@ -108,41 +108,41 @@ a forest says so with `forest`.
 ```cp
     root: V
     fn parent(self, v: V) -> ?V
-    fn children(self, v: V) -> List<V>            // in the order adj listed them
-    heavy: [V]?V                                  // largest child, None at a leaf
-    fn light(self, v: V) -> yields V [new]        // children except heavy[v]
-    fn depth(self, v: V) -> Int                   // edges to the root
-    far: [V]Int                                   // length to the root (weighted)
-    fn size(self, v: V) -> Int                    // vertices in the subtree
-    fn root_of(self, v: V) -> V [new]             // the root of v's tree (forests)
-    @get fn subtree_sizes(self) -> [V]Int         // O(n), a copy
+    fn children(self, v: V) -> List<V>     // in the order adj listed them
+    heavy: [V]?V                           // largest child, None at a leaf
+    fn light(self, v: V) -> yields V[new]  // children except heavy[v]
+    fn depth(self, v: V) -> Int            // edges to the root
+    far: [V]Int                            // length to the root (weighted)
+    fn size(self, v: V) -> Int             // vertices in the subtree
+    fn root_of(self, v: V) -> V[new]       // the root of v's tree (forests)
+    @get fn subtree_sizes(self) -> [V]Int  // O(n), a copy
 ```
 
 ### 3.3 Orders and positions
 
 ```cp
-    domain Pre                                   // heavy-first preorder
-    fn pos(self, v: V) -> Pre                    // O(1)
-    at: [Pre]V                                   // O(1), inverse of pos
-    fn sub(self, v: V) -> Range<Pre>             // O(1), t.sub(v).len == t.size(v)
-    fn below(self, v: V) -> Range<Pre>           // O(1), sub(v) without v
-    fn subtree(self, v: V) -> yields V [new]     // O(size(v)), preorder
-    fn reorder<T>(self, a: [V]T) -> [Pre]T       // O(n)
-    @get fn tour(self) -> yields (v: V, entering: Bool)   // O(n), 2n events
+    domain Pre                                           // heavy-first preorder
+    fn pos(self, v: V) -> Pre                            // O(1)
+    at: [Pre]V                                           // O(1), inverse of pos
+    fn sub(self, v: V) -> Range<Pre>                     // O(1), t.sub(v).len == t.size(v)
+    fn below(self, v: V) -> Range<Pre>                   // O(1), sub(v) without v
+    fn subtree(self, v: V) -> yields V[new]              // O(size(v)), preorder
+    fn reorder<T>(self, a: [V]T) -> [Pre]T               // O(n)
+    @get fn tour(self) -> yields (v: V, entering: Bool)  // O(n), 2n events
 ```
 
 ### 3.4 Ancestry and paths
 
 ```cp
-    fn is_anc(self, a: V, b: V) -> Bool          // O(1); a is_anc a
-    fn lower(self, u: V, v: V) -> V              // O(1); the child end of edge uv
-    fn lca(self, a: V, b: V) -> V                // O(log n), chain jumps
-    fn dist(self, a: V, b: V) -> Int             // O(log n), edges
-    fn far_dist(self, a: V, b: V) -> Int [new]   // O(log n), weighted length
-    fn ancestor(self, v: V, k: Int) -> ?V        // O(log n); None above the root
-    fn step(self, a: V, b: V, k: Int) -> ?V      // O(log n); k-th vertex a -> b
+    fn is_anc(self, a: V, b: V) -> Bool               // O(1); a is_anc a
+    fn lower(self, u: V, v: V) -> V                   // O(1); the child end of edge uv
+    fn lca(self, a: V, b: V) -> V                     // O(log n), chain jumps
+    fn dist(self, a: V, b: V) -> Int                  // O(log n), edges
+    fn far_dist(self, a: V, b: V) -> Int[new]         // O(log n), weighted length
+    fn ancestor(self, v: V, k: Int) -> ?V             // O(log n); None above the root
+    fn step(self, a: V, b: V, k: Int) -> ?V           // O(log n); k-th vertex a -> b
     fn lift_while(self, v: V, pred: V -> Bool) -> ?V  // O(log^2 n), pred monotone
-    fn path(self, a: V, b: V) -> List<V>         // O(dist), a first
+    fn path(self, a: V, b: V) -> List<V>              // O(dist), a first
 ```
 
 `step(a, b, 1)` is "the neighbour of `a` toward `b`" (ecnerwala's
@@ -173,11 +173,11 @@ an edge's value at its lower endpoint (`t.pos(t.lower(u, v))`).
 
 ```cp
     // O(n): v gets f(value at parent, v); the root gets f(init, root)
-    fn down<T>(self, init: T, f: (T, V) -> T) -> [V]T [new]
+    fn down<T>(self, init: T, f: (T, V) -> T) -> [V]T[new]
     // O(n): v gets finish(fold over children c of lift(value at c, c, v), v)
-    fn up<T, E, M>(self, m: M, lift: (T, V, V) -> E, finish: (E, V) -> T) -> [V]T [new]
+    fn up<T, E, M>(self, m: M, lift: (T, V, V) -> E, finish: (E, V) -> T) -> [V]T[new]
     // O(n): the value up() would give v if the tree were rooted at v
-    fn reroot<T, E, M>(self, m: M, lift: (T, V, V) -> E, finish: (E, V) -> T) -> [V]T [new]
+    fn reroot<T, E, M>(self, m: M, lift: (T, V, V) -> E, finish: (E, V) -> T) -> [V]T[new]
     // O(deg v): each child c of v with the fold of the others' f
     fn excl_fold<T, M>(self, v: V, m: M, f: V -> T) -> yields (c: V, rest: T)
 ```
@@ -191,10 +191,10 @@ division modulo a composite).
 ### 3.7 Whole-tree facts
 
 ```cp
-    fn diameter(self) -> (len: Int, u: V, v: V)   // O(n), weighted when built so
-    @get fn centroid(self) -> V                   // O(depth)
-    @get fn centroids(self) -> List<V>            // O(depth), one or two
-    fn shapes(self) -> (domain Shape, of: [V]Shape) [new]  // O(n log n), AHU
+    fn diameter(self) -> (len: Int, u: V, v: V)           // O(n), weighted when built so
+    @get fn centroid(self) -> V                           // O(depth)
+    @get fn centroids(self) -> List<V>                    // O(depth), one or two
+    fn shapes(self) -> (domain Shape, of: [V]Shape)[new]  // O(n log n), AHU
 ```
 
 `t.shapes().of[a] == t.shapes().of[b]` exactly when the subtrees of `a`
@@ -209,12 +209,12 @@ trees at their centroids (at most two candidates each).
     // ancestor, vt.len[x] = t.dist(vt.at[up], vt.at[x]), vt.key[x] a key?
     fn virtual(self, keys: List<V>) -> VirtualTree<V, K>
 
-struct Centroids<V> [new: promoted from examples/local-lib/graph]
-    fn new<N>(adj: N) -> Centroids<V>             // O(n log n) time and memory
+struct Centroids<V>[new: promoted from examples / local - lib / graph]
+    fn new<N>(adj: N) -> Centroids<V>  // O(n log n) time and memory
     root: V
-    fn parent(self, c: V) -> ?V                   // O(1), in the centroid tree
-    fn depth(self, c: V) -> Int                   // O(1), <= log2 n
-    fn ancestors(self, v: V) -> List<(c: V, dist: Int)>   // O(1); v's own first
+    fn parent(self, c: V) -> ?V                                  // O(1), in the centroid tree
+    fn depth(self, c: V) -> Int                                  // O(1), <= log2 n
+    fn ancestors(self, v: V) -> List<(c: V, dist: Int)>          // O(1); v's own first
     fn piece(self, c: V) -> yields (v: V, dist: Int, branch: V)  // O(|piece|)
 ```
 
@@ -229,14 +229,14 @@ pairs in the same branch".
 
 ```cp
 struct LinkCut<V, T>
-    fn new<M>(op: M, a: ?[V]T = None)             // O(n), like SegTree.new
-    fn link(mut self, u: V, v: V)                 // amortized O(log n) each
+    fn new<M>(op: M, a: ?[V]T = None)  // O(n), like SegTree.new
+    fn link(mut self, u: V, v: V)      // amortized O(log n) each
     fn cut(mut self, u: V, v: V)
     fn connected(mut self, u: V, v: V) -> Bool
     fn root_of(mut self, v: V) -> V
     fn make_root(mut self, v: V)
-    fn fold_path(mut self, u: V, v: V) -> T       // path order when Reversible
-    fn get(self, v: V) -> T                       // O(1)
+    fn fold_path(mut self, u: V, v: V) -> T  // path order when Reversible
+    fn get(self, v: V) -> T                  // O(1)
     fn set(mut self, v: V, x: T)
     fn lca(mut self, u: V, v: V, root: V) -> ?V
 ```
@@ -254,13 +254,13 @@ neither `Rooted`'s full build nor splaying:
 
 ```cp
 struct JumpTree<V>
-    fn new() -> JumpTree<V>                       // O(n), every vertex a root
-    fn add(mut self, v: V, p: V)                  // O(1), v a lone vertex
-    fn parent(self, v: V) -> ?V                   // O(1)
-    fn depth(self, v: V) -> Int                   // O(1)
-    fn root_of(self, v: V) -> V                   // O(log n)
-    fn ancestor(self, v: V, k: Int) -> ?V         // O(log n) each
-    fn lca(self, a: V, b: V) -> ?V                // None across trees
+    fn new() -> JumpTree<V>                // O(n), every vertex a root
+    fn add(mut self, v: V, p: V)           // O(1), v a lone vertex
+    fn parent(self, v: V) -> ?V            // O(1)
+    fn depth(self, v: V) -> Int            // O(1)
+    fn root_of(self, v: V) -> V            // O(log n)
+    fn ancestor(self, v: V, k: Int) -> ?V  // O(log n) each
+    fn lca(self, a: V, b: V) -> ?V         // None across trees
     fn lift_while(self, v: V, pred: V -> Bool) -> ?V
 ```
 
@@ -276,12 +276,12 @@ facts are arrays over it and a leaf's missing children are a trap, not a
 enum PermKind = Leaf | Incr | Decr | Partial | Full
 struct PermTree<I, V, Node>
     root: Node; kind: [Node]PermKind; first, last: [Node]I; lo, hi: [Node]V
-    fn of(p: [I]V) -> PermTree<I, V, _>           // O(n)
-    fn leaf(self, i: I) -> Node                   // O(1)
-    fn left(self, v: Node) -> Node                // O(1), traps on a leaf
+    fn of(p: [I]V) -> PermTree<I, V, _>  // O(n)
+    fn leaf(self, i: I) -> Node          // O(1)
+    fn left(self, v: Node) -> Node       // O(1), traps on a leaf
     fn right(self, v: Node) -> Node
-    fn span(self, v: Node) -> Range<I>            // positions
-    fn vals(self, v: Node) -> Range<V>            // exact unless Partial
+    fn span(self, v: Node) -> Range<I>  // positions
+    fn vals(self, v: Node) -> Range<V>  // exact unless Partial
 ```
 
 Folds over it are plain recursion (`cf2187f1`, `cf2187f2`). A top-level `fn`

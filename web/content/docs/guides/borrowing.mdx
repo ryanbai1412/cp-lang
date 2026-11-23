@@ -19,9 +19,9 @@ fn total(a: [V]Int) -> Int:
 fn bump(mut a: [V]Int, v: V):
     a[v] += 1
 
-print(total(a))         // read-only borrow, no array copy
-bump(mut a, V(1))   // mutable borrow, explicit at both ends
-let saved = a.copy()   // an owned copy, explicit cost
+print(total(a))       // read-only borrow, no array copy
+bump(mut a, V(1))     // mutable borrow, explicit at both ends
+let saved = a.copy()  // an owned copy, explicit cost
 ```
 
 While a place is borrowed mutably, other code cannot read or write the same place. Multiple read-only borrows are fine. Separate struct fields can be borrowed separately; overlapping container accesses need more evidence.
@@ -71,10 +71,10 @@ let a: [V]Int = [V] v => v.to_idx + 1
 fn find_span(a: [V]Int) -> Range<V>:
     V(1)..=V(4)
 
-let span: Range<V> = find_span(a)      // plain data: two boundaries
-let part = a[span]                     // a lexical lend, used here
+let span: Range<V> = find_span(a)  // plain data: two boundaries
+let part = a[span]                 // a lexical lend, used here
 print(part.sum())
-let saved = part.copy()                // owned data may escape
+let saved = part.copy()  // owned data may escape
 ```
 
 `find_span` above is an ordinary user helper returning a range. It must not return a borrowed slice. Returning the recipe for access is simpler than returning access itself.

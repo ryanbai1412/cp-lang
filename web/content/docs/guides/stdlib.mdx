@@ -82,9 +82,9 @@ items.sort(by: x => (x.cost, desc(x.value)))
 ```cp
 let xs = [1, 2]
 var q = Deque.of(xs)
-print(q.pop_front()!, q.pop_front()!) // 1 2
-print(xs.resized(4, 0))             // 1 2 0 0
-print(resized(xs, 1, 0), xs)        // 1, then the unchanged 1 2
+print(q.pop_front()!, q.pop_front()!)  // 1 2
+print(xs.resized(4, 0))                // 1 2 0 0
+print(resized(xs, 1, 0), xs)           // 1, then the unchanged 1 2
 ```
 
 Answer-space binary search uses two free functions (`F64` ranges take `steps: 80`), both returning `?I`:
@@ -117,8 +117,8 @@ Other prelude sequence helpers:
 - `std.seq` also provides zero-allocation sequence views `pairs(xs)` (consecutive `(a, b)` pairs), `with_prev(xs)` (`(?T, T)` with `none` on the first element), `cyclic_pairs(xs)`, and the standard permutation alias `Perm<V> = [V]V` (paired with `std.graph.Tree<V>` for `cpl stress` generation and shrinking):
 
 ```cp
-use std.seq.{Perm, pairs, with_prev}
 use std.graph.{Tree}
+use std.seq.{Perm, pairs, with_prev}
 
 let xs = [1, 4, 9]
 var diffs = 0
@@ -146,11 +146,11 @@ struct Node:
 fn merge(a: Node, b: Node) -> Node: Node(a.value + b.value)
 let nodes: [V]Node = [V] v => Node(a[v])
 
-var bit = Fenwick<V, Int>(a)                        // sum-only: .add(i, d), .fold(l..=r)
-var rmq = SparseTable<V, Int>(min, a)               // O(1) .fold(l..=r) -> Int (non-empty range)
-var st = SegTree<V, Int>(+, a)                      // bare operator
+var bit = Fenwick<V, Int>(a)           // sum-only: .add(i, d), .fold(l..=r)
+var rmq = SparseTable<V, Int>(min, a)  // O(1) .fold(l..=r) -> Int (non-empty range)
+var st = SegTree<V, Int>(+, a)         // bare operator
 var mx = SegTree<V, Node>(Monoid<Node>(id: Node(0), op: merge), nodes)
-var lz = SegTree<V, Int>(+, a, act: add)            // range add + range sum
+var lz = SegTree<V, Int>(+, a, act: add)  // range add + range sum
 
 let aff = Action<Int, (Int, Int)>(
     id: (1, 0),

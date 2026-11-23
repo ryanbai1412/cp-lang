@@ -69,10 +69,10 @@ or `[D.cuts]T` so index spaces are never downgraded to raw `Int`.
 default type parameter `K = T`:
 
 ```cp
-xs.argmax()                      // ?D by element order
-xs.argmax(by: p => p.score)      // ?D by key
-xs.first_ge(x)                   // ?D in sorted order
-xs.first_ge(k, by: p => p.key)   // ?D by key
+xs.argmax()                     // ?D by element order
+xs.argmax(by: p => p.score)     // ?D by key
+xs.first_ge(x)                  // ?D in sorted order
+xs.first_ge(k, by: p => p.key)  // ?D by key
 ```
 
 Existing `_by` names (`min_by`, `max_by`, `runs_by`, `first_ge_by`,
@@ -119,13 +119,13 @@ pub fn is_sorted<D, T, K = T>(self: [D]T, by: T -> K = x => x) -> Bool
 // O(n) time, O(1) space. (Also @get argmax / argmin when called without args.)
 @get pub fn argmax<D, T>(self: [D]T) -> ?D
 @get pub fn argmin<D, T>(self: [D]T) -> ?D
-pub fn argmax_by<D, T, K>(self: [D]T, by: T -> K) -> ?D   // [target: argmax(by:)]
-pub fn argmin_by<D, T, K>(self: [D]T, by: T -> K) -> ?D   // [target: argmin(by:)]
+pub fn argmax_by<D, T, K>(self: [D]T, by: T -> K) -> ?D  // [target: argmax(by:)]
+pub fn argmin_by<D, T, K>(self: [D]T, by: T -> K) -> ?D  // [target: argmin(by:)]
 
 // Element with smallest / largest key (first on ties), or `None`.
 // O(n) time, O(1) space.
-pub fn min_by<S, T, K>(it: S, key: T -> K) -> ?T          // [target: min(it, by:)]
-pub fn max_by<S, T, K>(it: S, key: T -> K) -> ?T          // [target: max(it, by:)]
+pub fn min_by<S, T, K>(it: S, key: T -> K) -> ?T  // [target: min(it, by:)]
+pub fn max_by<S, T, K>(it: S, key: T -> K) -> ?T  // [target: max(it, by:)]
 ```
 
 Laws:
@@ -295,16 +295,16 @@ from any other compression:
 
 ```cp
 pub struct Compressed<D, T>(vals: [D]T):
-    pub fn get<K>(self, i: K)                // O(1) element or O(r.len) slice
+    pub fn get<K>(self, i: K)  // O(1) element or O(r.len) slice
     pub fn slice(self, r: Range<D>) -> List<T>
-    @get pub fn len(self) -> Int             // O(1)
-    pub fn contains(self, val: T) -> Bool    // O(log n)
-    pub fn try_at(self, val: T) -> ?D        // O(log n); None if absent
-    pub fn at(self, val: T) -> D             // O(log n); traps if absent
-    pub fn first_ge(self, val: T) -> ?D      // O(log n)
-    pub fn first_gt(self, val: T) -> ?D      // O(log n)
-    pub fn last_le(self, val: T) -> ?D       // O(log n)
-    pub fn last_lt(self, val: T) -> ?D       // O(log n)
+    @get pub fn len(self) -> Int           // O(1)
+    pub fn contains(self, val: T) -> Bool  // O(log n)
+    pub fn try_at(self, val: T) -> ?D      // O(log n); None if absent
+    pub fn at(self, val: T) -> D           // O(log n); traps if absent
+    pub fn first_ge(self, val: T) -> ?D    // O(log n)
+    pub fn first_gt(self, val: T) -> ?D    // O(log n)
+    pub fn last_le(self, val: T) -> ?D     // O(log n)
+    pub fn last_lt(self, val: T) -> ?D     // O(log n)
 
 // O(n log n) time, O(n) space.
 pub fn compress<T>(all: List<T>)
@@ -590,7 +590,7 @@ for weight in W.rev:
     for v in by_w[weight]:
         let r = t.sub(v)
         let mx = combine(pref[r.start], suff[r.end])
-        ...
+        .. .
 ```
 
 ### 6.4 Codeforces 2187 F1 — Permutation Composition and Contribution of Minima
@@ -607,8 +607,8 @@ domain Val = 1..=n
 let a: [Pos]Val = read()
 let b: [Pos]Val = read()
 
-let inv_a = inverse(a)                         // [Val]Pos
+let inv_a = inverse(a)  // [Val]Pos
 let p = [Pos] i => inv_a[b[Pos(n - 1 - i.ord)]]
-let left = p.prev_less()                       // [Pos]?Pos
-let right = p.next_less(strict: false)         // [Pos]?Pos
+let left = p.prev_less()                // [Pos]?Pos
+let right = p.next_less(strict: false)  // [Pos]?Pos
 ```

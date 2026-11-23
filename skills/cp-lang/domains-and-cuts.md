@@ -60,8 +60,8 @@ print()
 for j in V(1).after:
     print(j, end: " ")
 print()
-// output: 0 1 2; 1 2 3; 2 3 none; 
-// output: 2 3 
+// output: 0 1 2; 1 2 3; 2 3 none;
+// output: 2 3
 ```
 
 Cuts prevent off-by-one bugs in prefix sums, DP on prefixes, and Fenwick/SegTree

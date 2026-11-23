@@ -102,65 +102,62 @@ for the same mathematical operation, the cost is visible in the name or type:
 <!-- spec-only: signatures and costs, not a program -->
 ```cp
 // Divisibility, division, and exact combinatorics
-fn gcd(a: Int, b: Int) -> Int                       // O(log min(|a|, |b|)); >= 0, gcd(0,0) = 0
-fn lcm(a: Int, b: Int) -> Int                       // O(log min(|a|, |b|)); >= 0, traps on overflow
+fn gcd(a: Int, b: Int) -> Int  // O(log min(|a|, |b|)); >= 0, gcd(0,0) = 0
+fn lcm(a: Int, b: Int) -> Int  // O(log min(|a|, |b|)); >= 0, traps on overflow
 fn ext_gcd(a: Int, b: Int) -> (g: Int, x: Int, y: Int)
-                                                    // O(log min(|a|, |b|)); a*x + b*y == g >= 0
-fn ceil_div(a: Int, b: Int) -> Int                  // O(1); b != 0
-fn divmod(self: Int, d: Int) -> (Int, Int)          // O(1); Euclidean (self / d, self % d), 0 <= r < |d|, d != 0
-fn fixed(num: Int, den: Int, k: Int) -> Str         // O(k); exact integer decimal formatting
-fn choose(n: Int, k: Int) -> Int                    // O(min(k, n - k)); 0 outside 0..=n
-fn choose2(n: Int) -> Int                           // O(1); n * (n - 1) / 2, 0 for n < 2
+// O(log min(|a|, |b|)); a*x + b*y == g >= 0
+fn ceil_div(a: Int, b: Int) -> Int           // O(1); b != 0
+fn divmod(self: Int, d: Int) -> (Int, Int)   // O(1); Euclidean (self / d, self % d), 0 <= r < |d|, d != 0
+fn fixed(num: Int, den: Int, k: Int) -> Str  // O(k); exact integer decimal formatting
+fn choose(n: Int, k: Int) -> Int             // O(min(k, n - k)); 0 outside 0..=n
+fn choose2(n: Int) -> Int                    // O(1); n * (n - 1) / 2, 0 for n < 2
 
 // Bit and digit helpers
-fn bit_len(x: Int) -> Int                           // O(1); 0 for x == 0
-fn digits(self: Int, base: Int = 10) -> List<Int>   // O(log_base x); lowest digit first
-@get fn sign(self: Int) -> Sign                     // O(1); Neg, Zero or Pos
-fn bit(self: Int, i: Int) -> Bool                   // O(1); bit 0 is lowest
-@get fn is_pow2(self: Int) -> Bool                  // O(1); x > 0 and x & (x - 1) == 0
-fn splitmix64(x: U64) -> U64                        // O(1); 64-bit mixing finalizer
+fn bit_len(x: Int) -> Int                          // O(1); 0 for x == 0
+fn digits(self: Int, base: Int = 10) -> List<Int>  // O(log_base x); lowest digit first
+@get fn sign(self: Int) -> Sign                    // O(1); Neg, Zero or Pos
+fn bit(self: Int, i: Int) -> Bool                  // O(1); bit 0 is lowest
+@get fn is_pow2(self: Int) -> Bool                 // O(1); x > 0 and x & (x - 1) == 0
+fn splitmix64(x: U64) -> U64                       // O(1); 64-bit mixing finalizer
 
 // Modular integer arithmetic (dynamic modulus without Mod<P>)
-fn mul_mod(a: Int, b: Int, m: Int) -> Int           // O(1); exact via I128 when needed, m >= 1
-fn pow_mod(a: Int, e: Int, m: Int) -> Int           // O(log e); e >= 0, m >= 1
-fn inv_mod(a: Int, m: Int) -> ?Int                  // O(log m); m >= 1, None if gcd(a, m) != 1
+fn mul_mod(a: Int, b: Int, m: Int) -> Int  // O(1); exact via I128 when needed, m >= 1
+fn pow_mod(a: Int, e: Int, m: Int) -> Int  // O(log e); e >= 0, m >= 1
+fn inv_mod(a: Int, m: Int) -> ?Int         // O(log m); m >= 1, None if gcd(a, m) != 1
 fn crt(r1: Int, m1: Int, r2: Int, m2: Int) -> ?(Int, Int)
-                                                    // O(log min(m1, m2)); non-coprime allowed
+// O(log min(m1, m2)); non-coprime allowed
 fn crt_all(eqs: List<(Int, Int)>) -> ?(Int, Int)
-                                                    // O(k log M); folds crt over a system
-fn mod_log(a: Int, b: Int, m: Int) -> ?Int          // O(sqrt m); smallest x >= 0: a^x = b (mod m)
-fn mod_sqrt(a: Int, p: Int) -> ?Int                 // O(log^2 p); prime p, x^2 = a (mod p)
-fn primitive_root(p: Int) -> Int                    // expected O(p^(1/4) log p); prime p
-fn floor_sum(n: Int, m: Int, a: Int, b: Int) -> Int // O(log m); sum_{i in 0..n} floor((a*i+b)/m)
+// O(k log M); folds crt over a system
+fn mod_log(a: Int, b: Int, m: Int) -> ?Int           // O(sqrt m); smallest x >= 0: a^x = b (mod m)
+fn mod_sqrt(a: Int, p: Int) -> ?Int                  // O(log^2 p); prime p, x^2 = a (mod p)
+fn primitive_root(p: Int) -> Int                     // expected O(p^(1/4) log p); prime p
+fn floor_sum(n: Int, m: Int, a: Int, b: Int) -> Int  // O(log m); sum_{i in 0..n} floor((a*i+b)/m)
 
 // Primality and factorization (single-input)
-fn is_prime(x: Int) -> Bool                         // O(log^2 x); deterministic Miller-Rabin, all Int
-fn factor(x: Int) -> List<(Int, Int)>               // O(sqrt x) <= 1e6, O(x^(1/4) log x) expected above
-fn divisors(x: Int) -> List<Int>                    // O(sqrt x); sorted
+fn is_prime(x: Int) -> Bool            // O(log^2 x); deterministic Miller-Rabin, all Int
+fn factor(x: Int) -> List<(Int, Int)>  // O(sqrt x) <= 1e6, O(x^(1/4) log x) expected above
+fn divisors(x: Int) -> List<Int>       // O(sqrt x); sorted
 fn divisors_from_factors(fs: List<(Int, Int)>) -> List<Int>
-                                                    // O(d(x) log d(x)); sorted divisors from factors
-fn phi(x: Int) -> Int                               // O(sqrt x); Euler's totient
+// O(d(x) log d(x)); sorted divisors from factors
+fn phi(x: Int) -> Int  // O(sqrt x); Euler's totient
 
 // Linear sieve and multiplicative tables
-struct Sieve:                                       // O(n) time and memory
-    spf: List<0..=2_000_000_000>                    // smallest prime factor, 0 for 0 and 1
-    primes: List<0..=2_000_000_000>                 // all primes in 2..=n, ascending
-    fn new(n: Int) -> Sieve                         // O(n)
-    fn is_prime(self, x: Int) -> Bool               // O(1)
-    fn factor(self, x: Int) -> List<(Int, Int)>     // O(log x)
-    fn divisors(self, x: Int) -> yields Int         // O(1) per divisor; unordered
-    fn phi(self, x: Int) -> Int                     // O(log x)
-    fn mobius(self, x: Int) -> Int                  // O(log x)
-    fn phi_table(self) -> List<Int>                 // O(n); totient[0..=n]
-    fn mobius_table(self) -> List<Int>              // O(n); mu[0..=n]
+struct Sieve:                                    // O(n) time and memory
+    spf: List<0..=2_000_000_000>                 // smallest prime factor, 0 for 0 and 1
+    primes: List<0..=2_000_000_000>              // all primes in 2..=n, ascending
+    fn new(n: Int) -> Sieve                      // O(n)
+    fn is_prime(self, x: Int) -> Bool            // O(1)
+    fn factor(self, x: Int) -> List<(Int, Int)>  // O(log x)
+    fn divisors(self, x: Int) -> yields Int      // O(1) per divisor; unordered
+    fn phi(self, x: Int) -> Int                  // O(log x)
+    fn mobius(self, x: Int) -> Int               // O(log x)
+    fn phi_table(self) -> List<Int>              // O(n); totient[0..=n]
+    fn mobius_table(self) -> List<Int>           // O(n); mu[0..=n]
 
-fn sieve_multiplicative<T>(
-    n: Int,
-    prime_pow: (Int, Int, Int) -> T,
-) -> List<T>
-    // O(n) time and memory; computes f[0..=n] for any multiplicative f
-    // with f(1) = T.one, f(a * b) = f(a) * f(b) for gcd(a, b) = 1,
-    // and f(p^k) = prime_pow(p, k, p^k) for every prime power p^k <= n.
+fn sieve_multiplicative<T>(n: Int, prime_pow: (Int, Int, Int) -> T) -> List<T>
+// O(n) time and memory; computes f[0..=n] for any multiplicative f
+// with f(1) = T.one, f(a * b) = f(a) * f(b) for gcd(a, b) = 1,
+// and f(p^k) = prime_pow(p, k, p^k) for every prime power p^k <= n.
 ```
 
 `sieve_multiplicative` takes only `prime_pow`; `T.one` and `*` come from the
@@ -181,24 +178,24 @@ struct Mod<P>(v: 0..P):
     let MOD = P
     let zero = Mod(0)
     let one = Mod(1 % P)
-    fn new(x: Int) -> Mod<P>                        // O(1); Euclidean reduction into 0..P
+    fn new(x: Int) -> Mod<P>  // O(1); Euclidean reduction into 0..P
     // x ** e via `impl Pow`: O(log |e|); negative e uses inv
-    fn try_inv(self) -> ?Mod<P>                     // O(log P); None if gcd(v, P) != 1
-    fn inv(self) -> Mod<P>                          // O(log P); traps if non-invertible
+    fn try_inv(self) -> ?Mod<P>  // O(log P); None if gcd(v, P) != 1
+    fn inv(self) -> Mod<P>       // O(log P); traps if non-invertible
     // also: from_int, sqrt, log, inv_all; Comb.derange, Barrett, PrimePowerComb,
     // ModComb (see the std.mod stub)
     // impls: Add, Sub, Neg, Mul, Div, Pow, Show
 
 struct Comb<M>:
-    fn new(limit: Int = 0) -> Comb<M>               // O(limit) time and memory; exact size
-    fn fact(self, n: Int) -> M                      // O(1) amortized; 0 for n >= M.MOD
-    fn inv_fact(self, n: Int) -> M                  // O(1) amortized; 0 <= n < M.MOD
-    fn inv(self, i: Int) -> M                       // O(1) amortized; 1 <= i < M.MOD
-    fn choose(self, n: Int, k: Int) -> M            // O(1) for n < M.MOD; Lucas O(log_P n) for n >= M.MOD
-    fn arrange(self, n: Int, k: Int) -> M           // O(1) amortized; 0 outside 0..=n
-    fn multichoose(self, n: Int, k: Int) -> M       // O(1) amortized; stars and bars
-    fn multinomial(self, ks: List<Int>) -> M        // O(ks.len) amortized; (sum ks)! / prod(k!)
-    fn catalan(self, n: Int) -> M                   // O(1) amortized
+    fn new(limit: Int = 0) -> Comb<M>          // O(limit) time and memory; exact size
+    fn fact(self, n: Int) -> M                 // O(1) amortized; 0 for n >= M.MOD
+    fn inv_fact(self, n: Int) -> M             // O(1) amortized; 0 <= n < M.MOD
+    fn inv(self, i: Int) -> M                  // O(1) amortized; 1 <= i < M.MOD
+    fn choose(self, n: Int, k: Int) -> M       // O(1) for n < M.MOD; Lucas O(log_P n) for n >= M.MOD
+    fn arrange(self, n: Int, k: Int) -> M      // O(1) amortized; 0 outside 0..=n
+    fn multichoose(self, n: Int, k: Int) -> M  // O(1) amortized; stars and bars
+    fn multinomial(self, ks: List<Int>) -> M   // O(ks.len) amortized; (sum ks)! / prod(k!)
+    fn catalan(self, n: Int) -> M              // O(1) amortized
 ```
 
 Performance notes from the corpus (`cf2135e2`, `cf2150g`, `cf2066d2`,
@@ -228,22 +225,22 @@ adds cyclic convolution and bitwise transforms.
 ```cp
 // Number-theoretic transform and polynomial convolution
 fn ntt<P>(mut a: List<Mod<P>>, inverse: Bool = false, bit_reversed: Bool = false)
-    // O(n log n) in place; a.len a power of 2 dividing P - 1.
-    // Uses radix-4 Montgomery butterflies for standard primes (998244353,
-    // 469762049, 167772161, 754974721) and primitive_root(P) for any other
-    // NTT-friendly prime P.
+// O(n log n) in place; a.len a power of 2 dividing P - 1.
+// Uses radix-4 Montgomery butterflies for standard primes (998244353,
+// 469762049, 167772161, 754974721) and primitive_root(P) for any other
+// NTT-friendly prime P.
 
 fn convolve<T, O, R>(
     a: List<T>,
     b: List<T>,
-    on: O = (x, y) => x + y,      // ^ | & subset gcd lcm
-    over: R = Semiring(+, *),     // Semiring(min, +) needs shape:
-    shape: ?Curved = None,        // Both | Right | Neither
+    on: O = (x, y) => x + y,   // ^ | & subset gcd lcm
+    over: R = Semiring(+, *),  // Semiring(min, +) needs shape:
+    shape: ?Curved = None,     // Both | Right | Neither
     cyclic: Bool = false,
 ) -> List<T>
-    // The value type picks the algorithm: NTT for an NTT-prime Mod<P>, three
-    // primes and CRT for any other Mod (runtime moduli too) or Int (exact when
-    // every output fits), FFT for F64. Bitwise `on:` needs equal powers of two.
+// The value type picks the algorithm: NTT for an NTT-prime Mod<P>, three
+// primes and CRT for any other Mod (runtime moduli too) or Int (exact when
+// every output fits), FFT for F64. Bitwise `on:` needs equal powers of two.
 
 // Subset/superset zeta-Mobius transforms in place (n = 2^k)
 enum SosOver = Sub | Sup
@@ -267,46 +264,46 @@ argument that can go out of sync with `a.len`.
 <!-- spec-only: signatures and costs, not a program -->
 ```cp
 struct Mat<T>(n: Int, m: Int, a: List<T>):
-    fn zero(n: Int, m: Int = n) -> Mat<T>           // O(n m)
-    fn identity(n: Int) -> Mat<T>                   // O(n^2)
-    fn of(rows: List<List<T>>) -> Mat<T>            // O(n m)
-    fn get(self, i: Int, j: Int) -> T               // O(1)
-    fn at(self, i: Int, j: Int) -> lends mut T         // O(1); writable cell: m.at(i, j) += x
-    fn pow(self, e: Int) -> Mat<T>                  // O(n^3 log e); square matrix, e >= 0
-    fn apply(self, v: List<T>) -> List<T>           // O(n m); A * v
-    fn transpose(self) -> Mat<T>                    // O(n m)
-    fn rows(self) -> List<List<T>>                  // O(n m)
-    fn product(n: Int) -> Monoid<Mat<T>>            // O(n^2); monoid for SegTree<D, Mat<T>>
+    fn zero(n: Int, m: Int = n) -> Mat<T>       // O(n m)
+    fn identity(n: Int) -> Mat<T>               // O(n^2)
+    fn of(rows: List<List<T>>) -> Mat<T>        // O(n m)
+    fn get(self, i: Int, j: Int) -> T           // O(1)
+    fn at(self, i: Int, j: Int) -> lends mut T  // O(1); writable cell: m.at(i, j) += x
+    fn pow(self, e: Int) -> Mat<T>              // O(n^3 log e); square matrix, e >= 0
+    fn apply(self, v: List<T>) -> List<T>       // O(n m); A * v
+    fn transpose(self) -> Mat<T>                // O(n m)
+    fn rows(self) -> List<List<T>>              // O(n m)
+    fn product(n: Int) -> Monoid<Mat<T>>        // O(n^2); monoid for SegTree<D, Mat<T>>
     // impls: Add, Sub, Neg, Mul (ikj order, skipping zero entries)
 
     // Exact Gaussian elimination over any exact field (e.g. Mod<P> with prime P):
-    fn det(self) -> T                               // O(n^3); square matrix
-    fn rank(self) -> Int                            // O(n m min(n, m))
-    fn solve(self, b: List<T>) -> ?List<T>          // O(n m min(n, m)); one solution or None
+    fn det(self) -> T                       // O(n^3); square matrix
+    fn rank(self) -> Int                    // O(n m min(n, m))
+    fn solve(self, b: List<T>) -> ?List<T>  // O(n m min(n, m)); one solution or None
     fn solve_space(self, b: List<T>) -> ?(x0: List<T>, basis: List<List<T>>)
-                                                    // O(n m min(n, m)); particular + nullspace
-    fn inverse(self) -> ?Mat<T>                     // O(n^3); square matrix, None if singular
+    // O(n m min(n, m)); particular + nullspace
+    fn inverse(self) -> ?Mat<T>  // O(n^3); square matrix, None if singular
 
 // Floating-point elimination with partial pivoting (F64):
-fn det_real(a: Mat<F64>, eps: F64 = 1e-9) -> F64    // O(n^3)
-fn rank_real(a: Mat<F64>, eps: F64 = 1e-9) -> Int   // O(n m min(n, m))
+fn det_real(a: Mat<F64>, eps: F64 = 1e-9) -> F64   // O(n^3)
+fn rank_real(a: Mat<F64>, eps: F64 = 1e-9) -> Int  // O(n m min(n, m))
 fn solve_real(a: Mat<F64>, b: List<F64>, eps: F64 = 1e-9) -> ?List<F64>
-                                                    // O(n m min(n, m))
+// O(n m min(n, m))
 fn inverse_real(a: Mat<F64>, eps: F64 = 1e-9) -> ?Mat<F64>
-                                                    // O(n^3)
+// O(n^3)
 
 // GF(2) linear basis over 63-bit non-negative integers (x >= 0)
 struct XorBasis:
-    fn new() -> XorBasis                            // O(W)
-    @get fn rank(self) -> Int                       // O(1); dimension of span
-    fn add(mut self, x: Int) -> Bool                // O(log x); true if independent
-    fn reduce(self, x: Int) -> Int                  // O(62); min x ^ s over s in span
-    fn contains(self, x: Int) -> Bool               // O(62); reduce(x) == 0
-    fn max_xor(self, init: Int = 0) -> Int          // O(62); max init ^ s over s in span
-    fn min_xor(self, init: Int) -> Int              // O(62); alias for reduce(init)
-    fn kth(self, k: Int) -> ?Int                    // O(62^2); k-th smallest in span (0-indexed)
-    fn merge(mut self, o: XorBasis)                 // O(rank * 62); union of spans
-    fn monoid() -> Monoid<XorBasis>                 // O(1); for SegTree<D, XorBasis>
+    fn new() -> XorBasis                    // O(W)
+    @get fn rank(self) -> Int               // O(1); dimension of span
+    fn add(mut self, x: Int) -> Bool        // O(log x); true if independent
+    fn reduce(self, x: Int) -> Int          // O(62); min x ^ s over s in span
+    fn contains(self, x: Int) -> Bool       // O(62); reduce(x) == 0
+    fn max_xor(self, init: Int = 0) -> Int  // O(62); max init ^ s over s in span
+    fn min_xor(self, init: Int) -> Int      // O(62); alias for reduce(init)
+    fn kth(self, k: Int) -> ?Int            // O(62^2); k-th smallest in span (0-indexed)
+    fn merge(mut self, o: XorBasis)         // O(rank * 62); union of spans
+    fn monoid() -> Monoid<XorBasis>         // O(1); for SegTree<D, XorBasis>
 ```
 
 Why `det_real` / `solve_real` are separate from `Mat<T>.det` / `Mat<T>.solve`:
@@ -329,38 +326,38 @@ least `2 * bit_ceil(n)`).
 <!-- spec-only: signatures and costs, not a program -->
 ```cp
 fn deriv<P>(a: List<Mod<P>>) -> List<Mod<P>>
-    // O(a.len) time and memory; formal derivative a'(x), length max(0, a.len - 1)
+// O(a.len) time and memory; formal derivative a'(x), length max(0, a.len - 1)
 
 fn integral<P>(a: List<Mod<P>>) -> List<Mod<P>>
-    // O(a.len) time and memory; antiderivative with constant term 0, length a.len + 1
-    // (or [] if a is empty); uses linear-time modular inverses 1..=a.len, no O(log P) div
+// O(a.len) time and memory; antiderivative with constant term 0, length a.len + 1
+// (or [] if a is empty); uses linear-time modular inverses 1..=a.len, no O(log P) div
 
 fn inv<P>(a: List<Mod<P>>, n: Int) -> List<Mod<P>>
-    // O(n log n) time (~10n log n via half-size Newton doubling: 5 NTTs of size 2m per
-    // doubling step m -> 2m), O(n) memory; returns a(x)^(-1) mod x^n.
-    // Precondition: n >= 0; if n > 0, a.len > 0 and a[0] != 0.
+// O(n log n) time (~10n log n via half-size Newton doubling: 5 NTTs of size 2m per
+// doubling step m -> 2m), O(n) memory; returns a(x)^(-1) mod x^n.
+// Precondition: n >= 0; if n > 0, a.len > 0 and a[0] != 0.
 
 fn log<P>(a: List<Mod<P>>, n: Int) -> List<Mod<P>>
-    // O(n log n) time (1 inv + 1 convolve + deriv + integral, ~13n log n), O(n) memory;
-    // returns ln(a(x)) mod x^n = integral(a'(x) * a(x)^(-1)) mod x^n.
-    // Precondition: n >= 0; if n > 0, a.len > 0 and a[0] == 1.
+// O(n log n) time (1 inv + 1 convolve + deriv + integral, ~13n log n), O(n) memory;
+// returns ln(a(x)) mod x^n = integral(a'(x) * a(x)^(-1)) mod x^n.
+// Precondition: n >= 0; if n > 0, a.len > 0 and a[0] == 1.
 
 fn exp<P>(a: List<Mod<P>>, n: Int) -> List<Mod<P>>
-    // O(n log n) time (Newton doubling g <- g * (1 - ln(g) + a) mod x^(2m), ~28n log n),
-    // O(n) memory; returns exp(a(x)) mod x^n.
-    // Precondition: n >= 0; if n > 0, a.len == 0 or a[0] == 0.
+// O(n log n) time (Newton doubling g <- g * (1 - ln(g) + a) mod x^(2m), ~28n log n),
+// O(n) memory; returns exp(a(x)) mod x^n.
+// Precondition: n >= 0; if n > 0, a.len == 0 or a[0] == 0.
 
 fn pow<P>(a: List<Mod<P>>, k: Int, n: Int) -> List<Mod<P>>
-    // O(n log n) time (1 log + 1 exp when nonzero, O(n) when k == 0 or shifted past n),
-    // O(n) memory; returns a(x)^k mod x^n for k >= 0, handling leading zeros a(x) = c x^d (...).
-    // Precondition: n >= 0, k >= 0.
+// O(n log n) time (1 log + 1 exp when nonzero, O(n) when k == 0 or shifted past n),
+// O(n) memory; returns a(x)^k mod x^n for k >= 0, handling leading zeros a(x) = c x^d (...).
+// Precondition: n >= 0, k >= 0.
 
 fn sqrt<P>(a: List<Mod<P>>, n: Int) -> ?List<Mod<P>>
-    // O(n log n + log^2 P) time (Tonelli-Shanks mod_sqrt for leading term + Newton doubling
-    // g <- (g + a * g^(-1)) / 2 mod x^(2m), ~20n log n), O(n) memory.
-    // Returns Some(g) with g(x)^2 == a(x) (mod x^n), or None if no square root exists mod P
-    // (odd leading zero count or non-residue leading coefficient).
-    // Precondition: n >= 0.
+// O(n log n + log^2 P) time (Tonelli-Shanks mod_sqrt for leading term + Newton doubling
+// g <- (g + a * g^(-1)) / 2 mod x^(2m), ~20n log n), O(n) memory.
+// Returns Some(g) with g(x)^2 == a(x) (mod x^n), or None if no square root exists mod P
+// (odd leading zero count or non-residue leading coefficient).
+// Precondition: n >= 0.
 ```
 
 Cost summary (NTTs of length `N = bit_ceil(n)`):

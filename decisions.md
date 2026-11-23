@@ -6689,3 +6689,18 @@ delete `scripts/gen.py`.
   but no rule said so, so the bug-catch run found no case guarding it.
 - **Reverse.** Drop R04.2.21 and `core-04/domain-is-its-range.cp`; callers
   write `Pos.first!..=Pos.last!`.
+
+## 296. The formatter's line-1 stamp waits for the 0.3.0 version (2026-11-22)
+
+- **Decision.** `cpl fmt` does not add the R11.4.1 `// cpl <version>` stamp
+  yet. When it does, the stamp goes on solutions only, never on test inputs
+  (decisions.md 276), and a project turns it off with `cp.toml [fmt]
+  stamp = false`.
+- **Why.** The stamp records the running compiler's version, which is
+  `0.2.2` in the workspace `Cargo.toml`. Stamping 183 corpus solutions with
+  `// cpl 0.2.2` now would mean restamping all of them at the release. It
+  would also shift every line number that reviews and goldens cite twice. A
+  file without a stamp is valid (R11.4.1).
+- **Reverse.** Add the stamp in `crates/cpl-fmt` and run `cpl fmt` over the
+  formatted set, as was done for decisions.md 276.
+

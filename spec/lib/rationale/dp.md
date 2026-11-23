@@ -105,14 +105,14 @@ keeping a second queue under another name.
 
 ```cp
 struct Line(k: Int, m: Int)
-    fn at(self, x: Int) -> Int                  // k * x + m
+    fn at(self, x: Int) -> Int  // k * x + m
 struct LiChao<L, K>
-    fn new(pick: (K, K) -> K, xs: Range<Int>) -> LiChao<L, K>   // O(1)
+    fn new(pick: (K, K) -> K, xs: Range<Int>) -> LiChao<L, K>  // O(1)
     fn add(mut self, l: L, on: ?Range<Int> = None)
-        // O(log xs.len) for a whole line, O(log^2 xs.len) for a segment
-    fn at(self, x: Int) -> ?K                   // O(log xs.len)
-    fn line_at(self, x: Int) -> ?L              // O(log xs.len)
-    fn clear(mut self)                          // O(1)
+    // O(log xs.len) for a whole line, O(log^2 xs.len) for a segment
+    fn at(self, x: Int) -> ?K       // O(log xs.len)
+    fn line_at(self, x: Int) -> ?L  // O(log xs.len)
+    fn clear(mut self)              // O(1)
 ```
 
 The convex hull trick. `L` is anything with `at(self, x: Int) -> K`:
@@ -132,27 +132,27 @@ fn monotone_minima(rows: Int, cols: Int, f: (Int, Int) -> ?Int)
     // Law: the leftmost argmin is nondecreasing in row (true for a Monge
     // f, checkable with std.spec.monge_break).
 fn dnc_layer(prev: List<?Int>, cost: (Int, Int) -> Int) -> List<?Int>
-    // O(n log n) calls of cost, n = prev.len. next[i] = min over j < i of
-    // prev[j] + cost(j, i); next[0] = None. Law: cost satisfies the
-    // quadrangle inequality (std.spec.dnc_break).
+// O(n log n) calls of cost, n = prev.len. next[i] = min over j < i of
+// prev[j] + cost(j, i); next[0] = None. Law: cost satisfies the
+// quadrangle inequality (std.spec.dnc_break).
 fn monge_path<K>(n: Int, w: (Int, Int) -> K) -> (val: List<K>, prev: List<Int>)
-    // Online LARSCH: O(n) calls of w, O(n) memory. val[i] = least weight of
-    // a path 0 -> i through increasing nodes, prev[i] its last hop (prev[0]
-    // = 0). Law: w is Monge (std.spec.monge_break).
+// Online LARSCH: O(n) calls of w, O(n) memory. val[i] = least weight of
+// a path 0 -> i through increasing nodes, prev[i] its last hop (prev[0]
+// = 0). Law: w is Monge (std.spec.monge_break).
 fn knuth(n: Int, cost: (Int, Int) -> Int) -> List<List<Int>>
-    // O(n^2) calls of cost, O(n^2) memory. dp[i][j] over cuts 0..=n:
-    // dp[i][i + 1] = 0, dp[i][j] = cost(i, j) + min over i < k < j of
-    // dp[i][k] + dp[k][j]. Law: cost is monotone and satisfies the
-    // quadrangle inequality (std.spec.knuth_break).
+// O(n^2) calls of cost, O(n^2) memory. dp[i][j] over cuts 0..=n:
+// dp[i][i + 1] = 0, dp[i][j] = cost(i, j) + min over i < k < j of
+// dp[i][k] + dp[k][j]. Law: cost is monotone and satisfies the
+// quadrangle inequality (std.spec.knuth_break).
 fn aliens<L>(k: Int, lambdas: Range<L>, solve: L -> (val: L, count: Int))
     -> L
     // O(log lambdas.len) calls of solve. f(k) for a convex f, where
     // solve(λ) is min over c of f(c) + λ c and the least c attaining it.
     // Law: f is convex in k; λ in lambdas reaches count <= k.
 fn subset_sums(xs: List<Int>) -> List<Int>
-    // O(2^n) time and memory. Every subset sum of xs, sorted, by merging.
-    // Sums over subsets and supersets are the math area's in-place
-    // std.ntt.sos_sub / sos_sup (inverse: Bool = false), O(n 2^n).
+// O(2^n) time and memory. Every subset sum of xs, sorted, by merging.
+// Sums over subsets and supersets are the math area's in-place
+// std.ntt.sos_sub / sos_sup (inverse: Bool = false), O(n 2^n).
 ```
 
 Each DP optimization takes the cost as an operation and returns the plain

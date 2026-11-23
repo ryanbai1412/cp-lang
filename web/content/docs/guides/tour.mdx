@@ -170,13 +170,13 @@ A top-level `return` ends the program. It takes no value and works from inside a
 When the input holds many test cases, add one line. `@!multitest` is a divider. The `!` marks a directive for the rest of the file, where a plain `@` decorates only the one item below it: everything above it runs once, and everything below it runs once per test case. The number of test cases is read for you at the divider.
 
 ```cp input="2\n3\n1 2 3\n0\n"
-let sv = Sieve(1e6)             // above the divider: built once, shared by every test case
+let sv = Sieve(1e6)  // above the divider: built once, shared by every test case
 
 @!multitest
-let n: 0..=2e5 = read()         // below the divider: once per test case
+let n: 0..=2e5 = read()  // below the divider: once per test case
 if n == 0:
     print("empty")
-    return                      // ends this test case; the next one starts
+    return  // ends this test case; the next one starts
 domain V = 1..=n
 let a: [V]Int = read()
 print(a.sum())

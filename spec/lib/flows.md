@@ -62,27 +62,27 @@ functions for everything whose input is a table or an edge list.
 <!-- spec-only: signatures and costs, not a program -->
 ```cp
 struct Arc(id: 0..2_147_483_648)
-    @get fn rev(self) -> Arc                          // O(1)
+    @get fn rev(self) -> Arc  // O(1)
 
-struct FlowGraph<V>                                   // Dinic
-    fn new() -> FlowGraph<V>                          // O(V)
-    fn add(mut self, u: V, v: V, cap: ?Int) -> Arc     // O(1); none: never cut
-    fn add_both(mut self, u: V, v: V, cap: Int) -> Arc // O(1); undirected
-    fn flow(self, a: Arc) -> Int                      // O(1)
-    fn cap(self, a: Arc) -> Int                       // O(1)
-    fn source(self, a: Arc) -> V                      // O(1)
-    fn target(self, a: Arc) -> V                      // O(1)
+struct FlowGraph<V>                                     // Dinic
+    fn new() -> FlowGraph<V>                            // O(V)
+    fn add(mut self, u: V, v: V, cap: ?Int) -> Arc      // O(1); none: never cut
+    fn add_both(mut self, u: V, v: V, cap: Int) -> Arc  // O(1); undirected
+    fn flow(self, a: Arc) -> Int                        // O(1)
+    fn cap(self, a: Arc) -> Int                         // O(1)
+    fn source(self, a: Arc) -> V                        // O(1)
+    fn target(self, a: Arc) -> V                        // O(1)
     fn max_flow(mut self, s: V, t: V, limit: ?Int = None) -> Int
-        // O(V^2 E); O(E sqrt V) on unit networks
+    // O(V^2 E); O(E sqrt V) on unit networks
     fn push_relabel(mut self, s: V, t: V) -> Int
-        // the same flow, O(V^2 sqrt E); highest label, gap
-    fn min_cut(self, s: V) -> [V]Bool                 // O(V + E)
-    fn reset(mut self)                                // O(E)
+    // the same flow, O(V^2 sqrt E); highest label, gap
+    fn min_cut(self, s: V) -> [V]Bool  // O(V + E)
+    fn reset(mut self)                 // O(E)
 
-struct CostFlow<V>                                    // successive shortest paths
-    fn new() -> CostFlow<V>                           // O(V)
-    fn add(mut self, u: V, v: V, cap: ?Int, cost: Int) -> Arc   // O(1)
-    fn flow(self, a: Arc) -> Int                      // O(1)
+struct CostFlow<V>                                             // successive shortest paths
+    fn new() -> CostFlow<V>                                    // O(V)
+    fn add(mut self, u: V, v: V, cap: ?Int, cost: Int) -> Arc  // O(1)
+    fn flow(self, a: Arc) -> Int                               // O(1)
     fn cap(self, a: Arc) -> Int
     fn cost(self, a: Arc) -> Int
     fn source(self, a: Arc) -> V
@@ -91,23 +91,23 @@ struct CostFlow<V>                                    // successive shortest pat
         -> (flow: Int, cost: Int)
         // O(F E log V) with potentials, plus O(V E) once if a cost is negative
     fn slope(mut self, s: V, t: V, limit: ?Int = None)
-        -> List<(flow: Int, cost: Int)>               // same cost
+        -> List<(flow: Int, cost: Int)>  // same cost
 
 fn max_closure<V, G: Next<V>>(before: G, profit: V -> Int)
-    -> (value: Int, take: [V]Bool)                    // one max flow on V + 2
+    -> (value: Int, take: [V]Bool)  // one max flow on V + 2
 
 fn max_matching<L, R>(adj: [L]List<R>)
-    -> (size: Int, mate: [L]?R, back: [R]?L)         // O(E sqrt V) Hopcroft–Karp
+    -> (size: Int, mate: [L]?R, back: [R]?L)  // O(E sqrt V) Hopcroft–Karp
 fn min_vertex_cover<L, R>(adj: [L]List<R>)
-    -> (left: [L]Bool, right: [R]Bool)               // O(E sqrt V), König
+    -> (left: [L]Bool, right: [R]Bool)  // O(E sqrt V), König
 fn max_weight_matching<L, R>(weight: (L, R) -> Int)
-    -> (total: Int, mate: [L]R)                      // O(L^2 R) Hungarian, L <= R
+    -> (total: Int, mate: [L]R)  // O(L^2 R) Hungarian, L <= R
 fn min_weight_matching<L, R>(weight: (L, R) -> Int)
-    -> (total: Int, mate: [L]R)                      // O(L^2 R) Hungarian, L <= R
+    -> (total: Int, mate: [L]R)  // O(L^2 R) Hungarian, L <= R
 fn general_matching<V>(adj: [V]List<V>)
-    -> (size: Int, mate: [V]?V)                      // O(V^3) Edmonds' blossoms
+    -> (size: Int, mate: [V]?V)  // O(V^3) Edmonds' blossoms
 fn max_weight_general_matching<V, E>(edges: [E](u: V, v: V, w: Int))
-    -> (total: Int, mate: [V]?V)                     // O(V^3) weighted blossoms, O(V^2) memory
+    -> (total: Int, mate: [V]?V)  // O(V^3) weighted blossoms, O(V^2) memory
 
 fn circulation<V, E>(arcs: [E](u: V, v: V, lo: Int, hi: Int)) -> ?[E]Int
 fn max_bounded_flow<V, E>(arcs: [E](u: V, v: V, lo: Int, hi: Int), s: V, t: V)
@@ -117,9 +117,9 @@ fn min_bounded_flow<V, E>(arcs: [E](u: V, v: V, lo: Int, hi: Int), s: V, t: V)
     // each: two max flows on V + 2, Dinic's bound
 
 fn gomory_hu<V, E>(edges: [E](u: V, v: V, w: Int))
-    -> List<(u: V, v: V, w: Int)>                    // V - 1 max flows (Gusfield)
+    -> List<(u: V, v: V, w: Int)>  // V - 1 max flows (Gusfield)
 fn global_min_cut<V, E>(edges: [E](u: V, v: V, w: Int))
-    -> (w: Int, side: [V]Bool)                       // Stoer-Wagner, O(V^3), O(V^2) memory
+    -> (w: Int, side: [V]Bool)  // Stoer-Wagner, O(V^3), O(V^2) memory
 ```
 
 ### Names
@@ -304,7 +304,9 @@ let pairs: [Pair](u: Item, v: Item, w: 0..=1e9) = read()
 
 domain Node = Item + Pair
 fn profit(v: Node) -> Int = match v: Item(i) => -cost[i], Pair(e) => pairs[e].w
-let needs = Graph.directed([(u: Node(i), v: Node(e)) for e in Pair for i in [pairs[e].u, pairs[e].v]])
+let needs = Graph.directed(
+    [(u: Node(i), v: Node(e)) for e in Pair for i in [pairs[e].u, pairs[e].v]]
+)
 print(max_closure(before: needs, profit: profit).value)
 ```
 
