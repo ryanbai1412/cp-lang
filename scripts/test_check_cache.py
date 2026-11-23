@@ -258,6 +258,27 @@ class CheckCacheTest(unittest.TestCase):
             self.assertIn("conflict markers", r.stderr)
             self.assertNotEqual(git("rev-parse", "main", cwd=remote), git("rev-parse", "HEAD"))
 
+    def test_land_commits_regenerated_skill_pages(self):
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        env = hermetic_env()
+        with tempfile.TemporaryDirectory() as tmp:
+            remote, work, git = self.land_repos(tmp, env)
+            os.makedirs(os.path.join(work, "scripts"))
+            os.makedirs(os.path.join(work, "skills"))
+            with open(os.path.join(work, "scripts", "skill-gen.py"), "w", encoding="utf-8") as f:
+                f.write("open('skills/seq.md', 'w').write(open('spec/seq.cp').read())\n")
+            with open(os.path.join(work, "scripts", "conformance-coverage.py"), "w", encoding="utf-8") as f:
+                f.write("")
+            os.makedirs(os.path.join(work, "spec"))
+            self.commit(git, work, os.path.join("spec", "seq.cp"))
+            r = subprocess.run([os.path.join(root, "scripts", "land.sh")], cwd=work,
+                               capture_output=True, text=True, env=env)
+            self.assertEqual(r.returncode, 0, r.stderr)
+            self.assertIn("regenerated", r.stderr)
+            self.assertEqual(git("show", "main:skills/seq.md", cwd=remote), "spec/seq.cp")
+            self.assertEqual(git("log", "-1", "--format=%(trailers:key=Domain,valueonly)", "main",
+                                 cwd=remote), "infra")
+
     def test_append_only_shared_files_rebase_without_conflicts(self):
         root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         env = hermetic_env()

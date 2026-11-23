@@ -4,11 +4,14 @@
 # the commit hook ran the commit tier, CI runs the full gate on every main
 # tip, and the infra sheriff reverts or fixes a red one. Every commit to land
 # needs a `Domain: <d>` trailer, and the change may not add a conflict marker.
+# A change under spec/, skills/ or scripts/ gets its generated skill pages and
+# COVERAGE.md regenerated and committed, so they can't go stale on main.
 # Each landing appends one JSON line (domain, seconds, tries) to
 # .git/cpl-land.log; scripts/land_stats.py reads it.
 #
 # Usage: scripts/land.sh [remote]   (default origin; CPL_LAND_TRIES, default 5)
 set -euo pipefail
+cd "$(git rev-parse --show-toplevel)"
 remote="${1:-origin}"
 tries="${CPL_LAND_TRIES:-5}"
 t0=$(date +%s)
@@ -23,6 +26,14 @@ for try in $(seq "$tries"); do
     if git diff FETCH_HEAD HEAD | grep -qE '^\+(<<<<<<<|\|\|\|\|\|\|\||>>>>>>>)( |$)'; then
         echo "land: conflict markers in your change: git diff FETCH_HEAD HEAD | grep -nE '^\+(<<<|\|\|\||>>>)'" >&2
         exit 1
+    fi
+    if [ -f scripts/skill-gen.py ] && ! git diff --quiet FETCH_HEAD HEAD -- spec skills scripts; then
+        python3 scripts/skill-gen.py >/dev/null && python3 scripts/conformance-coverage.py >/dev/null
+        git add -A -- $(ls -d skills spec/conformance/COVERAGE.md 2>/dev/null)
+        if ! git diff --cached --quiet; then
+            git commit -q --no-verify -m "factory: regenerate skill pages and coverage" -m "Domain: $domain"
+            echo "land: regenerated stale skill pages or COVERAGE.md" >&2
+        fi
     fi
     if git push -q --no-verify "$remote" HEAD:main; then
         secs=$(( $(date +%s) - t0 ))
