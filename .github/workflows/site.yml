@@ -8,9 +8,11 @@ on:
 permissions:
   contents: read
 
+# A started deploy always finishes; a newer push replaces the waiting one, so
+# the next deploy covers the newest tip.
 concurrency:
-  group: site
-  cancel-in-progress: true
+  group: site-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   deploy:
