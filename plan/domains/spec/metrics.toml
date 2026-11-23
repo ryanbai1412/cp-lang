@@ -111,3 +111,21 @@ name = "chapter-table fns missing from the prelude (R11.3.2)"
 command = "uv run scripts/conformance-prelude.py --check"
 today = "106 (geometry 36, math 31, flows 11, graphs-trees 11, strings 8, search-dp 7, ops-ranges 1, sequence-patterns 1)"
 target = "0"
+
+[[metric]]
+name = "known-gap cases in spec/SUBSET.md (shrink only)"
+command = "grep -cE '^- [a-z0-9-]+/[^ ]+\\.cp: ' spec/SUBSET.md"
+today = "see command (2026-11-23)"
+target = "0 for Milestone 2"
+
+[[metric]]
+name = "wrong cases found by implementers (per day; register row: every case is itself right)"
+command = "git log --since=1.day --grep='contradicted the spec\\|stale max/min or trap lines' --oneline -- spec/conformance | wc -l"
+today = "3 commits, 10 cases (2026-11-23)"
+target = "0; each one traced to a missing check"
+
+[[metric]]
+name = "cases failing interpreter vs sanitized C++ (register row: no undefined behaviour)"
+command = "CPL_CONFORM_CXXFLAGS='-O1 -g -fsanitize=address,undefined -D_GLIBCXX_DEBUG' target/release/cpl-conform diff | head -1"
+today = "not yet run over the whole suite"
+target = "0"
