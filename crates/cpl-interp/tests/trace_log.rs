@@ -394,7 +394,7 @@ fn raw_ints_read_back_as_written() {
 }
 
 /// The budgets of a debug session at 10^7 steps: stepping back answers
-/// in under 50 ms, recording makes the run at most 3x slower, and the
+/// in under 50 ms, recording makes the run at most 1.2x slower, and the
 /// recording takes a few hundred MB. `cargo test --release -p cpl-interp
 /// --test trace_log -- --ignored --nocapture`.
 #[test]
@@ -468,7 +468,7 @@ fn ten_million_steps_fit_the_debugging_budgets() {
         if back.as_millis() >= 50 {
             over.push(format!("{name}: step back took {back:?}"));
         }
-        if slower > 3.0 {
+        if slower > 1.2 {
             over.push(format!("{name}: tracing made the run {slower:.2}x slower"));
         }
         if mb >= 500.0 {
@@ -505,7 +505,7 @@ fn ten_million_steps_fit_the_debugging_budgets() {
             "{name}: 2000 runs; untraced {plain:?}, recorded {traced:?}: \
              {slower:.2}x the untraced run"
         );
-        if slower > 3.0 {
+        if slower > 1.2 {
             over.push(format!("{name}: tracing made the run {slower:.2}x slower"));
         }
     }
