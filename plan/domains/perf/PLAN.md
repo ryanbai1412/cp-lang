@@ -7,11 +7,11 @@ The detail behind [README.md](README.md). Dated 2026-11-22.
 Milestone 1 steps 6 and 7 (Submit, Compete) set the order; see the README's Milestone 1 section. Landed in phase 2: the in-flight branches, the perf and size harnesses, zero-cost builds, compaction (decision 271), the no-trap judge build (decision 299).
 
 1. **Tail over 1.5x** (M1 criterion 3). `p06_labyrinth` 3.90x, `cf1146h` 3.47x and RSS 10.5x, `wtf26b`, `p10_matching` 2.23x, `cf2178h` 1.87x, `ranges/mo` 1.47x, `flow/costflow` 1.26x. Profile each with `perf`, find the cause (codegen, stdlib body, or port algorithm), fix it generally or route it, re-run the set.
-2. **Fit 32 KB on Codeforces** (criterion 1). `ucup5s05f/port.cp` and `noi17p2/spec.cp`; `sizes.py --check` in the gate (request to infra).
-3. **Compiles on Codeforces** (criterion 2). Every built program through mingw-w64 g++ with the `codeforces` profile flags (Windows: 32-bit `long`, `-static`, the stack flag); fix codegen failures, route the rest.
+2. **Fit 32 KB** (criterion 1). `ucup5s05f/port.cp` and `noi17p2/spec.cp`; `sizes.py --check` in the gate (request to infra).
+3. **Compiles** (criterion 2). Every built program through g++ as C++17 (`bench/compiles.py`); fix codegen failures, route the rest. No new judge-profile or Windows g++ work in Milestone 1 (Ryan: language quality first); the existing profiles keep working.
 4. **Perf set completeness** (M1 of the old list): matched references, the three `bench/` pairs that do not build (`math/ntt`, `seq/scan_in_place`, `seq/slice_nth_element`, all stdlib), corpus blockers routed.
 5. **Ratchet** so wins stick: committed baseline, nightly runtime check (request to infra).
-6. **Deferred**: other judges (`atcoder` sizes and flags), zero-cost pairs past the tail (`iterators`, `optionals` waits on parameter ranges in the IR), max < 1.1x after tuning, SIMD, the `expr.rs`/`emit.rs` splits, harnesses into `cpl bench`.
+6. **Deferred**: new judge-profile work (Codeforces/AtCoder flags, Windows g++), zero-cost pairs past the tail (`iterators`, `optionals` waits on parameter ranges in the IR), max < 1.1x after tuning, SIMD, the `expr.rs`/`emit.rs` splits, harnesses into `cpl bench`.
 
 ## Why these milestones
 
@@ -43,4 +43,4 @@ Deadline about 09:30 PST 2026-11-23; worklog checkpoint every 2 hours.
 
 1. Tail until about 03:00: `p06_labyrinth` (done: 77e70afe0, 69.3 -> 40.4 ms), `cf1146h`, `p10_matching`, `cf2178h`.
 2. `ucup5s05f` and `noi17p2` under 32 KB (about 1 h).
-3. Corpus compile check with mingw-w64 and the `codeforces` flags (about 2 h).
+3. Full perf set and sizes re-run after each fix (`bench/compiles.py` is 1 failure, routed).

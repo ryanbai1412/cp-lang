@@ -142,3 +142,10 @@ Newest first: what landed (commit), evidence, next, blocked, requests from other
 - Request (idioms/ports owner of `research/dryrun`): `p06_labyrinth.cp` uses `print(true)`, which no longer checks (E0606); it drops out of the perf set until fixed.
 - Request from tech-debt (2026-11-22, Milestone 1, correctness): the one `cpl-conform diff` mismatch is undefined behaviour in emitted C++. `corpus/problems/dmopc21c5p2/spec.cp` (`print(chain([1, 3, 2], 4..=n).take(n))`, input `1`): interp prints `1`, C++ prints `34161590272`. `cpl build` emits `cpl::ListView<ll> t0 = m1_take_Lst_Int_2(m1_chain_...(std::vector<ll>{1, 3, 2}, ...), n);`, a view into a temporary vector that dies at the end of the statement. Any std fn that lends from a by-value temporary argument has this shape; codegen should bind the temporary to a local that outlives the view (or the checker should reject it). I'm adding an ASan/UBSan mode to `cpl-conform diff` to find every instance.
 - Note from tech-debt (2026-11-22, decision 317): your crates now have a `README.md` (job, invariants, tests) written from the crate docs; please keep it true when the crate changes.
+
+## 2026-11-22 21:45 checkpoint
+
+- Landed since the last checkpoint: 77e70afe0 (`p06_labyrinth` 69.3 -> 40.4 ms), c15f204f6 (Milestone 1 section), this commit.
+- `bench/compiles.py`: compiles the C++ of every program that builds with g++ (`-std=c++17 -O2 -fsyntax-only`). At `058ce6f3f`: 753 build, 1 does not compile, `etsr23r4p2/spec.cp` (request to compiler below). The same run through mingw-w64 with the `codeforces` flags also gave just that one, but judge profiles get no more Milestone 1 time (Ryan).
+- `python3 bench/sizes.py --judge generic`: 753 build, median 11,108 B, 2 over 32 KB (`ucup5s05f/port.cp` 37,078, `noi17p2/spec.cp` 34,484).
+- Next: `cf1146h`. `sum(f(x) for ..)` builds the whole list before summing (75 MB RSS against 7 MB for the matched C++); summing in the loop, by hand in the C++, took it from 575 to 468 ms and 9.6 MB. The rest is `Bitset &` allocating a new word list per call (matched C++: 152 ms). Then `p10_matching`, `cf2178h`, the 32 KB pair.

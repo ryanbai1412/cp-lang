@@ -20,20 +20,20 @@ The submitted C++ is as fast and as small as the C++ a strong contestant writes 
 
 ## Milestone 1
 
-[Milestone 1](../../product/MILESTONE-1.md), due about 09:30 PST 2026-11-23, needs perf for step 6 (Submit) and step 7 (Compete). What CPL submits must fit Codeforces, compile there, and never be slower than the C++ the friend would write. Codeforces is the target judge, checked against the local `codeforces` profile in `crates/cpl-judge/src/lib.rs`: GNU G++20 13.2 on Windows (winlibs), `-std=c++20 -O2 -static`, a 256 MB stack, a 64 KB source limit, 2 s and 256 MB. There are no real judge submissions. Checkpoints go in [worklog.md](worklog.md) every 2 hours.
+[Milestone 1](../../product/MILESTONE-1.md), due about 09:30 PST 2026-11-23, needs perf for step 6 (Submit) and step 7 (Compete): what CPL submits is one C++17 file that compiles under a standard g++, stays well under the judges' 64 KB, and is never slower than the C++ the friend would write. Ryan: language quality over judge-specific features, so no new Milestone 1 time goes into judge profiles; the existing profiles and their tests keep working. Checkpoints go in [worklog.md](worklog.md) every 2 hours.
 
 Exit criteria, each one command:
-1. **Fits.** Every program that builds is under 32 KB for `codeforces`, so none is near the 64 KB limit (`python3 bench/sizes.py --judge codeforces --check`). Today (debug `cpl` at `6bc30ccfb`): 752 programs build and 2 are over: `ucup5s05f/port.cp` at 37,388 B and `noi17p2/spec.cp` at 34,794 B.
-2. **Compiles on Codeforces.** Every program that builds compiles with a Windows g++ (mingw-w64) using the profile's flags, and the Linux g++ run matches the expected output. Target: 0 failures. Not yet measured.
+1. **Fits.** Every program that builds is under 32 KB (`python3 bench/sizes.py --judge generic --check`). Today (debug `cpl` at `058ce6f3f`): 753 programs build; 2 are over, `ucup5s05f/port.cp` at 37,078 B and `noi17p2/spec.cp` at 34,484 B.
+2. **Compiles.** Every program that builds compiles as C++17 with g++ (`python3 bench/compiles.py`). Today: 753 build, 1 does not compile (`etsr23r4p2/spec.cp`: `Action.new`'s default `compose: (+)` lowers to nothing; routed to compiler).
 3. **No performance disadvantage, tail first.** On the matched perf set (`bench/v03_perf_bench.py`): max < 1.5x and p95 < 1.2x. Today (no-trap build, 142 timed): p50 0.778x, p95 1.548x, max 3.90x (`p06_labyrinth`), 9 over 1.5x. Since then, 77e70afe0 took `p06_labyrinth` from 69.3 to 40.4 ms (matched C++: 14.3 ms).
-4. **No traps by default.** `cpl build` and `cpl submit` emit the no-trap build (decision 299, done); `--checks traps` is the opt-in. Trap cost on 46 `bench/` pairs: p50 1.011x, max 1.27x (`monodeque`). `math/comb` dropped from 100.3 to 83.6 ms without traps (matched C++: 73.5 ms).
+4. **No traps by default.** `cpl build` and `cpl submit` emit the no-trap build (decision 299, done); `--checks traps` is the opt-in. Trap cost on 46 `bench/` pairs: p50 1.011x, max 1.27x (`monodeque`).
 
-Deferred: SIMD and optimisation beyond parity; max < 1.1x after tuning; zero-cost pairs not in the tail (`iterators`, `optionals`); other judges' profiles (`atcoder` is also 2 over 32 KB); `cpl explain` cost annotations; codegen file splits; Python harnesses into `cpl bench`.
+Deferred: new judge-profile work (Codeforces/AtCoder flags, Windows g++); SIMD and optimisation beyond parity; max < 1.1x after tuning; zero-cost pairs not in the tail (`iterators`, `optionals`); `cpl explain` cost annotations; codegen file splits; Python harnesses into `cpl bench`.
 
 Next 3 (in hours):
-1. The tail over 1.5x, until about 03:00: `p06_labyrinth`, `cf1146h` (3.47x, 10.5x RSS), `p10_matching`, `cf2178h`. General fixes only; stdlib or port causes go to their owners.
+1. The tail over 1.5x, until about 03:00: `cf1146h` (3.47x, RSS 10.5x: `sum(...)` of a comprehension builds the list, `&` on `Bitset` allocates), `p10_matching`, `cf2178h`, the rest of `p06_labyrinth`. General fixes only; stdlib or port causes go to their owners.
 2. Under 32 KB, about 1 h: `ucup5s05f` and `noi17p2`.
-3. A corpus compile check with mingw-w64 and the `codeforces` flags, about 2 h. Codegen failures get fixed; the rest are routed.
+3. Re-run the full perf set and sizes after each fix; ratchet the numbers.
 
 ## Success criteria for v0.3
 
