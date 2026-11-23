@@ -1528,3 +1528,23 @@ fn traced_vm_swaps_grid_cells_itself() {
         .count();
     assert_eq!(writes, 0, "a traced swap fell back");
 }
+
+#[test]
+fn vm_feeds_loops_from_fns_with_mut_args_itself() {
+    let out = vm_runs_alone(
+        include_str!("../../cpl-cli/tests/programs/vm_fed_mut_args.cp"),
+        include_str!("../../cpl-cli/tests/programs/vm_fed_mut_args.in"),
+    );
+    assert_eq!(
+        out,
+        include_str!("../../cpl-cli/tests/programs/vm_fed_mut_args.out")
+    );
+    let out = vm_runs_alone(
+        include_str!("../../cpl-cli/tests/programs/yields_mut_arg_feeds.cp"),
+        "",
+    );
+    assert_eq!(
+        out,
+        include_str!("../../cpl-cli/tests/programs/yields_mut_arg_feeds.out")
+    );
+}

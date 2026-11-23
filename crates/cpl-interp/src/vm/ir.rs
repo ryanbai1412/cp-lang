@@ -1495,6 +1495,19 @@ pub(crate) struct FeedCallSpec {
     pub args_v: Vec<u16>,
     pub body_pc: usize,
     pub var_loc: SlotLoc,
+    /// Each `mut` parameter, by position, and where its value goes back
+    /// when the loop ends.
+    pub muts: Vec<(usize, FeedBack)>,
+}
+
+/// Where a `mut` argument of a fed call is stored back.
+#[derive(Clone, Copy, Debug)]
+pub(crate) enum FeedBack {
+    I(u16),
+    OptI(u16, u16),
+    Place(u16),
+    PlaceI(u16, ScalarKind),
+    PlaceOptI(u16, ScalarKind),
 }
 
 pub(crate) struct PrintSpec<'p> {

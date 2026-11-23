@@ -981,30 +981,14 @@ impl<'p, 'f> Compiler<'p, 'f> {
             || f.locals.len() > 512
             || self.program.judge_fns.contains(&fn_id)
             || args.len() != f.params.len()
-            || f.params.iter().any(|p| p.mutable)
             || self.inline_ret.is_some()
             || Self::block_has_outer_loop_jump(body, id)
         {
             return false;
         }
-        if !args.iter().all(|a| matches!(a, Arg::Value(_))) {
+        let Some((args_i, args_v, muts)) = self.compile_fed_args(fn_id, args) else {
             return false;
-        }
-        let mut args_i = Vec::new();
-        let mut args_v = Vec::new();
-        for (i, arg) in args.iter().enumerate() {
-            let Arg::Value(e) = arg else { unreachable!() };
-            let pty = &f.locals[i].ty;
-            if ScalarKind::of_ty(pty, self.program).is_some() {
-                args_i.push(self.compile_expr_i(e));
-            } else if ScalarKind::of_opt_ty(pty, self.program).is_some() {
-                let (rv, rs) = self.compile_expr_opt_i(e);
-                args_i.push(rv);
-                args_i.push(rs);
-            } else {
-                args_v.push(self.compile_expr_v(e));
-            }
-        }
+        };
         let var_loc = self.slot_loc(slot);
         let spec_idx = self.feed_calls.len() as u16;
         self.feed_calls.push(FeedCallSpec {
@@ -1013,6 +997,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
             args_v,
             body_pc: 0,
             var_loc,
+            muts,
         });
         let call_pc = self.emit(Op::CallVmFeed { spec: spec_idx }, seq_expr.span);
         self.note_fed_site(call_pc, stmt, seq_expr);

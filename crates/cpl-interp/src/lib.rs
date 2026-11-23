@@ -3406,7 +3406,20 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                             ..
                         }) = args.first()
                         {
-                            self.stack[self.base + *item_slot] = updated;
+                            let at = self.base + *item_slot;
+                            let lent = match &self.stack[at] {
+                                Value::Alias(global, to) => Some(Part {
+                                    global: *global,
+                                    at: *to,
+                                    steps: Vec::new(),
+                                }),
+                                Value::Part(part) => Some(Part::clone(part)),
+                                _ => None,
+                            };
+                            match lent {
+                                Some(part) => *self.part_mut(&part, span)? = updated,
+                                None => self.stack[at] = updated,
+                            }
                         }
                     }
                     (Mutation::Extend, Some(Value::List(items))) => {

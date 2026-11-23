@@ -989,9 +989,65 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     self.domains[id] = prev;
                 }
                 self.unsuspend();
+                let mut back = Ok(());
+                for &(param, to) in &fc.muts {
+                    match (to, fed_chunk.slot_map[param]) {
+                        (FeedBack::I(dst), SlotLoc::I(r, _)) => {
+                            vm_regs_i[base_i + dst as usize] =
+                                vm_regs_i[callee_base_i + r as usize];
+                        }
+                        (FeedBack::OptI(dst_val, dst_some), SlotLoc::OptI { val, some, .. }) => {
+                            vm_regs_i[base_i + dst_val as usize] =
+                                vm_regs_i[callee_base_i + val as usize];
+                            vm_regs_i[base_i + dst_some as usize] =
+                                vm_regs_i[callee_base_i + some as usize];
+                        }
+                        (to, from) => {
+                            let val = match (to, from) {
+                                (FeedBack::Place(_), SlotLoc::V(r)) => {
+                                    std::mem::take(&mut callee_regs_v[r as usize])
+                                }
+                                (FeedBack::PlaceI(_, kind), SlotLoc::I(r, _)) => {
+                                    kind.box_val(vm_regs_i[callee_base_i + r as usize])
+                                }
+                                (FeedBack::PlaceOptI(_, kind), SlotLoc::OptI { val, some, .. }) => {
+                                    kind.box_opt(
+                                        vm_regs_i[callee_base_i + val as usize],
+                                        vm_regs_i[callee_base_i + some as usize],
+                                    )
+                                }
+                                _ => unreachable!("a mut argument is kept as its parameter is"),
+                            };
+                            let (FeedBack::Place(path)
+                            | FeedBack::PlaceI(path, _)
+                            | FeedBack::PlaceOptI(path, _)) = to
+                            else {
+                                unreachable!("a register write-back is matched above")
+                            };
+                            let pp = &chunk.places[path as usize];
+                            let keys = place_keys(pp, regs_v);
+                            let root = place_root_mut(pp.root, regs_v, &mut self.globals);
+                            let regs_i = &vm_regs_i[base_i..base_i + chunk.num_i];
+                            if back.is_ok() {
+                                back = with_place_cell(
+                                    root,
+                                    &pp.steps,
+                                    regs_i,
+                                    &keys,
+                                    spans[cur_pc],
+                                    |cell| {
+                                        *cell = val;
+                                        Ok(())
+                                    },
+                                );
+                            }
+                        }
+                    }
+                }
                 self.return_regs_v(callee_regs_v);
                 vm_regs_i.truncate(callee_base_i);
                 let res = res?;
+                back?;
                 self.call_frames.pop();
                 match res {
                     ExecExit::FeedNext | ExecExit::FeedBreak => {}
