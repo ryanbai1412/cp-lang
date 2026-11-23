@@ -144,6 +144,16 @@ impl Ty {
         }
     }
 
+    /// The fields a lambda of several parameters takes from one element of
+    /// this type: a tuple's items or a record's field types (R01.8.1).
+    pub fn param_fields(&self) -> Option<Vec<Ty>> {
+        match self {
+            Ty::Tuple(items) => Some(items.clone()),
+            Ty::Record(fields) => Some(fields.iter().map(|(_, t)| t.clone()).collect()),
+            _ => None,
+        }
+    }
+
     /// A `.rev` view of `source`.
     pub fn rev_of(source: Ty) -> Ty {
         Ty::Named {

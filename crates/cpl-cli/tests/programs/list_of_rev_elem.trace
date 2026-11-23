@@ -1,0 +1,8 @@
+"variables":{"stdout":{"name":"stdout","type":"what the program printed, a line at a time","kind":"json"},"a":{"name":"a","type":"List\u003cInt>","kind":"array"},"v":{"name":"v","type":"Int","kind":"scalar"},"w":{"name":"w","type":"List\u003cInt>","kind":"array"},"s":{"name":"s","type":"List\u003cChar>","kind":"array"}},"runs":{"fast":{"label":"cpl run","steps":[{"id":0,"line":4,"label":"let a = [1, 2, 3]","stage":"main","values":{"stdout":[],"a":[1,2,3]},"locals":{},"frames":[{"fn":"main","line":4}]},
+{"id":1,"line":5,"label":"var v = 0","stage":"main","values":{"stdout":[],"a":[1,2,3],"v":0},"locals":{},"frames":[{"fn":"main","line":5}]},
+{"id":2,"line":6,"label":"v = List(a.rev).sum()","stage":"main","values":{"stdout":[],"a":[1,2,3],"v":6},"locals":{},"frames":[{"fn":"main","line":6}]},
+{"id":3,"line":7,"label":"let w: List\u003cInt> = List(a.filter(x => x > 1).rev)","stage":"main","values":{"stdout":[],"a":[1,2,3],"v":6,"w":[3,2]},"locals":{"x":3},"frames":[{"fn":"main","line":7}]},
+{"id":4,"line":8,"label":"let s: List\u003cChar> = List(\"ab\".rev)","stage":"main","values":{"stdout":[],"a":[1,2,3],"v":6,"w":[3,2],"s":["b","a"]},"locals":{"x":3},"frames":[{"fn":"main","line":8}]},
+{"id":5,"line":9,"label":"print → 6 3 2 ba","stage":"main","values":{"stdout":["6 3 2 ba"],"a":[1,2,3],"v":6,"w":[3,2],"s":["b","a"]},"locals":{"x":3},"checkpoint":"print 1","frames":[{"fn":"main","line":9}]},
+{"id":6,"line":9,"label":"the program ended","stage":"main","values":{"stdout":["6 3 2 ba"],"a":[1,2,3],"v":6,"w":[3,2],"s":["b","a"]},"locals":{"x":3},"checkpoint":"end","frames":[{"fn":"main","line":9}]}]}}}
+stderr:

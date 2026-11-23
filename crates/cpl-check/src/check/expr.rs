@@ -453,11 +453,11 @@ impl<'a> Checker<'a> {
                     Some(i) => self.lambda_params.swap_remove(i).1,
                     None => Vec::new(),
                 };
-                if let [Ty::Tuple(items)] = given.as_slice() {
-                    if params.len() > 1 && items.len() == params.len() {
-                        given = items.clone();
-                    }
-                }
+                let fields = match given.as_slice() {
+                    [one] => one.param_fields().filter(|f| f.len() == params.len()),
+                    _ => None,
+                };
+                given = fields.filter(|_| params.len() > 1).unwrap_or(given);
                 if !given.is_empty()
                     && params.len() != given.len()
                     && param_tys.iter().all(Option::is_none)
@@ -1596,7 +1596,7 @@ impl<'a> Checker<'a> {
                         }
                     }
                 }
-                Ty::Unknown
+                ty.seq_elem().unwrap_or(Ty::Unknown)
             }
             Ty::Error => Ty::Error,
             _ => Ty::Unknown,

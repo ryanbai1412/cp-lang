@@ -368,8 +368,7 @@ impl Checker<'_> {
             ) = (&arg.value.kind, &want)
             {
                 let takes: Vec<Ty> = wanted.iter().map(|p| p.ty.clone()).collect();
-                let destructures =
-                    matches!(takes.as_slice(), [Ty::Tuple(items)] if items.len() == params.len());
+                let destructures = matches!(takes.as_slice(), [one] if one.param_fields().is_some_and(|f| f.len() == params.len()));
                 if !takes.is_empty()
                     && params.len() != takes.len()
                     && !destructures

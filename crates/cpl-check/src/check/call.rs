@@ -915,7 +915,7 @@ impl<'a> Checker<'a> {
                                 body,
                                 ..
                             } if params.len() == 1
-                                || matches!(&elem, Ty::Tuple(items) if items.len() == params.len()) =>
+                                || elem.param_fields().is_some_and(|f| f.len() == params.len()) =>
                             {
                                 self.quietly(|c| {
                                     c.push_scope();

@@ -440,10 +440,7 @@ impl<'a> Checker<'a> {
     /// `pairs.map((a, b) => ..)`: a lambda of several parameters takes the
     /// fields of a tuple element, so it has one per field.
     pub(crate) fn lambda_takes_elem(&mut self, params: usize, elem: &Ty, span: Span) -> Ty {
-        let fields = match elem {
-            Ty::Tuple(items) => items.len(),
-            _ => 1,
-        };
+        let fields = elem.param_fields().map_or(1, |f| f.len());
         if params != fields {
             let message = format!("lambda takes {params} parameters, but `{elem}` has {fields}");
             self.error(codes::WRONG_ARG_COUNT, span, message);
