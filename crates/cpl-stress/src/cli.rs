@@ -587,8 +587,15 @@ pub fn run_with(
         },
         (None, Some((fn_name, _))) => {
             let size = i64::try_from(args.options.size).unwrap_or(i64::MAX);
-            match Program::resolve_gen(&args.file, fn_name, size) {
-                Ok(program) => Source::InFile(program),
+            match Program::interpreted_gen(&args.file, size) {
+                Ok(Some(program)) => Source::Interpreted {
+                    program: Box::new(program),
+                    name: name.clone(),
+                },
+                Ok(None) => match Program::resolve_gen(&args.file, fn_name, size) {
+                    Ok(program) => Source::InFile(program),
+                    Err(e) => return fail(e.to_string()),
+                },
                 Err(e) => return fail(e.to_string()),
             }
         }

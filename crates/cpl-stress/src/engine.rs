@@ -273,28 +273,39 @@ pub struct InterpChoices {
     pub limit: Duration,
 }
 
+impl InterpChoices {
+    /// One run of the generator, and the choices it made.
+    fn run(&self, io: cpl_interp::Io, replay: Option<Vec<u64>>) -> Result<Drawn, cpl_interp::Trap> {
+        let choices = std::sync::Arc::new(std::sync::Mutex::new(cpl_interp::Choices {
+            replay,
+            made: Vec::new(),
+        }));
+        let io = io.choosing(std::sync::Arc::clone(&choices));
+        let input = run_ir(&self.program, io, self.stack_limit, self.limit).map_err(|(_, t)| t)?;
+        let made = std::mem::take(&mut choices.lock().unwrap().made);
+        let (sites, choices) = made.into_iter().unzip();
+        Ok(Drawn {
+            choices,
+            sites,
+            input,
+        })
+    }
+}
+
 impl ChoiceSource for InterpChoices {
     fn draw(&self, seed: u64) -> Result<Drawn, StressError> {
-        match run_ir(
-            &self.program,
-            cpl_interp::Io::fixed(b"").seeded(seed),
-            self.stack_limit,
-            self.limit,
-        ) {
-            Ok(input) => Ok(Drawn {
-                choices: Vec::new(),
-                sites: Vec::new(),
-                input,
-            }),
-            Err((_, trap)) => Err(StressError(format!(
-                "the `@gen` fn of {} failed on seed {seed}: {}",
-                self.name, trap.message
-            ))),
-        }
+        self.run(cpl_interp::Io::fixed(b"").seeded(seed), None)
+            .map_err(|trap| {
+                StressError(format!(
+                    "the `@gen` fn of {} failed on seed {seed}: {}",
+                    self.name, trap.message
+                ))
+            })
     }
 
-    fn replay(&self, _choices: &[u64]) -> Option<Drawn> {
-        None
+    fn replay(&self, choices: &[u64]) -> Option<Drawn> {
+        self.run(cpl_interp::Io::fixed(b""), Some(choices.to_vec()))
+            .ok()
     }
 }
 

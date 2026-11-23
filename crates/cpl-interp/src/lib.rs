@@ -18,8 +18,9 @@ mod fn_value;
 mod input;
 mod io;
 mod read;
+use io::draw_below;
 use io::Feed;
-pub use io::Io;
+pub use io::{Choices, Io};
 mod observe;
 pub mod profile;
 pub mod replay;
@@ -406,6 +407,7 @@ fn run_from<O: Observer>(
         call_frames: Vec::new(),
         current_case: None,
         rng_state: seed.map_or(0x9e3779b97f4a7c15, |seed| seed ^ 0x9e3779b97f4a7c15),
+        choices: io.choices,
         tracer,
         stop: io.stop,
         countdown: stop::EVERY,
@@ -634,6 +636,8 @@ struct Interp<'p, 'o, O: Observer> {
     current_case: Option<u64>,
     /// Deterministic splitmix64 PRNG state (matches `cpl-codegen`).
     rng_state: u64,
+    /// The choices `rand` and `shuffle` write down or replay.
+    choices: Option<std::sync::Arc<std::sync::Mutex<Choices>>>,
     /// Records the trace of the run, when one was asked for.
     tracer: Option<Box<O>>,
     /// What ends the run early, looked at when `countdown` reaches 0.
@@ -756,14 +760,6 @@ fn index_count(place: &Place) -> usize {
         PlaceKind::Index(base, indices) => index_count(base) + indices.len(),
         PlaceKind::Field(base, _) | PlaceKind::Some(base) => index_count(base),
     }
-}
-
-fn splitmix64(state: &mut u64) -> u64 {
-    *state = state.wrapping_add(0x9e37_79b9_7f4a_7c15);
-    let mut z = *state;
-    z = (z ^ (z >> 30)).wrapping_mul(0xbf58_476d_1ce4_e5b9);
-    z = (z ^ (z >> 27)).wrapping_mul(0x94d0_49bb_1331_11eb);
-    z ^ (z >> 31)
 }
 
 impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
@@ -3484,6 +3480,10 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
         let arg2 = arg_vals.get(1).cloned().unwrap_or(Value::Unit);
         if op == Mutation::Shuffle {
             let mut rng_state = self.rng_state;
+            let choices = self.choices.clone();
+            let mut below = |n: usize| {
+                draw_below(choices.as_deref(), &mut rng_state, n as u128, span.start) as usize
+            };
             let mv_opt = match self.resolve(place, &mut indices.iter())? {
                 Value::MutView(mv) => Some(Rc::clone(mv)),
                 _ => None,
@@ -3493,7 +3493,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                     Value::List(items) => {
                         let v = Rc::make_mut(items);
                         for i in (1..mv.len).rev() {
-                            let j = (splitmix64(&mut rng_state) as usize) % (i + 1);
+                            let j = below(i + 1);
                             v.swap(mv.lo + i, mv.lo + j);
                         }
                         Value::Unit
@@ -3501,7 +3501,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                     Value::Array(arr) => {
                         let a = Rc::make_mut(arr);
                         for i in (1..mv.len).rev() {
-                            let j = (splitmix64(&mut rng_state) as usize) % (i + 1);
+                            let j = below(i + 1);
                             a.swap(mv.lo + i, mv.lo + j);
                         }
                         Value::Unit
@@ -3516,7 +3516,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                     Value::List(items) => {
                         let v = Rc::make_mut(items);
                         for i in (1..v.len()).rev() {
-                            let j = (splitmix64(&mut rng_state) as usize) % (i + 1);
+                            let j = below(i + 1);
                             v.swap(i, j);
                         }
                         Value::Unit
@@ -3525,7 +3525,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                         let a = Rc::make_mut(arr);
                         let n = a.len();
                         for i in (1..n).rev() {
-                            let j = (splitmix64(&mut rng_state) as usize) % (i + 1);
+                            let j = below(i + 1);
                             a.swap(i, j);
                         }
                         Value::Unit

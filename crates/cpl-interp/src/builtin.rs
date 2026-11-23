@@ -146,8 +146,8 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                     return trap(span, format!("rand({lo}, {hi}): lo > hi"));
                 }
                 let span_u = (hi as i128 - lo as i128 + 1) as u128;
-                let r = splitmix64(&mut self.rng_state) as u128;
-                let off = (r % span_u) as i128;
+                let choices = self.choices.as_deref();
+                let off = draw_below(choices, &mut self.rng_state, span_u, span.start) as i128;
                 Value::Int((lo as i128 + off) as i64)
             }
             Builtin::Copy => first,

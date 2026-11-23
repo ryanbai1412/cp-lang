@@ -1632,3 +1632,35 @@ fn cpl_stress_works_end_to_end_on_10_corpus_problems_of_different_shapes_2() {
 fn cpl_stress_works_end_to_end_on_10_corpus_problems_of_different_shapes_3() {
     stress_shard(3);
 }
+
+/// With no C++ compiler on PATH, the file's own `@gen` fn runs in the
+/// interpreter, as its solution and brute do, and its choices still shrink.
+#[test]
+fn cpl_stress_interprets_a_gen_fn_where_no_cpp_compiler_is() {
+    let dir = Path::new(env!("CARGO_TARGET_TMPDIR")).join("stress_gen_no_compiler");
+    let empty = dir.join("empty");
+    std::fs::create_dir_all(&empty).unwrap();
+    let path = dir.join("buggy.cp");
+    std::fs::write(&path, SHOI16P1_BUGGY).unwrap();
+    let out = Command::new(cpl_bin())
+        .args([
+            "stress",
+            path.to_str().unwrap(),
+            "--seed",
+            "1",
+            "--cases",
+            "200",
+        ])
+        .args(["--max-size", "6", "--threads", "2", "--time-limit", "30000"])
+        .env("PATH", &empty)
+        .output()
+        .expect("cpl stress runs");
+    let stdout = String::from_utf8_lossy(&out.stdout);
+    let stderr = String::from_utf8_lossy(&out.stderr);
+    assert_eq!(out.status.code(), Some(1), "{stdout}\n{stderr}");
+    assert!(stdout.contains("FAIL on case "), "{stdout}\n{stderr}");
+    assert!(
+        stdout.contains("to 4:\n    1 0\n    1\n    0\n"),
+        "shrinks to the one-vertex tree: {stdout}"
+    );
+}

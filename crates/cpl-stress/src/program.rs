@@ -575,6 +575,37 @@ impl Program {
         })
     }
 
+    /// The `@gen` fn of the `.cp` file `path` lowered to print one input of
+    /// at most `size` in the interpreter, when no C++ compiler is here to
+    /// build it; `None` when one is.
+    pub fn interpreted_gen(path: &Path, size: i64) -> Result<Option<cpl_ir::Program>, BuildError> {
+        let name = path.shown();
+        let text = std::fs::read_to_string(path)
+            .map_err(|e| BuildError(format!("can't read {name}: {e}")))?;
+        let profile = cpl_judge::resolve(path, &text, None).map_err(BuildError)?;
+        if found(&profile.host().compiler) {
+            return Ok(None);
+        }
+        let mut db = cpl_check::Database::new();
+        db.set_file(&name, text.as_str());
+        let analysis = db.analyze(&name).expect("the file was just set");
+        let failed = |diagnostics: &[cpl_diag::Diagnostic]| {
+            BuildError(format!(
+                "{name} does not build:\n{}",
+                cpl_diag::render_all(diagnostics, &name, &text).trim_end()
+            ))
+        };
+        let is_error = |d: &cpl_diag::Diagnostic| d.severity == cpl_diag::Severity::Error;
+        if analysis.diagnostics.iter().any(is_error) {
+            return Err(failed(&analysis.diagnostics));
+        }
+        let (gen_fn, _) = cpl_ir::generator(&analysis)
+            .ok_or_else(|| BuildError(format!("{name} declares no `@gen` fn")))?;
+        cpl_ir::lower_gen(&analysis, &gen_fn, size)
+            .map(Some)
+            .map_err(|diagnostics| failed(&diagnostics))
+    }
+
     /// The command with `extra` arguments added.
     pub fn with_args(&self, extra: &[&str]) -> Program {
         let mut program = self.clone();

@@ -27,8 +27,8 @@ Milestone 1.5, started the moment the loop above works on all 3 OSes and in all 
 Every criterion above passes, so Milestone 1.5 has started.
 
 Next:
-1. Milestone 1.5: replay. Time travel already runs in every editor under test: VS Code and nvim-dap step back through `cpl dap` (`suite.ts`, `dap_loop.lua`), JetBrains through the trace view (`CpPluginSmokeTest`). Replay first goes from the start of the run to a trace window (compiler's option (a)); checkpoints wait for the VM's explicit frame stack.
-2. `@gen` interpreted when no C++ compiler exists (General fixes owed).
+1. Milestone 1.5: replay. Time travel already runs in every editor under test: VS Code and nvim-dap step back through `cpl dap` (`suite.ts`, `dap_loop.lua`), JetBrains through the trace view (`CpPluginSmokeTest`). Every program shape (single, multitest, interactive) now takes checkpoints on the VM, and each reader replays from them: `cpl run --trace` windows (`--from`, `--last`), `--live` windows, a trap's locals, and `cpl dap` past its first 10^7 steps (`dap_reaches_every_step_of_a_run_longer_than_a_recording`). Left: checkpoints inside a fed loop body (tech-debt), and the +20% bar on `--full` (`trace_budget`).
+2. Done: with no C++ compiler, `cpl stress` runs the file's `@gen` fn in the interpreter, which writes down and replays its `rand`/`shuffle` choices as the C++ does, so its inputs still shrink (`cpl_stress_interprets_a_gen_fn_where_no_cpp_compiler_is`). Next: the divergence report (Milestone 2).
 
 ## Milestone 2
 

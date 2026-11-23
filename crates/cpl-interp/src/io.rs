@@ -1,6 +1,7 @@
 //! What a run reads: [`Io`].
 
 use crate::{More, Stop};
+use std::sync::{Arc, Mutex};
 
 /// What a program reads.
 pub struct Io<'a> {
@@ -15,6 +16,19 @@ pub struct Io<'a> {
     /// The file's text, when the run reports each top-level variable's
     /// last value.
     pub(crate) last_values: Option<&'a str>,
+    /// Where `rand` and `shuffle` write down their choices, and the
+    /// choices they replay.
+    pub(crate) choices: Option<Arc<Mutex<Choices>>>,
+}
+
+/// The choices a run's `rand` and `shuffle` made: each is how far above
+/// its low end a draw landed, with the source offset that drew it. With
+/// `replay`, the draws take those choices in order (0 past its end, the
+/// highest a draw allows when one is too big) instead of the seed's.
+#[derive(Default, Debug)]
+pub struct Choices {
+    pub replay: Option<Vec<u64>>,
+    pub made: Vec<(u32, u64)>,
 }
 
 pub(crate) enum Feed<'a> {
@@ -31,6 +45,7 @@ impl<'a> Io<'a> {
             seed: None,
             stop: None,
             last_values: None,
+            choices: None,
         }
     }
 
@@ -43,6 +58,7 @@ impl<'a> Io<'a> {
             seed: None,
             stop: None,
             last_values: None,
+            choices: None,
         }
     }
 
@@ -55,6 +71,7 @@ impl<'a> Io<'a> {
             seed: None,
             stop: None,
             last_values: None,
+            choices: None,
         }
     }
 
@@ -69,6 +86,15 @@ impl<'a> Io<'a> {
         }
     }
 
+    /// The same, with `rand` and `shuffle` writing their choices down in
+    /// `choices`, or replaying the ones it holds.
+    pub fn choosing(self, choices: Arc<Mutex<Choices>>) -> Io<'a> {
+        Io {
+            choices: Some(choices),
+            ..self
+        }
+    }
+
     /// The same, with `rand` and `shuffle` drawing from `seed`: one
     /// seed, one run.
     pub fn seeded(self, seed: u64) -> Io<'a> {
@@ -77,4 +103,34 @@ impl<'a> Io<'a> {
             ..self
         }
     }
+}
+
+/// A draw in `0..span` by `rand` or `shuffle` at `site`, as `cpl-codegen`'s
+/// `rng_below` makes it: replayed from `choices` or drawn from `rng`, and
+/// written down there.
+pub(crate) fn draw_below(
+    choices: Option<&std::sync::Mutex<Choices>>,
+    rng: &mut u64,
+    span: u128,
+    site: u32,
+) -> u128 {
+    let Some(choices) = choices else {
+        return splitmix64(rng) as u128 % span;
+    };
+    let mut choices = choices.lock().unwrap();
+    let at = choices.made.len();
+    let pick = match &choices.replay {
+        Some(list) => (list.get(at).copied().unwrap_or(0) as u128).min(span - 1),
+        None => splitmix64(rng) as u128 % span,
+    };
+    choices.made.push((site, pick as u64));
+    pick
+}
+
+pub(crate) fn splitmix64(state: &mut u64) -> u64 {
+    *state = state.wrapping_add(0x9e37_79b9_7f4a_7c15);
+    let mut z = *state;
+    z = (z ^ (z >> 30)).wrapping_mul(0xbf58_476d_1ce4_e5b9);
+    z = (z ^ (z >> 27)).wrapping_mul(0x94d0_49bb_1331_11eb);
+    z ^ (z >> 31)
 }
