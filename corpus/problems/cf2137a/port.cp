@@ -1,7 +1,8 @@
-// Codeforces 2137 A — Collatz Conjecture
-//
-// Reverse `k` halving steps (`x -> 2 * x` each step) by printing `x << k`.
-// With `k <= 20` and `x <= 20`, `x << k <= 20 * 2^20 < 2.1e7` cannot overflow.
+// Source: Codeforces 2137A (Collatz Conjecture), https://codeforces.com/contest/2137/problem/A
+// Problem: k Collatz steps (x even: x / 2, else 3x + 1) turned some start value into x. Given
+//   1 <= k, x <= 20, print any possible start. Multitest.
+// Solution: start at x * 2^k: every value on the way is even, so each step halves it. Print
+//   `x << k` (at most 20 * 2^20, no overflow), O(1).
 
 @!multitest
 let (k, x): (1..=20, 1..=20) = read()
