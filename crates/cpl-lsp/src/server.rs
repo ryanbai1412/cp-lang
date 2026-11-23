@@ -853,14 +853,18 @@ impl Server {
                     hints.into_iter().map(|(_, h)| h).collect(),
                 )))
             }
-            // `cpl fmt` on the open text: one edit that replaces the file,
-            // or none when it is already formatted or can't be.
+            // `cpl fmt` on the open text, in the style of the nearest
+            // `cp.toml`: one edit that replaces the file, or none when it is
+            // already formatted or can't be.
             "textDocument/formatting" => {
                 let uri = uri_of(params)?;
                 let Some(analysis) = self.db.analyze(uri) else {
                     return Ok(Reply::result(Value::Array(Vec::new())));
                 };
-                let edits = match cpl_fmt::format(&analysis.text) {
+                let style = path_of_uri(uri)
+                    .map(|path| cpl_fmt::Style::discover(std::path::Path::new(&path)).0)
+                    .unwrap_or_default();
+                let edits = match cpl_fmt::format_with(&analysis.text, &style) {
                     Ok(formatted) if formatted != *analysis.text => {
                         let whole = Span::new(0, analysis.text.len() as u32);
                         vec![obj([

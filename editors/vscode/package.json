@@ -209,6 +209,12 @@
         "language": "cp"
       }
     ],
+    "configurationDefaults": {
+      "[cp]": {
+        "editor.formatOnSave": true,
+        "editor.defaultFormatter": "cp-lang.cp-lang"
+      }
+    },
     "configuration": {
       "title": "CP Lang",
       "properties": {
