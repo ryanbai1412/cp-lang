@@ -21,7 +21,7 @@ mod walk;
 
 pub mod cli;
 
-pub use checker::{checker_lints, CheckerLint, CHECKER_LINTS};
+pub use checker::{checked, checker_lints, Checked, CheckerLint, CHECKER_LINTS};
 pub use config::{Config, ConfigError};
 
 use cpl_diag::{Code, Diagnostic, Severity, Span};

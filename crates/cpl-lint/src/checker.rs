@@ -41,8 +41,20 @@ pub(crate) fn checker_lint_named(name: &str) -> Option<&'static CheckerLint> {
 /// The checker's lints on `src`, at the levels `config` and the file's own
 /// `with lint(...)` and `@allow(...)` set. Empty when `src` does not parse.
 pub fn checker_lints(path: Option<&Path>, src: &str, config: &Config) -> Vec<Diagnostic> {
+    checked(path, src, config).lints
+}
+
+/// What the checker says about `src`: its lints, as `checker_lints` gives
+/// them, and how many errors it reports, which lints cannot see past.
+#[derive(Default)]
+pub struct Checked {
+    pub lints: Vec<Diagnostic>,
+    pub errors: usize,
+}
+
+pub fn checked(path: Option<&Path>, src: &str, config: &Config) -> Checked {
     let Some(regions) = with_parsed(src, |file| Some(Allows::collect(file).regions)) else {
-        return Vec::new();
+        return Checked::default();
     };
     let key = path
         .map(|p| p.to_string_lossy().into_owned())
@@ -50,10 +62,14 @@ pub fn checker_lints(path: Option<&Path>, src: &str, config: &Config) -> Vec<Dia
     let mut db = cpl_check::Database::new();
     db.set_file(&key, src);
     let Some(analysis) = db.analyze(&key) else {
-        return Vec::new();
+        return Checked::default();
     };
     let mut out = Vec::new();
+    let mut errors = 0;
     for diag in &analysis.diagnostics {
+        if diag.severity == Severity::Error && !CHECKER_LINTS.iter().any(|l| l.code == diag.code) {
+            errors += 1;
+        }
         let mut names = CHECKER_LINTS.iter().filter(|lint| lint.code == diag.code);
         let allowed = names.any(|lint| {
             regions
@@ -70,5 +86,5 @@ pub fn checker_lints(path: Option<&Path>, src: &str, config: &Config) -> Vec<Dia
         }
         out.push(diag);
     }
-    out
+    Checked { lints: out, errors }
 }

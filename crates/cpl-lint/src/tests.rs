@@ -526,14 +526,14 @@ mod cli {
         let file = dir.join("a.cp");
         std::fs::write(
             &file,
-            "var a = 1\nvar b = 2\nlet x: F64 = read()\nprint(a, b, x == 1.0)\n",
+            "var a = 1\nvar b = 2\nlet x: F64 = read()\nprint(a, b, yes(x == 1.0))\n",
         )
         .unwrap();
         let (code, out, err) = lint(&["--fix", file.to_str().unwrap()]);
         assert_eq!(code, 0);
         assert_eq!(
             std::fs::read_to_string(&file).unwrap(),
-            "let a = 1\nlet b = 2\nlet x: F64 = read()\nprint(a, b, x == 1.0)\n"
+            "let a = 1\nlet b = 2\nlet x: F64 = read()\nprint(a, b, yes(x == 1.0))\n"
         );
         assert!(out.contains("L0301") && !out.contains("L0201"), "{out}");
         assert!(

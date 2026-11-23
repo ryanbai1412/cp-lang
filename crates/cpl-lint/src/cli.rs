@@ -1,8 +1,8 @@
 //! `cpl lint`.
 
 use crate::{
-    apply_fixes, checker_lints, fix_checked_removed_syntax, fix_removed_syntax, is_taste, lint,
-    Config, LINTS,
+    apply_fixes, checked, fix_checked_removed_syntax, fix_removed_syntax, is_taste, lint, Config,
+    LINTS,
 };
 use cpl_diag::Severity;
 use std::collections::BTreeMap;
@@ -88,6 +88,8 @@ pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u
     files.dedup();
 
     let (mut warnings, mut errors, mut fixed, mut failed) = (0usize, 0usize, 0usize, 0usize);
+    let mut unchecked = 0usize;
+    let plural = |n: usize, word: &str| format!("{n} {word}{}", if n == 1 { "" } else { "s" });
     let keep =
         |d: &cpl_diag::Diagnostic| !taste || LINTS.iter().any(|l| l.code == d.code && is_taste(l));
     let (mut tasteful, mut by_lint) = (0usize, BTreeMap::<&str, usize>::new());
@@ -160,7 +162,16 @@ pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u
                 failed += 1;
             }
         }
-        diagnostics.extend(checker_lints(Some(file), &src, &config));
+        let found = checked(Some(file), &src, &config);
+        if found.errors > 0 {
+            let _ = writeln!(
+                stderr,
+                "error: {name} has {} lints cannot see past; `cpl check {name}` shows them",
+                plural(found.errors, "type error")
+            );
+            unchecked += 1;
+        }
+        diagnostics.extend(found.lints);
         diagnostics.retain(keep);
         diagnostics.sort_by_key(|d| (d.span.start, d.span.end, d.code));
         errors += diagnostics
@@ -198,7 +209,6 @@ pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u
             }
         }
     }
-    let plural = |n: usize, word: &str| format!("{n} {word}{}", if n == 1 { "" } else { "s" });
     let mut summary = format!(
         "{} checked, {}, {}",
         plural(files.len(), "file"),
@@ -210,6 +220,9 @@ pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u
             ", {} applied",
             plural(fixed, "fix").replace("fixs", "fixes")
         );
+    }
+    if unchecked > 0 {
+        summary += &format!(", {unchecked} not checking");
     }
     if failed > 0 {
         summary += &format!(", {failed} not linted");
@@ -226,7 +239,7 @@ pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u
         );
     }
     let _ = writeln!(stderr, "{summary}");
-    (errors > 0 || failed > 0) as u8
+    (errors > 0 || failed > 0 || unchecked > 0) as u8
 }
 
 /// Adds `path`, or every `.cp` file under it, to `files`.

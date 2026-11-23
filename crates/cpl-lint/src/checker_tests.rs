@@ -61,3 +61,24 @@ fn a_misspelt_checker_lint_suggests_its_name() {
         "{errors:?}"
     );
 }
+
+#[test]
+fn a_file_that_does_not_check_is_not_reported_clean() {
+    let dir = std::env::temp_dir().join(format!("cpl-lint-unchecked-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let file = dir.join("bad.cp");
+    std::fs::write(&file, "let x: Int = \"a\"\nprint(x)\n").unwrap();
+    let (mut out, mut err) = (Vec::new(), Vec::new());
+    let code = crate::cli::run(&[file.display().to_string()], &mut out, &mut err);
+    let err = String::from_utf8(err).unwrap();
+    std::fs::remove_dir_all(&dir).unwrap();
+    assert_eq!(code, 1, "{err}");
+    assert!(
+        err.contains("has 1 type error lints cannot see past"),
+        "{err}"
+    );
+    assert!(
+        err.ends_with("1 file checked, 0 warnings, 0 errors, 1 not checking\n"),
+        "{err}"
+    );
+}
