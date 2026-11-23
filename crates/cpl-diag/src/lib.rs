@@ -532,6 +532,29 @@ mod tests {
     use super::*;
 
     #[test]
+    fn an_insertion_at_another_fixs_start_goes_before_its_replacement() {
+        let src = "ab";
+        let replace = Diagnostic::error(codes::UNRESOLVED_NAME, Span::new(0, 2), "r").with_fix(
+            "replace",
+            Span::new(0, 2),
+            "xy",
+        );
+        let insert = Diagnostic::error(codes::UNRESOLVED_NAME, Span::new(0, 0), "i").with_fix(
+            "insert",
+            Span::new(0, 0),
+            "(",
+        );
+        assert_eq!(apply_fixes(src, &[replace, insert]), ("(xy".into(), 2));
+        // One fix whose own edits overlap is a producer bug, left alone.
+        let mut both = Diagnostic::error(codes::UNRESOLVED_NAME, Span::new(0, 2), "b");
+        both.fixes.push(Fix {
+            title: "both".into(),
+            edits: vec![(Span::new(0, 2), "x".into()), (Span::new(1, 2), "y".into())],
+        });
+        assert_eq!(apply_fixes(src, &[both]), ("ab".into(), 0));
+    }
+
+    #[test]
     fn an_edit_of_a_crlf_file_writes_crlf_and_keeps_whole_line_breaks() {
         let lf = "a\nb\n";
         assert_eq!(

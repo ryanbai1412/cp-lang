@@ -13,10 +13,10 @@ pub fn apply_fixes(src: &str, diagnostics: &[Diagnostic]) -> (String, usize) {
     let mut fixes: Vec<_> = diagnostics.iter().filter_map(|d| d.fixes.first()).collect();
     fixes.sort_by_key(|fix| fix.edits.iter().map(|(span, _)| span.start).min());
     for fix in fixes {
-        let clashes = fix.edits.iter().any(|(span, _)| {
-            edits
-                .iter()
-                .any(|(taken, _)| span.start < taken.end && taken.start < span.end)
+        let overlap = |a: &Span, b: &Span| a.start < b.end && b.start < a.end;
+        let clashes = fix.edits.iter().enumerate().any(|(i, (span, _))| {
+            edits.iter().any(|(taken, _)| overlap(span, taken))
+                || fix.edits[..i].iter().any(|(other, _)| overlap(span, other))
         });
         let out_of_source = fix.edits.iter().any(|(span, _)| {
             span.start > span.end
@@ -33,7 +33,8 @@ pub fn apply_fixes(src: &str, diagnostics: &[Diagnostic]) -> (String, usize) {
         );
         applied += 1;
     }
-    edits.sort_by_key(|(span, _)| span.start);
+    // An insertion at a replacement's start goes before it.
+    edits.sort_by_key(|(span, _)| (span.start, span.end));
     let mut out = String::with_capacity(src.len());
     let mut at = 0usize;
     for (span, text) in edits {
