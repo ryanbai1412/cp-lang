@@ -1,3 +1,5 @@
 let n: 1..=100 = read()
-let a: [0..n]Int = read()
-print((0..n).max(by: i => a[i])!)
+domain V = 0..n
+let a: [V]Int = read()
+let j = V.max(by: i => a[i])!
+print(j)

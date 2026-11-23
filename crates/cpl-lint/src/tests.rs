@@ -1875,3 +1875,41 @@ fn copy_comprehension_fixes_only_a_list_copy() {
     // A `Str` collects into what the context asks for, so it keeps only the help.
     assert!(out.contains("[c for c in \"ab\"]"), "{out}");
 }
+
+#[test]
+fn loop_argmax_names_the_call() {
+    // corpus noi03p4: `best` starts at `Home.first!`, so the call traps where it did.
+    let src = "domain Home = 0..4\n\
+let d: [Home]Int = read()\n\
+var best = Home.first!\n\
+for v in Home:\n    if d[v] > d[best]: best = v\n\
+print(best)\n";
+    assert!(
+        fixed(src).contains("best = Home.max(by: v => d[v])!\nprint(best)"),
+        "{}",
+        fixed(src)
+    );
+    // acceptance run 4 cf2272A and std/geometry.cp: a range gets the exact call
+    // as help, no fix, since an empty range kept `j` and the call traps.
+    let range = "let p: 1..=9 = read()\n\
+let a: [0..9]Int = read()\n\
+var j = 0\n\
+for i in 0..p if a[i] > a[j]:\n    j = i\n\
+var s = 0\n\
+for i in 1..p:\n    if a[i] < a[s]: s = i\n\
+print(j, s)\n";
+    let helps: Vec<String> = lint(range, &all_on())
+        .into_iter()
+        .filter(|d| d.code.0 == "L0547")
+        .map(|d| d.help.unwrap_or_default())
+        .collect();
+    assert!(
+        helps[0].contains("`var j = (0..p).max(by: i => a[i])!`"),
+        "{helps:?}"
+    );
+    assert!(
+        helps[1].contains("`var s = (0..p).min(by: i => a[i])!`"),
+        "{helps:?}"
+    );
+    assert_eq!(fixed(range), range);
+}

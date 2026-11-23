@@ -29,9 +29,7 @@ fn dists(src: Home) -> [Home]Int:
     d
 
 fn farthest(d: [Home]Int) -> Home:
-    var best = Home.first!
-    for v in Home:
-        if d[v] > d[best]: best = v
+    let best = Home.max(by: v => d[v])!
     best
 
 // a and b are the two ends of a diameter, and the third home is whoever is

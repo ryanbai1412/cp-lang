@@ -1,7 +1,8 @@
 let n: 1..=100 = read()
-let a: [0..n]Int = read()
-var j = 0
-for i in 0..n:
+domain V = 0..n
+let a: [V]Int = read()
+var j = V.first!
+for i in V:
     if a[i] > a[j]:
         j = i
 print(j)
