@@ -1285,10 +1285,6 @@ fn signature_of(
     } else {
         scope_entry(cursor, std, name)
     };
-    // A method the receiver's type doesn't offer (another module's internals).
-    if method && declared.is_none() {
-        return None;
-    }
     let rel = callee_end as u32 - item.offset;
     let checked = item
         .check
@@ -1297,11 +1293,19 @@ fn signature_of(
         .rev()
         .find(|e| e.span.end == rel && e.name == name)
         .map(|e| e.ty.clone());
+    // A method neither the checker resolved nor the receiver's type offers
+    // (another module's internals).
+    if method && declared.is_none() && !matches!(checked, Some(Ty::Fn { .. })) {
+        return None;
+    }
     let doc = declared.as_ref().map_or(String::new(), |e| e.doc.clone());
     match checked {
         // A library fn called as a method is checked as its free form, whose
-        // instantiated types lose the bounds and `yields`: the declaration wins.
-        Some(Ty::Fn { params, ret }) if !(method && params.iter().any(|p| p.name == "self")) => {
+        // instantiated types lose the bounds and `yields`: the declaration, when
+        // the receiver's type offers one, wins.
+        Some(Ty::Fn { params, ret })
+            if !(method && declared.is_some() && params.iter().any(|p| p.name == "self")) =>
+        {
             Some(Signature {
                 name: name.to_string(),
                 params: params

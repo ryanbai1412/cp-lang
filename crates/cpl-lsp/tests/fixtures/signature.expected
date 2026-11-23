@@ -24,3 +24,7 @@ active: by: Int -> K = x => x
 == signatureHelp @ 11:18
 runs(by: T -> K = x => x, link: ?((T, T) -> Bool) = None) -> yields Slice<S>
 active: by: T -> K = x => x
+
+== signatureHelp @ 12:34
+lis_ends(strict: Bool = ..., by: fn(T) -> K = ...) -> [D]Int
+active: strict: Bool = ...

@@ -9,3 +9,4 @@ b.sort(by: $0x => x % 2)
 let s = "aab"
 let top = b.max($0)
 print(s.runs(by: $0c => c).count(), top ?? 0)
+print([3, 1, 4].lis_ends(strict: $0false))
