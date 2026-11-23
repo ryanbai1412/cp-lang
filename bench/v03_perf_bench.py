@@ -337,6 +337,32 @@ def derived_inputs(cp, cache_dir):
     return sorted(os.path.join(cap, f) for f in os.listdir(cap) if os.path.getsize(os.path.join(cap, f)) > 0)
 
 
+def scaled_gen_inputs(gen, cache_dir):
+    """`gen.py <seed> <size>` at sizes 10, 100, ... up to the first that fails, times
+    out or writes over 16 MB; the two largest, since the largest may break a
+    constraint the generator does not bound (both programs must agree on one)."""
+    outs = []
+    for size in (10, 100, 1000, 10_000, 100_000):
+        out = os.path.join(cache_dir, f"gen_{sha256_file(gen)}_{size}.in")
+        if not os.path.exists(out):
+            tmp = out + f".tmp.{os.getpid()}.{threading.get_ident()}"
+            try:
+                with open(tmp, "wb") as fo:
+                    ok = subprocess.run([sys.executable, gen, "1", str(size)], stdout=fo,
+                                        stderr=subprocess.DEVNULL, timeout=20).returncode == 0
+            except subprocess.TimeoutExpired:
+                ok = False
+            if not ok or os.path.getsize(tmp) > 16 << 20:
+                os.remove(tmp)
+                open(out, "w").close()
+            else:
+                os.replace(tmp, out)
+        if os.path.getsize(out) == 0:
+            break
+        outs.append(out)
+    return outs[-2:]
+
+
 def load_unmatched():
     """Pairs listed in bench/unmatched.txt: id -> why port and orig differ in algorithm."""
     out = {}
@@ -400,8 +426,11 @@ def collect_items(suites, only, cache_dir):
                                 fo.truncate(0)
                     if os.path.getsize(out) > 0:
                         return [out]
+                if os.path.exists(os.path.join(prob_dir, "interactor.py")):
+                    return []
                 ins = sorted(glob.glob(os.path.join(prob_dir, "tests", "*.in")))
-                return derived_inputs(os.path.join(prob_dir, "port.cp"), cache_dir) + (
+                scaled = scaled_gen_inputs(gen, cache_dir) if os.path.exists(gen) else []
+                return derived_inputs(os.path.join(prob_dir, "port.cp"), cache_dir) + scaled + (
                     [max(ins, key=os.path.getsize)] if ins else []
                 )
 
@@ -553,6 +582,8 @@ def main():
                 tbin, terr = compile_cpp_cached(tcpp, args.cache, "tuned", "c++17", cxx23)
         inp = input_fn()
         if not inp:
+            if os.path.exists(os.path.join(os.path.dirname(cp), "interactor.py")):
+                return {"suite": suite, "name": name, "status": "skip", "reason": "interactive: needs the interactor, which the bench does not run"}
             return {"suite": suite, "name": name, "status": "skip", "reason": "no input: no generator, no tests, and `cpl bench` derives none"}
         return {
             "suite": suite,
