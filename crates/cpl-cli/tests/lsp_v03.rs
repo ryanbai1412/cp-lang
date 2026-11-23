@@ -289,12 +289,10 @@ fn every_lsp_feature_works_on_v03() {
             "use std. missing {wanted}: {mods:?}"
         );
     }
-    for removed in ["tour"] {
-        assert!(
-            !mods.iter().any(|m| m == removed),
-            "use std. has v0.2-only {removed}: {mods:?}"
-        );
-    }
+    assert!(
+        !mods.iter().any(|m| m == "tour"),
+        "use std. has v0.2-only tour: {mods:?}"
+    );
     let members = completion_labels(&replies[&31]);
     for wanted in ["push", "pop_first", "pop_last", "len"] {
         assert!(
