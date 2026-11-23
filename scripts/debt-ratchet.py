@@ -150,6 +150,16 @@ def prelude_privilege(root: Path) -> list[str]:
     return sorted(tables & public)
 
 
+def lint_std_names(root: Path) -> list[str]:
+    """String literals in lint rules that name a public std fn: lints keyed on library API."""
+    public: set[str] = set()
+    for p in sorted((root / "spec/std").glob("*.cp")):
+        public.update(re.findall(r"^\s*pub\s+fn\s+(\w+)", p.read_text(), re.M))
+    return [f"{_rel(root, p)}:{i} {name}" for p in _rs_files(root, "crates/cpl-lint/src/rules", tests=False)
+            for i, line in enumerate(_lines(p), 1) for name in re.findall(r'"([a-z_]\w*)"', line)
+            if name in public]
+
+
 def backend_std_names(root: Path) -> list[str]:
     subdirs = [f"crates/{c}/src" for c in BACK_ENDS]
     return [f"{_rel(root, p)}:{i} {m.group(1)}" for p in _rs_files(root, *subdirs, tests=False)
@@ -301,6 +311,7 @@ COUNTERS = {
     "ir_builtin_names": ("names string-matched in lower/call.rs", ir_builtin_names, True),
     "prelude_privilege": ("public std names in cpl-check prelude.rs tables", prelude_privilege, True),
     "backend_std_names": ("std type names in IR/interp/codegen", backend_std_names, True),
+    "lint_std_names": ("std fn names string-matched in lint rules", lint_std_names, True),
     "dup_fn_bodies": ("copied fn bodies across files", dup_fn_bodies, True),
     "layer_violations": ("forbidden shipped crate edges", layer_violations, True),
     "tree_walker": ("second interpreter engine", tree_walker, True),

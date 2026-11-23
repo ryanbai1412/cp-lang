@@ -105,5 +105,6 @@
     "cpl-wasm -> cpl-judge",
     "cpl-wasm -> cpl-lsp",
     "cpl-wasm -> cpl-stress"
-  ]
+  ],
+  "lint_std_names": 131
 }

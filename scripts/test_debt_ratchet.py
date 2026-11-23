@@ -108,6 +108,10 @@ class DebtRatchetTest(unittest.TestCase):
                         '[target.\'cfg(not(target_arch = "wasm32"))\'.dependencies]\ncpl-prover = "0"\n'
                         '[dev-dependencies]\ncpl-cli = "0"\n')
             self._write(root, "plan/ARCHITECTURE.md", "`crates/cpl-lint` and `crates/gone/x.rs`\n")
+            self._write(root, "spec/std/zz.cp", "pub fn rotate(self: Int) -> Int = self\n")
+            self._write(root, "crates/cpl-lint/src/rules/a.rs", 'if m == "rotate" || m == "tmp" {}\n')
+            self._write(root, "crates/cpl-lint/src/rules/tests.rs", 'let _ = "rotate";\n')
+            self.assertEqual(dr.lint_std_names(root), ["crates/cpl-lint/src/rules/a.rs:1 rotate"])
             self.assertEqual(dr.ir_builtin_names(root), ["prefix", "sum"])
             self.assertEqual(dr.backend_std_names(root), ["crates/cpl-codegen/src/a.rs:1 Bitset"])
             self.assertEqual(dr.edition_refs(root), ["crates/cpl-codegen/src/a.rs:1"])
