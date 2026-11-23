@@ -713,22 +713,32 @@ pub fn prev_permutation<S: IndexedMut>(mut self: S) -> Bool:
 /// The stretches of equal neighbours (or equal `by:` keys), in order:
 /// each a slice of `self`: `"aabccc".runs()` walks `"aa"`, `"b"`, `"ccc"`, and
 /// `[r.len for r in s.runs()]` is `[2, 1, 3]`. Each run's `.keys` is its range and
-/// `r[r.keys.first!]` its key. O(1) to make, O(n) to walk.
+/// `r[r.keys.first!]` its key. With `link:`, a run is a maximal piece where every adjacent
+/// pair `(x, y)` satisfies `link(x, y)`, and `by:` is ignored: `runs(by: key)` is
+/// `runs(link: (x, y) => key(x) == key(y))`. O(1) to make, O(n) to walk.
 ///
 /// cost: O(1) to make, O(n) to walk
 /// empty: yields nothing
 /// order: left to right; each run is a slice keeping the keys of `self`
 /// traps: never
 /// example: `[r.len for r in "aabccc".runs()] == [2, 1, 3]`
-pub fn runs<S: Indexed, T, K>(self: S, by: T -> K = x => x) -> yields Slice<S>:
+/// example: `[r.len for r in [1, 2, 4, 5, 6].runs(link: (x, y) => y == x + 1)] == [2, 3]`
+pub fn runs<S: Indexed, T, K>(self: S, by: T -> K = x => x, link: ?((T, T) -> Bool) = None) -> yields Slice<S>:
     let n = self.len
     var i = 0
-    while i < n:
-        let k = by(self.nth(i))
-        var j = i + 1
-        while j < n and by(self.nth(j)) == k: j += 1
-        yield self[self.keys.nth(i)..=self.keys.nth(j - 1)]
-        i = j
+    if link is Some(linked):
+        while i < n:
+            var j = i + 1
+            while j < n and linked(self.nth(j - 1), self.nth(j)): j += 1
+            yield piece(self, i, j)
+            i = j
+    else:
+        while i < n:
+            let k = by(self.nth(i))
+            var j = i + 1
+            while j < n and by(self.nth(j)) == k: j += 1
+            yield self[self.keys.nth(i)..=self.keys.nth(j - 1)]
+            i = j
 
 /// Bucket the keys of `self` by value: `b[k]` lists every `i` with `self[i] == k`, in key order.
 /// The result is keyed by the value domain, so group by any domain-valued key with
@@ -3062,22 +3072,6 @@ fn scan_prod_and_rotate_method_syntax():
 @get pub fn swap<A>(self: (A, A)) -> (A, A):
     let (a, b) = self
     (b, a)
-
-/// Maximal pieces where every adjacent pair links: `a.runs(link: (x, y) => y == x + 1)`.
-///
-/// cost: O(n)
-/// empty: yields nothing
-/// order: left to right; each run keeps the keys of `self`
-/// traps: never
-/// example: `[r.len for r in [1, 2, 4, 5, 6].runs_linked((x, y) => y == x + 1)] == [2, 3]`
-pub fn runs_linked<S: Indexed, T>(self: S, link: (T, T) -> Bool) -> yields Slice<S>:
-    let n = self.len
-    var i = 0
-    while i < n:
-        var j = i + 1
-        while j < n and link(self.nth(j - 1), self.nth(j)): j += 1
-        yield piece(self, i, j)
-        i = j
 
 /// Pieces between elements where `sep` holds; separators excluded, empty pieces kept.
 ///
