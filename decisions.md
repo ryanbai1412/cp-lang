@@ -8199,3 +8199,16 @@ tag move fatal again.
   - core-01/generator-arg-free-fold: `min`, `max`, `sum`, `count` and the empty case. Compiler known gap.
   - core-01/paren-generator-is-error: passes.
 - **Reverse.** Make `(e for ...)` a primary lazy sequence; that adds a second spelling of the comprehension's laziness.
+
+## 400. Grid `rows`/`cols` views; integer literals take an expected F64 (spec, 2026-11-23)
+
+- **Grid views (Ryan).**
+  - `g[r]` and `g[.., c]` are the one spelling of a single row or column.
+  - `g.rows` and `g.cols` are the O(1) views of all of them, getters with no `()` (R04b.1.12). Stdlib implements them.
+  - Cases: core-04/grid-rows-cols-views and grid-rows-is-a-getter. Known gaps for stdlib.
+- **F64 literals (compiler's H-SCI-LITERAL follow-up).**
+  - Where `F64` is expected, an integer literal in any spelling is that `F64`: `var r: F64 = 1e18`, `r min= 0`, `x * 2` (R01.4.2). It is the literal's type, as with domains and ranges, not a conversion.
+  - A literal F64 can't hold exactly is E0302. A non-literal `Int` still needs `F64(n)`.
+  - The other option was that a `.` keeps a literal `F64`. It was rejected because `1.5e5` has to stay an `Int` bound.
+  - Case: core-01/int-literal-takes-f64-where-expected. Known gap for compiler.
+- **Reverse.** Require `F64(...)` around integer literals again.
