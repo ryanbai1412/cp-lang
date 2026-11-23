@@ -160,7 +160,7 @@ Targets and today's numbers live in `plan/domains/infra/metrics.toml`.
 | Quality | Metric | Mechanism | Check |
 |---|---|---|---|
 | A fresh clone reaches a green gate | minutes, undocumented steps | Process: cold-clone probe from `README.md` | **missing**: not scheduled |
-| A gate failure says how to fix it | failures without the failing check and rerun command | `check.sh` `fail` messages name the command | **missing**: a check over every `fail` call |
+| A gate failure says how to fix it | failures without the failing check and rerun command | `check.sh` `fail` messages name the command | ci/R31, `scripts/test_check_cache.py` |
 | One command per task | tasks without a `just` name | `justfile` | none |
 
 ## Suites and tools

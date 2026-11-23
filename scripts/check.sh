@@ -226,7 +226,7 @@ staged_guard() {
         # itself, so each machine keeps its own list outside the history.
         deny="$(git rev-parse --git-common-dir)/info/sensitive-words"
         if [ -s "$deny" ] && grep -inF -f "$deny" <<<"$lines" | head -3 | cut -c1-60 | grep .; then
-            fail "added lines match the local list in .git/info/sensitive-words"
+            fail "added lines match the local list in .git/info/sensitive-words; remove those words"
         fi
     done
 }

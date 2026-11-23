@@ -250,3 +250,14 @@ prints the line it dropped from `web/scripts/doc-examples-failing.txt`, and
 the next commit there carries the shorter file.
 *Enforced by:* `web/scripts/gen-ref.mjs`, `crates/cpl-conform` (newly
 passing cases print, never fail).
+
+### ci/R31
+
+Every `fail` in `scripts/check.sh` says what to do next: the command to
+rerun, the fix, or where the finding above names it.
+*Why:* a lane that sees only "tests failed" spends minutes finding which
+check failed and how to reproduce it, and that time counts against the 5%
+devex budget. *Example:* `fail "tests failed"` fails
+`test_every_gate_failure_says_how_to_fix_it`; `fail "tests failed; rerun:
+cargo nextest run -p cpl-check"` passes.
+*Enforced by:* `scripts/test_check_cache.py`, run by `scripts/check.sh`.

@@ -335,5 +335,29 @@ class CheckCacheTest(unittest.TestCase):
                 self.assertIn("### b: second?", body)
                 self.assertNotIn("<" * 7, body)
 
+# A gate failure says what to do next (ci/R31): a command to rerun, a fix,
+# or a pointer to the finding printed above it.
+FIX_HINT = re.compile(r"`|scripts/|cargo |uv |node |python|git |rerun|\brun\b|\bsee\b|above|"
+                      r"\bfix\b|\buse\b|rewrite|remove|\badd\b|install|needs|names the|says", re.I)
+
+
+def unhelpful_failures(text):
+    """`fail`/`derived` messages in check.sh that give no next step."""
+    return [(n, m) for n, line in enumerate(text.split("\n"), 1)
+            for m in re.findall(r'\b(?:fail|derived) "((?:[^"\\]|\\.)*)"', line)
+            if m != "$1" and not FIX_HINT.search(m)]
+
+
+class GateMessagesTest(unittest.TestCase):
+    def test_every_gate_failure_says_how_to_fix_it(self):
+        with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "check.sh"), encoding="utf-8") as f:
+            self.assertEqual(unhelpful_failures(f.read()), [],
+                             "scripts/check.sh: say the command to rerun or the fix (ci/R31)")
+
+    def test_flags_a_bare_failure(self):
+        self.assertEqual(unhelpful_failures('fail "tests failed"\nfail "lint failed; rerun: cargo clippy"'),
+                         [(1, "tests failed")])
+
+
 if __name__ == "__main__":
     unittest.main()
