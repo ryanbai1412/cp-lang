@@ -348,6 +348,16 @@ for (const [module, list] of Object.entries(items)) {
 const failingFile = join(web, 'node_modules/.cache/doc-examples-failing.txt');
 writeFileSync(failingFile, ctx.failing.join('\n') + '\n');
 console.log(`ref: ${specPages} spec pages, ${modules.length} library modules, ${index.length} items; examples: ${ctx.ran.size} programs, ${ctx.failing.length} shown static (listed in ${failingFile.slice(repo.length + 1)})`);
+// handbook/guidelines/site-checklist.md site/R1: a std example that does not
+// run is shown static only while it is listed here; the list only shrinks.
+const knownFile = join(web, 'scripts/doc-examples-failing.txt');
+const knownStatic = new Set(readFileSync(knownFile, 'utf8').split('\n').filter((l) => l.trim() && !l.startsWith('#')));
+const failingNow = new Set(ctx.failing);
+const newlyFailing = ctx.failing.filter((f) => !knownStatic.has(f));
+const nowRunning = [...knownStatic].filter((f) => !failingNow.has(f));
+if (newlyFailing.length) console.error(`gen-ref: ${newlyFailing.length} std doc examples don't run (fix them, or the std docs):\n${newlyFailing.join('\n')}`);
+if (nowRunning.length) console.error(`gen-ref: ${nowRunning.length} std doc examples in ${knownFile.slice(repo.length + 1)} run now; delete their lines:\n${nowRunning.join('\n')}`);
+if (newlyFailing.length || nowRunning.length) process.exit(1);
 if (mathErrors.length) {
   console.error(`gen-ref: ${mathErrors.length} math spans KaTeX can't render:\n${mathErrors.slice(0, 20).join('\n')}`);
   process.exit(1);

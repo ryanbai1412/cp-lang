@@ -8347,3 +8347,9 @@ tag move fatal again.
 - **Call.** `struct Rev<S>` gets `nth`/`take`/`drop`/`take_last`/`drop_last` in std/seq.cp, each the mirrored op on `self.src`. The checker resolves a member `Rev` declares on `Rev` and no longer passes it on to the source, and a member that needs `self: S` with `S: Indexed` called on a `.rev` is E0606. Lowering runs `Rev`'s own methods inline on a list view known to walk backwards. That needs one more name read in lowering: `src` of a reversed view is the view flipped back (`ir_builtin_names` 159 -> 160).
 - **Why.** Every piece of a `.rev` came out mirrored, because `List.drop` ran on a view that walks backwards (a silent wrong answer). Declaring the pieces on `Rev` puts them in the library, where a user's own view type could do the same.
 - **Reverse.** Drop the `Rev` methods and the `src` arm. A piece of a `.rev` is then E0606, with `List(a.rev)` as the fix.
+
+## 423. Std examples that don't run are listed, and the list only shrinks (site, 2026-11-23)
+
+- **Call.** `web/scripts/gen-ref.mjs` fails the site build when a std `example:` line that is not in `web/scripts/doc-examples-failing.txt` can't run as a program, and when a listed line runs again. The list starts with the 35 lines the reference already showed as static code, so `skip_lists` goes from 162 to 197.
+- **Why.** Those 35 were already exempt, just invisibly: a new broken example joined them with no signal, which is how a reader met a doc example that doesn't compile. Listing them makes the exemption counted, and the ratchet keeps it falling.
+- **Reverse.** Delete the list and the check in `gen-ref.mjs`; broken examples go back to being shown static without failing anything.
