@@ -66,7 +66,7 @@ export const STDLIB_TYPES: readonly string[] = [
     'Selective', 'SemiRelaxedConvolve', 'Semigroup', 'Semiring', 'Settle', 'Sieve', 'Sign',
     'SimpleGraph', 'Slice', 'SortedBag', 'SortedMap', 'SortedRange', 'SortedSet', 'SosOver',
     'SparseFenwick2D', 'SparseIntervalMap', 'SparseIntervalSet', 'SparseSet', 'SparseTable',
-    'SparseTable2D', 'Step', 'SubproductTree', 'SubseqStep', 'Subset', 'SuffixArray',
+    'SparseTable2D', 'Step', 'Stepped', 'SubproductTree', 'SubseqStep', 'Subset', 'SuffixArray',
     'SuffixAutomaton', 'SuffixTreeEdge', 'Sweep', 'SweepAdd', 'Target', 'Ties', 'TimeStep',
     'TimeTree', 'Track', 'Tracked', 'Tree', 'Trie', 'TwoSat', 'Undo', 'Undoing', 'Vec', 'Vec3',
     'Version', 'VirtualTree', 'Visit', 'Walk', 'WaveletMatrix', 'Weighted', 'WeightedNext',

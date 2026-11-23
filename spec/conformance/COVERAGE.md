@@ -7,7 +7,7 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 3050 (1091 passing). Rules: 583.
+Cases: 3052 (1091 passing). Rules: 583.
 
 ## Summary per chapter
 
@@ -19,7 +19,7 @@ Cases: 3050 (1091 passing). Rules: 583.
 - R04b (04b-keys.md): 28 rules, 70 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R05 (05-ownership.md): 49 rules, 225 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R06 (06-control-functions.md): 25 rules, 114 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R07 (07-sequences.md): 90 rules, 204 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R07 (07-sequences.md): 90 rules, 206 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R08 (08-traits-generics.md): 29 rules, 92 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R09 (09-contexts-checks.md): 27 rules, 61 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R10 (10-io.md): 19 rules, 111 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -514,7 +514,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R07.7.8 [1+ 0-]: | `s.cyclic_pairs` | `Seq<(T, T)>`, plus (last, first) | polygons, rings
 - R07.7.9 [3+ 0-]: | `a.windows(k)`, `a.chunks(k)` | `Seq` of views of `a` | each view keeps `a`'s indices
 - R07.7.10 [5+ 1-]: | `a.runs(by: k)` | `Seq` of views: maximal equal-key runs | `.keys` of each is its range
-- R07.7.11 [2+ 0-]: | `s.step(k)` | every k-th element | ranges and indexed
+- R07.7.11 [3+ 1-]: | `s.step(k)` | every k-th element | ranges and indexed
 - R07.8.1 [2+ 2-]: `.collect()` and the constructors are one operation, \(O(n)\) and allocating; the postfix ...
 - R07.9.1 [3+ 0-]: | `s.sum()`, `s.prod()` | `T`; empty is the identity | \(O(n)\)
 - R07.9.2 [3+ 1-]: | `s.fold(op)` | `T` when `op` has an identity (`+`, `max` on a bounded type, `gcd`), else...
@@ -945,7 +945,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - R0202 Integer overflow: 46 case(s)
 - R0203 Division by zero: 3 case(s)
 - R0301 Unwrap of None: 7 case(s)
-- R0401 Assertion failed: 80 case(s)
+- R0401 Assertion failed: 81 case(s)
 - R0402 todo reached: 2 case(s)
 - R0501 Bad input token: 10 case(s)
 - R0502 Input outside its read contract: 4 case(s)
@@ -1048,8 +1048,8 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **rand** (10/10 named by a case)
 - **search** (9/9 named by a case)
 - **segtree** (54/54 named by a case)
-- **seq** (212/221 named by a case)
-  - uncovered: `Compressed`, `Filtered`, `Mapped`, `Rev`, `Rebased`, `Keys`, `SubseqStep`, `Ring`, `RingRange`
+- **seq** (215/225 named by a case)
+  - uncovered: `Compressed`, `Filtered`, `Mapped`, `Rev`, `Rebased`, `Stepped`, `Keys`, `SubseqStep`, `Ring`, `RingRange`
 - **slope** (39/39 named by a case)
 - **sparse** (23/23 named by a case)
 - **spec** (8/16 named by a case)
@@ -1063,7 +1063,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **window** (20/22 named by a case)
   - uncovered: `Tracked`, `Undo`
 
-2202 of 2328 std items are named by a case.
+2205 of 2332 std items are named by a case.
 
 ## Core cases without a `// rule:` line
 

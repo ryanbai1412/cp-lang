@@ -4,7 +4,7 @@
 
 Sequences: reductions, scans, runs, searching, permutations, monotone stacks, and compression.  - Reductions & extrema: `prod`, `is_sorted`, `min`/`max` (with `by:`), `argmax`/`argmin` (with `by:`). - Binary & unimodal search: moved to `std.search` (`bsearch_real`, `ternary_max`/`ternary_min`, `ternary_max_real`/`ternary_min_real`, `parallel_bsearch`). - Sorted lookup: `first_ge`/`first_gt`/`last_le`/`last_lt` (with optional `by:`), returning `?D` on `[D]T`, `?Int` on `List<T>`, and `?(K, V)` on `Map<K, V>`. - Runs, chunking & windows: `runs`, `run_ranges`, `chunk_by`, `buckets`, `windows`, `chunks`, `pairs`, `with_prev`, `cyclic_pairs`, `zip`. - Scans & folds: `scan`, `suffix_scan`, `excl_fold` (cut-indexed `prefix_fold`/`suffix_fold` live in `std.prefix`). - Reordering & selection: `reverse`, `rotate_left`/`rotate_right`, `dedup`/`deduped`, `partition`, `select`, `merge_sorted`. - Permutations: `next_permutation`, `prev_permutation`, `inverse`, `compose`, `perm_cycles`, `perm_pow`, `inversions`. - Monotone stack & sliding extrema: `prev_less`, `next_less`, `prev_greater`, `next_greater`, `sliding_min`, `sliding_max`. - Coordinate compression: `let (domain C, xs) = compress(all)` -> `Compressed<C, T>` (`at`, `try_at`, `contains`, `first_ge`, `first_gt`, `last_le`, `last_lt`).
 
-In prelude (no `use` needed): `Anchor`, `Compressed`, `Perm`, `RingSlice`, `Slice`, `Ties`, `adjacent`, `all`, `any`, `buckets`, `chain`, `chunks`, `compress`, `count`, `cyclic_pairs`, `dedup`, `deduped`, `distinct`, `drop_while`, `equal_range`, `find`, `first_gt`, `flat_map`, `flatten`, `get_or_insert`, `group`, `insert`, `inverse`, `inversions`, `is_sorted`, `is_subsequence`, `iterate`, `last_lt`, `lis`, `next_permutation`, `pairs`, `partition`, `partition_point`, `prev_permutation`, `prod`, `reduce`, `remove`, `reverse`, `rotate_left`, `rotate_right`, `rotated_left`, `rotated_right`, `runs`, `select`, `sum`, `take_while`, `tally`, `windows`, `zip`.
+In prelude (no `use` needed): `Anchor`, `Compressed`, `Perm`, `RingSlice`, `Slice`, `Stepped`, `Ties`, `adjacent`, `all`, `any`, `buckets`, `chain`, `chunks`, `compress`, `count`, `cyclic_pairs`, `dedup`, `deduped`, `distinct`, `drop_while`, `equal_range`, `find`, `first_gt`, `flat_map`, `flatten`, `get_or_insert`, `group`, `insert`, `inverse`, `inversions`, `is_sorted`, `is_subsequence`, `iterate`, `last_lt`, `lis`, `next_permutation`, `pairs`, `partition`, `partition_point`, `prev_permutation`, `prod`, `reduce`, `remove`, `reverse`, `rotate_left`, `rotate_right`, `rotated_left`, `rotated_right`, `runs`, `select`, `step`, `sum`, `take_while`, `tally`, `windows`, `zip`.
 
 ## Types & Constants
 
@@ -69,6 +69,13 @@ The distinct values of a coordinate compression, in increasing order, indexed by
 ## `struct Rebased<S>(pub src: S)`
 
 The view `rebase` returns.
+
+## `struct Stepped<S>(pub src: S, pub k: Int)`
+
+\(O(1)\) to make.
+
+- `@get fn len(self) -> Int` — \(O(1)\)
+- `fn nth<T>(self, j: Int) -> T` — \(O(1)\); traps: unless `0 <= j < self.len`
 
 ## `struct Keys<S, I, K>(pub src: S, pub keys: I, by: ?K)`
 
@@ -225,6 +232,7 @@ A contiguous piece of a ring, possibly wrapping past the end, at most n elements
 - `fn take_last<S: Indexed>(self: S, k: Int) -> Slice<S>` — \(O(1)\); traps: when `k < 0`
 - `fn nth<S: Indexed, T>(self: S, k: Int) -> T` — \(O(1)\); traps: when `k` is not in `0..self.len`
 - `@get fn rebase<S: Indexed>(self: S) -> Rebased<S>` — \(O(1)\)
+- `fn step<S: Indexed>(self: S, k: Int) -> Stepped<S>` — \(O(1)\) to make, \(O(1)\) per step; \(O(1)\).; traps: when `k < 1`
 - `fn rekey<D, K, T>(self: [D]T, keys: Range<K>) -> [K]T` — \(O(1)\); traps: when `keys.len != self.len`
 - `fn collect<S: Seq, T>(self: S) -> List<T>` — \(O(n)\), allocates
 - `fn keyed<S: Seq, I: Indexed, T, K>(self: S, keys: I = 0.., by: ?(T -> K) = None) -> Keys<S, I, K>` — \(O(1)\) to make, \(O(1)\) per step; `self` with keys attached, so it is `Keyed`: walking it still gives values, `.items` gives `(key, x)`, and `argmax`/`find` answer with keys.; traps: when both `keys` and `by` are given; when `keys` runs out first
