@@ -633,3 +633,10 @@ fn unwrapping_an_array_or_list_of_optionals_unwraps_every_cell() {
     let src = "fn f(n: Int) -> Int:\n    var at: [0..n]?Int = None\n    let at = at!\n    at[0] + 1\nvar xs: List<?Int> = []\nlet ys: List<Int> = xs!\nprint(f(1), ys.len)\n";
     assert!(check(src).is_empty(), "{:?}", check(src));
 }
+
+#[test]
+fn a_param_the_body_changes_gets_one_error_not_one_more_at_the_call() {
+    let d = one("fn f(a: List<Int>):\n    a.push(1)\nvar b = [1]\nf(mut b)\n");
+    assert_eq!(d.code.0, "E0403");
+    assert!(d.help.unwrap_or_default().contains("write `mut a`"));
+}

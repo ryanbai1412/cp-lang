@@ -1189,7 +1189,10 @@ impl Database {
             text: text.clone(),
             lines,
             has_syntax_errors,
-            diagnostics: crate::check::rename_values(sink.finish(), &ranges, &checks, &text),
+            diagnostics: crate::check::drop_mut_cascades(
+                crate::check::rename_values(sink.finish(), &ranges, &checks, &text),
+                &text,
+            ),
             items: ranges
                 .iter()
                 .zip(items.iter())

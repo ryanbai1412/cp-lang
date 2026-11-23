@@ -1320,6 +1320,42 @@ pub(crate) fn declare_with_var(
     }
 }
 
+/// Drops "`f` doesn't change `a`, so `mut` doesn't belong here" at a call
+/// when `f`'s body already got "`a` is not a var": the caller's `mut` is
+/// right, and the one fix is `mut a` in `f`'s parameter list (errors/R1).
+/// Runs on the whole file, as `f` and its call are checked as two items.
+pub(crate) fn drop_mut_cascades(mut diags: Vec<Diagnostic>, src: &str) -> Vec<Diagnostic> {
+    let params: Vec<Span> = diags
+        .iter()
+        .filter(|d| d.message.contains("is not a var"))
+        .flat_map(|d| &d.labels)
+        .filter(|l| l.message == "parameter declared here")
+        .map(|l| l.span)
+        .collect();
+    let text = |at: u32, to: u32| src.get(at as usize..to as usize).unwrap_or("");
+    // `p` is in `callee`'s parameter list: the last `fn ` before it
+    // names `callee`, and no `)` closes the list before `p`.
+    let in_params = |callee: &str, p: &Span| {
+        let before = text(0, p.start);
+        before.rfind("fn ").is_some_and(|at| {
+            let rest = &before[at + 3..];
+            rest.starts_with(callee)
+                && rest[callee.len()..].starts_with(['(', '<'])
+                && !rest.contains(')')
+        })
+    };
+    diags.retain(|d| {
+        let callee = d.message.split('`').nth(1).unwrap_or("");
+        !(d.message.ends_with("so `mut` doesn't belong here")
+            && params.iter().any(|p| {
+                in_params(callee, p)
+                    && d.message
+                        .contains(&format!("doesn't change `{}`", text(p.start, p.end)))
+            }))
+    });
+    diags
+}
+
 /// A parameter is lent for reading, and `var` does not apply to it: the
 /// fn and its callers both say `mut` (R8, spec/core/05-ownership.md).
 pub(crate) fn mut_param_help(diag: &mut Diagnostic, root: &str, param: Option<Span>) {
@@ -1330,6 +1366,10 @@ pub(crate) fn mut_param_help(diag: &mut Diagnostic, root: &str, param: Option<Sp
     diag.labels.push(cpl_diag::Label {
         span: param,
         message: "parameter declared here".into(),
+    });
+    diag.fixes.push(cpl_diag::Fix {
+        title: format!("write `mut {root}` in the parameter list"),
+        edits: vec![(Span::point(param.start), "mut ".into())],
     });
 }
 
