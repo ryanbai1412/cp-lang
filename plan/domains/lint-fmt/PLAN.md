@@ -4,6 +4,33 @@ The detail behind [README.md](README.md). Target design:
 [design/overview.md](design/overview.md). Numbers: [metrics.toml](metrics.toml).
 
 ## Workstreams, in order
+Milestone 1 (`plan/product/MILESTONE-1.md`) sets the order: what a newcomer
+meets in the browser and VS Code first, architecture after.
+
+1. **Lints in the playground (M1, with site/tools).** The browser editor runs
+   wasm `check`, checker only. Add one `cpl_lint` entry that lints a checked
+   analysis (fact-table refinement included) and returns diagnostics with
+   fixes; site/tools call it from `Playground.check`. Test: every record's
+   `before.cp` warns through wasm as it does through `cpl lint`.
+2. **Format on save (M1, with tools).** LSP `textDocument/formatting` uses
+   `cpl_fmt::format_with` and the file's `cp.toml [fmt]`; the VS Code extension
+   defaults `editor.formatOnSave` for `cp`. Fmt gate (0 not idempotent, 0
+   meaning changes) stays in the fast gate.
+3. **Newcomer ranking (M1).** Count `L` codes on corpus `port.cp` as the
+   newcomer proxy; record it in `metrics.toml`; audit the top 10 by count:
+   message names the CPL spelling, fix verified, explain teaches the idiom.
+   L0414 (most hits) gets precision work or leaves the default set.
+4. **Grow teaching lints by port evidence (M1).** Catalog families that fire on
+   ports (C++ habits: `chmin`, `.back(); .pop_back()`, `(a % m + m) % m`,
+   `YES`/`NO`), each a record with a fix where meaning-safe.
+5. **Done, kept green:** fmt gate (M1 of the review packet), lint records and
+   generated registry, groups and `cp.toml` levels, `[fmt]` widths, the
+   false-positive ratchet, the fact-table prototype.
+6. **Deferred past Milestone 1:** recognizers and library `@lint` (M3),
+   `bounds.rs` onto the fact table, sorted `use` and the stamp, L0601-L0609
+   levels in `cpl lint`.
+
+### Earlier order (review packet, kept for the reasons below)
 1. **Fmt gate (M1).** Land `devin/wip-fmt` (4 commits: c-spelling spacing,
    `impl`/`lends`/`without`/`as` spacing, leading-dot shorthands, `[n]T`,
    member keywords; `scripts/fmt_check.py` in the fast gate; a design note on

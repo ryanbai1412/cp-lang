@@ -13,6 +13,40 @@ slow or unidiomatic, says why in source terms, and offers only fixes that are
 verified to check and to print the same output. Both are gated on the
 idiomatic corpus, so a finding there is a bug in the lint, not the port.
 
+## Milestone 1 (plan/product/MILESTONE-1.md)
+Lint is passive teaching (J2, J5): a 1500+ newcomer's C++-shaped code gets the
+CPL spelling, in VS Code and in the browser playground. Fmt runs on save.
+Measured 2026-11-22: the playground editor calls `cpl.check`
+(`web/components/editor/code-editor.tsx:67`), whose wasm `check`
+(`crates/cpl-wasm/src/lib.rs:92`) runs the checker only, so the browser shows
+no lints; VS Code sets no format-on-save default (`editors/vscode/package.json`)
+and LSP formatting ignores `cp.toml [fmt]` (`crates/cpl-lsp/src/server.rs:858`).
+
+**Exit criteria**
+1. Playground: each record's `before.cp` shows its `L` warning and quick fix in
+   the browser, same findings as `cpl lint` (test in `cpl-wasm`).
+2. VS Code: a new `.cp` file is formatted on save with no settings, honouring
+   `cp.toml [fmt]` (LSP test plus extension default).
+3. Newcomer ranking: lints ranked by hits on the 1,160 corpus `port.cp` files
+   (C++ translations, the nearest proxy for newcomer code; today L0414 279,
+   L0504 57, L0503 42, L0523 37, L0507 36, L0524 33). Each of the top 10 has a
+   message that names the CPL spelling, a verified fix where meaning allows,
+   and an explain page; 0 false positives on corpus `spec.cp` and `std`.
+4. The top-ranked lint is worth seeing: L0414 (279 port hits) is either
+   precise enough to teach or moved out of the default set.
+
+**Deferred** (milestone "can wait", or not newcomer-facing): M3 recognizers and
+library `@lint`, moving `bounds.rs` onto the fact table, sorted `use` and the
+line-1 stamp, catalog families with no port evidence, lint speed work.
+
+**Next 3**
+1. Lints in the playground: a `cpl_lint` entry over the playground's analysis,
+   wired into wasm `check` (site/tools own the wiring; requests filed).
+2. Format on save: LSP formatting reads `cp.toml [fmt]`; extension default
+   `editor.formatOnSave` for `cp` (tools).
+3. Newcomer ranking in `metrics.toml`, then audit the top 10 messages and
+   L0414's default, highest count first.
+
 ## Covers
 - **Lint.** The engine (levels, `with lint(...)`, `cp.toml [lints]`, fix
   application), every `L0xxx` lint, its record and tests, `cpl lint`,
