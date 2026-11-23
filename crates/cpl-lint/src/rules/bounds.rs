@@ -246,6 +246,9 @@ impl Bounds {
                         parts.iter().for_each(|p| self.pattern(p))
                     }
                     PatternKind::Variant { args, .. } => args.iter().for_each(|p| self.pattern(p)),
+                    PatternKind::Record { fields, .. } => {
+                        fields.iter().for_each(|(_, p)| self.pattern(p))
+                    }
                     PatternKind::Var(inner) => self.pattern(inner),
                     PatternKind::Wildcard | PatternKind::Literal(_) | PatternKind::Error => {}
                 }
@@ -291,6 +294,9 @@ impl Bounds {
                         parts.iter().for_each(|p| self.names(p))
                     }
                     PatternKind::Variant { args, .. } => args.iter().for_each(|p| self.names(p)),
+                    PatternKind::Record { fields, .. } => {
+                        fields.iter().for_each(|(_, p)| self.names(p))
+                    }
                     PatternKind::Var(inner) => self.names(inner),
                     PatternKind::Wildcard | PatternKind::Literal(_) | PatternKind::Error => {}
                 }

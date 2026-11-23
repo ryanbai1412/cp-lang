@@ -609,6 +609,47 @@ pub struct Pattern {
 }
 
 impl Pattern {
+    /// The patterns directly inside a tuple, variant or record pattern.
+    pub fn parts(&self) -> Box<dyn Iterator<Item = &Pattern> + '_> {
+        match &self.kind {
+            PatternKind::Tuple(items) | PatternKind::Variant { args: items, .. } => {
+                Box::new(items.iter())
+            }
+            PatternKind::Record { fields, .. } => Box::new(fields.iter().map(|(_, p)| p)),
+            _ => Box::new(std::iter::empty()),
+        }
+    }
+
+    /// A record pattern as the tuple pattern over a record with fields
+    /// `names`, in their order, `_` where `..` skips one. `Err` names a
+    /// field the record lacks, or one the pattern leaves out without `..`.
+    pub fn record_as_tuple(&self, names: &[&str]) -> Result<Pattern, String> {
+        let PatternKind::Record { fields, rest } = &self.kind else {
+            return Ok(self.clone());
+        };
+        if let Some((name, _)) = fields
+            .iter()
+            .find(|(n, _)| !names.contains(&n.text.as_str()))
+        {
+            return Err(format!("the record has no field `{}`", name.text));
+        }
+        let mut items = Vec::with_capacity(names.len());
+        for &name in names {
+            match fields.iter().find(|(n, _)| n.text == name) {
+                Some((_, p)) => items.push(p.clone()),
+                None if *rest => items.push(Pattern {
+                    kind: PatternKind::Wildcard,
+                    span: self.span,
+                }),
+                None => return Err(format!("the pattern leaves out `{name}`; add it or `..`")),
+            }
+        }
+        Ok(Pattern {
+            kind: PatternKind::Tuple(items),
+            span: self.span,
+        })
+    }
+
     /// The one parameter of a lambda given where a one-argument fn is
     /// wanted: `(a, b) => ..` takes a pair apart (R06.1.4).
     pub fn single_param(params: &[Pattern]) -> Option<Pattern> {
@@ -630,6 +671,12 @@ pub enum PatternKind {
     /// `domain P` in a binding pattern: `let (domain P, part) = f(..)`.
     Domain(Name),
     Tuple(Vec<Pattern>),
+    /// `(to: u, w: c)`, `(total:, take:)`, `(to: u, ..)`: a record's fields
+    /// by name; `rest` is the `..` that skips the others (R02.7.6).
+    Record {
+        fields: Vec<(Name, Pattern)>,
+        rest: bool,
+    },
     /// `Add(l, r)` or a bare variant such as `L`.
     Variant {
         path: Vec<Name>,

@@ -3472,6 +3472,11 @@ impl<'a> Lowerer<'a> {
                 self.declare(vname, value, mutable, out);
             }
             ast::PatternKind::Wildcard => out.push(Stmt::Expr(value)),
+            ast::PatternKind::Record { .. } => {
+                if let Some(tuple) = self.record_pattern(pat, &value.ty) {
+                    self.bind_mut(&tuple, value, mutable, out);
+                }
+            }
             ast::PatternKind::Tuple(pats) => {
                 if let Ty::Pos(dom_id) = value.ty {
                     if let Some(factors) = self.product_domains.get(&dom_id).cloned() {
@@ -5877,6 +5882,10 @@ impl<'a> Lowerer<'a> {
                 }
                 test
             }
+            ast::PatternKind::Record { .. } => {
+                let tuple = self.record_pattern(pat, &value.ty)?;
+                self.pattern(&tuple, value, binds)
+            }
             ast::PatternKind::Tuple(pats) => {
                 let Some(fields) = value.ty.fields().filter(|f| f.len() == pats.len()) else {
                     if value.ty != Ty::Error {
@@ -6322,12 +6331,33 @@ fn written(e: &Expr) -> Option<i64> {
     }
 }
 
+impl Lowerer<'_> {
+    /// R02.7.6: `(to: u, ..)` over a record value, as the tuple pattern over
+    /// its fields in declaration order.
+    fn record_pattern(&mut self, pat: &ast::Pattern, ty: &Ty) -> Option<ast::Pattern> {
+        let message = match ty {
+            Ty::Error => return None,
+            Ty::Record(fields) => {
+                let names: Vec<&str> = fields.iter().map(|(n, _)| n.as_str()).collect();
+                match pat.record_as_tuple(&names) {
+                    Ok(tuple) => return Some(tuple),
+                    Err(message) => message,
+                }
+            }
+            _ => format!("a record pattern can't match a `{}`", self.show(ty)),
+        };
+        self.error(codes::TYPE_MISMATCH, pat.span, message);
+        None
+    }
+}
+
 /// `let (gap, Some(best)) = e else: ..` tests `e` against the pattern;
 /// an irrefutable one, `let (a, b) = e else: ..`, unwraps an optional `e`.
 fn refutable(pat: &ast::Pattern) -> bool {
     match &pat.kind {
         ast::PatternKind::Variant { .. } | ast::PatternKind::Literal(_) => true,
         ast::PatternKind::Tuple(items) => items.iter().any(refutable),
+        ast::PatternKind::Record { fields, .. } => fields.iter().any(|(_, p)| refutable(p)),
         ast::PatternKind::Or(alts) => alts.iter().all(refutable),
         _ => false,
     }

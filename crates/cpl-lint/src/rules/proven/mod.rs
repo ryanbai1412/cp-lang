@@ -1143,6 +1143,7 @@ fn var_range(
                 parts.iter().for_each(|p| names(p, out))
             }
             PatternKind::Variant { args, .. } => args.iter().for_each(|p| names(p, out)),
+            PatternKind::Record { fields, .. } => fields.iter().for_each(|(_, p)| names(p, out)),
             PatternKind::Var(inner) => names(inner, out),
             PatternKind::Wildcard | PatternKind::Literal(_) | PatternKind::Error => {}
         }
@@ -1455,6 +1456,7 @@ fn declared_in(stmts: &[cpl_syntax::ast::Stmt]) -> std::collections::HashSet<Str
                 parts.iter().for_each(|p| names(p, out))
             }
             PatternKind::Variant { args, .. } => args.iter().for_each(|p| names(p, out)),
+            PatternKind::Record { fields, .. } => fields.iter().for_each(|(_, p)| names(p, out)),
             _ => {}
         }
     }
@@ -1891,6 +1893,7 @@ fn forget(pat: &cpl_syntax::ast::Pattern, bounds: &mut bounds::Bounds) {
             parts.iter().for_each(|p| forget(p, bounds))
         }
         PatternKind::Variant { args, .. } => args.iter().for_each(|p| forget(p, bounds)),
+        PatternKind::Record { fields, .. } => fields.iter().for_each(|(_, p)| forget(p, bounds)),
         _ => {}
     }
 }

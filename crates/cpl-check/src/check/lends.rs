@@ -590,9 +590,9 @@ impl Visitor for Written {
     fn pattern(&mut self, pat: &ast::Pattern) {
         match &pat.kind {
             ast::PatternKind::Name(name) => self.add(Some(name)),
-            ast::PatternKind::Tuple(items) | ast::PatternKind::Variant { args: items, .. } => {
-                items.iter().for_each(|item| self.pattern(item))
-            }
+            ast::PatternKind::Tuple(_)
+            | ast::PatternKind::Variant { .. }
+            | ast::PatternKind::Record { .. } => pat.parts().for_each(|item| self.pattern(item)),
             _ => {}
         }
     }
@@ -1540,7 +1540,7 @@ impl<'a> Checker<'a> {
         };
         let mut bound = HashSet::new();
         for p in params {
-            super::types::pattern_types(p, &Ty::Unknown, &mut |n, _| {
+            super::pattern::pattern_types(p, &Ty::Unknown, &mut |n, _| {
                 bound.insert(n.to_string());
             });
         }

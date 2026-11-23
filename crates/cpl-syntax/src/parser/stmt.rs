@@ -718,35 +718,36 @@ impl<'a> Parser<'a> {
         // `let (a: Int, b: Str) = ...`: typed tuple pattern desugars to
         // `let (a, b): (Int, Str) = ...`.
         let mut tuple_elem_tys: Option<Type> = None;
-        let mut pat = if self.at(T::LParen) && self.has_typed_tuple_pattern() {
-            let pstart = self.start();
-            self.bump();
-            let mut pats = Vec::new();
-            let mut tys = Vec::new();
-            let items = self.comma_list(T::RParen, "the typed tuple pattern", |p| {
-                let pat = p.pattern();
-                let ty = p.eat(T::Colon).then(|| p.ty());
-                (pat, ty)
-            });
-            for (p, t) in items {
-                pats.push(p);
-                if let Some(t) = t {
-                    tys.push(t);
-                }
-            }
-            if tys.len() == pats.len() && !tys.is_empty() {
-                tuple_elem_tys = Some(Type {
-                    kind: TypeKind::Tuple(tys),
-                    span: self.span_from(pstart),
+        let mut pat =
+            if self.at(T::LParen) && !self.at_record_pattern() && self.has_typed_tuple_pattern() {
+                let pstart = self.start();
+                self.bump();
+                let mut pats = Vec::new();
+                let mut tys = Vec::new();
+                let items = self.comma_list(T::RParen, "the typed tuple pattern", |p| {
+                    let pat = p.pattern();
+                    let ty = p.eat(T::Colon).then(|| p.ty());
+                    (pat, ty)
                 });
-            }
-            Pattern {
-                kind: PatternKind::Tuple(pats),
-                span: self.span_from(pstart),
-            }
-        } else {
-            self.pattern()
-        };
+                for (p, t) in items {
+                    pats.push(p);
+                    if let Some(t) = t {
+                        tys.push(t);
+                    }
+                }
+                if tys.len() == pats.len() && !tys.is_empty() {
+                    tuple_elem_tys = Some(Type {
+                        kind: TypeKind::Tuple(tys),
+                        span: self.span_from(pstart),
+                    });
+                }
+                Pattern {
+                    kind: PatternKind::Tuple(pats),
+                    span: self.span_from(pstart),
+                }
+            } else {
+                self.pattern()
+            };
         // `var ones, open, ans: Z = 0`, `var ones, one_twos, ans: Z = (0, 0, 0)`,
         // and `let n, m: 1..=20 = read()`: homogeneous multi-binding.
         let mut shared_pats: Vec<Pattern> = Vec::new();

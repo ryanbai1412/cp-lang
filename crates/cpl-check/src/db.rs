@@ -1480,8 +1480,7 @@ fn inside_own_init(item: &ItemSyntax, name: &str, span: Span) -> bool {
 fn pattern_binds(pat: &ast::Pattern, name: &str) -> bool {
     match &pat.kind {
         ast::PatternKind::Name(n) => n == name,
-        ast::PatternKind::Tuple(items) => items.iter().any(|i| pattern_binds(i, name)),
-        _ => false,
+        _ => pat.parts().any(|i| pattern_binds(i, name)),
     }
 }
 
@@ -1576,6 +1575,7 @@ fn stmt_decls(stmt: &ast::Stmt, out: &mut Vec<Decl>) {
                     }
                 }
             }
+            ast::PatternKind::Record { .. } => pat.parts().for_each(|item| pattern(item, out)),
             _ => {}
         }
     }

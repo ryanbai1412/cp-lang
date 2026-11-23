@@ -254,6 +254,11 @@ pub(crate) fn walk_pattern(v: &mut dyn Visitor, pat: &Pattern, how: Bind) {
                 walk_pattern(v, part, how);
             }
         }
+        PatternKind::Record { fields, .. } => {
+            for (_, part) in fields {
+                walk_pattern(v, part, how);
+            }
+        }
         // Every alternative binds the same names.
         PatternKind::Or(alts) => {
             if let Some(first) = alts.first() {

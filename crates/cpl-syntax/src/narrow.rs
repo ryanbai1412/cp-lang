@@ -135,8 +135,8 @@ impl Visitor for Writes<'_, '_> {
     fn pattern(&mut self, pat: &Pattern) {
         match &pat.kind {
             PatternKind::Name(name) => self.found |= name == self.name,
-            PatternKind::Tuple(items) | PatternKind::Variant { args: items, .. } => {
-                items.iter().for_each(|item| self.pattern(item))
+            PatternKind::Tuple(_) | PatternKind::Variant { .. } | PatternKind::Record { .. } => {
+                pat.parts().for_each(|item| self.pattern(item))
             }
             _ => {}
         }
@@ -179,9 +179,9 @@ impl Mutators {
             fn pattern(&mut self, pat: &Pattern) {
                 match &pat.kind {
                     PatternKind::Name(name) => self.2.push(name.clone()),
-                    PatternKind::Tuple(items) | PatternKind::Variant { args: items, .. } => {
-                        items.iter().for_each(|item| self.pattern(item))
-                    }
+                    PatternKind::Tuple(_)
+                    | PatternKind::Variant { .. }
+                    | PatternKind::Record { .. } => pat.parts().for_each(|item| self.pattern(item)),
                     _ => {}
                 }
             }

@@ -1,6 +1,6 @@
 //! Statements, blocks, and declarations.
 
-use super::types::pattern_types;
+use super::pattern::{name_spans, pattern_types};
 use super::*;
 use cpl_syntax::ast::{
     self, AssignOp, Block, Expr, ExprKind, FnBody, Pattern, PatternKind, Stmt, StmtKind,
@@ -431,7 +431,10 @@ impl<'a> Checker<'a> {
     /// Binds the names in `pat` to parts of a value of type `ty`.
     pub(crate) fn bind(&mut self, pat: &Pattern, ty: &Ty, mutable: bool, keyword: &'static str) {
         match &pat.kind {
-            PatternKind::Name(_) | PatternKind::Domain(_) | PatternKind::Tuple(_) => {
+            PatternKind::Name(_)
+            | PatternKind::Domain(_)
+            | PatternKind::Tuple(_)
+            | PatternKind::Record { .. } => {
                 let effective_ty;
                 let bind_ty = if matches!(pat.kind, PatternKind::Tuple(_)) {
                     if let Ty::Pos(dom) = ty {
@@ -1197,7 +1200,7 @@ impl<'a> Checker<'a> {
                             ..
                         })
                     );
-                match super::types::domain_binding(pat) {
+                match super::pattern::domain_binding(pat) {
                     // `let LIM = 100`: with no `else` there is no variant
                     // to match, so a capitalized name is bound to the value.
                     Some(name)
@@ -2100,7 +2103,7 @@ impl<'a> Checker<'a> {
                     pat,
                     init: Some(init),
                     ..
-                } if super::types::domain_binding(pat) == Some("K") => {
+                } if super::pattern::domain_binding(pat) == Some("K") => {
                     for name in super::lends::names_in(init) {
                         let mutable = match self.local(&name) {
                             Some(local) => local.mutable,
@@ -2708,28 +2711,6 @@ fn memo_of(stmt: &Stmt) -> Option<(Span, bool)> {
     Some((memo.span, is_array))
 }
 
-/// The span of each name a pattern binds, in the order `pattern_types`
-/// visits them.
-fn name_spans(pat: &Pattern, is_var: bool, out: &mut Vec<(Span, bool)>) {
-    match &pat.kind {
-        PatternKind::Name(_) => out.push((pat.span, is_var)),
-        PatternKind::Domain(name) => out.push((name.span, is_var)),
-        PatternKind::Var(inner) => name_spans(inner, true, out),
-        PatternKind::Tuple(items) => {
-            for item in items {
-                match &item.kind {
-                    PatternKind::Domain(name) => out.push((name.span, is_var)),
-                    _ => match super::types::domain_binding(item) {
-                        Some(_) => out.push((item.span, is_var)),
-                        None => name_spans(item, is_var, out),
-                    },
-                }
-            }
-        }
-        _ => {}
-    }
-}
-
 impl Checker<'_> {
     /// The values of `fields(a, b, ..)` in a `for` head: the compile-time
     /// loop over a struct's or a tuple's fields (decision 28.1).
@@ -3074,7 +3055,7 @@ fn loop_exit(stmts: &[Stmt]) -> Option<Span> {
 fn refutable(pat: &ast::Pattern) -> bool {
     match &pat.kind {
         ast::PatternKind::Variant { .. } | ast::PatternKind::Literal(_) => true,
-        ast::PatternKind::Tuple(items) => items.iter().any(refutable),
+        ast::PatternKind::Tuple(_) | ast::PatternKind::Record { .. } => pat.parts().any(refutable),
         ast::PatternKind::Or(alts) => alts.iter().all(refutable),
         _ => false,
     }

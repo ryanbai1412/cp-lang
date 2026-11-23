@@ -3864,8 +3864,7 @@ impl<'a> Lowerer<'a> {
             ast::PatternKind::Domain(name) => {
                 out.insert(name.text.clone());
             }
-            ast::PatternKind::Tuple(pats) => pats.iter().for_each(|p| Self::pattern_names(p, out)),
-            _ => {}
+            _ => pat.parts().for_each(|p| Self::pattern_names(p, out)),
         }
     }
 

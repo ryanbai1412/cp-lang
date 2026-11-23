@@ -10,12 +10,14 @@ mod expr;
 mod known;
 pub(crate) mod lends;
 mod mut_args;
+mod pattern;
 mod spelling;
 mod stmt;
 pub(crate) use stmt::runs;
 mod types;
 
-pub(crate) use types::{domain_binding, memo_table, own_domains, trait_impl_key, type_head};
+pub(crate) use pattern::domain_binding;
+pub(crate) use types::{memo_table, own_domains, trait_impl_key, type_head};
 
 use crate::def::Def;
 use crate::prelude;
