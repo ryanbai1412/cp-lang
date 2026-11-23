@@ -5882,3 +5882,14 @@ H-RECORD-PATTERN-SHORTHAND; a contestant who builds with the shorthand
 writes the same shape to take it apart, and the only alternative is a
 field access per name. Reverse: drop the `?` after `pattern` in the grammar
 and the shorthand sentence of R02.7.6; the long form stays.
+
+## 231. `Map` is the default lookup table; `HashMap` is spelled to require hashing (2026-11-22)
+
+lib/containers.md §1.7 and §2.8 now say `Map<K, V>` and `Set<T>` are what
+a contestant writes for a lookup table, as §1 and chapters 2 and 7 already
+implied: codegen emits the salted hash table for a `Map` whose order no
+walk or ordered query observes (`cpl-codegen`'s `unordered::find`), so the
+obvious spelling is also the fast one. `HashMap` stays for a program that
+wants hashing regardless. Reason: rebuild round 3's H-MAP-DEFAULT-KIND,
+where §2.8 called `HashMap` "the default" and contradicted §1. Reverse:
+restore §2.8's sentence and drop the new paragraph in §1.7.

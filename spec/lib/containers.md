@@ -155,6 +155,10 @@ Four friction points surfaced in ports:
 
 ### 1.7 Hash maps and sets
 
+Write `Map` and `Set` for a lookup table; the compiler hashes them when no
+walk or ordered query observes their order (§1, decision 231). The rest of
+this section is for when hashing must be spelled.
+
 Builtin `HashMap<K, V>` and `HashSet<T>` already emit `std::unordered_map` and
 `std::unordered_set` with a salted `splitmix64` hash (`cpl::CpHash`), defeating
 Codeforces anti-hash hacks by default. However, `std::unordered_map` allocates
@@ -513,8 +517,10 @@ struct Interner<K>                            // online key <-> 0..len id
 
 ### 2.8 `std.hashmap` (open-addressing flat hash tables for `Int` keys)
 
-Builtin `HashMap<K, V>` and `HashSet<T>` remain the default for arbitrary
-hashable keys. `std.hashmap` adds an explicit open-addressing table for `Int`
+`Map<K, V>` and `Set<T>` are the default lookup tables: they already lower to
+the salted hash table when order is never observed (§1). Spell `HashMap<K, V>`
+or `HashSet<T>` only to require hashing whatever the program observes, and
+then walking one has no defined order. `std.hashmap` adds an explicit open-addressing table for `Int`
 keys when constant factor and memory matter:
 
 <!-- spec-only: signatures and costs, not a program -->
