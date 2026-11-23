@@ -1086,7 +1086,9 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 }
                 PlaceKind::Index(base, indices)
                     if matches!(base.ty, Ty::Array { .. } | Ty::List(_))
-                        && (indices.len() == 1 || indices.len() == 2) =>
+                        && (indices.len() == 1
+                            || indices.len() == 2
+                            || Self::indexes_nd_cell(&base.ty, indices)) =>
                 {
                     if matches!(base.ty, Ty::List(_)) && indices.len() != 1 {
                         return None;
@@ -1123,6 +1125,10 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 PlaceKind::Index(_, indices) if indices.len() == 1 => {
                     let r_i = self.compile_expr_i(&indices[0]);
                     steps.push(PlaceStep::Index1(r_i));
+                }
+                PlaceKind::Index(base, indices) if Self::indexes_nd_cell(&base.ty, indices) => {
+                    let (idx, n) = self.compile_index_run(indices);
+                    steps.push(PlaceStep::IndexN(idx, n));
                 }
                 PlaceKind::Index(_, indices) if indices.len() == 2 => {
                     let r_i = self.compile_expr_i(&indices[0]);

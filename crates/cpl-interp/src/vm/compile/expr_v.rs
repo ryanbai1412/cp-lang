@@ -105,6 +105,9 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 }
                 dst
             }
+            ExprKind::Index(base, indices) if Self::indexes_nd_cell(&base.ty, indices) => {
+                self.compile_index_nd_v(base, indices, span)
+            }
             ExprKind::Index(base, indices)
                 if matches!(base.ty, Ty::Array { .. })
                     && (indices.len() == 1 || indices.len() == 2) =>

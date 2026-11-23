@@ -450,6 +450,17 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 };
                 regs_v[dst as usize] = val;
             }
+            Op::LoadArrNV { dst, arr_v, idx, n } => {
+                let val = match &regs_v[arr_v as usize] {
+                    Value::Array(arr) => {
+                        let indices = &regs_i[idx as usize..(idx + n) as usize];
+                        let flat = nd_flat_index(&arr.dims, indices, spans[cur_pc])?;
+                        arr.get(flat).unwrap_or(Value::Unit)
+                    }
+                    _ => return trap(spans[cur_pc], "internal: expected array"),
+                };
+                regs_v[dst as usize] = val;
+            }
             Op::StoreLArr2V {
                 arr_v,
                 r_i,

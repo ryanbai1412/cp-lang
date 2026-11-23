@@ -550,8 +550,26 @@ pub(super) fn array_flat_index(
             }
             Ok((i * d1 + j) as usize)
         }
+        PlaceStep::IndexN(idx, n) => {
+            nd_flat_index(&arr.dims, &regs_i[idx as usize..(idx + n) as usize], span)
+        }
         PlaceStep::Field(_) => trap(span, "internal: expected index step"),
     }
+}
+
+/// The row-major cell of `indices` in an array of `dims`, each checked.
+pub(super) fn nd_flat_index(dims: &[i64], indices: &[i64], span: Span) -> Res<usize> {
+    let mut flat = 0;
+    for (&i, &d) in indices.iter().zip(dims) {
+        if i < 0 || i >= d {
+            return trap(
+                span,
+                format!("index {i} is outside an array dimension of length {d}"),
+            );
+        }
+        flat = flat * d + i;
+    }
+    Ok(flat as usize)
 }
 
 #[inline(never)]
@@ -573,8 +591,10 @@ pub(super) fn with_place_cell<R>(
     span: Span,
     f: impl FnOnce(&mut Value) -> Res<R>,
 ) -> Res<R> {
-    if let Some((&last @ (PlaceStep::Index1(_) | PlaceStep::Index2(..)), prefix)) =
-        steps.split_last()
+    if let Some((
+        &last @ (PlaceStep::Index1(_) | PlaceStep::Index2(..) | PlaceStep::IndexN(..)),
+        prefix,
+    )) = steps.split_last()
     {
         let container = walk_place_mut(root, prefix, regs_i, keys, span)?;
         if let Value::Array(arr) = container {
@@ -640,7 +660,7 @@ pub(super) fn walk_place_mut<'a>(
                 }
                 _ => return trap(span, "internal: expected array or list"),
             },
-            PlaceStep::Index2(..) => match cur {
+            PlaceStep::Index2(..) | PlaceStep::IndexN(..) => match cur {
                 Value::Array(arr) => {
                     let flat = array_flat_index(arr, step, regs_i, span)?;
                     let a = Rc::make_mut(arr);
@@ -707,7 +727,7 @@ pub(super) fn store_place_leaf_scalar(
             }
             _ => trap(span, "internal: expected array or list"),
         },
-        PlaceStep::Index2(..) => match container {
+        PlaceStep::Index2(..) | PlaceStep::IndexN(..) => match container {
             Value::Array(arr) => {
                 let flat = array_flat_index(arr, last, regs_i, span)?;
                 let a = Rc::make_mut(arr);
@@ -771,7 +791,7 @@ pub(super) fn store_place_leaf_opt_scalar(
             }
             _ => trap(span, "internal: expected array or list"),
         },
-        PlaceStep::Index2(..) => match container {
+        PlaceStep::Index2(..) | PlaceStep::IndexN(..) => match container {
             Value::Array(arr) => {
                 let flat = array_flat_index(arr, last, regs_i, span)?;
                 let a = Rc::make_mut(arr);
@@ -826,7 +846,7 @@ pub(super) fn store_place_leaf_val(
             }
             _ => trap(span, "internal: expected array or list"),
         },
-        PlaceStep::Index2(..) => match container {
+        PlaceStep::Index2(..) | PlaceStep::IndexN(..) => match container {
             Value::Array(arr) => {
                 let flat = array_flat_index(arr, last, regs_i, span)?;
                 Rc::make_mut(arr).set(flat, val);
@@ -1029,7 +1049,7 @@ pub(super) fn assign_place_leaf_scalar(
             }
             _ => trap(span, "internal: expected array or list"),
         },
-        PlaceStep::Index2(..) => match container {
+        PlaceStep::Index2(..) | PlaceStep::IndexN(..) => match container {
             Value::Array(arr) => {
                 let flat = array_flat_index(arr, last, regs_i, span)?;
                 let a = Rc::make_mut(arr);

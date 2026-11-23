@@ -13,6 +13,7 @@ mod expr_i;
 mod expr_opt_i;
 mod expr_v;
 mod fed_args;
+mod index_nd;
 mod range_loop;
 mod seq_load;
 mod sort;

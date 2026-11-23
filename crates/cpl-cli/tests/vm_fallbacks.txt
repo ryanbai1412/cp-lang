@@ -17,7 +17,6 @@ traced stmt:Assign(Global,Min)
 traced stmt:Assign(Global,Set)
 traced stmt:Assign(Index1D,Binary(Mul))
 traced stmt:Assign(Index2D,Max)
-traced stmt:Assign(IndexND,Set)
 traced stmt:Assign(Local,Binary(Add))
 traced stmt:DefDomain
 traced stmt:DefDomainFromVal
@@ -44,7 +43,6 @@ untraced stmt:Assign(Global,Binary(Sub))
 untraced stmt:Assign(Global,Min)
 untraced stmt:Assign(Index1D,Binary(Mul))
 untraced stmt:Assign(Index2D,Max)
-untraced stmt:Assign(IndexND,Set)
 untraced stmt:Assign(Local,Binary(Add))
 untraced stmt:DefDomain
 untraced stmt:Expr(Call)

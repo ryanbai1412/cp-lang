@@ -776,6 +776,13 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 self.emit(Op::ClearV { reg: tmp_v }, span);
                 dst
             }
+            ExprKind::Index(base, indices) if Self::indexes_nd_cell(&base.ty, indices) => {
+                let src_v = self.compile_index_nd_v(base, indices, span);
+                let dst = self.alloc_i();
+                self.emit(Op::UnboxI { dst_i: dst, src_v }, span);
+                self.emit(Op::ClearV { reg: src_v }, span);
+                dst
+            }
             ExprKind::Index(base, indices)
                 if matches!(base.ty, Ty::Array { .. })
                     && (indices.len() == 1 || indices.len() == 2) =>

@@ -46,6 +46,9 @@ pub(crate) enum PlaceStep {
     Field(u16),
     Index1(u16),
     Index2(u16, u16),
+    /// An element of an array of 3 or more dims, its `n` indices in the
+    /// registers from the first.
+    IndexN(u16, u16),
     /// A map entry, keyed by the `n`th of the path's `keys`.
     Key(u16),
 }
@@ -1079,6 +1082,13 @@ pub(crate) enum Op {
         arr_v: u16,
         r_i: u16,
         r_j: u16,
+    },
+    /// `dst = arr_v[idx..idx + n]`: an element of an `n`-D array.
+    LoadArrNV {
+        dst: u16,
+        arr_v: u16,
+        idx: u16,
+        n: u16,
     },
     LoadGArr2V {
         dst: u16,

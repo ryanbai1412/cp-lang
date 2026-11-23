@@ -1901,6 +1901,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
             | Op::TakeGList1V { .. }
             | Op::LoadLArr2V { .. }
             | Op::LoadGArr2V { .. }
+            | Op::LoadArrNV { .. }
             | Op::StoreLArr2V { .. }
             | Op::StoreGArr2V { .. }
             | Op::ConstF64 { .. }
