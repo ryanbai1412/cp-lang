@@ -1,10 +1,10 @@
-// expect: ok, output "1\n3 1 5..10 4..5 5..6 0 1 0 5..10 3..5 0..3\n1 0\n3\n1 2 1\nYES"
+// expect: ok, output "1\n3 1 5 10 4..5 5..6 0 1 0 5..10 3..5 0..3\n1 0\n3\n1 2 1\nYES"
 use std.interval.{SparseIntervalMap}
 use std.rand.{Rng}
 print(SparseIntervalMap(0, 1_000_000_000, 0).runs)
 var m = SparseIntervalMap(0, 10, 0)
 m.assign(3..5, 1)
-print(m.runs, m.get(4), m.run_at(7).range, m.range(4..6).map(p => p.range).collect(), m.each().map(p => p.val).collect(), m.each_rev().map(p => p.range).collect())
+print(m.runs, m.get(4), m.run_at(7).range.l, m.run_at(7).range.r, m.range(4..6).map(p => p.range).collect(), m.each().map(p => p.val).collect(), m.each_rev().map(p => p.range).collect())
 var old: List<Int> = []
 m.assign(4..6, 2, on_old: (_, v) => old.push(v))
 print(old)

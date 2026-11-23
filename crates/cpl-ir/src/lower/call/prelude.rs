@@ -140,7 +140,9 @@ impl<'a> Lowerer<'a> {
                         ahead.push(Stmt::Let(slot, Some(std::mem::replace(value, held))));
                     }
                 }
-                if sep.is_some() || none_text.is_some() {
+                // A range is a `Seq`: it prints its elements (R10.3.1).
+                let ranged = values.iter().any(|(v, _)| matches!(v.ty, Ty::Range(_)));
+                if sep.is_some() || none_text.is_some() || ranged {
                     values = values
                         .into_iter()
                         .map(|(value, at)| {
