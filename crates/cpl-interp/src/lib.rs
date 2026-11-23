@@ -2785,17 +2785,9 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
         for &d in &self.fn_guarded[id] {
             self.saved_domains.push((d, self.domains[d]));
         }
-        let has_alias = self.stack[self.base..self.base + f.params.len()]
-            .iter()
-            .any(|v| matches!(v, Value::Alias(..) | Value::Part(_)));
-        let has_fn_param = f
-            .locals
-            .iter()
-            .take(f.params.len())
-            .any(|l| matches!(l.ty, Ty::Fn(..)));
         // A traced chunk leaves a `yield` to the tree-walker, which feeds the loop.
         let fed_ok = !feeding || self.vm.as_ref().is_some_and(|c| c.main.traced);
-        let mut flow = if fed_ok && !(has_alias && has_fn_param) {
+        let mut flow = if fed_ok {
             if let Some(compiled) = self.vm.clone() {
                 if compiled.fns.get(id).is_some_and(Option::is_some) {
                     self.run_fn_vm_waited(&compiled, id, span, saved, dom_mark)
