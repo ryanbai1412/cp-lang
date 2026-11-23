@@ -118,9 +118,10 @@ def main(argv=None):
     ap.add_argument("--update", action="store_true")
     ap.add_argument("--cpl", default=os.path.join(ROOT, "target", "release", "cpl"))
     ap.add_argument("-j", type=int, default=os.cpu_count() or 4)
+    ap.add_argument("--changed", metavar="BASE", help="only the v03 ports changed since BASE (a commit, or `staged`)")
     ap.add_argument("ids", nargs="*")
     a = ap.parse_args(argv)
-    ids = a.ids or differential.v03()
+    ids = differential.select(a)
     with concurrent.futures.ThreadPoolExecutor(a.j) as pool:
         found = sorted(f for fs in pool.map(lambda p: check(p, a.cpl), ids) for f in fs)
     return differential.ratchet("generators", KNOWN, found, a, f"{len(ids)} ports")

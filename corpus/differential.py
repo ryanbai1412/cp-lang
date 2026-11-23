@@ -73,6 +73,8 @@ def native(pid, port, cpl):
 def removed_spellings(ids, cpl):
     files = [f for p in ids for n in ("port.cp", "dream.cp", "spec.cp")
              if os.path.exists(f := os.path.join(ROOT, "corpus", "problems", p, n))]
+    if not files:
+        return []
     r = subprocess.run([cpl, "migrate", "--check", "--json", *files], capture_output=True, text=True)
     return sorted(f"removed-spelling {os.path.relpath(os.path.join(ROOT, f['path']), ROOT)} -"
                   for f in json.loads(r.stdout)["files"] if f["changed"] or f["diagnostics"])
@@ -80,6 +82,21 @@ def removed_spellings(ids, cpl):
 
 def v03():
     return [l.split()[0] for l in open(os.path.join(ROOT, "corpus", "sets", "v03.txt")) if l.strip() and not l.startswith("#")]
+
+
+def changed(base):
+    """The v03 ports with a file under corpus/problems/<id>/ changed since `base` (`staged`: the index)."""
+    cmd = ["git", "diff", "--name-only", *(["--cached"] if base == "staged" else [base]), "--", "corpus/problems"]
+    files = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True, check=True).stdout.split()
+    touched = {f.split("/")[2] for f in files if f.count("/") >= 3}
+    return [p for p in v03() if p in touched]
+
+
+def select(a):
+    """The ports a run covers: the ids given, the ones changed since --changed, or all of v03."""
+    if a.update and (a.changed or a.ids):
+        sys.exit("--update rewrites the whole known list, so it runs over all of v03")
+    return changed(a.changed) if a.changed else a.ids or v03()
 
 
 def ratchet(name, path, found, a, what):
@@ -127,9 +144,10 @@ def main(argv=None):
     ap.add_argument("--update", action="store_true")
     ap.add_argument("--cpl", default=os.path.join(ROOT, "target", "release", "cpl"))
     ap.add_argument("-j", type=int, default=os.cpu_count() or 4)
+    ap.add_argument("--changed", metavar="BASE", help="only the v03 ports changed since BASE (a commit, or `staged`)")
     ap.add_argument("ids", nargs="*")
     a = ap.parse_args(argv)
-    ids = a.ids or v03()
+    ids = select(a)
     with concurrent.futures.ThreadPoolExecutor(a.j) as pool:
         found = sorted(f for fs in pool.map(lambda p: check(p, a.cpl), ids) for f in fs)
     found += removed_spellings(ids, a.cpl)
