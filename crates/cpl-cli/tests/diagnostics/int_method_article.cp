@@ -1,2 +1,2 @@
 let x = 5
-print(x.abs())
+print(x.gcd(4))

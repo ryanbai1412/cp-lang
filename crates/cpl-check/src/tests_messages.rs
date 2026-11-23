@@ -229,3 +229,13 @@ fn an_arrays_range_elements_do_not_widen_on_a_move() {
     );
     assert!(check("var a: [3]0..=9 = [3].filled(0)\nprint(a)\n").is_empty());
 }
+
+#[test]
+fn a_number_getter_called_with_parentheses_drops_them() {
+    let d = check("let x = -3\nlet f = 2.5\nprint(x.abs(), f.floor())\n");
+    let codes: Vec<_> = d
+        .iter()
+        .map(|d| (d.code.0, d.fixes[0].edits[0].1.as_str()))
+        .collect();
+    assert_eq!(codes, [("E0304", ""), ("E0304", "")], "{d:?}");
+}
