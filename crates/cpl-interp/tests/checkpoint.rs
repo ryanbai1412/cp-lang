@@ -357,3 +357,47 @@ fn a_checkpoint_can_stand_inside_calls_and_test_cases() {
         taken.iter().filter_map(Checkpoint::case).collect();
     assert!(cases.len() >= 2, "{cases:?}");
 }
+
+#[test]
+fn a_windowed_trace_is_the_full_traces_window_and_the_whole_run() {
+    let failing = "var s = 0\nfor i in 0..100000:\n    s = (s + i) % 1009\n    if i % 30000 == 0:\n        print(s)\nassert s < 0\n";
+    for source in [NESTED, CALLS, ONE_CALL, LONG, failing] {
+        for from in [None, Some(0), Some(4999), Some(1_000_000)] {
+            let program = program(source);
+            let config = TraceConfig {
+                from_step: from,
+                max_steps: Some(300),
+                ..config(source)
+            };
+            let mut full_out = Vec::new();
+            let full = cpl_interp::run_observed(
+                &program,
+                Io::fixed(b""),
+                &mut full_out,
+                Some(config.clone()),
+            );
+            let mut out = Vec::new();
+            let windowed = cpl_interp::trace::windowed(&program, b"", &mut out, config);
+            let at = format!("from {from:?} of {source}");
+            assert_eq!(out, full_out, "{at}");
+            assert_eq!(
+                windowed.trap.map(|t| t.message),
+                full.trap.map(|t| t.message),
+                "{at}"
+            );
+            let (rec, whole) = (windowed.recording.unwrap(), full.recording.unwrap());
+            assert_eq!(
+                (rec.skipped, rec.truncated, rec.len()),
+                (whole.skipped, whole.truncated, whole.len()),
+                "{at}"
+            );
+            for step in 0..whole.len() {
+                assert_eq!(
+                    step_text(&rec, step),
+                    step_text(&whole, step),
+                    "{at}, step {step}"
+                );
+            }
+        }
+    }
+}

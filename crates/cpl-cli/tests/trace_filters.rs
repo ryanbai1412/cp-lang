@@ -364,3 +364,33 @@ fn trace_filter_flags_require_trace() {
         );
     }
 }
+
+#[test]
+fn a_trace_by_default_is_the_full_traces_window() {
+    let path = write_temp(
+        "windowed",
+        "var s = 0\nfor i in 0..200000:\n    s = (s + i) % 1009\n    if i % 50000 == 0:\n        print(s)\nassert s < 0\n",
+    );
+    let path = path.to_str().unwrap();
+    let windowed = run_cpl(&["run", "--trace", "--format", "json", path], "");
+    let full = run_cpl(&["run", "--trace", "--full", "--format", "json", path], "");
+    assert_eq!(windowed.0, full.0, "the run fails its assert either way");
+    assert_ne!(windowed.0, 0);
+    assert_eq!(windowed.1, full.1, "the same trace document");
+    assert!(
+        windowed.1.contains("\"truncated\":true"),
+        "{}",
+        &windowed.1[..200]
+    );
+    let plain = run_cpl(&["run", "--trace", path], "");
+    let plain_full = run_cpl(&["run", "--trace", "--full", path], "");
+    assert_eq!(plain.2, plain_full.2, "the same failure");
+}
+
+#[test]
+fn full_without_trace_is_an_error() {
+    let path = write_temp("full_alone", "print(1)\n");
+    let (code, _, err) = run_cpl(&["run", "--full", path.to_str().unwrap()], "");
+    assert_ne!(code, 0);
+    assert!(err.contains("`--full`"), "{err}");
+}

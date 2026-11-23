@@ -33,6 +33,12 @@ today = "scalar 6.10x (114 ms -> 693 ms), array 6.01x (176 ms -> 1.06 s); demos 
 target = "<= 1.2x (Ryan: at most +20% to interpreter speeds)"
 
 [[metric]]
+name = "cpl_trace_default_vs_untraced"
+command = "least of 7 on one core: cpl run f.cp vs cpl run --trace --format json f.cp (10^7-round scalar / array loops); --live trace.json?from=N"
+today = "scalar 1.15x (184 -> 212 ms), array 1.04x (528 -> 547 ms); --full 657 / 1119 ms; live: first page 29 / 60 ms, first far window 786 / 2492 ms (counts the run's steps once), later windows 52-180 ms (2026-11-23)"
+target = "<= 1.2x (Ryan: at most +20% to interpreter speeds)"
+
+[[metric]]
 name = "trace_off_overhead"
 command = "cargo test --release -p cpl-interp --test trace_log ten_million -- --ignored --nocapture (untraced, before and after 7fa67de25)"
 today = "0: untraced runs are built over the no-op observer; scalar 121.6 ms before, 113.5 ms after (noise)"

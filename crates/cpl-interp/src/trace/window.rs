@@ -65,6 +65,32 @@ pub fn tail(program: &Program, input: &[u8], config: TraceConfig, steps: usize) 
     run_observed(program, Io::fixed(input), &mut Vec::new(), Some(config))
 }
 
+/// The run of `program` on `input`, printing to `output`, with its trace
+/// from `config.from_step` on: the traced run ends once its window is full,
+/// and then the run goes again untraced for its output and how it ended. A
+/// long run costs its untraced time plus its window's, not a traced run.
+pub fn windowed(
+    program: &Program,
+    input: &[u8],
+    output: &mut (dyn Write + Send),
+    config: TraceConfig,
+) -> Observed {
+    let config = TraceConfig {
+        stop_when_full: true,
+        ..config
+    };
+    let mut printed = Vec::new();
+    let window = run_observed(program, Io::fixed(input), &mut printed, Some(config));
+    if !window.recording.as_ref().is_some_and(|rec| rec.truncated) {
+        let _ = output.write_all(&printed);
+        return window;
+    }
+    Observed {
+        recording: window.recording,
+        ..run_observed(program, Io::fixed(input), output, None)
+    }
+}
+
 /// Loop rounds and calls between two checkpoints of a run [`resumed_tail`] keeps.
 const CHECKPOINT_EVERY: u64 = 1 << 16;
 

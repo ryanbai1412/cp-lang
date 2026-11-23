@@ -505,6 +505,8 @@ options:
   --from N          with --trace: skip the first N steps (0-based), to keep
                     any part of a long run
   --depth N         with --trace: record only up to call depth N (0 = top level)
+  --full            with --trace: trace the whole run as it goes; by default
+                    only the steps kept are traced and the rest runs untraced
   --format json     without --trace: the value of each top-level variable,
                     the output and the time, for an editor.
                     with --trace: the trace as JSON on standard output

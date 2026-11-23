@@ -366,6 +366,8 @@ struct RunArgs<'a> {
     from_step: Option<usize>,
     /// `--depth N`: maximum call depth to record.
     max_depth: Option<usize>,
+    /// `--full`: trace the whole run as it goes, not just the window kept.
+    full_trace: bool,
     format: Option<&'a str>,
     brute: bool,
     release: bool,
@@ -427,6 +429,7 @@ impl<'a> RunArgs<'a> {
             last_steps: None,
             from_step: None,
             max_depth: None,
+            full_trace: false,
             format: None,
             brute: false,
             release: false,
@@ -502,6 +505,7 @@ impl<'a> RunArgs<'a> {
                 flag if flag.starts_with("--from=") => {
                     args.from_step = Some(step_count("--from", &flag["--from=".len()..])?);
                 }
+                "--full" => args.full_trace = true,
                 "--depth" => match iter.next() {
                     Some(n) => {
                         let parsed: usize = n.parse().map_err(|_| {
@@ -570,10 +574,11 @@ impl<'a> RunArgs<'a> {
             || !args.watch.is_empty()
             || args.last_steps.is_some()
             || args.from_step.is_some()
-            || args.max_depth.is_some();
+            || args.max_depth.is_some()
+            || args.full_trace;
         if has_trace_filter && !args.trace {
             return Err(
-                "`--test`, `--watch`, `--last`, `--from`, and `--depth` filter a trace: add `--trace`".into(),
+                "`--test`, `--watch`, `--last`, `--from`, `--depth` and `--full` shape a trace: add `--trace`".into(),
             );
         }
         if args.checks.is_some() && !args.release {
@@ -1207,10 +1212,22 @@ fn run_live(args: &RunArgs, stdin: &mut (dyn FnMut() -> Vec<u8> + Send)) -> u8 {
                 }
                 match &*replay {
                     Some((_, replay)) => replay.window(config),
-                    None => traced(&compiled.program, &input, &mut Vec::new(), config),
+                    None => traced(
+                        &compiled.program,
+                        &input,
+                        &mut Vec::new(),
+                        config,
+                        args.full_trace,
+                    ),
                 }
             }
-            None => traced(&compiled.program, &input, &mut Vec::new(), config),
+            None => traced(
+                &compiled.program,
+                &input,
+                &mut Vec::new(),
+                config,
+                args.full_trace,
+            ),
         };
         Ok(trace::single(
             args.file,
@@ -1221,19 +1238,27 @@ fn run_live(args: &RunArgs, stdin: &mut (dyn FnMut() -> Vec<u8> + Send)) -> u8 {
     live::serve(args.file, &input, &note, &record)
 }
 
-/// The run on `input`, recorded; `--last` traces only the run's end again,
-/// from a checkpoint of its untraced run.
+/// The run on `input`, recorded. Unless `full`, only the steps kept are
+/// traced: `--last` traces the run's end again from a checkpoint of its
+/// untraced run, and any other trace stops once it is full.
 fn traced(
     program: &cpl_ir::Program,
     input: &[u8],
     output: &mut (dyn Write + Send),
     config: cpl_interp::trace::TraceConfig,
+    full: bool,
 ) -> cpl_interp::Observed {
+    if full || config.last_steps.is_some() && config.from_step.is_some() {
+        return cpl_interp::run_observed(
+            program,
+            cpl_interp::Io::fixed(input),
+            output,
+            Some(config),
+        );
+    }
     match config.last_steps.filter(|_| config.from_step.is_none()) {
         Some(steps) => cpl_interp::trace::resumed_tail(program, input, output, config, steps),
-        None => {
-            cpl_interp::run_observed(program, cpl_interp::Io::fixed(input), output, Some(config))
-        }
+        None => cpl_interp::trace::windowed(program, input, output, config),
     }
 }
 
@@ -1273,7 +1298,15 @@ fn observe_file(
         Some((_, judge)) => {
             interact::run_traced(&compiled.program, judge, input, &mut printed, config)
         }
-        None => traced(&compiled.program, input, &mut printed, config),
+        // `--format json` without `--trace` reports each variable's last
+        // value, which only a whole traced run has.
+        None => traced(
+            &compiled.program,
+            input,
+            &mut printed,
+            config,
+            args.full_trace || !args.trace,
+        ),
     };
     let millis = started.elapsed().as_millis();
     let recording = observed.recording.unwrap_or_default();
