@@ -193,7 +193,8 @@ own jobs passed, not only after a fully green run.
 job, so waiting for a full green run holds shipping for hours. *Example:* a
 red interpreter test doesn't stop the site deploying from a commit whose
 `site build` and `site browser tests` passed. *Enforced by:*
-`scripts/release/shippable.sh`, `scripts/site-deployable.sh`.
+`scripts/release/shippable.sh`, `scripts/site-deployable.sh` (which skips
+superseded runs, so it stays inside the API rate limit; `scripts/test_workflows.py`).
 
 ### ci/R26
 

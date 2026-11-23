@@ -9,6 +9,8 @@ on:
     workflows: [ci]
     types: [completed]
     branches: [main]
+  schedule:
+    - cron: "23,53 * * * *"
   workflow_dispatch:
 
 permissions:
@@ -23,7 +25,9 @@ concurrency:
 
 jobs:
   select:
-    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.event == 'push'
+    # A superseded (cancelled) ci run ran no job, so it can't make a commit
+    # deployable; skipping it keeps the selection inside the API rate limit.
+    if: github.event_name == 'workflow_dispatch' || github.event_name == 'schedule' || (github.event.workflow_run.event == 'push' && github.event.workflow_run.conclusion != 'cancelled')
     runs-on: ubuntu-latest
     timeout-minutes: 5
     outputs:

@@ -49,6 +49,16 @@ class WorkflowTest(unittest.TestCase):
         self.assertIn("subject-path: dist/*", sign)
         self.assertIn("id-token: write", sign)
 
+    def test_site_selection_skips_superseded_runs(self):
+        # Superseded ci runs end `cancelled` ~100 times an hour and ran no job;
+        # scanning each one spent the repo's API rate limit (ci/R25).
+        with open(os.path.join(ROOT, ".github", "workflows", "site.yml"), encoding="utf-8") as f:
+            self.assertIn("github.event.workflow_run.conclusion != 'cancelled'", job_block(f.read(), "select"))
+        with open(os.path.join(ROOT, "scripts", "site-deployable.sh"), encoding="utf-8") as f:
+            deployable = f.read()
+        self.assertIn('.conclusion != "cancelled"', deployable)
+        self.assertIn('[ "$sha" != "$live" ]', deployable)
+
     def test_blocking_jobs_cover_every_os(self):
         with open(os.path.join(ROOT, ".github", "workflows", "ci.yml"), encoding="utf-8") as f:
             ci = f.read()
