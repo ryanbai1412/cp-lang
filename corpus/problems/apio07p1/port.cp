@@ -47,8 +47,8 @@ var swaps = 0
 fn span(u: ?Bar, d: Int) -> ?(Int, Int):
     let v = u else:
         return (d, d)
-    let (ld, ls) = span(kids[v].l, d + 1)?
-    let (rd, rs) = span(kids[v].r, d + 1)?
+    let (ld, ls) = span(kids[v].l, d + 1) else: return None
+    let (rd, rs) = span(kids[v].r, d + 1) else: return None
     if ls >= rd:
         return (ld, rs)
     if rs >= ld:
@@ -57,7 +57,7 @@ fn span(u: ?Bar, d: Int) -> ?(Int, Int):
     return None
 
 fn answer() -> ?Int:
-    let (deep, shallow) = span(Bar.first!, 0)?
+    let (deep, shallow) = span(Bar.first!, 0) else: return None
     if deep - shallow > 1:
         return None
     return swaps

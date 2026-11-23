@@ -17,7 +17,7 @@ fn works(ops: Int) -> Bool:
     t.up(+, finish: (s, v) => settle(s + a[v] - each - Int(v.label <= extra)))[root] == 0
 
 let cycle = 2 * n
-let rounds = 0..=2 * (n + a.max())
+let rounds = 0..=2 * (n + a.max()!)
 print(
     [
         k * cycle + r for r in 0..cycle if let k = rounds.first_true(k => works(k * cycle + r))
