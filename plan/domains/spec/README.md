@@ -40,6 +40,23 @@ Next, in hours (checkpoint in worklog.md every 2 hours):
 2. 23:30-03:30: round-6 holes inside the subset get a rule, a case or a SUBSET entry; spec-blocks in supported chapters.
 3. 03:30-09:30: rebuild round 7 on Codeforces Div. 2 problems; fix every contradiction; shrink known gaps with owners.
 
+## Milestone 2
+
+`plan/product/MILESTONE-2.md`, the stable release. Spec's complete version: the whole language is normative, every rule is tested independently of the compiler, and a stranger can learn it, trust it and read why it is shaped this way, from `spec/` alone. Spec work on it starts once the Milestone 1 criteria above pass.
+
+Exit criteria (each checkable):
+1. **Whole language supported.** `spec/SUBSET.md` has 0 *documented* and 0 *gap* sections, and covers `lib/` as well as core and tools (today 95 supported, 3 documented, 0 gap, 91 known-gap cases: `scripts/conformance-subset.py --check`).
+2. **No known correctness bugs.** 0 known-gap cases in supported sections; every rule id, trait method, matrix cell and std signature has a passing case (`conformance-coverage/traits/matrix/sigs.py --check` with 0 gaps).
+3. **Every example runs.** `cpl-conform spec-blocks` passes every block; `spec-only` is kept for grammar fragments alone (today 85/185).
+4. **Both engines agree.** Every conformance case gives the same output and diagnostics under `cpl run` and the built C++ (`cpl-conform diff`).
+5. **Bugs get caught.** At least 95% of reverted compiler fixes are caught by the suite (`scripts/conformance-bugcatch.py`; 92% in round 1).
+6. **Writable from the docs.** A cold rebuild on unseen problems for every journey (J1-J10 problem types) records 0 contradictions and 0 holes.
+7. **Readable in depth.** Every chapter opens with its model; every decision cited in `spec/` gives its reason inline and its rejected alternatives in `spec/RATIONALE.md`; the site renders them without links outside the site.
+8. **Stable to depend on.** The spec carries a version and a changelog of normative changes; the compatibility promise, pins and `cpl migrate` codemods (R11.4.3) have rule ids and cases, including rebuilding old solutions byte for byte.
+9. **Every tool is specified.** Trace, DAP, explain, LSP, stress generators and judge profiles carry rule ids with cases. `13-lowering.md` states the performance bar perf measures: idiomatic p50 <= 1.1x, p95 <= 1.2x and max <= 1.5x of matched C++, and tuned max <= 1.1x, with every solution under 32 KB.
+
+Next steps, after Milestone 1: (1) rule ids and cases for trace, DAP and explain; (2) diff mode over every case; (3) version the spec, with a normative changelog and `cpl migrate` cases.
+
 ## Success criteria for v0.3
 
 1. Every rule that forbids, traps or limits has a reject case; every rule has an accept case unless it only forbids. (2 forbidding rules lack a reject case today; 3 rule gaps in all; 26 rules that only permit or define are listed with a reason in `spec/conformance/permits.txt`.)
