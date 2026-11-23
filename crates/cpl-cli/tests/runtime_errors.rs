@@ -816,3 +816,20 @@ print(b.at(5))
         "got:\n{err}"
     );
 }
+
+#[test]
+fn locals_of_a_call_that_traps_in_its_first_statement() {
+    let source = "\
+fn get(a: List<Int>, j: Int) -> Int:
+    return a[j]
+
+let k = 2
+print(get([0, 0, 0], k + 1))
+";
+    let (code, err) = run_stderr(source, "");
+    assert_eq!(code, 3, "got:\n{err}");
+    assert!(
+        err.contains("note: locals: a = [0, 0, 0], j = 3\n"),
+        "got:\n{err}"
+    );
+}

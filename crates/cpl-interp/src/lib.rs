@@ -12,6 +12,7 @@ mod input;
 pub mod profile;
 pub mod replay;
 pub mod trace;
+mod unwind;
 mod value;
 #[cfg(not(target_arch = "wasm32"))]
 mod vm;
@@ -406,6 +407,7 @@ fn run_io(
         #[cfg(not(target_arch = "wasm32"))]
         vm_pool_v: Vec::new(),
         view_locals: Vec::new(),
+        trap_frame: None,
         trace_indices: Vec::new(),
         trace_path: Vec::new(),
         trace_raw: Vec::new(),
@@ -424,36 +426,7 @@ fn run_io(
     let _ = interp.sink.flush();
     let trap = result.err().map(|mut trap| {
         if trap.call_stack.is_empty() && !interp.call_frames.is_empty() {
-            let frames = &interp.call_frames;
-            if frames.len() <= 32 {
-                trap.call_stack = frames
-                    .iter()
-                    .rev()
-                    .map(|&(name, call_span)| Frame {
-                        name: interp.program.shown_fn(name).to_string(),
-                        call_span,
-                    })
-                    .collect();
-            } else {
-                let mut stack = Vec::with_capacity(25);
-                for &(name, call_span) in frames[frames.len() - 16..].iter().rev() {
-                    stack.push(Frame {
-                        name: interp.program.shown_fn(name).to_string(),
-                        call_span,
-                    });
-                }
-                stack.push(Frame {
-                    name: format!("... {} frames omitted ...", frames.len() - 24),
-                    call_span: Span::default(),
-                });
-                for &(name, call_span) in frames[..8].iter().rev() {
-                    stack.push(Frame {
-                        name: interp.program.shown_fn(name).to_string(),
-                        call_span,
-                    });
-                }
-                trap.call_stack = stack;
-            }
+            trap.call_stack = unwind::call_stack(interp.program, &interp.call_frames);
         }
         if trap.case.is_none() {
             trap.case = interp.current_case;
@@ -462,7 +435,15 @@ fn run_io(
     });
     let recording = interp.tracer.take().map(|tracer| {
         let failed = trap.as_ref().map(|trap| (trap.message.as_str(), trap.span));
-        let view = interp.view();
+        let depth = interp.call_frames.len();
+        let kept = (interp.trap_frame.take()).filter(|kept| failed.is_some() && kept.0 == depth);
+        let mut view = interp.view();
+        if let Some((_, locals)) = &kept {
+            view.locals = locals
+                .iter()
+                .map(|(name, ty, value)| (*name, *ty, value))
+                .collect();
+        }
         tracer.finish(&view, failed)
     });
     Observed {
@@ -651,6 +632,8 @@ struct Interp<'p, 'o> {
     vm_pool_v: Vec<Vec<Value>>,
     /// The allocation [`Interp::view`] lists locals in, kept between steps.
     view_locals: Vec<(&'static str, &'static Ty, &'static Value)>,
+    /// The innermost call's locals when a traced run trapped, and its depth.
+    trap_frame: Option<(usize, Vec<(&'p str, &'p Ty, Value)>)>,
     /// The indices of the place a trace point writes, kept between steps.
     trace_indices: Vec<Value>,
     trace_path: Vec<usize>,
@@ -860,8 +843,24 @@ impl<'p, 'o> Interp<'p, 'o> {
     }
 
     fn view_in<'s>(&'s self, mut locals: Vec<(&'s str, &'s Ty, &'s Value)>) -> trace::View<'s> {
-        let named = self
-            .locals()
+        locals.extend(
+            self.named_locals()
+                .map(|(name, ty, value)| (name, ty, value)),
+        );
+        trace::View {
+            program: self.program,
+            globals: &self.globals,
+            domains: &self.domains,
+            locals,
+            raw: None,
+            depth: self.call_frames.len(),
+            call_frames: &self.call_frames,
+        }
+    }
+
+    /// The current call's named locals and their values.
+    fn named_locals(&self) -> impl Iterator<Item = (&'p str, &'p Ty, &Value)> + use<'_, 'p, 'o> {
+        self.locals()
             .iter()
             .enumerate()
             .filter(|(_, local)| !local.name.is_empty() && !local.name.starts_with('_'))
@@ -874,17 +873,7 @@ impl<'p, 'o> Interp<'p, 'o> {
                     value => value,
                 };
                 Some((local.name.as_str(), &local.ty, value))
-            });
-        locals.extend(named);
-        trace::View {
-            program: self.program,
-            globals: &self.globals,
-            domains: &self.domains,
-            locals,
-            raw: None,
-            depth: self.call_frames.len(),
-            call_frames: &self.call_frames,
-        }
+            })
     }
 
     /// Runs `record` on the tracer, when the run is traced.
@@ -3132,6 +3121,9 @@ impl<'p, 'o> Interp<'p, 'o> {
             if flow.is_ok() && self.tracer.as_ref().is_some_and(|tracer| tracer.stopped) {
                 flow = trap(span, trace::STOPPED);
             }
+        }
+        if flow.is_err() {
+            self.keep_trap_frame();
         }
         self.frame_locals.pop();
         self.base = saved;

@@ -550,3 +550,28 @@ print(b.get())
         .expect("a step inside the call");
     assert_eq!(inside.frames[0].0, "Box.get");
 }
+
+#[test]
+fn a_trap_in_a_calls_first_statement_ends_on_its_locals() {
+    let source = "\
+fn get(a: List<Int>, j: Int) -> Int:
+    return a[j]
+let k = 2
+print(get([0, 0, 0], k + 1))
+";
+    let config = TraceConfig {
+        source: source.into(),
+        record_frames: true,
+        ..TraceConfig::default()
+    };
+    let mut out = Vec::new();
+    let io = cpl_interp::Io::fixed(b"");
+    let observed = cpl_interp::run_observed(&program(source), io, &mut out, Some(config));
+    assert!(observed.trap.is_some());
+    let rec = observed.recording.expect("recorded");
+    let end = rec.step(rec.len() - 1).unwrap();
+    assert!(end.label.starts_with("failed: "), "{}", end.label);
+    assert_eq!(end.frames.len(), 2, "{:?}", end.frames);
+    assert_eq!(end.frames[0].0, "get");
+    assert!(end.locals.contains("\"j\""), "{}", end.locals);
+}

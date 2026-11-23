@@ -222,6 +222,9 @@ impl<'p, 'io> Interp<'p, 'io> {
                 self.base,
                 true,
             );
+            if exit.is_err() {
+                self.keep_trap_frame();
+            }
         }
         match exit? {
             ExecExit::Return(v) => Ok(v),

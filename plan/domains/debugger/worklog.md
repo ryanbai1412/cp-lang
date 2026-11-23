@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- A trap in a call's first statement now names that call's locals (`= note: locals: a = [0, 0, 0], j = 3`); the trace's last step and the viewer show them too. `crates/cpl-interp/src/unwind.rs` keeps the innermost frame of a traced run before unwinding. Made in the shared interpreter per the coordinator, noted in compiler's worklog.
 - Source-level fn names in traces, DAP frames and trap call stacks (`Box.get`, not the lowered `Box_<type args>_<id>.get`): `Program::fn_display` from `crates/cpl-ir/src/lower/names.rs`, mapped in `crates/cpl-interp/src/trace/lines.rs` and the trap call stack. Made in compiler's crates per the coordinator, noted in their worklog.
 - Request from tools: `cpl stress --help` has one 81-column line (`--trace`: "traces side by side as <file>.tests/stress-<seed>.trace.html", `crates/cpl-stress/src/cli.rs`). Every other help now fits 80 columns, checked by `every_help_fits_80_columns` in `crates/cpl-cli/tests/golden.rs`, which skips `stress` until it is rewrapped; drop the skip when you do.
 - `perf record` of the budget test (scalar 5.39x, array 5.62x) shows no hot spot left (exec_chunk_core 28%, exec_trace 14%, the rest 1-4%), so further tweaks are noise. Proposed the structural fix in `plan/domains/debugger/design/trace-replay.md`: record lines and frames only, plus snapshots, and recompute values by deterministic replay.
