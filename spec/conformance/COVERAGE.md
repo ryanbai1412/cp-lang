@@ -7,7 +7,7 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 2236 (995 passing). Rules: 531.
+Cases: 2238 (995 passing). Rules: 531.
 
 ## Summary per chapter
 
@@ -15,7 +15,7 @@ Cases: 2236 (995 passing). Rules: 531.
 - R02 (02-values-types.md): 51 rules, 100 cases; 0 uncovered, 7 happy-path only, 0 negative only
 - R03 (03-numbers-layout.md): 24 rules, 58 cases; 0 uncovered, 6 happy-path only, 1 negative only
 - R04 (04-indices.md): 61 rules, 89 cases; 0 uncovered, 1 happy-path only, 0 negative only
-- R04a (04a-identity-vs-offset.md): 39 rules, 51 cases; 0 uncovered, 1 happy-path only, 2 negative only
+- R04a (04a-identity-vs-offset.md): 39 rules, 53 cases; 0 uncovered, 1 happy-path only, 0 negative only
 - R04b (04b-keys.md): 27 rules, 62 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R05 (05-ownership.md): 43 rules, 144 cases; 0 uncovered, 3 happy-path only, 2 negative only
 - R06 (06-control-functions.md): 24 rules, 75 cases; 0 uncovered, 1 happy-path only, 0 negative only
@@ -39,7 +39,7 @@ negative case. Complete: rules with no gap in `rule-gaps.txt`.
 | R02 | 51 | 51 (100%) | 29 | 22 (75%) | 44 (86%) |
 | R03 | 24 | 23 (95%) | 17 | 11 (64%) | 17 (70%) |
 | R04 | 61 | 61 (100%) | 14 | 13 (92%) | 60 (98%) |
-| R04a | 39 | 37 (94%) | 4 | 3 (75%) | 36 (92%) |
+| R04a | 39 | 39 (100%) | 4 | 3 (75%) | 38 (97%) |
 | R04b | 27 | 27 (100%) | 6 | 6 (100%) | 27 (100%) |
 | R05 | 43 | 41 (95%) | 23 | 20 (86%) | 38 (88%) |
 | R06 | 24 | 24 (100%) | 17 | 16 (94%) | 23 (95%) |
@@ -50,7 +50,7 @@ negative case. Complete: rules with no gap in `rule-gaps.txt`.
 | R11 | 15 | 14 (93%) | 9 | 8 (88%) | 13 (86%) |
 | R12 | 17 | 17 (100%) | 6 | 6 (100%) | 17 (100%) |
 | R13 | 22 | 22 (100%) | 7 | 4 (57%) | 19 (86%) |
-| all | 531 | 522 (98%) | 225 | 187 (83%) | 484 (91%) |
+| all | 531 | 524 (98%) | 225 | 187 (83%) | 486 (91%) |
 
 ## Rules
 
@@ -272,8 +272,8 @@ Each rule: positive / negative case counts, then the gap if any.
 - R04a.4.1 [1+ 1-]: | C1 source position into a view | `blk[i]` inside a D&C on `blk = a[i.l..end]` | ✓ | + / ...
 - R04a.4.2 [1+ 1-]: | C2 nested slicing | `w[a..b]` with `a`, `b` from the source | ✓ | + / S | ✓ | + / S
 - R04a.4.3 [1+ 0-]: | C3 a range cut into halves | `let (x, y) = r.halve()`, then `a[x]`, `a[y]` | ✓ | + / S |...
-- R04a.5.1 [0+ 3-] *negative only*: | D1 literal first or last | `w[0]`, `w[w.len - 1]` | T | ✓ | T (compile) | ✓
-- R04a.5.2 [0+ 2-] *negative only*: | D2 counter loop | `for i in 0..w.len: w[i]` (festival's `rest[i]`) | T | ✓ | T (compile)...
+- R04a.5.1 [1+ 3-]: | D1 literal first or last | `w[0]`, `w[w.len - 1]` | T | ✓ | T (compile) | ✓
+- R04a.5.2 [1+ 2-]: | D2 counter loop | `for i in 0..w.len: w[i]` (festival's `rest[i]`) | T | ✓ | T (compile)...
 - R04a.5.3 [1+ 1-]: | D3 relative access by variable | `s[l..][k]`, meaning the k-th char after `l` | S | ✓ | ...
 - R04a.6.1 [1+ 1-]: | E1 a fn written with `xs[0]` / `0..xs.len` gets a slice | user `fn f(xs: List<Int>)` | T...
 - R04a.6.2 [1+ 0-]: | E2 a per-element table from an algorithm on a slice | `let z = z_function(s[l..])`, then...
