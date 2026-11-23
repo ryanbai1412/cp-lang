@@ -1,19 +1,13 @@
-// Codeforces 2127 B — Hamiiid, Haaamid... Hamid?
-//
-// `Pos = 1..=n` is 1-based; its 0-based index in `s` is `p = x.ord` (`0 <= p < n`).
-// Escaping left takes `left_escape = 1` day if no wall `'#'` lies in `0..p`, or
-// `l + 2` days if the nearest left wall is at `l` (`l + 1` cells plus the exit
-// step). Symmetrically, escaping right takes `right_escape = 1` if no wall lies
-// in `p + 1..n`, or `n - r + 1` if the nearest right wall is at `r`.
-//
-// On day 1 the builder may place one new wall on an empty neighbour of `p` to
-// maximize the runner's cheaper escape `min(left, right)`:
-// - Placing at `p - 1` (empty iff `left_escape < p + 1`) raises the left escape
-//   cost to `p + 1`, giving `min(p + 1, right_escape)`.
-// - Placing at `p + 1` (empty iff `right_escape < n - p`) raises the right
-//   escape cost to `n - p`, giving `min(left_escape, n - p)`.
-// - Otherwise (the builder cannot raise either side's cost further) the answer
-//   stays `min(left_escape, right_escape)`.
+// Source: Codeforces 2127B (Hamiiid, Haaamid... Hamid?),
+//   https://codeforces.com/contest/2127/problem/B
+// Problem: a 1 x n grid (n <= 2e5; multitest) of walls '#' and empty '.', Hamid on empty cell x.
+//   Each day Mani walls an empty cell other than Hamid's, then Hamid picks a side: no wall there
+//   and he escapes, else he moves onto the nearest wall and destroys it. Hamid minimises the days
+//   to escape, Mani maximises; print the days.
+// Solution: at 0-based p, the left side costs 1 day if open, else l + 2 for its nearest wall l;
+//   the right side 1 or n - r + 1. Hamid takes the cheaper side. On day 1 Mani can wall the empty
+//   cell next to Hamid, making that side cost p + 1 (left) or n - p (right) when that is more;
+//   the answer is the best of Mani's options. O(n).
 
 @!multitest
 let n: 1..=200_000 = read()

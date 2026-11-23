@@ -1,12 +1,13 @@
-// Codeforces 2138 B — Antiamuny Wants to Learn Swap
-//
-// A subarray `a[l..=r]` is sortable in the minimum number of operations iff it
-// contains no 3-term decreasing subsequence `a[x] > a[y] > a[z]` (`l <= x < y < z <= r`).
-// For each middle index `i`, the tightest such triple uses its nearest greater
-// element to the left `l = prev_gt[i]` and nearest smaller element to the right
-// `r = next_lt[i]`, so any query starting at or before `l` fails once it reaches `r`.
-// Taking suffix minima of `bad[l]` over `I` gives `min_bad[l]`, the earliest
-// forbidden right endpoint for any subarray starting at `l`.
+// Source: Codeforces 2138B (Antiamuny Wants to Learn Swap),
+//   https://codeforces.com/contest/2138/problem/B
+// Problem: a permutation a of n <= 5e5 and q <= 5e5 queries l r (multitest, sums <= 5e5). A
+//   subarray is perfect when one allowed swap of b_i and b_{i+2} never sorts it in fewer moves
+//   than adjacent swaps alone; print YES or NO for each a[l..=r].
+// Solution: a subarray is perfect iff it has no decreasing triple x < y < z. For each middle i
+//   the tightest triple takes the nearest greater element to its left and the nearest smaller to
+//   its right (std prev_smaller / next_smaller); bad[l] keeps the least such right end, and
+//   suffix minima make min_bad[l] the first right end that fails a query starting at l.
+//   O(n + q).
 
 use std.seq.{next_smaller, prev_smaller}
 

@@ -1,17 +1,13 @@
-// Codeforces 2124 D: Make a Palindrome.
-//
-// An operation deletes the k-th smallest of a window of length >= k. Let
-// `thresh` be the (k - 1)-th smallest value. Fewer than k - 1 values lie below
-// it, so a window's k-th smallest is never one of them: every `small` value
-// stays, in order, and must already read as a palindrome. Values above `thresh`
-// can always go, and copies of `thresh` can go while at least k values remain,
-// so the question is whether a palindrome keeps `small` and at least k - 1
-// values in all.
-//
-// Cut the array at the small values: `gaps[i]` copies of `thresh` sit between
-// small i - 1 and small i. A palindrome keeps min(gaps[i], gaps[g - 1 - i]) of
-// each mirrored pair of gaps on both sides, and the whole middle gap; summing
-// min over `gaps` zipped with its reverse counts exactly that.
+// Source: Codeforces 2124D (Make a Palindrome), https://codeforces.com/contest/2124/problem/D
+// Problem: an array a of n <= 2e5 values and k <= n (multitest, sum n <= 2e5). An operation
+//   deletes the k-th smallest of some window of length >= k. Print YES if some sequence of
+//   operations leaves a palindrome (the empty array counts), else NO.
+// Solution: k = 1 is always YES. With thresh the (k - 1)-th smallest value, a window's k-th
+//   smallest is never below thresh, so values below thresh all stay and must already read as
+//   a palindrome; larger values can always go, and copies of thresh can go while k values
+//   remain. Cut a at the small values into gaps of thresh copies: a palindrome keeps
+//   min(gaps[i], gaps[g - 1 - i]) of each mirrored pair; YES iff that plus the small values is
+//   at least k - 1. O(n log n) for the sort.
 @!multitest
 use std.strings.{is_palindrome}
 

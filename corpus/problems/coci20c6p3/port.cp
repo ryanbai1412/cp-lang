@@ -1,5 +1,9 @@
-// COCI 2020 Anagramistica: choose some of the n words so that exactly k pairs
-// of chosen words are anagrams of each other. Count the choices.
+// Source: COCI 2020/2021 Contest 6 #3 (Anagramistica), https://dmoj.ca/problem/coci20c6p3
+// Problem: n <= 2000 distinct words of <= 10 lowercase letters and k <= 2000. Count the subsets
+//   of the words with exactly k pairs of anagrams, mod 1e9+7.
+// Solution: anagrams form classes (keyed by letter counts) and only class sizes matter: taking
+//   t words of a class of size s makes t(t - 1)/2 pairs in C(s, t) ways. A knapsack over classes
+//   on the pair count 0..=k, stopping a class once t(t - 1)/2 passes k: O(n k).
 const P = 1000000007
 type Z = Mod<P>
 let n: 1..=2000 = read()

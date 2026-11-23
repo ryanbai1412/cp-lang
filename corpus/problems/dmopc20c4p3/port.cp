@@ -1,6 +1,10 @@
-// DMOPC '20 Contest 4 P3 Roving Roombas: a sweeper cleans the floor from
-// (0, y) to (x, y) and a climber cleans the wall from (x, 0) to (x, y). Count
-// the pairs of one sweeper and one climber whose paths cross.
+// Source: DMOPC '20 Contest 4 P3 (Roving Roombas), https://dmoj.ca/problem/dmopc20c4p3
+// Problem: n <= 2e5 Roombas clean (0, Y_i) to (X_i, Y_i) and m <= 2e5 cords run (X_j, 0) to
+//   (X_j, Y_j), coordinates 1..=1e9 (Roomba Y distinct, cord X distinct). Count the
+//   (Roomba, cord) pairs that touch, ends included.
+// Solution: a cord crosses a Roomba when X_j <= X_i and Y_j >= Y_i. Sweep heights downward,
+//   cords before Roombas at equal height, adding each cord to a SegTree over compressed cord x;
+//   each Roomba adds the count of cords at or left of its X_i. O((n + m) log m).
 // original: corpus/submissions/3484973.cpp
 type Pt = (x: 1..=1e9, y: 1..=1e9)
 let n: 1..=2e5 = read()

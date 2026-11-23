@@ -1,6 +1,10 @@
-// DMOPC '20 Contest 7 P1 Bob and Balance: 2n problems each have a kind. Split
-// them into n pairs so that as many pairs as possible hold two different
-// kinds. Print that number, then the pairs.
+// Source: DMOPC '20 Contest 7 P1 (Bob and Balance), https://dmoj.ca/problem/dmopc20c7p1
+// Problem: 2n weights (n <= 5e5, masses <= 1e9) go on n two-plate scales, one weight per plate.
+//   Maximise the tipped scales (unequal masses); print that number, then each scale's two
+//   weight indices.
+// Solution: greedy: repeatedly pair the two masses with the most weights left (a max-heap on
+//   count); a mass is paired with itself only when it is the last one left. Weights of each
+//   mass are compressed and listed, and popped to print the pairs. O(n log n).
 // original: corpus/submissions/3686504.cpp
 let n: 1..=1e5 = read()
 domain Slot = 1..=2 * n

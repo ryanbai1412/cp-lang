@@ -1,7 +1,14 @@
-// Codeforces 2053 F: fill the blanks (-1) of a matrix with 1..=k, maximizing Σ_v Σ_i c[v, i]·c[v, i + 1].
-// Some optimum gives all blanks of a row one value. Credit every pair of adjacent blank rows up
-// front; a DP over the value of the current row's blanks pays b_i·b_{i + 1} back only when the
-// value changes, and only values present in a neighbouring row ever rise, so `best` is a running max.
+// Source: Codeforces 2053F (Earnest Matrix Complement),
+//   https://codeforces.com/contest/2053/problem/F
+// Problem: an n x m matrix (n, m >= 2, sum of n m <= 6e5; multitest) of values in 1..=k with
+//   blanks -1. Fill the blanks to maximise sum over u and i of c[u, i] c[u, i + 1], where
+//   c[u, i] counts u in row i; print the maximum.
+// Solution: some optimum gives all blanks of a row one value. Credit every adjacent row pair up
+//   front with b_i b_{i+1} (blanks agreeing) plus its fixed-value matches; a DP over rows then
+//   picks each row's value v, gaining b_i times the count of v in rows i - 1 and i + 1, and pays
+//   b_i b_{i+1} back when the value changes. stay[v] is the best ending on v, fresh the best after
+//   a paid change; only values present in a neighbour row are touched, and `best` (max stay)
+//   only rises. O(n m) hash operations per test.
 @!multitest
 let (n, m, k): (2..=200_000, 2..=200_000, Int) = read()
 domain R = 0..n
