@@ -108,6 +108,8 @@ pub(crate) fn explain_file(
     let entries = cpl_codegen::explain_closures(&compiled.program);
     let dropped = cpl_codegen::explain_dropped_fields(&compiled.program);
     const DROPPED: &str = "never read; it and its stores are left out";
+    let mut db = cpl_check::Database::new();
+    db.set_file(path, compiled.text.as_str());
     if json {
         let row = |site: &str, lowering: &str, detail: &str| {
             format!(
@@ -147,8 +149,6 @@ pub(crate) fn explain_file(
                 &format!("{what}: {why}"),
             ));
         }
-        let mut db = cpl_check::Database::new();
-        db.set_file(path, compiled.text.as_str());
         for (name, rep) in cpl_lsp::explain::storage(&mut db, path).0 {
             let detail = format!("{}: {}", rep.ty, cpl_lsp::explain::describe(&rep));
             rows.push(row(&name, "storage", &detail));
@@ -156,8 +156,6 @@ pub(crate) fn explain_file(
         let _ = writeln!(stdout, "[\n{}\n]", rows.join(",\n"));
         return 0;
     }
-    let mut db = cpl_check::Database::new();
-    db.set_file(path, compiled.text.as_str());
     let section = cpl_lsp::explain::storage_section(&mut db, path);
     let _ = write!(
         stdout,

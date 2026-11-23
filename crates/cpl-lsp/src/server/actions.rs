@@ -17,6 +17,7 @@ impl Server {
         );
         let mut actions = Vec::new();
         let lints = lints(uri, &analysis);
+        let mut rechecked = false;
         for diag in analysis.diagnostics.iter().chain(&lints) {
             if diag.span.end < wanted.start || diag.span.start > wanted.end {
                 continue;
@@ -24,7 +25,10 @@ impl Server {
             // The fix `cpl fix` applies: for an error the first candidate
             // that re-checks, for a lint its first.
             let preferred = match diag.severity {
-                cpl_diag::Severity::Error => cpl_check_fix(uri, &analysis.text, diag),
+                cpl_diag::Severity::Error => {
+                    rechecked |= diag.fixes.len() > 1;
+                    cpl_ir::fix::checked_fix(&mut self.db, uri, &analysis.text, diag)
+                }
                 _ => diag.fixes.first(),
             };
             for fix in &diag.fixes {
@@ -59,6 +63,11 @@ impl Server {
                     ),
                 ]));
             }
+        }
+        // Choosing an error's fix re-checks candidates in the server's
+        // database; the buffer goes back until the client applies one.
+        if rechecked {
+            self.db.set_file(uri, analysis.text.clone());
         }
         // `cpl fix` on the document, for an editor's fix-all (on save).
         let only = params.at(&["context", "only"]).as_array().unwrap_or(&[]);
@@ -121,13 +130,4 @@ impl Server {
         }
         Ok(Reply::result(Value::Array(actions)))
     }
-}
-
-/// `cpl_ir::fix::checked_fix` on a scratch database, so the open documents stay as they are.
-fn cpl_check_fix<'d>(
-    uri: &str,
-    text: &str,
-    diag: &'d cpl_diag::Diagnostic,
-) -> Option<&'d cpl_diag::Fix> {
-    cpl_ir::fix::checked_fix(&mut cpl_check::Database::new(), uri, text, diag)
 }

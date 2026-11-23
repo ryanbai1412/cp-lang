@@ -110,7 +110,7 @@
   "lint_dup_helpers": 5,
   "plan_delta_lines": 1627,
   "vm_fallbacks": 92,
-  "own_databases": 35,
+  "own_databases": 33,
   "cpp_deep_copies": 51,
   "cpp_std_functions": 610,
   "near_dup_fns": 10,
