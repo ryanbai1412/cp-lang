@@ -134,6 +134,27 @@ fn a_comprehension_reserves_its_source_size() {
 }
 
 #[test]
+fn a_comprehension_over_a_str_reserves_its_length() {
+    let cpp = cpp(concat!(
+        "let s: Str = read()\n",
+        "let v = [Int(ch == 'A') for ch in s]\n",
+        "print(v.sum())\n",
+    ));
+    assert!(cpp.contains(".reserve(s.size());"), "{cpp}");
+}
+
+#[test]
+fn a_list_of_lists_literal_moves_its_rows() {
+    let cpp = cpp(concat!(
+        "let n: 1..=9 = read()\n",
+        "var dp = [List.filled(n, 0), List.filled(n, 1)]\n",
+        "dp[1][0] = 2\n",
+        "print(dp[0][0], dp[1][0])\n",
+    ));
+    assert!(cpp.contains("cpl::list_of<std::vector<"), "{cpp}");
+}
+
+#[test]
 fn a_yields_fn_run_as_pushes_reserves_no_list() {
     let cpp = cpp(concat!(
         "fn walk(xs: List<Int>) -> yields Int:\n",

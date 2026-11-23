@@ -1,30 +1,25 @@
-// Codeforces 2022 C, tuned: port.cp's memoized `best` as a table filled from the right, one
-// slot per (cut, front), with the votes read once into two Int lists, as orig.cpp's dp does.
+// Codeforces 2022 C, tuned: orig.cpp's dp over the 2n/3 cut points, pushed forward, so
+// each step scores only the shapes that start at that cut (port.cp scores every column).
 @!multitest
 let n: 3..=100_000 = read()
 let top: Str = read()
 let bottom: Str = read()
 let v = [[Int(ch == 'A') for ch in top], [Int(ch == 'A') for ch in bottom]]
 fn won(a: Int, b: Int, c: Int) -> Int = Int(a + b + c >= 2)
-let lost = -1_000_000
-var flush = List.filled(n + 1, lost)
-var behind = [List.filled(n + 1, lost), List.filled(n + 1, lost)]
-flush[n] = 0
-for c in (0..n).rev:
-    for z in 0..2:
-        let o = 1 - z
-        if c + 2 <= n:
-            var b = won(v[z][c], v[z][c + 1], v[o][c + 1]) + flush[c + 2]
-            if c + 4 <= n:
-                let bars = won(v[z][c], v[z][c + 1], v[z][c + 2]) + won(v[o][c + 1], v[o][c + 2], v[o][c + 3])
-                b = max(b, bars + behind[z][c + 3])
-            behind[z][c] = b
-    var f = lost
-    if c + 3 <= n:
-        f = won(v[0][c], v[0][c + 1], v[0][c + 2]) + won(v[1][c], v[1][c + 1], v[1][c + 2]) + flush[c + 3]
-    if c + 1 < n:
+let d = 2 * n / 3
+var dp = [List.filled(d + 1, 0), List.filled(d + 1, 0)]
+for cur in 0..d:
+    let x = cur * 3 / 2
+    if cur % 2 == 1:
         for z in 0..2:
             let o = 1 - z
-            f = max(f, won(v[z][c], v[o][c], v[o][c + 1]) + behind[z][c + 1])
-    flush[c] = f
-print(flush[0])
+            dp[0][cur + 1] = max(dp[0][cur + 1], dp[z][cur] + won(v[z][x], v[z][x + 1], v[o][x + 1]))
+            if cur + 2 <= d:
+                let bars = won(v[z][x], v[z][x + 1], v[z][x + 2]) + won(v[o][x + 1], v[o][x + 2], v[o][x + 3])
+                dp[z][cur + 2] = max(dp[z][cur + 2], dp[z][cur] + bars)
+    else:
+        let flat = won(v[0][x], v[0][x + 1], v[0][x + 2]) + won(v[1][x], v[1][x + 1], v[1][x + 2])
+        dp[0][cur + 2] = max(dp[0][cur + 2], dp[0][cur] + flat)
+        dp[0][cur + 1] = max(dp[0][cur + 1], dp[0][cur] + won(v[0][x], v[1][x], v[1][x + 1]))
+        dp[1][cur + 1] = max(dp[1][cur + 1], dp[0][cur] + won(v[0][x], v[1][x], v[0][x + 1]))
+print(dp[0][d])

@@ -68,7 +68,7 @@ impl<'p> Emitter<'p> {
         let n = match iter {
             Iter::Seq(src, _)
                 if walk::is_simple(src)
-                    && (matches!(src.ty, Ty::List(_) | Ty::ListView(..))
+                    && (matches!(src.ty, Ty::List(_) | Ty::ListView(..) | Ty::Str)
                         || matches!(&src.ty, Ty::Array { dims, .. } if dims.len() == 1)) =>
             {
                 format!("{}.size()", self.expr(src).at(PRIMARY))

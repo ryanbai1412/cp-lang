@@ -1063,6 +1063,19 @@ impl<'p> Emitter<'p> {
                                 }
                             })
                             .collect();
+                        let cell = ty
+                            .strip_prefix("std::vector<")
+                            .and_then(|c| c.strip_suffix('>'));
+                        if let Some(cell) = cell.filter(|c| c.contains("std::") && items.len() > 1)
+                        {
+                            // `std::vector{a, b}` copies each list out of its
+                            // initializer list; this moves them.
+                            self.need("list_of");
+                            return Code::primary(format!(
+                                "cpl::list_of<{cell}>({{{}}})",
+                                items.join(", ")
+                            ));
+                        }
                         Code::primary(format!("{ty}{{{}}}", items.join(", ")))
                     }
                 }

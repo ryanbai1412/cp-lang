@@ -555,6 +555,17 @@ template <class S> inline void truncate(S& s, ll n) {
 ",
     },
     Piece {
+        name: "list_of",
+        needs: &[],
+        code: "\
+// `[a, b]` of lists: the elements are built in order, as in `{a, b}`, then
+// moved, not copied, into the list.
+template <class T, size_t N> std::vector<T> list_of(T (&&a)[N]) {
+    return std::vector<T>(std::make_move_iterator(a), std::make_move_iterator(a + N));
+}
+",
+    },
+    Piece {
         name: "reserve",
         needs: &[],
         code: "\
