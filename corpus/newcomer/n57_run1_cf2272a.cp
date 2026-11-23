@@ -20,13 +20,13 @@ else:
 
 @check
 fn valid():
-    let p = n - k + 1
+    let p = n - k + 1  // expect: shadows_top_level
     fn mex_at(b: List<Int>) -> Int:
         var s: [0..=n]Bool = false
         for i in 0..p:
             s[b[i]] = true
         var x = 0
-        while s[x]:
+        while s[x]:  // expect: manual_mex
             x += 1
         return x
     var best = mex_at([x for x in a])  // expect: copy_comprehension
@@ -37,9 +37,9 @@ fn valid():
             best max= mex_at(b)
     let first: Int = read_output()
     if first == -1:
-        assert mex_at([x for x in a]) == best
+        assert mex_at([x for x in a]) == best  // expect: copy_comprehension
     else:
         let second: Int = read_output()
-        var b = [x for x in a]
+        var b = [x for x in a]  // expect: copy_comprehension
         b.swap(first - 1, second - 1)
         assert first != second and mex_at(b) == best

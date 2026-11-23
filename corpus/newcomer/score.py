@@ -4,6 +4,7 @@
     uv run python corpus/newcomer/score.py            summary + missing patterns by frequency
     uv run python corpus/newcomer/score.py --markdown the same as a Markdown table, for worklogs
     uv run python corpus/newcomer/score.py --misses   also each missed mark as file:line
+    uv run python corpus/newcomer/score.py --unmarked also each unmarked diagnostic as file:line
     uv run python corpus/newcomer/score.py --fixes    also apply `cpl lint --fix` to a copy and
                                                       require `cpl check` to pass on the result
 
@@ -87,7 +88,7 @@ def main(argv):
     broken = [f.name for f in files if subprocess.run([bin, "check", str(f)], capture_output=True).returncode != 0]
     got, _ = diagnostics(bin, files, names)
     total = hit = 0
-    missed, unknown, fps, misses = Counter(), [], Counter(), []
+    missed, unknown, fps, misses, strays = Counter(), [], Counter(), [], []
     for f in files:
         ms = marks(f)
         ds = got.get(f.name, [])
@@ -113,6 +114,7 @@ def main(argv):
         for i, (l, n, _) in enumerate(ds):
             if i not in used:
                 fps[n] += 1
+                strays.append(f"{f.name}:{l}: {n}")
     pct = 100 * hit / total if total else 0
     lines = [f"newcomer: {hit}/{total} marked spots flagged ({pct:.0f}%), {len(files)} files, "
              f"{sum(fps.values())} unmarked diagnostics, {len(broken)} files fail `cpl check`"]
@@ -126,6 +128,8 @@ def main(argv):
         lines += [f"    {n}: {e}" for n, e in bad]
     if "--misses" in argv:
         lines += ["  " + m for m in misses]
+    if "--unmarked" in argv:
+        lines += ["  unmarked " + m for m in strays]
     if "--markdown" in argv:
         lines += ["", "| # | Missed pattern | Spots | Lint exists |", "|---|---|---|---|"]
         lines += [f"| {i} | `{p.removeprefix('missing ')}` | {c} | {'yes, did not fire' if not p.startswith('missing ') else 'no'} |"

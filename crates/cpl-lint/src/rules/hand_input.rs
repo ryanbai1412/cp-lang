@@ -56,6 +56,21 @@ fn parts(ty: &str) -> Vec<&str> {
     out
 }
 
+/// Whether `[n - 1]` is read somewhere in `code`. A shift that is only
+/// written (`d[l - 1] += x` beside `d[r] -= x`) is a difference array, which
+/// `diff_by_hand` reports.
+fn reads_shifted(code: &str, n: &str) -> bool {
+    let shifted = format!("[{n}-1]");
+    code.match_indices(&shifted).any(|(i, _)| {
+        let after = &code[i + shifted.len()..];
+        let written = ["+=", "-=", "*=", "^=", "|=", "&="]
+            .iter()
+            .any(|op| after.starts_with(op))
+            || (after.starts_with('=') && !after.starts_with("=="));
+        !written
+    })
+}
+
 /// Whether `n` bounds a range (`0..n`, `domain V = 1..=n`) or sizes a type
 /// (`[n]`, `[n - 1](V, V)`) anywhere in `code`: then it is a count, and `a[n - 1]` is the last element.
 fn is_size(code: &str, n: &str) -> bool {
@@ -174,9 +189,7 @@ impl HandInput<'_> {
             }
             let rest = self.squashed(&stmts[k + 1..]);
             let Some((name, from)) = names.iter().zip(&tys).find(|(n, t)| {
-                t.starts_with("1..")
-                    && rest.contains(&format!("[{n}-1]"))
-                    && !is_size(&squash(self.src), n)
+                t.starts_with("1..") && reads_shifted(&rest, n) && !is_size(&squash(self.src), n)
             }) else {
                 continue;
             };
