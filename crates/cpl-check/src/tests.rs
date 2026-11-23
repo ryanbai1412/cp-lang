@@ -269,6 +269,20 @@ fn immutable_bindings_cannot_be_assigned() {
 }
 
 #[test]
+fn a_modulus_is_part_of_the_mod_type() {
+    let d = one("let a: Mod<7> = 3\nlet b: Mod<11> = a\n");
+    assert_eq!(
+        (d.code.0, d.message.as_str()),
+        ("E0302", "`b` is declared a Mod<11>, but `a` is a Mod<7>")
+    );
+    let d = one("let a: Mod<7> = 3\nlet b: Mod<11> = 4\nprint(a + b)\n");
+    assert_eq!(
+        (d.code.0, d.message.as_str()),
+        ("E0302", "`+` mixes a Mod<7> and a Mod<11>")
+    );
+}
+
+#[test]
 fn declared_types_are_checked_against_values_and_returns() {
     let d = one("let x: Bool = 5\n");
     assert_eq!(

@@ -222,7 +222,11 @@ impl<'a> Checker<'a> {
                 Some(s) if s.starts_with('"') => Ty::Str,
                 _ => Ty::Int,
             },
-            TypeKind::Value(_) | TypeKind::NewDomain | TypeKind::Infer => Ty::Unknown,
+            TypeKind::Value(e) => match e.kind {
+                ExprKind::Int(v) => Ty::Const(v),
+                _ => Ty::Unknown,
+            },
+            TypeKind::NewDomain | TypeKind::Infer => Ty::Unknown,
             TypeKind::Error => Ty::Error,
         }
     }
@@ -1720,7 +1724,7 @@ impl<'a> Checker<'a> {
 
     fn derives_structural(&mut self, ty: &Ty, trait_name: &str, seen: &mut Vec<String>) -> bool {
         match ty {
-            Ty::Error | Ty::Unknown => true,
+            Ty::Error | Ty::Unknown | Ty::Const(_) => true,
             Ty::Param(p) => self.param_has_bound(p, trait_name),
             Ty::Int
             | Ty::I128
@@ -1793,7 +1797,7 @@ impl<'a> Checker<'a> {
 
     fn derives_print(&mut self, ty: &Ty, allow_none: bool, seen: &mut Vec<String>) -> bool {
         match ty {
-            Ty::Error | Ty::Unknown => true,
+            Ty::Error | Ty::Unknown | Ty::Const(_) => true,
             Ty::Param(p) => self.param_has_bound(p, "Show"),
             Ty::Int
             | Ty::I128

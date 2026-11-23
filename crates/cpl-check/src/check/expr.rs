@@ -1285,6 +1285,12 @@ impl<'a> Checker<'a> {
                         .or_else(|| method_ret.clone())
                         .unwrap_or(left),
                     None if right == Ty::Error || right.is_vague() => left,
+                    None if matches!((&left, &right), (Ty::Named { name: a, .. }, Ty::Named { name: b, .. }) if a == b) =>
+                    {
+                        let message = format!("`{}` mixes a {left} and a {right}", op.text());
+                        self.error(codes::TYPE_MISMATCH, op_span, message);
+                        Ty::Error
+                    }
                     None => {
                         let message = format!(
                             "`{}` needs `impl {trait_name}<{right}> for {owner}`, and there is none",

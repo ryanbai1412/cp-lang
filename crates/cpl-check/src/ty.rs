@@ -49,6 +49,8 @@ pub enum Ty {
     /// of `struct Fenwick<D, T>`. Each use of the generic thing replaces it
     /// with the type given there.
     Param(String),
+    /// A literal value argument: the `7` of `Mod<7>` (R03.5.1).
+    Const(i128),
     /// Not known to this checker. Compatible with everything, so missing
     /// knowledge never becomes an error.
     Unknown,
@@ -794,6 +796,7 @@ impl fmt::Display for Ty {
                 }
                 Ok(())
             }
+            Ty::Const(v) => write!(f, "{v}"),
             Ty::Unknown => f.write_str("_"),
             Ty::Error => f.write_str("{error}"),
         }
