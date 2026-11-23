@@ -2764,10 +2764,12 @@ fn planar_walk(ps: List<Pt>, edges: List<(Int, Int)>) -> PlanarWalk:
 fn least_rotation(cyc: List<Int>) -> List<Int>:
     with lint(unproven_list_index: allow)
     let m = cyc.len
+    // `<` on lists is lexicographic; `best min= rot` would take the cellwise minimum.
+    with lint(chmin_chmax_if: allow)
     var best: List<Int> = copy(cyc)
     for s in 1..m:
         let rot = [cyc[(s + i) % m] for i in 0..m]
-        best min= rot
+        if rot < best: best = rot
     best
 
 /// For each query point, the index into `planar_faces(pts, edges)` of the bounded face that
