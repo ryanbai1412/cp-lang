@@ -7451,3 +7451,7 @@ R01.5.2 said "`/` is floor division and `%` is never negative", which cannot bot
 ## 348. `List(s)` converts one sequence; values make a list as a literal (2026-11-23)
 
 Chapter 5 built lists as `List(1, 2)` while R07.8.1 makes `List(s)` a conversion, so `List(xs)` read as a copy or as a list of one list (rebuild 8, H-LIST-CTOR). Rule: `List(s)` takes exactly one sequence; `[a, b]` is the list of values, `[xs]` the list of one list. Chapter 5's examples now use literals. Reason: one spelling per idea, and the conversion is the one `Set(s)` and `Str(s)` already share. Reverse: allow a variadic `List(a, b)` and say a single sequence argument converts.
+
+## 349. On `Int` keys, `pre[k]` is the cut: the fold of the first `k` (2026-11-23)
+
+R07.1.6 indexes a scan by cuts and lets a position fold through itself, but on a `List` or `[n]T` both are `Int`, so `pre[k]` read two ways one element apart, a silent WA (rebuild 8, H-INT-KEY-PREFIX). Rule: an `Int` index is the cut, `n + 1` entries, `pre[0]` the identity, as in every C++ prefix array; the fold through `k` is `pre[k + 1]`, and a domain makes the distinction typed. Reason: the scan has one entry per cut, and the cut reading is the one contestants already write. Reverse: make an `Int` index a position and write cuts as `pre.prefix(k)`.

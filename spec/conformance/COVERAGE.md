@@ -7,22 +7,22 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 2450 (995 passing). Rules: 561.
+Cases: 2456 (995 passing). Rules: 561.
 
 ## Summary per chapter
 
 - R01 (01-lexical-grammar.md): 53 rules, 119 cases; 0 uncovered, 1 happy-path only, 0 negative only
-- R02 (02-values-types.md): 52 rules, 126 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R02 (02-values-types.md): 52 rules, 127 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R03 (03-numbers-layout.md): 24 rules, 62 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R04 (04-indices.md): 66 rules, 111 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R04 (04-indices.md): 66 rules, 113 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04a (04a-identity-vs-offset.md): 39 rules, 53 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04b (04b-keys.md): 27 rules, 64 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R05 (05-ownership.md): 43 rules, 149 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R06 (06-control-functions.md): 24 rules, 80 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R07 (07-sequences.md): 90 rules, 124 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R06 (06-control-functions.md): 24 rules, 81 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R07 (07-sequences.md): 90 rules, 125 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R08 (08-traits-generics.md): 29 rules, 80 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R09 (09-contexts-checks.md): 26 rules, 55 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R10 (10-io.md): 18 rules, 81 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R09 (09-contexts-checks.md): 26 rules, 56 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R10 (10-io.md): 18 rules, 82 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R11 (11-modules-prelude.md): 15 rules, 39 cases; 0 uncovered, 0 happy-path only, 1 negative only
 - R12 (12-powers.md): 17 rules, 36 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R13 (13-lowering.md): 22 rules, 27 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -48,7 +48,7 @@ negative case. Complete: rules with no gap in `rule-gaps.txt`.
 | R01 | 53 | 53 (100%) | 28 | 27 (96%) | 52 (98%) |
 | R02 | 52 | 52 (100%) | 28 | 28 (100%) | 52 (100%) |
 | R03 | 24 | 24 (100%) | 13 | 13 (100%) | 24 (100%) |
-| R04 | 66 | 66 (100%) | 16 | 16 (100%) | 66 (100%) |
+| R04 | 66 | 66 (100%) | 15 | 15 (100%) | 66 (100%) |
 | R04a | 39 | 39 (100%) | 3 | 3 (100%) | 39 (100%) |
 | R04b | 27 | 27 (100%) | 7 | 7 (100%) | 27 (100%) |
 | R05 | 43 | 43 (100%) | 21 | 21 (100%) | 43 (100%) |
@@ -56,7 +56,7 @@ negative case. Complete: rules with no gap in `rule-gaps.txt`.
 | R07 | 90 | 90 (100%) | 24 | 24 (100%) | 90 (100%) |
 | R08 | 29 | 29 (100%) | 12 | 12 (100%) | 29 (100%) |
 | R09 | 26 | 26 (100%) | 14 | 14 (100%) | 26 (100%) |
-| R10 | 18 | 18 (100%) | 8 | 8 (100%) | 18 (100%) |
+| R10 | 18 | 18 (100%) | 7 | 7 (100%) | 18 (100%) |
 | R11 | 15 | 14 (93%) | 9 | 9 (100%) | 14 (93%) |
 | R12 | 17 | 17 (100%) | 6 | 6 (100%) | 17 (100%) |
 | R13 | 22 | 22 (100%) | 5 | 5 (100%) | 22 (100%) |
@@ -67,7 +67,7 @@ negative case. Complete: rules with no gap in `rule-gaps.txt`.
 | Rlint | 2 | 2 (100%) | 2 | 2 (100%) | 2 (100%) |
 | Rlsp | 5 | 0 (0%) | 2 | 0 (0%) | 0 (0%) |
 | Rstress | 1 | 1 (100%) | 0 | 0 (0%) | 1 (100%) |
-| all | 561 | 555 (98%) | 217 | 213 (98%) | 553 (98%) |
+| all | 561 | 555 (98%) | 215 | 211 (98%) | 553 (98%) |
 
 ## Rules
 
@@ -135,7 +135,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R02.1.2 [1+ 2-]: a **heap value**: `List<T>`, `Str`, `[D]T` arrays, `Map`, `Set`, every library container, ...
 - R02.1.3 [2+ 1-]: a **function value**: `fn` items, lambdas and operation values. They are zero-size when th...
 - R02.1.4 [1+ 1-]: Whether a value is owned or lent is not part of its type (chapter 5).
-- R02.2.1 [1+ 1-]: There are exactly four number types (decision 1.7). Narrow storage is a range type, never ...
+- R02.2.1 [2+ 1-]: There are exactly four number types (decision 1.7). Narrow storage is a range type, never ...
 - R02.2.2 [1+ 1-]: Literal-union types are scalars too: `'+' | '-'` or `"add" | "del"` has exactly those valu...
 - R02.3.1 [1+ 0-]: `Str` is a flat sequence of `Char` indexed by `0..len`, with the sequence capabilities of ...
 - R02.3.2 [2+ 2-]: `Str of "01?"` is a string whose characters come from the literal's alphabet. The alphabet...
@@ -231,8 +231,8 @@ Each rule: positive / negative case counts, then the gap if any.
 - R04.2.13 [1+ 0-]: | `V.wrap(x)` | integer to position, mod `V.count`: rings and cyclic shifts | \(O(1)\)
 - R04.2.14 [2+ 1-]: | `if let V(j) = i - 10:` | the pattern form of `V.at`: matches only inside `V` | \(O(1)\)
 - R04.2.15 [2+ 0-]: | `Int(v)` | position to its integer (for `1..=n`, that's 1..n) | free
-- R04.2.16 [4+ 1-]: | `Int(c)` | cut to its integer: the number of positions before it, 0..=n whatever the bas...
-- R04.2.17 [1+ 1-]: | `V.cuts(k)`, `V.cuts.at(k)` | integer to cut: trapping, or `?V.cuts` | \(O(1)\)
+- R04.2.16 [5+ 1-]: | `Int(c)` | cut to its integer: the number of positions before it, 0..=n whatever the bas...
+- R04.2.17 [2+ 1-]: | `V.cuts(k)`, `V.cuts.at(k)` | integer to cut, the inverse of `Int(c)`: `k` positions bef...
 - R04.2.18 [5+ 4-]: | `5` where a `V` or `V.cuts` is expected | integer literal is that position or cut (integ...
 - R04.3.1 [2+ 1-]: | position `v` | `v.prev`, `v.next`: `?V` | `v.l`, `v.r`: its cuts
 - R04.3.2 [1+ 0-]: | cut `c` | `c.prev`, `c.next`: `?V.cuts` | `c.l`, `c.r`: the positions beside it, `?V`
@@ -248,7 +248,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R04.4.11 [1+ 1-]: | `..` | all of the indexed dimension | only inside `[...]`: `grid[r, ..]`
 - R04.4.22 [1+ 0-]: The language's implicit conversions are this closed list, none user-extensible. Each appli...
 - R04.4.23 [1+ 0-]: **`T` to `?T`.** `u != from` with `from: ?V` compares `Some(u)` with `from`. Free.
-- R04.4.24 [1+ 1-]: , so it is an error; write `xs.map(x => Int(x))` (decision 246).
+- R04.4.24 [2+ 1-]: .
 - R04.4.25 [1+ 2-]: . For a domain with a runtime count (`domain V = 1..=n`, `n: 1..=2e5`), a literal outside ...
 - R04.4.26 [2+ 0-]: **Cut range to piece:** a literal `j..i` whose ends are cuts, where a `Range<V>` is expect...
 - R04.4.27 [2+ 1-]: **Scalar to array fill:** a value `x: T` where `[D]T` is expected is the array over `D` wi...
@@ -407,7 +407,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R06.1.5 [3+ 3-]: Named and positional arguments, defaults, named-only parameters after `;`, and a variadic ...
 - R06.1.6 [1+ 1-]: No overloading by type: one name and label set has one generic signature (decision 127). O...
 - R06.1.7 [3+ 1-]: Functions hoist within their block; every capture must be initialized before the first cal...
-- R06.1.8 [6+ 1-]: A `fn` passed where a function of fewer parameters is expected takes only those, when ever...
+- R06.1.8 [7+ 1-]: A `fn` passed where a function of fewer parameters is expected takes only those, when ever...
 - R06.2.1 [4+ 2-]: **Captures act as call-time arguments.** A closure holds no lend between calls: each call ...
 - R06.2.2 [1+ 2-]: A captured variable cannot be moved while the closure is alive, and a closure cannot outli...
 - R06.2.3 [1+ 1-]: A `let`-bound lambda may call itself; a `var` binding cannot. When recursion leaves the re...
@@ -432,7 +432,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R07.1.3 [2+ 1-]: **Laziness is explicit.** A chain reruns on every walk. Allocation happens only at `.colle...
 - R07.1.4 [1+ 1-]: **Identity everywhere.** Every slice keeps its source's keys (`a[l..=r][i] == a[i]`, `s[2....
 - R07.1.5 [1+ 1-]: **Views are lent values with the rules of `mut a[i]`.** A value built from a lent part is ...
-- R07.1.6 [3+ 0-]: **Prefix scans are indexed by cuts.** `pre[c]` folds left of `c`; `pre[v]` folds through `...
+- R07.1.6 [4+ 0-]: **Prefix scans are indexed by cuts.** `pre[c]` folds left of `c`; `pre[v]` folds through `...
 - R07.1.7 [1+ 1-]: **Costs show.** \(O(1)\) things are getters or views, allocation is named, options are nam...
 - R07.2.1 [2+ 0-]: | **sequence** (`Seq<T>`) | anything a `for` can walk, in order | either | everything in t...
 - R07.2.2 [3+ 0-]: | **indexed sequence** (`Indexed<K, T>`) | a sequence that also has \(O(1)\) `s[k]`, `.key...
@@ -552,7 +552,7 @@ Each rule: positive / negative case counts, then the gap if any.
 
 ### R09: 09-contexts-checks.md
 
-- R09.1.1 [3+ 2-]: Precedence: call argument, then the innermost `with`, then outer ones, then the default. A...
+- R09.1.1 [4+ 2-]: Precedence: call argument, then the innermost `with`, then outer ones, then the default. A...
 - R09.1.2 [1+ 1-]: Values are compile-time constants. A runtime value is a parameter or a fresh type (`type Z...
 - R09.1.3 [6+ 0-]: Contexts are **lexical**: a body sees the contexts where it is written. A function that sh...
 - R09.1.4 [1+ 0-]: Cost: one specialized copy of each `uses` function per distinct value; `cpl explain` lists...
@@ -581,7 +581,7 @@ Each rule: positive / negative case counts, then the gap if any.
 
 ### R10: 10-io.md
 
-- R10.1.1 [9+ 3-]: `@!multitest` reads the test count and runs everything below it per case; `@!multitest(unt...
+- R10.1.1 [10+ 3-]: .
 - R10.1.2 [4+ 0-]: Top-level `return` ends the program, or the current case under `@!multitest`.
 - R10.1.3 [1+ 0-]: IOI-style tasks mark entry points with `@grader`, `@grader(interactive)` or `@grader(two_p...
 - R10.2.1 [5+ 1-]: `read<T>()` dispatches on the expected type, so `let n: 1..=2e5 = read()` and `read<[n]Int...
@@ -863,7 +863,7 @@ prepends it.
 - 02-values-types.md: 3 blocks, 2 with a case, 1 spec-only, 0 neither
 - 03-numbers-layout.md: 2 blocks, 2 with a case, 0 spec-only, 0 neither
 - 04-indices.md: 7 blocks, 3 with a case, 3 spec-only, 1 neither
-  - line 247: `let k = (0..=n).last_true(k => cost(k) <= budget) ?? -1`
+  - line 251: `let k = (0..=n).last_true(k => cost(k) <= budget) ?? -1`
 - 04b-keys.md: 13 blocks, 8 with a case, 4 spec-only, 1 neither
   - line 166: `let t = s[l..r].rebase`
 - 05-ownership.md: 56 blocks, 48 with a case, 2 spec-only, 6 neither

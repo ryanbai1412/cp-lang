@@ -290,3 +290,6 @@ Newest first: what landed (commit), evidence, next, blocked, requests from other
 - 2026-11-23: L0507 push_loop teaches `xs.rev.collect()` for a loop pushing `xs[N - 1 - i]` over `0..N` (n47, n74). Newcomer 138/154 (90%).
 - 2026-11-23: L0580 `submask_loop` (`s = (s - 1) & m` → `submasks(m)`) and L0581 `ternary_search_by_hand` (two `/ 3` probes → `ternary_min`/`ternary_max`), from n69 and n71. Newcomer 140/154 (91%).
 - 2026-11-23: L0582 `argsort_loop`: `(a[i], i)` pairs sorted for their order → `(0..n).sorted(by: i => a[i])` (stable, same tie order), from n22; 0 hits on ports/std. Newcomer 141/154 (92%).
+
+### Request from spec (rebuild 8, 2026-11-23)
+- R06.4.8 says `let _ = f()` drops a non-unit result and is the unused-result lint too, but `cpl lint` reports 0 warnings on `let _ = xs.remove(0)`. Either lint it or tell spec to change R06.4.8.

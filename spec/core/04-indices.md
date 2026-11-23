@@ -44,7 +44,7 @@ enum Dir = N | E | S | W               // a fieldless enum is a domain too: [Dir
 | `if let V(j) = i - 10:` | the pattern form of `V.at`: matches only inside `V` | \(O(1)\) (R04.2.14) |
 | `Int(v)` | position to its integer (for `1..=n`, that's 1..n) | free (R04.2.15) |
 | `Int(c)` | cut to its integer: the number of positions before it, 0..=n whatever the base (`1..=n`: `v.l` is v-1, `v.r` is v; `0..n`: v, v+1) | free (R04.2.16) |
-| `V.cuts(k)`, `V.cuts.at(k)` | integer to cut: trapping, or `?V.cuts` | \(O(1)\) (R04.2.17) |
+| `V.cuts(k)`, `V.cuts.at(k)` | integer to cut, the inverse of `Int(c)`: `k` positions before it whatever the base (`1..=n`: `V.cuts(2)` is between positions 2 and 3); trapping, or `?V.cuts` | \(O(1)\) (R04.2.17) |
 | `5` where a `V` or `V.cuts` is expected | integer literal is that position or cut (integer domains; also fills `[d]V.cuts = 0`); outside a static bound it is a compile error | free (R04.2.18) |
 
 **Pieces.** Coordinate compression for intervals: `let (domain P, piece) =
@@ -175,6 +175,10 @@ operand fixes the type. Nothing else converts. (R04.4.22)
    An array's element type does not widen this way: `[V]1..=9` to
    `[V]Int` rewrites every cell, an \(O(n)\) cost a move must not hide
    (R05.2.2), so it is an error; write `xs.map(x => Int(x))` (decision 246).
+   The other way, an `Int` passed or stored into a range type
+   (`f(odd - 1)` with `odd: 0..=100`) is a checked narrowing: in range it is
+   free, out of range it traps in a checked build, as any range store does
+   (R02.10.2).
    (R04.4.24)
 3. **Integer literal to position or cut** of an integer domain (R04.2.18).
    For a domain with a runtime count (`domain V = 1..=n`, `n: 1..=2e5`),

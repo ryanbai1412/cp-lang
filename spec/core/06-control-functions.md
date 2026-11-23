@@ -51,7 +51,8 @@ fn solve(n: Int, mut seen: [V]Bool; limit: Int = 10) -> ?Int:
 - A `fn` passed where a function of fewer parameters is expected takes
   only those, when every omitted trailing parameter has a default; the
   defaults fill them: `vis.map(yes)` is `vis.map(b => yes(b))`. An omitted
-  parameter without a default is a type mismatch (E0302). (R06.1.8)
+  parameter without a default is a type mismatch (E0302). A generic `fn`
+  passes the same way: `sorted(by: desc)`. (R06.1.8)
 
 ## 6.2 Nested functions and lambdas
 
