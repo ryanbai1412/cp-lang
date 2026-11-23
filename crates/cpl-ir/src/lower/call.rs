@@ -34,7 +34,7 @@ impl<'a> Lowerer<'a> {
 
     /// `op(a, b)` for an operation value `op` (`min`, `+`): the operation
     /// itself, on `a` and `b`.
-    fn bare_op_call(
+    pub(super) fn bare_op_call(
         &mut self,
         op: BareOp,
         op_span: Span,
@@ -73,7 +73,7 @@ impl<'a> Lowerer<'a> {
         Some(self.expr(&e, hint))
     }
 
-    fn call_fn_val(&mut self, callee: Expr, args: &[ast::Arg], span: Span) -> Expr {
+    pub(super) fn call_fn_val(&mut self, callee: Expr, args: &[ast::Arg], span: Span) -> Expr {
         let Ty::Fn(param_tys, ret_ty) = callee.ty.clone() else {
             if callee.ty != Ty::Error {
                 self.error(
@@ -7907,19 +7907,10 @@ impl<'a> Lowerer<'a> {
         let value = self.expr(base, None);
         let ty = value.ty.clone();
         let method = name.text.as_str();
-        // Calling a field of function type (`m.op(a, b)`, `self.lt(a, b)`).
-        if let Some((index, fty)) = self.field_of(&ty, method) {
-            if matches!(fty, Ty::Fn(..)) {
-                let fv = self.mk(ExprKind::Field(Box::new(value), index), fty, span);
-                return self.call_fn_val(fv, args, span);
-            }
-            // A field holding a bare operator (`(count: +).count(a, b)`).
-            if let Some(op) = self.op_of_type(&fty) {
-                if let Some(e) = self.bare_op_call(op, name.span, args, span, hint) {
-                    return e;
-                }
-            }
-        }
+        let value = match self.call_field(value, name, args, span, hint) {
+            Ok(call) => return call,
+            Err(value) => value,
+        };
         if let Ty::Struct(id) = &ty {
             if method == "get" {
                 if let Some(key_ty) = self.counter_key.get(id).cloned() {

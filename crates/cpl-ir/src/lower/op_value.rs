@@ -17,6 +17,31 @@ impl<'a> Lowerer<'a> {
         id
     }
 
+    /// A call of a field that holds a function (`m.op(a, b)`, `self.lt(a, b)`)
+    /// or a bare operator (`(count: +).count(a, b)`); `Err` gives `value` back.
+    pub(super) fn call_field(
+        &mut self,
+        value: Expr,
+        name: &ast::Name,
+        args: &[ast::Arg],
+        span: Span,
+        hint: Option<&Ty>,
+    ) -> Result<Expr, Expr> {
+        let Some((index, fty)) = self.field_of(&value.ty, &name.text) else {
+            return Err(value);
+        };
+        if matches!(fty, Ty::Fn(..)) {
+            let fv = self.mk(ExprKind::Field(Box::new(value), index), fty, span);
+            return Ok(self.call_fn_val(fv, args, span));
+        }
+        match self.op_of_type(&fty) {
+            Some(op) => self
+                .bare_op_call(op, name.span, args, span, hint)
+                .ok_or(value),
+            None => Err(value),
+        }
+    }
+
     /// The operator a value of type `ty` stands for.
     pub(super) fn op_of_type(&self, ty: &Ty) -> Option<BareOp> {
         let Ty::Struct(id) = ty else { return None };
