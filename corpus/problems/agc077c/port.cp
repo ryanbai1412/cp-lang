@@ -61,7 +61,7 @@ var lo = 0
 var hi = 0
 for comp in complement_components():
     let sz = comp.len
-    let odd = count(odd_out[v] for v in comp)
+    let odd = comp.count(v => odd_out[v])
     lo += odd % 2
     hi += sz - (sz - odd) % 2
 

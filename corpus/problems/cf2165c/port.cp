@@ -28,7 +28,7 @@ for _ in 0..q:
     var ans = 0
     for b in (0..BITS).rev:
         let want = Int(c.bit(b))
-        let cnt = count(x.bit(b) for x in buf)
+        let cnt = buf.count(x => x.bit(b))
         if cnt > want: break
         if cnt < want:
             let mask = (1 << b) - 1

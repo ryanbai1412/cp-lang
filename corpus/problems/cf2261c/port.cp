@@ -9,7 +9,7 @@
 @!multitest
 let n: 1..=200_000 = read()
 let a: [0..n]0..=2 ** 30 - 1 = read()
-let odd = count(x % 2 == 1 for x in a)
+let odd = a.count(x => x % 2 == 1)
 let even = n - odd
 let win = odd % 2 == 0 or n == 1 or even + odd / 2 != 1
 print(if win: "Moggity" else: "Larpity")

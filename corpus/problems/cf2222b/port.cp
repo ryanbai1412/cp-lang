@@ -14,7 +14,7 @@ let (n, m): (1..=200_000, 1..=200_000) = read()
 let a: [0..n]-10 ** 9..=10 ** 9 = read()
 let xs: [0..m]1..=10 ** 9 = read()
 
-let cnt0 = count(x % 2 == 1 for x in xs)
+let cnt0 = xs.count(x => x % 2 == 1)
 fn best_rem(vals: List<Int>, var cnt: Int) -> Int:
     var s = vals.sorted()
     if cnt > 0:

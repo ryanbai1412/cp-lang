@@ -13,8 +13,8 @@ let p: [I]1..=5_000 = read()
 print(
     sum(
         min(
-            count(p[j] > p[i] for j in I.before(i)),
-            count(p[j] > p[i] for j in I.after(i)),
+            I.before(i).count(j => p[j] > p[i]),
+            I.after(i).count(j => p[j] > p[i]),
         ) for i in I
     )
 )

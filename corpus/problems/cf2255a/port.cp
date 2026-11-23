@@ -14,4 +14,4 @@ let s: [0..m]Char = read()
 fn hit(i: Int) -> Bool:
     (s[i] == '1' and s[(i + 1) % m] == '1') or (s[i] == '0' and s[(i - 1) % m] == '1')
 
-print(count(hit(i) for i in 1..m by 2), count(hit(i) for i in 0..m by 2))
+print((0..m).count(i => i % 2 == 1 and hit(i)), (0..m).count(i => i % 2 == 0 and hit(i)))
