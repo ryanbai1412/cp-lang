@@ -926,6 +926,10 @@ pub(crate) struct VmStats {
     pub(crate) total_fallbacks: u64,
     pub(crate) loop_fallbacks: u64,
     pub(crate) hot_loop_fallbacks: u64,
+    /// Statements the tree-walker ran, for any reason: what deleting it
+    /// still has to move.
+    pub(crate) walked: u64,
+    pub(crate) walked_counts: std::collections::BTreeMap<String, u64>,
     pub(crate) counts: std::collections::BTreeMap<String, u64>,
     pub(crate) loop_counts: std::collections::BTreeMap<String, u64>,
 }
@@ -968,8 +972,8 @@ impl VmStats {
         loop_entries.sort_by(|a, b| b.1.cmp(&a.1).then_with(|| a.0.cmp(b.0)));
         if std::env::var("CPL_VM_STATS").ok().as_deref() == Some("json") {
             let mut s = format!(
-                "{{\"total_fallbacks\":{},\"loop_fallbacks\":{},\"hot_loop_fallbacks\":{},\"top\":[",
-                self.total_fallbacks, self.loop_fallbacks, self.hot_loop_fallbacks
+                "{{\"total_fallbacks\":{},\"loop_fallbacks\":{},\"hot_loop_fallbacks\":{},\"walked\":{},\"top\":[",
+                self.total_fallbacks, self.loop_fallbacks, self.hot_loop_fallbacks, self.walked
             );
             for (i, (k, v)) in entries.iter().take(20).enumerate() {
                 if i > 0 {
@@ -986,6 +990,15 @@ impl VmStats {
                 let escaped = cpl_json::escape_string(k);
                 s.push_str(&format!("[{escaped},{v}]"));
             }
+            let mut walked: Vec<_> = self.walked_counts.iter().collect();
+            walked.sort_by(|a, b| b.1.cmp(a.1).then_with(|| a.0.cmp(b.0)));
+            s.push_str("],\"walked_top\":[");
+            for (i, (k, v)) in walked.iter().take(20).enumerate() {
+                if i > 0 {
+                    s.push(',');
+                }
+                s.push_str(&format!("[{},{v}]", cpl_json::escape_string(k)));
+            }
             s.push_str("],\"kinds\":[");
             for (i, (k, _)) in entries.iter().enumerate() {
                 if i > 0 {
@@ -997,8 +1010,8 @@ impl VmStats {
             eprintln!("{s}");
         } else {
             eprintln!(
-                "vm-stats: total_fallbacks={} loop_fallbacks={} hot_loop_fallbacks={}",
-                self.total_fallbacks, self.loop_fallbacks, self.hot_loop_fallbacks
+                "vm-stats: total_fallbacks={} loop_fallbacks={} hot_loop_fallbacks={} walked={}",
+                self.total_fallbacks, self.loop_fallbacks, self.hot_loop_fallbacks, self.walked
             );
             for (k, v) in entries.iter().take(15) {
                 eprintln!("  {v:>10}  {k}");
@@ -1026,7 +1039,7 @@ pub(super) fn place_tag(place: &Place) -> &'static str {
     }
 }
 
-pub(super) fn stmt_tag(stmt: &Stmt) -> String {
+pub(crate) fn stmt_tag(stmt: &Stmt) -> String {
     match stmt {
         Stmt::Let(_, e) => format!("stmt:Let({})", e.as_ref().map_or("Uninit", expr_tag_short)),
         Stmt::Assign(place, op, _) => format!("stmt:Assign({},{:?})", place_tag(place), op),
