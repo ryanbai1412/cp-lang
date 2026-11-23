@@ -1447,7 +1447,10 @@ impl Checker<'_> {
         {
             return None;
         }
-        let ret = catalog_ty(member.ret, &elem)?;
+        let ret = match (name.text.as_str(), elem) {
+            ("min" | "max", Some(elem)) if member.ret == "?T" => Ty::min_max_of(elem),
+            (_, elem) => catalog_ty(member.ret, &elem)?,
+        };
         // A sum of `1..=1e9`s leaves that range, and may not hold its `0`.
         if name.text == "sum" && matches!(ret, Ty::Range { .. }) {
             return Some(ret.widen());

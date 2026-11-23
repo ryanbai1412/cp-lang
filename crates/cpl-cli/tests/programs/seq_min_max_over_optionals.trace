@@ -1,0 +1,11 @@
+"variables":{"stdout":{"name":"stdout","type":"what the program printed, a line at a time","kind":"json"},"b":{"name":"b","type":"[D]?Int","kind":"array","labels":[0,1,2]},"hi":{"name":"hi","type":"?Int","kind":"scalar"},"lo":{"name":"lo","type":"?Int","kind":"scalar"},"xs":{"name":"xs","type":"List\u003c?Int>","kind":"array"}},"runs":{"fast":{"label":"cpl run","steps":[{"id":0,"line":2,"label":"var b: [D]?Int = None","stage":"main","values":{"stdout":[],"b":[null,null,null]},"locals":{},"frames":[{"fn":"main","line":2}]},
+{"id":1,"line":3,"label":"print → -1","stage":"main","values":{"stdout":["-1"],"b":[null,null,null]},"locals":{},"checkpoint":"print 1","frames":[{"fn":"main","line":3}]},
+{"id":2,"line":4,"label":"b[1] = 5","stage":"main","values":{"stdout":["-1"],"b":[null,5,null]},"locals":{},"frames":[{"fn":"main","line":4}],"focus":{"variable":"b","path":[1]}},
+{"id":3,"line":5,"label":"b[2] = 2","stage":"main","values":{"stdout":["-1"],"b":[null,5,2]},"locals":{},"frames":[{"fn":"main","line":5}],"focus":{"variable":"b","path":[2]}},
+{"id":4,"line":6,"label":"let hi = b.max()","stage":"main","values":{"stdout":["-1"],"b":[null,5,2],"hi":5},"locals":{},"frames":[{"fn":"main","line":6}]},
+{"id":5,"line":7,"label":"let lo = b.min()","stage":"main","values":{"stdout":["-1"],"b":[null,5,2],"hi":5,"lo":2},"locals":{},"frames":[{"fn":"main","line":7}]},
+{"id":6,"line":8,"label":"print → 5 2 6","stage":"main","values":{"stdout":["-1","5 2 6"],"b":[null,5,2],"hi":5,"lo":2},"locals":{},"checkpoint":"print 2","frames":[{"fn":"main","line":8}]},
+{"id":7,"line":9,"label":"let xs: List\u003c?Int> = [None, 7, None, 3]","stage":"main","values":{"stdout":["-1","5 2 6"],"b":[null,5,2],"hi":5,"lo":2,"xs":[null,7,null,3]},"locals":{},"frames":[{"fn":"main","line":9}]},
+{"id":8,"line":10,"label":"print → 7 3 7","stage":"main","values":{"stdout":["-1","5 2 6","7 3 7"],"b":[null,5,2],"hi":5,"lo":2,"xs":[null,7,null,3]},"locals":{"x":3},"checkpoint":"print 3","frames":[{"fn":"main","line":10}]},
+{"id":9,"line":10,"label":"the program ended","stage":"main","values":{"stdout":["-1","5 2 6","7 3 7"],"b":[null,5,2],"hi":5,"lo":2,"xs":[null,7,null,3]},"locals":{"x":3},"checkpoint":"end","frames":[{"fn":"main","line":10}]}]}}}
+stderr:

@@ -103,6 +103,15 @@ impl Ty {
         }
     }
 
+    /// The `min` or `max` of `elem`s: `?T` for `T`s, and `?T` again for
+    /// `?T`s, whose `None`s are skipped (R02.4.6, decision 410).
+    pub fn min_max_of(elem: Ty) -> Ty {
+        match elem {
+            Ty::Optional(_) => elem,
+            elem => Ty::Optional(Box::new(elem)),
+        }
+    }
+
     pub fn list(elem: Ty) -> Ty {
         Ty::Named {
             name: "List".into(),

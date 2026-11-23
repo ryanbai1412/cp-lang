@@ -207,7 +207,7 @@ impl<'a> Checker<'a> {
             ("max" | "min", [over])
                 if args[0].value.is_generator() && args[0].name.is_none() && !args[0].mutable =>
             {
-                Some(Ty::Optional(Box::new(self.element_ty(over))))
+                Some(Ty::min_max_of(self.element_ty(over)))
             }
             ("max" | "min", [_]) => {
                 let message = format!(

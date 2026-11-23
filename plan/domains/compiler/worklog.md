@@ -823,3 +823,5 @@ on input `2 / 1 / 2` prints `7` once in `cpl run` and in the C++ (`cpl_main` cal
 2026-11-23: second fix forward for `?T` min/max (R07.9.3) and `?` without control flow (R02.4.7). The two cf2289D acceptance solutions (2026-11-23-5 linux and windows) compare a non-empty prefix list's `min()` with `<`, so they now write `min()!`. apio07p1's port used `let (a, b) = span(...)?` as an early return, so it now writes `else: return None`. The cf2035f and cf2124d `perf.cp` files get the same `!` and `List(xs.rev)` as their ports.
 
 2026-11-23: `V.first`/`V.last` are `?V` (R04.2.3) and `List.pop` is `?T`, so cf600e's gold dream now roots its tree at `V.first!` (`n >= 1`), and scout/connectivity pops its Tarjan stack with `pop()!` (the loop stops at `u`, which is on the stack).
+
+2026-11-23: `min`/`max` over `?T` elements are a `?T` in the checker, as in the lowerer. Since `min`/`max` skip `None` (R02.4.6, decision 410), `b.max()` on a `[D]?Int` is a `?Int`, not a `??Int`. The catalog row and the free generator form both read `Ty::min_max_of`, so `print(b.max()!)` and `let t = b.max()!` agree that the answer is an `Int`. Parity: `seq_min_max_over_optionals`.
