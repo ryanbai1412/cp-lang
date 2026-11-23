@@ -257,7 +257,9 @@ List(s)   Set(s)   Str(s)      // conversions of anything that isn't a chain: Li
 ```
 
 `.collect()` and the constructors are one operation, O(n) and allocating;
-the postfix form is for chains, the prefix form for single values.
+the postfix form is for chains, the prefix form for single values. So a
+`Seq<Char>` becomes a word as `Str(cs)` or `let w: Str = cs.collect()`,
+and `sep.join(parts)` is for joining `Str` parts. (R07.8.1)
 
 **Lazy chains redo their work on every consumption.** A `map` calls `f` on
 every read; a `filter` calls `p` on every walk. Lint flags a lazy chain

@@ -7,7 +7,7 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 2395 (994 passing). Rules: 558.
+Cases: 2396 (994 passing). Rules: 559.
 
 ## Summary per chapter
 
@@ -19,7 +19,7 @@ Cases: 2395 (994 passing). Rules: 558.
 - R04b (04b-keys.md): 27 rules, 62 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R05 (05-ownership.md): 43 rules, 148 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R06 (06-control-functions.md): 24 rules, 76 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R07 (07-sequences.md): 88 rules, 113 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R07 (07-sequences.md): 89 rules, 114 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R08 (08-traits-generics.md): 29 rules, 78 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R09 (09-contexts-checks.md): 26 rules, 55 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R10 (10-io.md): 18 rules, 77 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -53,7 +53,7 @@ negative case. Complete: rules with no gap in `rule-gaps.txt`.
 | R04b | 27 | 27 (100%) | 7 | 7 (100%) | 27 (100%) |
 | R05 | 43 | 43 (100%) | 21 | 21 (100%) | 43 (100%) |
 | R06 | 24 | 24 (100%) | 16 | 16 (100%) | 24 (100%) |
-| R07 | 88 | 88 (100%) | 23 | 23 (100%) | 88 (100%) |
+| R07 | 89 | 89 (100%) | 23 | 23 (100%) | 89 (100%) |
 | R08 | 29 | 29 (100%) | 13 | 13 (100%) | 29 (100%) |
 | R09 | 26 | 26 (100%) | 14 | 14 (100%) | 26 (100%) |
 | R10 | 18 | 18 (100%) | 8 | 8 (100%) | 18 (100%) |
@@ -67,7 +67,7 @@ negative case. Complete: rules with no gap in `rule-gaps.txt`.
 | Rlint | 2 | 2 (100%) | 2 | 2 (100%) | 2 (100%) |
 | Rlsp | 5 | 0 (0%) | 2 | 0 (0%) | 0 (0%) |
 | Rstress | 1 | 1 (100%) | 0 | 0 (0%) | 1 (100%) |
-| all | 558 | 552 (98%) | 216 | 213 (98%) | 551 (98%) |
+| all | 559 | 553 (98%) | 216 | 213 (98%) | 552 (98%) |
 
 ## Rules
 
@@ -495,6 +495,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R07.7.9 [1+ 0-]: | `a.windows(k)`, `a.chunks(k)` | `Seq` of views of `a` | each view keeps `a`'s indices
 - R07.7.10 [5+ 0-]: | `a.runs(by: k)` | `Seq` of views: maximal equal-key runs | `.keys` of each is its range
 - R07.7.11 [1+ 0-]: | `s.step(k)` | every k-th element | ranges and indexed
+- R07.8.1 [1+ 0-]: `.collect()` and the constructors are one operation, O(n) and allocating; the postfix form...
 - R07.9.1 [1+ 0-]: | `s.sum()`, `s.prod()` | `T`; empty is the identity | O(n)
 - R07.9.2 [1+ 1-]: | `s.fold(op)` | `T` when `op` has an identity (`+`, `max` on a bounded type, `gcd`), else...
 - R07.9.3 [1+ 1-]: | `s.min()`, `s.max()`, `s.min(by: k)` | `?T`, `None` when empty; first on ties | O(n)

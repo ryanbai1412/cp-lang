@@ -74,6 +74,7 @@ they carry rule ids; the stdlib's own gaps are in `std/GAPS.md`.
 | R07.5 | Under the hood | supported | 17 pass, 2 known gaps |
 | R07.6 | Generators | supported | 10 pass |
 | R07.7 | Adapters (each makes a view: O(1), lazy) | supported | 18 pass |
+| R07.8 | Making containers | supported | 1 pass |
 | R07.9 | Folds | supported | 8 pass |
 | R07.11 | Ordering and grouping | supported | 8 pass |
 | R07.12 | More vocabulary | supported | 10 pass |
