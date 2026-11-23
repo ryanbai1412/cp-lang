@@ -13,6 +13,7 @@ path = "src/main.rs"
 cpl-check.workspace = true
 cpl-codegen.workspace = true
 cpl-diag.workspace = true
+cpl-fmt.workspace = true
 cpl-interp.workspace = true
 cpl-ir.workspace = true
 cpl-json.workspace = true

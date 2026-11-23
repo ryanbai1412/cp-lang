@@ -63,9 +63,9 @@ tracked file and checks the result is stable and checks and runs the same.
 Parity tests check that the editor, the playground and `cpl lint` report the
 same findings.
 
-The weakest areas today: fixed programs are not yet run on the whole
-corpus to show the output is unchanged, nothing measures how much a small
-edit reformats, and the suites have no mutation score. Those rows are marked `missing` in the quality
+The weakest areas today: nothing measures how much a small edit
+reformats, the suites have no mutation score, and only a few dozen corpus
+programs have a fix that applies, so the corpus run of fixes is thin. Those rows are marked `missing` in the quality
 register below and are built first.
 
 ## Where to start
@@ -159,7 +159,7 @@ in `plan/domains/lint-fmt/metrics.toml`.
 |---|---|---|---|
 | A fix clears its lint and still parses (`lints/R8`) | record fixes that leave the lint or a parse error | generated suite | `record_tests.rs` `every_record_fix_clears_its_lint_and_still_parses` |
 | A fix never adds a checker error (`lints/R9`) | fixed files with more errors, over records, `std` and corpus | generated suite | `record_tests.rs` `every_record_fix_adds_no_checker_error`, `corpus_tests.rs` `fixes_never_add_checker_errors` |
-| A fix keeps what the program prints (`lints/R11`) | runnable programs whose output changes after `cpl fix` | differential suite | `crates/cpl-cli/tests/fix_behavior.rs`, `behaviour_tests.rs` |
+| A fix keeps what the program prints (`lints/R11`) | runnable programs whose output changes after `cpl fix` | differential suite, plus a corpus run | `crates/cpl-cli/tests/fix_behavior.rs`, `behaviour_tests.rs`; `cpl-conform rewrites` (`#fix` cases) |
 | The fixed file is what a person would write: formatted, no churn outside the edit (`lints/R10`) | fixed files `cpl fmt --check` rejects; lines changed outside the fix | generated suite over every record; corpus files `missing` | `record_tests.rs` `every_record_fix_converges_and_is_formatted` |
 | Fixes converge: a second `cpl fix` changes nothing (`lints/R10`) | non-idempotent fix runs | generated suite over every record | `record_tests.rs` `every_record_fix_converges_and_is_formatted` |
 | Every lint has a fix or says why it has none (`lints/R12`) | lints with neither | gate | `record_tests.rs` `every_lint_has_a_fix_or_says_why_not` |
@@ -181,7 +181,7 @@ in `plan/domains/lint-fmt/metrics.toml`.
 |---|---|---|---|
 | Formatting never changes meaning | files whose tokens, parse or checker result change | design (`verify` re-lexes the output and rejects any token change) plus corpus suite | `crates/cpl-fmt/src/lib.rs` `verify`, `tests.rs` `formats_the_whole_corpus`, `scripts/fmt_check.py` |
 | Formatting is idempotent | files that change on a second run | corpus gate | `scripts/fmt_check.py`, `scripts/test_fmt_check.py` |
-| Formatted programs still print the same | programs whose output differs after `cpl fmt` | `missing` as a run (token equality implies it today) | — |
+| Formatted programs still print the same | programs whose output differs after `cpl fmt` | corpus run on every test input (token equality implies it too) | `cpl-conform rewrites` (`#fmt` cases) |
 | Every tracked `.cp` file is formatted | files `cpl fmt --check` would change | gate | `scripts/check.sh` fmt step, `scripts/fmt_check.py` |
 | Files that don't parse still format, and unfinished statements are left alone | panics or edits inside a broken statement | hand-written suite | `range_tests.rs` `an_unfinished_statement_is_left_alone` |
 | No input crashes fmt or lint (`lints/R23`) | panics and non-idempotent fmt on mutated sources | generated suite: token mutations of `std`, corpus `spec.cp` and every record, fixed seed | `crates/cpl-lint/src/fuzz_tests.rs` `mutated_sources_never_crash_lint_or_fmt` |

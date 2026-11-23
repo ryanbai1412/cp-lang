@@ -7,7 +7,7 @@ use cpl_conform::scoreboard::{self, Scoreboard, SuiteReport};
 use cpl_conform::{default_scoreboard_path, find_repo_root, run_suites, Suite};
 
 const USAGE: &str = "\
-usage: cpl-conform [conformance|corpus|docs|spec-blocks|diff|all]... [options] [filter]
+usage: cpl-conform [conformance|corpus|docs|spec-blocks|diff|rewrites|all]... [options] [filter]
 
 suites:
   conformance     spec/conformance/**/*.cp cases
@@ -16,7 +16,9 @@ suites:
   spec-blocks     fenced cp blocks in spec/core/*.md and spec/lib/*.md
   diff            interpreter vs g++ -O2 -std=c++17 differential, with
                   side-effect variants of corpus ports (variant/*)
-  all             all five suites (default if no suite is named)
+  rewrites        corpus programs print the same after `cpl fix` (#fix)
+                  and after `cpl fmt` (#fmt) on their tests
+  all             all six suites (default if no suite is named)
   fuzz [START] [COUNT] [--no-cxx]
                   generated programs (seeds START..START+COUNT, default
                   0 200) on the interpreter and the C++ at every --checks

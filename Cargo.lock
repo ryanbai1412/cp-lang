@@ -57,6 +57,7 @@ dependencies = [
  "cpl-check",
  "cpl-codegen",
  "cpl-diag",
+ "cpl-fmt",
  "cpl-interp",
  "cpl-ir",
  "cpl-json",

@@ -216,7 +216,7 @@ Crate names follow jobs; a crate whose job already matches keeps its name.
 | `cpl-cli` | `cpl check/run/build/test/stress/doc/fmt/lint/explain/judge/dap` |
 | `cpl-fmt`, `cpl-lint`, `cpl-doc`, `cpl-stress`, `cpl-judge` | tools over `cpl-check` queries |
 | `cpl-lsp` | the language server. `lib.rs` only re-exports `Server` and `serve`; dispatch is in `server.rs`. Hover facts come from `cpl-check/src/hover.rs`; the LSP renders them as markdown. Uses `cpl-check`, `cpl-lint`, `cpl-fmt`, `cpl-judge`, `cpl-ir`, and `cpl-doc` for doc text without Markdown math or links (`cpl_doc::plain`). `transport` framing is shared with the DAP in `cpl-cli/src/dap.rs`. `build.rs` lists the std modules for `use std.` completion |
-| `cpl-conform` | one harness: conformance, corpus, doc examples, differential, fuzzing, scoreboard |
+| `cpl-conform` | one harness: conformance, corpus, doc examples, differential, fuzzing, rewrites (cpl-lint fixes and cpl-fmt keep output), scoreboard |
 | `cpl-contest` | the contest workflow behind `cpl new/test/bench/watch`; the corpus benchmark (perf owns `corpus_bench.rs`) |
 | `cpl-json` | one dependency-free JSON value and printer, shared by every tool that speaks JSON |
 | `cpl-wasm` | browser bindings over `cpl-check`, `cpl-interp`, `cpl-codegen`, `cpl-lint` and `cpl-lsp`; no logic of its own |

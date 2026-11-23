@@ -48,6 +48,7 @@
     "cpl-conform -> cpl-check",
     "cpl-conform -> cpl-codegen",
     "cpl-conform -> cpl-diag",
+    "cpl-conform -> cpl-fmt",
     "cpl-conform -> cpl-interp",
     "cpl-conform -> cpl-ir",
     "cpl-conform -> cpl-json",

@@ -5,6 +5,7 @@ pub mod docs;
 pub mod fuzz;
 pub mod gen;
 mod lsp;
+pub mod rewrites;
 pub mod runner;
 pub mod scoreboard;
 pub mod spec_blocks;
@@ -21,6 +22,7 @@ pub enum Suite {
     Docs,
     SpecBlocks,
     Diff,
+    Rewrites,
 }
 
 impl Suite {
@@ -31,6 +33,7 @@ impl Suite {
             Suite::Docs => "docs",
             Suite::SpecBlocks => "spec-blocks",
             Suite::Diff => "diff",
+            Suite::Rewrites => "rewrites",
         }
     }
 
@@ -41,6 +44,7 @@ impl Suite {
             "docs" => Some(Suite::Docs),
             "spec-blocks" | "spec_blocks" => Some(Suite::SpecBlocks),
             "diff" => Some(Suite::Diff),
+            "rewrites" => Some(Suite::Rewrites),
             _ => None,
         }
     }
@@ -51,6 +55,7 @@ impl Suite {
         Suite::Docs,
         Suite::SpecBlocks,
         Suite::Diff,
+        Suite::Rewrites,
     ];
 
     pub const FAST: &'static [Suite] = &[
@@ -93,6 +98,7 @@ pub fn run_suites(root: &Path, suites: &[Suite], filter: Option<&str>) -> Scoreb
             Suite::Docs => docs::run(root, filter),
             Suite::SpecBlocks => spec_blocks::run(root, filter),
             Suite::Diff => diff::run(root, filter),
+            Suite::Rewrites => rewrites::run(root, filter),
         };
         sb.suites.insert(suite.name().to_string(), report);
     }
