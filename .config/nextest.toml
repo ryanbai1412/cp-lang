@@ -23,4 +23,4 @@ threads-required = 'num-cpus'
 # they drive whole programs through the CLI, LSP and conformance corpus, and
 # take most of the fast gate's time. The land tier (--fast) runs them all.
 [profile.commit]
-default-filter = 'not (kind(test) & (package(cpl-cli) | package(cpl-lsp) | package(cpl-conform)))'
+default-filter = 'not (kind(test) & (package(cpl-cli) | package(cpl-lsp) | package(cpl-conform))) | binary_id(cpl-cli::trace_goldens)'
