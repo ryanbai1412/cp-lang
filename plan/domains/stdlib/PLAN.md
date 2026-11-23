@@ -43,6 +43,11 @@ W2 runs before W3 because writing bodies whose examples fail for a compiler reas
 
 ## General fixes owed
 
+- **`Subset` is an IR builtin in `cpl run`** (6 `subset.cp` doc examples): std's `complement`,
+  `shifted` and `single(B)` are never reached (`Subset<B>` has no method `complement`). General
+  fix: Q3, lower `Subset` from `std/subset.cp`'s struct instead of `Ty::Subset`. Owner: stdlib + compiler.
+- **`dfs_tree`'s return type is mangled** (`Rooted<V,\n _>`) and its body is `todo`. Owner: stdlib.
+
 - **A generic bound only by a lambda parameter defaults to `Int`** (`window.cp#undoing`, 4 doc
   examples): `undoing(Dsu<V>(..), (mut d, e: (V, V)) => ..)` binds `T` to `Int`, even with the
   parameter annotated. General fix: unify `T` with an annotated lambda parameter's type. Owner: compiler.
