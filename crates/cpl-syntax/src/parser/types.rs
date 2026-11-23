@@ -526,32 +526,7 @@ impl<'a> Parser<'a> {
             T::Ident | T::Int | T::Minus | T::Float => {
                 // A range type: `0..=1e9`, `1..=n`, or one-sided `0..`, `2..`.
                 let lo = self.range_bound();
-                let inclusive = self.at(T::DotDotEq);
-                if !inclusive && !self.at(T::DotDot) {
-                    let span = lo.span;
-                    self.error(
-                        Diagnostic::error(codes::EXPECTED_TYPE, span, "expected a type").with_help(
-                            "types are capitalized (`Int`, `V`), or ranges such as `0..=1e9`",
-                        ),
-                    );
-                    TypeKind::Error
-                } else {
-                    self.range_op();
-                    let hi = if inclusive
-                        || matches!(
-                            self.peek(),
-                            T::Ident | T::Int | T::Minus | T::Float | T::LParen | T::SelfKw
-                        ) {
-                        Some(Box::new(self.range_bound()))
-                    } else {
-                        None
-                    };
-                    TypeKind::Range {
-                        lo: Some(Box::new(lo)),
-                        hi,
-                        inclusive,
-                    }
-                }
+                self.range_type_from(lo)
             }
             // `xs: &List<Int>`: a parameter is already lent (R4), so drop `&`.
             T::Amp => {
@@ -641,6 +616,35 @@ impl<'a> Parser<'a> {
 
     /// A range bound in a type: arithmetic and `<<`, but not `>>`, which
     /// closes nested type arguments.
+    /// The rest of a range type after its lower bound `lo`: `..=hi`, `..hi`
+    /// or `..`.
+    fn range_type_from(&mut self, lo: Expr) -> TypeKind {
+        let inclusive = self.at(T::DotDotEq);
+        if !inclusive && !self.at(T::DotDot) {
+            let span = lo.span;
+            self.error(
+                Diagnostic::error(codes::EXPECTED_TYPE, span, "expected a type")
+                    .with_help("types are capitalized (`Int`, `V`), or ranges such as `0..=1e9`"),
+            );
+            return TypeKind::Error;
+        }
+        self.range_op();
+        let hi = if inclusive
+            || matches!(
+                self.peek(),
+                T::Ident | T::Int | T::Minus | T::Float | T::LParen | T::SelfKw
+            ) {
+            Some(Box::new(self.range_bound()))
+        } else {
+            None
+        };
+        TypeKind::Range {
+            lo: Some(Box::new(lo)),
+            hi,
+            inclusive,
+        }
+    }
+
     fn range_bound(&mut self) -> Expr {
         let mut lhs = self.additive();
         while self.at(T::Shl) {
@@ -677,10 +681,17 @@ impl<'a> Parser<'a> {
                     T::Comma | T::Gt | T::Shr | T::Plus | T::Minus | T::Star | T::StarStar
                 );
             if value {
-                let expr = self.additive();
+                let start = self.span().start;
+                let expr = self.range_bound();
+                // `read<l + 1..=9>()`: the value is the low end of a range type.
+                let kind = if matches!(self.peek(), T::DotDot | T::DotDotEq) {
+                    self.range_type_from(expr)
+                } else {
+                    TypeKind::Value(Box::new(expr))
+                };
                 args.push(Type {
-                    span: expr.span,
-                    kind: TypeKind::Value(Box::new(expr)),
+                    kind,
+                    span: self.span_from(start),
                 });
             } else {
                 args.push(self.ty());
