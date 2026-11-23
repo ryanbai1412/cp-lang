@@ -71,6 +71,14 @@ fn division_by_a_positive_number_of_a_non_negative_one_is_plain_cpp() {
 }
 
 #[test]
+fn a_divisor_unpacked_from_input_keeps_its_declared_range() {
+    let src = "let item: [0..3](cost: 1..=200, worth: Int) = read()\nlet (c, w) = item[1]\nlet a: 0..=100 = read()\nprint(a / c, a % c, w)\n";
+    let body = body(src);
+    assert!(body.contains("(a / c)"), "{body}");
+    assert!(body.contains("(a % c)"), "{body}");
+}
+
+#[test]
 fn a_dividend_that_may_be_negative_gets_the_branchless_fix() {
     let source = "let a: Int = read()\nlet b: 1..=100 = read()\nprint(a / b, a % b)\n";
     let body = body(source);

@@ -91,3 +91,12 @@ Newest first: what landed (commit), evidence, next, blocked, requests from other
 - Request from spec (2026-11-22): `cpl build` (release) emits `cpl::at(xs, j)`, which bounds-checks every unproven `List` index; R09.2.2/R09.3.2 (decision 240) want no check unless `bounds` is kept via `release_checks:` or `with checks(bounds: on)`. Case (fails): `spec/conformance/core-09/release-list-index-unchecked.cp`.
 - Request from spec (2026-11-22): R09.3.6 gives division and `%` by zero a defined fallback of 0 in release, but `cpl run --release` traps (check the emitted C++ too) ("division by zero", exit 3) on `7 / d` with `d` an unproven 0. Case (fails): `spec/conformance/core-09/release-division-by-zero-fallback.cp`. Decision 240 aligns chapter 13 with chapter 9.
 - From spec (2026-11-22): `let k = 5; let fs: List<Int -> Int> = [x => x + k, x => x * 2]` and `fn pick(b: Bool) -> Int -> Int` returning one of two lambdas emit `std::function` today (R13.3.2 says never); the compiler request is to reject them, so codegen should not grow a path for them.
+
+- 2026-11-22 codegen: stable locals copied from an input path (`let (c, w) = item[v]`)
+  now keep the declared range, so `/` and `%` by them are plain C++
+  (`Facts::spec` in `crates/cpl-codegen/src/ranges.rs`; regression test
+  `a_divisor_unpacked_from_input_keeps_its_declared_range` fails without it).
+  cf2115e hot loop: `cpl::ediv(pc, g)` gone from the outer bound only, inner
+  `%`/`/` were already plain; on a synthetic n=200, q=2e5 input
+  (`python3 /tmp/alt.py` interleaved fastest-of runs) 296.2 -> 281.8 ms, same output
+  as before. The remaining gap is checked `Grid::ck` access (compiler range proof).

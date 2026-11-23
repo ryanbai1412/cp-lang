@@ -505,7 +505,8 @@ impl<'p> Facts<'p> {
     }
 
     /// The declared range of the value `e` reads, when `e` is a path into
-    /// a variable that was read from input and never changed.
+    /// a variable that was read from input and never changed, or a copy of
+    /// such a path.
     fn spec(&self, fn_id: Option<usize>, e: &Expr) -> Option<&'p Spec> {
         match &e.kind {
             ExprKind::Local(_) | ExprKind::Global(_) => {
@@ -517,8 +518,13 @@ impl<'p> Facts<'p> {
                 if !self.stable(v) {
                     return None;
                 }
-                match &self.init.get(&v)?.kind {
+                let init = self.init.get(&v)?;
+                match &init.kind {
                     ExprKind::Read(spec) => Some(spec),
+                    // `let (c, w) = item[v]`: a copy of a path into input.
+                    ExprKind::Index(..) | ExprKind::Field(..) => {
+                        self.spec(if v.1 { None } else { fn_id }, init)
+                    }
                     _ => None,
                 }
             }
