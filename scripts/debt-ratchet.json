@@ -81,6 +81,7 @@
     "cpl-lint -> cpl-syntax",
     "cpl-lsp -> cpl-check",
     "cpl-lsp -> cpl-diag",
+    "cpl-lsp -> cpl-doc",
     "cpl-lsp -> cpl-fmt",
     "cpl-lsp -> cpl-ir",
     "cpl-lsp -> cpl-json",
