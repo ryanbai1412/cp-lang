@@ -564,7 +564,7 @@ pub(crate) fn names_in(e: &Expr) -> Vec<String> {
 }
 
 /// The name a place expression starts from.
-fn root_name(mut e: &Expr) -> Option<&str> {
+pub(super) fn root_name(mut e: &Expr) -> Option<&str> {
     loop {
         e = match &e.kind {
             ExprKind::Index { base, .. } | ExprKind::Field { base, .. } => base,
@@ -2546,7 +2546,7 @@ impl<'a> Checker<'a> {
             _ => return,
         };
         for arg in args {
-            self.no_escape(&arg.value, &what);
+            self.escape_unless_kept(&arg.value, &what, Keep::In(callee));
             if receiver_is_mut_param {
                 if let ExprKind::Name(src) = &unparen(&arg.value).kind {
                     if let Some(local) = self.local(src).cloned() {

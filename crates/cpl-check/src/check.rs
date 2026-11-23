@@ -27,6 +27,7 @@ mod storage;
 mod tuple_bound;
 mod views;
 pub(crate) use stmt::runs;
+use views::Keep;
 mod types;
 
 pub(crate) use pattern::domain_binding;

@@ -1126,7 +1126,7 @@ impl<'a> Checker<'a> {
                 }
                 if let (true, Some(init)) = (*mutable, init) {
                     let what = format!("`var {}`", self.quote(pat.span));
-                    self.no_escape(init, &what);
+                    self.escape_unless_kept(init, &what, Keep::New(pat.span));
                 }
                 // A new binding of a name: what was known about the old
                 // one no longer applies.
@@ -1588,7 +1588,7 @@ impl<'a> Checker<'a> {
                 let part = matches!(&target.kind, ExprKind::Index { indices, .. }
                     if indices.iter().any(|index| matches!(index.kind, ExprKind::Range { step: None, .. })));
                 if *op == AssignOp::Set && !part {
-                    self.no_escape(value, "this assignment");
+                    self.escape_unless_kept(value, "this assignment", Keep::In(target));
                     if let Some((root, _)) = Self::root_name(target) {
                         let target_depth = self.var_depth(root);
                         self.no_escape_assign(value, target_depth);

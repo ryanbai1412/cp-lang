@@ -1153,13 +1153,16 @@ fn a_piece_of_a_read_view_keeps_the_lend_a_read() {
 
 #[test]
 fn a_lent_slice_is_not_stored_assigned_or_returned() {
+    // Storage declared after `a` in its block dies no later than `a`, so it
+    // may keep a view of it (R05.7.8).
+    for body in [
+        "var keep = a[l..=r]\n",
+        "var b: [V]Int = 0\nb = a[l..=r]\n",
+        "var parts: List<[V]Int> = []\nparts.push(a[l..=r])\n",
+    ] {
+        assert_eq!(check(&format!("{ARRAY}{body}")), vec![], "{body}");
+    }
     for (body, what) in [
-        ("var keep = a[l..=r]\n", "`var keep`"),
-        ("var b: [V]Int = 0\nb = a[l..=r]\n", "this assignment"),
-        (
-            "var parts: List<[V]Int> = []\nparts.push(a[l..=r])\n",
-            "`.push(...)`",
-        ),
         (
             "fn top(xs: [V]Int) -> [V]Int:\n    xs[l..=r]\n",
             "returning it",
