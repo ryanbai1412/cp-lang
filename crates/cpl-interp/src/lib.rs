@@ -943,6 +943,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
     }
 
     fn stmt(&mut self, stmt: &'p Stmt) -> Res<Flow> {
+        #[cfg(not(target_arch = "wasm32"))]
         if let Some(stats) = &mut self.vm_stats {
             stats.walked += 1;
             *stats.walked_counts.entry(vm::stmt_tag(stmt)).or_default() += 1;
