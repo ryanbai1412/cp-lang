@@ -23,7 +23,7 @@ Usage:
 the answers it reproduces byte for byte: the evidence a committed answer is
 derivable (decisions.md 278).
 """
-import argparse, hashlib, inspect, json, os, random, shutil, subprocess, sys, tempfile, tomllib
+import argparse, hashlib, inspect, json, os, random, resource, shutil, subprocess, sys, tempfile, tomllib
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PROBLEMS = os.path.join(ROOT, "corpus", "problems")
@@ -138,6 +138,11 @@ def binary(src):
     return exe
 
 
+def judge_stack():
+    """The judges' stack (Codeforces gives 256 MB), so a deep recursion in the accepted C++ runs as it did there."""
+    resource.setrlimit(resource.RLIMIT_STACK, (resource.RLIM_INFINITY, resource.RLIM_INFINITY))
+
+
 def stamp(p, cpp):
     """What a problem's generated cases depend on; `make` skips a problem whose stamp is unchanged."""
     h = hashlib.sha256()
@@ -171,7 +176,7 @@ def make(args):
                 shutil.rmtree(tests, ignore_errors=True)
                 os.makedirs(tests, exist_ok=True)
                 for i, inp in enumerate(inputs(p, gens, args.cases, tmp), 1):
-                    r = subprocess.run([exe], input=inp, capture_output=True, text=True, timeout=20)
+                    r = subprocess.run([exe], input=inp, capture_output=True, text=True, timeout=20, preexec_fn=judge_stack)
                     if r.returncode:
                         raise RuntimeError(f"accepted C++ exits {r.returncode} on case {i}")
                     open(os.path.join(tests, f"{i:02}.in"), "w").write(inp)
