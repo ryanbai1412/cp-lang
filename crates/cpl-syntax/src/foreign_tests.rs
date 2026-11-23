@@ -142,14 +142,6 @@ fn a_c_brace_block_header_becomes_a_colon_block() {
 }
 
 #[test]
-fn brace_bodied_fn_and_struct_get_the_brace_fix() {
-    let src = "struct P {\n    x: Int\n}\nfn f(p: P) -> Int {\n    return p.x\n}\n";
-    let d = parse_file(src).diagnostics;
-    assert_eq!(d.len(), 2, "{d:?}");
-    assert!(d.iter().all(|d| d.fixes[0].edits.len() == 2), "{d:?}");
-}
-
-#[test]
 fn cpp_declarations_are_one_error_that_writes_let() {
     for src in [
         "auto x = 1\nprint(x)\n",

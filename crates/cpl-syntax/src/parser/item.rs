@@ -94,10 +94,6 @@ impl<'a> Parser<'a> {
         } else if self.at(T::Colon) {
             self.bump();
             FnBody::Block(self.block(&format!("the signature of `{}`", name.text)))
-        } else if self.open_brace_body(&format!("the signature of `{}`", name.text)) {
-            let block = self.block(&format!("the signature of `{}`", name.text));
-            self.close_brace_body();
-            FnBody::Block(block)
         } else if (self.in_trait || self.in_grader)
             && self.at_line_end()
             && self.peek() != T::Indent
@@ -237,10 +233,6 @@ impl<'a> Parser<'a> {
         } else if self.at(T::Colon) {
             self.bump();
             FnBody::Block(self.block(&format!("the signature of `{}`", name.text)))
-        } else if self.open_brace_body(&format!("the signature of `{}`", name.text)) {
-            let block = self.block(&format!("the signature of `{}`", name.text));
-            self.close_brace_body();
-            FnBody::Block(block)
         } else if (self.in_trait || self.in_grader)
             && self.at_line_end()
             && self.peek() != T::Indent
@@ -491,9 +483,7 @@ impl<'a> Parser<'a> {
     /// `member`, one per line, and returns the methods among them.
     pub(super) fn members(&mut self, after: &str, mut member: impl FnMut(&mut Self)) -> Vec<Stmt> {
         let mut methods = Vec::new();
-        let braced = self.open_brace_body(after);
-        if !braced
-            && !self.expect(T::Colon, &format!("`:` after {after}"))
+        if !self.expect(T::Colon, &format!("`:` after {after}"))
             && !(self.at(T::Newline) && self.peek_n(1) == T::Indent)
         {
             self.skip_line();
@@ -558,9 +548,6 @@ impl<'a> Parser<'a> {
             }
         }
         self.eat(T::Dedent);
-        if braced {
-            self.close_brace_body();
-        }
         self.recovering = was_recovering;
         methods
     }
