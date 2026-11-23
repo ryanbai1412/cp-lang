@@ -12,7 +12,7 @@
 let op: Str = read()
 
 @!multitest
-let n: 1..=500 = read()
+let n: 2..=800 = read()
 let g: [0..n]Str = read()
 let black = sum(row.count('#') for row in g)
 let ink = if black > n * n - black: '.' else: '#'
