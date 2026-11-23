@@ -75,6 +75,9 @@ hold `edges`; `edges[a.e]` still works for rarely read fields.
 **No `add_edge`.** A graph that grows is the plain container, already a
 `Next`:
 
+<!-- given:
+  domain V = 0..4
+  let (u, v, c, s) = (V(0), V(1), 5, V(0)) -->
 ```python
 var adj: [V]List<(to: V, w: Int)> = []
 adj[u].push((to: v, w: c))
@@ -173,6 +176,9 @@ a longer one. `p.tight(g)` is the shortest-path DAG.
 
 All-pairs on a dense graph starts from the weight matrix:
 
+<!-- given:
+  domain V = 0..4
+  let g = Graph.directed([(u: V(0), v: V(1), w: 3), (u: V(1), v: V(2), w: 4)]) -->
 ```python
 var d = g.matrix()                          // [V, V]?W, O(n² + m)
 if not floyd_warshall(mut d): print("NEGATIVE CYCLE")
@@ -180,6 +186,12 @@ if not floyd_warshall(mut d): print("NEGATIVE CYCLE")
 
 ### Traversal generators
 
+<!-- given:
+  domain V = 0..4
+  let g = Graph.undirected([(V(0), V(1)), (V(1), V(2)), (V(1), V(3))])
+  let s = V(0)
+  var done: [V]Bool = false
+  fn seen_enough(v: V) -> Bool = false -->
 ```python
 for step in dfs(g, from: [s]):
     match step:
@@ -220,6 +232,9 @@ Flows and matchings are their own module (`std.flow`), on the same
 
 ## Trees
 
+<!-- given:
+  domain V = 0..4
+  let g = Graph.undirected([(V(0), V(1)), (V(1), V(2)), (V(1), V(3))]) -->
 ```python
 let t = Rooted(g, root: V.first!)          // or Rooted.from_parents(par), Rooted.try_from_parents(par), Rooted.forest(g, from:)
 ```
@@ -240,6 +255,10 @@ let t = Rooted(g, root: V.first!)          // or Rooted.from_parents(par), Roote
 
 **Tree DP without recursion** walks `t.order.rev`:
 
+<!-- given:
+  domain V = 0..4
+  let g = Graph.undirected([(V(0), V(1)), (V(1), V(2)), (V(1), V(3))])
+  let t = Rooted(g, root: V(0)) -->
 ```python
 var size: [V]Int = 1
 for v in t.order.rev:
