@@ -19,8 +19,8 @@ domain Pos = 0..n
 let a: [Pos]1..=1e9 = read()
 let ks: [q]1..=1e9 = read()
 let window = prefix(a)
-let cuts = compress(a + [2 * x for x in a])
-let cap = ks.max() + a.max()
+let (C, cuts) = compress(a + [2 * x for x in a])
+let cap = ks.max()! + a.max()!
 let by_k = (0..q).sorted(by: i => ks[i])
 
 fn raise(l: 1..=31, x: Int) -> Int:
@@ -28,20 +28,20 @@ fn raise(l: 1..=31, x: Int) -> Int:
     l + 2 * y - (y >> (l - 1)) - popcount(y & ((1 << (l - 1)) - 1))
 
 // Convert a compressed cut run `r` into its `(a[s] * 2^(l - 1), a[s - 1] * 2^l]` X-range.
-fn x_range(r: Range<cuts.D>, l: 1..=31) -> Range<Int>:
+fn x_range(r: Range<C>, l: 1..=31) -> Range<Int>:
     let lo = (cuts[r.first!] << (l - 1)) + 1
     let hi = if let nxt = r.last!.next: min(cap, cuts[nxt] << (l - 1)) else: cap
     lo..=hi
 
-var ans: [q]Int = a.max()
+var ans: [q]Int = a.max()!
 for l in 1..=31:
-    var saved = IntervalMap<cuts.D, ?Int>.new(None)
-    let windows = [(s, window.sum(s..=e)) for s in Pos if let e = s + (l - 1)].sorted(by: w => w.1)
+    var saved = IntervalMap<C, ?Int>.new(None)
+    let windows = [(s, window.fold(s..=e)) for s in Pos if let e = Pos.at(s + (l - 1))].sorted(by: w => w.1)
     for (s, total) in windows:
-        let end = if let p = s.prev: cuts.index_of(2 * a[p]).l else: cuts.D.last.r
+        let end = if let p = s.prev: cuts.index_of(2 * a[p]).l else: C.last!.r
         saved.assign(cuts.index_of(a[s]).l..end, total)
     var waiting = by_k.clone()
-    for (r, opt) in saved.each().rev:
+    for (r, opt) in saved.each_rev():
         if let best = opt:
             let xr = x_range(r, l)
             if not xr.is_empty:
