@@ -30,8 +30,9 @@ pub(crate) const EVERY: u32 = 4096;
 #[derive(Clone, Debug, Default)]
 pub struct Stop {
     cancelled: Arc<AtomicBool>,
-    /// None in the browser, which has no clock: there `looks_left` keeps
+    /// Absent in the browser, which has no clock: there `looks_left` keeps
     /// the time.
+    #[cfg(not(target_family = "wasm"))]
     deadline: Option<std::time::Instant>,
     /// Looks at the stop left before the run is out of time: a budget of
     /// loop rounds and calls, each look [`EVERY`] of them.

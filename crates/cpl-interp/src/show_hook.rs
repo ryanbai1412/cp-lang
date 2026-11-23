@@ -26,13 +26,10 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
         for &d in &self.fn_guarded[id] {
             self.saved_domains.push((d, self.domains[d]));
         }
-        #[cfg(not(target_arch = "wasm32"))]
         let flow = match self.vm.clone() {
             Some(vm) if self.on_vm(id) => self.run_fn_vm_waited(&vm, id, span, saved, dom_mark),
             _ => self.block(&f.body),
         };
-        #[cfg(target_arch = "wasm32")]
-        let flow = self.block(&f.body);
         while self.saved_domains.len() > dom_mark {
             let (id, prev) = self.saved_domains.pop().unwrap();
             self.domains[id] = prev;
@@ -51,10 +48,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
     /// Whether fn `id` runs on the VM, which keeps a one-`Int` struct such
     /// as `Mod<P>` as the `Int`.
     fn on_vm(&self, id: FnId) -> bool {
-        #[cfg(not(target_arch = "wasm32"))]
-        return (self.vm.as_ref()).is_some_and(|vm| vm.fns.get(id).is_some_and(Option::is_some));
-        #[cfg(target_arch = "wasm32")]
-        return false;
+        (self.vm.as_ref()).is_some_and(|vm| vm.fns.get(id).is_some_and(Option::is_some))
     }
 
     /// `value` with each part a `show` fn prints replaced by its text, typed

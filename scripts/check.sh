@@ -181,7 +181,7 @@ wasm_check() {
         echo "WARNING: skipped; the wasm32 target is not installed (run: rustup target add wasm32-unknown-unknown)" >&2
         return 0
     fi
-    cargo check -q -p cpl-wasm --target wasm32-unknown-unknown
+    RUSTFLAGS="${RUSTFLAGS:-} -D warnings" cargo check -q -p cpl-wasm --target wasm32-unknown-unknown
 }
 
 # Staged changes, plus commits that are not on origin/main yet, so a bot
