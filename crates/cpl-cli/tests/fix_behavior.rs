@@ -1,7 +1,8 @@
 //! A quick fix keeps what the program does: every runnable program in the
 //! repository (lint records' `before.cp`, the conformance cases and the
 //! `tests/programs` and `tests/parity` programs, with the `.in` beside
-//! each) runs to the same exit status and output after `cpl fix`.
+//! each, and the corpus ports on their first tests) runs to the same exit
+//! status and output after `cpl fix`.
 //!
 //! Only programs that run cleanly before the fix are held to this: a fix
 //! for a checker error is meant to change what happens.
@@ -11,24 +12,6 @@ use std::process::{Command, Stdio};
 use std::time::{Duration, Instant};
 
 const SHARDS: usize = 8;
-
-/// Programs whose fixes still change behaviour; each is a lint bug, and a
-/// file leaves this list when its fixes keep its output (the test says so).
-const KNOWN: &[&str] = &[
-    "crates/cpl-cli/tests/programs/dream_gaps.cp",
-    "crates/cpl-cli/tests/programs/reflect_fields.cp",
-    "crates/cpl-cli/tests/programs/reflect_variants.cp",
-    "crates/cpl-cli/tests/programs/repeat_loop.cp",
-    "crates/cpl-cli/tests/programs/variadic_pack.cp",
-    "spec/conformance/core-01/range-forms.cp",
-    "spec/conformance/core-01/shared-annotation.cp",
-    "spec/conformance/core-05/closure-captures-at-call.cp",
-    "spec/conformance/core-05/exercise-17-closure-borrows-per-call.cp",
-    "spec/conformance/core-05/local-var-captured-by-reference.cp",
-    "spec/conformance/core-06/rb1-q06-closure-mutates-capture.cp",
-    "spec/conformance/core-06/two-closures-share-var.cp",
-    "spec/conformance/std-tree/rooted-single-preorder.cp",
-];
 
 fn root() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("../..")
@@ -68,6 +51,13 @@ fn programs() -> Vec<String> {
         &cp,
         &mut paths,
     );
+    // A port runs on its tests; one with none has nothing to compare.
+    for dir in std::fs::read_dir(r.join("corpus/problems")).unwrap() {
+        let dir = dir.unwrap().path();
+        if dir.join("port.cp").exists() && !port_inputs(&dir).is_empty() {
+            paths.push(dir.join("port.cp"));
+        }
+    }
     let mut out: Vec<String> = paths
         .iter()
         .map(|p| {
@@ -78,8 +68,34 @@ fn programs() -> Vec<String> {
         })
         .collect();
     out.sort();
-    assert!(out.len() > 1000, "found only {} programs", out.len());
+    assert!(out.len() > 1300, "found only {} programs", out.len());
     out
+}
+
+/// The first few `tests/*.in` of a port's directory.
+fn port_inputs(dir: &Path) -> Vec<PathBuf> {
+    let Ok(entries) = std::fs::read_dir(dir.join("tests")) else {
+        return Vec::new();
+    };
+    let mut ins: Vec<PathBuf> = entries
+        .map(|e| e.unwrap().path())
+        .filter(|p| p.extension().is_some_and(|e| e == "in"))
+        .collect();
+    ins.sort();
+    ins.truncate(3);
+    ins
+}
+
+/// What `rel` runs on: a port its tests, any other program the `.in` beside it.
+fn inputs(src: &Path) -> Vec<Vec<u8>> {
+    let read = |p: &Path| std::fs::read(p).unwrap();
+    if src.file_name().is_some_and(|n| n == "port.cp") {
+        return port_inputs(src.parent().unwrap())
+            .iter()
+            .map(|p| read(p))
+            .collect();
+    }
+    vec![std::fs::read(src.with_extension("in")).unwrap_or_default()]
 }
 
 /// `(exit status, stdout)` of `cpl run path` on `input`, `None` past the
@@ -119,62 +135,59 @@ fn run(path: &Path, input: &[u8]) -> Option<(i32, Vec<u8>)> {
 fn changed(rel: &str, scratch: &Path) -> Option<String> {
     let src = root().join(rel);
     let text = std::fs::read_to_string(&src).unwrap();
-    let input = std::fs::read(src.with_extension("in")).unwrap_or_default();
+    let inputs = inputs(&src);
     std::fs::create_dir_all(scratch).unwrap();
     let file = scratch.join(src.file_name().unwrap());
     std::fs::write(&file, &text).unwrap();
-    let before = run(&file, &input);
-    let fixed = match before {
-        Some((0, _)) => {
-            cpl_cli::run(&["fix", file.to_str().unwrap()]);
-            std::fs::read_to_string(&file).unwrap()
+    let runs = |file: &Path| -> Vec<_> { inputs.iter().map(|i| run(file, i)).collect() };
+    let mut before = Vec::new();
+    for input in &inputs {
+        let r = run(&file, input);
+        let clean = matches!(r, Some((0, _)));
+        before.push(r);
+        if !clean {
+            break;
         }
-        _ => text.clone(),
+    }
+    let fixed = if before.iter().all(|r| matches!(r, Some((0, _)))) {
+        cpl_cli::run(&["fix", file.to_str().unwrap()]);
+        std::fs::read_to_string(&file).unwrap()
+    } else {
+        text.clone()
     };
     let after = if fixed == text {
         before.clone()
     } else {
-        run(&file, &input)
+        runs(&file)
     };
     let _ = std::fs::remove_dir_all(scratch);
     let show = |r: &Option<(i32, Vec<u8>)>| match r {
         Some((code, _)) => format!("exit {code}"),
         None => "no exit in 20 s".to_string(),
     };
-    (after != before).then(|| {
-        format!(
-            "{rel}: {} -> {}\n--- before\n{text}\n--- fixed\n{fixed}\n--- output after\n{}",
-            show(&before),
-            show(&after),
-            String::from_utf8_lossy(after.as_ref().map_or(&[][..], |a| &a.1))
-        )
-    })
+    let (b, a) = before.iter().zip(&after).find(|(b, a)| b != a)?;
+    Some(format!(
+        "{rel}: {} -> {}\n--- before\n{text}\n--- fixed\n{fixed}\n--- output after\n{}",
+        show(b),
+        show(a),
+        String::from_utf8_lossy(a.as_ref().map_or(&[][..], |a| &a.1))
+    ))
 }
 
 fn shard(n: usize) {
     let scratch = std::env::temp_dir().join(format!("cpl-fix-behavior-{}-{n}", std::process::id()));
     let mut wrong = Vec::new();
-    let mut fixed_known = Vec::new();
     for (i, rel) in programs().iter().enumerate() {
         if i % SHARDS != n {
             continue;
         }
-        let diff = changed(rel, &scratch.join(i.to_string()));
-        match (diff, KNOWN.contains(&rel.as_str())) {
-            (Some(d), false) => wrong.push(d),
-            (None, true) => fixed_known.push(rel.clone()),
-            _ => {}
-        }
+        wrong.extend(changed(rel, &scratch.join(i.to_string())));
     }
     let _ = std::fs::remove_dir_all(&scratch);
     assert!(
         wrong.is_empty(),
         "`cpl fix` changed what these programs do:\n\n{}",
         wrong.join("\n\n")
-    );
-    assert!(
-        fixed_known.is_empty(),
-        "fixing these now keeps their output; take them off KNOWN: {fixed_known:?}"
     );
 }
 
@@ -209,12 +222,4 @@ fn fixes_keep_behaviour_6() {
 #[test]
 fn fixes_keep_behaviour_7() {
     shard(7);
-}
-
-#[test]
-fn known_programs_exist() {
-    let all = programs();
-    for k in KNOWN {
-        assert!(all.iter().any(|p| p == k), "{k} is not a program here");
-    }
 }
