@@ -74,22 +74,10 @@ pub(crate) fn reported_errors(path: &std::path::Path, text: &str) -> Vec<cpl_dia
     out
 }
 
-/// `text` with the lint fixes `cpl lint --fix` would make, and how many;
-/// each round lints the analysis `db` has, so a clean file is checked once.
-fn apply_lint_fixes(db: &mut cpl_check::Database, path: &str, mut text: String) -> (String, usize) {
+/// `text` with the lint fixes `cpl lint --fix` would make, and how many.
+fn apply_lint_fixes(db: &mut cpl_check::Database, path: &str, text: String) -> (String, usize) {
     let (config, _) = cpl_lint::Config::discover(std::path::Path::new(path));
-    let mut applied = 0;
-    for _ in 0..8 {
-        db.set_file(path, text.as_str());
-        let analysis = db.analyze(path).expect("the file was just set");
-        let (next, n) = cpl_lint::apply_fixes(&text, &cpl_lint::lint_analysis(&analysis, &config));
-        if n == 0 {
-            break;
-        }
-        applied += n;
-        text = next;
-    }
-    (text, applied)
+    cpl_lint::apply_lint_fixes(db, path, text, &config)
 }
 
 pub(crate) fn fix(args: &[&str], stdout: &mut (dyn Write + Send), stderr: &mut String) -> u8 {

@@ -160,6 +160,8 @@ export class Cpl {
   check(source: string, options?: Options): Outcome;
   /** `cpl lint`: the lint warnings in `source` at default levels, with their fixes. */
   lint(source: string, options?: Options): Outcome;
+  /** `cpl fix`: `source` with the fixes `cpl fix` applies, as `fixed`, and the errors left. */
+  fix(source: string, options?: Options): Outcome & { fixed: string; applied: number };
   run(source: string, stdin?: string | Uint8Array, options?: Options): RunOutcome;
   /**
    * `cpl run --trace`: the run, recorded. `trace` is a document of

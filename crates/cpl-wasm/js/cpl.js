@@ -93,6 +93,11 @@ export class Cpl {
     return this.#call("cpl_lint", { ...options, source });
   }
 
+  /** `cpl fix`: `source` with the fixes `cpl fix` applies, as `fixed`, and the errors left. */
+  fix(source, options = {}) {
+    return this.#call("cpl_fix", { ...options, source });
+  }
+
   /** `cpl run`: checks `source`, then runs it with `stdin` as its input. */
   run(source, stdin = "", options = {}) {
     return this.#running("cpl_run", source, stdin, options);

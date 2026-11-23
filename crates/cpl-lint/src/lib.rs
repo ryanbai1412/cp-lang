@@ -41,7 +41,7 @@ pub mod cli;
 pub use checker::{check_errors, checked, checker_lints, Checked, CheckerLint, CHECKER_LINTS};
 pub use config::{Config, ConfigError};
 pub use facts::Facts;
-pub use typed::{lint_analysis, refine_with_analysis};
+pub use typed::{apply_lint_fixes, lint_analysis, refine_with_analysis};
 
 use cpl_diag::{Code, Diagnostic, Severity, Span};
 use cpl_syntax::ast::{Block, ExprKind, Stmt, StmtKind};

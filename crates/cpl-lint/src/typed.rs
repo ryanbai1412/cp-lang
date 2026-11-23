@@ -251,3 +251,26 @@ fn place_type<'f>(diag: &Diagnostic, facts: &'f Facts) -> Option<&'f Ty> {
 fn plain_type(ty: Option<&Ty>) -> bool {
     ty.is_some_and(|ty| !ty.has_vague() && !matches!(ty, Ty::Optional(_)))
 }
+
+/// `text` with the lint fixes `cpl lint --fix` would make under `config`,
+/// and how many; each round lints the analysis `db` has, so a clean file is
+/// checked once. `cpl fix` and the playground's `fix` share it.
+pub fn apply_lint_fixes(
+    db: &mut cpl_check::Database,
+    path: &str,
+    mut text: String,
+    config: &crate::Config,
+) -> (String, usize) {
+    let mut applied = 0;
+    for _ in 0..8 {
+        db.set_file(path, text.as_str());
+        let analysis = db.analyze(path).expect("the file was just set");
+        let (next, n) = crate::apply_fixes(&text, &lint_analysis(&analysis, config));
+        if n == 0 {
+            break;
+        }
+        applied += n;
+        text = next;
+    }
+    (text, applied)
+}

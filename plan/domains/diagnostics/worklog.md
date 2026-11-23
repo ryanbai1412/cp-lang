@@ -520,3 +520,8 @@ Landed since 23:10: four type/flow lints from `spec/idioms/lints.md`, L0571 `neg
   `fix_checked_removed_syntax`, and a playground fix-all entry.
   Tests: cpl-ir fix tests (moved), cpl-lsp, cpl-cli diagnostics/newcomer/
   catalogue.
+- Playground fix: cpl-wasm `Playground::fix` (ABI `cpl_fix`, `Cpl.fix` in
+  js) applies the same `cpl_ir::fix` error rounds, then the lint round,
+  now shared as `cpl_lint::apply_lint_fixes`. Test: cpl-wasm parity
+  `fix_matches_cpl_fix` (fixed text, stderr and exit status equal to
+  `cpl fix`'s on 5 cases). smoke.mjs not run here: no wasm32 target.

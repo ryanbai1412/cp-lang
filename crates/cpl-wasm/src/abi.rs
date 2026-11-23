@@ -137,6 +137,12 @@ pub extern "C" fn cpl_lint() {
     command(|playground, name, text, _, _| playground.lint(name, text).to_string());
 }
 
+/// `cpl fix` on `TEXT`: the fixed text and the errors left.
+#[no_mangle]
+pub extern "C" fn cpl_fix() {
+    command(|playground, name, text, _, _| playground.fix(name, text).to_string());
+}
+
 /// Runs `TEXT` on `STDIN`, stopping it when its calls take more than
 /// `stack` bytes.
 /// What it printed is the `STDOUT` output.

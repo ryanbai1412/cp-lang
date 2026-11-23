@@ -376,6 +376,43 @@ fn slow():
 
 /// Every lint record's `before.cp` and `after.cp` lint in the playground
 /// exactly as in `cpl lint` and the editor, which share `lint_analysis`.
+/// The playground's `fix` makes the file `cpl fix` writes.
+#[test]
+fn fix_matches_cpl_fix() {
+    let dir = Path::new(env!("CARGO_TARGET_TMPDIR")).join("parity-fix");
+    std::fs::create_dir_all(&dir).expect("a scratch directory");
+    let mut playground = Playground::new();
+    let cases = [
+        ("clean", "let n: Int = read()\nprint(n * 2)\n"),
+        (
+            "by_twin",
+            "let xs = [\"bbb\", \"a\"]\nprint(min_by(xs, s => s.len))\n",
+        ),
+        (
+            "elif",
+            "let n: Int = read()\nif n > 0: print(1) else if n < 0: print(2)\n",
+        ),
+        ("upper_let", "let NEG = 1\nprint(NEG)\n"),
+        ("left", "print(total)\n"),
+    ];
+    for (case, source) in cases {
+        let path = dir.join(format!("{case}.cp"));
+        std::fs::write(&path, source).expect("a writable scratch file");
+        let name = path.to_str().expect("a UTF-8 path");
+
+        let cli = cpl_cli::run(&["fix", name]);
+        let written = std::fs::read_to_string(&path).expect("readable fixed file");
+        let fix = playground.fix(name, source);
+        if !matches!(case, "clean" | "left") {
+            assert_ne!(written, source, "{case}: cpl fix changed nothing");
+        }
+
+        assert_eq!(text(&fix, "fixed"), written, "{case}: fixed text");
+        assert_eq!(exit_code(&fix), cli.code, "{case}: exit status");
+        assert_eq!(text(&fix, "stderr"), cli.stderr, "{case}: stderr");
+    }
+}
+
 #[test]
 fn the_playground_lints_like_cpl_lint() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../spec/lints");
