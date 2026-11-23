@@ -193,5 +193,9 @@ export type Worker = {
   ) => Promise<ReturnType<Cpl[Method]>>;
 } & { terminate(): void };
 
+/** Where `cpl-build.wasm`, the module with `build`, `explain` and `stress`, is. */
+export const BUILD_WASM: URL;
+/** The methods only `cpl-build.wasm` has; on `cpl.wasm` they throw a `CplError` of kind "load". */
+export const BUILD_CALLS: readonly ["stress", "build", "explain"];
 export function load(wasm?: string | URL | BufferSource | WebAssembly.Module): Promise<Cpl>;
 export function spawn(options?: { timeoutMs?: number }): Worker;

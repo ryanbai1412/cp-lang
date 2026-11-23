@@ -49,6 +49,12 @@ await page.goto(base + '/play');
 await page.getByRole('button', { name: 'Run' }).click();
 await page.getByRole('status').filter({ hasText: '115' }).waitFor({ timeout: 30000 });
 console.log('play run output ok');
+// C++17 and Explain come from cpl-build.wasm, which the worker loads on first use.
+await page.getByRole('tab', { name: 'C++17' }).click();
+await page.getByText('#include').first().waitFor({ timeout: 60000 });
+await page.getByRole('tab', { name: 'Explain' }).click();
+await page.getByText('Explaining…').waitFor({ state: 'detached', timeout: 60000 });
+console.log('play C++17 and Explain load cpl-build.wasm');
 wasm = 0;
 await page.goto(base + '/docs/guides/tour', { waitUntil: 'networkidle' });
 if (wasm) {

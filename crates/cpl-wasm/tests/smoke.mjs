@@ -17,8 +17,22 @@ import { test } from "node:test";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
 const dist = resolve(process.argv[2] ?? join(root, "dist/wasm"));
-const { load, CplError } = await import(pathToFileURL(join(dist, "cpl.js")));
-const cpl = await load();
+const { load, BUILD_WASM, BUILD_CALLS, CplError } = await import(pathToFileURL(join(dist, "cpl.js")));
+// cpl-build.wasm has every method, so the tests below use it; the first
+// test holds cpl.wasm to the same answers without the build methods.
+const cpl = await load(BUILD_WASM);
+const core = await load();
+
+test("cpl.wasm runs what cpl-build.wasm does, without build, explain or stress", () => {
+  const program = "let n: Int = read()\nprint(n * 2)\n";
+  assert.equal(core.run(program, "21").stdout, cpl.run(program, "21").stdout);
+  assert.deepEqual(core.check(program), cpl.check(program));
+  assert.deepEqual(core.lint(program), cpl.lint(program));
+  for (const method of BUILD_CALLS) {
+    assert.throws(() => core[method](program), (error) => error instanceof CplError && error.kind === "load");
+  }
+  assert.equal(core.run(program, "4").stdout, "8\n");
+});
 
 const DOUBLE = "let n: Int = read()\nprint(n * 2)\n";
 const recurse = (depth) =>

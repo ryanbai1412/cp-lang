@@ -5,6 +5,11 @@
 //   const cpl = await load();
 //   cpl.run("let n: Int = read()\nprint(n * 2)\n", "21").stdout   // "42\n"
 //
+// It ships as two modules: `cpl.wasm` has everything but `build`,
+// `explain` and `stress`, and `cpl-build.wasm` has everything. `load()`
+// loads the first; `load(BUILD_WASM)` the second. `spawn()`'s worker loads
+// each when a call first needs it.
+//
 // `load()` runs the compiler on the calling thread. `spawn()` runs it in a
 // Web Worker, which is what a page wants for running a program: the page
 // stays responsive, and a program that never ends is stopped after a time
@@ -30,6 +35,12 @@ export class CplError extends Error {
     this.kind = kind;
   }
 }
+
+/** Where `cpl-build.wasm`, the module with `build`, `explain` and `stress`, is. */
+export const BUILD_WASM = new URL("./cpl-build.wasm", import.meta.url);
+
+/** The methods only `cpl-build.wasm` has. */
+export const BUILD_CALLS = ["stress", "build", "explain"];
 
 /**
  * Loads the compiler. `wasm` is where `cpl.wasm` is (a URL, by default next
@@ -191,6 +202,9 @@ export class Cpl {
 
   #call(command, { name = "main.cp", source = "", stdin = "", edited = "" }, ...args) {
     const exports = this.#exports;
+    if (!exports[command]) {
+      throw new CplError("load", `cpl: this module has no \`${command.slice(4)}\`; it is in cpl-build.wasm`);
+    }
     try {
       this.#write(NAME, encoder.encode(name));
       this.#write(EDITED, encoder.encode(edited));

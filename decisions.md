@@ -7867,3 +7867,17 @@ Amended (2026-11-23): `exp`, `ln` and `hypot` from 1.5 join them the same way, r
 the ratchet to 95. `ln` traps on a negative number in checked runs; `ln(0.0)` is
 `-inf`, which the 1.5 rule already traps once printed or compared. `std.poly`'s free
 `exp(a, n)` still wins where it is imported.
+and the 5 names raise the `ir_builtin_names` ratchet from 87 to 92. `exp`, `ln` and
+`hypot` from 1.5 are still missing. Reverse: write them in std over a C++ escape.
+
+## 376. The browser compiler is two modules (2026-11-23)
+
+Every lane's growth landed in the one `cpl.wasm` every editor on the site
+downloads, about 1 KB a commit, and it hit its 1,980,000-byte gzipped cap.
+`crates/cpl-wasm` now has a default feature `build` (the C++ back end, explain
+and stress). `cpl.wasm` is built without it, 1,660,518 bytes gzipped, down from
+1,989,867. `cpl-build.wasm` is built with it, and the worker loads it on the
+first Build, Explain or Stress. Editors, Run and Trace never wait for codegen,
+and codegen's growth no longer counts against the cap. The cost is a second
+download of about 2 MB the first time a page builds. Reverse: build one module
+with default features and point the worker's build calls back at it.

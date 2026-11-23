@@ -47,11 +47,22 @@ dozen plain functions (`src/abi.rs`) and `js/cpl.js` is written by hand
 against them. It runs no `wasm-opt`: its output gzips larger than rustc's
 `opt-level = "z"`, and the bytes stay the same on every machine.
 
-`scripts/build-wasm.sh --out DIR` builds into another directory, and
-`--smoke` runs the Node test below after building.
+It builds two modules from this crate. `cpl.wasm` is built without the
+`build` feature: check, lint, run, trace, replay, hover and the language
+server, which is what an editor on a page needs first. `cpl-build.wasm`
+adds `build`, `explain` and `stress` (the C++ back end and the stress
+runner). `load()` loads `cpl.wasm`, `load(BUILD_WASM)` loads
+`cpl-build.wasm`, and `spawn()`'s worker loads each the first time a call
+needs it. A build method on `cpl.wasm` throws a `CplError` of kind
+`"load"`.
+
+`scripts/build-wasm.sh --out DIR` builds into another directory,
+`--smoke` runs the Node test below after building, and `--names DIR`
+builds `cpl.wasm` with its function names for
+`web/scripts/wasm-size.mjs --why`, which prints the bytes per crate.
 
 A page needs the files of `dist/wasm/` side by side, served from
-anywhere static. `cpl.js` finds `cpl.wasm` next to itself.
+anywhere static. `cpl.js` finds both modules next to itself.
 
 ## The interface
 

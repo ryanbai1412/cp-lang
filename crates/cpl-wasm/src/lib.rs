@@ -282,12 +282,14 @@ impl Playground {
 
     /// `cpl stress --explain --format json`, running in-process on `cpl-interp`
     /// with the same generator, shrinker and JSON report as the CLI.
+    #[cfg(feature = "build")]
     pub fn stress(&mut self, name: &str, source: &str, cases: u32, seed: u64, size: u32) -> String {
         self.stress_with_stack(name, source, cases, seed, size, MAX_STACK)
     }
 
     /// [`stress`](Self::stress), stopping the interpreter when its calls take
     /// more than `stack` bytes on WebAssembly.
+    #[cfg(feature = "build")]
     pub fn stress_with_stack(
         &mut self,
         name: &str,
@@ -322,6 +324,7 @@ impl Playground {
 
     /// `cpl build`: checks `source`, then writes it as one C++17 file.
     /// `cpp` is `null` when there is none to show.
+    #[cfg(feature = "build")]
     pub fn build(&mut self, name: &str, source: &str) -> Value {
         let compiled = match self.compile(name, source) {
             Ok(compiled) => compiled,
@@ -394,6 +397,7 @@ impl Playground {
 
     /// `cpl explain` on `source`: how its closures, views and copies lower
     /// to C++, as the CLI prints it. `text` is null when it doesn't compile.
+    #[cfg(feature = "build")]
     pub fn explain(&mut self, name: &str, source: &str) -> Value {
         match self.compile(name, source) {
             Ok(compiled) => {

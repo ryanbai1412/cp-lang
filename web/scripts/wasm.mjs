@@ -11,7 +11,7 @@ import { fileURLToPath } from 'node:url';
 const web = dirname(dirname(fileURLToPath(import.meta.url)));
 const repo = dirname(web);
 const dist = join(repo, 'dist/wasm');
-const files = ['cpl.js', 'cpl.worker.js', 'cpl.wasm'];
+const files = ['cpl.js', 'cpl.worker.js', 'cpl.wasm', 'cpl-build.wasm'];
 
 // The newest file the build reads: crate sources and manifests, std, the lock.
 function newest(path) {
@@ -54,6 +54,6 @@ mkdirSync(join(web, 'public/wasm'), { recursive: true });
 for (const f of files) copyFileSync(join(dist, f), join(web, 'public/wasm', f));
 writeFileSync(
   join(web, 'lib/cpl-types.ts'),
-  readFileSync(join(repo, 'crates/cpl-wasm/js/cpl.d.ts'), 'utf8').replace(/^export (class|function) /gm, 'export declare $1 '),
+  readFileSync(join(repo, 'crates/cpl-wasm/js/cpl.d.ts'), 'utf8').replace(/^export (class|function|const) /gm, 'export declare $1 '),
 );
 console.log(`wasm: copied ${files.join(', ')} to public/wasm/`);
