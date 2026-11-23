@@ -1,4 +1,10 @@
-// Runnable port (proto/cp.py lib-run) of mccc3j4.cp
+// Source: Mock CCC '22 Contest 1 J4 (Snowball Fight), https://dmoj.ca/problem/mccc3j4
+// Problem: N <= 2000 students each start with one target in a queue. In each of T <= 2000
+//   rounds, every student with a nonempty queue throws at its front and pops it; then each
+//   hit student appends its throwers in increasing order. Print each student's last target.
+// Solution: simulate: a list per student with a head index as its queue; collect the round's
+//   (target, thrower) pairs in thrower order before appending any. Each round appends at most
+//   N entries: O(N T).
 // original: corpus/submissions/4223440.cpp
 
 let (n, t): (Int, Int) = read()

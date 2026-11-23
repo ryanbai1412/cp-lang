@@ -1,12 +1,9 @@
-// NOI 2014 Getting-Up Syndrome: n gates in a row (n <= 100000), each `AND t`,
-// `OR t` or `XOR t` with 0 <= t <= 1e9. Pick a starting number from 0 to m
-// (m <= 1e9), pass it through every gate in order, and print the largest
-// result.
-//
-// The gates work on every bit alone, so send all-zeros and all-ones through
-// once. Then choose the start from the top bit down: a 0 that already comes
-// out as 1 is free; otherwise a 1 is worth it if it comes out as 1 and still
-// fits under m.
+// Source: NOI 2014 P1 (Getting-Up Syndrome), https://dmoj.ca/problem/noi14p1
+// Problem: n <= 1e5 gates, each AND t, OR t or XOR t (t <= 1e9). Choose a start 0 <= x <= m
+//   (m <= 1e9), pass it through all gates in order, and print the largest result.
+// Solution: the gates act on each bit alone, so send all-zeros and all-ones through once to
+//   see what each bit becomes from 0 and from 1. Then greedily from the top bit: a 0 that
+//   comes out 1 is free; else take a 1 if it comes out 1 and the start stays <= m. O(n + 30).
 // original: corpus/submissions/3595714.cpp
 let (n, m): (Int, Int) = read()
 let bits = 30

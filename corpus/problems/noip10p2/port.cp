@@ -1,8 +1,10 @@
-// NOIP 2010 Tortoise Chess: a track of n squares, each with a score, and m
-// cards, each moving the tortoise 1 to 4 squares; the cards add up to
-// exactly n - 1. Play them in any order; the score is the sum over every
-// square stood on, the first included. Print the best score.
-// The cards left decide the square, so the state is four counts.
+// Source: NOIP 2010 Senior P2 (Tortoise Chess), https://dmoj.ca/problem/noip10p2
+// Problem: a row of N <= 350 squares scored 0..100, and M <= 120 cards each moving 1 to 4
+//   squares, at most 40 of each kind, summing to exactly N - 1. Play all cards in some order
+//   from square 1; print the best total score of the squares visited, the start included.
+// Solution: the cards left fix the current square, so the state is the four counts left.
+//   Memoised best(a, b, c, d) = this square's score + the max over each kind still left of
+//   best with that count lowered; at most 41^4 states, 4 moves each.
 // original: corpus/submissions/5445662.cpp
 let n: 1..=350 = read()
 let m: 1..=120 = read()

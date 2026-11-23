@@ -1,7 +1,11 @@
+// Source: Yet Another Contest 6 P2 (No More Telemarketers), https://dmoj.ca/problem/yac6p2
+// Problem: two rooted trees s, t on N <= 1e6 workers (boss or -1). A move re-hangs a worker A
+//   under any B that A does not manage. Print the fewest moves turning s into t and the moves
+//   as pairs (A, B), or -1 if impossible.
+// Solution: the root manages everyone, so it never moves: different roots give -1. Otherwise
+//   each worker whose boss differs moves exactly once, to its t-boss, in a preorder of t: the
+//   new boss's chain to the root is already final, so it cannot pass through the worker. O(N).
 // cp: 0.1 0f8d77b+dirty
-// Yet Another Contest 6 P2: turn one rooted tree into another by moves that
-// re-hang a vertex under a new parent; the root can never move. Print the
-// moves, or -1.
 let n: 1..=1e6 = read()
 domain V = 1..=n
 

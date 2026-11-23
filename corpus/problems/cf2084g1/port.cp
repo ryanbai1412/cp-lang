@@ -1,10 +1,14 @@
-// Codeforces 2084 G1: only the parity of each value's position matters.
-// Put the values in increasing order; when the k smallest are placed and c of
-// them sit on the n / 2 even positions, the beauty gains
-// (2c - k) * (2(n / 2 - c) - (n - k)), the product of the even-minus-odd
-// imbalances of the small and the large values. So it is a DP over k and c,
-// with a known value forced to its own parity; the beauty is
-// (best + n(n + 1)^2 / 2) / 2. O(n^2).
+// Source: Codeforces 2084G1 (Wish Upon a Satellite, Easy Version),
+//   https://codeforces.com/contest/2084/problem/G1
+// Problem: f(c) is the final c_1 when Turtle (maximiser, first) and Piggy alternately merge an
+//   adjacent pair into its min (Turtle) or max (Piggy). Fill the zeros of a partial
+//   permutation of length n <= 5000 to maximise the sum of f over all subarrays; print that
+//   sum. Multitest, sum n <= 5000.
+// Solution: only the parity of each value's position matters. Place values in increasing order;
+//   with the k smallest placed, c of them on the n / 2 even positions, the beauty gains
+//   (2c - k)(2(n / 2 - c) - (n - k)), the product of the small and large values' even-minus-odd
+//   imbalances. DP over (k, c), a known value forced to its parity; the beauty is
+//   (best + n(n + 1)^2 / 2) / 2. O(n^2).
 @!multitest
 let n: 1..=5000 = read()
 domain P = 1..=n

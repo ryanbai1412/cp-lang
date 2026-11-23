@@ -1,8 +1,12 @@
-// Codeforces 2062 E1: The Game (Easy Version).
-// Scan nodes in decreasing weight order, maintaining the LCA of all nodes
-// strictly heavier than the current weight. The first node v that is not an
-// ancestor of that LCA has a heavier node outside its subtree, while every
-// heavier node contains all nodes heavier than itself — so picking v wins.
+// Source: Codeforces 2062E1 (The Game, Easy Version),
+//   https://codeforces.com/contest/2062/problem/E1
+// Problem: a tree of n <= 4e5 nodes rooted at 1, values w_i <= n. Players alternately delete the
+//   subtree of a remaining node heavier than the last one chosen (first move: any node); the
+//   first who cannot move wins. Print a node Cirno can pick first to win, or 0. Multitest.
+// Solution: pick the heaviest v with a heavier node outside its subtree: any reply u has all
+//   nodes heavier than u in its subtree, so after it nothing heavier is left. Scan weights
+//   downward keeping the LCA of all strictly heavier nodes; the first v that is not an
+//   ancestor of it wins. O(n log n).
 use std.seq.{buckets}
 
 @!multitest

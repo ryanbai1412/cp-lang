@@ -1,10 +1,10 @@
-// NOI 2016 Excellent Splits: count the ways to cut a block of the string
-// into AABB with A and B not empty. For each of t strings.
-//
-// Every square AA belongs to a unique maximal repetition (run) `(l, r, p)`
-// with `p | |A|`. Enumerating all runs via `lyndon_runs(s)` gives every
-// square start/end interval deterministically in O(n log n); difference
-// arrays accumulate how many squares start/end at each index.
+// Source: NOI 2016 P1 (Good Partitions), https://dmoj.ca/problem/noi16p1
+// Problem: for each of T <= 10 lowercase strings S (n <= 30000), sum over all substrings the
+//   number of ways to write the substring as AABB with A, B nonempty.
+// Solution: with ends[i] the squares AA ending at i and starts[i] those starting at i, the
+//   answer is sum ends[i] * starts[i + 1]. Every square lies in a run (l, r, p) with a half
+//   that is a multiple of p: for each run and half w = p, 2p, ... add the intervals of starts
+//   and of ends to difference arrays. Runs from lyndon_runs; O(n log n) per string.
 // original: corpus/submissions/4797772.cpp
 use std.strings.{lyndon_runs}
 
