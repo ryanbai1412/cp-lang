@@ -8,7 +8,7 @@
     "crates/cpl-ir/src/lower/expr.rs": 5557,
     "crates/cpl-ir/src/lower/mono.rs": 4450,
     "crates/cpl-check/src/check/expr.rs": 4211,
-    "crates/cpl-check/src/check/stmt.rs": 3249,
+    "crates/cpl-check/src/check/stmt.rs": 3252,
     "crates/cpl-stress/src/spec.rs": 2911,
     "crates/cpl-check/src/check/lends.rs": 2834,
     "crates/cpl-check/src/db.rs": 2489,

@@ -7037,3 +7037,7 @@ are core builtins that a user can't usefully shadow in a fold, so the lint
 compares the callee's name (`crates/cpl-lint/src/rules/taste/forms.rs`
 `spelled_out`) and the `lint_std_names` ratchet rises 135 -> 138. Reverse:
 drop the `ExprKind::Call` arm of `spelled_out` and re-run `--update`.
+
+## 318. `cpl-check` check/stmt.rs grows 3 lines for the L0609 help (2026-11-22)
+
+L0609 `cache_field_written_outside` had no help; a lint help that says why and what to write is the Milestone 1 lint bar, and the help sits at its only emission site. Raised the ratchet baseline for check/stmt.rs by 3 lines. Reverse: move the message into a helper outside the capped file and lower the baseline.

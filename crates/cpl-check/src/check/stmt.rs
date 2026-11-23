@@ -1552,7 +1552,10 @@ impl<'a> Checker<'a> {
                                             "`{}.{}` is a `@cache` field and should only be written inside `{sname}`",
                                             sname, field.text
                                         ),
-                                    ));
+                                    ).with_help(format!(
+                                        "`{sname}`'s methods keep a `@cache` field in step with the fields it derives from; \
+                                         write it from one of them, or drop `@cache` if it is plain state"
+                                    )));
                                 }
                             }
                         }
