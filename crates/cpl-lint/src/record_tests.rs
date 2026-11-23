@@ -136,6 +136,35 @@ fn every_record_fix_clears_its_lint_and_still_parses() {
     }
 }
 
+/// Fixes converge: fixing the fixed `before.cp` again changes nothing, and
+/// what a fix writes is already formatted, so applying it leaves no
+/// follow-up edit.
+#[test]
+fn every_record_fix_converges_and_is_formatted() {
+    let config = all_on();
+    let mut wrong = Vec::new();
+    for lint in LINTS {
+        let (fixed, applied) = fix(lint.trigger, &config);
+        if applied == 0 {
+            continue;
+        }
+        let (again, more) = fix(&fixed, &config);
+        if more != 0 || again != fixed {
+            wrong.push(format!(
+                "{}: a second fix changes it again:\n{again}",
+                lint.name
+            ));
+        }
+        if cpl_fmt::format(&fixed).is_ok_and(|f| f != fixed) {
+            wrong.push(format!(
+                "{}: the fixed file is not formatted:\n{fixed}",
+                lint.name
+            ));
+        }
+    }
+    assert!(wrong.is_empty(), "{}", wrong.join("\n"));
+}
+
 /// A quick fix never adds a checker error: what `before.cp` fixes to has
 /// no error `before.cp` lacked (a migration lint's `before.cp` may already
 /// fail, naming the replaced API).
