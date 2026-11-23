@@ -5,30 +5,45 @@ use cpl_diag::Fix;
 use cpl_syntax::ast::{Arg, CmpOp, Expr, ExprKind};
 
 impl Checker<'_> {
-    /// `enumerate(xs)`, `reversed(xs)`: Python's free functions for what
-    /// CP Lang reads as a member, so the unresolved name gets `xs.items`.
+    /// `enumerate(xs)`, `reversed(xs)`, `pow(a, b)`: Python's free
+    /// functions for what CP Lang spells as a member or an operator, so the
+    /// unresolved name gets `xs.items` or `a ** b`.
     pub(super) fn member_for_call(&mut self, call: &Expr, callee: &Expr, args: &[Arg]) {
-        let (ExprKind::Name(name), [arg]) = (&callee.kind, args) else {
+        let ExprKind::Name(name) = &callee.kind else {
             return;
         };
-        let (member, what) = match name.as_str() {
-            "enumerate" => ("items", "index-element pairs are"),
-            "reversed" => ("rev", "the reversed view is"),
+        let operand = |c: &Self, a: &Arg| {
+            let t = c.text(a.value.span);
+            let atom = !t.contains(' ') || (t.starts_with('[') && t.ends_with(']'));
+            if atom {
+                t.to_string()
+            } else {
+                format!("({t})")
+            }
+        };
+        let (ours, what) = match (name.as_str(), args) {
+            ("enumerate", [xs]) => (
+                format!("{}.items", operand(self, xs)),
+                "index-element pairs are a member",
+            ),
+            ("reversed", [xs]) => (
+                format!("{}.rev", operand(self, xs)),
+                "the reversed view is a member",
+            ),
+            ("pow", [a, b]) => (
+                format!("{} ** {}", operand(self, a), operand(self, b)),
+                "power is the operator `**`",
+            ),
             _ => return,
         };
-        let xs = self.text(arg.value.span);
-        let xs = if xs.contains(' ') && !(xs.starts_with('[') && xs.ends_with(']')) {
-            format!("({xs})")
-        } else {
-            xs.to_string()
-        };
         let Some(diag) = self.sink.last_mut().filter(|d| {
-            d.code == codes::UNRESOLVED_NAME && d.span == callee.span && arg.name.is_none()
+            d.code == codes::UNRESOLVED_NAME
+                && d.span == callee.span
+                && args.iter().all(|a| a.name.is_none())
         }) else {
             return;
         };
-        let ours = format!("{xs}.{member}");
-        diag.help = Some(format!("{what} a member in CP Lang: `{ours}`"));
+        diag.help = Some(format!("{what} in CP Lang: `{ours}`"));
         diag.fixes.clear();
         diag.fix(format!("write `{ours}`"), call.span, ours);
     }

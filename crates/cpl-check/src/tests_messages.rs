@@ -163,10 +163,10 @@ fn in_on_a_list_offers_the_scan() {
 
 #[test]
 fn enumerate_and_reversed_become_members() {
-    let src = "let xs = [1, 2]\nfor (i, x) in enumerate(xs):\n    print(i, x)\nfor x in reversed(xs):\n    print(x)\n";
+    let src = "let xs = [1, 2]\nfor (i, x) in enumerate(xs):\n    print(i, x)\nfor x in reversed(xs):\n    print(x)\nprint(pow(2, xs.len + 1))\n";
     let d = check(src);
     let fixes: Vec<_> = d.iter().map(|d| d.fixes[0].edits[0].1.as_str()).collect();
-    assert_eq!(fixes, ["xs.items", "xs.rev"], "{d:?}");
+    assert_eq!(fixes, ["xs.items", "xs.rev", "2 ** (xs.len + 1)"], "{d:?}");
 }
 
 #[test]
