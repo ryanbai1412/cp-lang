@@ -1025,3 +1025,37 @@ fn report_json_names_the_report_it_wrote() {
         sections[0]
     );
 }
+
+/// A problem is named `a` or `a.cp` alike by every command that takes a
+/// file, as `cpl test a` always did; `cpl a.cp` says which command runs it.
+#[test]
+fn a_problem_name_without_cp_names_its_file() {
+    let dir = scratch("bare-name");
+    std::fs::write(dir.join("a.cp"), "let n: Int = read()\nprint(n * 2)\n").unwrap();
+    std::fs::write(dir.join("case.in"), "21\n").unwrap();
+    let out = cpl(&dir, &["run", "a", "case.in"]);
+    assert_eq!(
+        (out.status.code(), text(&out.stdout)),
+        (Some(0), "42\n".into()),
+        "{}",
+        text(&out.stderr)
+    );
+    let out = cpl(&dir, &["check", "a"]);
+    assert_eq!(out.status.code(), Some(0), "{}", text(&out.stderr));
+    assert!(text(&out.stdout).contains("a.cp: no errors"));
+    let out = cpl(&dir, &["build", "a", "--json"]);
+    assert_eq!(out.status.code(), Some(0), "{}", text(&out.stderr));
+    assert!(dir.join("a.cpp").is_file());
+    // A file of that very name, or a missing one, is left as it is.
+    let out = cpl(&dir, &["check", "b"]);
+    assert_eq!(out.status.code(), Some(EXIT_USAGE.into()));
+    assert!(
+        text(&out.stderr).contains("can't read `b`"),
+        "{}",
+        text(&out.stderr)
+    );
+    let out = cpl(&dir, &["a.cp"]);
+    assert_eq!(out.status.code(), Some(EXIT_USAGE.into()));
+    assert!(text(&out.stderr)
+        .starts_with("cpl: `a.cp` is a file, not a command: `cpl run a.cp` runs it"));
+}

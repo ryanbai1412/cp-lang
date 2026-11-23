@@ -126,6 +126,8 @@ pub fn exec<S: AsRef<str>>(
     };
     let rest: Vec<&str> = args.iter().skip(1).map(AsRef::as_ref).collect();
     let rest = commands::json_spelling(args.first().map_or("", AsRef::as_ref), rest);
+    let named = commands::file_names(args.first().map_or("", AsRef::as_ref), rest);
+    let rest: Vec<&str> = named.iter().map(|arg| arg.as_ref()).collect();
     match args.first().map(AsRef::as_ref) {
         Some("-h" | "--help") if rest == ["--json"] => {
             let _ = writeln!(stdout, "{}", commands::help_json());
@@ -300,6 +302,11 @@ pub fn exec<S: AsRef<str>>(
         }
         Some("lsp") => usage_error("`lsp` talks to an editor over stdio and takes no files".into()),
         Some("dap") => usage_error("`dap` talks to an editor over stdio and takes no files".into()),
+        Some(other) if other.ends_with(".cp") || std::path::Path::new(other).is_file() => {
+            usage_error(format!(
+                "`{other}` is a file, not a command: `cpl run {other}` runs it"
+            ))
+        }
         Some(other) => usage_error(format!("unknown command `{other}`")),
     }
 }

@@ -534,6 +534,36 @@ pub(crate) fn json_spelling<'a>(command: &str, args: Vec<&'a str>) -> Vec<&'a st
     spelled
 }
 
+/// `cpl run a` for `cpl run a.cp`, as `cpl test a` already reads it: the
+/// file argument of a command that takes one gets `.cp` when it has no
+/// extension, names nothing, and `<it>.cp` is a file. Only the first
+/// argument, or every non-option one for `<file>...` commands, is a file.
+pub(crate) fn file_names<'a>(command: &str, args: Vec<&'a str>) -> Vec<std::borrow::Cow<'a, str>> {
+    use std::borrow::Cow;
+    let shape = COMMANDS
+        .iter()
+        .find(|c| c.name == command)
+        .map_or("", |c| c.args);
+    let many = shape == "<file>...";
+    let resolve = |arg: &'a str| -> Cow<'a, str> {
+        let path = std::path::Path::new(arg);
+        let cp = path.with_extension("cp");
+        match path.extension().is_none() && !path.exists() && cp.is_file() {
+            true => Cow::Owned(cp.display().to_string()),
+            false => Cow::Borrowed(arg),
+        }
+    };
+    args.into_iter()
+        .enumerate()
+        .map(|(i, arg)| {
+            match shape.starts_with("<file") && !arg.starts_with('-') && (i == 0 || many) {
+                true => resolve(arg),
+                false => Cow::Borrowed(arg),
+            }
+        })
+        .collect()
+}
+
 /// The first argument that looks like an option (`-x`, `--x`; a lone `-` is
 /// a path) but is none of the command's, for the commands parsed here.
 pub(crate) fn unknown_option<'a>(command: &str, args: &[&'a str]) -> Option<&'a str> {
