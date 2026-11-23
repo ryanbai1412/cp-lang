@@ -52,8 +52,10 @@ Use cases come from walking these combinations:
 
 These came from the catalogue walk and idioms' review:
 
-- **One spelling for a position.** A position is a search over `a.keys`:
-  `a.keys.find(i => p(a[i]))` gives `?I`. There is no `position`.
+- **One spelling for a position (proposal, Ryan's call).** A position is a
+  search over `a.keys`: `a.keys.find(i => p(a[i]))` gives `?I`, with no
+  `position`. The options are in [indices-options.md](indices-options.md);
+  no API is built or removed on it until Ryan decides.
 - **Ties belong to `max` and `min`.** `a.keys.max(by: i => a[i], ties:
   last)` is argmax; `argmax()` stays as its short form, with the same
   `ties:`.
