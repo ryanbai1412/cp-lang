@@ -68,6 +68,10 @@ fn traced(program: &Path, tree: bool) -> String {
     saved
 }
 
+/// What cpl prints when it fails itself: such a run is a bug to fix,
+/// so no saved trace may hold it and blessing never writes one.
+const CRASHED: &str = "this is a cpl bug";
+
 fn fnv64(bytes: &[u8]) -> u64 {
     bytes.iter().fold(0xcbf2_9ce4_8422_2325, |hash, &b| {
         (hash ^ u64::from(b)).wrapping_mul(0x0000_0100_0000_01b3)
@@ -96,7 +100,10 @@ fn every_program_records_its_saved_trace() {
                     for program in *chunk {
                         let golden = program.with_extension("trace");
                         if bless {
-                            std::fs::write(&golden, traced(program, false)).unwrap();
+                            let trace = traced(program, false);
+                            if !trace.contains(CRASHED) {
+                                std::fs::write(&golden, trace).unwrap();
+                            }
                         }
                         let Ok(want) = std::fs::read_to_string(&golden) else {
                             differ.push(format!("{} is not saved", golden.display()));
@@ -105,7 +112,12 @@ fn every_program_records_its_saved_trace() {
                         let want = want.replace("\r\n", "\n");
                         for (engine, tree) in [("vm", false), ("tree-walker", true)] {
                             let got = traced(program, tree);
-                            if got != want {
+                            if got.contains(CRASHED) || want.contains(CRASHED) {
+                                differ.push(format!(
+                                    "{} on the {engine}: cpl crashed, and a crash is never a saved trace",
+                                    golden.file_name().unwrap().to_string_lossy()
+                                ));
+                            } else if got != want {
                                 let at = got
                                     .lines()
                                     .zip(want.lines())
