@@ -20,7 +20,7 @@ Layout: this file is the index. Every domain uses the same layout, copied from `
 
 | # | Seg | Domain | Owns | One line |
 |---|---|---|---|---|
-| 1 | A | [infra](domains/infra/README.md) | CI, gate, land queue, `scripts/`, `justfile`, `mise.toml`, setup docs, release pipeline, installers, public-repo hygiene | main green at every commit, ~10 s warm gate, install in one line |
+| 1 | A | [infra](domains/infra/README.md) | CI, gate, landing and main-green sheriff, `scripts/`, `justfile`, `mise.toml`, setup docs, release pipeline, installers, public-repo hygiene | main green at every commit, ~10 s warm gate, install in one line |
 | 2 | B | [compiler](domains/compiler/README.md) | `crates/cpl-syntax`, `cpl-check`, `cpl-ir`, `cpl-interp`, `prover`; the shared core interfaces | The implementation meets the spec; interpreter == C++ |
 | 3 | B | [perf](domains/perf/README.md) | `crates/cpl-codegen`, `cpl bench` | C++ as fast and small as hand-written |
 | 4 | B | [diagnostics](domains/diagnostics/README.md) | `crates/cpl-diag`, `spec/diagnostics.md` | One error per root cause, naming the fix |

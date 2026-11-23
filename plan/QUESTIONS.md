@@ -215,6 +215,7 @@ Options: (a) warn only; (b) `land.sh` refuses while the latest main CI run is re
 Recommendation: (b) once CI has been green 24 h; today CI is red, so (b) would freeze every lane.
 How to reverse: one env default in `scripts/land.sh`.
 Meanwhile: (a), with the warning printed in every land.
+Superseded (decisions.md 234): `land.sh` is rebase and push and checks no CI; CI gates every main tip and the infra sheriff reverts or fixes a red one.
 
 ### infra: what happens to unlanded devin/* branches?
 Options: (a) delete only branches `git cherry` shows fully landed; (b) also archive to `refs/archive/<name>` and delete any branch with no owning lane after 48 h.

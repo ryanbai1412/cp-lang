@@ -8,7 +8,7 @@ tech-debt.
 
 | Module | Path | What it is for |
 |---|---|---|
-| Fast/full gate | `scripts/check.sh` (376 lines) | The one gate. `--fast`: staged-secret and public-host scan, lockfile registry check, `cargo fmt --check`, clippy, nextest (minus 5 slow tests), doctests, prelude size, debt ratchet, taste reviews, site snippet gate (`web/scripts/gate.mjs`), `cpl-conform all --check`, recovery scoreboard. `--full` adds prover fuzz, judge flags, budgets, wasm smoke, VS Code and editor smoke. Writes step times and `target/gate-fast-time.json`; on a clean tree appends the tree hash to `.git/cpl-gate-passed`. |
+| Fast/full gate | `scripts/check.sh` (376 lines) | The one gate. `--fast`: staged-secret and public-host scan, lockfile registry check, `cargo fmt --check`, clippy, nextest (minus 5 slow tests), doctests, prelude size, debt ratchet, taste reviews, site snippet gate (`web/scripts/gate.mjs`), `cpl-conform all --check`, recovery scoreboard. `--full` adds prover fuzz, judge flags, budgets, wasm smoke, VS Code and editor smoke. Writes step times and `target/gate-fast-time.json`. |
 | Stage cache | `scripts/check_cache.py`, tests `scripts/test_check_cache.py` | Skips a gate stage when the hash of the whole tree minus that stage's excludes (plus tool versions and `CPL_*`/`CARGO_*` env) matches its last pass. Stages: `clippy`, `nextest_doc`, `recovery`, `scoreboard_fast`, `site_gate`. |
 | C++ compile cache | `scripts/cxx-cache.py` (as a `g++` shim), tests `scripts/test_cxx_cache.py` | Reuses a binary built from the same C++ bytes, flags, compiler and system headers; per user, so worktrees start warm. |
 | Gate env | `scripts/gate-env.sh` | Resolves the absolute cargo target dir for `check.sh`. |

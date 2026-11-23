@@ -1,6 +1,6 @@
 # infra
 
-Segment: A. Service. Owns: CI and workflows (`.github/`), the gate (`scripts/check.sh`, `check_cache.py`, `cxx-cache.py`), the land queue (`scripts/land.sh`), hooks (`.githooks/`), `scripts/` machinery, `justfile`, `mise.toml`, setup docs, the release pipeline (`release.yml`, `scripts/release/`), installers (`web/public/install.{sh,ps1}`), the site deploy workflow (`site.yml`), public-repo hygiene. Status 2026-11-22: warm gate 3.7 s unchanged / 77 s after a one-line crate edit; CI red; 0 releases; site deploy blocked on Actions secrets.
+Segment: A. Service. Owns: CI and workflows (`.github/`), the gate (`scripts/check.sh`, `check_cache.py`, `cxx-cache.py`), landing (`scripts/land.sh`, rebase and push) and the sheriff duty of keeping main green, hooks (`.githooks/`), `scripts/` machinery, `justfile`, `mise.toml`, setup docs, the release pipeline (`release.yml`, `scripts/release/`), installers (`web/public/install.{sh,ps1}`), the site deploy workflow (`site.yml`), public-repo hygiene. Status 2026-11-22: warm gate 3.7 s unchanged / 77 s after a one-line crate edit; CI red; 0 releases; site deploy blocked on Actions secrets.
 
 Detail: [PLAN.md](PLAN.md) · code: [ARCHITECTURE.md](ARCHITECTURE.md) · numbers: [metrics.toml](metrics.toml) · log: [worklog.md](worklog.md) · gate design: [design/gate-tiers.md](design/gate-tiers.md)
 
@@ -9,7 +9,7 @@ Keep every other domain moving: main green at every commit, a gate fast enough t
 
 ## Covers
 - **Main green**: CI results, triage of any red within 30 min (fix or revert, never weaken a test), flaky tests, stale `devin/*` branches and lock refs.
-- **Devex**: setup (mise, pnpm, uv, just), the gate and its cache, hooks, `just` tasks, CI speed, the land queue.
+- **Devex**: setup (mise, pnpm, uv, just), the gate and its cache, hooks, `just` tasks, CI speed, landing.
 - **Release**: release workflow, installers, versioning, the site deploy workflow, CONTRIBUTING/SECURITY/license, history hygiene.
 - **Status board**: `scripts/status.py`, running every domain's `metrics.toml` hourly.
 
@@ -25,7 +25,7 @@ The bar for v0.3:
 6. A fresh clone reaches a green gate with the 5 documented commands.
 
 ## Milestones
-- **M1 Main is green and accountable** — CI `gate` and `site build` green on main 10 commits in a row; `land.sh` requires the `Domain:` trailer and warns on foreign paths (tested in `scripts/test_check_cache.py`); `land.sh` appends each landing (queue wait, train size, gate time, bisects) to a log the board reads; superseded `devin/*` branches deleted; `scripts/status.py` writes `plan/STATUS-BOARD.md` from every `metrics.toml`.
+- **M1 Main is green and accountable** — CI `gate` and `site build` green on main 10 commits in a row; `land.sh` requires the `Domain:` trailer and warns on foreign paths (tested in `scripts/test_check_cache.py`); `land.sh` logs each landing (domain, seconds, tries) and `land_stats.py` reports `land_p95_s` <= 30; superseded `devin/*` branches deleted; `scripts/status.py` writes `plan/STATUS-BOARD.md` from every `metrics.toml`.
 - **M2 10-second commit gate** — two tiers ([design/gate-tiers.md](design/gate-tiers.md)): pre-commit runs only what the change can affect (per-crate test selection from the cargo graph, cached by inputs), the full fast gate runs in `land.sh` and CI. Exit: `metrics.toml` `commit_gate_edit_s` <= 10 on 8 cores, `land_gate_warm_s` <= 60, test count unchanged.
 - **M3 Releases that install** — edge published nightly by the GitHub schedule; `install-smoke` job green on 3 OSes after publish; site deploys from CI; `v0.3.0` stable cut on Ryan's OK; CONTRIBUTING.md and SECURITY.md exist.
 
@@ -59,7 +59,7 @@ Numbers miss these; a cold agent scores 1-5 with a reason, on the probes below.
 Probes (cold agent, timed, files touched counted):
 - **Fresh clone**: from `README.md` "Setup" only, reach a green `just check`. Pass = green, < 30 min, no undocumented step.
 - **Add a gate step**: add a new fast check for a made-up script; must land in the right tier and cache stage.
-- **Planted red**: a commit that breaks one test is queued in a train of 3; the agent must explain from `land.sh` output who broke it and what happened to the others.
+- **Planted red**: three commits land, one breaks a test; acting as sheriff from the CI log and `git log` over the run's range, the agent must name the culprit and revert or fix it within one CI run.
 - **Cut a release**: from docs only, dry-run an edge release and verify the artifacts.
 
 ## Improve (highest impact first)
@@ -74,7 +74,7 @@ Probes (cold agent, timed, files touched counted):
 ## Decisions for Ryan
 Each is in [plan/QUESTIONS.md](../../QUESTIONS.md) with options and a default I work on meanwhile.
 1. **Two gate tiers** — pre-commit runs affected-crate tests (<= 10 s); the full fast gate moves to `land.sh` and CI. Default: build it.
-2. **CI red blocks landing?** — when main's CI is red, `land.sh` admits only `CPL_LAND_URGENT=1` fixes. Default: warn only until CI has been green 24 h, then enforce.
+2. **CI red blocks landing?** — superseded by decisions.md 234: `land.sh` never gates; CI gates every main tip and the infra sheriff reverts or fixes a red one.
 3. **Unlanded branches** — archive (`refs/archive/<name>`, restorable) then delete `devin/*` branches with no owner after 48 h. Default: delete only `git cherry`-superseded ones.
 
 ## Ryan's role
