@@ -22,21 +22,22 @@ Spec writes cases, never compiler code: a failing case goes to the owning domain
 
 ## Milestone 1
 
-`plan/product/MILESTONE-1.md`: a Codeforces 1500+ friend learns CPL, solves unfamiliar problems, tests, submits and competes, unaided. What it needs from spec: "a coherent, documented, sufficiently complete subset ... gaps clearly identified rather than disguised", and "documentation examples must actually work".
+`plan/product/MILESTONE-1.md`, due about 09:30 PST 2026-11-23 on edge: a Codeforces 1500+ friend learns CPL, solves unfamiliar problems, tests and competes unaided, on Linux, macOS or Windows, from Neovim/Vim or VS Code. No real judge submissions: "accepted" means passing under the local `codeforces` profile (compiler, flags, limits, 64 KB). From spec: "a coherent, documented, sufficiently complete subset ... gaps clearly identified rather than disguised", and "documentation examples must actually work".
 
 Exit criteria (each checkable):
-1. **Subset frozen.** `spec/SUBSET.md` tags every core chapter section and lib family *supported*, *documented* (spec only) or *known gap* (with the owner worklog line). Every failing case citing a *supported* rule is listed as a known gap with its owner, checked by `conformance-subset.py --check` (first freeze: 92 supported, 3 documented, 86 known-gap cases).
-2. **Examples run.** Every code block in a *supported* chapter passes `cpl-conform spec-blocks` or is `spec-only` with a reason (today 85/185 pass over all chapters).
-3. **Writable from the docs.** A cold rebuild on ten Codeforces/AtCoder Div. 2 A-D problems, reading only `spec/` and `std/`, records 0 contradictions and < 5 holes inside the subset.
-4. **Range keys folded.** Decision 289 is in every chapter and its 7 cases pass (today 4/7; `r[x]`, the outside-key trap and a lent-slice case are compiler-owned).
-5. **Journey tools pinned.** The `check`, `run`, `test`, `stress`, `build` contracts carry rule ids with passing cases (cli, fmt, lint, bundle, stress done).
+1. **Subset frozen.** Done: `spec/SUBSET.md` tags every core and tool rule section; each failing case in a *supported* section is a known gap with its owner; `conformance-subset.py --check` passes (92 supported, 3 documented, 86 known-gap cases). Keep it passing, and shrink the list.
+2. **Examples run.** Every code block in a *supported* chapter passes `cpl-conform spec-blocks` or is `spec-only` with a reason (today 85/185 over all chapters).
+3. **Writable from the docs.** A cold rebuild on Codeforces Div. 2 A-D problems, reading only `spec/` and `std/`, records 0 contradictions and < 5 holes inside the subset (round 6, CSES: 3 contradictions, 26 holes).
+4. **Range keys folded.** Decision 289 is in every chapter and its 7 cases pass (today 4/7; the 3 failures are compiler-owned and listed in SUBSET.md).
+5. **Journey contracts pinned.** `check`, `run`, `test`, `stress`, `build`, the `codeforces` judge profile (size limits, flags, stack) and the four Neovim LSP features (diagnostics, completion, formatting, definition) carry rule ids with cases or named owner tests; cli, fmt, lint, bundle and stress are done.
+6. **Portable.** CRLF source and input, and paths, are specified the same on all three platforms, with cases.
 
-Deferred (milestone's "what can wait"): trait/matrix cells outside the subset, rule ids for trace, DAP, explain and LSP, more bug-catch rounds, `cpl migrate` (R11.4.3), advanced lib chapters (flows, geometry, sequence patterns) beyond *documented*, prelude gaps for non-subset names. New language features only where a journey step is blocked.
+Deferred (in parallel, after blockers): trait/matrix cells outside the subset; trace, DAP and explain rule ids; bug-catch rounds; `cpl migrate` (R11.4.3); advanced lib chapters beyond *documented*; prelude gaps for non-subset names. New language features only where a journey step is blocked.
 
-Top 3 next steps:
-1. Write `spec/SUBSET.md` from per-chapter conformance results; route each failing *supported* case to its owner.
-2. Finish the range-key fold: audit `spec/lib` and `std` docs for positional range reads, keep the 3 failing cases visible and routed.
-3. Rebuild round on M1-style problems (round 6, CSES, is running); fix every contradiction inside the subset.
+Next, in hours (checkpoint in worklog.md every 2 hours):
+1. 21:30-23:30: judge-profile and LSP rule ids with cases; CRLF/path rules; route failures.
+2. 23:30-03:30: round-6 holes inside the subset get a rule, a case or a SUBSET entry; spec-blocks in supported chapters.
+3. 03:30-09:30: rebuild round 7 on Codeforces Div. 2 problems; fix every contradiction; shrink known gaps with owners.
 
 ## Success criteria for v0.3
 

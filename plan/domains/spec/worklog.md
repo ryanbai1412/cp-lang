@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- Checkpoint 21:45: landed SUBSET.md (dc9c48216), Mod fill case, decision 315 (5c174a450). Milestone 1 section updated for the 09:30 deadline, local Codeforces profile, three platforms and Neovim. Next: judge-profile and LSP rule ids, CRLF rules.
 - Decision 315: path lengths are `Int` whatever the weight range (round 6 H-FW-WEIGHT-WIDTH, round 5 H-RANGE-WEIGHT-SUM); `spec/lib/graphs-trees.md` says so; case `std-graph/floyd-warshall-range-weights-sum-past-range.cp` passes. Stdlib: `matrix()` doc still says `[V, V]?W`.
 - Round 6 silent holes, first triage: H-FOR-IF (`spec/core/01-lexical-grammar.md:228`, ch. 6 examples), H-TUPLE-FIELD (`02-values-types.md:105`), H-Z-ZERO (`std/strings.cp` example) and H-MOD-FILL (`std/mod.cp:64`) are already answered; the reader missed them, so no new rule. Added `std-mod/literal-fills-mod-array.cp` (passes) to pin H-MOD-FILL.
 - `spec/SUBSET.md` (decision 314): Milestone 1 subset frozen, 92 supported / 3 documented sections, 86 known-gap cases (conformance 2216/2365 at this commit), `scripts/conformance-subset.py --check` 0 problems. Owners are by folder for now; next: refine owners and shrink the list.
