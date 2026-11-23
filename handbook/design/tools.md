@@ -97,6 +97,25 @@ small.
 - `cpl lsp` never shells out to `cpl`; it links the same crates (so the playground's in-browser LSP and the desktop one agree).
 - Editor keyword lists match `crates/cpl-syntax/src/token.rs` (`editors/smoke.sh`).
 
+
+## Decisions this design rests on
+
+- **Decision 31: the generated C++ runs on the judge's stack, with no
+  depth limit.** A recursion-depth limit rejects correct programs that the
+  judge accepts, such as a DFS down a path of 10^6 vertices. So `cpl run`
+  stops a program only when it really runs out of stack, and `cpl build`
+  runs `main` on a thread sized by the judge profile. The rejected
+  alternatives were a fixed call-depth cap, and leaving the stack to the
+  judge's default, which overflows on the same programs.
+- **Decision 34: a judge is a profile, chosen flag first.** Profiles live
+  in `cpl-judge`, a crate with no dependencies, so the CLI, the playground
+  and stress share them. Codegen sees only a `Target` and never a judge
+  name. The order is: `--judge`, then the file's `// judge:` line, then
+  `cp.toml`, then `generic`. The most local statement wins, as with
+  `// limits:`. The rejected alternative was judge names known inside
+  codegen, where adding a course's judge would need a code change instead
+  of a `[judge.<name>]` table.
+
 ## Changes
 
 - 2026-11-23: first version, from the tools lane's old architecture notes.

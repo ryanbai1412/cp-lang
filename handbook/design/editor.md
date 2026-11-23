@@ -136,6 +136,18 @@ The rules every command and editor feature follows are in
 The quality register in `handbook/domains/tools.md` lists every check;
 targets and current numbers are in `plan/domains/tools/metrics.toml`.
 
+
+## Decisions this design rests on
+
+- **Decision 29: hover shows the declaration's own `///` doc, and the
+  editors are thin.** The doc above a definition is where its cost is
+  written, so hover reads it from wherever the name is declared, std
+  included, instead of keeping a second table of descriptions. Neovim,
+  Emacs and Helix get setups in their own idiom that only start `cpl lsp`.
+  Every feature lives in the server, so it reaches every editor and the
+  playground at once. The rejected alternative was per-editor plugins with
+  their own logic, which drift apart and each need their own tests.
+
 ## Changes
 
 - 2026-11-23: first version, from the tools lane's old architecture notes and

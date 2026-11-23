@@ -587,7 +587,7 @@ uv run scripts/conformance-coverage.py --check ||
 step "conformance matrix: generated cases current, every cell a case or n/a"
 uv run scripts/conformance-matrix.py --check || fail "matrix gate failed; see above"
 uv run scripts/spec-xref.py --check || fail "a rule id names no rule in spec/core; see above"
-uv run scripts/spec-decisions-explained.py --max 37 || fail "a decision cited in spec/ has no handbook explanation; see above"
+uv run scripts/spec-decisions-explained.py --max 34 || fail "a decision cited in spec/ has no handbook explanation; see above"
 
 step "conformance traits: every claimed trait method has a case or a gap line"
 uv run scripts/conformance-traits.py --check || fail "trait gate failed; see above"
