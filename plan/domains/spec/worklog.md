@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- `conformance-bugcatch.py`: a suite run now times out (`--timeout`, default 900 s) and a revert that hangs the suite counts as caught; the focused rerun of 152ffd38 and 701193ef sat over 17 min in one suite run with no timeout.
 - New gate `scripts/conformance-sigs.py` (in check.sh): every named arg in a core/lib fenced block must be a param of some `spec/std` fn of that name; 6 known gaps in `spec/conformance/sig-gaps.txt` (shrink-only), all routed to stdlib. Measured: `uv run scripts/conformance-sigs.py --check` -> `sig gaps: 6 (0 new, 0 fixed)`.
 - core/05's `seen: mut seen` example fails because std `dfs` ignores `seen` (walks its own `vis`); stdlib request.
 - Doc fixes from spec-block errors: lib/flows.md cf863F uses `Val.first!`/`Val.last!` (a domain's `first` is `?`), and lib/ops-ranges.md's inline `Action` says `compose:` like std (was `tags:`). Requests: compiler (impl of a trait alias, `min(by:)` value, `Graph.directed` on records), stdlib (`SegTree(act: assign)`, `Filter` vs `Filtered`). Hole: `labels("S", "T")` in a sum domain (lib/flows.md) is in no core chapter.

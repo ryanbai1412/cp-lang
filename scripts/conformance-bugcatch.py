@@ -53,14 +53,27 @@ def candidates(limit):
     return out
 
 
+HUNG = {"(suite timed out: the revert hangs a case)": "hang"}
+SUITE_TIMEOUT = 900
+
+
+def broken(base, got):
+    if got is HUNG:
+        return list(HUNG)
+    return sorted(k for k, v in base.items() if v == "pass" and got.get(k) != "pass")
+
+
 def run_suite(wt, env, board):
     build = subprocess.run(["cargo", "build", "--release", "-q", "-p", "cpl-conform"], cwd=wt, env=env,
                            capture_output=True, text=True, check=False)
     if build.returncode:
         return None
     exe = Path(env["CARGO_TARGET_DIR"]) / "release" / "cpl-conform"
-    subprocess.run([str(exe), "conformance", "--write", "--scoreboard", str(board)], cwd=wt, env=env,
-                   capture_output=True, text=True, check=False)
+    try:
+        subprocess.run([str(exe), "conformance", "--write", "--scoreboard", str(board)], cwd=wt, env=env,
+                       capture_output=True, text=True, check=False, timeout=SUITE_TIMEOUT)
+    except subprocess.TimeoutExpired:
+        return HUNG
     return json.loads(board.read_text())["suites"]["conformance"]["cases"]
 
 
@@ -72,8 +85,8 @@ def at_fix(wt, env, work, sha, files, head):
     git("clean", "-fdq", cwd=wt)
     git("checkout", head, "--", "spec/conformance", cwd=wt)
     fixed = run_suite(wt, env, work / "fix.json")
-    if fixed is None:
-        return "fix commit does not build", []
+    if fixed is None or fixed is HUNG:
+        return "fix commit does not build or hangs", []
     gone = [f for f in files if git("cat-file", "-e", f"{sha}^:{f}", cwd=wt, check=False).returncode]
     keep = [f for f in files if f not in gone]
     if keep:
@@ -85,17 +98,20 @@ def at_fix(wt, env, work, sha, files, head):
     git("clean", "-fdq", cwd=wt)
     if got is None:
         return "revert does not build", []
-    broke = sorted(k for k, v in fixed.items() if v == "pass" and got.get(k) != "pass")
+    broke = broken(fixed, got)
     return ("caught at fix" if broke else "missed at fix"), broke
 
 
 def main():
+    global SUITE_TIMEOUT
     ap = argparse.ArgumentParser()
     ap.add_argument("--limit", type=int, default=40)
+    ap.add_argument("--timeout", type=int, default=SUITE_TIMEOUT, help="seconds per suite run; a hang counts as caught")
     ap.add_argument("--commits", nargs="*")
     ap.add_argument("--work", default=str(ROOT.parent / "cpl-bugcatch"))
     ap.add_argument("--out", default=str(ROOT / "plan/domains/spec/bugcatch.md"))
     a = ap.parse_args()
+    SUITE_TIMEOUT = a.timeout
     work = Path(a.work)
     wt = work / "tree"
     work.mkdir(parents=True, exist_ok=True)
@@ -109,8 +125,8 @@ def main():
     rows = []
     try:
         base = run_suite(wt, env, work / "base.json")
-        if base is None:
-            sys.exit("bugcatch: HEAD does not build")
+        if base is None or base is HUNG:
+            sys.exit("bugcatch: HEAD does not build or the suite hangs")
         for sha, subj in todo:
             git("checkout", "-f", "-q", head, cwd=wt)
             git("clean", "-fdq", cwd=wt)
@@ -133,7 +149,7 @@ def main():
                 rows.append((sha, subj, "revert does not build", []))
                 print(f"{sha[:8]} skip (does not build)", flush=True)
                 continue
-            broke = sorted(k for k, v in base.items() if v == "pass" and got.get(k) != "pass")
+            broke = broken(base, got)
             rows.append((sha, subj, "caught" if broke else "missed", broke))
             print(f"{sha[:8]} {'caught' if broke else 'MISSED'} ({len(broke)} cases)", flush=True)
     finally:
