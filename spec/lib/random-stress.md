@@ -63,7 +63,8 @@ fn brute(): ...
   the test's input and `read_output()` reads the output being checked,
   token by token like `read`; it rejects by returning `false` or by a
   failing `assert`. `cpl test` and `cpl judge d input output` use it in
-  place of an exact compare (decision 375). Pair it
+  place of an exact compare (decision 375). Under `@!multitest` it runs
+  once per test, on that test's input and output. Pair it
   with a brute that compares feasibility, since a unary checker cannot
   catch a wrong "impossible".
 - A checker sees only the input and the output, never the solution's bindings: a fact

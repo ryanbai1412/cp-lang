@@ -34,6 +34,10 @@ Binary search lives on ranges (round 1). This round adds the rest.
 `bsearch`, `peak`, `valley`. It has no elements, so no `for`, `len` or
 `first_true`. The default `steps: 100` shrinks a 1e18 span below 1e-12.
 
+`ok` is monotone on `r`: `first_true` takes false then true and returns
+the first true, `last_true` takes true then false and returns the last
+true; each is `None` when no element is true (decision 377).
+
 The answer-search idiom is just the range method, read as the statement:
 
 <!-- given:

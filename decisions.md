@@ -7881,3 +7881,12 @@ first Build, Explain or Stress. Editors, Run and Trace never wait for codegen,
 and codegen's growth no longer counts against the cap. The cost is a second
 download of about 2 MB the first time a page builds. Reverse: build one module
 with default features and point the worker's build calls back at it.
+
+## 377. Search shapes, range axes and default float output (2026-11-23)
+
+Rebuild round 21 guessed three things the spec never said, and the
+implementation already does each: `last_true` takes a true-then-false
+predicate (`first_true` false-then-true); an array's axes may be plain ranges
+(`[0..=n, 0..=k]Int`); `print` of an `F64` with no precision gives 10
+decimals in both backends. The spec now states them. Reverse the float
+default by changing `io.precision`'s default and this rule together.

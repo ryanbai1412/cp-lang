@@ -6,6 +6,8 @@ Everything else in the stdlib indexes by these, so they come first.
 
 A **domain** is a finite, ordered index type. Its members are **positions**,
 which are `Ord` in that order (`v < w`, `SortedSet<V>`). (R04.2.23)
+An array's axes may also be plain ranges, one per dimension:
+`[0..=n, 0..=k]Int` is indexed `dp[i, j]` like a product of domains. (R04.2.25)
 Between and around positions sit **cuts**: a domain of n positions has n + 1
 cuts, `D.cuts`. A **range** is a contiguous run of positions, and its two
 ends are cuts. Arrays are `[D]T`, indexed only by `D`, so a vertex never
