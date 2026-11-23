@@ -24,14 +24,19 @@ impl Server {
             self.token_ids += 1;
             let id = self.token_ids;
             let previous = params.get("previousResultId").and_then(Value::as_str);
-            let old = self
-                .tokens
-                .insert(uri, (id, data.clone()))
-                .filter(|(old, _)| delta && previous == Some(old.to_string().as_str()));
+            let sent = self.tokens.entry(uri).or_default();
+            let old = previous
+                .filter(|_| delta)
+                .and_then(|previous| sent.iter().find(|(old, _)| old.to_string() == previous))
+                .map(|(_, old)| old.clone());
+            sent.push((id, data.clone()));
+            if sent.len() > KEPT {
+                sent.remove(0);
+            }
             let numbers = |data: &[u32]| Value::Array(data.iter().map(|&n| n.into()).collect());
             let id = ("resultId", id.to_string().into());
             Reply::result(match old {
-                Some((_, old)) => {
+                Some(old) => {
                     let (start, deleted, inserted) = edit(&old, &data);
                     obj([
                         id,
@@ -51,6 +56,9 @@ impl Server {
         }))
     }
 }
+
+/// How many of a document's last token sets a delta may start from.
+const KEPT: usize = 4;
 
 /// The one splice that turns `old` into `new`: where it starts, how many
 /// numbers it deletes, and what it inserts.

@@ -48,8 +48,10 @@ pub struct Server {
     /// The client asked for run, stress and trace lenses
     /// (`initializationOptions.codeLens`); VS Code draws its own.
     lenses: bool,
-    /// The semantic tokens last sent for each document, with their result id.
-    tokens: HashMap<String, (u64, Vec<u32>)>,
+    /// The semantic tokens last sent for each document, newest last, with
+    /// their result ids: a client may hold any of the last few (VS Code asks
+    /// again for a visible editor while another request is in flight).
+    tokens: HashMap<String, Vec<(u64, Vec<u32>)>>,
     token_ids: u64,
     shutdown: bool,
     exit: Option<i32>,

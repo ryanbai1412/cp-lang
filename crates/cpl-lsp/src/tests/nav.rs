@@ -244,6 +244,17 @@ fn semantic_tokens_delta_sends_one_splice() {
     data.splice(start..start + deleted, inserted);
     let fresh = tokens(&mut server, None);
     assert_eq!(Value::Array(data), fresh.at(&["data"]).clone());
+    // A full request in between (VS Code's own, for a visible editor) leaves
+    // the earlier id usable.
+    let earlier = fresh.at(&["resultId"]).as_str().unwrap_or("").to_string();
+    tokens(&mut server, None);
+    assert!(
+        tokens(&mut server, Some(&earlier))
+            .at(&["edits"])
+            .as_array()
+            .is_some(),
+        "a delta from the set before the last"
+    );
     // An unknown previous id gets the whole set.
     assert!(tokens(&mut server, Some("nope"))
         .at(&["data"])
