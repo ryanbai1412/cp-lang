@@ -273,3 +273,27 @@ fn stress_traps_an_overflow_as_cpl_run_does() {
     assert!(text.contains("FAIL on case 1 (seed 1): RE"), "{text}");
     assert!(text.contains("error[R0202]: integer overflow"), "{text}");
 }
+
+/// A shift past an `Int` traps under stress as under `cpl run`, though
+/// C++ would shift it without a word (`stress/U34`).
+#[test]
+fn stress_traps_a_shift_overflow_as_cpl_run_does() {
+    let file = scratch("shift-overflow");
+    std::fs::write(
+        &file,
+        "let k: 0..=63 = read()\nprint(1 << k)\n\n@gen\nfn top():\n    print(63)\n",
+    )
+    .unwrap();
+    let (code, text) = cpl(&[
+        OsStr::new("stress"),
+        file.as_os_str(),
+        OsStr::new("--cases"),
+        OsStr::new("1"),
+    ]);
+    assert_eq!(code, Some(1), "{text}");
+    assert!(text.contains("FAIL on case 1 (seed 1): RE"), "{text}");
+    assert!(
+        text.contains("`1 << 63` does not fit in an `Int`"),
+        "{text}"
+    );
+}

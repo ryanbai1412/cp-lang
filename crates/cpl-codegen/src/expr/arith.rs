@@ -155,6 +155,11 @@ impl<'p> Emitter<'p> {
                 code.narrow = both_narrow;
                 code
             }
+            (Ty::Int, BinOp::Shl) if !self.facts.fits(self.fn_id, op, l, r) => {
+                let b = self.shift_amount(b, 64);
+                self.need("ishl");
+                Code::primary(format!("cpl::ishl({}, {})", a.text, b.text))
+            }
             (Ty::Int, BinOp::Shl) => {
                 let b = self.shift_amount(b, 64);
                 Code::new(format!("{} << {}", widen(a).at(UNARY), b.at(UNARY)), SHIFT)

@@ -27,6 +27,22 @@ fn interactive_flushes_after_each_print() {
 }
 
 #[test]
+fn a_shift_not_proved_in_range_traps_in_a_checked_build() {
+    let out = cpp("let k: 0..=63 = read()\nvar x = 3\nx <<= k\nprint(1 << k, x)\n");
+    assert!(out.contains("cpl::ishl(1, "), "{out}");
+    assert!(
+        out.contains("x = cpl::ishl(x, cpl::shamt(k, 64));"),
+        "{out}"
+    );
+    let proved = cpp("let k: 0..=62 = read()\nprint(1 << k)\n");
+    assert!(
+        proved.contains("1LL << k") || proved.contains("1 << k"),
+        "{proved}"
+    );
+    assert!(!proved.contains("cpl::ishl("), "{proved}");
+}
+
+#[test]
 fn an_int_op_not_proved_in_range_never_overflows_cpp() {
     let out = cpp("let n: Int = read()\nfor i in 0..n: print(n * 2, i + 1, n - i)\n");
     assert!(out.contains("cpl::imul(n, 2)"), "{out}");

@@ -626,6 +626,7 @@ impl<'p> Facts<'p> {
         match op {
             BinOp::Add => his().and_then(|(x, y)| x.checked_add(y)).is_some(),
             BinOp::Mul => his().and_then(|(x, y)| x.checked_mul(y)).is_some(),
+            BinOp::Shl => his().is_some_and(|(x, y)| (0..64).contains(&y) && x <= i64::MAX >> y),
             BinOp::Sub => true,
             _ => false,
         }

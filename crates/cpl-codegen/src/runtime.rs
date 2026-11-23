@@ -820,6 +820,22 @@ inline __int128 imul128(__int128 a, __int128 b) { return (__int128)((u128)a * (u
 ",
     },
     Piece {
+        name: "ishl",
+        needs: &["fail"],
+        code: "\
+// `a << b` for a shift amount already in 0..64: traps as `cpl run` does in a
+// checked build, wraps in a judge build, and is never C++'s undefined shift.
+inline ll ishl(ll a, ll b) {
+#ifdef LOCAL
+    char why[112];
+    if (a < 0) { snprintf(why, sizeof why, \"`<<` of the negative number %lld\", a); fail(why); }
+    if (b > 0 && a > (std::numeric_limits<ll>::max() >> b)) { snprintf(why, sizeof why, \"integer overflow: `%lld << %lld` does not fit in an `Int` (64 bits)\", a, b); fail(why); }
+#endif
+    return (ll)((unsigned long long)a << b);
+}
+",
+    },
+    Piece {
         name: "first",
         needs: &[],
         code: "\
