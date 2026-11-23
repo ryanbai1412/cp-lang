@@ -682,7 +682,7 @@ impl<'p> Emitter<'p> {
                             && !effects
                                 .calls
                                 .iter()
-                                .any(|f| self.summaries[*f].writes.contains(&global))
+                                .any(|f| self.uses.effects(*f).writes.contains(&global))
                     }
                     None => false,
                 };
@@ -779,7 +779,7 @@ impl<'p> Emitter<'p> {
                                 && !effects
                                     .calls
                                     .iter()
-                                    .any(|f| self.summaries[*f].writes.contains(&global))
+                                    .any(|f| self.uses.effects(*f).writes.contains(&global))
                         }
                         None => false,
                     };
@@ -1258,7 +1258,7 @@ impl<'p> Emitter<'p> {
                     && !effects
                         .calls
                         .iter()
-                        .any(|f| self.summaries[*f].writes.contains(&root))
+                        .any(|f| self.uses.effects(*f).writes.contains(&root))
             }
             // No fn sees a local it isn't passed `mut`, and that is a store.
             // Nor may it read the local whole: that read could move it.

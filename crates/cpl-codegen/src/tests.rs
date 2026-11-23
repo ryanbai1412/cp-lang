@@ -7,6 +7,7 @@ mod devirt;
 mod lend;
 mod loops;
 mod runtime;
+mod uses;
 mod widths;
 
 pub(crate) fn cpp(source: &str) -> String {

@@ -108,7 +108,7 @@ impl Tail {
 
 /// Locals `block` reads whole, not only through an index, field, length
 /// or the elements a `for` walks.
-fn whole_reads(block: &Block) -> std::collections::BTreeSet<usize> {
+pub(crate) fn whole_reads(block: &Block) -> std::collections::BTreeSet<usize> {
     let (mut uses, mut parts) = (Vec::new(), Vec::new());
     walk::deep_exprs(block, &mut |e| match &e.kind {
         ExprKind::Local(s) => uses.push(*s),
@@ -353,37 +353,24 @@ impl<'p> Emitter<'p> {
             return false;
         }
         let program = self.program;
-        let (blocks, params): (Vec<&Block>, &[cpl_ir::ParamDef]) = match self.fn_id {
-            Some(id) => (vec![&program.fns[id].body], &program.fns[id].params),
-            None => (vec![&program.setup, &program.main], &[]),
+        let blocks: Vec<&Block> = match self.fn_id {
+            Some(id) => vec![&program.fns[id].body],
+            None => vec![&program.setup, &program.main],
         };
         if self.facts.stores((self.fn_id, false, slot)) > 1
             || !blocks.iter().all(|b| only_called(program, b, slot, 3))
         {
             return false;
         }
-        let mut effects = Effects::default();
-        let mut whole = std::collections::BTreeSet::new();
-        let mut by_ref = std::collections::BTreeSet::new();
-        for block in &blocks {
-            effects.locals.extend(Effects::of_block(block).locals);
-            whole.extend(whole_reads(block));
-            walk::deep_exprs(block, &mut |e| {
-                if let ExprKind::Closure(c) = e.kind {
-                    let caps = program.closures[c].captures.iter();
-                    by_ref.extend(caps.filter(|c| c.by_ref && !c.is_global).map(|c| c.outer));
-                }
-            });
-        }
+        let home = self
+            .fn_id
+            .map_or(crate::uses::Home::Top, crate::uses::Home::Fn);
         let sunk = self.fn_id.map(|id| &self.sunk[id]);
         let def = &program.closures[cid];
         def.captures.iter().filter(|c| !c.is_global).all(|c| {
             let o = c.outer;
-            !effects.locals.contains(&o)
-                && !whole.contains(&o)
-                && !by_ref.contains(&o)
-                && sunk.is_none_or(|s| !s.contains(&o))
-                && params.get(o).is_none_or(|p| !p.mutable)
+            let found = self.uses.of_binding(home, o);
+            !found.mutated && !found.moved && sunk.is_none_or(|s| !s.contains(&o))
         })
     }
 
@@ -405,7 +392,7 @@ impl<'p> Emitter<'p> {
             walk::deep_expr(e, &mut |x| {
                 opaque |= matches!(x.kind, ExprKind::Closure(_) | ExprKind::CallExpr(..))
             });
-            let writes = |f: &usize| root.0 && this.summaries[*f].writes.contains(&root.1);
+            let writes = |f: &usize| root.0 && this.uses.effects(*f).writes.contains(&root.1);
             !opaque
                 && !effects.calls.iter().any(writes)
                 && !if root.0 {
@@ -427,7 +414,7 @@ impl<'p> Emitter<'p> {
                 continue;
             };
             let callee_writes =
-                callee.is_some_and(|f| root.0 && self.summaries[f].writes.contains(&root.1));
+                callee.is_some_and(|f| root.0 && self.uses.effects(f).writes.contains(&root.1));
             if value.ty.is_scalar()
                 || got.ty == value.ty
                 || muts.contains(&root)
@@ -883,7 +870,7 @@ pub(crate) fn fn_param_only_called(program: &cpl_ir::Program, fn_id: usize, slot
 /// or captured by a closure that may keep it. A closure that captures it
 /// and is itself passed where it is only called (`first_true(m =>
 /// ok(m))`), or passed on itself (`bag.first_true(ok)`), counts as a call.
-fn only_called(program: &cpl_ir::Program, body: &Block, slot: usize, depth: u8) -> bool {
+pub(crate) fn only_called(program: &cpl_ir::Program, body: &Block, slot: usize, depth: u8) -> bool {
     let (mut uses, mut calls, mut escapes) = (0usize, 0usize, false);
     let mut passed_on = std::collections::BTreeSet::new();
     walk::deep_stmts(body, &mut |stmt| {

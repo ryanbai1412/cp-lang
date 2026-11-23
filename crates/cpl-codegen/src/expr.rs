@@ -1815,7 +1815,7 @@ impl<'p> Emitter<'p> {
                         let shared = match crate::lend::given_root(value) {
                             Some(root) => {
                                 lent.contains(&root)
-                                    || (root.0 && this.summaries[id].writes.contains(&root.1))
+                                    || (root.0 && this.uses.effects(id).writes.contains(&root.1))
                             }
                             None => false,
                         };

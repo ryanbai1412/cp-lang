@@ -128,6 +128,8 @@ pub(crate) struct Emitter<'p> {
     /// True when some type holds itself.
     pub show_cycle: bool,
     pub summaries: Vec<FnSummary>,
+    /// What may happen to each heap binding, and what each fn can do.
+    pub uses: crate::uses::Uses,
     /// The fn being emitted (`None` is the top level), and its locals.
     pub fn_id: Option<usize>,
     /// The closure currently being emitted, if inside a closure body.
@@ -257,6 +259,7 @@ impl<'p> Emitter<'p> {
             showing: BTreeSet::new(),
             show_cycle: false,
             summaries: Vec::new(),
+            uses: Default::default(),
             fn_id: None,
             closure_id: None,
             names: Vec::new(),
@@ -301,6 +304,12 @@ impl<'p> Emitter<'p> {
         };
         let feeds = cpl_ir::pushed::Feeds::of(program);
         emitter.summaries = feeds.summaries;
+        emitter.uses = crate::uses::Uses::of(
+            program,
+            &emitter.devirt,
+            &emitter.summaries,
+            emitter.target.checks != crate::Checks::None,
+        );
         emitter.pushers = feeds.pushers;
         emitter.sinks = crate::sink::sinks(
             program,
