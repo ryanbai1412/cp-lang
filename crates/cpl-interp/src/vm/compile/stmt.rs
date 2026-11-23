@@ -261,10 +261,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
         let ok = self.traced
             && args.len() == f.params.len()
             && (args.iter().zip(&f.params)).all(|(a, p)| matches!(a, Arg::Mut(_)) == p.mutable)
-            && !self.program.judge_fns.contains(fn_id)
-            && ScalarKind::of_opt_ty(&e.ty, self.program).is_none()
-            && (ScalarKind::of_ty(&e.ty, self.program).is_some()
-                || !matches!(e.ty, Ty::Tuple(_) | Ty::Struct(_)));
+            && !self.program.judge_fns.contains(fn_id);
         ok.then_some((*fn_id, args.as_slice()))
     }
 

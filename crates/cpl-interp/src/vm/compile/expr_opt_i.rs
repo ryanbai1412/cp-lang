@@ -5,6 +5,17 @@ use cpl_ir::{Builtin, Expr, ExprKind, Mutation, PlaceKind, Ty};
 impl<'p, 'f> Compiler<'p, 'f> {
     pub(super) fn compile_expr_opt_i(&mut self, expr: &'p Expr) -> (u16, u16) {
         let span = expr.span;
+        if let Some((fn_id, args)) = self.traced_call(expr) {
+            let src_v = self.emit_traced_call(expr, fn_id, args, false);
+            let (dst_val, dst_some) = (self.alloc_i(), self.alloc_i());
+            let unbox = Op::UnboxOptI {
+                dst_val,
+                dst_some,
+                src_v,
+            };
+            self.emit(unbox, span);
+            return (dst_val, dst_some);
+        }
         match &expr.kind {
             ExprKind::None => {
                 let v = self.alloc_i();

@@ -1197,6 +1197,16 @@ impl<'p, 'f> Compiler<'p, 'f> {
     }
 
     pub(super) fn compile_expr_small_tuple(&mut self, expr: &'p Expr, dst_base: u16, len: u8) {
+        if let Some((fn_id, args)) = self.traced_call(expr) {
+            let src_v = self.emit_traced_call(expr, fn_id, args, false);
+            let unbox = Op::UnboxSmallTuple {
+                dst_base,
+                len,
+                src_v,
+            };
+            self.emit(unbox, expr.span);
+            return;
+        }
         let span = expr.span;
         match &expr.kind {
             ExprKind::Tuple(fs) if fs.len() == len as usize => {
