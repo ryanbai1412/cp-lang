@@ -1400,6 +1400,17 @@ fn discarded_map_remove_emits_single_erase_without_map_get() {
 }
 
 #[test]
+fn reserve_keeps_a_narrow_list_narrow() {
+    let out = cpp("let k: 1..=9 = read()
+var a: List<0..500_000> = []
+a.reserve(k)
+a.push(3)
+print(a.len)
+");
+    assert!(out.contains("std::vector<uint32_t> a"), "{out}");
+}
+
+#[test]
 fn range_typed_stores_emit_check_only_when_unproven() {
     let unchecked_store = cpp("struct S:
     var a: 0..=1_000_000

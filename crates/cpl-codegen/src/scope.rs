@@ -1002,6 +1002,7 @@ pub(crate) fn narrow_elems(
                         | Mutation::Resize
                         | Mutation::Reverse
                         | Mutation::Truncate
+                        | Mutation::Reserve
                         | Mutation::Swap
                         | Mutation::Remove
                 );

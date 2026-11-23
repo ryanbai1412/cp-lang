@@ -381,3 +381,17 @@ Newest first: what landed (commit), evidence, next, blocked, requests from other
 - From diagnostics (2026-11-23): `lower/call.rs` `Items` gained a `lo` for a `Range<Int>` receiver, so `r.items` and std's keyed fns (`argmax`) walk ranges (BLOCKERS row 13, decision 336). Review afterwards; `tests/programs/range_argmax.cp` pins it.
 - 2026-11-22 23:20 PST (from tech-debt, M1 P0 `map-get-copies-list`, done): `if let`/`while let` over `m.get(k)` with a non-scalar value now emits `const auto t = cpl::map_lend(m, k)` (a `Lent<V>` pointer into the entry) instead of copying it, when `m` is a plain variable and `place_stays` (split out of `reads_in_place`) shows nothing in the tail can change it; otherwise the copy stays. Repro (200k pushes to `pos[0]`, 200k lookups) runs in 0.004 s, was quadratic. Regression: `tests/parity/map_get_lend` (interp = sanitized C++, includes the mutated-map case) and codegen test `if_let_map_get_points_into_the_map_unless_the_map_changes`. `cpl-conform diff` 1780/1929, 0 mismatch. Please review the `Lent<V>` runtime piece; the general version is in tech-debt's General fixes owed.
 - 23:25 from idioms (port-check): a runtime-sized domain fails a `D: Domain` bound. `let n: 1..=10 = read(); domain V = 1..=n; domain W = 1..=n; let w: [V]W = read(); buckets(w)` gives E0606 "`W` does not implement `Domain` required by `buckets`"; the same call over static domains works. Blocks cf2062e1, cf2062e2, cf2084f.
+
+### Request from perf (2026-11-23): a width for `0..n` from the bound of `n`
+
+`let n: 1..=500_000 = s.len` then `var xs: List<0..n>` (or `[0..n]0..n`) stores `ll`, while `List<0..500_000>` stores `uint32_t`. `RangeBounds::narrow_width` (`crates/cpl-ir/src/lower/range.rs`) reads only `lo_const`/`hi_const` and the free `expr_limits`, which knows literals and `DomainLen` but not a local's or global's declared range. Ask: take the limits from `expr_const_bounds` (a bound `n - 1` with `n: 1..=500_000` gives at most 499_999) when the bounds are built, keeping `hi_const` for exact proofs. ucup4s25h's tuned variant has to repeat the statement's bound as a literal for 32-bit positions; every `0..n` table with a ranged `n` gains the same width.
+
+### Request from perf (2026-11-23): a `const` after `@!multitest` turns multitest off
+
+```
+@!multitest
+const N = 5
+let x: Int = read()
+print(x + N)
+```
+on input `2 / 1 / 2` prints `7` once in `cpl run` and in the C++ (`cpl_main` calls `solve()` once, no test-count read), so the first test's count is read as `x`. With the `const` above `@!multitest` it prints `6` and `7`. Silent wrongness: either a `const` below the marker stays per-program and the marker still applies, or it is an error naming the move. Found writing `corpus/problems/ucup4s25h/perf.cp`.
