@@ -10,7 +10,7 @@ This is more than a proof of concept, a toy interpreter or a demo website. The f
 
 - **Due:** about 12 hours, by 2026-11-23 09:30 PST. Plan in hours; checkpoints every 2 hours.
 - **Platforms:** Linux, macOS and Windows, all supported and all tested.
-- **Editors:** Neovim/Vim with a working LSP (the first friend's editor), plus VS Code.
+- **Editors:** Neovim/Vim (the first friend's), VS Code and JetBrains, each with a working LSP.
 - **Judge:** Codeforces. We check submissions against a local Codeforces profile; agents never submit to real judges.
 - **Channel:** the edge release is enough. No stable release needed.
 - Deferred work continues in parallel, but milestone blockers come first.
@@ -36,7 +36,7 @@ Afterwards they can give meaningful feedback on expressiveness, correctness mech
 - **Language and compiler:** a coherent, documented subset that handles representative real problems, including nontrivial algorithms and data structures. It is correct and identical across interpreter and C++; gaps are listed, never disguised.
 - **Standard library:** the foundational containers, algorithms, math and helpers. It need not be exhaustive, but ordinary solutions never require extensive workarounds.
 - **CLI and local testing:** reliable check, run, sample tests, custom tests, checkers and judge-ready builds; sample import through Competitive Companion.
-- **Editors:** Neovim/Vim and VS Code with highlighting, diagnostics, completion and formatting, so the user never switches between disconnected tools.
+- **Editors:** Neovim/Vim, VS Code and JetBrains with highlighting, diagnostics, completion and formatting, so the user never switches between disconnected tools.
 - **Website and learning:** a credible site, a concise intro guide, searchable docs, runnable examples that actually work, and enough practice to teach the core language model.
 - **Submission:** a reliable self-contained C++17 file for Codeforces. Single-test and multitest problems work; other formats work where feasible and are clearly scoped where not.
 - **Debugging:** high-quality diagnostics and runtime errors, print debugging, assertions, and fast reproduction of failing cases. A basic integrated brute/stress workflow is the differentiator to show. Full time-travel debugging is not required.
@@ -51,7 +51,6 @@ These don't block the milestone unless testing shows they are essential:
 - Automatic generation and shrinking for arbitrary input structures.
 - Advanced static performance analysis and inline resource annotations.
 - Direct submission to judges.
-- Comprehensive JetBrains support.
 - A third-party package ecosystem.
 - Long-range backward compatibility across language versions.
 - Exhaustive beginner tutorials.
