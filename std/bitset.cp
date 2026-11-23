@@ -1494,3 +1494,11 @@ fn subset_parity_constructors_and_complement():
     assert s2.len == 1 and P(3) in s2 and P(64) not in s2
     let evens = Bitset<P>.of([p for p in P if p.ord % 2 == 0])
     assert evens.len == 35 and P(0) in evens and P(1) not in evens and P(68) in evens
+
+impl Show for DynBitset:
+    fn show(a):
+        var out = ""
+        for v in a.each():
+            if not out.is_empty: out += " "
+            out += "{v}"
+        out

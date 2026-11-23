@@ -1058,3 +1058,23 @@ fn roots_and_values_yield_one_entry_per_component():
     var vs = w.values().collect()
     vs.sort()
     assert vs == [6, 6, 9]
+
+impl Show for Dsu<V>:
+    fn show(d):
+        var out = ""
+        for v in V:
+            var x = v.ord
+            while d.p[x] >= 0: x = d.p[x]
+            if not out.is_empty: out += " "
+            out += "{V.nth(x)}"
+        out
+
+impl Show for DsuOf<V, T>:
+    fn show(d):
+        var out = ""
+        for v in V:
+            var x = v
+            while d.up[x] != x: x = d.up[x]
+            if not out.is_empty: out += " "
+            out += "{x}"
+        out

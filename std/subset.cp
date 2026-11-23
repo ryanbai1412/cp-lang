@@ -184,3 +184,11 @@ fn subset_count(n: Int) -> Int:
     with checks(asserts: on):
         assert n <= 25, "Subset over {n} values: at most 25"
     1 << n
+
+impl Show for Subset<B>:
+    fn show(s):
+        var out = ""
+        for b in s.each():
+            if not out.is_empty: out += " "
+            out += "{b}"
+        out
