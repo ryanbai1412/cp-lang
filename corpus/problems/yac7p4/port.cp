@@ -1,6 +1,7 @@
 // YAC 7 P4 (today/ runnable subset) — original: corpus/submissions/5705324.cpp
 // Uses a SegTree over Euler preorder positions to support first_ge/min active tin
 // since proto/cpc Set<T> lacks ordered first/first_ge.
+use std.math.{bit_len}
 
 let n: 1..=200_000 = read()
 let m: 1..=200_000 = read()
@@ -20,9 +21,7 @@ for _ in 0..n - 1:
 var queries: [0..m]V = read()
 
 // Iterative Euler tour + binary lifting
-var logn = 1
-while (1 << logn) <= n:
-    logn += 1
+let logn = bit_len(n)
 
 var par: [V]?V = None
 var depth: [V]Int = 0

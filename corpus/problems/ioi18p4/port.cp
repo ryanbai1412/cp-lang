@@ -2,17 +2,15 @@
 // original: corpus/submissions/4724581.cpp (grader function create_circuit)
 // stdin here: M n, then A[0..n).
 // stdout: three lines, C[0..=M], X and Y (each X/Y line starts with the count).
+use std.math.{bit_len}
 let m: 1..=100000 = read()
 let n: 1..=200000 = read()
 domain Seq = 0..n
 let a: [Seq]1..=m = read()
 
 // 2^L leaves >= n + 1 targets (A, then the origin)
-var l = 1
-var leaves = 2
-while leaves < n + 1:
-    l += 1
-    leaves *= 2
+let l = bit_len(n)
+let leaves = 1 << l
 let unused = leaves - (n + 1)
 
 fn bitrev(p: Int) -> Int:

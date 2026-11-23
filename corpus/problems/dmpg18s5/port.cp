@@ -39,9 +39,7 @@ for d in 1..=max_v:
         divs[v].push(d)
         v += d
 
-var bsize = 1
-while (bsize + 1) * (bsize + 1) <= n:
-    bsize += 1
+let bsize = n.isqrt
 let nb = (n - 1) / bsize + 1
 var block_cnt: [0..nb, 0..=max_v]Int = 0
 
