@@ -206,7 +206,11 @@ impl<'a> Parser<'a> {
                     let close = match next {
                         // `} else {`: the `else` keeps the `}`'s indentation.
                         Some(e) => Span::new(t.span.start, e.span.start),
-                        None if blank_after(t.span.end) => Span::new(line as u32, t.span.end),
+                        None if blank_after(t.span.end) => {
+                            // A CRLF line ends in `\r\n`: drop both with the `}` line.
+                            let cr = self.src[..line].ends_with('\r') as usize;
+                            Span::new((line - cr) as u32, t.span.end)
+                        }
                         None => return None,
                     };
                     return indent.trim().is_empty().then(|| {

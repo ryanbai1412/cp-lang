@@ -164,3 +164,10 @@ fn cpp_declarations_are_one_error_that_writes_let() {
         .diagnostics
         .is_empty());
 }
+
+#[test]
+fn the_brace_fix_drops_a_crlf_line_whole() {
+    let src = "let x = 3\r\nif x > 2 {\r\n    print(x)\r\n}\r\n";
+    let edits = &parse_file(src).diagnostics[0].fixes[0].edits;
+    assert_eq!((edits[1].0.start, edits[1].0.end), (35, 38), "{edits:?}");
+}

@@ -272,6 +272,7 @@ fn newcomer_scoreboard() {
     }
     let show = std::env::var("NEWCOMER_SHOW").ok();
     let mut by_habit: BTreeMap<&str, Tally> = BTreeMap::new();
+    let mut crlf_differs = Vec::new();
     for (n, c) in cases.iter().enumerate() {
         let (original, tests) = &tests[&c.problem];
         let path = dir
@@ -293,6 +294,11 @@ fn newcomer_scoreboard() {
         t.first_right += right as u32;
         t.fixable += !errs[0].fixes.is_empty() as u32;
         let (fixed, _) = cpl_cli::apply_error_fixes(&path, &c.src);
+        // Windows: the same copy with CRLF line ends gets the same fixes.
+        let (crlf, _) = cpl_cli::apply_error_fixes(&path, &c.src.replace('\n', "\r\n"));
+        if crlf.replace("\r\n", "\n") != fixed {
+            crlf_differs.push(format!("{} {}: {}", c.problem, c.line + 1, c.habit));
+        }
         let runs =
             fixed == *original || (errors(&path, &fixed).is_empty() && passes(&fixed, tests, n));
         t.runs += runs as u32;
@@ -357,5 +363,9 @@ fn newcomer_scoreboard() {
         pct(all.runs) >= 98.0,
         "fewer than 98% of copies run right after `cpl fix` ({:.1}%)",
         pct(all.runs)
+    );
+    assert!(
+        crlf_differs.is_empty(),
+        "CRLF copies fixed differently: {crlf_differs:#?}"
     );
 }
