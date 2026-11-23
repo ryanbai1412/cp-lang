@@ -5,7 +5,10 @@ Status: proposal. Owner: debugger. Reverse by deleting this file; nothing ships 
 ## Problem
 
 The 10^7-step budget test (`cargo test --release -p cpl-interp --test trace_log ten_million -- --ignored --nocapture`)
-measures scalar 5.39x and array 5.62x the untraced run; the observe-only hooks already cost 2.1-2.2x.
+measures scalar 5.39x and array 5.62x the untraced run (124.6 ms untraced, 307.2 ms observed, 671.3 ms recorded;
+array 178.2 / 451.2 / 1001.3 ms), so the observe-only hooks alone cost 2.47x and 2.53x. That is the floor
+for this design: recording only lines and frames adds `Log::step` to the observed run, which leaves under 0.5x
+of headroom against a 3x ratio, and more against the absolute bar.
 A `perf record` of that test spreads the time flat: `exec_chunk_core` 28%, `exec_trace` 14%, then
 `step_rest`, `raw_locals`, `raw_write`, `Arc::make_mut`, `locals_ints`, `set_int_item` at 1-4% each.
 No single hot spot is left; a 64-slot line cache and an inline loop-counter path were both noise.
