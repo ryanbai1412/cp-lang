@@ -65,7 +65,7 @@ numbers and layout; `W` warnings; `L` lints; `R` runtime traps.
 | E0408 | assign_into_range *(0.3)* | `r[i] = x`: `r` is a `Range`, which has no storage to write; copy it with `List(r)` first (R07.2.5) |
 | E0501 | unsupported | `yield` outside a generator |
 | E0502 | non_ascii | `é` is not ASCII; a Str literal holds single-byte ASCII characters only |
-| E0503 | removed_syntax | names the 0.3 spelling (`D.bounds` is `D.cuts`, `(+, max)` is `each(+, max)`, `.enumerate()` is `.keyed().items`, `@alt(main)` is `@alt(program)`) |
+| E0503 | removed_syntax | names the 0.3 spelling (`D.bounds` is `D.cuts`, `(+, max)` is `each(+, max)`, `.enumerate()` is `.keyed().items`, `@alt(main)` is `@alt(program)`, `@allow(x)` is `with lint(x: allow)`) |
 | E0504 | not_implemented | planned syntax this version reads but does not implement yet; the help names today's spelling |
 | E0601 | lent_twice | `a` is lent `mut` here while lent at line N |
 | E0602 | used_while_lent | `xs` is written while the view `w` (line N) still reads it |
