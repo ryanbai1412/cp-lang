@@ -239,3 +239,10 @@ fn a_number_getter_called_with_parentheses_drops_them() {
         .collect();
     assert_eq!(codes, [("E0304", ""), ("E0304", "")], "{d:?}");
 }
+
+#[test]
+fn substr_and_substring_become_slices() {
+    let d = check("let s = \"abcd\"\nprint(s.substr(1, 2), s.substring(1, 3))\n");
+    let fixes: Vec<_> = d.iter().map(|d| d.fixes[0].edits[0].1.as_str()).collect();
+    assert_eq!(fixes, ["s[1..1 + 2]", "s[1..3]"], "{d:?}");
+}

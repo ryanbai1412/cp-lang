@@ -54,6 +54,21 @@ impl Checker<'_> {
                 ),
                 _ => return,
             },
+            ("substr" | "substring", [a, b]) => match &callee.kind {
+                ExprKind::Field { base, .. } => {
+                    let (a, b) = (self.text(a.value.span), self.text(b.value.span));
+                    let end = if name == "substr" {
+                        format!("{a} + {b}")
+                    } else {
+                        b.to_string()
+                    };
+                    (
+                        format!("{}[{a}..{end}]", self.text(base.span)),
+                        "a substring is a slice",
+                    )
+                }
+                _ => return,
+            },
             _ => return,
         };
         let Some(diag) = self
