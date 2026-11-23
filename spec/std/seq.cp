@@ -863,8 +863,8 @@ pub fn compress<S: Seq, T>(all: S) -> (domain C, Compressed<C, T>):
 /// example: `let (domain P, piece) = (0..10).pieces(cuts: [3, 7]); [piece[p].len for p in P] == [3, 4, 3]`
 @allow(unproven_list_index)
 pub fn pieces<D, S: Seq>(self: Range<D>, cuts: S) -> (domain P, [P]Range<D>):
-    let a = self.start
-    let b = self.end
+    let a = self.l
+    let b = self.r
     if self.is_empty:
         for c in cuts: assert a <= c and c <= b, "pieces: cut outside range"
         domain P = 0..0
@@ -897,16 +897,16 @@ pub fn covering<P, D>(self: [P]Range<D>, r: Range<D>) -> Range<P>:
     var (lo, hi) = (0, P.count)
     while lo < hi:
         let m = (lo + hi) / 2
-        if self[P(m)].start < r.start: lo = m + 1 else: hi = m
+        if self[P(m)].l < r.l: lo = m + 1 else: hi = m
     let i = lo
     (lo, hi) = (0, P.count)
     while lo < hi:
         let m = (lo + hi) / 2
-        if self[P(m)].end <= r.end: lo = m + 1 else: hi = m
+        if self[P(m)].r <= r.r: lo = m + 1 else: hi = m
     let j = lo
-    let at_i = if i < P.count: self[P(i)].start else: self[P.last!].end
-    let at_j = if j > 0: self[P(j - 1)].end else: self[P.first!].start
-    assert at_i == r.start and at_j == r.end, "covering: an end of the range is not a cut"
+    let at_i = if i < P.count: self[P(i)].l else: self[P.last!].r
+    let at_j = if j > 0: self[P(j - 1)].r else: self[P.first!].l
+    assert at_i == r.l and at_j == r.r, "covering: an end of the range is not a cut"
     span(P.cuts(i), P.cuts(j))
 
 /// The first `f(x)` that is not `None`, stopping there; `None` if every one is.
@@ -992,7 +992,7 @@ pub fn cycle<D>(self: [D]D, from: D) -> yields D:
 pub fn halve<D>(self: Range<D>) -> ?(Range<D>, Range<D>):
     if self.len <= 1: return None
     let m = self.mid
-    Some((self.start..m, m..self.end))
+    Some((self.l..m, m..self.r))
 
 /// O(1). The middle cut: ⌊len/2⌋ elements before it; `r.l` when empty. Its `.r` is the
 /// middle element only when `r` is non-empty, so guard with `if r.is_empty` first.
@@ -1003,8 +1003,8 @@ pub fn halve<D>(self: Range<D>) -> ?(Range<D>, Range<D>):
 /// example: `(0..5).mid.r == Some(2)`
 @get pub fn mid<D>(self: Range<D>) -> Cut<D>:
     let n = self.len
-    if n == 0: return self.end
-    (self[n / 2]..self[n / 2]).start
+    if n == 0: return self.r
+    (self[n / 2]..self[n / 2]).l
 
 /// O(1). The positions in both ranges.
 ///
@@ -1071,7 +1071,7 @@ pub fn bsearch<D>(self: Range<D>, ok: D -> Bool, last: Bool = false) -> Cut<D>:
         let m = lo + (hi - lo) / 2
         if ok(self[m]) != last: hi = m
         else: lo = m + 1
-    if lo < n: (self[lo]..self[lo]).start else: self.end
+    if lo < n: (self[lo]..self[lo]).l else: self.r
 
 /// The two ends of a range as offsets, `(lo, hi)` with `lo <= hi`: what a range query walks.
 /// A range written backwards, `P(3)..P(1)`, stops the program here: no query silently answers
@@ -1082,8 +1082,8 @@ pub fn bsearch<D>(self: Range<D>, ok: D -> Bool, last: Bool = false) -> Cut<D>:
 /// traps: when the range is written backwards
 /// example: `(2..5).ends == (2, 5)`
 @get pub fn ends<D>(self: Range<D>) -> (Int, Int):
-    let lo = self.start.ord
-    let hi = self.end.ord
+    let lo = self.l.ord
+    let hi = self.r.ord
     assert lo <= hi, "the range is written backwards"
     (lo, hi)
 
@@ -3507,7 +3507,7 @@ pub fn outermost<D, S: Seq<Range<D>>>(self: S) -> List<Range<D>>:
     rs.sort(by: p => (p.1.start, -Int(p.1.end), p.0))
     var out: List<Range<D>> = []
     for (_, r) in rs:
-        if out.len == 0 or out[out.len - 1].end < r.end: out.push(r)
+        if out.len == 0 or out[out.len - 1].r < r.r: out.push(r)
     out
 
 /// O(1). A list's keys: `0..xs.len`, in increasing order.

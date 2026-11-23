@@ -947,8 +947,8 @@ fn li_chao_matches_a_scan_over_lines_and_segments():
                 lines.push((l:, a:, b:))
             for x in lo..=hi:
                 let here = [e.l.at(x) for e in lines if e.a <= x and x <= e.b]
-                assert low.at(x) == min(here)
-                assert high.at(x) == max(here)
+                assert low.at(x) == here.min()!
+                assert high.at(x) == here.max()!
     var ties = LiChao<Counted, (cost: Int, used: Int)>(min, 0..=10)
     ties.add(Counted(1, 0, 3))
     ties.add(Counted(1, 0, 2))
@@ -985,7 +985,7 @@ fn knuth_matches_the_cubic_interval_dp():
         for len in 2..=n:
             for i in 0..=n - len:
                 let j = i + len
-                slow[i][j] = pre[j] - pre[i] + min(slow[i][k] + slow[k][j] for k in i + 1..j)
+                slow[i][j] = pre[j] - pre[i] + [slow[i][k] + slow[k][j] for k in i + 1..j].min()!
         assert dp == slow
 
 @test

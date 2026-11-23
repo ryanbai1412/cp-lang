@@ -247,8 +247,8 @@ pub struct SegTree<D, T, F = Int>(m: Monoid<T>):
     /// order: position `i` holds `f(i)`
     /// traps: never
     /// example: `let w = [1, 2, 3]; SegTree<0..3, Int>.of(+, i => w[i] * 2).all == 12`
-    pub fn of<M>(op: M, f: D -> T) -> SegTree<D, T>:
-        var s = SegTree<D, T>.build(Monoid<T>.of(op), [D] i => f(i), None)
+    pub fn of<M>(op: M, f: D -> T) -> SegTree<D, T, F>:
+        var s = SegTree<D, T, F>.build(Monoid<T>.of(op), [D] i => f(i), None)
         s.source = f
         s
 
@@ -395,11 +395,11 @@ fn folds_match_a_plain_array():
         st.set(i, a[i])
         let l = V.nth(rand(0, 10))
         let r = V.nth(rand(l.to_idx, 10))
-        assert st.fold(l..=r) == max(a[v] for v in l..=r)
-    assert st.all == max(a[v] for v in V)
+        assert st.fold(l..=r) == [a[v] for v in l..=r].max()!
+    assert st.all == [a[v] for v in V].max()!
     assert st.fold(V(3)..V(3)) == Int.MIN
-    assert st.fold(..V(4)) == max(a[v] for v in V if v < V(4))
-    assert st.fold(V(4)..) == max(a[v] for v in V if v >= V(4))
+    assert st.fold(..V(4)) == [a[v] for v in V if v < V(4)].max()!
+    assert st.fold(V(4)..) == [a[v] for v in V if v >= V(4)].max()!
 
 @test
 fn at_is_a_writable_leaf():
@@ -418,7 +418,7 @@ fn at_is_a_writable_leaf():
         let l = V.nth(rand(0, 8))
         let r = V.nth(rand(l.to_idx, 8))
         assert st.fold(l..=r) == sum(a[v] for v in l..=r)
-    assert st.all == sum(a)
+    assert st.all == a.sum()
 
 @test
 fn every_bare_operator_folds():
@@ -447,7 +447,7 @@ fn of_and_refresh_follow_the_formula():
         let i = V.nth(rand(0, 8))
         a[i] = rand(-20, 20)
         st.refresh(i)
-        assert st.all == min(a[v] + v.ord for v in V)
+        assert st.all == [a[v] + v.ord for v in V].min()!
         assert st.get(i) == a[i] + i.ord
 
 @test

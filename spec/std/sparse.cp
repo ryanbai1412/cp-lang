@@ -51,8 +51,8 @@ pub struct SparseTable<D, T>(op: (T, T) -> T):
     /// example: `SparseTable(max, [3, 1, 4]).fold(0..2) == 3`
     /// example: `SparseTable(min, [3, 1, 4]).fold(1..2) == 1`
     pub fn fold(self, r: Range<D>) -> T:
-        let lo = r.start.ord
-        let hi = r.end.ord
+        let lo = r.l.ord
+        let hi = r.r.ord
         assert lo < hi
         let k = bit_width(hi - lo) - 1
         let off = k * n
@@ -161,8 +161,8 @@ pub struct DisjointSparseTable<D, T>(op: (T, T) -> T):
     /// example: `DisjointSparseTable((a, b) => a + b, [3, 1, 4]).fold(1..3) == 5`
     /// example: `DisjointSparseTable((a, b) => a, [7, 8, 9]).fold(1..3) == 8`
     pub fn fold(self, r: Range<D>) -> T:
-        let lo = r.start.ord
-        let hi = r.end.ord
+        let lo = r.l.ord
+        let hi = r.r.ord
         assert lo < hi
         let r1 = hi - 1
         if lo == r1:
@@ -310,7 +310,7 @@ pub struct LinearRmq<D, T>(before: (T, T) -> Bool):
         for b in 0..nb:
             var cur: U64 = U64(0)
             for i in 64 * b..min(64 * b + 64, n):
-                while cur != U64(0) and before(vals[i], vals[64 * b + bit_width(cur) - 1]):
+                while cur != U64(0) and before(q.vals[i], q.vals[64 * b + bit_width(cur) - 1]):
                     cur ^= U64(1) << (bit_width(cur) - 1)
                 cur |= U64(1) << (i - 64 * b)
                 q.mask.push(cur)
@@ -371,10 +371,10 @@ fn range_min_matches_brute_force():
     let a = [V] v => rand(-50, 50)
     let st = SparseTable<V, Int>(min, a)
     for l in V:
-        for r in l..=V.last:
-            assert st.fold(l..=r) == min(a[v] for v in l..=r)!
-    assert st.fold(..=V(5)) == min(a[v] for v in V if v <= V(5))!
-    assert st.fold(V(8)..) == min(a[v] for v in V if v >= V(8))!
+        for r in l..=V.last!:
+            assert st.fold(l..=r) == [a[v] for v in l..=r].min()!
+    assert st.fold(..=V(5)) == [a[v] for v in V if v <= V(5)].min()!
+    assert st.fold(V(8)..) == [a[v] for v in V if v >= V(8)].min()!
 
 @test
 fn gcd_max_bitwise_and_custom_semigroup_tables():
@@ -402,7 +402,7 @@ fn disjoint_sparse_table_handles_non_idempotent_non_commutative_folds():
     let a = [V] _ => rand(-20, 20)
     let st_sum = DisjointSparseTable<V, Int>(+, a)
     for l in V:
-        for r in l..=V.last:
+        for r in l..=V.last!:
             assert st_sum.fold(l..=r) == sum(a[v] for v in l..=r)
     domain P = 0..7
     let words = [P] p => ["a", "b", "c", "d", "e", "f", "g"][p.to_idx]

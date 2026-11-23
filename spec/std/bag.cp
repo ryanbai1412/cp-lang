@@ -262,7 +262,7 @@ pub struct SortedBag<K>:
     /// example: `var b = SortedBag.of([1, 3, 3, 5, 7]); b.drain_range(3..6).collect() == [3, 3, 5] and b.to_list() == [1, 7]`
     pub fn drain_range(mut self, r: Range<K>) -> yields K:
         if r.is_empty: return
-        while let x = self.range_first(Some(r.start), true, Some(r.end), false):
+        while let x = self.range_first(Some(r.l), true, Some(r.r), false):
             let _ = self.remove(x)
             yield x
 
@@ -1195,7 +1195,7 @@ pub struct SortedSet<K>:
     /// traps: when both `after` and `before` are given
     /// example: `var s = SortedSet.of([1, 2, 5, 8]); s.drain(after: 1, while: x => x < 6) == [2, 5] and s.to_list() == [1, 8]`
     /// example: `var s = SortedSet.of([1, 2, 5, 8]); s.drain(before: 8, while: x => x > 1) == [5, 2]`
-    pub fn drain(mut self; after: ?K = None, before: ?K = None, while ok: K -> Bool) -> List<K> = bag.drain(after: after, before: before, while: ok)
+    pub fn drain(mut self; after: ?K = None, before: ?K = None, while ok: K -> Bool) -> List<K> = bag.drain(after:, before:, while: ok)
 
     /// The keys of `self` inside `r`, as an O(1) view; replaces `first_ge`, `first_gt`, `last_le`,
     /// `last_lt` and `count_range` (decision 103). `r` is any ordered range: `a..b`, `a..=b`, `..b`,
@@ -1529,9 +1529,8 @@ pub struct SortedMap<K, V>:
     /// traps: when both `after` and `before` are given
     /// example: `var m: SortedMap<Int, Int> = SortedMap(); m.set(1, 10); m.set(4, 40); m.set(6, 60); m.drain(after: 1, while: (k, v) => v < 50) == [(4, 40)] and m.len == 2`
     pub fn drain(mut self; after: ?K = None, before: ?K = None, while ok: (K, V) -> Bool) -> List<(K, V)>:
-        let gone = ks.drain(after: after, before: before, while: k => ok(k, vals.get(k)!))
-        var out: List<(K, V)> = []
-        for k in gone: out.push((k, vals.remove(k)!))
+        let gone = ks.drain(after:, before:, while: k => ok(k, vals.get(k)!))
+        let out: List<(K, V)> = [(k, vals.remove(k)!) for k in gone]
         out
 
     /// Split off and return all entries with key `>= k`.
@@ -2097,7 +2096,7 @@ pub struct BucketCount:
         let n = max(r.len, 0)
         var bs = 1
         while bs * bs < n: bs += 1
-        BucketCount(r.start, r.start + n, bs, 0, List.filled(n, 0), List.filled(n / bs + 1, 0))
+        BucketCount(r.l, r.l + n, bs, 0, List.filled(n, 0), List.filled(n / bs + 1, 0))
 
     /// O(1). Add `delta` (default 1; may be negative) copies of `x`.
     ///
