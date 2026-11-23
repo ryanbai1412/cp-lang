@@ -1378,15 +1378,25 @@ pub(crate) fn show(
                 rec(out, value, value_ty);
             }
         }
+        // A range is a `Seq`: it shows its elements (R10.3.1).
         (Value::Range128(lo, hi), Ty::Range(_)) => {
-            let _ = write!(out, "{lo}..{hi}");
+            for i in *lo..*hi {
+                if i > *lo {
+                    out.push(b' ');
+                }
+                let _ = write!(out, "{i}");
+            }
         }
         (Value::Range(lo, hi), Ty::Range(inner)) => {
-            if let Ty::Pos(d) = **inner {
-                let dlo = domains[d].0;
-                let _ = write!(out, "{}..{}", lo + dlo, hi + dlo);
-            } else {
-                let _ = write!(out, "{lo}..{hi}");
+            let dlo = match **inner {
+                Ty::Pos(d) => domains[d].0,
+                _ => 0,
+            };
+            for i in *lo..*hi {
+                if i > *lo {
+                    out.push(b' ');
+                }
+                let _ = write!(out, "{}", i + dlo);
             }
         }
         _ => {}

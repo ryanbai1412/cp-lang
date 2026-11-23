@@ -43,6 +43,7 @@ pub fn sep_of(elem: &Ty, structs: &[StructDef]) -> Sep {
         | Ty::Enum(_)
         | Ty::Array { .. }
         | Ty::List(_)
+        | Ty::Range(_)
         | Ty::Map(..)
         | Ty::HashMap(..)
         | Ty::Set(_)

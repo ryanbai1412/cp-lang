@@ -1,4 +1,4 @@
-// expect: ok, output "1\n3 1 5 10 4..5 5..6 0 1 0 5..10 3..5 0..3\n1 0\n3\n1 2 1\nYES"
+// expect: ok, output "1\n3 1 5 10 4\n5 0 1 0 5 6 7 8 9\n3 4\n0 1 2\n1 0\n3\n1 2 1\nYES"
 use std.interval.{SparseIntervalMap}
 use std.rand.{Rng}
 print(SparseIntervalMap(0, 1_000_000_000, 0).runs)

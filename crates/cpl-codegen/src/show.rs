@@ -256,19 +256,21 @@ impl<'p> Emitter<'p> {
                 b.push_str("        if (!first) cpl::put_char('\\n');\n        first = false;\n");
                 b.push_str(&format!("        {shown_key}\n        cpl::put_char(' ');\n        {shown_value}\n    }}\n"));
             }
+            // A range is a `Seq`: it shows its elements (R10.3.1).
             Ty::Range(inner) => {
-                if let Ty::Pos(d) = **inner {
-                    let dlo = format!("{}_lo", dom_ident(program, d));
-                    self.need("put_int");
-                    b.push_str(&format!(
-                        "    cpl::put_int((ll)v.lo + {dlo}); cpl::put_str(\"..\"); cpl::put_int((ll)v.hi + {dlo});\n"
-                    ));
-                } else {
-                    self.need("put_int");
-                    b.push_str(
-                        "    cpl::put_int(v.lo); cpl::put_str(\"..\"); cpl::put_int(v.hi);\n",
-                    );
-                }
+                let (put, cast, dlo) = match &**inner {
+                    Ty::I128 => ("put_i128", "", String::new()),
+                    Ty::Pos(d) => (
+                        "put_int",
+                        "(ll)",
+                        format!(" + {}_lo", dom_ident(program, *d)),
+                    ),
+                    _ => ("put_int", "(ll)", String::new()),
+                };
+                self.need(put);
+                b.push_str(&format!(
+                    "    for (auto i = v.lo; i < v.hi; ++i) {{\n        if (i != v.lo) cpl::put_char(' ');\n        cpl::{put}({cast}i{dlo});\n    }}\n"
+                ));
             }
             _ => {}
         }
