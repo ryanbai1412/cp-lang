@@ -335,9 +335,9 @@ impl<'p, 'f> Compiler<'p, 'f> {
         let ok = match &e.kind {
             ExprKind::Call(..) | ExprKind::CallExpr(..) => self.traced_call(e).is_some(),
             ExprKind::Do(block) => self.gives_natively(&block.stmts),
-            // Made on the VM as `MakeClosure`, which writes nothing.
-            ExprKind::Closure(cid) => (self.program.closures[*cid].captures.iter())
-                .all(|cap| cap.is_global || !cap.by_ref),
+            // Making a closure writes nothing: `MakeClosure` on the VM, or
+            // the tree-walker for one that captures a local by reference.
+            ExprKind::Closure(_) => true,
             _ => quiet_node(e),
         };
         let mut children = ok;

@@ -31,7 +31,6 @@ traced stmt:For(Seq)
 traced stmt:For(SeqRev)
 traced stmt:Let(Call)
 traced stmt:Let(CallExpr)
-traced stmt:Let(Closure)
 traced stmt:Let(Uninit)
 traced stmt:Let(Unwrap)
 traced stmt:Trap
