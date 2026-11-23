@@ -103,6 +103,6 @@ const grundy: [0..=100]Int = [
     100,
     103,
 ]
-let (n, m) = read<(1..=200_000, 1..=100)>()
-let need = read<[n]0..=100>().map(x => grundy[x]).fold((x, y) => x ^ y, 0)
-print((1..=m).find(i => grundy[i] == need) ?? -1)
+let (n, m) = read<(1..=1_000_000, 1..=100)>()
+let need = read<[n]1..=100>().map(side => grundy[side]).fold(^)
+print((1..=m).find(side => grundy[side] == need) ?? -1)
