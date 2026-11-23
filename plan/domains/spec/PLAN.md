@@ -49,3 +49,16 @@ Workstreams 1-3 below are landed; 4-6 continue in the order above.
 1. Rebase and land `devin/wip-conformance-matrix`.
 2. Reject cases for the R03, R09 and R13 happy-path-only rules (19 of the 45).
 3. Fix malformed `// rule:` lines; file the `std.*` cite request.
+
+## General fixes owed
+
+Each local fix, and the mechanism that would remove its whole class.
+
+| Instance | General fix | Owner |
+|---|---|---|
+| Rebuild 7: `std/README.md` lists `bsearch_first`, copying `windows`, `first(p)` that `std/*.cp` and spec/core do not have | generate the API listing in `std/README.md` from the `std/*.cp` declarations and doc comments, or a check that every signature it lists exists there | stdlib (spec adds the check to `conformance-signatures.py` if stdlib keeps hand-written listings) |
+| Rebuild 7: `Str.count(c: Char)` beside `Seq.count(p)` | a check that no two `pub fn`s of one name apply to one receiver type (R06.1.6) over all of `std/` | compiler (as an error), stdlib (cleanup) |
+| Rebuild 7: `Str(len:)` is E0504 inside a supported subset row | `conformance-subset.py` fails a supported row whose rule text names a form the compiler reports as E0504 | spec |
+| Rebuild 7: answered rules guessed anyway (lambda tuple unpack R06.1.4, range precedence R01.5, blank lines R10.2.8) | each core chapter overview lists the rules a newcomer guesses, generated from rebuild HOLES files | spec |
+| Rebuild 6-7: a spec fact and a std doc fact that disagree (`tally` type, `desc` flag) | `conformance-signatures.py` compares spec tables' result types with `std/*.cp` signatures for every row that names one | spec |
+

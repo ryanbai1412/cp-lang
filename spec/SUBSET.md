@@ -131,6 +131,8 @@ they carry rule ids; the stdlib's own gaps are in `std/GAPS.md`.
 - core-02/getter-needs-defaults.cp: compiler
 - core-02/question-extent-let-stays-optional.cp: compiler
 - core-02/question-not-early-return.cp: compiler
+- core-02/str-len-runtime-bound.cp: compiler
+- core-02/str-len-runtime-bound-rejects.cp: compiler
 - core-02/spec-block-enums.cp: compiler
 - core-03/field-bound-from-input.cp: compiler
 - core-03/memory-over-profile.cp: compiler
