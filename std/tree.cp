@@ -420,7 +420,7 @@ pub struct Rooted<V, Pre>:
     /// let adj: [V]List<V> = [[2, 3], [1, 4, 5], [1], [2], [2]]
     /// let t = Rooted(adj, root: 1)
     /// let sums = t.reroot(
-    ///     Monoid((size: 0, dist: 0), (a, b) => (size: a.size + b.size, dist: a.dist + b.dist)),
+    ///     Monoid<(size: Int, dist: Int)>.of(each(size: +, dist: +)),
     ///     lift: (x, _, _) => (size: x.size, dist: x.dist + x.size),
     ///     finish: (s, _) => (size: s.size + 1, dist: s.dist),
     /// )
