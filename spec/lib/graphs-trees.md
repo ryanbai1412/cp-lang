@@ -94,6 +94,7 @@ what to generate and shrink.
 
 ### Traits
 
+<!-- spec-only: excerpt of spec/std -->
 ```python
 pub trait Next<V>:
     type Arc: Target<V>
@@ -131,7 +132,7 @@ Whole-graph algorithms (SCC, components, bridges) also need `V: Domain`.
 ### Customizing: a lambda over `g.out(u)`
 
 ```python
-dijkstra(u => g.out(u).filter(a => !banned[a.e]), from: [(s, 0)])  // arcs keep .w, .e
+dijkstra(u => g.out(u).filter(a => not banned[a.e]), from: [(s, 0)])  // arcs keep .w, .e
 bfs(u => g.out(u).filter(a => a.w <= mid), from: [s])              // binary search on the answer
 bfs(c => c.adj4.filter(c => grid[c] != '#'), from: [start])      // implicit grid
 dijkstra(g.weighted(a => 2 * a.w), from: [(s, 0)])                 // reweight; keeps .to, .e

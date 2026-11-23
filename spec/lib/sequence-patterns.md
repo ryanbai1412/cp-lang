@@ -53,6 +53,11 @@ positions. Each works on any `Indexed` (`[D]T`, `List`, `Str`, a slice).
 | `a.maximal(state, ok:, anchor: Anchor.Start)` | the same keyed by left end: the longest piece starting at each position | O(n) amortized |
 | `a.spans(by: key)` | for each position, the widest piece where it is the minimum | O(n) |
 
+<!-- given:
+  let s = "aabccc"
+  let a = [1, 2, 2, 5]
+  let d = 1
+  let line = "a b" -->
 ```python
 s.runs()                              // "aabccc" -> "aa", "b", "ccc"
 a.runs(link: (x, y) => x < y)         // strictly increasing runs
@@ -75,6 +80,9 @@ the strategy chosen by the op's laws exactly as `Window(op)` chooses it:
 | `Selective` (`min`, `max`, `min(by:)`) | monotone deque | O(1) amortized |
 | any `Op` (`gcd`, matrix product, `MaxSub`) | two stacks | O(1) amortized |
 
+<!-- given:
+  let a = [1, 2, 3, 4]
+  let k = 2 -->
 ```python
 a.windows(k).fold(+).max()!           // best sum of k consecutive
 a.windows(k).fold(min)                // sliding minimum, one per window
@@ -103,6 +111,7 @@ Both walk `r` left to right, move `l` only forward, and keep `state` in
 step by calling `state.push(a[r])` and `state.pop(a[l])`. They return one
 piece per right end, `[D]Slice` (`minimal`: `[D]?Slice`).
 
+<!-- spec-only: signatures and costs, not a program -->
 ```python
 pub trait Track<T>:
     fn push(mut self, x: T)       // x joins at the right end
@@ -159,6 +168,9 @@ the widest piece in which `a[i]` is the minimum. `a.spans(by: key)` gives
 it as `[D]Range<D>`, ties broken so every subarray is counted once (strict
 on the left, non-strict on the right). Maximum is `by: desc`.
 
+<!-- given:
+  domain V = 0..4
+  let a: [V]Int = 1 -->
 ```python
 let sp = a.spans()
 let total = a.keys.map(i => a[i] * (sp[i].l..i.r).len * (i.l..sp[i].r).len).sum()

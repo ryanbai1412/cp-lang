@@ -580,7 +580,7 @@ Split at `RT = 1000`: walk the top barrels downward in O(1) per step via
 use std.bag.{SortedBag}
 
 let (n, q): (1..=200_000, 1..=200_000) = read()
-let RT = 1000
+const RT = 1000
 domain Small = 0..=RT
 
 var cur = SortedBag<Int>()

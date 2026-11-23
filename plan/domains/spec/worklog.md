@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- lib/sequence-patterns, graphs-trees, containers: 3 blocks given setup, 2 std excerpts/listings spec-only, `!x` -> `not x` and `let RT` -> `const RT` in examples; spec-blocks 48 -> 50/185 pass, errors 75 -> 71. `runs(link:)`, `gcd(xs)` filed with stdlib; a `List<Int>` vs `List<Int>` E0302 with diagnostics.
 - lib/graphs-trees: 5 blocks given a small graph; spec-blocks 45 -> 48/185 pass. Two of them fail on stubs missing `Visit.prune` and `Rooted.order` (stdlib/worklog.md).
 - Spec-block runner reads markers above indented fences and strips the fence's indent from the body (CommonMark); lib/geometry's two programs fixed (`F64(1e9)` for a `Vec` bound, a parenthesized two-line condition). spec-blocks 43 -> 45/185 pass, errors 87 -> 78. Ratchet tests 8/8.
 - lib/ops-ranges: 4 std excerpts and solution fragments marked `spec-only`, 3 blocks given `a`/`d`; spec-blocks errors 91 -> 87, passes 43/185. The given blocks now fail on stdlib gaps (dual SegTree, named `each`, matrix `pow`), filed in stdlib/worklog.md.
