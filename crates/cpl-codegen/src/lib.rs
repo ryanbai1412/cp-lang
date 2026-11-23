@@ -178,6 +178,8 @@ fn prepared(program: &cpl_ir::Program, target: &Target) -> cpl_ir::Program {
     splice::splice(&mut program);
     unpack::unpack(&mut program);
     optfn::known_options(&mut program);
+    // A param `optfn` knows is `None` can leave a field only ever `None`.
+    prune::prune(&mut program, target.checks != Checks::None);
     program
 }
 

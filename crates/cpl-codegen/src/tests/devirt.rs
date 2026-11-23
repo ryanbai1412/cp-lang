@@ -94,3 +94,13 @@ fn a_fn_field_of_a_struct_never_built_is_no_std_function() {
     assert!(!out.contains("std::function<"), "{out}");
     assert!(out.contains("cpl::NoFn<ll> f;"), "{out}");
 }
+
+#[test]
+fn an_optional_fn_field_a_forwarded_none_fills_is_dropped() {
+    let out = cpp(concat!(
+        "var h = Heap.of([5, 3])\n",
+        "h.push(read::<Int>())\n",
+        "print(h.peek!)\n",
+    ));
+    assert!(!out.contains("std::function<"), "{out}");
+}
