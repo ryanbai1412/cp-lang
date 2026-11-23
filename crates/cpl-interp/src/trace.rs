@@ -20,6 +20,7 @@ mod lines;
 mod log;
 mod raw;
 mod trap;
+mod unseen;
 mod window;
 pub use compare::{first_divergence, stages, Divergence, Stage};
 use glob::glob_match;
@@ -1091,25 +1092,6 @@ impl Tracer {
             return;
         }
         self.step(view, span, None, None, None);
-    }
-
-    /// [`Tracer::local_changed`] at call depth `depth`, without a view, when
-    /// no step is kept from it: true when it took note, false when it needs
-    /// the view to record the step.
-    pub(crate) fn local_changed_unseen(&mut self, depth: usize, name: &str) -> bool {
-        if self.skip == 0 && self.recording(depth) {
-            return false;
-        }
-        if depth > 0 {
-            self.touch_all();
-        }
-        if depth == 0 || name.is_empty() || name.starts_with('_') || !self.watched(name) {
-            return true;
-        }
-        if self.recording(depth) {
-            self.skipped();
-        }
-        true
     }
 
     /// Local `name` of the innermost call was given a value.

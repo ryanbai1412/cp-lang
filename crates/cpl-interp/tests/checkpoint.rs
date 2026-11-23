@@ -474,3 +474,72 @@ fn a_windowed_trace_is_the_full_traces_window_and_the_whole_run() {
         }
     }
 }
+
+const CELLS: &str = "var a: [0..50]Int = 0
+var best = 0
+fn bump(x: Int) -> Int:
+    a[x % 50] += x
+    return a[x % 50] % 1009
+for i in 0..4000:
+    a[i % 50] += 1
+    let v = bump(i)
+    if v > best:
+        best = v
+print(best)
+";
+
+#[test]
+fn a_window_from_step_n_is_the_whole_traces_steps_from_n() {
+    let input = reads_input();
+    for (source, input) in [
+        (NESTED, &b""[..]),
+        (CALLS, &b""[..]),
+        (READS, &input[..]),
+        (DEEP, &b""[..]),
+        (ONE_CALL, &b""[..]),
+        (SHARED, &b""[..]),
+        (CELLS, &b""[..]),
+        (MULTITEST_RAND, MULTITEST_INPUT),
+    ] {
+        let program = program(source);
+        let whole = observe_on_this_thread(
+            &program,
+            Io::fixed(input),
+            &mut Vec::new(),
+            LIMITS,
+            Some(config(source)),
+        );
+        let whole = whole.recording.unwrap();
+        for from in [
+            1,
+            2,
+            37,
+            1000,
+            whole.len() / 2,
+            whole.len().saturating_sub(5),
+        ] {
+            let window = TraceConfig {
+                from_step: Some(from),
+                max_steps: Some(200),
+                ..config(source)
+            };
+            let part = observe_on_this_thread(
+                &program,
+                Io::fixed(input),
+                &mut Vec::new(),
+                LIMITS,
+                Some(window),
+            );
+            let part = part.recording.unwrap();
+            let at = format!("from {from} of {source}");
+            assert_eq!(part.skipped, from.min(whole.len()), "{at}");
+            for step in 0..part.len().min(whole.len().saturating_sub(from)) {
+                assert_eq!(
+                    step_text(&part, step),
+                    step_text(&whole, from + step),
+                    "{at}, step {step}"
+                );
+            }
+        }
+    }
+}

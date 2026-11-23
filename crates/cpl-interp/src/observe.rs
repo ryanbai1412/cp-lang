@@ -58,6 +58,21 @@ pub(crate) trait Observer {
     fn local_changed_unseen(&mut self, _depth: usize, _name: &str) -> bool {
         false
     }
+    /// [`Observer::changed`] with no view, as [`Observer::local_changed_unseen`].
+    fn changed_unseen(&mut self, _id: usize, _name: &str, _depth: usize, _path: &[usize]) -> bool {
+        false
+    }
+    /// [`Observer::declared`] with no view, as [`Observer::local_changed_unseen`].
+    fn declared_unseen(
+        &mut self,
+        _id: usize,
+        _name: &str,
+        _unnamed: bool,
+        _depth: usize,
+        _at: Span,
+    ) -> bool {
+        false
+    }
     fn assigned_local(&mut self, _view: &View, _at: Span, _name: &str) {}
     fn assigned_global(&mut self, _view: &View, _at: Span, _id: usize) {}
     fn printed(&mut self, _view: &View, _at: Span, _text: &str) {}
@@ -126,6 +141,19 @@ impl Observer for Tracer {
     }
     fn local_changed_unseen(&mut self, depth: usize, name: &str) -> bool {
         Tracer::local_changed_unseen(self, depth, name)
+    }
+    fn changed_unseen(&mut self, id: usize, name: &str, depth: usize, path: &[usize]) -> bool {
+        Tracer::changed_unseen(self, id, name, depth, path)
+    }
+    fn declared_unseen(
+        &mut self,
+        id: usize,
+        name: &str,
+        unnamed: bool,
+        depth: usize,
+        at: Span,
+    ) -> bool {
+        Tracer::declared_unseen(self, id, name, unnamed, depth, at)
     }
     fn declared(&mut self, id: usize, view: &View, at: Span) {
         Tracer::declared(self, id, view, at)
@@ -200,6 +228,9 @@ impl<O: Observer> Interp<'_, '_, O> {
         };
         if let PlaceKind::Global(id) = &place.kind {
             let id = *id;
+            if self.trace_global_unseen(place, &[]) {
+                return;
+            }
             return self.traced(|tracer, view| tracer.declared(id, view, place.span));
         }
         let mut path = std::mem::take(&mut self.trace_path);
@@ -210,8 +241,33 @@ impl<O: Observer> Interp<'_, '_, O> {
                 .take(leading_indices(place))
                 .map(|index| index.int().max(0) as usize),
         );
-        self.traced(|tracer, view| tracer.changed(global, view, place.span, &path));
+        if !self.trace_global_unseen(place, &path) {
+            self.traced(|tracer, view| tracer.changed(global, view, place.span, &path));
+        }
         self.trace_path = path;
+    }
+
+    /// A write to global `place`, a cell of it at `path`, when the tracer
+    /// needs no view of it, as for a step it skips: true when it is done.
+    pub(crate) fn trace_global_unseen(&mut self, place: &Place, path: &[usize]) -> bool {
+        if !self.observed() || self.assignments() {
+            return false;
+        }
+        let Some(id) = root_global(place) else {
+            return false;
+        };
+        let depth = self.call_frames.len();
+        let global = &self.program.globals[id];
+        let Some(tracer) = self.tracer.as_mut() else {
+            return false;
+        };
+        match place.kind {
+            PlaceKind::Global(_) => {
+                let unnamed = global.span.end == 0;
+                tracer.declared_unseen(id, &global.name, unnamed, depth, place.span)
+            }
+            _ => tracer.changed_unseen(id, &global.name, depth, path),
+        }
     }
 
     /// A write to global `place` that the observer takes note of without

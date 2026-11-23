@@ -28,6 +28,11 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 }
             }
             TracePoint::Cell(place, _) | TracePoint::Assign(place) if self.quiet_write(place) => {}
+            TracePoint::Assign(place)
+                if matches!(place.kind, PlaceKind::Global(_))
+                    && self.trace_global_unseen(place, &[]) => {}
+            TracePoint::Cell(place, ref indices)
+                if self.trace_cell_unseen(place, regs_i, indices) => {}
             TracePoint::Cell(place, ref indices)
                 if self.trace_raw_cell(&chunk.slot_map, regs_i, regs_v, place, indices) => {}
             ref point => {
@@ -99,6 +104,17 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
             }
             TracePoint::LoopEnd(_) | TracePoint::Tick => {}
         }
+    }
+
+    /// [`Interp::trace_global_unseen`] for a cell of a global at the indices
+    /// in registers `indices`.
+    fn trace_cell_unseen(&mut self, place: &Place, regs_i: &[i64], indices: &[u16]) -> bool {
+        let mut path = std::mem::take(&mut self.trace_path);
+        path.clear();
+        path.extend(indices.iter().map(|&r| regs_i[r as usize].max(0) as usize));
+        let done = self.trace_global_unseen(place, &path);
+        self.trace_path = path;
+        done
     }
 
     /// Reports a write to `place` with the locals read straight from the
