@@ -64,10 +64,9 @@ fn main_solve():
         var i = 0
         while i + 1 < open.len:
             let right = climb(open[i], u)
-            right.rev
             var full = climb(open[i + 1], u)
             full.push(u)
-            for x in right: full.push(x)
+            for x in right.rev: full.push(x)
             pairings.push(full)
             i += 2
         if open.len % 2 == 1: return open.last!

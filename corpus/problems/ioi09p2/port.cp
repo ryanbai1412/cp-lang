@@ -53,4 +53,4 @@ fn sweep(stop: ?Worker) -> ?Plan:
     best
 
 let best = sweep(None)!
-sweep(best.setter)
+let _ = sweep(best.setter)

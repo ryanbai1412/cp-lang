@@ -26,7 +26,6 @@ coci20c6p3
 coci25c3p4
 coi06p2
 dmopc20c7p5
-egoi22p3
 etsr23r3p1
 etsr23r3p2
 etsr23r3p3
@@ -35,7 +34,6 @@ ioi05p2
 ioi05p6
 ioi07p2
 ioi08p1
-ioi09p2
 ioi09p7
 ioi11p2
 ioi13p3io
