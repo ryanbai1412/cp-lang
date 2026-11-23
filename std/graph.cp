@@ -56,6 +56,17 @@ pub trait Weighted<W>:
     /// example: `domain V = 0..3; let a: (to: V, w: Int) = (to: 1, w: 7); a.w == 7`
     @get fn w(self) -> W
 
+/// The length of arc `a` as every graph algorithm reads it: `a.w` for a [`Weighted`] arc, 1
+/// otherwise. `Rooted` takes `dist` and `depth`-like lengths from it.
+///
+/// cost: \(O(1)\)
+/// traps: never
+/// example: `domain V = 0..3; let a: (to: V, w: Int) = (to: 1, w: 7); arc_len(a) == 7 and arc_len(V(2)) == 1`
+pub fn arc_len<A>(a: A) -> Int:
+    if A: Weighted:
+        return a.w
+    1
+
 /// O(1). The edge an arc belongs to; both arcs of an undirected edge share it.
 pub trait Edged<E>:
     /// The edge an arc belongs to. Both arcs of an undirected edge carry the same `e`.

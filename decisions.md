@@ -7595,3 +7595,21 @@ the grammar's `field` take `pub`; compiler adds the E0207 check and
 stdlib marks its API members. Decision 351's editor filter stays until
 the check lands; then completion follows the checker. Reverse: drop R11.1.4
 and treat every member as public.
+
+## 359. Graph algorithms read arc lengths through `arc_len`; `if A: Trait` holds by shape (stdlib, 2026-11-23)
+
+`Rooted` over arcs with a `w` field gave `dist` 2 for a 5 + 12 path, in
+`cpl run` and in C++, while its docs promise the arcs' lengths: `build`
+counted 1 per edge, because a generic body could not read `a.w` only when the
+arc has one. `std.graph.arc_len(a)` is that read (`a.w` for a `Weighted` arc,
+else 1), and every graph algorithm that takes edge lengths from `Next` arcs
+uses it; `Rooted.far` is now built from it. To make `arc_len` work on the
+record arcs (`(to: V, w: Int)`) that `Graph` yields, a conditional bound
+`if A: Trait` (R08.2.9) on a type with no `impl` now also holds when every
+member the trait leaves without a body is a field of the type
+(`Lowerer::has_bound_by_shape`), matching how `.to`/`.w` already resolve on
+records. User traits and libraries get it the same. Cases
+`conformance/std-tree/rooted-takes-arc-weights.cp`, parity
+`cli/tests/parity/rooted_arc_weights.cp`. Reverse: drop the
+`has_bound_by_shape` call in `ExprKind::HasBound` lowering and `arc_len`
+falls back to 1 on records. `lower/expr.rs` +1 line (`--update rs_over_cap`).

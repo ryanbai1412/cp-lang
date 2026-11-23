@@ -91,6 +91,7 @@ fn aliasing_and_sort_keys_agree_between_interp_and_sanitized_cpp() {
             "range_int_sum_overflow",
             "rec_fn_param",
             "rec_local_closure",
+            "rooted_arc_weights",
             "same_domain_lengths",
             "same_domain_longer_first",
             "same_domain_mut",

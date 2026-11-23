@@ -608,6 +608,7 @@ impl<'a> Lowerer<'a> {
                     }),
                     _ => false,
                 };
+                let has = has || self.has_bound_by_shape(&param.text, &trait_name.text);
                 self.mk(ExprKind::Bool(has), Ty::Bool, span)
             }
             ast::ExprKind::Without {

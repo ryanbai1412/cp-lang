@@ -14,7 +14,7 @@ use std.algebra.{Reversible}
 use std.algebra.{add}
 use std.dp.{Step}
 use std.dsu.{Dsu}
-use std.graph.{Next, Target, Graph, Visit, Edged}
+use std.graph.{Next, Target, Graph, Visit, Edged, arc_len}
 use std.rand.{Rng}
 use std.segtree.{SegTree}
 use std.seq.{dedup, first_true, get_or_insert, span}
@@ -145,6 +145,7 @@ pub struct Rooted<V, Pre>:
         var seen: [V]Bool = false
         var par: [V]?V = None
         var dep: [V]Int = 0
+        var far: [V]Int = 0
         var bfs: List<V> = []
         var k0: [V]Int = 0
         var k1: [V]Int = 0
@@ -163,6 +164,7 @@ pub struct Rooted<V, Pre>:
                         seen[v] = true
                         par[v] = Some(u)
                         dep[v] = dep[u] + 1
+                        far[v] = far[u] + arc_len(a)
                         bfs.push(v)
                 k1[u] = bfs.len
         assert roots.len > 0 and bfs.len == V.count
@@ -197,7 +199,7 @@ pub struct Rooted<V, Pre>:
             roots[0],
             par,
             [V] v => dep[v],
-            dep,
+            far,
             [V] v => sz[v],
             bfs,
             [V] v => k0[v],
@@ -1340,8 +1342,16 @@ fn lca_dist_ancestor_and_step_match_climbing():
                 assert r.jump(a, b, k) == (if k < p.len: Some(p[k]) else: None)
 
 @test
-// blocked: `build` cannot read `a.w` only when the arc type is `Weighted` (compiler worklog)
-fn weighted_dist_adds_the_lengths_on_the_path() = todo
+fn weighted_dist_adds_the_lengths_on_the_path():
+    domain V = 0..12
+    let plain = random_tree(V.first!)
+    let len = [V, V] (a, b) => (a.ord + 1) * (b.ord + 1) % 7 + 1
+    let adj = [V] u => [(to: v, w: len[u, v]) for v in plain[u]]
+    let r = Rooted(adj, V.first!)
+    for a in V:
+        for b in V:
+            let p = slow_path(r, a, b)
+            assert r.dist(a, b) == sum(len[p[i], p[i + 1]] for i in 0..p.len - 1)
 
 @test
 fn path_folds_keep_the_order_from_a_to_b():
@@ -1559,8 +1569,17 @@ fn from_parents_tour_pos_and_value_owned_pre():
     assert Rooted.try_from_parents(cyc) == None
 
 @test
-// blocked: `build` cannot read `a.w` only when the arc type is `Weighted` (compiler worklog)
-fn weighted_rooted_bfs_tree_on_cyclic_graph() = todo
+fn weighted_rooted_bfs_tree_on_cyclic_graph():
+    domain V = 0..4
+    let adj: [V]List<(to: V, w: Int)> = [
+        [(to: 1, w: 5), (to: 2, w: 1)],
+        [(to: 0, w: 5), (to: 3, w: 2)],
+        [(to: 0, w: 1), (to: 3, w: 9)],
+        [(to: 1, w: 2), (to: 2, w: 9)],
+    ]
+    let r = Rooted(adj, V(0))
+    assert r.parent(3) == Some(1) and r.depth(3) == 2
+    assert r.dist(0, 3) == 7 and r.w(2) == 1 and r.dist(2, 3) == 8
 
 @test
 fn lower_is_the_child_end_of_an_edge():

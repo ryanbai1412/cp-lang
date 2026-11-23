@@ -48,3 +48,23 @@ impl<'a> Lowerer<'a> {
         self.expr(&lambda, hint)
     }
 }
+
+impl<'a> Lowerer<'a> {
+    /// `if A: Weighted:` on a type with no `impl`: met by shape when every member the trait
+    /// leaves without a body is a field of `A` (a record arc `(to: V, w: Int)` is `Weighted`).
+    pub(super) fn has_bound_by_shape(&mut self, param: &str, trait_name: &str) -> bool {
+        let Some(GenArg::Ty(ty)) = self.gen_env.get(param).cloned() else {
+            return false;
+        };
+        let Some(Sym::Trait(tid)) = self.get_sym(trait_name) else {
+            return false;
+        };
+        let needed: Vec<String> = self.traits[tid]
+            .methods
+            .iter()
+            .filter(|m| matches!(m.body, ast::FnBody::None))
+            .map(|m| m.name.text.clone())
+            .collect();
+        !needed.is_empty() && needed.iter().all(|m| self.field_of(&ty, m).is_some())
+    }
+}
