@@ -833,8 +833,8 @@ pub struct Palindromes(odd: List<Int>, even: List<Int>):
     /// example: `let p = manacher("abacaba"); p.is_palindrome(0..3) and not p.is_palindrome(1..4)`
     pub fn is_palindrome<R>(self, r: R) -> Bool:
         if r.is_empty: return true
-        let l = r.l.ord
-        let hi = r.r.ord
+        let l = r.start.ord
+        let hi = r.end.ord
         let n = odd.len
         assert 0 <= l and l <= hi and hi <= n, "`is_palindrome(r)` needs `0 <= lo <= hi <= len`"
         let m = hi - l
@@ -848,7 +848,8 @@ pub struct Palindromes(odd: List<Int>, even: List<Int>):
     /// traps: never
     /// example: `manacher("aaa").count() == 6`
     pub fn count(self) -> Int:
-        var total = sum(x for x in odd)
+        var total = 0
+        for x in odd: total += x
         for x in even: total += x
         total
 
@@ -1270,9 +1271,8 @@ pub struct SuffixArray:
     /// example: `SuffixArray("banana").lcp_of_ranks(1..3) == 3`
     /// example: `SuffixArray("banana").lcp_of_ranks(3..4) == 6`
     pub fn lcp_of_ranks(self, r: Range<Int>) -> Int:
-        let (lo, hi) = r.ends
-        assert 0 <= lo and lo < hi and hi <= sa.len, "`lcp_of_ranks(r)` needs a non-empty `r` within `0..len`"
-        if hi - lo == 1: sa.len - sa[lo] else: lcp[self.arg_min(lo, hi - 1)]
+        assert 0 <= r.start and r.start < r.end and r.end <= sa.len, "`lcp_of_ranks(r)` needs a non-empty `r` within `0..len`"
+        if r.end - r.start == 1: sa.len - sa[r.start] else: lcp[self.arg_min(r.start, r.end - 1)]
 
     /// Where the rank range `r` splits in the suffix tree: the `k` in `r.start + 1..r.end` whose
     /// adjacent LCP `lcp[k - 1]` equals `lcp_of_ranks(r)`, so `r.start..k` and `k..r.end` are
@@ -1285,9 +1285,8 @@ pub struct SuffixArray:
     /// example: `SuffixArray("banana").split(0..3) == 1`
     /// example: `SuffixArray("banana").split(0..6) == 3`
     pub fn split(self, r: Range<Int>) -> Int:
-        let (lo, hi) = r.ends
-        assert 0 <= lo and lo + 2 <= hi and hi <= sa.len, "`split(r)` needs at least two ranks within `0..len`"
-        self.arg_min(lo, hi - 1) + 1
+        assert 0 <= r.start and r.start + 2 <= r.end and r.end <= sa.len, "`split(r)` needs at least two ranks within `0..len`"
+        self.arg_min(r.start, r.end - 1) + 1
 
     /// The `k`-th (0-based) lexicographically smallest distinct non-empty substring, as the
     /// positions `l..r` of one occurrence, or `None` when `k >= distinct()`.
@@ -1302,7 +1301,10 @@ pub struct SuffixArray:
         assert k >= 0, "`kth_distinct(k)` needs `k >= 0`"
         let n = sa.len
         if k >= dcum[n]: return None
-        let lo = (1..=n - 1).last_true(mid => dcum[mid] <= k) ?? 0
+        var (lo, hi) = (0, n - 1)
+        while lo < hi:
+            let mid = (lo + hi + 1) / 2
+            if dcum[mid] <= k: lo = mid else: hi = mid - 1
         let shared = if lo == 0: 0 else: lcp[lo - 1]
         Some(sa[lo]..sa[lo] + shared + (k - dcum[lo]) + 1)
 
@@ -1366,7 +1368,7 @@ pub fn suffix_tree_edges<S: Indexed>(s: S) -> List<SuffixTreeEdge>:
             out.push(SuffixTreeEdge(csum, bottom, parent_d, elen, start..(i + 1)))
             if not st_depth.is_empty and st_depth[st_depth.len - 1] == parent_d:
                 st_sum[st_sum.len - 1] += bottom
-            elif parent_d > 0:
+            else if parent_d > 0:
                 st_depth.push(parent_d)
                 st_start.push(start)
                 st_sum.push(bottom)
@@ -1743,7 +1745,7 @@ pub struct Hash2D<R, C>(bases: (Int, Int)):
     /// example: `domain R = 0..2; domain C = 0..4; let h = Hash2D<R, C>((r, c) => r.to_idx); h.rect(R(0)..=R(0), C(0)..=C(1)) != h.rect(R(1)..=R(1), C(0)..=C(1))`
     pub fn rect(self, rows: Range<R>, cols: Range<C>) -> HashVal:
         if rows.is_empty or cols.is_empty: return HashVal(0, 0)
-        let (r1, r2, c1, c2) = (rows.l.ord, rows.r.ord, cols.l.ord, cols.r.ord)
+        let (r1, r2, c1, c2) = (rows.start.ord, rows.end.ord, cols.start.ord, cols.end.ord)
         assert (0 <= r1 and r1 <= r2 and r2 < pow_r1.len)
         assert (0 <= c1 and c1 <= c2 and c2 < stride)
         let o1 = r1 * stride
@@ -2035,7 +2037,7 @@ pub struct DynamicHash<D>:
     /// example: `let h = DynamicHash("xyxy"); h.get(0..2) == h.get(2..4)`
     pub fn get(self, r: Range<D>) -> HashVal:
         if r.is_empty: return HashVal(0, 0)
-        self.span(r.l.ord, r.r.ord)
+        self.span(r.start.ord, r.end.ord)
 
     /// The hash of the elements over `r` read backwards, comparable with `get`.
     ///
@@ -2046,7 +2048,7 @@ pub struct DynamicHash<D>:
     @allow(unproven_list_index)
     pub fn rev_get(self, r: Range<D>) -> HashVal:
         if r.is_empty: return HashVal(0, 0)
-        let (l, e) = (r.l.ord, r.r.ord)
+        let (l, e) = (r.start.ord, r.end.ord)
         let s1 = (dh_sum(fwd1, e, RH_M1) - dh_sum(fwd1, l, RH_M1) + RH_M1) % RH_M1
         let s2 = (dh_sum(fwd2, e, RH_M2) - dh_sum(fwd2, l, RH_M2) + RH_M2) % RH_M2
         HashVal(s1 * inv1[l] % RH_M1, s2 * inv2[l] % RH_M2)
@@ -2125,7 +2127,8 @@ pub struct SuffixAutomaton<A>:
     /// example: `SuffixAutomaton<Char>().len == 1`
     pub fn new() -> SuffixAutomaton<A>:
         let k = A.K
-        let lts: List<?A> = [None for _ in 0..k]
+        var lts: List<?A> = []
+        for _ in 0..k: lts.push(None)
         SuffixAutomaton(k, List.filled(k, -1), [-1], [0], [-1], [false], 0, lts)
 
     /// The suffix automaton of `s`: `SuffixAutomaton<A>()` followed by `push` of each element.
@@ -2308,7 +2311,7 @@ pub struct SuffixAutomaton<A>:
     /// example: `SuffixAutomaton<Char>.of("abb").topo_order() == [0, 1, 4, 2, 3]`
     pub fn topo_order(self) -> List<Int>:
         let m = links.len
-        let top = [max_len[v] for v in 0..m].max() ?? 0
+        let top = max(max_len[v] for v in 0..m) ?? 0
         var cnt = List.filled(top + 1, 0)
         for v in 0..m: cnt[max_len[v]] += 1
         for i in 1..=top: cnt[i] += cnt[i - 1]
@@ -3334,8 +3337,8 @@ fn z_and_prefix_function_match_their_definitions():
         let p = prefix_function(s)
         for i in 0..n:
             assert z[i] == common_prefix(s, 0, i)
-            assert p[i] == [k for k in 0..=i if s[0..k] == s[i + 1 - k..i + 1]].max()!
-        assert period(s) == [d for d in 1..=n if s[0..n - d] == s[d..n]].min()!
+            assert p[i] == max(k for k in 0..=i if s[0..k] == s[i + 1 - k..i + 1])
+        assert period(s) == min(d for d in 1..=n if s[0..n - d] == s[d..n])
 
 @test
 fn find_all_matches_a_scan():
@@ -3525,9 +3528,9 @@ fn manacher_and_is_palindrome_match_brute():
     assert not is_palindrome("ab") and not is_palindrome("abca")
     let mp = manacher("abacaba")
     assert mp.odd == [1, 2, 1, 4, 1, 2, 1]
-    assert mp.longest() == (l: 0, r: 7)
+    assert mp.longest == (l: 0, r: 7)
     assert manacher("abba").even == [0, 0, 2, 0]
-    assert manacher("").count() == 0 and manacher("").longest() == (l: 0, r: 0)
+    assert manacher("").count == 0 and manacher("").longest == (l: 0, r: 0)
     for _ in 0..40:
         let s = random_word(rand(0, 14), 2)
         let n = s.len
@@ -3541,8 +3544,8 @@ fn manacher_and_is_palindrome_match_brute():
                 if r > l and ok:
                     total += 1
                     if r - l > best.r - best.l: best = (l:, r:)
-        assert p.count() == total
-        assert p.longest() == best
+        assert p.count == total
+        assert p.longest == best
 
 @test
 fn suffix_array_struct_queries_match_brute():
@@ -3860,13 +3863,13 @@ fn sequence_generality_parity_across_list_array_and_views():
 
     // RollingHash over List<Int>, [D]Int, ListView<Int>, Str, StrView
     let bases = (131, 137)
-    let hl = RollingHash(xs, bases:)
-    let ha = RollingHash(arr, bases:)
-    let hv = RollingHash(copy(view), bases:)
+    let hl = RollingHash(xs, bases: bases)
+    let ha = RollingHash(arr, bases: bases)
+    let hv = RollingHash(copy(view), bases: bases)
     assert ha.all == hl.all and hv.all == hl.all
     assert ha.get(P(2)..P(6)) == hl.get(1..5) and hv.get(1..5) == hl.get(1..5)
-    let hs = RollingHash(copy("xabacabay"[1..8]), bases:)
-    assert hs.all == RollingHash("abacaba", bases:).all
+    let hs = RollingHash(copy("xabacabay"[1..8]), bases: bases)
+    assert hs.all == RollingHash("abacaba", bases: bases).all
 
     // Suffix array / LCP / SuffixArray.matches over List<Int>, [D]Int, ListView<Int>, Str, StrView
     let sa_l = SuffixArray(xs).sa

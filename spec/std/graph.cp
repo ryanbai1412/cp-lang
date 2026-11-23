@@ -2426,7 +2426,7 @@ pub fn scc_times<V, E>(arcs: [E](u: V, v: V)) -> [E]?Int:
                         tstk.push(v)
                         dfs_u.push(v)
                         dfs_i.push(0)
-                    elif on_stk[v]:
+                    else if on_stk[v]:
                         if tin[v] < low[u]: low[u] = tin[v]
                 else:
                     if low[u] == tin[u]:
@@ -2450,7 +2450,7 @@ pub fn scc_times<V, E>(arcs: [E](u: V, v: V)) -> [E]?Int:
             let rv = find(arcs[e].v.to_idx)
             if ru == rv:
                 left_es.push(e)
-            elif e.to_idx <= mid and comp[ru] != -1 and comp[ru] == comp[rv]:
+            else if e.to_idx <= mid and comp[ru] != -1 and comp[ru] == comp[rv]:
                 left_es.push(e)
                 to_merge_u.push(ru)
                 to_merge_v.push(rv)
@@ -2505,7 +2505,7 @@ pub fn scc_times<V, E>(arcs: [E](u: V, v: V)) -> [E]?Int:
                         tstk.push(v)
                         dfs_u.push(v)
                         dfs_i.push(0)
-                    elif on_stk[v]:
+                    else if on_stk[v]:
                         if tin[v] < low[u]: low[u] = tin[v]
                 else:
                     if low[u] == tin[u]:
@@ -2579,7 +2579,7 @@ pub fn block_cut_tree<V>(g: Next<V>) -> (domain B, links: List<(b: B, v: V)>):
                     stk_u.push(v)
                     stk_i.push(0)
                     stk_p.push(u)
-                elif v != par:
+                else if v != par:
                     if tin[v] < low[u]: low[u] = tin[v]
             else:
                 stk_u.pop()

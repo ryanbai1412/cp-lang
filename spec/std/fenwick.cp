@@ -64,7 +64,7 @@ pub struct Fenwick<D, T>:
     /// example: `Fenwick([1, 2, 3]).fold(1..3) == 5`
     /// example: `Fenwick([1, 2, 3]).fold(2..2) == 0`
     pub fn fold(self, r: Range<D>) -> T:
-        self.prefix(r.r) - self.prefix(r.l)
+        self.prefix(r.end) - self.prefix(r.start)
 
     /// The smallest boundary `b` with `prefix(b) >= target`, by binary lifting over the tree;
     /// `None` when even the whole sum is below `target`. A `target <= 0` gives the start cut.
@@ -216,10 +216,10 @@ pub struct Fenwick2D<R, C, T>:
     /// example: `var f = Fenwick2D<0..2, 0..2, Int>(); f.add(0, 0, 1); f.add(1, 1, 2); f.fold(0..2, 1..2) == 2`
     /// example: `var f = Fenwick2D<0..2, 0..2, Int>(); f.add(0, 0, 1); f.fold(0..2, 1..1) == 0`
     pub fn fold(self, rows: Range<R>, cols: Range<C>) -> T:
-        let r0 = rows.l.ord
-        let r1 = rows.r.ord
-        let c0 = cols.l.ord
-        let c1 = cols.r.ord
+        let r0 = rows.start.ord
+        let r1 = rows.end.ord
+        let c0 = cols.start.ord
+        let c1 = cols.end.ord
         self.corner(r1, c1) - self.corner(r0, c1) - self.corner(r1, c0) + self.corner(r0, c0)
 
     /// The sum of every cell above the row cut `r` and left of the column cut `c`.
@@ -418,8 +418,8 @@ pub struct SparseFenwick2D<T>:
     /// example: `var f = SparseFenwick2D<Int>(); f.add_point(1, 2); f.build(); f.add(1, 2, 5); f.fold(2..2, 0..10) == 0`
     pub fn fold(self, xs: Range<Int>, ys: Range<Int>) -> T:
         assert built, "`fold` before `build`"
-        if xs.l >= xs.r or ys.l >= ys.r: return T.zero
-        self.corner(xs.r, ys.r) - self.corner(xs.l, ys.r) - self.corner(xs.r, ys.l) + self.corner(xs.l, ys.l)
+        if xs.start >= xs.end or ys.start >= ys.end: return T.zero
+        self.corner(xs.end, ys.end) - self.corner(xs.start, ys.end) - self.corner(xs.end, ys.start) + self.corner(xs.start, ys.start)
 
 @test
 fn sums_match_a_plain_array():

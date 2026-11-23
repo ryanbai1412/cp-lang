@@ -623,7 +623,7 @@ fn beats_segtree_chmin_chmax_add_matches_brute():
             for i in rng: ref[i] += x
         else:
             assert st.sum(rng) == sum(ref[i] for i in rng)
-            assert st.min_val(rng) == [ref[i] for i in rng].min()!
-            assert st.max_val(rng) == [ref[i] for i in rng].max()!
+            assert st.min_val(rng) == min(ref[i] for i in rng)
+            assert st.max_val(rng) == max(ref[i] for i in rng)
     for i in I:
         assert st.get(i) == ref[i]
