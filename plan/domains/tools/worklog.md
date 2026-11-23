@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- Landed (this): `cpl check` and `cpl fix` move from `crates/cpl-cli/src/lib.rs` to `src/check.rs` (lib.rs 1,939 -> 1,801 lines), PLAN.md phase-2 step 3; no behaviour change (`cargo nextest run -p cpl-cli`: 248 passed).
 - Landed (this): golden tests that `lint` exits 1 on a lint set to deny in cp.toml, and `replay` replays a recorded call (exit 0) and exits 1 at a step with no call; 21/23 commands assert all four (`measure.py golden`).
 - Landed (this): golden test that `submit`, `cover`, `explain`, `profile`, `test` and `doc` exit 1 on a program with an error, a failing case or an unreadable file; 19/23 commands now assert all four (`measure.py golden`). Found: `cpl lint bad.cp` on a file with a type error prints `0 errors` and exits 0; `cpl test` on a file with no cases says so before checking it. Both open, not changed.
 - Landed (this): `measure.py golden` reports per command which of help, usage error, success and failing exit its tests assert: 13/23 have all four. `cpl new` on an existing name exits 1 and keeps the file (tested).

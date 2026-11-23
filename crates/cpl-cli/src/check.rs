@@ -1,0 +1,152 @@
+//! `cpl check` and `cpl fix`: the front end's errors for each file, and
+//! the fixes they carry applied.
+
+use std::io::Write;
+
+use crate::{checked_fix, json_out, EXIT_ERRORS, EXIT_USAGE};
+
+pub(crate) fn check(args: &[&str], stdout: &mut (dyn Write + Send), stderr: &mut String) -> u8 {
+    let json = args.contains(&"--json");
+    let files = args.iter().filter(|arg| **arg != "--json");
+    let mut reports = Vec::new();
+    let mut db = cpl_check::Database::new();
+    let mut code = 0;
+    for path in files {
+        let text = match std::fs::read_to_string(path) {
+            Ok(text) => text,
+            Err(error) => {
+                *stderr += &format!("cpl: can't read `{path}`: {error}\n");
+                code = EXIT_USAGE;
+                continue;
+            }
+        };
+        db.set_file(path, text.as_str());
+        // What `cpl run` and `cpl build` would reject, `cpl check` rejects.
+        let analysis = db.analyze(path).expect("the file was just set");
+        let diagnostics = cpl_ir::reported(&analysis);
+        let failed = diagnostics
+            .iter()
+            .any(|d| d.severity == cpl_diag::Severity::Error);
+        if json {
+            let lines = cpl_diag::LineIndex::new(&text);
+            let diagnostics = diagnostics.iter().map(|d| json_out::diagnostic(d, &lines));
+            reports.push(cpl_json::obj([
+                ("path", cpl_json::Value::String(path.to_string())),
+                ("ok", cpl_json::Value::Bool(!failed)),
+                ("diagnostics", cpl_json::Value::Array(diagnostics.collect())),
+            ]));
+        } else if !diagnostics.is_empty() {
+            *stderr += &cpl_diag::render_all(&diagnostics, path, &text);
+        }
+        if json {
+            if failed && code == 0 {
+                code = EXIT_ERRORS;
+            }
+        } else if !failed {
+            let _ = writeln!(stdout, "{path}: no errors");
+        } else if code == 0 {
+            code = EXIT_ERRORS;
+        }
+    }
+    if json {
+        let files = cpl_json::Value::Array(reports);
+        let _ = writeln!(
+            stdout,
+            "{}",
+            cpl_json::to_string(&cpl_json::obj([("files", files)]))
+        );
+    }
+    code
+}
+
+/// The errors `cpl check` reports for `text`, read as the file at `path`.
+pub(crate) fn errors_in(
+    db: &mut cpl_check::Database,
+    path: &str,
+    text: &str,
+) -> Vec<cpl_diag::Diagnostic> {
+    db.set_file(path, text);
+    let analysis = db.analyze(path).expect("the file was just set");
+    let mut out = cpl_ir::check(&analysis);
+    out.retain(|d| d.severity == cpl_diag::Severity::Error);
+    out
+}
+
+/// `text` with the first fix of each error applied, round after round
+/// until none applies, and how many were applied. A round can uncover
+/// another error, so the rounds are capped.
+pub fn apply_error_fixes(path: &str, text: &str) -> (String, usize) {
+    let mut db = cpl_check::Database::new();
+    let mut text = text.to_string();
+    let mut applied = 0;
+    let mut budget = checked_fix::MAX_CHECKS;
+    for _ in 0..8 {
+        let mut errors = errors_in(&mut db, path, &text);
+        checked_fix::rank_checked(&mut db, path, &text, &mut errors, &mut budget);
+        let (next, n) = cpl_lint::apply_fixes(&text, &errors);
+        if n == 0 || next == text {
+            break;
+        }
+        applied += n;
+        text = next;
+    }
+    (text, applied)
+}
+
+/// `text` with the lint fixes `cpl lint --fix` would make, and how many.
+fn apply_lint_fixes(path: &str, mut text: String) -> (String, usize) {
+    let (config, _) = cpl_lint::Config::discover(std::path::Path::new(path));
+    let mut applied = 0;
+    for _ in 0..8 {
+        let (next, n) = cpl_lint::apply_fixes(&text, &cpl_lint::lint(&text, &config));
+        if n == 0 {
+            break;
+        }
+        applied += n;
+        text = next;
+    }
+    (text, applied)
+}
+
+pub(crate) fn fix(files: &[&str], stdout: &mut (dyn Write + Send), stderr: &mut String) -> u8 {
+    let mut db = cpl_check::Database::new();
+    let mut code = 0;
+    for path in files {
+        let text = match std::fs::read_to_string(path) {
+            Ok(text) => text,
+            Err(error) => {
+                *stderr += &format!("cpl: can't read `{path}`: {error}\n");
+                code = EXIT_USAGE;
+                continue;
+            }
+        };
+        let (fixed, mut applied) = apply_error_fixes(path, &text);
+        let left = errors_in(&mut db, path, &fixed);
+        let fixed = if left.is_empty() {
+            let (linted, n) = apply_lint_fixes(path, fixed);
+            applied += n;
+            linted
+        } else {
+            fixed
+        };
+        if applied > 0 {
+            if let Err(error) = std::fs::write(path, &fixed) {
+                *stderr += &format!("cpl: can't write `{path}`: {error}\n");
+                code = EXIT_USAGE;
+                continue;
+            }
+        }
+        if !left.is_empty() {
+            *stderr += &cpl_diag::render_all(&left, path, &fixed);
+            if code == 0 {
+                code = EXIT_ERRORS;
+            }
+        }
+        let fixes = if applied == 1 { "fix" } else { "fixes" };
+        let _ = match left.len() {
+            0 => writeln!(stdout, "{path}: {applied} {fixes} applied, no errors"),
+            n => writeln!(stdout, "{path}: {applied} {fixes} applied, {n} left"),
+        };
+    }
+    code
+}

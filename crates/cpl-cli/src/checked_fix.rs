@@ -46,7 +46,7 @@ fn choose<'d>(
             ..diag.clone()
         };
         let (fixed, _) = cpl_lint::apply_fixes(text, std::slice::from_ref(&alone));
-        let errors = crate::errors_in(db, path, &fixed);
+        let errors = crate::check::errors_in(db, path, &fixed);
         if errors.is_empty() {
             return Some(fix);
         }
