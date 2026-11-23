@@ -501,7 +501,7 @@ method exists when the op is a `Group`.
 |---|---|
 | `Prefix(a)` (`+` only) | `fold(r)` in \(O(1)\) |
 | `Fenwick(a)` (`+` only) | `fold(r)` in \(O(\log n)\); `s[i] = x` (read, then add the difference) |
-| `Window(op)` | `pop()` subtracts: \(O(1)\) worst case, no second stack |
+| `Window(op)` | `pop(x)` subtracts: \(O(1)\) worst case, no second stack |
 | `Diff` (`+` only) | `add(r, x)` offline in \(O(1)\), then `finish()` in \(O(n)\) |
 | `Potentials(op)` | union-find with relative values (below) |
 
@@ -635,7 +635,7 @@ out[v] = if below: st.fold(..=v) else: st.fold(v..)
 var w = Window(min)
 for i in I:
     w.push(a[i])
-    if w.len > k: w.pop()
+    if w.len > k: w.pop(a[i - k])
     ans[i] = w.all!
 ```
 

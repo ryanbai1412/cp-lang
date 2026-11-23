@@ -8293,3 +8293,8 @@ tag move fatal again.
 - **A binary search states its call count:** at most \(\lceil \log_2(n+1) \rceil\) calls of `ok`, so an interactor's query budget can be counted (case `std-search/first-true-call-count`). Reverse: back to \(O(\log n)\).
 - **Already answered.** Tuples compare lexicographically (R08 derived impls); `minimal` asks for an upward-closed `ok` ("hereditary and upward closed are promises"); `sorted(desc:)` stays an error and std drops it (the spec wins, known gap `core-07/sorted-has-no-desc-flag`).
 - **Routed.** Compiler: a closure over a `SegTree` parameter fails in C++ (const binding; diff suite), `track` taking its element type from its state, and `for` over `Subset.items`. Stdlib: `maximal(Window(+), ...)` (the 5th round), the `std/README` `z_function` and `LazySegTree` entries that contradict `std/`, `Window.pop` with two arities, `fold_supersets`/`fold_subsets` missing, and `bfs(enter:)` missing from the spec tables (document it or drop it).
+
+## 414. `Window` has one `pop(x)` (spec, 2026-11-23)
+
+- **Call.** `Window` had an inherent `pop()` and `Track.pop(x)`: one name with two arities on one type, which broke `maximal(Window(+), ...)` for five rebuild rounds. Only `pop(x)` survives, so direct use and `maximal`/`minimal`/`mo` share one protocol. In checked builds `pop(x)` asserts that `x` is the front element (R0401), so the argument the caller passes also checks the window. Renaming to `drop_front()` was rejected because it gives two words for one act.
+- **Reverse.** Restore the inherent `pop()` and route `Track` through a separate name.

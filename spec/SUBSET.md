@@ -171,10 +171,8 @@ documented. The stdlib's own gaps are in `std/GAPS.md`.
 
 - core-01/compound-assign-key-evaluated-once.cp: compiler
 - core-01/stepped-range-is-a-value.cp: compiler
-- core-02/enum-method-is-variant.cp: compiler
 - core-02/question-extent-let-stays-optional.cp: compiler
 - core-02/question-not-early-return.cp: compiler
-- core-02/spec-block-enums.cp: compiler
 - core-02/str-len-runtime-bound-rejects.cp: compiler
 - core-02/unwrap-shadow-below-multitest.cp: compiler
 - core-02/bare-variant-needs-expected-enum.cp: compiler
@@ -220,6 +218,10 @@ documented. The stdlib's own gaps are in `std/GAPS.md`.
 - core-05/lent-var-reassigned-from-itself.cp: compiler
 - std-seq/maximal-window-sum.cp: stdlib
 - std-window/track-infers-element-from-sequence.cp: compiler
+- std-window/window-pop-checks-front.cp: stdlib
+- std-window/window-pop-empty-traps.cp: stdlib
+- std-window/window-pop-to-empty.cp: stdlib
+- std-window/window-min-after-pop.cp: stdlib
 - std-subset/items-walks-members.cp: compiler
 - core-05/view-take-keeps-a-read-lend.cp: compiler
 - core-07/fold-with-init.cp: compiler
@@ -230,7 +232,6 @@ documented. The stdlib's own gaps are in `std/GAPS.md`.
 - core-07/slice-past-source-traps.cp: compiler
 - core-07/tally-is-counter.cp: stdlib
 - core-07/tally-missing-key-is-zero.cp: stdlib
-- core-07/heap-by-desc-lambda.cp: compiler
 - core-08/const-param-arithmetic.cp: compiler
 - core-08/extension-concrete-and-generic-ambiguous.cp: compiler
 - core-08/static-fn-default-param-mismatch.cp: compiler
@@ -239,7 +240,6 @@ documented. The stdlib's own gaps are in `std/GAPS.md`.
 - core-04/grid-rows-cols-views.cp: stdlib
 - core-04/list-fill-copies-per-key.cp: compiler
 - core-07/chain-takes-any-number.cp: stdlib
-- core-06/dijkstra-from-unpacks-tuple-vertex.cp: compiler
 - core-04/grid-rows-is-a-getter.cp: stdlib
 - core-09/release-division-by-zero-fallback.cp: compiler
 - core-09/release-list-index-unchecked.cp: perf
@@ -251,7 +251,6 @@ documented. The stdlib's own gaps are in `std/GAPS.md`.
 - core-10/print-range-prints-items.cp: compiler
 - std-graph/undirected-unweighted-has-deg.cp: stdlib
 - core-10/tuple-dependent-bound-in-block.cp: compiler
-- std-seq/min-of-empty-list-is-none.cp: compiler
 - core-11/prelude-has-components.cp: compiler
 - core-11/strings-table-in-prelude.cp: compiler
 - diagnostics/graph-edge-field-names.cp: diagnostics
