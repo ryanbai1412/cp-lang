@@ -10,7 +10,6 @@ mod inline;
 mod lend;
 mod names;
 mod niche;
-mod presize;
 mod ranges;
 mod rowcache;
 mod runtime;

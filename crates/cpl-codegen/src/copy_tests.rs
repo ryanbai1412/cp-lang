@@ -109,19 +109,3 @@ fn a_let_of_an_if_copies_a_place_the_body_changes() {
     ));
     assert!(!cpp.contains("& pos = "), "{cpp}");
 }
-
-#[test]
-fn a_comprehension_reserves_its_source_size() {
-    let cpp = cpp(concat!(
-        "fn flip(xs: List<Int>) -> List<Int> = [9 - x for x in xs.rev]\n",
-        "let n: 1..=9 = read()\n",
-        "let sq = [i * i for i in 0..n]\n",
-        "print(flip(sq).len, [x for x in sq if x > 1].len)\n",
-    ));
-    assert!(cpp.contains(".reserve(xs.size());"), "{cpp}");
-    assert!(
-        cpp.contains(".reserve((size_t)std::max<ll>(0, n - 0));"),
-        "{cpp}"
-    );
-    assert_eq!(cpp.matches(".reserve(").count(), 2, "{cpp}");
-}
