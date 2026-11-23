@@ -4259,29 +4259,6 @@ impl<'a> Lowerer<'a> {
 
     /// `m.remove(k)` for its effect alone: the value that was there is
     /// not asked for, so it is not looked up. False when `e` is not that.
-    /// `s.set(b, on)` on a `Subset<B>` writes `s` (`set(mut self, ...)`).
-    fn subset_set(&mut self, e: &ast::Expr, out: &mut Vec<Stmt>) -> bool {
-        let ast::ExprKind::Call { callee, .. } = &e.kind else {
-            return false;
-        };
-        let ast::ExprKind::Field { base, name } = &callee.kind else {
-            return false;
-        };
-        if name.text != "set" {
-            return false;
-        }
-        let Some(Ty::Pos(d)) = self.probe_ty_silent(base) else {
-            return false;
-        };
-        if self.subset_base(d).is_none() {
-            return false;
-        }
-        let value = self.expr(e, None);
-        let place = self.place(base);
-        out.push(Stmt::Assign(place, AssignOp::Set, value));
-        true
-    }
-
     fn drop_key(&mut self, e: &ast::Expr, out: &mut Vec<Stmt>) -> bool {
         let ast::ExprKind::Call { callee, args } = &e.kind else {
             return false;

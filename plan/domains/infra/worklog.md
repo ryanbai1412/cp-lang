@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- Sheriff: compiler 08acc1bd1 broke the debt ratchet (`lower/stmt.rs` 6400 -> 6421); moved `subset_set` to `lower/range.rs`. Caught locally before CI reported it. Compiler told.
 - Sheriff, run 45103905035: reverted stdlib f89b7fb27 (`Prefix` lost `Show`, so the differential parity test failed); `grid_parts_generic.cp` runs again. Stdlib told.
 - Sheriff, run 45103905035 (f89b7fb27): clippy `while_immutable_condition` from diagnostics e2542299e fixed directly; diagnostics told.
 - `land.sh` regenerates the bundled skill pages and `COVERAGE.md` after its rebase when the change touches `spec/`, `skills/` or `scripts/`, and commits them under the lane's `Domain:` (about 4 s). Stale generated files were main's most common red today: 5 times. Test `test_land_commits_regenerated_skill_pages`. Lanes pushing with raw `git push` skip it, so they should use `scripts/land.sh`.
