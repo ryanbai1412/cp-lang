@@ -50,7 +50,7 @@ struct Block(seen: [Side]Run, real: [Side]Run):
     @get fn len(self) -> Int = seen[X].len
     fn each(self, f: Run -> Run) -> Block = Block(seen.map(f), real.map(f))
     fn head(self, s: Side) -> Char = text[s][seen[s].at]
-    fn bs(self, s: Side, k: Int) -> Int = count_b[s].sum(seen[s].take(k).span)
+    fn bs(self, s: Side, k: Int) -> Int = count_b[s].fold(seen[s].take(k).span)
 
 var ops: [Side]List<Run> = []
 
@@ -58,7 +58,7 @@ fn reconcile(var b: Block):
     while b.len > 0 and b.head(X) == b.head(Y): b = b.each(v => v.drop(1))
     if b.len == 0: return
     let lead = if b.head(X) == 'B': 1 else: -1
-    let k = bsearch_last(1..b.len, k => (b.bs(X, k) - b.bs(Y, k)) * lead > 0)! + 1
+    let k = (1..b.len).last_true(k => (b.bs(X, k) - b.bs(Y, k)) * lead > 0)! + 1
     reconcile(b.each(v => v.drop(k)))
     var blk = b.each(v => v.take(k))
     if blk.head(X) == 'B': blk = blk.each(v => v.rev)

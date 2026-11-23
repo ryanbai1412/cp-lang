@@ -28,6 +28,6 @@ for (i, c) in s.items:
     if i + 1 - open.len <= 2 * k:
         ans max= k + open.len
     else:
-        let from = bsearch_first(0..open.len, j => (i + 1 - open[j]) - (open.len - j) <= 2 * k)!
+        let from = (0..open.len).first_true(j => (i + 1 - open[j]) - (open.len - j) <= 2 * k)!
         ans max= open.len - from
 print(min(ans, n / 2))

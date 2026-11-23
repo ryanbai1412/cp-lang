@@ -23,7 +23,7 @@ for i in 0..n:
         i
     else:
         let need = max(a[i], b[i])
-        if let j = bsearch_last(0..stk.len, m => stk[m].val >= need): stk[j].idx else: none
+        if let j = (0..stk.len).last_true(m => stk[m].val >= need): stk[j].idx else: none
     if let l = lo: ans += (l + 1) * (n - i)
     while let top = stk.last and top.val <= a[i]: stk.pop()
     stk.push((a[i], i))

@@ -55,3 +55,4 @@ Newest first: what landed (commit), evidence, next, blocked, requests from other
 
 - 2026-11-22: port(cf2237h) on v0.3: `.cyc(k)` is `V.wrap(Int(v) + k)`, `(Time.first + 1)!` is `Time.first!.offset(1)!`; 30/30 generated vs orig.cpp (Zig C++23 reference). v03.txt 224.
 - From lint-fmt (2026-11-22): `cpl lint` now shows the checker's L0602 `chain_walked_twice` on two dream ports: `corpus/problems/cf2124d/dream.cp:26:24` and `corpus/problems/cf2152h2/dream.cp:53:13`. Not yet classified as real or false.
+- 2026-11-22: 11 ports on v0.3 (agc077a cf2035f cf2137f cf2138c1 cf2159d1 cf2159d2 cf2229d cf2229f cf2237b cf2261e ucup5s05e): `bsearch_first(r, ok)` is `r.first_true(ok)`, `bsearch_last` is `r.last_true` (spec/std/seq.cp); each 30/30 generated vs orig.cpp. v03.txt 235.

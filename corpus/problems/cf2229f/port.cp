@@ -38,5 +38,5 @@ fn can_reach(thresh: Int) -> Bool:
             dp[mask] max= if nrem >= thresh: (cnt + 1, 0) else: (cnt, nrem)
     dp[total_masks - 1].0 >= k
 
-let ans_idx = bsearch_last(0..total_masks, idx => can_reach(sorted_sums[idx])) ?? 0
+let ans_idx = (0..total_masks).last_true(idx => can_reach(sorted_sums[idx])) ?? 0
 print(sorted_sums[ans_idx] + fin)

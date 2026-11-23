@@ -18,7 +18,7 @@ for (i, x) in a.items:
     while let top = stack.last and top.val >= x: stack.pop()
     var starts = [i + 1] + (stack.last.map(t => t.starts) ?? [0])
     for l in 2..=3 if l < starts.len:
-        let below = bsearch_first(0..stack.len, k => stack[k].val >= ceil_div(x, l)) ?? stack.len
+        let below = (0..stack.len).first_true(k => stack[k].val >= ceil_div(x, l)) ?? stack.len
         let prev = if below > 0: stack[below - 1].starts else: [0]
         starts = starts[..l] + [min(u, v) for (u, v) in zip(starts[l..], prev)]
     ans += starts.sum()

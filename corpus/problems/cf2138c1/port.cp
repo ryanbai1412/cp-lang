@@ -30,7 +30,7 @@ var par: [V]?V = none
 for i in 2..=n: par[V(i)] = raw_par[i]
 let t = Rooted.from_parents(par)
 
-let leaf_depth = min(t.depth(v) for v in V if t.size(v) == 1)!
+let leaf_depth = V.filter(v => t.size(v) == 1).map(v => t.depth(v)).min()!
 var freq: [0..n]Int = 0
 for v in V: freq[t.depth(v)] += 1
 
@@ -49,4 +49,4 @@ fn is_good(l: Int) -> Bool:
             p *= 2
     S(k) in dp
 
-print(bsearch_last(0..leaf_depth + 2, is_good)!)
+print((0..leaf_depth + 2).last_true(is_good)!)

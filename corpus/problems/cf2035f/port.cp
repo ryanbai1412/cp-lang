@@ -18,6 +18,6 @@ let cycle = 2 * n
 let rounds = 0..=2 * (n + a.max())
 print(
     [
-        k * cycle + r for r in 0..cycle if let k = bsearch_first(rounds, k => works(k * cycle + r))
+        k * cycle + r for r in 0..cycle if let k = rounds.first_true(k => works(k * cycle + r))
     ].min() ?? -1
 )
