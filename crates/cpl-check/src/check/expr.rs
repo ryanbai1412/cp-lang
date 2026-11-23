@@ -1447,41 +1447,6 @@ impl<'a> Checker<'a> {
         }
     }
 
-    /// Whether the step `e`, a `?I`, is known to stay inside `I`: a test
-    /// or a loop around it orders the name it steps from against another
-    /// position of `I` ([`cpl_syntax::order`]).
-    fn step_stays(&self, e: &Expr, domain: &Ty) -> bool {
-        matches!(domain, Ty::Pos(_))
-            && self.steps.bounds(e, 0).into_iter().any(|name| {
-                match cpl_syntax::order::end_domain(name) {
-                    // `i > D.first`: an end of the domain itself.
-                    Some(of) => matches!(domain, Ty::Pos(d) if d == of),
-                    None => self.local(name).is_some_and(|local| local.ty == *domain),
-                }
-            })
-    }
-
-    /// `i + 1` used where its domain is wanted: the message for indexing
-    /// with it. A step is a `?I`, `none` when it leaves `I`.
-    fn unhandled_step(&self, got: &Ty, want: &Ty, at: &Expr) -> Option<String> {
-        let Ty::Optional(inner) = got else {
-            return None;
-        };
-        (matches!(**inner, Ty::Pos(_)) && inner.fits(want)).then(|| {
-            format!(
-                "`{}` is a {got}: it may step outside {inner}",
-                self.quote(at.span)
-            )
-        })
-    }
-
-    fn step_help(&self, at: &Expr) -> String {
-        let text = self.quote(at.span);
-        format!(
-            "bind it with `if let j = {text}`, give the edge a value with `??`, or assert with `({text})!`"
-        )
-    }
-
     /// Reports a comparison between positions of two different domains.
     /// The trait an arithmetic operator asks of a struct on its left, and
     /// the struct's name: `a + b` with `a: Pt` is `Add` for `Pt`.
@@ -3220,12 +3185,17 @@ impl<'a> Checker<'a> {
                         _ => false,
                     };
                     // A step that was not bound, clamped or asserted.
-                    if let Some(message) = self.unhandled_step(got, want, index_expr) {
+                    if let Some(may) = self.unhandled_step(got, want, index_expr) {
+                        let message =
+                            format!("`{}` is a {got}: it {may}", self.quote(index_expr.span));
                         let help = self.step_help(index_expr);
+                        let origin =
+                            self.origin(index_expr, &format!("declared as {}", got.with_article()));
                         if let Some(diag) =
                             self.error(codes::WRONG_DOMAIN, index_expr.span, message)
                         {
                             diag.help = Some(help);
+                            diag.labels.extend(origin);
                         }
                     } else {
                         let origins = [
@@ -3628,16 +3598,18 @@ impl<'a> Checker<'a> {
         if self.literal_position(at, want) || self.literal_shape_fits(at, got, want) {
             return true;
         }
-        if self.unhandled_step(got, want, at).is_some() {
+        if let Some(may) = self.unhandled_step(got, want, at) {
             let text = format!(
-                "expected {want}, got {got}: `{}` may step outside {want}",
+                "expected {want}, got {got}: `{}` {may}",
                 self.quote(at.span)
             );
             let help = self.step_help(at);
+            let origin = self.origin(at, &format!("declared as {}", got.with_article()));
             // R04.8.4: a `?V` where a `V` is wanted is the wrong type, not the wrong domain.
             let code = { codes::TYPE_MISMATCH };
             if let Some(diag) = self.error(code, at.span, text) {
                 diag.help = Some(help);
+                diag.labels.extend(origin);
             }
             return false;
         }

@@ -15,6 +15,7 @@ mod moves;
 mod mut_args;
 mod pattern;
 mod spelling;
+mod steps;
 mod stmt;
 pub(crate) use stmt::runs;
 mod types;

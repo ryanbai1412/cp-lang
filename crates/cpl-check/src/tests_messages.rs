@@ -439,6 +439,26 @@ fn a_list_getter_that_may_give_nothing_is_optional() {
 }
 
 #[test]
+fn a_name_holding_an_optional_position_may_be_none_not_step() {
+    let d = check(
+        "domain V = 0..3\nvar a: [V]Int = [0, 0, 0]\nvar r: List<V> = [V.first!]\nlet u = r.pop()\na[u] += 1\n",
+    );
+    assert_eq!(d.len(), 1, "{d:?}");
+    assert!(
+        d[0].message.contains("`u` is a ?V: it may be `None`"),
+        "{d:?}"
+    );
+    assert!(
+        d[0].labels
+            .iter()
+            .any(|l| l.message.contains("declared as a ?V")),
+        "{d:?}"
+    );
+    let help = d[0].help.as_deref().unwrap_or("");
+    assert!(help.contains("`u!`") && !help.contains("edge"), "{help}");
+}
+
+#[test]
 fn a_header_field_is_made_var_in_a_block_struct() {
     let d = check("struct P(x: Int)\nvar p = P(1)\np.x = 2\n");
     assert_eq!(d.len(), 1, "{d:?}");
