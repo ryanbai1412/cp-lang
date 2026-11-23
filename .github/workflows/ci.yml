@@ -27,14 +27,15 @@ concurrency:
 
 jobs:
   # --fast split into parallel jobs (CPL_GATE_PART in scripts/check.sh): the
-  # checks, the conformance ratchet, and the workspace tests in six nextest partitions.
+  # checks, the conformance ratchet in three suite shards, and the workspace
+  # tests in six nextest partitions.
   gate:
     name: gate (${{ matrix.part }})
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        part: [checks, conform, "tests:hash:1/6", "tests:hash:2/6", "tests:hash:3/6", "tests:hash:4/6", "tests:hash:5/6", "tests:hash:6/6"]
+        part: [checks, "conform:conformance,spec-blocks", "conform:diff", "conform:corpus,docs", "tests:hash:1/6", "tests:hash:2/6", "tests:hash:3/6", "tests:hash:4/6", "tests:hash:5/6", "tests:hash:6/6"]
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
