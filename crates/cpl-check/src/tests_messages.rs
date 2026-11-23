@@ -540,3 +540,17 @@ fn a_generic_alias_binds_its_parameters() {
     let src = "use std.seq.{Perm}\ndomain V = 1..=3\nlet p: Perm<V> = read()\nprint(p[V(1)])\n";
     assert!(check(src).is_empty(), "{:?}", check(src));
 }
+
+#[test]
+fn a_getter_called_with_parens_offers_to_drop_them() {
+    let d = one("let xs = [3, 1]\nprint(xs.len())\n");
+    assert_eq!(d.code, cpl_diag::codes::NOT_CALLABLE);
+    assert_eq!(
+        fixed("let xs = [3, 1]\nprint(xs.len())\n"),
+        "let xs = [3, 1]\nprint(xs.len)\n"
+    );
+    assert_eq!(
+        fixed("let xs = [3, 1]\nprint(xs.first())\n"),
+        "let xs = [3, 1]\nprint(xs.first)\n"
+    );
+}
