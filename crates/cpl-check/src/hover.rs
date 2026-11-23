@@ -76,6 +76,17 @@ impl Database {
         Some((total, unbounded))
     }
 
+    /// How the value hovered at `offset` is stored: widths, the niche of an
+    /// optional, field offsets and an array's peak bytes. Cheap: it reads
+    /// the checked item, as hover does.
+    pub fn representation(&mut self, path: &str, offset: u32) -> Option<Representation> {
+        let analysis = self.analyze(path)?;
+        let (item, at) = analysis.item_at(offset)?;
+        let ty = innermost(&item.check.hovers, at)?.ty.clone();
+        let mut lookup = |name: &str| self.lookup(path, &analysis, name);
+        Some(represent(&ty, &mut lookup))
+    }
+
     pub fn hover(&mut self, path: &str, offset: u32) -> Option<Hover> {
         let analysis = self.analyze(path)?;
         let (item, at) = analysis.item_at(offset)?;
@@ -805,24 +816,61 @@ fn cost_lines(ty: &Ty, lookup: &mut Lookup) -> String {
     out
 }
 
-/// How a value of `ty` is laid out, after its size: where `none` goes for
-/// an optional, and each field's offset and the padding for a tuple, record
-/// or struct.
-fn layout_note(ty: &Ty, lookup: &mut Lookup) -> String {
+/// How one value is stored: the one computation behind hover's storage
+/// lines and `cpl explain`'s representation section.
+#[derive(Clone, PartialEq, Eq, Debug, Default)]
+pub struct Representation {
+    /// The type, as hover shows it.
+    pub ty: String,
+    /// Bytes per value, or per element for an array; `None` when it grows
+    /// on the heap.
+    pub bytes: Option<u64>,
+    /// For an array: how many cells its index types allow at most, and the
+    /// bytes those take.
+    pub max_cells: Option<i128>,
+    pub max_bytes: Option<u128>,
+    /// For `?T`: whether `None` is a value `T` never takes (`true`, no flag)
+    /// or needs a flag beside it (`false`).
+    pub none_is_spare: Option<bool>,
+    /// For a tuple, record or struct of two or more fixed-size fields: each
+    /// field's offset, and the padding between and after them.
+    pub field_offsets: Vec<u64>,
+    pub padding: u64,
+}
+
+pub(crate) fn represent(ty: &Ty, lookup: &mut Lookup) -> Representation {
+    let mut out = Representation {
+        ty: ty.to_string(),
+        ..Representation::default()
+    };
+    let cell = match ty {
+        Ty::Array { index, elem } => {
+            out.bytes = size(elem, lookup);
+            out.max_cells = index
+                .iter()
+                .try_fold(1i128, |acc, i| acc.checked_mul(index_size(i, lookup)?));
+            out.max_bytes = out
+                .bytes
+                .zip(out.max_cells)
+                .map(|(per, n)| n as u128 * u128::from(per));
+            &**elem
+        }
+        _ => {
+            out.bytes = size(ty, lookup);
+            ty
+        }
+    };
+    (out.none_is_spare, out.field_offsets, out.padding) = layout(cell, lookup);
+    out
+}
+
+/// Where `None` goes for an optional, and each field's offset and the
+/// padding for a tuple, record or struct.
+fn layout(ty: &Ty, lookup: &mut Lookup) -> (Option<bool>, Vec<u64>, u64) {
     let sizes: Option<Vec<u64>> = match ty {
         Ty::Optional(inner) => {
-            let Some(inner_size) = size(inner, lookup) else {
-                return String::new();
-            };
-            return if has_niche(inner, inner_size) {
-                " (None is a spare value: no flag)".to_string()
-            } else {
-                format!(
-                    " ({} + {} flag for None)",
-                    human_bytes(inner_size.into()),
-                    human_bytes(inner_size.clamp(1, 8).into())
-                )
-            };
+            let spare = size(inner, lookup).map(|s| has_niche(inner, s));
+            return (spare, Vec::new(), 0);
         }
         Ty::Tuple(items) => items.iter().map(|t| size(t, lookup)).collect(),
         Ty::Record(fields) => fields.iter().map(|(_, t)| size(t, lookup)).collect(),
@@ -835,13 +883,33 @@ fn layout_note(ty: &Ty, lookup: &mut Lookup) -> String {
         _ => None,
     };
     let Some(sizes) = sizes.filter(|s| s.len() > 1) else {
-        return String::new();
+        return (None, Vec::new(), 0);
     };
     let layout = struct_layout(&sizes);
-    let at: Vec<String> = layout.offsets.iter().map(u64::to_string).collect();
-    let padding: u64 = (0..=sizes.len())
+    let padding = (0..=sizes.len())
         .map(|i| layout.padding_before(i, &sizes))
         .sum();
+    (None, layout.offsets, padding)
+}
+
+/// `layout`, after the size on a storage line.
+fn layout_note(ty: &Ty, lookup: &mut Lookup) -> String {
+    let (spare, offsets, padding) = layout(ty, lookup);
+    if let (Ty::Optional(inner), Some(spare)) = (ty, spare) {
+        if spare {
+            return " (None is a spare value: no flag)".to_string();
+        }
+        let inner_size = size(inner, lookup).unwrap_or(0);
+        return format!(
+            " ({} + {} flag for None)",
+            human_bytes(inner_size.into()),
+            human_bytes(inner_size.clamp(1, 8).into())
+        );
+    }
+    if offsets.is_empty() {
+        return String::new();
+    }
+    let at: Vec<String> = offsets.iter().map(u64::to_string).collect();
     let mut note = format!(" (fields at {}", at.join(", "));
     if padding > 0 {
         note += &format!("; {} padding", human_bytes(padding.into()));

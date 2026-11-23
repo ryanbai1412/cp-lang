@@ -46,6 +46,8 @@ Contract tests run alongside all of it: each interface change adds or updates th
 | Two-core VM makes the full gate slow | `--fast` per commit; trains via `scripts/land.sh` |
 
 ## General fixes owed
+- LSP call hierarchy resolves calls by name in cpl-lsp. General fix: the checker records each fn's resolved callees, one call graph for callHierarchy, dead-code lint and explain. Owner: compiler.
+- `cpl explain` whole-program peak memory, specializations and remaining checks need IR data. General fix: an IR-level explain query beside `Database::representation`. Owner: compiler.
 
 Each local fix whose general mechanism is still owed: the instance, the general fix, the owner.
 

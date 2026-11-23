@@ -295,3 +295,24 @@ fn checks_with_field_names_types_and_fn_uses() {
         "{codes_bu:?}"
     );
 }
+
+#[test]
+fn representation_is_the_data_behind_the_storage_line() {
+    let src = "domain V = 0..1000\nlet a: [V](Int, Bool) = read()\nlet o: ?V = None\nprint(a, o)\n";
+    let at = |needle: &str| src.find(needle).unwrap() as u32;
+    let mut db = Database::new();
+    db.set_file("a.cp", src);
+    let a = db.representation("a.cp", at("a:")).unwrap();
+    assert_eq!(
+        (a.bytes, a.max_cells, a.max_bytes),
+        (Some(16), Some(1000), Some(16_000))
+    );
+    assert_eq!((a.field_offsets, a.padding), (vec![0, 8], 7));
+    let o = db.representation("a.cp", at("o:")).unwrap();
+    assert_eq!((o.bytes, o.none_is_spare), (Some(2), Some(true)));
+    assert!(db
+        .hover("a.cp", at("o:"))
+        .unwrap()
+        .text
+        .contains("None is a spare value"));
+}
