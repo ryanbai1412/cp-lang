@@ -17,6 +17,9 @@ Each finding is `<rule> <problem> <detail>`:
   no-reference      a problem with tests and no accepted C++ with a `main`
                     (a grader-style submission), so its answers can't be
                     recomputed (problem-packages/R1)
+  stale-tests-path  a tracked file outside corpus/ names `corpus/problems/<id>/tests`
+                    for a problem whose cases are now a seed list, so it reads
+                    files that no longer exist (problem-packages/R9)
 
 A reference that needs a newer g++ than this machine's is skipped and
 counted on stderr, never a finding, so findings don't depend on the
@@ -149,6 +152,23 @@ def dream_unlogged(pid, pdir, meta):
     yield f"dream-unlogged {pid} -"
 
 
+def stale_tests_paths(ids):
+    """Tracked files outside corpus/ that name a seeded problem's deleted `tests/`."""
+    seeded = {pid for pid in ids if os.path.exists(os.path.join(PROBLEMS, pid, "tests.toml"))
+              and not os.path.isdir(os.path.join(PROBLEMS, pid, "tests"))}
+    if not seeded:
+        return []
+    pattern = r"corpus/problems/(" + "|".join(sorted(seeded)) + r")/tests\b"
+    out = subprocess.run(["git", "grep", "-nIE", pattern, "--", ".", ":!corpus/", ":!research/"],
+                         cwd=ROOT, capture_output=True, text=True).stdout
+    found = []
+    for line in out.splitlines():
+        path, _, rest = line.split(":", 2)
+        for pid in set(re.findall(r"corpus/problems/([\w-]+)/tests\b", rest)) & seeded:
+            found.append(f"stale-tests-path {pid} {path}")
+    return found
+
+
 def audit(pid, do_run):
     pdir = os.path.join(PROBLEMS, pid)
     try:
@@ -172,6 +192,7 @@ def main(argv=None):
     ids = a.ids or sorted(os.listdir(PROBLEMS))
     with concurrent.futures.ThreadPoolExecutor(a.j) as pool:
         found = sorted(f for fs in pool.map(lambda p: audit(p, not a.no_run), ids) for f in fs)
+    found = sorted(set(found + stale_tests_paths(ids)))
     known = set()
     if os.path.exists(KNOWN):
         known = {l.strip() for l in open(KNOWN) if l.strip() and not l.startswith("#")}
