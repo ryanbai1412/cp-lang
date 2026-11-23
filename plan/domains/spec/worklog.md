@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- R01.11.1: `core-01/rejected-spellings-replacements-run.cp` (passes: `//`, `xs + ys`, `for .. if`, `**`, getter `len`, `[k: v]`) and `core-01/list-repeat-times-n.cp` (fails: `[x] * n` from decision 135 has no `List * Int`; stdlib request). `[x; n]` gets no fix (diagnostics request).
 - Accept cases for R04a.5.1/5.2 (`core-04/d1-slice-first-last.cp`, `core-04/d2-slice-loop-over-keys.cp`, pass): the spellings the D1/D2 lints point to.
 - Accept cases for 4 more negative-only rules (all pass): R08.5.4 `core-08/match-stored-shape-only.cp`, R08.5.3 `core-08/generic-over-seq-capability.cp`, R04a.9.5 `core-04/filter-iterates-without-keys.cp`, R07.1.7 `core-07/costs-show-getters-vs-calls.cp`. `conformance-coverage.py` -> 47 rule gaps.
 - First accept cases for 5 negative-only rules: `core-11/mod-uses-sibling.cp` (fails: sibling `use` unresolved, compiler request), `core-06/generator-lend-ends-at-last-use.cp`, `core-07/slice-view-then-write.cp`, `core-08/default-method-override-once.cp`, `core-05/cache-field-own-method-writes.cp` (pass).

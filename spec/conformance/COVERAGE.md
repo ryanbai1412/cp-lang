@@ -7,11 +7,11 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 2238 (995 passing). Rules: 531.
+Cases: 2240 (995 passing). Rules: 531.
 
 ## Summary per chapter
 
-- R01 (01-lexical-grammar.md): 50 rules, 100 cases; 0 uncovered, 4 happy-path only, 1 negative only
+- R01 (01-lexical-grammar.md): 50 rules, 102 cases; 0 uncovered, 4 happy-path only, 0 negative only
 - R02 (02-values-types.md): 51 rules, 100 cases; 0 uncovered, 7 happy-path only, 0 negative only
 - R03 (03-numbers-layout.md): 24 rules, 58 cases; 0 uncovered, 6 happy-path only, 1 negative only
 - R04 (04-indices.md): 61 rules, 89 cases; 0 uncovered, 1 happy-path only, 0 negative only
@@ -35,7 +35,7 @@ negative case. Complete: rules with no gap in `rule-gaps.txt`.
 
 | Chapter | Rules | Accept | Forbidding | Reject | Complete |
 |---|---|---|---|---|---|
-| R01 | 50 | 49 (98%) | 28 | 24 (85%) | 45 (90%) |
+| R01 | 50 | 50 (100%) | 28 | 24 (85%) | 46 (92%) |
 | R02 | 51 | 51 (100%) | 29 | 22 (75%) | 44 (86%) |
 | R03 | 24 | 23 (95%) | 17 | 11 (64%) | 17 (70%) |
 | R04 | 61 | 61 (100%) | 14 | 13 (92%) | 60 (98%) |
@@ -50,7 +50,7 @@ negative case. Complete: rules with no gap in `rule-gaps.txt`.
 | R11 | 15 | 14 (93%) | 9 | 8 (88%) | 13 (86%) |
 | R12 | 17 | 17 (100%) | 6 | 6 (100%) | 17 (100%) |
 | R13 | 22 | 22 (100%) | 7 | 4 (57%) | 19 (86%) |
-| all | 531 | 524 (98%) | 225 | 187 (83%) | 486 (91%) |
+| all | 531 | 525 (98%) | 225 | 187 (83%) | 487 (91%) |
 
 ## Rules
 
@@ -107,7 +107,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R01.8.7 [1+ 1-]: Members without parentheses are O(1) (`xs.len`, `t.parent[v]`); anything that does work ha...
 - R01.9.1 [1+ 0-]: Decorators are `@name` or `@name(args)` on the next item; the set is closed and listed in ...
 - R01.10.1 [3+ 1-]: Call arguments: positional first, named after in any order, each parameter at most once; p...
-- R01.11.1 [0+ 3-] *negative only*: Each of these gets an error with a machine-applicable fix:
+- R01.11.1 [2+ 3-]: Each of these gets an error with a machine-applicable fix:
 
 ### R02: 02-values-types.md
 
