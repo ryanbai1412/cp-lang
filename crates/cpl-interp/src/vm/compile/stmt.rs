@@ -417,7 +417,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 }
             }
             Stmt::For(id, slot, iter, body) => {
-                if !self.try_compile_for(*id, *slot, iter, body) {
+                if !self.try_compile_for(stmt, *id, *slot, iter, body) {
                     self.emit_fallback_stmt(stmt);
                 }
             }
@@ -605,6 +605,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
 
     pub(super) fn try_compile_for_fed(
         &mut self,
+        stmt: &'p Stmt,
         id: LoopId,
         slot: Slot,
         fn_id: FnId,
@@ -655,7 +656,8 @@ impl<'p, 'f> Compiler<'p, 'f> {
             body_pc: 0,
             var_loc,
         });
-        self.emit(Op::CallVmFeed { spec: spec_idx }, seq_expr.span);
+        let call_pc = self.emit(Op::CallVmFeed { spec: spec_idx }, seq_expr.span);
+        self.note_fed_site(call_pc, stmt, seq_expr);
         let j_after = self.emit(Op::Jmp { target: 0 }, seq_expr.span);
 
         let body_pc = self.ops.len();
@@ -685,6 +687,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
 
     pub(super) fn try_compile_for(
         &mut self,
+        stmt: &'p Stmt,
         id: LoopId,
         slot: Slot,
         iter: &'p Iter,
@@ -693,7 +696,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
         if let Iter::Seq(seq_expr, rev) = iter {
             if !*rev && self.allow_fed_loops {
                 if let Some((fn_id, _acc_slot)) = self.feeds.feeds(id, seq_expr, body) {
-                    return self.try_compile_for_fed(id, slot, fn_id, seq_expr, body);
+                    return self.try_compile_for_fed(stmt, id, slot, fn_id, seq_expr, body);
                 }
             }
             if !*rev && self.feeds.feeds(id, seq_expr, body).is_some() {

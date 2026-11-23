@@ -1289,7 +1289,9 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                     body,
                     left: None,
                 };
-                self.call_feeding(*callee, args, seq.span, Some(fed))?;
+                if !(self.ckpt.waits() && self.resume_fed(seq, &fed)?) {
+                    self.call_feeding(*callee, args, seq.span, Some(fed))?;
+                }
                 if let Some(flow) = self.fed_left.take() {
                     return Ok(flow);
                 }

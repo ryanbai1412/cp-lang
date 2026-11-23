@@ -872,7 +872,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     regs_i[dst as usize] = i64::from(res);
                 }
                 Op::Jmp { target } => {
-                    if target as usize <= cur_pc && self.tick(spans[cur_pc])? && fed.is_none() {
+                    if target as usize <= cur_pc && self.tick(spans[cur_pc])? {
                         self.take_checkpoint(compiled, chunk, cur_pc, base_i, vm_regs_i, regs_v);
                         regs_i = &mut vm_regs_i[base_i..base_i + chunk.num_i];
                     }
@@ -961,7 +961,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     let next = regs_i[r_i as usize] + 1;
                     if next < regs_i[r_hi as usize] {
                         regs_i[r_i as usize] = next;
-                        if target as usize <= cur_pc && self.tick(spans[cur_pc])? && fed.is_none() {
+                        if target as usize <= cur_pc && self.tick(spans[cur_pc])? {
                             self.take_checkpoint(
                                 compiled, chunk, cur_pc, base_i, vm_regs_i, regs_v,
                             );
@@ -974,7 +974,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     let cur = regs_i[r_i as usize];
                     if cur < regs_i[r_hi as usize] {
                         regs_i[r_i as usize] = cur + 1;
-                        if target as usize <= cur_pc && self.tick(spans[cur_pc])? && fed.is_none() {
+                        if target as usize <= cur_pc && self.tick(spans[cur_pc])? {
                             self.take_checkpoint(
                                 compiled, chunk, cur_pc, base_i, vm_regs_i, regs_v,
                             );
@@ -987,7 +987,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     let cur = regs_i[r_i as usize];
                     if cur > regs_i[r_lo as usize] {
                         regs_i[r_i as usize] = cur - 1;
-                        if target as usize <= cur_pc && self.tick(spans[cur_pc])? && fed.is_none() {
+                        if target as usize <= cur_pc && self.tick(spans[cur_pc])? {
                             self.take_checkpoint(
                                 compiled, chunk, cur_pc, base_i, vm_regs_i, regs_v,
                             );

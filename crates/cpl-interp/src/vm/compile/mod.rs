@@ -213,7 +213,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
     /// The loops around the code compiled next, then `own`, when a
     /// checkpoint can read every one of them.
     fn resumable_loops(&self, own: Option<Option<LoopReg>>) -> Option<Vec<LoopReg>> {
-        if self.inline_slots.is_some() || self.feed_acc.is_some() {
+        if self.inline_slots.is_some() {
             return None;
         }
         (self.loops.iter().map(|l| l.resumable))
@@ -294,6 +294,27 @@ impl<'p, 'f> Compiler<'p, 'f> {
             last = Some(pc);
             before.push(call);
         }
+    }
+
+    /// Notes the call op at `pc` of the `yields` fn that feeds the loop
+    /// `stmt`: a run from a checkpoint inside the fn makes the loop again
+    /// and goes on in the fn.
+    pub(super) fn note_fed_site(&mut self, pc: usize, stmt: &'p Stmt, call: &'p Expr) {
+        let mut order = Order::default();
+        order.walk(call);
+        if !matches!(order.calls[..], [Some(only)] if std::ptr::eq(only, call)) {
+            return;
+        }
+        let Some(loops) = self.resumable_loops(None) else {
+            return;
+        };
+        self.call_sites.push(CallSite {
+            pc: pc as u32,
+            loops,
+            stmt,
+            call,
+            before: Vec::new(),
+        });
     }
 
     /// The one call op from `start` on that `call` compiled to.

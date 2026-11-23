@@ -265,3 +265,28 @@ on write, so a checkpoint copies main's locals and the globals, not the heap.
   `a_checkpoint_can_stand_inside_calls_and_test_cases` checks checkpoints
   land at both depths.
 
+## Feed loops
+
+- **Taken (untraced recordings):** a checkpoint stands in a loop of a
+  `yields` fn feeding a `for` (`for x in evens(n)`), in main or in any fn,
+  at any depth.
+- **How:** the VM's `CallVmFeed` now suspends its caller like a call
+  (`Body::Fed`, the fed chunk in `compiled.fed_fns`) and pushes the fn's
+  call frame, as the tree-walker does. The `for` is the call site
+  (`note_fed_site`). A resumed run makes the `for` again on the tree-walker;
+  at the waited call it resumes the fn's frame while it feeds the loop
+  (`resume_fed`, `resume_callee` with a `Fed`), so each later `yield` runs
+  the body as before.
+- **Found on the way:** the frame waiting on a call is read once and kept
+  for later checkpoints (`known`), since it can't change while it waits. A
+  fed loop's caller does change: the body runs in it at each `yield`. Each
+  yield now marks that frame to be read again (`Interp::feeding`).
+- **Not taken:** in the body of a fed loop (it runs in the caller's frame
+  inside the fn's), and in traced runs: the traced VM runs no fed loops, so
+  a counted run and `Timeline` get no checkpoint in them. Both are owed:
+  the second with the traced chunks for fns with `mut` parameters (compile
+  traced chunks for every shape untraced compiles).
+- **Tests:** fixture `FEED` (fed loops in main and in a fn, with a body
+  loop) is in the run, traced-resume, window and tail tests; not yet in the
+  `Timeline` and counted tests.
+

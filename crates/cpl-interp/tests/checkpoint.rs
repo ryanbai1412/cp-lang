@@ -153,6 +153,35 @@ print(g)
 print(run(g))
 ";
 
+const FEED: &str = "fn evens(n: Int) -> yields Int:
+    for i in 0..n:
+        if i % 2 == 0:
+            yield i
+fn upto(n: Int) -> yields Int:
+    for i in 0..n:
+        yield i
+fn inner(m: Int) -> Int:
+    var t = 0
+    for x in upto(m):
+        var j = 0
+        while j < 200:
+            t = (t + x * j) % 1000003
+            j += 1
+    return t
+var s = 0
+for x in evens(60000):
+    s = (s * 31 + x) % 1000003
+print(s)
+print(inner(150))
+var u = 0
+for x in upto(150):
+    var j = 0
+    while j < 200:
+        u = (u + x + j) % 1000003
+        j += 1
+print(u)
+";
+
 const MULTITEST_RAND: &str = "@!multitest
 let n: Int = read()
 var s = 0
@@ -207,6 +236,7 @@ fn a_run_from_a_checkpoint_prints_the_rest_of_the_output() {
         (SEQ, &b""[..]),
         (CLOSURE, &b""[..]),
         (MUT, &b""[..]),
+        (FEED, &b""[..]),
         (MULTITEST_RAND, MULTITEST_INPUT),
     ] {
         let (program, whole, taken) = record(source, input);
@@ -236,6 +266,7 @@ fn a_traced_run_from_a_checkpoint_records_the_whole_trace_from_there() {
         (SEQ, &b""[..]),
         (CLOSURE, &b""[..]),
         (MUT, &b""[..]),
+        (FEED, &b""[..]),
         (MULTITEST_RAND, MULTITEST_INPUT),
     ] {
         let (program, _, taken) = record(source, input);
@@ -301,6 +332,7 @@ fn the_tail_from_a_checkpoint_is_the_whole_runs_last_steps() {
         (SEQ, &b""[..], 3000),
         (CLOSURE, &b""[..], 3000),
         (MUT, &b""[..], 3000),
+        (FEED, &b""[..], 3000),
         (NESTED, &b""[..], 1),
     ] {
         let program = program(source);
@@ -363,6 +395,7 @@ fn a_window_from_a_checkpoint_is_the_whole_runs_window() {
         (SEQ, &b""[..]),
         (CLOSURE, &b""[..]),
         (MUT, &b""[..]),
+        (FEED, &b""[..]),
         (MULTITEST_RAND, MULTITEST_INPUT),
     ] {
         let program = program(source);

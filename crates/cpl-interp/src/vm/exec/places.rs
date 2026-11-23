@@ -1,3 +1,4 @@
+use crate::checkpoint::Body;
 use crate::observe::Observer;
 use crate::value::{ArrayData, CaptureVal, OptVal, TupleVal, Value};
 use crate::vm::helpers::*;
@@ -925,6 +926,16 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         }
                     }
                 }
+                let f = &self.program.fns[fc.fn_id];
+                self.call_frames.push((f.name.as_str(), spans[cur_pc]));
+                self.suspend(
+                    chunk,
+                    cur_pc,
+                    base_i,
+                    regs_v,
+                    Body::Fed(fc.fn_id),
+                    self.base,
+                );
                 let dom_mark = self.saved_domains.len();
                 for &d in &fed_chunk.guarded_domains {
                     self.saved_domains.push((d, self.domains[d]));
@@ -962,9 +973,12 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     let (id, prev) = self.saved_domains.pop().unwrap();
                     self.domains[id] = prev;
                 }
+                self.unsuspend();
                 self.return_regs_v(callee_regs_v);
                 vm_regs_i.truncate(callee_base_i);
-                match res? {
+                let res = res?;
+                self.call_frames.pop();
+                match res {
                     ExecExit::FeedNext | ExecExit::FeedBreak => {}
                     ExecExit::Return(v) => return Ok(Some(ExecExit::Return(v))),
                 }
@@ -988,6 +1002,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     }
                 }
                 let saved_base = self.base;
+                self.feeding();
                 self.base = ctx.caller_base;
                 let body_res = self.exec_chunk_core(
                     compiled,
@@ -1014,6 +1029,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 let ctx = fed.as_deref_mut().expect("FeedYieldV outside fed call");
                 store_fed_val(ctx, vm_regs_i, val);
                 let saved_base = self.base;
+                self.feeding();
                 self.base = ctx.caller_base;
                 let body_res = self.exec_chunk_core(
                     compiled,
@@ -1049,6 +1065,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 for item in items {
                     store_fed_val(ctx, vm_regs_i, item);
                     let saved_base = self.base;
+                    self.feeding();
                     self.base = ctx.caller_base;
                     let body_res = self.exec_chunk_core(
                         compiled,

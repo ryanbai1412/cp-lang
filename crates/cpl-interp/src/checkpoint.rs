@@ -81,6 +81,8 @@ struct FrameAt {
 pub(crate) enum Body {
     Main,
     Fn(FnId),
+    /// A `yields` fn feeding a loop's body as it yields.
+    Fed(FnId),
     Closure(cpl_ir::ClosureId),
 }
 
@@ -563,6 +565,15 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
         }
     }
 
+    /// A `yields` fn runs its loop's body, which changes the frame waiting
+    /// on it: that frame is read again at the next checkpoint.
+    #[cfg(not(target_arch = "wasm32"))]
+    #[inline]
+    pub(crate) fn feeding(&mut self) {
+        let waiting = self.ckpt.frames.len().saturating_sub(1);
+        self.ckpt.known = self.ckpt.known.min(waiting);
+    }
+
     #[cfg(not(target_arch = "wasm32"))]
     #[cold]
     #[inline(never)]
@@ -731,7 +742,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
             return Snap::No;
         }
         let lends = match s.callee {
-            Body::Fn(_) => false,
+            Body::Fn(_) | Body::Fed(_) => false,
             Body::Closure(cid) => !self.program.closures[cid].muts.is_empty(),
             Body::Main => true,
         };
@@ -811,7 +822,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
             let mut surely = vec![false; n];
             match callee {
                 Body::Main => {}
-                Body::Fn(id) => (surely.iter_mut())
+                Body::Fn(id) | Body::Fed(id) => (surely.iter_mut())
                     .take(self.program.fns[id].params.len())
                     .for_each(|d| *d = true),
                 Body::Closure(cid) => {
@@ -943,7 +954,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
         let program = self.program;
         match body {
             Body::Main => (program.main_locals.len(), &program.main),
-            Body::Fn(id) => (program.fns[id].locals.len(), &program.fns[id].body),
+            Body::Fn(id) | Body::Fed(id) => (program.fns[id].locals.len(), &program.fns[id].body),
             Body::Closure(cid) => {
                 let def = &program.closures[cid];
                 (def.locals.len(), &def.body)
@@ -985,10 +996,15 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
     }
 
     /// The call frame `k` of `frames` makes, from where it was; what it returns.
-    fn resume_callee(&mut self, frames: &[FrameAt], k: usize) -> Res<Value> {
+    fn resume_callee(
+        &mut self,
+        frames: &[FrameAt],
+        k: usize,
+        fed: Option<crate::Fed<'p>>,
+    ) -> Res<Value> {
         let frame = &frames[k];
         let id = match frame.body {
-            Body::Fn(id) => id,
+            Body::Fn(id) | Body::Fed(id) => id,
             Body::Closure(cid) => return self.resume_closure(frames, k, cid),
             Body::Main => unreachable!("a callee frame is a fn's or a closure's"),
         };
@@ -1000,6 +1016,13 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
         self.frame_locals.push(&f.locals);
         self.call_frames.push((f.name.as_str(), span));
         let entered = self.tracer.as_mut().map(|tracer| tracer.enter_fn(&f.name));
+        let feeding = fed.is_some();
+        if let Some(fed) = fed {
+            self.fed_loops.push(crate::Fed {
+                callee: base,
+                ..fed
+            });
+        }
         let in_closure = std::mem::replace(&mut self.in_closure, false);
         let mut flow = self.resume_frame(frames, k);
         while self.saved_domains.len() > frame.doms {
@@ -1027,6 +1050,12 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
         }
         self.frame_locals.pop();
         self.base = saved;
+        if feeding {
+            if let Some(left) = self.fed_loops.pop().and_then(|fed| fed.left) {
+                self.fed_left = Some(left).filter(|left| !matches!(left, Flow::Next));
+                flow = Ok(Flow::Next);
+            }
+        }
         let flow = flow?;
         self.call_frames.pop();
         self.stack.truncate(base);
@@ -1138,6 +1167,20 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
         flow
     }
 
+    /// At the loop `seq` feeds: when the `yields` fn is the call a run from
+    /// a checkpoint waits on, that call from where it was, feeding `fed`.
+    pub(crate) fn resume_fed(&mut self, seq: &'p cpl_ir::Expr, fed: &crate::Fed<'p>) -> Res<bool> {
+        let at = seq as *const cpl_ir::Expr as usize;
+        if !matches!(&self.ckpt.pending, Some((call, _)) if *call == at) {
+            return Ok(false);
+        }
+        let (_, frames) = self.ckpt.pending.take().unwrap();
+        self.ckpt.returned.clear();
+        let fed = crate::Fed { left: None, ..*fed };
+        self.resume_callee(&frames, 0, Some(fed))?;
+        Ok(true)
+    }
+
     /// What a `for` over `seq` walks, and the round it starts from when a
     /// run from a checkpoint goes on in it: the sequence as it was when the
     /// loop began.
@@ -1195,7 +1238,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 }
             }
         }
-        self.resume_callee(&frames, 0).map(Some)
+        self.resume_callee(&frames, 0, None).map(Some)
     }
 }
 
@@ -1205,6 +1248,7 @@ fn chunk_of<'c, 'p>(compiled: &'c CompiledProgram<'p>, body: Body) -> Option<&'c
     match body {
         Body::Main => Some(&compiled.main),
         Body::Fn(id) => compiled.fns[id].as_ref(),
+        Body::Fed(id) => compiled.fed_fns[id].as_ref(),
         Body::Closure(cid) => compiled.closures[cid].as_ref(),
     }
 }
