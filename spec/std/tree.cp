@@ -218,6 +218,16 @@ pub struct Rooted<V, Pre>:
             yield at[Pre.nth(p)]
             p += sz[at[Pre.nth(p)]]
 
+    /// Every vertex, parents before children: breadth-first from the roots, each vertex's
+    /// children in child order. `t.order.rev` lists children before parents, the order a tree DP
+    /// without recursion walks.
+    ///
+    /// cost: O(1); the list is the tree's own breadth-first order
+    /// order: breadth-first; the roots first
+    /// traps: never
+    /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); t.order == [0, 1, 2, 3, 4]`
+    @get pub fn order(self) -> List<V> = bfs
+
     /// The position of `v` in this tree's own preorder domain `t.Pre`; the inverse of `at`.
     ///
     /// cost: O(1)

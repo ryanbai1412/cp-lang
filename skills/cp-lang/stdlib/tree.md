@@ -17,6 +17,7 @@ Fields: `root: V`, `par: [V]?V`, `far: [V]Int`, `bfs: List<V>`, `heavy: [V]?V`, 
 - `fn try_from_parents(par: [V]?V) -> ?Rooted<V, _>` — O(n); `from_parents` for parents that may not form a forest: `None` when they have a cycle.
 - `fn forest(next: Next<V>, from: List<V>) -> Rooted<V, _>` — O(n + m); One tree per root: `next` must reach every vertex from exactly one of `from`.; traps: when `from` is empty, or some vertex is reached from no root or from two
 - `@get fn roots(self) -> yields V` — O(1) to make, O(1) per root; The roots in the order given: one for `new`, one per tree for `forest`, key order for `from_parents`.
+- `@get fn order(self) -> List<V>` — O(1); the list is the tree's own breadth-first order; Every vertex, parents before children: breadth-first from the roots, each vertex's children in child order.
 - `fn pos(self, v: V) -> Pre` — O(1); The position of `v` in this tree's own preorder domain `t.Pre`; the inverse of `at`.
 - `fn parent(self, v: V) -> ?V` — O(1); The parent of `v`; `None` at a root.
 - `fn up_arc<A>(self, v: V) -> ?A` — O(1); The arc `v` was entered by, with every field `next` gave it (`t.up_arc(v)!.cost` on a tree read with a `cost` field); `None` at a root.
