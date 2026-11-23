@@ -113,9 +113,8 @@ pub(crate) struct Scope {
     /// Modules imported whole (`use lib.treap`, `use lib.flow as fl`), by
     /// the name this file calls them: their public names are `treap.X`.
     pub aliases: HashMap<String, usize>,
-    /// Every module this file reaches through `use`, its own imports
-    /// first and theirs after. A type that comes back from an imported fn
-    /// is looked up here even when this file never names it.
+    /// Every module this file reaches through `use`, its own imports first and theirs after. A
+    /// type returned by an imported fn is looked up here even when this file never names it.
     pub modules: Vec<Module>,
 }
 
@@ -1685,6 +1684,7 @@ impl FileCtx<'_> {
             DEP_NAMES => self.scope.names_fp,
             DEP_IMPORTS => self.scope.imports_fp,
             DEP_LENT => self.replays_fingerprint(),
+            key if key.starts_with(fields::DEP_FIELD) => self.field_fp(key),
             key => match (key.strip_prefix(DEP_TYPE), key.strip_prefix(DEP_EFFECTS)) {
                 (Some(name), _) => self.type_def(name).1,
                 (_, Some(name)) => self.effects(name).1,
@@ -1824,10 +1824,8 @@ impl FileCtx<'_> {
         (None, 0)
     }
 
-    /// The definition behind a type's name: this file's own or imported
-    /// one, else the one in a module it reaches. A value of a library's
-    /// type can come back from a call without the file ever importing the
-    /// type by name.
+    /// The definition behind a type's name: this file's own or imported one, else one in a
+    /// module it reaches (a library's value can come back without importing its type).
     fn type_def(&mut self, name: &str) -> (Option<Arc<Def>>, u64) {
         match self.def(name) {
             (None, _) => self.reached(name),
@@ -1845,9 +1843,8 @@ impl FileCtx<'_> {
         }
     }
 
-    /// The earlier top-level statements whose effect reaches item
-    /// `current`: views still named at or after it, and asserts none of
-    /// whose names was assigned since. Empty for almost every file.
+    /// The earlier top-level statements whose effect reaches item `current`: views still named
+    /// at or after it, and asserts none of whose names was assigned since. Usually empty.
     fn replays(&mut self, current: usize) -> Vec<Replay> {
         let items = self.items.clone();
         if matches!(
@@ -1929,9 +1926,8 @@ impl FileCtx<'_> {
         out
     }
 
-    /// What the body of the fn `name` of this file touches by itself: the
-    /// top-level `var`s it changes and reads, and the fns of this file it
-    /// calls. `None` if this file has no such fn.
+    /// What the body of this file's fn `name` touches by itself: the top-level `var`s it
+    /// changes and reads, and the fns of this file it calls. `None` if there is no such fn.
     fn own_effects(&mut self, name: &str) -> Option<Arc<Effects>> {
         if let Some(known) = self.own_effects.get(name) {
             return known.clone();
@@ -2000,9 +1996,8 @@ impl FileCtx<'_> {
         own
     }
 
-    /// What calling the fn `name` of this file touches outside itself,
-    /// counting the fns it calls, and the fingerprint of that. A fn from
-    /// a module touches nothing here.
+    /// What calling this file's fn `name` touches outside itself, counting the fns it calls, and
+    /// the fingerprint of that. A fn from a module touches nothing here.
     fn effects(&mut self, name: &str) -> (Arc<Effects>, u64) {
         if let Some(known) = self.effects.get(name) {
             return known.clone();
@@ -2120,6 +2115,10 @@ impl Env for FileCtx<'_> {
         let (effects, fingerprint) = self.effects(name);
         self.record(&format!("{DEP_EFFECTS}{name}"), fingerprint);
         effects
+    }
+
+    fn field_decl(&mut self, ty: &str, field: &str) -> Option<Span> {
+        self.field_decl_at(ty, field)
     }
 
     fn lent_before(&mut self) -> Vec<Replay> {
@@ -2502,5 +2501,6 @@ fn wide_array(
 }
 
 mod cycles;
+mod fields;
 #[cfg(test)]
 mod tests;

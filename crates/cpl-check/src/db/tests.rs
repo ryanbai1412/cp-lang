@@ -73,3 +73,27 @@ fn a_top_level_move_points_at_the_move_after_an_edit_above_it() {
         assert_eq!(diags[0].fixes[0].edits[0].0, Span::point(moved + 1));
     }
 }
+
+#[test]
+fn assigning_a_fixed_field_offers_var_where_it_is_declared_after_an_edit() {
+    let mut db = Database::new();
+    for gap in ["", "let pad = 1\nprint(pad)\n"] {
+        let src = format!(
+            "struct S:\n    n: Int\n    top: Int\n{gap}var s = S(n: 1, top: 0)\ns.top = 1\n"
+        );
+        db.set_file("a.cp", src.as_str());
+        let diags = db.diagnostics("a.cp");
+        assert_eq!(diags.len(), 1, "{diags:?}");
+        let top = src.find("top:").unwrap() as u32;
+        assert_eq!(
+            diags[0].fixes[0].edits[0],
+            (Span::point(top), "var ".to_string())
+        );
+    }
+    // `u, v: V` has no place to put `var` for `v` alone.
+    db.set_file(
+        "a.cp",
+        "struct P:\n    u, v: Int\nvar p = P(u: 1, v: 2)\np.v = 3\n",
+    );
+    assert!(db.diagnostics("a.cp")[0].fixes.is_empty());
+}

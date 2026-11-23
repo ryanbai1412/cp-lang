@@ -339,9 +339,8 @@ impl<'a> Checker<'a> {
         last
     }
 
-    /// Checks statements that run one after another. A slice or row
-    /// bound by `let` keeps its array lent until the last statement that
-    /// names it.
+    /// Checks statements that run one after another. A slice or row bound by `let` keeps its
+    /// array lent until the last statement that names it.
     fn stmts(&mut self, stmts: &[Stmt], top_level: bool) -> Ty {
         let mut last = Ty::Unit;
         let present = self.present.len();
@@ -500,8 +499,8 @@ impl<'a> Checker<'a> {
         }
     }
 
-    /// What `let pat = init else: ...` binds: the value in each optional.
-    /// A tuple of values is taken apart, `let (x, y) = (a, b) else: ...`.
+    /// What `let pat = init else: ...` binds: the value in each optional. A tuple of values is
+    /// taken apart, `let (x, y) = (a, b) else: ...`.
     /// A refutable pattern, `let (gap, Some(best)) = e else: ...`, is matched
     /// against `e` itself.
     pub(crate) fn let_else(&mut self, pat: &ast::Pattern, init: &ast::Expr, ty: Ty) -> Ty {
@@ -1602,6 +1601,7 @@ impl<'a> Checker<'a> {
                             _ => false,
                         };
                         if fixed_field {
+                            let var_at = self.env.field_decl(sname, &name.text);
                             let base_text = self.quote(base.span);
                             let message = format!(
                                 "field `{sname}.{}` is fixed (not `var`) and cannot be assigned",
@@ -1614,6 +1614,9 @@ impl<'a> Checker<'a> {
                                     "declare `var {}` on `{sname}` or rebuild with `{base_text} with {}: ...`",
                                     name.text, name.text
                                 ));
+                                if let Some(at) = var_at {
+                                    diag.fix(format!("declare `var {}`", name.text), at, "var ");
+                                }
                             }
                         }
                     }
@@ -2070,10 +2073,9 @@ impl<'a> Checker<'a> {
         }
     }
 
-    /// The `K` of an `impl Index`: how many values the type has. `const K`
-    /// is known at compile time; `let K` is evaluated once, where the
-    /// impl is declared, and frozen, so it can't read a `var`
-    /// (plan/19 §3.1).
+    /// The `K` of an `impl Index`: how many values the type has. `const K` is known at compile
+    /// time; `let K` is evaluated once, where the impl is declared, and frozen, so it can't read
+    /// a `var` (plan/19 §3.1).
     fn index_size(&mut self, body: &[Stmt]) {
         for stmt in body {
             match &stmt.kind {
@@ -2256,11 +2258,9 @@ impl<'a> Checker<'a> {
         }
     }
 
-    /// Reports a `@memo` that would not remember anything. Both back ends
-    /// keep one table of answers per top-level or local fn, keyed by its
-    /// arguments, and run the fn as written when they can't: the program
-    /// would be right and, without a word, as slow as if `@memo` were not
-    /// there.
+    /// Reports a `@memo` that would not remember anything. Both back ends keep one table of
+    /// answers per top-level or local fn, keyed by its arguments, and run the fn as written
+    /// when they can't: the program would be right and, silently, as slow as without `@memo`.
     fn is_bounded_memo_type(&mut self, ty: &Ty) -> bool {
         match ty {
             Ty::Pos(_) | Ty::Bool | Ty::Range { .. } | Ty::Error | Ty::Unknown => true,

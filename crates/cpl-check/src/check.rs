@@ -50,6 +50,11 @@ pub(crate) trait Env {
     fn has_imports(&mut self) -> bool;
     /// Every top-level name, for "did you mean".
     fn names(&mut self) -> Vec<String>;
+    /// Where struct `ty` declares `field`, relative to the item being
+    /// checked, when an edit there can fix an error.
+    fn field_decl(&mut self, _ty: &str, _field: &str) -> Option<Span> {
+        None
+    }
 }
 
 #[derive(Clone, Debug)]
