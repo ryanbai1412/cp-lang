@@ -17,6 +17,17 @@ sorting, segments, convex hulls and Minkowski sums, polygon area and
 containment, rotating calipers, closest pair, half-plane intersection, and
 careful floating-point geometry.
 
+## The model in one paragraph
+
+Geometry is exact by default: `Pt` holds integer coordinates, `turn`
+gives the orientation of three points from one cross product, and
+`ByAngle` is a sort key, so angular order is `ps.sort(by: ByAngle)`
+rather than a comparator full of special cases. Hulls (`convex_hull`,
+`lower_hull`, `upper_hull`, and `_idx` forms that return positions),
+segment tests (`on_segment`, `segments_meet`) and polygon area and
+containment build on those primitives. Floating-point geometry is a
+separate, explicitly marked layer, used only when the problem needs it.
+
 ## 1. Contest survey
 
 Across Codeforces Div. 1, AtCoder Grand/Regular, and ICPC regionals and World

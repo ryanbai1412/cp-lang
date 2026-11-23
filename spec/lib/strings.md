@@ -22,6 +22,19 @@ Facts checked directly in this repository (`stdlib/strings.cp`,
 verified; external library inventories (KACTL, AtCoder Library, CP-Algorithms)
 are standard public references.
 
+## The model in one paragraph
+
+A `Str` is an indexed sequence of `Char` (`core/07-sequences.md`), so
+slicing, `.keys`, folds and searches are the sequence methods, and a
+slice keeps its positions (`core/04b-keys.md`). `std.strings` adds text
+utilities (`split`, `trim`, `join`, `parse_int`) and the string
+algorithms by their textbook names: `z_function`, `prefix_function`,
+`manacher` and `Palindromes`, `SuffixArray`, `SuffixAutomaton`,
+`PalindromicTree`, `Trie`, `AhoCorasick` and `RollingHash`. Each names
+its algorithm and cost. The linear matchers (`z_function`,
+`prefix_function`, `manacher`) take any `Indexed` sequence, not only
+`Str`, and return tables keyed by the input's own positions.
+
 ## 1. Survey of contest patterns
 
 String problems across Codeforces Div. 1, AtCoder Grand/WTF, ICPC World Finals,

@@ -16,6 +16,17 @@ must cover, one API that covers them, the laws each function keeps, how the
 area uses domains, and what stays user code. `plan/STDLIB.md` §4.12 is the
 summary; this file is the reasoning.
 
+## The model in one paragraph
+
+A flow problem is a `FlowGraph` (or `CostFlow` with costs) built arc by
+arc; each `add` returns the `Arc`, so the flow on that arc is read back
+by name after solving, never by a recomputed index. Matching and cover
+problems that reduce to flow get named functions (`max_matching`,
+`min_vertex_cover`, `max_weight_matching`, `general_matching`), and
+bounded flows, circulations and `gomory_hu` cover the rarer shapes.
+Capacities are ordinary integers; the algorithm and its bound are in
+each entry's cost line.
+
 ## 1. What contests ask
 
 Flow problems are modelling problems. The algorithm is a black box the

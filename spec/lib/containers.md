@@ -16,6 +16,20 @@ Status: design for the CP Lang standard library containers area (`plan/STDLIB.md
 language, documented intrinsics, and other stdlib modules — no compiler
 privilege.
 
+## The model in one paragraph
+
+Every container is ordinary CP Lang over the public language, chosen by
+the operations a solution needs, each with its cost documented. Ordered
+data is `SortedSet`, `SortedMap` and `SortedBag`, with cursors and rank;
+disjoint runs are `IntervalSet` and `IntervalMap`; connectivity is `Dsu`
+and its variants (`ParityDsu`, `PotentialDsu`, `PersistentDsu`); a
+priority queue is one `Heap(by:)`, with `IndexedHeap` when priorities
+change; `Deque`, `Bitset` and `DynBitset` cover the rest of the common
+shapes. `Marks` resets in O(1) per test, `FlatMap` and `Counter` hash,
+and `Compressed` maps raw values onto a domain so later tables are
+dense arrays (`core/04-indices.md`). The survey below says which contest
+jobs drove each choice; `RATIONALE.md` lists the decisions.
+
 ## 1. Contest pattern survey
 
 This survey is grounded in Codeforces Div. 1, AtCoder Grand/ARC/WTF, ICPC World

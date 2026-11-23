@@ -23,6 +23,18 @@ with no compiler privilege, guessable textbook names, options as named
 arguments, documented time and memory cost on every public item, explicit
 representation, and algebraic laws checked by `@test`.
 
+## The model in one paragraph
+
+The modulus is part of the type: `type Z = Mod<998244353>` makes `Z`
+arithmetic reduce on every operation, so a missing `%` cannot be
+written and two moduli cannot mix (`core/03-numbers-layout.md`).
+Around it, `std.math` holds integer number theory (`gcd`, `ext_gcd`,
+`iroot`, `Sieve`), `std.mod` factorials and binomials (`Comb`),
+`std.ntt` convolutions (`convolve`, `fwht`, `sos`), `std.poly` formal
+power series (`inv`, `log`, `exp`, `pow`) and `std.matrix` dense and
+GF(2) linear algebra (`Mat`, `MatPow`, `XorBasis`, `BitMat`). Each
+function names its algorithm and its cost; none is chosen for you.
+
 ## 1. Survey of contest patterns
 
 A survey of Codeforces Div. 1/2, AtCoder ABC/ARC/AGC/WTF, ICPC World Finals,

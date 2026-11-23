@@ -119,5 +119,6 @@ Questions from site or any reader: add them to
 ## Overviews
 
 Every core chapter opens with a short overview ("The model in one
-paragraph", or chapter 5's "The model in six sentences"); the site's
-in-depth chapters start there and follow the rule sections for detail.
+paragraph", or chapter 5's "The model in six sentences"), and so does
+every `lib/` chapter; the site's in-depth chapters start there and
+follow the rule sections for detail.
