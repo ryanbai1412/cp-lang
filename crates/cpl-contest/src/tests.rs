@@ -1076,11 +1076,13 @@ fn fetch_says_where_the_name_goes_when_given_dash_o() {
 
 #[test]
 fn a_problems_checker_py_judges_its_cases_unless_the_file_declares_one() {
-    if std::process::Command::new("python3")
+    let python = cpl_stress::program::python();
+    let ran = std::process::Command::new(&python[0])
+        .args(&python[1..])
         .arg("--version")
-        .output()
-        .is_err()
-    {
+        .stdin(std::process::Stdio::null())
+        .output();
+    if !ran.is_ok_and(|out| out.status.success()) {
         return;
     }
     // The corpus layout: `port.cp`, `tests/` and `checker.py` side by side.

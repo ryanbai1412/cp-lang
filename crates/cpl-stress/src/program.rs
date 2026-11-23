@@ -430,6 +430,22 @@ pub fn interpreter(first_line: &str) -> Option<Vec<String>> {
     Some(words)
 }
 
+/// How to run Python 3: `python3`, or on Windows the `py -3` launcher, else
+/// `python`. Windows' `python3` is often the Store's stub, which never runs
+/// the script.
+pub fn python() -> Vec<String> {
+    if cfg!(windows) {
+        let real = |name: &str| find_interpreter(name).filter(|p| !p.contains("WindowsApps"));
+        if real("py").is_some() {
+            return vec!["py".to_string(), "-3".to_string()];
+        }
+        if real("python").is_some() {
+            return vec!["python".to_string()];
+        }
+    }
+    vec!["python3".to_string()]
+}
+
 /// `/usr/bin/python3` is `python3`.
 fn interpreter_name(program: &str) -> &str {
     program.rsplit(['/', '\\']).next().unwrap_or(program)
@@ -482,7 +498,11 @@ impl Program {
         let extension = path.extension().and_then(|e| e.to_str()).unwrap_or("");
         let argv = match extension {
             "cpp" | "cc" | "cxx" => vec![compile_cpp(path, false)?],
-            "py" => vec!["python3".to_string(), name.clone()],
+            "py" => {
+                let mut argv = python();
+                argv.push(name.clone());
+                argv
+            }
             "cp" => build_judged(path, None, Part::Solution, TRAPS)?,
             _ => {
                 // Relative paths need `./` to be found.
