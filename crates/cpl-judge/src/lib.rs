@@ -72,7 +72,8 @@ pub struct Profile {
 /// otherwise: the judge is assumed to give that much address space.
 pub const THREAD_STACK: u64 = 1 << 30;
 
-/// The size every solution aims under: past it `cpl build` warns.
+/// The size every solution aims under: `cpl build` shrinks the C++ to fit
+/// it, and warns at three quarters of it.
 pub const TARGET_BYTES: usize = 32 * 1024;
 
 /// The most any build writes, whatever the judge accepts.
@@ -85,10 +86,15 @@ impl Profile {
         self.source_limit.min(HARD_BYTES)
     }
 
-    /// The source size worth a warning: [`TARGET_BYTES`], or half of a
+    /// The size a build shrinks the C++ to fit: [`TARGET_BYTES`], or a
     /// smaller limit.
+    pub fn aim(&self) -> usize {
+        TARGET_BYTES.min(self.limit())
+    }
+
+    /// The source size worth a warning: three quarters of [`Profile::aim`].
     pub fn warn_at(&self) -> usize {
-        TARGET_BYTES.min(self.limit() / 2)
+        self.aim() / 4 * 3
     }
 
     /// What a contestant must know before submitting to a judge that
