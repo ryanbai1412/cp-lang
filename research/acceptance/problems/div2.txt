@@ -1,0 +1,14 @@
+# Milestone 1 `solve` step: 10 held-out Div2 problems (PROTOCOL.md). Codeforces Rounds 1135
+# and 1137, after the corpus's newest contest (2268). Keep these out of corpus/, the skill,
+# docs and site examples. Statements live on codeforces.com/contest/<id>/problem/<index>.
+# id     name | tags
+cf2285A  Composite Permutation | constructive algorithms, math
+cf2285B  Diverse String | combinatorics, math, strings
+cf2285C  Max Substitution | combinatorics, data structures, math, sortings, two pointers
+cf2285D  Reverse Partition | binary search, combinatorics, data structures, math
+cf2285E  Arithmetic Subarray | data structures, greedy, implementation, sortings, two pointers
+cf2289A  Problem from Dolgoderevenskoye | math
+cf2289B  Problem from Chebarkul | data structures, implementation
+cf2289C  Problem from Ust-Katav | binary search, data structures, divide and conquer
+cf2289D  Problem from Yuzhnouralsk | data structures, greedy, meet-in-the-middle, sortings, two pointers
+cf2289E  The Problem from Silach | brute force, data structures, dp, dsu, trees, two pointers

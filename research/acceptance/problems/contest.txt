@@ -1,0 +1,9 @@
+# Milestone 1 `compete` step: a virtual contest of 5 held-out problems, 2 hours, no pauses
+# (PROTOCOL.md). Codeforces Round 1130 (Div. 2), A-E. Keep these out of corpus/, the skill,
+# docs and site examples.
+# id     name | tags
+cf2272A  Maximize One MEX | brute force, constructive algorithms, greedy
+cf2272B  Frogs Jump | constructive algorithms, greedy
+cf2272C  Yet Another Black Cell Problem | binary search, constructive algorithms, dp, greedy
+cf2272D  Connecting the Conflicts | brute force, constructive algorithms, dfs and similar, dp
+cf2272E  Memory Cell Interception | binary search, greedy, two pointers
