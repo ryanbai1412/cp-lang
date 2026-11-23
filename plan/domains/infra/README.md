@@ -8,15 +8,16 @@ Detail: [PLAN.md](PLAN.md) · code: [ARCHITECTURE.md](ARCHITECTURE.md) · number
 Keep every other domain moving: main green at every commit, a gate fast enough that nobody batches around it, landing that never waits on a person, and `curl | sh` installs that just work. Interrupts (red main, broken landing, broken release) beat roadmap work.
 
 ## Milestone 1
-[plan/product/MILESTONE-1.md](../../product/MILESTONE-1.md) step 3 (Install) and "Release quality" are infra's. Exit criteria:
-1. A published release: edge after every green main CI (at most hourly) and nightly, a dated edge 7 days in a row, `v0.3.0` on Ryan's OK.
-2. `curl -fsSL https://cp-lang.org/install.sh | sh` installs a working `cpl` on clean Linux and macOS (and `install.ps1` on Windows), checked by an install-smoke job after every publish.
-3. The VS Code extension installs in one step from the release and starts the language server, checked in the same smoke job.
-4. Main green: red-to-green median < 30 min, CI <= 3 min end to end; lanes spend < 5% of their time on landing and devex.
+[plan/product/MILESTONE-1.md](../../product/MILESTONE-1.md) step 3 (Install) and "Release quality" are infra's, on Linux, macOS and Windows, on edge. Deadline 2026-11-23 09:30 PST. Exit criteria:
+1. Edge publishes after every green main CI (at most hourly) and nightly, building all three OSes.
+2. One line installs a working `cpl` on each OS: `curl -fsSL https://cp-lang.org/install.sh | sh` (Linux, macOS) and `irm https://cp-lang.org/install.ps1 | iex` (Windows), checked end to end by an install-smoke job on all three after every publish.
+3. CI runs the tests on Linux, macOS and Windows (the extra OSes on fewer jobs), still <= 3 min end to end; main red-to-green median < 30 min.
+4. The release ships the editor assets editors needs (Neovim/Vim config, VS Code `.vsix`), and the smoke job checks they install.
+5. Lanes spend < 5% of their time on landing and devex.
 
-Deferring: per-crate commit-tier test selection (old M2), the gate step registry, status-board polish, the 16-core runner, JetBrains packaging.
+Deferring: a stable `v0.3.0`, per-crate commit-tier test selection, the gate step registry, status-board polish, the 16-core runner, JetBrains packaging.
 
-Next 3: (1) install-smoke job on Linux, macOS and Windows after each publish, including the VS Code extension; (2) main green and CI <= 3 min; (3) a one-step VS Code install (Open VSX or `cpl` installing the release's `.vsix`).
+Next 3: (1) install-smoke on all three OSes after each publish; (2) macOS and Windows in the CI test matrix; (3) main green and CI <= 3 min.
 
 ## Covers
 - **Main green**: CI results, triage of any red within 30 min (fix or revert, never weaken a test), flaky tests, stale `devin/*` branches and lock refs.

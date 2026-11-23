@@ -6,12 +6,11 @@ The detail behind [README.md](README.md). Dated 2026-11-22.
 
 | # | Workstream | Why first / why here | Done when |
 |---|---|---|---|
-| 1 | **Install-smoke after every publish** | Milestone 1 step 3: a friend installs without help. | A job after `publish` runs `install.sh` on clean Linux and macOS and `install.ps1` on Windows, then `cpl run` on a sample and installs the `.vsix` into VS Code. |
-| 2 | **Main green, CI <= 3 min** | Releases only come from green commits; slow CI makes each red cover many commits. | Red-to-green median < 30 min; CI wall time <= 3 min from caching and input-hash skipping; per-job times in the worklog. |
-| 3 | **One-step VS Code install** | Milestone 1 "Editor support". | The extension installs with one command or click (Open VSX, or `cpl` installing the release's `.vsix`). |
+| 1 | **Install-smoke on 3 OSes** | Milestone 1 step 3, on Linux, macOS and Windows. | After `publish`, the sh one-liner on Linux and macOS and the PowerShell one-liner on Windows install edge, `cpl run` a sample, and the editor assets install. |
+| 2 | **macOS and Windows in CI** | All three OSes supported and tested. | CI runs the tests on each OS (the extra OSes on fewer jobs); paths and line endings covered. |
+| 3 | **Main green, CI <= 3 min** | Edge only publishes from green commits. | Red-to-green median < 30 min; CI <= 3 min from caching and input-hash skipping; per-job times in the worklog. |
 | 4 | **Landing friction < 5%** | Lanes skip slow checks, and skipped checks turn main red. | `land.sh` runs the checks behind most reds in seconds; `land_p95_s` <= 30. |
-| 5 | **Stable `v0.3.0`** | Milestone 1 "Release quality". | Cut on Ryan's OK from a green commit; installers default to it. |
-| 6 | **Deferred** | On the milestone's "can wait" list. | Per-crate commit-tier selection, the gate step registry, status-board polish, CONTRIBUTING/SECURITY. |
+| 5 | **Deferred** | Not needed for the milestone. | Stable `v0.3.0`, per-crate commit-tier selection, the gate step registry, status-board polish, CONTRIBUTING/SECURITY. |
 
 ## Why these milestones
 - **M1 (green + accountable)** first because every lane's work is judged against main, and Ryan asked how domains stay inside their lines: the trailer and the board are the mechanism.
