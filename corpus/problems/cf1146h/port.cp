@@ -11,11 +11,12 @@ let pts: [V]Pt = read()
 
 let left = [V, V] (i, j) => Bitset<V>.of(k for k in V if turn(pts[i], pts[j], pts[k]) > 0)
 
-// A triangle with c points inside adds C(c, 2) - c * (n - 4) / 2.
-fn net(c: Int) -> Int = c * (c - (n - 3))
-let twice = sum(
-    net(
+// A triangle with `inside` points inside it adds C(inside, 2) - inside * (n - 4) / 2 to c5.
+// That is a half-integer for some triangles, so sum twice the excess and halve once at the end.
+fn twice_excess(inside: Int) -> Int = inside * (inside - 1) - inside * (n - 4)
+let twice_total = sum(
+    twice_excess(
         (left[i, j] & left[j, k] & left[k, i]).len
     ) for i in V for j in V.after(i) for k in V.after(i) if k in left[i, j]
 )
-print(choose(n, 5) + twice / 2)
+print(choose(n, 5) + twice_total / 2)
