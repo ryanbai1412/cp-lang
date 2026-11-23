@@ -1,10 +1,12 @@
-// IOI 2004 Hermes: a city of streets along every integer x and y. Starting
-// at (0, 0), Hermes must see n lighthouses in order; he sees one when he
-// stands on its vertical or horizontal street. Print the least walking.
-// After seeing lighthouse i he is on its vertical street at some y, or on
-// its horizontal street at some x. For the next one he either keeps his
-// free coordinate and walks to the new street, or walks along his street
-// until the other coordinate matches.
+// Source: IOI 2004 (Hermes), https://dmoj.ca/problem/ioi04p2
+// Problem: streets run along every integer x and y. Starting at (0, 0), Hermes must, in order,
+//   visit some point on the horizontal or the vertical street of each of n <= 20000 junctions
+//   (X_i, Y_i), |X_i|, |Y_i| <= 1000. Print the least total walking distance.
+// Solution: after junction i he stands on its vertical street at some y, or its horizontal
+//   street at some x, so on_x[y] / on_y[x] (2001 entries each) hold the least walk to each such
+//   state. For the next junction he either keeps his free coordinate (every entry grows by |dx|
+//   or |dy|) or walks along his street to the new junction's other street, landing on it at the
+//   old street's coordinate (one min over the array). O(n * 2001).
 // original: corpus/submissions/4171535.cpp
 let n: 1..=20000 = read()
 domain Coord = -1000..=1000

@@ -1,5 +1,10 @@
-// Runnable today/ port of CCO '03 P4 (Constrained Permutations) for proto/cpc.
-// O(n * 2^n) bitmask DP matching the v2.1 Subset<V> solution.
+// Source: CCO 2003 P4 (Constrained Permutations), https://dmoj.ca/problem/cco03p4
+// Problem: n <= 9 and k constraints "x comes before y". Print how many permutations of 1..=n
+//   satisfy them all.
+// Solution: place the numbers front to back; need[y] is the mask of numbers that must come
+//   before y. dp[s] counts orders of the set s placed first; y can join s when need[y] is in s.
+//   O(2^n n).
+// Runnable today on proto/cpc; matches the v2.1 Subset<V> solution.
 // original: corpus/submissions/5024536.cpp
 
 fn bit(k: Int) -> Int: return 1 << k

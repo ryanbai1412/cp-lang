@@ -1,11 +1,12 @@
-// NOIP 2008 Passing Notes: a class seated in n rows of m, each pupil with a
-// kindness score (the two corner pupils score 0). A note goes from the top
-// left to the bottom right, moving only down or right, and a reply comes
-// back up and left; no pupil in between may help twice. Print the largest
-// total kindness of the helpers.
-// The reply reversed is a second note, so two notes leave together and
-// take one step each at a time. After d steps a note in row r is in column
-// d - r, so the state is d and the two rows, the upper note first.
+// Source: NOIP 2008 P3 (Message Passing), https://dmoj.ca/problem/noip08p3
+// Problem: an m x n class (m, n <= 50), each pupil with kindness 0..=100 (the two corners 0).
+//   A note goes from the top-left to the bottom-right moving down or right, and a reply comes
+//   back moving up or left, with no pupil used by both. Print the largest total kindness.
+// Solution: reversed, the reply is a second down/right path, so walk both together one step at
+//   a time: after d steps a path in row r is in column d - r, so the state is d and the two
+//   rows a < b (equal only at the corners; ordered rows lose nothing, as crossing paths can swap
+//   tails). @memo best(d, a, b) is the most kindness still to collect, over the 4 move pairs.
+//   O((m + n) m^2) states, O(1) each.
 // original: corpus/submissions/5185022.cpp
 let n: 1..=50 = read()
 let m: 1..=50 = read()

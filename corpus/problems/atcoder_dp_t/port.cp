@@ -1,5 +1,10 @@
-// Educational DP T, Permutation: count the permutations of 1..=n in which
-// neighbours i and i+1 compare the way the i-th sign says.
+// Source: AtCoder Educational DP T (Permutation), https://atcoder.jp/contests/dp/tasks/dp_t
+// Problem: n <= 3000 and a string of n - 1 signs '<' / '>'. Count the permutations p of 1..=n with
+//   p_i < p_{i+1} exactly where the i-th sign is '<', mod 1e9+7.
+// Solution: build the permutation left to right by relative order: ways[r] counts orderings of
+//   the first i values whose last one has r of them below it. The next value with r below it
+//   follows a last value with fewer than r below ('<') or at least r ('>'), so each step is one
+//   prefix (or suffix) sum: O(n^2).
 // original: corpus/submissions/4131863.cpp
 const P = 1000000007
 type Z = Mod<P>

@@ -1,6 +1,11 @@
-// DMOPC '21 Contest 8 P1 Peanut Planning: put n numbers in a line so that
-// every two neighbours add up to at least m, and the line is the smallest
-// possible in dictionary order. Print it, or -1 if there is none.
+// Source: DMOPC '21 Contest 8 P1 (Peanut Planning), https://dmoj.ca/problem/dmopc21c8p1
+// Problem: n <= 5e5 numbers a_i <= 1e9 and m <= 1e9. Arrange them in a line so that every two
+//   neighbours sum to at least m; print the lexicographically smallest such line, or -1.
+// Solution: greedy: the line alternates the smallest unused number x and the smallest unused
+//   number y with x + y >= m (y also fits the next, larger, x). As x grows, more of the largest
+//   numbers become good partners and stay good, so in the sorted array small numbers leave
+//   from the front and partners are promoted from the back onto a stack whose top is the
+//   smallest. No partner left means -1. O(n log n) for the sort, then O(n).
 // original: corpus/submissions/4522590.cpp
 let n: 1..=1e6 = read()
 let m: 1..=2e9 = read()

@@ -1,7 +1,11 @@
-// NOIP 2014 Joint Weights: over all ordered pairs of vertices at distance 2
-// in a tree, the largest product of weights and the sum of products mod
-// 10007. Such a pair is two neighbours of a middle vertex: the sum is
-// (sum of neighbours)^2 - sum of squares, the best product the top two.
+// Source: NOIP 2014 Day 1 P2 (Joint Weights); DMOJ's noip14p2 is not public, statement from
+//   Luogu P1351
+// Problem: a tree of n <= 2e5 vertices with weights W_i <= 10000. Each ordered pair (u, v) at
+//   distance 2 gives W_u * W_v; print the largest such product and the sum of all of them
+//   mod 10007.
+// Solution: a pair at distance 2 is two neighbours of a middle vertex. Per middle vertex, the
+//   ordered sum over its neighbours is (sum of w)^2 - sum of w^2, and the best product is the
+//   top two neighbour weights. O(n).
 const P = 10007
 type Z = Mod<P>
 let n: 2..=2e5 = read()

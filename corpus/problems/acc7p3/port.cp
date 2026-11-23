@@ -1,11 +1,11 @@
-// Another Contest 7 P3 Network Connections: n computers with distinct
-// values, m cables already laid. A new cable between i and j costs
-// |a[i] - a[j]|. Print the least cost that connects every computer.
-//
-// Sorted by value, any cable between two computers can be replaced by the
-// chain of neighbours between them for the same cost, so only the n - 1
-// neighbouring pairs are candidate edges. Kruskal over those, after the
-// free cables.
+// Source: Another Contest 7 P3 (Network Connections), https://dmoj.ca/problem/acc7p3
+// Problem: n <= 1e5 users with distinct values f_i <= 1e9 (increasing with i) and m <= 1e5
+//   existing friendships. Making i and j friends costs |f_i - f_j|; print the least cost that
+//   connects everyone.
+// Solution: sorted by value, a link between any two users can be replaced by the chain of
+//   neighbouring pairs between them at the same total cost, so only the n - 1 neighbouring pairs
+//   are candidates. Unite the existing friendships in a DSU, then Kruskal over those pairs by
+//   cost. O(n log n + m).
 // original: corpus/submissions/3540475.cpp
 
 let n: Int = read()

@@ -1,5 +1,14 @@
-// IOI 2011 Race: in a tree of n cities with road lengths, find a path of
-// total length exactly k that uses the fewest roads. Print that count, or -1.
+// Source: IOI 2011 Day 1 (Race), https://dmoj.ca/problem/ioi11p2
+// Problem: a tree of n <= 2e5 cities whose n - 1 roads have lengths 0..=1e6. Find a path of total
+//   length exactly k <= 1e6 that uses the fewest roads; print that count, or -1 if none exists.
+// Solution: root the tree at city 0; a path turns at its top city v and joins two cities under
+//   different children of v. reach[v] maps a distance from the root to the fewest roads from the
+//   root over cities under v; children are merged small-to-large, each entry (far, hops) of the
+//   smaller map first looking up k + 2 dist(v) - far in the larger, giving
+//   hops + other - 2 depth(v) roads. Children go before parents (`tree.at.rev`), no recursion:
+//   O(n log n) hash operations.
+// The IOI grader calls best_path(N, K, H, L); like orig.cpp's main, this port reads n and k,
+//   then the n - 1 roads as `u v len` lines.
 let n: 1..=2e5 = read()
 let k: 1..=1e6 = read()
 domain City = 0..n

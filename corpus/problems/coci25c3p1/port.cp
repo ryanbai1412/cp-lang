@@ -1,6 +1,11 @@
-// COCI '25 Contest 3 P1: a brush starts at the centre of an n x n canvas.
-// L R U D move it one cell (it stays put at an edge); any other letter
-// paints, in that colour, every cell at Manhattan distance below k.
+// Source: COCI 2025/2026 Round 3 (Kist); not on DMOJ, statement in the COCI archive at hsin.hr,
+//   2025_2026/contest3_tasks.pdf
+// Problem: an n x n grid of '.' (n odd, n, k <= 50); Ivo starts in the centre cell and runs a
+//   word of <= 50 capital letters: L R U D move one cell (skipped if it would leave the grid),
+//   any other letter paints every cell at Manhattan distance < k with that letter. Print the grid.
+// Solution: simulate: a move happens only when the next cell is in its domain (`Row.at`,
+//   `Col.at` give None off the grid), and a paint rewrites every cell within distance k - 1.
+//   O(|word| n^2), about 1e5 steps.
 // Runnable today on the interpreter (`cp.py lib-run`): proto/cpc cannot yet
 // iterate or index a Str.
 // original: corpus/submissions/7730233.cpp
