@@ -267,6 +267,19 @@ struct Bitset<D>                                // O(K / 64) words, 1 bit/pos
     // O(K * sqrt(sum) / 64); binary-carry knapsack over 0..D.count
 ```
 
+<!-- spec-only: signatures and costs, not a program -->
+```cp
+struct BitTrie<W>                               // multiset of 0..2^W, a count per node
+    fn new() -> BitTrie<W>                      // O(1)
+    fn of(x: Int) -> BitTrie<W>                 // O(W), traps unless x in 0..2^W
+    @get fn len(self) -> Int                    // O(1), with multiplicity
+    @get fn is_empty(self) -> Bool              // O(1)
+    fn add(mut self, x: Int)                    // O(W)
+    fn count(self, x: Int) -> Int               // O(W), 0 when absent
+    fn walk(self, x: Int) -> yields (bit: Int, count: Int)  // O(W), path of x from bit W - 1
+    fn absorb(mut self, mut other: BitTrie<W>)  // O(min nodes), smaller into larger; empties other
+```
+
 Laws: every set operation agrees pointwise with `[D]Bool`; `b.first` equals
 `b.next(D.first)`; `b.count_below(i)` equals `count(x < i for x in b.each())`;
 `b.shift_or(k)` equals `b | b.shifted(k)` without allocation; `subset_sums`

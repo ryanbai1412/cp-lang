@@ -1,4 +1,5 @@
 //! A dense set of positions of a domain, 64 per word.
+use std.seq.{take_all}
 
 /// One bit per position of `D`, in `ceil(K / 64)` words.
 /// `Bitset<D>` is an explicit type you ask for; `[D]Bool` stays one byte
@@ -1194,6 +1195,133 @@ pub struct XorTrie:
         _c1 = [-1]
         _cnt = [0]
         _dist = [0]
+
+struct BitTrieNode:
+    var cnt: Int
+    kid: [0..2]?Int
+
+/// \(O(W)\) per op. A multiset of `W`-bit integers (values in `0..2^W`) as a binary trie with
+/// a count per node, read from the top bit down. Unlike `XorTrie`, two tries of one width merge:
+/// `absorb` adds another trie's counts into this one, so tries kept per group of indices (DSU,
+/// small-to-large over a tree, runs of equal keys) combine as the groups do.
+/// Layout: one `List` of nodes, the root at 0, each node a count and two optional children.
+pub struct BitTrie<W>:
+    var nodes: List<BitTrieNode>
+
+    fn leaf() -> BitTrieNode = BitTrieNode(0, [0..2] _ => None)
+
+    /// An empty `BitTrie<W>`.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `BitTrie<3>.new().is_empty`
+    pub fn new() -> BitTrie<W> = BitTrie([BitTrie.leaf()])
+
+    /// The trie holding `x` once: one path of `W + 1` nodes.
+    ///
+    /// cost: \(O(W)\)
+    /// traps: when `x` is not in `0..2^W`
+    /// example: `BitTrie<3>.of(5).count(5) == 1`
+    pub fn of(x: Int) -> BitTrie<W>:
+        assert 0 <= x < 1 << W
+        BitTrie([BitTrieNode(1, [0..2] side => if d < W and side == (x >> (W - 1 - d)) & 1: Some(d + 1) else: None) for d in 0..=W])
+
+    /// The number of stored integers, with multiplicity.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `var t = BitTrie<3>.of(5); t.add(5); t.len == 2`
+    @get pub fn len(self) -> Int = nodes[0].cnt
+
+    /// True when the trie holds no integers.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `BitTrie<3>.new().is_empty and not BitTrie<3>.of(0).is_empty`
+    @get pub fn is_empty(self) -> Bool = nodes[0].cnt == 0
+
+    /// Insert one copy of `x`.
+    ///
+    /// cost: \(O(W)\) time, up to `W` new nodes
+    /// traps: when `x` is not in `0..2^W`
+    /// example: `var t = BitTrie<3>.new(); t.add(5); t.add(5); t.count(5) == 2`
+    pub fn add(mut self, x: Int):
+        assert 0 <= x < 1 << W
+        var t = 0
+        nodes[0].cnt += 1
+        for b in (0..W).rev:
+            let side = (x >> b) & 1
+            if let c = nodes[t].kid[side]:
+                t = c
+            else:
+                nodes[t].kid[side] = nodes.len
+                t = nodes.len
+                nodes.push(BitTrie.leaf())
+            nodes[t].cnt += 1
+
+    /// The multiplicity of `x`; zero when absent or out of range.
+    ///
+    /// cost: \(O(W)\)
+    /// traps: never
+    /// example: `var t = BitTrie<3>.of(5); t.add(1); t.count(5) == 1 and t.count(4) == 0`
+    pub fn count(self, x: Int) -> Int:
+        if x < 0 or x >= 1 << W: return 0
+        var t = 0
+        for b in (0..W).rev:
+            guard let c = nodes[t].kid[(x >> b) & 1] else: return 0
+            t = c
+        nodes[t].cnt
+
+    /// The path of `x` from the top bit down: for each bit `b` from `W - 1` to 0, while some
+    /// stored `y` agrees with `x` on bits `b` and above, yields `b` and how many do. Stops at the
+    /// first bit where none does.
+    ///
+    /// `count` at `bit` is the number of `y` with `y >> bit == x >> bit`; those differing from
+    /// `x` first at `b` number the previous count minus this one (`len` above the top bit).
+    ///
+    /// cost: \(O(W)\) for the whole walk, \(O(1)\) per step
+    /// empty: yields nothing
+    /// order: bits from `W - 1` down
+    /// traps: when `x` is not in `0..2^W`
+    /// example: `var t = BitTrie<3>.of(5); t.add(4); t.add(1); List(t.walk(5)) == [(bit: 2, count: 2), (bit: 1, count: 2), (bit: 0, count: 1)]`
+    pub fn walk(self, x: Int) -> yields (bit: Int, count: Int):
+        assert 0 <= x < 1 << W
+        var t = 0
+        for b in (0..W).rev:
+            unchecked:
+                guard let c = nodes[t].kid[(x >> b) & 1] else: return
+                t = c
+                yield (bit: b, count: nodes[t].cnt)
+
+    // Adds the subtree of `other` at `y` into the one of `self` at `x`, returning `x`, or a
+    // copy of `other`'s subtree when `x` is `None`.
+    fn merge(mut self, x: ?Int, other: BitTrie<W>, y: Int) -> Int:
+        let into = if let v = x: v else:
+            nodes.push(BitTrie.leaf())
+            nodes.len - 1
+        unchecked:
+            nodes[into].cnt += other.nodes[y].cnt
+            for side in 0..2 if let c = other.nodes[y].kid[side]:
+                nodes[into].kid[side] = self.merge(nodes[into].kid[side], other, c)
+        into
+
+    /// Add every integer of `other` into `self`, with multiplicity, leaving `other` empty.
+    ///
+    /// The smaller trie's nodes are walked into the larger, whichever side that is, so a
+    /// sequence of absorbs that only ever merges disjoint groups costs \(O(N W \log N)\) over
+    /// `N` insertions.
+    ///
+    /// cost: \(O(\min(\mathit{nodes}(\mathit{self}), \mathit{nodes}(\mathit{other})))\)
+    /// empty: an empty `other` leaves `self` unchanged
+    /// traps: never
+    /// example: `var a = BitTrie<3>.of(5); var b = BitTrie<3>.of(5); b.add(2); a.absorb(mut b); a.count(5) == 2 and a.len == 3 and b.is_empty`
+    pub fn absorb(mut self, mut other: BitTrie<W>):
+        if nodes.len < other.nodes.len:
+            var mine = nodes.take_all()
+            nodes = other.nodes.take_all()
+            other.nodes = mine.take_all()
+        self.merge(Some(0), other, 0)
+        other.nodes = [BitTrie.leaf()]
 
 /// `a - b`: the positions in `a` that are not in `b`.
 impl Sub for Bitset<D>:

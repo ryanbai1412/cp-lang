@@ -1,0 +1,17 @@
+// expect: ok, output "YES 3 1 0\n2 2\n1 2\n0 1\nYES 7 2 0\nYES"
+use std.bitset.{BitTrie}
+var t = BitTrie<3>.of(5)
+t.add(4)
+t.add(1)
+print(yes(not t.is_empty and BitTrie<3>.new().is_empty), t.len, t.count(5), t.count(7))
+for (bit, count) in t.walk(5): print(bit, count)
+var u = BitTrie<3>.of(5)
+u.add(2)
+u.add(2)
+var big = BitTrie<3>.of(6)
+big.absorb(mut t)
+u.absorb(mut big)
+print(yes(t.is_empty and big.is_empty), u.len, u.count(2), u.count(4) - 1)
+var e = BitTrie<3>.new()
+e.absorb(mut u)
+print(yes(e.len == 7 and u.is_empty and e.count(5) == 2 and e.count(6) == 1))
