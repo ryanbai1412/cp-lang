@@ -6179,3 +6179,13 @@ constants and the `exit(3)` in the C++ runtime, and the sentence in
   fastest, two runs agree within 0.03x on every pair.
 - **Reverse.** Use `median` again in `run_pair` in
   `crates/cpl-contest/src/zero_cost.rs`.
+
+## 254. `bench/v03_perf_bench.py` times each side by its fastest CPU time (2026-11-22)
+
+- **Decision.** A program's time is the fastest user+sys CPU time over its
+  runs (from `wait4`), not the median wall time.
+- **Why.** The harness runs 8 jobs at once on a shared box, so wall time
+  counts waiting for a core. Same reason as the zero-cost runner: noise only
+  adds time to a deterministic program.
+- **Reverse.** Return the wall time from `run_once` and take
+  `statistics.median` again in `bench/v03_perf_bench.py`.

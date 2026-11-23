@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Cached, matched-algorithm v0.3 C++ codegen performance benchmark harness.
 
-Measures median runtime ratio (emitted C++ / matched C++ original) across:
+Measures the runtime ratio (emitted C++ / matched C++ original), each side's
+fastest user+sys CPU time over its runs, across:
   1. corpus   -- corpus/problems/*/{port.cp,orig.cpp} (max-N via corpus_generators, gen.py --max, or tests/*.in)
   2. dryrun   -- research/dryrun/v03/p*.cp at large N vs bench/dryrun-matched/p*.cpp
                  (the same algorithm as research/dryrun/p*_ref.cpp with the fast
@@ -30,7 +31,6 @@ import os
 import re
 import resource
 import signal
-import statistics
 import subprocess
 import sys
 import threading
@@ -97,7 +97,6 @@ def same_tokens(a, b):
 
 def run_once(binary, inp, outp, timeout):
     with open(inp, "rb") as fi, open(outp, "wb") as fo:
-        t0 = time.perf_counter()
         pr = subprocess.Popen(
             [binary],
             stdin=fi,
@@ -110,12 +109,13 @@ def run_once(binary, inp, outp, timeout):
         killer.start()
         _, status, usage = os.wait4(pr.pid, 0)
         pr.returncode = os.waitstatus_to_exitcode(status)
-        wall = time.perf_counter() - t0
         timed_out = not killer.is_alive()
         killer.cancel()
     if timed_out:
         return timeout, "timeout", 0
-    return wall, "ok" if pr.returncode == 0 else f"exit {pr.returncode}", usage.ru_maxrss
+    # Parallel jobs and other load inflate wall time, not CPU time.
+    cpu = usage.ru_utime + usage.ru_stime
+    return cpu, "ok" if pr.returncode == 0 else f"exit {pr.returncode}", usage.ru_maxrss
 
 
 CXX23_SHIM = os.path.join(ROOT, "bench", "cxx23-shim")
@@ -527,8 +527,8 @@ def main():
                 tp, _, _ = run_once(b["pbin"], b["inp"], out_p, args.timeout)
                 ts_o.append(to)
                 ts_p.append(tp)
-        med_o = statistics.median(ts_o) * 1000.0
-        med_p = statistics.median(ts_p) * 1000.0
+        med_o = min(ts_o) * 1000.0
+        med_p = min(ts_p) * 1000.0
         ratio = med_p / med_o if med_o > 0 else 1.0
         why = unmatched.get(b["name"]) if b["suite"] == "corpus" else None
         rows.append(
