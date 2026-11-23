@@ -12,6 +12,7 @@ mod cache;
 mod call;
 mod comprehension;
 mod expr;
+mod fn_value;
 mod fresh;
 mod hoist;
 mod index_set;

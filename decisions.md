@@ -7559,3 +7559,16 @@ receiver is now held in a temporary in the enclosing statements
 temporary is held (`Squares([]).at(4)`). Case
 `conformance/core-12/view-of-a-temporary.cp`. Reverse: use `self.place(base)`
 again in `sorted_view_from_expr`.
+
+## 357. A generic fn named as a value is the closure that calls it (stdlib, 2026-11-23)
+
+`Heap(by: desc)` failed with "doesn't know the name `desc`": a generic fn
+(`desc<T>`) named as a value had no instantiation, though `sorted(by: desc)`
+worked through a builtin path and `by: x => desc(x)` worked everywhere. A
+generic fn used as a value now lowers as the closure `(a, ..) => f(a, ..)`
+over its required parameters (`lower/fn_value.rs`), so its type arguments
+are inferred wherever the closure's are, including an optional `?(T -> K)`
+parameter; user generic fns get it the same. Case
+`conformance/core-06/generic-fn-as-a-value.cp`. Reverse: drop the
+`Sym::GenFn` arm in `Lowerer::name_as_written`. `lower/mod.rs` +1 line
+(`--update rs_over_cap`).
