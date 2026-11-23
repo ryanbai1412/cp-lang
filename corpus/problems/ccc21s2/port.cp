@@ -12,6 +12,6 @@ var col_odd: [0..cols]Bool = false
 for (kind, at) in strokes:
     if kind == 'R': row_odd[at - 1] ^= true else: col_odd[at - 1] ^= true
 
-let (r, c) = (count(row_odd), count(col_odd))
+let (r, c) = (row_odd.count(x => x), col_odd.count(x => x))
 // a cell is gold iff exactly one of its row and column is odd
 print(r * (cols - c) + c * (rows - r))
