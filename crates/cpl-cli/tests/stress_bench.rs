@@ -111,7 +111,7 @@ fn stress_compares_a_fn_with_its_brute() {
         "--cases".as_ref(),
         "20".as_ref(),
     ]);
-    assert!(out.contains("with its @brute fns swapped in"), "{out}");
+    assert!(out.contains("with its @alt fns swapped in"), "{out}");
     assert!(
         out.contains("FAIL on case 1") && out.contains("WA"),
         "{out}"

@@ -311,7 +311,7 @@ pub(crate) fn swap_in_part_brutes_of(src: &str, only: Option<&str>) -> Option<St
     Some(swapped)
 }
 
-/// Builds `swapped`, the file with its `@brute(f)` fns in place, from
+/// Builds `swapped`, the file with its `@alt(f)` fns in place, from
 /// beside `file` so its imports resolve the same way.
 pub(crate) fn build_part_brute(file: &Path, name: &str, swapped: &str) -> Result<Program, String> {
     let stem = file.file_stem().and_then(|s| s.to_str()).unwrap_or("brute");
@@ -319,7 +319,7 @@ pub(crate) fn build_part_brute(file: &Path, name: &str, swapped: &str) -> Result
     // the build cache keeps it.
     let path = file.with_file_name(format!(".{stem}.brute.cp"));
     let mut program = Program::resolve_source(&path, swapped).map_err(|e| e.to_string())?;
-    program.name = format!("{name} with its @brute fns swapped in");
+    program.name = format!("{name} with its @alt fns swapped in");
     Ok(program)
 }
 
@@ -675,12 +675,13 @@ pub fn run_with(
         return report.failure.is_some() as u8;
     }
     let judged_by = match &judge {
-        Judge::Tokens => "none".to_string(),
-        Judge::Checker(program) | Judge::Interactor(program) => program.name.clone(),
+        Judge::Tokens => "checker: none".to_string(),
+        Judge::Checker(program) => format!("checker: {}", program.name),
+        Judge::Interactor(program) => format!("interactor: {}", program.name),
     };
     let _ = writeln!(
         stdout,
-        "  brute: {}      checker: {judged_by}",
+        "  brute: {}      {judged_by}",
         brute.as_ref().map_or("none", |b| b.name.as_str())
     );
     let Some(failure) = &report.failure else {

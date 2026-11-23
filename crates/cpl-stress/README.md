@@ -91,9 +91,9 @@ exiting 0, so a testlib checker works unchanged. An interactor is run as
 solution's, and accepts by exiting 0. Either can judge an output on its
 own, so `--brute` is optional with them.
 
-A file that declares `@checker` or `@interactor` is never compared token
-by token. Until the compiler can build the co-located judge, `cpl stress`
-stops and asks for it built, instead of calling right answers wrong.
+A file that declares `@check` or `@interactor` is never compared token
+by token: its own fn judges every case, and the header line names it
+(`checker: …` or `interactor: …`).
 
 ## Programs
 

@@ -422,7 +422,7 @@ fn check_says_what_run_and_build_would() {
 /// Milestone 1's loop on one program: WA, `cpl stress` against the file's
 /// own brute, checker or interactor, the shrunk case saved, the fix, then
 /// `cpl test` and `cpl stress` both pass.
-fn stress_loop(test: &str, planted: &str, fixed: &str, saved: &[&str]) {
+fn stress_loop(test: &str, planted: &str, fixed: &str, saved: &[&str]) -> String {
     assert_ne!(fixed, planted);
     let path = scratch(test, "p.cp", planted);
     let run = |args: &[&OsStr]| {
@@ -437,15 +437,15 @@ fn stress_loop(test: &str, planted: &str, fixed: &str, saved: &[&str]) {
     ];
     let rerun = ["test".as_ref(), path.as_os_str()];
 
-    let (code, report) = run(&stress);
-    assert_eq!(code, Some(1), "{report}");
+    let (code, failed) = run(&stress);
+    assert_eq!(code, Some(1), "{failed}");
     let tests = path.with_file_name("p.tests");
     let mut cases: Vec<_> = std::fs::read_dir(&tests)
         .unwrap()
         .map(|e| e.unwrap().file_name().into_string().unwrap())
         .collect();
     cases.sort();
-    assert_eq!(cases, saved, "{report}");
+    assert_eq!(cases, saved, "{failed}");
     let (code, report) = run(&rerun);
     assert_eq!(code, Some(1), "{report}");
     assert!(report.contains("0/1 passed"), "{report}");
@@ -457,6 +457,7 @@ fn stress_loop(test: &str, planted: &str, fixed: &str, saved: &[&str]) {
     let (code, report) = run(&stress);
     assert_eq!(code, Some(0), "{report}");
     assert!(report.contains("200 cases agree"), "{report}");
+    failed
 }
 
 fn source(path: &str) -> String {
@@ -481,12 +482,20 @@ fn a_wrong_answer_goes_from_stress_to_a_saved_case_to_a_green_rerun() {
 fn the_loop_reruns_a_checked_multitest_through_the_files_checker() {
     let planted = source("tests/debugger/cf2284b_planted.cp");
     let fixed = source("tests/debugger/cf2284b.cp");
-    stress_loop("loop-check", &planted, &fixed, &["stress-1.in"]);
+    let failed = stress_loop("loop-check", &planted, &fixed, &["stress-1.in"]);
+    assert!(
+        failed.contains("checker: ") && failed.contains("p.cp (`check`)"),
+        "{failed}"
+    );
 }
 
 #[test]
 fn the_loop_reruns_an_interactive_multitest_through_the_files_interactor() {
     let fixed = source("tests/debugger/guess_multitest.cp");
     let planted = fixed.replace("else: lo = mid + 1", "else: lo = mid");
-    stress_loop("loop-interactor", &planted, &fixed, &["stress-1.in"]);
+    let failed = stress_loop("loop-interactor", &planted, &fixed, &["stress-1.in"]);
+    assert!(
+        failed.contains("interactor: ") && failed.contains("p.cp (`judge`)"),
+        "{failed}"
+    );
 }
