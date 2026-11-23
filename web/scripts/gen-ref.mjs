@@ -192,6 +192,22 @@ function sigParams(sig) {
 
 const cell = (code) => (code ? `\`${code.replace(/\|/g, '\\|')}\`` : '');
 
+// A signature's parameters other than `self`, split at top-level commas.
+function ownParams(sig) {
+  const start = sig.indexOf('(');
+  if (start < 0) return 0;
+  const parts = [''];
+  let depth = 0;
+  for (let i = start; i < sig.length; i++) {
+    const c = sig[i];
+    if ('([<'.includes(c)) depth++;
+    else if (')]>'.includes(c) && sig[i - 1] !== '-' && --depth === 0) break;
+    if (depth === 1 && c === ',') parts.push('');
+    else if (i > start) parts[parts.length - 1] += c;
+  }
+  return parts.map((p) => p.trim()).filter((p) => p && !/^(mut\s+)?self\b/.test(p)).length;
+}
+
 function renderItem(item, level, prefix, parentDoc, index, module, ctx, shared = []) {
   const name = prefix ? `${prefix}.${item.name}` : item.name;
   const own = item.doc && item.doc !== parentDoc ? item.doc : '';
@@ -199,9 +215,17 @@ function renderItem(item, level, prefix, parentDoc, index, module, ctx, shared =
   const plain = (text, cost = false) => linked(plainSpans(texSpans(text, { legacyCost: cost })), item.links ?? []);
   const hover = [prose && plain(prose), ...facts.map(([k, v]) => `${k}: ${plain(v, k === 'cost')}`)].filter(Boolean).join('\n\n');
   ctx.anchors.push([module, item.line, slug(name), hover]);
+  // site/R4 (handbook/guidelines/site-checklist.md): an entry is a highlighted
+  // signature, a parameter table, prose, then labelled rows; never one blob.
+  const where = `${module}.${name}`;
+  if (!item.signature?.trim()) ctx.unstructured.push(`${where}: no signature`);
+  for (const l of prose.split('\n'))
+    if (/^\s*(cost|empty|order|ties|traps)\s*:/i.test(l)) ctx.unstructured.push(`${where}: a \`${l.trim().split(':')[0]}:\` line left in the prose`);
   const lines = [`${'#'.repeat(level)} \`${name}\``, '', '```cp', layoutSignature(item.signature), '```', ''];
   if (prose) lines.push(linked(ctx.math(prose, name), item.links ?? []), '');
   const params = item.kind === 'fn' ? sigParams(item.signature) : [];
+  if (item.kind === 'fn' && !params.length && ownParams(item.signature ?? ''))
+    ctx.unstructured.push(`${where}: its parameters don't parse into a table: ${item.signature}`);
   if (params.length) {
     lines.push('| Parameter | Type | Default |', '|---|---|---|');
     for (const [n, t, d] of params) lines.push(`| ${cell(n)} | ${cell(t)} | ${d ? cell(d) : 'required'} |`);
@@ -293,6 +317,7 @@ for (const m of modules) for (const i of m.items) collect(i, m.name, '', []);
 const ctx = {
   ran: await runInTurn(tries),
   failing: [],
+  unstructured: [],
   anchors: [],
   math(text, where, cost = false) {
     return checkMath(where, texSpans(text, { legacyCost: cost }));
@@ -359,7 +384,8 @@ const newlyFailing = ctx.failing.filter((f) => !knownStatic.has(f));
 const nowRunning = [...knownStatic].filter((f) => !failingNow.has(f));
 if (newlyFailing.length) console.error(`gen-ref: ${newlyFailing.length} std doc examples don't run (fix them, or the std docs):\n${newlyFailing.join('\n')}`);
 if (nowRunning.length) console.error(`gen-ref: ${nowRunning.length} std doc examples in ${knownFile.slice(repo.length + 1)} run now; delete their lines:\n${nowRunning.join('\n')}`);
-if (newlyFailing.length || nowRunning.length) process.exit(1);
+if (ctx.unstructured.length) console.error(`gen-ref: ${ctx.unstructured.length} std entries don't render as structure (site/R4):\n${ctx.unstructured.slice(0, 20).join('\n')}`);
+if (newlyFailing.length || nowRunning.length || ctx.unstructured.length) process.exit(1);
 if (mathErrors.length) {
   console.error(`gen-ref: ${mathErrors.length} math spans KaTeX can't render:\n${mathErrors.slice(0, 20).join('\n')}`);
   process.exit(1);

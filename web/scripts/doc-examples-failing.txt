@@ -24,7 +24,6 @@ segtree.SegTree.new: `var s = SegTree<Int, Int>(+, over: 0..1_000_000_000); s.se
 seq.covering: with the pieces of `(0..10).pieces(cuts: [3, 7])`, `piece.covering(3..10).len == 2`
 seq.Filtered.src: `let a = [1, 2]; a.filter(x => x > 1).src == a`
 seq.Mapped.src: `let a = [1, 2]; a.map(x => x * 2).src == a`
-seq.Rev.src: `let a = [1, 2]; a.rev.src == a`
 seq.Items.src: `let a = [1, 2]; a.items.src == a`
 seq.Slice.iter: `[5, 6, 7][1..].iter().collect() == [1, 2]`
 seq.keyed: `"ab".keyed().items.collect() == [(0, 'a'), (1, 'b')]`
