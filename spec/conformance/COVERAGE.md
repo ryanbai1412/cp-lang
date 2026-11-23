@@ -7,14 +7,14 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 2292 (995 passing). Rules: 536.
+Cases: 2294 (995 passing). Rules: 536.
 
 ## Summary per chapter
 
 - R01 (01-lexical-grammar.md): 52 rules, 112 cases; 0 uncovered, 3 happy-path only, 0 negative only
 - R02 (02-values-types.md): 51 rules, 113 cases; 0 uncovered, 3 happy-path only, 0 negative only
 - R03 (03-numbers-layout.md): 24 rules, 61 cases; 0 uncovered, 4 happy-path only, 0 negative only
-- R04 (04-indices.md): 63 rules, 94 cases; 0 uncovered, 2 happy-path only, 0 negative only
+- R04 (04-indices.md): 63 rules, 95 cases; 0 uncovered, 2 happy-path only, 0 negative only
 - R04a (04a-identity-vs-offset.md): 39 rules, 53 cases; 0 uncovered, 1 happy-path only, 0 negative only
 - R04b (04b-keys.md): 27 rules, 62 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R05 (05-ownership.md): 43 rules, 148 cases; 0 uncovered, 2 happy-path only, 0 negative only
@@ -38,7 +38,7 @@ negative case. Complete: rules with no gap in `rule-gaps.txt`.
 | R01 | 52 | 52 (100%) | 30 | 27 (90%) | 49 (94%) |
 | R02 | 51 | 51 (100%) | 29 | 26 (89%) | 48 (94%) |
 | R03 | 24 | 24 (100%) | 17 | 13 (76%) | 20 (83%) |
-| R04 | 63 | 63 (100%) | 15 | 13 (86%) | 61 (96%) |
+| R04 | 63 | 63 (100%) | 16 | 14 (87%) | 61 (96%) |
 | R04a | 39 | 39 (100%) | 4 | 3 (75%) | 38 (97%) |
 | R04b | 27 | 27 (100%) | 6 | 6 (100%) | 27 (100%) |
 | R05 | 43 | 43 (100%) | 23 | 21 (91%) | 41 (95%) |
@@ -50,7 +50,7 @@ negative case. Complete: rules with no gap in `rule-gaps.txt`.
 | R11 | 15 | 14 (93%) | 9 | 8 (88%) | 13 (86%) |
 | R12 | 17 | 17 (100%) | 6 | 6 (100%) | 17 (100%) |
 | R13 | 22 | 22 (100%) | 7 | 5 (71%) | 20 (90%) |
-| all | 536 | 535 (99%) | 229 | 201 (87%) | 507 (94%) |
+| all | 536 | 535 (99%) | 230 | 202 (87%) | 507 (94%) |
 
 ## Rules
 
@@ -228,7 +228,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R04.4.11 [1+ 1-]: | `..` | all of the indexed dimension | only inside `[...]`: `grid[r, ..]`
 - R04.4.22 [1+ 0-]: The language's implicit conversions are this closed list, none user-extensible. Each appli...
 - R04.4.23 [1+ 0-]: **`T` to `?T`.** `u != from` with `from: ?V` compares `Some(u)` with `from`. Free.
-- R04.4.24 [1+ 0-]: **A range type to a wider one** (`1..=5` to `Int`, `0..=9` to `-5..=100`). Free. Arithmeti...
+- R04.4.24 [1+ 1-]: , so it is an error; write `xs.map(x => Int(x))` (decision 246).
 - R04.4.25 [1+ 2-]: . For a domain with a runtime count (`domain V = 1..=n`, `n: 1..=2e5`), a literal outside ...
 - R04.4.26 [2+ 0-]: **Cut range to piece:** a literal `j..i` whose ends are cuts, where a `Range<V>` is expect...
 - R04.4.27 [2+ 1-]: **Scalar to array fill:** a value `x: T` where `[D]T` is expected is the array over `D` wi...
@@ -332,8 +332,8 @@ Each rule: positive / negative case counts, then the gap if any.
 
 ### R05: 05-ownership.md
 
+- R05.2.2 [3+ 4-]: **A range type to a wider one** (`1..=5` to `Int`, `0..=9` to `-5..=100`). Free. Arithmeti...
 - R05.2.1 [2+ 0-] *happy-path only*: **R1. Plain values copy.** A value is plain when no part of it lives on the heap: `Int`, `...
-- R05.2.2 [3+ 4-]: **R2. Heap values move.** `List`, `Map`, `Set`, `Str`, `[D]T`, `Graph`, `SegTree` and any ...
 - R05.3.1 [2+ 2-]: `let x = e` binds `x` to `e`; `x` can't be reassigned or mutated.
 - R05.3.2 [2+ 0-]: `var x = e` binds a mutable variable: `x = e2`, `x.push(..)`, `x[i] = ..`.
 - R05.3.3 [1+ 0-]: A **place** is a variable, a field (`s.f`), an element (`a[i]`), a slice (`a[r]`) or any p...
@@ -670,7 +670,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0207 Private item: 1 case(s)
 - E0208 Uppercase value name: 1 case(s)
 - E0301 Wrong index domain: 15 case(s)
-- E0302 Type mismatch: 36 case(s)
+- E0302 Type mismatch: 37 case(s)
 - E0303 Wrong number of arguments: 6 case(s)
 - E0304 Value is not callable: 1 case(s)
 - E0305 Value is not indexable: 3 case(s)
@@ -724,45 +724,6 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0904 memory_over_profile *(0.3)*: 1 case(s)
 - E9998 internal_unsupported *(retired)*: exempt (internal: a construct the compiler cannot lower)
 - E9999 Internal compiler error: exempt (internal compiler error)
-- L0001 : 2 case(s)
-- L0101 : 1 case(s)
-- L0201 : 1 case(s)
-- L0202 : 1 case(s)
-- L0203 : 1 case(s)
-- L0204 : 1 case(s)
-- L0205 : 1 case(s)
-- L0206 : 1 case(s)
-- L0207 : 1 case(s)
-- L0208 : 1 case(s)
-- L0209 : 1 case(s)
-- L0210 : **no case**
-- L0301 : 1 case(s)
-- L0412 : 1 case(s)
-- L0413 : 1 case(s)
-- L0414 : 1 case(s)
-- L0415 : 1 case(s)
-- L0501 : 1 case(s)
-- L0502 : 1 case(s)
-- L0503 : 1 case(s)
-- L0504 : 1 case(s)
-- L0505 : 1 case(s)
-- L0506 : 1 case(s)
-- L0507 : 1 case(s)
-- L0508 : 1 case(s)
-- L0509 : 1 case(s)
-- L0510 : 1 case(s)
-- L0511 : 1 case(s)
-- L0512 : 1 case(s)
-- L0513 : 1 case(s)
-- L0514 : 1 case(s)
-- L0515 : 1 case(s)
-- L0516 : 1 case(s)
-- L0517 : 1 case(s)
-- L0518 : 1 case(s)
-- L0519 : 1 case(s)
-- L0520 : 1 case(s)
-- L0521 : 1 case(s)
-- L0522 : 1 case(s)
 - L0601 Right side changes the place it assigns: 2 case(s)
 - L0602 Lazy chain walked twice: 1 case(s)
 - L0603 `.map` view read many times by index: 1 case(s)
@@ -787,7 +748,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - W0101 Unused expression value: 1 case(s)
 - W0201 size_near_limit *(0.3)*: 1 case(s)
 
-2 of 140 testable codes have no negative case.
+1 of 101 testable codes have no negative case.
 
 ## Spec code blocks
 
@@ -866,7 +827,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **rand** (10/10 named by a case)
 - **search** (9/9 named by a case)
 - **segtree** (54/54 named by a case)
-- **seq** (204/216 named by a case)
+- **seq** (203/215 named by a case)
   - uncovered: `Compressed`, `Filtered`, `Mapped`, `Rev`, `Items`, `Slice`, `Rebased`, `Keys`, `SubseqStep`, `Ring`, `RingRange`, `RingSlice`
 - **slope** (39/39 named by a case)
 - **sparse** (23/23 named by a case)
@@ -879,4 +840,4 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **window** (20/22 named by a case)
   - uncovered: `Tracked`, `Undo`
 
-2133 of 2258 std items are named by a case.
+2132 of 2257 std items are named by a case.

@@ -6070,3 +6070,16 @@ case exits 1, `cpl run` on `print(xs[5])` exits 3, `cpl check` on a type
 error exits 1, `cpl stress` with no file exits 2. Reverse: swap the three
 constants and the `exit(3)` in the C++ runtime, and the sentence in
 `spec/tools/cli.md`.
+
+## 246. Implicit widening is for scalars, never arrays (2026-11-22)
+
+- **Decision.** R04.4.24 widens a range type to a wider one only as a
+  scalar. `var d: [V]Int = xs` with `xs: [V]1..=9` is a type error
+  (E0302); the conversion is spelled `xs.map(x => Int(x))`. Case:
+  `spec/conformance/core-04/array-elements-do-not-widen.cp`.
+- **Why.** Arrays store the narrowest width (R03.1.4), so widening one
+  rewrites every cell, while `let b = a` on an array is an O(1) move
+  (R05.2.2). An implicit O(n) conversion breaks "costs are visible".
+  Rebuild round 5 (H-ARRAY-WIDEN) asked; `cpl run` accepts it today.
+- **Reverse.** List "an array of a range type to an array of a wider one,
+  by a copy" in R04.4.22's closed list and make the case `ok`.

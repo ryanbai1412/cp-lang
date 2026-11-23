@@ -165,6 +165,9 @@ operand fixes the type. Nothing else converts. (R04.4.22)
    `-5..=100`). Free. Arithmetic on range types yields `Int` (chapter 3),
    so a sum of weights `1..=1e9` is an `Int`, and a path distance or
    `dist: [V]?W` built from one is `Int` unless declared narrower.
+   An array's element type does not widen this way: `[V]1..=9` to
+   `[V]Int` rewrites every cell, an O(n) cost a move must not hide
+   (R05.2.2), so it is an error; write `xs.map(x => Int(x))` (decision 246).
    (R04.4.24)
 3. **Integer literal to position or cut** of an integer domain (R04.2.18).
    For a domain with a runtime count (`domain V = 1..=n`, `n: 1..=2e5`),
