@@ -7,7 +7,7 @@ let a: [0..n]1..=1e9 = read()
 let b = a.sorted(by: x => -x)  // expect: sort_desc_by_negation
 var ans: Z = 1
 for k in 0..n:
-    if k + 1 < n and b[k] == b[k + 1]:  // expect: missing manual-adjacent-compare
+    if k + 1 < n and b[k] == b[k + 1]:  // expect: adjacent_by_index
         break
     ans += Z(b[k] - 1) ** (k + 1)
 print(ans)

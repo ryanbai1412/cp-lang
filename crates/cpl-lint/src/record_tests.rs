@@ -212,7 +212,11 @@ impl Vocabulary {
 
     fn defined_in(src: &str, keyword: &str, name: &str, top_level: bool) -> bool {
         src.lines().any(|line| {
-            let line = if top_level { line } else { line.trim_start() };
+            let mut line = if top_level { line } else { line.trim_start() };
+            // `@get pub fn adjacent`: attributes come before the item.
+            while let Some(rest) = line.strip_prefix('@') {
+                line = rest.split_once(' ').map_or("", |(_, r)| r);
+            }
             let line = line.strip_prefix("pub ").unwrap_or(line);
             line.strip_prefix(keyword)
                 .and_then(|rest| rest.strip_prefix(' '))

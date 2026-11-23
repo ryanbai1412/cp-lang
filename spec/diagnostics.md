@@ -158,6 +158,8 @@ prefix_sum}, L0522 copy_sort_writeback, L0523 chmin_chmax_if, L0524 bool_ternary
 | L0582 | argsort_loop | a list of `(a[i], i)` pairs sorted for their order: `(0..n).sorted(by: i => a[i])` |
 | L0583 | palindrome_by_hand | `s[i]` against `s[n - 1 - i]` over `0..n / 2`: `is_palindrome(s)` (`std.strings`) |
 | L0584 | monotone_stack_by_hand | a stack of positions popped while `a[st.last!] < a[i]`: `a.next_smaller(by: x => -x)` (`std.seq`) |
+| L0585 | subset_masks_by_hand | `for mask in 0..(1 << n)` testing `(mask >> i) & 1` to pick `a[i]`: `for sub in a.subsequences()` (`std.seq`) |
+| L0586 | adjacent_by_index | `if i + 1 < n and a[i] .. a[i + 1]` (or `v != V.last!`) in a loop over positions: `for (x, y) in a.adjacent` (`std.seq`) |
 | L0601 | same_place_read_write | `a[l] += inc(mut a[l])`, `xs[0] = xs.pop()!` |
 | L0602 | chain_walked_twice | a lazy chain value consumed twice |
 | L0603 | map_recomputed | `.map(f)` view read many times by index |

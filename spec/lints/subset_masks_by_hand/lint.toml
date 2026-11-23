@@ -1,0 +1,6 @@
+code = "L0585"
+level = "warn"
+group = "idiom"
+title = "Subsets as masks, elements picked bit by bit"
+summary = "`for mask in 0..(1 << n)` testing `(mask >> i) & 1` to pick `a[i]`: `for sub in a.subsequences()`"
+no_fix = "the mask is often also a DP index or an output, and only the author knows whether the loop still needs it"
