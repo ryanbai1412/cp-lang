@@ -172,7 +172,7 @@ Each row is a quality a user can feel on the site, the metric, and the strongest
 | Pages run without errors | console errors and failed requests per route | Browser smoke | `web/tests/smoke.mjs`, `learn-smoke.mjs`, CI job `site browser tests`; **missing** over every route |
 | Links shared on social sites preview well | pages without title, description and preview image | [site/R13](../guidelines/site-checklist.md): the build fails on an exported page without its own title, description, preview image or card tag | `web/scripts/social.mjs` (site postbuild) |
 | One product | layout and theme bugs at 390, 768 and 1440 px, light and dark | Process: UI pass with screenshots | **missing**: no recurring pass or screenshot diff |
-| Accessible | axe-core violations per route; keyboard reach of Run, tabs and search | **missing** | none |
+| Accessible | axe-core violations per route; keyboard reach of Run, tabs and search | [site/R14](../guidelines/site-checklist.md): axe-core's WCAG 2 A and AA rules on 19 routes; today's 25 route-rule violations are listed and the list only shrinks | `web/tests/a11y.mjs`, CI job `site browser tests` |
 
 ### J2. Learn
 

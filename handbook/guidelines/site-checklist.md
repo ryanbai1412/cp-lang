@@ -116,3 +116,11 @@ Every page the site exports carries its own title and description, and the site'
 - **Why:** contestants share a std page or a practice problem in a team chat; a bare URL with no title gets no clicks and looks broken.
 - **Example:** a link to `/docs/ref/std/segtree` previews as "segtree · CP Lang" with the module's one-line summary and the CP Lang card.
 - **Enforced by:** `web/scripts/social.mjs` (site postbuild).
+
+## site/R14: Every page passes WCAG 2 A and AA
+
+A route a visitor lands on has no axe-core violation of the WCAG 2 A and AA rules: text meets contrast, every input and editor has an accessible name, and every scrollable region is reachable by keyboard.
+
+- **Why:** a contestant on a screen reader, on a dim screen at 3am, or driving the site from the keyboard during a contest should be able to read, search and run code.
+- **Example:** each code editor carries an `aria-label` naming what it holds, so a screen reader announces "CP Lang source" instead of "edit text".
+- **Enforced by:** `web/tests/a11y.mjs`, with today's violations in `web/tests/a11y-known.txt`, a list that only shrinks.
