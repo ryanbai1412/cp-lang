@@ -82,6 +82,7 @@ pub fn replay(
 
 /// [`replay`] where no thread can be started (WebAssembly), its calls held
 /// to `limits` and each run ended by `stop`.
+#[allow(clippy::too_many_arguments)]
 pub fn replay_on_this_thread(
     recorded: &Recording,
     original: &Program,
