@@ -6337,3 +6337,40 @@ constants and the `exit(3)` in the C++ runtime, and the sentence in
   needs compiler queries that do not exist yet.
 - **Reverse.** Sections are independent records in `explain --json`;
   adding or dropping one changes no other.
+||||||| parent of 42144bbaf (plan(tech-debt): decide the builtin floor, pure moves and ratchets)
+
+||||||| parent of 8d7aa07f2 (plan(tech-debt): decide the builtin floor, pure moves and ratchets)
+
+## 266. The builtin floor: storage, I/O, bits and numeric primitives (2026-11-22)
+
+- **Decision.** The compiler keeps intrinsics only for storage (`List`,
+  `Str`, `Map`, `Set` and their views), I/O, bits and numeric primitives;
+  every other name it matches is a std body any library could write. The
+  classification is `plan/domains/tech-debt/architecture/builtin-floor.md`:
+  66 of the names `ir_builtin_names` counts are on the floor, 23 are
+  derived (2 moved so far). A derived name moves only when its std body
+  passes the perf gate. Former tech-debt question in `plan/QUESTIONS.md`.
+- **Why.** "No privileged stdlib" (AGENTS.md): a power the stdlib needs is
+  one user libraries get too. The floor keeps every remaining special case
+  visible and countable.
+- **Reverse.** A name goes back on the floor with a line here and a raised
+  `ir_builtin_names` baseline.
+
+## 267. The steward may land pure-move refactors in other lanes' crates (2026-11-22)
+
+- **Decision.** Tech-debt may land behaviour-free moves (file splits,
+  renames, directory moves) in any crate, announced in the owner's
+  `worklog.md` in the same commit, each passing that crate's tests. Former
+  tech-debt question in `plan/QUESTIONS.md`.
+- **Why.** Moves are mechanical and conflict-prone; one lane batching them
+  is cheaper than twelve lanes each tripping file-size caps.
+- **Reverse.** Owners take moves back; tech-debt files proposals only.
+
+## 268. Debt ratchets hard-fail on any increase (2026-11-22)
+
+- **Decision.** Every counter in `scripts/debt-ratchet.py` fails the gate
+  when it grows. The only way past is a named `--update <counter>` in the
+  same commit plus a line here saying why. Former tech-debt question in
+  `plan/QUESTIONS.md`.
+- **Why.** Twelve parallel lanes ignore warnings.
+- **Reverse.** Make the ratchet step warn-only in `scripts/check.sh`.

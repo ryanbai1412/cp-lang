@@ -44,6 +44,24 @@ Recommendation: (a); warnings are ignored by twelve parallel lanes.
 How to reverse it: switch the ratchet step to warn in `scripts/check.sh`.
 Meanwhile: (a).
 
+### site: should the landing show 0.3 programs the compiler cannot run yet?
+Options: (a) keep them as tabs with a "0.3 spec" badge and no Run, as today; the syntax and library tabs show no Run button; 4 of their 8 programs now run with a sample input (`web/content/landing/syntax/records.cp`), 4 are still `spec` (`web/content/landing/library/ioi05p2.spec.cp`); (b) show only programs that run, adding the rest as the compiler catches up; (c) lead each tab group with runnable programs, spec ones after.
+Recommendation: (c). The first thing a visitor clicks should run; the 0.3 shape still shows, labelled.
+How to reverse it: tab order lives in `web/lib/landing.ts`; one edit.
+Meanwhile: (c).
+
+### site: should guide code blocks become live runners?
+Options: (a) static highlighted blocks, as today (`web/content/docs/guides/tour.mdx`); (b) every block with status `runs` gets a compact Run and "Open in playground"; (c) only on Learn pages.
+Recommendation: (b). The gate already proves which blocks run; Run turns reading into checking, which is the docs-only bar.
+How to reverse it: one MDX component mapping in `web/components/`.
+Meanwhile: (b), built: `remarkLive` in `web/source.config.ts` wraps each fence the gate measured `runs` in `web/components/live-code.tsx`.
+
+### site: Learn for v0.3, breadth or depth?
+Options: (a) 8 short chapters + 15 original judged problems covering a Div 2 A-C (today 3 chapters, 7 problems in `web/content/learn/read/`, `web/content/practice/`); (b) a full course to Div 1 topics; (c) freeze Learn and put the effort into guides and reference.
+Recommendation: (a). It covers what a first contest needs and stays small enough to keep compiler-checked as the language moves.
+How to reverse it: content only; chapters add or drop independently.
+Meanwhile: (a).
+
 ### compiler: how does a product position lower?
 `domain P = (R, C)`; `for (r, c) in P: if let q = P.at((Int(r) - 1, Int(c))): n += 1` (`spec/conformance/core-04/prod-at-neighbour.cp`).
 Options: (a) in the IR a position of `P` is a tuple of factor positions `(R, C)`; `nth`, array offsets and `[P]T` indexing compute the row-major offset at the use. (b) a position is one packed row-major `Int`; factors are `div`/`mod` at the use.

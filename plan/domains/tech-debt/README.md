@@ -28,7 +28,7 @@ ratchet and counts: `scripts/debt-ratchet.py` (`--show`, `--list NAME`; 0.4 s, i
 
 1. No 0.2 code path, test or corpus file remains (`edition_refs`, `v02_port_files` = 0).
 2. One interpreter engine; back ends read the IR only (`tree_walker`, `layer_violations` = 0).
-3. Library type names never appear in IR, interpreter or emitter (`backend_std_names` = 0); compiler builtins at or under the floor Ryan signs off (Q1).
+3. Library type names never appear in IR, interpreter or emitter (`backend_std_names` = 0); compiler builtins at or under the floor (decision 266).
 4. Every ratchet below is in `scripts/check.sh` and can only go down.
 5. Every lane has had two cold reviews; rubric median >= 4/5; the four change-cost probes each touch <= 3 files.
 
@@ -63,7 +63,7 @@ ratchet and counts: `scripts/debt-ratchet.py` (`--show`, `--list NAME`; 0.4 s, i
 | Largest Rust file (lines) | `find crates -path '*/src/*' -name '*.rs' \| xargs wc -l \| sort -n \| tail -2 \| head -1` | 15,367 (`cpl-interp/src/vm.rs`) | <= 4,000 |
 | Dead edition references | `M edition_refs` | 0 (was 92) | 0 |
 | `#[ignore]` Rust tests | `M rust_ignore` | 17 | <= 3 |
-| Builtin names string-matched in lowering | `M ir_builtin_names` | 89 | <= floor (Q1, proposed 30) |
+| Builtin names string-matched in lowering | `M ir_builtin_names` | 86 (was 89) | <= 66, the floor (decision 266) |
 | Std type names in IR/interp/codegen | `M backend_std_names` | 17 | 0 |
 | Duplicated fn bodies across files | `M dup_fn_bodies` | 4 | 0 |
 | Shipped crate edges | `M crate_edges` | 75 | no unreviewed new edge |
@@ -119,7 +119,7 @@ of `git log --grep 'Domain: <lane>'`.
 
 1. Land M1: the restructure and 0.2 deletion are written; they only need rebasing and the gate.
 2. Done: every count above is a shrink-only ratchet in `scripts/debt-ratchet.py`.
-3. Propose the builtin floor and the std-intrinsic mechanism to compiler/stdlib (Q1).
+3. Move the 23 derived builtins into std behind the perf gate (decision 266).
 4. One VM: file the tree-walker removal plan with compiler; split `vm.rs` first.
 5. One bound analysis: lint reads checker facts (proposal to lint-fmt + compiler).
 6. Run cold-review round 1 and the probe baseline; findings go to owners' worklogs.
@@ -127,12 +127,12 @@ of `git log --grep 'Domain: <lane>'`.
 
 ## Ryan's role
 
-Sign off the targets above once (segment B), answer Q1-Q3, then read the
+Sign off the targets above once (segment B), then read the
 weekly numbers in `worklog.md`. Push back on any rubric question or probe that
 does not match what "clean" means to you.
 
-## Decisions needed from Ryan (filed in [plan/QUESTIONS.md](../../QUESTIONS.md))
+## Decisions
 
-- **Q1. The builtin floor.** Which names may the compiler know? Recommend: I/O, numeric primitives, `List`/`Str`/`Map`/`Set` storage, declared in std with an `@intrinsic` mechanism user libraries can use too; everything else moves to std. Default meanwhile: the count only goes down.
-- **Q2. Steward pure-move rights.** May this lane land behaviour-free file splits in other lanes' crates (owner notified in its worklog)? Recommend yes. Default: yes for `vm.rs` (already agreed in the handoff), ask per file otherwise.
-- **Q3. Ratchet strictness.** Recommend hard-fail for every lane on any increase, with a same-commit baseline bump plus a `decisions.md` line as the only escape. Default: hard-fail.
+Q1-Q3 are decided by their recommendations: decisions 266 (builtin floor),
+267 (steward pure moves) and 268 (hard-fail ratchets) in `decisions.md`.
+Nothing from this lane is waiting on Ryan.

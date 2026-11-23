@@ -47,7 +47,7 @@ The detail behind [README.md](README.md). Dated 2026-11-22.
    worklog: one VM (compiler), builtin floor and `@intrinsic` (compiler +
    stdlib), one bound analysis (lint-fmt + compiler), std names out of the
    back ends (compiler + perf), one member catalog (compiler + tools), wasm
-   lints (lint-fmt). This lane does the pure-move file splits (Q2).
+   lints (lint-fmt). This lane does the pure-move file splits (decision 267).
 5. **Keep `plan/ARCHITECTURE.md` true.** Rewrite part B1 from `debt-ratchet.py --show`
    output; every path it cites is checked by `stale_arch_paths`.
 
@@ -80,8 +80,9 @@ The detail behind [README.md](README.md). Dated 2026-11-22.
 - Text-based counts can be gamed (renaming a builtin past the regex).
   Mitigation: the cold review checks the intent; the regexes are listed in
   `scripts/debt-ratchet.py` for anyone to tighten.
-- `ir_builtin_names` has no agreed floor until Q1 is answered; until then the
-  target is "only down".
+- `ir_builtin_names` counts string literals, so its floor (66, decision 266)
+  includes aliases and type names; the classification in
+  `architecture/builtin-floor.md` is the reference.
 - Old branches may contain work a lane still wants; deleting needs the
   owner's confirmation in its worklog, never a silent delete.
 
