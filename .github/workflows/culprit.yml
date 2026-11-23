@@ -22,7 +22,9 @@ jobs:
       group: culprit
       cancel-in-progress: false
     runs-on: ubuntu-latest
-    timeout-minutes: 120
+    # A red that lasts hours spans 1000+ commits; past 30 min the sheriff's
+    # own root-cause finding has long beaten the bisect.
+    timeout-minutes: 30
     env:
       BAD: ${{ github.event.workflow_run.head_sha }}
       RUN_ID: ${{ github.event.workflow_run.id }}
