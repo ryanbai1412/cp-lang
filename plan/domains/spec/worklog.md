@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-23
+- Bug-catch round 13: interpreter 9/9 caught (1 no longer builds reverted). Release pass 0/4, but all four (4b3d07d40, 84c17db3d, 3671b8037, 2ac3605d9) are codegen optimisations whose revert changes speed, not output; their own codegen unit tests cover them. General fix: `conformance-bugcatch.py` now labels a non-fix subject that no case catches as an optimisation and leaves it out of the rate.
 - Checker and interactor APIs now run in conformance through `// tool: judge` / `// tool: run` cases: core-06/check-assert-rejects-wrong-output, check-accepts-valid-output, interactor-send-recv pass; check-bool-false-rejects fails (tools known gap: `-> Bool` returning `false` accepts). Closes the owed general fix from rebuild 20.
 - Rebuild round 20 (interactive, any-answer, hashing, bitmask DP, 64-bit; 1700-2300): 21 holes (11 silent, 3 contradiction, 2 missing-stdlib, 5 found-late); 8/10 pass samples, 1200 stress inputs agree. Its 2 'interactor/checker broken' failures were the spec's wrong API: decision 375 spells `@check fn ok() -> Bool` with `read_output()` and `@interactor fn judge(mut sol: Interactor)`. Case core-02/read-str-of-alphabet-type-arg (compiler gap). Owed: a conformance mode that runs `cpl judge`/interactor pairs, so the tool APIs the spec shows are executed (General fixes owed).
 - Acceptance run 4 spec rows: decision 374 (checker sees only input, R10.2.3 dependent tuple bounds, 2 cases). `list-copy-is-move` already has the `.clone()` help.

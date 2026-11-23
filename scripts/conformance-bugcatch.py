@@ -37,6 +37,11 @@ def src_only(paths):
     return [p for p in paths if any(p.startswith(s + "/") for s in SRC) and "/tests/" not in p]
 
 
+def is_fix(subj):
+    m = SUBJECT.match(subj)
+    return bool(m and FIXY.search(m.group(3).replace("fix-it", "")))
+
+
 def candidates(limit):
     log = git("log", "--no-merges", "--format=%H%x09%s", "HEAD", "--", *SRC).stdout.splitlines()
     out = []
@@ -165,12 +170,14 @@ def main():
                 print(f"{sha[:8]} skip (does not build)", flush=True)
                 continue
             broke = broken(base, got)
-            rows.append((sha, subj, "caught" if broke else "missed", broke))
-            print(f"{sha[:8]} {'caught' if broke else 'MISSED'} ({len(broke)} cases)", flush=True)
+            res = "caught" if broke else ("missed" if is_fix(subj) else "optimisation, no behaviour to catch")
+            rows.append((sha, subj, res, broke))
+            print(f"{sha[:8]} {'caught' if broke else res.upper() if res == 'missed' else res} ({len(broke)} cases)", flush=True)
     finally:
         git("worktree", "remove", "--force", str(wt), check=False)
     caught = sum(r[2].startswith("caught") for r in rows)
     missed = sum(r[2].startswith("missed") for r in rows)
+    opt = sum(r[2].startswith("optimisation") for r in rows)
     lines = [
         "# Bug-catch rate",
         "",
@@ -181,7 +188,8 @@ def main():
         "",
         f"**{caught} of {caught + missed} revertible fixes caught"
         + (f" ({100 * caught // max(1, caught + missed)}%)" if caught + missed else "")
-        + f"**; {len(rows) - caught - missed} of {len(rows)} no longer revert or build on HEAD.",
+        + f"**; {len(rows) - caught - missed - opt} of {len(rows)} no longer revert or build on HEAD"
+        + f"; {opt} are optimisations, whose revert changes speed, not output.",
         "",
         "| commit | subject | result | cases that fail |",
         "|---|---|---|---|",
@@ -190,7 +198,8 @@ def main():
         shown = ", ".join(f"`{b}`" for b in broke[:3]) + (f" +{len(broke) - 3}" if len(broke) > 3 else "")
         lines.append(f"| `{sha[:8]}` | {subj.replace('|', '/')} | {res} | {shown} |")
     Path(a.out).write_text("\n".join(lines) + "\n")
-    print(f"bugcatch: {caught}/{caught + missed} caught, {len(rows) - caught - missed} not revertible; wrote {a.out}")
+    print(f"bugcatch: {caught}/{caught + missed} caught, {len(rows) - caught - missed - opt} not revertible, "
+          f"{opt} optimisations; wrote {a.out}")
 
 
 if __name__ == "__main__":
