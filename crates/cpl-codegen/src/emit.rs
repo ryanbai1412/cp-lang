@@ -802,112 +802,30 @@ impl<'p> Emitter<'p> {
             visited_enums: &mut BTreeSet<usize>,
         ) {
             match ty {
+                Ty::Struct(sid) if !visited_structs.insert(*sid) => return,
+                Ty::Enum(eid) if !visited_enums.insert(*eid) => return,
                 Ty::Struct(sid) => {
-                    if visited_structs.insert(*sid) {
-                        let s = &program.structs[*sid];
-                        if let Some(show_fn) = s.show_fn {
-                            if reachable.insert(show_fn) {
-                                fn_work.push(show_fn);
-                            }
-                        } else {
-                            for (i, (_, fty)) in s.fields.iter().enumerate() {
-                                if s.cached_fields.contains(&i) {
-                                    continue;
-                                }
-                                mark_show_ty(
-                                    fty,
-                                    program,
-                                    reachable,
-                                    fn_work,
-                                    visited_structs,
-                                    visited_enums,
-                                );
-                            }
+                    if let Some(show_fn) = program.structs[*sid].show_fn {
+                        if reachable.insert(show_fn) {
+                            fn_work.push(show_fn);
                         }
                     }
                 }
-                Ty::Enum(eid) => {
-                    if visited_enums.insert(*eid) {
-                        for (_, fields) in &program.enums[*eid].variants {
-                            for fty in fields {
-                                mark_show_ty(
-                                    fty,
-                                    program,
-                                    reachable,
-                                    fn_work,
-                                    visited_structs,
-                                    visited_enums,
-                                );
-                            }
-                        }
-                    }
-                }
-                Ty::Range(t)
-                | Ty::Opt(t)
-                | Ty::List(t)
-                | Ty::Set(t)
-                | Ty::HashSet(t)
-                | Ty::Mut(t) => mark_show_ty(
-                    t,
+                _ => {}
+            }
+            let parts = match ty {
+                Ty::Range(t) | Ty::Mut(t) => vec![(**t).clone()],
+                _ => crate::show::parts(program, ty),
+            };
+            for part in &parts {
+                mark_show_ty(
+                    part,
                     program,
                     reachable,
                     fn_work,
                     visited_structs,
                     visited_enums,
-                ),
-                Ty::Array { elem, .. } => {
-                    mark_show_ty(
-                        elem,
-                        program,
-                        reachable,
-                        fn_work,
-                        visited_structs,
-                        visited_enums,
-                    );
-                }
-                Ty::Map(k, v) | Ty::HashMap(k, v) => {
-                    mark_show_ty(
-                        k,
-                        program,
-                        reachable,
-                        fn_work,
-                        visited_structs,
-                        visited_enums,
-                    );
-                    mark_show_ty(
-                        v,
-                        program,
-                        reachable,
-                        fn_work,
-                        visited_structs,
-                        visited_enums,
-                    );
-                }
-                Ty::Tuple(ts) => {
-                    for t in ts {
-                        mark_show_ty(
-                            t,
-                            program,
-                            reachable,
-                            fn_work,
-                            visited_structs,
-                            visited_enums,
-                        );
-                    }
-                }
-                Ty::Record(fs) => {
-                    for (_, t) in fs {
-                        mark_show_ty(
-                            t,
-                            program,
-                            reachable,
-                            fn_work,
-                            visited_structs,
-                            visited_enums,
-                        );
-                    }
-                }
-                _ => {}
+                );
             }
         }
 

@@ -119,41 +119,8 @@ impl<'p> Emitter<'p> {
         format!("show_{}", index + 1)
     }
 
-    /// The types a value of the compound type `ty` is made of.
     fn parts(&self, ty: &Ty) -> Vec<Ty> {
-        match ty {
-            Ty::Opt(inner)
-            | Ty::List(inner)
-            | Ty::ListView(inner, _)
-            | Ty::Keyed(inner, _)
-            | Ty::Set(inner)
-            | Ty::HashSet(inner) => {
-                vec![(**inner).clone()]
-            }
-            Ty::Array { elem, .. } => vec![(**elem).clone()],
-            Ty::Map(key, value) | Ty::HashMap(key, value) => {
-                vec![(**key).clone(), (**value).clone()]
-            }
-            Ty::Struct(id) => {
-                let def = &self.program.structs[*id];
-                if def.show_fn.is_some() {
-                    Vec::new()
-                } else {
-                    def.fields
-                        .iter()
-                        .enumerate()
-                        .filter(|(i, _)| !def.cached_fields.contains(i))
-                        .map(|(_, (_, t))| t.clone())
-                        .collect()
-                }
-            }
-            Ty::Enum(id) => self.program.enums[*id]
-                .variants
-                .iter()
-                .flat_map(|(_, tys)| tys.iter().cloned())
-                .collect(),
-            _ => ty.fields().unwrap_or_default(),
-        }
+        parts(self.program, ty)
     }
 
     fn show_body(&mut self, ty: &Ty) -> String {
@@ -586,5 +553,43 @@ impl<'p> Emitter<'p> {
                 out.push_str(&format!("{lead}for (auto& {x} : {items}) {x} = {value};\n"));
             }
         }
+    }
+}
+
+/// The types a value of the compound type `ty` is made of: what printing
+/// it prints, so what must be shown first.
+pub(crate) fn parts(program: &cpl_ir::Program, ty: &Ty) -> Vec<Ty> {
+    match ty {
+        Ty::Opt(inner)
+        | Ty::List(inner)
+        | Ty::ListView(inner, _)
+        | Ty::Keyed(inner, _)
+        | Ty::Set(inner)
+        | Ty::HashSet(inner) => {
+            vec![(**inner).clone()]
+        }
+        Ty::Array { elem, .. } => vec![(**elem).clone()],
+        Ty::Map(key, value) | Ty::HashMap(key, value) => {
+            vec![(**key).clone(), (**value).clone()]
+        }
+        Ty::Struct(id) => {
+            let def = &program.structs[*id];
+            if def.show_fn.is_some() {
+                Vec::new()
+            } else {
+                def.fields
+                    .iter()
+                    .enumerate()
+                    .filter(|(i, _)| !def.cached_fields.contains(i))
+                    .map(|(_, (_, t))| t.clone())
+                    .collect()
+            }
+        }
+        Ty::Enum(id) => program.enums[*id]
+            .variants
+            .iter()
+            .flat_map(|(_, tys)| tys.iter().cloned())
+            .collect(),
+        _ => ty.fields().unwrap_or_default(),
     }
 }

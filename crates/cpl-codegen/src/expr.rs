@@ -221,6 +221,11 @@ impl<'p> Emitter<'p> {
                     || matches!(e.kind, ExprKind::Str(_) | ExprKind::None)
                 {
                     codes.push(code);
+                } else if e.ty == Ty::Unit {
+                    if code.text != "(void)0" {
+                        out.push_str(&format!("{}{};\n", pad(this.indent), code.text));
+                    }
+                    codes.push(Code::primary("(void)0"));
                 } else {
                     let name = this.temp();
                     out.push_str(&format!(
