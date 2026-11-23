@@ -1,6 +1,6 @@
 # agc077c
 
-Score: 3/5
+Score: 4/5
 Dream: 4/5
 
 The complement-graph components are found by a hand DFS with a two-pointer skip over sorted adjacency, and the parity bookkeeping (`out_deg`, `c0`/`c1`, `mi_1`/`ma_1`) is never explained. No dream exists, so the score is capped at 3. Scored cold against `design/EXEMPLARS-PORTS.md`.
@@ -70,3 +70,19 @@ Still fails:
 - Minor: the even-`k` "always Yes" (lines 7-8) still cites the editorial instead of deriving it, and line 8 is a stray short wrap.
 
 Dream notes: its bounds (`n: 1..`, `k: 1..=1_000_000_000`, lines 24-26) are looser than the statement the port now encodes, and it prints with `if ...: "Yes" else: "No"` where the port has `yes()`.
+
+## Cold rescore (57f3059f2)
+
+Port 3 → 4/5, rescored cold after 3e1dc1074; dream 4/5 holds. `cpl check` and `cpl lint` are clean, the sample passes.
+
+Better:
+- The hand-written complement BFS is gone: line 39 is `components(complement(Graph.undirected(edges)))`, the dream's named algorithm, and the friction file measures it at 0.022-0.033 s against orig.cpp's 0.078-0.095 s on three max inputs.
+- The even-`k` exit (lines 30-32) now runs before the parity setup, and the header derives it (lines 10-11): the operations on S + a and S + b flip just a and b.
+- The header carries the whole argument (lines 5-18): the odd-count parity identity, the per-component interval and why `lo <= target <= hi` (line 49) suffices. Bounds are types (lines 24-26), output is `yes()`.
+
+Still fails (all owed, minor; none needs the language):
+- Parallel per-component counters (lines 40-44): `size` and `odd` are two `[C]Int` tables filled by one loop, where the dream reads each component's members. `for members in comp.buckets():` with `members.len` and `members.count(v => odd_out[v])` checks, lints clean and agrees with the port on 120 `gen.py` inputs (probed).
+- One fact, two spellings: the header gives the start parity as `(n - v) % 2` (line 13), line 34 as `(n - 1 - v.ord) % 2`; `(n - Int(v)) % 2 == 1` checks and agrees on 60 inputs (probed).
+- Lines 36-37 spell the toggle `x = not x` twice; `odd_out[u] ^= true` checks (probed). Cosmetic.
+
+Dream notes: unchanged from the previous rescore (even `k` only asserted on lines 7-8, bounds looser than the statement, `"Yes"`/`"No"` literals where the port has `yes()`).
