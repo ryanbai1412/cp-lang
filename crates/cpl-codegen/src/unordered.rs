@@ -8,7 +8,9 @@
 //! uses that can't see the order keeps the tree.
 
 use crate::walk;
-use cpl_ir::{Block, Builtin, Expr, ExprKind, Iter, Mutation, Program, Stmt, Ty};
+use cpl_ir::{
+    Block, Builtin, Expr, ExprKind, Iter, Mutation, PlaceKind, Program, SortBy, Stmt, Ty, UnOp,
+};
 
 #[derive(Default)]
 struct Found {
@@ -16,6 +18,8 @@ struct Found {
     sets: Vec<Ty>,
     ordered_maps: Vec<Ty>,
     ordered_sets: Vec<Ty>,
+    /// Loops over a table whose order cannot show: see [`sorted_scans`].
+    blind_scans: Vec<*const Expr>,
 }
 
 fn add(list: &mut Vec<Ty>, ty: &Ty) {
@@ -128,6 +132,7 @@ impl Found {
         walk::deep_stmts(block, &mut |stmt| {
             if let Stmt::For(_, _, iter, _) = stmt {
                 match iter {
+                    Iter::Seq(seq, _) if self.blind_scans.contains(&(seq as *const Expr)) => {}
                     Iter::Seq(seq, _)
                     | Iter::RangeVal(seq, _)
                     | Iter::Subsets(seq)
@@ -140,10 +145,91 @@ impl Found {
     }
 }
 
+/// `[x for .. in m ..].sorted(..)` where equal sort keys mean equal
+/// elements: a scalar element sorted by itself or its negation. The list
+/// comes out the same in any order of `m`, so its loop cannot show it, as
+/// long as the loop does nothing but push onto that list.
+fn sorted_scans(block: &Block, out: &mut Vec<*const Expr>) {
+    walk::deep_exprs(block, &mut |e| {
+        let ExprKind::Do(b) = &e.kind else { return };
+        let [Stmt::Let(list, Some(init)), Stmt::Expr(sort), Stmt::Give(give)] = &b.stmts[..] else {
+            return;
+        };
+        let ExprKind::Sort(place, by, _) = &sort.kind else {
+            return;
+        };
+        let by_value = match by {
+            SortBy::Natural => true,
+            SortBy::Key(slot, key) => match &key.kind {
+                ExprKind::Local(s) => s == slot,
+                ExprKind::Unary(UnOp::Neg, x) => matches!(x.kind, ExprKind::Local(s) if s == *slot),
+                _ => false,
+            },
+            SortBy::Fn { .. } => false,
+        };
+        let scalar = matches!(&place.ty, Ty::List(elem) if elem.is_scalar());
+        if !by_value
+            || !scalar
+            || !matches!(place.kind, PlaceKind::Local(s) if s == *list)
+            || !matches!(give.kind, ExprKind::Local(s) if s == *list)
+        {
+            return;
+        }
+        let built = match &init.kind {
+            ExprKind::Builtin(Builtin::Copy, args) if args.len() == 1 => &args[0],
+            _ => init,
+        };
+        let ExprKind::Do(inner) = &built.kind else {
+            return;
+        };
+        let [Stmt::Let(acc, Some(empty)), Stmt::For(_, _, Iter::Seq(seq, _), body), Stmt::Give(out_list)] =
+            &inner.stmts[..]
+        else {
+            return;
+        };
+        let table = matches!(seq.ty, Ty::Map(..) | Ty::Set(_));
+        let fresh = matches!(&empty.kind, ExprKind::Tuple(items) if items.is_empty());
+        if table
+            && fresh
+            && matches!(out_list.kind, ExprKind::Local(s) if s == *acc)
+            && pushes_only_onto(body, *acc)
+        {
+            out.push(seq as *const Expr);
+        }
+    });
+}
+
+/// `body` changes nothing but pushes onto the local `acc`, calls nothing
+/// and never leaves early.
+fn pushes_only_onto(body: &Block, acc: usize) -> bool {
+    let mut ok = true;
+    walk::deep_exprs(body, &mut |e| match &e.kind {
+        ExprKind::Mutate(Mutation::Push, place, _) => {
+            ok &= matches!(place.kind, PlaceKind::Local(s) if s == acc);
+        }
+        ExprKind::Mutate(..)
+        | ExprKind::Call(..)
+        | ExprKind::CallExpr(..)
+        | ExprKind::Closure(_)
+        | ExprKind::Print(..) => ok = false,
+        _ => {}
+    });
+    walk::deep_stmts(body, &mut |stmt| {
+        ok &= !matches!(stmt, Stmt::Break(_) | Stmt::Return(_) | Stmt::Assign(..));
+    });
+    ok
+}
+
 /// The key types of the `Map`s, and the element types of the `Sets`,
 /// whose order the program can never see.
 pub(crate) fn find(program: &Program) -> (Vec<Ty>, Vec<Ty>) {
     let mut found = Found::default();
+    let mut bodies: Vec<&Block> = program.fns.iter().map(|f| &f.body).collect();
+    bodies.extend(program.closures.iter().map(|c| &c.body));
+    bodies.extend([&program.main, &program.setup]);
+    for body in bodies {
+        sorted_scans(body, &mut found.blind_scans);
+    }
     for global in &program.globals {
         found.see(program, &global.ty);
     }
@@ -160,6 +246,7 @@ pub(crate) fn find(program: &Program) -> (Vec<Ty>, Vec<Ty>) {
         mut sets,
         ordered_maps,
         ordered_sets,
+        ..
     } = found;
     maps.retain(|k| !ordered_maps.contains(k));
     sets.retain(|k| !ordered_sets.contains(k));

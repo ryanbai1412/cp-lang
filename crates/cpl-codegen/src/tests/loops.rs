@@ -29,3 +29,19 @@ fn an_inclusive_loop_to_a_bound_below_int_max_is_a_plain_loop() {
         "a sum that can't wrap is plain: {wrapping}"
     );
 }
+
+#[test]
+fn a_map_scanned_only_into_a_list_sorted_by_value_is_a_hash_table() {
+    let source = concat!(
+        "let n: 1..=1000 = read()\n",
+        "let a: [0..n]Int = read()\n",
+        "var freq: Map<Int, Int> = Map()\n",
+        "for x in a: freq[x] += 1\n",
+        "let odd = [cnt for (x, cnt) in freq.items if x % 2 == 1].sorted(by: c => -c)\n",
+        "print(odd)\n",
+    );
+    let hashed = cpp(source);
+    assert!(!hashed.contains("std::map<ll, ll> freq"), "{hashed}");
+    let ordered = cpp(&source.replace("sorted(by: c => -c)", "rev"));
+    assert!(ordered.contains("std::map<ll, ll> freq"), "{ordered}");
+}
