@@ -1935,7 +1935,7 @@ fn unimodality_break(xs: List<Int>) -> ?Int // O(n)
 fn monge_break(cost: (Int, Int) -> Int, rows: Int, cols: Int) -> ?(Int, Int)
 // O(rows * cols)
 fn argmins(cost: (Int, Int) -> Int, rows: Int, cols: Int) -> List<Int>
-fn dnc_break( // O(n log n), O(n^2)
+fn dnc_break(cost: (Int, Int) -> Int, n: Int) -> ?(Int, Int) // O(n^2)
 fn knuth_break(opt: (Int, Int) -> Int, n: Int) -> ?(Int, Int) // O(n^2)
 fn differences(xs: List<Int>) -> List<Int> // O(n)
 fn newton(xs: List<Int>) -> List<Int> // O(n^2)
