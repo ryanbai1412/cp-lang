@@ -6,15 +6,6 @@
 {"id":5,"line":5,"label":"let k = read(0..10)","stage":"main","values":{"stdout":[],"a":[5,6,7],"s":20,"k":9},"locals":{"v":2},"frames":[{"fn":"main","line":5}]},
 {"id":6,"line":6,"label":"print → 3 20 9","stage":"main","values":{"stdout":["3 20 9"],"a":[5,6,7],"s":20,"k":9},"locals":{"v":2},"checkpoint":"print 1","frames":[{"fn":"main","line":6}]},
 {"id":7,"line":9,"label":"var t: [W]Int = 1","stage":"main","values":{"stdout":["3 20 9"],"a":[5,6,7],"s":20,"k":9},"locals":{"m":4,"t":[1,1,1,1]},"frames":[{"fn":"sub","line":9},{"fn":"main","line":11}]},
-{"id":8,"line":10,"label":"sum(t)","stage":"main","values":{"stdout":["3 20 9"],"a":[5,6,7],"s":20,"k":9},"locals":{"self":[1,1,1,1],"out":0},"frames":[{"fn":"sum","line":10},{"fn":"sub","line":10},{"fn":"main","line":11}]},
-{"id":9,"line":10,"label":"sum(t)","stage":"main","values":{"stdout":["3 20 9"],"a":[5,6,7],"s":20,"k":9},"locals":{"self":[1,1,1,1],"out":0,"x":1},"frames":[{"fn":"sum","line":10},{"fn":"sub","line":10},{"fn":"main","line":11}]},
-{"id":10,"line":10,"label":"sum(t)","stage":"main","values":{"stdout":["3 20 9"],"a":[5,6,7],"s":20,"k":9},"locals":{"self":[1,1,1,1],"out":1,"x":1},"frames":[{"fn":"sum","line":10},{"fn":"sub","line":10},{"fn":"main","line":11}]},
-{"id":11,"line":10,"label":"sum(t)","stage":"main","values":{"stdout":["3 20 9"],"a":[5,6,7],"s":20,"k":9},"locals":{"self":[1,1,1,1],"out":1,"x":1},"frames":[{"fn":"sum","line":10},{"fn":"sub","line":10},{"fn":"main","line":11}]},
-{"id":12,"line":10,"label":"sum(t)","stage":"main","values":{"stdout":["3 20 9"],"a":[5,6,7],"s":20,"k":9},"locals":{"self":[1,1,1,1],"out":2,"x":1},"frames":[{"fn":"sum","line":10},{"fn":"sub","line":10},{"fn":"main","line":11}]},
-{"id":13,"line":10,"label":"sum(t)","stage":"main","values":{"stdout":["3 20 9"],"a":[5,6,7],"s":20,"k":9},"locals":{"self":[1,1,1,1],"out":2,"x":1},"frames":[{"fn":"sum","line":10},{"fn":"sub","line":10},{"fn":"main","line":11}]},
-{"id":14,"line":10,"label":"sum(t)","stage":"main","values":{"stdout":["3 20 9"],"a":[5,6,7],"s":20,"k":9},"locals":{"self":[1,1,1,1],"out":3,"x":1},"frames":[{"fn":"sum","line":10},{"fn":"sub","line":10},{"fn":"main","line":11}]},
-{"id":15,"line":10,"label":"sum(t)","stage":"main","values":{"stdout":["3 20 9"],"a":[5,6,7],"s":20,"k":9},"locals":{"self":[1,1,1,1],"out":3,"x":1},"frames":[{"fn":"sum","line":10},{"fn":"sub","line":10},{"fn":"main","line":11}]},
-{"id":16,"line":10,"label":"sum(t)","stage":"main","values":{"stdout":["3 20 9"],"a":[5,6,7],"s":20,"k":9},"locals":{"self":[1,1,1,1],"out":4,"x":1},"frames":[{"fn":"sum","line":10},{"fn":"sub","line":10},{"fn":"main","line":11}]},
-{"id":17,"line":11,"label":"print → 4","stage":"main","values":{"stdout":["3 20 9","4"],"a":[5,6,7],"s":20,"k":9},"locals":{"v":2},"checkpoint":"print 2","frames":[{"fn":"main","line":11}]},
-{"id":18,"line":11,"label":"the program ended","stage":"main","values":{"stdout":["3 20 9","4"],"a":[5,6,7],"s":20,"k":9},"locals":{"v":2},"checkpoint":"end","frames":[{"fn":"main","line":11}]}]}}}
+{"id":8,"line":11,"label":"print → 4","stage":"main","values":{"stdout":["3 20 9","4"],"a":[5,6,7],"s":20,"k":9},"locals":{"v":2},"checkpoint":"print 2","frames":[{"fn":"main","line":11}]},
+{"id":9,"line":11,"label":"the program ended","stage":"main","values":{"stdout":["3 20 9","4"],"a":[5,6,7],"s":20,"k":9},"locals":{"v":2},"checkpoint":"end","frames":[{"fn":"main","line":11}]}]}}}
 stderr:

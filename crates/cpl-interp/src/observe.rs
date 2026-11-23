@@ -26,6 +26,17 @@ pub(crate) trait Observer {
         (false, false)
     }
     fn leave_fn(&mut self, _entered: (bool, bool)) {}
+    /// Whether the trace steps over a call of `name` (see
+    /// [`Tracer::steps_over`]).
+    fn steps_over(&self, _name: &str) -> bool {
+        false
+    }
+    /// Inside a call the trace steps over.
+    fn over_library(&self) -> bool {
+        false
+    }
+    /// A call the trace stepped over, from `span`, took a `mut` argument.
+    fn stepped_over(&mut self, _view: &View, _span: Span) {}
     /// A fn value ran: any global may have changed, through a capture or a
     /// `mut` argument.
     fn globals_may_change(&mut self) {}
@@ -132,6 +143,15 @@ impl Observer for Tracer {
     fn leave_fn(&mut self, entered: (bool, bool)) {
         Tracer::leave_fn(self, entered)
     }
+    fn steps_over(&self, name: &str) -> bool {
+        Tracer::steps_over(self, name)
+    }
+    fn over_library(&self) -> bool {
+        Tracer::over_library(self)
+    }
+    fn stepped_over(&mut self, view: &View, span: Span) {
+        Tracer::stepped_over(self, view, span)
+    }
     fn globals_may_change(&mut self) {
         self.touch_all()
     }
@@ -212,6 +232,18 @@ impl<O: Observer> Interp<'_, '_, O> {
         match &self.tracer {
             Some(tracer) if tracer.stopped() => crate::trap(span, trace::STOPPED),
             _ => Ok(()),
+        }
+    }
+
+    /// A call of `id` from `span` returned: a call the trace stepped over
+    /// that took a `mut` argument gets the step at its call.
+    pub(crate) fn after_call(&mut self, id: cpl_ir::FnId, span: Span) {
+        let f = &self.program.fns[id];
+        if self.observed()
+            && f.params.iter().any(|p| p.mutable)
+            && (self.tracer.as_ref()).is_some_and(|t| t.steps_over(&f.name) && !t.over_library())
+        {
+            self.traced(|tracer, view| tracer.stepped_over(view, span));
         }
     }
 

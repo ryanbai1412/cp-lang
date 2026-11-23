@@ -1062,6 +1062,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
         let flow = flow?;
         self.call_frames.pop();
         self.stack.truncate(base);
+        self.after_call(id, span);
         Ok(match flow {
             Flow::Return(value) => value,
             _ => Value::Unit,

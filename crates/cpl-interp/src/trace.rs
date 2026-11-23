@@ -464,6 +464,10 @@ pub(crate) struct Tracer {
     /// Active calls matching `include_fns` / `exclude_fns`.
     pos_inside: usize,
     neg_inside: usize,
+    /// By active call, whether it is an imported module's fn the trace
+    /// steps over: a library's own steps are not the user's, unless the
+    /// trace's fn names ask for it.
+    over: Vec<bool>,
     test_cases: Vec<(u64, u64)>,
     watch: Vec<String>,
     last_steps: Option<usize>,
@@ -565,6 +569,7 @@ impl Tracer {
             include_fns,
             exclude_fns,
             pos_inside: 0,
+            over: Vec::new(),
             neg_inside: 0,
             test_cases: config.test_cases,
             watch: config.watch,
@@ -695,7 +700,26 @@ impl Tracer {
         if neg {
             self.neg_inside += 1;
         }
+        self.over.push(!pos && self.library.contains(name));
         (pos, neg)
+    }
+
+    /// Whether the trace steps over a call of `name`, an imported module's
+    /// fn the trace's fn names don't ask for.
+    pub(crate) fn steps_over(&self, name: &str) -> bool {
+        self.library.contains(name) && !self.include_fns.iter().any(|p| glob_match(p, name))
+    }
+
+    /// Inside a call the trace steps over.
+    pub(crate) fn over_library(&self) -> bool {
+        self.over.last().copied().unwrap_or(false)
+    }
+
+    /// A call the trace stepped over took a `mut` argument: the step at
+    /// its call shows what it changed.
+    pub(crate) fn stepped_over(&mut self, view: &View, span: Span) {
+        self.touch_all();
+        self.step(view, span, None, None, None);
     }
 
     pub fn leave_fn(&mut self, (pos, neg): (bool, bool)) {
@@ -706,6 +730,7 @@ impl Tracer {
         if neg {
             self.neg_inside -= 1;
         }
+        self.over.pop();
     }
 
     fn case_matches(&self) -> bool {
@@ -724,7 +749,7 @@ impl Tracer {
         }
         let fn_ok = (self.include_fns.is_empty() || self.pos_inside > 0) && self.neg_inside == 0;
         let depth_ok = self.max_depth.is_none_or(|max| depth <= max);
-        fn_ok && depth_ok && self.case_matches()
+        fn_ok && depth_ok && !self.over_library() && self.case_matches()
     }
 
     fn watched(&self, name: &str) -> bool {
@@ -1142,6 +1167,11 @@ impl Tracer {
 
     /// `print(...)` wrote `text`.
     pub fn printed(&mut self, view: &View, span: Span, text: &str) {
+        if self.over_library() && self.case_matches() {
+            // What a stepped-over call prints shows at the next step.
+            self.rec.log.print(text);
+            return;
+        }
         if !self.recording(view.depth) {
             return;
         }

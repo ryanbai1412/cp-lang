@@ -135,23 +135,7 @@ makes no network requests.
 
 ## Rules every change keeps
 
-- **The trace never changes behaviour.** A traced run prints exactly what
-  an untraced one does.
-- **Never store what can be recomputed cheaply, never recompute what the
-  user waits on.** Steps are deltas plus snapshots; far steps come from
-  checkpoints, not from keeping everything.
-- **No new tree-walker dependency.** A traced construct runs on the VM. A
-  fallback must be listed in `crates/cpl-cli/tests/vm_fallbacks.txt`, whose
-  counts only go down.
-- **No privileged type.** The trace shows a library type through mechanisms
-  any library can use, never a special case for one std type.
-- **Explanations are general.** A new attribution rule must name a line for
-  a reason the recordings show, and must not lower the seeded-bug count.
-- **JSON stays compatible.** A new field is added only when it carries
-  information (`"stuck"` appears only for runs that never finish), and the
-  schema and viewer tests change with it.
-- **One entry per job.** A new kind of traced run is a new configuration of
-  `observe_on_this_thread`, not a new entry point.
+The rules and their checks are in `handbook/guidelines/debugging.md`.
 
 ## Known limits
 
@@ -159,8 +143,7 @@ makes no network requests.
 - Checkpoints can't yet stand inside a fed loop body.
 - An array over 20000 cells is drawn as `[]`, because each step stores
   every value whole; showing it needs per-step changes in the JSON.
-- Steps inside std functions are shown, and a std type such as `Subset` is
-  shown by its fields, not its members.
+- A type with `impl Show` is shown by its fields, not through the impl.
 - The trace lives inside `crates/cpl-interp`; it should become its own
   crate behind a narrow observer interface.
 - Tracing 10^7 steps costs more than the 1.2x target over an untraced run;

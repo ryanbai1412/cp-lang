@@ -50,7 +50,12 @@ impl Tracer {
     /// on the way. False when they must take it.
     pub fn raw_write(&mut self, id: usize, view: &View, span: Span, path: &[usize]) -> bool {
         let Some(raw) = view.raw else { return false };
-        if !self.unfiltered || self.finishing || self.case == Some(0) || !self.visible[id] {
+        if !self.unfiltered
+            || self.over_library()
+            || self.finishing
+            || self.case == Some(0)
+            || !self.visible[id]
+        {
             return false;
         }
         if self.all_touched || !self.touched.is_empty() || view.program.globals[id].span.end == 0 {

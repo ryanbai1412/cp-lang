@@ -120,7 +120,7 @@ tests for wording.
 
 | Quality | Metric | Mechanism | Where |
 |---|---|---|---|
-| Tracing never changes what the program does | programs whose traced output differs from untraced | differential sweep over every program in the corpus, traced against untraced | `crates/cpl-cli/tests/trace_goldens.rs` `a_traced_run_prints_what_an_untraced_run_prints` |
+| Tracing never changes what the program does | programs whose traced output differs from untraced | differential sweep over every program, traced against untraced (`handbook/guidelines/debugging.md` rule 1) | `crates/cpl-cli/tests/trace_goldens.rs` `a_traced_run_prints_what_an_untraced_run_prints` |
 | A trace shows the program's real state at every step | values that differ from the state the run had | debug assertion in the tracer ("changed unseen"), saved traces | `crates/cpl-interp/src/trace.rs`, `trace_goldens.rs` |
 | A trace's state changes only when it should | unexplained changes between saved traces | saved traces as the oracle; edits to expected output are flagged for review | `trace_goldens.rs` |
 | No saved trace records a crash of `cpl` itself | saved traces holding an internal error | gate in the trace suite | `trace_goldens.rs` |
@@ -128,7 +128,7 @@ tests for wording.
 | A run resumed from a checkpoint equals the whole run there | differing steps, output or input | differential tests over hand-picked programs; `missing` over every saved-trace program | `crates/cpl-interp/tests/checkpoint.rs`; `missing` |
 | Traces run on the VM, not the tree-walker | tree-walker fallbacks by kind; only goes down | ratchet | `crates/cpl-cli/tests/vm_fallbacks.rs` |
 | Large values stay visible | values over the trace's size cap shown as `[]` | `missing`: arrays over 20000 cells are drawn empty | `missing` |
-| Std code stays out of a user's trace | steps inside `std` functions by default | `missing` | `missing` |
+| Library code stays out of a user's trace | steps inside an imported module's fns the trace didn't ask for | design: the tracer steps over library calls (`handbook/guidelines/debugging.md` rule 2); saved traces of std calls | `crates/cpl-cli/tests/trace_goldens.rs` `every_program_records_its_saved_trace` |
 | Huge traces can be narrowed to what matters | filters by fn, test, watch, depth, window | hand-written suite | `crates/cpl-cli/tests/trace_filters.rs` |
 | Tracing is cheap enough to leave on | traced vs untraced time on 10^7 steps (target at most 1.2x); memory; worst step back | budget test, run by hand; `missing` as a gate | `trace_log.rs` `ten_million_steps_fit_the_debugging_budgets` (ignored); `missing` |
 | Tracing off costs nothing | untraced time before and after the observer | design: untraced runs use a no-op observer | `crates/cpl-interp/src/lib.rs` |

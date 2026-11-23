@@ -32,5 +32,5 @@
 {"id":31,"line":26,"label":"(groups[key(3)] ??= []).push(7)","stage":"main","values":{"stdout":["0 4 8","23 6","key 3"],"n":6,"xs":[3,0,7,4,1,8],"evens":[0,4,8],"a":23,"b":6,"groups":[[6,[7]]],"__key_8":6},"locals":{"i":5,"x":8,"x":8},"frames":[{"fn":"main","line":26}]},
 {"id":32,"line":27,"label":"(groups[6] ??= []).push(8)","stage":"main","values":{"stdout":["0 4 8","23 6","key 3"],"n":6,"xs":[3,0,7,4,1,8],"evens":[0,4,8],"a":23,"b":6,"groups":[[6,[7,8]]],"__key_8":6},"locals":{"i":5,"x":8,"x":8},"frames":[{"fn":"main","line":27}]},
 {"id":33,"line":28,"label":"for x in xs: (groups[x % 3] ??= [x]).push(x)","stage":"main","values":{"stdout":["0 4 8","23 6","key 3"],"n":6,"xs":[3,0,7,4,1,8],"evens":[0,4,8],"a":23,"b":6,"groups":[[0,[3]],[6,[7,8]]],"__key_8":6},"locals":{"i":5,"x":8,"x":8,"x":3},"frames":[{"fn":"main","line":28}]},
-... 38 more lines, 16366 bytes, fnv64 a55fbcc545d2998a
+... 26 more lines, 10394 bytes, fnv64 87bc28393d0e0e61
 stderr:

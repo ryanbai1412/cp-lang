@@ -78,5 +78,5 @@
 {"id":14,"label":"14"},
 {"id":15,"label":"15"}],"edges":[{"id":0,"from":12,"to":3,"weight":14},
 {"id":1,"from":13,"to":3,"weight":9},
-... 36346 more lines, 2098072 bytes, fnv64 cae5b545e40542b7
+... 27931 more lines, 1606097 bytes, fnv64 fceafecbf45946d3
 stderr:
