@@ -430,9 +430,9 @@ Turn a sequence into output, and keep one vocabulary across shapes.
 
 ### seq/U24: print or join with a separator
 Need: print a list joined by `, ` or with no space.
-Design: `print(a, sep: ", ")` is the one way; `join` takes any printable sequence.
-Milestone: M1-critical. Status: partial
-Evidence: program `spec/conformance/std-seq/seq-u24-separator.cp`; `["a", "b"].join(", ")` is E0302: `join` is `sep.join(parts)`.
+Design: `print(a, sep: ", ")` prints any sequence; `sep.join(parts)` (Python's order) builds a `Str` from any printable sequence.
+Milestone: M1-critical. Status: supported
+Evidence: program `spec/conformance/std-seq/seq-u24-separator.cp`.
 
 ### seq/U25: one call works on every shape
 Need: the call you know for arrays also works on a list, a slice, a `Str`, a range or a generator.
