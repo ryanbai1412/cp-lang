@@ -9,13 +9,13 @@ rows naming no existing check, from `scripts/debt-ratchet.json`; they only go do
 |---|---|---|---|
 | [compiler](domains/compiler/README.md) | 15 | 1 | 2 |
 | [debugger](domains/debugger/README.md) | 19 | 14 | 0 |
-| [diagnostics](domains/diagnostics/README.md) | 19 | 5 | 0 |
+| [diagnostics](domains/diagnostics/README.md) | 19 | 1 | 0 |
 | [idioms](domains/idioms/README.md) | 13 | 1 | 3 |
 | [infra](domains/infra/README.md) | 15 | 0 | 0 |
-| [lint-fmt](domains/lint-fmt/README.md) | 19 | 2 | 0 |
-| [perf](domains/perf/README.md) | 18 | 4 | 0 |
-| [site](domains/site/README.md) | 17 | 9 | 3 |
-| [spec](domains/spec/README.md) | 21 | 8 | 0 |
+| [lint-fmt](domains/lint-fmt/README.md) | 20 | 0 | 0 |
+| [perf](domains/perf/README.md) | 18 | 3 | 0 |
+| [site](domains/site/README.md) | 17 | 8 | 3 |
+| [spec](domains/spec/README.md) | 21 | 6 | 0 |
 | [stdlib](domains/stdlib/README.md) | 19 | 30 | 3 |
 | [tech-debt](domains/tech-debt/README.md) | 30 | 0 | 3 |
 | [tools](domains/tools/README.md) | 18 | 22 | 0 |
@@ -149,6 +149,7 @@ rows naming no existing check, from `scripts/debt-ratchet.json`; they only go do
 | crate_tests_pass | cpl-lint 148 passed, cpl-fmt 60 passed, 0 failed | all pass |
 | fixes_that_add_errors | 0 | 0 |
 | newcomer_port_warnings_top10 | L0504 66, L0549 45, L0503 44, L0537 39, L0524 38, L0507 38, L0523 36, L0201 31, L0203 29, L0208 28 (750 in all) | each of the top 10 names real CPL vocabulary, has a fix where meaning allows and an explain page |
+| fmt_mutation_score | 0.843 | 0.95 |
 
 ## perf
 
@@ -311,10 +312,10 @@ catalogue was first written and only go down; M1 readiness gaps are every open M
 
 | Area | Use cases | Supported | Partial | Gap | Claimed without evidence | M1 baseline gaps | M1 readiness gaps |
 |---|---|---|---|---|---|---|---|
-| play | 12 | 6 | 3 | 3 | 3 | 1 | 1 |
-| seq | 25 | 15 | 5 | 5 | 3 | 9 | 9 |
-| stress | 27 | 19 | 3 | 5 | 3 | 1 | 1 |
-| all | 64 | 40 | 11 | 13 | 9 | 11 | 11 |
+| play | 12 | 6 | 6 | 0 | 0 | 1 | 1 |
+| seq | 67 | 35 | 16 | 15 | 0 | 4 | 21 |
+| stress | 27 | 20 | 5 | 2 | 0 | 1 | 1 |
+| all | 106 | 61 | 27 | 17 | 0 | 6 | 23 |
 
 ## Open questions (`plan/QUESTIONS.md`)
 
