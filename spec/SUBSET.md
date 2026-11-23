@@ -280,6 +280,9 @@ documented. The stdlib's own gaps are in `std/GAPS.md`.
 - core-05/map-walk-lends-entry-list.cp: compiler
 - core-05/method-on-heap-element-lends.cp: compiler
 - core-06/generator-in-nested-for-streams.cp: compiler
+- core-04/product-result-indexed-by-parts.cp: compiler
+- core-06/lambda-unpacks-tuple-vertex.cp: compiler
+- core-10/print-range-prints-items.cp: compiler
 - core-07/slice-literal-outside-keys-rejected.cp: compiler
 - core-07/run-literal-index-not-a-key.cp: compiler
 - core-02/str-len-and-charset-compose.cp: compiler

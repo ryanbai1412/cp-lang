@@ -61,10 +61,11 @@ fn brute(): ...
 - A unary `@check fn ok() -> Bool` runs on every implementation's
   output, for problems with many valid answers. Inside it `read()` reads
   the test's input and `read_output()` reads the output being checked,
-  token by token like `read`; it rejects by returning `false` or by a
+  token by token like `read`, with the same typed forms (`read_output<T>()`,
+  `let x: T = read_output()`); it rejects by returning `false` or by a
   failing `assert`. `cpl test` and `cpl judge d input output` use it in
-  place of an exact compare (decision 375). Under `@!multitest` it runs
-  once per test, on that test's input and output. Pair it
+  place of an exact compare (decision 375). Under `@!multitest` it is shared code above
+  the divider and runs once per test, on that test's input and output. Pair it
   with a brute that compares feasibility, since a unary checker cannot
   catch a wrong "impossible".
 - A checker sees only the input and the output, never the solution's bindings: a fact

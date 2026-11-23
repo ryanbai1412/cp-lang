@@ -8052,3 +8052,17 @@ tag move fatal again.
   "the first element". A literal is almost always meant as a position, so
   an unproven literal is rejected at compile time instead of trapping.
 - **Reverse.** Make the literal case a lint again (L0605) and let it trap.
+
+## 389. Rebuild round 27: inline products, typed `read_output`, subset order; routes (spec, 2026-11-23)
+
+- **Decision.** No new rule; six silent holes get one sentence each where the
+  reader looked. An inline tuple of domains `(R, C)` is the named product
+  everywhere (R04.2.11, decision 159), so a result keyed by it takes `c[r, c]`;
+  a whole-graph call with no `from:` takes its vertex type from the lambda's
+  annotation; `read_output` has `read`'s typed forms; a `@check` under
+  `@!multitest` is shared code; `for s in B.subsets` walks increasing masks;
+  an inline `if let ... else` is an expression.
+- **Why.** Round 27 guessed each of these; four of the six were already
+  implied by a general rule (decision 159, R10.3.1 printing any `Seq`), so
+  the fix states the instance at the place the reader looked.
+- **Reverse.** Delete the sentences; the general rules still hold.

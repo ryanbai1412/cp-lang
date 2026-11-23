@@ -134,7 +134,10 @@ Whole-graph algorithms (SCC, components, bridges) also need `V: Domain`.
 ### Customizing: a lambda over `g.out(u)`
 
 Any closure from a vertex to its arcs is a graph. The vertex type comes
-from `from:`, so the lambda's parameter needs no annotation.
+from `from:`, so the lambda's parameter needs no annotation; a whole-graph
+call with no `from:` (`components`, `scc`) takes it from the lambda's annotated
+parameter, `(p: (R, C)) => p.adj4`. A k-parameter lambda unpacks a
+tuple vertex: `(v, k) => ...` over `(V, K)` states (R06.1.4).
 
 <!-- spec-only: fragment over an unnamed graph and grid; call forms, not a program -->
 ```python

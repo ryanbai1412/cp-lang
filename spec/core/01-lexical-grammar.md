@@ -280,7 +280,8 @@ match d: L => -1, R => 1            // one-line match
   the value-position form. `if x is p:` in a header gets a lint with a
   fix to the `let` form (decision 111). An `else:` runs when any binder
   fails to match or any comma condition is false. Each binder repeats `let`:
-  `if let a = x, let b = y:`. (R01.7.1)
+  `if let a = x, let b = y:`. With an `else:`, the inline `if let` is an
+  expression like the inline `if`: `if let k = m.get(x): k else: 0`. (R01.7.1)
 - `for` and `while` (there is no `loop`: `while true:` with a `break` is
   the loop that exits in the middle) take an `else:` that runs when the loop ended
   without `break`; a labelled break from an inner loop skips the inner
