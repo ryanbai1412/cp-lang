@@ -580,7 +580,8 @@ impl<'a> Checker<'a> {
     /// The type of a name as a value. One that a test has shown to hold a
     /// value is the value it holds (see [`cpl_syntax::narrow`]).
     fn name_ty(&mut self, name: &str, span: Span) -> Ty {
-        if self.assigning_name != Some(span) && self.moved.contains_key(name) {
+        let moved_at = self.moved.get(name).copied();
+        if let (true, Some(at)) = (self.assigning_name != Some(span), moved_at) {
             if let Some(diag) = self.error(
                 codes::USE_AFTER_MOVE,
                 span,
@@ -589,6 +590,13 @@ impl<'a> Checker<'a> {
                 diag.help = Some(format!(
                     "use `{name}.clone()` where it was moved if you still need `{name}`"
                 ));
+                if at.end > 0 {
+                    let message = "moved here".to_string();
+                    diag.labels.push(cpl_diag::Label { span: at, message });
+                    let title = format!("clone `{name}` where it moves");
+                    let edits = vec![(Span::point(at.end), ".clone()".to_string())];
+                    diag.fixes.push(cpl_diag::Fix { title, edits });
+                }
             }
         }
         let hover = self.hovers.len();
