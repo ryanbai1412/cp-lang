@@ -12,6 +12,17 @@ update=0
 # reports false regressions.
 cpl=${1:-$(ls -t target/release/cpl target/debug/cpl 2>/dev/null | head -1)}
 cpl=${cpl:-target/debug/cpl}
+# --update writes the ratchet, so a cpl older than the compiler it stands for
+# would bake its bugs into the list: build first, or refuse a binary given.
+if [ "$update" = 1 ]; then
+    if [ -z "${1:-}" ]; then
+        cargo build -q -p cpl-cli --bin cpl
+        cpl=target/debug/cpl
+    elif stale=$(find crates -name '*.rs' -newer "$cpl" -print -quit) && [ -n "$stale" ]; then
+        echo "port-check: $cpl is older than $stale; rebuild it before --update" >&2
+        exit 1
+    fi
+fi
 list=corpus/port-check-failing.txt
 # Read std/ as it is now, so a std edit needs no rebuild of cpl.
 export CPL_STD_DIR=${CPL_STD_DIR:-$PWD/std}
