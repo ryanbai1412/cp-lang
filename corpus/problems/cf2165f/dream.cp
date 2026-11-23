@@ -12,7 +12,7 @@ let a: [I]V = read()
 // shapes[k]: ("3" value, "5" position) of each "435" whose "4" is at k.
 var shapes: [I]List<(V, I)> = []
 var latest = SegTree<V, ?I>(max)
-let next = a.next_greater()
+let next = a.next_smaller(by: x => desc(x))
 for j in I:
     if let i = next[j], let k = latest.fold(a[j].r..a[i].l): shapes[k].push((a[j], i))
     latest.set(a[j], j)
@@ -20,9 +20,11 @@ for j in I:
 // two: the latest "2" per value whose "1" (next smaller) came before i.
 var two = SegTree<V, ?I>(max)
 var best: [I]?I = None
-let freed = a.next_less().inverse()
+var freed: [I]List<I> = []
+for (j, n) in a.next_smaller().items: if let i = n: freed[i].push(j)
 for i in I:
     for (v, r) in shapes[i]: best[r] max= two.fold(..v)
     for j in freed[i]: two.set(a[j], j)
 
-print(sum(l.ord + 1 for l in best.scan(max).present))
+let best_so_far = best.scan(max)
+print(sum(l.ord + 1 for k in I if let l = best_so_far.prefix(k.ord + 1)))
