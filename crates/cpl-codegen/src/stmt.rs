@@ -55,7 +55,9 @@ impl<'p> Emitter<'p> {
                 Stmt::Let(_, Some(init))
                     if place_root(init).is_some()
                         || crate::lend::lending_if(init)
-                            .is_some_and(|arms| arms.iter().any(|a| place_root(a).is_some())) =>
+                            .is_some_and(|arms| arms.iter().any(|a| place_root(a).is_some()))
+                        || matches!(&init.kind, ExprKind::Builtin(cpl_ir::Builtin::MapGet, a)
+                            if a.first().is_some_and(|m| place_root(m).is_some())) =>
                 {
                     Some(Tail::of(&block.stmts[k + 1..]))
                 }
@@ -1215,6 +1217,13 @@ impl<'p> Emitter<'p> {
             ExprKind::Local(_) | ExprKind::Global(_) if temp(slot) => {}
             _ => return false,
         }
+        self.place_stays(slot, init, tail)
+    }
+
+    /// Whether the place `init` reads stays unchanged for as long as the
+    /// `let` of `slot` lives (see [`Emitter::reads_in_place`]).
+    pub(crate) fn place_stays(&self, slot: usize, init: &Expr, tail: Option<&Tail>) -> bool {
+        let temp = |slot: usize| self.locals()[slot].name.is_empty();
         let Some((global, root)) = place_root(init) else {
             return false;
         };
@@ -1395,6 +1404,16 @@ impl<'p> Emitter<'p> {
                 if !hoisted && fixed_len.is_none() && elem_l.is_none() && !name.starts_with('_') {
                     let at = (cpp.as_str(), name.as_str());
                     if self.let_lending_branch(*slot, init, at, tail.as_ref(), out) {
+                        return;
+                    }
+                    if let Some([map, key]) = self.lent_map_get(*slot, init, tail.as_ref()) {
+                        // `if let l = m.get(k)`: point at the entry, never copy it.
+                        self.need("map_lend");
+                        let (m, k) = (self.expr(map).text, self.expr(key).text);
+                        self.line(
+                            out,
+                            &format!("const auto {name} = cpl::map_lend({m}, {k});"),
+                        );
                         return;
                     }
                 }

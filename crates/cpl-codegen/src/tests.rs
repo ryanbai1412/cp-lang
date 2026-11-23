@@ -3,6 +3,8 @@
 
 use crate::emit;
 
+mod lend;
+
 pub(crate) fn cpp(source: &str) -> String {
     let mut db = cpl_check::Database::new();
     db.set_file("t.cp", source);

@@ -24,6 +24,36 @@ pub(crate) fn lending_if(init: &Expr) -> Option<[&Expr; 2]> {
 }
 
 impl<'p> Emitter<'p> {
+    /// The map and key of `let t = m.get(k)` when `t` is the temporary an
+    /// `if let` or `while let` tests, the value is no scalar, and nothing
+    /// can change `m` while `t` lives: `t` may then point into `m`.
+    pub(crate) fn lent_map_get<'e>(
+        &self,
+        slot: usize,
+        init: &'e Expr,
+        tail: Option<&Tail>,
+    ) -> Option<[&'e Expr; 2]> {
+        let ExprKind::Builtin(cpl_ir::Builtin::MapGet, args) = &init.kind else {
+            return None;
+        };
+        let [map, key] = args.as_slice() else {
+            return None;
+        };
+        let value_ty = match &map.ty {
+            Ty::Map(_, v) | Ty::HashMap(_, v) => v,
+            _ => return None,
+        };
+        let pattern_temp = self.locals()[slot].name.is_empty();
+        let plain = matches!(map.kind, ExprKind::Local(_) | ExprKind::Global(_));
+        (self.closure_id.is_none()
+            && pattern_temp
+            && plain
+            && !value_ty.is_scalar()
+            && !self.spent.contains(&slot)
+            && self.place_stays(slot, map, tail))
+        .then_some([map, key])
+    }
+
     /// Writes `cpp own; const cpp& name = c ? (own = f(a)) : a[i];` and gives
     /// true when a branch names a place nothing changes while `name` lives.
     pub(crate) fn let_lending_branch(

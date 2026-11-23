@@ -1376,6 +1376,23 @@ template <class M, class Q> auto map_get(const M& m, const Q& k) -> std::optiona
 ",
     },
     Piece {
+        name: "map_lend",
+        needs: &[],
+        code: "\
+template <class V> struct Lent {
+    const V* p;
+    bool has_value() const { return p != nullptr; }
+    explicit operator bool() const { return p != nullptr; }
+    const V& operator*() const { return *p; }
+    const V* operator->() const { return p; }
+    operator std::optional<V>() const { return p ? std::optional<V>(*p) : std::nullopt; }
+};
+template <class M, class Q> Lent<typename M::mapped_type> map_lend(const M& m, const Q& k) {
+    auto it = m.find(k); return {it == m.end() ? nullptr : &it->second};
+}
+",
+    },
+    Piece {
         name: "map_take",
         needs: &[],
         code: "\
