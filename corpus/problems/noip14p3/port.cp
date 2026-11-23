@@ -16,9 +16,9 @@ for x in X:
     let (up, down) = moves[x]
     var next: [H]?Int = None
     for h in H:  // upward, so several taps chain
-        next[h + up ?? H.last] min= min(taps[h], next[h]) + 1
+        next[H.at(h + up) ?? H.last!] min= min(taps[h], next[h]) + 1
     for h in H:
-        if let low = h - down: next[low] min= taps[h]
+        if let low = H.at(h - down): next[low] min= taps[h]
     if let (low, high) = gap[x]:
         for h in H if Int(h) <= low or Int(h) >= high: next[h] = None
     if all(t == None for t in next):
