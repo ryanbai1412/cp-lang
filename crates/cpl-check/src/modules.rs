@@ -27,7 +27,8 @@ impl Loader for FsLoader {
         if rest.is_empty() {
             return None;
         }
-        let from = Path::new(from.strip_prefix("file://").unwrap_or(from));
+        let from = file_path(from);
+        let from = Path::new(&from);
         let start = from.parent().unwrap_or(Path::new("."));
         let start = if start.as_os_str().is_empty() {
             Path::new(".")
@@ -57,6 +58,47 @@ const BUNDLED: &[(&str, &str)] = include!(concat!(env!("OUT_DIR"), "/std_modules
 
 /// The text of the standard library module `module` (`["segtree"]`) that
 /// is built into the compiler.
+/// The OS path a checker file name stands for: a `file://` URI decoded
+/// (`%20` is a space; on Windows `/C:/x.cp` is `C:/x.cp`), any other name as is.
+pub fn file_path(name: &str) -> String {
+    match name.strip_prefix("file://") {
+        Some(rest) => os_path(percent_decoded(rest), cfg!(windows)),
+        None => name.to_string(),
+    }
+}
+
+fn percent_decoded(text: &str) -> String {
+    let bytes = text.as_bytes();
+    let mut out = Vec::with_capacity(bytes.len());
+    let mut i = 0;
+    while i < bytes.len() {
+        let hex = bytes
+            .get(i + 1..i + 3)
+            .and_then(|h| std::str::from_utf8(h).ok())
+            .and_then(|h| u8::from_str_radix(h, 16).ok());
+        match (bytes[i], hex) {
+            (b'%', Some(byte)) => {
+                out.push(byte);
+                i += 3;
+            }
+            (byte, _) => {
+                out.push(byte);
+                i += 1;
+            }
+        }
+    }
+    String::from_utf8_lossy(&out).into_owned()
+}
+
+fn os_path(path: String, windows: bool) -> String {
+    let b = path.as_bytes();
+    if windows && b.len() >= 3 && b[0] == b'/' && b[1].is_ascii_alphabetic() && b[2] == b':' {
+        path[1..].to_string()
+    } else {
+        path
+    }
+}
+
 pub fn bundled_std(module: &[String]) -> Option<&'static str> {
     let name = module.join("/");
     BUNDLED
@@ -172,6 +214,18 @@ mod tests {
     use super::*;
 
     #[test]
+    fn file_uris_name_the_os_path() {
+        assert_eq!(
+            file_path("file:///home/a/my%20code/x.cp"),
+            "/home/a/my code/x.cp"
+        );
+        assert_eq!(file_path("/work/x.cp"), "/work/x.cp");
+        assert_eq!(os_path("/C:/Users/x.cp".into(), true), "C:/Users/x.cp");
+        assert_eq!(os_path("/C:/Users/x.cp".into(), false), "/C:/Users/x.cp");
+        assert_eq!(os_path("/home/x.cp".into(), true), "/home/x.cp");
+    }
+
+    #[test]
     fn a_library_is_named_by_its_manifest() {
         assert_eq!(library_name("# mine\nname = \"lib\"\n"), Some("lib"));
         assert_eq!(library_name("name=\"kit\" # short\n"), Some("kit"));
@@ -198,6 +252,28 @@ mod tests {
         let from = contest.join("a.cp");
         let module = ["lib", "math", "poly"].map(String::from);
         let loaded = FsLoader.load(&from.to_string_lossy(), &module);
+        std::fs::remove_dir_all(&root).unwrap();
+        assert_eq!(
+            loaded.map(|(_, text)| text).as_deref(),
+            Some("fn two() -> Int: 2\n")
+        );
+    }
+
+    #[test]
+    fn an_editor_uri_with_a_space_finds_the_library_beside_it() {
+        let root = std::env::temp_dir().join(format!("cpl uri {}", std::process::id()));
+        std::fs::create_dir_all(root.join("contest")).unwrap();
+        std::fs::create_dir_all(root.join("kit")).unwrap();
+        std::fs::write(root.join("contest/cp.toml"), "[libs]\nlib = \"../kit\"\n").unwrap();
+        std::fs::write(root.join("kit/poly.cp"), "fn two() -> Int: 2\n").unwrap();
+        let path = root
+            .join("contest/a.cp")
+            .to_string_lossy()
+            .replace('\\', "/");
+        let slash = if path.starts_with('/') { "" } else { "/" };
+        let uri = format!("file://{slash}{}", path.replace(' ', "%20"));
+        let module = ["lib", "poly"].map(String::from);
+        let loaded = FsLoader.load(&uri, &module);
         std::fs::remove_dir_all(&root).unwrap();
         assert_eq!(
             loaded.map(|(_, text)| text).as_deref(),

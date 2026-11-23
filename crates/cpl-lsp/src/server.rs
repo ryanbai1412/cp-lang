@@ -1819,27 +1819,8 @@ pub(crate) fn count_text(n: u128) -> String {
 
 /// The file a `file://` URI names, with `%XX` escapes decoded.
 pub(crate) fn path_of_uri(uri: &str) -> Option<String> {
-    let rest = uri.strip_prefix("file://")?.as_bytes();
-    let mut out = Vec::with_capacity(rest.len());
-    let mut i = 0;
-    while i < rest.len() {
-        let hex = rest
-            .get(i + 1..i + 3)
-            .and_then(|h| std::str::from_utf8(h).ok())
-            .and_then(|h| u8::from_str_radix(h, 16).ok());
-        match (rest[i], hex) {
-            (b'%', Some(byte)) => {
-                out.push(byte);
-                i += 3;
-            }
-            (byte, _) => {
-                out.push(byte);
-                i += 1;
-            }
-        }
-    }
-    let path = String::from_utf8(out).ok()?;
-    Some(crate::uri::os_path(path, cfg!(windows)))
+    uri.starts_with("file://")
+        .then(|| cpl_check::file_path(uri))
 }
 
 /// The run, stress and trace lenses of the file at `path`, each a title and
