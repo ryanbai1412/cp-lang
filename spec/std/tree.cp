@@ -1442,10 +1442,63 @@ fn reroot_matches_up_from_every_root():
 fn shapes_match_the_canonical_string() = todo
 
 @test
-fn centroid_ancestors_split_every_path() = todo
+fn centroid_ancestors_split_every_path():
+    for n in 1..=12:
+        domain V = 0..n
+        let adj = random_tree(V.first!)
+        let r = Rooted(adj, V.first!)
+        let cd = Centroids(adj)
+        assert cd.parent(cd.root) == None
+        var anc: [V]List<(c: V, dist: Int)> = []
+        for v in V:
+            anc[v] = cd.ancestors(v).collect()
+            assert anc[v].len == cd.depth(v) + 1 and anc[v].last!.c == cd.root
+            assert anc[v][0].c == v and anc[v][0].dist == 0
+            for i in 0..anc[v].len:
+                assert anc[v][i].dist == r.dist(v, anc[v][i].c)
+                if i + 1 < anc[v].len: assert cd.parent(anc[v][i].c) == Some(anc[v][i + 1].c)
+        for a in V:
+            for b in V:
+                var best = anc[a].last!
+                var db = 0
+                for x in anc[a]:
+                    for y in anc[b]:
+                        if x.c == y.c and cd.depth(x.c) >= cd.depth(best.c):
+                            best = x
+                            db = y.dist
+                assert best.dist + db == r.dist(a, b)
+                var (ba, bb): (?V, ?V) = (None, None)
+                for p in cd.piece(best.c):
+                    if p.v == a: ba = Some(p.branch)
+                    if p.v == b: bb = Some(p.branch)
+                assert ba != None and bb != None
+                assert a == b or a == best.c or b == best.c or ba != bb
 
 @test
-fn a_jump_tree_answers_what_the_rooted_tree_does() = todo
+fn a_jump_tree_answers_what_the_rooted_tree_does():
+    domain V = 0..14
+    let adj = random_tree(V.first!)
+    let r = Rooted(adj, V.first!)
+    var j = JumpTree<V>()
+    for d in 1..V.count:
+        for v in V:
+            if r.depth(v) == d: j.add(v, r.parent(v)!)
+    for a in V:
+        assert j.parent(a) == r.parent(a) and j.depth(a) == r.depth(a) and j.root_of(a) == V.first!
+        for k in 0..r.depth(a) + 2: assert j.ancestor(a, k) == r.ancestor(a, k)
+        for t in 0..r.depth(a) + 2:
+            let ok = (v: V) => r.depth(v) >= t
+            var want: ?V = None
+            if ok(a):
+                var x = a
+                while let p = r.parent(x):
+                    if not ok(p): break
+                    x = p
+                want = Some(x)
+            assert j.jump_while(a, ok) == want
+        for b in V:
+            assert j.lca(a, b) == Some(r.lca(a, b)) and j.dist(a, b) == Some(r.dist(a, b))
+            for k in 0..r.dist(a, b) + 2: assert j.jump(a, b, k) == r.jump(a, b, k)
 
 /// A rooted forest grown one leaf at a time, by skew-binary jump pointers: `add` is O(1),
 /// queries are O(log n), and it keeps three arrays. Every vertex starts as its own root.
