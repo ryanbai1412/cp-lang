@@ -1,5 +1,10 @@
 # Operating manual
 
+> The loop, the roles and the standing reviews now live in
+> `handbook/process/factory.md`, `ownership.md` and `change.md`. The settled
+> language decisions below are being folded into `handbook/language/` by the
+> spec domain; until then they stay here.
+
 > For 0.3.0, `spec/` is normative and `research/archive/spec-status.md` says where the work
 > stands. The settled list below predates it; where they disagree (for
 > example `None` absorbing arithmetic, or the Python prototype), `spec/` and
