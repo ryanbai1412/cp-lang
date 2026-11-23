@@ -1406,7 +1406,7 @@ print(a.len)
 
 #[test]
 fn items_of_a_slice_keep_its_list_narrow() {
-    let out = cpp("var a: List<0..500_000> = [1, 2]\nfor (i, x) in a[..1].items: print(i + x)\n");
+    let out = cpp("var a: List<0..500_000> = [1, 2]\nfor (i, x) in a[..1].items: print(i + x)\nlet w = a[..1]\nprint([w[i] for i in 0..1])\n");
     assert!(out.contains("std::vector<uint32_t> a"), "{out}");
 }
 
