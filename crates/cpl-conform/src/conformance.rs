@@ -326,7 +326,7 @@ fn run_tool_case(
         Expect::OkOutput(want) => first.status == 0 && first.stdout.trim_end_matches('\n') == want,
         Expect::Diag { code, line } => diag_lines(&all, code).any(|l| l == line + offset),
         Expect::Trap { code, line } => {
-            all.contains(code.as_str()) && all.contains(&format!(":{}", line + offset))
+            all.contains(code.as_str()) && rendered_at(&all, line + offset)
         }
         Expect::Exit(code) => first.status == *code,
     };
@@ -362,6 +362,12 @@ fn run_tool_case(
         status: "pass".into(),
         detail: String::new(),
     }
+}
+
+/// Whether a rendered diagnostic points at `line` (`file:LINE:COL`); a bare
+/// `:LINE` would also match a column.
+fn rendered_at(rendered: &str, line: usize) -> bool {
+    rendered.contains(&format!(":{line}:"))
 }
 
 /// Parses `// expect: ...` and computes the line offset after the header lines (`// expect:`, `// rule:`, `// input:`, `// timeout:` ...).
@@ -566,7 +572,7 @@ pub fn run_one(db: &mut Database, case: &ConformanceCase) -> CaseOutcome {
             };
             if run.trapped
                 && run.trap_rendered.contains(&code)
-                && run.trap_rendered.contains(&format!(":{target_line}"))
+                && rendered_at(&run.trap_rendered, target_line)
             {
                 CaseOutcome {
                     status: "pass".into(),
@@ -819,6 +825,13 @@ mod tests {
         assert_eq!(header_input(text), b"3 4\n");
         assert_eq!(parse_header(text).unwrap().1, 2);
         assert!(header_input("// expect: ok\nprint(1)\n").is_empty());
+    }
+
+    #[test]
+    fn a_trap_line_is_not_matched_by_its_column() {
+        let rendered = "error[R0202]: overflow\n  --> a.cp:6:7\n";
+        assert!(rendered_at(rendered, 6));
+        assert!(!rendered_at(rendered, 7));
     }
 
     #[test]

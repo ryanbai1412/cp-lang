@@ -1241,7 +1241,54 @@
         "std-tree/rooted-single-vertex-diameter.cp": "fail",
         "std-tree/rooted-single-vertex-sizes.cp": "fail",
         "std-window/sweep-move-feeds-track.cp": "pass",
-        "std-window/window-push-all.cp": "pass"
+        "std-window/window-push-all.cp": "pass",
+        "widths/add-assign-traps-0.cp": "pass",
+        "widths/add-assign-traps-1.cp": "pass",
+        "widths/add-assign-traps-2.cp": "pass",
+        "widths/add-assign-traps-3.cp": "pass",
+        "widths/add-assign-traps-4.cp": "pass",
+        "widths/add-assign-traps-5.cp": "pass",
+        "widths/add-in-range.cp": "pass",
+        "widths/add-traps-0.cp": "pass",
+        "widths/add-traps-1.cp": "pass",
+        "widths/add-traps-2.cp": "pass",
+        "widths/add-traps-3.cp": "pass",
+        "widths/add-traps-4.cp": "pass",
+        "widths/add-traps-5.cp": "pass",
+        "widths/add-wraps-when-unchecked.cp": "pass",
+        "widths/div-in-range.cp": "pass",
+        "widths/div-wraps-when-unchecked.cp": "pass",
+        "widths/mul-assign-traps-0.cp": "pass",
+        "widths/mul-assign-traps-1.cp": "pass",
+        "widths/mul-assign-traps-2.cp": "pass",
+        "widths/mul-assign-traps-3.cp": "pass",
+        "widths/mul-assign-traps-4.cp": "pass",
+        "widths/mul-assign-traps-5.cp": "pass",
+        "widths/mul-in-range.cp": "pass",
+        "widths/mul-traps-0.cp": "pass",
+        "widths/mul-traps-1.cp": "pass",
+        "widths/mul-traps-2.cp": "pass",
+        "widths/mul-traps-3.cp": "pass",
+        "widths/mul-traps-4.cp": "pass",
+        "widths/mul-traps-5.cp": "pass",
+        "widths/mul-wraps-when-unchecked.cp": "pass",
+        "widths/neg-in-range.cp": "pass",
+        "widths/rem-in-range.cp": "pass",
+        "widths/rem-wraps-when-unchecked.cp": "pass",
+        "widths/sub-assign-traps-0.cp": "pass",
+        "widths/sub-assign-traps-1.cp": "pass",
+        "widths/sub-assign-traps-2.cp": "pass",
+        "widths/sub-assign-traps-3.cp": "pass",
+        "widths/sub-assign-traps-4.cp": "pass",
+        "widths/sub-assign-traps-5.cp": "pass",
+        "widths/sub-in-range.cp": "pass",
+        "widths/sub-traps-0.cp": "pass",
+        "widths/sub-traps-1.cp": "pass",
+        "widths/sub-traps-2.cp": "pass",
+        "widths/sub-traps-3.cp": "pass",
+        "widths/sub-traps-4.cp": "pass",
+        "widths/sub-traps-5.cp": "pass",
+        "widths/sub-wraps-when-unchecked.cp": "pass"
       },
       "causes": [
         {
@@ -1862,10 +1909,10 @@
       ],
       "counts": {
         "fail": 229,
-        "pass": 1010
+        "pass": 1057
       },
-      "passed": 1010,
-      "total": 1239
+      "passed": 1057,
+      "total": 1286
     },
     "corpus": {
       "cases": {
@@ -3356,7 +3403,7 @@
           ]
         },
         {
-          "cause": "cxx_err: In function ‘ll prog::f()’:",
+          "cause": "cxx_err: In function \u2018ll prog::f()\u2019:",
           "count": 1,
           "examples": [
             "conformance/core-01/todo-unreached.cp"
