@@ -12,6 +12,55 @@ impl<'a> Lowerer<'a> {
         hint: Option<&Ty>,
         span: Span,
     ) -> Expr {
+        let lambda = self.gen_fn_closure_ast(gfid, name, span);
+        self.expr(&lambda, hint)
+    }
+
+    /// A generic call's argument that names a generic fn for a fn parameter is
+    /// that closure, so the call binds its parameters as it does a lambda's:
+    /// `ap(v, desc)` with `by: T -> K` is `desc` at `T`.
+    pub(super) fn gen_fn_values_as_lambdas(
+        &mut self,
+        params: &[&ast::Param],
+        args: &[ast::Arg],
+    ) -> Option<Vec<ast::Arg>> {
+        let positional: Vec<&&ast::Param> = params.iter().filter(|p| !p.named_only).collect();
+        let mut next = 0;
+        let mut changed = false;
+        let out = args
+            .iter()
+            .map(|arg| {
+                let param = match &arg.name {
+                    Some(n) => params.iter().find(|p| p.label_text() == n.text),
+                    None => {
+                        next += 1;
+                        positional.get(next - 1).copied()
+                    }
+                };
+                let mut arg = arg.clone();
+                let ast::ExprKind::Name(name) = &arg.value.kind else {
+                    return arg;
+                };
+                let name = name.clone();
+                let fn_slot = param.and_then(|p| p.ty.as_ref()).is_some_and(|t| {
+                    matches!(
+                        lambda_infer::unwrap_optional(t).kind,
+                        ast::TypeKind::Fn { .. }
+                    )
+                });
+                if fn_slot && self.lookup(&name).is_none() {
+                    if let Some(Sym::GenFn(gfid)) = self.get_sym(&name) {
+                        arg.value = self.gen_fn_closure_ast(gfid, &name, arg.value.span);
+                        changed = true;
+                    }
+                }
+                arg
+            })
+            .collect();
+        changed.then_some(out)
+    }
+
+    fn gen_fn_closure_ast(&mut self, gfid: GenFnId, name: &str, span: Span) -> ast::Expr {
         let params: Vec<String> = self.gen_fns[gfid]
             .decl
             .params
@@ -32,7 +81,7 @@ impl<'a> Lowerer<'a> {
                 })
                 .collect(),
         });
-        let lambda = at(ast::ExprKind::Lambda {
+        at(ast::ExprKind::Lambda {
             params: params
                 .iter()
                 .map(|p| ast::Pattern {
@@ -44,8 +93,7 @@ impl<'a> Lowerer<'a> {
             param_mut: Vec::new(),
             ret_ty: None,
             body: Box::new(body),
-        });
-        self.expr(&lambda, hint)
+        })
     }
 }
 

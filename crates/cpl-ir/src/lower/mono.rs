@@ -1641,22 +1641,12 @@ impl<'a> Lowerer<'a> {
             .map(|(_, p)| p)
             .collect();
 
-        let thunked: Vec<ast::Arg>;
-        let args = match thunk_lazy_args(&ast_params, args) {
-            Some(t) => {
-                thunked = t;
-                thunked.as_slice()
-            }
-            None => args,
-        };
-        let packed: Vec<ast::Arg>;
-        let args = match pack_args(&ast_params, args, span) {
-            Some(p) => {
-                packed = p;
-                packed.as_slice()
-            }
-            None => args,
-        };
+        let thunked = thunk_lazy_args(&ast_params, args);
+        let args = thunked.as_deref().unwrap_or(args);
+        let packed = pack_args(&ast_params, args, span);
+        let args = packed.as_deref().unwrap_or(args);
+        let closed = self.gen_fn_values_as_lambdas(&ast_params, args);
+        let args = closed.as_deref().unwrap_or(args);
 
         let mut inferred = self.seed_gens(owner_env.clone(), &explicit, decl, want);
 

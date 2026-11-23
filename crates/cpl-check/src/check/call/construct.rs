@@ -357,6 +357,7 @@ impl Checker<'_> {
                 }
                 ty => ty,
             };
+            let arg_ty = self.fn_value_for(&arg.value, arg_ty, &slot.subst(bindings));
             let arg_ty = self.narrowed(&arg_ty, slot);
             slot.unify(&arg_ty, bindings);
             let want = slot.subst(bindings);
@@ -533,5 +534,31 @@ impl Checker<'_> {
             };
             self.error(codes::WRONG_ARG_COUNT, call.span, message);
         }
+    }
+}
+
+impl Checker<'_> {
+    /// A generic fn passed as a value takes its type parameters from the
+    /// parameter types it is given: `ap(v, desc)` with `by: V -> K` is
+    /// `desc` at `T = V`, so `K` is `Desc<V>`.
+    fn fn_value_for(&mut self, value: &Expr, ty: Ty, want: &Ty) -> Ty {
+        let ExprKind::Name(name) = &value.kind else {
+            return ty;
+        };
+        if self.local(name).is_some() {
+            return ty;
+        }
+        let Some(Def::Fn { generics, .. }) = self.global(name).as_deref().cloned() else {
+            return ty;
+        };
+        let (Ty::Fn { params, .. }, Ty::Fn { params: wanted, .. }) = (&ty, want) else {
+            return ty;
+        };
+        let mut own = Bindings::default();
+        for (param, wanted) in params.iter().zip(wanted) {
+            param.ty.unify(&wanted.ty, &mut own);
+        }
+        own.retain(|g, t| generics.contains(g) && !matches!(t, Ty::Param(_)));
+        ty.subst(&own)
     }
 }
