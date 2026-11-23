@@ -2,7 +2,7 @@
 // that some query names is a pin with two variables, "a_v < x" and "a_v > x". A median of x
 // lets at most one of the three be below and at most one above; along one vertex's pins in
 // increasing x, "above the last" and "below the next" are exactly one of the two.
-enum Side: Below, Above
+enum Side: Below | Above
 let (n, m) = read<(1..=100_000, 1..=100_000)>()
 domain V = 1..=n
 let qs = read<[m](i: V, j: V, k: V, x: 1..=1_000_000_000)>()
