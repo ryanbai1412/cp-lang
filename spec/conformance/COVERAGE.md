@@ -7,11 +7,11 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 2405 (995 passing). Rules: 559.
+Cases: 2406 (995 passing). Rules: 559.
 
 ## Summary per chapter
 
-- R01 (01-lexical-grammar.md): 52 rules, 112 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R01 (01-lexical-grammar.md): 52 rules, 113 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R02 (02-values-types.md): 52 rules, 118 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R03 (03-numbers-layout.md): 24 rules, 61 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04 (04-indices.md): 66 rules, 110 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -124,7 +124,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R01.8.6 [1+ 1-]: **Optional chaining**: `x?.f`, `f(x?)` propagate `None`; `x ?? y` falls back lazily; `x!` ...
 - R01.8.7 [1+ 1-]: Members without parentheses are O(1) (`xs.len`, `t.parent[v]`); anything that does work ha...
 - R01.9.1 [1+ 0-]: Decorators are `@name` or `@name(args)` on the next item; the set is closed and listed in ...
-- R01.10.1 [3+ 1-]: Call arguments: positional first, named after in any order, each parameter at most once; p...
+- R01.10.1 [4+ 1-]: Call arguments: positional first, named after in any order, each parameter at most once; p...
 - R01.10.2 [1+ 4-]: A program the grammar does not derive is a syntax error, E0103: `var x: Int` with no `= ex...
 - R01.11.1 [2+ 3-]: Each of these gets an error with a machine-applicable fix:
 

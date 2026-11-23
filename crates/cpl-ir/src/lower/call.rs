@@ -247,12 +247,10 @@ impl<'a> Lowerer<'a> {
                         }
                     }
                 }
-                // A plain call of two values is the core binary `min`/`max`, even
-                // where the `Seq` fold of that name is in scope (std.seq).
-                if matches!(name.as_str(), "min" | "max")
-                    && args.len() >= 2
-                    && args.iter().all(|a| a.name.is_none())
-                {
+                // A plain call of two values is the core binary `min`/`max`, and a
+                // free `count`/`all`/`any` of one generator tests each value it makes,
+                // even where std.seq's fold of that name is in scope (decision 53).
+                if super::names::core_over_std(name, args) {
                     return self.prelude(name, args, hint, span);
                 }
                 match self.get_sym(name) {

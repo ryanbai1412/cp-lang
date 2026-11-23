@@ -15,11 +15,22 @@ impl<'a> Checker<'a> {
             && args.iter().all(|a| a.name.is_none() && !a.mutable)
     }
 
+    /// `count(x > 1 for x in xs)`: a free `count`, `all` or `any` of one
+    /// generator tests each value it makes, even beside `std.seq`'s fold
+    /// of that name (decision 53).
+    pub(super) fn generator_test(callee: &Expr, args: &[Arg]) -> bool {
+        matches!(&callee.kind, ExprKind::Name(n) if matches!(n.as_str(), "count" | "all" | "any"))
+            && matches!(args, [arg] if arg.name.is_none()
+                && !arg.mutable
+                && matches!(arg.value.kind, ExprKind::Comprehension { .. }))
+    }
+
     pub(super) fn prelude_call(&mut self, call: &Expr, callee: &Expr, args: &[Arg]) -> Option<Ty> {
         let ExprKind::Name(name) = &callee.kind else {
             return None;
         };
-        let shadowed = name != "zip" && !Self::binary_min_max(callee, args);
+        let generator = Self::generator_test(callee, args);
+        let shadowed = name != "zip" && !Self::binary_min_max(callee, args) && !generator;
         if self.local(name).is_some() || (self.global(name).is_some() && shadowed) {
             return None;
         }
@@ -123,6 +134,8 @@ impl<'a> Checker<'a> {
                 }
                 None
             }
+            ("count", [_]) if generator => Some(Ty::Int),
+            ("all" | "any", [_]) if generator => Some(Ty::Bool),
             ("abs", [Ty::Int | Ty::Range { .. }]) => Some(Ty::Int),
             ("abs", [t @ (Ty::I128 | Ty::Float)]) => Some(t.clone()),
             // `none` is neither skipped nor passed on by `sum` (v2.2).

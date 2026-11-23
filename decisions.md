@@ -7075,3 +7075,14 @@ rises 138 -> 139. Reverse: drop the `print` arm in `word` and re-run `--update`.
 
 Ryan's review closed `lib/search-dp.md` open item 1: adopt `V.ranges` (the domain of non-empty ranges of `V`, a triangle in walk order by length) and `r.splits` (the `len - 1` two-piece cuts). A key of `V.ranges` is non-empty by its type, so `r.first`/`r.last` are `V` rather than `?V`, the type carrying the proof instead of a `!` at every use; a plain `Range<V>` keeps `?V` (R04.4.14). Inner pieces use the existing `Indexed` spellings `r.drop(1)` and `r.drop_last(1)`, no new name. Lost: `[V, V.cuts]Int` with `l <= r` by hand (half the table unused, the invariant unchecked) and an optional `first` on keys (a `!` per use for a fact the type knows). Cases: `std-dp/ranges-*.cp`. Reverse: make key `first` `?V` and restore the `!`s in `lib/search-dp.md`.
 
+
+## 323. A free `count`/`all`/`any` of one generator tests each value (2026-11-22)
+
+`count(x % 2 == 0 for x in xs)` counted every element (5, not 2) and `all(...)`
+of a generator failed E0303: once std.seq's `count`/`all`/`any` folds were in
+scope, the generator became their `self`, never the core reduce over its tests
+that decision 53 names as canonical. Like the binary `min`/`max` exception
+(R11.3.3), a free call of exactly one generator now keeps the core reduce in the
+checker (`known.rs::generator_test`) and lowering (`names::core_over_std`); a local
+or user fn of that name still wins. Spec corrected `count-on-bools-counts-every-element.cp` to match
+(d908df023); `core-01/generator-test-counts-trues.cp` pins it. Reverse: drop both guards.

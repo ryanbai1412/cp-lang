@@ -131,7 +131,7 @@ impl<'a> Checker<'a> {
                 }
             }
         }
-        if Self::binary_min_max(callee, args) {
+        if Self::binary_min_max(callee, args) || Self::generator_test(callee, args) {
             for arg in args {
                 self.infer(&arg.value);
             }
