@@ -2,7 +2,7 @@
 
 use crate::emit::{pad, Emitter, Pushed, ADD, PRIMARY, REL};
 use crate::expr::string_literal;
-use crate::lend::{Hold, Tail};
+use crate::lend::Hold;
 use crate::names::{dom_ident, fn_name};
 use crate::walk::{self, Effects};
 use cpl_ir::{
@@ -32,7 +32,7 @@ impl<'p> Emitter<'p> {
     pub fn block(&mut self, block: &Block, out: &mut String) {
         for k in 0..block.stmts.len() {
             self.tail = self.tail_at(&block.stmts, k);
-            self.moves_last = last_read(self.program, block, k);
+            self.moves_last = crate::uses::last_read(self.program, block, k);
             self.stmt_presized(&block.stmts, k, out);
             self.moves_last = false;
         }
@@ -1152,94 +1152,6 @@ impl<'p> Emitter<'p> {
         }
     }
 
-    /// Whether the `let` of `slot` can be a reference to what `init`
-    /// names instead of a copy of it. It can when nothing changes either
-    /// for as long as the name lives: the name is set once and never
-    /// changed, `init` is a path into a global or a parameter, and the
-    /// statements after the `let` in its block (`tail`) neither store to
-    /// that variable nor call anything that could. Without a `tail` the
-    /// whole fn is held to that.
-    pub(crate) fn reads_in_place(&self, slot: usize, init: &Expr, tail: Option<&Tail>) -> bool {
-        if self.closure_id.is_some() {
-            return false;
-        }
-        if init.ty.is_scalar() || matches!(init.ty, Ty::Fn(..)) || self.spent.contains(&slot) {
-            return false;
-        }
-        let temp = |slot: usize| self.locals()[slot].name.is_empty();
-        match init.kind {
-            ExprKind::Field(..) | ExprKind::Index(..) | ExprKind::Unwrap(..) => {}
-            // The optional an `if let` or `while let` tests.
-            ExprKind::Local(_) | ExprKind::Global(_) if temp(slot) => {}
-            _ => return false,
-        }
-        self.place_stays(slot, init, tail)
-    }
-
-    /// Whether the place `init` reads stays unchanged for as long as the
-    /// `let` of `slot` lives (see [`Emitter::reads_in_place`]).
-    pub(crate) fn place_stays(&self, slot: usize, init: &Expr, tail: Option<&Tail>) -> bool {
-        let temp = |slot: usize| self.locals()[slot].name.is_empty();
-        let Some((global, root)) = place_root(init) else {
-            return false;
-        };
-        if self.facts.stores((self.fn_id, false, slot)) > 1 {
-            return false;
-        }
-        let params = self.fn_id.map_or(0, |id| self.program.fns[id].params.len());
-        let named_local = !global && root >= params && !temp(root);
-        if !global && root >= params && !named_local {
-            // A temporary set once is read only by the pattern that takes
-            // it apart, and a reference it holds was checked for all the
-            // statements after it, which cover this name.
-            return !self.spent.contains(&root)
-                && self.facts.stores((self.fn_id, false, root)) == 1;
-        }
-        if named_local && self.spent.contains(&root) {
-            return false;
-        }
-        if !global && self.fn_id.is_some_and(|id| self.sunk[id].contains(&root)) {
-            return false;
-        }
-        if tail.is_some_and(|tail| tail.tested) && temp(slot) {
-            return true;
-        }
-        let Some(tail) = tail else {
-            let Some(id) = self.fn_id else {
-                return false;
-            };
-            let body = &self.program.fns[id].body;
-            let own = crate::ranges::Facts::of_fn(id, body);
-            let stored = match global {
-                true => own.stores((None, true, root)),
-                false => own.stores((Some(id), false, root)),
-            };
-            return stored == 0 && !Tail::of(self.program, &body.stmts).calls;
-        };
-        if tail.opaque
-            && !(named_local && !crate::lend::closure_writes(self.program, self.fn_id, root))
-        {
-            return false;
-        }
-        let effects = &tail.effects;
-        match global {
-            // A parameter may be another name for the global.
-            true => {
-                !effects.globals.contains(&root)
-                    && effects.locals.iter().all(|local| *local >= params)
-                    && !effects
-                        .calls
-                        .iter()
-                        .any(|f| self.uses.effects(*f).writes.contains(&root))
-            }
-            // No fn sees a local it isn't passed `mut`, and that is a store.
-            // Nor may it read the local whole: that read could move it.
-            false if named_local => !effects.locals.contains(&root) && !tail.whole.contains(&root),
-            // A parameter may be another name for a global a call writes.
-            false => !effects.locals.contains(&root) && !tail.calls,
-        }
-    }
-
     pub fn stmt(&mut self, stmt: &Stmt, out: &mut String) {
         if let (Some(sites), Some(span)) = (&mut self.sites, stmt.span()) {
             if self.counted.contains(&(stmt as *const Stmt)) {
@@ -1493,7 +1405,7 @@ impl<'p> Emitter<'p> {
                     // `_t` is a name for a value the program may not use.
                     let cpp = if auto { "auto" } else { &cpp };
                     self.line(out, &format!("[[maybe_unused]] {cpp} {name} = {text};"));
-                } else if self.reads_in_place(*slot, init, tail.as_ref()) {
+                } else if self.lends(*slot, init, tail.as_ref()) {
                     // `let sp = sorted[b]`: a name for what is already
                     // there. A copy would cost the whole list.
                     self.line(out, &format!("const {cpp}& {name} = {text};"));
@@ -1804,27 +1716,6 @@ fn found_entry<'p>(cond: &'p Expr, then: &Block) -> Option<(&'p Expr, &'p Expr)>
         }
     });
     (reads && quiet).then_some((map, key))
-}
-
-/// True when statement `k` of `block` reads a heap variable for the last
-/// time and may move it: `x = y` or `let x = y` with `y` dead after it
-/// (`uses::dead_after`), or a `let` whose source is set again before
-/// anything reads it.
-fn last_read(program: &cpl_ir::Program, block: &Block, k: usize) -> bool {
-    if let Stmt::Let(_, Some(init)) = &block.stmts[k] {
-        return crate::lend::overwritten_before_read(init, &block.stmts[k + 1..])
-            || matches!(init.kind, ExprKind::Local(src)
-                if crate::uses::dead_after(program, block, k, src));
-    }
-    let Stmt::Assign(place, AssignOp::Set, value) = &block.stmts[k] else {
-        return false;
-    };
-    let (ExprKind::Local(slot), PlaceKind::Local(_) | PlaceKind::Global(_)) =
-        (&value.kind, &place.kind)
-    else {
-        return false;
-    };
-    walk::root(place) != (false, *slot) && crate::uses::dead_after(program, block, k, *slot)
 }
 
 /// The arguments of `text` when it is exactly `cpp((size_t)(..), ..)`:

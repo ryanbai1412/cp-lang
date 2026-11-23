@@ -50,3 +50,18 @@ for v in 0..n:
 ";
     assert_eq!(uses_of(source, "xs").escapes, Some(KEPT));
 }
+
+#[test]
+fn a_read_of_a_value_set_while_it_lives_is_a_copy() {
+    let out = super::cpp(
+        "var best = (gap: 9, id: 0)
+let a = best min= (gap: 4, id: 7)
+let b = best min= (gap: 4, id: 8)
+print(best.gap, best.id, Int(a), Int(b))
+",
+    );
+    assert!(
+        !out.contains("std::tuple<ll, ll>& t"),
+        "`min=` compares with what `best` was, so that is copied, not lent:\n{out}"
+    );
+}

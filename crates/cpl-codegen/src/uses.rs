@@ -9,7 +9,7 @@
 
 use crate::lend::{copied_at_test, Tail};
 use crate::walk::{self, Effects as Stores};
-use cpl_ir::{Arg, Block, Builtin, Expr, ExprKind, FnId, Program, Stmt};
+use cpl_ir::{Arg, AssignOp, Block, Builtin, Expr, ExprKind, FnId, PlaceKind, Program, Stmt, Ty};
 use std::collections::{BTreeMap, BTreeSet};
 
 pub(crate) use cpl_ir::effects::Effects;
@@ -257,14 +257,137 @@ pub(crate) fn dead_after(program: &Program, block: &Block, k: usize, slot: usize
     declared && !closure && !mentions(program, &block.stmts[k + 1..], slot).any
 }
 
+/// Why the place a lent `let` reads may change while the name lives.
+pub(crate) const SET_AGAIN: &str = "the name is changed later, so it owns its value";
+pub(crate) const SOURCE_MOVED: &str = "what it reads is moved while the name lives";
+pub(crate) const SOURCE_SET: &str = "what it reads is set while the name lives";
+pub(crate) const SOURCE_CALLED: &str = "a call while the name lives may change what it reads";
+pub(crate) const SOURCE_MAY_CHANGE: &str = "what it reads may change while the name lives";
+pub(crate) const SOURCE_READ_WHOLE: &str =
+    "what it reads is read whole, so may move, while the name lives";
+
 impl crate::emit::Emitter<'_> {
+    /// Where the code being written binds its locals.
+    pub(crate) fn home(&self) -> Home {
+        match (self.closure_id, self.fn_id) {
+            (Some(cid), _) => Home::Closure(cid),
+            (None, Some(id)) => Home::Fn(id),
+            (None, None) => Home::Top,
+        }
+    }
+
+    /// Whether the `let` of `slot` can be a reference to the place `init`
+    /// names instead of a copy of it: it is a heap value outside a closure,
+    /// and nothing changes either for as long as the name lives
+    /// ([`Emitter::source_change`]). `tail` is what the statements after the
+    /// `let` in its block do; without one the whole fn is held to that.
+    pub(crate) fn lends(&self, slot: usize, init: &Expr, tail: Option<&Tail>) -> bool {
+        self.closure_id.is_none()
+            && !init.ty.is_scalar()
+            && !matches!(init.ty, Ty::Fn(..))
+            && !self.spent.contains(&slot)
+            && match init.kind {
+                ExprKind::Field(..) | ExprKind::Index(..) | ExprKind::Unwrap(..) => true,
+                // The optional an `if let` or `while let` tests.
+                ExprKind::Local(_) | ExprKind::Global(_) => self.locals()[slot].name.is_empty(),
+                _ => false,
+            }
+            && self.source_change(slot, init, tail).is_none()
+    }
+
+    pub(crate) fn source_stays(&self, slot: usize, init: &Expr, tail: Option<&Tail>) -> bool {
+        self.source_change(slot, init, tail).is_none()
+    }
+
+    /// Why the place `init` reads may change, or the name `slot` be changed,
+    /// while the `let` of `slot` lives; `None` when neither can.
+    pub(crate) fn source_change(
+        &self,
+        slot: usize,
+        init: &Expr,
+        tail: Option<&Tail>,
+    ) -> Option<&'static str> {
+        let temp = |slot: usize| self.locals()[slot].name.is_empty();
+        let changed = |yes: bool, why| yes.then_some(why);
+        let Some((global, root)) = crate::stmt::place_root(init) else {
+            return Some(SOURCE_CALLED);
+        };
+        let home = self.home();
+        if self.uses.of_binding(home, slot).mutated
+            || self.facts.stores((self.fn_id, false, slot)) > 1
+        {
+            return Some(SET_AGAIN);
+        }
+        let params = self.fn_id.map_or(0, |id| self.program.fns[id].params.len());
+        let named_local = !global && root >= params && !temp(root);
+        if !global && root >= params && !named_local {
+            // A temporary set once is read only by the pattern that takes
+            // it apart, and a reference it holds was checked for all the
+            // statements after it, which cover this name.
+            return changed(self.spent.contains(&root), SOURCE_MOVED).or(changed(
+                self.facts.stores((self.fn_id, false, root)) != 1,
+                SOURCE_SET,
+            ));
+        }
+        if (named_local && self.spent.contains(&root))
+            || (!global && self.fn_id.is_some_and(|id| self.sunk[id].contains(&root)))
+        {
+            return Some(SOURCE_MOVED);
+        }
+        if tail.is_some_and(|tail| tail.tested) && temp(slot) {
+            return None;
+        }
+        let Some(tail) = tail else {
+            let Some(id) = self.fn_id else {
+                return Some(SOURCE_MAY_CHANGE);
+            };
+            let body = &self.program.fns[id].body;
+            let own = crate::ranges::Facts::of_fn(id, body);
+            let stored = match global {
+                true => own.stores((None, true, root)),
+                false => own.stores((Some(id), false, root)),
+            };
+            return changed(stored != 0, SOURCE_SET).or(changed(
+                Tail::of(self.program, &body.stmts).calls,
+                SOURCE_CALLED,
+            ));
+        };
+        if tail.opaque
+            && !(named_local && !crate::lend::closure_writes(self.program, self.fn_id, root))
+        {
+            return Some(SOURCE_CALLED);
+        }
+        let effects = &tail.effects;
+        match global {
+            // A parameter may be another name for the global.
+            true => changed(
+                effects.globals.contains(&root) || effects.locals.iter().any(|l| *l < params),
+                SOURCE_SET,
+            )
+            .or(changed(
+                effects
+                    .calls
+                    .iter()
+                    .any(|f| self.uses.effects(*f).writes.contains(&root)),
+                SOURCE_CALLED,
+            )),
+            // No fn sees a local it isn't passed `mut`, and that is a store.
+            // Nor may it read the local whole: that read could move it.
+            false if named_local => changed(effects.locals.contains(&root), SOURCE_SET)
+                .or(changed(tail.whole.contains(&root), SOURCE_READ_WHOLE)),
+            // A parameter may be another name for a global a call writes.
+            false => changed(effects.locals.contains(&root), SOURCE_SET)
+                .or(changed(tail.calls, SOURCE_CALLED)),
+        }
+    }
+
     /// What the statements after `stmts[k]` do while the `let` there lives,
-    /// when that `let` might lend.
+    /// when that `let` binds a heap value.
     pub(crate) fn tail_at(&self, stmts: &[Stmt], k: usize) -> Option<Tail> {
         let Stmt::Let(slot, Some(init)) = &stmts[k] else {
             return None;
         };
-        if !crate::lend::may_lend(init) {
+        if init.ty.is_scalar() || matches!(init.ty, Ty::Fn(..)) {
             return None;
         }
         let rest = &stmts[k + 1..];
@@ -275,4 +398,25 @@ impl crate::emit::Emitter<'_> {
             ..Tail::of(self.program, live)
         })
     }
+}
+
+/// True when statement `k` of `block` reads a heap variable for the last
+/// time and may move it: `x = y` or `let x = y` with `y` dead after it
+/// (`uses::dead_after`), or a `let` whose source is set again before
+/// anything reads it.
+pub(crate) fn last_read(program: &Program, block: &Block, k: usize) -> bool {
+    if let Stmt::Let(_, Some(init)) = &block.stmts[k] {
+        return crate::lend::overwritten_before_read(init, &block.stmts[k + 1..])
+            || matches!(init.kind, ExprKind::Local(src)
+                if dead_after(program, block, k, src));
+    }
+    let Stmt::Assign(place, AssignOp::Set, value) = &block.stmts[k] else {
+        return false;
+    };
+    let (ExprKind::Local(slot), PlaceKind::Local(_) | PlaceKind::Global(_)) =
+        (&value.kind, &place.kind)
+    else {
+        return false;
+    };
+    walk::root(place) != (false, *slot) && dead_after(program, block, k, *slot)
 }

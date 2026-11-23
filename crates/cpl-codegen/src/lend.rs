@@ -21,23 +21,8 @@ pub(crate) fn lending_if(init: &Expr) -> Option<[&Expr; 2]> {
     }
 }
 
-/// Whether a `let` of `init` may read a place in place, so its block works
-/// out what the statements after it do: `a[i]`, `if c: f(a) else: a[i]`,
-/// `m.get(k)`, `m.get(k) ?? d`.
-pub(crate) fn may_lend(init: &Expr) -> bool {
-    let map_get = |e: &Expr| {
-        matches!(&e.kind, ExprKind::Builtin(cpl_ir::Builtin::MapGet, a)
-            if a.first().is_some_and(|m| crate::stmt::place_root(m).is_some()))
-    };
-    crate::stmt::place_root(init).is_some()
-        || lending_if(init)
-            .is_some_and(|arms| arms.iter().any(|a| crate::stmt::place_root(a).is_some()))
-        || map_get(init)
-        || matches!(&init.kind, ExprKind::Binary(BinOp::Coalesce, got, _) if map_get(got))
-}
-
 /// What the statements after a `let` in its block can do, for
-/// [`Emitter::reads_in_place`].
+/// [`Emitter::lends`].
 pub(crate) struct Tail {
     pub(crate) effects: Effects,
     /// A call of a fn of the program.
@@ -457,7 +442,7 @@ impl<'p> Emitter<'p> {
             && plain
             && !value_ty.is_scalar()
             && !self.spent.contains(&slot)
-            && self.place_stays(slot, map, tail))
+            && self.source_stays(slot, map, tail))
         .then_some([map, key])
     }
 
@@ -487,7 +472,7 @@ impl<'p> Emitter<'p> {
             || self.closure_id.is_some()
             || !plain
             || self.spent.contains(&slot)
-            || !self.place_stays(slot, map, tail)
+            || !self.source_stays(slot, map, tail)
         {
             return false;
         }
@@ -498,7 +483,7 @@ impl<'p> Emitter<'p> {
             out,
             &format!("const auto {entry} = cpl::map_lend({m}, {k});"),
         );
-        let other = if self.reads_in_place(slot, default, tail) {
+        let other = if self.lends(slot, default, tail) {
             format!("({})", self.expr(default).text)
         } else {
             let own = self.temp();
@@ -525,7 +510,7 @@ impl<'p> Emitter<'p> {
         let (ExprKind::If(cond, ..), Some(arms)) = (&init.kind, lending_if(init)) else {
             return false;
         };
-        let lent = arms.map(|arm| self.reads_in_place(slot, arm, tail));
+        let lent = arms.map(|arm| self.lends(slot, arm, tail));
         if !lent.contains(&true) {
             return false;
         }
