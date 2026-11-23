@@ -48,7 +48,7 @@ domain Pos = 0..n
 let a: [Pos]Val = read()
 
 struct Run:
-    head: Val
+    var head: Val
     var tail: Val
     var opp_below: Bool
 

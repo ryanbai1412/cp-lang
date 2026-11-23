@@ -430,6 +430,15 @@ fn a_builtin_that_may_give_nothing_is_optional() {
 }
 
 #[test]
+fn a_list_getter_that_may_give_nothing_is_optional() {
+    let d = check("var xs: List<Int> = []\nprint(xs.first)\n");
+    assert_eq!(d.len(), 1, "{d:?}");
+    assert!(d[0].message.contains("`xs.first` has type `?Int`"), "{d:?}");
+    let clean = check("var xs = [5, 6]\nprint(xs.first!, xs.last ?? 0)\n");
+    assert!(clean.is_empty(), "{clean:?}");
+}
+
+#[test]
 fn a_header_field_is_made_var_in_a_block_struct() {
     let d = check("struct P(x: Int)\nvar p = P(1)\np.x = 2\n");
     assert_eq!(d.len(), 1, "{d:?}");

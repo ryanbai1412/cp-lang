@@ -35,7 +35,7 @@ for c in C:
 var tree_adj: [C]List<C> = []
 var stack = [root]
 while not stack.is_empty:
-    let u = stack.pop()
+    let u = stack.pop()!
     for v in dag_adj[u]:
         indeg[v] -= 1
         if indeg[v] == 0:

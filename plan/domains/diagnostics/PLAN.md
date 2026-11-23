@@ -70,7 +70,7 @@ row that moved.
    worst newcomer rows.
 
 ## General fixes owed
-- `xs.first`/`xs.last` (Get rows typed `?T`) are still `Ty::Unknown` to the checker, so `print(xs.first)` prints `none`. General fix: type every catalog Get row the way `catalog_ret` types methods (owner: compiler; the method half landed from diagnostics 2026-11-23).
+- `xs.first`/`xs.last` on a `List` are now `?T` (they were `Ty::Unknown`, so `print(xs.first)` printed `none`); the getter typing is still a list of special cases in `member_ty`. General fix: type every catalog Get row from its catalog `ret`, as `catalog_ret` does for methods (owner: compiler).
 Local fixes made, with the general fix that would remove the class.
 | Instance | Local fix (done) | General fix | Owner |
 |---|---|---|---|

@@ -2020,7 +2020,10 @@ impl<'a> Checker<'a> {
                     self.error(codes::MISSING_IMPL, name.span, message);
                     return Ty::Error;
                 }
-                "first" | "last" if base_ty == Ty::Str => {
+                "first" | "last"
+                    if base_ty == Ty::Str
+                        || matches!(&base_ty, Ty::Named { name, .. } if name == "List") =>
+                {
                     return Ty::Optional(Box::new(elem));
                 }
                 "get" => {
