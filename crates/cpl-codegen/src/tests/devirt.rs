@@ -125,3 +125,28 @@ fn explain_lists_no_fn_field_of_a_struct_the_file_omits() {
         "{explained:?}"
     );
 }
+
+#[test]
+fn a_struct_built_with_several_closures_splits_per_closure() {
+    let out = cpp(concat!(
+        "let k = read::<Int>()\n",
+        "let add = Monoid<Int>.of(+)\n",
+        "let big = Monoid<Int>.of(max)\n",
+        "struct Box(op: Int -> Int)\n",
+        "fn apply(b: Box, x: Int) -> Int = b.op(x)\n",
+        "print(add.op(k, 2), big.op(k, 2), apply(Box(x => x + 1), k), apply(Box(x => x * k), k))\n",
+    ));
+    assert!(!out.contains("std::function<"), "{out}");
+}
+
+#[test]
+fn a_variable_holding_two_closures_keeps_its_struct_whole() {
+    let out = cpp(concat!(
+        "struct Box(op: Int -> Int)\n",
+        "let k = read::<Int>()\n",
+        "var b = Box(x => x + 1)\n",
+        "if k > 3:\n    b = Box(x => x * k)\n",
+        "print(b.op(k))\n",
+    ));
+    assert!(out.contains("std::function<ll(ll)> op;"), "{out}");
+}

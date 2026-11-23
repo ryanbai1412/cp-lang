@@ -1074,9 +1074,9 @@ fn local_closure_lowers_to_auto_and_dynamic_field_falls_back_to_std_function() {
         "    let loc = (x: Int) => x + k\n",
         "    loc(1)\n",
         "let k = 5\n",
-        "let a = Box(x => x + 1)\n",
-        "let b = Box(x => x + k)\n",
-        "print(run(k), a.op(2), b.op(3))\n",
+        "var a = Box(x => x + 1)\n",
+        "if k > 3:\n    a = Box(x => x + k)\n",
+        "print(run(k), a.op(2))\n",
     );
     let mut db = cpl_check::Database::new();
     db.set_file("t.cp", src);

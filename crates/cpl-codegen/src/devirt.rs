@@ -1404,7 +1404,7 @@ fn safe_place(place: &cpl_ir::Place) -> bool {
 }
 
 /// Every struct a value of type `ty` holds.
-fn ty_structs(ty: &Ty, out: &mut BTreeSet<usize>) {
+pub(crate) fn ty_structs(ty: &Ty, out: &mut BTreeSet<usize>) {
     match ty {
         Ty::Struct(s) => {
             out.insert(*s);

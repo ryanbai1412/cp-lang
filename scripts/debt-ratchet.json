@@ -114,7 +114,7 @@
   "vm_fallbacks": 58,
   "own_databases": 29,
   "cpp_deep_copies": 48,
-  "cpp_std_functions": 201,
+  "cpp_std_functions": 176,
   "near_dup_fns": 9,
   "consumer_rederived": 60,
   "rs_near_cap": [
