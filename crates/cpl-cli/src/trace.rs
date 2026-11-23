@@ -60,7 +60,7 @@ pub fn trap_locals(
     let observed = cpl_interp::run_observed(program, io, &mut sink, Some(config));
     (observed.trap?.message == trap.message).then_some(())?;
     let at = source.get(trap.span.start as usize..trap.span.end as usize);
-    cpl_interp::trace::trap_locals(&observed.recording?, at.unwrap_or(""))
+    cpl_interp::trace::trap_locals(&observed.recording?, source, at.unwrap_or(""))
 }
 
 fn file_name(path: &str) -> &str {

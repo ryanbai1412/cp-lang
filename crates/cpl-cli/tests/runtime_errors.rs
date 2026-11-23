@@ -1110,3 +1110,12 @@ fn common_traps_say_the_cpl_fix() {
         );
     }
 }
+
+#[test]
+fn a_top_level_trap_names_the_value_it_reads_not_ended_loop_locals() {
+    let source = "var xs = [3, 1]\nfor i in 0..2:\n    let v = xs[i]\n    print(v)\nlet w: ?Int = None\nprint(w!)\n";
+    let (code, err) = run_stderr(source, "");
+    assert_eq!(code, 3);
+    assert!(err.contains("note: locals: w = None"), "got:\n{err}");
+    assert!(!err.contains("i = 1"), "got:\n{err}");
+}

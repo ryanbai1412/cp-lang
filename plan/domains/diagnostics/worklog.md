@@ -335,3 +335,4 @@ Landed since 23:10: four type/flow lints from `spec/idioms/lints.md`, L0571 `neg
 ### Request from spec (2026-11-23): `^` on `Bool` should name `!=`
 
 `p ^ false` is E0309 "`^` can't combine a Bool and a Bool" with no fix. R01.5.9: on `Bool` the error names `!=` (and `and`/`or` for `&`/`|`). Case: `core-01/bool-caret-names-ne.cp`.
+- 03:50 PST: trap `locals:` note: a trap on an unindented top-level line no longer lists the ended loop locals of the top level, and top-level values the trapping code names are added (`print(w!)` now notes `w = None`, was `i = 1, v = 1`). The trap re-run records frames to tell the top level apart. Consumer test in `runtime_errors`; debugger worklog notified. Still open (debugger): ended block locals inside a fn, which needs scope spans on IR locals.

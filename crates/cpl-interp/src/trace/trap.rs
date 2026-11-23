@@ -8,6 +8,7 @@ pub fn trap_config(source: &str) -> TraceConfig {
     TraceConfig {
         source: source.to_string(),
         last_steps: Some(1),
+        record_frames: true,
         ..TraceConfig::default()
     }
 }
@@ -19,23 +20,44 @@ const TRAP_LOCALS: usize = 8;
 
 /// The innermost call's locals at the last step of `recording`, as the
 /// source writes them: `i = 3, best = [0, 1]`; `None` when it has none.
-/// Those the trapping code `at` names come first.
-pub fn trap_locals(recording: &Recording, at: &str) -> Option<String> {
+/// Top-level values the trapping code `at` names are added, and those it
+/// names come first. On an unindented top-level line, the block locals of
+/// the top level have ended, so they are left out.
+pub fn trap_locals(recording: &Recording, source: &str, at: &str) -> Option<String> {
     let step = recording.step(recording.len().checked_sub(1)?)?;
-    let cpl_json::Value::Object(map) = cpl_json::parse(&step.locals).ok()? else {
-        return None;
-    };
     let named = |name: &str| {
         at.split(|c: char| !(c.is_alphanumeric() || c == '_'))
             .any(|word| word == name)
     };
-    let mut locals: Vec<_> = map.iter().collect();
+    let top_level = step.frames.len() == 1;
+    let unindented = (step.line as usize)
+        .checked_sub(1)
+        .and_then(|line| source.lines().nth(line))
+        .is_some_and(|line| !line.starts_with([' ', '\t']));
+    let mut locals: Vec<(String, cpl_json::Value)> = match cpl_json::parse(&step.locals) {
+        Ok(cpl_json::Value::Object(map)) if !(top_level && unindented) => map
+            .iter()
+            .map(|(name, value)| (name.to_string(), value.clone()))
+            .collect(),
+        _ => Vec::new(),
+    };
+    for (var, json) in &step.values {
+        let Some(name) = recording.vars.get(*var).map(|v| v.name.as_str()) else {
+            continue;
+        };
+        if named(name) && !locals.iter().any(|(local, _)| local == name) {
+            if let Ok(value) = cpl_json::parse(json) {
+                locals.push((name.to_string(), value));
+            }
+        }
+    }
     locals.sort_by_key(|(name, _)| !named(name));
+    let more = locals.len() > TRAP_LOCALS;
     let mut parts: Vec<String> = locals
         .into_iter()
         .take(TRAP_LOCALS)
         .map(|(name, value)| {
-            let text = shown(value);
+            let text = shown(&value);
             if text.chars().count() > TRAP_LOCAL_CHARS {
                 let cut: String = text.chars().take(TRAP_LOCAL_CHARS).collect();
                 format!("{name} = {cut}...")
@@ -44,7 +66,7 @@ pub fn trap_locals(recording: &Recording, at: &str) -> Option<String> {
             }
         })
         .collect();
-    if map.len() > TRAP_LOCALS {
+    if more {
         parts.push("...".to_string());
     }
     (!parts.is_empty()).then(|| parts.join(", "))
