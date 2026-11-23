@@ -10,7 +10,20 @@ const HASHED: &str = "a hash table: nothing reads its order";
 
 /// The report for `program`, lowered from `text`, naming the file `path`.
 pub fn report(path: &str, text: &str, program: &cpl_ir::Program) -> String {
-    let mut out = String::new();
+    report_with(path, text, program, None)
+}
+
+/// [`report`] opening with `storage`, the types and memory section the
+/// checker's representation query fills, which then isn't listed as not
+/// shown yet.
+pub fn report_with(
+    path: &str,
+    text: &str,
+    program: &cpl_ir::Program,
+    storage: Option<&str>,
+) -> String {
+    let mut out = storage.unwrap_or_default().to_string();
+    let shown = usize::from(storage.is_some()) * 2;
     let stdout = &mut out;
     let entries = explain_closures(program);
     let dropped = explain_dropped_fields(program);
@@ -57,7 +70,7 @@ pub fn report(path: &str, text: &str, program: &cpl_ir::Program) -> String {
         if dropped.is_empty() && sunk.is_empty() && hashed.is_empty() && copies.is_empty() {
             let _ = writeln!(stdout, "{path}: no closure or fn-typed sites");
         }
-        not_shown_yet(stdout);
+        not_shown_yet(stdout, shown);
         return out;
     }
     if !entries.is_empty() {
@@ -119,13 +132,13 @@ pub fn report(path: &str, text: &str, program: &cpl_ir::Program) -> String {
             let _ = writeln!(stdout, "  {line}:{col}  {desc}");
         }
     }
-    not_shown_yet(stdout);
+    not_shown_yet(stdout, shown);
     out
 }
 
-/// The sections `spec/tools/explain.md` promises that need the compiler's
-/// representation query (plan/QUESTIONS.md tools-3), named so nobody
-/// mistakes their absence for "nothing to report".
+/// The sections `spec/tools/explain.md` promises that no query fills yet
+/// (plan/QUESTIONS.md tools-3), named so nobody mistakes their absence for
+/// "nothing to report"; the first two are the storage section's.
 const NOT_SHOWN_YET: &[&str] = &[
     "types: bytes and niches",
     "arrays and peak memory",
@@ -133,9 +146,9 @@ const NOT_SHOWN_YET: &[&str] = &[
     "checks left per build",
 ];
 
-fn not_shown_yet(stdout: &mut String) {
+fn not_shown_yet(stdout: &mut String, shown: usize) {
     let _ = writeln!(stdout, "Not shown yet:");
-    for section in NOT_SHOWN_YET {
+    for section in &NOT_SHOWN_YET[shown..] {
         let _ = writeln!(stdout, "  {section}");
     }
 }

@@ -147,13 +147,105 @@ pub(crate) fn explain_file(
                 &format!("{what}: {why}"),
             ));
         }
+        for (name, rep) in storage(path, &compiled.text).0 {
+            rows.push(row(
+                &name,
+                "storage",
+                &format!("{}: {}", rep.ty, describe(&rep)),
+            ));
+        }
         let _ = writeln!(stdout, "[\n{}\n]", rows.join(",\n"));
         return 0;
     }
+    let section = storage_section(path, &compiled.text);
     let _ = write!(
         stdout,
         "{}",
-        cpl_codegen::explain::report(path, &compiled.text, &compiled.program)
+        cpl_codegen::explain::report_with(path, &compiled.text, &compiled.program, Some(&section))
     );
     0
+}
+
+/// Each top-level value's representation, and the most bytes the fixed-size
+/// ones take with the names of those that grow: the checker's query, the
+/// data hover shows.
+#[allow(clippy::type_complexity)]
+fn storage(
+    path: &str,
+    text: &str,
+) -> (
+    Vec<(String, cpl_check::Representation)>,
+    Option<(u128, Vec<String>)>,
+) {
+    let mut db = cpl_check::Database::new();
+    db.set_file(path, text);
+    let rows = db
+        .symbols(path)
+        .into_iter()
+        .filter(|s| matches!(s.kind, cpl_check::DeclKind::Value))
+        .filter_map(|s| Some((s.name, db.representation(path, s.name_span.start)?)))
+        .collect();
+    let total = db
+        .storage(path)
+        .map(|(bytes, grows)| (bytes, grows.into_iter().map(|(name, _)| name).collect()));
+    (rows, total)
+}
+
+/// `cpl explain`'s types and memory section (spec/tools/explain.md).
+fn storage_section(path: &str, text: &str) -> String {
+    let (rows, total) = storage(path, text);
+    if rows.is_empty() {
+        return format!("Storage for {path}: no top-level values\n");
+    }
+    let mut out = format!("Storage for {path} (at the input bounds):\n");
+    let name_width = rows.iter().map(|(name, _)| name.len()).max().unwrap_or(0);
+    let ty_width = rows.iter().map(|(_, rep)| rep.ty.len()).max().unwrap_or(0);
+    for (name, rep) in &rows {
+        let line = format!(
+            "  {name:name_width$}  {:ty_width$}  {}",
+            rep.ty,
+            describe(rep)
+        );
+        out += line.trim_end();
+        out += "\n";
+    }
+    if let Some((bytes, grows)) = total {
+        out += &format!("  peak {}", cpl_check::human_bytes(bytes));
+        if !grows.is_empty() {
+            out += &format!(", not counting {}", grows.join(", "));
+        }
+        out += "\n";
+    }
+    out
+}
+
+/// One value's bytes: per element and at most for an array, then where an
+/// optional keeps `None` and a record's field offsets and padding.
+fn describe(rep: &cpl_check::Representation) -> String {
+    let bytes = |n: u64| cpl_check::human_bytes(n.into());
+    let mut out = match (rep.bytes, rep.max_cells, rep.max_bytes) {
+        (Some(per), Some(cells), Some(most)) => format!(
+            "{} per element x {cells} = {}",
+            bytes(per),
+            cpl_check::human_bytes(most)
+        ),
+        (Some(per), None, _) if rep.ty.starts_with('[') => {
+            format!("{} per element, no bound on the count", bytes(per))
+        }
+        (Some(each), _, _) => bytes(each),
+        (None, _, _) => "on the heap, as large as it grows".to_string(),
+    };
+    match rep.none_is_spare {
+        Some(true) => out += ", None is a spare value (no flag)",
+        Some(false) => out += ", None takes a flag beside the value",
+        None => {}
+    }
+    if !rep.field_offsets.is_empty() {
+        let at: Vec<String> = rep.field_offsets.iter().map(|o| format!("@{o}")).collect();
+        out += &format!(", fields {}", at.join(" "));
+        if rep.padding > 0 {
+            out += &format!(", {} padding", bytes(rep.padding));
+        }
+    }
+    out
 }

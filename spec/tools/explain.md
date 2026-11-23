@@ -27,6 +27,10 @@ Today `cpl explain <file>` prints closure lowering, dropped fields,
 views, the reductions the judge build sinks (the list is never built) and
 the `Map` and `Set` types stored as hash tables (nothing reads their
 order), each heap value the judge build copies with why it must own it
-(every other heap read is a reference, R05.3.5), then lists the sections it cannot fill yet under `Not shown yet:`
-(types, arrays and peak memory, specializations, checks); they wait on
-the compiler's representation query (plan/QUESTIONS.md tools-3).
+(every other heap read is a reference, R05.3.5). It opens with
+`Storage for <file>`: each top-level value's type and bytes (per element
+and at the input bounds for an array), where an optional keeps `None`,
+field offsets and padding, and the peak the fixed-size values take,
+naming those that grow; these are the checker's representation query,
+the numbers hover shows. It then lists what it cannot fill yet under
+`Not shown yet:` (specializations, checks; plan/QUESTIONS.md tools-3).

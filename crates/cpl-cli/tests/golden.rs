@@ -732,9 +732,9 @@ fn explain_json_lists_each_copy_and_why() {
         .contains("changed later"));
 }
 
-/// A file's explanation names the representation sections it can't fill
-/// yet (plan/QUESTIONS.md tools-3), on a file with closures and on one
-/// with none.
+/// A file's explanation names the sections it can't fill yet
+/// (plan/QUESTIONS.md tools-3), on a file with closures and on one with
+/// none.
 #[test]
 fn explain_a_file_names_the_sections_not_shown_yet() {
     let dir = scratch("explain_not_shown");
@@ -749,13 +749,50 @@ fn explain_a_file_names_the_sections_not_shown_yet() {
         assert_eq!(out.status.code(), Some(0), "{}", text(&out.stderr));
         let stdout = text(&out.stdout);
         assert!(
-            stdout.ends_with(
-                "Not shown yet:\n  types: bytes and niches\n  arrays and peak memory\n  \
-                 specializations chosen\n  checks left per build\n"
-            ),
+            stdout.ends_with("Not shown yet:\n  specializations chosen\n  checks left per build\n"),
             "{file}: {stdout}"
         );
     }
+}
+
+/// A file's explanation opens with each top-level value's bytes: per
+/// element and at the input bounds for an array, the niche of an optional,
+/// field offsets and padding, and the peak the fixed-size ones take; the
+/// same numbers hover shows, also in `--json`.
+#[test]
+fn explain_a_file_shows_each_values_storage() {
+    let dir = scratch("explain_storage");
+    std::fs::write(
+        dir.join("s.cp"),
+        "domain V = 0..1000\nlet n: Int = read()\nlet a: [V](Int, 0..=9) = (0, 0)\n\
+         let o: ?V = None\nlet xs: [n]Int = read()\nprint(n, o, a[0].0, xs.len)\n",
+    )
+    .unwrap();
+    let out = cpl(&dir, &["explain", "s.cp"]);
+    assert_eq!(out.status.code(), Some(0), "{}", text(&out.stderr));
+    assert!(
+        text(&out.stdout).starts_with(
+            "Storage for s.cp (at the input bounds):\n\
+             \x20 n   Int              8 bytes\n\
+             \x20 a   [V](Int, 0..=9)  16 bytes per element x 1000 = 16 KB, fields @0 @8, 7 bytes padding\n\
+             \x20 o   ?V               2 bytes, None is a spare value (no flag)\n\
+             \x20 xs  [n]Int           8 bytes per element, no bound on the count\n\
+             \x20 peak 16 KB, not counting xs\n"
+        ),
+        "{}",
+        text(&out.stdout)
+    );
+    let json = cpl_json::parse(&text(&cpl(&dir, &["explain", "s.cp", "--json"]).stdout)).unwrap();
+    let rows = json.as_array().unwrap();
+    let o = rows
+        .iter()
+        .find(|r| r.at(&["site"]).as_str() == Some("o"))
+        .unwrap();
+    assert_eq!(o.at(&["lowering"]).as_str(), Some("storage"));
+    assert_eq!(
+        o.at(&["detail"]).as_str(),
+        Some("?V: 2 bytes, None is a spare value (no flag)")
+    );
 }
 
 /// Help fits an 80-column terminal. `stress` is the debugger domain's, which
