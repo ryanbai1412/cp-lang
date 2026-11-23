@@ -40,7 +40,7 @@ fn solve() -> ?[I]I:
 
     for len in Len:
         if unused_ind[len].len != unused_val[len].len: return none
-        for (u, v) in zip(unused_ind[len], unused_val[len]): b[u] = v
+        for k in 0..unused_ind[len].len: b[unused_ind[len][k]] = some(unused_val[len][k])
 
     for st in I if b[st] != none:
         var (i, v) = (st, b[st]!)

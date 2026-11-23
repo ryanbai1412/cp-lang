@@ -24,7 +24,7 @@ fn dfs(u: V, p: ?V, depth: Int):
     par[u] = p
     by_depth[depth].push(u)
     for nb in g[u] if some(nb) != p: dfs(nb, u, depth + 1)
-dfs(V.first, none, 0)
+dfs(V.first!, none, 0)
 
 let ans = [
     layer.len + Int(
@@ -49,13 +49,11 @@ for (d, layer) in by_depth.items.rev if not layer.is_empty:
         place(forbiddens[0].u, s)
     elif forbiddens.len >= 2:
         let rotated = forbiddens.map(f => f.loc).rotated_left(1)
-        for (f, loc) in zip(forbiddens, rotated):
-            place(f.u, loc)
+        for k in 0..forbiddens.len: place(forbiddens[k].u, rotated[k])
 
     let unconstrained = [u for u in layer if forbidden_loc[u] == none]
     let free_slots = [s for s in Slot if last_depth[s] != some(d)]
-    for (u, s) in zip(unconstrained, free_slots):
-        place(u, s)
+    for k in 0..min(unconstrained.len, free_slots.len): place(unconstrained[k], free_slots[k])
 
 print(ans)
 for group in resp:

@@ -13,8 +13,8 @@ let queries: [Q](a: V, b: V, k: Int) = read()
 var hop: [V, V]?Int = none
 for e in edges:
     for (x, y) in [(e.u, e.v), (e.v, e.u)]: hop[x, y] = 1
-let hops = floyd_warshall(hop)!
-var d = [V, V] (i, j) => hops[i, j]!
+assert floyd_warshall(mut hop)
+var d = [V, V] (i, j) => hop[i, j]!
 
 var pending: [V, V]List<Q> = []
 for i in Q.sort(by: i => queries[i].k): pending[queries[i].a, queries[i].b].push(i)
