@@ -72,13 +72,15 @@ impl Scopes<'_> {
     /// carries from one test into the next. A counter (`k += 1`) is meant to.
     fn leaks_across_tests(&mut self, stmt: &Stmt, target: &Expr, op: AssignOp, value: &Expr) {
         let Some(divider) = self.divider else { return };
-        let ExprKind::Name(name) = &target.kind else {
+        // `cnt[x] += 1` leaks as surely as `cnt = ..`; only a plain `t += 1` may be a test counter.
+        let Some(name) = root_name(target) else {
             return;
         };
         if stmt.span.shift(self.base).start < divider {
             return;
         }
-        let counter = matches!(op, AssignOp::Binary(BinOp::Add | BinOp::Sub))
+        let counter = matches!(target.kind, ExprKind::Name(_))
+            && matches!(op, AssignOp::Binary(BinOp::Add | BinOp::Sub))
             && matches!(value.kind, ExprKind::Int(_));
         let above = self
             .resolve(name)

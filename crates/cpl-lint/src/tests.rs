@@ -1717,3 +1717,62 @@ fn chmax_if_with_a_comment_warns_without_a_fix() {
     assert_eq!(d.code, crate::CHMIN_CHMAX_IF.code);
     assert!(d.fixes.is_empty());
 }
+
+#[test]
+fn search_loops_newcomers_write_from_corpus_newcomer() {
+    // n03: a flag with no `break` is still `all`.
+    let flag = "let a = [1, 2]\nvar ok = true\nfor i in 0..1:\n    if a[i] > a[i + 1]:\n        ok = false\nprint(yes(ok))\n";
+    assert!(
+        fixed(flag).contains("let ok = (0..1).all(i => not (a[i] > a[i + 1]))"),
+        "{}",
+        fixed(flag)
+    );
+    // n45: a sentinel start keeps its value as the default.
+    let sentinel = "let a = [1, 0]\nvar found = -1\nfor i in 0..2:\n    if a[i] == 0:\n        found = i\n        break\nprint(found)\n";
+    assert!(fixed(sentinel).contains("let found = first(i for i in 0..2 if a[i] == 0) ?? -1"));
+    assert!(only(sentinel)
+        .help
+        .as_deref()
+        .unwrap()
+        .contains("keep the `?Int`"));
+    // n12: `and x == none` is a first match; a variable named `first` gets no fix.
+    let guard = "let a = [1, 2]\nvar at: ?Int = none\nfor x in a:\n    if x % 2 == 0 and at == none:\n        at = x\nprint(at ?? -1)\n";
+    assert!(
+        fixed(guard).contains("let at: ?Int = first(x for x in a if x % 2 == 0)"),
+        "{}",
+        fixed(guard)
+    );
+    let named = guard.replace("at", "first");
+    assert_eq!(only(&named).code.0, "L0501");
+    assert!(only(&named).fixes.is_empty());
+    for src in [flag, sentinel, guard, &named] {
+        assert!(
+            crate::fix_tests::checker_errors(&fixed(src)).is_empty(),
+            "{}",
+            fixed(src)
+        );
+    }
+    // Setting it back to where it started is not a search.
+    let same = "let a = [1, 2]\nvar ok = true\nfor x in a:\n    if x > 1:\n        ok = true\nprint(yes(ok))\n";
+    assert!(taste_codes(same).is_empty());
+}
+
+#[test]
+fn yes_no_printed_from_each_branch_is_yes() {
+    let src = "let ok = true\nif ok:\n    print(\"YES\")\nelse:\n    print(\"NO\")\n";
+    assert_eq!(
+        only(src).help.as_deref(),
+        Some("write `print(yes(ok))`; `YES` and `NO` are the default words")
+    );
+    let mixed = "let ok = true\nif ok:\n    print(\"YES\")\nelse:\n    \"NO\"\n";
+    assert!(codes(mixed).iter().all(|c| *c != "L0524"));
+}
+
+#[test]
+fn a_table_above_multitest_counted_into_leaks() {
+    let src =
+        "var cnt: [0..=9]Int = 0\n@!multitest\nlet x: 0..=9 = read()\ncnt[x] += 1\nprint(cnt[x])\n";
+    assert_eq!(only(src).code.0, "L0211");
+    let counter = "var t = 0\n@!multitest\nt += 1\nprint(t)\n";
+    assert!(codes(counter).iter().all(|c| *c != "L0211"));
+}

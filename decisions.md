@@ -7049,3 +7049,9 @@ L0609 `cache_field_written_outside` had no help; a lint help that says why and w
 ## 320. L0529 matches `sqrt` by name; lint_std_names 138 -> 140 (2026-11-22)
 
 `float_sqrt_for_int` (3c4480379) reads `sqrt` off the syntax, as the other float rules do, and the fact table then checks the operand is an integer. Raised the `lint_std_names` baseline by its 2 lines instead of leaving main red. Reverse: when the fact table records the fn a call resolves to, match `std.math` `sqrt` through it and lower the baseline.
+
+## 321. L0524 matches a `print` call by name (2026-11-22)
+`if ok: print("YES") else: print("NO")` is how the newcomer set (n03) writes
+the answer word, so L0524 reads a branch that is one `print` of a string
+literal (`crates/cpl-lint/src/rules/answers.rs` `word`); `lint_std_names`
+rises 138 -> 139. Reverse: drop the `print` arm in `word` and re-run `--update`.

@@ -3,6 +3,7 @@
 
     uv run python corpus/newcomer/score.py            summary + missing patterns by frequency
     uv run python corpus/newcomer/score.py --markdown the same as a Markdown table, for worklogs
+    uv run python corpus/newcomer/score.py --misses   also each missed mark as file:line
     uv run python corpus/newcomer/score.py --fixes    also apply `cpl lint --fix` to a copy and
                                                       require `cpl check` to pass on the result
 
@@ -86,7 +87,7 @@ def main(argv):
     broken = [f.name for f in files if subprocess.run([bin, "check", str(f)], capture_output=True).returncode != 0]
     got, _ = diagnostics(bin, files, names)
     total = hit = 0
-    missed, unknown, fps = Counter(), [], Counter()
+    missed, unknown, fps, misses = Counter(), [], Counter(), []
     for f in files:
         ms = marks(f)
         ds = got.get(f.name, [])
@@ -106,6 +107,7 @@ def main(argv):
                 used |= {i for i, (_, n, d) in enumerate(ds) if near(line, d) and (n in want.split("|") or want.startswith("missing "))}
             else:
                 missed[want] += 1
+                misses.append(f"{f.name}:{line}: {want}")
         for i, (l, n, _) in enumerate(ds):
             if i not in used:
                 fps[n] += 1
@@ -120,6 +122,8 @@ def main(argv):
         bad = fix_failures(bin, files)
         lines.append(f"  fixes: {len(files) - len(bad)}/{len(files)} files still pass `cpl check` after `cpl lint --fix`")
         lines += [f"    {n}: {e}" for n, e in bad]
+    if "--misses" in argv:
+        lines += ["  " + m for m in misses]
     if "--markdown" in argv:
         lines += ["", "| # | Missed pattern | Spots | Lint exists |", "|---|---|---|---|"]
         lines += [f"| {i} | `{p.removeprefix('missing ')}` | {c} | {'yes, did not fire' if not p.startswith('missing ') else 'no'} |"

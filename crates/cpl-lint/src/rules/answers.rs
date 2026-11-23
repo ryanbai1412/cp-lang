@@ -28,18 +28,26 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
             let [(Cond::Expr(cond), yes)] = &branches[..] else {
                 return;
             };
-            let (Some(t), Some(f)) = (word(yes), word(no)) else {
+            let (Some((t, printed)), Some((f, also))) = (word(yes), word(no)) else {
                 return;
             };
+            if printed != also {
+                return;
+            }
             if !t.eq_ignore_ascii_case("YES") || !f.eq_ignore_ascii_case("NO") {
                 return;
             }
             let cond = cond.span.shift(self.base).text(self.src);
+            let call = if printed {
+                format!("print(yes({cond}))")
+            } else {
+                format!("yes({cond})")
+            };
             let help = if (t, f) == ("YES", "NO") {
-                format!("write `yes({cond})`; `YES` and `NO` are the default words")
+                format!("write `{call}`; `YES` and `NO` are the default words")
             } else {
                 format!(
-                    "write `yes({cond})`, and set the words once with \
+                    "write `{call}`, and set the words once with \
                      `with io(answers: (\"{t}\", \"{f}\"))` or the judge profile"
                 )
             };
@@ -64,20 +72,28 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
     v.out
 }
 
-/// The text of a block that is one plain string literal.
-fn word(block: &Block) -> Option<&str> {
+/// The text of a block that is one plain string literal, or one `print` of
+/// it (then `true`).
+fn word(block: &Block) -> Option<(&str, bool)> {
     let [stmt] = &block.stmts[..] else {
         return None;
     };
-    let StmtKind::Expr(Expr {
-        kind: ExprKind::Str(pieces),
-        ..
-    }) = &stmt.kind
-    else {
+    let StmtKind::Expr(e) = &stmt.kind else {
         return None;
     };
-    match &pieces[..] {
-        [StrPiece::Text(t)] => Some(t),
+    let (e, printed) = match &e.kind {
+        ExprKind::Call { callee, args }
+            if matches!(&callee.kind, ExprKind::Name(f) if f == "print") && args.len() == 1 =>
+        {
+            (&args[0].value, true)
+        }
+        _ => (e, false),
+    };
+    match &e.kind {
+        ExprKind::Str(pieces) => match &pieces[..] {
+            [StrPiece::Text(t)] => Some((t, printed)),
+            _ => None,
+        },
         _ => None,
     }
 }

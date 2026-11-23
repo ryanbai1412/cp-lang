@@ -22,7 +22,7 @@
   "ir_builtin_names": 85,
   "prelude_privilege": 23,
   "backend_std_names": 17,
-  "lint_std_names": 140,
+  "lint_std_names": 141,
   "dup_fn_bodies": 3,
   "layer_violations": 1,
   "tree_walker": 1,

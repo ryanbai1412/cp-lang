@@ -766,10 +766,20 @@ impl<'a> Taste<'a> {
             body,
         } = *acc;
         let init_text = self.text(init.span);
-        if !matches!(init_text, "none" | "false" | "true") {
+        let int_lit = |t: &str| {
+            let t = t.strip_prefix('-').unwrap_or(t);
+            !t.is_empty() && t.chars().all(|c| c.is_ascii_digit() || c == '_')
+        };
+        let sentinel = int_lit(init_text);
+        if !matches!(init_text, "none" | "false" | "true") && !sentinel {
             return;
         }
-        let (call, fix) = match self.exact_search(name, init_text, pat, iter, body) {
+        let exact = self.exact_search(name, init_text, pat, iter, body);
+        // A sentinel start is a search only in the exact `if c: x = e; break` shape.
+        if sentinel && exact.is_none() {
+            return;
+        }
+        let (call, fix) = match exact {
             Some((call, text)) => (call, Some(text)),
             None => (
                 match init_text {
@@ -783,13 +793,23 @@ impl<'a> Taste<'a> {
         let mut diag = Diagnostic::warning(
             SEARCH_LOOP.code,
             self.pair_span(decl.span, next.span),
-            format!("a search loop that sets `{name}` and breaks"),
+            if breaks_after_setting(&body.stmts, name) {
+                format!("a search loop that sets `{name}` and breaks")
+            } else {
+                format!("a search loop: only the first write to `{name}` counts")
+            },
         )
-        .with_help(if init_text == "none" {
+        .with_help(if sentinel {
+            format!(
+                "say the search: `first(.. for .. in .. if ..) ?? {init_text}`, or keep the `?Int` it returns instead of the sentinel `{init_text}`"
+            )
+        } else if init_text == "none" {
             "say the search: `first(.. for .. in .. if ..)`, or `.count(..)` to count".to_string()
         } else {
             format!("say the search: `xs.{call}(x => ..)`, or `.count(..)` to count")
         });
+        // `let first = first(..)` would read itself.
+        let fix = fix.filter(|_| name != call);
         if let Some(edits) = fix.and_then(|text| self.fold(init, next, call, text)) {
             diag.fixes.push(Fix {
                 title: format!("use `{call}`"),
@@ -808,41 +828,8 @@ impl<'a> Taste<'a> {
         iter: &Expr,
         body: &Block,
     ) -> Option<(&'static str, String)> {
-        let [Stmt {
-            kind: StmtKind::Expr(e),
-            ..
-        }] = &body.stmts[..]
-        else {
-            return None;
-        };
-        let ExprKind::If {
-            branches,
-            otherwise: None,
-        } = &e.kind
-        else {
-            return None;
-        };
-        let [(Cond::Expr(cond), then)] = &branches[..] else {
-            return None;
-        };
-        let [Stmt {
-            kind:
-                StmtKind::Assign {
-                    target,
-                    op: AssignOp::Set,
-                    value,
-                },
-            ..
-        }, Stmt {
-            kind: StmtKind::Break(None),
-            ..
-        }] = &then.stmts[..]
-        else {
-            return None;
-        };
-        if !matches!(&target.kind, ExprKind::Name(n) if n == name) {
-            return None;
-        }
+        let (cond, value) =
+            forms::write_once(&body.stmts, name).or_else(|| forms::set_then_break(body, name))?;
         let (p, it, c, v) = (
             self.ntext(pat.span),
             iter_text(iter, self.ntext(iter.span)),
@@ -854,6 +841,18 @@ impl<'a> Taste<'a> {
         }
         Some(match (init, v) {
             ("none", _) => ("first", format!("first({v} for {p} in {it} if {c})")),
+            (lit, _)
+                if forms::write_once(&body.stmts, name).is_none()
+                    && lit
+                        .trim_start_matches('-')
+                        .chars()
+                        .all(|ch| ch.is_ascii_digit() || ch == '_') =>
+            {
+                (
+                    "first",
+                    format!("first({v} for {p} in {it} if {c}) ?? {lit}"),
+                )
+            }
             ("false", "true") => ("any", format!("{}.any({p} => {c})", receiver(&it))),
             ("true", "false") => ("all", format!("{}.all({p} => not ({c}))", receiver(&it))),
             _ => return None,
