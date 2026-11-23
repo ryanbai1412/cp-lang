@@ -136,6 +136,14 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
         for &d in &self.closure_guarded[cid] {
             self.saved_domains.push((d, self.domains[d]));
         }
+        #[cfg(not(target_arch = "wasm32"))]
+        let flow = match self.vm.clone() {
+            Some(compiled) if lent.is_empty() && compiled.closures[cid].is_some() => self
+                .run_closure_vm_from_stack(&compiled, cid)
+                .map(Flow::Return),
+            _ => self.block(&def.body),
+        };
+        #[cfg(target_arch = "wasm32")]
         let flow = self.block(&def.body);
         while self.saved_domains.len() > dom_mark {
             let (id, prev) = self.saved_domains.pop().unwrap();

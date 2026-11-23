@@ -91,6 +91,33 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
         Ok(())
     }
 
+    /// Closure `cid`'s body on the VM, in the frame at `self.base` that
+    /// holds its parameters and captures, all values.
+    pub(crate) fn run_closure_vm_from_stack(
+        &mut self,
+        compiled: &CompiledProgram<'p>,
+        cid: cpl_ir::ClosureId,
+    ) -> Res<Value> {
+        let chunk = compiled.closures[cid].as_ref().unwrap();
+        let mut vm_regs_i = std::mem::take(&mut self.vm_regs_i);
+        let base_i = vm_regs_i.len();
+        vm_regs_i.resize(base_i + chunk.num_i, 0);
+        let mut regs_v = self.take_regs_v(chunk.num_v);
+        sync_from_stack(
+            &chunk.slot_map,
+            &mut vm_regs_i[base_i..base_i + chunk.num_i],
+            &mut regs_v,
+            &mut self.stack,
+            self.base,
+            chunk.traced,
+        );
+        let res = self.exec_chunk_inner(compiled, chunk, base_i, &mut vm_regs_i, &mut regs_v);
+        self.return_regs_v(regs_v);
+        vm_regs_i.truncate(base_i);
+        self.vm_regs_i = vm_regs_i;
+        res
+    }
+
     pub(crate) fn run_fn_vm_from_stack(
         &mut self,
         compiled: &CompiledProgram<'p>,
