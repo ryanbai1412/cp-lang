@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- Routed to stdlib: `min(by:)`/`max(by:)` as operation values (`lib/ops-ranges.md`) have no std definition.
 - `lib/ops-ranges.md` wrote `Monoid`, `Group`, `Action` and `Semiring` as traits (`trait Monoid<T> = Op<T> + HasId<T>`, `impl Monoid<Int> for Lcm`), against decisions 26.4 and 42.6 and `spec/std/algebra.cp`, where they are values. The excerpts now show the std structs with their laws as comments; `Lcm` implements `Op` and `HasId` and runs. spec-blocks 84/185 (27 error, 74 skip).
 - Bugcatch built only `cpl-conform`, so every `// tool:` case failed in its runs ("no `cpl` next to cpl-conform") and could catch nothing; it now builds `cpl-cli` too. New case `core-07/generator-expression-body-generic.cp` (a generic `-> yields T = expr` fn): with `701193ef` reverted it gives R0001, on HEAD it prints 15. Full rerun follows.
 - R09.6.1: a trap's call trace names frames as the source does (`Box.at`), never lowered names; tool case `core-09/trap-trace-source-names.cp` passes. Aimed at bugcatch miss `ae43f536`; bugcatch rerun on it follows.
