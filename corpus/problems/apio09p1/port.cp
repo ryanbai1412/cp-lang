@@ -1,5 +1,11 @@
-// APIO '09 P1 (Digging for Oil): pick 3 non-overlapping k x k sub-squares.
-// Runnable on proto/cpc today.
+// Source: APIO 2009 Digging for Oil (采油区域), https://dmoj.ca/problem/apio09p1
+// Problem: an n x m grid (n, m <= 1500) of values 0..=500 and a size k; print the largest total
+//   of three non-overlapping k x k squares (three always fit).
+// Solution: the three squares always split by a straight cut into one and two, and the two by
+//   another cut. With 2D prefix sums, for each of four flips/transposes of the grid sweep a
+//   horizontal cut i: down[i] is the best square below it, and above it take two squares split
+//   either horizontally (best in the row band + up) or vertically (prefix and suffix column
+//   maxima). O(nm) per orientation.
 // original: corpus/submissions/5536569.cpp
 let n: 1..=1500 = read()
 let m: 1..=1500 = read()

@@ -1,8 +1,11 @@
-// CCO 2022 P3: two disjoint schedules of intervals on sides 0 and 1, with a
-// travel delay k to switch sides. Maximise the number of intervals visited.
-// Run Dijkstra over DP states (count, side, other_active) -> earliest time d,
-// transitioning to the next interval on the same side or switching after d + k
-// via binary search on sorted interval starts.
+// Source: CCO 2022 P3 Double Attendance, https://dmoj.ca/problem/cco22p3
+// Problem: two rooms show slides during open intervals (a, b): n1, n2 <= 3e5, no overlap within a
+//   room, times <= 1e9. You start in room 1 at time 0; moving between rooms takes k <= 1e9. A
+//   slide counts if you spend positive time in its room while it shows; print the most slides.
+// Solution: Dijkstra over states (slides seen, room, whether the slide showing in the other room
+//   is already counted), each keeping its earliest time d. From a state, wait for the next slide
+//   in this room, or move and catch the first uncounted slide still showing at d + k (binary
+//   search on sorted starts). 4 (n1 + n2) states, O((n1 + n2) log) in all.
 // original: corpus/submissions/4801968.cpp
 let n: 1..=300000 = read()
 let m: 1..=300000 = read()

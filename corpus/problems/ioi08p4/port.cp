@@ -1,7 +1,12 @@
-// IOI 2008 Teleporters: you ride east along a track from its west end. Each
-// teleporter has two endpoints, and reaching one moves you to the other, from
-// where you keep riding east: one point per jump. With n teleporters in place,
-// add m more (any free endpoints) to score as many points as possible.
+// Source: IOI 2008 Teleporters, https://dmoj.ca/problem/ioi08p4
+// Problem: a track from 0 to 2,000,001 has n <= 1e6 teleporters with distinct endpoints
+//   1 <= w < e <= 2e6. Riding east, reaching an endpoint jumps you to the other one, 1 point
+//   per jump. Add up to m <= 1e6 new teleporters (any free endpoints); print the most points.
+// Solution: each stretch between consecutive endpoints leads to the stretch after its exit's
+//   partner, so the stretches form one path from the start (the ride) plus disjoint cycles. A
+//   new teleporter from the ride into a cycle splices it in for its length + 2 points: take the
+//   longest cycles first; with none left, each pair of crossing teleporters adds 4 and a last
+//   single one adds 1. Sorting the endpoints dominates: O(n log n).
 // original: corpus/submissions/5637680.cpp
 let n: 1..=1e6 = read()
 let m: 1..=1e6 = read()

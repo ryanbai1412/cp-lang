@@ -1,18 +1,12 @@
-// Codeforces 2096 H: Wonderful XOR Sum.
-// Given `n` intervals `[l_j, r_j]` in `0..2^m`, we need `ways[x]` = number of
-// tuples with XOR `x`, then output `XOR_x ((ways[x] * 2^x) mod P)`.
-// Under the Walsh-Hadamard transform (WHT), XOR convolution becomes pointwise
-// multiplication: `hat[mask] = prod_j sum_{a in [l_j, r_j]} (-1)^{pop(a & mask)}`.
-// Group masks by their lowest set bit `q - 1` (`q in 1..=m`), writing
-// `mask = (hi << q) + half` with `half = 1 << (q - 1)`.
-// On the low `q` bits, `sum_{a < t} (-1)^{pop(a & half)}` is the triangle wave
-// `triangle(t, half) = min(t, 2 * half - t)`.
-// For each interval `[l, r)` (`r = (last + 1) mod 2^m`), the contribution at
-// `hi` has base sign `(-1)^{pop((r >> q) & hi)}` (folded into `high_xor`) and
-// factor `vr - vl` if `pop(hx & hi)` is even (`even_prod`) or `vr + vl` if odd
-// (`odd_prod`), where `hx = (l ^ r) >> q`. A multiplicative butterfly over the
-// `m - q` high bits evaluates the product for every `hi`, and an inverse WHT
-// recovers `ways`.
+// Source: Codeforces 2096H (Wonderful XOR Problem), https://codeforces.com/contest/2096/problem/H
+// Problem: n intervals [l_i, r_i] in 0..2^m (n <= 2e5, m <= 18); f_x counts sequences with
+//   l_i <= a_i <= r_i and XOR x, mod 998244353. Print the XOR over x of (f_x * 2^x mod p).
+//   Multitest, sum n <= 2e5, sum 2^m <= 2^18.
+// Solution: after a Walsh-Hadamard transform, hat[mask] = prod_i sum_{a in [l_i, r_i]}
+//   (-1)^pop(a & mask). For masks with lowest set bit q - 1, each interval's factor is a sign
+//   times vr - vl or vr + vl (a triangle wave on the low q bits), picked by the parity of
+//   pop(((l ^ r) >> q) & hi). Bucket the two factors by (l ^ r) >> q; a multiplicative butterfly
+//   gives the product for every high part hi, and an inverse FWHT recovers f. O((n + 2^m) m).
 use std.ntt.{fwht}
 
 type Z = Mod<998_244_353>

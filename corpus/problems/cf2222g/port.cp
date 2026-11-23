@@ -1,20 +1,13 @@
-// Codeforces 2222 G: for each k in 1..=n, count unordered pairs {u, v} (u <= v)
-// whose maximum remaining component size after deleting all edges on the u-v
-// path is k.
-//
-// Root at a centroid rt, and let excl be rt's largest child subtree (size <= n/2).
-// - u == v (0 edges cut): the whole tree stays connected -> ans[n] = n.
-// - lca(u, v) = x with both endpoints in non-dominant child subtrees of x (for
-//   x != rt, all children; for x == rt, all children except excl): x's own
-//   component has size n - s1 (for {x, w}) or n - s1 - s2 (for w1, w2 in two
-//   child subtrees of sizes s1, s2), which always dominates every other cut
-//   component along the path.
-// - u in excl, v == rt: rt's component n - sz[excl] >= n/2 dominates ->
-//   ans[n - sz[excl]] += sz[excl].
-// - u in excl, v in another child c != excl of rt: the max component on u..v is
-//   max(k[u], k[v]), where k[w] is the max component hanging off the path from
-//   rt to w (seeded at best[excl] = 0 and best[c] = n - sz[excl] - sz[c]).
-//   Prefix sums over the two histograms count pairs with max(k[u], k[v]) == i.
+// Source: Codeforces 2222G (Statistics on Tree), https://codeforces.com/contest/2222/problem/G
+// Problem: a tree on n <= 1e5 vertices. The value of a pair u <= v is the size of the largest
+//   component left after deleting every edge on the u-v path; for each i in 1..=n print how many
+//   pairs have value i. Multitest, sum n <= 5e5.
+// Solution: root at a centroid rt; let excl be its largest child. Unless one endpoint is in excl
+//   and the other in another child of rt, the component holding the path's top x dominates:
+//   n - s1 (x and one child subtree) or n - s1 - s2 (two of them), counted by grouping x's child
+//   sizes (O(sqrt n) distinct). For the rest the value is max(k[u], k[v]), k[w] being the largest
+//   piece hanging off the path rt..w; histograms of k on the two sides and prefix sums count
+//   them. O(n sqrt n) worst case for the size pairs, O(n) otherwise.
 use std.prefix.*
 
 @!multitest

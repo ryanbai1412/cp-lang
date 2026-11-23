@@ -1,22 +1,13 @@
-// Codeforces 2157 F: Git Gud.
-// Merge `n` positions using `d` layers of jumps (`1 <= d <= n`). Each layer
-// switch costs `LAYER_COST = 1000` (`(d - 1) * 1000` total), and assigning each
-// position a distinct `d`-tuple `c = (c_0, ..., c_{d-1})` of non-negative layer
-// counts with weight `w = sum(c)` costs `w` (the total jump count for that
-// position):
-//   - At `d = 1`, weights `0..n` cost `n * (n - 1) / 2`.
-//   - For `d >= 2`, there are `C(d + w - 1, w)` tuples of weight `w`. Choosing
-//     the `n` smallest-weight tuples minimizes total cost; `plan_for(d)` sums
-//     each weight layer until `n` tuples are taken. Once `(d - 1) * LAYER_COST`
-//     reaches `best.cost`, no larger `d` can improve on `best`.
-//
-// Reverse-lex merge order: walk the `n` chosen `d`-tuples in reverse
-// lexicographic order, assigning them positions `n` down to `1`. Truncating
-// the last weight class `max_w` keeps the chosen set downward-closed because
-// every tuple of weight `< max_w` is already included in full. At each prefix
-// `t[..cl]`, the first position of every `t[..=cl]` sub-group after the first
-// jumps forward to the group's `start`; printing layers in reverse order
-// merges all `n` positions in exact budget.
+// Source: Codeforces 2157F (Git Gud), https://codeforces.com/contest/2157/problem/F
+// Problem: unknown skill s in 1..=n (n = 4 or 250000). A mission (difficulty y, length l) costs
+//   l, plus 1000 if y is above the previous mission's difficulty, and adds l to s when y == s.
+//   Print at most 1e6 missions, total cost <= 1e6, that bring every possible s to >= n.
+// Solution: a run of non-increasing difficulties pays only lengths, so use d descending passes
+//   ((d - 1) * 1000 for the climbs). Every start skill gets a distinct d-tuple of jumps per pass
+//   and the lengths total the tuples' weights, so take the n lightest tuples (C(d + w - 1, w) of
+//   weight w), trying d = 2, 3, ... until (d - 1) * 1000 reaches the best cost (d = 1 costs
+//   n(n - 1)/2). A DFS over the chosen tuples in reverse lex order emits each pass's jumps
+//   (difficulty x, length start - x); passes print last first. O(n) per tried d.
 
 use std.math.{choose}
 

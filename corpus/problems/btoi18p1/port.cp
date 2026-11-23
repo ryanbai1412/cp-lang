@@ -1,11 +1,11 @@
-// Baltic OI 2018 Love Polygon: n people, each loves one person (maybe
-// themselves). Redirect as few loves as possible so that everybody is in a
-// pair loving each other; print that number, or -1 if n is odd.
-//
-// A final pair costs 2 minus the loves already pointing inside it, so the
-// goal is to keep as many loves as possible. Pairs that already love each
-// other stay. Everything else is a matching on the love arrows: take them
-// from the leaves inward, then walk what is left of each cycle.
+// Source: Baltic OI 2018 Love Polygon, https://dmoj.ca/problem/btoi18p1
+// Problem: n <= 1e5 people (names of at most 10 letters) each love one person, maybe themselves.
+//   Print the fewest love arrows to redirect so that everyone is in a pair of two people loving
+//   each other, or -1 if n is odd.
+// Solution: the answer is n minus the arrows kept. Mutual pairs keep both. Elsewhere a kept arrow
+//   is a matched edge of the functional graph: match greedily from the leaves inward (peeling
+//   in-degree 0), then along what is left of each cycle, starting after an already matched node
+//   if the cycle has one, else anywhere (len / 2). O(n) after interning names.
 // original: corpus/submissions/4456169.cpp
 use std.seq.{get_or_insert_with}
 

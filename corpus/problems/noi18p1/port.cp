@@ -1,4 +1,12 @@
-// Runnable port (proto/cp.py lib-run) of statement-first noi18p1.cp
+// Source: NOI 2018 Return (归程), https://dmoj.ca/problem/noi18p1
+// Problem: a connected undirected graph, n <= 2e5, m <= 4e5, edges with length l <= 1e4 and
+//   altitude a <= 1e9. Each of Q <= 4e5 days gives a start v and water line p (decoded with the
+//   last answer when K = 1: forced online): drive free over edges with a > p, then walk to node
+//   1; print the least walked length. T <= 3 tests.
+// Solution: Dijkstra from node 1 gives dist. A Kruskal reconstruction tree merges components by
+//   altitude, highest first; each new node keeps the edge's altitude and its subtree's minimum
+//   dist. The car reaches exactly the leaves under v's highest ancestor with altitude > p, found
+//   by binary lifting; print that node's minimum dist. O((n + m) log n + Q log n).
 // original: corpus/submissions/6512702.cpp
 
 let t_cases: Int = read()
