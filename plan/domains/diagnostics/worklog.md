@@ -217,3 +217,4 @@ Newest first: what landed (commit), evidence, next, blocked, requests from other
 
 ## Checkpoint 2026-11-22 21:40 PST
 Landed: brace-block fixes (49b5d592f, e07745558, db6e2ca7b), Milestone 1 section (e9a7f7178), newcomer scoreboard (f0c1a672e). Next: `auto x =` recovery, CRLF spans test, practice-problem traps.
+- 2026-11-22 C++ declarations: `auto x = ...`, `auto (a, b) = ...`, `auto [a, b]` and `int`/`long`/`double`/`bool`/`string`/`char` `x = ...` at a statement start are one E0503 "declares a variable with `let`" with a `let` fix (a reassigned one then gets the `var` fix). Newcomer scoreboard (new row `int` for `var`, 27 copies): 183 copies, runs after `cpl fix` 94.0% -> 98.9%, errors 227 -> 209; gated at >= 98%. Fixture `diagnostics/cpp_auto_int`; parser test `cpp_declarations_are_one_error_that_writes_let`.

@@ -1,0 +1,15 @@
+error[E0503]: CP Lang declares a variable with `let`, not `auto`
+  --> cpp_auto_int.cp:1:1
+  |
+1 | auto (n, k) = (3, 4)
+  | ^^^^
+  = help: `let x = 0` for a value that stays, `var x = 0` for one that changes; the type comes from the value
+
+error[E0503]: CP Lang declares a variable with `let`, not `int`
+  --> cpp_auto_int.cp:2:1
+  |
+2 | int total = n + k
+  | ^^^
+  = help: `let x = 0` for a value that stays, `var x = 0` for one that changes; the type comes from the value
+
+cpp_auto_int.cp: 2 errors

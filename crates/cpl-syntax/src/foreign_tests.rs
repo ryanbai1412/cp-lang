@@ -148,3 +148,19 @@ fn brace_bodied_fn_and_struct_get_the_brace_fix() {
     assert_eq!(d.len(), 2, "{d:?}");
     assert!(d.iter().all(|d| d.fixes[0].edits.len() == 2), "{d:?}");
 }
+
+#[test]
+fn cpp_declarations_are_one_error_that_writes_let() {
+    for src in [
+        "auto x = 1\nprint(x)\n",
+        "int x = 1\nprint(x)\n",
+        "auto (a, b) = (1, 2)\nprint(a + b)\n",
+    ] {
+        let d = parse_file(src).diagnostics;
+        assert_eq!(d.len(), 1, "{src}: {d:?}");
+        assert_eq!(d[0].fixes[0].edits[0].1, "let");
+    }
+    assert!(parse_file("let int = 1\nprint(int)\n")
+        .diagnostics
+        .is_empty());
+}

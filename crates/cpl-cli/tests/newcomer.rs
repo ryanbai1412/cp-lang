@@ -145,6 +145,10 @@ const HABITS: &[(&str, Habit)] = &[
         swap(ls, i, ".push(", ".push_back(")
     }),
     ("`//` for `/`", |ls, i| swap(ls, i, " / ", " // ")),
+    ("`int` for `var`", |ls, i| {
+        ls[i].trim_start().starts_with("var ").then_some(())?;
+        swap(ls, i, "var ", "int ")
+    }),
     ("`auto` for `let`", |ls, i| {
         ls[i].trim_start().starts_with("let ").then_some(())?;
         swap(ls, i, "let ", "auto ")
@@ -335,7 +339,7 @@ fn newcomer_scoreboard() {
     );
     // Bars at the measured values; raise them as fixes land.
     assert!(
-        all.copies >= 150,
+        all.copies >= 180,
         "the newcomer copies went missing ({})",
         all.copies
     );
@@ -350,8 +354,8 @@ fn newcomer_scoreboard() {
         pct(all.first_right)
     );
     assert!(
-        pct(all.runs) >= 69.0,
-        "fewer than 69% of copies run right after `cpl fix` ({:.1}%)",
+        pct(all.runs) >= 98.0,
+        "fewer than 98% of copies run right after `cpl fix` ({:.1}%)",
         pct(all.runs)
     );
 }

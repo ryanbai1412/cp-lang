@@ -423,6 +423,28 @@ impl<'a> Parser<'a> {
     pub(super) fn stmt_kind(&mut self) -> StmtKind {
         match self.peek() {
             T::Let | T::Var => self.let_stmt(),
+            // `auto x = 0`, `int x = 0`: C++'s declarations, read as `let`.
+            T::Ident
+                if matches!(
+                    self.text(),
+                    "auto" | "int" | "long" | "double" | "bool" | "string" | "char"
+                ) && (self.peek_n(1) == T::Ident
+                    && matches!(self.peek_n(2), T::Eq | T::Colon)
+                    || self.text() == "auto"
+                        && matches!(self.peek_n(1), T::LParen | T::LBracket)) =>
+            {
+                let kw = self.span();
+                self.error(
+                    Diagnostic::error(
+                        codes::REMOVED_SYNTAX,
+                        kw,
+                        format!("CP Lang declares a variable with `let`, not `{}`", self.text()),
+                    )
+                    .with_help("`let x = 0` for a value that stays, `var x = 0` for one that changes; the type comes from the value")
+                    .with_fix("write `let`", kw, "let"),
+                );
+                self.let_stmt()
+            }
             // `extern fn transaction(m: Int) -> Int`: the judge supplies the body.
             T::Ident if self.text() == "extern" && self.peek_n(1) == T::Fn => {
                 self.bump();
