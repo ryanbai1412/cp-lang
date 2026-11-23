@@ -29,12 +29,12 @@ fn check():
         assert prefix_mex(a, len) == len
         return
     let y: Int = read_output()
-    var b = a.copy()
+    var b = a.clone()
     b.swap(x - 1, y - 1)
     var best = prefix_mex(a, len)
     for i in 0..n:
         for j in i + 1..n:
-            var c = a.copy()
+            var c = a.clone()
             c.swap(i, j)
             best = max(best, prefix_mex(c, len))
     assert prefix_mex(b, len) == best
