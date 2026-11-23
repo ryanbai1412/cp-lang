@@ -143,6 +143,17 @@ pub fn listen_on(
     Ok(())
 }
 
+/// `cpl test` compares outputs exactly until this is uncommented and finished.
+const ANY_ANSWER_CHECK: &str = "
+// Any valid answer is accepted. Uncomment and finish this check, and
+// `cpl test` judges each output with it instead of comparing with the sample:
+// @check
+// fn ok() -> Bool:
+//     let n: Int = read()         // the test's input, read as the solution reads it
+//     let out: Int = read_output()  // the output being checked
+//     false                       // true when `out` is a valid answer for this input
+";
+
 /// What is known about a problem before any code is written.
 #[derive(Clone, PartialEq, Eq, Debug, Default)]
 pub struct Scaffold {
@@ -153,6 +164,9 @@ pub struct Scaffold {
     /// The input starts with the number of test cases: Competitive
     /// Companion's `"testType": "multiNumber"`. The file gets `@!multitest`.
     pub multitest: bool,
+    /// The output section accepts any of several answers, so the file gets
+    /// a `@check` to finish instead of an exact compare.
+    pub any_answer: bool,
     /// The `let ... = read()` lines.
     pub reads: Vec<String>,
     /// Sample inputs with their outputs.
@@ -283,6 +297,8 @@ impl Scaffold {
             limits: Some(limits),
             interactive: problem.get("interactive") == Some(&Json::Bool(true)),
             multitest: problem.get("testType").and_then(Json::as_str) == Some("multiNumber"),
+            // Competitive Companion sends no statement to look for it in.
+            any_answer: false,
             reads: Vec::new(),
             samples,
         })
@@ -340,6 +356,9 @@ impl Scaffold {
             }
             _ if self.reads.is_empty() => out.push_str("let n: 1..=2e5 = read()\n"),
             _ => {}
+        }
+        if self.any_answer {
+            out.push_str(ANY_ANSWER_CHECK);
         }
         out
     }

@@ -101,6 +101,7 @@ pub fn parse(judge: Judge, url: &str, html: &str) -> Result<Scaffold, String> {
         limits,
         samples,
         multitest: judge == Judge::Codeforces && counts_test_cases(html),
+        any_answer: accepts_any_answer(judge, html),
         ..Scaffold::default()
     })
 }
@@ -119,6 +120,38 @@ fn counts_test_cases(html: &str) -> bool {
     ["number of test", "multiple test", "several test"]
         .iter()
         .any(|phrase| first.contains(phrase))
+}
+
+/// An output section that accepts any of several answers: "If there are
+/// multiple answers, print any of them".
+fn accepts_any_answer(judge: Judge, html: &str) -> bool {
+    let (start, end) = match judge {
+        Judge::Codeforces => ("class=\"output-specification\"", "class=\"sample-tests\""),
+        Judge::AtCoder => ("<h3>Output</h3>", "<h3>Sample Input"),
+    };
+    let english = html
+        .find("<span class=\"lang-en\">")
+        .map_or(html, |at| &html[at..]);
+    let Some(rest) = after(english, start) else {
+        return false;
+    };
+    let section = text(&rest[..rest.find(end).unwrap_or(rest.len())]).to_ascii_lowercase();
+    let section = section.split_whitespace().collect::<Vec<_>>().join(" ");
+    [
+        "print any",
+        "output any",
+        "any of them",
+        "any one of them",
+        "any valid",
+        "any such",
+        "multiple answers",
+        "multiple possible answers",
+        "multiple solutions",
+        "several answers",
+        "several possible answers",
+    ]
+    .iter()
+    .any(|phrase| section.contains(phrase))
 }
 
 type Page = (Option<String>, Option<Limits>, Vec<(String, String)>);
@@ -489,6 +522,17 @@ YES
             "<p>The first line contains n. The answer is the number of test cases you pass.</p>",
         );
         assert!(!parse(Judge::Codeforces, "u", &later).unwrap().multitest);
+        assert!(!page.any_answer);
+        let any = html.replace(
+            "<div class=\"sample-tests\">",
+            "<div class=\"output-specification\"><div class=\"section-title\">Output</div><p>Print the edges. If there are multiple answers, print any of them.</p></div><div class=\"sample-tests\">",
+        );
+        assert!(parse(Judge::Codeforces, "u", &any).unwrap().any_answer);
+        let story = html.replace("<p>w</p>", "<p>Print any of them.</p>");
+        assert!(
+            !parse(Judge::Codeforces, "u", &story).unwrap().any_answer,
+            "the input section says nothing of the output"
+        );
         assert_eq!(prefix("a\u{e9}b", 2), "a");
         assert_eq!(page.title.as_deref(), Some("A. Watermelon"));
         assert_eq!(page.short_name().as_deref(), Some("a"));

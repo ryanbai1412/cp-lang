@@ -984,3 +984,30 @@ fn an_interactive_problem_names_the_interactor_in_the_file() {
         "{source}"
     );
 }
+
+/// An any-answer problem gets a `@check` to finish, commented out so the
+/// file runs as before; uncommented, it is the check `cpl test` uses.
+#[test]
+fn an_any_answer_problem_gets_a_check_to_finish() {
+    let scaffold = Scaffold {
+        any_answer: true,
+        reads: vec!["let n: Int = read()".into()],
+        ..Scaffold::default()
+    };
+    let source = scaffold.source(None);
+    assert!(
+        source.starts_with("let n: Int = read()\n\n// Any valid answer is accepted."),
+        "{source}"
+    );
+    let check: Vec<&str> = source
+        .lines()
+        .filter_map(|line| line.strip_prefix("// "))
+        .skip_while(|line| !line.starts_with("@check"))
+        .collect();
+    assert_eq!(check[..2], ["@check", "fn ok() -> Bool:"], "{source}");
+    assert!(
+        check.iter().any(|line| line.contains("read_output()")),
+        "{source}"
+    );
+    assert!(!Scaffold::default().source(None).contains("@check"));
+}
