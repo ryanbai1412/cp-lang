@@ -1,26 +1,16 @@
 # `route rule` pairs axe-core flags today; delete a line once it passes.
-/ aria-input-field-name
 / color-contrast
 / scrollable-region-focusable
 /docs/guides/tour color-contrast
-/docs/ref/std/algebra aria-input-field-name
 /docs/ref/std/algebra color-contrast
 /docs/ref/std/algebra scrollable-region-focusable
-/docs/ref/std/segtree aria-input-field-name
 /docs/ref/std/segtree color-contrast
-/learn/start aria-input-field-name
 /learn/start color-contrast
-/learn/intro aria-input-field-name
 /learn/intro color-contrast
-/learn/read/standard-library aria-input-field-name
 /learn/read/standard-library color-contrast
-/learn/practice/prime-count aria-input-field-name
-/play aria-input-field-name
 /play color-contrast
 /lints color-contrast
-/lints/search_loop aria-input-field-name
 /lints/search_loop color-contrast
 /errors color-contrast
-/errors/E0301 aria-input-field-name
 /errors/E0301 color-contrast
 /decisions color-contrast

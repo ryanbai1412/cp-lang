@@ -116,9 +116,11 @@ export interface CodeEditorProps {
   checkOnLoad?: boolean;
   /** Code run before `value`, checked with it but not shown. */
   prefix?: string;
+  /** What the editor holds, for screen readers (site/R14). */
+  label?: string;
 }
 
-export function CodeEditor({ value, onChange, onRun, readOnly, live = true, className, minHeight, checkOnLoad = false, prefix = '' }: CodeEditorProps) {
+export function CodeEditor({ value, onChange, onRun, readOnly, live = true, className, minHeight, checkOnLoad = false, prefix = '', label }: CodeEditorProps) {
   const host = useRef<HTMLDivElement>(null);
   const view = useRef<EditorView | null>(null);
   const callbacks = useRef({ onChange, onRun });
@@ -142,6 +144,7 @@ export function CodeEditor({ value, onChange, onRun, readOnly, live = true, clas
         syntaxHighlighting(highlight),
         theme,
         EditorState.readOnly.of(!!readOnly),
+        EditorView.contentAttributes.of({ 'aria-label': label ?? (readOnly ? 'CP Lang example' : 'CP Lang source') }),
         keymap.of([
           { key: 'Mod-Enter', run: () => (callbacks.current.onRun?.(), true) },
           indentWithTab,
