@@ -277,7 +277,7 @@ and `cargo-semver-checks`. Targets and today's numbers are in
 | Modules import without cycles | explicit import cycles | `crates/cpl-check/tests/std_acyclic.rs`; `measure.py cycles` for the graph |
 | Public API changes are never silent | signature changes with no codemod or release note | rule `std-api/R20`; `missing` (public-signature snapshot test, like `cargo-semver-checks`) |
 | Old solutions keep building | corpus ports broken by a std change | corpus in `cpl-conform all --check` |
-| Lint-clean std | lint hits in std (`L0301` float equality and others) | `cpl-lint` baselines, shrink-only; each kept hit is marked `with lint(...: allow)` |
+| Lint-clean std | lint hits in std (`L0301` float equality and others) | rule `std-api/R21`; `scripts/std-lint-ratchet.py` (in `scripts/check.sh`, per file and code, shrink-only) |
 
 ## Review rubric
 

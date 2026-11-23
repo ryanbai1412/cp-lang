@@ -141,9 +141,9 @@
     "infra": 0,
     "lint-fmt": 0,
     "perf": 3,
-    "site": 8,
-    "spec": 6,
-    "stdlib": 30,
+    "site": 7,
+    "spec": 5,
+    "stdlib": 29,
     "tech-debt": 0,
     "tools": 22
   },

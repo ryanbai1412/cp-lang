@@ -224,6 +224,14 @@ Renaming a public item ships a `cpl fix` codemod and a checker error on the old 
 - **Example:** `K`, `to_idx`, `from_idx` give an error with a fix to `count`, `ord`, `nth`.
 - **Enforced by:** corpus ports in `cpl-conform all --check`; `missing` (public-signature snapshot test).
 
+### R21. std is lint-clean
+
+std passes `cpl lint` like a contestant's program does; a hit that is right is marked `with lint(name: allow)` where it sits.
+
+- **Why:** std is read and copied as the model of good code, and a lint that fires on std teaches people to ignore it.
+- **Example:** an `L0301` float equality in std is a real comparison bug or an `allow` with its reason.
+- **Enforced by:** `scripts/std-lint-ratchet.py` (in `scripts/check.sh`): hits per file and code only go down.
+
 ## Review
 
 Before landing a public std change, confirm each rule above holds or the
@@ -232,4 +240,5 @@ change adds the rule it needs. The doc itself meets
 
 ## Changes
 
+- 2026-11-23: R21 (std is lint-clean), from the register.
 - 2026-11-23: first version, from `std-api.md` and the stdlib register.
