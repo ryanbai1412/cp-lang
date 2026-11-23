@@ -136,6 +136,28 @@ fn every_record_fix_clears_its_lint_and_still_parses() {
     }
 }
 
+/// Every lint's quick fix is a code action in the editor, so a lint either
+/// has one (fixing its `before.cp` clears it) or says why not (`no_fix` in
+/// its `lint.toml`), and never both.
+#[test]
+fn every_lint_has_a_fix_or_says_why_not() {
+    let config = all_on();
+    let mut wrong = Vec::new();
+    for lint in LINTS {
+        let (fixed, applied) = fix(lint.trigger, &config);
+        let fixes = applied > 0 && !codes(&fixed).contains(&lint.code.0);
+        match (fixes, lint.no_fix) {
+            (true, Some(_)) => wrong.push(format!("{}: has a fix; drop `no_fix`", lint.name)),
+            (false, None) => wrong.push(format!(
+                "{}: no fix clears before.cp; add one or `no_fix = \"why\"` to its lint.toml",
+                lint.name
+            )),
+            _ => {}
+        }
+    }
+    assert!(wrong.is_empty(), "{}", wrong.join("\n"));
+}
+
 #[test]
 fn every_record_after_passes_cpl_check() {
     for lint in LINTS {

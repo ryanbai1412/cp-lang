@@ -1,12 +1,14 @@
 //! Generates the lint registry from the records in `spec/lints/<name>/`:
 //! one `pub const <NAME>: Lint` per record and `LINTS`, every lint in code
 //! order. A record's `lint.toml` holds `code`, `level`, `group`, `title` and `summary`,
-//! each a one-line basic string.
+//! each a one-line basic string, and `no_fix` when the lint has no
+//! machine fix: why not.
 
 use std::fmt::Write as _;
 use std::path::PathBuf;
 
 const KEYS: [&str; 5] = ["code", "level", "title", "summary", "group"];
+const OPTIONAL: [&str; 1] = ["no_fix"];
 const FILES: [(&str, &str); 4] = [
     ("explanation", "explain.md"),
     ("trigger", "before.cp"),
@@ -79,6 +81,12 @@ fn main() {
             fields[2], fields[3]
         )
         .unwrap();
+        writeln!(
+            out,
+            "    no_fix: {:?},",
+            fields.get(5).filter(|v| !v.is_empty())
+        )
+        .unwrap();
         for (field, file) in FILES {
             let path = dir.join(file);
             println!("cargo:rerun-if-changed={}", path.display());
@@ -103,6 +111,7 @@ fn main() {
 /// The values of `KEYS` in `text`, in that order; anything else is an error.
 fn fields(text: &str, path: &str) -> Vec<String> {
     let mut found: Vec<Option<String>> = vec![None; KEYS.len()];
+    let mut optional = vec![String::new(); OPTIONAL.len()];
     for line in text
         .lines()
         .filter(|l| !l.trim().is_empty() && !l.starts_with('#'))
@@ -110,17 +119,22 @@ fn fields(text: &str, path: &str) -> Vec<String> {
         let (key, value) = line
             .split_once(" = ")
             .unwrap_or_else(|| panic!("{path}: expected `key = \"value\"`, got {line:?}"));
-        let at = KEYS
-            .iter()
-            .position(|k| *k == key)
-            .unwrap_or_else(|| panic!("{path}: unknown key {key:?}; the keys are {KEYS:?}"));
+        if let Some(at) = OPTIONAL.iter().position(|k| *k == key) {
+            optional[at] = unquote(value, path);
+            continue;
+        }
+        let at = KEYS.iter().position(|k| *k == key).unwrap_or_else(|| {
+            panic!("{path}: unknown key {key:?}; the keys are {KEYS:?} and {OPTIONAL:?}")
+        });
         found[at] = Some(unquote(value, path));
     }
-    found
+    let mut fields: Vec<String> = found
         .into_iter()
         .zip(KEYS)
         .map(|(v, k)| v.unwrap_or_else(|| panic!("{path}: missing {k:?}")))
-        .collect()
+        .collect();
+    fields.extend(optional);
+    fields
 }
 
 /// A TOML basic string's contents, with its `\"` and `\\` escapes.

@@ -130,6 +130,9 @@ pub struct Lint {
     pub group: Group,
     pub title: &'static str,
     pub summary: &'static str,
+    /// Why `cpl lint --fix` (and the editor's quick fix) has no rewrite for
+    /// it; `None` when it has one.
+    pub no_fix: Option<&'static str>,
     pub explanation: &'static str,
     pub trigger: &'static str,
     pub fix: &'static str,

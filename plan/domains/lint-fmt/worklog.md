@@ -282,3 +282,4 @@ Newest first: what landed (commit), evidence, next, blocked, requests from other
 - 2026-11-23: `cpl-lint` build fails when two records claim one code (L0572/L0573 collided twice between allocation and landing).
 - 2026-11-23: L0577 skips a shift that is only written (difference array, `diff_by_hand`); newcomer marks for the 12 true unmarked findings, `score.py --unmarked`. Newcomer 152/152, 0 unmarked, fixes 77/77.
 - 2026-11-23: `cpl_fmt::format_range` / `format_on_type` (range.rs) for LSP range and on-type formatting; every newcomer line formats alone, idempotent, tokens kept. Tools wires `textDocument/rangeFormatting` and `onTypeFormatting` (`\n`, `:`).
+- 2026-11-23: every lint has a machine fix (34; the editor quick fix) or `no_fix = "why"` in its lint.toml (62); test `every_lint_has_a_fix_or_says_why_not`. Asked site to show `no_fix` on /lints pages, diagnostics to do the same for spec/checker-lints.
