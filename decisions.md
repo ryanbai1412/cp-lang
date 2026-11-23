@@ -7431,3 +7431,7 @@ touched; after `:` the cursor's line. `use` runs are sorted only by a
 whole-file format. Reason: one layout engine for file, range and keystroke,
 so the three can never disagree. Reverse: drop `range.rs`; the LSP falls
 back to whole-file formatting.
+
+## 345. `binom_by_hand` also reads a factorial table times two inverse-table entries; `lint_std_names` 180 -> 181 (2026-11-23)
+
+L0557 flagged only `fact[a] * inv(fact[b]) * inv(fact[a - b])`, one table. Ports and newcomers more often keep the inverses in a second table: `fact[a + b] * inv_fact[a] * inv_fact[b]` (atcoder_dp_y) or `fact[n] * ifact[k] % P * ifact[n - k] % P` (cco22p4). The rule now also matches a product of `f[A]` and two entries of a table named for inverses (`inv` in the name, or `i` + the factorial table's name) whose indices split `A` (`A = B + C`, or `C = A - B`); a `T(x)` index wrapper is read through. The name test keeps `xs[i + j] * ys[i] * ys[j]` quiet; it is the one string match added. Reverse: drop `binom_inverse_table` in `crates/cpl-lint/src/rules/hand_math.rs` and its test, and lower the baseline.

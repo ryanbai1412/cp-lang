@@ -284,6 +284,48 @@ impl HandMath<'_> {
                 }
             }
         }
+        self.binom_inverse_table(expr, &hits);
+    }
+
+    /// `fact[a + b] * inv_fact[a] * inv_fact[b]`: the factorials and their
+    /// inverses kept in two tables, the inverse one named after its job.
+    fn binom_inverse_table(&mut self, expr: &Expr, hits: &[(&str, &Expr)]) {
+        let key = |e: &Expr| -> String {
+            match &unparen(e).kind {
+                ExprKind::Call { args, .. } if args.len() == 1 => self.text(args[0].value.span),
+                _ => self.text(e.span),
+            }
+            .to_string()
+        };
+        for &(f, a) in hits {
+            for (i, &(g, b)) in hits.iter().enumerate() {
+                let inverse = g.contains("inv") || g == format!("i{f}");
+                if g == f || !inverse {
+                    continue;
+                }
+                for &(g2, c) in &hits[i + 1..] {
+                    let (ka, kb, kc) = (key(a), key(b), key(c));
+                    let split = ka == format!("{kb} + {kc}")
+                        || ka == format!("{kc} + {kb}")
+                        || kc == format!("{ka} - {kb}")
+                        || kb == format!("{ka} - {kc}");
+                    if g2 != g || !split {
+                        continue;
+                    }
+                    self.products.push(expr.span);
+                    let k = if kb == format!("{ka} - {kc}") { kc } else { kb };
+                    self.warn(
+                        &BINOM_BY_HAND,
+                        expr.span,
+                        format!("`{f}[..]` over two `{g}[..]` entries is `{ka}` choose `{k}`, by hand"),
+                        format!(
+                            "`Comb<Z>(limit)` (`std.mod`, with `type Z = Mod<P>`) keeps the factorial tables: `c.choose({ka}, {k})` is the binomial, `0` when `{k} > {ka}`"
+                        ),
+                    );
+                    return;
+                }
+            }
+        }
     }
 
     fn runs(&mut self, stmt: &Stmt) {

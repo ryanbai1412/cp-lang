@@ -1852,3 +1852,26 @@ fn plain_math_reads_latex_as_unicode() {
     );
     assert_eq!(plain("no math, `xs[0]`"), "no math, `xs[0]`");
 }
+
+#[test]
+fn binom_from_a_factorial_and_an_inverse_factorial_table_is_flagged() {
+    let mod_tables = "type Z = Mod<998244353>\nlet (a, b): (0..=1000, 0..=1000) = read()\nvar fact: List<Z> = [Z(1)]\nfor i in 1..=2000:\n    fact.push(fact[i - 1] * Z(i))\nvar inv_fact: List<Z> = []\nfor f in fact:\n    inv_fact.push(f.inv())\nprint(fact[a + b] * inv_fact[a] * inv_fact[b])\n";
+    assert!(
+        codes(mod_tables).contains(&"L0557"),
+        "{:?}",
+        codes(mod_tables)
+    );
+    let int_tables = "fn c(fact: List<Int>, ifact: List<Int>, n: Int, k: Int) -> Int =\n    fact[n] * ifact[k] % 998244353 * ifact[n - k] % 998244353\n";
+    assert!(
+        codes(int_tables).contains(&"L0557"),
+        "{:?}",
+        codes(int_tables)
+    );
+    let convolution =
+        "fn f(xs: List<Int>, ys: List<Int>, i: Int, j: Int) -> Int = xs[i + j] * ys[i] * ys[j]\n";
+    assert!(
+        !codes(convolution).contains(&"L0557"),
+        "{:?}",
+        codes(convolution)
+    );
+}
