@@ -1,12 +1,16 @@
-// NOI 2019 Jump: n cities at (x_i, y_i) in [1..w] x [1..h] and m jump devices;
-// device j at city u_j takes time t_j to jump to any city inside [lx, rx] x
-// [ly, ry]. Find shortest time from city 1 to every city 2..=n.
-// Rethought without std::set (which is missing in proto/cpc and tight on
-// memory): build a static X-segment tree whose nodes store cities sorted by y,
-// paired with a path-compressed next-alive link array per node. Run Dijkstra
-// on cities + devices; each city is visited and unlinked from each of its
-// O(log w) segtree nodes at most once.
+// Source: NOI 2019 P4 (Jump), https://dmoj.ca/problem/noi19p4
+// Problem: n <= 7e4 cities at distinct points of a w x h grid (w, h <= n) and m <= 1.5e5 portals;
+//   portal i at city p_i takes time t_i <= 1e4 to any city in [L_i, R_i] x [D_i, U_i]. Print the
+//   least time from city 1 to each of cities 2..n.
+// Solution: Dijkstra over cities and portals. A portal's distance is final when popped, so every
+//   city in its rectangle not yet reached gets exactly that distance and can be removed. A static
+//   segment tree over x keeps, per node, its cities sorted by y with path-compressed next-alive
+//   links; a rectangle harvests its O(log w) nodes from the first y >= D, skipping dead cities,
+//   and each city is unlinked from each of its nodes at most once.
+//   O((n log w + m log w log n) + (n + m) log(n + m)).
 // original: corpus/submissions/3800719.cpp
+// Rethought without std::set (which is missing in proto/cpc and tight on
+// memory).
 let n: 1..=70000 = read()
 let m: 1..=150000 = read()
 let w: 1..=70000 = read()

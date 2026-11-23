@@ -1,4 +1,13 @@
-// Runnable today/ port of IOI '20 P5 (Mushrooms) for real Rust `cpl build`.
+// Source: IOI 2020 P5 (Counting Mushrooms), https://dmoj.ca/problem/ioi20p5
+// Problem: interactive; n <= 2e4 mushrooms of species A or B, mushroom 0 is A. use_machine(x)
+//   on distinct labels returns the number of adjacent pairs of different species; at most 2e4
+//   calls and total length 1e5. Return the number of A mushrooms.
+// Solution: until 199 mushrooms are classified, take up to 5 unknowns at a time and place them
+//   among known mushrooms in an arrangement found by brute force over permutations, so that two
+//   queries separate all 2^k species masks (a two-level decision tree, cached per shape).
+//   Then interleave the larger known same-species pool with unknowns: k unknowns per query,
+//   ceil(res / 2) of them differ from the pool and the parity of res gives the last one.
+//   A few hundred queries and O(n) total length.
 // Stdin: n, then hidden binary mushroom types s[0..n] (0 = A, 1 = B; s[0] == 0).
 // Simulates use_machine, runs the decision-tree + interleaving solver, prints count of A.
 // original: corpus/submissions/4736004.cpp

@@ -1,4 +1,13 @@
-// Runnable today/ port of EGOI '22 P4 (Tourists) for proto/cpc.
+// Source: EGOI 2022 P4 (Tourists), https://oj.uz/problem/view/EGOI22_tourists
+// Problem: a tree of n <= 2e5 cities; m <= 2e5 tourists start in cities a_i with opinion 0.
+//   q <= 2e5 queries: "t f g c" moves tourists f..g to city c, each losing its path length;
+//   "e c d" adds d <= 1e9 to everyone now in city c; "q v" prints tourist v's opinion.
+// Solution: tourists with consecutive numbers in one city form intervals (an assign-range map
+//   whose starts sit in a max segment tree); a 't' visits the intervals it overlaps and adds
+//   O(1) new ones, so the work is amortized. Each city keeps a treap of its tourists keyed by
+//   number with lazy add: a moved range is split out of the old city's treap, gets
+//   -dist(old, c) and is merged into c's treap; an event adds at c's root, and a query walks
+//   the treap of the city covering v, summing lazies. O((m + q) log m) amortized.
 // Uses Rooted for O(1) tree dist, a max-SegTree ODT for O(log m) interval lookup/split,
 // and flat parallel arrays for the per-city lazy-add treap arena.
 // original: corpus/submissions/5199667.cpp

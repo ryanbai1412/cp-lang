@@ -1,4 +1,15 @@
-// CCO '20 P5 — Interval Collection (today form for proto/cpc)
+// Source: CCO 2020 P5 (Interval Collection), https://dmoj.ca/problem/cco20p5
+// Problem: Q <= 5e5 events add or remove one copy of an interval [l, r] (1 <= l < r <= 1e6). After
+//   each, pick a non-empty subset S: prefer one whose intervals share no common interval of
+//   positive length, else the smallest such greatest common interval, then the shortest least
+//   enclosing interval; print that enclosing length.
+// Solution: offline over time: each interval copy lives on a time range, put on O(log Q) nodes of
+//   a segment tree over time, walked by DFS with rollback. Along the path keep the shortest
+//   interval, the interval with min r (max l on ties) and the one with max l (min r on ties); if
+//   min r >= max l, those two give the smallest common part and its enclosing length. Two
+//   disjoint intervals (r' <= l) beat that; the best r - l' over such pairs comes from Fenwick
+//   prefix-max trees (indexed by r, holding l, and a mirrored one) with undo logs.
+//   O(Q log Q log C).
 // original: corpus/submissions/4562195.cpp
 let q: 1..=500_000 = read()
 domain Q = 0..q

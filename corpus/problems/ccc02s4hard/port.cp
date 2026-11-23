@@ -1,4 +1,12 @@
-// CCC '02 S4 (Hard) — Bridge Crossing (today form for proto/cpc)
+// Source: CCC 2002 S4 (Bridge Crossing, Hard), https://dmoj.ca/problem/ccc02s4hard
+// Problem: a queue of Q <= 1e5 people (name, crossing time <= 1e9) crosses a bridge in consecutive
+//   groups of at most M <= 1e5; a group takes its slowest member's time. Print "Total Time: T"
+//   for the min total, then the names of one optimal grouping, a group per line.
+// Solution: dp[i] = min over i < j <= i + M of max(t_i..t_{j-1}) + dp[j], filled from the right.
+//   A monotone stack gives the range of j where t_i is that max; a segment tree over j keeps
+//   min dp[j] and min dp[j] + max, and a lazy tag sets the max on that range. Each step is one
+//   range assign and one range min (ties to the smallest j), O(Q log Q); the groups follow the
+//   stored argmins.
 // original: corpus/submissions/4157744.cpp
 let m: 1..=100_000 = read()
 let n: 1..=100_000 = read()

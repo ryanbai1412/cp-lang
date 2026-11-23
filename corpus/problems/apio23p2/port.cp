@@ -1,4 +1,13 @@
-// Runnable today/ port of APIO '23 P2 (Sequence) for proto/cpc.
+// Source: APIO 2023 P2 (Sequence), https://dmoj.ca/problem/apio23p2
+// Problem: A of length N <= 5e5 with 1 <= A[i] <= N. Over all subarrays and each median x of it
+//   (both middle elements if the length is even), print the max number of occurrences of x in it.
+// Solution: v is a median of a subarray holding c copies iff |#greater - #smaller| <= c. For each
+//   v in increasing order, a segment tree over prefixes stores +1/-1/0 for greater/smaller/v with
+//   min and max prefix sum and the count of v. The copies of v cut the array into blocks, each a
+//   range [yl, yr] of reachable balances plus the count x before it; blocks i < j work iff their
+//   balances can differ by at most x_j - x_i. Overlapping ranges: a range-chmax segment tree swept
+//   from the right; disjoint ones: a sweep by balance with a max segment tree keyed by x - y, then
+//   mirrored. Values with no more copies than the answer are skipped. O(N log N).
 // Stdin protocol: n, then n integers a[0..n] in 1..=n.
 // original: corpus/submissions/5593302.cpp
 

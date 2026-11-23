@@ -1,4 +1,12 @@
-// Runnable today/ port of IATI '21 A13 for real Rust `cpl build`.
+// Source: IATI 2021 Senior Day 1 Task 3 (News), https://dmoj.ca/problem/iati21a13
+// Problem: a tree of N <= 2e5 workers rooted at 1, some initially knowing the news; Q <= 2e5
+//   queries on x's subtree down to k levels below x (0 <= k <= N): "1 x k" tells all of them
+//   the news, "2 x k" prints how many of them know it.
+// Solution: a worker learns the news once, so first find offline the first update covering
+//   each vertex: a DFS keeps the active ancestor updates in a min segment tree indexed by their
+//   depth limit dep(x) + k, and vertex u takes the min over limits >= dep(u). Replaying the
+//   queries, a segment tree over Euler order keeps each node's on-vertex depths sorted; a
+//   count is a binary search per node on [tin x, tout x], depth <= dep(x) + k, O(log^2 N).
 // Stdin: n, n-1 edges (1-based), init[0..n] (0/1), q, then q queries (ty, u, k).
 // Uses top-level recursive fns (working around cpl-emit recursive nested-fn self-capture bug).
 // original: corpus/submissions/5052303.cpp

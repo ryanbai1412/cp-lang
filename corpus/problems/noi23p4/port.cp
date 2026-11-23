@@ -1,4 +1,13 @@
-// Runnable today/ port of NOI '23 P4 (Trade) for real Rust `cpl build`.
+// Source: NOI 2023 P4 (Trade), https://dmoj.ca/problem/noi23p4
+// Problem: 2^n - 1 cities (2 <= n <= 18) in a heap-shaped tree: city i >= 2 has a one-way road to
+//   i/2 of length a_i, plus m <= 2^n directed roads u -> v with v in u's subtree (lengths <= 1e9).
+//   Print the sum of dist(x, y) over all ordered pairs (0 if unreachable) mod 998244353.
+// Solution: leaving x's subtree means first stepping up to its parent, so outside it
+//   dist(x, y) = a_x + dist(parent, y). A DFS from the root keeps d = dist(x, .) - dw(x),
+//   dw being x's road sum to the root: the parent's values already give every path via the
+//   parent, then a Dijkstra seeded at x, restricted to x's subtree, improves the inside. Add the
+//   reached values plus offsets, recurse, and restore the subtree's values on return.
+//   O((2^n + m) n log 2^n).
 // original: corpus/submissions/5723063.cpp
 
 const MODV = 998244353
