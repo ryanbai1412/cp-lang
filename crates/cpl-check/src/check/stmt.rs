@@ -1311,7 +1311,7 @@ impl<'a> Checker<'a> {
                         .map(|f| f.name.text.clone())
                         .collect(),
                 );
-                self.methods(&s.methods, &self_ty);
+                self.bounded_methods(&s.methods, &self_ty, &s.bounds);
                 self.cached_fields = prev_cached;
                 self.leave_body(body);
             }
@@ -1498,7 +1498,7 @@ impl<'a> Checker<'a> {
                     );
                 }
                 self.owned(&owner, &body.stmts);
-                self.methods(&body.stmts, &self_ty);
+                self.bounded_methods(&body.stmts, &self_ty, bounds);
                 self.leave_body(scope);
             }
             StmtKind::Use { .. } | StmtKind::Break(_) | StmtKind::Continue(_) | StmtKind::Error => {
@@ -2022,7 +2022,7 @@ impl<'a> Checker<'a> {
 
     /// Checks the fns, laws and constants of a struct, enum, trait or impl
     /// body. The struct's fields can be named in them without `self.`.
-    fn methods(&mut self, methods: &[Stmt], self_ty: &Ty) {
+    pub(crate) fn methods(&mut self, methods: &[Stmt], self_ty: &Ty) {
         let fields = match self_ty {
             Ty::Named { name, .. } => match self.global(name).as_deref() {
                 Some(Def::Struct { fields, .. }) => fields.clone(),

@@ -72,7 +72,7 @@ Maximum non-empty subarray summary (Kadane monoid).
 - `fn join(a: MaxCount<T>, b: MaxCount<T>) -> MaxCount<T>` — \(O(1)\); The larger value with its count; on equal values, the value with both counts summed.
 - `fn monoid() -> Monoid<MaxCount<T>>` — \(O(1)\); `Monoid(id, MaxCount.join)` with identity value the low end of `T` (as `Monoid.of(max)`) and count 0, for `SegTree` and `fold`.
 
-## `struct Affine<T>(pub a: T, pub b: T)`
+## `struct Affine<T: Mul>(pub a: T, pub b: T)`
 
 \(O(1)\) per composition/eval.
 

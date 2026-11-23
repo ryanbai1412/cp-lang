@@ -298,7 +298,7 @@ pub fn knuth(n: Int, cost: (Int, Int) -> Int) -> List<List<Int>>:
 /// ties: among counts with equal penalized value, `solve` must report the least; `aliens` relies on it
 /// traps: when `k < 0`, when `lambdas` is empty, or when no `λ` in `lambdas` gives a count of at most `k`
 /// example: `aliens(5, lam => (0..=10).map(c => (val: (c - 3) * (c - 3) + lam * c, count: c)).min(by: p => (p.val, p.count))!) == 4`
-pub fn aliens<L>(k: Int, solve: L -> (val: L, count: Int), lambdas: ?Range<L> = None) -> L:
+pub fn aliens<L: Add + Sub + Mul>(k: Int, solve: L -> (val: L, count: Int), lambdas: ?Range<L> = None) -> L:
     assert k >= 0
     var lo: L = -1
     var hi: L = 1
@@ -387,7 +387,7 @@ pub fn monge_paths<N, K>(nodes: List<N>, cost: (N, N) -> K) -> (val: List<K>, pr
 /// `monge_path` one node at a time, for a DP whose next weight depends on the
 /// optimum just found. `next()` returns the optimum at the next node and the
 /// node before it; `val(i)` reads any node already reached.
-pub struct MongePath<N, K>(nodes: List<N>, cost: (N, N) -> K):
+pub struct MongePath<N, K: Add>(nodes: List<N>, cost: (N, N) -> K):
     // Online LARSCH: row r is node r + 1, column c is node c. Level l keeps a
     // stack of surviving columns for rows 2^(l+1) - 1 apart, and `bat[l]` is
     // the stack slot the best column for level l's next odd row starts at.

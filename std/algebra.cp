@@ -330,7 +330,7 @@ pub struct MaxCount<T>(pub val: T, pub count: Int):
     )
 
 /// \(O(1)\) per composition/eval. Affine map `x -> a * x + b` over any ring `T` (`Int`, `Mod<P>`).
-pub struct Affine<T>(pub a: T, pub b: T):
+pub struct Affine<T: Mul>(pub a: T, pub b: T):
     /// The identity map `x -> 1 * x + 0`.
     ///
     /// cost: \(O(1)\)

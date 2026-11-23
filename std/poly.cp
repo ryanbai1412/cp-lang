@@ -394,7 +394,7 @@ pub fn prod_linear<P>(roots: List<Mod<P>>) -> List<Mod<P>>:
 /// example: `type Z = Mod<998244353>; let a: List<Z> = [0, 0, 1]; taylor_shift(a, Z(1)) == [Z(1), Z(2), Z(1)]`
 pub fn taylor_shift<P>(a: List<Mod<P>>, c: Mod<P>) -> List<Mod<P>>:
     let n = a.len
-    if n <= 1 or c.v == 0: return a
+    if n <= 1 or c.v == 0: return a.copy()
     assert n < P, "poly.taylor_shift requires a.len < P"
     var fact = List.filled(n, Mod<P>(1))
     var ifact = List.filled(n, Mod<P>(1))
@@ -712,7 +712,7 @@ pub fn interpolate<P>(xs: List<Mod<P>>, ys: List<Mod<P>>) -> List<Mod<P>>:
     out
 
 /// \(O(n)\) storage. Algebraic polynomial / formal power series wrapper over `T` (lowest degree first).
-pub struct Poly<T>(pub c: List<T>):
+pub struct Poly<T: Div>(pub c: List<T>):
     /// A polynomial with coefficients `c`, lowest degree first, stored as given (trailing zeros
     /// kept, so `len` is `c.len`).
     ///

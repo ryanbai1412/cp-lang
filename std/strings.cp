@@ -1747,7 +1747,7 @@ pub struct Hash2D<R, C>(bases: (Int, Int)):
     pub fn rect(self, rows: Range<R>, cols: Range<C>) -> HashVal:
         with lint(unproven_list_index: allow)
         if rows.is_empty or cols.is_empty: return HashVal(0, 0)
-        let (r1, r2, c1, c2) = (rows.start.ord, rows.end.ord, cols.start.ord, cols.end.ord)
+        let (r1, r2, c1, c2) = (rows.l.ord, rows.r.ord, cols.l.ord, cols.r.ord)
         assert (0 <= r1 and r1 <= r2 and r2 < pow_r1.len)
         assert (0 <= c1 and c1 <= c2 and c2 < stride)
         let o1 = r1 * stride
@@ -2039,7 +2039,7 @@ pub struct DynamicHash<D>:
     /// example: `let h = DynamicHash("xyxy"); h.get(0..2) == h.get(2..4)`
     pub fn get(self, r: Range<D>) -> HashVal:
         if r.is_empty: return HashVal(0, 0)
-        self.span(r.start.ord, r.end.ord)
+        self.span(r.l.ord, r.r.ord)
 
     /// The hash of the elements over `r` read backwards, comparable with `get`.
     ///
@@ -2050,7 +2050,7 @@ pub struct DynamicHash<D>:
     pub fn rev_get(self, r: Range<D>) -> HashVal:
         with lint(unproven_list_index: allow)
         if r.is_empty: return HashVal(0, 0)
-        let (l, e) = (r.start.ord, r.end.ord)
+        let (l, e) = (r.l.ord, r.r.ord)
         let s1 = (dh_sum(fwd1, e, RH_M1) - dh_sum(fwd1, l, RH_M1) + RH_M1) % RH_M1
         let s2 = (dh_sum(fwd2, e, RH_M2) - dh_sum(fwd2, l, RH_M2) + RH_M2) % RH_M2
         HashVal(s1 * inv1[l] % RH_M1, s2 * inv2[l] % RH_M2)

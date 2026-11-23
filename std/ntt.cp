@@ -285,7 +285,7 @@ pub const subset = Disjoint()
 /// example: `convolve([0, 1, 1, 1], [0, 1, 1, 1], on: lcm) == [0, 1, 3, 3]`
 /// example: `convolve([0, 1, 3], [0, 2, 5], over: Semiring(min, +), shape: Both) == [0, 1, 3, 5, 8]`
 /// example: `let e: List<Int> = []; convolve([1, 2], e) == []`
-pub fn convolve<T, O, R>(
+pub fn convolve<T: Add + Sub + Mul, O, R>(
     a: List<T>,
     b: List<T>,
     on: O = (x, y) => x + y,
@@ -339,7 +339,7 @@ fn same<A, B>(a: A, b: B) -> Bool = a == b
 
 /// `convolve` over another semiring: `out[i + j]` folds `over.mul(a[i], b[j])` with `over.add`.
 /// `shape: Both` merges slopes (both inputs convex for `min`, concave for `max`, `mul` is `+`).
-fn semiring_convolve<T, R>(a: List<T>, b: List<T>, over: R, shape: ?Curved) -> List<T>:
+fn semiring_convolve<T: Add + Sub, R>(a: List<T>, b: List<T>, over: R, shape: ?Curved) -> List<T>:
     with lint(unproven_list_index: allow)
     if a.is_empty or b.is_empty: return []
     let add = Monoid<T>.of(over.add)

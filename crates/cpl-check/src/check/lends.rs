@@ -2721,6 +2721,9 @@ impl<'a> Checker<'a> {
             return;
         }
         let root = place.root;
+        if self.cached_fields.contains(&root) {
+            return;
+        }
         let decl = self.let_decl(&root);
         let message = format!("`{root}` is not a var, so `{}` can't change it", show(call));
         // R07.11.1: an in-place method needs a `var` source.

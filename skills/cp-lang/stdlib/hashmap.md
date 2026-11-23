@@ -28,7 +28,7 @@ Fields: `ks: List<Int>`, `vs: List<V>`, `state: List<Int>`, `default_val: V`, `s
 - `@get fn values(self) -> yields V` — \(O(1)\) to make, \(O(\mathit{capacity})\) to walk; The values, one per entry.
 - `fn absorb(mut self, mut other: FlatMap<V>, join: ?((V, V) -> V) = None)` — \(O(\min(\lvert \mathit{self} \rvert, \lvert \mathit{other} \rvert))\) expected; Merge all entries from `other` into `self` (emptying `other`), combining collisions with `join` or overwriting.
 
-## `struct Counter<K, V = Int>`
+## `struct Counter<K, V: Add = Int>`
 
 Default-valued frequency / weight map over hashable keys `K`.
 

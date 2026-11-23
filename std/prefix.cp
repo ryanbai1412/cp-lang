@@ -41,7 +41,7 @@ pub fn scan<D, T, M>(self: [D]T, f: M, from: ?T = None) -> Prefix<D, T>:
 pub enum FillOrder = Forward | Reverse
 
 /// Append-only 1-D prefix/suffix sum table returned by `Prefix<D, T>.filling(...)`.
-pub struct FillPrefix<D, T>:
+pub struct FillPrefix<D, T: Add + Sub>:
     p: [D.cuts]T
     pub rev: Bool
     pub next: Int
@@ -88,10 +88,10 @@ pub struct FillPrefix<D, T>:
     pub fn fold(self, r: Range<D>) -> T:
         if r.is_empty: return T.zero
         if rev:
-            let in_filled = r.start.ord > next
+            let in_filled = r.l.ord > next
             assert in_filled
-            return self.p[r.start] - self.p[r.end]
-        self.prefix(r.end) - self.prefix(r.start)
+            return self.p[r.l] - self.p[r.r]
+        self.prefix(r.r) - self.prefix(r.l)
 
 /// Prefix sums over a domain `D`, a 2-D grid `(R, C)`, or a `List<T>`, of `Int`s,
 /// `F64`s, `Mod`s, or anything else with `+`, `-` and a zero.
@@ -100,7 +100,7 @@ pub struct FillPrefix<D, T>:
 /// in fill order; `.fold(...)` and `.prefix(...)` are \(O(1)\) over the already-filled prefix or suffix.
 /// On `a: [R, C]T`, `Prefix(a)` is the 2-D `Prefix<R, C, T>`, folding rectangles with
 /// `fold(rows, cols)`; it is never a 1-D table over the cells.
-pub struct Prefix<D, T>:
+pub struct Prefix<D, T: Add + Sub>:
     p: [D.cuts]T
 
     /// Build 1-D prefix sums over `a: [D]T`; `Prefix(a)` calls it.
@@ -146,7 +146,7 @@ pub struct Prefix<D, T>:
     /// example: `domain D = 0..3; let p = Prefix<D, Int>([D] v => 1 + Int(v)); p.fold(1..=2) == 5`
     pub fn fold(self, r: Range<D>) -> T:
         if r.is_empty: return T.zero
-        self.p[r.end] - self.p[r.start]
+        self.p[r.r] - self.p[r.l]
 
     /// The sum over a wrapping run of positions, e.g. `a.ring.span(i, k)`: the part from `r.start`
     /// to `D.last` plus the part from `D.first` to `r.end` when it wraps.
@@ -229,7 +229,7 @@ pub struct Prefix<D, T>:
         Some(D.cuts.nth(lo))
 
 /// Internal append-only 2-D prefix/suffix sum table returned by `Prefix<R, C, T>.filling(...)`.
-pub struct _FillPrefix2 < R, C, T >:
+pub struct _FillPrefix2 <R, C, T: Add + Sub>:
     p: [R.cuts, C.cuts]T
     pub rev: Bool
     pub next: Int
@@ -280,25 +280,25 @@ pub struct _FillPrefix2 < R, C, T >:
     pub fn fold(self, rows: Range<R>, cols: Range<C>) -> T:
         if rows.is_empty or cols.is_empty: return T.zero
         if rev:
-            let in_filled = rows.start.ord * C.K + cols.start.ord > next
+            let in_filled = rows.l.ord * C.K + cols.l.ord > next
             assert in_filled
             return self.p[
-                rows.start,
-                cols.start,
-            ] - self.p[rows.end, cols.start] - self.p[
-                rows.start,
-                cols.end,
-            ] + self.p[rows.end, cols.end]
-        self.prefix(rows.end, cols.end) - self.prefix(rows.start, cols.end) - self.prefix(
-            rows.end,
-            cols.start,
+                rows.l,
+                cols.l,
+            ] - self.p[rows.r, cols.l] - self.p[
+                rows.l,
+                cols.r,
+            ] + self.p[rows.r, cols.r]
+        self.prefix(rows.r, cols.r) - self.prefix(rows.l, cols.r) - self.prefix(
+            rows.r,
+            cols.l,
         ) + self.prefix(
-            rows.start,
-            cols.start,
+            rows.l,
+            cols.l,
         )
 
 /// Internal 2-D shape of `Prefix<R, C, T>`, constructed by `Prefix(a)` or `Prefix<R, C, T>.filling(...)`.
-pub struct _Prefix2 < R, C, T >:
+pub struct _Prefix2 <R, C, T: Add + Sub>:
     p: [R.cuts, C.cuts]T
 
     /// Build 2-D prefix sums over `a: [R, C]T`; `Prefix(a)` on a grid calls it.
@@ -342,16 +342,16 @@ pub struct _Prefix2 < R, C, T >:
     /// traps: never
     /// example: `domain R = 0..2; domain C = 0..3; let p = Prefix<R, C, Int>([R, C] (r, c) => 1 + 3 * Int(r) + Int(c)); p.fold(0..=1, 1..=2) == 16`
     pub fn fold(self, rows: Range<R>, cols: Range<C>) -> T:
-        self.p[rows.end, cols.end] - self.p[rows.start, cols.end] - self.p[
-            rows.end,
-            cols.start,
+        self.p[rows.r, cols.r] - self.p[rows.l, cols.r] - self.p[
+            rows.r,
+            cols.l,
         ] + self.p[
-            rows.start,
-            cols.start,
+            rows.l,
+            cols.l,
         ]
 
 /// Internal append-only list prefix/suffix sum table returned by `Prefix<T>.filling(n, ...)`.
-pub struct _FillPrefixList < T >:
+pub struct _FillPrefixList <T: Add + Sub>:
     p: List<T>
     pub rev: Bool
     pub next: Int
@@ -397,7 +397,7 @@ pub struct _FillPrefixList < T >:
         self.prefix(r.end) - self.prefix(r.start)
 
 /// Internal list shape of `Prefix<T>`, constructed by `Prefix(a)` or `Prefix<T>.filling(n, ...)`.
-pub struct _PrefixList < T >:
+pub struct _PrefixList <T: Sub>:
     p: List<T>
 
     /// Build 1-D prefix sums over `a: List<T>`; `Prefix(a)` on a list calls it.
@@ -486,7 +486,7 @@ pub fn suffix_fold<D, T, M>(op: M, a: [D]T) -> [D.cuts]T:
 
 /// Offline difference array: `Diff<D, T>()` for 1-D ranges or `Diff<R, C, T>()` for 2-D grids.
 /// \(O(1)\) range/rectangle `add`, \(O(\lvert D \rvert)\) or \(O(\lvert R \rvert \cdot \lvert C \rvert)\) `finish`.
-pub struct Diff<D, T>:
+pub struct Diff<D, T: Add + Sub>:
     d: [D.cuts]T
 
     /// Create an all-zero 1-D difference array over `D`.
@@ -506,8 +506,8 @@ pub struct Diff<D, T>:
     /// example: `domain D = 0..4; var d = Diff<D, Int>(); d.add(1..3, 5); d.add(2..=3, 1); [d.finish()[v] for v in D] == [0, 5, 6, 1]`
     pub fn add(mut self, r: Range<D>, x: T):
         if r.is_empty: return
-        d[r.start] = d[r.start] + x
-        d[r.end] = d[r.end] - x
+        d[r.l] = d[r.l] + x
+        d[r.r] = d[r.r] - x
 
     /// The accumulated values across `D`: each position's total of the `add`s covering it. The
     /// structure is unchanged and can take more `add`s.
@@ -526,7 +526,7 @@ pub struct Diff<D, T>:
         out
 
 /// Internal 2-D shape of `Diff<R, C, T>`: \(O(1)\) rectangle `add`, \(O(\lvert R \rvert \cdot \lvert C \rvert)\) `finish`.
-pub struct _Diff2 < R, C, T >:
+pub struct _Diff2 <R, C, T: Add + Sub>:
     d: [R.cuts, C.cuts]T
 
     /// Create an all-zero 2-D difference array over `(R, C)`.
@@ -546,10 +546,10 @@ pub struct _Diff2 < R, C, T >:
     /// example: `domain R = 0..2; domain C = 0..3; var d = Diff<R, C, Int>(); d.add(0..=1, 1..=2, 3); d.finish()[R(1), C(2)] == 3 and d.finish()[R(0), C(0)] == 0`
     pub fn add(mut self, rows: Range<R>, cols: Range<C>, x: T):
         if rows.is_empty or cols.is_empty: return
-        d[rows.start, cols.start] = d[rows.start, cols.start] + x
-        d[rows.start, cols.end] = d[rows.start, cols.end] - x
-        d[rows.end, cols.start] = d[rows.end, cols.start] - x
-        d[rows.end, cols.end] = d[rows.end, cols.end] + x
+        d[rows.l, cols.l] = d[rows.l, cols.l] + x
+        d[rows.l, cols.r] = d[rows.l, cols.r] - x
+        d[rows.r, cols.l] = d[rows.r, cols.l] - x
+        d[rows.r, cols.r] = d[rows.r, cols.r] + x
 
     /// The accumulated grid across `(R, C)`: each cell's total of the `add`s covering it. The
     /// structure is unchanged and can take more `add`s.
@@ -571,7 +571,7 @@ pub struct _Diff2 < R, C, T >:
 
 /// \(O(\lvert D \rvert)\) space. Online sweep-line difference accumulator: schedule future range adds in \(O(1)\)
 /// and advance a cursor through `D` in `order` in \(O(1)\) per position.
-pub struct SweepAdd<D, T>:
+pub struct SweepAdd<D, T: Add + Sub>:
     d: [D.cuts]T
     cur: T
     pub rev: Bool
@@ -596,11 +596,11 @@ pub struct SweepAdd<D, T>:
     pub fn add(mut self, r: Range<D>, x: T):
         if r.is_empty: return
         if rev:
-            d[r.end] = d[r.end] + x
-            d[r.start] = d[r.start] - x
+            d[r.r] = d[r.r] + x
+            d[r.l] = d[r.l] - x
         else:
-            d[r.start] = d[r.start] + x
-            d[r.end] = d[r.end] - x
+            d[r.l] = d[r.l] + x
+            d[r.r] = d[r.r] - x
 
     /// Advance the cursor to `i`, the next position in fill order, and return the accumulated
     /// value there: the total of every scheduled `add` covering `i`.
@@ -622,7 +622,7 @@ pub struct SweepAdd<D, T>:
 
 /// \(O(\lvert D \rvert)\) space. Second-order offline difference array for arithmetic-progression range adds:
 /// \(O(1)\) `add_arith`, \(O(\lvert D \rvert)\) `finish`.
-pub struct ArithDiff<D, T>:
+pub struct ArithDiff<D, T: Add + Sub + Mul>:
     d: [D.cuts]T
     e: [D.cuts]T
 
@@ -645,10 +645,10 @@ pub struct ArithDiff<D, T>:
     /// example: `domain D = 0..5; var d = ArithDiff<D, Int>(); d.add_arith(1..=3, 10, 2); [d.finish()[v] for v in D] == [0, 10, 12, 14, 0]`
     pub fn add_arith(mut self, r: Range<D>, start: T, step: T):
         if r.is_empty: return
-        d[r.start] = d[r.start] + start
-        e[r.start] = e[r.start] + step
-        d[r.end] = d[r.end] - (start + step * r.len)
-        e[r.end] = e[r.end] - step
+        d[r.l] = d[r.l] + start
+        e[r.l] = e[r.l] + step
+        d[r.r] = d[r.r] - (start + step * r.len)
+        e[r.r] = e[r.r] - step
 
     /// Add a constant `x` to every position in `r`: `add_arith(r, x, 0)`.
     ///
@@ -658,8 +658,8 @@ pub struct ArithDiff<D, T>:
     /// example: `domain D = 0..5; var d = ArithDiff<D, Int>(); d.add_arith(1..=3, 10, 2); d.add(0..2, 1); [d.finish()[v] for v in D] == [1, 11, 12, 14, 0]`
     pub fn add(mut self, r: Range<D>, x: T):
         if r.is_empty: return
-        d[r.start] = d[r.start] + x
-        d[r.end] = d[r.end] - x
+        d[r.l] = d[r.l] + x
+        d[r.r] = d[r.r] - x
 
     /// The accumulated values across `D`. The structure is unchanged and can take more adds.
     ///

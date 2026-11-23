@@ -229,7 +229,7 @@ pub fn parallel_bsearch<I>(
 /// traps: never
 /// example: `gallop_first(0, i => i * i >= 50) == Some(8)`
 /// example: `gallop_first(10, i => i >= 3) == Some(10)`
-pub fn gallop_first<I>(from: I, ok: I -> Bool) -> ?I:
+pub fn gallop_first<I: Add>(from: I, ok: I -> Bool) -> ?I:
     if ok(from): return Some(from)
     var (lo, step) = (from, 1)
     while true:
@@ -303,7 +303,7 @@ pub fn split_best<G, D, T: Ord>(
     fn push_entry(g: G, r: Range<D>, gi: Int):
         if r.len == 0: return
         let (val, pos) = best(g, r)
-        assert r.start <= pos and pos < r.end, "split_best: best returned position outside range"
+        assert r.l <= pos and pos < r.r, "split_best: best returned position outside range"
         let id = v_list.len
         g_list.push(g)
         r_list.push(r)
@@ -352,8 +352,8 @@ pub fn split_best<G, D, T: Ord>(
         let r = r_list[top]
         let p = p_list[top]
         let g_idx = gi_list[top]
-        if r.start < p:
-            push_entry(g, r.start..p, g_idx)
+        if r.l < p:
+            push_entry(g, r.l..p, g_idx)
         let after = p + 1
-        if after < r.end:
-            push_entry(g, after..r.end, g_idx)
+        if after < r.r:
+            push_entry(g, after..r.r, g_idx)

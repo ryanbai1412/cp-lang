@@ -18,7 +18,7 @@ An integer modulo the constant `P`, always stored in `0..P`.
 - `fn log(self, target: Mod<P>) -> ?Int` — \(O(\sqrt P)\); The least `k >= 0` with `self ** k == target` (baby-step giant-step), or `None`.
 - `fn inv_all(xs: List<Mod<P>>) -> List<Mod<P>>` — \(O(n + \log P)\); The inverse of every element of `xs`, with one `inv` in all (Montgomery's trick).; traps: when any element has `gcd(v, P) != 1` (in particular 0)
 
-## `struct Comb<M>`
+## `struct Comb<M: Add + Sub + Mul>`
 
 Factorials and inverse factorials for a modular type `M = Mod<P>` (prime `P`).
 

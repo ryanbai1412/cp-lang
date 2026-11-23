@@ -10,7 +10,7 @@ pub struct Version(root: Int)
 
 /// Path-copying persistent segment tree over a domain `D` and monoid `Monoid<T>`.
 /// `set` and `update` return a new `Version` in \(O(\log n)\) time and memory; `fold` and `get` take \(O(\log n)\).
-pub struct PersistentSegTree<D, T>(m: Monoid<T>):
+pub struct PersistentSegTree<D, T: Sub>(m: Monoid<T>):
     left: List<0..=2_000_000_000>
     right: List<0..=2_000_000_000>
     val: List<T>

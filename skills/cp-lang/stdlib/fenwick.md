@@ -6,7 +6,7 @@ Fenwick tree (binary indexed tree) over a domain: point add, range sum.
 
 In prelude (no `use` needed): `Fenwick`, `Fenwick2D`.
 
-## `struct Fenwick<D, T>`
+## `struct Fenwick<D, T: Add + Sub>`
 
 Point add and range sum over anything with `+` and `-` (`Int`, `Mod<P>`).
 
@@ -25,7 +25,7 @@ Fields: `t: List<T>`.
 - `fn first_gt(self, target: Int) -> ?Cut<D>` — \(O(\log \lvert D \rvert)\); The smallest boundary `b` with `prefix(b) > target`, or `None` when the whole sum is at most `target`.; traps: never (negative values give an unspecified cut, not a trap)
 - `fn clear(mut self)` — \(O(\lvert D \rvert)\); Reset every value to zero, keeping the domain and the allocation.
 
-## `struct Fenwick2D<R, C, T>`
+## `struct Fenwick2D<R, C, T: Add + Sub>`
 
 Point add and rectangle sum on a grid.
 
@@ -38,7 +38,7 @@ Fields: `t: List<T>`.
 - `fn get(self, r: R, c: C) -> T` — \(O(\log \lvert R \rvert \log \lvert C \rvert)\); The current value of the cell `(r, c)`.; traps: when `r` is outside `R` or `c` is outside `C`
 - `fn clear(mut self)` — \(O(\lvert R \rvert \lvert C \rvert)\); Reset every cell to zero, keeping the domains and the allocation.
 
-## `struct DualFenwick<D, T>`
+## `struct DualFenwick<D, T: Add + Sub>`
 
 Range add and point get via a difference Fenwick tree.
 
@@ -72,7 +72,7 @@ Fields: `t: List<T>`.
 - `fn prefix(self, b: Cut<D>) -> T` — \(O(\log \lvert D \rvert)\); The xor of every position left of the boundary `b`.; traps: never (`b` is a cut of `D` by type)
 - `fn xor(self, r: Range<D>) -> T` — \(O(\log \lvert D \rvert)\); The xor over the positions of `r`.; traps: when a non-empty `r` reaches outside `D`
 
-## `struct SparseFenwick2D<T>`
+## `struct SparseFenwick2D<T: Add + Sub>`
 
 Fields: `n: Int`, `pts: List<(Int, Int)>`, `xs: List<Int>`, `ys: List<List<Int>>`, `ft: List<List<T>>`, `built: Bool`.
 

@@ -66,7 +66,7 @@ A graph whose arcs carry edge ids: bridges, two-edge components, edge blocks.
 - `fn peel(self, ready: ?(V -> Bool) = None, on_remove: ?((V, A) -> ()) = None) -> List<V>` — \(O(n + m)\) plus the calls of `ready` and `on_remove`; `peel(g, ready:, on_remove:)` as a method; see the free `peel`.
 - `fn transpose(self) -> Graph<V, A> where A: (to: V, ..)` — \(O(n + m)\); Every arc `u -> a.to` reversed to `a.to -> u`, its other fields kept (`(..a, to: u)`).
 
-## `struct Paths<V, W, A>`
+## `struct Paths<V, W: Add, A>`
 
 \(O(n)\) memory.
 

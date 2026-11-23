@@ -1756,7 +1756,7 @@ fn gomory_hu_tree_gives_every_pairwise_min_cut():
             var stack: List<V> = [a]
             seen[a] = true
             while not stack.is_empty:
-                let x = stack.pop()
+                let x = stack.pop()!
                 for e in tree:
                     for (p, q) in [(e.u, e.v), (e.v, e.u)]:
                         if p == x and not seen[q]:

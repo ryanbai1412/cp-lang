@@ -1540,6 +1540,19 @@ pub(crate) fn extract_bounds(bounds: &[ast::Bound]) -> Vec<(String, Vec<String>)
 }
 
 impl<'a> Checker<'a> {
+    /// Checks a struct's or impl's methods with its `bounds` in scope, as its generics are.
+    pub(crate) fn bounded_methods(
+        &mut self,
+        methods: &[ast::Stmt],
+        self_ty: &Ty,
+        bounds: &[ast::Bound],
+    ) {
+        let outer = self.param_bounds.len();
+        self.param_bounds.extend(extract_bounds(bounds));
+        self.methods(methods, self_ty);
+        self.param_bounds.truncate(outer);
+    }
+
     /// True when trait `sub` is `want` or transitively inherits from `want`.
     pub(crate) fn trait_implies(&mut self, sub: &str, want: &str) -> bool {
         let mut stack = vec![sub.to_string()];

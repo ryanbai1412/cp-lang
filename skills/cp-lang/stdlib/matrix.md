@@ -6,7 +6,7 @@ Dense matrices, exact and floating-point Gaussian elimination, and GF(2) XOR bas
 
 In prelude (no `use` needed): `Mat`.
 
-## `struct Mat<T>`
+## `struct Mat<T: Add + Sub + Mul + Div>`
 
 A dense `rows x cols` matrix stored flat in row-major order.
 

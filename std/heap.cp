@@ -703,7 +703,7 @@ pub struct MinMaxHeap<T>:
 
 /// Meldable min-heap (skew / leftist heap) with \(O(\log n)\) `meld` and \(O(1)\) lazy offset `add_all`.
 /// `peek` / `top` is \(O(1)\); `push`, `pop`, and `meld` are \(O(\log n)\).
-pub struct MeldHeap<T>:
+pub struct MeldHeap<T: Add>:
     var _len: Int = 0
     var _root: Int = -1
     _keys: List<T> = []

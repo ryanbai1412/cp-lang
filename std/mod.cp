@@ -168,7 +168,7 @@ impl Read for Mod<P>:
 /// Its tables are `@cache` fields that grow on demand, so an immutable
 /// `let c = Comb<Z>()` (or `Comb<Z>(limit)` to pre-size) answers queries in \(O(1)\)
 /// with amortized \(O(1)\) growth per new factorial.
-pub struct Comb<M>:
+pub struct Comb<M: Add + Sub + Mul>:
     @cache f: List<M>
     @cache g: List<M>
     @cache d: List<M>

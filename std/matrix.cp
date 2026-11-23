@@ -11,7 +11,7 @@ use std.mod.{Mod}
 use std.rand.{Rng}
 
 /// A dense `rows x cols` matrix stored flat in row-major order.
-pub struct Mat<T>:
+pub struct Mat<T: Add + Sub + Mul + Div>:
     pub rows: Int
     pub cols: Int
     pub data: List<T>
@@ -896,7 +896,7 @@ pub struct MatPow<T>:
         while k <= max_exp:
             pw.push(cur)
             k *= 2
-            if k <= max_exp: cur = cur * cur
+            if k <= max_exp: cur = pw[pw.len - 1] * pw[pw.len - 1]
         MatPow(a.rows, pw)
 
     /// Compute `a^e * v` for `0 <= e <= max_exp`, as matrix-vector products with the stored powers

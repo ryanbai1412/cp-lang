@@ -5314,7 +5314,7 @@ impl<'a> Lowerer<'a> {
                     Ty::opt(Ty::Pos(*d)),
                 )
             }
-            (Ty::Range(inner), "start") => {
+            (Ty::Range(inner), "start" | "l") => {
                 let inner = (**inner).clone();
                 let res_ty = if inner == Ty::I128 { Ty::I128 } else { Ty::Int };
                 let lo = builtin(self, Builtin::RangeLo, vec![value], res_ty);
@@ -5323,7 +5323,7 @@ impl<'a> Lowerer<'a> {
                     _ => lo,
                 }
             }
-            (Ty::Range(inner), "end") => {
+            (Ty::Range(inner), "end" | "r") => {
                 let inner = (**inner).clone();
                 let res_ty = if inner == Ty::I128 { Ty::I128 } else { Ty::Int };
                 let hi = builtin(self, Builtin::RangeHi, vec![value], res_ty);

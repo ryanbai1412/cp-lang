@@ -7,7 +7,7 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 2583 (995 passing). Rules: 568.
+Cases: 2585 (995 passing). Rules: 568.
 
 ## Summary per chapter
 
@@ -17,10 +17,10 @@ Cases: 2583 (995 passing). Rules: 568.
 - R04 (04-indices.md): 69 rules, 128 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04a (04a-identity-vs-offset.md): 39 rules, 53 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04b (04b-keys.md): 27 rules, 66 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R05 (05-ownership.md): 43 rules, 154 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R05 (05-ownership.md): 43 rules, 155 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R06 (06-control-functions.md): 24 rules, 88 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R07 (07-sequences.md): 90 rules, 141 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R08 (08-traits-generics.md): 29 rules, 86 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R08 (08-traits-generics.md): 29 rules, 87 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R09 (09-contexts-checks.md): 26 rules, 56 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R10 (10-io.md): 18 rules, 95 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R11 (11-modules-prelude.md): 16 rules, 44 cases; 0 uncovered, 0 happy-path only, 1 negative only
@@ -398,7 +398,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R05.10.7 [1+ 0-]: **`return`** inside a lambda returns from the lambda. (Non-local exit from closures is def...
 - R05.10.8 [2+ 1-]: **`@memo`** fns may not capture a `var` they could see change.
 - R05.10.9 [1+ 1-]: **C1. No lend escapes.** No `lends` result, projection or stored value borrows the field, ...
-- R05.10.10 [1+ 1-]: **C2. Only the struct's own methods write it.** Outside code can't, even through `mut`.
+- R05.10.10 [2+ 1-]: **C2. Only the struct's own methods write it.** Outside code can't, even through `mut`.
 - R05.10.11 [2+ 1-]: **C3. Inside the struct, a cache write is a `mut` access to the field.** A method walking ...
 - R05.10.12 [1+ 1-]: **C4. No unknown calls while the field is lent.** A method holding a lend into the field m...
 - R05.10.13 [2+ 0-]: **C5. Derived `==`, `hash`, `Ord` and `print` skip `@cache` fields.** Otherwise `d1 == d2`...
@@ -535,7 +535,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R08.1.7 [5+ 1-]: **Field traits**: a trait may require fields (`trait Target<V>: to: V`); a bodiless `@get ...
 - R08.1.8 [1+ 1-]: Library-authored diagnostics: a trait may attach a message to "not implemented" and to eac...
 - R08.2.1 [2+ 1-]: Bounds go inline (`T: Ord + Hash`), in a `where` clause, or directly as a parameter type: ...
-- R08.2.2 [1+ 1-]: Generic bodies are checked once against their bounds, at definition; errors point at the g...
+- R08.2.2 [2+ 1-]: Generic bodies are checked once against their bounds, at definition; errors point at the g...
 - R08.2.3 [2+ 1-]: Everything is monomorphized; there are no vtables and no `dyn`.
 - R08.2.4 [3+ 0-]: `domain` is a kind on type parameters; `const N: Int` parameters take compile-time values ...
 - R08.2.5 [3+ 1-]: Type-parameter defaults fill omitted trailing arguments. Explicit arguments on a static ca...

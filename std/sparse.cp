@@ -51,8 +51,8 @@ pub struct SparseTable<D, T>(op: (T, T) -> T):
     /// example: `SparseTable(max, [3, 1, 4]).fold(0..2) == 3`
     /// example: `SparseTable(min, [3, 1, 4]).fold(1..2) == 1`
     pub fn fold(self, r: Range<D>) -> T:
-        let lo = r.start.ord
-        let hi = r.end.ord
+        let lo = r.l.ord
+        let hi = r.r.ord
         assert lo < hi
         let k = bit_width(hi - lo) - 1
         let off = k * n
@@ -161,8 +161,8 @@ pub struct DisjointSparseTable<D, T>(op: (T, T) -> T):
     /// example: `DisjointSparseTable((a, b) => a + b, [3, 1, 4]).fold(1..3) == 5`
     /// example: `DisjointSparseTable((a, b) => a, [7, 8, 9]).fold(1..3) == 8`
     pub fn fold(self, r: Range<D>) -> T:
-        let lo = r.start.ord
-        let hi = r.end.ord
+        let lo = r.l.ord
+        let hi = r.r.ord
         assert lo < hi
         let r1 = hi - 1
         if lo == r1:

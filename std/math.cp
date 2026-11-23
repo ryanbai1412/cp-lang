@@ -1694,7 +1694,7 @@ fn gcd_lcm_and_bezout():
         assert g >= 0
         if a != 0 or b != 0:
             assert a % g == 0 and b % g == 0
-            assert max(d for d in 1..=60 if a % d == 0 and b % d == 0) == g
+            assert [d for d in 1..=60 if a % d == 0 and b % d == 0].max() == Some(g)
         let e = ext_gcd(a, b)
         assert e.g == g and a * e.x + b * e.y == g
     assert gcd(0, 0) == 0 and lcm(4, 6) == 12 and lcm(0, 5) == 0 and lcm(-4, 6) == 12

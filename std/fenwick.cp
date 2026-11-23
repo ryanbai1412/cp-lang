@@ -6,7 +6,7 @@ use std.seq.{deduped, ends}
 /// `Fenwick<D, Int>()` starts at zero and `Fenwick<D, Int>(a)` from an array, in \(O(n)\).
 /// `add`, `prefix` and `sum` are \(O(\log n)\); memory is n + 1 values.
 /// A range is one prefix minus another, so there is no "Fenwick on max": that is a `SegTree`.
-pub struct Fenwick<D, T>:
+pub struct Fenwick<D, T: Add + Sub>:
     t: List<T>
 
     /// A Fenwick tree over `D`: all zeros, or holding the values of `a` when given. The values
@@ -64,7 +64,7 @@ pub struct Fenwick<D, T>:
     /// example: `Fenwick([1, 2, 3]).fold(1..3) == 5`
     /// example: `Fenwick([1, 2, 3]).fold(2..2) == 0`
     pub fn fold(self, r: Range<D>) -> T:
-        self.prefix(r.end) - self.prefix(r.start)
+        self.prefix(r.r) - self.prefix(r.l)
 
     /// The smallest boundary `b` with `prefix(b) >= target`, by binary lifting over the tree;
     /// `None` when even the whole sum is below `target`. A `target <= 0` gives the start cut.
@@ -173,7 +173,7 @@ pub struct Fenwick<D, T>:
 
 /// Point add and rectangle sum on a grid. `add` and `sum` are \(O(\log R \cdot \log C)\);
 /// memory is (R + 1) * (C + 1) values.
-pub struct Fenwick2D<R, C, T>:
+pub struct Fenwick2D<R, C, T: Add + Sub>:
     t: List<T>
 
     /// An all-zero 2-D Fenwick tree over the grid `R` by `C`.
@@ -216,10 +216,10 @@ pub struct Fenwick2D<R, C, T>:
     /// example: `var f = Fenwick2D<0..2, 0..2, Int>(); f.add(0, 0, 1); f.add(1, 1, 2); f.fold(0..2, 1..2) == 2`
     /// example: `var f = Fenwick2D<0..2, 0..2, Int>(); f.add(0, 0, 1); f.fold(0..2, 1..1) == 0`
     pub fn fold(self, rows: Range<R>, cols: Range<C>) -> T:
-        let r0 = rows.start.ord
-        let r1 = rows.end.ord
-        let c0 = cols.start.ord
-        let c1 = cols.end.ord
+        let r0 = rows.l.ord
+        let r1 = rows.r.ord
+        let c0 = cols.l.ord
+        let c1 = cols.r.ord
         self.corner(r1, c1) - self.corner(r0, c1) - self.corner(r1, c0) + self.corner(r0, c0)
 
     /// The sum of every cell above the row cut `r` and left of the column cut `c`.
@@ -254,7 +254,7 @@ pub struct Fenwick2D<R, C, T>:
 /// Range add and point get via a difference Fenwick tree.
 /// `DualFenwick<D, Int>()` starts at zero and `DualFenwick<D, Int>(a)` from an array, in \(O(n)\).
 /// `add` and `get` are \(O(\log n)\); memory is n + 1 values.
-pub struct DualFenwick<D, T>:
+pub struct DualFenwick<D, T: Add + Sub>:
     t: List<T>
 
     /// A range-add, point-get Fenwick tree over `D`: all zeros, or holding the values of `a` when
@@ -357,8 +357,8 @@ pub struct RangeFenwick<D>:
     /// example: `var f = RangeFenwick([1, 2, 3]); f.add(0..2, 10); f.fold(0..3) == 26`
     /// example: `var f = RangeFenwick([1, 2, 3]); f.add(1..3, 5); f.fold(2..3) == 8`
     pub fn add(mut self, r: Range<D>, x: Int):
-        let lo = r.start.ord
-        let hi = r.end.ord
+        let lo = r.l.ord
+        let hi = r.r.ord
         if lo >= hi: return
         self.bump(lo, x)
         if hi < D.K: self.bump(hi, -x)
@@ -387,7 +387,7 @@ pub struct RangeFenwick<D>:
     /// example: `var f = RangeFenwick([1, 2, 3]); f.add(1..2, 4); f.fold(1..3) == 9`
     /// example: `RangeFenwick([1, 2, 3]).fold(2..2) == 0`
     pub fn fold(self, r: Range<D>) -> Int:
-        self.prefix(r.end) - self.prefix(r.start)
+        self.prefix(r.r) - self.prefix(r.l)
 
     /// Reset every value to zero, keeping the domain and the allocation.
     ///
@@ -455,7 +455,7 @@ pub struct XorFenwick<D, T>:
     /// example: `XorFenwick([1, 2, 4]).xor(1..3) == 6`
     /// example: `XorFenwick([1, 2, 4]).xor(2..2) == 0`
     pub fn xor(self, r: Range<D>) -> T:
-        self.prefix(r.end) ^ self.prefix(r.start)
+        self.prefix(r.r) ^ self.prefix(r.l)
 
 /// \(O(n \log n)\) space. Offline coordinate-compressed 2D Fenwick tree (KACTL `FT2`):
 /// register all update coordinates with `add_point`, call `build()`, then run `add` and `sum`
@@ -469,7 +469,7 @@ fn lower_bound(a: List<Int>, x: Int) -> Int:
         else: hi = mid
     lo
 
-pub struct SparseFenwick2D<T>:
+pub struct SparseFenwick2D<T: Add + Sub>:
     n: Int
     pts: List<(Int, Int)>
     xs: List<Int>

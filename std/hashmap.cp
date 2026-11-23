@@ -252,7 +252,7 @@ pub struct FlatMap<V>:
 /// Invariant: no stored entry equals `init`. A write that leaves a key at `init` (`add`, `set`,
 /// `absorb`) removes it, so `len` is the number of keys whose value differs from `init` and
 /// `contains(k)` is `get(k) != init`.
-pub struct Counter<K, V = Int>:
+pub struct Counter<K, V: Add = Int>:
     _len: Int
     m: HashMap<K, V>
     init: V

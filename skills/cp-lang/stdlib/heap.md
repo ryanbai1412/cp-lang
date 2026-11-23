@@ -83,7 +83,7 @@ Fields: `lt: ?((T, T) -> Bool)`.
 - `fn clear(mut self)` — \(O(1)\); Remove all elements.
 - `fn take(mut self) -> MinMaxHeap<T>` — \(O(1)\); Move contents out in \(O(1)\), leaving `self` empty.
 
-## `struct MeldHeap<T>`
+## `struct MeldHeap<T: Add>`
 
 Meldable min-heap (skew / leftist heap) with \(O(\log n)\) `meld` and \(O(1)\) lazy offset `add_all`.
 

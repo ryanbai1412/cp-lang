@@ -10,7 +10,7 @@ Import: `use std.persistent.{...}`.
 
 Opaque version handle for `PersistentSegTree`.
 
-## `struct PersistentSegTree<D, T>(m: Monoid<T>)`
+## `struct PersistentSegTree<D, T: Sub>(m: Monoid<T>)`
 
 Path-copying persistent segment tree over a domain `D` and monoid `Monoid<T>`.
 

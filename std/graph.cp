@@ -20,7 +20,7 @@ use std.deque.{Deque}
 use std.dsu.{Dsu}
 use std.heap.{Heap, MinHeap}
 use std.math.{gcd}
-use std.seq.{reverse, count}
+use std.seq.{reverse, count, Slice}
 
 /// \(O(\deg u)\) per walk of `out(u)`.
 /// What every graph algorithm walks: the arcs out of `u`. Implemented by
@@ -1061,7 +1061,7 @@ fn a_plain_edge_list_needs_no_edge_domain():
 /// tuple of them); `hashed: true` on the search makes them hash maps over the states
 /// reached, for state spaces like `Int` values or unbounded tuples. An unbounded `V`
 /// without it is a compile error that names `hashed: true`.
-pub struct Paths<V, W, A>:
+pub struct Paths<V, W: Add, A>:
     pub dist: [V]?W
     pub back: [V]?(from: V, via: A)
     order: List<V>
@@ -3219,8 +3219,8 @@ pub fn arborescence<V, E, W: Add + Sub, R: (u: V, v: V, w: W, ..)>(edges: [E]R, 
         hist_n.push(cur_n)
         hist_root.push(cur_root)
         hist_in_idx.push(in_idx)
-        hist_v_of.push(cur_v)
-        hist_orig_e.push(cur_orig)
+        hist_v_of.push(cur_v.copy())
+        hist_orig_e.push(cur_orig.copy())
         if cnt == 0:
             hist_id.push([i for i in 0..cur_n])
             hist_prev_idx.push(List<Int>())
@@ -3229,7 +3229,7 @@ pub fn arborescence<V, E, W: Add + Sub, R: (u: V, v: V, w: W, ..)>(edges: [E]R, 
             if id[i] == -1:
                 id[i] = cnt
                 cnt += 1
-        hist_id.push(id)
+        hist_id.push(id.copy())
         var nxt_u = List<Int>()
         var nxt_v = List<Int>()
         var nxt_w = List<W>()
@@ -3358,7 +3358,7 @@ pub struct Functional<V>:
                 state[u] = 2
         var up: List<List<Int>> = [nx]
         while (1 << up.len) <= n:
-            let prev = up[up.len - 1]
+            let prev = up[up.len - 1].copy()
             up.push([prev[prev[i]] for i in 0..n])
         Functional(next, nx, root, depth, cyc, pos, cycles, up)
 
