@@ -7,12 +7,12 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 2495 (995 passing). Rules: 565.
+Cases: 2496 (995 passing). Rules: 565.
 
 ## Summary per chapter
 
 - R01 (01-lexical-grammar.md): 55 rules, 130 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R02 (02-values-types.md): 52 rules, 128 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R02 (02-values-types.md): 52 rules, 129 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R03 (03-numbers-layout.md): 24 rules, 62 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04 (04-indices.md): 68 rules, 116 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04a (04a-identity-vs-offset.md): 39 rules, 53 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -163,7 +163,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R02.6.6 [1+ 1-]: `@get` on a read-only method whose other parameters all have defaults lets it be called wi...
 - R02.6.7 [2+ 0-]: Storage may reorder fields to remove padding; source order is what constructors, patterns ...
 - R02.7.1 [4+ 0-]: Variants are `PascalCase` names in their enum's scope, like `Some` and `None` of `?T` (dec...
-- R02.7.2 [2+ 1-]: `@tag(lit)` on a variant names the token it reads and prints as (`@tag("Q") Ask(h: Int)`, ...
+- R02.7.2 [3+ 1-]: `@tag(lit)` on a variant names the token it reads and prints as (`@tag("Q") Ask(h: Int)`, ...
 - R02.7.3 [2+ 0-]: A payload-free enum is a domain: `[Dir]Int` is a table, `for d in Dir` walks it.
 - R02.7.4 [1+ 2-]: `match` is exhaustive. Patterns match only the stored shape; there are no user-defined pat...
 - R02.7.6 [3+ 0-]: A record pattern names the fields it binds, `(to: u, w: c)`, and `..` skips the rest; `(to...

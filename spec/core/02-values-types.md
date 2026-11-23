@@ -191,7 +191,9 @@ enum Ev:
   a pattern always binds. (R02.7.1)
 - `@tag(lit)` on a variant names the token it reads and prints as (`@tag("Q") Ask(h: Int)`,
   `@tag(1) Add(l: V, r: V)`); without it the token is the variant's name. Tags are distinct
-  within the enum (E0407). (R02.7.2)
+  within the enum (E0407). A token set from the statement (`DR`, `DL`, ...)
+  is a payload-free enum, `enum D = DR | DL`; there is no union of string
+  literals (decision 356). (R02.7.2)
 - A payload-free enum is a domain: `[Dir]Int` is a table, `for d in Dir`
   walks it. (R02.7.3)
 - `match` is exhaustive. Patterns match only the stored shape; there are

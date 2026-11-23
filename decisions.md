@@ -7537,3 +7537,14 @@ evaluated once without a temporary, a compound update with a computed `k`
 `let`; binding a temporary is the follow-up. `lower/mod.rs` +1 and
 `lower/stmt.rs` +3 lines (`--update rs_over_cap`). Reverse: drop the
 `index_set` call in `assign`.
+
+## 356. A token set from the statement is an enum, not a string-literal union (2026-11-23)
+
+Rebuild round 9 (H-MATCH-EXPR follow-up) wrote `read<"DR" | "DL" | "UR" | "UL">()`,
+which the compiler rejects (E0309). A payload-free enum already reads each
+variant by its name (R02.7.2), is a domain for tables, and is matched
+exhaustively, so a literal-union type would be a second spelling of the same
+idea and new core syntax for what an existing mechanism covers. R02.7.2 now
+says so; `core-02/token-set-is-an-enum.cp` pins it, and diagnostics should make
+E0309 on `"A" | "B"` suggest `enum D = A | B`. Reverse: add literal types to
+R02 and drop the sentence.
