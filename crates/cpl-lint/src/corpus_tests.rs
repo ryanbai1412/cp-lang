@@ -235,7 +235,7 @@ fn one_item_proves_what_the_whole_file_proves_there() {
 /// is in `SUPERSEDED_BY`, so only the wider is shown) or teach two things
 /// (listed here). A new pair has to be one or the other.
 /// The rewrite of the outer one keeps the inner code, so both still teach.
-const DISTINCT: &[(&str, &str)] = &[
+pub(crate) const DISTINCT: &[(&str, &str)] = &[
     ("L0415", "L0506"),
     ("L0501", "L0549"),
     ("L0504", "L0203"),
