@@ -260,10 +260,14 @@ enum Part {
 
 /// Emits the C++ for a `.cp` file into the cache, through the same front
 /// end and back end as `cpl build`. Returns the path of the C++ file.
+/// A counterexample that crashes is one stress must see.
+const TRAPS: cpl_codegen::Checks = cpl_codegen::Checks::Traps;
+
 fn emit_cpp(
     source: &Path,
     text: Option<&str>,
     part: Part,
+    checks: cpl_codegen::Checks,
 ) -> Result<(PathBuf, cpl_judge::Profile), BuildError> {
     let name = source.display().to_string();
     let text = match text {
@@ -304,8 +308,7 @@ fn emit_cpp(
         stamp: Some(profile.stamp()),
         thread_stack: profile.thread_stack,
         windows: profile.os == cpl_judge::Os::Windows,
-        // A counterexample that crashes is one stress must see.
-        checks: cpl_codegen::Checks::Traps,
+        checks,
     };
     let mut cpp = cpl_codegen::emit_for(&program, &file, None, &target);
     if matches!(part, Part::Gen(_)) {
@@ -324,8 +327,13 @@ fn emit_cpp(
 
 /// Builds the C++ of a `.cp` file as its judge does, as far as the
 /// compiler here allows, and runs it on the judge's stack.
-fn build_judged(source: &Path, text: Option<&str>, part: Part) -> Result<Vec<String>, BuildError> {
-    let (cpp, profile) = emit_cpp(source, text, part)?;
+fn build_judged(
+    source: &Path,
+    text: Option<&str>,
+    part: Part,
+    checks: cpl_codegen::Checks,
+) -> Result<Vec<String>, BuildError> {
+    let (cpp, profile) = emit_cpp(source, text, part, checks)?;
     let host = profile.host();
     let binary = compile_with(&cpp, true, &host.compiler, &host.flags)?;
     let stack = profile.ulimit();
@@ -373,7 +381,7 @@ impl Program {
         let argv = match extension {
             "cpp" | "cc" | "cxx" => vec![compile_cpp(path, false)?],
             "py" => vec!["python3".to_string(), name.clone()],
-            "cp" => build_judged(path, None, Part::Solution)?,
+            "cp" => build_judged(path, None, Part::Solution, TRAPS)?,
             // Relative paths need `./` to be found.
             _ => vec![path
                 .canonicalize()
@@ -388,12 +396,22 @@ impl Program {
         })
     }
 
+    /// The `.cp` file at `path` built for its judge with `checks` instead
+    /// of the traps stress keeps (`cpl run --release --checks`).
+    pub fn resolve_checks(path: &Path, checks: cpl_codegen::Checks) -> Result<Program, BuildError> {
+        Ok(Program {
+            name: path.display().to_string(),
+            argv: build_judged(path, None, Part::Solution, checks)?,
+            env: Vec::new(),
+        })
+    }
+
     /// The `.cp` source `text`, built as if it were the file `path`, which
     /// need not exist: its imports and judge resolve from beside `path`.
     pub fn resolve_source(path: &Path, text: &str) -> Result<Program, BuildError> {
         Ok(Program {
             name: path.display().to_string(),
-            argv: build_judged(path, Some(text), Part::Solution)?,
+            argv: build_judged(path, Some(text), Part::Solution, TRAPS)?,
             env: Vec::new(),
         })
     }
@@ -403,7 +421,7 @@ impl Program {
     pub fn resolve_cold_cache(path: &Path) -> Result<Program, BuildError> {
         Ok(Program {
             name: format!("{} (@cache cold)", path.display()),
-            argv: build_judged(path, None, Part::ColdCache)?,
+            argv: build_judged(path, None, Part::ColdCache, TRAPS)?,
             env: Vec::new(),
         })
     }
@@ -413,7 +431,7 @@ impl Program {
     pub fn resolve_brute(path: &Path, fn_name: &str) -> Result<Program, BuildError> {
         Ok(Program {
             name: format!("{} (`{fn_name}`)", path.display()),
-            argv: build_judged(path, None, Part::Brute)?,
+            argv: build_judged(path, None, Part::Brute, TRAPS)?,
             env: Vec::new(),
         })
     }
@@ -423,7 +441,7 @@ impl Program {
     pub fn resolve_gen(path: &Path, fn_name: &str, size: i64) -> Result<Program, BuildError> {
         Ok(Program {
             name: format!("{} (`{fn_name}`)", path.display()),
-            argv: build_judged(path, None, Part::Gen(size))?,
+            argv: build_judged(path, None, Part::Gen(size), TRAPS)?,
             env: Vec::new(),
         })
     }

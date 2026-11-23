@@ -329,6 +329,8 @@ struct RunArgs<'a> {
     format: Option<&'a str>,
     brute: bool,
     release: bool,
+    /// `--checks LEVEL` with `--release`: the judge build's checks.
+    checks: Option<cpl_codegen::Checks>,
     live: bool,
 }
 
@@ -385,6 +387,7 @@ impl<'a> RunArgs<'a> {
             format: None,
             brute: false,
             release: false,
+            checks: None,
             live: false,
         };
         let mut paths = Vec::new();
@@ -466,6 +469,17 @@ impl<'a> RunArgs<'a> {
                 }
                 "--brute" => args.brute = true,
                 "--release" => args.release = true,
+                "--checks" => {
+                    match iter.next().and_then(|n| cpl_codegen::Checks::parse(n)) {
+                        Some(level) => args.checks = Some(level),
+                        None => {
+                            return Err(format!(
+                            "`--checks` takes one of {}: `cpl run a.cp --release --checks none`",
+                            cpl_codegen::Checks::NAMES.map(|n| format!("`{n}`")).join(", ")
+                        ))
+                        }
+                    }
+                }
                 "--live" => args.live = true,
                 "--format" => match iter.next() {
                     Some(format @ ("json" | "html" | "text")) => args.format = Some(format),
@@ -502,6 +516,11 @@ impl<'a> RunArgs<'a> {
         if has_trace_filter && !args.trace {
             return Err(
                 "`--test`, `--watch`, `--last`, and `--depth` filter a trace: add `--trace`".into(),
+            );
+        }
+        if args.checks.is_some() && !args.release {
+            return Err(
+                "`--checks` picks what the judge build traps on: use it with `--release`".into(),
             );
         }
         if args.release && (args.trace || args.format.is_some()) {
@@ -827,10 +846,10 @@ fn run_release(
     stderr: &mut String,
 ) -> u8 {
     let path = std::path::Path::new(args.file);
-    let built = if args.brute {
-        cpl_stress::Program::resolve_brute(path, "the brute")
-    } else {
-        cpl_stress::Program::resolve(path)
+    let built = match (args.brute, args.checks) {
+        (true, _) => cpl_stress::Program::resolve_brute(path, "the brute"),
+        (false, Some(checks)) => cpl_stress::Program::resolve_checks(path, checks),
+        (false, None) => cpl_stress::Program::resolve(path),
     };
     let program = match built {
         Ok(program) => program,
@@ -1317,6 +1336,27 @@ mod tests {
             out.stderr
         );
         let out = run(&["run", &path, "--release", "--trace"]);
+        assert_eq!(out.code, EXIT_USAGE);
+        // `--checks` picks what the release build traps on, as for `build`.
+        let divide = temp_file("divide.cp", "let d: Int = read()\nprint(6 / d)\n");
+        let out = run_with_input(&["run", &divide, "--release"], b"0\n");
+        assert_eq!(out.code, EXIT_FAILED, "{}", out.stderr);
+        assert!(out.stderr.contains("division by zero"), "{}", out.stderr);
+        let out = run_with_input(&["run", &divide, "--release", "--checks", "none"], b"0\n");
+        assert_eq!(
+            (out.code, out.stdout.as_slice()),
+            (0, b"0\n".as_slice()),
+            "{}",
+            out.stderr
+        );
+        let out = run(&["run", &divide, "--checks", "none"]);
+        assert_eq!(out.code, EXIT_USAGE);
+        assert!(
+            out.stderr.contains("use it with `--release`"),
+            "{}",
+            out.stderr
+        );
+        let out = run(&["run", &divide, "--release", "--checks", "some"]);
         assert_eq!(out.code, EXIT_USAGE);
         let out = run(&["build", &path, "--checked"]);
         assert_eq!(out.code, 0, "{}", out.stderr);

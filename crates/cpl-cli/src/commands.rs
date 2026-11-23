@@ -504,7 +504,10 @@ options:
   --release         run what a judge runs: the C++ of `cpl build`, built with
                     the judge's flags (those g++ here accepts) on the judge's
                     stack, and kept until the file changes.
-                    Fast, and without the interpreter's checks
+                    Fast, and without the interpreter's checks; it traps on
+                    a bad index, `/ 0` and `assert` unless `--checks` says
+  --checks LEVEL    with --release: what that build traps on, as
+                    `cpl build --checks` takes it (none, traps, all)
 ";
 
 /// Both spellings of JSON output, `--json` and `--format json`, work on every

@@ -10,7 +10,7 @@ most recently edited `.cp` file in the folder.
 | `cpl fetch <url> [d]` | downloads the samples of a Codeforces or AtCoder problem page into `d.tests/`, and creates `d.cp` with the title and limits if it is new; `--html` reads a page saved from the browser (Codeforces refuses scripts) |
 | `cpl check d...` | every error in the files: names, types, borrows, input ranges; nothing runs |
 | `cpl fix d...` | applies each error's suggested fix and reports what is left |
-| `cpl run d [files]` | checked build in the interpreter, on files or stdin; compares with `.out` files if present; `--release` runs the judge's C++; `--trace` writes the HTML trace (`tools/trace-debug.md`); on a file with an `@interactor` it runs the program against it |
+| `cpl run d [files]` | checked build in the interpreter, on files or stdin; compares with `.out` files if present; `--release` runs the judge's C++ (`--checks` as for `build`; traps by default); `--trace` writes the HTML trace (`tools/trace-debug.md`); on a file with an `@interactor` it runs the program against it |
 | `cpl test d` | every case in `d.tests/`, inline `@sample`s and `@test` fns |
 | `cpl stress d` | alternatives, generators, checkers, law sampling; shrinks and saves failures (`tools/stress.md`) |
 | `cpl locate d` | the smallest failing input and the first part whose alt disagrees |
