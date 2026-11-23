@@ -93,3 +93,28 @@ pub(crate) fn name_spans(pat: &Pattern, is_var: bool, out: &mut Vec<(Span, bool)
         _ => {}
     }
 }
+
+impl Checker<'_> {
+    /// Binds the names a refutable pattern takes apart: `let ... else`, or an
+    /// arm like `(Some(lo), Some(hi)) if lo < hi`.
+    pub(crate) fn bind_refutable(
+        &mut self,
+        pat: &Pattern,
+        ty: &Ty,
+        mutable: bool,
+        keyword: &'static str,
+    ) {
+        let PatternKind::Tuple(items) = &pat.kind else {
+            return self.bind(pat, ty, mutable, keyword);
+        };
+        for (i, item) in items.iter().enumerate() {
+            let item_ty = match ty {
+                Ty::Tuple(tys) if tys.len() == items.len() => tys[i].clone(),
+                Ty::Record(fields) if fields.len() == items.len() => fields[i].1.clone(),
+                Ty::Error => Ty::Error,
+                _ => Ty::Unknown,
+            };
+            self.bind_refutable(item, &item_ty, mutable, keyword);
+        }
+    }
+}
