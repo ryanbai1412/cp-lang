@@ -1,0 +1,8 @@
+error[E0103]: CP Lang writes a lambda with `=>`, not `->`
+  --> java_lambda_arrow.cp:2:16
+  |
+2 | print(xs.map(x -> x * 2))
+  |                ^^
+  = help: `->` names a fn's return type; a lambda's body follows `=>`
+
+java_lambda_arrow.cp: 1 error

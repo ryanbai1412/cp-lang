@@ -97,3 +97,13 @@ fn pythons_type_brackets_are_one_error_with_angles() {
         .diagnostics
         .is_empty());
 }
+
+#[test]
+fn javas_lambda_arrow_is_one_error_with_fat_arrow() {
+    let d = parse_file("let xs = [1, 2]\nprint(xs.map(x -> x * 2))\n").diagnostics;
+    assert_eq!(d.len(), 1, "{d:?}");
+    assert_eq!(d[0].fixes[0].edits[0].1, "=>");
+    assert!(parse_file("fn f(x: Int) -> Int = x\nprint(f(1))\n")
+        .diagnostics
+        .is_empty());
+}

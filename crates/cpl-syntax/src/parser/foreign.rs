@@ -442,12 +442,45 @@ impl<'a> Parser<'a> {
 
     /// `lambda x: x * 2`: Python's lambda. One error with the `x => x * 2`
     /// fix, read as that lambda.
-    /// Python's `lambda x: e` or Rust's `|x| e`, read as `x => e`.
+    /// Python's `lambda x: e`, Rust's `|x| e` or Java's `x -> e`, read as
+    /// `x => e`.
     pub(super) fn foreign_lambda(&mut self) -> Option<Expr> {
         if self.at_ident("lambda") && matches!(self.peek_n(1), T::Ident | T::Colon) {
             return Some(self.python_lambda());
         }
+        if self.at(T::Ident) && self.peek_n(1) == T::Arrow {
+            return Some(self.arrow_lambda());
+        }
         self.rust_closure()
+    }
+
+    /// `x -> x * 2`: Java's and Kotlin's lambda arrow. One error with the
+    /// `=>` fix, read as `x => x * 2`.
+    fn arrow_lambda(&mut self) -> Expr {
+        let start = self.start();
+        let params = vec![self.pattern_atom()];
+        let arrow = self.span();
+        self.bump();
+        self.recovered(
+            Diagnostic::error(
+                codes::EXPECTED_TOKEN,
+                arrow,
+                "CP Lang writes a lambda with `=>`, not `->`",
+            )
+            .with_help("`->` names a fn's return type; a lambda's body follows `=>`")
+            .with_fix("write `=>`", arrow, "=>"),
+        );
+        let body = self.lambda_body();
+        Expr {
+            kind: ExprKind::Lambda {
+                params,
+                param_tys: Vec::new(),
+                param_mut: Vec::new(),
+                ret_ty: None,
+                body: Box::new(body),
+            },
+            span: self.span_from(start),
+        }
     }
 
     /// `|x| x + 1` or `|a, b| a + b`: Rust's closure. One error with the
