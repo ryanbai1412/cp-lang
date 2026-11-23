@@ -284,7 +284,8 @@ impl Server {
                 if let Some(def) = self.db.definition_location(&uri, offset) {
                     if def.path != uri {
                         let text = self.db.file_text(&def.path).unwrap_or_default();
-                        hover.text = offered_lines(&hover.text, &Outline::of_source(&text));
+                        let outline = self.std.outline_of(&def.path, text);
+                        hover.text = offered_lines(&hover.text, &outline);
                     }
                 }
                 let declared = self

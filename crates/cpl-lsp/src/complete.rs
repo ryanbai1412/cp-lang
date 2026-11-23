@@ -54,6 +54,7 @@ pub(crate) const RANGE_MEMBERS: &[(&str, &str)] = &[
 pub struct StdLib {
     modules: HashMap<String, Option<Arc<Outline>>>,
     prelude: Option<Arc<Vec<(String, String)>>>,
+    files: HashMap<String, (Arc<str>, Arc<Outline>)>,
 }
 
 impl StdLib {
@@ -70,6 +71,18 @@ impl StdLib {
                 Some(Arc::new(Outline::of_source(&text)))
             })
             .clone()
+    }
+
+    /// The outline of the file at `path`, parsed again only when its text changes.
+    pub fn outline_of(&mut self, path: &str, text: Arc<str>) -> Arc<Outline> {
+        if let Some((seen, outline)) = self.files.get(path) {
+            if Arc::ptr_eq(seen, &text) || *seen == text {
+                return outline.clone();
+            }
+        }
+        let outline = Arc::new(Outline::of_source(&text));
+        self.files.insert(path.to_string(), (text, outline.clone()));
+        outline
     }
 
     /// The names `std/prelude.cp` brings in, with the module of each.

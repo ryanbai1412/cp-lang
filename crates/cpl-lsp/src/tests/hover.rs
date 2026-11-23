@@ -18,3 +18,16 @@ fn hover_explains_the_types_and_values_the_compiler_defines() {
     assert!(shown(&mut server, 2, 9).contains("type List<T>"));
     assert!(shown(&mut server, 2, 15).contains("type Bool"));
 }
+
+#[test]
+fn a_files_outline_is_parsed_again_only_when_its_text_changes() {
+    let mut std = crate::complete::StdLib::default();
+    let text: std::sync::Arc<str> = "pub fn f(x: Int) -> Int:\n    x\n".into();
+    let first = std.outline_of("std/a.cp", text.clone());
+    assert!(std::sync::Arc::ptr_eq(
+        &first,
+        &std.outline_of("std/a.cp", text)
+    ));
+    let edited = std.outline_of("std/a.cp", "pub fn g() -> Int:\n    1\n".into());
+    assert!(!std::sync::Arc::ptr_eq(&first, &edited));
+}
