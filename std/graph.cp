@@ -679,6 +679,18 @@ pub fn undirected_of_pairs<V>(edges: List<(V, V)>) -> [V]List<V>:
 /// example: `domain V = 0..3; let g: [V]List<V> = [[1, 2], [2], []]; g.deg(0) == 2 and g.deg(2) == 0`
 pub fn deg<V, A>(self: [V]List<A>, u: V) -> Int = self[u].len
 
+/// The reverse of an adjacency list: `v` lists `u` once for each arc `u -> v`, `u` ascending.
+///
+/// cost: \(O(n + m)\), a new adjacency list
+/// order: each list ascending by source vertex
+/// traps: never
+/// example: `domain V = 0..3; let g: [V]List<V> = [[1, 2], [2], []]; g.transpose() == [[], [0], [0, 1]]`
+pub fn transpose<V>(self: [V]List<V>) -> [V]List<V>:
+    var t: [V]List<V> = []
+    for u in V:
+        for v in self[u]: t[v].push(u)
+    t
+
 // blocked: generic `V` of a `Next<V>` free fn is bound to `Int` (GAPS.md graph free fns)
 /// The connected components of an undirected graph, as a fresh domain `C` and each vertex's
 /// component.

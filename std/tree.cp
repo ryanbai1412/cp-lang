@@ -22,12 +22,13 @@ use std.math.{bit}
 
 /// A BFS spanning tree rooted at `V.first`, as a `Rooted`. Each vertex's parent is the
 /// vertex whose arc first reached it, scanning vertices in BFS order and arcs in input
-/// order. A forest is `spanning_forest`.
+/// order. Any graph works: a `Graph`, or the adjacency list `Graph.undirected` gives for edges
+/// indexed by a plain range. A forest is `spanning_forest`.
 ///
 /// cost: \(O(n + m)\)
 /// traps: when the graph is not connected from `V.first`, or `V` is empty
 /// example: `domain V = 0..3; domain E = 0..2; let es: [E](u: V, v: V) = [(u: 0, v: 1), (u: 1, v: 2)]; let t = Graph.undirected(es).spanning_tree(); t.parent(2) == Some(1) and t.parent(0) == None`
-pub fn spanning_tree<V, A>(self: Graph<V, A>) -> Rooted<V, _> = Rooted.new(self, V.first!)
+pub fn spanning_tree<V, G: Next<V>>(self: G) -> Rooted<V, _> = Rooted.new(self, V.first!)
 
 /// The DFS tree from `root` of the component holding it, as a `Rooted` tree and a mask of the
 /// edges it uses. The search takes arcs in input order and descends at once (recursive order,
