@@ -3,13 +3,16 @@
 @!multitest
 let n: 2..=2e5 = read()
 let k: 1..=2e5 = read()
+domain I = 1..=n
 domain X = 2..=2 * k
-let a = read<[n]1..=k>()
+let a = read<[I]1..=k>()
 
 var open: [X]Int = 0
 var close: [X]Int = 0
 var exact: [X]Int = 0
-for (u, v) in a.zip(a.rev).take(n / 2):
+for i in I:
+    if 2 * Int(i) > n: break
+    let (u, v) = (a[i], a[I(n + 1 - Int(i))])
     open[X(min(u, v) + 1)] += 1
     close[X(max(u, v) + k)] += 1
     exact[X(u + v)] += 1

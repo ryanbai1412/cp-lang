@@ -8,7 +8,8 @@ domain C = 1..=m
 var grid = read<[R, C]Char>()
 
 var ok = true
-for p in grid.keys:
+let cells = [(r, c) for r in R for c in C]
+for p in cells:
     if grid[p] != 'B': continue
     for q in p.adj4:
         if grid[q] == 'G': ok = false
@@ -16,5 +17,5 @@ for p in grid.keys:
 
 let open = (c: (R, C)) => grid[c] != '#'
 let reach = bfs(c => c.adj4.filter(open), from: [(R.last!, C.last!)], enter: (c, _) => open(c))
-ok = ok and grid.keys.all(p => grid[p] != 'G' or reach[p] != None)
+ok = ok and cells.all(p => grid[p] != 'G' or reach[p] != None)
 print(yes(ok, answers: ("Yes", "No")))
