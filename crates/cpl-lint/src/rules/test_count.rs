@@ -2,6 +2,10 @@
 //! `for _ in 0..t:` holding the rest of the program runs each case by hand.
 //! The `@!multitest` divider reads the count and runs what is below it per
 //! case, unindented, with the same per-case state.
+//!
+//! A loop whose one read is a query answered from a table built before the
+//! count (`let pre = Prefix(..)`, then `for _ in 0..q:` reading `(l, r)`)
+//! is a query loop, not test cases, and is left alone.
 
 use crate::rules::read_loop::is_read;
 use crate::walk::{walk_stmt, Scope, Visitor};
@@ -77,11 +81,18 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
         return Vec::new();
     };
     let body_text = &loop_text[header_end + 1..];
+    let words = || body_text.split(|c: char| !c.is_alphanumeric() && c != '_');
+    let built: Vec<String> = tops[..k]
+        .iter()
+        .filter_map(|(_, s)| bound_name(s))
+        .collect();
+    let answers_queries = body.stmts.iter().filter(|s| reads(s)).count() == 1
+        && body.stmts.first().is_some_and(reads)
+        && words().any(|w| built.iter().any(|b| b == w));
     if !between.trim().is_empty()
         || body_text.contains("\"\"\"")
-        || body_text
-            .split(|c: char| !c.is_alphanumeric() && c != '_')
-            .any(|w| w == t)
+        || words().any(|w| w == t)
+        || answers_queries
     {
         return Vec::new();
     }
@@ -109,6 +120,18 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
         lint: &TEST_COUNT_LOOP,
         diag,
     }]
+}
+
+/// The name a top-level `let`, `var` or `const` binds.
+fn bound_name(stmt: &Stmt) -> Option<String> {
+    match &stmt.kind {
+        StmtKind::Let { pat, .. } => match &pat.kind {
+            PatternKind::Name(n) => Some(n.to_string()),
+            _ => None,
+        },
+        StmtKind::Const { name, .. } => Some(name.text.clone()),
+        _ => None,
+    }
 }
 
 /// Whether `stmt` reads input anywhere.

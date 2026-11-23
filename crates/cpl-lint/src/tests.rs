@@ -784,6 +784,12 @@ fn test_count_loop_only_when_the_count_comes_first() {
     // A `return` inside would end one case under the divider, every case here.
     let early = "let t: Int = read()\nfor _ in 0..t:\n    let k: Int = read()\n    if k == 0: return\n    print(k)\n";
     assert_eq!(taste_codes(early), Vec::<&str>::new());
+    // web/content/practice/prime-ranges: q queries over a table built first.
+    let ranges = "const N = 100\nlet pre = Prefix([1..=N] k => k % 2)\nlet q: 1..=2e5 = read()\nfor _ in 0..q:\n    let (l, r): (1..=100, 1..=100) = read()\n    print(pre.fold(l..=r))\n";
+    assert_eq!(taste_codes(ranges), Vec::<&str>::new());
+    let cases = "let t: Int = read()\nfor _ in 0..t:\n    let (a, b): (Int, Int) = read()\n    print(a + b)\n";
+    assert_eq!(taste_codes(cases), ["L0593"]);
+
     let solve = "let sieve = [1, 2]\nlet t: Int = read()\nfor _ in 1..=t:\n    solve()\nfn solve():\n    let k: Int = read()\n    print(k + sieve.len)\n";
     assert_eq!(fixed(solve), "let sieve = [1, 2]\n@!multitest\nsolve()\nfn solve():\n    let k: Int = read()\n    print(k + sieve.len)\n");
 }
