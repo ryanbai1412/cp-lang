@@ -175,6 +175,7 @@ impl Emitter<'_> {
     }
 
     /// In a sink variant, the loop over the sunk list, as a callback.
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn sink_loop(
         &mut self,
         id: cpl_ir::LoopId,

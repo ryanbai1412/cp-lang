@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- Sheriff (infra): 037d7bf31's `sink_loop` takes 8 arguments, clippy's too_many_arguments on main; allowed on that fn, as `fuse.rs` does.
 - Sheriff (infra): c8c829d60 left `owner.trim().split_whitespace()` in `cpl-codegen/src/copy_tests.rs`, a clippy error that stopped `cargo test -p cpl-codegen --lib` and `just gen` on main; the `trim()` is gone.
 - `cf2084e` (1.35x in the full run): the gap is the `sum(... for f in need..=m)` per value, which builds a `std::vector` for the stdlib `sum` instance. Hand-fusing that one call in the emitted C++: 36.8 -> 29.7 ms, orig 29.1 ms (1.02x; gen.py 1 5000, same output, fastest of 15). Codegen's `fuse.rs` only fuses a `for` over an inlined producer; a call to a generic `sum` is the compiler's consumer-fusion request (measurement added there).
 - `cf2124h` (1.46x; also 2x peak RSS): the whole gap is the width of `max_len: [...]0..=2 * n`, emitted as `std::vector<ll>` because the compiler does not fold the bound through `n = n0 + 1`, `n0: 1..=15_000`. Emitted C++ with only that vector as `int`: 0.77 -> 0.56 s, 882 -> 443 MB, orig 0.52 s / 443 MB (n = 15000 random, `/usr/bin/time`, same output). Dropping the inner loop's `cpl::at(a, j)` moved nothing (0.89 s, noise). Added to the compiler's let-bound narrowing request.
