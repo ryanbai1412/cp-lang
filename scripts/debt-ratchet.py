@@ -158,8 +158,9 @@ def external_crates(root: Path) -> list[str]:
 # Where history and measured lists are kept, or the facts' own sources.
 WRITTEN_TWICE_SKIP = ("plan/", "research/", "corpus/", "spec/conformance/", "decisions.md", "Cargo.",
                       "scripts/debt-ratchet.json", "scripts/test_debt_ratchet.py", "crates/cpl-cli/tests/")
-# Copies a gate already compares with the source: the crate map (`crate_edges`).
-WRITTEN_TWICE_CHECKED = {"handbook/design/architecture.md"}
+# Copies a gate already compares with the source: the crate map (`crate_edges`) and the std
+# lint baseline (scripts/std-lint-ratchet.py).
+WRITTEN_TWICE_CHECKED = {"handbook/design/architecture.md", "scripts/std-lint-baseline.txt"}
 
 
 def written_twice(root: Path) -> list[str]:
