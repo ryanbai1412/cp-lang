@@ -12,9 +12,11 @@
 We decide what to build top down. Every part of CP Lang a user touches is a
 *surface*, grouped into *areas*. For each surface we write how it should feel
 and list every *use case* it must serve, each a stable need with an ID, a
-chosen design and the evidence that the design works. We write this once,
-exhaustively, then keep it current. Gaps show up as listed, unbuilt use
-cases rather than as user reports.
+chosen design and the evidence that the design works. We build this model
+once, as completely as we can, then keep refining it: each omission found is
+added. Gaps show up as listed, unbuilt use cases rather than as user
+reports. Coverage is half the job; the other half is finding the design
+that makes each use case one smooth call.
 
 ## Problem
 
@@ -30,8 +32,10 @@ experience is before building it.
 
 1. **Journey:** an end-to-end task a contestant does, crossing surfaces:
    "I have WA and want to know why". Today's J1 to J10 in
-   `handbook/product/journeys.md`, refined into workflows, each with an
-   owner and its own acceptance cases. Few and not exhaustive.
+   `handbook/product/journeys.md`, refined into workflows. Each has an
+   owner, an ideal walkthrough and end-to-end acceptance cases. Few and not
+   exhaustive. The top one is M1 itself: a friend learns CP Lang, solves,
+   tests, debugs and submits in a real contest.
 2. **Area:** a group of surfaces with one README that summarizes them in prose.
 3. **Surface:** one thing a user touches, with one owner and a short doc.
 4. **Use case:** one need, exhaustively listed per surface, with a stable ID.
@@ -69,9 +73,11 @@ Areas and their surfaces:
 | debugger | traces, breakpoints, replay | debugger |
 | performance | explain costs, profiles, judge profiles | perf |
 | release | install, channels, upgrades | infra |
+| language | recursion and closures, indices and domains, DP state, mutation and views, multitest | spec |
 
-The language itself keeps `handbook/language/` and `spec/`; its use cases
-are the conformance and corpus programs it already has.
+The language area doesn't restate `spec/`. Its use cases are programming
+experiences, such as "the DP gains a dimension", and link to the spec rules
+and corpus programs behind them.
 
 An area README, `std/README.md`, opens like this:
 
@@ -91,6 +97,19 @@ Evidence: program seq-u7.cp; completion offers find_index after `a.fi`
 
 The ID names the need, so the design can change without renumbering. The
 design links to the spec for exact semantics and doesn't restate them.
+Where context changes the best expression, a use case can name more than
+one design.
+
+**Granularity:** two situations are one use case when the contestant has the
+same intent and the same design should serve both; otherwise they are two.
+First match in any sequence and the transition point of a monotone
+predicate are two use cases. First match in an array and in a generator are
+one.
+
+**Dimensions:** each surface doc lists its dimensions of variation, for
+sequences the operation, the shape (array, slice, generator), index
+semantics, mutability, empty input, lazy or eager, and cost. Use cases are
+found by walking the combinations, not by brainstorming alone.
 
 ### How we design a surface
 
@@ -99,21 +118,24 @@ design links to the spec for exact semantics and doesn't restate them.
    lists, and trial reports.
 2. **Dream:** write the ideal code or interaction for representative
    problems before looking at what CP Lang does today.
-3. **Design:** choose the model. Consider the status quo and real
-   alternatives seriously; don't invent a second option to tick a box.
-4. **Validate:** try the design against every use case and many real
-   programs, and look for counterexamples. New needs found here go back
-   into the list.
+3. **Design the model:** find the smallest set of abstractions that
+   serves the use cases. Consider the status quo and real alternatives
+   seriously; don't invent a second option to tick a box.
+4. **Challenge:** try the design against every use case and many real
+   programs. The reviewer asks how close it is to the dream, whether one
+   general mechanism could replace several, why it beats C++, Python and
+   Rust, where it gets awkward or slow, and how it composes with the rest
+   of CP Lang. New needs found here go back into the list.
 5. **Commit:** the use cases, their designs and their acceptance cases.
 
-Depth depends on how uncertain the decision is and how costly it is to
-reverse:
+Depth depends on uncertainty, impact, how costly the decision is to
+reverse, and how many surfaces it touches. The levels are heuristics:
 
 | Level | Example | Needs |
 |---|---|---|
-| A | A bug, or a listed use case being built | Nothing extra |
+| A | A bug, or building a listed use case whose design is settled | Nothing extra |
 | B | A new use case, or a changed design | Its use-case entry |
-| C | A new surface, or a model across surfaces (indices) | The five steps, an independent review by another lane, and Ryan's review |
+| C | A new surface, or a model across surfaces (indices) | The five steps and an independent review by another lane. Ryan reviews only what changes CP Lang's character or settles an open question of taste |
 
 ### Evidence
 
@@ -135,9 +157,10 @@ we judge whether the design is good.
 - Every public std fn names the use case or capability it serves (`serves: seq/U7`).
 - Every CLI subcommand and flag, and every LSP capability, appears in some use case.
 - Every journey step has at least one use case.
-- Within the M1 cohort, the count of unsupported use cases only goes down.
-  Use cases discovered later join the next cohort, so finding gaps is
-  rewarded, not punished.
+- Two numbers for M1. *Baseline:* of the gaps known when the catalogue was
+  first written, how many remain; this only goes down. *Readiness:* every
+  known M1-critical gap, including ones found since; this can go up, and it
+  is the release criterion. Finding a gap is good work.
 - IDs are never reused.
 - Every trial friction is matched to a use case; one with no match is an
   *escape* and is added. Escapes are a signal, not a proof the list is
@@ -166,15 +189,17 @@ goes to RFCs.
    sequences, `cpl stress`, and editor completion. Each owner writes the
    surface doc, its use cases and acceptance cases. Another lane reviews it
    for missing needs and bad designs.
-2. Judge the pilot: did it find needs we'd missed, improve a design, and
-   produce useful tests, for how much time?
+2. Judge the pilot: did it change a design before it was built, find needs
+   the owner missed, expose a mismatch between surfaces, and produce useful
+   tests? Can a later agent decide well from the docs alone?
 3. Then roll out to every area, with the checks turned on.
 
 ## Cost
 
-About an hour per pilot surface, and one use-case edit per change after
-that. We'll notice it costs too much if lanes spend more than 10% of their
-time on these docs without the pilot finding real gaps.
+A first pass per pilot surface takes about an hour. Deep design takes as
+long as it pays off, because designing is the work, not process. After
+that, a change costs one use-case edit. The 10% rule applies to the
+bookkeeping: IDs, statuses and links. If that costs more, we simplify it.
 
 ## Alternatives
 
