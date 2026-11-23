@@ -8134,7 +8134,7 @@ tag move fatal again.
 - **Reverse.** Rename the five catalog rows back and drop `old_copy_spelling`
   in `check/steps.rs`.
 
-## 394. Rebuild round 29: holes and bugs (spec, 2026-11-23)
+## 395. Rebuild round 29: holes and bugs (spec, 2026-11-23)
 
 - **Decision.** No new rule. Of 23 holes, 10 were already answered by a general rule the reader didn't find first:
   - H01: `pre[k]` on `Int` keys is a cut (R07 rule 6).
