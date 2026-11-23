@@ -82,7 +82,7 @@ fn count_in(l: Int, r: Int, ql: Int, qr: Int) -> Int:
     if nxt.0 <= qr: ans += 1
     ans
 
-var active = SegTree<I, Int>(-1, (a, b) => max(a, b))
+var active = SegTree<I, Int>(max, fill: -1)
 var b_cr: [I]Int = 0
 var b_ql: [I]Int = 0
 var b_qr: [I]Int = 0
@@ -97,7 +97,7 @@ b_v[I(0)] = count_in(0, n, -1, 1_000_000_000)
 var ans: List<Int> = []
 for qi in 0..n:
     let a = pos[qi]
-    let cl = active.query(I(0), I(a))
+    let cl = active.fold(I(0)..=I(a))
     let cr = b_cr[I(cl)]
     let ql = b_ql[I(cl)]
     let qr = b_qr[I(cl)]

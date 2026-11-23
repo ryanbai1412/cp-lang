@@ -21,18 +21,18 @@ let fairs: [n]Fair = read()
 
 fn most() -> Int:
     let never = -1e18
-    var from_above = SegTree<Loc, Int>(never, (a, b) => max(a, b))  // best[y] + down * y
-    var from_below = SegTree<Loc, Int>(never, (a, b) => max(a, b))  // best[y] - up * y
+    var from_above = SegTree<Loc, Int>(max, fill: never)  // best[y] + down * y
+    var from_below = SegTree<Loc, Int>(max, fill: never)  // best[y] - up * y
 
     fn reach(x: Loc) -> Int:
         max(
-            from_above.query(Loc.first, x) - down * x.label,
-            from_below.query(x, Loc.last) + up * x.label,
+            from_above.fold(Loc.first..=x) - down * x.label,
+            from_below.fold(x..=Loc.last) + up * x.label,
         )
 
     fn stand(x: Loc, money: Int):
-        from_above.set(x, max(from_above.query(x, x), money + down * x.label))
-        from_below.set(x, max(from_below.query(x, x), money - up * x.label))
+        from_above.set(x, max(from_above.fold(x..=x), money + down * x.label))
+        from_below.set(x, max(from_below.fold(x..=x), money - up * x.label))
 
     stand(home, 0)
     let order = fairs.sorted(by: f => (f.day, f.at))

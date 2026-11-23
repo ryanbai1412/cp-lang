@@ -27,14 +27,14 @@ fn swaps(shoe: [Pos]Int) -> Int:
             served[size] = k + 1
         else:
             waiting[size].push(p)
-    var standing = SegTree<Pos, Int>(0, (a, b) => a + b)
+    var standing = SegTree<Pos, Int>(+, fill: 0)
     for p in Pos: standing.set(p, 1)
     var total = 0
     for p in Pos:
         if let q = partner[p]:
             standing.set(p, 0)
             standing.set(q, 0)
-            total += standing.query(p, q)
+            total += standing.fold(p..=q)
             if shoe[p] > 0: total += 1
     total
 

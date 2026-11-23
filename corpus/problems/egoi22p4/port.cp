@@ -110,7 +110,7 @@ fn main_solve():
         return 0
 
     // ODT backed by max-SegTree of active interval starts (O(log m) last_le)
-    var odt_st = SegTree<Pos, Int>(-1, (a, b) => max(a, b))
+    var odt_st = SegTree<Pos, Int>(max, fill: -1)
     var seg_r: [Pos]Int = -1
     var seg_c: [Pos]City = City(0)
 
@@ -133,13 +133,13 @@ fn main_solve():
         odt_st.set(Pos(l), -1)
 
     fn assign_range(l: Int, r: Int, x: City):
-        var cur = odt_st.query(Pos(0), Pos(r))
+        var cur = odt_st.fold(Pos(0)..=Pos(r))
         while cur != -1:
             let cl = cur
             let cr = seg_r[Pos(cl)]
             let px = seg_c[Pos(cl)]
             if cr < l: break
-            if cl > 0: cur = odt_st.query(Pos(0), Pos(cl - 1))
+            if cl > 0: cur = odt_st.fold(Pos(0)..=Pos(cl - 1))
             else: cur = -1
             let ov_l = max(l, cl)
             let ov_r = min(r, cr)
@@ -168,7 +168,7 @@ fn main_solve():
             if u != -1: t_lazy[u] += v
         else:
             let p: Int = read()
-            let start = odt_st.query(Pos(0), Pos(p - 1))
+            let start = odt_st.fold(Pos(0)..=Pos(p - 1))
             print(query_energy(p - 1, seg_c[Pos(start)]))
 
 main_solve()
