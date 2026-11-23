@@ -6187,8 +6187,8 @@ impl<'a> Lowerer<'a> {
                     return res;
                 }
                 let message = format!(
-                    "a `{}` has no member `{}` that `cpl run` knows",
-                    self.show(&ty),
+                    "{} has no member `{}` that `cpl run` knows",
+                    self.a_ty(&ty),
                     name.text
                 );
                 self.error(codes::UNKNOWN_FIELD, name.span, message);
@@ -9898,8 +9898,8 @@ impl<'a> Lowerer<'a> {
                     return res;
                 }
                 let message = format!(
-                    "a `{}` has no method `{method}` that `cpl run` knows",
-                    self.show(&ty)
+                    "{} has no method `{method}` that `cpl run` knows",
+                    self.a_ty(&ty)
                 );
                 self.error(codes::UNKNOWN_FIELD, name.span, message);
                 self.member_typo(&ty, method, name.span);

@@ -1,0 +1,7 @@
+error[E0203]: an `Int` has no method `abs` that `cpl run` knows
+  --> int_method_article.cp:2:9
+  |
+2 | print(x.abs())
+  |         ^^^
+
+int_method_article.cp: 1 error

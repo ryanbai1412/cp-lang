@@ -3,6 +3,13 @@
 use super::*;
 
 impl<'a> Lowerer<'a> {
+    /// "a `List`", "an `Int`": the type with its article, for messages.
+    pub(super) fn a_ty(&self, ty: &Ty) -> String {
+        let shown = self.show(ty);
+        let an = shown.starts_with(['A', 'E', 'I', 'O', 'U']);
+        format!("{} `{shown}`", if an { "an" } else { "a" })
+    }
+
     /// On the error just reported for `.name` of a `ty`: the member it is
     /// a typo of, with the fix. Candidates are the built-in members (a
     /// range has a list's too), the record's fields and every fn in reach that takes `self`.
