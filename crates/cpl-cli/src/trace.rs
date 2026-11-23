@@ -512,6 +512,7 @@ fn made(
                         from,
                         format!("`{n}`, which line {at} reads, last changed here, to {v}"),
                     ));
+                    reads.extend(ordered_by(&lines, &call.name, from));
                 }
             }
             changed.push((at, format!("`{name}` last changed here, to {value}")));
@@ -534,6 +535,35 @@ fn made(
     let mut seen = std::collections::HashSet::new();
     out.retain(|(line, _)| seen.insert(*line));
     out
+}
+
+/// Where the container line `at` takes an end of (`heap.pop()`,
+/// `set.first`) is declared, when its kind decides which end that is.
+fn ordered_by(lines: &[&str], fn_name: &str, at: u32) -> Option<(u32, String)> {
+    let text = lines.get(at as usize - 1)?;
+    let body = body_of(lines, fn_name)?;
+    let word = |c: char| c.is_alphanumeric() || c == '_';
+    ["pop()", "top", "peek", "first", "last", "min", "max"]
+        .iter()
+        .find_map(|end| {
+            let (before, _) = text.split_once(&format!(".{end}"))?;
+            let name = &before[before.rfind(|c: char| !word(c)).map_or(0, |k| k + 1)..];
+            let k = body.clone().find(|&k| {
+                let head = lines[k].trim_start();
+                (head.strip_prefix("var ").or_else(|| head.strip_prefix("let ")))
+                    .and_then(|rest| rest.strip_prefix(name))
+                    .is_some_and(|rest| rest.starts_with([' ', ':', '=']))
+            })?;
+            let kind = ["MinHeap", "MaxHeap", "Heap", "Set", "Map"]
+                .into_iter()
+                .find(|kind| lines[k].contains(kind))?;
+            (!name.is_empty()).then(|| {
+                (
+                    k as u32 + 1,
+                    format!("`{name}.{end}` at line {at} takes the end that the {kind} declared here keeps"),
+                )
+            })
+        })
 }
 
 /// The 1-based lines whose test decides whether line `at` runs: the
