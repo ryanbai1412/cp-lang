@@ -7,6 +7,7 @@ Reads `plan/domains/*/metrics.toml` (the recorded `today`, not a fresh run;
 each metric's `command` re-measures it) and the "Open" section of
 `plan/QUESTIONS.md`.
 """
+import importlib.util
 import json
 import re
 import sys
@@ -19,6 +20,14 @@ OUT = ROOT / "plan" / "STATUS.md"
 
 def cell(v):
     return str(v).replace("|", "\\|").replace("\n", " ").strip()
+
+
+def usecase_rows():
+    spec = importlib.util.spec_from_file_location("check_usecases", ROOT / "scripts" / "check-usecases.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    entries, _, state = mod.load(ROOT)
+    return mod.table(entries, state)
 
 
 def render():
@@ -52,6 +61,11 @@ def render():
         for m in metrics:
             body.append(f"| {cell(m.get('name', '?'))} | {cell(m.get('today', m.get('value', '?')))} | {cell(m.get('target', ''))} |")
     out += body
+    out += ["", "## Use cases (`handbook/product/**/*-usecases.md`)", "",
+            "From `scripts/check-usecases.py`. A `supported` or `partial` use case whose Evidence names",
+            "nothing runnable counts as a gap. M1 baseline gaps are the M1-critical ones open when the",
+            "catalogue was first written and only go down; M1 readiness gaps are every open M1-critical one.", ""]
+    out += usecase_rows()
     out += ["", "## Open questions (`plan/QUESTIONS.md`)", ""] + [f"- {cell(q)}" for q in questions]
     return "\n".join(out) + "\n"
 

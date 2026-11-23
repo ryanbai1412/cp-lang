@@ -8,17 +8,17 @@ rows naming no existing check, from `scripts/debt-ratchet.json`; they only go do
 | Domain | Metrics | Unchecked rows | Open questions |
 |---|---|---|---|
 | [compiler](domains/compiler/README.md) | 15 | 1 | 2 |
-| [debugger](domains/debugger/README.md) | 19 | 15 | 0 |
-| [diagnostics](domains/diagnostics/README.md) | 19 | 6 | 0 |
-| [idioms](domains/idioms/README.md) | 13 | 3 | 3 |
-| [infra](domains/infra/README.md) | 15 | 5 | 0 |
-| [lint-fmt](domains/lint-fmt/README.md) | 19 | 6 | 0 |
+| [debugger](domains/debugger/README.md) | 19 | 14 | 0 |
+| [diagnostics](domains/diagnostics/README.md) | 19 | 5 | 0 |
+| [idioms](domains/idioms/README.md) | 13 | 1 | 3 |
+| [infra](domains/infra/README.md) | 15 | 0 | 0 |
+| [lint-fmt](domains/lint-fmt/README.md) | 19 | 2 | 0 |
 | [perf](domains/perf/README.md) | 18 | 4 | 0 |
-| [site](domains/site/README.md) | 17 | 15 | 3 |
-| [spec](domains/spec/README.md) | 21 | 9 | 0 |
-| [stdlib](domains/stdlib/README.md) | 19 | 36 | 3 |
+| [site](domains/site/README.md) | 17 | 9 | 3 |
+| [spec](domains/spec/README.md) | 21 | 8 | 0 |
+| [stdlib](domains/stdlib/README.md) | 19 | 30 | 3 |
 | [tech-debt](domains/tech-debt/README.md) | 30 | 0 | 3 |
-| [tools](domains/tools/README.md) | 18 | 23 | 0 |
+| [tools](domains/tools/README.md) | 18 | 22 | 0 |
 
 ## compiler
 
@@ -302,6 +302,19 @@ rows naming no existing check, from `scripts/debt-ratchet.json`; they only go do
 | hover coverage of pub std items and syntax forms | not measured | ratchet up to all; signature with named options, cost, syntax meaning |
 | go-to-definition coverage of names in the corpus, desktop and playground | not measured | ratchet up to all |
 | quality register rows marked missing | see command | only goes down |
+
+## Use cases (`handbook/product/**/*-usecases.md`)
+
+From `scripts/check-usecases.py`. A `supported` or `partial` use case whose Evidence names
+nothing runnable counts as a gap. M1 baseline gaps are the M1-critical ones open when the
+catalogue was first written and only go down; M1 readiness gaps are every open M1-critical one.
+
+| Area | Use cases | Supported | Partial | Gap | Claimed without evidence | M1 baseline gaps | M1 readiness gaps |
+|---|---|---|---|---|---|---|---|
+| play | 12 | 6 | 3 | 3 | 3 | 1 | 1 |
+| seq | 25 | 15 | 5 | 5 | 3 | 9 | 9 |
+| stress | 27 | 19 | 3 | 5 | 3 | 1 | 1 |
+| all | 64 | 40 | 11 | 13 | 9 | 11 | 11 |
 
 ## Open questions (`plan/QUESTIONS.md`)
 

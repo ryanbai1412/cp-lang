@@ -288,7 +288,7 @@ fi
 # script tests with the conformance suite; a trailing @N/M passes --shard N/M), and CPL_GATE_PART=tests:<nextest partition> (e.g. tests:hash:1/6)
 # runs only that share of the tests, plus the doctests in share 1. Unset runs
 # all of --fast.
-script_tests=(scripts/test_dream_gaps.py scripts/test_review_check.py scripts/test_check_cache.py scripts/test_cxx_cache.py scripts/test_release.py scripts/test_debt_ratchet.py scripts/test_fmt_check.py scripts/test_skill_gen.py scripts/test_affected.py scripts/test_land_stats.py scripts/test_devex_stats.py scripts/test_new_lint.py scripts/test_conform_staged.py scripts/test_domain_of.py scripts/test_culprit.py scripts/test_commit_status.py scripts/test_check_handbook.py scripts/test_expectation_edits.py scripts/test_conformance_gaps.py scripts/test_mutation_score.py scripts/test_coverage_matrix.py scripts/test_workflows.py scripts/test_wall_clock.py scripts/test_flaky.py scripts/test_justfile.py scripts/test_port_check.py)
+script_tests=(scripts/test_dream_gaps.py scripts/test_review_check.py scripts/test_check_cache.py scripts/test_cxx_cache.py scripts/test_release.py scripts/test_debt_ratchet.py scripts/test_fmt_check.py scripts/test_skill_gen.py scripts/test_affected.py scripts/test_land_stats.py scripts/test_devex_stats.py scripts/test_new_lint.py scripts/test_conform_staged.py scripts/test_domain_of.py scripts/test_culprit.py scripts/test_commit_status.py scripts/test_check_handbook.py scripts/test_expectation_edits.py scripts/test_conformance_gaps.py scripts/test_mutation_score.py scripts/test_coverage_matrix.py scripts/test_workflows.py scripts/test_wall_clock.py scripts/test_flaky.py scripts/test_justfile.py scripts/test_port_check.py scripts/test_check_usecases.py)
 gate_part="${CPL_GATE_PART:-}"
 case "$gate_part" in
     "" | checks) ;;
@@ -365,6 +365,8 @@ if [ "$mode" = commit ]; then
     step "tech-debt ratchet (scripts/debt-ratchet.py --check)"
     uv run --quiet python scripts/debt-ratchet.py --check \
         || fail "tech-debt ratchet failed; see scripts/debt-ratchet.json"
+    step "use cases: unique IDs, every field, evidence that exists (scripts/check-usecases.py)"
+    uv run --quiet python scripts/check-usecases.py --check >/dev/null || fail "use-case catalogue check failed; see above"
     step "generated files current: skill pages, COVERAGE.md, gap lists (scripts/gen.py --check)"
     # CI's regen job regenerates stale files on main, so a commit isn't
     # blocked by staleness it may not have caused.
@@ -576,6 +578,8 @@ python3 scripts/debt-ratchet.py --check \
 
 step "handbook reads for an outsider (scripts/check-handbook.py)"
 uv run --quiet python scripts/check-handbook.py || fail "handbook doc leans on shared context; see above"
+step "use cases: unique IDs, every field, evidence that exists (scripts/check-usecases.py)"
+uv run --quiet python scripts/check-usecases.py --check >/dev/null || fail "use-case catalogue check failed; see above"
 
 # On a main push CI sets CPL_DERIVED_HEALED=1: the regen job in the same run
 # commits these files (and goes red if it can't), so staleness only warns.

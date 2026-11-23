@@ -20,7 +20,7 @@ tier = "pre-commit"
 [[gen]]
 name = "status"
 files = ["plan/STATUS.md"]
-inputs = ["plan/domains/*/metrics.toml", "plan/QUESTIONS.md"]
+inputs = ["plan/domains/*/metrics.toml", "plan/QUESTIONS.md", "handbook/product/**/*-usecases.md", "scripts/usecases.json"]
 write = ["scripts/status.py"]
 check = ["scripts/status.py", "--check"]
 tier = "pre-commit"
