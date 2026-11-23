@@ -7,6 +7,7 @@ import com.intellij.openapi.fileTypes.FileTypeManager
 import com.intellij.openapi.fileTypes.SyntaxHighlighterFactory
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.vfs.LocalFileSystem
+import com.intellij.openapi.vfs.newvfs.impl.VfsRootAccess
 import com.intellij.xdebugger.ui.DebuggerColors
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import org.junit.Assume
@@ -47,6 +48,8 @@ class CpPluginSmokeTest : BasePlatformTestCase() {
 
     fun `test a cp file makes a run configuration on its first sample`() {
         val dir = Files.createTempDirectory("cpl").toFile()
+        // macOS's temp folder sits outside the roots a test may read.
+        VfsRootAccess.allowRootAccess(testRootDisposable, dir.canonicalPath)
         File(dir, "i1").writeText("3\n")
         val source = File(dir, "sum.cp").apply { writeText("fn main():\n    let n: Int = read()\n    print(n + 1)\n") }
         val vfile = LocalFileSystem.getInstance().refreshAndFindFileByIoFile(source)!!
@@ -54,10 +57,15 @@ class CpPluginSmokeTest : BasePlatformTestCase() {
         val context = ConfigurationContext(myFixture.file)
         val made = context.configurationsFromContext.orEmpty().map { it.configuration }.filterIsInstance<CplRunConfiguration>()
         val config = made.single()
-        assertEquals(source.path, config.options.file)
+        // The IDE spells paths with `/` and through the real temp folder on every OS.
+        val same = { path: String -> File(path).canonicalPath }
+        assertEquals(same(source.path), same(config.options.file!!))
         assertEquals("run", config.options.command)
         assertEquals("run sum.cp", config.name)
-        assertEquals(listOf(cpl.path, "run", source.path, File(dir, "i1").path), config.commandLine().getCommandLineList(null))
+        assertEquals(
+            listOf(cpl.path, "run", source.path, File(dir, "i1").path).map(same),
+            config.commandLine().getCommandLineList(null).map(same),
+        )
     }
 
     fun `test the stress configuration saves a failing case that the test configuration reruns`() {
