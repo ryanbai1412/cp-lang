@@ -1,2 +1,9 @@
 # v0.3 programs whose C++ for judge `codeforces` is over the 32 KB bar, until it fits.
 # bench/sizes.py --check fails on one over the bar that is not listed, or one listed that fits.
+corpus/problems/cf2255f/port.cp  # 49016 bytes
+corpus/problems/cf2066e/port.cp  # 40133 bytes
+corpus/problems/cf2089e/port.cp  # 38128 bytes
+corpus/problems/cf2262b/port.cp  # 36759 bytes
+corpus/problems/cf2237i2/port.cp  # 34871 bytes
+corpus/problems/cf2150f/port.cp  # 34031 bytes
+corpus/problems/cf2237h/port.cp  # 32920 bytes

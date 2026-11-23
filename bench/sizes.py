@@ -4,8 +4,8 @@ against the 32 KB bar (warn at 24 KB).
 
     python3 bench/sizes.py [--judge J] [--cpl PATH] [--report FILE] [--check]
 
-Programs: corpus/problems/*/spec.cp, research/dryrun/v03/*.cp and
-bench/*/*.cp. A program that does not build is listed, not sized; building
+Programs: corpus/problems/*/spec.cp, corpus/problems/*/port.cp,
+research/dryrun/v03/*.cp and bench/*/*.cp. A program that does not build is listed, not sized; building
 is other suites' job. --report writes one line per program (bytes, the
 largest part, the path). --check fails when a built program is over the bar
 but not in bench/oversize.txt, or is in it and fits.
@@ -17,7 +17,12 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 BAR = 32 * 1024
 WARN = 24 * 1024
 OVERSIZE = os.path.join(ROOT, "bench", "oversize.txt")
-SETS = ("corpus/problems/*/spec.cp", "research/dryrun/v03/*.cp", "bench/*/*.cp")
+SETS = (
+    "corpus/problems/*/spec.cp",
+    "corpus/problems/*/port.cp",
+    "research/dryrun/v03/*.cp",
+    "bench/*/*.cp",
+)
 
 
 def programs():
