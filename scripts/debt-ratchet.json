@@ -139,7 +139,7 @@
     "diagnostics": 7,
     "idioms": 4,
     "infra": 7,
-    "lint-fmt": 7,
+    "lint-fmt": 6,
     "perf": 4,
     "site": 15,
     "spec": 10,

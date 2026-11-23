@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Fail on spellings that spec/GLOSSARY.md bans, across spec/core, spec/lib and std."""
+"""Fail on spellings that spec/GLOSSARY.md bans, across spec/core, spec/lib, std and the lint records."""
 import glob, os, re, sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -28,7 +28,8 @@ def code_lines(path):
 
 bad = 0
 files = sorted(glob.glob(f"{ROOT}/spec/core/*.md") + glob.glob(f"{ROOT}/spec/lib/**/*.md", recursive=True)
-               + glob.glob(f"{ROOT}/std/*.cp"))
+               + glob.glob(f"{ROOT}/std/*.cp") + glob.glob(f"{ROOT}/spec/lints/*/*.cp")
+               + glob.glob(f"{ROOT}/spec/lints/*/*.md"))
 for f in files:
     for i, line, code in code_lines(f):
         for pat, why, allow in BANNED:
