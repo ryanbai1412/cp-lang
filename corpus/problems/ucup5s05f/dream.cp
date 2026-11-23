@@ -4,7 +4,7 @@
 // p(x) = prod(1 - s x), then convert power sums to binomial sums via transposed
 // multipoint evaluation:
 //   answer[k] = [x^k] (power_sums(x) * prod(1 - u x for u in 0..k)) / k!
-use std.poly.{SubproductTree, inv, prod_linear}
+use std.poly.{compose, inv, prod_linear}
 use std.strings.{suffix_tree_edges}
 
 type Z = Mod<998_244_353>
@@ -26,6 +26,7 @@ let below = [Z(e.top_size) for e in edges]
 let top = power_sums(above, n)
 let bottom = power_sums(below, n)
 let sums = [top[j] - bottom[j] for j in 0..=n]
-let tree = SubproductTree([Z(u) for u in 0..n], keep: n + 1)
-let ans = tree.eval_transposed(sums)
-print([(ans[i] * comb.inv_fact(i + 1)).v for i in 0..n])
+let f = [sums[j] * comb.inv_fact(j) for j in 0..=n]
+let ln1p = [Z(0)] + [(if k % 2 == 1: Z(1) else: -Z(1)) * comb.inv(k) for k in 1..=n]
+let ans = compose(f, ln1p, n + 1)
+print(ans[1..])
