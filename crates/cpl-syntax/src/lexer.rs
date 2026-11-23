@@ -860,6 +860,7 @@ impl<'a> Lexer<'a> {
             (b'<', _, _) => (Lt, 1),
             (b'>', _, _) => (Gt, 1),
             (b'+', b'+', _) if self.increment(start) => return,
+            (b'-', b'-', _) if self.increment(start) => return,
             (b'+', b'+', _) => {
                 self.pos += 2;
                 let span = Span::new(start as u32, self.pos as u32);
@@ -1052,8 +1053,8 @@ impl<'a> Lexer<'a> {
         self.push_empty(TokenKind::RBracket, self.pos);
     }
 
-    /// `i++` ending a statement: C's increment, written `i += 1` here. The
-    /// `++` is dropped so the line still reads as `i`, with no cascade.
+    /// `i++` or `i--` ending a statement: C's increment, written `i += 1`
+    /// here. The `++` is dropped so the line still reads as `i`, with no cascade.
     fn increment(&mut self, start: usize) -> bool {
         let after = self.src[start + 2..].lines().next().unwrap_or("");
         let target = self
@@ -1067,6 +1068,11 @@ impl<'a> Lexer<'a> {
         let c_for = line.trim_start().starts_with("for") && line.contains(';');
         let prefix = after.starts_with(|c: char| c.is_ascii_alphabetic() || c == '_');
         let postfix = place && after.trim_start().starts_with(')');
+        let (op, verb, ours) = match &self.src[start..start + 2] {
+            "--" if c_for => return false,
+            "--" => ("--", "decrement", "-="),
+            _ => ("++", "increment", "+="),
+        };
         if c_for && (postfix || prefix && after.contains(')')) {
             // The parser reports the whole C-style `for` header once.
             self.pos += 2;
@@ -1081,10 +1087,14 @@ impl<'a> Lexer<'a> {
             Diagnostic::error(
                 codes::UNKNOWN_CHAR,
                 span,
-                "`++` doesn't increment in CP Lang",
+                format!("`{op}` doesn't {verb} in CP Lang"),
             )
-            .with_help("write `+= 1`")
-            .with_fix("replace `++` with ` += 1`", span, " += 1"),
+            .with_help(format!("write `{ours} 1`"))
+            .with_fix(
+                format!("replace `{op}` with ` {ours} 1`"),
+                span,
+                format!(" {ours} 1"),
+            ),
         );
         true
     }

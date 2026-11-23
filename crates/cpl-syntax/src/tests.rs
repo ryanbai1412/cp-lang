@@ -1915,3 +1915,10 @@ fn pythons_is_and_is_not_are_one_error_with_the_comparison_fix() {
         .collect();
     assert_eq!(fixed, [("is not", "!="), ("is", "==")], "{d:?}");
 }
+
+#[test]
+fn a_c_decrement_is_one_error_with_the_compound_fix() {
+    let d = parse_file("t--\nxs[i]--\nprint(a - -b)\n").diagnostics;
+    let fixed: Vec<_> = d.iter().map(|d| d.fixes[0].edits[0].1.as_str()).collect();
+    assert_eq!(fixed, [" -= 1", " -= 1"], "{d:?}");
+}
