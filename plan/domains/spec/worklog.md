@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- Trait coverage 118/120 to 120/120: cases for `IndexOp` on `Disjoint` (`at`, `len`); trait-gaps.txt is empty.
 - sig-gaps 5 to 3: `conformance-sigs.py` lets a variadic `..xs` take any name (decision 324), so `each(sum: +, hi: max)` is no longer a false gap. The other three (`dijkstra(step:)`, `pow(op:)`, `convolve(concave:)` vs std `shape:`) are routed to stdlib.
 - Rjudge.2 reject case (the judge line names only the chosen profile). rule-gaps.txt holds only R11.4.3 (`cpl migrate`, deferred to Milestone 2).
 - Request from site: since `835de99a1` lowercase `none` is E0503, but `spec/lib` still writes it in code (`containers.md` `prv != none`, `geometry.md`, `rationale/dp.md`, plus prose in 7 more files), and those pages render on the site's reference. Site migrated its own guides and Learn. General fix: the spec gate runs `cpl check` on spec/lib fences, so the next rename fails there instead of on the site.

@@ -1126,3 +1126,17 @@ m.rebuild([true, false, false])
 print(yes(m.can_swap(E(0), E(1))), yes(m.can_swap(E(1), E(2))))
 """
 out = "YES NO"
+
+[case."IndexOp/Disjoint/at"]
+code = """
+use std.ntt.{Disjoint}
+print(Disjoint().at(1, 2)!, yes(Disjoint().at(3, 1) == None))
+"""
+out = "3 YES"
+
+[case."IndexOp/Disjoint/len"]
+code = """
+use std.ntt.{Disjoint}
+print(Disjoint().len(8, 8))
+"""
+out = "8"
