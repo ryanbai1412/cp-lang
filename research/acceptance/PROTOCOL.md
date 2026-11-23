@@ -78,6 +78,26 @@ One JSON object per run, saved as `runs/<YYYY-MM-DD>-<n>.json`:
   finding in later runs merges into one row; reuse ids from `BLOCKERS.md`.
 - Every finding needs evidence a lane can reproduce without the transcript.
 
+## Milestone 2 runs
+[MILESTONE-2](../../plan/product/MILESTONE-2.md) runs the same eight steps on each release
+candidate, on Linux, macOS and Windows, with these changes:
+- **A fresh held-out set per run.** `problems/sets/<set>.txt` lists 10 Div2, 5 Div1 and a
+  5-problem timed round, each newer than the corpus's newest contest and never used by an
+  earlier run, with a local judge in `problems/<id>/` (plus `ref.cpp`, a fast reference
+  that must be AC under `judge.py`). A problem that a run has used is no longer held out;
+  the next run takes the next set. The first is `m2-1`.
+- **Four personas, one agent each per OS,** all under the friend's rules above:
+
+| Persona | Who | Steps and sets | Passes when |
+|---|---|---|---|
+| `beginner` | Knows basic C++ or Python, solves Div2 A-B, never used a language server. | All 8; `solve` on the set's first 5 Div2. | 4/5 `solve`, 3/5 `compete`; every step reached from the site's beginner path. |
+| `cf1500` | The Milestone 1 friend. | All 8; `solve` on the 10 Div2. | As in Milestone 1. |
+| `elite` | Codeforces 2400+, fluent in tuned C++, judges by speed and control. | `install`, `solve` on the 5 Div1, `submit`, `compete`. | 4/5 Div1 accepted, each max input within 1.5x of `ref.cpp`, and one solution tuned to within 1.1x from the docs alone. |
+| `reader` | PL-curious, reads the advanced chapters. | `understand`, `try`, `design` with 10 probes. | 9/10 predictions, every chapter gives its reasons. |
+
+- **Gate:** stable is promoted only when every persona passes every step it runs on every
+  OS and BLOCKERS.md has no open P0 or blocker row.
+
 ## After a run
 1. Add the JSON, run `research/acceptance/blockers.py`, and commit both with the
    run's transcript summary in `runs/<date>-<n>.md`.

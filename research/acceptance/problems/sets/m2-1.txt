@@ -1,0 +1,7 @@
+# Milestone 2 held-out set m2-1 (PROTOCOL.md, "Milestone 2 runs"). All newer than the corpus's
+# newest contest and not in corpus/, the skill, docs or site examples; keep them out.
+# Statements live on codeforces.com/contest/<id>/problem/<index>.
+# set      id
+div2       cf2283A cf2283B cf2283C cf2283D cf2283E cf2276A cf2276B cf2276C cf2276D cf2276E
+div1       cf2279A cf2279B cf2279C cf2279D cf2279E
+contest    cf2277A cf2277B cf2277C cf2277D1 cf2277D2

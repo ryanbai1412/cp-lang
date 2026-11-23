@@ -33,7 +33,7 @@ Packet: [PLAN.md](PLAN.md) (detail), [metrics.toml](metrics.toml) (commands + to
 
 **Exit criteria:** the latest release-candidate run passes J1-J10 on Linux, macOS and Windows for every persona; the corpus, perf, lint and skill numbers above are met and measured by `metrics.toml` commands; BLOCKERS.md has 0 open P0 or blocker rows.
 
-**Next steps (once Milestone 1 passes):** fresh unseen sets per run; the beginner and elite personas; idiomatic re-ports, worst-reviewed first.
+**Next steps:** (1) the first fresh held-out set, `research/acceptance/problems/sets/m2-1.txt` (10 Div2, 5 Div1, a 5-problem round), with local judges and `ref.cpp` references, being built now; (2) the four personas and the M2 gate are in PROTOCOL.md's "Milestone 2 runs" section, to drive from run 7 on; (3) idiomatic re-ports, worst-reviewed first (`scripts/review-check.py`).
 
 ## Mission
 What idiomatic v0.3 looks like, written down (skill, principles, idiom catalog) and proven (re-ports on every judge, dry runs, blind evals, new problems). A cold model given the skill writes code that says the editorial's idea, and the corpus proves it is accepted on every judge.
