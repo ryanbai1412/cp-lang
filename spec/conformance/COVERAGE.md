@@ -24,7 +24,7 @@ Cases: 2888 (1010 passing). Rules: 582.
 - R09 (09-contexts-checks.md): 27 rules, 61 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R10 (10-io.md): 19 rules, 111 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R11 (11-modules-prelude.md): 16 rules, 51 cases; 0 uncovered, 0 happy-path only, 1 negative only
-- R12 (12-powers.md): 17 rules, 36 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R12 (12-powers.md): 17 rules, 37 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R13 (13-lowering.md): 22 rules, 30 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - Rbundle (bundle.md): 3 rules, 3 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - Rcli (cli.md): 2 rules, 6 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -496,7 +496,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R07.5.7 [1+ 0-]: | `w.keys`, `w.len` | `lo..hi`, `hi - lo`
 - R07.5.8 [1+ 0-]: | `List(w)` | the one allocation: a fresh 0-based copy
 - R07.5.9 [1+ 3-]: **Lending: the rules of `mut a[i]`, over a range.** Any number of read views coexist with ...
-- R07.5.10 [2+ 1-]: **Lifetime: second-class, no annotations.** A value is lent if any part of it is (a field,...
+- R07.5.10 [2+ 1-]: : in a `let`, `var`, field or container that dies no later than its sources, never in a gl...
 - R07.5.11 [2+ 1-]: **Parameters.** A read-only `xs: [V]T` takes an array or any `Indexed` over `V` (a `mut` o...
 - R07.5.12 [2+ 1-]: **Walk-only views.** `filter`, `take_while` and generators are `Seq` only: the `if` or the...
 - R07.6.1 [2+ 0-]: **Push, not pull.** The generator runs and the `for` body runs at each `yield`, so a non-r...
@@ -652,7 +652,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R12.4.8 [1+ 1-]: Parameters are lent: a fn never owns its arguments.
 - R12.4.9 [1+ 1-]: A value is lent if any part is: a struct's fields, a closure's captures, a generator value...
 - R12.4.10 [1+ 1-]: A lent value lives until its last use. It may be kept in a `let`, `var`, field or containe...
-- R12.4.11 [1+ 1-]: While it lives its sources are lent: a read lend forbids writing, resizing or moving them,...
+- R12.4.11 [1+ 2-]: While it lives its sources are lent: a read lend forbids writing, resizing or moving them,...
 - R12.4.12 [1+ 2-]: Owned values move: `let b = a` and `S(a)` move `a`; `a.clone()` copies.
 - R12.11.1 [1+ 1-]: **Trait aliases.** `pub trait WeightedNext<V, W> = Next<V> where Self.Arc: Weighted<W>` na...
 - R12.11.2 [1+ 0-]: **Inline bounds.** A trait in a parameter's type is a fresh hidden type parameter, static ...
@@ -755,7 +755,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0208 Uppercase value name: 2 case(s)
 - E0209 Definition cycle: 1 case(s)
 - E0301 Wrong index domain: 16 case(s)
-- E0302 Type mismatch: 45 case(s)
+- E0302 Type mismatch: 44 case(s)
 - E0303 Wrong number of arguments: 11 case(s)
 - E0304 Value is not callable: 3 case(s)
 - E0305 Value is not indexable: 10 case(s)
@@ -788,7 +788,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0603 Lent value escapes its scope: 21 case(s)
 - E0604 Invalid `lends` projection: 1 case(s)
 - E0605 Invalid `Index` implementation: 2 case(s)
-- E0606 Missing trait implementation for operator: 23 case(s)
+- E0606 Missing trait implementation for operator: 24 case(s)
 - E0607 Moved while captured by a closure: 3 case(s)
 - E0608 Use of moved value: 16 case(s)
 - E0701 Ambiguous trait method: 2 case(s)
@@ -987,7 +987,7 @@ prepends it.
   - line 966: `var xs = [1, 2]`
 - 06-control-functions.md: 3 blocks, 0 with a case, 3 spec-only, 0 neither
 - 07-sequences.md: 7 blocks, 0 with a case, 6 spec-only, 1 neither
-  - line 218: `fn divisors(n: Int) -> yields Int:`
+  - line 219: `fn divisors(n: Int) -> yields Int:`
 - 08-traits-generics.md: 4 blocks, 0 with a case, 4 spec-only, 0 neither
 - 09-contexts-checks.md: 3 blocks, 0 with a case, 3 spec-only, 0 neither
 - 10-io.md: 3 blocks, 1 with a case, 2 spec-only, 0 neither

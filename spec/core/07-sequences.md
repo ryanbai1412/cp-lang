@@ -199,9 +199,10 @@ a[l..=r].rev.map(f)       // Mapped<Rev<Slice<[V]T>>, F>, F the lambda's own typ
   (arguments are always lent) and comes back only from a fn declared
   `lends`, whose result borrows every non-plain parameter unless narrowed:
   `fn window(xs: [V]Int, r: Range<V>) -> lends [V]Int = xs[r]`,
-  `fn pick(a: [V]Int, b: [V]Int) -> lends(a) [V]Int`. It never goes in a
-  `var`, field, container, global or escaping closure. Keeping one is
-  `List(w)`. An unnamed temporary lives to the end of its statement, and the temporaries of a
+  `fn pick(a: [V]Int, b: [V]Int) -> lends(a) [V]Int`. It is a lent value and is kept
+  like one (R05.7.8): in a `let`, `var`, field or container that dies no
+  later than its sources, never in a global from a fn or in an escaping
+  closure. Keeping one longer is `List(w)`. An unnamed temporary lives to the end of its statement, and the temporaries of a
 `for` header live for the whole loop: `for r in a.sorted().runs():` is valid. (R07.5.10)
 - **Parameters.** A read-only `xs: [V]T` takes an array or any `Indexed`
   over `V` (a `mut` one, any `IndexedMut`); it is a template parameter, so
