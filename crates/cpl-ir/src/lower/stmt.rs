@@ -3367,34 +3367,33 @@ impl<'a> Lowerer<'a> {
             }
             return;
         }
-        let field_tys: Vec<Ty> = match &temps[0].1 {
-            Ty::Struct(sid) => self.structs[*sid]
-                .def
-                .fields
-                .iter()
-                .map(|(_, t)| t.clone())
-                .collect(),
-            Ty::Tuple(items) => items.clone(),
-            Ty::Record(fields) => fields.iter().map(|(_, t)| t.clone()).collect(),
-            Ty::Unit => Vec::new(),
-            Ty::Error => return,
-            ty => {
+        // Values of different types walk together when they have as many
+        // fields: `fields(ops, a, b)` pairs the i-th op with the i-th parts.
+        let mut shapes: Vec<Vec<Ty>> = Vec::new();
+        for (_, ty, span) in &temps {
+            if *ty == Ty::Error {
+                return;
+            }
+            let Some(tys) = self.field_tys(ty) else {
                 let message = format!(
                     "`fields` walks the fields of a struct or a tuple, not of a `{}`",
                     self.show(ty)
                 );
-                self.error(codes::TYPE_MISMATCH, temps[0].2, message);
+                self.error(codes::TYPE_MISMATCH, *span, message);
+                return;
+            };
+            if let Some(first) = shapes.first().filter(|f| f.len() != tys.len()) {
+                let message = format!(
+                    "`fields` walks values with as many fields together; this has {}, the first {}",
+                    tys.len(),
+                    first.len()
+                );
+                self.error(codes::TYPE_MISMATCH, *span, message);
                 return;
             }
-        };
-        if let Some((_, ty, span)) = temps.iter().find(|(_, ty, _)| *ty != temps[0].1) {
-            let message = format!(
-                "`fields` walks values of one type together; this is a `{}`",
-                self.show(ty)
-            );
-            self.error(codes::TYPE_MISMATCH, *span, message);
-            return;
+            shapes.push(tys);
         }
+        let field_tys = shapes[0].clone();
         if field_tys.is_empty() {
             let at = out.len() - temps.len();
             let lets: Vec<Stmt> = out.drain(at..).collect();
@@ -3411,18 +3410,19 @@ impl<'a> Lowerer<'a> {
                 }
             }
         }
-        for (i, fty) in field_tys.iter().enumerate() {
+        for i in 0..field_tys.len() {
             let mut items: Vec<Expr> = temps
                 .iter()
-                .map(|(slot, _, span)| {
+                .zip(&shapes)
+                .map(|((slot, _, span), tys)| {
                     let base = self.local(*slot, *span);
-                    self.mk(ExprKind::Field(Box::new(base), i), fty.clone(), *span)
+                    self.mk(ExprKind::Field(Box::new(base), i), tys[i].clone(), *span)
                 })
                 .collect();
             let value = if items.len() == 1 {
                 items.pop().unwrap()
             } else {
-                let ty = Ty::Tuple(vec![fty.clone(); items.len()]);
+                let ty = Ty::Tuple(items.iter().map(|e| e.ty.clone()).collect());
                 let span = temps[0].2;
                 self.mk(ExprKind::Tuple(items), ty, span)
             };

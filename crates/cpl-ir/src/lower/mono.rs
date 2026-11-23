@@ -4416,17 +4416,29 @@ fn pack_args(params: &[&ast::Param], args: &[ast::Arg], span: Span) -> Option<Ve
     let param = params.iter().filter(|p| !p.named_only).nth(at)?;
     let mut kept = Vec::new();
     let mut items = Vec::new();
+    let mut named = Vec::new();
     for arg in args {
-        match arg.name {
+        match &arg.name {
             None if kept.iter().filter(|a: &&ast::Arg| a.name.is_none()).count() >= at => {
                 items.push(arg.value.clone());
+            }
+            // A name no parameter has is a field of the named tuple (R06.1.5).
+            Some(n) if !params.iter().any(|p| p.label_text() == n.text) => {
+                named.push((n.clone(), arg.value.clone()));
             }
             _ => kept.push(arg.clone()),
         }
     }
-    let span = match (items.first(), items.last()) {
-        (Some(a), Some(b)) => Span::new(a.span.start, b.span.end),
+    let ends = |a: Span, b: Span| Span::new(a.start, b.end);
+    let span = match (items.first(), items.last(), named.first(), named.last()) {
+        (Some(a), Some(b), _, _) => ends(a.span, b.span),
+        (_, _, Some(a), Some(b)) => ends(a.0.span, b.1.span),
         _ => Span::point(span.end),
+    };
+    let kind = if items.is_empty() && !named.is_empty() {
+        ast::ExprKind::Record(named)
+    } else {
+        ast::ExprKind::Tuple(items)
     };
     kept.push(ast::Arg {
         name: Some(ast::Name {
@@ -4434,10 +4446,7 @@ fn pack_args(params: &[&ast::Param], args: &[ast::Arg], span: Span) -> Option<Ve
             span,
         }),
         mutable: false,
-        value: ast::Expr {
-            kind: ast::ExprKind::Tuple(items),
-            span,
-        },
+        value: ast::Expr { kind, span },
     });
     Some(kept)
 }

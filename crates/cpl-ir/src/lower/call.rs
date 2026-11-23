@@ -206,6 +206,11 @@ impl<'a> Lowerer<'a> {
                         GenArg::Ty(Ty::Struct(id)) => {
                             return self.construct_or_new(id, args, span);
                         }
+                        GenArg::Ty(own @ (Ty::Tuple(_) | Ty::Record(_))) => {
+                            if let Some(e) = self.fields_ctor(own, args, span) {
+                                return e;
+                            }
+                        }
                         GenArg::Ty(Ty::Int) => return self.prelude("Int", args, hint, span),
                         GenArg::Ty(Ty::Float) => return self.prelude("F64", args, hint, span),
                         GenArg::Ty(Ty::Char) => return self.prelude("Char", args, hint, span),
@@ -1411,7 +1416,9 @@ impl<'a> Lowerer<'a> {
     /// `Edge(u: a, v: b, w: 5)` or `Edge(a, b, 5)`.
     /// `P(read() for _ in fields(P))`, `P(x + y for (x, y) in fields(a, b))`:
     /// the body once per field, giving that field (decision 28.9).
-    fn fields_ctor(&mut self, id: StructId, args: &[ast::Arg], span: Span) -> Option<Expr> {
+    /// `own` is the struct, tuple or record type built; a type parameter
+    /// `T(f(x) for x in fields(a))` builds whatever `T` is.
+    fn fields_ctor(&mut self, own: Ty, args: &[ast::Arg], span: Span) -> Option<Expr> {
         let [arg] = args else {
             return None;
         };
@@ -1425,21 +1432,22 @@ impl<'a> Lowerer<'a> {
             return None;
         }
         let values = self.reflected_values(&clause.iter)?;
-        let fields = self.structs[id].def.fields.clone();
+        let field_tys = self.field_tys(&own)?;
+        let own_name = self.show(&own);
         let mut stmts = Vec::new();
         let mut temps = Vec::new();
         for a in values {
             if let ast::ExprKind::Name(n) = &a.value.kind {
                 if self.lookup(n).is_none() && n.starts_with(|c: char| c.is_ascii_uppercase()) {
-                    let own = match self.gen_env.get(n) {
-                        Some(GenArg::Ty(Ty::Struct(sid))) => *sid == id,
-                        _ => matches!(self.get_sym(n), Some(Sym::Struct(sid)) if sid == id),
+                    let is_own = match self.gen_env.get(n) {
+                        Some(GenArg::Ty(t)) => *t == own,
+                        _ => {
+                            matches!((self.get_sym(n), &own), (Some(Sym::Struct(sid)), Ty::Struct(id)) if sid == *id)
+                        }
                     };
-                    if !own {
-                        let message = format!(
-                            "`fields({n})` here names the type it builds, `{}`",
-                            self.structs[id].def.name
-                        );
+                    if !is_own {
+                        let message =
+                            format!("`fields({n})` here names the type it builds, `{own_name}`");
                         self.error(codes::TYPE_MISMATCH, a.value.span, message);
                         return Some(self.err_expr(span));
                     }
@@ -1447,44 +1455,53 @@ impl<'a> Lowerer<'a> {
                 }
             }
             let v = self.expr(&a.value, None);
-            if v.ty != Ty::Struct(id) && v.ty != Ty::Error {
-                let message = format!(
-                    "`fields` here walks values of the type it builds, `{}`; this is a `{}`",
-                    self.structs[id].def.name,
-                    self.show(&v.ty)
-                );
-                self.error(codes::TYPE_MISMATCH, a.value.span, message);
+            if v.ty == Ty::Error {
                 return Some(self.err_expr(span));
             }
+            // Values of other types walk along when they have as many fields.
+            let tys = match self.field_tys(&v.ty) {
+                Some(tys) if tys.len() == field_tys.len() => tys,
+                _ => {
+                    let message = format!(
+                        "`fields` here walks values with the fields of the type it builds, `{own_name}`; this is a `{}`",
+                        self.show(&v.ty)
+                    );
+                    self.error(codes::TYPE_MISMATCH, a.value.span, message);
+                    return Some(self.err_expr(span));
+                }
+            };
             let slot = self.temp(v.ty.clone());
             stmts.push(Stmt::Let(slot, Some(v)));
-            temps.push((slot, a.value.span));
+            temps.push((slot, a.value.span, tys));
         }
         let mut items = Vec::new();
-        for (i, (_, fty)) in fields.iter().enumerate() {
+        for (i, fty) in field_tys.iter().enumerate() {
             self.cx.scopes.push(HashMap::new());
             self.cx.local_syms.push(HashMap::new());
             if !temps.is_empty() {
                 let mut vals: Vec<Expr> = temps
                     .iter()
-                    .map(|(slot, sp)| {
+                    .map(|(slot, sp, tys)| {
                         let base = self.local(*slot, *sp);
-                        self.mk(ExprKind::Field(Box::new(base), i), fty.clone(), *sp)
+                        self.mk(ExprKind::Field(Box::new(base), i), tys[i].clone(), *sp)
                     })
                     .collect();
                 let value = if vals.len() == 1 {
                     vals.pop().unwrap()
                 } else {
-                    let ty = Ty::Tuple(vec![fty.clone(); vals.len()]);
+                    let ty = Ty::Tuple(vals.iter().map(|e| e.ty.clone()).collect());
                     self.mk(ExprKind::Tuple(vals), ty, temps[0].1)
                 };
                 self.bind(&clause.pat, value, &mut stmts);
             }
             let v = self.expect(body, fty);
-            let v = match self
-                .struct_field_range(id, i)
-                .and_then(|r| r.scalar().cloned())
-            {
+            let range = match &own {
+                Ty::Struct(id) => self
+                    .struct_field_range(*id, i)
+                    .and_then(|r| r.scalar().cloned()),
+                _ => None,
+            };
+            let v = match range {
                 Some(b) => self.check_range(v, &b, body.span),
                 None => v,
             };
@@ -1494,13 +1511,13 @@ impl<'a> Lowerer<'a> {
             self.cx.local_syms.pop();
             self.cx.scopes.pop();
         }
-        let value = self.mk(ExprKind::Tuple(items), Ty::Struct(id), span);
+        let value = self.mk(ExprKind::Tuple(items), own.clone(), span);
         stmts.push(Stmt::Give(value));
-        Some(self.mk(ExprKind::Do(Block { stmts }), Ty::Struct(id), span))
+        Some(self.mk(ExprKind::Do(Block { stmts }), own, span))
     }
 
     fn construct(&mut self, id: StructId, args: &[ast::Arg], span: Span) -> Expr {
-        if let Some(e) = self.fields_ctor(id, args, span) {
+        if let Some(e) = self.fields_ctor(Ty::Struct(id), args, span) {
             return e;
         }
         let fields = self.structs[id].def.fields.clone();

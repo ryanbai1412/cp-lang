@@ -7158,7 +7158,7 @@ on a taken number renumbers its own entry with `just next-decision`. Old
 duplicates keep their numbers, because commit bodies cite them. Reverse by
 removing the counter.
 
-## 329. Grid neighbours are getters and `Dir4` directions are constants (2026-11-22)
+## 331. Grid neighbours are getters and `Dir4` directions are constants (2026-11-22)
 
 `p.up`, `p.down`, `p.left`, `p.right` on any `(R, C)` cell are `@get` fns in `std/grid.cp` returning `?(R, C)`, written without parens like `r.prev`, and `Dir4.up` (and `right`, `down`, `left`) are `pub const`s, so `p.step(Dir4.up) == p.up` and `p.step(d)` stays for a computed `d`. Each getter is one `R.at(p.0 - 1)`-style bounds test and one add, an inline C++ fn. Matches `spec/lib/graphs-trees.md` (spec's wording). Reverse: turn the consts back into `fn up() -> Dir4` and drop the four getters; `cpl fix` rewrites `p.up` to `p.step(Dir4.up())`.
 
@@ -7204,3 +7204,7 @@ the statement's bounds). Matching the call `read` by name is the one new
 table (PLAN.md). 13 corpus ports carry it, listed for idioms. Reverse: delete
 `spec/lints/read_loop/`, `rules/read_loop.rs` and the `push_loop` skip.
 
+
+## 332. Named variadic args, field-wise `fields` and `T(...)` grow three capped compiler files (stdlib, 2026-11-22)
+
+The call: `check/stmt.rs` (+24), `lower/call.rs` (+17) and `lower/mono.rs` (+9) take the debt ratchet's `--update rs_over_cap` so that named variadic args make a record (decision 324), `fields(a, b, ...)` walks values of different types with as many fields, and `T(...)` builds a tuple or record type parameter; together they make `each` over `Monoid` components the field-wise monoid. Why: the logic belongs beside the code it extends, and splitting these files is tech-debt's ongoing work, not this change's. Reverse: move the `fields` checks into a `check/fields.rs` and the constructor into `lower/fields.rs`, then shrink the allowlist.

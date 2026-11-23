@@ -23,6 +23,24 @@ pub(super) struct LoopFrame {
 }
 
 impl Lowerer<'_> {
+    /// The field types of a struct, tuple or record, in declaration order.
+    pub(super) fn field_tys(&self, ty: &Ty) -> Option<Vec<Ty>> {
+        match ty {
+            Ty::Struct(sid) => Some(
+                self.structs[*sid]
+                    .def
+                    .fields
+                    .iter()
+                    .map(|(_, t)| t.clone())
+                    .collect(),
+            ),
+            Ty::Tuple(items) => Some(items.clone()),
+            Ty::Record(fields) => Some(fields.iter().map(|(_, t)| t.clone()).collect()),
+            Ty::Unit => Some(Vec::new()),
+            _ => None,
+        }
+    }
+
     /// Opens the loops of a comprehension. Its body is lowered next, with
     /// the loop variables in scope, and [`Self::close_loops`] wraps it.
     pub(super) fn open_loops(&mut self, clauses: &[ast::Clause]) -> Vec<LoopFrame> {

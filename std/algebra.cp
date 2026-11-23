@@ -35,7 +35,15 @@ pub struct Monoid<T>(id: T, op: (T, T) -> T):
         if same(m, max): return Monoid(T.MIN, (a, b) => max(a, b))
         if same(m, min): return Monoid(T.MAX, (a, b) => min(a, b))
         if same(m, gcd): return Monoid(T.zero, (a, b) => gcd(a, b))
-        m
+        m.monoid()
+
+    /// A monoid is its own monoid: what [`Monoid.of`] gives back for anything that is not a
+    /// bare operator. A type of your own with a `monoid()` method is accepted the same way.
+    ///
+    /// cost: O(1)
+    /// traps: never
+    /// example: `Monoid<Int>(0, (a, b) => a + b).monoid().op(2, 3) == 5`
+    pub fn monoid(self) -> Monoid<T> = self
 
 fn same<A, B>(a: A, b: B) -> Bool = a == b
 
@@ -532,7 +540,24 @@ pub trait Selective<T>: Idempotent<T>
 /// cost: O(1) to build; each call costs the sum of its components
 /// traps: never
 /// example: `fold(each(+, max), [(1, 5), (2, 3)]) == (3, 5)`
-pub fn each<Ms>(..ms: Ms) -> Ms = todo
+/// example: `fold(each(n: +, hi: max), [(n: 1, hi: 5), (n: 2, hi: 3)]).hi == 5`
+pub fn each<Ms>(..ms: Ms) -> Each<Ms> = Each(ms)
+
+/// The ops of [`each`], one per component; a structure takes it through [`Monoid.of`].
+pub struct Each<Ms>(ms: Ms):
+    /// The monoid on `T` that applies the i-th op to the i-th components, with the tuple of
+    /// their identities as its identity.
+    ///
+    /// cost: O(components)
+    /// traps: never (an op with no known identity is a compile-time error)
+    /// example: `each(+, max).monoid<(Int, Int)>().op((1, 5), (2, 3)) == (3, 5)`
+    pub fn monoid<T>(self) -> Monoid<T>:
+        let ms = self.ms
+        Monoid(T(identity_of(m) for m in fields(ms)), (a, b) => T(op_of(m, x, y) for (m, x, y) in fields(ms, a, b)))
+
+fn identity_of<M, F>(m: M) -> F = Monoid<F>.of(m).id
+
+fn op_of<M, F>(m: M, x: F, y: F) -> F = Monoid<F>.of(m).op(x, y)
 
 /// Marker type for the stock `add` action.
 pub struct AddAction

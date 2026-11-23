@@ -2805,17 +2805,23 @@ impl Checker<'_> {
         let mut first: Option<Ty> = None;
         for v in values {
             let ty = self.infer(&v.value);
-            if let Some(first) = &first {
-                if !first.is_vague() && !ty.is_vague() && *first != ty {
-                    self.error(
-                        codes::TYPE_MISMATCH,
-                        v.value.span,
-                        format!(
-                            "`fields` walks values of one type together; this is a `{ty}`, the first is a `{first}`"
-                        ),
-                    );
-                }
-            } else {
+            let enum_mismatch = first.as_ref().is_some_and(|first| {
+                !first.is_vague()
+                    && !ty.is_vague()
+                    && *first != ty
+                    && (variant_shapes.is_some() || self.variant_payloads(&ty).is_some())
+            });
+            if enum_mismatch {
+                let first = first.as_ref().unwrap();
+                self.error(
+                    codes::TYPE_MISMATCH,
+                    v.value.span,
+                    format!(
+                        "`fields` walks values of one type together; this is a `{ty}`, the first is a `{first}`"
+                    ),
+                );
+            }
+            if first.is_none() {
                 first = Some(ty.clone());
             }
             if let Some(variants) = self.variant_payloads(&ty) {
@@ -2824,6 +2830,24 @@ impl Checker<'_> {
                 continue;
             }
             match self.reflect(&ty) {
+                // Values of other types walk along when they have as many fields.
+                Ok(Some(fields))
+                    if shapes
+                        .iter()
+                        .flatten()
+                        .next()
+                        .is_some_and(|f: &Vec<(String, Ty)>| f.len() != fields.len()) =>
+                {
+                    self.error(
+                        codes::TYPE_MISMATCH,
+                        v.value.span,
+                        format!(
+                            "`fields` walks values with as many fields together; this `{ty}` has {}",
+                            fields.len()
+                        ),
+                    );
+                    shapes.push(None);
+                }
                 Ok(fields) => shapes.push(fields),
                 Err(()) => {
                     if let Some(d) = self.error(

@@ -37,15 +37,17 @@ impl Checker<'_> {
                 }
             }
             let ty = self.infer(&v.value);
+            let same_arity = |r: &Result<Option<Vec<(String, Ty)>>, ()>| matches!((own, r), (Some((_, f)), Ok(Some(g))) if f.len() == g.len());
+            let reflected = self.reflect(&ty);
             if let (Some((name, _)), Ty::Named { name: got, .. }) = (own, &ty) {
-                if got != name {
+                if got != name && !same_arity(&reflected) {
                     let message = format!(
                         "`fields` here walks values of the type it builds, `{name}`; this is a `{ty}`"
                     );
                     self.error(codes::TYPE_MISMATCH, v.value.span, message);
                 }
             }
-            shapes.push(self.reflect(&ty).ok().flatten());
+            shapes.push(reflected.ok().flatten());
         }
         if !clause.conds.is_empty() {
             let message =
@@ -264,10 +266,17 @@ impl Checker<'_> {
         let mut extra = 0usize;
         let mut misnamed = false;
         let mut pack: Vec<Ty> = Vec::new();
+        let mut named_pack: Vec<(String, Ty)> = Vec::new();
         for (i, arg) in args.iter().enumerate() {
             let param = match &arg.name {
                 Some(name) if labeled => match params.iter().find(|p| p.name == name.text) {
                     Some(param) => Some(param),
+                    // Named arguments to `..xs` make it a named tuple (R06.1.5).
+                    None if variadic => {
+                        let ty = self.infer(&arg.value);
+                        named_pack.push((name.text.clone(), self.settle(&ty).widen()));
+                        continue;
+                    }
                     None => {
                         let names: Vec<String> = params.iter().map(|p| p.name.clone()).collect();
                         let suggestion = closest(&name.text, names.iter().map(String::as_str));
@@ -435,7 +444,17 @@ impl Checker<'_> {
             }
         }
         if let Some(last) = positional.last().filter(|p| p.variadic) {
-            last.ty.unify(&Ty::Tuple(pack), bindings);
+            if named_pack.is_empty() {
+                last.ty.unify(&Ty::Tuple(pack), bindings);
+            } else if pack.is_empty() {
+                last.ty.unify(&Ty::Record(named_pack), bindings);
+            } else {
+                let message = format!(
+                    "`..{}` takes positional or named arguments in one call, not both",
+                    last.name
+                );
+                self.error(codes::TYPE_MISMATCH, call.span, message);
+            }
         }
         // A misspelled name already explains a missing argument.
         if misnamed || (!labeled && args.iter().any(|a| a.name.is_some())) {
