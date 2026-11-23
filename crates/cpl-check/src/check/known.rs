@@ -484,7 +484,7 @@ impl<'a> Checker<'a> {
     /// Without this the call works on a copy and the change is lost.
     /// `p.swap()` on a type with its own non-`mut` `swap`, or `s.add(x, y)`
     /// on an operation-value field `add`, is not the built-in mutator of
-    /// that name (R05.4.1).
+    /// that name (R05.4.2).
     pub(crate) fn own_non_mutator(&mut self, callee: &Expr) -> bool {
         let ExprKind::Field { base, name } = &callee.kind else {
             return false;
