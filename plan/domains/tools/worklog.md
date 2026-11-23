@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- Measured: where open-to-first-diagnostics goes at 5,002 lines (a one-off timing test in `tests/latency.rs`, release, not committed): `didOpen` is 149 KB; printing it 1 ms, parsing 0-1 ms, `Server::respond` 79-123 ms against a cold `Database::analyze` of 80-157 ms on the same loaded VM. Nothing tools-side is left to cut; the open waits on the checker. ARCHITECTURE known debt refreshed (exit codes vs spec, cli.json source, file sizes, latency).
 - Landed (this): VS Code tables and grammar list `cross` and `dot`, which stdlib made public free fns on `Pt` (f660ae18d); `vscode_sync` was red on main. `cargo nextest run -p cpl-cli --test vscode_sync` passes; `npm test` in `editors/vscode` 37/37.
 - Landed (this): `cpl build` moves from `crates/cpl-cli/src/lib.rs` to `src/build.rs` (`BuildOptions`, `build_file`, `build_checked`, `take_judge`), no behaviour change; `lib.rs` 1,662 -> 1,422 lines. `cargo nextest run -p cpl-cli` as before (failures only the main-side corpus `Range` `.l`/`.r` ones).
 - Measured: release latency on main (`cargo test --release -p cpl-lsp --test latency -- --nocapture`, 5,002 lines): `check, cold` median 76 ms, p90 79 ms (budget 50 ms, the one failing test); open to first diagnostics median 97 ms, p90 110 ms (budget 100 ms, passes at the median); hover p90 92 ms; rename p90 55 ms. Compiler follow-up filed; `devin/check-fx-hash` is theirs to land or delete. ARCHITECTURE line counts refreshed.
