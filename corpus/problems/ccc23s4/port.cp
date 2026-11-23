@@ -11,18 +11,18 @@ struct Road:
 
 let roads: [E]Road = read()
 
-type Adj = [V]List<(V, Int)>
+type Adj = [V]List<(to: V, w: Int)>
 
 fn link(mut g: Adj, r: Road):
-    g[r.u].push((r.v, r.len))
-    g[r.v].push((r.u, r.len))
+    g[r.u].push((to: r.v, w: r.len))
+    g[r.v].push((to: r.u, w: r.len))
 
 // Shortest roads first, cheapest among ties; keep a road only if the kept
 // network doesn't already connect its ends within its length.
 var g: Adj = []
 var total = 0
 for r in roads.sorted(by: r => (r.len, r.cost)):
-    if (dijkstra(g, r.u)[r.v] ?? inf) > r.len:
+    if (dijkstra(g, from: [(r.u, 0)])[r.v] ?? inf) > r.len:
         total += r.cost
         link(mut g, r)
 print(total)

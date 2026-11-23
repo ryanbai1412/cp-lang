@@ -44,8 +44,7 @@ fn main_solve():
         while w > 0:
             rev.push(digit_char(w % 10))
             w = w / 10
-        rev.rev
-        for ch in rev: out.push(ch)
+        for ch in rev.rev: out.push(ch)
     out.push('.')
     var frac = scaled % 100_000
     var div = 10_000

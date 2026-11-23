@@ -13,28 +13,20 @@ fn read_tile() -> Tile:
         else: ends[ends.len - 1] = ends[ends.len - 1] * 10 + (c - '0')
     (min(ends[0], ends[1]), max(ends[0], ends[1]))
 
-@multitest
-fn solve():
-    let n: 1..=1e5 = read()
-    var tiles: List<Tile> = []
-    for _ in 0..n: tiles.push(read_tile())
+@!multitest
+let n: 1..=1e5 = read()
+var tiles: List<Tile> = []
+for _ in 0..n: tiles.push(read_tile())
 
-    // Largest tile first, each on the row whose front tile has the smallest b
-    // that is still large enough. The rows stay in order of that b, so the
-    // row is found by binary search, as in patience sorting.
-    var rows: List<List<Tile>> = []
-    sort(mut tiles)
-    for t in tiles.rev:
-        domain R = 0..rows.len
-        if let r = R.first_where(
-            r => rows[r.idx][rows[r.idx].len - 1].b >= t.b
-        ): rows[r.idx].push(t)
-        else: rows.push([t])
-    print(rows.len)
-    for row in rows:
-        for t in row.rev:
-            write(t.a)
-            write("-")
-            write(t.b)
-            write(" ")
-        print()
+// Largest tile first, each on the row whose front tile has the smallest b
+// that is still large enough. The rows stay in order of that b, so the
+// row is found by binary search, as in patience sorting.
+var rows: List<List<Tile>> = []
+sort(mut tiles)
+for t in tiles.rev:
+    let r = Int(rows.partition_point(row => row.last!.b >= t.b))
+    if r < rows.len: rows[r].push(t)
+    else: rows.push([t])
+print(rows.len)
+for row in rows:
+    print(["{t.a}-{t.b}" for t in row.rev])

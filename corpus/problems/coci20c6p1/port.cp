@@ -7,12 +7,12 @@ let m: 1..=100 = read()
 domain Row = 0..n
 domain Col = 0..m
 let g: [Row, Col]Char = read()
-var out: [Row, Col]Char = g
+var out: [Row, Col]Char = g.copy()
 for r in Row:
     for c in Col:
         if g[r, c] != '#': continue
-        if let c2 = c + 1: out[r, c2] = '#'
-        if let r2 = r + 1:
+        if let c2 = Col.at(c + 1): out[r, c2] = '#'
+        if let r2 = Row.at(r + 1):
             out[r2, c] = '#'
-            if let c2 = c + 1: out[r2, c2] = '#'
+            if let c2 = Col.at(c + 1): out[r2, c2] = '#'
 for r in Row: print(out[r, ..])

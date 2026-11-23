@@ -7,6 +7,6 @@ let scores: [t]0..=1e9 = read()
 var seen = SortedBag<Int>()  // WISH F13: a bag with rank queries
 var ranks = 0
 for s in scores:
-    ranks += 1 + seen.count_above(s)
+    ranks += 1 + (seen.len - seen.rank(s) - seen.count(s))
     seen.add(s)
 print(ranks / F64(t), digits: 2)  // WISH F15: floats are still undecided

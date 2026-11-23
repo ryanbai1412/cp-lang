@@ -29,4 +29,4 @@ for c in Count:
             if let b1 = b.prev: after += b.label * steps[a.next!, b1, c]
             if let c1 = c.prev: after += c.label * steps[a, b.next!, c1]
             steps[a, b, c] = after / left
-print(fixed(steps[Count(dishes[Pieces(1)]), Count(dishes[Pieces(2)]), Count(dishes[Pieces(3)])], 9))
+print(steps[Count(dishes[Pieces(1)]), Count(dishes[Pieces(2)]), Count(dishes[Pieces(3)])], precision: 9)

@@ -7,7 +7,7 @@
 // to all the others is a sort and a running sum, and the average over the
 // K directions times pi/2 is the answer, off by about 1/K^2.
 // original: corpus/submissions/4041223.cpp
-use real.float.{PI, sin_cos, fixed}
+use real.float.{PI, sin_cos}
 
 const K = 30
 let n: Int = read()
@@ -32,4 +32,4 @@ for k in 0..K:
         behind += s
         ahead -= s
         i += 1
-for p in P: print(fixed(total[p] / K * PI / 2, 2))
+for p in P: print(total[p] / K * PI / 2, precision: 2)

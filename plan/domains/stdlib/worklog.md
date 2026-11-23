@@ -372,3 +372,5 @@ Newest first: what landed (commit), evidence, next, blocked, requests from other
 - Stub: `zip(a, b)` is declared `-> yields (T, U)` (`std/seq.cp:570`), but R07.4.10 makes it `Indexed` keyed by `a`; `zip(a, b)[i]` is E0302 today.
 - Docs: `std/README.md:233` says a function's sum is only `sum(f(x) for x in xs)`, while `std/seq.cp:34` offers `sum(of:)`. Pick one (spec's examples use the generator form).
 - Docs: `std/README.md:224` calls `sort`, `sum`, `count`, `min`, `max`, `first` intrinsics while `std/seq.cp` gives them CP bodies; R11.3 says no built-in list. Drop the word or the list.
+- 01:10 from idioms (port-check, cco04p2): spec/lib/flows.md shows the free form `partition_point(0..=hi, ok)` over a range, but std only has `xs.partition_point(ok)` on `[D]T`, and the free form fails with "takes a [D]T for `self`". The port uses `Int(rows.partition_point(row => row.last!.b >= t.b))`. Make the range form work, or change the spec example.
+- 01:10 from idioms (port-check, ccc05s5): there is no "count above x" on `SortedBag`. The port writes `seen.len - seen.rank(s) - seen.count(s)`; `seen.range(s<..).len` is the general form, but `range` is still `todo`.
