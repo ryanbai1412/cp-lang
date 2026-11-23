@@ -15,10 +15,12 @@ use cpl_diag::{Diagnostic, Fix, Span};
 use cpl_syntax::ast::*;
 use std::collections::{HashMap, HashSet};
 
+mod forms;
 mod range_tree;
 mod search;
 mod stdlib_algo;
 mod string_algo;
+use forms::{AccLoop, Form};
 use range_tree::*;
 use search::*;
 use stdlib_algo::*;
@@ -220,8 +222,27 @@ impl<'a> Taste<'a> {
             if let Some((next_base, next)) = stmts.get(i + 1) {
                 self.next_base = *next_base;
                 self.symmetric(stmt, next);
-                self.search(stmt, next);
-                self.reduction(stmt, next);
+                let Some(acc) = AccLoop::of(stmt, next) else {
+                    continue;
+                };
+                for form in acc.forms() {
+                    let AccLoop {
+                        name,
+                        init,
+                        pat,
+                        iter,
+                        ..
+                    } = acc;
+                    match form {
+                        Form::Search => self.search(&acc, stmt, next),
+                        Form::Fold { cond, op, value } => {
+                            self.reduce(name, init, pat, iter, cond, op, value, stmt, next)
+                        }
+                        Form::Build { cond, value } => {
+                            self.collect(name, init, pat, iter, cond, value, stmt, next)
+                        }
+                    }
+                }
             }
         }
     }
@@ -733,24 +754,16 @@ impl<'a> Taste<'a> {
 
     /// `var x = none` then a `for` that sets `x` and breaks: `first(..)`;
     /// with `false`/`true` and `x = true`/`false`: `any(..)`/`all(..)`.
-    fn search(&mut self, decl: &Stmt, next: &Stmt) {
-        let Some((name, init)) = var_decl(decl) else {
-            return;
-        };
-        let StmtKind::For {
-            label: None,
+    fn search(&mut self, acc: &AccLoop, decl: &Stmt, next: &Stmt) {
+        let AccLoop {
+            name,
+            init,
             pat,
             iter,
             body,
-            else_body: None,
-        } = &next.kind
-        else {
-            return;
-        };
+        } = *acc;
         let init_text = self.text(init.span);
-        if !matches!(init_text, "none" | "false" | "true")
-            || !breaks_after_setting(&body.stmts, name)
-        {
+        if !matches!(init_text, "none" | "false" | "true") {
             return;
         }
         let (call, fix) = match self.exact_search(name, init_text, pat, iter, body) {
@@ -840,55 +853,6 @@ impl<'a> Taste<'a> {
             ("true", "false") => ("all", format!("all(not ({c}) for {p} in {it})")),
             _ => return None,
         })
-    }
-
-    /// `var s = 0` then `for x in xs: s += e`: one `sum`, `count`, `max`
-    /// or `min`.
-    fn reduction(&mut self, decl: &Stmt, next: &Stmt) {
-        let Some((name, init)) = var_decl(decl) else {
-            return;
-        };
-        let StmtKind::For {
-            label: None,
-            pat,
-            iter,
-            body,
-            else_body: None,
-        } = &next.kind
-        else {
-            return;
-        };
-        let [only] = &body.stmts[..] else {
-            return;
-        };
-        let (cond, only) = match &only.kind {
-            StmtKind::Expr(Expr {
-                kind:
-                    ExprKind::If {
-                        branches,
-                        otherwise: None,
-                    },
-                ..
-            }) => match &branches[..] {
-                [(Cond::Expr(cond), then)] => match &then.stmts[..] {
-                    [only] => (Some(cond), only),
-                    _ => return,
-                },
-                _ => return,
-            },
-            _ => (None, only),
-        };
-        match &only.kind {
-            StmtKind::Assign { target, op, value } if matches!(&target.kind, ExprKind::Name(n) if n == name) => {
-                self.reduce(name, init, pat, iter, cond, op, value, decl, next)
-            }
-            StmtKind::Expr(e) => {
-                if let Some(value) = pushed_onto(e, name) {
-                    self.collect(name, init, pat, iter, cond, value, decl, next)
-                }
-            }
-            _ => {}
-        }
     }
 
     /// `var xs = [..]` then a loop that only pushes onto `xs`.
