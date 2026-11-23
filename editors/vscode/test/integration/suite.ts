@@ -89,7 +89,7 @@ const tests: [string, () => Promise<void>][] = [
         'go to definition and the outline come from the server',
         async () => {
             const document = await open('d.cp');
-            const use = document.positionAt(document.getText().indexOf('pre[hi.after]'));
+            const use = document.positionAt(document.getText().indexOf('pre[hi.r]'));
             const locations = await vscode.commands.executeCommand<vscode.Location[]>(
                 'vscode.executeDefinitionProvider',
                 document.uri,

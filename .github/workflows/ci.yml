@@ -127,8 +127,7 @@ jobs:
   vscode:
     name: vscode (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
-    # Informational until editors/vscode/test/fixtures/workspace/d.cp checks again (E0309 on `[I.cuts]Int`).
-    continue-on-error: true
+    continue-on-error: ${{ matrix.os == 'windows-latest' }}
     strategy:
       fail-fast: false
       matrix:
