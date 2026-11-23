@@ -283,7 +283,6 @@ documented. The stdlib's own gaps are in `std/GAPS.md`.
 - core-04/product-result-indexed-by-parts.cp: compiler
 - core-06/lambda-unpacks-tuple-vertex.cp: compiler
 - core-10/print-range-prints-items.cp: compiler
-- core-02/list-of-str-is-chars.cp: compiler
 - std-graph/undirected-unweighted-has-deg.cp: stdlib
 - core-10/tuple-dependent-bound-in-block.cp: compiler
 - std-seq/min-of-empty-list-is-none.cp: compiler

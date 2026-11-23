@@ -136,6 +136,10 @@ unchecked:                                           // every check off, every b
   and is the only in-code spelling: `@allow(name)` is removed syntax (E0503,
   decision 243). Lints are declared by the library that owns the names they
   mention; the linter has no hard-coded stdlib names. (R09.4.4)
+- A check or `assert` that fails inside library code, whether a library fn or
+  a library domain's `let count` (a `Subset` over more than 25 values), reports
+  at the user's line that reached it, with the library line as a note, in
+  both engines. (R09.4.5)
 
 ## 9.5 Trust tiers
 
