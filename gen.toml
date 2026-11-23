@@ -115,3 +115,11 @@ inputs = ["git history of crates/*/src"]
 write = ["scripts/conformance-bugcatch.py"]
 check = "none"
 tier = "manual"
+
+[[gen]]
+name = "blockers"
+files = ["plan/product/BLOCKERS.md"]
+inputs = ["research/acceptance/runs/*.json"]
+write = ["research/acceptance/blockers.py"]
+check = ["research/acceptance/blockers.py", "--check"]
+tier = "pre-commit"
