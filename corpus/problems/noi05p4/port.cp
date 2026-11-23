@@ -1,6 +1,12 @@
-// NOI 2005 CongCong and KeKe: a cat chases a uniformly random-walking mouse on
-// an unweighted graph, taking up to two greedy shortest-path steps per turn
-// (tie-breaking by smallest vertex id). Compute the expected turns until catch.
+// Source: NOI 2005 P4 (CongCong and KoKo), https://dmoj.ca/problem/noi05p4
+// Problem: an undirected graph, N, E <= 1000, cat at C and mouse at M connected. Each turn the cat
+//   takes up to two steps, each to the neighbour nearest the mouse (smallest label on ties), then
+//   the mouse stays or moves to a neighbour, all choices equally likely. Print the expected
+//   number of turns until they meet, to 3 decimals.
+// Solution: the cat's moves are deterministic and the distance drops every turn, so the states
+//   (cat, mouse) form a DAG. BFS from every vertex gives all distances and step[cat, mouse]; a
+//   memoised E(cat, mouse) = 1 + the average of E over the mouse's deg + 1 choices after the
+//   cat's two steps, or 1 if a step catches it. O(n (n + e)).
 // original: corpus/submissions/5032733.cpp
 use std.graph.{Graph}
 

@@ -1,7 +1,11 @@
-// WOSS Dual Olympiad 2021 S3, Fleeing Through the School: walk a grid
-// through the periods 0, 1, 2, 3, 4 in order. Stepping onto a capital
-// letter carries you to its small letter, which cannot be stepped onto
-// directly. Print the fewest steps, or -1.
+// Source: WOSS Dual Olympiad 2021 S3 (Late for Class!), https://dmoj.ca/problem/wossoly21s3
+// Problem: an R x C grid (R, C <= 200) of '.', '#' walls, marks 0-4 and letter portals: stepping
+//   onto capital X teleports you for free to its small x, and small letters can't be entered.
+//   Walk 0 -> 1 -> 2 -> 3 -> 4 in order (4-neighbour steps, 1 s each); print the fewest seconds,
+//   or -1 if some class can't be reached.
+// Solution: the legs are independent, so add four shortest paths. Each is a BFS over cells where
+//   a step onto q lands at land(q): the small letter for a capital, nowhere for '#' or a small
+//   letter, q itself otherwise. O(RC) per leg; an unreachable leg makes the total -1.
 // original: corpus/submissions/4224399.cpp
 let n: 1..=200 = read()
 let m: 1..=200 = read()

@@ -1,15 +1,13 @@
-// Codeforces 2057 F: Formation.
-// Tallest pupil after at most `k` pizzas while keeping the line comfortable
-// (`2 * a[i] >= a[i + 1]`).
-// Raising pupil `i` to `X` lifts the `l` pupils `s = i - l + 1 ..= i` to
-// `ceil(X / 2^j)`; `l` is the exact affected window iff `a[s]` needs lifting
-// and `a[s - 1]` already satisfies the constraint: `X in (a[s] * 2^(l - 1), a[s - 1] * 2^l]`.
-// With `y = X - 1`, `ceil(X / 2^j) = 1 + floor(y / 2^j)`. Summing `j = 0..l`
-// using the binary-digit identity `sum_{j < l} floor(y / 2^j) = 2y - floor(y / 2^(l - 1)) - popcount(y mod 2^(l - 1))`
-// gives the closed form `raise(l, X)`.
-// Since `raise(l, X) - sum(a[s..=i])` is increasing in `X`, for each `l <= 31`
-// assign windows in ascending sum order (so later `assign` keeps the maximum
-// sum on each `X`-interval) and sweep from high to low against queries sorted by `k`.
+// Source: Codeforces 2057F (Formation), https://codeforces.com/contest/2057/problem/F
+// Problem: heights a[1..n] (<= 1e9) with 2a[i] >= a[i+1]; a pizza adds 1 to one pupil. For each of
+//   q queries k (<= 1e9) print the largest max(a) reachable with at most k pizzas while keeping
+//   2a[i] >= a[i+1]. n, q <= 5e4 (sums over all tests). Multitest.
+// Solution: raising pupil i to X forces pupil i - j up to ceil(X / 2^j), so only a window s..=i of
+//   l <= 31 pupils moves; it is exactly that window iff X / 2^(l-1) is in (a[s], 2a[s-1]], at cost
+//   raise(l, X) - sum a[s..=i], raise in closed form. Per l, an IntervalMap over compressed
+//   X / 2^(l-1) keeps the largest window sum per range (assigned in ascending sum); ranges high to
+//   low meet queries by descending k, binary-searching X in the first range that fits.
+//   O(31 (n + q) log).
 
 @!multitest
 use std.interval.IntervalMap

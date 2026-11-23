@@ -1,9 +1,12 @@
-// IOI 2008 Islands: island i has a bridge of some length to island `to`.
-// In every connected group of islands, walk the longest path that visits no
-// island twice; print the sum over the groups.
-//
-// n islands and n bridges: every group is one cycle with trees hanging off
-// it. Peel the trees leaf first, then go round each cycle once.
+// Source: IOI 2008 Day 1 (Islands), https://dmoj.ca/problem/ioi08p2
+// Problem: n <= 1e6 islands; island i has one bridge of length L_i <= 1e8 to another island, so
+//   n bridges. In each connected group take the longest bridge path that visits no island twice;
+//   print the sum over the groups (needs 64 bits).
+// Solution: each group is one cycle with trees hanging off it. Peel the trees leaf first
+//   (Kahn), keeping reach[v], the longest walk down into v's tree, and inside[v], the longest path
+//   within it. Then go round each cycle once from a start: for islands a before b the best is
+//   reach[a] + reach[b] plus the longer way round, taken from running maxima of reach[a] - at[a]
+//   and reach[a] + at[a]. O(n).
 let n: Int = read()
 domain I = 1..=n
 let bridge: [I](to: I, len: Int) = read()

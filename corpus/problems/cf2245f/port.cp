@@ -1,18 +1,12 @@
-// Codeforces 2245 F: 2D interval DP over expanded right-endpoint states.
-//
-// Hook-length DP derivation: a valid sequence of `n` insertions forms a rooted
-// binary tree whose linear-extension count is `n! / prod_v size(v)`. Rather
-// than tracking binomial interleaving coefficients across subintervals, `dp[i, s]`
-// accumulates `1 / prod size(v)` over all valid subtrees on `[i, s.owner)`.
-// Splitting `[i, k.owner)` at `j` combines `[i, j]` (completed at `last[j]`)
-// with `[j + 1, k.owner)` (at state `k` with `next(k) == some(nk)`); the newly
-// formed subtree has size `k.owner - i`, contributing the factor
-// `inv(k.owner - i)`. Multiplying `dp[Pos.first, last[Pos.last]]` by `n!`
-// cancels the denominator and recovers the exact number of valid permutations.
-//
-// State runs: each position `i` owns a run of states — a fixed count `c` gives
-// a chain of `c + 1` states stepping `0 -> 1 -> ... -> c`, while an unknown
-// count (and the padding position `Pos.last`) gives one self-looping state.
+// Source: Codeforces 2245F (Familiar?), https://codeforces.com/contest/2245/problem/F
+// Problem: mystery(p) pushes p[1..n] on a stack, first popping every larger top; b[i] is how many
+//   it pops for p[i]. Given a[1..n] (-1 = free), count permutations p of 1..n with b[i] = a[i]
+//   wherever a[i] != -1, mod 998244353. n <= 500, sum n^3 <= 500^3, memory 128 MB. Multitest.
+// Solution: who pops whom forms a tree whose permutations number n! / prod subtree sizes
+//   (hook length), so the DP sums 1 / prod size rather than interleaving binomials. Expand each
+//   position into states: a known count c is a chain of c + 1 states, an unknown one a single
+//   self-loop. dp[i, s] sums subtrees on [i, owner(s)); splitting at j glues [i, j] to
+//   [j + 1, owner(k)) times 1 / (owner(k) - i). O(n) states, O(n^3); answer dp * n!.
 type Z = Mod<998_244_353>
 let comb = Comb<Z>()
 

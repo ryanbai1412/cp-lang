@@ -1,4 +1,12 @@
-// IOI '20 P3, Carnival Tickets (buildable today-form)
+// Source: IOI 2020 Day 1 (Carnival Tickets), https://dmoj.ca/problem/ioi20p3
+// Problem: n (even) colours of m tickets each, values sorted per colour; n, m <= 1500, k <= m
+//   rounds. Each round takes one ticket per colour and pays sum |a[i] - b| for the b minimising
+//   it. Maximise the total over k rounds and print the allocation (round per ticket, or -1).
+// Solution: in each round the n/2 high tickets count + and the low n/2 count -. Start every colour
+//   with its k smallest as -; the j-th upgrade of a colour turns one into its next largest +,
+//   gaining x[c][m-1-j] + x[c][k-1-j], decreasing in j, so sort and take the best n*k/2.
+//   Then each round gives its n/2 colours with the most + left their largest unused ticket and the
+//   rest their smallest. O(nk log(nk)).
 // original: corpus/submissions/4724579.cpp (grader function find_maximum)
 // stdin here: n m k, then the n x m ticket values (each row sorted).
 // stdout: the prize, then the n x m allocation (round index or -1).

@@ -1,6 +1,12 @@
-// APIO 2007 Zoo: n pens in a ring, one animal each. A child standing at pen
-// p sees pens p..p+4 and is happy if a feared animal in view is removed or a
-// loved one in view stays. Remove animals to make the most children happy.
+// Source: APIO 2007 P3 (Zoo), https://dmoj.ca/problem/apio07p3
+// Problem: n <= 1e4 enclosures in a circle, c <= 5e4 children; each sees five consecutive ones
+//   E..E+4 (wrapping) and names some there it fears and some it loves. A child is happy if a
+//   feared animal is removed or a loved one stays. Choose animals to remove; print the most
+//   children that can be made happy.
+// Solution: a child only depends on which of its 5 pens are emptied, so tabulate happy[p, mask]
+//   over the 32 masks of the window starting at p. DP round the ring with the window's mask as
+//   state: fix the first window's mask, slide one pen at a time (drop the old pen, decide the
+//   new one) adding happy[p, mask], and end on the starting mask. O(32 * 32 * 2 * n).
 let n: 10..=1e4 = read()
 let c: 1..=5e4 = read()
 domain Pen = 1..=n

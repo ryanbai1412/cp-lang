@@ -1,25 +1,15 @@
-// Codeforces 2135 E2: Beyond the Palindrome (Hard Version).
-//
-// Read 1 as a step up and 0 as a step down. Deleting "10" cancels an up
-// with the down after it, so f(s) = 0^a 1^b with a = -min and b = end - min
-// of the walk (prefix heights, starting at 0). Reversing s turns the walk
-// around: f(rev s) has a' = max - end. So s is an almost-palindrome iff
-//
-//     max + min = end.
-//
-// Count the complement. Walks inside a band of period p (width p - 1) are
-// counted by the reflection principle, an alternating sum of binomials
-// repeating every p. Taking exact (max, min) by inclusion-exclusion and
-// summing over every band, the walks ending at height ±d (C(n, (n+d)/2)
-// each way) carry weight 2 * (2g(d) - g(d-1) - g(d+1)), where
-//
-//     g(i) = sum of p over p | i with i / p odd, for the periods p that
-//            can hold a bad walk.
-//
-// The sum over every such p is odd_div_sum[i]. Period 1 (a walk that never
-// moves) is never possible, and period 2 only when n is even: an odd walk in
-// a width-1 band always ends at max + min. Period 1 appears in i iff i is
-// odd and period 2 iff i ≡ 2 (mod 4). A brute force agrees for n <= 12.
+// Source: Codeforces 2135E2 (Beyond the Palindrome, Hard Version),
+//   https://codeforces.com/contest/2135/problem/E2
+// Problem: f(r) deletes every "10" from the binary string r, repeatedly, until none is left. For
+//   each n (<= 2e7, sum <= 1e8, t <= 1e4) count the binary strings s of length n with
+//   f(s) = f(rev(s)), mod 998244353. Multitest.
+// Solution: read 1 as +1 and 0 as -1: f(s) = 0^(-min) 1^(end - min) of the prefix walk and
+//   f(rev s) starts with max - end zeros, so s counts iff max + min = end. Count the rest: the
+//   reflection principle counts walks in a band of period p, and inclusion-exclusion over
+//   (max, min) weights the C(n, (n+d)/2) walks ending at +-d by 2(2g(d) - g(d-1) - g(d+1)),
+//   g(i) = sum of p | i with i/p odd, less periods 1 (always) and 2 (n odd) that hold no bad
+//   walk. One multiplicative sieve of odd-divisor sums to max n, then O(n) per test.
+// A brute force agrees for n <= 12.
 use std.math.{sieve_multiplicative}
 
 type M = Mod<998_244_353>

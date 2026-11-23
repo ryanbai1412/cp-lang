@@ -1,6 +1,15 @@
-// Runnable today/ port of NOI '02 P2 for real Rust `cpl build`.
-// Stdin: cnt_n, cnt_m, hidden types t[0..n] (0=liar, 1=truth, 2=wild), and wild_ans[0..n]
-// (wild card's fixed answer when asked about each person). Simulates Ask(i, j, 0) and prints recovered types.
+// Source: NOI 2002 P2 (Naughty Kid), https://dmoj.ca/problem/noi02p2
+// Problem: interactive. N + M + 1 <= 501 children: N Star (always truthful), M Moon (always lie)
+//   and a referee (true on his odd-numbered answers, false on even). Ask(a, b, T) asks a whether
+//   b is in team T (never about himself, each pair once). Name the referee and everyone's team,
+//   asking each child fewer than three questions for full marks.
+// Solution: seat everyone in a ring and ask each child "is your right neighbour Star?", then "is
+//   your left one?". From a team member either answer means "same team", so both answers on an
+//   edge agree, except the referee's first (true) one about his right neighbour: the first
+//   disagreeing edge finds him. Walking away from him, each answer fixes the next child's team.
+//   Two questions per child, O(N + M).
+// This port simulates the interactor: stdin has N, M, the hidden roles (0 Moon, 1 Star,
+//   2 referee) and the referee's answer about each child; it prints the recovered roles.
 // original: corpus/submissions/4793917.cpp
 
 fn ri() -> Int:
