@@ -55,7 +55,7 @@ for name in outer.namelist():
         if "META-INF/plugin.xml" in jar.namelist():
             xml = jar.read("META-INF/plugin.xml").decode()
 assert xml, "no META-INF/plugin.xml in the edge JetBrains plugin"
-deps = re.findall(r"<depends[^>]*>([^<]+)</depends>", xml)
+deps = re.findall(r"<depends(?![^>]*optional=\"true\")[^>]*>([^<]+)</depends>", xml)
 hard = [d for d in deps if "ultimate" in d.lower()]
 assert not hard, f"plugin requires {hard}, so IntelliJ IDEA Community refuses it"
 print("loads in Community: depends on", deps)
