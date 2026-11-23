@@ -43,7 +43,7 @@ fn parks(reach: Int) -> List<Town>:
             built.push(v)
     built
 
-let reach = bsearch_first(0..=2e14, x => parks(x).len <= k)!
+let reach = (0..=2e14).first_true(x => parks(x).len <= k)!
 print(reach)
 
 var chosen = parks(reach)

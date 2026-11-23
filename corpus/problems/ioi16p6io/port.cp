@@ -123,6 +123,6 @@ fn eval_penalty(lam: Int) -> (cost: Int, used: Int):
             lc_add(-2 * r, cost + r * r, used)
     (dp_cost[0], dp_cnt[0])
 
-let lam = bsearch_first(0..=m * m, pen => eval_penalty(pen).used <= k) ?? (m * m)
+let lam = (0..=m * m).first_true(pen => eval_penalty(pen).used <= k) ?? (m * m)
 let res = eval_penalty(lam)
 print(res.cost - k * lam)

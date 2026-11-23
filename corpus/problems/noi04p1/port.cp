@@ -44,7 +44,7 @@ for c in Cmd:
         while size > 0:
             let lowest = staff.first_ge(1)!.left!
             if bases[lowest.to_idx] + raise >= floor: break
-            let leaving = staff.sum(lowest..=lowest)
+            let leaving = staff.fold(lowest..=lowest)
             staff.add(lowest, -leaving)
             size -= leaving
             left += leaving

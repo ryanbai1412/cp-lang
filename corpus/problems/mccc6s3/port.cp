@@ -27,7 +27,7 @@ let m = vals.len
 domain U = 0..m
 
 fn lb(target: Int) -> Int:
-    let lo = bsearch_first(0..m, mid => vals[mid] >= target) ?? m
+    let lo = (0..m).first_true(mid => vals[mid] >= target) ?? m
     lo
 
 fn sweep(arr: [Pos]Int, prefer_first: Bool, is_rev: Bool):

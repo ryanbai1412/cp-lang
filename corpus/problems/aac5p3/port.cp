@@ -14,7 +14,7 @@ xs.sort()
 
 // Number of values strictly below x.
 fn below(x: Int) -> Int:
-    let lo = bsearch_first(0..m, mid => xs[mid] >= x) ?? m
+    let lo = (0..m).first_true(mid => xs[mid] >= x) ?? m
     return lo
 
 var ans = List.filled(n, 0)

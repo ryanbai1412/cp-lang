@@ -25,7 +25,7 @@ var bit = Fenwick<Val, Int>.new()
 var inv = 0
 for i in Pos:
     if a[i] < Val.last:
-        inv += bit.sum(a[i].r..Val.last.r)
+        inv += bit.fold(a[i].r..Val.last.r)
     bit.add(a[i], 1)
 
 var order = [Val] v => v

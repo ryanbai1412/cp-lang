@@ -27,7 +27,7 @@ for i in 1..=n:
         wins.pop()
     let prev = wins.last!.1
     let start = max(wins.last!.0, i) + 1
-    if let pos = bsearch_first(start..=n, mid => through(i, mid) <= through(prev, mid)):
+    if let pos = (start..=n).first_true(mid => through(i, mid) <= through(prev, mid)):
         wins.push((pos, i))
 
 if best[n] > 1e18:

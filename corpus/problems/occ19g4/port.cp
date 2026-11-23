@@ -71,7 +71,7 @@ fn cdq_query(l: Int, r: Int):
         while li < left.len and left[li].u <= q.u:
             bit.add(left[li].y, 1)
             li += 1
-        ans[P(q.id)] += q.sgn * bit.sum(q.lo..=q.hi)
+        ans[P(q.id)] += q.sgn * bit.fold(q.lo..=q.hi)
     for j in 0..li:
         bit.add(left[j].y, -1)
 

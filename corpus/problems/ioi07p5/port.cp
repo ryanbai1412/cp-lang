@@ -44,7 +44,7 @@ fn grid() -> Int:
         while a.u - at[from].u > d:
             near.add(V(at[from].v), -1)
             from += 1
-        pairs += near.sum(V(max(a.v - d, 1 - m))..=V(min(a.v + d, m - 1)))
+        pairs += near.fold(V(max(a.v - d, 1 - m))..=V(min(a.v + d, m - 1)))
         near.add(V(a.v), 1)
     pairs
 

@@ -80,7 +80,7 @@ fn find_alive(o: Int, i0: Int) -> Int:
     i
 
 fn lower_y(o: Int, target: Int) -> Int:
-    let lo = bsearch_first(0..bucket_y[o].len, mid => bucket_y[o][mid] >= target) ?? bucket_y[o].len
+    let lo = (0..bucket_y[o].len).first_true(mid => bucket_y[o][mid] >= target) ?? bucket_y[o].len
     lo
 
 var rem: [0..n]Bool = false

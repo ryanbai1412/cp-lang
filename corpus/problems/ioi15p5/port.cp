@@ -40,7 +40,7 @@ fn swaps_after(t: Int) -> Int:
                 j = val[j]
     n - cycles
 
-let lo = bsearch_first(0..0, mid => swaps_after(mid) <= mid) ?? 0
+let lo = (0..0).first_true(mid => swaps_after(mid) <= mid) ?? 0
 let rounds = lo
 
 // Sort the row Ermek alone would leave, recording each swap as a pair of

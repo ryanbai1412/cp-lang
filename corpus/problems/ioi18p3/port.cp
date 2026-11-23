@@ -64,6 +64,6 @@ let horder = [v for v in human.at]
 var shared: [Trip]Int = 0
 var seen = Fenwick<wolf.Pre, Int>.new()
 for k in Cut:
-    for a in asks[k]: shared[a.trip] += a.sign * seen.sum(wolf_range[a.trip])
+    for a in asks[k]: shared[a.trip] += a.sign * seen.fold(wolf_range[a.trip])
     if k.ord < n: seen.add(wolf.pos(horder[k.ord]), 1)
 for i in Trip: print(if shared[i] > 0: 1 else: 0)

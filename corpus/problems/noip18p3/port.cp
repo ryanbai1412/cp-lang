@@ -33,7 +33,7 @@ fn pair_up(chains: List<Int>, k: Int) -> (tracks: Int, spare: Int):
     for i in 0..a.len:
         if unused(i) != i: continue
         skip[i] = i + 1
-        let lo = bsearch_first(i + 1..a.len, mid => a[mid] >= k - a[i]) ?? a.len  // the first chain after i that is at least k - a[i]
+        let lo = (i + 1..a.len).first_true(mid => a[mid] >= k - a[i]) ?? a.len  // the first chain after i that is at least k - a[i]
         let j = unused(lo)
         if j < a.len:
             skip[j] = j + 1

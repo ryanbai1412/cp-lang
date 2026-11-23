@@ -87,7 +87,7 @@ fn sum_arith(l: Int, r: Int) -> Int:
     if l > r: 0 else: (l + r) * (r - l + 1) / 2
 
 fn suffix_pos_sum(k: Int) -> Int:
-    let lo = bsearch_first(0..n, mid => range_sum(cnt_bit, max(0, mid - k), n - 1) >= n - mid) ?? n
+    let lo = (0..n).first_true(mid => range_sum(cnt_bit, max(0, mid - k), n - 1) >= n - mid) ?? n
     let cnt_packed = n - lo
     let cnt_shifted = range_sum(cnt_bit, 0, n - 1) - cnt_packed
     let packed_sum = sum_arith(n - cnt_packed, n - 1)

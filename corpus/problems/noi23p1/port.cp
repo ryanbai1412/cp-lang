@@ -60,7 +60,7 @@ for e in events.sorted():
     if e.1 == 2:
         let lo = first_ge(e.2)
         let hi = first_ge(e.3 + 1)
-        if lo < hi: cells -= alive.sum(Vert(lo)..=Vert(hi - 1))
+        if lo < hi: cells -= alive.fold(Vert(lo)..=Vert(hi - 1))
     else: alive.add(Vert(e.2), e.3)
 
 // a diagonal stroke meets each other stroke in at most one cell

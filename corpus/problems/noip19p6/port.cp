@@ -49,14 +49,14 @@ for _ in 0..tests:
     fn walk(x: V):
         let want = Size(max(n - 2 * t.size(x), 0))..=Size(n - 2 * heavy(x))
         above.add(Size(n - t.size(x)), 1)
-        let before = seen.sum(want)
+        let before = seen.fold(want)
         seen.add(Size(t.size(x)), 1)
-        let up = chain.sum(want)
+        let up = chain.fold(want)
         chain.add(Size(t.size(x)), 1)
         for k in t.children(x): walk(k)
         chain.add(Size(t.size(x)), -1)
-        let below = seen.sum(want) - before
-        total += x.label * (all.sum(want) - below - up + above.sum(want))
+        let below = seen.fold(want) - before
+        total += x.label * (all.fold(want) - below - up + above.fold(want))
         above.add(Size(n - t.size(x)), -1)
 
     for k in t.children(c): walk(k)

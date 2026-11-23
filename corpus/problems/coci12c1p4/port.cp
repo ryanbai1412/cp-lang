@@ -7,4 +7,4 @@ let marbles: [m]1..=1e9 = read()
 assert marbles.sum() > kids  // the original divides by zero when the answer is 1
 
 // with handfuls of at most x, colour c needs ceil(c / x) children
-print(bsearch_first(1..=1e9, x => sum(ceil_div(c, x) for c in marbles) <= kids)!)
+print((1..=1e9).first_true(x => sum(ceil_div(c, x) for c in marbles) <= kids)!)

@@ -52,7 +52,7 @@ for _ in 0..tests:
     let kind: 1..=2 = read()
     if kind == 1:
         let n: 1..=67_000_000 = read()
-        let card = bsearch_first(0..(1 << 28), x => rank_packed(x) >= n)!
+        let card = (0..(1 << 28)).first_true(x => rank_packed(x) >= n)!
         var out: List<(Int, Int)> = []
         for i in 0..QUADS:
             let mask = (card >> (7 * (3 - i))) & 127

@@ -37,7 +37,7 @@ fn hits_enough(mid: Int) -> Bool:
     hl >= kl0 or hr >= kr0
 
 let hi_bound = 1_000_000_000 * 2 * L / n + 2
-let t1 = bsearch_first(0..=hi_bound, hits_enough)!
+let t1 = (0..=hi_bound).first_true(hits_enough)!
 simulate(t1)
 
 if hl >= kl0 and hr >= kr0:

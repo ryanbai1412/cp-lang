@@ -54,7 +54,7 @@ fn query_st(l: Int, r: Int) -> (Int, Int):
     if lr < rr or (lr == rr and li < ri): (lr, li) else: (rr, ri)
 
 fn first_after(x: Int) -> Int:
-    let lo = bsearch_first(0..n, mid => segs[mid].0 >= x) ?? n
+    let lo = (0..n).first_true(mid => segs[mid].0 >= x) ?? n
     lo
 
 var lift: [0..=LOG, I]Int = -1

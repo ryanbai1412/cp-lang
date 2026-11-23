@@ -35,6 +35,6 @@ fn outposts(radius: Int) -> Int:
     if open[V.first] != none: used += 1
     used
 
-// WISH TR4: `bsearch_first(0..n, r => outposts(r) <= k)`
-let lo = bsearch_first(0..n, mid => outposts(mid) <= k) ?? n
+// WISH TR4: `(0..n).first_true(r => outposts(r) <= k)`
+let lo = (0..n).first_true(mid => outposts(mid) <= k) ?? n
 print(lo)

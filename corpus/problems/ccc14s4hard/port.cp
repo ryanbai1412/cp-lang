@@ -42,7 +42,7 @@ fn rebuild(b: Block):
 // The height of the strips of block b that are at or over `need`.
 fn tinted(b: Block) -> Int:
     let rows = darkest[b]
-    let lo = bsearch_first(0..rows.len, mid => rows[mid].tint + pending[b] < need) ?? rows.len  // rows[..lo] are dark enough, rows[hi..] are not
+    let lo = (0..rows.len).first_true(mid => rows[mid].tint + pending[b] < need) ?? rows.len  // rows[..lo] are dark enough, rows[hi..] are not
     if lo == 0: 0 else: rows[lo - 1].height
 
 // Add t to the strips at offsets l..r.

@@ -16,6 +16,6 @@ while true:
         grid.add(x, y, a)
     elif op == 2:
         let (l, b, r, t): (X, Y, X, Y) = read()
-        print(grid.sum(l..=r, b..=t))
+        print(grid.fold(l..=r, b..=t))
     else:
         break

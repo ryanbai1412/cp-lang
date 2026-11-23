@@ -57,5 +57,5 @@ fn cover(fee: Int) -> Plan:
     done
 
 // a higher fee never means more photos; find the lowest fee that fits k
-let fee = bsearch_first(0..m * m, mid => cover(mid).photos <= k) ?? (m * m)
+let fee = (0..m * m).first_true(mid => cover(mid).photos <= k) ?? (m * m)
 print(cover(fee).cost - k * fee)

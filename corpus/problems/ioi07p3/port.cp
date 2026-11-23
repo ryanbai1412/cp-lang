@@ -19,7 +19,7 @@ var st = LazySegTree<H, Int, Int>(AddMin, init)
 
 // First height in 1..=limit with count <= target (non-increasing array).
 fn first_le(mut st: LazySegTree<H, Int, Int>, limit: Int, target: Int) -> Int:
-    let lo = bsearch_first(1..limit + 1, mid => st.get(H(mid)) <= target) ?? (limit + 1)
+    let lo = (1..limit + 1).first_true(mid => st.get(H(mid)) <= target) ?? (limit + 1)
     lo
 
 for p in pairs:

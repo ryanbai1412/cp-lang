@@ -30,11 +30,11 @@ for v in t.at:
     spots[home[v]].push(t.pos(v).to_idx)
 
 // how many employees of region x sit at preorder positions < p
-// WISH TR4: `bsearch_first(0..w.len, i => w[i] >= p)` is on the cheat sheet
+// WISH TR4: `(0..w.len).first_true(i => w[i] >= p)` is on the cheat sheet
 // but not in the interpreter prelude, and the real want is one call:
 // `spots[x].count_in(t.sub(a))` on a sorted `List<Pre>`.
 fn before(x: Region, p: Int) -> Int:
-    let lo = bsearch_first(0..spots[x].len, mid => spots[x][mid] >= p) ?? spots[x].len
+    let lo = (0..spots[x].len).first_true(mid => spots[x][mid] >= p) ?? spots[x].len
     lo
 
 // pairs topped by the big region x, for every lower region at once
