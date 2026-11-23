@@ -1,12 +1,10 @@
-// CCC 2000 S5 Sheep and Coyotes: sheep stand at points with y > 0, and a
-// coyote enters anywhere on the fence, the segment y = 0, 0 <= x <= 1000,
-// and eats the nearest sheep. Print every sheep that is nearest (ties count)
-// for some entry point, in input order.
-//
-// Sheep p beats sheep q at x when 2 x (q.x - p.x) <= |q|^2 - |p|^2, one
-// linear bound per rival, so the entry points that reach p are an interval.
-// Coordinates have at most two decimals; they are scaled to whole numbers
-// and the interval ends stay exact fractions, as in the original.
+// Source: CCC 2000 S5 (Sheep and Coyotes), https://dmoj.ca/problem/ccc00s5
+// Problem: up to 1000 sheep in a 1000 x 1000 field, coordinates with two decimals. A coyote
+//   enters anywhere on the south side (y = 0, 0 <= x <= 1000) and eats the nearest sheep (any of
+//   tied ones). Print "The sheep at (x, y) might be eaten." for each sheep that can be eaten.
+// Solution: p beats q at entry x iff 2x(q.x - p.x) <= |q|^2 - |p|^2, one half-line per rival, so
+//   p's entry points are an interval; a rival with the same x and a lower y wins everywhere.
+//   Coordinates are scaled to integers and interval ends kept as exact fractions. O(n^2).
 // original: corpus/submissions/4584542.cpp
 const SCALE = 1000
 

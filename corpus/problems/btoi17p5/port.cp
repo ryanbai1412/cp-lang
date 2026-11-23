@@ -1,9 +1,10 @@
-// Baltic OI 2017 Plus Minus: an n x m grid of + and - where every 2 x 2
-// square holds two of each; k cells are already fixed. Count the fillings
-// modulo 1e9 + 7.
-// Such a grid has every row alternating or every column alternating (or
-// both, the two checkerboards). An alternating row is fixed by one cell, so
-// rows without a fixed cell are free and rows with fixed cells must agree.
+// Source: Baltic OI 2017 Day 2 P2 (Plus Minus), https://dmoj.ca/problem/btoi17p5
+// Problem: an N x M grid (N, M <= 1e9) of + and - where every 2 x 2 square holds two of each; K
+//   <= 1e5 distinct cells are measured. Count the consistent grids mod 1e9 + 7.
+// Solution: such a grid has every row alternating or every column alternating (both: the two
+//   checkerboards). With alternating rows a row is set by one cell's sign xor its column parity:
+//   rows with measured cells must agree, the rest are free, 2^(free rows) (a Map per row).
+//   Columns likewise; subtract the checkerboards counted twice (0, 1 or 2). O(K log K).
 // original: corpus/submissions/4456190.cpp
 type Z = Mod<1000000007>
 let n: 1..=1e9 = read()

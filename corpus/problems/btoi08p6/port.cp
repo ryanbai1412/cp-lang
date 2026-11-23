@@ -1,4 +1,10 @@
-// Baltic OI '08 P6 (Gloves): subset dominance boxes + Pareto skyline sweep.
+// Source: Baltic OI 2008 Day 2 P3 (Gloves), https://dmoj.ca/problem/btoi08p6
+// Problem: n <= 20 colours, a_i left and b_i right gloves of colour i (<= 1e8). Taken blind, how
+//   many left L and right R gloves guarantee a same-colour pair? Print L and R minimising L + R.
+// Solution: (L, R) fails iff for some colour set S, L <= sum of a over S and R <= sum of b off S.
+//   So (L, R) must lie outside all 2^n such boxes. Sorted by the a-sum, a candidate is L = box
+//   i's a-sum + 1 and R = 1 + the largest b-sum among later boxes (a suffix max); take the
+//   smallest sum with L, R within the drawers. O(2^n n).
 // Runnable on proto/cpc today.
 // original: corpus/submissions/5325518.cpp
 let n: 1..=20 = read()

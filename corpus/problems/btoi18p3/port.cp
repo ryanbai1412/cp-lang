@@ -1,7 +1,12 @@
-// BOI 2018 Worm Worries (interactive): a box of n x m x k cells with hidden
-// heights. "? x y z" gives one height, at most q times. Find a cell that is
-// no lower than any of the (up to six) cells beside it. The tests are a
-// line, a sheet, or a small box with a generous q.
+// Source: Baltic OI 2018 Day 1 P3 (Worm Worries), https://dmoj.ca/problem/btoi18p3
+// Problem: interactive. An N x M x K box (each <= 1e6) of hidden humidities; "? x y z" asks one,
+//   at most Q times; answer "! x y z" with a cell no lower than its up to six neighbours. Tests
+//   are a line (N = 1e6, Q = 35), a sheet (N = M <= 1000, Q = 3500) or a box (<= 500^3).
+// Solution: a line: golden-section search, which reuses one probe each round. A sheet: halve the
+//   longer side along a line and take its highest cell c; if the best cell seen so far is
+//   higher, recurse into its half; else c is the answer if both cells across the line are lower,
+//   else recurse towards the higher one. Each step reads one line: O(N + M) queries. A box: best
+//   of Q / 2 random cells, then walk uphill. Heights are memoised.
 // original: corpus/submissions/4656860.cpp
 let (n, m, k, q): (1..=1e6, 1..=1e6, 1..=1e6, 1..=1e5) = read()
 domain X = 1..=n

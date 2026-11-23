@@ -1,11 +1,12 @@
-// Codeforces 2084 F: Skyscape.
-// A smaller element can only move left past larger ones, so every pair with
-// u < v and pos_a[u] < pos_a[v] must keep pos_b[u] < pos_b[v]. Hence each
-// value v is constrained to [lo[v], hi[v]] where lo[v] is the maximum fixed
-// position among u <= v at or before v in a (defaulting to Pos.first), and
-// hi[v] is the minimum fixed position among u >= v at or after v in a
-// (defaulting to Pos.last). Earliest-deadline-first then assigns values to
-// positions in Pos order.
+// Source: Codeforces 2084F (Skyscape), https://codeforces.com/contest/2084/problem/F
+// Problem: a permutation a and a partial permutation c (0 = missing) of length n. b is good if
+//   at most n operations "pick l < r with a_r = min(a_l..a_r), rotate a_l..a_r right by one" turn
+//   a into b. Print a good b that extends c, or -1. n <= 5e5, sum of n <= 5e5; multitest.
+// Solution: a smaller value can only move left past larger ones, so u < v with u before v in a
+//   keep that order in b. v must sit in [lo[v], hi[v]]: lo is the largest fixed position of a
+//   u <= v at or before v in a, hi the smallest of a u >= v at or after v (sweeps with max/min
+//   SegTrees over values). Then earliest deadline first fills positions in order from a MinHeap
+//   of (hi, v), checking deadlines and fixed cells. O(n log n).
 
 @!multitest
 use std.seq.{buckets}

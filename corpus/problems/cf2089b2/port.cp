@@ -1,14 +1,13 @@
-// Codeforces 2089 B2 (Canteen, Hard Version): minimize rounds until `a` becomes
-// all zero, after reducing `sum(a)` by at most `k`.
-//
-// In each round, `a[i]` cancels with `b[i]` and leftover `a[i]` shifts right
-// cyclically to `i + 1 (mod n)`. Since `sum(a) <= sum(b)`, cutting the circle
-// right after a minimum prefix sum of `a - b` guarantees no surplus crosses
-// the cut. Walking once around from that cut, each `b[idx]` cancels greedily
-// with the most recent unmatched `a` deposit (LIFO stack), recording how many
-// units finish at distance `d = step + 1 - deposit.at`. Deleting a unit drops
-// its match, so spending budget `k` on the longest distances leaves the largest
-// `d` whose suffix `d..=n` exceeds `k` (or 0 if all units are deleted).
+// Source: Codeforces 2089B2 (Canteen, Hard Version),
+//   https://codeforces.com/contest/2089/problem/B2
+// Problem: a[0..n) and b[0..n), sum a <= sum b. First make exactly k decrements of positive a_i.
+//   Then each round both a_i and b_i drop by min(a_i, b_i) and a shifts right cyclically by one.
+//   Print the fewest rounds until a is all 0. n <= 2e5, k <= 2e14, sum of n <= 2e5; multitest.
+// Solution: cut the circle right after a minimum prefix sum of a - b, so no surplus crosses the
+//   cut. Walking once round from it, each b[idx] eats the latest unmatched a deposits (a LIFO
+//   stack); a unit eaten d = step + 1 - deposit's step rounds later counts at distance d. The k
+//   decrements delete the farthest units, so the answer is the largest d whose suffix count
+//   d..=n exceeds k (0 if none). O(n).
 
 struct Deposit:
     amount: Int
