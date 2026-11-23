@@ -61,6 +61,7 @@ below lists every quality with its check, `missing` where there is none.
 - **A slow commit or CI step:** `python3 scripts/affected.py <paths>`, then
   `.github/workflows/ci.yml`.
 - **A release question:** [release](../process/release.md).
+- **How the parts are built:** [infra design](../design/infra.md).
 
 # Reference
 

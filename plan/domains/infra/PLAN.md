@@ -1,6 +1,6 @@
 # infra plan
 
-The detail behind [README.md](README.md). Dated 2026-11-22.
+The infra work plan, dated 2026-11-22; the charter is [handbook/domains/infra.md](../../../handbook/domains/infra.md).
 
 ## Workstreams, in order
 
@@ -56,3 +56,40 @@ The detail behind [README.md](README.md). Dated 2026-11-22.
 | Core-gate reds wait on a sheriff | An auto-revert job: a commit that turns the core gate red and stays red 15 min is reverted, with a note to its owner | infra |
 | A skill source changed without regenerating the bundled skill (stale `seq.md`, `strings.md`, red checks) | Done: regen commits derived files on main and the main gate only warns on them (regen red if a generator fails); still owed: the pre-commit hook regenerates them when `std/` is staged | infra |
 | cf1943b stopped checking and nothing caught it | Done: `scripts/port-check.sh` ratchet over every port | infra |
+
+## Milestone 1
+[Milestone 1](../../../handbook/product/milestones.md) step 3 (Install) and "Release quality" are infra's, on Linux, macOS and Windows, on edge. Deadline 2026-11-23 09:30 PST. Exit criteria:
+1. Edge publishes after every green main CI that edge is behind (one release in flight, newest green SHA wins) and nightly, building all three OSes.
+2. One line installs a working `cpl` on each OS: `curl -fsSL https://cp-lang.org/install.sh | sh` (Linux, macOS) and `irm https://cp-lang.org/install.ps1 | iex` (Windows), checked end to end by an install-smoke job on all three after every publish.
+3. CI runs the tests on Linux, macOS and Windows (the extra OSes on fewer jobs), still <= 3 min end to end; main red-to-green median < 30 min.
+4. The release ships the editor assets editors needs (Neovim/Vim config, VS Code `.vsix`, JetBrains plugin), and the smoke job checks they install.
+5. Lanes spend < 5% of their time on landing and devex.
+
+Deferring: a stable `v0.3.0`, per-crate commit-tier test selection, the gate step registry, status-board polish, the 16-core runner.
+
+Next 3: (1) install-smoke on all three OSes after each publish; (2) macOS and Windows in the CI test matrix; (3) main green and CI <= 3 min.
+
+## Milestone 2
+[Milestone 2](../../../handbook/product/milestones.md), the stable release. The complete infra: nobody thinks about landing, CI or releases. Exit criteria:
+1. Main is green at least 95% of the time (7-day window); any red is fixed or reverted within 15 min, and a commit that turns the core gate red and stays red 15 min is auto-reverted.
+2. Landing p95 at most 30 s, never over 1 min; every lane's devex time under 5%.
+3. Main CI p50 at most 3 min end to end on GitHub-hosted runners, on all three OSes, with every deterministic step cached or skipped by input hash.
+4. Two channels: edge from every green tip (one release in flight, newest wins), stable promoted by hand (`v*` tag or dispatch) with CHANGELOG notes, beta while 0.x; Ryan promotes `v0.3.0`.
+5. Every release passes install-smoke on Linux, macOS and Windows (sh, PowerShell, `cpl self update`, VS Code `.vsix`, Neovim/Vim setup) before it is marked latest; signed checksums; reproducible builds rebuild byte for byte.
+6. The macOS, Windows and editor CI jobs block main again (each after 3 greens in a row).
+
+Next: (1) CI at 3 min (nextest archive shared by shards, compiled-C++ cache, rebalanced shards); (2) auto-revert job for the core gate; (3) install-smoke as a gate on marking a release latest.
+
+## Judgment rubric
+Numbers miss these; a cold agent scores 1-5 with a reason, on the probes below.
+1. When the gate fails, does its output name the failing check and the exact command to rerun it, without scrolling?
+2. Can a newcomer tell which tier a test belongs in, and move it, from `check.sh --help` and this folder alone?
+3. Does landing feel like one command that either lands or says precisely why not?
+4. Is every number on the status board reproducible by pasting its command?
+5. After a red main, does the history explain what broke and how it was fixed?
+
+Probes (cold agent, timed, files touched counted):
+- **Fresh clone**: from `README.md` "Setup" only, reach a green `just check`. Pass = green, < 30 min, no undocumented step.
+- **Add a gate step**: add a new fast check for a made-up script; must land in the right tier and cache stage.
+- **Planted red**: three commits land, one breaks a test; acting as sheriff from the CI log and `git log` over the run's range, the agent must name the culprit and revert or fix it within one CI run.
+- **Cut a release**: from docs only, dry-run an edge release and verify the artifacts.

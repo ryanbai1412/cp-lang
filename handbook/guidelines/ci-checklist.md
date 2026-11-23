@@ -174,3 +174,12 @@ finished in 30 min or edge is over 2 hours old.
 lands blind until someone notices. *Example:* a hung job holds main's run
 slot for 40 min; the issue opens at 30 and closes when the next run ends.
 *Enforced by:* `scripts/ci-watchdog.sh`, `.github/workflows/watchdog.yml`.
+
+### ci/R24
+
+Each workflow and job grants only the token permissions it uses, and no
+workflow runs on `pull_request_target`.
+*Why:* a workflow that runs untrusted code with a write token can push to
+main or publish a release. *Example:* `commit-status.yml` gets
+`statuses: write` and nothing else; only the release publish job gets
+`contents: write`. *Enforced by:* **missing**; review of `.github/` changes.

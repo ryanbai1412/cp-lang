@@ -188,6 +188,7 @@ reasoning spread through `decisions.md`.
 | `design/std-mechanisms.md` | How std gets its powers without privilege | stdlib | `plan/domains/stdlib/library-domains.md` |
 | `design/debugger.md` | Tracing, replay, stress, the debugger | debugger | the debugger plan's architecture notes |
 | `design/repo.md` | File structure, toolchain, scripts | infra | `REPO.md`, `plan/LAYOUT.md` |
+| `design/infra.md` | Landing, CI, releases and installers: each part, the path of a commit to a user, the invariants | infra | `plan/domains/infra/ARCHITECTURE.md` |
 
 ### Domains: one charter each
 
