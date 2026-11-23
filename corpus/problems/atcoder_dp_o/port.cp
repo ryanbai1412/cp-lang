@@ -14,7 +14,7 @@ let likes: [Man, Woman]0..=1 = read()
 var ways: [Taken]Z = 0
 ways[Taken.empty] = 1
 for t in Taken:
-    if not t.is_empty:
+    if t != Taken.empty:
         let m = Man(t.len - 1)
         ways[t] = sum(ways[t.without(w)] for w in t if likes[m, w] == 1)
 print(ways[Taken.full])

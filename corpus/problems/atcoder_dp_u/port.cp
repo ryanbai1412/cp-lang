@@ -15,8 +15,6 @@ for g in Group:
 // group of s's rabbits that stay together.
 var best: [Group]Int = 0
 for s in Group:
-    var g = s.idx
-    while g > 0:
-        best[s] max= score[Group(g)] + best[Group(s.idx - g)]
-        g = (g - 1) & s.idx
+    for g in s.subsets:
+        if g != Group.empty: best[s] max= score[g] + best[s - g]
 print(best[Group.full])

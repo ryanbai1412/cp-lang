@@ -21,5 +21,5 @@ for s in Used:
     for v in V:
         if colour[v] in s:
             let rest = s.without(colour[v])
-            ways[s, v] = if rest.is_empty: 1 else: sum(ways[rest, u] for u in adj[v])
+            ways[s, v] = if rest == Used.empty: 1 else: sum(ways[rest, u] for u in adj[v])
 print(sum(ways[s, v] for s in Used for v in V if s.len >= 2))

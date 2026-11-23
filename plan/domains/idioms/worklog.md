@@ -219,3 +219,4 @@ Newest first: what landed (commit), evidence, next, blocked, requests from other
 - 03:15 port: btoi19p4 had a silent bug of its own: the knapsack stepped back with `Meal.at(p - b)` (the meal domain) where it meant `Paid.at(p - b)`. Fixed, 60/60 vs the AC C++. The checker caught it: `variety` is indexed by `Paid`.
 - 03:15 port: ioi21p4 `upto.last!.copy()` (60/60 vs the AC grader via a local wrapper).
 - 03:30 port: yac6p2 `read(none: -1, gen: random_parents)` for the parent arrays, where the root is written as `-1`. A local move checker (count equals the reference's, no move hangs a vertex under its own subtree, the final tree is `want`) passes 60/60; plain diff differs on 2 because move order is free.
+- 04:00 port: atcoder_dp_o and btoi18p6 test a `Subset` for empty with `== Subset.empty` (no `is_empty` yet, filed with stdlib), and atcoder_dp_u walks submasks with `s.subsets` and `s - g`, not the raw `idx` bit loop. Each is 60/60 vs the AC C++.

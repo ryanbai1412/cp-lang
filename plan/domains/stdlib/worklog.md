@@ -402,3 +402,4 @@ Newest first: what landed (commit), evidence, next, blocked, requests from other
   - H-SORTEDSET-RANGE-TODO: `SortedSet.range` and `SortedRange` are `todo` in a supported family.
   - H-INTRINSIC-SCOPE: `bit_width`, `popcount`, `isqrt`, `bit_len` have no stub/prelude entry (README:224, R11.3.2).
   - Round-9 solution 02 fails: `zip(s, s.drop(2)).count((x, y) => x == y)` on a `Str` is E0302 "can't compare a Char with a Int".
+- 04:00 from idioms: `Subset<B>` has no `is_empty`, unlike every other std collection (bag.cp has five). Three ports wrote `s.is_empty` and now write `s == Used.empty`. Add `@get pub fn is_empty(self) -> Bool`.
