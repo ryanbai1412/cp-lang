@@ -1723,3 +1723,9 @@ fn a_name_resolves_to_the_file_or_module_that_declares_it() {
         ["std.seq"]
     );
 }
+
+#[test]
+fn a_reversed_view_concatenates_like_its_source() {
+    let src = "let a = [3, 2, 1]\nlet b = [7, 8]\nlet c: List<Int> = a.rev + b\nlet d: List<Int> = b + a.rev\nprint(c, d)\n";
+    assert_eq!(check(src), vec![]);
+}

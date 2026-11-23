@@ -1455,8 +1455,10 @@ impl<'a> Checker<'a> {
         let Ty::Named { name, .. } = left else {
             return None;
         };
-        matches!(self.type_def(name).as_deref(), Some(Def::Struct { .. }))
-            .then(|| (trait_name, name.clone()))
+        // A view such as `Rev<S>` is a sequence, so `a.rev + b` concatenates.
+        (left.seq_elem().is_none()
+            && matches!(self.type_def(name).as_deref(), Some(Def::Struct { .. })))
+        .then(|| (trait_name, name.clone()))
     }
 
     fn comparable(
@@ -3941,7 +3943,7 @@ impl Checker<'_> {
 }
 
 fn seq_concat_elem(ty: &Ty) -> Option<&Ty> {
-    match ty {
+    match ty.rev_source().unwrap_or(ty) {
         Ty::Named { name, args }
             if matches!(name.as_str(), "List" | "ListView") && args.len() == 1 =>
         {
