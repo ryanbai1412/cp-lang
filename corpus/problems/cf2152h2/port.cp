@@ -44,34 +44,36 @@ var br = Breaks([], [], [])
 var set: [V]?Int = [V] v => br.single(bound[v], 1)
 var dsu = Dsu<V>()
 
-// Raise the breakpoints `h` (F) to max(F, l - d) at the integers.
-fn raise(h: ?Int, d: Int) -> ?Int:
-    var rest = h
-    var (pos, slope, val) = (br.at[h!], 0, 0)  // F(pos) = val, slope just right of pos
+// Raise the breakpoints with smallest `h` (F) to max(F, l - d) at the integers.
+fn raise(h: Int, d: Int) -> ?Int:
+    var rest: ?Int = h
+    var (pos, slope, val) = (br.at[h], 0, 0)  // F(pos) = val, slope just right of pos
     while let b = rest and val + slope * (br.at[b] - pos) < br.at[b] - d:
         (val, pos, slope) = (val + slope * (br.at[b] - pos), br.at[b], slope + br.cnt[b])
         rest = br.rest(b)
-    let (step, part) = ((pos - val - d) / (slope - 1), (pos - val - d) % (slope - 1))
+    // l - d meets F at pos + (pos - val - d) / (slope - 1): split the jump of slope - 1 there.
+    let (step, part) = (pos - val - d).divmod(slope - 1)
     let cross = pos + step
     if part > 0: rest = br.meld(br.single(cross + 1, part), rest)
     rest = br.meld(br.single(cross, slope - 1 - part), rest)
     br.meld(br.single(d, 1), rest)
 
-for (u, v, w) in edges.sorted(by: e => -e.w):
+for (u, v, w) in edges.sorted(by: e => e.w, desc: true):
     let (kept, merged) = dsu.merge(u, v)!
     set[kept] = br.meld(set[kept], set[merged])
     bound[kept] += bound[merged] - 2 * w
-    if bound[kept] < br.at[set[kept]!]: set[kept] = raise(set[kept], bound[kept])
+    let top = set[kept]!  // never empty: each vertex brings one breakpoint
+    if bound[kept] < br.at[top]: set[kept] = raise(top, bound[kept])
 
 var breaks: List<Int> = []
 var h = set[dsu.find(V.first!)]
 while let b = h:
-    for _ in 0..br.cnt[b]: breaks.push(br.at[b])
+    repeat br.cnt[b]: breaks.push(br.at[b])
     h = br.rest(b)
 
 let below = prefix(breaks)
 let q: 1..=250_000 = read()
 let asks: [0..q]1..=1e9 = read()
 for l in asks:
-    let k = breaks.first_ge(l) ?? breaks.len
-    print(l * k - below.prefix(k))
+    let k = breaks.partition_point(b => b >= l)
+    print(l * Int(k) - below.prefix(k))
