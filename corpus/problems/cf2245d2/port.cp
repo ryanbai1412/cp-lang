@@ -1,12 +1,12 @@
-// Codeforces 2245 D2: assign each vertex a non-zero integer so every kind-1
-// edge has a[u] + a[v] > 0 and every kind-2 edge has a[u] + a[v] < 0.
-//
-// Peel any vertex whose remaining incident edges all have the same kind (at
-// least one kind count is 0). Give the z-th peeled vertex magnitude n - z,
-// positive if its remaining edges are kind 1 (cnt[v, 2] == 0) and negative if
-// they are kind 2 (cnt[v, 1] == 0). Since later vertices have strictly smaller
-// magnitude, each vertex's sign decides every edge incident to it at peel time.
-// If peeling stalls before all n vertices are removed, no assignment exists.
+// Source: Codeforces 2245D2 (Construct an Array, Hard Version),
+//   https://codeforces.com/contest/2245/problem/D2
+// Problem: find integers a[1..n], |a| <= 1e9, meeting m constraints (o, i, j), i <= j: o = 1
+//   needs a[i] + a[j] >= 0, o = 2 needs a[i] + a[j] < 0; print YES and a, or NO.
+//   n <= 2e5, m <= 1e6 (sums too); multitest.
+// Solution: peel any vertex whose remaining constraints are all one kind and give the z-th
+//   peeled vertex magnitude n - z, positive for kind 1, negative for kind 2: it outweighs every
+//   later neighbour, so its sign settles all its remaining constraints (self-loops included).
+//   A queue of ready vertices with per-kind counts; if peeling stalls, print NO. O(n + m).
 @!multitest
 let (n, m): (1..=2e5, 0..=2e5) = read()
 domain V = 1..=n

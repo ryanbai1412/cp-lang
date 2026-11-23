@@ -1,13 +1,15 @@
-// Codeforces 2180 F2: Control Car (Hard Version).
-// Follow the car through an unbounded grid, choosing each corner only when the
-// car first needs it. In a cell, two inherited corners matter: the floor is
-// shut when the bottom-left corner points right, the right wall when the
-// top-right one points down. The fresh bottom-right corner decides the move:
-// pointing left shuts the floor, pointing up shuts the wall. A fall hands it
-// on as the top-right corner below, a slide as the bottom-left corner on the
-// right, and the other corner of the new cell is fresh. The car stops inside
-// the n x m grid iff it stops in a cell (i, j) with i < n, j < m. For a fixed
-// n the count is a linear recurrence in m: tabulate 600 columns and extend it.
+// Source: Codeforces 2180F2 (Control Car, Hard Version),
+//   https://codeforces.com/contest/2180/problem/F2
+// Problem: each of the (n+1)(m+1) grid points of an n x m grid gets a wall of length 1 pointing
+//   up, down, left or right. A car starts in cell (1, 1), moves down when it can, else right,
+//   and stops when blocked or out of the grid. Count orientations where it stops inside the
+//   grid, mod 1e9+7. n <= 50 (sum n <= 50), m <= 1e15; multitest.
+// Solution: follow the car through an unbounded grid, fixing each corner only when first
+//   needed: a cell's bottom-left and top-right corners are inherited, its bottom-right is fresh
+//   and decides fall, slide or stop. A row-by-row DP over 50 x 600 cells keeps, per column, the
+//   weight of ways to enter split by floor/wall shut, and sums stops in rows ..= i, columns ..= j
+//   (weighted by 4^-(corners fixed)). For fixed n the count is a linear recurrence in m:
+//   `guess_at` extends the 600 tabulated columns to column m - 1.
 use std.spec.{guess_at}
 type Z = Mod<1_000_000_007>
 

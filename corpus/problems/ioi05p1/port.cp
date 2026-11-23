@@ -1,6 +1,13 @@
-// IOI 2005 P1, Garden: roses stand on a grid. Fence two rectangles that
-// do not overlap, each holding exactly k roses, with the smallest total
-// length of fence. Print NO if there are no two such rectangles.
+// Source: IOI 2005 Day 1, Garden, https://dmoj.ca/problem/ioi05p1
+// Problem: an l x w garden (l, w <= 250) with n <= 5000 roses on unit squares (several per
+//   square allowed). Choose two disjoint axis-parallel rectangles, each holding exactly k roses,
+//   with the least total perimeter; print it, or NO.
+// Solution: two disjoint rectangles are split by a line between rows or between columns. For
+//   each bottom row, `above` grows the top row upward, keeps per-column rose counts of the strip
+//   and finds, with a two-pointer window over columns, the narrowest exactly-k rectangles; a
+//   running min gives the best one at or above each row. The same on the flipped garden gives
+//   the best below; `split` tries every cut, and the transposed garden every vertical cut.
+//   O(l w (l + w)).
 // original: corpus/submissions/5034025.cpp
 let length: 1..=250 = read()
 let width: 1..=250 = read()

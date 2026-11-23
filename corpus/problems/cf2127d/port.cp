@@ -1,17 +1,12 @@
-// Codeforces 2127 D — Root Was Built by Love, Broken by Destiny
-//
-// Place the n vertices on two parallel banks so no two of the m edges cross.
-// A connected graph admits such a 2-bank planar drawing iff it is a tree
-// (m == n - 1) whose non-leaf spine (vertices with deg > 1) induces a path
-// (every spine vertex has at most 2 spine neighbours, `deg2[v] <= 2`).
-//
-// Counting valid drawings modulo 10^9 + 7:
-// - If the spine has `spine_edges >= 1` edges (at least 2 spine vertices),
-//   orienting the spine left-to-right (2 ways) and choosing the starting bank
-//   (2 ways) gives 4, times `(deg[v] - deg2[v])!` for ordering each spine
-//   vertex's leaf children on the opposite bank.
-// - If `spine_edges == 0` (a star, n >= 2), choosing the center's bank (2 ways)
-//   and ordering all n - 1 leaves gives `2 * (n - 1)!`.
+// Source: Codeforces 2127D (Root was Built by Love, Broken by Destiny),
+//   https://codeforces.com/contest/2127/problem/D
+// Problem: a connected simple graph with n houses and m bridges. Place the houses on two
+//   parallel river banks (order on each bank matters) so every bridge joins opposite banks and
+//   no two bridges cross; count arrangements mod 1e9+7. n, m <= 2e5 (sums too); multitest.
+// Solution: such a drawing exists iff the graph is a tree (m = n - 1) whose non-leaf vertices
+//   (the spine) form a path: no spine vertex has 3 spine neighbours. With a spine edge there
+//   are 4 ways to orient the spine and pick the start bank, times (leaves at v)! per spine
+//   vertex v; a star gives 2 (n - 1)!. Degree counts and factorials: O(n + m).
 
 const MOD = 1_000_000_007
 type Z = Mod<MOD>

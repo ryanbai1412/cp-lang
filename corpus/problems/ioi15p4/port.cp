@@ -1,13 +1,12 @@
-// IOI 2015 Day 2 P1, Horses: for n years, the herd multiplies by x[i] in
-// year i and a horse then sells for y[i]. Starting from one horse and
-// selling everything in the best single year gives max over i of
-// x[1] * ... * x[i] * y[i]; print it modulo 1e9 + 7 at the start and
-// after each update of one x or one y.
-//
-// Walk the years backwards in blocks that end at a year with x > 1,
-// keeping the best sale so far as a multiple of the herd at the block
-// start. Once that multiple reaches 1e9 no earlier year can win, and
-// each block at least doubles it, so about 30 blocks are visited.
+// Source: IOI 2015 Day 2, Horses, https://dmoj.ca/problem/ioi15p4
+// Problem: n <= 5e5 years; in year i the herd multiplies by x[i], then horses sell for y[i]
+//   each (1 <= x, y <= 1e9). Starting with one horse, print the most money obtainable, mod
+//   1e9+7, initially and after each of m <= 1e5 updates setting one x[i] or y[i].
+// Solution: it is best to sell everything in one year i, earning x[0] * ... * x[i] * y[i].
+//   Walk the years backwards in blocks that start at a year with x > 1 (`surge.left_while`),
+//   keeping the best sale so far as a multiple `lead` of the herd at the block start; each
+//   block multiplies it by x >= 2, so once it reaches 1e9 no earlier year can win (~30
+//   blocks). SegTrees give the max y per block and the prefix product mod p: O(30 log n) each.
 // input: n, x[], y[], m, then m lines `kind year value` (0-based year;
 // kind 1 sets x, kind 2 sets y)
 // original: corpus/submissions/5723351.cpp (the three grader functions)

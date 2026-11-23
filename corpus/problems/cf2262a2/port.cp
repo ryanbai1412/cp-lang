@@ -1,21 +1,14 @@
-// Codeforces 2262 A2 — Bucket-Avoidance Subset Counting
-//
-// Each `a[i]` satisfies `0 <= a[i] <= ceil(n / i)`: every `j < a[i]` has
-// `j * i < n` (visiting `sum_{i=1..n} ceil(n / i) = O(n log n)` must-hit
-// buckets `[j * i, min(n, (j + 1) * i))`), while `a[i] * i` may exceed `n`
-// (when `i` does not divide `n`), so both endpoints of the forbidden bucket
-// `[a[i] * i, (a[i] + 1) * i)` are clamped to `n` in `diff`.
-//
-// `diff` is a range-add difference array over forbidden buckets
-// `[a[i] * i, min(n, (a[i] + 1) * i))`, so `cover.prefix(i + 1)` counts how
-// many forbidden buckets cover `i`. `need[lo]` starts at `n + 1` (meaning no
-// must-hit interval constrains `lo`) and after `suffix_scan_in_place(..., min)`
-// holds the tightest right endpoint of any must-hit interval starting at `>= lo`.
-//
-// Scanning `i` from `n - 1` down to `0`, `ways[i]` counts valid subsets whose
-// smallest element is `i`: if `i` is uncovered (`cover.prefix(i + 1) == 0`),
-// the next chosen element must lie in `i + 1..need[i]`, whose running sum is
-// maintained in `tot` by shrinking `hi` down to `need[i]`.
+// Source: Codeforces 2262A2 (Floor of MEX, Hard Version),
+//   https://codeforces.com/contest/2262/problem/A2
+// Problem: f(B, k) = mex of {floor(y / k) : y in B}. Given a[1..n] (0 <= a[k] <= n), count sets
+//   B of {0..n-1} with f(B, k) = a[k] for all k, mod 1e9+7 (one is guaranteed to exist).
+//   n, sum n <= 1e5; multitest.
+// Solution: a[k] says each bucket [j k, (j+1) k) with j < a[k] holds an element of B and the
+//   bucket [a[k] k, (a[k]+1) k) holds none. Forbidden buckets are added to a difference array
+//   (`cover`); for must-hit buckets, `need_suf[i]` is the least right end of one starting at
+//   >= i. ways[i] counts valid sets whose smallest element is i (ways[n] = 1 means none left):
+//   the next element lies in i+1 ..< need_suf[i], a window kept as a running sum `tot` while
+//   scanning i down. The buckets total sum ceil(n / k) = O(n log n).
 
 use std.prefix.{suffix_fold}
 

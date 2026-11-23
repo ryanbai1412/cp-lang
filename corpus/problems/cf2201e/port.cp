@@ -1,20 +1,14 @@
-// Codeforces 2201 E: ABBA Counting.
-// With m = n / 2, S = A + B + B + A says exactly that the second half of S is
-// its first half X rotated left by |A|. So count pairs (X, shift), then
-// correct for strings hit by several shifts.
-// If X has least period p, rotations repeat every p and S is hit by m / p
-// shifts. Let ways(len) count pairs (X, shift mod len) with X of period
-// len, for each len = m / f. S is counted there iff p | len, len / p times;
-// weighting ways(m / f) by c(f) = prod over primes r | f of (1 - r) makes S
-// count sum over f | q of c(f) * q / f = 1 for q = m / p, since
-// c = (mu * id) * 1 and (mu * id) * id is the identity of Dirichlet
-// convolution.
-// For one len, fold each half onto len residues (a clash leaves no X). A
-// shift pairs residue j of the first half with j + shift of the second; it
-// is consistent iff every pair of known letters agrees, and then each pair
-// with no known letter is free. Over all shifts at once: correlating the
-// +1/-1 letter signs gives agree - disagree, correlating known flags gives
-// the number of known pairs.
+// Source: Codeforces 2201E (ABBA Counting), https://codeforces.com/contest/2201/problem/E
+// Problem: a string t of even length n <= 4e5 over 'a', 'b', '?'. Count fillings S of the '?'
+//   that can be written S = A + B + B + A for some (possibly empty) strings A, B, mod 998244353.
+//   Sum n <= 4e5; multitest.
+// Solution: with m = n / 2, S = ABBA iff its second half is the first half X rotated by |A|,
+//   so count pairs (X, shift) and fix overcounting: X of least period p is hit by m / p shifts.
+//   ways(len) counts pairs (X of period len, shift mod len) by folding each half onto len
+//   residues; a shift is consistent iff known letters agree, and each unknown pair is free.
+//   Cyclic NTT correlations of the +-1 signs and of the known flags give, for all shifts at
+//   once, agreements and known pairs. Answer = sum over f | m of ways(m / f) * prod (1 - r)
+//   over primes r | f (mu * id Moebius weights): O(m d(m) + sigma(m) log m).
 use std.math.{divisors, factor}
 use std.ntt.{convolve}
 

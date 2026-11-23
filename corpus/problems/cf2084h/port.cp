@@ -1,12 +1,13 @@
-// Codeforces 2084 H: Turtle and Multiplication (run-length staircase DP).
-// The DP runs over maximal runs `blocks` of `s`. Each round alternates parity
-// of block index: for each height h >= 1, the transition sums the `dp` of the
-// newest earlier block of the same parity at least h tall, while every earlier
-// block grows by 1 per round (`lift`): a monotone `Staircase`.
-//   - Heights below the newest step contribute `floor + lift - 1` base ways
-//     (the first block of parity Even has `blocks.first` choices; Odd starts at 1).
-//   - At the end, multiplying by `blocks.last` chooses the surviving length of
-//     the final run.
+// Source: Codeforces 2084H (Turtle and Nediam 2), https://codeforces.com/contest/2084/problem/H
+// Problem: a binary string s of length n. An operation picks three consecutive s_i..s_i+2,
+//   takes their median x and deletes the first s_j = x with j >= i. Count the distinct strings
+//   reachable with at most n - 2 operations, mod 1e9+7. n, sum n <= 2e6; multitest.
+// Solution: work on the run lengths `blocks` of s (one run: lengths 2..n, n - 1 strings). A DP
+//   over runs alternates parity: for each height h the transition sums the dp of the newest
+//   earlier run of the same parity that is at least h tall, and every earlier run grows by
+//   one per round. Per parity a monotone `Staircase` stack stores tops minus the shared `lift`
+//   and keeps the visible sum `hidden` up to date on push. The last run's length multiplies
+//   the result. O(n) amortised.
 @!multitest
 use std.seq.runs
 
