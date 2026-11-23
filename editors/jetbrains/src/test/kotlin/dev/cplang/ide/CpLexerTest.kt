@@ -61,8 +61,9 @@ class CpLexerTest {
     }
 
     @Test
-    fun `every stdlib and example file lexes with no gap`() {
-        val files = listOf("stdlib", "examples", "crates/cpl-cli/tests").flatMap { dir ->
+    fun `every std and example file lexes with no gap`() {
+        val files = listOf("std", "examples", "crates/cpl-cli/tests").flatMap { dir ->
+            assertTrue("$dir exists", File(repo, dir).isDirectory)
             File(repo, dir).walkTopDown().filter { it.extension == "cp" }.toList()
         }
         assertTrue("found .cp files", files.size > 20)

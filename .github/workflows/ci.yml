@@ -166,7 +166,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [macos-latest, windows-latest]
-    timeout-minutes: 20
+    timeout-minutes: 35
     steps:
       - uses: actions/checkout@v4
       - name: Install the pinned Rust toolchain
@@ -178,6 +178,11 @@ jobs:
         run: |
           cargo test -p cpl-cli --lib --test golden --test cli
           cargo test -p cpl-contest
+      # The editor's latency budgets on this OS, in the optimized build people run.
+      # Not blocking until a few runs show the hosted runners meet them.
+      - name: LSP latency (release)
+        continue-on-error: true
+        run: cargo test --release -p cpl-lsp --test latency -- --nocapture
 
   # JetBrains: the plugin builds, and its tests run in a headless IDE against
   # the real `cpl` (file type, highlighting, the LSP server, run configurations).
