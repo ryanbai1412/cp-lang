@@ -381,9 +381,18 @@ fi
 
 wasm_check
 
-# Logs of the steps that run beside the workspace tests.
+step "cargo build -p cpl-cli -p cpl-conform (the binaries the checks below run)"
 cargo build -q -p cpl-cli -p cpl-conform
+# Logs of the steps that run beside the workspace tests.
 lib_logs="$(mktemp -d)"
+site_gate_pid=""
+# CI's checks part runs no tests, so the snippet gate overlaps fmt_check
+# instead of running after it.
+if [ "$gate_part" = checks ] && ! cache_hit site_gate; then
+    need node "the site's snippet gate runs on it"
+    CPL="$cpl" node web/scripts/gate.mjs >"$lib_logs/site_gate.log" 2>&1 &
+    site_gate_pid=$!
+fi
 script_test_pid=""
 recovery_pid=""
 scoreboard_pid=""
@@ -410,7 +419,7 @@ else
     scoreboard_pid=$!
 fi
 cleanup() {
-    kill ${script_test_pid:+"$script_test_pid"} ${recovery_pid:+"$recovery_pid"} ${scoreboard_pid:+"$scoreboard_pid"} ${fmt_pid:+"$fmt_pid"} 2>/dev/null || true
+    kill ${script_test_pid:+"$script_test_pid"} ${recovery_pid:+"$recovery_pid"} ${scoreboard_pid:+"$scoreboard_pid"} ${fmt_pid:+"$fmt_pid"} ${site_gate_pid:+"$site_gate_pid"} 2>/dev/null || true
     rm -rf "$lib_logs" "$manifest" "$manifest.reads" ${tmp:+"$tmp"}
 }
 trap cleanup EXIT
@@ -527,7 +536,14 @@ python3 scripts/review-check.py --check \
     || fail "taste review gate failed; see research/reviews/README.md"
 
 step "site snippet gate (node web/scripts/gate.mjs)"
-if cache_hit site_gate; then
+if [ -n "$site_gate_pid" ]; then
+    site_gate_status=0
+    wait "$site_gate_pid" || site_gate_status=1
+    cat "$lib_logs/site_gate.log"
+    site_gate_pid=""
+    [ "$site_gate_status" -eq 0 ] || fail "site snippet gate failed; rerun: CPL=$cpl node web/scripts/gate.mjs"
+    cache_save site_gate
+elif cache_hit site_gate; then
     echo "cached (tree unchanged outside its excludes)"
 elif [ "$mode" = land ] && [ "$sel_site" != 1 ] && [ -z "$sel_packages" ]; then
     echo "skipped: the train touches no site, docs or crate path"
