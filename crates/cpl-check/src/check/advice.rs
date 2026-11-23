@@ -456,6 +456,10 @@ impl Checker<'_> {
                 ),
                 "a range with a step is written",
             ),
+            ("input", []) => (
+                "read_line()".to_string(),
+                "a line is read with `read_line` (a value with `read()`)",
+            ),
             ("enumerate", [xs]) => (
                 format!("{}.items", operand(self, xs)),
                 "index-element pairs are a member",
