@@ -16,6 +16,9 @@ use std::collections::{BTreeMap, BTreeSet};
 /// `asserts` is whether the build checks them; when it does not, they go
 /// too, so a fn only an `assert` calls is not emitted.
 pub(crate) fn prune(program: &mut Program, asserts: bool) {
+    if !asserts {
+        keep_stores_of_asserts(program);
+    }
     let mut nones = Nones {
         params: none_params(program),
         fields: BTreeSet::new(),
@@ -25,6 +28,53 @@ pub(crate) fn prune(program: &mut Program, asserts: bool) {
     if !nones.fields.is_empty() {
         run(program, asserts, &nones);
     }
+}
+
+/// A skipped `assert` whose condition stores still runs it, so
+/// `assert floyd_warshall(mut d)` closes `d` in every build.
+fn keep_stores_of_asserts(program: &mut Program) {
+    let mut storing = BTreeSet::new();
+    let effects: Vec<Effects> = program
+        .fns
+        .iter()
+        .map(|f| Effects::of_block(&f.body))
+        .collect();
+    loop {
+        let before = storing.len();
+        for (id, e) in effects.iter().enumerate() {
+            if !e.globals.is_empty() || e.calls.iter().any(|c| storing.contains(c)) {
+                storing.insert(id);
+            }
+        }
+        if storing.len() == before {
+            break;
+        }
+    }
+    let stores = |cond: &Expr| {
+        let e = Effects::of_expr(cond);
+        !e.locals.is_empty() || !e.globals.is_empty() || e.calls.iter().any(|c| storing.contains(c))
+    };
+    fn visit(b: &mut Block, stores: &dyn Fn(&Expr) -> bool) {
+        for stmt in &mut b.stmts {
+            match stmt {
+                Stmt::Assert { cond, .. } if stores(cond) => *stmt = Stmt::Expr(cond.clone()),
+                Stmt::If(_, then, otherwise) => {
+                    visit(then, stores);
+                    visit(otherwise, stores);
+                }
+                Stmt::While(_, _, body) | Stmt::For(_, _, _, body) => visit(body, stores),
+                _ => {}
+            }
+        }
+    }
+    for f in &mut program.fns {
+        visit(&mut f.body, &stores);
+    }
+    for c in &mut program.closures {
+        visit(&mut c.body, &stores);
+    }
+    visit(&mut program.main, &stores);
+    visit(&mut program.setup, &stores);
 }
 
 /// Optionals that hold `None` wherever they are read.
