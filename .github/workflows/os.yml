@@ -17,6 +17,9 @@ on:
       filter:
         description: nextest filterset (default every test)
         default: all()
+      stress:
+        description: run each selected test this many times (nextest --stress-count); empty runs each once
+        default: ""
 
 permissions:
   contents: read
@@ -60,4 +63,5 @@ jobs:
       - name: Workspace tests
         env:
           FILTER: ${{ inputs.filter || 'all()' }}
-        run: cargo nextest run --workspace --no-fail-fast -E "$FILTER"
+          STRESS: ${{ inputs.stress }}
+        run: cargo nextest run --workspace --no-fail-fast -E "$FILTER" ${STRESS:+--stress-count "$STRESS"}
