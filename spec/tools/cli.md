@@ -45,4 +45,6 @@ last two `null` when the judge accepts. `cpl build --json` prints the C++
 file's `path`, `bytes`, the `limit` and `judge` it was built for, and `sizes`:
 each piece's `part`, `name` and `bytes`, adding up to `bytes`. `cpl submit
 --json` prints `ready` and the `build` and `test` reports those two print,
-`null` for a step that did not run.
+`null` for a step that did not run. `cpl report --json` prints the report's
+`path` and `bytes`, its `sections`, the `comparison` of the interpreter and
+C++ runs and the prefilled `issue_url`, `null` when there is none.

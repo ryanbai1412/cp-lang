@@ -7,6 +7,8 @@ use std::process::Command;
 use std::sync::{Mutex, OnceLock};
 use std::time::{SystemTime, UNIX_EPOCH};
 
+use cpl_json::{obj, Value};
+
 use crate::{EXIT_ERRORS, EXIT_USAGE, VERSION};
 
 pub const USAGE: &str = "\
@@ -27,6 +29,10 @@ options:
   -i, --input <file>  read program input from <file> instead of stdin
   --shrink            minimize the input while the failure still reproduces
   --last              build the report from the newest ICE crash bundle
+  --json              print one JSON object instead: the report's `path` and
+                      `bytes`, the `sections` it includes, the `comparison`
+                      of the two runs and the prefilled `issue_url` (`null`
+                      when there is none)
   -h, --help          print this help
 ";
 
@@ -176,12 +182,14 @@ pub fn report(
     let mut input_path: Option<&str> = None;
     let mut shrink = false;
     let mut last = false;
+    let mut json = false;
 
     let mut i = 0;
     while i < args.len() {
         match args[i] {
             "--last" => last = true,
             "--shrink" => shrink = true,
+            "--json" => json = true,
             "-i" | "--input" => {
                 i += 1;
                 let Some(p) = args.get(i) else {
@@ -375,6 +383,36 @@ pub fn report(
         sections.push("ICE backtrace");
     }
 
+    let url = (body.len() <= PREFILL_URL_LIMIT).then(|| {
+        let title = issue_title(&source_name, diff_summary.as_ref(), ice_backtrace.is_some());
+        format!(
+            "{ISSUE_BASE_URL}&title={}&body={}",
+            percent_encode(&title),
+            percent_encode(&body),
+        )
+    });
+    if json {
+        let or_null = |text: Option<&str>| text.map_or(Value::Null, Value::from);
+        let report = obj([
+            ("path", report_filename.as_str().into()),
+            ("bytes", body.len().into()),
+            (
+                "sections",
+                sections
+                    .iter()
+                    .map(|s| Value::from(*s))
+                    .collect::<Vec<_>>()
+                    .into(),
+            ),
+            (
+                "comparison",
+                or_null(diff_summary.as_ref().map(|d| d.headline.as_str())),
+            ),
+            ("issue_url", or_null(url.as_deref())),
+        ]);
+        let _ = writeln!(stdout, "{}", cpl_json::to_string(&report));
+        return 0;
+    }
     let _ = writeln!(stdout, "wrote {report_filename} ({} bytes)", body.len());
     let _ = writeln!(
         stdout,
@@ -384,13 +422,7 @@ pub fn report(
     if let Some(diff) = &diff_summary {
         let _ = writeln!(stdout, "comparison: {}", diff.headline);
     }
-    if body.len() <= PREFILL_URL_LIMIT {
-        let title = issue_title(&source_name, diff_summary.as_ref(), ice_backtrace.is_some());
-        let url = format!(
-            "{ISSUE_BASE_URL}&title={}&body={}",
-            percent_encode(&title),
-            percent_encode(&body),
-        );
+    if let Some(url) = url {
         let _ = writeln!(stdout, "issue URL: {url}");
     }
     0

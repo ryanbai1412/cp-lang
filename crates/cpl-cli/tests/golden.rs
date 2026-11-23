@@ -731,3 +731,44 @@ fn submit_json_says_whether_it_is_ready_and_why() {
     assert_eq!(json.at(&["ready"]).as_bool(), Some(false));
     assert_eq!(*json.at(&["build"]), cpl_json::Value::Null);
 }
+
+#[test]
+fn report_json_names_the_report_it_wrote() {
+    let dir = scratch("report-json");
+    std::fs::write(dir.join("a.cp"), "let n: Int = read()\nprint(n * 2)\n").unwrap();
+    std::fs::write(dir.join("in.txt"), "21\n").unwrap();
+    let mut sections = Vec::new();
+    for args in [
+        &["report", "a.cp", "--input", "in.txt", "--json"][..],
+        &["report", "a.cp", "--input", "in.txt", "--format", "json"],
+    ] {
+        let out = cpl(&dir, args);
+        assert_eq!(
+            out.status.code(),
+            Some(0),
+            "{args:?}: {}",
+            text(&out.stderr)
+        );
+        let json = cpl_json::parse(&text(&out.stdout)).expect("cpl report --json is JSON");
+        let path = json.at(&["path"]).as_str().expect("a path").to_string();
+        assert!(
+            path.starts_with("cpl-report-") && path.ends_with(".md"),
+            "{path}"
+        );
+        let written = std::fs::read(dir.join(&path))
+            .expect("the report is written")
+            .len() as i64;
+        assert_eq!(json.at(&["bytes"]).as_i64(), Some(written));
+        assert!(
+            json.at(&["issue_url"]).as_str().is_some(),
+            "a small report has an issue URL"
+        );
+        sections.push(json.at(&["sections"]).clone());
+    }
+    assert_eq!(sections[0], sections[1]);
+    assert!(
+        sections[0].to_string().contains("source"),
+        "{}",
+        sections[0]
+    );
+}

@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- Landed (this): `cpl report --json` (and `--format json`): the report's `path` and `bytes`, its `sections`, the `comparison` of the two runs and the prefilled `issue_url` (`null` when none). `measure.py json`: 18/23; of the target set (all but dap, lsp, self, watch) only `fmt` is left, requested from lint-fmt.
 - Landed (this): `cpl submit --json` (and `--format json`): `ready`, plus the `build` and `test` reports that `cpl build --json` and `cpl test --json` print, `null` for a step that did not run; exit codes unchanged. `measure.py json`: 17/23 (`lint --json` landed from lint-fmt).
 - Landed (this): fix `cpl test a.cp --json` (and `--format json`, `cpl test a --json`), which said "`json` does not exist": the value of `--format` counted as a second path, so the inline-test runner took the command. `--format` now always means the contest runner; golden test over the three spellings.
 - Landed (this): `cpl build --json` (and `--format json`): the C++ file's `path`, `bytes`, `limit`, `judge` and `sizes` (each piece's `part`, `name`, `bytes`, adding up to `bytes`); `--json` with `-o -` or `--checked` is a usage error. `build_file` takes a `BuildOptions` instead of five positional flags. `measure.py json`: 15/23.
