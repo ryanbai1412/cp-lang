@@ -27,7 +27,7 @@ for _ in 0..500:
         let k = rng.int(0, 29)
         let p = rng.int(0, 99)
         u.offer(k, p)
-        if not fin[k]: bestv[k] = min(bestv[k], p)
+        if not fin[k]: bestv[k] min= p
     else:
         var bk = -1
         for k in 0..30:

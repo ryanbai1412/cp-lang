@@ -33,11 +33,11 @@ let block = 8
 fn relax_row(r: Int, mut dist: List<Int>):
     for c in 1..c_cnt:
         let cand = dist[c - 1] + h_cost[r][c - 1]
-        if cand < dist[c]: dist[c] = cand
+        dist[c] min= cand
     var c = c_cnt - 2
     while c >= 0:
         let cand = dist[c + 1] + h_cost[r][c]
-        if cand < dist[c]: dist[c] = cand
+        dist[c] min= cand
         c -= 1
 
 fn build_block(r_lo: Int, r_hi: Int) -> List<Int>:

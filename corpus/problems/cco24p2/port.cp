@@ -25,14 +25,14 @@ for i in 0..n:
     let v = x - 1
     arra[I(i)] = v
     cnt_a[I(v)] += 1
-    if v > max_a: max_a = v
+    max_a max= v
 
 for i in 0..n:
     let x: 1..=n = read()
     let v = x - 1
     arrb[I(i)] = v
     cnt_b[I(v)] += 1
-    if v > max_b: max_b = v
+    max_b max= v
 
 var same_tally = true
 var perm_ok = true

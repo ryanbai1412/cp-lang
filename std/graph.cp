@@ -620,12 +620,12 @@ pub fn scc<V>(g: Next<V>) -> (domain C, comp: [V]C):
                     on[v] = true
                     call.push(v)
                 elif on[v]:
-                    low[u] = min(low[u], idx[v])
+                    low[u] min= idx[v]
             else:
                 call.pop()
                 if call.len > 0:
                     let p = call[call.len - 1]
-                    low[p] = min(low[p], low[u])
+                    low[p] min= low[u]
                 if low[u] == idx[u]:
                     while true:
                         let w = st[st.len - 1]
@@ -792,7 +792,7 @@ pub fn cut_vertices<V, E>(g: EdgedNext<V, E>) -> [V]Bool:
                     if ch >= 2: is_cut[u] = true
                 else:
                     let p = stk_u[stk_u.len - 1]
-                    if low[u] < low[p]: low[p] = low[u]
+                    low[p] min= low[u]
                     if low[u] >= tin[p] and stk_u.len > 1:
                         is_cut[p] = true
                 continue
@@ -803,7 +803,7 @@ pub fn cut_vertices<V, E>(g: EdgedNext<V, E>) -> [V]Bool:
             if let Some(pe) = stk_pe[k]:
                 if eid == pe: continue
             if tin[v] != -1:
-                if tin[v] < low[u]: low[u] = tin[v]
+                low[u] min= tin[v]
             else:
                 stk_ch[k] += 1
                 tin[v] = timer
@@ -1538,7 +1538,7 @@ pub fn bridges<V, E>(g: EdgedNext<V, E>) -> [E]Bool:
                 stk_nbrs.pop()
                 if stk_u.len > 0:
                     let p = stk_u[stk_u.len - 1]
-                    if low[u] < low[p]: low[p] = low[u]
+                    low[p] min= low[u]
                     if low[u] > tin[p]:
                         if let Some(eid) = pe:
                             is_bridge[eid] = true
@@ -1550,7 +1550,7 @@ pub fn bridges<V, E>(g: EdgedNext<V, E>) -> [E]Bool:
             if let Some(pe) = stk_pe[k]:
                 if eid == pe: continue
             if tin[v] != -1:
-                if tin[v] < low[u]: low[u] = tin[v]
+                low[u] min= tin[v]
             else:
                 tin[v] = timer
                 low[v] = timer
@@ -2516,7 +2516,7 @@ pub fn scc_times<V, E>(arcs: [E](u: V, v: V)) -> [E]?Int:
                         dfs_u.push(v)
                         dfs_i.push(0)
                     elif on_stk[v]:
-                        if tin[v] < low[u]: low[u] = tin[v]
+                        low[u] min= tin[v]
                 else:
                     if low[u] == tin[u]:
                         while true:
@@ -2529,7 +2529,7 @@ pub fn scc_times<V, E>(arcs: [E](u: V, v: V)) -> [E]?Int:
                     dfs_i.pop()
                     if dfs_u.len > 0:
                         let p = dfs_u[dfs_u.len - 1]
-                        if low[u] < low[p]: low[p] = low[u]
+                        low[p] min= low[u]
         var left_es = List<E>()
         var right_es = List<E>()
         var to_merge_u = List<Int>()
@@ -2595,7 +2595,7 @@ pub fn scc_times<V, E>(arcs: [E](u: V, v: V)) -> [E]?Int:
                         dfs_u.push(v)
                         dfs_i.push(0)
                     elif on_stk[v]:
-                        if tin[v] < low[u]: low[u] = tin[v]
+                        low[u] min= tin[v]
                 else:
                     if low[u] == tin[u]:
                         while true:
@@ -2608,7 +2608,7 @@ pub fn scc_times<V, E>(arcs: [E](u: V, v: V)) -> [E]?Int:
                     dfs_i.pop()
                     if dfs_u.len > 0:
                         let p = dfs_u[dfs_u.len - 1]
-                        if low[u] < low[p]: low[p] = low[u]
+                        low[p] min= low[u]
         var active = List<E>()
         for e in all_es:
             if comp[arcs[e].u.to_idx] == comp[arcs[e].v.to_idx]:
@@ -2669,14 +2669,14 @@ pub fn block_cut_tree<V>(g: Next<V>) -> (domain B, links: List<(b: B, v: V)>):
                     stk_i.push(0)
                     stk_p.push(u)
                 elif v != par:
-                    if tin[v] < low[u]: low[u] = tin[v]
+                    low[u] min= tin[v]
             else:
                 stk_u.pop()
                 stk_i.pop()
                 stk_p.pop()
                 if stk_u.len > 0:
                     let p = stk_u[stk_u.len - 1]
-                    if low[u] < low[p]: low[p] = low[u]
+                    low[p] min= low[u]
                     if low[u] >= tin[p]:
                         if p != root: is_cut[p] = true
                         var blk = List<V>()
@@ -2750,7 +2750,7 @@ pub fn blocks<V, E>(g: EdgedNext<V, E>) -> (domain B, block: [E]B):
                     if not in_stk[e]:
                         in_stk[e] = true
                         estk.push(e)
-                    low[u] = min(low[u], tin[v])
+                    low[u] min= tin[v]
             else:
                 let pe = stk_pe[top]
                 stk_v.pop()
@@ -2758,7 +2758,7 @@ pub fn blocks<V, E>(g: EdgedNext<V, E>) -> (domain B, block: [E]B):
                 stk_i.pop()
                 if stk_v.len > 0:
                     let p = stk_v[stk_v.len - 1]
-                    low[p] = min(low[p], low[u])
+                    low[p] min= low[u]
                     if low[u] >= tin[p]:
                         let pe_val = pe!
                         while estk.len > 0:
@@ -2909,7 +2909,7 @@ pub fn dominators<V>(g: Next<V>, root: V) -> [V]?V:
                 dsu[x] = cur
                 k -= 1
             let cand = sdom[best[p]]
-            if cand < sdom[u_idx]: sdom[u_idx] = cand
+            sdom[u_idx] min= cand
         bucket[sdom[u_idx]].push(u_idx)
         let p = par[u_idx]
         dsu[u_idx] = p

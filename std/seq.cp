@@ -2049,8 +2049,8 @@ pub fn radix_sort<S: IndexedMut, T>(mut self: S, by: T -> Int = x => x):
     var lo = cur[0].0
     var hi = cur[0].0
     for p in cur:
-        if p.0 < lo: lo = p.0
-        if hi < p.0: hi = p.0
+        lo min= p.0
+        hi max= p.0
     var span = hi - lo
     var shift = 0
     while span > 0:

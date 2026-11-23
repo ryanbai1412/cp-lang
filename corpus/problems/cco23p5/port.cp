@@ -46,7 +46,7 @@ fn dp1(u: Int) -> Int:
     var best = 0
     for idx in 0..ch[V(u)].len:
         let c = dp1(ch[V(u)][idx])
-        if c > best: best = c
+        best max= c
     let res = best + arr[V(u)]
     memo1[V(u)] = res
     res
@@ -151,7 +151,7 @@ fn dp2(u: Int, me: Int, bk: Int) -> Int:
     if bk == 0:
         for idx in 0..ch[V(u)].len:
             let c = dp2(ch[V(u)][idx], 0, 0)
-            if c > best: best = c
+            best max= c
         let r2a = opt2(u, 1, 2)
         if r2a.v1 != -1 and tot + r2a.val > best: best = tot + r2a.val
         if me == 0:
@@ -162,17 +162,17 @@ fn dp2(u: Int, me: Int, bk: Int) -> Int:
             for idx in 0..ch[V(u)].len:
                 let v = ch[V(u)][idx]
                 let c = tot - arr[V(v)] + dp2(v, 0, 0)
-                if c > best: best = c
+                best max= c
     elif me == 1:
         for idx in 0..ch[V(u)].len:
             let v = ch[V(u)][idx]
             let c = tot - arr[V(v)] + dp2(v, 0, 1)
-            if c > best: best = c
+            best max= c
     else:
         for idx in 0..ch[V(u)].len:
             let v = ch[V(u)][idx]
             let c = tot - arr[V(v)] + dp2(v, 1, 1)
-            if c > best: best = c
+            best max= c
     let res = best + arr[V(u)]
     memo2[key] = res
     res

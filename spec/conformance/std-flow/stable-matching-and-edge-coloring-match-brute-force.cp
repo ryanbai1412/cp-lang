@@ -63,7 +63,7 @@ fn edge_colorings_use_max_degree_proper_colours():
         let (colors, color) = edge_coloring(es)
         var deg = 0
         for l in L: deg = max(deg, [e for e in E if es[e].l == l].len)
-        for r in R: deg = max(deg, [e for e in E if es[e].r == r].len)
+        for r in R: deg max= [e for e in E if es[e].r == r].len
         assert colors == deg
         for e in E:
             assert 0 <= color[e] and color[e] < colors

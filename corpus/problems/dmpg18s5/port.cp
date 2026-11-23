@@ -18,8 +18,7 @@ var q_b: [0..q]Int = 0
 var q_c: [0..q]Int = 0
 var max_v = 1
 for i in 0..n:
-    if a[i] > max_v:
-        max_v = a[i]
+    max_v max= a[i]
 for i in 0..q:
     let t: 1..=2 = read()
     q_type[i] = t
@@ -30,15 +29,13 @@ for i in 0..q:
         q_a[i] = l - 1
         q_b[i] = r - 1
         q_c[i] = x
-        if x > max_v:
-            max_v = x
+        max_v max= x
     else:
         let idx: 1..=200_000 = read()
         let x: 1..=200_000 = read()
         q_a[i] = idx - 1
         q_b[i] = x
-        if x > max_v:
-            max_v = x
+        max_v max= x
 
 var divs: [0..=max_v]List<Int> = []
 for d in 1..=max_v:

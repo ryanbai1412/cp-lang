@@ -16,7 +16,7 @@ let masts: [M](h: Int, k: Int) = read()
 var max_h = 0
 var pairs: List<(h: Int, k: Int)> = []
 for m in M:
-    if masts[m].h > max_h: max_h = masts[m].h
+    max_h max= masts[m].h
     pairs.push(masts[m])
 pairs = pairs.sorted()
 

@@ -31,7 +31,7 @@ fn line(xs: List<Int>) -> Str:
 var due = [Plane] p => k[p]
 let order = topo<Plane>(p => after[p])!
 for p in order.rev:
-    for a in after[p]: due[p] = min(due[p], due[a.to] - 1)
+    for a in after[p]: due[p] min= due[a.to] - 1
 
 print(line([p.to_idx + 1 for p in sorted([p for p in Plane], by: p => due[p])]))
 

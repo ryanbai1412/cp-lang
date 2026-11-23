@@ -23,8 +23,7 @@ for _ in 0..f_cnt:
 var max_len = List.filled(k + 1, 0)
 for idx in 0..f_cnt:
     let (l, g) = raw[idx]
-    if l > max_len[g]:
-        max_len[g] = l
+    max_len[g] max= l
 
 var gem_pairs: List<(Int, Int)> = [(max_len[g], g) for g in 1..=k]
 gem_pairs.sort()

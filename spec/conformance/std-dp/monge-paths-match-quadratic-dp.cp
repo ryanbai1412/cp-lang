@@ -19,7 +19,7 @@ for t in 0..60:
         best[i] = best[0] + c(xs[0], xs[i])
         for j in 1..i:
             let v = best[j] + c(xs[j], xs[i])
-            if v < best[i]: best[i] = v
+            best[i] min= v
     if got.val != best: ok = false
     for i in 1..n:
         if got.val[got.prev[i]] + c(xs[got.prev[i]], xs[i]) != got.val[i]: ok = false

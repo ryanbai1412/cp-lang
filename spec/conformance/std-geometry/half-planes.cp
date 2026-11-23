@@ -23,7 +23,7 @@ fn inside(poly: List<Vec>, q: Vec) -> Int:
         let a = poly[i]
         let b = poly[(i + 1) % poly.len]
         let c = (b - a).cross(q - a) / a.dist(b)
-        if c < mn: mn = c
+        mn min= c
     if mn > 1e-6: 1 else: if mn < -1e-6: -1 else: 0
 fn tri(mut seed: Int) -> List<Vec>:
     let a = Vec(F64(rnd(mut seed, 21) - 10), F64(rnd(mut seed, 21) - 10))

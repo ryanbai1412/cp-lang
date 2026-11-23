@@ -40,13 +40,11 @@ else:
         let sz = dr - dl
         a[i] = max(0, a[i] - sz)
         if dr == dl or buf[dr - 1] != m - i - 1:
-            if a[i] < 1:
-                a[i] = 1
+            a[i] max= 1
         dl -= 1
         buf[dl] = -i - 1
         var drop = pi
-        if drop > dr - dl:
-            drop = dr - dl
+        drop min= dr - dl
         dl += drop
 
     var has_zero = false

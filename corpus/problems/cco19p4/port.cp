@@ -85,7 +85,7 @@ else:
             let idx = base + o
             if has_c[idx]:
                 let v = eval_c(cm[idx], cb[idx], x)
-                if v > best: best = v
+                best max= v
             if l == r: return best
             let mid = (l + r) / 2
             if x <= mid:

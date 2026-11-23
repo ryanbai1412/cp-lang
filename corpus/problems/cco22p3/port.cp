@@ -62,7 +62,7 @@ while let top = pq.pop():
         push_state(u + 1, loc, keep, t)
 
     var cand = (last_starting_le(theirs, d + k) ?? -1)
-    if cand < 0: cand = 0
+    cand max= 0
     if other == 1:
         if let o = oi:
             if o == cand: cand += 1

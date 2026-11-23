@@ -19,7 +19,6 @@ std L0508 7
 std L0509 2
 std L0516 2
 std L0520 18
-std L0523 18
 std L0527 3
 std L0530 12
 std L0532 2

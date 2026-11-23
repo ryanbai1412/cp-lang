@@ -67,7 +67,7 @@ for _ in 0..40:
             for j in 0..i:
                 if a[j] < a[i] and dp2[j] + 1 > d: d = dp2[j] + 1
             dp2.push(d)
-            if d > best: best = d
+            best max= d
         if lis.len != best: ok = false
         let rec = lis.reconstruct()
         if rec.len != best: ok = false

@@ -44,7 +44,7 @@ fn rebuild(bi: Bk):
     b_ptr[bi] = 0
     let ql = bi.ord * B
     var qr = ql + B
-    if qr > m: qr = m
+    qr min= m
     for idx in ql..qr:
         let sl = yvals[Y.nth(idx)]
         let ic = sl * b_v[idx]
@@ -75,7 +75,7 @@ fn query_all() -> Int:
             b_ptr[bi] += 1
         let p = b_ptr[bi]
         let cur = h_m[bi][p] * x + h_b[bi][p]
-        if cur > best: best = cur
+        best max= cur
     best
 
 fn add_y(y: Int):
@@ -95,11 +95,11 @@ var i = 0
 while i < n:
     let cur_x = order[i].0
     let cand = rem * cur_x + query_all()
-    if cand > ans: ans = cand
+    ans max= cand
     while i < n and order[i].0 == cur_x:
         add_y(order[i].1)
         i += 1
         rem -= 1
 let tail = query_all()
-if tail > ans: ans = tail
+ans max= tail
 print(ans)

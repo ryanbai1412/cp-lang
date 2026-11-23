@@ -19,8 +19,8 @@ for _ in 0..q:
     let (m, k): (Int, Int) = read()
     qm.push(m)
     qk.push(k)
-    if m > hi: hi = m
-    if k > hi: hi = k
+    hi max= m
+    hi max= k
 
 let bits = max(1, bit_width(hi))
 let sz = 1 << bits
@@ -41,7 +41,7 @@ fn query(m: Int, k: Int) -> Int:
         let chi = bit_m ^ bit_k
         if bit_k == 1:
             let sib = tree[Node(2 * o + (1 - chi))]
-            if sib > ans: ans = sib
+            ans max= sib
         o = 2 * o + chi
     max(ans, tree[Node(o)])
 

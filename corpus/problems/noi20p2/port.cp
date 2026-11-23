@@ -27,7 +27,7 @@ var need: [V]Int = [V] _ => 0
 for p in P:
     let du = tree.depth(paths[p].u) + 1
     let v = paths[p].v
-    if du > need[v]: need[v] = du
+    need[v] max= du
 
 // Simulated Pool<Node>: index 0 is null sentinel.
 var lc: List<Int> = [0]

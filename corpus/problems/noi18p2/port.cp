@@ -16,7 +16,7 @@ var cases: List<List<Int>> = []
 var max_n = 1
 for _ in 0..t:
     let n: Int = read()
-    if n > max_n: max_n = n
+    max_n max= n
     var q: List<Int> = []
     for _ in 0..n:
         let v: Int = read()

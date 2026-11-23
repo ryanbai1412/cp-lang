@@ -5,7 +5,7 @@ var low = p[0]
 var best = 0
 for x in p:
     best max= x - low
-    if x > low: low = x
+    low max= x
 print(best)
 
 @gen

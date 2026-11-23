@@ -36,8 +36,8 @@ for step in 0..3000:
         elif op == 1: t.chmax(rg, x)
         else: t.add(rg, x)
         for i in l..h:
-            if op == 0: cur[i] = min(cur[i], x)
-            elif op == 1: cur[i] = max(cur[i], x)
+            if op == 0: cur[i] min= x
+            elif op == 1: cur[i] max= x
             else: cur[i] += x
         for i in 0..12:
             hmx[i] = max(hmx[i], cur[i])

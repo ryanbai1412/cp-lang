@@ -35,5 +35,5 @@ fn eval_word() -> Int:
 var best = 0
 for _ in 0..n:
     let cur = eval_word()
-    if cur > best: best = cur
+    best max= cur
 print(best)

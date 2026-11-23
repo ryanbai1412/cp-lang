@@ -30,7 +30,7 @@ fn mul(a: Mat, b: Mat) -> Mat:
         for j in State:
             if a[i, j] > NONE:
                 for l in State:
-                    if b[j, l] > NONE: c[i, l] = max(c[i, l], a[i, j] + b[j, l])
+                    if b[j, l] > NONE: c[i, l] max= a[i, j] + b[j, l]
     c
 
 fn apply(x: Row, a: Mat) -> Row:
@@ -38,7 +38,7 @@ fn apply(x: Row, a: Mat) -> Row:
     for i in State:
         if x[i] > NONE:
             for j in State:
-                if a[i, j] > NONE: y[j] = max(y[j], x[i] + a[i, j])
+                if a[i, j] > NONE: y[j] max= x[i] + a[i, j]
     y
 
 var day: Mat = [State, State] (i, j) => NONE

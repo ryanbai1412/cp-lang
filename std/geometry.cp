@@ -2767,7 +2767,7 @@ fn least_rotation(cyc: List<Int>) -> List<Int>:
     var best: List<Int> = copy(cyc)
     for s in 1..m:
         let rot = [cyc[(s + i) % m] for i in 0..m]
-        if rot < best: best = rot
+        best min= rot
     best
 
 /// For each query point, the index into `planar_faces(pts, edges)` of the bounded face that

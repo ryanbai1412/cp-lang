@@ -30,14 +30,14 @@ for _ in 0..400:
         for i in N(l)..=N(r): a[i] += x
     else:
         t.chmin(N(l)..=N(r), x)
-        for i in N(l)..=N(r): a[i] = min(a[i], x)
+        for i in N(l)..=N(r): a[i] min= x
     var sm = 0
     var mn = a[N(0)]
     var mx = a[N(0)]
     for i in N:
         sm += a[i]
-        mn = min(mn, a[i])
-        mx = max(mx, a[i])
+        mn min= a[i]
+        mx max= a[i]
     if t.all_sum != sm or t.all_min != Some(mn) or t.all_max != Some(mx): ok = false
     if t.sum(N(l)..=N(r)) != [a[i] for i in N(l)..=N(r)].sum(): ok = false
 print(yes(ok))

@@ -22,7 +22,7 @@ var hi = 0
 var lo: ?Int = None
 for c in Letter:
     base += acnt[c] * bcnt[c]
-    if acnt[c] > hi: hi = acnt[c]
+    hi max= acnt[c]
     if bcnt[c] > 0:
         if let cur = lo:
             if acnt[c] < cur: lo = acnt[c]

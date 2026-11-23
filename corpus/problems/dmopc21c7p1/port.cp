@@ -25,7 +25,7 @@ for i in 0..n:
             continue
         var v = TOP
         if let below = Row.at(r + 1): v = a[below, c]
-        if let right = Col.at(c + 1): v = min(v, a[r, right])
+        if let right = Col.at(c + 1): v min= a[r, right]
         a[r, c] = v - 1
 
 fn valid() -> Bool:

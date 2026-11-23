@@ -28,7 +28,7 @@ for (t, op) in ops.items:
     var best = (overlap: lens.first!, span: lens.first!)
     let (a, b) = (by_end.first!, by_start.first!)
     if a.r >= b.l.0:
-        best = min(best, (overlap: a.r - b.l.0, span: b.r - a.l.0))
+        best min= (overlap: a.r - b.l.0, span: b.r - a.l.0)
     if disjoint[t].best < inf:
-        best = min(best, (overlap: 0, span: disjoint[t].best))
+        best min= (overlap: 0, span: disjoint[t].best)
     print(best.span)
