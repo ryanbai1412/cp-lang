@@ -1,5 +1,6 @@
 //! Binary heaps (round 5): `Heap<T>(by:)` pops the smallest key first and `Heap(by: desc)` the
-//! largest. One type per shape: `Heap`, `ErasableHeap`, `IndexedHeap`, `MeldHeap`, `MinMaxHeap`.
+//! largest. One type per shape: `Heap`, `ErasableHeap`, `IndexedHeap`, `MeldHeap` (or many in one
+//! `MeldHeaps` pool), `MinMaxHeap`.
 //!
 //! Ties: no heap here is stable. Among elements with equal keys under `by:`, which one `peek`
 //! shows and `pop` returns is unspecified (but `peek` always shows the one `pop` returns next).
@@ -948,6 +949,199 @@ struct MeldNode<T>:
     var l: -2_147_483_648..=2_147_483_647
     var r: -2_147_483_648..=2_147_483_647
     var rank: 0..=127
+    var stamp: Int = 0
+
+/// One heap in a `MeldHeaps<T>` pool: a handle, so copying it is \(O(1)\). `Meld<T>()` is the
+/// empty heap.
+///
+/// The pool relinks a heap's nodes in place, so a handle stands for its heap only until the heap
+/// changes: using a copy taken before a `push`, `pop` or `meld` traps.
+pub struct Meld<T>:
+    var _root: Int = -1
+    var _len: Int = 0
+    var _stamp: Int = 0
+
+    /// Number of elements in the heap.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `var p = MeldHeaps<Int>(); p.of([4, 2]).len == 2`
+    @get pub fn len(self) -> Int = _len
+
+    /// Whether the heap is empty.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `Meld<Int>().is_empty`
+    @get pub fn is_empty(self) -> Bool = _len == 0
+
+/// A pool of meldable min-heaps (leftist) that keep their nodes in one shared list.
+///
+/// Each heap is a `Meld<T>` handle. `meld` relinks nodes instead of copying them, so melding
+/// many heaps, one per vertex or component, costs no allocation beyond the nodes themselves.
+/// Use `MeldHeap` for a few heaps that own their nodes.
+pub struct MeldHeaps<T>:
+    _nodes: List<MeldNode<T>> = []
+    _stamps: Int = 0
+    lt: ?((T, T) -> Bool) = None
+
+    /// An empty pool, optionally ordered by key extractor `by:`.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `var p = MeldHeaps<Int>.new(by: x => -x); var h = p.of([1, 3]); p.pop(mut h) == Some(3)`
+    pub fn new<K>(by: ?(T -> K) = None) -> MeldHeaps<T>:
+        if let f = by: return MeldHeaps(lt: Some((a, b) => f(a) < f(b)))
+        MeldHeaps()
+
+    /// A new heap in the pool holding `xs`.
+    ///
+    /// cost: \(O(n)\)
+    /// empty: an empty heap
+    /// traps: never
+    /// example: `var p = MeldHeaps<Int>(); let h = p.of([4, 2, 3]); p.top(h) == Some(2)`
+    pub fn of(mut self, xs: List<T>) -> Meld<T>:
+        var q = [self.node(x) for x in xs]
+        var i = 0
+        while i + 1 < q.len:
+            q.push(self.merge(q[i], q[i + 1]))
+            i += 2
+        self.seal(if q.len > 0: q.last! else: -1, xs.len)
+
+    /// The smallest element of `h`, or `None` if it is empty.
+    ///
+    /// cost: \(O(1)\)
+    /// empty: `None`
+    /// traps: when `h` is a stale copy (see `Meld`)
+    /// example: `var p = MeldHeaps<Int>(); var h = p.of([5]); p.add_all(h, 2); p.top(h) == Some(7)`
+    pub fn top(self, h: Meld<T>) -> ?T:
+        self.check(h)
+        if h._root < 0: None else: Some(_nodes[h._root].key)
+
+    /// Push `x` into `h`.
+    ///
+    /// `x` is stored as given: earlier `add_all` offsets do not apply to it.
+    ///
+    /// cost: \(O(\log n)\)
+    /// traps: when `h` is a stale copy (see `Meld`)
+    /// example: `var p = MeldHeaps<Int>(); var h = Meld<Int>(); p.push(mut h, 3); p.push(mut h, 1); p.top(h) == Some(1) and h.len == 2`
+    pub fn push(mut self, mut h: Meld<T>, x: T):
+        self.check(h)
+        let t = self.node(x)
+        h = self.seal(self.merge(h._root, t), h._len + 1)
+
+    /// Push every element of `items` into `h`.
+    ///
+    /// cost: \(O(k \log n)\) for `k` items
+    /// empty: an empty `items` does nothing
+    /// traps: when `h` is a stale copy (see `Meld`)
+    /// example: `var p = MeldHeaps<Int>(); var h = p.of([4]); p.push_all(mut h, [3, 1]); p.drain(mut h) == [1, 3, 4]`
+    pub fn push_all(mut self, mut h: Meld<T>, items: Seq<T>):
+        for x in items: self.push(mut h, x)
+
+    /// Remove and return the smallest element of `h`, or `None` if it is empty.
+    ///
+    /// cost: \(O(\log n)\)
+    /// empty: `None`
+    /// traps: when `h` is a stale copy (see `Meld`)
+    /// example: `var p = MeldHeaps<Int>(); var h = p.of([4, 2]); p.pop(mut h) == Some(2) and p.pop(mut h) == Some(4) and p.pop(mut h) == None`
+    pub fn pop(mut self, mut h: Meld<T>) -> ?T:
+        self.check(h)
+        if h._root < 0: return None
+        let t = h._root
+        self.push_down(t)
+        _nodes[t].stamp = -1
+        h = self.seal(self.merge(_nodes[t].l, _nodes[t].r), h._len - 1)
+        Some(_nodes[t].key)
+
+    /// The heap holding `a` and `b`, as `MergeSegs.merge` is. Both are used up: their nodes now
+    /// belong to the result, and using `a` or `b` again traps.
+    ///
+    /// Every element keeps the value its own heap reported: pending `add_all` offsets apply only
+    /// to the elements they were added to.
+    ///
+    /// cost: \(O(\log n)\), no copying
+    /// traps: when `a` or `b` is a stale copy (see `Meld`), or both are the same heap
+    /// example: `var p = MeldHeaps<Int>(); let a = p.of([4, 2]); let b = p.of([3, 1]); var c = p.meld(a, b); p.drain(mut c) == [1, 2, 3, 4] and c.is_empty`
+    pub fn meld(mut self, a: Meld<T>, b: Meld<T>) -> Meld<T>:
+        self.check(a)
+        self.check(b)
+        assert a._root < 0 or a._root != b._root, "meld: `a` and `b` are the same heap"
+        if b._root >= 0: _nodes[b._root].stamp = -1
+        if a._root >= 0: _nodes[a._root].stamp = -1
+        self.seal(self.merge(a._root, b._root), a._len + b._len)
+
+    /// Add `delta` lazily to every element of `h` (for additive types).
+    ///
+    /// Only the elements in `h` now change; later pushes do not. With `by:`, the key must keep
+    /// its order under the shift, or later pops are unspecified.
+    ///
+    /// cost: \(O(1)\)
+    /// empty: does nothing
+    /// traps: when `h` is a stale copy (see `Meld`); overflow wraps in release, traps in debug
+    /// example: `var p = MeldHeaps<Int>(); var h = p.of([1, 5]); p.add_all(h, 10); p.drain(mut h) == [11, 15]`
+    pub fn add_all(mut self, h: Meld<T>, delta: T) where T: Add:
+        self.check(h)
+        if h._root < 0: return
+        _nodes[h._root].key += delta
+        _nodes[h._root].add = Some(plus(_nodes[h._root].add, delta))
+
+    /// Pop all of `h` in ascending order, leaving it empty.
+    ///
+    /// cost: \(O(n \log n)\)
+    /// empty: `[]`
+    /// order: ascending, the order `pop` returns them; a new `List`, keyed from 0
+    /// traps: when `h` is a stale copy (see `Meld`)
+    /// example: `var p = MeldHeaps<Int>(); var h = p.of([3, 1, 2]); p.drain(mut h) == [1, 2, 3] and h.is_empty`
+    pub fn drain(mut self, mut h: Meld<T>) -> List<T>:
+        var out: List<T> = []
+        while let x = self.pop(mut h): out.push(x)
+        out
+
+    fn check(self, h: Meld<T>):
+        assert h._root < 0 or _nodes[h._root].stamp == h._stamp, "this `Meld` handle is a stale copy: its heap changed after the copy was taken"
+
+    fn seal(mut self, root: Int, len: Int) -> Meld<T>:
+        if root < 0: return Meld()
+        _stamps += 1
+        _nodes[root].stamp = _stamps
+        Meld(_root: root, _len: len, _stamp: _stamps)
+
+    fn less(self, a: T, b: T) -> Bool:
+        if let f = lt: return f(a, b)
+        a < b
+
+    fn node(mut self, x: T) -> Int:
+        _nodes.push(MeldNode(x, None, -1, -1, 1))
+        _nodes.len - 1
+
+    fn rank_of(self, t: Int) -> Int = if t < 0: 0 else: _nodes[t].rank
+
+    fn push_down(mut self, t: Int):
+        if T: Add:
+            if let d = _nodes[t].add:
+                for c in [_nodes[t].l, _nodes[t].r]:
+                    if c >= 0:
+                        _nodes[c].key += d
+                        _nodes[c].add = Some(plus(_nodes[c].add, d))
+                _nodes[t].add = None
+
+    fn merge(mut self, a: Int, b: Int) -> Int:
+        if a < 0: return b
+        if b < 0: return a
+        let (x, y) = if self.less(_nodes[b].key, _nodes[a].key): (b, a) else: (a, b)
+        self.push_down(x)
+        let l = _nodes[x].l
+        let m = self.merge(_nodes[x].r, y)
+        let (rl, rm) = (self.rank_of(l), self.rank_of(m))
+        if rl < rm:
+            _nodes[x].l = m
+            _nodes[x].r = l
+            _nodes[x].rank = rl + 1
+        else:
+            _nodes[x].r = m
+            _nodes[x].rank = rm + 1
+        x
 
 fn plus<T: Add>(a: ?T, d: T) -> T:
     if let x = a: return x + d
