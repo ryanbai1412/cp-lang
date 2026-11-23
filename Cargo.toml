@@ -52,3 +52,10 @@ opt-level = 1
 
 [profile.dev.package.cpl-conform]
 opt-level = 1
+
+# CI's optimized cpl (site, acceptance): what users run is `release`; this
+# builds in about two thirds of the time with the same opt-level.
+[profile.ci]
+inherits = "release"
+lto = false
+codegen-units = 16

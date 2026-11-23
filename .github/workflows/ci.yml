@@ -463,9 +463,9 @@ jobs:
       - name: Reuse unchanged build outputs
         run: scripts/ci-mtime.sh
       - name: Build cpl
-        run: cargo build --release --bin cpl
+        run: cargo build --profile ci --bin cpl
       - name: Rejudge the acceptance solutions
-        run: python3 research/acceptance/regress.py target/release/cpl -j "$(nproc)"
+        run: python3 research/acceptance/regress.py target/ci/cpl -j "$(nproc)"
 
   site:
     name: site build
@@ -502,9 +502,11 @@ jobs:
       - name: Install
         run: pnpm install --frozen-lockfile
       - name: Build cpl
-        run: cargo build --release --bin cpl
+        run: cargo build --profile ci --bin cpl
       # The build generates content/generated/ (from cpl), which typecheck reads.
       - name: Build
+        env:
+          CPL: ${{ github.workspace }}/target/ci/cpl
         run: pnpm --filter cp-lang-web build
       - name: Typecheck
         run: pnpm --filter cp-lang-web typecheck

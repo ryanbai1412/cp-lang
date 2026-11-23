@@ -139,27 +139,27 @@ fn changed(rel: &str, scratch: &Path) -> Option<String> {
     std::fs::create_dir_all(scratch).unwrap();
     let file = scratch.join(src.file_name().unwrap());
     std::fs::write(&file, &text).unwrap();
+    // Most programs have nothing to fix; only a changed one is run.
+    cpl_cli::run(&["fix", file.to_str().unwrap()]);
+    let fixed = std::fs::read_to_string(&file).unwrap();
+    if fixed == text {
+        let _ = std::fs::remove_dir_all(scratch);
+        return None;
+    }
     let runs = |file: &Path| -> Vec<_> { inputs.iter().map(|i| run(file, i)).collect() };
+    std::fs::write(&file, &text).unwrap();
     let mut before = Vec::new();
     for input in &inputs {
         let r = run(&file, input);
         let clean = matches!(r, Some((0, _)));
         before.push(r);
         if !clean {
-            break;
+            let _ = std::fs::remove_dir_all(scratch);
+            return None;
         }
     }
-    let fixed = if before.iter().all(|r| matches!(r, Some((0, _)))) {
-        cpl_cli::run(&["fix", file.to_str().unwrap()]);
-        std::fs::read_to_string(&file).unwrap()
-    } else {
-        text.clone()
-    };
-    let after = if fixed == text {
-        before.clone()
-    } else {
-        runs(&file)
-    };
+    std::fs::write(&file, &fixed).unwrap();
+    let after = runs(&file);
     let _ = std::fs::remove_dir_all(scratch);
     let show = |r: &Option<(i32, Vec<u8>)>| match r {
         Some((code, _)) => format!("exit {code}"),
