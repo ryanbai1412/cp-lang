@@ -435,6 +435,7 @@ fn made(
         .collect();
     names.sort();
     let mut changed = Vec::new();
+    let mut stale = Vec::new();
     for name in names {
         let mut prev = before.get(name);
         let mut at = None;
@@ -447,11 +448,55 @@ fn made(
         }
         if let Some((at, value)) = at.filter(|(at, _)| *at != line) {
             changed.push((at, format!("`{name}` last changed here, to {value}")));
+            // Still as declared: the lines that write it never changed it.
+            if text_of(at).trim_start().starts_with(&format!("var {name}")) {
+                stale.extend((body_of(&lines, &call.name).into_iter().flatten())
+                    .map(|k| k as u32 + 1)
+                    .filter(|&k| k != at && writes(text_of(k), name))
+                    .take(2)
+                    .map(|k| (k, format!("`{name}` is still as line {at} declared it: this line is the one that would change it"))));
+            }
         }
     }
     changed.sort();
     out.extend(changed.into_iter().take(3));
+    out.extend(stale);
     out
+}
+
+/// Whether `text` sets `name` or one of its items: `name = ...`,
+/// `name[i] += ...`, never `name == ...`.
+fn writes(text: &str, name: &str) -> bool {
+    let word = |c: char| c.is_alphanumeric() || c == '_';
+    text.match_indices(name).any(|(at, _)| {
+        if text[..at].ends_with(word) {
+            return false;
+        }
+        let mut rest = &text[at + name.len()..];
+        if rest.starts_with(word) {
+            return false;
+        }
+        if rest.starts_with('[') {
+            let mut depth = 0;
+            let Some(end) = rest.find(|c| {
+                depth += match c {
+                    '[' => 1,
+                    ']' => -1,
+                    _ => 0,
+                };
+                depth == 0
+            }) else {
+                return false;
+            };
+            rest = &rest[end + 1..];
+        }
+        let rest = rest.trim_start();
+        let op = rest.find('=').unwrap_or(rest.len());
+        let ops = &rest[..op];
+        op < rest.len()
+            && !rest[op + 1..].starts_with('=')
+            && (ops.chars().all(|c| "+-*/%&|^<>".contains(c)) || matches!(ops, "max" | "min"))
+    })
 }
 
 /// With no step of a wrong call recorded, the `return`s in its body of
