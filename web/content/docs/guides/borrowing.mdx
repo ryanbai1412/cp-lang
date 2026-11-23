@@ -5,6 +5,8 @@ description: "Value semantics, mut parameters, lends projections, and @law disjo
 
 Variables own their values. Function parameters borrow them for the call. A projection lets a caller work on part of a value—a row, a slice, or an element—without allocating a copy or keeping a reference for later.
 
+This guide teaches the model; the normative rules, every case included, are in the [ownership reference](/docs/ref/core/05-ownership). Where the two differ, the reference wins.
+
 > **Implementation status.** Struct projections with `lends` / `lends mut` and explicit `mut` parameters run directly in `cpl` and the browser WebAssembly playground. Custom `@law disjoint` proofs and generic library projections are part of the specification and are rolling out incrementally across the compiler.
 
 ## Own it, borrow it, or copy it
@@ -108,6 +110,8 @@ print(counter.data)
 ```
 
 A trivial single-index forwarding projection like this one gets the `i != j` law automatically; it is written out here to show the contract. The law says when two lends through that same projection are separate. It does not assert that every call is safe. The checker must prove the condition at the call site.
+
+List and array indexing carry the same law, so two distinct constant indices are already proven apart: after `let r = rows[0]`, `rows[1].push(9)` compiles while `r` is live, but `rows[i].push(9)` for an unknown `i` is E0602 until `i != 0` is known.
 
 ```cp
 domain V = 1..=3
