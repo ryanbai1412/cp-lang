@@ -160,7 +160,7 @@ struct Tally:
   (`SegTree(max, a)` is `SegTree.new(max, a)`, `Rooted(g, root: r)`): its
   parameters are lent for the call and its result is owned unless the
   signature says `lends` (chapter 5, decision 147). The cost rule tells
-  them apart: a custom constructor that keeps data copies it (O(n),
+  them apart: a custom constructor that keeps data copies it (\(O(n)\),
   documented) or says `lends`. When a type declares a static `new`,
   `T(args)` always calls it, so `Mod<7>(10)` reduces to `3` and the
   field form `Mod<7>(v: 3)` is E0310. (R02.6.3)
@@ -170,7 +170,7 @@ struct Tally:
   traits (`impl Target<V> for Edge` with no body when the field exists). (R02.6.5)
 - `@get` on a read-only method whose other parameters all have defaults
   lets it be called without parentheses (`v.next` is `v.next(1)`); it
-  must be O(1) (decision 140). (R02.6.6)
+  must be \(O(1)\) (decision 140). (R02.6.6)
 - Storage may reorder fields to remove padding; source order is what
   constructors, patterns and printing use (chapter 3). (R02.6.7)
 
@@ -281,7 +281,7 @@ type Z = Mod(read<Prime>())         // runtime modulus
   `round(x)` or `trunc(x)`. `Int(x)` of an `F64` is an error (E0302)
   whose fix offers `floor(x)`. (R02.11.1)
 - No implicit copies of heap values (`.clone()`), no implicit
-  allocation behind an O(1)-looking member, no implicit `Int` to
+  allocation behind an \(O(1)\)-looking member, no implicit `Int` to
   position (`V(x)` traps out of range; `V.at(x)` is `?V`). (R02.11.2)
 - No inheritance, no subtyping, no overloading by argument type
   (decision 127), no user-defined implicit conversions. (R02.11.3)

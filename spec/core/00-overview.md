@@ -28,7 +28,7 @@ to the chapter that defines it.
   the laws. (`lib/ops-ranges.md`)
 - **The stdlib has no privileges.** Everything it does, a user library
   can do; the list of powers is chapter 12.
-- **Costs are visible.** No-parenthesis members are O(1); anything that
+- **Costs are visible.** No-parenthesis members are \(O(1)\); anything that
   allocates, copies or traverses looks like it; `cpl explain` shows
   every implicit choice (widths, layouts, specializations, copies).
 - **Two builds, one meaning.** Checked builds trap on every unproven

@@ -66,6 +66,16 @@ shrinking, explain, trace and debugger, fmt and lint, LSP, bundler.
 Errors and lints: `diagnostics.md`. Examples that must and must not
 compile: `conformance/`. What 0.2.x does not do yet: `delta/`.
 
+## Math
+
+Math in the spec, in doc comments and in lint records is LaTeX inside
+`\( ... \)`: `\(O(n \log n)\)`, `\(O(n \cdot \alpha(n))\)`,
+`/// cost: \(O(\log n)\)`. Sizes are `\lvert D \rvert`, not `|D|`, so a
+table cell needs no escaped pipe; a multi-letter name is `\mathit{len}`.
+The site renders it with KaTeX at build time; hover and CLI output show a
+plain-Unicode fallback (`O(n log n)`). Code blocks are source and keep their
+`// O(n)` comments as written. (decision 335)
+
 ## Checking
 
 - `std/` is the standard library, built into `cpl`. Every fn has a doc comment, a cost and a body

@@ -33,17 +33,17 @@ g.deg(u)                              // O(1)
 
 | Form | Meaning | Cost |
 |---|---|---|
-| `Graph.directed(edges)`, `Graph.undirected(edges)` | build from any `[E]` of records with `u: V, v: V` | O(n + m) |
-| `keep: a => (to: a.to, w: a.w)` | choose what each arc stores; run once per arc | O(n + m) |
-| `g[u]` | `Indexed` view of `u`'s arcs, in input order | O(1) |
-| `g.deg(u)` | arcs out of `u` | O(1) |
-| `g.next(u)` | where `u`'s arcs lead (`g.out(u)` mapped to `.to`) | O(1) per arc |
-| `g.weighted(f)` | the same graph with `.w` read as `f(a)` | O(1); `f` per read |
-| `g.transpose()` | arcs reversed, other fields kept | O(n + m) |
-| `g.only(keep)` | induced view: arcs touching a vertex `keep` rejects are skipped | O(1) to make |
-| `g.only(from: f)` | arcs leaving a vertex `f` rejects are skipped (a stop vertex: arrive, never leave) | O(1) to make |
-| `g.matrix()` | `[V, V]?W`, least weight per pair; a range-typed weight (`w: 1..=1e9`) bounds each edge, not a path, so the matrix stores `Int` and sums never trap (decision 315) | O(n² + m) |
-| `Graph.of(arcs)` | build from any `Seq` of `(from: V, arc: A)` | O(n + m) |
+| `Graph.directed(edges)`, `Graph.undirected(edges)` | build from any `[E]` of records with `u: V, v: V` | \(O(n + m)\) |
+| `keep: a => (to: a.to, w: a.w)` | choose what each arc stores; run once per arc | \(O(n + m)\) |
+| `g[u]` | `Indexed` view of `u`'s arcs, in input order | \(O(1)\) |
+| `g.deg(u)` | arcs out of `u` | \(O(1)\) |
+| `g.next(u)` | where `u`'s arcs lead (`g.out(u)` mapped to `.to`) | \(O(1)\) per arc |
+| `g.weighted(f)` | the same graph with `.w` read as `f(a)` | \(O(1)\); `f` per read |
+| `g.transpose()` | arcs reversed, other fields kept | \(O(n + m)\) |
+| `g.only(keep)` | induced view: arcs touching a vertex `keep` rejects are skipped | \(O(1)\) to make |
+| `g.only(from: f)` | arcs leaving a vertex `f` rejects are skipped (a stop vertex: arrive, never leave) | \(O(1)\) to make |
+| `g.matrix()` | `[V, V]?W`, least weight per pair; a range-typed weight (`w: 1..=1e9`) bounds each edge, not a path, so the matrix stores `Int` and sums never trap (decision 315) | \(O(n^2 + m)\) |
+| `Graph.of(arcs)` | build from any `Seq` of `(from: V, arc: A)` | \(O(n + m)\) |
 
 ### Storage
 
@@ -171,12 +171,12 @@ All return `Paths<V, W, A>`:
 
 | Form | Weights | Cost |
 |---|---|---|
-| `bfs(g, from:, until:)` | unit | O(n + m) |
-| `bfs01(g, from:, until:)` | 0 or 1 | O(n + m) |
-| `dial(g, from:, max_w:, until:)` | small ints | O(n · max_w + m) |
-| `dijkstra(g, from: [(s, d0)], until:)` | non-negative | O(m log n) |
-| `bellman_ford(g, from:)` | any; `None` on a negative cycle | O(n m) |
-| `floyd_warshall(mut d, over: Semiring(min, +)) -> Bool` | dense, in place; `false` on a negative cycle; `over: Semiring(max, min)` gives widest paths | O(n³) |
+| `bfs(g, from:, until:)` | unit | \(O(n + m)\) |
+| `bfs01(g, from:, until:)` | 0 or 1 | \(O(n + m)\) |
+| `dial(g, from:, max_w:, until:)` | small ints | \(O(n \cdot \mathit{max\_w} + m)\) |
+| `dijkstra(g, from: [(s, d0)], until:)` | non-negative | \(O(m \log n)\) |
+| `bellman_ford(g, from:)` | any; `None` on a negative cycle | \(O(n m)\) |
+| `floyd_warshall(mut d, over: Semiring(min, +)) -> Bool` | dense, in place; `false` on a negative cycle; `over: Semiring(max, min)` gives widest paths | \(O(n^3)\) |
 
 `until: t` stops once `t` is settled. `from:` is any `Seq`; multi-source is
 a longer one. `p.tight(g)` is the shortest-path DAG.
@@ -219,20 +219,20 @@ Every grouping returns a fresh domain and the map into it:
 
 | Form | Result | Cost |
 |---|---|---|
-| `components(g)` | `(domain C, comp: [V]C)` | O(n + m) |
-| `complement(g)` | the complement graph of the missing arcs `g`: `bfs`, `dfs`, `reachable` and `components` over it cost O(n + m) | O(1) to make |
-| `scc(g)` | `(domain C, comp: [V]C)`, `C` in topological order | O(n + m) |
-| `condense(g, comp)` | `[C]List<(to: C)>`, the arcs between components | O(n + m) |
-| `two_edge_components(g)` | `(domain C, comp: [V]C)` | O(n + m) |
-| `blocks(g)` | `(domain B, block: [E]B)`, biconnected blocks of edges | O(n + m) |
-| `bridges(g)`, `cut_vertices(g)` | `[E]Bool`, `[V]Bool` | O(n + m) |
-| `topo(g)` | `?List<V>`, `None` on a cycle | O(n + m) |
-| `two_color(g)` | `?[V]Bool`, `None` when an odd cycle exists | O(n + m) |
-| `find_cycle(g)` | `?List<V>` | O(n + m) |
-| `kruskal(edges)` (records with `w`) | `(total, take: [E]Bool)` | O(m log m) |
-| `euler_walk(edges, directed:)` | `?Walk<V, E>` | O(n + m) |
-| `TwoSat<X>()`, `.add_or(a, b)`, `.solve()` | `?[X]Bool` | O(n + m) |
-| `Functional(next: [V]V)` | `.after(v, k)`, `.on_cycle(v)`, `.cycle_len(v)`, `.root_of(v)` | O(n log n) build |
+| `components(g)` | `(domain C, comp: [V]C)` | \(O(n + m)\) |
+| `complement(g)` | the complement graph of the missing arcs `g`: `bfs`, `dfs`, `reachable` and `components` over it cost \(O(n + m)\) | \(O(1)\) to make |
+| `scc(g)` | `(domain C, comp: [V]C)`, `C` in topological order | \(O(n + m)\) |
+| `condense(g, comp)` | `[C]List<(to: C)>`, the arcs between components | \(O(n + m)\) |
+| `two_edge_components(g)` | `(domain C, comp: [V]C)` | \(O(n + m)\) |
+| `blocks(g)` | `(domain B, block: [E]B)`, biconnected blocks of edges | \(O(n + m)\) |
+| `bridges(g)`, `cut_vertices(g)` | `[E]Bool`, `[V]Bool` | \(O(n + m)\) |
+| `topo(g)` | `?List<V>`, `None` on a cycle | \(O(n + m)\) |
+| `two_color(g)` | `?[V]Bool`, `None` when an odd cycle exists | \(O(n + m)\) |
+| `find_cycle(g)` | `?List<V>` | \(O(n + m)\) |
+| `kruskal(edges)` (records with `w`) | `(total, take: [E]Bool)` | \(O(m \log m)\) |
+| `euler_walk(edges, directed:)` | `?Walk<V, E>` | \(O(n + m)\) |
+| `TwoSat<X>()`, `.add_or(a, b)`, `.solve()` | `?[X]Bool` | \(O(n + m)\) |
+| `Functional(next: [V]V)` | `.after(v, k)`, `.on_cycle(v)`, `.cycle_len(v)`, `.root_of(v)` | \(O(n \log n)\) build |
 
 Flows and matchings are their own module (`std.flow`), on the same
 `V`/`E` domains.
@@ -248,17 +248,17 @@ let t = Rooted(g, root: V.first!)          // or Rooted.from_parents(par), Roote
 
 | Form | Meaning | Cost |
 |---|---|---|
-| `t.parent(v)` | `?V` | O(1) |
-| `t.child_arcs(v)` | the arcs from `v` to its children, with their fields | O(1) per child |
-| `Lift.of(next)` | binary lifting over any partial successor `V -> ?V` (a greedy "next pick") | O(n log n) build |
-| `t.up_arc(v)` | `?A`: the arc `v` was entered by, with its fields (`t.up_arc(v)!.cost`) | O(1) |
-| `t.children(v)` | `Indexed` view of `v`'s children (stored contiguously) | O(1) |
-| `t.depth(v)`, `t.size(v)` | edges from the root; vertices in the subtree | O(1) |
-| `t.order` | every vertex, parents before children (BFS order); `.rev` is children first | O(1) |
-| `t.lca(a, b)`, `t.dist(a, b)`, `t.is_anc(a, b)` | | O(log n) |
-| `t.ancestor(v, k)`, `t.jump(a, b, k)` | `?V`: k steps up; k steps along the path a → b | O(log n) |
-| `t.path(a, b)` | `List<V>` | O(length) |
-| `t.diameter()`, `t.centroid()` | `(len, u, v)`; a centroid | O(n) |
+| `t.parent(v)` | `?V` | \(O(1)\) |
+| `t.child_arcs(v)` | the arcs from `v` to its children, with their fields | \(O(1)\) per child |
+| `Lift.of(next)` | binary lifting over any partial successor `V -> ?V` (a greedy "next pick") | \(O(n \log n)\) build |
+| `t.up_arc(v)` | `?A`: the arc `v` was entered by, with its fields (`t.up_arc(v)!.cost`) | \(O(1)\) |
+| `t.children(v)` | `Indexed` view of `v`'s children (stored contiguously) | \(O(1)\) |
+| `t.depth(v)`, `t.size(v)` | edges from the root; vertices in the subtree | \(O(1)\) |
+| `t.order` | every vertex, parents before children (BFS order); `.rev` is children first | \(O(1)\) |
+| `t.lca(a, b)`, `t.dist(a, b)`, `t.is_anc(a, b)` | | \(O(\log n)\) |
+| `t.ancestor(v, k)`, `t.jump(a, b, k)` | `?V`: k steps up; k steps along the path a → b | \(O(\log n)\) |
+| `t.path(a, b)` | `List<V>` | \(O(\mathit{length})\) |
+| `t.diameter()`, `t.centroid()` | `(len, u, v)`; a centroid | \(O(n)\) |
 
 **Tree DP without recursion** walks `t.order.rev`:
 
@@ -276,9 +276,9 @@ The library forms for the shapes that recur:
 
 | Form | Meaning | Cost |
 |---|---|---|
-| `t.up(op, lift:, finish:)` | bottom-up DP: fold children with `op` | O(n) calls |
-| `t.reroot(op, lift:, finish:)` | the same DP for every root at once; no inverse needed | O(n) calls |
-| `t.down(init, f)` | top-down: `out[v] = f(out[parent], v)` | O(n) calls |
+| `t.up(op, lift:, finish:)` | bottom-up DP: fold children with `op` | \(O(n)\) calls |
+| `t.reroot(op, lift:, finish:)` | the same DP for every root at once; no inverse needed | \(O(n)\) calls |
+| `t.down(init, f)` | top-down: `out[v] = f(out[parent], v)` | \(O(n)\) calls |
 
 Recursion stays available and natural (`for c in t.children(v): mine.absorb(go(c))`).
 
@@ -299,12 +299,12 @@ for r in t.chains(a, b): ...               // the ranges themselves, when you ne
 
 | Form | Meaning | Cost |
 |---|---|---|
-| `t.sub(v)`, `t.below(v)` | `Range<t.Pre>`: subtree with / without `v` | O(1) |
-| `t.chains(a, b)` | `yields Range<t.Pre>`, ordered from `a` to `b` | O(log n) ranges |
-| `t.fold_path(a, b, ds, edges:)`, `t.apply_path(...)` | path fold / update over any range structure | O(log n) ranges |
-| `t.tour` | `yields Visit<V, V>`: `Enter` / `Exit` events, `via` the parent | O(1) to make, O(n) to walk |
-| `t.virtual(keys)` | the virtual (auxiliary) tree of `keys` | O(k log k) |
-| `Centroids(g)` | centroid decomposition: `.parent(c)`, `.ancestors(v)` with distances | O(n log n) |
+| `t.sub(v)`, `t.below(v)` | `Range<t.Pre>`: subtree with / without `v` | \(O(1)\) |
+| `t.chains(a, b)` | `yields Range<t.Pre>`, ordered from `a` to `b` | \(O(\log n)\) ranges |
+| `t.fold_path(a, b, ds, edges:)`, `t.apply_path(...)` | path fold / update over any range structure | \(O(\log n)\) ranges |
+| `t.tour` | `yields Visit<V, V>`: `Enter` / `Exit` events, `via` the parent | \(O(1)\) to make, \(O(n)\) to walk |
+| `t.virtual(keys)` | the virtual (auxiliary) tree of `keys` | \(O(k \log k)\) |
+| `Centroids(g)` | centroid decomposition: `.parent(c)`, `.ancestors(v)` with distances | \(O(n \log n)\) |
 
 ### Changing trees
 
@@ -319,11 +319,11 @@ as `Rooted` where they mean the same thing (`lca`, `dist`, `jump`,
 
 | Form | Meaning | Cost |
 |---|---|---|
-| `Lit(x, value)` | a 2-SAT literal, "x is `value`", for `TwoSat` | O(1) |
-| `p.up`, `p.down`, `p.left`, `p.right` | the neighbouring cell of a `(Row, Col)` cell, a `?(Row, Col)` that is `None` off the grid; getters, no parens, like `r.prev` | O(1) |
-| `p.adj4`, `p.adj8`, `p.step(d)`, `p.ray(d)` | the neighbours inside the grid; one step in direction `d`; the cells from `p` to the edge in direction `d` | O(1) per cell |
-| `Dir4.up`, `Dir4.right`, `Dir4.down`, `Dir4.left`, `Dir4.all()`, `Dir8` | directions are constants, not calls: `p.step(Dir4.up) == p.up` | O(1) |
-| `kruskal_tree(es, w:)`, `KruskalTree` | the reconstruction tree over a fresh node domain; `reach(v, limit:)` is one subtree, `top(v, ok:)` tests the merging edges themselves, `up(op, leaf:)` folds leaf values per node; flip the order with `w: e => desc(e.w)` | O(m log m), O(log n) per `reach` |
+| `Lit(x, value)` | a 2-SAT literal, "x is `value`", for `TwoSat` | \(O(1)\) |
+| `p.up`, `p.down`, `p.left`, `p.right` | the neighbouring cell of a `(Row, Col)` cell, a `?(Row, Col)` that is `None` off the grid; getters, no parens, like `r.prev` | \(O(1)\) |
+| `p.adj4`, `p.adj8`, `p.step(d)`, `p.ray(d)` | the neighbours inside the grid; one step in direction `d`; the cells from `p` to the edge in direction `d` | \(O(1)\) per cell |
+| `Dir4.up`, `Dir4.right`, `Dir4.down`, `Dir4.left`, `Dir4.all()`, `Dir8` | directions are constants, not calls: `p.step(Dir4.up) == p.up` | \(O(1)\) |
+| `kruskal_tree(es, w:)`, `KruskalTree` | the reconstruction tree over a fresh node domain; `reach(v, limit:)` is one subtree, `top(v, ok:)` tests the merging edges themselves, `up(op, leaf:)` folds leaf values per node; flip the order with `w: e => desc(e.w)` | \(O(m \log m)\), \(O(\log n)\) per `reach` |
 
 ## Open
 

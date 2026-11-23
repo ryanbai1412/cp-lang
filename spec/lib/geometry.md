@@ -57,7 +57,7 @@ Reference libraries surveyed:
   angular ordering (`angle_less(base, s, t)` for `[base, base + 2*pi)`).
 - **CP Lang corpus and frictions**:
   - `ucup4s25e.cp` hand-rolls `Pt`, `upper_hull`, and Minkowski sum of two
-    upper chains in O(n) on already-sorted points.
+    upper chains in \(O(n)\) on already-sorted points.
   - `ucup5s05e.cp` hand-rolls lower and upper hulls *keeping collinear points*
     while preserving original point IDs.
   - `cf2138f.cp` (`research/frictions/cf2138f.md`) hand-rolls a `F64` vector
@@ -184,8 +184,8 @@ fn minkowski_upper(a: List<Pt>, b: List<Pt>) -> List<Pt>
 // O(|a| + |b|); upper convex chain of {p + q} for non-empty left-to-right upper chains a, b
 ```
 
-Keeping `lower_hull` and `upper_hull` O(n) on already x-sorted inputs is
-essential for O(n log n) divide-and-conquer hulls (such as `ucup4s25e`).
+Keeping `lower_hull` and `upper_hull` \(O(n)\) on already x-sorted inputs is
+essential for \(O(n \log n)\) divide-and-conquer hulls (such as `ucup4s25e`).
 `convex_hull` sorts, deduplicates, and stitches the two chains.
 
 ### 3.5 Polygons and rotating calipers
@@ -302,7 +302,7 @@ Every implementation test verifies these laws on random and degenerate inputs:
   in h)`; `diameter2(h) == max(dist2(u, v) for u in h for v in h)`.
 - **Minkowski sum**: `minkowski_sum(a, b) == convex_hull([p + q for p in a for
   q in b])`; `minkowski_upper(a, b)` equals the upper hull of pairwise sums.
-- **Closest pair**: `closest_pair2(pts)` matches O(n^2) brute force, and
+- **Closest pair**: `closest_pair2(pts)` matches \(O(n^2)\) brute force, and
   `closest_pair(pts)` returns distinct `a != b` with `dist2(pts[a], pts[b]) ==
   closest_pair2(...)`.
 - **Floating point**: `reflect(reflect(p, a, b), a, b)` is `close` to `p`;
@@ -532,8 +532,8 @@ on `Pt`/`Pt3`) determine which width is overflow-free:
 ### Additional exact API
 
 - `arg(p: Pt) -> ByAngle` — float-free angular sort key (`sort(mut pts, by: arg)` or `sort(mut pts, by: p => arg(p - base))`).
-- `any_segments_meet(segs: List<(a: Pt, b: Pt)>, strict: Bool = false) -> ?(Int, Int)` — O(n log n) Shamos–Hoey sweep line using an exact `I128` comparator in a deterministic treap (handles vertical segments, shared endpoints, and both `strict: false` and `strict: true`).
-- `Pt3(x: Int, y: Int, z: Int)` with `Add`, `Sub`, `Neg`, `Show`, `norm2`, `norm2_128`, `len`, `scale`, `dot3`, `dot3_128`, `cross3`, `dist2_3`, and O(n^2) exact `I128` `convex_hull_3d(pts: List<Pt3>) -> List<(Int, Int, Int)>`.
+- `any_segments_meet(segs: List<(a: Pt, b: Pt)>, strict: Bool = false) -> ?(Int, Int)` — \(O(n \log n)\) Shamos–Hoey sweep line using an exact `I128` comparator in a deterministic treap (handles vertical segments, shared endpoints, and both `strict: false` and `strict: true`).
+- `Pt3(x: Int, y: Int, z: Int)` with `Add`, `Sub`, `Neg`, `Show`, `norm2`, `norm2_128`, `len`, `scale`, `dot3`, `dot3_128`, `cross3`, `dist2_3`, and \(O(n^2)\) exact `I128` `convex_hull_3d(pts: List<Pt3>) -> List<(Int, Int, Int)>`.
 
 ## Coverage
 
@@ -549,7 +549,7 @@ Audit against AtCoder Library (which omits geometry), KACTL (`content/geometry/`
 | 6 | Minkowski sum (full & upper chain) | **have** | `minkowski_sum`, `minkowski_upper` |
 | 7 | Polygon signed area & point location (simple & convex) | **have** | `area2`, `area2_128`, `Location`, `locate`, `locate_convex`, `polygon_area` |
 | 8 | Rotating calipers (diameter & min bounding box) | **have** | `diameter2`, `min_bounding_box` |
-| 9 | Convex hull O(log n) queries (extreme & tangents) | **have** | `hull_extreme`, `hull_tangents` |
+| 9 | Convex hull \(O(\log n)\) queries (extreme & tangents) | **have** | `hull_extreme`, `hull_tangents` |
 | 10 | Closest pair of points (2D exact) | **have** | `closest_pair2`, `closest_pair<D>` |
 | 11 | Careful floating-point 2D vectors & lines | **have** | `Vec`, `close`, `sign_eps`, `vdot`, `vcross`, `vdist`, `vturn`, `project`, `reflect`, `line_dist`, `seg_dist`, `line_intersect`, `circumcenter` |
 | 12 | Circle-line, circle-circle intersections & tangents | **have** | `circle_line_intersect`, `circle_intersect`, `circle_tangents`, `circle_circle_tangents` |
@@ -563,7 +563,7 @@ Audit against AtCoder Library (which omits geometry), KACTL (`content/geometry/`
 | 20 | Domain-indexed segment & half-hull twins | **new** | `any_segments_meet_idx<D>`, `lower_hull_idx<D>`, `upper_hull_idx<D>`, `convex_hull_3d_idx<D>` |
 | 21 | Online (incremental) 2D convex hull | **new** | `OnlineHull` (`add`, `locate`, `extreme`, `area2`, `len`, `is_empty`, `vertices`, `clear`) |
 | 22 | Minkowski lower chain & convex polygon overlap/intersection | **new** | `minkowski_lower`, `convex_polygons_overlap`, `convex_polygon_intersect` |
-| 23 | Convex hull width & O(log n) line-hull intersection | **new** | `hull_width`, `hull_line_intersect` |
+| 23 | Convex hull width & \(O(\log n)\) line-hull intersection | **new** | `hull_width`, `hull_line_intersect` |
 | 24 | Farthest pair & Manhattan (L1) MST candidates | **new** | `farthest_pair<D>`, `manhattan_mst<D>` |
 | 25 | Simple polygon centroid, kernel, triangulation & Pick's theorem | **new** | `polygon_centroid`, `polygon_kernel`, `polygon_triangulate`, `pick_interior`, `pick_boundary` |
 | 26 | First-class `Circle`, incenter, circle-circle area & inversion | **new** | `Circle` (`through`, `area`, `circumference`, `locate`), `incenter`, `circle_circle_area`, `invert` |
@@ -580,7 +580,7 @@ Audit against AtCoder Library (which omits geometry), KACTL (`content/geometry/`
 | 37 | Generic sweep-line event framework | **out** | Sweep state transitions are problem-specific; concrete sweeps (`any_segments_meet`, `circles_union_area`, `rects_union_area`, `point_location_planar`) and exact keys (`ByAngle`, `turn`) stay composable. |
 | 38 | Spatial hashing / quadtrees / BVH | **out** | Heuristic acceleration structures; `closest_pair` and `delaunay` cover exact proximity. |
 | 39 | Ellipses, Bezier curves, and general conics | **out** | Rare in contests; affine scaling reduces ellipses to circles and ternary search handles general smooth curves. |
-| 40 | 3D dynamic convex hull / 3D Delaunay / 3D Voronoi | **out** | Outside standard contest scope; O(n^2) static `convex_hull_3d` suffices. |
+| 40 | 3D dynamic convex hull / 3D Delaunay / 3D Voronoi | **out** | Outside standard contest scope; \(O(n^2)\) static `convex_hull_3d` suffices. |
 | 41 | Sub-polygon chord-area prefix structure | **out** | Two lines composing `Prefix<D, Int>` over `cross(poly[i], poly[i.next])`; no standalone type needed. |
 
 Totals: **16 have**, **15 new**, **10 out** (41 topics).

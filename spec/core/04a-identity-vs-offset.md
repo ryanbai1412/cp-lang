@@ -150,7 +150,7 @@ What comes with it:
    (group A). (R04a.11.1)
 2. **`.items` gives keys; `.keyed().items` gives a 0-based counter.** Use
    `.items` when the index goes back into a sequence. (R04a.11.2)
-3. **`w.rebase`**: an O(1) view of `w` keyed `0..w.len`, for the rare
+3. **`w.rebase`**: an \(O(1)\) view of `w` keyed `0..w.len`, for the rare
    relative case (D3, or E1 with a fn written 0-based). It allocates nothing. (R04a.11.3)
 4. **Per-element results are keyed like their input** (`[S.keys]T`), so
    `z_function(s[l..])[i]` works with `i` from `s[l..]`. (R04a.11.4)

@@ -45,12 +45,12 @@ per-vertex child lists.
 
 ## 2. The idea: one value, one order, every structure
 
-A `Rooted<V, Pre>` is built once in O(n) and answers every static question.
+A `Rooted<V, Pre>` is built once in \(O(n)\) and answers every static question.
 It owns a fresh domain `t.Pre`: the positions of a heavy-first preorder.
 That one order makes three things contiguous at once:
 
 - every subtree is one range, `t.sub(v): Range<Pre>`;
-- every heavy chain is one range, so a path is O(log n) ranges (`t.chains`);
+- every heavy chain is one range, so a path is \(O(\log n)\) ranges (`t.chains`);
 - the heavy child of `v` sits at `t.pos(v) + 1`, so small-to-large keeps
   it in place and iterates light subtrees as ranges.
 
@@ -103,7 +103,7 @@ tested), so `depth` is the distance from the root; back edges and low-links
 are graph algorithms (`std.graph`). A vertex the search never reaches traps;
 a forest says so with `forest`.
 
-### 3.2 Shape (all O(1))
+### 3.2 Shape (all \(O(1)\))
 
 ```cp
     root: V
@@ -265,7 +265,7 @@ struct JumpTree<V>
 ```
 
 A permutation's interval structure is a tree too. `PermTree.of(p)` builds the
-binary permutation tree of a bijection `p: [I]V` in one O(n) stack pass:
+binary permutation tree of a bijection `p: [I]V` in one \(O(n)\) stack pass:
 every node covers a run of positions, its children split the run, and its
 values form an interval unless the node is `Partial` (a run that closes only
 further up, as a `Full` node whose right child fills its gaps). Nodes get a fresh domain of 2n - 1 members, so the per-node
@@ -425,7 +425,7 @@ for _ in 0..q:
 
 For every vertex, the sum of the colours that occur most often in its
 subtree. Keep the heavy child's counts; add each light subtree vertex by
-vertex: every vertex is added O(log n) times.
+vertex: every vertex is added \(O(\log n)\) times.
 
 ```cp
 domain V = read(1..=1e5)
@@ -461,7 +461,7 @@ solve(t.root, keep: true)
 for v in V: print(ans[v])
 ```
 
-Recursion goes as deep as the tree; `solve` touches each vertex O(log n) times.
+Recursion goes as deep as the tree; `solve` touches each vertex \(O(\log n)\) times.
 
 ## 7. Performance plan
 
@@ -474,8 +474,8 @@ CSR, RMQ LCA. `Rooted` will match its layout where that never loses:
   of `v` are contiguous after its heavy child), halving construction memory;
 - `far` is stored only by `weighted`; `new` reads `far` as `depth`.
 
-LCA stays chain jumping: O(log n) worst case but two or three jumps on
-random trees, O(n) memory instead of the O(n log n) of a sparse table.
+LCA stays chain jumping: \(O(\log n)\) worst case but two or three jumps on
+random trees, \(O(n)\) memory instead of the \(O(n \log n)\) of a sparse table.
 Matched benchmarks (bench/tree/) build a 1e6-vertex tree and run 1e6 LCA,
 `dist`, `ancestor`, subtree and path-fold queries against the C++
 equivalent with the same algorithm; target 1.1x.
@@ -545,7 +545,7 @@ reason.
 | Descendants at a depth | new | `Bfs`, `by_depth`, `layer` |
 | Mo on trees | new | `Ev`, `enter`, `exit`, `path_events` |
 | Long-path decomposition | new | `long_paths`, `LongPaths` |
-| O(1) LCA | new | `LcaTable` |
+| \(O(1)\) LCA | new | `LcaTable` |
 | Link-cut distance and k-th on path | new | `LinkCut.dist`, `LinkCut.jump` |
 | Growing-tree distance | new | `JumpTree.dist` |
 | Euler tour tree | new | `EulerTourTree`, `LazyEulerTourTree` |
@@ -554,8 +554,8 @@ reason.
 | Prüfer code | new | `prufer`, `from_prufer` |
 | Top tree | out | rare, and `EulerTourTree` with `LinkCut` covers its contest uses within 64 KB |
 | Fully dynamic connectivity (HDLT) | out | rare, big constant; offline uses containers' segment-tree-over-time |
-| Offline Tarjan LCA | out | `lca` is online at O(n) memory; no port needed offline |
-| O(1) level ancestor (ladders) | out | `ancestor` is a few chain jumps; ladders cost O(n log n) memory |
+| Offline Tarjan LCA | out | `lca` is online at \(O(n)\) memory; no port needed offline |
+| \(O(1)\) level ancestor (ladders) | out | `ancestor` is a few chain jumps; ladders cost \(O(n \log n)\) memory |
 | Randomized tree hashing | out | `shapes` is exact at the same cost |
 | Unrooted isomorphism | out | two lines: `centroids` then `shapes` (section 3) |
 | Every vertex's eccentricity | out | one line from `diameter` (law 9) |

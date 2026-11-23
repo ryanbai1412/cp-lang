@@ -25,7 +25,7 @@ Questions from site or any reader: add them to
   completion stay exact). Custom destructuring (132; views are methods
   returning enums, so patterns stay core-only). Members that compute
   without `()` (140; parentheses mean work, so `g.transpose()` looks like
-  the O(n) it is).
+  the \(O(n)\) it is).
 
 ## Numbers, widths and layout (`core/03-numbers-layout.md`, "The model in one paragraph")
 
@@ -33,7 +33,7 @@ Questions from site or any reader: add them to
 - Lost: manual widths (`u32` fields) everywhere (149; the range or domain
   you already wrote gives the width, and each section names its rejected
   alternative). Implicit widening of arrays (246; only scalars widen, an
-  array conversion is O(n) and spelled `xs.map(...)`). Checks on in
+  array conversion is \(O(n)\) and spelled `xs.map(...)`). Checks on in
   release (148; costs judge time; a trapping program gives a wrong answer,
   never undefined behaviour). Path lengths in the weight's range (315).
 
@@ -73,7 +73,7 @@ Questions from site or any reader: add them to
 - Decisions 53, 142, 143.
 - Lost: free-function folds and sorts (53; methods, so completion finds
   them). One iterator trait (142; six capabilities say exactly what a
-  view supports, so an O(n) read never hides behind `s[k]`).
+  view supports, so an \(O(n)\) read never hides behind `s[k]`).
 
 ## Traits and generics (`core/08-traits-generics.md`)
 

@@ -142,7 +142,7 @@ let a2 = (..a, to: u)                 // record update
   reordering visible to the program, row variables only on records,
   duplicate fields an error, `without` of a missing field an error,
   rows not inferred across statements, no rows on named structs, field
-  access through a row is O(1), and rows never change layout of an
+  access through a row is \(O(1)\), and rows never change layout of an
   existing value. (R08.4.4)
 
 ## 8.5 What is deliberately missing

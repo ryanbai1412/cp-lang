@@ -98,7 +98,7 @@ capture only plain values. Using a plain value never affects the original. (R05.
 passed to a constructor, put in a container or returned. Using a variable
 after it moved on any path to that use is a compile error, including a
 move in one branch of an `if` or in an earlier iteration of a loop;
-`x.clone()` is the explicit O(n) copy. A move is O(1) (a few words), never
+`x.clone()` is the explicit \(O(n)\) copy. A move is \(O(1)\) (a few words), never
 a deep copy. (R05.2.2)
 
 <!-- rejects: E0608 -->
@@ -115,7 +115,7 @@ print(k + j)                // fine
 ```
 
 `let b = a` where `a` is used again is the error above, never a silent
-copy (decision 128): a copy of a heap value is O(n), and an O(n) step
+copy (decision 128): a copy of a heap value is \(O(n)\), and an \(O(n)\) step
 must look like one (`a.clone()`). Moving out of a place that stays alive, such as an
 element, is `xs[i].take()`, which exists only where the type has an empty
 value to leave behind: `None` in a `?T`, the empty `List`, `Str`, map or
@@ -177,7 +177,7 @@ print(a.len)               // error: a was moved into h on line 3; write Holder(
 ## 5. Returns (R5)
 
 **R5. A fn returns an owned value, unless it is declared `lends`.**
-Returning moves, and is O(1). Returning a parameter, part of one, or
+Returning moves, and is \(O(1)\). Returning a parameter, part of one, or
 anything built from one is returning a lent value, which needs `lends` in
 the signature (§6), or `.clone()`.
 
@@ -211,11 +211,11 @@ let ev = xs.filter(p)             // filter is `lends`: xs is lent while ev live
 
 The stdlib picks with one rule: **a result owns its data when copying
 what it needs fits within the cost the fn already documents; it lends only
-when copying would cost more than building**, which is the case for O(1)
+when copying would cost more than building**, which is the case for \(O(1)\)
 views and adapters (`a[l..r]`, `.filter`, `g.weighted(f)`). So every
-O(n)-or-more build (`Graph.directed`, `Rooted`, `LcaTable`, `Lift`,
+\(O(n)\)-or-more build (`Graph.directed`, `Rooted`, `LcaTable`, `Lift`,
 `Centroids`, `t.virtual`, `SegTree`) returns an owned value, and `lends`
-in a signature always means "O(1), and borrows". Sharing a domain (`V`,
+in a signature always means "\(O(1)\), and borrows". Sharing a domain (`V`,
 `t.Pre`) is not a lend: domains are types, so a table indexed by `t.Pre`
 holds nothing of `t`.
 

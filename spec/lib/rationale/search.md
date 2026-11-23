@@ -40,7 +40,7 @@ Patterns, each one call:
 | peak / valley of a unimodal integer `f` | `ternary_max(r, f)` / `ternary_min(r, f)` |
 | peak / valley of a unimodal real `f` | `ternary_max_real` / `ternary_min_real` |
 | many monotone queries over one timeline | `parallel_bsearch(q, r, reset, apply, ok)` |
-| any `t` with `p(t)`, not monotone | `first(r, p)` / `r.first(p)`, O(n) |
+| any `t` with `p(t)`, not monotone | `first(r, p)` / `r.first(p)`, \(O(n)\) |
 
 ## 2. The API
 
@@ -78,9 +78,9 @@ fn parallel_bsearch<I>(
 // holds. ok(q) is monotone in the applied prefix.
 ```
 
-**`bsearch_*` is the O(log n) monotone form of `first`/`last`.** `first(r,
+**`bsearch_*` is the \(O(\log n)\) monotone form of `first`/`last`.** `first(r,
 p)` and `r.first(p)` scan and accept any `p`; `bsearch_first(r, ok)` asks
-O(log n) questions and needs `ok` monotone. Same answer type, same
+\(O(\log n)\) questions and needs `ok` monotone. Same answer type, same
 argument order; the prefix names the cost and the law. `plan/STDLIB.md`
 section 2 says this once for every area.
 

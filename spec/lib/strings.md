@@ -52,12 +52,12 @@ the longest prefix of a pattern ending at each text position (`T5` in
 
 **Lyndon words and cyclic rotations.** Lexicographically smallest cyclic shift
 and Duval's Lyndon factorization. KACTL ships `MinRotation` (Booth/Duval,
-O(n)); CP-Algorithms pairs it with `lyndon_factorization` (Duval, O(n)), from
+\(O(n)\)); CP-Algorithms pairs it with `lyndon_factorization` (Duval, \(O(n)\)), from
 which `min_rotation` is five lines. Both are short, notorious for off-by-one
 bugs under contest pressure, and work on any `Ord` sequence.
 
-**Polynomial rolling hashing.** O(1) substring equality, concatenation of
-hashes, O(log n) LCP/LCS via binary search, lexicographic substring comparison,
+**Polynomial rolling hashing.** \(O(1)\) substring equality, concatenation of
+hashes, \(O(\log n)\) LCP/LCS via binary search, lexicographic substring comparison,
 and 2D grid rectangle hashing. KACTL ships `Hashing` (arithmetic mod `2^64 - 1`
 with fixed or randomized base) and `Hashing-codeforces` (double modulus against
 anti-hash hacks). Six of ten submissions in `scout_batch_10` hand-rolled their
@@ -69,27 +69,27 @@ provides `Hash2D<R, C>`. What is missing from `RollingHash` is `lcp`, `lcs`,
 and `lcp_with` (`noi16p1`), plus promoting `Hash2D<R, C>` with double-mod
 `HashVal` so single-mod collisions are impossible on Codeforces.
 
-**Suffix structures.** Suffix array (SA-IS, O(n) for bounded alphabets and
-O(n log n) for general `Ord`), Kasai LCP array (O(n)), O(1) arbitrary-pair LCP
-queries via RMQ, pattern range search in O(|pat| log n), O(1) substring
-comparison, and the suffix automaton (SAM, online O(n) amortized) for distinct
+**Suffix structures.** Suffix array (SA-IS, \(O(n)\) for bounded alphabets and
+\(O(n \log n)\) for general `Ord`), Kasai LCP array (\(O(n)\)), \(O(1)\) arbitrary-pair LCP
+queries via RMQ, pattern range search in \(O(\lvert \mathit{pat} \rvert \log n)\), \(O(1)\) substring
+comparison, and the suffix automaton (SAM, online \(O(n)\) amortized) for distinct
 substrings, endpos counts, and longest common substring. AtCoder Library ships
 `suffix_array` (SA-IS) and `lcp_array` (Kasai). KACTL ships `SuffixArray` and
 `SuffixTree`. In `proto/ports/ecnerwala/ucup5s05f_orig.cpp`, ecnerwala's
 `src/seq/suffix_array.hpp` layers `SuffixArrayBase` (`sa`, `rank`),
 `SuffixArrayLCPBase` (`lcp`), `SuffixArrayRMQBase` (`get_lcp(a, b)`,
 `get_split(l, r)`), and `PrefixArrayRMQ` (`get_lcs(a, b)`). In our corpus,
-`saspeed` tests O(n) SA-IS speed at `n = 10^6`, `noi15p5` joins adjacent
+`saspeed` tests \(O(n)\) SA-IS speed at `n = 10^6`, `noi15p5` joins adjacent
 suffixes by decreasing LCP, `nccc10s3` binary-searches the suffix array for
 pattern occurrences (`T4`), and `ucup5s05f` walks the suffix tree over `sa` and
 `lcp`. `examples/local-lib/str/suffix_automaton.cp` already has a clean
-`SuffixAutomaton<A>`, though its `occurrences()` uses O(n log n) sort instead
-of O(n) counting sort.
+`SuffixAutomaton<A>`, though its `occurrences()` uses \(O(n \log n)\) sort instead
+of \(O(n)\) counting sort.
 
 **Palindromes.** Manacher's algorithm for all odd/even palindrome radii in
-O(n), O(1) substring palindrome queries, total palindrome count, longest
+\(O(n)\), \(O(1)\) substring palindrome queries, total palindrome count, longest
 palindromic substring, and the palindromic tree (Eertree) for distinct
-palindromes, per-palindrome occurrence counts, and O(n log n) palindrome
+palindromes, per-palindrome occurrence counts, and \(O(n \log n)\) palindrome
 partition DP via series links. KACTL ships `Manacher`; `examples/local-lib/str/
 palindromes.cp` has Manacher's radii. `plan/STDLIB.md` already schedules
 `manacher` and `is_palindrome`.
@@ -130,11 +130,11 @@ is parameterized by the grid's row and column domains `R` and `C`, taking
 `Range<R>` and `Range<C>` in `.rect(rows, cols)`, so row/column swaps are type
 errors.
 
-**Layered cost for suffix arrays.** Computing only `sa` and `lcp` is O(n) via
+**Layered cost for suffix arrays.** Computing only `sa` and `lcp` is \(O(n)\) via
 `suffix_array(s).sa` and `.lcp`. When a solution
-also wants `rank`, O(1) `lcp_between(i, j)`, O(|pat| log n) `rank_range(pat)`,
-O(log n) `lcp_range(i, len)`, or O(1) `compare`, it constructs `SuffixArray(s)`
-at documented O(n log n) build cost. Nothing is built secretly behind
+also wants `rank`, \(O(1)\) `lcp_between(i, j)`, \(O(\lvert \mathit{pat} \rvert \log n)\) `rank_range(pat)`,
+\(O(\log n)\) `lcp_range(i, len)`, or \(O(1)\) `compare`, it constructs `SuffixArray(s)`
+at documented \(O(n \log n)\) build cost. Nothing is built secretly behind
 `suffix_array(s)`.
 
 **Zero-cost safety and guessable names.** Every algorithm uses its textbook
@@ -241,7 +241,7 @@ Laws:
 - `pt.distinct` equals the number of distinct non-empty palindromic substrings
   of `s`, and `pt.distinct <= n`.
 - Walking `state = pt.series_link(state)` from any state to root 0 takes at
-  most `O(log n)` steps.
+  most \(O(\log n)\) steps.
 
 ### 3.4 Rolling hashing
 
@@ -513,8 +513,8 @@ repeat m:
 
 Minimum number of palindromic pieces to partition a string `s` of length `n`
 (`n <= 5 * 10^5`). `PalindromicTree<Letter>` maintains series links so every
-palindromic suffix of `s[..=i]` is grouped into `O(log n)` arithmetic
-progressions of lengths, giving O(n log n) DP.
+palindromic suffix of `s[..=i]` is grouped into \(O(\log n)\) arithmetic
+progressions of lengths, giving \(O(n \log n)\) DP.
 
 ```cp
 // Group palindromic suffixes by arithmetic progression via series_link:
@@ -561,7 +561,7 @@ Audit against AtCoder Library (`string`), KACTL (`strings`), cp-algorithms (`str
 | `Str` utilities (`to_lower`, `to_upper`, `trim`, `trim_start`, `trim_end`, `split`, `split_once`, `split_whitespace`, `join`, `replace`, `parse_int`) | Contest I/O & parsing | new | `Str.{to_lower,to_upper,trim,split,split_once,split_whitespace,join,replace,parse_int}` |
 | Z-algorithm | ACL `z_algorithm`, KACTL `Zfunc`, cp-alg | have | `z_function<S: Indexed>` |
 | Prefix function / KMP | KACTL `KMP`, cp-alg | have | `prefix_function`, `find_all`, `borders`, `prefix_matches`, `overlap`, `period` |
-| KMP prefix automaton (O(1) DP transitions) | cp-alg, Benq | new | `KmpAutomaton<A>.{new,len,step,link,find_all}` |
+| KMP prefix automaton (\(O(1)\) DP transitions) | cp-alg, Benq | new | `KmpAutomaton<A>.{new,len,step,link,find_all}` |
 | Shift-And / bitset matching | Contest templates | new | `shift_and<S: Indexed, P: Indexed>` |
 | Wildcard pattern matching (`?`) | cp-alg, contest templates | new | `find_all_wildcard<S: Indexed, P: Indexed>(..., wildcard: Char = '?')` |
 | Longest common prefix / suffix of two sequences | Contest basics | have | `common_prefix_len`, `common_suffix_len` |
@@ -583,8 +583,8 @@ Audit against AtCoder Library (`string`), KACTL (`strings`), cp-algorithms (`str
 | Aho-Corasick (static) | KACTL `AhoCorasick`, cp-alg | have / new | `AhoCorasick<A>.{new,root,len,step,link,hit,words_at,find_all,counts}` (have); `{fail_order,exit_link,pattern_state}` (new) |
 | Dynamic / online Aho-Corasick (log-decomposed buckets) | cp-alg, contest templates | new | `DynamicAhoCorasick<A>.{new,add,remove,count_matches}` |
 | `HashInterval` single-mod `2^64` hash | KACTL `Hashing` | out | Omitted because `RollingHash` (double 31-bit salted) and `RollingHash61` (Mersenne `2^61 - 1` salted) cover both fast-32-bit and single-64-bit hashing without hackable power-of-2 mod (Thue-Morse collision). |
-| Ukkonen online suffix tree | cp-alg | out | Omitted because `SuffixAutomaton<A>` covers online suffix-structure queries in O(1) amortized per char, and `suffix_tree_edges` builds the compressed suffix tree offline in O(n) from SA+LCP. |
-| Rabin-Karp standalone function | cp-alg | out | Omitted because `find_all` (KMP, deterministic O(n+m)) and `RollingHash` already cover single-pattern and hash-based matching. |
+| Ukkonen online suffix tree | cp-alg | out | Omitted because `SuffixAutomaton<A>` covers online suffix-structure queries in \(O(1)\) amortized per char, and `suffix_tree_edges` builds the compressed suffix tree offline in \(O(n)\) from SA+LCP. |
+| Rabin-Karp standalone function | cp-alg | out | Omitted because `find_all` (KMP, deterministic \(O(n+m)\)) and `RollingHash` already cover single-pattern and hash-based matching. |
 | Edit distance / LCS DP | cp-alg | out | Omitted because it is a 10-line problem-specific DP whose weights/tie-breaking/path-recovery vary per problem. |
 | Suffix array of a tree / persistent trie / persistent SAM | Niche | out | Omitted because tree-SA and persistent automata have problem-specific node payloads; users compose `Trie`/`SuffixAutomaton` or explicit node pools. |
 | Unicode / regex / locale | General-purpose | out | Out of scope for competitive programming (ASCII bytes and generic `Indexed`/`Seq` sequences). |
@@ -597,7 +597,7 @@ Audit against AtCoder Library (`string`), KACTL (`strings`), cp-algorithms (`str
 ## Cross-area
 
 - **`std.seq`:** `count`, `find`, `rfind`, `starts_with`, `ends_with` overlap conceptually with sequence queries on `List<T>`/`[D]T`. Keeping `starts_with`/`ends_with` generic over `Indexed` avoids duplication; `Str.count(c: Char)` / `Str.find(p)` / `Str.rfind(p)` remain `Str`-specific because they accept a `Str` or `Char` pattern.
-- **`std.math` / `std.poly`:** `find_all_wildcard` can also be implemented via NTT for large alphabets (O(n log n) vs O(n * |pat| / 64)); the strings spec exposes the single name `find_all_wildcard`, independent of backend.
+- **`std.math` / `std.poly`:** `find_all_wildcard` can also be implemented via NTT for large alphabets (\(O(n \log n)\) vs \(O(n \cdot \lvert \mathit{pat} \rvert / 64)\)); the strings spec exposes the single name `find_all_wildcard`, independent of backend.
 - **`std.bitset`:** Binary `XorTrie` is owned by `std.bitset` rather than `std.strings`; `std.strings.Trie<A>` covers general-alphabet prefix tries.
 - **`std.segtree`:** `DynamicHash` is a monoid-over-segment-tree hash specialized for string range hashing and palindrome checks; it avoids making users wire up custom `HashMonoid` structs and power tables manually.
 
@@ -612,7 +612,7 @@ Every power from `spec/core/12-powers.md` (and any gap beyond it) needed by `std
    - Signatures: `find_all`, `borders`, `KmpAutomaton.find_all`, `shift_and`, `find_all_wildcard`, `SuffixArray.find_all`, `AhoCorasick.find_all`.
    - Smallest example: `for (at, pat) in ac.find_all(s): if pat == target: break`.
 3. **W8 (User places — `get`/`set`):**
-   - Signatures: `DynamicHash.{get,set}` (so `dh[i] = c` updates the hashed element in O(log n) and `dh[l..r]` queries the range hash).
+   - Signatures: `DynamicHash.{get,set}` (so `dh[i] = c` updates the hashed element in \(O(\log n)\) and `dh[l..r]` queries the range hash).
    - Smallest example: `dh[i] = 'a'; if dh.is_palindrome(l..r): ans += 1`.
 4. **W12 (Cost on first `///` line):**
    - Signatures: All 191 public declarations in `std/strings.cp`.

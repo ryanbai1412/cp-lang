@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- Math convention (decision 335): 515 cost spans in spec prose and tables converted to `\( ... \)`; all 74 distinct spans compile under KaTeX. Code-block listings follow once std converts.
 - Doc example cases are now keyed `file#item:k` (`docs::example_ids`), not by a hash of their text, so an edited example keeps its id. The committed docs baseline is rewritten to the new ids.
 - `cpl-conform` now bounds each interpreted conformance run by `CPL_CONFORM_CASE_TIMEOUT`. Before this, a case past the limit hung the whole suite: `range-folds-are-ranges-own.cp` ran for 19 min.
 - Decision 326 (Ryan): R07.9.6, a fold costs what the receiver's type says. R08.1.4 now says overrides hold through generics and extension fns are final. 5 cases; probes showed trait-default overrides through generics work, a concrete `self: Range<Int>` extension is silently ignored, a user `impl Seq` isn't walkable, and the range `len`/`min`/`max` walk. Routed to compiler, stdlib and tools.

@@ -26,7 +26,7 @@ fails a point below is sent back with the point named.
 3. **Options are named arguments.** `by:`, `init:`, `cmp:` and friends,
    never a `_by` or `_with` twin. Defaults make the common call short.
 4. **Cost on every signature**, in the `///` comment and in
-   `plan/STDLIB.md`, written as section 2 says. Anything O(n) or
+   `plan/STDLIB.md`, written as section 2 says. Anything \(O(n)\) or
    allocating looks like it.
 5. **No privilege.** Only public language and section 3 intrinsics. A
    missing power is proposed in section 3 for the core lane, not
@@ -54,8 +54,8 @@ the fact; each numbered item is owed by the area owner, or answered in
 the design with a reason.
 
 **`math.md`** (number theory, combinatorics): passes 1, 3, 5, 6.
-1. Write expected costs as section 2 says, `// O(x^(1/4) log x)
-   expected`, not `expected O(...)` (`primitive_root`, `factor_big`).
+1. Write expected costs as section 2 says, `// \(O(x^{1/4} \log x)\)
+   expected`, not `expected \(O(...)\)` (`primitive_root`, `factor_big`).
 2. `Z.comb(limit)` answers the `Comb<P>` friction (14 friction reports); move
    those ports to it in the same commit as the method, with the
    friction files marked fixed.

@@ -135,7 +135,7 @@ library or by this spec:
   (per test case at top level below `@!multitest`). A memo function may
   not do I/O or mutate captures; a write to something it captured while
   the cache lives is an error. `cpl explain` shows table bytes. (R06.4.1)
-- `@get`: an O(1) read-only method called without parentheses. (R06.4.2)
+- `@get`: an \(O(1)\) read-only method called without parentheses. (R06.4.2)
 - `@test`, `@alt(f, caps)`, `@gen`, `@check`, `@interactor`: tool
   roles (`tools/stress.md`); the item is otherwise unchanged. The old
   spellings `@alt(main)`, `@brute(main)` and `@checker` are E0503, naming

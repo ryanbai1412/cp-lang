@@ -38,7 +38,7 @@ overflowing "infinity"). Surveyed sources:
 |---|---|
 | AtCoder Library | `mf_graph` (Dinic: `add_edge`, `flow(s, t, limit)`, `min_cut(s)`, `get_edge`, `change_edge`), `mcf_graph` (successive shortest paths with potentials: `flow`, `slope`). No matching type: matching is "build a flow". |
 | KACTL | `Dinic`, `PushRelabel`, `EdmondsKarp`, `MinCostMaxFlow`, `GlobalMinCut` (Stoer–Wagner), `GomoryHu`, `hopcroftKarp`, `DFSMatching`, `MinimumVertexCover`, `WeightedMatching` (Hungarian, rectangular `n <= m`), `GeneralMatching` (randomized Tutte matrix), `MatroidIntersection`. |
-| ecnerwala (`proto/ports/ecnerwala/*_orig.cpp`) | `cf2147h`: Dinic plus Gusfield's Gomory–Hu loop written inline; `cf2062g`: an O(n^3) Hungarian minimizing Manhattan cost. No other flow code in the 200+ originals. |
+| ecnerwala (`proto/ports/ecnerwala/*_orig.cpp`) | `cf2147h`: Dinic plus Gusfield's Gomory–Hu loop written inline; `cf2062g`: an \(O(n^3)\) Hungarian minimizing Manhattan cost. No other flow code in the 200+ originals. |
 | Corpus ports | `scout_batch_15`: `dmopc20c7p5` and `noi09p4` (project selection by min cut), `sdoi17r1p4` (Hungarian inside a fractional binary search), `flow_ext.cp` (min-cost flow and Hungarian prototypes); `scout_batch_5/noi06p4` (project selection, hand-offset node numbering); `examples/local-lib/graph/` (Hopcroft–Karp with König cover, min-cost flow, lower-bound flows). |
 | Codeforces / AtCoder / ICPC usage | Max flow with a modelled network is the dominant shape (assignment with capacities, vertex splitting, grid colourings, project selection); bipartite matching with König's theorem second (vertex cover, independent set, DAG path cover); assignment (Hungarian) and min-cost flow (transport, k disjoint cheapest paths, convex costs by unit arcs) third; lower bounds, Gomory–Hu, global min cut and general matching are rare but recurring at Div. 1 / WF level. |
 
@@ -156,7 +156,7 @@ fn global_min_cut<V, E>(edges: [E](u: V, v: V, w: Int))
 
 `FlowGraph` and `CostFlow` are separate because their arcs carry different
 data and their solvers different contracts; a cost of zero is not a
-max-flow network (SSP is O(F) augmentations, Dinic is not). They share
+max-flow network (SSP is \(O(F)\) augmentations, Dinic is not). They share
 `Arc` and the accessor names so moving a model from one to the other is a
 type change and an extra argument per `add`.
 
@@ -372,9 +372,9 @@ The whole area, in the order the corpus is likely to want it:
 
 1. **Sum domains** (core lane): network nodes as `Item + Pair + labels(...)`.
    The largest single friction in the area.
-2. **`global_min_cut(edges)`** (Stoer–Wagner, O(V^3)) next to `gomory_hu`.
+2. **`global_min_cut(edges)`** (Stoer–Wagner, \(O(V^3)\)) next to `gomory_hu`.
    Shipped: the dense form, since a global cut problem has small `V`.
-3. **`max_weight_general_matching`** (Edmonds weighted, O(V^3)): shipped, dense, like
+3. **`max_weight_general_matching`** (Edmonds weighted, \(O(V^3)\)): shipped, dense, like
    `global_min_cut`. Still open:
    `max_weight_matching` over sparse edges (min-cost flow on unit arcs).
 4. **`min_cost_circulation`** with negative cycles (cycle cancelling or

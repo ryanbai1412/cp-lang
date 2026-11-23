@@ -9,8 +9,8 @@ ends, `.first`/`.last` are optional.
    are pushed into the loop body, so they compile to the hand-written loop.
    `break`/`return` work through them; lockstep is `List(g)`. (R07.1.1)
 2. **Six capabilities.** `Seq` walks; `Keyed` walks `(key, x)`; `Sized` has
-   O(1) `.len`; `Bidir` walks backwards; `Indexed` adds O(1) `s[i]` and
-   `.keys`; `IndexedMut` makes `s[i]` a place (POWERS W4). Adapters keep `Indexed` when they can stay O(1) (slices, `.rev`,
+   \(O(1)\) `.len`; `Bidir` walks backwards; `Indexed` adds \(O(1)\) `s[i]` and
+   `.keys`; `IndexedMut` makes `s[i]` a place (POWERS W4). Adapters keep `Indexed` when they can stay \(O(1)\) (slices, `.rev`,
    `map`, `take`/`drop`, `zip`); `filter`, `take_while` and generators are
    `Seq`. (R07.1.2)
 3. **Laziness is explicit.** A chain reruns on every walk. Allocation happens
@@ -28,7 +28,7 @@ ends, `.first`/`.last` are optional.
    work on views (`a[l..=r].sort()`); each has a copying twin (`sorted`). (R07.1.5)
 6. **Prefix scans are indexed by cuts.** `pre[c]` folds left of `c`;
    `pre[v]` folds through `v`. (R07.1.6)
-7. **Costs show.** O(1) things are getters or views, allocation is named,
+7. **Costs show.** \(O(1)\) things are getters or views, allocation is named,
    options are named arguments (`max(by:)`), and there is no overloading. (R07.1.7)
 
 ## Terms
@@ -38,11 +38,11 @@ Every word below means one thing in this doc, in the stubs and in errors.
 | Term | Means | Owns its elements? | Examples |
 |---|---|---|---|
 | **sequence** (`Seq<T>`) | anything a `for` can walk, in order | either | everything in this table (R07.2.1) |
-| **indexed sequence** (`Indexed<K, T>`) | a sequence that also has O(1) `s[k]`, `.keys` and `.len` | either | `[V]T`, `List<T>`, `Str`, ranges, slices, `.rev` (R07.2.2) |
+| **indexed sequence** (`Indexed<K, T>`) | a sequence that also has \(O(1)\) `s[k]`, `.keys` and `.len` | either | `[V]T`, `List<T>`, `Str`, ranges, slices, `.rev` (R07.2.2) |
 | **key** | what an indexed sequence is indexed by: a domain position (`V`) or an `Int` offset (`List`, `Str`) | | `i: V`, `3` (R07.2.3) |
 | **collection** | a sequence that owns its elements; making one allocates | yes | `[V]T` arrays, `List`, `Str`, `Set`, `Map` (R07.2.4) |
 | **range** | a run of a domain, `l..r`; a sequence of positions or cuts with no data behind it (round 1) | nothing to own | `l..=r`, `..i`, `V.range` (R07.2.5) |
-| **view** | a sequence made from a source without copying it: O(1) to make, borrows the source, does its work as you walk or read it. Formally, a `Seq` built from a lent source, so it is a lent value (POWERS W4); there is no `View` trait and no marker on the struct | no | `a[l..=r]`, `a.rev`, `a.map(f)`, `a.filter(p)` (R07.2.6) |
+| **view** | a sequence made from a source without copying it: \(O(1)\) to make, borrows the source, does its work as you walk or read it. Formally, a `Seq` built from a lent source, so it is a lent value (POWERS W4); there is no `View` trait and no marker on the struct | no | `a[l..=r]`, `a.rev`, `a.map(f)`, `a.filter(p)` (R07.2.6) |
 | **slice** | the view `a[r]`: one contiguous range `r` of an indexed source | no | `a[l..=r]`, `s[i..]`, `grid[r]` (a row) (R07.2.7) |
 | **adapter** | a method that turns a sequence into a view | | `.map`, `.filter`, `.rev`, `.take`, `zip` (R07.2.8) |
 | **chain** | adapters applied one after another; still a view, still lazy | no | `a.filter(p).map(f)` (R07.2.9) |
@@ -52,7 +52,7 @@ Every word below means one thing in this doc, in the stubs and in errors.
 
 How they relate:
 - **Two capabilities.** A view is indexed when its adapter can answer
-  `w[k]` in O(1): slices, `.rev`, `.map`, `.items`, `zip`, `take`/`drop`.
+  `w[k]` in \(O(1)\): slices, `.rev`, `.map`, `.items`, `zip`, `take`/`drop`.
   It is only a sequence (walk-only) otherwise: `filter`, `take_while`,
   `chain`, generators. (R07.2.13)
 - **Slices are the views that narrow keys.** Every other indexed view keeps
@@ -79,12 +79,12 @@ a.items           // (i, a[i]) pairs with a's own indices
 |---|---|---|
 | `Seq<T>` | `for x in s` walks it in order; each `for` runs it from the start | generators, `s.filter(p)`, `chain(a, b)`, `g[u]` (R07.3.1) |
 | `Keyed<D, T>` | `Seq` + `s.items` walks `(key, x)`; keys survive `filter` | everything `Indexed`, `s.filter(p)`, `s.take_while(p)`, `Map`, `g.keyed()`, `g.keyed(by: f)` (R07.3.2) |
-| `Sized` | O(1) `s.len` | collections, ranges, `Indexed` views, sets, maps (R07.3.3) |
-| `Bidir<T>` | `s.rev` walks backwards; `s.last` is O(1) | everything `Indexed`, sorted sets, deques, `filter` over a `Bidir` (R07.3.4) |
-| `Indexed<D, T>` | `Keyed` + `Sized` + `Bidir` + `s[i]` for `i: D` in O(1), `s.keys: Range<D>` | `[D]T`, `List<T>` and `Str` (`D = Int`), ranges, slices, `.rev`, `.map(f)`, `zip(a, b)` (R07.3.5) |
+| `Sized` | \(O(1)\) `s.len` | collections, ranges, `Indexed` views, sets, maps (R07.3.3) |
+| `Bidir<T>` | `s.rev` walks backwards; `s.last` is \(O(1)\) | everything `Indexed`, sorted sets, deques, `filter` over a `Bidir` (R07.3.4) |
+| `Indexed<D, T>` | `Keyed` + `Sized` + `Bidir` + `s[i]` for `i: D` in \(O(1)\), `s.keys: Range<D>` | `[D]T`, `List<T>` and `Str` (`D = Int`), ranges, slices, `.rev`, `.map(f)`, `zip(a, b)` (R07.3.5) |
 | `IndexedMut<D, T>` | `Indexed` + `s[i]` is a place: `sort()`, `swap`, slice assignment | `[D]T`, `List`, `Str`, `mut` slices (R07.3.6) |
 
-**Cost rule.** Views are O(1) to make and allocate nothing. A
+**Cost rule.** Views are \(O(1)\) to make and allocate nothing. A
 loop over them compiles to the loop you would write by hand. Anything that
 builds a container says so: a comprehension, `List(s)`, or a method named
 for its result (`sorted`, `tally`, `scan`).
@@ -112,7 +112,7 @@ let t = w.rebase                         // O(1) view keyed by a fresh 0..w.len 
 - **Combining two sequences pairs them by walk order**: `==`, `<`,
   `starts_with`, `+`, slice assignment and `zip`. (R07.4.2)
 - **`[s.keys]x`** is a table over exactly `s`'s keys; `t.rekey(r)` re-keys
-  equal-length cells onto `r` in O(1). (R07.4.3)
+  equal-length cells onto `r` in \(O(1)\). (R07.4.3)
 - **Materializing counts from 0:** `.collect()`, `.sorted()`, `List(w)`
   and `Str(w)` build a new sequence keyed from 0. To keep `w`'s keys, build
   a table over them: `[w.keys] k => w[k]` (see R04b.1.6). (R07.4.4)
@@ -123,19 +123,19 @@ let t = w.rebase                         // O(1) view keyed by a fresh 0..w.len 
 
 | View | Indexed by | Walks | Cost |
 |---|---|---|---|
-| `a[r]` (`r: Range<D>`; `a[j..i]` with cut ends is the piece) | `D`, only inside `r` | `r` in order | O(1) (R07.4.6) |
-| `a.rev` | `D` | backwards | O(1) (R07.4.7) |
-| `a.items` | `D`, gives `(i, a[i])` | in order | O(1) (R07.4.8) |
-| `a.map(f)` | `D`, gives `f(a[i])`, calling `f` on every read | in order | O(1); `f` per read (R07.4.9) |
-| `zip(a, b)` | `a`'s keys, pairing by walk order: the k-th of `a` with the k-th of `b` | in order | O(1) (R07.4.10) |
-| `w.drop(k)`, `w.take(k)`, `w.drop_last(k)`, `w.take_last(k)` | same as `w`, clamped: `w.drop(k)` is `w[w.l.next(k) ?? w.r..]` | in order | O(1) (R07.4.11) |
-| `grid[r]` | the column domain: row `r` of a `[R, C]T` | in order | O(1) (R07.4.12) |
-| `grid[rs, cs]` | `(R, C)` pairs inside `rs` × `cs`; `.items` gives `((x, y), v)` | row-major | O(1) (R07.4.13) |
+| `a[r]` (`r: Range<D>`; `a[j..i]` with cut ends is the piece) | `D`, only inside `r` | `r` in order | \(O(1)\) (R07.4.6) |
+| `a.rev` | `D` | backwards | \(O(1)\) (R07.4.7) |
+| `a.items` | `D`, gives `(i, a[i])` | in order | \(O(1)\) (R07.4.8) |
+| `a.map(f)` | `D`, gives `f(a[i])`, calling `f` on every read | in order | \(O(1)\); `f` per read (R07.4.9) |
+| `zip(a, b)` | `a`'s keys, pairing by walk order: the k-th of `a` with the k-th of `b` | in order | \(O(1)\) (R07.4.10) |
+| `w.drop(k)`, `w.take(k)`, `w.drop_last(k)`, `w.take_last(k)` | same as `w`, clamped: `w.drop(k)` is `w[w.l.next(k) ?? w.r..]` | in order | \(O(1)\) (R07.4.11) |
+| `grid[r]` | the column domain: row `r` of a `[R, C]T` | in order | \(O(1)\) (R07.4.12) |
+| `grid[rs, cs]` | `(R, C)` pairs inside `rs` × `cs`; `.items` gives `((x, y), v)` | row-major | \(O(1)\) (R07.4.13) |
 
 `zip` pairs by walk order and is keyed by its first argument; zipping a
 `[V]T` with an `[E]T` is still a type error. It stops at the shorter side.
 Writing a sequence into a range is slice assignment, not a zip:
-`q[start..] = suffix` copies in order, O(k), and traps in every build if the
+`q[start..] = suffix` copies in order, \(O(k)\), and traps in every build if the
 lengths differ.
 
 A view borrows its source. Through a `var` source a view is writable and
@@ -157,7 +157,7 @@ a[l..=r].rev.map(f)       // Mapped<Rev<Slice<[V]T>>, F>, F the lambda's own typ
 
 | Written | Lowers to |
 |---|---|
-| `a[l..=r]`, `.rev`, `.map(f)` | build the struct, O(1) (R07.5.1) |
+| `a[l..=r]`, `.rev`, `.map(f)` | build the struct, \(O(1)\) (R07.5.1) |
 | `w[i]` | debug: check `lo <= i < hi`; then `a[i]` (no offset: indices are kept) (R07.5.2) |
 | `w.rev[i]` | `a[i]`; only the walk order differs (R07.5.3) |
 | `a.map(f)[i]` | `f(a[i])`, inlined, per read (R07.5.4) |
@@ -222,29 +222,29 @@ for d in divisors(n):
   wants to own the loop. Materialize one (`List(g)`), or zip indexed
   sequences. `zip` takes only `Indexed`. (R07.6.4)
 
-## Adapters (each makes a view: O(1), lazy)
+## Adapters (each makes a view: \(O(1)\), lazy)
 
 | Form | Result | Note |
 |---|---|---|
 | `s.map(f)` | `Indexed` if `s` is, else `Seq` | `f` runs on every read (R07.7.1) |
 | `s.filter(p)`, `s.take_while(p)`, `s.skip_while(p)` | `Seq` | (R07.7.2) |
-| `s.take(k)`, `s.drop(k)` | an O(1) view on an `Indexed`; a `Seq` otherwise | consuming a view from the front is `w = w.drop(1)` (R07.7.3) |
+| `s.take(k)`, `s.drop(k)` | an \(O(1)\) view on an `Indexed`; a `Seq` otherwise | consuming a view from the front is `w = w.drop(1)` (R07.7.3) |
 | `chain(a, b)` | `Seq` | (R07.7.4) |
-| `s.adjacent` | `Seq<(T, T)>`, adjacent pairs | `@get`, O(1) per step (R07.7.5) |
-| `s.pairs()` | `Seq<(T, T)>`, every pair `x` before `y` | O(n²) to walk, so a call (R07.7.6) |
+| `s.adjacent` | `Seq<(T, T)>`, adjacent pairs | `@get`, \(O(1)\) per step (R07.7.5) |
+| `s.pairs()` | `Seq<(T, T)>`, every pair `x` before `y` | \(O(n^2)\) to walk, so a call (R07.7.6) |
 | `s.with_prev` | `Seq<(?T, T)>`, starting `(None, first)` | path walks that treat the first step apart (R07.7.7) |
 | `s.cyclic_pairs` | `Seq<(T, T)>`, plus (last, first) | polygons, rings (R07.7.8) |
 | `a.windows(k)`, `a.chunks(k)` | `Seq` of views of `a` | each view keeps `a`'s indices (R07.7.9) |
 | `a.runs(by: k)` | `Seq` of views: maximal equal-key runs | `.keys` of each is its range (R07.7.10) |
 | `s.step(k)` | every k-th element | ranges and indexed (R07.7.11) |
 
-**Parentheses mean work.** Only O(1) members read without `()`: `@get`
-properties such as `.len`, and views and generators, which cost O(1) to
+**Parentheses mean work.** Only \(O(1)\) members read without `()`: `@get`
+properties such as `.len`, and views and generators, which cost \(O(1)\) to
 make and are paid for as you walk them (`.rev`, `.items`, `.adjacent`, `.keys`,
 `g.edges`, `t.tour`). Anything that computes or allocates up front is a
 call, however few arguments it takes: `g.transpose()`, `t.centroid()`,
 `a.sorted()`, `.collect()`. The spec check rejects an `@get` whose documented
-cost isn't O(1) to make.
+cost isn't \(O(1)\) to make.
 
 ## Making containers
 
@@ -256,7 +256,7 @@ s.filter(p).map(f).collect()   // end of a chain: the type the context expects, 
 List(s)   Set(s)   Str(s)      // conversions of anything that isn't a chain: List(0..n)
 ```
 
-`.collect()` and the constructors are one operation, O(n) and allocating;
+`.collect()` and the constructors are one operation, \(O(n)\) and allocating;
 the postfix form is for chains, the prefix form for single values. So a
 `Seq<Char>` becomes a word as `Str(cs)` or `let w: Str = cs.collect()`,
 and `sep.join(parts)` is for joining `Str` parts. (R07.8.1)
@@ -273,11 +273,11 @@ since the second walk reruns against what the first wrote.
 
 | Form | Result | Cost |
 |---|---|---|
-| `s.sum()`, `s.prod()` | `T`; empty is the identity | O(n) (R07.9.1) |
-| `s.fold(op)` | `T` when `op` has an identity (`+`, `max` on a bounded type, `gcd`), else `?T` | O(n) (R07.9.2) |
-| `s.min()`, `s.max()`, `s.min(by: k)` | `?T`, `None` when empty; first on ties | O(n) (R07.9.3) |
-| `s.count(p)`, `s.any(p)`, `s.all(p)` | `Int`, `Bool` | O(n) (R07.9.4) |
-| `s.find(p)`, `s.rfind(p)` | `?T`, linear scan (binary search is `r.first_true`) | O(n) (R07.9.5) |
+| `s.sum()`, `s.prod()` | `T`; empty is the identity | \(O(n)\) (R07.9.1) |
+| `s.fold(op)` | `T` when `op` has an identity (`+`, `max` on a bounded type, `gcd`), else `?T` | \(O(n)\) (R07.9.2) |
+| `s.min()`, `s.max()`, `s.min(by: k)` | `?T`, `None` when empty; first on ties | \(O(n)\) (R07.9.3) |
+| `s.count(p)`, `s.any(p)`, `s.all(p)` | `Int`, `Bool` | \(O(n)\) (R07.9.4) |
+| `s.find(p)`, `s.rfind(p)` | `?T`, linear scan (binary search is `r.first_true`) | \(O(n)\) (R07.9.5) |
 
 **A fold costs what the receiver's type says.** The costs above are the
 generic walks every `Seq` gets. They are default methods of the
@@ -285,7 +285,7 @@ capability trait that provides them (`Seq`, `Sized`, `Bidir`,
 `Indexed`), so a type with a faster way overrides the method in its
 `impl`, written in CP Lang with its own documented cost. A range's `impl`
 gives `sum()`, `min()`, `max()` and `count()` as closed forms, so
-`(3..m).step(2).sum()` is O(1). In the same way `Prefix.fold` is O(1)
+`(3..m).step(2).sum()` is \(O(1)\). In the same way `Prefix.fold` is \(O(1)\)
 and `Bitset.len` is a popcount. Ordinary method resolution picks the
 method (R08.1.4), generic code included, and the compiler never pattern
 matches a pipeline. User types get the same power. Parentheses still
@@ -324,18 +324,18 @@ A `Prefix` takes both kinds of index and the types keep them apart: a cut
 folds what lies left of it, a position folds through itself. The inclusive
 query (`pref_min[v]`) is the common one and needs no `.r`.
 
-O(n) time and memory. This replaces `scan`, `suffix_scan`, `excl_fold`,
+\(O(n)\) time and memory. This replaces `scan`, `suffix_scan`, `excl_fold`,
 `scan_in_place` and `Prefix(...)` construction.
 
 ## Ordering and grouping
 
 | Form | Meaning | Cost |
 |---|---|---|
-| `s.sort(by: k)`, `s.reverse()`, `s.dedup()`, `s.fill(x)` | in place: needs a `var` source; works on views | O(n log n), O(n), O(n), O(n) (R07.11.1) |
+| `s.sort(by: k)`, `s.reverse()`, `s.dedup()`, `s.fill(x)` | in place: needs a `var` source; works on views | \(O(n \log n)\), \(O(n)\), \(O(n)\), \(O(n)\) (R07.11.1) |
 | `s.sorted(by: k)`, `s.deduped()` | new `List` | same, allocates (R07.11.2) |
-| `s.group(by: k)` | `Map<K, List<T>>` | O(n) expected (R07.11.3) |
-| `s.tally(by: k)` | `Counter<K>` | O(n) expected (R07.11.4) |
-| `compress(s)` | `(domain C, comp)`: values sorted and deduped, as a fresh domain | O(n log n) (R07.11.5) |
+| `s.group(by: k)` | `Map<K, List<T>>` | \(O(n)\) expected (R07.11.3) |
+| `s.tally(by: k)` | `Counter<K>` | \(O(n)\) expected (R07.11.4) |
+| `compress(s)` | `(domain C, comp)`: values sorted and deduped, as a fresh domain | \(O(n \log n)\) (R07.11.5) |
 
 Sorts are stable. Descending is a key, not a flag: `by: x => desc(x.score)`.
 Every in-place verb that has a result-named twin follows the same pattern
@@ -346,15 +346,15 @@ place) are different jobs, not twins.
 
 | Form | Meaning | Cost |
 |---|---|---|
-| `s.drop_while(p)` | skip the leading elements where `p` holds, yield the rest | O(1) per step (R07.12.1) |
-| `s.flat_map(f)`, `s.flatten()` | each element to a sequence, all inner elements in order | O(1) per element (R07.12.2) |
-| `iterate(x, step)` | `x, step(x), step(step(x)), ...` until `step` gives `None` | O(1) per step (R07.12.3) |
-| `s.is_sorted(by:)`, `s.is_subsequence(t)` | the two common checks | O(n) (R07.12.4) |
-| `a.partition_point(ok)`, `a.equal_range(x, by:)` | on sorted `a`: the cut where monotone `ok` turns true; the range equal to `x` | O(log n) (R07.12.5) |
-| `a.next_permutation()`, `a.prev_permutation()` | step to the neighbouring arrangement in place; `false` past the end | amortized O(1) (R07.12.6) |
-| `a.rotate_left(k)`, `a.rotate_right(k)`; `s.rotated_left(k)`, `s.rotated_right(k)` | rotate in place; a rotated copy | O(n) (R07.12.7) |
-| `m.get_or_insert(k, v)` | `m[k]`, storing `v` first if absent: `ids.get_or_insert(name, ids.len)` | O(log n) (R07.12.8) |
-| `m[k]`, `m[k] = v`, `m[k] op= v` on a `Map` | a read traps when `k` is absent (`m.get(k)` is the `?V`); `=` inserts or replaces; `op=` starts an absent key at the default of `V` (`0`, `""`, empty) | O(log n), O(1) expected for a hash map (R07.12.9) |
+| `s.drop_while(p)` | skip the leading elements where `p` holds, yield the rest | \(O(1)\) per step (R07.12.1) |
+| `s.flat_map(f)`, `s.flatten()` | each element to a sequence, all inner elements in order | \(O(1)\) per element (R07.12.2) |
+| `iterate(x, step)` | `x, step(x), step(step(x)), ...` until `step` gives `None` | \(O(1)\) per step (R07.12.3) |
+| `s.is_sorted(by:)`, `s.is_subsequence(t)` | the two common checks | \(O(n)\) (R07.12.4) |
+| `a.partition_point(ok)`, `a.equal_range(x, by:)` | on sorted `a`: the cut where monotone `ok` turns true; the range equal to `x` | \(O(\log n)\) (R07.12.5) |
+| `a.next_permutation()`, `a.prev_permutation()` | step to the neighbouring arrangement in place; `false` past the end | amortized \(O(1)\) (R07.12.6) |
+| `a.rotate_left(k)`, `a.rotate_right(k)`; `s.rotated_left(k)`, `s.rotated_right(k)` | rotate in place; a rotated copy | \(O(n)\) (R07.12.7) |
+| `m.get_or_insert(k, v)` | `m[k]`, storing `v` first if absent: `ids.get_or_insert(name, ids.len)` | \(O(\log n)\) (R07.12.8) |
+| `m[k]`, `m[k] = v`, `m[k] op= v` on a `Map` | a read traps when `k` is absent (`m.get(k)` is the `?V`); `=` inserts or replaces; `op=` starts an absent key at the default of `V` (`0`, `""`, empty) | \(O(\log n)\), \(O(1)\) expected for a hash map (R07.12.9) |
 
 ## Answers to round 2's questions
 

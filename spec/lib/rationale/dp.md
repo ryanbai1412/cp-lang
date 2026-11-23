@@ -35,7 +35,7 @@ experience rather than a count are marked *(judgement)*.
   Knuth or divide-and-conquer optimization. ecnerwala's DP is mostly plain
   tables with a clever state; the library carries little DP machinery.
 - **KACTL** *(judgement, from its table of contents)*:
-  `LineContainer` (max of lines, any insertion order, O(log n)),
+  `LineContainer` (max of lines, any insertion order, \(O(\log n)\)),
   `DivideAndConquerDP`, `KnuthDP`, `TernarySearch` (integer, unimodal),
   `GoldenSectionSearch`, `FastKnapsack`, `LIS`, `ConstantIntervals`.
 - **AtCoder Library** *(judgement)*: no DP module; its searches are
@@ -62,10 +62,10 @@ experience rather than a count are marked *(judgement)*.
    unimodal `f`, golden-section on reals.
 4. **Parallel binary search**: `q` independent searches over the same
    timeline of `T` events whose predicate needs the state after a prefix of
-   events (DSU, Fenwick). `O((T + q) log T)` instead of `O(q T)`.
+   events (DSU, Fenwick). \(O((T + q) \log T)\) instead of \(O(q T)\).
 5. **DP over a layer**: `next` from `prev`, for `k` layers, keeping two rows.
 6. **DP over subsets**: iterate masks in increasing order; sum over subsets
-   or supersets (SOS) in `O(n 2^n)`.
+   or supersets (SOS) in \(O(n 2^n)\).
 7. **DP over digits**: count numbers `<= N` with a digit property; a
    recursion on `(position, state, tight)`.
 8. **DP over intervals**: `dp[l][r]` from shorter intervals; with Knuth's
@@ -100,7 +100,7 @@ The searches (`bsearch_first`/`_last`, `bsearch_real`, `ternary_*`,
 
 The sliding-window optimum is `std.window.MonoDeque<T>` (containers
 area): `push(at, val)` with increasing `at`, `drop_before(at)`, `best`, all
-amortized O(1), memory O(window). The DP toolkit reuses it rather than
+amortized \(O(1)\), memory \(O(\mathit{window})\). The DP toolkit reuses it rather than
 keeping a second queue under another name.
 
 ```cp
@@ -119,7 +119,7 @@ The convex hull trick. `L` is anything with `at(self, x: Int) -> K`:
 `Line` gives `LiChao<Line, Int>(min, 0..=m)`; a struct whose `at` returns
 `(cost: Int, used: Int)` gives the tie-broken envelope Aliens needs, with
 the same tree. `pick` is `min` or `max`. Nodes are allocated as lines
-arrive, so memory is O(lines) words, not O(xs.len), and an array of trees
+arrive, so memory is \(O(\mathit{lines})\) words, not \(O(\mathit{xs.len})\), and an array of trees
 (`[Station]LiChao<Line, Int>`) costs a few words per empty tree. Law: two
 `L`s cross at most once on `xs` (true of lines and of
 `(line, tie-break)` pairs). Overflow: `k * x + m` must fit in `Int`.
@@ -300,8 +300,8 @@ for t in parallel_bsearch(q, E.all, reset, join, reaches): print(t!)
 [Problem](https://atcoder.jp/contests/dp/tasks/dp_n). Merge `n <= 400`
 adjacent slimes; merging costs the merged size. `dp[l][r]` over cuts is
 `sum(l..r) + min_k dp[l][k] + dp[k][r]`; the sum is monotone and satisfies
-the quadrangle inequality, so Knuth's bound applies (and turns `O(n^3)`
-into `O(n^2)`, which matters at `n = 5000` variants).
+the quadrangle inequality, so Knuth's bound applies (and turns \(O(n^3)\)
+into \(O(n^2)\), which matters at `n = 5000` variants).
 
 ```cp
 // dp[l][r] = sum of a over the cuts l..r + the best split k of [l, r).
@@ -376,7 +376,7 @@ returns the table (path reconstruction from `opt` is an open question).
 
 The integer searches existed; ports kept writing loops because the answer
 space was huge (`0..=2e18`) or real. `bsearch_first` handles any `Int`
-range in `O(log)` without overflow, and `bsearch_real` covers the rest.
+range in \(O(\log)\) without overflow, and `bsearch_real` covers the rest.
 
 ### 6.7 Concave functions as sorted slopes (`cf2084g2`)
 
@@ -388,11 +388,11 @@ slopes `f(c + 1) - f(c)` in falling order, and `Convex` is its negation.
 
 | op | meaning | cost |
 |---|---|---|
-| `Concave.point(d)` | 0 at `d` only | O(1) |
-| `Concave.flat(lo..=hi)` | 0 on `lo..=hi` | O(len log len) expected |
-| `f.max_convolve(g)` | `f(c) = max over a + b = c of f(a) + g(b)` | O(\|g\| log n) expected |
-| `f.add_quadratic(q)` | `f(c) += q(c)` | O(1) |
-| `f.at(c)`, `f.max()` | a value, the maximum | O(c - lo + log n), O(n) |
+| `Concave.point(d)` | 0 at `d` only | \(O(1)\) |
+| `Concave.flat(lo..=hi)` | 0 on `lo..=hi` | \(O(\mathit{len} \log \mathit{len})\) expected |
+| `f.max_convolve(g)` | `f(c) = max over a + b = c of f(a) + g(b)` | \(O(\lvert g \rvert \log n)\) expected |
+| `f.add_quadratic(q)` | `f(c) += q(c)` | \(O(1)\) |
+| `f.at(c)`, `f.max()` | a value, the maximum | \(O(c - \mathit{lo} + \log n)\), \(O(n)\) |
 
 Laws: the max-plus convolution of concave functions merges their slope
 multisets, so the domains add and nothing is recomputed. Adding a quadratic
@@ -441,7 +441,7 @@ debugger and `cpl stress` check on small inputs automatically when the
 function is called in debug builds, so a wrong application fails on the
 first sample rather than at WA on test 37. It adds the rest of the hard
 end (the rest of the slope trick beyond §6.7's `std.slope`: hinge adds and prefix minima, kinetic
-segment trees, SMAWK, the monotone CHT deque for O(1) amortized, `Bits<D>`
+segment trees, SMAWK, the monotone CHT deque for \(O(1)\) amortized, `Bits<D>`
 subset loops, a typed `@rolling` table) and gives `@memo` a bottom-up
 `into` table so a top-down DP can be flipped to an iterative one with one
 edit.
@@ -497,7 +497,7 @@ in the plan/STDLIB.md `[new]` block, **out** says why it stays out.
 | subset sum by bitset | have | `Bitset.subset_sums`, containers lane |
 | 0/1, bounded and unbounded knapsack | out | the recurrence is the problem; 3 lines over a list, bounded is `MonoDeque` |
 | digit DP | out | `@memo` over (position, tight, state) is the clear form (§5.5) |
-| interval DP, general O(n^3) | out | user code; `knuth` when the quadrangle law holds |
+| interval DP, general \(O(n^3)\) | out | user code; `knuth` when the quadrangle law holds |
 | bitmask DP (TSP, Hamiltonian paths) | out | `@memo` or a `[1 << n]` table with `submasks` |
 | broken-profile DP | out | the profile is problem-specific; user code over masks |
 | Steiner tree DP | out | graphs lane: needs shortest paths per mask |

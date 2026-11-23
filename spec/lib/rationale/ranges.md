@@ -2,7 +2,7 @@
 
 Status: design for section 4.10 of `plan/STDLIB.md`. Covers every
 range-query and range-update pattern from competitive programming, from
-O(1) prefix sums to lazy/dual segment trees, persistent trees, Li Chao
+\(O(1)\) prefix sums to lazy/dual segment trees, persistent trees, Li Chao
 trees, segment-tree beats, and offline sweeps.
 
 ## 1. Contest pattern survey
@@ -13,18 +13,18 @@ factor. Surveying four primary sources fixes the exact patterns the stdlib
 must cover cleanly.
 
 **AtCoder Library (ACL)** distills 80% of contest range work into three
-structures: `fenwick_tree` (point add, range sum in O(log n)), `segtree`
-(point set, range monoid fold, `max_right`, `min_left` in O(log n)), and
+structures: `fenwick_tree` (point add, range sum in \(O(\log n)\)), `segtree`
+(point set, range monoid fold, `max_right`, `min_left` in \(O(\log n)\)), and
 `lazy_segtree` (range action apply, range monoid fold, `max_right`,
-`min_left` in O(log n)). ACL's biggest win is the `max_right` / `min_left`
-binary search directly on the tree, eliminating O(log^2 n) binary searches
+`min_left` in \(O(\log n)\)). ACL's biggest win is the `max_right` / `min_left`
+binary search directly on the tree, eliminating \(O(\log^2 n)\) binary searches
 around `fold`. Its biggest friction in C++ is boilerplate: every tree
 requires a separate `S op(S, S)`, `S e()`, `S mapping(F, S)`,
 `F composition(F, F)`, `F id()`, plus a fake monoid whenever you only want
 range-apply and point-get.
 
 **KACTL** covers the next 15%: `FenwickTree` (with `lower_bound`),
-`FenwickTree2d`, `RMQ` (sparse table, O(1) idempotent range query),
+`FenwickTree2d`, `RMQ` (sparse table, \(O(1)\) idempotent range query),
 `SegmentTree` (iterative 2n), `LazySegmentTree` (recursive with range
 set/add), `LineContainer` (dynamic convex hull trick), and `Mo` (Hilbert
 or alternating-block query ordering). KACTL keeps each template tiny by
@@ -72,7 +72,7 @@ gaps between today's `stdlib/` and `design/EXEMPLARS-PORTS.md`:
   API compromise.
 
 **Remaining ICPC / AtCoder / CF Div. 1 patterns** complete the picture:
-static non-idempotent O(1) queries (disjoint sparse table), O(1) amortized
+static non-idempotent \(O(1)\) queries (disjoint sparse table), \(O(1)\) amortized
 sliding-window folds (`MonoDeque` for min/max, `TwoStackFold` for
 inverse-free monoids like `gcd` or matrix product), coordinate-free
 dynamic segment trees (`SparseSegTree` over `lo..hi` up to `10^18`),
@@ -97,7 +97,7 @@ guess any method from its neighbours:
   monoid or semigroup; `t.sum(r)` is used where the operation is addition
   and nothing else makes sense (`Prefix`,
   `Fenwick`, `Fenwick2D`, `RangeFenwick`, `ChminSegTree`); `t.xor(r)` on
-  `XorFenwick`; `t.all` is an O(1) `@get` property for the whole domain.
+  `XorFenwick`; `t.all` is an \(O(1)\) `@get` property for the whole domain.
 - **Range update:** `t.apply(r, f)` applies lazy tag `f` to every
   position in `r` (`LazySegTree`, `DualSegTree`); `t.add(r, x)` adds `x`
   to `r` (`DualFenwick`, `RangeFenwick`, `Diff`).
@@ -110,10 +110,10 @@ guess any method from its neighbours:
   Constructors accept `a: ?[D]T = None` and `fill: ?T = None` so
   `LazySegTree<Pos, Int>(AddMax, fill: 0)` and
   `SegTree<V, Int>(max, a)` share one constructor.
-- **Every function documents its time and memory cost.** O(1) vs O(log n)
-  vs amortized O(log^2 n) vs O(n log n) is part of the contract.
-- **Nothing hidden under the hood.** `Prefix` is static O(1), `Fenwick`
-  is O(log n) group sum, `SparseTable` requires idempotence,
+- **Every function documents its time and memory cost.** \(O(1)\) vs \(O(\log n)\)
+  vs amortized \(O(\log^2 n)\) vs \(O(n \log n)\) is part of the contract.
+- **Nothing hidden under the hood.** `Prefix` is static \(O(1)\), `Fenwick`
+  is \(O(\log n)\) group sum, `SparseTable` requires idempotence,
   `DisjointSparseTable` does not, `DualSegTree` skips pulls, `LiChao` is
   dynamic pointer-arena over `lo..=hi`. The type name chooses the
   algorithm and memory layout.
@@ -150,7 +150,7 @@ fn fold<T, M>(m: M, xs: List<T>) -> T  // O(n)
 Addition to `std.algebra`: **`MaxSub`**, the Kadane maximum-subarray
 monoid (closing `cf2255e2.md` and `EXEMPLARS-PORTS.md`). Storing
 `empty: Bool` avoids wrapping every node in `?MaxSub` while keeping
-`MaxSub.empty` as a true identity. All operations are O(1):
+`MaxSub.empty` as a true identity. All operations are \(O(1)\):
 
 ```cp
 /// Maximum non-empty subarray summary (Kadane monoid).
@@ -173,7 +173,7 @@ code.
 
 ### 3.2 `std.prefix` — static prefix, suffix, and difference tables
 
-Static O(1) queries after O(n) or O(r * c) preprocessing, indexed by
+Static \(O(1)\) queries after \(O(n)\) or \(O(r \cdot c)\) preprocessing, indexed by
 `Cut<D>` so off-by-one cut shifts cannot compile.
 
 ```cp
@@ -207,7 +207,7 @@ fn prefix(a)  // dispatches on [D]T, [R, C]T, or List<T>
 ```
 
 Append-only `Prefix.filling(...)` covers DPs that compute each cell while
-querying O(1) prefix or suffix sums of the already-filled part (1D or 2D,
+querying \(O(1)\) prefix or suffix sums of the already-filled part (1D or 2D,
 forward or reverse, migrated in `cf2183f` [2D reverse] and `cf2229e` [1D
 forward]). `.set` traps on out-of-order writes and `.sum`/`.prefix` trap
 on queries touching unfilled cells (empty ranges always return `T.zero`).
@@ -226,8 +226,8 @@ Additions to `std.prefix`:
   Given any range `r: Range<D>`, the fold of everything *outside* `r` is
   simply `m.op(pref[r.start], suff[r.end])` — zero `.ord + 1` arithmetic.
 - **`Diff<D, T>` and `Diff<R, C, T>`**: offline range-add difference
-  arrays that accumulate O(1) `add(...)` calls and materialize `[D]T` or
-  `[R, C]T` in one O(n) / O(r * c) `finish()` pass (eliminating the
+  arrays that accumulate \(O(1)\) `add(...)` calls and materialize `[D]T` or
+  `[R, C]T` in one \(O(n)\) / \(O(r \cdot c)\) `finish()` pass (eliminating the
   manual right-end boundary checks in problems like `cf2084e`).
 
 ```cp
@@ -289,7 +289,7 @@ Additions to `std.fenwick`:
   than adding `range_add` onto `Fenwick` enforces the invariant: you can
   never accidentally call `sum(r)` on a difference tree.
 - **`RangeFenwick<D, T>`**: range-add and range-sum over `Int` using two
-  Fenwick arrays (`d[i]` and `i * d[i]`), O(log n) with ~2n memory and
+  Fenwick arrays (`d[i]` and `i * d[i]`), \(O(\log n)\) with ~2n memory and
   far smaller constant factor than `LazySegTree<D, Int>(AddSum)`.
 
 ```cp
@@ -382,13 +382,13 @@ fn affine_sum<T>() -> Action<T, (T, T)>   // generic (Int, Mod<P>)
 
 Note on **non-pushing / commutative dual trees**: when `compose` is
 commutative (e.g., range `max=` or range `+=`), a dual tree does not even
-need top-down `push` — `apply` composes onto O(log n) canonical nodes and
+need top-down `push` — `apply` composes onto \(O(\log n)\) canonical nodes and
 `get` composes up the root path. `DualSegTree` pushes top-down by default
 so non-commutative actions (like `assign` and `cf2255e2`'s history tags)
 are always sound without a trap; commutative range-add belongs to
 `DualFenwick`.
 
-### 3.6 `std.sparse` — O(1) static range tables
+### 3.6 `std.sparse` — \(O(1)\) static range tables
 
 ```cp
 // Existing: O(n log n) build, O(1) query; op must be associative and idempotent
@@ -407,10 +407,10 @@ struct DisjointSparseTable<D, T>(op: (T, T) -> T)
 suffix folds left of `mid` and prefix folds right of `mid` at each level.
 Any query `[lo, hi)` of length > 1 splits cleanly at the unique level
 `bit_width(lo ^ (hi - 1)) - 1`, answering non-idempotent static queries
-(`Mod<P>` products, `Mat<T>` products, `MaxSub`) in O(1) without needing
+(`Mod<P>` products, `Mat<T>` products, `MaxSub`) in \(O(1)\) without needing
 inverses.
 
-### 3.7 `std.window` — O(1) amortized sliding-window folds
+### 3.7 `std.window` — \(O(1)\) amortized sliding-window folds
 
 Promoted from `examples/local-lib/ds/mono_deque.cp` and
 `two_stack_fold.cp`:
@@ -443,7 +443,7 @@ These cover the remaining Div. 1 / ICPC range structures with the same
 domain-safe, cost-documented conventions.
 
 **Merge-sort tree (`std.mergesort` or `std.range`):** static `[D]T`,
-O(n log n) build and memory, O(log^2 n) queries for counting or locating
+\(O(n \log n)\) build and memory, \(O(\log^2 n)\) queries for counting or locating
 values inside a range:
 
 ```cp
@@ -457,7 +457,7 @@ struct MergeSortTree<D, T>
 
 **Dynamic / sparse segment tree (`SparseSegTree<T>`):** coordinate-free
 point-update / range-fold over an integer interval `lo..hi` (up to
-`10^18`), creating O(log W) nodes per update (`W = hi - lo`):
+`10^18`), creating \(O(\log W)\) nodes per update (`W = hi - lo`):
 
 ```cp
 struct SparseSegTree<T>(m: Monoid<T>, lo: Int, hi: Int)
@@ -490,7 +490,7 @@ struct RangeKth<D>                                 // static range order stats
 ```
 
 **Li Chao tree (`std.lichao`):** promotes `examples/local-lib/ds/li_chao.cp`
-and adds segment insertion (`add_segment`, O(log^2 W)) and optional
+and adds segment insertion (`add_segment`, \(O(\log^2 W)\)) and optional
 `max` mode:
 
 ```cp
@@ -513,8 +513,8 @@ struct LiChaoTag<V>(lo: Int, hi: Int)
 
 **Segment-tree beats (`std.beats`):** promotes and generalizes
 `examples/local-lib/ds/chmin_segtree.cp` to full Ji Driver beats
-(`chmin`, `chmax`, `add` with `sum`, `min`, `max`), amortized O(log^2 n)
-per operation, O(n) memory:
+(`chmin`, `chmax`, `add` with `sum`, `min`, `max`), amortized \(O(\log^2 n)\)
+per operation, \(O(n)\) memory:
 
 ```cp
 struct BeatsSegTree<D>

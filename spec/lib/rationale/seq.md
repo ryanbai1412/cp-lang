@@ -35,7 +35,7 @@ against KACTL, AtCoder Library, and an empirical audit of two local corpora:
      decomposition, and nearest-smaller/larger monotone-stack loops with `-1`/`n`
      sentinels.
    - Missing `bsearch_real`, `ternary_max`/`ternary_min`, `first_gt`/`last_lt`
-     on sequences and `Compressed`, `rotate_right`, and O(1)-space in-place
+     on sequences and `Compressed`, `rotate_right`, and \(O(1)\)-space in-place
      `rotate_left` (`cf2207h3`; the old `rotate_left` copied the whole list).
 
 Across KACTL, AtCoder Library, and Codeforces editorials, eight cohesive
@@ -83,14 +83,14 @@ ports.
 neighbours (`chunk_by`, `run_ranges`, `pairs`, `with_prev`, `cyclic_pairs`,
 `excl_fold`) is a `yields` generator. In particular, `chunk_by` and
 `run_ranges` yield `Range<D>` rather than copied `List<T>` slices, so a caller
-gets `r.len` in O(1), `a[r.first!]` in O(1), and `for i in r:` with zero
+gets `r.len` in \(O(1)\), `a[r.first!]` in \(O(1)\), and `for i in r:` with zero
 allocations, and only copies if it explicitly writes `a[r]`.
 
 **Costs are visible.** In-place mutators take `mut a` (`sort`, `reverse`,
 `dedup`, `rotate_left`, `rotate_right`, `nth_element`, `next_permutation`,
-`prev_permutation`) and use O(1) extra space. Value-returning twins are past
+`prev_permutation`) and use \(O(1)\) extra space. Value-returning twins are past
 participles (`sorted`, `reversed`, `deduped`, `resized`) and clearly document
-their O(n) allocation.
+their \(O(n)\) allocation.
 
 **Sentinels are banned.** Extrema on possibly-empty inputs return `?T` or `?D`;
 sorted lookups return `?D`; nearest-smaller/larger tables return `[D]?D`;
@@ -137,7 +137,7 @@ Laws:
 ### 3.2 Sorting, selection, merging, and in-place reordering
 
 Builtins provide `sort(mut xs, by:, desc:)` and `sorted(xs, by:, desc:)`
-(O(n log n)); `std.algebra.desc(x)` reverses individual tuple fields in `by:`.
+(\(O(n \log n)\)); `std.algebra.desc(x)` reverses individual tuple fields in `by:`.
 `std.seq` adds:
 
 ```cp

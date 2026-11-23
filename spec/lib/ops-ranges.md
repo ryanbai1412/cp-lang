@@ -286,7 +286,7 @@ fold it makes sense for, and the pairing is checked:
 | Action | On `+` | On `min` / `max` | On other ops |
 |---|---|---|---|
 | `add` | `x + f * n` | `x + f` | error: no `impl` |
-| `assign` | `f * n` | `f` | `f` folded `n` times with `op` (O(log n)) |
+| `assign` | `f * n` | `f` | `f` folded `n` times with `op` (\(O(\log n)\)) |
 | `affine` | `a * x + b * n` | error: not monotone | error |
 | `flip` | swaps `now` / `flipped` of a `Flip<T>` | same | same |
 
@@ -349,11 +349,11 @@ The same values fold any `Seq`, with no structure:
 
 | Form | Meaning | Cost |
 |---|---|---|
-| `xs.fold(op)` | left to right; `T` for a `Monoid`, `?T` for an `Op` | O(n) |
-| `xs.sum()`, `xs.prod()` | `fold(+)`, `fold(*)` | O(n) |
-| `xs.min()`, `xs.max()`, `xs.min(by:)` | `fold(min)` and friends; `?T`, `None` when empty | O(n) |
-| `xs.scan(op)` | a `Prefix<D, T>`: the n + 1 exclusive folds, indexed by cuts (ch. 7) | O(n) |
-| `pow(x, k, op = *)` | `x` folded with itself `k` times by squaring | O(log k) ops |
+| `xs.fold(op)` | left to right; `T` for a `Monoid`, `?T` for an `Op` | \(O(n)\) |
+| `xs.sum()`, `xs.prod()` | `fold(+)`, `fold(*)` | \(O(n)\) |
+| `xs.min()`, `xs.max()`, `xs.min(by:)` | `fold(min)` and friends; `?T`, `None` when empty | \(O(n)\) |
+| `xs.scan(op)` | a `Prefix<D, T>`: the n + 1 exclusive folds, indexed by cuts (ch. 7) | \(O(n)\) |
+| `pow(x, k, op = *)` | `x` folded with itself `k` times by squaring | \(O(\log k)\) ops |
 
 `pow` is the one fast power (`x ** k` is its operator spelling, through `Pow`): numbers, `Mod<P>`, matrices under any
 semiring, permutations (`op: compose`), `Affine` maps, and any user monoid.
@@ -375,13 +375,13 @@ operations support it:
 | `s[i]` | the value at `i` | |
 | `s[i] = x`, `s[i] += y` | point write, through a `lends mut` place | point updates |
 | `s.fold(r)` | fold of `Range<D>` `r`, left to right | `T` for a `Monoid`, `?T` for an `Op` |
-| `s.all` | fold of everything, O(1) | `Monoid` |
+| `s.all` | fold of everything, \(O(1)\) | `Monoid` |
 | `s.prefix(c)` | fold of everything before cut `c` | |
 | `s.apply(r, f)`, `s.apply_all(f)` | apply tag `f` to every position in `r` | `act:` |
 | `s.right_while(from: c, ok)` | the last cut `d` with `ok(s.fold(c..d))`, `ok` monotone | `Monoid` |
 | `s.left_while(to: c, ok)` | the first cut `d` with `ok(s.fold(d..c))` | `Monoid` |
-| `s.clear()` | every leaf back to `fill` (or the identity), pending tags dropped, O(n) | |
-| `for (i, x) in s.items` | every position and value, O(n) | |
+| `s.clear()` | every leaf back to `fill` (or the identity), pending tags dropped, \(O(n)\) | |
+| `for (i, x) in s.items` | every position and value, \(O(n)\) | |
 
 - `right_while` and `left_while` return cuts, like `bsearch` in round 1.
   They replace `max_right` and `min_left`.
@@ -394,17 +394,17 @@ operations support it:
 
 | Job | Structure | Build | Query | Strategy picked by laws |
 |---|---|---|---|---|
-| point write, range fold | `SegTree(op, a)` | O(n) | O(log n) | |
-| range apply, range fold | `SegTree(op, a, act:)` | O(n) | O(log n) | tags `Commutative`: no push-down |
-| range apply, point read | `SegTree(a: a, act:)` | O(n) | O(log n) | tags `Commutative`: no push-down |
-| static fold | `SparseTable(op, a)` | O(n log n) | O(1) | `Idempotent`: overlapping halves; else `DisjointSparseTable(op, a)` |
-| static prefix / range sum | `Prefix(a)` | O(n) | O(1) | `+` only: `prefix(c)`, `fold(r)`; other ops scan with `a.scan(op)` |
-| dynamic prefix / range sum | `Fenwick(a)` | O(n) | O(log n) | `+`/`-` only: `fold(r)`; other ops use `SegTree` |
-| sliding window fold | `Window(op)` | | O(1) amortized | `Selective`: monotone deque; else two stacks |
-| offline range add | `Diff` | | O(1) per `add(r, x)`, O(n) finish | `+`/`-` only |
-| old versions | `PersistentSegTree(op, a)`, `PersistentLazySegTree(op, a, act:)` | O(n) | O(log n) | as `SegTree` |
-| huge index range | `SegTree(op, over: lo..hi)` | O(1) | O(log range) | nodes made on first touch |
-| chmin/chmax with sums | `BeatsSegTree(a)` | O(n) | O(log² n) amortized | its own structure |
+| point write, range fold | `SegTree(op, a)` | \(O(n)\) | \(O(\log n)\) | |
+| range apply, range fold | `SegTree(op, a, act:)` | \(O(n)\) | \(O(\log n)\) | tags `Commutative`: no push-down |
+| range apply, point read | `SegTree(a: a, act:)` | \(O(n)\) | \(O(\log n)\) | tags `Commutative`: no push-down |
+| static fold | `SparseTable(op, a)` | \(O(n \log n)\) | \(O(1)\) | `Idempotent`: overlapping halves; else `DisjointSparseTable(op, a)` |
+| static prefix / range sum | `Prefix(a)` | \(O(n)\) | \(O(1)\) | `+` only: `prefix(c)`, `fold(r)`; other ops scan with `a.scan(op)` |
+| dynamic prefix / range sum | `Fenwick(a)` | \(O(n)\) | \(O(\log n)\) | `+`/`-` only: `fold(r)`; other ops use `SegTree` |
+| sliding window fold | `Window(op)` | | \(O(1)\) amortized | `Selective`: monotone deque; else two stacks |
+| offline range add | `Diff` | | \(O(1)\) per `add(r, x)`, \(O(n)\) finish | `+`/`-` only |
+| old versions | `PersistentSegTree(op, a)`, `PersistentLazySegTree(op, a, act:)` | \(O(n)\) | \(O(\log n)\) | as `SegTree` |
+| huge index range | `SegTree(op, over: lo..hi)` | \(O(1)\) | \(O(\log \mathit{range})\) | nodes made on first touch |
+| chmin/chmax with sums | `BeatsSegTree(a)` | \(O(n)\) | \(O(\log^2 n)\) amortized | its own structure |
 
 A tree built with `act:` and no fold op reads one point at a time: `st[k]` is
 `a[k]` with every `apply` whose range covers `k` composed onto it, in the order
@@ -433,7 +433,7 @@ still visible. `act:` in the constructor is where tag memory appears, and
 `cpl explain` shows the layout.
 
 `Fenwick2D<R, C, T>` is point add and rectangle sum over a grid
-(O(log R log C)); `Line(k, m)` is the `k x + m` that `LiChao` and
+(\(O(\log R \log C)\)); `Line(k, m)` is the `k x + m` that `LiChao` and
 `MonotoneHull` store.
 
 ## 9. Specialization
@@ -443,13 +443,13 @@ Ryan's example is that lazy propagation is unnecessary when tags commute.
 **Without push-down.** If the tags' monoid is `Commutative` (`add` on
 `max`, `add` on `+`, `xor` flips), the order in which a node's ancestors'
 tags apply doesn't matter.
-- `apply(r, f)` leaves `f` on the O(log n) covering nodes and updates the
+- `apply(r, f)` leaves `f` on the \(O(\log n)\) covering nodes and updates the
   folds on their ancestors.
 - `fold(r)` adds up the tags on each covering node's path from the root as
   it climbs.
 - Nothing is ever pushed down. That is about half the memory traffic of a
-  propagating tree, with the same O(log n) bound and the same answers.
-- A point write `s[i] = x` still pushes along its one path, O(log n).
+  propagating tree, with the same \(O(\log n)\) bound and the same answers.
+- A point write `s[i] = x` still pushes along its one path, \(O(\log n)\).
 
 **How a library writes it.** A generic body can test a bound, and the test
 is decided when the fn is instantiated:
@@ -495,10 +495,10 @@ method exists when the op is a `Group`.
 
 | Structure | With a `Group` |
 |---|---|
-| `Prefix(a)` (`+` only) | `fold(r)` in O(1) |
-| `Fenwick(a)` (`+` only) | `fold(r)` in O(log n); `s[i] = x` (read, then add the difference) |
-| `Window(op)` | `pop()` subtracts: O(1) worst case, no second stack |
-| `Diff` (`+` only) | `add(r, x)` offline in O(1), then `finish()` in O(n) |
+| `Prefix(a)` (`+` only) | `fold(r)` in \(O(1)\) |
+| `Fenwick(a)` (`+` only) | `fold(r)` in \(O(\log n)\); `s[i] = x` (read, then add the difference) |
+| `Window(op)` | `pop()` subtracts: \(O(1)\) worst case, no second stack |
+| `Diff` (`+` only) | `add(r, x)` offline in \(O(1)\), then `finish()` in \(O(n)\) |
 | `Potentials(op)` | union-find with relative values (below) |
 
 **Union-find with potentials.** "Value of `b` is value of `a` plus `w`"
@@ -529,7 +529,7 @@ structure with that pair.
 - **Sqrt blocks** are `Blocks(op, a, act:, size:)` with exactly the
   `SegTree` vocabulary. They exist for operations with no cheap
   composition (e.g. "sort this block", rebuild per block) and for the
-  O(1)-update, O(sqrt n)-query trade.
+  \(O(1)\)-update, \(O(\sqrt{n})\)-query trade.
 - **Offline divide and conquer over time** (`timetree.cp`) takes any
   structure with `mark`/`undo_to`.
 ## 12. Trees and DP
@@ -570,9 +570,9 @@ convolve(a, b, over: Semiring(max, +), concave: .b)   // max-plus, b concave
   with an NTT prime uses NTT; any other `Mod` or `Int` uses three primes and
   CRT; `F64` uses FFT. `cpl explain` names it.
 - `over:` other than `Semiring(+, *)` has no fast transform in general, so
-  it requires a stated shape (`concave: .b` gives the O(n log n) SMAWK
+  it requires a stated shape (`concave: .b` gives the \(O(n \log n)\) SMAWK
   path; debug checks the shape). Without one it is an error, not a hidden
-  O(n²).
+  \(O(n^2)\).
 - `cyclic: true`, and `convolve_all(polys)` for many at once, stay.
 ## 14. Cost model
 

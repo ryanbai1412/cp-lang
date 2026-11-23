@@ -100,7 +100,7 @@ each vertex was reached. Failure is an optional (`topo` is `None` on a
 cycle), never a sentinel.
 
 **Costs are written on every function**, in terms of n = |V|, m = number of
-arcs examined, and the cost of one call to a user closure counted as O(1).
+arcs examined, and the cost of one call to a user closure counted as \(O(1)\).
 
 ## 3. The API
 

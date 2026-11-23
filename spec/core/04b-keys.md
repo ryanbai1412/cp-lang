@@ -25,7 +25,7 @@ in user helpers and in library code.
 4. **Ends and relative reads are named.**
    - `w.first` and `w.last` are the first and last elements (`?T`).
    - `w.nth(k)` is the element `k` steps from the start. It is 0-based,
-     O(1), and traps past the end.
+     \(O(1)\), and traps past the end.
    - `w.keys.nth(k)` is the k-th key, because a range is an indexed
      sequence too. (R04b.1.4)
 5. **An array can cover any run of keys.** `[r]T` for a range `r` of `K` is
@@ -38,14 +38,14 @@ in user helpers and in library code.
    - To keep `w`'s keys, build a table over them: `[w.keys] k => w[k]`.
      (R04b.1.6)
 7. **A sequence can get a domain of its own.**
-   - `w.rebase` is an O(1) getter returning a `Rebased<S>` view keyed by a fresh domain `0..w.len` that
+   - `w.rebase` is an \(O(1)\) getter returning a `Rebased<S>` view keyed by a fresh domain `0..w.len` that
      belongs to `w` alone (the `[domain]T` package of 2.14). Binding it with
      `let t = w.rebase` names the domain `t.Idx`.
    - `t.Idx` has every domain power: `Int(i)`, `t.Idx(k)`, `t.Idx.wrap(x)`,
      `[t.Idx]U` tables. Its keys can't be mixed with the source's or with
      another rebase's.
    - `a.rekey(r)` is the inverse: the same cells re-keyed onto a range `r`
-     of equal length, O(1), trapping on a length mismatch. Library code uses
+     of equal length, \(O(1)\), trapping on a length mismatch. Library code uses
      it to hand results back in the caller's keys. (R04b.1.7)
 
 Diagnostics:
@@ -200,7 +200,7 @@ only that container, because the callee may grow it (`push`, `pop`,
 `clear` need the concrete type). `fn f(xs: List<Int>)` called with
 `s[3..7]` is a type error with two fixes:
 - make `f` generic as above, using `first`, `nth` and `items`; (R04b.3.1)
-- call `f(List(w))`, an O(len) copy keyed from 0. (R04b.3.2)
+- call `f(List(w))`, an \(O(\mathit{len})\) copy keyed from 0. (R04b.3.2)
 
 ## Library code
 
@@ -252,7 +252,7 @@ pub fn scan<K, T>(self: [K]T, f: (T, T) -> T, from: ?T = None) -> Prefix<K, T> =
 | A table over exactly `s`'s keys | `[s.keys]x` | `[K]T` valid on `s.keys` (R04b.4.2) |
 | A private 0-based index space for `s` | `let t = s.rebase` | view over fresh `t.Idx` (R04b.4.3) |
 | An owned list as a domain array | `let (domain I, b) = xs.with_domain()` | `[I]T` that owns its cells (R04b.4.4) |
-| Results back in the caller's keys | `table.rekey(s.keys)` | O(1) re-key (R04b.4.5) |
+| Results back in the caller's keys | `table.rekey(s.keys)` | \(O(1)\) re-key (R04b.4.5) |
 
 ## Spec changes this implies
 

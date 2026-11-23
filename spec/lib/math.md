@@ -53,11 +53,11 @@ building block.
 
 Second, **primality, sieves, factorization and multiplicative functions**:
 three distinct cost regimes appear in contests. For many queries up to
-`n <= 2e7`, a linear sieve (`Sieve(n)`) gives `O(1)` primality, `O(log x)`
-factorization, and `O(d(x))` divisor enumeration, plus `O(n)` tables of any
+`n <= 2e7`, a linear sieve (`Sieve(n)`) gives \(O(1)\) primality, \(O(\log x)\)
+factorization, and \(O(d(x))\) divisor enumeration, plus \(O(n)\) tables of any
 multiplicative function (`phi`, `mobius`, divisor sums, or custom recurrences
 like `cf2135e2`'s `odd_div_sum`). For a single number up to `1e12`, trial
-division (`factor`, `divisors`, `phi`) is `O(sqrt x)` with no setup. For
+division (`factor`, `divisors`, `phi`) is \(O(\sqrt{x})\) with no setup. For
 numbers up to `2^62`, deterministic 12-base Miller-Rabin (`is_prime`) and
 Pollard's rho with Brent batching (`factor` above `10^6`) handle arbitrary 64-bit
 inputs. Rounding out elementary number theory are `crt` / `crt_all` (general
@@ -74,7 +74,7 @@ value, and prevents mixing two moduli.
 Fourth, **combinatorial counting tables tied to `Mod<P>`**: factorial and
 inverse-factorial tables appear in 25 ecnerwala submissions (`cf2066d2`,
 `cf2084e`, `cf2135e2`, `cf2150g`, etc.). Every such solution wants `fact`,
-`inv_fact`, `inv(i)` in `O(1)`, `choose(n, k)` (with `0` outside `0..=n` and
+`inv_fact`, `inv(i)` in \(O(1)\), `choose(n, k)` (with `0` outside `0..=n` and
 Lucas's theorem when `n >= P`), `arrange`, `multichoose`, `multinomial`, and
 `catalan`, without repeating the modulus literal after `type Z = Mod<P>`.
 
@@ -88,7 +88,7 @@ the algorithm. Both linear
 and cyclic convolutions (`cyclic: true`) occur regularly. Alongside NTT,
 bitwise convolutions (`convolve(a, b, on: |)`, `on: &`, `on: ^`) and
 subset/superset zeta-Mobius transforms (one `sos(a, over: Sub | Sup,
-inverse:)`) cover `O(n 2^n)` bitmask DP.
+inverse:)`) cover `\(O(n 2^n)\)` bitmask DP.
 
 Sixth, **dense matrices and Gaussian elimination**: linear recurrences and
 walk counting (`Mat.pow`, `Mat.apply`), matrix-DP segment trees
@@ -108,8 +108,8 @@ with a `Monoid` combinator eliminates a recurring 20-line template.
 
 Every function documents its cost and its regime. Where two algorithms exist
 for the same mathematical operation, the cost is visible in the name or type:
-`Sieve(n).factor(x)` is `O(log x)` after `O(n)` setup, and standalone
-`factor(x)` is `O(sqrt x)` for `x <= 1e6` and `O(x^(1/4) log x)` expected above.
+`Sieve(n).factor(x)` is \(O(\log x)\) after \(O(n)\) setup, and standalone
+`factor(x)` is \(O(\sqrt{x})\) for `x <= 1e6` and \(O(x^{1/4} \log x)\) expected above.
 
 <!-- spec-only: signatures and costs, not a program -->
 ```cp
@@ -175,7 +175,7 @@ fn sieve_multiplicative<T>(n: Int, prime_pow: (Int, Int, Int) -> T) -> List<T>
 `sieve_multiplicative` takes only `prime_pow`; `T.one` and `*` come from the
 value type, as for every other algebraic default, so `Int`, `Mod<P>` and user
 structs with `One` and `Mul` all work. Two statistics at once use a record
-type with its own `*`. It runs in strict `O(n)` time by tracking the largest
+type with its own `*`. It runs in strict \(O(n)\) time by tracking the largest
 prime-power divisor `low[i]` of each `i`.
 
 ### 2.2 `std.mod`: modular arithmetic and combinatorics
@@ -268,7 +268,7 @@ argument that can go out of sync with `a.len`.
 
 > The names of record are `std/matrix.cp`'s: `Mat.zeros(n, m)`, `Mat.from_rows(rows)`,
 > `rows`/`cols`/`data`, `impl Pow`, and `A.mul_vec(x)` for `A.apply(x)`; there is no
-> `impl Neg`. `XorBasis` holds 63-bit non-negative values; `new` and `add` are O(W).
+> `impl Neg`. `XorBasis` holds 63-bit non-negative values; `new` and `add` are \(O(W)\).
 
 `Mat<T>` stores entries in a single flat row-major `List<T>` of length
 `n * m` so multiplication and elimination stay cache-friendly.
@@ -373,23 +373,23 @@ fn sqrt<P>(a: List<Mod<P>>, n: Int) -> ?List<Mod<P>>
 ```
 
 Cost summary (NTTs of length `N = bit_ceil(n)`):
-- `deriv`, `integral`: `O(n)` time, `0` NTTs (`integral` computes `inv[1..=n]` in `O(n)` via `inv[i] = -(P / i) * inv[P % i]`).
+- `deriv`, `integral`: \(O(n)\) time, `0` NTTs (`integral` computes `inv[1..=n]` in \(O(n)\) via `inv[i] = -(P / i) * inv[P % i]`).
 - `inv`: ~`5` NTTs of size `2m` per doubling (`m = 1, 2, ..., N/2`), geometric total ~`10` NTTs of size `N`.
 - `log`: `inv(a, n)` + 1 `convolve` of length `n` + `deriv`/`integral`.
 - `exp`: Newton doubling calling `log` + 1 `convolve` at each doubling `m -> 2m`.
-- `pow`: `O(n)` normalization + 1 `log` + 1 `exp` + `O(n)` rescaling (no `log k` factor).
-- `sqrt`: 1 `mod_sqrt` (`O(log^2 P)`) + Newton doubling calling `inv` + 1 `convolve` at each doubling.
+- `pow`: \(O(n)\) normalization + 1 `log` + 1 `exp` + \(O(n)\) rescaling (no `log k` factor).
+- `sqrt`: 1 `mod_sqrt` (\(O(\log^2 P)\)) + Newton doubling calling `inv` + 1 `convolve` at each doubling.
 
 ### 2.6 Everyday integer helpers (all in the prelude)
 
 | Form | Meaning | Cost |
 |---|---|---|
-| `ceil_div(a, b)`, `x.divmod(d)` | ceiling division; Euclidean `(q, r)` with `0 <= r < abs(d)` | O(1) |
-| `x.digits(base:)`, `x.to_str(base:)` | digits lowest first; the written form, highest first | O(log x) |
-| `x.sign` | the side of zero, a `Sign` | O(1) |
-| `floor_quotients(n, from: 1)` | each distinct `n / i` for `i >= from`, with its run of `i`, `(q, lo, hi)` | O(sqrt n) |
-| `Ratio(p, q)` | an exact reduced rational | O(log) per op |
-| `coef.eval(x)` | a polynomial at `x` over any ring, by Horner | O(len) |
+| `ceil_div(a, b)`, `x.divmod(d)` | ceiling division; Euclidean `(q, r)` with `0 <= r < abs(d)` | \(O(1)\) |
+| `x.digits(base:)`, `x.to_str(base:)` | digits lowest first; the written form, highest first | \(O(\log x)\) |
+| `x.sign` | the side of zero, a `Sign` | \(O(1)\) |
+| `floor_quotients(n, from: 1)` | each distinct `n / i` for `i >= from`, with its run of `i`, `(q, lo, hi)` | \(O(\sqrt{n})\) |
+| `Ratio(p, q)` | an exact reduced rational | \(O(\log)\) per op |
+| `coef.eval(x)` | a polynomial at `x` over any ring, by Horner | \(O(\mathit{len})\) |
 | `Curved` | the `shape:` of a non-`(+, *)` `convolve` (`Both`, `Right`, `Neither`) | — |
 
 ## 3. Laws and invariants
@@ -409,7 +409,7 @@ Every module enforces its mathematical laws in `@test`:
   `gcd(x.v, P) == 1`; `Comb<P>.choose` satisfies Pascal's identity and
   Lucas's theorem; `fact(n) * inv_fact(n) == one`; `inv(i) * Mod(i) == one`.
 - `std.ntt`: `ntt(mut a, inverse: true)` is the exact inverse of `ntt(mut a)`;
-  `convolve` agrees with the naive `O(n m)` loop for every value type, `on:`
+  `convolve` agrees with the naive \(O(n m)\) loop for every value type, `on:`
   and `over:`, both `cyclic: false` and `cyclic: true`; `sos(inverse: true)`
   inverts `sos`.
 - `std.poly`: `convolve(a, inv(a, n))[0..n] == [1, 0, ...]`; `exp(log(a, n), n) == a[0..n]`
@@ -589,7 +589,7 @@ binary exponentiation vanish.
 
 Given an array `a[1..=n]` (`n <= 5e5`) and `q` range queries `[l, r]`, print
 the maximum XOR of any subset of `a[l..=r]`. A `SegTree` over `XorBasis`
-answers each query in `O(log n * 62)` (or offline prefix bases in `O(62)`).
+answers each query in \(O(\log n \cdot 62)\) (or offline prefix bases in \(O(62)\)).
 
 ```cp
 // XorBasis forms a monoid under merge, so a SegTree answers range max-XOR

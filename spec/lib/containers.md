@@ -25,7 +25,7 @@ disjoint runs are `IntervalSet` and `IntervalMap`; connectivity is `Dsu`
 and its variants (`ParityDsu`, `PotentialDsu`, `PersistentDsu`); a
 priority queue is one `Heap(by:)`, with `IndexedHeap` when priorities
 change; `Deque`, `Bitset` and `DynBitset` cover the rest of the common
-shapes. `Marks` resets in O(1) per test, `FlatMap` and `Counter` hash,
+shapes. `Marks` resets in \(O(1)\) per test, `FlatMap` and `Counter` hash,
 and `Compressed` maps raw values onto a domain so later tables are
 dense arrays (`core/04-indices.md`). The survey below says which contest
 jobs drove each choice; `RATIONALE.md` lists the decisions.
@@ -42,12 +42,12 @@ Contestants reach for ordered balanced trees for four distinct jobs:
 
 - **Neighbour queries and local walks.** Given a dynamic set or multiset, find
   the predecessor/successor (`last_lt`, `first_gt`) and walk a few steps
-  forward or backward in O(1) amortized per step. In `cf2066e_orig.cpp`,
+  forward or backward in \(O(1)\) amortized per step. In `cf2066e_orig.cpp`,
   ecnerwala keeps `std::set<std::pair<int, int>>` (adding a unique id to get a
-  multiset with O(1) erase and unique handles) and walks `rbegin()` downwards
+  multiset with \(O(1)\) erase and unique handles) and walks `rbegin()` downwards
   up to `sqrt(M)` steps while also reading `std::prev(it)` and `std::next(it)`
-  on every insert and erase. Without O(1) cursors, each step re-walks from the
-  root, turning O(q sqrt(M)) into O(q sqrt(M) log n) — a 6.11x slowdown and TLE
+  on every insert and erase. Without \(O(1)\) cursors, each step re-walks from the
+  root, turning \(O(q \sqrt{M})\) into \(O(q \sqrt{M} \log n)\) — a 6.11x slowdown and TLE
   in `research/frictions/cf2066e.md`.
 - **Order statistics.** `rank(k)` (count of elements `< k`), `nth(i)` (0-based
   k-th smallest), and `count_range(lo, hi)`. KACTL provides `OrderStatisticTree`
@@ -55,9 +55,9 @@ Contestants reach for ordered balanced trees for four distinct jobs:
   `ccc05s5`, `cf2262b` all need order statistics.
 - **Monotone predicate search on the tree.** In `cf2262b`, the prefix maxima
   increase in both position and value, so one ordered set answers "first
-  maximum whose value exceeds `s`" in O(log n) without keeping a second `Map`
+  maximum whose value exceeds `s`" in \(O(\log n)\) without keeping a second `Map`
   and a `Fenwick` in sync (`research/frictions/cf2262b.md`).
-- **Small-to-large merging.** `take()` in O(1) plus `swap` and draining the
+- **Small-to-large merging.** `take()` in \(O(1)\) plus `swap` and draining the
   smaller container into the larger.
 
 Builtin `Set<T>` and `Map<K, V>` cover basic ordered sets/maps (lowering to
@@ -73,7 +73,7 @@ with order statistics and cursors are needed.
 Painting ranges of a 1D array or HLD chains with a value/timestamp and
 processing every overwritten run `(range, old_val)` is ubiquitous in CF Div. 1
 and ICPC (color-overwrite sweeps, HLD path paint as in `cf2237h`, active-segment
-maintenance, amortized O((n + q) log n) total runs created and destroyed).
+maintenance, amortized \(O((n + q) \log n)\) total runs created and destroyed).
 
 In `cf2237h.cp` (`research/frictions/cf2237h.md`), hand-rolling this over
 `Map<Int, (r: Int, t: Time)>` takes ~25 lines of fragile `split(l)`, `split(r)`,
@@ -91,9 +91,9 @@ files, including `cf2069f`, `cf2222f`, `cf2237h`, `cf2150f`, `wtf26a`), four
 variants recur:
 
 - **Plain DSU with optional rollback (`Dsu<V>`).** Fast path halving
-  O(alpha(n)) when `mark()` is never called; switches to union-by-size without
-  path compression O(log n) once `mark()` is called so `undo_to(snap)` restores
-  exact state in O(1) per undone unite.
+  \(O(alpha(n))\) when `mark()` is never called; switches to union-by-size without
+  path compression \(O(\log n)\) once `mark()` is called so `undo_to(snap)` restores
+  exact state in \(O(1)\) per undone unite.
 - **Payload-carrying DSU (`DsuOf<V, T>`).** Each component carries a `T`
   combined by `join(val_a, val_b)` in argument order `(a, b)` regardless of
   which root union-by-size keeps. This covers both commutative aggregates (sum,
@@ -113,21 +113,21 @@ variants recur:
 
 > Superseded by `std/heap.cp`: one type per shape (`Heap`, `ErasableHeap`,
 > `IndexedHeap`, `MeldHeap`) with `by:`; `MinHeap`/`MaxHeap` are aliases of
-> `Heap`, `peek` returns an unnamed `?(D, K)`, and `of(xs, by:)` builds in O(n).
+> `Heap`, `peek` returns an unnamed `?(D, K)`, and `of(xs, by:)` builds in \(O(n)\).
 
 `MinHeap<T>` and `MaxHeap<T>` (chosen by name, never a hidden comparator flag;
 mixed tie-breaking via `Desc<T>`) cover standard priority queues, Dijkstra, and
 greedy scheduling. Three gaps appear across contests:
 
-- **O(n) bottom-up construction (`of(xs)`).** Floyd's heapify builds a heap in
-  O(n) instead of O(n log n) pushes.
+- **\(O(n)\) bottom-up construction (`of(xs)`).** Floyd's heapify builds a heap in
+  \(O(n)\) instead of \(O(n \log n)\) pushes.
 - **Arbitrary removal (`ErasableMinHeap<T>`, `ErasableMaxHeap<T>`).** The
-  two-heap lazy-deletion idiom (`live` + `dead`) gives O(log n) amortized
+  two-heap lazy-deletion idiom (`live` + `dead`) gives \(O(\log n)\) amortized
   `remove(x)` at binary-heap constant factor (2–3x faster and far less memory
   than a balanced tree when only min/max is needed).
 - **Keyed decrease/update-key (`IndexedMinHeap<D, T>`, `IndexedMaxHeap<D, T>`).**
-  Over a domain `D`, maps each active key `d: D` to a priority `T` with O(log n)
-  `set(d, val)`, `remove(d)`, `pop() -> ?(D, T)`, and O(1) `get(d) -> ?T` /
+  Over a domain `D`, maps each active key `d: D` to a priority `T` with \(O(\log n)\)
+  `set(d, val)`, `remove(d)`, `pop() -> ?(D, T)`, and \(O(1)\) `get(d) -> ?T` /
   `contains(d)`. Avoids stale-entry memory blowup in dense Dijkstra/Prim and
   dynamic scheduling.
 - **One pop per key (`Settle<K, P>(best: min)`).** `offer(k, p)` keeps the
@@ -137,33 +137,33 @@ greedy scheduling. Three gaps appear across contests:
 
 ### 1.5 Deques and sliding-window queues
 
-`Deque<T>` is a ring buffer with O(1) amortized ends and O(1) random access
+`Deque<T>` is a ring buffer with \(O(1)\) amortized ends and \(O(1)\) random access
 (`get`, `set`, `first`, `last(k)`). Two classic contest structures sit directly
 beside it in `examples/local-lib/ds/`:
 
-- **`MonoDeque<T>`** — sliding-window minimum or maximum in O(1) amortized per
+- **`MonoDeque<T>`** — sliding-window minimum or maximum in \(O(1)\) amortized per
   element (`push(at, val)`, `drop_before(min_at)`, `best`). Used in sliding-window
   DP, convex/Monge DP (`cf2183h`), and range-min sweeps.
-- **`TwoStackFold<T>`** — FIFO queue with O(1) `fold` over any `Monoid<T>`
+- **`TwoStackFold<T>`** — FIFO queue with \(O(1)\) `fold` over any `Monoid<T>`
   without requiring an inverse (gcd, bitwise OR, matrix products).
 
 ### 1.6 Bitsets
 
 `Bitset<D>` packs a set of positions of domain `D` into 64-bit words for
-O(K / 64) set algebra and shift DP (`cf2147h`, `cf2187d`, `ioi04p5`, `yac1p4`).
+\(O(K / 64)\) set algebra and shift DP (`cf2147h`, `cf2187d`, `ioi04p5`, `yac1p4`).
 Four friction points surfaced in ports:
 
 - **Knapsack performance trap (`cf2187d`).** The obvious loop
   `for w in ws: reach.union(reach.shifted(w))` allocates a fresh `Bitset` per
-  step and is O(n * W / 64) — 10x slower than the C++ original on 100k equal
+  step and is \(O(n \cdot W / 64)\) — 10x slower than the C++ original on 100k equal
   weights. Two fixes belong together: an in-place non-allocating
   `shift_or(k)` / `shift_up(k)` for custom shift DPs, and a stdlib
   `Bitset<D>.subset_sums(weights)` that applies the folklore binary carry (turning
-  duplicate weights into O(sqrt(sum)) items in O(K sqrt(S) / 64)).
+  duplicate weights into \(O(\sqrt{\mathit{sum}})\) items in \(O(K \sqrt{S} / 64)\)).
 - **Word-level negative shifts.** `shifted(-k)` currently loops bit-by-bit in
-  O(K) instead of word-by-word in O(K / 64).
+  \(O(K)\) instead of word-by-word in \(O(K / 64)\).
 - **Navigation and range queries.** `first`, `last`, `prev(i)` (completing
-  `next(i)`), `clear()`, and `count_below(i)` (all O(K / 64)).
+  `next(i)`), `clear()`, and `count_below(i)` (all \(O(K / 64)\)).
 - **Non-mutating single-bit helpers and search.** `with(i)`, `without(i)`, and
   `find(pred)` (from `cf2147h.md`, avoiding `var rest = alive; rest.remove(v)`).
 
@@ -182,7 +182,7 @@ when `n >= 2e5` and hash lookups are the bottleneck.
 
 `std.hashmap` provides `FlatMap<V>` (open-addressing linear
 probing over `Int` keys with salted `splitmix64`, power-of-two table, load
-factor <= 0.5, O(1) expected lookup/insert/remove, ~16 bytes/entry vs ~48 bytes
+factor <= 0.5, \(O(1)\) expected lookup/insert/remove, ~16 bytes/entry vs ~48 bytes
 for `std::unordered_map`). It is explicit by name — never silently substituted
 for `HashMap`.
 
@@ -200,11 +200,11 @@ Three complementary patterns appear across contests:
 - **Online bidirectional interning (`std.marks.Interner<K>` or `std.seq`).**
   Assigns dense `0..len` ids to arbitrary keys on the fly (`id`, `get`, `key`,
   `keys`). Promoted from `examples/local-lib/ds/interner.cp`.
-- **O(1)-clear epoch tables (`std.marks.Marks<D>` and `MarkMap<D, T>`).**
-  `Marks<D>` already gives an O(1)-clear visited set over `D` using a 32-bit
-  generation stamp. `MarkMap<D, T>` generalizes it to an O(1)-clear sparse array
+- **\(O(1)\)-clear epoch tables (`std.marks.Marks<D>` and `MarkMap<D, T>`).**
+  `Marks<D>` already gives an \(O(1)\)-clear visited set over `D` using a 32-bit
+  generation stamp. `MarkMap<D, T>` generalizes it to an \(O(1)\)-clear sparse array
   over `D` with a default value `default: T` (`get`, `set`, `contains`,
-  `remove`, `clear` all O(1)), replacing manual epoch arrays in BFS, Dinic, and
+  `remove`, `clear` all \(O(1)\)), replacing manual epoch arrays in BFS, Dinic, and
   per-query DP resets.
 
 ---
@@ -281,7 +281,7 @@ agrees with brute-force 0/1 subset sums on random small weight multisets.
 
 `SortedBag<K>` is backed by a randomized treap over flat arrays with a recycled
 free list (eliminating memory leaks on erase, fixing `cf2066e.md` #2) and parent
-pointers so a `BagCursor` steps to `prev` / `next` in O(1) amortized (fixing
+pointers so a `BagCursor` steps to `prev` / `next` in \(O(1)\) amortized (fixing
 `cf2066e.md` #1). Each node stores `(key, pri, cnt, sub, left, right, parent)`.
 
 <!-- spec-only: signatures and costs, not a program -->
@@ -339,9 +339,9 @@ is false if already present) and exposes the exact same `first_ge`/`first_gt`/
 `Map<Int, I>`, and `Fenwick<I, Int>` into one `SortedSet<I>`).
 
 Why not mutate `SortedBag` through a cursor (`erase(c)`)? Because a treap
-`split`/`merge` is already O(log n) and invalidates structural paths; keeping
+`split`/`merge` is already \(O(\log n)\) and invalidates structural paths; keeping
 cursors read-only handles that remain valid until the next mutation avoids
-dangling-cursor traps while giving O(1) amortized `prev`/`next` and O(1)
+dangling-cursor traps while giving \(O(1)\) amortized `prev`/`next` and \(O(1)\)
 `entries_rev()` walks (which is exactly what `cf2066e` needs).
 
 Laws: `SortedBag` matches a sorted `List<K>` on every op; `nth(rank(k))` is
@@ -553,7 +553,7 @@ struct FlatMap<V>                                        // O(1) expected; open 
 ```
 
 Uses a per-instance random `splitmix64` salt (initialized from `rand`) so
-anti-hash inputs cannot force O(n) probe chains, and backward-shift deletion so
+anti-hash inputs cannot force \(O(n)\) probe chains, and backward-shift deletion so
 tombstones never degrade performance.
 
 ### 2.9 What stays user code
@@ -568,7 +568,7 @@ tombstones never degrade performance.
   now ships in `std.timetree` using `mark`/`apply`/`answer`/`undo` callbacks
   (zero `TimeStep` allocation, 1 mark per tree node, devirtualized in C++).
 - **Two-heap running median**: 6 lines over `MaxHeap` + `MinHeap` (or one
-  `SortedBag.nth(len / 2)` when O(log n) tree cost is fine).
+  `SortedBag.nth(len / 2)` when \(O(\log n)\) tree cost is fine).
 
 ### 2.10 Core features coordinated with the core-extensions lane
 
@@ -591,7 +591,7 @@ None of these are special-cased in stdlib; all are general core improvements:
 Problem: maintain a multiset of barrel volumes under `+ a` / `- a` (`n, q <= 2e5`,
 `a <= 1e6`) and answer whether any `k > 0` has `sum(barrels < k) < k`, at least
 two barrels `>= k`, and every gap between consecutive barrels `>= k` at least `k`.
-Split at `RT = 1000`: walk the top barrels downward in O(1) per step via
+Split at `RT = 1000`: walk the top barrels downward in \(O(1)\) per step via
 `entries_rev()` for large `k`, and track small gaps via `SortedBag` cursors.
 
 ```cp
@@ -728,7 +728,7 @@ print(ans)
 Problem: given string of `0`, `1`, `?` (`n <= 1e5`), compute the sum of all
 distinct final values reachable by filling `?`. After the first `?`, each later
 `?` contributes an optional half-gap whose total sum is `<= m`, so `subset_sums`
-computes all reachable sums in O(m sqrt(m) / 64) without manual binary carries.
+computes all reachable sums in \(O(m \sqrt{m} / 64)\) without manual binary carries.
 
 <!-- spec-only: excerpt of the port; m, half_gaps, end_f, Pos, p0, p1 and Z come from its earlier lines -->
 ```cp
@@ -748,7 +748,7 @@ print(sum(Z(v) for v in cool))
 Problem: reverse removals into insertions; maintain prefix maxima and count how
 many prefix maxima are eaten by champions. `SortedSet<I>` holds the prefix
 maxima in one structure, answering both the monotone value search
-(`bsearch_first`) and range count (`range(r).len`) in O(log n).
+(`bsearch_first`) and range count (`range(r).len`) in \(O(\log n)\).
 
 <!-- spec-only: fragment over the solution's `I`, `a`, `total`, `c` and `stop` -->
 ```cp
@@ -765,8 +765,8 @@ let eaten = tops.range(c.l..stop).len - 1
 
 Problem: answer `components(A) - components(A + B)` after each edge toggle in
 graphs A and B (`n, q <= 4e5`). Two `Dsu<V>` instances share the `Mark`
-protocol (`mark()` / `undo_to(snap)`), switching cleanly from O(alpha(n)) to
-O(log n) rollback on the first mark.
+protocol (`mark()` / `undo_to(snap)`), switching cleanly from \(O(alpha(n))\) to
+\(O(\log n)\) rollback on the first mark.
 
 <!-- spec-only: fragment over the solution's `V`, `T`, `Edge` and `ans` -->
 ```cp

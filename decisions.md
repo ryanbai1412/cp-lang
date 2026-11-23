@@ -7260,3 +7260,6 @@ the cp.toml nearest the current directory instead of the default, so
 Vim's `gq` honours `[fmt]`. Reverse: restore the `"."` default in
 `crates/cpl-fmt/src/cli.rs`.
 
+## 335. Math is LaTeX inside `\( ... \)` (2026-11-22)
+
+Ryan's call, relayed by the coordinator: math in doc comments, the spec and lint records is LaTeX inside `\( ... \)` (`/// cost: \(O(n \log n)\)`). The site renders it with KaTeX at build time, LSP hover and CLI output get a plain-Unicode fallback (`O(n log n)`), and a docs check fails a `cost:` line or math-looking span that isn't valid LaTeX. Spec converted its prose and table cost spans (515 spans, 74 distinct, all accepted by KaTeX 0.16 with `throwOnError`). Sizes use `\lvert x \rvert` so table cells need no `\|`; code blocks keep `// O(n)` comments as source. Lost: plain `O(n)` source, which reads fine raw but can't be typeset or checked. Reverse: strip the delimiters (a mechanical rewrite).

@@ -16,7 +16,7 @@ fixed length (`windows`, `chunks`), equal or linked neighbours (`runs`),
 separators (`split`), the longest or shortest piece satisfying a
 condition at each end (`maximal`, `minimal`), and the piece where an
 element wins (`spans`). How each piece is summarized is an op value from
-round 5, and the op's laws pick the O(1)-per-step strategy, so "sliding
+round 5, and the op's laws pick the \(O(1)\)-per-step strategy, so "sliding
 min", "sliding sum" and "sliding gcd" are one call with different ops.
 State that isn't a fold (distinct counts, a frequency table) implements
 one small protocol, `Track`, which two pointers and Mo's algorithm both
@@ -37,21 +37,21 @@ Everything else is an idiom over these six, shown in section 3.
 
 ## 2. The pieces
 
-All of these are O(1) to make and lazy, read without parentheses only when
+All of these are \(O(1)\) to make and lazy, read without parentheses only when
 they are views (`a.adjacent`), and yield views of `a` keyed by `a`'s
 positions. Each works on any `Indexed` (`[D]T`, `List`, `Str`, a slice).
 
 | Form | Pieces | Cost to walk |
 |---|---|---|
-| `a.windows(k)` | every length-`k` piece, left to right; none if `k > a.len` | O(n) |
-| `a.chunks(k)` | consecutive length-`k` pieces; the last may be shorter | O(n) |
-| `a.runs(by: key)` | maximal pieces of equal `key` | O(n) |
-| `a.runs(link: (x, y) => Bool)` | maximal pieces where every adjacent pair links | O(n) |
-| `a.split(sep: p)` | pieces between elements where `p` holds (separators excluded; empty pieces kept) | O(n) |
-| `a.maximal(state, ok:)` | for each right end, the longest piece ending there that is `ok` | O(n) amortized |
-| `a.minimal(state, ok:)` | for each right end, the shortest piece ending there that is `ok`, or none | O(n) amortized |
-| `a.maximal(state, ok:, anchor: Anchor.Start)` | the same keyed by left end: the longest piece starting at each position | O(n) amortized |
-| `a.spans(by: key)` | for each position, the widest piece where it is the minimum | O(n) |
+| `a.windows(k)` | every length-`k` piece, left to right; none if `k > a.len` | \(O(n)\) |
+| `a.chunks(k)` | consecutive length-`k` pieces; the last may be shorter | \(O(n)\) |
+| `a.runs(by: key)` | maximal pieces of equal `key` | \(O(n)\) |
+| `a.runs(link: (x, y) => Bool)` | maximal pieces where every adjacent pair links | \(O(n)\) |
+| `a.split(sep: p)` | pieces between elements where `p` holds (separators excluded; empty pieces kept) | \(O(n)\) |
+| `a.maximal(state, ok:)` | for each right end, the longest piece ending there that is `ok` | \(O(n)\) amortized |
+| `a.minimal(state, ok:)` | for each right end, the shortest piece ending there that is `ok`, or none | \(O(n)\) amortized |
+| `a.maximal(state, ok:, anchor: Anchor.Start)` | the same keyed by left end: the longest piece starting at each position | \(O(n)\) amortized |
+| `a.spans(by: key)` | for each position, the widest piece where it is the minimum | \(O(n)\) |
 
 <!-- given:
   let s = "aabccc"
@@ -71,14 +71,14 @@ own option because equal-key runs are the common case and need no lambda.
 ### Folding pieces: the sliding fold
 
 A sequence of pieces has `.fold(op)`, which yields one value per piece.
-On `windows(k)` it is the sliding fold, O(1) amortized per window, with
+On `windows(k)` it is the sliding fold, \(O(1)\) amortized per window, with
 the strategy chosen by the op's laws exactly as `Window(op)` chooses it:
 
 | Law of `op` | Strategy | Cost per step |
 |---|---|---|
-| `Group` (`+`, `^`, `Mod` `*` without zero) | add the new element, subtract the old | O(1) worst case |
-| `Selective` (`min`, `max`, `min(by:)`) | monotone deque | O(1) amortized |
-| any `Op` (`gcd`, matrix product, `MaxSub`) | two stacks | O(1) amortized |
+| `Group` (`+`, `^`, `Mod` `*` without zero) | add the new element, subtract the old | \(O(1)\) worst case |
+| `Selective` (`min`, `max`, `min(by:)`) | monotone deque | \(O(1)\) amortized |
+| any `Op` (`gcd`, matrix product, `MaxSub`) | two stacks | \(O(1)\) amortized |
 
 <!-- given:
   let a = [1, 2, 3, 4]
@@ -90,8 +90,8 @@ a.windows(k).fold(gcd).count(g => g > 1)
 ```
 
 On other pieces (`runs`, `chunks`, `split`) `.fold(op)` folds each piece
-directly, which is already O(n) total since they don't overlap. Writing
-`for w in a.windows(k): w.sum()` is O(nk); the lint `window_refold`
+directly, which is already \(O(n)\) total since they don't overlap. Writing
+`for w in a.windows(k): w.sum()` is \(O(\mathit{nk})\); the lint `window_refold`
 suggests `.fold(+)`.
 
 This replaces `sliding_min`, `sliding_max`, `sliding_fold`, `MonoDeque`
@@ -131,7 +131,7 @@ pub fn maximal<D, T, S: Track<T>>(self: [D]T, mut state: S, ok: S -> Bool,
 | `Counter<K>` | count up / down; `.len` is the distinct count | `c.len <= k` |
 | `Bag<T>` (sorted multiset) | insert / erase one | `b.max! - b.min! <= d` |
 | `track(s, add:, remove:)` (a `Tracked`) over any structure `s` | your two closures on `mut s` | a predicate on `t.state` |
-| `undoing(s, add:)` (an `Undoing`) over any `Undo` (`mark`/`undo_to`: rollback `Dsu`, `ParityDsu`, `RollbackArray`) | apply / queue-undo: each element re-applied O(log n) times amortized | `u => not u.state.consistent` |
+| `undoing(s, add:)` (an `Undoing`) over any `Undo` (`mark`/`undo_to`: rollback `Dsu`, `ParityDsu`, `RollbackArray`) | apply / queue-undo: each element re-applied \(O(\log n)\) times amortized | `u => not u.state.consistent` |
 
 <!-- spec-only: fragment over a sequence `a` and its bounds `K`, `k`, `S` -->
 ```python
@@ -143,7 +143,7 @@ let shortest = a.minimal(Window(+), ok: w => w.all >= S).present().min(by: .len)
 
 - **The promise is checked where it is cheap.** Hereditary and upward
   closed are promises like round 5's laws. `cpl stress` compares
-  `maximal`/`minimal` against their O(n²) definition on small inputs, so
+  `maximal`/`minimal` against their \(O(n^2)\) definition on small inputs, so
   a non-monotone `ok` shows up as a counterexample naming the piece.
 - **Mo's algorithm takes the same protocol.** `mo(queries, state, answer:)`
   with `state: Track<T>` replaces `add:`/`remove:` closures; Mo pushes and
@@ -204,7 +204,7 @@ No helper is added for these; each is one or two lines.
 | longest run | `s.runs().max(by: .len)!.len` |
 | adjacent differences | `a.adjacent.map((x, y) => y - x)` |
 | count adjacent pairs with a property | `a.adjacent.count((x, y) => x > y)` |
-| every pair `i < j` (brute force) | `a.pairs()`, O(n²) to walk |
+| every pair `i < j` (brute force) | `a.pairs()`, \(O(n^2)\) to walk |
 | best subarray sum (Kadane) | `a.fold(MaxSub)` (round 5's summary; the same op answers range queries in a `SegTree`) |
 | maximum and how often | `a.fold(MaxCount)` |
 | prefix records | `a.keys.filter(i => a[i] > pre[i.l])` with `pre = a.scan(max)` |
@@ -225,19 +225,19 @@ No helper is added for these; each is one or two lines.
 `a.ring` is a view of `a` read as a cycle: `a.ring.windows(k)` yields the
 `n` windows starting at each position (wrapping), `a.ring.from(i)` walks
 all `n` positions starting at `i`, and every element is still a position
-of `a`. It replaces the "double the array" trick, which costs O(n) memory
+of `a`. It replaces the "double the array" trick, which costs \(O(n)\) memory
 and loses the positions. A wrapping window isn't one range of `a`, so its
 `.keys` is a sequence of positions, not a `Range<D>`: wrapping pieces are
 `RingSlice`s with `start`, `end`, `len` and `keys`. `a.ring.next(i)` and
 `a.ring.prev(i)` step with wrap-around. The positions alone, with no array, are a
 `RingRange<D>`: `a.ring.span(i, k)` is the `k` positions from `i` on, `slice.range` takes them
-from a `RingSlice`, and `pre.cyclic_sum(r)` sums a `Prefix` over one in O(1).
+from a `RingSlice`, and `pre.cyclic_sum(r)` sums a `Prefix` over one in \(O(1)\).
 
 Two pointers wrap too. `a.ring.maximal(state, ok:)` and
 `a.ring.minimal(state, ok:)` return `[D]RingSlice` and `[D]?RingSlice`:
 for each position as the last element, the longest or shortest wrapping
 piece (at most n elements) ending there that is `ok`. They walk two laps,
-so they cost O(n) pushes and pops. Problems about "everything except
+so they cost \(O(n)\) pushes and pops. Problems about "everything except
 `l..=r`" become a ring window from `r` round to `l`:
 
 <!-- spec-only: fragment over the problem's `street`, `m` and `q` -->
@@ -267,8 +267,8 @@ from the front.
 - **Same state protocol.** `Track` is accepted by `maximal`, `minimal`,
   `Sweep` and `mo`; `Window`, `Counter` and `Bag` implement it, and so can
   a user struct.
-- **Costs read off the code.** Making a piece sequence is O(1); walking
-  it is O(n) total for non-overlapping pieces, `windows(k).fold` is O(n),
+- **Costs read off the code.** Making a piece sequence is \(O(1)\); walking
+  it is \(O(n)\) total for non-overlapping pieces, `windows(k).fold` is \(O(n)\),
   and re-folding each window is linted.
 
 ## 5. What goes away

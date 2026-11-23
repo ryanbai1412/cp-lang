@@ -22,13 +22,13 @@ Binary search lives on ranges (round 1). This round adds the rest.
 
 | Form | Meaning | Cost |
 |---|---|---|
-| `r.first_true(ok)`, `r.last_true(ok)`, `r.bsearch(ok, last:)` | round 1 | O(log n) calls |
-| `r.first_true(ok, near: c)` | galloping search from cut `c` outward: cost grows with the distance to the answer | O(log d) calls |
-| `r.peak(by: f)`, `r.valley(by: f)` | an argmax / argmin of `f` unimodal on `r`, `?D`; first on plateaus that don't hide the peak | O(log n) calls |
+| `r.first_true(ok)`, `r.last_true(ok)`, `r.bsearch(ok, last:)` | round 1 | \(O(\log n)\) calls |
+| `r.first_true(ok, near: c)` | galloping search from cut `c` outward: cost grows with the distance to the answer | \(O(\log d)\) calls |
+| `r.peak(by: f)`, `r.valley(by: f)` | an argmax / argmin of `f` unimodal on `r`, `?D`; first on plateaus that don't hide the peak | \(O(\log n)\) calls |
 | `(lo..hi).bsearch(ok, steps: 100)` with `F64` ends | the flip point of a real predicate | `steps` calls |
 | `(lo..hi).peak(by: f, steps: 100)`, `.valley(...)` | real ternary / golden-section search, `F64` | `steps` calls |
-| `parallel_bsearch(qs, r, apply, ok)` | every query's `first_true` over shared monotone updates `r` | O((q + \|r\|) log \|r\|) |
-| `dinkelbach(solve, lo)` | max ratio: `solve(λ)` returns the best `(num, den)` at `λ` | O(log) solves |
+| `parallel_bsearch(qs, r, apply, ok)` | every query's `first_true` over shared monotone updates `r` | \(O((q + \lvert r \rvert) \log \lvert r \rvert)\) |
+| `dinkelbach(solve, lo)` | max ratio: `solve(λ)` returns the best `(num, den)` at `λ` | \(O(\log)\) solves |
 
 `F64` ends make an **interval**: `x in i`, `i.l`, `i.r`, `i.mid`,
 `bsearch`, `peak`, `valley`. It has no elements, so no `for`, `len` or
@@ -88,7 +88,7 @@ if dp[i] min= dp[j] + cost(j..i): from[i] = j
 ```
 
 - **Layers.** A DP over k layers keeps two tables and moves:
-  `repeat k - 1: best = layer(best)`. Assigning a returned table is O(1).
+  `repeat k - 1: best = layer(best)`. Assigning a returned table is \(O(1)\).
 - **Reconstruction** walks the kept argmins: `for c in from.chain(Pos.cuts.last!)`
   yields `c, from[c], from[from[c]], ...` until `None`. `chain` is an
   `[D]?D` method (any parent array: DP choices, BFS back pointers, DSU).
@@ -100,7 +100,7 @@ triangle (n(n+1)/2 slots). Iterating it goes by length, then left end, so a
 piece comes after all its sub-pieces. `r.splits` yields every way to cut `r`
 into two non-empty pieces, as `(left, right)` with `left.r == right.l`: one
 pair per cut strictly inside `r`, so `len - 1` of them, none for one element.
-O(1) to make, nothing allocated; the cut itself is `left.r`. A `Range<V>` goes wherever a
+\(O(1)\) to make, nothing allocated; the cut itself is `left.r`. A `Range<V>` goes wherever a
 `V.ranges` is expected, the way an `Int` goes into a range-typed slot: non-emptiness is a
 contract, proved when it can be and checked in checked builds otherwise, so
 `best(r.drop(1))` needs no conversion. A key of `V.ranges` is non-empty by
@@ -134,7 +134,7 @@ for s in Group.subsets:
 ```
 
 `a.fold_subsets(op)` / `a.fold_supersets(op)` over `[B.subsets]T` are the
-sum-over-subsets transforms, O(2^n · n); with `op` inverse, `unfold_*`.
+sum-over-subsets transforms, \(O(2^n \cdot n)\); with `op` inverse, `unfold_*`.
 
 ### Top-down: `@memo fn`
 
@@ -151,7 +151,7 @@ sum-over-subsets transforms, O(2^n · n); with `op` inverse, `unfold_*`.
   Int, else it's a compile error naming the parameter. Memory is the
   product of the sizes (here 19 × 2 × 163 slots), allocated when the
   enclosing block starts; `cpl explain` prints it. `@memo(map)` is a hash
-  map over any hashable arguments: O(states visited) memory, a hash per call.
+  map over any hashable arguments: \(O(\text{states visited})\) memory, a hash per call.
 - **Bare `@memo` is an error** whose fix offers `array` when every
   parameter is bounded and `map` otherwise. An array spends memory on
   states the recursion never reaches and a map pays a hash per call, so
@@ -170,17 +170,17 @@ brute in `cpl stress`.
 
 | Form | Plain DP it replaces | Cost |
 |---|---|---|
-| `monotone_minima(rows, cols, f)` | `row i: min over c of f(i, c)`, argmin monotone in `i` (D&C opt) → `[R]?(val, at)` | O((n + m) log n) calls |
-| `smawk(rows, cols, f)` | same, `f` totally monotone (Monge) | O(n + m) calls |
-| `knuth(n, cost)` | `dp[i][j] = min over splits + cost(i, j)` with Knuth's condition → `(n + 1)²` table | O(n²) |
-| `split_best(groups, range:, best:)` | values of a family of ranges, best first: each pop re-queues the two pieces around the chosen position (k largest subarray sums) | O(k log(n + k)) `best` calls |
-| `aliens(k, solve)` | "exactly k items" when the value is convex in k: `solve(λ)` returns `(val, count)` | O(log range) solves |
-| `monge_path(n, cost)` | shortest 0 → n path with Monge `cost(j..i)` (LARSCH) | O(n log n) |
-| `LiChao(max, over: r)`, `.add(line, on:)`, `.at(x)` | max of lines / segments at x | O(log \|r\|) |
-| `LineContainer(max)` | max of lines, any order | O(log n) |
-| `MonotoneHull(max)` | lines and queries both monotone | O(1) amortized |
-| `convolve(a, b, over: Semiring(min, +), shape:)` | `c[k] = min a[i] + b[k - i]` | O(n + m) or O(n m) by shape |
-| `Concave`, `Convex` (std.slope, decision 81) | piecewise-linear concave / convex DP | O(log n) per op |
+| `monotone_minima(rows, cols, f)` | `row i: min over c of f(i, c)`, argmin monotone in `i` (D&C opt) → `[R]?(val, at)` | \(O((n + m) \log n)\) calls |
+| `smawk(rows, cols, f)` | same, `f` totally monotone (Monge) | \(O(n + m)\) calls |
+| `knuth(n, cost)` | `dp[i][j] = min over splits + cost(i, j)` with Knuth's condition → `(n + 1)²` table | \(O(n^2)\) |
+| `split_best(groups, range:, best:)` | values of a family of ranges, best first: each pop re-queues the two pieces around the chosen position (k largest subarray sums) | \(O(k \log(n + k))\) `best` calls |
+| `aliens(k, solve)` | "exactly k items" when the value is convex in k: `solve(λ)` returns `(val, count)` | \(O(\log \mathit{range})\) solves |
+| `monge_path(n, cost)` | shortest 0 → n path with Monge `cost(j..i)` (LARSCH) | \(O(n \log n)\) |
+| `LiChao(max, over: r)`, `.add(line, on:)`, `.at(x)` | max of lines / segments at x | \(O(\log \lvert r \rvert)\) |
+| `LineContainer(max)` | max of lines, any order | \(O(\log n)\) |
+| `MonotoneHull(max)` | lines and queries both monotone | \(O(1)\) amortized |
+| `convolve(a, b, over: Semiring(min, +), shape:)` | `c[k] = min a[i] + b[k - i]` | \(O(n + m)\) or \(O(n m)\) by shape |
+| `Concave`, `Convex` (std.slope, decision 81) | piecewise-linear concave / convex DP | \(O(\log n)\) per op |
 
 D&C optimisation as a library call, the same layer cf868f writes by hand:
 
@@ -196,10 +196,10 @@ partial function.)
 
 | Form | Meaning | Cost |
 |---|---|---|
-| `a.lis(strict: true)` | positions of one longest increasing subsequence, `List<D>` | O(n log n) |
-| `a.prev_smaller()`, `a.next_smaller()` | `[D]?D` nearest smaller to each side (monotone stack); larger with `by: desc` | O(n) |
-| `Window<D>(enter, leave)`, `w.move(to: r)` | stateful sliding piece (two pointers, Mo, D&C costs) | O(distance moved) |
-| `MonoDeque(min)`, `WindowFold(op)` | sliding min / fold of any monoid | O(1) amortized |
+| `a.lis(strict: true)` | positions of one longest increasing subsequence, `List<D>` | \(O(n \log n)\) |
+| `a.prev_smaller()`, `a.next_smaller()` | `[D]?D` nearest smaller to each side (monotone stack); larger with `by: desc` | \(O(n)\) |
+| `Window<D>(enter, leave)`, `w.move(to: r)` | stateful sliding piece (two pointers, Mo, D&C costs) | \(O(\text{distance moved})\) |
+| `MonoDeque(min)`, `WindowFold(op)` | sliding min / fold of any monoid | \(O(1)\) amortized |
 | `backtrack(start, next)` | `yields Step<S>`; `step.prune()`, `break`, `return` | per node |
 
 ## Open

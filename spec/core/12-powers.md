@@ -56,10 +56,10 @@ keeps it at its stated cost (decision 142):
 
     pub trait Seq<T>:                    fn iter(self) -> yields T          // walk in order
     pub trait Keyed<K, T>: Seq<T>:       fn items(self) -> yields (K, T)    // each element knows its key
-    pub trait Sized:                     len: Int                           // O(1) length
+    pub trait Sized:                     len: Int                           // \(O(1)\) length
     pub trait Bidir<T>: Seq<T>:          fn iter_rev(self) -> yields T      // walk backwards
     pub trait Indexed<K, T>: Keyed<K, T>, Sized, Bidir<T>:
-        fn at(self, k: K) -> T                                              // O(1) s[k]
+        fn at(self, k: K) -> T                                              // \(O(1)\) s[k]
         keys: Range<K>                                                      // contiguous keys
     pub trait IndexedMut<K, T>: Indexed<K, T>:
         fn at(mut self, k: K) -> lends mut T                                   // s[k] is a place
@@ -70,7 +70,7 @@ keeps it at its stated cost (decision 142):
 | `Seq` | `map`, `filter`, `take_while`, `chain`, folds, `min`/`max`, `any`/`all`, `first(p)`, `tally`, `runs`, `pairs`, `keyed()`, `collect()`, `sorted()` (R12.4.1) |
 | `Keyed` | `.items`, `find`, `find_all`, `argmax`/`argmin`: walk and remember keys (R12.4.2) |
 | `Sized` | `.len` (R12.4.3) |
-| `Bidir` | `.rev`, `.last` as an O(1) property (R12.4.4) |
+| `Bidir` | `.rev`, `.last` as an \(O(1)\) property (R12.4.4) |
 | `Indexed` | `s[k]`, slices, `nth`, `bsearch`, `first_ge`, string algorithms, `zip` (R12.4.5) |
 | `IndexedMut` | `sort()`, `reverse()`, `swap`, `select`, `shuffle`, `next_perm`, slice assignment (R12.4.6) |
 | `Contains` | `x in s`: sets, maps (keys), bitsets, ranges; a linear search is `s.any(x)` (R12.4.7) |
@@ -106,7 +106,7 @@ full model with exercises is `spec/core/05-ownership.md`):
    A closure's captures are borrowed per call, not for its life. (R12.4.11)
 5. Owned values move: `let b = a` and `S(a)` move `a`; `a.clone()` copies. (R12.4.12)
 
-A view is a `Seq` (and `Indexed` when reads stay O(1)) built from a lent
+A view is a `Seq` (and `Indexed` when reads stay \(O(1)\)) built from a lent
 source. There is no `View` trait and no marker on the struct: the same
 `Filter` owns its source when built from an owned value (`Filter(xs, p)`
 moves `xs`) and borrows it when built from a lent one (`arr.filter(p)`,
@@ -139,7 +139,7 @@ stubs need nothing more:
 A `for` over a generator pastes its body at the loop and each `yield x`
 becomes the loop body, so `for y in a.filter(p).map(f): b(y)` is
 `for x in a: if p(x): b(f(x))`, and `break`, `continue` and `return` act on
-that one loop. An adapter implements each capability it can keep O(1):
+that one loop. An adapter implements each capability it can keep \(O(1)\):
 `Filter` keeps `Keyed` and `Bidir` but not `Sized` or `Indexed`, so
 `a.filter(p).argmax()` walks `a.items()` once and answers with a key of `a`.
 Recursive generators pass the body as a closure that
@@ -205,7 +205,7 @@ places. With only `set`, `x[k] = v` calls `set` and `x[k] op= v` is
 `set(k, at(k) op v)`, with `k` evaluated once; a named alias is an error
 pointing at the method. `SegTree` uses `set` (an update must recompute
 ancestors); `Map` uses `at_mut` and inserts the default (decision 128).
-Moves: returning any value is O(1); `.take()` moves out of a place that
+Moves: returning any value is \(O(1)\); `.take()` moves out of a place that
 stays live; parameters are lends, `mut` lends allow draining
 (`a.absorb(mut b)`). Overlapping `mut` places are a compile error.
 Needs: `SegTree`, `Fenwick`, `Map`, `Counter`, small-to-large.
@@ -286,7 +286,8 @@ code. Status: partial (`read` is still compiler-special for some types).
 
 ## W12. Costs and library lints (P12)
 
-Every public signature's first doc line states its cost: `/// O(log n).`
+Every public signature's doc comment states its cost as LaTeX math:
+`/// cost: \(O(\log n)\)` (the math convention in `spec/README.md`).
 `cpl explain` and hover show it. Libraries may declare lints with a code,
 message and codemod (`#lint(L7001, "...")`) and `#on_unimplemented("...")`
 messages on traits. `assert` runs in checked builds and, opted in as `asserts`, in release (chapter 9). Status: doc convention only.

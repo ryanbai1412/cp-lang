@@ -285,7 +285,7 @@ match d: L => -1, R => 1            // one-line match
   is the row place. `a[l..r]` is a slice view keeping the source keys. (R01.8.5)
 - **Optional chaining**: `x?.f`, `f(x?)` propagate `None`; `x ?? y`
   falls back lazily; `x!` unwraps or traps with the source location. (R01.8.6)
-- Members without parentheses are O(1) (`xs.len`, `t.parent[v]`);
+- Members without parentheses are \(O(1)\) (`xs.len`, `t.parent[v]`);
   anything that does work has parentheses (`g.transpose()`), decision 140. (R01.8.7)
 
 ## 1.9 Items
