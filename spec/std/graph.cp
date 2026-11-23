@@ -33,7 +33,7 @@ pub trait Next<V>:
     /// order: the implementation's arc order (input order for `Graph`, list order for `[V]List`)
     /// traps: never
     /// example: `domain V = 0..3; let g: [V]List<V> = [[2, 1], [], []]; g.out(0).collect() == [2, 1]`
-    fn out(self, u: V) -> yields Self.Arc = todo
+    fn out(self, u: V) -> yields Self.Arc
 
 /// O(1). Where an arc leads. A plain vertex is its own target, and a record
 /// with a `to: V` field is one (a field is a `@get`).
@@ -54,7 +54,7 @@ pub trait Weighted<W>:
     /// cost: O(1) plus the cost of `f` under `weighted`
     /// traps: never
     /// example: `domain V = 0..3; let a: (to: V, w: Int) = (to: 1, w: 7); a.w == 7`
-    @get fn w(self) -> W = todo
+    @get fn w(self) -> W
 
 /// O(1). The edge an arc belongs to; both arcs of an undirected edge share it.
 pub trait Edged<E>:
@@ -63,7 +63,7 @@ pub trait Edged<E>:
     /// cost: O(1)
     /// traps: never
     /// example: `domain V = 0..2; domain E = 0..1; let es: [E](u: V, v: V) = [(u: 0, v: 1)]; let g = Graph.undirected(es); g.out(0).collect()[0].e == g.out(1).collect()[0].e`
-    @get fn e(self) -> E = todo
+    @get fn e(self) -> E
 
 /// A graph whose arcs carry weights: shortest paths, MST over arcs, DAG folds.
 pub trait WeightedNext<V, W> = Next<V> where Self.Arc: Weighted<W>
