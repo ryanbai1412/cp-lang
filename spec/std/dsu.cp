@@ -66,6 +66,7 @@ pub struct Dsu<V>:
     /// traps: when `snap` lies after the present (its changes were already undone)
     /// example: `var d = Dsu<0..3>(); d.unite(0, 1); let m = d.mark(); d.unite(1, 2); d.undo_to(m); d.same(0, 1) and not d.same(0, 2)`
     pub fn undo_to(mut self, snap: Mark):
+        assert snap.at <= joined.len
         var i = joined.len
         unchecked:
             while i > snap.at:
@@ -326,6 +327,7 @@ pub struct DsuOf<V, T>:
     /// traps: when `snap` lies after the present (its changes were already undone)
     /// example: `var d = DsuOf<0..2, Int>(init: v => v, join: (x, y) => x + y); let m = d.mark(); d.unite(0, 1); d.set(0, 9); d.undo_to(m); d.get(0) == 0 and d.get(1) == 1`
     pub fn undo_to(mut self, snap: Mark):
+        assert snap.at <= log.len
         while log.len > snap.at:
             let (y, x, old) = log.pop()!
             if y != x:
@@ -462,6 +464,7 @@ pub struct ParityDsu<V>:
     /// traps: when `snap` lies after the present (its changes were already undone)
     /// example: `var d = ParityDsu<0..3>(); d.unite(0, 1); d.unite(1, 2); let m = d.mark(); d.unite(2, 0); d.undo_to(m); d.consistent`
     pub fn undo_to(mut self, snap: Mark):
+        assert snap.at <= log.len
         while log.len > snap.at:
             let (y, joined) = log.pop()!
             if not joined:
@@ -591,6 +594,7 @@ pub struct PotentialDsu<V>:
     /// traps: when `snap` lies after the present (its changes were already undone)
     /// example: `var d = PotentialDsu<0..2>(); d.unite(0, 1, 5); let m = d.mark(); d.unite(1, 0, 5); d.undo_to(m); d.consistent and d.diff(0, 1) == Some(5)`
     pub fn undo_to(mut self, snap: Mark):
+        assert snap.at <= log.len
         while log.len > snap.at:
             let (y, joined) = log.pop()!
             if not joined:
@@ -645,6 +649,7 @@ pub struct RollbackArray<D, T>:
     /// traps: when `snap` lies after the present (its changes were already undone)
     /// example: `var a = RollbackArray<0..2, Int>(init: _ => 0); let m = a.mark(); a.set(0, 5); a.set(0, 6); a.undo_to(m); a.get(0) == 0`
     pub fn undo_to(mut self, snap: Mark):
+        assert snap.at <= log.len
         while log.len > snap.at:
             let (i, old) = log.pop()!
             data[i] = old
