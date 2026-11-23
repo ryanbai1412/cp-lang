@@ -11,7 +11,7 @@ This is more than a proof of concept, a toy interpreter or a demo website. The f
 - **Due:** about 12 hours, by 2026-11-23 09:30 PST. Plan in hours; checkpoints every 2 hours.
 - **Platforms:** Linux, macOS and Windows, all supported and all tested.
 - **Editors:** Neovim/Vim (the first friend's), VS Code and JetBrains, each with a working LSP.
-- **Judge:** Codeforces-style problems. The output is one portable C++17 file that standard g++ compiles. No judge-specific features; agents never submit to real judges. Language quality matters more than judge coverage.
+- **Judge:** Codeforces-style problems. The output is one portable C++17 file that standard g++ compiles. Named judge profiles are kept but are not a milestone focus; agents never submit to real judges. Language quality matters more than judge coverage.
 - **Channel:** the edge release is enough. No stable release needed.
 - Deferred work continues in parallel, but milestone blockers come first.
 
