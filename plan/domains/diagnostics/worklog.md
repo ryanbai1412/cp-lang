@@ -561,3 +561,9 @@ Landed since 23:10: four type/flow lints from `spec/idioms/lints.md`, L0571 `neg
   `if n >= 1:` with `n: 1..=10` (always) or `n == 0` (never, dead branch).
   Found in the scoped prover, so surrounding tests narrow it. 0 hits on
   corpus, newcomer and std.
+- Lint L0308 `noop_mod_reduce`: `k % n` where the declared `k: 0..n` already
+  puts `k` below the modulus; `cpl fix` writes `k`. Only a declared input on
+  the left: computed left sides (std's `round * 7 % 200`) are reduced for
+  reasons the bounds don't carry. 0 hits on corpus, newcomer and std.
+  The prover's lint results now live in one `hazards::Found`, so a new one
+  costs `proven/mod.rs` no lines.

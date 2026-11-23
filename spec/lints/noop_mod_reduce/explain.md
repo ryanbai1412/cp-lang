@@ -1,0 +1,1 @@
+`k % n` is `k` when `0 <= k < n`, and a declared range like `k: 0..n` already says that. The `%` adds nothing but a question for the reader, so `cpl fix` writes `k`. If `k` can reach `n` after all, the declared range is too tight and the reduction is hiding it.

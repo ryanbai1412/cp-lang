@@ -179,6 +179,7 @@ prefix_sum}, L0522 copy_sort_writeback, L0523 chmin_chmax_if, L0524 bool_ternary
 | L0305 | unwrap_on_possibly_empty | `a.max()!`, `a.min()!`, `a.first!` or `a.last!` where `a`'s declared length can be 0: the unwrap traps on that input; handle `None` or tighten the bound |
 | L0306 | int_overflow_at_bounds | `a * b`, `a + b` or `a ** k` whose operands' declared ranges let it leave `Int`, shown by an input that does: widen an operand to `I128`, use `Mod<P>`, or tighten the bounds |
 | L0307 | always_true_bounds_check | `if x >= 0:` with `x: 0..=n`, or `n == 0` with `n: 1..=10`: the declared ranges settle the test, so it or its branch does nothing; drop it or widen the range |
+| L0308 | noop_mod_reduce | `k % n` where `k`'s declared range is already in `0..n`: the remainder is `k`; write `k` |
 | L0601 | same_place_read_write | `a[l] += inc(mut a[l])`, `xs[0] = xs.pop()!` |
 | L0602 | chain_walked_twice | a lazy chain value consumed twice |
 | L0603 | map_recomputed | `.map(f)` view read many times by index |

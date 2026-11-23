@@ -1,0 +1,5 @@
+code = "L0308"
+level = "warn"
+group = "style"
+title = "Remainder of a value already below the modulus"
+summary = "`k % n` where `k`'s declared range is already in `0..n`: the remainder is `k`; write `k`"

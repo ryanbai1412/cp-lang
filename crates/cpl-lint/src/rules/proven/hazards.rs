@@ -1,12 +1,27 @@
 //! Operators whose declared operands can make them trap: a `/` or `%` by a
 //! divisor that can be 0, a `<<` that can leave `Int`, a `for` range that
 //! starts above its end and so never runs, a `!` on a slice that can be
-//! empty.
+//! empty, a `%` whose left side is already below the modulus.
 
 use super::{bounds, Proven};
 use crate::walk::unparen;
 use cpl_diag::Span;
 use cpl_syntax::ast::{BinOp, Expr, ExprKind};
+
+/// What the walk finds for the lints in this file's rules.
+#[derive(Clone, Debug, Default)]
+pub(super) struct Found {
+    pub(super) empty_slices: Vec<EmptySlice>,
+    pub(super) settled: Vec<Settled>,
+    pub(super) noop_mods: Vec<NoopMod>,
+}
+
+/// `x % m` where `x` is already in `0..m`: the whole expression and `x`.
+pub(crate) type NoopMod = ((u32, u32), (u32, u32));
+
+pub(crate) fn proven_noop_mods(file: &crate::File) -> Vec<NoopMod> {
+    super::proven(file).found.noop_mods
+}
 
 pub(super) fn hazards(
     base: u32,
@@ -35,6 +50,26 @@ pub(super) fn hazards(
                     (base + rhs.span.start, base + rhs.span.end),
                     k.hi,
                     safe,
+                ));
+            }
+        }
+    }
+    // `k % n` with a declared `k: 0..n`: the remainder is `k` itself.
+    if op == BinOp::Rem {
+        let plain = |e: &Expr| match &unparen(e).kind {
+            ExprKind::Int(_) => true,
+            ExprKind::Name(n) => bounds.is_input(n),
+            _ => false,
+        };
+        let input = matches!(&unparen(lhs).kind, ExprKind::Name(n) if bounds.is_input(n));
+        if let (true, true, Some(x), Some(m)) =
+            (input, plain(rhs), bounds.expr(lhs), bounds.expr(rhs))
+        {
+            let below = bounds.diff(lhs, rhs).is_some_and(|d| d.hi < 0) || x.hi < m.lo;
+            if x.lo >= 0 && below {
+                out.found.noop_mods.push((
+                    (base + lhs.span.start, base + rhs.span.end),
+                    (base + lhs.span.start, base + lhs.span.end),
                 ));
             }
         }
@@ -82,7 +117,7 @@ pub(super) fn empty_range(base: u32, iter: &Expr, bounds: &bounds::Bounds) -> Op
 pub(crate) type EmptySlice = ((u32, u32), (u32, u32));
 
 pub(crate) fn proven_empty_slices(file: &crate::File) -> Vec<EmptySlice> {
-    super::proven(file).empty_slices
+    super::proven(file).found.empty_slices
 }
 
 /// `a[l..r].first!` or `a[l..r].max()!` where the declared `l` and `r`
@@ -113,7 +148,7 @@ pub(super) fn unwrap(
             } = &range.kind
             {
                 if can_be_empty(lo, hi, *inclusive, bounds).is_some() {
-                    out.empty_slices.push((
+                    out.found.empty_slices.push((
                         (base + expr.span.start, base + expr.span.end),
                         (base + range.span.start, base + range.span.end),
                     ));
@@ -214,7 +249,7 @@ pub(crate) fn declared(
 pub(crate) type Settled = ((u32, u32), bool);
 
 pub(crate) fn proven_settled(file: &crate::File) -> Vec<Settled> {
-    super::proven(file).settled
+    super::proven(file).found.settled
 }
 
 /// `x >= 0` with `x: 0..=n`, or `n == 0` with `n: 1..=10`: one comparison
@@ -262,7 +297,8 @@ pub(super) fn settle(base: u32, expr: &Expr, bounds: &bounds::Bounds, out: &mut 
         _ => return,
     };
     if always || never {
-        out.settled
+        out.found
+            .settled
             .push(((base + expr.span.start, base + expr.span.end), always));
     }
 }

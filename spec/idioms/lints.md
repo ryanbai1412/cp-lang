@@ -1054,7 +1054,7 @@ One sub-family per module. Each says: you rebuilt something the library has.
 | redundant_min_max_at_bounds | `min(x, K)` where declared bounds prove `x <= K` (always returns `x`) | `x` (or fix typo in `K`) | warn | #6 | bound | |
 | dead_match_arm_at_bounds | `match` / `else if` branch unreachable under declared range constraints | remove dead arm or widen constraint | warn | #6 | bound | |
 | redundant_domain_redeclare | two identical `domain` declarations with the same bounds in the same scope when one is a copy | reuse the domain if same index space (or comment why distinct) | warn | #3 | ty | |
-| noop_mod_reduce | `x % P` when `x` is already `Mod<P>` or proven in `0..P` | `x` | fix | #6 | bound | |
+| noop_mod_reduce | `x % P` when `x` is already `Mod<P>` or proven in `0..P` | `x` | fix | #6 | bound | ✓noop_mod_reduce |
 
 ---
 
