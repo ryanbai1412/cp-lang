@@ -2192,7 +2192,7 @@ pub struct BucketCount:
     /// traps: when `k` is not in `0..len`
     /// example: `var b = BucketCount(0..10); b.add(3); b.add(7, 2); b.kth(0) == 3 and b.kth(1) == 7 and b.kth(2) == 7`
     pub fn kth(self, k: Int) -> Int:
-        assert 0 <= k and k < total, "`k` is outside `0..len`"
+        assert 0 <= k < total, "`k` is outside `0..len`"
         var left = k
         var b = 0
         while left >= blk[b]:

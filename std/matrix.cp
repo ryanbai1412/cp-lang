@@ -1039,7 +1039,7 @@ pub struct BitMat(pub rows: Int, pub cols: Int):
                 if self.get(r, c): aug.set(r, c, true)
             aug.set(r, n + r, true)
         let piv = bit_rref(n, 2 * n, mut aug.bits)
-        if n > 0 and piv[n - 1] >= n: return None
+        if 0 < n <= piv[n - 1]: return None
         var out = BitMat.new(n, n)
         for r in 0..n:
             for c in 0..n:

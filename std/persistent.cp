@@ -317,7 +317,7 @@ pub struct RangeKth<D, T>:
     /// example: `RangeKth([5, 1, 4, 2]).kth(1..4, 1) == 2`
     pub fn kth(self, r: Range<D>, k: Int) -> T:
         let (lo, hi) = r.ends
-        assert 0 <= k and k < hi - lo, "RangeKth.kth index out of range"
+        assert 0 <= k < hi - lo, "RangeKth.kth index out of range"
         unchecked:
             var (u, v, nl, nr, rem) = (roots[lo], roots[hi], 0, vals.len, k)
             while nr - nl > 1:

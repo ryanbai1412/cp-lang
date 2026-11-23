@@ -19,10 +19,10 @@ for i in 0..n:
     for j in 0..n:
         if i > 0:
             let d = h[i, j] - h[i - 1, j]
-            if -1 <= d and d <= 1: row_bad[i - 1, d + 1] = true
+            if -1 <= d <= 1: row_bad[i - 1, d + 1] = true
         if j > 0:
             let d = h[i, j] - h[i, j - 1]
-            if -1 <= d and d <= 1: col_bad[j - 1, d + 1] = true
+            if -1 <= d <= 1: col_bad[j - 1, d + 1] = true
 
 fn min_cost(c: [0..n]Int, bad: [0..n - 1, 0..3]Bool) -> ?Int:
     var dp: [0..2]?Int = [0, c[0]]

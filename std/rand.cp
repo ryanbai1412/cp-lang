@@ -116,7 +116,7 @@ pub struct Rng(s: U64):
     /// example: `var r = Rng(9); r.sample(2, from: [1, 1, 1]) == [1, 1]`
     pub fn sample<S: Indexed, T>(mut self, k: Int, from: S) -> List<T>:
         let n = from.len
-        assert 0 <= k and k <= n
+        assert 0 <= k <= n
         var pos = [i for i in 0..n]
         for i in 0..k: pos.swap_idx(i, self.int(i, n - 1))
         [from.at(pos[i]) for i in 0..k]

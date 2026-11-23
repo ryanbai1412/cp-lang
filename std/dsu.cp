@@ -718,7 +718,7 @@ pub struct PersistentDsu<V>:
         _kid.len - 1
 
     fn root_ord(self, ver: Int, start: Int) -> Int:
-        assert 0 <= ver and ver < _roots.len, "`ver` is not a version of this PersistentDsu"
+        assert 0 <= ver < _roots.len, "`ver` is not a version of this PersistentDsu"
         var x = start
         while true:
             let (p, _) = self.get(_roots[ver], x)

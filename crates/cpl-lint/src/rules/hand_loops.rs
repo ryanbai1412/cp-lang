@@ -298,24 +298,38 @@ impl HandLoops<'_> {
             // The other bound is next to it, so the chain keeps the order.
             let near = [k.wrapping_sub(1), k + 1];
             let upper = near.iter().find_map(|&m| match bounds.get(m) {
-                Some(Some((y, false, hi))) if y == x => Some(hi),
+                Some(Some((y, false, hi))) if y == x => Some((m, hi)),
                 _ => None,
             });
-            if let Some(hi) = upper {
-                chained.push(format!("{lo} {x} {hi}"));
+            if let Some((m, hi)) = upper {
+                // Bounds that swap places must not call anything: the chain
+                // evaluates the lower one first.
+                let pure = m > k || !format!("{lo}{hi}").contains('(');
+                chained.push((format!("{lo} {x} {hi}"), pure));
             }
         }
         // Two coordinates checked together are `grid_bounds_check` (L0535).
-        let [first] = chained.as_slice() else {
+        let [(first, pure)] = chained.as_slice() else {
             return;
         };
-        let help = format!("write `{first}`: one chained comparison reads as the range it checks");
-        self.warn(
-            &SPLIT_RANGE_CHECK,
-            expr.span,
-            "a range check written as two comparisons".to_string(),
-            help,
-        );
+        let mut diag = Diagnostic::warning(
+            SPLIT_RANGE_CHECK.code,
+            expr.span.shift(self.base),
+            "a range check written as two comparisons",
+        )
+        .with_help(format!(
+            "write `{first}`: one chained comparison reads as the range it checks"
+        ));
+        if terms.len() == 2 && *pure {
+            diag.fixes.push(Fix {
+                title: format!("write `{first}`"),
+                edits: vec![(expr.span.shift(self.base), first.clone())],
+            });
+        }
+        self.out.push(Finding {
+            lint: &SPLIT_RANGE_CHECK,
+            diag,
+        });
     }
 
     fn contains_add(&mut self, stmt: &Stmt) {

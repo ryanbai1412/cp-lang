@@ -63,7 +63,7 @@ fn walk(corner: Int):
         for step in [1, -1]:
             var passed: List<Int> = []
             var j = here + step
-            while 0 <= j and j < along[i].len:
+            while 0 <= j < along[i].len:
                 let next = along[i][j]
                 if sides == n and next == start: polygons += 1
                 if spent[next]: break

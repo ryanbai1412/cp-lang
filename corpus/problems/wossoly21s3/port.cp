@@ -27,8 +27,8 @@ for r in Row:
 // Where a step onto q really puts you.
 fn land(q: Cell) -> ?Cell:
     let ch = school[q]
-    if ch == '#' or ('a' <= ch and ch <= 'z'): return None  // WISH L9: ch.is_lower, ch.lower
-    if 'A' <= ch and ch <= 'Z': return place[ch + 32]
+    if ch == '#' or ('a' <= ch <= 'z'): return None  // WISH L9: ch.is_lower, ch.lower
+    if 'A' <= ch <= 'Z': return place[ch + 32]
     return q
 
 fn walk(from: Cell, to: Cell) -> ?Int:

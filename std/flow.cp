@@ -1217,7 +1217,7 @@ pub fn max_weight_general_matching<V, E>(
         eu,
         ev,
         ew,
-        [if 1 <= i and i <= n: top else: 0 for i in 0..m],
+        [if 1 <= i <= n: top else: 0 for i in 0..m],
         List.filled(m, 0),
         List.filled(m, 0),
         [i for i in 0..m],

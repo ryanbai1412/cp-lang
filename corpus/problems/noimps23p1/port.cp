@@ -25,7 +25,7 @@ fn reach(start: Int, iv: List<(l: Int, r: Int)>) -> List<Bool>:
     var hit = List.filled(n, false)
     var stack: List<Int> = []
     for i in 0..m:
-        if iv[i].l <= start and start < iv[i].r:
+        if iv[i].l <= start < iv[i].r:
             seen[i] = true
             stack.push(i)
     while stack.len > 0:

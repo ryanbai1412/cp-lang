@@ -991,7 +991,7 @@ pub struct WaveletMatrix<D>:
     /// example: `WaveletMatrix([3, 1, 4, 1, 5]).quantile_sum(1..3, 0) == 0`
     pub fn quantile_sum(self, r: Range<D>, k: Int) -> Int:
         var (lo, hi) = r.ends
-        assert 0 <= k and k <= hi - lo, "`quantile_sum` needs `k` in `0..=r.len`"
+        assert 0 <= k <= hi - lo, "`quantile_sum` needs `k` in `0..=r.len`"
         var rem = k
         var (res, total) = (0, 0)
         for l in 0..bits:
@@ -1203,4 +1203,4 @@ fn merge_sort_and_sparse_segtree_match_brute():
             for v in [-11, -5, 0, 5, 11]:
                 assert mst.count_lt(rng, v) == cnt(rng, x => x < v)
                 assert mst.count_le(rng, v) == cnt(rng, x => x <= v)
-            assert mst.count_in(rng, -3, 4) == cnt(rng, x => -3 <= x and x <= 4)
+            assert mst.count_in(rng, -3, 4) == cnt(rng, x => -3 <= x <= 4)

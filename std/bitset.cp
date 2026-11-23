@@ -450,7 +450,7 @@ pub struct Bitset<D>:
         reach.add(D.nth(0))
         var cnt = List.filled(D.K, 0)
         for w in weights:
-            if w > 0 and w < D.K: cnt[w] += 1
+            if 0 < w < D.K: cnt[w] += 1
         for w in 1..D.K:
             let c = cnt[w]
             if c > 2:
@@ -621,7 +621,7 @@ pub struct DynBitset:
     /// traps: when `i` is not in `0..cap`
     /// example: `var d = DynBitset(10); d.add(3); d.contains(3) and not d.contains(4)`
     pub fn contains(self, i: Int) -> Bool:
-        assert 0 <= i and i < _cap
+        assert 0 <= i < _cap
         (_w[i / 64] >> (i % 64)) & U64(1) == U64(1)
 
     /// Set bit `i` to `on` in place (W8 `IndexSet` backing `b[i] = on`).
@@ -716,7 +716,7 @@ pub struct DynBitset:
     /// traps: when `i` is not in `0..=cap`
     /// example: `var d = DynBitset(10); d.add(3); d.add(8); d.next(3) == Some(3) and d.next(4) == Some(8) and d.next(9) == None`
     pub fn next(self, i: Int) -> ?Int:
-        assert 0 <= i and i <= _cap
+        assert 0 <= i <= _cap
         if i == _cap: return None
         var k = i / 64
         var x = _w[k] & ~low(i % 64)
@@ -734,7 +734,7 @@ pub struct DynBitset:
     /// traps: when `i` is not in `0..cap`
     /// example: `var d = DynBitset(10); d.add(1); d.add(3); d.prev(3) == Some(3) and d.prev(2) == Some(1) and d.prev(0) == None`
     pub fn prev(self, i: Int) -> ?Int:
-        assert 0 <= i and i < _cap
+        assert 0 <= i < _cap
         var k = i / 64
         var x = _w[k] & low(i % 64 + 1)
         while true:
@@ -751,7 +751,7 @@ pub struct DynBitset:
     /// traps: when `i` is not in `0..=cap`
     /// example: `var d = DynBitset(10); d.add(1); d.add(3); d.add(8); d.count_below(8) == 2`
     pub fn count_below(self, i: Int) -> Int:
-        assert 0 <= i and i <= _cap
+        assert 0 <= i <= _cap
         self.count_range(0..i)
 
     /// The number of set bits in `r`.
@@ -934,7 +934,7 @@ pub struct DynBitset:
         reach.add(0)
         var cnt = List.filled(cap, 0)
         for w in weights:
-            if w > 0 and w < cap: cnt[w] += 1
+            if 0 < w < cap: cnt[w] += 1
         for w in 1..cap:
             let c = cnt[w]
             if c > 2:
@@ -989,7 +989,7 @@ pub struct XorTrie:
     /// traps: when `bits` is not in `1..=62`
     /// example: `XorTrie(3).is_empty`
     pub fn new(bits: Int = 60) -> XorTrie:
-        assert bits >= 1 and bits <= 62
+        assert 1 <= bits <= 62
         XorTrie(bits, 0, [-1], [-1], [0], [0])
 
     /// Reserve pool capacity for at least `nodes` trie nodes, so later adds do not reallocate; the
@@ -1022,7 +1022,7 @@ pub struct XorTrie:
     /// traps: when `x` is not in `0..2^bits`
     /// example: `var t = XorTrie(3); t.add(5); t.add(5); t.count(5) == 2`
     pub fn add(mut self, x: Int):
-        assert 0 <= x and x < 1 << _bits
+        assert 0 <= x < 1 << _bits
         self.walk(x, 1, if self.count(x) == 0: 1 else: 0)
 
     /// Remove one copy of `x`; returns `false` if absent, leaving the trie unchanged.
@@ -1060,7 +1060,7 @@ pub struct XorTrie:
     /// traps: when `mask` is not in `0..2^bits`
     /// example: `var t = XorTrie(3); t.add(1); t.add(5); t.xor_all(1); t.contains(0) and t.contains(4) and not t.contains(1)`
     pub fn xor_all(mut self, mask: Int):
-        assert 0 <= mask and mask < 1 << _bits
+        assert 0 <= mask < 1 << _bits
         _mask ^= mask
 
     /// The maximum value of `x ^ y` over stored `y`, or `None` if empty.
@@ -1089,7 +1089,7 @@ pub struct XorTrie:
     /// traps: when `x` is not in `0..2^bits`
     /// example: `var t = XorTrie(3); t.add(1); t.add(5); t.add(6); t.count_xor_less(2, 5) == 2`
     pub fn count_xor_less(self, x: Int, limit: Int) -> Int:
-        assert 0 <= x and x < 1 << _bits
+        assert 0 <= x < 1 << _bits
         if limit <= 0: return 0
         if limit >= 1 << _bits: return _cnt[0]
         let z = x ^ _mask
@@ -1142,7 +1142,7 @@ pub struct XorTrie:
     /// traps: when `x` is not in `0..2^bits`
     /// example: `var t = XorTrie(3); t.add(1); t.add(5); t.add(6); t.mex_xor() == 0 and t.mex_xor(1) == 1`
     pub fn mex_xor(self, x: Int = 0) -> Int:
-        assert 0 <= x and x < 1 << _bits
+        assert 0 <= x < 1 << _bits
         let z = x ^ _mask
         var node = 0
         var res = 0
@@ -1158,7 +1158,7 @@ pub struct XorTrie:
         res
 
     fn extreme_xor(self, x: Int, want: Int) -> ?Int:
-        assert 0 <= x and x < 1 << _bits
+        assert 0 <= x < 1 << _bits
         if _cnt[0] == 0: return None
         let z = x ^ _mask
         var node = 0

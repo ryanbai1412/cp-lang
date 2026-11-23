@@ -1854,3 +1854,15 @@ fn copy_comprehension_needs_a_seq() {
     let seqs = "domain V = 0..3\nlet a = [3, 1]\nprint([x for x in a], [v for v in V], [c for c in \"ab\"], [i for i in 0..3])\n";
     assert_eq!(codes(seqs).iter().filter(|c| **c == "L0549").count(), 4);
 }
+
+#[test]
+fn split_range_check_fixes_to_a_chain() {
+    // corpus noi14p5 and ioi19p6: the two comparisons become one chain.
+    let src = "let (x, n): (Int, 1..=100) = read()\nif x < n and x >= 0:\n    print(1)\nif not (0 < x and x < n):\n    print(2)\n";
+    let out = fixed(src);
+    assert!(out.contains("if 0 <= x < n:"), "{out}");
+    assert!(out.contains("if not (0 < x < n):"), "{out}");
+    // A third test, or a bound call that would run in a new order, keeps only the help.
+    let kept = "let (x, n): (Int, 1..=100) = read()\nif x > 0 and x < n and n > 5:\n    print(1)\nif x < n.min(9) and x >= abs(n):\n    print(2)\n";
+    assert_eq!(fixed(kept), kept);
+}

@@ -20,7 +20,7 @@ var found: List<Int> = []
 
 fn ask(target: Int, guess: Int) -> Int:
     queries += 1
-    assert 0 <= guess and guess < (1 << 60)
+    assert 0 <= guess < (1 << 60)
     var (a, b, d) = (target, guess, 0)
     while a != b:
         if a > b: a = a >> 1

@@ -303,7 +303,7 @@ pub fn split_best<G, D, T: Ord>(
     fn push_entry(g: G, r: Range<D>, gi: Int):
         if r.len == 0: return
         let (val, pos) = best(g, r)
-        assert r.l <= pos and pos < r.r, "split_best: best returned position outside range"
+        assert r.l <= pos < r.r, "split_best: best returned position outside range"
         let id = v_list.len
         g_list.push(g)
         r_list.push(r)

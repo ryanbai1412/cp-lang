@@ -599,7 +599,7 @@ pub struct LazyTreap<T, F>(
     /// traps: when `pos < 0` or `pos > len`
     /// example: `var t = LazyTreap<Int, Int>(apply: (v, k, f) => v + f, compose: (g, f) => g + f); t.push(1); t.push(3); t.insert_at(1, 2); t.to_list() == [1, 2, 3]`
     pub fn insert_at(mut self, pos: Int, x: T):
-        assert 0 <= pos and pos <= self.len
+        assert 0 <= pos <= self.len
         let idx = nodes.len
         nodes.push(TreapNode(None, None, self.priority(), 1, x, None, false))
         let (a, b) = self.split_pos(root, pos)
@@ -659,7 +659,7 @@ pub struct LazyTreap<T, F>(
     /// traps: when `pos < 0` or `pos >= len`
     /// example: `var t = LazyTreap<Int, Int>(apply: (v, k, f) => v + f, compose: (g, f) => g + f); t.push(1); t.push(2); t.apply_all(5); t.erase_at(0) == 6 and t.to_list() == [7]`
     pub fn erase_at(mut self, pos: Int) -> T:
-        assert 0 <= pos and pos < self.len, "`erase_at` position out of range"
+        assert 0 <= pos < self.len, "`erase_at` position out of range"
         let (a, bc) = self.split_pos(root, pos)
         let (b, c) = self.split_pos(bc, 1)
         root = self.merge(a, c)
@@ -687,7 +687,7 @@ pub struct LazyTreap<T, F>(
     /// traps: when `k < 0` or `k > len`
     /// example: `var t = LazyTreap<Int, Int>(apply: (v, k, f) => v + f, compose: (g, f) => g + f); t.push(1); t.push(2); t.push(3); let u = t.split_at(1); t.to_list() == [1] and u.to_list() == [2, 3]`
     pub fn split_at(mut self, k: Int) -> LazyTreap<T, F>:
-        assert 0 <= k and k <= self.len, "`split_at` position out of range"
+        assert 0 <= k <= self.len, "`split_at` position out of range"
         let (a, b) = self.split_pos(root, k)
         root = a
         var out = LazyTreap(apply_fn, split_fn, compose_fn, before_fn, [], None, Rng(48))
@@ -723,7 +723,7 @@ pub struct LazyTreap<T, F>(
     /// traps: when `pos < 0` or `pos >= len`
     /// example: `var t = LazyTreap<Int, Int>(apply: (v, k, f) => v + f, compose: (g, f) => g + f); t.push(1); t.push(2); t.apply(0..1, 4); t.get(0) == 5`
     pub fn get(mut self, pos: Int) -> T:
-        assert 0 <= pos and pos < self.len
+        assert 0 <= pos < self.len
         var cur = root
         var rem = pos
         unchecked:

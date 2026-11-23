@@ -27,7 +27,7 @@ pub fn repeat(self: Str, n: Int) -> Str:
 /// example: `[1, 2, 3].starts_with([2]) == false`
 pub fn starts_with<S: Indexed, P: Indexed>(self: S, pat: P, at: Int = 0) -> Bool:
     with lint(unproven_list_index: allow)
-    assert 0 <= at and at <= self.len, "`starts_with` needs `at` in `0..=self.len`"
+    assert 0 <= at <= self.len, "`starts_with` needs `at` in `0..=self.len`"
     if at + pat.len > self.len: return false
     for i in 0..pat.len:
         if self.nth(at + i) != pat.nth(i): return false
@@ -174,7 +174,7 @@ pub fn rsearch<S: Indexed, K, P>(self: S, p: P) -> ?K:
 /// example: `'x'.is_space == false`
 @get pub fn is_space(self: Char) -> Bool:
     let c = Int(self)
-    c == 32 or (c >= 9 and c <= 13)
+    c == 32 or (9 <= c <= 13)
 
 /// A copy of `self` with every ASCII capital replaced by its lowercase letter (`Char.lower`).
 ///
@@ -669,7 +669,7 @@ pub struct KmpAutomaton<A>:
         var p: List<Int> = []
         for a in pat:
             let c = a.to_idx
-            assert 0 <= c and c < k, "KmpAutomaton: character outside alphabet"
+            assert 0 <= c < k, "KmpAutomaton: character outside alphabet"
             p.push(c)
         let m = p.len
         var pi: List<0..=2_000_000_000> = List.filled(m + 1, 0)
@@ -704,9 +704,9 @@ pub struct KmpAutomaton<A>:
     /// example: `let k = KmpAutomaton<Char>("aba"); k.step(3, 'b') == 2 and k.step(0, 'b') == 0`
     pub fn step(self, state: Int, a: A) -> Int:
         with lint(unproven_list_index: allow)
-        assert 0 <= state and state < pi.len, "KmpAutomaton.step: state out of range"
+        assert 0 <= state < pi.len, "KmpAutomaton.step: state out of range"
         let c = a.to_idx
-        assert 0 <= c and c < alpha, "KmpAutomaton.step: character outside alphabet"
+        assert 0 <= c < alpha, "KmpAutomaton.step: character outside alphabet"
         goto[state * alpha + c]
 
     /// The failure link of `state`: the length of the longest proper border of `pat[..state]`,
@@ -717,7 +717,7 @@ pub struct KmpAutomaton<A>:
     /// example: `let k = KmpAutomaton<Char>("aba"); k.link(3) == 1 and k.link(2) == 0`
     pub fn link(self, state: Int) -> Int:
         with lint(unproven_list_index: allow)
-        assert 0 <= state and state < pi.len, "KmpAutomaton.link: state out of range"
+        assert 0 <= state < pi.len, "KmpAutomaton.link: state out of range"
         pi[state]
 
     /// The start position (0-based, counted in `text`'s iteration order) of every occurrence of
@@ -737,7 +737,7 @@ pub struct KmpAutomaton<A>:
             yield 0
             for a in text:
                 let c = a.to_idx
-                assert 0 <= c and c < alpha, "KmpAutomaton.find_all: character outside alphabet"
+                assert 0 <= c < alpha, "KmpAutomaton.find_all: character outside alphabet"
                 pos += 1
                 yield pos
             return
@@ -745,7 +745,7 @@ pub struct KmpAutomaton<A>:
         var pos = 0
         for a in text:
             let c = a.to_idx
-            assert 0 <= c and c < alpha, "KmpAutomaton.find_all: character outside alphabet"
+            assert 0 <= c < alpha, "KmpAutomaton.find_all: character outside alphabet"
             state = goto[state * alpha + c]
             pos += 1
             if state == m: yield pos - m
@@ -814,7 +814,7 @@ pub struct Palindromes(pub odd: List<Int>, even: List<Int>):
     /// example: `manacher("abacaba").longest_at(3) == 7`
     pub fn longest_at(self, i: Int) -> Int:
         with lint(unproven_list_index: allow)
-        assert 0 <= i and i < odd.len, "`longest_at(i)` needs `0 <= i < len`"
+        assert 0 <= i < odd.len, "`longest_at(i)` needs `0 <= i < len`"
         2 * odd[i] - 1
 
     /// The length of the longest even-length palindrome centred on the cut `i` (between
@@ -825,7 +825,7 @@ pub struct Palindromes(pub odd: List<Int>, even: List<Int>):
     /// example: `manacher("abba").longest_between(2) == 4`
     pub fn longest_between(self, i: Int) -> Int:
         with lint(unproven_list_index: allow)
-        assert 0 <= i and i <= odd.len, "`longest_between(i)` needs `0 <= i <= len`"
+        assert 0 <= i <= odd.len, "`longest_between(i)` needs `0 <= i <= len`"
         if i == odd.len: 0 else: 2 * even[i]
 
     /// True when the positions `r` (`l..r`, `l..=r`, or a `Range<D>`) of the original sequence
@@ -1499,8 +1499,8 @@ pub struct RollingHash:
         let (b1, b2) = bases
         let n = p1.len - 1
         let t = x.hash_token
-        let x1 = if 0 <= t and t < 1_000_000_006: t + 1 else: t % 1_000_000_006 + 1
-        let x2 = if 0 <= t and t < 1_000_000_008: t + 1 else: t % 1_000_000_008 + 1
+        let x1 = if 0 <= t < 1_000_000_006: t + 1 else: t % 1_000_000_006 + 1
+        let x2 = if 0 <= t < 1_000_000_008: t + 1 else: t % 1_000_000_008 + 1
         p1.push((p1[n] * b1 + x1) % 1_000_000_007)
         p2.push((p2[n] * b2 + x2) % 1_000_000_009)
         pow1.push(pow1[n] * b1 % 1_000_000_007)
@@ -1530,8 +1530,8 @@ pub struct RollingHash:
         var (h1, h2) = (0, 0)
         for x in seq:
             let t = x.hash_token
-            let x1 = if 0 <= t and t < 1_000_000_006: t + 1 else: t % 1_000_000_006 + 1
-            let x2 = if 0 <= t and t < 1_000_000_008: t + 1 else: t % 1_000_000_008 + 1
+            let x1 = if 0 <= t < 1_000_000_006: t + 1 else: t % 1_000_000_006 + 1
+            let x2 = if 0 <= t < 1_000_000_008: t + 1 else: t % 1_000_000_008 + 1
             h1 = (h1 * b1 + x1) % 1_000_000_007
             h2 = (h2 * b2 + x2) % 1_000_000_009
         HashVal(h1, h2)
@@ -1802,7 +1802,7 @@ pub struct RollingHash61:
     pub fn new<S: Seq>(seq: S, base: ?U64 = None) -> RollingHash61:
         with lint(unproven_list_index: allow)
         let b = base ?? U64(rand(1 << 20, 1 << 29))
-        assert U64(2) <= b and b < RH61_MOD, "RollingHash61: base must be in 2..2^61 - 1"
+        assert U64(2) <= b < RH61_MOD, "RollingHash61: base must be in 2..2^61 - 1"
         var pre: List<U64> = [U64(0)]
         var pow: List<U64> = [U64(1)]
         var h = U64(0)
@@ -2070,8 +2070,8 @@ pub struct DynamicHash<D>:
     fn put(mut self, i: Int, t: Int):
         with lint(unproven_list_index: allow)
         let n = tok1.len
-        let x1 = if 0 <= t and t < RH_M1 - 1: t + 1 else: t % (RH_M1 - 1) + 1
-        let x2 = if 0 <= t and t < RH_M2 - 1: t + 1 else: t % (RH_M2 - 1) + 1
+        let x1 = if 0 <= t < RH_M1 - 1: t + 1 else: t % (RH_M1 - 1) + 1
+        let x2 = if 0 <= t < RH_M2 - 1: t + 1 else: t % (RH_M2 - 1) + 1
         let d1 = (x1 - tok1[i]) % RH_M1
         let d2 = (x2 - tok2[i]) % RH_M2
         tok1[i] = x1
@@ -3199,7 +3199,7 @@ pub struct AhoCorasick<A>:
     /// traps: when `state` is outside `0..self.len`
     /// example: `let ac = AhoCorasick<Char>(["a", "ab", "b"]); ac.exit_link(2) == Some(3) and ac.exit_link(1) == None`
     pub fn exit_link(self, state: Int) -> ?Int:
-        assert 0 <= state and state < fail.len, "`exit_link(state)` needs `0 <= state < len`"
+        assert 0 <= state < fail.len, "`exit_link(state)` needs `0 <= state < len`"
         if exit[state] == -1: None else: Some(exit[state])
 
     /// The state where `patterns[pattern]` ends.
@@ -3208,7 +3208,7 @@ pub struct AhoCorasick<A>:
     /// traps: when `pattern` is outside `0..patterns.len`
     /// example: `AhoCorasick<Char>(["a", "ab", "b"]).pattern_state(1) == 2`
     pub fn pattern_state(self, pattern: Int) -> Int:
-        assert 0 <= pattern and pattern < pat_state.len, "`pattern_state(pattern)` needs a pattern index"
+        assert 0 <= pattern < pat_state.len, "`pattern_state(pattern)` needs a pattern index"
         pat_state[pattern]
 
 /// \(O(\lvert \mathit{pat} \rvert \cdot \lvert A \rvert \cdot \log n)\) amortized insert/delete, \(O(\lvert \mathit{text} \rvert \cdot \log n)\) query.

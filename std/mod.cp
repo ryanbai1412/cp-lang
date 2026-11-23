@@ -225,7 +225,7 @@ pub struct Comb<M: Add + Sub + Mul>:
     /// example: `type Z = Mod<7>; Comb<Z>().inv_fact(3) == Z(6)`
     /// example: `type Z = Mod<7>; Comb<Z>().inv_fact(0) == Z(1)`
     pub fn inv_fact(self, n: Int) -> M:
-        assert 0 <= n and n < M.MOD, "`inv_fact(n)` needs `n` in `0..M.MOD`"
+        assert 0 <= n < M.MOD, "`inv_fact(n)` needs `n` in `0..M.MOD`"
         self.ensure(n)
         g[n]
 
@@ -235,7 +235,7 @@ pub struct Comb<M: Add + Sub + Mul>:
     /// traps: when `i` is outside `1..M.MOD`
     /// example: `type Z = Mod<7>; Comb<Z>().inv(3) == Z(5)`
     pub fn inv(self, i: Int) -> M:
-        assert 1 <= i and i < M.MOD, "`inv(i)` needs `i` in `1..M.MOD`"
+        assert 1 <= i < M.MOD, "`inv(i)` needs `i` in `1..M.MOD`"
         self.ensure(i)
         g[i] * f[i - 1]
 
@@ -354,7 +354,7 @@ pub struct Barrett(pub m: Int, im: U64):
     /// traps: when `m` is outside `1..2^31`
     /// example: `Barrett(7).mul(3, 5) == 1`
     pub fn new(m: Int) -> Barrett:
-        assert m >= 1 and m < 2_147_483_648
+        assert 1 <= m < 2_147_483_648
         Barrett(m, if m == 1: U64(0) else: (U64(0) - U64(1)) / U64(m) + U64(1))
 
     /// `(a * b) % m` without a hardware division, for `a, b` in `0..m`.

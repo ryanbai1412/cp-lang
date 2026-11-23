@@ -781,7 +781,7 @@ pub struct Poly<T: Div>(pub c: List<T>):
     /// cost: \(O(1)\)
     /// traps: when `i < 0`
     /// example: `Poly<Int>([1, 2]).at(1) == 2 and Poly<Int>([1, 2]).at(5) == 0`
-    pub fn at(self, i: Int) -> T = if 0 <= i and i < c.len: c[i] else: T.zero
+    pub fn at(self, i: Int) -> T = if 0 <= i < c.len: c[i] else: T.zero
 
     /// Write coefficient `i`, growing with zeros if needed.
     ///

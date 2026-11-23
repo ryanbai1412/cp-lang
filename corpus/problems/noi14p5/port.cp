@@ -43,7 +43,7 @@ var path: List<Int> = []
 for v in 0..cells:
     let r = at[v] / m
     let col = at[v] % m
-    if lo[r] <= col and col <= hi[r]:
+    if lo[r] <= col <= hi[r]:
         path.push(v + 1)
         for above in 0..r: hi[above] min= col
         for below in (r + 1)..n: lo[below] max= col

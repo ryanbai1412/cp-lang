@@ -3260,7 +3260,7 @@ pub struct LongPaths<V, L>:
     /// traps: unless `0 <= d <= height[v]`
     /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); let lp = t.long_paths(); lp.slot(1, 1) == lp.slot(3, 0) and lp.slot(0, 1) == lp.slot(1, 0)`
     pub fn slot(self, v: V, d: Int) -> L:
-        assert (0 <= d and d <= height[v])
+        assert (0 <= d <= height[v])
         L.nth(pos[v].to_idx + d)
 
 /// Lowest common ancestors in \(O(1)\) after \(O(n \log n)\) preprocessing, by a sparse table over the

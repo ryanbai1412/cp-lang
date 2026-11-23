@@ -28,7 +28,7 @@ var hi: [Row]Col = Col.last!
 var path: List<Value> = []
 for v in Value:
     let (r, col) = at[v]
-    if lo[r] <= col and col <= hi[r]:
+    if lo[r] <= col <= hi[r]:
         path.push(v)
         for above in ..r:
             hi[above] min= col

@@ -429,7 +429,7 @@ pub fn digits(self: Int, base: Int = 10) -> List<Int>:
 /// example: `(-10).to_str(base: 2) == "-1010"`
 /// example: `0.to_str() == "0"`
 pub fn to_str(self: Int, base: Int = 10) -> Str:
-    assert base >= 2 and base <= 36
+    assert 2 <= base <= 36
     if self == 0: return "0"
     var cs: List<Char> = []
     var x = self
@@ -1096,7 +1096,7 @@ pub struct DirichletSum<T: Add + Sub + Mul + Div>:
     /// example: `var ds = DirichletSum<Int>(10, [0, 1, 1, 2, 2, 4, 2, 6, 4, 6, 4], m => m, m => m * (m + 1) / 2); ds.sum(10) == 32`
     /// example: `var ds = DirichletSum<Int>(10, [0, 1, 1, 2, 2], m => m, m => m * (m + 1) / 2); ds.sum(0) == 0`
     pub fn sum(mut self, m: Int) -> T:
-        assert 0 <= m and m <= self.n, "DirichletSum.sum requires m in 0..=n"
+        assert 0 <= m <= self.n, "DirichletSum.sum requires m in 0..=n"
         if m < self.pre.len: return self.pre[m]
         if let v = self.memo.get(m): return v
         let inv1 = T.one / self.g1

@@ -18,7 +18,7 @@ fn min_distance(
     let (start, goal) = (B(s), B(g))
 
     fn cut(w: (span: Range<B>, y: Int), at: B) -> List<(span: Range<B>, y: Int)>:
-        if not (w.span.first! < at and at < w.span.last!):
+        if not (w.span.first! < at < w.span.last!):
             return [w]
         let left = (w.span.first!..=at).last_true(b => tall.fold(b..=at) >= w.y)!
         let right = (at..=w.span.last!).first_true(b => tall.fold(at..=b) >= w.y)!

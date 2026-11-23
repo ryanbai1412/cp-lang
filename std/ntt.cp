@@ -331,7 +331,7 @@ pub fn convolve<T: Add + Sub + Mul, O, R>(
             else:
                 k = on(i, j)
             if cyclic and k >= 0: k %= na
-            if k >= 0 and k < n_out:
+            if 0 <= k < n_out:
                 out[k] = out[k] + a[i] * b[j]
     out
 

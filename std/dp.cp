@@ -495,7 +495,7 @@ pub struct MongePath<N, K: Add>(nodes: List<N>, cost: (N, N) -> K):
     /// traps: when `i < 0` or `i >= len`
     /// example: `var p = MongePath([0, 1, 2], (a, b) => (b - a) * (b - a)); p.next(); p.val(1) == 1`
     pub fn val(self, i: Int) -> K:
-        assert 0 <= i and i < self.len
+        assert 0 <= i < self.len
         if i == 0: K.zero else: vals[i]
     /// The number of nodes reached so far, `nodes.first` included, so a fresh `MongePath` has `len == 1`.
     ///
@@ -937,7 +937,7 @@ fn li_chao_matches_a_scan_over_lines_and_segments():
                 high.add(l, on: a..=b)
                 lines.push((l:, a:, b:))
             for x in lo..=hi:
-                let here = [e.l.at(x) for e in lines if e.a <= x and x <= e.b]
+                let here = [e.l.at(x) for e in lines if e.a <= x <= e.b]
                 assert low.at(x) == here.min()!
                 assert high.at(x) == here.max()!
     var ties = LiChao<Counted, (cost: Int, used: Int)>(min, 0..=10)

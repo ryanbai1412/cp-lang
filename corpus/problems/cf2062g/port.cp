@@ -21,7 +21,7 @@ fn sort_perm<D>(mut perm: [D]D) -> List<(D, D)>:
         var l = perm[r]
         var cur = perm[l]
         while cur != r:
-            if cur < r and cur > l: l = cur
+            if l < cur < r: l = cur
             cur = perm[cur]
         ops.push((l, r))
         perm.swap_at(l, r)

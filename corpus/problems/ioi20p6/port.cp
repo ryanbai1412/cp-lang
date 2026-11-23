@@ -50,7 +50,7 @@ fn next_hop(s: Int, t: Int, near: List<Int>) -> Int:
     else:
         // The mirror image: the parent first, each child opening a stretch.
         for i in (1..near.len).rev:
-            if near[i] <= t and t < s: return near[i]
+            if near[i] <= t < s: return near[i]
         near[0]
 
 let q: 1..=1e5 = read()

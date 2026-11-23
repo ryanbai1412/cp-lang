@@ -46,7 +46,7 @@ for r in 1..=n:
 var vis: [Node]Bool = false
 var stk: List<Int> = []
 let start = arr[Grid((m + 1) + 1)]
-if start >= 1 and start <= target:
+if 1 <= start <= target:
     vis[Node(start)] = true
     stk.push(start)
 

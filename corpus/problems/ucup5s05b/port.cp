@@ -71,7 +71,7 @@ fn front(qa: Int, qb: Int, qc: Int, t: Int) -> Int:
                 if at == 0: spans.push((min(u.x, v.x), max(u.x, v.x) + 1))
             elif at % slope == 0:
                 let k = -at / slope
-                if 0 <= k and k <= len:
+                if 0 <= k <= len:
                     let x = u.x + step.x * k
                     spans.push((x, x + 1))
     union_len(spans)

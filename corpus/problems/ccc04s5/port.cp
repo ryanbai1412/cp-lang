@@ -27,7 +27,7 @@ fn solve_case(rows: Int, cols: Int):
                 let ch = grid[R(r), C(c)]
                 if ch == '*':
                     break
-                if ch >= '0' and ch <= '9':
+                if '0' <= ch <= '9':
                     gain += ch - '0'
                 if dp[R(r)] > neg_inf:
                     nxt[R(start)] max= gain + dp[R(r)]
@@ -37,7 +37,7 @@ fn solve_case(rows: Int, cols: Int):
                 let ch = grid[R(r), C(c)]
                 if ch == '*':
                     break
-                if ch >= '0' and ch <= '9':
+                if '0' <= ch <= '9':
                     gain += ch - '0'
                 if dp[R(r)] > neg_inf:
                     nxt[R(start)] max= gain + dp[R(r)]

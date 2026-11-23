@@ -240,7 +240,7 @@ pub struct Deque<T>:
     /// example: `Deque.of([7, 8]).get(1) == 8`
     /// example: `var q = Deque.of([1]); q.push_front(0); q[0] == 0`
     pub fn get(self, i: Int) -> T:
-        assert 0 <= i and i < n
+        assert 0 <= i < n
         unchecked:
             return buf[(head + i) & mask]
 
@@ -250,7 +250,7 @@ pub struct Deque<T>:
     /// traps: when `i` is not in `0..len`
     /// example: `var q = Deque.of([7, 8]); q[0] = 9; q.to_list() == [9, 8]`
     pub fn set(mut self, i: Int, x: T):
-        assert 0 <= i and i < n
+        assert 0 <= i < n
         unchecked:
             buf[(head + i) & mask] = x
 

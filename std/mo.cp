@@ -273,7 +273,7 @@ pub fn mo_with_updates<D, U, R>(
     for i in 0..q:
         let (l, r) = queries[i].range.ends
         let t = queries[i].time
-        assert t >= 0 and t <= updates.len, "a `time` is outside `0..=updates.len`"
+        assert 0 <= t <= updates.len, "a `time` is outside `0..=updates.len`"
         lo = min(lo, l)
         hi = max(hi, r)
     let n = hi - lo
