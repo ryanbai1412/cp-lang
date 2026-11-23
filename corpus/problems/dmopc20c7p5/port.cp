@@ -24,10 +24,10 @@ var profit: [Node]Int = 0
 for i in Item: profit[item_node(i)] = -cost[i]
 for p in Pair: profit[pair_node(p)] = pairs[p].w
 
-domain Need = 0..2 * m
-let needs: [Need](u: Node, v: Node) = [Need] k =>
-    let p = Pair(k.ord / 2)
-    let item = if k.ord % 2 == 0: pairs[p].u else: pairs[p].v
-    (u: pair_node(p), v: item_node(item))
+// taking a pair forces both of its items
+var before: [Node]List<Node> = []
+for p in Pair:
+    before[item_node(pairs[p].u)].push(pair_node(p))
+    before[item_node(pairs[p].v)].push(pair_node(p))
 
-print(max_closure(profit, needs).value)
+print(max_closure(before, profit: v => profit[v]).value)
