@@ -526,13 +526,27 @@ impl<'a> Lexer<'a> {
             self.line_indent = width;
             return;
         };
+        // Still inside an outer bracket the line continues the outer list:
+        // `f(\n  g(a,\n  b)` closes `g(a)` before its `,`.
+        let comma = match self.out.tokens.last() {
+            Some(t) if depth > 0 && t.kind == TokenKind::Comma => self.out.tokens.pop(),
+            _ => Option::None,
+        };
         // Close at the end of the last line that had tokens.
-        let close_at = self
-            .out
-            .tokens
-            .last()
-            .map_or(line_start, |t| t.span.end as usize);
+        let close_at = match &comma {
+            Some(c) => c.span.start as usize,
+            None => self
+                .out
+                .tokens
+                .last()
+                .map_or(line_start, |t| t.span.end as usize),
+        };
         self.close_unclosed(depth, close_at, line_start);
+        if depth > 0 {
+            self.out.tokens.extend(comma);
+            self.line_indent = width;
+            return;
+        }
         self.end_line(close_at);
         self.pos = line_start;
         self.line_start();

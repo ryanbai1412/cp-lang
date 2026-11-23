@@ -74,6 +74,7 @@ row that moved.
 Local fixes made, with the general fix that would remove the class.
 | Instance | Local fix (done) | General fix | Owner |
 |---|---|---|---|
+| 51 of 100 corpus `spec.cp` files fail `cpl check` (22 E0302, 11 E0203, 5 E0606, 4 E0501), so the recovery base has only 44 of them | recovery now uses every clean `spec.cp`, not a hand list of 37 | port-check gates `spec.cp` as well as `port.cp`, so a spec stays checkable | idioms |
 | BLOCKERS run 6 #161: under `@!multitest` a `@gen` that omits the test count gets only "the brute failed on this input (Code(3))" | none (stress crate) | `cpl stress` quotes the failing program's own first error line (its R-code and help, e.g. the read that ran out of input) whenever a brute, checker or fast run fails, in both the process and in-process engines | stress |
 | `manacher(s)` on `[Pos]Char`: E0203 for `.nth` inside std, shown at the user's call | the error names the std fn, file and line, and says the gap is the library's (`lower/report.rs`) | check each generic std body against its trait bounds once (`Indexed` declares `nth`), so a std gap fails a std test and never reaches a user | stdlib, compiler |
 | L0533 `negate_for_desc` and L0541 `sort_desc_by_negation` written the same hour | dropped L0533 | a lint claims its `spec/idioms/lints.md` row (the last column) when work starts, so two lanes can't build one row | lint-fmt |

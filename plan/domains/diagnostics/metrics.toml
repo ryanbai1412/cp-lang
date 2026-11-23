@@ -14,7 +14,7 @@ milestone = "M1"
 [[metric]]
 name = "broken ports: cascaded errors"
 command = "cargo test -p cpl-cli --test recovery recovery_scoreboard -- --ignored --nocapture | grep '^  all'"
-today = "0 per 414 files (the `[n - 1Int>` cascade is one E0101 now)"
+today = "0 per 577 files, on every corpus spec.cp that checks clean (44 of 100)"
 target = "<= 2% (gated, decision 284)"
 milestone = "M1"
 

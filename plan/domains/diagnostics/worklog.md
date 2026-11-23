@@ -436,3 +436,9 @@ Landed since 23:10: four type/flow lints from `spec/idioms/lints.md`, L0571 `neg
 - M2 step 1: `every_golden_fix_names_something_that_exists` applies
   `cpl fix` to every golden in tests/diagnostics and fails if a fix adds an
   unknown or private name (E0201, E0203, E0207). Green on all goldens.
+- M2 step 2: the recovery base is every corpus `spec.cp` that checks clean
+  (44 of 100, 577 broken copies), not a hand list of 37. Its one cascade
+  (noi08p5, an inner `)` dropped on a line of a multi-line call) is fixed:
+  the lexer closes the inner call before the line's `,` and keeps the next
+  line in the outer call. 0 cascades, 99.8% first error right, 100% of
+  recoverable copies get a fix. 51 unclean specs logged for idioms.

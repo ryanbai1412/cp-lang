@@ -33,3 +33,20 @@ fn a_leading_operator_continues_past_blank_and_comment_lines() {
     let lexed = lexer::lex("let b = a\n    // note\n    - 3\n// after\nlet c = 1\n");
     assert_eq!(lexed.comments.len(), 2);
 }
+
+/// An inner call's `)` missing on one line of an outer call (noi08p5): the
+/// next line is still an argument of the outer call, so one error.
+#[test]
+fn a_missing_close_paren_inside_a_multiline_call_is_one_error() {
+    let src = "let d = f(\n    g(a, max(b, c),\n    g(0, c),\n)\nprint(d)\n";
+    let file = parse_file(src);
+    assert_eq!(file.diagnostics.len(), 1, "{:#?}", file.diagnostics);
+    let d = &file.diagnostics[0];
+    assert_eq!(d.code.0, "E0101");
+    let at = src.find("c),\n    g(0").unwrap() + 2;
+    assert_eq!(
+        d.fixes[0].edits[0],
+        (cpl_diag::Span::point(at as u32), ")".to_string())
+    );
+    assert_eq!(file.items.len(), 2);
+}
