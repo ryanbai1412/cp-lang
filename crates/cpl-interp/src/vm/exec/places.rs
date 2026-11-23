@@ -1,3 +1,4 @@
+use crate::observe::Observer;
 use crate::value::{ArrayData, CaptureVal, OptVal, TupleVal, Value};
 use crate::vm::helpers::*;
 use crate::vm::ir::*;
@@ -5,7 +6,7 @@ use crate::{trap, Flow, Interp, Res};
 use cpl_ir::{AssignOp, BinOp, CmpOp, LoopId};
 use std::rc::Rc;
 
-impl<'p, 'io> Interp<'p, 'io> {
+impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
     #[allow(clippy::too_many_arguments)]
     #[inline]
     pub(super) fn exec_places_and_fallback(

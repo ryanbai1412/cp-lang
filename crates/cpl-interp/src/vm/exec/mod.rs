@@ -1,3 +1,4 @@
+use crate::observe::Observer;
 use crate::value::{TupleVal, Value};
 use crate::vm::helpers::*;
 use crate::vm::ir::*;
@@ -10,7 +11,7 @@ mod containers;
 mod places;
 mod trace;
 
-impl<'p, 'io> Interp<'p, 'io> {
+impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
     fn take_regs_v(&mut self, n: usize) -> Vec<Value> {
         if n == 0 {
             return Vec::new();

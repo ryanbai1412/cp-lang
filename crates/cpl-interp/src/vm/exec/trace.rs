@@ -1,12 +1,13 @@
 //! A traced chunk tells the tracer of a write it just did itself.
 
+use crate::observe::Observer;
 use crate::value::Value;
 use crate::vm::helpers::*;
 use crate::vm::ir::*;
 use crate::Interp;
 use cpl_ir::{Place, PlaceKind, Ty};
 
-impl<'p, 'io> Interp<'p, 'io> {
+impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
     /// The `Trace` op of `chunk`: kept out of the op dispatch, which a
     /// traced loop runs once a round.
     #[inline(never)]
@@ -94,7 +95,7 @@ impl<'p, 'io> Interp<'p, 'io> {
         place: &'p Place,
         indices: &[u16],
     ) -> bool {
-        if self.tracer.is_none() || self.assignments() {
+        if !self.observed() || self.assignments() {
             return false;
         }
         let mut raw = std::mem::take(&mut self.trace_raw);

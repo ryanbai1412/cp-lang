@@ -1,3 +1,4 @@
+use crate::observe::Observer;
 use crate::value::{ArrayData, OptVal, TupleVal, Value};
 use crate::vm::helpers::*;
 use crate::vm::ir::*;
@@ -5,7 +6,7 @@ use crate::{trap, Interp, Res};
 use cpl_ir::CmpOp;
 use std::rc::Rc;
 
-impl<'p, 'io> Interp<'p, 'io> {
+impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
     #[inline]
     pub(super) fn exec_seq_and_list(
         &mut self,

@@ -9,6 +9,7 @@
 //! Strings are byte vectors. Nothing here decodes or validates text.
 
 mod input;
+mod observe;
 pub mod profile;
 pub mod replay;
 pub mod trace;
@@ -24,6 +25,7 @@ use cpl_ir::{
 };
 use input::Input;
 pub use input::More;
+use observe::Observer;
 use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::io::Write;
@@ -356,6 +358,25 @@ fn run_io(
     trace: Option<trace::TraceConfig>,
     profile: bool,
 ) -> Observed {
+    match trace {
+        Some(config) => {
+            let tracer = Box::new(trace::Tracer::new(config, program));
+            run_as(program, io, output, limits, Some(tracer), profile)
+        }
+        None => run_as::<observe::Unobserved>(program, io, output, limits, None, profile),
+    }
+}
+
+/// [`run_io`] with `tracer` watching: a separate build of the interpreter
+/// for each kind of observer, so an unobserved run carries no hooks.
+fn run_as<O: Observer>(
+    program: &Program,
+    io: Io,
+    output: &mut (dyn Write + Send),
+    limits: Limits,
+    tracer: Option<Box<O>>,
+    profile: bool,
+) -> Observed {
     let top = 0u8;
     let seed = io.seed;
     let mut interp = Interp {
@@ -392,7 +413,7 @@ fn run_io(
         call_frames: Vec::new(),
         current_case: None,
         rng_state: seed.map_or(0x9e3779b97f4a7c15, |seed| seed ^ 0x9e3779b97f4a7c15),
-        tracer: trace.map(|config| Box::new(trace::Tracer::new(config, program))),
+        tracer,
         profiler: profile.then(|| Box::new(profile::Profiler::new(program))),
         debug_out: Vec::new(),
         feeds: cpl_ir::pushed::Feeds::of(program),
@@ -433,7 +454,7 @@ fn run_io(
         }
         *trap
     });
-    let recording = interp.tracer.take().map(|tracer| {
+    let recording = interp.tracer.take().and_then(|tracer| {
         let failed = trap.as_ref().map(|trap| (trap.message.as_str(), trap.span));
         let depth = interp.call_frames.len();
         let kept = (interp.trap_frame.take()).filter(|kept| failed.is_some() && kept.0 == depth);
@@ -572,7 +593,7 @@ fn classify_fast_closure(def: &cpl_ir::ClosureDef) -> Option<FastClosure> {
     }
 }
 
-struct Interp<'p, 'o> {
+struct Interp<'p, 'o, O: Observer> {
     program: &'p Program,
     globals: Vec<Value>,
     /// First label and size of each domain, once it is declared.
@@ -606,7 +627,7 @@ struct Interp<'p, 'o> {
     /// Deterministic splitmix64 PRNG state (matches `cpl-codegen`).
     rng_state: u64,
     /// Records the trace of the run, when one was asked for.
-    tracer: Option<Box<trace::Tracer>>,
+    tracer: Option<Box<O>>,
     profiler: Option<Box<profile::Profiler>>,
     /// What `debug(...)` showed.
     debug_out: Vec<u8>,
@@ -633,7 +654,7 @@ struct Interp<'p, 'o> {
     /// The allocation [`Interp::view`] lists locals in, kept between steps.
     view_locals: Vec<(&'static str, &'static Ty, &'static Value)>,
     /// The innermost call's locals when a traced run trapped, and its depth.
-    trap_frame: Option<(usize, Vec<(&'p str, &'p Ty, Value)>)>,
+    trap_frame: Option<unwind::TrapFrame<'p>>,
     /// The indices of the place a trace point writes, kept between steps.
     trace_indices: Vec<Value>,
     trace_path: Vec<usize>,
@@ -721,7 +742,7 @@ fn splitmix64(state: &mut u64) -> u64 {
     z ^ (z >> 31)
 }
 
-impl<'p, 'o> Interp<'p, 'o> {
+impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
     fn main(&mut self) -> Res<()> {
         let program = self.program;
         self.stack.clear();
@@ -757,10 +778,10 @@ impl<'p, 'o> Interp<'p, 'o> {
             }
             // `CPL_TRACE_ENGINE=tree` traces on the tree-walker, which a
             // test holds the register VM's recording to.
-            let tree = self.tracer.is_some()
+            let tree = self.observed()
                 && std::env::var_os("CPL_TRACE_ENGINE").is_some_and(|e| e == "tree");
             if self.profiler.is_none() && !has_mut_view && !tree {
-                let traced = self.tracer.is_some();
+                let traced = self.observed();
                 self.vm = Some(Rc::new(vm::CompiledProgram::compile(
                     program,
                     &self.feeds,
@@ -780,7 +801,7 @@ impl<'p, 'o> Interp<'p, 'o> {
         // Above `@!multitest`: once. A top-level `return` there ends the
         // program.
         if let Some(tracer) = &mut self.tracer {
-            tracer.case = Some(0);
+            tracer.begin_cases();
         }
         if let Flow::Return(_) = self.block(&program.setup)? {
             return Ok(());
@@ -843,6 +864,8 @@ impl<'p, 'o> Interp<'p, 'o> {
     }
 
     fn view_in<'s>(&'s self, mut locals: Vec<(&'s str, &'s Ty, &'s Value)>) -> trace::View<'s> {
+        // The map shortens the locals' `'p` to `'s`.
+        #[allow(clippy::map_identity)]
         locals.extend(
             self.named_locals()
                 .map(|(name, ty, value)| (name, ty, value)),
@@ -859,7 +882,7 @@ impl<'p, 'o> Interp<'p, 'o> {
     }
 
     /// The current call's named locals and their values.
-    fn named_locals(&self) -> impl Iterator<Item = (&'p str, &'p Ty, &Value)> + use<'_, 'p, 'o> {
+    fn named_locals(&self) -> impl Iterator<Item = (&'p str, &'p Ty, &Value)> + use<'_, 'p, 'o, O> {
         self.locals()
             .iter()
             .enumerate()
@@ -874,82 +897,6 @@ impl<'p, 'o> Interp<'p, 'o> {
                 };
                 Some((local.name.as_str(), &local.ty, value))
             })
-    }
-
-    /// Runs `record` on the tracer, when the run is traced.
-    fn traced(&mut self, record: impl FnOnce(&mut trace::Tracer, &trace::View)) {
-        if let Some(mut tracer) = self.tracer.take() {
-            let locals = relifetime(std::mem::take(&mut self.view_locals));
-            let view = self.view_in(locals);
-            record(&mut tracer, &view);
-            self.view_locals = relifetime(view.locals);
-            self.tracer = Some(tracer);
-        }
-    }
-
-    /// A step for a change to `place`, when it is in a top-level variable.
-    fn trace_change(&mut self, place: &Place, indices: &[Value]) {
-        if self.tracer.is_none() {
-            return;
-        }
-        let Some(global) = root_global(place) else {
-            if let Some(slot) = root_local(place) {
-                self.trace_local(slot, place.span);
-            }
-            return;
-        };
-        if let PlaceKind::Global(id) = &place.kind {
-            let id = *id;
-            return self.traced(|tracer, view| tracer.declared(id, view, place.span));
-        }
-        let mut path = std::mem::take(&mut self.trace_path);
-        path.clear();
-        path.extend(
-            indices
-                .iter()
-                .take(leading_indices(place))
-                .map(|index| index.int().max(0) as usize),
-        );
-        self.traced(|tracer, view| tracer.changed(global, view, place.span, &path));
-        self.trace_path = path;
-    }
-
-    fn assignments(&self) -> bool {
-        self.tracer
-            .as_ref()
-            .is_some_and(|tracer| tracer.assignments)
-    }
-
-    /// With [`trace::TraceConfig::assignments`], the value of the
-    /// variable `place` is in, which was just given a value.
-    fn trace_assigned(&mut self, place: &Place) {
-        if !self.assignments() {
-            return;
-        }
-        let span = place.span;
-        if let Some(id) = root_global(place) {
-            self.traced(|tracer, view| tracer.assigned_global(view, span, id));
-        } else if let Some(slot) = root_local(place) {
-            self.trace_assigned_local(slot, span);
-        }
-    }
-
-    /// A step for local `slot` of a running call, which just changed.
-    fn trace_local(&mut self, slot: usize, span: Span) {
-        // Top-level locals are loop counters and the like: no step of their own.
-        if self.tracer.is_none() || self.call_frames.is_empty() {
-            return;
-        }
-        let name = self.locals()[slot].name.as_str();
-        self.traced(|tracer, view| tracer.local_changed(view, span, name));
-    }
-
-    fn trace_assigned_local(&mut self, slot: usize, span: Span) {
-        if !self.assignments() {
-            return;
-        }
-        let name = self.locals()[slot].name.as_str();
-        self.traced(|tracer, view| tracer.assigned_local(view, span, name));
     }
 
     fn flush_if_large(&mut self) {
@@ -989,7 +936,7 @@ impl<'p, 'o> Interp<'p, 'o> {
                 }
             }
             Stmt::Assign(place, op, value) => {
-                if self.tracer.is_none() {
+                if !self.observed() {
                     self.assign_untraced(place, *op, value)?;
                 } else {
                     let indices = self.assign(place, *op, value)?;
@@ -1683,7 +1630,7 @@ fn cell_mut<'s>(
     }
 }
 
-impl<'p, 'o> Interp<'p, 'o> {
+impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
     /// Fast-path assignment when tracing is disabled: avoids allocating an
     /// index `Vec` for direct locals/globals and 1D/2D array or list writes.
     fn assign_untraced(&mut self, place: &'p Place, op: AssignOp, value: &'p Expr) -> Res<()> {
@@ -2223,7 +2170,7 @@ impl<'p, 'o> Interp<'p, 'o> {
             ExprKind::Call(id, args) => self.call(*id, args, span)?,
             ExprKind::CallExpr(callee, args) => {
                 let fv = self.eval(callee)?;
-                if self.tracer.is_none()
+                if !self.observed()
                     && self.profiler.is_none()
                     && args.len() <= 4
                     && args.iter().all(|a| matches!(a, Arg::Value(_)))
@@ -2374,7 +2321,7 @@ impl<'p, 'o> Interp<'p, 'o> {
             }
             ExprKind::Mutate(op, place, args) => {
                 let value = self.mutate(*op, place, args, span)?;
-                if self.tracer.is_some() && root_global(place).is_some() {
+                if self.observed() && root_global(place).is_some() {
                     let global = root_global(place).unwrap_or_default();
                     self.traced(|tracer, view| tracer.mutated(global, view, span));
                 } else if let Some(slot) = root_local(place) {
@@ -3042,7 +2989,7 @@ impl<'p, 'o> Interp<'p, 'o> {
         self.frame_locals.push(&f.locals);
         self.call_frames.push((f.name.as_str(), span));
         let entered = self.tracer.as_mut().map(|tracer| tracer.enter_fn(&f.name));
-        if self.tracer.is_some() {
+        if self.observed() {
             let params: Vec<&str> = f.locals[..f.params.len()]
                 .iter()
                 .map(|l| l.name.as_str())
@@ -3108,7 +3055,7 @@ impl<'p, 'o> Interp<'p, 'o> {
         if let (Some(entered), Some(tracer)) = (entered, &mut self.tracer) {
             tracer.leave_fn(entered);
         }
-        if self.tracer.is_some() {
+        if self.observed() {
             self.traced(|tracer, view| {
                 let returned = match &flow {
                     Ok(Flow::Return(value)) if tracer.keeps_call() && f.ret != Ty::Unit => {
@@ -3118,7 +3065,7 @@ impl<'p, 'o> Interp<'p, 'o> {
                 };
                 tracer.leave_call(returned);
             });
-            if flow.is_ok() && self.tracer.as_ref().is_some_and(|tracer| tracer.stopped) {
+            if flow.is_ok() && self.tracer.as_ref().is_some_and(|tracer| tracer.stopped()) {
                 flow = trap(span, trace::STOPPED);
             }
         }
@@ -3632,7 +3579,7 @@ impl<'p, 'o> Interp<'p, 'o> {
             }
             None => self.out.push(b'\n'),
         }
-        if self.tracer.is_some() {
+        if self.observed() {
             let text = String::from_utf8_lossy(&self.out[start.min(self.out.len())..]).into_owned();
             self.traced(|tracer, view| tracer.printed(view, span, &text));
         }
