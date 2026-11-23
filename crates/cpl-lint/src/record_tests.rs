@@ -45,15 +45,26 @@ fn every_lint_record_directory_belongs_to_a_lint() {
     }
 }
 
-/// `Lnnnn name` pairs in the "Emitted by 0.2.x" paragraph of
-/// `spec/diagnostics.md`, expanding `La-Lb prefix_{x, y}` ranges.
+/// `Lnnnn name` pairs `spec/diagnostics.md` lists for the lints `cpl-lint`
+/// owns (below L0600): its table rows `| L0201 | var_never_reassigned | .. |`
+/// and the "Emitted by 0.2.x" paragraph, expanding `La-Lb prefix_{x, y}`
+/// ranges there.
 fn spec_lints() -> Vec<(u32, String)> {
     let doc = include_str!("../../../spec/diagnostics.md");
-    let start = doc.find("Emitted by 0.2.x:").expect("lint paragraph");
+    let mut out: Vec<(u32, String)> = doc
+        .lines()
+        .filter_map(|row| {
+            let cells: Vec<&str> = row.split('|').map(str::trim).collect();
+            let code: u32 = cells.get(1)?.strip_prefix('L')?.parse().ok()?;
+            (code < 600).then(|| (code, cells[2].to_string()))
+        })
+        .collect();
+    let Some(start) = doc.find("Emitted by 0.2.x:") else {
+        return out;
+    };
     let para = &doc[start..];
     let para = &para[..para.find("\n\n").unwrap_or(para.len())];
     let text = para.split_whitespace().collect::<Vec<_>>().join(" ");
-    let mut out = Vec::new();
     let mut rest = text.as_str();
     while let Some(at) = rest.find(" L") {
         rest = &rest[at + 1..];
@@ -100,7 +111,8 @@ fn every_lint_matches_the_spec_lint_list() {
     let extra: Vec<_> = spec.iter().filter(|e| !ours.contains(e)).collect();
     assert!(
         missing.is_empty() && extra.is_empty(),
-        "lints not in spec/diagnostics.md: {missing:?}; listed there but not lints: {extra:?}"
+        "lints not in spec/diagnostics.md: {missing:?} (add a row `| Lnnnn | name | fires on |` \
+         to its Lints section); listed there but not lints: {extra:?}"
     );
 }
 
