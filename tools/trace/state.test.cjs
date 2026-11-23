@@ -24,6 +24,16 @@ test("knapsack first divergence is fast step 5 vs spec step 9 at dp[1][4]", () =
   assert.match(s.detail, /^dp\[1\]\[4\]: fast 6 ≠ spec 3 · checkpoint cell:1:4$/);
 });
 
+test("a --from window numbers its steps as the whole run does", () => {
+  const window = structuredClone(samples.dijkstra);
+  window.runs.fast.firstStep = 1000;
+  T.validate(window);
+  assert.equal(T.stepNumber(window.runs.fast, 0), 1001);
+  assert.match(T.summary(window, T.analyze(window)).detail, /steps from step 1001 ·/);
+  window.runs.fast.firstStep = 0;
+  assert.throws(() => T.validate(window), /firstStep must be a positive integer/);
+});
+
 test("summary covers single-run, agreeing and incomparable traces", () => {
   const single = samples.dijkstra;
   assert.equal(T.summary(single, T.analyze(single)).state, "single");

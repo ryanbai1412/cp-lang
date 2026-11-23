@@ -456,6 +456,7 @@ const TraceCore = (() => {
     for (const [name, run] of Object.entries(trace.runs)) {
       if (!record(run) || typeof run.label !== "string" || !Array.isArray(run.steps) || !run.steps.length) fail(`${name} needs a label and at least one step`);
       if (run.steps.length > 100000) fail("Viewer supports at most 100,000 steps per run");
+      if (own(run, "firstStep") && !(Number.isInteger(run.firstStep) && run.firstStep >= 1)) fail(`${name} firstStep must be a positive integer`);
       const ids = new Set(), checkpoints = new Set();
       for (const [index, s] of run.steps.entries()) {
         const where = `${name} step ${index + 1}`;
@@ -608,12 +609,14 @@ const TraceCore = (() => {
     return variables.flatMap(id => diff(step.values[id], previous.values[id], [], own(step.values, id), own(previous.values, id))
       .map(d => ({variable:id, path:d.path, before:d.slow, after:d.fast, beforePresent:d.slowPresent, afterPresent:d.fastPresent})));
   }
+  // The run's own step number, 1-based: a `--from` window starts past step 1.
+  function stepNumber(run, i) { return (run.firstStep ?? 0) + i + 1; }
   function summary(trace, analysis) {
     const first = analysis.divergences[0];
     const steps = trace.runs.fast.steps, last = steps[steps.length - 1];
     if (!trace.runs.slow && last && last.label.startsWith("failed: "))
-      return {state:"trapped", title:`Trapped at step ${steps.length}, line ${last.line}`, detail:last.label.slice("failed: ".length), trap:steps.length - 1};
-    if (!trace.runs.slow) return {state:"single", title:"Execution captured", detail:`${trace.runs.fast.steps.length} steps · scrub the timeline to replay every snapshot`};
+      return {state:"trapped", title:`Trapped at step ${stepNumber(trace.runs.fast, steps.length - 1)}, line ${last.line}`, detail:last.label.slice("failed: ".length), trap:steps.length - 1};
+    if (!trace.runs.slow) return {state:"single", title:"Execution captured", detail:`${trace.runs.fast.steps.length} steps${trace.runs.fast.firstStep ? ` from step ${stepNumber(trace.runs.fast, 0)}` : ""} · scrub the timeline to replay every snapshot`};
     if (!analysis.pairs.length) return {state:"incomparable", title:"No shared checkpoints", detail:"The runs cannot be compared: add matching checkpoint names to both runs"};
     if (!first) return {state:"agree", title:"Fast and spec agree", detail:`All compared values match at ${analysis.pairs.length} shared checkpoints`};
     const d = first.differences[0];
@@ -763,7 +766,7 @@ const TraceCore = (() => {
     return null;
   }
   return {validate, diff, align, compare, analyze, pathName, own, containsPath, selectDifference, place, findPlace, firstChange,
-    SPEEDS, clamp, format, valueAt, referenceAt, adjacentCheckpoint, checkpointWindow, adjacentDivergence, changes, summary, keyAction, layout, viewBox, legend, liveTrace, createPlayer, editorLink};
+    SPEEDS, clamp, format, valueAt, referenceAt, adjacentCheckpoint, checkpointWindow, adjacentDivergence, changes, summary, stepNumber, keyAction, layout, viewBox, legend, liveTrace, createPlayer, editorLink};
 })();
 if (typeof module !== "undefined") module.exports = TraceCore;
 
