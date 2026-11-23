@@ -39,7 +39,7 @@ fn take(i: S):
 fn drop(i: S):
     let s = st[i]
     if s.some:
-        ends[s.a].pop()
+        ends[s.a].pop(s.b.r)
         shortest[s.a] = ends[s.a].all
     else:
         cover.apply(s.a..=s.b, -1)

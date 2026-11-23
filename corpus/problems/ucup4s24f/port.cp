@@ -36,7 +36,7 @@ for i in (1..=n).rev:
         first_full = occ_heap.peek!.0
 
     while oldest > first_full:
-        window.pop()
+        window.pop(dp[oldest])
         oldest -= 1
     dp[i] = c[i - 1] + window.all!
     window.push(dp[i])

@@ -4,6 +4,6 @@ var w = Window(max)
 var out = List<Int>()
 for (i, x) in a.items:
     w.push(x)
-    if w.len > k: w.pop()
+    if w.len > k: w.pop(a[i - k])
     if i + 1 >= k: out.push(w.all!)
 print(out)

@@ -12,6 +12,8 @@ use std.hashmap.{Counter}
 pub struct Window<T, M>(op: M):
     q: List<T>
     front: List<T>
+    olds: List<T>
+    head: Int
     back: ?T
 
     /// An empty window over `op`. The strategy comes from `op`'s laws: a `Group` keeps a running
@@ -22,7 +24,7 @@ pub struct Window<T, M>(op: M):
     /// traps: never
     /// example: `var w = Window(+); w.all == None`
     pub fn new(op: M) -> Window<T, M>:
-        Window(op, [], [], None)
+        Window(op, [], [], [], 0, None)
 
     /// Push `x` at the back, as the newest element.
     ///
@@ -32,14 +34,15 @@ pub struct Window<T, M>(op: M):
     pub fn push(mut self, x: T):
         self.push_back(x)
 
-    /// Pop the front: remove the oldest element.
+    /// Pop the front: remove the oldest element, `x`. Passing the leaving element is the same
+    /// protocol as `Track.pop(x)`, so a `Window` is a `Track` with no second spelling.
     ///
     /// cost: \(O(1)\) amortized calls of `op`
-    /// traps: on an empty window
-    /// example: `var w = Window(min); w.push(3); w.push(1); w.push(2); w.pop(); w.all == Some(1)`
-    /// example: `var w = Window(min); w.push(1); w.push(2); w.pop(); w.all == Some(2)`
-    pub fn pop(mut self):
-        self.drop_front()
+    /// traps: on an empty window, or in a checked build when `x` is not the oldest element
+    /// example: `var w = Window(min); w.push(3); w.push(1); w.push(2); w.pop(3); w.all == Some(1)`
+    /// example: `var w = Window(min); w.push(1); w.push(2); w.pop(1); w.all == Some(2)`
+    pub fn pop(mut self, x: T):
+        self.drop_front(x)
 
     /// The fold of the current contents, oldest first (`op(op(x1, x2), x3)` for pushes `x1`, `x2`,
     /// `x3`), so a non-commutative op folds in push order; `None` when empty.
@@ -48,7 +51,7 @@ pub struct Window<T, M>(op: M):
     /// empty: `None`
     /// traps: never
     /// example: `var w = Window(+); w.push(2); w.push(3); w.all == Some(5)`
-    /// example: `var w = Window(+); w.push(2); w.pop(); w.all == None`
+    /// example: `var w = Window(+); w.push(2); w.pop(2); w.all == None`
     @get pub fn all(self) -> ?T:
         if front.len == 0: return back
         let f = front.last!
@@ -59,7 +62,7 @@ pub struct Window<T, M>(op: M):
     ///
     /// cost: \(O(1)\)
     /// traps: never
-    /// example: `var w = Window(+); w.push(2); w.push(3); w.pop(); w.len == 1`
+    /// example: `var w = Window(+); w.push(2); w.push(3); w.pop(2); w.len == 1`
     @get pub fn len(self) -> Int:
         front.len + q.len
 
@@ -68,7 +71,7 @@ pub struct Window<T, M>(op: M):
         if let b = back: back = Some(op(b, x))
         else: back = Some(x)
 
-    fn drop_front(mut self):
+    fn drop_front(mut self, x: T):
         if front.len == 0:
             assert q.len > 0, "`pop` on an empty window"
             var k = q.len - 1
@@ -78,8 +81,12 @@ pub struct Window<T, M>(op: M):
                 k -= 1
                 acc = op(q[k], acc)
                 front.push(acc)
-            q.clear()
+            olds.clear()
+            swap(mut olds, mut q)
+            head = 0
             back = None
+        assert olds[head] == x, "`pop(x)` is passed the oldest element, and `x` is not it"
+        head += 1
         front.pop()
 
 /// State a window can add to at the back and remove from at the front. `pop(x)` is passed the
@@ -96,12 +103,12 @@ impl Track<K> for Counter<K, Int>:
     fn pop(mut self, x: K):
         self.add(x, -1)
 
-/// `push(x)` is `Window.push(x)`; `pop(x)` is `Window.pop()`, which already knows the front.
+/// `push(x)` and `pop(x)` are `Window`'s own `push(x)` and `pop(x)`.
 impl Track<T> for Window<T, M>:
     fn push(mut self, x: T):
         self.push_back(x)
     fn pop(mut self, x: T):
-        self.drop_front()
+        self.drop_front(x)
 
 /// A `Track` over any structure: `add(mut state, x)` applies an element at the back and
 /// `remove(mut state, x)` takes the front one back out, so `ok` reads `w.state`. The same shape

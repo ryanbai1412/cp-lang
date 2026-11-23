@@ -5,7 +5,7 @@ var out: List<Int> = []
 for i in 0..n:
     w.push(a[i])
     if i >= k:
-        w.pop()
+        w.pop(a[i - k])
     if i >= k - 1:
         out.push(w.all!)
 print(out)

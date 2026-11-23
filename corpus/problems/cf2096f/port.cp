@@ -36,7 +36,7 @@ fn take(i: S):
 fn drop(i: S):
     let s = st[i]
     if s.some:
-        ends[s.a].pop()  // statements leave in the order they came
+        ends[s.a].pop(s.b.ord)  // statements leave in the order they came
         shortest.set(s.a, ends[s.a].all)
     else:
         cover.apply(s.a..=s.b, -1)
