@@ -7,7 +7,6 @@ apio23p1
 apio23p2
 atcoder_dp_g
 atcoder_dp_j
-atcoder_dp_l
 atcoder_dp_n
 atcoder_dp_o
 atcoder_dp_s
