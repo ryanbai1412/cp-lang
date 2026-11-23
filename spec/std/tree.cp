@@ -3854,7 +3854,7 @@ pub struct KruskalTree<V, N, W>:
     /// cost: O(1); built with the tree
     /// traps: never
     /// example: `domain V = 0..3; let es: [0..2](u: V, v: V, w: Int) = [(u: 0, v: 1, w: 5), (u: 1, v: 2, w: 3)]; let (domain N, kt) = kruskal_tree(es, w: e => es[e].w); kt.tree.parent(kt.leaf[1]) == kt.tree.parent(kt.leaf[2]) and kt.tree.size(kt.leaf[0]) == 1`
-    @get pub fn tree(self) -> Rooted<N, _> = todo
+    @get pub fn tree(self) -> Rooted<N, _> = Rooted.from_parents(lift.up)
 
     /// The highest node above `leaf[v]` whose weight is at most `limit` (`leaf[v]` itself when
     /// None is); its leaves are what `v` reaches by edges of weight at most `limit`.
