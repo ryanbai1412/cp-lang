@@ -145,6 +145,7 @@ impl<'a> Lexer<'a> {
                         self.continuation_line();
                     }
                 }
+                b'/' if self.peek_at(1) == b'/' && self.floor_division() => {}
                 b'/' if self.peek_at(1) == b'/' => self.comment(),
                 _ => self.token(),
             }
@@ -160,6 +161,44 @@ impl<'a> Lexer<'a> {
         }
         self.push_empty(TokenKind::Eof, end);
         self.report_tabs();
+    }
+
+    /// `n // 3)`: Python's floor division, which here starts a comment
+    /// and hides the closer. One error with the `/` fix, read as `/`.
+    fn floor_division(&mut self) -> bool {
+        use TokenKind::{Float, Ident, Int, RBracket, RParen};
+        let start = self.pos;
+        let rest = self.src[start + 2..]
+            .lines()
+            .next()
+            .unwrap_or("")
+            .trim_start();
+        let operand_before = matches!(
+            self.last_kind(),
+            Some(Ident | Int | Float | RParen | RBracket)
+        );
+        let operand_after =
+            rest.starts_with(|c: char| c.is_ascii_alphanumeric() || c == '_' || c == '(');
+        if self.openers.is_empty()
+            || !operand_before
+            || !operand_after
+            || !rest.contains([')', ']'])
+        {
+            return false;
+        }
+        let span = Span::new(start as u32, start as u32 + 2);
+        self.out.diagnostics.push(
+            Diagnostic::error(
+                codes::UNEXPECTED_TOKEN,
+                span,
+                "`//` starts a comment in CP Lang, so the rest of this line is skipped",
+            )
+            .with_help("`/` on two `Int`s already rounds down: `7 / 2` is 3, `-7 / 2` is -4")
+            .with_fix("replace with `/`", span, "/"),
+        );
+        self.pos += 2;
+        self.push(TokenKind::Slash, start);
+        true
     }
 
     fn comment(&mut self) {
