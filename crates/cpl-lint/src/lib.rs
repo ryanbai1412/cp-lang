@@ -31,6 +31,7 @@ pub(crate) use std_source;
 mod checker;
 mod config;
 pub mod facts;
+mod recheck;
 mod rules;
 mod typed;
 mod walk;
@@ -420,6 +421,7 @@ pub fn proven_ranges_parsed(src: &str, items: &[(u32, &ParsedItem)]) -> Vec<(u32
 pub fn lint(src: &str, config: &Config) -> Vec<Diagnostic> {
     let mut diags = with_parsed(src, |file| lint_file(file, config));
     typed::refine(&mut diags, src);
+    recheck::recheck(&mut diags, src);
     diags
 }
 
