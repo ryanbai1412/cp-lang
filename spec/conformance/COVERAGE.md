@@ -7,7 +7,7 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 2851 (995 passing). Rules: 576.
+Cases: 2852 (995 passing). Rules: 576.
 
 ## Summary per chapter
 
@@ -18,7 +18,7 @@ Cases: 2851 (995 passing). Rules: 576.
 - R04a (04a-identity-vs-offset.md): 39 rules, 54 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04b (04b-keys.md): 28 rules, 70 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R05 (05-ownership.md): 43 rules, 180 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R06 (06-control-functions.md): 24 rules, 105 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R06 (06-control-functions.md): 24 rules, 106 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R07 (07-sequences.md): 90 rules, 181 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R08 (08-traits-generics.md): 29 rules, 92 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R09 (09-contexts-checks.md): 27 rules, 61 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -413,7 +413,7 @@ Each rule: positive / negative case counts, then the gap if any.
 ### R06: 06-control-functions.md
 
 - R06.1.1 [2+ 0-]: One-line `= expr` or a block whose last expression is the value. `return` is for early exi...
-- R06.1.2 [3+ 3-]: Parameters are lent for the call; `mut` parameters may be mutated (or drained) and are mar...
+- R06.1.2 [3+ 4-]: Parameters are lent for the call; `mut` parameters may be mutated (or drained) and are mar...
 - R06.1.3 [1+ 0-]: A parameter of a `fn` or a lambda may be a pattern, as in `for`: `(mut d, (u, v)) => d.uni...
 - R06.1.4 [5+ 1-]: A lambda with k parameters, passed where the callee expects a function of one k-tuple, unp...
 - R06.1.5 [8+ 3-]: Named and positional arguments, defaults, named-only parameters after `;`, and a variadic ...
@@ -741,7 +741,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0112 `let ... else` block falls through: 1 case(s)
 - E0201 Unresolved name: 10 case(s)
 - E0202 Duplicate definition: 3 case(s)
-- E0203 Unknown field or method: 17 case(s)
+- E0203 Unknown field or method: 18 case(s)
 - E0204 Unknown type: 4 case(s)
 - E0205 Used before initialization: 2 case(s)
 - E0206 Unresolved module: 2 case(s)
