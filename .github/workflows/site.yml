@@ -1,7 +1,9 @@
 name: site
 
-# Deploys only main commits CI passed: it runs when a CI run on main
-# finishes green, on that run's commit. A manual dispatch deploys its ref.
+# Deploys the newest main commit whose `site build` and `site browser tests`
+# jobs passed, whenever a ci run on main ends, even if unrelated jobs are red
+# or the run was superseded (handbook/guidelines/ci-checklist.md ci/R25). A
+# manual dispatch deploys its ref.
 on:
   workflow_run:
     workflows: [ci]
@@ -11,17 +13,34 @@ on:
 
 permissions:
   contents: read
+  actions: read
 
-# A started deploy always finishes; a newer push replaces the waiting one, so
-# the next deploy covers the newest tip.
+# A started deploy always finishes; a newer trigger replaces the waiting one,
+# and it selects the newest passing commit itself.
 concurrency:
-  # A ci run that didn't pass deploys nothing; it must not displace a waiting deploy.
-  group: site-${{ github.event_name == 'workflow_run' && github.event.workflow_run.conclusion != 'success' && github.run_id || github.ref }}
+  group: site-deploy
   cancel-in-progress: false
 
 jobs:
+  select:
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.event == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      sha: ${{ steps.pick.outputs.sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: scripts
+      - id: pick
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ "$GITHUB_EVENT_NAME" = workflow_dispatch ]; then sha=$GITHUB_SHA; else sha=$(scripts/site-deployable.sh); fi
+          echo "sha=$sha" >>"$GITHUB_OUTPUT"
   deploy:
-    if: github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && (github.event.workflow_run.event == 'push' || github.event.workflow_run.event == 'workflow_dispatch'))
+    needs: select
+    if: needs.select.outputs.sha != ''
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
@@ -31,7 +50,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+          ref: ${{ needs.select.outputs.sha }}
       - name: Install the pinned Rust toolchain
         run: rustup show active-toolchain || rustup toolchain install
       - uses: Swatinem/rust-cache@v2
@@ -54,7 +73,7 @@ jobs:
       - name: Deploy
         working-directory: web/worker
         env:
-          DEPLOY_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+          DEPLOY_SHA: ${{ needs.select.outputs.sha }}
         run: $WRANGLER deploy --message "$DEPLOY_SHA"
       - name: Smoke
         run: |

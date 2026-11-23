@@ -183,3 +183,13 @@ workflow runs on `pull_request_target`.
 main or publish a release. *Example:* `commit-status.yml` gets
 `statuses: write` and nothing else; only the release publish job gets
 `contents: write`. *Enforced by:* **missing**; review of `.github/` changes.
+
+### ci/R25
+
+Each thing main ships (edge, the site) goes out from the newest commit whose
+own jobs passed, not only after a fully green run.
+*Why:* at the landing rate most runs are superseded or red on an unrelated
+job, so waiting for a full green run holds shipping for hours. *Example:* a
+red interpreter test doesn't stop the site deploying from a commit whose
+`site build` and `site browser tests` passed. *Enforced by:*
+`scripts/release/shippable.sh`, `scripts/site-deployable.sh`.
