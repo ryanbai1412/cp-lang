@@ -68,5 +68,8 @@ fn every_std_module_but_the_known_ones_parses() {
         .map(|path| path.file_name().unwrap().to_string_lossy().into_owned())
         .collect();
     failing.retain(|name| !NOT_PARSED.contains(&name.as_str()));
-    assert!(failing.is_empty(), "these std modules stopped parsing: {failing:?}");
+    assert!(
+        failing.is_empty(),
+        "these std modules stopped parsing: {failing:?}"
+    );
 }
