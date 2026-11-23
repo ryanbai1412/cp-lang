@@ -348,6 +348,7 @@ struct TreapNode<T, F>:
     var sz: 0..2_147_483_648
     var val: T
     var tag: ?F
+    var rev: Bool
 
 /// Arena-backed randomized treap with subtree-size-aware lazy tag propagation.
 /// Supports value-ordered insertion (`insert`, using `before`) for slope-trick / priority
@@ -417,22 +418,42 @@ pub struct LazyTreap<T, F>(
     /// example: `LazyTreap<Int, Int>(apply: (v, k, f) => v + f, compose: (g, f) => g + f).is_empty == true`
     @get pub fn is_empty(self) -> Bool = root == None
 
+    // A node's subtree reads as its children in stored order, reversed when `rev` is set, then
+    // `tag` applied over that order. `tag` is always the newer of the two.
     fn put(mut self, u: ?Int, f: F):
         if let i = u:
             unchecked:
-                nodes[i].val = apply_fn(nodes[i].val, self.sz_of(nodes[i].l), f)
+                let ls = self.sz_of(if nodes[i].rev: nodes[i].r else: nodes[i].l)
+                nodes[i].val = apply_fn(nodes[i].val, ls, f)
                 if let old = nodes[i].tag:
                     nodes[i].tag = compose_fn(f, old)
                 else:
                     nodes[i].tag = f
 
-    fn down(mut self, i: Int):
+    fn push_tag(mut self, i: Int):
         unchecked:
             if let f = nodes[i].tag:
-                let (fl, fr) = split_fn(f, self.sz_of(nodes[i].l))
-                self.put(nodes[i].l, fl)
-                self.put(nodes[i].r, fr)
+                let (a, b) = if nodes[i].rev: (nodes[i].r, nodes[i].l) else: (nodes[i].l, nodes[i].r)
+                let (fa, fb) = split_fn(f, self.sz_of(a))
+                self.put(a, fa)
+                self.put(b, fb)
                 nodes[i].tag = None
+
+    fn toggle(mut self, u: ?Int):
+        if let i = u:
+            self.push_tag(i)
+            unchecked: nodes[i].rev = not nodes[i].rev
+
+    fn down(mut self, i: Int):
+        self.push_tag(i)
+        unchecked:
+            if nodes[i].rev:
+                let l = nodes[i].l
+                nodes[i].l = nodes[i].r
+                nodes[i].r = l
+                nodes[i].rev = false
+                self.toggle(nodes[i].l)
+                self.toggle(nodes[i].r)
 
     fn pull(mut self, i: Int):
         unchecked: nodes[i].sz = 1 + self.sz_of(nodes[i].l) + self.sz_of(nodes[i].r)
@@ -511,7 +532,7 @@ pub struct LazyTreap<T, F>(
     pub fn insert(mut self, x: T):
         let idx = nodes.len
         let p = self.priority()
-        nodes.push(TreapNode(None, None, p, 1, x, None))
+        nodes.push(TreapNode(None, None, p, 1, x, None, false))
         root = self.ins(root, idx, x, p)
 
     /// Append `x` at the end of the sequence.
@@ -521,7 +542,7 @@ pub struct LazyTreap<T, F>(
     /// example: `var t = LazyTreap<Int, Int>(apply: (v, k, f) => v + f, compose: (g, f) => g + f); t.push(1); t.push(2); t.to_list() == [1, 2]`
     pub fn push(mut self, x: T):
         let idx = nodes.len
-        nodes.push(TreapNode(None, None, self.priority(), 1, x, None))
+        nodes.push(TreapNode(None, None, self.priority(), 1, x, None, false))
         root = self.merge(root, idx)
 
     /// Insert `x` so that it becomes the element at 0-based position `pos`; `pos == len` appends.
@@ -532,7 +553,7 @@ pub struct LazyTreap<T, F>(
     pub fn insert_at(mut self, pos: Int, x: T):
         assert 0 <= pos and pos <= self.len
         let idx = nodes.len
-        nodes.push(TreapNode(None, None, self.priority(), 1, x, None))
+        nodes.push(TreapNode(None, None, self.priority(), 1, x, None, false))
         let (a, b) = self.split_pos(root, pos)
         root = self.merge(self.merge(a, idx), b)
 
@@ -575,7 +596,14 @@ pub struct LazyTreap<T, F>(
     /// empty: changes nothing
     /// traps: when a non-empty `r` reaches outside `0..len`
     /// example: `var t = LazyTreap<Int, Int>(apply: (v, k, f) => v + f, compose: (g, f) => g + f); t.push(1); t.push(2); t.push(3); t.reverse(0..2); t.to_list() == [2, 1, 3]`
-    pub fn reverse(mut self, r: Range<Int>) = todo
+    pub fn reverse(mut self, r: Range<Int>):
+        let (lo, hi) = (r.start, r.start + r.len)
+        assert 0 <= lo and lo <= hi and hi <= self.len, "`reverse` out of range"
+        if lo == hi: return
+        let (a, bc) = self.split_pos(root, lo)
+        let (b, c) = self.split_pos(bc, hi - lo)
+        self.toggle(b)
+        root = self.merge(self.merge(a, b), c)
 
     /// Remove the element at 0-based position `pos` and return it with every pending tag applied.
     ///
@@ -623,7 +651,7 @@ pub struct LazyTreap<T, F>(
         let n = src.nodes[i]
         let l = self.copy_from(src, n.l)
         let r = self.copy_from(src, n.r)
-        nodes.push(TreapNode(l, r, n.pri, n.sz, n.val, n.tag))
+        nodes.push(TreapNode(l, r, n.pri, n.sz, n.val, n.tag, n.rev))
         nodes.len - 1
 
     /// Move every element of `other` onto the end of `self`, in order, leaving `other` empty. Both
@@ -664,29 +692,32 @@ pub struct LazyTreap<T, F>(
             assert false
             return nodes[0].val
 
-    // A read leaves the tree as it is: the tags still pending above a node
-    // ride along as `pend` instead of being pushed into it.
-    fn walk(self, u: ?Int, pend: ?F, lim: Int, mut out: List<T>):
+    // A read leaves the tree as it is: what `down` would push into a node rides along instead,
+    // as the tag `pend` put on it and whether it is toggled (`tog`) after that.
+    fn walk(self, u: ?Int, pend: ?F, tog: Bool, lim: Int, mut out: List<T>):
         if out.len >= lim: return
         let i = u ?? return
         unchecked:
-            let ls = self.sz_of(nodes[i].l)
-            var down = nodes[i].tag
-            var v = nodes[i].val
+            let n = nodes[i]
+            let (a, b) = if n.rev: (n.r, n.l) else: (n.l, n.r)
+            let ls = self.sz_of(a)
+            var v = n.val
+            var t = n.tag
             if let p = pend:
                 v = apply_fn(v, ls, p)
-                if let t = down: down = compose_fn(p, t) else: down = p
-            if let d = down:
-                let (fl, fr) = split_fn(d, ls)
-                self.walk(nodes[i].l, fl, lim, mut out)
-                if out.len < lim:
-                    out.push(v)
-                    self.walk(nodes[i].r, fr, lim, mut out)
-            else:
-                self.walk(nodes[i].l, None, lim, mut out)
-                if out.len < lim:
-                    out.push(v)
-                    self.walk(nodes[i].r, None, lim, mut out)
+                if let old = t: t = compose_fn(p, old) else: t = p
+            var (fa, fb): (?F, ?F) = (None, None)
+            if let f = t:
+                let (x, y) = split_fn(f, ls)
+                fa = x
+                fb = y
+            let flip = n.rev != tog
+            let (fl, fr) = if n.rev: (fb, fa) else: (fa, fb)
+            let (first, f1, last, f2) = if flip: (n.r, fr, n.l, fl) else: (n.l, fl, n.r, fr)
+            self.walk(first, f1, flip, lim, mut out)
+            if out.len < lim:
+                out.push(v)
+                self.walk(last, f2, flip, lim, mut out)
 
     /// The first `min(k, len)` elements in order, with pending tags applied. Reads without pushing
     /// tags, so the tree is unchanged.
@@ -699,7 +730,7 @@ pub struct LazyTreap<T, F>(
     /// example: `var t = LazyTreap<Int, Int>(apply: (v, k, f) => v + f, compose: (g, f) => g + f); t.push(1); t.take(5) == [1]`
     pub fn take(self, k: Int) -> List<T>:
         var out: List<T> = []
-        if k > 0: self.walk(root, None, k, mut out)
+        if k > 0: self.walk(root, None, false, k, mut out)
         out
 
     /// Every element in order, with pending tags applied; `take(len)`.
