@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- Sheriff: diagnostics 7ff7decee turned `x is Some(v)` patterns into `==` comparisons (cpl-lint record/std/is_in_cond tests red). Forward fix: only `is None`/`is not None` are the Python comparison; 224/224 syntax+lint tests pass.
 - Sheriff: run 45106494509 red on `vscode_sync` and `lsp_v03` (stdlib b4e3f16af, 48070c3c1 added std.spec/std.derive) and the `loop_invariant_mod_div` lint tests (compiler 92b58227f enabled L0210 there). Forward-fixed the VS Code table and grammar, the lsp_v03 removed-module list and the lint examples; `cpl-lint` and those two tests pass locally. The tests.rs ratchet was already fixed by 2ebfc5816.
 - Sheriff: run 45104791170 red on `cpl-cli::cli a_statement_that_only_works_out_a_value_is_a_warning` (compiler 08acc1bd1 made `Subset.set` write its receiver; the test still expected a W0101). Moved `s.set` to the kept list; the test passes locally.
 - Sheriff: compiler 08acc1bd1 broke the debt ratchet (`lower/stmt.rs` 6400 -> 6421); moved `subset_set` to `lower/range.rs`. Caught locally before CI reported it. Compiler told.
