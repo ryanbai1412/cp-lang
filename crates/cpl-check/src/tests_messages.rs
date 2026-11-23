@@ -99,3 +99,15 @@ fn another_languages_member_names_point_at_ours() {
         "{diags:?}"
     );
 }
+
+#[test]
+fn pythons_range_says_how_a_range_is_written() {
+    let diags = check("for i in range(3):\n    print(i)\n");
+    assert!(
+        diags[0]
+            .help
+            .as_deref()
+            .is_some_and(|h| h.contains("`range(n)` is `0..n`")),
+        "{diags:?}"
+    );
+}
