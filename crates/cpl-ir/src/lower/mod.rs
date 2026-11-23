@@ -436,6 +436,17 @@ impl Lowerer<'_> {
                 }
             }
         }
+        let products = (0..lw.domains.len())
+            .map(|d| {
+                let parts = lw.product_domains.get(&d)?;
+                Some(
+                    parts
+                        .iter()
+                        .map(|(name, f)| (name.clone(), f.ty()))
+                        .collect(),
+                )
+            })
+            .collect();
         let program = Program {
             warnings: lw.warnings,
             struct_shown,
@@ -444,6 +455,7 @@ impl Lowerer<'_> {
             structs: lw.structs.iter().map(|s| s.def.clone()).collect(),
             enums: lw.enums,
             domains: lw.domains,
+            products,
             globals: lw.globals,
             fns,
             library_fns,
@@ -680,6 +692,16 @@ pub(super) enum ProductFactor {
     Domain(DomainId),
     Enum { enum_id: EnumId, len: i64 },
     Bool,
+}
+
+impl ProductFactor {
+    pub(super) fn ty(&self) -> Ty {
+        match self {
+            ProductFactor::Domain(d) => Ty::Pos(*d),
+            ProductFactor::Enum { enum_id, .. } => Ty::Enum(*enum_id),
+            ProductFactor::Bool => Ty::Bool,
+        }
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -1524,11 +1546,7 @@ impl<'a> Lowerer<'a> {
     }
 
     pub(super) fn product_factor_ty(&self, f: &ProductFactor) -> Ty {
-        match f {
-            ProductFactor::Domain(d) => Ty::Pos(*d),
-            ProductFactor::Enum { enum_id, .. } => Ty::Enum(*enum_id),
-            ProductFactor::Bool => Ty::Bool,
-        }
+        f.ty()
     }
 
     pub(super) fn product_factor_len(&self, f: &ProductFactor, span: Span) -> Expr {

@@ -118,6 +118,8 @@ pub const INF: i64 = 4_000_000_000_000_000_000;
 pub const INT_MIN: i64 = -i64::MAX;
 
 pub type DomainId = usize;
+/// A product domain's parts, each named or not, with its type.
+pub type ProductParts = Vec<(Option<String>, Ty)>;
 
 /// The most values a domain can have for `Subset<D>` to hold its subsets.
 pub const MAX_SUBSET_BITS: i64 = 25;
@@ -1334,6 +1336,10 @@ pub struct Program {
     pub enums: Vec<EnumDef>,
     /// Domain names. Sizes are set as the program runs.
     pub domains: Vec<String>,
+    /// By domain, a product domain's parts as `(R, C)` or `(r: R, c: C)`
+    /// names them: each a `Pos`, `Enum` or `Bool`, the first the most
+    /// significant digit of a position's ordinal.
+    pub products: Vec<Option<ProductParts>>,
     pub globals: Vec<Global>,
     pub fns: Vec<Function>,
     /// By [`FnId`]: whether the fn is an imported module's, not the file's.
