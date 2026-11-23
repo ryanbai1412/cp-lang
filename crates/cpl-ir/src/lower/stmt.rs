@@ -2256,26 +2256,8 @@ impl<'a> Lowerer<'a> {
                 self.domain_lens.insert(id, (least.max(0), most.max(0)));
             }
         }
-        let lo_e = self.expr(lo, None);
-        let lo = if lo_e.ty == Ty::Char {
-            self.mk(
-                ExprKind::Cast(Cast::CharToInt, Box::new(lo_e)),
-                Ty::Int,
-                lo.span,
-            )
-        } else {
-            self.coerce(lo_e, &Ty::Int, lo.span)
-        };
-        let hi_e = self.expr(hi, None);
-        let hi = if hi_e.ty == Ty::Char {
-            self.mk(
-                ExprKind::Cast(Cast::CharToInt, Box::new(hi_e)),
-                Ty::Int,
-                hi.span,
-            )
-        } else {
-            self.coerce(hi_e, &Ty::Int, hi.span)
-        };
+        let lo = self.domain_end(id, lo);
+        let hi = self.domain_end(id, hi);
         let slot = self.temp(Ty::Int);
         out.push(Stmt::Let(slot, Some(lo)));
         let lo = self.local(slot, def.span);

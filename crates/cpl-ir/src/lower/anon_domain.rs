@@ -199,6 +199,17 @@ impl<'a> Lowerer<'a> {
         true
     }
 
+    /// One end of `domain d = lo..hi`, as the `Int` it counts from; a `Char` end makes `d` a
+    /// char domain.
+    pub(super) fn domain_end(&mut self, id: DomainId, end: &ast::Expr) -> Expr {
+        let e = self.expr(end, None);
+        if e.ty != Ty::Char {
+            return self.coerce(e, &Ty::Int, end.span);
+        }
+        self.char_domains.insert(id);
+        self.cast(Cast::CharToInt, e, Ty::Int)
+    }
+
     pub(super) fn unify_array_dims(
         &self,
         index: &[ast::Type],

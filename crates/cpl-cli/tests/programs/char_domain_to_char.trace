@@ -1,0 +1,9 @@
+"variables":{"stdout":{"name":"stdout","type":"what the program printed, a line at a time","kind":"json"},"l":{"name":"l","type":"Letter","kind":"scalar"},"s":{"name":"s","type":"Str","kind":"scalar"}},"runs":{"fast":{"label":"cpl run","steps":[{"id":0,"line":3,"label":"let l = Letter('c')","stage":"main","values":{"stdout":[],"l":99},"locals":{},"frames":[{"fn":"main","line":3}]},
+{"id":1,"line":4,"label":"print → c 99 2","stage":"main","values":{"stdout":["c 99 2"],"l":99},"locals":{},"checkpoint":"print 1","frames":[{"fn":"main","line":4}]},
+{"id":2,"line":5,"label":"var s = \"\"","stage":"main","values":{"stdout":["c 99 2"],"l":99,"s":""},"locals":{},"frames":[{"fn":"main","line":5}]},
+{"id":3,"line":7,"label":"if x.ord \u003c 3: s.push(Char(x))","stage":"main","values":{"stdout":["c 99 2"],"l":99,"s":"a"},"locals":{"x":97},"frames":[{"fn":"main","line":7}]},
+{"id":4,"line":7,"label":"if x.ord \u003c 3: s.push(Char(x))","stage":"main","values":{"stdout":["c 99 2"],"l":99,"s":"ab"},"locals":{"x":98},"frames":[{"fn":"main","line":7}]},
+{"id":5,"line":7,"label":"if x.ord \u003c 3: s.push(Char(x))","stage":"main","values":{"stdout":["c 99 2"],"l":99,"s":"abc"},"locals":{"x":99},"frames":[{"fn":"main","line":7}]},
+{"id":6,"line":8,"label":"print → abc z","stage":"main","values":{"stdout":["c 99 2","abc z"],"l":99,"s":"abc"},"locals":{"x":122},"checkpoint":"print 2","frames":[{"fn":"main","line":8}]},
+{"id":7,"line":8,"label":"the program ended","stage":"main","values":{"stdout":["c 99 2","abc z"],"l":99,"s":"abc"},"locals":{"x":122},"checkpoint":"end","frames":[{"fn":"main","line":8}]}]}}}
+stderr:

@@ -966,6 +966,12 @@ impl<'a> Lowerer<'a> {
             ("F64", Ty::I128) => (Cast::I128ToFloat, Ty::Float),
             ("F64", Ty::U64) => (Cast::U64ToFloat, Ty::Float),
             ("Char", Ty::Int) => (Cast::IntToChar, Ty::Char),
+            // A position of a `Char` domain is its char (R04.2.24).
+            ("Char", Ty::Pos(d)) if self.char_domains.contains(d) => {
+                let d = *d;
+                let code = self.cast(Cast::Label(d), value, Ty::Int);
+                return self.cast(Cast::IntToChar, code, Ty::Char);
+            }
             ("Str", Ty::List(elem)) if **elem == Ty::Char => {
                 return self.mk(
                     ExprKind::Builtin(Builtin::ListToStr, vec![value]),

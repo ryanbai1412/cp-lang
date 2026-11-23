@@ -822,6 +822,8 @@ struct Lowerer<'a> {
     /// with constant ends, and of each domain's length.
     global_bounds: HashMap<GlobalId, (i64, i64)>,
     domain_lens: HashMap<DomainId, (i64, i64)>,
+    /// Domains whose ends are `Char`s: `Char(l)` turns a position back into its char.
+    char_domains: HashSet<DomainId>,
     /// Declared integer range bounds for globals and struct fields.
     global_ranges: HashMap<GlobalId, RangeInfo>,
     struct_field_ranges: HashMap<(StructId, usize), RangeInfo>,
@@ -956,6 +958,7 @@ impl<'a> Lowerer<'a> {
             global_specs: HashMap::new(),
             global_bounds: HashMap::new(),
             domain_lens: HashMap::new(),
+            char_domains: HashSet::new(),
             global_ranges: HashMap::new(),
             struct_field_ranges: HashMap::new(),
             narrow_elems: std::collections::BTreeMap::new(),
