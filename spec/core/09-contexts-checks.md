@@ -118,7 +118,7 @@ unchecked:                                           // every check off, every b
 - `unchecked:` is the greppable escape: a statement block with every
   check off in every build. (R09.4.3)
 - Lints are contexts: `with lint(name: allow)` silences one in a scope,
-  and is the only way to in code: `@allow(name)` is removed syntax (E0503,
+  and is the only in-code spelling: `@allow(name)` is removed syntax (E0503,
   decision 243). Lints are declared by the library that owns the names they
   mention; the linter has no hard-coded stdlib names. (R09.4.4)
 
