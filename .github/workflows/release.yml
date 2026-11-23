@@ -30,8 +30,10 @@ permissions:
   actions: read
 
 # A started release always finishes; a newer trigger replaces the waiting one.
+# A ci run that didn't pass releases nothing, so its trigger gets a group of its
+# own instead of displacing a waiting release.
 concurrency:
-  group: release-${{ startsWith(github.ref, 'refs/tags/v') && 'stable' || inputs.channel || 'edge' }}
+  group: release-${{ github.event_name == 'workflow_run' && github.event.workflow_run.conclusion != 'success' && github.run_id || (startsWith(github.ref, 'refs/tags/v') && 'stable' || inputs.channel || 'edge') }}
   cancel-in-progress: false
 
 jobs:

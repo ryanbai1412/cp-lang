@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- `release` and `site` shared one concurrency group with the workflow_run triggers of cancelled or failed ci runs, so those (most ci runs under load) displaced a waiting dispatch or green-ci release. They now get a group of their own. Milestone 1 now includes JetBrains; README updated.
 - Milestone 1, three OSes: release `install-smoke` runs the sh installer on clean Linux and macOS runners and the PowerShell one on Windows after each publish, then checks `cpl --version` names the commit, `cpl run` (LF and CRLF) and `cpl build`. New `os` workflow runs the workspace tests with GCC on macos-latest and windows-latest, separate from `ci` so it doesn't delay ci's result or edge. `GITHUB_ADMIN_TOKEN` dispatches workflows now (204).
 - First edge release (edge, edge-2026-11-23, from 528cddc42) via an `edge-now-*` tag. `install.sh` with no flags 404'd on `releases/latest` because no stable release exists; both installers now fall back to edge. Checked on a clean ubuntu:24.04 container: `cpl 0.2.2 (edge, 528cddc4)` installs and runs.
 - release.yml: pushing an `edge-now-*` tag releases edge from the newest green main commit, since `workflow_dispatch` returns HTTP 403 to agents and main has been red since the edge trigger landed.

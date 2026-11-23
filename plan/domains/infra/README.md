@@ -12,10 +12,10 @@ Keep every other domain moving: main green at every commit, a gate fast enough t
 1. Edge publishes after every green main CI (at most hourly) and nightly, building all three OSes.
 2. One line installs a working `cpl` on each OS: `curl -fsSL https://cp-lang.org/install.sh | sh` (Linux, macOS) and `irm https://cp-lang.org/install.ps1 | iex` (Windows), checked end to end by an install-smoke job on all three after every publish.
 3. CI runs the tests on Linux, macOS and Windows (the extra OSes on fewer jobs), still <= 3 min end to end; main red-to-green median < 30 min.
-4. The release ships the editor assets editors needs (Neovim/Vim config, VS Code `.vsix`), and the smoke job checks they install.
+4. The release ships the editor assets editors needs (Neovim/Vim config, VS Code `.vsix`, JetBrains plugin), and the smoke job checks they install.
 5. Lanes spend < 5% of their time on landing and devex.
 
-Deferring: a stable `v0.3.0`, per-crate commit-tier test selection, the gate step registry, status-board polish, the 16-core runner, JetBrains packaging.
+Deferring: a stable `v0.3.0`, per-crate commit-tier test selection, the gate step registry, status-board polish, the 16-core runner.
 
 Next 3: (1) install-smoke on all three OSes after each publish; (2) macOS and Windows in the CI test matrix; (3) main green and CI <= 3 min.
 

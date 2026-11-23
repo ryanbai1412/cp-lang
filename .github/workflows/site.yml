@@ -15,7 +15,8 @@ permissions:
 # A started deploy always finishes; a newer push replaces the waiting one, so
 # the next deploy covers the newest tip.
 concurrency:
-  group: site-${{ github.ref }}
+  # A ci run that didn't pass deploys nothing; it must not displace a waiting deploy.
+  group: site-${{ github.event_name == 'workflow_run' && github.event.workflow_run.conclusion != 'success' && github.run_id || github.ref }}
   cancel-in-progress: false
 
 jobs:
