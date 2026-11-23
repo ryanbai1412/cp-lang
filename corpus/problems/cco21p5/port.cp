@@ -1,5 +1,5 @@
-// CCO 2021 P5 (CP Lang 0.2.2): `LazySegTree<Slot, Int>(AddMin)` directly replaces
-// the pre-0.2.2 negated `AddMax` + `INF` sentinel + `set_dp` workaround.
+// CCO 2021 P5: a segment tree of `?Int` minimums with range add; an empty
+// slot is `None`, so no INF sentinel is needed.
 // original: corpus/submissions/4554642.cpp
 
 let (n, m): (2..=200_000, 1..=200_000) = read()
@@ -29,19 +29,20 @@ let add_min = Action<?Int, Int>(
     (f, x, _) => x + f,
     over: Monoid<?Int>(None, opt_min),
 )
-var tree = LazySegTree<Slot, ?Int, Int>(add_min)
-tree.set(Slot.last, 0)
+let empty: [Slot]?Int = None
+var tree = SegTree(add_min.over, empty, act: add_min)
+tree.set(Slot.last!, Some(0))
 
 var j = n
 var ans = 0
 for i in (1..n).rev:
     while j >= 0 and suff[j] >= i: j -= 1
-    for a in at_min[i]: tree.apply(Slot(a + 1).., 1)
-    var cur = tree.fold(Slot(j + 1)..) ?? 0
+    for a in at_min[i]: tree.apply(Slot(a + 1)..=Slot.last!, 1)
+    var cur = tree.fold(Slot(j + 1)..=Slot.last!) ?? 0
     if min_nb[i] >= n:
         cur += 1
-        tree.apply(Slot(i + 1).., 1)
-    tree.set(Slot(i), cur)
+        tree.apply(Slot(i + 1)..=Slot.last!, 1)
+    tree.set(Slot(i), Some(cur))
     if i == 1: ans = cur
 
 print(ans)

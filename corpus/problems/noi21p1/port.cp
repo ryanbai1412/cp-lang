@@ -13,7 +13,7 @@ for _ in 0..t:
         [E] e => (V(rand(1, e.label)), V(e.label + 1))
 
     let edges: [E](u: V, v: V) = read(gen: random_tree)
-    let tree = Rooted(edges, V.first)
+    let tree = Rooted(Graph.undirected(edges), V.first!)
 
     // Stamp the vertices of each "1" path with the number of the command.
     // An edge is heavy when its two ends carry the same stamp, because any
@@ -21,31 +21,32 @@ for _ in 0..t:
     // The tree is laid out so that a path is a few ranges of cells. Inside
     // a range, also keep one bit per cell: is the edge to the cell before
     // heavy? Only where two ranges of a path meet are stamps compared.
-    var stamp = AssignSum<tree.Pre>()
-    var tied = AssignSum<tree.Pre>()
+    var stamp = SegTree(+, [tree.Pre] _ => 0, act: assign)
+    var tied = SegTree(+, [tree.Pre] _ => 0, act: assign)
     var who: [tree.Pre]V = V.first!
-    for v in V: who[tree.sub(v).l] = v
+    for v in V: who[tree.sub(v).first!] = v
 
     for now in 1..=m:
         let kind: 1..=2 = read()
         let a: V = read()
         let b: V = read()
         if kind == 1:
-            for (l, r) in tree.chains(a, b):
-                stamp.assign(l, r, now)
-                tied.assign(l, r, 1)
-                tied.assign(l, l, 0)
-                if let after = r + 1: tied.assign(after, after, 0)
+            for chain in tree.chains(a, b):
+                let c = chain.range
+                let (l, r) = (c.first!, c.last!)
+                stamp.apply(c, Some(now))
+                tied.apply(c, Some(1))
+                tied.set(l, 0)
+                if r != tree.Pre.last: tied.set(tree.Pre.nth(r.ord + 1), 0)
         else:
-            let peak = tree.sub(tree.lca(a, b)).l
+            let peak = tree.sub(tree.lca(a, b)).first!
             var heavy = 0
-            for (l, r) in tree.chains(a, b):
-                if let second = l + 1 and l != r: heavy += tied.sum(second, r)
+            for chain in tree.chains(a, b):
+                let c = chain.range
+                let l = c.first!
+                heavy += tied.fold(c) - tied[l]
                 // every range but the highest hangs from the path by one more edge
                 if l != peak:
-                    let above = tree.sub(tree.parent(who[l])!).l
-                    if stamp.sum(l, l) != 0 and stamp.sum(l, l) == stamp.sum(
-                        above,
-                        above,
-                    ): heavy += 1
+                    let above = tree.sub(tree.parent(who[l])!).first!
+                    if stamp[l] != 0 and stamp[l] == stamp[above]: heavy += 1
             print(heavy)

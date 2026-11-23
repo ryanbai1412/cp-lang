@@ -4,7 +4,6 @@ btoi17p1
 btoi18p3
 btoi19p3
 ccc02s4hard
-cco21p5
 cf2062e1
 cf2062e2
 cf2084f
@@ -21,7 +20,6 @@ ioi14p6
 ioi18p1
 mccc4j5
 noi15p5
-noi21p1
 noi21p3
 noi21p4
 noip01p4
