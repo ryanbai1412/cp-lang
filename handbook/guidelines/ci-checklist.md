@@ -286,3 +286,18 @@ archive to the commit and workflow that built it, with no key to leak.
 ryanbai1412/cp-lang` passes for an edge archive; a rebuilt or swapped one
 fails.
 *Enforced by:* `scripts/test_workflows.py`, run by `scripts/check.sh`.
+
+### ci/R34
+
+A test that asserts a wall-clock bound under 5 s is listed in
+`wall_clock_tests` in `scripts/check.sh`, so it runs only in the
+non-blocking timing job and `--full` (decision 225).
+*Why:* a busy hosted runner can be several times slower than a laptop, so a
+50 ms budget in a blocking tier fails main with no code change and the red
+does not reproduce locally. Bounds of 5 s or more guard against hangs, and
+those may block.
+*Example:* a new `assert!(t.elapsed() < Duration::from_millis(50))` in
+`crates/cpl-lsp/tests/` fails
+`test_every_short_timing_budget_is_kept_out_of_the_blocking_tiers` until its
+test is listed.
+*Enforced by:* `scripts/test_wall_clock.py`, run by `scripts/check.sh`.
