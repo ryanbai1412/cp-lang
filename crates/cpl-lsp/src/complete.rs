@@ -180,7 +180,58 @@ pub fn completion(cursor: &Cursor, std: &mut StdLib) -> Vec<Value> {
             .map(|(entry, sort)| item_json(&entry, rank(&entry, sort)))
             .collect();
     }
-    scope_completion(cursor, std, word, &rank)
+    let mut items = argument_names(cursor, std, offset);
+    items.extend(scope_completion(cursor, std, word, &rank));
+    items
+}
+
+/// `xs.sorted(b|`: each parameter of the open call that no argument gives
+/// yet, offered as `name:`, the named-only ones first.
+fn argument_names(cursor: &Cursor, std: &mut StdLib, offset: usize) -> Vec<Value> {
+    let text = &*cursor.analysis.text;
+    let Some(item) = item_at(cursor.analysis, cursor.offset) else {
+        return Vec::new();
+    };
+    let Some((paren, commas, arg_start)) = open_call(text, item.offset as usize, offset) else {
+        return Vec::new();
+    };
+    if !text[arg_start..offset].trim_start().chars().all(is_ident) {
+        return Vec::new();
+    }
+    let callee_end = text[..paren].trim_end().len();
+    let name = ident_before(text, callee_end);
+    if name.is_empty() {
+        return Vec::new();
+    }
+    let Some(sig) = signature_of(cursor, std, item, callee_end, name) else {
+        return Vec::new();
+    };
+    let given = named_args(&text[paren + 1..arg_start]);
+    let mut by_position = commas.saturating_sub(given.len());
+    let mut out = Vec::new();
+    for param in &sig.params {
+        if !param.named_only && by_position > 0 {
+            by_position -= 1;
+            continue;
+        }
+        if param.variadic || given.contains(&param.name.as_str()) {
+            continue;
+        }
+        let mut detail = format!("{}: {}", param.name, param.ty);
+        if !param.default.is_empty() {
+            detail = format!("{detail} = {}", param.default);
+        }
+        let label = format!("{}:", param.name);
+        let mut item = item_json(
+            &plain(&label, Kind::Field, detail, ""),
+            u8::from(!param.named_only),
+        );
+        if let Value::Object(members) = &mut item {
+            members.insert("insertText".to_string(), format!("{label} ").into());
+        }
+        out.push(item);
+    }
+    out
 }
 
 /// The type the expression starting at `at` should have: the parameter it
@@ -274,19 +325,38 @@ fn same_type(a: &str, b: &str) -> bool {
 
 /// A line-comment, or an odd number of quotes, before the cursor.
 fn in_comment_or_string(line: &str) -> bool {
-    let mut in_string = false;
+    // Inside a string's `{..}` the cursor is in code again: `"{xs.|}"`.
+    let (mut in_string, mut raw, mut depth) = (false, false, 0usize);
+    let mut prev = ' ';
     let mut chars = line.chars().peekable();
     while let Some(c) = chars.next() {
-        match c {
-            '\\' if in_string => {
-                chars.next();
+        if in_string && depth == 0 {
+            match c {
+                '\\' if !raw => {
+                    chars.next();
+                }
+                '"' => in_string = false,
+                '{' if !raw && chars.peek() == Some(&'{') => {
+                    chars.next();
+                }
+                '{' if !raw => depth = 1,
+                _ => {}
             }
-            '"' => in_string = !in_string,
-            '/' if !in_string && chars.peek() == Some(&'/') => return true,
-            _ => {}
+        } else {
+            match c {
+                '"' if depth == 0 => {
+                    in_string = true;
+                    raw = prev == 'r';
+                }
+                '{' if depth > 0 => depth += 1,
+                '}' if depth > 0 => depth -= 1,
+                '/' if depth == 0 && chars.peek() == Some(&'/') => return true,
+                _ => {}
+            }
         }
+        prev = c;
     }
-    in_string
+    in_string && depth == 0
 }
 
 fn item_json(entry: &Entry, sort: u8) -> Value {
@@ -327,7 +397,13 @@ fn plain(name: &str, kind: Kind, detail: String, doc: &str) -> Entry {
 fn use_completion(cursor: &Cursor, std: &mut StdLib, path: &str, word: &str) -> Vec<Value> {
     let path = path.trim_start();
     // `use std.seq.{zip, sc`: the public names of `std.seq`.
-    if let Some((module, _)) = path.split_once(".{") {
+    let typed = &path[..path.len() - word.len()];
+    // `use std.seq.{zip, sc` and `use std.seq.sc`: the public names of `std.seq`.
+    let module = match path.split_once(".{") {
+        Some((module, _)) => Some(module),
+        None => typed.strip_suffix('.').filter(|m| m.contains('.')),
+    };
+    if let Some(module) = module {
         let Some(module) = module.strip_prefix("std.") else {
             return Vec::new();
         };
@@ -341,7 +417,6 @@ fn use_completion(cursor: &Cursor, std: &mut StdLib, path: &str, word: &str) -> 
             .map(|e| item_json(e, 0))
             .collect();
     }
-    let typed = &path[..path.len() - word.len()];
     match typed {
         "" => vec![item_json(
             &plain("std", Kind::Module, "the standard library".into(), ""),
@@ -700,6 +775,16 @@ fn receives(detail: &str, ty: &Ty) -> bool {
             _ => false,
         }),
         None if is_generic => false,
+        // `self: ?T`, `T` generic, takes every optional.
+        None if matches!(ty, Ty::Optional(_))
+            && self_ty.strip_prefix('?').is_some_and(|inner| {
+                generics
+                    .split(',')
+                    .any(|g| g.split(':').next().unwrap_or("").trim() == inner)
+            }) =>
+        {
+            true
+        }
         None => {
             let name = self_ty.split('<').next().unwrap_or(self_ty);
             let ty = match ty {

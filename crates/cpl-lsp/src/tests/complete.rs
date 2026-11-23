@@ -557,3 +557,33 @@ fn hover_signature_help_and_completion_agree_on_library_methods() {
         assert_eq!(label, as_called(&detail), "signature help on {name}");
     }
 }
+
+#[test]
+fn completion_offers_the_open_calls_argument_names_not_given_yet() {
+    let items = completions("let xs = [3, 1]\nprint(xs.sorted(b|))\n");
+    assert!(labels(&items).contains(&"by:"), "{items:?}");
+    let items = completions("fn f(a: Int, scale: Int = 1) -> Int = a\nprint(f(1, sc|))\n");
+    assert!(labels(&items).contains(&"scale:"), "{items:?}");
+    assert!(
+        !labels(&items).contains(&"a:"),
+        "a is given by position: {items:?}"
+    );
+    let items = completions(&format!("{ROAD}let r = Road(to: 1, |)\n"));
+    assert!(labels(&items).contains(&"w:"), "{items:?}");
+    assert!(!labels(&items).contains(&"to:"), "to is given: {items:?}");
+    // A value being written is not a name.
+    let items = completions("let xs = [3, 1]\nprint(xs.sorted(by: x|))\n");
+    assert!(!labels(&items).contains(&"by:"), "{items:?}");
+}
+
+#[test]
+fn completion_works_after_a_dot_in_an_optional_an_interpolation_and_a_use() {
+    let items = completions("let m: ?Int = None\nprint(m.|)\n");
+    assert!(labels(&items).contains(&"is_some_and"), "{items:?}");
+    let items = completions("let xs = [3, 1]\nprint(\"{xs.|}\")\n");
+    assert!(labels(&items).contains(&"len"), "{items:?}");
+    let items = completions("print(\"{{xs.|}}\")\n");
+    assert!(items.is_empty(), "`{{` is a literal brace: {items:?}");
+    let items = completions("use std.graph.|\n");
+    assert!(labels(&items).contains(&"Graph"), "{items:?}");
+}
