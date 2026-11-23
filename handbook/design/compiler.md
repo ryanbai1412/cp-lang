@@ -2,12 +2,39 @@
 
 | | |
 |---|---|
-| Owner | Compiler |
+| Kind | Design |
+| Owner | compiler |
 | Status | Active |
+| Describes | `crates/cpl-syntax`, `crates/cpl-check`, `crates/cpl-ir`, `crates/cpl-interp`, `crates/cpl-prover`, `crates/cpl-codegen` |
 
-How a `.cp` file becomes a checked run and a C++ file, as seven parts:
-syntax, names, types, IR, facts, VM and codegen. For each part: its job, the
-data it owns, the invariants it keeps, and what it must never do.
+This page explains how a `.cp` file becomes a checked run and a C++ file.
+Read it before changing any compiler crate, or when you need to know which
+part decides something.
+
+## The picture
+
+Take `let a = [10, 20, 30]` and `print(a.rev.take(2))`.
+
+The parser turns the text into a tree with a source span on every node.
+The checker resolves `take` to the method on `Rev`, the type of a reversed
+view, and types `a.rev` as `Rev<List<Int>>`. Lowering turns the checked
+tree into one typed program with every generic made concrete. The checked
+interpreter and the C++ back end both run that one program, so both print
+`30 20`.
+
+The design rests on three ideas:
+
+- **Every stage works one top-level item at a time.** An edit re-parses
+  and re-checks only the item you changed and what depends on it, so the
+  editor stays fast, and a broken item never stops the others from being
+  checked.
+- **Meaning is decided once.** The checker decides types, lowering decides
+  the program, and a few shared facts (effects, printing) are computed once
+  for both back ends. Nothing downstream re-derives what an earlier stage
+  decided, so the two engines can't drift apart.
+- **No std name is special.** The standard library is checked and lowered
+  like any user library. A std behaviour the compiler needs becomes a
+  general mechanism a user library can use too.
 
 ```
 text --cpl-syntax--> ParsedFile   (lossless tree per item, spans, Missing/Error nodes)
@@ -17,11 +44,22 @@ text --cpl-syntax--> ParsedFile   (lossless tree per item, spans, Missing/Error 
                        '--cpl-codegen-> one C++17 file
 ```
 
-Example: in `let a = [10, 20, 30]; print(a.rev.take(2))`, syntax gives a
-call tree with spans. Names resolve `take` to the inherent method on `Rev`.
-Types give `a.rev` the type `Rev<List<Int>>`, which is not `Indexed`, so it
-can't be passed to an arbitrary `S: Indexed` fn. The IR lowers the call once,
-and the VM and the C++ both run that one `Program`, so both print `30 20`.
+## Where to start
+
+- **A wrong type or a wrong error:** `crates/cpl-check/src/check/`.
+- **A wrong answer on both engines:** lowering, `crates/cpl-ir/src/lower/`.
+- **A wrong answer on one engine:** the VM in `crates/cpl-interp/src/vm/`,
+  or codegen.
+
+The rules for changing these parts are in
+`handbook/guidelines/compiler-changes.md`.
+
+---
+
+# Reference
+
+Each part's job, the data it owns, the invariants it keeps and what it
+must never do.
 
 ## Syntax (`crates/cpl-syntax`)
 
@@ -126,3 +164,7 @@ and the VM and the C++ both run that one `Program`, so both print `30 20`.
 
 The full list, with what is still missing, is the quality register in
 `handbook/domains/compiler.md`.
+
+## Changes
+
+- 2026-11-23: overview first; part contracts under Reference.

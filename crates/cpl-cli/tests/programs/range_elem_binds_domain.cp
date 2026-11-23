@@ -1,4 +1,4 @@
-// A range element type binds a generic used as a domain (R04.4.30): `R` is `0..2`, then `1..=3`.
+// A range element type binds a generic used as a domain (R04.4.30): `R` is `0..2`, then `1..=3`. See compiler-changes/R6.
 fn hits<L, R>(adj: [L]List<R>) -> [R]Int:
     var out: [R]Int = 0
     for l in L:

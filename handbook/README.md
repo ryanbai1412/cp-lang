@@ -83,7 +83,7 @@ number. *Fix the remaining failures* is in the domain's plan.
 | change the language | `language/<area>.md`, the spec chapter it leads, `process/change.md` |
 | add or change a std API | `guidelines/std-api.md`, `guidelines/std-docs.md` |
 | write or improve an error message | `guidelines/errors.md` |
-| change the parser, checker, IR, VM or codegen | `guidelines/compiler-changes.md` |
+| change the parser, checker, IR, VM or codegen | `guidelines/compiler-changes.md`, `-checklist.md` | How to fix the compiler so the fix holds for every program; checklist `compiler-changes/R1`..`R11` | compiler |
 | add a test suite, or know which test to write | `process/quality.md` |
 | add a conformance case or change a spec rule | `guidelines/conformance.md`, `guidelines/spec-rules.md` |
 | land a commit, or understand a red CI | `process/landing-and-ci.md` |

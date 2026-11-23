@@ -1,5 +1,7 @@
 //! How well the front end recovers from broken code: one diagnostic per
 //! root cause, at the right line.
+//! Enforces compiler-changes/R9 in
+//! `handbook/guidelines/compiler-changes-checklist.md`.
 //!
 //! Two corpora. The code blocks of `plan/1x-*.md` are mostly valid 0.2.2
 //! with some planned syntax mixed in. The broken ports take every

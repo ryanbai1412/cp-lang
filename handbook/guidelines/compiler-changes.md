@@ -2,80 +2,66 @@
 
 | | |
 |---|---|
-| Kind | Guidelines |
+| Kind | Guideline |
 | Owner | compiler |
-| Describes | `crates/cpl-syntax/`, `crates/cpl-check/`, `crates/cpl-ir/`, `crates/cpl-interp/`, `crates/cpl-prover/`, `spec/conformance/`, `crates/cpl-cli/tests/programs/` |
+| Describes | `crates/cpl-syntax/`, `crates/cpl-check/`, `crates/cpl-ir/`, `crates/cpl-interp/`, `crates/cpl-prover/` |
 
-Read this before you change how a program is parsed, typed, lowered or run.
-The parts and their invariants are in `handbook/design/compiler.md`; this
-page says how to change them without breaking a user.
+Read this before you change how a program is parsed, typed, lowered or
+run. It explains how to fix a compiler bug so the fix holds for every
+program, not only the one in the report. The exhaustive rules, each with an
+id that tests and reviews cite, are in
+[compiler-changes-checklist.md](compiler-changes-checklist.md).
 
 ## A good fix, by example
 
-A user reports that `fn max(a: Int, b: Int) -> Int = a + b` is ignored by
-`max(x, 3)`: the builtin runs and prints the wrong number.
+A user writes their own `fn max(a: Int, b: Int) -> Int = a + b` and calls
+`max(x, 3)`. The builtin runs instead and prints the wrong number, with no
+error.
 
-A bad fix adds `if name == "max" && self.declares("max")` in the call
-lowering. It fixes one name, leaves `min` and `abs` broken, and adds a std
-name to the compiler.
+A bad fix adds a check for the name `max` in the call lowering. It fixes
+one name, leaves `min` and `abs` broken, and teaches the compiler one more
+std name.
 
-A good fix finds the rule that was broken (a local name shadows a prelude
-name, R11.2.3), finds the one place names are resolved, and makes every
-prelude name obey it there. It lands with a conformance case for `max`, and
-the same case with a top-level `let max = ...`, and records where each name
-resolves so lint and the editor read the same answer.
+A good fix starts from the spec. The rule broken is "a local name shadows a
+prelude name" (R11.2.3). Names are resolved in one place, so the fix goes
+there and every prelude name obeys it at once. The commit adds a
+conformance case for a user `fn max` and one for a top-level
+`let max = ...`, so the bug can't come back unseen.
 
-## The rules
+## The ideas behind the rules
 
-1. **Fix the class, not the case.** Find the rule in `spec/` the program
-   broke and the one place that rule lives, and fix it there. Never match a
-   std name as a string, add a one-case path, or add an edition branch: each
-   is counted by `ir_builtin_names`, `prelude_privilege` or
-   `backend_std_names` in `scripts/debt-ratchet.py` and may only go down.
-2. **Every fix lands with its regression.** The conformance case or
-   program that exposed the bug is committed with the fix. When the two
-   engines could differ, add a program under `crates/cpl-cli/tests/programs/`
-   so `crates/cpl-cli/tests/differential.rs` holds both to one `.out`.
-3. **Never weaken a case.** A conformance case that contradicts `spec/` is a
-   question for spec, not an edit. A skip, xfail or allowlist entry only
-   ever shrinks.
-4. **One program, two engines.** The VM and the C++ run the same IR and must
-   agree on every valid program and on input either rejects. A fact both
-   need (effects, pushed loops, printing) is decided once in `cpl-ir` and
-   read by both; a back end never re-derives a type the checker gave.
-5. **A bound means what it says.** A type meets a trait bound only by
-   implementing the trait. A view such as `Rev<S>` is never unwrapped to `S`
-   to satisfy a bound, and a generic is bound only to what its uses need: a
-   generic the fn uses as a domain may bind to a range, any other keeps the
-   range's `Int`.
-6. **No error starts inside std.** Generic std is checked at its
-   definition, so a user's mistake is reported at the user's call.
-7. **Check what users already wrote.** A change to typing or lowering is
-   tried on every corpus port, acceptance solution and site reference
-   before it lands; a change that breaks one is migrated with it, in the
-   same commit, keeping each program's meaning.
+**The spec decides, the compiler obeys.** Every bug is a spec rule the
+compiler broke. Find the rule, find the one place it is implemented, and
+fix it there. A fix that matches a std name, adds a path for one shape of
+program, or special-cases an edition is a symptom patch; it is counted as
+debt and only allowed to shrink.
 
-## Checklist
+**One program, two engines.** The checked interpreter and the generated
+C++ run the same lowered program. A fact both need, such as which globals a
+function writes or how a type prints, is decided once and read by both.
+Then a disagreement between them is always a bug in one place, and the
+differential suite finds it.
 
-- [ ] The fix sits where the broken spec rule lives, with no std name,
-      one-case path or edition branch added.
-- [ ] A conformance case or differential program fails without the fix
-      and passes with it.
-- [ ] No conformance case, expected output or skip list was loosened.
-- [ ] `cargo nextest run -p cpl-check -p cpl-ir -p cpl-interp` and
-      `cargo nextest run -p cpl-cli --test differential` pass.
-- [ ] `cpl-conform all --check` shows no regression, which covers the
-      corpus ports and the spec blocks.
-- [ ] `python3 scripts/debt-ratchet.py --check` passes.
+**Types mean what they say.** A trait bound is met only by a type that
+implements the trait, and a generic is bound only to what its uses need.
+Guessing a type to make a program compile turns a clear error into a wrong
+answer later.
 
-## Measures
+**What users already wrote keeps working.** Corpus ports, acceptance
+solutions and site examples are real programs. A change that breaks one
+either migrates it in the same commit, keeping its meaning, or is the
+wrong change.
 
-The compiler charter (`handbook/domains/compiler.md`) lists every quality
-the compiler must have and the suite that enforces it: conformance, the
-two-engine differential, VM fallbacks, std privilege and std checked at
-definition.
+**Evidence lands with the fix.** The program that exposed a bug becomes a
+test in the same commit, and no existing test is loosened to make room.
+
+## Deciding a case nobody wrote down
+
+Ask which spec rule the program depends on. If none covers it, the
+question goes to spec before any code changes. If one does, ask where that
+rule lives in the compiler, and whether your fix makes every program the
+rule covers right, not only this one.
 
 ## Changes
 
-- 2026-11-23: first version, from the compiler lane's working rules and
-  the review of fixes that broke corpus programs.
+- 2026-11-23: first version; rules moved to the checklist.

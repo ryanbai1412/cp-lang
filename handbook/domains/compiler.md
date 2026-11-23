@@ -1,20 +1,78 @@
-# Compiler domain charter
+# Compiler
 
 | | |
 |---|---|
-| Owner | Compiler |
+| Kind | Domain charter |
+| Owner | compiler |
 | Status | Active |
+| Describes | `crates/cpl-syntax`, `crates/cpl-check`, `crates/cpl-ir`, `crates/cpl-interp`, `crates/cpl-prover` |
 
-## Mission
+The compiler domain decides what a CP Lang program means. It reads the
+text, checks names and types, lowers the program to one typed form, and
+runs it on the checked interpreter; the C++ back end reads that same form.
+If `cpl check` accepted your program or `cpl run` printed an answer, this
+domain's work decided both.
 
-Every program the spec defines means exactly what the spec says, in the
-interpreter and in the generated C++. Every program the spec rejects is
-rejected with one error naming the rule it breaks. There is one front end, one
-IR and one interpreter engine, and no std name is special in the compiler.
+## What good looks like
 
-Example: `let a = [10, 20, 30]; print(a.rev.take(2))` prints `30 20` from
-`cpl run` and from the built C++. Before that holds, it is a known gap with a
-conformance case, never a silent wrong answer.
+A contestant writes `let a = [10, 20, 30]` and `print(a.rev.take(2))`. The
+editor, `cpl check`, `cpl run` and the C++ on the judge all agree: it
+prints `30 20`. If they write something the spec rejects, they get one
+error, at the token to change, naming the rule. Nothing they write crashes
+the compiler, and nothing gives a different answer on the judge than it did
+locally.
+
+That holds for every program, not just ones someone tested: every rule in
+`spec/` has a conformance case that passes, and the interpreter and the C++
+agree on all of them with nothing skipped. A user's own library works the
+same way the standard library does, because the compiler never treats a
+std name as special.
+
+## How it fits together
+
+A program passes through five parts, each with one job:
+
+- **Syntax** turns text into a tree, one top-level item at a time, and
+  never fails, so a half-typed program still gets checked.
+- **Names and types** say what each name refers to and give every
+  expression a type and every index its domain (a typed index space). This
+  is the incremental database the editor queries.
+- **Lowering** turns a checked program into one typed, monomorphic
+  `Program`.
+- **Facts** that both back ends need, such as which globals a function
+  writes, are computed once from the `Program`.
+- **The VM** runs the `Program` with every check the spec names; the C++
+  back end, owned by perf, emits the same `Program` as one C++17 file.
+
+`handbook/design/compiler.md` describes each part's data and contracts.
+
+## How we know it is good
+
+The conformance suite runs every spec rule's cases; the differential suite
+runs the same programs on both engines and compares output. Ratchets count
+std names matched in the compiler and constructs the VM can't run yet, and
+only let those counts fall. The rules for changing the compiler, each with
+the check behind it, are in `handbook/guidelines/compiler-changes.md`.
+
+The weakest areas today: nobody generates programs to compare the two
+engines on code no one wrote; nothing checks that checked and unchecked
+builds agree; std-bound violations and interpreter memory are not measured;
+and incremental re-checking is not counted. The quality register below
+lists every quality with its check.
+
+## Where to start
+
+- **A program gives the wrong answer or a wrong error:** find the spec
+  rule, add a conformance case or a program under
+  `crates/cpl-cli/tests/programs/`, and follow the guideline.
+- **The two engines disagree:** run `cpl-conform diff` and fix whichever
+  side is wrong.
+- **A conformance case fails:** `cpl-conform conformance --causes` groups
+  failures by cause.
+
+---
+
+# Reference
 
 ## Scope
 
@@ -70,7 +128,7 @@ targets are in `plan/domains/compiler/metrics.toml`.
 | Quality | Metric | Mechanism | Status |
 |---|---|---|---|
 | Programs mean what the spec says | conformance cases passing, of all | `cpl-conform conformance` over `spec/conformance/` (generated from spec rules) | enforced; `--check` blocks regressions |
-| Interpreter and C++ agree | cases where the two outputs differ; cases skipped | `cpl-conform diff`; `crates/cpl-cli/tests/differential.rs` over `crates/cpl-cli/tests/programs/`; rule 4 of [compiler-changes](../guidelines/compiler-changes.md#the-rules) | enforced; skips only shrink |
+| Interpreter and C++ agree | cases where the two outputs differ; cases skipped | `cpl-conform diff`; `crates/cpl-cli/tests/differential.rs` over `crates/cpl-cli/tests/programs/`; [compiler-changes/R4](../guidelines/compiler-changes-checklist.md#compiler-changesr4) | enforced; skips only shrink |
 | Agreement on unusual input | mismatches over seeded degenerate inputs | `crates/cpl-cli/tests/fuzz_three_way.rs` | enforced for its families |
 | No silent wrong answer | conformance cases with wrong output | `cpl-conform conformance --causes` (`wrong output` group) | enforced as a count |
 | A rejected program names its rule | rejected cases whose expected code matches | `cpl-conform conformance` (expected `error[...]` per case) | enforced |
@@ -78,8 +136,8 @@ targets are in `plan/domains/compiler/metrics.toml`.
 | Front end never panics | panics over arbitrary input | `crates/cpl-cli/tests/recovery.rs`; a parser/checker fuzzer | partial: fuzzer missing |
 | Internal errors never reach a user | `R0001` / internal traps over conformance and corpus | `cpl-conform corpus` and `conformance` (internal traps fail the case) | enforced |
 | Generic std is checked at its definition, so no error starts inside std | errors `cpl check std/<file>.cp` reports; diagnostics whose primary span is in `std/` on any user program | `crates/cpl-cli/tests/std_checks.rs` (count only drops, toward 0); a check that no conformance or corpus diagnostic points into `std/` | partial: the span check is missing |
-| Std bounds mean what they say | generic calls that type-check by unwrapping a type that doesn't meet the bound | trait-bound checks at the call (`cpl-check`), conformance cases such as `core-07`; rule 5 of [compiler-changes](../guidelines/compiler-changes.md#the-rules) | partial: no suite generates bound violations |
-| No std privilege | std names matched in check, IR and interp | `ir_builtin_names`, `prelude_privilege`, `backend_std_names`, `lint_std_names` ratchets in `scripts/debt-ratchet.py`; rule 1 of [compiler-changes](../guidelines/compiler-changes.md#the-rules) | enforced; only shrink |
+| Std bounds mean what they say | generic calls that type-check by unwrapping a type that doesn't meet the bound | trait-bound checks at the call (`cpl-check`), conformance cases such as `core-07`; [compiler-changes/R5](../guidelines/compiler-changes-checklist.md#compiler-changesr5) | partial: no suite generates bound violations |
+| No std privilege | std names matched in check, IR and interp | `ir_builtin_names`, `prelude_privilege`, `backend_std_names`, `lint_std_names` ratchets in `scripts/debt-ratchet.py`; [compiler-changes/R1](../guidelines/compiler-changes-checklist.md#compiler-changesr1) | enforced; only shrink |
 | One interpreter engine | VM fallbacks to the tree-walker | `vm_fallbacks` and `tree_walker` ratchets; `CPL_VM_STATS=json` | enforced as a count; target 0, tree-walker deleted |
 | Runs are deterministic | output differences across repeated runs | `crates/cpl-interp/tests/checkpoint.rs`, trace goldens (`crates/cpl-cli/tests/trace_goldens.rs`) | partial |
 | Traps show source values | traps without values or span | `crates/cpl-cli/tests/runtime_errors.rs` | enforced |
@@ -104,11 +162,11 @@ targets are in `plan/domains/compiler/metrics.toml`.
 | Interpreter memory fits contest inputs (J6) | peak memory on the largest corpus inputs | none | missing |
 | The C++ builds on every judge profile (J9) | ports that fail to compile or exceed the source limit | `crates/cpl-cli/tests/judges.rs` | enforced |
 | Old solutions keep building (J10) | corpus programs that stop checking after a change | `cpl-conform corpus`; `crates/cpl-cli/tests/judges.rs` ports | enforced |
-| A user library has the powers std has (J10) | std-only mechanisms | `prelude_privilege`, `backend_std_names`, `ir_builtin_names`, `lint_std_names` in `scripts/debt-ratchet.py`; rule 1 of [compiler-changes](../guidelines/compiler-changes.md#the-rules) | partial |
+| A user library has the powers std has (J10) | std-only mechanisms | `prelude_privilege`, `backend_std_names`, `ir_builtin_names`, `lint_std_names` in `scripts/debt-ratchet.py`; [compiler-changes/R1](../guidelines/compiler-changes-checklist.md#compiler-changesr1) | partial |
 | Suites catch the bugs they claim to | mutation score of the conformance and differential suites | `scripts/mutation-score.py` on the code a diff touches | partial: not yet in the gate |
 | Generated programs find disagreements (as Csmith does for GCC and LLVM) | mismatches per 100k generated programs | a differential program generator, also run at each `--checks` level | missing |
 | Code stays maintainable | owned files over the size cap; duplicated bodies | `rs_over_cap`, `dup_fn_bodies`, `near_dup_fns` ratchets | enforced |
-| Every fix keeps its regression | fixes landed without a case or program | the checklist in [compiler-changes](../guidelines/compiler-changes.md#checklist) | process |
+| Every fix keeps its regression | fixes landed without a case or program | [compiler-changes/R2](../guidelines/compiler-changes-checklist.md#compiler-changesr2) | process |
 
 ## Suites and tools
 
@@ -122,3 +180,8 @@ targets are in `plan/domains/compiler/metrics.toml`.
 | `CPL_VM_STATS=json` | statements and expressions the VM hands to the tree-walker | `CPL_VM_STATS=json cpl run a.cp < in` |
 | debt ratchets | std names, fallbacks, file sizes, duplication growing | `python3 scripts/debt-ratchet.py --check` |
 | `scripts/land.sh` | anything above failing on the rebased tip | `scripts/land.sh` |
+
+## Changes
+
+- 2026-11-23: overview first, reference after; rules moved to
+  `handbook/guidelines/compiler-changes-checklist.md`.

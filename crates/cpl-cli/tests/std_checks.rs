@@ -1,5 +1,7 @@
 //! std is ordinary CPL: `cpl check std/<file>.cp` holds it to the rules a
 //! user library meets. Each file's error count may only drop, toward 0.
+//! Enforces compiler-changes/R8 in
+//! `handbook/guidelines/compiler-changes-checklist.md`.
 
 use std::collections::BTreeMap;
 use std::path::Path;
