@@ -617,12 +617,14 @@ impl<'a> Checker<'a> {
             self.old_optional_spelling(span, "Some");
         }
         let moved_at = self.moved.get(name).copied().filter(|at| {
+            // Inferring the same expression again (`B(xs).m()`'s receiver) isn't a second use.
             // A move a loop makes every round is reported where it moves.
-            !self
-                .sink
-                .diagnostics()
-                .iter()
-                .any(|d| d.code == codes::USE_AFTER_MOVE && d.span == *at)
+            *at != span
+                && !self
+                    .sink
+                    .diagnostics()
+                    .iter()
+                    .any(|d| d.code == codes::USE_AFTER_MOVE && d.span == *at)
         });
         if let (true, Some(at)) = (self.assigning_name != Some(span), moved_at) {
             if let Some(diag) = self.error(

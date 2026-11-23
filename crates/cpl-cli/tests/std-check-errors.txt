@@ -2,6 +2,6 @@
 # A count may only drop: lower it here when std gets cleaner. A file not
 # listed must check clean.
 std/grid.cp 6
-std/matrix.cp 2
+std/matrix.cp 1
 std/search.cp 1
 std/seq.cp 7
