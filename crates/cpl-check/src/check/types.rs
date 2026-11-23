@@ -1679,6 +1679,21 @@ impl<'a> Checker<'a> {
         }
     }
 
+    /// R04.2.10: the factor positions one array axis stands for, `[P]T` with
+    /// `domain P = (R, C)` or `type P = (R, C)`.
+    pub(crate) fn axis_factors(&mut self, axis: &Ty) -> Option<Vec<Ty>> {
+        match axis {
+            Ty::Pos(d) => Some(
+                self.product_factors(d)?
+                    .into_iter()
+                    .map(|(_, t)| t)
+                    .collect(),
+            ),
+            Ty::Tuple(items) if items.len() > 1 => Some(items.clone()),
+            _ => None,
+        }
+    }
+
     /// R11.1.4: E0207 when `base.name` reads a member another module declares without `pub`.
     pub(crate) fn private_member(&mut self, base_ty: &Ty, name: &ast::Name) -> bool {
         let Ty::Named { name: owner, .. } = base_ty else {

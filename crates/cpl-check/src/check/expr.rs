@@ -2972,20 +2972,18 @@ impl<'a> Checker<'a> {
             {
                 (**elem).clone()
             }
-            // `[State]T` where `domain State = (V, K)`: allow multi-index `dp[v, k]`
-            // in addition to `dp[s]` and `dp[(v, k)]`.
+            // `[State]T` where `State = (V, K)` (a domain or a type): allow multi-index
+            // `dp[v, k]` in addition to `dp[s]` and `dp[(v, k)]`.
             Ty::Array { index, elem }
                 if index.len() == 1
                     && indices.len() > 1
-                    && matches!(&index[0], Ty::Pos(dom) if self.product_factors(dom).is_some_and(|f| f.len() == indices.len())) =>
+                    && self
+                        .axis_factors(&index[0])
+                        .is_some_and(|f| f.len() == indices.len()) =>
             {
-                let Ty::Pos(dom) = &index[0] else {
-                    unreachable!()
-                };
-                let factors = self.product_factors(dom).unwrap();
-                let wants: Vec<Ty> = factors.iter().map(|(_, want)| want.clone()).collect();
+                let wants = self.axis_factors(&index[0]).unwrap();
                 self.note_typed_index(expr, base, indices, &index_tys, &wants);
-                for ((got, (_, want)), index_expr) in index_tys.iter().zip(&factors).zip(indices) {
+                for ((got, want), index_expr) in index_tys.iter().zip(&wants).zip(indices) {
                     self.expect_fits(got, want, index_expr, |c, got, want| {
                         format!(
                             "`{}` is indexed by {}, but `{}` is {}",

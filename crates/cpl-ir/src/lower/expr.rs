@@ -1216,6 +1216,23 @@ impl<'a> Lowerer<'a> {
                 if let Ty::Pos(d) = resolved {
                     return self.mk(ExprKind::DomainVal(d), Ty::DomainVal, span);
                 }
+                // R04.2.10: `type Cell = (Row, Col)` as a value is the tuple of its
+                // factor domains, walked like `for p in (Row, Col)`.
+                if let Ty::Tuple(items) = &resolved {
+                    let doms: Option<Vec<Expr>> = items
+                        .iter()
+                        .map(|t| match t {
+                            Ty::Pos(d) => {
+                                Some(self.mk(ExprKind::DomainVal(*d), Ty::DomainVal, span))
+                            }
+                            _ => None,
+                        })
+                        .collect();
+                    if let Some(doms) = doms.filter(|d| d.len() > 1) {
+                        let ty = Ty::Tuple(vec![Ty::DomainVal; doms.len()]);
+                        return self.mk(ExprKind::Tuple(doms), ty, span);
+                    }
+                }
                 let message = format!("`{name}` is a type, and a value is needed here");
                 self.error(codes::TYPE_MISMATCH, span, message);
                 if m == 0 && matches!(ty_ast.kind, ast::TypeKind::Range { .. }) {
@@ -4272,6 +4289,49 @@ impl<'a> Lowerer<'a> {
         })
     }
 
+    /// R04.2.10: `type Cell = (Row, Col)` names the product of its factor domains.
+    fn alias_factors(&mut self, name: &str) -> Option<Vec<(Option<String>, ProductFactor)>> {
+        let Some(Sym::Alias(aid)) = self.get_sym(name) else {
+            return None;
+        };
+        let (m, ty_ast, offset) = self.aliases[aid];
+        let sm = std::mem::replace(&mut self.cur_mod, m);
+        let so = std::mem::replace(&mut self.offset, offset);
+        let resolved = self.resolve_ty(ty_ast);
+        self.cur_mod = sm;
+        self.offset = so;
+        let Ty::Tuple(items) = resolved else {
+            return None;
+        };
+        let factors: Vec<_> = items
+            .iter()
+            .map(|t| self.ty_to_product_factor(t).map(|f| (None, f)))
+            .collect::<Option<_>>()?;
+        (factors.len() > 1).then_some(factors)
+    }
+
+    /// A walk over every position of the product of `factors`.
+    fn product_walk(
+        &mut self,
+        factors: Vec<(Option<String>, ProductFactor)>,
+        span: Span,
+    ) -> (Iter, Ty) {
+        let d = self.intern_anon_product_domain(factors);
+        let mut defs = Vec::new();
+        self.def_anon_product_domain(d, span, &mut defs);
+        self.cx.pending.extend(defs);
+        let lo = self.int_lit(0, span);
+        let hi = self.mk(ExprKind::DomainLen(d), Ty::Int, span);
+        let walk = Iter::Range {
+            lo,
+            hi,
+            step: None,
+            rev: false,
+            closed: false,
+        };
+        (walk, Ty::Pos(d))
+    }
+
     pub(super) fn iter(&mut self, e: &ast::Expr) -> (Iter, Ty) {
         let span = e.span;
         if let Some(res) = self.sorted_view_iter(e, span) {
@@ -4343,28 +4403,17 @@ impl<'a> Lowerer<'a> {
         };
         match &e.kind {
             ast::ExprKind::Paren(inner) => self.iter(inner),
+            ast::ExprKind::Name(n) if self.alias_factors(n).is_some() => {
+                let factors = self.alias_factors(n).unwrap();
+                self.product_walk(factors, span)
+            }
             ast::ExprKind::Tuple(items) if !items.is_empty() => {
                 let factors: Option<Vec<(Option<String>, ProductFactor)>> = items
                     .iter()
                     .map(|it| self.expr_to_product_factor(it).map(|f| (None, f)))
                     .collect();
                 if let Some(factors) = factors {
-                    let d = self.intern_anon_product_domain(factors);
-                    let mut defs = Vec::new();
-                    self.def_anon_product_domain(d, span, &mut defs);
-                    self.cx.pending.extend(defs);
-                    let lo = self.int_lit(0, span);
-                    let hi = self.mk(ExprKind::DomainLen(d), Ty::Int, span);
-                    return (
-                        Iter::Range {
-                            lo,
-                            hi,
-                            step: None,
-                            rev: false,
-                            closed: false,
-                        },
-                        Ty::Pos(d),
-                    );
+                    return self.product_walk(factors, span);
                 }
                 let value = self.expr(e, None);
                 let message = format!("a `for` can't walk over a `{}`", self.show(&value.ty));
@@ -4380,22 +4429,7 @@ impl<'a> Lowerer<'a> {
                     })
                     .collect();
                 if let Some(factors) = factors {
-                    let d = self.intern_anon_product_domain(factors);
-                    let mut defs = Vec::new();
-                    self.def_anon_product_domain(d, span, &mut defs);
-                    self.cx.pending.extend(defs);
-                    let lo = self.int_lit(0, span);
-                    let hi = self.mk(ExprKind::DomainLen(d), Ty::Int, span);
-                    return (
-                        Iter::Range {
-                            lo,
-                            hi,
-                            step: None,
-                            rev: false,
-                            closed: false,
-                        },
-                        Ty::Pos(d),
-                    );
+                    return self.product_walk(factors, span);
                 }
                 let value = self.expr(e, None);
                 let message = format!("a `for` can't walk over a `{}`", self.show(&value.ty));

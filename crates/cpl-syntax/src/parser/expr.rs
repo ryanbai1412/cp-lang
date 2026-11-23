@@ -1059,7 +1059,7 @@ impl<'a> Parser<'a> {
                 self.bump();
                 ExprKind::None
             }
-            T::Ident if self.text() == "lazy" && self.peek_n(1) == T::LBracket => {
+            T::Ident if self.lazy_array_ahead() => {
                 let span = self.span();
                 self.planned(span, &crate::planned::LAZY_ARRAY);
                 self.bump();

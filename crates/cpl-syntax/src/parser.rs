@@ -138,6 +138,26 @@ impl<'a> Parser<'a> {
         self.tokens.get(self.pos + n).map_or(T::Eof, |t| t.kind)
     }
 
+    /// `lazy[D] i => e`, the removed lazy array; `lazy` alone is an ordinary name.
+    fn lazy_array_ahead(&self) -> bool {
+        if self.text() != "lazy" || self.peek_n(1) != T::LBracket {
+            return false;
+        }
+        let mut depth = 0;
+        for n in 1.. {
+            match self.peek_n(n) {
+                T::LBracket => depth += 1,
+                T::RBracket if depth == 1 => {
+                    return self.peek_n(n + 1) == T::Ident && self.peek_n(n + 2) == T::FatArrow;
+                }
+                T::RBracket => depth -= 1,
+                T::Eof | T::Newline => return false,
+                _ => {}
+            }
+        }
+        false
+    }
+
     fn at(&self, kind: TokenKind) -> bool {
         self.peek() == kind
     }
