@@ -7807,3 +7807,12 @@ with cases: block `if` is an expression, `i..` outside a slice, `sorted()` on a
 generator, `?T` `==`. Deferred to Milestone 2: a sum domain `V + C` and an
 upper-triangle reader; the idioms are `domain N = 0..n + C.count` and a nested
 read loop. Reverse: edit R10.1.1 and its case.
+
+## 372. `maximal`/`minimal` return positions, not lent slices (2026-11-23)
+
+`a.maximal(state, ok:)` returns `[D]Range<D>` and `minimal` `[D]?Range<D>`,
+not `[D]Slice`: an \(O(n)\) build owns its result (core 05), and a table of
+lent slices was rejected by the checker (E0603, E0302). It matches `spans`
+and the ring forms' `RingSlice`; `.len`, `.first!`, `.last!` read the same and
+`a[w]` reads the piece. Reverse: a `lends` table of slices once the checker
+accepts one, in spec/lib/sequence-patterns.md and std/seq.cp.

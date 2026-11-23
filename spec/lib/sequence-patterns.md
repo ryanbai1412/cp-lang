@@ -109,7 +109,8 @@ where a condition holds. It needs one fact about the condition:
 
 Both walk `r` left to right, move `l` only forward, and keep `state` in
 step by calling `state.push(a[r])` and `state.pop(a[l])`. They return one
-piece per right end, `[D]Slice` (`minimal`: `[D]?Slice`).
+piece per right end as its positions, `[D]Range<D>` (`minimal`:
+`[D]?Range<D>`), like `spans`; `a[w]` reads the piece.
 
 <!-- spec-only: signatures and costs, not a program -->
 ```python
@@ -120,7 +121,7 @@ pub trait Track<T>:
 pub enum Anchor = Start | End
 
 pub fn maximal<D, T, S: Track<T>>(self: [D]T, mut state: S, ok: S -> Bool,
-                                  anchor: Anchor = Anchor.End) -> [D]Slice<[D]T>
+                                  anchor: Anchor = Anchor.End) -> [D]Range<D>
 ```
 
 `Track` implementations that already exist:
@@ -151,7 +152,9 @@ let shortest = a.minimal(Window(+), ok: w => w.all >= S).present().min(by: .len)
   (`Counter`, `Bag`), and `Window(op)` there needs `Commutative`.
   `track(s, add:, remove:)` keeps the closure form one call away.
 - **Results are keyed by the right end.** `maximal` and `minimal` return
-  `[D]Slice` (`[D]?Slice`), like the ring forms, so "the group ending at
+  `[D]Range<D>` (`[D]?Range<D>`), like the ring forms' `RingSlice` (positions
+  without the array): an \(O(n)\) build owns its result (core 05, "the stdlib
+  picks with one rule"), so it keeps no lent slice of `a`. So "the group ending at
   `i`" is `g[i]` and the starts are `g.map(p => p.first!)`. With
   `anchor: Anchor.Start` the same pass keys each piece by its left end, so
   "the longest group starting at `s`" is `g[s]`: the next pointer for greedy

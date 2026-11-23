@@ -3180,7 +3180,8 @@ fn piece<S: Indexed>(s: S, i: Int, j: Int) -> Slice<S>:
 /// Which end of a piece a two-pointer result is keyed by.
 pub enum Anchor = Start | End
 /// Two pointers: for each right end, the longest piece ending there that is `ok`, fed through
-/// `state: Track`. `ok` must be monotone under shrinking. `anchor: Anchor.Start` keys by left
+/// `state: Track`, as its positions: read the piece as `a[w]`, like [`spans`](spans). `ok` must be
+/// monotone under shrinking. `anchor: Anchor.Start` keys by left
 /// end instead: the longest piece starting at each position, as greedy jumps want. \(O(n)\) amortized.
 ///
 /// cost: \(O(n)\) amortized pushes and pops on `state`
@@ -3194,11 +3195,11 @@ pub fn maximal<D, T, St>(
     state: St,
     ok: St -> Bool,
     anchor: Anchor = Anchor.End,
-) -> [D]Slice<[D]T>:
+) -> [D]Range<D>:
     with lint(unproven_list_index: allow)
     let n = self.len
     var st = state
-    var out: List<Slice<[D]T>> = []
+    var out: [D]Range<D> = D.cuts.nth(0)..D.cuts.nth(0)
     match anchor:
         Anchor.End:
             var l = 0
@@ -3207,21 +3208,22 @@ pub fn maximal<D, T, St>(
                 while l <= r and not ok(st):
                     st.pop(self[l])
                     l += 1
-                out.push(self[l..r + 1])
+                out[D.nth(r)] = D.cuts.nth(l)..D.cuts.nth(r + 1)
         Anchor.Start:
             var l = 0
             for r in 0..n:
                 st.push(self[r])
                 while l <= r and not ok(st):
-                    out.push(self[l..r])
+                    out[D.nth(l)] = D.cuts.nth(l)..D.cuts.nth(r)
                     st.pop(self[l])
                     l += 1
             while l < n:
-                out.push(self[l..n])
+                out[D.nth(l)] = D.cuts.nth(l)..D.cuts.nth(n)
                 l += 1
     out
 
-/// For each right end, the shortest piece ending there that is `ok`, or None, keyed by that
+/// For each right end, the shortest piece ending there that is `ok` (its positions), or None,
+/// keyed by that
 /// end like the ring forms; `anchor: Anchor.Start` keys by left end. \(O(n)\) amortized.
 ///
 /// cost: \(O(n)\) amortized pushes and pops on `state`
@@ -3229,18 +3231,22 @@ pub fn maximal<D, T, St>(
 /// ties: none: each key has one shortest piece
 /// order: keyed by `D`, by right end (or left end with `Anchor.Start`)
 /// traps: never
-/// example: `[1, 2, 3].minimal(state: Window(+), ok: w => (w.all ?? 0) >= 3).map(w => w.map(.len)) == [None, Some(2), Some(1)]`
+///
+/// ```cp
+/// let sum = track(0, (mut s, x) => s += x, (mut s, x) => s -= x)
+/// [1, 2, 3].minimal(state: sum, ok: w => w.state >= 3).map(w => w.map(.len))
+///     == [None, Some(2), Some(1)]
+/// ```
 pub fn minimal<D, T, St>(
     self: [D]T,
     state: St,
     ok: St -> Bool,
     anchor: Anchor = Anchor.End,
-) -> [D]?Slice<[D]T>:
+) -> [D]?Range<D>:
     with lint(unproven_list_index: allow)
     let n = self.len
     var st = state
-    var out: List<?Slice<[D]T>> = []
-    for _ in 0..n: out.push(None)
+    var out: [D]?Range<D> = None
     match anchor:
         Anchor.End:
             var l = 0
@@ -3251,13 +3257,13 @@ pub fn minimal<D, T, St>(
                     best_l = l
                     st.pop(self[l])
                     l += 1
-                if best_l >= 0: out[r] = Some(self[best_l..r + 1])
+                if best_l >= 0: out[D.nth(r)] = Some(D.cuts.nth(best_l)..D.cuts.nth(r + 1))
         Anchor.Start:
             var l = 0
             for r in 0..n:
                 st.push(self[r])
                 while l <= r and ok(st):
-                    out[l] = Some(self[l..r + 1])
+                    out[D.nth(l)] = Some(D.cuts.nth(l)..D.cuts.nth(r + 1))
                     st.pop(self[l])
                     l += 1
     out
