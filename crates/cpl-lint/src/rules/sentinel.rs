@@ -121,7 +121,7 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
         )
         .with_label(*at, "the sentinel is tested here")
         .with_help(format!(
-            "declare it `{}` filled with `none`, so an unset entry can't be read as a number; read one with `if let`, `!` or `??`",
+            "declare it `{}` filled with `None`, so an unset entry can't be read as a number; read one with `if let`, `!` or `??`",
             t.ty
         ));
         out.push(Finding {

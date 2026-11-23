@@ -87,7 +87,7 @@ fn another_languages_true_and_null_are_spelled_here() {
         "let b = true\nprint(b)\n"
     );
     let diags = check("let x: ?Int = null\nprint(x ?? 0)\n");
-    assert_eq!(diags[0].help.as_deref(), Some("CP Lang spells it `none`"));
+    assert_eq!(diags[0].help.as_deref(), Some("CP Lang spells it `None`"));
 }
 
 #[test]

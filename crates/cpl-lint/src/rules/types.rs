@@ -506,7 +506,7 @@ impl Visitor for Types<'_> {
                     "`.ord` counts from 0, and `{domain}(..)` takes a label: they differ unless `{domain}` starts at 0"
                 ))
                 .with_help(format!(
-                    "{step} (a `?{domain}`: `none` past the end); `{domain}.wrap(..)` wraps around"
+                    "{step} (a `?{domain}`: `None` past the end); `{domain}.wrap(..)` wraps around"
                 ));
                 self.findings.push(Finding {
                     lint: &POSITION_ARITHMETIC,

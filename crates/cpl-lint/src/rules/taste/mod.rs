@@ -793,7 +793,7 @@ impl<'a> Taste<'a> {
         Some((text(list.span), text(indices[0].span), v, rest))
     }
 
-    /// `var x = none` then a `for` that sets `x` and breaks: `first(..)`;
+    /// `var x = None` then a `for` that sets `x` and breaks: `first(..)`;
     /// with `false`/`true` and `x = true`/`false`: `any(..)`/`all(..)`.
     fn search(&mut self, acc: &AccLoop, decl: &Stmt, next: &Stmt) {
         let AccLoop {
@@ -809,7 +809,7 @@ impl<'a> Taste<'a> {
             !t.is_empty() && t.chars().all(|c| c.is_ascii_digit() || c == '_')
         };
         let sentinel = int_lit(init_text);
-        if !matches!(init_text, "none" | "false" | "true") && !sentinel {
+        if !matches!(init_text, "None" | "none" | "false" | "true") && !sentinel {
             return;
         }
         let exact = self.exact_search(name, init_text, pat, iter, body);
@@ -821,7 +821,7 @@ impl<'a> Taste<'a> {
             Some((call, text)) => (call, Some(text)),
             None => (
                 match init_text {
-                    "none" => "first",
+                    "None" | "none" => "first",
                     "false" => "any",
                     _ => "all",
                 },
@@ -841,7 +841,7 @@ impl<'a> Taste<'a> {
             format!(
                 "say the search: `first(.. for .. in .. if ..) ?? {init_text}`, or keep the `?Int` it returns instead of the sentinel `{init_text}`"
             )
-        } else if init_text == "none" {
+        } else if matches!(init_text, "None" | "none") {
             "say the search: `first(.. for .. in .. if ..)`, or `.count(..)` to count".to_string()
         } else {
             format!("say the search: `xs.{call}(x => ..)`, or `.count(..)` to count")
@@ -878,7 +878,7 @@ impl<'a> Taste<'a> {
             return None;
         }
         Some(match (init, v) {
-            ("none", _) => ("first", format!("first({v} for {p} in {it} if {c})")),
+            ("None" | "none", _) => ("first", format!("first({v} for {p} in {it} if {c})")),
             (lit, _)
                 if forms::write_once(&body.stmts, name).is_none()
                     && lit
@@ -990,10 +990,10 @@ impl<'a> Taste<'a> {
         let diag = Diagnostic::warning(
             NONE_CHECK_UNWRAP.code,
             expr.span,
-            format!("`{x} != none` and then `{x}!`: the check is said twice"),
+            format!("`{x} != None` and then `{x}!`: the check is said twice"),
         )
         .with_help(format!(
-            "bind it once: `if let v = {x} and ..:`, or compare the option itself (`{x} == some(..)`, `{x} ?? d`)"
+            "bind it once: `if let v = {x} and ..:`, or compare the option itself (`{x} == Some(..)`, `{x} ?? d`)"
         ));
         self.push(&NONE_CHECK_UNWRAP, diag);
     }
@@ -1660,7 +1660,7 @@ impl<'a> Taste<'a> {
             format!("`{index}` is only used as `{list}[{index}]`"),
         )
         .with_help(format!(
-            "iterate the values: `for x in {list}:`; with no index there is none to get wrong"
+            "iterate the values: `for x in {list}:`; with no index there is nothing to get wrong"
         ));
         if let Some(elem) = list
             .strip_suffix('s')
@@ -1669,7 +1669,7 @@ impl<'a> Taste<'a> {
             let mut edits = vec![(pat.span, elem.to_string()), (iter.span, list.to_string())];
             edits.extend(uses.reads.iter().map(|r| (*r, elem.to_string())));
             diag.help = Some(format!(
-                "iterate the values: `for {elem} in {list}:`; with no index there is none to get wrong"
+                "iterate the values: `for {elem} in {list}:`; with no index there is nothing to get wrong"
             ));
             diag.fixes.push(Fix {
                 title: format!("iterate `{list}`"),

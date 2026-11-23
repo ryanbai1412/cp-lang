@@ -146,7 +146,7 @@ impl<'a> Checker<'a> {
                     if let Some(diag) = self.error(codes::BAD_OPERANDS, args[0].value.span, message)
                     {
                         diag.help = Some(
-                            "`sum` does not skip or absorb `none`: add `x ?? 0`, or filter with `if let`".into(),
+                            "`sum` does not skip or absorb `None`: add `x ?? 0`, or filter with `if let`".into(),
                         );
                     }
                 }

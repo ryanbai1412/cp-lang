@@ -599,3 +599,37 @@ mod tests {
         assert_eq!(d.fixes[0].edits[0].0, Span::new(100, 103));
     }
 }
+
+/// The old spelling of an optional in `text`, `none` or `some(`, if any. The
+/// spec spells them `None` and `Some(x)`; help, notes and lint records teach
+/// that spelling. `none:`, the argument name of `print(xs, none: d)`, is not one.
+pub fn old_option_spelling(text: &str) -> Option<&'static str> {
+    let ident = |c: Option<char>| c.is_some_and(|c| c.is_alphanumeric() || c == '_');
+    text.char_indices().find_map(|(i, _)| {
+        if ident(text[..i].chars().next_back()) {
+            return None;
+        }
+        let rest = &text[i..];
+        if rest.starts_with("some(") {
+            return Some("some(");
+        }
+        let after = rest.strip_prefix("none")?.chars().next();
+        (!ident(after) && after != Some(':')).then_some("none")
+    })
+}
+
+#[cfg(test)]
+mod option_spelling_tests {
+    use super::old_option_spelling;
+
+    #[test]
+    fn finds_none_and_some_but_not_the_none_argument() {
+        assert_eq!(old_option_spelling("`x ?? none`"), Some("none"));
+        assert_eq!(old_option_spelling("x == some(3)"), Some("some("));
+        assert_eq!(
+            old_option_spelling("`print(xs, none: -1)`, `None`, `Some(x)`"),
+            None
+        );
+        assert_eq!(old_option_spelling("nonempty, is_none(), awesome(x)"), None);
+    }
+}

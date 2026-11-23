@@ -857,7 +857,7 @@ fn none_check_unwrap_from_cco16p3() {
     assert_eq!(found.code, NONE_CHECK_UNWRAP.code);
     assert_eq!(
         found.message,
-        "`p != none` and then `p!`: the check is said twice"
+        "`p != None` and then `p!`: the check is said twice"
     );
     let other = "fn f(p: ?Int, q: ?Int) -> Bool = p != none and q! == 1\nprint(f(none, 1))\n";
     assert_eq!(taste_codes(other), Vec::<&str>::new());

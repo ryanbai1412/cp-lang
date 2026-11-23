@@ -1,5 +1,5 @@
 let n: 1..=90 = read()
-var memo: [0..=90]?Int = none
+var memo: [0..=90]?Int = None
 fn fib(i: Int) -> Int:
     if i < 2:
         return i

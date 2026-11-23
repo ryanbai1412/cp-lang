@@ -10,7 +10,7 @@ help: write `w /= 2`
 52:5-56:5 L0520 a hand-rolled binary search: this is `first_true`
 help: `let left = (..).first_true(at => ..)`: the predicate must be monotone along the range
 60:9-60:22 L0505 `u` is only used as `g[u]`
-help: iterate the values: `for x in g:`; with no index there is none to get wrong
+help: iterate the values: `for x in g:`; with no index there is nothing to get wrong
 101:5-104:5 L0504 a loop that only accumulates `best` is one `max`
 help: write `V.map(v => cells[v]).max()`, or `max(0, V.map(v => cells[v]).max() ?? 0)` if `0` can win or the loop can run zero times
 101:9-101:13 L0203 this local hides the top-level `best`
@@ -376,7 +376,7 @@ es: [V]Edge
 ```cp
 flag: [V]?Bool
   domain V = 1..=n, n <= 2e5
-  storage: 2 bytes per element, 400 KB max (1 byte + 1 byte flag for none)
+  storage: 2 bytes per element, 400 KB max (1 byte + 1 byte flag for None)
 ```
 
 == hover @ 144:7

@@ -1,6 +1,6 @@
 //! A grid's edge tested by hand, C++'s `if (r > 0) ... g[r - 1][c]` and
 //! `if (0 <= nx && nx < h && ...)`. With the grid over domains, `std.grid`'s
-//! `(r, c).step(d)` and `(r, c).adj4` are `none` or skip a step off the grid.
+//! `(r, c).step(d)` and `(r, c).adj4` are `None` or skip a step off the grid.
 //! `grid_neighbour_step` (L0534), `grid_bounds_check` (L0535), and
 //! `dx_dy_arrays` (L0539) for the `dx`/`dy` step tables C++ loops over.
 
@@ -9,8 +9,8 @@ use crate::{File, Finding, DX_DY_ARRAYS, GRID_BOUNDS_CHECK, GRID_NEIGHBOUR_STEP}
 use cpl_diag::Diagnostic;
 use cpl_syntax::ast::{BinOp, CmpOp, Cond, Expr, ExprKind, PatternKind, Stmt, StmtKind};
 
-const STEP_HELP: &str = "declare `domain R = 0..h`, `domain C = 0..w` and the grid over `[R, C]`, then read the neighbour with `if let (pr, pc) = (r, c).up` (`std.grid`): a step off the grid is `none`, so there is no edge test to get wrong";
-const BOUNDS_HELP: &str = "declare the grid over `[R, C]` (`domain R = 0..h`), then step with `for d in Dir4.all()` and `if let (nx, ny) = (x, y).step(d)` (`std.grid`): a step off the grid is `none`, so there are no bounds to write";
+const STEP_HELP: &str = "declare `domain R = 0..h`, `domain C = 0..w` and the grid over `[R, C]`, then read the neighbour with `if let (pr, pc) = (r, c).up` (`std.grid`): a step off the grid is `None`, so there is no edge test to get wrong";
+const BOUNDS_HELP: &str = "declare the grid over `[R, C]` (`domain R = 0..h`), then step with `for d in Dir4.all()` and `if let (nx, ny) = (x, y).step(d)` (`std.grid`): a step off the grid is `None`, so there are no bounds to write";
 
 pub(crate) fn check(file: &File) -> Vec<Finding> {
     struct Edges<'a> {
@@ -108,7 +108,7 @@ fn direction_lists(stmts: &[(u32, &Stmt)], out: &mut Vec<Finding>) {
             pair[0].1.span.shift(pair[0].0),
             format!("`{dx}` and `{dy}` spell the {n} grid directions as two lists of offsets"),
         )
-        .with_help(format!("loop `for d in {dirs}.all()` and step with `(r, c).step(d)` (`std.grid`), which is `none` off the grid: one name per direction instead of two lists kept in step by hand"));
+        .with_help(format!("loop `for d in {dirs}.all()` and step with `(r, c).step(d)` (`std.grid`), which is `None` off the grid: one name per direction instead of two lists kept in step by hand"));
         out.push(Finding {
             lint: &DX_DY_ARRAYS,
             diag,

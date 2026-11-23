@@ -3930,7 +3930,7 @@ impl Checker<'_> {
         let message = format!("`{sign}=` can't be applied to {}", target_ty.with_article());
         if let Some(diag) = self.error(codes::BAD_OPERANDS, target.span, message) {
             diag.help = Some(format!(
-                "write `x = x {sign} y` when `none` should stay `none`, or `x min= y + w` for a transition"
+                "write `x = x {sign} y` when `None` should stay `None`, or `x min= y + w` for a transition"
             ));
         }
     }

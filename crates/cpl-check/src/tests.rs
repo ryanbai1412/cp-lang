@@ -599,7 +599,7 @@ fn files_are_independent() {
 fn hover_shows_type_domain_and_storage() {
     assert_eq!(
         hover(ROADS, "dist: [V]"),
-        "dist: [V]?Int\n  domain V = 1..=n, n <= 2e5\n  storage: 8 bytes per element, 1.6 MB max (none is a spare value: no flag)"
+        "dist: [V]?Int\n  domain V = 1..=n, n <= 2e5\n  storage: 8 bytes per element, 1.6 MB max (None is a spare value: no flag)"
     );
     assert_eq!(
         hover(ROADS, "roads[e]"),
@@ -665,7 +665,7 @@ fn hover_works_while_the_file_is_broken() {
         roads_with("link(mut g, r)", "link(mut g, r").replace("print(total)", "print(total +");
     assert_eq!(
         hover(&src, "dist: [V]"),
-        "dist: [V]?Int\n  domain V = 1..=n, n <= 2e5\n  storage: 8 bytes per element, 1.6 MB max (none is a spare value: no flag)"
+        "dist: [V]?Int\n  domain V = 1..=n, n <= 2e5\n  storage: 8 bytes per element, 1.6 MB max (None is a spare value: no flag)"
     );
     assert_eq!(hover(&src, "total +"), "total: Int");
     assert_eq!(

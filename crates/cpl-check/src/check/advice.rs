@@ -404,7 +404,7 @@ pub(super) fn foreign_value(name: &str) -> Option<&'static str> {
     match name {
         "True" | "TRUE" => Some("true"),
         "False" | "FALSE" => Some("false"),
-        "null" | "nil" | "None" | "NULL" | "nullptr" => Some("none"),
+        "null" | "nil" | "none" | "NULL" | "nullptr" => Some("None"),
         _ => None,
     }
 }

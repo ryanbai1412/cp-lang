@@ -1,6 +1,7 @@
-use std.strings.{manacher}
+use std.strings.{SuffixArray}
 
-domain Pos = 1..=3
+let n: 1..=10 = read()
+domain Pos = 0..n
 let s: [Pos]Char = read()
-let pal = manacher(s)
-print(yes(pal.is_palindrome(0..=2)))
+let sa = SuffixArray(s)
+print(sa.len)

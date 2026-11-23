@@ -1,6 +1,6 @@
 //! `sentinel_scalar` (L0536): a scalar `var` started at `-1` or at a value of
 //! size at least `10**9` to mean "nothing yet", then set inside a `for` loop
-//! (a found index, or a running best). `?Int` starting at `none` says it in
+//! (a found index, or a running best). `?Int` starting at `None` says it in
 //! the type. Tables are `sentinel_table`'s.
 
 use super::sentinel::{constant, LARGE};
@@ -79,9 +79,9 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
         };
         let shown = span.text(file.src);
         let help = if index {
-            format!("declare `var {name}: ?Int = none` and read it with `?? -1`, `if let` or `!`: `-1` passes for a real index, `none` cannot")
+            format!("declare `var {name}: ?Int = None` and read it with `?? -1`, `if let` or `!`: `-1` passes for a real index, `None` cannot")
         } else {
-            format!("declare `var {name}: ?Int = none`, or reduce with `.max()` / `.min()` (`std.seq`): `{shown}` guesses a bound the data may pass, `none` is no number at all")
+            format!("declare `var {name}: ?Int = None`, or reduce with `.max()` / `.min()` (`std.seq`): `{shown}` guesses a bound the data may pass, `None` is no number at all")
         };
         let diag = Diagnostic::warning(
             SENTINEL_SCALAR.code,

@@ -122,3 +122,27 @@ fn golden_fixes() {
         assert_eq!(again, 0, "{path}: the fixed file still has a fix to apply");
     }
 }
+
+/// Errors, help and notes teach `Some(x)` / `None`, the spec's spelling; the
+/// quoted source lines of a golden may still hold the old one.
+#[test]
+fn golden_messages_spell_options_some_none() {
+    for entry in fs::read_dir(dir()).unwrap() {
+        let path = entry.unwrap().path();
+        if path.extension().is_none_or(|e| e != "err") {
+            continue;
+        }
+        for line in fs::read_to_string(&path).unwrap().lines() {
+            let t = line.trim_start();
+            let message = ["error", "warning", "= help", "= note"]
+                .iter()
+                .any(|p| t.starts_with(p));
+            if let (true, Some(old)) = (message, cpl_diag::old_option_spelling(t)) {
+                panic!(
+                    "{}: `{old}` is `None`/`Some(x)` now: {line}",
+                    path.display()
+                );
+            }
+        }
+    }
+}

@@ -252,7 +252,7 @@ fn hover_shows_type_and_cost_with_its_range() {
     assert_eq!(hover.at(&["contents", "kind"]).as_str(), Some("markdown"));
     assert_eq!(
         hover.at(&["contents", "value"]).as_str(),
-        Some("```cp\ndist: [V]?Int\n  domain V = 1..=n, n <= 2e5\n  storage: 8 bytes per element, 1.6 MB max (none is a spare value: no flag)\n```")
+        Some("```cp\ndist: [V]?Int\n  domain V = 1..=n, n <= 2e5\n  storage: 8 bytes per element, 1.6 MB max (None is a spare value: no flag)\n```")
     );
     assert_eq!(hover.at(&["range", "start"]), &pos(6, 13));
     assert_eq!(hover.at(&["range", "end"]), &pos(6, 17));
@@ -725,7 +725,7 @@ fn v22_optionals_hover_as_optionals_and_check_clean() {
     let hover = hover_at(&mut server, 7, 4);
     assert_eq!(
         hover.at(&["contents", "value"]).as_str(),
-        Some("```cp\nbest: ?Int\n  storage: 8 bytes (none is a spare value: no flag)\n```")
+        Some("```cp\nbest: ?Int\n  storage: 8 bytes (None is a spare value: no flag)\n```")
     );
     assert_eq!(hover.at(&["range", "start"]), &pos(7, 4));
     assert_eq!(hover.at(&["range", "end"]), &pos(7, 8));
@@ -733,7 +733,7 @@ fn v22_optionals_hover_as_optionals_and_check_clean() {
     assert_eq!(
         hover.at(&["contents", "value"]).as_str(),
         Some(
-            "```cp\ndp: [0..=x]?Int\n  storage: 8 bytes per element, 8 MB max (none is a spare value: no flag)\n```"
+            "```cp\ndp: [0..=x]?Int\n  storage: 8 bytes per element, 8 MB max (None is a spare value: no flag)\n```"
         )
     );
 }
@@ -755,7 +755,7 @@ fn v22_removed_forms_are_reported_with_what_to_write() {
     assert_eq!(codes, ["E0309", "E0110", "E0503"]);
     let found = lines_and_messages(&diagnostics);
     let expected = [
-        (6, "`+=` can't be applied to an ?Int\nhelp: write `x = x + y` when `none` should stay `none`"),
+        (6, "`+=` can't be applied to an ?Int\nhelp: write `x = x + y` when `None` should stay `None`"),
         (8, "`??` mixed with `+ - * / %` needs parentheses\nhelp: write `(best ?? 0) + 1`"),
         (9, "`defer` was removed in CP Lang 0.2.2\nhelp: undo by hand after the call"),
     ];

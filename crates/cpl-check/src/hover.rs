@@ -815,10 +815,10 @@ fn layout_note(ty: &Ty, lookup: &mut Lookup) -> String {
                 return String::new();
             };
             return if has_niche(inner, inner_size) {
-                " (none is a spare value: no flag)".to_string()
+                " (None is a spare value: no flag)".to_string()
             } else {
                 format!(
-                    " ({} + {} flag for none)",
+                    " ({} + {} flag for None)",
                     human_bytes(inner_size.into()),
                     human_bytes(inner_size.clamp(1, 8).into())
                 )

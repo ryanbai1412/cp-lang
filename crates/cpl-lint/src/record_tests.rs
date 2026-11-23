@@ -215,7 +215,9 @@ impl Vocabulary {
             &before[from..]
         });
         let known = |n: &str| {
-            self.builtin.contains(n) || user.split(|c: char| !is_ident(c)).any(|w| w == n)
+            matches!(n, "Some" | "None")
+                || self.builtin.contains(n)
+                || user.split(|c: char| !is_ident(c)).any(|w| w == n)
         };
         let upper = name.starts_with(|c: char| c.is_ascii_uppercase());
         if name.len() == 1 || name.chars().all(|c| c.is_ascii_uppercase() || c == '_') {
@@ -337,6 +339,43 @@ fn record_math_is_latex() {
                     !rest.contains("O("),
                     "{}/{file}: bare O(...)",
                     record.display()
+                );
+            }
+        }
+    }
+}
+
+#[test]
+fn records_and_helps_spell_options_some_none() {
+    let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../spec/lints");
+    for entry in std::fs::read_dir(&dir).unwrap() {
+        for file in std::fs::read_dir(entry.unwrap().path()).unwrap() {
+            let path = file.unwrap().path();
+            let text = std::fs::read_to_string(&path).unwrap();
+            for line in text.lines() {
+                let old = cpl_diag::old_option_spelling(line);
+                assert!(
+                    old.is_none(),
+                    "{}: `{}` is `None`/`Some(x)` now: {line}",
+                    path.display(),
+                    old.unwrap()
+                );
+            }
+        }
+    }
+    for lint in LINTS {
+        for d in lint_all(lint.trigger) {
+            for text in [Some(&d.message), d.help.as_ref()]
+                .into_iter()
+                .flatten()
+                .chain(&d.notes)
+            {
+                let old = cpl_diag::old_option_spelling(text);
+                assert!(
+                    old.is_none(),
+                    "{}: `{}` is `None`/`Some(x)` now: {text}",
+                    lint.name,
+                    old.unwrap()
                 );
             }
         }

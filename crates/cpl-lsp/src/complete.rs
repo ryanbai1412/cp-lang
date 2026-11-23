@@ -43,8 +43,8 @@ pub(crate) const POS_MEMBERS: &[(&str, &str)] = &[
 pub(crate) const RANGE_MEMBERS: &[(&str, &str)] = &[
     ("start", "the lower endpoint of the range"),
     ("end", "the exclusive upper endpoint of the range"),
-    ("first", "the first element, or `none` when empty"),
-    ("last", "the last element, or `none` when empty"),
+    ("first", "the first element, or `None` when empty"),
+    ("last", "the last element, or `None` when empty"),
     ("len", "the number of elements in the range"),
     ("is_empty", "true when the range holds no elements"),
     ("rev", "the range in reverse order"),
