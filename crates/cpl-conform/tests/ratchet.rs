@@ -205,6 +205,11 @@ fn spec_blocks_markers_above_a_fence() {
         Marker::Given("let n = 3\nlet a = [1, 2]".into())
     );
     assert_eq!(blocks[2].1, Marker::None);
+    let md = "<!-- rejects: E0608 -->\n```cp\nf()\n```\n";
+    assert_eq!(
+        extract_marked_blocks(md)[0].1,
+        Marker::Rejects("E0608".into())
+    );
 }
 
 #[test]

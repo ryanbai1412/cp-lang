@@ -23,16 +23,18 @@ pub struct SpecBlock {
     pub marker: Marker,
 }
 
-/// The `<!-- spec-only: reason -->` or `<!-- given: code -->` comment ending
-/// on the line right above a fence. `given` code (top-level lines, one per
-/// line) is prepended when the block runs; a spec-only block that fails to
-/// check is a skip, not an error.
+/// The `<!-- spec-only: reason -->`, `<!-- given: code -->` or
+/// `<!-- rejects: E0608 -->` comment ending on the line right above a fence.
+/// `given` code (top-level lines, one per line) is prepended when the block
+/// runs; a spec-only block that fails to check is a skip, not an error; a
+/// `rejects` block passes only when checking it reports that code.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub enum Marker {
     #[default]
     None,
     SpecOnly(String),
     Given(String),
+    Rejects(String),
 }
 
 fn marker_above(before: &str) -> Marker {
@@ -48,6 +50,8 @@ fn marker_above(before: &str) -> Marker {
     let inner = body[open + 4..].trim_start();
     if let Some(r) = inner.strip_prefix("spec-only:") {
         Marker::SpecOnly(r.split_whitespace().collect::<Vec<_>>().join(" "))
+    } else if let Some(c) = inner.strip_prefix("rejects:") {
+        Marker::Rejects(c.trim().to_string())
     } else if let Some(c) = inner.strip_prefix("given:") {
         let lines: Vec<&str> = c.lines().map(str::trim).filter(|l| !l.is_empty()).collect();
         Marker::Given(lines.join("\n"))
@@ -150,6 +154,23 @@ fn eval_one(db: &mut Database, block: &SpecBlock) -> (String, (CaseOutcome, bool
             detail: format!("spec-only: {reason}"),
         };
         return (block.id.clone(), (skip, strict_ok));
+    }
+    if let Marker::Rejects(code) = &block.marker {
+        let hit = spec_failed && spec_diag.contains(&format!("[{code}]"));
+        let outcome = CaseOutcome {
+            status: if hit { "pass" } else { "error" }.into(),
+            detail: if hit {
+                String::new()
+            } else if spec_failed {
+                format!(
+                    "wanted {code}; got {}",
+                    runner::first_line_trimmed(&spec_diag, 140)
+                )
+            } else {
+                format!("wanted {code}; got no diagnostic")
+            },
+        };
+        return (block.id.clone(), (outcome, hit));
     }
     let outcome = if !spec_failed {
         CaseOutcome {
