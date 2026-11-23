@@ -5,7 +5,7 @@
 //! two (`split_range_check`) and a map key tested before `+=`
 //! (`contains_then_add`).
 
-use crate::walk::{unparen, Visitor};
+use crate::walk::{unparen, walk_stmt, Visitor};
 use crate::{
     File, Finding, Lint, CONTAINS_THEN_ADD, COPY_COMPREHENSION, LOOP_ARGMAX, MANUAL_MEX,
     QUEUE_HEAD_INDEX, SPLIT_RANGE_CHECK,
@@ -359,6 +359,7 @@ impl HandLoops<'_> {
             };
             let read = format!("{q}[{h}]");
             if !body.stmts.iter().any(|s| is_step(s, h))
+                || reads_head_otherwise(&body.stmts, h)
                 || !body
                     .stmts
                     .iter()
@@ -577,4 +578,35 @@ impl Visitor for HandLoops<'_> {
         self.copy(expr);
         self.range_check(expr);
     }
+}
+
+/// Whether `body` reads the head index `h` other than as an index (`q[h]`,
+/// `qy[h]`) and its step: then it is a result too (a rank, a count), which a
+/// queue drops.
+fn reads_head_otherwise(body: &[Stmt], h: &str) -> bool {
+    struct Reads<'a> {
+        h: &'a str,
+        names: usize,
+        heads: usize,
+    }
+    impl Visitor for Reads<'_> {
+        fn expr(&mut self, e: &Expr) {
+            match &e.kind {
+                ExprKind::Name(n) if n == self.h => self.names += 1,
+                ExprKind::Index { indices, .. } if matches!(indices.as_slice(), [i] if name(i) == Some(self.h)) => {
+                    self.heads += 1
+                }
+                _ => {}
+            }
+        }
+    }
+    let mut reads = Reads {
+        h,
+        names: 0,
+        heads: 0,
+    };
+    for s in body.iter().filter(|s| !is_step(s, h)) {
+        walk_stmt(&mut reads, s);
+    }
+    reads.names > reads.heads
 }
