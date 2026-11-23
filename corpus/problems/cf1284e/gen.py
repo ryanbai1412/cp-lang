@@ -2,6 +2,10 @@
 import random
 import sys
 
+if sys.argv[1] == "--max":
+    # n = 2500 distinct random points in [-1e9, 1e9]^2: in general position (no three
+    # collinear, as the statement requires) with overwhelming probability.
+    sys.argv[1:] = ["0", "2500"]
 seed = int(sys.argv[1])
 size = int(sys.argv[2])
 rng = random.Random(seed)
