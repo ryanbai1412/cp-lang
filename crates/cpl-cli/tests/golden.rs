@@ -73,6 +73,12 @@ fn new_creates_the_solution_and_its_tests_folder() {
     assert!(dir.join("sum.tests").is_dir());
     let check = cpl(&dir, &["check", "sum.cp"]);
     assert_eq!(check.status.code(), Some(0), "{}", text(&check.stdout));
+    std::fs::write(dir.join("sum.cp"), "print(1)\n").unwrap();
+    let again = cpl(&dir, &["new", "sum"]);
+    assert_eq!(again.status.code(), Some(EXIT_ERRORS.into()));
+    assert!(text(&again.stderr).contains("won't overwrite"));
+    let kept = std::fs::read_to_string(dir.join("sum.cp")).unwrap();
+    assert_eq!(kept, "print(1)\n");
 }
 
 #[test]

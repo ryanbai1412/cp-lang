@@ -68,6 +68,15 @@ def golden():
     cmds = commands()
     arg = re.compile(r'(?:&\[|\.arg\(|\.args\(\[|(?<![.\w])\w+\(&?\[?)\s*(?:&?OsStr::new\()?"([a-z]+)"')
     counts = {c: 0 for c in cmds}
+    # What the tests of each command assert: its --help, a usage error,
+    # a success (exit 0) and a failing exit code (1 or 3).
+    kinds = {
+        "help": re.compile(r'helps\(|"--help"'),
+        "usage": re.compile(r"misused\(|EXIT_USAGE"),
+        "success": re.compile(r"Some\(0\)|\.success\(\)"),
+        "exit": re.compile(r"EXIT_ERRORS|EXIT_FAILED|Some\([13]\)|!\w+(?:\.\w+)*\.success\(\)"),
+    }
+    covered = {c: set() for c in cmds}
     every = []  # tests that walk every command `cpl --help` lists
     for path in sorted(glob.glob(os.path.join(ROOT, "crates/*/tests/*.rs"))):
         text = open(path).read()
@@ -87,9 +96,20 @@ def golden():
             called = {c for h, (t, _, cs) in uses.items() if not t and re.search(rf"\b{h}\(", body) for c in cs}
             for c in direct | called:
                 counts[c] += 1
+            helpers = "".join(b for h, (t, b, _) in uses.items() if not t and re.search(rf"\b{h}\(", body))
+            for c in direct:
+                covered[c] |= {k for k, r in kinds.items() if r.search(body + helpers)}
     print("  ".join(f"{c} {n}" for c, n in counts.items()))
     print(f"commands {len(cmds)}  with a test {sum(n > 0 for n in counts.values())}  without {sorted(c for c, n in counts.items() if n == 0)}")
     print(f"tests over every command (help and an unknown option): {len(every)}")
+    if every:
+        for c in cmds:
+            covered[c] |= {"help", "usage"}
+    full = [c for c in cmds if len(covered[c]) == len(kinds)]
+    print(f"commands with help, usage, success and exit tested: {len(full)}/{len(cmds)}")
+    for c in cmds:
+        if c not in full:
+            print(f"  {c} lacks {', '.join(k for k in kinds if k not in covered[c])}")
 
 
 if __name__ == "__main__":
