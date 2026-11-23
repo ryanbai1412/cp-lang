@@ -7,4 +7,4 @@
 
 @!multitest
 let s: Str = read()
-print(if s.count('Y') <= 1: "YES" else: "NO")
+print(yes(s.count('Y') <= 1))

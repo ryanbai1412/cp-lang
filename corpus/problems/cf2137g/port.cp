@@ -55,4 +55,4 @@ repeat q:
         propagate(v)
     else:
         let cry_wins = state[v] == Outcome.BothCry or state[v] == Outcome.FirstWins
-        print(if cry_wins: "YES" else: "NO")
+        print(yes(cry_wins))

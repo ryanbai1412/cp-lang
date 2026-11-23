@@ -10,4 +10,4 @@ let n: 3..=100 = read()
 let a: [0..n]?(0..=100) = read(none: -1)
 let fixed = [x for x in a if let x = x]
 let ok = fixed.is_empty or (fixed[0] > 0 and fixed.all(x => x == fixed[0]))
-print(if ok: "YES" else: "NO")
+print(yes(ok))

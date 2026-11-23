@@ -23,4 +23,4 @@ fn ok() -> Bool:
         return cnt.all(v => v >= 0)
     true
 
-print(if ok(): "YES" else: "NO")
+print(yes(ok()))

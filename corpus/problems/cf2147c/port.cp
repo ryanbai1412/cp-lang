@@ -10,4 +10,4 @@
 let _n: 1..=200_000 = read()
 let s: Str = read()
 let ok = s.runs(link: (a, b) => a != b).all(r => r.first! != '1' or r.len % 4 != 3)
-print(if ok: "YES" else: "NO")
+print(yes(ok))

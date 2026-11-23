@@ -8,4 +8,4 @@
 @!multitest
 let n: 1..=100 = read()
 let a: [0..n]1..=10 ** 9 = read()
-print(if a.any(x => x == 100): "Yes" else: "No")
+print(yes(a.any(x => x == 100), answers: ("Yes", "No")))

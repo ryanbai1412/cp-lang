@@ -23,4 +23,4 @@ for v in a:
     if v < thresh: before += 1
     elif v == thresh: gaps[before] += 1
 let kept = small.len + [min(x, y) for (x, y) in zip(gaps, gaps.rev)].sum()
-print(if is_palindrome(small) and kept >= k - 1: "YES" else: "NO")
+print(yes(is_palindrome(small) and kept >= k - 1))

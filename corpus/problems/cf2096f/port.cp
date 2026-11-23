@@ -53,4 +53,4 @@ for r in S:
 let q: Int = read()
 for _ in 0..q:
     let (ql, qr): (S, S) = read()
-    print(if ql >= first_fit[qr]: "YES" else: "NO")
+    print(yes(ql >= first_fit[qr]))

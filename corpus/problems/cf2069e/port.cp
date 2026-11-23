@@ -47,4 +47,4 @@ fn possible() -> Bool:
     if sum_ab > ab: can_shift(mut ab_runs, ab, min(sum_ba, ba), need)
     else: can_shift(mut ba_runs, ba, min(sum_ab, ab), need)
 
-print(if possible(): "YES" else: "NO")
+print(yes(possible()))

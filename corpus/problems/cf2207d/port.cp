@@ -30,4 +30,4 @@ for u in t.at.rev:
         d min= nd
     dist[u] = d
 
-print(if dist[start] == 0: "YES" else: "NO")
+print(yes(dist[start] == 0))
