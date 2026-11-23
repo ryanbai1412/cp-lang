@@ -1900,7 +1900,7 @@
         "egoi23p7": "error",
         "etsr23r1p4": "pass",
         "etsr23r3p3": "error",
-        "etsr23r4p2": "error",
+        "etsr23r4p2": "trap",
         "ioi01p1": "pass",
         "ioi05p2": "error",
         "ioi09p3": "error",
@@ -1956,13 +1956,13 @@
       "causes": [
         {
           "cause": "E0302: expected `<id>`, found `<id>`",
-          "count": 10,
+          "count": 8,
           "examples": [
             "ccc20s4",
             "cco21p5",
             "cheerio1s3",
             "coci21c2p5",
-            "etsr23r4p2"
+            "ioi05p2"
           ]
         },
         {
@@ -1985,27 +1985,19 @@
           ]
         },
         {
+          "cause": "E0302: can't compare a `<id>` with a `<id>`",
+          "count": 2,
+          "examples": [
+            "noip20p3",
+            "sac22cc2p5"
+          ]
+        },
+        {
           "cause": "E0501: `<id>` and `<id>` can't handle a domain expression that does not produce a range, count, or index space yet",
           "count": 2,
           "examples": [
             "coci21c2p4",
             "noi09p4"
-          ]
-        },
-        {
-          "cause": "E0501: `<id>` has no input format for a `<id>`",
-          "count": 2,
-          "examples": [
-            "ceoi18p1",
-            "shoi16p1"
-          ]
-        },
-        {
-          "cause": "E0606: `<id>` requires `<id>`, which `<id>` does not implement",
-          "count": 2,
-          "examples": [
-            "btoi18p4",
-            "noip20p3"
           ]
         },
         {
@@ -2044,6 +2036,13 @@
           ]
         },
         {
+          "cause": "E0302: `<id>` does not implement `<id>`",
+          "count": 1,
+          "examples": [
+            "noi06p3"
+          ]
+        },
+        {
           "cause": "E0302: `<id>` is a type, and a value is needed here",
           "count": 1,
           "examples": [
@@ -2065,10 +2064,17 @@
           ]
         },
         {
-          "cause": "E0302: can't compare a `<id>` with a `<id>`",
+          "cause": "E0302: can't tell what this empty list holds",
           "count": 1,
           "examples": [
-            "sac22cc2p5"
+            "shoi16p1"
+          ]
+        },
+        {
+          "cause": "E0302: can't tell which optional this `<id>` is",
+          "count": 1,
+          "examples": [
+            "ceoi18p1"
           ]
         },
         {
@@ -2121,6 +2127,20 @@
           ]
         },
         {
+          "cause": "E0606: `<id>` requires `<id>`, which `<id>` does not implement",
+          "count": 1,
+          "examples": [
+            "btoi18p4"
+          ]
+        },
+        {
+          "cause": "R0001: internal: expected closure",
+          "count": 1,
+          "examples": [
+            "etsr23r4p2"
+          ]
+        },
+        {
           "cause": "R0502: 1 is outside `<id>` (input line 1, column 1)",
           "count": 1,
           "examples": [
@@ -2136,9 +2156,9 @@
         }
       ],
       "counts": {
-        "error": 39,
+        "error": 38,
         "pass": 15,
-        "trap": 1,
+        "trap": 2,
         "untested": 44,
         "wrong": 1
       },
