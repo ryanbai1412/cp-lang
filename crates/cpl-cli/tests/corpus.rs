@@ -284,6 +284,7 @@ fn each_failing_test_is_rejected_for_its_stated_reason() {
             "s2_for_mut" => "expected a value after `in`, found `mut`",
             "s2_opt_plus_eq" => "`+=` can't be applied to an ?Int",
             "s2_print_yes_no" => "`print` has no argument named `yes`",
+            "s2_dom_try" => "a `domain D` has no method `try`",
             "s2_read_angle" => "doesn't know the name `read` here",
             "s2_read_no_type" => "can't tell what to read here",
             "s2_subdomain_widen" => "`a` is indexed by Pkg, but `d` is a Dep",
