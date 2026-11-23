@@ -6,6 +6,7 @@
 //! poisoned.
 
 mod advice;
+pub(crate) use advice::rename_values;
 mod call;
 mod expr;
 mod known;

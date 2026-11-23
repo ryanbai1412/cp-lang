@@ -531,3 +531,53 @@ pub(super) fn by_twin(src: &str, name: &str, span: Span) -> Option<(String, Fix)
         },
     ))
 }
+
+/// The E0208 fix for an uppercase top-level value: rename it and every use
+/// in the file's items, when its lowercase name is not a word anywhere in it.
+pub(crate) fn rename_values(
+    mut diags: Vec<cpl_diag::Diagnostic>,
+    ranges: &[cpl_syntax::ItemRange],
+    checks: &[std::sync::Arc<crate::db::ItemCheck>],
+    src: &str,
+) -> Vec<cpl_diag::Diagnostic> {
+    let at = |s: Span| src.get(s.start as usize..s.end as usize).unwrap_or("");
+    let words: std::collections::HashSet<&str> = src
+        .split(|c: char| !(c.is_alphanumeric() || c == '_'))
+        .collect();
+    let refs: Vec<(Span, &str)> = ranges
+        .iter()
+        .zip(checks)
+        .flat_map(|(r, c)| {
+            c.refs
+                .iter()
+                .map(move |g| (g.span.shift(r.span.start), &*g.name))
+        })
+        .collect();
+    for d in diags
+        .iter_mut()
+        .filter(|d| d.code == codes::VALUE_NAME_CASE)
+    {
+        let old = at(d.span);
+        let line = src[..d.span.start as usize]
+            .rfind('\n')
+            .map_or(0, |i| i + 1);
+        let top_level = ["let ", "var "].iter().any(|k| src[line..].starts_with(k));
+        let lower = old.to_lowercase();
+        let taken = words.contains(lower.as_str()) || !d.fixes.is_empty();
+        if !top_level || old.is_empty() || taken {
+            continue;
+        }
+        let uses = refs
+            .iter()
+            .filter(|(s, name)| *name == old && at(*s) == old);
+        let mut edits: Vec<_> = std::iter::once(d.span)
+            .chain(uses.map(|(s, _)| *s))
+            .map(|s| (s, lower.clone()))
+            .collect();
+        edits.sort_by_key(|(s, _)| s.start);
+        edits.dedup_by_key(|(s, _)| s.start);
+        let title = format!("rename `{old}` to `{lower}` everywhere");
+        d.fixes.push(Fix { title, edits });
+    }
+    diags
+}

@@ -59,10 +59,10 @@ fn calling_a_number_suggests_the_product() {
 #[test]
 fn an_uppercase_literal_let_becomes_a_const() {
     assert_eq!(fixed("let N = 5\nprint(N)\n"), "const N = 5\nprint(N)\n");
-    let diags = check("let N = read()\nprint(N)\n");
-    assert!(diags.iter().all(|d| d.fixes.is_empty()), "{diags:?}");
-    let diags = check("var N = 5\nN += 1\n");
-    assert!(diags.iter().all(|d| d.fixes.is_empty()), "{diags:?}");
+    let read = fixed("let N = read()\nprint(N)\n");
+    assert_eq!(read, "let n = read()\nprint(n)\n");
+    let var = fixed("var N = 5\nN += 1\nprint(N)\n");
+    assert_eq!(var, "var n = 5\nn += 1\nprint(n)\n");
 }
 
 #[test]
@@ -310,4 +310,26 @@ fn is_empty_on_a_type_with_len_is_fixed_to_len_zero() {
     let d = check("domain B = 0..4\nlet s = Subset<B>.empty\nif not s.is_empty: print(1)\n");
     assert_eq!(d.len(), 1, "{d:?}");
     assert_eq!(d[0].fixes[0].edits[0].1, "len == 0", "{d:?}");
+}
+
+#[test]
+fn an_uppercase_value_is_renamed_with_every_use() {
+    let src = "let K: 1..=9 = read()\n\
+               domain Slot = 0..K\n\
+               fn f() -> Int = K - 1\n\
+               print(f(), Slot.size, K)\n";
+    let d = check(src);
+    assert_eq!(d.len(), 1, "{d:?}");
+    let edits = &d[0].fixes.last().unwrap().edits;
+    assert_eq!(edits.len(), 4, "{edits:?}");
+    let mut fixed = src.to_string();
+    for (span, text) in edits.iter().rev() {
+        fixed.replace_range(span.start as usize..span.end as usize, text);
+    }
+    assert!(check(&fixed).is_empty(), "{fixed}: {:?}", check(&fixed));
+    let taken = check("let K = 3\nlet k = K + 1\nprint(k)\n");
+    assert!(
+        taken[0].fixes.iter().all(|f| f.edits.len() < 2),
+        "{taken:?}"
+    );
 }

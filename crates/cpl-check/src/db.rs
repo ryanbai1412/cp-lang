@@ -1184,7 +1184,7 @@ impl Database {
             text: text.clone(),
             lines,
             has_syntax_errors,
-            diagnostics: sink.finish(),
+            diagnostics: crate::check::rename_values(sink.finish(), &ranges, &checks, &text),
             items: ranges
                 .iter()
                 .zip(items.iter())
