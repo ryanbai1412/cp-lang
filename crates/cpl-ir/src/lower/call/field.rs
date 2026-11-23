@@ -343,6 +343,9 @@ impl<'a> Lowerer<'a> {
                 let ord = self.cast(Cast::Ord, value, Ty::Int);
                 self.int_add(ord, 1)
             }
+            (Ty::Enum(e), "ord" | "idx" | "label") if self.unit_enum(*e) => {
+                self.cast(Cast::EnumOrd(*e), value, Ty::Int)
+            }
             // The cuts on either side of a fieldless enum's variant, by number.
             (Ty::Enum(e), "l" | "r") if self.unit_enum(*e) => {
                 let ord = self.cast(Cast::EnumOrd(*e), value, Ty::Int);

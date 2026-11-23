@@ -257,7 +257,6 @@ documented. The stdlib's own gaps are in `std/GAPS.md`.
 - core-08/trait-message-bound-holds.cp: compiler
 - core-01/comprehension-filter-if-let.cp: compiler
 - core-09/deep-recursion-trap.cp: compiler
-- core-04/enum-ord-is-ordinal.cp: compiler
 - core-04/table-over-named-product-unpacks.cp: compiler
 - core-07/map-view-reread-calls-again.cp: compiler
 - core-01/int-literal-takes-f64-where-expected.cp: compiler
