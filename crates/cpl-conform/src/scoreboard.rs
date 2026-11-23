@@ -409,6 +409,10 @@ impl Scoreboard {
     }
 }
 
+fn case_file(case_id: &str) -> &str {
+    case_id.split('#').next().unwrap_or(case_id)
+}
+
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct RatchetReport {
     pub regressions: Vec<String>,
@@ -432,6 +436,14 @@ pub fn check_ratchet(baseline: &Scoreboard, current: &Scoreboard, filtered: bool
                 base.passed - cur.passed
             ));
         }
+        // A case keyed `file#hash` (a doc example) changes key when its text is
+        // edited, so a vanished one only regresses if its file passes fewer cases.
+        let file_passes = |cases: &BTreeMap<String, String>, file: &str| {
+            cases
+                .iter()
+                .filter(|(id, st)| *st == "pass" && case_file(id) == file)
+                .count()
+        };
         for (case_id, base_status) in &base.cases {
             if base_status != "pass" {
                 continue;
@@ -448,7 +460,11 @@ pub fn check_ratchet(baseline: &Scoreboard, current: &Scoreboard, filtered: bool
                         "{suite_name}/{case_id}: regressed from pass to {cur_status}{detail}"
                     ));
                 }
-                None if !filtered => {
+                None if !filtered
+                    && (!case_id.contains('#')
+                        || file_passes(&cur.cases, case_file(case_id))
+                            < file_passes(&base.cases, case_file(case_id))) =>
+                {
                     report.regressions.push(format!(
                         "{suite_name}/{case_id}: previously passing case disappeared"
                     ));

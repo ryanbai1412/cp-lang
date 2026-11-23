@@ -237,3 +237,16 @@ fn committed_scoreboard_ratchet() {
         );
     }
 }
+
+#[test]
+fn an_edited_doc_example_is_not_a_regression_but_a_lost_one_is() {
+    let base = make_board("docs", &[("docs/a.cp#1", "pass"), ("docs/a.cp#2", "pass")]);
+    let edited = make_board("docs", &[("docs/a.cp#1", "pass"), ("docs/a.cp#3", "pass")]);
+    assert!(check_ratchet(&base, &edited, false).regressions.is_empty());
+    let lost = make_board("docs", &[("docs/a.cp#1", "pass"), ("docs/b.cp#9", "pass")]);
+    let r = check_ratchet(&base, &lost, false);
+    assert_eq!(
+        r.regressions,
+        vec!["docs/docs/a.cp#2: previously passing case disappeared"]
+    );
+}

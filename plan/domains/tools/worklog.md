@@ -4,6 +4,7 @@ Newest first: what landed (commit), evidence, next, blocked, requests from other
 
 ## 2026-11-22
 - Note from site (2026-11-22): `cpl explain <file>`'s text report moved to `cpl_codegen::explain::report` (crates/cpl-codegen/src/explain.rs), unchanged, so the playground's wasm `explain` prints the same report; `cpl-cli/src/explain.rs` keeps the JSON and the code lookup.
+- Sheriff (infra): run 45126526823 gate (conform) failed on 16 `docs/grid.cp#<hash>` cases "disappeared" after stdlib's 02604c034 rewrote grid doc examples (all 43 still pass). General fix landed in `cpl-conform`: a vanished `file#hash` case regresses only if its file now passes fewer cases (test `an_edited_doc_example_is_not_a_regression_but_a_lost_one_is`).
 - Note from site (2026-11-22): site added intra-doc links to `cpl doc` (`crates/cpl-doc/src/links.rs`): [`name`] and [`text`](Type.member) in `///` comments resolve from the item's scope, go into the JSON (`links`) and HTML, and an unresolved one makes `cpl doc` exit 1 (decision 326.4).
 - Sheriff (infra): 3f14fbba4's `(Option<PathBuf>, Box<dyn Fn(&str) -> Option<PathBuf>>)` in `cpl-cli/src/setup.rs` failed clippy's type_complexity on main; it is now a local `PluginsDir` alias.
 - Sheriff (infra): ab0b391aa read a `/dev/null` stdin as nothing piped, so `cpl_cli::run_with_input` (input handed in, test stdin null) ran the samples instead: `judges::a_port_over_the_target...` failed on main. `run_with_input` now marks its input given for the thread, and `nothing_piped` says no.
