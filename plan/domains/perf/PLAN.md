@@ -53,6 +53,7 @@ Local fixes that landed, and the mechanism that would remove the whole class.
 | cf2147f needs a hand-written cover tree to reach orig.cpp: `SegTree` with an `Action` always pushes its tags down and keeps `t`, `lz`, `has_lz`, `span` in four arrays | a commutative `Action` whose effect a node can recompute from its own tag (cover counts) skips the push; one node record instead of parallel arrays | stdlib (`std.ds` SegTree) |
 | cf2124h tuned by writing constant bounds (`0..=30_002`) where port.cp has `0..=2 * n` | width inference bounds a range through names and `*` (`lower/range.rs::expr_limits`), so a bound written from the statement's variables narrows as a constant does | compiler |
 | reduction sinking re-derives which fns are pure (`sink::pure_fns`), as fusion re-derives trap-freedom (`fuse::trap_free_with`) | one effects summary per fn in the IR (traps, reads, writes, recursion), computed once and read by every codegen pass | compiler |
+| cf2237g tuned by hand into one queue, since `[y for x in layer for y in grow(x)]` builds a list per call of `grow` | the reverse of reduction sinking: a fn that builds a fresh list and returns it, iterated once by its caller, gets a variant that pushes each element to the caller's loop body | perf |
 | tuned variants found under three names (`perf.cp`, `<stem>.perf.cp`, dry-run `<stem>_w.cp`) | one name, `perf.cp` / `<stem>.perf.cp`; rename the dry-run files | perf |
 
 ## Next
