@@ -149,3 +149,5 @@ struct Ru$0ns:
 let na$0mes: [V](name: Str, t: 1..=1000) = [V] v => (name: "", t: 1)
 let di$0sts: [V][V]?Int = [V] u => [V] v => None
 print(es[V.first!].to, es[V.first!].w, yes(es[V.first!].used), yes(flag[V.first!] ?? false), pairs, adj, names, dists[V.first!][V.first!] ?? 0, Runs([V] v => 0, []).seen)
+let word = "aab"
+for r in word.ru$0ns(): print(r.len, word.mi$0n()!)

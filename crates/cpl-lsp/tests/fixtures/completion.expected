@@ -2,6 +2,7 @@
 8:11-8:11 E0108 expected a field or method name after `.`
 9:12-9:12 E0108 expected a field or method name after `.`
 10:13-10:13 E0102 expected a value after `=`, found the end of the line
+12:19-12:19 E0108 expected a field or method name after `.`
 
 == completion @ 8:11
 to [5] to: Int
@@ -29,11 +30,11 @@ es [6] let es: List<Edge> = []
 e [6] let e = Edge(to: 1, w: 2)
 a [6] let a = e.
 b [6] let b = es.
+runs [3] fn runs<S: Indexed, T, K>(self: S, by: T -> K = x => x, link: ?((T, T) -> Bool) = None) -> yields Slice<S>
 Action [22] pub struct Action<T, F>(pub id: F, pub compose: (F, F) -> F, pub apply: (F, T, Int) -> T, pub over: Monoid<T>)
 Commutative [8] pub trait Commutative<T>: Op<T>
 Desc [22] pub struct Desc<T>(pub x: T)
 Group [22] pub struct Group<T>(pub id: T, pub op: (T, T) -> T, pub inv: T -> T)
-Idempotent [8] pub trait Idempotent<T>: Op<T>
 
 == completion @ 11:8
 Edge [22] struct Edge
@@ -43,8 +44,22 @@ e [6] let e = Edge(to: 1, w: 2)
 a [6] let a = e.
 b [6] let b = es.
 c [6] let c: Int =
+runs [3] fn runs<S: Indexed, T, K>(self: S, by: T -> K = x => x, link: ?((T, T) -> Bool) = None) -> yields Slice<S>
 Action [22] pub struct Action<T, F>(pub id: F, pub compose: (F, F) -> F, pub apply: (F, T, Int) -> T, pub over: Monoid<T>)
 Commutative [8] pub trait Commutative<T>: Op<T>
 Desc [22] pub struct Desc<T>(pub x: T)
 Group [22] pub struct Group<T>(pub id: T, pub op: (T, T) -> T, pub inv: T -> T)
-Idempotent [8] pub trait Idempotent<T>: Op<T>
+
+== completion @ 12:19
+cyclic_pairs [2] fn cyclic_pairs<S: Seq, T>(self: S) -> yields (T, T)
+deduped [2] fn deduped<S: Seq, T>(self: S) -> List<T>
+distinct [2] fn distinct<S: Seq, T, K>(self: S, by: T -> K = x => x) -> List<T>
+drop_while [2] fn drop_while<S: Seq, T>(self: S, drop: T -> Bool) -> yields T
+find [2] fn find<S: Seq, T>(self: S, p: T -> Bool) -> ?T
+flat_map [2] fn flat_map<S: Seq, T, U: Seq, V>(self: S, f: T -> U) -> yields V
+flatten [2] fn flatten<S: Seq, U: Seq, T>(self: S) -> yields T
+group [2] fn group<S: Seq, T, K, U>(self: S, by: T -> K, of: T -> U = x => x) -> HashMap<K, List<U>>
+inversions [2] fn inversions<S: Seq, T>(self: S) -> Int
+is_sorted [2] fn is_sorted<S: Seq, T, K>(self: S, by: T -> K = x => x) -> Bool
+is_subsequence [2] fn is_subsequence<S: Seq, N: Indexed, T>(self: S, of: N) -> Bool
+adjacent [2] fn adjacent<S: Seq, T>(self: S) -> yields (T, T)

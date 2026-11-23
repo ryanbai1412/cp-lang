@@ -95,7 +95,7 @@ impl Checker<'_> {
             return self.uncalled_method(expr, base, name, owner, ty);
         };
         if member.kind != crate::builtins::MemberKind::Method
-            || !member.params.is_empty()
+            || member.needs_arguments()
             || member.ret.is_empty()
         {
             return;

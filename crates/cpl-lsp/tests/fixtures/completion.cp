@@ -9,3 +9,4 @@ let a = e.$0
 let b = es.$0
 let c: Int = $0
 print(n$0)
+print(runs("aab").$0)

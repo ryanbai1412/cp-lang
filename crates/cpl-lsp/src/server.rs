@@ -238,7 +238,19 @@ impl Server {
                         ),
                     ])));
                 }
-                let Some(mut hover) = self.db.hover(&uri, offset) else {
+                let hover = match self.db.hover(&uri, offset) {
+                    Some(hover) => Some(hover),
+                    None => {
+                        let analysis = self.db.analyze(&uri).expect("hover implies an analysis");
+                        let cursor = Cursor {
+                            uri: &uri,
+                            analysis: &analysis,
+                            offset,
+                        };
+                        complete::member_hover(&cursor, &mut self.std)
+                    }
+                };
+                let Some(mut hover) = hover else {
                     return Ok(Reply::default());
                 };
                 if let Some(def) = self.db.definition_location(&uri, offset) {

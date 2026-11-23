@@ -404,3 +404,43 @@ fn every_in_place_help_names_a_call_that_runs() {
     );
     assert!(wrong.is_empty(), "{}", wrong.join("\n"));
 }
+
+/// Hover, signature help and completion show a member's parameters from its
+/// row, so an option the doc names (`by:`) must be one of them.
+#[test]
+fn every_option_a_row_documents_is_one_of_its_params() {
+    let mut missing = Vec::new();
+    for member in BUILTIN_MEMBERS {
+        let params: Vec<&str> = cpl_check::split_builtin_params(member.params)
+            .into_iter()
+            .map(|p| p.split_once(':').map_or(p, |(n, _)| n).trim())
+            .collect();
+        let mut doc = member.doc;
+        while let Some(at) = doc.find('`') {
+            let rest = &doc[at + 1..];
+            let Some(close) = rest.find('`') else { break };
+            let code = &rest[..close];
+            if let Some(name) = code
+                .strip_suffix(':')
+                .or_else(|| code.split_once(": ").map(|(n, _)| n))
+            {
+                if !name.is_empty()
+                    && name.chars().all(|c| c.is_ascii_lowercase() || c == '_')
+                    && !params.contains(&name)
+                {
+                    missing.push(format!(
+                        "{}.{} documents `{name}:`",
+                        member.receiver.name(),
+                        member.name
+                    ));
+                }
+            }
+            doc = &rest[close + 1..];
+        }
+    }
+    assert!(
+        missing.is_empty(),
+        "add these to the row's params:\n{}",
+        missing.join("\n")
+    );
+}

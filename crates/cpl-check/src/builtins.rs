@@ -72,6 +72,12 @@ pub struct BuiltinMember {
 }
 
 impl BuiltinMember {
+    /// True when a call must pass an argument: some parameter has no
+    /// `= default`. `xs.sort()` needs none; `xs.swap(i, j)` does.
+    pub fn needs_arguments(&self) -> bool {
+        split_params(self.params).iter().any(|p| !p.contains(" = "))
+    }
+
     /// `len: Int` for a `Get`, `swap(i: Int, j: Int)` for a method.
     pub fn signature(&self) -> String {
         let ret = if self.ret.is_empty() {
@@ -236,16 +242,16 @@ pub const BUILTIN_MEMBERS: &[BuiltinMember] = &[
     row!(List, "reverse", Method, "", "", true, "Reverses the list in place. O(n).", "xs.reverse()", ""),
     row!(List, "reversed", Method, "", "List<T>", false, "A new list in reverse order. O(n).", "xs.reversed()", "List<Int>"),
     row!(List, "rev", Get, "", "List<T>", false, "An O(1) read-only reverse view that keeps the keys: `xs.rev.nth(0)` is the last element and `xs.rev[0]` is an error; copy with `.to_list()` to keep.", "xs.rev", "_"),
-    row!(List, "sort", Method, "", "", true, "Sorts in place in O(n log n); `by:` gives a key, `cmp:` a strict-weak-order comparator `(a, b) => Bool` (mutually exclusive with `by:`), and `desc: true` reverses the order.", "xs.sort()", ""),
-    row!(List, "sorted", Method, "", "List<T>", false, "A new sorted list in O(n log n); takes `by:`, `cmp:`, and `desc:` like `sort`.", "xs.sorted()", "List<Int>"),
+    row!(List, "sort", Method, "by: T -> K = x => x, cmp: (T, T) -> Bool = (a, b) => a < b, desc: Bool = false", "", true, "Sorts in place in O(n log n); `by:` gives a key, `cmp:` a strict-weak-order comparator `(a, b) => Bool` (mutually exclusive with `by:`), and `desc: true` reverses the order.", "xs.sort()", ""),
+    row!(List, "sorted", Method, "by: T -> K = x => x, cmp: (T, T) -> Bool = (a, b) => a < b, desc: Bool = false", "List<T>", false, "A new sorted list in O(n log n); takes `by:`, `cmp:`, and `desc:` like `sort`.", "xs.sorted()", "List<Int>"),
     row!(List, "map", Method, "f: T -> U", "List<U>", false, "A new list of `f(x)` for each element `x`. O(n).", "xs.map(x => x * 2)", "List<Int>"),
     row!(List, "filter", Method, "pred: T -> Bool", "List<T>", false, "A new list of elements satisfying `pred`. O(n).", "xs.filter(x => x > 1)", "_"),
     row!(List, "contains", Method, "x: T", "Bool", false, "True when some element equals `x`. O(n).", "xs.contains(2)", "Bool"),
     row!(List, "count", Method, "x: T", "Int", false, "How many elements equal `x`; given a test, `xs.count(x => x > 1)`, how many it holds for. O(n).", "xs.count(2)", "Int"),
     row!(List, "sum", Method, "", "T", false, "The sum of the elements; `0` when empty. O(n).", "xs.sum()", "Int"),
     row!(List, "fold", Method, "op: M", "T", false, "Folds the elements left to right: a monoid (`+`, `*`, `^`, `gcd`, `min`, `max`, `Monoid`) returns its identity when empty; a binary fn `(T, T) -> T` traps when empty, and `xs.fold(f)!` or `xs.fold(f) ?? d` asks for a `?T`. O(n).", "xs.fold(+)", "Int"),
-    row!(List, "min", Method, "", "?T", false, "The smallest element (optionally keyed by `by:`), `None` when empty; first on ties. O(n).", "xs.min()", "?Int"),
-    row!(List, "max", Method, "", "?T", false, "The largest element (optionally keyed by `by:`), `None` when empty; first on ties. O(n).", "xs.max()", "?Int"),
+    row!(List, "min", Method, "by: T -> K = x => x", "?T", false, "The smallest element (optionally keyed by `by:`), `None` when empty; first on ties. O(n).", "xs.min()", "?Int"),
+    row!(List, "max", Method, "by: T -> K = x => x", "?T", false, "The largest element (optionally keyed by `by:`), `None` when empty; first on ties. O(n).", "xs.max()", "?Int"),
     row!(List, "all", Method, "test: T -> Bool", "Bool", false, "True when the test holds for every element; stops at the first that fails. O(n).", "xs.all(x => x > 0)", "Bool"),
     row!(List, "any", Method, "test: T -> Bool", "Bool", false, "True when the test holds for some element; stops at the first. O(n).", "xs.any(x => x > 0)", "Bool"),
     row!(List, "find", Method, "x: T", "?Int", false, "The index of the first element equal to `x`. The first element a test holds for is `xs.first(x => x > 1)`. O(n).", "xs.find(2)", "?Int"),
@@ -275,8 +281,8 @@ pub const BUILTIN_MEMBERS: &[BuiltinMember] = &[
     row!(Str, "reverse", Method, "", "", true, "Reverses the characters in place. O(n).", "s.reverse()", ""),
     row!(Str, "reversed", Method, "", "Str", false, "The text backwards. O(n).", "s.reversed()", "Str"),
     row!(Str, "rev", Get, "", "Str", false, "An O(1) read-only reverse view that keeps the keys: `s.rev.nth(0)` is the last character and `s.rev[0]` is an error; copy with `.to_str()` to keep.", "s.rev", "_"),
-    row!(Str, "sort", Method, "", "", true, "Sorts characters in place in O(n log n); takes `by:`, `cmp:`, and `desc:` like `List.sort`.", "s.sort()", ""),
-    row!(Str, "sorted", Method, "", "List<Char>", false, "A new sorted `List<Char>` in O(n log n); takes `by:`, `cmp:`, and `desc:` like `sort`.", "s.sorted()", "List<Char>"),
+    row!(Str, "sort", Method, "by: Char -> K = x => x, cmp: (Char, Char) -> Bool = (a, b) => a < b, desc: Bool = false", "", true, "Sorts characters in place in O(n log n); takes `by:`, `cmp:`, and `desc:` like `List.sort`.", "s.sort()", ""),
+    row!(Str, "sorted", Method, "by: Char -> K = x => x, cmp: (Char, Char) -> Bool = (a, b) => a < b, desc: Bool = false", "List<Char>", false, "A new sorted `List<Char>` in O(n log n); takes `by:`, `cmp:`, and `desc:` like `sort`.", "s.sorted()", "List<Char>"),
     row!(Str, "map", Method, "f: Char -> U", "List<U>", false, "A new list of `f(c)` for each character `c`. O(n).", "s.map(c => Int(c == 'l'))", "List<Int>"),
     row!(Str, "filter", Method, "pred: Char -> Bool", "List<Char>", false, "A new list of characters satisfying `pred`. O(n).", "s.filter(c => c > 'e')", "_"),
     row!(Str, "join", Method, "parts: List<Str>", "Str", false, "The parts with this text between them.", "\", \".join([\"a\", \"b\"])", "Str"),
@@ -284,11 +290,11 @@ pub const BUILTIN_MEMBERS: &[BuiltinMember] = &[
     row!(Str, "contains", Method, "c: Char", "Bool", false, "True when the text has the character `c`. O(n).", "s.contains('e')", "Bool"),
     row!(Str, "count", Method, "c: Char", "Int", false, "How many characters equal `c`; given a test, `s.count(c => c > 'e')`, how many it holds for. O(n).", "s.count('l')", "Int"),
     row!(Str, "fold", Method, "op: M", "Char", false, "Folds characters left to right; a binary fn `(Char, Char) -> Char` traps when empty, and `s.fold(f)!` or `s.fold(f) ?? d` asks for a `?Char`. O(n).", "s.fold(min)", "Char"),
-    row!(Str, "min", Method, "", "?Char", false, "The smallest character (optionally keyed by `by:`), `None` when empty; first on ties. O(n).", "s.min()", "?Char"),
-    row!(Str, "max", Method, "", "?Char", false, "The largest character (optionally keyed by `by:`), `None` when empty; first on ties. O(n).", "s.max()", "?Char"),
+    row!(Str, "min", Method, "by: Char -> K = x => x", "?Char", false, "The smallest character (optionally keyed by `by:`), `None` when empty; first on ties. O(n).", "s.min()", "?Char"),
+    row!(Str, "max", Method, "by: Char -> K = x => x", "?Char", false, "The largest character (optionally keyed by `by:`), `None` when empty; first on ties. O(n).", "s.max()", "?Char"),
     row!(Str, "all", Method, "test: Char -> Bool", "Bool", false, "True when the test holds for every character; stops at the first that fails. O(n).", "s.all(c => c >= 'a')", "Bool"),
     row!(Str, "any", Method, "test: Char -> Bool", "Bool", false, "True when the test holds for some character; stops at the first. O(n).", "s.any(c => c == 'e')", "Bool"),
-    row!(Str, "find", Method, "c: Char", "?Int", false, "The index of the first character equal to `c` (or substring `p: Str`).", "s.find('e')", "?Int"),
+    row!(Str, "find", Method, "c: Char", "?Int", false, "The index of the first character equal to `c`, or where the first copy of `c` starts when `c` is a `Str`.", "s.find('e')", "?Int"),
     row!(Str, "first_ge", Method, "c: Char", "?Int", false, "In a sorted string, the index of the first character `>= c`. O(log n).", "s.first_ge('e')", "?Int"),
     row!(Str, "first_gt", Method, "c: Char", "?Int", false, "In a sorted string, the index of the first character `> c`. O(log n).", "s.first_gt('e')", "?Int"),
     row!(Str, "last_le", Method, "c: Char", "?Int", false, "In a sorted string, the index of the last character `<= c`. O(log n).", "s.last_le('l')", "?Int"),
@@ -349,16 +355,16 @@ pub const BUILTIN_MEMBERS: &[BuiltinMember] = &[
     row!(Array, "clone", Method, "", "[D]T", false, "A separate array with the same cells. O(n).", "a.clone()", "[0..3]Int"),
     row!(Array, "reverse", Method, "", "", true, "Reverses the cells in place. O(n).", "a.reverse()", ""),
     row!(Array, "reversed", Method, "", "List<T>", false, "A new list with the cells in reverse order. O(n).", "a.reversed()", "List<Int>"),
-    row!(Array, "sort", Method, "", "", true, "Sorts in place in O(n log n); `by:` gives a key, `cmp:` a strict-weak-order comparator `(a, b) => Bool` (mutually exclusive with `by:`), and `desc: true` reverses the order.", "a.sort()", ""),
-    row!(Array, "sorted", Method, "", "List<T>", false, "The cells as a sorted list in O(n log n); takes `by:`, `cmp:`, and `desc:` like `sort`.", "a.sorted()", "List<Int>"),
+    row!(Array, "sort", Method, "by: T -> K = x => x, cmp: (T, T) -> Bool = (a, b) => a < b, desc: Bool = false", "", true, "Sorts in place in O(n log n); `by:` gives a key, `cmp:` a strict-weak-order comparator `(a, b) => Bool` (mutually exclusive with `by:`), and `desc: true` reverses the order.", "a.sort()", ""),
+    row!(Array, "sorted", Method, "by: T -> K = x => x, cmp: (T, T) -> Bool = (a, b) => a < b, desc: Bool = false", "List<T>", false, "The cells as a sorted list in O(n log n); takes `by:`, `cmp:`, and `desc:` like `sort`.", "a.sorted()", "List<Int>"),
     row!(Array, "map", Method, "f: T -> U", "[D]U", false, "A new array with `f(x)` in each cell, keeping the index domain(s). O(n).", "a.map(x => x + 1)", "[0..3]Int"),
     row!(Array, "filter", Method, "pred: T -> Bool", "List<T>", false, "A new list of cells satisfying `pred`. O(n).", "a.filter(x => x > 1)", "_"),
     row!(Array, "contains", Method, "x: T", "Bool", false, "True when some cell equals `x`. O(n).", "a.contains(7)", "Bool"),
     row!(Array, "count", Method, "x: T", "Int", false, "How many cells equal `x`; given a test, `a.count(x => x > 1)`, how many it holds for. O(n).", "a.count(7)", "Int"),
     row!(Array, "sum", Method, "", "T", false, "The sum of the cells; `0` when empty. O(n).", "a.sum()", "Int"),
     row!(Array, "fold", Method, "op: M", "T", false, "Folds the cells left to right: a monoid (`+`, `*`, `^`, `gcd`, `min`, `max`, `Monoid`) returns its identity when empty; a binary fn `(T, T) -> T` traps when empty, and `a.fold(f)!` or `a.fold(f) ?? d` asks for a `?T`. O(n).", "a.fold(+)", "Int"),
-    row!(Array, "min", Method, "", "?T", false, "The smallest cell (optionally keyed by `by:`), `None` when empty; first on ties. O(n).", "a.min()", "?Int"),
-    row!(Array, "max", Method, "", "?T", false, "The largest cell (optionally keyed by `by:`), `None` when empty; first on ties. O(n).", "a.max()", "?Int"),
+    row!(Array, "min", Method, "by: T -> K = x => x", "?T", false, "The smallest cell (optionally keyed by `by:`), `None` when empty; first on ties. O(n).", "a.min()", "?Int"),
+    row!(Array, "max", Method, "by: T -> K = x => x", "?T", false, "The largest cell (optionally keyed by `by:`), `None` when empty; first on ties. O(n).", "a.max()", "?Int"),
     row!(Array, "all", Method, "test: T -> Bool", "Bool", false, "True when the test holds for every cell; stops at the first that fails. O(n).", "a.all(x => x > 0)", "Bool"),
     row!(Array, "any", Method, "test: T -> Bool", "Bool", false, "True when the test holds for some cell; stops at the first. O(n).", "a.any(x => x > 0)", "Bool"),
     row!(Array, "find", Method, "x: T", "?I", false, "The index of the first cell equal to `x`. The first cell a test holds for is `a.first(x => x > 1)`.", "a.find(7)", "?Int"),
@@ -421,4 +427,30 @@ mod tests {
             }
         }
     }
+}
+
+/// `i: Int, f: (Int, Int) -> Int` split at its top-level commas, trimmed.
+pub fn split_params(text: &str) -> Vec<&str> {
+    let mut out = Vec::new();
+    let (mut depth, mut start) = (0i32, 0);
+    // `Map<K, V>` nests; `a < b` in a default does not.
+    let mut angles = 0i32;
+    for (i, c) in text.char_indices() {
+        match c {
+            '(' | '[' | '{' => depth += 1,
+            ')' | ']' | '}' => depth -= 1,
+            '<' if text[..i].ends_with(|p: char| p.is_alphanumeric()) => angles += 1,
+            '>' if angles > 0 && !text[..i].ends_with(['-', '=']) => angles -= 1,
+            ',' if depth == 0 && angles > 0 => {}
+            ',' if depth == 0 => {
+                out.push(text[start..i].trim());
+                start = i + 1;
+            }
+            _ => {}
+        }
+    }
+    if !text[start..].trim().is_empty() {
+        out.push(text[start..].trim());
+    }
+    out
 }

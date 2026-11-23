@@ -10,5 +10,17 @@ walk(from: Int, steps: Int = 1; back: Bool = false) -> Int
 active: back: Bool = false
 
 == signatureHelp @ 5:50
-reach(while: fn(a: Int, b: Int) -> Bool; cyclic: Bool = ...) -> List<Int>
-active: cyclic: Bool = ...
+reach(while: fn(a: Int, b: Int) -> Bool; cyclic: Bool = false) -> List<Int>
+active: cyclic: Bool = false
+
+== signatureHelp @ 8:12
+sort(by: Int -> K = x => x, cmp: (Int, Int) -> Bool = (a, b) => a < b, desc: Bool = false)
+active: by: Int -> K = x => x
+
+== signatureHelp @ 10:17
+max(by: Int -> K = x => x) -> ?Int
+active: by: Int -> K = x => x
+
+== signatureHelp @ 11:18
+runs(by: T -> K = x => x, link: ?((T, T) -> Bool) = None) -> yields Slice<S>
+active: by: T -> K = x => x

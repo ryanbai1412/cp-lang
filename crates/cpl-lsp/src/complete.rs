@@ -222,8 +222,8 @@ fn expected_type(cursor: &Cursor, std: &mut StdLib, at: usize) -> Option<String>
 fn type_of_entry(entry: &Entry) -> Option<String> {
     let detail = entry.detail.as_str();
     match entry.kind {
-        Kind::Fn | Kind::Method | Kind::Getter if detail.contains("->") => {
-            detail.rsplit_once("->").map(|(_, r)| r.trim().to_string())
+        Kind::Fn | Kind::Method | Kind::Getter if ret_of(detail).is_some() => {
+            ret_of(detail).map(str::to_string)
         }
         Kind::Field | Kind::Value | Kind::Const | Kind::Getter => {
             let rest = detail
@@ -555,6 +555,141 @@ fn generics_of(header: &str) -> Vec<String> {
 }
 
 fn members_of_ty(cursor: &Cursor, std: &mut StdLib, ty: &Ty) -> Vec<(Entry, u8)> {
+    let mut out = own_members_of_ty(cursor, std, ty);
+    let mut seen: HashSet<String> = out.iter().map(|(e, _)| e.name.clone()).collect();
+    for entry in std_methods(cursor, std) {
+        if receives(&entry.detail, ty) && seen.insert(entry.name.clone()) {
+            out.push((entry, 1));
+        }
+    }
+    out
+}
+
+/// The hover for a member the checker records no fact for, `s.runs` in
+/// `s.runs()`: the declaration the receiver's members name, rendered as
+/// completion and signature help show it.
+pub fn member_hover(cursor: &Cursor, std: &mut StdLib) -> Option<cpl_check::Hover> {
+    let text = &*cursor.analysis.text;
+    let at = (cursor.offset as usize).min(text.len());
+    let start = text[..at]
+        .char_indices()
+        .rev()
+        .take_while(|&(_, c)| is_ident(c))
+        .last()
+        .map_or(at, |(i, _)| i);
+    let end = at
+        + text[at..]
+            .chars()
+            .take_while(|&c| is_ident(c))
+            .map(char::len_utf8)
+            .sum::<usize>();
+    if start == end || !text[..start].ends_with('.') {
+        return None;
+    }
+    let ty = receiver_type(cursor, start as u32 - 1)?;
+    let entry = members_of_ty(cursor, std, &ty)
+        .into_iter()
+        .map(|(e, _)| e)
+        .find(|e| e.name == text[start..end])?;
+    Some(cpl_check::Hover {
+        span: cpl_diag::Span {
+            start: start as u32,
+            end: end as u32,
+        },
+        text: entry.detail,
+        doc: (!entry.doc.is_empty()).then_some(entry.doc),
+    })
+}
+
+/// The prelude's `pub fn f(self: S, ..)`: called as `xs.f()` on any receiver
+/// `S` accepts.
+fn std_methods(cursor: &Cursor, std: &mut StdLib) -> Vec<Entry> {
+    let mut out = Vec::new();
+    for (module, name) in std.prelude(cursor.uri).iter() {
+        let Some(outline) = std.module(cursor.uri, module) else {
+            continue;
+        };
+        if let Some(entry) = outline.find(name) {
+            if entry.kind == Kind::Fn && entry.public && self_type(&entry.detail).is_some() {
+                let mut entry = entry.clone();
+                entry.kind = Kind::Method;
+                entry.instance = true;
+                out.push(entry);
+            }
+        }
+    }
+    out
+}
+
+/// `Int` in `fn f(g: Int -> Int) -> Int`: what follows the parameter list.
+fn ret_of(detail: &str) -> Option<&str> {
+    let open = detail.find('(')?;
+    let mut depth = 0i32;
+    for (i, c) in detail[open..].char_indices() {
+        match c {
+            '(' | '[' | '{' => depth += 1,
+            ')' | ']' | '}' => {
+                depth -= 1;
+                if depth == 0 {
+                    let rest = detail[open + i + 1..].trim_start();
+                    return rest
+                        .strip_prefix("->")
+                        .map(|r| r.trim().trim_end_matches(':').trim());
+                }
+            }
+            _ => {}
+        }
+    }
+    None
+}
+
+/// `S` in `fn runs<S: Indexed, T>(self: S, ..)`.
+fn self_type(detail: &str) -> Option<&str> {
+    let (_, rest) = detail
+        .split_once("(self: ")
+        .or_else(|| detail.split_once("(mut self: "))?;
+    let end = rest.find([',', ')']).unwrap_or(rest.len());
+    Some(rest[..end].trim())
+}
+
+/// Whether `ty` can be the `self` of the fn whose signature is `detail`:
+/// its generic's bound (`S: Indexed`) holds, or its type is `ty`'s.
+fn receives(detail: &str, ty: &Ty) -> bool {
+    let Some(self_ty) = self_type(detail) else {
+        return false;
+    };
+    let generics = detail
+        .split_once('<')
+        .filter(|(head, _)| !head.contains('('))
+        .and_then(|(_, rest)| rest.split_once(">("))
+        .map_or("", |(g, _)| g);
+    let bound = generics.split(',').find_map(|g| {
+        let (name, bound) = g.split_once(':')?;
+        (name.trim() == self_ty).then(|| bound.trim())
+    });
+    let is_generic = generics
+        .split(',')
+        .any(|g| g.split(':').next().unwrap_or("").trim() == self_ty);
+    match bound {
+        Some(bound) => bound.split('+').all(|b| match b.trim() {
+            "Seq" => ty.is_seq(),
+            "Indexed" => ty.is_indexed(),
+            "IndexedMut" => ty.is_indexed_mut(),
+            _ => false,
+        }),
+        None if is_generic => false,
+        None => {
+            let name = self_ty.split('<').next().unwrap_or(self_ty);
+            let ty = match ty {
+                Ty::Range { .. } => &Ty::Int,
+                ty => ty,
+            };
+            ty.to_string().split('<').next() == Some(name)
+        }
+    }
+}
+
+fn own_members_of_ty(cursor: &Cursor, std: &mut StdLib, ty: &Ty) -> Vec<(Entry, u8)> {
     let builtin = |members: &[(&str, &str)], ty: String| {
         members
             .iter()
@@ -667,14 +802,15 @@ fn builtin_receiver(ty: &Ty) -> Option<(Receiver, Vec<(String, String)>)> {
 
 /// A catalog row as a completion entry, its types written for this value.
 fn builtin_entry(member: &BuiltinMember, bindings: &[(String, String)]) -> Entry {
-    let params = split_params(member.params)
+    let params = cpl_check::split_builtin_params(member.params)
         .into_iter()
         .map(|param| {
             let (name, ty) = param.split_once(':').unwrap_or((param, ""));
+            let (ty, default) = ty.split_once(" = ").unwrap_or((ty, ""));
             Param {
                 name: name.trim().to_string(),
                 ty: substitute(ty.trim(), bindings),
-                default: String::new(),
+                default: default.trim().to_string(),
                 named_only: false,
             }
         })
@@ -692,27 +828,6 @@ fn builtin_entry(member: &BuiltinMember, bindings: &[(String, String)]) -> Entry
         instance: true,
         members: Vec::new(),
     }
-}
-
-/// `i: Int, f: (Int, Int) -> Int` split at its top-level commas.
-fn split_params(text: &str) -> Vec<&str> {
-    let mut out = Vec::new();
-    let (mut depth, mut start) = (0i32, 0);
-    for (i, c) in text.char_indices() {
-        match c {
-            '(' | '[' | '<' | '{' => depth += 1,
-            ')' | ']' | '>' | '}' if !text[..i].ends_with('-') => depth -= 1,
-            ',' if depth == 0 => {
-                out.push(text[start..i].trim());
-                start = i + 1;
-            }
-            _ => {}
-        }
-    }
-    if !text[start..].trim().is_empty() {
-        out.push(text[start..].trim());
-    }
-    out
 }
 
 fn type_members(
@@ -1216,10 +1331,7 @@ fn signature_of(
                             named_only: p.named_only,
                         })
                         .collect(),
-                    entry
-                        .detail
-                        .rsplit_once("->")
-                        .map_or(String::new(), |(_, r)| r.trim().to_string()),
+                    ret_of(&entry.detail).unwrap_or("").to_string(),
                 ),
                 // A struct called as its constructor takes its fields.
                 Kind::Struct => (

@@ -1518,7 +1518,7 @@ print(xs.sorted(), xs.rev, fold(Monoid.sum, xs), m)
     };
     let sorted = shown(&mut server, 4, 10);
     assert!(
-        sorted.starts_with("```cp\nsorted() -> List<T>\ncost: O(n log n)\n```"),
+        sorted.starts_with("```cp\nsorted(by: T -> K = x => x, cmp: (T, T) -> Bool = (a, b) => a < b, desc: Bool = false) -> List<T>\ncost: O(n log n)\n```"),
         "{sorted}"
     );
     let rev = shown(&mut server, 4, 23);
