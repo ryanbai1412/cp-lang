@@ -596,7 +596,16 @@ pub fn member_hover(cursor: &Cursor, std: &mut StdLib) -> Option<cpl_check::Hove
             start: start as u32,
             end: end as u32,
         },
-        text: entry.detail,
+        // The doc's whole `cost:` line: `O(1) to make, O(n) to walk`, not just `O(1)`.
+        text: match entry
+            .doc
+            .lines()
+            .map(str::trim)
+            .find(|l| l.starts_with("cost: O("))
+        {
+            Some(cost) => format!("{}\n{cost}", entry.detail),
+            None => entry.detail,
+        },
         doc: (!entry.doc.is_empty()).then_some(entry.doc),
     })
 }

@@ -251,7 +251,28 @@ impl Server {
                     };
                     let member = complete::member_hover(&cursor, &mut self.std);
                     match checked {
-                        Some(checked) => Some(member.unwrap_or(checked)),
+                        // The checker's cost lines stay when the doc writes none.
+                        Some(checked) => Some(match member {
+                            Some(mut member) if !member.text.contains("\ncost: ") => {
+                                // The doc's whole `cost:` line, `O(1) to make, O(n) to
+                                // walk`, over the checker's first clause of it.
+                                let written = member.doc.as_deref().and_then(|doc| {
+                                    doc.lines()
+                                        .map(str::trim)
+                                        .find(|l| l.starts_with("cost: O("))
+                                });
+                                for line in checked.text.lines().skip(1) {
+                                    member.text.push('\n');
+                                    member.text.push_str(match written {
+                                        Some(written) if line.starts_with("cost: ") => written,
+                                        _ => line,
+                                    });
+                                }
+                                member
+                            }
+                            Some(member) => member,
+                            None => checked,
+                        }),
                         None => crate::syntax_hover::hover(&analysis, offset).or(member),
                     }
                 } else {

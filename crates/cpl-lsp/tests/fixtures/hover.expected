@@ -419,6 +419,7 @@ dists: [V][V]?Int
 == hover @ 153:17
 ```cp
 fn runs<S: Indexed, T, K>(self: S, by: T -> K = x => x, link: ?((T, T) -> Bool) = None) -> yields Slice<S>
+cost: O(1)
 ```
 
 The stretches of equal neighbours (or equal `by:` keys), in order:
