@@ -11,7 +11,7 @@
 use std.strings.{prefix_matches}
 
 /// (length, start in s, start in t) of the longest block of s that is a rotation of a block of t.
-fn longest<S: Indexed, T: Indexed>(s: S, t: T) -> (Int, Int, Int):
+fn longest<T: Indexed>(s: Str, t: T) -> (Int, Int, Int):
     let (n, m) = (s.len, t.len)
     var best = (0, 0, 0)
     for cut in 0..=n:
