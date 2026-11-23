@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- P0 probe: a `let`/`var` with no initializer is accepted and reads 0, though the grammar requires `= expr`. Cases `core-01/var-needs-initializer.cp` and `core-02/array-needs-initializer.cp` (R02.8.3); both fail; compiler request. Index-space mixing (assign, compare, argument, array, index, map key) is already rejected.
 - Two more R03.5.1 reject cases, `core-03/mod-assign-other-modulus.cp` and `core-03/mod-arg-other-modulus.cp`: the compiler never compares moduli (both fail; added to the compiler request). Two runtime moduli (`Mod(p)`, `Mod(q)`) also mix silently, but the spec doesn't say they are distinct types, so no case.
 - Probed happy-path-only R02.6.6: `@get` with a required parameter is accepted; no diagnostic code exists, so the reject case waits (diagnostics and compiler requests).
 - Reject probe for happy-path-only R03.5.1 found a P0: `Mod<7> + Mod<11>` runs and prints 0. Case `core-03/mod-two-moduli-dont-mix.cp` (fails); compiler request. R03.1.3 (runtime-bounded struct field accepted) waits on a diagnostic code; asked in diagnostics/worklog.md.

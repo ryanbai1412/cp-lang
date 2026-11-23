@@ -7,12 +7,12 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 2214 (995 passing). Rules: 531.
+Cases: 2216 (995 passing). Rules: 531.
 
 ## Summary per chapter
 
 - R01 (01-lexical-grammar.md): 50 rules, 99 cases; 0 uncovered, 4 happy-path only, 1 negative only
-- R02 (02-values-types.md): 51 rules, 94 cases; 1 uncovered, 7 happy-path only, 0 negative only
+- R02 (02-values-types.md): 51 rules, 95 cases; 1 uncovered, 7 happy-path only, 0 negative only
 - R03 (03-numbers-layout.md): 24 rules, 58 cases; 0 uncovered, 6 happy-path only, 1 negative only
 - R04 (04-indices.md): 61 rules, 88 cases; 0 uncovered, 2 happy-path only, 0 negative only
 - R04a (04a-identity-vs-offset.md): 39 rules, 50 cases; 0 uncovered, 1 happy-path only, 3 negative only
@@ -147,7 +147,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R02.7.5 [1+ 0-] *happy-path only*: Layout uses niche filling, so `Ev` is 8 bytes with no tag when `V` positions are 4 bytes (...
 - R02.8.1 [1+ 1-]: `[D]T` is a fixed-size array indexed by domain `D` (positions of `D`, never raw `Int`). `[...
 - R02.8.2 [1+ 0-]: `List<T>` grows, is indexed by `0..len` positions, and its slices keep source positions.
-- R02.8.3 [2+ 0-]: `[D]T` arrays are built by tables (`[V] v => 0`), typed reads (`read<[V]Int>()`), comprehe...
+- R02.8.3 [2+ 1-]: `[D]T` arrays are built by tables (`[V] v => 0`), typed reads (`read<[V]Int>()`), comprehe...
 - R02.8.4 [1+ 0-]: `xs[i]` on a heap element lends it (`let row = rows[i]`); on a plain element it copies.
 - R02.8.5 [1+ 0-] *happy-path only*: Large arrays never live on the C++ stack (chapter 13).
 - R02.9.1 [1+ 1-]: Two fresh types are never equal, even from the same expression.
@@ -646,7 +646,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0007 Malformed character literal: 1 case(s)
 - E0101 Unclosed delimiter: 1 case(s)
 - E0102 Expected expression: 4 case(s)
-- E0103 Expected token: 3 case(s)
+- E0103 Expected token: 5 case(s)
 - E0104 Expected indented block: 1 case(s)
 - E0105 Expected type: 1 case(s)
 - E0106 Expected pattern: 1 case(s)
@@ -874,6 +874,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 
 - core-01/rb1-q09-lends-needs-arrow.cp
 - core-01/rb1-q36-no-comma-enum.cp
+- core-01/var-needs-initializer.cp
 - core-02/enum-comma-form-rejected.cp
 - core-04/domain-mixup.cp
 - core-04/first-is-optional.cp
