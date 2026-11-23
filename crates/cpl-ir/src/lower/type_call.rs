@@ -26,6 +26,7 @@ impl Lowerer<'_> {
             (None, "I128") => Ty::I128,
             (None, "U64") => Ty::U64,
             (None, "F64") => Ty::Float,
+            (None, "Char") => Ty::Char,
             _ => return None,
         };
         let found = self
@@ -35,6 +36,13 @@ impl Lowerer<'_> {
             .map(|p| p.2);
         if let Some(fn_id) = found {
             return Some(self.user_call(fn_id, None, args, span));
+        }
+        if ty == Ty::Char && matches!(name.text.as_str(), "from_idx" | "try_at") {
+            let value = match self.one_arg(&name.text, args, &Ty::Int, span) {
+                Some(value) => value,
+                None => return Some(self.err_expr(span)),
+            };
+            return Some(self.char_from_idx(value, span));
         }
         let to = match (&ty, name.text.as_str()) {
             (Ty::Int, "from_int") => "Int",
@@ -48,5 +56,39 @@ impl Lowerer<'_> {
             None => return Some(self.err_expr(span)),
         };
         Some(self.convert(to, value, span))
+    }
+
+    /// `Char.from_idx(i)`: the `i`th of the 128 chars `Char.K` counts, `None` outside them.
+    fn char_from_idx(&mut self, value: Expr, span: Span) -> Expr {
+        let mut stmts = Vec::new();
+        let i = self.hold(value, &mut stmts);
+        let zero = self.int_lit(0, span);
+        let k = self.int_lit(128, span);
+        let ge0 = self.mk(
+            ExprKind::Cmp(CmpOp::Ge, Box::new(i.clone()), Box::new(zero)),
+            Ty::Bool,
+            span,
+        );
+        let lt_k = self.mk(
+            ExprKind::Cmp(CmpOp::Lt, Box::new(i.clone()), Box::new(k)),
+            Ty::Bool,
+            span,
+        );
+        let ok = self.mk(
+            ExprKind::Binary(BinOp::And, Box::new(ge0), Box::new(lt_k)),
+            Ty::Bool,
+            span,
+        );
+        let ty = Ty::opt(Ty::Char);
+        let ch = self.cast(Cast::IntToChar, i, Ty::Char);
+        let some = self.mk(ExprKind::Some(Box::new(ch)), ty.clone(), span);
+        let none = self.mk(ExprKind::None, ty.clone(), span);
+        let pick = self.mk(
+            ExprKind::If(Box::new(ok), Box::new(some), Box::new(none)),
+            ty.clone(),
+            span,
+        );
+        stmts.push(Stmt::Give(pick));
+        self.mk(ExprKind::Do(Block { stmts }), ty, span)
     }
 }
