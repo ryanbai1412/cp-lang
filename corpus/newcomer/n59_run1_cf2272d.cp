@@ -6,7 +6,7 @@ var hub = 1
 var found = false  // expect: missing flag-for-first-match
 for t in 1..=k:
     let n: 1..=2e5 = read()
-    var adj: [1..=n]List<Int> = []  // expect: missing manual-adjacency-list
+    var adj: [1..=n]List<Int> = []  // expect: manual_adjacency_list
     for _ in 0..n - 1:
         let (u, v): (1..=n, 1..=n) = read()
         adj[u].push(v)

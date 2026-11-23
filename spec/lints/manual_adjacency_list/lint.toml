@@ -1,0 +1,5 @@
+code = "L0537"
+level = "warn"
+group = "idiom"
+title = "Adjacency list built edge by edge"
+summary = "`adj[u].push(v)` per read edge: `Graph.undirected(es)` / `Graph.directed(es)`"

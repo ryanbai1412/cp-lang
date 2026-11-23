@@ -1,6 +1,7 @@
 //! The rules. Each is a function from a parsed file to what it found, in
 //! file positions; `lint` applies levels and `with lint` afterwards.
 
+mod adjacency;
 mod answers;
 mod assign;
 mod bounds;
@@ -33,6 +34,7 @@ pub(crate) use proven::*;
 
 pub(crate) fn run(file: &File, config: &Config) -> Vec<Finding> {
     let mut findings = Vec::new();
+    findings.extend(adjacency::check(file));
     findings.extend(scopes::check(file));
     findings.extend(types::check(file));
     findings.extend(assign::check(file));

@@ -248,7 +248,7 @@ One sub-family per module. Each says: you rebuilt something the library has.
 
 | Lint | Catches | Write instead | Tier | P | Engine | Status |
 |---|---|---|---|---|---|---|
-| adjacency_build_loop | `adj[u].push(v); adj[v].push(u)` over read edges | `Graph.undirected(...)` / `directed` / `weighted` | fix | #1 | loop | |
+| adjacency_build_loop | `adj[u].push(v); adj[v].push(u)` over read edges | `Graph.undirected(...)` / `directed` / `weighted` | fix | #1 | loop | ✓manual_adjacency_list |
 | bfs_by_hand | queue + dist array with `-1` | `bfs(next, from:)` | fix? | #1 | loop | |
 | multi_source_bfs_by_hand | queue seeded with many sources | `bfs(next, from: sources)` | fix? | #1 | loop | |
 | zero_one_bfs_by_hand | deque with front/back pushes | `dial` / 0-1 `bfs` | fix? | #1 | loop | |
