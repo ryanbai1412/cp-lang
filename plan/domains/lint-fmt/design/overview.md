@@ -37,8 +37,15 @@ source --parse--> syntax tree --check--> typed IR + facts --> lint engine --> fi
   agree in interpreter and C++, and stress for `fix?`.
 - **Levels:** groups `correctness`, `perf`, `idiom`, `style`, `pedantic`;
   `cp.toml [lints]` by group or name; in code only `with lint(name: allow)`.
-- **Surfaces:** CLI, LSP code actions, playground (needs the checker in wasm),
-  stress reports, the skill eval.
+- **One owner per finding.** What the checker already reports (a getter
+  called with `()`, a renamed API) is a checker diagnostic with a fix, never
+  also a lint. Today 7 lints fire only on code the checker rejects (L0205,
+  L0206, L0512, L0513, L0515 say the same thing; L0510 `by_twin` and L0511
+  `tree_order` name a fix the checker's error lacks); they retire into the
+  checker after this review (worklog.md, 2026-11-22).
+- **Surfaces:** CLI, LSP code actions, playground (the checker builds for
+  wasm32 and `cpl.wasm` uses it; the prover stays native for size), stress
+  reports, the skill eval.
 
 ## Non-goals
 - Style options or per-project formatting.
