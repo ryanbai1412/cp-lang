@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- Rjudge.2 reject case (the judge line names only the chosen profile). rule-gaps.txt holds only R11.4.3 (`cpl migrate`, deferred to Milestone 2).
 - Request from site: since `835de99a1` lowercase `none` is E0503, but `spec/lib` still writes it in code (`containers.md` `prv != none`, `geometry.md`, `rationale/dp.md`, plus prose in 7 more files), and those pages render on the site's reference. Site migrated its own guides and Learn. General fix: the spec gate runs `cpl check` on spec/lib fences, so the next rename fails there instead of on the site.
 - `// tool: lsp <feature>` in cpl-conform (`src/lsp.rs`) drives `cpl lsp --stdio` over the case; 5 `tools-lsp/` cases cover Rlsp.1-5 (diagnostics, member completion, definition into std, formatting, `cpl setup neovim`), all passing. Tool args take `{case}`/`{dir}`. Rlsp.1 has a one-root-cause reject case; Rlsp.5 is a permit. rule-gaps.txt is down to R11.4.3 (`cpl migrate`, deferred) and Rjudge.2. Fixed `!= none` in a containers.md block that E0503 now rejects.
 - R01.1.4 gets its reject cases: a lone `\r` is an error (passes between tokens; a raw one in a string is accepted, routed to compiler). rule-gaps.txt drops to 7, of which 5 are the LSP rules; next is an LSP driver in cpl-conform.

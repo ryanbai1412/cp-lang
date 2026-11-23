@@ -7,7 +7,7 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 2474 (995 passing). Rules: 561.
+Cases: 2475 (995 passing). Rules: 561.
 
 ## Summary per chapter
 
@@ -29,7 +29,7 @@ Cases: 2474 (995 passing). Rules: 561.
 - Rbundle (bundle.md): 3 rules, 3 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - Rcli (cli.md): 2 rules, 6 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - Rfmt (fmt-lint.md): 1 rules, 2 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- Rjudge (judge-profiles.md): 2 rules, 3 cases; 0 uncovered, 1 happy-path only, 0 negative only
+- Rjudge (judge-profiles.md): 2 rules, 4 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - Rlint (fmt-lint.md): 2 rules, 3 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - Rlsp (lsp.md): 5 rules, 6 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - Rstress (stress.md): 1 rules, 2 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -63,11 +63,11 @@ negative case. Complete: rules with no gap in `rule-gaps.txt`.
 | Rbundle | 3 | 3 (100%) | 0 | 0 (0%) | 3 (100%) |
 | Rcli | 2 | 2 (100%) | 1 | 1 (100%) | 2 (100%) |
 | Rfmt | 1 | 1 (100%) | 1 | 1 (100%) | 1 (100%) |
-| Rjudge | 2 | 2 (100%) | 1 | 0 (0%) | 1 (50%) |
+| Rjudge | 2 | 2 (100%) | 1 | 1 (100%) | 2 (100%) |
 | Rlint | 2 | 2 (100%) | 2 | 2 (100%) | 2 (100%) |
 | Rlsp | 5 | 5 (100%) | 1 | 1 (100%) | 5 (100%) |
 | Rstress | 1 | 1 (100%) | 0 | 0 (0%) | 1 (100%) |
-| all | 561 | 560 (99%) | 214 | 213 (99%) | 559 (99%) |
+| all | 561 | 560 (99%) | 214 | 214 (100%) | 560 (99%) |
 
 ## Rules
 
@@ -681,7 +681,7 @@ Each rule: positive / negative case counts, then the gap if any.
 ### Rjudge: judge-profiles.md
 
 - Rjudge.1 [3+ 1-]: Chosen by `--judge`, else a `// judge: name` line, else `cp.toml`. `[judge.<name>]` tables...
-- Rjudge.2 [1+ 0-] *happy-path only*: The C++ file's second line names the profile, its compiler command and its stack, so the f...
+- Rjudge.2 [2+ 1-]: The C++ file's second line names the profile, its compiler command and its stack, so the f...
 
 ### Rlint: fmt-lint.md
 
