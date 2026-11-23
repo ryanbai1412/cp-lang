@@ -1003,8 +1003,8 @@ impl<'a> Lowerer<'a> {
         // The branches agree on one type: the hint, or the widest of them.
         let mut ty = ty.unwrap_or(Ty::Error);
         for candidate in lowered.iter().map(|(_, v, _)| &v.ty).chain([&result.ty]) {
-            if *candidate == Ty::Float && ty == Ty::Int {
-                ty = Ty::Float;
+            if ty == Ty::Int && self.int_joins(candidate) {
+                ty = candidate.clone();
             }
             if let (Ty::Range(c_inner), Ty::Range(t_inner)) = (candidate, &ty) {
                 if matches!(

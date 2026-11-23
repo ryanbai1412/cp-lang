@@ -4668,6 +4668,12 @@ impl<'a> Lowerer<'a> {
         }
     }
 
+    /// Whether an `if` with an `Int` branch beside a `ty` branch is a `ty`: `F64`, or a number
+    /// struct an `Int` is made into (R04.4.28).
+    pub(super) fn int_joins(&self, ty: &Ty) -> bool {
+        *ty == Ty::Float || matches!(ty, Ty::Struct(sid) if self.is_number(*sid))
+    }
+
     pub(super) fn try_coerce(&mut self, e: Expr, want: &Ty) -> Result<Expr, Expr> {
         if e.ty == *want || e.ty == Ty::Error || *want == Ty::Error {
             return Ok(e);

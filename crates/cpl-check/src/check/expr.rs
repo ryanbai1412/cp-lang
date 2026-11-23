@@ -608,6 +608,13 @@ impl<'a> Checker<'a> {
                         }
                         match result {
                             Some(first) if first.is_vague() => ty,
+                            // `if c: 0 else: z` with `z: Mod<P>` is a `Mod<P>` (decision 3.10).
+                            Some(first)
+                                if first.is_int()
+                                    && matches!(&ty, Ty::Named { name, .. } if self.is_number(name)) =>
+                            {
+                                ty
+                            }
                             Some(first) => first.widen(),
                             None => ty,
                         }
