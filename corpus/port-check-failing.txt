@@ -8,7 +8,6 @@ btoi19p5
 ccc02s4hard
 cco19p1
 cco21p5
-ceoi17p2
 cf2062e1
 cf2062e2
 cf2066d2
@@ -27,7 +26,6 @@ coci25c3p4
 coi06p2
 dmopc20c7p5
 etsr23r3p1
-etsr23r3p2
 etsr23r3p3
 etsr23r4p2
 ioi05p2
