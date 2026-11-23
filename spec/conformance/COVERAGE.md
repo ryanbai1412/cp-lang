@@ -817,7 +817,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **graph** (107/122 named by a case)
   - uncovered: `Weighted`, `Edged`, `WeightedNext`, `EdgedNext`, `EdgeArc`, `Reweighted`, `SimpleGraph`, `ConnectedGraph`, `Dag`, `Digraph`, `Graph.weighted`, `Walk`, `TwoSat.add_or`, `Complement`, `Only`
 - **grid** (23/23 named by a case)
-- **hashmap** (38/38 named by a case)
+- **hashmap** (37/37 named by a case)
 - **heap** (88/88 named by a case)
 - **interval** (44/44 named by a case)
 - **io** (5/5 named by a case)
@@ -857,7 +857,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **window** (20/22 named by a case)
   - uncovered: `Tracked`, `Undo`
 
-2150 of 2283 std items are named by a case.
+2149 of 2282 std items are named by a case.
 
 ## Core cases without a `// rule:` line
 
