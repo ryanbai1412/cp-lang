@@ -1756,3 +1756,17 @@ fn build_compiler_rebuilds_with_the_pinned_toolchain() {
     assert_eq!(out.status.code(), Some(EXIT_USAGE.into()));
     assert!(text(&out.stderr).contains("through the installed launcher, and there is none"));
 }
+
+/// BLOCKERS run 6 #23: a solution that reads its queries in a loop keeps a
+/// brute that reads them the same way, sharing the header's `n`, `q`, `a`.
+#[test]
+fn a_brute_reading_queries_in_a_loop_shares_the_header() {
+    let dir = scratch("brute-query-reads");
+    std::fs::write(
+        dir.join("a.cp"),
+        "@!multitest\nlet (n, q): (1..=9, 1..=9) = read()\nlet a: [0..n]Int = read()\nfor _ in 0..q:\n    let i: 1..=n = read()\n    print(a[i - 1])\n\n@alt(program)\nfn brute():\n    for _ in 0..q:\n        let i: 1..=n = read()\n        print(a[i - 1])\n",
+    )
+    .unwrap();
+    let out = cpl(&dir, &["check", "a.cp"]);
+    assert_eq!(out.status.code(), Some(0), "{}", text(&out.stderr));
+}

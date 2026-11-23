@@ -423,3 +423,8 @@ Landed since 23:10: four type/flow lints from `spec/idioms/lints.md`, L0571 `neg
   member, E0207 on a private helper points at the public twin with a fix,
   and E0203 no longer lists private fields. Restores the newcomer scoreboard
   (window-max) after std's private `Window.push_back`. Golden added.
+- #23: an `@alt(program)` brute that reads its queries in a loop, like the
+  solution, now shares the top-level reads before that loop (`n`, `q`, `a`)
+  instead of being refused with "the solution's own work" (x9 on cf2285D).
+  A brute that starts with its own `let n = read()` still reads it all.
+  Test in golden.rs.

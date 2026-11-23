@@ -74,3 +74,78 @@ pub(super) fn unreadable(spec: &Spec) -> Option<Ty> {
         },
     }
 }
+
+impl<'a> Lowerer<'a> {
+    /// The header an aside that reads input itself shares: when the solution
+    /// reads its queries inside a loop and the fn reads them too, the
+    /// top-level `let`s that read before that loop, if the fn uses a name
+    /// they bind (`n`, `a`, `q`). Otherwise nothing: the fn reads it all.
+    pub(super) fn shared_reads(
+        &mut self,
+        items: &[(u32, &'a ast::Stmt)],
+        name: &str,
+        gen: bool,
+    ) -> usize {
+        let mut reads = |this: &mut Self, (offset, stmt): &(u32, &ast::Stmt)| {
+            this.offset = *offset;
+            Self::reads_input(&this.source(stmt.span))
+        };
+        let item = |stmt: &ast::Stmt| {
+            matches!(
+                stmt.kind,
+                ast::StmtKind::Fn(_) | ast::StmtKind::Struct(_) | ast::StmtKind::Impl { .. }
+            )
+        };
+        if gen {
+            return 0;
+        }
+        let end = (0..items.len())
+            .find(|&i| {
+                let stmt = items[i].1;
+                !item(stmt)
+                    && !matches!(stmt.kind, ast::StmtKind::Let { .. })
+                    && reads(self, &items[i])
+            })
+            .unwrap_or(items.len());
+        let Some(last) = (0..end)
+            .rev()
+            .find(|&i| !item(items[i].1) && reads(self, &items[i]))
+        else {
+            return 0;
+        };
+        let mut bound = HashSet::new();
+        for (_, stmt) in &items[..=last] {
+            if let ast::StmtKind::Let { pat, .. } = &stmt.kind {
+                Self::pattern_names(pat, &mut bound);
+            }
+        }
+        // `fn brute(): for _ in 0..q: let i = read()` reads per query and
+        // shares `n`; `fn brute(): let n = read()` reads everything itself.
+        let per_query = items.iter().any(|(offset, stmt)| {
+            let ast::StmtKind::Fn(decl) = &stmt.kind else {
+                return false;
+            };
+            let ast::FnBody::Block(body) = &decl.body else {
+                return false;
+            };
+            self.offset = *offset;
+            let uses = |w: &str| bound.contains(w);
+            decl.name.text == name
+                && self
+                    .source(stmt.span)
+                    .split(|c: char| !(c.is_alphanumeric() || c == '_'))
+                    .any(uses)
+                && body
+                    .stmts
+                    .iter()
+                    .find(|s| Self::reads_input(&self.source(s.span)))
+                    .is_some_and(|s| !matches!(s.kind, ast::StmtKind::Let { .. }))
+        });
+        let used = per_query;
+        if used {
+            last + 1
+        } else {
+            0
+        }
+    }
+}

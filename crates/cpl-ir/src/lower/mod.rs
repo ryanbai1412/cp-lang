@@ -3595,7 +3595,7 @@ impl<'a> Lowerer<'a> {
                 .filter(|(offset, stmt)| line_of(stmt.span.shift(*offset).start) < line)
                 .count()
         } else if own_reads || size.is_some() {
-            0
+            self.shared_reads(&items, name, size.is_some())
         } else {
             items
                 .iter()
