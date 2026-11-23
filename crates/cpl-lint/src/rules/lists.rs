@@ -131,7 +131,7 @@ fn indexed_list(iter: &Expr) -> Option<&str> {
             hi: Some(hi),
             inclusive: false,
             step: None,
-        } if matches!(lo.kind, ExprKind::Int(0)) => receiver(hi, "len"),
+        } if matches!(lo.kind, ExprKind::Int(_)) => receiver(hi, "len"),
         _ => receiver(iter, "indices"),
     }
 }
@@ -423,7 +423,10 @@ mod tests {
         };
         assert_eq!(codes(&rev("(0..ws.len).rev")), Vec::<&str>::new());
         assert_eq!(codes(&rev("ws.indices.rev")), Vec::<&str>::new());
-        assert_eq!(codes(&rev("(1..ws.len).rev")), ["L0414"]);
+        // Any literal start is at least 0; a variable one may be negative.
+        assert_eq!(codes(&rev("(1..ws.len).rev")), Vec::<&str>::new());
+        assert_eq!(codes(&rev("2..ws.len")), Vec::<&str>::new());
+        assert_eq!(codes(&rev("i..ws.len")), ["L0414"]);
         // So is an enclosing `if` or `while` test.
         let body = |test: &str, index: &str| {
             format!("var ws: List<Int> = []\nws.push(read())\nvar total = 0\nfor i in 0..3:\n    for j in 0..3:\n        if {test}:\n            total += {index}\nprint(total)\n")

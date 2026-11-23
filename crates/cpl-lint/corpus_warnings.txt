@@ -15,7 +15,7 @@ std L0204 13
 std L0206 3
 std L0207 2
 std L0209 34
-std L0414 103
+std L0414 101
 std L0501 1
 std L0503 3
 std L0504 21
@@ -24,4 +24,4 @@ std L0506 13
 std L0507 11
 std L0508 4
 std L0509 8
-std L0520 6
+std L0520 7
