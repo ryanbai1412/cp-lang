@@ -50,6 +50,7 @@ number. *Fix the remaining failures* is in the domain's plan.
 | add or change a std API | `guidelines/std-api.md`, `guidelines/std-docs.md` |
 | write or improve an error message | `guidelines/errors.md` |
 | add a test suite, or know which test to write | `process/quality.md` |
+| add a conformance case or change a spec rule | `guidelines/conformance.md`, `guidelines/spec-rules.md` |
 | land a commit, or understand a red CI | `process/landing-and-ci.md` |
 | make a decision outside my domain | `process/ownership.md` |
 | propose a major change | `process/handbook-and-rfcs.md` |
@@ -109,6 +110,8 @@ How far along each milestone is, and what blocks it, stays in `plan/`.
 | `guidelines/errors.md` | One error per root cause, at the mistake, naming the rule and a fix that compiles; checklist | diagnostics |
 | `guidelines/lints.md` | When a lint is warranted, how it teaches, configuration, fix quality | lint-fmt |
 | `guidelines/performance.md` | Matched-algorithm comparison, runtime and size bars (including the tuned max), behavior never changes | perf |
+| `guidelines/conformance.md` | What makes a conformance case worth having: one rule, expected result from the spec, known gaps that fail for their reason, generated tables, engine agreement; checklist | spec |
+| `guidelines/spec-rules.md` | Writing a spec rule: one general rule, one spelling picked by type, rule ids, the three questions, chapters agree with std; checklist | spec |
 | `guidelines/writing.md` | Writing for an outsider: docs, commit messages, reports | coordinator |
 | `guidelines/idiomatic-code.md` | How ports, dreams, skill pages and examples read: editorial first, std over hand-rolled, each fact once, constraints as types, one spelling; checklist | idioms |
 | `guidelines/problem-packages.md` | Tests with trusted answers, checkers, interactors, validators, max inputs, one package format; checklist | idioms |
