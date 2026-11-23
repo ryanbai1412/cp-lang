@@ -3,8 +3,11 @@
 
 use super::*;
 
+/// `(code, 1-based line)` pairs.
+type Codes = Vec<(String, u32)>;
+
 /// `(code, 1-based line)` of each error, and of each warning, in a golden.
-fn golden_diagnostics(err: &str) -> (Vec<(String, u32)>, Vec<(String, u32)>) {
+fn golden_diagnostics(err: &str) -> (Codes, Codes) {
     let (mut errors, mut warnings) = (Vec::new(), Vec::new());
     let mut lines = err.lines().peekable();
     while let Some(line) = lines.next() {
