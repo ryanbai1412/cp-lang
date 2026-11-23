@@ -7,7 +7,7 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 3109 (1092 passing). Rules: 583.
+Cases: 3112 (1092 passing). Rules: 583.
 
 ## Summary per chapter
 
@@ -1022,7 +1022,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
   - uncovered: `CostFlow.potentials`, `max_weight_matching`, `min_weight_matching`, `general_matching`, `max_weight_general_matching`, `max_bounded_flow`, `min_bounded_flow`, `global_min_cut`, `Matroid`
 - **geometry** (153/160 named by a case)
   - uncovered: `ByAngle`, `PI`, `Vec.from_angle`, `planar_faces`, `point_location_planar`, `delaunay`, `voronoi_cells`
-- **graph** (115/126 named by a case)
+- **graph** (116/127 named by a case)
   - uncovered: `Edged`, `EdgedNext`, `EdgeArc`, `Reweighted`, `SimpleGraph`, `ConnectedGraph`, `Dag`, `Digraph`, `Walk`, `TwoSat.add_or`, `Complement`
 - **grid** (27/27 named by a case)
 - **hashmap** (37/37 named by a case)
@@ -1049,7 +1049,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **rand** (10/10 named by a case)
 - **search** (9/9 named by a case)
 - **segtree** (55/55 named by a case)
-- **seq** (217/227 named by a case)
+- **seq** (218/228 named by a case)
   - uncovered: `Compressed`, `Filtered`, `Mapped`, `Rev`, `Rebased`, `Stepped`, `Keys`, `SubseqStep`, `Ring`, `RingRange`
 - **slope** (39/39 named by a case)
 - **sparse** (23/23 named by a case)
@@ -1064,7 +1064,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **window** (20/22 named by a case)
   - uncovered: `Tracked`, `Undo`
 
-2229 of 2351 std items are named by a case.
+2231 of 2353 std items are named by a case.
 
 ## Core cases without a `// rule:` line
 
