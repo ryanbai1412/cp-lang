@@ -15,6 +15,7 @@ pub(crate) fn should_run_unit_tests(args: &[&str]) -> bool {
         matches!(
             *a,
             "-h" | "--help"
+                | "--format"
                 | "--tests"
                 | "--fast"
                 | "--checker"

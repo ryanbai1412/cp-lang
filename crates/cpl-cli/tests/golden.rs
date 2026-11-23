@@ -672,3 +672,28 @@ fn build_json_says_where_the_bytes_of_the_cpp_go() {
         );
     }
 }
+
+#[test]
+fn test_json_runs_the_cases_of_a_file_given_by_path_or_name() {
+    let dir = scratch("test-json");
+    std::fs::write(dir.join("a.cp"), "let n: 1..=10 = read()\nprint(n)\n").unwrap();
+    std::fs::create_dir_all(dir.join("a.tests")).unwrap();
+    std::fs::write(dir.join("a.tests/1.in"), "3\n").unwrap();
+    std::fs::write(dir.join("a.tests/1.out"), "3\n").unwrap();
+    for args in [
+        &["test", "a.cp", "--json"][..],
+        &["test", "a.cp", "--format", "json"],
+        &["test", "a", "--json"],
+    ] {
+        let out = cpl(&dir, args);
+        assert_eq!(
+            out.status.code(),
+            Some(0),
+            "{args:?}: {}",
+            text(&out.stderr)
+        );
+        let json = cpl_json::parse(&text(&out.stdout)).expect("cpl test --json is JSON");
+        assert_eq!(json.at(&["passed"]).as_i64(), Some(1), "{args:?}");
+        assert_eq!(json.at(&["total"]).as_i64(), Some(1), "{args:?}");
+    }
+}

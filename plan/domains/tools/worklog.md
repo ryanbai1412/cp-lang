@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- Landed (this): fix `cpl test a.cp --json` (and `--format json`, `cpl test a --json`), which said "`json` does not exist": the value of `--format` counted as a second path, so the inline-test runner took the command. `--format` now always means the contest runner; golden test over the three spellings.
 - Landed (this): `cpl build --json` (and `--format json`): the C++ file's `path`, `bytes`, `limit`, `judge` and `sizes` (each piece's `part`, `name`, `bytes`, adding up to `bytes`); `--json` with `-o -` or `--checked` is a usage error. `build_file` takes a `BuildOptions` instead of five positional flags. `measure.py json`: 15/23.
 - Landed (this): `cpl judge --json` (and `--format json`): `{"accepted", "reason", "diagnostic"}`, the diagnostic as `cpl check --json` prints one; text output and exit codes (0 accepts, 3 rejects) unchanged, so `cpl stress` is unaffected; `--help` now names exit 3. `measure.py json`: 14/23.
 - Landed (this): `cpl fix --json` (and `--format json`): `{"files": [{"path", "applied", "ok", "diagnostics"}]}`, the diagnostics left as `cpl check --json` prints them; spec/tools/cli.md says so; golden test checks it against `check --json`. `measure.py json`: 13/23. Re-measured LSP release latency (`cargo nextest run --release -p cpl-lsp --test latency`): 5,002-line `check, cold` median 78 ms, p90 94 ms (budget 50, still red, compiler request open); `lsp_requests_are_under_100_ms` and the largest-corpus-file p95 test pass.
