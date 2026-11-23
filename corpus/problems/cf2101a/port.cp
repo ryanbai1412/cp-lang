@@ -1,13 +1,11 @@
-// Codeforces 2101 A: Mex in the Grid.
-// A subgrid has mex >= k iff it holds every cell of 0..k - 1, i.e. it covers
-// their bounding box, and the number of subgrids covering a box is largest
-// when the box is small and central. Growing values in square shells around
-// the centre keeps every prefix 0..k - 1 in the smallest central box at once,
-// so every term of the sum is maximal.
-//
-// `rank` orders rows (and columns) outward from the centre, alternating
-// sides. Shell k is the cells whose larger rank is k: its row k is filled
-// first, then its column k, so the k * k smaller shells come before it.
+// Source: Codeforces 2101A (Mex in the Grid), https://codeforces.com/contest/2101/problem/A
+// Problem: multitest; n <= 500 (sum of n <= 1000). Place 0..n^2 - 1 in an n x n grid to
+//   maximise the sum of mex over all subgrids; print any optimal grid.
+// Solution: a subgrid has mex >= k iff it covers the bounding box of 0..k - 1, and boxes
+//   covered by the most subgrids are small and central. Growing the values in square shells
+//   around the centre keeps every prefix 0..k - 1 in the smallest central box, so every term
+//   is maximal. rank orders rows (and columns) outward from the centre, alternating sides;
+//   shell k (cells with larger rank k) gets k^2.. : its row k first, then its column k. O(n^2).
 @!multitest
 let n: 1..=500 = read()
 domain Coord = 0..n

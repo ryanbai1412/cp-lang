@@ -1,5 +1,11 @@
-// AtCoder DP R Walk, as it has to be written today: the matrix product and
-// the binary power are both written out. Builds; stress OK against 4131862.cpp.
+// Source: AtCoder Educational DP Contest R (Walk), https://atcoder.jp/contests/dp/tasks/dp_r
+// Problem: a simple directed graph on n <= 50 vertices given as an adjacency matrix.
+//   Count the directed walks of length k (k <= 1e18, edges may repeat), modulo 1e9 + 7.
+// Solution: the walks of length k from i to j are entry (i, j) of adj^k, so the answer is
+//   the sum of all entries of adj^k. Binary powering with an n^3 matrix product:
+//   O(n^3 log k).
+// Written out today: the matrix product and the binary power. Builds; stress OK against
+//   4131862.cpp.
 const P = 1000000007
 type Z = Mod<P>
 let n: 1..=50 = read()

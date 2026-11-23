@@ -1,5 +1,11 @@
-// COCI 2025 Contest 3 P2: count the permutations of n items that have
-// exactly k cycles, modulo 1e9 + 7.
+// Source: COCI 2025/2026 Round 3 #2 (Festival); not on DMOJ, statement in the round's task
+//   PDF in the COCI 2025/2026 archive
+// Problem: put n distinct candies (n <= 5000) into k identical non-empty boxes (k <= n),
+//   each box ordered with its largest candy first. Count the arrangements modulo 1e9 + 7.
+//   A box is a cycle, so this is the number of permutations of n with exactly k cycles.
+// Solution: unsigned Stirling numbers of the first kind: item i starts a cycle of its own
+//   or goes right after one of the i - 1 items before it, so c(i, c) = c(i - 1, c - 1) +
+//   (i - 1) c(i - 1, c). One row rolled from high c down: O(n^2).
 // original: corpus/submissions/7730377.cpp
 const P = 1000000007
 type Z = Mod<P>

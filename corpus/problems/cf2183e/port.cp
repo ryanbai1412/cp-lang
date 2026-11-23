@@ -1,6 +1,13 @@
-// Codeforces 2183 E: LCM is Legendary Counting Master.
-// 1/lcm(x, y) <= 1/x - 1/y for x < y, so the sum telescopes to at most 1/a_1:
-// a good sequence starts at 1 and steps x -> x + d with d dividing x.
+// Source: Codeforces 2183E (LCM is Legendary Counting Master),
+//   https://codeforces.com/contest/2183/problem/E
+// Problem: multitest; a_1..a_n with each a_i in 0..m (2 <= n <= m <= 3000, sum of m <= 3000).
+//   Count ways to replace every 0 by a value in 1..m so that a is strictly increasing and
+//   1/lcm(a_1, a_2) + ... + 1/lcm(a_{n-1}, a_n) + 1/lcm(a_n, a_1) >= 1, modulo 998244353.
+// Solution: for x < y, 1/lcm(x, y) = gcd/(xy) <= (y - x)/(xy) = 1/x - 1/y, equal iff y - x
+//   divides x, and the wrap term is at most 1/a_n, so the sum telescopes to at most 1/a_1:
+//   a good sequence starts at 1 and every step goes x -> x + d with d | x. ways[x] counts
+//   prefixes ending at x; a step pushes ways[j * d] to (j + 1) * d for every d and j
+//   (O(m log m)), then zeroes all but a_i if it is given. O(n m log m) per test.
 type Z = Mod<998_244_353>
 
 @!multitest

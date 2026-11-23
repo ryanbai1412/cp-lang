@@ -1,5 +1,9 @@
-// COCI '20 Contest 6 P1: every '#' on the picture is the top-left corner of
-// a 2 x 2 stamp. Print the stamped picture.
+// Source: COCI '20 Contest 6 #1 (Bold), https://dmoj.ca/problem/coci20c6p1
+// Problem: an n x m picture of '.' and '#' (2 <= n, m <= 100; no '#' in the last row or
+//   column). Bolding replaces every '#' by a 2 x 2 square of '#' reaching right and down;
+//   print the bolded picture.
+// Solution: copy the picture and, for each '#' of the original, also mark the cells to
+//   its right, below and below-right (bounds checked with at). O(nm).
 // Runnable on proto/cpc today.
 // original: corpus/submissions/4188008.cpp
 let n: 1..=100 = read()
