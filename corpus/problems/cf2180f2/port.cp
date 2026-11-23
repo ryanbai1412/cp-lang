@@ -38,7 +38,7 @@ fn stops<domain I, domain J>() -> [I, J]Z:
                 w.walled + side.walled,
                 w.shut + side.shut,
             )
-            out[i, j] = (walled + shut + 4 * (w.boxed + side.boxed)) * weight[i.to_idx + j.to_idx]
+            out[i, j] = (walled + shut + 4 * (w.boxed + side.boxed)) * weight[i.ord + j.ord]
             let falls = open + walled
             ways[j] = state(falls, falls, floor: 3, wall: 2)
             side = state(open + 2 * shut, shut, floor: 1, wall: 3)
@@ -49,7 +49,7 @@ domain J = 0..600
 let inside = Prefix(stops<I, J>())
 
 @!multitest
-let (n, m): (1..=50, 1..=1e15) = read()
+let (n, m): (1..=I.len, 1..=1e15) = read()
 // count[k]: orientations of an n x k grid whose car stops inside it.
 let count = [Z(4) ** ((n + 1) * (Int(k) + 1)) * inside.prefix(I.cuts(n), k) for k in J.cuts]
 print(guess_at(count, m)!)
