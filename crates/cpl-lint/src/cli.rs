@@ -4,7 +4,7 @@ use crate::{
     apply_fixes, checked, fix_checked_removed_syntax, fix_removed_syntax, is_taste, lint, Config,
     LINTS,
 };
-use cpl_diag::Severity;
+use cpl_diag::{Diagnostic, Severity};
 use std::collections::BTreeMap;
 use std::io::Write;
 use std::path::{Path, PathBuf};
@@ -162,10 +162,14 @@ pub fn run_with(
                 }
             }
         }
-        if !cpl_syntax::parse_file(&src).diagnostics.is_empty() {
+        let parsed = cpl_syntax::parse_file(&src);
+        if !parsed.diagnostics.is_empty() {
+            if !as_json && !taste {
+                show(stdout, &parsed.diagnostics, &name, &src);
+            }
             let _ = writeln!(
                 stderr,
-                "error: {name} has syntax errors and was not linted; `cpl check {name}` shows them"
+                "error: {name} has syntax errors and was not linted; fix them and lint again"
             );
             failed += 1;
             reports.push(FileReport {
@@ -200,7 +204,7 @@ pub fn run_with(
         if found.errors > 0 {
             let _ = writeln!(
                 stderr,
-                "error: {name} has {} lints cannot see past; `cpl check {name}` shows them",
+                "error: {name} has {} lints cannot see past; they are shown with the lints",
                 plural(found.errors, "type error")
             );
             unchecked += 1;
@@ -240,15 +244,13 @@ pub fn run_with(
                 );
                 tasteful += 1;
             }
-        } else if !diagnostics.is_empty() {
-            let lines = cpl_diag::LineIndex::new(&src);
-            for diagnostic in &diagnostics {
-                let _ = writeln!(
-                    stdout,
-                    "{}",
-                    cpl_diag::render(diagnostic, &name, &src, &lines)
-                );
-            }
+        } else {
+            // Type errors go with the lints, so one `cpl lint` (and Vim's
+            // `:make`) shows everything wrong with the file.
+            let mut shown = found.problems;
+            shown.extend(diagnostics);
+            shown.sort_by_key(|d| (d.span.start, d.span.end, d.code));
+            show(stdout, &shown, &name, &src);
         }
     }
     let mut summary = format!(
@@ -289,6 +291,17 @@ pub fn run_with(
         }
     }
     (errors > 0 || failed > 0 || unchecked > 0) as u8
+}
+
+fn show(stdout: &mut dyn Write, diagnostics: &[Diagnostic], name: &str, src: &str) {
+    let lines = cpl_diag::LineIndex::new(src);
+    for diagnostic in diagnostics {
+        let _ = writeln!(
+            stdout,
+            "{}",
+            cpl_diag::render(diagnostic, name, src, &lines)
+        );
+    }
 }
 
 /// Adds `path`, or every `.cp` file under it, to `files`.

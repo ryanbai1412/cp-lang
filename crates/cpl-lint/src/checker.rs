@@ -47,11 +47,12 @@ pub fn checker_lints(path: Option<&Path>, src: &str, config: &Config) -> Vec<Dia
 }
 
 /// What the checker says about `src`: its lints, as `checker_lints` gives
-/// them, and how many errors it reports, which lints cannot see past.
+/// them, and the errors it reports, which lints cannot see past.
 #[derive(Default)]
 pub struct Checked {
     pub lints: Vec<Diagnostic>,
     pub errors: usize,
+    pub problems: Vec<Diagnostic>,
 }
 
 pub fn checked(path: Option<&Path>, src: &str, config: &Config) -> Checked {
@@ -67,10 +68,10 @@ pub fn checked(path: Option<&Path>, src: &str, config: &Config) -> Checked {
         return Checked::default();
     };
     let mut out = Vec::new();
-    let mut errors = 0;
+    let mut problems = Vec::new();
     for diag in &analysis.diagnostics {
         if diag.severity == Severity::Error && !CHECKER_LINTS.iter().any(|l| l.code == diag.code) {
-            errors += 1;
+            problems.push(diag.clone());
         }
         let mut names = CHECKER_LINTS.iter().filter(|lint| lint.code == diag.code);
         let allowed = names.any(|lint| {
@@ -88,5 +89,9 @@ pub fn checked(path: Option<&Path>, src: &str, config: &Config) -> Checked {
         }
         out.push(diag);
     }
-    Checked { lints: out, errors }
+    Checked {
+        lints: out,
+        errors: problems.len(),
+        problems,
+    }
 }

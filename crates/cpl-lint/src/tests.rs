@@ -602,7 +602,11 @@ mod cli {
         let file = dir.join("a.cp");
         std::fs::write(&file, "let x = (1\n").unwrap();
         let (code, out, err) = lint(&[file.to_str().unwrap()]);
-        assert_eq!((code, out.as_str()), (1, ""));
+        assert_eq!(code, 1);
+        assert!(
+            out.starts_with("error["),
+            "the syntax error itself is shown: {out}"
+        );
         assert!(
             err.contains("has syntax errors and was not linted"),
             "{err}"

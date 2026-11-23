@@ -40,15 +40,15 @@ printf 'let  x=1\nprint( x )\n' >"$tmp/b.cp"
     -c "wqall"
 printf 'let x = 1\nprint(x)\n' | cmp -s - "$tmp/b.cp" || { echo "vim smoke: gq wrote $(cat "$tmp/b.cp")" >&2; exit 7; }
 
-# `:make` checks the file through `cpl check` and fills the quickfix list.
-printf 'let x: Int = "a"\nprint(y)\n' >"$tmp/c.cp"
+# `:make` lists type errors and lints together through `cpl lint`.
+printf 'let x: Int = "a"\nprint(y)\nvar s = 0\nprint(s)\n' >"$tmp/c.cp"
 "$vim_bin" --clean -Nu NONE -Es \
     -c "set rtp+=$nvim_dir | let g:cpl_path = '$cpl'" \
     -c "filetype plugin indent on" \
     -c "edit $tmp/c.cp" \
     -c "silent make" \
-    -c "if getqflist()->map({_, e -> [e.lnum, e.col, e.type]}) != [[1, 14, 'E'], [2, 7, 'E']] | cquit 8 | endif" \
-    -c "qall!" || { echo "vim smoke: :make did not list both errors" >&2; exit 8; }
+    -c "if getqflist()->map({_, e -> [e.lnum, e.col, e.type]}) != [[1, 14, 'E'], [2, 7, 'E'], [3, 1, 'W']] | cquit 8 | endif" \
+    -c "qall!" || { echo "vim smoke: :make did not list both errors and the lint" >&2; exit 8; }
 
 # The documented setup: `cpl setup vim` writes a start package Vim loads.
 "$cpl" setup vim --dir "$tmp/pack/cpl/start/cplang" >/dev/null
