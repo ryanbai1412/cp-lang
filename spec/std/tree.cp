@@ -830,8 +830,17 @@ pub struct Rooted<V, Pre>:
     /// empty: empty ranges are skipped, so one or two ranges come out
     /// order: increasing positions
     /// traps: when `v` and `root` are in different trees of a forest
-    /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); t.sub_at(1, 3).flat_map(r => r.map(p => t.at[p])).collect() == [0, 1, 4, 2] and t.sub_at(1, 2).count() == 1`
-    pub fn sub_at(self, v: V, root: V) -> yields Range<Pre> = todo
+    /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); [t.at[p] for r in t.sub_at(1, 3) for p in r] == [0, 1, 4, 2] and t.sub_at(1, 2).count() == 1`
+    pub fn sub_at(self, v: V, root: V) -> yields Range<Pre>:
+        if self.lca(v, root) != v:
+            yield self.sub(v)
+        elif v == root:
+            yield span(Pre.cuts(0), Pre.cuts(Pre.count))
+        else:
+            let c = self.ancestor(root, dep[root] - dep[v] - 1)!
+            yield span(Pre.cuts(0), tin[c].l)
+            let after = span(tin[c].r(sz[c]), Pre.cuts(Pre.count))
+            if not after.is_empty: yield after
 
     // blocked: `Rooted` resolves to a compiler built-in (GAPS.md tree `Rooted`)
     /// Whether `c` lies on the path from `a` to `b`, ends included.
