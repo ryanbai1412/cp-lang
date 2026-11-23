@@ -157,3 +157,19 @@ fn assigning_a_fixed_field_offers_var_where_it_is_declared_after_an_edit() {
     );
     assert!(db.diagnostics("a.cp")[0].fixes.is_empty());
 }
+
+#[test]
+fn std_and_prelude_paths_match_with_either_separator() {
+    for path in [
+        "std/heap.cp",
+        "/home/u/cpl/std/heap.cp",
+        r"C:\cpl\std\heap.cp",
+    ] {
+        assert!(is_std_path(path), "{path}");
+    }
+    for path in ["heap.cp", "src/a.cp", "/home/u/std", r"C:\cpl\stdx\heap.cp"] {
+        assert!(!is_std_path(path), "{path}");
+    }
+    assert!(is_prelude(r"C:\cpl\std\prelude.cp"));
+    assert!(is_prelude("std/prelude.cp"));
+}

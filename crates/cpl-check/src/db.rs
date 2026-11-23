@@ -2185,13 +2185,13 @@ impl Env for FileCtx<'_> {
 
 /// Whether `path` is the prelude itself, which is not given its own names.
 fn is_prelude(path: &str) -> bool {
-    path == "prelude.cp" || path.ends_with("std/prelude.cp")
+    path == "prelude.cp" || path.replace('\\', "/").ends_with("std/prelude.cp")
 }
 
 /// Whether `path` is a standard-library module (which declares its own imports
 /// explicitly, so `BUILT_ON` must not introduce stdlib-to-stdlib cycles).
 fn is_std_path(path: &str) -> bool {
-    path.contains("/std/") || path.starts_with("std/")
+    format!("/{}", path.replace('\\', "/")).contains("/std/")
 }
 
 /// The declaration of the top-level name that starts at `at`.
