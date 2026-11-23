@@ -138,10 +138,12 @@ impl HandMath<'_> {
         if !self.text(body.span).contains(&test) {
             return;
         }
+        // Dividing `x` by `d` anywhere in the loop, even under an `if`, factors it.
         let factors = body
             .stmts
             .iter()
-            .any(|s| matches!(&s.kind, StmtKind::While { .. }));
+            .any(|s| matches!(&s.kind, StmtKind::While { .. }))
+            || self.text(body.span).contains(&format!("{x} /= {d}"));
         let (msg, help) = if factors {
             (
                 format!("trial division by `{d}` factors `{x}` by hand"),

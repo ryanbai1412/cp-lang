@@ -1833,3 +1833,15 @@ fn library_fn_is_not_told_to_call_itself() {
     let other = body.replacen("fn divisors", "fn my_divs", 1);
     assert!(codes(&format!("pub {other}")).contains(&"L0561"));
 }
+
+#[test]
+fn trial_division_under_an_if_factors() {
+    // std/math.cp `factor`: the dividing loop sits under `if rest % p == 0`.
+    let src = "fn f(x: Int) -> List<(Int, Int)>:\n    var out = List<(Int, Int)>()\n    var (rest, p) = (x, 2)\n    while p * p <= rest:\n        if rest % p == 0:\n            var e = 0\n            while rest % p == 0:\n                rest /= p\n                e += 1\n            out.push((p, e))\n        p += 1\n    if rest > 1: out.push((rest, 1))\n    out\nprint(f(12))\n";
+    let d = lint(src, &all_on());
+    let d = d.iter().find(|d| d.code.0 == "L0561").expect("L0561");
+    assert!(
+        d.help.as_deref().unwrap().contains("`factor(rest)`"),
+        "{d:#?}"
+    );
+}
