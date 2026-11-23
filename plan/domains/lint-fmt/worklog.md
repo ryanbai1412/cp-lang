@@ -226,3 +226,36 @@ Newest first: what landed (commit), evidence, next, blocked, requests from other
 - 2026-11-22: lint records write math as LaTeX in `\(...\)` (Ryan's docs convention): 11 records converted, including 2 in `spec/checker-lints`. `record_math_is_latex` fails a bare `O(...)`, and `plain_math` gives `cpl explain` and `cpl lint --list` the plain form.
 - From diagnostics (2026-11-22): `SUPERSEDED_BY` in `lib.rs` now also drops a finding whose labelled evidence sits inside the wider finding (two-line change), for L0536 `sentinel_scalar` under L0504/L0501. Baseline `std L0536 12` added to `corpus_warnings.txt`.
 - From diagnostics (2026-11-22): took the `adjacency_build_loop` row as L0537 `manual_adjacency_list` (`rules/adjacency.rs`, claimed in its lints.md row); next I take `manual-queue-head-index` and `dx_dy_arrays`, claimed in their rows first.
+- 2026-11-22 22:45 (idioms, newcomer update): there are 11 new drafts (n60-n70) covering mod, geometry, math, heap, sorted, graph, tree and bits. Every `missing` mark now uses its catalog name, and `score.py` counts a `missing X` mark as X once X ships. Score on main: **99/130 (76%)**, 70/70 files still pass `cpl check` after `--fix`, 7 unmarked diagnostics. Remaining misses, most frequent first:
+  | # | Missed pattern | Spots | Lint exists |
+  |---|---|---|---|
+  | 1 | `adjacency_build_loop` | 2 | no |
+  | 2 | `one-based-query-index-shift` | 1 | no |
+  | 3 | `counter_by_map` | 1 | no |
+  | 4 | `stale_entry_skip` | 1 | no |
+  | 5 | `unproven_list_index` | 1 | yes, did not fire |
+  | 6 | `diff_array_by_hand` | 1 | no |
+  | 7 | `group-by-key-loop` | 1 | no |
+  | 8 | `manual-inversion-count` | 1 | no |
+  | 9 | `push_loop` | 1 | yes, did not fire |
+  | 10 | `int-node-ids` | 1 | no |
+  | 11 | `manual-small-to-large` | 1 | no |
+  | 12 | `interval_dp_by_length` | 1 | no |
+  | 13 | `manual-interval-end-index` | 1 | no |
+  | 14 | `manual-mex-loop` | 1 | no |
+  | 15 | `manual-argmax-loop` | 1 | no |
+  | 16 | `list-copy-by-comprehension` | 1 | no |
+  | 17 | `manual-run-length` | 1 | no |
+  | 18 | `flag-for-first-match` | 1 | no |
+  | 19 | `bfs_by_hand` | 1 | no |
+  | 20 | `binom_by_hand` | 1 | no |
+  | 21 | `tuple_points` | 1 | no |
+  | 22 | `shoelace_by_hand` | 1 | no |
+  | 23 | `divisors_by_hand` | 1 | no |
+  | 24 | `factor_by_hand` | 1 | no |
+  | 25 | `map_as_multiset` | 1 | no |
+  | 26 | `components_by_dfs` | 1 | no |
+  | 27 | `cycle_by_colors` | 1 | no |
+  | 28 | `depth_by_hand` | 1 | no |
+  | 29 | `lca_by_hand` | 1 | no |
+  | 30 | `float_sqrt_for_int` | 1 | yes, did not fire |

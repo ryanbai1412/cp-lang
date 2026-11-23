@@ -94,6 +94,8 @@ def main(argv):
         used = set()
         for line, want in ms:
             total += 1
+            if want.startswith("missing ") and want[8:] in known:
+                want = want[8:]  # the lint has shipped since the mark was written
             if want.startswith("missing "):
                 ok = any(near(line, d) for _, _, d in ds)
             else:
