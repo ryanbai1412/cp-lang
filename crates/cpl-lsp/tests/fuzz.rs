@@ -5,6 +5,8 @@
 //! The server turns a panic into an `internal error in cpl` reply and a
 //! diagnostic (see `Server::handle`), so the test fails on that text, which
 //! also catches a panic the server survived.
+//!
+//! Enforces `handbook/guidelines/commands-checklist.md#r12-halftyped-code`.
 
 use cpl_json::{obj, Value};
 use cpl_lsp::Server;

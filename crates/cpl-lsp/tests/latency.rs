@@ -19,6 +19,8 @@
 //! ```text
 //! cargo test --release -p cpl-lsp --test latency -- --nocapture
 //! ```
+//!
+//! Enforces `handbook/guidelines/commands-checklist.md#r13-latency`.
 
 use cpl_check::Database;
 use cpl_json::{obj, Value};

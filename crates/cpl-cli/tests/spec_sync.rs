@@ -1,6 +1,8 @@
 //! `cpl --help` and the command table in `spec/tools/cli.md` name the same
 //! commands, except a known list that may only shrink. Q tools-1 in
 //! plan/QUESTIONS.md decides how each one is resolved.
+//!
+//! Enforces `handbook/guidelines/commands-checklist.md#r4-the-spec-names-the-commands`.
 
 use std::collections::BTreeSet;
 

@@ -7,8 +7,6 @@
 | Status | Active |
 | Describes | `crates/cpl-lsp`, `crates/cpl-cli`, `crates/cpl-wasm` (the engine calls), `editors/` |
 
-## Summary
-
 The terminal, the desktop editors and the browser playground all answer
 from one analysis of the file. `cpl check` and the editor's red squiggle
 are the same diagnostic, made by the same code. `cpl fix` and the editor's
@@ -21,7 +19,7 @@ the result. The playground runs the same server compiled to WebAssembly
 (`crates/cpl-wasm`). `cpl check` on the saved file calls the same analysis
 and prints the same diagnostic.
 
-## Goals
+## What good looks like
 
 - **One answer.** The CLI, the editors and the playground never disagree
   about what a file means. Each job has one entry point that the others call
@@ -35,7 +33,7 @@ and prints the same diagnostic.
   options, costs, storage and proven ranges come from the compiler's facts,
   never re-derived in a tool.
 
-## The pieces
+## How it fits together
 
 ```
 source text
@@ -71,6 +69,38 @@ source text
   Competitive Companion import) by running `cpl` commands with `--json`,
   never by re-implementing them.
 
+## Next: one signature model
+
+Today hover, signature help, completion details and the docs each format a
+function's signature themselves, so they drift: hover on `sort` can show
+`sort()` without its `by:` and `desc:` options. The target is one signature
+model built from the checker's resolved item (parameters, named options with
+defaults, return type, cost, doc summary) that every surface renders. Its
+checks are the hover snapshots, completion replay and definition coverage
+rows of `handbook/domains/tools.md`.
+
+## How we know it works
+
+Parity tests run the CLI, the language server and the playground on every
+conformance case, corpus solution and example and require the same
+diagnostics, fixes, runs and traces. The server is fuzzed with cut and
+garbled real files, its latency is measured at 5,000 lines on each OS, and
+completion is replayed over the corpus. Hover, signature help and go to
+definition are the weakest: fixtures cover a handful of cases, and the
+signature model below does not exist yet.
+
+## Where to start
+
+- A request's behaviour: `crates/cpl-lsp/src/server.rs`, then
+  `complete.rs` for completion and signature help.
+- What the editor shows for a case: the fixtures in
+  `crates/cpl-lsp/tests/fixtures/`; `BLESS=1` rewrites their expected
+  output.
+- A new shared job: add a row to the table below and a parity test in
+  `crates/cpl-wasm/tests/parity.rs`.
+
+# Reference
+
 ## One entry point per job
 
 | Job | Entry point | CLI | Editor | Playground | Parity test |
@@ -82,12 +112,14 @@ source text
 | Storage and costs | the compiler's representation query | `cpl explain` | hover | explain | `crates/cpl-lsp/tests/explain_hover.rs` |
 | Cases of a problem | `cpl_contest::problem::find_tests_dir` | `cpl test` | test panels | | `editors/vscode/test/unit/results.test.ts`, `editors/jetbrains/src/test/kotlin/dev/cplang/ide/CplTest.kt` |
 
-A new job gets a row here and a parity test before a second caller uses it.
+A new job gets a row here and a parity test before a second caller uses it
+(`handbook/guidelines/commands-checklist.md#r10-one-entry-point-per-job`).
 
 ## Invariants
 
-- A tool never re-implements a check, a type or a fact; it asks the
-  analysis.
+The rules every command and editor feature follows are in
+`handbook/guidelines/commands.md`. The design adds these:
+
 - The language server applies a quick fix on its own database and then
   restores the document's text, because the editor has not applied the edit
   yet.
@@ -98,16 +130,6 @@ A new job gets a row here and a parity test before a second caller uses it.
   rest by name.
 - Editor keyword and std name tables match the compiler
   (`crates/cpl-cli/tests/vscode_sync.rs`, `editors/smoke.sh`).
-
-## Next: one signature model
-
-Today hover, signature help, completion details and the docs each format a
-function's signature themselves, so they drift: hover on `sort` can show
-`sort()` without its `by:` and `desc:` options. The target is one signature
-model built from the checker's resolved item (parameters, named options with
-defaults, return type, cost, doc summary) that every surface renders. Its
-checks are the hover snapshots, completion replay and definition coverage
-rows of `handbook/domains/tools.md`.
 
 ## Measures
 

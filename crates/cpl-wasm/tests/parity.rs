@@ -9,6 +9,8 @@
 //! This runs natively, where the playground is the same code as in the
 //! `.wasm` file apart from the interpreter's stack. `tests/smoke.mjs` runs
 //! the built module itself.
+//!
+//! Enforces `handbook/guidelines/commands-checklist.md#r10-one-entry-point-per-job`.
 
 use cpl_json::Value;
 use cpl_wasm::Playground;

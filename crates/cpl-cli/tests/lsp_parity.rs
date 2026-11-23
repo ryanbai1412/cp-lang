@@ -3,6 +3,7 @@
 //! examples. The editor shows what `cpl check` and `cpl lint` both report.
 //!
 //! Rule: `errors/R12`, handbook/guidelines/errors-checklist.md#r12-every-tool-shows-the-same-diagnostic.
+//! Enforces `handbook/guidelines/commands-checklist.md#r10-one-entry-point-per-job`.
 
 use std::collections::BTreeMap;
 use std::io::Write;

@@ -16,6 +16,8 @@
 //! ```text
 //! cargo test --release -p cpl-cli --test cold_start -- --nocapture
 //! ```
+//!
+//! Enforces `handbook/guidelines/commands-checklist.md#r7-cold-start`.
 
 use std::path::{Path, PathBuf};
 use std::process::Command;

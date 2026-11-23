@@ -360,6 +360,7 @@ fn fix_json_reports_what_it_applied_and_what_is_left() {
 
 /// Every command `cpl --help` lists: its own `--help`, and an option it does
 /// not have is a usage error that shows its usage, not a missing file.
+/// Enforces `handbook/guidelines/commands-checklist.md#r1-help`.
 #[test]
 fn every_command_has_help_and_rejects_an_unknown_option() {
     let help = text(&cpl(Path::new("."), &["--help"]).stdout);
@@ -491,6 +492,7 @@ fn judges_json_lists_every_profile_and_marks_the_chosen_one() {
     }
 }
 
+/// Enforces `handbook/guidelines/commands-checklist.md#r3-one-spelling`.
 #[test]
 fn json_and_format_json_are_one_flag_on_every_command_with_json() {
     let dir = scratch("json-spelling");
@@ -800,6 +802,7 @@ fn explain_a_file_shows_each_values_storage() {
 
 /// Help fits an 80-column terminal. `stress` is the debugger domain's, which
 /// has the request (plan/domains/debugger/worklog.md).
+/// Enforces `handbook/guidelines/commands-checklist.md#r1-help`.
 #[test]
 fn every_help_fits_80_columns() {
     let json = cpl_json::parse(&text(&cpl(Path::new("."), &["--help", "--json"]).stdout)).unwrap();
