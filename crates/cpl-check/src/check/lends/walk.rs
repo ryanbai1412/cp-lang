@@ -35,6 +35,44 @@ impl Checker<'_> {
         true
     }
 
+    /// `for x in lo..hi` knows `x >= lo` and `x < hi` (`<=` for `..=`)
+    /// in its body, so `a[k] = a[l].take()` under `for l in 0..k` is two
+    /// disjoint parts.
+    pub(super) fn add_loop_facts(&mut self, stmt: &Stmt) {
+        let StmtKind::For { pat, iter, .. } = &stmt.kind else {
+            return;
+        };
+        let (
+            ast::PatternKind::Name(x),
+            ExprKind::Range {
+                lo,
+                hi,
+                inclusive,
+                step: None,
+            },
+        ) = (&pat.kind, &unparen(iter).kind)
+        else {
+            return;
+        };
+        let bounds = [
+            (lo, CmpOp::Ge),
+            (hi, if *inclusive { CmpOp::Le } else { CmpOp::Lt }),
+        ];
+        for (bound, op) in bounds {
+            let Some(bound) = bound.as_deref().filter(|b| is_pure(b)) else {
+                continue;
+            };
+            let mut names = names_in(bound);
+            names.push(x.clone());
+            self.lends.facts.push(Fact {
+                lhs: x.clone(),
+                op,
+                rhs: show(bound),
+                names,
+            });
+        }
+    }
+
     /// The places the walk over `iter` keeps lent, each with whether the
     /// lend is `mut`. Empty when `iter` is no generator or view call.
     pub(super) fn walk_sources(&mut self, iter: &Expr) -> Vec<(Place, bool)> {

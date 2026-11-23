@@ -1866,6 +1866,7 @@ impl<'a> Checker<'a> {
                 _ => break,
             };
         }
+        self.add_loop_facts(stmt);
         if self.hold_walk(stmt, iter, iter_ty) {
             return;
         }
