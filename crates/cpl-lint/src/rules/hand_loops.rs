@@ -10,7 +10,7 @@ use crate::{
     File, Finding, Lint, CONTAINS_THEN_ADD, COPY_COMPREHENSION, LOOP_ARGMAX, MANUAL_MEX,
     QUEUE_HEAD_INDEX, SPLIT_RANGE_CHECK,
 };
-use cpl_diag::{Diagnostic, Span};
+use cpl_diag::{Diagnostic, Fix, Span};
 use cpl_syntax::ast::*;
 
 use super::shapes::{compare, int, is_step, name, single};
@@ -345,18 +345,32 @@ impl HandLoops<'_> {
             return;
         };
         let place = format!("{}[{}]", self.text(m.span), self.text(k.span));
+        // The `if` ends with its later branch's value, before the newline.
+        let whole = Span::new(stmt.span.start, v1.span.end.max(v2.span.end)).shift(self.base);
         let (v1, v2) = (self.text(v1.span), self.text(v2.span));
         if self.text(t1.span) != place || self.text(t2.span) != place || v1 != v2 {
             return;
         }
-        self.warn(
-            &CONTAINS_THEN_ADD,
-            stmt.span,
+        // The fix holds where `+=` starts a missing key at 0; the checker's
+        // type of the map (the label) decides that in `typed.rs`.
+        let bump = format!("{place} += {v1}");
+        let mut diag = Diagnostic::warning(
+            CONTAINS_THEN_ADD.code,
+            stmt.span.shift(self.base),
             format!("`{place}` is tested for a key before `+=`"),
-            format!(
-                "write `{place} += {v1}`: on a `Map`, `+=` starts a missing key at `0`, so the test and the `else` are the same step"
-            ),
-        );
+        )
+        .with_label(m.span.shift(self.base), "the map")
+        .with_help(format!(
+            "write `{bump}`: on a `Map`, `+=` starts a missing key at `0`, so the test and the `else` are the same step"
+        ));
+        diag.fixes.push(Fix {
+            title: format!("write `{bump}`"),
+            edits: vec![(whole, bump)],
+        });
+        self.out.push(Finding {
+            lint: &CONTAINS_THEN_ADD,
+            diag,
+        });
     }
 }
 
