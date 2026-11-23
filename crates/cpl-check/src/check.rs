@@ -491,10 +491,12 @@ impl<'a> Checker<'a> {
         let (fixed, io, shapes) = (self.fixed_io.len(), self.io_costs.len(), self.shapes.len());
         let conflicts = self.lends.conflicts.len();
         let moved = self.moved.clone();
+        let lambda_params = self.lambda_params.clone();
         let sink = std::mem::replace(&mut self.sink, Sink::new());
         let out = f(self);
         self.sink = sink;
         self.moved = moved;
+        self.lambda_params = lambda_params;
         self.hovers.truncate(hovers);
         self.refs.truncate(refs);
         self.resolved.truncate(resolved);

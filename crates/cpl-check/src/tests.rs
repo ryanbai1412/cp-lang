@@ -1778,6 +1778,13 @@ fn a_library_fn_in_method_form_hovers_and_types_like_its_free_form() {
 }
 
 #[test]
+fn a_list_map_lambda_param_takes_the_element_type() {
+    let src = "let ys = [1, 2].map(x =>\n    let y = x + 1\n    y\n)\nprint(ys)\n";
+    assert_eq!(hover(src, "x =>"), "x: Int");
+    assert_eq!(hover(src, "y = x"), "y: Int");
+}
+
+#[test]
 fn an_impl_method_wins_over_a_library_fn_whose_bound_fails() {
     let src = "use std.algebra.{Reversible}\nstruct Word(s: Str)\nimpl Reversible for Word:\n    fn rev(self) -> Word = Word(s + \"!\")\nprint(Word(\"ab\").rev().s)\n";
     assert_eq!(codes(src), Vec::<&str>::new());
