@@ -148,3 +148,11 @@ inputs = []
 write = ["scripts/conformance-widths.py"]
 check = ["scripts/conformance-widths.py", "--check"]
 tier = "pre-commit"
+
+[[gen]]
+name = "ownership"
+files = ["spec/conformance/ownership/*.cp"]
+inputs = []
+write = ["scripts/conformance-ownership.py"]
+check = ["scripts/conformance-ownership.py", "--check"]
+tier = "pre-commit"

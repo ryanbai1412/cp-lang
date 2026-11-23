@@ -1297,7 +1297,34 @@
         "core-05/view-assigned-into-typed-var.cp": "pass",
         "core-07/view-of-a-temporary-used-in-its-statement.cp": "pass",
         "core-07/view-of-a-temporary-copied-is-owned.cp": "pass",
-        "core-07/view-of-a-temporary-in-a-var.cp": "pass"
+        "core-07/view-of-a-temporary-in-a-var.cp": "pass",
+        "ownership/fn-temp-let.cp": "pass",
+        "ownership/top-named-var.cp": "pass",
+        "ownership/top-temp-assign-after.cp": "pass",
+        "ownership/top-named-push-after.cp": "pass",
+        "ownership/fn-param-let.cp": "pass",
+        "ownership/top-named-assign-after.cp": "pass",
+        "ownership/fn-param-push-after.cp": "pass",
+        "ownership/fn-temp-out.cp": "pass",
+        "ownership/fn-named-var.cp": "pass",
+        "ownership/fn-temp-assign-after.cp": "pass",
+        "ownership/top-named-push-before.cp": "fail",
+        "ownership/top-named-let.cp": "pass",
+        "ownership/fn-named-push-before.cp": "pass",
+        "ownership/top-named-assign-before.cp": "fail",
+        "ownership/fn-named-assign-after.cp": "pass",
+        "ownership/fn-named-let.cp": "pass",
+        "ownership/fn-named-push-after.cp": "pass",
+        "ownership/fn-param-assign-after.cp": "pass",
+        "ownership/fn-temp-var.cp": "pass",
+        "ownership/top-temp-push-after.cp": "pass",
+        "ownership/fn-param-out.cp": "pass",
+        "ownership/fn-temp-push-after.cp": "pass",
+        "ownership/fn-named-out.cp": "pass",
+        "ownership/top-temp-let.cp": "pass",
+        "ownership/fn-param-var.cp": "pass",
+        "ownership/top-temp-var.cp": "pass",
+        "ownership/fn-named-assign-before.cp": "pass"
       },
       "causes": [
         {
@@ -1917,11 +1944,11 @@
         }
       ],
       "counts": {
-        "fail": 231,
-        "pass": 1064
+        "fail": 233,
+        "pass": 1089
       },
-      "passed": 1064,
-      "total": 1295
+      "passed": 1089,
+      "total": 1322
     },
     "corpus": {
       "cases": {
