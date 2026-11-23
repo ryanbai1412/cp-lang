@@ -1,0 +1,23 @@
+---
+title: Friend groups
+description: "Level B. Teaches Dsu over a domain: unite, size, and counting components as edges arrive."
+level: B
+chapter: 9
+teaches: "`Dsu<V>`, `unite` returning whether it merged, `size`"
+---
+
+There are n people (1 ≤ n ≤ 2·10⁵), each in a group of their own. Then m friendships arrive one at a time (1 ≤ m ≤ 2·10⁵); friends join their two groups into one. After each friendship, print the number of groups and the size of the largest group.
+
+**Input:** n and m, then m lines `a b` (1 ≤ a, b ≤ n; a may equal b). **Output:** m lines of two integers.
+
+| Input | Output |
+|---|---|
+| `4 4`<br/>`1 2`<br/>`3 4`<br/>`2 1`<br/>`1 4` | `3 2`<br/>`2 2`<br/>`2 2`<br/>`1 4` |
+
+<Judge id="friend-groups">
+
+- `domain V = 1..=n` names the people, and `Dsu<V>.new()` is a disjoint-set union over them; see [`Dsu`](/docs/ref/std/dsu).
+- `d.unite(a, b)` returns `true` only when it joined two different groups, so the group count drops exactly then.
+- The largest group never shrinks: after a union, `big max= d.size(a)` keeps it.
+
+</Judge>

@@ -1,0 +1,23 @@
+---
+title: Zero-sum stretches
+description: "Level C. Teaches scan(+) as a Prefix over cuts and counting equal prefix sums with a Counter."
+level: C
+chapter: 8
+teaches: "`a.scan(+)`, cuts, `Counter`"
+---
+
+You are given n integers (1 ≤ n ≤ 2·10⁵, −10⁹ ≤ aᵢ ≤ 10⁹). Count the non-empty contiguous stretches whose sum is 0.
+
+**Input:** n, then the n integers. **Output:** one integer.
+
+| Input | Output |
+|---|---|
+| `5`<br/>`1 -1 2 -2 0` | `6` |
+
+<Judge id="zero-sum">
+
+- A stretch sums to 0 exactly when the prefix sums at its two ends are equal. `a.scan(+)` gives the n + 1 prefix sums, one per cut; see [`scan`](/docs/ref/std/prefix).
+- Walk the cuts with `for c in I.cuts:` and read each sum with `pre.prefix(c)`. Each earlier cut with the same sum closes one stretch here.
+- `Counter<Int, Int>` reads missing keys as 0, so `seen.get(s)` needs no `??`. The answer can reach about 2·10¹⁰, which fits in an `Int`.
+
+</Judge>

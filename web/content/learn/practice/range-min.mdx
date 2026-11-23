@@ -1,0 +1,23 @@
+---
+title: Range minimum with updates
+description: "Level C. Teaches SegTree with an operation value: set a point, fold a range, in O(log n) each."
+level: C
+chapter: 8
+teaches: "`SegTree(min, a)`, `set`, `fold(l..=r)`"
+---
+
+You are given n numbers a₁ … aₙ (1 ≤ n ≤ 2·10⁵, 1 ≤ aᵢ ≤ 10⁹) and q queries (1 ≤ q ≤ 2·10⁵). A query `1 i x` sets aᵢ to x (1 ≤ x ≤ 10⁹). A query `2 l r` (l ≤ r) asks for the minimum of aₗ … aᵣ. Answer every query of type 2.
+
+**Input:** n and q, then the n numbers, then q queries, one per line. **Output:** one line per query of type 2.
+
+| Input | Output |
+|---|---|
+| `5 4`<br/>`5 3 8 1 4`<br/>`2 1 5`<br/>`1 4 9`<br/>`2 3 5`<br/>`2 1 2` | `1`<br/>`4`<br/>`3` |
+
+<Judge id="range-min">
+
+- Scanning `a[l..=r]` per query is O(nq), about 4·10¹⁰ steps at the limits. A segment tree answers each query in O(log n).
+- `SegTree(min, a)` builds one from the array, with `min` as the operation; see [`SegTree`](/docs/ref/std/segtree).
+- `t.set(i, x)` replaces one value and `t.fold(l..=r)` folds a range, with the same `V` keys as `a`.
+
+</Judge>
