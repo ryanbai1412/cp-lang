@@ -9,7 +9,6 @@
     "crates/cpl-ir/src/lower/mono.rs": 4497,
     "crates/cpl-check/src/check/expr.rs": 4236,
     "crates/cpl-check/src/check/stmt.rs": 3276,
-    "crates/cpl-stress/src/spec.rs": 2911,
     "crates/cpl-check/src/check/lends.rs": 2834,
     "crates/cpl-check/src/db.rs": 2489,
     "crates/cpl-interp/src/trace.rs": 2378
