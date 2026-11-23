@@ -14,13 +14,13 @@ pub struct Arc(id: 0..2_147_483_648):
     /// The paired arc in the opposite direction, what `e ^ 1` means in C++. Every `add` makes an
     /// arc and its reverse together, so `a.rev.rev == a`.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: never
     /// example: `var g = FlowGraph<0..2>(); let a = g.add(0, 1, Some(5)); g.source(a.rev) == 1 and a.rev.rev == a`
     @get pub fn rev(self) -> Arc = Arc(id ^ 1)
 
 /// A flow network over the vertices `V`, solved with Dinic's algorithm (`max_flow`) or push-relabel (`push_relabel`).
-/// `add` is O(1). `max_flow` is O(V^2 E) in general, O(E sqrt(V)) on unit
+/// `add` is \(O(1)\). `max_flow` is \(O(V^2 E)\) in general, \(O(E \sqrt{V})\) on unit
 /// networks (bipartite matching). Memory is two arcs per `add`.
 pub struct FlowGraph<V>:
     head: [V]List<Arc>
@@ -31,7 +31,7 @@ pub struct FlowGraph<V>:
 
     /// An empty flow network over the vertices `V`.
     ///
-    /// cost: O(n) for n = `V.count`
+    /// cost: \(O(n)\) for n = `V.count`
     /// traps: never
     /// example: `let g = FlowGraph<0..3>(); g.arcs.collect() == []`
     pub fn new() -> FlowGraph<V>:
@@ -41,7 +41,7 @@ pub struct FlowGraph<V>:
     /// returns the forward arc. A `cap` of `None` is an arc no cut can afford: capacity 2^60.
     /// Self-loops are allowed and never carry flow.
     ///
-    /// cost: O(1) amortized; two arcs of memory
+    /// cost: \(O(1)\) amortized; two arcs of memory
     /// traps: when `cap` is negative
     /// example: `var g = FlowGraph<0..2>(); let a = g.add(0, 1, Some(5)); g.cap(a) == 5 and g.cap(a.rev) == 0`
     /// example: `var g = FlowGraph<0..2>(); let a = g.add(0, 1, None); g.cap(a) == 1 << 60`
@@ -63,7 +63,7 @@ pub struct FlowGraph<V>:
     /// Adds an undirected edge between `u` and `v`: an arc `u -> v` whose reverse also has
     /// capacity `cap`. Returns the `u -> v` arc.
     ///
-    /// cost: O(1) amortized; two arcs of memory
+    /// cost: \(O(1)\) amortized; two arcs of memory
     /// traps: when `cap` is negative
     /// example: `var g = FlowGraph<0..2>(); let a = g.add_both(0, 1, 3); g.cap(a.rev) == 3 and g.max_flow(1, 0) == 3`
     pub fn add_both(mut self, u: V, v: V, cap: Int) -> Arc:
@@ -75,7 +75,7 @@ pub struct FlowGraph<V>:
     /// The flow currently sent along `a`: negative on the reverse arc of a used arc, so
     /// `flow(a.rev) == -flow(a)`.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: never
     /// example: `var g = FlowGraph<0..2>(); let a = g.add(0, 1, Some(5)); g.max_flow(0, 1); g.flow(a) == 5 and g.flow(a.rev) == -5`
     pub fn flow(self, a: Arc) -> Int = cap0[a.id] - left[a.id]
@@ -83,21 +83,21 @@ pub struct FlowGraph<V>:
     /// The capacity `a` has now: what `add` or the last `set_cap` gave it, 0 for the reverse arc of
     /// an `add`, `cap` for either arc of an `add_both`.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: never
     /// example: `var g = FlowGraph<0..2>(); let a = g.add(0, 1, Some(4)); g.cap(a) == 4`
     pub fn cap(self, a: Arc) -> Int = cap0[a.id]
 
     /// The vertex `a` leaves.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: never
     /// example: `var g = FlowGraph<0..3>(); let a = g.add(2, 0, Some(1)); g.source(a) == 2 and g.source(a.rev) == 0`
     pub fn source(self, a: Arc) -> V = to[a.id ^ 1]
 
     /// The vertex `a` points to.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: never
     /// example: `var g = FlowGraph<0..3>(); let a = g.add(2, 0, Some(1)); g.target(a) == 0 and g.target(a.rev) == 2`
     pub fn target(self, a: Arc) -> V = to[a.id]
@@ -109,7 +109,7 @@ pub struct FlowGraph<V>:
     /// `add` order. Calling it again with no change adds 0; after it runs to completion (returns
     /// less than `limit`, or `limit` is `None`), `min_cut(s)` and `cut_arcs(s)` are valid.
     ///
-    /// cost: O(V² E); O(E sqrt V) when every capacity is 1
+    /// cost: \(O(V^2 E)\); \(O(E \sqrt V)\) when every capacity is 1
     /// ties: among maximum flows, the one Dinic finds scanning arcs in `add` order
     /// traps: when `s == t` or `limit` is negative
     /// example: `var g = FlowGraph<0..4>(); g.add(0, 1, Some(3)); g.add(0, 2, Some(2)); g.add(1, 2, Some(1)); g.add(1, 3, Some(2)); g.add(2, 3, Some(3)); g.max_flow(0, 3) == 5`
@@ -134,7 +134,7 @@ pub struct FlowGraph<V>:
     /// The source side of a minimum `s`-`t` cut: the vertices `s` still reaches in the residual
     /// network, after `max_flow(s, t)` (or `push_relabel(s, t)`) ran to completion.
     ///
-    /// cost: O(V + E)
+    /// cost: \(O(V + E)\)
     /// ties: the smallest source side among minimum cuts (exactly what `s` reaches)
     /// order: keyed by `V`
     /// traps: when no completed `max_flow` or `push_relabel` from `s` came since the last `add`, `set_cap` or `reset`
@@ -146,7 +146,7 @@ pub struct FlowGraph<V>:
 
     /// Clears all flow, so every arc is back at its current capacity with nothing sent.
     ///
-    /// cost: O(E)
+    /// cost: \(O(E)\)
     /// traps: never
     /// example: `var g = FlowGraph<0..2>(); let a = g.add(0, 1, Some(5)); g.max_flow(0, 1); g.reset(); g.flow(a) == 0 and g.max_flow(0, 1) == 5`
     pub fn reset(mut self):
@@ -156,7 +156,7 @@ pub struct FlowGraph<V>:
     /// Changes arc `a`'s capacity to `cap` (`None`: 2^60), keeping its flow; a later `max_flow`
     /// continues from the current flow. The reverse arc keeps its own capacity.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: when the flow on `a` exceeds the new capacity (lower it with `reset` first), or `cap` is negative
     /// example: `var g = FlowGraph<0..2>(); let a = g.add(0, 1, Some(2)); g.max_flow(0, 1); g.set_cap(a, Some(5)); g.max_flow(0, 1) == 3`
     pub fn set_cap(mut self, a: Arc, cap: ?Int):
@@ -169,14 +169,14 @@ pub struct FlowGraph<V>:
 
     /// The capacity left on `a` in the residual network: `cap(a) - flow(a)`.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: never
     /// example: `var g = FlowGraph<0..2>(); let a = g.add(0, 1, Some(5)); g.max_flow(0, 1, limit: Some(2)); g.residual(a) == 3 and g.residual(a.rev) == 2`
     pub fn residual(self, a: Arc) -> Int = left[a.id]
 
-    /// Every arc `add` or `add_both` returned, lazily; never a reverse arc. O(1) to make.
+    /// Every arc `add` or `add_both` returned, lazily; never a reverse arc. \(O(1)\) to make.
     ///
-    /// cost: O(E) for the whole walk
+    /// cost: \(O(E)\) for the whole walk
     /// empty: yields nothing before the first `add`
     /// order: the order `add` returned them
     /// traps: never
@@ -186,7 +186,7 @@ pub struct FlowGraph<V>:
 
     /// The arcs `add` or `add_both` returned whose source is `u`, lazily; never a reverse arc.
     ///
-    /// cost: O(deg u) for the whole walk
+    /// cost: \(O(\deg u)\) for the whole walk
     /// empty: yields nothing when no added arc leaves `u`
     /// order: the order `add` returned them
     /// traps: never
@@ -199,7 +199,7 @@ pub struct FlowGraph<V>:
     /// `max_flow(s, t)` ran to completion. Every one is saturated and their capacities sum to the
     /// flow value.
     ///
-    /// cost: O(V + E)
+    /// cost: \(O(V + E)\)
     /// order: the order `add` returned them
     /// traps: like `min_cut`, when the flow from `s` is missing or stale
     /// example: `var g = FlowGraph<0..3>(); g.add(0, 1, Some(5)); let b = g.add(1, 2, Some(1)); g.max_flow(0, 2); g.cut_arcs(0) == [b]`
@@ -213,7 +213,7 @@ pub struct FlowGraph<V>:
     /// Each path walks from `s` along the first arc, in `add` order, that still carries unclaimed
     /// flow, until it reaches `t`; its amount is the least unclaimed flow on the way.
     ///
-    /// cost: O(P (V + E)) for P paths
+    /// cost: \(O(P (V + E))\) for P paths
     /// empty: yields nothing when no flow goes from `s` to `t`
     /// order: discovery order, as above
     /// traps: when `s == t`
@@ -257,7 +257,7 @@ pub struct FlowGraph<V>:
     /// heuristic), often several times faster than Dinic on dense or unit-capacity grids. Adds to
     /// the flow already there and returns the amount added; `min_cut(s)` works after it.
     ///
-    /// cost: O(V² sqrt E)
+    /// cost: \(O(V^2 \sqrt E)\)
     /// traps: when `s == t`
     /// example: `var g = FlowGraph<0..4>(); g.add(0, 1, Some(3)); g.add(0, 2, Some(2)); g.add(1, 2, Some(1)); g.add(1, 3, Some(2)); g.add(2, 3, Some(3)); g.push_relabel(0, 3) == 5`
     pub fn push_relabel(mut self, s: V, t: V) -> Int:
@@ -368,7 +368,7 @@ pub struct FlowGraph<V>:
 
 /// A flow network with a cost per unit on every arc, solved by successive shortest paths
 /// with Johnson potentials. Arc handles and accessors are those of `FlowGraph`.
-/// `add` is O(1); memory is two arcs per `add`.
+/// `add` is \(O(1)\); memory is two arcs per `add`.
 pub struct CostFlow<V>:
     head: [V]List<Arc>
     to: List<V>
@@ -378,7 +378,7 @@ pub struct CostFlow<V>:
 
     /// An empty min-cost flow network over the vertices `V`.
     ///
-    /// cost: O(n) for n = `V.count`
+    /// cost: \(O(n)\) for n = `V.count`
     /// traps: never
     /// example: `let g = CostFlow<0..3>(); g.arcs.collect() == []`
     pub fn new() -> CostFlow<V>:
@@ -388,7 +388,7 @@ pub struct CostFlow<V>:
     /// and cost `-cost`. `cap: None` is 2^60. Costs may be negative; `min_cost_flow` needs no
     /// residual cycle of negative total cost (run `cancel_cycles` first when there may be one).
     ///
-    /// cost: O(1) amortized; two arcs of memory
+    /// cost: \(O(1)\) amortized; two arcs of memory
     /// traps: when `cap` is negative
     /// example: `var g = CostFlow<0..2>(); let a = g.add(0, 1, Some(2), 7); g.cost(a) == 7 and g.cost(a.rev) == -7`
     pub fn add(mut self, u: V, v: V, cap: ?Int, cost: Int) -> Arc:
@@ -409,42 +409,42 @@ pub struct CostFlow<V>:
 
     /// The flow currently sent along `a`; `flow(a.rev) == -flow(a)`.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: never
     /// example: `var g = CostFlow<0..2>(); let a = g.add(0, 1, Some(2), 1); g.min_cost_flow(0, 1); g.flow(a) == 2`
     pub fn flow(self, a: Arc) -> Int = cap0[a.id] - left[a.id]
 
     /// The capacity `a` has now: what `add` or the last `set_cap` gave it, 0 for a reverse arc.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: never
     /// example: `var g = CostFlow<0..2>(); let a = g.add(0, 1, Some(2), 1); g.cap(a) == 2 and g.cap(a.rev) == 0`
     pub fn cap(self, a: Arc) -> Int = cap0[a.id]
 
     /// The cost per unit of flow along `a`; `cost(a.rev) == -cost(a)`.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: never
     /// example: `var g = CostFlow<0..2>(); let a = g.add(0, 1, Some(2), -3); g.cost(a) == -3`
     pub fn cost(self, a: Arc) -> Int = price[a.id]
 
     /// The vertex `a` leaves.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: never
     /// example: `var g = CostFlow<0..3>(); let a = g.add(2, 0, Some(1), 0); g.source(a) == 2`
     pub fn source(self, a: Arc) -> V = to[a.id ^ 1]
 
     /// The vertex `a` points to.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: never
     /// example: `var g = CostFlow<0..3>(); let a = g.add(2, 0, Some(1), 0); g.target(a) == 0`
     pub fn target(self, a: Arc) -> V = to[a.id]
 
     /// Changes arc `a`'s capacity, keeping its flow, as [`FlowGraph.set_cap`](FlowGraph.set_cap).
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: when the flow on `a` exceeds the new capacity, or `cap` is negative
     /// example: `var g = CostFlow<0..2>(); let a = g.add(0, 1, Some(1), 2); g.min_cost_flow(0, 1); g.set_cap(a, Some(3)); g.min_cost_flow(0, 1) == (flow: 2, cost: 4)`
     pub fn set_cap(mut self, a: Arc, cap: ?Int):
@@ -454,9 +454,9 @@ pub struct CostFlow<V>:
         cap0[a.id] = c
         left[a.id] = c - f
 
-    /// Every arc `add` returned, lazily; never a reverse arc. O(1) to make.
+    /// Every arc `add` returned, lazily; never a reverse arc. \(O(1)\) to make.
     ///
-    /// cost: O(E) for the whole walk
+    /// cost: \(O(E)\) for the whole walk
     /// empty: yields nothing before the first `add`
     /// order: the order `add` returned them
     /// traps: never
@@ -468,7 +468,7 @@ pub struct CostFlow<V>:
     /// min-cost circulation plus the `s`-`t` flows already sent, and returns the cost added (zero or
     /// negative). Negative cycles are allowed here; afterwards `min_cost_flow` is safe.
     ///
-    /// cost: O(V E) per cancelled cycle (Bellman-Ford), at most `|c|` cycles for the returned cost `c`
+    /// cost: \(O(V E)\) per cancelled cycle (Bellman-Ford), at most `|c|` cycles for the returned cost `c`
     /// traps: never
     /// example: `var g = CostFlow<0..2>(); g.add(0, 1, Some(1), -2); g.add(1, 0, Some(1), 1); g.cancel_cycles() == -1`
     /// example: `var g = CostFlow<0..2>(); g.add(0, 1, Some(1), 2); g.cancel_cycles() == 0`
@@ -522,7 +522,7 @@ pub struct CostFlow<V>:
     /// residual path, so the cost added is convex in the amount (see `slope`). Costs may be
     /// negative; the first call with a negative residual arc runs Bellman-Ford once.
     ///
-    /// cost: O(F E log V) for F augmenting paths, plus O(V E) once when a residual arc has a negative cost
+    /// cost: \(O(F E \log V)\) for F augmenting paths, plus \(O(V E)\) once when a residual arc has a negative cost
     /// ties: among cheapest flows, the one the shortest paths find (Dijkstra breaking ties by least vertex)
     /// traps: when `s == t`, `limit` is negative, or the residual network has a negative-cost cycle
     /// example: `var g = CostFlow<0..3>(); g.add(0, 1, Some(2), 1); g.add(1, 2, Some(2), 1); g.add(0, 2, Some(1), 5); g.min_cost_flow(0, 2) == (flow: 3, cost: 9)`
@@ -618,7 +618,7 @@ pub struct CostFlow<V>:
 /// Profits may be negative; the empty set is a closure, so `value >= 0`. One `max_flow` on
 /// V + 2 vertices and V + E arcs; `take` is the source side of its minimum cut.
 ///
-/// cost: one `max_flow` on V + 2 vertices and V + E arcs, O(V + E) calls of `profit`
+/// cost: one `max_flow` on V + 2 vertices and V + E arcs, \(O(V + E)\) calls of `profit`
 /// ties: the smallest optimal closure (contained in every other)
 /// order: `take` keyed by `V`
 /// traps: never
@@ -646,7 +646,7 @@ pub fn max_closure<V, G: Next<V>>(before: G, profit: V -> Int) -> (value: Int, t
 /// Hopcroft-Karp without recursion, scanning `L` in increasing order and each `adj[l]` in list
 /// order; repeated entries are harmless.
 ///
-/// cost: O(E sqrt V) time, O(V + E) memory
+/// cost: \(O(E \sqrt V)\) time, \(O(V + E)\) memory
 /// empty: `(size: 0, ...)` with every entry `None` when `L` or every list is empty
 /// ties: the maximum matching Hopcroft-Karp finds in the scan order above
 /// traps: never
@@ -715,7 +715,7 @@ fn flip_path<L, R>(path: List<L>, end: R, mut mate: [L]?R, mut back: [R]?L):
 /// left to right, matched edge right to left), the cover is the left vertices outside `Z` and the
 /// right vertices inside it; this cover does not depend on which maximum matching is used.
 ///
-/// cost: O(E sqrt V)
+/// cost: \(O(E \sqrt V)\)
 /// empty: nothing marked when there are no edges
 /// ties: the König cover above
 /// order: `left` keyed by `L`, `right` keyed by `R`
@@ -752,7 +752,7 @@ fn alternating_layers<L, R>(adj: [L]List<R>, mate: [L]?R, back: [R]?L) -> [L]?(0
 /// `total`, the sum of `weight(l, mate[l])`. Needs `L.count <= R.count`; with fewer left vertices
 /// some of `R` stay unused.
 ///
-/// cost: O(L² R) time, O(L R) calls of `weight`, by the Hungarian algorithm
+/// cost: \(O(L^2 R)\) time, \(O(L R)\) calls of `weight`, by the Hungarian algorithm
 /// ties: the assignment the Hungarian algorithm finds adding rows in increasing order and scanning columns in increasing order
 /// order: `mate` keyed by `L`
 /// traps: when `L.count > R.count`
@@ -765,7 +765,7 @@ pub fn max_weight_matching<L, R>(weight: (L, R) -> Int) -> (total: Int, mate: [L
 /// The minimum-weight assignment: every `l` in `L` gets a distinct `mate[l]` in `R`, minimizing
 /// `total`, the sum of `weight(l, mate[l])`. Needs `L.count <= R.count`.
 ///
-/// cost: O(L² R) time, O(L R) calls of `weight`, by the Hungarian algorithm
+/// cost: \(O(L^2 R)\) time, \(O(L R)\) calls of `weight`, by the Hungarian algorithm
 /// ties: the assignment the Hungarian algorithm finds adding rows in increasing order and scanning columns in increasing order
 /// order: `mate` keyed by `L`
 /// traps: when `L.count > R.count`
@@ -830,7 +830,7 @@ fn hungarian<L, R>(cost: (L, R) -> Int) -> [L]R:
 /// Edmonds' blossom algorithm, growing a search from each free vertex in increasing order and
 /// scanning `adj[v]` in list order; that fixes which maximum matching comes back.
 ///
-/// cost: O(V³)
+/// cost: \(O(V³)\)
 /// empty: `size == 0` and every `mate` `None` when there are no edges
 /// traps: never
 /// example: `let adj: [0..4]List<0..4> = [[1], [0, 2], [1, 3], [2]]; general_matching(adj) == (size: 2, mate: [Some(1), Some(0), Some(3), Some(2)])`
@@ -1141,7 +1141,7 @@ struct Blossom:
 /// maximizing `total`, the sum of chosen `w`, not necessarily of largest size. Edges with
 /// `w <= 0` never help and are ignored; of parallel edges the heaviest counts.
 ///
-/// cost: O(V³) time, O(V²) memory, by Edmonds' weighted blossom algorithm with dual labels
+/// cost: \(O(V³)\) time, \(O(V^2)\) memory, by Edmonds' weighted blossom algorithm with dual labels
 /// ties: the matching the algorithm finds; `total` is exact
 /// traps: never
 /// example: `let es: [0..3](u: 0..4, v: 0..4, w: Int) = [(u: 0, v: 1, w: 2), (u: 1, v: 2, w: 3), (u: 2, v: 3, w: 2)]; max_weight_general_matching(es) == (total: 4, mate: [Some(1), Some(0), Some(3), Some(2)])`
@@ -1287,7 +1287,7 @@ fn bounded_flow<V, E>(
 /// every later vertex with parent `p` on `u`'s side (what `u` reaches in the residual) takes
 /// parent `u`.
 ///
-/// cost: `V.count - 1` max flows on one reused network, each O(V² E)
+/// cost: `V.count - 1` max flows on one reused network, each \(O(V^2 E)\)
 /// empty: `[]` when `V` has at most one position
 /// order: one edge per vertex but `V.first`, by increasing `u`; `v` is its parent
 /// traps: when some `w` is negative
@@ -1313,7 +1313,7 @@ pub fn gomory_hu<V, E>(edges: [E](u: V, v: V, w: Int)) -> List<(u: V, v: V, w: I
 /// holding it) and adds the most tightly connected vertex, the least on ties; the first phase
 /// whose cut is minimum gives `side`.
 ///
-/// cost: O(V³) time, O(V²) memory
+/// cost: \(O(V³)\) time, \(O(V^2)\) memory
 /// order: `side` keyed by `V`
 /// traps: when `V` has fewer than two positions, or some `w` is negative
 /// example: `let es: [0..2](u: 0..3, v: 0..3, w: Int) = [(u: 0, v: 1, w: 2), (u: 1, v: 2, w: 3)]; global_min_cut(es) == (w: 2, side: [false, true, true])`
@@ -1788,7 +1788,7 @@ fn global_min_cut_matches_brute_force():
         assert V.any(v => got.side[v]) and V.any(v => not got.side[v])
         assert sum(e.w for e in es if got.side[e.u] != got.side[e.v]) == best
 
-/// O(E sqrt V) for the first `augment_all`, O(V + E) per later `add` + `augment`.
+/// \(O(E \sqrt V)\) for the first `augment_all`, \(O(V + E)\) per later `add` + `augment`.
 /// A bipartite matching that grows with the graph: edges arrive online and each
 /// `augment(l)` tries one augmenting path from `l` (Kuhn), so a contest that adds
 /// vertices or edges between queries keeps a maximum matching without re-solving.
@@ -1800,7 +1800,7 @@ pub struct Matching<L, R>:
 
     /// An online bipartite matching between `L` and `R` with no edges and nothing matched.
     ///
-    /// cost: O(L + R)
+    /// cost: \(O(L + R)\)
     /// traps: never
     /// example: `let m = Matching<0..2, 0..2>(); m.len == 0 and m.mate(0) == None`
     pub fn new() -> Matching<L, R>:
@@ -1811,7 +1811,7 @@ pub struct Matching<L, R>:
 
     /// Allows `l` to match `r`. Does not augment; a repeated edge is harmless.
     ///
-    /// cost: O(1) amortized
+    /// cost: \(O(1)\) amortized
     /// traps: never
     /// example: `var m = Matching<0..2, 0..2>(); m.add(0, 1); m.len == 0 and m.augment(0) and m.mate(0) == Some(1)`
     pub fn add(mut self, l: L, r: R) = adj[l].push(r)
@@ -1819,7 +1819,7 @@ pub struct Matching<L, R>:
     /// Looks for one augmenting path from the unmatched `from` (Kuhn's DFS, trying edges in `add`
     /// order); `true` when it grew the matching. `false` also when `from` is already matched.
     ///
-    /// cost: O(V + E)
+    /// cost: \(O(V + E)\)
     /// traps: never
     /// example: `var m = Matching<0..2, 0..2>(); m.add(0, 0); m.add(0, 1); m.add(1, 0); m.augment(0); m.augment(1) and m.mate(0) == Some(1) and m.mate(1) == Some(0)`
     pub fn augment(mut self, from: L) -> Bool:
@@ -1848,7 +1848,7 @@ pub struct Matching<L, R>:
     /// Grows the current matching to a maximum one by Hopcroft-Karp and returns the number of pairs
     /// added.
     ///
-    /// cost: O(E sqrt V)
+    /// cost: \(O(E \sqrt V)\)
     /// traps: never
     /// example: `var m = Matching<0..2, 0..2>(); m.add(0, 0); m.add(1, 0); m.add(1, 1); m.augment_all() == 2 and m.len == 2`
     pub fn augment_all(mut self) -> Int:
@@ -1860,7 +1860,7 @@ pub struct Matching<L, R>:
     /// augmenting path ending at `r` if it is still free. Returns the new size; the matching stays
     /// maximum when it was before. No edge is removed.
     ///
-    /// cost: O(V + E)
+    /// cost: \(O(V + E)\)
     /// traps: never
     /// example: `var m = Matching<0..2, 0..2>(); m.add(0, 0); m.add(1, 0); m.augment(0); m.remove(0) == 1 and m.mate(0) == Some(0)`
     pub fn remove(mut self, l: L) -> Int:
@@ -1904,26 +1904,26 @@ pub struct Matching<L, R>:
 
     /// `l`'s partner, `None` when unmatched.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: never
     /// example: `var m = Matching<0..2, 0..2>(); m.add(1, 0); m.augment(1); m.mate(1) == Some(0) and m.mate(0) == None`
     pub fn mate(self, l: L) -> ?R = mate[l]
     /// `r`'s partner, `None` when unmatched.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: never
     /// example: `var m = Matching<0..2, 0..2>(); m.add(1, 0); m.augment(1); m.back(0) == Some(1) and m.back(1) == None`
     pub fn back(self, r: R) -> ?L = back[r]
     /// The number of matched pairs.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: never
     /// example: `var m = Matching<0..2, 0..2>(); m.add(1, 0); m.augment(1); m.len == 1`
     @get pub fn len(self) -> Int = size
     /// The König vertex cover of the current matching, built as in
     /// [`min_vertex_cover`](min_vertex_cover); a minimum cover when the matching is maximum.
     ///
-    /// cost: O(V + E)
+    /// cost: \(O(V + E)\)
     /// order: `left` keyed by `L`, `right` keyed by `R`
     /// traps: never
     /// example: `var m = Matching<0..2, 0..1>(); m.add(0, 0); m.add(1, 0); m.augment_all(); m.cover() == (left: [false, false], right: [true])`
@@ -1944,7 +1944,7 @@ pub struct Matching<L, R>:
 /// the one with fewer pairs comes back. `used[e]` marks the chosen edges; of parallel edges at
 /// most one is used.
 ///
-/// cost: O(F E log V), F = matching size
+/// cost: \(O(F E \log V)\), F = matching size
 /// ties: the matching successive shortest paths finds, fewer pairs first
 /// order: `mate` keyed by `L`, `used` keyed by `E`
 /// traps: when `size` is negative, or a weight times `L.count + 1` overflows
@@ -1987,7 +1987,7 @@ pub fn best_matching<L, R, E>(
 /// best first, and likewise `pref_r`. A pair can match only when each lists the other. The result
 /// is the stable matching best for every `l`, which is unique.
 ///
-/// cost: O(L R)
+/// cost: \(O(L R)\)
 /// empty: `[]` when `L` is empty; `None` for every `l` whose list is empty
 /// traps: when a preference list names the same vertex twice
 /// example: `let pl: [0..2]List<0..2> = [[0, 1], [0, 1]]; let pr: [0..2]List<0..2> = [[1, 0], [1, 0]]; stable_matching(pl, pr) == [Some(1), Some(0)]`
@@ -2034,7 +2034,7 @@ pub fn stable_matching<L, R>(pref_l: [L]List<R>, pref_r: [R]List<L>) -> [L]?R:
 /// `b` the least free at `r`; when they differ, the path from `r` alternating colours `a` and `b`
 /// has them swapped, which frees `a` at `r`; then the edge takes `a`.
 ///
-/// cost: O(E V)
+/// cost: \(O(E V)\)
 /// order: `color` keyed by `E`
 /// traps: never
 /// example: `let es: [0..3](l: 0..2, r: 0..2) = [(l: 0, r: 0), (l: 0, r: 1), (l: 1, r: 0)]; edge_coloring(es) == (colors: 2, color: [1, 0, 0])`
@@ -2155,7 +2155,7 @@ fn edge_colorings_use_max_degree_proper_colours():
 /// length), breadth-first from the sources in increasing element order, so each augmentation
 /// takes the least element on ties.
 ///
-/// cost: O(r E (r + oracle)) for answer size r, oracle the cost of one `can_add` or `can_swap`
+/// cost: \(O(r E (r + \mathit{oracle}))\) for answer size r, oracle the cost of one `can_add` or `can_swap`
 /// order: keyed by `E`
 /// traps: never
 /// example: `let es: [0..3](u: 0..3, v: 0..3) = [(u: 0, v: 1), (u: 1, v: 2), (u: 0, v: 2)]; let col: [0..3]0..2 = [0, 0, 1]; let lim: [0..2]Int = [1, 1]; matroid_intersection(GraphicMatroid(es), ColorMatroid(col, lim)) == [true, false, true]`
@@ -2209,7 +2209,7 @@ pub trait Matroid<E>:
     fn can_add(self, e: E) -> Bool
     fn can_swap(self, out: E, e: E) -> Bool
 
-/// O(V + E) per rebuild. Independent sets are forests of the edges' endpoints.
+/// \(O(V + E)\) per rebuild. Independent sets are forests of the edges' endpoints.
 pub struct GraphicMatroid<V, E>:
     edges: [E](u: V, v: V)
     var take: [E]Bool
@@ -2219,7 +2219,7 @@ pub struct GraphicMatroid<V, E>:
     below: [E]?V
     /// The graphic matroid of `edges`: a set of edges is independent when it is a forest on `V`.
     ///
-    /// cost: O(1); each `rebuild` is O(V + E), a DFS of the chosen forest
+    /// cost: \(O(1)\); each `rebuild` is \(O(V + E)\), a DFS of the chosen forest
     /// traps: never
     /// example: `let es: [0..3](u: 0..3, v: 0..3) = [(u: 0, v: 1), (u: 1, v: 2), (u: 0, v: 2)]; var m = GraphicMatroid(es); m.rebuild([true, true, false]); not m.can_add(2) and m.can_swap(0, 2)`
     pub fn new(edges: [E](u: V, v: V)) -> GraphicMatroid<V, E> =
@@ -2274,7 +2274,7 @@ impl Matroid<E> for GraphicMatroid<V, E>:
         let inside = (x: V) => tin[c] <= tin[x] and tin[x] < tout[c]
         inside(u) != inside(v)
 
-/// O(E) per rebuild. Independent sets take at most `limit[c]` elements of each colour.
+/// \(O(E)\) per rebuild. Independent sets take at most `limit[c]` elements of each colour.
 pub struct ColorMatroid<E, C>:
     color: [E]C
     limit: [C]Int
@@ -2283,7 +2283,7 @@ pub struct ColorMatroid<E, C>:
     /// The partition matroid of `color`: a set is independent when it holds at most `limit[c]`
     /// elements of each colour `c`.
     ///
-    /// cost: O(1); each `rebuild` is O(E)
+    /// cost: \(O(1)\); each `rebuild` is \(O(E)\)
     /// empty: with no elements only the empty set exists and every query is `false`
     /// traps: when some `limit[c]` is negative
     /// example: `let col: [0..3]0..2 = [0, 0, 1]; let lim: [0..2]Int = [1, 1]; var m = ColorMatroid(col, lim); m.rebuild([true, false, false]); not m.can_add(1) and m.can_add(2)`

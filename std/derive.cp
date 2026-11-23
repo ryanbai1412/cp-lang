@@ -1,12 +1,12 @@
 //! The `Eq`, `Ord`, `Show` and `Hash` a struct gets field by field, as library code on
 //! `fields` (decision 28.7), for an `impl` to call: `impl Ord for Job: fn lt(a, b) =
 //! lt_fields(b, a)` orders the other way, and `impl Hash for P: fn hash(self) =
-//! hash_fields(self)` is a struct's whole `Hash`. Each costs O(fields) plus what its fields'
+//! hash_fields(self)` is a struct's whole `Hash`. Each costs \(O(\mathit{fields})\) plus what its fields'
 //! own operations cost.
 
 /// `a == b` field by field, in declaration order, stopping at the first field that differs.
 ///
-/// cost: O(fields)
+/// cost: \(O(\mathit{fields})\)
 /// empty: `true` for a struct with no fields
 /// traps: never
 /// example: `struct P(a: Int, b: Int); eq_fields(P(1, 2), P(1, 2)) == true`
@@ -18,7 +18,7 @@ pub fn eq_fields<T>(a: T, b: T) -> Bool:
 
 /// `a < b` by the first field that differs, in declaration order (lexicographic).
 ///
-/// cost: O(fields)
+/// cost: \(O(\mathit{fields})\)
 /// empty: `false` for a struct with no fields
 /// ties: `false` when every field is equal
 /// traps: never
@@ -31,7 +31,7 @@ pub fn lt_fields<T>(a: T, b: T) -> Bool:
 
 /// The fields of `a` in declaration order, one space apart, each shown as `print` would.
 ///
-/// cost: O(fields) plus the length of the result
+/// cost: \(O(\mathit{fields})\) plus the length of the result
 /// empty: `""` for a struct with no fields
 /// order: declaration order
 /// traps: never
@@ -47,7 +47,7 @@ pub fn show_fields<T>(a: T) -> Str:
 /// A `T` read from input field by field, each with its own type's `read()`, in declaration
 /// order: `read_fields<Edge>()` with no `impl` of its own.
 ///
-/// cost: O(fields) plus the tokens read
+/// cost: \(O(\mathit{fields})\) plus the tokens read
 /// empty: reads nothing for a struct with no fields
 /// order: declaration order
 /// traps: when input runs out or a token does not parse as its field's type
@@ -68,24 +68,24 @@ fn mix64(z0: U64) -> U64:
     z ^ (z >> 31)
 
 impl Hash for Int:
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// example: `5.hash() == 5.hash()`
     fn hash(self) -> U64 = mix64(U64(self))
 
 impl Hash for U64:
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     fn hash(self) -> U64 = mix64(self)
 
 impl Hash for Char:
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     fn hash(self) -> U64 = mix64(U64(Int(self)))
 
 impl Hash for Bool:
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     fn hash(self) -> U64 = mix64(if self: U64(1) else: U64(0))
 
 impl Hash for Str:
-    /// cost: O(length)
+    /// cost: \(O(\mathit{length})\)
     /// example: `"ab".hash() != "ba".hash()`
     fn hash(self) -> U64:
         var h = U64(self.len)
@@ -95,7 +95,7 @@ impl Hash for Str:
 /// The fields' hashes combined in declaration order, so equal structs hash equal and
 /// reordered field values usually do not.
 ///
-/// cost: O(fields) plus what each field's `hash` costs
+/// cost: \(O(\mathit{fields})\) plus what each field's `hash` costs
 /// empty: the same fixed value for every struct with no fields
 /// order: declaration order
 /// traps: never

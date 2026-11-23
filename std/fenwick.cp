@@ -3,8 +3,8 @@ use std.algebra.{Group}
 use std.seq.{deduped, ends}
 
 /// Point add and range sum over anything with `+` and `-` (`Int`, `Mod<P>`).
-/// `Fenwick<D, Int>()` starts at zero and `Fenwick<D, Int>(a)` from an array, in O(n).
-/// `add`, `prefix` and `sum` are O(log n); memory is n + 1 values.
+/// `Fenwick<D, Int>()` starts at zero and `Fenwick<D, Int>(a)` from an array, in \(O(n)\).
+/// `add`, `prefix` and `sum` are \(O(\log n)\); memory is n + 1 values.
 /// A range is one prefix minus another, so there is no "Fenwick on max": that is a `SegTree`.
 pub struct Fenwick<D, T>:
     t: List<T>
@@ -13,7 +13,7 @@ pub struct Fenwick<D, T>:
     /// must form a group under `+` and `-` (`Int`, `Mod<P>`, `F64`), since a range sum is one
     /// prefix minus another.
     ///
-    /// cost: O(|D|) time; memory |D| + 1 values
+    /// cost: \(O(\lvert D \rvert)\) time; memory |D| + 1 values
     /// empty: an empty `D` gives a tree whose every sum is zero
     /// order: positions keep the domain `D` (of `a`, when given)
     /// traps: never
@@ -31,7 +31,7 @@ pub struct Fenwick<D, T>:
 
     /// Add `x` to the value at position `i`: `a[i] += x`.
     ///
-    /// cost: O(log |D|)
+    /// cost: \(O(\log \lvert D \rvert)\)
     /// traps: when `i` is outside `D`
     /// example: `var f = Fenwick([1, 2, 3]); f.add(0, 5); f.fold(0..2) == 8`
     pub fn add(mut self, i: D, x: T):
@@ -43,7 +43,7 @@ pub struct Fenwick<D, T>:
     /// The sum of every position left of the boundary `b`. For a position `v`, `prefix(v.r)`
     /// includes `v` and `prefix(v.l)` does not; the start cut gives zero.
     ///
-    /// cost: O(log |D|)
+    /// cost: \(O(\log \lvert D \rvert)\)
     /// traps: never (`b` is a cut of `D` by type)
     /// example: `Fenwick([1, 2, 3]).prefix((0..2).r) == 3`
     /// example: `Fenwick([1, 2, 3]).prefix((0..0).r) == 0`
@@ -58,7 +58,7 @@ pub struct Fenwick<D, T>:
     /// The sum over the positions of `r`: `prefix(r.r) - prefix(r.l)`. Accepts every range form
     /// (`l..r`, `l..=r`, `..i`, `i..`).
     ///
-    /// cost: O(log |D|)
+    /// cost: \(O(\log \lvert D \rvert)\)
     /// empty: zero
     /// traps: when a non-empty `r` reaches outside `D`
     /// example: `Fenwick([1, 2, 3]).fold(1..3) == 5`
@@ -70,7 +70,7 @@ pub struct Fenwick<D, T>:
     /// `None` when even the whole sum is below `target`. A `target <= 0` gives the start cut.
     /// Correct only when every value is non-negative (prefix sums non-decreasing).
     ///
-    /// cost: O(log |D|)
+    /// cost: \(O(\log \lvert D \rvert)\)
     /// ties: the leftmost qualifying cut
     /// traps: never (negative values give an unspecified cut, not a trap)
     /// example: `Fenwick([1, 2, 3]).first_ge(3) == Some((0..2).r)`
@@ -95,7 +95,7 @@ pub struct Fenwick<D, T>:
     /// `prefix(d.r) >= k`, or `None` when fewer than `k` items exist in total. Positions with value
     /// zero are never returned. For non-negative values.
     ///
-    /// cost: O(log |D|)
+    /// cost: \(O(\log \lvert D \rvert)\)
     /// ties: the leftmost qualifying position
     /// traps: when `k < 1` (negative values give an unspecified position, not a trap)
     /// example: `Fenwick([1, 0, 2]).kth(2) == Some(2)`
@@ -108,7 +108,7 @@ pub struct Fenwick<D, T>:
 
     /// The current value at position `i`: `sum(i..=i)`.
     ///
-    /// cost: O(log |D|)
+    /// cost: \(O(\log \lvert D \rvert)\)
     /// traps: when `i` is outside `D`
     /// example: `Fenwick([1, 2, 3]).get(1) == 2`
     pub fn get(self, i: D) -> T:
@@ -117,7 +117,7 @@ pub struct Fenwick<D, T>:
     /// Assign `a[i] = x`, by adding the difference `x - get(i)`; also the write-through place for
     /// `f[i] = x`.
     ///
-    /// cost: O(log |D|)
+    /// cost: \(O(\log \lvert D \rvert)\)
     /// traps: when `i` is outside `D`
     /// example: `var f = Fenwick([1, 2, 3]); f.set(1, 5); f.all == 9`
     pub fn set(mut self, i: D, x: T):
@@ -125,7 +125,7 @@ pub struct Fenwick<D, T>:
 
     /// The sum of every position of `D`, kept current by `add`, `set` and `clear`.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// empty: zero on an empty domain
     /// traps: never
     /// example: `Fenwick([1, 2, 3]).all == 6`
@@ -134,7 +134,7 @@ pub struct Fenwick<D, T>:
 
     /// The sum of every position right of the boundary `b`: `all - prefix(b)`. The end cut gives zero.
     ///
-    /// cost: O(log |D|)
+    /// cost: \(O(\log \lvert D \rvert)\)
     /// traps: never
     /// example: `Fenwick([1, 2, 3]).suffix((0..1).r) == 5`
     /// example: `Fenwick([1, 2, 3]).suffix((0..3).r) == 0`
@@ -144,7 +144,7 @@ pub struct Fenwick<D, T>:
     /// The smallest boundary `b` with `prefix(b) > target`, or `None` when the whole sum is at most
     /// `target`. For non-negative values.
     ///
-    /// cost: O(log |D|)
+    /// cost: \(O(\log \lvert D \rvert)\)
     /// ties: the leftmost qualifying cut
     /// traps: never (negative values give an unspecified cut, not a trap)
     /// example: `Fenwick([1, 2, 3]).first_gt(3) == Some((0..3).r)`
@@ -165,27 +165,27 @@ pub struct Fenwick<D, T>:
 
     /// Reset every value to zero, keeping the domain and the allocation.
     ///
-    /// cost: O(|D|)
+    /// cost: \(O(\lvert D \rvert)\)
     /// traps: never
     /// example: `var f = Fenwick([1, 2, 3]); f.clear(); f.all == 0`
     pub fn clear(mut self):
         for p in 0..t.len: t[p] = T.zero
 
-/// Point add and rectangle sum on a grid. `add` and `sum` are O(log R * log C);
+/// Point add and rectangle sum on a grid. `add` and `sum` are \(O(\log R \cdot \log C)\);
 /// memory is (R + 1) * (C + 1) values.
 pub struct Fenwick2D<R, C, T>:
     t: List<T>
 
     /// An all-zero 2-D Fenwick tree over the grid `R` by `C`.
     ///
-    /// cost: O(|R| |C|) time; memory (|R| + 1)(|C| + 1) values
+    /// cost: \(O(\lvert R \rvert \lvert C \rvert)\) time; memory (|R| + 1)(|C| + 1) values
     /// traps: never
     /// example: `Fenwick2D<0..2, 0..2, Int>().fold(0..2, 0..2) == 0`
     pub fn new() -> Fenwick2D<R, C, T> = Fenwick2D(List.filled((R.K + 1) * (C.K + 1), T.zero))
 
     /// Add `x` to the cell `(r, c)`: `a[r, c] += x`.
     ///
-    /// cost: O(log |R| log |C|)
+    /// cost: \(O(\log \lvert R \rvert \log \lvert C \rvert)\)
     /// traps: when `r` is outside `R` or `c` is outside `C`
     /// example: `var f = Fenwick2D<0..2, 0..2, Int>(); f.add(1, 0, 5); f.fold(1..2, 0..1) == 5`
     pub fn add(mut self, r: R, c: C, x: T):
@@ -210,7 +210,7 @@ pub struct Fenwick2D<R, C, T>:
 
     /// The sum over the rectangle `rows` by `cols`, by inclusion-exclusion over four prefixes.
     ///
-    /// cost: O(log |R| log |C|)
+    /// cost: \(O(\log \lvert R \rvert \log \lvert C \rvert)\)
     /// empty: zero when either range is empty
     /// traps: when a range of a non-empty rectangle reaches outside its domain
     /// example: `var f = Fenwick2D<0..2, 0..2, Int>(); f.add(0, 0, 1); f.add(1, 1, 2); f.fold(0..2, 1..2) == 2`
@@ -224,7 +224,7 @@ pub struct Fenwick2D<R, C, T>:
 
     /// The sum of every cell above the row cut `r` and left of the column cut `c`.
     ///
-    /// cost: O(log |R| log |C|)
+    /// cost: \(O(\log \lvert R \rvert \log \lvert C \rvert)\)
     /// traps: never
     /// example: `var f = Fenwick2D<0..2, 0..2, Int>(); f.add(0, 0, 1); f.add(1, 1, 2); f.prefix((0..1).r, (0..2).r) == 1`
     pub fn prefix(self, r: Cut<R>, c: Cut<C>) -> T:
@@ -232,7 +232,7 @@ pub struct Fenwick2D<R, C, T>:
 
     /// The current value of the cell `(r, c)`.
     ///
-    /// cost: O(log |R| log |C|)
+    /// cost: \(O(\log \lvert R \rvert \log \lvert C \rvert)\)
     /// traps: when `r` is outside `R` or `c` is outside `C`
     /// example: `var f = Fenwick2D<0..2, 0..2, Int>(); f.add(1, 1, 2); f.get(1, 1) == 2`
     pub fn get(self, r: R, c: C) -> T:
@@ -245,22 +245,22 @@ pub struct Fenwick2D<R, C, T>:
 
     /// Reset every cell to zero, keeping the domains and the allocation.
     ///
-    /// cost: O(|R| |C|)
+    /// cost: \(O(\lvert R \rvert \lvert C \rvert)\)
     /// traps: never
     /// example: `var f = Fenwick2D<0..2, 0..2, Int>(); f.add(1, 1, 2); f.clear(); f.get(1, 1) == 0`
     pub fn clear(mut self):
         for p in 0..t.len: t[p] = T.zero
 
 /// Range add and point get via a difference Fenwick tree.
-/// `DualFenwick<D, Int>()` starts at zero and `DualFenwick<D, Int>(a)` from an array, in O(n).
-/// `add` and `get` are O(log n); memory is n + 1 values.
+/// `DualFenwick<D, Int>()` starts at zero and `DualFenwick<D, Int>(a)` from an array, in \(O(n)\).
+/// `add` and `get` are \(O(\log n)\); memory is n + 1 values.
 pub struct DualFenwick<D, T>:
     t: List<T>
 
     /// A range-add, point-get Fenwick tree over `D`: all zeros, or holding the values of `a` when
     /// given. It stores differences, so `get(i)` is a prefix sum of them.
     ///
-    /// cost: O(|D|) time; memory |D| + 1 values
+    /// cost: \(O(\lvert D \rvert)\) time; memory |D| + 1 values
     /// empty: an empty `D` gives a tree with no positions to read
     /// order: positions keep the domain `D` (of `a`, when given)
     /// traps: never
@@ -286,7 +286,7 @@ pub struct DualFenwick<D, T>:
 
     /// Add `x` to every position of `r`.
     ///
-    /// cost: O(log |D|)
+    /// cost: \(O(\log \lvert D \rvert)\)
     /// empty: changes nothing
     /// traps: when a non-empty `r` reaches outside `D`
     /// example: `var d = DualFenwick([1, 2, 3]); d.add(0..2, 10); d.get(1) == 12`
@@ -300,7 +300,7 @@ pub struct DualFenwick<D, T>:
     /// The current value at position `i`: its initial value plus every `x` added over a range
     /// containing `i`.
     ///
-    /// cost: O(log |D|)
+    /// cost: \(O(\log \lvert D \rvert)\)
     /// traps: when `i` is outside `D`
     /// example: `var d = DualFenwick([1, 2, 3]); d.add(1..3, 5); d.get(1) == 7`
     pub fn get(self, i: D) -> T:
@@ -313,7 +313,7 @@ pub struct DualFenwick<D, T>:
 
     /// Reset every value to zero, keeping the domain and the allocation.
     ///
-    /// cost: O(|D|)
+    /// cost: \(O(\lvert D \rvert)\)
     /// traps: never
     /// example: `var d = DualFenwick([1, 2, 3]); d.clear(); d.get(0) == 0`
     pub fn clear(mut self):
@@ -321,7 +321,7 @@ pub struct DualFenwick<D, T>:
 
 /// Range add and range sum over `Int` with two difference Fenwick trees (`d[i]` and
 /// `i * d[i]`): `RangeFenwick<D>()` starts at zero and `RangeFenwick<D>(a)` from an array.
-/// `add`, `prefix` and `fold` are O(log n); memory is 3(n + 1) values. Smaller constants than a
+/// `add`, `prefix` and `fold` are \(O(\log n)\); memory is 3(n + 1) values. Smaller constants than a
 /// `LazySegTree` over `AddSum`.
 pub struct RangeFenwick<D>:
     base: List<Int>
@@ -330,7 +330,7 @@ pub struct RangeFenwick<D>:
 
     /// A range-add, range-sum tree over `D`: all zeros, or holding the values of `a` when given.
     ///
-    /// cost: O(|D|) time; memory 3(|D| + 1) values
+    /// cost: \(O(\lvert D \rvert)\) time; memory 3(|D| + 1) values
     /// empty: an empty `D` gives a tree whose every sum is zero
     /// order: positions keep the domain `D` (of `a`, when given)
     /// traps: never
@@ -351,7 +351,7 @@ pub struct RangeFenwick<D>:
 
     /// Add `x` to every position of `r`.
     ///
-    /// cost: O(log |D|)
+    /// cost: \(O(\log \lvert D \rvert)\)
     /// empty: changes nothing
     /// traps: when a non-empty `r` reaches outside `D`
     /// example: `var f = RangeFenwick([1, 2, 3]); f.add(0..2, 10); f.fold(0..3) == 26`
@@ -365,7 +365,7 @@ pub struct RangeFenwick<D>:
 
     /// The sum of every position left of the boundary `b`, adds included.
     ///
-    /// cost: O(log |D|)
+    /// cost: \(O(\log \lvert D \rvert)\)
     /// traps: never (`b` is a cut of `D` by type)
     /// example: `var f = RangeFenwick([1, 2, 3]); f.add(0..3, 1); f.prefix((0..2).r) == 5`
     pub fn prefix(self, b: Cut<D>) -> Int:
@@ -381,7 +381,7 @@ pub struct RangeFenwick<D>:
 
     /// The sum over the positions of `r`.
     ///
-    /// cost: O(log |D|)
+    /// cost: \(O(\log \lvert D \rvert)\)
     /// empty: zero
     /// traps: when a non-empty `r` reaches outside `D`
     /// example: `var f = RangeFenwick([1, 2, 3]); f.add(1..2, 4); f.fold(1..3) == 9`
@@ -391,7 +391,7 @@ pub struct RangeFenwick<D>:
 
     /// Reset every value to zero, keeping the domain and the allocation.
     ///
-    /// cost: O(|D|)
+    /// cost: \(O(\lvert D \rvert)\)
     /// traps: never
     /// example: `var f = RangeFenwick([1, 2, 3]); f.clear(); f.fold(0..3) == 0`
     pub fn clear(mut self):
@@ -401,14 +401,14 @@ pub struct RangeFenwick<D>:
             b2[p] = 0
 
 /// Point xor and range xor: `XorFenwick<D, T>()` starts at zero and `XorFenwick<D, T>(a)` from an
-/// array, in O(n). `flip`, `prefix` and `xor` are O(log n); memory is n + 1 values. `^` is its
+/// array, in \(O(n)\). `flip`, `prefix` and `xor` are \(O(\log n)\); memory is n + 1 values. `^` is its
 /// own inverse, so a range is one prefix xored with another.
 pub struct XorFenwick<D, T>:
     t: List<T>
 
     /// A xor Fenwick tree over `D`: all zeros, or holding the values of `a` when given.
     ///
-    /// cost: O(|D|) time; memory |D| + 1 values
+    /// cost: \(O(\lvert D \rvert)\) time; memory |D| + 1 values
     /// empty: an empty `D` gives a tree whose every xor is zero
     /// order: positions keep the domain `D` (of `a`, when given)
     /// traps: never
@@ -425,7 +425,7 @@ pub struct XorFenwick<D, T>:
 
     /// Xor `x` into the value at position `i`: `a[i] ^= x`.
     ///
-    /// cost: O(log |D|)
+    /// cost: \(O(\log \lvert D \rvert)\)
     /// traps: when `i` is outside `D`
     /// example: `var f = XorFenwick([1, 2, 4]); f.flip(1, 2); f.xor(0..3) == 5`
     pub fn flip(mut self, i: D, x: T):
@@ -436,7 +436,7 @@ pub struct XorFenwick<D, T>:
 
     /// The xor of every position left of the boundary `b`.
     ///
-    /// cost: O(log |D|)
+    /// cost: \(O(\log \lvert D \rvert)\)
     /// traps: never (`b` is a cut of `D` by type)
     /// example: `XorFenwick([1, 2, 4]).prefix((0..2).r) == 3`
     pub fn prefix(self, b: Cut<D>) -> T:
@@ -449,7 +449,7 @@ pub struct XorFenwick<D, T>:
 
     /// The xor over the positions of `r`.
     ///
-    /// cost: O(log |D|)
+    /// cost: \(O(\log \lvert D \rvert)\)
     /// empty: zero
     /// traps: when a non-empty `r` reaches outside `D`
     /// example: `XorFenwick([1, 2, 4]).xor(1..3) == 6`
@@ -457,9 +457,9 @@ pub struct XorFenwick<D, T>:
     pub fn xor(self, r: Range<D>) -> T:
         self.prefix(r.end) ^ self.prefix(r.start)
 
-/// O(n log n) space. Offline coordinate-compressed 2D Fenwick tree (KACTL `FT2`):
+/// \(O(n \log n)\) space. Offline coordinate-compressed 2D Fenwick tree (KACTL `FT2`):
 /// register all update coordinates with `add_point`, call `build()`, then run `add` and `sum`
-/// in O(log^2 n).
+/// in \(O(\log^2 n)\).
 fn lower_bound(a: List<Int>, x: Int) -> Int:
     var lo = 0
     var hi = a.len
@@ -480,7 +480,7 @@ pub struct SparseFenwick2D<T>:
     /// An empty offline 2-D Fenwick builder. Use it in two phases: register every point that will
     /// ever be updated with `add_point`, call `build` once, then use `add` and `sum`.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: never
     /// example: `var f = SparseFenwick2D<Int>(); f.build(); f.fold(0..10, 0..10) == 0`
     pub fn new() -> SparseFenwick2D<T>:
@@ -488,7 +488,7 @@ pub struct SparseFenwick2D<T>:
 
     /// Register the point `(x, y)` as a future `add` target. Registering a point twice is harmless.
     ///
-    /// cost: O(1) amortized
+    /// cost: \(O(1)\) amortized
     /// traps: after `build`
     /// example: `var f = SparseFenwick2D<Int>(); f.add_point(5, 7); f.add_point(5, 7); f.build(); f.add(5, 7, 3); f.fold(0..10, 0..10) == 3`
     pub fn add_point(mut self, x: Int, y: Int):
@@ -498,7 +498,7 @@ pub struct SparseFenwick2D<T>:
     /// Compress the registered `x` coordinates, and per `x` bucket the `y` coordinates it can
     /// receive, and allocate the bucket trees at zero. Ends the registration phase.
     ///
-    /// cost: O(n log n) for `n` registered points; memory O(n log n)
+    /// cost: \(O(n \log n)\) for `n` registered points; memory \(O(n \log n)\)
     /// traps: when called a second time
     /// example: `var f = SparseFenwick2D<Int>(); f.add_point(1, 2); f.build(); f.fold(1..2, 2..3) == 0`
     pub fn build(mut self):
@@ -521,7 +521,7 @@ pub struct SparseFenwick2D<T>:
 
     /// Add `v` at the registered point `(x, y)`.
     ///
-    /// cost: O(log^2 n)
+    /// cost: \(O(\log^2 n)\)
     /// traps: before `build`, or when `(x, y)` was never registered
     /// example: `var f = SparseFenwick2D<Int>(); f.add_point(1, 2); f.add_point(3, 4); f.build(); f.add(1, 2, 5); f.add(3, 4, 7); f.fold(0..2, 0..10) == 5`
     pub fn add(mut self, x: Int, y: Int, v: T):
@@ -552,7 +552,7 @@ pub struct SparseFenwick2D<T>:
     /// The total added at registered points with `x` in `xs` and `y` in `ys`. The ranges are over
     /// raw coordinates; points outside them, or never registered, contribute nothing.
     ///
-    /// cost: O(log^2 n)
+    /// cost: \(O(\log^2 n)\)
     /// empty: zero when either range is empty
     /// traps: before `build`
     /// example: `var f = SparseFenwick2D<Int>(); f.add_point(1, 2); f.add_point(3, 4); f.build(); f.add(1, 2, 5); f.add(3, 4, 7); f.fold(0..10, 3..5) == 7`

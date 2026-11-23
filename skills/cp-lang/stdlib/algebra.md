@@ -17,15 +17,15 @@ In prelude (no `use` needed): `Action`, `Commutative`, `Desc`, `Group`, `Idempot
 
 An associative operation with an identity: the pair `(id, op)`, written `Monoid<T>(id, op)` or, naming both, `Monoid<T>(id: e, op: (a, b) => ...)`.
 
-- `fn of<M>(m: M) -> Monoid<T>` — O(1); The monoid a structure was handed: a `Monoid` is itself, and a bare operator brings its identity: zero for `+`, `^`, `\|` and `gcd`, one for `*`, all bits for `&`, and for `min` / `max` the far end of `T` (`None` on a `?T`).; traps: never (an operator without a known identity is a compile-time error)
-- `fn monoid(self) -> Monoid<T>` — O(1); A monoid is its own monoid: what [`Monoid.of`] gives back for anything that is not a bare operator.
+- `fn of<M>(m: M) -> Monoid<T>` — \(O(1)\); The monoid a structure was handed: a `Monoid` is itself, and a bare operator brings its identity: zero for `+`, `^`, `\|` and `gcd`, one for `*`, all bits for `&`, and for `min` / `max` the far end of `T` (`None` on a `?T`).; traps: never (an operator without a known identity is a compile-time error)
+- `fn monoid(self) -> Monoid<T>` — \(O(1)\); A monoid is its own monoid: what [`Monoid.of`] gives back for anything that is not a bare operator.
 
 ## `struct Action<T, F>(pub id: F, pub compose: (F, F) -> F, apply: (F, T, Int) -> T, pub over: Monoid<T>)`
 
 A lazy update `F` on values `T` folded with `over`.
 
-- `fn new<M>(id: F = F.zero, compose: (F, F) -> F = (+), apply: (F, T, Int) -> T, over: M = (+)) -> Action<T, F>` — O(1); A lazy action of tags `F` on values `T` folded with `over`.; traps: never (laws are not checked here; use `laws_hold`)
-- `fn of<A, M>(a: A, op: M) -> Action<T, F>` — O(1); Resolve a stock action (`add`, `assign`, `affine`) or an `Action` against fold `op`.
+- `fn new<M>(id: F = F.zero, compose: (F, F) -> F = (+), apply: (F, T, Int) -> T, over: M = (+)) -> Action<T, F>` — \(O(1)\); A lazy action of tags `F` on values `T` folded with `over`.; traps: never (laws are not checked here; use `laws_hold`)
+- `fn of<A, M>(a: A, op: M) -> Action<T, F>` — \(O(1)\); Resolve a stock action (`add`, `assign`, `affine`) or an `Action` against fold `op`.
 
 ## `struct Desc<T>(x: T)`
 
@@ -39,55 +39,55 @@ A folded value that can be read from the other end.
 
 Maximum non-empty subarray summary (Kadane monoid).
 
-- `fn empty() -> MaxSub` — O(1); The summary of no elements: the identity of `join`.
-- `fn of(v: Int) -> MaxSub` — O(1); The summary of the single element `v`: best, total, best prefix and best suffix are all `v`.
-- `fn join(a: MaxSub, b: MaxSub) -> MaxSub` — O(1); The summary of `a`'s elements followed by `b`'s (the same as `a + b`).; traps: never (overflow wraps in release, traps in debug)
-- `fn scale(self, k: Int) -> MaxSub` — O(1); The summary of the same elements each multiplied by `k` (the same as `self * k`).; traps: when `k < 0`
-- `@get fn try_best(self) -> ?Int` — O(1); The largest sum of a non-empty contiguous run of the summarized elements, or `None` for the empty summary.
-- `fn monoid() -> Monoid<MaxSub>` — O(1); `Monoid(MaxSub.empty(), MaxSub.join)`, for `SegTree` and `fold`.
+- `fn empty() -> MaxSub` — \(O(1)\); The summary of no elements: the identity of `join`.
+- `fn of(v: Int) -> MaxSub` — \(O(1)\); The summary of the single element `v`: best, total, best prefix and best suffix are all `v`.
+- `fn join(a: MaxSub, b: MaxSub) -> MaxSub` — \(O(1)\); The summary of `a`'s elements followed by `b`'s (the same as `a + b`).; traps: never (overflow wraps in release, traps in debug)
+- `fn scale(self, k: Int) -> MaxSub` — \(O(1)\); The summary of the same elements each multiplied by `k` (the same as `self * k`).; traps: when `k < 0`
+- `@get fn try_best(self) -> ?Int` — \(O(1)\); The largest sum of a non-empty contiguous run of the summarized elements, or `None` for the empty summary.
+- `fn monoid() -> Monoid<MaxSub>` — \(O(1)\); `Monoid(MaxSub.empty(), MaxSub.join)`, for `SegTree` and `fold`.
 
 ## `struct Semigroup<T>(pub op: (T, T) -> T)`
 
-O(1) construction.
+\(O(1)\) construction.
 
 ## `struct Group<T>(pub id: T, pub op: (T, T) -> T, inv: T -> T)`
 
-O(1) construction.
+\(O(1)\) construction.
 
-- `fn of<G>(g: G) -> Group<T>` — O(1); The group a structure was handed: a `Group` is itself, `+` brings zero and negation, `^` brings zero and itself as inverse.; traps: never (an operator without a known inverse is a compile-time error)
+- `fn of<G>(g: G) -> Group<T>` — \(O(1)\); The group a structure was handed: a `Group` is itself, `+` brings zero and negation, `^` brings zero and itself as inverse.; traps: never (an operator without a known inverse is a compile-time error)
 
 ## `struct MinCount<T>(pub val: T, pub count: Int)`
 
-O(1) per merge.
+\(O(1)\) per merge.
 
-- `fn of(v: T) -> MinCount<T>` — O(1); The summary of the single element `v`: value `v`, count 1.
-- `fn join(a: MinCount<T>, b: MinCount<T>) -> MinCount<T>` — O(1); The smaller value with its count; on equal values, the value with both counts summed.
-- `fn monoid() -> Monoid<MinCount<T>>` — O(1); `Monoid(id, MinCount.join)` with identity value the far end of `T` (as `Monoid.of(min)`) and count 0, for `SegTree` and `fold`.
+- `fn of(v: T) -> MinCount<T>` — \(O(1)\); The summary of the single element `v`: value `v`, count 1.
+- `fn join(a: MinCount<T>, b: MinCount<T>) -> MinCount<T>` — \(O(1)\); The smaller value with its count; on equal values, the value with both counts summed.
+- `fn monoid() -> Monoid<MinCount<T>>` — \(O(1)\); `Monoid(id, MinCount.join)` with identity value the far end of `T` (as `Monoid.of(min)`) and count 0, for `SegTree` and `fold`.
 
 ## `struct MaxCount<T>(pub val: T, pub count: Int)`
 
-O(1) per merge.
+\(O(1)\) per merge.
 
-- `fn of(v: T) -> MaxCount<T>` — O(1); The summary of the single element `v`: value `v`, count 1.
-- `fn join(a: MaxCount<T>, b: MaxCount<T>) -> MaxCount<T>` — O(1); The larger value with its count; on equal values, the value with both counts summed.
-- `fn monoid() -> Monoid<MaxCount<T>>` — O(1); `Monoid(id, MaxCount.join)` with identity value the low end of `T` (as `Monoid.of(max)`) and count 0, for `SegTree` and `fold`.
+- `fn of(v: T) -> MaxCount<T>` — \(O(1)\); The summary of the single element `v`: value `v`, count 1.
+- `fn join(a: MaxCount<T>, b: MaxCount<T>) -> MaxCount<T>` — \(O(1)\); The larger value with its count; on equal values, the value with both counts summed.
+- `fn monoid() -> Monoid<MaxCount<T>>` — \(O(1)\); `Monoid(id, MaxCount.join)` with identity value the low end of `T` (as `Monoid.of(max)`) and count 0, for `SegTree` and `fold`.
 
 ## `struct Affine<T>(pub a: T, pub b: T)`
 
-O(1) per composition/eval.
+\(O(1)\) per composition/eval.
 
-- `fn id() -> Affine<T>` — O(1); The identity map `x -> 1 * x + 0`.
-- `fn eval(self, x: T) -> T` — O(1); `a * x + b`.; traps: never (overflow wraps in release, traps in debug)
-- `fn then(f: Affine<T>, g: Affine<T>) -> Affine<T>` — O(1); `f` first, then `g`: the map `x -> g.eval(f.eval(x))`, which is `Affine(g.a * f.a, g.a * f.b + g.b)`.; traps: never (overflow wraps in release, traps in debug)
-- `fn monoid() -> Monoid<Affine<T>>` — O(1); `Monoid(Affine.id(), Affine.then)`: a fold applies the leftmost map first, so a segment tree over maps answers "push `x` through positions `l..r` in order".
+- `fn id() -> Affine<T>` — \(O(1)\); The identity map `x -> 1 * x + 0`.
+- `fn eval(self, x: T) -> T` — \(O(1)\); `a * x + b`.; traps: never (overflow wraps in release, traps in debug)
+- `fn then(f: Affine<T>, g: Affine<T>) -> Affine<T>` — \(O(1)\); `f` first, then `g`: the map `x -> g.eval(f.eval(x))`, which is `Affine(g.a * f.a, g.a * f.b + g.b)`.; traps: never (overflow wraps in release, traps in debug)
+- `fn monoid() -> Monoid<Affine<T>>` — \(O(1)\); `Monoid(Affine.id(), Affine.then)`: a fold applies the leftmost map first, so a segment tree over maps answers "push `x` through positions `l..r` in order".
 
 ## `enum Ordering`
 
-O(1).
+\(O(1)\).
 
 ## `struct Semiring<A, M>(add: A, mul: M)`
 
-O(1).
+\(O(1)\).
 
 ## `trait Op<T>`
 
@@ -117,7 +117,7 @@ Law: `op(a, b)` is `a` or `b`.
 
 The ops of [`each`], one per component; a structure takes it through [`Monoid.of`].
 
-- `fn monoid<T>(self) -> Monoid<T>` — O(components); The monoid on `T` that applies the i-th op to the i-th components, with the tuple of their identities as its identity.; traps: never (an op with no known identity is a compile-time error)
+- `fn monoid<T>(self) -> Monoid<T>` — \(O(\mathit{components})\); The monoid on `T` that applies the i-th op to the i-th components, with the tuple of their identities as its identity.; traps: never (an op with no known identity is a compile-time error)
 
 ## `struct AddAction`
 
@@ -137,12 +137,12 @@ Marker type for the stock `flip` action.
 
 ## Functions
 
-- `fn desc<T>(x: T) -> Desc<T>` — O(1); `x` wrapped so that it compares the other way round: `desc(a) < desc(b)` exactly when `b < a`.
-- `fn fold<T, M, S: Seq>(m: M, xs: S) -> T` — O(n) calls of `op`; `xs` folded left to right with `m`: `op(op(op(id, x0), x1), x2)`, so a non-commutative `m` sees elements in sequence order.; traps: never (an `m` without a known identity is a compile-time error)
-- `fn point_action<T, F, M>(id: F, compose: (F, F) -> F, apply: (F, T) -> T, over: M) -> Action<T, F>` — O(1); An `Action` whose `apply` ignores the span: `apply(f, val, span) == apply(f, val)`.
-- `fn cmp<T: Ord>(a: T, b: T) -> Ordering` — O(1) plus one or two comparisons of `T`; The three-way comparison of `a` and `b` under `Ord`.
-- `fn minmax<T: Ord>(a: T, b: T) -> (T, T)` — O(1) plus one comparison of `T`; The pair `(min(a, b), max(a, b))` in the operands' own type: two `Cut`s give two `Cut`s.
-- `fn each<Ms>(..ms: Ms) -> Each<Ms>` — O(1) to build; each call costs the sum of its components; One operation per component of a tuple (positional) or record (named): `op((a0, a1), (b0, b1)) == (m0(a0, b0), m1(a1, b1))`.
+- `fn desc<T>(x: T) -> Desc<T>` — \(O(1)\); `x` wrapped so that it compares the other way round: `desc(a) < desc(b)` exactly when `b < a`.
+- `fn fold<T, M, S: Seq>(m: M, xs: S) -> T` — \(O(n)\) calls of `op`; `xs` folded left to right with `m`: `op(op(op(id, x0), x1), x2)`, so a non-commutative `m` sees elements in sequence order.; traps: never (an `m` without a known identity is a compile-time error)
+- `fn point_action<T, F, M>(id: F, compose: (F, F) -> F, apply: (F, T) -> T, over: M) -> Action<T, F>` — \(O(1)\); An `Action` whose `apply` ignores the span: `apply(f, val, span) == apply(f, val)`.
+- `fn cmp<T: Ord>(a: T, b: T) -> Ordering` — \(O(1)\) plus one or two comparisons of `T`; The three-way comparison of `a` and `b` under `Ord`.
+- `fn minmax<T: Ord>(a: T, b: T) -> (T, T)` — \(O(1)\) plus one comparison of `T`; The pair `(min(a, b), max(a, b))` in the operands' own type: two `Cut`s give two `Cut`s.
+- `fn each<Ms>(..ms: Ms) -> Each<Ms>` — \(O(1)\) to build; each call costs the sum of its components; One operation per component of a tuple (positional) or record (named): `op((a0, a1), (b0, b1)) == (m0(a0, b0), m1(a1, b1))`.
 
 ## Example
 

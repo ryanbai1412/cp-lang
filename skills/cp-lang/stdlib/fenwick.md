@@ -12,18 +12,18 @@ Point add and range sum over anything with `+` and `-` (`Int`, `Mod<P>`).
 
 Fields: `t: List<T>`.
 
-- `fn new(a: ?[D]T = None) -> Fenwick<D, T>` — O(|D|) time; memory |D| + 1 values; A Fenwick tree over `D`: all zeros, or holding the values of `a` when given.
-- `fn add(mut self, i: D, x: T)` — O(log |D|); Add `x` to the value at position `i`: `a[i] += x`.; traps: when `i` is outside `D`
-- `fn prefix(self, b: Cut<D>) -> T` — O(log |D|); The sum of every position left of the boundary `b`.; traps: never (`b` is a cut of `D` by type)
-- `fn fold(self, r: Range<D>) -> T` — O(log |D|); The sum over the positions of `r`: `prefix(r.r) - prefix(r.l)`.; traps: when a non-empty `r` reaches outside `D`
-- `fn first_ge(self, target: Int) -> ?Cut<D>` — O(log |D|); The smallest boundary `b` with `prefix(b) >= target`, by binary lifting over the tree; `None` when even the whole sum is below `target`.; traps: never (negative values give an unspecified cut, not a trap)
-- `fn kth(self, k: Int) -> ?D` — O(log |D|); The `k`-th item counting from 1, when position `d` holds `a[d]` items: the first `d` with `prefix(d.r) >= k`, or `None` when fewer than `k` items exist in total.; traps: when `k < 1` (negative values give an unspecified position, not a trap)
-- `fn get(self, i: D) -> T` — O(log |D|); The current value at position `i`: `sum(i..=i)`.; traps: when `i` is outside `D`
-- `fn set(mut self, i: D, x: T)` — O(log |D|); Assign `a[i] = x`, by adding the difference `x - get(i)`; also the write-through place for `f[i] = x`.; traps: when `i` is outside `D`
-- `@get fn all(self) -> T` — O(1); The sum of every position of `D`, kept current by `add`, `set` and `clear`.
-- `fn suffix(self, b: Cut<D>) -> T` — O(log |D|); The sum of every position right of the boundary `b`: `all - prefix(b)`.
-- `fn first_gt(self, target: Int) -> ?Cut<D>` — O(log |D|); The smallest boundary `b` with `prefix(b) > target`, or `None` when the whole sum is at most `target`.; traps: never (negative values give an unspecified cut, not a trap)
-- `fn clear(mut self)` — O(|D|); Reset every value to zero, keeping the domain and the allocation.
+- `fn new(a: ?[D]T = None) -> Fenwick<D, T>` — \(O(\lvert D \rvert)\) time; memory |D| + 1 values; A Fenwick tree over `D`: all zeros, or holding the values of `a` when given.
+- `fn add(mut self, i: D, x: T)` — \(O(\log \lvert D \rvert)\); Add `x` to the value at position `i`: `a[i] += x`.; traps: when `i` is outside `D`
+- `fn prefix(self, b: Cut<D>) -> T` — \(O(\log \lvert D \rvert)\); The sum of every position left of the boundary `b`.; traps: never (`b` is a cut of `D` by type)
+- `fn fold(self, r: Range<D>) -> T` — \(O(\log \lvert D \rvert)\); The sum over the positions of `r`: `prefix(r.r) - prefix(r.l)`.; traps: when a non-empty `r` reaches outside `D`
+- `fn first_ge(self, target: Int) -> ?Cut<D>` — \(O(\log \lvert D \rvert)\); The smallest boundary `b` with `prefix(b) >= target`, by binary lifting over the tree; `None` when even the whole sum is below `target`.; traps: never (negative values give an unspecified cut, not a trap)
+- `fn kth(self, k: Int) -> ?D` — \(O(\log \lvert D \rvert)\); The `k`-th item counting from 1, when position `d` holds `a[d]` items: the first `d` with `prefix(d.r) >= k`, or `None` when fewer than `k` items exist in total.; traps: when `k < 1` (negative values give an unspecified position, not a trap)
+- `fn get(self, i: D) -> T` — \(O(\log \lvert D \rvert)\); The current value at position `i`: `sum(i..=i)`.; traps: when `i` is outside `D`
+- `fn set(mut self, i: D, x: T)` — \(O(\log \lvert D \rvert)\); Assign `a[i] = x`, by adding the difference `x - get(i)`; also the write-through place for `f[i] = x`.; traps: when `i` is outside `D`
+- `@get fn all(self) -> T` — \(O(1)\); The sum of every position of `D`, kept current by `add`, `set` and `clear`.
+- `fn suffix(self, b: Cut<D>) -> T` — \(O(\log \lvert D \rvert)\); The sum of every position right of the boundary `b`: `all - prefix(b)`.
+- `fn first_gt(self, target: Int) -> ?Cut<D>` — \(O(\log \lvert D \rvert)\); The smallest boundary `b` with `prefix(b) > target`, or `None` when the whole sum is at most `target`.; traps: never (negative values give an unspecified cut, not a trap)
+- `fn clear(mut self)` — \(O(\lvert D \rvert)\); Reset every value to zero, keeping the domain and the allocation.
 
 ## `struct Fenwick2D<R, C, T>`
 
@@ -31,12 +31,12 @@ Point add and rectangle sum on a grid.
 
 Fields: `t: List<T>`.
 
-- `fn new() -> Fenwick2D<R, C, T>` — O(|R| |C|) time; memory (|R| + 1)(|C| + 1) values; An all-zero 2-D Fenwick tree over the grid `R` by `C`.
-- `fn add(mut self, r: R, c: C, x: T)` — O(log |R| log |C|); Add `x` to the cell `(r, c)`: `a[r, c] += x`.; traps: when `r` is outside `R` or `c` is outside `C`
-- `fn fold(self, rows: Range<R>, cols: Range<C>) -> T` — O(log |R| log |C|); The sum over the rectangle `rows` by `cols`, by inclusion-exclusion over four prefixes.; traps: when a range of a non-empty rectangle reaches outside its domain
-- `fn prefix(self, r: Cut<R>, c: Cut<C>) -> T` — O(log |R| log |C|); The sum of every cell above the row cut `r` and left of the column cut `c`.
-- `fn get(self, r: R, c: C) -> T` — O(log |R| log |C|); The current value of the cell `(r, c)`.; traps: when `r` is outside `R` or `c` is outside `C`
-- `fn clear(mut self)` — O(|R| |C|); Reset every cell to zero, keeping the domains and the allocation.
+- `fn new() -> Fenwick2D<R, C, T>` — \(O(\lvert R \rvert \lvert C \rvert)\) time; memory (|R| + 1)(|C| + 1) values; An all-zero 2-D Fenwick tree over the grid `R` by `C`.
+- `fn add(mut self, r: R, c: C, x: T)` — \(O(\log \lvert R \rvert \log \lvert C \rvert)\); Add `x` to the cell `(r, c)`: `a[r, c] += x`.; traps: when `r` is outside `R` or `c` is outside `C`
+- `fn fold(self, rows: Range<R>, cols: Range<C>) -> T` — \(O(\log \lvert R \rvert \log \lvert C \rvert)\); The sum over the rectangle `rows` by `cols`, by inclusion-exclusion over four prefixes.; traps: when a range of a non-empty rectangle reaches outside its domain
+- `fn prefix(self, r: Cut<R>, c: Cut<C>) -> T` — \(O(\log \lvert R \rvert \log \lvert C \rvert)\); The sum of every cell above the row cut `r` and left of the column cut `c`.
+- `fn get(self, r: R, c: C) -> T` — \(O(\log \lvert R \rvert \log \lvert C \rvert)\); The current value of the cell `(r, c)`.; traps: when `r` is outside `R` or `c` is outside `C`
+- `fn clear(mut self)` — \(O(\lvert R \rvert \lvert C \rvert)\); Reset every cell to zero, keeping the domains and the allocation.
 
 ## `struct DualFenwick<D, T>`
 
@@ -44,10 +44,10 @@ Range add and point get via a difference Fenwick tree.
 
 Fields: `t: List<T>`.
 
-- `fn new(a: ?[D]T = None) -> DualFenwick<D, T>` — O(|D|) time; memory |D| + 1 values; A range-add, point-get Fenwick tree over `D`: all zeros, or holding the values of `a` when given.
-- `fn add(mut self, r: Range<D>, x: T)` — O(log |D|); Add `x` to every position of `r`.; traps: when a non-empty `r` reaches outside `D`
-- `fn get(self, i: D) -> T` — O(log |D|); The current value at position `i`: its initial value plus every `x` added over a range containing `i`.; traps: when `i` is outside `D`
-- `fn clear(mut self)` — O(|D|); Reset every value to zero, keeping the domain and the allocation.
+- `fn new(a: ?[D]T = None) -> DualFenwick<D, T>` — \(O(\lvert D \rvert)\) time; memory |D| + 1 values; A range-add, point-get Fenwick tree over `D`: all zeros, or holding the values of `a` when given.
+- `fn add(mut self, r: Range<D>, x: T)` — \(O(\log \lvert D \rvert)\); Add `x` to every position of `r`.; traps: when a non-empty `r` reaches outside `D`
+- `fn get(self, i: D) -> T` — \(O(\log \lvert D \rvert)\); The current value at position `i`: its initial value plus every `x` added over a range containing `i`.; traps: when `i` is outside `D`
+- `fn clear(mut self)` — \(O(\lvert D \rvert)\); Reset every value to zero, keeping the domain and the allocation.
 
 ## `struct RangeFenwick<D>`
 
@@ -55,32 +55,32 @@ Range add and range sum over `Int` with two difference Fenwick trees (`d[i]` and
 
 Fields: `base: List<Int>`, `b1: List<Int>`, `b2: List<Int>`.
 
-- `fn new(a: ?[D]Int = None) -> RangeFenwick<D>` — O(|D|) time; memory 3(|D| + 1) values; A range-add, range-sum tree over `D`: all zeros, or holding the values of `a` when given.
-- `fn add(mut self, r: Range<D>, x: Int)` — O(log |D|); Add `x` to every position of `r`.; traps: when a non-empty `r` reaches outside `D`
-- `fn prefix(self, b: Cut<D>) -> Int` — O(log |D|); The sum of every position left of the boundary `b`, adds included.; traps: never (`b` is a cut of `D` by type)
-- `fn fold(self, r: Range<D>) -> Int` — O(log |D|); The sum over the positions of `r`.; traps: when a non-empty `r` reaches outside `D`
-- `fn clear(mut self)` — O(|D|); Reset every value to zero, keeping the domain and the allocation.
+- `fn new(a: ?[D]Int = None) -> RangeFenwick<D>` — \(O(\lvert D \rvert)\) time; memory 3(|D| + 1) values; A range-add, range-sum tree over `D`: all zeros, or holding the values of `a` when given.
+- `fn add(mut self, r: Range<D>, x: Int)` — \(O(\log \lvert D \rvert)\); Add `x` to every position of `r`.; traps: when a non-empty `r` reaches outside `D`
+- `fn prefix(self, b: Cut<D>) -> Int` — \(O(\log \lvert D \rvert)\); The sum of every position left of the boundary `b`, adds included.; traps: never (`b` is a cut of `D` by type)
+- `fn fold(self, r: Range<D>) -> Int` — \(O(\log \lvert D \rvert)\); The sum over the positions of `r`.; traps: when a non-empty `r` reaches outside `D`
+- `fn clear(mut self)` — \(O(\lvert D \rvert)\); Reset every value to zero, keeping the domain and the allocation.
 
 ## `struct XorFenwick<D, T>`
 
-Point xor and range xor: `XorFenwick<D, T>()` starts at zero and `XorFenwick<D, T>(a)` from an array, in O(n).
+Point xor and range xor: `XorFenwick<D, T>()` starts at zero and `XorFenwick<D, T>(a)` from an array, in \(O(n)\).
 
 Fields: `t: List<T>`.
 
-- `fn new(a: ?[D]T = None) -> XorFenwick<D, T>` — O(|D|) time; memory |D| + 1 values; A xor Fenwick tree over `D`: all zeros, or holding the values of `a` when given.
-- `fn flip(mut self, i: D, x: T)` — O(log |D|); Xor `x` into the value at position `i`: `a[i] ^= x`.; traps: when `i` is outside `D`
-- `fn prefix(self, b: Cut<D>) -> T` — O(log |D|); The xor of every position left of the boundary `b`.; traps: never (`b` is a cut of `D` by type)
-- `fn xor(self, r: Range<D>) -> T` — O(log |D|); The xor over the positions of `r`.; traps: when a non-empty `r` reaches outside `D`
+- `fn new(a: ?[D]T = None) -> XorFenwick<D, T>` — \(O(\lvert D \rvert)\) time; memory |D| + 1 values; A xor Fenwick tree over `D`: all zeros, or holding the values of `a` when given.
+- `fn flip(mut self, i: D, x: T)` — \(O(\log \lvert D \rvert)\); Xor `x` into the value at position `i`: `a[i] ^= x`.; traps: when `i` is outside `D`
+- `fn prefix(self, b: Cut<D>) -> T` — \(O(\log \lvert D \rvert)\); The xor of every position left of the boundary `b`.; traps: never (`b` is a cut of `D` by type)
+- `fn xor(self, r: Range<D>) -> T` — \(O(\log \lvert D \rvert)\); The xor over the positions of `r`.; traps: when a non-empty `r` reaches outside `D`
 
 ## `struct SparseFenwick2D<T>`
 
 Fields: `n: Int`, `pts: List<(Int, Int)>`, `xs: List<Int>`, `ys: List<List<Int>>`, `ft: List<List<T>>`, `built: Bool`.
 
-- `fn new() -> SparseFenwick2D<T>` — O(1); An empty offline 2-D Fenwick builder.
-- `fn add_point(mut self, x: Int, y: Int)` — O(1) amortized; Register the point `(x, y)` as a future `add` target.; traps: after `build`
-- `fn build(mut self)` — O(n log n) for `n` registered points; memory O(n log n); Compress the registered `x` coordinates, and per `x` bucket the `y` coordinates it can receive, and allocate the bucket trees at zero.; traps: when called a second time
-- `fn add(mut self, x: Int, y: Int, v: T)` — O(log^2 n); Add `v` at the registered point `(x, y)`.; traps: before `build`, or when `(x, y)` was never registered
-- `fn fold(self, xs: Range<Int>, ys: Range<Int>) -> T` — O(log^2 n); The total added at registered points with `x` in `xs` and `y` in `ys`.; traps: before `build`
+- `fn new() -> SparseFenwick2D<T>` — \(O(1)\); An empty offline 2-D Fenwick builder.
+- `fn add_point(mut self, x: Int, y: Int)` — \(O(1)\) amortized; Register the point `(x, y)` as a future `add` target.; traps: after `build`
+- `fn build(mut self)` — \(O(n \log n)\) for `n` registered points; memory \(O(n \log n)\); Compress the registered `x` coordinates, and per `x` bucket the `y` coordinates it can receive, and allocate the bucket trees at zero.; traps: when called a second time
+- `fn add(mut self, x: Int, y: Int, v: T)` — \(O(\log^2 n)\); Add `v` at the registered point `(x, y)`.; traps: before `build`, or when `(x, y)` was never registered
+- `fn fold(self, xs: Range<Int>, ys: Range<Int>) -> T` — \(O(\log^2 n)\); The total added at registered points with `x` in `xs` and `y` in `ys`.; traps: before `build`
 
 ## Example
 

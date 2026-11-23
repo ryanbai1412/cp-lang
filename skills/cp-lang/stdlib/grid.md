@@ -10,35 +10,35 @@ In prelude (no `use` needed): `Dir4`, `Dir8`, `adj4`, `adj8`, `ray`, `step`.
 
 One of the four directions up, right, down, left (clockwise, rows growing downwards).
 
-- `fn all() -> List<Dir4>` — O(1); All four directions, clockwise from up.
-- `fn from(letters: Str, ch: Char) -> ?Dir4` — O(1); The direction a letter stands for, given the letters for up, right, down and left in that; traps: `letters.len != 4`
-- `@get fn cw(self) -> Dir4` — O(1); A quarter turn clockwise: up to right, right to down, down to left, left to up.
-- `@get fn ccw(self) -> Dir4` — O(1); A quarter turn counter-clockwise, the inverse of `cw`.
-- `@get fn back(self) -> Dir4` — O(1); The opposite direction, a half turn: its delta is the negated delta.
-- `@get fn delta(self) -> (Int, Int)` — O(1); The change in (row, column) of one step.
+- `fn all() -> List<Dir4>` — \(O(1)\); All four directions, clockwise from up.
+- `fn from(letters: Str, ch: Char) -> ?Dir4` — \(O(1)\); The direction a letter stands for, given the letters for up, right, down and left in that; traps: `letters.len != 4`
+- `@get fn cw(self) -> Dir4` — \(O(1)\); A quarter turn clockwise: up to right, right to down, down to left, left to up.
+- `@get fn ccw(self) -> Dir4` — \(O(1)\); A quarter turn counter-clockwise, the inverse of `cw`.
+- `@get fn back(self) -> Dir4` — \(O(1)\); The opposite direction, a half turn: its delta is the negated delta.
+- `@get fn delta(self) -> (Int, Int)` — \(O(1)\); The change in (row, column) of one step.
 
 ## `struct Dir8(k: Int)`
 
 One of the eight directions, clockwise from up: the four of `Dir4` and the diagonals between.
 
-- `fn all() -> List<Dir8>` — O(1); All eight directions, clockwise from up: up, up-right, right, down-right, down, down-left, left, up-left.
-- `fn from(letters: Str, ch: Char) -> ?Dir8` — O(1); The direction whose letter is `ch` in `letters`, listed in `Dir8.all()` order, e.g.; traps: `letters.len != 8`
-- `@get fn cw(self) -> Dir8` — O(1); An eighth of a turn clockwise: the next direction in `Dir8.all()`, wrapping from up-left to up.
-- `@get fn ccw(self) -> Dir8` — O(1); An eighth of a turn counter-clockwise, the inverse of `cw`.
-- `@get fn back(self) -> Dir8` — O(1); The opposite direction, four eighths round: its delta is the negated delta.
-- `@get fn delta(self) -> (Int, Int)` — O(1); The change in (row, column) of one step; each part is `-1`, `0` or `1`.
+- `fn all() -> List<Dir8>` — \(O(1)\); All eight directions, clockwise from up: up, up-right, right, down-right, down, down-left, left, up-left.
+- `fn from(letters: Str, ch: Char) -> ?Dir8` — \(O(1)\); The direction whose letter is `ch` in `letters`, listed in `Dir8.all()` order, e.g.; traps: `letters.len != 8`
+- `@get fn cw(self) -> Dir8` — \(O(1)\); An eighth of a turn clockwise: the next direction in `Dir8.all()`, wrapping from up-left to up.
+- `@get fn ccw(self) -> Dir8` — \(O(1)\); An eighth of a turn counter-clockwise, the inverse of `cw`.
+- `@get fn back(self) -> Dir8` — \(O(1)\); The opposite direction, four eighths round: its delta is the negated delta.
+- `@get fn delta(self) -> (Int, Int)` — \(O(1)\); The change in (row, column) of one step; each part is `-1`, `0` or `1`.
 
 ## Functions
 
-- `@get fn up<R, C>(self: (R, C)) -> ?(R, C)` — O(1); The cell one row up from `self` (towards row 0), or `None` on the top row.
-- `@get fn down<R, C>(self: (R, C)) -> ?(R, C)` — O(1); The cell one row down from `self`, or `None` on the bottom row.
-- `@get fn left<R, C>(self: (R, C)) -> ?(R, C)` — O(1); The cell one column left of `self`, or `None` in the first column.
-- `@get fn right<R, C>(self: (R, C)) -> ?(R, C)` — O(1); The cell one column right of `self`, or `None` in the last column.
-- `fn step<R, C, D>(self: (R, C), d: D) -> ?(R, C)` — O(1); The cell one step from `self` in direction `d` (a `Dir4` or a `Dir8`), or `None` when that step leaves the grid `(R, C)`.
-- `fn ray<R, C, D>(self: (R, C), d: D) -> yields (R, C)` — O(1) to create, O(1) per cell; The cells from `self` (not included) to the edge of the grid in direction `d`, nearest first: `p.step(d)`, then a step from that, until a step leaves the grid.
-- `@get fn adj4<R, C>(self: (R, C)) -> yields (R, C)` — O(1) to create, O(1) per cell; The up to four cells sharing a side with `self`: `self.step(d)` for each `d` in `Dir4.all()`, skipping steps that leave the grid.
-- `@get fn adj8<R, C>(self: (R, C)) -> yields (R, C)` — O(1) to create, O(1) per cell; The up to eight cells sharing a side or a corner with `self`: `self.step(d)` for each `d` in `Dir8.all()`, skipping steps that leave the grid.
-- `fn transposed<R, C, T>(self: [R, C]T) -> [C, R]T` — O(rows · cols) time and space; A new grid with rows and columns exchanged: `g.transposed()[c, r] == g[r, c]` for every cell.
+- `@get fn up<R, C>(self: (R, C)) -> ?(R, C)` — \(O(1)\); The cell one row up from `self` (towards row 0), or `None` on the top row.
+- `@get fn down<R, C>(self: (R, C)) -> ?(R, C)` — \(O(1)\); The cell one row down from `self`, or `None` on the bottom row.
+- `@get fn left<R, C>(self: (R, C)) -> ?(R, C)` — \(O(1)\); The cell one column left of `self`, or `None` in the first column.
+- `@get fn right<R, C>(self: (R, C)) -> ?(R, C)` — \(O(1)\); The cell one column right of `self`, or `None` in the last column.
+- `fn step<R, C, D>(self: (R, C), d: D) -> ?(R, C)` — \(O(1)\); The cell one step from `self` in direction `d` (a `Dir4` or a `Dir8`), or `None` when that step leaves the grid `(R, C)`.
+- `fn ray<R, C, D>(self: (R, C), d: D) -> yields (R, C)` — \(O(1)\) to create, \(O(1)\) per cell; The cells from `self` (not included) to the edge of the grid in direction `d`, nearest first: `p.step(d)`, then a step from that, until a step leaves the grid.
+- `@get fn adj4<R, C>(self: (R, C)) -> yields (R, C)` — \(O(1)\) to create, \(O(1)\) per cell; The up to four cells sharing a side with `self`: `self.step(d)` for each `d` in `Dir4.all()`, skipping steps that leave the grid.
+- `@get fn adj8<R, C>(self: (R, C)) -> yields (R, C)` — \(O(1)\) to create, \(O(1)\) per cell; The up to eight cells sharing a side or a corner with `self`: `self.step(d)` for each `d` in `Dir8.all()`, skipping steps that leave the grid.
+- `fn transposed<R, C, T>(self: [R, C]T) -> [C, R]T` — \(O(\mathit{rows} \cdot \mathit{cols})\) time and space; A new grid with rows and columns exchanged: `g.transposed()[c, r] == g[r, c]` for every cell.
 
 ## Example
 

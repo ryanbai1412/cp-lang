@@ -653,6 +653,14 @@ fn plain_text_writes_math_in_unicode_and_links_as_code() {
     assert_eq!(plain::math("O(n^2 + \\sqrt{q})"), "O(n² + √q)");
     assert_eq!(plain::math("O(n^{1/2})"), "O(n^(1/2))");
     assert_eq!(
+        plain::math("O(\\lvert D \\rvert \\cdot \\mathit{rows} + \\sqrt n + \\deg u)"),
+        "O(|D| · rows + √n + deg u)"
+    );
+    assert_eq!(
+        plain::math("O(\\text{path length} + \\mathit{max\\_coord})"),
+        "O(path length + max_coord)"
+    );
+    assert_eq!(
         plain::text(
             "cost: \\(O(n \\log n)\\); see [`up`] and [`size`](Bag.len), not [a](https://x.y)."
         ),

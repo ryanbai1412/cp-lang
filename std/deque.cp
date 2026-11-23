@@ -3,8 +3,8 @@
 use std.seq.{remove}
 
 /// A queue with both ends open: `var q = Deque<Int>()`. `push` / `pop` work at the back,
-/// `push_front` / `pop_front` at the front, all amortized O(1); `q[i]` is the `i`-th element
-/// from the front in O(1). Memory is a ring of at most twice the largest length.
+/// `push_front` / `pop_front` at the front, all amortized \(O(1)\); `q[i]` is the `i`-th element
+/// from the front in \(O(1)\). Memory is a ring of at most twice the largest length.
 pub struct Deque<T>:
     buf: List<T>
     head: Int
@@ -14,18 +14,18 @@ pub struct Deque<T>:
 
     /// Create an empty `Deque<T>`.
     ///
-    /// cost: O(1); nothing is allocated until the first push
+    /// cost: \(O(1)\); nothing is allocated until the first push
     /// traps: never
     /// example: `var q: Deque<Int> = Deque(); q.len == 0`
     pub fn new() -> Deque<T> = Deque([], 0, 0, -1, 1)
 
     /// A deque holding `xs`, front to back: the queue of a search, `var q = Deque.of(sources)`,
-    /// then `while let u = q.pop_front(): ...`. O(n).
+    /// then `while let u = q.pop_front(): ...`. \(O(n)\).
     ///
     /// The first element of `xs` is the front, so `pop_front` returns the elements in the
     /// order `xs` lists them.
     ///
-    /// cost: O(n)
+    /// cost: \(O(n)\)
     /// empty: an empty deque
     /// traps: never
     /// example: `Deque.of([1, 2, 3]).to_list() == [1, 2, 3]`
@@ -36,12 +36,12 @@ pub struct Deque<T>:
         for x in xs: q.push(x)
         q
 
-    /// Reserve capacity for at least `cap` elements without reallocating. O(1) when empty, O(cap) otherwise.
+    /// Reserve capacity for at least `cap` elements without reallocating. \(O(1)\) when empty, \(O(\mathit{cap})\) otherwise.
     ///
     /// The contents and their order do not change; a `cap` no larger than the current
     /// capacity (including any `cap <= 0`) does nothing.
     ///
-    /// cost: O(1) when empty, O(cap) otherwise
+    /// cost: \(O(1)\) when empty, \(O(\mathit{cap})\) otherwise
     /// traps: never
     /// example: `var q = Deque.of([1, 2]); q.reserve(100); q.to_list() == [1, 2]`
     pub fn reserve(mut self, cap: Int):
@@ -55,14 +55,14 @@ pub struct Deque<T>:
 
     /// Number of elements currently in the deque.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: never
     /// example: `Deque.of([4, 5]).len == 2`
     @get pub fn len(self) -> Int:
         n
     /// Whether the deque is empty.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: never
     /// example: `Deque.of([7]).is_empty == false`
     @get pub fn is_empty(self) -> Bool:
@@ -72,7 +72,7 @@ pub struct Deque<T>:
     ///
     /// The capacity is kept, so refilling does not reallocate.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: never
     /// example: `var q = Deque.of([1, 2]); q.clear(); q.len == 0`
     pub fn clear(mut self):
@@ -82,9 +82,9 @@ pub struct Deque<T>:
         mask = -1
         want = 1
 
-    /// Move the deque's contents out in O(1), leaving `self` empty.
+    /// Move the deque's contents out in \(O(1)\), leaving `self` empty.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: never
     /// example: `var q = Deque.of([1, 2]); let r = q.take(); q.len == 0 and r.to_list() == [1, 2]`
     pub fn take(mut self) -> Deque<T>:
@@ -108,7 +108,7 @@ pub struct Deque<T>:
 
     /// Append `x` to the back of the deque.
     ///
-    /// cost: O(1) amortized; a full ring doubles
+    /// cost: \(O(1)\) amortized; a full ring doubles
     /// traps: never
     /// example: `var q = Deque.of([1]); q.push(2); q.to_list() == [1, 2]`
     pub fn push(mut self, x: T):
@@ -123,7 +123,7 @@ pub struct Deque<T>:
     ///
     /// Every existing element moves one place back: `q[0]` is now `x`.
     ///
-    /// cost: O(1) amortized; a full ring doubles
+    /// cost: \(O(1)\) amortized; a full ring doubles
     /// traps: never
     /// example: `var q = Deque.of([1]); q.push_front(0); q.to_list() == [0, 1]`
     pub fn push_front(mut self, x: T):
@@ -137,7 +137,7 @@ pub struct Deque<T>:
 
     /// Remove and return the back, or `None` when empty.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// empty: `None`, and the deque stays empty
     /// traps: never
     /// example: `var q = Deque.of([1, 2]); q.pop() == Some(2) and q.to_list() == [1]`
@@ -149,7 +149,7 @@ pub struct Deque<T>:
 
     /// Remove and return the front, or `None` when empty.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// empty: `None`, and the deque stays empty
     /// traps: never
     /// example: `var q = Deque.of([1, 2]); q.pop_front() == Some(1) and q.to_list() == [2]`
@@ -161,13 +161,13 @@ pub struct Deque<T>:
             n -= 1
             return Some(x)
 
-    /// O(k) for `k` removed. Remove and return the longest front run on which `ok` holds,
+    /// \(O(k)\) for `k` removed. Remove and return the longest front run on which `ok` holds,
     /// in order: a queue sorted by key releases everything below a rising threshold.
     ///
     /// `ok` is called front to back and the run stops at the first element where it is false;
     /// that element and everything behind it stay. `ok` is called at most `k + 1` times.
     ///
-    /// cost: O(k) for `k` removed
+    /// cost: \(O(k)\) for `k` removed
     /// empty: `[]`
     /// order: front first, the order the elements sat in; a new `List`, keyed from 0
     /// traps: never
@@ -178,12 +178,12 @@ pub struct Deque<T>:
         out
 
     /// Pop from the back while `ok` holds; the popped values, back first.
-    /// O(popped).
+    /// \(O(\mathit{popped})\).
     ///
     /// The mirror of `pop_front_while`: `ok` is called back to front and the run stops at the
     /// first element where it is false.
     ///
-    /// cost: O(k) for `k` removed
+    /// cost: \(O(k)\) for `k` removed
     /// empty: `[]`
     /// order: back first, the order they were popped; a new `List`, keyed from 0
     /// traps: never
@@ -195,7 +195,7 @@ pub struct Deque<T>:
 
     /// The front, or `None` when empty.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// empty: `None`
     /// ties: none: there is one front
     /// traps: never
@@ -209,7 +209,7 @@ pub struct Deque<T>:
     ///
     /// `dq.last(k)` is `dq[dq.len - 1 - k]` when `k < dq.len`, and `None` otherwise.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// empty: `None` for every `k`
     /// ties: none: each `k` names one place
     /// traps: when `k < 0`
@@ -220,10 +220,10 @@ pub struct Deque<T>:
         if k < 0 or k >= n: return None
         Some(self.get(n - 1 - k))
 
-    /// Each element with its place from the front: `for (i, x) in dq.items`. O(1) to make,
-    /// O(n) to walk.
+    /// Each element with its place from the front: `for (i, x) in dq.items`. \(O(1)\) to make,
+    /// \(O(n)\) to walk.
     ///
-    /// cost: O(1) to make, O(1) per step
+    /// cost: \(O(1)\) to make, \(O(1)\) per step
     /// empty: yields nothing
     /// order: front to back; the places are `0..len`
     /// traps: never
@@ -235,7 +235,7 @@ pub struct Deque<T>:
     ///
     /// `q[i]` calls this; place `0` is the front and `len - 1` the back.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: when `i` is not in `0..len`
     /// example: `Deque.of([7, 8]).get(1) == 8`
     /// example: `var q = Deque.of([1]); q.push_front(0); q[0] == 0`
@@ -246,7 +246,7 @@ pub struct Deque<T>:
 
     /// Overwrite the `i`-th element from the front (W8 `IndexSet` backing `dq[i] = x`).
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: when `i` is not in `0..len`
     /// example: `var q = Deque.of([7, 8]); q[0] = 9; q.to_list() == [9, 8]`
     pub fn set(mut self, i: Int, x: T):
@@ -256,7 +256,7 @@ pub struct Deque<T>:
 
     /// Materialize the elements front to back as a `List<T>`.
     ///
-    /// cost: O(n), one new `List`
+    /// cost: \(O(n)\), one new `List`
     /// empty: `[]`
     /// order: front to back; a new `List`, keyed from 0
     /// traps: never
@@ -270,7 +270,7 @@ pub struct Deque<T>:
     ///
     /// `for x in q` uses this.
     ///
-    /// cost: O(1) per step
+    /// cost: \(O(1)\) per step
     /// empty: yields nothing
     /// order: front to back
     /// traps: never
@@ -280,7 +280,7 @@ pub struct Deque<T>:
 
     /// Yield elements back to front without allocating.
     ///
-    /// cost: O(1) per step
+    /// cost: \(O(1)\) per step
     /// empty: yields nothing
     /// order: back to front
     /// traps: never
@@ -296,7 +296,7 @@ pub struct Deque<T>:
     /// The element at place `k` becomes the front. `k` is reduced with Euclidean `%`, so a
     /// negative `k` rotates right: `rotate_left(-1)` is `rotate_right(1)`.
     ///
-    /// cost: O(min(k, n - k)) after reducing `k` mod `n`
+    /// cost: \(O(\min(k, n - k))\) after reducing `k` mod `n`
     /// empty: does nothing, for every `k`
     /// traps: never
     /// example: `var q = Deque.of([1, 2, 3, 4]); q.rotate_left(1); q.to_list() == [2, 3, 4, 1]`
@@ -314,7 +314,7 @@ pub struct Deque<T>:
     /// The back `k` elements move to the front, in order. `rotate_right(k)` is
     /// `rotate_left(-k)`.
     ///
-    /// cost: O(min(k, n - k)) after reducing `k` mod `n`
+    /// cost: \(O(\min(k, n - k))\) after reducing `k` mod `n`
     /// empty: does nothing, for every `k`
     /// traps: never
     /// example: `var q = Deque.of([1, 2, 3, 4]); q.rotate_right(1); q.to_list() == [4, 1, 2, 3]`
@@ -323,7 +323,7 @@ pub struct Deque<T>:
         if n == 0: return
         self.rotate_left(-k)
 
-/// Doubly-linked list supporting O(1) end pushes/pops and O(1) splicing (`splice_back`, `splice_front`).
+/// Doubly-linked list supporting \(O(1)\) end pushes/pops and \(O(1)\) splicing (`splice_back`, `splice_front`).
 pub struct LinkedList<T>:
     _len: Int
     head: Int
@@ -352,7 +352,7 @@ pub struct LinkedList<T>:
 
     /// Create an empty `LinkedList<T>`.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: never
     /// example: `var l: LinkedList<Int> = LinkedList(); l.len == 0`
     pub fn new() -> LinkedList<T>:
@@ -360,7 +360,7 @@ pub struct LinkedList<T>:
 
     /// Create a singleton `LinkedList<T>` containing `x`.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: never
     /// example: `LinkedList.of(5).each().collect() == [5]`
     pub fn of(x: T) -> LinkedList<T>:
@@ -370,7 +370,7 @@ pub struct LinkedList<T>:
 
     /// Build a `LinkedList<T>` from `xs`, front to back.
     ///
-    /// cost: O(n)
+    /// cost: \(O(n)\)
     /// empty: an empty list
     /// traps: never
     /// example: `LinkedList.from_list([1, 2]).each().collect() == [1, 2]`
@@ -381,7 +381,7 @@ pub struct LinkedList<T>:
 
     /// Number of elements currently in the list.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: never
     /// example: `LinkedList.from_list([1, 2, 3]).len == 3`
     @get pub fn len(self) -> Int:
@@ -389,7 +389,7 @@ pub struct LinkedList<T>:
 
     /// Whether the list is empty.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: never
     /// example: `LinkedList.of(1).is_empty == false`
     @get pub fn is_empty(self) -> Bool:
@@ -397,7 +397,7 @@ pub struct LinkedList<T>:
 
     /// The front element, or `None` when the list is empty (as `Deque.first`).
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// empty: `None`
     /// ties: none: there is one front
     /// traps: never
@@ -407,7 +407,7 @@ pub struct LinkedList<T>:
 
     /// The back element, or `None` when the list is empty (as `Deque.last`).
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// empty: `None`
     /// ties: none: there is one back
     /// traps: never
@@ -417,7 +417,7 @@ pub struct LinkedList<T>:
 
     /// Append `x` to the back.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: never
     /// example: `var l = LinkedList.of(1); l.push(2); l.each().collect() == [1, 2]`
     pub fn push(mut self, x: T):
@@ -431,7 +431,7 @@ pub struct LinkedList<T>:
 
     /// Prepend `x` to the front.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: never
     /// example: `var l = LinkedList.of(1); l.push_front(0); l.each().collect() == [0, 1]`
     pub fn push_front(mut self, x: T):
@@ -445,7 +445,7 @@ pub struct LinkedList<T>:
 
     /// Remove and return the back element, or `None` if empty.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// empty: `None`
     /// traps: never
     /// example: `var l = LinkedList.from_list([1, 2]); l.pop() == Some(2) and l.len == 1`
@@ -460,7 +460,7 @@ pub struct LinkedList<T>:
 
     /// Remove and return the front element, or `None` if empty.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// empty: `None`
     /// traps: never
     /// example: `var l = LinkedList.from_list([1, 2]); l.pop_front() == Some(1) and l.first == 2`
@@ -477,7 +477,7 @@ pub struct LinkedList<T>:
     ///
     /// The elements keep their order: `self`'s first, then `other`'s. No element is copied.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: never
     /// example: `var a = LinkedList.from_list([1, 2]); a.splice_back(LinkedList.from_list([3, 4])); a.each().collect() == [1, 2, 3, 4]`
     pub fn splice_back(mut self, other: LinkedList<T>):
@@ -487,15 +487,15 @@ pub struct LinkedList<T>:
     ///
     /// The elements keep their order: `other`'s first, then `self`'s.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: never
     /// example: `var a = LinkedList.from_list([1, 2]); a.splice_front(LinkedList.from_list([3, 4])); a.each().collect() == [3, 4, 1, 2]`
     pub fn splice_front(mut self, other: LinkedList<T>):
         for x in other.each_rev(): self.push_front(x)
 
-    /// Reverse the list in place. O(1) via reversible links.
+    /// Reverse the list in place. \(O(1)\) via reversible links.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// empty: does nothing
     /// traps: never
     /// example: `var a = LinkedList.from_list([1, 2, 3]); a.reverse(); a.each().collect() == [3, 2, 1]`
@@ -505,7 +505,7 @@ pub struct LinkedList<T>:
 
     /// Remove all elements.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: never
     /// example: `var a = LinkedList.from_list([1, 2]); a.clear(); a.is_empty`
     pub fn clear(mut self):
@@ -516,7 +516,7 @@ pub struct LinkedList<T>:
 
     /// Yield elements front to back.
     ///
-    /// cost: O(1) per step
+    /// cost: \(O(1)\) per step
     /// empty: yields nothing
     /// order: front to back
     /// traps: never
@@ -529,7 +529,7 @@ pub struct LinkedList<T>:
 
     /// Yield elements back to front.
     ///
-    /// cost: O(1) per step
+    /// cost: \(O(1)\) per step
     /// empty: yields nothing
     /// order: back to front
     /// traps: never

@@ -16,17 +16,17 @@ Union-find with path halving and union by size.
 
 Fields: `parts: Int`, `marked: Bool`.
 
-- `fn new(rollback: Bool = false) -> Dsu<V>` — O(n) for n = `V.count`; one `[V]` array; A union-find over `V` with every position in its own set.
-- `fn find(self, v: V) -> V` — O(alpha(n)) amortized; O(log n) after the first `mark`; The representative of `v`'s set: the root that union by size kept.
-- `fn mark(mut self) -> Mark` — O(1); The present, to return to with [`undo_to`](Dsu.undo_to).
-- `fn undo_to(mut self, snap: Mark)` — O(1) per undone `unite`; Undoes every `unite` made since `snap = mark()`, newest first, so the sets, sizes and representatives are exactly what they were at the mark.; traps: when `snap` lies after the present (its changes were already undone)
-- `fn unite(mut self, a: V, b: V) -> Bool` — O(alpha(n)) amortized; O(log n) after the first `mark`, plus one log entry; Merges the sets of `a` and `b`; `false` if they were already one set (nothing changes then).
+- `fn new(rollback: Bool = false) -> Dsu<V>` — \(O(n)\) for n = `V.count`; one `[V]` array; A union-find over `V` with every position in its own set.
+- `fn find(self, v: V) -> V` — \(O(\alpha(n))\) amortized; \(O(\log n)\) after the first `mark`; The representative of `v`'s set: the root that union by size kept.
+- `fn mark(mut self) -> Mark` — \(O(1)\); The present, to return to with [`undo_to`](Dsu.undo_to).
+- `fn undo_to(mut self, snap: Mark)` — \(O(1)\) per undone `unite`; Undoes every `unite` made since `snap = mark()`, newest first, so the sets, sizes and representatives are exactly what they were at the mark.; traps: when `snap` lies after the present (its changes were already undone)
+- `fn unite(mut self, a: V, b: V) -> Bool` — \(O(\alpha(n))\) amortized; \(O(\log n)\) after the first `mark`, plus one log entry; Merges the sets of `a` and `b`; `false` if they were already one set (nothing changes then).
 - `fn merge(mut self, a: V, b: V) -> ?(kept: V, merged: V)` — as `unite`; As [`unite`](Dsu.unite), but says which root stayed and which went under it, so data kept per set can follow: `if let (kept, merged) = d.merge(a, b): sum[kept] += sum[merged]`.
-- `fn same(self, a: V, b: V) -> Bool` — O(alpha(n)) amortized; O(log n) after the first `mark`; Whether `a` and `b` are in the same set.
-- `fn size(self, v: V) -> Int` — O(alpha(n)) amortized; O(log n) after the first `mark`; The number of positions in `v`'s set, `v` included.
-- `@get fn components(self) -> Int` — O(1); The number of sets: `V.count` minus the successful `unite`s still in effect.
-- `fn roots(self) -> yields V` — O(n) for the whole walk, no allocation; The representative of each set, once each, lazily.
-- `fn groups(self) -> List<List<V>>` — O(n alpha(n)); allocates the lists; Every set as a list of its positions, each position in exactly one list.
+- `fn same(self, a: V, b: V) -> Bool` — \(O(\alpha(n))\) amortized; \(O(\log n)\) after the first `mark`; Whether `a` and `b` are in the same set.
+- `fn size(self, v: V) -> Int` — \(O(\alpha(n))\) amortized; \(O(\log n)\) after the first `mark`; The number of positions in `v`'s set, `v` included.
+- `@get fn components(self) -> Int` — \(O(1)\); The number of sets: `V.count` minus the successful `unite`s still in effect.
+- `fn roots(self) -> yields V` — \(O(n)\) for the whole walk, no allocation; The representative of each set, once each, lazily.
+- `fn groups(self) -> List<List<V>>` — \(O(n \alpha(n))\); allocates the lists; Every set as a list of its positions, each position in exactly one list.
 
 ## `struct DsuOf<V, T>`
 
@@ -34,20 +34,20 @@ Union-find where every set carries a value of type `T`.
 
 Fields: `val: [V]T`, `join: (T, T) -> T`, `marked: Bool`.
 
-- `fn new(init: (V) -> T, join: (T, T) -> T) -> DsuOf<V, T>` — O(n) calls of `init`; three `[V]` arrays; A union-find over `V` with every position alone, the set of `v` holding `init(v)`, and `join` combining the values of two sets when they merge.
-- `fn find(self, v: V) -> V` — O(alpha(n)) amortized; O(log n) after the first `mark`; The representative of `v`'s set, as for [`Dsu.find`](Dsu.find).
-- `fn get(self, v: V) -> T` — O(alpha(n)) amortized; O(log n) after the first `mark`; The value of `v`'s set.
-- `fn set(mut self, v: V, x: T)` — O(alpha(n)) amortized; O(log n) after the first `mark`, plus one log entry; Replaces the value of `v`'s whole set with `x`.
+- `fn new(init: (V) -> T, join: (T, T) -> T) -> DsuOf<V, T>` — \(O(n)\) calls of `init`; three `[V]` arrays; A union-find over `V` with every position alone, the set of `v` holding `init(v)`, and `join` combining the values of two sets when they merge.
+- `fn find(self, v: V) -> V` — \(O(\alpha(n))\) amortized; \(O(\log n)\) after the first `mark`; The representative of `v`'s set, as for [`Dsu.find`](Dsu.find).
+- `fn get(self, v: V) -> T` — \(O(\alpha(n))\) amortized; \(O(\log n)\) after the first `mark`; The value of `v`'s set.
+- `fn set(mut self, v: V, x: T)` — \(O(\alpha(n))\) amortized; \(O(\log n)\) after the first `mark`, plus one log entry; Replaces the value of `v`'s whole set with `x`.
 - `fn unite(mut self, a: V, b: V) -> Bool` — as [`Dsu.unite`](Dsu.unite), plus one call of `join`; Merges the sets of `a` and `b`, giving the merged set `join(value of a's set, value of b's set)` in that argument order whichever root is kept; `false` if they were already one set (the value is left alone then and `join` is not called).
 - `fn merge(mut self, a: V, b: V) -> ?(kept: V, merged: V)` — as `unite`; As [`unite`](DsuOf.unite), but says which root stayed and which went under it.
-- `fn same(self, a: V, b: V) -> Bool` — O(alpha(n)) amortized; O(log n) after the first `mark`; Whether `a` and `b` are in the same set.
-- `fn size(mut self, v: V) -> Int` — O(alpha(n)) amortized; O(log n) after the first `mark`; The number of positions in `v`'s set, `v` included.
-- `@get fn components(self) -> Int` — O(1); The number of sets.
-- `fn roots(self) -> yields V` — O(n) for the whole walk, no allocation; The representative of each set, once each, lazily.
-- `@get fn values(self) -> yields T` — O(n) for the whole walk, no allocation; The value of each set, once each, lazily: one per root, in the order of [`roots`](DsuOf.roots).
-- `fn mark(mut self) -> Mark` — O(1); The present, to return to with [`undo_to`](DsuOf.undo_to).
-- `fn undo_to(mut self, snap: Mark)` — O(1) per undone change; Undoes every merge and every `set` made since `snap = mark()`, newest first, restoring the sets and their values exactly.; traps: when `snap` lies after the present (its changes were already undone)
-- `fn groups(mut self) -> List<List<V>>` — O(n alpha(n)); allocates the lists; Every set as a list of its positions, as `Dsu.groups`; values are read with `get`.
+- `fn same(self, a: V, b: V) -> Bool` — \(O(\alpha(n))\) amortized; \(O(\log n)\) after the first `mark`; Whether `a` and `b` are in the same set.
+- `fn size(mut self, v: V) -> Int` — \(O(\alpha(n))\) amortized; \(O(\log n)\) after the first `mark`; The number of positions in `v`'s set, `v` included.
+- `@get fn components(self) -> Int` — \(O(1)\); The number of sets.
+- `fn roots(self) -> yields V` — \(O(n)\) for the whole walk, no allocation; The representative of each set, once each, lazily.
+- `@get fn values(self) -> yields T` — \(O(n)\) for the whole walk, no allocation; The value of each set, once each, lazily: one per root, in the order of [`roots`](DsuOf.roots).
+- `fn mark(mut self) -> Mark` — \(O(1)\); The present, to return to with [`undo_to`](DsuOf.undo_to).
+- `fn undo_to(mut self, snap: Mark)` — \(O(1)\) per undone change; Undoes every merge and every `set` made since `snap = mark()`, newest first, restoring the sets and their values exactly.; traps: when `snap` lies after the present (its changes were already undone)
+- `fn groups(mut self) -> List<List<V>>` — \(O(n \alpha(n))\); allocates the lists; Every set as a list of its positions, as `Dsu.groups`; values are read with `get`.
 
 ## `struct ParityDsu<V>`
 
@@ -55,15 +55,15 @@ Union-find that knows, for two positions of one set, whether they are on the sam
 
 Fields: `up: [V]V`.
 
-- `fn new() -> ParityDsu<V>` — O(n); three `[V]` arrays; A parity union-find over `V` with every position alone and nothing known.
-- `fn find(self, v: V) -> (root: V, flip: Bool)` — O(log n); The representative of `v`'s set and whether `v` is on the other side from it.
-- `fn unite(mut self, a: V, b: V, differ: Bool = true) -> Bool` — O(log n), plus one log entry when it merges or contradicts; Records that `a` and `b` are on opposite sides (`differ: false`: the same side).
-- `fn diff(self, a: V, b: V) -> ?Bool` — O(log n); Whether `a` and `b` are on opposite sides; `None` when nothing relates them yet.
-- `fn same(self, a: V, b: V) -> Bool` — O(log n); Whether `a` and `b` are in the same set, so that their relative side is known.
-- `fn size(self, v: V) -> Int` — O(log n); The number of positions in `v`'s set, `v` included.
-- `@get fn consistent(self) -> Bool` — O(1); Whether no contradiction is in effect: every `unite` since the last undone one agreed with those before it.
-- `fn mark(self) -> Mark` — O(1); The present, to return to with [`undo_to`](ParityDsu.undo_to).
-- `fn undo_to(mut self, snap: Mark)` — O(1) per undone `unite`; Takes back every `unite` since `snap = mark()`, contradictions included, newest first.; traps: when `snap` lies after the present (its changes were already undone)
+- `fn new() -> ParityDsu<V>` — \(O(n)\); three `[V]` arrays; A parity union-find over `V` with every position alone and nothing known.
+- `fn find(self, v: V) -> (root: V, flip: Bool)` — \(O(\log n)\); The representative of `v`'s set and whether `v` is on the other side from it.
+- `fn unite(mut self, a: V, b: V, differ: Bool = true) -> Bool` — \(O(\log n)\), plus one log entry when it merges or contradicts; Records that `a` and `b` are on opposite sides (`differ: false`: the same side).
+- `fn diff(self, a: V, b: V) -> ?Bool` — \(O(\log n)\); Whether `a` and `b` are on opposite sides; `None` when nothing relates them yet.
+- `fn same(self, a: V, b: V) -> Bool` — \(O(\log n)\); Whether `a` and `b` are in the same set, so that their relative side is known.
+- `fn size(self, v: V) -> Int` — \(O(\log n)\); The number of positions in `v`'s set, `v` included.
+- `@get fn consistent(self) -> Bool` — \(O(1)\); Whether no contradiction is in effect: every `unite` since the last undone one agreed with those before it.
+- `fn mark(self) -> Mark` — \(O(1)\); The present, to return to with [`undo_to`](ParityDsu.undo_to).
+- `fn undo_to(mut self, snap: Mark)` — \(O(1)\) per undone `unite`; Takes back every `unite` since `snap = mark()`, contradictions included, newest first.; traps: when `snap` lies after the present (its changes were already undone)
 
 ## `struct PotentialDsu<V>`
 
@@ -71,16 +71,16 @@ Weighted (potential / difference-constraint) union-find over domain `V` with `Ma
 
 Fields: `up: [V]V`, `pot: [V]Int`, `log: List<(V, Bool)>`.
 
-- `fn new<G>(op: ?G = None) -> PotentialDsu<V>` — O(n); three `[V]` arrays; A potential union-find over `V` with every position alone at the identity potential.
-- `fn find(self, v: V) -> (root: V, offset: Int)` — O(log n); The representative of `v`'s set and `val[v] - val[root]`.
-- `fn unite(mut self, a: V, b: V, w: Int) -> Bool` — O(log n), plus one log entry when it merges or contradicts; Records `val[b] - val[a] == w`.
-- `fn diff(self, a: V, b: V) -> ?Int` — O(log n); `val[b] - val[a]` when `a` and `b` are in the same set, else `None`.
-- `fn same(self, a: V, b: V) -> Bool` — O(log n); Whether `a` and `b` are in the same set, so that their difference is known.
-- `fn size(self, v: V) -> Int` — O(log n); The number of positions in `v`'s set, `v` included.
-- `@get fn components(self) -> Int` — O(1); The number of sets.
-- `@get fn consistent(self) -> Bool` — O(1); Whether no contradiction is in effect.
-- `fn mark(self) -> Mark` — O(1); The present, to return to with [`undo_to`](PotentialDsu.undo_to).
-- `fn undo_to(mut self, snap: Mark)` — O(1) per undone `unite`; Takes back every `unite` since `snap = mark()`, contradictions included, newest first.; traps: when `snap` lies after the present (its changes were already undone)
+- `fn new<G>(op: ?G = None) -> PotentialDsu<V>` — \(O(n)\); three `[V]` arrays; A potential union-find over `V` with every position alone at the identity potential.
+- `fn find(self, v: V) -> (root: V, offset: Int)` — \(O(\log n)\); The representative of `v`'s set and `val[v] - val[root]`.
+- `fn unite(mut self, a: V, b: V, w: Int) -> Bool` — \(O(\log n)\), plus one log entry when it merges or contradicts; Records `val[b] - val[a] == w`.
+- `fn diff(self, a: V, b: V) -> ?Int` — \(O(\log n)\); `val[b] - val[a]` when `a` and `b` are in the same set, else `None`.
+- `fn same(self, a: V, b: V) -> Bool` — \(O(\log n)\); Whether `a` and `b` are in the same set, so that their difference is known.
+- `fn size(self, v: V) -> Int` — \(O(\log n)\); The number of positions in `v`'s set, `v` included.
+- `@get fn components(self) -> Int` — \(O(1)\); The number of sets.
+- `@get fn consistent(self) -> Bool` — \(O(1)\); Whether no contradiction is in effect.
+- `fn mark(self) -> Mark` — \(O(1)\); The present, to return to with [`undo_to`](PotentialDsu.undo_to).
+- `fn undo_to(mut self, snap: Mark)` — \(O(1)\) per undone `unite`; Takes back every `unite` since `snap = mark()`, contradictions included, newest first.; traps: when `snap` lies after the present (its changes were already undone)
 
 ## `struct RollbackArray<D, T>`
 
@@ -88,24 +88,24 @@ Domain-indexed array `[D]T` with `Mark` rollback.
 
 Fields: `data: [D]T`, `log: List<(D, T)>`.
 
-- `fn new(init: D -> T) -> RollbackArray<D, T>` — O(n) calls of `init`, for n = `D.count`; An array over `D` holding `init(i)` at each `i`, that can step back to any mark.
-- `fn get(self, i: D) -> T` — O(1); The current value at `i`.
-- `fn set(mut self, i: D, val: T)` — O(1), plus one log entry; Sets `i` to `val`, logging the previous value so `undo_to` can restore it.
-- `fn mark(self) -> Mark` — O(1); The present, to return to with [`undo_to`](RollbackArray.undo_to).
-- `fn undo_to(mut self, snap: Mark)` — O(1) per undone `set`; Reverts every `set` since `snap = mark()`, newest first, so each position holds what it held at the mark.; traps: when `snap` lies after the present (its changes were already undone)
+- `fn new(init: D -> T) -> RollbackArray<D, T>` — \(O(n)\) calls of `init`, for n = `D.count`; An array over `D` holding `init(i)` at each `i`, that can step back to any mark.
+- `fn get(self, i: D) -> T` — \(O(1)\); The current value at `i`.
+- `fn set(mut self, i: D, val: T)` — \(O(1)\), plus one log entry; Sets `i` to `val`, logging the previous value so `undo_to` can restore it.
+- `fn mark(self) -> Mark` — \(O(1)\); The present, to return to with [`undo_to`](RollbackArray.undo_to).
+- `fn undo_to(mut self, snap: Mark)` — \(O(1)\) per undone `set`; Reverts every `set` since `snap = mark()`, newest first, so each position holds what it held at the mark.; traps: when `snap` lies after the present (its changes were already undone)
 
 ## `struct PersistentDsu<V>`
 
 Path-copying persistent disjoint-set union over domain `V`.
 
-- `fn new() -> PersistentDsu<V>` — O(n); A persistent union-find over `V` holding version 0, every position in its own set.
+- `fn new() -> PersistentDsu<V>` — \(O(n)\); A persistent union-find over `V` holding version 0, every position in its own set.
 - `fn get(self, root: Int, i: Int) -> (Int, Int)`
-- `@get fn base(self) -> Int` — O(1); The handle of version 0, where every position is alone.
-- `fn find(self, ver: Int, v: V) -> V` — O(log² n); The representative of `v`'s set in version `ver`, chosen by union by size as in [`Dsu.find`](Dsu.find).; traps: when `ver` is not a version handle of `self`
-- `fn same(self, ver: Int, a: V, b: V) -> Bool` — O(log² n); Whether `a` and `b` are in the same set in version `ver`.; traps: when `ver` is not a version handle of `self`
-- `fn size(self, ver: Int, v: V) -> Int` — O(log² n); The number of positions in `v`'s set in version `ver`, `v` included.; traps: when `ver` is not a version handle of `self`
-- `fn unite(mut self, ver: Int, a: V, b: V) -> Int` — O(log² n) time and O(log n) memory; A new version equal to `ver` with the sets of `a` and `b` merged; `ver` itself is unchanged.; traps: when `ver` is not a version handle of `self`
-- `fn reserve(mut self, nodes: Int)` — O(nodes); Preallocates room for at least `nodes` persistent-array nodes, so later `unite`s do not grow the pool.; traps: when `nodes < 0`
+- `@get fn base(self) -> Int` — \(O(1)\); The handle of version 0, where every position is alone.
+- `fn find(self, ver: Int, v: V) -> V` — \(O(\log^2 n)\); The representative of `v`'s set in version `ver`, chosen by union by size as in [`Dsu.find`](Dsu.find).; traps: when `ver` is not a version handle of `self`
+- `fn same(self, ver: Int, a: V, b: V) -> Bool` — \(O(\log^2 n)\); Whether `a` and `b` are in the same set in version `ver`.; traps: when `ver` is not a version handle of `self`
+- `fn size(self, ver: Int, v: V) -> Int` — \(O(\log^2 n)\); The number of positions in `v`'s set in version `ver`, `v` included.; traps: when `ver` is not a version handle of `self`
+- `fn unite(mut self, ver: Int, a: V, b: V) -> Int` — \(O(\log^2 n)\) time and \(O(\log n)\) memory; A new version equal to `ver` with the sets of `a` and `b` merged; `ver` itself is unchanged.; traps: when `ver` is not a version handle of `self`
+- `fn reserve(mut self, nodes: Int)` — \(O(\mathit{nodes})\); Preallocates room for at least `nodes` persistent-array nodes, so later `unite`s do not grow the pool.; traps: when `nodes < 0`
 
 ## Example
 

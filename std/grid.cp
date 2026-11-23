@@ -10,32 +10,32 @@ const DC = [0, 1, 1, 1, 0, -1, -1, -1]
 pub struct Dir4(k: Int):
     /// Up: one row towards row 0, delta `(-1, 0)`.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: never
     /// example: `Dir4.up.delta == (-1, 0)`
     pub const up: Dir4 = Dir4(0)
     /// Right: one column higher, delta `(0, 1)`.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: never
     /// example: `Dir4.right.delta == (0, 1)`
     pub const right: Dir4 = Dir4(1)
     /// Down: one row higher (rows grow downwards), delta `(1, 0)`.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: never
     /// example: `Dir4.down.delta == (1, 0)`
     pub const down: Dir4 = Dir4(2)
     /// Left: one column lower, delta `(0, -1)`.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: never
     /// example: `Dir4.left.delta == (0, -1)`
     pub const left: Dir4 = Dir4(3)
     /// All four directions, clockwise from up. The list is fresh each call, but has a fixed
     /// length of four, so the cost is constant.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// order: up, right, down, left
     /// traps: never
     /// example: `Dir4.all() == [Dir4.up, Dir4.right, Dir4.down, Dir4.left]`
@@ -46,7 +46,7 @@ pub struct Dir4(k: Int):
     /// Matching is exact (case-sensitive). If a letter appears more than once in `letters`, the
     /// first position wins.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// ties: a repeated letter maps to its first position in `letters`
     /// traps: `letters.len != 4`
     /// example: `Dir4.from("URDL", 'D') == Some(Dir4.down)`
@@ -58,28 +58,28 @@ pub struct Dir4(k: Int):
         None
     /// A quarter turn clockwise: up to right, right to down, down to left, left to up.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: never
     /// example: `Dir4.up.cw == Dir4.right`
     /// example: `Dir4.left.cw == Dir4.up`
     @get pub fn cw(self) -> Dir4 = Dir4((k + 1) % 4)
     /// A quarter turn counter-clockwise, the inverse of `cw`.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: never
     /// example: `Dir4.up.ccw == Dir4.left`
     /// example: `Dir4.down.cw.ccw == Dir4.down`
     @get pub fn ccw(self) -> Dir4 = Dir4((k + 3) % 4)
     /// The opposite direction, a half turn: its delta is the negated delta.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: never
     /// example: `Dir4.up.back == Dir4.down`
     /// example: `Dir4.right.back == Dir4.left`
     @get pub fn back(self) -> Dir4 = Dir4((k + 2) % 4)
     /// The change in (row, column) of one step.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: never
     /// example: `Dir4.all().map(d => d.delta) == [(-1, 0), (0, 1), (1, 0), (0, -1)]`
     @get pub fn delta(self) -> (Int, Int) = (DR[2 * k], DC[2 * k])
@@ -89,7 +89,7 @@ pub struct Dir8(k: Int):
     /// All eight directions, clockwise from up: up, up-right, right, down-right, down,
     /// down-left, left, up-left. `Dir8` has no named constructors; index this list.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// order: clockwise from up
     /// traps: never
     /// example: `Dir8.all().map(d => d.delta) == [(-1, 0), (-1, 1), (0, 1), (1, 1), (1, 0), (1, -1), (0, -1), (-1, -1)]`
@@ -101,7 +101,7 @@ pub struct Dir8(k: Int):
     /// Matching is exact (case-sensitive). If a letter appears more than once in `letters`, the
     /// first position wins.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// ties: a repeated letter maps to its first position in `letters`
     /// traps: `letters.len != 8`
     /// example: `Dir8.from("abcdefgh", 'c') == Some(Dir8.all()[2])`
@@ -113,26 +113,26 @@ pub struct Dir8(k: Int):
     /// An eighth of a turn clockwise: the next direction in `Dir8.all()`, wrapping from
     /// up-left to up.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: never
     /// example: `Dir8.all()[0].cw.delta == (-1, 1)`
     /// example: `Dir8.all()[7].cw == Dir8.all()[0]`
     @get pub fn cw(self) -> Dir8 = Dir8((k + 1) % 8)
     /// An eighth of a turn counter-clockwise, the inverse of `cw`.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: never
     /// example: `Dir8.all()[0].ccw == Dir8.all()[7]`
     @get pub fn ccw(self) -> Dir8 = Dir8((k + 7) % 8)
     /// The opposite direction, four eighths round: its delta is the negated delta.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: never
     /// example: `Dir8.all()[1].back.delta == (1, -1)`
     @get pub fn back(self) -> Dir8 = Dir8((k + 4) % 8)
     /// The change in (row, column) of one step; each part is `-1`, `0` or `1`.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: never
     /// example: `Dir8.all()[3].delta == (1, 1)`
     @get pub fn delta(self) -> (Int, Int) = (DR[k], DC[k])
@@ -142,7 +142,7 @@ pub struct Dir8(k: Int):
 ///
 /// `p.up` is [`step`] by the constant `Dir4.up`: one bounds test and one subtraction.
 ///
-/// cost: O(1)
+/// cost: \(O(1)\)
 /// traps: never
 /// example: `domain R = 0..3; domain C = 0..3; (R(1), C(2)).up == Some((R(0), C(2)))`
 /// example: `domain R = 0..3; domain C = 0..3; (R(0), C(2)).up == None`
@@ -151,7 +151,7 @@ pub struct Dir8(k: Int):
 
 /// The cell one row down from `self`, or `None` on the bottom row. A getter, like `r.next`.
 ///
-/// cost: O(1)
+/// cost: \(O(1)\)
 /// traps: never
 /// example: `domain R = 0..3; domain C = 0..3; (R(1), C(2)).down == Some((R(2), C(2)))`
 /// example: `domain R = 0..3; domain C = 0..3; (R(2), C(2)).down == None`
@@ -160,7 +160,7 @@ pub struct Dir8(k: Int):
 
 /// The cell one column left of `self`, or `None` in the first column. A getter, like `r.prev`.
 ///
-/// cost: O(1)
+/// cost: \(O(1)\)
 /// traps: never
 /// example: `domain R = 0..3; domain C = 0..3; (R(1), C(2)).left == Some((R(1), C(1)))`
 /// example: `domain R = 0..3; domain C = 0..3; (R(1), C(0)).left == None`
@@ -169,7 +169,7 @@ pub struct Dir8(k: Int):
 
 /// The cell one column right of `self`, or `None` in the last column. A getter, like `r.next`.
 ///
-/// cost: O(1)
+/// cost: \(O(1)\)
 /// traps: never
 /// example: `domain R = 0..3; domain C = 0..3; (R(1), C(1)).right == Some((R(1), C(2)))`
 /// example: `domain R = 0..3; domain C = 0..3; (R(1), C(2)).right == None`
@@ -182,7 +182,7 @@ pub struct Dir8(k: Int):
 /// `p.step(d)` is `(R, C).at((p.0 + d.delta.0, p.1 + d.delta.1))`: each coordinate must stay in
 /// its own domain, so falling off one side never wraps to the other.
 ///
-/// cost: O(1)
+/// cost: \(O(1)\)
 /// traps: never
 /// example: `domain R = 0..3; domain C = 0..3; (R(1), C(1)).step(Dir4.up) == Some((R(0), C(1)))`
 /// example: `domain R = 0..3; domain C = 0..3; (R(0), C(1)).step(Dir4.up) == None`
@@ -196,7 +196,7 @@ pub fn step<R, C, D>(self: (R, C), d: D) -> ?(R, C):
 /// The cells from `self` (not included) to the edge of the grid in direction `d`, nearest
 /// first: `p.step(d)`, then a step from that, until a step leaves the grid.
 ///
-/// cost: O(1) to create, O(1) per cell
+/// cost: \(O(1)\) to create, \(O(1)\) per cell
 /// empty: yields nothing when `self.step(d)` is `None`
 /// order: nearest first
 /// traps: never
@@ -212,7 +212,7 @@ pub fn ray<R, C, D>(self: (R, C), d: D) -> yields (R, C):
 /// The up to four cells sharing a side with `self`: `self.step(d)` for each `d` in
 /// `Dir4.all()`, skipping steps that leave the grid.
 ///
-/// cost: O(1) to create, O(1) per cell
+/// cost: \(O(1)\) to create, \(O(1)\) per cell
 /// empty: yields nothing on a 1 × 1 grid
 /// order: up, right, down, left, with off-grid cells skipped
 /// traps: never
@@ -226,7 +226,7 @@ pub fn ray<R, C, D>(self: (R, C), d: D) -> yields (R, C):
 /// The up to eight cells sharing a side or a corner with `self`: `self.step(d)` for each `d` in
 /// `Dir8.all()`, skipping steps that leave the grid.
 ///
-/// cost: O(1) to create, O(1) per cell
+/// cost: \(O(1)\) to create, \(O(1)\) per cell
 /// empty: yields nothing on a 1 × 1 grid
 /// order: clockwise from up, with off-grid cells skipped
 /// traps: never
@@ -240,7 +240,7 @@ pub fn ray<R, C, D>(self: (R, C), d: D) -> yields (R, C):
 /// A new grid with rows and columns exchanged: `g.transposed()[c, r] == g[r, c]` for every
 /// cell. The result is owned, not a view.
 ///
-/// cost: O(rows · cols) time and space
+/// cost: \(O(\mathit{rows} \cdot \mathit{cols})\) time and space
 /// empty: an empty grid gives an empty grid over `[C, R]`
 /// order: keyed by `(C, R)`, so walking it is row-major over the new rows (the old columns)
 /// traps: never

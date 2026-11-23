@@ -2,7 +2,7 @@
 
 # std.persistent
 
-Persistent segment tree and static range k-th smallest queries.  Each update copies only the O(log n) nodes on the root-to-leaf path and returns a new `Version` handle. All earlier versions remain readable in O(log n).
+Persistent segment tree and static range k-th smallest queries.  Each update copies only the \(O(\log n)\) nodes on the root-to-leaf path and returns a new `Version` handle. All earlier versions remain readable in \(O(\log n)\).
 
 Import: `use std.persistent.{...}`.
 
@@ -16,17 +16,17 @@ Path-copying persistent segment tree over a domain `D` and monoid `Monoid<T>`.
 
 Fields: `val: List<T>`.
 
-- `fn new<M>(op: M, a: ?[D]T = None, fill: ?T = None) -> PersistentSegTree<D, T>` — O(n) time and memory with `a:` or `fill:`, O(1) otherwise, for n = `|D|`; Build version 0 over `D` from `a:`, a uniform `fill:`, or the monoid identity everywhere, and keep it as `base`.; traps: when both `a:` and `fill:` are given
-- `@get fn base(self) -> Version` — O(1); The version built by `new`.
-- `fn set(mut self, v: Version, i: D, x: T) -> Version` — O(log n) time and memory; A new version equal to `v` with position `i` set to `x`.; traps: when `i` is not in `D`, or `v` did not come from this tree
-- `fn update(mut self, v: Version, i: D, f: T -> T) -> Version` — O(log n) time and memory, one call of `f`; A new version equal to `v` with position `i` replaced by `f` of its value in `v`.; traps: when `i` is not in `D`, or `v` did not come from this tree
-- `fn get(self, v: Version, i: D) -> T` — O(log n); The value at position `i` in version `v`.; traps: when `i` is not in `D`, or `v` did not come from this tree
-- `fn fold(self, v: Version, r: Range<D>) -> T` — O(log n); The fold of `r` in version `v`, left to right, so a non-commutative monoid sees its elements in position order.; traps: when a non-empty `r` reaches outside `D`, or `v` did not come from this tree
-- `fn all(self, v: Version) -> T` — O(1); The fold of every position in version `v`, read from its root.; traps: when `v` did not come from this tree
-- `fn reserve(mut self, nodes: Int)` — O(nodes); Preallocate room for `nodes` tree nodes in total, so later writes do not regrow the arena.; traps: when `nodes < 0`
-- `fn right_while(self, v: Version, from: Cut<D>, ok: T -> Bool) -> Cut<D>` — O(log n) calls of `ok`; The rightmost cut `b` at or after `from` such that `ok(fold(v, from..b))` holds, reading version `v`.; traps: when `from` is not a cut of `D`, when `ok(identity)` is false, or `v` did not come from this tree
-- `fn left_while(self, v: Version, to: Cut<D>, ok: T -> Bool) -> Cut<D>` — O(log n) calls of `ok`; The leftmost cut `b` at or before `to` such that `ok(fold(v, b..to))` holds, reading version `v`.; traps: when `to` is not a cut of `D`, when `ok(identity)` is false, or `v` did not come from this tree
-- `fn diff_kth(self, hi: Version, lo: Version, k: Int) -> ?D` — O(log n); For a tree of counts under `+`, the position of the `k`-th item (1-based) in the difference `hi - lo` (0-based, like `RangeKth.kth`), walking both versions at once; `None` when the difference holds at most `k` items.; traps: when `k < 0`, or a version did not come from this tree
+- `fn new<M>(op: M, a: ?[D]T = None, fill: ?T = None) -> PersistentSegTree<D, T>` — \(O(n)\) time and memory with `a:` or `fill:`, \(O(1)\) otherwise, for n = `|D|`; Build version 0 over `D` from `a:`, a uniform `fill:`, or the monoid identity everywhere, and keep it as `base`.; traps: when both `a:` and `fill:` are given
+- `@get fn base(self) -> Version` — \(O(1)\); The version built by `new`.
+- `fn set(mut self, v: Version, i: D, x: T) -> Version` — \(O(\log n)\) time and memory; A new version equal to `v` with position `i` set to `x`.; traps: when `i` is not in `D`, or `v` did not come from this tree
+- `fn update(mut self, v: Version, i: D, f: T -> T) -> Version` — \(O(\log n)\) time and memory, one call of `f`; A new version equal to `v` with position `i` replaced by `f` of its value in `v`.; traps: when `i` is not in `D`, or `v` did not come from this tree
+- `fn get(self, v: Version, i: D) -> T` — \(O(\log n)\); The value at position `i` in version `v`.; traps: when `i` is not in `D`, or `v` did not come from this tree
+- `fn fold(self, v: Version, r: Range<D>) -> T` — \(O(\log n)\); The fold of `r` in version `v`, left to right, so a non-commutative monoid sees its elements in position order.; traps: when a non-empty `r` reaches outside `D`, or `v` did not come from this tree
+- `fn all(self, v: Version) -> T` — \(O(1)\); The fold of every position in version `v`, read from its root.; traps: when `v` did not come from this tree
+- `fn reserve(mut self, nodes: Int)` — \(O(\mathit{nodes})\); Preallocate room for `nodes` tree nodes in total, so later writes do not regrow the arena.; traps: when `nodes < 0`
+- `fn right_while(self, v: Version, from: Cut<D>, ok: T -> Bool) -> Cut<D>` — \(O(\log n)\) calls of `ok`; The rightmost cut `b` at or after `from` such that `ok(fold(v, from..b))` holds, reading version `v`.; traps: when `from` is not a cut of `D`, when `ok(identity)` is false, or `v` did not come from this tree
+- `fn left_while(self, v: Version, to: Cut<D>, ok: T -> Bool) -> Cut<D>` — \(O(\log n)\) calls of `ok`; The leftmost cut `b` at or before `to` such that `ok(fold(v, b..to))` holds, reading version `v`.; traps: when `to` is not a cut of `D`, when `ok(identity)` is false, or `v` did not come from this tree
+- `fn diff_kth(self, hi: Version, lo: Version, k: Int) -> ?D` — \(O(\log n)\); For a tree of counts under `+`, the position of the `k`-th item (1-based) in the difference `hi - lo` (0-based, like `RangeKth.kth`), walking both versions at once; `None` when the difference holds at most `k` items.; traps: when `k < 0`, or a version did not come from this tree
 
 ## `struct RangeKth<D, T>`
 
@@ -34,49 +34,49 @@ Static range k-th smallest and range rank queries over `[D]T`.
 
 Fields: `vals: List<T>`.
 
-- `fn new(a: [D]T) -> RangeKth<D, T>` — O(n log n) time and memory for n = `a.len`; Build the static structure over `a`: one persistent count tree over the sorted distinct values per prefix of `a`.
-- `fn kth(self, r: Range<D>, k: Int) -> T` — O(log n); The `k`-th smallest element (0-based) of `a` over `r`, counting repeats.; traps: when `k < 0` or `k >= r.len`, or `r` reaches outside `D`
-- `fn count_le(self, r: Range<D>, x: T) -> Int` — O(log n); The number of elements of `a` over `r` that are at most `x`.; traps: when a non-empty `r` reaches outside `D`
-- `fn count_lt(self, r: Range<D>, x: T) -> Int` — O(log n); The number of elements of `a` over `r` that are less than `x`.; traps: when a non-empty `r` reaches outside `D`
-- `fn count_in(self, r: Range<D>, lo_v: T, hi_v: T) -> Int` — O(log n); The number of elements of `a` over `r` in `lo_v ..= hi_v` (both ends inclusive); 0 when `lo_v > hi_v`.; traps: when a non-empty `r` reaches outside `D`
+- `fn new(a: [D]T) -> RangeKth<D, T>` — \(O(n \log n)\) time and memory for n = `a.len`; Build the static structure over `a`: one persistent count tree over the sorted distinct values per prefix of `a`.
+- `fn kth(self, r: Range<D>, k: Int) -> T` — \(O(\log n)\); The `k`-th smallest element (0-based) of `a` over `r`, counting repeats.; traps: when `k < 0` or `k >= r.len`, or `r` reaches outside `D`
+- `fn count_le(self, r: Range<D>, x: T) -> Int` — \(O(\log n)\); The number of elements of `a` over `r` that are at most `x`.; traps: when a non-empty `r` reaches outside `D`
+- `fn count_lt(self, r: Range<D>, x: T) -> Int` — \(O(\log n)\); The number of elements of `a` over `r` that are less than `x`.; traps: when a non-empty `r` reaches outside `D`
+- `fn count_in(self, r: Range<D>, lo_v: T, hi_v: T) -> Int` — \(O(\log n)\); The number of elements of `a` over `r` in `lo_v ..= hi_v` (both ends inclusive); 0 when `lo_v > hi_v`.; traps: when a non-empty `r` reaches outside `D`
 
 ## `struct PersistentLazySegTree<D, T, F>(act: Action<T, F>)`
 
-O(q log \|D\|) space.
+\(O(q \log \lvert D \rvert)\) space.
 
 Fields: `val: List<T>`, `tag: List<F>`.
 
 - `fn fold_rec(self, u: Int, nl: Int, nr: Int, ql: Int, qr: Int, acc: F) -> T` — `acc` holds the tags of the ancestors of `u`, which are newer than every tag below them.
-- `fn new(act: Action<T, F>, a: ?[D]T = None, fill: ?T = None) -> PersistentLazySegTree<D, T, F>` — O(n) time and memory with `a:` or `fill:`, O(1) otherwise, for n = `|D|`; Build version 0 over `D` from `a:`, a uniform `fill:`, or the identity of `act`'s monoid, and keep it as `base`.; traps: when both `a:` and `fill:` are given
-- `@get fn base(self) -> Version` — O(1); The version built by `new`.
-- `fn apply(mut self, v: Version, r: Range<D>, f: F) -> Version` — O(log n) time and memory; A new version equal to `v` with the tag `f` applied to every position of `r`.; traps: when a non-empty `r` reaches outside `D`, or `v` did not come from this tree
-- `fn set(mut self, v: Version, i: D, x: T) -> Version` — O(log n) time and memory; A new version equal to `v` with position `i` set to `x`, discarding tags pending above it.; traps: when `i` is not in `D`, or `v` did not come from this tree
-- `fn fold(self, v: Version, r: Range<D>) -> T` — O(log n); The fold of `r` in version `v`, left to right, with every applied tag accounted for.; traps: when a non-empty `r` reaches outside `D`, or `v` did not come from this tree
-- `fn get(self, v: Version, i: D) -> T` — O(log n); The value at position `i` in version `v`, with every applied tag accounted for.; traps: when `i` is not in `D`, or `v` did not come from this tree
-- `fn all(self, v: Version) -> T` — O(1); The fold of every position in version `v`, read from its root.; traps: when `v` did not come from this tree
+- `fn new(act: Action<T, F>, a: ?[D]T = None, fill: ?T = None) -> PersistentLazySegTree<D, T, F>` — \(O(n)\) time and memory with `a:` or `fill:`, \(O(1)\) otherwise, for n = `|D|`; Build version 0 over `D` from `a:`, a uniform `fill:`, or the identity of `act`'s monoid, and keep it as `base`.; traps: when both `a:` and `fill:` are given
+- `@get fn base(self) -> Version` — \(O(1)\); The version built by `new`.
+- `fn apply(mut self, v: Version, r: Range<D>, f: F) -> Version` — \(O(\log n)\) time and memory; A new version equal to `v` with the tag `f` applied to every position of `r`.; traps: when a non-empty `r` reaches outside `D`, or `v` did not come from this tree
+- `fn set(mut self, v: Version, i: D, x: T) -> Version` — \(O(\log n)\) time and memory; A new version equal to `v` with position `i` set to `x`, discarding tags pending above it.; traps: when `i` is not in `D`, or `v` did not come from this tree
+- `fn fold(self, v: Version, r: Range<D>) -> T` — \(O(\log n)\); The fold of `r` in version `v`, left to right, with every applied tag accounted for.; traps: when a non-empty `r` reaches outside `D`, or `v` did not come from this tree
+- `fn get(self, v: Version, i: D) -> T` — \(O(\log n)\); The value at position `i` in version `v`, with every applied tag accounted for.; traps: when `i` is not in `D`, or `v` did not come from this tree
+- `fn all(self, v: Version) -> T` — \(O(1)\); The fold of every position in version `v`, read from its root.; traps: when `v` did not come from this tree
 
 ## `struct PersistentArray<D, T>`
 
-O(q log \|D\|) space.
+\(O(q \log \lvert D \rvert)\) space.
 
 Fields: `val: List<T>`.
 
-- `fn new(a: ?[D]T = None, fill: ?T = None) -> PersistentArray<D, T>` — O(n) time and memory for n = `|D|`; Build version 0 over `D` from `a:` or a uniform `fill:`, and keep it as `base`.; traps: when both or neither of `a:` and `fill:` are given
-- `@get fn base(self) -> Version` — O(1); The version built by `new`.
-- `fn get(self, v: Version, i: D) -> T` — O(log n); The value at position `i` in version `v`.; traps: when `i` is not in `D`, or `v` did not come from this array
-- `fn set(mut self, v: Version, i: D, x: T) -> Version` — O(log n) time and memory; A new version equal to `v` with position `i` set to `x`; `v` is unchanged.; traps: when `i` is not in `D`, or `v` did not come from this array
+- `fn new(a: ?[D]T = None, fill: ?T = None) -> PersistentArray<D, T>` — \(O(n)\) time and memory for n = `|D|`; Build version 0 over `D` from `a:` or a uniform `fill:`, and keep it as `base`.; traps: when both or neither of `a:` and `fill:` are given
+- `@get fn base(self) -> Version` — \(O(1)\); The version built by `new`.
+- `fn get(self, v: Version, i: D) -> T` — \(O(\log n)\); The value at position `i` in version `v`.; traps: when `i` is not in `D`, or `v` did not come from this array
+- `fn set(mut self, v: Version, i: D, x: T) -> Version` — \(O(\log n)\) time and memory; A new version equal to `v` with position `i` set to `x`; `v` is unchanged.; traps: when `i` is not in `D`, or `v` did not come from this array
 
 ## `struct PMultiset<D>`
 
-O(log \|D\|) per update.
+\(O(\log \lvert D \rvert)\) per update.
 
 Fields: `root: Int`.
 
-- `fn empty() -> PMultiset<D>` — O(1); The empty multiset over `D`.
-- `fn with(self, x: D) -> PMultiset<D>` — O(log |D|) time and memory; A new multiset with one more copy of `x`; `self` is unchanged.; traps: when `x` is not in `D`
-- `fn without(self, x: D) -> PMultiset<D>` — O(log |D|) time and memory; A new multiset with one copy of `x` removed, or equal to `self` when `x` is absent; `self` is unchanged.; traps: when `x` is not in `D`
-- `fn count(self, x: D) -> Int` — O(log |D|); The number of copies of `x`.; traps: when `x` is not in `D`
-- `fn cmp(self, other: PMultiset<D>, desc: Bool = false) -> Int` — O(log |D|); Compare the elements of `self` and `other` as sorted sequences, lexicographically: ascending, or largest first with `desc: true`.
+- `fn empty() -> PMultiset<D>` — \(O(1)\); The empty multiset over `D`.
+- `fn with(self, x: D) -> PMultiset<D>` — \(O(\log \lvert D \rvert)\) time and memory; A new multiset with one more copy of `x`; `self` is unchanged.; traps: when `x` is not in `D`
+- `fn without(self, x: D) -> PMultiset<D>` — \(O(\log \lvert D \rvert)\) time and memory; A new multiset with one copy of `x` removed, or equal to `self` when `x` is absent; `self` is unchanged.; traps: when `x` is not in `D`
+- `fn count(self, x: D) -> Int` — \(O(\log \lvert D \rvert)\); The number of copies of `x`.; traps: when `x` is not in `D`
+- `fn cmp(self, other: PMultiset<D>, desc: Bool = false) -> Int` — \(O(\log \lvert D \rvert)\); Compare the elements of `self` and `other` as sorted sequences, lexicographically: ascending, or largest first with `desc: true`.
 
 ## Example
 

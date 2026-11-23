@@ -3,14 +3,14 @@ use std.seq.{ends}
 use std.math.{isqrt}
 
 /// The order in which to visit `queries` so a sliding window moves its endpoints
-/// O((n + q) sqrt n) times, as a permutation of `0..queries.len`.
+/// \(O((n + q) \sqrt n)\) times, as a permutation of `0..queries.len`.
 ///
 /// Let `lo` be the least start and `n` the distance from `lo` to the greatest end over all
 /// queries, and `b = max(1, isqrt(n))`. Query `i` falls in block `(queries[i].start - lo) / b`.
 /// Blocks are visited in increasing order; within an even block queries go by increasing end,
 /// within an odd block by decreasing end (the snake that saves the return sweep).
 ///
-/// cost: O(q log q)
+/// cost: \(O(q \log q)\)
 /// empty: `[]`
 /// ties: equal block and end keep the earlier query first
 /// order: increasing block, then end increasing in even blocks and decreasing in odd ones
@@ -42,7 +42,7 @@ pub fn mo_order<D>(queries: List<Range<D>>) -> List<Int>:
 /// right end moves right (entering, increasing), then the left end moves right (leaving,
 /// increasing), then the right end moves left (leaving, decreasing).
 ///
-/// cost: O(|Δstart| + |Δend|)
+/// cost: \(O(\lvert Δ\mathit{start} \rvert + \lvert Δ\mathit{end} \rvert)\)
 /// empty: `[]` when `from == to`
 /// order: left growth, right growth, left shrink, right shrink, each outward-to-inward as above
 /// traps: never
@@ -75,7 +75,7 @@ pub fn mo_steps<D>(from: Range<D>, to: Range<D>) -> List<(pos: D, entering: Bool
 /// original query order, so `result[i]` answers `queries[i]`. Allocates only the order and the
 /// results.
 ///
-/// cost: O((n + q) sqrt n) calls to `add` and `remove`, `q` calls to `answer`, plus O(q log q)
+/// cost: \(O((n + q) \sqrt n)\) calls to `add` and `remove`, `q` calls to `answer`, plus \(O(q \log q)\)
 /// empty: `[]`, calling nothing
 /// order: `result[i]` answers `queries[i]`
 /// traps: never; traps raised by the callbacks propagate
@@ -132,7 +132,7 @@ pub fn mo<D, R>(
 /// `2^k × 2^k` grid and its key is that point's index on the standard Hilbert curve (the
 /// `xy2d` construction that starts at `(0, 0)`, visits `(0, 1)` second and ends at `(2^k - 1, 0)`).
 ///
-/// cost: O(q log q + q log n)
+/// cost: \(O(q \log q + q \log n)\)
 /// empty: `[]`
 /// ties: equal keys (equal ranges) keep the earlier query first
 /// order: increasing Hilbert key
@@ -185,7 +185,7 @@ pub fn mo_order_hilbert<D>(queries: List<Range<D>>) -> List<Int>:
 /// the block's end with `add`, and each query's left part is added between a `mark()` and the
 /// matching `undo`. Results come back in the original query order.
 ///
-/// cost: O((n + q) sqrt n) calls to `add`, no removals, one `reset` per block
+/// cost: \(O((n + q) \sqrt n)\) calls to `add`, no removals, one `reset` per block
 /// empty: `[]`, calling nothing
 /// order: `result[i]` answers `queries[i]`
 /// traps: never; traps raised by the callbacks propagate
@@ -252,7 +252,7 @@ pub fn mo_rollback<D, M, R>(
 /// all increasing. Time starts at 0 and the window starts empty. Results come back in the
 /// original query order.
 ///
-/// cost: O(n^(5/3) + q log q) window moves and updates for `q ~ n` queries
+/// cost: \(O(n^{5/3} + q \log q)\) window moves and updates for `q ~ n` queries
 /// empty: `[]`, calling nothing
 /// ties: equal keys keep the earlier query first
 /// order: `result[i]` answers `queries[i]`

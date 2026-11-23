@@ -25,7 +25,7 @@ pub mod cli;
 pub mod examples;
 pub mod html;
 pub mod links;
-pub mod plain;
+pub use cpl_diag::plain;
 
 pub mod json {
     use crate::{links, Example, Item, Module};

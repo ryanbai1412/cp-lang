@@ -12,11 +12,11 @@ A sliding fold queue over `op`.
 
 Fields: `q: List<T>`, `front: List<T>`, `back: ?T`.
 
-- `fn new(op: M) -> Window<T, M>` — O(1); An empty window over `op`.
-- `fn push(mut self, x: T)` — O(1) amortized calls of `op`; Push `x` at the back, as the newest element.; traps: never (beyond what `op` traps on)
-- `fn pop(mut self)` — O(1) amortized calls of `op`; Pop the front: remove the oldest element.; traps: on an empty window
-- `@get fn all(self) -> ?T` — O(1); The fold of the current contents, oldest first (`op(op(x1, x2), x3)` for pushes `x1`, `x2`, `x3`), so a non-commutative op folds in push order; `None` when empty.
-- `@get fn len(self) -> Int` — O(1); The number of elements in the window: pushes minus pops.
+- `fn new(op: M) -> Window<T, M>` — \(O(1)\); An empty window over `op`.
+- `fn push(mut self, x: T)` — \(O(1)\) amortized calls of `op`; Push `x` at the back, as the newest element.; traps: never (beyond what `op` traps on)
+- `fn pop(mut self)` — \(O(1)\) amortized calls of `op`; Pop the front: remove the oldest element.; traps: on an empty window
+- `@get fn all(self) -> ?T` — \(O(1)\); The fold of the current contents, oldest first (`op(op(x1, x2), x3)` for pushes `x1`, `x2`, `x3`), so a non-commutative op folds in push order; `None` when empty.
+- `@get fn len(self) -> Int` — \(O(1)\); The number of elements in the window: pushes minus pops.
 
 ## `trait Track<T>`
 
@@ -28,7 +28,7 @@ A `Track` built from a structure and two closures.
 
 - `fn push(mut self, x: T)` — one call of `add`; Apply `x` at the back: one call of `add(state, x)`.; traps: never (beyond what `add` traps on)
 - `fn pop(mut self, x: T)` — one call of `remove`; Take the front element `x` back out: one call of `remove(state, x)`.; traps: never (beyond what `remove` traps on)
-- `@get fn state(self) -> S` — O(1); The structure with exactly the window's elements applied.
+- `@get fn state(self) -> S` — \(O(1)\); The structure with exactly the window's elements applied.
 
 ## `trait Undo`
 
@@ -38,9 +38,9 @@ A structure that can return to an earlier state, newest change first: `Dsu`, `Pa
 
 The queue-undo trick: a `Track` over an `Undo` structure, so a window that adds at the back and drops from the front runs on a structure that can only undo its newest change (a rollback DSU in a two-pointer pass).
 
-- `fn push(mut self, x: T)` — O(1) applications of `add` amortized; Push `x` at the back: one `add` on top of the current state.; traps: never (beyond what `add` traps on)
-- `fn pop(mut self, x: T)` — O(log n) applications of `add` amortized; Drop the front element, which must be `x`.; traps: on an empty `Undoing`
-- `@get fn state(self) -> S` — O(1); The structure with exactly the window's elements applied.
+- `fn push(mut self, x: T)` — \(O(1)\) applications of `add` amortized; Push `x` at the back: one `add` on top of the current state.; traps: never (beyond what `add` traps on)
+- `fn pop(mut self, x: T)` — \(O(\log n)\) applications of `add` amortized; Drop the front element, which must be `x`.; traps: on an empty `Undoing`
+- `@get fn state(self) -> S` — \(O(1)\); The structure with exactly the window's elements applied.
 
 ## `struct Sweep<D, S>(pub state: S)`
 
@@ -48,14 +48,14 @@ A movable interval over `D` feeding a `Track`, for Mo and divide-and-conquer DP.
 
 Fields: `lo: Int`, `hi: Int`.
 
-- `fn new(state: S, start: ?Range<D> = None) -> Sweep<D, S>` — O(1), plus `start.len` pushes when `start` is given; A sweep over `state`, starting empty (or at `start`).; traps: never (beyond what `state.push` traps on)
-- `fn move(mut self, to: Range<D>)` — O(|dl| + |dr|) pushes and pops, where `dl` and `dr` are the moves of the two ends; Slide to `to`, feeding `state` the positions that enter and leave.; traps: never (beyond what the state traps on)
-- `@get fn range(self) -> Range<D>` — O(1); The current interval: the positions whose pushes the state holds.
+- `fn new(state: S, start: ?Range<D> = None) -> Sweep<D, S>` — \(O(1)\), plus `start.len` pushes when `start` is given; A sweep over `state`, starting empty (or at `start`).; traps: never (beyond what `state.push` traps on)
+- `fn move(mut self, to: Range<D>)` — \(O(\lvert \mathit{dl} \rvert + \lvert \mathit{dr} \rvert)\) pushes and pops, where `dl` and `dr` are the moves of the two ends; Slide to `to`, feeding `state` the positions that enter and leave.; traps: never (beyond what the state traps on)
+- `@get fn range(self) -> Range<D>` — \(O(1)\); The current interval: the positions whose pushes the state holds.
 
 ## Functions
 
-- `fn track<S, T>(state: S, add: (mut S, T) -> (), remove: (mut S, T) -> ()) -> Tracked<S, T>` — O(1); A `Track` over any structure: `add(mut state, x)` applies an element at the back and `remove(mut state, x)` takes the front one back out, so `ok` reads `w.state`.
-- `fn undoing<S: Undo, T>(state: S, add: (mut S, T) -> ()) -> Undoing<S, T>` — O(1); `Undoing` over `state`, holding no elements; see there.
+- `fn track<S, T>(state: S, add: (mut S, T) -> (), remove: (mut S, T) -> ()) -> Tracked<S, T>` — \(O(1)\); A `Track` over any structure: `add(mut state, x)` applies an element at the back and `remove(mut state, x)` takes the front one back out, so `ok` reads `w.state`.
+- `fn undoing<S: Undo, T>(state: S, add: (mut S, T) -> ()) -> Undoing<S, T>` — \(O(1)\); `Undoing` over `state`, holding no elements; see there.
 
 ## Example
 

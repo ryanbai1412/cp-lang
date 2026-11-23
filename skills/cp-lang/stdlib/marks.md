@@ -2,38 +2,38 @@
 
 # std.marks
 
-Opt-in generation-stamped mark table: `add`, `in`, `remove`, and `clear` are all O(1).  For sparse resets prefer `[D]Bool` with a touched list; import `std.marks.Marks<D>` when repeated full clears inside a loop would otherwise cost O(T * N). Each `clear()` bumps a 32-bit generation counter instead of touching the underlying array, resetting the table only if the counter reaches its 32-bit ceiling.
+Opt-in generation-stamped mark table: `add`, `in`, `remove`, and `clear` are all \(O(1)\).  For sparse resets prefer `[D]Bool` with a touched list; import `std.marks.Marks<D>` when repeated full clears inside a loop would otherwise cost \(O(T \cdot N)\). Each `clear()` bumps a 32-bit generation counter instead of touching the underlying array, resetting the table only if the counter reaches its 32-bit ceiling.
 
 In prelude (no `use` needed): `Marks`.
 
 ## `struct Marks<D>`
 
-A visited/mark set over a domain `D` with O(1) `add`, `remove`, `contains` (`v in m`), and O(1) `clear()`.
+A visited/mark set over a domain `D` with \(O(1)\) `add`, `remove`, `contains` (`v in m`), and \(O(1)\) `clear()`.
 
 Fields: `cnt: Int`.
 
-- `fn new() -> Marks<D>` — O(|D|); An empty mark set over `D`, with its stamp array allocated once.
-- `fn add(mut self, v: D) -> Bool` — O(1); Mark `v`.; traps: when `v` is outside `D`
-- `fn remove(mut self, v: D) -> Bool` — O(1); Unmark `v`.; traps: when `v` is outside `D`
-- `fn contains(self, v: D) -> Bool` — O(1); Whether `v` is marked; also spelled `v in m`.; traps: when `v` is outside `D`
-- `fn clear(mut self)` — O(1) amortized; O(|D|) on the call that wraps the counter; Unmark everything by moving to a new generation, without touching the stamp array.
-- `@get fn len(self) -> Int` — O(1); The number of marked positions.
-- `@get fn is_empty(self) -> Bool` — O(1); Whether no position is marked; `len == 0`.
+- `fn new() -> Marks<D>` — \(O(\lvert D \rvert)\); An empty mark set over `D`, with its stamp array allocated once.
+- `fn add(mut self, v: D) -> Bool` — \(O(1)\); Mark `v`.; traps: when `v` is outside `D`
+- `fn remove(mut self, v: D) -> Bool` — \(O(1)\); Unmark `v`.; traps: when `v` is outside `D`
+- `fn contains(self, v: D) -> Bool` — \(O(1)\); Whether `v` is marked; also spelled `v in m`.; traps: when `v` is outside `D`
+- `fn clear(mut self)` — \(O(1)\) amortized; \(O(\lvert D \rvert)\) on the call that wraps the counter; Unmark everything by moving to a new generation, without touching the stamp array.
+- `@get fn len(self) -> Int` — \(O(1)\); The number of marked positions.
+- `@get fn is_empty(self) -> Bool` — \(O(1)\); Whether no position is marked; `len == 0`.
 
 ## `struct MarkMap<D, T>`
 
-Epoch-stamped map over domain `D` with O(1) `get`, `set`, `contains`, `remove`, and `clear()`.
+Epoch-stamped map over domain `D` with \(O(1)\) `get`, `set`, `contains`, `remove`, and `clear()`.
 
 Fields: `vals: [D]T`, `default_val: T`, `gen: Int`, `cnt: Int`.
 
-- `fn new(default_val: T) -> MarkMap<D, T>` — O(|D|); An empty map over `D`.
-- `@get fn len(self) -> Int` — O(1); The number of keys present.
-- `@get fn is_empty(self) -> Bool` — O(1); Whether no key is present; `len == 0`.
-- `fn contains(self, v: D) -> Bool` — O(1); Whether `v` has a value.; traps: when `v` is outside `D`
-- `fn get(self, v: D) -> ?T` — O(1); The value at `v`, or `None` when `v` is absent.; traps: when `v` is outside `D`
-- `fn set(mut self, v: D, val: T)` — O(1); Give `v` the value `val`, adding `v` when it is absent and overwriting it otherwise.; traps: when `v` is outside `D`
-- `fn remove(mut self, v: D) -> ?T` — O(1); Remove `v` and return the value it had, or `None` (and change nothing) when it was absent.; traps: when `v` is outside `D`
-- `fn clear(mut self)` — O(1) amortized; O(|D|) on the call that wraps the counter; Remove every key by moving to a new generation, without touching the value array; the arrays are reset when the counter reaches `2_000_000_000`, as for `Marks.clear`.
+- `fn new(default_val: T) -> MarkMap<D, T>` — \(O(\lvert D \rvert)\); An empty map over `D`.
+- `@get fn len(self) -> Int` — \(O(1)\); The number of keys present.
+- `@get fn is_empty(self) -> Bool` — \(O(1)\); Whether no key is present; `len == 0`.
+- `fn contains(self, v: D) -> Bool` — \(O(1)\); Whether `v` has a value.; traps: when `v` is outside `D`
+- `fn get(self, v: D) -> ?T` — \(O(1)\); The value at `v`, or `None` when `v` is absent.; traps: when `v` is outside `D`
+- `fn set(mut self, v: D, val: T)` — \(O(1)\); Give `v` the value `val`, adding `v` when it is absent and overwriting it otherwise.; traps: when `v` is outside `D`
+- `fn remove(mut self, v: D) -> ?T` — \(O(1)\); Remove `v` and return the value it had, or `None` (and change nothing) when it was absent.; traps: when `v` is outside `D`
+- `fn clear(mut self)` — \(O(1)\) amortized; \(O(\lvert D \rvert)\) on the call that wraps the counter; Remove every key by moving to a new generation, without touching the value array; the arrays are reset when the counter reaches `2_000_000_000`, as for `Marks.clear`.
 
 ## `struct Interner<K>`
 
@@ -41,15 +41,15 @@ Online value-to-id interner assigning contiguous `0..len` IDs to distinct keys `
 
 Fields: `to_id: HashMap<K, Int>`, `keys: List<K>`.
 
-- `fn new() -> Interner<K>` — O(1); An empty interner.
-- `@get fn len(self) -> Int` — O(1); The number of distinct keys interned so far; ids are exactly `0..len`.
-- `@get fn is_empty(self) -> Bool` — O(1); Whether no key has been interned; `len == 0`.
-- `fn clear(mut self)` — O(1); Forget every key, so the next new key gets id `0` again.
-- `fn id(mut self, k: K) -> Int` — O(1) expected; The id of `k`.
-- `fn get(self, k: K) -> ?Int` — O(1) expected; The id of `k`, or `None` when `k` has not been interned; never adds a key.
-- `fn key(self, i: Int) -> K` — O(1); The key whose id is `i`; the inverse of `id`.; traps: when `i` is outside `0..len`
-- `fn contains(self, k: K) -> Bool` — O(1) expected; Whether `k` has been interned; `get(k) != None`.
-- `fn reserve(mut self, cap: Int)` — O(cap); Allocate room for at least `cap` distinct keys, so the next `cap - len` new keys do not reallocate.; traps: when `cap < 0`
+- `fn new() -> Interner<K>` — \(O(1)\); An empty interner.
+- `@get fn len(self) -> Int` — \(O(1)\); The number of distinct keys interned so far; ids are exactly `0..len`.
+- `@get fn is_empty(self) -> Bool` — \(O(1)\); Whether no key has been interned; `len == 0`.
+- `fn clear(mut self)` — \(O(1)\); Forget every key, so the next new key gets id `0` again.
+- `fn id(mut self, k: K) -> Int` — \(O(1)\) expected; The id of `k`.
+- `fn get(self, k: K) -> ?Int` — \(O(1)\) expected; The id of `k`, or `None` when `k` has not been interned; never adds a key.
+- `fn key(self, i: Int) -> K` — \(O(1)\); The key whose id is `i`; the inverse of `id`.; traps: when `i` is outside `0..len`
+- `fn contains(self, k: K) -> Bool` — \(O(1)\) expected; Whether `k` has been interned; `get(k) != None`.
+- `fn reserve(mut self, cap: Int)` — \(O(\mathit{cap})\); Allocate room for at least `cap` distinct keys, so the next `cap - len` new keys do not reallocate.; traps: when `cap < 0`
 
 ## `struct SparseSet<D>`
 
@@ -57,14 +57,14 @@ Briggs-Torczon sparse set over domain `D`.
 
 Fields: `dense: List<D>`, `pos: [D]Int`.
 
-- `fn new() -> SparseSet<D>` — O(|D|); An empty sparse set over `D`.
-- `@get fn len(self) -> Int` — O(1); The number of elements.
-- `@get fn is_empty(self) -> Bool` — O(1); Whether the set has no elements; `len == 0`.
-- `fn contains(self, v: D) -> Bool` — O(1); Whether `v` is in the set.; traps: when `v` is outside `D`
-- `fn add(mut self, v: D) -> Bool` — O(1); Add `v` at the end of the dense order.; traps: when `v` is outside `D`
-- `fn remove(mut self, v: D) -> Bool` — O(1); Remove `v`, moving the last element of the dense order into its slot.; traps: when `v` is outside `D`
-- `fn clear(mut self)` — O(1); Remove every element by resetting the length; the sparse table is not touched.
-- `fn each(self) -> yields D` — O(len); Every element, in dense order: insertion order, except that each `remove` moved the then-last element into the removed one's slot.
+- `fn new() -> SparseSet<D>` — \(O(\lvert D \rvert)\); An empty sparse set over `D`.
+- `@get fn len(self) -> Int` — \(O(1)\); The number of elements.
+- `@get fn is_empty(self) -> Bool` — \(O(1)\); Whether the set has no elements; `len == 0`.
+- `fn contains(self, v: D) -> Bool` — \(O(1)\); Whether `v` is in the set.; traps: when `v` is outside `D`
+- `fn add(mut self, v: D) -> Bool` — \(O(1)\); Add `v` at the end of the dense order.; traps: when `v` is outside `D`
+- `fn remove(mut self, v: D) -> Bool` — \(O(1)\); Remove `v`, moving the last element of the dense order into its slot.; traps: when `v` is outside `D`
+- `fn clear(mut self)` — \(O(1)\); Remove every element by resetting the length; the sparse table is not touched.
+- `fn each(self) -> yields D` — \(O(\mathit{len})\); Every element, in dense order: insertion order, except that each `remove` moved the then-last element into the removed one's slot.
 
 ## `struct Id<T>(raw: 0..=2_000_000_000)`
 
@@ -74,14 +74,14 @@ Compact 4-byte typed handle into an `Arena<T>`.
 
 Contiguous pool allocator returning compact 4-byte `Id<T>` handles (for user trees, tries, and persistent nodes).
 
-- `fn new(cap: Int = 0) -> Arena<T>` — O(cap); An empty arena with room for `cap` nodes before it reallocates.; traps: when `cap < 0`
-- `@get fn len(self) -> Int` — O(1); The number of nodes allocated since creation or the last `clear`; valid handles have raw values `0..len`.
-- `@get fn is_empty(self) -> Bool` — O(1); Whether no node is allocated; `len == 0`.
-- `fn alloc(mut self, x: T) -> Id<T>` — O(1) amortized; Store `x` as a new node and return its handle; handles are issued in order `0, 1, 2, ...`.; traps: when the arena already holds `2_000_000_001` nodes
-- `fn get(self, id: Id<T>) -> T` — O(1); The node behind `id`; also `arena[id]`.; traps: when `id` is not below `len`. A handle issued before a `clear` is not detected while
-- `fn set(mut self, id: Id<T>, x: T)` — O(1); Overwrite the node behind `id` with `x`; also `arena[id] = x`.; traps: when `id` is not below `len` (stale handles as in `get`)
-- `fn reserve(mut self, cap: Int)` — O(cap); Allocate room for at least `cap` nodes in total; changes no handle or node.; traps: when `cap < 0`
-- `fn clear(mut self)` — O(1); Drop every node, so the next `alloc` returns handle `0` again.
+- `fn new(cap: Int = 0) -> Arena<T>` — \(O(\mathit{cap})\); An empty arena with room for `cap` nodes before it reallocates.; traps: when `cap < 0`
+- `@get fn len(self) -> Int` — \(O(1)\); The number of nodes allocated since creation or the last `clear`; valid handles have raw values `0..len`.
+- `@get fn is_empty(self) -> Bool` — \(O(1)\); Whether no node is allocated; `len == 0`.
+- `fn alloc(mut self, x: T) -> Id<T>` — \(O(1)\) amortized; Store `x` as a new node and return its handle; handles are issued in order `0, 1, 2, ...`.; traps: when the arena already holds `2_000_000_001` nodes
+- `fn get(self, id: Id<T>) -> T` — \(O(1)\); The node behind `id`; also `arena[id]`.; traps: when `id` is not below `len`. A handle issued before a `clear` is not detected while
+- `fn set(mut self, id: Id<T>, x: T)` — \(O(1)\); Overwrite the node behind `id` with `x`; also `arena[id] = x`.; traps: when `id` is not below `len` (stale handles as in `get`)
+- `fn reserve(mut self, cap: Int)` — \(O(\mathit{cap})\); Allocate room for at least `cap` nodes in total; changes no handle or node.; traps: when `cap < 0`
+- `fn clear(mut self)` — \(O(1)\); Drop every node, so the next `alloc` returns handle `0` again.
 
 ## Example
 

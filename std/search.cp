@@ -99,7 +99,7 @@ fn golden_real(lo: F64, hi: F64, f: F64 -> F64, steps: Int, larger: Bool) -> F64
 /// log_phi |r| + 3 distinct calls of `f` (29 for 1e6), which is what interactive query budgets
 /// assume. A non-unimodal `f` gives an unspecified position of `r`.
 ///
-/// cost: O(log n) calls of `f`, about log_phi n + 3, for n = `r.len`
+/// cost: \(O(\log n)\) calls of `f`, about log_phi n + 3, for n = `r.len`
 /// empty: `None`
 /// ties: the first position of the plateau
 /// traps: never
@@ -116,7 +116,7 @@ pub fn ternary_max<I, K>(r: Range<I>, f: I -> K) -> ?I:
 /// log_phi |r| + 3 distinct calls of `f` (29 for 1e6), which is what interactive query budgets
 /// assume. A non-unimodal `f` gives an unspecified position of `r`.
 ///
-/// cost: O(log n) calls of `f`, about log_phi n + 3, for n = `r.len`
+/// cost: \(O(\log n)\) calls of `f`, about log_phi n + 3, for n = `r.len`
 /// empty: `None`
 /// ties: the first position of the plateau
 /// traps: never
@@ -160,10 +160,10 @@ pub fn ternary_min_real(lo: F64, hi: F64, f: F64 -> F64, steps: Int = 100) -> F6
 ///
 /// `reset()` empties the caller's structure, `apply(t)` adds the event at time `t`, and `ok(q)`
 /// asks query `q` of the structure as it stands. Law: once `ok(q)` holds it stays true as more
-/// events are applied. Each of the O(log n) rounds calls `reset` once, `apply` on every `t` of
+/// events are applied. Each of the \(O(\log n)\) rounds calls `reset` once, `apply` on every `t` of
 /// `r` in increasing order, and `ok` once per open query, between the right `apply` calls.
 ///
-/// cost: O((n + queries) log n) calls of `apply` and `ok`, O(n + queries) memory, for n = `r.len`
+/// cost: \(O((n + \mathit{queries}) \log n)\) calls of `apply` and `ok`, \(O(n + \mathit{queries})\) memory, for n = `r.len`
 /// empty: every entry `None` when `r` is empty; `[]` when `queries == 0`
 /// order: `out[q]` answers query `q`, for `q` in `0..queries`
 /// traps: when `queries < 0`
@@ -225,7 +225,7 @@ pub fn parallel_bsearch<I>(
 /// Exponential search: probes `from`, `from + 1`, `from + 3`, `from + 7`, ... (doubling the step)
 /// until `ok` holds or `I` ends, then bisects the last gap.
 ///
-/// cost: O(log d) calls of `ok`, for d the distance from `from` to the answer
+/// cost: \(O(\log d)\) calls of `ok`, for d the distance from `from` to the answer
 /// traps: never
 /// example: `gallop_first(0, i => i * i >= 50) == Some(8)`
 /// example: `gallop_first(10, i => i >= 3) == Some(10)`
@@ -252,7 +252,7 @@ pub fn gallop_first<I>(from: I, ok: I -> Bool) -> ?I:
 /// calls `solve(l)`; when `num - l * den <= eps` it returns `l`, else it sets `l = num / den`
 /// and repeats. `l` never decreases, and it converges superlinearly.
 ///
-/// cost: O(log(1 / eps)) calls of `solve`, usually a handful
+/// cost: \(O(\log(1 / \mathit{eps}))\) calls of `solve`, usually a handful
 /// traps: when `solve` returns `den <= 0`
 /// example: `dinkelbach(0.0, solve: _ => (num: 3.0, den: 2.0)) == 1.5`
 /// example: `dinkelbach(0.0, solve: l => if l < 1.0: (num: 3.0, den: 2.0) else: (num: 2.0, den: 1.0)) == 2.0`
@@ -270,10 +270,10 @@ pub fn dinkelbach(lo: F64, solve: F64 -> (num: F64, den: F64), eps: F64 = 1e-9) 
 ///
 /// A queue holds one entry per non-empty group range. Taking the top entry `(g, r)` with value
 /// `t` at position `p` yields `t` and queues the non-empty pieces `r.start..p` and `p.next..r.end`
-/// with their own `best`. So the k best cost O(k log(n + k)) `best` calls, n the number of
+/// with their own `best`. So the k best cost \(O(k \log(n + k))\) `best` calls, n the number of
 /// groups: the k largest subarray sums, Super Piano, k smallest pair sums (with negated values).
 ///
-/// cost: O(n + k) calls of `best` and O((n + k) log(n + k)) queue work for the first k values
+/// cost: \(O(n + k)\) calls of `best` and \(O((n + k) \log(n + k))\) queue work for the first k values
 /// empty: yields nothing when `groups` is empty or every range is empty
 /// ties: equal values come out in group order, then left piece before right piece
 /// order: decreasing `T`

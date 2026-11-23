@@ -11,7 +11,7 @@ fn same<A, B>(a: A, b: B) -> Bool = a == b
 /// Point update and range fold. The operation is a bare operator (`+`, `*`, `^`, `&`, `|`,
 /// `min`, `max`, `gcd`) or your own `Monoid(id, op)`: `SegTree<V, Int>(max, a)`,
 /// `SegTree<V, Int>(+)`, `SegTree<V, Run>(Monoid(Run.empty, Run.join), a)`.
-/// `set` and `fold` are O(log n), and so are `right_while` and `left_while`; memory is
+/// `set` and `fold` are \(O(\log n)\), and so are `right_while` and `left_while`; memory is
 /// 2 * bit_ceil(n) values. The fold keeps the order of the positions, so
 /// non-commutative operations work.
 pub struct SegTree<D, T, F = Int>(m: Monoid<T>):
@@ -35,7 +35,7 @@ pub struct SegTree<D, T, F = Int>(m: Monoid<T>):
     /// changes speed, never answers. `over: lo..hi` covers a huge `Int` range instead, making nodes
     /// on first touch; positions outside the touched ones hold `fill` or the identity.
     ///
-    /// cost: O(|D|); O(1) with `over:`
+    /// cost: \(O(\lvert D \rvert)\); \(O(1)\) with `over:`
     /// empty: an empty `D` gives a tree whose every fold is the identity
     /// order: positions keep the domain `D` of `a`
     /// traps: when both `a` and `fill` are given, or `over:` is given together with `a`
@@ -133,7 +133,7 @@ pub struct SegTree<D, T, F = Int>(m: Monoid<T>):
     /// Apply tag `f` to every position of `r`: each fold over `r` then sees the values with `f`
     /// applied, through the action given to `act:`.
     ///
-    /// cost: O(log |D|)
+    /// cost: \(O(\log \lvert D \rvert)\)
     /// empty: changes nothing
     /// traps: when a non-empty `r` reaches outside `D`
     /// example: `var s = SegTree(+, [1, 2, 3], act: add); s.apply(0..2, 10); s.all == 26`
@@ -163,7 +163,7 @@ pub struct SegTree<D, T, F = Int>(m: Monoid<T>):
 
     /// Apply tag `f` to every position; `apply(D.all, f)`.
     ///
-    /// cost: O(1) amortized when the tags commute, else O(|D|)
+    /// cost: \(O(1)\) amortized when the tags commute, else \(O(\lvert D \rvert)\)
     /// empty: changes nothing for an empty `D`
     /// traps: never
     /// example: `var s = SegTree(+, [1, 2, 3], act: add); s.apply_all(1); s.all == 9`
@@ -173,7 +173,7 @@ pub struct SegTree<D, T, F = Int>(m: Monoid<T>):
 
     /// The fold of the values in `r`, left to right: `op(op(a[l], a[l + 1]), ...)`.
     ///
-    /// cost: O(log |D|)
+    /// cost: \(O(\log \lvert D \rvert)\)
     /// empty: the identity
     /// traps: when a non-empty `r` reaches outside `D`
     /// example: `var s = SegTree(+, [1, 2, 3], act: add); s.apply(1..3, 1); s.fold(1..3) == 7`
@@ -199,7 +199,7 @@ pub struct SegTree<D, T, F = Int>(m: Monoid<T>):
     /// monotone (once false it stays false as `d` moves right) and true on the identity, so `from`
     /// itself always qualifies. Replaces `max_right`.
     ///
-    /// cost: O(log |D|)
+    /// cost: \(O(\log \lvert D \rvert)\)
     /// ties: the rightmost qualifying cut
     /// traps: when `ok(identity)` is false
     /// example: `SegTree(+, [1, 2, 3, 4]).right_while((0..0).r, s => s <= 3) == (0..2).r`
@@ -231,7 +231,7 @@ pub struct SegTree<D, T, F = Int>(m: Monoid<T>):
     /// monotone (once false it stays false as `d` moves left) and true on the identity, so `to`
     /// itself always qualifies. Replaces `min_left`.
     ///
-    /// cost: O(log |D|)
+    /// cost: \(O(\log \lvert D \rvert)\)
     /// ties: the leftmost qualifying cut
     /// traps: when `ok(identity)` is false
     /// example: `SegTree(+, [1, 2, 3, 4]).left_while((0..4).r, s => s <= 7) == (0..2).r`
@@ -261,7 +261,7 @@ pub struct SegTree<D, T, F = Int>(m: Monoid<T>):
     /// `refresh(i)` recomputes position `i`, so the formula is written once instead of at every
     /// update site.
     ///
-    /// cost: O(|D|), calling `f` once per position in key order
+    /// cost: \(O(\lvert D \rvert)\), calling `f` once per position in key order
     /// empty: an empty `D` gives a tree whose every fold is the identity
     /// order: position `i` holds `f(i)`
     /// traps: never
@@ -273,7 +273,7 @@ pub struct SegTree<D, T, F = Int>(m: Monoid<T>):
 
     /// Recompute position `i` as `f(i)` with the formula given to `of`, and update its ancestors.
     ///
-    /// cost: O(log |D|) plus one call of `f`
+    /// cost: \(O(\log \lvert D \rvert)\) plus one call of `f`
     /// traps: when `i` is outside `D`, or the tree was not built with `of`
     /// example: `var w = [1, 2, 3]; var s = SegTree<0..3, Int>.of(+, i => w[i]); w[1] = 10; s.refresh(1); s.all == 14`
     pub fn refresh(mut self, i: D):
@@ -283,7 +283,7 @@ pub struct SegTree<D, T, F = Int>(m: Monoid<T>):
 
     /// The value at position `i`, with every tag applied.
     ///
-    /// cost: O(1); O(log |D|) on a tree with `act:`
+    /// cost: \(O(1)\); \(O(\log \lvert D \rvert)\) on a tree with `act:`
     /// traps: when `i` is outside `D`
     /// example: `SegTree(+, [4, 5, 6]).get(1) == 5`
     /// example: `var s = SegTree(act: assign, [1, 2, 3]); s.apply(0..2, Some(9)); s.get(1) == 9`
@@ -295,7 +295,7 @@ pub struct SegTree<D, T, F = Int>(m: Monoid<T>):
 
     /// Make position `i` hold `x`, replacing any tags applied to it, and update its ancestors.
     ///
-    /// cost: O(log |D|)
+    /// cost: \(O(\log \lvert D \rvert)\)
     /// traps: when `i` is outside `D`
     /// example: `var s = SegTree(+, [1, 2, 3]); s.set(0, 10); s.all == 15`
     pub fn set(mut self, i: D, x: T):
@@ -308,7 +308,7 @@ pub struct SegTree<D, T, F = Int>(m: Monoid<T>):
     /// Position `i` as a writable place: `st.at(i) += x`, `st.at(i) max= x`. The ancestors are
     /// updated when the write ends, so each use is one `set`; read with `get` instead.
     ///
-    /// cost: O(log |D|) per write
+    /// cost: \(O(\log \lvert D \rvert)\) per write
     /// traps: when `i` is outside `D`
     /// example: `var s = SegTree(+, [1, 2, 3]); s.at(0) += 5; s.all == 11`
     pub fn at(mut self, i: D) -> lends mut T:
@@ -327,7 +327,7 @@ pub struct SegTree<D, T, F = Int>(m: Monoid<T>):
 
     /// Replace the value `v` at `i` with `f(v)`; `set(i, f(get(i)))` in one walk.
     ///
-    /// cost: O(log |D|) plus one call of `f`
+    /// cost: \(O(\log \lvert D \rvert)\) plus one call of `f`
     /// traps: when `i` is outside `D`
     /// example: `var s = SegTree(+, [1, 2, 3]); s.update(2, x => x * 10); s.all == 33`
     pub fn update(mut self, i: D, f: T -> T):
@@ -335,7 +335,7 @@ pub struct SegTree<D, T, F = Int>(m: Monoid<T>):
 
     /// The fold of every position, left to right.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// empty: the identity for an empty `D`
     /// traps: never
     /// example: `SegTree(max, [3, 9, 4]).all == 9`
@@ -343,7 +343,7 @@ pub struct SegTree<D, T, F = Int>(m: Monoid<T>):
 
     /// The operation the tree folds with, as its `(id, op)` pair.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: never
     /// example: `SegTree(+, [1]).monoid.id == 0`
     @get pub fn monoid(self) -> Monoid<T> = m
@@ -351,7 +351,7 @@ pub struct SegTree<D, T, F = Int>(m: Monoid<T>):
     /// The fold of `r`, or `None` when `r` is empty; for operations whose identity is only a
     /// sentinel.
     ///
-    /// cost: O(log |D|)
+    /// cost: \(O(\log \lvert D \rvert)\)
     /// empty: `None`
     /// traps: when a non-empty `r` reaches outside `D`
     /// example: `SegTree(+, [1, 2]).try_fold(0..2) == Some(3)`
@@ -364,7 +364,7 @@ pub struct SegTree<D, T, F = Int>(m: Monoid<T>):
     /// Make every position hold `fill`, or the identity when `fill` is `None`, dropping all pending
     /// tags; the storage is reused. A tree built with `of` keeps its formula.
     ///
-    /// cost: O(|D|)
+    /// cost: \(O(\lvert D \rvert)\)
     /// empty: nothing to reset for an empty `D`
     /// traps: never
     /// example: `var s = SegTree(+, [1, 2, 3]); s.clear(); s.all == 0`
@@ -377,7 +377,7 @@ pub struct SegTree<D, T, F = Int>(m: Monoid<T>):
     /// The values of the canonical nodes that exactly cover `r`: the maximal aligned blocks of the
     /// tree's `bit_ceil(|D|)` leaves inside `r`. Their fold, left to right, is `fold(r)`.
     ///
-    /// cost: O(log |D|)
+    /// cost: \(O(\log \lvert D \rvert)\)
     /// empty: yields nothing
     /// order: left to right; at most `2 * log2(bit_ceil(|D|))` values
     /// traps: when a non-empty `r` reaches outside `D`
@@ -518,7 +518,7 @@ fn fill_option_initializes_leaves_without_array():
     assert summed.all == 35 and summed.fold(V(2)..=V(4)) == 21
 
 /// Static merge-sort tree for orthogonal 2D range counting over `[D]T`.
-/// Build in O(n log n) time and memory; answer value-range counts over any `Range<D>` in O(log^2 n).
+/// Build in \(O(n \log n)\) time and memory; answer value-range counts over any `Range<D>` in \(O(\log^2 n)\).
 pub struct MergeSortTree<D, T>:
     data: List<T>
     beg: List<0..=2_000_000_000>
@@ -527,7 +527,7 @@ pub struct MergeSortTree<D, T>:
 
     /// A static tree over `a` whose nodes hold their values sorted, for counting values in a range.
     ///
-    /// cost: O(|D| log |D|) time and memory
+    /// cost: \(O(\lvert D \rvert \log \lvert D \rvert)\) time and memory
     /// empty: an empty `a` gives a tree where every count is 0
     /// order: positions keep the domain `D` of `a`
     /// traps: never
@@ -586,7 +586,7 @@ pub struct MergeSortTree<D, T>:
 
     /// The number of positions in `r` whose value is `< x`.
     ///
-    /// cost: O(log^2 |D|)
+    /// cost: \(O(\log^2 \lvert D \rvert)\)
     /// empty: 0
     /// traps: when a non-empty `r` reaches outside `D`
     /// example: `MergeSortTree([3, 1, 4, 1, 5]).count_lt(0..5, 3) == 2`
@@ -607,7 +607,7 @@ pub struct MergeSortTree<D, T>:
 
     /// The number of positions in `r` whose value is `<= x`.
     ///
-    /// cost: O(log^2 |D|)
+    /// cost: \(O(\log^2 \lvert D \rvert)\)
     /// empty: 0
     /// traps: when a non-empty `r` reaches outside `D`
     /// example: `MergeSortTree([3, 1, 4, 1, 5]).count_le(0..5, 3) == 3`
@@ -628,7 +628,7 @@ pub struct MergeSortTree<D, T>:
 
     /// The number of positions in `r` whose value lies in `lo_v..=hi_v`; 0 when `lo_v > hi_v`.
     ///
-    /// cost: O(log^2 |D|)
+    /// cost: \(O(\log^2 \lvert D \rvert)\)
     /// empty: 0
     /// traps: when a non-empty `r` reaches outside `D`
     /// example: `MergeSortTree([3, 1, 4, 1, 5]).count_in(1..4, 1, 4) == 3`
@@ -639,7 +639,7 @@ pub struct MergeSortTree<D, T>:
 
     /// The number of positions in `r` whose value is `> x`.
     ///
-    /// cost: O(log^2 |D|)
+    /// cost: \(O(\log^2 \lvert D \rvert)\)
     /// empty: 0
     /// traps: when a non-empty `r` reaches outside `D`
     /// example: `MergeSortTree([3, 1, 4, 1, 5]).count_gt(0..5, 3) == 2`
@@ -649,7 +649,7 @@ pub struct MergeSortTree<D, T>:
 
     /// The number of positions in `r` whose value is `>= x`.
     ///
-    /// cost: O(log^2 |D|)
+    /// cost: \(O(\log^2 \lvert D \rvert)\)
     /// empty: 0
     /// traps: when a non-empty `r` reaches outside `D`
     /// example: `MergeSortTree([3, 1, 4, 1, 5]).count_ge(0..5, 4) == 2`
@@ -659,7 +659,7 @@ pub struct MergeSortTree<D, T>:
 
     /// The smallest value in `r` that is `>= x`, or `None`.
     ///
-    /// cost: O(log^2 |D|)
+    /// cost: \(O(\log^2 \lvert D \rvert)\)
     /// empty: `None`
     /// ties: equal values are interchangeable; the value is returned, not a position
     /// traps: when a non-empty `r` reaches outside `D`
@@ -685,7 +685,7 @@ pub struct MergeSortTree<D, T>:
 
     /// The largest value in `r` that is `<= x`, or `None`.
     ///
-    /// cost: O(log^2 |D|)
+    /// cost: \(O(\log^2 \lvert D \rvert)\)
     /// empty: `None`
     /// ties: equal values are interchangeable; the value is returned, not a position
     /// traps: when a non-empty `r` reaches outside `D`
@@ -709,7 +709,7 @@ pub struct MergeSortTree<D, T>:
                 h /= 2
         best
 
-/// O(|R| * |C|) space. Iterative 2D segment tree: point update and rectangle fold in O(log |R| * log |C|).
+/// \(O(\lvert R \rvert \cdot \lvert C \rvert)\) space. Iterative 2D segment tree: point update and rectangle fold in \(O(\log \lvert R \rvert \cdot \log \lvert C \rvert)\).
 pub struct SegTree2D<R, C, T>(m: Monoid<T>):
     t: List<T>
 
@@ -732,7 +732,7 @@ pub struct SegTree2D<R, C, T>(m: Monoid<T>):
     /// the identity everywhere. `op` must be `Commutative`, since a rectangle is folded in
     /// row-blocks and column-blocks rather than in one order.
     ///
-    /// cost: O(|R| * |C|)
+    /// cost: \(O(\lvert R \rvert \cdot \lvert C \rvert)\)
     /// empty: an empty `R` or `C` gives a tree whose every fold is the identity
     /// order: cells keep the domains `R` and `C` of `a`
     /// traps: when both `a` and `fill` are given
@@ -762,7 +762,7 @@ pub struct SegTree2D<R, C, T>(m: Monoid<T>):
 
     /// The value of cell `(r, c)`.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: when `r` is outside `R` or `c` is outside `C`
     /// example: `var g = SegTree2D<0..3, 0..3, Int>(+, fill: 1); g.set(1, 2, 7); g.get(1, 2) == 7`
     pub fn get(self, r: R, c: C) -> T:
@@ -770,7 +770,7 @@ pub struct SegTree2D<R, C, T>(m: Monoid<T>):
 
     /// Make cell `(r, c)` hold `x`.
     ///
-    /// cost: O(log |R| * log |C|)
+    /// cost: \(O(\log \lvert R \rvert \cdot \log \lvert C \rvert)\)
     /// traps: when `r` is outside `R` or `c` is outside `C`
     /// example: `var g = SegTree2D<0..3, 0..3, Int>(+, fill: 1); g.set(0, 0, 5); g.all == 13`
     pub fn set(mut self, r: R, c: C, x: T):
@@ -792,7 +792,7 @@ pub struct SegTree2D<R, C, T>(m: Monoid<T>):
 
     /// Replace the value `v` of cell `(r, c)` with `f(v)`.
     ///
-    /// cost: O(log |R| * log |C|) plus one call of `f`
+    /// cost: \(O(\log \lvert R \rvert \cdot \log \lvert C \rvert)\) plus one call of `f`
     /// traps: when `r` is outside `R` or `c` is outside `C`
     /// example: `var g = SegTree2D<0..3, 0..3, Int>(+, fill: 1); g.update(2, 2, x => x + 1); g.all == 10`
     pub fn update(mut self, r: R, c: C, f: T -> T):
@@ -800,7 +800,7 @@ pub struct SegTree2D<R, C, T>(m: Monoid<T>):
 
     /// The fold of every cell in rows `rows` and columns `cols`.
     ///
-    /// cost: O(log |R| * log |C|)
+    /// cost: \(O(\log \lvert R \rvert \cdot \log \lvert C \rvert)\)
     /// empty: the identity when `rows` or `cols` is empty
     /// traps: when a non-empty range reaches outside its domain
     /// example: `SegTree2D<0..3, 0..3, Int>(+, fill: 1).fold(0..2, 1..3) == 4`
@@ -823,15 +823,15 @@ pub struct SegTree2D<R, C, T>(m: Monoid<T>):
 
     /// The fold of every cell.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// empty: the identity for an empty grid
     /// traps: never
     /// example: `var g = SegTree2D<0..2, 0..2, Int>(max, fill: 0); g.set(1, 0, 8); g.all == 8`
     @get pub fn all(self) -> T:
         if R.K == 0 or C.K == 0: m.id else: t[2 * C.K + 1]
 
-/// O(|D| log V) build and memory. Wavelet matrix over non-negative integer values:
-/// O(log V) range k-th smallest, frequency, value-range count, predecessor/successor, and quantile sum.
+/// \(O(\lvert D \rvert \log V)\) build and memory. Wavelet matrix over non-negative integer values:
+/// \(O(\log V)\) range k-th smallest, frequency, value-range count, predecessor/successor, and quantile sum.
 pub struct WaveletMatrix<D>:
     bits: Int
     n: Int
@@ -857,7 +857,7 @@ pub struct WaveletMatrix<D>:
     /// A wavelet matrix over the non-negative values of `a`, with one bit level per bit of the
     /// largest value (`V` below is that value plus one).
     ///
-    /// cost: O(|D| log V) time and memory
+    /// cost: \(O(\lvert D \rvert \log V)\) time and memory
     /// empty: an empty `a` gives a matrix where every count is 0
     /// order: positions keep the domain `D` of `a`
     /// traps: when some value is negative
@@ -900,7 +900,7 @@ pub struct WaveletMatrix<D>:
     /// The `k`-th smallest value in `r`, counting from 0 and with repeats, or `None` when
     /// `k >= r.len`.
     ///
-    /// cost: O(log V)
+    /// cost: \(O(\log V)\)
     /// empty: `None`
     /// ties: equal values are counted once each
     /// traps: when `k < 0`, or a non-empty `r` reaches outside `D`
@@ -925,7 +925,7 @@ pub struct WaveletMatrix<D>:
 
     /// The number of positions in `r` holding exactly `x`; 0 for any `x` outside `0..V`.
     ///
-    /// cost: O(log V)
+    /// cost: \(O(\log V)\)
     /// empty: 0
     /// traps: when a non-empty `r` reaches outside `D`
     /// example: `WaveletMatrix([3, 1, 4, 1, 5]).rank(0..5, 1) == 2`
@@ -936,7 +936,7 @@ pub struct WaveletMatrix<D>:
 
     /// The number of positions in `r` whose value is `< x`.
     ///
-    /// cost: O(log V)
+    /// cost: \(O(\log V)\)
     /// empty: 0
     /// traps: when a non-empty `r` reaches outside `D`
     /// example: `WaveletMatrix([3, 1, 4, 1, 5]).count_lt(0..5, 4) == 3`
@@ -946,7 +946,7 @@ pub struct WaveletMatrix<D>:
 
     /// The number of positions in `r` whose value lies in `lo_v..=hi_v`; 0 when `lo_v > hi_v`.
     ///
-    /// cost: O(log V)
+    /// cost: \(O(\log V)\)
     /// empty: 0
     /// traps: when a non-empty `r` reaches outside `D`
     /// example: `WaveletMatrix([3, 1, 4, 1, 5]).count_in(0..5, 1, 3) == 3`
@@ -957,7 +957,7 @@ pub struct WaveletMatrix<D>:
 
     /// The largest value in `r` that is `< x`, or `None`.
     ///
-    /// cost: O(log V)
+    /// cost: \(O(\log V)\)
     /// empty: `None`
     /// ties: equal values are interchangeable; the value is returned, not a position
     /// traps: when a non-empty `r` reaches outside `D`
@@ -970,7 +970,7 @@ pub struct WaveletMatrix<D>:
 
     /// The smallest value in `r` that is `> x`, or `None`.
     ///
-    /// cost: O(log V)
+    /// cost: \(O(\log V)\)
     /// empty: `None`
     /// ties: equal values are interchangeable; the value is returned, not a position
     /// traps: when a non-empty `r` reaches outside `D`
@@ -983,7 +983,7 @@ pub struct WaveletMatrix<D>:
 
     /// The sum of the `k` smallest values in `r`, with repeats.
     ///
-    /// cost: O(log V)
+    /// cost: \(O(\log V)\)
     /// empty: 0 (only `k == 0` is allowed)
     /// ties: equal values are counted once each
     /// traps: when `k` is outside `0..=r.len`, or a non-empty `r` reaches outside `D`
@@ -1007,7 +1007,7 @@ pub struct WaveletMatrix<D>:
                 (lo, hi) = (zs[l] + self.ones(l, lo), zs[l] + self.ones(l, hi))
         total + rem * res
 
-/// O(|D| log^2 |D|) space. Dynamic point-update + 2D range value-count and k-th structure
+/// \(O(\lvert D \rvert \log^2 \lvert D \rvert)\) space. Dynamic point-update + 2D range value-count and k-th structure
 /// (Fenwick of order trees) over `[D]T`.
 pub struct DynamicOrderTree<D, T>:
     n: Int
@@ -1042,7 +1042,7 @@ pub struct DynamicOrderTree<D, T>:
     /// A structure over `a` answering value counts and order statistics on ranges while positions
     /// are reassigned.
     ///
-    /// cost: O(|D| log^2 |D|) time and memory
+    /// cost: \(O(\lvert D \rvert \log^2 \lvert D \rvert)\) time and memory
     /// empty: an empty `a` gives a tree where every count is 0
     /// order: positions keep the domain `D` of `a`
     /// traps: never
@@ -1058,7 +1058,7 @@ pub struct DynamicOrderTree<D, T>:
 
     /// Make position `i` hold `x`.
     ///
-    /// cost: O(log^2 |D|)
+    /// cost: \(O(\log^2 \lvert D \rvert)\)
     /// traps: when `i` is outside `D`
     /// example: `var t = DynamicOrderTree([3, 1, 4]); t.set(0, 0); t.kth(0..3, 0) == Some(0)`
     pub fn set(mut self, i: D, x: T):
@@ -1069,14 +1069,14 @@ pub struct DynamicOrderTree<D, T>:
 
     /// The value at position `i`.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: when `i` is outside `D`
     /// example: `var t = DynamicOrderTree([3, 1, 4]); t.set(2, 9); t.get(2) == 9`
     pub fn get(self, i: D) -> T = val[i.ord]
 
     /// The number of positions in `r` whose value is `< x`.
     ///
-    /// cost: O(log^2 |D|)
+    /// cost: \(O(\log^2 \lvert D \rvert)\)
     /// empty: 0
     /// traps: when a non-empty `r` reaches outside `D`
     /// example: `DynamicOrderTree([3, 1, 4]).count_lt(1..3, 4) == 1`
@@ -1084,7 +1084,7 @@ pub struct DynamicOrderTree<D, T>:
 
     /// The number of positions in `r` whose value lies in `lo_v..=hi_v`; 0 when `lo_v > hi_v`.
     ///
-    /// cost: O(log^2 |D|)
+    /// cost: \(O(\log^2 \lvert D \rvert)\)
     /// empty: 0
     /// traps: when a non-empty `r` reaches outside `D`
     /// example: `DynamicOrderTree([3, 1, 4]).count_in(0..3, 1, 3) == 2`
@@ -1095,7 +1095,7 @@ pub struct DynamicOrderTree<D, T>:
     /// The `k`-th smallest value in `r`, counting from 0 and with repeats, or `None` when
     /// `k >= r.len`.
     ///
-    /// cost: O(log^3 |D|): a binary search over all stored values, counting each in `r`
+    /// cost: \(O(\log^3 \lvert D \rvert)\): a binary search over all stored values, counting each in `r`
     /// empty: `None`
     /// ties: equal values are counted once each
     /// traps: when `k < 0`, or a non-empty `r` reaches outside `D`
@@ -1111,7 +1111,7 @@ pub struct DynamicOrderTree<D, T>:
             else: lo = mid + 1
         bit[0].nth(lo)
 
-/// O(q log |D|) space. Mergeable min-ordered set over domain `D` for lazily pruned
+/// \(O(q \log \lvert D \rvert)\) space. Mergeable min-ordered set over domain `D` for lazily pruned
 /// minimum-alive queries (`MergeSeg.singleton`, `merge`, `first_alive`).
 pub struct MergeSeg<D>:
     heap: List<D>
@@ -1154,7 +1154,7 @@ pub struct MergeSeg<D>:
 
     /// A set of positions of `D` holding only `x`, stored as a sparse binary tree over `D`.
     ///
-    /// cost: O(log |D|)
+    /// cost: \(O(\log \lvert D \rvert)\)
     /// traps: when `x` is outside `D`
     /// example: `var t = MergeSeg<0..10>.singleton(3); t.first_alive(x => true) == Some(3)`
     pub fn singleton(x: D) -> MergeSeg<D> = MergeSeg([x])
@@ -1162,7 +1162,7 @@ pub struct MergeSeg<D>:
     /// The union of `self` and `other`. The result reuses the nodes of both, so neither input may be
     /// used afterwards.
     ///
-    /// cost: O(log |D|) amortized per node absorbed
+    /// cost: \(O(\log \lvert D \rvert)\) amortized per node absorbed
     /// traps: never
     /// example: `var m = MergeSeg<0..10>.singleton(7).merge(MergeSeg<0..10>.singleton(3)); m.first_alive(x => true) == Some(3)`
     pub fn merge(self, other: MergeSeg<D>) -> MergeSeg<D>:
@@ -1179,7 +1179,7 @@ pub struct MergeSeg<D>:
     /// the way is removed for good, so `alive` must be monotone over time: a position never comes
     /// back to life.
     ///
-    /// cost: O(log |D|) amortized
+    /// cost: \(O(\log \lvert D \rvert)\) amortized
     /// ties: the smallest position in key order
     /// traps: never
     /// example: `var m = MergeSeg<0..10>.singleton(3).merge(MergeSeg<0..10>.singleton(7)); m.first_alive(x => x > 5) == Some(7)`

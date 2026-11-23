@@ -15,15 +15,15 @@ struct BagNode<K>:
     var par: -2_147_483_648..=2_147_483_647
 
 /// An ordered multiset (bag) of `K` backed by a randomized treap over a single flat node array
-/// with recycled node slots and parent pointers for O(1) amortized cursor stepping.
+/// with recycled node slots and parent pointers for \(O(1)\) amortized cursor stepping.
 /// Keeps one node per distinct key with its multiplicity and subtree element count.
 /// `add`, `add_many`, `remove`, `remove_all`, `contains`, `count`,
-/// `pop_first`, `pop_last`, `rank`, `nth`, `first_true`, `last_true`, and `cursor_*` are O(log n) expected;
-/// `range(r)` returns an O(1) view whose `.first`, `.last`, `.len`, `.is_empty` are O(log n)
-/// expected and whose iteration (`for x in b.range(r)` / `.rev`) is O(log n + k);
-/// `first`, `last`, `key_of` and `count_of` are O(1); `next_cursor` and `prev_cursor` are O(1) amortized;
-/// `len`, `distinct`, `is_empty`, `clear`, and `take` are O(1);
-/// `entries`, `entries_rev`, and `to_list` are O(n).
+/// `pop_first`, `pop_last`, `rank`, `nth`, `first_true`, `last_true`, and `cursor_*` are \(O(\log n)\) expected;
+/// `range(r)` returns an \(O(1)\) view whose `.first`, `.last`, `.len`, `.is_empty` are \(O(\log n)\)
+/// expected and whose iteration (`for x in b.range(r)` / `.rev`) is \(O(\log n + k)\);
+/// `first`, `last`, `key_of` and `count_of` are \(O(1)\); `next_cursor` and `prev_cursor` are \(O(1)\) amortized;
+/// `len`, `distinct`, `is_empty`, `clear`, and `take` are \(O(1)\);
+/// `entries`, `entries_rev`, and `to_list` are \(O(n)\).
 ///
 /// Elements are ordered by `K`'s `<`; copies of one key are equal and indistinguishable, so
 /// no method here has a tie to break between them. `n` in every cost is `len`.
@@ -38,7 +38,7 @@ pub struct SortedBag<K>:
 
     /// Create an empty `SortedBag<K>`.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: never
     /// example: `var b: SortedBag<Int> = SortedBag(); b.len == 0`
     pub fn new() -> SortedBag<K> = SortedBag([], [], 0, -1, U64(0x5e3779b97f4a7c15), None, None)
@@ -47,7 +47,7 @@ pub struct SortedBag<K>:
     ///
     /// Every copy counts: `SortedBag.of([2, 2])` holds two elements.
     ///
-    /// cost: O(n log n) expected
+    /// cost: \(O(n \log n)\) expected
     /// empty: an empty bag
     /// traps: never
     /// example: `SortedBag.of([3, 1, 3]).to_list() == [1, 3, 3]`
@@ -58,7 +58,7 @@ pub struct SortedBag<K>:
 
     /// Total number of elements in the bag (counting duplicates).
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: never
     /// example: `SortedBag.of([3, 1, 3]).len == 3`
     @get pub fn len(self) -> Int:
@@ -66,7 +66,7 @@ pub struct SortedBag<K>:
 
     /// Number of distinct keys currently in the bag.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: never
     /// example: `SortedBag.of([3, 1, 3]).distinct == 2`
     @get pub fn distinct(self) -> Int:
@@ -74,7 +74,7 @@ pub struct SortedBag<K>:
 
     /// Whether the bag has no elements.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: never
     /// example: `SortedBag.of([1]).is_empty == false`
     @get pub fn is_empty(self) -> Bool:
@@ -84,7 +84,7 @@ pub struct SortedBag<K>:
     ///
     /// The node array keeps its capacity.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: never
     /// example: `var b = SortedBag.of([1, 2]); b.clear(); b.len == 0 and b.first == None`
     pub fn clear(mut self):
@@ -95,9 +95,9 @@ pub struct SortedBag<K>:
         lo = None
         hi = None
 
-    /// Move the bag's contents out in O(1), leaving `self` empty.
+    /// Move the bag's contents out in \(O(1)\), leaving `self` empty.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: never
     /// example: `var b = SortedBag.of([1, 2]); let t = b.take(); b.is_empty and t.to_list() == [1, 2]`
     pub fn take(mut self) -> SortedBag<K>:
@@ -114,7 +114,7 @@ pub struct SortedBag<K>:
     ///
     /// The `Bool` matches `SortedSet.add`, so code can switch between the two.
     ///
-    /// cost: O(log n) expected
+    /// cost: \(O(\log n)\) expected
     /// traps: never
     /// example: `var b: SortedBag<Int> = SortedBag(); b.add(3) and b.add(3) and b.count(3) == 2`
     pub fn add(mut self, x: K) -> Bool:
@@ -137,7 +137,7 @@ pub struct SortedBag<K>:
     ///
     /// `c == 0` does nothing.
     ///
-    /// cost: O(log n) expected, independent of `c`
+    /// cost: \(O(\log n)\) expected, independent of `c`
     /// traps: when `c < 0`
     /// example: `var b = SortedBag.of([1]); b.add_many(5, 3); b.len == 4 and b.count(5) == 3`
     pub fn add_many(mut self, x: K, c: Int):
@@ -151,7 +151,7 @@ pub struct SortedBag<K>:
 
     /// Remove one copy of `x` if present; returns `true` if a copy was removed.
     ///
-    /// cost: O(log n) expected
+    /// cost: \(O(\log n)\) expected
     /// traps: never
     /// example: `var b = SortedBag.of([2, 2]); b.remove(2) and b.count(2) == 1 and not b.remove(7)`
     pub fn remove(mut self, x: K) -> Bool:
@@ -164,7 +164,7 @@ pub struct SortedBag<K>:
 
     /// Remove all copies of `x` and return how many were removed.
     ///
-    /// cost: O(log n) expected
+    /// cost: \(O(\log n)\) expected
     /// traps: never
     /// example: `var b = SortedBag.of([2, 2, 3]); b.remove_all(2) == 2 and b.to_list() == [3]`
     /// example: `var b = SortedBag.of([3]); b.remove_all(2) == 0`
@@ -178,7 +178,7 @@ pub struct SortedBag<K>:
 
     /// How many copies of `x` are currently in the bag.
     ///
-    /// cost: O(log n) expected
+    /// cost: \(O(\log n)\) expected
     /// traps: never
     /// example: `SortedBag.of([2, 2, 3]).count(2) == 2`
     /// example: `SortedBag.of([2, 2, 3]).count(4) == 0`
@@ -195,14 +195,14 @@ pub struct SortedBag<K>:
     ///
     /// `x in b` calls this.
     ///
-    /// cost: O(log n) expected
+    /// cost: \(O(\log n)\) expected
     /// traps: never
     /// example: `SortedBag.of([2, 3]).contains(3) == true`
     pub fn contains(self, x: K) -> Bool = self.count(x) > 0
 
-    /// The smallest element, or `None` when empty. O(1), kept current by every update.
+    /// The smallest element, or `None` when empty. \(O(1)\), kept current by every update.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// empty: `None`
     /// ties: none: copies of the least key are equal
     /// traps: never
@@ -210,9 +210,9 @@ pub struct SortedBag<K>:
     @get pub fn first(self) -> ?K:
         lo
 
-    /// The largest element, or `None` when empty. O(1), kept current by every update.
+    /// The largest element, or `None` when empty. \(O(1)\), kept current by every update.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// empty: `None`
     /// ties: none: copies of the greatest key are equal
     /// traps: never
@@ -222,7 +222,7 @@ pub struct SortedBag<K>:
 
     /// Remove and return one copy of the smallest element, or `None` when empty.
     ///
-    /// cost: O(log n) expected
+    /// cost: \(O(\log n)\) expected
     /// empty: `None`
     /// traps: never
     /// example: `var b = SortedBag.of([3, 1, 1]); b.pop_first() == Some(1) and b.count(1) == 1`
@@ -232,13 +232,13 @@ pub struct SortedBag<K>:
         let _ = self.remove(x!)
         x
 
-    /// O(log n). Removes and returns the least element satisfying monotone `ok` (false then
+    /// \(O(\log n)\). Removes and returns the least element satisfying monotone `ok` (false then
     /// true): "the shortest partner that completes this chain".
     ///
     /// One copy is removed. `None`, and no change, when `ok` holds for no element. It is
     /// `first_true(ok)` followed by `remove` of the result, in one descent.
     ///
-    /// cost: O(log n) expected
+    /// cost: \(O(\log n)\) expected
     /// empty: `None`
     /// ties: none: copies of the answer are equal; one is removed
     /// traps: never in release; debug traps when `ok` is not false-then-true at the answer
@@ -249,13 +249,13 @@ pub struct SortedBag<K>:
         if let v = x: let _ = self.remove(v)
         x
 
-    /// O(log n + k). Removes the elements whose value lies in `r`, yielding them in order.
+    /// \(O(\log n + k)\). Removes the elements whose value lies in `r`, yielding them in order.
     ///
     /// Each copy is yielded once, so a key with count `c` is yielded `c` times. A loop that
     /// stops early leaves the elements not yet yielded in the bag. `r` may be any ordered range
     /// (`a..b`, `a..=b`, `..b`, `a..`, `..`).
     ///
-    /// cost: O(log n + k) expected for `k` removed
+    /// cost: \(O(\log n + k)\) expected for `k` removed
     /// empty: yields nothing, for an empty bag or an empty `r`
     /// order: ascending
     /// traps: never
@@ -268,7 +268,7 @@ pub struct SortedBag<K>:
 
     /// Remove and return one copy of the largest element, or `None` when empty.
     ///
-    /// cost: O(log n) expected
+    /// cost: \(O(\log n)\) expected
     /// empty: `None`
     /// traps: never
     /// example: `var b = SortedBag.of([3, 3, 1]); b.pop_last() == Some(3) and b.to_list() == [1, 3]`
@@ -282,7 +282,7 @@ pub struct SortedBag<K>:
     ///
     /// `k` need not be in the bag. `b.nth(b.rank(k))` is the least element `>= k`.
     ///
-    /// cost: O(log n) expected
+    /// cost: \(O(\log n)\) expected
     /// empty: `0`
     /// traps: never
     /// example: `SortedBag.of([1, 2, 2, 5]).rank(2) == 1`
@@ -325,11 +325,11 @@ pub struct SortedBag<K>:
         else:
             true
 
-    /// The keys of `self` inside `r`, as an O(1) view; replaces `first_ge`, `first_gt`, `last_le`,
+    /// The keys of `self` inside `r`, as an \(O(1)\) view; replaces `first_ge`, `first_gt`, `last_le`,
     /// `last_lt` and `count_range` (decision 103). `r` is any ordered range: `a..b`, `a..=b`, `..b`,
     /// `..=b`, `a..` or `..`. The view lends `self`, so `self` cannot change while it is in use.
     ///
-    /// cost: O(1) to make; see `SortedRange` for each query
+    /// cost: \(O(1)\) to make; see `SortedRange` for each query
     /// empty: a range with no keys gives an empty view
     /// traps: never
     /// example: `SortedBag.of([1, 3, 3, 7]).range(2..=7).len == 3`
@@ -431,7 +431,7 @@ pub struct SortedBag<K>:
     /// It is `b.to_list()[i]` without the list; `None` for any `i` outside `0..len`, negative
     /// included.
     ///
-    /// cost: O(log n) expected
+    /// cost: \(O(\log n)\) expected
     /// empty: `None`
     /// traps: never
     /// example: `SortedBag.of([5, 2, 2, 1]).nth(2) == Some(2)`
@@ -454,12 +454,12 @@ pub struct SortedBag<K>:
         None
 
     /// Smallest key where monotone `ok(k)` holds (`false..false, true..true`), or `None`.
-    /// Checks monotonicity at the boundary. O(log n) expected.
+    /// Checks monotonicity at the boundary. \(O(\log n)\) expected.
     ///
     /// `ok` is called on keys along one root-to-leaf path. Debug builds check that `ok` is
     /// false on the key just below the answer.
     ///
-    /// cost: O(log n) expected calls of `ok`
+    /// cost: \(O(\log n)\) expected calls of `ok`
     /// empty: `None`
     /// ties: none: copies of a key are one candidate; the least key wins
     /// traps: never in release; debug traps when `ok` is not false-then-true at the answer
@@ -478,9 +478,9 @@ pub struct SortedBag<K>:
         best
 
     /// Largest key where monotone `ok(k)` holds (`true..true, false..false`), or `None`.
-    /// Checks monotonicity at the boundary. O(log n) expected.
+    /// Checks monotonicity at the boundary. \(O(\log n)\) expected.
     ///
-    /// cost: O(log n) expected calls of `ok`
+    /// cost: \(O(\log n)\) expected calls of `ok`
     /// empty: `None`
     /// ties: none: copies of a key are one candidate; the greatest key wins
     /// traps: never in release; debug traps when `ok` is not true-then-false at the answer
@@ -500,13 +500,13 @@ pub struct SortedBag<K>:
 
     /// Remove and return the maximal run of elements strictly after `after` (ascending),
     /// strictly before `before` (descending), or from the smallest element (ascending)
-    /// while `ok(k)` holds. O(k log n) expected for `k` removed elements.
+    /// while `ok(k)` holds. \(O(k \log n)\) expected for `k` removed elements.
     ///
     /// The walk starts at the first element past the bound and stops at the first element
     /// where `ok` is false, which stays; each copy of a removed key is one element of the
     /// result. Giving both `after` and `before` is an error.
     ///
-    /// cost: O(k log n) expected for `k` removed elements
+    /// cost: \(O(k \log n)\) expected for `k` removed elements
     /// empty: `[]`
     /// order: ascending with `after` or no bound, descending with `before`; a new `List`, keyed from 0
     /// traps: when both `after` and `before` are given
@@ -537,7 +537,7 @@ pub struct SortedBag<K>:
 
     /// Cursor to the smallest key, or `None` when empty.
     ///
-    /// cost: O(log n) expected
+    /// cost: \(O(\log n)\) expected
     /// empty: `None`
     /// traps: never
     /// example: `let b = SortedBag.of([5, 2, 2]); b.key_of(b.cursor_first()!) == 2`
@@ -550,7 +550,7 @@ pub struct SortedBag<K>:
 
     /// Cursor to the largest key, or `None` when empty.
     ///
-    /// cost: O(log n) expected
+    /// cost: \(O(\log n)\) expected
     /// empty: `None`
     /// traps: never
     /// example: `let b = SortedBag.of([5, 2, 2]); b.key_of(b.cursor_last()!) == 5`
@@ -563,7 +563,7 @@ pub struct SortedBag<K>:
 
     /// Cursor to exact key `k`, or `None` if absent.
     ///
-    /// cost: O(log n) expected
+    /// cost: \(O(\log n)\) expected
     /// empty: `None`
     /// traps: never
     /// example: `let b = SortedBag.of([2, 5]); b.cursor_at(5) != None and b.cursor_at(3) == None`
@@ -578,7 +578,7 @@ pub struct SortedBag<K>:
 
     /// Cursor to smallest key `>= k`, or `None`.
     ///
-    /// cost: O(log n) expected
+    /// cost: \(O(\log n)\) expected
     /// empty: `None`
     /// traps: never
     /// example: `let b = SortedBag.of([2, 5]); b.key_of(b.cursor_ge(3)!) == 5 and b.cursor_ge(6) == None`
@@ -596,7 +596,7 @@ pub struct SortedBag<K>:
 
     /// Cursor to smallest key `> k`, or `None`.
     ///
-    /// cost: O(log n) expected
+    /// cost: \(O(\log n)\) expected
     /// empty: `None`
     /// traps: never
     /// example: `let b = SortedBag.of([2, 5]); b.key_of(b.cursor_gt(2)!) == 5 and b.cursor_gt(5) == None`
@@ -614,7 +614,7 @@ pub struct SortedBag<K>:
 
     /// Cursor to largest key `<= k`, or `None`.
     ///
-    /// cost: O(log n) expected
+    /// cost: \(O(\log n)\) expected
     /// empty: `None`
     /// traps: never
     /// example: `let b = SortedBag.of([2, 5]); b.key_of(b.cursor_le(4)!) == 2 and b.cursor_le(1) == None`
@@ -632,7 +632,7 @@ pub struct SortedBag<K>:
 
     /// Cursor to largest key `< k`, or `None`.
     ///
-    /// cost: O(log n) expected
+    /// cost: \(O(\log n)\) expected
     /// empty: `None`
     /// traps: never
     /// example: `let b = SortedBag.of([2, 5]); b.key_of(b.cursor_lt(5)!) == 2 and b.cursor_lt(2) == None`
@@ -652,14 +652,14 @@ pub struct SortedBag<K>:
     ///
     /// `c` must come from this bag and no mutation may have happened since it was made.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: never in release (a stale cursor reads an unspecified key); debug traps when the node of `c` has been freed
     /// example: `let b = SortedBag.of([2, 2, 5]); b.key_of(b.cursor_first()!) == 2`
     pub fn key_of(self, c: BagCursor) -> K = nodes[c.id].key
 
     /// Multiplicity stored at cursor `c`.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: never in release (a stale cursor reads an unspecified count); debug traps when the node of `c` has been freed
     /// example: `let b = SortedBag.of([2, 2, 5]); b.count_of(b.cursor_at(2)!) == 2`
     pub fn count_of(self, c: BagCursor) -> Int = nodes[c.id].cnt
@@ -668,7 +668,7 @@ pub struct SortedBag<K>:
     ///
     /// Steps over all copies of the current key at once.
     ///
-    /// cost: O(1) amortized, O(log n) worst case
+    /// cost: \(O(1)\) amortized, \(O(\log n)\) worst case
     /// traps: never in release; debug traps when the node of `c` has been freed
     /// example: `let b = SortedBag.of([2, 2, 5]); b.key_of(b.next_cursor(b.cursor_first()!)!) == 5`
     /// example: `let b = SortedBag.of([2, 5]); b.next_cursor(b.cursor_last()!) == None`
@@ -687,7 +687,7 @@ pub struct SortedBag<K>:
 
     /// Cursor to the next smaller distinct key, or `None`.
     ///
-    /// cost: O(1) amortized, O(log n) worst case
+    /// cost: \(O(1)\) amortized, \(O(\log n)\) worst case
     /// traps: never in release; debug traps when the node of `c` has been freed
     /// example: `let b = SortedBag.of([2, 5, 5]); b.key_of(b.prev_cursor(b.cursor_last()!)!) == 2`
     /// example: `let b = SortedBag.of([2, 5]); b.prev_cursor(b.cursor_first()!) == None`
@@ -706,7 +706,7 @@ pub struct SortedBag<K>:
 
     /// Visit every distinct `(key, count)` in ascending order.
     ///
-    /// cost: O(1) amortized per step
+    /// cost: \(O(1)\) amortized per step
     /// empty: yields nothing
     /// order: ascending key, one entry per distinct key
     /// traps: never
@@ -722,7 +722,7 @@ pub struct SortedBag<K>:
     ///
     /// Exactly the reverse of `entries`.
     ///
-    /// cost: O(1) amortized per step
+    /// cost: \(O(1)\) amortized per step
     /// empty: yields nothing
     /// order: descending key, one entry per distinct key
     /// traps: never
@@ -735,7 +735,7 @@ pub struct SortedBag<K>:
 
     /// Every element in ascending order, repeated by multiplicity.
     ///
-    /// cost: O(n)
+    /// cost: \(O(n)\)
     /// empty: `[]`
     /// order: ascending, each key repeated by its count; a new `List`, keyed from 0
     /// traps: never
@@ -748,7 +748,7 @@ pub struct SortedBag<K>:
 
     /// Preallocate treap node pool for at least `cap` distinct keys.
     ///
-    /// cost: O(cap) when the pool grows, O(1) otherwise
+    /// cost: \(O(\mathit{cap})\) when the pool grows, \(O(1)\) otherwise
     /// traps: never
     /// example: `var b = SortedBag.of([1]); b.reserve(100); b.to_list() == [1]`
     pub fn reserve(mut self, cap: Int):
@@ -760,7 +760,7 @@ pub struct SortedBag<K>:
     ///
     /// The larger side keeps the node array; the smaller side's keys move to a fresh one.
     ///
-    /// cost: O(log n + s log n) expected, `s` the smaller side's distinct keys
+    /// cost: \(O(\log n + s \log n)\) expected, `s` the smaller side's distinct keys
     /// empty: both sides empty
     /// traps: never
     /// example: `var b = SortedBag.of([1, 3, 3, 5]); let hi = b.split_at(3); b.to_list() == [1] and hi.to_list() == [3, 3, 5]`
@@ -783,12 +783,12 @@ pub struct SortedBag<K>:
 
     /// Concatenate `other` onto `self` when every key in `self` is `<` every key in `other`.
     ///
-    /// The inverse of `split_at`. The precondition is checked in O(1) against `self.last` and
+    /// The inverse of `split_at`. The precondition is checked in \(O(1)\) against `self.last` and
     /// `other.first`; either side may be empty.
     ///
     /// The smaller side's keys move into the larger side's node array, as in `split_at`.
     ///
-    /// cost: O(log n + s log n) expected, `s` the smaller side's distinct keys
+    /// cost: \(O(\log n + s \log n)\) expected, `s` the smaller side's distinct keys
     /// traps: when both are non-empty and `self.last >= other.first`
     /// example: `var a = SortedBag.of([1, 2]); a.join(SortedBag.of([4, 4])); a.to_list() == [1, 2, 4, 4]`
     pub fn join(mut self, other: SortedBag<K>):
@@ -811,7 +811,7 @@ pub struct SortedBag<K>:
     /// Copies add up: a key with count `a` in `self` and `b` in `other` ends with `a + b`. The
     /// smaller bag's elements are inserted into the larger, whichever side that is.
     ///
-    /// cost: O(min(n, m) log(n + m)) expected
+    /// cost: \(O(\min(n, m) \log(n + m))\) expected
     /// empty: an empty `other` leaves `self` unchanged
     /// traps: never
     /// example: `var a = SortedBag.of([1, 3]); var b = SortedBag.of([3, 2]); a.absorb(mut b); a.to_list() == [1, 2, 3, 3] and b.is_empty`
@@ -835,12 +835,12 @@ pub struct SortedBag<K>:
         for (k, c) in other.entries(): self.add_many(k, c)
         other.clear()
 
-    /// Sum of all elements (for additive `K`). O(1) when augmented, O(n) otherwise.
+    /// Sum of all elements (for additive `K`). \(O(1)\) when augmented, \(O(n)\) otherwise.
     ///
     /// Each copy is added. `BagNode` keeps no subtree sum, so this bag is never augmented and
-    /// the cost is O(n); `AugSortedBag` keeps sums.
+    /// the cost is \(O(n)\); `AugSortedBag` keeps sums.
     ///
-    /// cost: O(n)
+    /// cost: \(O(n)\)
     /// empty: `K.zero`
     /// traps: never (overflow wraps in release, traps in debug)
     /// example: `SortedBag.of([2, 2, 5]).sum() == 9`
@@ -1000,23 +1000,23 @@ pub struct SortedBag<K>:
             self.move_out(nodes[t].right, mut into)
 
 /// An ordered set of unique keys `K` with order statistics (`rank`, `nth`),
-/// O(1) key-range views (`range(r)`), and monotone search (`first_true`/`last_true`). Backed by `SortedBag<K>`.
-/// All single-key and range-summary operations are O(log n) expected;
-/// `range(r)` is O(1); range iteration is O(log n + k);
-/// `len`, `is_empty`, `clear`, `take` are O(1); `each`, `each_rev`, and `to_list` are O(n).
+/// \(O(1)\) key-range views (`range(r)`), and monotone search (`first_true`/`last_true`). Backed by `SortedBag<K>`.
+/// All single-key and range-summary operations are \(O(\log n)\) expected;
+/// `range(r)` is \(O(1)\); range iteration is \(O(\log n + k)\);
+/// `len`, `is_empty`, `clear`, `take` are \(O(1)\); `each`, `each_rev`, and `to_list` are \(O(n)\).
 pub struct SortedSet<K>:
     var bag: SortedBag<K>
 
     /// Create an empty `SortedSet<K>`.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: never
     /// example: `var s: SortedSet<Int> = SortedSet(); s.len == 0`
     pub fn new() -> SortedSet<K> = SortedSet(SortedBag<K>.new())
 
     /// Build a `SortedSet` containing the distinct elements of `xs`.
     ///
-    /// cost: O(n log n) expected
+    /// cost: \(O(n \log n)\) expected
     /// empty: an empty set
     /// traps: never
     /// example: `SortedSet.of([3, 1, 3]).to_list() == [1, 3]`
@@ -1027,7 +1027,7 @@ pub struct SortedSet<K>:
 
     /// Number of keys in the set.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: never
     /// example: `SortedSet.of([3, 1, 3]).len == 2`
     @get pub fn len(self) -> Int:
@@ -1035,7 +1035,7 @@ pub struct SortedSet<K>:
 
     /// Whether the set is empty.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: never
     /// example: `SortedSet.of([1]).is_empty == false`
     @get pub fn is_empty(self) -> Bool:
@@ -1043,14 +1043,14 @@ pub struct SortedSet<K>:
 
     /// Remove all keys from the set.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: never
     /// example: `var s = SortedSet.of([1, 2]); s.clear(); s.len == 0`
     pub fn clear(mut self) = SortedSet(bag.take())
 
     /// Move all keys out, leaving `self` empty.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: never
     /// example: `var s = SortedSet.of([1, 2]); let t = s.take(); s.is_empty and t.to_list() == [1, 2]`
     pub fn take(mut self) -> SortedSet<K>:
@@ -1058,21 +1058,21 @@ pub struct SortedSet<K>:
 
     /// Insert `x` if absent; returns `true` when `x` was newly inserted.
     ///
-    /// cost: O(log n) expected
+    /// cost: \(O(\log n)\) expected
     /// traps: never
     /// example: `var s = SortedSet.of([1]); s.add(2) and not s.add(2) and s.len == 2`
     pub fn add(mut self, x: K) -> Bool = bag.add_unique(x)
 
     /// Remove `x` if present; returns `true` if removed.
     ///
-    /// cost: O(log n) expected
+    /// cost: \(O(\log n)\) expected
     /// traps: never
     /// example: `var s = SortedSet.of([1, 2]); s.remove(2) and not s.remove(2) and s.to_list() == [1]`
     pub fn remove(mut self, x: K) -> Bool = bag.remove(x)
 
     /// Add `x` when `on` is true, or remove it otherwise, matching `Set.set` and `Bitset.set`.
     ///
-    /// cost: O(log n) expected
+    /// cost: \(O(\log n)\) expected
     /// traps: never
     /// example: `var s = SortedSet.of([1]); s.set(2, true); s.set(1, false); s.to_list() == [2]`
     pub fn set(mut self, x: K, on: Bool):
@@ -1085,14 +1085,14 @@ pub struct SortedSet<K>:
     ///
     /// `x in s` calls this.
     ///
-    /// cost: O(log n) expected
+    /// cost: \(O(\log n)\) expected
     /// traps: never
     /// example: `SortedSet.of([1, 4]).contains(4) and not SortedSet.of([1, 4]).contains(2)`
     pub fn contains(self, x: K) -> Bool = bag.contains(x)
 
-    /// Smallest key in the set, or `None`. O(1), kept current by every update.
+    /// Smallest key in the set, or `None`. \(O(1)\), kept current by every update.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// empty: `None`
     /// ties: none: keys are distinct
     /// traps: never
@@ -1100,9 +1100,9 @@ pub struct SortedSet<K>:
     @get pub fn first(self) -> ?K:
         bag.first
 
-    /// Largest key in the set, or `None`. O(1), kept current by every update.
+    /// Largest key in the set, or `None`. \(O(1)\), kept current by every update.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// empty: `None`
     /// ties: none: keys are distinct
     /// traps: never
@@ -1112,7 +1112,7 @@ pub struct SortedSet<K>:
 
     /// Remove and return the smallest key, or `None`.
     ///
-    /// cost: O(log n) expected
+    /// cost: \(O(\log n)\) expected
     /// empty: `None`
     /// traps: never
     /// example: `var s = SortedSet.of([4, 1]); s.pop_first() == Some(1) and s.to_list() == [4]`
@@ -1120,7 +1120,7 @@ pub struct SortedSet<K>:
 
     /// Remove and return the largest key, or `None`.
     ///
-    /// cost: O(log n) expected
+    /// cost: \(O(\log n)\) expected
     /// empty: `None`
     /// traps: never
     /// example: `var s = SortedSet.of([4, 1]); s.pop_last() == Some(4) and s.to_list() == [1]`
@@ -1130,7 +1130,7 @@ pub struct SortedSet<K>:
     ///
     /// `k` need not be in the set.
     ///
-    /// cost: O(log n) expected
+    /// cost: \(O(\log n)\) expected
     /// empty: `0`
     /// traps: never
     /// example: `SortedSet.of([1, 4, 9]).rank(4) == 1`
@@ -1141,7 +1141,7 @@ pub struct SortedSet<K>:
     ///
     /// `None` for any `i` outside `0..len`, negative included.
     ///
-    /// cost: O(log n) expected
+    /// cost: \(O(\log n)\) expected
     /// empty: `None`
     /// traps: never
     /// example: `SortedSet.of([9, 1, 4]).nth(1) == Some(4)`
@@ -1149,12 +1149,12 @@ pub struct SortedSet<K>:
     pub fn nth(self, i: Int) -> ?K = bag.nth(i)
 
     /// The sum of the elements in `keys` (all of them by default), for additive `K`:
-    /// `set.sum(..b)` adds everything below `b`. O(log n): subtree sums are kept.
+    /// `set.sum(..b)` adds everything below `b`. \(O(\log n)\): subtree sums are kept.
     ///
     /// `keys` may be any ordered range (`a..b`, `a..=b`, `..b`, `a..`, `..`); its ends need
     /// not be in the set.
     ///
-    /// cost: O(log n) expected
+    /// cost: \(O(\log n)\) expected
     /// empty: `K.zero`, for an empty set or an empty `keys`
     /// traps: never (overflow wraps in release, traps in debug)
     /// example: `SortedSet.of([1, 2, 5]).sum() == 8`
@@ -1164,7 +1164,7 @@ pub struct SortedSet<K>:
 
     /// Smallest key `k` where monotone `ok(k)` holds (`false..false, true..true`), or `None`.
     ///
-    /// cost: O(log n) expected calls of `ok`
+    /// cost: \(O(\log n)\) expected calls of `ok`
     /// empty: `None`
     /// ties: none: keys are distinct; the least key wins
     /// traps: never in release; debug traps when `ok` is not false-then-true at the answer
@@ -1174,7 +1174,7 @@ pub struct SortedSet<K>:
 
     /// Largest key `k` where monotone `ok(k)` holds (`true..true, false..false`), or `None`.
     ///
-    /// cost: O(log n) expected calls of `ok`
+    /// cost: \(O(\log n)\) expected calls of `ok`
     /// empty: `None`
     /// ties: none: keys are distinct; the greatest key wins
     /// traps: never in release; debug traps when `ok` is not true-then-false at the answer
@@ -1184,12 +1184,12 @@ pub struct SortedSet<K>:
 
     /// Remove and return the maximal run of keys strictly after `after` (ascending),
     /// strictly before `before` (descending), or from the smallest key (ascending)
-    /// while `ok(k)` holds. O(k log n) expected for `k` removed keys.
+    /// while `ok(k)` holds. \(O(k \log n)\) expected for `k` removed keys.
     ///
     /// The walk stops at the first key where `ok` is false, which stays. Giving both `after`
     /// and `before` is an error.
     ///
-    /// cost: O(k log n) expected for `k` removed keys
+    /// cost: \(O(k \log n)\) expected for `k` removed keys
     /// empty: `[]`
     /// order: ascending with `after` or no bound, descending with `before`; a new `List`, keyed from 0
     /// traps: when both `after` and `before` are given
@@ -1201,11 +1201,11 @@ pub struct SortedSet<K>:
         while ok: K -> Bool
     ) -> List<K> = bag.drain(after:, before:, while: ok)
 
-    /// The keys of `self` inside `r`, as an O(1) view; replaces `first_ge`, `first_gt`, `last_le`,
+    /// The keys of `self` inside `r`, as an \(O(1)\) view; replaces `first_ge`, `first_gt`, `last_le`,
     /// `last_lt` and `count_range` (decision 103). `r` is any ordered range: `a..b`, `a..=b`, `..b`,
     /// `..=b`, `a..` or `..`. The view lends `self`, so `self` cannot change while it is in use.
     ///
-    /// cost: O(1) to make; see `SortedRange` for each query
+    /// cost: \(O(1)\) to make; see `SortedRange` for each query
     /// empty: a range with no keys gives an empty view
     /// traps: never
     /// example: `SortedSet.of([1, 3, 7]).range(..7).last == Some(3)`
@@ -1245,7 +1245,7 @@ pub struct SortedSet<K>:
     ///
     /// `for x in s` uses this.
     ///
-    /// cost: O(1) amortized per step
+    /// cost: \(O(1)\) amortized per step
     /// empty: yields nothing
     /// order: ascending
     /// traps: never
@@ -1255,7 +1255,7 @@ pub struct SortedSet<K>:
 
     /// Visit every key in descending order.
     ///
-    /// cost: O(1) amortized per step
+    /// cost: \(O(1)\) amortized per step
     /// empty: yields nothing
     /// order: descending
     /// traps: never
@@ -1265,7 +1265,7 @@ pub struct SortedSet<K>:
 
     /// Return all keys in ascending order as a `List<K>`.
     ///
-    /// cost: O(n)
+    /// cost: \(O(n)\)
     /// empty: `[]`
     /// order: ascending; a new `List`, keyed from 0
     /// traps: never
@@ -1274,7 +1274,7 @@ pub struct SortedSet<K>:
 
     /// Preallocate treap node pool for at least `cap` keys.
     ///
-    /// cost: O(cap) when the pool grows, O(1) otherwise
+    /// cost: \(O(\mathit{cap})\) when the pool grows, \(O(1)\) otherwise
     /// traps: never
     /// example: `var s = SortedSet.of([1]); s.reserve(100); s.to_list() == [1]`
     pub fn reserve(mut self, cap: Int):
@@ -1282,7 +1282,7 @@ pub struct SortedSet<K>:
 
     /// Split off and return all keys `>= k`, keeping `< k` in `self`.
     ///
-    /// cost: O(log n + s log n) expected, `s` the smaller side's size
+    /// cost: \(O(\log n + s \log n)\) expected, `s` the smaller side's size
     /// empty: both sides empty
     /// traps: never
     /// example: `var s = SortedSet.of([1, 3, 5]); let hi = s.split_at(3); s.to_list() == [1] and hi.to_list() == [3, 5]`
@@ -1290,7 +1290,7 @@ pub struct SortedSet<K>:
 
     /// Concatenate `other` onto `self` when every key in `self` is `<` every key in `other`.
     ///
-    /// The precondition is checked in O(1) against `self.last` and `other.first`.
+    /// The precondition is checked in \(O(1)\) against `self.last` and `other.first`.
     ///
     /// cost: as `SortedBag.join`
     /// traps: when both are non-empty and `self.last >= other.first`
@@ -1301,7 +1301,7 @@ pub struct SortedSet<K>:
     ///
     /// A key in both sets appears once.
     ///
-    /// cost: O(min(n, m) log(n + m)) expected
+    /// cost: \(O(\min(n, m) \log(n + m))\) expected
     /// empty: an empty `other` leaves `self` unchanged
     /// traps: never
     /// example: `var a = SortedSet.of([1, 3]); var b = SortedSet.of([3, 2]); a.absorb(mut b); a.to_list() == [1, 2, 3] and b.is_empty`
@@ -1314,7 +1314,7 @@ pub struct SortedSet<K>:
         other.bag.clear()
 
 /// Order-statistic ordered map from `K` to `V` backed by a randomized treap.
-/// `get`, `set`, `remove`, `rank`, `nth`, `first_ge`/`last_le`, `first_true`/`last_true`, `split_at`, `join` are O(log n).
+/// `get`, `set`, `remove`, `rank`, `nth`, `first_ge`/`last_le`, `first_true`/`last_true`, `split_at`, `join` are \(O(\log n)\).
 ///
 /// Entries are ordered by key; keys are distinct, so no lookup has a tie to break. Every
 /// entry-returning method gives `(key, val)`.
@@ -1330,7 +1330,7 @@ pub struct SortedMap<K, V>:
 
     /// Create an empty `SortedMap<K, V>`.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: never
     /// example: `var m: SortedMap<Int, Str> = SortedMap(); m.len == 0`
     pub fn new() -> SortedMap<K, V>:
@@ -1338,7 +1338,7 @@ pub struct SortedMap<K, V>:
 
     /// Preallocate treap node pool for at least `cap` entries.
     ///
-    /// cost: O(cap) when the pool grows, O(1) otherwise
+    /// cost: \(O(\mathit{cap})\) when the pool grows, \(O(1)\) otherwise
     /// traps: never
     /// example: `var m: SortedMap<Int, Str> = SortedMap(); m.reserve(100); m.is_empty`
     pub fn reserve(mut self, cap: Int):
@@ -1346,7 +1346,7 @@ pub struct SortedMap<K, V>:
 
     /// Number of key-value pairs.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: never
     /// example: `var m: SortedMap<Int, Str> = SortedMap(); m.set(1, "a"); m.set(1, "b"); m.len == 1`
     @get pub fn len(self) -> Int:
@@ -1354,7 +1354,7 @@ pub struct SortedMap<K, V>:
 
     /// Whether the map is empty.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: never
     /// example: `var m: SortedMap<Int, Str> = SortedMap(); m.is_empty`
     @get pub fn is_empty(self) -> Bool:
@@ -1362,16 +1362,16 @@ pub struct SortedMap<K, V>:
 
     /// Remove all entries.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: never
     /// example: `var m: SortedMap<Int, Str> = SortedMap(); m.set(1, "a"); m.clear(); m.get(1) == None`
     pub fn clear(mut self):
         ks.clear()
         vals = HashMap<K, V>()
 
-    /// Move contents out in O(1), leaving `self` empty.
+    /// Move contents out in \(O(1)\), leaving `self` empty.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: never
     /// example: `var m: SortedMap<Int, Str> = SortedMap(); m.set(1, "a"); let t = m.take(); m.is_empty and t.get(1) == Some("a")`
     pub fn take(mut self) -> SortedMap<K, V>:
@@ -1381,7 +1381,7 @@ pub struct SortedMap<K, V>:
 
     /// Look up `k`, returning `None` if absent.
     ///
-    /// cost: O(log n) expected
+    /// cost: \(O(\log n)\) expected
     /// traps: never
     /// example: `var m: SortedMap<Int, Str> = SortedMap(); m.set(1, "a"); m.get(1) == Some("a") and m.get(2) == None`
     pub fn get(self, k: K) -> ?V:
@@ -1389,7 +1389,7 @@ pub struct SortedMap<K, V>:
 
     /// Whether `k` is present.
     ///
-    /// cost: O(log n) expected
+    /// cost: \(O(\log n)\) expected
     /// traps: never
     /// example: `var m: SortedMap<Int, Str> = SortedMap(); m.set(1, "a"); m.contains(1) and not m.contains(2)`
     pub fn contains(self, k: K) -> Bool:
@@ -1397,7 +1397,7 @@ pub struct SortedMap<K, V>:
 
     /// Insert or overwrite `k -> v` (W8 `IndexSet` backing `m[k] = v`).
     ///
-    /// cost: O(log n) expected
+    /// cost: \(O(\log n)\) expected
     /// traps: never
     /// example: `var m: SortedMap<Int, Str> = SortedMap(); m[1] = "a"; m[1] = "b"; m.get(1) == Some("b")`
     pub fn set(mut self, k: K, v: V):
@@ -1406,7 +1406,7 @@ pub struct SortedMap<K, V>:
 
     /// Remove `k` and return its previous value, or `None` if absent.
     ///
-    /// cost: O(log n) expected
+    /// cost: \(O(\log n)\) expected
     /// traps: never
     /// example: `var m: SortedMap<Int, Str> = SortedMap(); m.set(1, "a"); m.remove(1) == Some("a") and m.remove(1) == None`
     pub fn remove(mut self, k: K) -> ?V:
@@ -1416,9 +1416,9 @@ pub struct SortedMap<K, V>:
             let _ = vals.remove(k)
         v
 
-    /// Smallest `(key, val)` pair, or `None` if empty. O(1), kept current by every update.
+    /// Smallest `(key, val)` pair, or `None` if empty. \(O(1)\), kept current by every update.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// empty: `None`
     /// ties: none: keys are distinct
     /// traps: never
@@ -1426,9 +1426,9 @@ pub struct SortedMap<K, V>:
     @get pub fn first(self) -> ?(K, V):
         self.entry(ks.first)
 
-    /// Largest `(key, val)` pair, or `None` if empty. O(1), kept current by every update.
+    /// Largest `(key, val)` pair, or `None` if empty. \(O(1)\), kept current by every update.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// empty: `None`
     /// ties: none: keys are distinct
     /// traps: never
@@ -1438,7 +1438,7 @@ pub struct SortedMap<K, V>:
 
     /// Remove and return the smallest `(key, val)` pair, or `None`.
     ///
-    /// cost: O(log n) expected
+    /// cost: \(O(\log n)\) expected
     /// empty: `None`
     /// traps: never
     /// example: `var m: SortedMap<Int, Str> = SortedMap(); m.set(3, "c"); m.set(1, "a"); m.pop_first() == Some((1, "a")) and m.len == 1`
@@ -1449,7 +1449,7 @@ pub struct SortedMap<K, V>:
 
     /// Remove and return the largest `(key, val)` pair, or `None`.
     ///
-    /// cost: O(log n) expected
+    /// cost: \(O(\log n)\) expected
     /// empty: `None`
     /// traps: never
     /// example: `var m: SortedMap<Int, Str> = SortedMap(); m.set(3, "c"); m.set(1, "a"); m.pop_last() == Some((3, "c")) and m.len == 1`
@@ -1460,7 +1460,7 @@ pub struct SortedMap<K, V>:
 
     /// Smallest entry with key `>= k`, or `None`.
     ///
-    /// cost: O(log n) expected
+    /// cost: \(O(\log n)\) expected
     /// empty: `None`
     /// ties: none: keys are distinct
     /// traps: never
@@ -1470,7 +1470,7 @@ pub struct SortedMap<K, V>:
 
     /// Smallest entry with key `> k`, or `None`.
     ///
-    /// cost: O(log n) expected
+    /// cost: \(O(\log n)\) expected
     /// empty: `None`
     /// ties: none: keys are distinct
     /// traps: never
@@ -1480,7 +1480,7 @@ pub struct SortedMap<K, V>:
 
     /// Largest entry with key `<= k`, or `None`.
     ///
-    /// cost: O(log n) expected
+    /// cost: \(O(\log n)\) expected
     /// empty: `None`
     /// ties: none: keys are distinct
     /// traps: never
@@ -1490,7 +1490,7 @@ pub struct SortedMap<K, V>:
 
     /// Largest entry with key `< k`, or `None`.
     ///
-    /// cost: O(log n) expected
+    /// cost: \(O(\log n)\) expected
     /// empty: `None`
     /// ties: none: keys are distinct
     /// traps: never
@@ -1500,7 +1500,7 @@ pub struct SortedMap<K, V>:
 
     /// Number of entries with key strictly less than `k`.
     ///
-    /// cost: O(log n) expected
+    /// cost: \(O(\log n)\) expected
     /// empty: `0`
     /// traps: never
     /// example: `var m: SortedMap<Int, Str> = SortedMap(); m.set(1, "a"); m.set(3, "c"); m.rank(3) == 1 and m.rank(9) == 2`
@@ -1511,7 +1511,7 @@ pub struct SortedMap<K, V>:
     ///
     /// `None` for any `i` outside `0..len`, negative included.
     ///
-    /// cost: O(log n) expected
+    /// cost: \(O(\log n)\) expected
     /// empty: `None`
     /// traps: never
     /// example: `var m: SortedMap<Int, Str> = SortedMap(); m.set(3, "c"); m.set(1, "a"); m.nth(1) == Some((3, "c")) and m.nth(2) == None`
@@ -1522,7 +1522,7 @@ pub struct SortedMap<K, V>:
     ///
     /// `ok` must be false-then-true along ascending keys.
     ///
-    /// cost: O(log n) expected calls of `ok`
+    /// cost: \(O(\log n)\) expected calls of `ok`
     /// empty: `None`
     /// ties: none: keys are distinct; the least key wins
     /// traps: never in release; debug traps when `ok` is not false-then-true at the answer
@@ -1534,7 +1534,7 @@ pub struct SortedMap<K, V>:
     ///
     /// `ok` must be true-then-false along ascending keys.
     ///
-    /// cost: O(log n) expected calls of `ok`
+    /// cost: \(O(\log n)\) expected calls of `ok`
     /// empty: `None`
     /// ties: none: keys are distinct; the greatest key wins
     /// traps: never in release; debug traps when `ok` is not true-then-false at the answer
@@ -1547,7 +1547,7 @@ pub struct SortedMap<K, V>:
     /// With neither bound the walk starts at the smallest key. It stops at the first entry
     /// where `ok` is false, which stays; bounds are exclusive. Giving both is an error.
     ///
-    /// cost: O(k log n) expected for `k` removed entries
+    /// cost: \(O(k \log n)\) expected for `k` removed entries
     /// empty: `[]`
     /// order: ascending key with `after` or no bound, descending with `before`; a new `List`, keyed from 0
     /// traps: when both `after` and `before` are given
@@ -1565,7 +1565,7 @@ pub struct SortedMap<K, V>:
     ///
     /// `self` keeps the entries with key `< k`.
     ///
-    /// cost: O(log n + s log n) expected for the keys, plus O(m) expected to move the `m` values split off
+    /// cost: \(O(\log n + s \log n)\) expected for the keys, plus \(O(m)\) expected to move the `m` values split off
     /// empty: both sides empty
     /// traps: never
     /// example: `var m: SortedMap<Int, Str> = SortedMap(); m.set(1, "a"); m.set(3, "c"); let hi = m.split_at(2); m.len == 1 and hi.first == Some((3, "c"))`
@@ -1577,10 +1577,10 @@ pub struct SortedMap<K, V>:
 
     /// Concatenate `other` onto `self` when every key in `self` is `<` every key in `other`.
     ///
-    /// The precondition is checked in O(1) against the last key of `self` and the first of
+    /// The precondition is checked in \(O(1)\) against the last key of `self` and the first of
     /// `other`.
     ///
-    /// cost: as `SortedBag.join` for the keys, plus O(m) expected to move the `m` values of `other`
+    /// cost: as `SortedBag.join` for the keys, plus \(O(m)\) expected to move the `m` values of `other`
     /// traps: when both are non-empty and the last key of `self` is `>=` the first key of `other`
     /// example: `var a: SortedMap<Int, Str> = SortedMap(); a.set(1, "a"); var b: SortedMap<Int, Str> = SortedMap(); b.set(3, "c"); a.join(b); a.len == 2`
     pub fn join(mut self, other: SortedMap<K, V>):
@@ -1592,7 +1592,7 @@ pub struct SortedMap<K, V>:
     /// For a key in both maps the result is `join(self's value, other's value)`, or `other`'s
     /// value when `join` is `None`, whichever map is drained into the other.
     ///
-    /// cost: O(min(n, m) log(n + m)) expected
+    /// cost: \(O(\min(n, m) \log(n + m))\) expected
     /// empty: an empty `other` leaves `self` unchanged
     /// traps: never
     /// example: `var a: SortedMap<Int, Int> = SortedMap(); a.set(1, 10); var b: SortedMap<Int, Int> = SortedMap(); b.set(1, 5); b.set(2, 7); a.absorb(mut b, join: (x, y) => x + y); a.get(1) == Some(15) and a.get(2) == Some(7) and b.is_empty`
@@ -1613,9 +1613,9 @@ pub struct SortedMap<K, V>:
                 let _ = ks.add(k)
                 vals[k] = v
 
-    /// O(1) to make. Yields `(key, val)` pairs in ascending key order.
+    /// \(O(1)\) to make. Yields `(key, val)` pairs in ascending key order.
     ///
-    /// cost: O(1) to make, O(1) amortized per step
+    /// cost: \(O(1)\) to make, \(O(1)\) amortized per step
     /// empty: yields nothing
     /// order: ascending key
     /// traps: never
@@ -1625,7 +1625,7 @@ pub struct SortedMap<K, V>:
 
     /// Yield `(key, val)` pairs in descending key order.
     ///
-    /// cost: O(1) amortized per step
+    /// cost: \(O(1)\) amortized per step
     /// empty: yields nothing
     /// order: descending key
     /// traps: never
@@ -1635,7 +1635,7 @@ pub struct SortedMap<K, V>:
 
     ///
     ///
-    /// cost: O(1) to make, O(1) amortized per step
+    /// cost: \(O(1)\) to make, \(O(1)\) amortized per step
     /// empty: yields nothing
     /// order: ascending key
     /// traps: never
@@ -1645,7 +1645,7 @@ pub struct SortedMap<K, V>:
 
     ///
     ///
-    /// cost: O(1) to make, O(1) amortized per step
+    /// cost: \(O(1)\) to make, \(O(1)\) amortized per step
     /// empty: yields nothing
     /// order: ascending key
     /// traps: never
@@ -1654,7 +1654,7 @@ pub struct SortedMap<K, V>:
         for k in ks.entries(): yield vals.get(k.key)!
 
 /// Monoid-augmented ordered multiset maintaining `op` over `leaf(k)` on every subtree (W10 operation values).
-/// Supports O(log n) `add`, `remove`, `rank`, `nth`, `fold_lt`, `fold_le`, `fold_ge`, `fold_gt`, `fold_between`, and O(1) `all`.
+/// Supports \(O(\log n)\) `add`, `remove`, `rank`, `nth`, `fold_lt`, `fold_le`, `fold_ge`, `fold_gt`, `fold_between`, and \(O(1)\) `all`.
 ///
 /// Every fold combines `leaf(k)` over the chosen elements in ascending key order, one `leaf(k)`
 /// per copy, starting from `id`; `op` need not be commutative. An empty selection folds to `id`.
@@ -1748,7 +1748,7 @@ pub struct AugSortedBag<K, T>:
 
     /// Create an empty `AugSortedBag<K, T>` with associative `op`, identity `id`, and key map `leaf`.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: never
     /// example: `var b: AugSortedBag<Int, Int> = AugSortedBag((x, y) => x + y, 0, k => k); b.all == 0`
     pub fn new(
@@ -1759,7 +1759,7 @@ pub struct AugSortedBag<K, T>:
 
     /// Preallocate treap node pool for at least `cap` elements.
     ///
-    /// cost: O(cap) when the pool grows, O(1) otherwise
+    /// cost: \(O(\mathit{cap})\) when the pool grows, \(O(1)\) otherwise
     /// traps: never
     /// example: `var b: AugSortedBag<Int, Int> = AugSortedBag((x, y) => x + y, 0, k => k); b.reserve(100); b.len == 0`
     pub fn reserve(mut self, cap: Int):
@@ -1767,21 +1767,21 @@ pub struct AugSortedBag<K, T>:
 
     /// Total number of elements (with multiplicity).
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: never
     /// example: `var b: AugSortedBag<Int, Int> = AugSortedBag((x, y) => x + y, 0, k => k); b.add(3); b.add(3); b.len == 2`
     @get pub fn len(self) -> Int = _len
 
     /// Whether the bag is empty.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: never
     /// example: `var b: AugSortedBag<Int, Int> = AugSortedBag((x, y) => x + y, 0, k => k); b.is_empty`
     @get pub fn is_empty(self) -> Bool = _len == 0
 
     /// Fold of all elements in the bag.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// empty: `id`
     /// traps: never
     /// example: `var b: AugSortedBag<Int, Int> = AugSortedBag((x, y) => x + y, 0, k => k); b.add(3); b.add(1); b.add(3); b.all == 7`
@@ -1789,7 +1789,7 @@ pub struct AugSortedBag<K, T>:
 
     /// Insert one copy of `x`.
     ///
-    /// cost: O(log n) expected
+    /// cost: \(O(\log n)\) expected
     /// traps: never
     /// example: `var b: AugSortedBag<Int, Int> = AugSortedBag((x, y) => x + y, 0, k => k); b.add(3); b.add(3); b.count(3) == 2`
     pub fn add(mut self, x: K):
@@ -1809,7 +1809,7 @@ pub struct AugSortedBag<K, T>:
 
     /// Remove one copy of `x`; returns false if absent.
     ///
-    /// cost: O(log n) expected
+    /// cost: \(O(\log n)\) expected
     /// traps: never
     /// example: `var b: AugSortedBag<Int, Int> = AugSortedBag((x, y) => x + y, 0, k => k); b.add(3); b.add(1); b.add(3); b.remove(3) and b.all == 4 and not b.remove(2)`
     pub fn remove(mut self, x: K) -> Bool:
@@ -1824,14 +1824,14 @@ pub struct AugSortedBag<K, T>:
 
     /// Multiplicity of `x`.
     ///
-    /// cost: O(log n) expected
+    /// cost: \(O(\log n)\) expected
     /// traps: never
     /// example: `var b: AugSortedBag<Int, Int> = AugSortedBag((x, y) => x + y, 0, k => k); b.add(3); b.add(3); b.count(3) == 2 and b.count(1) == 0`
     pub fn count(self, x: K) -> Int = self.rank_le(x) - self.rank(x)
 
     /// Number of elements strictly less than `k`.
     ///
-    /// cost: O(log n) expected
+    /// cost: \(O(\log n)\) expected
     /// empty: `0`
     /// traps: never
     /// example: `var b: AugSortedBag<Int, Int> = AugSortedBag((x, y) => x + y, 0, k => k); b.add(3); b.add(1); b.add(3); b.rank(3) == 1`
@@ -1848,7 +1848,7 @@ pub struct AugSortedBag<K, T>:
     ///
     /// Copies count; `None` for any `i` outside `0..len`.
     ///
-    /// cost: O(log n) expected
+    /// cost: \(O(\log n)\) expected
     /// empty: `None`
     /// traps: never
     /// example: `var b: AugSortedBag<Int, Int> = AugSortedBag((x, y) => x + y, 0, k => k); b.add(3); b.add(1); b.add(3); b.nth(2) == Some(3) and b.nth(3) == None`
@@ -1864,18 +1864,18 @@ pub struct AugSortedBag<K, T>:
                 t = rs[t]
         None
 
-    /// Smallest element, or `None`. O(1), kept current by every update.
+    /// Smallest element, or `None`. \(O(1)\), kept current by every update.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// empty: `None`
     /// ties: none: copies of the least key are equal
     /// traps: never
     /// example: `var b: AugSortedBag<Int, Int> = AugSortedBag((x, y) => x + y, 0, k => k); b.add(3); b.add(1); b.first == Some(1)`
     @get pub fn first(self) -> ?K = lo_k
 
-    /// Largest element, or `None`. O(1), kept current by every update.
+    /// Largest element, or `None`. \(O(1)\), kept current by every update.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// empty: `None`
     /// ties: none: copies of the greatest key are equal
     /// traps: never
@@ -1884,7 +1884,7 @@ pub struct AugSortedBag<K, T>:
 
     /// Fold elements with key `< hi`.
     ///
-    /// cost: O(log n) expected
+    /// cost: \(O(\log n)\) expected
     /// empty: `id`
     /// traps: never
     /// example: `var b: AugSortedBag<Int, Int> = AugSortedBag((x, y) => x + y, 0, k => k); b.add(3); b.add(1); b.add(3); b.fold_lt(3) == 1`
@@ -1892,7 +1892,7 @@ pub struct AugSortedBag<K, T>:
 
     /// Fold elements with key `<= hi`.
     ///
-    /// cost: O(log n) expected
+    /// cost: \(O(\log n)\) expected
     /// empty: `id`
     /// traps: never
     /// example: `var b: AugSortedBag<Int, Int> = AugSortedBag((x, y) => x + y, 0, k => k); b.add(3); b.add(1); b.add(3); b.fold_le(3) == 7`
@@ -1900,7 +1900,7 @@ pub struct AugSortedBag<K, T>:
 
     /// Fold elements with key `>= lo`.
     ///
-    /// cost: O(log n) expected
+    /// cost: \(O(\log n)\) expected
     /// empty: `id`
     /// traps: never
     /// example: `var b: AugSortedBag<Int, Int> = AugSortedBag((x, y) => x + y, 0, k => k); b.add(3); b.add(1); b.add(3); b.fold_ge(2) == 6`
@@ -1908,7 +1908,7 @@ pub struct AugSortedBag<K, T>:
 
     /// Fold elements with key `> lo`.
     ///
-    /// cost: O(log n) expected
+    /// cost: \(O(\log n)\) expected
     /// empty: `id`
     /// traps: never
     /// example: `var b: AugSortedBag<Int, Int> = AugSortedBag((x, y) => x + y, 0, k => k); b.add(3); b.add(1); b.add(3); b.fold_gt(1) == 6 and b.fold_gt(3) == 0`
@@ -1918,7 +1918,7 @@ pub struct AugSortedBag<K, T>:
     ///
     /// `lo >= hi` selects nothing and gives `id`.
     ///
-    /// cost: O(log n) expected
+    /// cost: \(O(\log n)\) expected
     /// empty: `id`, also when `lo >= hi`
     /// traps: never
     /// example: `var b: AugSortedBag<Int, Int> = AugSortedBag((x, y) => x + y, 0, k => k); b.add(3); b.add(1); b.add(3); b.fold_between(1, 3) == 1 and b.fold_between(2, 4) == 6`
@@ -1932,7 +1932,7 @@ pub struct AugSortedBag<K, T>:
 
     /// Yield all elements in ascending order.
     ///
-    /// cost: O(1) amortized per step
+    /// cost: \(O(1)\) amortized per step
     /// empty: yields nothing
     /// order: ascending, each key repeated by its count
     /// traps: never
@@ -1949,7 +1949,7 @@ pub struct AugSortedBag<K, T>:
             t = rs[u]
 
 /// Monoid-augmented ordered unique set maintaining `op` over `leaf(k)` on every subtree (W10 operation values).
-/// Covers dynamic range sums and consecutive-gap monoids (`cf2066e`) in O(log n).
+/// Covers dynamic range sums and consecutive-gap monoids (`cf2066e`) in \(O(\log n)\).
 ///
 /// Every fold combines `leaf(k)` over the chosen keys in ascending order, starting from `id`;
 /// `op` need not be commutative. An empty selection folds to `id`.
@@ -1959,7 +1959,7 @@ pub struct AugSortedSet<K, T>:
 
     /// Create an empty `AugSortedSet<K, T>` with associative `op`, identity `id`, and key map `leaf`.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: never
     /// example: `var s: AugSortedSet<Int, Int> = AugSortedSet((x, y) => x + y, 0, k => k); s.all == 0`
     pub fn new(op: (T, T) -> T, id: T, leaf: K -> T) -> AugSortedSet<K, T> = AugSortedSet<K, T>(
@@ -1969,28 +1969,28 @@ pub struct AugSortedSet<K, T>:
 
     /// Preallocate treap node pool for at least `cap` keys.
     ///
-    /// cost: O(cap) when the pool grows, O(1) otherwise
+    /// cost: \(O(\mathit{cap})\) when the pool grows, \(O(1)\) otherwise
     /// traps: never
     /// example: `var s: AugSortedSet<Int, Int> = AugSortedSet((x, y) => x + y, 0, k => k); s.reserve(100); s.len == 0`
     pub fn reserve(mut self, cap: Int) = bag.reserve(cap)
 
     /// Number of distinct keys.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: never
     /// example: `var s: AugSortedSet<Int, Int> = AugSortedSet((x, y) => x + y, 0, k => k); s.add(3); s.add(3); s.len == 1`
     @get pub fn len(self) -> Int = bag.len
 
     /// Whether the set is empty.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: never
     /// example: `var s: AugSortedSet<Int, Int> = AugSortedSet((x, y) => x + y, 0, k => k); s.is_empty`
     @get pub fn is_empty(self) -> Bool = bag.is_empty
 
     /// Fold of all keys in the set.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// empty: `id`
     /// traps: never
     /// example: `var s: AugSortedSet<Int, Int> = AugSortedSet((x, y) => x + y, 0, k => k); s.add(3); s.add(1); s.add(3); s.all == 4`
@@ -1998,7 +1998,7 @@ pub struct AugSortedSet<K, T>:
 
     /// Insert `x`; returns true if `x` was new.
     ///
-    /// cost: O(log n) expected
+    /// cost: \(O(\log n)\) expected
     /// traps: never
     /// example: `var s: AugSortedSet<Int, Int> = AugSortedSet((x, y) => x + y, 0, k => k); s.add(3) and not s.add(3)`
     pub fn add(mut self, x: K) -> Bool:
@@ -2008,21 +2008,21 @@ pub struct AugSortedSet<K, T>:
 
     /// Remove `x`; returns true if `x` was present.
     ///
-    /// cost: O(log n) expected
+    /// cost: \(O(\log n)\) expected
     /// traps: never
     /// example: `var s: AugSortedSet<Int, Int> = AugSortedSet((x, y) => x + y, 0, k => k); s.add(3); s.remove(3) and not s.remove(3) and s.all == 0`
     pub fn remove(mut self, x: K) -> Bool = bag.remove(x)
 
     /// Whether `x` is present.
     ///
-    /// cost: O(log n) expected
+    /// cost: \(O(\log n)\) expected
     /// traps: never
     /// example: `var s: AugSortedSet<Int, Int> = AugSortedSet((x, y) => x + y, 0, k => k); s.add(3); s.contains(3) and not s.contains(1)`
     pub fn contains(self, x: K) -> Bool = bag.count(x) > 0
 
     /// Number of keys strictly less than `k`.
     ///
-    /// cost: O(log n) expected
+    /// cost: \(O(\log n)\) expected
     /// empty: `0`
     /// traps: never
     /// example: `var s: AugSortedSet<Int, Int> = AugSortedSet((x, y) => x + y, 0, k => k); s.add(3); s.add(1); s.rank(3) == 1 and s.rank(4) == 2`
@@ -2032,24 +2032,24 @@ pub struct AugSortedSet<K, T>:
     ///
     /// `None` for any `i` outside `0..len`.
     ///
-    /// cost: O(log n) expected
+    /// cost: \(O(\log n)\) expected
     /// empty: `None`
     /// traps: never
     /// example: `var s: AugSortedSet<Int, Int> = AugSortedSet((x, y) => x + y, 0, k => k); s.add(3); s.add(1); s.nth(1) == Some(3) and s.nth(2) == None`
     pub fn nth(self, i: Int) -> ?K = bag.nth(i)
 
-    /// Smallest key, or `None`. O(1), kept current by every update.
+    /// Smallest key, or `None`. \(O(1)\), kept current by every update.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// empty: `None`
     /// ties: none: keys are distinct
     /// traps: never
     /// example: `var s: AugSortedSet<Int, Int> = AugSortedSet((x, y) => x + y, 0, k => k); s.add(3); s.add(1); s.first == Some(1)`
     @get pub fn first(self) -> ?K = bag.first
 
-    /// Largest key, or `None`. O(1), kept current by every update.
+    /// Largest key, or `None`. \(O(1)\), kept current by every update.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// empty: `None`
     /// ties: none: keys are distinct
     /// traps: never
@@ -2058,7 +2058,7 @@ pub struct AugSortedSet<K, T>:
 
     /// Fold keys `< hi`.
     ///
-    /// cost: O(log n) expected
+    /// cost: \(O(\log n)\) expected
     /// empty: `id`
     /// traps: never
     /// example: `var s: AugSortedSet<Int, Int> = AugSortedSet((x, y) => x + y, 0, k => k); s.add(1); s.add(3); s.add(5); s.fold_lt(5) == 4`
@@ -2066,7 +2066,7 @@ pub struct AugSortedSet<K, T>:
 
     /// Fold keys `<= hi`.
     ///
-    /// cost: O(log n) expected
+    /// cost: \(O(\log n)\) expected
     /// empty: `id`
     /// traps: never
     /// example: `var s: AugSortedSet<Int, Int> = AugSortedSet((x, y) => x + y, 0, k => k); s.add(1); s.add(3); s.add(5); s.fold_le(5) == 9`
@@ -2074,7 +2074,7 @@ pub struct AugSortedSet<K, T>:
 
     /// Fold keys `>= lo`.
     ///
-    /// cost: O(log n) expected
+    /// cost: \(O(\log n)\) expected
     /// empty: `id`
     /// traps: never
     /// example: `var s: AugSortedSet<Int, Int> = AugSortedSet((x, y) => x + y, 0, k => k); s.add(1); s.add(3); s.add(5); s.fold_ge(3) == 8`
@@ -2082,7 +2082,7 @@ pub struct AugSortedSet<K, T>:
 
     /// Fold keys `> lo`.
     ///
-    /// cost: O(log n) expected
+    /// cost: \(O(\log n)\) expected
     /// empty: `id`
     /// traps: never
     /// example: `var s: AugSortedSet<Int, Int> = AugSortedSet((x, y) => x + y, 0, k => k); s.add(1); s.add(3); s.add(5); s.fold_gt(3) == 5`
@@ -2092,7 +2092,7 @@ pub struct AugSortedSet<K, T>:
     ///
     /// `lo >= hi` selects nothing and gives `id`.
     ///
-    /// cost: O(log n) expected
+    /// cost: \(O(\log n)\) expected
     /// empty: `id`, also when `lo >= hi`
     /// traps: never
     /// example: `var s: AugSortedSet<Int, Int> = AugSortedSet((x, y) => x + y, 0, k => k); s.add(1); s.add(3); s.add(5); s.fold_between(1, 5) == 4 and s.fold_between(4, 2) == 0`
@@ -2100,7 +2100,7 @@ pub struct AugSortedSet<K, T>:
 
     /// Yield all keys in ascending order.
     ///
-    /// cost: O(1) amortized per step
+    /// cost: \(O(1)\) amortized per step
     /// empty: yields nothing
     /// order: ascending
     /// traps: never
@@ -2108,7 +2108,7 @@ pub struct AugSortedSet<K, T>:
     pub fn each(self) -> yields K:
         for x in bag.each(): yield x
 
-/// O(1) point add, O(sqrt(N)) k-th order statistic over an integer value range `r`.
+/// \(O(1)\) point add, \(O(\sqrt{N})\) k-th order statistic over an integer value range `r`.
 /// Designed as a Mo's algorithm companion for value-range frequency tables.
 ///
 /// `N` is `r.len`; the table keeps one count per value and one per block of about `sqrt(N)`
@@ -2121,9 +2121,9 @@ pub struct BucketCount:
     cnt: List<Int>
     blk: List<Int>
 
-    /// O(r.len). Create an empty bucketed frequency table over `r`.
+    /// \(O(r.\mathit{len})\). Create an empty bucketed frequency table over `r`.
     ///
-    /// cost: O(r.len)
+    /// cost: \(O(r.\mathit{len})\)
     /// empty: an empty `r` gives a table every write traps on
     /// traps: never
     /// example: `var b = BucketCount(0..10); b.len == 0`
@@ -2133,11 +2133,11 @@ pub struct BucketCount:
         while bs * bs < n: bs += 1
         BucketCount(r.start, r.start + n, bs, 0, List.filled(n, 0), List.filled(n / bs + 1, 0))
 
-    /// O(1). Add `delta` (default 1; may be negative) copies of `x`.
+    /// \(O(1)\). Add `delta` (default 1; may be negative) copies of `x`.
     ///
     /// A negative `delta` removes copies; the count of `x` may not go below 0.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: when `x` is not in `r`; when the count of `x` would become negative
     /// example: `var b = BucketCount(0..10); b.add(3); b.add(7, 2); b.count(7) == 2 and b.len == 3`
     pub fn add(mut self, x: Int, delta: Int = 1):
@@ -2148,29 +2148,29 @@ pub struct BucketCount:
         blk[i / bs] += delta
         total += delta
 
-    /// O(1). Remove `delta` (default 1) copies of `x`.
+    /// \(O(1)\). Remove `delta` (default 1) copies of `x`.
     ///
     /// The same as `add(x, -delta)`.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: when `x` is not in `r`; when the count of `x` would become negative
     /// example: `var b = BucketCount(0..10); b.add(7, 2); b.remove(7); b.count(7) == 1`
     pub fn remove(mut self, x: Int, delta: Int = 1):
         self.add(x, -delta)
 
-    /// O(1). Multiplicity of `x`.
+    /// \(O(1)\). Multiplicity of `x`.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: never; an `x` outside `r` has count 0
     /// example: `var b = BucketCount(0..10); b.add(3); b.count(3) == 1 and b.count(4) == 0 and b.count(99) == 0`
     pub fn count(self, x: Int) -> Int:
         if lo <= x and x < hi: cnt[x - lo] else: 0
 
-    /// O(sqrt(N)). Number of elements strictly less than `x`.
+    /// \(O(\sqrt{N})\). Number of elements strictly less than `x`.
     ///
     /// Any `x` works: below `r` gives 0, at or above `r.end` gives `len`.
     ///
-    /// cost: O(sqrt(N))
+    /// cost: \(O(\sqrt{N})\)
     /// empty: `0`
     /// traps: never
     /// example: `var b = BucketCount(0..10); b.add(3); b.add(7, 2); b.count_lt(7) == 1 and b.count_lt(8) == 3`
@@ -2183,11 +2183,11 @@ pub struct BucketCount:
         for j in i / bs * bs..i: acc += cnt[j]
         acc
 
-    /// O(sqrt(N)). The `k`-th smallest element, 0-based like `nth`: `kth(0)` is the smallest.
+    /// \(O(\sqrt{N})\). The `k`-th smallest element, 0-based like `nth`: `kth(0)` is the smallest.
     ///
     /// Copies count: with elements `3, 7, 7`, `kth(1)` and `kth(2)` are both `7`.
     ///
-    /// cost: O(sqrt(N))
+    /// cost: \(O(\sqrt{N})\)
     /// ties: none: the `k`-th element is one value
     /// traps: when `k` is not in `0..len`
     /// example: `var b = BucketCount(0..10); b.add(3); b.add(7, 2); b.kth(0) == 3 and b.kth(1) == 7 and b.kth(2) == 7`
@@ -2206,23 +2206,23 @@ pub struct BucketCount:
 
     ///
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: never
     /// example: `var b = BucketCount(0..10); b.add(4, 3); b.len == 3`
     @get pub fn len(self) -> Int:
         total
 
-    /// O(1). Whether the table is empty.
+    /// \(O(1)\). Whether the table is empty.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: never
     /// example: `var b = BucketCount(0..10); b.add(4); b.remove(4); b.is_empty`
     @get pub fn is_empty(self) -> Bool:
         total == 0
 
-    /// O(r.len). Reset all counts to zero.
+    /// \(O(r.\mathit{len})\). Reset all counts to zero.
     ///
-    /// cost: O(r.len)
+    /// cost: \(O(r.\mathit{len})\)
     /// traps: never
     /// example: `var b = BucketCount(0..10); b.add(4); b.clear(); b.count(4) == 0 and b.len == 0`
     pub fn clear(mut self):
@@ -2448,7 +2448,7 @@ pub struct SortedRange<K>:
 
     /// The smallest key in the range.
     ///
-    /// cost: O(log n) expected
+    /// cost: \(O(\log n)\) expected
     /// empty: `None`
     /// ties: copies of a key are equal, so any is the answer
     /// traps: never
@@ -2457,7 +2457,7 @@ pub struct SortedRange<K>:
 
     /// The largest key in the range.
     ///
-    /// cost: O(log n) expected
+    /// cost: \(O(\log n)\) expected
     /// empty: `None`
     /// ties: copies of a key are equal, so any is the answer
     /// traps: never
@@ -2466,7 +2466,7 @@ pub struct SortedRange<K>:
 
     /// The number of keys in the range, counting copies.
     ///
-    /// cost: O(log n) expected
+    /// cost: \(O(\log n)\) expected
     /// empty: 0
     /// traps: never
     /// example: `SortedBag.of([1, 3, 3, 7]).range(3..=3).len == 2`
@@ -2474,7 +2474,7 @@ pub struct SortedRange<K>:
 
     /// True when the range holds no key.
     ///
-    /// cost: O(log n) expected
+    /// cost: \(O(\log n)\) expected
     /// empty: `true`
     /// traps: never
     /// example: `SortedSet.of([1, 7]).range(2..7).is_empty`
@@ -2482,7 +2482,7 @@ pub struct SortedRange<K>:
 
     /// The keys in ascending order, copies included.
     ///
-    /// cost: O(log n + k) expected for `k` keys visited
+    /// cost: \(O(\log n + k)\) expected for `k` keys visited
     /// empty: yields nothing
     /// order: ascending
     /// traps: never
@@ -2491,7 +2491,7 @@ pub struct SortedRange<K>:
 
     /// The keys in descending order, copies included.
     ///
-    /// cost: O(log n + k) expected for `k` keys visited
+    /// cost: \(O(\log n + k)\) expected for `k` keys visited
     /// empty: yields nothing
     /// order: descending
     /// traps: never

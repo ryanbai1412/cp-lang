@@ -4,7 +4,7 @@
 ///
 /// Signs are ignored: `gcd(a, b) == gcd(|a|, |b|)`, and `gcd(a, 0) == |a|`.
 ///
-/// cost: O(log min(|a|, |b|))
+/// cost: \(O(\log \min(\lvert a \rvert, \lvert b \rvert))\)
 /// traps: when the result is `2^63` (`gcd(Int.MIN, 0)` or `gcd(Int.MIN, Int.MIN)`)
 /// example: `gcd(12, 18) == 6`
 /// example: `gcd(-4, 6) == 2`
@@ -19,7 +19,7 @@ pub fn gcd(a: Int, b: Int) -> Int:
 ///
 /// Computed as `|a| / gcd(a, b) * |b|`, so it traps only when the true result overflows.
 ///
-/// cost: O(log min(|a|, |b|))
+/// cost: \(O(\log \min(\lvert a \rvert, \lvert b \rvert))\)
 /// traps: when the result overflows `Int`
 /// example: `lcm(4, 6) == 12`
 /// example: `lcm(-4, 6) == 12`
@@ -31,7 +31,7 @@ const SQRT_MAX = 3_037_000_499
 
 /// The exact floor square root `floor(sqrt(x))` of `x >= 0`, with no float rounding loss.
 ///
-/// cost: O(1)
+/// cost: \(O(1)\)
 /// traps: when `self < 0`
 /// example: `isqrt(15) == 3`
 /// example: `isqrt(16) == 4`
@@ -46,7 +46,7 @@ const SQRT_MAX = 3_037_000_499
 
 /// The exact ceiling square root `ceil(sqrt(x))` of `x >= 0`.
 ///
-/// cost: O(1)
+/// cost: \(O(1)\)
 /// traps: when `self < 0`
 /// example: `ceil_sqrt(15) == 4`
 /// example: `ceil_sqrt(16) == 4`
@@ -59,7 +59,7 @@ pub fn ceil_sqrt(x: Int) -> Int:
 ///
 /// The largest `r >= 0` with `r^k <= x`, found without floats or overflow.
 ///
-/// cost: O(log x)
+/// cost: \(O(\log x)\)
 /// traps: when `x < 0` or `k < 1`
 /// example: `iroot(26, 3) == 2`
 /// example: `iroot(27, 3) == 3`
@@ -86,7 +86,7 @@ fn pow_at_most(r: Int, k: Int, x: Int) -> Bool:
 /// sign: `fixed(-1, 300, 2) == "0.00"`. With `k == 0` there is no point. A negative `den` flips
 /// the sign. `fixed(t, 2, 1)` prints a half-integer. `|num| * 10^k * 2` must fit an `Int`.
 ///
-/// cost: O(k + digits of the result)
+/// cost: \(O(k + \text{digits of the result})\)
 /// traps: when `den == 0`, `k < 0`, or `|num| * 10^k * 2` overflows
 /// example: `fixed(1, 3, 2) == "0.33"`
 /// example: `fixed(2, 3, 2) == "0.67"`
@@ -113,7 +113,7 @@ pub fn fixed(num: Int, den: Int, k: Int) -> Str:
 /// and is at most the result times `min(k, n - k)`. For counts modulo a prime use `Comb` in
 /// `std.mod`.
 ///
-/// cost: O(min(k, n - k))
+/// cost: \(O(\min(k, n - k))\)
 /// traps: when the result overflows `Int`
 /// example: `choose(5, 2) == 10`
 /// example: `choose(5, 6) == 0`
@@ -127,7 +127,7 @@ pub fn choose(n: Int, k: Int) -> Int:
 
 /// The number of unordered pairs from `n` things: `n * (n - 1) / 2` for `n >= 2`, else 0.
 ///
-/// cost: O(1)
+/// cost: \(O(1)\)
 /// traps: when the result overflows `Int`
 /// example: `choose2(5) == 10`
 /// example: `choose2(1) == 0`
@@ -141,7 +141,7 @@ pub fn choose2(n: Int) -> Int = if n < 2: 0 else: n * (n - 1) / 2
 /// negative. So `|x| <= max(1, |b| / g)` and `|y| <= max(1, |a| / g)`, and `ext_gcd(a, 0)` is
 /// `(|a|, sign of a or 1, 0)`.
 ///
-/// cost: O(log min(|a|, |b|))
+/// cost: \(O(\log \min(\lvert a \rvert, \lvert b \rvert))\)
 /// traps: when `g` is `2^63`
 /// example: `ext_gcd(240, 46) == (2, -9, 47)`
 /// example: `ext_gcd(46, 240) == (2, 47, -9)`
@@ -163,7 +163,7 @@ pub fn ext_gcd(a: Int, b: Int) -> (g: Int, x: Int, y: Int):
 /// Built-in `/` is Euclidean division (the remainder is never negative), which already equals
 /// `floor(a / b)` for `b > 0`; `ceil_div` is the rounding-up counterpart for either sign of `b`.
 ///
-/// cost: O(1)
+/// cost: \(O(1)\)
 /// traps: when `b == 0`, or on overflow (`ceil_div(Int.MIN, -1)`)
 /// example: `ceil_div(7, 2) == 4`
 /// example: `ceil_div(-7, 2) == -3`
@@ -175,7 +175,7 @@ pub fn ceil_div(self: Int, b: Int) -> Int = if b > 0: -((-self) / b) else: -(sel
 ///
 /// Works as both `n.divmod(d)` and `divmod(n, d)`.
 ///
-/// cost: O(1)
+/// cost: \(O(1)\)
 /// traps: when `d == 0`, or on overflow (`Int.MIN.divmod(-1)`)
 /// example: `7.divmod(3) == (2, 1)`
 /// example: `(-7).divmod(3) == (-3, 2)`
@@ -184,7 +184,7 @@ pub fn ceil_div(self: Int, b: Int) -> Int = if b > 0: -((-self) / b) else: -(sel
 pub fn divmod(self: Int, d: Int) -> (Int, Int) = (self / d, self % d)
 
 /// The smallest prime factor of every number up to `n` (0 for 0 and 1), by a linear sieve.
-/// O(n) time and memory.
+/// \(O(n)\) time and memory.
 pub struct Sieve:
     pub spf: List<0..=2_000_000_000>
     pub primes: List<0..=2_000_000_000>
@@ -194,7 +194,7 @@ pub struct Sieve:
     ///
     /// `spf[0]` and `spf[1]` are 0. Queries take any `x` in `0..=n` (`1..=n` where 0 is meaningless).
     ///
-    /// cost: O(n) time and memory
+    /// cost: \(O(n)\) time and memory
     /// traps: when `n < 0` or `n > 2_000_000_000`
     /// example: `Sieve(10).is_prime(7) == true`
     /// example: `Sieve(0).is_prime(0) == false`
@@ -214,7 +214,7 @@ pub struct Sieve:
 
     /// Whether `x` is prime, for `0 <= x <= n`: `spf[x] == x` and `x >= 2`.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: when `x` is outside `0..=n`
     /// example: `Sieve(10).is_prime(7) == true`
     /// example: `Sieve(10).is_prime(9) == false`
@@ -223,7 +223,7 @@ pub struct Sieve:
 
     /// The prime factorization of `x` in `1..=n` as `(prime, exponent)` pairs, by repeated `spf`.
     ///
-    /// cost: O(log x)
+    /// cost: \(O(\log x)\)
     /// order: smallest prime first; a new `List`, keyed from 0
     /// traps: when `x` is outside `1..=n`
     /// example: `Sieve(100).factor(60) == [(2, 2), (3, 1), (5, 1)]`
@@ -243,7 +243,7 @@ pub struct Sieve:
 
     /// Euler's totient of `x` in `1..=n`: how many of `1..=x` are coprime to `x`.
     ///
-    /// cost: O(log x)
+    /// cost: \(O(\log x)\)
     /// traps: when `x` is outside `1..=n`
     /// example: `Sieve(100).phi(36) == 12`
     /// example: `Sieve(100).phi(1) == 1`
@@ -255,7 +255,7 @@ pub struct Sieve:
     /// The Mobius function of `x` in `1..=n`: 0 if a square above 1 divides `x`, else -1 to the
     /// number of prime factors.
     ///
-    /// cost: O(log x)
+    /// cost: \(O(\log x)\)
     /// traps: when `x` is outside `1..=n`
     /// example: `Sieve(100).mobius(30) == -1`
     /// example: `Sieve(100).mobius(12) == 0`
@@ -267,7 +267,7 @@ pub struct Sieve:
 
     /// Euler's totient of every `0..=n`, with `phi[0] == 0`.
     ///
-    /// cost: O(n)
+    /// cost: \(O(n)\)
     /// order: `phi[k]` at key `k`, `k` in `0..=n`; a new `List`
     /// traps: never
     /// example: `Sieve(6).phi_table() == [0, 1, 1, 2, 2, 4, 2]`
@@ -284,7 +284,7 @@ pub struct Sieve:
 
     /// The Mobius function of every `0..=n`, with `mu[0] == 0` and `mu[1] == 1`.
     ///
-    /// cost: O(n)
+    /// cost: \(O(n)\)
     /// order: `mu[k]` at key `k`, `k` in `0..=n`; a new `List`
     /// traps: never
     /// example: `Sieve(6).mobius_table() == [0, 1, -1, -1, 0, -1, 1]`
@@ -301,7 +301,7 @@ pub struct Sieve:
 
     /// The number of positive divisors of every `0..=n`, with `d[0] == 0`.
     ///
-    /// cost: O(n)
+    /// cost: \(O(n)\)
     /// order: `d[k]` at key `k`, `k` in `0..=n`; a new `List`
     /// traps: never
     /// example: `Sieve(6).div_count_table() == [0, 1, 2, 2, 3, 2, 4]`
@@ -323,7 +323,7 @@ pub struct Sieve:
 
     /// The sum of the positive divisors of every `0..=n`, with `sigma[0] == 0`.
     ///
-    /// cost: O(n)
+    /// cost: \(O(n)\)
     /// order: `sigma[k]` at key `k`, `k` in `0..=n`; a new `List`
     /// traps: when a sum overflows `Int`
     /// example: `Sieve(6).div_sum_table() == [0, 1, 3, 4, 7, 6, 12]`
@@ -350,7 +350,7 @@ pub struct Sieve:
     /// They come in mixed-radix order over the factorization: the exponent of the smallest prime
     /// changes fastest. That order is fixed but not sorted; use `.sorted()` for ascending.
     ///
-    /// cost: O(log x) to start, O(1) per divisor
+    /// cost: \(O(\log x)\) to start, \(O(1)\) per divisor
     /// order: mixed-radix over the exponents, smallest prime fastest (12 gives 1, 2, 4, 3, 6, 12)
     /// traps: when `x` is outside `1..=n`
     /// example: `Sieve(12).divisors(12).collect() == [1, 2, 4, 3, 6, 12]`
@@ -358,12 +358,12 @@ pub struct Sieve:
     pub fn divisors(self, x: Int) -> yields Int:
         for d in divisors_in_radix_order(self.factor(x)): yield d
 
-/// Tabulate a multiplicative function `f` on `0..=n` in O(n) with a linear sieve.
+/// Tabulate a multiplicative function `f` on `0..=n` in \(O(n)\) with a linear sieve.
 ///
 /// `f(1) = T.one`, `f(a * b) = f(a) * f(b)` for coprime `a, b`, and `f(p^e) = prime_pow(p, e,
 /// p^e)` for every prime power `p^e <= n`. Index 0 holds `T.one`.
 ///
-/// cost: O(n) time and memory, plus one `prime_pow` call per prime power
+/// cost: \(O(n)\) time and memory, plus one `prime_pow` call per prime power
 /// order: `f(k)` at key `k`, `k` in `0..=n`; a new `List`
 /// traps: when `n < 0`
 /// example: `sieve_multiplicative(6, (p, e, pe) => e + 1) == [1, 1, 2, 2, 3, 2, 4]`
@@ -397,7 +397,7 @@ pub fn sieve_multiplicative<T>(n: Int, prime_pow: (Int, Int, Int) -> T) -> List<
 
 /// The number of bits needed to write `x >= 0`: `bit_len(0) == 0`, `bit_len(5) == 3`.
 ///
-/// cost: O(1)
+/// cost: \(O(1)\)
 /// traps: when `self < 0`
 /// example: `bit_len(0) == 0`
 /// example: `bit_len(5) == 3`
@@ -406,7 +406,7 @@ pub fn bit_len(x: Int) -> Int = bit_width(x)
 
 /// The digits of `x >= 0` in `base`, lowest first; `0` has the one digit `0`.
 ///
-/// cost: O(log_base x)
+/// cost: \(O(\mathit{log\_base} x)\)
 /// order: lowest digit first; a new `List`, keyed from 0
 /// traps: when `self < 0` or `base < 2`
 /// example: `1203.digits() == [3, 0, 2, 1]`
@@ -423,7 +423,7 @@ pub fn digits(self: Int, base: Int = 10) -> List<Int>:
 /// `self` written in `base` (2..=36), highest digit first, lowercase letters past 9, a leading
 /// `-` when negative. The inverse of `Str.parse_int`.
 ///
-/// cost: O(log |self|)
+/// cost: \(O(\log \lvert \mathit{self} \rvert)\)
 /// traps: when `base` is outside `2..=36`
 /// example: `255.to_str(base: 16) == "ff"`
 /// example: `(-10).to_str(base: 2) == "-1010"`
@@ -447,7 +447,7 @@ pub enum Sign: Neg = -1, Zero = 0, Pos = 1
 
 /// The side of zero `self` is on: `Neg`, `Zero` or `Pos`. `(b - a).sign` compares two values.
 ///
-/// cost: O(1)
+/// cost: \(O(1)\)
 /// traps: never
 /// example: `(-5).sign == Sign.Neg`
 /// example: `0.sign == Sign.Zero`
@@ -459,7 +459,7 @@ pub enum Sign: Neg = -1, Zero = 0, Pos = 1
 /// Bits from 63 up repeat the sign: None is set in a non-negative `Int` and all are set in a
 /// negative one.
 ///
-/// cost: O(1)
+/// cost: \(O(1)\)
 /// traps: when `i < 0`
 /// example: `5.bit(0) == true`
 /// example: `5.bit(1) == false`
@@ -469,7 +469,7 @@ pub fn bit(self: Int, i: Int) -> Bool = if i >= 64: self < 0 else: (self >> i) &
 
 /// Is `self` a power of two? `self > 0 and self & (self - 1) == 0`.
 ///
-/// cost: O(1)
+/// cost: \(O(1)\)
 /// traps: never
 /// example: `8.is_pow2 == true`
 /// example: `1.is_pow2 == true`
@@ -483,7 +483,7 @@ pub fn bit(self: Int, i: Int) -> Bool = if i >= 64: self < 0 else: (self >> i) &
 /// 0xBF58476D1CE4E5B9; z ^= z >> 27; z *= 0x94D049BB133111EB; z ^= z >> 31`, all wrapping. It is
 /// the usual guard for `HashMap` keys, and `std.rand.Rng.next` is this applied to its state.
 ///
-/// cost: O(1)
+/// cost: \(O(1)\)
 /// traps: never
 /// example: `splitmix64(0) == 0xE220A8397B1DCDAF`
 /// example: `splitmix64(1) != splitmix64(2)`
@@ -498,7 +498,7 @@ pub fn splitmix64(x: U64) -> U64:
 /// Trial division for `x <= 1_000_000`; Pollard's rho with deterministic Miller-Rabin above.
 /// `factor(1)` is `[]`.
 ///
-/// cost: O(sqrt x) for `x <= 1_000_000`; O(x^(1/4) log x) expected above
+/// cost: \(O(\sqrt x)\) for `x <= 1_000_000`; \(O(x^{1/4} \log x)\) expected above
 /// order: smallest prime first; a new `List`, keyed from 0
 /// traps: when `x < 1`
 /// example: `factor(60) == [(2, 2), (3, 1), (5, 1)]`
@@ -544,7 +544,7 @@ pub fn factor(x: Int) -> List<(Int, Int)>:
 
 /// The positive divisors of `x >= 1`, ascending.
 ///
-/// cost: O(sqrt x)
+/// cost: \(O(\sqrt x)\)
 /// order: ascending; a new `List`, keyed from 0
 /// traps: when `x < 1`
 /// example: `divisors(12) == [1, 2, 3, 4, 6, 12]`
@@ -564,7 +564,7 @@ pub fn divisors(x: Int) -> List<Int>:
 /// `factors` is taken as `(prime, exponent)` pairs with distinct primes, as `factor` returns
 /// them; it is not checked. The empty factorization is that of 1.
 ///
-/// cost: O(d log d) for `d` divisors
+/// cost: \(O(d \log d)\) for `d` divisors
 /// empty: `[1]`
 /// order: ascending; a new `List`, keyed from 0
 /// traps: when an exponent is negative, or a divisor overflows `Int`
@@ -594,7 +594,7 @@ fn ext_gcd_x(a: Int, b: Int) -> (Int, Int):
 ///
 /// `a` may be negative or at least `m`; it is reduced first. Modulo 1 the inverse is 0.
 ///
-/// cost: O(log m)
+/// cost: \(O(\log m)\)
 /// traps: when `m < 1`
 /// example: `inv_mod(3, 7) == Some(5)`
 /// example: `inv_mod(-3, 7) == Some(2)`
@@ -611,7 +611,7 @@ pub fn inv_mod(a: Int, m: Int) -> ?Int:
 ///
 /// The moduli need not be coprime; the residues may be any `Int`.
 ///
-/// cost: O(log min(m1, m2))
+/// cost: \(O(\log \min(m1, m2))\)
 /// traps: when `m1 < 1` or `m2 < 1`, or `lcm(m1, m2)` overflows
 /// example: `crt(2, 3, 3, 5) == Some((8, 15))`
 /// example: `crt(1, 4, 3, 6) == Some((9, 12))`
@@ -628,7 +628,7 @@ pub fn crt(r1: Int, m1: Int, r2: Int, m2: Int) -> ?(Int, Int):
 /// The solution of the system `x = r (mod m)` for every `(r, m)` in `eqs`, as `(r, m)` with
 /// `0 <= r < m`, or `None` if inconsistent: `crt` folded left to right from `(0, 1)`.
 ///
-/// cost: O(eqs.len * log lcm)
+/// cost: \(O(\mathit{eqs}.\mathit{len} \cdot \log \mathit{lcm})\)
 /// empty: `Some((0, 1))`
 /// traps: when some `m < 1`, or the running lcm overflows
 /// example: `crt_all([(2, 3), (3, 5), (2, 7)]) == Some((23, 105))`
@@ -648,7 +648,7 @@ pub fn crt_all(eqs: List<(Int, Int)>) -> ?(Int, Int):
 ///
 /// Negative operands are fine; the result is the Euclidean remainder.
 ///
-/// cost: O(1)
+/// cost: \(O(1)\)
 /// traps: when `m < 1`
 /// example: `mul_mod(1_000_000_000_000_000_000, 1_000_000_000_000_000_000, 1_000_000_007) == 2401`
 /// example: `mul_mod(-3, 5, 7) == 6`
@@ -658,7 +658,7 @@ pub fn mul_mod(a: Int, b: Int, m: Int) -> Int:
 
 /// `a ** e mod m`, in `0..m`, for `e >= 0` and `m >= 1`; `a ** 0` is `1 % m`.
 ///
-/// cost: O(log e) multiplications, each O(1)
+/// cost: \(O(\log e)\) multiplications, each \(O(1)\)
 /// traps: when `e < 0` or `m < 1`
 /// example: `pow_mod(2, 10, 1000) == 24`
 /// example: `pow_mod(-2, 3, 7) == 6`
@@ -674,10 +674,10 @@ pub fn pow_mod(a: Int, e: Int, m: Int) -> Int:
 
 /// Is `x` prime? Deterministic Miller-Rabin over the first twelve primes, exact for every `Int`.
 ///
-/// Values below 2, negatives included, are not prime. `Sieve(n).is_prime(x)` is O(1) for many
+/// Values below 2, negatives included, are not prime. `Sieve(n).is_prime(x)` is \(O(1)\) for many
 /// small `x`.
 ///
-/// cost: O(log^2 x)
+/// cost: \(O(\log^2 x)\)
 /// traps: never
 /// example: `is_prime(2) == true`
 /// example: `is_prime(1_000_000_007) == true`
@@ -711,7 +711,7 @@ fn rho_step(y: Int, c: Int, x: Int) -> Int:
     if s >= x - c: s - (x - c) else: s + c
 
 /// A divisor of the odd composite `x` other than 1 and `x`, by Pollard's rho with Brent's
-/// batching. Expected O(x^(1/4) log x).
+/// batching. Expected \(O(x^{1/4} \log x)\).
 fn rho(x: Int) -> Int:
     var c = 1
     while true:
@@ -740,7 +740,7 @@ fn rho(x: Int) -> Int:
 
 /// Euler's totient of `x >= 1`: how many of `1..=x` are coprime to `x`.
 ///
-/// cost: O(sqrt x) for `x <= 1_000_000`; O(x^(1/4) log x) expected above
+/// cost: \(O(\sqrt x)\) for `x <= 1_000_000`; \(O(x^{1/4} \log x)\) expected above
 /// traps: when `x < 1`
 /// example: `phi(36) == 12`
 /// example: `phi(1) == 1`
@@ -753,7 +753,7 @@ pub fn phi(x: Int) -> Int:
 /// The smallest primitive root modulo the prime `p`: the least `g >= 1` whose powers reach every
 /// non-zero residue.
 ///
-/// cost: O(p^(1/4) log p) expected to factor `p - 1`, then O(log^2 p) per candidate
+/// cost: \(O(p^{1/4} \log p)\) expected to factor `p - 1`, then \(O(\log^2 p)\) per candidate
 /// traps: when `p` is not prime
 /// example: `primitive_root(7) == 3`
 /// example: `primitive_root(998_244_353) == 3`
@@ -771,7 +771,7 @@ pub fn primitive_root(p: Int) -> Int:
 /// Any `m >= 1` works, including `a` not coprime to `m` (the shared factor is peeled off before
 /// baby-step giant-step). `a^0` is `1 % m`, and `a` and `b` are reduced first.
 ///
-/// cost: O(sqrt m)
+/// cost: \(O(\sqrt m)\)
 /// ties: the least `x`
 /// traps: when `m < 1`
 /// example: `mod_log(3, 6, 7) == Some(3)`
@@ -813,7 +813,7 @@ pub fn mod_log(a: Int, b: Int, m: Int) -> ?Int:
 /// Of the two roots `x` and `p - x` it returns the smaller; the root of 0 is 0. `a` is reduced
 /// first.
 ///
-/// cost: O(log^2 p)
+/// cost: \(O(\log^2 p)\)
 /// ties: the smaller root
 /// traps: when `p` is not prime
 /// example: `mod_sqrt(2, 7) == Some(3)`
@@ -853,7 +853,7 @@ pub fn mod_sqrt(a: Int, p: Int) -> ?Int:
 /// The sum of `(a * i + b) / m` over `i` in `0..n`, with floor (Euclidean) division, by the
 /// Euclid-like reduction. Any sign of `a` and `b` works.
 ///
-/// cost: O(log m)
+/// cost: \(O(\log m)\)
 /// traps: when `n < 0` or `m < 1`, or the sum overflows
 /// example: `floor_sum(4, 10, 6, 3) == 3`
 /// example: `floor_sum(3, 2, -1, 0) == -2`
@@ -875,7 +875,7 @@ pub fn floor_sum(n: Int, m: Int, a: Int, b: Int) -> Int:
 
 /// Every prime in `lo..hi`, by a segmented sieve; `[]` when the range is empty or below 2.
 ///
-/// cost: O((hi - lo) log log hi + sqrt hi)
+/// cost: \(O((\mathit{hi} - \mathit{lo}) \log \log \mathit{hi} + \sqrt \mathit{hi})\)
 /// order: ascending; a new `List`, keyed from 0
 /// traps: never
 /// example: `primes_in(10, 30) == [11, 13, 17, 19, 23, 29]`
@@ -901,7 +901,7 @@ pub fn primes_in(lo: Int, hi: Int) -> List<Int>:
 
 /// The number of primes `<= n` (Lucy_Hedgehog); 0 for `n < 2`.
 ///
-/// cost: O(n^(3/4) / log n) time, O(sqrt n) memory
+/// cost: \(O(n^{3/4} / \log n)\) time, \(O(\sqrt n)\) memory
 /// traps: never
 /// example: `prime_count(10) == 4`
 /// example: `prime_count(100) == 25`
@@ -929,7 +929,7 @@ pub fn prime_count(n: Int) -> Int:
 ///
 /// The first range is clipped to start at `from`. Nothing is yielded when `n < from`.
 ///
-/// cost: O(sqrt n)
+/// cost: \(O(\sqrt n)\)
 /// empty: yields nothing when `n < from`
 /// order: by `i`, increasing (so `q` decreasing)
 /// traps: when `from < 1`
@@ -946,7 +946,7 @@ pub fn floor_quotients(n: Int, from: Int = 1) -> yields (q: Int, lo: Int, hi: In
 
 /// Each positive divisor of `x >= 1`, from `factor(x)`, without building a list.
 ///
-/// cost: O(x^(1/4) + d(x)) expected
+/// cost: \(O(x^{1/4} + d(x))\) expected
 /// order: mixed-radix over the exponents, smallest prime fastest (12 gives 1, 2, 4, 3, 6, 12)
 /// traps: when `x < 1`
 /// example: `each_divisor(12).collect() == [1, 2, 4, 3, 6, 12]`
@@ -974,7 +974,7 @@ fn divisors_in_radix_order(fs: List<(Int, Int)>) -> yields Int:
 
 /// Every submask of `mask`, in descending order, ending with 0.
 ///
-/// cost: O(2^popcount(mask))
+/// cost: \(O(2^\mathit{popcount}(\mathit{mask}))\)
 /// order: descending
 /// traps: when `mask < 0`
 /// example: `submasks(5).collect() == [5, 4, 1, 0]`
@@ -989,7 +989,7 @@ pub fn submasks(mask: Int) -> yields Int:
 /// Every subset of `0..n` with exactly `k` elements, as a bitmask, in ascending order (Gosper's
 /// hack).
 ///
-/// cost: O(C(n, k))
+/// cost: \(O(C(n, k))\)
 /// empty: yields nothing when `k > n`; yields just 0 when `k == 0`
 /// order: ascending
 /// traps: when `n < 0`, `k < 0` or `n > 62`
@@ -1010,7 +1010,7 @@ pub fn bit_subsets(n: Int, k: Int) -> yields Int:
 ///
 /// `a` and `b` are indexed by the integer itself: index 0 is ignored and `c[0]` is `T.zero`.
 ///
-/// cost: O(n log n) time, O(n) memory
+/// cost: \(O(n \log n)\) time, \(O(n)\) memory
 /// empty: `[T.zero]` when `n == 0`
 /// order: `c[k]` at key `k`, `k` in `0..=n`; a new `List`
 /// traps: when `n < 0`, or `a.len` or `b.len` is below `n + 1`
@@ -1030,7 +1030,7 @@ pub fn dirichlet_convolve<T: Add + Mul>(a: List<T>, b: List<T>, n: Int) -> List<
 /// Indexed like `dirichlet_convolve`: index 0 is ignored and `b[0]` is `T.zero`. `a[1]` must be
 /// invertible in `T`; for `Int` that means `a[1]` is 1 or -1.
 ///
-/// cost: O(n log n) time, O(n) memory
+/// cost: \(O(n \log n)\) time, \(O(n)\) memory
 /// empty: `[T.zero]` when `n == 0`
 /// order: `b[k]` at key `k`, `k` in `0..=n`; a new `List`
 /// traps: when `n < 0`, `a.len < n + 1`, or `a[1]` is not invertible
@@ -1049,7 +1049,7 @@ pub fn dirichlet_inv<T: Sub + Mul + Div>(a: List<T>, n: Int) -> List<T>:
             acc[d * k] += a[d] * b[k]
     b
 
-/// O(n^(2/3)) time and memory. Stateful Du's sieve cache for prefix sums of a multiplicative function `f`
+/// \(O(n^{2/3})\) time and memory. Stateful Du's sieve cache for prefix sums of a multiplicative function `f`
 /// given prefix sums of `g` and `f * g`.
 pub struct DirichletSum<T: Add + Sub + Mul + Div>:
     pub n: Int
@@ -1068,7 +1068,7 @@ pub struct DirichletSum<T: Add + Sub + Mul + Div>:
     /// `F(m) = (fg_sum(m) - sum_{i=2..=m} g(i) F(m / i)) / g(1)`, grouped by floor quotients and
     /// memoized. A table of about `n^(2/3)` entries gives the stated cost.
     ///
-    /// cost: O(f_small.len) to build; queries as `sum`
+    /// cost: \(O(\mathit{f\_small}.\mathit{len})\) to build; queries as `sum`
     /// empty: an empty `f_small` makes every query use the recursion
     /// traps: when `n < 0`
     /// example: `var ds = DirichletSum<Int>(10, [0, 1, 1, 2, 2], m => m, m => m * (m + 1) / 2); ds.sum(10) == 32`
@@ -1088,10 +1088,10 @@ pub struct DirichletSum<T: Add + Sub + Mul + Div>:
 
     /// The prefix sum `F(m) = sum_{k=1..=m} f(k)`, with `F(0) == 0`.
     ///
-    /// Results are memoized, so all the `n / i` values together cost O(n^(2/3)) when `f_small` has
+    /// Results are memoized, so all the `n / i` values together cost \(O(n^{2/3})\) when `f_small` has
     /// about `n^(2/3)` entries.
     ///
-    /// cost: O(1) cached; O(n^(2/3)) total across all `n / i` queries
+    /// cost: \(O(1)\) cached; \(O(n^{2/3})\) total across all `n / i` queries
     /// traps: when `m` is outside `0..=n`, or `g(1)` is not invertible
     /// example: `var ds = DirichletSum<Int>(10, [0, 1, 1, 2, 2, 4, 2, 6, 4, 6, 4], m => m, m => m * (m + 1) / 2); ds.sum(10) == 32`
     /// example: `var ds = DirichletSum<Int>(10, [0, 1, 1, 2, 2], m => m, m => m * (m + 1) / 2); ds.sum(0) == 0`
@@ -1114,7 +1114,7 @@ pub struct DirichletSum<T: Add + Sub + Mul + Div>:
 
 /// The totient summatory function `sum_{k=1..=n} phi(k)`; 0 for `n <= 0`.
 ///
-/// cost: O(n^(2/3)) time and memory
+/// cost: \(O(n^{2/3})\) time and memory
 /// traps: when the sum overflows `Int`
 /// example: `sum_phi(10) == 32`
 /// example: `sum_phi(1) == 1`
@@ -1136,7 +1136,7 @@ pub fn sum_phi(n: Int) -> Int:
 
 /// The Mertens function `sum_{k=1..=n} mu(k)`; 0 for `n <= 0`.
 ///
-/// cost: O(n^(2/3)) time and memory
+/// cost: \(O(n^{2/3})\) time and memory
 /// traps: never
 /// example: `sum_mobius(10) == -1`
 /// example: `sum_mobius(1) == 1`
@@ -1167,7 +1167,7 @@ fn du_limit(n: Int) -> Int:
 /// value `v` of `n / i`, `i` in `1..=n`, in ascending order of `v` (for `n = 10`: `v` = 1, 2, 3,
 /// 5, 10).
 ///
-/// cost: O(n^(3/4) / log n) time, O(sqrt n) memory
+/// cost: \(O(n^{3/4} / \log n)\) time, \(O(\sqrt n)\) memory
 /// empty: `T.zero` when `n == 0` (with `prime_sum == []`)
 /// order: `prime_sum` is read in ascending order of `v`
 /// traps: when `n < 0`, or `prime_sum.len` is not the number of distinct `n / i`
@@ -1214,7 +1214,7 @@ pub fn sum_multiplicative<T: Add + Sub + Mul>(
 /// non-negative solution for `x` when `b != 0`, so the result is canonical. When `b == 0`,
 /// `x0 = c / a` and `y0 = 0`.
 ///
-/// cost: O(log min(|a|, |b|))
+/// cost: \(O(\log \min(\lvert a \rvert, \lvert b \rvert))\)
 /// traps: when `a == b == 0` (the solutions are not one family), or `y0` overflows
 /// example: `linear_diophantine(240, 46, 4) == Some((5, -26, 23, 120))`
 /// example: `linear_diophantine(3, 0, 6) == Some((2, 0, 0, 1))`
@@ -1234,7 +1234,7 @@ pub fn linear_diophantine(a: Int, b: Int, c: Int) -> ?(x0: Int, y0: Int, step_x:
 ///
 /// `a` and `b` are reduced first.
 ///
-/// cost: O(log m)
+/// cost: \(O(\log m)\)
 /// traps: when `m < 1`
 /// example: `linear_congruence(6, 4, 10) == Some((4, 5))`
 /// example: `linear_congruence(2, 1, 4) == None`
@@ -1252,7 +1252,7 @@ pub fn linear_congruence(a: Int, b: Int, m: Int) -> ?(r: Int, step: Int):
 ///
 /// `a` is reduced first; the root of 0 is 0.
 ///
-/// cost: O(p^(1/4) + sqrt p) expected to find one root, plus O(gcd(k, p - 1)) to pick the least
+/// cost: \(O(p^{1/4} + \sqrt p)\) expected to find one root, plus \(O(\mathit{gcd}(k, p - 1))\) to pick the least
 /// ties: the least root
 /// traps: when `p` is not prime or `k < 1`
 /// example: `mod_kth_root(6, 3, 7) == Some(3)`
@@ -1281,7 +1281,7 @@ pub fn mod_kth_root(a: Int, k: Int, p: Int) -> ?Int:
 /// The multiplicative order of `a` modulo `m >= 1`: the least `k >= 1` with `a^k = 1 (mod m)`,
 /// or `None` if `gcd(a, m) != 1`. Modulo 1 the order is 1.
 ///
-/// cost: O(m^(1/4) log m) expected
+/// cost: \(O(m^{1/4} \log m)\) expected
 /// traps: when `m < 1`
 /// example: `mult_order(2, 7) == Some(3)`
 /// example: `mult_order(3, 7) == Some(6)`
@@ -1301,7 +1301,7 @@ pub fn mult_order(a: Int, m: Int) -> ?Int:
 ///
 /// For prime `n` it is the Legendre symbol. `a` may be any `Int`; `(a / 1) == 1`.
 ///
-/// cost: O(log n)
+/// cost: \(O(\log n)\)
 /// traps: when `n <= 0` or `n` is even
 /// example: `jacobi(2, 7) == 1`
 /// example: `jacobi(3, 7) == -1`
@@ -1323,7 +1323,7 @@ pub fn jacobi(a: Int, n: Int) -> Int:
 /// Carmichael's function `lambda(n)` for `n >= 1`: the least `k >= 1` with `a^k = 1 (mod n)`
 /// for every `a` coprime to `n`.
 ///
-/// cost: O(n^(1/4) log n) expected
+/// cost: \(O(n^{1/4} \log n)\) expected
 /// traps: when `n < 1`
 /// example: `carmichael(1) == 1`
 /// example: `carmichael(8) == 2`
@@ -1341,7 +1341,7 @@ pub fn carmichael(n: Int) -> Int:
 
 /// The least `x >= 0` with `lo <= (a * x) % m <= hi`, or `None`; `a` is reduced first.
 ///
-/// cost: O(log m)
+/// cost: \(O(\log m)\)
 /// ties: the least `x`
 /// traps: unless `m >= 1` and `0 <= lo <= hi < m`
 /// example: `min_mod_in_range(3, 7, 5, 6) == Some(2)`
@@ -1365,7 +1365,7 @@ fn min_mod_in_range_reduced(a: Int, m: Int, lo: Int, hi: Int) -> ?Int:
 /// `a0` may be negative or zero; every later term is positive, and the last term is at least 2
 /// unless the expansion has one term.
 ///
-/// cost: O(log min(|p|, |q|))
+/// cost: \(O(\log \min(\lvert p \rvert, \lvert q \rvert))\)
 /// order: `a0` first; a new `List`, keyed from 0
 /// traps: when `q <= 0`
 /// example: `continued_fraction(415, 93) == [4, 2, 6, 7]`
@@ -1383,7 +1383,7 @@ pub fn continued_fraction(p: Int, q: Int) -> List<Int>:
 
 /// The reduced fraction `p / q` with `1 <= q <= max_den` closest to `num / den` (Stern-Brocot).
 ///
-/// cost: O(log max_den)
+/// cost: \(O(\log \mathit{max\_den})\)
 /// ties: the smaller denominator, then the smaller value
 /// traps: when `den == 0` or `max_den < 1`
 /// example: `best_rational(31_416, 10_000, 10) == Ratio(22, 7)`
@@ -1411,11 +1411,11 @@ pub fn best_rational(num: Int, den: Int, max_den: Int) -> Ratio:
     if lo.q != hi.q: return if lo.q < hi.q: lo else: hi
     if lo < hi: lo else: hi
 
-/// O(1) storage. Exact reduced rational `p / q` (`q > 0`, `gcd(|p|, q) == 1`).
+/// \(O(1)\) storage. Exact reduced rational `p / q` (`q > 0`, `gcd(|p|, q) == 1`).
 pub struct Ratio(pub p: Int, q: Int):
     /// The fraction `p / q` in lowest terms, with a positive denominator.
     ///
-    /// cost: O(log min(|p|, |q|))
+    /// cost: \(O(\log \min(\lvert p \rvert, \lvert q \rvert))\)
     /// traps: when `q == 0`
     /// example: `Ratio(2, 4) == Ratio(1, 2)`
     /// example: `Ratio(3, -6).floor == -1`
@@ -1427,14 +1427,14 @@ pub struct Ratio(pub p: Int, q: Int):
 
     /// `n` as the fraction `n / 1`.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: never
     /// example: `Ratio.from_int(3) == Ratio(3, 1)`
     pub fn from_int(n: Int) -> Ratio = Ratio.new(n, 1)
 
     /// The multiplicative inverse `q / p`, sign moved to the numerator.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: when `p == 0`
     /// example: `Ratio(-2, 3).inv == Ratio(-3, 2)`
     /// example: `Ratio(1, 4).inv == Ratio.from_int(4)`
@@ -1442,7 +1442,7 @@ pub struct Ratio(pub p: Int, q: Int):
 
     /// The floor of `p / q` (Euclidean division).
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: never
     /// example: `Ratio(7, 2).floor == 3`
     /// example: `Ratio(-7, 2).floor == -4`
@@ -1450,7 +1450,7 @@ pub struct Ratio(pub p: Int, q: Int):
 
     /// The ceiling of `p / q`: `ceil_div(p, q)`.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: never
     /// example: `Ratio(7, 2).ceil == 4`
     /// example: `Ratio(-7, 2).ceil == -3`
@@ -1458,7 +1458,7 @@ pub struct Ratio(pub p: Int, q: Int):
 
     /// The absolute value `|p| / q`.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: never
     /// example: `Ratio(-1, 2).abs == Ratio(1, 2)`
     @get pub fn abs(self) -> Ratio = Ratio.new(abs(p), q)
@@ -1484,11 +1484,11 @@ impl Ord for Ratio:
 impl Show for Ratio:
     fn show(a) = "{a.p}/{a.q}"
 
-/// O(n) storage in base-10^9 limbs. Arbitrary-precision signed integer.
+/// \(O(n)\) storage in base-10^9 limbs. Arbitrary-precision signed integer.
 pub struct BigInt(neg: Bool, limbs: List<Int>):
     /// `x` as a `BigInt`.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: never
     /// example: `BigInt.from_int(-42).to_str() == "-42"`
     pub fn from_int(x: Int) -> BigInt:
@@ -1505,7 +1505,7 @@ pub struct BigInt(neg: Bool, limbs: List<Int>):
     ///
     /// Leading zeros are allowed, and `-0` is zero. There is no `+` and no whitespace.
     ///
-    /// cost: O(s.len)
+    /// cost: \(O(s.\mathit{len})\)
     /// traps: when `s` is not an optional `-` followed by at least one decimal digit
     /// example: `BigInt.from_str("-000123").to_str() == "-123"`
     /// example: `BigInt.from_str("-0").to_str() == "0"`
@@ -1528,7 +1528,7 @@ pub struct BigInt(neg: Bool, limbs: List<Int>):
 
     /// The decimal text of `self`: no leading zeros, a `-` only when negative, `"0"` for zero.
     ///
-    /// cost: O(n)
+    /// cost: \(O(n)\)
     /// traps: never
     /// example: `BigInt.from_int(0).to_str() == "0"`
     /// example: `BigInt.from_int(-7).to_str() == "-7"`
@@ -1548,7 +1548,7 @@ pub struct BigInt(neg: Bool, limbs: List<Int>):
 
     /// The Euclidean quotient and remainder `(self / d, self % d)`: `0 <= r < |d|`, as for `Int`.
     ///
-    /// cost: O(n * m)
+    /// cost: \(O(n \cdot m)\)
     /// traps: when `d` is zero
     /// example: `BigInt.from_int(-7).divmod(BigInt.from_int(3)) == (BigInt.from_int(-3), BigInt.from_int(2))`
     /// example: `BigInt.from_int(7).divmod(BigInt.from_int(-3)) == (BigInt.from_int(-2), BigInt.from_int(1))`
@@ -1564,14 +1564,14 @@ pub struct BigInt(neg: Bool, limbs: List<Int>):
 
     /// The absolute value.
     ///
-    /// cost: O(n)
+    /// cost: \(O(n)\)
     /// traps: never
     /// example: `BigInt.from_int(-5).abs() == BigInt.from_int(5)`
     pub fn abs(self) -> BigInt = BigInt(neg: false, limbs: self.limbs)
 
     /// The greatest common divisor of `a` and `b`, never negative; `gcd(0, 0)` is 0.
     ///
-    /// cost: O(n^2)
+    /// cost: \(O(n^2)\)
     /// traps: never
     /// example: `BigInt.gcd(BigInt.from_int(12), BigInt.from_int(-18)) == BigInt.from_int(6)`
     /// example: `BigInt.gcd(BigInt.from_int(0), BigInt.from_int(0)) == BigInt.from_int(0)`

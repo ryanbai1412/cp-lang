@@ -28,31 +28,31 @@ Direction of a sum-over-subsets (SOS) zeta/Mobius transform.
 
 ## `struct RelaxedConvolve<P>`
 
-O(log^2 n) amortized per step, O(n log^2 n) total.
+\(O(\log^2 n)\) amortized per step, \(O(n \log^2 n)\) total.
 
 Fields: `a: List<Mod<P>>`, `b: List<Mod<P>>`, `c: List<Mod<P>>`.
 
-- `fn new() -> RelaxedConvolve<P>` — O(1); An empty online convolution: no values pushed yet.
-- `fn push(mut self, ai: Mod<P>, bi: Mod<P>) -> Mod<P>` — O(log^2 k) amortized; Append `a[k] = ai` and `b[k] = bi` at the next index `k` and return `c[k] = sum_{i=0..=k} a[i] * b[k - i]`.; traps: when `k` reaches the largest NTT length `P` supports
+- `fn new() -> RelaxedConvolve<P>` — \(O(1)\); An empty online convolution: no values pushed yet.
+- `fn push(mut self, ai: Mod<P>, bi: Mod<P>) -> Mod<P>` — \(O(\log^2 k)\) amortized; Append `a[k] = ai` and `b[k] = bi` at the next index `k` and return `c[k] = sum_{i=0..=k} a[i] * b[k - i]`.; traps: when `k` reaches the largest NTT length `P` supports
 
 ## `struct SemiRelaxedConvolve<P>`
 
-O(log^2 n) amortized per step.
+\(O(\log^2 n)\) amortized per step.
 
 Fields: `b: List<Mod<P>>`, `a: List<Mod<P>>`, `c: List<Mod<P>>`.
 
-- `fn new(b: List<Mod<P>>) -> SemiRelaxedConvolve<P>` — O(b.len); An online convolution against the fixed polynomial `b`, nothing pushed yet.
-- `fn push(mut self, ai: Mod<P>) -> Mod<P>` — O(log^2 k) amortized; Append `a[k] = ai` at the next index `k` and return `c[k] = sum_{i=0..=k} a[i] * b[k - i]`.; traps: when `k` reaches the largest NTT length `P` supports
+- `fn new(b: List<Mod<P>>) -> SemiRelaxedConvolve<P>` — \(O(b.\mathit{len})\); An online convolution against the fixed polynomial `b`, nothing pushed yet.
+- `fn push(mut self, ai: Mod<P>) -> Mod<P>` — \(O(\log^2 k)\) amortized; Append `a[k] = ai` at the next index `k` and return `c[k] = sum_{i=0..=k} a[i] * b[k - i]`.; traps: when `k` reaches the largest NTT length `P` supports
 
 ## Functions
 
-- `fn ntt<P>(mut a: List<Mod<P>>, inverse: Bool = false, bit_reversed: Bool = false)` — O(n log n); In-place number-theoretic transform of `a` modulo the NTT-friendly prime `P`.; traps: when `a.len` is not a power of two dividing `P - 1`, or `P` is not prime
-- `fn convolve<T, O, R>(a: List<T>, b: List<T>, on: O = (x, y) => x + y, over: R = Semiring(+, *), shape: ?Curved = None, cyclic: Bool = false) -> List<T>` — O(n log n) bitwise; O(n + m) `Both`; O(n m) today for the product, `subset`, `gcd`/`lcm`, `Right`, `Neither` and any `IndexOp` (the transforms are planned); The convolution of `a` and `b`: `c[on(i, j)]` is the `over.add` of every `over.mul(a[i], b[j])`.; traps: when `cyclic: true` and `a.len != b.len`; when a bitwise or `subset` input is not a power-of-two length equal to the other's; when an `Int` output overflows
-- `fn sos<S: IndexedMut>(mut a: S, over: SosOver = Sub, inverse: Bool = false)` — O(k 2^k); In-place sum-over-subsets (zeta) transform of `a`, length `2^k`, or its Mobius inverse.; traps: when `a.len` is not a power of two
-- `fn fwht<S: IndexedMut, T>(mut a: S, inverse: Bool = false)` — O(n log n); In-place Walsh-Hadamard (XOR) transform of `a`, length `2^k`.; traps: when `a.len` is not a power of two; with `inverse: true` on `Int`, when an entry is not divisible by `n`
-- `fn convolve_all<P>(polys: List<List<Mod<P>>>) -> List<Mod<P>>` — O(S log^2 S) for total length `S`; The product of every polynomial in `polys`, multiplied as a balanced tree.; traps: when the product outgrows the largest NTT length `P` supports
-- `fn subset_exp<P>(a: List<Mod<P>>) -> List<Mod<P>>` — O(k^2 2^k); The set power series exponential of `a`, length `2^k`, with `a[0] == 0`.; traps: when `a.len` is not a power of two, or `a[0] != 0`
-- `fn subset_log<P>(a: List<Mod<P>>) -> List<Mod<P>>` — O(k^2 2^k); The set power series logarithm of `a`, length `2^k`, with `a[0] == 1`: the inverse of `subset_exp`, so `subset_exp(subset_log(a)) == a`.; traps: when `a.len` is not a power of two, or `a[0] != 1`
+- `fn ntt<P>(mut a: List<Mod<P>>, inverse: Bool = false, bit_reversed: Bool = false)` — \(O(n \log n)\); In-place number-theoretic transform of `a` modulo the NTT-friendly prime `P`.; traps: when `a.len` is not a power of two dividing `P - 1`, or `P` is not prime
+- `fn convolve<T, O, R>(a: List<T>, b: List<T>, on: O = (x, y) => x + y, over: R = Semiring(+, *), shape: ?Curved = None, cyclic: Bool = false) -> List<T>` — \(O(n \log n)\) bitwise; \(O(n + m)\) `Both`; \(O(n m)\) today for the product, `subset`, `gcd`/`lcm`, `Right`, `Neither` and any `IndexOp` (the transforms are planned); The convolution of `a` and `b`: `c[on(i, j)]` is the `over.add` of every `over.mul(a[i], b[j])`.; traps: when `cyclic: true` and `a.len != b.len`; when a bitwise or `subset` input is not a power-of-two length equal to the other's; when an `Int` output overflows
+- `fn sos<S: IndexedMut>(mut a: S, over: SosOver = Sub, inverse: Bool = false)` — \(O(k 2^k)\); In-place sum-over-subsets (zeta) transform of `a`, length `2^k`, or its Mobius inverse.; traps: when `a.len` is not a power of two
+- `fn fwht<S: IndexedMut, T>(mut a: S, inverse: Bool = false)` — \(O(n \log n)\); In-place Walsh-Hadamard (XOR) transform of `a`, length `2^k`.; traps: when `a.len` is not a power of two; with `inverse: true` on `Int`, when an entry is not divisible by `n`
+- `fn convolve_all<P>(polys: List<List<Mod<P>>>) -> List<Mod<P>>` — \(O(S \log^2 S)\) for total length `S`; The product of every polynomial in `polys`, multiplied as a balanced tree.; traps: when the product outgrows the largest NTT length `P` supports
+- `fn subset_exp<P>(a: List<Mod<P>>) -> List<Mod<P>>` — \(O(k^2 2^k)\); The set power series exponential of `a`, length `2^k`, with `a[0] == 0`.; traps: when `a.len` is not a power of two, or `a[0] != 0`
+- `fn subset_log<P>(a: List<Mod<P>>) -> List<Mod<P>>` — \(O(k^2 2^k)\); The set power series logarithm of `a`, length `2^k`, with `a[0] == 1`: the inverse of `subset_exp`, so `subset_exp(subset_log(a)) == a`.; traps: when `a.len` is not a power of two, or `a[0] != 1`
 
 ## Example
 

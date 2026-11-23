@@ -5,6 +5,7 @@
 //! editor (`plan/30-compiler.md` 3.7).
 
 pub mod json;
+pub mod plain;
 pub mod registry;
 mod render;
 mod source;

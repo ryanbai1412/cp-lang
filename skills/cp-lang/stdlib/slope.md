@@ -8,52 +8,52 @@ Import: `use std.slope.{...}`.
 
 ## `struct Concave(start: Int, base: Int)`
 
-O(log n) expected per slope operation, for n slopes.
+\(O(\log n)\) expected per slope operation, for n slopes.
 
 Fields: `slopes: LazyTreap<Int, Slide>`.
 
-- `fn point(d: Int) -> Concave` — O(1); The function defined on the single point `d`, with `f(d) = 0`.
-- `fn flat(r: Range<Int>) -> Concave` — O(|r| log |r|) expected; The function that is 0 on every point of `r`; its domain is `r`, so `lo` is the first point of `r` and `hi` the last.; traps: when `r` is empty
-- `fn reserve(mut self, n: Int)` — O(n); Make room for `n` slopes in total, so later operations do not regrow the storage.; traps: when `n < 0`
-- `@get fn lo(self) -> Int` — O(1); The first point of the domain.
-- `@get fn hi(self) -> Int` — O(1); The last point of the domain.
-- `fn max_convolve(mut self, g: Concave)` — O(|g| log n) expected, for `|g|` slopes in `g`; Replace `f` with `c => max over a + b == c of f(a) + g(b)`.
-- `fn add_quadratic(mut self, q: Int -> Int)` — O(1); `f(c) += q(c)` for a quadratic `q` with leading coefficient at most 0, so `f` stays concave.; traps: when `q` is not a quadratic polynomial on the points read, or its leading coefficient is positive
-- `fn at(mut self, c: Int) -> Int` — O(log n) expected (O(c - lo + log n) in the current implementation); The value `f(c)`.; traps: when `c` is outside `lo..=hi`
-- `fn max(mut self) -> Int` — O(log n) expected (O(n) in the current implementation); The largest value of `f` over its domain.
-- `fn add_left(mut self, a: Int)` — O(log n) expected; Add `min(0, x - a)`: a hinge with slope 1 left of `a` and flat from `a` on.
-- `fn add_right(mut self, a: Int)` — O(log n) expected; Add `min(0, a - x)`: flat up to `a` and slope -1 right of it.
-- `fn add_abs(mut self, a: Int)` — O(log n) expected; Add `-\|x - a\|`; `add_left(a)` and `add_right(a)` together.
-- `fn add_const(mut self, c: Int)` — O(1); Add the constant `c` everywhere.
-- `fn add_linear(mut self, k: Int)` — O(1); Add `k * x`, applied lazily to every slope.
-- `fn prefix_max(mut self)` — O(log n) expected (O(n log n) in the current implementation); Replace `f(x)` with the largest `f(y)` over `y <= x` in the domain; the domain is unchanged and every falling slope becomes 0.
-- `fn suffix_max(mut self)` — O(log n) expected (O(n log n) in the current implementation); Replace `f(x)` with the largest `f(y)` over `y >= x` in the domain; the domain is unchanged and every rising slope becomes 0.
-- `fn shift(mut self, d: Int)` — O(1); Move the function right by `d`: the new `f(x)` is the old `f(x - d)`, and `lo` and `hi` both grow by `d`.
-- `fn slide_max(mut self, a: Int, b: Int)` — O(b - a + log n) expected; Replace `f(x)` with the largest old `f(y)` over `x - b <= y <= x - a`; the domain becomes `lo + a ..= hi + b`.; traps: when `a > b`
-- `fn argmax(mut self) -> Range<Int>` — O(log n) expected (O(n) in the current implementation); The points where `f` reaches its maximum, as a half-open range; by concavity they are contiguous.
+- `fn point(d: Int) -> Concave` — \(O(1)\); The function defined on the single point `d`, with `f(d) = 0`.
+- `fn flat(r: Range<Int>) -> Concave` — \(O(\lvert r \rvert \log \lvert r \rvert)\) expected; The function that is 0 on every point of `r`; its domain is `r`, so `lo` is the first point of `r` and `hi` the last.; traps: when `r` is empty
+- `fn reserve(mut self, n: Int)` — \(O(n)\); Make room for `n` slopes in total, so later operations do not regrow the storage.; traps: when `n < 0`
+- `@get fn lo(self) -> Int` — \(O(1)\); The first point of the domain.
+- `@get fn hi(self) -> Int` — \(O(1)\); The last point of the domain.
+- `fn max_convolve(mut self, g: Concave)` — \(O(\lvert g \rvert \log n)\) expected, for `|g|` slopes in `g`; Replace `f` with `c => max over a + b == c of f(a) + g(b)`.
+- `fn add_quadratic(mut self, q: Int -> Int)` — \(O(1)\); `f(c) += q(c)` for a quadratic `q` with leading coefficient at most 0, so `f` stays concave.; traps: when `q` is not a quadratic polynomial on the points read, or its leading coefficient is positive
+- `fn at(mut self, c: Int) -> Int` — \(O(\log n)\) expected (\(O(c - \mathit{lo} + \log n)\) in the current implementation); The value `f(c)`.; traps: when `c` is outside `lo..=hi`
+- `fn max(mut self) -> Int` — \(O(\log n)\) expected (\(O(n)\) in the current implementation); The largest value of `f` over its domain.
+- `fn add_left(mut self, a: Int)` — \(O(\log n)\) expected; Add `min(0, x - a)`: a hinge with slope 1 left of `a` and flat from `a` on.
+- `fn add_right(mut self, a: Int)` — \(O(\log n)\) expected; Add `min(0, a - x)`: flat up to `a` and slope -1 right of it.
+- `fn add_abs(mut self, a: Int)` — \(O(\log n)\) expected; Add `-\|x - a\|`; `add_left(a)` and `add_right(a)` together.
+- `fn add_const(mut self, c: Int)` — \(O(1)\); Add the constant `c` everywhere.
+- `fn add_linear(mut self, k: Int)` — \(O(1)\); Add `k * x`, applied lazily to every slope.
+- `fn prefix_max(mut self)` — \(O(\log n)\) expected (\(O(n \log n)\) in the current implementation); Replace `f(x)` with the largest `f(y)` over `y <= x` in the domain; the domain is unchanged and every falling slope becomes 0.
+- `fn suffix_max(mut self)` — \(O(\log n)\) expected (\(O(n \log n)\) in the current implementation); Replace `f(x)` with the largest `f(y)` over `y >= x` in the domain; the domain is unchanged and every rising slope becomes 0.
+- `fn shift(mut self, d: Int)` — \(O(1)\); Move the function right by `d`: the new `f(x)` is the old `f(x - d)`, and `lo` and `hi` both grow by `d`.
+- `fn slide_max(mut self, a: Int, b: Int)` — \(O(b - a + \log n)\) expected; Replace `f(x)` with the largest old `f(y)` over `x - b <= y <= x - a`; the domain becomes `lo + a ..= hi + b`.; traps: when `a > b`
+- `fn argmax(mut self) -> Range<Int>` — \(O(\log n)\) expected (\(O(n)\) in the current implementation); The points where `f` reaches its maximum, as a half-open range; by concavity they are contiguous.
 
 ## `struct Convex(neg: Concave)`
 
-O(log n) expected per slope operation, for n slopes.
+\(O(\log n)\) expected per slope operation, for n slopes.
 
-- `fn point(d: Int) -> Convex` — O(1); The function defined on the single point `d`, with `f(d) = 0`.
-- `fn flat(r: Range<Int>) -> Convex` — O(|r| log |r|) expected; The function that is 0 on every point of `r`; its domain is `r`.; traps: when `r` is empty
-- `@get fn lo(self) -> Int` — O(1); The first point of the domain.
-- `@get fn hi(self) -> Int` — O(1); The last point of the domain.
-- `fn min_convolve(mut self, g: Convex)` — O(|g| log n) expected, for `|g|` slopes in `g`; Replace `f` with `c => min over a + b == c of f(a) + g(b)`.
-- `fn add_quadratic(mut self, q: Int -> Int)` — O(1); `f(c) += q(c)` for a quadratic `q` with leading coefficient at least 0, so `f` stays convex; `q` is called at most four times, as in `Concave.add_quadratic`.; traps: when `q` is not a quadratic polynomial on the points read, or its leading coefficient is negative
-- `fn at(mut self, c: Int) -> Int` — O(log n) expected (O(c - lo + log n) in the current implementation); The value `f(c)`.; traps: when `c` is outside `lo..=hi`
-- `fn min(mut self) -> Int` — O(log n) expected (O(n) in the current implementation); The smallest value of `f` over its domain.
-- `fn add_left(mut self, a: Int)` — O(log n) expected; Add `max(0, a - x)`: slope -1 left of `a` and flat from `a` on.
-- `fn add_right(mut self, a: Int)` — O(log n) expected; Add `max(0, x - a)`: flat up to `a` and slope 1 right of it.
-- `fn add_abs(mut self, a: Int)` — O(log n) expected; Add `\|x - a\|`; `add_left(a)` and `add_right(a)` together.
-- `fn add_const(mut self, c: Int)` — O(1); Add the constant `c` everywhere.
-- `fn add_linear(mut self, k: Int)` — O(1); Add `k * x`, applied lazily to every slope.
-- `fn prefix_min(mut self)` — O(log n) expected (O(n log n) in the current implementation); Replace `f(x)` with the smallest `f(y)` over `y <= x` in the domain; the domain is unchanged.
-- `fn suffix_min(mut self)` — O(log n) expected (O(n log n) in the current implementation); Replace `f(x)` with the smallest `f(y)` over `y >= x` in the domain; the domain is unchanged.
-- `fn shift(mut self, d: Int)` — O(1); Move the function right by `d`: the new `f(x)` is the old `f(x - d)`, and `lo` and `hi` both grow by `d`.
-- `fn slide_min(mut self, a: Int, b: Int)` — O(b - a + log n) expected; Replace `f(x)` with the smallest old `f(y)` over `x - b <= y <= x - a`; the domain becomes `lo + a ..= hi + b`.; traps: when `a > b`
-- `fn argmin(mut self) -> Range<Int>` — O(log n) expected (O(n) in the current implementation); The points where `f` reaches its minimum, as a half-open range; by convexity they are contiguous.
+- `fn point(d: Int) -> Convex` — \(O(1)\); The function defined on the single point `d`, with `f(d) = 0`.
+- `fn flat(r: Range<Int>) -> Convex` — \(O(\lvert r \rvert \log \lvert r \rvert)\) expected; The function that is 0 on every point of `r`; its domain is `r`.; traps: when `r` is empty
+- `@get fn lo(self) -> Int` — \(O(1)\); The first point of the domain.
+- `@get fn hi(self) -> Int` — \(O(1)\); The last point of the domain.
+- `fn min_convolve(mut self, g: Convex)` — \(O(\lvert g \rvert \log n)\) expected, for `|g|` slopes in `g`; Replace `f` with `c => min over a + b == c of f(a) + g(b)`.
+- `fn add_quadratic(mut self, q: Int -> Int)` — \(O(1)\); `f(c) += q(c)` for a quadratic `q` with leading coefficient at least 0, so `f` stays convex; `q` is called at most four times, as in `Concave.add_quadratic`.; traps: when `q` is not a quadratic polynomial on the points read, or its leading coefficient is negative
+- `fn at(mut self, c: Int) -> Int` — \(O(\log n)\) expected (\(O(c - \mathit{lo} + \log n)\) in the current implementation); The value `f(c)`.; traps: when `c` is outside `lo..=hi`
+- `fn min(mut self) -> Int` — \(O(\log n)\) expected (\(O(n)\) in the current implementation); The smallest value of `f` over its domain.
+- `fn add_left(mut self, a: Int)` — \(O(\log n)\) expected; Add `max(0, a - x)`: slope -1 left of `a` and flat from `a` on.
+- `fn add_right(mut self, a: Int)` — \(O(\log n)\) expected; Add `max(0, x - a)`: flat up to `a` and slope 1 right of it.
+- `fn add_abs(mut self, a: Int)` — \(O(\log n)\) expected; Add `\|x - a\|`; `add_left(a)` and `add_right(a)` together.
+- `fn add_const(mut self, c: Int)` — \(O(1)\); Add the constant `c` everywhere.
+- `fn add_linear(mut self, k: Int)` — \(O(1)\); Add `k * x`, applied lazily to every slope.
+- `fn prefix_min(mut self)` — \(O(\log n)\) expected (\(O(n \log n)\) in the current implementation); Replace `f(x)` with the smallest `f(y)` over `y <= x` in the domain; the domain is unchanged.
+- `fn suffix_min(mut self)` — \(O(\log n)\) expected (\(O(n \log n)\) in the current implementation); Replace `f(x)` with the smallest `f(y)` over `y >= x` in the domain; the domain is unchanged.
+- `fn shift(mut self, d: Int)` — \(O(1)\); Move the function right by `d`: the new `f(x)` is the old `f(x - d)`, and `lo` and `hi` both grow by `d`.
+- `fn slide_min(mut self, a: Int, b: Int)` — \(O(b - a + \log n)\) expected; Replace `f(x)` with the smallest old `f(y)` over `x - b <= y <= x - a`; the domain becomes `lo + a ..= hi + b`.; traps: when `a > b`
+- `fn argmin(mut self) -> Range<Int>` — \(O(\log n)\) expected (\(O(n)\) in the current implementation); The points where `f` reaches its minimum, as a half-open range; by convexity they are contiguous.
 
 ## Example
 

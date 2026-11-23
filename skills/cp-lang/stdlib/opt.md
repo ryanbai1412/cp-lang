@@ -8,8 +8,8 @@ In prelude (no `use` needed): `is_none_or`, `is_some_and`.
 
 ## Functions
 
-- `fn is_some_and<T>(self: ?T, p: T -> Bool) -> Bool` — O(1) plus one call of `p`; Whether there is a value and `p` holds for it; `false` on `None`.; traps: only where `p` traps
-- `fn is_none_or<T>(self: ?T, p: T -> Bool) -> Bool` — O(1) plus one call of `p`; Whether there is no value or `p` holds for it; `true` on `None`.; traps: only where `p` traps
+- `fn is_some_and<T>(self: ?T, p: T -> Bool) -> Bool` — \(O(1)\) plus one call of `p`; Whether there is a value and `p` holds for it; `false` on `None`.; traps: only where `p` traps
+- `fn is_none_or<T>(self: ?T, p: T -> Bool) -> Bool` — \(O(1)\) plus one call of `p`; Whether there is no value or `p` holds for it; `true` on `None`.; traps: only where `p` traps
 
 ## Example
 

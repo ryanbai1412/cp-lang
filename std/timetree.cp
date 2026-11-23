@@ -1,7 +1,7 @@
 //! Offline segment tree over time (divide-and-conquer on life intervals).
 //!
 //! Turn any rollback-capable data structure (e.g. `Dsu` with `.mark()` / `.undo_to(snap)`)
-//! into a dynamic structure with insertions and deletions over `[0, q)` in O(q log q)
+//! into a dynamic structure with insertions and deletions over `[0, q)` in \(O(q \log q)\)
 //! apply/undo steps.
 use std.dsu.{Dsu, Mark}
 
@@ -25,7 +25,7 @@ pub struct TimeTree<E>:
 
     /// An empty timeline of `q` time slots `0..q`, with no events scheduled yet.
     ///
-    /// cost: O(q) time and memory
+    /// cost: \(O(q)\) time and memory
     /// traps: when `q < 0`
     /// example: `TimeTree<Int>(2).steps().len == 2`
     pub fn new(q: Int) -> TimeTree<E>:
@@ -41,10 +41,10 @@ pub struct TimeTree<E>:
             head[u] = idx
 
     /// Schedule `ev` to be active at every time slot in `lo..hi` (half-open). The interval is
-    /// stored on the O(log q) segment-tree nodes that cover it, one copy of `ev` on each.
+    /// stored on the \(O(\log q)\) segment-tree nodes that cover it, one copy of `ev` on each.
     /// An empty interval (`lo >= hi`) schedules nothing.
     ///
-    /// cost: O(log q)
+    /// cost: \(O(\log q)\)
     /// traps: when `lo < 0` or `hi > q` on a non-empty interval
     /// example: `var tt = TimeTree<Str>(2); tt.add_interval(0, 2, "e"); tt.steps().len == 4`
     pub fn add_interval(mut self, lo: Int, hi: Int, ev: E):
@@ -66,7 +66,7 @@ pub struct TimeTree<E>:
     /// node copies were stored by `add_interval` / `add_range`; read them from the steps, never
     /// compute them.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: when `id` is not an id that some `Apply` step carries
     /// example: `var tt = TimeTree<Str>(2); tt.add_interval(0, 2, "e"); tt.event(0) == "e"`
     pub fn event(self, id: Int) -> E = ev_val[id]
@@ -92,7 +92,7 @@ pub struct TimeTree<E>:
     /// the node emits one `Undo` per `Apply` it emitted, so undos match applies in LIFO order.
     /// Children are visited left (earlier times) before right.
     ///
-    /// cost: O(q + m log q) time and memory for `m` scheduled intervals
+    /// cost: \(O(q + m \log q)\) time and memory for `m` scheduled intervals
     /// empty: `[]` when `q == 0`
     /// order: DFS order; `Query(t)` appears once per `t`, in increasing `t`
     /// traps: never
@@ -136,7 +136,7 @@ pub struct TimeTree<E>:
     /// scheduling order; at each leaf `t` it calls `answer(t)`; on leaving such a node it calls
     /// `undo(m)` once with the value its `mark()` returned. Nodes with no events call neither.
     ///
-    /// cost: O(q + m log q) callback calls for `m` scheduled intervals, O(log q) extra stack
+    /// cost: \(O(q + m \log q)\) callback calls for `m` scheduled intervals, \(O(\log q)\) extra stack
     /// empty: `[]` when `q == 0`
     /// order: `[answer(0), ..., answer(q - 1)]`, indexed by time
     /// traps: never (callbacks may trap)
@@ -156,7 +156,7 @@ pub struct TimeTree<E>:
     /// Schedule `ev` to be active at every time slot in `r`; `add_interval` with the range
     /// form. An empty `r` schedules nothing.
     ///
-    /// cost: O(log q)
+    /// cost: \(O(\log q)\)
     /// empty: schedules nothing
     /// traps: when a non-empty `r` reaches outside `0..q`
     /// example: `var tt = TimeTree<Str>(3); tt.add_range(1..3, "e"); tt.steps().len == 7`
@@ -167,7 +167,7 @@ pub struct TimeTree<E>:
 
     /// The steps of `steps`, yielded one at a time without building the list.
     ///
-    /// cost: O(1) amortized per step, O(log q) extra stack
+    /// cost: \(O(1)\) amortized per step, \(O(\log q)\) extra stack
     /// order: the same DFS order as `steps`
     /// traps: never
     /// example: `TimeTree<Int>(2).walk().collect() == [TimeStep.Query(0), TimeStep.Query(1)]`
@@ -212,7 +212,7 @@ pub struct TimeTree<E>:
 /// then `right`, then calls `on_cross(left, right)` once, so `on_cross` sees each pair of
 /// events `i < j` in exactly one call, with `i` in `left` and `j` in `right`.
 ///
-/// cost: O(n log n) plus the callbacks; each level copies the halves, O(n) extra memory
+/// cost: \(O(n \log n)\) plus the callbacks; each level copies the halves, \(O(n)\) extra memory
 /// empty: makes no calls; neither does a single event
 /// order: halves keep input order; calls go bottom-up, left subproblem before right
 /// traps: never (the callback may trap)
@@ -233,7 +233,7 @@ pub fn cdq<E>(events: List<E>, on_cross: (List<E>, List<E>) -> ()):
 /// `by(item) = (lo, hi)`. Builds a `TimeTree`, schedules every item in list order and walks
 /// it with `run`; `TimeTree(q)` with `add_interval` and `run` gives the same calls.
 ///
-/// cost: O(q + m log q) callback calls for `m` items
+/// cost: \(O(q + m \log q)\) callback calls for `m` items
 /// empty: no items: `[answer(0), ..., answer(q - 1)]` with no `mark`, `apply` or `undo` calls
 /// order: `[answer(0), ..., answer(q - 1)]`, indexed by time
 /// traps: when an item's non-empty interval reaches outside `0..q`

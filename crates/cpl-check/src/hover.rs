@@ -399,9 +399,10 @@ fn in_receiver_domains(cost: &str, generics: &[(String, Ty)]) -> String {
 }
 
 /// The smallest entry under the cursor.
-/// The first `O(...)` a doc states, with what qualifies it: `O(log n)
-/// amortized`.
+/// The first `O(...)` a doc states, in plain text, with what qualifies it:
+/// `O(log n) amortized`.
 fn cost_of(doc: &str) -> Option<String> {
+    let doc = &cpl_diag::plain::text(doc);
     let start = doc.find("O(")?;
     let mut depth = 0;
     for (i, c) in doc[start..].char_indices() {

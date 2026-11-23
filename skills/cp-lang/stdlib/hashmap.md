@@ -12,21 +12,21 @@ Flat open-addressing hash map from `Int` keys to `V`, salted with `splitmix64`.
 
 Fields: `ks: List<Int>`, `vs: List<V>`, `state: List<Int>`, `default_val: V`, `salt: U64`, `live: Int`, `used: Int`.
 
-- `fn new(default_val: V, cap: Int = 16) -> FlatMap<V>` — O(cap); [rename] Create an empty `FlatMap<V>` sized for at least `cap` entries (replaces `with_capacity`).
-- `@get fn len(self) -> Int` — O(1); Number of live key-value pairs.
-- `@get fn is_empty(self) -> Bool` — O(1); Whether the map has no live entries.
-- `fn clear(mut self)` — O(capacity); Remove all entries while keeping allocated capacity.
-- `fn get(self, k: Int) -> ?V` — O(1) expected; Look up `k`, returning `None` if absent.
-- `fn contains(self, k: Int) -> Bool` — O(1) expected; Whether `k` is currently present.
-- `fn set(mut self, k: Int, v: V)` — O(1) expected amortized; Insert or overwrite `k -> v`.
-- `fn get_or_insert(mut self, k: Int, v: V) -> V` — O(1) expected amortized; Return the value for `k`, inserting `v` first if `k` is absent.
-- `fn remove(mut self, k: Int) -> ?V` — O(1) expected; Remove `k` if present; returns its old value or `None`.
-- `fn reserve(mut self, cap: Int)` — O(cap) when the table grows, O(1) otherwise; Reserve space for at least `cap` entries without rehashing.
-- `fn take(mut self) -> FlatMap<V>` — O(1); Move the map's contents out in O(1), leaving `self` empty.
-- `@get fn items(self) -> yields (Int, V)` — O(1) to make, O(capacity) to walk; O(1) to make.
-- `@get fn keys(self) -> yields Int` — O(1) to make, O(capacity) to walk; The keys, one per entry.
-- `@get fn values(self) -> yields V` — O(1) to make, O(capacity) to walk; The values, one per entry.
-- `fn absorb(mut self, mut other: FlatMap<V>, join: ?((V, V) -> V) = None)` — O(min(|self|, |other|)) expected; Merge all entries from `other` into `self` (emptying `other`), combining collisions with `join` or overwriting.
+- `fn new(default_val: V, cap: Int = 16) -> FlatMap<V>` — \(O(\mathit{cap})\); [rename] Create an empty `FlatMap<V>` sized for at least `cap` entries (replaces `with_capacity`).
+- `@get fn len(self) -> Int` — \(O(1)\); Number of live key-value pairs.
+- `@get fn is_empty(self) -> Bool` — \(O(1)\); Whether the map has no live entries.
+- `fn clear(mut self)` — \(O(\mathit{capacity})\); Remove all entries while keeping allocated capacity.
+- `fn get(self, k: Int) -> ?V` — \(O(1)\) expected; Look up `k`, returning `None` if absent.
+- `fn contains(self, k: Int) -> Bool` — \(O(1)\) expected; Whether `k` is currently present.
+- `fn set(mut self, k: Int, v: V)` — \(O(1)\) expected amortized; Insert or overwrite `k -> v`.
+- `fn get_or_insert(mut self, k: Int, v: V) -> V` — \(O(1)\) expected amortized; Return the value for `k`, inserting `v` first if `k` is absent.
+- `fn remove(mut self, k: Int) -> ?V` — \(O(1)\) expected; Remove `k` if present; returns its old value or `None`.
+- `fn reserve(mut self, cap: Int)` — \(O(\mathit{cap})\) when the table grows, \(O(1)\) otherwise; Reserve space for at least `cap` entries without rehashing.
+- `fn take(mut self) -> FlatMap<V>` — \(O(1)\); Move the map's contents out in \(O(1)\), leaving `self` empty.
+- `@get fn items(self) -> yields (Int, V)` — \(O(1)\) to make, \(O(\mathit{capacity})\) to walk; \(O(1)\) to make.
+- `@get fn keys(self) -> yields Int` — \(O(1)\) to make, \(O(\mathit{capacity})\) to walk; The keys, one per entry.
+- `@get fn values(self) -> yields V` — \(O(1)\) to make, \(O(\mathit{capacity})\) to walk; The values, one per entry.
+- `fn absorb(mut self, mut other: FlatMap<V>, join: ?((V, V) -> V) = None)` — \(O(\min(\lvert \mathit{self} \rvert, \lvert \mathit{other} \rvert))\) expected; Merge all entries from `other` into `self` (emptying `other`), combining collisions with `join` or overwriting.
 
 ## `struct Counter<K, V = Int>`
 
@@ -34,29 +34,29 @@ Default-valued frequency / weight map over hashable keys `K`.
 
 Fields: `m: HashMap<K, V>`, `init: V`.
 
-- `fn new(init: V) -> Counter<K, V>` — O(1); Create an empty `Counter<K, V>` whose missing keys read as `init`.
-- `fn of(xs: List<K>) -> Counter<K, Int>` — O(n) expected; Count occurrences of each element in `xs`.
-- `@get fn len(self) -> Int` — O(1); Number of keys with a stored entry.
-- `@get fn is_empty(self) -> Bool` — O(1); Whether no keys are stored.
-- `fn get(self, k: K) -> V` — O(1) expected; Value stored for `k`, or `init` if absent (does not insert).
-- `fn contains(self, k: K) -> Bool` — O(1) expected; Whether `k` currently has a stored entry.
-- `fn set(mut self, k: K, v: V)` — O(1) expected amortized; Set `k` to `v` (W8 `IndexSet` backing `c[k] = v`).
-- `fn add(mut self, k: K, delta: V)` — O(1) expected amortized; Add `delta` to `k`'s value, removing `k` if the result equals `init`.; traps: never (overflow wraps in release, traps in debug)
-- `fn remove(mut self, k: K) -> ?V` — O(1) expected; Remove `k` and return its previous value, or `None` if absent.
-- `fn reserve(mut self, cap: Int)` — O(cap) when the table grows, O(1) otherwise; Reserve space for at least `cap` keys.
-- `fn clear(mut self)` — O(n); Remove all entries.
-- `fn take(mut self) -> Counter<K, V>` — O(1); Move contents out in O(1), leaving `self` empty.
-- `fn absorb(mut self, mut other: Counter<K, V>)` — O(min(|self|, |other|)) expected; Merge all entries from `other` into `self` by adding values (emptying `other`).; traps: never (overflow wraps in release, traps in debug)
-- `fn total(self) -> V` — O(n); Sum of all stored values.; traps: never (overflow wraps in release, traps in debug)
-- `fn most_common(self, k: Int) -> List<(K, V)>` — O(n log n); Top `k` entries sorted by descending value.; traps: when `k < 0`
-- `@get fn items(self) -> yields (K, V)` — O(1) to make, O(1) per step; O(1) to make.
-- `@get fn keys(self) -> yields K` — O(1) to make, O(1) per step; The keys, one per distinct element.
-- `@get fn values(self) -> yields V` — O(1) to make, O(1) per step; The counts, one per key.
+- `fn new(init: V) -> Counter<K, V>` — \(O(1)\); Create an empty `Counter<K, V>` whose missing keys read as `init`.
+- `fn of(xs: List<K>) -> Counter<K, Int>` — \(O(n)\) expected; Count occurrences of each element in `xs`.
+- `@get fn len(self) -> Int` — \(O(1)\); Number of keys with a stored entry.
+- `@get fn is_empty(self) -> Bool` — \(O(1)\); Whether no keys are stored.
+- `fn get(self, k: K) -> V` — \(O(1)\) expected; Value stored for `k`, or `init` if absent (does not insert).
+- `fn contains(self, k: K) -> Bool` — \(O(1)\) expected; Whether `k` currently has a stored entry.
+- `fn set(mut self, k: K, v: V)` — \(O(1)\) expected amortized; Set `k` to `v` (W8 `IndexSet` backing `c[k] = v`).
+- `fn add(mut self, k: K, delta: V)` — \(O(1)\) expected amortized; Add `delta` to `k`'s value, removing `k` if the result equals `init`.; traps: never (overflow wraps in release, traps in debug)
+- `fn remove(mut self, k: K) -> ?V` — \(O(1)\) expected; Remove `k` and return its previous value, or `None` if absent.
+- `fn reserve(mut self, cap: Int)` — \(O(\mathit{cap})\) when the table grows, \(O(1)\) otherwise; Reserve space for at least `cap` keys.
+- `fn clear(mut self)` — \(O(n)\); Remove all entries.
+- `fn take(mut self) -> Counter<K, V>` — \(O(1)\); Move contents out in \(O(1)\), leaving `self` empty.
+- `fn absorb(mut self, mut other: Counter<K, V>)` — \(O(\min(\lvert \mathit{self} \rvert, \lvert \mathit{other} \rvert))\) expected; Merge all entries from `other` into `self` by adding values (emptying `other`).; traps: never (overflow wraps in release, traps in debug)
+- `fn total(self) -> V` — \(O(n)\); Sum of all stored values.; traps: never (overflow wraps in release, traps in debug)
+- `fn most_common(self, k: Int) -> List<(K, V)>` — \(O(n \log n)\); Top `k` entries sorted by descending value.; traps: when `k < 0`
+- `@get fn items(self) -> yields (K, V)` — \(O(1)\) to make, \(O(1)\) per step; \(O(1)\) to make.
+- `@get fn keys(self) -> yields K` — \(O(1)\) to make, \(O(1)\) per step; The keys, one per distinct element.
+- `@get fn values(self) -> yields V` — \(O(1)\) to make, \(O(1)\) per step; The counts, one per key.
 
 ## Functions
 
-- `fn push<K>(mut self: Counter<K, Int>, x: K)` — O(1) expected; Count one more `x`: `c.add(x, 1)`, so a `Counter` fills like a bag.
-- `fn pop<K>(mut self: Counter<K, Int>, x: K)` — O(1) expected; Count one fewer `x`: `c.add(x, -1)`, the undo of `push`.
+- `fn push<K>(mut self: Counter<K, Int>, x: K)` — \(O(1)\) expected; Count one more `x`: `c.add(x, 1)`, so a `Counter` fills like a bag.
+- `fn pop<K>(mut self: Counter<K, Int>, x: K)` — \(O(1)\) expected; Count one fewer `x`: `c.add(x, -1)`, the undo of `push`.
 
 ## Example
 

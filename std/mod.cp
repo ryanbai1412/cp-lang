@@ -11,7 +11,7 @@ use std.fenwick.{Fenwick}
 use std.math.{crt_all, factor, gcd, inv_mod, mod_log, mod_sqrt, mul_mod}
 
 /// An integer modulo the constant `P`, always stored in `0..P`.
-/// `+ - *` are O(1); `/` and `inv` are O(log P) and need `gcd(x, P) == 1`.
+/// `+ - *` are \(O(1)\); `/` and `inv` are \(O(\log P)\) and need `gcd(x, P) == 1`.
 pub struct Mod<P>(pub v: 0..P):
     /// The modulus: `Z.MOD`.
     let MOD = P
@@ -22,7 +22,7 @@ pub struct Mod<P>(pub v: 0..P):
     ///
     /// `Mod<P>(x)` calls `new`, so every way of building a `Mod` reduces.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: never
     /// example: `Mod<7>(-1) == Mod<7>(6)`
     /// example: `Mod<7>(15) == Mod<7>(1)`
@@ -34,7 +34,7 @@ pub struct Mod<P>(pub v: 0..P):
     /// Uses the extended Euclidean algorithm, so `P` need not be prime. With `P == 1` the only value
     /// is 0, which is also `one`, so `Mod<1>(0).try_inv()` is `Some(Mod<1>(0))`.
     ///
-    /// cost: O(log P)
+    /// cost: \(O(\log P)\)
     /// traps: never
     /// example: `Mod<7>(3).try_inv() == Some(Mod<7>(5))`
     /// example: `Mod<6>(4).try_inv() == None`
@@ -53,7 +53,7 @@ pub struct Mod<P>(pub v: 0..P):
     /// `x.inv()` is `x.try_inv().unwrap()` with a trap that names `x` and `P`; `a / b` is
     /// `a * b.inv()`.
     ///
-    /// cost: O(log P)
+    /// cost: \(O(\log P)\)
     /// traps: when `gcd(v, P) != 1`
     /// example: `Mod<7>(3).inv() == Mod<7>(5)`
     /// example: `Mod<10>(3).inv() == Mod<10>(7)`
@@ -64,7 +64,7 @@ pub struct Mod<P>(pub v: 0..P):
     /// This is the conversion an `Int` literal takes where a `Mod<P>` is expected, so
     /// `let x: Mod<7> = 10` is `Mod<7>.from_int(10)`.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: never
     /// example: `Mod<7>.from_int(10) == Mod<7>(3)`
     /// example: `Mod<7>.from_int(-8) == Mod<7>(6)`
@@ -75,7 +75,7 @@ pub struct Mod<P>(pub v: 0..P):
     /// Of the two roots `r` and `P - r`, it returns the one with the smaller value `v`; the root of 0
     /// is 0.
     ///
-    /// cost: O(log^2 P)
+    /// cost: \(O(\log^2 P)\)
     /// ties: the root with the smaller value
     /// traps: when `P` is not prime
     /// example: `Mod<7>(2).sqrt() == Some(Mod<7>(3))`
@@ -90,7 +90,7 @@ pub struct Mod<P>(pub v: 0..P):
     /// Any modulus works: the non-coprime part is peeled off first. `self ** 0` is `one`, so
     /// `x.log(one)` is `Some(0)` for every `x`.
     ///
-    /// cost: O(sqrt P)
+    /// cost: \(O(\sqrt P)\)
     /// ties: the least `k`
     /// traps: never
     /// example: `Mod<7>(3).log(Mod<7>(6)) == Some(3)`
@@ -100,7 +100,7 @@ pub struct Mod<P>(pub v: 0..P):
 
     /// The inverse of every element of `xs`, with one `inv` in all (Montgomery's trick).
     ///
-    /// cost: O(n + log P)
+    /// cost: \(O(n + \log P)\)
     /// empty: `[]`
     /// order: same order as `xs`; a new `List`, keyed from 0
     /// traps: when any element has `gcd(v, P) != 1` (in particular 0)
@@ -166,8 +166,8 @@ impl Read for Mod<P>:
 
 /// Factorials and inverse factorials for a modular type `M = Mod<P>` (prime `P`).
 /// Its tables are `@cache` fields that grow on demand, so an immutable
-/// `let c = Comb<Z>()` (or `Comb<Z>(limit)` to pre-size) answers queries in O(1)
-/// with amortized O(1) growth per new factorial.
+/// `let c = Comb<Z>()` (or `Comb<Z>(limit)` to pre-size) answers queries in \(O(1)\)
+/// with amortized \(O(1)\) growth per new factorial.
 pub struct Comb<M>:
     @cache f: List<M>
     @cache g: List<M>
@@ -178,7 +178,7 @@ pub struct Comb<M>:
     /// The tables hold `min(limit, P - 1) + 1` entries and grow on demand later (doubling, capped at
     /// `P`), so `Comb<Z>()` with no limit is valid and simply grows on first use.
     ///
-    /// cost: O(min(limit, P))
+    /// cost: \(O(\min(\mathit{limit}, P))\)
     /// traps: when `limit < 0`, or `P` is not prime
     /// example: `type Z = Mod<7>; let c = Comb<Z>(3); c.fact(3) == Z(6)`
     pub fn new(limit: Int = 0) -> Comb<M>:
@@ -207,7 +207,7 @@ pub struct Comb<M>:
 
     /// `n!`, reduced; 0 when `n >= M.MOD` (the product contains `P`).
     ///
-    /// cost: O(1) amortized
+    /// cost: \(O(1)\) amortized
     /// traps: when `n < 0`
     /// example: `type Z = Mod<1_000_000_007>; Comb<Z>().fact(5) == Z(120)`
     /// example: `type Z = Mod<7>; Comb<Z>().fact(6) == Z(6)`
@@ -220,7 +220,7 @@ pub struct Comb<M>:
 
     /// `1 / n!`, for `0 <= n < M.MOD`.
     ///
-    /// cost: O(1) amortized
+    /// cost: \(O(1)\) amortized
     /// traps: when `n` is outside `0..M.MOD`
     /// example: `type Z = Mod<7>; Comb<Z>().inv_fact(3) == Z(6)`
     /// example: `type Z = Mod<7>; Comb<Z>().inv_fact(0) == Z(1)`
@@ -231,7 +231,7 @@ pub struct Comb<M>:
 
     /// `1 / i`, for `1 <= i < M.MOD`, from the factorials: `(i - 1)! / i!`.
     ///
-    /// cost: O(1) amortized
+    /// cost: \(O(1)\) amortized
     /// traps: when `i` is outside `1..M.MOD`
     /// example: `type Z = Mod<7>; Comb<Z>().inv(3) == Z(5)`
     pub fn inv(self, i: Int) -> M:
@@ -248,7 +248,7 @@ pub struct Comb<M>:
     /// For `n < M.MOD` it reads the tables. For `n >= M.MOD` it uses Lucas's theorem on the base-`P`
     /// digits, so the answer is exact modulo `P` for every `n`. A negative `n` gives 0.
     ///
-    /// cost: O(1) amortized for `n < M.MOD`; O(log_P n) otherwise
+    /// cost: \(O(1)\) amortized for `n < M.MOD`; \(O(\mathit{log\_P} n)\) otherwise
     /// traps: never
     /// example: `type Z = Mod<1_000_000_007>; Comb<Z>().choose(5, 2) == Z(10)`
     /// example: `type Z = Mod<1_000_000_007>; Comb<Z>().choose(5, 6) == Z(0)`
@@ -267,7 +267,7 @@ pub struct Comb<M>:
     /// those `k` numbers include a multiple of `P`, else `fact(n % P) / fact((n - k) % P)`, so it is
     /// exact for `n >= M.MOD` too.
     ///
-    /// cost: O(1) amortized
+    /// cost: \(O(1)\) amortized
     /// traps: never
     /// example: `type Z = Mod<1_000_000_007>; Comb<Z>().arrange(5, 2) == Z(20)`
     /// example: `type Z = Mod<7>; Comb<Z>().arrange(9, 2) == Z(2)`
@@ -283,7 +283,7 @@ pub struct Comb<M>:
     /// `multichoose(0, 0)` is 1 (the empty placement) and `multichoose(n, 0)` is 0 for `n > 0`; a
     /// negative `n` or `k` gives 0.
     ///
-    /// cost: O(1) amortized
+    /// cost: \(O(1)\) amortized
     /// traps: never
     /// example: `type Z = Mod<1_000_000_007>; Comb<Z>().multichoose(3, 2) == Z(4)`
     /// example: `type Z = Mod<1_000_000_007>; Comb<Z>().multichoose(2, 3) == Z(6)`
@@ -298,7 +298,7 @@ pub struct Comb<M>:
     /// The difference form needs no division by `n + 1`, so it stays exact when `n + 1` is a
     /// multiple of `P`.
     ///
-    /// cost: O(1) amortized
+    /// cost: \(O(1)\) amortized
     /// traps: when `n < 0`
     /// example: `type Z = Mod<1_000_000_007>; Comb<Z>().catalan(0) == Z(1)`
     /// example: `type Z = Mod<1_000_000_007>; Comb<Z>().catalan(4) == Z(14)`
@@ -312,7 +312,7 @@ pub struct Comb<M>:
     /// `!0 = 1`, `!1 = 0`, and `!n = (n - 1)(!(n - 1) + !(n - 2))`; the values are tabled like the
     /// factorials.
     ///
-    /// cost: O(1) amortized, O(n) table
+    /// cost: \(O(1)\) amortized, \(O(n)\) table
     /// traps: when `n < 0`
     /// example: `type Z = Mod<1_000_000_007>; Comb<Z>().derange(0) == Z(1)`
     /// example: `type Z = Mod<1_000_000_007>; Comb<Z>().derange(4) == Z(9)`
@@ -329,7 +329,7 @@ pub struct Comb<M>:
     /// It is computed as the product of `choose(k_1 + ... + k_i, k_i)`, so Lucas applies and the
     /// result is exact modulo `P` even when `sum ks >= M.MOD`.
     ///
-    /// cost: O(ks.len) amortized
+    /// cost: \(O(\mathit{ks}.\mathit{len})\) amortized
     /// empty: 1 (the empty multinomial)
     /// traps: never
     /// example: `type Z = Mod<1_000_000_007>; Comb<Z>().multinomial([2, 1]) == Z(3)`
@@ -345,12 +345,12 @@ pub struct Comb<M>:
             acc = acc * self.choose(total, k)
         acc
 
-/// O(1) reduction. Fast Barrett modular multiplier for a runtime modulus `1 <= m < 2^31`.
+/// \(O(1)\) reduction. Fast Barrett modular multiplier for a runtime modulus `1 <= m < 2^31`.
 pub struct Barrett(pub m: Int, im: U64):
     /// A Barrett multiplier for the runtime modulus `m`, `1 <= m < 2^31`: precomputes
     /// `im = floor((2^64 - 1) / m) + 1` (wrapping, so 0 for `m == 1`).
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: when `m` is outside `1..2^31`
     /// example: `Barrett(7).mul(3, 5) == 1`
     pub fn new(m: Int) -> Barrett:
@@ -359,7 +359,7 @@ pub struct Barrett(pub m: Int, im: U64):
 
     /// `(a * b) % m` without a hardware division, for `a, b` in `0..m`.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: when `a` or `b` is outside `0..m`
     /// example: `Barrett(7).mul(3, 5) == 1`
     /// example: `Barrett(1_000_000_007).mul(1_000_000_006, 1_000_000_006) == 1`
@@ -370,7 +370,7 @@ pub struct Barrett(pub m: Int, im: U64):
 
     /// `a % m`, for `a < m * m`.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: when `a >= m * m`
     /// example: `Barrett(7).reduce(48) == 6`
     /// example: `Barrett(7).reduce(0) == 0`
@@ -378,14 +378,14 @@ pub struct Barrett(pub m: Int, im: U64):
         assert a < U64(m) * U64(m)
         Int(a % U64(m))
 
-/// O(p^e) build, O(log_p n) query. Binomial coefficients modulo a prime power `p^e` (Granville's theorem).
+/// \(O(p^e)\) build, \(O(\mathit{log\_p} n)\) query. Binomial coefficients modulo a prime power `p^e` (Granville's theorem).
 pub struct PrimePowerComb(p: Int, e: Int, pe: Int):
     free: List<Int>
 
     /// Tables for binomial coefficients modulo `p^e`: the factorials with every factor of `p`
     /// removed, modulo `p^e`.
     ///
-    /// cost: O(p^e) time and memory
+    /// cost: \(O(p^e)\) time and memory
     /// traps: when `p` is not prime, or `e < 1`, or `p^e` overflows `Int`
     /// example: `PrimePowerComb(2, 3).choose(6, 3) == 4`
     pub fn new(p: Int, e: Int) -> PrimePowerComb:
@@ -419,7 +419,7 @@ pub struct PrimePowerComb(p: Int, e: Int, pe: Int):
     /// `C(n, k) mod p^e`, by Granville's generalization of Lucas's theorem; 0 when `k` is outside
     /// `0..=n`.
     ///
-    /// cost: O(log_p n)
+    /// cost: \(O(\mathit{log\_p} n)\)
     /// traps: never
     /// example: `PrimePowerComb(2, 3).choose(6, 3) == 4`
     /// example: `PrimePowerComb(3, 2).choose(9, 3) == 3`
@@ -435,14 +435,14 @@ pub struct PrimePowerComb(p: Int, e: Int, pe: Int):
         for _ in 0..c: r = r * p % pe
         r
 
-/// O(sum p_i^e_i) build, O(omega(m) log n) query. Binomial coefficients modulo any `m >= 1` via CRT.
+/// \(O(\text{sum p\_i}^\mathit{e\_i})\) build, \(O(\mathit{omega}(m) \log n)\) query. Binomial coefficients modulo any `m >= 1` via CRT.
 pub struct ModComb(pub m: Int):
     parts: List<PrimePowerComb>
 
     /// Binomial coefficients modulo any `m >= 1`: factor `m` and build one `PrimePowerComb` per
     /// prime power, combined by CRT.
     ///
-    /// cost: O(sum p_i^e_i)
+    /// cost: \(O(\text{sum p\_i}^\mathit{e\_i})\)
     /// traps: when `m < 1`
     /// example: `ModComb(12).choose(6, 3) == 8`
     pub fn new(m: Int) -> ModComb:
@@ -453,7 +453,7 @@ pub struct ModComb(pub m: Int):
     ///
     /// With `m == 1` every answer is 0.
     ///
-    /// cost: O(omega(m) log n)
+    /// cost: \(O(\mathit{omega}(m) \log n)\)
     /// traps: never
     /// example: `ModComb(12).choose(6, 3) == 8`
     /// example: `ModComb(10).choose(5, 2) == 0`

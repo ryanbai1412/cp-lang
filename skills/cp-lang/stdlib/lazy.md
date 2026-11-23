@@ -10,8 +10,8 @@ In prelude (no `use` needed): `Flip`.
 
 Paired aggregate `(now, flipped)` for range-toggle / complement updates (`SegTree(op, a, act: flip)`).
 
-- `fn of(on: Bool, x: T, id: T) -> Flip<T>` — O(1); The leaf for one element that is currently `on` or off: `Flip(x, id)` when `on`, else `Flip(id, x)`.
-- `fn op<M>(m: M) -> Monoid<Flip<T>>` — O(1); The monoid on pairs that folds both halves with `m` independently: `op(a, b) == Flip(m(a.now, b.now), m(a.flipped, b.flipped))`, identity `Flip(id, id)` with `id` from `Monoid.of(m)`.; traps: never (an `m` without a known identity is a compile-time error)
+- `fn of(on: Bool, x: T, id: T) -> Flip<T>` — \(O(1)\); The leaf for one element that is currently `on` or off: `Flip(x, id)` when `on`, else `Flip(id, x)`.
+- `fn op<M>(m: M) -> Monoid<Flip<T>>` — \(O(1)\); The monoid on pairs that folds both halves with `m` independently: `op(a, b) == Flip(m(a.now, b.now), m(a.flipped, b.flipped))`, identity `Flip(id, id)` with `id` from `Monoid.of(m)`.; traps: never (an `m` without a known identity is a compile-time error)
 
 ## `struct LazyTreap<T, F>(apply_fn: (T, Int, F) -> T, split_fn: (F, Int) -> (F, F), compose_fn: (F, F) -> F, before_fn: (T, T) -> Bool)`
 
@@ -21,18 +21,18 @@ Fields: `apply_fn: (T, Int, F) -> T,`, `split_fn: (F, Int) -> (F, F),`, `compose
 
 ## `struct Rope<D, T>`
 
-O(n) space.
+\(O(n)\) space.
 
-- `fn new(a: ?[D]T = None, fill: ?T = None, merge: ?((T, T) -> T) = None) -> Rope<D, T>` — O(|D|); A rope over `D` holding the values of `a`, or `fill` at every position.; traps: when neither or both of `a` and `fill` are given
-- `fn apply(mut self, r: Range<D>, tag: T)` — O(log n) expected; Apply `tag` to every value at positions `r`: each becomes `merge(tag, x)`, or `tag` when no `merge` was given.; traps: when a non-empty `r` reaches outside `D`
-- `fn reverse(mut self, r: Range<D>)` — O(log n) expected; Reverse the order of the values at positions `r`; pending tags stay with their values.; traps: when a non-empty `r` reaches outside `D`
-- `fn get(mut self, i: D) -> T` — O(log n) expected; The value currently at position `i`, with pending tags merged in.; traps: when `i` is outside `D`
-- `fn set(mut self, i: D, x: T)` — O(log n) expected; Overwrite the value currently at position `i` with `x`, replacing any pending tags on it.; traps: when `i` is outside `D`
-- `fn to_array(mut self) -> [D]T` — O(|D|); The current values in position order, with every pending tag merged in.
+- `fn new(a: ?[D]T = None, fill: ?T = None, merge: ?((T, T) -> T) = None) -> Rope<D, T>` — \(O(\lvert D \rvert)\); A rope over `D` holding the values of `a`, or `fill` at every position.; traps: when neither or both of `a` and `fill` are given
+- `fn apply(mut self, r: Range<D>, tag: T)` — \(O(\log n)\) expected; Apply `tag` to every value at positions `r`: each becomes `merge(tag, x)`, or `tag` when no `merge` was given.; traps: when a non-empty `r` reaches outside `D`
+- `fn reverse(mut self, r: Range<D>)` — \(O(\log n)\) expected; Reverse the order of the values at positions `r`; pending tags stay with their values.; traps: when a non-empty `r` reaches outside `D`
+- `fn get(mut self, i: D) -> T` — \(O(\log n)\) expected; The value currently at position `i`, with pending tags merged in.; traps: when `i` is outside `D`
+- `fn set(mut self, i: D, x: T)` — \(O(\log n)\) expected; Overwrite the value currently at position `i` with `x`, replacing any pending tags on it.; traps: when `i` is outside `D`
+- `fn to_array(mut self) -> [D]T` — \(O(\lvert D \rvert)\); The current values in position order, with every pending tag merged in.
 
 ## Functions
 
-- `fn flip_action<T, M>(m: M) -> Action<Flip<T>, Bool>` — O(1); The range-toggle action on `Flip<T>` values over `m`: the tag is a `Bool`, `true` swaps `now` and `flipped`, `false` is the identity, and tags compose by exclusive or.
+- `fn flip_action<T, M>(m: M) -> Action<Flip<T>, Bool>` — \(O(1)\); The range-toggle action on `Flip<T>` values over `m`: the tag is a `Bool`, `true` swaps `now` and `flipped`, `false` is the identity, and tags compose by exclusive or.
 
 ## Example
 

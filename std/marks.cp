@@ -1,7 +1,7 @@
-//! Opt-in generation-stamped mark table: `add`, `in`, `remove`, and `clear` are all O(1).
+//! Opt-in generation-stamped mark table: `add`, `in`, `remove`, and `clear` are all \(O(1)\).
 //!
 //! For sparse resets prefer `[D]Bool` with a touched list; import `std.marks.Marks<D>` when
-//! repeated full clears inside a loop would otherwise cost O(T * N). Each `clear()` bumps a
+//! repeated full clears inside a loop would otherwise cost \(O(T \cdot N)\). Each `clear()` bumps a
 //! 32-bit generation counter instead of touching the underlying array, resetting the table
 //! only if the counter reaches its 32-bit ceiling.
 
@@ -9,8 +9,8 @@ use std.interval.{IntervalMap}
 
 const MAX_GEN = 2_000_000_000
 
-/// A visited/mark set over a domain `D` with O(1) `add`, `remove`, `contains` (`v in m`),
-/// and O(1) `clear()`. Memory is one `[D]0..=2_000_000_000` array (4 bytes per element).
+/// A visited/mark set over a domain `D` with \(O(1)\) `add`, `remove`, `contains` (`v in m`),
+/// and \(O(1)\) `clear()`. Memory is one `[D]0..=2_000_000_000` array (4 bytes per element).
 pub struct Marks<D>:
     stamp: [D]0..=2_000_000_000
     var gen: Int
@@ -18,7 +18,7 @@ pub struct Marks<D>:
 
     /// An empty mark set over `D`, with its stamp array allocated once.
     ///
-    /// cost: O(|D|)
+    /// cost: \(O(\lvert D \rvert)\)
     /// empty: an empty `D` gives a set that can never hold a mark
     /// traps: never
     /// example: `Marks<0..5>().is_empty`
@@ -27,7 +27,7 @@ pub struct Marks<D>:
     /// Mark `v`. Returns `true` when `v` was unmarked, `false` when it was already marked (and
     /// nothing changes).
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: when `v` is outside `D`
     /// example: `var m = Marks<0..5>(); m.add(2) and not m.add(2)`
     pub fn add(mut self, v: D) -> Bool:
@@ -38,7 +38,7 @@ pub struct Marks<D>:
 
     /// Unmark `v`. Returns `true` when `v` was marked, `false` when it was not (and nothing changes).
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: when `v` is outside `D`
     /// example: `var m = Marks<0..5>(); m.add(2); m.remove(2) and not m.remove(2)`
     pub fn remove(mut self, v: D) -> Bool:
@@ -49,16 +49,16 @@ pub struct Marks<D>:
 
     /// Whether `v` is marked; also spelled `v in m`.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: when `v` is outside `D`
     /// example: `var m = Marks<0..5>(); m.add(1); m.contains(1) and not m.contains(0)`
     pub fn contains(self, v: D) -> Bool = stamp[v] == gen
 
     /// Unmark everything by moving to a new generation, without touching the stamp array. Once the
-    /// generation counter reaches `2_000_000_000` the array is reset to zero, so the cost stays O(1)
+    /// generation counter reaches `2_000_000_000` the array is reset to zero, so the cost stays \(O(1)\)
     /// amortized over the calls.
     ///
-    /// cost: O(1) amortized; O(|D|) on the call that wraps the counter
+    /// cost: \(O(1)\) amortized; \(O(\lvert D \rvert)\) on the call that wraps the counter
     /// traps: never
     /// example: `var m = Marks<0..5>(); m.add(1); m.add(3); m.clear(); m.is_empty and not (1 in m)`
     pub fn clear(mut self):
@@ -71,7 +71,7 @@ pub struct Marks<D>:
 
     /// The number of marked positions.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: never
     /// example: `var m = Marks<0..5>(); m.add(1); m.add(3); m.add(1); m.len == 2`
     @get pub fn len(self) -> Int:
@@ -79,13 +79,13 @@ pub struct Marks<D>:
 
     /// Whether no position is marked; `len == 0`.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: never
     /// example: `var m = Marks<0..5>(); m.add(0); m.remove(0); m.is_empty`
     @get pub fn is_empty(self) -> Bool:
         cnt == 0
 
-/// Epoch-stamped map over domain `D` with O(1) `get`, `set`, `contains`, `remove`, and `clear()`.
+/// Epoch-stamped map over domain `D` with \(O(1)\) `get`, `set`, `contains`, `remove`, and `clear()`.
 pub struct MarkMap<D, T>:
     stamp: [D]0..=2_000_000_000
     vals: [D]T
@@ -96,7 +96,7 @@ pub struct MarkMap<D, T>:
     /// An empty map over `D`. `default_val` fills the value array and is never returned: an absent
     /// key reads as `None`.
     ///
-    /// cost: O(|D|)
+    /// cost: \(O(\lvert D \rvert)\)
     /// empty: an empty `D` gives a map that can never hold an entry
     /// traps: never
     /// example: `MarkMap<0..5, Int>(0).is_empty`
@@ -105,7 +105,7 @@ pub struct MarkMap<D, T>:
 
     /// The number of keys present.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: never
     /// example: `var m = MarkMap<0..5, Int>(0); m.set(1, 7); m.set(1, 8); m.set(4, 0); m.len == 2`
     @get pub fn len(self) -> Int:
@@ -113,7 +113,7 @@ pub struct MarkMap<D, T>:
 
     /// Whether no key is present; `len == 0`.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: never
     /// example: `var m = MarkMap<0..5, Int>(0); m.set(2, 1); m.remove(2); m.is_empty`
     @get pub fn is_empty(self) -> Bool:
@@ -121,21 +121,21 @@ pub struct MarkMap<D, T>:
 
     /// Whether `v` has a value. A key set to `default_val` is present.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: when `v` is outside `D`
     /// example: `var m = MarkMap<0..5, Int>(0); m.set(2, 0); m.contains(2) and not m.contains(3)`
     pub fn contains(self, v: D) -> Bool = stamp[v] == gen
 
     /// The value at `v`, or `None` when `v` is absent.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: when `v` is outside `D`
     /// example: `var m = MarkMap<0..5, Int>(0); m.set(2, 9); m.get(2) == Some(9) and m.get(3) == None`
     pub fn get(self, v: D) -> ?T = if stamp[v] == gen: vals[v] else: None
 
     /// Give `v` the value `val`, adding `v` when it is absent and overwriting it otherwise.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: when `v` is outside `D`
     /// example: `var m = MarkMap<0..5, Int>(0); m.set(2, 9); m.set(2, 4); m.get(2) == Some(4)`
     pub fn set(mut self, v: D, val: T):
@@ -146,7 +146,7 @@ pub struct MarkMap<D, T>:
 
     /// Remove `v` and return the value it had, or `None` (and change nothing) when it was absent.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: when `v` is outside `D`
     /// example: `var m = MarkMap<0..5, Int>(0); m.set(2, 9); m.remove(2) == Some(9) and m.remove(2) == None`
     pub fn remove(mut self, v: D) -> ?T:
@@ -158,7 +158,7 @@ pub struct MarkMap<D, T>:
     /// Remove every key by moving to a new generation, without touching the value array; the
     /// arrays are reset when the counter reaches `2_000_000_000`, as for `Marks.clear`.
     ///
-    /// cost: O(1) amortized; O(|D|) on the call that wraps the counter
+    /// cost: \(O(1)\) amortized; \(O(\lvert D \rvert)\) on the call that wraps the counter
     /// traps: never
     /// example: `var m = MarkMap<0..5, Int>(0); m.set(2, 9); m.clear(); m.get(2) == None and m.is_empty`
     pub fn clear(mut self):
@@ -170,21 +170,21 @@ pub struct MarkMap<D, T>:
         cnt = 0
 
 /// Online value-to-id interner assigning contiguous `0..len` IDs to distinct keys `K`.
-/// `id`, `get`, and `key` are O(1) expected; `len`, `is_empty`, `clear` are O(1).
+/// `id`, `get`, and `key` are \(O(1)\) expected; `len`, `is_empty`, `clear` are \(O(1)\).
 pub struct Interner<K>:
     to_id: HashMap<K, Int>
     keys: List<K>
 
     /// An empty interner.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: never
     /// example: `Interner<Str>().is_empty`
     pub fn new() -> Interner<K> = Interner(HashMap<K, Int>(), [])
 
     /// The number of distinct keys interned so far; ids are exactly `0..len`.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: never
     /// example: `var t = Interner<Str>(); t.id("a"); t.id("b"); t.id("a"); t.len == 2`
     @get pub fn len(self) -> Int:
@@ -192,7 +192,7 @@ pub struct Interner<K>:
 
     /// Whether no key has been interned; `len == 0`.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: never
     /// example: `var t = Interner<Str>(); t.id("a"); t.clear(); t.is_empty`
     @get pub fn is_empty(self) -> Bool:
@@ -200,7 +200,7 @@ pub struct Interner<K>:
 
     /// Forget every key, so the next new key gets id `0` again.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: never
     /// example: `var t = Interner<Str>(); t.id("a"); t.id("b"); t.clear(); t.id("b") == 0`
     pub fn clear(mut self):
@@ -209,7 +209,7 @@ pub struct Interner<K>:
 
     /// The id of `k`. A new key gets the next id, `len`, so ids follow first-seen order.
     ///
-    /// cost: O(1) expected
+    /// cost: \(O(1)\) expected
     /// traps: never
     /// example: `var t = Interner<Str>(); t.id("x") == 0 and t.id("y") == 1 and t.id("x") == 0`
     pub fn id(mut self, k: K) -> Int:
@@ -221,21 +221,21 @@ pub struct Interner<K>:
 
     /// The id of `k`, or `None` when `k` has not been interned; never adds a key.
     ///
-    /// cost: O(1) expected
+    /// cost: \(O(1)\) expected
     /// traps: never
     /// example: `var t = Interner<Str>(); t.id("x"); t.get("x") == Some(0) and t.get("y") == None and t.len == 1`
     pub fn get(self, k: K) -> ?Int = to_id.get(k)
 
     /// The key whose id is `i`; the inverse of `id`.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: when `i` is outside `0..len`
     /// example: `var t = Interner<Str>(); t.id("x"); t.id("y"); t.key(1) == "y"`
     pub fn key(self, i: Int) -> K = keys[i]
 
     /// Whether `k` has been interned; `get(k) != None`.
     ///
-    /// cost: O(1) expected
+    /// cost: \(O(1)\) expected
     /// traps: never
     /// example: `var t = Interner<Int>(); t.id(40); t.contains(40) and not t.contains(41)`
     pub fn contains(self, k: K) -> Bool:
@@ -244,7 +244,7 @@ pub struct Interner<K>:
     /// Allocate room for at least `cap` distinct keys, so the next `cap - len` new keys do not
     /// reallocate. Changes no ids.
     ///
-    /// cost: O(cap)
+    /// cost: \(O(\mathit{cap})\)
     /// traps: when `cap < 0`
     /// example: `var t = Interner<Int>(); t.reserve(100); t.id(5); t.len == 1`
     pub fn reserve(mut self, cap: Int):
@@ -252,7 +252,7 @@ pub struct Interner<K>:
         keys.reserve(cap)
 
 /// Briggs-Torczon sparse set over domain `D`.
-/// O(1) `add`, `remove`, `contains`, `clear` AND O(`len`) iteration over active elements.
+/// \(O(1)\) `add`, `remove`, `contains`, `clear` AND O(`len`) iteration over active elements.
 pub struct SparseSet<D>:
     _len: Int
     dense: List<D>
@@ -260,7 +260,7 @@ pub struct SparseSet<D>:
 
     /// An empty sparse set over `D`.
     ///
-    /// cost: O(|D|)
+    /// cost: \(O(\lvert D \rvert)\)
     /// empty: an empty `D` gives a set that can never hold an element
     /// traps: never
     /// example: `SparseSet<0..5>().is_empty`
@@ -269,7 +269,7 @@ pub struct SparseSet<D>:
 
     /// The number of elements.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: never
     /// example: `var s = SparseSet<0..5>(); s.add(1); s.add(4); s.add(1); s.len == 2`
     @get pub fn len(self) -> Int:
@@ -277,7 +277,7 @@ pub struct SparseSet<D>:
 
     /// Whether the set has no elements; `len == 0`.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: never
     /// example: `var s = SparseSet<0..5>(); s.add(1); s.remove(1); s.is_empty`
     @get pub fn is_empty(self) -> Bool:
@@ -285,7 +285,7 @@ pub struct SparseSet<D>:
 
     /// Whether `v` is in the set.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: when `v` is outside `D`
     /// example: `var s = SparseSet<0..5>(); s.add(3); s.contains(3) and not s.contains(2)`
     pub fn contains(self, v: D) -> Bool:
@@ -295,7 +295,7 @@ pub struct SparseSet<D>:
     /// Add `v` at the end of the dense order. Returns `true` when `v` was absent, `false` when it
     /// was present (and nothing changes).
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: when `v` is outside `D`
     /// example: `var s = SparseSet<0..5>(); s.add(3) and not s.add(3)`
     pub fn add(mut self, v: D) -> Bool:
@@ -309,7 +309,7 @@ pub struct SparseSet<D>:
     /// Remove `v`, moving the last element of the dense order into its slot. Returns `true` when `v`
     /// was present, `false` when it was absent (and nothing changes).
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: when `v` is outside `D`
     /// example: `var s = SparseSet<0..5>(); s.add(3); s.add(1); s.add(4); s.remove(3); s.each().collect() == [4, 1]`
     pub fn remove(mut self, v: D) -> Bool:
@@ -323,7 +323,7 @@ pub struct SparseSet<D>:
 
     /// Remove every element by resetting the length; the sparse table is not touched.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: never
     /// example: `var s = SparseSet<0..5>(); s.add(3); s.clear(); s.is_empty and not s.contains(3)`
     pub fn clear(mut self):
@@ -332,7 +332,7 @@ pub struct SparseSet<D>:
     /// Every element, in dense order: insertion order, except that each `remove` moved the then-last
     /// element into the removed one's slot.
     ///
-    /// cost: O(len)
+    /// cost: \(O(\mathit{len})\)
     /// empty: yields nothing for an empty set
     /// order: dense order (insertion order adjusted by removals, as above)
     /// traps: never
@@ -349,7 +349,7 @@ pub struct Arena<T>:
 
     /// An empty arena with room for `cap` nodes before it reallocates.
     ///
-    /// cost: O(cap)
+    /// cost: \(O(\mathit{cap})\)
     /// traps: when `cap < 0`
     /// example: `Arena<Int>(cap: 8).is_empty`
     pub fn new(cap: Int = 0) -> Arena<T>:
@@ -360,7 +360,7 @@ pub struct Arena<T>:
     /// The number of nodes allocated since creation or the last `clear`; valid handles have raw
     /// values `0..len`.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: never
     /// example: `var a = Arena<Int>(); a.alloc(5); a.alloc(6); a.len == 2`
     @get pub fn len(self) -> Int:
@@ -368,7 +368,7 @@ pub struct Arena<T>:
 
     /// Whether no node is allocated; `len == 0`.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: never
     /// example: `var a = Arena<Int>(); a.alloc(5); a.clear(); a.is_empty`
     @get pub fn is_empty(self) -> Bool:
@@ -376,7 +376,7 @@ pub struct Arena<T>:
 
     /// Store `x` as a new node and return its handle; handles are issued in order `0, 1, 2, ...`.
     ///
-    /// cost: O(1) amortized
+    /// cost: \(O(1)\) amortized
     /// traps: when the arena already holds `2_000_000_001` nodes
     /// example: `var a = Arena<Str>(); a.alloc("p"); a.alloc("q") == Id<Str>(1)`
     pub fn alloc(mut self, x: T) -> Id<T>:
@@ -385,7 +385,7 @@ pub struct Arena<T>:
 
     /// The node behind `id`; also `arena[id]`.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: when `id` is not below `len`. A handle issued before a `clear` is not detected while
     /// it is below `len`; it reads whatever node now holds that slot
     /// example: `var a = Arena<Int>(); let i = a.alloc(5); a.alloc(6); a.get(i) == 5`
@@ -394,7 +394,7 @@ pub struct Arena<T>:
 
     /// Overwrite the node behind `id` with `x`; also `arena[id] = x`.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: when `id` is not below `len` (stale handles as in `get`)
     /// example: `var a = Arena<Int>(); let i = a.alloc(5); a.set(i, 9); a[i] == 9`
     pub fn set(mut self, id: Id<T>, x: T):
@@ -402,7 +402,7 @@ pub struct Arena<T>:
 
     /// Allocate room for at least `cap` nodes in total; changes no handle or node.
     ///
-    /// cost: O(cap)
+    /// cost: \(O(\mathit{cap})\)
     /// traps: when `cap < 0`
     /// example: `var a = Arena<Int>(); a.reserve(100); a.alloc(1); a.len == 1`
     pub fn reserve(mut self, cap: Int):
@@ -411,7 +411,7 @@ pub struct Arena<T>:
     /// Drop every node, so the next `alloc` returns handle `0` again. Every handle issued before is
     /// invalidated.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: never
     /// example: `var a = Arena<Int>(); a.alloc(5); a.clear(); a.alloc(7) == Id<Int>(0)`
     pub fn clear(mut self):

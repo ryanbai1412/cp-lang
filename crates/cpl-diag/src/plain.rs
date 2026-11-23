@@ -55,7 +55,12 @@ fn links(text: &str) -> String {
 
 /// LaTeX math as plain text: commands to their symbols, `^2` to `²`.
 pub fn math(tex: &str) -> String {
-    const WORDS: [(&str, &str); 14] = [
+    const WORDS: [(&str, &str); 19] = [
+        ("\\lvert ", "|"),
+        (" \\rvert", "|"),
+        ("\\lvert", "|"),
+        ("\\rvert", "|"),
+        ("\\deg", "deg"),
         ("\\log", "log"),
         ("\\ln", "ln"),
         ("\\min", "min"),
@@ -71,7 +76,16 @@ pub fn math(tex: &str) -> String {
         ("\\,", " "),
         ("\\;", " "),
     ];
-    let mut s = tex.trim().to_string();
+    let mut s = tex.trim().replace("\\_", "_");
+    for font in ["\\mathit{", "\\mathrm{", "\\text{"] {
+        while let Some(at) = s.find(font) {
+            let open = at + font.len();
+            let end = s[open..].find('}').map_or(s.len(), |e| open + e);
+            let inner = s[open..end].to_string();
+            s.replace_range(at..(end + 1).min(s.len()), &inner);
+        }
+    }
+    s = s.replace("\\sqrt ", "√");
     while let Some(at) = s.find("\\sqrt{") {
         let end = s[at..].find('}').map_or(s.len(), |e| at + e);
         let inner = s[at + 6..end].to_string();

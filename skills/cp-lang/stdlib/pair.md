@@ -10,13 +10,13 @@ In prelude (no `use` needed): `Pair`.
 
 An unordered pair `{lo, hi}` of distinct positions of `V`, `lo` before `hi`.
 
-- `fn new(u: V, v: V) -> Pair<V>` — O(1); The pair of `u` and `v`, in either order: the smaller position becomes `lo`.; traps: when `u == v`
-- `fn at(u: V, v: V) -> ?Pair<V>` — O(1); The pair of `u` and `v` in either order, or `None` when `u == v`: the non-trapping [`new`](Pair.new).
-- `fn other(self, v: V) -> V` — O(1); The end of the pair that is not `v`: `p.other(p.lo) == p.hi` and `p.other(p.hi) == p.lo`.; traps: when `v` is neither `self.lo` nor `self.hi`
+- `fn new(u: V, v: V) -> Pair<V>` — \(O(1)\); The pair of `u` and `v`, in either order: the smaller position becomes `lo`.; traps: when `u == v`
+- `fn at(u: V, v: V) -> ?Pair<V>` — \(O(1)\); The pair of `u` and `v` in either order, or `None` when `u == v`: the non-trapping [`new`](Pair.new).
+- `fn other(self, v: V) -> V` — \(O(1)\); The end of the pair that is not `v`: `p.other(p.lo) == p.hi` and `p.other(p.hi) == p.lo`.; traps: when `v` is neither `self.lo` nor `self.hi`
 
 ## Functions
 
-- `fn symmetric<V, T>(self: [Pair<V>]T, diag: T) -> [V, V]T` — O(n²) for `n == V.count`; allocates the matrix; The full square matrix of a per-pair table: `m[u, v] == m[v, u] == self[u, v]` for `u != v`, and `diag` at every `m[v, v]`.
+- `fn symmetric<V, T>(self: [Pair<V>]T, diag: T) -> [V, V]T` — \(O(n^2)\) for `n == V.count`; allocates the matrix; The full square matrix of a per-pair table: `m[u, v] == m[v, u] == self[u, v]` for `u != v`, and `diag` at every `m[v, v]`.
 
 ## Example
 

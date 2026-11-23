@@ -9,7 +9,7 @@
 pub struct Pair<V>(pub lo: V, pub hi: V):
     /// The pair of `u` and `v`, in either order: the smaller position becomes `lo`.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: when `u == v`
     /// example: `Pair<0..4>(3, 1).lo == 1`
     /// example: `Pair<0..4>(3, 1) == Pair<0..4>(1, 3)`
@@ -20,7 +20,7 @@ pub struct Pair<V>(pub lo: V, pub hi: V):
     /// The pair of `u` and `v` in either order, or `None` when `u == v`: the non-trapping
     /// [`new`](Pair.new).
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: never
     /// example: `Pair<0..4>.at(2, 2) == None`
     /// example: `Pair<0..4>.at(2, 0) == Some(Pair<0..4>(0, 2))`
@@ -28,7 +28,7 @@ pub struct Pair<V>(pub lo: V, pub hi: V):
 
     /// The end of the pair that is not `v`: `p.other(p.lo) == p.hi` and `p.other(p.hi) == p.lo`.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: when `v` is neither `self.lo` nor `self.hi`
     /// example: `Pair<0..4>(1, 3).other(3) == 1`
     pub fn other(self, v: V) -> V:
@@ -40,7 +40,7 @@ pub struct Pair<V>(pub lo: V, pub hi: V):
 /// `u != v`, and `diag` at every `m[v, v]`. `read<[Pair<V>]Int>().map(Some).symmetric(diag: None)`
 /// is a distance matrix for `floyd_warshall`.
 ///
-/// cost: O(n²) for `n == V.count`; allocates the matrix
+/// cost: \(O(n^2)\) for `n == V.count`; allocates the matrix
 /// empty: the empty matrix when `V` is empty; `[[diag]]` when `V` has one position
 /// order: keyed by `(V, V)`, row-major
 /// traps: never

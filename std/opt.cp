@@ -3,7 +3,7 @@
 
 /// Whether there is a value and `p` holds for it; `false` on `None`.
 ///
-/// cost: O(1) plus one call of `p`
+/// cost: \(O(1)\) plus one call of `p`
 /// traps: only where `p` traps
 /// example: `Some(4).is_some_and(v => v > 3) == true`
 /// example: `let n: ?Int = None; n.is_some_and(v => v > 3) == false`
@@ -13,7 +13,7 @@ pub fn is_some_and<T>(self: ?T, p: T -> Bool) -> Bool:
 
 /// Whether there is no value or `p` holds for it; `true` on `None`.
 ///
-/// cost: O(1) plus one call of `p`
+/// cost: \(O(1)\) plus one call of `p`
 /// traps: only where `p` traps
 /// example: `Some(2).is_none_or(v => v > 3) == false`
 /// example: `let n: ?Int = None; n.is_none_or(v => v > 3) == true`

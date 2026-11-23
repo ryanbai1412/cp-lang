@@ -5,7 +5,7 @@ use std.seq.{nth}
 
 /// `self` written `n` times in a row, as a new `Str`: `"0".repeat(4)` is `"0000"`.
 ///
-/// cost: O(|self| * n)
+/// cost: \(O(\lvert \mathit{self} \rvert \cdot n)\)
 /// empty: an empty `self`, or `n == 0`, gives `""`
 /// traps: when `n < 0`
 /// example: `"ab".repeat(3) == "ababab"`
@@ -19,7 +19,7 @@ pub fn repeat(self: Str, n: Int) -> Str:
 /// run past the end. Works on any `Indexed` pair (`Str`, `List<T>`, `[D]T`, views); `at`
 /// counts positions from 0, and only the values are compared, never the keys.
 ///
-/// cost: O(min(|self| - at, |pat|))
+/// cost: \(O(\min(\lvert \mathit{self} \rvert - \mathit{at}, \lvert \mathit{pat} \rvert))\)
 /// empty: an empty `pat` matches at every `at` in `0..=self.len`; an empty `self` starts only with an empty `pat`
 /// traps: when `at` is outside `0..=self.len`
 /// example: `"banana".starts_with("ban") == true`
@@ -37,7 +37,7 @@ pub fn starts_with<S: Indexed, P: Indexed>(self: S, pat: P, at: Int = 0) -> Bool
 /// `pat` in order. Works on any `Indexed` pair (`Str`, `List<T>`, `[D]T`, views); only the
 /// values are compared, never the keys.
 ///
-/// cost: O(min(|self|, |pat|))
+/// cost: \(O(\min(\lvert \mathit{self} \rvert, \lvert \mathit{pat} \rvert))\)
 /// empty: an empty `pat` is a suffix of everything; an empty `self` ends only with an empty `pat`
 /// traps: never
 /// example: `[1, 2, 3].ends_with([2, 3]) == true`
@@ -56,7 +56,7 @@ pub fn ends_with<S: Indexed, P: Indexed>(self: S, pat: P) -> Bool:
 /// needs no `+ l`. An empty `p` stands at the first key of `self` (the end key when `self`
 /// is empty).
 ///
-/// cost: O(|self| + |p|)
+/// cost: \(O(\lvert \mathit{self} \rvert + \lvert p \rvert)\)
 /// empty: an empty `p` gives `Some(first key)`; an empty `self` and non-empty `p` give `None`
 /// ties: the leftmost occurrence
 /// traps: never
@@ -70,7 +70,7 @@ pub fn search<S: Indexed, K, P>(self: S, p: P) -> ?K:
 
 /// How many times the character `c` stands in `self`: `"banana".count('a')` is `3`.
 ///
-/// cost: O(|self|)
+/// cost: \(O(\lvert \mathit{self} \rvert)\)
 /// empty: `0`
 /// traps: never
 /// example: `"banana".count('a') == 3`
@@ -86,7 +86,7 @@ pub fn count(self: Str, c: Char) -> Int:
 /// Like `find`, the result is a key of `self`. An empty `p` stands at the end key, the cut
 /// after the last element (`self.len` on a whole `Str`).
 ///
-/// cost: O(|self| + |p|)
+/// cost: \(O(\lvert \mathit{self} \rvert + \lvert p \rvert)\)
 /// empty: an empty `p` gives `Some(end key)`; an empty `self` and non-empty `p` give `None`
 /// ties: the rightmost occurrence
 /// traps: never
@@ -100,7 +100,7 @@ pub fn rsearch<S: Indexed, K, P>(self: S, p: P) -> ?K:
 
 /// The lowercase letter of an ASCII capital; any other character is returned as it is.
 ///
-/// cost: O(1)
+/// cost: \(O(1)\)
 /// ties: None; one character in, one out
 /// traps: never
 /// example: `'A'.lower == 'a'`
@@ -109,7 +109,7 @@ pub fn rsearch<S: Indexed, K, P>(self: S, p: P) -> ?K:
 
 /// The capital of an ASCII lowercase letter; any other character is returned as it is.
 ///
-/// cost: O(1)
+/// cost: \(O(1)\)
 /// ties: None; one character in, one out
 /// traps: never
 /// example: `'a'.upper == 'A'`
@@ -118,7 +118,7 @@ pub fn rsearch<S: Indexed, K, P>(self: S, p: P) -> ?K:
 
 /// The value `0..=9` of an ASCII decimal digit: `'7'.digit` is `7`.
 ///
-/// cost: O(1)
+/// cost: \(O(1)\)
 /// traps: when `self` is not in `'0'..='9'` (test with `is_digit` first)
 /// example: `'7'.digit == 7`
 /// example: `'0'.digit == 0`
@@ -128,7 +128,7 @@ pub fn rsearch<S: Indexed, K, P>(self: S, p: P) -> ?K:
 
 /// True when `self` is an ASCII decimal digit, `'0'..='9'`.
 ///
-/// cost: O(1)
+/// cost: \(O(1)\)
 /// traps: never
 /// example: `'5'.is_digit == true`
 /// example: `'x'.is_digit == false`
@@ -136,7 +136,7 @@ pub fn rsearch<S: Indexed, K, P>(self: S, p: P) -> ?K:
 
 /// True when `self` is an ASCII lowercase letter, `'a'..='z'`.
 ///
-/// cost: O(1)
+/// cost: \(O(1)\)
 /// traps: never
 /// example: `'q'.is_lower == true`
 /// example: `'Q'.is_lower == false`
@@ -144,7 +144,7 @@ pub fn rsearch<S: Indexed, K, P>(self: S, p: P) -> ?K:
 
 /// True when `self` is an ASCII capital letter, `'A'..='Z'`.
 ///
-/// cost: O(1)
+/// cost: \(O(1)\)
 /// traps: never
 /// example: `'Q'.is_upper == true`
 /// example: `'q'.is_upper == false`
@@ -152,7 +152,7 @@ pub fn rsearch<S: Indexed, K, P>(self: S, p: P) -> ?K:
 
 /// True when `self` is an ASCII letter, `'a'..='z'` or `'A'..='Z'`.
 ///
-/// cost: O(1)
+/// cost: \(O(1)\)
 /// traps: never
 /// example: `'Z'.is_alpha == true`
 /// example: `'_'.is_alpha == false`
@@ -160,7 +160,7 @@ pub fn rsearch<S: Indexed, K, P>(self: S, p: P) -> ?K:
 
 /// True when `self` is an ASCII letter or decimal digit.
 ///
-/// cost: O(1)
+/// cost: \(O(1)\)
 /// traps: never
 /// example: `'9'.is_alnum == true`
 /// example: `' '.is_alnum == false`
@@ -168,7 +168,7 @@ pub fn rsearch<S: Indexed, K, P>(self: S, p: P) -> ?K:
 
 /// True when `self` is one of the four ASCII whitespace characters `' '`, `'\t'`, `'\n'`, `'\r'`.
 ///
-/// cost: O(1)
+/// cost: \(O(1)\)
 /// traps: never
 /// example: `'\t'.is_space == true`
 /// example: `'x'.is_space == false`
@@ -178,7 +178,7 @@ pub fn rsearch<S: Indexed, K, P>(self: S, p: P) -> ?K:
 
 /// A copy of `self` with every ASCII capital replaced by its lowercase letter (`Char.lower`).
 ///
-/// cost: O(|self|)
+/// cost: \(O(\lvert \mathit{self} \rvert)\)
 /// empty: `""`
 /// traps: never
 /// example: `"AbC1".to_lower() == "abc1"`
@@ -186,7 +186,7 @@ pub fn to_lower(self: Str) -> Str = Str([c.lower for c in self])
 
 /// A copy of `self` with every ASCII lowercase letter replaced by its capital (`Char.upper`).
 ///
-/// cost: O(|self|)
+/// cost: \(O(\lvert \mathit{self} \rvert)\)
 /// empty: `""`
 /// traps: never
 /// example: `"AbC1".to_upper() == "ABC1"`
@@ -195,7 +195,7 @@ pub fn to_upper(self: Str) -> Str = Str([c.upper for c in self])
 /// A copy of `self` with leading and trailing whitespace (`Char.is_space`) removed; inner
 /// whitespace is kept.
 ///
-/// cost: O(|self|)
+/// cost: \(O(\lvert \mathit{self} \rvert)\)
 /// empty: `""`; so is a string of only whitespace
 /// traps: never
 /// example: `"  a b \n".trim() == "a b"`
@@ -204,7 +204,7 @@ pub fn trim(self: Str) -> Str = self.trim_start().trim_end()
 
 /// A copy of `self` with leading whitespace (`Char.is_space`) removed.
 ///
-/// cost: O(|self|)
+/// cost: \(O(\lvert \mathit{self} \rvert)\)
 /// empty: `""`; so is a string of only whitespace
 /// traps: never
 /// example: `"  a b \n".trim_start() == "a b \n"`
@@ -215,7 +215,7 @@ pub fn trim_start(self: Str) -> Str:
 
 /// A copy of `self` with trailing whitespace (`Char.is_space`) removed.
 ///
-/// cost: O(|self|)
+/// cost: \(O(\lvert \mathit{self} \rvert)\)
 /// empty: `""`; so is a string of only whitespace
 /// traps: never
 /// example: `"  a b \n".trim_end() == "  a b"`
@@ -229,7 +229,7 @@ pub fn trim_end(self: Str) -> Str:
 /// Every `sep` is a cut, so `k` separators give `k + 1` pieces; adjacent, leading and
 /// trailing separators give empty pieces. Use `split_whitespace` to drop empty pieces.
 ///
-/// cost: O(|self|)
+/// cost: \(O(\lvert \mathit{self} \rvert)\)
 /// empty: `[""]`, one empty piece
 /// order: left to right; a new `List`, keyed from 0
 /// traps: never
@@ -251,7 +251,7 @@ pub fn split(self: Str, sep: Char) -> List<Str>:
 /// `self` cut at the first `sep` into `(before, after)`, neither holding that `sep`; `None`
 /// when `sep` does not occur. Later separators stay in `after`.
 ///
-/// cost: O(|self|)
+/// cost: \(O(\lvert \mathit{self} \rvert)\)
 /// empty: `None`
 /// traps: never
 /// example: `"key=val=x".split_once('=') == Some(("key", "val=x"))`
@@ -265,7 +265,7 @@ pub fn split_once(self: Str, sep: Char) -> ?(Str, Str):
 /// The maximal runs of non-whitespace characters of `self` (`Char.is_space` separates), as
 /// new strings. No piece is empty.
 ///
-/// cost: O(|self|)
+/// cost: \(O(\lvert \mathit{self} \rvert)\)
 /// empty: `[]`; so is a string of only whitespace
 /// order: left to right; a new `List`, keyed from 0
 /// traps: never
@@ -289,7 +289,7 @@ pub fn split_whitespace(self: Str) -> List<Str>:
 /// Each element is written as string interpolation `"{x}"` writes it, so `Str`, `Char` and
 /// numbers all join without a `map`.
 ///
-/// cost: O(total output length)
+/// cost: \(O(\text{total output length})\)
 /// empty: `""`
 /// traps: never
 /// example: `", ".join(["a", "b", "c"]) == "a, b, c"`
@@ -309,7 +309,7 @@ pub fn join<S: Seq>(self: Str, parts: S) -> Str:
 /// Occurrences are taken greedily left to right and never overlap; the text that `to`
 /// inserts is not scanned again.
 ///
-/// cost: O(|self| + |output|)
+/// cost: \(O(\lvert \mathit{self} \rvert + \lvert \mathit{output} \rvert)\)
 /// empty: an empty `self` gives `""`
 /// traps: when `from` is empty
 /// example: `"aaaa".replace("aa", "b") == "bb"`
@@ -342,7 +342,7 @@ pub fn replace(self: Str, from: Str, to: Str) -> Str:
 /// past 9 are letters in either case (`'a'` and `'A'` are 10). Whitespace, a `+` sign or any
 /// other character makes it malformed.
 ///
-/// cost: O(|self|)
+/// cost: \(O(\lvert \mathit{self} \rvert)\)
 /// empty: `None`
 /// traps: when `base` is outside `2..=36`
 /// example: `"ff".parse_int(base: 16) == Some(255)`
@@ -369,7 +369,7 @@ pub fn parse_int(self: Str, base: Int = 10) -> ?Int:
 /// Tokens are separated by whitespace exactly as on standard input, so a tuple or list type
 /// reads several tokens.
 ///
-/// cost: O(|self|)
+/// cost: \(O(\lvert \mathit{self} \rvert)\)
 /// empty: `None` unless `T` reads zero tokens
 /// traps: never
 /// example: `"-12".parse<Mod<7>>() == Some(2)`
@@ -383,7 +383,7 @@ pub fn parse<T: Read>(self: Str) -> ?T = todo
 /// Keyed by `s.keys`, so `z_function(s[l..])[i]` takes `i` from the slice. Works on any
 /// `Indexed` sequence (`Str`, `List<T>`, `[D]T`, `Range<I>`, views) without conversion.
 ///
-/// cost: O(n)
+/// cost: \(O(n)\)
 /// empty: an empty array
 /// order: keyed by the keys of `s`
 /// traps: never
@@ -408,7 +408,7 @@ pub fn z_function<S: Indexed<K, T>, K, T: Eq>(s: S) -> [K]Int:
 ///
 /// Keyed by `s.keys`. Works on any `Indexed` sequence without conversion.
 ///
-/// cost: O(n)
+/// cost: \(O(n)\)
 /// empty: an empty array
 /// order: keyed by the keys of `s`
 /// traps: never
@@ -432,7 +432,7 @@ fn failure_lengths<S: Indexed>(s: S) -> List<Int>:
 /// Works on any `Indexed` pair (`Str`, `List<T>`, `[D]T`, views) without conversion; keys
 /// are those of `self`. An empty pattern occurs at every key and at the end key.
 ///
-/// cost: O(|self| + |pat|)
+/// cost: \(O(\lvert \mathit{self} \rvert + \lvert \mathit{pat} \rvert)\)
 /// empty: an empty `pat` yields every key of `self` then its end key; an empty `self` yields nothing for a non-empty `pat`
 /// ties: every occurrence is yielded; None is preferred
 /// order: increasing start key
@@ -457,7 +457,7 @@ pub fn find_all<S: Indexed, P: Indexed, K>(self: S, pat: P) -> yields K:
 /// The length of the longest common prefix of `self` and `other`, comparing values in order
 /// from the first key of each. Works on any `Indexed` pair.
 ///
-/// cost: O(min(|self|, |other|))
+/// cost: \(O(\min(\lvert \mathit{self} \rvert, \lvert \mathit{other} \rvert))\)
 /// empty: `0` when either is empty
 /// traps: never
 /// example: `"abcd".common_prefix_len("abxd") == 2`
@@ -471,7 +471,7 @@ pub fn common_prefix_len<A: Indexed, B: Indexed>(self: A, other: B) -> Int:
 /// The length of the longest common suffix of `self` and `other`, comparing values in order
 /// from the last key of each. Works on any `Indexed` pair.
 ///
-/// cost: O(min(|self|, |other|))
+/// cost: \(O(\min(\lvert \mathit{self} \rvert, \lvert \mathit{other} \rvert))\)
 /// empty: `0` when either is empty
 /// traps: never
 /// example: `"xbcd".common_suffix_len("abcd") == 3`
@@ -486,7 +486,7 @@ pub fn common_suffix_len<A: Indexed, B: Indexed>(self: A, other: B) -> Int:
 /// The shortest period of `s`: the smallest `d >= 1` with `s[i] == s[i + d]` wherever both
 /// sides exist. It is `s.len` when nothing shorter works.
 ///
-/// cost: O(n)
+/// cost: \(O(n)\)
 /// empty: `0`
 /// traps: never
 /// example: `period("abcabca") == 3`
@@ -496,7 +496,7 @@ pub fn period<S: Indexed>(s: S) -> Int = if s.is_empty: 0 else: s.len - failure_
 
 /// True when `s` reads the same forwards and backwards. Works on any `Indexed` sequence.
 ///
-/// cost: O(n)
+/// cost: \(O(n)\)
 /// empty: `true`
 /// traps: never
 /// example: `is_palindrome("abba") == true`
@@ -511,7 +511,7 @@ pub fn is_palindrome<S: Indexed>(s: S) -> Bool:
 /// The length of every non-empty proper border of `s` (a prefix that is also a suffix,
 /// shorter than `s`). Works on any `Indexed` sequence.
 ///
-/// cost: O(n)
+/// cost: \(O(n)\)
 /// empty: yields nothing; so does a single element
 /// order: longest first
 /// traps: never
@@ -532,7 +532,7 @@ pub fn borders<S: Indexed>(s: S) -> yields Int:
 /// A full match counts as `pat.len`; matching then continues from the longest border of
 /// `pat`, so `res[i] == pat.len` exactly where an occurrence ends. Keyed by `self.keys`.
 ///
-/// cost: O(|self| + |pat|)
+/// cost: \(O(\lvert \mathit{self} \rvert + \lvert \mathit{pat} \rvert)\)
 /// empty: an empty `self` gives an empty array; an empty `pat` gives all zeros
 /// order: keyed by the keys of `self`
 /// traps: never
@@ -553,7 +553,7 @@ pub fn prefix_matches<S: Indexed<K, T>, P: Indexed<J, T>, K, J, T: Eq>(self: S, 
 /// The length of the longest suffix of `a` that is also a prefix of `b`, at most
 /// `min(|a|, |b|)`; how far `b` can slide onto the end of `a`.
 ///
-/// cost: O(|a| + |b|)
+/// cost: \(O(\lvert a \rvert + \lvert b \rvert)\)
 /// empty: `0` when either is empty
 /// traps: never
 /// example: `overlap("abcab", "abd") == 2`
@@ -572,7 +572,7 @@ pub fn overlap<A: Indexed, B: Indexed>(a: A, b: B) -> Int:
 /// The start key of each factor of the Lyndon factorization of `s` (Duval): the unique way
 /// to cut `s` into Lyndon words `w1 >= w2 >= ...` in lexicographic order.
 ///
-/// cost: O(n)
+/// cost: \(O(n)\)
 /// empty: `[]`
 /// order: increasing keys; the first is the first key of `s`
 /// traps: never
@@ -597,7 +597,7 @@ pub fn lyndon_factorization<S: Indexed<K, T>, K, T>(s: S) -> List<K>:
 
 /// The key at which the lexicographically smallest cyclic rotation of `s` starts (Booth).
 ///
-/// cost: O(n)
+/// cost: \(O(n)\)
 /// empty: `None`
 /// ties: the smallest key, when `s` is periodic
 /// traps: never
@@ -625,7 +625,7 @@ pub fn min_rotation<S: Indexed<K, T>, K, T>(s: S) -> ?K:
 
 /// The key at which the lexicographically greatest cyclic rotation of `s` starts.
 ///
-/// cost: O(n)
+/// cost: \(O(n)\)
 /// empty: `None`
 /// ties: the smallest key, when `s` is periodic
 /// traps: never
@@ -650,7 +650,7 @@ pub fn max_rotation<S: Indexed<K, T>, K, T>(s: S) -> ?K:
                 k = 0
     Some(s.keys.nth(min(a, b)))
 
-/// O(|pat| * |A|). Prefix (KMP) automaton over alphabet domain `A`, for O(1) transitions in DP.
+/// \(O(\lvert \mathit{pat} \rvert \cdot \lvert A \rvert)\). Prefix (KMP) automaton over alphabet domain `A`, for \(O(1)\) transitions in DP.
 pub struct KmpAutomaton<A>:
     alpha: 0..=2_000_000_000
     goto: List<0..=2_000_000_000>
@@ -659,7 +659,7 @@ pub struct KmpAutomaton<A>:
     /// The KMP automaton of `pat` over the alphabet domain `A`: one state per matched prefix
     /// length `0..=pat.len`, with a full transition table. Call it as `KmpAutomaton<A>(pat)`.
     ///
-    /// cost: O(|pat| * |A|)
+    /// cost: \(O(\lvert \mathit{pat} \rvert \cdot \lvert A \rvert)\)
     /// empty: an empty `pat` gives one state, `0`, which matches everywhere
     /// traps: when an element of `pat` is not in `A`
     /// example: `KmpAutomaton<Char>("aba").len == 4`
@@ -691,7 +691,7 @@ pub struct KmpAutomaton<A>:
     /// The number of states, `pat.len + 1`; the states are `0..=pat.len` and `pat.len` means a
     /// full match.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: never
     /// example: `KmpAutomaton<Char>("ab").len == 3`
     @get pub fn len(self) -> Int = pi.len
@@ -699,7 +699,7 @@ pub struct KmpAutomaton<A>:
     /// The matched prefix length after reading `a` in `state`. From the full-match state the
     /// automaton falls back along `link` first, so matching continues and overlaps are found.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: when `state` is outside `0..self.len`
     /// example: `let k = KmpAutomaton<Char>("aba"); k.step(3, 'b') == 2 and k.step(0, 'b') == 0`
     pub fn step(self, state: Int, a: A) -> Int:
@@ -712,7 +712,7 @@ pub struct KmpAutomaton<A>:
     /// The failure link of `state`: the length of the longest proper border of `pat[..state]`,
     /// and `0` at state `0`. It equals `prefix_function(pat)[state - 1]` for `state >= 1`.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: when `state` is outside `0..self.len`
     /// example: `let k = KmpAutomaton<Char>("aba"); k.link(3) == 1 and k.link(2) == 0`
     pub fn link(self, state: Int) -> Int:
@@ -723,7 +723,7 @@ pub struct KmpAutomaton<A>:
     /// The start position (0-based, counted in `text`'s iteration order) of every occurrence of
     /// `pat` in `text`, overlapping ones included.
     ///
-    /// cost: O(|text|)
+    /// cost: \(O(\lvert \mathit{text} \rvert)\)
     /// empty: an empty `text` yields nothing unless `pat` is empty; an empty `pat` yields `0..=|text|`
     /// ties: every occurrence is yielded; None is preferred
     /// order: increasing start
@@ -755,7 +755,7 @@ pub struct KmpAutomaton<A>:
 ///
 /// Positions count from 0 in `self`'s order; on a whole `Str` or `List` they are its keys.
 ///
-/// cost: O(|self| * ceil(|pat| / 64))
+/// cost: \(O(\lvert \mathit{self} \rvert \cdot \mathit{ceil}(\lvert \mathit{pat} \rvert / 64))\)
 /// empty: an empty `pat` yields `0..=|self|`; an empty `self` yields nothing for a non-empty `pat`
 /// order: increasing start
 /// traps: never
@@ -768,7 +768,7 @@ pub fn shift_and<S: Indexed, P: Indexed>(self: S, pat: P) -> yields Int:
 ///
 /// Positions count from 0 in `self`'s order, as for `shift_and`.
 ///
-/// cost: O(|self| * ceil(|pat| / 64))
+/// cost: \(O(\lvert \mathit{self} \rvert \cdot \mathit{ceil}(\lvert \mathit{pat} \rvert / 64))\)
 /// empty: an empty `pat` yields `0..=|self|`; an empty `self` yields nothing for a non-empty `pat`
 /// ties: every match is yielded; None is preferred
 /// order: increasing start
@@ -790,26 +790,26 @@ pub fn find_all_wildcard<S: Indexed, P: Indexed>(
                 break
         if ok: yield i
 
-/// O(n) space, O(1) queries. Manacher palindrome radii. `odd[i]` is the number of palindromes centred on `s[i]`;
+/// \(O(n)\) space, \(O(1)\) queries. Manacher palindrome radii. `odd[i]` is the number of palindromes centred on `s[i]`;
 /// `even[i]` is the number centred between `s[i - 1]` and `s[i]`.
 pub struct Palindromes(pub odd: List<Int>, even: List<Int>):
     /// The length of the sequence the radii were computed for.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: never
     /// example: `manacher("aba").len == 3`
     @get pub fn len(self) -> Int = odd.len
 
     /// True when the sequence the radii were computed for is empty.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: never
     /// example: `manacher("").is_empty == true`
     @get pub fn is_empty(self) -> Bool = odd.is_empty
 
     /// The length of the longest odd-length palindrome centred on position `i`, `2 * odd[i] - 1`.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: when `i` is outside `0..self.len`
     /// example: `manacher("abacaba").longest_at(3) == 7`
     pub fn longest_at(self, i: Int) -> Int:
@@ -820,7 +820,7 @@ pub struct Palindromes(pub odd: List<Int>, even: List<Int>):
     /// The length of the longest even-length palindrome centred on the cut `i` (between
     /// positions `i - 1` and `i`), `2 * even[i]`; `0` at the cuts `0` and `self.len`.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: when `i` is outside `0..=self.len`
     /// example: `manacher("abba").longest_between(2) == 4`
     pub fn longest_between(self, i: Int) -> Int:
@@ -831,7 +831,7 @@ pub struct Palindromes(pub odd: List<Int>, even: List<Int>):
     /// True when the positions `r` (`l..r`, `l..=r`, or a `Range<D>`) of the original sequence
     /// form a palindrome: `p.is_palindrome(l..r) == is_palindrome(s[l..r])`.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: when `r` reaches outside `0..=self.len`
     /// example: `let p = manacher("abacaba"); p.is_palindrome(0..3) and not p.is_palindrome(1..4)`
     pub fn is_palindrome<R>(self, r: R) -> Bool:
@@ -847,7 +847,7 @@ pub struct Palindromes(pub odd: List<Int>, even: List<Int>):
     /// The number of non-empty palindromic substrings, each occurrence counted:
     /// `sum(odd) + sum(even)`.
     ///
-    /// cost: O(n)
+    /// cost: \(O(n)\)
     /// traps: never
     /// example: `manacher("aaa").count() == 6`
     pub fn count(self) -> Int:
@@ -857,7 +857,7 @@ pub struct Palindromes(pub odd: List<Int>, even: List<Int>):
 
     /// The half-open range `(l, r)` of a longest palindromic substring.
     ///
-    /// cost: O(n)
+    /// cost: \(O(n)\)
     /// ties: the leftmost (smallest `l`)
     /// traps: never
     /// example: `manacher("abacdc").longest() == (0, 3)`
@@ -880,7 +880,7 @@ pub struct Palindromes(pub odd: List<Int>, even: List<Int>):
 /// `s[i - k + 1..i + k]` a palindrome, and `even[i]` the largest `k` with `s[i - k..i + k]`
 /// one. Works on any `Indexed` sequence; positions count from 0.
 ///
-/// cost: O(n)
+/// cost: \(O(n)\)
 /// empty: both lists empty
 /// traps: never
 /// example: `manacher("abba").count() == 6`
@@ -1059,7 +1059,7 @@ fn sa_order<S: Indexed>(s: S) -> List<Int>:
     let _ = sa.pop()
     sa
 
-/// O(n) SA-IS + Kasai LCP (O(n log n) with RMQ). Suffix array, inverse rank, adjacent LCP, and O(1) LCP/comparison queries.
+/// \(O(n)\) SA-IS + Kasai LCP (\(O(n \log n)\) with RMQ). Suffix array, inverse rank, adjacent LCP, and \(O(1)\) LCP/comparison queries.
 pub struct SuffixArray:
     pub sa: List<Int>
     rank: List<Int>
@@ -1076,7 +1076,7 @@ pub struct SuffixArray:
     /// Elements are compared by `Ord`, so a shorter suffix that is a prefix of a longer one
     /// ranks first.
     ///
-    /// cost: O(n) for `Str` and small integer alphabets, O(n log n) otherwise
+    /// cost: \(O(n)\) for `Str` and small integer alphabets, \(O(n \log n)\) otherwise
     /// empty: `sa`, `rank` and `lcp` all empty
     /// traps: never
     /// example: `SuffixArray("banana").sa == [5, 3, 1, 0, 4, 2]`
@@ -1124,14 +1124,14 @@ pub struct SuffixArray:
 
     /// The length `n` of the sequence the suffix array was built over.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: never
     /// example: `SuffixArray("banana").len == 6`
     @get pub fn len(self) -> Int = sa.len
 
     /// True when the suffix array was built over an empty sequence.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: never
     /// example: `SuffixArray("").is_empty == true`
     @get pub fn is_empty(self) -> Bool = sa.is_empty
@@ -1139,7 +1139,7 @@ pub struct SuffixArray:
     /// The length of the longest common prefix of the suffixes starting at `i` and `j`. The
     /// empty suffix at `n` is allowed, and `lcp_between(i, i) == n - i`.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: when `i` or `j` is outside `0..=self.len`
     /// example: `SuffixArray("banana").lcp_between(1, 3) == 3`
     pub fn lcp_between(self, i: Int, j: Int) -> Int:
@@ -1152,7 +1152,7 @@ pub struct SuffixArray:
     /// The ranks `lo..hi` of the suffixes that start with `pat`. When there are None it is the
     /// empty range at the rank where `pat` would sort.
     ///
-    /// cost: O(|pat| log n)
+    /// cost: \(O(\lvert \mathit{pat} \rvert \log n)\)
     /// empty: an empty `pat` gives `0..n`
     /// order: a range of ranks, increasing
     /// traps: never
@@ -1193,7 +1193,7 @@ pub struct SuffixArray:
 
     /// The start of every occurrence of `pat`, read off `sa` over `rank_range(pat)`.
     ///
-    /// cost: O(|pat| log n + occurrences)
+    /// cost: \(O(\lvert \mathit{pat} \rvert \log n + \mathit{occurrences})\)
     /// empty: an empty `pat` yields every start `0..n` (not the end position `n`)
     /// ties: every occurrence is yielded; None is preferred
     /// order: suffix-array order (by rank), not by position
@@ -1205,7 +1205,7 @@ pub struct SuffixArray:
 
     /// The number of occurrences of `pat`, overlapping ones included: `rank_range(pat).len`.
     ///
-    /// cost: O(|pat| log n)
+    /// cost: \(O(\lvert \mathit{pat} \rvert \log n)\)
     /// empty: an empty `pat` gives `n`
     /// traps: never
     /// example: `SuffixArray("banana").count("an") == 2`
@@ -1214,7 +1214,7 @@ pub struct SuffixArray:
     /// The ranks `lo..hi` of the suffixes whose LCP with the suffix at `i` is at least `len`;
     /// always contains `rank[i]`.
     ///
-    /// cost: O(log n)
+    /// cost: \(O(\log n)\)
     /// order: a range of ranks, increasing; it holds `rank[i]`
     /// traps: when `i` is outside `0..n` or `len` outside `0..=n - i`
     /// example: `SuffixArray("banana").lcp_range(1, 3) == 1..3`
@@ -1236,7 +1236,7 @@ pub struct SuffixArray:
     /// The lexicographic comparison of `s[l1..r1]` and `s[l2..r2]`: `-1`, `0` or `1`. A proper
     /// prefix compares less.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: when a range is not within `0..=n` or has its end before its start
     /// example: `SuffixArray("banana").compare(1, 3, 3, 5) == 0`
     /// example: `SuffixArray("banana").compare(1, 2, 1, 3) == -1`
@@ -1259,7 +1259,7 @@ pub struct SuffixArray:
 
     /// The number of distinct non-empty substrings: `n * (n + 1) / 2 - sum(lcp)`.
     ///
-    /// cost: O(n)
+    /// cost: \(O(n)\)
     /// traps: never
     /// example: `SuffixArray("banana").distinct() == 15`
     pub fn distinct(self) -> Int = dcum[sa.len]
@@ -1267,7 +1267,7 @@ pub struct SuffixArray:
     /// The longest prefix common to every suffix with rank in `r`: the minimum of `lcp[j]` for
     /// `j in r.start..r.end - 1`, or the suffix's own length when `r` holds one rank.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// empty: an empty `r` traps
     /// traps: when `r` is empty or reaches outside `0..n`
     /// example: `SuffixArray("banana").lcp_of_ranks(1..3) == 3`
@@ -1280,7 +1280,7 @@ pub struct SuffixArray:
     /// adjacent LCP `lcp[k - 1]` equals `lcp_of_ranks(r)`, so `r.start..k` and `k..r.end` are
     /// the first child and the rest.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// empty: an `r` with fewer than two ranks traps
     /// ties: the smallest such `k`
     /// traps: when `r.len < 2` or `r` reaches outside `0..n`
@@ -1293,7 +1293,7 @@ pub struct SuffixArray:
     /// The `k`-th (0-based) lexicographically smallest distinct non-empty substring, as the
     /// positions `l..r` of one occurrence, or `None` when `k >= distinct()`.
     ///
-    /// cost: O(log n)
+    /// cost: \(O(\log n)\)
     /// ties: the occurrence in the suffix of smallest rank that holds it
     /// order: `k` counts in increasing lexicographic order; the range is increasing positions
     /// traps: when `k < 0`
@@ -1312,13 +1312,13 @@ pub struct SuffixArray:
 
 /// The suffix array of `s`; the same as `SuffixArray(s)`.
 ///
-/// cost: O(n) for `Str` and small integer alphabets, O(n log n) otherwise
+/// cost: \(O(n)\) for `Str` and small integer alphabets, \(O(n \log n)\) otherwise
 /// empty: an empty suffix array
 /// traps: never
 /// example: `suffix_array([3, 1, 2]).sa == [1, 2, 0]`
 pub fn suffix_array<S: Indexed>(s: S) -> SuffixArray = SuffixArray.new(s)
 
-/// O(1) value. One edge of the compressed suffix tree of a sequence, built in O(n) from SA + LCP.
+/// \(O(1)\) value. One edge of the compressed suffix tree of a sequence, built in \(O(n)\) from SA + LCP.
 pub struct SuffixTreeEdge(
     pub top_size: Int,
     pub bottom_size: Int,
@@ -1336,7 +1336,7 @@ pub struct SuffixTreeEdge(
 /// `top_size` the total `edge_len` of all edges below `v`, and `bottom_size` that plus this
 /// edge's `edge_len`. Summing `edge_len` gives `SuffixArray(s).distinct()`.
 ///
-/// cost: O(n)
+/// cost: \(O(n)\)
 /// empty: `[]`
 /// order: bottom-up: each edge comes after every edge below it, subtrees in rank order
 /// traps: never
@@ -1380,7 +1380,7 @@ pub fn suffix_tree_edges<S: Indexed>(s: S) -> List<SuffixTreeEdge>:
 /// is a half-open range `s[l..r]` with smallest period `period`, `r - l >= 2 * period`, that
 /// cannot be extended left or right with the same period. Positions count from 0.
 ///
-/// cost: O(n log n) time and memory
+/// cost: \(O(n \log n)\) time and memory
 /// empty: `[]`
 /// order: by `(l, r)`; a new `List`, keyed from 0
 /// traps: never
@@ -1425,29 +1425,29 @@ pub fn lyndon_runs<S: Indexed>(s: S) -> List<(l: Int, r: Int, period: Int)>:
 const RH_M1 = 1_000_000_007
 const RH_M2 = 1_000_000_009
 
-/// O(1) space and comparison. A 64-bit double-mod polynomial hash value (`Copy + Eq + Ord + Hash`).
+/// \(O(1)\) space and comparison. A 64-bit double-mod polynomial hash value (`Copy + Eq + Ord + Hash`).
 /// Can itself be fed into another `RollingHash` (e.g. hashing rows into a column hash for 2D grids).
 pub struct HashVal(pub h1: Int, pub h2: Int):
     /// One integer that identifies the pair, `(h1 << 31) | h2`, so a `RollingHash` can hash a
     /// sequence of `HashVal` (rows of a grid, say).
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: never
     /// example: `HashVal(1, 2).hash_token == 2147483650`
     @get pub fn hash_token(self) -> Int = (h1 << 31) | h2
 
-/// O(1) per element. Elements accepted by `RollingHash`: `Char`, `Int`, `Bool`, `HashVal`, or any user type
+/// \(O(1)\) per element. Elements accepted by `RollingHash`: `Char`, `Int`, `Bool`, `HashVal`, or any user type
 /// implementing `hash_token`.
 pub trait Hashable:
     @get fn hash_token(self) -> Int = Int(self)
 
 @get fn ord(self: Int) -> Int = self
 
-/// O(n) build, O(1) slice hash. Generalized double-mod polynomial rolling hash over `Str`, `List<T>`, or any `[D]T`
+/// \(O(n)\) build, \(O(1)\) slice hash. Generalized double-mod polynomial rolling hash over `Str`, `List<T>`, or any `[D]T`
 /// (`Char`, `Int`, `Bool`, `HashVal`).
 ///
-/// Built in O(n); substring queries `.get(l..r)` / `.slice(l, r)` and `.combine(a, b, b_len)`
-/// are O(1). Each constructor draws independent random salted bases unless `bases:` is passed
+/// Built in \(O(n)\); substring queries `.get(l..r)` / `.slice(l, r)` and `.combine(a, b, b_len)`
+/// are \(O(1)\). Each constructor draws independent random salted bases unless `bases:` is passed
 /// explicitly, so 2D row and column hashes never collide on transposes.
 pub struct RollingHash:
     pub bases: (Int, Int)
@@ -1463,7 +1463,7 @@ pub struct RollingHash:
     /// `hash_token` (a `Char`'s code, a `Bool`'s `0`/`1`). The bases are drawn at random unless
     /// `bases:` gives them; hashes only compare under the same bases.
     ///
-    /// cost: O(n)
+    /// cost: \(O(n)\)
     /// empty: an empty hash; `push` can grow it
     /// traps: when a given base is outside `2..M`
     /// example: `let h = RollingHash("abab"); h.get(0..2) == h.get(2..4)`
@@ -1495,7 +1495,7 @@ pub struct RollingHash:
 
     /// Appends `x` to the end of the hashed sequence.
     ///
-    /// cost: O(1) amortized
+    /// cost: \(O(1)\) amortized
     /// traps: never
     /// example: `var h = RollingHash("ab"); h.push('a'); h.all == h.hash_of("aba")`
     pub fn push<T: Hashable>(mut self, x: T):
@@ -1511,7 +1511,7 @@ pub struct RollingHash:
 
     /// Removes the last element of the hashed sequence.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: when the hash is empty
     /// example: `var h = RollingHash("abc"); h.pop(); h.all == h.hash_of("ab")`
     pub fn pop(mut self):
@@ -1524,7 +1524,7 @@ pub struct RollingHash:
     /// The hash `seq` would have under `self`'s bases, without building a `RollingHash` of it;
     /// compare it with any slice of `self`.
     ///
-    /// cost: O(|seq|)
+    /// cost: \(O(\lvert \mathit{seq} \rvert)\)
     /// empty: `HashVal(0, 0)`
     /// traps: never
     /// example: `let h = RollingHash("xab"); h.hash_of("ab") == h.get(1..3)`
@@ -1542,7 +1542,7 @@ pub struct RollingHash:
     /// The hash of the concatenation of `parts`, each given as its hash and length, under
     /// `self`'s bases; `combine` folded left to right.
     ///
-    /// cost: O(|parts|) amortized
+    /// cost: \(O(\lvert \mathit{parts} \rvert)\) amortized
     /// empty: `HashVal(0, 0)`
     /// traps: when a `len` is negative
     /// example: `let h = RollingHash("abcd"); h.concat([(h.get(0..2), 2), (h.get(2..4), 2)]) == h.all`
@@ -1553,21 +1553,21 @@ pub struct RollingHash:
 
     /// The number of elements hashed.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: never
     /// example: `RollingHash("abc").len == 3`
     @get pub fn len(self) -> Int = p1.len - 1
 
     /// True when no elements are hashed.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: never
     /// example: `RollingHash("").is_empty == true`
     @get pub fn is_empty(self) -> Bool = p1.len == 1
 
     /// The hash of the whole sequence, `self.get(0..self.len)`.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: never
     /// example: `let h = RollingHash("abc"); h.all == h.get(0..3)`
     @get pub fn all(self) -> HashVal = self.slice(0, p1.len - 1)
@@ -1592,7 +1592,7 @@ pub struct RollingHash:
 
     /// The hash of the half-open slice `l..r` (0-based); `HashVal(0, 0)` when `l == r`.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: when `l > r`, `l < 0` or `r > self.len`
     /// example: `let h = RollingHash("abab"); h.slice(0, 2) == h.slice(2, 4) and h.slice(1, 1) == HashVal(0, 0)`
     pub fn slice(self, l: Int, r: Int) -> HashVal:
@@ -1603,7 +1603,7 @@ pub struct RollingHash:
     /// The hash of a range of positions: `l..r`, `l..=r`, `..k`, `k..`, or a `Range<D>` when the
     /// hash was built over a `[D]T`. The same value as `slice`.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: when the range reaches outside the hashed sequence
     /// example: `let h = RollingHash("abab"); h.get(0..2) == h.get(2..=3)`
     pub fn get<R>(self, r: R) -> HashVal:
@@ -1613,7 +1613,7 @@ pub struct RollingHash:
     /// The hash of `a`'s sequence followed by `b`'s, where `b` has length `b_len`:
     /// `a * base^b_len + b` per modulus.
     ///
-    /// cost: O(1) amortized (the power table grows past `len` on demand)
+    /// cost: \(O(1)\) amortized (the power table grows past `len` on demand)
     /// traps: when `b_len < 0`
     /// example: `let h = RollingHash("abc"); h.combine(h.get(0..1), h.get(1..3), 2) == h.all`
     pub fn combine(self, a: HashVal, b: HashVal, b_len: Int) -> HashVal:
@@ -1625,7 +1625,7 @@ pub struct RollingHash:
     /// The length of the longest common prefix of the suffixes starting at `a` and `b`, by
     /// binary search on hashes (so it can be wrong on a collision).
     ///
-    /// cost: O(log n)
+    /// cost: \(O(\log n)\)
     /// traps: when `a` or `b` is outside `0..=self.len`
     /// example: `RollingHash("abcabd").lcp(0, 3) == 2`
     pub fn lcp(self, a: Int, b: Int) -> Int:
@@ -1642,7 +1642,7 @@ pub struct RollingHash:
     /// The length of the longest common suffix of the prefixes `s[..a]` and `s[..b]`, by binary
     /// search on hashes.
     ///
-    /// cost: O(log n)
+    /// cost: \(O(\log n)\)
     /// traps: when `a` or `b` is outside `0..=self.len`
     /// example: `RollingHash("xabyab").lcs(3, 6) == 2`
     pub fn lcs(self, a: Int, b: Int) -> Int:
@@ -1659,7 +1659,7 @@ pub struct RollingHash:
     /// The length of the longest common prefix of `self[a..]` and `other[b..]`, by binary search
     /// on hashes. Both hashes must use the same bases.
     ///
-    /// cost: O(log min(|self| - a, |other| - b))
+    /// cost: \(O(\log \min(\lvert \mathit{self} \rvert - a, \lvert \mathit{other} \rvert - b))\)
     /// traps: when the bases differ, `a` is outside `0..=self.len` or `b` outside `0..=other.len`
     /// example: `RollingHash("abcd", bases: Some((131, 137))).lcp_with(1, RollingHash("xbcx", bases: Some((131, 137))), 1) == 2`
     pub fn lcp_with(self, a: Int, other: RollingHash, b: Int) -> Int:
@@ -1674,8 +1674,8 @@ pub struct RollingHash:
             else: hi = mid - 1
         lo
 
-/// O(R * C) build, O(1) rectangle hash. Double-mod 2D polynomial prefix hash over a grid with row domain `R` and column domain `C`.
-/// Built in O(R * C); `rect(rows, cols)` is O(1) and returns a `HashVal`.
+/// \(O(R \cdot C)\) build, \(O(1)\) rectangle hash. Double-mod 2D polynomial prefix hash over a grid with row domain `R` and column domain `C`.
+/// Built in \(O(R \cdot C)\); `rect(rows, cols)` is \(O(1)\) and returns a `HashVal`.
 pub struct Hash2D<R, C>(bases: (Int, Int)):
     stride: Int
     pre1: List<Int>
@@ -1691,7 +1691,7 @@ pub struct Hash2D<R, C>(bases: (Int, Int)):
     /// Each modulus uses one base along rows and one along columns; they are drawn at random
     /// unless `bases:` gives them. A token enters as `token % M + 1`, as in `RollingHash`.
     ///
-    /// cost: O(|R| * |C|)
+    /// cost: \(O(\lvert R \rvert \cdot \lvert C \rvert)\)
     /// empty: an empty `R` or `C` gives a hash whose only rectangle is empty
     /// traps: when a given base is outside `2..M`
     /// example: `domain R = 0..2; domain C = 0..4; let h = Hash2D<R, C>((r, c) => c.to_idx % 2); h.rect(R(0)..=R(1), C(0)..=C(1)) == h.rect(R(0)..=R(1), C(2)..=C(3))`
@@ -1740,7 +1740,7 @@ pub struct Hash2D<R, C>(bases: (Int, Int)):
     /// The hash of the rectangle `rows` x `cols`; equal rectangles of equal shape hash equal.
     /// A rectangle with no rows or no columns hashes to `HashVal(0, 0)`.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// empty: an empty `rows` or `cols` gives `HashVal(0, 0)`
     /// traps: never (the ranges are typed by `R` and `C`)
     /// example: `domain R = 0..2; domain C = 0..4; let h = Hash2D<R, C>((r, c) => r.to_idx); h.rect(R(0)..=R(0), C(0)..=C(1)) != h.rect(R(1)..=R(1), C(0)..=C(1))`
@@ -1785,10 +1785,10 @@ fn rh61_tok(t: Int) -> U64:
     let r = t % m1
     U64(r + 1)
 
-/// O(1) value. Single-modulus `2^61 - 1` (Mersenne prime) polynomial hash value (`Copy + Eq + Ord + Hash`).
+/// \(O(1)\) value. Single-modulus `2^61 - 1` (Mersenne prime) polynomial hash value (`Copy + Eq + Ord + Hash`).
 pub struct Hash61(v: U64)
 
-/// O(n) build, O(1) query. Single-modulus `2^61 - 1` polynomial rolling hash with randomized base.
+/// \(O(n)\) build, \(O(1)\) query. Single-modulus `2^61 - 1` polynomial rolling hash with randomized base.
 pub struct RollingHash61:
     base: U64
     pre: List<U64>
@@ -1798,7 +1798,7 @@ pub struct RollingHash61:
     /// call it as `RollingHash61(seq)`. Same scheme as `RollingHash` with one modulus: each
     /// token enters as `token % M + 1`; the base is drawn at random unless `base:` gives it.
     ///
-    /// cost: O(n)
+    /// cost: \(O(n)\)
     /// empty: an empty hash; `push` can grow it
     /// traps: when a given base is outside `2..2^61 - 1`
     /// example: `let h = RollingHash61("abab"); h.get(0..2) == h.get(2..4)`
@@ -1820,14 +1820,14 @@ pub struct RollingHash61:
 
     /// The number of elements hashed.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: never
     /// example: `RollingHash61("abc").len == 3`
     @get pub fn len(self) -> Int = pre.len - 1
 
     /// True when no elements are hashed.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: never
     /// example: `RollingHash61("").is_empty == true`
     @get pub fn is_empty(self) -> Bool = pre.len == 1
@@ -1840,7 +1840,7 @@ pub struct RollingHash61:
 
     /// The hash of the whole sequence, `self.get(0..self.len)`.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: never
     /// example: `let h = RollingHash61("abc"); h.all == h.get(0..3)`
     @get pub fn all(self) -> Hash61 = self.slice61(0, pre.len - 1)
@@ -1848,7 +1848,7 @@ pub struct RollingHash61:
     /// The hash of a range of positions (`l..r`, `l..=r`, `..k`, `k..`, or a `Range<D>` when
     /// built over a `[D]T`); an empty range hashes to `Hash61(0)`.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: when the range reaches outside the hashed sequence
     /// example: `let h = RollingHash61("abab"); h.get(0..2) == h.get(2..=3)`
     pub fn get<R>(self, r: R) -> Hash61:
@@ -1858,7 +1858,7 @@ pub struct RollingHash61:
     /// The hash of `a`'s sequence followed by `b`'s, where `b` has length `b_len`:
     /// `a * base^b_len + b` modulo `2^61 - 1`.
     ///
-    /// cost: O(1) amortized (the power table grows past `len` on demand)
+    /// cost: \(O(1)\) amortized (the power table grows past `len` on demand)
     /// traps: when `b_len < 0`
     /// example: `let h = RollingHash61("abc"); h.combine(h.get(0..1), h.get(1..3), 2) == h.all`
     pub fn combine(self, a: Hash61, b: Hash61, b_len: Int) -> Hash61:
@@ -1876,7 +1876,7 @@ pub struct RollingHash61:
 
     /// Appends `x` to the end of the hashed sequence.
     ///
-    /// cost: O(1) amortized
+    /// cost: \(O(1)\) amortized
     /// traps: never
     /// example: `var h = RollingHash61("ab"); h.push('a'); h.push('b'); h.get(0..2) == h.get(2..4)`
     pub fn push<T: Hashable>(mut self, x: T):
@@ -1888,7 +1888,7 @@ pub struct RollingHash61:
 
     /// Removes the last element of the hashed sequence.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: when the hash is empty
     /// example: `var h = RollingHash61("abab"); h.pop(); h.len == 3`
     pub fn pop(mut self):
@@ -1898,7 +1898,7 @@ pub struct RollingHash61:
     /// The length of the longest common prefix of the suffixes starting at `a` and `b`, by
     /// binary search on hashes.
     ///
-    /// cost: O(log n)
+    /// cost: \(O(\log n)\)
     /// traps: when `a` or `b` is outside `0..=self.len`
     /// example: `RollingHash61("abcabd").lcp(0, 3) == 2`
     pub fn lcp(self, a: Int, b: Int) -> Int:
@@ -1914,7 +1914,7 @@ pub struct RollingHash61:
     /// The length of the longest common suffix of the prefixes `s[..a]` and `s[..b]`, by binary
     /// search on hashes.
     ///
-    /// cost: O(log n)
+    /// cost: \(O(\log n)\)
     /// traps: when `a` or `b` is outside `0..=self.len`
     /// example: `RollingHash61("xabyab").lcs(3, 6) == 2`
     pub fn lcs(self, a: Int, b: Int) -> Int:
@@ -1930,7 +1930,7 @@ pub struct RollingHash61:
     /// The length of the longest common prefix of `self[a..]` and `other[b..]`, by binary search
     /// on hashes. Both hashes must use the same base.
     ///
-    /// cost: O(log min(|self| - a, |other| - b))
+    /// cost: \(O(\log \min(\lvert \mathit{self} \rvert - a, \lvert \mathit{other} \rvert - b))\)
     /// traps: when the bases differ, `a` is outside `0..=self.len` or `b` outside `0..=other.len`
     /// example: `RollingHash61("abcd", base: Some(U64(131))).lcp_with(1, RollingHash61("xbcx", base: Some(U64(131))), 1) == 2`
     pub fn lcp_with(self, a: Int, other: RollingHash61, b: Int) -> Int:
@@ -1945,7 +1945,7 @@ pub struct RollingHash61:
             if self.slice61(a, a + mid) == other.slice61(b, b + mid): lo = mid else: hi = mid - 1
         lo
 
-/// O(n) build, O(log n) point update and range hash. Mutable double-mod rolling hash over domain `D`.
+/// \(O(n)\) build, \(O(\log n)\) point update and range hash. Mutable double-mod rolling hash over domain `D`.
 /// Supports `h[i] = x` via W8 `IndexSet`.
 pub struct DynamicHash<D>:
     bases: (Int, Int)
@@ -1964,7 +1964,7 @@ pub struct DynamicHash<D>:
     /// backwards in a segment tree; call it as `DynamicHash(seq)`. Positions are `seq`'s keys
     /// (domain `D`); hashes follow the `RollingHash` scheme and bases.
     ///
-    /// cost: O(n)
+    /// cost: \(O(n)\)
     /// empty: an empty hash
     /// traps: when a given base is outside `2..M`
     /// example: `let h = DynamicHash("abab"); h.get(0..2) == h.get(2..4)`
@@ -2005,35 +2005,35 @@ pub struct DynamicHash<D>:
 
     /// The number of hashed positions, `D.K`.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: never
     /// example: `DynamicHash("abc").len == 3`
     @get pub fn len(self) -> Int = tok1.len
 
     /// True when there are no positions.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: never
     /// example: `DynamicHash("").is_empty == true`
     @get pub fn is_empty(self) -> Bool = tok1.is_empty
 
     /// The hash of the whole sequence, `self.get(..)`.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: never
     /// example: `let h = DynamicHash("abab"); h.all == h.get(0..4)`
     @get pub fn all(self) -> HashVal = self.span(0, tok1.len)
 
     /// Replaces the element at position `i` with `x`; `h[i] = x` means the same.
     ///
-    /// cost: O(log n)
+    /// cost: \(O(\log n)\)
     /// traps: never (`i` is a `D`)
     /// example: `var h = DynamicHash("abxb"); h.set(2, 'a'); h.get(0..2) == h.get(2..4)`
     pub fn set<T: Hashable>(mut self, i: D, x: T) = self.put(i.ord, x.hash_token)
 
     /// The hash of the elements over `r` in order (a cut range `j..i` works too, decision 124).
     ///
-    /// cost: O(log n)
+    /// cost: \(O(\log n)\)
     /// empty: an empty `r` gives `HashVal(0, 0)`
     /// traps: never (`r` is a `Range<D>`)
     /// example: `let h = DynamicHash("xyxy"); h.get(0..2) == h.get(2..4)`
@@ -2043,7 +2043,7 @@ pub struct DynamicHash<D>:
 
     /// The hash of the elements over `r` read backwards, comparable with `get`.
     ///
-    /// cost: O(log n)
+    /// cost: \(O(\log n)\)
     /// empty: an empty `r` gives `HashVal(0, 0)`
     /// traps: never (`r` is a `Range<D>`)
     /// example: `let h = DynamicHash("abba"); h.rev_get(0..2) == h.get(2..4)`
@@ -2057,7 +2057,7 @@ pub struct DynamicHash<D>:
 
     /// True when the elements over `r` read the same both ways: `get(r) == rev_get(r)`.
     ///
-    /// cost: O(log n)
+    /// cost: \(O(\log n)\)
     /// empty: `true` for an empty `r`
     /// traps: never (`r` is a `Range<D>`)
     /// example: `let h = DynamicHash("abca"); h.is_palindrome(1..2) and not h.is_palindrome(0..4)`
@@ -2109,8 +2109,8 @@ fn dh_sum(tree: List<Int>, e: Int, m: Int) -> Int:
 
 // ---- alphabet-domain automata
 
-/// O(n * |A|) space, O(1) amortized push. Online suffix automaton over alphabet domain `A`.
-/// O(n * |A|) flat memory, O(n) amortized build, O(states) `topo_order` and `occurrences`.
+/// \(O(n \cdot \lvert A \rvert)\) space, \(O(1)\) amortized push. Online suffix automaton over alphabet domain `A`.
+/// \(O(n \cdot \lvert A \rvert)\) flat memory, \(O(n)\) amortized build, \(O(\mathit{states})\) `topo_order` and `occurrences`.
 pub struct SuffixAutomaton<A>:
     alpha: 0..=2_000_000_000
     next: List<-1..=2_000_000_000>
@@ -2124,7 +2124,7 @@ pub struct SuffixAutomaton<A>:
     /// An empty suffix automaton over the alphabet domain `A`: only the root state `0`. Call it
     /// as `SuffixAutomaton<A>()`, then `push` letters.
     ///
-    /// cost: O(|A|)
+    /// cost: \(O(\lvert A \rvert)\)
     /// traps: never
     /// example: `SuffixAutomaton<Char>().len == 1`
     pub fn new() -> SuffixAutomaton<A>:
@@ -2138,7 +2138,7 @@ pub struct SuffixAutomaton<A>:
     /// clone if one is needed. For `"abb"` the states are `0` (empty), `1` (`a`), `2` (`ab`),
     /// `3` (`abb`, `bb`) and `4` (`b`, the clone).
     ///
-    /// cost: O(|s| * |A|) memory, O(|s|) amortized time
+    /// cost: \(O(\lvert s \rvert \cdot \lvert A \rvert)\) memory, \(O(\lvert s \rvert)\) amortized time
     /// empty: only the root
     /// traps: when an element of `s` is not in `A`
     /// example: `SuffixAutomaton<Char>.of("abb").len == 5`
@@ -2170,7 +2170,7 @@ pub struct SuffixAutomaton<A>:
 
     /// Appends the letter `a` to the string the automaton recognises the substrings of.
     ///
-    /// cost: O(1) amortized (O(|A|) for a cloned state)
+    /// cost: \(O(1)\) amortized (\(O(\lvert A \rvert)\) for a cloned state)
     /// traps: never (`a` is an `A`)
     /// example: `var m = SuffixAutomaton<Char>(); m.push('a'); m.push('b'); m.distinct() == 3`
     pub fn push(mut self, a: A):
@@ -2200,14 +2200,14 @@ pub struct SuffixAutomaton<A>:
 
     /// The root state, for the empty string: always `0`.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: never
     /// example: `SuffixAutomaton<Char>.of("ab").root == 0`
     @get pub fn root(self) -> Int = 0
 
     /// The number of states, the root included; at most `max(1, 2n - 1)`.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: never
     /// example: `SuffixAutomaton<Char>.of("abb").len == 5`
     @get pub fn len(self) -> Int = links.len
@@ -2215,7 +2215,7 @@ pub struct SuffixAutomaton<A>:
     /// The state reached from `state` by the letter `a`, or `None` when that extension is not a
     /// substring.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: when `state` is outside `0..self.len`
     /// example: `let m = SuffixAutomaton<Char>.of("abb"); m.step(0, 'b') == Some(4) and m.step(1, 'a') == None`
     pub fn step(self, state: Int, a: A) -> ?Int:
@@ -2226,7 +2226,7 @@ pub struct SuffixAutomaton<A>:
     /// The suffix link of `state`: the state of its longest suffix that lies in another state;
     /// `None` at the root.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: when `state` is outside `0..self.len`
     /// example: `let m = SuffixAutomaton<Char>.of("abb"); m.link(3) == Some(4) and m.link(0) == None`
     pub fn link(self, state: Int) -> ?Int:
@@ -2236,7 +2236,7 @@ pub struct SuffixAutomaton<A>:
 
     /// The length of the longest substring in `state`; `0` at the root.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: when `state` is outside `0..self.len`
     /// example: `SuffixAutomaton<Char>.of("abb").longest(3) == 3`
     pub fn longest(self, state: Int) -> Int:
@@ -2245,7 +2245,7 @@ pub struct SuffixAutomaton<A>:
 
     /// The length of the shortest substring in `state`, `longest(link) + 1`; `0` at the root.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: when `state` is outside `0..self.len`
     /// example: `SuffixAutomaton<Char>.of("abb").shortest(3) == 2`
     pub fn shortest(self, state: Int) -> Int:
@@ -2255,7 +2255,7 @@ pub struct SuffixAutomaton<A>:
     /// The 0-based position where the first occurrence of `state`'s substrings ends; `-1` at the
     /// root. A clone keeps the position of the state it was cloned from.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// ties: the earliest occurrence; later ones are not tracked
     /// traps: when `state` is outside `0..self.len`
     /// example: `let m = SuffixAutomaton<Char>.of("abb"); m.first_pos(4) == 1 and m.first_pos(3) == 2`
@@ -2266,7 +2266,7 @@ pub struct SuffixAutomaton<A>:
     /// The state holding `word`, or `None` when `word` is not a substring; the root for an empty
     /// `word`.
     ///
-    /// cost: O(|word|)
+    /// cost: \(O(\lvert \mathit{word} \rvert)\)
     /// empty: an empty `word` gives `Some(0)`
     /// ties: None; a substring lies in exactly one state
     /// traps: when an element of `word` is not in `A`
@@ -2282,7 +2282,7 @@ pub struct SuffixAutomaton<A>:
 
     /// True when `word` is a substring of the automaton's string: `find(word) != None`.
     ///
-    /// cost: O(|word|)
+    /// cost: \(O(\lvert \mathit{word} \rvert)\)
     /// empty: `true` for an empty `word`
     /// traps: when an element of `word` is not in `A`
     /// example: `let m = SuffixAutomaton<Char>.of("abb"); m.contains("ab") and not m.contains("ba")`
@@ -2291,7 +2291,7 @@ pub struct SuffixAutomaton<A>:
     /// The number of distinct non-empty substrings: the sum of `longest(v) - shortest(v) + 1`
     /// over the states other than the root.
     ///
-    /// cost: O(states)
+    /// cost: \(O(\mathit{states})\)
     /// traps: never
     /// example: `SuffixAutomaton<Char>.of("abb").distinct() == 5`
     pub fn distinct(self) -> Int:
@@ -2303,7 +2303,7 @@ pub struct SuffixAutomaton<A>:
     /// Every state, by non-decreasing `longest` (counting sort), so each state comes after its
     /// suffix link; iterate it backwards to push values up the links.
     ///
-    /// cost: O(states)
+    /// cost: \(O(\mathit{states})\)
     /// empty: `[0]` for an empty automaton
     /// ties: smaller state number first
     /// order: non-decreasing `longest`; a new `List`, keyed from 0
@@ -2326,7 +2326,7 @@ pub struct SuffixAutomaton<A>:
     /// For each state, the number of end positions of its substrings in the automaton's
     /// string; the root counts every position, `n`.
     ///
-    /// cost: O(states)
+    /// cost: \(O(\mathit{states})\)
     /// empty: `[0]` for an empty automaton
     /// order: keyed by state
     /// traps: never
@@ -2344,7 +2344,7 @@ pub struct SuffixAutomaton<A>:
     /// A longest common substring of the automaton's string and `other`, as `(len, end)` with
     /// `other[end - len..end]` the substring (positions in `other`, from 0).
     ///
-    /// cost: O(|other|)
+    /// cost: \(O(\lvert \mathit{other} \rvert)\)
     /// empty: `(0, 0)` for an empty `other`; also when nothing is shared
     /// ties: the smallest `end`
     /// traps: when an element of `other` is not in `A`
@@ -2370,7 +2370,7 @@ pub struct SuffixAutomaton<A>:
     /// Moves the append point back to the root, so the next `push` starts a new word of a
     /// generalized automaton (the substrings of all words added so far).
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: never
     /// example: `var m = SuffixAutomaton<Char>.of("ab"); m.reset(); m.push('c'); m.contains("c") and not m.contains("bc")`
     pub fn reset(mut self):
@@ -2379,7 +2379,7 @@ pub struct SuffixAutomaton<A>:
     /// Adds `word` as a separate word of a generalized automaton: `reset()`, then `push` each
     /// letter. Afterwards the automaton holds the substrings of every word added.
     ///
-    /// cost: O(|word|) amortized
+    /// cost: \(O(\lvert \mathit{word} \rvert)\) amortized
     /// empty: an empty `word` only resets
     /// traps: when an element of `word` is not in `A`
     /// example: `var m = SuffixAutomaton<Char>(); m.add_word("ab"); m.add_word("b"); m.distinct() == 3`
@@ -2389,7 +2389,7 @@ pub struct SuffixAutomaton<A>:
 
     /// Every state in the order of `topo_order`, lazily.
     ///
-    /// cost: O(states)
+    /// cost: \(O(\mathit{states})\)
     /// order: non-decreasing `longest`; ties by smaller state number
     /// traps: never
     /// example: `SuffixAutomaton<Char>.of("abb").states().collect() == [0, 1, 4, 2, 3]`
@@ -2399,7 +2399,7 @@ pub struct SuffixAutomaton<A>:
     /// The suffix-link tree as child lists: entry `v` lists the states whose link is `v`.
     /// Rooted at `0`.
     ///
-    /// cost: O(states)
+    /// cost: \(O(\mathit{states})\)
     /// order: keyed by state; each child list in increasing state number
     /// traps: never
     /// example: `SuffixAutomaton<Char>.of("abb").endpos_tree() == [[1, 4], [], [], [], [2, 3]]`
@@ -2413,7 +2413,7 @@ pub struct SuffixAutomaton<A>:
     /// `None` when there are not that many. With `distinct: false` each substring counts once
     /// per occurrence. A proper prefix comes before its extensions.
     ///
-    /// cost: O(states * |A|)
+    /// cost: \(O(\mathit{states} \cdot \lvert A \rvert)\)
     /// ties: with `distinct: false`, copies of one substring are adjacent and interchangeable
     /// order: the letters of the substring, first to last
     /// traps: when `k < 0`
@@ -2463,7 +2463,7 @@ pub struct SuffixAutomaton<A>:
 
 /// The length of the longest sequence that is a substring of every word in `words`.
 ///
-/// cost: O(sum |w| * |A|)
+/// cost: \(O(\mathit{sum} \lvert w \rvert \cdot \lvert A \rvert)\)
 /// empty: `0` for no words; one word gives its length
 /// traps: never
 /// example: `lcs_all(["abcd", "xbcy", "bcz"]) == 2`
@@ -2497,8 +2497,8 @@ pub fn lcs_all<A, S: Seq>(words: List<S>) -> Int:
         if not cur.is_empty: lo = mid else: hi = mid - 1
     lo
 
-/// O(n * |A|) space, O(1) amortized push. Online palindromic tree (eertree) over alphabet domain `A`, with `diff` and `series_link`
-/// for O(n log n) palindromic partition DP.
+/// \(O(n \cdot \lvert A \rvert)\) space, \(O(1)\) amortized push. Online palindromic tree (eertree) over alphabet domain `A`, with `diff` and `series_link`
+/// for \(O(n \log n)\) palindromic partition DP.
 /// State `0` is the odd root (`pal_len == -1`); state `1` is the even root (`pal_len == 0`).
 pub struct PalindromicTree<A>:
     alpha: 0..=2_000_000_000
@@ -2520,7 +2520,7 @@ pub struct PalindromicTree<A>:
     /// An empty palindromic tree over the alphabet domain `A`: just the odd root `0` and the
     /// even root `1`. Call it as `PalindromicTree<A>()`.
     ///
-    /// cost: O(|A|)
+    /// cost: \(O(\lvert A \rvert)\)
     /// traps: never
     /// example: `PalindromicTree<Char>().len == 2`
     pub fn new() -> PalindromicTree<A>:
@@ -2546,7 +2546,7 @@ pub struct PalindromicTree<A>:
     /// The palindromic tree of `s`: `PalindromicTree<A>()` followed by `push` of each element.
     /// New states are numbered from `2` in creation order.
     ///
-    /// cost: O(|s| * |A|) memory, O(|s|) amortized time
+    /// cost: \(O(\lvert s \rvert \cdot \lvert A \rvert)\) memory, \(O(\lvert s \rvert)\) amortized time
     /// empty: just the two roots
     /// traps: when an element of `s` is not in `A`
     /// example: `PalindromicTree<Char>.of("aba").distinct == 3`
@@ -2558,7 +2558,7 @@ pub struct PalindromicTree<A>:
     /// Appends the letter `a` and returns the state of the longest palindromic suffix of the
     /// new string, creating it if it is new.
     ///
-    /// cost: O(1) amortized
+    /// cost: \(O(1)\) amortized
     /// traps: never (`a` is an `A`)
     /// example: `var t = PalindromicTree<Char>(); t.push('a'); t.push('a') == 3`
     pub fn push(mut self, a: A) -> Int:
@@ -2615,21 +2615,21 @@ pub struct PalindromicTree<A>:
 
     /// The number of states, both roots included: `distinct + 2`.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: never
     /// example: `PalindromicTree<Char>.of("aba").len == 5`
     @get pub fn len(self) -> Int = slink.len
 
     /// The number of distinct non-empty palindromic substrings, `len - 2`; at most `n`.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: never
     /// example: `PalindromicTree<Char>.of("aba").distinct == 3`
     @get pub fn distinct(self) -> Int = slink.len - 2
 
     /// The length of the palindrome of `state`: `-1` at the odd root, `0` at the even root.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: when `state` is outside `0..self.len`
     /// example: `let t = PalindromicTree<Char>.of("aba"); t.pal_len(4) == 3 and t.pal_len(0) == -1`
     pub fn pal_len(self, state: Int) -> Int:
@@ -2639,7 +2639,7 @@ pub struct PalindromicTree<A>:
     /// The state of the longest proper palindromic suffix of `state`'s palindrome. A one-letter
     /// palindrome links to the even root `1`; both roots link to the odd root `0`.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: when `state` is outside `0..self.len`
     /// example: `let t = PalindromicTree<Char>.of("aba"); t.link(4) == 2 and t.link(2) == 1 and t.link(1) == 0`
     pub fn link(self, state: Int) -> Int:
@@ -2649,7 +2649,7 @@ pub struct PalindromicTree<A>:
     /// The state of `a + P + a` where `P` is `state`'s palindrome, or `None` when that is not in
     /// the tree. From the odd root it gives the one-letter palindrome `a`.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: when `state` is outside `0..self.len`
     /// example: `let t = PalindromicTree<Char>.of("aba"); t.step(3, 'a') == Some(4) and t.step(1, 'a') == None`
     pub fn step(self, state: Int, a: A) -> ?Int:
@@ -2660,7 +2660,7 @@ pub struct PalindromicTree<A>:
     /// The difference `pal_len(state) - pal_len(link(state))`, the period that groups
     /// palindromic suffixes into series; `0` at both roots.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: when `state` is outside `0..self.len`
     /// example: `PalindromicTree<Char>.of("aba").diff(4) == 2`
     pub fn diff(self, state: Int) -> Int:
@@ -2669,9 +2669,9 @@ pub struct PalindromicTree<A>:
 
     /// The nearest state up the suffix links whose `diff` differs from `state`'s: `link(state)`
     /// when the diffs differ, else `series_link(link(state))`. Following it from any state
-    /// reaches a root in O(log n) steps. Both roots give `0`.
+    /// reaches a root in \(O(\log n)\) steps. Both roots give `0`.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: when `state` is outside `0..self.len`
     /// example: `PalindromicTree<Char>.of("aba").series_link(4) == 2`
     /// example: `PalindromicTree<Char>.of("aaaa").series_link(5) == 1`
@@ -2682,7 +2682,7 @@ pub struct PalindromicTree<A>:
     /// For each state, how many times its palindrome occurs in the pushed string, overlaps
     /// included; `0` at both roots. The entries from `2` sum to `manacher(s).count()`.
     ///
-    /// cost: O(states)
+    /// cost: \(O(\mathit{states})\)
     /// order: keyed by state
     /// traps: never
     /// example: `PalindromicTree<Char>.of("aba").occ_counts() == [0, 0, 2, 1, 1]`
@@ -2697,7 +2697,7 @@ pub struct PalindromicTree<A>:
     /// Prepends the letter `a` (a double-ended tree) and returns the state of the longest
     /// palindromic prefix of the new string, creating it if it is new.
     ///
-    /// cost: O(1) amortized
+    /// cost: \(O(1)\) amortized
     /// traps: never (`a` is an `A`)
     /// example: `var t = PalindromicTree<Char>.of("ba"); t.push_front('a') == 4`
     pub fn push_front(mut self, a: A) -> Int:
@@ -2730,7 +2730,7 @@ pub struct PalindromicTree<A>:
     /// Undoes the most recent `push` not yet undone, removing the state it created if any, so a
     /// DFS over a tree of strings can back out.
     ///
-    /// cost: O(1) amortized
+    /// cost: \(O(1)\) amortized
     /// traps: when there is no `push` to undo
     /// example: `var t = PalindromicTree<Char>.of("ab"); t.pop(); t.distinct == 1 and t.last_state == 2`
     pub fn pop(mut self):
@@ -2753,7 +2753,7 @@ pub struct PalindromicTree<A>:
     /// The state of the longest palindromic suffix of the current string; the even root `1`
     /// when the string is empty.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// ties: None; the longest suffix is unique
     /// traps: never
     /// example: `PalindromicTree<Char>.of("aba").last_state == 4`
@@ -2762,7 +2762,7 @@ pub struct PalindromicTree<A>:
     /// True when `word` is a palindrome occurring in the pushed string, that is, a state of the
     /// tree.
     ///
-    /// cost: O(|word|)
+    /// cost: \(O(\lvert \mathit{word} \rvert)\)
     /// empty: `true` (the even root)
     /// traps: never
     /// example: `let t = PalindromicTree<Char>.of("aba"); t.contains("aba") and not t.contains("ab")`
@@ -2785,7 +2785,7 @@ pub struct PalindromicTree<A>:
     /// `dp[i]` is the least number of palindromes the first `i` pushed letters split into, for
     /// `i in 0..=n`, by the series-link DP.
     ///
-    /// cost: O(n log n)
+    /// cost: \(O(n \log n)\)
     /// ties: None; only the count is returned
     /// order: keyed by prefix length `0..=n`
     /// traps: never
@@ -2809,7 +2809,7 @@ pub struct PalindromicTree<A>:
                     v = t.ser_link[v]
         dp
 
-/// Dynamic trie over alphabet domain `A`. O(|word|) per operation; flat `|A|`-stride table.
+/// Dynamic trie over alphabet domain `A`. \(O(\lvert \mathit{word} \rvert)\) per operation; flat `|A|`-stride table.
 pub struct Trie<A>:
     alpha: 0..=2_000_000_000
     next: List<-1..=2_000_000_000>
@@ -2819,7 +2819,7 @@ pub struct Trie<A>:
     /// An empty trie over the alphabet domain `A`: one root node `0`, no words. Call it as
     /// `Trie<A>()`. Nodes are numbered in creation order.
     ///
-    /// cost: O(|A|)
+    /// cost: \(O(\lvert A \rvert)\)
     /// traps: never
     /// example: `Trie<Char>().len == 1`
     pub fn new() -> Trie<A>:
@@ -2828,7 +2828,7 @@ pub struct Trie<A>:
 
     /// The root node, for the empty word: always `0`.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: never
     /// example: `Trie<Char>().root == 0`
     @get pub fn root(self) -> Int = 0
@@ -2836,21 +2836,21 @@ pub struct Trie<A>:
     /// The number of nodes, the root included. `remove` keeps nodes, so this never shrinks
     /// except by `clear`.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: never
     /// example: `var t = Trie<Char>(); t.add("ab"); t.add("ac"); t.len == 4`
     @get pub fn len(self) -> Int = ends.len
 
     /// True when no words are stored (every count is zero), whatever nodes remain.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: never
     /// example: `var t = Trie<Char>(); t.add("a"); t.remove("a"); t.is_empty`
     @get pub fn is_empty(self) -> Bool = pass[0] == 0
 
     /// The child of `node` along `a`, or `None` when it was never created.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: when `node` is outside `0..self.len`
     /// example: `var t = Trie<Char>(); t.add("ab"); t.step(0, 'a') == Some(1) and t.step(1, 'z') == None`
     pub fn step(self, node: Int, a: A) -> ?Int:
@@ -2861,7 +2861,7 @@ pub struct Trie<A>:
     /// The node of `word`, or `None` when no stored word starts with `word`
     /// (`count_prefix(word) == 0`).
     ///
-    /// cost: O(|word|)
+    /// cost: \(O(\lvert \mathit{word} \rvert)\)
     /// empty: `Some(0)` unless the trie is empty
     /// ties: None; a word has one node
     /// traps: never
@@ -2878,7 +2878,7 @@ pub struct Trie<A>:
     /// Inserts one copy of `word` and returns its terminal node; `count(word)` and
     /// `count_prefix(p)` for every prefix `p` of `word` grow by one.
     ///
-    /// cost: O(|word|)
+    /// cost: \(O(\lvert \mathit{word} \rvert)\)
     /// empty: an empty `word` is stored at the root
     /// traps: never
     /// example: `var t = Trie<Char>(); t.add("ab") == 2`
@@ -2902,7 +2902,7 @@ pub struct Trie<A>:
     /// Removes one copy of `word`, reversing one `add`, and returns `true`; returns `false` and
     /// changes nothing when `count(word) == 0`.
     ///
-    /// cost: O(|word|)
+    /// cost: \(O(\lvert \mathit{word} \rvert)\)
     /// empty: removes a copy of the empty word, if stored
     /// traps: never
     /// example: `var t = Trie<Char>(); t.add("ab"); t.remove("ab") and not t.remove("ab")`
@@ -2920,7 +2920,7 @@ pub struct Trie<A>:
 
     /// The number of copies of exactly `word` stored.
     ///
-    /// cost: O(|word|)
+    /// cost: \(O(\lvert \mathit{word} \rvert)\)
     /// empty: copies of the empty word
     /// traps: never
     /// example: `var t = Trie<Char>(); t.add("ab"); t.add("ab"); t.count("ab") == 2 and t.count("a") == 0`
@@ -2931,7 +2931,7 @@ pub struct Trie<A>:
 
     /// The number of stored words (with multiplicity) that start with `prefix`.
     ///
-    /// cost: O(|prefix|)
+    /// cost: \(O(\lvert \mathit{prefix} \rvert)\)
     /// empty: every stored word
     /// traps: never
     /// example: `var t = Trie<Char>(); t.add("ab"); t.add("ac"); t.count_prefix("a") == 2`
@@ -2942,7 +2942,7 @@ pub struct Trie<A>:
 
     /// The number of stored words that end at `node`.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: when `node` is outside `0..self.len`
     /// example: `var t = Trie<Char>(); let v = t.add("ab"); t.ends_at(v) == 1`
     pub fn ends_at(self, node: Int) -> Int:
@@ -2951,7 +2951,7 @@ pub struct Trie<A>:
 
     /// The number of stored words that pass through or end at `node`; at the root, all of them.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: when `node` is outside `0..self.len`
     /// example: `var t = Trie<Char>(); t.add("ab"); t.add("ac"); t.pass_at(1) == 2`
     pub fn pass_at(self, node: Int) -> Int:
@@ -2960,7 +2960,7 @@ pub struct Trie<A>:
 
     /// True when at least one copy of exactly `word` is stored: `count(word) > 0`.
     ///
-    /// cost: O(|word|)
+    /// cost: \(O(\lvert \mathit{word} \rvert)\)
     /// empty: whether the empty word is stored
     /// traps: never
     /// example: `var t = Trie<Char>(); t.add("ab"); t.contains("ab") and not t.contains("a")`
@@ -2969,7 +2969,7 @@ pub struct Trie<A>:
 
     /// Removes every word and node, leaving just the root.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: never
     /// example: `var t = Trie<Char>(); t.add("ab"); t.clear(); t.is_empty and t.len == 1`
     pub fn clear(mut self):
@@ -2980,7 +2980,7 @@ pub struct Trie<A>:
     /// The `k`-th (0-based) stored word in lexicographic order, copies counted, as its letters;
     /// `None` when fewer than `k + 1` words are stored. A word comes before its extensions.
     ///
-    /// cost: O(depth * |A|)
+    /// cost: \(O(\mathit{depth} \cdot \lvert A \rvert)\)
     /// ties: copies of one word are adjacent and interchangeable
     /// order: the letters of the word, first to last
     /// traps: when `k < 0`
@@ -3005,7 +3005,7 @@ pub struct Trie<A>:
 
     /// The number of stored words (with multiplicity) lexicographically smaller than `word`.
     ///
-    /// cost: O(|word| * |A|)
+    /// cost: \(O(\lvert \mathit{word} \rvert \cdot \lvert A \rvert)\)
     /// empty: `0` for an empty `word`
     /// traps: never
     /// example: `var t = Trie<Char>(); t.add("b"); t.add("ab"); t.add("a"); t.count_less("b") == 2`
@@ -3023,8 +3023,8 @@ pub struct Trie<A>:
                 if at == -1: return total
         total
 
-/// O(total * |A|) build, O(1) step. Aho-Corasick multi-pattern automaton over alphabet domain `A`.
-/// Built in O(sum |p| * |A|) flat memory and time; `step`, `link`, and `hit` are O(1).
+/// \(O(\mathit{total} \cdot \lvert A \rvert)\) build, \(O(1)\) step. Aho-Corasick multi-pattern automaton over alphabet domain `A`.
+/// Built in \(O(\mathit{sum} \lvert p \rvert \cdot \lvert A \rvert)\) flat memory and time; `step`, `link`, and `hit` are \(O(1)\).
 pub struct AhoCorasick<A>:
     alpha: 0..=2_000_000_000
     goto: List<-1..=2_000_000_000>
@@ -3039,7 +3039,7 @@ pub struct AhoCorasick<A>:
     /// `p` is `patterns[p]`. States are the trie nodes of the patterns, numbered in creation
     /// order with the root `0`; equal patterns share a state.
     ///
-    /// cost: O(sum |p| * |A|)
+    /// cost: \(O(\mathit{sum} \lvert p \rvert \cdot \lvert A \rvert)\)
     /// empty: no patterns gives just the root; an empty pattern ends at the root and matches at every `at` in `0..=|text|`
     /// traps: when an element of a pattern is not in `A`
     /// example: `AhoCorasick<Char>(["a", "ab", "b"]).len == 4`
@@ -3090,14 +3090,14 @@ pub struct AhoCorasick<A>:
 
     /// The root state, before any letter is read: always `0`.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: never
     /// example: `AhoCorasick<Char>(["a"]).root == 0`
     @get pub fn root(self) -> Int = 0
 
     /// The number of states, the root included.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: never
     /// example: `AhoCorasick<Char>(["a", "ab", "b"]).len == 4`
     @get pub fn len(self) -> Int = fail.len
@@ -3105,7 +3105,7 @@ pub struct AhoCorasick<A>:
     /// The state after reading `a` in `state`: the longest pattern prefix that is a suffix of
     /// what has been read. Total, so it never fails.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: when `state` is outside `0..self.len`
     /// example: `let ac = AhoCorasick<Char>(["a", "ab", "b"]); ac.step(2, 'b') == 3 and ac.step(1, 'a') == 1`
     pub fn step(self, state: Int, a: A) -> Int:
@@ -3115,7 +3115,7 @@ pub struct AhoCorasick<A>:
     /// The failure link of `state`: the state of its longest proper suffix that is a pattern
     /// prefix; `0` at the root.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: when `state` is outside `0..self.len`
     /// example: `let ac = AhoCorasick<Char>(["a", "ab", "b"]); ac.link(2) == 3 and ac.link(0) == 0`
     pub fn link(self, state: Int) -> Int:
@@ -3125,7 +3125,7 @@ pub struct AhoCorasick<A>:
     /// True when some pattern ends at `state` itself or at a state up its failure links:
     /// `words_at(state)` is non-empty.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: when `state` is outside `0..self.len`
     /// example: `let ac = AhoCorasick<Char>(["ab", "b"]); ac.hit(2) and not ac.hit(1)`
     pub fn hit(self, state: Int) -> Bool:
@@ -3134,7 +3134,7 @@ pub struct AhoCorasick<A>:
 
     /// Every pattern that ends at `state` or up its failure links, by index.
     ///
-    /// cost: O(output)
+    /// cost: \(O(\mathit{output})\)
     /// order: longest pattern first; equal patterns by increasing index; a new `List`, keyed from 0
     /// traps: when `state` is outside `0..self.len`
     /// example: `AhoCorasick<Char>(["a", "ab", "b"]).words_at(2) == [1, 2]`
@@ -3150,7 +3150,7 @@ pub struct AhoCorasick<A>:
     /// Every occurrence of every pattern in `text`, as `(at, pattern)` with `at` the 0-based
     /// start: exactly the pairs with `text[at..at + patterns[pattern].len] == patterns[pattern]`.
     ///
-    /// cost: O(|text| + output)
+    /// cost: \(O(\lvert \mathit{text} \rvert + \mathit{output})\)
     /// empty: an empty `text` yields only matches of an empty pattern
     /// ties: at one end position, longest pattern first, then increasing index (`words_at`)
     /// order: by end position
@@ -3171,7 +3171,7 @@ pub struct AhoCorasick<A>:
     /// For each pattern, how many times it occurs in `text`, overlaps included: the number of
     /// `find_all` pairs with that index.
     ///
-    /// cost: O(|text| + states)
+    /// cost: \(O(\lvert \mathit{text} \rvert + \mathit{states})\)
     /// empty: all zeros for an empty `text` (an empty pattern still counts once)
     /// order: keyed by pattern index
     /// traps: when an element of `text` is not in `A`
@@ -3192,7 +3192,7 @@ pub struct AhoCorasick<A>:
     /// Every state in BFS order of the trie (root first, then by depth, equal depths by state
     /// number), so each state comes after its failure link; iterate backwards for bottom-up DP.
     ///
-    /// cost: O(states)
+    /// cost: \(O(\mathit{states})\)
     /// order: non-decreasing depth; ties by smaller state number
     /// traps: never
     /// example: `AhoCorasick<Char>(["a", "ab", "b"]).fail_order() == [0, 1, 3, 2]`
@@ -3201,7 +3201,7 @@ pub struct AhoCorasick<A>:
     /// The nearest state strictly up the failure links of `state` at which a pattern ends, or
     /// `None` when there is None.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: when `state` is outside `0..self.len`
     /// example: `let ac = AhoCorasick<Char>(["a", "ab", "b"]); ac.exit_link(2) == Some(3) and ac.exit_link(1) == None`
     pub fn exit_link(self, state: Int) -> ?Int:
@@ -3210,14 +3210,14 @@ pub struct AhoCorasick<A>:
 
     /// The state where `patterns[pattern]` ends.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: when `pattern` is outside `0..patterns.len`
     /// example: `AhoCorasick<Char>(["a", "ab", "b"]).pattern_state(1) == 2`
     pub fn pattern_state(self, pattern: Int) -> Int:
         assert 0 <= pattern and pattern < pat_state.len, "`pattern_state(pattern)` needs a pattern index"
         pat_state[pattern]
 
-/// O(|pat| * |A| * log n) amortized insert/delete, O(|text| * log n) query.
+/// \(O(\lvert \mathit{pat} \rvert \cdot \lvert A \rvert \cdot \log n)\) amortized insert/delete, \(O(\lvert \mathit{text} \rvert \cdot \log n)\) query.
 /// Online multi-pattern Aho-Corasick via log-decomposed static buckets.
 pub struct DynamicAhoCorasick<A>:
     alpha: 0..=2_000_000_000
@@ -3229,7 +3229,7 @@ pub struct DynamicAhoCorasick<A>:
     /// An empty online pattern set over the alphabet domain `A`; call it as
     /// `DynamicAhoCorasick<A>()`.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: never
     /// example: `DynamicAhoCorasick<Char>().is_empty`
     pub fn new() -> DynamicAhoCorasick<A> = DynamicAhoCorasick<A>(
@@ -3242,21 +3242,21 @@ pub struct DynamicAhoCorasick<A>:
 
     /// The number of patterns stored, copies counted.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: never
     /// example: `var d = DynamicAhoCorasick<Char>(); d.add("a"); d.add("a"); d.len == 2`
     @get pub fn len(self) -> Int = n
 
     /// True when no patterns are stored.
     ///
-    /// cost: O(1)
+    /// cost: \(O(1)\)
     /// traps: never
     /// example: `var d = DynamicAhoCorasick<Char>(); d.add("a"); d.remove("a"); d.is_empty`
     @get pub fn is_empty(self) -> Bool = n == 0
 
     /// Stores one more copy of `pattern`.
     ///
-    /// cost: O(|pattern| * |A| * log n) amortized
+    /// cost: \(O(\lvert \mathit{pattern} \rvert \cdot \lvert A \rvert \cdot \log n)\) amortized
     /// empty: an empty pattern matches at every `at` in `0..=|text|`
     /// traps: when an element of `pattern` is not in `A`
     /// example: `var d = DynamicAhoCorasick<Char>(); d.add("ab"); d.len == 1`
@@ -3268,7 +3268,7 @@ pub struct DynamicAhoCorasick<A>:
 
     /// Removes one stored copy of `pattern`.
     ///
-    /// cost: O(|pattern| * |A| * log n) amortized
+    /// cost: \(O(\lvert \mathit{pattern} \rvert \cdot \lvert A \rvert \cdot \log n)\) amortized
     /// empty: removes a copy of the empty pattern
     /// traps: when no copy of `pattern` is stored
     /// example: `var d = DynamicAhoCorasick<Char>(); d.add("ab"); d.remove("ab"); d.count_matches("ab") == 0`
@@ -3281,7 +3281,7 @@ pub struct DynamicAhoCorasick<A>:
     /// The total number of occurrences of all stored patterns in `text`, overlaps and copies
     /// counted.
     ///
-    /// cost: O(|text| * log n)
+    /// cost: \(O(\lvert \mathit{text} \rvert \cdot \log n)\)
     /// empty: `0` for an empty `text` unless an empty pattern is stored
     /// traps: when an element of `text` is not in `A`
     /// example: `var d = DynamicAhoCorasick<Char>(); d.add("ab"); d.add("b"); d.count_matches("abb") == 3`
