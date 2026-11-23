@@ -1,5 +1,11 @@
-// SAC '22 CC4 P4 (today/ runnable subset) — original: corpus/submissions/4411200.cpp
-// O(n) monotone-deque two-pointers rethinking the 280-LOC custom LazySegTree.
+// Source: SAC '22 Code Challenge 4 P4, https://dmoj.ca/problem/sac22cc4p4
+// Problem: n <= 1e6 integers |a[i]| <= 1e9 and 0 <= B <= T <= 2e9. Print how many subarrays [l, r]
+//   have B <= max - min <= T.
+// Solution: count(t), the subarrays with max - min <= t, is a two-pointer scan: for each right
+//   end, the smallest left end that keeps max - min <= t, with the max and the min of the window
+//   in two monotone deques (index arrays). The answer is count(T) - count(B - 1), O(n).
+// original: corpus/submissions/4411200.cpp
+// note: a runnable subset, n <= 2e5 and B, T <= 1e9, below the statement's 1e6 and 2e9.
 
 let n: 1..=200_000 = read()
 let ql: 0..=1_000_000_000 = read()

@@ -1,4 +1,11 @@
-// Runnable port (proto/cp.py lib-run) of statement-first aac5p3.cp
+// Source: An Animal Contest 5 P3 (Ski Resort), https://dmoj.ca/problem/aac5p3
+// Problem: a tree of n <= 2e5 breakpoints rooted at 1, hills (edges) of difficulty d <= 1e9; each
+//   of k <= 2e5 pandas with skill s <= 1e9 starts at 1 and keeps skiing down the child hill with
+//   the least |s - d| (ties to the easier) until a leaf. Print how many pandas visit each
+//   breakpoint.
+// Solution: the skills reaching a node form an interval; sorting its child hills by difficulty
+//   splits it at the midpoints between neighbours, a tie going to the easier hill. A DFS hands
+//   each child its interval and counts the sorted skills inside by binary search: O((n + k) log).
 // original: corpus/submissions/4239862.cpp
 let (n, m): (Int, Int) = read()
 var adj: List<List<(w: Int, v: Int)>> = [[] for _ in 0..n]

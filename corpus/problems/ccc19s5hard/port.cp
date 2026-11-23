@@ -1,4 +1,9 @@
-// CCC '19 S5 (Hard) — Triangle: The Data Structure (today form for proto/cpc)
+// Source: CCC 2019 S5 (Triangle: The Data Structure), https://dmoj.ca/problem/ccc19s5
+// Problem: a triangle of n <= 3000 rows, row i holding i numbers in 0..=1e9, and 1 <= k <= n.
+//   Print the sum over every sub-triangle of size k of its largest element.
+// Solution: with m[i][j] the max of the size-s sub-triangle topped at (i, j), size s + d for d <=
+//   (s + 1) / 2 is the max of the three size-s ones at (i, j), (i + d, j), (i + d, j + d), which
+//   cover it. Grow s by about 1.5x up to k in two alternating buffers: O(n^2 log k).
 // original: corpus/submissions/5119931.cpp
 let n: 1..=3000 = read()
 let k: 1..=n = read()

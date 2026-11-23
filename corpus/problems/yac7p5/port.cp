@@ -1,8 +1,12 @@
-// Yet Another Contest 7 P5 (interactive): each of n eggs breaks from its own
-// floor of 1..=n upward, all different; "? egg floor" tells whether that egg
-// breaks there. Split the floors in half, sort the eggs by one question each
-// (the last egg of a group needs none), and recurse, starting with the half
-// nearer to the floor we are standing on.
+// Source: Yet Another Contest 7 P5 (Egg Dropping), https://dmoj.ca/problem/yac7p5
+// Problem: interactive. Egg i shatters exactly from floor p[i] up, p a uniformly random
+//   permutation of 1..=n, n <= 1e4. "? e f" moves from floor c to f and drops egg e: |c - f| + 1
+//   moves, plus 20 if the direction reverses. At most 2e5 queries, then "! p"; full score needs <=
+//   188000 moves.
+// Solution: place(lo, hi, eggs) knows the eggs are exactly those with floors lo..hi: drop all but
+//   one at mid - 1 to split them by breaking; the spare goes to the side left one short. Recurse
+//   into the half nearer the current floor first, and split small ranges next to it, to keep the
+//   elevator moving one way. Each level asks each egg at most once: about n log2 n questions.
 let n: 1..=1e4 = read()
 domain Egg = 1..=n
 var floor_of: [Egg]Int = 0

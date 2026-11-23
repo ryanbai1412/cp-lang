@@ -1,7 +1,12 @@
-// CEOI 2018 Toys: write n as a product of any number of factors >= 2 (n = 1
-// is the empty product); a factorisation scores the sum of (factor - 1).
-// Print how many different scores exist, then the scores in increasing order.
-// Enumerate factorisations with non-decreasing factors over the divisor list.
+// Source: CEOI 2018 Toys, https://dmoj.ca/problem/ceoi18p5
+// Problem: a collection with c_i identical toys of each type i has n = prod (c_i + 1) different
+//   sub-collections (the empty one included). Given n <= 1e9, print how many totals sum c_i are
+//   possible, then all of them in increasing order.
+// Solution: a collection is a factorisation of n into factors >= 2, scoring sum (factor - 1). List
+//   the divisors in O(sqrt n); split(rest, from, score) records rest as the last factor, then
+//   tries each divisor d >= divs[from] with d^2 <= rest that divides it, so factors are
+//   non-decreasing and each factorisation comes once. An ordered Set collects the scores; the cost
+//   is the number of factorisations times the divisor scan.
 // original: corpus/submissions/5323876.cpp
 let n: 1..=1e9 = read()
 

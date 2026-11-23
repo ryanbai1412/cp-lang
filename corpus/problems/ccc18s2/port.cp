@@ -1,4 +1,9 @@
-// CCC '18 S2 — Sunflowers (today form for proto/cpc)
+// Source: CCC 2018 S2 (Sunflowers), https://dmoj.ca/problem/ccc18s2
+// Problem: an n x n grid, 2 <= n <= 100, of positive values <= 1e9 is a rotation by a multiple of
+//   90 degrees of a table whose rows increase left to right and columns top to bottom. Print the
+//   original table.
+// Solution: only the original orientation increases both ways: try up to four clockwise rotations,
+//   checking every row and column, and print the first that passes. O(n^2).
 // original: corpus/submissions/4329456.cpp
 let n: 2..=100 = read()
 domain R = 0..n

@@ -1,4 +1,11 @@
-// Runnable port (proto/cp.py lib-run) of dmopc21c2p2.cp
+// Source: DMOPC '21 Contest 2 P2 (Scrambling Swaps), https://dmoj.ca/problem/dmopc21c2p2
+// Problem: a list of swaps (x, y) of positions of an array of length n <= 300 starts empty; q <=
+//   3e5 queries: "B x y" adds a swap at the front, "E x y" at the end, "Q p" asks for any starting
+//   permutation that the list, applied in order, turns into p (at most 3000 such queries).
+// Solution: keep the whole list as one permutation perm (final[i] = start[perm[i]]) and its
+//   inverse. A swap appended at the end swaps two positions of perm; one added at the front swaps
+//   two values (positions inv[x], inv[y]). Answer Q with start[v] = p[inv[v]]. O(1) per swap, O(n)
+//   per Q.
 // original: corpus/submissions/3946515.cpp
 
 let (n, q): (Int, Int) = read()

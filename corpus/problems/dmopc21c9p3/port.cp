@@ -1,4 +1,11 @@
-// Runnable port (proto/cp.py lib-run) of dmopc21c9p3.cp
+// Source: DMOPC '21 Contest 9 P3 (Terrible Trains), https://dmoj.ca/problem/dmopc21c9p3
+// Problem: a connected graph of n <= 3000 stations and m <= 3000 one-hour routes. Each of q <= 1e6
+//   commuters asks: after adding one new one-hour route of our choice, can one go S -> T within X
+//   hours and U -> V within Y hours? Print YES or NO for each.
+// Solution: all-pairs distances by a BFS from every station, O(n (n + m)). If one trip already
+//   fits, the new route joins the other trip's ends. Otherwise both trips use the new route (p,
+//   q); cutting a shortest S-U path and a shortest T-V path, that works iff d(S,U) + d(T,V) <= X +
+//   Y - 2 (or the same with U and V swapped). O(1) per query.
 // original: corpus/submissions/4564027.cpp
 
 let (n, m): (Int, Int) = read()
