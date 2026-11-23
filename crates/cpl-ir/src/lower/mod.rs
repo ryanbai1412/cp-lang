@@ -856,7 +856,7 @@ struct Lowerer<'a> {
     sigs: Vec<FnSig<'a>>,
     bodies: Vec<Option<Function>>,
     gen_fns: Vec<GenFnTemplate<'a>>,
-    fn_insts: HashMap<(GenFnId, Vec<GenArg>), FnId>,
+    fn_insts: HashMap<(GenFnId, Vec<GenArg>, Vec<String>), FnId>,
 
     closures: Vec<ClosureDef>,
     queued_fns: Vec<FnId>,
@@ -3675,15 +3675,7 @@ impl<'a> Lowerer<'a> {
             }
         }
         let saved_cx = std::mem::replace(&mut self.cx, cx);
-        for ast_p in &decl.params {
-            if let Some(ty_ast) = &ast_p.ty {
-                if let Some(&slot) = self.cx.scopes[0].get(&ast_p.name.text) {
-                    if let Some(rinfo) = self.range_info_from_ast(ty_ast) {
-                        self.cx.local_ranges.insert(slot, rinfo);
-                    }
-                }
-            }
-        }
+        self.bind_param_facts(decl);
         let mut out = Vec::new();
 
         // If this is a constructor/static method of a struct with owned domains (e.g. `Rooted<V>.Pre`),

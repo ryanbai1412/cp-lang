@@ -2,6 +2,7 @@
 //! closures, `lends` projections, and `laws_hold`.
 
 use super::*;
+use declare::rev_param_key;
 use std::collections::HashSet;
 
 pub(super) type ModId = usize;
@@ -1437,8 +1438,9 @@ impl<'a> Lowerer<'a> {
         args: Vec<GenArg>,
         trait_params: &[(usize, Ty)],
         op_params: &[(String, BareOp)],
+        rev_params: Vec<String>,
     ) -> FnId {
-        let key = (gfid, args.clone());
+        let key = (gfid, args.clone(), rev_params.clone());
         if let Some(&id) = self.fn_insts.get(&key) {
             if !self.sigs[id].returns_fresh_domain && self.sigs[id].new_domain_slots.is_empty() {
                 return id;
@@ -1483,6 +1485,9 @@ impl<'a> Lowerer<'a> {
         }
         for (name, op) in op_params {
             env.insert(op_param_key(name), GenArg::Op(*op));
+        }
+        for name in &rev_params {
+            env.insert(rev_param_key(name), GenArg::Int(1));
         }
         let id = self.declare_fn_in(decl, tpl_mod, tpl_offset, owner, env);
         let suffix: Vec<String> = args.iter().map(|a| self.mangle_arg(a)).collect();
@@ -2332,7 +2337,8 @@ impl<'a> Lowerer<'a> {
             final_args.push(GenArg::Int(1));
         }
         final_args.extend(op_params.iter().map(|&(_, op)| GenArg::Op(op)));
-        let fn_id = self.instantiate_fn(gfid, final_args, &trait_params, &op_params);
+        let rev = self.reversed_params(decl, &ast_params, receiver.as_ref(), args, &gen_names);
+        let fn_id = self.instantiate_fn(gfid, final_args, &trait_params, &op_params, rev);
         if let Some(ty) = hashed {
             self.sigs[fn_id].params[0].ty = ty;
         }

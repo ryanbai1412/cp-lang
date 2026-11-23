@@ -70,3 +70,76 @@ impl<'a> Lowerer<'a> {
         }
     }
 }
+
+/// The env entry saying a generic fn's param `name` was given a `.rev` of a
+/// list or view, so the instance's `name.keys` walk backwards (R07.4.7).
+pub(super) fn rev_param_key(name: &str) -> String {
+    format!("__rev_param_{name}")
+}
+
+impl<'a> Lowerer<'a> {
+    /// `e` is `a.rev` over a list or view, or a name bound to one.
+    fn reversed_arg(&mut self, e: &ast::Expr) -> bool {
+        match &e.kind {
+            ast::ExprKind::Field { base, name } if name.text == "rev" => matches!(
+                self.probe_ty_silent(base),
+                Some(Ty::List(_) | Ty::ListView(..) | Ty::MutView(_))
+            ),
+            ast::ExprKind::Name(n) => match self.lookup(n) {
+                Some(slot) => self.cx.view_rev.contains(&slot),
+                None => {
+                    matches!(self.get_sym(n), Some(Sym::Global(id)) if self.global_view_rev.contains(&id))
+                }
+            },
+            _ => false,
+        }
+    }
+
+    /// The params of a generic fn given a reversed view, whose instance is
+    /// its own: there the param's `.keys` walk backwards, as at the call.
+    pub(super) fn reversed_params(
+        &mut self,
+        decl: &ast::FnDecl,
+        params: &[&ast::Param],
+        receiver: Option<&Arg>,
+        args: &[ast::Arg],
+        generics: &[String],
+    ) -> Vec<String> {
+        let generic = |p: &ast::Param| {
+            matches!(p.ty.as_ref().map(|t| &t.kind),
+                Some(ast::TypeKind::Named { name, args }) if args.is_empty() && generics.contains(&name.text))
+        };
+        let mut out = Vec::new();
+        if let (Some(Arg::Value(e)), Some(p)) = (receiver, decl.params.first()) {
+            if generic(p) && (Self::reversed_list(e) || self.named_reversed(e)) {
+                out.push(p.name.text.clone());
+            }
+        }
+        for (pos, p) in params.iter().enumerate() {
+            let arg = args
+                .iter()
+                .find(|a| a.name.as_ref().is_some_and(|n| n.text == p.name.text))
+                .or_else(|| args.get(pos).filter(|a| a.name.is_none()));
+            if generic(p) && arg.is_some_and(|a| self.reversed_arg(&a.value)) {
+                out.push(p.name.text.clone());
+            }
+        }
+        out
+    }
+
+    /// What a fn's params keep known in its body: the range of a ranged
+    /// param, and that a param given a reversed view walks backwards.
+    pub(super) fn bind_param_facts(&mut self, decl: &ast::FnDecl) {
+        for p in &decl.params {
+            let Some(&slot) = self.cx.scopes[0].get(&p.name.text) else {
+                continue;
+            };
+            if let Some(rinfo) = p.ty.as_ref().and_then(|t| self.range_info_from_ast(t)) {
+                self.cx.local_ranges.insert(slot, rinfo);
+            }
+            if self.gen_env.contains_key(&rev_param_key(&p.name.text)) {
+                self.cx.view_rev.insert(slot);
+            }
+        }
+    }
+}
