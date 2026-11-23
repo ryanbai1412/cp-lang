@@ -1,5 +1,13 @@
-// NOI 2006 P3 (CP Lang 0.3): independent envelope DP using Tropical Optionals
-// `?Int` + `min=` (zero `INF` sentinels).
+// Source: NOI 2006 P3 Millennium Worm (千年虫), https://dmoj.ca/problem/noi06p3
+// Problem: a fossil A gives n rows (n <= 1e5 here), row i covering cells L_i..=R_i, coordinates
+//   <= 1e6. Find a model worm B that corrodes down to A: B covers A row by row, and each side,
+//   read down the rows, is a trunk with rectangular feet (the side steps out onto a foot and
+//   back in, alternately, the first and last rows on the trunk). Print the fewest cells in B - A.
+// Solution: the sides are independent (mirror the left one: a = max L - L), and each picks
+//   heights h_i >= a_i minimizing sum(h_i - a_i), where rows keep their height or strict rises
+//   and falls alternate. Only heights within 2 of a value in rows i - 2..=i + 2 are tried (<= 25
+//   per row). A DP from the bottom keeps states lo (on the trunk, may rise) and hi (on a foot,
+//   may fall) per candidate, with prefix/suffix minima over the next row: O(25 n).
 // original: corpus/submissions/3868871.cpp
 let n: 1..=100_000 = read()
 domain Col = 0..n

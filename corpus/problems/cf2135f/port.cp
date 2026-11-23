@@ -1,10 +1,13 @@
-// Codeforces 2135 F: To the Infinity.
-// f_u = x ^ (the product of f over the right children down u's left spine), so a node is
-// the multiset of those right children, compared largest first. A value only holds values
-// of lower generation (gen = max(gen l, gen r + 1)) and beats every value of a lower one,
-// so ranking generation by generation gives each distinct value a key in increasing order.
-// A multiset is a persistent segment tree over keys with random-weighted hashes; two
-// differ first at the largest key whose subtrees hash apart.
+// Source: Codeforces 2135F (To the Infinity), https://codeforces.com/contest/2135/problem/F
+// Problem: a full binary tree on n <= 4e5 nodes (n odd), root 1; a leaf has f(x) = x and an inner
+//   node f_u = f_l ^ f_r. Print the nodes sorted by f_u as x -> infinity, ties by smaller index.
+//   Multitest, sum n <= 4e5.
+// Solution: f_u = x ^ (product of f over the right children down u's left spine), so a node is the
+//   multiset of those right children, compared largest first. With gen = max(gen l, gen r + 1), a
+//   value only holds lower generations and beats every lower-generation value, so rank generation
+//   by generation, giving distinct values increasing keys. A multiset is a persistent segment tree
+//   over keys (set[u] = set[l] + key[r]) with random-weighted hashes; compare by descending to the
+//   largest key whose subtrees hash apart, O(log n). Sorting each generation: O(n log^2 n).
 
 use std.rand.{Rng}
 

@@ -1,27 +1,12 @@
-// Codeforces 2187 D: Cool Problem.
-// The walk starts at c_0 = 0, updates c_i = x + c_{i-1} on '0' and
-// c_i = y - c_{i-1} on '1', and scores sum(c_i).
-//
-// Up to the first '?', the prefix `head` is fixed, leaving state `c0` (0 when
-// `head` is empty) and prefix sum `f`. After the first '?', every completion
-// of length m + 1 has the same score as one of two canonical end-shapes indexed
-// by an integer position `end` in -m..=m + 1:
-//   - end = k + 1 >= 1: `0 0^k 1^(m - k)` starting at `start = x + c0`,
-//   - end = -k <= 0:    `1 0^k 1^(m - k)` starting at `start = y - c0`.
-// On `0^k 1^(m - k)` from `start`, the k + 1 zero-steps form the arithmetic
-// progression `start, start + x, ..., last = start + k * x`, and the m - k
-// one-steps alternate between `y - last` and `last`, giving the O(1) closed
-// form in `walk_from(start, k)`.
-//
-// Tracking the reachable end positions through `rest` (the m chars after the
-// first '?'): the first '?' seeds the opposite-parity pair `(p0, p1) = (1, 0)`.
-//   - '0' drifts the two parities oppositely: `(p0, p1) = (p0 + 1, p1 - 1)`.
-//   - '1' negates parity, swapping `(p0, p1) = (p1, p0)`.
-//   - '?' unions `{p0 + 1, p1 - 1}` with `{p1, p0}`. Since `p0 - p1` is odd,
-//     the union shifts the base pair `p1' = min(p0, p1 - 1), p0' = p1' + 1` by
-//     either 0 or the even gap `2g = |p0 - p1 + 1|`, adding half-gap `g`.
-// By induction, the reachable end positions are `{2i + p0, 2i + p1}` over all
-// subset sums `i` of the half-gaps `g` (whose sum is at most m).
+// Source: Codeforces 2187D (Cool Problem), https://codeforces.com/contest/2187/problem/D
+// Problem: integers x, y <= 1e6 and a string s over 0, 1, ? (n <= 1e5). With c_0 = 0,
+//   c_i = x + c_{i-1} on '0' and y - c_{i-1} on '1', f = sum c_i. Print the sum of the distinct
+//   values f takes over all completions of s, mod 998244353. Multitest, sum n <= 1e5.
+// Solution: the prefix before the first '?' is fixed (state c0, sum f). After it every completion
+//   scores like a canonical shape 0 0^k 1^(m-k) or 1 0^k 1^(m-k), indexed by an end position in
+//   -m..=m + 1, scored in O(1) by closed form. Scanning the rest keeps the reachable ends as
+//   {2i + p0, 2i + p1} over subset sums i of half-gaps added at each '?' (they total <= m), so a
+//   bitset subset sum lists them; the distinct scores go into a set and are summed.
 
 type Z = Mod<998_244_353>
 

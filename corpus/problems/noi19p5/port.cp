@@ -1,4 +1,13 @@
-// NOI '19 P5 - Landlords (runnable on proto/cp.py lib-run today)
+// Source: NOI 2019 P5 Landlords (斗主地), https://dmoj.ca/problem/noi19p5
+// Problem: a deck of n <= 1e7 cards, card i scoring i (type 1) or i^2 (type 2). Each of m <= 5e5
+//   shuffles cuts off the top A_i cards and merges the two piles, taking the next card from a pile
+//   with probability proportional to its remaining size. Then Q <= 5e5 queries: print the
+//   expected score of the card at position c, mod 998244353.
+// Solution: the expected score stays a polynomial of degree <= 2 in the position, since the merge
+//   sends each pile's j-th card to a position distributed linearly. Keep its coefficients; after
+//   each shuffle compute the new expectations at positions 1, 2 and n from the old polynomial
+//   (which card can land there and with what probability) and refit. n <= 2 is special-cased.
+//   O(m + Q).
 
 type Z = Mod<998244353>
 
