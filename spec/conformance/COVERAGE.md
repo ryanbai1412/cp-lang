@@ -7,7 +7,7 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 2397 (994 passing). Rules: 559.
+Cases: 2398 (995 passing). Rules: 559.
 
 ## Summary per chapter
 
@@ -845,8 +845,8 @@ Every `pub` item in `std`, counted as covered when a conformance
 case names it. `/// example:` lines are also run by the `docs` suite of
 `cpl-conform`; this list is about whole-program cases (edges, traps).
 
-- **algebra** (41/52 named by a case)
-  - uncovered: `Desc`, `Reversible`, `Semigroup`, `Semiring`, `HasId`, `HasInv`, `Idempotent`, `AddAction`, `AssignAction`, `AffineAction`, `FlipAction`
+- **algebra** (42/52 named by a case)
+  - uncovered: `Desc`, `Reversible`, `Semigroup`, `HasId`, `HasInv`, `Idempotent`, `AddAction`, `AssignAction`, `AffineAction`, `FlipAction`
 - **bag** (154/161 named by a case)
   - uncovered: `BagCursor`, `SortedBag.count_of`, `SortedBag.next_cursor`, `SortedBag.prev_cursor`, `SortedBag.entries`, `SortedBag.entries_rev`, `SortedRange`
 - **beats** (24/25 named by a case)
@@ -878,8 +878,8 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **mo** (5/6 named by a case)
   - uncovered: `mo_steps`
 - **mod** (29/29 named by a case)
-- **ntt** (14/17 named by a case)
-  - uncovered: `Curved`, `Disjoint`, `SosOver`
+- **ntt** (16/18 named by a case)
+  - uncovered: `Disjoint`, `SosOver`
 - **opt** (2/2 named by a case)
 - **pair** (5/5 named by a case)
 - **persistent** (34/38 named by a case)
@@ -906,7 +906,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **window** (20/22 named by a case)
   - uncovered: `Tracked`, `Undo`
 
-2152 of 2282 std items are named by a case.
+2155 of 2283 std items are named by a case.
 
 ## Core cases without a `// rule:` line
 

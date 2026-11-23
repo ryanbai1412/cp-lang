@@ -14,6 +14,10 @@ In prelude (no `use` needed): `Curved`, `convolve`.
 
 Which arguments of a convolution over a semiring other than `(+, *)` have the shape that makes it fast: convex for `min`, concave for `max`.
 
+## `trait IndexOp`
+
+A custom index op for `convolve(on:)`: `a[i] * b[j]` lands at `at(i, j)`, or nowhere when it is `None`; the output has `len(a.len, b.len)` entries.
+
 ## `struct Disjoint`
 
 The index op of a subset convolution: `i \| j` over disjoint pairs `i & j == 0`.
@@ -43,7 +47,7 @@ Fields: `b: List<Mod<P>>`, `a: List<Mod<P>>`, `c: List<Mod<P>>`.
 ## Functions
 
 - `fn ntt<P>(mut a: List<Mod<P>>, inverse: Bool = false, bit_reversed: Bool = false)` — O(n log n); In-place number-theoretic transform of `a` modulo the NTT-friendly prime `P`.; traps: when `a.len` is not a power of two dividing `P - 1`, or `P` is not prime
-- `fn convolve<T, O, R>(a: List<T>, b: List<T>, on: O = (x, y) => x + y, over: R = Semiring(+, *), shape: ?Curved = None, cyclic: Bool = false) -> List<T>` — O((n + m) log(n + m)) for the product; O(n log n) bitwise; O(k^2 2^k) `subset`; O(n log log n) `gcd`/`lcm`; O(n + m) `Both`; O((n + m) log n) `Right`; O(n m) `Neither`; The convolution of `a` and `b`: `c[on(i, j)]` is the `over.add` of every `over.mul(a[i], b[j])`.; traps: when `cyclic: true` and `a.len != b.len`; when a bitwise or `subset` input is not a power-of-two length equal to the other's; when an `Int` output overflows
+- `fn convolve<T, O, R>(a: List<T>, b: List<T>, on: O = (x, y) => x + y, over: R = Semiring(+, *), shape: ?Curved = None, cyclic: Bool = false) -> List<T>` — O(n log n) bitwise; O(n + m) `Both`; O(n m) today for the product, `subset`, `gcd`/`lcm`, `Right`, `Neither` and any `IndexOp` (the transforms are planned); The convolution of `a` and `b`: `c[on(i, j)]` is the `over.add` of every `over.mul(a[i], b[j])`.; traps: when `cyclic: true` and `a.len != b.len`; when a bitwise or `subset` input is not a power-of-two length equal to the other's; when an `Int` output overflows
 - `fn sos<S: IndexedMut>(mut a: S, over: SosOver = Sub, inverse: Bool = false)` — O(k 2^k); In-place sum-over-subsets (zeta) transform of `a`, length `2^k`, or its Mobius inverse.; traps: when `a.len` is not a power of two
 - `fn fwht<S: IndexedMut, T>(mut a: S, inverse: Bool = false)` — O(n log n); In-place Walsh-Hadamard (XOR) transform of `a`, length `2^k`.; traps: when `a.len` is not a power of two; with `inverse: true` on `Int`, when an entry is not divisible by `n`
 - `fn convolve_all<P>(polys: List<List<Mod<P>>>) -> List<Mod<P>>` — O(S log^2 S) for total length `S`; The product of every polynomial in `polys`, multiplied as a balanced tree.; traps: when the product outgrows the largest NTT length `P` supports
