@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- Rebuild-4 H-PATHS-DIST-SPELLING: the overview program reads `p[V.last!]`, as chapter `lib/graphs-trees.md` and `std/graph.cp` say (`std-graph/paths-index.cp` passes). The two overview cases that read the non-pub `p.dist` field now read `p[v]` and still pass.
 - Rebuild-4 H-ANON-ARRAY-INT-INDEX: R02.8.1 now points at R04.3.3's exception (an anonymous-range array takes `Int`, checked); case `core-02/anon-range-array-takes-int.cp` (passes).
 - Regenerated COVERAGE.md with `--allow-new-gaps`: R01.5.7 and R04.4.29 say "never" about something permitted, so they have no reject to write. 32 rule gaps, 31 without a reject.
 - Rebuild-4 H-REVERSED-RANGE: new R04.4.29 (a range past its end is empty, never a trap), case `core-04/reversed-range-empty.cp` (passes).

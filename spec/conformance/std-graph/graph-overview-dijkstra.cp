@@ -15,4 +15,4 @@ let es2: [E2](u: V2, v: V2, w: Int) = []
 let g2 = Graph.undirected(es2)
 let p2 = dijkstra(g2, from: [(V2.first!, 0)])
 
-print(p.dist[V.last!] ?? -1, p2.dist[V2.last!] ?? -1)
+print(p[V.last!] ?? -1, p2[V2.last!] ?? -1)
