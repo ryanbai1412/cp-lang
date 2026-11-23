@@ -12,7 +12,7 @@ Point update and range fold.
 
 Fields: `span: List<Int>`, `size: Int`, `log: Int`, `act: ?Action<T, F>`.
 
-- `fn new<M, A>(op: ?M = None, a: ?[D]T = None, fill: ?T = None, act: A = NoAction(), over: ?Range<Int> = None) -> SegTree<D, T, F>` — O(|D|); O(1) with `over:`; A tree over `D` folding with `op`: built from `a`, filled with `fill`, or holding the identity everywhere when neither is given.; traps: when both `a` and `fill` are given, or `over:` is given together with `a`
+- `fn new<M, A>(op: M = NoOp(), a: ?[D]T = None, fill: ?T = None, act: A = NoAction(), over: ?Range<Int> = None) -> SegTree<D, T, F>` — O(|D|); O(1) with `over:`; A tree over `D` folding with `op`: built from `a`, filled with `fill`, or holding the identity everywhere when neither is given.; traps: when both `a` and `fill` are given, or `over:` is given together with `a`
 - `fn apply(mut self, r: Range<D>, f: F)` — O(log |D|); Apply tag `f` to every position of `r`: each fold over `r` then sees the values with `f` applied, through the action given to `act:`.; traps: when a non-empty `r` reaches outside `D`
 - `fn apply_all(mut self, f: F)` — O(1) amortized when the tags commute, else O(|D|); Apply tag `f` to every position; `apply(D.all, f)`.
 - `fn fold(self, r: Range<D>) -> T` — O(log |D|); The fold of the values in `r`, left to right: `op(op(a[l], a[l + 1]), ...)`.; traps: when a non-empty `r` reaches outside `D`
