@@ -5225,6 +5225,9 @@ impl<'a> Lowerer<'a> {
                 let ord = self.cast(Cast::Ord, value, Ty::Int);
                 self.int_add(ord, 1)
             }
+            (Ty::Enum(e), "next" | "prev") if self.unit_enum(*e) => {
+                self.enum_step(*e, value, name.text == "next", span)
+            }
             (Ty::Pos(d), "next") => {
                 let len = self.mk(ExprKind::DomainLen(*d), Ty::Int, span);
                 builtin(
