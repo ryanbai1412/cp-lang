@@ -676,3 +676,61 @@ fn stops_at_its_time_limit(source: &str) {
     assert_eq!(trap.as_deref(), Some(cpl_interp::trace::OUT_OF_TIME));
     assert!(started.elapsed().as_secs() < 5, "{:?}", started.elapsed());
 }
+
+const PUSHES: &str = "\
+var xs: List<Int> = []
+var bs: List<Bool> = []
+for i in 0..300:
+    xs.push(i * 3)
+    bs.push(i % 2 == 0)
+print(xs[299])
+";
+
+#[test]
+fn a_list_rebuilt_from_its_pushes_holds_every_item_pushed() {
+    let rec = record(PUSHES, "", TraceConfig::default());
+    let var = |name: &str| rec.vars.iter().position(|v| v.id == name).expect("traced");
+    let (xs, bs) = (var("xs"), var("bs"));
+    let value = |k: usize, var: usize| {
+        rec.step(k)
+            .unwrap()
+            .values
+            .iter()
+            .find(|(v, _)| *v == var)
+            .map(|(_, v)| v.to_string())
+    };
+    let ints = |n: usize| {
+        format!(
+            "[{}]",
+            (0..n)
+                .map(|i| (i * 3).to_string())
+                .collect::<Vec<_>>()
+                .join(",")
+        )
+    };
+    let bools = |n: usize| {
+        format!(
+            "[{}]",
+            (0..n)
+                .map(|i| (i % 2 == 0).to_string())
+                .collect::<Vec<_>>()
+                .join(",")
+        )
+    };
+    let mut seen = (0, 0);
+    for k in 0..rec.len() {
+        if let Some(got) = value(k, xs) {
+            while ints(seen.0) != got {
+                seen.0 += 1;
+                assert!(seen.0 <= 300, "step {k}: xs = {got}");
+            }
+        }
+        if let Some(got) = value(k, bs) {
+            while bools(seen.1) != got {
+                seen.1 += 1;
+                assert!(seen.1 <= 300, "step {k}: bs = {got}");
+            }
+        }
+    }
+    assert_eq!(seen, (300, 300));
+}
