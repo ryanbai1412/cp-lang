@@ -267,7 +267,6 @@ documented. The stdlib's own gaps are in `std/GAPS.md`.
 - core-07/list-scan-indexed-by-count.cp: stdlib
 - core-07/tally-missing-key-is-zero.cp: stdlib
 - core-07/heap-by-desc-lambda.cp: compiler
-- core-07/count-of-bools-needs-a-predicate.cp: compiler
 - core-08/const-param-arithmetic.cp: compiler
 - core-08/extension-concrete-and-generic-ambiguous.cp: compiler
 - core-08/static-fn-default-param-mismatch.cp: compiler
@@ -298,7 +297,6 @@ documented. The stdlib's own gaps are in `std/GAPS.md`.
 - std-prefix/first-ge-negative-element-traps.cp: stdlib
 - std-prefix/scan-at-position-folds-through.cp: stdlib
 - std-prefix/scan-max-of-bounded.cp: stdlib
-- std-prefix/scan-of-list-int-is-cut.cp: stdlib
 - std-segtree/closure-op-picks-index.cp: compiler
 - std-strings/split-trailing-and-leading.cp: stdlib
 - std-heap/drain-break-keeps-the-rest.cp: compiler

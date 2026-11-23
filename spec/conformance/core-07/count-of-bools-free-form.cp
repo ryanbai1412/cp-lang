@@ -1,4 +1,4 @@
-// expect: E0303 at 3
+// expect: E0303 at 4
 // rule: 07.9.4
 // has: "len"
 // The free form `count(b)` is the same question as `b.count()`; a generator of tests, `count(x for x in b)`, counts the trues (decision 53).
