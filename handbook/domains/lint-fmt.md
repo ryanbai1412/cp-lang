@@ -222,7 +222,7 @@ in `plan/domains/lint-fmt/metrics.toml`.
 
 | Quality | Metric | Mechanism | Where |
 |---|---|---|---|
-| Lint and fmt add little to the editor's response | lint and fmt time on the largest file; share of the 500 ms front-end budget | `missing` as a gate | — |
+| Lint and fmt add little to the editor's response (`lints/R24`) | lint and fmt time on the largest ports, against a tenth of the 500 ms front-end budget; the largest `std` modules printed | gate in optimized builds | `crates/cpl-lint/src/speed_tests.rs` `lint_and_fmt_of_the_largest_files_fit_a_tenth_of_the_front_end_budget` |
 | One analysis: no tool re-checks a file to lint it | checker databases built outside the session | ratchet `own_databases` | `scripts/debt-ratchet.py` |
 | Lint knows no std API by name | std names in rules | ratchet `lint_std_names` | `scripts/debt-ratchet.py` |
 | Suites catch regressions in the rules | mutation score of `cpl-lint` and `cpl-fmt` suites | `missing` | — |

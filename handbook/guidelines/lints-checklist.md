@@ -224,3 +224,14 @@ Example: `cnt[]x = 1`, a key deleted mid-edit, gets a checker error, not a
 crash.
 Enforced by: `mutated_sources_never_crash_lint_or_fmt` in
 `crates/cpl-lint/src/fuzz_tests.rs` (deeper runs with `CPL_FUZZ_MUTANTS`).
+
+### R24: Lint and fmt stay fast in the editor
+
+Linting an analysed file, and formatting it, each take at most a tenth of the
+500 ms front-end budget on the largest contest programs we have.
+Reason: the editor runs both on every keystroke, after the checker; their
+time comes straight out of the wait before diagnostics appear.
+Example: the largest corpus port lints and formats in a few milliseconds each
+in an optimized build.
+Enforced by: `lint_and_fmt_of_the_largest_files_fit_a_tenth_of_the_front_end_budget`
+in `crates/cpl-lint/src/speed_tests.rs` (asserted under `cargo test --release`).

@@ -856,6 +856,8 @@ mod corpus_tests;
 
 #[cfg(test)]
 mod fuzz_tests;
+#[cfg(test)]
+mod speed_tests;
 
 #[cfg(test)]
 mod behaviour_tests;

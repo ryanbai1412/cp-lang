@@ -22,6 +22,7 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
         src: file.src,
         base: 0,
         out: Vec::new(),
+        squashed: std::cell::OnceCell::new(),
     };
     file.walk(&mut v, |v, base| v.base = base);
     v.out
@@ -31,6 +32,8 @@ struct HandSearch<'a> {
     src: &'a str,
     base: u32,
     out: Vec<Finding>,
+    /// `squash_code` of the whole file, made once on first use.
+    squashed: std::cell::OnceCell<String>,
 }
 
 /// `text` without comments and without spaces, except one between two words
@@ -142,10 +145,14 @@ fn value_index(s: &str) -> Option<(&str, &str)> {
 }
 
 impl HandSearch<'_> {
+    fn squashed_file(&self) -> &str {
+        self.squashed.get_or_init(|| squash_code(self.src))
+    }
+
     /// The pairs sorted by `sorted`: `(x, i, range)` when `recv` is a list of
     /// `(x[i], i)` built by a comprehension or a push loop over `range`.
     fn argsort(&self, recv: &str) -> Option<(String, String, String)> {
-        let src = squash_code(self.src);
+        let src = self.squashed_file();
         let comp = |c: &str| {
             let (x, i) = value_index(c.strip_prefix('[')?)?;
             let rest = c.split_once(&format!("for {i} in "))?.1;
@@ -428,7 +435,7 @@ impl HandSearch<'_> {
             return;
         };
         let whole = squash_code(body.span.shift(self.base).text(self.src));
-        let file = squash_code(self.src);
+        let file = self.squashed_file();
         let pops: Vec<_> = whole.match_indices(".pop()").collect();
         let [(at, _)] = pops.as_slice() else {
             return;
