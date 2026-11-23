@@ -1,5 +1,10 @@
-// NOIP 2021 Sequence: count weighted length-n sequences over 0..=m whose sum of
-// 2^{a_i} has popcount at most k, modulo 998244353.
+// Source: NOIP 2021 P2 (Sequence), https://dmoj.ca/problem/noip21p2
+// Problem: n <= 30, m <= 100, k <= n and weights v_0..v_m. Over all arrays a of n values in
+//   0..=m with at most k one bits in 2^a_1 + ... + 2^a_n, sum v_a_1 * ... * v_a_n mod 998244353.
+// Solution: add bits 0..=m in order. dp[used, carry, ones]: weighted ways to give `used` of the
+//   n positions values below the current bit, with that carry into it and `ones` one bits fixed.
+//   Giving `take` more positions bit b multiplies by C(n - used, take) v_b^take and fixes bit
+//   (carry + take) & 1; at the end the carry adds its popcount. O(m n^3 k), about 1e8.
 // original: corpus/submissions/5445677.cpp
 const P = 998244353
 type Z = Mod<P>

@@ -1,7 +1,11 @@
-// NOI 2002 Greedy Nine-Headed Dragon: the fruits of a tree are shared among
-// the heads. The big head eats exactly k fruits, the root among them, and
-// every other head eats at least one. A branch is hard to swallow, at its
-// own cost, when one head eats both its ends. Minimise the total cost.
+// Source: NOI 2002 P3 (The Greedy Kuzuryu), https://dmoj.ca/problem/noi02p3
+// Problem: a tree of n <= 300 fruits, branch costs c <= 1e5, is split among m >= 2 heads, each
+//   eating at least one fruit; the big head eats exactly k fruits, fruit 1 among them. A branch
+//   whose two ends one head eats costs c. Print the minimum total cost, or -1 if impossible.
+// Solution: with 2+ small heads they can alternate down the tree, so only big-big branches cost;
+//   with one small head (m = 2) small-small branches cost too. Tree knapsack cost[v, who eats v,
+//   fruits the big head eats in v's subtree], merging each child into its parent, children
+//   first, over all count pairs: O(n^3). -1 when m - 1 + k > n.
 // original: corpus/submissions/3718952.cpp
 let n: 1..=300 = read()
 let heads: 2..=300 = read()

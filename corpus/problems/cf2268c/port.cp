@@ -1,12 +1,12 @@
-// Codeforces 2268 C: largest v such that some subarray of length >= 2 has
-// both its maximum and its xor containing every bit of v. Build v greedily
-// from the top bit. For a fixed v, a subarray is a pair of cuts; its masked
-// xor is v exactly when the masked prefix xors p, q at its cuts satisfy
-// q = p ^ v, i.e. both lie in the class min(p, p ^ v) with opposite parity
-// (whether the prefix is the larger of the pair). Within a class, the pair's
-// maximum is the largest gap maximum between them, so folding the class's
-// gaps from the smallest maximum up (a Cartesian tree of the gaps) meets
-// every pair exactly once, at the gap that is its maximum.
+// Source: Codeforces 2268C (KiaKio and Energy Intervals),
+//   https://codeforces.com/contest/2268/problem/C
+// Problem: an array of n >= 2 values a_i < 2^18. Over segments l < r with maximum m, print the
+//   largest xor of (a_i & m). Multitest, sum of n <= 2e5.
+// Solution: build the answer v from bit 17 down, keeping a bit when some segment has a maximum
+//   containing v and xor of a_i & v equal to v. Such a segment is two cuts at least 2 apart
+//   whose masked prefix xors p, p ^ v share the class min(p, p ^ v) with opposite parity. Per
+//   class, a monotonic stack over the gaps between consecutive cuts (gap maxima by SparseTable)
+//   merges groups at each gap's maximum, the maximum of every pair it joins. O(18 n log n).
 use std.prefix.{prefix_fold}
 
 @!multitest

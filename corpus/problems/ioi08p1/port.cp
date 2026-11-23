@@ -1,14 +1,11 @@
-// IOI 2008 Type Printer: n different lowercase words (n <= 25000, at most 20
-// letters each) are to be printed, in any order, on a printer that can add a
-// letter to the end of its line, take the last letter away ('-'), or print
-// the line ('P'). Letters may be left on the line at the end. Print the
-// fewest operations and then the operations, one to a line.
-//
-// The words form a trie and the printer walks it, typing on the way down and
-// deleting on the way up. Every trie edge is traversed twice (down + '-')
-// except the edges on the path to the final word, which are never deleted, so
-// minimizing operations leaves a longest word last: at every node, defer the
-// child on the longest word's path until after all other branches.
+// Source: IOI 2008 P1 (Type Printer), https://dmoj.ca/problem/ioi08p1
+// Problem: n <= 25000 distinct lowercase words of length <= 20. A printer adds a letter, removes
+//   the last one ('-') or prints its word ('P'), and may end non-empty. Print the fewest
+//   operations that print every word, in any order, then the operations, one per line.
+// Solution: put the words in a trie and walk it, typing down and deleting up, printing at word
+//   ends. Every edge costs 2 except those on the path to the last word, so end on a longest
+//   word: at each node visit the child on that word's path last and never delete it.
+//   O(total letters * 26).
 // original: corpus/submissions/5034409.cpp
 use std.strings.{Trie}
 

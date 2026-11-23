@@ -1,9 +1,10 @@
-// NOI 2002 Island of Cavemen: caveman i starts in cave c[i] of a ring of m
-// caves, walks p[i] caves a year and lives l[i] years. Find the smallest m
-// (at least the largest starting cave) for which no two living cavemen ever
-// share a cave. The answer is at most 1e6.
-// Two cavemen meet in year x when (p[i] - p[j]) x = c[j] - c[i] (mod m): one
-// linear congruence per pair, and only its smallest solution matters.
+// Source: NOI 2002 P4 (Island of Cavemen), https://dmoj.ca/problem/noi02p4
+// Problem: n <= 15 cavemen on a ring of m caves; caveman i starts in cave c_i <= 100, moves p_i
+//   <= 100 caves a year and lives l_i <= 1e6 years. Print the smallest m for which no two ever
+//   share a cave while both live; it is at most 1e6.
+// Solution: try m upward from the largest c_i. Two cavemen meet in year x when
+//   (p_i - p_j) x = c_j - c_i (mod m); extended gcd gives its least solution, and m fails if
+//   that is at most both lifetimes. O(answer * n^2 log m).
 // original: corpus/submissions/3741279.cpp
 let n: 1..=15 = read()
 struct Caveman:

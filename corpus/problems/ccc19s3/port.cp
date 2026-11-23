@@ -1,10 +1,11 @@
-// CCC 2019 S3 Arithmetic Square: a 3 x 3 grid of integers, some cells
-// unknown (X). Fill the unknowns so every row and every column is an
-// arithmetic progression. A filling always exists; any one is accepted.
-//
-// A line with exactly one unknown forces it. When nothing is forced, guess
-// one cell and go on; a guess that leads to a half-integer middle is thrown
-// away and the whole fill starts over, as in the original.
+// Source: CCC 2019 S3 (Arithmetic Square), https://dmoj.ca/problem/ccc19s3
+// Problem: a 3 x 3 grid of integers in [-1e6, 1e6], some cells unknown (X). Fill the unknowns
+//   so every row and column is an arithmetic sequence, all values in [-1e9, 1e9]; a solution
+//   exists and any one is accepted.
+// Solution: a line with exactly one unknown forces it (a middle is the mean of the ends), so
+//   settle fills forced cells until none is left. When nothing is forced, set a random open cell
+//   to a value in -500..499 and settle again. A forced middle that is not whole throws the
+//   attempt away and the fill restarts from the input, as in the original.
 // original: corpus/submissions/4325116.cpp
 type Square = List<List<?Int>>
 const ROWS = [[(i, j) for j in 0..3] for i in 0..3]

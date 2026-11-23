@@ -1,9 +1,13 @@
-// Codeforces 2222 F: Building Tree.
-// Divide-and-conquer on weight range [lo, hi] with rollback connectivity.
-// Invariant: `conn` holds all edges with weight outside [lo, hi], carrying one
-// representative colored vertex per component. Adding all edges in one half
-// merges colored components at the other half's minimum weight (lo or mid + 1),
-// which builds the minimum spanning forest over colored vertices in O(m log m).
+// Source: Codeforces 2222F (Building Tree), https://codeforces.com/contest/2222/problem/F
+// Problem: a graph of n, m <= 3e5 with edge weights 0..=m; a path's length is the mex of its
+//   weights, dis(u, v) the least over u-v paths. q vertices with colors c_i: joining two costs
+//   dis(c_u, c_v), allowed only when connected. Print the cheapest way to connect all q, or -1.
+//   Multitest, sums of n, m, q <= 3e5.
+// Solution: dis(u, v) <= x iff u, v connect while avoiding the weight-y edges, some y <= x, so
+//   Kruskal over x = 0..=m: divide and conquer on [lo, hi] keeps the edges outside [lo, hi] in a
+//   rollback DSU carrying one colored vertex per component; adding one half's edges merges
+//   colored components at the other half's least x, joined in a second DSU. Each edge is added
+//   O(log m) times: O(m log m log n).
 @!multitest
 use std.dsu.DsuOf
 

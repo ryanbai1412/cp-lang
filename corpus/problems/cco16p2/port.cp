@@ -1,7 +1,11 @@
-// CCO 2016 Splitting Hares: weighted points in the plane, no three on a line.
-// Pick a line and take everything on one side of it, plus what you like of
-// the points on the line. Maximise the weight taken. Some best line passes
-// through a point, so turn a line around every point in turn.
+// Source: CCO 2016 P2 (Splitting Hares), https://dmoj.ca/problem/cco16p2
+// Problem: n <= 4000 distinct points with weights |w| <= 1e4. Draw a line and take every point
+//   on one side of it, points on the line included; print the largest total weight.
+// Solution: with no three points collinear, some best line passes through two points. For
+//   each pivot, sort the other points by the direction of the line through them (folded into
+//   the upper half plane) and sweep, keeping the weight strictly right of the line; each line
+//   takes the better side, the pivot, and the other point if positive. O(n^2 log n). Asserts
+//   no three collinear, which only some subtasks promise.
 use std.geometry.{arg, turn}
 
 let n: 3..=4000 = read()

@@ -1,14 +1,12 @@
-// NOI 2021 Quantum Communication: a dictionary of n words of 256 bits
-// (n <= 400000), made by the generator the statement gives, seeded with a1
-// and a2. Then m questions (m <= 120000), each a word as 64 hex digits and a
-// k <= 15: print 1 if some dictionary word differs from it in at most k
-// bits, else 0. The questions are chained: after an answer of 1, every bit
-// of the next question's word is flipped before use.
-//
-// Cut a word into 16 blocks of 16 bits. At most 15 differing bits leave some
-// block untouched, so only the dictionary words that share a block with the
-// question need comparing. The dictionary is random, so a block value has
-// about n / 65536 words.
+// Source: NOI 2021 P4 (Quantum Communication), https://dmoj.ca/problem/noi21p4
+// Problem: a dictionary of n <= 4e5 random 256-bit words comes from the statement's generator,
+//   seeded with a1, a2. Then m <= 1.2e5 queries, each 64 hex digits and k <= 15: print 1 if a
+//   dictionary word differs from the query in at most k bits, else 0. Online: after an answer
+//   of 1, every bit of the next query is flipped.
+// Solution: cut words into 16 blocks of 16 bits; at most 15 differing bits leave some block
+//   equal (pigeonhole). Per block, a map from block value to the words with it; a query compares
+//   only the words sharing one of its blocks, by popcount of the block xors. Random words put
+//   about n / 65536 in a bucket: ~100 candidates of 16 popcounts per query.
 // original: corpus/submissions/3861375.cpp
 domain Block = 0..16
 let block_bits = 16
