@@ -65,6 +65,15 @@ architecture after. Deadline ~09:30 PST 2026-11-23; hours, not days.
    copy, `research/archive/local-lib-v02/spec/worked.cp`: 1 E0206 before and
    after sorting; `fmt_check.py` re-checks meaning anyway.
 
+## General fixes owed
+
+| Instance | General fix | Owner |
+|---|---|---|
+| Lint codes collided twice (L0530-L0532) when two lanes added records at once | `record_codes_are_unique` fails a duplicate; lanes take code blocks (lint-fmt L054x, diagnostics L053x). Next: `cpl lint --new <name>` picks the lane's next free code | lint-fmt |
+| L0521's running total, L0542 and L0504's `x = f(x, e)` match `push`, `last`, `len` and a parameter name as text | rules match resolved symbols from the fact table (callee is a fn, a parameter or a std method), so no rule reads a name | lint-fmt, with compiler for the fact table |
+| L0522 knows three copy spellings (`to_list`, comprehension, push loop), each matched separately | one "value is a copy of `xs[l..r]`" recognizer shared by every rule that reads a copy | lint-fmt |
+| L0518 took only `false`/`0` as a sieve mark, missing `comp[j] = true` | marks are any constant written at a stepped multiple | lint-fmt (done in a5317254) |
+
 ## Why each milestone
 - **M1 first** because fmt is the smallest, nearly done, and every later
   bulk change (fixes, codemods, ports) is printed by it; a fmt that can change

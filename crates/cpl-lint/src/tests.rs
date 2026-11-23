@@ -1499,6 +1499,29 @@ fn dropping_leading_prelude_imports_leaves_no_leading_blank_line() {
     assert_eq!(fixed(src), "let x = 1\n");
 }
 #[test]
+fn a_call_fold_loop_teaches_fold() {
+    let src = "let a: List<Int> = read()\nfn g(x: Int, y: Int) -> Int = x + y\nvar r = 0\nfor x in a:\n    r = g(r, x)\nprint(r)\n";
+    let found = lint(src, &all_on());
+    let f = found.iter().find(|d| d.code.0 == "L0504").expect("L0504");
+    assert!(
+        f.help
+            .as_deref()
+            .is_some_and(|h| h.contains("`a.fold(g, 0)`")),
+        "{:?}",
+        f.help
+    );
+    let after =
+        "let a: List<Int> = read()\nfn g(x: Int, y: Int) -> Int = x + y\nprint(a.fold(g, 0))\n";
+    assert!(crate::fix_tests::checker_errors(after).is_empty());
+    let flipped = src.replace("g(r, x)", "g(x, r)");
+    assert!(
+        !taste_codes(&flipped).contains(&"L0504"),
+        "{:?}",
+        codes(&flipped)
+    );
+}
+
+#[test]
 fn newcomer_sieve_and_push_copy_sort() {
     let sieve = "let n: 1..=1000 = read()\nvar comp: [0..=n]Bool = false\nvar primes: List<Int> = []\nfor i in 2..=n:\n    if not comp[i]:\n        primes.push(i)\n        var j = i * i\n        while j <= n:\n            comp[j] = true\n            j += i\nprint(primes.len)\n";
     assert!(taste_codes(sieve).contains(&"L0518"), "{:?}", codes(sieve));

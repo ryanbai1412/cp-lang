@@ -294,3 +294,13 @@ fn every_help_names_real_vocabulary() {
 fn lint_all(src: &str) -> Vec<Diagnostic> {
     lint(src, &all_on())
 }
+
+#[test]
+fn record_codes_are_unique() {
+    let mut seen = std::collections::HashMap::new();
+    for lint in LINTS {
+        if let Some(other) = seen.insert(lint.code, lint.name) {
+            panic!("{} is both `{other}` and `{}`", lint.code.0, lint.name);
+        }
+    }
+}

@@ -109,6 +109,8 @@ impl<'a> AccLoop<'a> {
 
 static ADD: AssignOp = AssignOp::Binary(BinOp::Add);
 static MAX: AssignOp = AssignOp::Max;
+/// `x = f(x, e)`: the fold is the whole call.
+static SET: AssignOp = AssignOp::Set;
 static MIN: AssignOp = AssignOp::Min;
 
 /// `x = x + v` and `x = max(x, v)`, C++'s spellings of `x += v` and `x max= v`:
@@ -133,6 +135,19 @@ fn spelled_out<'a>(name: &str, value: &'a Expr) -> Option<(&'static AssignOp, &'
             let op = match &callee.kind {
                 ExprKind::Name(n) if n == "max" => &MAX,
                 ExprKind::Name(n) if n == "min" => &MIN,
+                ExprKind::Name(_) => {
+                    let is_self = |e: &Expr| matches!(&e.kind, ExprKind::Name(n) if n == name);
+                    return match &args[..] {
+                        [a, b]
+                            if [a, b].iter().all(|x| x.name.is_none() && !x.mutable)
+                                && is_self(&a.value)
+                                && !is_self(&b.value) =>
+                        {
+                            Some((&SET, value))
+                        }
+                        _ => None,
+                    };
+                }
                 _ => return None,
             };
             match &args[..] {

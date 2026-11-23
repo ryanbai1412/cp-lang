@@ -459,27 +459,6 @@ impl<'a> Taste<'a> {
         self.push(&HAND_ROLLED_PREFIX_SUM, diag);
     }
 
-    /// A running total stored each step (L0521, help only): the loop also does what the
-    /// table's reads need, so `cpl fix` leaves the rewrite to the contestant.
-    fn running_total(&mut self, base: u32, stmt: &Stmt) {
-        let Some((table, var, added)) = running_total_loop(stmt) else {
-            return;
-        };
-        let added = &self.src[(base + added.span.start) as usize..(base + added.span.end) as usize];
-        if !mentions(added, var) || has_try(stmt) {
-            return;
-        }
-        let diag = Diagnostic::warning(
-            HAND_ROLLED_PREFIX_SUM.code,
-            stmt.span,
-            format!("`{table}` is a running total built by hand: use `prefix(...)`"),
-        )
-        .with_help(
-            "`prefix(a)` (or `a.scan(+)`) builds every prefix sum in O(n); `.prefix(cut)` reads one and `.fold(range)` sums a range in O(1)",
-        );
-        self.push(&HAND_ROLLED_PREFIX_SUM, diag);
-    }
-
     /// Copy-mutate-writeback on a slice (L0522):
     ///   `let sub = xs[l..r].sorted(..); for i in l..r: xs[i] = sub[i - l]`
     /// or
@@ -1567,6 +1546,29 @@ impl<'a> Taste<'a> {
             self.ntext(value.span),
             self.text(init.span),
         );
+        if let (AssignOp::Set, ExprKind::Call { callee, args }) = (op, &value.kind) {
+            let (f, x) = (self.ntext(callee.span), self.ntext(args[1].value.span));
+            // A fn parameter `f` is the fold being written, not one to call.
+            let param = [format!("({f}:"), format!(", {f}:")];
+            if cond.is_some()
+                || mentions(x, name)
+                || mentions(&it, name)
+                || param.iter().any(|p| self.src.contains(p.as_str()))
+            {
+                return;
+            }
+            let seq = sequence(&it, p, x, None);
+            let diag = Diagnostic::warning(
+                LOOP_REDUCTION.code,
+                self.pair_span(decl.span, next.span),
+                format!("a loop that only folds `{name}` through `{f}` is one `fold`"),
+            )
+            .with_help(format!(
+                "write `{seq}.fold({f}, {i})`; one call says what the loop computes, with the start value next to it"
+            ));
+            self.push(&LOOP_REDUCTION, diag);
+            return;
+        }
         let c = cond.map(|c| self.ntext(c.span));
         if mentions(v, name) || c.is_some_and(|c| mentions(c, name)) || mentions(&it, name) {
             return;

@@ -1292,3 +1292,26 @@ fn is_last_of(e: &Expr, table: &str) -> bool {
         _ => false,
     }
 }
+
+impl Taste<'_> {
+    /// A running total stored each step (L0521, help only): the loop also does what the
+    /// table's reads need, so `cpl fix` leaves the rewrite to the contestant.
+    pub(super) fn running_total(&mut self, base: u32, stmt: &Stmt) {
+        let Some((table, var, added)) = running_total_loop(stmt) else {
+            return;
+        };
+        let added = &self.src[(base + added.span.start) as usize..(base + added.span.end) as usize];
+        if !mentions(added, var) || has_try(stmt) {
+            return;
+        }
+        let diag = Diagnostic::warning(
+            HAND_ROLLED_PREFIX_SUM.code,
+            stmt.span,
+            format!("`{table}` is a running total built by hand: use `prefix(...)`"),
+        )
+        .with_help(
+            "`prefix(a)` (or `a.scan(+)`) builds every prefix sum in O(n); `.prefix(cut)` reads one and `.fold(range)` sums a range in O(1)",
+        );
+        self.push(&HAND_ROLLED_PREFIX_SUM, diag);
+    }
+}
