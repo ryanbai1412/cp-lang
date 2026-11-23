@@ -635,3 +635,13 @@ fn html_turns_resolved_links_into_anchors_on_the_right_page() {
         "{tree}"
     );
 }
+
+#[test]
+fn a_pub_fn_keeps_pub_in_its_signature() {
+    let module = extract(
+        "/// One.\npub fn one<T>(x: T) -> Int = 1\n\n/// Two.\nfn two() -> Int = 2\n",
+        "m.cp",
+    );
+    let sigs: Vec<&str> = module.items.iter().map(|i| i.signature.as_str()).collect();
+    assert_eq!(sigs, ["pub fn one<T>(x: T) -> Int", "fn two() -> Int"]);
+}

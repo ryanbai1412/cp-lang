@@ -330,10 +330,20 @@ impl Extractor<'_> {
 
     fn fn_item(&self, stmt: &Stmt, decl: &FnDecl) -> Item {
         let line = self.docs.line_of(self.code_span(stmt).start + self.base);
+        // `sig_span` can start at `fn`; the signature shows `pub` whenever
+        // the declaration has it, so a reader (and a generator) can tell.
+        let mut signature = squeeze(self.text(decl.sig_span));
+        let public = self
+            .text(self.code_span(stmt))
+            .trim_start()
+            .starts_with("pub ");
+        if public && !signature.starts_with("pub ") {
+            signature = format!("pub {signature}");
+        }
         let mut item = self.item(
             Kind::Fn,
             &decl.name.text,
-            squeeze(self.text(decl.sig_span)),
+            signature,
             line,
             self.first_line(stmt),
         );
