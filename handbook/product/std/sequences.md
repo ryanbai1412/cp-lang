@@ -57,8 +57,8 @@ entry):
   that's a detour (seq/U2).
 - `argmax` has no tie rule, so "the last maximum" or "widest" is a hand
   loop (seq/U3).
-- `a.scan(min).fold(l..r)` silently returns garbage: range folds subtract,
-  which is only right for a group (seq/U7). This is a P0.
+- `a.scan(min).fold(l..r)` traps, because a range fold subtracts. It should
+  be a compile error (seq/U7).
 - Seeded `fold`, `zip` and `perm_order` are in std but `cpl run` can't
   call them on lists or arrays (seq/U9, U15, U13).
 - `join` on a `List<Int>` is a type error (seq/U24).

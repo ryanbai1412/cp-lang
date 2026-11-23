@@ -17,25 +17,29 @@ use std.seq.{ends, RingRange, first_true}
 ///
 /// The folds run left to right: the value at cut `c.next` is `f(pre[c], a[c.r])`, so `f` need not
 /// be commutative. Without `from`, `f` must be an op with an identity (`+`, `*`, `min`, a
-/// `Monoid`); a plain closure with neither is a compile error. The table's `prefix(b)` is
-/// `pre[b]`; its `sum`, `get`, `suffix`, `cyclic_sum` and `first_*` subtract stored folds, so
-/// they are range folds only when `f` is `+` (a `Group`).
+/// `Monoid`); a plain closure with neither is a compile error. The table's `prefix(b)`, `all`
+/// and `first_*` read stored folds and work for any `f`. Its `fold`, `suffix` and `cyclic_sum`
+/// subtract them, so they need `f` to be `+` and trap otherwise: for a range `min`, use a
+/// `SparseTable` or `SegTree`.
 ///
 /// cost: \(O(n)\) calls of `f`; \(O(n)\) space
 /// empty: one cut, holding `from` or the identity
 /// order: keyed by `D.cuts`, left to right
-/// traps: never (beyond what `f` traps on)
+/// traps: never (beyond what `f` traps on); see `fold` for range reads
 /// example: `[3, 1, 4].scan(+).prefix(2) == 4`
 /// example: `[3, 1, 4].scan(+).fold(1..=2) == 5`
 /// example: `[3, 1, 4].scan(+, from: 10).prefix(0) == 10`
 pub fn scan<D, T, M>(self: [D]T, f: M, from: ?T = None) -> Prefix<D, T>:
     let m = Monoid<T>.of(f)
+    let sums = same(f, +)
     var p: [D.cuts]T = from ?? m.id
     var acc = from ?? m.id
     for (i, x) in self.items:
         acc = m.op(acc, x)
         p[i.r] = acc
-    Prefix<D, T>.of_cuts(p)
+    Prefix<D, T>.of_cuts(p, sums)
+
+fn same<A, B>(a: A, b: B) -> Bool = a == b
 
 /// Fill direction for an append-only `Prefix.filling(...)` table.
 pub enum FillOrder = Forward | Reverse
@@ -102,6 +106,7 @@ pub struct FillPrefix<D, T: Add + Sub>:
 /// `fold(rows, cols)`; it is never a 1-D table over the cells.
 pub struct Prefix<D, T: Add + Sub>:
     p: [D.cuts]T
+    sums: Bool
 
     /// Build 1-D prefix sums over `a: [D]T`; `Prefix(a)` calls it.
     ///
@@ -113,7 +118,7 @@ pub struct Prefix<D, T: Add + Sub>:
         var p: [D.cuts]T = T.zero
         for i in D:
             p[i.r] = p[i.l] + a[i]
-        Prefix(p)
+        Prefix(p, true)
 
     /// Create an append-only 1-D prefix/suffix sum table filled via `.set(i, x)` in `order`.
     ///
@@ -136,15 +141,17 @@ pub struct Prefix<D, T: Add + Sub>:
     /// example: `domain D = 0..3; let p = Prefix<D, Int>([D] v => 1 + Int(v)); p.prefix(0) == 0`
     pub fn prefix(self, b: Cut<D>) -> T = self.p[b]
 
-    fn of_cuts(p: [D.cuts]T) -> Prefix<D, T> = Prefix(p)
+    fn of_cuts(p: [D.cuts]T, sums: Bool) -> Prefix<D, T> = Prefix(p, sums)
 
     /// The sum of `a[i]` for `i` in `r`, or `0` when `r` is empty: `prefix(r.r) - prefix(r.l)`.
     ///
     /// cost: \(O(1)\)
     /// empty: zero
-    /// traps: never
+    /// traps: on a table from `scan(f)` with `f` other than `+`
     /// example: `domain D = 0..3; let p = Prefix<D, Int>([D] v => 1 + Int(v)); p.fold(1..=2) == 5`
+    /// trap: `[3, 1, 4].scan(min).fold(1..3)`
     pub fn fold(self, r: Range<D>) -> T:
+        assert sums, "a range read subtracts prefix folds, which is only right for a `scan(+)` table"
         if r.is_empty: return T.zero
         self.p[r.r] - self.p[r.l]
 
@@ -153,9 +160,10 @@ pub struct Prefix<D, T: Add + Sub>:
     ///
     /// cost: \(O(1)\)
     /// empty: zero for an empty span
-    /// traps: never
+    /// traps: on a table from `scan(f)` with `f` other than `+`
     /// example: `domain D = 0..3; let a: [D]Int = [D] v => 1 + Int(v); Prefix<D, Int>(a).cyclic_sum(a.ring.span(2, 2)) == 4`
     pub fn cyclic_sum(self, r: RingRange<D>) -> T:
+        assert sums, "a range read subtracts prefix folds, which is only right for a `scan(+)` table"
         if r.len == 0: return T.zero
         let (s, e) = (r.start, r.end)
         if s.ord <= e.ord: return self.p[e.r] - self.p[s.l]
@@ -174,9 +182,11 @@ pub struct Prefix<D, T: Add + Sub>:
     /// The sum of everything right of boundary `b`: `all - prefix(b)`, zero at the last cut.
     ///
     /// cost: \(O(1)\)
-    /// traps: never
+    /// traps: on a table from `scan(f)` with `f` other than `+`
     /// example: `domain D = 0..3; let p = Prefix<D, Int>([D] v => 1 + Int(v)); p.suffix(1) == 5`
+    /// trap: `[3, 1, 4].scan(max).suffix(1)`
     pub fn suffix(self, b: Cut<D>) -> T:
+        assert sums, "a range read subtracts prefix folds, which is only right for a `scan(+)` table"
         self.all - self.p[b]
 
     /// The sum of the entire domain: `prefix` at the last cut, zero for an empty domain.

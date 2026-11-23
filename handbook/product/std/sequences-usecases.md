@@ -55,9 +55,9 @@ needs are proven by the program case named under Evidence, which runs in CI.
 ### seq/U7: range folds from one prefix table
 
 - **Need:** sums of `a[l..r]` in \(O(1)\) after \(O(n)\).
-- **Design:** `a.scan(+)` then `.fold(l..r)`, `.prefix(c)`; a non-group op allows prefix reads only.
+- **Design:** `a.scan(+)` then `.fold(l..r)`, `.prefix(c)`. A table from another op answers prefix reads, and a range read from it is an error; today that error is a trap, and the goal is a compile error.
 - **Milestone:** M1-critical. **Status:** partial.
-- **Evidence:** program `spec/conformance/std-seq/product-sequences-supported.cp` (`+`); `a.scan(min).fold(2..5)` returns 0, silently (P0, probe x-scanmin).
+- **Evidence:** program `spec/conformance/std-seq/product-sequences-supported.cp` (`+`); trap case `spec/conformance/std-prefix/scan-min-range-fold-traps.cp`.
 
 ### seq/U8: prefix folds over a slice
 
