@@ -1459,6 +1459,14 @@ fn setup_unpacks_the_jetbrains_plugin_into_each_ide() {
     }
     assert!(!dir.join("data/JetBrains/IntelliJIdea2024.2").exists());
     assert!(!dir.join("data/JetBrains/consentOptions").exists());
+    // The IDE learns where the plugin's updates come from.
+    let updates =
+        std::fs::read_to_string(dir.join("config/JetBrains/IdeaIC2024.3/options/updates.xml"))
+            .unwrap();
+    assert!(
+        updates.contains("/download/edge/updatePlugins.xml"),
+        "{updates}"
+    );
     let said = text(&out.stdout);
     assert!(
         said.contains("IdeaIC2024.3") && said.contains("with LSP4IJ"),

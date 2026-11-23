@@ -362,6 +362,8 @@ struct Ide {
     name: String,
     plugins: PathBuf,
     log: Option<PathBuf>,
+    /// The IDE's settings folder, which holds `options/`.
+    config: Option<PathBuf>,
 }
 
 impl Ide {
@@ -424,6 +426,7 @@ fn jetbrains_ides() -> Vec<Ide> {
             }),
         )
     };
+    let config_root = config.clone();
     let mut names: Vec<String> = config
         .and_then(|c| std::fs::read_dir(c).ok())
         .into_iter()
@@ -445,6 +448,7 @@ fn jetbrains_ides() -> Vec<Ide> {
             Some(Ide {
                 plugins: plugins(&name)?,
                 log: log(&name),
+                config: config_root.as_ref().map(|root| root.join(&name)),
                 name,
             })
         })
@@ -541,6 +545,7 @@ fn install_jetbrains(zip: Option<PathBuf>, dir: Option<PathBuf>) -> Result<Strin
             name: String::new(),
             plugins: dir,
             log: None,
+            config: None,
         }],
         None => jetbrains_ides(),
     };
@@ -613,6 +618,12 @@ fn install_jetbrains(zip: Option<PathBuf>, dir: Option<PathBuf>) -> Result<Strin
             "installed CP Lang for {name} in {}, with LSP4IJ for `cpl lsp`\n",
             ide.plugins.shown()
         );
+        if let Some(config) = &ide.config {
+            if let Err(e) = add_plugin_host(config, &plugin_host()) {
+                report +=
+                    &format!("  (can't tell {name} where CP Lang's updates come from: {e})\n");
+            }
+        }
     }
     if !old.is_empty() {
         report += &format!(
@@ -622,6 +633,51 @@ fn install_jetbrains(zip: Option<PathBuf>, dir: Option<PathBuf>) -> Result<Strin
     }
     report += "restart the IDE, then `cpl setup jetbrains --check` says whether CP Lang loaded";
     Ok(report)
+}
+
+/// The custom plugin repository the release publishes for CP Lang. An IDE
+/// that knows it can update the plugin, and stops warning on every start that
+/// it can't tell where CP Lang was installed from.
+fn plugin_host() -> String {
+    format!(
+        "{}/download/edge/updatePlugins.xml",
+        crate::toolchain::releases_url()
+    )
+}
+
+/// Adds `host` to the plugin repositories in `config`'s `options/updates.xml`
+/// (Settings, Plugins, Manage Plugin Repositories), keeping what is there.
+fn add_plugin_host(config: &Path, host: &str) -> std::io::Result<()> {
+    let file = config.join("options/updates.xml");
+    let old = std::fs::read_to_string(&file).unwrap_or_default();
+    if old.contains(host) {
+        return Ok(());
+    }
+    let entry = format!("<option value=\"{host}\" />");
+    let hosts = format!("<option name=\"pluginHosts\">\n      <list>\n        {entry}\n      </list>\n    </option>");
+    let component = "<component name=\"UpdatesConfigurable\">";
+    let after = |at: usize| format!("{}\n        {entry}{}", &old[..at], &old[at..]);
+    let list = old.find("<option name=\"pluginHosts\">").and_then(|at| {
+        let rest = &old[at..];
+        let end = rest.find("</option>").unwrap_or(rest.len());
+        rest[..end].find("<list>").map(|l| at + l + "<list>".len())
+    });
+    let new = if let Some(at) = list {
+        after(at)
+    } else if let Some(at) = old.find(component) {
+        let at = at + component.len();
+        format!("{}\n    {hosts}{}", &old[..at], &old[at..])
+    } else if let Some(at) = old.rfind("</application>") {
+        format!(
+            "{}  {component}\n    {hosts}\n  </component>\n{}",
+            &old[..at],
+            &old[at..]
+        )
+    } else {
+        format!("<application>\n  {component}\n    {hosts}\n  </component>\n</application>\n")
+    };
+    std::fs::create_dir_all(file.parent().unwrap_or(config))?;
+    std::fs::write(file, new)
 }
 
 /// What `ide` lacks to load the plugin and run `cpl lsp`: its jar and LSP4IJ's.
@@ -781,6 +837,38 @@ mod tests {
     use super::*;
 
     #[test]
+    fn setup_adds_the_plugin_repository_and_keeps_the_ides_own() {
+        let config = std::env::temp_dir().join(format!("cpl-updates-{}", std::process::id()));
+        let file = config.join("options/updates.xml");
+        let host =
+            "https://github.com/ryanbai1412/cp-lang/releases/download/edge/updatePlugins.xml";
+        let hosts = |text: &str| text.matches("<option value=").count();
+        add_plugin_host(&config, host).unwrap();
+        let fresh = std::fs::read_to_string(&file).unwrap();
+        assert!(
+            fresh.contains(host) && fresh.contains("UpdatesConfigurable"),
+            "{fresh}"
+        );
+        add_plugin_host(&config, host).unwrap();
+        assert_eq!(std::fs::read_to_string(&file).unwrap(), fresh, "added once");
+        for (before, kept) in [
+            ("<application>\n  <component name=\"UpdatesConfigurable\">\n    <option name=\"pluginHosts\">\n      <list>\n        <option value=\"https://plugins.jetbrains.com/mine.xml\" />\n      </list>\n    </option>\n  </component>\n</application>\n", 2),
+            ("<application>\n  <component name=\"UpdatesConfigurable\">\n    <option name=\"CHECK_NEEDED\" value=\"false\" />\n  </component>\n</application>\n", 1),
+            ("<application>\n  <component name=\"Other\" />\n</application>\n", 1),
+        ] {
+            std::fs::write(&file, before).unwrap();
+            add_plugin_host(&config, host).unwrap();
+            let after = std::fs::read_to_string(&file).unwrap();
+            assert!(after.contains(host), "{after}");
+            assert_eq!(hosts(&after), kept, "{after}");
+            assert_eq!(after.matches("UpdatesConfigurable").count(), 1, "{after}");
+            assert!(after.contains("CHECK_NEEDED") == before.contains("CHECK_NEEDED"), "{after}");
+            assert!(after.contains("Other") == before.contains("Other"), "{after}");
+        }
+        std::fs::remove_dir_all(&config).unwrap();
+    }
+
+    #[test]
     fn vim_keeps_the_lsp_client_it_has_and_otherwise_gets_vim_lsp() {
         let vim = std::env::temp_dir().join(format!("cpl-vim-{}", std::process::id()));
         let plugin = |dir: &str, file: &str| {
@@ -876,6 +964,7 @@ mod tests {
             name: name.into(),
             plugins: PathBuf::new(),
             log: None,
+            config: None,
         };
         assert!(ide("IntelliJIdea2024.2").too_old() && ide("IdeaIC2023.3").too_old());
         assert!(

@@ -205,6 +205,7 @@ jobs:
       - name: Collect
         env:
           VERSION: ${{ needs.plan.outputs.version }}
+          CHANNEL: ${{ needs.plan.outputs.channel }}
         # Versioned names to keep, unversioned ones for the per-channel URL
         # (releases/download/<edge|vX>/cp-lang.vsix) the site and docs link to.
         run: |
@@ -217,6 +218,7 @@ jobs:
           cp dist/cp-lang.vsix "dist/cp-lang-$v.vsix"
           cp dist/cp-lang-jetbrains.zip "dist/cp-lang-jetbrains-$v.zip"
           python3 scripts/release/editors.py dist
+          python3 scripts/release/jetbrains_repo.py dist "$CHANNEL"
       - uses: actions/upload-artifact@v4
         with:
           name: editors
