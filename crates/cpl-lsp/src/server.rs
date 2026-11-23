@@ -1377,6 +1377,10 @@ fn diagnostic_json(diag: &Diagnostic, uri: &str, text: &str, lines: &LineIndex) 
         ("source".to_string(), "cpl".into()),
         ("message".to_string(), message.into()),
     ]);
+    if diag.code.0.starts_with('L') {
+        let href = format!("https://cp-lang.org/lints/{}", diag.code.0);
+        members.insert("codeDescription".to_string(), obj([("href", href.into())]));
+    }
     if !diag.labels.is_empty() {
         let related: Vec<Value> = diag
             .labels

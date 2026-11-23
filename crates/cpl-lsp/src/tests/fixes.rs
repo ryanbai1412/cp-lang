@@ -291,4 +291,13 @@ fn compound_self_ref_is_offered_only_where_the_place_is_not_optional() {
         .map(|d| d.at(&["range", "start", "line"]).as_u32())
         .collect();
     assert_eq!(lines, [Some(3)], "{diagnostics:?}");
+    let lint = diagnostics
+        .iter()
+        .find(|d| d.at(&["code"]).as_str() == Some("L0210"));
+    let href = lint.map(|d| d.at(&["codeDescription", "href"]).as_str());
+    assert_eq!(
+        href,
+        Some(Some("https://cp-lang.org/lints/L0210")),
+        "a lint links to its page"
+    );
 }
