@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- Sheriff, run 45103072712 (81cc0ca18): stale skill pages (seq, strings, README) from perf 81cc0ca18 and stdlib f7fe0cc3d; regenerated. Same run's `lsp_parity` red was 1a632121c, already reverted in cc42001b4. Owners told.
 - Sheriff, run 45102568095 (4d3b35448): reverted spec 1a632121c (`lsp_parity` fails on its new library case: a batched `cpl check` loses a library module's E0201) and regenerated stale `COVERAGE.md`; `cpl-conform all --check` 0 regressions. Spec, tools and stdlib told.
 - `land.sh` refuses a change that adds a `<<<<<<<`/`|||||||`/`>>>>>>>` line (after fb3eff861's marker turned every gate red); test `test_land_refuses_a_change_that_adds_a_conflict_marker`, 4 land tests pass.
 - Sheriff, run 45101880839 (30e596ab8): every gate red on a leftover conflict marker in `decisions.md` from tools fb3eff861; deleted the marker. Tools told.
