@@ -6,7 +6,7 @@ use super::Compiler;
 use crate::apply::{applies, operands};
 use crate::vm::helpers::quiet;
 use crate::vm::ir::*;
-use cpl_ir::{Dim, Expr, ExprKind, Ty};
+use cpl_ir::{Dim, Expr, ExprKind, Mutation, Ty};
 
 /// Whether comparing values of `ty` never runs user code (a struct's `eq`
 /// or `lt`), so the frame can stay in registers.
@@ -38,6 +38,9 @@ impl<'p, 'f> Compiler<'p, 'f> {
     /// `expr` into a fresh value register by `Op::ApplyV`, when it applies
     /// to its operands.
     pub(super) fn try_compile_apply_v(&mut self, expr: &'p Expr) -> Option<u16> {
+        if matches!(expr.kind, ExprKind::Mutate(..)) {
+            return self.try_compile_mutate_place(expr);
+        }
         if !applies(expr) {
             return None;
         }
@@ -65,6 +68,39 @@ impl<'p, 'f> Compiler<'p, 'f> {
         });
         let dst = self.alloc_v();
         self.emit(Op::ApplyV { idx, dst, sync }, expr.span);
+        for r in regs {
+            if r >= self.num_local_v {
+                self.emit(Op::ClearV { reg: r }, expr.span);
+            }
+        }
+        Some(dst)
+    }
+
+    /// The mutation `expr` into a fresh value register by
+    /// `Op::MutatePlace`, when the VM can walk to its place and the change
+    /// runs no user code.
+    pub(super) fn try_compile_mutate_place(&mut self, expr: &'p Expr) -> Option<u16> {
+        let ExprKind::Mutate(op, place, args) = &expr.kind else {
+            return None;
+        };
+        if *op == Mutation::Shuffle || !plain(&place.ty) || !args.iter().all(|a| plain(&a.ty)) {
+            return None;
+        }
+        let saved = (self.ops.len(), self.spans.len(), self.places.len());
+        let Some(path) = self.compile_place_path(place) else {
+            self.ops.truncate(saved.0);
+            self.spans.truncate(saved.1);
+            self.places.truncate(saved.2);
+            return None;
+        };
+        let regs: Vec<u16> = args.iter().map(|a| self.compile_expr_v(a)).collect();
+        let idx = self.applies.len() as u32;
+        self.applies.push(ApplySpec {
+            expr,
+            regs: regs.clone(),
+        });
+        let dst = self.alloc_v();
+        self.emit(Op::MutatePlace { idx, path, dst }, expr.span);
         for r in regs {
             if r >= self.num_local_v {
                 self.emit(Op::ClearV { reg: r }, expr.span);

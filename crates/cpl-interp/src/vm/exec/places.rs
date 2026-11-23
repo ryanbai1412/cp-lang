@@ -1171,6 +1171,31 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 };
                 regs_v[dst as usize] = val?;
             }
+            Op::MutatePlace { idx, path, dst } => {
+                let spec = &chunk.applies[idx as usize];
+                let cpl_ir::ExprKind::Mutate(op, place, _) = &spec.expr.kind else {
+                    return trap(spans[cur_pc], "internal: not a mutation");
+                };
+                let arg = |n: usize| {
+                    spec.regs
+                        .get(n)
+                        .map_or(Value::Unit, |&r| regs_v[r as usize].clone())
+                };
+                let (arg, arg2) = (arg(0), arg(1));
+                let program = self.program;
+                let pp = &chunk.places[path as usize];
+                let root = place_root_mut(pp.root, regs_v, &mut self.globals);
+                let cell = walk_place_mut(root, &pp.steps, regs_i, spans[cur_pc])?;
+                regs_v[dst as usize] = crate::mutation::mutate_cell(
+                    *op,
+                    cell,
+                    &place.ty,
+                    arg,
+                    arg2,
+                    program,
+                    spans[cur_pc],
+                )?;
+            }
             Op::FallbackStmt {
                 idx,
                 clear_from_v,

@@ -1313,3 +1313,15 @@ fn vm_defines_domains_itself() {
         include_str!("../../cpl-cli/tests/programs/vm_def_domain.out")
     );
 }
+
+#[test]
+fn vm_mutates_places_itself() {
+    let out = vm_runs_alone(
+        include_str!("../../cpl-cli/tests/programs/vm_mutate_place.cp"),
+        include_str!("../../cpl-cli/tests/programs/vm_mutate_place.in"),
+    );
+    assert_eq!(
+        out,
+        include_str!("../../cpl-cli/tests/programs/vm_mutate_place.out")
+    );
+}

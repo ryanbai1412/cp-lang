@@ -1481,6 +1481,13 @@ pub(crate) enum Op {
         dst: u16,
         sync: bool,
     },
+    /// `dst` = the mutation `applies[idx]` (an `ExprKind::Mutate`) of the
+    /// place at `path`, given its arguments in the spec's registers.
+    MutatePlace {
+        idx: u32,
+        path: u16,
+        dst: u16,
+    },
     FallbackStmt {
         idx: u32,
         clear_from_v: u16,

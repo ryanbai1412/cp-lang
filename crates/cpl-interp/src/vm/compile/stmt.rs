@@ -569,7 +569,10 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 } else if let ExprKind::Print(args, end) = &expr.kind {
                     self.compile_print(args, end.as_deref(), expr.span);
                 } else if let ExprKind::Mutate(op, place, args) = &expr.kind {
-                    if !self.try_compile_mutate_stmt(*op, place, args, expr.span) {
+                    if self.try_compile_mutate_stmt(*op, place, args, expr.span) {
+                    } else if let Some(dst) = self.try_compile_mutate_place(expr) {
+                        self.emit(Op::ClearV { reg: dst }, expr.span);
+                    } else {
                         self.emit_fallback_stmt(stmt);
                     }
                 } else if let ExprKind::Sort(place, cpl_ir::SortBy::Natural, desc) = &expr.kind {
