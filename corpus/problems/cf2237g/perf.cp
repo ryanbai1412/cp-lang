@@ -26,7 +26,7 @@ let primes = sieve.primes[..P]
 // Tuned: the smooth numbers grow in one list read from the front, as
 // orig.cpp does, instead of a new list per layer and per number, and the
 // symbol table is 32-bit.
-var smooth = [1]
+var smooth: List<1..=V> = [1]
 var at = 0
 while smooth.len < 1 << SYMBOL:
     let x = smooth[at]
@@ -62,7 +62,7 @@ for _ in 0..t:
         let n: Int = read()
         let a: [0..n]Int = read()
         let b = [
-            symbols[s] for s in recut([x for x in a], WORD, SYMBOL, ceil_div(n * WORD, SYMBOL))
+            symbols[s] for s in recut(a.collect(), WORD, SYMBOL, ceil_div(n * WORD, SYMBOL))
         ] + powers
         print(b.len)
         print(b)
