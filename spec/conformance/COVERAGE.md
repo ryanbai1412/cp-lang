@@ -7,7 +7,7 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 2283 (995 passing). Rules: 535.
+Cases: 2284 (995 passing). Rules: 535.
 
 ## Summary per chapter
 
@@ -19,7 +19,7 @@ Cases: 2283 (995 passing). Rules: 535.
 - R04b (04b-keys.md): 27 rules, 62 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R05 (05-ownership.md): 43 rules, 148 cases; 0 uncovered, 2 happy-path only, 0 negative only
 - R06 (06-control-functions.md): 24 rules, 75 cases; 0 uncovered, 1 happy-path only, 0 negative only
-- R07 (07-sequences.md): 88 rules, 110 cases; 0 uncovered, 2 happy-path only, 0 negative only
+- R07 (07-sequences.md): 88 rules, 111 cases; 0 uncovered, 1 happy-path only, 0 negative only
 - R08 (08-traits-generics.md): 29 rules, 77 cases; 0 uncovered, 2 happy-path only, 0 negative only
 - R09 (09-contexts-checks.md): 25 rules, 51 cases; 0 uncovered, 5 happy-path only, 0 negative only
 - R10 (10-io.md): 17 rules, 71 cases; 0 uncovered, 1 happy-path only, 0 negative only
@@ -43,14 +43,14 @@ negative case. Complete: rules with no gap in `rule-gaps.txt`.
 | R04b | 27 | 27 (100%) | 6 | 6 (100%) | 27 (100%) |
 | R05 | 43 | 43 (100%) | 23 | 21 (91%) | 41 (95%) |
 | R06 | 24 | 24 (100%) | 17 | 16 (94%) | 23 (95%) |
-| R07 | 88 | 88 (100%) | 24 | 22 (91%) | 86 (97%) |
+| R07 | 88 | 88 (100%) | 24 | 23 (95%) | 87 (98%) |
 | R08 | 29 | 29 (100%) | 15 | 13 (86%) | 27 (93%) |
 | R09 | 25 | 25 (100%) | 18 | 13 (72%) | 20 (80%) |
 | R10 | 17 | 17 (100%) | 9 | 8 (88%) | 16 (94%) |
 | R11 | 15 | 14 (93%) | 9 | 8 (88%) | 13 (86%) |
 | R12 | 17 | 17 (100%) | 6 | 6 (100%) | 17 (100%) |
 | R13 | 22 | 22 (100%) | 7 | 5 (71%) | 20 (90%) |
-| all | 535 | 534 (99%) | 229 | 200 (87%) | 505 (94%) |
+| all | 535 | 534 (99%) | 229 | 201 (87%) | 506 (94%) |
 
 ## Rules
 
@@ -415,7 +415,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R07.2.2 [2+ 0-]: | **indexed sequence** (`Indexed<K, T>`) | a sequence that also has O(1) `s[k]`, `.keys` a...
 - R07.2.3 [2+ 0-]: | **key** | what an indexed sequence is indexed by: a domain position (`V`) or an `Int` of...
 - R07.2.4 [1+ 0-]: | **collection** | a sequence that owns its elements; making one allocates | yes | `[V]T` ...
-- R07.2.5 [2+ 0-] *happy-path only*: | **range** | a run of a domain, `l..r`; a sequence of positions or cuts with no data behi...
+- R07.2.5 [2+ 1-]: | **range** | a run of a domain, `l..r`; a sequence of positions or cuts with no data behi...
 - R07.2.6 [1+ 1-]: | **view** | a sequence made from a source without copying it: O(1) to make, borrows the s...
 - R07.2.7 [1+ 1-]: | **slice** | the view `a[r]`: one contiguous range `r` of an indexed source | no | `a[l.....
 - R07.2.8 [1+ 0-]: | **adapter** | a method that turns a sequence into a view | | `.map`, `.filter`, `.rev`, ...
@@ -692,7 +692,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0405 Assigning a fixed field: 1 case(s)
 - E0406 Recursive `var` lambda: 1 case(s)
 - E0407 Duplicate enum variant tag: 1 case(s)
-- E0408 assign_into_range *(0.3)*: **no case**
+- E0408 assign_into_range *(0.3)*: 1 case(s)
 - E0501 Unsupported construct in backend: 7 case(s)
 - E0502 Non-ASCII character in source or string: 1 case(s)
 - E0503 Removed syntax from an older version: 6 case(s)
@@ -785,7 +785,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - W0101 Unused expression value: 1 case(s)
 - W0201 size_near_limit *(0.3)*: 1 case(s)
 
-2 of 139 testable codes have no negative case.
+1 of 139 testable codes have no negative case.
 
 ## Spec code blocks
 
