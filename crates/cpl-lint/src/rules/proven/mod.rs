@@ -21,6 +21,12 @@ pub(crate) fn proven_expr_ranges(file: &File) -> Vec<crate::ProvenExpr> {
     proven(file).exprs
 }
 
+/// Each `/` and `%` whose divisor the declared bounds let be 0, under the
+/// same scoping as [`proven_ranges`]: operator, divisor and its range.
+pub(crate) fn proven_divisors(file: &File) -> Vec<Divisor> {
+    proven(file).divisors
+}
+
 pub(crate) fn proven_loops(file: &File) -> Vec<crate::ProvenLoop> {
     proven(file).loops
 }
@@ -175,6 +181,10 @@ fn len_of(seq: &cpl_syntax::ast::Expr) -> cpl_syntax::ast::Expr {
 /// A sum of products of loop counts.
 type Terms = Vec<Vec<Factor>>;
 
+/// A `/` or `%` whose divisor can be 0: the operator, the divisor, and the
+/// divisor's range.
+pub(crate) type Divisor = ((u32, u32), (u32, u32), i128, i128);
+
 /// A `push` call's list, how often it runs, and the counts of the loops around it.
 type Push = (String, Option<u128>, Vec<Factor>);
 
@@ -190,6 +200,9 @@ struct Proven {
     /// Each list only pushed to in counted loops, with its most elements.
     lists: Vec<(String, u128)>,
     exprs: Vec<crate::ProvenExpr>,
+    /// Each `/` and `%` whose divisor the bounds let be 0: the operator,
+    /// the divisor, and the divisor's range.
+    divisors: Vec<Divisor>,
     loops: Vec<crate::ProvenLoop>,
     indexes: Vec<crate::ProvenIndex>,
     fns: Vec<FnCost>,
@@ -215,6 +228,7 @@ impl Default for Proven {
             pushed_calls: Vec::new(),
             lists: Vec::new(),
             exprs: Vec::new(),
+            divisors: Vec::new(),
             loops: Vec::new(),
             indexes: Vec::new(),
             fns: Vec::new(),
@@ -426,6 +440,26 @@ fn arith(base: u32, expr: &cpl_syntax::ast::Expr, bounds: &bounds::Bounds, out: 
                         hi: v.hi,
                         overflow: leaves.then(|| bounds.overflow(expr)).flatten(),
                     });
+                }
+            }
+            if matches!(op, BinOp::Div | BinOp::Rem) {
+                // Only a divisor read as declared: a value derived from one
+                // (`a.len`, `k - 1`) is usually nonzero for reasons the
+                // bounds can't see.
+                let declared = match &crate::walk::unparen(rhs).kind {
+                    ExprKind::Name(n) => bounds.is_input(n),
+                    _ => false,
+                };
+                if let Some(d) = bounds
+                    .expr(rhs)
+                    .filter(|d| declared && d.lo <= 0 && 0 <= d.hi && d.lo != d.hi)
+                {
+                    out.divisors.push((
+                        (base + op_span.start, base + op_span.end),
+                        (base + rhs.span.start, base + rhs.span.end),
+                        d.lo,
+                        d.hi,
+                    ));
                 }
             }
             arith(base, lhs, bounds, out);
@@ -1642,6 +1676,31 @@ fn narrow(
                     CmpOp::Eq => Some(CmpOp::Eq),
                     _ => None,
                 };
+                // `b != 0` trims an end of `b`'s range that is that constant.
+                if *op == CmpOp::Ne {
+                    for (name, other) in [(left, right), (right, left)] {
+                        let ExprKind::Name(name) = &name.kind else {
+                            continue;
+                        };
+                        let (Some(have), Some(c)) = (bounds.expr_name(name), bounds.expr(other))
+                        else {
+                            continue;
+                        };
+                        if c.lo != c.hi || block(name) || bounds.written_by_fn(name) {
+                            continue;
+                        }
+                        let (lo, hi) = if c.lo == have.lo {
+                            (have.lo + 1, have.hi)
+                        } else if c.lo == have.hi {
+                            (have.lo, have.hi - 1)
+                        } else {
+                            continue;
+                        };
+                        if lo <= hi {
+                            bounds.restrict(name, bounds::Interval { lo, hi });
+                        }
+                    }
+                }
                 if let Some(flipped) = flipped {
                     for (name, op, other) in [(left, *op, right), (right, flipped, left)] {
                         let ExprKind::Name(name) = &name.kind else {

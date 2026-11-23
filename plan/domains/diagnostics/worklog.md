@@ -463,3 +463,10 @@ Landed since 23:10: four type/flow lints from `spec/idioms/lints.md`, L0571 `neg
   newcomer; 4 dead lets in std (graph.cp `full`, `id`; interval.cp `sl`;
   lazy.cp `ls`) for stdlib, counted in corpus_warnings.txt. The std rises
   in L0503/L0536/L0549 that test reports are std drift, not this change.
+- Lint L0599 `int_div_possible_zero` (lints.md bound row): `a / b` or
+  `a % b` where `b` is a declared input whose range includes 0 (R0203 on
+  that input); help: guard with `if b != 0:` or declare `1..=hi`. The
+  bounds narrowing learns `b != c` at an end of `b`'s range, so the guard
+  silences it. Derived divisors (`a.len`, `k - 1`) are skipped: the first
+  cut flagged 18 corpus/std spots, all nonzero by logic the bounds can't
+  see. 0 hits on corpus, newcomer and std now.

@@ -50,6 +50,7 @@ mod test_count;
 mod types;
 mod unreachable;
 mod while_pop;
+mod zero_div;
 
 use crate::{Config, File, Finding};
 
@@ -98,6 +99,7 @@ pub(crate) fn run(file: &File, config: &Config) -> Vec<Finding> {
     findings.extend(hand_loops::check(file));
     findings.extend(hand_math::check(file));
     findings.extend(unreachable::check(file));
+    findings.extend(zero_div::check(file));
     findings.extend(hand_graph::check(file));
     findings.extend(hand_ds::check(file));
     findings.extend(hand_input::check(file));

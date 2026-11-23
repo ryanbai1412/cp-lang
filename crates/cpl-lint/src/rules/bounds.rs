@@ -632,6 +632,11 @@ impl Bounds {
         }
     }
 
+    /// Whether `name` is an input of a declared range, as read.
+    pub(crate) fn is_input(&self, name: &str) -> bool {
+        matches!(self.defs.get(name), Some(Def::Input(_)))
+    }
+
     pub(crate) fn bound_once(&self, name: &str) -> bool {
         self.file.bindings.get(name) == Some(&1)
     }
