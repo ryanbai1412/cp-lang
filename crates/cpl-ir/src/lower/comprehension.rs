@@ -384,6 +384,26 @@ impl Lowerer<'_> {
                 return self.build_table(grid, params, body, elem.as_ref(), None, span, whole);
             }
         }
+        // `[P] (a, d) => …` with `domain P = (A, Dir)`: the names unpack the
+        // position into its parts, as `for (a, d) in P` does (R01.8.2).
+        if let [DimSpec::Pos(p)] = dims.as_slice() {
+            let parts = self.product_domains.get(p).map_or(0, Vec::len);
+            if params.len() > 1 && params.len() == parts {
+                let unpack = ast::Pattern {
+                    kind: ast::PatternKind::Tuple(params.to_vec()),
+                    span: params[0].span,
+                };
+                return self.build_table(
+                    dims,
+                    &[unpack],
+                    body,
+                    elem.as_ref(),
+                    None,
+                    span,
+                    Whole::No,
+                );
+            }
+        }
         self.build_table(dims, params, body, elem.as_ref(), None, span, Whole::No)
     }
 

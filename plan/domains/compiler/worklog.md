@@ -700,3 +700,5 @@ on input `2 / 1 / 2` prints `7` once in `cpl run` and in the C++ (`cpl_main` cal
 
 2026-11-23: `P.at((r - 1, c))` on `domain P = (R, C)` was E0302 in the IR, which lowered every `at` as one `Int` label. `domain_at` now takes a product's parts tuple and gives `None` when any part is outside its factor, so `(-1, c)` never lands on a neighbouring row (R04.2.10; `core-04/prod-at-neighbour`; parity in `programs/product_at.cp`). The product tuple helpers moved to `lower/product.rs`.
 - 2026-11-23 (group a): a `let` bound to `a.rev` remembers it is reversed (lower/declare.rs, `declare` moved out of mod.rs), so its `.keys` walk the source keys backwards like the unnamed `a.rev.keys` (R07.4.7). Case core-07/rev-keeps-keys; parity program rev_named_keys.
+
+2026-11-23: `[P] (i, d) => e` over `domain P = (A, Dir)` was E0303 ("runs over 1 domains but names 2 positions"), though `[A, Dir] (i, d) => e` is the same table (R01.8.1, R01.8.2). `table` now reads k names over one k-part product position as a tuple pattern that unpacks it, as `for (i, d) in P` does (`core-04/table-over-named-product-unpacks`; parity in `programs/table_unpacks_product.cp`).
