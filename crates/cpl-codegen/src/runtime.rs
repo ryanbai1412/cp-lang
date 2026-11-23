@@ -1191,29 +1191,22 @@ template <class K, class H = CpHash> struct HashSet {
         code: "\
 template <class T> struct Range {
     T lo = 0, hi = 0;
-    static Range make(T lo, T hi) {
-        using U = std::conditional_t<sizeof(T) == 16, unsigned __int128, unsigned long long>;
-        if (hi > lo && (U)hi - (U)lo > (~(U)0 >> 1)) fail(\"range span overflow\");
-        return {lo, hi};
-    }
+    static Range make(T lo, T hi) { return {lo, hi}; }
+    using U = std::conditional_t<sizeof(T) == 16, unsigned __int128, unsigned long long>;
+    U span() const { return hi <= lo ? 0 : (U)hi - (U)lo; }
     ll len() const {
-        if (hi <= lo) return 0;
-        if constexpr (sizeof(T) == 16) {
-            auto d = (unsigned __int128)hi - (unsigned __int128)lo;
-            if (d > (~0ULL >> 1)) fail(\"range length overflow\");
-            return (ll)d;
-        }
-        return (ll)hi - (ll)lo;
+        if (span() > (~0ULL >> 1)) fail(\"range length overflow\");
+        return (ll)span();
     }
     bool empty() const { return hi <= lo; }
     bool has(T x) const { return x >= lo && x < hi; }
     std::optional<T> first() const { return lo < hi ? std::optional<T>(lo) : std::nullopt; }
     std::optional<T> last() const { return lo < hi ? std::optional<T>((T)(hi - 1)) : std::nullopt; }
     T operator[](ll i) const { return (T)((ll)lo + i); }
-    std::optional<T> get(ll i) const { return i < 0 || i >= len() ? std::optional<T>() : std::optional<T>((T)((ll)lo + i)); }
+    std::optional<T> get(ll i) const { return i < 0 || (U)i >= span() ? std::optional<T>() : std::optional<T>((T)(lo + (T)i)); }
     std::vector<T> rev() const {
         std::vector<T> out;
-        if (lo < hi) { out.reserve((size_t)((ll)hi - (ll)lo)); for (T x = hi; x-- > lo;) out.push_back(x); }
+        if (lo < hi) { out.reserve((size_t)len()); for (T x = hi; x-- > lo;) out.push_back(x); }
         return out;
     }
     bool operator==(const Range& o) const { return lo == o.lo && hi == o.hi; }

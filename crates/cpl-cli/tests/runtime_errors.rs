@@ -398,12 +398,12 @@ fn wide_range_overflow_traps_in_interp_and_cpp() {
         (
             "let lo = -6_000_000_000_000_000_000\nlet hi = 6_000_000_000_000_000_000\nprint((lo..=hi).first_true(x => x >= 7)!)\n",
             "integer overflow: range",
-            "range span overflow",
+            "range length overflow",
         ),
         (
             "let big = I128(1_000_000_000_000_000_000) * I128(1_000_000_000_000_000_000) * I128(100)\nprint(((-big)..=big).first_true(x => x >= I128(7))!)\n",
             "integer overflow: range",
-            "range span overflow",
+            "range length overflow",
         ),
         (
             "let lo = I128(-4_000_000_000) * I128(10_000_000_000)\nlet r = lo..=I128(0)\nprint(r.len)\n",

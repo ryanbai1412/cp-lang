@@ -2056,22 +2056,10 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 if matches!(&e.ty, Ty::Range(inner) if **inner == Ty::I128) {
                     let lo = self.eval(lo)?.i128();
                     let hi = self.eval(hi)?.i128();
-                    if hi > lo && hi.checked_sub(lo).is_none() {
-                        return trap(
-                            e.span,
-                            format!("integer overflow: range `{lo}..{hi}` span does not fit in an `I128` (128 bits)"),
-                        );
-                    }
                     Value::Range128(lo, hi)
                 } else {
                     let lo = self.eval(lo)?.int();
                     let hi = self.eval(hi)?.int();
-                    if hi > lo && hi.checked_sub(lo).is_none() {
-                        return trap(
-                            e.span,
-                            format!("integer overflow: range `{lo}..{hi}` span does not fit in an `Int` (64 bits)"),
-                        );
-                    }
                     Value::Range(lo, hi)
                 }
             }
@@ -2482,7 +2470,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
             }
             Value::Range(lo, hi) => {
                 let index = values[0].int();
-                let len = (hi - lo).max(0);
+                let len = hi.saturating_sub(*lo).max(0);
                 if index < 0 || index >= len {
                     trap(
                         span,

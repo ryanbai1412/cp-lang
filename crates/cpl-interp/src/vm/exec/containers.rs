@@ -27,7 +27,16 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     Value::StrView(view) => view.len as i64,
                     Value::Map(m) => m.len() as i64,
                     Value::Set(s) => s.len() as i64,
-                    Value::Range(lo, hi) => (hi - lo).max(0),
+                    Value::Range(lo, hi) if lo >= hi => 0,
+                    Value::Range(lo, hi) => match hi.checked_sub(*lo) {
+                        Some(d) => d,
+                        None => {
+                            return trap(
+                                spans[cur_pc],
+                                format!("integer overflow: range `{lo}..{hi}` length does not fit in an `Int` (64 bits)"),
+                            );
+                        }
+                    },
                     Value::Range128(lo, hi) if lo >= hi => 0,
                     Value::Range128(lo, hi) => {
                         match hi.checked_sub(*lo).and_then(|d| i64::try_from(d).ok()) {
@@ -828,14 +837,6 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
             Op::MakeRange { dst, r_lo, r_hi } => {
                 let lo = regs_i[r_lo as usize];
                 let hi = regs_i[r_hi as usize];
-                if hi > lo && hi.checked_sub(lo).is_none() {
-                    return trap(
-                            spans[cur_pc],
-                            format!(
-                                "integer overflow: range `{lo}..{hi}` span does not fit in an `Int` (64 bits)"
-                            ),
-                        );
-                }
                 regs_v[dst as usize] = Value::Range(lo, hi);
             }
             Op::CmpOptI {

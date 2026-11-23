@@ -229,7 +229,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                     Value::Array(array) if array.dims.len() == 1 => (at >= 0 && at < array.dims[0])
                         .then(|| array.get_unchecked_val(at as usize)),
                     Value::Range(lo, hi) => {
-                        let len = (hi - lo).max(0);
+                        let len = hi.saturating_sub(*lo).max(0);
                         (at >= 0 && at < len).then_some(Value::Int(lo + at))
                     }
                     _ => None,
@@ -651,7 +651,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                     Value::ListView(v) => (v.first_key(), v.len as i64, v.rev),
                     Value::StrView(v) => (v.lo as i64, v.len as i64, v.rev),
                     Value::MutView(v) => (v.lo as i64, v.len as i64, false),
-                    Value::Range(lo, hi) => (*lo, (hi - lo).max(0), false),
+                    Value::Range(lo, hi) => (*lo, hi.saturating_sub(*lo).max(0), false),
                     _ => return trap(span, "keys need a slice"),
                 };
                 Value::Int(if op == Builtin::KeyPos {
@@ -916,7 +916,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
             }
             Builtin::RangeRev => match first {
                 Value::Range(lo, hi) => {
-                    let mut out = Vec::with_capacity((hi - lo).max(0) as usize);
+                    let mut out = Vec::with_capacity(hi.saturating_sub(lo).max(0) as usize);
                     let mut v = hi - 1;
                     while v >= lo {
                         out.push(Value::Int(v));
@@ -928,7 +928,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                     Value::List(Rc::new(out))
                 }
                 Value::Range128(lo, hi) => {
-                    let mut out = Vec::with_capacity((hi - lo).max(0) as usize);
+                    let mut out = Vec::with_capacity(hi.saturating_sub(lo).max(0) as usize);
                     let mut v = hi - 1;
                     while v >= lo {
                         out.push(Value::I128(v));

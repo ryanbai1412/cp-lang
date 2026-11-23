@@ -13,6 +13,7 @@ pub use laws::lower_sampling_laws;
 pub(in crate::lower) use laws::Stress;
 mod items;
 mod prelude;
+mod range_room;
 mod rev;
 mod seq;
 mod user;

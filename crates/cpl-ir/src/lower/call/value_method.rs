@@ -1448,21 +1448,7 @@ impl<'a> Lowerer<'a> {
                         span,
                     );
                     out.push(Stmt::Let(k_s, Some(k_clamped)));
-                    let diff = lw.mk(
-                        ExprKind::Binary(
-                            BinOp::Sub,
-                            Box::new(lw.local(hi_s, span)),
-                            Box::new(lw.local(lo_s, span)),
-                        ),
-                        Ty::Int,
-                        span,
-                    );
-                    let zero2 = lw.mk(ExprKind::Int(0), Ty::Int, span);
-                    let avail = lw.mk(
-                        ExprKind::Builtin(Builtin::Max, vec![diff, zero2]),
-                        Ty::Int,
-                        span,
-                    );
+                    let avail = lw.range_room(lo_s, hi_s, span);
                     let shift = lw.mk(
                         ExprKind::Builtin(Builtin::Min, vec![avail, lw.local(k_s, span)]),
                         Ty::Int,
