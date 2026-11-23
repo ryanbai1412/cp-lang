@@ -1,13 +1,10 @@
-// Codeforces 2207 A — 1-1
-//
-// Operations only flip the middle bit of `101 <-> 111`, so maximal runs of `1`s
-// separated by at most one `0` merge into independent contiguous `1`-blocks
-// with fixed endpoints.
-// - First pass (`101 -> 111`): fills every sandwiched `0`, reaching the unique
-//   maximum `1`-count.
-// - Second pass (`111 -> 101` left-to-right): reduces each length-`L` block of
-//   `1`s to `1010...1` with `L / 2 + 1` ones, which is minimum because no two
-//   adjacent `0`s can be created inside a block.
+// Source: Codeforces 2207A (1-1), https://codeforces.com/contest/2207/problem/A
+// Problem: a binary string s, 3 <= n <= 100. A move sets any s_i with s_{i-1} = s_{i+1} = 1 to 0
+//   or 1. Print the least and the most 1s reachable. Multitest, t <= 500.
+// Solution: the end 1s of each maximal run of 1s with single-0 gaps never change, so each such
+//   block is independent. Filling every 0 between two 1s left to right gives the most; then
+//   clearing every 1 between two 1s left to right leaves 1010...1, floor(L / 2) + 1 ones per
+//   block of length L, the least since no move makes two adjacent 0s inside a block. O(n).
 
 @!multitest
 let n: 3..=100 = read()

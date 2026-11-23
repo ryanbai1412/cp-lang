@@ -1,5 +1,10 @@
-// CCC 2022 S3 Good Samples: write n notes with pitches 1..=m so that exactly
-// k runs of consecutive notes have all pitches different, or report -1.
+// Source: CCC 2022 S3 (Good Samples), https://dmoj.ca/problem/ccc22s3
+// Problem: print n <= 1e6 pitches in 1..=m (m <= n) with exactly k <= 1e18 good samples
+//   (contiguous runs with no repeated pitch), or -1 if there is no such piece.
+// Solution: the good samples ending at note i are 1 plus the distinct notes just before it, so
+//   1 to min(i + 1, m), and repeating the note `take` back gives exactly take. Each note in
+//   turn takes the most it can (a fresh pitch of the cycle when it takes all) while leaving 1
+//   for every later note; print -1 unless that uses up exactly k. O(n).
 let n: 1..=1e6 = read()
 let m: 1..=1e6 = read()
 let k: 1..=1e18 = read()

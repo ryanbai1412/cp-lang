@@ -1,4 +1,9 @@
-// Med, in the forms proto/cpc builds today. See ../coci21c6p1.cp.
+// Source: COCI 2021/2022 Round 6 P1 (Med), https://dmoj.ca/problem/coci21c6p1
+// Problem: n <= 500 beekeepers with distinct names and five round scores in 0..=500; the sixth
+//   round adds 0..=500 more. Ranking is by total, ties to the smaller name. For each, print the
+//   best and the worst possible final place.
+// Solution: best place: they get 500 and everyone else 0; worst: they get 0 and everyone else
+//   500. Each place is 1 + the number ranked ahead, counted directly: O(n^2).
 // original: corpus/submissions/4529987.cpp
 let n: Int = read()
 var name: List<Str> = []

@@ -1,5 +1,9 @@
-// Educational DP U, Grouping: split n rabbits into groups. A group scores
-// a[i][j] for each pair inside it. Maximise the total.
+// Source: AtCoder Educational DP Contest U (Grouping), https://atcoder.jp/contests/dp/tasks/dp_u
+// Problem: n <= 16 rabbits with symmetric scores |a[i][j]| <= 1e9, a[i][i] = 0. Split them into
+//   groups, earning a[i][j] for every pair in one group; print the largest total.
+// Solution: score[g], what subset g earns as one group, sums its pairs: O(2^n n^2). Then
+//   best[s] = max over nonempty subsets g of s of score[g] + best[s - g], g being the group
+//   that stays together; walking the subsets of every subset costs O(3^n).
 // original: corpus/submissions/4131872.cpp
 let n: 1..=16 = read()
 domain R = 0..n

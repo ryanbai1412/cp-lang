@@ -1,9 +1,10 @@
-// Codeforces 2262 A1 — Uncovered Floor-Division Buckets
-//
-// `a[i] = floor(x / i)` confines `x` to `[a[i] * i, (a[i] + 1) * i)`. With
-// `n <= 200_000` and `a[i] <= 10^9`, `(a[i] + 1) * i <= 2e14` fits in 64-bit
-// `Int`. Mark each bucket clamped to `0..=n` with a difference array and list
-// all uncovered positions in `0..n`.
+// Source: Codeforces 2262A1 (Floor of MEX, easy), https://codeforces.com/contest/2262/problem/A1
+// Problem: f(S, x) = mex of {floor(y / x) : y in S}. Given a_k = f(A, k) for k = 1..=n (n <= 1e5,
+//   0 <= a_k <= n) of a hidden A within 0..n, print any B within 0..n with f(B, k) = a_k for
+//   all k: its size, then its elements. Multitest, sum n <= 1e5.
+// Solution: f(B, k) = a_k needs no y in the bucket [a_k k, (a_k + 1) k) and every lower bucket
+//   hit. B = every y in 0..n outside all those forbidden buckets contains the valid A, so it
+//   hits every bucket A hits. Mark the buckets, clamped to 0..=n, in a difference array: O(n).
 
 @!multitest
 let n: 1..=200_000 = read()
