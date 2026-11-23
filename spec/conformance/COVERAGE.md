@@ -7,7 +7,7 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 2697 (995 passing). Rules: 570.
+Cases: 2698 (995 passing). Rules: 570.
 
 ## Summary per chapter
 
@@ -19,7 +19,7 @@ Cases: 2697 (995 passing). Rules: 570.
 - R04b (04b-keys.md): 27 rules, 66 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R05 (05-ownership.md): 43 rules, 160 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R06 (06-control-functions.md): 24 rules, 97 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R07 (07-sequences.md): 90 rules, 149 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R07 (07-sequences.md): 90 rules, 150 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R08 (08-traits-generics.md): 29 rules, 91 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R09 (09-contexts-checks.md): 26 rules, 56 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R10 (10-io.md): 19 rules, 106 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -500,7 +500,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R07.7.6 [1+ 0-]: | `s.pairs()` | `Seq<(T, T)>`, every pair `x` before `y` | \(O(n^2)\) to walk, so a call
 - R07.7.7 [1+ 0-]: | `s.with_prev` | `Seq<(?T, T)>`, starting `(None, first)` | path walks that treat the fir...
 - R07.7.8 [1+ 0-]: | `s.cyclic_pairs` | `Seq<(T, T)>`, plus (last, first) | polygons, rings
-- R07.7.9 [2+ 0-]: | `a.windows(k)`, `a.chunks(k)` | `Seq` of views of `a` | each view keeps `a`'s indices
+- R07.7.9 [3+ 0-]: | `a.windows(k)`, `a.chunks(k)` | `Seq` of views of `a` | each view keeps `a`'s indices
 - R07.7.10 [5+ 1-]: | `a.runs(by: k)` | `Seq` of views: maximal equal-key runs | `.keys` of each is its range
 - R07.7.11 [1+ 0-]: | `s.step(k)` | every k-th element | ranges and indexed
 - R07.8.1 [2+ 0-]: `.collect()` and the constructors are one operation, \(O(n)\) and allocating; the postfix ...
