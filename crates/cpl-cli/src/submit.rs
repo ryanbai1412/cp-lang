@@ -206,13 +206,11 @@ pub(crate) fn list_judges(
                 ("stack", text(&profile.stack_text())),
                 (
                     "thread_stack_mb",
-                    profile
-                        .thread_stack
-                        .map_or(Value::Null, |b| int(b as u64 >> 20)),
+                    profile.thread_stack.map_or(Value::Null, |b| int(b >> 20)),
                 ),
                 ("source_limit_kb", int(profile.limit() as u64 / 1024)),
-                ("time_ms", int(profile.time_ms as u64)),
-                ("memory_mb", int(profile.memory_mb as u64)),
+                ("time_ms", int(profile.time_ms)),
+                ("memory_mb", int(profile.memory_mb)),
                 ("evidence", text(&profile.evidence)),
             ]));
             continue;
