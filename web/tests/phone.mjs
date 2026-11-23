@@ -12,7 +12,13 @@ const routes = ['/', '/docs/guides/tour', '/docs/ref/std/algebra', '/learn', '/l
   '/learn/language/types-widths-proofs',
   '/learn/language/values',
   '/learn/language/standard-library',
-  '/learn/language/cpp-and-the-judge', '/trace.html'];
+  '/learn/language/cpp-and-the-judge',
+  '/learn/language/functions-and-closures',
+  '/learn/language/sequences-and-views',
+  '/learn/language/traits-and-generics',
+  '/learn/language/input-and-output',
+  '/learn/language/modules-and-prelude',
+  '/learn/language/library-powers', '/trace.html'];
 const { page, errors } = await open();
 await page.setViewportSize({ width: 390, height: 844 });
 let bad = 0;

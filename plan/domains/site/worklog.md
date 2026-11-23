@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- Phone check covers the 6 new Language chapters: `CDP=http://localhost:29229 pnpm phone` 39/39 routes fit 390 px.
 - Landed `site: language chapter on library powers` (spec ch 12): 4 runnable examples (user `+`, `impl Show`, `Monoid` with `SegTree`, a generator with adapters), with a 'Why' citing decisions 127, 128 and 133. Every `spec/core` part from 02 to 12 now has a Language chapter. Filed with stdlib: W10's `SegTree(op:, id:)` doesn't exist.
 - Landed `site: language chapter on modules and the prelude` (spec ch 11): 4 runnable examples (hoisting, inline `mod`, `use std.segtree`, a local shadowing a prelude name), with a 'Why' citing decisions 150 and 241. Filed with compiler: a runtime domain used above its declaration reads as empty.
 - Landed `site: language chapter on input and output` (spec ch 10): 4 runnable examples (multitest, enum command stream, printing with `yes`/`none:`/padding, `io(base: 1)`), with a 'Why' citing decisions 136 and 161. Filed with compiler: `{s:6}` on a `Str` is E0302.
