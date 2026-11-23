@@ -7,7 +7,7 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 2700 (995 passing). Rules: 570.
+Cases: 2705 (995 passing). Rules: 570.
 
 ## Summary per chapter
 
@@ -981,6 +981,8 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 
 ## Core cases without a `// rule:` line
 
+- core-01/for-filter-on-inner-clause.cp
+- core-01/inline-if-binds-loosest.cp
 - core-01/while-let-tuple-pattern.cp
 - core-02/alias-walks-as-aliased-type.cp
 - core-02/generic-variant-compares-with-typed-side.cp
@@ -992,10 +994,12 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - core-03/mod-array-fills-from-int-literal.cp
 - core-04/char-from-idx.cp
 - core-04/list-literal-sizes-a-generic-domain.cp
+- core-04/literal-range-table-int-keys.cp
 - core-07/yielded-closure-writes-generator-local.cp
 - core-08/has-bound-generic-impl.cp
 - core-09/asin-outside-domain-trap.cp
 - core-09/exp-ln-hypot.cp
 - core-09/ln-of-negative-trap.cp
 - core-09/trig-intrinsics.cp
+- core-10/tuple-dependent-bound-in-block.cp
 - core-12/builtin-number-from-int.cp

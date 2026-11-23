@@ -263,7 +263,6 @@ documented. The stdlib's own gaps are in `std/GAPS.md`.
 - core-07/range-folds-are-ranges-own.cp: stdlib
 - core-07/slice-past-source-traps.cp: compiler
 - core-07/tally-is-counter.cp: stdlib
-- core-07/list-scan-indexed-by-count.cp: stdlib
 - core-07/tally-missing-key-is-zero.cp: stdlib
 - core-07/heap-by-desc-lambda.cp: compiler
 - core-08/const-param-arithmetic.cp: compiler
@@ -282,6 +281,9 @@ documented. The stdlib's own gaps are in `std/GAPS.md`.
 - core-10/test-position-stored-above-multitest.cp: compiler
 - core-10/read-range-arithmetic-lower-bound.cp: compiler
 - core-10/print-view-honours-sep.cp: compiler
+- core-01/for-filter-on-inner-clause.cp: compiler
+- core-10/tuple-dependent-bound-in-block.cp: compiler
+- std-seq/min-of-empty-list-is-none.cp: compiler
 - core-11/mod-uses-sibling.cp: compiler
 - core-11/prelude-has-components.cp: compiler
 - core-11/runtime-domain-use-before-definition.cp: compiler
@@ -294,7 +296,6 @@ documented. The stdlib's own gaps are in `std/GAPS.md`.
 - std-dp/interval-ranges-deque-game.cp: stdlib
 - std-grid/step-on-product-domain-position.cp: stdlib
 - std-prefix/first-ge-negative-element-traps.cp: stdlib
-- std-prefix/scan-at-position-folds-through.cp: stdlib
 - std-segtree/closure-op-picks-index.cp: compiler
 - std-strings/split-trailing-and-leading.cp: stdlib
 - std-heap/drain-break-keeps-the-rest.cp: compiler

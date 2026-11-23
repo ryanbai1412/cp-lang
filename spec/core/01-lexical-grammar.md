@@ -258,6 +258,7 @@ So `-x ** 2` is `-(x ** 2)`, `not a == b` is `not (a == b)`, and
 <!-- spec-only: syntax tour with `...` placeholder bodies -->
 ```
 if c: a elif d: b else: e           // inline form is an expression
+(if c: a else: b) >> i              // it binds loosest: `else:` takes the rest unless parenthesized
 if let v = m.get(k), v > 0: ...     // header binders, comma conditions
 while let x = q.pop(): ...
 while let (d, u) = h.pop(): ...   // any pattern binds, tuples included

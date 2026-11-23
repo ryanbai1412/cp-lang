@@ -1,4 +1,4 @@
-// expect: ok, output "[1, 5, 3]"
+// expect: ok, output "1 5 3"
 // rule: 05.8.2
 fn merge_into(mut dst: Int, src: Int): dst += src
 var c = [1, 2, 3]

@@ -7961,3 +7961,13 @@ always on a manual run), and always run the LSP handshake against their own
   escapes included (round 23, H24, the one contradiction). Everything else
   in the round's 30 holes was a correct guess or a route.
 - **Reverse.** Make the charset a raw literal.
+
+## 382. Rebuild round 24: interactive multitest; routes (spec, 2026-11-23)
+
+- **Decision.** Under `@!multitest` the interactor harness sends the
+  program the test count and runs the `@interactor` once per test; the
+  reader's run confirmed it. `let wire = Wire()` is enough; a marker-or-number
+  reply is read as `Str` and parsed. The inline `if` binds loosest
+  (already rule 16 of the precedence table), now shown in 1.7. `cpl build`
+  writes `d.cpp` beside the source; `-o -` gives stdout.
+- **Reverse.** Have the interactor send the count itself.
