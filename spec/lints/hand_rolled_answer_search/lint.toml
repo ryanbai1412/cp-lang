@@ -1,0 +1,4 @@
+code = "L0520"
+level = "warn"
+title = "Hand-rolled binary search"
+summary = "manual `while lo < hi` midpoint loop over a predicate: use `r.first_true`/`r.last_true`"

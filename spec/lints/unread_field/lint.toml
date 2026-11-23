@@ -1,0 +1,4 @@
+code = "L0202"
+level = "warn"
+title = "Struct field never read"
+summary = "a struct field that is never read"

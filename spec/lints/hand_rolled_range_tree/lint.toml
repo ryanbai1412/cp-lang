@@ -1,0 +1,4 @@
+code = "L0514"
+level = "warn"
+title = "Hand-rolled Fenwick or segment tree"
+summary = "manual BIT (`p += p & -p`) or segment-tree (`2 * p` / `2 * p + 1`) loop: use `std.fenwick` / `std.segtree` / `std.lazy`"

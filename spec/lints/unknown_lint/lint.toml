@@ -1,0 +1,4 @@
+code = "L0001"
+level = "warn"
+title = "Unknown lint name"
+summary = "`with lint` or `cp.toml` names a lint that does not exist"

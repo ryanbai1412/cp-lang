@@ -1,0 +1,4 @@
+code = "L0511"
+level = "warn"
+title = "`preorder` or `postorder` of a rooted tree"
+summary = "`t.preorder` / `t.postorder`: iterate the preorder array `t.at` (`t.at.rev` for children first)"

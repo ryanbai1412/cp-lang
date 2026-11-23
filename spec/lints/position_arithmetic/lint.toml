@@ -1,0 +1,4 @@
+code = "L0101"
+level = "warn"
+title = "Position arithmetic via `.ord`"
+summary = "`V(v.ord + 1)` builds a position from a number"

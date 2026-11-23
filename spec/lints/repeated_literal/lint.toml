@@ -1,0 +1,4 @@
+code = "L0506"
+level = "warn"
+title = "Repeated large literal"
+summary = "a big literal (a bound or modulus) written in several places"

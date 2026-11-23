@@ -1,0 +1,4 @@
+code = "L0210"
+level = "warn"
+title = "Assignment of a place in terms of itself"
+summary = "`x = x + e` or `cnt[v] = cnt[v] % m` is the compound assignment `x += e`"

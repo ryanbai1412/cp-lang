@@ -1,0 +1,4 @@
+code = "L0413"
+level = "warn"
+title = "`@memo` table exceeds memory budget"
+summary = "a `@memo` whose table does not fit in memory at the input bounds"

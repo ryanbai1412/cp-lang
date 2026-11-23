@@ -1,0 +1,4 @@
+code = "L0502"
+level = "warn"
+title = "Discarded function return value"
+summary = "`let _ =` throws away what a fn of this file returns"

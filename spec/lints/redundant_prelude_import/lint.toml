@@ -1,0 +1,4 @@
+code = "L0208"
+level = "warn"
+title = "`use` of a name the prelude already provides"
+summary = "`use std.tree.{Rooted}` imports what the prelude gives every program"

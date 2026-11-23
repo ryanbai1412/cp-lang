@@ -1,0 +1,4 @@
+code = "L0512"
+level = "warn"
+title = "Non-canonical domain/sequence method spelling"
+summary = "`D.sorted(by:)` -> `D.sort(by:)`; `xs.first(where: p)` -> `xs.first(p)`"

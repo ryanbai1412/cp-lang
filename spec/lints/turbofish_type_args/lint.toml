@@ -1,0 +1,4 @@
+code = "L0204"
+level = "warn"
+title = "Turbofish `::<...>` on generic call"
+summary = "`f::<T>(...)`: canonical generic call spelling is `f<T>(...)`"

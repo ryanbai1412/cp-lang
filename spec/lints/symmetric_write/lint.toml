@@ -1,0 +1,4 @@
+code = "L0503"
+level = "warn"
+title = "Duplicate symmetric write"
+summary = "the same fact written for `(u, v)` and then `(v, u)`"

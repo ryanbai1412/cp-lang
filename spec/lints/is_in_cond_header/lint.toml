@@ -1,0 +1,4 @@
+code = "L0207"
+level = "warn"
+title = "Pattern test `x is p` in `if`/`elif`/`while` header"
+summary = "`if`/`elif`/`while` headers bind with `let p = x`, not `x is p`"

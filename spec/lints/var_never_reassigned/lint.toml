@@ -1,0 +1,4 @@
+code = "L0201"
+level = "warn"
+title = "Mutable binding never reassigned"
+summary = "a `var` that is never changed"

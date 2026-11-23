@@ -1,0 +1,4 @@
+code = "L0522"
+level = "warn"
+title = "Copy-mutate-writeback on a slice"
+summary = "copying `xs[l..r]` to sort/reverse/rotate and writing it back: mutate `xs[l..r]` in place"

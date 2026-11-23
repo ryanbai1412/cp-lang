@@ -1,0 +1,4 @@
+code = "L0521"
+level = "warn"
+title = "Hand-rolled prefix sum"
+summary = "manual `p[i + 1] = p[i] + x` or `p[i.r] = p[i.l] + x` loop: use `prefix(...)`"

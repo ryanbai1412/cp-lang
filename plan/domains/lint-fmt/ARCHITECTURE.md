@@ -30,7 +30,8 @@ Depends on `cpl-syntax`, `cpl-diag`, and, outside wasm only, `cpl-check` and
 
 | File | Lines | What it is for |
 |---|---|---|
-| `src/lib.rs` | 1,035 | `Level`, `Lint`, the `LINTS` registry (38 consts with code, name, default, title, summary, explanation, trigger, fix text); `lint`, `lint_parsed`, `fix`, `fix_at`, `apply_fixes`; `@allow` and `with lint(name: allow)` regions; removed-syntax codemods behind `cpl fix`; the `Proven*` analysis API |
+| `build.rs` | | Generates the `LINTS` registry (one const per `spec/lints/<name>/`, code order) from each record's `lint.toml` (code, level, title, summary) and its `explain.md`, `before.cp`, `after.cp`, `near_miss.cp` |
+| `src/lib.rs` | 704 | `Level`, `Lint`, `include!` of the generated registry; `lint`, `lint_parsed`, `fix`, `fix_at`, `apply_fixes`; `with lint(name: allow)` regions; removed-syntax codemods behind `cpl fix`; the `Proven*` analysis API |
 | `src/checker.rs` | 74 | `CHECKER_LINTS`: the names of L0601-L0609, which `cpl-check` emits; `checker_lints` runs the checker for `cpl lint` and applies levels and `with lint` regions |
 | `src/config.rs` | 153 | `Config` from `cp.toml [lints]` (levels by name) plus `memory_mb` |
 | `src/walk.rs` | 513 | Tree walkers over `cpl_syntax` items shared by the rules |

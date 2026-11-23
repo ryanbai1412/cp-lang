@@ -1,0 +1,4 @@
+code = "L0508"
+level = "warn"
+title = "Check for `none`, then unwrap"
+summary = "`x != none and .. x!`: the check and the unwrap say one thing twice"
