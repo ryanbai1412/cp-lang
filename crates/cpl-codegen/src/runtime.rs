@@ -1448,6 +1448,15 @@ template <class M, class Q> const typename M::mapped_type& map_or(const M& m, co
 ",
     },
     Piece {
+        name: "map_move_or",
+        needs: &[],
+        code: "\
+template <class M, class Q> typename M::mapped_type map_move_or(M& m, const Q& k, typename M::mapped_type d) {
+    auto it = m.find(k); if (it == m.end()) return d; return std::move(it->second);
+}
+",
+    },
+    Piece {
         name: "map_take",
         needs: &[],
         code: "\

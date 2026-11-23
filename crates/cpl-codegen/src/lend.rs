@@ -6,7 +6,7 @@
 use crate::emit::{Code, Emitter, COND};
 use crate::names::ident;
 use crate::walk::{self, Effects};
-use cpl_ir::{Arg, BinOp, Block, Expr, ExprKind, Stmt, Ty};
+use cpl_ir::{Arg, AssignOp, BinOp, Block, Expr, ExprKind, PlaceKind, Stmt, Ty};
 
 /// A container argument that is no place: a temporary C++ destroys at the
 /// end of the statement.
@@ -533,5 +533,113 @@ impl<'p> Emitter<'p> {
             &format!("const auto& {held} = {entry} ? *{entry} : ({own} = {d});"),
         );
         held
+    }
+}
+
+/// Equal pure paths, ignoring spans: `masks[v]` twice.
+fn same_path(a: &Expr, b: &Expr) -> bool {
+    match (&a.kind, &b.kind) {
+        (ExprKind::Int(x), ExprKind::Int(y)) => x == y,
+        (ExprKind::Local(x), ExprKind::Local(y)) => x == y,
+        (ExprKind::Global(x), ExprKind::Global(y)) => x == y,
+        (ExprKind::Cast(c, x), ExprKind::Cast(d, y)) => c == d && same_path(x, y),
+        (ExprKind::Field(x, f), ExprKind::Field(y, g)) => f == g && same_path(x, y),
+        (ExprKind::Binary(o, x, l), ExprKind::Binary(p, y, r)) => {
+            o == p && same_path(x, y) && same_path(l, r)
+        }
+        (ExprKind::Index(x, i), ExprKind::Index(y, j)) => {
+            i.len() == j.len() && same_path(x, y) && i.iter().zip(j).all(|(a, b)| same_path(a, b))
+        }
+        _ => false,
+    }
+}
+
+/// Whether running `e` may read or write the variable `root`: anything
+/// that calls code counts.
+fn may_touch(e: &Expr, root: (bool, usize)) -> bool {
+    let mut hit = false;
+    walk::deep_expr(e, &mut |x| {
+        hit |= match &x.kind {
+            ExprKind::Local(s) => !root.0 && *s == root.1,
+            ExprKind::Global(g) => root.0 && *g == root.1,
+            ExprKind::Mutate(_, p, _) | ExprKind::Sort(p, ..) | ExprKind::MutSlice(p, ..) => {
+                walk::root(p) == root
+            }
+            ExprKind::Call(..) | ExprKind::CallExpr(..) | ExprKind::Closure(_) => true,
+            _ => false,
+        }
+    });
+    hit
+}
+
+impl Emitter<'_> {
+    /// `m[k] = (m.get(k) ?? d) + r` copies the entry only to store the
+    /// longer list back. When nothing else in the value can see `m`, the
+    /// entry is moved out instead (`cpl::map_move_or`) and the store
+    /// puts it back.
+    pub(crate) fn mark_moved_entry(&mut self, place: &cpl_ir::Place, op: AssignOp, value: &Expr) {
+        let (AssignOp::Set, PlaceKind::Index(base, keys), ExprKind::Do(block)) =
+            (op, &place.kind, &value.kind)
+        else {
+            return;
+        };
+        let ([key], PlaceKind::Local(_) | PlaceKind::Global(_)) = (keys.as_slice(), &base.kind)
+        else {
+            return;
+        };
+        let root = walk::root(base);
+        let [Stmt::Let(_, Some(copy)), rest @ ..] = block.stmts.as_slice() else {
+            return;
+        };
+        let ExprKind::Builtin(cpl_ir::Builtin::Copy, of) = &copy.kind else {
+            return;
+        };
+        let Some(ExprKind::Binary(BinOp::Coalesce, got, d)) = of.first().map(|e| &e.kind) else {
+            return;
+        };
+        let ExprKind::Builtin(cpl_ir::Builtin::MapGet, args) = &got.kind else {
+            return;
+        };
+        let rest_ok = rest.iter().all(|s| match s {
+            Stmt::Expr(e) | Stmt::Give(e) => !may_touch(e, root),
+            _ => false,
+        });
+        if matches!(copy.ty, Ty::List(_))
+            && matches!(args[0].kind, ExprKind::Local(_) | ExprKind::Global(_))
+            && walk::path_root(&args[0]) == Some(root)
+            && (same_path(&args[1], key) || self.key_temp_of(key, &args[1]))
+            && !may_touch(key, root)
+            && !may_touch(d, root)
+            && rest_ok
+            && self.expr_elem_layout(&of[0]).is_none()
+        {
+            self.moved_entry.insert(copy as *const Expr as usize);
+        }
+    }
+
+    /// Whether `key` is the temporary the store's key was evaluated into,
+    /// and `got` the same key written again.
+    fn key_temp_of(&self, key: &Expr, got: &Expr) -> bool {
+        let ExprKind::Local(slot) = key.kind else {
+            return false;
+        };
+        let v = (self.fn_id, false, slot);
+        self.facts.stable(v) && self.facts.init(v).is_some_and(|init| same_path(init, got))
+    }
+
+    pub(crate) fn moved_entry_code(&mut self, of: &Expr) -> Code {
+        let ExprKind::Binary(_, got, d) = &of.kind else {
+            unreachable!("marked by mark_moved_entry")
+        };
+        let ExprKind::Builtin(_, args) = &got.kind else {
+            unreachable!("marked by mark_moved_entry")
+        };
+        self.need("map_move_or");
+        let (m, k, d) = (
+            self.expr(&args[0]).text,
+            self.expr(&args[1]).text,
+            self.expr(d).text,
+        );
+        Code::primary(format!("cpl::map_move_or({m}, {k}, {d})"))
     }
 }

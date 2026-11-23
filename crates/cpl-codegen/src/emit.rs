@@ -163,6 +163,9 @@ pub(crate) struct Emitter<'p> {
     /// `m.get(k) ?? d` expressions read only within their full expression,
     /// written as `cpl::map_or` (see [`Emitter::mark_read_in_place`]).
     pub read_in_place: BTreeSet<usize>,
+    /// Copies of a map entry that is stored straight back (see
+    /// [`Emitter::mark_moved_entry`]): the entry is moved out instead.
+    pub moved_entry: BTreeSet<usize>,
     /// The statement being written stores a local read for the last time.
     pub moves_last: bool,
     pub pushers: BTreeMap<usize, usize>,
@@ -269,6 +272,7 @@ impl<'p> Emitter<'p> {
             last_use_call: false,
             give_ref: false,
             read_in_place: BTreeSet::new(),
+            moved_entry: BTreeSet::new(),
             moves_last: false,
             pushers: BTreeMap::new(),
             sinks: BTreeMap::new(),

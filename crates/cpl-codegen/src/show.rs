@@ -302,6 +302,8 @@ impl<'p> Emitter<'p> {
         if sparse {
             parts.push("{ size_t start = cpl::out.size();".to_string());
         }
+        let shown_values: Vec<&cpl_ir::Expr> = args.iter().map(|a| &a.value).chain(end).collect();
+        let marked = self.mark_read_in_place(&shown_values, None, &[]);
         for (i, arg) in args.iter().enumerate() {
             let shown = self.show_expr(&arg.value, &arg.digits.to_string());
             match (i > 0, sparse) {
@@ -323,6 +325,7 @@ impl<'p> Emitter<'p> {
             }
             None => parts.push("cpl::put_line();".to_string()),
         }
+        marked.iter().for_each(|m| _ = self.read_in_place.remove(m));
         if self.program.interactive {
             parts.push("cpl::flush(); fflush(stdout);".to_string());
         }

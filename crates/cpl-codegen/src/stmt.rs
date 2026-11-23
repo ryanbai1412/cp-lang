@@ -1002,6 +1002,7 @@ impl<'p> Emitter<'p> {
                 return;
             }
         }
+        self.mark_moved_entry(place, op, value);
         let whole = value;
         let value = self.flatten(value, out);
         if let (AssignOp::Set, PlaceKind::Local(_) | PlaceKind::Global(_)) = (op, &place.kind) {

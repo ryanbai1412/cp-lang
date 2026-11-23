@@ -1208,9 +1208,14 @@ impl<'p> Emitter<'p> {
                 let d = ident(&program.domains[*id]);
                 Code::primary(format!("cpl::DomainVal{{{d}_lo, {d}_len}}"))
             }
+            ExprKind::Builtin(Builtin::Copy, args)
+                if self.moved_entry.remove(&(e as *const _ as usize)) =>
+            {
+                self.moved_entry_code(&args[0])
+            }
             ExprKind::Builtin(op, args) => {
                 let operands: Vec<&Expr> = args.iter().collect();
-                if *op == Builtin::ListConcat {
+                if matches!(op, Builtin::ListConcat | Builtin::Copy) {
                     self.mark_read_in_place(&operands, None, &[]);
                 }
                 self.sequence(&operands, &e.ty, |this, codes| {

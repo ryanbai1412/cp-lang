@@ -42,13 +42,19 @@ fn block_copies(cpp: &str) -> usize {
 /// A copy kind: its name, its counter over a C++ file, and its bound.
 type Bound = (&'static str, fn(&str) -> usize, usize);
 
+/// `std::vector<ll>(cpl::map_or(m, k, d))`: a copy of an entry, made to
+/// be changed.
+fn entry_copies(cpp: &str) -> usize {
+    cpp.lines().filter(|l| l.contains(">(cpl::map_or(")).count()
+}
+
 /// The most copies of each kind the corpus may build to, with why the
 /// ones left are left.
-const BOUNDS: [Bound; 2] = [
-    // `var cols = m.get(r) ?? []` then pushed to (a copy it needs) and
-    // `m[k] = (m.get(k) ?? []) + [v]`, an append to a copy.
-    ("map_get_copies", map_get_copies, 3),
+const BOUNDS: [Bound; 3] = [
+    // `var cols = m.get(r) ?? []` then pushed to: a copy it needs.
+    ("map_get_copies", map_get_copies, 1),
     ("block_copies", block_copies, 0),
+    ("entry_copies", entry_copies, 0),
 ];
 
 fn sources() -> Vec<PathBuf> {
@@ -73,7 +79,7 @@ fn the_corpus_never_copies_a_heap_value_it_only_reads() {
     let sources = sources();
     let chunk = sources.len().div_ceil(8);
     let built = std::sync::atomic::AtomicUsize::new(0);
-    let found: Vec<(String, [usize; 2])> = std::thread::scope(|s| {
+    let found: Vec<(String, [usize; BOUNDS.len()])> = std::thread::scope(|s| {
         let jobs: Vec<_> = sources
             .chunks(chunk)
             .enumerate()

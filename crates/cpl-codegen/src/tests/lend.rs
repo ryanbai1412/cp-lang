@@ -235,3 +235,30 @@ fn a_map_entry_passed_to_a_fn_is_read_in_place_unless_the_fn_writes_the_map() {
         "a fn that writes the map gets a copy: {written}"
     );
 }
+
+#[test]
+fn an_entry_stored_back_longer_is_moved_out_unless_the_rest_reads_the_map() {
+    let moved = body(concat!(
+        "let masks = [3, 1, 3]\n",
+        "var h = Map<Int, List<Int>>()\n",
+        "for v in 0..3:\n",
+        "    h[masks[v]] = (h.get(masks[v]) ?? []) + [v]\n",
+        "print(h.len)\n",
+    ));
+    assert!(
+        moved.contains("cpl::map_move_or(h, "),
+        "the entry is moved, not copied: {moved}"
+    );
+    assert!(!moved.contains("map_get("), "no copy of the entry: {moved}");
+    let copied = body(concat!(
+        "var h = Map<Int, List<Int>>()\n",
+        "h[1] = [1]\n",
+        "for v in 0..3:\n",
+        "    h[v] = (h.get(v) ?? []) + h[1]\n",
+        "print(h.len)\n",
+    ));
+    assert!(
+        !copied.contains("map_move_or"),
+        "a value that reads the map keeps its copy: {copied}"
+    );
+}

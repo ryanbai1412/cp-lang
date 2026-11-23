@@ -92,3 +92,9 @@ print(summed(by_key.get(1) ?? []), summed(by_key.get(5) ?? [7]))
 var sorted_in = Map<Int, List<Int>>()
 for v in 0..4: sorted_in[v % 2] = (sorted_in.get(v % 2) ?? []) + [v]
 print(summed(sorted_in.get(0) ?? []), summed(sorted_in.get(1) ?? []), sorted_in.len)
+let marks = [3, 1, 3, 2, 1]
+var grouped = Map<Int, List<Int>>()
+for v in 0..5: grouped[marks[v]] = (grouped.get(marks[v]) ?? []) + [v]
+for v in 0..5: grouped[marks[v]] = (grouped.get(marks[v]) ?? []) + grouped[1]
+print(grouped.get(3) ?? [])
+print(grouped.get(1) ?? [])
