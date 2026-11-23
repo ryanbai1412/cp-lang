@@ -107,7 +107,9 @@ pub(super) fn lints(uri: &str, analysis: &cpl_check::Analysis) -> Vec<Diagnostic
         .iter()
         .map(|i| (i.offset, &i.syntax.parsed))
         .collect();
-    cpl_lint::lint_parsed(&analysis.text, &items, &lint_config(uri))
+    let mut diags = cpl_lint::lint_parsed(&analysis.text, &items, &lint_config(uri));
+    cpl_lint::refine_with_analysis(&mut diags, analysis);
+    diags
 }
 
 #[cfg(not(target_arch = "wasm32"))]

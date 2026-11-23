@@ -1,0 +1,1 @@
+An assignment whose right side applies an operator to the place it writes, `x = x + e` or `cnt[v] = cnt[v] % m`, is the compound assignment `x += e`: the place is written once and cannot drift from the copy on the right. `cpl fix` rewrites it when neither side calls anything, so evaluating the place once instead of twice changes nothing.

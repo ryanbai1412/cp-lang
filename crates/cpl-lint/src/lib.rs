@@ -35,12 +35,14 @@ pub(crate) use std_source;
 mod checker;
 mod config;
 mod rules;
+mod typed;
 mod walk;
 
 pub mod cli;
 
 pub use checker::{checked, checker_lints, Checked, CheckerLint, CHECKER_LINTS};
 pub use config::{Config, ConfigError};
+pub use typed::refine_with_analysis;
 
 use cpl_diag::{Code, Diagnostic, Severity, Span};
 use cpl_syntax::ast::{Block, ExprKind, Stmt, StmtKind};
@@ -205,6 +207,13 @@ pub const REDUNDANT_ARG_NAME: Lint = lint!(
     Warn,
     "Named argument or record field repeating its own name",
     "`f(moves: moves)` or `(val: val)` can be punned as `f(moves:)` / `(val:)`",
+);
+pub const COMPOUND_SELF_REF: Lint = lint!(
+    "L0210",
+    compound_self_ref,
+    Warn,
+    "Assignment of a place in terms of itself",
+    "`x = x + e` or `cnt[v] = cnt[v] % m` is the compound assignment `x += e`",
 );
 pub const FLOAT_EQUALITY: Lint = lint!(
     "L0301",
@@ -411,6 +420,7 @@ pub const LINTS: &[Lint] = &[
     IS_IN_COND_HEADER,
     REDUNDANT_PRELUDE_IMPORT,
     REDUNDANT_ARG_NAME,
+    COMPOUND_SELF_REF,
     FLOAT_EQUALITY,
     DOMAIN_KEYED_MAP,
     MEMO_KEY_SPACE,
@@ -696,7 +706,9 @@ pub fn proven_ranges_parsed(src: &str, items: &[(u32, &ParsedItem)]) -> Vec<(u32
 /// A file with a syntax error gets no lints: what the parser could not read
 /// may hold the assignment or the read a lint would say is missing.
 pub fn lint(src: &str, config: &Config) -> Vec<Diagnostic> {
-    with_parsed(src, |file| lint_file(file, config))
+    let mut diags = with_parsed(src, |file| lint_file(file, config));
+    typed::refine(&mut diags, src);
+    diags
 }
 
 pub fn lint_parsed(src: &str, items: &[(u32, &ParsedItem)], config: &Config) -> Vec<Diagnostic> {
