@@ -1,6 +1,6 @@
 # The Milestone 1 subset
 
-What CP Lang promises for Milestone 1 (`plan/product/MILESTONE-1.md`): a
+What CP Lang promises for Milestone 1 (`handbook/product/milestones.md`): a
 contestant who has never used it learns, solves, tests and submits with it,
 unaided. Each rule section of `core/` and `tools/` is one row:
 

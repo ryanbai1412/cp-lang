@@ -16,7 +16,7 @@ Questions from site or any reader: add them to
 
 - Overview: `core/00-overview.md` (The model, A small program, Layers).
 - The goals and design rules every decision is checked against are in
-  `AGENTS.md`; the mission and audience in `plan/product/VISION.md`.
+  `AGENTS.md`; the mission and audience in `handbook/product/vision.md`.
 
 ## Values and types (`core/02-values-types.md`)
 
