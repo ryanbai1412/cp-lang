@@ -1,0 +1,77 @@
+name: culprit
+# When a main CI run fails, bisect each failing nextest test over the
+# commits since the last green main run (superseded runs are cancelled, so
+# a red run covers many commits), name the culprit commit and its lane, and
+# push a revert that makes the tests pass to culprit/revert-<sha>. The
+# infra sheriff lands that revert or a fix forward. See scripts/culprit.py.
+on:
+  workflow_run:
+    workflows: [ci]
+    types: [completed]
+    branches: [main]
+permissions:
+  contents: write
+  actions: read
+concurrency:
+  group: culprit
+  cancel-in-progress: false
+jobs:
+  find:
+    if: github.event.workflow_run.conclusion == 'failure' && github.event.workflow_run.event == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      BAD: ${{ github.event.workflow_run.head_sha }}
+      RUN_ID: ${{ github.event.workflow_run.id }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          fetch-depth: 0
+      - name: Failing tests and the last green main commit
+        id: range
+        run: |
+          good=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow ci.yml --branch main --event push \
+              --status success --limit 1 --json headSha --jq '.[0].headSha')
+          echo "good=$good" >>"$GITHUB_OUTPUT"
+          gh run view "$RUN_ID" --repo "$GITHUB_REPOSITORY" --log-failed >failed.log || true
+          n=$(grep -cE '\b(FAIL|TIMEOUT|SIG[A-Z]+) +\[' failed.log || true)
+          echo "fails=$n" >>"$GITHUB_OUTPUT"
+          echo "good $good, bad $BAD, $n FAIL lines"
+      - name: Install the pinned Rust toolchain
+        if: steps.range.outputs.fails != '0'
+        run: rustup show active-toolchain || rustup toolchain install
+      - uses: Swatinem/rust-cache@v2
+        if: steps.range.outputs.fails != '0'
+        with:
+          cache-targets: "false"
+          save-if: "false"
+      - name: Restore CI's dev target/
+        if: steps.range.outputs.fails != '0'
+        uses: actions/cache/restore@v4
+        with:
+          path: target
+          key: target-ci-v1-dev-${{ hashFiles('Cargo.lock', 'rust-toolchain.toml') }}-
+          restore-keys: |
+            target-ci-v1-dev-${{ hashFiles('Cargo.lock', 'rust-toolchain.toml') }}-
+            target-ci-v1-dev-
+      - uses: taiki-e/install-action@v2
+        if: steps.range.outputs.fails != '0'
+        with:
+          tool: cargo-nextest
+      - name: Bisect
+        if: steps.range.outputs.fails != '0'
+        run: |
+          git config user.name "cpl culprit"
+          git config user.email "culprit@users.noreply.github.com"
+          mv failed.log "$RUNNER_TEMP/failed.log"
+          python3 scripts/culprit.py --in-place --push-reverts --good "${{ steps.range.outputs.good }}" \
+              --bad "$BAD" --from-log "$RUNNER_TEMP/failed.log" --json "$RUNNER_TEMP/culprit.json" \
+              | tee "$RUNNER_TEMP/culprit.txt"
+          { echo '```'; cat "$RUNNER_TEMP/culprit.txt"; echo '```'; } >>"$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() && steps.range.outputs.fails != '0' }}
+        with:
+          name: culprit
+          path: ${{ runner.temp }}/culprit.*

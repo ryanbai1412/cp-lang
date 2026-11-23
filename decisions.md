@@ -8250,6 +8250,11 @@ tag move fatal again.
 - **Call.** `first_ge`/`first_gt`/`last_le`/`last_lt`/`count_range` on `SortedBag`/`SortedSet` are E0203 "was replaced by `range(..)...`", each with the rewrite `cpl fix` applies (`first_true(x => x > k)` for a non-Int `first_gt`). L0515 guessed the same calls from `let` bindings, so it only repeated the error; retired with its record, as L0205 was (decision 405).
 - **Reverse.** Restore `spec/lints/sorted_range_method/` and `sorted_range_method` in `rules/taste/mod.rs`.
 
+## 412. Bisect every red main run automatically (infra, 2026-11-23)
+
+- **Call.** `culprit.yml` runs after each failed main CI run. `scripts/culprit.py` bisects each failing nextest test over the commits since the last green main run, building and running only that test, groups tests by the commit that broke them, reverts each culprit on top of the red tip, and pushes a revert that makes its tests pass to `culprit/revert-<sha>`. The infra sheriff lands that revert or a fix forward and tells the lane only when the fix needs it. Superseded main runs are cancelled, so one red run covers dozens of commits; naming a culprit by hand took 20-40 minutes. It adds nothing to `land.sh` or any lane's commit.
+- **Reverse.** Delete `.github/workflows/culprit.yml`; `scripts/culprit.py` still works by hand.
+
 ## 408. Edge ships hourly from the newest shippable main commit (infra, 2026-11-23)
 
 - **Call.** At 200+ commits an hour a fully green main tip can be hours apart, and edge waited for one. An hourly scheduled release now publishes edge from the newest main commit whose shipping jobs passed (`scripts/release/shippable.sh`: the conformance gate parts, the cli jobs on macOS and Windows, the acceptance solutions), even if ratchet, editor, latency or unit-test jobs are red. The release run still builds every target and smoke-tests the archives, `install.sh` and `cpl run` before publishing. A green CI run still publishes edge at once, and stable still needs a fully green run.
