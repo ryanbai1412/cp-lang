@@ -38,6 +38,10 @@ const COMMON: &[(&str, &str)] = &[
         include_str!("../../../editors/neovim/ftplugin/cp.vim"),
     ),
     (
+        "compiler/cpl.vim",
+        include_str!("../../../editors/neovim/compiler/cpl.vim"),
+    ),
+    (
         "syntax/cp.vim",
         include_str!("../../../editors/neovim/syntax/cp.vim"),
     ),

@@ -1,24 +1,37 @@
-'use client';
+"use client";
 
-import { Check, Download } from 'lucide-react';
-import Link from 'next/link';
-import { type ReactNode, useEffect, useState } from 'react';
-import { Badge } from '@/components/ui/badge';
-import published from '@/generated/downloads.json';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { cn } from '@/lib/utils';
+import { Check, Download } from "lucide-react";
+import Link from "next/link";
+import { type ReactNode, useEffect, useState } from "react";
+import { Badge } from "@/components/ui/badge";
+import published from "@/generated/downloads.json";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { cn } from "@/lib/utils";
 
-const key = 'cpl-setup';
+const key = "cpl-setup";
 
 function Code({ children }: { children: string }) {
-  return <pre className="mt-2 overflow-x-auto rounded-md border bg-muted/40 p-3 text-xs">{children}</pre>;
+  return (
+    <pre className="mt-2 overflow-x-auto rounded-md border bg-muted/40 p-3 text-xs">
+      {children}
+    </pre>
+  );
 }
 
 type Asset = { url: string; size: number } | undefined;
-const downloads = published as unknown as Record<string, Record<'vscode' | 'jetbrains', Asset>>;
+const downloads = published as unknown as Record<
+  string,
+  Record<"vscode" | "jetbrains", Asset>
+>;
 
 // One button per release channel that ships the file, from the releases' own latest.json.
-function Downloads({ asset, label }: { asset: 'vscode' | 'jetbrains'; label: string }) {
+function Downloads({
+  asset,
+  label,
+}: {
+  asset: "vscode" | "jetbrains";
+  label: string;
+}) {
   const shipped = Object.keys(downloads).filter((c) => downloads[c][asset]);
   return (
     <div className="mt-2 flex flex-wrap gap-2">
@@ -49,40 +62,50 @@ function Soon() {
 
 const editors: { id: string; name: string; body: ReactNode }[] = [
   {
-    id: 'vscode',
-    name: 'VS Code',
+    id: "vscode",
+    name: "VS Code",
     body: (
       <>
         <p>
-          Download the extension, then in VS Code (or Cursor, Windsurf, VSCodium) open Extensions → ⋯ → Install from
-          VSIX… and pick the file. Marketplace and Open VSX installs <Soon />.
+          Download the extension, then in VS Code (or Cursor, Windsurf,
+          VSCodium) open Extensions → ⋯ → Install from VSIX… and pick the file.
+          Marketplace and Open VSX installs <Soon />.
         </p>
         <Downloads asset="vscode" label="Download cp-lang.vsix" />
-        <p className="mt-3">Or from a terminal (on Windows, the same two lines in PowerShell):</p>
+        <p className="mt-3">
+          Or from a terminal (on Windows, the same two lines in PowerShell):
+        </p>
         <Code>
           {
-            'curl.exe -fLO https://github.com/ryanbai1412/cp-lang/releases/download/edge/cp-lang.vsix\ncode --install-extension cp-lang.vsix'
+            "curl.exe -fLO https://github.com/ryanbai1412/cp-lang/releases/download/edge/cp-lang.vsix\ncode --install-extension cp-lang.vsix"
           }
         </Code>
       </>
     ),
   },
   {
-    id: 'neovim',
-    name: 'Neovim',
+    id: "neovim",
+    name: "Neovim",
     body: (
       <>
         <p>
-          Neovim 0.10 or later (Ubuntu 22.04&apos;s apt has 0.6: take the AppImage or tarball from{' '}
-          <a href="https://github.com/neovim/neovim/releases">Neovim&apos;s releases</a>). One command installs the plugin as a package, with nothing to add to your config: every{' '}
-          <code>.cp</code> buffer gets highlighting and <code>cpl lsp</code> (diagnostics, completion, hover, go to
-          definition with <code>vim.lsp.buf.definition()</code>, formatting with <code>vim.lsp.buf.format()</code>), and{' '}
-          <code>:Cpl test</code>, <code>:Cpl stress</code> and <code>:Cpl submit</code> run on the current file.
+          Neovim 0.10 or later (Ubuntu 22.04&apos;s apt has 0.6: take the
+          AppImage or tarball from{" "}
+          <a href="https://github.com/neovim/neovim/releases">
+            Neovim&apos;s releases
+          </a>
+          ). One command installs the plugin as a package, with nothing to add
+          to your config: every <code>.cp</code> buffer gets highlighting and{" "}
+          <code>cpl lsp</code> (diagnostics, completion, hover, go to definition
+          with <code>vim.lsp.buf.definition()</code>, formatting with{" "}
+          <code>vim.lsp.buf.format()</code>), and <code>:Cpl test</code>,{" "}
+          <code>:Cpl stress</code> and <code>:Cpl submit</code> run on the
+          current file.
         </p>
         <p className="mt-3">Linux and macOS:</p>
         <Code>
           {
-            'mkdir -p ~/.local/share/nvim/site/pack/cpl/start\ncurl -fsSL https://github.com/ryanbai1412/cp-lang/releases/download/edge/editors.tar.gz |\n  tar -xzf - --strip-components=1 -C ~/.local/share/nvim/site/pack/cpl/start cp-lang-editors/neovim'
+            "mkdir -p ~/.local/share/nvim/site/pack/cpl/start\ncurl -fsSL https://github.com/ryanbai1412/cp-lang/releases/download/edge/editors.tar.gz |\n  tar -xzf - --strip-components=1 -C ~/.local/share/nvim/site/pack/cpl/start cp-lang-editors/neovim"
           }
         </Code>
         <p className="mt-3">Windows (PowerShell):</p>
@@ -91,66 +114,81 @@ const editors: { id: string; name: string; body: ReactNode }[] = [
             '$d = "$env:LOCALAPPDATA\\nvim-data\\site\\pack\\cpl\\start"; mkdir -Force $d\ncurl.exe -fsSLo "$env:TEMP\\cpl-editors.tar.gz" https://github.com/ryanbai1412/cp-lang/releases/download/edge/editors.tar.gz\ntar -xzf "$env:TEMP\\cpl-editors.tar.gz" --strip-components=1 -C $d cp-lang-editors/neovim'
           }
         </Code>
-        <p className="mt-3">Run it again to update. With lazy.nvim, point a spec at the same folder instead.</p>
+        <p className="mt-3">
+          Run it again to update. With lazy.nvim, point a spec at the same
+          folder instead.
+        </p>
       </>
     ),
   },
   {
-    id: 'vim',
-    name: 'Vim',
+    id: "vim",
+    name: "Vim",
     body: (
       <>
         <p>
-          The same package gives Vim 8.2 or later the filetype and highlighting. On Windows, use <code>~/vimfiles</code>{' '}
-          for <code>~/.vim</code> and the PowerShell lines from the Neovim tab.
+          The same package gives Vim 8.2 or later the filetype, highlighting and
+          indent, with no LSP client needed: <code>:make</code> runs{" "}
+          <code>cpl check</code> and puts each error in the quickfix list (
+          <code>:copen</code>), and <code>gq</code> formats through{" "}
+          <code>cpl fmt</code>. On Windows, use <code>~/vimfiles</code> for{" "}
+          <code>~/.vim</code> and the PowerShell lines from the Neovim tab.
         </p>
         <Code>
           {
-            'mkdir -p ~/.vim/pack/cpl/start\ncurl -fsSL https://github.com/ryanbai1412/cp-lang/releases/download/edge/editors.tar.gz |\n  tar -xzf - --strip-components=1 -C ~/.vim/pack/cpl/start cp-lang-editors/neovim'
+            "mkdir -p ~/.vim/pack/cpl/start\ncurl -fsSL https://github.com/ryanbai1412/cp-lang/releases/download/edge/editors.tar.gz |\n  tar -xzf - --strip-components=1 -C ~/.vim/pack/cpl/start cp-lang-editors/neovim"
           }
         </Code>
         <p className="mt-3">
-          For diagnostics and completion, install{' '}
-          <a className="underline" href="https://github.com/prabirshrestha/vim-lsp">
+          For live diagnostics, completion, hover and go to definition, install{" "}
+          <a
+            className="underline"
+            href="https://github.com/prabirshrestha/vim-lsp"
+          >
             vim-lsp
-          </a>{' '}
+          </a>{" "}
           and add this to your <code>.vimrc</code>:
         </p>
         <Code>
-          {"au User lsp_setup call lsp#register_server({'name': 'cpl', 'cmd': ['cpl', 'lsp'], 'allowlist': ['cp']})"}
-        </Code>
-      </>
-    ),
-  },
-  {
-    id: 'helix',
-    name: 'Helix',
-    body: (
-      <>
-        <p>
-          Append <code>editors/helix/languages.toml</code> to <code>~/.config/helix/languages.toml</code>, then:
-        </p>
-        <Code>
           {
-            'mkdir -p ~/.config/helix/runtime/queries\nln -s /path/to/cp-lang/editors/helix/runtime/queries/cp ~/.config/helix/runtime/queries/cp\nhx --grammar build\nhx --health cp'
+            "au User lsp_setup call lsp#register_server({'name': 'cpl', 'cmd': ['cpl', 'lsp'], 'allowlist': ['cp']})"
           }
         </Code>
       </>
     ),
   },
   {
-    id: 'zed',
-    name: 'Zed',
+    id: "helix",
+    name: "Helix",
+    body: (
+      <>
+        <p>
+          Append <code>editors/helix/languages.toml</code> to{" "}
+          <code>~/.config/helix/languages.toml</code>, then:
+        </p>
+        <Code>
+          {
+            "mkdir -p ~/.config/helix/runtime/queries\nln -s /path/to/cp-lang/editors/helix/runtime/queries/cp ~/.config/helix/runtime/queries/cp\nhx --grammar build\nhx --health cp"
+          }
+        </Code>
+      </>
+    ),
+  },
+  {
+    id: "zed",
+    name: "Zed",
     body: (
       <p>
-        Registry install <Soon />. Until then, run <code>zed: install dev extension</code> and pick{' '}
-        <code>editors/zed</code> (needs Rust with the <code>wasm32-wasip1</code> target).
+        Registry install <Soon />. Until then, run{" "}
+        <code>zed: install dev extension</code> and pick{" "}
+        <code>editors/zed</code> (needs Rust with the <code>wasm32-wasip1</code>{" "}
+        target).
       </p>
     ),
   },
   {
-    id: 'emacs',
-    name: 'Emacs',
+    id: "emacs",
+    name: "Emacs",
     body: (
       <Code>
         {
@@ -160,23 +198,29 @@ const editors: { id: string; name: string; body: ReactNode }[] = [
     ),
   },
   {
-    id: 'jetbrains',
-    name: 'JetBrains',
+    id: "jetbrains",
+    name: "JetBrains",
     body: (
       <>
         <p>
-          IntelliJ IDEA Ultimate, CLion, PyCharm Professional or another commercial JetBrains IDE, 2024.3 or later: the
-          free Community editions lack the language server API the plugin uses. Marketplace install <Soon />.
+          IntelliJ IDEA Ultimate, CLion, PyCharm Professional or another
+          commercial JetBrains IDE, 2024.3 or later: the free Community editions
+          lack the language server API the plugin uses. Marketplace install{" "}
+          <Soon />.
         </p>
         <Downloads asset="jetbrains" label="Download cp-lang-jetbrains.zip" />
         <p className="mt-3">Or from a terminal (on Windows, in PowerShell):</p>
         <Code>
-          {'curl.exe -fLO https://github.com/ryanbai1412/cp-lang/releases/download/edge/cp-lang-jetbrains.zip'}
+          {
+            "curl.exe -fLO https://github.com/ryanbai1412/cp-lang/releases/download/edge/cp-lang-jetbrains.zip"
+          }
         </Code>
         <p className="mt-3">
-          Then Settings → Plugins → ⚙ → Install Plugin from Disk, pick the zip as it is, and restart. A <code>.cp</code>{' '}
-          file gets diagnostics, completion, go to definition and formatting from <code>cpl lsp</code>; set the path to{' '}
-          <code>cpl</code> under Settings → Tools → CP Lang if it is not on the <code>PATH</code>.
+          Then Settings → Plugins → ⚙ → Install Plugin from Disk, pick the zip
+          as it is, and restart. A <code>.cp</code> file gets diagnostics,
+          completion, go to definition and formatting from <code>cpl lsp</code>;
+          set the path to <code>cpl</code> under Settings → Tools → CP Lang if
+          it is not on the <code>PATH</code>.
         </p>
       </>
     ),
@@ -185,34 +229,50 @@ const editors: { id: string; name: string; body: ReactNode }[] = [
 
 const steps: { id: string; title: string; body: ReactNode }[] = [
   {
-    id: 'install',
-    title: 'Install cpl',
+    id: "install",
+    title: "Install cpl",
     body: (
       <>
         <p>
-          One line installs a prebuilt binary of the edge build, the newest commit of <code>main</code> that passed
-          every check.
+          One line installs a prebuilt binary of the edge build, the newest
+          commit of <code>main</code> that passed every check.
         </p>
         <p className="mt-3">Linux and macOS:</p>
-        <Code>{'curl -fsSL https://cp-lang.org/install.sh | sh -s -- --channel edge'}</Code>
+        <Code>
+          {
+            "curl -fsSL https://cp-lang.org/install.sh | sh -s -- --channel edge"
+          }
+        </Code>
         <p className="mt-3">Windows (PowerShell):</p>
-        <Code>{'& ([scriptblock]::Create((irm https://cp-lang.org/install.ps1))) -Channel edge'}</Code>
+        <Code>
+          {
+            "& ([scriptblock]::Create((irm https://cp-lang.org/install.ps1))) -Channel edge"
+          }
+        </Code>
         <p className="mt-3">
-          Then open a new terminal and run <code>cpl --version</code>: edge builds print <code>cpl 0.3.0-dev+&lt;commit&gt;</code>, the version these docs describe, and an older <code>0.2.x</code> install needs <code>cpl self update</code>, which also fetches newer builds
-          later. On a platform without a binary, build it with Rust:
+          Then open a new terminal and run <code>cpl --version</code>: edge
+          builds print <code>cpl 0.3.0-dev+&lt;commit&gt;</code>, the version
+          these docs describe, and an older <code>0.2.x</code> install needs{" "}
+          <code>cpl self update</code>, which also fetches newer builds later.
+          On a platform without a binary, build it with Rust:
         </p>
-        <Code>{'cargo install --locked --git https://github.com/ryanbai1412/cp-lang cpl-cli\ncpl --version'}</Code>
+        <Code>
+          {
+            "cargo install --locked --git https://github.com/ryanbai1412/cp-lang cpl-cli\ncpl --version"
+          }
+        </Code>
       </>
     ),
   },
   {
-    id: 'editor',
-    title: 'Install the editor extension',
+    id: "editor",
+    title: "Install the editor extension",
     body: (
       <>
         <p>
-          Every editor talks to the same language server, <code>cpl lsp</code>: diagnostics as you type, hover,
-          completion, go to definition, rename and quick fixes.
+          Every editor talks to the same language server, <code>cpl lsp</code>:
+          diagnostics as you type, hover, completion, go to definition, rename
+          and quick fixes.
         </p>
         <Tabs defaultValue="vscode" className="mt-3">
           <TabsList className="flex-wrap">
@@ -223,7 +283,11 @@ const steps: { id: string; title: string; body: ReactNode }[] = [
             ))}
           </TabsList>
           {editors.map((e) => (
-            <TabsContent key={e.id} value={e.id} className="text-sm text-muted-foreground">
+            <TabsContent
+              key={e.id}
+              value={e.id}
+              className="text-sm text-muted-foreground"
+            >
               {e.body}
             </TabsContent>
           ))}
@@ -232,65 +296,75 @@ const steps: { id: string; title: string; body: ReactNode }[] = [
     ),
   },
   {
-    id: 'verify',
-    title: 'Check it works',
+    id: "verify",
+    title: "Check it works",
     body: (
       <>
         <p>
-          Open a <code>.cp</code> file and type <code>let x = </code>; an error should appear as you type. Then:
+          Open a <code>.cp</code> file and type <code>let x = </code>; an error
+          should appear as you type. Then:
         </p>
-        <Code>{'echo \'print("hi")\' > hi.cp\ncpl run hi.cp'}</Code>
+        <Code>{"echo 'print(\"hi\")' > hi.cp\ncpl run hi.cp"}</Code>
       </>
     ),
   },
   {
-    id: 'judge',
-    title: 'Pick your judge',
+    id: "judge",
+    title: "Pick your judge",
     body: (
       <>
         <p>
-          A judge profile fixes the compiler, flags, stack and source limit, so local runs behave like the judge. See{' '}
+          A judge profile fixes the compiler, flags, stack and source limit, so
+          local runs behave like the judge. See{" "}
           <Link className="underline" href="/tools/judges">
             all profiles
           </Link>
           .
         </p>
-        <Code>{'cpl judges\ncpl build --judge codeforces a.cp'}</Code>
+        <Code>{"cpl judges\ncpl build --judge codeforces a.cp"}</Code>
       </>
     ),
   },
   {
-    id: 'loop',
-    title: 'Set up the contest loop',
+    id: "loop",
+    title: "Set up the contest loop",
     body: (
       <>
         <p>
-          Create a problem, keep its tests running on every save, stress it against a brute, then check it&apos;s ready.
+          Create a problem, keep its tests running on every save, stress it
+          against a brute, then check it&apos;s ready.
         </p>
-        <Code>{'cpl new a\ncpl watch a\ncpl stress a.cp\ncpl submit a.cp'}</Code>
+        <Code>
+          {"cpl new a\ncpl watch a\ncpl stress a.cp\ncpl submit a.cp"}
+        </Code>
         <p className="mt-2">
-          To import a problem with its samples and limits instead, install the{' '}
-          <a className="underline" href="https://github.com/jmerle/competitive-companion">
+          To import a problem with its samples and limits instead, install the{" "}
+          <a
+            className="underline"
+            href="https://github.com/jmerle/competitive-companion"
+          >
             Competitive Companion
-          </a>{' '}
-          browser extension, run <code>cpl new --listen</code>, and click the extension&apos;s green plus on the problem
-          page (or on the contest page, for every problem). <code>cpl run a.cp</code> then runs every sample.
+          </a>{" "}
+          browser extension, run <code>cpl new --listen</code>, and click the
+          extension&apos;s green plus on the problem page (or on the contest
+          page, for every problem). <code>cpl run a.cp</code> then runs every
+          sample.
         </p>
       </>
     ),
   },
   {
-    id: 'ai',
-    title: 'Optional: point your AI assistant at the docs',
+    id: "ai",
+    title: "Optional: point your AI assistant at the docs",
     body: (
       <p>
         <Link className="underline" href="/llms.txt">
           /llms.txt
-        </Link>{' '}
-        indexes the docs and{' '}
+        </Link>{" "}
+        indexes the docs and{" "}
         <Link className="underline" href="/llms-full.txt">
           /llms-full.txt
-        </Link>{' '}
+        </Link>{" "}
         is all of them in one file, ready to paste into a rules file.
       </p>
     ),
@@ -301,7 +375,7 @@ export function Checklist() {
   const [done, setDone] = useState<Record<string, boolean>>({});
   useEffect(() => {
     try {
-      setDone(JSON.parse(localStorage.getItem(key) ?? '{}'));
+      setDone(JSON.parse(localStorage.getItem(key) ?? "{}"));
     } catch {}
   }, []);
   const toggle = (id: string) => {
@@ -323,19 +397,27 @@ export function Checklist() {
                 type="button"
                 onClick={() => toggle(s.id)}
                 aria-pressed={!!done[s.id]}
-                aria-label={`Mark "${s.title}" ${done[s.id] ? 'not done' : 'done'}`}
+                aria-label={`Mark "${s.title}" ${done[s.id] ? "not done" : "done"}`}
                 className={cn(
-                  'mt-0.5 flex size-5 shrink-0 items-center justify-center rounded border transition-colors',
-                  done[s.id] && 'border-primary bg-primary text-primary-foreground',
+                  "mt-0.5 flex size-5 shrink-0 items-center justify-center rounded border transition-colors",
+                  done[s.id] &&
+                    "border-primary bg-primary text-primary-foreground",
                 )}
               >
                 {done[s.id] && <Check className="size-3.5" />}
               </button>
               <div className="min-w-0 flex-1">
-                <h2 className={cn('font-semibold', done[s.id] && 'text-muted-foreground line-through')}>
+                <h2
+                  className={cn(
+                    "font-semibold",
+                    done[s.id] && "text-muted-foreground line-through",
+                  )}
+                >
                   {i + 1}. {s.title}
                 </h2>
-                <div className="mt-1 text-sm text-muted-foreground">{s.body}</div>
+                <div className="mt-1 text-sm text-muted-foreground">
+                  {s.body}
+                </div>
               </div>
             </div>
           </li>
