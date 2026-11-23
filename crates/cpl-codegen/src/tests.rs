@@ -362,7 +362,7 @@ fn every_optional_int_is_one_int_with_int64_min_as_none() {
         PACKED
     );
     // A list filled by `push`, a grid, a local, a parameter and a result.
-    let cpp = cpp("fn half(x: ?Int) -> ?Int: x\nlet n: 0..=9 = read()\nvar xs: List<?Int> = []\nvar g: [n, n]?Int = None\nfor i in 0..n:\n    xs.push(None)\n    xs.push(i)\n    g[i, 0] = i\nlet best: ?Int = xs.pop()\nprint(xs.len, xs[0] ?? -1, g[0, 0] ?? -1, half(best) ?? -1)\n");
+    let cpp = cpp("fn half(x: ?Int) -> ?Int: x\nlet n: 0..=9 = read()\nvar xs: List<?Int> = []\nvar g: [n, n]?Int = None\nfor i in 0..n:\n    xs.push(None)\n    xs.push(i)\n    g[i, 0] = i\nlet best: ?Int = xs.pop()!\nprint(xs.len, xs[0] ?? -1, g[0, 0] ?? -1, half(best) ?? -1)\n");
     assert_eq!(decl(&cpp, "xs"), "std::vector<cpl::OptInt>", "{cpp}");
     assert_eq!(decl(&cpp, "g"), "cpl::Grid<cpl::OptInt, 2>", "{cpp}");
     assert_eq!(decl(&cpp, "best"), "cpl::OptInt", "{cpp}");
@@ -1400,7 +1400,7 @@ print(a.len)
 
 #[test]
 fn items_of_a_slice_keep_its_list_narrow() {
-    let out = cpp("var a: List<0..500_000> = [1, 2]\nfor (i, x) in a[..1].items: print(i + x)\nlet w = a[..1]\nprint([w[i] for i in 0..1], w.last!, a.first)\n");
+    let out = cpp("var a: List<0..500_000> = [1, 2]\nfor (i, x) in a[..1].items: print(i + x)\nlet w = a[..1]\nprint([w[i] for i in 0..1], w.last!, a.first!)\n");
     assert!(out.contains("std::vector<uint32_t> a"), "{out}");
 }
 
