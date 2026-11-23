@@ -658,7 +658,9 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
         vm_regs_i: &[i64],
         regs_v: &[Value],
     ) -> Option<Checkpoint> {
-        if !self.fed_loops.is_empty() || self.peer.is_some() || self.program.interactive {
+        // In a fed loop's body, the frames the fn's yield waits in are not
+        // what a resume makes again.
+        if self.fed_bodies > 0 || self.peer.is_some() || self.program.interactive {
             return None;
         }
         let edge = chunk.back_edges.iter().find(|e| e.pc as usize == pc)?;

@@ -281,14 +281,19 @@ on write, so a checkpoint copies main's locals and the globals, not the heap.
   for later checkpoints (`known`), since it can't change while it waits. A
   fed loop's caller does change: the body runs in it at each `yield`. Each
   yield now marks that frame to be read again (`Interp::feeding`).
-- **Not taken:** in the body of a fed loop (it runs in the caller's frame
-  inside the fn's), and in traced runs: the traced VM runs no fed loops, so
-  a counted run and `Timeline` get no checkpoint in them. Both are owed:
-  the second is to compile traced chunks for fed fns, as untraced ones
-  are.
+- **Traced runs:** the traced VM leaves the `for` to the tree-walker,
+  which now runs the fn on its traced chunk (`call_feeding`), so a counted
+  run and `Timeline` take checkpoints in its loops. Each `yield` there is a
+  fallback: the tree-walker feeds the loop as it would, so the trace is
+  the tree-walker's. The `for` is the call site its caller waits at
+  (`note_call_site`), and the tree-walker's `feed` marks the caller to be
+  read again, like the VM's.
+- **Not taken:** in the body of a fed loop (`Interp::fed_bodies`): it runs
+  in the caller's frame inside the fn's, which a resume does not make
+  again.
 - **Tests:** fixture `FEED` (fed loops in main and in a fn, with a body
-  loop) is in the run, traced-resume, window and tail tests; not yet in the
-  `Timeline` and counted tests.
+  loop) is in the run, traced-resume, window, tail, `Timeline` and counted
+  tests.
 
 ## Traced fns with `var` parameters
 

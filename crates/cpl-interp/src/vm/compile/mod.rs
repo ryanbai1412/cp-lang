@@ -242,6 +242,17 @@ impl<'p, 'f> Compiler<'p, 'f> {
         let head = match stmt {
             Stmt::Let(_, Some(e)) | Stmt::Expr(e) | Stmt::Return(Some(e)) => e,
             Stmt::If(e, ..) | Stmt::While(_, e, _) => e,
+            // A traced run's loop fed by a `yields` fn: the tree-walker runs it.
+            Stmt::For(_, _, Iter::Seq(e, _), _) if matches!(e.kind, ExprKind::Call(..)) => {
+                let falls_back = (start..self.ops.len()).any(|pc| {
+                    matches!(self.ops[pc], Op::FallbackStmt { idx, .. }
+                        if std::ptr::eq(self.fallback_stmts[idx as usize], stmt))
+                });
+                if !falls_back {
+                    return;
+                }
+                e
+            }
             Stmt::Assign(place, _, e) => {
                 let mut effects = Effects::default();
                 cpl_ir::walk::place_exprs(place, &mut |i| effects.walk(i));

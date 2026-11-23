@@ -435,7 +435,7 @@ fn a_window_from_a_checkpoint_is_the_whole_runs_window() {
 
 #[test]
 fn a_timeline_keeps_checkpoints_across_the_whole_run() {
-    for source in [LONG, DEEP, ONE_CALL, SHARED, SEQ, CLOSURE, MUT] {
+    for source in [LONG, DEEP, ONE_CALL, SHARED, SEQ, CLOSURE, MUT, FEED] {
         let program = program(source);
         let timeline = cpl_interp::trace::Timeline::record_on_this_thread(
             &program,
@@ -460,7 +460,7 @@ fn a_timeline_keeps_checkpoints_across_the_whole_run() {
 
 #[test]
 fn a_counted_runs_checkpoints_resume_to_the_rest_of_the_output() {
-    for source in [ONE_CALL, DEEP, SHARED, SEQ, CLOSURE, MUT] {
+    for source in [ONE_CALL, DEEP, SHARED, SEQ, CLOSURE, MUT, FEED] {
         let (program, whole, _) = record(source, b"");
         let (counted, taken) = cpl_interp::checkpoint::count_on_this_thread(
             &program,

@@ -415,6 +415,7 @@ fn run_from<O: Observer>(
         vm: None,
         #[cfg(not(target_arch = "wasm32"))]
         vm_regs_i: Vec::new(),
+        fed_bodies: 0,
         #[cfg(not(target_arch = "wasm32"))]
         lent: Vec::new(),
         #[cfg(not(target_arch = "wasm32"))]
@@ -648,6 +649,8 @@ struct Interp<'p, 'o, O: Observer> {
     /// Shared unboxed `i64` register stack for the VM.
     #[cfg(not(target_arch = "wasm32"))]
     vm_regs_i: Vec<i64>,
+    /// Fed loop bodies running, which take no checkpoint.
+    fed_bodies: u32,
     /// The `mut` params of running traced VM calls: the stack slot holding
     /// each one's value, and the caller's place it was lent from.
     #[cfg(not(target_arch = "wasm32"))]
@@ -2853,7 +2856,11 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
         let locals = self.frame_locals.pop();
         self.base = caller;
         self.stack[caller + slot] = value;
+        self.fed_bodies += 1;
+        #[cfg(not(target_arch = "wasm32"))]
+        self.feeding();
         let flow = self.block(body);
+        self.fed_bodies -= 1;
         let updated = self.stack[caller + slot].clone();
         self.base = callee;
         self.frame_locals.extend(locals);
@@ -2983,8 +2990,11 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
             .iter()
             .take(f.params.len())
             .any(|l| matches!(l.ty, Ty::Fn(..)));
+        // A traced chunk leaves a `yield` to the tree-walker, which feeds the loop.
         #[cfg(not(target_arch = "wasm32"))]
-        let mut flow = if !feeding && !has_part && !(has_alias && has_fn_param) {
+        let fed_ok = !feeding || self.vm.as_ref().is_some_and(|c| c.main.traced);
+        #[cfg(not(target_arch = "wasm32"))]
+        let mut flow = if fed_ok && !has_part && !(has_alias && has_fn_param) {
             if let Some(compiled) = self.vm.clone() {
                 if compiled.fns.get(id).is_some_and(Option::is_some) {
                     self.run_fn_vm_waited(&compiled, id, span, saved, dom_mark)
