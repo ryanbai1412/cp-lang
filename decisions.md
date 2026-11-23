@@ -5992,3 +5992,16 @@ Running the checker makes `cpl lint spec/std/tree.cp` 0.21 s, not 0.02 s,
 so the lint-time target becomes the 500 ms front-end budget: every semantic
 lint will read checker facts anyway (design/overview.md). Reverse: drop the
 `checker_lints` call in `crates/cpl-lint/src/cli.rs`.
+
+## 240. Release leaves `List` and slice bounds unchecked (2026-11-22)
+`spec/core/13-lowering.md` said `xs[i]` on `List`/`Str` and slices keep
+their bounds check in release ("same"), while R09.2.2 and R09.3.2, the
+one list of checks that other chapters link to, say release skips every
+check unless `bounds` is kept with `release_checks:` or `with checks(...)`,
+and R13.1.4 calls an unchecked index on an invalid program as unsafe as
+the C++. Chapter 9 wins: chapter 13's two rows now say release has no
+check unless `bounds` is kept. Valid programs give the same answers
+either way, and the hot path loses a compare per index. Case:
+`spec/conformance/core-09/release-list-index-unchecked.cp`. Reverse: make
+R09.3.2's release column "trap" for `List` indexes and restore "same" in
+chapter 13.

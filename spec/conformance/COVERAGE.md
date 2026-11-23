@@ -7,7 +7,7 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 2246 (995 passing). Rules: 531.
+Cases: 2248 (995 passing). Rules: 531.
 
 ## Summary per chapter
 
@@ -21,7 +21,7 @@ Cases: 2246 (995 passing). Rules: 531.
 - R06 (06-control-functions.md): 24 rules, 75 cases; 0 uncovered, 1 happy-path only, 0 negative only
 - R07 (07-sequences.md): 88 rules, 110 cases; 0 uncovered, 2 happy-path only, 0 negative only
 - R08 (08-traits-generics.md): 29 rules, 76 cases; 0 uncovered, 2 happy-path only, 1 negative only
-- R09 (09-contexts-checks.md): 25 rules, 49 cases; 0 uncovered, 6 happy-path only, 0 negative only
+- R09 (09-contexts-checks.md): 25 rules, 50 cases; 0 uncovered, 5 happy-path only, 0 negative only
 - R10 (10-io.md): 16 rules, 66 cases; 0 uncovered, 1 happy-path only, 0 negative only
 - R11 (11-modules-prelude.md): 15 rules, 30 cases; 0 uncovered, 1 happy-path only, 1 negative only
 - R12 (12-powers.md): 17 rules, 36 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -45,12 +45,12 @@ negative case. Complete: rules with no gap in `rule-gaps.txt`.
 | R06 | 24 | 24 (100%) | 17 | 16 (94%) | 23 (95%) |
 | R07 | 88 | 88 (100%) | 24 | 22 (91%) | 86 (97%) |
 | R08 | 29 | 28 (96%) | 15 | 13 (86%) | 26 (89%) |
-| R09 | 25 | 25 (100%) | 18 | 12 (66%) | 19 (76%) |
+| R09 | 25 | 25 (100%) | 18 | 13 (72%) | 20 (80%) |
 | R10 | 16 | 16 (100%) | 8 | 7 (87%) | 15 (93%) |
 | R11 | 15 | 14 (93%) | 9 | 8 (88%) | 13 (86%) |
 | R12 | 17 | 17 (100%) | 6 | 6 (100%) | 17 (100%) |
 | R13 | 22 | 22 (100%) | 7 | 4 (57%) | 19 (86%) |
-| all | 531 | 526 (99%) | 225 | 189 (84%) | 490 (92%) |
+| all | 531 | 526 (99%) | 225 | 190 (84%) | 491 (92%) |
 
 ## Rules
 
@@ -530,10 +530,10 @@ Each rule: positive / negative case counts, then the gap if any.
 - R09.1.4 [1+ 0-]: Cost: one specialized copy of each `uses` function per distinct value; `cpl explain` lists...
 - R09.1.5 [1+ 1-]: Standard contexts: `io` (chapter 10), `checks` (below), `lint` (one field per lint: `with ...
 - R09.2.1 [1+ 1-]: | checked | `cpl run`, `cpl stress`, `cpl test`, the interpreter, `cpl build --checked`, C...
-- R09.2.2 [2+ 0-] *happy-path only*: | release | `cpl build`, `cpl submit`, the bundle on the judge | no runtime checks unless ...
+- R09.2.2 [3+ 1-]: | release | `cpl build`, `cpl submit`, the bundle on the judge | no runtime checks unless ...
 - R09.2.3 [2+ 0-] *happy-path only*: **Checks never call user code.** A checked build makes exactly the calls to user functions...
 - R09.3.1 [1+ 0-]: | index `a[i]` with `i: D` on `[D]T` | always (the type is the proof) | none | none
-- R09.3.2 [1+ 1-]: | `D(x)` from an `Int`, raw index, `List` index | range facts show it fits | trap with val...
+- R09.3.2 [2+ 2-]: | `D(x)` from an `Int`, raw index, `List` index | range facts show it fits | trap with val...
 - R09.3.3 [1+ 1-]: | store into a range type | the value's range fits (`x % 7` into `0..7`) | trap naming val...
 - R09.3.4 [2+ 1-]: | `Int` / `I128` overflow | interval arithmetic proves it fits | trap with operands | wrap...
 - R09.3.5 [1+ 1-]: | `x!` on `None` | flow proves `Some` | trap naming the place | reads the niche as a value
