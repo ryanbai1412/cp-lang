@@ -7,12 +7,12 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 2261 (995 passing). Rules: 533.
+Cases: 2262 (995 passing). Rules: 533.
 
 ## Summary per chapter
 
 - R01 (01-lexical-grammar.md): 51 rules, 109 cases; 0 uncovered, 2 happy-path only, 0 negative only
-- R02 (02-values-types.md): 51 rules, 105 cases; 0 uncovered, 5 happy-path only, 0 negative only
+- R02 (02-values-types.md): 51 rules, 106 cases; 0 uncovered, 4 happy-path only, 0 negative only
 - R03 (03-numbers-layout.md): 24 rules, 60 cases; 0 uncovered, 5 happy-path only, 0 negative only
 - R04 (04-indices.md): 61 rules, 90 cases; 0 uncovered, 1 happy-path only, 0 negative only
 - R04a (04a-identity-vs-offset.md): 39 rules, 53 cases; 0 uncovered, 1 happy-path only, 0 negative only
@@ -36,7 +36,7 @@ negative case. Complete: rules with no gap in `rule-gaps.txt`.
 | Chapter | Rules | Accept | Forbidding | Reject | Complete |
 |---|---|---|---|---|---|
 | R01 | 51 | 51 (100%) | 29 | 27 (93%) | 49 (96%) |
-| R02 | 51 | 51 (100%) | 29 | 24 (82%) | 46 (90%) |
+| R02 | 51 | 51 (100%) | 29 | 25 (86%) | 47 (92%) |
 | R03 | 24 | 24 (100%) | 17 | 12 (70%) | 19 (79%) |
 | R04 | 61 | 61 (100%) | 14 | 13 (92%) | 60 (98%) |
 | R04a | 39 | 39 (100%) | 4 | 3 (75%) | 38 (97%) |
@@ -50,7 +50,7 @@ negative case. Complete: rules with no gap in `rule-gaps.txt`.
 | R11 | 15 | 14 (93%) | 9 | 8 (88%) | 13 (86%) |
 | R12 | 17 | 17 (100%) | 6 | 6 (100%) | 17 (100%) |
 | R13 | 22 | 22 (100%) | 7 | 5 (71%) | 20 (90%) |
-| all | 533 | 532 (99%) | 227 | 197 (86%) | 502 (94%) |
+| all | 533 | 532 (99%) | 227 | 198 (87%) | 503 (94%) |
 
 ## Rules
 
@@ -114,7 +114,7 @@ Each rule: positive / negative case counts, then the gap if any.
 
 - R02.1.1 [2+ 0-] *happy-path only*: a **plain value**: numbers, `Bool`, `Char`, positions and cuts of a domain, `?T` of a plai...
 - R02.1.2 [1+ 2-]: a **heap value**: `List<T>`, `Str`, `[D]T` arrays, `Map`, `Set`, every library container, ...
-- R02.1.3 [2+ 0-] *happy-path only*: a **function value**: `fn` items, lambdas and operation values. They are zero-size when th...
+- R02.1.3 [2+ 1-]: a **function value**: `fn` items, lambdas and operation values. They are zero-size when th...
 - R02.1.4 [1+ 1-]: Whether a value is owned or lent is not part of its type (chapter 5).
 - R02.2.1 [1+ 1-]: There are exactly four number types (decision 1.7). Narrow storage is a range type, never ...
 - R02.2.2 [1+ 1-]: Literal-union types are scalars too: `'+' | '-'` or `"add" | "del"` has exactly those valu...
@@ -661,7 +661,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0201 Unresolved name: 4 case(s)
 - E0202 Duplicate definition: 3 case(s)
 - E0203 Unknown field or method: 9 case(s)
-- E0204 Unknown type: 2 case(s)
+- E0204 Unknown type: 3 case(s)
 - E0205 Used before initialization: 2 case(s)
 - E0206 Unresolved module: 2 case(s)
 - E0207 Private item: 1 case(s)
