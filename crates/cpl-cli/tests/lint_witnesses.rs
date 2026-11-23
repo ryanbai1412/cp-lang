@@ -106,6 +106,12 @@ fn every_bound_lint_witness_traps_where_the_lint_says() {
                 continue;
             }
             checked += 1;
+            let (status, tested) = cpl(&["test", file]);
+            if status == Some(0) || !tested.contains(&format!("main.cp:{line}:")) {
+                wrong.push(format!(
+                    "{shown}: `cpl test` passes the {code} case saved for line {line}:\n{tested}"
+                ));
+            }
             let mut spec = cpl_stress::InputSpec::from_source(&src).unwrap();
             assert!(witness.iter().all(|(n, v)| spec.pin(n, *v)));
             let mut inputs = vec![fs::read_to_string(&case).unwrap()];
