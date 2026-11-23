@@ -1,6 +1,12 @@
-// AtCoder AGC 079 C: transform 1..=n into permutation a with a reversible
-// queue, minimizing reversals (or -1). Reversing time pushes n..=1 and pops a
-// back-to-front; every value enters on one of two ends.
+// Source: AtCoder AGC 079 C, https://atcoder.jp/contests/agc079/tasks/agc079_c
+// Problem: multitest; a permutation P of 1..N (sum N <= 2.5e5) is fed in order into a queue
+//   with three operations: append the next element of P at the back, output the front, reverse
+//   the queue. Print the min number of reversals to output 1..N in order, or -1.
+// Solution: run time backwards: values N..1 enter a deque, each on one of its two ends, and P
+//   leaves it back to front from either end. Pass 1 simulates this with a stack of runs (chains
+//   entered on one side) and a parity DSU of which values share a side; a trapped value is -1.
+//   Pass 2 replays it, orienting each parity component on first use to match the current side
+//   and counting side changes (free while the deque holds one value). near-linear.
 //
 // Run-stack invariant (Pass 1):
 // The stack `runs` partitions the current deque into contiguous chains

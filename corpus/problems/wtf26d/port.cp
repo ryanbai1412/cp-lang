@@ -1,4 +1,13 @@
-// AtCoder WTF 2026 D: largest permutation <= Q reachable from P.
+// Source: AtCoder World Tour Finals 2026 Algorithm D,
+//   https://atcoder.jp/contests/awtf2026algo/tasks/awtf2026algo_d
+// Problem: multitest; permutations P <= Q (lexicographically) of 1..N, sum N <= 1e6. Repeatedly
+//   swap adjacent elements of P so that P stays <= Q and no unordered pair of values is swapped
+//   twice. Print the lexicographically greatest P reachable.
+// Solution: keep the longest feasible prefix of Q, and at the first failure place the largest
+//   feasible value < q[i]. Feasibility of placing v is a prefix-min check (some unused value
+//   <= cap lies before v in P); the active caps form a monotone stack. The free suffix then
+//   drains the stack into disjoint P-blocks, each led by its largest eligible witness and filled
+//   with the unused values >= it in decreasing order; the rest follow descending. O(N log N).
 // Lexicographic optimality: matching the longest feasible prefix of Q and
 // stepping down to the largest feasible value `< q[i]` at the first failure `i`
 // is uniquely optimal, because any reachable completion after `i` is smaller

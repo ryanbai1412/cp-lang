@@ -1,6 +1,13 @@
-// Universal Cup 5, stage 2 H: split charges on a line into two groups (some
-// charges are pinned to A or B) so that the weakest pull q * q' / d^2 between
-// two charges of one group is as strong as possible; print it as a fraction.
+// Source: The 5th Universal Cup, Stage 2 (Grand Prix of EPS), problem H: Harmonizing Charges
+//   (QOJ contest 4207)
+// Problem: multitest, n <= 1e5 (sum 5e5) charges q_i <= 15000 at distinct x_i <= 2e5 on a line,
+//   some pinned to set A or B. Split them into two nonempty sets maximizing the min over
+//   same-set pairs of q_i q_j / (x_i - x_j)^2; print that value as a reduced fraction p/q.
+// Solution: the weakest pulls must be cut, so it is enough to 2-colour the spanning tree of
+//   weakest pulls (pins hang off a reference node in a parity DSU), built by Boruvka. Each
+//   round sweeps left to right and mirrored over a segment tree of components holding a Hull
+//   per node, so a charge finds its weakest pull into every other component. The answer is
+//   the weakest same-colour pair, one Hull sweep per colour. O(n log^2 n).
 //
 // As for any two-clustering that wants its weakest same-group pair strong, it
 // is enough to two-colour the spanning tree of weakest pulls: pinned charges

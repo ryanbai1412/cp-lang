@@ -1,4 +1,14 @@
-// Codeforces 2237 I2: Tree DP over a rooted tree with edge labels '0', '1', '?'.
+// Source: Codeforces 2237 I2, DBFS Order (Hard Version),
+//   https://codeforces.com/contest/2237/problem/I2
+// Problem: multitest; a rooted tree with ordered children, n <= 3000, sum n^2 <= 9e6. Non-root
+//   vertices are coloured 0/1 as allowed by a string over 0, 1, ?. The traversal pushes the next
+//   unvisited child to the deque front if 0 (DFS-like) or back if 1 (BFS-like). Count distinct
+//   traversal lists over all valid colourings mod 1e9+7.
+// Solution: count each list once through a canonical labelling, by tree DP: dp[u][depth] holds
+//   counts per (active, resolved) state, depth being the max 1-edge depth below u. Children are
+//   merged one at a time under the validity rules below, trying both edges for '?', with a -1
+//   correction for a double-counted chain start; Deferred states are dropped at the root.
+//   Merges cost the product of depth-table sizes, O(n^2) in total.
 // At each vertex u, `dp[u]` counts valid labellings keyed by
 // `State(depth, active, resolved)`:
 //   - `depth`: max 1-edge depth among processed children,
