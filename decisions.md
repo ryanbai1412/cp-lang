@@ -8262,3 +8262,10 @@ tag move fatal again.
 - **`chain` takes any number of sequences,** as free `min`/`max` take any number of values, so there's no nesting. Reverse: back to two.
 - **A helper over `[K]Int` doesn't take `a.rev`.** R04b's helper paragraph said it did, contradicting R07.3.5 (decision 388). The fix is to copy, `f(List(a.rev))`. Reverse with decision 388.
 - **Routed.** Compiler: grid row and column view keys come out 0-based (a silent wrong answer), `from:` dijkstra unpacking, map views reading ahead past a trap, explain rows, interpreter precompute speed. Stdlib: `maximal` over `Window` (fourth round), `Window(gcd)`, a deque for selective ops, `pow` vs `**`, float `sqrt`. Diagnostics: E0208 and E0503 fix-its. Tools: `cpl test` float tokens.
+
+## 410. `ir_builtin_names` also reads tuple match arms (tech-debt, 2026-11-23)
+
+- **Call.** The measure counted names only in arms written `"name" | ... =>`. Lowering also matches std names in tuple arms such as `(Ty::Range(inner), "nth") if ... =>` in `lower/call/value_method.rs`, which it missed: fc4ace59c and 7f910bf52 added such arms without moving the count. Reading them too takes `ir_builtin_names` from 94 to 163. Nothing new is privileged; the count was low. The 69 names it gains include `push`, `pop`, `insert`, `find`, `fold`, `join`, `reversed` and `windows`.
+- **Effect on B6 #3.** The target is unchanged: the intrinsics count, with every other name a std body.
+- **Reverse.** Drop `TUPLE_ARM_RE` from `ir_builtin_names` in `scripts/debt-ratchet.py` and restore 94.
+

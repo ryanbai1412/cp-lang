@@ -278,6 +278,19 @@ class DebtRatchetTest(unittest.TestCase):
             self.assertEqual(len(dr.cpp_deep_copies(root)), 3)
             self.assertEqual(len(dr.cpp_std_functions(root)), 2)
 
+    def test_ir_builtin_names_reads_tuple_arms(self) -> None:
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            call = root / "crates/cpl-ir/src/lower/call"
+            call.mkdir(parents=True)
+            (call.parent / "call.rs").write_text('    "sum" | "len" => {}\n')
+            (call / "value_method.rs").write_text(
+                '            (Ty::Range(inner), "nth" | "at") if args.len() == 1 => {\n'
+                '            (ty, "find")\n'
+                '                if ok =>\n'
+                '        let x = ("not", "arm");\n')
+            self.assertEqual(dr.ir_builtin_names(root), ["at", "find", "len", "nth", "sum"])
+
     def test_a_raised_baseline_needs_a_decision_naming_it(self) -> None:
         with tempfile.TemporaryDirectory() as d:
             root = Path(d)

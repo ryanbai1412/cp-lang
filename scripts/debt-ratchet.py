@@ -45,6 +45,9 @@ RUST_IGNORE_RE = re.compile(r"^\s*#\[ignore\b")
 EDITION_RE = re.compile(r"is_v03|spec_edition|CPL_EDITION|Edition::V02|edition::")
 # A match arm on string literals: `"name" | "other" =>`.
 ARM_RE = re.compile(r'^\s*"[A-Za-z_][\w.]*"(?:\s*\|\s*"[A-Za-z_][\w.]*")*\s*=>')
+# The same names in a tuple arm: `(Ty::Range(inner), "nth" | "at") if ... =>`.
+TUPLE_ARM_RE = re.compile(
+    r'^\s*\(.*?,\s*("[A-Za-z_][\w.]*"(?:\s*\|\s*"[A-Za-z_][\w.]*")*)\s*\)\s*(?:if\b.*)?(?:=>|$)')
 # Library types the IR, interpreter and emitter should not know by name;
 # `List`, `Str`, `Map` and `Set` are the core intrinsics.
 STD_TYPE_RE = re.compile(
@@ -132,6 +135,8 @@ def ir_builtin_names(root: Path) -> list[str]:
     for line in (ln for f in files if f.is_file() for ln in _lines(f)):
         if ARM_RE.match(line):
             names.update(re.findall(r'"([^"]+)"', line.split("=>")[0]))
+        elif m := TUPLE_ARM_RE.match(line):
+            names.update(re.findall(r'"([^"]+)"', m.group(1)))
     return sorted(names)
 
 

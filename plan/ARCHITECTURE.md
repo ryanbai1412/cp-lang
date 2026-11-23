@@ -472,7 +472,8 @@ L0513 guessed from syntax what E0304 and E0201/E0204 already report.
   3. lint-fmt: `cpl-lint` takes a session's facts instead of building its
      own (`checker.rs`, `facts.rs`, `lib.rs`); each rule that restates a
      checker code is retired for that code's fix, as L0206 and L0513 were.
-  4. diagnostics: a checker diagnostic carries its fixes, so `cpl fix`, the
+  4. diagnostics: `cpl_check::fix` re-checks and applies in rounds over
+     `cpl_diag::apply_fixes`, and a checker diagnostic carries its fixes, so `cpl fix`, the
      editor's fix-all and the playground apply the same edits.
   5. tools (stress, explain, trace, migrate) and perf (`checks.rs`): the
      remaining sites.
@@ -506,8 +507,8 @@ lowering, interpreter and emitter.
      builtins they served.
   6. stdlib: the no-privilege test: a std module copied into a user
      library runs the same.
-- **Ratchets.** `ir_builtin_names` (95 at the start, 94 today) to the
-  intrinsics count, then the intrinsics leave the measure;
+- **Ratchets.** `ir_builtin_names` (163 today, counting tuple arms since
+  decision 410) to the intrinsics count, then the intrinsics leave the measure;
   `backend_std_names` 18, `prelude_privilege` 24 and `lint_std_names` 180,
   each to 0.
 
@@ -531,6 +532,6 @@ row (owner tools).
 |---|---|---|---|
 | check | `cpl_check::Session::diagnostics` | 36 `Database::new()` sites | compiler |
 | lint | `cpl_lint::lint` on a session's facts | `lint`, `lint_parsed`, `lint_named` build their own | lint-fmt |
-| fix | one fix applier for checker and lint fixes | `apply_error_fixes_in` (cli), `checked_fix` (lsp), `fix_checked_removed_syntax`, `apply_fixes` (lint) | diagnostics |
+| fix | `cpl_check::fix` (checked, in rounds), over `cpl_diag::apply_fixes` (text edits) | `apply_error_fixes_in` (cli), `checked_fix` (lsp), `fix_checked_removed_syntax`, `apply_fixes` (lint) | diagnostics |
 | run | `cpl_interp::run_with` | `run`, `run_with`, `run_observed`, `run_profiled` | compiler |
 | trace | `cpl_interp::observe_on_this_thread` | plus `checkpoint::record_*` | debugger |
