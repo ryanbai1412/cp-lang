@@ -920,7 +920,14 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 // The closure may read the place a param of this frame is lent from.
                 let lends = self.lends();
                 if lends {
-                    sync_to_stack(&chunk.slot_map, regs_i, regs_v, &mut self.stack, self.base, true);
+                    sync_to_stack(
+                        &chunk.slot_map,
+                        regs_i,
+                        regs_v,
+                        &mut self.stack,
+                        self.base,
+                        true,
+                    );
                     self.show_lent();
                 }
                 let val = if let Some(callee) = compiled.closures[cid].as_ref() {
@@ -1080,7 +1087,14 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 };
                 if lends {
                     self.hide_lent();
-                    sync_from_stack(&chunk.slot_map, regs_i, regs_v, &mut self.stack, self.base, true);
+                    sync_from_stack(
+                        &chunk.slot_map,
+                        regs_i,
+                        regs_v,
+                        &mut self.stack,
+                        self.base,
+                        true,
+                    );
                 }
                 match ret_mode {
                     CallRet::Unit => {}
