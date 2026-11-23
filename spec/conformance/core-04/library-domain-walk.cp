@@ -1,5 +1,6 @@
 // expect: ok, output "6 1 2 3 12 13 23 0 1 2 3 4 5"
-// R04.2.26: a struct with `impl Index` is a domain: `[T]E` and `for x in T` walk `T.nth(0)`, `T.nth(1)`, …, and `T.nth(k).ord` is `k`.
+// rule: 04.2.26 04.2.27
+// R04.2.27: a struct with `impl Index` is a domain: `[T]E` and `for x in T` walk `T.nth(0)`, `T.nth(1)`, …, and `T.nth(k).ord` is `k`.
 struct Two(a: Int, b: Int)
 
 impl Index for Two:

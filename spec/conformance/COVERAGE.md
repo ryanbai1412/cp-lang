@@ -7,14 +7,14 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 2714 (995 passing). Rules: 570.
+Cases: 2722 (995 passing). Rules: 573.
 
 ## Summary per chapter
 
 - R01 (01-lexical-grammar.md): 56 rules, 158 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R02 (02-values-types.md): 52 rules, 148 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R03 (03-numbers-layout.md): 24 rules, 67 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R04 (04-indices.md): 70 rules, 150 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R04 (04-indices.md): 73 rules, 158 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04a (04a-identity-vs-offset.md): 39 rules, 54 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04b (04b-keys.md): 27 rules, 66 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R05 (05-ownership.md): 43 rules, 162 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -48,7 +48,7 @@ negative case. Complete: rules with no gap in `rule-gaps.txt`.
 | R01 | 56 | 56 (100%) | 31 | 31 (100%) | 56 (100%) |
 | R02 | 52 | 52 (100%) | 30 | 30 (100%) | 52 (100%) |
 | R03 | 24 | 24 (100%) | 13 | 13 (100%) | 24 (100%) |
-| R04 | 70 | 70 (100%) | 15 | 15 (100%) | 70 (100%) |
+| R04 | 73 | 73 (100%) | 18 | 18 (100%) | 73 (100%) |
 | R04a | 39 | 39 (100%) | 3 | 3 (100%) | 39 (100%) |
 | R04b | 27 | 27 (100%) | 7 | 7 (100%) | 27 (100%) |
 | R05 | 43 | 43 (100%) | 21 | 21 (100%) | 43 (100%) |
@@ -67,7 +67,7 @@ negative case. Complete: rules with no gap in `rule-gaps.txt`.
 | Rlint | 2 | 2 (100%) | 2 | 2 (100%) | 2 (100%) |
 | Rlsp | 5 | 5 (100%) | 1 | 1 (100%) | 5 (100%) |
 | Rstress | 1 | 1 (100%) | 0 | 0 (0%) | 1 (100%) |
-| all | 570 | 569 (99%) | 224 | 224 (100%) | 569 (99%) |
+| all | 573 | 572 (99%) | 227 | 227 (100%) | 572 (99%) |
 
 ## Rules
 
@@ -241,6 +241,9 @@ Each rule: positive / negative case counts, then the gap if any.
 - R04.2.22 [1+ 0-]: | `v.ord` | position to its 0-based ordinal: 0 for the first position whatever the base, t...
 - R04.2.17 [2+ 1-]: | `V.cuts(k)`, `V.cuts.at(k)` | integer to cut, the inverse of `Int(c)`: `k` positions bef...
 - R04.2.18 [5+ 4-]: | `5` where a `V` or `V.cuts` is expected | integer literal is that position or cut (integ...
+- R04.2.26 [1+ 1-]: The impl writes `count`, `ord` and `nth` under those names; `count` is sized like a domain...
+- R04.2.27 [3+ 2-]: The type is then a domain like any other: `[Two]E` indexes by `t.ord`, `for t in Two` and ...
+- R04.2.28 [1+ 1-]: Ordinal order is a walk order, not a successor: `V(x)`, `V.at(x)`, `Int(v)`, `V.wrap`, `.n...
 - R04.3.1 [2+ 1-]: | position `v` | `v.prev`, `v.next`: `?V` | `v.l`, `v.r`: its cuts
 - R04.3.2 [1+ 0-]: | cut `c` | `c.prev`, `c.next`: `?V.cuts` | `c.l`, `c.r`: the positions beside it, `?V`
 - R04.3.3 [4+ 3-]: Arithmetic on a position gives an `Int`: `v + k`, `v - k` and `v - w` (two positions of on...
@@ -735,7 +738,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0112 else_falls_through *(0.3)*: 1 case(s)
 - E0201 Unresolved name: 8 case(s)
 - E0202 Duplicate definition: 3 case(s)
-- E0203 Unknown field or method: 12 case(s)
+- E0203 Unknown field or method: 13 case(s)
 - E0204 Unknown type: 3 case(s)
 - E0205 Used before initialization: 2 case(s)
 - E0206 Unresolved module: 2 case(s)
@@ -774,7 +777,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0602 Variable mutated while lent: 35 case(s)
 - E0603 Lent value escapes its scope: 19 case(s)
 - E0604 Invalid `lends` projection: 1 case(s)
-- E0605 Invalid `Index` implementation: 1 case(s)
+- E0605 Invalid `Index` implementation: 2 case(s)
 - E0606 Missing trait implementation for operator: 23 case(s)
 - E0607 Moved while captured by a closure: 3 case(s)
 - E0608 Use of moved value: 15 case(s)
@@ -853,7 +856,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - L0607 Large array of padded elements: 1 case(s)
 - L0608 Parentheses do not match the cost: 2 case(s)
 - L0609 A `@cache` field written outside its type: 1 case(s)
-- R0001 Runtime trap: 8 case(s)
+- R0001 Runtime trap: 10 case(s)
 - R0101 Index out of range: 22 case(s)
 - R0102 Value outside a domain: 5 case(s)
 - R0201 Range store out of range: 9 case(s)
@@ -884,10 +887,11 @@ prepends it.
   - line 105: `let var const fn struct enum domain type use pub if elif els`
 - 02-values-types.md: 3 blocks, 2 with a case, 1 spec-only, 0 neither
 - 03-numbers-layout.md: 2 blocks, 2 with a case, 0 spec-only, 0 neither
-- 04-indices.md: 7 blocks, 1 with a case, 3 spec-only, 3 neither
-  - line 169: `for j in ..i:`
-  - line 265: `let k = (0..=n).last_true(k => cost(k) <= budget) ?? -1`
-  - line 286: `fn inversions(r: Range<Pos>) -> Int:`
+- 04-indices.md: 8 blocks, 1 with a case, 3 spec-only, 4 neither
+  - line 59: `struct Two(a: Int, b: Int)`
+  - line 207: `for j in ..i:`
+  - line 303: `let k = (0..=n).last_true(k => cost(k) <= budget) ?? -1`
+  - line 324: `fn inversions(r: Range<Pos>) -> Int:`
 - 04b-keys.md: 13 blocks, 3 with a case, 6 spec-only, 4 neither
   - line 72: `fn solve(r: Range<V>) -> Int:`
   - line 100: `let z = z_function(s[l..])`
@@ -909,7 +913,7 @@ prepends it.
 - 10-io.md: 3 blocks, 1 with a case, 2 spec-only, 0 neither
 - 11-modules-prelude.md: 1 blocks, 0 with a case, 1 spec-only, 0 neither
 
-16 of 108 blocks have neither a case nor a spec-only reason.
+17 of 109 blocks have neither a case nor a spec-only reason.
 
 ## Standard library
 

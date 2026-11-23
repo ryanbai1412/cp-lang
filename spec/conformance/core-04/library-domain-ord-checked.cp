@@ -1,5 +1,6 @@
 // expect: R0001 at 10
-// R04.2.26: `ord` is the impl's own code, so indexing `[T]E` checks that `x.ord` lands in `0..T.count`, as `V.at(k)` does.
+// rule: 04.2.27
+// R04.2.27: `ord` is the impl's own code, so indexing `[T]E` checks that `x.ord` lands in `0..T.count`, as `V.at(k)` does.
 struct Id(i: Int)
 
 impl Index for Id:

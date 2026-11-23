@@ -1,4 +1,5 @@
 // expect: ok, output "2 3 6\n0 5 5 4 3 2 1 0"
+// rule: 04.2.27
 // R04.2.27: a library domain is the `Seq` of its walk: `T.find`, `T.count(p)`, `T.first`, `T.last` and `T.rev`.
 struct Two(a: Int, b: Int)
 

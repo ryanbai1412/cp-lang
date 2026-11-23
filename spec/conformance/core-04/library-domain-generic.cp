@@ -1,4 +1,5 @@
 // expect: ok, output "4 6 6"
+// rule: 04.2.27
 // R04.2.27: `D: Domain` takes a core domain and a library domain alike: `for d in D`, `[D]T` and `D.count`.
 struct Two(a: Int, b: Int)
 

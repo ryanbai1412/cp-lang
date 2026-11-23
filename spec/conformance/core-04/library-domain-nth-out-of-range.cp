@@ -1,6 +1,7 @@
 // expect: R0001 at 16 (checked)
+// rule: 04.2.27
 // input: "6\n"
-// R04.2.26: `T.nth(k)` outside `0..T.count` traps; the impl's `nth` never sees it.
+// R04.2.27: `T.nth(k)` outside `0..T.count` traps; the impl's `nth` never sees it.
 struct Two(a: Int, b: Int)
 
 impl Index for Two:
