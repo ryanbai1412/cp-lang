@@ -651,6 +651,8 @@ impl<'a> Checker<'a> {
                 args,
             },
             Def::Trait { .. } => Ty::Unknown,
+            // Declared by a broken statement: its error is already reported.
+            Def::Value { ty: Ty::Error, .. } | Def::Fn { ty: Ty::Error, .. } => Ty::Error,
             Def::Value { .. } | Def::Fn { .. } | Def::Variant { .. } | Def::Impl { .. } => {
                 self.error(
                     codes::UNKNOWN_TYPE,
