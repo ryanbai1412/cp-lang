@@ -10,8 +10,8 @@
 //! undo the fact.
 
 use cpl_ir::{
-    Arg, AssignOp, BinOp, Block, Builtin, Cast, Expr, ExprKind, IntWidth, Iter, Place, PlaceKind,
-    Program, Spec, Stmt, Ty,
+    Arg, AssignOp, BinOp, Block, Builtin, Cast, Expr, ExprKind, Iter, Place, PlaceKind, Program,
+    Spec, Stmt, Ty,
 };
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -94,7 +94,7 @@ impl<'p> Facts<'p> {
         }
         for (sid, s) in program.structs.iter().enumerate() {
             for (&fi, &w) in &s.narrow_ints {
-                if w == IntWidth::U32 {
+                if w.is_unsigned() {
                     facts.u32_fields.insert((sid, fi));
                 }
             }

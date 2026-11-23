@@ -1077,13 +1077,47 @@ pub struct ClosureDef {
 /// Narrow storage width for a ranged `Int` field or ranged-`Int` array/list element.
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 pub enum IntWidth {
+    U8,
+    I8,
+    U16,
+    I16,
     U32,
     I32,
 }
 
 impl IntWidth {
+    /// The narrowest width holding `lo..=hi` (R03.1.4), or `None` past 32 bits.
+    pub fn of(lo: i64, hi: i64) -> Option<IntWidth> {
+        let fits = |min: i64, max: i64| lo >= min && hi <= max;
+        if lo > hi {
+            None
+        } else if fits(0, u8::MAX.into()) {
+            Some(IntWidth::U8)
+        } else if fits(i8::MIN.into(), i8::MAX.into()) {
+            Some(IntWidth::I8)
+        } else if fits(0, u16::MAX.into()) {
+            Some(IntWidth::U16)
+        } else if fits(i16::MIN.into(), i16::MAX.into()) {
+            Some(IntWidth::I16)
+        } else if fits(0, u32::MAX.into()) {
+            Some(IntWidth::U32)
+        } else if fits(i32::MIN.into(), i32::MAX.into()) {
+            Some(IntWidth::I32)
+        } else {
+            None
+        }
+    }
+
+    pub fn is_unsigned(self) -> bool {
+        matches!(self, IntWidth::U8 | IntWidth::U16 | IntWidth::U32)
+    }
+
     pub fn cpp(self) -> &'static str {
         match self {
+            IntWidth::U8 => "uint8_t",
+            IntWidth::I8 => "int8_t",
+            IntWidth::U16 => "uint16_t",
+            IntWidth::I16 => "int16_t",
             IntWidth::U32 => "uint32_t",
             IntWidth::I32 => "int32_t",
         }

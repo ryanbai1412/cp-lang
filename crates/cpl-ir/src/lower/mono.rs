@@ -896,16 +896,7 @@ impl<'a> Lowerer<'a> {
         } else {
             hi_raw.checked_sub(1)?
         };
-        if lo_min > hi_max {
-            return None;
-        }
-        if lo_min >= 0 && hi_max <= i64::from(u32::MAX) {
-            Some(IntWidth::U32)
-        } else if lo_min >= i64::from(i32::MIN) && hi_max <= i64::from(i32::MAX) {
-            Some(IntWidth::I32)
-        } else {
-            None
-        }
+        IntWidth::of(lo_min, hi_max)
     }
 
     /// The ranged `Int` and 1D ranged-`Int` array/list fields of `decl` whose bounds fit in 32 bits.

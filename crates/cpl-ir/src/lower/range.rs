@@ -49,16 +49,7 @@ impl RangeBounds {
         let hi_max = self
             .hi_const
             .or_else(|| self.hi.as_ref().and_then(expr_limits).map(|(_, hi)| hi))?;
-        if lo_min > hi_max {
-            return None;
-        }
-        if lo_min >= 0 && hi_max <= i64::from(u32::MAX) {
-            Some(IntWidth::U32)
-        } else if lo_min >= i64::from(i32::MIN) && hi_max <= i64::from(i32::MAX) {
-            Some(IntWidth::I32)
-        } else {
-            None
-        }
+        IntWidth::of(lo_min, hi_max)
     }
 }
 

@@ -1085,7 +1085,7 @@ fn a_field_ranged_by_a_shifted_const_narrows() {
 }
 
 #[test]
-fn ranged_int_struct_fields_narrow_to_32_bits() {
+fn ranged_int_struct_fields_take_the_narrowest_width() {
     let cpp = cpp(concat!(
         "type Z = Mod<998244353>\n",
         "type BigZ = Mod<1_000_000_000_000_000_007>\n",
@@ -1103,8 +1103,8 @@ fn ranged_int_struct_fields_narrow_to_32_bits() {
         "Mod<998244353> should narrow to uint32_t: {cpp}"
     );
     assert!(
-        cpp.contains("int32_t w = 0;"),
-        "signed range should narrow to int32_t: {cpp}"
+        cpp.contains("int16_t w = 0;"),
+        "-1000..=1000 should narrow to int16_t: {cpp}"
     );
     assert!(
         cpp.contains("ll(a.v)"),
@@ -1570,8 +1570,8 @@ print(total)
         "expected [R, C]0..=1_000_000 to emit cpl::Grid<uint32_t, 2>:\n{grid}"
     );
     assert!(
-        grid.contains("cpl::Grid<int32_t, 2> s"),
-        "expected [R, C]-100..=100 to emit cpl::Grid<int32_t, 2>:\n{grid}"
+        grid.contains("cpl::Grid<int8_t, 2> s"),
+        "expected [R, C]-100..=100 to emit cpl::Grid<int8_t, 2>:\n{grid}"
     );
     assert!(
         grid.contains("ll(g("),
@@ -1618,8 +1618,8 @@ for v in V:
 print(ans)
 ");
     assert!(
-        tuples.contains("std::vector<std::tuple<uint32_t, int32_t>> pts"),
-        "expected [V](0..=1_000_000, -100..=100) to emit std::vector<std::tuple<uint32_t, int32_t>>:\n{tuples}"
+        tuples.contains("std::vector<std::tuple<uint32_t, int8_t>> pts"),
+        "expected [V](0..=1_000_000, -100..=100) to emit std::vector<std::tuple<uint32_t, int8_t>>:\n{tuples}"
     );
 
     let widened = cpp("fn sum_grid<R, C>(g: [R, C]Int) -> Int:
