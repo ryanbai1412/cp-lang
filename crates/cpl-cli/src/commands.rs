@@ -502,6 +502,8 @@ options:
   --watch VAR       with --trace: record steps only when VAR changes (repeatable
                     or comma-separated, e.g. `--watch dp,ans`)
   --last N          with --trace: keep only the last N steps (ring buffer)
+  --from N          with --trace: skip the first N steps (0-based), to keep
+                    any part of a long run
   --depth N         with --trace: record only up to call depth N (0 = top level)
   --format json     without --trace: the value of each top-level variable,
                     the output and the time, for an editor.

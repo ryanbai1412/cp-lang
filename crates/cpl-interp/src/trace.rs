@@ -2044,63 +2044,6 @@ fn snapshot(value: &Value, ty: &Ty, kind: Kind, view: &View) -> (String, Option<
     }
 }
 
-/// One run of a trace document: `{"label": .., "steps": [..]}`.
-fn run_json(
-    label: &str,
-    rec: &Recording,
-    ids: &[String],
-    dropped: &dyn Fn(&str) -> bool,
-) -> String {
-    let mut out = String::from("{\"label\":");
-    string(&mut out, label);
-    out.push_str(",\"steps\":[");
-    for (index, step) in rec.steps(0..rec.len()).enumerate() {
-        if index > 0 {
-            out.push(',');
-        }
-        out += &format!("{{\"id\":{index},\"line\":{},\"label\":", step.line);
-        string(&mut out, &step.label);
-        out.push_str(",\"stage\":");
-        string(&mut out, &step.stage);
-        out.push_str(",\"values\":{");
-        for (i, (var, json)) in step.values.iter().enumerate() {
-            if i > 0 {
-                out.push(',');
-            }
-            string(&mut out, &ids[*var]);
-            out.push(':');
-            out.push_str(json);
-        }
-        out.push_str("},\"locals\":");
-        out.push_str(&step.locals);
-        if let Some(checkpoint) = step.checkpoint.as_deref().filter(|name| !dropped(name)) {
-            out.push_str(",\"checkpoint\":");
-            string(&mut out, checkpoint);
-        }
-        if !step.frames.is_empty() {
-            out.push_str(",\"frames\":[");
-            for (i, (name, line)) in step.frames.iter().enumerate() {
-                if i > 0 {
-                    out.push(',');
-                }
-                out.push_str("{\"fn\":");
-                string(&mut out, name);
-                out += &format!(",\"line\":{line}}}");
-            }
-            out.push(']');
-        }
-        if let Some((var, path)) = &step.focus {
-            out.push_str(",\"focus\":{\"variable\":");
-            string(&mut out, &ids[*var]);
-            let path: Vec<String> = path.iter().map(usize::to_string).collect();
-            out += &format!(",\"path\":[{}]}}", path.join(","));
-        }
-        out.push('}');
-    }
-    out.push_str("]}");
-    out
-}
-
 /// The trace document of one run, or of a solution (`fast`) and its
 /// brute (`slow`) on the same input. The two are lined up on the
 /// checkpoints they share, and compared on what both printed and on the
@@ -2176,10 +2119,10 @@ pub fn document(
     }
     let is_dropped = |name: &str| dropped.contains(name);
     out.push_str("},\"runs\":{\"fast\":");
-    out += &run_json(fast_label, fast, &fast_ids, &is_dropped);
+    out += &compare::run_json(fast_label, fast, &fast_ids, &is_dropped);
     if let Some((slow_label, slow)) = slow {
         out.push_str(",\"slow\":");
-        out += &run_json(slow_label, slow, &slow_ids, &is_dropped);
+        out += &compare::run_json(slow_label, slow, &slow_ids, &is_dropped);
         // Compared: what both runs have and mean alike.
         let compare: Vec<&Var> = vars
             .iter()

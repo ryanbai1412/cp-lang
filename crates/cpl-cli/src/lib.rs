@@ -362,6 +362,8 @@ struct RunArgs<'a> {
     watch: Vec<String>,
     /// `--last N`: keep only the last N steps.
     last_steps: Option<usize>,
+    /// `--from N`: skip the first N steps, so any part of a long run can be kept.
+    from_step: Option<usize>,
     /// `--depth N`: maximum call depth to record.
     max_depth: Option<usize>,
     format: Option<&'a str>,
@@ -423,6 +425,7 @@ impl<'a> RunArgs<'a> {
             test_cases: Vec::new(),
             watch: Vec::new(),
             last_steps: None,
+            from_step: None,
             max_depth: None,
             format: None,
             brute: false,
@@ -492,6 +495,13 @@ impl<'a> RunArgs<'a> {
                     }
                     args.last_steps = Some(parsed);
                 }
+                "--from" => match iter.next() {
+                    Some(n) => args.from_step = Some(step_count("--from", n)?),
+                    None => return Err("`--from` needs a step number".into()),
+                },
+                flag if flag.starts_with("--from=") => {
+                    args.from_step = Some(step_count("--from", &flag["--from=".len()..])?);
+                }
                 "--depth" => match iter.next() {
                     Some(n) => {
                         let parsed: usize = n.parse().map_err(|_| {
@@ -559,10 +569,11 @@ impl<'a> RunArgs<'a> {
         let has_trace_filter = !args.test_cases.is_empty()
             || !args.watch.is_empty()
             || args.last_steps.is_some()
+            || args.from_step.is_some()
             || args.max_depth.is_some();
         if has_trace_filter && !args.trace {
             return Err(
-                "`--test`, `--watch`, `--last`, and `--depth` filter a trace: add `--trace`".into(),
+                "`--test`, `--watch`, `--last`, `--from`, and `--depth` filter a trace: add `--trace`".into(),
             );
         }
         if args.checks.is_some() && !args.release {
@@ -1191,8 +1202,14 @@ fn trace_config(args: &RunArgs, text: &str) -> cpl_interp::trace::TraceConfig {
     config.test_cases = args.test_cases.clone();
     config.watch = args.watch.clone();
     config.last_steps = args.last_steps;
+    config.from_step = args.from_step;
     config.max_depth = args.max_depth;
     config
+}
+
+fn step_count(flag: &str, n: &str) -> Result<usize, String> {
+    n.parse()
+        .map_err(|_| format!("`{flag}` expects a step number from 0, not `{n}`"))
 }
 
 /// `cpl run --trace` and `cpl run --format json`: the run, recorded.

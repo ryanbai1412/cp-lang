@@ -223,6 +223,46 @@ print(y)
 }
 
 #[test]
+fn trace_from_keeps_the_run_from_that_step_on() {
+    let path = write_temp(
+        "from_step",
+        "var x: Int = 0\nfor i in 1..=20:\n    x = i\nprint(x)\n",
+    );
+    let p = path.to_str().unwrap();
+    let steps = |extra: &[&str]| {
+        let (code, stdout, stderr) = run_cpl(
+            &[&["run", p, "--trace"], extra, &["--format", "json"]].concat(),
+            "",
+        );
+        assert_eq!(code, 0, "{stderr}");
+        let ids: Vec<&str> = stdout.split("{\"id\":").skip(1).collect();
+        (
+            stdout.clone(),
+            ids.iter()
+                .map(|s| {
+                    s.split_once(",\"values\"")
+                        .map_or(*s, |(head, _)| head)
+                        .split_once(',')
+                        .unwrap()
+                        .1
+                        .to_string()
+                })
+                .collect::<Vec<_>>(),
+        )
+    };
+    let (_, all) = steps(&[]);
+    let (window, from) = steps(&["--from", "10"]);
+    assert!(window.contains("\"firstStep\":10"), "{window}");
+    assert_eq!(
+        from,
+        all[10..],
+        "the window is the whole run's steps from step 10"
+    );
+    let (code, _, stderr) = run_cpl(&["run", p, "--trace", "--from", "x"], "");
+    assert_eq!(code, 2, "{stderr}");
+}
+
+#[test]
 fn trace_depth_filter() {
     let path = write_temp(
         "depth",
@@ -292,7 +332,7 @@ print(pre[V.last!.r], cut)
 fn trace_filter_flags_require_trace() {
     let path = write_temp("req_trace", "print(1)\n");
     let p = path.to_str().unwrap();
-    for flag in ["--test=1", "--watch=x", "--last=5", "--depth=1"] {
+    for flag in ["--test=1", "--watch=x", "--last=5", "--from=5", "--depth=1"] {
         let (code, _stdout, stderr) = run_cpl(&["run", p, flag], "");
         assert_eq!(
             code, 2,

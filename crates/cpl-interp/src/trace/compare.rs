@@ -1,6 +1,6 @@
 //! Two runs of a file side by side: where they first part ways.
 
-use super::{Assigned, Recording, Shown};
+use super::{string, Assigned, Recording, Shown};
 use std::collections::HashMap;
 
 /// A checkpoint both runs reached, with what each showed there.
@@ -113,4 +113,64 @@ pub fn stages(fast: &Recording, slow: &Recording) -> Vec<Stage> {
             })
         })
         .collect()
+}
+
+/// One run of a trace document: `{"label": .., "steps": [..]}`.
+pub(super) fn run_json(
+    label: &str,
+    rec: &Recording,
+    ids: &[String],
+    dropped: &dyn Fn(&str) -> bool,
+) -> String {
+    let mut out = String::from("{\"label\":");
+    string(&mut out, label);
+    out += &(rec.skipped > 0)
+        .then(|| format!(",\"firstStep\":{}", rec.skipped))
+        .unwrap_or_default();
+    out.push_str(",\"steps\":[");
+    for (index, step) in rec.steps(0..rec.len()).enumerate() {
+        if index > 0 {
+            out.push(',');
+        }
+        out += &format!("{{\"id\":{index},\"line\":{},\"label\":", step.line);
+        string(&mut out, &step.label);
+        out.push_str(",\"stage\":");
+        string(&mut out, &step.stage);
+        out.push_str(",\"values\":{");
+        for (i, (var, json)) in step.values.iter().enumerate() {
+            if i > 0 {
+                out.push(',');
+            }
+            string(&mut out, &ids[*var]);
+            out.push(':');
+            out.push_str(json);
+        }
+        out.push_str("},\"locals\":");
+        out.push_str(&step.locals);
+        if let Some(checkpoint) = step.checkpoint.as_deref().filter(|name| !dropped(name)) {
+            out.push_str(",\"checkpoint\":");
+            string(&mut out, checkpoint);
+        }
+        if !step.frames.is_empty() {
+            out.push_str(",\"frames\":[");
+            for (i, (name, line)) in step.frames.iter().enumerate() {
+                if i > 0 {
+                    out.push(',');
+                }
+                out.push_str("{\"fn\":");
+                string(&mut out, name);
+                out += &format!(",\"line\":{line}}}");
+            }
+            out.push(']');
+        }
+        if let Some((var, path)) = &step.focus {
+            out.push_str(",\"focus\":{\"variable\":");
+            string(&mut out, &ids[*var]);
+            let path: Vec<String> = path.iter().map(usize::to_string).collect();
+            out += &format!(",\"path\":[{}]}}", path.join(","));
+        }
+        out.push('}');
+    }
+    out.push_str("]}");
+    out
 }
