@@ -3,7 +3,8 @@
 # push (someone landed first) rebase and push again. Nothing is gated here:
 # the commit hook ran the commit tier, CI runs the full gate on every main
 # tip, and the infra sheriff reverts or fixes a red one. Every commit to land
-# needs a `Domain: <d>` trailer, and the change may not add a conflict marker.
+# needs a `Domain: <d>` trailer, and the change may not add a conflict marker
+# or grow a file the debt ratchet caps.
 # A change under spec/, skills/ or scripts/ gets its generated skill pages and
 # COVERAGE.md regenerated and committed, so they can't go stale on main.
 # Each landing appends one JSON line (domain, seconds, tries) to
@@ -33,6 +34,15 @@ for try in $(seq "$tries"); do
         if ! git diff --cached --quiet; then
             git commit -q --no-verify -m "factory: regenerate skill pages and coverage" -m "Domain: $domain"
             echo "land: regenerated stale skill pages or COVERAGE.md" >&2
+        fi
+    fi
+    if [ -f scripts/debt-ratchet.py ]; then
+        grown=$(python3 scripts/debt-ratchet.py --check 2>&1 |
+            sed -n 's/^debt-ratchet: ERROR: \([^:]*\):.*/\1/p' |
+            grep -Fx -f <(git diff --name-only FETCH_HEAD HEAD) || true)
+        if [ -n "$grown" ]; then
+            echo "land: your change grows a capped file: $grown (python3 scripts/debt-ratchet.py --check)" >&2
+            exit 1
         fi
     fi
     if git push -q --no-verify "$remote" HEAD:main; then

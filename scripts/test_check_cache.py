@@ -258,6 +258,27 @@ class CheckCacheTest(unittest.TestCase):
             self.assertIn("conflict markers", r.stderr)
             self.assertNotEqual(git("rev-parse", "main", cwd=remote), git("rev-parse", "HEAD"))
 
+    def test_land_refuses_only_a_change_that_grows_a_capped_file(self):
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        env = hermetic_env()
+        with tempfile.TemporaryDirectory() as tmp:
+            remote, work, git = self.land_repos(tmp, env)
+            os.makedirs(os.path.join(work, "scripts"))
+            with open(os.path.join(work, "scripts", "debt-ratchet.py"), "w", encoding="utf-8") as f:
+                f.write("print('debt-ratchet: ERROR: big.rs: grew from 1 to 2 lines'); exit(1)\n")
+            git("add", "scripts")
+            git("commit", "-qm", "factory: ratchet\n\nDomain: infra")
+            self.commit(git, work, "other.rs")
+            r = subprocess.run([os.path.join(root, "scripts", "land.sh")], cwd=work,
+                               capture_output=True, text=True, env=env)
+            self.assertEqual(r.returncode, 0, r.stderr)
+            self.commit(git, work, "big.rs")
+            r = subprocess.run([os.path.join(root, "scripts", "land.sh")], cwd=work,
+                               capture_output=True, text=True, env=env)
+            self.assertNotEqual(r.returncode, 0)
+            self.assertIn("grows a capped file: big.rs", r.stderr)
+            self.assertNotEqual(git("rev-parse", "main", cwd=remote), git("rev-parse", "HEAD"))
+
     def test_land_commits_regenerated_skill_pages(self):
         root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         env = hermetic_env()
