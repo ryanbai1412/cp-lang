@@ -745,12 +745,18 @@ pub fn fix_checked_removed_syntax_in(
 
 /// What `cpl fix` makes of a source: removed-syntax rewrites (parser, then
 /// type-directed checker rewrites), then every lint fix, each to a fixed point.
-pub fn fix(src: &str, config: &Config) -> (String, usize) {
+#[cfg(test)]
+pub(crate) fn fix(src: &str, config: &Config) -> (String, usize) {
     fix_at(None, src, config)
 }
 
 /// Like [`fix`], resolving imports relative to `path` when given.
-pub fn fix_at(path: Option<&std::path::Path>, src: &str, config: &Config) -> (String, usize) {
+#[cfg(test)]
+pub(crate) fn fix_at(
+    path: Option<&std::path::Path>,
+    src: &str,
+    config: &Config,
+) -> (String, usize) {
     let key = path
         .map(|p| p.to_string_lossy().into_owned())
         .unwrap_or_else(|| "<fix>.cp".to_string());

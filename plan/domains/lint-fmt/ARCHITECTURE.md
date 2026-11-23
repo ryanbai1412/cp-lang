@@ -31,8 +31,8 @@ Depends on `cpl-syntax`, `cpl-diag`, and, outside wasm only, `cpl-check` and
 | File | Lines | What it is for |
 |---|---|---|
 | `build.rs` | | Generates the `LINTS` registry (one const per `spec/lints/<name>/`, code order) from each record's `lint.toml` (code, level, title, summary) and its `explain.md`, `before.cp`, `after.cp`, `near_miss.cp` |
-| `src/lib.rs` | 704 | `Level`, `Lint`, `include!` of the generated registry; `lint`, `lint_parsed`, `fix`, `fix_at`, `apply_fixes`; `with lint(name: allow)` regions; removed-syntax codemods behind `cpl fix`; the `Proven*` analysis API |
-| `src/checker.rs` | 74 | `CHECKER_LINTS`: the names of L0601-L0609, which `cpl-check` emits; `checker_lints` runs the checker for `cpl lint` and applies levels and `with lint` regions |
+| `src/lib.rs` | 704 | `Level`, `Lint`, `include!` of the generated registry; `lint` (source only, for tests), `fix_in`, `apply_fixes`; `with lint(name: allow)` regions; removed-syntax codemods behind `cpl fix`; the `Proven*` analysis API |
+| `src/checker.rs` | 74 | `CHECKER_LINTS`: the names of L0601-L0609, which `cpl-check` emits; `checked_analysis` sorts what `cpl check` reported into checker lints at their levels and `with lint` regions, and the errors lints can't see past |
 | `src/config.rs` | 153 | `Config` from `cp.toml [lints]` (levels by name) plus `memory_mb` |
 | `src/walk.rs` | 513 | Tree walkers over `cpl_syntax` items shared by the rules |
 | `src/rules/mod.rs` | 34 | `run`: calls each rule module in turn |
@@ -65,11 +65,15 @@ Found with `grep -rhoE 'cpl_(lint|fmt)::[A-Za-z_]+' crates --include=*.rs`.
 | Interface | Consumers |
 |---|---|
 | `cpl_fmt::format`, `cpl_fmt::cli` | `cpl-cli` (`cpl fmt`), `cpl-lsp` (format document) |
-| `cpl_lint::lint`, `Config` | `cpl-cli`, `cpl-conform` runner, `cpl-contest` watch, `cpl-lsp` |
-| `cpl_lint::lint_parsed` | `cpl-lsp` (reuses its parse) |
-| `cpl_lint::fix_at`, `apply_fixes` | `cpl-cli` (`cpl fix`, `cpl lint --fix`), `cpl-lsp` quick fixes, `crates/cpl-cli/tests/recovery.rs` |
+| `cpl_lint::lint_analysis`, `checked_analysis`, `Config` | the one lint entry: `cpl lint`, `cpl fix`, `cpl-lsp`, `cpl-wasm`, `cpl-conform` runner, `cpl-contest` watch, each on the analysis its warm `Database` holds |
+| `cpl_lint::fix_in`, `apply_lint_fixes`, `apply_fixes` | `cpl fix`, `cpl lint --fix`, the editor's fix-all, the playground's fix |
 | `cpl_lint::LINTS` | `cpl-cli` (`cpl explain L0xxx`, `--list`) |
 | `Proven{Expr,Loop,Fn,Index,Size}`, `Run`, `proven_*_parsed`, `domain_sizes_parsed`, `list_sizes` | `cpl-lsp` inlay hints and hovers |
+
+One entry (ARCHITECTURE.md B6 #2): a tool lints through `lint_analysis` on
+the analysis it already has and never builds a `Database` for lint. When
+`cpl_check::Session` lands it becomes `cpl_lint::lint(&session, file)`;
+`lint(src)` stays a test helper.
 
 The `Proven*` API is the checker's job living in the wrong crate; it moves to
 `cpl-check` in M3 and `cpl-lsp` follows (request in the compiler worklog).
