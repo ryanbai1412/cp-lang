@@ -584,6 +584,7 @@ impl Server {
                 // VS Code draws its own Run lenses but not the memory one.
                 let lenses = match (self.lenses, path_of_uri(uri)) {
                     (lenses, Some(path)) => {
+                        let path = crate::uri::native_path(&path);
                         let mut all = if lenses {
                             code_lenses(&path, text)
                         } else {

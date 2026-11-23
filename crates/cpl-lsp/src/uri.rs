@@ -11,6 +11,20 @@ pub(crate) fn uri_of_path(path: &str) -> String {
     file_uri(path)
 }
 
+/// `path` spelled the way the OS prints paths (`\` on Windows), for the
+/// paths the server hands back to the editor as command arguments.
+pub(crate) fn native_path(path: &str) -> String {
+    native(path, cfg!(windows))
+}
+
+fn native(path: &str, windows: bool) -> String {
+    if windows {
+        path.replace('/', "\\")
+    } else {
+        path.to_string()
+    }
+}
+
 /// `file://` and `path` with `\` as `/`, a `/` before a Windows drive
 /// (`C:`), and every byte outside the URI path characters `%XX`-escaped,
 /// so a path with a space or a drive letter round-trips through the editor.
@@ -61,6 +75,12 @@ fn bundled_std_file(path: &str) -> Option<std::path::PathBuf> {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn command_paths_use_the_os_separator() {
+        assert_eq!(super::native("c:/a b/x.cp", true), "c:\\a b\\x.cp");
+        assert_eq!(super::native("/a b/x.cp", false), "/a b/x.cp");
+    }
+
     use super::*;
 
     #[test]

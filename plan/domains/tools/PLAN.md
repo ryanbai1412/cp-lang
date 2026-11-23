@@ -48,7 +48,7 @@ Each local fix tonight, and the mechanism that would remove its whole class.
 |---|---|---|
 | Windows CI: editor tests split CRLF repo files (normalized in the test) | `.gitattributes` `* text=auto eol=lf`, with `-text` on the CRLF test fixtures, so every checkout is LF | infra |
 | Built C++ prints `\r\n` on Windows, the interpreter `\n` (cpl-cli tests normalize) | binary stdout in runtime.rs's `out` piece, so both agree byte for byte | perf |
-| The LSP spells Windows paths `c:/...`; VS Code's memory-lens test compares via `Uri.file` | one URI-to-path function in `cpl-lsp/src/uri.rs` that returns native paths, used by every command argument | tools |
+| The LSP spells Windows paths `c:/...`; VS Code's memory-lens test compares via `Uri.file` | done: `uri::native_path` spells every lens argument the OS's way | tools |
 | cpl-contest tests drive `#!` shell scripts, so they're `cfg(unix)` | a portable test-program helper (tiny `.cp` programs run by `cpl`) so they run on Windows too | tools |
 | `peak_memory` reads `/proc`: no MB and no MLE on macOS and Windows (bench test checks MB on Linux only) | per-platform peak memory (`proc_pid_rusage`, `GetProcessMemoryInfo`) in cpl-stress | debugger |
 | Hand-kept VS Code tables missed `IndexOp` (and earlier `dot`, `cross`) | generate `languageData.ts` and the grammar's name lists from the checker (`cpl` symbols as JSON) at build time | tools |
