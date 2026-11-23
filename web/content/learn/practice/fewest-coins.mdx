@@ -1,0 +1,20 @@
+---
+title: Fewest coins
+description: "Level B. Teaches a DP over ?Int with min=."
+---
+
+There are n coin values (1 ≤ n ≤ 100, each from 1 to 10⁵), each available without limit. Print the fewest coins that add up to exactly x (1 ≤ x ≤ 10⁵), or -1 if no combination does.
+
+**Input:** n and x, then the n values. **Output:** one number.
+
+| Input | Output |
+|---|---|
+| `3 11`<br/>`1 5 7` | `3` |
+
+<Judge id="fewest-coins">
+
+- `dp[s]` is the fewest coins for the sum `s`, or `None` if `s` can't be made. There is no `INF` to add 1 to.
+- `if let d = dp[s - v]` uses only sums that can be made, and `dp[s] min= d + 1` keeps the better one; `None` loses to every value.
+- The -1 the statement asks for appears once, at the output.
+
+</Judge>

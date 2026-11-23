@@ -1,0 +1,19 @@
+[
+ {
+  "input": "3\n+ 4\n* 3\n+ 1\n",
+  "expected": "16\n",
+  "sample": true
+ },
+ {
+  "input": "1\n* 0\n",
+  "expected": "0\n"
+ },
+ {
+  "input": "2\n* 1000000000\n* 1000000000\n",
+  "expected": "49\n"
+ },
+ {
+  "input": "4\n+ 1000000000\n+ 7\n* 2\n+ 0\n",
+  "expected": "2\n"
+ }
+]

@@ -1,0 +1,20 @@
+---
+title: At most
+description: "Level B. Teaches binary search on a sorted array with first_gt."
+---
+
+You are given n integers (1 ≤ n ≤ 2·10⁵, each from 1 to 10⁹) and q queries (1 ≤ q ≤ 2·10⁵). For each query x, print how many of the integers are at most x.
+
+**Input:** n, the integers, q, then q lines with x. **Output:** one line per query.
+
+| Input | Output |
+|---|---|
+| `5`<br/>`5 1 4 1 9`<br/>`3`<br/>`1`<br/>`4`<br/>`10` | `2`<br/>`3`<br/>`5` |
+
+<Judge id="at-most">
+
+- In the sorted array, the values at most x are a prefix. Its length is the index of the first value greater than x.
+- `b.first_gt(x)` is that index, found by binary search in O(log n). It returns `?Int`, `None` when every value is at most x, so `?? n` is that case.
+- The four searches, `first_ge`, `first_gt`, `last_le`, `last_lt`, are named for what they return, so there is no `upper_bound` minus one to work out.
+
+</Judge>

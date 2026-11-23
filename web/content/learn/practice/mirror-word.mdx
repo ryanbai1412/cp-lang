@@ -1,0 +1,20 @@
+---
+title: Mirror word
+description: "Level A. Teaches Str, indexing and yes()."
+---
+
+You are given one word of lowercase letters, at most 10⁵ long. Print `YES` if it reads the same backwards, otherwise `NO`.
+
+**Input:** the word. **Output:** `YES` or `NO`.
+
+| Input | Output |
+|---|---|
+| `level` | `YES` |
+
+<Judge id="mirror-word">
+
+- `Str` is indexed by `0..s.len`, one byte per character, in O(1).
+- `(0..n).all(k => ...)` asks a question of every index; there is no flag variable to forget to reset.
+- `print` does not take a bare `Bool`. `yes(b)` prints `YES` or `NO`, the spelling most judges want.
+
+</Judge>

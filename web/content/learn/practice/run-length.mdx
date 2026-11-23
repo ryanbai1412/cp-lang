@@ -1,0 +1,20 @@
+---
+title: Run length
+description: "Level A. Teaches building a Str with push and interpolation."
+---
+
+You are given a word of lowercase letters, at most 10⁵ long. Replace each maximal run of equal letters by the letter and the run's length. For `aaabcc` print `a3b1c2`.
+
+**Input:** the word. **Output:** the encoded word.
+
+| Input | Output |
+|---|---|
+| `aaabcc` | `a3b1c2` |
+
+<Judge id="run-length">
+
+- `var out = ""` is a growable buffer: `out.push(c)` appends a `Char`, `out += t` appends a `Str`.
+- `"{j - i}"` turns a number into text; integers have no `.to_str()`.
+- The inner `while` finds the end of the run, and `i = j` jumps past it, so the whole scan is O(n).
+
+</Judge>

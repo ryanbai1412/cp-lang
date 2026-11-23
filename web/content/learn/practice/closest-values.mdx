@@ -1,0 +1,20 @@
+---
+title: Closest values
+description: "Level A. Teaches sorted() and min= over neighbours."
+---
+
+You are given n integers (2 ≤ n ≤ 2·10⁵, each from 1 to 10⁹). Print the smallest difference between two of them.
+
+**Input:** n, then the n integers. **Output:** one number.
+
+| Input | Output |
+|---|---|
+| `5`<br/>`5 1 9 14 3` | `2` |
+
+<Judge id="closest-values">
+
+- After sorting, the closest pair is next to each other, so n − 1 differences are enough.
+- `a.sorted()` returns a sorted copy; `a` itself is unchanged.
+- `n: 2..=2e5` promises at least one pair, so `best!` cannot fail. The range in the type is the reason, and the compiler holds the input to it.
+
+</Judge>

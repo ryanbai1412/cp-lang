@@ -1,0 +1,27 @@
+[
+ {
+  "input": "level\n",
+  "expected": "YES\n",
+  "sample": true
+ },
+ {
+  "input": "ab\n",
+  "expected": "NO\n"
+ },
+ {
+  "input": "a\n",
+  "expected": "YES\n"
+ },
+ {
+  "input": "abba\n",
+  "expected": "YES\n"
+ },
+ {
+  "input": "abca\n",
+  "expected": "NO\n"
+ },
+ {
+  "input": "racecar\n",
+  "expected": "YES\n"
+ }
+]

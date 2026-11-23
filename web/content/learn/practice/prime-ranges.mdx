@@ -1,0 +1,20 @@
+---
+title: Prime ranges
+description: "Level B. Teaches std.math.Sieve and prefix counts."
+---
+
+You are given q queries (1 ≤ q ≤ 2·10⁵), each two numbers 1 ≤ l ≤ r ≤ 10⁵. For each, print how many primes lie between l and r, inclusive.
+
+**Input:** q, then q lines `l r`. **Output:** one line per query.
+
+| Input | Output |
+|---|---|
+| `2`<br/>`1 10`<br/>`10 20` | `4`<br/>`4` |
+
+<Judge id="prime-ranges">
+
+- `Sieve(N)` from `std.math` builds the table once, in O(N log log N). `sv.is_prime(k)` is then a lookup.
+- `pre[k]` counts the primes up to k, so a query is one subtraction. The sieve sits above the queries, so it is not rebuilt for each one.
+- `use std.math.{Sieve}` names what the program takes from the library; the [library guide](/docs/guides/stdlib) lists the rest.
+
+</Judge>

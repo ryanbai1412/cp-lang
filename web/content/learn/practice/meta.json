@@ -1,1 +1,1 @@
-{ "title": "Practice", "defaultOpen": true, "pages": ["halving-game", "odd-one-out", "collatz-length", "range-sums", "longest-corridor", "second-place", "leaderboard"] }
+{"title": "Practice", "defaultOpen": true, "pages": ["halving-game", "odd-one-out", "collatz-length", "plus-or-times", "mirror-word", "run-length", "range-sums", "longest-corridor", "closest-values", "second-place", "leaderboard", "at-most", "fewest-coins", "prime-ranges", "best-stretch"]}

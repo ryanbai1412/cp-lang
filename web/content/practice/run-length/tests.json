@@ -1,0 +1,23 @@
+[
+ {
+  "input": "aaabcc\n",
+  "expected": "a3b1c2\n",
+  "sample": true
+ },
+ {
+  "input": "a\n",
+  "expected": "a1\n"
+ },
+ {
+  "input": "abc\n",
+  "expected": "a1b1c1\n"
+ },
+ {
+  "input": "zzzzzzzzzzzz\n",
+  "expected": "z12\n"
+ },
+ {
+  "input": "aabbaa\n",
+  "expected": "a2b2a2\n"
+ }
+]
