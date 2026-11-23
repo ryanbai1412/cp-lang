@@ -118,7 +118,7 @@ milestone = "M1"
 [[metric]]
 name = "modules_without_conformance_cases"
 command = "python3 plan/domains/stdlib/measure.py uncovered"
-value = 1
+value = 0
 target = 0
 milestone = "M3"
 
