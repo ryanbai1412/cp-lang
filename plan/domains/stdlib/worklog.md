@@ -445,3 +445,4 @@ Newest first: what landed (commit), evidence, next, blocked, requests from other
 ### Request from spec (rebuild 12, 2026-11-23): still-open stub holes
 
 Round 12's cold reader hit again: `tally` returning `HashMap` (R07.11.4 says `Counter`), `r.start`/`r.end` in `std/prefix.cp` (R04.8 rejects them), and no stubs for `abs`, `min`/`max`, `Map`/`Set`/`HashMap`/`HashSet`. Also: add a `c[k] += 1` example to `Counter` (it works; the reader couldn't tell).
+- Routed from idioms (2026-11-23): `SegTree(act: flip_action<Side>(side), leaves)` (no `op`) checks with `T = Int`, so `st.all.now` fails "an `Int` has no member `now`"; spelling the op as `SegTree(toggle.over, leaves, act: toggle)` works (cf2152g). The `Flip` doc also says `SegTree(op, a, act: flip)`, but no `flip` value exists. General fix: with no `op`, take `T` from the action's `over` monoid (as the `act: assign` example already does), and make every doc spelling an `example:` so it is checked.
