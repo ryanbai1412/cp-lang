@@ -13,7 +13,7 @@ DEFAULT_DOCS = [
     "AGENTS.md",
     "README.md",
     "REPO.md",
-    "plan/PORTING.md",
+    "handbook/process/porting.md",
     "plan/STATUS.md",
     "spec/conformance/README.md",
 ]

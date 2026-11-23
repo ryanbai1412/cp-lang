@@ -2,7 +2,7 @@
 """What the dreams need: run `cpl check` over corpus/problems/*/dream.cp and
 count the errors by the missing feature or library name they report.
 
-A dream (plan/PORTING.md) is written in the syntax and library we wish we
+A dream (handbook/process/porting.md) is written in the syntax and library we wish we
 had, so its errors are the factory's to-do list. Each error is filed under
 a gap:
 

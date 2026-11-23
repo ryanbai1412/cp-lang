@@ -595,7 +595,7 @@ def main():
         "by today's compiler, with its token count; the gap is what the language",
         "still owes.",
         "",
-        "Lints counts the `cpl lint --taste` findings (the `plan/PORTING.md`",
+        "Lints counts the `cpl lint --taste` findings (the `handbook/process/porting.md`",
         f"checklist as lints L05xx; {sum(n for n, _ in taste_lints.values())} over all ports).",
         "",
         "| Added | Problem | Port | Tokens | Runtime | Taste | Lints | Areas | Frictions | First friction |",

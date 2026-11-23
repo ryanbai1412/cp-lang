@@ -1,9 +1,9 @@
 # Taste reviews
 
 One file per port, `NAME.md`, written cold: the reviewer reads `AGENTS.md`,
-`plan/PORTING.md`, the exemplars, the statement (or the friction report),
+`handbook/process/porting.md`, the exemplars, the statement (or the friction report),
 the dream and the port, never the C++ original. The bar is
-`design/EXEMPLARS-PORTS.md`: a 5 reads like one of its exemplars, for the
+`research/design-history/EXEMPLARS-PORTS.md`: a 5 reads like one of its exemplars, for the
 port and for the dream. `scripts/review-check.py` reads the first `Score:`
 line (the port) and `Dream:` line (the dream) and fails `scripts/check.sh --fast` when a
 port newer than `baseline.json` has no dream or no review.
@@ -13,7 +13,7 @@ it with a score.
 
 ## Scores
 
-- **5** could be an exemplar in `design/EXEMPLARS-PORTS.md`: reads like the editorial, every fact once,
+- **5** could be an exemplar in `research/design-history/EXEMPLARS-PORTS.md`: reads like the editorial, every fact once,
   nothing a contestant would want to change.
 - **4** reads like the editorial; the gaps are minor and every one is in the
   friction report.
@@ -28,15 +28,15 @@ it with a score.
 ## Dream score
 
 `Dream: N/5` on the line after `Score:`, on the same scale, judged against
-the exemplars in `design/EXEMPLARS-PORTS.md`: the header states the
+the exemplars in `research/design-history/EXEMPLARS-PORTS.md`: the header states the
 invariant, standard algorithms are named, structures with an invariant get a
 type, searches are `find`/`first`/`any`, index spaces are domains, each
 bound once, no sentinels or fake monoids. A dream under 4 reads like the C++
 and is sent back: the review says what the dream should say instead, and the
 port is judged against that rewrite rather than the dream as written.
 
-Calibrate against `design/EXEMPLARS-PORTS.md` (cf2147h, cf2084h, cf2147f,
-cf2255e2) and `design/sketches/ioi2025/`. Any of these is a dream failure and
+Calibrate against `research/design-history/EXEMPLARS-PORTS.md` (cf2147h, cf2084h, cf2147f,
+cf2255e2) and `research/design-history/sketches/`. Any of these is a dream failure and
 caps the dream at 3:
 
 - the C++ construction kept (a greedy builder, a cycle walk, a pointer chase)
@@ -67,7 +67,7 @@ provisional.
 
 ## Sections
 
-- **Checklist failures:** each failed `plan/PORTING.md` item, with the line.
+- **Checklist failures:** each failed `handbook/process/porting.md` item, with the line.
 - **Owed rewrites:** gaps today's language can already close. The author
   owes these; each names the rewrite and, where it matters, the run that
   shows it works.

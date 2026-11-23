@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Report which corpus ports open with the standard header (plan/PORTING.md, "Header").
+"""Report which corpus ports open with the standard header (handbook/process/porting.md, "Header").
 
     uv run python corpus/header.py          count, then the 20 longest ports missing it
     uv run python corpus/header.py --all    list every port missing it

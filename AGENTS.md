@@ -29,7 +29,7 @@ Then read, in order:
 3. `plan/ARCHITECTURE.md`: compiler, IR, interpreter, and crate architecture.
 4. `decisions.md`: every design call, its reason and how to reverse it.
 5. `REPO.md`: where everything lives.
-6. `plan/PORTING.md`: if you port solutions, the bar and the review.
+6. `handbook/process/porting.md`: if you port solutions, the bar and the review.
 
 `plan/agent-context.md` has Ryan's own words; historical design debates live
 under `research/design-history/`.
