@@ -453,3 +453,7 @@ Landed since 23:10: four type/flow lints from `spec/idioms/lints.md`, L0571 `neg
   mark the fix `cpl fix` applies as `isPreferred` (re-checked on a scratch
   database), so Neovim's apply-preferred and VS Code's quick fix take the
   same candidate as the CLI. Test in cpl-lsp tests/fixes.rs.
+- Lint L0597 `unreachable_code` (lints.md flow row): statements after
+  `return`/`break`/`continue` in the same block; the fix deletes them.
+  `cpl check` and `cpl lint` were both silent on it. Record in
+  spec/lints/unreachable_code; 0 hits on corpus and std.

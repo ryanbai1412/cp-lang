@@ -1,0 +1,1 @@
+A statement after `return`, `break` or `continue` in the same block never runs: the block has already been left. It is usually a line that was meant to come first, such as a `print` before the `return`, or debugging code left behind. The fix deletes the lines that never run; if one of them was meant to run, move the `return` below it instead.
