@@ -1,6 +1,6 @@
 # diagnostics plan
 
-Detail behind [README.md](README.md). Numbers: [metrics.toml](metrics.toml).
+The charter is handbook/domains/diagnostics.md. Numbers: [metrics.toml](metrics.toml).
 
 ## Where we are
 Main does not meet its own recovery bars: both scoreboards in
@@ -96,3 +96,47 @@ Local fixes made, with the general fix that would remove the class.
 - `let r = mut rows[0]` then `rows.pop()` checks clean on main: a `mut` reference into an element doesn't stop the container's length changing (R05.8.4). The lend should keep its element steps, as `let r = rows[0]` does since BLOCKERS row 48. Owner: compiler.
 - `Perm<1..=n>` / `Perm<Int>` (BLOCKERS row 37): lowering now names the missing domain at the user's type. General fix: accept a range type argument as an index, as `[1..=n]T` already is, and have the checker check alias arguments used as indexes so `cpl check` catches what only lowering sees. Owner: compiler.
 - A trap's `locals:` note shows dead loop variables and misses the trapping top-level value: `for i in 0..2: let v = xs[i]`, then `let w: ?Int = None; print(w!)` notes `locals: i = 1, v = 1`. General fix: the trace recorder drops a local when its scope ends and records top-level `let`s as locals, so every tool (trap notes, `cpl trace`, debugger) shows only live names. Owner: debugger (`crates/cpl-interp/src/trace.rs`). Top-level half done (bc44c0690); ended block locals inside a fn left with debugger.
+
+## Milestone 2 exit criteria
+The complete version: whatever a contestant writes, from any language
+habit, a stranger's typo or a half-finished idea, the first thing CPL says
+is the one root cause, at the place they wrote it, in the spec's words, with
+a fix that is right, and the same thing in every tool, OS and build. A trap
+reads like a teacher looking over the shoulder: the values, the line, the
+rule, the CPL way. Diagnostics never blame the user for a library's gap,
+never point at std, and never suggest a name that doesn't run.
+
+Exit criteria (each a gated test or scoreboard on CI, all three OSes):
+1. **One root cause.** Broken-ports cascades <= 2% on a base of every
+   `spec.cp` that checks clean, `cpl-ir` emits no second error for a
+   reported root, and first-error-on-the-right-line stays 100%
+   (`--test recovery`).
+2. **Every fix right.** >= 95% of recoverable common-mistake errors carry a
+   fix and 100% of offered fixes restore a clean program; the cut-value
+   class stays separate (decision 6551). Gated by `--test catalogue`,
+   `--test newcomer`, broken-ports.
+3. **Every suggestion runs.** Every help, fix and did-you-mean names an
+   item that exists and is public, checked generally by executing it
+   (`builtin_catalog`'s in-place test grows to all method and free-function
+   advice, habit renames and std twins).
+4. **Library gaps are the library's.** An error inside std names the std
+   line and the user call chain and never reads as the user's mistake; a
+   std instantiation fails at the trait bound, at the user's call (owed by
+   compiler, General fixes owed).
+5. **Newcomers and strangers.** The newcomer scoreboard covers >= 300
+   copies over C++, Python and Rust habits plus every acceptance-run
+   mistake; runs-after-fix >= 99.5%, silent 0. Every BLOCKERS row tagged
+   diagnostics is closed with a golden.
+6. **Catalogue.** Every E/R/L code has a spec row, an example that
+   triggers it, a `cpl explain` page and a `/errors` or `/lints` page the
+   diagnostic links to; the full `spec/idioms/lints.md` catalog, including
+   the type, flow and bound rows.
+7. **Traps.** Every R-code names the values and the CPL fix; the
+   interpreter and the built C++ report the same trap, line and values on
+   the corpus (`trap_parity`), and trap locals never hang on a large
+   top-level value.
+8. **Every tool.** CLI, LSP (Neovim, Vim, VS Code, JetBrains), playground,
+   trace and `cpl stress` show the same diagnostics and fixes, CRLF and LF
+   alike (`lsp_parity`, CRLF goldens).
+9. **Speed.** Diagnostics add under 10% to a front-end run, which stays
+   under 500 ms on every corpus file.
