@@ -1,6 +1,9 @@
-// NOIP 2004 Chorus Formation: remove the fewest singers so that heights
-// strictly rise to some singer and strictly fall after: longest rising run
-// ending at each singer plus longest falling run starting there.
+// Source: NOIP 2004 P3 (Chorus Formation), https://dmoj.ca/problem/noip04p3
+// Problem: N <= 100 heights in 130..=230 in a row. Remove the fewest students so the rest strictly
+//   rise to one student and strictly fall after; print that count.
+// Solution: up[i] is the longest strictly rising subsequence ending at i and down[i] the longest
+//   strictly falling one starting there, each an O(N^2) LIS DP. A formation peaking at i keeps
+//   up[i] + down[i] - 1; print N minus the best.
 let n: 2..=100 = read()
 domain I = 1..=n
 let h: [I]130..=230 = read()

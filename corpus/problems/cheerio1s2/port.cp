@@ -1,4 +1,9 @@
-// Cheerio Contest 1 S2, n cheapest seats (buildable today-form)
+// Source: Cheerio Contest 1 S2 (School Expansion), https://dmoj.ca/problem/cheerio1s2
+// Problem: build N <= 2e5 classrooms on floors with no gaps; the j-th room on floor i costs
+//   A i + B j (A, B <= 1e9). Print the least total cost (needs 64 bits).
+// Solution: cost grows along floors and along rooms, so the N cheapest (floor, room) pairs never
+//   leave a gap. A MinHeap holds each floor's next room (A i + B for floors 1..=N); pop the
+//   cheapest N times, pushing that floor's next room (+B). O(N log N).
 // original: corpus/submissions/5337643.cpp
 let n: 1..=1e5 = read()
 let a: 1..=1e4 = read()

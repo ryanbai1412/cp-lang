@@ -1,5 +1,11 @@
-// Kaučuk, in the forms proto/cp.py lib-run takes today (proto/cpc
-// has no string interpolation, so this one runs on the interpreter). See ../coci21c2p1.cp.
+// Source: COCI 2021/2022 Contest 2 #1 (Kaučuk), https://dmoj.ca/problem/coci21c2p1
+// Problem: n <= 100 lines, each `section`, `subsection` or `subsubsection` and a title (<= 20
+//   lowercase letters). Print each title after its number ("1", "1.2" or "1.2.1"): each level
+//   counts from 1 and restarts under every new parent.
+// Solution: a counter per depth, read off the command's length. A command bumps its depth's
+//   counter, resets the deeper ones and prints the counters down to its depth. O(n).
+// Runs on proto/cp.py lib-run today: proto/cpc has no string interpolation.
+//   See ../coci21c2p1.cp.
 // original: corpus/submissions/4143397.cpp
 let n: Int = read()
 var at = [0, 0, 0, 0]

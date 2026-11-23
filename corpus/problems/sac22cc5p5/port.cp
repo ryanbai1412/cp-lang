@@ -1,4 +1,11 @@
-// SAC '22 CC5 P5 (today/ runnable subset) — original: corpus/submissions/4575631.cpp
+// Source: SAC '22 Code Challenge 5 P5 (Querying Rectangles), https://dmoj.ca/problem/sac22cc5p5
+// Problem: an N x M grid of lowercase letters (N, M <= 5000) and 1 <= K <= min(N, M). Print the
+//   number of distinct K x K subgrids.
+// Solution: a 2D double polynomial hash (`Hash2D`, prefix sums) gives each K x K square's hash in
+//   O(1); put all (N - K + 1)(M - K + 1) of them in a Set and print its size. O(N M) hashes,
+//   collisions ignored.
+// Runnable today/ subset.
+// original: corpus/submissions/4575631.cpp
 use std.strings.{Hash2D, HashVal}
 
 let (n, m, k): (1..=5_000, 1..=5_000, 1..=5_000) = read()

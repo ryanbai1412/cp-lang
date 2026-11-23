@@ -1,11 +1,10 @@
-// Codeforces 2211 A — Antimedian Deletion
-//
-// Each operation deletes the median of a chosen length-3 subarray (never the
-// minimum or maximum of the triple), reducing the array length by 1 until
-// length 2. For `n == 1`, no operation applies so the answer is `[1]`. For
-// `n >= 2`, any target element `p[i]` can survive down to length 2 (by always
-// picking a triple containing `p[i]` where `p[i]` is an extremum, or deleting
-// outside `p[i]`), while length 1 is unreachable, so every position answers `2`.
+// Source: Codeforces 2211A (Antimedian Deletion), https://codeforces.com/contest/2211/problem/A
+// Problem: a permutation p of n <= 100. An operation takes 3 adjacent elements and deletes their
+//   minimum or maximum. For each i, print the shortest reachable length of an array that still
+//   holds p[i]. Multitest.
+// Solution: an operation needs 3 elements, so lengths stop at 2, and any window has a minimum and
+//   a maximum, one of them not p[i], so p[i] survives down to length 2. Print 2 for every i, or 1
+//   when n = 1; O(n).
 
 @!multitest
 let n: 1..=100 = read()

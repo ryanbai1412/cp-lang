@@ -1,4 +1,9 @@
-// MCCC '22 J5 (CP Lang 0.2.2): maximum independent set over `Subset<V>`.
+// Source: Mock CCC '22 Contest 1 J5 (New Year's Restrictions), https://dmoj.ca/problem/mccc3j5
+// Problem: N <= 18 resolutions and M distinct pairs of them that cannot both be kept. Print the
+//   most resolutions that can be kept (a maximum independent set).
+// Solution: try all 2^N subsets (`Subset<V>`), keep those holding no restricted pair, and print
+//   the largest popcount. O(2^N M).
+// Written for CP Lang 0.2.2.
 // original: corpus/submissions/4223449.cpp
 let (n, m): (Int, Int) = read()
 domain V = 1..=n
