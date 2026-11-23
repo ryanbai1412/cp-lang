@@ -1517,12 +1517,10 @@ impl<'p> Emitter<'p> {
                         && self.closure_id.is_none()
                         && self.fn_id.is_some()
                         && matches!(value.kind, ExprKind::Call(..));
-                    self.rekey_last = if is_return && self.closure_id.is_none() {
-                        self.rekeyed_local(value)
-                    } else {
-                        None
-                    };
-                    let text = if is_return && self.closure_id.is_none() {
+                    let rekeyed = (is_return && self.closure_id.is_none())
+                        .then(|| self.rekeyed_local(value))
+                        .flatten();
+                    let mut text = if is_return && self.closure_id.is_none() {
                         if let ExprKind::Tuple(items) = &value.kind {
                             if !items.is_empty()
                                 && !matches!(
@@ -1637,8 +1635,13 @@ impl<'p> Emitter<'p> {
                         };
                         self.expr_with_elem_layout(value, ret_l.as_ref()).text
                     };
+                    if let Some(local) = rekeyed {
+                        let name = &self.names[local];
+                        if let Some(rest) = text.strip_prefix(&format!("cpl::rekey_own({name}, ")) {
+                            text = format!("cpl::rekey_own(std::move({name}), {rest}");
+                        }
+                    }
                     self.last_use_call = false;
-                    self.rekey_last = None;
                     self.line(out, &format!("return {text};"));
                 }
             }

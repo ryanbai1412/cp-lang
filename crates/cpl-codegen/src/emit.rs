@@ -155,9 +155,6 @@ pub(crate) struct Emitter<'p> {
     /// Set while the call a `return` makes is written: its local arguments
     /// are at their last use.
     pub last_use_call: bool,
-    /// Set while a `return` of `list.rekey(..)` is written: the local list it
-    /// reads for the last time, moved into the result instead of copied.
-    pub rekey_last: Option<usize>,
     /// The statement being written stores a local read for the last time.
     pub moves_last: bool,
     pub pushers: BTreeMap<usize, usize>,
@@ -256,7 +253,6 @@ impl<'p> Emitter<'p> {
             rows,
             sunk: crate::scope::sunk_params(program),
             last_use_call: false,
-            rekey_last: None,
             moves_last: false,
             pushers: BTreeMap::new(),
             pushing: None,

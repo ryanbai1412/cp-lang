@@ -2363,16 +2363,7 @@ impl<'p> Emitter<'p> {
                 if matches!(op, Builtin::Rekey) {
                     self.need("rekey");
                 }
-                let mut all: Vec<String> = (0..args.len()).map(|i| text(i).to_string()).collect();
-                let moved = self.rekey_last.take();
-                if let (Some(local), Some(first)) = (moved, all.first_mut()) {
-                    if name == "rekey_own"
-                        && matches!(args[0].kind, ExprKind::Local(l) if l == local)
-                        && *first == self.names[local]
-                    {
-                        *first = format!("std::move({first})");
-                    }
-                }
+                let all: Vec<String> = (0..args.len()).map(|i| text(i).to_string()).collect();
                 Code::primary(format!("cpl::{name}({})", all.join(", ")))
             }
             Builtin::ToStr => {
