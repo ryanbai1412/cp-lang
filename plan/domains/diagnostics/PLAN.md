@@ -76,6 +76,7 @@ Local fixes made, with the general fix that would remove the class.
 |---|---|---|---|
 | `manacher(s)` on `[Pos]Char`: E0203 for `.nth` inside std, shown at the user's call | the error names the std fn, file and line, and says the gap is the library's (`lower/report.rs`) | check each generic std body against its trait bounds once (`Indexed` declares `nth`), so a std gap fails a std test and never reaches a user | stdlib, compiler |
 | L0533 `negate_for_desc` and L0541 `sort_desc_by_negation` written the same hour | dropped L0533 | a lint claims its `spec/idioms/lints.md` row (the last column) when work starts, so two lanes can't build one row | lint-fmt |
+| `cpl migrate corpus` rewrote 7 `dream.cp` drafts wrongly (`fn phase_plan(..) =` became `fn phase:lan(..):`) | reverted those files; only `.copy()` rewrites kept | migrate applies a fix only when the file checks with it applied, and never splices inside a name | tools |
 | `score.py` ran a stale `target/release/cpl` and scored 0% | run with `CPL=target/debug/cpl` | the scorer runs the newest built `cpl`, or builds it | lint-fmt |
 | new lints hit std code (`std/strings.cp`, `std/dp.cp`) | baselined in `corpus_warnings.txt` | a std-wide `allow` for idiom lints whose fix is the library itself, so the baseline holds only real debt | lint-fmt |
 | help naming `(r, c).adj4` (a `@get` fn in `std.grid`) fails `every_help_names_real_vocabulary` as "no such method" | grid helps name `.step(d)` instead | the vocabulary check resolves `@get` fns (and tuple receivers) the way the checker does | lint-fmt |

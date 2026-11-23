@@ -40,6 +40,6 @@ mix(mut a[l.l..m.l], mut a[m.l..r.r])
 print(a)
 
 // an owned copy may be kept
-var keep = a[l..=r].copy()
+var keep = a[l..=r].clone()
 keep.push(0)
 print(keep)

@@ -11,7 +11,7 @@ let area: 1..=2e6 = read()
 domain P = 0..n
 type Pt = (x: 0..=1e5, y: 0..=1e5)
 let raw: [P]Pt = read()
-var pts = raw.copy()
+var pts = raw.clone()
 pts.sort()
 
 var ys: List<Int> = [0]

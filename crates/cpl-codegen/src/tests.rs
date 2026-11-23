@@ -358,7 +358,7 @@ fn every_optional_int_is_one_int_with_int64_min_as_none() {
     );
     assert_eq!(table("for x in dp: print(x ?? 0)"), PACKED);
     assert_eq!(
-        table("let copy = dp.copy()\nprint(copy[V.first!] ?? 0)"),
+        table("let copy = dp.clone()\nprint(copy[V.first!] ?? 0)"),
         PACKED
     );
     // A list filled by `push`, a grid, a local, a parameter and a result.
@@ -1809,7 +1809,7 @@ fn a_local_read_for_the_last_time_moves_into_its_place() {
     assert!(moved.contains("dp = std::move(next);"), "{moved}");
     let read = cpp(&src("").replace(
         "    dp = next\n",
-        "    dp = next.copy()\n    print(next[0])\n",
+        "    dp = next.clone()\n    print(next[0])\n",
     ));
     assert!(
         !read.contains("dp = std::move(next);"),

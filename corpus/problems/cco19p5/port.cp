@@ -21,5 +21,5 @@ for v in V:
     let f = above[v].min()!
     above[v].remove(f)
     if f != v and above[f].len < above[v].len: swap(mut above[f], mut above[v])
-    for x in above[v].copy(): above[f].add(x)
+    for x in above[v].clone(): above[f].add(x)
 print(total)

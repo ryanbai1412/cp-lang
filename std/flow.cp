@@ -1021,7 +1021,7 @@ struct Blossom:
         let pr = self.get_pr(u, xr)
         for i in 0..pr: self.set_match(flower[u][i], flower[u][i ^ 1])
         self.set_match(xr, v)
-        let f = flower[u].copy()
+        let f = flower[u].clone()
         flower[u] = [f[(i + pr) % f.len] for i in 0..f.len]
 
     fn augment(mut self, u: Int, v: Int):
@@ -1426,8 +1426,8 @@ pub fn global_min_cut<V, E>(edges: [E](u: V, v: V, w: Int)) -> (w: Int, side: [V
             for i in 0..n if alive[i] and not added[i]: key[i] += mat[t * n + i]
         if key[t] < best:
             best = key[t]
-            best_group = group[t].copy()
-        for x in group[t].copy(): group[s].push(x)
+            best_group = group[t].clone()
+        for x in group[t].clone(): group[s].push(x)
         alive[t] = false
         for i in 0..n:
             mat[s * n + i] += mat[t * n + i]
@@ -1667,7 +1667,7 @@ fn max_matching_matches_brute_force_and_the_cover_proves_it():
         // best[mask]: the largest matching of the first left vertices into the rights in `mask`
         var best = List.filled(32, 0)
         for l in L:
-            var next = best.copy()
+            var next = best.clone()
             for mask in 0..32:
                 for r in adj[l]:
                     let bit = 1 << r.to_idx
@@ -1778,7 +1778,7 @@ fn all_bounded_flows<V, E>(
             net[arcs[e].u] -= f[e.to_idx]
             net[arcs[e].v] += f[e.to_idx]
         if V.all(v => net[v] == 0 or Some(v) == s or Some(v) == t):
-            out.push((if let x = s: -net[x] else: 0, f.copy()))
+            out.push((if let x = s: -net[x] else: 0, f.clone()))
         var i = 0
         while i < E.K and f[i] == arcs[E.nth(i)].hi:
             f[i] = arcs[E.nth(i)].lo

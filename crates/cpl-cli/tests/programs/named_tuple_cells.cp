@@ -3,7 +3,7 @@
 let n = 2
 var es: [n](Int, Int) = (0, 0)
 es[1] = (3, 4)
-let named: [n](a: Int, b: Int) = es.copy()
+let named: [n](a: Int, b: Int) = es.clone()
 print(named[1].a + named[1].b)
 let o: ?(Int, Int) = (5, 6)
 let on: ?(a: Int, b: Int) = o

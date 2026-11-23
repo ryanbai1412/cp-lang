@@ -931,7 +931,7 @@ fn moved_from_heap_values_are_rejected() {
         ["E0608"]
     );
     assert_eq!(
-        codes("let a = [1, 2]\nlet b = a.copy()\nprint(a.len, b.len)\n"),
+        codes("let a = [1, 2]\nlet b = a.clone()\nprint(a.len, b.len)\n"),
         Vec::<&str>::new()
     );
     assert_eq!(

@@ -127,7 +127,7 @@ pub struct Rooted<V, Pre>:
         for v in V:
             if let p = par[v]: kids[p].push(v)
             else: roots.push(v)
-        var queue = roots.copy()
+        var queue = roots.clone()
         var i = 0
         while i < queue.len:
             for c in kids[queue[i]]: queue.push(c)
@@ -1007,7 +1007,7 @@ pub struct Rooted<V, Pre>:
         var start: List<Int> = List.filled(V.count + 1, 0)
         for v in V: start[dep[v] + 1] += 1
         for d in 1..start.len: start[d] += start[d - 1]
-        var fill = start.copy()
+        var fill = start.clone()
         var order: List<V> = List.filled(V.count, root)
         var slot: [V]Int = 0
         for p in Pre:

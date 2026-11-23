@@ -2736,7 +2736,7 @@ fn planar_walk(ps: List<Pt>, edges: List<(Int, Int)>) -> PlanarWalk:
     for u in 0..n:
         for j in 0..adj[u].len: half.push((u, adj[u][j], j))
     half.sort()
-    var walk = PlanarWalk([], off.copy(), List.filled(off[n], 0), half)
+    var walk = PlanarWalk([], off.clone(), List.filled(off[n], 0), half)
     var done = List.filled(off[n], false)
     var raw: List<List<Int>> = []
     for u in 0..n:

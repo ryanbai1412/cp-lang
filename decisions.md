@@ -8120,3 +8120,16 @@ tag move fatal again.
   `rs_near_cap` lists files within 100 lines of the cap, for information only. A baseline raised above origin/main now fails `--check` unless the commit's decisions.md lines name the counter or the file.
 - **Why.** Ryan's debt scan found counts that only grew because nothing gated them (`ir_builtin_names` 89 -> 95 by a bare `--update`, decision numbers 12 -> 28), and "tree-walker deleted" needs a number that can only fall.
 - **Reverse.** Drop the counters from `COUNTERS` and `unexplained_bumps` from `main`.
+
+## 394. `.clone()` is the one copy spelling; `.copy()` is a migrated error (diagnostics, 2026-11-23)
+
+- **Decision.** `xs.clone()` copies a list, string, map, set, array or view;
+  `xs.copy()` on those is E0503 with the fix `clone`, so `cpl migrate`
+  rewrites it. The built-in catalog (completion, docs, the catalog test) lists
+  only `clone`, the lowering takes both names, and std, the tests and the corpus
+  ports are migrated. The free `copy(x)` builtin stays: `std.seq`'s `clone`
+  is defined on it.
+- **Why.** spec/core/05-ownership.md §13 already picked `.clone()`, but the
+  catalog generated `.copy()`, so editors and docs taught both (BLOCKERS #42).
+- **Reverse.** Rename the five catalog rows back and drop `old_copy_spelling`
+  in `check/steps.rs`.

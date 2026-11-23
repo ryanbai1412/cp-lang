@@ -7,7 +7,7 @@ let (n, k): (1..=2e5, 1..=2e5) = read()
 let a: [0..n]1..=2e5 = read()
 if k == 1: return print("YES")
 
-var order = a.copy()
+var order = a.clone()
 order.select(k - 2)
 let thresh = order[k - 2]
 let small = a.filter(v => v < thresh).to_list()

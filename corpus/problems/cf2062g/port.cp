@@ -36,7 +36,7 @@ let q: [I]I = read()
 let (_, mate) = min_weight_matching<I, I>((i, j) => abs(i.ord - j.ord) + abs(p[i].ord - q[j].ord))
 
 // Stage 1: move each element from i to mate[i].
-var pos_perm = mate.copy()
+var pos_perm = mate.clone()
 var ops = sort_perm(mut pos_perm)
 
 // Stage 2: value v now sits at pos_of[v] and must become q[pos_of[v]].

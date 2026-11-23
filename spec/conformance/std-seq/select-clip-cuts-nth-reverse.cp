@@ -4,7 +4,7 @@ a.select(1)
 print(yes(a.nth(1) == 2))
 var b = [9, 3, 7, 1, 8, 2, 6, 4, 5, 0]
 for k in 0..10:
-    var c = b.copy()
+    var c = b.clone()
     c.select(k)
     print(c.nth(k), end: " ")
 print()

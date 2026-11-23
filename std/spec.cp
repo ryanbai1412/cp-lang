@@ -178,7 +178,7 @@ pub fn differences(xs: List<Int>) -> List<Int>:
 /// traps: never (overflow wraps in release, traps in debug)
 /// example: `newton([1, 4, 9, 16]) == [1, 3, 2, 0]`
 pub fn newton(xs: List<Int>) -> List<Int>:
-    var row = xs.copy()
+    var row = xs.clone()
     var out: List<Int> = []
     while not row.is_empty:
         out.push(row[0])
@@ -245,7 +245,7 @@ pub fn berlekamp_massey<P>(xs: List<Mod<P>>) -> List<Mod<P>>:
             shift += 1
             continue
         let coef = d / last
-        var next = cur.copy()
+        var next = cur.clone()
         while next.len < prev.len + shift: next.push(Mod<P>(0))
         for j in 0..prev.len: next[j + shift] -= coef * prev[j]
         if 2 * len <= i:
@@ -263,7 +263,7 @@ pub fn berlekamp_massey<P>(xs: List<Mod<P>>) -> List<Mod<P>>:
 // coefficients.
 fn reduce_rec<P>(p: List<Mod<P>>, c: List<Mod<P>>) -> List<Mod<P>>:
     let k = c.len
-    var q = p.copy()
+    var q = p.clone()
     while q.len < k: q.push(Mod<P>(0))
     var top = q.len - 1
     while top >= k:

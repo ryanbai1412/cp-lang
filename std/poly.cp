@@ -366,7 +366,7 @@ pub fn prod_linear<P>(roots: List<Mod<P>>) -> List<Mod<P>>:
 /// example: `type Z = Mod<998244353>; let a: List<Z> = [0, 0, 1]; taylor_shift(a, Z(1)) == [Z(1), Z(2), Z(1)]`
 pub fn taylor_shift<P>(a: List<Mod<P>>, c: Mod<P>) -> List<Mod<P>>:
     let n = a.len
-    if n <= 1 or c.v == 0: return a.copy()
+    if n <= 1 or c.v == 0: return a.clone()
     assert n < P, "poly.taylor_shift requires a.len < P"
     var fact = List.filled(n, Mod<P>(1))
     var ifact = List.filled(n, Mod<P>(1))

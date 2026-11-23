@@ -47,7 +47,7 @@ while cur_l < cur_r:
 // dp[p] = max antichain size ending with popcount allowance >= p
 var dp: [0..=MAXB]Int = 0
 for (o, k) in left_blocks:
-    var ndp = dp.copy()
+    var ndp = dp.clone()
     let hi_a = min(MAXB, o + k)
     for b in 0..=hi_a:
         let lo_a = max(b, o)

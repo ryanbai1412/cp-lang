@@ -71,7 +71,7 @@ fn augment():
                 break
         if ok and cap[path.last!] > 0 and (best == None or gain > best!):
             best = gain
-            best_path = path.copy()
+            best_path = path.clone()
         if not next_permutation(mut perm): break
     var prv = 3
     for nxt in best_path:

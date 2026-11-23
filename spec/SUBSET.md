@@ -298,8 +298,6 @@ documented. The stdlib's own gaps are in `std/GAPS.md`.
 - std-segtree/closure-op-picks-index.cp: compiler
 - std-strings/split-trailing-and-leading.cp: stdlib
 - std-seq/split-on-separator-predicate.cp: stdlib
-- core-07/range-in-brackets-help-names-list.cp: diagnostics
-- std-rand/shuffled-help-names-rng-shuffle.cp: diagnostics
 - core-06/check-multitest-reads-own-shape.cp: tools
 - core-05/chunks-walk-lends-parent.cp: compiler
 - core-05/windows-walk-lends-parent.cp: compiler

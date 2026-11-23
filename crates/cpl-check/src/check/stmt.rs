@@ -100,37 +100,6 @@ impl<'a> Checker<'a> {
         );
     }
 
-    /// R07.9.2: `s.fold(f)` with a plain fn has no identity, so it is `?T`.
-    fn fold_needs_identity(&mut self, init: &Expr, declared: &Ty) {
-        if matches!(declared, Ty::Optional(_) | Ty::Error) {
-            return;
-        }
-        let ExprKind::Call { callee, args } = &crate::check::lends::unparen(init).kind else {
-            return;
-        };
-        let ExprKind::Field { name, .. } = &callee.kind else {
-            return;
-        };
-        let [arg] = args.as_slice() else {
-            return;
-        };
-        if name.text != "fold"
-            || arg.name.is_some()
-            || !matches!(arg.value.kind, ExprKind::Lambda { .. })
-        {
-            return;
-        }
-        let shown = self.quote(init.span);
-        let message = format!(
-            "`{shown}` is {}: a fold by a lambda has no identity, so an empty sequence gives `None`",
-            Ty::Optional(Box::new(declared.clone())).with_article()
-        );
-        if let Some(diag) = self.error(codes::EMPTY_FOLD_NO_IDENTITY, init.span, message) {
-            diag.help = Some(format!("unwrap: `{shown}!`, or `?? d` for a default"));
-            diag.fix("unwrap it with `!`", Span::point(init.span.end), "!");
-        }
-    }
-
     /// R08.1.3, R08.5.2: inherent methods live with their type, so
     /// `impl m.P:` and `impl Range<Int>:` (a type declared elsewhere)
     /// are errors, not blocks no call reaches.

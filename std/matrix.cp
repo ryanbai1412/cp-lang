@@ -1278,7 +1278,7 @@ fn berlekamp_massey<P>(s: List<Mod<P>>) -> List<Mod<P>>:
             shift += 1
             continue
         let coef = d / last
-        var next = cur.copy()
+        var next = cur.clone()
         while next.len < prev.len + shift: next.push(Mod<P>(0))
         for j in 0..prev.len: next[j + shift] -= coef * prev[j]
         if 2 * len <= i:

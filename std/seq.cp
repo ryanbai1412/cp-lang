@@ -1206,7 +1206,7 @@ pub fn perm_pow<V>(p: [V]V, k: Int) -> [V]V:
 pub fn inversions<S: Seq, T>(self: S) -> Int:
     var cur: List<T> = [x for x in self]
     let n = cur.len
-    var tmp = cur.copy()
+    var tmp = cur.clone()
     var total = 0
     var w = 1
     while w < n:
@@ -1283,7 +1283,7 @@ pub fn pop_while<T>(mut self: List<T>, ok: T -> Bool) -> List<T>:
 /// cost: \(O(\text{size of the value})\), allocates for heap values
 /// traps: never
 /// example: `let a = [1]; var b = a.clone(); b.push(2); a == [1]`
-pub fn clone<T>(self: T) -> T = self.copy()
+pub fn clone<T>(self: T) -> T = copy(self)
 
 /// Move all elements out of `self` in \(O(1)\), leaving it empty.
 ///
@@ -2002,9 +2002,9 @@ pub fn kway_merge<S: Indexed, T>(lists: List<S>) -> List<T>:
         while i + 1 < parts.len:
             next.push(merge_sorted(parts[i], parts[i + 1]))
             i += 2
-        if i < parts.len: next.push(parts[i].copy())
+        if i < parts.len: next.push(parts[i].clone())
         parts = next
-    parts[0].copy()
+    parts[0].clone()
 
 /// \(O(n)\), \(O(n)\) memory. Stable LSD radix sort in place by integer key `by:` (signed `Int` supported).
 ///
@@ -2028,7 +2028,7 @@ pub fn radix_sort<S: IndexedMut, T>(mut self: S, by: T -> Int = x => x):
         var count = [0 for _ in 0..257]
         for p in cur: count[((p.0 - lo) >> shift) % 256 + 1] += 1
         for d in 0..256: count[d + 1] += count[d]
-        var out = cur.copy()
+        var out = cur.clone()
         for p in cur:
             let d = ((p.0 - lo) >> shift) % 256
             out[count[d]] = p
@@ -2638,21 +2638,21 @@ fn reorder_and_permutations_in_place():
     assert a == [1, 3, 2, 1]
     // next_permutation and prev_permutation are exact mirrors
     var p = [1, 2, 2]
-    var fwd = [p.copy()]
-    while next_permutation(mut p): fwd.push(p.copy())
+    var fwd = [p.clone()]
+    while next_permutation(mut p): fwd.push(p.clone())
     assert fwd == [[1, 2, 2], [2, 1, 2], [2, 2, 1]] and p == [1, 2, 2]
     var q = [2, 2, 1]
-    var bwd = [q.copy()]
-    while prev_permutation(mut q): bwd.push(q.copy())
+    var bwd = [q.clone()]
+    while prev_permutation(mut q): bwd.push(q.clone())
     assert bwd == [[2, 2, 1], [2, 1, 2], [1, 2, 2]] and q == [2, 2, 1]
     // 4-element full round-trip forward and backward
     var perm = [1, 2, 3, 4]
-    var up = [perm.copy()]
-    while next_permutation(mut perm): up.push(perm.copy())
+    var up = [perm.clone()]
+    while next_permutation(mut perm): up.push(perm.clone())
     assert up.len == 24 and perm == [1, 2, 3, 4]
     var perm_down = [4, 3, 2, 1]
-    var down = [perm_down.copy()]
-    while prev_permutation(mut perm_down): down.push(perm_down.copy())
+    var down = [perm_down.clone()]
+    while prev_permutation(mut perm_down): down.push(perm_down.clone())
     assert down.len == 24 and perm_down == [4, 3, 2, 1]
     assert down == up.rev
     // Edge cases: empty and singleton

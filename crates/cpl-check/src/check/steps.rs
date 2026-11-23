@@ -1,9 +1,92 @@
 //! `i + 1` and other `?I` values used where a position of `I` is wanted.
 
 use super::*;
-use cpl_syntax::ast::{Expr, ExprKind};
+use cpl_syntax::ast::{Expr, ExprKind, Name};
 
 impl Checker<'_> {
+    /// R07.1.7: parentheses mark work, so `xs.sorted` reads as O(1) but isn't.
+    pub(super) fn missing_parens(
+        &mut self,
+        expr: &Expr,
+        base: &Expr,
+        name: &Name,
+        owner: &str,
+        ty: &Ty,
+    ) {
+        if name.text.is_empty() {
+            return;
+        }
+        let Some(member) = crate::builtins::builtin_member(owner, &name.text) else {
+            return self.uncalled_method(expr, base, name, owner, ty);
+        };
+        if member.kind != crate::builtins::MemberKind::Method
+            || !member.params.is_empty()
+            || member.ret.is_empty()
+        {
+            return;
+        }
+        let after = self.src.get(expr.span.end as usize..).unwrap_or("");
+        if after.trim_start().starts_with('(') {
+            return;
+        }
+        let shown = format!("{}.{}", self.quote(base.span), name.text);
+        let message = format!("`{shown}` does work, but without `()` it reads like an O(1) field");
+        self.sink.push(
+            Diagnostic::warning(codes::PARENS_MEAN_WORK, expr.span, message)
+                .with_help(format!("write `{shown}()`: `()` marks a call that does work, and only O(1) getters read as fields")),
+        );
+    }
+
+    /// R07.9.2: `s.fold(f)` with a plain fn has no identity, so it is `?T`.
+    pub(super) fn fold_needs_identity(&mut self, init: &Expr, declared: &Ty) {
+        if matches!(declared, Ty::Optional(_) | Ty::Error) {
+            return;
+        }
+        let ExprKind::Call { callee, args } = &crate::check::lends::unparen(init).kind else {
+            return;
+        };
+        let ExprKind::Field { name, .. } = &callee.kind else {
+            return;
+        };
+        let [arg] = args.as_slice() else {
+            return;
+        };
+        if name.text != "fold"
+            || arg.name.is_some()
+            || !matches!(arg.value.kind, ExprKind::Lambda { .. })
+            || matches!(self.quote(arg.value.span).as_str(), "+" | "*" | "^")
+        {
+            return;
+        }
+        let shown = self.quote(init.span);
+        let message = format!(
+            "`{shown}` is {}: a fold by a lambda has no identity, so an empty sequence gives `None`",
+            Ty::Optional(Box::new(declared.clone())).with_article()
+        );
+        if let Some(diag) = self.error(codes::EMPTY_FOLD_NO_IDENTITY, init.span, message) {
+            diag.help = Some(format!("unwrap: `{shown}!`, or `?? d` for a default"));
+            diag.fix("unwrap it with `!`", Span::point(init.span.end), "!");
+        }
+    }
+
+    /// `xs.copy()`, the spelling before `xs.clone()` (R05, decision in spec/core/05-ownership.md).
+    pub(super) fn old_copy_spelling(&mut self, base: &Ty, name: &Name) -> bool {
+        let owned = matches!(base, Ty::Str | Ty::Array { .. })
+            || matches!(base, Ty::Named { name, .. } if matches!(name.as_str(), "List" | "Map" | "Set"));
+        if name.text != "copy" || !owned {
+            return false;
+        }
+        let message = "`.copy()` is spelled `.clone()` since 0.3".to_string();
+        if let Some(diag) = self.error(codes::REMOVED_SYNTAX, name.span, message) {
+            diag.help = Some(
+                "an owned copy is `.clone()`; `cpl migrate` rewrites every `.copy()` in a folder"
+                    .into(),
+            );
+            diag.fix("write `clone`", name.span, "clone");
+        }
+        true
+    }
+
     pub(super) fn optional_compare(
         &mut self,
         op_str: &str,

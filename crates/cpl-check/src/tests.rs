@@ -1173,7 +1173,7 @@ fn a_lent_slice_is_not_stored_assigned_or_returned() {
     }
     // A copy is an owned value.
     assert_eq!(
-        check(&format!("{ARRAY}var keep = a[l..=r].copy()\n")),
+        check(&format!("{ARRAY}var keep = a[l..=r].clone()\n")),
         vec![]
     );
 }
@@ -1542,7 +1542,7 @@ fn a_loop_lends_what_it_goes_over() {
     // Over positions or a copy, in another list, or after the loop.
     for rest in [
         "for i in 0..xs.len:\n    xs.push(i)\n    if xs.len > 9: break\n",
-        "for x in xs.copy():\n    xs.push(x)\n",
+        "for x in xs.clone():\n    xs.push(x)\n",
         "var ys: List<Int> = []\nfor x in xs:\n    ys.push(x)\n",
         "for x in xs:\n    print(x)\nxs.push(1)\nprint(grow())\n",
         "for x in xs:\n    print(peek() + x)\n",

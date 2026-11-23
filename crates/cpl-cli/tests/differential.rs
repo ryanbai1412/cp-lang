@@ -992,7 +992,7 @@ while lo >= 0:
     a.swap(lo + 1, mid)
     lo -= 2
 
-var b = a.copy()
+var b = a.clone()
 a.select(n - 1)
 assert a[n - 1] == n - 1
 for i in 0..n - 1: assert a[i] <= n - 1

@@ -1,6 +1,6 @@
 // cp: 0.1 bea787c+dirty
 let s = "ab"
-var t = s.copy()
+var t = s.clone()
 t.push('c')
 let q: List<(Int, Int)> = [(1, 2)]
 var q2 = q

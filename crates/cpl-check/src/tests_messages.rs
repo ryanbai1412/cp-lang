@@ -268,7 +268,7 @@ fn a_copying_twin_of_an_in_place_method_names_the_in_place_one() {
     assert_eq!(d.len(), 1, "{d:?}");
     let help = d[0].help.as_deref().unwrap_or_default();
     assert!(
-        help.contains("`var ys = xs.clone()`, then `ys.shuffle()`"),
+        help.contains("`var ys = xs.clone()`, then `rng.shuffle(mut ys)`"),
         "{d:?}"
     );
 }
@@ -492,4 +492,19 @@ fn a_header_field_is_made_var_in_a_block_struct() {
     assert!(d[0].fixes.is_empty(), "{d:?}");
     let help = d[0].help.as_deref().unwrap_or("");
     assert!(help.contains("block `struct P:`"), "{help}");
+}
+
+#[test]
+fn the_old_copy_spelling_is_one_error_with_the_clone_fix() {
+    for src in [
+        "let xs = [1, 2]\nlet ys = xs.copy()\nprint(ys)\n",
+        "let s = \"ab\"\nlet t = s.copy()\nprint(t)\n",
+        "var m = Map<Int, Int>()\nlet n = m.copy()\nprint(n.len)\n",
+    ] {
+        let d = check(src);
+        assert_eq!(d.len(), 1, "{src}: {d:?}");
+        assert!(d[0].message.contains("`.clone()`"), "{d:?}");
+        assert_eq!(d[0].fixes[0].edits[0].1, "clone", "{d:?}");
+    }
+    assert!(check("let xs = [1, 2]\nlet ys = xs.clone()\nprint(ys)\n").is_empty());
 }

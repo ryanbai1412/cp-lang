@@ -11,7 +11,7 @@ let m: 1..=100 = read()
 domain Row = 0..n
 domain Col = 0..m
 let g: [Row, Col]Char = read()
-var out: [Row, Col]Char = g.copy()
+var out: [Row, Col]Char = g.clone()
 for r in Row:
     for c in Col:
         if g[r, c] != '#': continue

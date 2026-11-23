@@ -249,7 +249,7 @@ fn find_first(s: Str, target: Char, i: Int) -> ?Int:
     find_first(s, target, i + 1)
 
 let s: Str = read()
-var st = State(0, None, s.copy())
+var st = State(0, None, s.clone())
 for i in 0..s.len:
     st = step(st, i)
 let idx = find_first(s, s[2], 0) ?? -1

@@ -2,6 +2,7 @@
 //! `Str`, a `Map`, a `Set` and an array. Each row is run here, so the
 //! catalog cannot say something `cpl run` does not do.
 
+use std::path::Path;
 use std::process::Command;
 
 use cpl_check::{prelude_names, MemberKind, PreludeKind, Receiver, BUILTIN_MEMBERS};
@@ -29,7 +30,6 @@ fn run(name: &str, body: &str) -> Result<(), String> {
 }
 
 #[test]
-#[ignore = "cpl-check/src/builtins.rs: 9 stale v0.2 example_ty rows (rev, filter, fold, windows)"]
 fn every_row_of_the_catalog_runs_with_the_type_it_names() {
     let mut wrong = Vec::new();
     for (i, member) in BUILTIN_MEMBERS.iter().enumerate() {
@@ -52,23 +52,23 @@ fn every_row_of_the_catalog_runs_with_the_type_it_names() {
                 "{who}: `ret` and `example_ty` disagree on whether it gives a value"
             ));
         }
+        // `_`: a view or adapter, whose type the program does not write.
+        let ann = match member.example_ty {
+            "_" => String::new(),
+            ty => format!(": {ty}"),
+        };
         let body = if member.example_ty.is_empty() {
             member.example.to_string()
         } else if member.example_ty == "Bool" {
-            format!(
-                "let got: {} = {}\nprint(yes(got))",
-                member.example_ty, member.example
-            )
+            format!("let got{ann} = {}\nprint(yes(got))", member.example)
         } else if member.example_ty.starts_with('?') {
             format!(
-                "let got: {} = {}\nif let _ = got: print(1)\nelse: print(0)",
-                member.example_ty, member.example
+                "let got{ann} = {}\nif let _ = got: print(1)\nelse: print(0)",
+                member.example
             )
         } else {
-            format!(
-                "let got: {} = {}\nprint(got)",
-                member.example_ty, member.example
-            )
+            let show = if member.example_ty == "_" { "1" } else { "got" };
+            format!("let got{ann} = {}\nprint({show})", member.example)
         };
         if let Err(why) = run(&format!("row{i}"), &body) {
             wrong.push(format!(
@@ -79,8 +79,8 @@ fn every_row_of_the_catalog_runs_with_the_type_it_names() {
         // Built-in `Get` properties are read without parentheses.
         if member.kind == MemberKind::Get {
             let called = format!(
-                "let got: {} = {}()\nif let _ = Some(got): print(1)",
-                member.example_ty, member.example
+                "let got{ann} = {}()\nif let _ = Some(got): print(1)",
+                member.example
             );
             match run(&format!("row{i}_called"), &called) {
                 Ok(()) => wrong.push(format!(
@@ -349,4 +349,58 @@ fn ordered_container_method_parity_and_range_len_guard() {
             "{mode} output mismatch on ordered_containers_parity.cp"
         );
     }
+}
+
+/// Every copying twin of an in-place method (`xs.reversed()` beside
+/// `xs.reverse()`, `xs.shuffled()` beside std.rand's `rng.shuffle(mut xs)`)
+/// gets a help naming the in-place call; that call must run as written.
+#[test]
+fn every_in_place_help_names_a_call_that_runs() {
+    let std_dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../std");
+    let mut stems: Vec<String> = BUILTIN_MEMBERS
+        .iter()
+        .filter(|m| m.receiver == Receiver::List && m.mutates && m.params.is_empty())
+        .map(|m| m.name.to_string())
+        .collect();
+    for entry in std::fs::read_dir(&std_dir).unwrap() {
+        let text = std::fs::read_to_string(entry.unwrap().path()).unwrap_or_default();
+        for line in text.lines() {
+            let Some(head) = line.trim_start().strip_prefix("pub fn ") else {
+                continue;
+            };
+            if head.contains("(mut self, mut ") {
+                stems.push(head.split(['<', '(']).next().unwrap().to_string());
+            }
+        }
+    }
+    let mut wrong = Vec::new();
+    let mut seen = 0;
+    for (i, stem) in stems.iter().enumerate() {
+        for twin in [format!("{stem}d"), format!("{stem}ed")] {
+            if BUILTIN_MEMBERS.iter().any(|m| m.name == twin) {
+                continue;
+            }
+            let src = format!("let xs = [3, 1, 2]\nprint(xs.{twin}())\n");
+            let Err(why) = run(&format!("twin{i}_{twin}"), &src) else {
+                continue;
+            };
+            let Some(at) = why.find("then `") else {
+                continue;
+            };
+            let call = &why[at + "then `".len()..];
+            let call = &call[..call.find('`').unwrap()];
+            seen += 1;
+            let prog = format!("use std.rand.{{Rng}}\nvar rng = Rng(1)\nvar ys = [3, 1, 2]\n{call}\nprint(ys.len)\n");
+            if let Err(why) = run(&format!("twin{i}_{twin}_runs"), &prog) {
+                wrong.push(format!(
+                    "`xs.{twin}()` suggests `{call}`, which fails:\n{why}"
+                ));
+            }
+        }
+    }
+    assert!(
+        seen >= 2,
+        "only {seen} in-place helps found; the twin scan is broken"
+    );
+    assert!(wrong.is_empty(), "{}", wrong.join("\n"));
 }

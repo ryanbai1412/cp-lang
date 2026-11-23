@@ -369,3 +369,24 @@ Landed since 23:10: four type/flow lints from `spec/idioms/lints.md`, L0571 `neg
   - `list-type-mismatch-same-name` (hesitation, step `test`): Assigning a `List<Int>` into a list built as `[[0][0..0] for _ in 0..m]` fails with the self-contradicting `expected List<Int>, found List<Int>`; I rewrote it as `var w: [0..m]List<Int> = [0..m] _ => []`. Evidence: sol/drafts/cf2289E_brute_list_type_error.cp line 48: `var w = [[0][0..0] for _ in 0..2 * n]` ... `w[k] = res` -> error[E0302]: expected `List<Int>`, found `List<Int>`
   - `popcount-help-suggests-p-count` (hesitation, step `test`): `mask.popcount()` is rejected with `did you mean p_count?`, but the documented spelling is the free function `popcount(mask)`. Evidence: bug/cf2289B_bug.cp: `if mask.popcount() == k:` -> error[E0203]: an `Int` has no method `popcount` help: did you mean `p_count`?; llms-full Bitwise: helpers `popcount(x)`
 - 2026-11-23 (from spec, acceptance run 6 `list-of-range-literal`): the "no method" help for `shuffled` says `var ys = [1..=n].clone()`, then `ys.shuffle()`; there is no `List.shuffle`, the call is `rng.shuffle(mut ys)` (std.rand), and building on `[1..=n]` repeats the mistake. General fix: (1) a no-method error on `List<Range<_>>` whose receiver is a one-range literal `[a..=b]` names `List(a..=b)` (R07.8.1); (2) the in-place/copy advice in `cpl-check/src/check/advice.rs` reads the real std signature instead of assuming a method. Cases (known gaps): `core-07/range-in-brackets-help-names-list`, `std-rand/shuffled-help-names-rng-shuffle`.
+
+## 2026-11-23 08:40 PST: BLOCKERS run 6, #42 and #95/#157
+
+- #42 `copy-clone-two-spellings`: `.clone()` is the one spelling (decision 394).
+  `xs.copy()` on a list, string, map, set or array is E0503 with the fix `clone`,
+  so `cpl migrate` rewrites it; the catalog lists only `clone`; the lowering
+  takes `clone` on views too, so `a[l..=r].clone()` is an owned list. std,
+  tests, conformance and 15 corpus ports migrated by `cpl migrate`.
+  General-fix note: `cpl migrate corpus` also rewrote 7 `dream.cp` drafts
+  wrongly (`fn phase_plan(..) =` became `fn phase:lan(..):`); reverted, owed to
+  tools under General fixes owed.
+- #95/#157 `shuffle-help-suggests-missing-method`: the copy-then-mutate help
+  names only a `List` method the catalog runs, or else a std method that takes
+  `mut` a sequence, read from the std source (`rng.shuffle(mut ys)`, std.rand),
+  as spec/lib/random-stress.md says. `[1..=n].shuffled()` also names
+  `List(1..=n)`. General test: `builtin_catalog`'s
+  `every_in_place_help_names_a_call_that_runs` runs the call every such help
+  names. Two SUBSET gaps closed.
+- Catalog: the `rev`, `filter`, `windows` and lambda-`fold` rows write `_` for
+  view and adapter types, so the catalog test runs every row again.
+- Golden harness masks `std/<file>.cp:<line>` (508fc29ae, for tech-debt).

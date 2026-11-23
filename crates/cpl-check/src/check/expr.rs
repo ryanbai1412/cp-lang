@@ -1879,6 +1879,7 @@ impl<'a> Checker<'a> {
                         .any(|m| m.name == name.text)
             })
             && self.global(&name.text).is_none()
+            && !self.old_copy_spelling(&base_ty, name)
         {
             let widened = base_ty.widen().with_article();
             let (a, ty) = widened.split_once(' ').unwrap_or(("a", &widened));
@@ -1890,12 +1891,12 @@ impl<'a> Checker<'a> {
                 if let Some((help, fix)) = twin {
                     diag.help = Some(help);
                     diag.fixes.push(fix);
+                } else if let Some(help) = in_place.clone() {
+                    diag.help = Some(help);
                 } else if let Some(s) = suggestion {
                     diag.suggest(name.span, s);
                 } else if let Some(help) = super::advice::foreign_call(&name.text) {
                     diag.help = Some(help.to_string());
-                } else if let Some(help) = in_place.clone() {
-                    diag.help = Some(help);
                 } else if generator {
                     diag.help = Some("a generator pushes its values into a loop: `for x in g:`, or `List(g)` to keep them (R07.1.1)".to_string());
                 }
@@ -1912,6 +1913,9 @@ impl<'a> Checker<'a> {
         };
         if let Some(owner) = owner.as_deref() {
             self.missing_parens(expr, base, name, owner, &ty);
+            if ty != Ty::Unknown || matches!(owner, "Map" | "Set") {
+                self.old_copy_spelling(&base_ty, name);
+            }
         }
         // A catalog method the call types later (`xs.sorted()`) is still
         // known here, by its catalog signature.
@@ -4091,33 +4095,7 @@ impl Checker<'_> {
     }
 }
 
-impl Checker<'_> {
-    /// R07.1.7: parentheses mark work, so `xs.sorted` reads as O(1) but isn't.
-    fn missing_parens(&mut self, expr: &Expr, base: &Expr, name: &ast::Name, owner: &str, ty: &Ty) {
-        if name.text.is_empty() {
-            return;
-        }
-        let Some(member) = crate::builtins::builtin_member(owner, &name.text) else {
-            return self.uncalled_method(expr, base, name, owner, ty);
-        };
-        if member.kind != crate::builtins::MemberKind::Method
-            || !member.params.is_empty()
-            || member.ret.is_empty()
-        {
-            return;
-        }
-        let after = self.src.get(expr.span.end as usize..).unwrap_or("");
-        if after.trim_start().starts_with('(') {
-            return;
-        }
-        let shown = format!("{}.{}", self.quote(base.span), name.text);
-        let message = format!("`{shown}` does work, but without `()` it reads like an O(1) field");
-        self.sink.push(
-            Diagnostic::warning(codes::PARENS_MEAN_WORK, expr.span, message)
-                .with_help(format!("write `{shown}()`: `()` marks a call that does work, and only O(1) getters read as fields")),
-        );
-    }
-}
+impl Checker<'_> {}
 
 impl Checker<'_> {
     /// R04.4.5, R04.4.6: only a literal half-open `j..i` of cuts is a piece.

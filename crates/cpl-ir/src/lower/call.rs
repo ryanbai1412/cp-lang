@@ -1880,7 +1880,7 @@ impl<'a> Lowerer<'a> {
                     None => self.err_expr(span),
                 }
             }
-            (Ty::StrView, "copy") => match self.positional_any(method, args, 0, span) {
+            (Ty::StrView, "copy" | "clone") => match self.positional_any(method, args, 0, span) {
                 Some(_) => self.mk(
                     ExprKind::Builtin(Builtin::ToStr, vec![value]),
                     Ty::Str,
@@ -1888,7 +1888,7 @@ impl<'a> Lowerer<'a> {
                 ),
                 None => self.err_expr(span),
             },
-            (Ty::ListView(e, _) | Ty::Keyed(e, _) | Ty::MutView(e), "copy") => {
+            (Ty::ListView(e, _) | Ty::Keyed(e, _) | Ty::MutView(e), "copy" | "clone") => {
                 let out_ty = Ty::list((**e).clone());
                 match self.positional_any(method, args, 0, span) {
                     Some(_) => self.mk(
@@ -1907,7 +1907,7 @@ impl<'a> Lowerer<'a> {
                 | Ty::Set(_)
                 | Ty::HashSet(_)
                 | Ty::Str,
-                "copy",
+                "copy" | "clone",
             ) => match self.positional_any(method, args, 0, span) {
                 Some(_) => self.mk(
                     ExprKind::Builtin(Builtin::Copy, vec![value]),

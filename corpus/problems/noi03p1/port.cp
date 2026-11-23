@@ -43,7 +43,7 @@ while i < eq.len:
         place *= 10
 
 fn show(changes: List<(Int, Int)>):
-    var out = eq.copy()
+    var out = eq.clone()
     for (at, d) in changes: out[at] = Char('0'.ord + d)
     print("{out}#")
 

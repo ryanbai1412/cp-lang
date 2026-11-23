@@ -18,7 +18,7 @@ fn volumes(height: [Pillar]1..=50) -> List<Int>:
     reach[Volume.first!] = true
     var most = 0  // largest reachable volume so far
     for i in 1..n:
-        var next = reach.copy()  // level = own height: holds nothing
+        var next = reach.clone()  // level = own height: holds nothing
         var top = most
         for j in 1..i:
             if j == 1 or tall[j] != tall[j - 1]:

@@ -45,7 +45,7 @@ fn most() -> Int:
         // Fairs i..j share a day, sorted by location.
         let g = j - i
         let arrive = [reach(order[i + t].at) for t in 0..g]
-        var going_down = arrive.copy()
+        var going_down = arrive.clone()
         var going_up = arrive
         for t in 0..g:
             if t > 0:

@@ -640,17 +640,73 @@ pub(super) fn foreign_value(name: &str) -> Option<&'static str> {
 /// Python's conversion builtins and `math.`, as CP Lang writes them.
 /// `xs.shuffled()` where std has the in-place `shuffle`: name the copy-then-change form.
 pub(super) fn in_place_twin(name: &str, recv: &str) -> Option<String> {
-    let known = |s: &str| {
-        crate::prelude::spec_member_names().contains(s)
-            || crate::builtins::BUILTIN_MEMBERS.iter().any(|m| m.name == s)
+    let stems = [name.strip_suffix('d'), name.strip_suffix("ed")];
+    let stems = stems.into_iter().flatten().filter(|s| !s.is_empty());
+    // `[1..=n]` is a list of one range; its numbers are `List(1..=n)` (R07.8.1).
+    let inner = recv.strip_prefix('[').and_then(|r| r.strip_suffix(']'));
+    let (copy, lead) = match inner.filter(|r| r.contains("..") && !r.contains([',', '['])) {
+        Some(range) => (
+            format!("List({range})"),
+            format!("`{recv}` is a list holding one range; the numbers are `List({range})`. "),
+        ),
+        None => (format!("{recv}.clone()"), String::new()),
     };
-    let stem = [name.strip_suffix('d'), name.strip_suffix("ed")]
-        .into_iter()
-        .flatten()
-        .find(|s| !s.is_empty() && known(s))?;
-    Some(format!(
-        "`{stem}` changes the list in place and returns nothing; for a changed copy, write `var ys = {recv}.clone()`, then `ys.{stem}()`"
-    ))
+    for stem in stems {
+        // A list method `builtin_catalog` runs, so `cpl run` has it.
+        let listed = crate::builtins::BUILTIN_MEMBERS
+            .iter()
+            .any(|m| m.receiver == crate::builtins::Receiver::List && m.mutates && m.name == stem);
+        if listed {
+            return Some(format!(
+                "{lead}`{stem}` changes the list in place and returns nothing; for a changed copy, write `var ys = {copy}`, then `ys.{stem}()`"
+            ));
+        }
+        if let Some((owner, module)) = std_in_place_method(stem) {
+            let var = owner.to_lowercase();
+            return Some(format!(
+                "{lead}`{stem}` is a method of `{owner}` (`std.{module}`) that changes a list in place; for a changed copy, write `var ys = {copy}`, then `{var}.{stem}(mut ys)` with a `var {var}: {owner}`"
+            ));
+        }
+    }
+    None
+}
+
+/// A std method `fn stem<S: IndexedMut>(mut self, mut a: S)` that changes the sequence it is
+/// given, as `Rng.shuffle`: its type's name and module, read from the std source.
+fn std_in_place_method(stem: &str) -> Option<(String, String)> {
+    for (module, text) in crate::modules::std_modules() {
+        let mut owner = None;
+        for line in text.lines() {
+            if let Some(rest) = line
+                .strip_prefix("struct ")
+                .or_else(|| line.strip_prefix("pub struct "))
+            {
+                owner = Some(
+                    rest.split(|c: char| !c.is_alphanumeric() && c != '_')
+                        .next()?
+                        .to_string(),
+                );
+            } else if !line.starts_with([' ', '\t'])
+                && !line.trim().is_empty()
+                && !line.starts_with("//")
+                && !line.starts_with('@')
+            {
+                owner = None;
+            }
+            let Some(head) = line.trim_start().strip_prefix("pub fn ") else {
+                continue;
+            };
+            let after = head
+                .strip_prefix(stem)
+                .filter(|r| r.starts_with(['<', '(']));
+            if let (Some(after), Some(owner)) = (after, &owner) {
+                if after.contains("(mut self, mut ") && after.contains("IndexedMut") {
+                    return Some((owner.clone(), module.replace('/', ".")));
+                }
+            }
+        }
+    }
+    None
 }
 
 pub(super) fn foreign_call(name: &str) -> Option<&'static str> {
