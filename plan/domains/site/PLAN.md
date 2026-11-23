@@ -51,7 +51,6 @@ Deferred (milestone "what can wait"): interval DP and chapters past Div 2 C; tra
 ## General fixes owed
 
 - **Browser hover has no std doc text.** Instance: hover on a std item in a site editor shows its signature only, because the wasm build blanks std comments (decision 337). General fix: serve the doc text `cpl doc --format json` already produces as a lazily fetched file the wasm hover (or `intelligence.ts`) joins by item, so the size cut costs nothing. Owner: site, with tools for the hover hook.
-- **Docs and Learn code blocks are not editors.** Instance: `LiveCode` fences show highlighted HTML with Run, so they get no hover or completion. General fix: mount a read-only `CodeEditor` on a fence when the reader first focuses or hovers it, keeping static HTML for page weight. Owner: site.
 
 Each row: the instance, the general fix, and who owns it.
 

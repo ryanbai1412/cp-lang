@@ -1,7 +1,8 @@
 'use client';
 
-import { Loader2, Play } from 'lucide-react';
+import { Loader2, Pencil, Play } from 'lucide-react';
 import { type ReactNode, useState } from 'react';
+import { CodeEditor } from '@/components/editor/code-editor';
 import { encodeShare, formatDiagnostics } from '@/components/runner';
 import { Button } from '@/components/ui/button';
 import { cpl } from '@/lib/cpl';
@@ -9,7 +10,10 @@ import { cn } from '@/lib/utils';
 
 // A guide's highlighted block plus Run (when the gate ran it with its input) and a playground link.
 // The compiler loads on the first Run, so a page of these fetches no WASM until then.
-export function LiveCode({ source, stdin = '', ran, children }: { source: string; stdin?: string; ran?: string; children: ReactNode }) {
+// Edit swaps the block for an editor with diagnostics, hover and completion.
+export function LiveCode({ source: original, stdin = '', ran, children }: { source: string; stdin?: string; ran?: string; children: ReactNode }) {
+  const [source, setSource] = useState(original);
+  const [editing, setEditing] = useState(false);
   const [out, setOut] = useState<{ text: string; ok: boolean } | 'running' | null>(null);
   const run = async () => {
     setOut('running');
@@ -23,12 +27,24 @@ export function LiveCode({ source, stdin = '', ran, children }: { source: string
   };
   return (
     <div className="live-code my-4 [&>figure]:my-0">
-      {children}
+      {editing ? (
+        <div className="not-prose rounded-md border">
+          <CodeEditor value={source} onChange={setSource} onRun={run} />
+        </div>
+      ) : (
+        children
+      )}
       <div className="not-prose mt-1.5 flex flex-wrap items-center gap-2 text-xs">
         {ran && (
           <Button size="sm" variant="outline" className="h-7" onClick={run} disabled={out === 'running'}>
             {out === 'running' ? <Loader2 className="animate-spin" /> : <Play />}
             Run
+          </Button>
+        )}
+        {!editing && (
+          <Button size="sm" variant="ghost" className="h-7 text-muted-foreground" onClick={() => setEditing(true)}>
+            <Pencil />
+            Edit
           </Button>
         )}
         <Button size="sm" variant="ghost" className="h-7 text-muted-foreground" asChild>

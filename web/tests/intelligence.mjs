@@ -84,6 +84,18 @@ await docs.waitForLoadState('domcontentloaded');
 if (!docs.url().endsWith('/docs/ref/std/segtree#segtree')) fail(`std definition opened ${docs.url()}`);
 console.log('go to definition on SegTree opens', new URL(docs.url()).pathname + new URL(docs.url()).hash);
 await docs.close();
+
+// A guide's block becomes an editor on Edit, with the same intelligence.
+await page.goto(base + '/docs/guides/tour', { waitUntil: 'networkidle' });
+await page.locator('.live-code').first().getByRole('button', { name: 'Edit' }).click();
+const block = page.locator('.live-code .cm-content').first();
+await block.waitFor({ timeout: 10000 }).catch(() => fail('Edit on a guide block shows no editor'));
+await block.click();
+await page.keyboard.press('ControlOrMeta+End');
+await page.keyboard.insertText('\nprint(ma');
+await page.keyboard.press('Control+Space');
+await page.locator('.cm-tooltip-autocomplete').getByText('max', { exact: true }).first().waitFor({ timeout: 30000 }).catch(() => fail('no completion in an edited guide block'));
+console.log('a guide block edits in place, with completion');
 if (errors.length) fail(`page errors: ${errors.join('; ')}`);
 await page.close();
 process.exit(0);
