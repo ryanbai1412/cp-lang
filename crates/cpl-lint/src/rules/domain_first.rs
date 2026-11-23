@@ -1,12 +1,12 @@
 //! `domain_empty_first_last` (L0304) and `unwrap_on_possibly_empty`
 //! (L0305): `D.first!` on a domain, or `a.max()!` / `a.first!` on an array
-//! over one, where the declared bounds let it be empty, so the unwrap traps
-//! on that input.
+//! over one, or `a[l..r].first!` on a slice, where the declared bounds let
+//! it be empty, so the unwrap traps on that input.
 
-use super::bounds::{Bounds, Interval};
+use super::bounds::Bounds;
 use crate::walk::{unparen, Visitor};
 use crate::{File, Finding, Lint, DOMAIN_EMPTY_FIRST_LAST, UNWRAP_ON_POSSIBLY_EMPTY};
-use cpl_diag::Diagnostic;
+use cpl_diag::{Diagnostic, Span};
 use cpl_syntax::ast::{Expr, ExprKind, Pattern, PatternKind, StmtKind, Type, TypeKind};
 
 /// What empties a domain or an array: its declared index set, the end
@@ -21,27 +21,10 @@ struct Empty {
 
 pub(crate) fn check(file: &File) -> Vec<Finding> {
     let bounds = Bounds::of(file);
-    let declared = |e: &Expr| match &unparen(e).kind {
-        ExprKind::Int(_) => bounds.expr(e),
-        ExprKind::Name(name) if bounds.is_input(name) => bounds.expr(e),
-        _ => None,
-    };
     // The end that can empty `lo..hi` (`lo..=hi`), with the value it takes then.
     let empties = |lo: &Expr, hi: &Expr, inclusive: bool| -> Option<(Expr, i128)> {
-        let (Some(a), Some(b)): (Option<Interval>, Option<Interval>) = (declared(lo), declared(hi))
-        else {
-            return None;
-        };
-        // The most `lo - hi` can be: from a relation when the two ends
-        // have one, else from their declared ranges.
-        let same = bounds.atom(lo).is_some() && bounds.atom(lo) == bounds.atom(hi);
-        let gap = if same {
-            0
-        } else {
-            bounds.diff(lo, hi).map_or(a.hi - b.lo, |d| d.hi)
-        };
-        let can_be_empty = if inclusive { gap > 0 } else { gap >= 0 };
-        (can_be_empty && matches!(unparen(hi).kind, ExprKind::Name(_))).then(|| (hi.clone(), b.lo))
+        let at = super::proven::hazards::can_be_empty(lo, hi, inclusive, &bounds)?;
+        matches!(unparen(hi).kind, ExprKind::Name(_)).then(|| (hi.clone(), at))
     };
     let mut empty: Vec<Empty> = Vec::new();
     for (base, stmt) in file.top_level() {
@@ -120,8 +103,29 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
         .any(|g| file.src.contains(g.as_str()))
     };
     empty.retain(|e| !guarded(e));
+    let mut slices: Vec<Finding> = super::proven::hazards::proven_empty_slices(file)
+        .into_iter()
+        .filter(|(at, _)| !super::wide_shift::in_test_fn(file, at.0))
+        .map(|((start, end), (lo, hi))| {
+            let shown = Span::new(start, end).text(file.src);
+            let read = &shown[..shown.len() - 1];
+            let range = Span::new(lo, hi).text(file.src);
+            let diag = Diagnostic::warning(
+                UNWRAP_ON_POSSIBLY_EMPTY.code,
+                Span::new(start, end),
+                format!("the declared bounds let `{range}` be empty, and then `{shown}` traps"),
+            )
+            .with_help(format!(
+                "`{read}` is `None` on an empty slice: handle it with `if let v = {read}:` or `{read} ?? fallback`, or declare the ends so `{range}` is never empty"
+            ));
+            Finding {
+                lint: &UNWRAP_ON_POSSIBLY_EMPTY,
+                diag,
+            }
+        })
+        .collect();
     if empty.is_empty() {
-        return Vec::new();
+        return slices;
     }
     struct Unwraps<'a> {
         src: &'a str,
@@ -184,6 +188,7 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
         out: Vec::new(),
     };
     file.walk(&mut v, |v, base| v.base = base);
+    v.out.append(&mut slices);
     v.out
 }
 

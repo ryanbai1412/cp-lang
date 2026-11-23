@@ -760,7 +760,7 @@ One sub-family per module. Each says: you rebuilt something the library has.
 | slice_key_lost_indexing | indexing a sliced `[D]T` with an integer `0..k` instead of `D` position | iterate `for p in s.keys:` or index with the cut/position | warn | #3 | ty | |
 | reversed_range_literal | `for i in n..0:` (empty ascending range, meant `(0..n).rev`) | `for i in (0..n).rev:` | fix? | #4 | bound |✓reversed_range_literal |
 | cut_midpoint_overflow | `(l.ord + r.ord) / 2` computed in `Int` instead of range midpoint | `(l..r).mid` | fix | #4 | syn | |
-| subrange_not_checked_nonempty | indexing `a[l..r].first!` when `l <= r` (may be empty) from bounds | check `if let x = a[l..r].first:` or prove `l < r` | warn | #4 | bound | |
+| subrange_not_checked_nonempty | indexing `a[l..r].first!` when `l <= r` (may be empty) from bounds | check `if let x = a[l..r].first:` or prove `l < r` | warn | #4 | bound | ✓unwrap_on_possibly_empty |
 | unbounded_cut_step | `p.next!` / `p.prev!` in a loop without proving `p` is not at domain boundary | iterate `for p in D.init:` / `for (a, b) in a.windows(2):` | warn | #4 | bound | |
 | domain_size_recomputed | `hi - lo + 1` repeated when `D` is already declared as `lo..=hi` | `D.len` | fix | #6 | ty | |
 

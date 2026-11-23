@@ -542,3 +542,9 @@ Landed since 23:10: four type/flow lints from `spec/idioms/lints.md`, L0571 `neg
   top-level array unwrapped, when its declared index range can be empty
   and the file never tests the end or the length. Both lints now match no
   std member names (ratchet 146 -> 144). 0 hits on corpus, newcomer and std.
+- L0305 now also covers lints.md `subrange_not_checked_nonempty`:
+  `a[l..r].max()!` / `a[l..r].first!` when the declared `l` and `r` allow an
+  empty slice, found in the scoped prover so `if l < r:` silences it. A
+  declared range written from another name (`r: l + 1..=n`) now relates the
+  two names for every bound lint, not only for this one. 0 hits on corpus,
+  newcomer and std.

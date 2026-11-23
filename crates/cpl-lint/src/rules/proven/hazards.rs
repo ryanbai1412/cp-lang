@@ -1,8 +1,10 @@
 //! Operators whose declared operands can make them trap: a `/` or `%` by a
 //! divisor that can be 0, a `<<` that can leave `Int`, a `for` range that
-//! starts above its end and so never runs.
+//! starts above its end and so never runs, a `!` on a slice that can be
+//! empty.
 
 use super::{bounds, Proven};
+use crate::walk::unparen;
 use cpl_diag::Span;
 use cpl_syntax::ast::{BinOp, Expr, ExprKind};
 
@@ -73,4 +75,136 @@ pub(super) fn empty_range(base: u32, iter: &Expr, bounds: &bounds::Bounds) -> Op
     };
     let (a, b) = (bounds.expr(lo)?, bounds.expr(hi)?);
     (a.lo > b.hi).then_some((base + iter.span.start, base + iter.span.end))
+}
+
+/// A `!` on a member of a slice whose declared ends let it be empty: the
+/// whole unwrap, and the slice's range.
+pub(crate) type EmptySlice = ((u32, u32), (u32, u32));
+
+pub(crate) fn proven_empty_slices(file: &crate::File) -> Vec<EmptySlice> {
+    super::proven(file).empty_slices
+}
+
+/// `a[l..r].first!` or `a[l..r].max()!` where the declared `l` and `r`
+/// allow an empty slice: every member read with no argument is `None` on
+/// an empty one. Then on into the operand.
+pub(super) fn unwrap(
+    base: u32,
+    expr: &Expr,
+    inner: &Expr,
+    bounds: &bounds::Bounds,
+    out: &mut Proven,
+) {
+    let recv = match &unparen(inner).kind {
+        ExprKind::Field { base, .. } => Some(base),
+        ExprKind::Call { callee, args } if args.is_empty() => match &unparen(callee).kind {
+            ExprKind::Field { base, .. } => Some(base),
+            _ => None,
+        },
+        _ => None,
+    };
+    if let Some(ExprKind::Index { indices, .. }) = recv.map(|r| &unparen(r).kind) {
+        if let [range] = indices.as_slice() {
+            if let ExprKind::Range {
+                lo: Some(lo),
+                hi: Some(hi),
+                inclusive,
+                step: None,
+            } = &range.kind
+            {
+                if can_be_empty(lo, hi, *inclusive, bounds).is_some() {
+                    out.empty_slices.push((
+                        (base + expr.span.start, base + expr.span.end),
+                        (base + range.span.start, base + range.span.end),
+                    ));
+                }
+            }
+        }
+    }
+    super::arith(base, inner, bounds, out);
+}
+
+/// Whether `lo..hi` (`lo..=hi`) with ends read as declared, or literals,
+/// can be empty: then the least value `hi` takes.
+pub(crate) fn can_be_empty(
+    lo: &Expr,
+    hi: &Expr,
+    inclusive: bool,
+    bounds: &bounds::Bounds,
+) -> Option<i128> {
+    let declared = |e: &Expr| match &unparen(e).kind {
+        ExprKind::Int(_) => bounds.expr(e),
+        ExprKind::Name(name) if bounds.is_input(name) => bounds.expr(e),
+        _ => None,
+    };
+    let (a, b) = (declared(lo)?, declared(hi)?);
+    if !matches!(unparen(hi).kind, ExprKind::Name(_))
+        && !matches!(unparen(lo).kind, ExprKind::Name(_))
+    {
+        return None;
+    }
+    // The most `lo - hi` can be: from a relation when the two ends have
+    // one, else from their declared ranges.
+    let same = bounds.atom(lo).is_some() && bounds.atom(lo) == bounds.atom(hi);
+    let gap = if same {
+        0
+    } else {
+        bounds.diff(lo, hi).map_or(a.hi - b.lo, |d| d.hi)
+    };
+    let empty = if inclusive { gap > 0 } else { gap >= 0 };
+    empty.then_some(b.lo)
+}
+
+/// `name` is read as `ty`, so it lies in `range`, and an end of `ty`
+/// written from another name (`y: x + 1..=n`) relates the two.
+pub(crate) fn declared(
+    name: &str,
+    range: bounds::Interval,
+    ty: &cpl_syntax::ast::Type,
+    bounds: &mut bounds::Bounds,
+) {
+    bounds.input(name, range);
+    let cpl_syntax::ast::TypeKind::Range { lo, hi, inclusive } = &ty.kind else {
+        return;
+    };
+    let mut rel: Vec<(String, bounds::Interval)> = Vec::new();
+    let mut add = |y: String, d: bounds::Interval| match rel.iter_mut().find(|(n, _)| *n == y) {
+        Some((_, e)) => {
+            *e = bounds::Interval {
+                lo: e.lo.max(d.lo),
+                hi: e.hi.min(d.hi),
+            }
+        }
+        None => rel.push((y, d)),
+    };
+    let shift = |e: &Expr| super::shift_of(e, bounds);
+    // `name - y` from each end `y + c`, with the end's range for `y`'s.
+    if let Some(lo) = lo {
+        if let (Some((y, c)), Some(end)) = (shift(lo), bounds.expr(lo)) {
+            add(
+                y,
+                bounds::Interval {
+                    lo: c,
+                    hi: range.hi - (end.lo - c),
+                },
+            );
+        }
+    }
+    if let Some(hi) = hi {
+        if let (Some((y, c)), Some(end)) = (shift(hi), bounds.expr(hi)) {
+            let top = if *inclusive { c } else { c - 1 };
+            add(
+                y,
+                bounds::Interval {
+                    lo: range.lo - (end.hi - c),
+                    hi: top,
+                },
+            );
+        }
+    }
+    for (y, d) in rel {
+        if y != name && d.lo <= d.hi {
+            bounds.relate(name, &y, d);
+        }
+    }
 }

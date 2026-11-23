@@ -6,7 +6,7 @@ use super::bounds;
 use crate::File;
 
 mod cost;
-mod hazards;
+pub(crate) mod hazards;
 pub(crate) use cost::*;
 
 /// Each immutable `let` without a written type, and each loop variable over
@@ -218,6 +218,7 @@ struct Proven {
     /// `k`, the most `k` can be, and the most it can be without overflow.
     shifts: Vec<Divisor>,
     empty_ranges: Vec<(u32, u32)>,
+    empty_slices: Vec<hazards::EmptySlice>,
     loops: Vec<crate::ProvenLoop>,
     indexes: Vec<crate::ProvenIndex>,
     fns: Vec<FnCost>,
@@ -246,6 +247,7 @@ impl Default for Proven {
             divisors: Vec::new(),
             shifts: Vec::new(),
             empty_ranges: Vec::new(),
+            empty_slices: Vec::new(),
             loops: Vec::new(),
             indexes: Vec::new(),
             fns: Vec::new(),
@@ -466,8 +468,8 @@ fn arith(base: u32, expr: &cpl_syntax::ast::Expr, bounds: &bounds::Bounds, out: 
         ExprKind::Unary { expr: inner, .. }
         | ExprKind::Paren(inner)
         | ExprKind::Try(inner)
-        | ExprKind::Unwrap(inner)
         | ExprKind::Field { base: inner, .. } => arith(base, inner, bounds, out),
+        ExprKind::Unwrap(inner) => hazards::unwrap(base, expr, inner, bounds, out),
         ExprKind::Compare { first, rest } => {
             arith(base, first, bounds, out);
             rest.iter().for_each(|(_, e)| arith(base, e, bounds, out));
@@ -851,7 +853,7 @@ fn ranges_of_stmt(
                     forget(pat, bounds);
                     if let PatternKind::Name(name) = &pat.kind {
                         match (value, ty, init) {
-                            (Some(v), Some(_), _) => bounds.input(name, v),
+                            (Some(v), Some(ty), _) => hazards::declared(name, v, ty, bounds),
                             (_, None, Some(init)) if !mutable => {
                                 bounds.bind(name, value);
                                 bounds.define(name, init);

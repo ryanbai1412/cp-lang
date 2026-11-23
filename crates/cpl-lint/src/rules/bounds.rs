@@ -216,7 +216,7 @@ impl Bounds {
         match (&pat.kind, &ty.kind) {
             (PatternKind::Name(name), _) => {
                 if let Some(range) = self.range(ty) {
-                    self.input(name, range);
+                    super::proven::hazards::declared(name, range, ty, self);
                 }
                 if let Some(size) = super::proven::array_size(base, ty, self) {
                     self.set_size(name, size);
