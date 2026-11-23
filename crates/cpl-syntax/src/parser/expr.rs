@@ -1252,6 +1252,9 @@ impl<'a> Parser<'a> {
                             span,
                         };
                     }
+                    if self.at(T::For) {
+                        return self.paren_generator(start);
+                    }
                     if self.at(T::Comma) {
                         self.bump();
                         if self.at(T::Ident) && self.peek_n(1) == T::Colon {
@@ -1510,7 +1513,7 @@ impl<'a> Parser<'a> {
 
     /// Parses one or more `for pat in iter [if cond]` (or comma-separated
     /// `for a in A, b in B if cond`, mirroring `for` statements).
-    fn clauses(&mut self) -> Vec<Clause> {
+    pub(super) fn clauses(&mut self) -> Vec<Clause> {
         let mut clauses = Vec::new();
         while self.eat(T::For) {
             loop {

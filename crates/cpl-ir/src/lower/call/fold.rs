@@ -403,7 +403,10 @@ impl<'a> Lowerer<'a> {
                 );
                 self.err_expr(span)
             }
-            [one] => self.min_max_reduce(is_max, &one.value, false, span),
+            [one] => {
+                let generator = matches!(one.value.kind, ast::ExprKind::Comprehension { .. });
+                self.min_max_reduce(is_max, &one.value, generator, span)
+            }
             _ => {
                 let mut values: Vec<Expr> =
                     args.iter().map(|a| self.expr(&a.value, None)).collect();

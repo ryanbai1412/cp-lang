@@ -10,6 +10,7 @@
 
 mod expr;
 mod foreign;
+mod generator;
 mod item;
 mod pattern;
 mod stmt;
