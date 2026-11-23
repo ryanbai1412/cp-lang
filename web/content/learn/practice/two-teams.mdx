@@ -1,0 +1,23 @@
+---
+title: Two teams
+description: "Level B. Teaches two_color: a bipartite check that returns ?[V]Bool, None when an odd cycle exists."
+level: B
+chapter: 9
+teaches: "`two_color(g)`, `?[V]Bool`, `!= None`"
+---
+
+There are n players (1 ≤ n ≤ 2·10⁵) and m rivalries (0 ≤ m ≤ 2·10⁵); a rivalry `u v` means u and v must be on different teams. Can the players be split into two teams so every rivalry crosses teams? Print `YES` or `NO`.
+
+**Input:** n and m, then m lines `u v`. **Output:** `YES` or `NO`.
+
+| Input | Output |
+|---|---|
+| `4 4`<br/>`1 2`<br/>`2 3`<br/>`3 4`<br/>`4 1` | `YES` |
+
+<Judge id="two-teams">
+
+- The split exists exactly when the rivalry graph is bipartite. `two_color(Graph.undirected(es))` returns one side per player as a `[V]Bool`, or `None` when an odd cycle makes it impossible; see [`Graph`](/docs/ref/std/graph).
+- It isn't in the prelude: `use std.graph.{two_color}`, as the error suggests.
+- A rivalry `u u` is an odd cycle of length 1, so the answer is `NO`.
+
+</Judge>

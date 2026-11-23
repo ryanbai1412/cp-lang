@@ -1,0 +1,23 @@
+---
+title: Talk schedule
+description: "Level B. Teaches the earliest-end greedy: sort records by a field and keep a running free time."
+level: B
+chapter: 7
+teaches: "`sorted(by:)` on records, greedy by earliest end"
+---
+
+There are n talks (1 ≤ n ≤ 2·10⁵). Talk i runs from sᵢ to eᵢ (0 ≤ sᵢ ≤ eᵢ ≤ 10⁹). You can attend a talk only if it starts no earlier than the previous one you attended ended. Print the most talks you can attend.
+
+**Input:** n, then n lines `s e`. **Output:** one integer.
+
+| Input | Output |
+|---|---|
+| `4`<br/>`1 3`<br/>`2 5`<br/>`4 6`<br/>`6 7` | `3` |
+
+<Judge id="talk-schedule">
+
+- Read the talks as records, `[0..n](s: 0..=1e9, e: 0..=1e9)`, so `t.s` and `t.e` can't be swapped by accident.
+- Taking the talk that ends first never hurts: it leaves the most time for the rest. So walk `talks.sorted(by: t => t.e)` and take each talk that starts at or after `free`.
+- Swapping any chosen talk for one that ends no later never makes the plan worse, which is why sorting by end is enough; [Greedy and two pointers](/learn/read/greedy-and-two-pointers) has more greedy patterns.
+
+</Judge>

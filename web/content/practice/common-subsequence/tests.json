@@ -1,0 +1,43 @@
+[
+ {
+  "input": "abcbdab\nbdcaba\n",
+  "expected": "4\n",
+  "sample": true
+ },
+ {
+  "input": "a\nb\n",
+  "expected": "0\n"
+ },
+ {
+  "input": "a\na\n",
+  "expected": "1\n"
+ },
+ {
+  "input": "abc\nabc\n",
+  "expected": "3\n"
+ },
+ {
+  "input": "aaaa\naa\n",
+  "expected": "2\n"
+ },
+ {
+  "input": "baccbbaabb\nbcaabccc\n",
+  "expected": "5\n"
+ },
+ {
+  "input": "bbbaacbba\nbbba\n",
+  "expected": "4\n"
+ },
+ {
+  "input": "caabccab\nbbab\n",
+  "expected": "3\n"
+ },
+ {
+  "input": "acb\naa\n",
+  "expected": "1\n"
+ },
+ {
+  "input": "ccactgtagggtggcgtgcctgtaggaatattcttgtagttctatacagtatggctgcatgagtgttatgaatcttctcgtcgatggagtgcccaacatatggtgttcgcacaatcgtcaactctaagttgagtagacgtttgtggggcttttcagcatggtttttagggtaggcgttgaacaaggtaccagtctgcgtgttgatatgcggaggatgacatgcgtaactgcgttgtctgcagtggtttgccggtacttgcactgcggaatacttgcccgtactgctggggaccgactagccagtatcgggccggatagtgatcaacctccgcgtagcgttctaagtaagctcctggcattgtgatgaactgcttagtcgagatgtcacctagggacccctcgccgtactcagtgcactatcatctaacgaaacactggcggtgtcctgtattcgcacgtatgctcaaatgttagtctcacgggcctgaaaggaaaatctaacgtcactgaacttagaaattatctttttttgcgtcgacagtgctaacgaaggatcgtaaacagagattgcagacatacaggggcggataccgcagaccctccgatccgcaccttagctaagcggtatcgtcgtgctagccagatctacatgctgaagccaactgaatgcgcttgtgtacggatattgaaagtgtatccacgtcgttgaaatttcggtatccttctgttggataatcgctcgctttggctatatgatttctccagtcgtgcaactctagcggggtgaccattagtgcgac\ncgggtgttacatcgagcctctcttcgttggtggggccgagttccattggacccaatacacaatcaatattcacgtcacgactcgttcgggcagtcatccccactaaatttaaaagccttcgaaaagccttttggatttatcgtcccgttggcgacactcatcgagacgcacggacatcctgcgctgcagcgattctggaggcagtaattacaaagctcactccatcccggcttacgagagggtcgaacgtcgacagacggagtaatcttcttgctacgtctttcgtgatgggcggaggcgtgggtgcatgagcacgacccactctcgttctataagcgacaaggtattagtccgaatagtcgggggtgctacacgacgaactcggttcctacaatgaatttgatttatgaggtatttacaagacgtcatgcgagcgacaatccggggtgcgagtcatctcgcggcgcacatatcacacaaactaactaacgtgttcctttgactgccggggatacccgctctgcgccatgatttaacagtttctcggcctacagagacaagcggtcggagtgtaatgtcagtaacacaattagtatgttccaccggctctgcagatactagagtttcgtgagccggcattaccattccgcccaaatgtaaaaggataacggcagttacatgactcaaaccgtggaagttacagctagttgatcaatctcaccgaggtaagtacggagtgcgaatgttatagtgtcctaaccggcaggagccgaccctcgagaagagctcagtaatccgtc\n",
+  "expected": "516\n"
+ }
+]

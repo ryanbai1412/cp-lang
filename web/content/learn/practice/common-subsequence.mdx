@@ -1,0 +1,23 @@
+---
+title: Common subsequence
+description: "Level B. Teaches a 2D DP table over two cut spaces, [0..=s.len, 0..=t.len]Int, filled in order."
+level: B
+chapter: 10
+teaches: "2D table `[0..=s.len, 0..=t.len]Int`, `if ... else` as a value"
+---
+
+You are given two strings s and t of lowercase letters (1 ≤ |s|, |t| ≤ 3000). Print the length of their longest common subsequence: the longest string you can get from both by deleting characters.
+
+**Input:** s on the first line, t on the second. **Output:** one integer.
+
+| Input | Output |
+|---|---|
+| `abcbdab`<br/>`bdcaba` | `4` |
+
+<Judge id="common-subsequence">
+
+- `best[i, j]` is the answer for the first i characters of s and the first j of t, so the table has one more row and column than the strings: `var best: [0..=s.len, 0..=t.len]Int = 0`.
+- If `s[i - 1] == t[j - 1]`, extend `best[i - 1, j - 1]`; otherwise take the better of dropping one character from either side. `if ... else` is an expression, so one assignment says both cases.
+- [Dynamic programming](/learn/read/dynamic-programming) covers the table shapes. 3000 × 3000 is 9·10⁶ cells.
+
+</Judge>

@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- 2026-11-23: M2 Learn depth, 39 to 44 judged problems: round-trip (D, bitmask DP with ?Int and mask.bit), parity-pick (A, @!multitest), talk-schedule (B, earliest-end greedy), two-teams (B, two_color), common-subsequence (B, 2D DP). Tests from Python models (brute-force permutations/subsets for TSP and scheduling), each ref.cp matches; gate 677 snippets ok, links 0 broken.
 - 2026-11-23: M2 Learn depth, 35 to 39 judged problems: pattern-count (B, find_all), tree-distance (C, Rooted.lca), strong-groups (C, scc with a returned domain), cheapest-network (C, Kruskal with sorted(by:) + Dsu). Tests from Python models, each ref.cp matches; gate 619 snippets ok, links 0 broken.
 - 2026-11-23: M2 Learn depth, 30 to 35 judged problems: choose (B, Mod + Comb), course-order (B, smallest_topo), subtree-sizes (B, Rooted; 2e5 path runs in 0.35 s), increasing-run (C, lis), range-add-min (D, SegTree act: add). Tests from Python models, each ref.cp matches; gate 572 snippets ok, links 0 broken.
 - 2026-11-23: M2 Learn depth, 25 to 30 judged problems: shortest-road (B, dijkstra), inversions (C, Fenwick), window-max (B, Window(max)), knapsack (B, 0/1 DP), cut-ropes (C, last_true on the answer). Tests from Python models, each ref.cp matches; gate 518 snippets ok, links 0 broken.

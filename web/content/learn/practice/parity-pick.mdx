@@ -1,0 +1,23 @@
+---
+title: Parity pick
+description: "Level A. Teaches @!multitest: the program body runs once per test case, with no state to reset."
+level: A
+chapter: 11
+teaches: "`@!multitest`, `any`, `yes`"
+---
+
+There are t test cases (1 ≤ t ≤ 10⁴; the total n over all cases is at most 2·10⁵). Each gives n numbers (1 ≤ n ≤ 2·10⁵, 1 ≤ aᵢ ≤ 10⁹). Can you remove exactly one number so that the sum of the rest is even? An empty sum is 0. Print `YES` or `NO` for each case.
+
+**Input:** t, then for each case n and the n numbers. **Output:** t lines.
+
+| Input | Output |
+|---|---|
+| `3`<br/>`2`<br/>`1 3`<br/>`1`<br/>`5`<br/>`3`<br/>`1 1 2` | `NO`<br/>`YES`<br/>`YES` |
+
+<Judge id="parity-pick">
+
+- `@!multitest` at the top reads t and runs the rest of the file once per case, so the code reads like a single test and nothing leaks from one case to the next; see [Multitest and state](/learn/language/multitest-state).
+- Removing x leaves `total - x`, which is even exactly when x has the same parity as the total.
+- `print(yes(a.any(x => x % 2 == total % 2)))` prints `YES` or `NO`.
+
+</Judge>

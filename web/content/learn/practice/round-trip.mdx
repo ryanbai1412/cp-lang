@@ -1,0 +1,23 @@
+---
+title: Round trip
+description: "Level D. Teaches bitmask DP over subsets: a [0..1 << n, T]?Int table, min= from None, and no INF."
+level: D
+chapter: 10
+teaches: "bitmask DP, `[0..1 << n, T]?Int`, `min=` on `None`"
+---
+
+A courier starts at town 0, must visit each of the n towns (2 ≤ n ≤ 16) exactly once, and return to town 0. Going from town u to town v takes d[u][v] minutes (0 ≤ d[u][v] ≤ 10⁶, d[u][u] = 0; d[u][v] may differ from d[v][u]). Print the shortest total time.
+
+**Input:** n, then n lines of n integers: row u is d[u][0] … d[u][n − 1]. **Output:** one integer.
+
+| Input | Output |
+|---|---|
+| `4`<br/>`0 10 15 20`<br/>`10 0 35 25`<br/>`15 35 0 30`<br/>`20 25 30 0` | `80` |
+
+<Judge id="round-trip">
+
+- Trying every order is (n − 1)! ≈ 1.3·10¹² for n = 16. Instead, `best[mask, u]` is the fastest way to start at 0, visit exactly the towns in `mask`, and stand at `u`: 2¹⁶ · 16 states, 16 moves each.
+- Make the table `?Int` and start it at `None`: `var best: [0..1 << n, T]?Int = None`. Then `best[next, v] min= cur + d[u, v]` takes the first value it sees, with no `INF` to overflow; see [Optionals](/learn/read/optionals).
+- `mask.bit(u.ord)` tests whether town `u` is in `mask`. Skip states you haven't reached with `let cur = best[mask, u] else: continue`, and finish with a `?Int` running minimum over the last town plus the trip home.
+
+</Judge>
