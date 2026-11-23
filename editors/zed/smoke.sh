@@ -10,6 +10,8 @@ root="$here/../.."
 cargo build -q --release --target wasm32-wasip1 --manifest-path "$here/Cargo.toml" --target-dir "$here/target"
 [ -f "$here/target/wasm32-wasip1/release/cp_lang_zed.wasm" ] || { echo "zed smoke: no extension.wasm" >&2; exit 1; }
 rev="$(sed -n 's/^rev = "\(.*\)"$/\1/p' "$here/extension.toml")"
+# A shallow clone (CI's checkout) lacks the commit; Zed fetches it from the repository too.
+git -C "$root" cat-file -e "$rev^{commit}" 2>/dev/null || git -C "$root" fetch -q --depth 1 origin "$rev"
 for file in grammar.js src/parser.c; do
     git -C "$root" cat-file -e "$rev:editors/tree-sitter-cp/$file" 2>/dev/null || { echo "zed smoke: grammar rev $rev has no editors/tree-sitter-cp/$file" >&2; exit 1; }
     git -C "$root" show "$rev:editors/tree-sitter-cp/$file" | cmp -s - "$root/editors/tree-sitter-cp/$file" ||
