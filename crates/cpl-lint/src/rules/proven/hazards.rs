@@ -208,3 +208,61 @@ pub(crate) fn declared(
         }
     }
 }
+
+/// A comparison the declared bounds settle: its span, and whether it always
+/// holds (else it never does).
+pub(crate) type Settled = ((u32, u32), bool);
+
+pub(crate) fn proven_settled(file: &crate::File) -> Vec<Settled> {
+    super::proven(file).settled
+}
+
+/// `x >= 0` with `x: 0..=n`, or `n == 0` with `n: 1..=10`: one comparison
+/// of declared inputs and literals, at least one an input, that the
+/// bounds here (narrowed by the tests around it) settle either way.
+pub(super) fn settle(base: u32, expr: &Expr, bounds: &bounds::Bounds, out: &mut Proven) {
+    use cpl_syntax::ast::CmpOp;
+    let ExprKind::Compare { first, rest } = &expr.kind else {
+        return;
+    };
+    let [(op, rhs)] = rest.as_slice() else {
+        return;
+    };
+    let lhs = first.as_ref();
+    let input = |e: &Expr| matches!(&unparen(e).kind, ExprKind::Name(n) if bounds.is_input(n));
+    let literal = |e: &Expr| matches!(unparen(e).kind, ExprKind::Int(_));
+    if !(input(lhs) || input(rhs)) || !(input(lhs) || literal(lhs)) || !(input(rhs) || literal(rhs))
+    {
+        return;
+    }
+    let (Some(a), Some(b)) = (bounds.expr(lhs), bounds.expr(rhs)) else {
+        return;
+    };
+    // What `lhs - rhs` can be.
+    let mut d = bounds::Interval {
+        lo: a.lo - b.hi,
+        hi: a.hi - b.lo,
+    };
+    if let Some(r) = bounds.diff(lhs, rhs) {
+        d = bounds::Interval {
+            lo: d.lo.max(r.lo),
+            hi: d.hi.min(r.hi),
+        };
+    }
+    if d.lo > d.hi {
+        return;
+    }
+    let (always, never) = match op {
+        CmpOp::Lt => (d.hi < 0, d.lo >= 0),
+        CmpOp::Le => (d.hi <= 0, d.lo > 0),
+        CmpOp::Gt => (d.lo > 0, d.hi <= 0),
+        CmpOp::Ge => (d.lo >= 0, d.hi < 0),
+        CmpOp::Eq => (d.lo == 0 && d.hi == 0, d.lo > 0 || d.hi < 0),
+        CmpOp::Ne => (d.lo > 0 || d.hi < 0, d.lo == 0 && d.hi == 0),
+        _ => return,
+    };
+    if always || never {
+        out.settled
+            .push(((base + expr.span.start, base + expr.span.end), always));
+    }
+}

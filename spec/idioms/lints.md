@@ -1050,7 +1050,7 @@ One sub-family per module. Each says: you rebuilt something the library has.
 | Lint | Catches | Write instead | Tier | P | Engine | Status |
 |---|---|---|---|---|---|---|
 | empty_range_loop_at_bounds | `for i in a..b:` where declared bounds prove `a >= b` (loop never runs) | fix bounds or remove dead loop | warn | #6 | bound | ✓reversed_range_literal |
-| always_true_bounds_check | `if x >= 0:` or `if i < n:` already proven true by `x`'s declared range or domain | remove redundant check | fix? | #6 | bound | |
+| always_true_bounds_check | `if x >= 0:` or `if i < n:` already proven true by `x`'s declared range or domain | remove redundant check | fix? | #6 | bound | ✓always_true_bounds_check |
 | redundant_min_max_at_bounds | `min(x, K)` where declared bounds prove `x <= K` (always returns `x`) | `x` (or fix typo in `K`) | warn | #6 | bound | |
 | dead_match_arm_at_bounds | `match` / `else if` branch unreachable under declared range constraints | remove dead arm or widen constraint | warn | #6 | bound | |
 | redundant_domain_redeclare | two identical `domain` declarations with the same bounds in the same scope when one is a copy | reuse the domain if same index space (or comment why distinct) | warn | #3 | ty | |
@@ -1101,7 +1101,7 @@ One sub-family per module. Each says: you rebuilt something the library has.
 | alt_shares_mut_state | `@alt` reading or mutating top-level `var` shared with main `solve()` | isolate state inside each function | warn | #12 | flow | |
 | alt_same_complexity_as_main | `@alt` uses the same non-trivial DS/algorithm as main (blind to shared misconception) | write a simpler brute-force `@alt` | doc | #12 | flow | |
 | stress_unseeded_rand | `@gen` using non-deterministic seed instead of passed `rng` | use the framework-provided `Rng` so counterexamples replay | warn | #12 | ty | |
-| assert_always_true_at_bounds | `assert(x >= 0)` when `x`'s type already guarantees `x >= 0` | remove tautological assert (or assert the real invariant) | warn | #12 | bound | |
+| assert_always_true_at_bounds | `assert(x >= 0)` when `x`'s type already guarantees `x >= 0` | remove tautological assert (or assert the real invariant) | warn | #12 | bound | ✓always_true_bounds_check |
 | alt_ignores_io_context | `@alt` printing raw `"YES"`/`"NO"` while `solve` uses `with io(answers: ("Yes", "No"))` | return `Bool` or share `with io(...)` | warn | #12 | flow | |
 
 ---

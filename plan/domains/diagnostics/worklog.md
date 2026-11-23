@@ -555,3 +555,9 @@ Landed since 23:10: four type/flow lints from `spec/idioms/lints.md`, L0571 `neg
   0 hits on corpus, newcomer and std. Not in the playground: the wasm build
   has no prover. lints.md: `wide_shift` and `empty_range_loop_at_bounds`
   marked as covered by L0302 and L0303.
+- Lint L0307 `always_true_bounds_check` (lints.md rows
+  `always_true_bounds_check` and `assert_always_true_at_bounds`): one
+  comparison of declared inputs and literals that the bounds there settle,
+  `if n >= 1:` with `n: 1..=10` (always) or `n == 0` (never, dead branch).
+  Found in the scoped prover, so surrounding tests narrow it. 0 hits on
+  corpus, newcomer and std.

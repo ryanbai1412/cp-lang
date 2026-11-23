@@ -46,6 +46,7 @@ mod reverse;
 mod scopes;
 mod sentinel;
 mod sentinel_scalar;
+mod settled;
 mod shapes;
 mod spelled;
 mod taste;
@@ -108,6 +109,7 @@ pub(crate) fn run(file: &File, config: &Config) -> Vec<Finding> {
     findings.extend(empty_range::check(file));
     findings.extend(domain_first::check(file));
     findings.extend(overflow::check(file));
+    findings.extend(settled::check(file));
     findings.extend(hand_graph::check(file));
     findings.extend(hand_ds::check(file));
     findings.extend(hand_input::check(file));

@@ -219,6 +219,7 @@ struct Proven {
     shifts: Vec<Divisor>,
     empty_ranges: Vec<(u32, u32)>,
     empty_slices: Vec<hazards::EmptySlice>,
+    settled: Vec<hazards::Settled>,
     loops: Vec<crate::ProvenLoop>,
     indexes: Vec<crate::ProvenIndex>,
     fns: Vec<FnCost>,
@@ -248,6 +249,7 @@ impl Default for Proven {
             shifts: Vec::new(),
             empty_ranges: Vec::new(),
             empty_slices: Vec::new(),
+            settled: Vec::new(),
             loops: Vec::new(),
             indexes: Vec::new(),
             fns: Vec::new(),
@@ -471,6 +473,7 @@ fn arith(base: u32, expr: &cpl_syntax::ast::Expr, bounds: &bounds::Bounds, out: 
         | ExprKind::Field { base: inner, .. } => arith(base, inner, bounds, out),
         ExprKind::Unwrap(inner) => hazards::unwrap(base, expr, inner, bounds, out),
         ExprKind::Compare { first, rest } => {
+            hazards::settle(base, expr, bounds, out);
             arith(base, first, bounds, out);
             rest.iter().for_each(|(_, e)| arith(base, e, bounds, out));
         }

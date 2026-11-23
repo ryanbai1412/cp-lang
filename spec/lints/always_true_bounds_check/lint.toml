@@ -1,0 +1,6 @@
+code = "L0307"
+level = "warn"
+group = "correctness"
+title = "Comparison the declared bounds already settle"
+summary = "`if x >= 0:` with `x: 0..=n`, or `n == 0` with `n: 1..=10`: the declared ranges settle the test, so it or its branch does nothing; drop it or widen the range"
+no_fix = "whether the test is dead or the declared range is too tight is the contestant's call; the help shows both"
