@@ -477,38 +477,6 @@ fn trace_matches_cpl_run_trace() {
     }
 }
 
-/// Fix cases where the editor's fix-all still differs from `cpl fix`: it
-/// makes only the lint fixes, not the fix each error carries, until both
-/// call the one fix path (plan/ARCHITECTURE.md B6). Shrink-only: a case
-/// that starts to match must leave this list.
-const FIX_ALL_DIFFERS: &[&str] = &[
-    "assign_fixed_field.cp",
-    "assign_fixed_inline_field.cp",
-    "c_operators.cp",
-    "checked_closer.cp",
-    "ellipsis_body.cp",
-    "fold_by_lambda_unwrapped.cp",
-    "foreign_members.cp",
-    "generator_method_typo.cp",
-    "if_let_on_position_offset.cp",
-    "index_old_names.cp",
-    "int_condition_compares_with_zero.cp",
-    "max_by_is_max_with_by.cp",
-    "member_typos.cp",
-    "move_while_captured.cp",
-    "names_and_mutation.cp",
-    "optional_range_ends.cp",
-    "optional_range_ends_unwrap.cp",
-    "range_type_used_as_domain.cp",
-    "shouting_let_constant_expr.cp",
-    "unclosed_for_pattern.cp",
-    "unclosed_match_arm.cp",
-    "unclosed_tag.cp",
-    "use_after_move.cp",
-    "use_after_move_at_top_level.cp",
-    "view_mutation.cp",
-];
-
 /// The editor's fix-all is `cpl fix`: the same file, rewritten the same way.
 #[test]
 fn fix_all_matches_cpl_fix() {
@@ -598,12 +566,7 @@ fn fix_all_matches_cpl_fix() {
                     .unwrap_or(&[]),
             ),
         };
-        let file = path.file_name().unwrap().to_string_lossy();
-        let known = FIX_ALL_DIFFERS.contains(&file.as_ref());
-        if known && by_editor == by_cli {
-            differ.push(format!("{file} now matches: take it off FIX_ALL_DIFFERS"));
-        }
-        if !known && by_editor != by_cli {
+        if by_editor != by_cli {
             differ.push(format!(
                 "{}:\n--- cpl fix\n{by_cli}\n--- editor fix-all\n{by_editor}",
                 path.file_name().unwrap().to_string_lossy()

@@ -529,3 +529,7 @@ Landed since 23:10: four type/flow lints from `spec/idioms/lints.md`, L0571 `neg
   `D.last!` where `D = lo..hi` has ends from declared inputs and literals
   whose ranges (or a relation between them) let it be empty. Help: `if let`
   or tighten the bound; no fix. 0 hits on corpus, newcomer and std.
+- B6 #2 one fix path, step 2: the editor's `source.fixAll` now applies
+  error fixes through `cpl_ir::fix` and then the lint round, as `cpl fix`
+  does. `fix_all_matches_cpl_fix` matches on all 27 fix cases, so
+  FIX_ALL_DIFFERS is deleted.

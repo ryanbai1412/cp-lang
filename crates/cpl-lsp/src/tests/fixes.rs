@@ -15,7 +15,13 @@ fn quick_fixes_come_from_the_diagnostics() {
             ("context", obj([("diagnostics", diagnostics.into())])),
         ]),
     ));
-    let actions = reply[0].at(&["result"]).as_array().unwrap_or(&[]);
+    let actions: Vec<&Value> = reply[0]
+        .at(&["result"])
+        .as_array()
+        .unwrap_or(&[])
+        .iter()
+        .filter(|a| a.at(&["kind"]).as_str() == Some("quickfix"))
+        .collect();
     assert_eq!(actions.len(), 1);
     assert_eq!(
         actions[0].at(&["title"]).as_str(),
@@ -179,6 +185,7 @@ fn quick_fixes_cover_c_spellings_and_mutation() {
         .as_array()
         .unwrap_or(&[])
         .iter()
+        .filter(|a| a.at(&["kind"]).as_str() == Some("quickfix"))
         .filter_map(|a| a.at(&["title"]).as_str())
         .collect();
     assert_eq!(

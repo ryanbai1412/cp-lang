@@ -6,8 +6,10 @@ help: add `)` at the end of the expression
 
 == codeAction @ 4:13
 drop `()` to read `xs.len`
+apply every `cpl fix` fix
 
 == codeAction @ 5:9
 insert `)`
 insert `)` right after `(`
 insert `)` after `n`
+apply every `cpl fix` fix
