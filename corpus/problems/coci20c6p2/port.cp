@@ -12,14 +12,14 @@ fn id(name: Str) -> V:
     let next_id = ids.len
     ids.get_or_insert_with(name, () => V(next_id))
 
-var out: [V]List<(to: V, time: Int)> = []
+var out: [V]List<(to: V, w: Int)> = []
 for _ in 0..m:
     let (a, b, time): (Str, Str, Int) = read()
-    out[id(a)].push((to: id(b), time:))
+    out[id(a)].push((to: id(b), w: time))
 
 let q: Int = read()
 for _ in 0..q:
     let (a, b): (Str, Str) = read()
-    let dist = dijkstra(v => out[v], [(id(a), 0)], e => e.time)
+    let dist = dijkstra(out, from: [(id(a), 0)])
     if let d = dist[id(b)]: print(d)
     else: print("Roger")

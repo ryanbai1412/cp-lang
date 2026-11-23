@@ -4,7 +4,8 @@ let area: 1..=3e5 = read()
 domain P = 0..n
 type Pt = (x: 0..=3e5, y: 1..=3e5)
 let raw: [P]Pt = read()
-let pts = raw.sorted()
+var pts = raw.copy()
+pts.sort()
 
 var ys: List<Int> = [0]
 for p in pts:
@@ -32,4 +33,4 @@ for l in P.rev:
                 dp[lo, hi, k] = dp[lo, r.l, k]
             else:
                 dp[lo, hi, k] = [dp[lo, i.r, tallest(l, i)] + dp[i.r, hi, k] + 1 for i in l..=r].min()!
-print(dp[P.cuts.first, P.cuts.last, H.first!])
+print(dp[P.cuts.first!, P.cuts.last!, H.first!])

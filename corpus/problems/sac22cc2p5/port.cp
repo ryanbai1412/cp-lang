@@ -22,4 +22,4 @@ for _ in 0..q:
         cur[i] = x
     else:
         let (l, r): (Pos, Pos) = read()
-        print(fen[l.ord % 2].sum(l..=r))
+        print(fen[l.ord % 2].fold(l..=r))
