@@ -22,8 +22,8 @@ Spec writes cases, never compiler code: a failing case goes to the owning domain
 
 ## Success criteria for v0.3
 
-1. Every rule that forbids, traps or limits has a reject case; every rule has an accept case unless it only forbids. (45 forbidding rules lack a reject case today.)
-2. Every case cites a rule, a std item or a diagnostic code that exists. (78 bad cites, 10 rule-less core cases today.)
+1. Every rule that forbids, traps or limits has a reject case; every rule has an accept case unless it only forbids. (39 forbidding rules lack a reject case today.)
+2. Every case cites a rule, a std item or a diagnostic code that exists. (0 bad cites, 11 rule-less core cases today.)
 3. The feature x consumer matrix and the trait x claimer x method table have no empty cell (case or written n/a reason).
 4. Every spec code block is a case or is marked spec-only. (19 of 185 tagged blocks pass, most fail as fragments naming undefined values; 27 untagged blocks are skipped.)
 5. A cold agent rebuilding from `spec/` alone finds fewer than 5 holes. (Round 2 found 32.)
@@ -44,8 +44,8 @@ All values measured 2026-11-22 on `4b8f504f` with a release build; commands in [
 | Conformance cases passing (compiler's number, spec's suite) | `cpl-conform conformance` | 1845/2030 | 100% | - |
 | Cases (only grows) | same | 2030 | ratchet up | - |
 | Rules cited by >= 1 case | `cpl-conform --rules` | 528/528 | 100% | M1 |
-| Forbidding rules with no reject case | `conformance-coverage.py` | 45 | 0 | M1 |
-| Case cites to unknown rules | `cpl-conform --rules` | 78 | 0 | M1 |
+| Forbidding rules with no reject case | `conformance-coverage.py` | 39 | 0 | M1 |
+| Case cites to unknown rules | `cpl-conform --rules` | 0 | 0 | M1 |
 | Core cases with no `// rule:` | `conformance-coverage.py` | 10 | 0 | M1 |
 | Diagnostic codes with no reject case | `conformance-coverage.py` | 2/135 | 0 | M1 |
 | Std items named by a case | `conformance-coverage.py` | 2037/2245 | 2245 | M2 |
@@ -77,7 +77,7 @@ Probes (a cold agent attempts, pass/fail + time + files touched):
 ## Improve (highest impact first)
 
 1. Land `devin/wip-conformance-matrix` (6 unlanded commits: matrix generator with 211 generated cases, 108 hand cases, rulings for decisions 211-215).
-2. Write reject cases for the 45 happy-path-only rules (R03, R09, R13 thinnest) and fix the 78 bad cites; then gate `conformance-coverage.py --check`.
+2. Write reject cases for the 39 happy-path-only rules (R03, R09, R13 thinnest; several wait on a diagnostic code); then gate `conformance-coverage.py --check`.
 3. Trait generator: every method on every claimer (17 std traits, 72 `impl` claims, plus core claimers).
 4. Spec-block coverage: a `given` prelude so fragments run (166 of 185 fail today), tag the 27 untagged blocks, mark the rest spec-only.
 5. Spec vs std contradiction check (e.g. ch. 7 says descending is a key, `sort` has `desc:`); feed rebuild round 2's 32 holes.
