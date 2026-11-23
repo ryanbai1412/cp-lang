@@ -1257,3 +1257,41 @@ fn a_constrained_str_is_a_word_over_its_alphabet_of_a_length_in_its_range() {
         );
     }
 }
+
+#[test]
+fn an_enum_reads_its_variants_tag_or_else_its_name() {
+    let src = "enum Op = @tag(\"add\") Add(x: 1..=9) | Del | @tag(7) Seven\nlet q: 1..=6 = read()\nlet ops: [q]Op = read()\n";
+    let spec = InputSpec::from_source(src).unwrap();
+    for seed in 0..30 {
+        let text = generate(&spec, &mut Rng::new(seed), Size::Small(6))
+            .unwrap()
+            .render();
+        let mut tokens = text.split_whitespace().skip(1);
+        while let Some(tag) = tokens.next() {
+            match tag {
+                "add" => assert!((1..=9).contains(&tokens.next().unwrap().parse::<i32>().unwrap())),
+                "Del" | "7" => {}
+                other => panic!("{other} in {text}"),
+            }
+        }
+    }
+}
+
+#[test]
+fn a_range_reads_two_ends_in_order() {
+    let src = "let n: 1..=9 = read()\ndomain V = 1..=n\nlet r: Range<V> = read()\n";
+    let spec = InputSpec::from_source(src).unwrap();
+    for seed in 0..30 {
+        let text = generate(&spec, &mut Rng::new(seed), Size::Small(9))
+            .unwrap()
+            .render();
+        let t: Vec<i128> = text
+            .split_whitespace()
+            .map(|t| t.parse().unwrap())
+            .collect();
+        assert!(
+            matches!(t[..], [n, l, r] if 1 <= l && l <= r && r <= n),
+            "{text}"
+        );
+    }
+}

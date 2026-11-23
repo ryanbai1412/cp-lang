@@ -1,40 +1,23 @@
 # Programs whose input `cpl stress` can't generate yet, and why.
 # Checked by readable_shapes.rs; a fix deletes its line.
-corpus/problems/apio09p2/spec.cp: can't generate a `Range<X>` yet; pass a generator with `--gen`
-corpus/problems/btoi20p3/spec.cp: can't generate a `Range<Street>` yet; pass a generator with `--gen`
 corpus/problems/ccc04s5/spec.cp: this `read()` is not a top-level `let name: Type = read()`, so a generated input would leave it out; read it into one first, like `let edges: [m](u: V, v: V) = read()`
 corpus/problems/cco04p4/spec.cp: this fn reads input, so a generated input would leave its reads out; read them into a top-level `let name: Type = read()` and pass the values in
 corpus/problems/cco16p4/spec.cp: this fn reads input, so a generated input would leave its reads out; read them into a top-level `let name: Type = read()` and pass the values in
-corpus/problems/cco20p5/spec.cp: can't generate a `Op` yet; pass a generator with `--gen`
 corpus/problems/egoi23p4/spec.cp: this fn reads input, so a generated input would leave its reads out; read them into a top-level `let name: Type = read()` and pass the values in
-corpus/problems/etsr23r1p4/spec.cp: can't generate a `Op` yet; pass a generator with `--gen`
 corpus/problems/ioi01p1/spec.cp: this `read()` is not a top-level `let name: Type = read()`, so a generated input would leave it out; read it into one first, like `let edges: [m](u: V, v: V) = read()`
 corpus/problems/ioi09p6/spec.cp: `Cell` is not a domain declared above
-corpus/problems/ioi14p5io/spec.cp: can't generate a `Protocol` yet; pass a generator with `--gen`
 corpus/problems/ioi19p5/spec.cp: this `read()` is not a top-level `let name: Type = read()`, so a generated input would leave it out; read it into one first, like `let edges: [m](u: V, v: V) = read()`
-corpus/problems/mccc4j4/spec.cp: can't generate a `Outcome` yet; pass a generator with `--gen`
-corpus/problems/noi02p1/spec.cp: can't generate a `Cmd` yet; pass a generator with `--gen`
-corpus/problems/noi08p5/spec.cp: can't generate a `Op` yet; pass a generator with `--gen`
 corpus/problems/noi09p4/spec.cp: can't generate a `List<Cell>` yet; pass a generator with `--gen`
-corpus/problems/noi10p2/spec.cp: can't generate a `Range<1..=n>` yet; pass a generator with `--gen`
-corpus/problems/noi17p2/spec.cp: can't generate a `Op` yet; pass a generator with `--gen`
 corpus/problems/noip20p3/spec.cp: this `read()` is not a top-level `let name: Type = read()`, so a generated input would leave it out; read it into one first, like `let edges: [m](u: V, v: V) = read()`
-corpus/problems/sac22cc2p5/spec.cp: can't generate a `Ask` yet; pass a generator with `--gen`
-corpus/problems/sac22cc4jp2/spec.cp: can't generate a `Shape` yet; pass a generator with `--gen`
-corpus/problems/sdoi17r1p2/spec.cp: can't generate a `Op` yet; pass a generator with `--gen`
 corpus/problems/ucrpc21c/spec.cp: this loop reads more than `let name: Type = read()` lines whose types use only names from above it, so a generated input would leave its reads out; read them into one first, like `let edges: [m](u: V, v: V) = read()`
 crates/cpl-cli/tests/programs/batch25_yields_with_effects.cp: this fn reads input, so a generated input would leave its reads out; read them into a top-level `let name: Type = read()` and pass the values in
 crates/cpl-cli/tests/programs/one_sided_ranges.cp: can't generate a `0..` yet; pass a generator with `--gen`
 crates/cpl-cli/tests/programs/read_impl.cp: this `read()` is not a top-level `let name: Type = read()`, so a generated input would leave it out; read it into one first, like `let edges: [m](u: V, v: V) = read()`
 crates/cpl-cli/tests/programs/s2_read_flow.cp: this loop reads more than `let name: Type = read()` lines whose types use only names from above it, so a generated input would leave its reads out; read them into one first, like `let edges: [m](u: V, v: V) = read()`
-spec/conformance/core-02/enum-field-runtime-domain.cp: can't generate a `Cmd` yet; pass a generator with `--gen`
 spec/conformance/core-02/literal-union-read.cp: can't generate a `"add" | "del"` yet; pass a generator with `--gen`
-spec/conformance/core-02/token-set-is-an-enum.cp: can't generate a `D` yet; pass a generator with `--gen`
 spec/conformance/core-04/product-domain-grid-reads-and-indexes.cp: `Cell` is not a domain declared above
 spec/conformance/core-04/product-domain-is-a-seq.cp: `Cell` is not a domain declared above
 spec/conformance/core-09/asserts-on-block-kept-in-judge-build.cp: this `read()` is not a top-level `let name: Type = read()`, so a generated input would leave it out; read it into one first, like `let edges: [m](u: V, v: V) = read()`
-spec/conformance/core-10/range-field-in-variant-reads-two-ends.cp: can't generate a `Q` yet; pass a generator with `--gen`
-spec/conformance/core-10/read-array-of-tagged-commands.cp: can't generate a `Q` yet; pass a generator with `--gen`
 spec/conformance/core-10/read-base-arg.cp: this `read()` is not a top-level `let name: Type = read()`, so a generated input would leave it out; read it into one first, like `let edges: [m](u: V, v: V) = read()`
 spec/conformance/core-10/read-base-one-array.cp: this `read()` is not a top-level `let name: Type = read()`, so a generated input would leave it out; read it into one first, like `let edges: [m](u: V, v: V) = read()`
 spec/conformance/core-10/read-base-one-counted.cp: this `read()` is not a top-level `let name: Type = read()`, so a generated input would leave it out; read it into one first, like `let edges: [m](u: V, v: V) = read()`

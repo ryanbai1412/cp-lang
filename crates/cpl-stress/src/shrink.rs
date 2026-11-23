@@ -290,13 +290,22 @@ fn fit_in(spec: &InputSpec, outer: &Env, case: &Case) -> Option<Case> {
     for (field, value) in spec.fields.iter().zip(&case.values) {
         let fitted = match (&field.shape, value) {
             // Each part of `(n, q)` is bound before the next is fitted.
-            (Shape::Tuple { parts: shapes, .. }, Value::Tuple(items))
-                if field.names.len() == shapes.len() && shapes.len() == items.len() =>
-            {
+            (
+                Shape::Tuple {
+                    parts: shapes,
+                    binds,
+                },
+                Value::Tuple(items),
+            ) if field.names.len() == shapes.len() && shapes.len() == items.len() => {
                 let mut parts = Vec::new();
-                for ((shape, item), name) in shapes.iter().zip(items).zip(&field.names) {
+                for (at, ((shape, item), name)) in
+                    shapes.iter().zip(items).zip(&field.names).enumerate()
+                {
                     let part = fit_value(shape, item, &env)?;
                     bind(std::slice::from_ref(name), &part, &mut env);
+                    if let Some(own) = binds.get(at) {
+                        bind(own, &part, &mut env);
+                    }
                     parts.push(part);
                 }
                 Value::Tuple(parts)

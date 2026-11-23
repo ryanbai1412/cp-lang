@@ -471,12 +471,15 @@ fn make_in(spec: &InputSpec, outer: &Env, pick: &mut dyn Pick) -> Option<Case> {
     for field in &spec.fields {
         let value = match (&field.shape, field.names.as_slice()) {
             // `let (n, q): (.., ..) = read()`: each part can be a size.
-            (Shape::Tuple { parts, .. }, names) if names.len() == parts.len() => {
+            (Shape::Tuple { parts, binds }, names) if names.len() == parts.len() => {
                 let mut built = Vec::new();
-                for (part, name) in parts.iter().zip(names) {
+                for (at, (part, name)) in parts.iter().zip(names).enumerate() {
                     let is_size = name.as_ref().is_some_and(|n| spec.sizes.contains(n));
                     let value = build(part, &env, &spec.sizes, is_size, pick)?;
                     bind(std::slice::from_ref(name), &value, &mut env);
+                    if let Some(own) = binds.get(at) {
+                        bind(own, &value, &mut env);
+                    }
                     built.push(value);
                 }
                 Value::Tuple(built)

@@ -29,37 +29,46 @@ pub(super) enum Record {
     Struct(Vec<Type>),
     /// A struct another module declares, its fields already shaped.
     Shaped(Vec<Shape>),
-    Enum(Vec<(u8, Vec<Type>)>),
+    /// Each variant's tag and its fields' types.
+    Enum(Vec<(String, Vec<Type>)>),
 }
 
 impl Record {
-    /// `@tags("R", "C")` above an enum: one letter per variant, in order.
-    /// Tags longer than a letter are not generated yet.
+    /// An enum reads one token, its variant's tag: the variant's `@tag(..)`,
+    /// its place in `@tags(..)` above the enum, or else its name.
     pub(super) fn tagged(stmt: &Stmt, decl: &cpl_syntax::ast::EnumDecl) -> Option<Record> {
-        let tags = stmt.decorators.iter().find(|d| d.name.text == "tags")?;
-        if tags.args.len() != decl.variants.len() {
+        let tags = stmt.decorators.iter().find(|d| d.name.text == "tags");
+        if tags.is_some_and(|tags| tags.args.len() != decl.variants.len()) {
             return None;
         }
-        let letters = tags.args.iter().map(|arg| match &arg.value.kind {
+        let word = |expr: &Expr| match &expr.kind {
             ExprKind::Str(pieces) => match pieces.as_slice() {
-                [cpl_syntax::ast::StrPiece::Text(text)] if text.len() == 1 && text.is_ascii() => {
-                    Some(text.as_bytes()[0])
-                }
+                [cpl_syntax::ast::StrPiece::Text(text)] => Some(text.clone()),
                 _ => None,
             },
-            ExprKind::Char(c) if c.is_ascii() => Some(*c as u8),
+            ExprKind::Char(c) => Some(c.to_string()),
+            ExprKind::Int(n) => Some(n.to_string()),
             _ => None,
-        });
-        let variants = letters
-            .zip(&decl.variants)
-            .map(|(letter, variant)| {
-                Some((
-                    letter?,
-                    variant.fields.iter().map(|(_, ty)| ty.clone()).collect(),
-                ))
+        };
+        let variants = decl
+            .variants
+            .iter()
+            .enumerate()
+            .map(|(at, variant)| {
+                let tag = match (&variant.tag, tags) {
+                    (Some(tag), _) => word(tag)?,
+                    (None, Some(tags)) => word(&tags.args[at].value)?,
+                    (None, None) => variant.name.text.clone(),
+                };
+                let fields = variant.fields.iter().map(|(_, ty)| ty.clone()).collect();
+                Some((tag, fields))
             })
-            .collect::<Option<_>>()?;
-        Some(Record::Enum(variants))
+            .collect::<Option<Vec<(String, Vec<Type>)>>>()?;
+        let words = variants.iter().map(|(tag, _)| tag);
+        let fine = |w: &String| !w.is_empty() && !w.contains(char::is_whitespace);
+        (words.clone().all(fine)
+            && words.collect::<std::collections::HashSet<_>>().len() == variants.len())
+        .then_some(Record::Enum(variants))
     }
 }
 
@@ -193,6 +202,24 @@ impl Builder<'_> {
                 };
                 self.base = outer;
                 shape?.ok_or_else(|| unsupported(self))
+            }
+            // `Range<T>` reads its two ends `l r` of `T`, `l <= r`.
+            TypeKind::Named { name, args } if name.text == "Range" && args.len() == 1 => {
+                let Shape::Int { lo, hi } = self.shape(&args[0])? else {
+                    return Err(unsupported(self));
+                };
+                let start = String::from("(range start)");
+                let at_start = Expr {
+                    kind: ExprKind::Name(start.clone()),
+                    span: args[0].span,
+                };
+                Ok(Shape::Tuple {
+                    parts: vec![
+                        Shape::Int { lo, hi: hi.clone() },
+                        Shape::Int { lo: at_start, hi },
+                    ],
+                    binds: vec![vec![Some(start)], Vec::new()],
+                })
             }
             // `Mod<P>` reads a residue, `0..P`.
             TypeKind::Named { name, args } if name.text == "Mod" && args.len() == 1 => {
@@ -1339,25 +1366,40 @@ impl Builder<'_> {
                 parts: parts.clone(),
             }),
             Record::Enum(variants) => {
+                if variants.is_empty() {
+                    return Err(
+                        self.error(Span::new(0, 0), format!("`{name}` has no variants to read"))
+                    );
+                }
+                // One-letter tags are a `Char`; longer ones are words, each
+                // its position in the enum.
+                let letters: Option<Vec<u8>> = variants
+                    .iter()
+                    .map(|(tag, _)| match tag.as_bytes() {
+                        [b] if b.is_ascii_graphic() => Some(*b),
+                        _ => None,
+                    })
+                    .collect();
                 let mut arms = Vec::new();
-                for (tag, fields) in variants {
+                for (at, (_, fields)) in variants.iter().enumerate() {
                     let parts = parts(self, fields)?;
                     let binds = vec![Vec::new(); parts.len()];
+                    let tag = letters.as_ref().map_or(at as i128, |l| i128::from(l[at]));
                     arms.push(Arm {
-                        tags: Some(vec![i128::from(*tag)]),
+                        tags: Some(vec![tag]),
                         parts,
                         binds,
                     });
                 }
-                let letters = variants.iter().map(|(tag, _)| *tag);
-                let (lo, hi) = (letters.clone().min(), letters.max());
-                let (Some(lo), Some(hi)) = (lo, hi) else {
-                    return Err(
-                        self.error(Span::new(0, 0), format!("`{name}` has no variants to read"))
-                    );
+                let tag = match letters {
+                    Some(letters) => Shape::Char {
+                        lo: *letters.iter().min().expect("variants"),
+                        hi: *letters.iter().max().expect("variants"),
+                    },
+                    None => Shape::Words(variants.iter().map(|(tag, _)| tag.clone()).collect()),
                 };
                 Ok(Shape::Choice {
-                    tag: Box::new(Shape::Char { lo, hi }),
+                    tag: Box::new(tag),
                     name: format!("{name}.tag"),
                     arms,
                 })
