@@ -31,15 +31,15 @@ Each bug names its class on a `// class:` line: one of the P0 classes of
 `modulus`, `floating-point`) or `logic` for a wrong algorithm.
 `every_seeded_bug_names_its_bug_class` prints the count per class.
 
-Two P0 classes have no seeded bug, on purpose. `io-flush`: a `Wire`
-flushes before every read and at exit (`spec/core/10-io.md`), so a missing
-flush cannot be written. `complexity`: the smallest input that runs past a
-time limit depends on the machine, so it has no `.min` to check; hidden
-complexity is the linter's to warn about.
+Every P0 class has a seeded bug. A `complexity` bug hangs (an endless
+loop) rather than running slow, since the smallest input that runs past a
+time limit depends on the machine; hidden complexity is the linter's to
+warn about.
 
 A new bug is a new pair of files. A stress change that finds a smaller
 counterexample updates the `.min`, with the reason in the commit.
 
 A bug that never ends names a short per-run limit on a `// time-limit-ms:` line, so each case
-it hangs on stops quickly. `io-flush` has no seeded bug: `Wire` flushes before every read and at
-exit (`spec/core/10-io.md`), so a missing flush cannot be written.
+it hangs on stops quickly. `Wire` flushes before every read and at exit (`spec/core/10-io.md`), so
+a missing flush cannot be written; the `io-flush` bug is the I/O slip that
+still can: a judge reply left unread, so the next test reads it.
