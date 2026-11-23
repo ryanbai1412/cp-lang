@@ -4,6 +4,7 @@ Newest first: what landed (commit), evidence, next, blocked, requests from other
 
 ## 2026-11-22
 - Triage: the 14 corpus `spec.cp` L0209 are real and `--fix` is check-neutral (filed with idioms); the 11 `spec/std` L0507 are real push-only loops (e.g. `mo.cp:211` is `[None] * q`, `poly.cp:797`, `hashmap.cp:417`). No lint change.
+- Request from tools: `cpl lint bad.cp` on a file with a type error (`let x: Int = "a"`) prints `1 file checked, 0 warnings, 0 errors` and exits 0, while `cpl check` reports E0302 and exits 1. Either report the checker errors (and exit 1, as a denied lint does) or say the file was not linted because it does not check; "0 errors" reads as clean.
 - Triage: the 6 corpus `spec.cp` L0207 warnings are real (decision 111); `cpl lint --fix` clears them without changing any `cpl check` output. Filed with idioms, who own the files.
 - Ratchet: the same bless took std L0520 6 -> 7. Not a lint change: `b10e3d444` (stdlib) added a hand-rolled `while lo < hi` search in `DynamicOrderTree.kth` (`segtree.cp:1075`); real finding, filed with stdlib.
 - lint: L0414 treats `for j in c..xs.len` with any literal `c` as proving `xs[j]` (it took only `0..`); a variable start still warns since it may be negative. Test in `rules/lists.rs`, near miss in the record. Ratchet: std L0414 103 -> 101 (`flow.cp:238-239`-style `k..path.len` loops keep warning: `k` is a variable).
