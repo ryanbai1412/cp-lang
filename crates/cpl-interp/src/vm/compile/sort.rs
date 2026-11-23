@@ -33,7 +33,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
             Some(e) => self.compile_expr_i(e),
             None => u16::MAX,
         };
-        let Some(path) = self.compile_place_path(place) else {
+        let Some(path) = self.compile_place_path_to(place, true) else {
             self.ops.truncate(saved_ops);
             self.spans.truncate(saved_spans);
             self.places.truncate(saved_places);
