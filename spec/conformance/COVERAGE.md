@@ -870,7 +870,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - R0502 Input outside its read contract: 4 case(s)
 - R0601 Stack exhausted: 1 case(s)
 - W0101 Unused expression value: 1 case(s)
-- W0201 size_near_limit *(0.3)*: 1 case(s)
+- W0201 Submission near the size limit: 1 case(s)
 
 50 of 150 testable codes have no negative case.
 
