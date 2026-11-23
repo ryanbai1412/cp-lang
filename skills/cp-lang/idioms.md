@@ -78,7 +78,7 @@ print(ans)
 ```cp
 domain I = 0..5
 let vals = [2, 5, 1, 4, 3]
-var st = SegTree<I, Int>.of(+, i => vals[i.to_idx])
+var st = SegTree<I, Int>.of(+, i => vals[i.ord])
 st.set(I(2), 10)
 print(st.fold(I(1)..=I(3)), st.all)
 // output: 19 24
