@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- lint: `cpl lint --fix` on a copy of all 5172 tracked .cp files (one call each, 20 s timeout): 0 ICEs, 0 timeouts.
 - lint: `cpl lint` on each of the 5172 tracked .cp files (`git ls-files '*.cp'`, 20 s timeout each): 0 ICEs, 0 timeouts. README metrics gain the fix-safety row.
 - lint: tried a run-based meaning check for fixes (`cpl lint --fix` on a copy of each corpus spec.cp, then `cpl run` original and fixed on its first 3 tests/*.in under the same file name). `cpl lint --fix` changes 7 files (btoi18p4, cco20p4, ioi05p2, noi09p4, noip18p3, noip20p3, sdoi17r1p2), and none of the 7 passes `cpl check` today, so every run stops at the same checker errors (outputs differ only in the echoed source line). Not measurable until those ports check; the checker-error gate above is what holds for now.
 - lint: new gate `corpus_tests::fixes_never_add_checker_errors`: `fix_at` on every spec/std module and corpus spec.cp, checker error count after <= before. 8.1 s in `cargo test -q -p cpl-lint fixes_never_add` (debug); passes. With the old `bsearch_first` fix put back it fails with "spec/std/prefix.cp: 118 -> 120". `cargo test -q -p cpl-lint`: 102 passed.
