@@ -1527,7 +1527,7 @@ pub struct Rebased<S>(pub src: S)
 /// empty: an empty view
 /// order: source order, every `k`-th; source keys
 /// traps: when `k < 1`
-/// example: `[3, 1, 2, 4].step(2).collect() == [3, 2]`
+/// example: `[3, 1, 2, 4, 5].step(2).nth(2) == 5`
 pub fn step<S: Indexed>(self: S, k: Int) -> Stepped<S>:
     assert k >= 1, "step(k) requires k >= 1"
     Stepped(self, k)
