@@ -11,8 +11,8 @@ import java.nio.file.Files
 
 /**
  * `cpl lsp` through LSP4IJ, the client every IDE runs it with after `cpl setup jetbrains`
- * (the free IntelliJ IDEA has no other): a wrong file gets the server's diagnostic and
- * completion offers its names.
+ * (the free IntelliJ IDEA has no other): a wrong file gets the server's diagnostic, a
+ * lint shows as a warning whose quick fix rewrites the file, and completion offers its names.
  */
 class CpLsp4ijTest : BasePlatformTestCase() {
     private val cpl = File(System.getProperty("cpl.bin"))
@@ -61,6 +61,25 @@ class CpLsp4ijTest : BasePlatformTestCase() {
             myFixture.completeBasic()?.filter { item ->
                 listOf(item, item.`object`).any { it.javaClass.name.startsWith("com.redhat.devtools.lsp4ij") }
             }?.takeIf { items -> items.any { it.lookupString == "total" } }
+        }
+    }
+
+    fun `test a lint is a warning whose quick fix applies`() {
+        open("lint.cp", "let x = 3\nif x >= 0 and x < 5: print(x)\n")
+        val warning = eventually("lint warning") {
+            myFixture.doHighlighting(HighlightSeverity.WARNING)
+                .firstOrNull { it.severity == HighlightSeverity.WARNING && it.description?.contains("range check") == true }
+        }
+        assertEquals(1, myFixture.editor.document.getLineNumber(warning.startOffset))
+        myFixture.editor.caretModel.moveToOffset(warning.startOffset)
+        val fix = eventually("quick fix") {
+            myFixture.doHighlighting(HighlightSeverity.WARNING)
+            myFixture.availableIntentions.firstOrNull { it.text.contains("0 <= x < 5") }
+        }
+        myFixture.launchAction(fix)
+        eventually("fixed text") {
+            PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue()
+            myFixture.editor.document.text.takeIf { it.contains("if 0 <= x < 5:") }
         }
     }
 }
