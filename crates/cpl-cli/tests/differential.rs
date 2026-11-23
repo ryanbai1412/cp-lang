@@ -39,7 +39,7 @@ const GXX_FLAGS: [&str; 7] = [
 /// and when `sort(by:)` works out a key, `print` arguments that print,
 /// stepped ranges at their edges, arrays of two lengths given for one
 /// `D`, `argmin` on arrays that do not start at 0, `?` inside a larger
-/// expression, how a `Float` prints, and `sort(by:)` with a `()` key. They are a test of their own,
+/// expression, how a `Float` prints, `sort(by:)` with a `()` key, and optional fn parameters every call fills alike. They are a test of their own,
 /// so a break in either is named as that.
 fn parity_programs() -> Vec<PathBuf> {
     let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/parity");
@@ -82,6 +82,7 @@ fn aliasing_and_sort_keys_agree_between_interp_and_sanitized_cpp() {
             "mut_cell_receiver",
             "mut_field_after_closure",
             "mut_self_closure",
+            "optional_fn_params",
             "output_over_64k_in_a_string",
             "part_below_first",
             "part_from_one",
