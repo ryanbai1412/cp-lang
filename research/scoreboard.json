@@ -1941,13 +1941,13 @@
         "noip99p1": "pass",
         "sac22cc2p5": "error",
         "sac22cc3jp2": "pass",
-        "sac22cc3jp4": "untested",
+        "sac22cc3jp4": "pass",
         "sac22cc4jp2": "untested",
         "sdoi17r1p2": "error",
         "sdoi17r2p4": "untested",
         "shoi16p1": "error",
         "shoi16p3": "pass",
-        "ucrpc21c": "untested",
+        "ucrpc21c": "pass",
         "ucrpc21h": "error",
         "yac6p3": "untested",
         "yac6p4": "error",
@@ -2149,12 +2149,12 @@
       ],
       "counts": {
         "error": 37,
-        "pass": 26,
+        "pass": 28,
         "trap": 1,
-        "untested": 35,
+        "untested": 33,
         "wrong": 1
       },
-      "passed": 26,
+      "passed": 28,
       "total": 100
     },
     "diff": {
