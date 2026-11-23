@@ -1452,6 +1452,14 @@ pub trait Hashable:
 /// explicitly, so 2D row and column hashes never collide on transposes.
 ///
 /// not a container: `len` is the hashed string's length; it holds hashes, not elements.
+fn rh_pow(b: Int, e: Int, m: Int) -> Int:
+    var (acc, x, k) = (1, b % m, e)
+    while k > 0:
+        if k % 2 == 1: acc = acc * x % m
+        x = x * x % m
+        k /= 2
+    acc
+
 pub struct RollingHash:
     pub bases: (Int, Int)
     p1: List<Int>
@@ -1616,14 +1624,16 @@ pub struct RollingHash:
     /// The hash of `a`'s sequence followed by `b`'s, where `b` has length `b_len`:
     /// `a * base^b_len + b` per modulus.
     ///
-    /// cost: \(O(1)\) amortized (the power table grows past `len` on demand)
+    /// cost: \(O(1)\) when `b_len <= len`, else \(O(\log b_len)\)
     /// traps: when `b_len < 0`
     /// example: `let h = RollingHash("abc"); h.combine(h.get(0..1), h.get(1..3), 2) == h.all`
     pub fn combine(self, a: HashVal, b: HashVal, b_len: Int) -> HashVal:
-        HashVal(
-            (a.h1 * pow1[b_len] + b.h1) % 1_000_000_007,
-            (a.h2 * pow2[b_len] + b.h2) % 1_000_000_009,
-        )
+        with lint(unproven_list_index: allow)
+        assert b_len >= 0, "RollingHash.combine: negative length"
+        let fits = b_len < pow1.len
+        let q1 = if fits: pow1[b_len] else: rh_pow(bases.0, b_len, 1_000_000_007)
+        let q2 = if fits: pow2[b_len] else: rh_pow(bases.1, b_len, 1_000_000_009)
+        HashVal((a.h1 * q1 + b.h1) % 1_000_000_007, (a.h2 * q2 + b.h2) % 1_000_000_009)
 
     /// The length of the longest common prefix of the suffixes starting at `a` and `b`, by
     /// binary search on hashes (so it can be wrong on a collision).
