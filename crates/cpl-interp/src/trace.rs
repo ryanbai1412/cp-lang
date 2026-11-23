@@ -27,8 +27,8 @@ pub(crate) use last::last_values_of;
 mod unseen;
 mod window;
 pub use compare::{
-    first_divergence, mentions, named_values, printed_divergence, stages, stuck_divergence,
-    Divergence, Stage,
+    explain_divergence, first_divergence, mentions, named_values, printed_divergence, stages,
+    stuck_divergence, Divergence, Stage,
 };
 use glob::glob_match;
 pub use log::Steps;

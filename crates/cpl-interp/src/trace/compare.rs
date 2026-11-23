@@ -228,15 +228,29 @@ pub fn printed_divergence(source: &str, fast: &Recording, slow: &Recording) -> O
     names.sort();
     let mut blame: Vec<(u32, String)> = Vec::new();
     for name in names {
+        let set = (0..=at).rev().find(|&s| {
+            steps[s].line != print && assigned_name(text_of(steps[s].line)) == Some(name.as_str())
+        });
         let changed = (0..=at).rev().find(|&s| {
             let now = values[s].get(name);
             now.is_some() && (s == 0 || values[s - 1].get(name) != now)
         });
-        if let Some(s) = changed.filter(|&s| steps[s].line != print) {
+        let whys = match (set, changed) {
+            (Some(s), Some(c)) if s > c => {
+                vec![(s, "is last set here, and stays {v}"), (c, "gets {v} here")]
+            }
+            (_, Some(c)) => vec![(c, "last changed here, to {v}")],
+            (Some(s), None) => vec![(s, "is last set here, to {v}")],
+            (None, None) => Vec::new(),
+        };
+        for (s, why) in whys.into_iter().filter(|&(s, _)| steps[s].line != print) {
             let value = &values[s][name];
             blame.push((
                 steps[s].line,
-                format!("`{name}` last changed here, to {value}"),
+                format!(
+                    "`{name}`, which line {print} prints, {}",
+                    why.replace("{v}", value)
+                ),
             ));
         }
     }
@@ -398,7 +412,23 @@ fn assigned_name(text: &str) -> Option<&str> {
     let rest = text[end..].trim_start();
     let op = rest.find('=')?;
     let ops = &rest[..op];
-    let set = !rest[op + 1..].starts_with('=') && ops.chars().all(|c| "+-*/%&|^<>".contains(c));
+    let op_ok = ops.chars().all(|c| "+-*/%&|^<>".contains(c)) || matches!(ops, "max" | "min");
+    let set = !rest[op + 1..].starts_with('=') && op_ok;
     (end > 0 && set && !matches!(&text[..end], "let" | "var" | "if" | "while" | "for"))
         .then(|| &text[..end])
+}
+
+/// What `cpl stress --explain` reports when no call went wrong: the first
+/// value the solution gives differently, with where its first wrong output
+/// came from, else that output alone.
+pub fn explain_divergence(source: &str, fast: &Recording, slow: &Recording) -> Option<Divergence> {
+    let printed = || printed_divergence(source, fast, slow);
+    match first_divergence(fast, slow) {
+        Some(mut d) if d.blame.is_empty() => {
+            d.blame = printed().map(|p| p.blame).unwrap_or_default();
+            Some(d)
+        }
+        Some(d) => Some(d),
+        None => printed(),
+    }
 }

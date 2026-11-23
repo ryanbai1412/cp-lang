@@ -18,9 +18,7 @@ use crate::program::Program;
 use crate::run::{stress_with, InputSource, Options, Report, StressError};
 use crate::spec::InputSpec;
 use cpl_diag::Severity;
-use cpl_interp::trace::{
-    first_divergence, printed_divergence, stages as trace_stages, Divergence, TraceConfig,
-};
+use cpl_interp::trace::{explain_divergence, stages as trace_stages, Divergence, TraceConfig};
 use std::time::Duration;
 
 /// One run's result: `None` when the solution is accepted, or
@@ -506,8 +504,7 @@ pub fn stress_source(
                 })
                 .collect();
             if explain {
-                explained = Some(Ok(first_divergence(&fast_rec, &slow_rec)
-                    .or_else(|| printed_divergence(source, &fast_rec, &slow_rec))));
+                explained = Some(Ok(explain_divergence(source, &fast_rec, &slow_rec)));
             }
         }
     }

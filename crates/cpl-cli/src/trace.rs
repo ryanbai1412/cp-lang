@@ -3,8 +3,8 @@
 
 use cpl_diag::Shown;
 use cpl_interp::trace::{
-    document, first_divergence, mentions, named_values, printed_divergence, stages,
-    stuck_divergence, Divergence, Recording, TraceConfig,
+    document, explain_divergence, mentions, named_values, stages, stuck_divergence, Divergence,
+    Recording, TraceConfig,
 };
 use std::path::Path;
 
@@ -225,13 +225,11 @@ pub fn against_brute(
     Ok(cpl_stress::cli::Traced {
         stages,
         // The wrong call of a part needs no `explain`: calls are always kept.
-        divergence: first_call_divergence(&source, &fast, &slow)
-            .or_else(|| explain.then(|| first_divergence(&fast, &slow)).flatten())
-            .or_else(|| {
-                explain
-                    .then(|| printed_divergence(&source, &fast, &slow))
-                    .flatten()
-            }),
+        divergence: first_call_divergence(&source, &fast, &slow).or_else(|| {
+            explain
+                .then(|| explain_divergence(&source, &fast, &slow))
+                .flatten()
+        }),
         html: html(&versus(&name, &source, &brute_fn, &fast, &slow)),
     })
 }
@@ -410,10 +408,10 @@ fn made(
     call: &cpl_interp::trace::Call,
     own: &[cpl_interp::trace::Step],
 ) -> Vec<(u32, String)> {
-    let Some(last) = own.last() else {
-        return Vec::new();
-    };
     let lines: Vec<&str> = source.lines().collect();
+    let Some(last) = own.last() else {
+        return constant_returns(&lines, call);
+    };
     let text_of = |line: u32| lines.get(line as usize - 1).copied().unwrap_or("");
     let returned = mentions(text_of(last.line), "return");
     let line = match body_of(&lines, &call.name) {
@@ -454,6 +452,28 @@ fn made(
     changed.sort();
     out.extend(changed.into_iter().take(3));
     out
+}
+
+/// With no step of a wrong call recorded, the `return`s in its body of
+/// the very value it gave: the only lines that make that value as it is.
+fn constant_returns(lines: &[&str], call: &cpl_interp::trace::Call) -> Vec<(u32, String)> {
+    let (Some(body), Some(value)) = (body_of(lines, &call.name), &call.returned) else {
+        return Vec::new();
+    };
+    (body.clone().zip(&lines[body]))
+        .filter(|(_, text)| {
+            let ret = text
+                .find("return ")
+                .map(|at| text[at + 7..].split("//").next().unwrap_or(""));
+            ret.is_some_and(|ret| ret.trim() == value)
+        })
+        .map(|(at, _)| {
+            (
+                at as u32 + 1,
+                format!("`{}` returns {value} here", call.name),
+            )
+        })
+        .collect()
 }
 
 /// A call's arguments, JSON by name, as `k: 1, a: [2, 1]`.
