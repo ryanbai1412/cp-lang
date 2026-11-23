@@ -38,6 +38,7 @@ Afterwards they can give meaningful feedback on expressiveness, correctness mech
 - **CLI and local testing:** reliable check, run, sample tests, custom tests, checkers and judge-ready builds; sample import through Competitive Companion.
 - **Editors:** Neovim/Vim, VS Code and JetBrains with highlighting, diagnostics, completion and formatting, so the user never switches between disconnected tools.
 - **Website and learning:** a credible site, a concise intro guide, searchable docs, runnable examples that actually work, and enough practice to teach the core language model.
+- **In-depth language chapters:** one per major part (ownership and mutation, domains and ranges, types and proofs, multitest, checked operations, the judge model), precise enough to predict behaviour, each explaining the design decisions behind it. The first friends are PL enthusiasts who will want to understand it fully.
 - **Submission:** a reliable self-contained C++17 file for Codeforces. Single-test and multitest problems work; other formats work where feasible and are clearly scoped where not.
 - **Debugging:** high-quality diagnostics and runtime errors, print debugging, assertions, and fast reproduction of failing cases. A basic integrated brute/stress workflow is the differentiator to show. Full time-travel debugging is not required.
 - **Release quality:** reproducible builds, installers tested on all three platforms, automated regression checks, and no known serious correctness or submission bugs in supported workflows.
