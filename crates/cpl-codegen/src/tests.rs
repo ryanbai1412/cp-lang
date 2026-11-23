@@ -637,13 +637,13 @@ fn a_let_of_a_list_nothing_changes_is_a_reference_not_a_copy() {
         "    row[row.len - 1]\n",
         "print(last_of(2))\n",
         "let (_, vals) = compress([30, 10, 20, 10])\n",
-        "print(vals.at(20))\n",
+        "print(vals.index_of(20))\n",
     ));
     assert!(
         cpp.contains("const std::vector<ll>& row = cpl::at(rows, r);"),
         "{cpp}"
     );
-    // `vals.at(x)` searches the field where it is.
+    // `vals.index_of(x)` searches the field where it is.
     assert!(!cpp.contains("= self.vals;"), "{cpp}");
 }
 

@@ -902,15 +902,15 @@ fn compress_call_sites_get_fresh_domains_in_interp_checked_and_release() {
     let main_src = "\
 let (domain X, xs) = compress([40, -7, 40, 1_000_000_000, 3])
 let (domain Y, ys) = compress([5, 6])
-let ix = xs.at(40)
-let iy = ys.at(6)
+let ix = xs.index_of(40)
+let iy = ys.index_of(6)
 print(xs.len, ys.len, xs[ix], ys[iy])
 
 fn work(a: List<Int>, b: List<Int>):
     let (domain U, u) = compress(a)
     let (domain W, v) = compress(b)
-    let iu = u.at(a[0])
-    let iv = v.at(b[0])
+    let iu = u.index_of(a[0])
+    let iv = v.index_of(b[0])
     print(u.len, v.len, u[iu], v[iv])
 
 work([10, 20, 30, 10], [99])
@@ -954,8 +954,8 @@ let a: List<Int> = [read() for _ in 0..n]
 let b: List<Int> = [read() for _ in 0..m]
 let (domain X, xs) = compress(a)
 let (domain Y, ys) = compress(b)
-let ix = xs.at(a[0])
-let iy = ys.at(b[0])
+let ix = xs.index_of(a[0])
+let iy = ys.index_of(b[0])
 print(xs.len, ys.len, xs[ix], ys[iy])
 ";
     std::fs::write(&multi_cp, multi_src).unwrap();
