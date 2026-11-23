@@ -73,7 +73,7 @@ fn plan(x: Int) -> ?Plan:
                 for j in PosB.cuts:
                     if let i = latest and mss[i, j] <= x: came[s.r, j, spent] = Back(i, spent)
                     if fit(s.l, j, spent): latest = j
-            if let i = PosB.cuts.first(j => fit(s.l, j, false)):
+            if let i = PosB.cuts.find(j => fit(s.l, j, false)):
                 for j in PosB.cuts:
                     if j > i: came[s.r, j, true] = Back(i, false)
     var at = Back(PosB.cuts.last!, true)

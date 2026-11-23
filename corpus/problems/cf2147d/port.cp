@@ -15,7 +15,7 @@ var freq: Map<Int, Int> = Map()
 for x in a: freq[x] += 1
 
 let base = sum(x / 2 for x in a)
-let extras = [cnt for (x, cnt) in freq.items if x % 2 == 1].sorted(by: c => -c)
+let extras = [cnt for (x, cnt) in freq.items if x % 2 == 1].sorted(desc: true)
 var score: [0..2]Int = base
 for (k, c) in extras.items: score[k % 2] += c
 print(score[0], score[1])
