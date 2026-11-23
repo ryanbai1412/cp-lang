@@ -535,6 +535,32 @@ fn fmt_check_reports_without_writing_and_fmt_rewrites() {
 }
 
 #[test]
+fn fmt_with_no_path_formats_stdin_and_rewrites_no_file() {
+    let dir = scratch("fmt-no-path");
+    let messy = "fn inc(x: Int) -> Int:\n    return x+1\n";
+    std::fs::write(dir.join("a.cp"), messy).unwrap();
+    let mut child = Command::new(env!("CARGO_BIN_EXE_cpl"))
+        .arg("fmt")
+        .current_dir(&dir)
+        .stdin(std::process::Stdio::piped())
+        .stdout(std::process::Stdio::piped())
+        .spawn()
+        .expect("cpl runs");
+    std::io::Write::write_all(&mut child.stdin.take().unwrap(), b"let x=1\n").unwrap();
+    let out = child.wait_with_output().unwrap();
+    assert_eq!(out.status.code(), Some(0));
+    assert_eq!(text(&out.stdout), "let x = 1\n");
+    assert_eq!(std::fs::read_to_string(dir.join("a.cp")).unwrap(), messy);
+    let check = cpl(&dir, &["fmt", "--check"]);
+    assert_eq!(
+        check.status.code(),
+        Some(1),
+        "--check with no path checks the directory"
+    );
+    assert_eq!(std::fs::read_to_string(dir.join("a.cp")).unwrap(), messy);
+}
+
+#[test]
 fn fmt_json_says_which_files_changed_and_why_one_was_not_formatted() {
     let dir = scratch("fmt-json");
     std::fs::write(dir.join("a.cp"), "fn inc(x: Int) -> Int:\n    return x+1\n").unwrap();

@@ -7248,3 +7248,15 @@ method and field names the shapes read (`push`, `pop`, `last`, `len`);
 the fact table removes them. Reverse: delete the three records and
 `rules/hand_graph.rs`.
 
+## 335. `cpl fmt` rewrites only the paths it is given; no path formats stdin (2026-11-22)
+
+`cpl fmt` with no path used to mean `cpl fmt .`, so `cpl fmt < a.cp` or a
+stray `cpl fmt` rewrote every .cp file under the current directory (one
+cost a 461-file revert). Now, as in gofmt and rustfmt, no path formats
+standard input to standard output; on a terminal it is a usage error naming
+`cpl fmt .`. `--check` with no path still checks the current directory,
+since it writes nothing. `--stdin` and the no-path form use the style of
+the cp.toml nearest the current directory instead of the default, so
+Vim's `gq` honours `[fmt]`. Reverse: restore the `"."` default in
+`crates/cpl-fmt/src/cli.rs`.
+

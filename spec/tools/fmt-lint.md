@@ -9,7 +9,10 @@ One canonical layout, no options: 4-space indents, 100 columns,
 `with` lines first in their block, sorted `use` lines, one blank line
 between items, trailing commas in multi-line brackets, the compiler
 stamp on line 1. Formatting never changes meaning; it is idempotent and
-fast enough to run on every save. (Rfmt.1)
+fast enough to run on every save. (Rfmt.1) `cpl fmt` rewrites only the
+files and directories it is given (`cpl fmt .` is the whole project); with
+no path it formats standard input to standard output, and `--check` with no
+path checks the current directory.
 
 ## `cpl lint`
 

@@ -1,6 +1,6 @@
 //! `cpl fmt`.
 
-use crate::{format, format_with, FormatError, Style};
+use crate::{format_with, FormatError, Style};
 use cpl_diag::LineIndex;
 use std::io::Write;
 use std::path::{Path, PathBuf};
@@ -9,11 +9,14 @@ pub const USAGE: &str = "\
 usage: cpl fmt [--check] [--json] [path]...
 
 Rewrites each .cp file in the canonical style. A directory stands for every
-.cp file under it; no path at all means the current directory.
+.cp file under it, so `cpl fmt .` formats the whole project. With no path,
+standard input is formatted to standard output, or with `--check` the
+current directory is checked; files are only rewritten when named.
 
 options:
   --check    change nothing; list the files that would change and exit 1
-  --stdin    format standard input to standard output
+  --stdin    format standard input to standard output, in the style of
+             the cp.toml nearest the current directory
   --json     print one JSON object instead: `files`, each with its `path`,
              whether it `changed` (or would, under --check), `ok`, the
              `diagnostics` that stopped formatting and any other `error`
@@ -78,13 +81,32 @@ pub fn run_with(
         );
         return 2;
     }
+    if paths.is_empty() && !check && !as_json {
+        if std::io::IsTerminal::is_terminal(&std::io::stdin()) {
+            let _ = write!(
+                stderr,
+                "error: name what to format: `cpl fmt .` rewrites every .cp file under the \
+                 current directory, `cpl fmt --stdin` formats standard input\n\n{USAGE}"
+            );
+            return 2;
+        }
+        stdin = true;
+    }
     if stdin {
         let mut src = String::new();
         if let Err(e) = std::io::Read::read_to_string(&mut std::io::stdin(), &mut src) {
             let _ = writeln!(stderr, "error: can't read standard input: {e}");
             return 1;
         }
-        return match format(&src) {
+        let (style, read) = Style::discover(Path::new("<stdin>.cp"));
+        for error in read.into_iter().flat_map(|(toml, errors)| {
+            errors
+                .into_iter()
+                .map(move |e| format!("{}: {e}", toml.display()))
+        }) {
+            let _ = writeln!(stderr, "{error}");
+        }
+        return match format_with(&src, &style) {
             Ok(out) => {
                 let _ = write!(stdout, "{out}");
                 0
