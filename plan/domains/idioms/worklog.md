@@ -247,3 +247,5 @@ Newest first: what landed (commit), evidence, next, blocked, requests from other
 - 09:10 port: cf2066d2 `open.fold(Time.first!..=Time.at(used.ord + c)!)` in place of the unbounded `..=` (and `Time.at` now takes the 1-based label, so the old `- 1` was an ordinal); 60/60 vs orig.cpp on its gen.py.
 - 09:10 port: noi10p4 `topo::<Plane>(...)` (one type argument); 60/60 vs the AC C++ on generated feasible schedules.
 - 09:10 port: noi21p2 `.inv()` (a method call, not a fn value); 60/60 vs corpus/submissions/3893923.cpp. meta.json's 3859252.cpp asserts on test-specific shapes (`n == 2`) and crashes on general input, so it is not a usable reference.
+- 09:12 port: ioi18p3 `jump_while` in place of the removed `lift_while`; 60/60 vs the AC grader code wrapped in a stdin main. ioi15p4 `left_while` in place of `min_left` and `Year.cuts.first!/last!`; 60/60 vs the AC grader code wrapped likewise.
+- 09:12 coi06p2 blocked: its bridge test needs a DFS tree, and `map.dfs_tree(Town.first!)` over `domain Town = 1..=n` (runtime n) fails E0005 "expected a compile-time constant integer" (routed to stdlib).

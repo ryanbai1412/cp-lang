@@ -55,8 +55,8 @@ var asks: [Cut]List<(trip: Trip, sign: Int)> = [Cut] _ => []
 var wolf_range: [Trip]Range<wolf.Pre> = [Trip] _ => wolf.sub(V.first!)
 for i in Trip:
     let trip = trips[i]
-    let h = human.sub(human.lift_while(trip.s, c => c >= trip.l)!)
-    wolf_range[i] = wolf.sub(wolf.lift_while(trip.e, c => c <= trip.r)!)
+    let h = human.sub(human.jump_while(trip.s, c => c >= trip.l)!)
+    wolf_range[i] = wolf.sub(wolf.jump_while(trip.e, c => c <= trip.r)!)
     asks[Cut(h.start.ord)].push((trip: i, sign: -1))
     asks[Cut(h.end.ord)].push((trip: i, sign: 1))
 

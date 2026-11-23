@@ -23,14 +23,14 @@ var price = SegTree<Year, Int>(max, y)
 
 fn best() -> Z:
     var (lead, ans) = (0, Z(0))  // best sale / herd at `end`, and the sale itself
-    var end = Year.cuts.last
-    while lead < 1_000_000_000 and end != Year.cuts.first:
-        let quiet = surge.min_left(end, s => s <= 1)
-        let start = quiet.left ?? Year.first
+    var end = Year.cuts.last!
+    while lead < 1_000_000_000 and end != Year.cuts.first!:
+        let quiet = surge.left_while(end, s => s <= 1)
+        let start = quiet.left ?? Year.first!
         let top = price.fold(start.l..end)
         if top > lead:
             lead = top
-            ans = growth.fold(Year.cuts.first..start.r) * Z(top)
+            ans = growth.fold(Year.cuts.first!..start.r) * Z(top)
         lead *= x[start]
         end = start.l
     ans

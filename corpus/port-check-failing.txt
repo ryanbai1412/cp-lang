@@ -31,9 +31,7 @@ ioi13p3io
 ioi13p4
 ioi14p2
 ioi14p6
-ioi15p4
 ioi18p1
-ioi18p3
 mccc4j5
 noi03p2
 noi07p4
