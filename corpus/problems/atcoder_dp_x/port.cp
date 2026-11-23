@@ -1,5 +1,11 @@
-// Educational DP X, Tower: stack some blocks. Block i weighs w, is worth v and
-// carries at most s on top of it. Maximise the value of the tower.
+// Source: AtCoder Educational DP Contest X (Tower), https://atcoder.jp/contests/dp/tasks/dp_x
+// Problem: N <= 1000 blocks, block i with weight w_i <= 1e4, solidness s_i <= 1e4 and value
+//   v_i <= 1e9. Stack some of them so every block carries a total weight above it of at most
+//   its s; print the largest total value of the tower.
+// Solution: exchange argument: some optimal tower has s + w non-decreasing from the top, so
+//   take the blocks in that order and build top down. best[x] is the most value of a tower
+//   weighing x; block b goes under any tower with x <= s_b, a 0/1 knapsack scanned downward
+//   over x. O(N * max s), with weights at most 2e4.
 // original: corpus/submissions/4133420.cpp
 let n: 1..=1000 = read()
 let blocks: [n](w: 1..=1e4, s: 1..=1e4, v: 1..=1e9) = read()
