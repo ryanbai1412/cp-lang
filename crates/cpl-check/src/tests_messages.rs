@@ -614,3 +614,16 @@ fn a_missing_member_with_no_close_name_lists_what_the_type_has() {
         "{help}"
     );
 }
+
+#[test]
+fn a_comprehension_over_a_range_is_not_called_a_list_of_one_range() {
+    let d = one("let n = 3\nprint([i for i in 1..=n].shuffled())\n");
+    let help = d.help.unwrap_or_default();
+    assert!(!help.contains("one range"), "{help}");
+    assert!(
+        help.contains("`var ys = [i for i in 1..=n].clone()`"),
+        "{help}"
+    );
+    let d = one("let n = 3\nprint([1..=n].shuffled())\n");
+    assert!(d.help.unwrap_or_default().contains("holding one range"));
+}

@@ -763,7 +763,9 @@ pub(super) fn in_place_twin(name: &str, recv: &str) -> Option<String> {
     let stems = stems.into_iter().flatten().filter(|s| !s.is_empty());
     // `[1..=n]` is a list of one range; its numbers are `List(1..=n)` (R07.8.1).
     let inner = recv.strip_prefix('[').and_then(|r| r.strip_suffix(']'));
-    let (copy, lead) = match inner.filter(|r| r.contains("..") && !r.contains([',', '['])) {
+    let (copy, lead) = match inner
+        .filter(|r| r.contains("..") && !r.contains([',', '[']) && !r.contains(" for "))
+    {
         Some(range) => (
             format!("List({range})"),
             format!("`{recv}` is a list holding one range; the numbers are `List({range})`. "),
