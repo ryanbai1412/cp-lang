@@ -1579,8 +1579,7 @@ impl<'a> Lowerer<'a> {
                 }
             }
             ast::StmtKind::Assert { cond, message } => {
-                let text = self.source(cond.span);
-                let line = self.line(cond.span);
+                let (text, line, note) = self.assert_place(cond.span);
                 let span = self.span(stmt.span);
                 let cond = self.expect(cond, &Ty::Bool);
                 let message = message.as_ref().map(|m| self.expect(m, &Ty::Str));
@@ -1592,6 +1591,7 @@ impl<'a> Lowerer<'a> {
                     message,
                     text,
                     line,
+                    note,
                     span,
                     kept,
                 });

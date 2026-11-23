@@ -74,6 +74,8 @@ pub struct Trap {
     pub call_stack: Vec<Frame>,
     /// 1-based test case number when running under `@!multitest`.
     pub case: Option<u64>,
+    /// Where the failure is written when that is not the user's line.
+    pub notes: Vec<String>,
 }
 
 impl Trap {
@@ -126,6 +128,11 @@ impl Trap {
         if let Some(help) = trap_help::help(&self.message) {
             diagnostic = diagnostic.with_help(help);
         }
+        diagnostic = self
+            .notes
+            .iter()
+            .cloned()
+            .fold(diagnostic, cpl_diag::Diagnostic::with_note);
         if let Some(case) = self.case {
             diagnostic = diagnostic.with_note(format!("in test case {case}"));
         }
@@ -142,37 +149,11 @@ impl Trap {
                 current_line = lines.line_of(frame.call_span.start) + 1;
             }
             parts.push((Some(format!("top level ({path}:{current_line})")), 1));
-            let parts = runs(&parts);
+            let parts = unwind::runs(&parts);
             diagnostic = diagnostic.with_note(format!("call stack: {}", parts.join(" <- ")));
         }
         diagnostic
     }
-}
-
-/// A call stack's frames with each run of one call written once and counted,
-/// `spin (a.cp:2) 40000 times`; the omitted middle (`None`, with its count)
-/// joins a run on both sides of it.
-fn runs(parts: &[(Option<String>, usize)]) -> Vec<String> {
-    let mut out: Vec<(Option<String>, usize)> = Vec::new();
-    for (i, (text, n)) in parts.iter().enumerate() {
-        let around = |j: usize| parts.get(j).and_then(|p| p.0.as_ref());
-        let text = match text {
-            None if i > 0 && around(i - 1).is_some() && around(i - 1) == around(i + 1) => {
-                around(i - 1).cloned()
-            }
-            t => t.clone(),
-        };
-        match out.last_mut() {
-            Some((last, count)) if last.is_some() && *last == text => *count += n,
-            _ => out.push((text, *n)),
-        }
-    }
-    let show = |(text, n): (Option<String>, usize)| match text {
-        None => format!("... {n} frames omitted ..."),
-        Some(t) if n > 1 => format!("{t} {n} times"),
-        Some(t) => t,
-    };
-    out.into_iter().map(show).collect()
 }
 
 /// Stack for the interpreter thread: deep recursion in the program is deep
@@ -278,6 +259,7 @@ pub(crate) fn on_interp_thread(run: &(dyn Fn(Limits) -> Observed + Sync)) -> Obs
             span: Span::default(),
             call_stack: Vec::new(),
             case: None,
+            notes: Vec::new(),
         }),
         ..Observed::default()
     };
@@ -502,6 +484,7 @@ fn trap<T>(span: Span, message: impl Into<String>) -> Res<T> {
         span,
         call_stack: Vec::new(),
         case: None,
+        notes: Vec::new(),
     }))
 }
 
@@ -1021,6 +1004,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 cond,
                 message,
                 text,
+                note,
                 span,
                 ..
             } => {
@@ -1032,7 +1016,9 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                             report.extend(bytes.iter().map(|b| *b as char));
                         }
                     }
-                    return trap(*span, report);
+                    let mut failed = trap::<()>(*span, report).unwrap_err();
+                    failed.notes.extend(note.clone());
+                    return Err(failed);
                 }
             }
             Stmt::DefDomain { id, lo, len } => {

@@ -49,6 +49,22 @@ impl<'a> Lowerer<'a> {
         }
     }
 
+    /// An assert's condition as written, the line it reports, and where it
+    /// is when that is a library: there it reports the user's line that
+    /// reached it, and names its own line in a note.
+    pub(super) fn assert_place(&self, cond: Span) -> (String, u32, Option<String>) {
+        let text = self.source(cond);
+        if self.cur_mod == 0 {
+            return (text, self.line(cond), None);
+        }
+        let line = self.mods[0].lines.line_of(self.asked_at.at.start) + 1;
+        let place = self.library_place(self.cur_mod, cond.shift(self.offset));
+        let note = place.map(|(module, at, inside)| {
+            format!("{}.cp:{at}: inside `{inside}`", module.replace('.', "/"))
+        });
+        (text, line, note)
+    }
+
     pub(super) fn error(&mut self, code: cpl_diag::Code, span: Span, message: impl Into<String>) {
         let at = span.shift(self.offset);
         let span = self.span(span);
@@ -339,7 +355,7 @@ impl<'a> Lowerer<'a> {
 /// first, which an error inside the library lists as notes.
 #[derive(Clone, Default)]
 pub(super) struct Asked {
-    at: Span,
+    pub(super) at: Span,
     lib: Span,
     via: Vec<(usize, Span)>,
 }

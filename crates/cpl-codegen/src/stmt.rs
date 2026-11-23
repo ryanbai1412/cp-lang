@@ -1706,25 +1706,25 @@ impl<'p> Emitter<'p> {
                 message,
                 text,
                 line,
+                note,
                 ..
             } => {
                 self.need("fail");
                 let cond = self.expr(cond).text;
                 let report = format!("assertion failed: {text} (line {line})");
-                match message {
-                    None => self.line(
-                        out,
-                        &format!(
-                            "if (!({cond})) cpl::fail({});",
-                            string_literal(report.as_bytes())
-                        ),
-                    ),
+                let note = note
+                    .as_ref()
+                    .map_or(String::new(), |n| format!("\nnote: {n}"));
+                let why = match message {
+                    None => string_literal(format!("{report}{note}").as_bytes()),
                     Some(message) => {
                         let message = self.expr(message).text;
                         let report = string_literal(format!("{report}: ").as_bytes());
-                        self.line(out, &format!("if (!({cond})) cpl::fail((std::string({report}) + {message}).c_str());"));
+                        let note = string_literal(note.as_bytes());
+                        format!("(std::string({report}) + {message} + {note}).c_str()")
                     }
-                }
+                };
+                self.line(out, &format!("if (!({cond})) cpl::fail({why});"));
             }
             Stmt::DefDomain { id, lo, len } => {
                 let d = ident(&program.domains[*id]);

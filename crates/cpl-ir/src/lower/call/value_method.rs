@@ -653,6 +653,7 @@ impl<'a> Lowerer<'a> {
                             )),
                             text: "not (after != None and before != None)".into(),
                             line: lw.line(span),
+                            note: None,
                             span,
                             kept: false,
                         });

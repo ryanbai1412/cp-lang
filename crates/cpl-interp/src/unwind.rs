@@ -45,3 +45,29 @@ impl<O: Observer> Interp<'_, '_, O> {
         self.trap_frame = Some((self.call_frames.len(), locals.collect()));
     }
 }
+
+/// A call stack's frames with each run of one call written once and counted,
+/// `spin (a.cp:2) 40000 times`; the omitted middle (`None`, with its count)
+/// joins a run on both sides of it.
+pub(crate) fn runs(parts: &[(Option<String>, usize)]) -> Vec<String> {
+    let mut out: Vec<(Option<String>, usize)> = Vec::new();
+    for (i, (text, n)) in parts.iter().enumerate() {
+        let around = |j: usize| parts.get(j).and_then(|p| p.0.as_ref());
+        let text = match text {
+            None if i > 0 && around(i - 1).is_some() && around(i - 1) == around(i + 1) => {
+                around(i - 1).cloned()
+            }
+            t => t.clone(),
+        };
+        match out.last_mut() {
+            Some((last, count)) if last.is_some() && *last == text => *count += n,
+            _ => out.push((text, *n)),
+        }
+    }
+    let show = |(text, n): (Option<String>, usize)| match text {
+        None => format!("... {n} frames omitted ..."),
+        Some(t) if n > 1 => format!("{t} {n} times"),
+        Some(t) => t,
+    };
+    out.into_iter().map(show).collect()
+}

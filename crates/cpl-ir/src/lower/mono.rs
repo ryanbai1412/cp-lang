@@ -4129,6 +4129,7 @@ impl<'a> Lowerer<'a> {
                 message: None,
                 text: format!("law {}", law.name),
                 line: self.line(law.body.span),
+                note: None,
                 span: self.span(span),
                 kept: false,
             }];

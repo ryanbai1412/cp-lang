@@ -32,6 +32,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 span,
                 call_stack: Vec::new(),
                 case: None,
+                notes: Vec::new(),
             })
         };
         Ok(match spec {

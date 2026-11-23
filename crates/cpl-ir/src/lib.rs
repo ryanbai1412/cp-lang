@@ -1002,6 +1002,9 @@ pub enum Stmt {
         /// The condition as written, and its line, for the report.
         text: String,
         line: u32,
+        /// Where in a library the assert is written, when the user's
+        /// `line` reached it there.
+        note: Option<String>,
         span: Span,
         /// Under `with checks(asserts: on)`: checked in every build. (R09.4.1)
         kept: bool,

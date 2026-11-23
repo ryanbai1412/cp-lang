@@ -376,6 +376,7 @@ impl Replay {
                     span: cpl_diag::Span::default(),
                     call_stack: Vec::new(),
                     case: None,
+                    notes: Vec::new(),
                 }),
                 ..Observed::default()
             },
