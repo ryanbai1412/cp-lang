@@ -7,9 +7,12 @@
 //   node scripts/wasm-size.mjs [dist/wasm/cpl.wasm]
 //   node scripts/wasm-size.mjs --why   the crates cpl.wasm's bytes come from
 //
+// With WASM_SIZE_HISTORY=<file> (CI keeps it across main runs), it prints the
+// gzipped change since the commit recorded there, then records this one, so
+// growth names its commits before the cap fails.
 // Over the cap, it prints --why's table too, so a lane sees what grew.
 import { execFileSync } from 'node:child_process';
-import { existsSync, mkdtempSync, readFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -121,6 +124,25 @@ if (!existsSync(file)) {
 const raw = readFileSync(file);
 const gz = gzipSync(raw, { level: 9 }).length;
 const line = `wasm-size: cpl.wasm is ${n(raw.length)} bytes, ${n(gz)} gzipped (cap ${n(cap)})`;
+const history = process.env.WASM_SIZE_HISTORY;
+if (history) {
+  const head = (() => {
+    try {
+      return execFileSync('git', ['rev-parse', 'HEAD'], { cwd: repo, encoding: 'utf8' }).trim();
+    } catch {
+      return 'unknown';
+    }
+  })();
+  const [was, wasGz] = existsSync(history) ? readFileSync(history, 'utf8').trim().split(/\s+/) : [];
+  if (was && Number.isFinite(+wasGz) && was !== head) {
+    const d = gz - +wasGz;
+    const delta = `wasm-size: ${d >= 0 ? '+' : ''}${n(d)} bytes gzipped since ${was.slice(0, 9)} (git log ${was.slice(0, 9)}..${head.slice(0, 9)})`;
+    console.log(delta);
+    if (process.env.GITHUB_STEP_SUMMARY) writeFileSync(process.env.GITHUB_STEP_SUMMARY, `${delta}\n`, { flag: 'a' });
+  }
+  mkdirSync(dirname(history), { recursive: true });
+  writeFileSync(history, `${head} ${gz}\n`);
+}
 const full = join(dirname(file), 'cpl-build.wasm');
 const fullLine = existsSync(full)
   ? `wasm-size: cpl-build.wasm (loaded on the first build, explain or stress) is ${n(gzipSync(readFileSync(full), { level: 9 }).length)} gzipped`
