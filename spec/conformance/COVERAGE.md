@@ -7,11 +7,11 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 2463 (995 passing). Rules: 561.
+Cases: 2467 (995 passing). Rules: 561.
 
 ## Summary per chapter
 
-- R01 (01-lexical-grammar.md): 53 rules, 121 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R01 (01-lexical-grammar.md): 53 rules, 125 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R02 (02-values-types.md): 52 rules, 127 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R03 (03-numbers-layout.md): 24 rules, 62 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04 (04-indices.md): 66 rules, 114 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -85,7 +85,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R01.2.4 [2+ 1-]: **Continuation.** A line indented deeper than the previous logical line, where that line d...
 - R01.2.5 [1+ 1-]: `;` separates simple statements on one line (`if c: a.push(x); continue`). It never ends a...
 - R01.2.6 [1+ 0-]: Trailing commas are allowed in every comma-separated list.
-- R01.3.1 [1+ 0-]: Types, domains, traits, type parameters and enum variants are `PascalCase`: `Some(x)`, `No...
+- R01.3.1 [2+ 3-]: Types, domains, traits, type parameters and enum variants are `PascalCase`: `Some(x)`, `No...
 - R01.3.2 [2+ 1-]: Values, functions, fields and modules are `snake_case` or lower camel; a `let` or `var` bi...
 - R01.3.3 [2+ 1-]: So a pattern needs no lookup to read: a capitalized name is a variant or constant, a lower...
 - R01.3.4 [3+ 1-]: In an expression, `Name<` opens type arguments when `Name` is capitalized and what follows...
@@ -759,7 +759,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0408 assign_into_range *(0.3)*: 1 case(s)
 - E0501 Unsupported construct in backend: 8 case(s)
 - E0502 Non-ASCII character in source or string: 1 case(s)
-- E0503 Removed syntax from an older version: 7 case(s)
+- E0503 Removed syntax from an older version: 10 case(s)
 - E0504 Planned syntax, not implemented yet: 1 case(s)
 - E0601 Aliased mutable lend: 12 case(s)
 - E0602 Variable mutated while lent: 33 case(s)
