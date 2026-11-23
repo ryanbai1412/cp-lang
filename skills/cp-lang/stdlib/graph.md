@@ -65,7 +65,6 @@ Fields: `start: [V.cuts]Int`, `arcs: List<A>`.
 - `fn lists(self) -> [V]List<V>` — O(n + m); The targets of every vertex as plain lists, `lists()[u] == next(u).collect()`: the shape `std.flow` matchings take.
 - `fn hops(self) -> [V, V]Int` — O(n (n + m)) time, O(n^2) memory; The fewest arcs between every ordered pair, by a BFS from each vertex; `0` on the diagonal.; traps: when some vertex cannot reach another
 - `fn edges<E>(self) -> yields Edge<V, E> where A: Edged<E>` — O(1) to make, O(1) per edge; Every edge once, as `Edge(e, u, v)` with its ends as given to the build.
-- `fn dfs_tree<E>(self, root: V) -> (tree: Rooted<V, V>, tree_edge: [E]Bool) where A: Edged<E>` — O(n + m); The DFS tree from `root` of the component holding it, as a `Rooted` tree and a mask of the edges it uses.
 - `fn peel(self, ready: ?(V -> Bool) = None, on_remove: ?((V, A) -> ()) = None) -> List<V>` — O(n + m) plus the calls of `ready` and `on_remove`; `peel(g, ready:, on_remove:)` as a method; see the free `peel`.
 - `fn transpose(self) -> Graph<V, A> where A: (to: V, ..)` — O(n + m); Every arc `u -> a.to` reversed to `a.to -> u`, its other fields kept (`(..a, to: u)`).
 

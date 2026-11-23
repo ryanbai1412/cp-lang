@@ -10,7 +10,7 @@
 //! `fold_path` / `apply_path` walk a path over it, so there is no second
 //! "tree with values" type and no second copy of the data.
 use std.algebra.{Reversible}
-use std.graph.{Next, Target, Graph, Visit}
+use std.graph.{Next, Target, Graph, Visit, Edged}
 use std.dp.{Step}
 use std.algebra.{Monoid, MaxSub, Action}
 use std.segtree.{SegTree}
@@ -27,6 +27,20 @@ use std.dsu.{Dsu}
 /// traps: when the graph is not connected from `V.first`, or `V` is empty
 /// example: `domain V = 0..3; domain E = 0..2; let es: [E](u: V, v: V) = [(u: 0, v: 1), (u: 1, v: 2)]; let t = Graph.undirected(es).spanning_tree(); t.parent(2) == Some(1) and t.parent(0) == None`
 pub fn spanning_tree<V, A>(self: Graph<V, A>) -> Rooted<V, _> = Rooted.new(self, V.first!)
+
+// blocked: `_` inside a tuple return type is E0005 (compiler worklog)
+/// The DFS tree from `root` of the component holding it, as a `Rooted` tree and a mask of the
+/// edges it uses. The search takes arcs in input order and descends at once (recursive order,
+/// run without recursion). On an undirected graph every edge with `tree_edge[e] == false`
+/// then joins a vertex to one of its ancestors in `tree`, which is what bridges, cut vertices
+/// and back-edge DPs need. `tree` is a forest over all of `V`: each vertex outside the
+/// component is a root of its own.
+///
+/// cost: O(n + m)
+/// order: children in the order the search reached them
+/// traps: never
+/// example: `domain V = 0..3; domain E = 0..3; let es: [E](u: V, v: V) = [(u: 0, v: 1), (u: 1, v: 2), (u: 2, v: 0)]; let (tree, tree_edge) = Graph.undirected(es).dfs_tree(0); tree.parent(2) == Some(1) and tree.depth(2) == 2 and tree_edge == [true, true, false]`
+pub fn dfs_tree<V, A, E>(self: Graph<V, A>, root: V) -> (tree: Rooted<V, _>, tree_edge: [E]Bool) where A: Edged<E> = todo
 
 /// A tree rooted at `root`, owning its own fresh heavy-first preorder domain `t.Pre`.
 /// Built in O(n) without recursion; memory is seven `[V]` arrays, one `[Pre]` array and child

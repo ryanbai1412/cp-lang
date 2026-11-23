@@ -362,7 +362,6 @@ pub struct Graph<V: Domain, A: Target<V>>:
             assert head == V.K, "hops: graph is not strongly connected"
         out
 
-
     /// Every edge once, as `Edge(e, u, v)` with its ends as given to the build. Needs arcs that
     /// keep `e`; the graph keeps one source arc per edge.
     ///
@@ -385,18 +384,6 @@ pub struct Graph<V: Domain, A: Target<V>>:
         for e in E:
             if seen[e]:
                 yield Edge(e, us[e]!, vs[e]!)
-
-    /// The DFS tree from `root` of the component holding it, as a `Rooted` tree and a mask of the
-    /// edges it uses. The search takes arcs in input order and descends at once (recursive order,
-    /// run without recursion). On an undirected graph every edge with `tree_edge[e] == false`
-    /// then joins a vertex to one of its ancestors in `tree`, which is what bridges, cut vertices
-    /// and back-edge DPs need. Vertices outside the component are not in `tree`.
-    ///
-    /// cost: O(n + m)
-    /// order: children in the order the search reached them
-    /// traps: never
-    /// example: `domain V = 0..3; domain E = 0..3; let es: [E](u: V, v: V) = [(u: 0, v: 1), (u: 1, v: 2), (u: 2, v: 0)]; let (tree, tree_edge) = Graph.undirected(es).dfs_tree(0); tree.parent(2) == Some(1) and tree.depth(2) == 2 and tree_edge == [true, true, false]`
-    pub fn dfs_tree<E>(self, root: V) -> (tree: Rooted<V, V>, tree_edge: [E]Bool) where A: Edged<E> = todo
 
     // blocked: `Graph` resolves to a compiler built-in typed over `Int` (GAPS.md graph)
     /// `peel(g, ready:, on_remove:)` as a method; see the free `peel`.
@@ -1879,7 +1866,6 @@ fn at_most_one_forbids_every_pair_and_allows_each_single():
             assert (got == None) == (i != j)
             if let a = got:
                 for k in 0..5: assert (a[X(k)] == lits[k].value) == (k == i)
-
 
 // ---- Spec surface without implementations yet ----------------------------
 

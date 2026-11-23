@@ -5959,7 +5959,6 @@ comment line or a `use` spanning lines ends a run, so hand-made groups stay.
 Order cannot change meaning: a colliding `use` is an error either way
 (R11.2.3); `scripts/fmt_check.py` finds 0 meaning changes on 5,176 files.
 Reverse: drop the `imports` pass from `format` in `crates/cpl-fmt/src/lib.rs`.
-||||||| parent of 73a8e17ef (tools: start every command's own errors with cpl:)
 
 ## 237. A command's own errors start with `cpl:` (2026-11-22)
 
@@ -5971,3 +5970,13 @@ for, and `cpl:` can't be mistaken for a compiler diagnostic
 with the command line. `cpl stress` (debugger) is asked to follow.
 Reverse: replace `"cpl: ` with `"error: ` in the messages of
 `crates/cpl-contest/src` and `crates/cpl-doc/src/cli.rs`.
+
+## 238. `dfs_tree` returns a forest over all of `V` (2026-11-22)
+`Graph.dfs_tree(root)` documented that vertices outside `root`'s component
+are "not in `tree`", but `Rooted<V, _>` covers every vertex of `V` (its
+build asserts the BFS reached `V.count` vertices). Rather than add a
+partial `Rooted`, `tree` is a forest: `root` first, then each unreached
+vertex as a root of its own, in `V` order, so `tree.parent(v) == None` and
+`tree.depth(v) == 0` for them. It lives in `std.tree` as a free fn on
+`Graph`, like `spanning_tree`, because `std.graph` cannot import `Rooted`.
+Reverse: give `Rooted` an optional vertex set and return only the component.
