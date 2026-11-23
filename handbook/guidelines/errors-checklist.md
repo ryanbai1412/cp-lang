@@ -128,6 +128,14 @@ A warning drawn from the declared ranges names an input those ranges allow that 
 - **Example:** source.fixAll in the editor writes the same file as `cpl fix`.
 - **Enforced by:** `crates/cpl-cli/tests/lsp_parity.rs`; `crates/cpl-wasm/tests/parity.rs` `fix_all_matches_cpl_fix`; editor CI jobs; `missing` for `check` vs `run` vs `build`.
 
+### R17. A mistake costs no more time than a clean file
+
+A file with a mistake goes through the front end within 10% of the time its corrected version takes: recovery, suggestions and labels never make the editor or `cpl check` slower.
+
+- **Why:** errors arrive while the user types, in every keystroke's check; a slow error path is felt on every edit, and a timeout hides the error entirely.
+- **Example:** a token pasted into a 300-line port still checks in about the time of the clean port, because a did-you-mean searches only names in scope.
+- **Enforced by:** `crates/cpl-cli/tests/front_end_fuzz.rs` `a_broken_copy_checks_within_10_percent_of_its_original`.
+
 ## Codes
 
 ### R13. Every code is catalogued with a trigger, a fix and a page
@@ -166,5 +174,6 @@ An error a user, a blind reader or a bug report found unhelpful lands with its f
 
 ## Changes
 
+- 2026-11-23: add R17, the time a mistake may add to the front end.
 - 2026-11-23: add R16, the rule the bound lints `L0302` to `L0308` enforce.
 - 2026-11-23: first version, from the rules in `handbook/guidelines/errors.md` and the diagnostics register.

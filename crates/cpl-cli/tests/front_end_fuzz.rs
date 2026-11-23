@@ -236,3 +236,75 @@ fn mutated_programs_never_crash_and_report_deterministically() {
             .join("\n-----\n")
     );
 }
+
+/// Diagnostics add under 10% to the front end: every corpus spec, broken by
+/// a mutation that keeps its size (a token, a line or a piece pasted in) so
+/// that it reports something, goes through the checker, lowering and linter
+/// against a warm database, alternating with its clean original. Summed over
+/// the corpus, the broken copies take at most 1.10x the originals' time.
+/// Rule: `errors/R17`, handbook/guidelines/errors-checklist.md#r17-a-mistake-costs-no-more-time-than-a-clean-file.
+#[test]
+fn a_broken_copy_checks_within_10_percent_of_its_original() {
+    use std::time::{Duration, Instant};
+    let mut paths: Vec<PathBuf> = std::fs::read_dir(root().join("corpus/problems"))
+        .unwrap()
+        .flatten()
+        .map(|e| e.path().join("spec.cp"))
+        .filter(|p| p.exists())
+        .collect();
+    paths.sort();
+    let threads = std::thread::available_parallelism().map_or(4, |n| n.get());
+    let (clean, broken, copies) = std::thread::scope(|scope| {
+        let workers: Vec<_> = (0..threads)
+            .map(|t| {
+                let paths = &paths;
+                scope.spawn(move || {
+                    let mut db = cpl_check::Database::new();
+                    let (mut clean, mut broken, mut copies) = (Duration::ZERO, Duration::ZERO, 0);
+                    for (k, path) in paths.iter().enumerate().skip(t).step_by(threads) {
+                        let src = std::fs::read_to_string(path).unwrap();
+                        let name = path.to_string_lossy().into_owned();
+                        let mut rng = Rng((0x5EED_u64 << 32 | k as u64) | 1);
+                        let quiet = front_end(&mut db, &name, &src).len();
+                        let copy = (0..20).map(|_| mutate(&src, &mut rng)).find(|c| {
+                            c.len() >= src.len() && front_end(&mut db, &name, c).len() > quiet
+                        });
+                        let Some(copy) = copy else { continue };
+                        let time = |db: &mut cpl_check::Database, text: &str| {
+                            let start = Instant::now();
+                            front_end(db, &name, text);
+                            start.elapsed()
+                        };
+                        let (mut best_clean, mut best_broken) = (Duration::MAX, Duration::MAX);
+                        for _ in 0..3 {
+                            best_clean = best_clean.min(time(&mut db, &src));
+                            best_broken = best_broken.min(time(&mut db, &copy));
+                        }
+                        clean += best_clean;
+                        broken += best_broken;
+                        copies += 1;
+                    }
+                    (clean, broken, copies)
+                })
+            })
+            .collect();
+        workers
+            .into_iter()
+            .map(|w| w.join().unwrap())
+            .fold((Duration::ZERO, Duration::ZERO, 0), |a, b| {
+                (a.0 + b.0, a.1 + b.1, a.2 + b.2)
+            })
+    });
+    let ratio = broken.as_secs_f64() / clean.as_secs_f64();
+    println!("{copies} broken copies: {broken:?} against {clean:?} clean, {ratio:.3}x");
+    assert!(
+        copies * 2 > paths.len(),
+        "only {copies} of {} specs broke",
+        paths.len()
+    );
+    assert!(
+        ratio <= 1.10,
+        "diagnostics add {:.0}% to the front end ({broken:?} against {clean:?})",
+        (ratio - 1.0) * 100.0
+    );
+}
