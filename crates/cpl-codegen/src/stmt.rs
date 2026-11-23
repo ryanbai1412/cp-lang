@@ -789,6 +789,13 @@ impl<'p> Emitter<'p> {
                     _ => None,
                 };
                 let opened = lit_arr.is_some() || !(untouched && !rev && !is_map);
+                // A short literal walked forward is unrolled: each round then reads constants.
+                let unroll = match lit_arr {
+                    Some((items, _)) if items.len() <= 16 && !rev => {
+                        format!("_Pragma(\"GCC unroll {}\") ", items.len())
+                    }
+                    _ => String::new(),
+                };
                 let holder = if let Some((items, elem)) = lit_arr {
                     let elem_cpp = if matches!(elem.as_ref(), Ty::Bool) {
                         "bool".to_string()
@@ -909,7 +916,7 @@ impl<'p> Emitter<'p> {
                     opening.extend(first);
                     self.loop_body(id, &opening, body, out);
                 } else {
-                    self.line(out, &format!("for ({decl} : {items}) {{"));
+                    self.line(out, &format!("{unroll}for ({decl} : {items}) {{"));
                     self.loop_body(id, &first, body, out);
                 }
                 if opened {

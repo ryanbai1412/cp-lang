@@ -102,6 +102,7 @@ mod tests {
             "{code}"
         );
         assert!(main.contains("2 * n"), "{code}");
+        assert!(main.contains("_Pragma(\"GCC unroll 2\") for ("), "{code}");
     }
 
     #[test]
