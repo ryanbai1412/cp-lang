@@ -189,7 +189,23 @@ pub fn mo_order_hilbert<D>(queries: List<Range<D>>) -> List<Int>:
 /// empty: `[]`, calling nothing
 /// order: `result[i]` answers `queries[i]`
 /// traps: never; traps raised by the callbacks propagate
-/// example: `let a = [1, 2, 3]; var s = 0; mo_rollback([0..2, 1..3], mark: () => s, add: i => s += a[i], answer: _ => s, undo: m => s = m, reset: () => s = 0) == [3, 5]`
+///
+/// The blocks need the size of the position domain, so the queries range over a declared one:
+///
+/// ```cp
+/// domain P = 0..3
+/// let a: [P]Int = [1, 2, 3]
+/// var s = 0
+/// let qs: List<Range<P>> = [P(0)..P(2), P(1)..]
+/// mo_rollback(
+///     qs,
+///     mark: () => s,
+///     add: i => s += a[i],
+///     answer: _ => s,
+///     undo: m => s = m,
+///     reset: () => s = 0,
+/// ) == [3, 5]
+/// ```
 pub fn mo_rollback<D, M, R>(
     queries: List<Range<D>>,
     mark: () -> M,

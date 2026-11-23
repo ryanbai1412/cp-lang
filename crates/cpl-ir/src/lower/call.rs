@@ -7449,6 +7449,12 @@ impl<'a> Lowerer<'a> {
                         }
                         return self.err_expr(span);
                     }
+                    // `D` bound to `Int` by `Range<Int>` arguments: positions are the `Int`s.
+                    if let Some(GenArg::Ty(Ty::Int)) = self.gen_env.get(n) {
+                        return self
+                            .one_arg("nth", args, &Ty::Int, span)
+                            .unwrap_or_else(|| self.err_expr(span));
+                    }
                 }
             }
         }
