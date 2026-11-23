@@ -47,6 +47,8 @@ Local fixes that landed, and the mechanism that would remove the whole class.
 | `if` on a known `same(op, op)` pruned in `prune.rs`, but only when `on:` is passed | `same` folds for a default-valued op parameter too (request in compiler's worklog) | compiler |
 | Bitset fusion keyed on the field list (`is_bitset_ty`, `scope::rows`), stale twice | recognise std types by declaration, one predicate shared by codegen | perf |
 | unused runtime fns found by name in the text (`runtime::unused_lines`), now skipping comments and members | runtime pieces declare the fns they define, and reachability follows the emitted calls, as it does for program fns | perf |
+| cf2147c timed on a derived input that breaks the statement (`n` = 1, 200000-letter `s`) | `cpl bench` derives only inputs the port's declared types allow, and ports tie a string's length to its count (`s: Str` of length `n`) | tools (`cpl bench`), idioms (port) |
+| `s.runs(link: f).all(...)` builds every run and calls `link` through `std::function` | `.all`/`.any` over a `yields` fn feed the body as `cpl_each_` loops do; a `?Fn` argument given a lambda is devirtualised like a `Fn` one | compiler (lowering of `.all`), perf (devirt) |
 | tuned variants found under three names (`perf.cp`, `<stem>.perf.cp`, dry-run `<stem>_w.cp`) | one name, `perf.cp` / `<stem>.perf.cp`; rename the dry-run files | perf |
 
 ## Next

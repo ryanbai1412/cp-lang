@@ -20,7 +20,8 @@ of each run (emitted / original) and g++ time on the emitted C++ (taken while
 Every pair that does not reach a ratio is listed with its reason.
 
 Each program may keep a tuned in-language variant next to it (`perf.cp`
-beside a corpus `port.cp`, as `cpl bench --corpus` reads it, else `<stem>.perf.cp`): widths, `unchecked:`,
+beside a corpus `port.cp`, as `cpl bench --corpus` reads it, else `<stem>.perf.cp`,
+else a dry run's `<stem>_w.cp`): widths, `unchecked:`,
 layout, no inline C++ beyond the documented escape. Its tuned ratio is the
 better of the two; the summary prints the tuned max against the 1.1x bar
 (AGENTS.md goal 3) and the outliers left above it. Compiled C++ originals and
@@ -413,6 +414,9 @@ def tuned_path(cp):
     """The tuned in-language variant kept next to `cp`, if there is one."""
     d, base = os.path.split(cp)
     t = os.path.join(d, "perf.cp") if base == "port.cp" else cp[:-3] + ".perf.cp"
+    if not os.path.exists(t):
+        # The dry runs keep their hand-rooted in-language rewrite as `<stem>_w.cp`.
+        t = cp[:-3] + "_w.cp"
     return t if os.path.exists(t) else None
 
 
@@ -430,7 +434,16 @@ def percentile(sorted_vals, q):
 def summarize(rows, min_ms):
     measured = [r for r in rows if r.get("status") == "ok" and max(r["port_ms"], r["orig_ms"]) >= min_ms]
     ratios = sorted(r["ratio"] for r in measured)
-    tuned = sorted(min(r["ratio"], r.get("tuned_ratio") or r["ratio"]) for r in measured)
+    # An unmatched pair's tuned variant may be the original's algorithm, written in the
+    # language: it counts toward the tuned bar, though the idiomatic port does not.
+    rewritten = [
+        r for r in rows
+        if r.get("status") == "unmatched" and r.get("tuned_ratio") and max(r["port_ms"], r["orig_ms"]) >= min_ms
+    ]
+    tuned = sorted(
+        [min(r["ratio"], r.get("tuned_ratio") or r["ratio"]) for r in measured]
+        + [r["tuned_ratio"] for r in rewritten]
+    )
     return {
         "total_ok": sum(1 for r in rows if r.get("status") == "ok"),
         "measured_ge_min_ms": len(measured),
@@ -442,7 +455,7 @@ def summarize(rows, min_ms):
         "gt_1_5": sum(1 for x in ratios if x > 1.5),
         "tuned_max": round(tuned[-1], 3) if tuned else 0.0,
         "tuned_gt_1_1": sum(1 for x in tuned if x > TUNED_BAR),
-        "tuned_variants": sum(1 for r in measured if r.get("tuned_ratio")),
+        "tuned_variants": sum(1 for r in measured if r.get("tuned_ratio")) + len(rewritten),
         **resource_summary([r for r in rows if r.get("status") == "ok"]),
     }
 
