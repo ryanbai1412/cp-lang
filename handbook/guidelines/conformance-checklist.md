@@ -74,6 +74,18 @@ today's; a case or harness change that doubles it is a regression to fix,
 not a new baseline. CPU time is the measure because wall time moves with
 machine load. Enforced by `scripts/conformance-speed.py`.
 
+### conformance/R9. The suite catches bugs no past fix shows
+
+The bug-catch rate replays bugs that once happened; a suite tuned to it can
+still miss the next one. So small bugs are planted in the compiler (a
+comparison flipped, `&&` for `||`, `+ 1` for `- 1`) and the suite rerun.
+A surviving mutant either needs a case or is shown to change nothing a
+program can see, and the report says which. Example: reusing the wrong
+map's entry under two nested `if k in m:` tests survived until a case read
+two maps with the same key. Enforced by `scripts/conformance-mutants.py`,
+in the non-blocking `ci-slow` workflow, with its report in
+`plan/domains/spec/mutants.md`.
+
 ## Checklist
 
 - [ ] One rule per case, cited in `// rule:` (conformance/R1)
@@ -83,6 +95,7 @@ machine load. Enforced by `scripts/conformance-speed.py`.
 - [ ] Cases over a space come from a table (conformance/R5)
 - [ ] Runs the same in both engines and under sanitizers (conformance/R6)
 - [ ] Keeps the suites within their CPU budget (conformance/R8)
+- [ ] A surviving mutant gets a case or is shown equivalent (conformance/R9)
 
 ## Changes
 

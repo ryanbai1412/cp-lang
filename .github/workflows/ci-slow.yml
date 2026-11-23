@@ -73,6 +73,27 @@ jobs:
           name: coverage-matrix
           path: target/coverage/
 
+  # Mutation score: one-line compiler mutants against the conformance suite
+  # (handbook/guidelines/conformance-checklist.md, conformance/R9).
+  mutants:
+    name: mutation score (not blocking)
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install the pinned Rust toolchain
+        run: rustup show active-toolchain || rustup toolchain install
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: mutants
+      - name: Mutation score
+        run: python3 scripts/conformance-mutants.py --n 12 --seed ${{ github.run_number }} --work target/mutants --out target/mutants.md && tee -a "$GITHUB_STEP_SUMMARY" < target/mutants.md
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mutation-score
+          path: target/mutants.md
+
   # The editor's latency budgets on each OS, in the optimized build people
   # run. Its own job, so its release build doesn't lengthen the cli job.
   # Not blocking until a few runs show the hosted runners meet them.
