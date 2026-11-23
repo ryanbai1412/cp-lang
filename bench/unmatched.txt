@@ -5,3 +5,4 @@
 cf2101c  port: SortedSet.range(..=x).last (O(log n)); orig: DSU over free values (near O(1))
 cf2115a  port: shortest path over gcd values, O(max * distinct); orig: Mobius count with random hashes, O(V log V) per step
 cf2268c  port: sorts (class, cut, parity) tuples per bit, O(n log n); orig: hash map of classes plus a counting sort, O(n) (perf record: 59% in std::sort of the emitted C++)
+wtf26b   port: suffix sums over every (y, k, cut) and a fresh n^3 table each step, O(n^4) whatever a is; orig: loops y >= x - 1 for x < a[i] into a table shrinking to (n, i+1, i+1), so its cost follows a (port 2.5 s vs orig 0.69 s on all-ones a, 2.5 s vs 37 s on random a)
