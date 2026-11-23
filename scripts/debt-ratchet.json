@@ -138,11 +138,11 @@
     "debugger": 14,
     "diagnostics": 6,
     "idioms": 1,
-    "infra": 1,
+    "infra": 0,
     "lint-fmt": 2,
     "perf": 4,
     "site": 9,
-    "spec": 9,
+    "spec": 8,
     "stdlib": 30,
     "tech-debt": 0,
     "tools": 22

@@ -161,7 +161,7 @@ Targets and today's numbers live in `plan/domains/infra/metrics.toml`.
 |---|---|---|---|
 | A fresh clone reaches a green gate | minutes, undocumented steps | Process: cold-clone probe from `README.md` | **missing**: not scheduled |
 | A gate failure says how to fix it | failures without the failing check and rerun command | `check.sh` `fail` messages name the command | ci/R31, `scripts/test_check_cache.py` |
-| One command per task | tasks without a `just` name | `justfile`: a recipe per contributor task, each explained in `just --list` | ci/R36, `scripts/test_justfile.py` |
+| One command per task | tasks without a `just` name | `justfile`: a recipe per contributor task, each with a comment that just --list shows | ci/R36, `scripts/test_justfile.py` |
 
 ## Suites and tools
 
