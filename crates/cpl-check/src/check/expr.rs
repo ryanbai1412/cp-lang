@@ -1377,7 +1377,7 @@ impl<'a> Checker<'a> {
                 let clear = primitive(&left) && primitive(&right);
                 if clear {
                     let into_string = (op == BinOp::Add)
-                        .then(|| self.into_string(lhs, rhs))
+                        .then(|| self.string_fix(lhs, rhs))
                         .flatten();
                     let message = format!(
                         "`{}` can't combine {} and {}",

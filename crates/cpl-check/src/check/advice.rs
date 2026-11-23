@@ -21,7 +21,7 @@ impl Checker<'_> {
     }
 
     /// `"a" + n` as `"a{n}"`, and `n + "a"` as `"{n}a"`.
-    pub(super) fn into_string(&self, lhs: &Expr, rhs: &Expr) -> Option<(Span, String)> {
+    pub(super) fn string_fix(&self, lhs: &Expr, rhs: &Expr) -> Option<(Span, String)> {
         let literal = |e: &Expr| {
             let text = self.quote(e.span);
             let plain = matches!(e.kind, ExprKind::Str(_))
@@ -53,8 +53,13 @@ pub(super) fn lent_twice(a: &Arg, b: &Arg, why: &str) -> (String, String) {
         } else {
             "once `mut`"
         };
+        let reason = if why.contains("only when") {
+            why
+        } else {
+            "a call can't change one place through two names"
+        };
         return (
-            format!("`{first}` is lent to this call twice, {how}: a call can't change one place through two names"),
+            format!("`{first}` is lent to this call twice, {how}: {reason}"),
             format!("pass `{first}` once"),
         );
     }

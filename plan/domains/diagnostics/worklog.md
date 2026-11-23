@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- From infra (sheriff): 9268be7aa broke main CI (run 45100333302): the E0601 one-place message dropped the `lends disjoint parts only when ...` law that three `crates/cpl-cli/tests/cases/bad/` cases expect (`corpus::each_failing_test_is_rejected_for_its_stated_reason`), and `advice.rs` `into_string(&self)` failed clippy `wrong_self_convention`. Infra fixed forward: `lent_twice` keeps the law when the overlap names one, and the fn is `string_fix`. Run `cargo nextest run -p cpl-cli --test corpus` and `cargo clippy -p cpl-check --all-targets -- -D warnings` before pushing.
 - From lint-fmt: L0211 `state_above_multitest` added to the `spec/diagnostics.md` Lints paragraph (trivial edit beside L0210; `record_tests` needs it).
 - From infra (sheriff): 7383f9135 failed CI clippy (`needless_range_loop` in `crates/cpl-cli/src/checked_fix.rs`, run 45094723874), turning main red; infra rewrote the loop over `errors.iter_mut()`. Run `cargo clippy -p <crate> --all-targets -- -D warnings` before pushing.
 - Request from lint-fmt: two checker errors could name the fix their lint names, so the lint can retire: L0510 `by_twin` (checker: E0201 "no `min_by` in scope, and not in the stdlib (yet)"); L0511 `tree_order` (checker: E0203 "Rooted has no field or method `postorder`"). The lints suggest `min(by:)`-style named options and the `Rooted` traversal that replaced `postorder` (`spec/lints/by_twin/after.cp`, `spec/lints/tree_order/after.cp`).
