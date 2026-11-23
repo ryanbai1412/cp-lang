@@ -1456,22 +1456,7 @@ impl<'a> Parser<'a> {
             );
         }
         self.error(diag);
-        let block = |e: Expr| Block {
-            stmts: vec![Stmt {
-                public: false,
-                decorators: Vec::new(),
-                span: e.span,
-                kind: StmtKind::Expr(e),
-            }],
-            span,
-        };
-        Expr {
-            kind: ExprKind::If {
-                branches: vec![(Cond::Expr(cond), block(yes))],
-                otherwise: Some(block(no)),
-            },
-            span,
-        }
+        Self::inline_if(cond, yes, no, span)
     }
 
     pub(super) fn same_line(&self) -> bool {

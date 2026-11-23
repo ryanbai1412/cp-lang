@@ -1887,3 +1887,15 @@ fn pythons_lambda_f_string_and_do_are_each_one_error_with_a_fix() {
     let fixed: Vec<_> = d.iter().map(|d| d.fixes[0].edits[0].1.as_str()).collect();
     assert_eq!(fixed, ["x =>", "(a, b) =>", "", ":"], "{d:?}");
 }
+
+#[test]
+fn pythons_conditional_expression_is_one_error_with_the_inline_if_fix() {
+    let src = "print(x if x > 2 else 0)\nlet y = f(a) if c else -1\nif x > 2:\n    print(1)\n";
+    let d = parse_file(src).diagnostics;
+    let fixed: Vec<_> = d.iter().map(|d| d.fixes[0].edits[0].1.as_str()).collect();
+    assert_eq!(
+        fixed,
+        ["if x > 2: x else: 0", "if c: f(a) else: -1"],
+        "{d:?}"
+    );
+}

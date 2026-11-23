@@ -3,6 +3,86 @@
 use super::*;
 
 impl<'a> Parser<'a> {
+    /// `if c: a else: b`, as the ternaries of other languages read.
+    pub(super) fn inline_if(cond: Expr, yes: Expr, no: Expr, span: Span) -> Expr {
+        let block = |e: Expr| Block {
+            stmts: vec![Stmt {
+                public: false,
+                decorators: Vec::new(),
+                span: e.span,
+                kind: StmtKind::Expr(e),
+            }],
+            span,
+        };
+        Expr {
+            kind: ExprKind::If {
+                branches: vec![(Cond::Expr(cond), block(yes))],
+                otherwise: Some(block(no)),
+            },
+            span,
+        }
+    }
+
+    /// `a if c else b`: Python's conditional expression. One error with the
+    /// `if c: a else: b` fix, read as that inline `if`.
+    pub(super) fn python_ternary(&mut self, start: u32, first: usize, yes: Expr) -> Expr {
+        let mut depth = 0i32;
+        let rest = self.tokens.get(self.pos + 1..).unwrap_or_default();
+        let else_at = rest.iter().position(|t| {
+            match t.kind {
+                T::LParen | T::LBracket | T::LBrace => depth += 1,
+                T::RParen | T::RBracket | T::RBrace => depth -= 1,
+                _ => {}
+            }
+            depth < 0
+                || matches!(t.kind, T::Newline | T::Eof | T::Colon)
+                || (depth == 0 && t.kind == T::Else)
+        });
+        let else_at = else_at.map(|k| self.pos + 1 + k);
+        let Some(else_at) = else_at
+            .filter(|&e| self.at(T::If) && self.tokens[e].kind == T::Else && e > self.pos + 1)
+        else {
+            return yes;
+        };
+        let iff = self.pos;
+        let if_span = self.span();
+        self.bump();
+        let cond = self.coalesce();
+        if self.pos != else_at {
+            self.pos = iff;
+            return yes;
+        }
+        self.bump();
+        let no = self.expr();
+        let text = |p: &Self, a: usize, b: usize| {
+            let (a, b) = (p.tokens[a].span.start, p.tokens[b - 1].span.end);
+            p.src[a as usize..b as usize].to_string()
+        };
+        let (a, c, b) = (
+            text(self, first, iff),
+            text(self, iff + 1, else_at),
+            text(self, else_at + 1, self.pos),
+        );
+        let whole = self.rel(Span::new(
+            self.tokens[first].span.start,
+            self.tokens[self.pos - 1].span.end,
+        ));
+        self.recovered(
+            Diagnostic::error(
+                codes::REMOVED_SYNTAX,
+                if_span,
+                "CP Lang writes `a if c else b` as `if c: a else: b`",
+            )
+            .with_help("an inline `if` takes `:` after the condition and after `else`")
+            .with_fix(
+                "write it as an inline `if`",
+                whole,
+                format!("if {c}: {a} else: {b}"),
+            ),
+        );
+        Self::inline_if(cond, yes, no, self.span_from(start))
+    }
+
     /// `lambda x: x * 2`: Python's lambda. One error with the `x => x * 2`
     /// fix, read as that lambda.
     pub(super) fn python_lambda(&mut self) -> Expr {

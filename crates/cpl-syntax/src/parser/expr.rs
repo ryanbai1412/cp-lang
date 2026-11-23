@@ -96,6 +96,7 @@ impl<'a> Parser<'a> {
         }
         let first = self.pos;
         let base = self.coalesce();
+        let base = self.python_ternary(start, first, base);
         if self.c_ternary_ahead(&base) {
             return self.c_ternary(start, first, base);
         }
