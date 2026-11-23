@@ -55,6 +55,10 @@ pub(crate) trait Env {
     fn has_imports(&mut self) -> bool;
     /// Every top-level name, for "did you mean".
     fn names(&mut self) -> Vec<String>;
+    /// The top-level names the file declares itself, without its imports.
+    fn declared(&mut self) -> Vec<String> {
+        self.names()
+    }
     /// Where struct `ty` declares `field`, relative to the item being
     /// checked, when an edit there can fix an error.
     fn field_decl(&mut self, _ty: &str, _field: &str) -> Option<Span> {

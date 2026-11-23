@@ -2172,6 +2172,15 @@ impl Env for FileCtx<'_> {
         names.sort();
         names
     }
+
+    fn declared(&mut self) -> Vec<String> {
+        self.record(DEP_NAMES, self.scope.names_fp);
+        let names = self.scope.names.keys();
+        names
+            .filter(|name| impl_parts(name).is_none())
+            .cloned()
+            .collect()
+    }
 }
 
 /// Whether `path` is the prelude itself, which is not given its own names.

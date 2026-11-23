@@ -430,7 +430,6 @@ pub const TRAIT_NAMES: &[&str] = &[
     "Contains",
     "Ord",
     "Eq",
-    "Hash",
     "Show",
     "Read",
     "Gen",

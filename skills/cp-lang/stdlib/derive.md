@@ -2,9 +2,13 @@
 
 # std.derive
 
-The `Eq`, `Ord` and `Show` a struct gets field by field, as library code on `fields` (decision 28.7), for an `impl` to call: `impl Ord for Job: fn lt(a, b) = lt_fields(b, a)` orders the other way. Each costs O(fields) plus what its fields' own operations cost.
+The `Eq`, `Ord`, `Show` and `Hash` a struct gets field by field, as library code on `fields` (decision 28.7), for an `impl` to call: `impl Ord for Job: fn lt(a, b) = lt_fields(b, a)` orders the other way, and `impl Hash for P: fn hash(self) = hash_fields(self)` is a struct's whole `Hash`. Each costs O(fields) plus what its fields' own operations cost.
 
-Import: `use std.derive.{...}`.
+In prelude (no `use` needed): `Hash`.
+
+## `trait Hash`
+
+A value's 64-bit hash: equal values hash equal.
 
 ## Functions
 
@@ -12,3 +16,4 @@ Import: `use std.derive.{...}`.
 - `fn lt_fields<T>(a: T, b: T) -> Bool` — O(fields); `a < b` by the first field that differs, in declaration order (lexicographic).
 - `fn show_fields<T>(a: T) -> Str` — O(fields) plus the length of the result; The fields of `a` in declaration order, one space apart, each shown as `print` would.
 - `fn read_fields<T>() -> T` — O(fields) plus the tokens read; A `T` read from input field by field, each with its own type's `read()`, in declaration; traps: when input runs out or a token does not parse as its field's type
+- `fn hash_fields<T>(a: T) -> U64` — O(fields) plus what each field's `hash` costs; The fields' hashes combined in declaration order, so equal structs hash equal and reordered field values usually do not.

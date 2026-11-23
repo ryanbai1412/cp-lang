@@ -1468,7 +1468,7 @@ impl<'a> Checker<'a> {
                         "inherent `impl` must be in the same module as the type".to_string(),
                     );
                 } else if let Some(tr) = trait_name {
-                    let file_names = self.env.names();
+                    let file_names = self.env.declared();
                     let target_head = type_head(target);
                     let trait_head = type_head(tr);
                     let target_local = target_head.as_ref().is_some_and(|t| file_names.contains(t));

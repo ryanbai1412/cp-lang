@@ -16,6 +16,7 @@ use std.bitset.{Bitset}
 use std.deque.{Deque}
 use std.dp.{LiChao, Line, LineContainer, MonotoneHull, aliens}
 use std.ntt.{Curved, convolve}
+use std.derive.{Hash}
 use std.dsu.{Dsu, DsuOf, ParityDsu, PotentialDsu}
 use std.fenwick.{Fenwick, Fenwick2D}
 use std.flow.{Arc, FlowGraph, max_closure}

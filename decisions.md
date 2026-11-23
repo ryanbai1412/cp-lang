@@ -6215,3 +6215,22 @@ constants and the `exit(3)` in the C++ runtime, and the sentence in
   delete `crates/cpl-ir/src/lower/anon_domain.rs` and its call in
   `resolve_gen_args_for_struct`, and migrate written uses with a `cpl fix`
   rewrite to `domain V = <range>`.
+
+## 256. `Hash` is a std trait in `std.derive`, not a compiler trait name (2026-11-22)
+
+- **Decision.** `pub trait Hash: fn hash(self) -> U64` lives in
+  `spec/std/derive.cp` with impls for `Int`, `U64`, `Char`, `Bool` and `Str`
+  (splitmix64) and `hash_fields`, as decision 28.8 describes; the prelude
+  brings it in with `use std.derive.{Hash}`, and `"Hash"` leaves
+  `TRAIT_NAMES` in `crates/cpl-check/src/prelude.rs`. The orphan rule
+  (R08.5.2) now asks which names the file declares (`Env::declared`), not
+  every name it can see, so `impl Hash for F64` is still an orphan when
+  `Hash` comes in through the prelude or a `use`.
+- **Why.** The coordinator's direction: build `Hash` on the general
+  mechanism a library can declare, without raising `prelude_privilege`.
+  Structs keep their structural `Hash` for `HashMap` keys
+  (`implements_trait`, by name) until the compiler's trait-default work
+  (compiler worklog, `Gen`/`Hash` reply) makes it a default method.
+- **Reverse.** Put `"Hash"` back in `TRAIT_NAMES`, delete the trait, its
+  impls, `mix64` and `hash_fields` from `derive.cp` and the prelude line;
+  `Env::declared` can stay (it is the correct orphan test either way).
