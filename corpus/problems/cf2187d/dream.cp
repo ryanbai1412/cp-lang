@@ -30,12 +30,15 @@ let (n, x, y): (1..=100_000, 1..=1_000_000, 1..=1_000_000) = read()
 let s: Str of "01?" = read()
 fn step(c: Int, ch: Char) -> Int = if ch == '0': x + c else: y - c
 
-let (head, rest) = s.split_once('?') ?? return print(Z(s.scan(step, from: 0).sum()))
-let head_walk = head.scan(step, from: 0)
-let c0 = match head_walk.last:
-    Some(v) => v
-    None => 0
-let f = head_walk.sum()
+fn walk(t: Str) -> (last: Int, total: Int):
+    var (c, acc) = (0, 0)
+    for ch in t:
+        c = step(c, ch)
+        acc += c
+    (last: c, total: acc)
+
+let (head, rest) = s.split_once('?') ?? return print(Z(walk(s).total))
+let (c0, f) = walk(head)
 
 var (p0, p1) = (1, 0)
 var gaps: List<Int> = []
@@ -61,5 +64,5 @@ fn walk_from(start: Int, k: Int) -> Int:
 fn total(end: Int) -> Int =
     if end >= 1: f + walk_from(x + c0, end - 1) else: f + walk_from(y - c0, -end)
 
-let cool = { total(2 * i.ord + p) for i in reach for p in [p0, p1] }
+let cool = Set(total(2 * i.ord + p) for i in reach for p in [p0, p1])
 print(sum(Z(v) for v in cool))
