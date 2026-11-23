@@ -159,8 +159,8 @@ export const STDLIB_VALUES: readonly string[] = [
     'subset_exp', 'subset_folds', 'subset_log', 'subset_sums', 'suffix_array', 'suffix_fold',
     'suffix_tree_edges', 'sum_mobius', 'sum_multiplicative', 'sum_phi', 'supermasks', 'swap_at',
     'symmetric', 'take', 'take_all', 'take_last', 'taylor_shift', 'to_lower', 'to_upper',
-    'transposed', 'transposed_mul', 'triangles', 'trim', 'trim_end', 'trim_start', 'turn_eps',
-    'two_color', 'two_edge_components', 'unimodality_break', 'update', 'upper_hull',
+    'transpose', 'transposed', 'transposed_mul', 'triangles', 'trim', 'trim_end', 'trim_start',
+    'turn_eps', 'two_color', 'two_edge_components', 'unimodality_break', 'update', 'upper_hull',
     'upper_hull_idx', 'valleys', 'voronoi_cells', 'with_domain', 'with_next', 'zip_exact',
 ];
 

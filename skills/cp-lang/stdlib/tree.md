@@ -280,7 +280,7 @@ Fields: `edge: [N]Int`, `lift: Lift<N, Int>`.
 
 ## Functions
 
-- `fn spanning_tree<V, A>(self: Graph<V, A>) -> Rooted<V, _>` — \(O(n + m)\); A BFS spanning tree rooted at `V.first`, as a `Rooted`.; traps: when the graph is not connected from `V.first`, or `V` is empty
+- `fn spanning_tree<V, G: Next<V>>(self: G) -> Rooted<V, _>` — \(O(n + m)\); A BFS spanning tree rooted at `V.first`, as a `Rooted`.; traps: when the graph is not connected from `V.first`, or `V` is empty
 - `fn dfs_tree<V, A, E>(self: Graph<V, A>, root: V) -> (tree: Rooted<V, _>, tree_edge: [E]Bool) where A: Edged<E>` — \(O(n + m)\); The DFS tree from `root` of the component holding it, as a `Rooted` tree and a mask of the edges it uses.
 - `fn cartesian_tree<D, T>(a: [D]T, by: (T, T) -> Bool = (x, y) => x <y) -> [D]?D: var par: [D]?D = None var stack: List<D> = [] for i in D: var last: ?D = None while not stack.is_empty and by(a[i], a[stack.last!]): last = stack.pop() if let l = last: par[l] = Some(i) if not stack.is_empty: par[i] = Some(stack.last!) stack.push(i) par` — \(O(n)\), one stack pass; The Cartesian tree of `a` as parent links: the root is the least element by `by` (the leftmost among equals) and every subtree is a contiguous range of `D`.
 - `fn kruskal_tree<V, E, W, R: (u: V, v: V, ..)>(edges: [E]R, w: E -> W) -> (domain N, KruskalTree<V, N, W>)` — \(O(m \log m)\) for m edges; The Kruskal reconstruction tree of `edges` weighted by `w`, over the vertices `V`, taking the same arguments as `std.graph.kruskal`; its nodes are a fresh domain bound by the caller: `let (domain N, kt) = kruskal_tree(es, w: f)`.
