@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- Reject cases `core-01/bitand-binds-looser-than-eq.cp` (R01.5.1, E0302) and `core-01/lowercase-generic-needs-expected-type.cp` (R01.3.4, E0806), both pass; 41 rule gaps.
 - R08.4.4 accept case `core-08/row-fn-keeps-extra-fields.cp` (passes).
 - R01.11.1: `core-01/rejected-spellings-replacements-run.cp` (passes: `//`, `xs + ys`, `for .. if`, `**`, getter `len`, `[k: v]`) and `core-01/list-repeat-times-n.cp` (fails: `[x] * n` from decision 135 has no `List * Int`; stdlib request). `[x; n]` gets no fix (diagnostics request).
 - Accept cases for R04a.5.1/5.2 (`core-04/d1-slice-first-last.cp`, `core-04/d2-slice-loop-over-keys.cp`, pass): the spellings the D1/D2 lints point to.

@@ -7,11 +7,11 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 2241 (995 passing). Rules: 531.
+Cases: 2243 (995 passing). Rules: 531.
 
 ## Summary per chapter
 
-- R01 (01-lexical-grammar.md): 50 rules, 102 cases; 0 uncovered, 4 happy-path only, 0 negative only
+- R01 (01-lexical-grammar.md): 50 rules, 104 cases; 0 uncovered, 2 happy-path only, 0 negative only
 - R02 (02-values-types.md): 51 rules, 100 cases; 0 uncovered, 7 happy-path only, 0 negative only
 - R03 (03-numbers-layout.md): 24 rules, 58 cases; 0 uncovered, 6 happy-path only, 1 negative only
 - R04 (04-indices.md): 61 rules, 89 cases; 0 uncovered, 1 happy-path only, 0 negative only
@@ -35,7 +35,7 @@ negative case. Complete: rules with no gap in `rule-gaps.txt`.
 
 | Chapter | Rules | Accept | Forbidding | Reject | Complete |
 |---|---|---|---|---|---|
-| R01 | 50 | 50 (100%) | 28 | 24 (85%) | 46 (92%) |
+| R01 | 50 | 50 (100%) | 28 | 26 (92%) | 48 (96%) |
 | R02 | 51 | 51 (100%) | 29 | 22 (75%) | 44 (86%) |
 | R03 | 24 | 23 (95%) | 17 | 11 (64%) | 17 (70%) |
 | R04 | 61 | 61 (100%) | 14 | 13 (92%) | 60 (98%) |
@@ -50,7 +50,7 @@ negative case. Complete: rules with no gap in `rule-gaps.txt`.
 | R11 | 15 | 14 (93%) | 9 | 8 (88%) | 13 (86%) |
 | R12 | 17 | 17 (100%) | 6 | 6 (100%) | 17 (100%) |
 | R13 | 22 | 22 (100%) | 7 | 4 (57%) | 19 (86%) |
-| all | 531 | 526 (99%) | 225 | 187 (83%) | 488 (91%) |
+| all | 531 | 526 (99%) | 225 | 189 (84%) | 490 (92%) |
 
 ## Rules
 
@@ -70,7 +70,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R01.3.1 [1+ 0-]: Types, domains, traits, type parameters and enum variants are `PascalCase`: `Some(x)`, `No...
 - R01.3.2 [1+ 1-]: Values, functions, fields and modules are `snake_case` or lower camel; a value binding wit...
 - R01.3.3 [2+ 1-]: So a pattern needs no lookup to read: a capitalized name is a variant or constant, a lower...
-- R01.3.4 [3+ 0-] *happy-path only*: In an expression, `Name<` opens type arguments when `Name` is capitalized and what follows...
+- R01.3.4 [3+ 1-]: In an expression, `Name<` opens type arguments when `Name` is capitalized and what follows...
 - R01.3.5 [1+ 0-]: `_` is the discard name in patterns and parameters.
 - R01.3.6 [2+ 0-] *happy-path only*: `Some` and `None` are not reserved: they are the variants of `?T`, in the prelude like any...
 - R01.3.7 [1+ 1-]: `unchecked:` opens a block whose arithmetic and indexing checks are off in every build (ch...
@@ -80,7 +80,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R01.4.4 [1+ 1-]: **Strings**: `"..."` with the same escapes plus `\"`. Every string literal interpolates: `...
 - R01.4.5 [1+ 0-]: **Lists** `[a, b, c]`, **maps** `[k: v, k2: v2]` (`[:]` is empty), **tuples** `(a, b)`, **...
 - R01.4.6 [1+ 1-]: `++` is a lex error ("CP Lang concatenates with `+`").
-- R01.5.1 [3+ 0-] *happy-path only*: So `-x ** 2` is `-(x ** 2)`, `not a == b` is `not (a == b)`, and `s & (s << 1) == 0` is `(...
+- R01.5.1 [3+ 1-]: So `-x ** 2` is `-(x ** 2)`, `not a == b` is `not (a == b)`, and `s & (s << 1) == 0` is `(...
 - R01.5.2 [2+ 1-]: `/` is floor division and `%` is never negative (decision 24).
 - R01.5.3 [1+ 2-]: Chained comparisons keep Python's meaning, each operand evaluated once, but only when ever...
 - R01.5.4 [1+ 0-]: Operands and arguments evaluate left to right. Assignment evaluates the right side first, ...
@@ -665,7 +665,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0207 Private item: 1 case(s)
 - E0208 Uppercase value name: 1 case(s)
 - E0301 Wrong index domain: 15 case(s)
-- E0302 Type mismatch: 34 case(s)
+- E0302 Type mismatch: 35 case(s)
 - E0303 Wrong number of arguments: 6 case(s)
 - E0304 Value is not callable: 1 case(s)
 - E0305 Value is not indexable: 3 case(s)
@@ -709,7 +709,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0803 `?` used directly in a condition: 2 case(s)
 - E0804 `?` whose result is dropped: 1 case(s)
 - E0805 fresh_type_leaks_test *(0.3)*: 1 case(s)
-- E0806 Type annotation required for inference: 3 case(s)
+- E0806 Type annotation required for inference: 4 case(s)
 - E0901 No fixed-width integer types: 3 case(s)
 - E0902 Range store not provable: 8 case(s)
 - E0903 int128_unavailable *(0.3)*: **no case**
