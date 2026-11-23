@@ -807,6 +807,8 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - L0559 diff_by_hand: **no case**
 - L0560 components_by_dfs: **no case**
 - L0561 trial_division: **no case**
+- L0562 count_until: **no case**
+- L0563 read_loop: **no case**
 - L0601 Right side changes the place it assigns: 2 case(s)
 - L0602 Lazy chain walked twice: 1 case(s)
 - L0603 `.map` view read many times by index: 1 case(s)
@@ -831,7 +833,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - W0101 Unused expression value: 1 case(s)
 - W0201 size_near_limit *(0.3)*: 1 case(s)
 
-22 of 122 testable codes have no negative case.
+24 of 124 testable codes have no negative case.
 
 ## Spec code blocks
 
