@@ -446,7 +446,7 @@ impl<'a> Lowerer<'a> {
         args: &[ast::Arg],
         span: Span,
     ) {
-        let sym = (self.resolved_method(method, base, span).flatten())
+        let sym = (self.resolved_method(method, base, span))
             .or_else(|| self.method_syms(method).into_iter().next());
         let decl = match sym {
             Some(Sym::Fn(fid)) => self.sigs[fid].decl,

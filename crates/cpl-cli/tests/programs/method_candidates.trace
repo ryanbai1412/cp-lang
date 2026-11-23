@@ -1,0 +1,7 @@
+"variables":{"stdout":{"name":"stdout","type":"what the program printed, a line at a time","kind":"json"},"p":{"name":"p","type":"(R, C)","kind":"json"},"s":{"name":"s","type":"Str","kind":"scalar"}},"runs":{"fast":{"label":"cpl run","steps":[{"id":0,"line":6,"label":"let p = (R(1), C(1))","stage":"main","values":{"stdout":[],"p":[1,1]},"locals":{},"frames":[{"fn":"main","line":6}]},
+{"id":1,"line":7,"label":"print → 0 1","stage":"main","values":{"stdout":["0 1"],"p":[1,1]},"locals":{},"checkpoint":"print 1","frames":[{"fn":"main","line":7}]},
+{"id":2,"line":8,"label":"let s = \"a,b,ca\"","stage":"main","values":{"stdout":["0 1"],"p":[1,1],"s":"a,b,ca"},"locals":{},"frames":[{"fn":"main","line":8}]},
+{"id":3,"line":9,"label":"print → 2 2","stage":"main","values":{"stdout":["0 1","2 2"],"p":[1,1],"s":"a,b,ca"},"locals":{"x":3},"checkpoint":"print 2","frames":[{"fn":"main","line":9}]},
+{"id":4,"line":10,"label":"print → 3 3","stage":"main","values":{"stdout":["0 1","2 2","3 3"],"p":[1,1],"s":"a,b,ca"},"locals":{"x":3},"checkpoint":"print 3","frames":[{"fn":"main","line":10}]},
+{"id":5,"line":10,"label":"the program ended","stage":"main","values":{"stdout":["0 1","2 2","3 3"],"p":[1,1],"s":"a,b,ca"},"locals":{"x":3},"checkpoint":"end","frames":[{"fn":"main","line":10}]}]}}}
+stderr:

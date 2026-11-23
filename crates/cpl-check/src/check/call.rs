@@ -203,11 +203,18 @@ impl<'a> Checker<'a> {
                 }
             }
         }
-        let mut ty = if receiver.is_some()
+        let past_row = self.past_builtin_row(callee, args);
+        let library = past_row
+            .then(|| self.method_form_call(call, callee, args))
+            .flatten();
+        let mut ty = if let Some(ty) = library {
+            ty
+        } else if receiver.is_some()
             && !matches!(
                 callee_ty,
                 Ty::Fn { .. } | Ty::Unknown | Ty::Error | Ty::TypeName(_)
-            ) {
+            )
+        {
             for arg in args {
                 self.infer(&arg.value);
             }
@@ -1426,20 +1433,13 @@ impl Checker<'_> {
         name: &str,
     ) -> Option<(&'static crate::builtins::BuiltinMember, Option<Ty>)> {
         let base_ty = self.quietly(|c| c.infer(base));
-        let (owner, elem) = match &base_ty {
-            Ty::Str => ("Str", Some(Ty::Char)),
-            Ty::Array { .. } => ("[D]T", base_ty.seq_elem()),
-            Ty::Named { name, args } => (
-                match name.as_str() {
-                    "HashSet" => "Set",
-                    "HashMap" => "Map",
-                    other => other,
-                },
-                base_ty
-                    .seq_elem()
-                    .or_else(|| (args.len() == 1).then(|| args[0].clone())),
-            ),
-            _ => return None,
+        let owner = catalog_owner(&base_ty)?;
+        let elem = match &base_ty {
+            Ty::Str => Some(Ty::Char),
+            Ty::Named { args, .. } => {
+                (base_ty.seq_elem()).or_else(|| (args.len() == 1).then(|| args[0].clone()))
+            }
+            _ => base_ty.seq_elem(),
         };
         Some((crate::builtins::builtin_member(owner, name)?, elem))
     }
@@ -1577,4 +1577,18 @@ impl Checker<'_> {
             span: callee.span,
         })
     }
+}
+
+/// The catalog's name for the built-in type whose members `ty` has.
+pub(super) fn catalog_owner(ty: &Ty) -> Option<&str> {
+    Some(match ty {
+        Ty::Str => "Str",
+        Ty::Array { .. } => "[D]T",
+        Ty::Named { name, .. } => match name.as_str() {
+            "HashSet" => "Set",
+            "HashMap" => "Map",
+            other => other,
+        },
+        _ => return None,
+    })
 }

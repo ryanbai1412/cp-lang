@@ -82,3 +82,21 @@ pub(super) fn add_methods(scope: &mut Scope, index: usize) {
         });
     }
 }
+
+/// What the library's `name` of `module` is imported under: its
+/// `method_key` beside a name the file declares, or another module's of
+/// the name (seq's `xs.fold(f, init)` beside the listed free
+/// `std.algebra.fold`), so a call picks among them (R11.3.4).
+pub(super) fn import_key(
+    scope: &Scope,
+    module: &[cpl_syntax::ast::Name],
+    name: &str,
+    method: bool,
+    own: bool,
+) -> String {
+    let path: Vec<&str> = module.iter().map(|n| n.text.as_str()).collect();
+    let path = path.join(".");
+    let taken =
+        method && (scope.imports.get(name)).is_some_and(|i| scope.modules[i.module].name != path);
+    crate::prelude::import_key(module, name, method && (own || taken))
+}

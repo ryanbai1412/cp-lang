@@ -647,10 +647,7 @@ impl Database {
                 if own && !method {
                     continue;
                 }
-                // Beside a name the file declares itself, or another module's
-                // method of that name, the library's method is one of the
-                // candidates a call picks from, under a name no program writes.
-                let key = crate::prelude::import_key(module, &name.text, method && own);
+                let key = scoping::import_key(&scope, module, &name.text, method, own);
                 if scope.imports.contains_key(&key) || !used || failed_names.contains(&name.text) {
                     continue;
                 }

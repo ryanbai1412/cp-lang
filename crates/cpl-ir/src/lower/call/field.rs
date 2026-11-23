@@ -1186,33 +1186,39 @@ impl<'a> Lowerer<'a> {
     }
 
     /// The fn the checker resolved `base.name(..)` to: the `Resolved` at
-    /// the method's name, the first one after `base` inside `span`. `Some(None)`
-    /// when it resolved to a member of the receiver's own type.
+    /// the method's name, the first one after `base` inside `span`.
     pub(in crate::lower) fn resolved_method(
         &self,
         name: &str,
         base: &ast::Expr,
         span: Span,
-    ) -> Option<Option<Sym>> {
+    ) -> Option<Sym> {
         let items = &self.mods[self.cur_mod].items;
         let item = &items[items
             .binary_search_by_key(&self.offset, |i| i.offset)
             .ok()?];
         let (_, found) = (item.check.resolved.iter())
             .filter(|(at, r)| at.start >= base.span.end && at.end <= span.end && r.name == name)
+            .filter(|(_, r)| r.owner.is_none())
             .min_by_key(|(at, _)| at.start)?;
-        Some(match (&found.owner, found.module.as_str()) {
-            (Some(_), _) => None,
-            (None, "") => self.get_sym(name),
-            (None, module) => {
+        match found.module.as_str() {
+            "" => self.get_sym(name),
+            module => {
                 (self.get_sym(&cpl_check::method_key(name, module))).or_else(|| self.get_sym(name))
             }
-        })
+        }
     }
 
     /// Where the checker left no choice (a receiver of a type parameter):
     /// the first candidate whose written `self` shape the receiver may have.
-    fn fitting_method(&mut self, candidates: &[Sym], base: &ast::Expr) -> Option<Sym> {
+    /// A fn that can't take `arg_count` arguments after `self` is not the call:
+    /// `xs.fold()` is then the built-in `fold`, reported as such.
+    fn fitting_method(
+        &mut self,
+        candidates: &[Sym],
+        base: &ast::Expr,
+        arg_count: usize,
+    ) -> Option<Sym> {
         let given = self.probe_ty_silent(base).and_then(|ty| self.shape(&ty));
         let fits = candidates.iter().copied().find(|&sym| {
             let decl = match sym {
@@ -1223,6 +1229,13 @@ impl<'a> Lowerer<'a> {
             let Some(first) = decl.params.first().filter(|p| p.name.text == "self") else {
                 return false;
             };
+            let required = (decl.params.iter())
+                .filter(|p| p.default.is_none() && !p.variadic)
+                .count();
+            let variadic = decl.params.iter().any(|p| p.variadic);
+            if arg_count + 1 < required || (!variadic && arg_count + 1 > decl.params.len()) {
+                return false;
+            }
             let takes = first
                 .ty
                 .as_ref()
@@ -1246,11 +1259,8 @@ impl<'a> Lowerer<'a> {
         recv_mark: Option<usize>,
     ) -> Option<Expr> {
         let candidates = self.method_syms(name);
-        let chosen = match self.resolved_method(name, base, span) {
-            Some(None) => return None,
-            Some(Some(sym)) => Some(sym),
-            None => self.fitting_method(&candidates, base),
-        };
+        let chosen = (self.resolved_method(name, base, span))
+            .or_else(|| self.fitting_method(&candidates, base, args.len()));
         let sym = match chosen {
             Some(s) => s,
             None => {

@@ -75,6 +75,9 @@ impl Checker<'_> {
             }
             (Ty::Tuple(takes), Ty::Tuple(on)) => takes.len() == on.len(),
             (Ty::Tuple(takes), Ty::Record(on)) => takes.len() == on.len(),
+            (Ty::Tuple(takes), Ty::Pos(d)) => {
+                (self.product_factors(d)).is_some_and(|parts| parts.len() == takes.len())
+            }
             (Ty::Named { name: takes, .. }, Ty::Named { name: on, .. }) => takes == on,
             _ => false,
         };
@@ -101,6 +104,10 @@ impl Checker<'_> {
         }
         if fit.iter().any(|f| f.2) {
             fit.retain(|f| f.2);
+        }
+        // The file's own fn of the name stands in front of the library's.
+        if fit.iter().any(|f| self.env.origin(&f.0).is_none()) {
+            fit.retain(|f| self.env.origin(&f.0).is_none());
         }
         match fit.len() {
             0 => Pick::NoFit,
@@ -178,21 +185,15 @@ impl Checker<'_> {
 
     /// Records which candidate `base.name` calls, when its receiver says.
     pub(super) fn note_method(&mut self, base: &Ty, name: &ast::Name) {
-        match self.pick_method(base, &name.text) {
-            Pick::One(key, _) => self.record_method(name, &key),
-            // A member of the receiver's own type, `(0..10).step(3)`: no fn
-            // in reach takes it, and lowering looks for none.
-            Pick::NoFit if !base.has_vague() && !matches!(base, Ty::Fn { .. }) => {
-                if !self.chosen_methods.iter().any(|r| r.0 == name.span) {
-                    let resolved = Resolved {
-                        module: String::new(),
-                        name: name.text.clone(),
-                        owner: Some(base.to_string()),
-                    };
-                    self.chosen_methods.push((name.span, resolved));
-                }
-            }
-            _ => {}
+        // Beside a built-in member of the name, the call's arguments pick
+        // (`method_form_call`): `xs.fold(+)` is the built-in's.
+        let builtin = super::call::catalog_owner(base)
+            .is_some_and(|owner| crate::builtins::builtin_member(owner, &name.text).is_some());
+        if builtin {
+            return;
+        }
+        if let Pick::One(key, _) = self.pick_method(base, &name.text) {
+            self.record_method(name, &key);
         }
     }
 
@@ -256,9 +257,14 @@ impl<'a> Checker<'a> {
         };
         let own_member = match &base_ty {
             Ty::Optional(_) => OPTIONAL_MEMBERS.contains(&name.text.as_str()),
+            Ty::Domain(_) => crate::builtins::DOMAIN_MEMBERS.contains(&name.text.as_str()),
+            Ty::Pos(_) => crate::builtins::POS_MEMBERS.contains(&name.text.as_str()),
             _ => self.catalog_row(base, &name.text).is_some(),
         };
-        let vague = base_ty.has_vague() || matches!(base_ty, Ty::Fn { .. });
+        // A view has its source's members, `xs.rev.nth(1)` (R07.4.5).
+        let vague = base_ty.has_vague()
+            || matches!(base_ty, Ty::Fn { .. })
+            || base_ty.view_source().is_some();
         let fits = own_member || vague || !matches!(pick, Pick::NoFit);
         let mut free_args = vec![Arg {
             name: None,
@@ -291,10 +297,20 @@ impl<'a> Checker<'a> {
         // form's E0606 is the method's, `?List<Int>` lacking the `Seq` that
         // `sum` requires. A receiver of another shape has a member of its
         // own, `(0..10).step(3)`, that the free form says nothing of.
+        let free_failed = !errors.is_empty();
         let missing: Vec<_> = (errors.into_iter())
             .filter(|d| d.code == codes::MISSING_IMPL)
             .collect();
-        if !fits && !missing.is_empty() {
+        // Only where the checker knows every trait the receiver has: an
+        // optional, or a type the program or library declares. A built-in
+        // container's members and traits are lowering's.
+        let known = match &base_ty {
+            Ty::Optional(_) => true,
+            Ty::Named { name, .. } => (self.type_def(name))
+                .is_some_and(|d| matches!(&*d, Def::Struct { .. } | Def::Enum { .. })),
+            _ => false,
+        };
+        if !fits && known && !missing.is_empty() {
             for mut diag in missing {
                 diag.message = diag
                     .message
@@ -308,6 +324,12 @@ impl<'a> Checker<'a> {
         if matches!(pick, Pick::NoFit) {
             return None;
         }
+        // Arguments the fn doesn't take are the receiver's own member's,
+        // `xs.fold(+)` beside `xs.fold(f, init: 0)`.
+        if own_member && free_failed {
+            self.chosen_methods.retain(|r| r.0 != name.span);
+            return None;
+        }
         if let Some(mut hover) = hover.filter(|_| !self.hovers.iter().any(|h| h.span == name.span))
         {
             hover.name = name.text.clone();
@@ -316,7 +338,10 @@ impl<'a> Checker<'a> {
         if let Some((span, mut resolved)) = resolved {
             resolved.name = name.text.clone();
             self.resolved.retain(|r| r.0 != span);
-            self.resolved.push((span, resolved));
+            self.resolved.push((span, resolved.clone()));
+            // Kept past a probe that runs this call quietly, for lowering.
+            self.chosen_methods.retain(|r| r.0 != span);
+            self.chosen_methods.push((span, resolved));
         }
         if plain_value(&ty) {
             return Some(ty);
@@ -327,6 +352,38 @@ impl<'a> Checker<'a> {
 }
 
 impl Checker<'_> {
+    /// Whether `base.name(args)` gives arguments its built-in member's row
+    /// doesn't take while a library fn fits the receiver: then the call is
+    /// the library's, `xs.fold(f, init: 0)` beside the built-in `xs.fold(+)`.
+    pub(super) fn past_builtin_row(&mut self, callee: &Expr, args: &[Arg]) -> bool {
+        let ExprKind::Field { base, name } = &callee.kind else {
+            return false;
+        };
+        let Some((row, _)) = self.catalog_row(base, &name.text) else {
+            return false;
+        };
+        let base_ty = self.quietly(|c| c.infer(base));
+        if !matches!(self.pick_method(&base_ty, &name.text), Pick::One(..)) {
+            return false;
+        }
+        let params = row_params(row.params);
+        let takes_fn = |ty: &str| ty.contains("->") || (ty.len() == 1 && ty != "T");
+        let positional = args.iter().filter(|a| a.name.is_none()).count();
+        positional > params.len()
+            || (args.iter()).any(|a| {
+                (a.name.as_ref()).is_some_and(|n| !params.iter().any(|(p, _)| *p == n.text))
+            })
+            || (args.iter().zip(&params)).any(|(a, (_, ty))| {
+                matches!(a.value.kind, ExprKind::Lambda { .. }) && !takes_fn(ty)
+            })
+    }
+
+    /// A named type a `for` walks is a `Seq`: `SortedRange<K>`, or a
+    /// struct whose `each` yields its elements.
+    pub(super) fn walks_by_each(&mut self, ty: &Ty) -> bool {
+        matches!(ty, Ty::Named { .. }) && !matches!(self.element_ty(ty), Ty::Unknown | Ty::Error)
+    }
+
     /// The type of a call, index or other compound expression, for tools.
     /// An untyped call keeps the library type `method_form_call` gave it.
     pub(super) fn record_shape(&mut self, expr: &Expr, ty: &Ty) {
@@ -385,4 +442,24 @@ impl Checker<'_> {
             ));
         }
     }
+}
+
+/// A catalog row's parameters, `r: Range<T>, by: T -> K`, as names and types.
+fn row_params(params: &str) -> Vec<(&str, &str)> {
+    let mut out = Vec::new();
+    let (mut depth, mut start) = (0i32, 0);
+    for (i, c) in params.char_indices().chain([(params.len(), ',')]) {
+        match c {
+            '<' | '(' | '[' => depth += 1,
+            '>' | ')' | ']' => depth -= 1,
+            ',' if depth == 0 => {
+                if let Some((n, t)) = params[start..i].split_once(':') {
+                    out.push((n.trim(), t.trim()));
+                }
+                start = i + 1;
+            }
+            _ => {}
+        }
+    }
+    out
 }
