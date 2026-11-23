@@ -17,7 +17,9 @@ something else. The input is a file; without one it is the newest
 options:
   --json   print one JSON object: the `input`, the `part` and its `alt`
            (both null when every part agrees), and what the program and
-           the program with that alt printed (`output`, `alt_output`)
+           the program with that alt printed (`output`, `alt_output`),
+           and the first wrong call of the part as `cpl stress --json`
+           gives it under `explain` (`divergence`, null when none)
 
 Exit status: 0 when every part agrees, 1 when one disagrees or the file
 does not build, 2 on a usage error.
@@ -86,16 +88,23 @@ pub fn run_with(
         }
     };
     let shown = input.display().to_string();
+    let divergence = || {
+        let traced = tracer.and_then(|trace| trace(file, &text, false).ok());
+        traced.and_then(|traced| traced.divergence)
+    };
     if json {
         let field = |v: Option<&String>| v.map_or("null".into(), |v| cpl_json::escape_string(v));
         let _ = writeln!(
             stdout,
-            "{{\"input\":{},\"part\":{},\"alt\":{},\"output\":{},\"alt_output\":{}}}",
+            "{{\"input\":{},\"part\":{},\"alt\":{},\"output\":{},\"alt_output\":{},\"divergence\":{}}}",
             cpl_json::escape_string(&shown),
             field(located.as_ref().map(|l| &l.part)),
             field(located.as_ref().map(|l| &l.alt)),
             field(located.as_ref().map(|l| &l.output)),
             field(located.as_ref().map(|l| &l.alt_output)),
+            (located.as_ref())
+                .and_then(|_| divergence())
+                .map_or("null".into(), |d| crate::cli::divergence_json(&d)),
         );
     } else {
         match &located {
@@ -109,8 +118,7 @@ pub fn run_with(
                     "`{}` disagrees with its alt `{}` on {shown}: line {line} is {ours:?}, with `{}` swapped in it is {theirs:?}",
                     l.part, l.alt, l.alt
                 );
-                let traced = tracer.and_then(|trace| trace(file, &text, false).ok());
-                if let Some(d) = traced.and_then(|traced| traced.divergence) {
+                if let Some(d) = divergence() {
                     crate::cli::print_divergence(stdout, &d);
                 }
             }

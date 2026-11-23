@@ -2,6 +2,8 @@ package dev.cplang.ide
 
 import com.intellij.execution.Executor
 import com.intellij.execution.actions.ConfigurationContext
+import com.intellij.execution.filters.Filter
+import com.intellij.execution.filters.OpenFileHyperlinkInfo
 import com.intellij.execution.actions.LazyRunConfigurationProducer
 import com.intellij.execution.configurations.CommandLineState
 import com.intellij.execution.configurations.ConfigurationFactory
@@ -23,6 +25,7 @@ import com.intellij.execution.runners.ExecutionEnvironment
 import com.intellij.icons.AllIcons
 import com.intellij.openapi.options.SettingsEditor
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.ui.ComboBox
 import com.intellij.openapi.util.Ref
 import com.intellij.psi.PsiElement
@@ -89,6 +92,10 @@ class CplRunConfiguration(project: Project, factory: ConfigurationFactory, name:
 
     override fun getState(executor: Executor, environment: ExecutionEnvironment): RunProfileState =
         object : CommandLineState(environment) {
+            init {
+                addConsoleFilters(CplLineFilter(project, File(options.file ?: "").absoluteFile))
+            }
+
             override fun startProcess(): ProcessHandler {
                 val handler = ProcessHandlerFactory.getInstance().createColoredProcessHandler(commandLine())
                 ProcessTerminatedListener.attach(handler)
@@ -157,5 +164,20 @@ class CplRunLineMarkerContributor : RunLineMarkerContributor() {
         val name = PsiTreeUtil.nextLeaf(element)?.let { if (it is PsiWhiteSpace) PsiTreeUtil.nextLeaf(it) else it }
         if (name?.text != "main") return null
         return Info(AllIcons.RunConfigurations.TestState.Run, ExecutorAction.getActions(0)) { "Run ${element.containingFile.name}" }
+    }
+}
+
+/**
+ * Links each source line `cpl` names in its output (`solution tri(k: 1) = 0 at line 4` under
+ * `cpl stress`'s first wrong call, `line 5: k: 1` in its last steps) to that line of the file.
+ */
+class CplLineFilter(private val project: Project, private val file: File) : Filter {
+    override fun applyFilter(line: String, entireLength: Int): Filter.Result? {
+        val refs = Cpl.lineRefs(line).takeIf { it.isNotEmpty() } ?: return null
+        val vfile = LocalFileSystem.getInstance().findFileByIoFile(file) ?: return null
+        val start = entireLength - line.length
+        return Filter.Result(refs.map { (range, n) ->
+            Filter.ResultItem(start + range.first, start + range.last + 1, OpenFileHyperlinkInfo(project, vfile, n - 1))
+        })
     }
 }

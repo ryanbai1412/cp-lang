@@ -326,6 +326,32 @@ pub(crate) fn build_part_brute(file: &Path, name: &str, swapped: &str) -> Result
 
 use cpl_json::escape_string as json_string;
 
+/// One divergence as JSON, as `cpl stress --json` (under `explain`) and
+/// `cpl locate --json` give it.
+pub fn divergence_json(d: &Divergence) -> String {
+    let side = |side: &Option<(u32, String)>| {
+        side.as_ref().map_or("null".to_string(), |(line, value)| {
+            format!("{{\"line\":{line},\"value\":{}}}", json_string(value))
+        })
+    };
+    let inside = if d.inside.is_empty() {
+        String::new()
+    } else {
+        let steps: Vec<_> = (d.inside.iter())
+            .map(|(line, locals)| format!("{{\"line\":{line},\"locals\":{}}}", json_string(locals)))
+            .collect();
+        format!(",\"inside\":[{}]", steps.join(","))
+    };
+    format!(
+        "{{\"name\":{},\"nth\":{},\"call\":{},\"fast\":{},\"brute\":{}{inside}}}",
+        json_string(&d.name),
+        d.nth,
+        d.call,
+        side(&d.fast),
+        side(&d.brute),
+    )
+}
+
 /// The report in the shape the editor reads (`editors/vscode/README.md`).
 pub fn report_json(
     report: &Report,
@@ -354,32 +380,10 @@ pub fn report_json(
             json_string(&path.display().to_string())
         })
     };
-    let side = |side: &Option<(u32, String)>| {
-        side.as_ref().map_or("null".to_string(), |(line, value)| {
-            format!("{{\"line\":{line},\"value\":{}}}", json_string(value))
-        })
-    };
     let explain = match explained {
         None => String::new(),
         Some(Ok(None)) => ",\"explain\":{\"divergence\":null}".to_string(),
-        Some(Ok(Some(d))) => format!(
-            ",\"explain\":{{\"divergence\":{{\"name\":{},\"nth\":{},\"call\":{},\"fast\":{},\"brute\":{}{}}}}}",
-            json_string(&d.name),
-            d.nth,
-            d.call,
-            side(&d.fast),
-            side(&d.brute),
-            if d.inside.is_empty() {
-                String::new()
-            } else {
-                let steps: Vec<_> = (d.inside.iter())
-                    .map(|(line, locals)| {
-                        format!("{{\"line\":{line},\"locals\":{}}}", json_string(locals))
-                    })
-                    .collect();
-                format!(",\"inside\":[{}]", steps.join(","))
-            }
-        ),
+        Some(Ok(Some(d))) => format!(",\"explain\":{{\"divergence\":{}}}", divergence_json(d)),
         Some(Err(why)) => format!(",\"explain\":{{\"error\":{}}}", json_string(why)),
     };
     format!(

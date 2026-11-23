@@ -39,6 +39,16 @@ class CplTest {
     }
 
     @Test
+    fun `the lines cpl names in its output link to the file`() {
+        val wrong = "    solution tri(k: 1) = 0 at line 4"
+        assertEquals(listOf(wrong.indexOf("line 4")..wrong.length - 1 to 4), Cpl.lineRefs(wrong))
+        val step = "      line 5: k: 1, s: 0"
+        assertEquals(listOf(step.indexOf("line 5")..step.indexOf(":") - 1 to 5), Cpl.lineRefs(step))
+        // `line 1` of the output, not of the file.
+        assertEquals(emptyList<Pair<IntRange, Int>>(), Cpl.lineRefs("`tri` disagrees with its alt on one.in: line 1 is \"0\""))
+    }
+
+    @Test
     fun `the fn at the caret is the one to trace`() {
         val text = "use x\n\n/// d\n@memo\nfn dfs(v: Int):\n    go(v)\n\n// c\nfn main():\n    dfs(0)\nlet top = 1\n"
         assertNull(Cpl.enclosingFn(text, text.indexOf("use")))

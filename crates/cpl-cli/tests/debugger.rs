@@ -599,4 +599,23 @@ fn locate_names_the_wrong_call_of_the_part_that_disagrees() {
         report.contains("first wrong call: `tri(k: 1)`, the 1st call of `tri`"),
         "{report}"
     );
+    let out = cpl(
+        &[
+            "locate".as_ref(),
+            path.as_os_str(),
+            input.as_os_str(),
+            "--json".as_ref(),
+        ],
+        b"",
+    );
+    let json = cpl_json::parse(&text(&out.stdout)).expect("JSON");
+    let d = json.at(&["divergence"]);
+    assert_eq!(
+        d.at(&["name"]).as_str(),
+        Some("tri(k: 1)"),
+        "{}",
+        text(&out.stdout)
+    );
+    assert_eq!(d.at(&["call"]).as_bool(), Some(true));
+    assert_eq!(d.at(&["fast", "line"]).as_i64(), Some(4));
 }

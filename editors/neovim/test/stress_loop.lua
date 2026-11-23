@@ -83,5 +83,25 @@ check(code == 0, ':Cpl test after the fix exited ' .. code .. ':\n' .. shown)
 vim.cmd('Cpl stress')
 code, shown = finished(':Cpl stress after the fix')
 check(code == 0, ':Cpl stress after the fix exited ' .. code .. ':\n' .. shown)
+-- `cpl locate` names the first wrong call of a part, and the file shows it on that line.
+local part = dir .. '/p.cp'
+vim.fn.writefile(vim.fn.readfile(repo .. '/crates/cpl-cli/tests/debugger/part_planted.cp'), part)
+vim.fn.writefile({ '1' }, dir .. '/one.in')
+vim.cmd.edit(part)
+local source = vim.api.nvim_get_current_buf()
+vim.cmd('Cpl locate ' .. vim.fn.fnameescape(dir .. '/one.in'))
+code, shown = finished(':Cpl locate')
+check(code == 1, ':Cpl locate exited ' .. code .. ':\n' .. shown)
+-- Headless Neovim on Windows draws nothing in a terminal buffer, so there is no text to read.
+if vim.fn.has('win32') == 0 then
+    local ns = vim.api.nvim_get_namespaces()['cpl_divergence']
+    local marks = {}
+    check(vim.wait(5000, function()
+        marks = vim.diagnostic.get(source, { namespace = ns })
+        return #marks > 0
+    end), 'no first-wrong-call warning after :Cpl locate:\n' .. shown)
+    check(marks[1].lnum == 3 and marks[1].message:find('first wrong call: `tri(k: 1)`', 1, true) ~= nil,
+        'the warning is ' .. vim.inspect(marks[1]))
+end
 print('neovim stress loop: ok')
 vim.cmd('qall!')

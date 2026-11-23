@@ -5,10 +5,45 @@
 -- and vim.g.cpl_autocomplete = false turn those off.
 vim.filetype.add({ extension = { cp = 'cp' } })
 
+-- The solution's line of the first wrong call `cpl stress` or `cpl locate` printed
+-- (`solution tri(k: 1) = 0 at line 4` under `first wrong call: ...`), and that headline.
+local function divergence(lines)
+    local headline
+    for _, line in ipairs(lines) do
+        local h = line:match('^%s*(first wrong call: .-)%s*$') or line:match('^%s*(first differing value: .-)%s*$')
+        if h then headline = h end
+        local at = headline and line:match('^%s+solution%s.-%sat line (%d+)%s*$')
+        if at then return { line = tonumber(at), message = headline } end
+    end
+end
+
+-- `cpl <args>` in a terminal split. When it names the first wrong call, that line of the
+-- file shows it as a warning until the next run.
+local wrong_call = vim.api.nvim_create_namespace('cpl_divergence')
+local function run_in_terminal(args)
+    local source = vim.api.nvim_get_current_buf()
+    vim.diagnostic.reset(wrong_call, source)
+    vim.cmd('botright new')
+    local term = vim.api.nvim_get_current_buf()
+    vim.fn.termopen(vim.list_extend({ vim.g.cpl_path or 'cpl' }, args), {
+        on_exit = function()
+            -- The last of the output can reach the buffer just after the exit (Windows' ConPTY).
+            vim.defer_fn(function()
+                if not (vim.api.nvim_buf_is_valid(term) and vim.api.nvim_buf_is_valid(source)) then return end
+                local found = divergence(vim.api.nvim_buf_get_lines(term, 0, -1, false))
+                if found == nil then return end
+                vim.diagnostic.set(wrong_call, source, { {
+                    lnum = found.line - 1, col = 0, source = 'cpl',
+                    severity = vim.diagnostic.severity.WARN, message = found.message,
+                } })
+            end, 200)
+        end,
+    })
+end
+
 -- The server's Run, Trace and Stress lenses name `cpl` arguments; run them in a terminal split.
 vim.lsp.commands['cpl.exec'] = function(command)
-    vim.cmd('botright new')
-    vim.fn.termopen(vim.list_extend({ vim.g.cpl_path or 'cpl' }, command.arguments or {}))
+    run_in_terminal(command.arguments or {})
 end
 
 -- `:Cpl test`, `:Cpl stress`, `:Cpl submit`...: `cpl <command> <this file> [args]` in a terminal
@@ -18,8 +53,7 @@ vim.api.nvim_create_user_command('Cpl', function(opts)
     local args = #opts.fargs > 0 and vim.deepcopy(opts.fargs) or { 'test' }
     local file = vim.api.nvim_buf_get_name(0)
     if vim.bo.filetype == 'cp' and file ~= '' then table.insert(args, 2, file) end
-    vim.cmd('botright new')
-    vim.fn.termopen(vim.list_extend({ vim.g.cpl_path or 'cpl' }, args))
+    run_in_terminal(args)
 end, {
     nargs = '*',
     desc = 'run cpl on this file',

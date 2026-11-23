@@ -103,6 +103,12 @@ object Cpl {
         return scratch + cases
     }
 
+    /** Each source line `cpl` names in a line of its output (`at line 4`, `line 5: k: 1`): where, and the 1-based line. */
+    fun lineRefs(text: String): List<Pair<IntRange, Int>> =
+        listOf(Regex("\\bat (line (\\d+))\\b"), Regex("^\\s+(line (\\d+)):")).flatMap { re ->
+            re.findAll(text).map { m -> m.groups[1]!!.range to m.groupValues[2].toInt() }.toList()
+        }.sortedBy { it.first.first }
+
     /** The top-level `fn` the offset is in, for `cpl run --trace FN`. */
     fun enclosingFn(text: CharSequence, offset: Int): String? {
         val fn = Regex("^fn\\s+([A-Za-z_][A-Za-z0-9_]*)", RegexOption.MULTILINE)
