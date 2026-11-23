@@ -227,32 +227,38 @@ pub fn sort<S: IndexedMut, T, K: Ord>(mut self: S, by: T -> K = x => x, desc: Bo
     let ks = self.keys
     var a: List<(K, T)> = [(by(self[k]), self[k]) for k in ks]
     var b = a.clone()
+    var in_a = true
     var w = 1
     while w < n:
-        var lo = 0
-        while lo < n:
-            let mid = if lo + w < n: lo + w else: n
-            let hi = if lo + 2 * w < n: lo + 2 * w else: n
-            var (i, j) = (lo, mid)
-            for k in lo..hi:
-                let right = j < hi and (
-                    i >= mid or (if desc: a[i].0 < a[j].0 else: a[j].0 < a[i].0)
-                )
-                if right:
-                    b[k] = a[j]
-                    j += 1
-                else:
-                    b[k] = a[i]
-                    i += 1
-            lo = hi
-        let c = a
-        a = b
-        b = c
+        if in_a: merge_runs(a, mut b, w, desc)
+        else: merge_runs(b, mut a, w, desc)
+        in_a = not in_a
         w *= 2
     var t = 0
     for k in ks:
-        self[k] = a[t].1
+        self[k] = if in_a: a[t].1 else: b[t].1
         t += 1
+
+/// One bottom-up pass of `sort`: merges each pair of adjacent sorted runs of length `w` in
+/// `src` into `dst`, stably.
+fn merge_runs<K: Ord, T>(src: List<(K, T)>, mut dst: List<(K, T)>, w: Int, desc: Bool):
+    let n = src.len
+    var lo = 0
+    while lo < n:
+        let mid = if lo + w < n: lo + w else: n
+        let hi = if lo + 2 * w < n: lo + 2 * w else: n
+        var (i, j) = (lo, mid)
+        for k in lo..hi:
+            let right = j < hi and (
+                i >= mid or (if desc: src[i].0 < src[j].0 else: src[j].0 < src[i].0)
+            )
+            if right:
+                dst[k] = src[j]
+                j += 1
+            else:
+                dst[k] = src[i]
+                i += 1
+        lo = hi
 
 /// The elements of `self` sorted by `by`: the value form of `sort`. A new `List`, keyed from 0;
 /// to keep keys, sort the keys instead (`a.keys.sorted(by: i => a[i])`).
