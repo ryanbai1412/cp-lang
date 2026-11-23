@@ -20,6 +20,7 @@ suites:
 options:
   --check         fail if any suite's pass count drops or a passing case regresses
   --write         update the scoreboard JSON with the suites that were run
+  --shard N/M     diff runs only every Mth target, starting at the Nth
   --scoreboard P  scoreboard JSON path (default: research/scoreboard.json)
   --causes        group failing cases by root cause, sorted by count
   --rules         check spec/core rule coverage against spec/conformance
@@ -63,6 +64,19 @@ fn main() -> ExitCode {
             "--rules" => rules_only = true,
             "--strict" => strict = true,
             "--verbose" | "-v" => verbose = true,
+            "--shard" => {
+                i += 1;
+                let shard = args.get(i).and_then(|s| {
+                    let (n, m) = s.split_once('/')?;
+                    let (n, m) = (n.parse::<usize>().ok()?, m.parse::<usize>().ok()?);
+                    (1..=m).contains(&n).then_some((n, m))
+                });
+                let Some(shard) = shard else {
+                    eprintln!("cpl-conform: --shard needs N/M with 1 <= N <= M");
+                    return ExitCode::from(2);
+                };
+                let _ = cpl_conform::runner::SHARD.set(shard);
+            }
             "--scoreboard" | "--out" | "--baseline" => {
                 i += 1;
                 if i >= args.len() {
@@ -219,7 +233,11 @@ fn main() -> ExitCode {
                 return ExitCode::FAILURE;
             }
         };
-        let ratchet = scoreboard::check_ratchet(&baseline, &current, filter.is_some());
+        let ratchet = scoreboard::check_ratchet(
+            &baseline,
+            &current,
+            filter.is_some() || cpl_conform::runner::SHARD.get().is_some(),
+        );
         if !ratchet.improvements.is_empty() {
             println!(
                 "ratchet: {} newly passing case(s)",

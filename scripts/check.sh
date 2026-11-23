@@ -257,7 +257,7 @@ fi
 # CPL_GATE_PART=checks runs everything but the workspace tests and the
 # conformance ratchet, CPL_GATE_PART=conform runs the ratchet and the script
 # unit tests (CPL_GATE_PART=conform:<suite+...> runs only those suites, the
-# script tests with the conformance suite), and CPL_GATE_PART=tests:<nextest partition> (e.g. tests:hash:1/6)
+# script tests with the conformance suite; a trailing @N/M passes --shard N/M), and CPL_GATE_PART=tests:<nextest partition> (e.g. tests:hash:1/6)
 # runs only that share of the tests, plus the doctests in share 1. Unset runs
 # all of --fast.
 script_tests=(scripts/test_dream_gaps.py scripts/test_review_check.py scripts/test_check_cache.py scripts/test_cxx_cache.py scripts/test_release.py scripts/test_debt_ratchet.py scripts/test_fmt_check.py scripts/test_skill_gen.py scripts/test_affected.py scripts/test_land_stats.py scripts/test_devex_stats.py scripts/test_new_lint.py scripts/test_conform_staged.py)
@@ -268,6 +268,10 @@ case "$gate_part" in
         [ "$mode" = fast ] || fail "CPL_GATE_PART=$gate_part needs --fast"
         conform_suites=all
         [ "$gate_part" = conform ] || conform_suites="${gate_part#conform:}"
+        conform_shard=
+        case "$conform_suites" in
+            *@*) conform_shard="--shard ${conform_suites#*@}"; conform_suites="${conform_suites%@*}" ;;
+        esac
         conform_suites="${conform_suites//[+,]/ }"
         case " $conform_suites " in
             *" all "* | *" conformance "*)
@@ -279,8 +283,8 @@ case "$gate_part" in
         step "cpl-conform ratchet ($conform_suites --check against research/scoreboard.json)"
         cargo build -q -p cpl-cli -p cpl-conform
         # shellcheck disable=SC2086
-        "$target/debug/cpl-conform" $conform_suites --check \
-            || fail "cpl-conform ratchet failure; rerun: cargo run -p cpl-conform -- $conform_suites --check"
+        "$target/debug/cpl-conform" $conform_suites $conform_shard --check \
+            || fail "cpl-conform ratchet failure; rerun: cargo run -p cpl-conform -- $conform_suites $conform_shard --check"
         step_end
         printf '\ncheck: conformance part passed in %ss\n' "$(( $(date +%s) - gate_t0 ))"
         exit 0

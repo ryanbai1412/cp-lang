@@ -65,6 +65,11 @@ fn discover(root: &Path, filter: Option<&str>) -> Vec<DiffTarget> {
     }
 
     targets
+        .into_iter()
+        .enumerate()
+        .filter(|(i, _)| runner::in_shard(*i))
+        .map(|(_, t)| t)
+        .collect()
 }
 
 fn fnv1a_hex(data: &[u8]) -> String {

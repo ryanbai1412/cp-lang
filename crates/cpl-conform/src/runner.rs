@@ -236,3 +236,11 @@ pub fn truncate_chars(s: &str, max_len: usize) -> String {
     let out: String = chars.by_ref().take(max_len).collect();
     out
 }
+
+/// `--shard N/M`: a suite that honours it keeps only its targets `i` with
+/// `i % M == N - 1`, so M CI jobs split it.
+pub static SHARD: std::sync::OnceLock<(usize, usize)> = std::sync::OnceLock::new();
+
+pub fn in_shard(i: usize) -> bool {
+    SHARD.get().is_none_or(|&(n, m)| i % m == n - 1)
+}
