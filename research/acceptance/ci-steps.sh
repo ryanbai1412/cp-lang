@@ -47,7 +47,11 @@ p = subprocess.Popen(["cpl", "lsp"], stdin=subprocess.PIPE, stdout=subprocess.PI
 p.stdin.write(b"Content-Length: %d\r\n\r\n" % len(body) + body)
 p.stdin.flush()
 try:
-    out = p.stdout.read1(4096) if hasattr(p.stdout, "read1") else p.stdout.read(200)
+    head = b""
+    while not head.endswith(b"\r\n\r\n"):
+        head += p.stdout.read(1)
+    size = int(head.split(b"Content-Length:")[1].split(b"\r\n")[0])
+    out = p.stdout.read(size)
 finally:
     p.kill()
 print(out.decode(errors="replace"))
