@@ -1,15 +1,12 @@
-// NOI 2017 Queueing Worms: `n` worms, each with a length from 1 to 6, each a
-// queue of one at first. "1 u v" puts the queue headed by `v` behind `u`, the
-// last of its queue; "2 u" cuts the queue behind `u`; "3 s k" takes every
-// block of `k` digits of `s`, counts the places where `k` worms standing in a
-// row have those lengths, and prints the product of the counts modulo
-// 998244353. `k` is at most 50 and there are few cuts.
-//
-// Maintain a count for every contiguous block of at most 50 worms. A join makes
-// the blocks that cross `(u, v)` and a cut removes them: each crossing block is
-// a suffix ending at `u` concatenated with a prefix starting at `v` of total
-// length at most 50. `Block(hash, len)` keeps every hash paired with its length
-// so `concat` never passes a length by hand.
+// Source: NOI 2017, Queueing Worms, https://dmoj.ca/problem/noi17p2
+// Problem: n <= 2e5 worms of lengths 1..=6, each its own queue; m <= 5e5 operations: join the
+//   queue ending at i to the one starting at j, split after i (at most 1e3 splits), or for a
+//   digit string s and k <= 50 print the product over the length-k substrings t of s of the
+//   number of worms whose next k lengths read t, mod 998244353 (sum |s| <= 1e7).
+// Solution: count every run of at most 50 consecutive worms in a Map keyed by rolling hash. A
+//   join adds the runs crossing the new joint (a suffix of i's queue plus a prefix of j's, at
+//   most 50 long) and a split removes them; each run is made once between splits, so that is
+//   O(50 n + 50^2 c) map updates. A query hashes s and multiplies the counts of its windows.
 
 use std.strings.{HashVal}
 

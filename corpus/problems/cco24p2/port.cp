@@ -1,4 +1,13 @@
-// CCO '24 P2 — Pizza Party (today form for proto/cpc)
+// Source: CCO 2024 Day 1 P2, Pizza Party, https://dmoj.ca/problem/cco24p2
+// Problem: pizzas a_1..a_N leave a cart top first, each onto a new stack or the top of one;
+//   then people b_1..b_N each take a pizza of their flavour from some stack top (N <= 1e6,
+//   flavours <= N). Print the fewest stacks K, each pizza's stack and each person's stack, or
+//   -1 if impossible.
+// Solution: only the judged subtasks (flavours <= 2, or distinct a) are handled; otherwise
+//   nothing is printed. Flavour counts must match. Flavours <= 2: one stack if b is a
+//   reversed, else stack = flavour. Distinct a: a person must take a pizza laid later than
+//   the next person's, so cover b by chains decreasing in placement order: greedy patience
+//   piles, binary-searching the first pile top below the new placement. O(N log N).
 // original: corpus/submissions/6435481.cpp
 let n: 1..=1_000_000 = read()
 domain I = 0..n

@@ -1,4 +1,12 @@
-// NOI 2022 P4, can rooted tree G become rooted tree H by deleting at most k <= 5 leaves, one at a time? (buildable today-form)
+// Source: NOI 2022, Challenge NPC II, https://dmoj.ca/problem/noi22p4
+// Problem: rooted trees G and H with |H| <= |G| <= |H| + k, k <= 5 (multitest, T <= 500,
+//   |G| <= 1e5, sum |G| <= 5e5; first line C T k). Can deleting nodes of G leave a connected
+//   part containing G's root that is isomorphic to H as a rooted tree? Print Yes or No.
+// Solution: name every subtree shape of both trees (AHU: a Map from sorted child shapes to an
+//   id). prune(u, v), memoized on the shape pair: equal shapes match; else cancel the children
+//   of u and v of equal shape, then give each leftover child of v its own leftover child of u
+//   that prunes into it (backtracking; u's other leftovers are deleted whole). Each leftover
+//   costs a deletion, so at most k remain and the search stays small.
 // original: corpus/submissions/4802121.cpp
 // Both trees share one node space (H is offset by |G|) held in List<List<Int>>,
 // and shapes are named through a Map<List<Int>, Int>: the prototype has no

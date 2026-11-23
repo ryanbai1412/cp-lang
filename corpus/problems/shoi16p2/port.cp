@@ -1,4 +1,12 @@
-// SHOI 2016 P2, lattice squares avoiding k deleted points (buildable today-form)
+// Source: SHOI 2016 / JLOI 2016, Square, https://dmoj.ca/problem/shoi16p2
+// Problem: an (N+1) x (M+1) lattice of points (N, M <= 1e6) with K <= 2000 points deleted.
+//   Count the squares, axis-parallel or tilted, whose four corners are all kept points, mod
+//   100000007.
+// Solution: inclusion-exclusion. Each square sits in exactly one i x i axis box, which holds i
+//   squares: sum (N-i+1)(M-i+1) i. Subtract the squares through each deleted point, a closed
+//   form per side of the point. For each pair of deleted points list the squares having both
+//   as corners (as a side, both ways, or as a diagonal), sort them, and add back 1, 2 or 3 for
+//   squares with 2, 3 or 4 deleted corners (1, 3 or 6 pairs). O(min(N, M) + K^2 log K).
 // original: corpus/submissions/5445692.cpp
 const MOD = 100000007
 let n: 1..=1e6 = read()

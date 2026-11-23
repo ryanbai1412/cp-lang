@@ -1,5 +1,11 @@
-// NOI 2022 Multi-Provincial Team Selection P1, Preprocessor — ideal CP Lang sketch
-// Category: Unusual Verbatim Line-Oriented I/O (`read_line()`, significant whitespace & empty lines)
+// Source: NOI 2022 Provincial Selection, Preprocessor, https://dmoj.ca/problem/noimps22p1
+// Problem: n <= 100 lines of at most 100 printable chars. "#define name content" and
+//   "#undef name" print an empty line; other lines print with each maximal [A-Za-z0-9_] run
+//   naming a defined macro replaced by its content, expanded again, except names already being
+//   expanded (no recursion). Output lines have at most 1000 chars.
+// Solution: keep macros in a Map. expand(line, active) copies non-identifier characters, cuts
+//   each maximal identifier and, if it is a macro not in the active Set, appends its body
+//   expanded with the name added to active; otherwise copies it. The bounds are tiny.
 // Original C++: corpus/submissions/4533698.cpp (116 LOC raw, ~76 LOC stripped)
 
 // WISH B19-9: `read_line()` reads verbatim up to '\n' (preserving leading/trailing spaces and
