@@ -612,3 +612,5 @@ on input `2 / 1 / 2` prints `7` once in `cpl run` and in the C++ (`cpl_main` cal
   plan/domains/debugger/design/trace-replay.md "Interactive programs".
 
 2026-11-23: a top-level `let Some(y) = x else: return` left `y` out of scope for later items (`core-01/let-else-some-pattern-top-level`); in a fn body it bound. The file's names (`db::decls_of`) and their types (`Checker::defs_of` via `pattern_types`) skipped variant patterns. `pattern::typed_pattern` now walks a variant's payload with the types `Checker::variant_payload` gives, the same lookup `bind` uses, so `Some(y)`, `(Some(w), k)` and `Shape.Circle(r)` bind at top level too. Case `core-01/let-else-variant-in-tuple-top-level`.
+
+2026-11-23: `for a in 0..3 if a > 0, b in 0..3:` read `, b in 0..3` as a second test of the filter (`a > 0 and b in 0..3`), so `b` was unbound (`core-01/for-filter-on-inner-clause`). Inside a `for` clause's `if` (`Parser::for_filter`), a `,` that `comma_starts_clause` sees starting `pat in` now ends the filter and starts the next clause; elsewhere `, x in s` is still a test.

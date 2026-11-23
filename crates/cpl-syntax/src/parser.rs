@@ -100,11 +100,14 @@ pub(crate) struct Parser<'a> {
     /// Statements that run before the one being read: the `m[k] ??= init`
     /// of `(m[k] ??= init).push(x)`.
     lead_stmts: Vec<crate::ast::Stmt>,
+    /// Reading a `for` clause's `if`, where `, b in ys` starts the next clause.
+    for_filter: bool,
 }
 
 impl<'a> Parser<'a> {
     fn new(src: &'a str, tokens: &'a [Token], delta: i64, sink: Sink) -> Parser<'a> {
         Parser {
+            for_filter: false,
             src,
             tokens,
             pos: 0,

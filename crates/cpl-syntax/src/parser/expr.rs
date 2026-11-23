@@ -1555,7 +1555,7 @@ impl<'a> Parser<'a> {
     }
 
     /// True if a `,` inside a comprehension is followed by `pat in ...`.
-    fn comma_starts_clause(&self) -> bool {
+    pub(super) fn comma_starts_clause(&self) -> bool {
         let mut i = 1;
         let mut depth = 0u32;
         loop {

@@ -1188,7 +1188,12 @@ impl<'a> Parser<'a> {
                         self.bump();
                         true
                     });
-                let filter = has_filter.then(|| (self.start(), self.cond()));
+                let filter = has_filter.then(|| {
+                    let outer = std::mem::replace(&mut self.for_filter, true);
+                    let cond = (self.start(), self.cond());
+                    self.for_filter = outer;
+                    cond
+                });
                 clauses.push((pat, iter, filter));
                 if !self.eat(T::Comma) {
                     break;
@@ -1535,7 +1540,7 @@ impl<'a> Parser<'a> {
             return Cond::Const(self.expr());
         }
         let test = self.expr();
-        if self.eat(T::Comma) {
+        if self.eat_guard_comma() {
             return Cond::Guard {
                 test,
                 and: Box::new(self.more_clauses()),
@@ -1662,13 +1667,23 @@ impl<'a> Parser<'a> {
 
     /// What follows a `,` or `where` in a condition: `let`s and whole
     /// tests, any number, each holding only if those before it did.
+    /// A `,` that joins two tests, as `and` does; in a `for` clause's `if`,
+    /// `, b in ys` starts the next clause instead.
+    fn eat_guard_comma(&mut self) -> bool {
+        if !self.at(T::Comma) || (self.for_filter && self.comma_starts_clause()) {
+            return false;
+        }
+        self.bump();
+        true
+    }
+
     fn more_clauses(&mut self) -> Cond {
         if self.at(T::Let) {
             self.bump();
             return self.let_cond();
         }
         let test = self.or();
-        if self.eat(T::Comma) {
+        if self.eat_guard_comma() {
             return Cond::Guard {
                 test,
                 and: Box::new(self.more_clauses()),
