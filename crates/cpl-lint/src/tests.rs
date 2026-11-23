@@ -841,6 +841,13 @@ fn push_loop_becomes_a_comprehension_from_ioi16p6io_and_dmopc21c5p5() {
         fixed(src),
         "let raw = [(r: 2, c: 1)]\nvar norm: List<(Int, Int)> = [(min(p.r, p.c), max(p.r, p.c)) for p in raw]\nnorm.push((0, 0))\nprint(norm)\n"
     );
+    // corpus/problems/ioi18p4: a loop variable the item never reads becomes `_`.
+    let unused =
+        "let m = 2\nvar c: List<Int> = []\nfor i in 0..(m + 1):\n    c.push(7)\nprint(c)\n";
+    assert_eq!(
+        fixed(unused),
+        "let m = 2\nlet c: List<Int> = [7 for _ in 0..(m + 1)]\nprint(c)\n"
+    );
     // proto/ports/blind_critic_4/dmopc21c5p5.cp, with a filter and a head.
     let head = "fn f(n: Int) -> List<Int>:\n    var perm: List<Int> = [0]\n    for i in 1..=n:\n        if i % 2 == 1: perm.push(i)\n    perm\nprint(f(3))\n";
     assert!(fixed(head).contains("let perm: List<Int> = [0] + [i for i in 1..=n if i % 2 == 1]"));

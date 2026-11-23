@@ -926,6 +926,10 @@ impl<'a> Taste<'a> {
         if mentions(v, name) || c.is_some_and(|c| mentions(c, name)) || mentions(&it, name) {
             return;
         }
+        let unused = p.chars().all(|ch| ch.is_alphanumeric() || ch == '_')
+            && !mentions(v, p)
+            && !c.is_some_and(|c| mentions(c, p));
+        let p = if unused { "_" } else { p };
         let filter = c.map(|c| format!(" if {c}")).unwrap_or_default();
         let reversed = c.is_none().then(|| forms::reversed(p, &it, v)).flatten();
         let comp = reversed
