@@ -13,6 +13,9 @@ for v in P.drop(1).rev:
     let a = best[h]
     best[h] = match join[v].how:
         IAmYourFriend => (skip: a.skip + max(b.skip, b.take), take: a.take + b.skip)
-        MyFriendsAreYourFriends => (skip: a.skip + b.skip, take: max(a.take + max(b.skip, b.take), a.skip + b.take))
+        MyFriendsAreYourFriends => (
+            skip: a.skip + b.skip,
+            take: max(a.take + max(b.skip, b.take), a.skip + b.take),
+        )
         WeAreYourFriends => (skip: a.skip + b.skip, take: max(a.take + b.skip, a.skip + b.take))
 print(max(best[P.first!].skip, best[P.first!].take))

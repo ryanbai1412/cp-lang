@@ -10,7 +10,7 @@ let facts: [m](i: Slot, j: Slot, k: Slot, x: 1..=1e9) = read()
 // A fact says: of its three numbers at most one is below x and at most one
 // is above. So the only questions are "is slot s below x?" and "is it
 // above x?", one pair for every slot and value some fact puts together.
-const SPAN = 1073741824          // 2^30, above every value
+const SPAN = 1073741824  // 2^30, above every value
 fn key(s: Slot, x: Int) -> Int: s.label * SPAN + x
 var keys: List<Int> = []
 for f in facts:
@@ -55,7 +55,7 @@ if any(of[below(q)] == of[no(below(q))] or of[above(q)] == of[no(above(q))] for 
 else:
     print("YES")
     var number: [Slot]Int = 1
-    for q in Mark:              // ascending, so the last word on a slot is its largest bound
+    for q in Mark:  // ascending, so the last word on a slot is its largest bound
         if not holds(below(q)): number[slot(q)] = value(q)
         if holds(above(q)): number[slot(q)] = value(q) + 1
     print(number)

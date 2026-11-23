@@ -24,7 +24,7 @@ if kind == 0:
         a[i] = v
 else:
     let (x, y, z): (Int, Int, Int) = read()
-    var (older, old): (Int, Int) = read()       // b[i - 2], b[i - 1]
+    var (older, old): (Int, Int) = read()  // b[i - 2], b[i - 1]
     let m: Int = read()
     var i = 1
     for _ in 0..m:

@@ -14,14 +14,14 @@
 // each polygon once.
 // original: corpus/submissions/4225209.cpp
 
-struct Line(a: Int, b: Int, c: Int)         // a x + b y + c = 0
-struct Hom(x: Int, y: Int, w: Int)          // the point (x / w, y / w), w > 0, reduced
+struct Line(a: Int, b: Int, c: Int)  // a x + b y + c = 0
+struct Hom(x: Int, y: Int, w: Int)   // the point (x / w, y / w), w > 0, reduced
 
 fn through(x1: Int, y1: Int, x2: Int, y2: Int) -> Line = Line(y1 - y2, x2 - x1, x1 * y2 - x2 * y1)
 
 fn crossing(p: Line, q: Line) -> ?Hom:
     let w = p.a * q.b - q.a * p.b
-    if w == 0: return none                  // parallel, or the same line
+    if w == 0: return none  // parallel, or the same line
     let (x, y) = (p.b * q.c - q.b * p.c, p.c * q.a - q.c * p.a)
     let g = gcd(gcd(abs(x), abs(y)), abs(w)) * (if w < 0: -1 else: 1)
     Hom(x / g, y / g, w / g)
@@ -36,8 +36,8 @@ for _ in 0..n:
     lines.push(through(x1, y1, x2, y2))
 
 var id_of: Map<(Int, Int, Int), Int> = Map()
-var along: List<List<Int>> = []             // the crossings on each line, in order
-var place: Map<(Int, Int), Int> = Map()     // (crossing, line) -> where it is in along[line]
+var along: List<List<Int>> = []          // the crossings on each line, in order
+var place: Map<(Int, Int), Int> = Map()  // (crossing, line) -> where it is in along[line]
 for i in 0..n:
     var found: List<Hom> = []
     for other in lines:

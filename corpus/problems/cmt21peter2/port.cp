@@ -23,9 +23,9 @@ for k in 0..K:
     let dir = sin_cos(PI * k / K)
     let shadow = [P] p => at[p].x * dir.cos + at[p].y * dir.sin
     let order = sorted(P, by: p => shadow[p])
-    var ahead = sum(shadow[p] for p in P)   // the shadows not yet passed
+    var ahead = sum(shadow[p] for p in P)  // the shadows not yet passed
     var behind = 0.0
-    var i = 0                               // how many shadows are behind
+    var i = 0  // how many shadows are behind
     for p in order:
         let s = shadow[p]
         total[p] += (i * s - behind) + (ahead - (n - i) * s)

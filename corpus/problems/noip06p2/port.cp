@@ -20,7 +20,7 @@ for i in Item:
     if items[i].main == 0:
         var bundles: List<(cost: Int, worth: Int)> = [(items[i].price, worth(i))]
         for e in extras[i]:
-            let plain = bundles.len         // bundles without this accessory
+            let plain = bundles.len  // bundles without this accessory
             for t in 0..plain:
                 bundles.push((bundles[t].cost + items[e].price, bundles[t].worth + worth(e)))
         for j in Money.rev:

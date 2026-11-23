@@ -675,7 +675,10 @@ pub struct MinMaxHeap<T>:
             var m = 2 * i + 1
             for c in [2 * i + 2, 4 * i + 3, 4 * i + 4, 4 * i + 5, 4 * i + 6]:
                 if c < n:
-                    let better = if min_side: self.less(_xs[c], _xs[m]) else: self.less(_xs[m], _xs[c])
+                    let better = if min_side: self.less(_xs[c], _xs[m]) else: self.less(
+                        _xs[m],
+                        _xs[c],
+                    )
                     if better: m = c
             let wins = if min_side: self.less(_xs[m], _xs[i]) else: self.less(_xs[i], _xs[m])
             if not wins: break
@@ -685,7 +688,6 @@ pub struct MinMaxHeap<T>:
             let flip = if min_side: self.less(_xs[p], _xs[m]) else: self.less(_xs[m], _xs[p])
             if flip: self.swap(m, p)
             i = m
-
 
 /// Meldable min-heap (skew / leftist heap) with O(log n) `meld` and O(1) lazy offset `add_all`.
 /// `peek` / `top` is O(1); `push`, `pop`, and `meld` are O(log n).
@@ -861,7 +863,15 @@ pub struct MeldHeap<T>:
     /// traps: never
     /// example: `var h = MeldHeap.of([1]); let t = h.take(); h.is_empty and t.peek == Some(1)`
     pub fn take(mut self) -> MeldHeap<T>:
-        let out = MeldHeap(_len: _len, _root: _root, _keys: _keys, _add: _add, _kids: _kids, _rank: _rank, lt: lt)
+        let out = MeldHeap(
+            _len: _len,
+            _root: _root,
+            _keys: _keys,
+            _add: _add,
+            _kids: _kids,
+            _rank: _rank,
+            lt: lt,
+        )
         self.clear()
         out
 
@@ -911,7 +921,6 @@ pub struct MeldHeap<T>:
         _kids[x] = if self.rank_of(l) < self.rank_of(m): (m, l) else: (l, m)
         _rank[x] = self.rank_of(_kids[x].1) + 1
         x
-
 
 fn plus<T: Add>(a: ?T, d: T) -> T:
     if let x = a: return x + d

@@ -1073,7 +1073,15 @@ pub struct DirichletSum<T: Add + Sub + Mul + Div>:
         assert n >= 0, "DirichletSum requires n >= 0"
         var pre = List.filled(max(f_small.len, 1), T.zero)
         for k in 1..f_small.len: pre[k] = pre[k - 1] + f_small[k]
-        DirichletSum(n: n, pre: pre, g_sum: g_sum, fg_sum: fg_sum, g1: g_sum(1), memo: Map<Int, T>())
+        DirichletSum(
+            n: n,
+            pre: pre,
+            g_sum: g_sum,
+            fg_sum: fg_sum,
+            g1: g_sum(1),
+            memo: Map<Int,
+            T>(),
+        )
 
     /// The prefix sum `F(m) = sum_{k=1..=m} f(k)`, with `F(0) == 0`.
     ///
@@ -1115,7 +1123,12 @@ pub fn sum_phi(n: Int) -> Int:
     for p in 2..=lim:
         if phi_small[p] == p:
             for k in (p..=lim).step(p): phi_small[k] -= phi_small[k] / p
-    var ds = DirichletSum<Int>(n, phi_small, m => m, m => if m % 2 == 0: m / 2 * (m + 1) else: (m + 1) / 2 * m)
+    var ds = DirichletSum<Int>(
+        n,
+        phi_small,
+        m => m,
+        m => if m % 2 == 0: m / 2 * (m + 1) else: (m + 1) / 2 * m,
+    )
     ds.sum(n)
 
 /// The Mertens function `sum_{k=1..=n} mu(k)`; 0 for `n <= 0`.
@@ -1157,7 +1170,11 @@ fn du_limit(n: Int) -> Int:
 /// traps: when `n < 0`, or `prime_sum.len` is not the number of distinct `n / i`
 /// example: `sum_multiplicative(10, (p, e, pe) => 1, [0, 1, 2, 3, 4]) == 10`
 /// example: `sum_multiplicative(10, (p, e, pe) => e + 1, [0, 2, 4, 6, 8]) == 27`
-pub fn sum_multiplicative<T: Add + Sub + Mul>(n: Int, prime_pow: (Int, Int, Int) -> T, prime_sum: List<T>) -> T:
+pub fn sum_multiplicative<T: Add + Sub + Mul>(
+    n: Int,
+    prime_pow: (Int, Int, Int) -> T,
+    prime_sum: List<T>,
+) -> T:
     assert n >= 0, "sum_multiplicative requires n >= 0"
     if n == 0:
         assert prime_sum.is_empty, "sum_multiplicative requires one prime_sum per distinct n / i"
@@ -1622,7 +1639,10 @@ fn big_sub_mag(a: List<Int>, b: List<Int>) -> List<Int>:
 
 fn big_add(a: BigInt, bneg: Bool, b: List<Int>) -> BigInt:
     if a.neg == bneg: return big_make(a.neg, big_add_mag(a.limbs, b))
-    if big_cmp_mag(a.limbs, b) >= 0: big_make(a.neg, big_sub_mag(a.limbs, b)) else: big_make(bneg, big_sub_mag(b, a.limbs))
+    if big_cmp_mag(a.limbs, b) >= 0: big_make(
+        a.neg,
+        big_sub_mag(a.limbs, b),
+    ) else: big_make(bneg, big_sub_mag(b, a.limbs))
 
 fn big_mul_mag(a: List<Int>, b: List<Int>) -> List<Int>:
     if a.is_empty or b.is_empty: return []

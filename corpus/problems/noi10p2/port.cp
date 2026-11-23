@@ -15,7 +15,10 @@ struct Pair:
     val: Int
     pos: Int
 
-let rmq = SparseTable<B, Pair>((x, y) => if x.val >= y.val: x else: y, [B] b => Pair(pre[b], b.to_idx))
+let rmq = SparseTable<B, Pair>(
+    (x, y) => if x.val >= y.val: x else: y,
+    [B] b => Pair(pre[b], b.to_idx),
+)
 
 struct Cand:
     score: Int

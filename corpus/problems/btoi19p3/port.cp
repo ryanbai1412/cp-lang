@@ -15,7 +15,7 @@ fn valley() -> [Road]Link:
     [Road] r => (V(rand(1, r.label)), V(r.label + 1), rand(1, 1e9))
 
 let roads: [Road]Link = read(gen: valley)
-let shops: [s]V = read()                    // distinct in the statement; nothing here says so
+let shops: [s]V = read()  // distinct in the statement; nothing here says so
 let asks: [Ask](closed: Road, from: V) = read()
 
 // Hang the valley from the exit. Closing a road cuts off the subtree under
@@ -26,7 +26,7 @@ let asks: [Ask](closed: Road, from: V) = read()
 // with far[] measured from the exit.
 let tree = Rooted(roads, exit, weight: .len)
 let far: [V]Int = [V] v => tree.dist(exit, v)
-var shop_under: [V]?Int = none              // far[] of the nearest shop in the subtree
+var shop_under: [V]?Int = none  // far[] of the nearest shop in the subtree
 for v in shops: shop_under[v] = far[v]
 for v in tree.at.rev:
     if let p = tree.parent(v):

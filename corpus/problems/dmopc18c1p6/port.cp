@@ -39,7 +39,12 @@ for c in Col.rev:
                 elif k == r:
                     cost = flip_cost(c, l, r, false) + prev_dp[l, r]
                 else:
-                    cost = prev_dp[l, k] + prev_dp[k + 1, r] + flip_cost(c, l, k, false) + flip_cost(c, k + 1, r, true)
+                    cost = prev_dp[l, k] + prev_dp[k + 1, r] + flip_cost(c, l, k, false) + flip_cost(
+                        c,
+                        k + 1,
+                        r,
+                        true,
+                    )
                 if cost < best:
                     best = cost
                     best_k = k

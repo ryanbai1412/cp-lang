@@ -17,7 +17,7 @@ let block_bits = 16
 type Word = [Block]Int
 
 let (n, m): (Int, Int) = read()
-let (seed1, seed2): (Str, Str) = read()     // up to 2^64 - 1: too big for an Int
+let (seed1, seed2): (Str, Str) = read()  // up to 2^64 - 1: too big for an Int
 var (k1, k2) = (U64.parse(seed1), U64.parse(seed2))
 
 /// The statement's generator: an xorshift on two 64-bit words, of which one bit is used.
@@ -29,7 +29,7 @@ fn next_bit() -> Int:
     k2.plus(k4).bit(32)
 
 var dict: List<Word> = []
-var sharing: [Block]Map<Int, List<Int>> = [Block] b => Map<Int, List<Int>>()   // block value -> words
+var sharing: [Block]Map<Int, List<Int>> = [Block] b => Map<Int, List<Int>>()  // block value -> words
 for i in 0..n:
     var word: Word = [Block] b => 0
     for b in Block:

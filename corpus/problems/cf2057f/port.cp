@@ -30,7 +30,9 @@ fn raise(l: 1..=31, x: Int) -> Int:
 var ans: [q]Int = a.max()
 for l in 1..=31:
     var saved = IntervalMap<C, ?Int>.new(none)
-    let windows = [(s, window.fold(s..=e)) for s in Pos if let e = s.offset(l - 1)].sorted(by: w => w.1)
+    let windows = [
+        (s, window.fold(s..=e)) for s in Pos if let e = s.offset(l - 1)
+    ].sorted(by: w => w.1)
     for (s, total) in windows:
         let end = if let p = s.prev: cuts.at(2 * a[p]).l else: C.last!.r
         saved.assign(cuts.at(a[s]).l..end, some(total))

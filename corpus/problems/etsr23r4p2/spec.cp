@@ -26,7 +26,10 @@ fn tower(s: Int, x: Int, depth: Int) -> (big: Bool, val: Int):
     let below = tower(s - 1, x, depth + 1)
     power(below.val, below.big, m)
 let sums = Monoid(id: [Slot] _ => Z(0), op: (x: [Slot]Z, y: [Slot]Z) => [Slot] s => x[s] + y[s])
-let raise = Action<[Slot]Z, Int>.new(apply: (k: Int, x: [Slot]Z, len: Int) => [Slot] s => x[Slot.at(Int(s) + k) ?? Slot.last!], over: sums)
+let raise = Action<[Slot]Z, Int>.new(
+    apply: (k: Int, x: [Slot]Z, len: Int) => [Slot] s => x[Slot.at(Int(s) + k) ?? Slot.last!],
+    over: sums,
+)
 var st = SegTree(sums, [I] i => [Slot] s => Z(tower(Int(s), a[i], 0).val), act: raise)
 for _ in 0..q:
     let (kind, l, r) = read<(0..=1, I, I)>()

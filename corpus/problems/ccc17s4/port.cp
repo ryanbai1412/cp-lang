@@ -31,7 +31,10 @@ if dearest <= d:
     for p in Pipe:
         if chosen[p] and (is_old(p) or pipes[p].cost < dearest): rest.unite(pipes[p].u, pipes[p].v)
     for p in Pipe:
-        if not chosen[p] and is_old(p) and pipes[p].cost <= d and not rest.same(pipes[p].u, pipes[p].v):
+        if not chosen[p] and is_old(p) and pipes[p].cost <= d and not rest.same(
+            pipes[p].u,
+            pipes[p].v,
+        ):
             days -= 1
             break
 print(days)

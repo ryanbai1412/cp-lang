@@ -70,7 +70,12 @@ pub struct Action<T, F>(id: F, compose: (F, F) -> F, apply: (F, T, Int) -> T, ov
     /// traps: never (laws are not checked here; use `laws_hold`)
     /// example: `Action<Int, Int>(apply: (d, x, span) => x + d * span).apply(2, 10, 3) == 16`
     /// example: `Action<Int, Int>(apply: (d, x, span) => x + d * span).compose(2, 5) == 7`
-    pub fn new<M>(id: F = F.zero, compose: (F, F) -> F = (+), apply: (F, T, Int) -> T, over: M = (+)) -> Action<T, F>:
+    pub fn new<M>(
+        id: F = F.zero,
+        compose: (F, F) -> F = (+),
+        apply: (F, T, Int) -> T,
+        over: M = (+),
+    ) -> Action<T, F>:
         Action(id, compose, apply, Monoid<T>.of(over))
 
     /// Resolve a stock action (`add`, `assign`, `affine`) or an `Action` against fold `op`.
@@ -86,10 +91,20 @@ pub struct Action<T, F>(id: F, compose: (F, F) -> F, apply: (F, T, Int) -> T, ov
             return Action(T.zero, (nf, of) => nf + of, (f, v, span) => v + f, m)
         if same(a, assign):
             if same(op, +):
-                return Action(None, (nf, of) => nf ?? of, (f, v, span) => if let x = f: x * span else: v, m)
+                return Action(
+                    None,
+                    (nf, of) => nf ?? of,
+                    (f, v, span) => if let x = f: x * span else: v,
+                    m,
+                )
             return Action(None, (nf, of) => nf ?? of, (f, v, span) => f ?? v, m)
         if same(a, affine):
-            return Action((T.one, T.zero), (nf, of) => (nf.0 * of.0, nf.0 * of.1 + nf.1), (f, v, span) => f.0 * v + f.1 * span, m)
+            return Action(
+                (T.one, T.zero),
+                (nf, of) => (nf.0 * of.0, nf.0 * of.1 + nf.1),
+                (f, v, span) => f.0 * v + f.1 * span,
+                m,
+            )
         a
 
 /// `x` with its order reversed. Build it with `desc(x)`.
@@ -272,7 +287,10 @@ pub struct MinCount<T>(val: T, count: Int):
     /// cost: O(1)
     /// traps: never
     /// example: `fold(MinCount.monoid(), [MinCount.of(v) for v in [3, 1, 1]]).count == 2`
-    pub fn monoid() -> Monoid<MinCount<T>> = Monoid(MinCount(Monoid<T>.of(min).id, 0), (a, b) => MinCount.join(a, b))
+    pub fn monoid() -> Monoid<MinCount<T>> = Monoid(
+        MinCount(Monoid<T>.of(min).id, 0),
+        (a, b) => MinCount.join(a, b),
+    )
 
 /// O(1) per merge. Maximum value together with its multiplicity (range add: `SegTree(MaxCount.monoid, a, act: add)`).
 pub struct MaxCount<T>(val: T, count: Int):
@@ -298,7 +316,10 @@ pub struct MaxCount<T>(val: T, count: Int):
     /// cost: O(1)
     /// traps: never
     /// example: `fold(MaxCount.monoid(), [MaxCount.of(v) for v in [3, 1, 3]]).count == 2`
-    pub fn monoid() -> Monoid<MaxCount<T>> = Monoid(MaxCount(Monoid<T>.of(max).id, 0), (a, b) => MaxCount.join(a, b))
+    pub fn monoid() -> Monoid<MaxCount<T>> = Monoid(
+        MaxCount(Monoid<T>.of(max).id, 0),
+        (a, b) => MaxCount.join(a, b),
+    )
 
 /// O(1) per composition/eval. Affine map `x -> a * x + b` over any ring `T` (`Int`, `Mod<P>`).
 pub struct Affine<T>(a: T, b: T):

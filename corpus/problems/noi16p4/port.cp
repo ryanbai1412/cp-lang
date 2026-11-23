@@ -7,7 +7,7 @@ let n: 1..=500000 = read()
 let m: 1..=200000 = read()
 type Span = (l: 0..=1e9, r: 0..=1e9)
 domain I = 0..n
-fn short() -> Span:                         // few coordinates, so intervals pile up
+fn short() -> Span:  // few coordinates, so intervals pile up
     let l = rand(0, 8)
     (l, l + rand(0, 5))
 fn tangle() -> [I]Span: [I] _ => short()
@@ -25,7 +25,7 @@ fn cover(s: Span, times: Int):
     depth.add(coord.first_ge(s.l)!, coord.first_ge(s.r)!, times)
 
 var best: ?Int = none
-var taken = 0                               // the window is spans[i..taken]
+var taken = 0  // the window is spans[i..taken]
 for i in 0..n:
     while taken < n and depth.max() < m:
         cover(spans[taken], 1)

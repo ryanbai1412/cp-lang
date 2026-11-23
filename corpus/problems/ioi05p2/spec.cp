@@ -10,13 +10,24 @@ enum Cmd:
     @tag("Q") Ask(h: 0..=1_000_000_000)
     @tag("E") End
 let cmds = read_all<Cmd>(until: c => c == Cmd.End)
-let (domain P, piece) = Rail.pieces(cuts: cmds.flat_map(c => if c is Cmd.Set(a, b, _): [a.l, b.r] else: []))
+let (domain P, piece) = Rail.pieces(
+    cuts: cmds.flat_map(c => if c is Cmd.Set(a, b, _): [a.l, b.r] else: [])
+)
 type Rise = (rise: Int, peak: Int, len: Int)
-let track = Monoid<Rise>(id: (rise: 0, peak: 0, len: 0),
-    op: (x, y) => (rise: x.rise + y.rise, peak: max(x.peak, x.rise + y.peak), len: x.len + y.len))
-let slope = Action<Rise, ?Int>(id: None, compose: (old, new) => new ?? old,
-    apply: (d, x, _) => if d is Some(v): (rise: v * x.len, peak: max(0, v * x.len), len: x.len) else: x,
-    over: track)
+let track = Monoid<Rise>(
+    id: (rise: 0, peak: 0, len: 0),
+    op: (x, y) => (rise: x.rise + y.rise, peak: max(x.peak, x.rise + y.peak), len: x.len + y.len),
+)
+let slope = Action<Rise, ?Int>(
+    id: None,
+    compose: (old, new) => new ?? old,
+    apply: (d, x, _) => if d is Some(v): (
+        rise: v * x.len,
+        peak: max(0, v * x.len),
+        len: x.len,
+    ) else: x,
+    over: track,
+)
 var t = SegTree(track, [P] p => (rise: 0, peak: 0, len: piece[p].len), act: slope)
 for c in cmds:
     match c:

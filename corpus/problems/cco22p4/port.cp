@@ -102,10 +102,12 @@ fn dp(u: Int, k: Int) -> Int:
             let ar = k - al
             if al >= 0:
                 let xr = if al + bl == sf and ar + br > ss: ar + br - 1 else: ar + br
-                let term = (choose(hu, i) * arrange(al + bl, bl) % MOD
-                    * arrange(ar + br, br) % MOD
-                    * dp(first, al + bl) % MOD
-                    * dp(second, xr) % MOD)
+                let term = (
+                    choose(hu, i) * arrange(al + bl, bl) % MOD * arrange(ar + br, br) % MOD * dp(
+                        first,
+                        al + bl,
+                    ) % MOD * dp(second, xr) % MOD
+                )
                 ans = (ans + term) % MOD
     memo[vu, K(k)] = ans
     ans

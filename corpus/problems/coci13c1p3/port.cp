@@ -18,5 +18,8 @@ for r in I.cuts:
         // opposite corner cell in the given quadrant
         fn corner(rows: Range<I>, cols: Range<I>) -> List<Int>:
             [pre.sum(span(r, x), span(c, y)) for x in rows for y in cols]
-        total += matches(corner(..r, ..c), corner(r.., c..)) + matches(corner(..r, c..), corner(r.., ..c))
+        total += matches(corner(..r, ..c), corner(r.., c..)) + matches(
+            corner(..r, c..),
+            corner(r.., ..c),
+        )
 print(total)

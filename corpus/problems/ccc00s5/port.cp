@@ -10,7 +10,7 @@
 // original: corpus/submissions/4584542.cpp
 const SCALE = 1000
 
-struct Frac(num: Int, den: Int)             // den > 0
+struct Frac(num: Int, den: Int)  // den > 0
 fn le(a: Frac, b: Frac) -> Bool = a.num * b.den <= b.num * a.den
 fn frac(num: Int, den: Int) -> Frac = if den < 0: Frac(-num, -den) else: Frac(num, den)
 
@@ -28,7 +28,7 @@ for _ in 0..n:
 
 for (px, py) in sheep:
     var (lo, hi) = (Frac(0, 1), Frac(1000 * SCALE, 1))
-    var hidden = false                      // a rival straight below p wins everywhere
+    var hidden = false  // a rival straight below p wins everywhere
     for (qx, qy) in sheep:
         if qx == px:
             if qy < py: hidden = true

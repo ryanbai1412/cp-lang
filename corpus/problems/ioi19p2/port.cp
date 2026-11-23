@@ -8,16 +8,22 @@ let n: 3..=1e5 = read()
 let m: n - 1..=2e5 = read()
 let a: 1..=n - 2 = read()
 let b: 1..=n - 2 = read()
-assert a + b < n       // and the third part is the rest
+assert a + b < n  // and the third part is the rest
 domain Spot = 0..n
 domain Link = 0..m
 
 // generator: a bushy tree, then extra links that mostly lead to spot 0, so
 // that some maps cannot be split
 fn bushy() -> [Link](u: Spot, v: Spot):
-    [Link] l => (if l.idx < n - 1: (Spot(rand(0, l.idx) / 3), Spot(l.idx + 1))
-                 elif rand(0, 3) > 0: (Spot.first, Spot(rand(0, n - 1)))
-                 else: (Spot(rand(0, n - 1)), Spot(rand(0, n - 1))))
+    [Link] l => (
+        if l.idx < n - 1: (
+            Spot(rand(0, l.idx) / 3),
+            Spot(l.idx + 1),
+        ) elif rand(0, 3) > 0: (Spot.first, Spot(rand(0, n - 1))) else: (
+            Spot(rand(0, n - 1)),
+            Spot(rand(0, n - 1)),
+        )
+    )
 
 let links: [Link](u: Spot, v: Spot) = read(gen: bushy)
 let land = Graph.undirected(links)

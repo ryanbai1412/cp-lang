@@ -7,8 +7,8 @@ const P = 20170408
 type Z = Mod<P>
 
 let n: 1..=1e9 = read()
-let m: 1..=200 = read()        // the statement allows 2e7; kept small for the checker
-let k: 1..=20 = read()         // the statement allows 100
+let m: 1..=200 = read()  // the statement allows 2e7; kept small for the checker
+let k: 1..=20 = read()   // the statement allows 100
 domain R = 0..k
 type Vec = [R]Z
 

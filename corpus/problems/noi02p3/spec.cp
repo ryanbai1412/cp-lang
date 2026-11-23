@@ -16,7 +16,15 @@ fn eat(v: F) -> [Head]List<?Int>:
     var best: [Head]List<?Int> = [Head] w => if w == Head.Big: [None, Some(0)] else: [Some(0), None]
     for c in t.children(v):
         let sub = eat(c)
-        let via = (w, wc) => convolve(best[w], sub[wc].map(x => x + clash(w, wc, c)).collect(), over: tropical, shape: Curved.Neither)
-        best = [Head] w => zip(via(w, Head.Small), via(w, Head.Big)).map(((p, q)) => min(p, q)).collect()
+        let via = (w, wc) => convolve(
+            best[w],
+            sub[wc].map(x => x + clash(w, wc, c)).collect(),
+            over: tropical,
+            shape: Curved.Neither,
+        )
+        best = [Head] w => zip(
+            via(w, Head.Small),
+            via(w, Head.Big),
+        ).map(((p, q)) => min(p, q)).collect()
     best
 print(if heads - 1 + k > n: -1 else: eat(t.root)[Head.Big][k]!)

@@ -237,9 +237,15 @@ pub struct SparseTable2D<R, C, T>(op: (T, T) -> T):
                 for i in 0..h - (1 << kr) + 1:
                     for j in 0..w - (1 << kc) + 1:
                         s.table[s.at(kr, kc, i, j)] = if kr == 0:
-                            op(s.table[s.at(0, kc - 1, i, j)], s.table[s.at(0, kc - 1, i, j + (1 << (kc - 1)))])
+                            op(
+                                s.table[s.at(0, kc - 1, i, j)],
+                                s.table[s.at(0, kc - 1, i, j + (1 << (kc - 1)))],
+                            )
                         else:
-                            op(s.table[s.at(kr - 1, kc, i, j)], s.table[s.at(kr - 1, kc, i + (1 << (kr - 1)), j)])
+                            op(
+                                s.table[s.at(kr - 1, kc, i, j)],
+                                s.table[s.at(kr - 1, kc, i + (1 << (kr - 1)), j)],
+                            )
         s
 
     /// The fold of `op` over the rectangle `rows` by `cols`, both non-empty: four overlapping
@@ -255,7 +261,10 @@ pub struct SparseTable2D<R, C, T>(op: (T, T) -> T):
         assert r0 < r1 and c0 < c1, "`fold` needs a non-empty rectangle"
         let (kr, kc) = (bit_width(r1 - r0) - 1, bit_width(c1 - c0) - 1)
         let (i2, j2) = (r1 - (1 << kr), c1 - (1 << kc))
-        op(op(table[self.at(kr, kc, r0, c0)], table[self.at(kr, kc, r0, j2)]), op(table[self.at(kr, kc, i2, c0)], table[self.at(kr, kc, i2, j2)]))
+        op(
+            op(table[self.at(kr, kc, r0, c0)], table[self.at(kr, kc, r0, j2)]),
+            op(table[self.at(kr, kc, i2, c0)], table[self.at(kr, kc, i2, j2)]),
+        )
 
     /// The rectangle fold like `fold`, or `None` when `rows` or `cols` is empty.
     ///
@@ -318,7 +327,12 @@ pub struct LinearRmq<D, T>(before: (T, T) -> Bool):
         var k = 1
         while (1 << k) <= nb:
             for b in 0..nb:
-                q.top.push(if b + (1 << k) <= nb: q.better(q.top[(k - 1) * nb + b], q.top[(k - 1) * nb + b + (1 << (k - 1))]) else: q.top[(k - 1) * nb + b])
+                q.top.push(
+                    if b + (1 << k) <= nb: q.better(
+                        q.top[(k - 1) * nb + b],
+                        q.top[(k - 1) * nb + b + (1 << (k - 1))],
+                    ) else: q.top[(k - 1) * nb + b]
+                )
             k += 1
         q
 

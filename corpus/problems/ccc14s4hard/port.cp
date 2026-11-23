@@ -18,17 +18,19 @@ domain Pane = 0..n
 let panes: [Pane](x1: Int, y1: Int, x2: Int, y2: Int, tint: Int) = read()
 
 let ys = Set([panes[p].y1 for p in Pane] + [panes[p].y2 for p in Pane]).sorted()
-domain Strip = 0..ys.len - 1        // strip s lies between ys[s] and ys[s + 1]
+domain Strip = 0..ys.len - 1  // strip s lies between ys[s] and ys[s + 1]
 var first_strip = Map<Int, Int>()
 for i in 0..ys.len: first_strip[ys[i]] = i
 
 let size = max(1, isqrt(Strip.K))
 domain Block = 0..(Strip.K + size - 1) / size
-fn strips(b: Block) -> Range<Strip> = Strip.nth(b.to_idx * size)..=Strip.nth(min(Strip.K, (b.to_idx + 1) * size) - 1)
+fn strips(b: Block) -> Range<Strip> = Strip.nth(b.to_idx * size)..=Strip.nth(
+    min(Strip.K, (b.to_idx + 1) * size) - 1
+)
 
 var tint: [Strip]Int = 0
 var pending: [Block]Int = 0
-var darkest: [Block]List<(tint: Int, height: Int)> = [Block] b => []    // darkest first; height is the total so far
+var darkest: [Block]List<(tint: Int, height: Int)> = [Block] b => []  // darkest first; height is the total so far
 
 fn rebuild(b: Block):
     var (rows, height) = ([], 0)

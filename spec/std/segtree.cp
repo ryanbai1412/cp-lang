@@ -41,7 +41,13 @@ pub struct SegTree<D, T, F = Int>(m: Monoid<T>):
     /// example: `SegTree<0..4, Int>(max, fill: 5).fold(1..3) == 5`
     /// example: `SegTree<0..4, Int>(+).all == 0`
     /// example: `var s = SegTree<Int, Int>(+, over: 0..1_000_000_000); s.set(999_999_999, 4); s.all == 4`
-    pub fn new<M, A>(op: ?M = None, a: ?[D]T = None, fill: ?T = None, act: A = NoAction(), over: ?Range<Int> = None) -> SegTree<D, T, F>:
+    pub fn new<M, A>(
+        op: ?M = None,
+        a: ?[D]T = None,
+        fill: ?T = None,
+        act: A = NoAction(),
+        over: ?Range<Int> = None,
+    ) -> SegTree<D, T, F>:
         if over != None: todo
         let m = Monoid<T>.of(op!)
         if same(act, NoAction()):
@@ -328,8 +334,6 @@ pub struct SegTree<D, T, F = Int>(m: Monoid<T>):
     /// traps: never
     /// example: `SegTree(+, [1]).monoid.id == 0`
     @get pub fn monoid(self) -> Monoid<T> = m
-
-
 
     /// The fold of `r`, or `None` when `r` is empty; for operations whose identity is only a
     /// sentinel.
@@ -732,9 +736,15 @@ pub struct SegTree2D<R, C, T>(m: Monoid<T>):
             for i in h..2 * h:
                 for j in w..2 * w: g.t[i * 2 * w + j] = v
         for i in h..2 * h:
-            for j in (1..w).rev: g.t[i * 2 * w + j] = m.op(g.t[i * 2 * w + 2 * j], g.t[i * 2 * w + 2 * j + 1])
+            for j in (1..w).rev: g.t[i * 2 * w + j] = m.op(
+                g.t[i * 2 * w + 2 * j],
+                g.t[i * 2 * w + 2 * j + 1],
+            )
         for i in (1..h).rev:
-            for j in 1..2 * w: g.t[i * 2 * w + j] = m.op(g.t[2 * i * 2 * w + j], g.t[(2 * i + 1) * 2 * w + j])
+            for j in 1..2 * w: g.t[i * 2 * w + j] = m.op(
+                g.t[2 * i * 2 * w + j],
+                g.t[(2 * i + 1) * 2 * w + j],
+            )
         g
 
     /// The value of cell `(r, c)`.
@@ -848,7 +858,13 @@ pub struct WaveletMatrix<D>:
             top = max(top, v)
         var bits = 0
         while (top >> bits) > 0: bits += 1
-        var w = WaveletMatrix<D>(bits, n, [], List.filled(bits * (n + 1), 0), List.filled(bits * (n + 1), 0))
+        var w = WaveletMatrix<D>(
+            bits,
+            n,
+            [],
+            List.filled(bits * (n + 1), 0),
+            List.filled(bits * (n + 1), 0),
+        )
         for l in 0..bits:
             let b = bits - 1 - l
             let base = l * (n + 1)
@@ -1019,7 +1035,11 @@ pub struct DynamicOrderTree<D, T>:
     /// traps: never
     /// example: `DynamicOrderTree([3, 1, 4]).count_lt(0..3, 4) == 2`
     pub fn new(a: [D]T) -> DynamicOrderTree<D, T>:
-        var t = DynamicOrderTree<D, T>(D.K, [a[i] for i in D], [SortedBag<T>.new() for _ in 0..D.K + 1])
+        var t = DynamicOrderTree<D, T>(
+            D.K,
+            [a[i] for i in D],
+            [SortedBag<T>.new() for _ in 0..D.K + 1],
+        )
         for i in 0..D.K: t.bump(i, t.val[i], true)
         t
 
@@ -1088,7 +1108,7 @@ pub struct MergeSeg<D>:
         heap.push(x)
         var i = heap.len - 1
         while i > 0:
-            let p = (i - 1) // 2
+            let p = (i - 1)  // 2
             if heap[i] < heap[p]:
                 let tmp = heap[p]
                 heap[p] = heap[i]

@@ -13,7 +13,7 @@ let t: Cell = read()
 let e1: Cell = read()
 let e2: Cell = read()
 
-fn adj4(p: Cell) -> List<Cell>:               // v2: p.adj4
+fn adj4(p: Cell) -> List<Cell>:  // v2: p.adj4
     var out: List<Cell> = []
     if let r = p.0 - 1: out.push((r, p.1))
     if let r = p.0 + 1: out.push((r, p.1))
@@ -39,7 +39,7 @@ while head < q.len:
         break
     var next: List<(Cell, Cell)> = []
     for h2 in adj4(h):
-        if h2 == p: next.push((h, p))         // token slides into the hole
+        if h2 == p: next.push((h, p))  // token slides into the hole
         else: next.push((p, h2))
     for st in next:
         let a = st.0

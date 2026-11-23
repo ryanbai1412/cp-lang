@@ -21,5 +21,6 @@ for c in Course.rev:
     let below = n - rank[c]
     let ways = scores(c)
     beaten = [0..n] j => ways * (0..=below).sum(of: t =>
-        beaten[t] * comb.choose(j, t) * comb.choose(n - 1 - j, below - t))
+        beaten[t] * comb.choose(j, t) * comb.choose(n - 1 - j, below - t)
+    )
 print(beaten[n - 1])

@@ -9,4 +9,8 @@
 @!multitest
 let n: 1..=200_000 = read()
 let a: [0..n]0..=2 ** 30 - 1 = read()
-print(a.adjacent.filter((x, y) => x != y).map((x, y) => x | ((1 << bit_width(x ^ y)) - 1)).max() ?? a[0])
+print(
+    a.adjacent.filter((x, y) => x != y).map(
+        (x, y) => x | ((1 << bit_width(x ^ y)) - 1)
+    ).max() ?? a[0]
+)

@@ -5,7 +5,7 @@
 let n: 2..=100 = read()
 let k: 1..=50 = read()
 domain Village = 1..=n
-type Site = WithMin<Village>                // Site.bottom is Bytetown, label 0
+type Site = WithMin<Village>  // Site.bottom is Bytetown, label 0
 type Info = (trees: 0..=1e4, down: Site, len: 1..=1e4)
 
 fn drains(rows: [Village]Info) -> Bool:
@@ -20,7 +20,11 @@ fn drains(rows: [Village]Info) -> Bool:
     true
 
 fn random_river() -> [Village]Info:
-    [Village] v => (trees: rand(0, 10000), down: Site(rand(0, v - Village.first)), len: rand(1, 10000))
+    [Village] v => (
+        trees: rand(0, 10000),
+        down: Site(rand(0, v - Village.first)),
+        len: rand(1, 10000),
+    )
 
 let rows: [Village]Info = read(gen: random_river) where drains(rows)
 
@@ -35,7 +39,7 @@ fn depth(s: Site) -> Int:
     0
 
 domain Mills = 0..=k
-type Row = [Mills]Int                       // row[j]: best cost with at most j new mills
+type Row = [Mills]Int  // row[j]: best cost with at most j new mills
 
 // min-plus combination of the children's rows, their logs going to `mill`
 fn spread(cs: List<Village>, mill: Site) -> Row:

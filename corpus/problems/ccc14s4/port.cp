@@ -28,7 +28,10 @@ fn cuts(vals: List<Int>) -> List<Int>:
     out
 
 fn rank(sorted_cuts: List<Int>, v: Int) -> Int:
-    let lo = bsearch_first(0..sorted_cuts.len - 1, mid => sorted_cuts[mid] >= v) ?? (sorted_cuts.len - 1)
+    let lo = bsearch_first(
+        0..sorted_cuts.len - 1,
+        mid => sorted_cuts[mid] >= v,
+    ) ?? (sorted_cuts.len - 1)
     lo
 
 var (all_x, all_y): (List<Int>, List<Int>) = ([], [])
@@ -39,7 +42,7 @@ for p in panes:
     all_y.push(p.y1)
 let xs = cuts(all_x)
 let ys = cuts(all_y)
-domain X = 0..xs.len                        // cell (i, j) is xs[i]..xs[i+1] by ys[j]..ys[j+1]
+domain X = 0..xs.len  // cell (i, j) is xs[i]..xs[i+1] by ys[j]..ys[j+1]
 domain Y = 0..ys.len
 
 var tint: [X, Y]Int = 0

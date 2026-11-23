@@ -9,7 +9,7 @@ let kind: Char = read()
 // letter to one cell (-1 = free); ways(key) counts the valid completions.
 var cell_of: [0..25]Int = -1
 var memo: [0..7776]Int = -1
-let weight: List<Int> = [1296, 216, 36, 6, 1]     // weight[r]: one more cell in row r
+let weight: List<Int> = [1296, 216, 36, 6, 1]  // weight[r]: one more cell in row r
 fn ways(key: Int) -> Int:
     if key == 7775: return 1
     if memo[key] != -1: return memo[key]

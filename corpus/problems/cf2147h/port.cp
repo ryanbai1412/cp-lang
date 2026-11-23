@@ -23,7 +23,9 @@ else:
     // Gallai's induction: remove an odd-degree v after complementing its neighborhood;
     // on the way back v joins the side where its degree is even.
     fn even_split(alive: Bitset<V>) -> Bitset<V>:
-        let v = V.find(v => v in alive and (odd[v] & alive).len % 2 == 1) ?? return Bitset<V>.empty()
+        let v = V.find(
+            v => v in alive and (odd[v] & alive).len % 2 == 1
+        ) ?? return Bitset<V>.empty()
         let rest = alive.without(v)
         let nbr = odd[v] & rest
         complement_within(nbr)

@@ -9,7 +9,10 @@ let t = Rooted.from_parents(read<[V.drop(1)]V>())
 fn place(v: V) -> (count: Int, near: Int):
     var count = 0
     var near = inf
-    for (c, dist) in t.children(v).map(u => place(u)).map(r => (r.count, r.near + 1)).sorted(by: r => desc(r.1)):
+    for (
+        c,
+        dist,
+    ) in t.children(v).map(u => place(u)).map(r => (r.count, r.near + 1)).sorted(by: r => desc(r.1)):
         count += c - 1
         if dist + near >= d:
             count += 1

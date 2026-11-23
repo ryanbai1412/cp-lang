@@ -10,7 +10,7 @@
 let n: 1..=50 = read()
 let m: 1..=50 = read()
 let kind: [n, m]0..=100 = read()
-let last = n + m - 2                        // steps from corner to corner
+let last = n + m - 2  // steps from corner to corner
 
 // the notes may share a seat only at the two corners
 fn apart(d: Int, a: Int, b: Int) -> Bool:

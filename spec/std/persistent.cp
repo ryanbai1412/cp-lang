@@ -427,7 +427,10 @@ pub struct PersistentLazySegTree<D, T, F>(act: Action<T, F>):
         if ql <= nl and nr <= qr: return act.apply(acc, val[u], nr - nl)
         let mid = (nl + nr) / 2
         let down = act.compose(acc, tag[u])
-        act.over.op(self.fold_rec(left[u], nl, mid, ql, qr, down), self.fold_rec(right[u], mid, nr, ql, qr, down))
+        act.over.op(
+            self.fold_rec(left[u], nl, mid, ql, qr, down),
+            self.fold_rec(right[u], mid, nr, ql, qr, down),
+        )
 
     /// Build version 0 over `D` from `a:`, a uniform `fill:`, or the identity of `act`'s monoid, and
     /// keep it as `base`. Range writes copy O(log n) nodes and their pending tags, never changing an
@@ -437,7 +440,12 @@ pub struct PersistentLazySegTree<D, T, F>(act: Action<T, F>):
     /// empty: an empty `D` gives a tree whose every fold is the identity
     /// traps: when both `a:` and `fill:` are given
     /// example: `var t = PersistentLazySegTree(Action<Int, Int>(apply: (d, x, span) => x + d * span), a: [1, 2, 3]); t.all(t.base) == 6`
-    pub fn new(act: Action<T, F>, a: ?[D]T = None, fill: ?T = None) -> PersistentLazySegTree<D, T, F>:
+    pub fn new(
+        act: Action<T,
+        F>,
+        a: ?[D]T = None,
+        fill: ?T = None,
+    ) -> PersistentLazySegTree<D, T, F>:
         var t = PersistentLazySegTree<D, T, F>(act, [0], [0], [act.over.id], [act.id], 0)
         if let init = a:
             assert fill == None, "pass either `a:` or `fill:`, not both"
@@ -525,7 +533,11 @@ pub struct PersistentArray<D, T>:
     fn set_rec(mut self, u: Int, nl: Int, nr: Int, idx: Int, x: T) -> Int:
         if nr - nl == 1: return self.push_node(0, 0, x)
         let mid = (nl + nr) / 2
-        if idx < mid: return self.push_node(self.set_rec(left[u], nl, mid, idx, x), right[u], val[u])
+        if idx < mid: return self.push_node(
+            self.set_rec(left[u], nl, mid, idx, x),
+            right[u],
+            val[u],
+        )
         self.push_node(left[u], self.set_rec(right[u], mid, nr, idx, x), val[u])
 
     /// Build version 0 over `D` from `a:` or a uniform `fill:`, and keep it as `base`.

@@ -19,7 +19,7 @@ let tree = Rooted(net, Station.first)
 // enters it, one at odd depth as the walk leaves it. Then the labels inside
 // a subtree are consecutive, and a station's own label is at one end of them.
 var label: [Station]Int = 0
-var station: [Station]Station = Station.first       // station[label[s].idx] == s
+var station: [Station]Station = Station.first  // station[label[s].idx] == s
 var used = 0
 fn number(s: Station):
     label[s] = used

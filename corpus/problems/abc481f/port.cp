@@ -53,7 +53,9 @@ fn slow():
             if let du = best_len[u]:
                 let cand = best_str[u] + Str(['0' + c])
                 let nd = du + 1
-                if best_len[v] == none or nd < best_len[v]! or (nd == best_len[v]! and cand < best_str[v]):
+                if best_len[v] == none or nd < best_len[v]! or (
+                    nd == best_len[v]! and cand < best_str[v]
+                ):
                     best_len[v] = nd
                     best_str[v] = cand
     for v in V:

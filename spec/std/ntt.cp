@@ -6,8 +6,8 @@
 //! for any other `Mod` or `Int`, FFT for `F64`), and `cpl explain` names it. `cyclic: Bool = false`:
 //! - linear (`cyclic: false`): length `a.len + b.len - 1` (or `[]` if either input is empty)
 //! - cyclic (`cyclic: true`): requires `a.len == b.len`, length `n = a.len`, index `(i + j) % n`.
-use std.math.{is_pow2, mul_mod, pow_mod, primitive_root}
 use std.algebra.{Semiring}
+use std.math.{is_pow2, mul_mod, pow_mod, primitive_root}
 use std.mod.{Mod}
 
 const P1 = 998_244_353
@@ -509,7 +509,15 @@ pub fn subset_log<P>(a: List<Mod<P>>) -> List<Mod<P>>:
     assert a[0] == Mod<P>(1), "subset_log needs `a[0] == 1`"
     ranked(a, false)
 
-fn add_block<P>(mut c: List<Mod<P>>, x: List<Mod<P>>, xs: Int, y: List<Mod<P>>, ys: Int, w: Int, at: Int):
+fn add_block<P>(
+    mut c: List<Mod<P>>,
+    x: List<Mod<P>>,
+    xs: Int,
+    y: List<Mod<P>>,
+    ys: Int,
+    w: Int,
+    at: Int,
+):
     with lint(unproven_list_index: allow)
     let ylen = min(w, y.len - ys)
     if ylen <= 0: return

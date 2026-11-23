@@ -113,7 +113,11 @@ impl Track<T> for Window<T, M>:
 /// cost: O(1)
 /// traps: never
 /// example: `var t = track(0, (mut s, x) => s += x, (mut s, x) => s -= x); t.push(3); t.push(4); t.pop(3); t.state == 4`
-pub fn track<S, T>(state: S, add: (mut S, T) -> (), remove: (mut S, T) -> ()) -> Tracked<S, T> = Tracked(state, add, remove)
+pub fn track<S, T>(
+    state: S,
+    add: (mut S, T) -> (),
+    remove: (mut S, T) -> (),
+) -> Tracked<S, T> = Tracked(state, add, remove)
 
 /// A `Track` built from a structure and two closures.
 pub struct Tracked<S, T>(state: S, add: (mut S, T) -> (), remove: (mut S, T) -> ()):

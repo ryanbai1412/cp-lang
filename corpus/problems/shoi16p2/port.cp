@@ -26,7 +26,15 @@ for i in 1..=min(n, m):
 // minus the squares through each deleted point
 for i in 0..k:
     let (xl, xr, yl, yr) = (pts[i].x, n - pts[i].x, pts[i].y, m - pts[i].y)
-    total -= corner_squares(xl, xr, yl) + corner_squares(yr, yl, xl) + corner_squares(xr, xl, yr) + corner_squares(yl, yr, xr)
+    total -= corner_squares(xl, xr, yl) + corner_squares(yr, yl, xl) + corner_squares(
+        xr,
+        xl,
+        yr,
+    ) + corner_squares(
+        yl,
+        yr,
+        xr,
+    )
 
 // plus what that double-counted: collect each square once per pair of deleted corners
 var hit: List<(Int, Int, Int, Int)> = []

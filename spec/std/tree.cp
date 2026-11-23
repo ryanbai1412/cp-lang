@@ -9,15 +9,15 @@
 //! structure indexed by `t.Pre` (a `SegTree`, with or without `act:`, a `Fenwick`), and
 //! `fold_path` / `apply_path` walk a path over it, so there is no second
 //! "tree with values" type and no second copy of the data.
-use std.algebra.{Reversible}
-use std.graph.{Next, Target, Graph, Visit, Edged}
-use std.dp.{Step}
 use std.algebra.{Monoid, MaxSub, Action}
-use std.segtree.{SegTree}
+use std.algebra.{Reversible}
 use std.algebra.{add}
-use std.seq.{dedup, first_true, get_or_insert, span}
-use std.rand.{Rng}
+use std.dp.{Step}
 use std.dsu.{Dsu}
+use std.graph.{Next, Target, Graph, Visit, Edged}
+use std.rand.{Rng}
+use std.segtree.{SegTree}
+use std.seq.{dedup, first_true, get_or_insert, span}
 
 /// A BFS spanning tree rooted at `V.first`, as a `Rooted`. Each vertex's parent is the
 /// vertex whose arc first reached it, scanning vertices in BFS order and arcs in input
@@ -40,7 +40,11 @@ pub fn spanning_tree<V, A>(self: Graph<V, A>) -> Rooted<V, _> = Rooted.new(self,
 /// order: children in the order the search reached them
 /// traps: never
 /// example: `domain V = 0..3; domain E = 0..3; let es: [E](u: V, v: V) = [(u: 0, v: 1), (u: 1, v: 2), (u: 2, v: 0)]; let (tree, tree_edge) = Graph.undirected(es).dfs_tree(0); tree.parent(2) == Some(1) and tree.depth(2) == 2 and tree_edge == [true, true, false]`
-pub fn dfs_tree<V, A, E>(self: Graph<V, A>, root: V) -> (tree: Rooted<V, _>, tree_edge: [E]Bool) where A: Edged<E> = todo
+pub fn dfs_tree<V, A, E>(self: Graph<V, A>, root: V) -> (
+    tree: Rooted<V,
+    _>,
+    tree_edge: [E]Bool,
+) where A: Edged<E> = todo
 
 /// A tree rooted at `root`, owning its own fresh heavy-first preorder domain `t.Pre`.
 /// Built in O(n) without recursion; memory is seven `[V]` arrays, one `[Pre]` array and child
@@ -1437,7 +1441,10 @@ fn orders_lifting_and_the_virtual_tree():
     domain V = 0..14
     let adj = random_tree(V.first!)
     let r = Rooted(adj, V.first!)
-    let up: [V]?(V, Word) = [V] v => if let p = r.parent(v): Some((p, Word(Str(v.to_idx)))) else: None
+    let up: [V]?(
+        V,
+        Word,
+    ) = [V] v => if let p = r.parent(v): Some((p, Word(Str(v.to_idx)))) else: None
     let l = Lift(up, op: (x, y) => Word(x.s + y.s), identity: Word(""))
     let cost: [V]?(V, Int) = [V] v => if let p = r.parent(v): Some((p, v.to_idx + 1)) else: None
     let lc = Lift(cost, op: (x, y) => x + y, identity: 0)
@@ -1457,7 +1464,10 @@ fn orders_lifting_and_the_virtual_tree():
             sum += u.to_idx + 1
         for t in 0..r.depth(a) + 1:
             let c = l.climb(a, u => r.depth(u) >= t)
-            assert c.at == r.ancestor(a, max(r.depth(a) - t, 0))! and c.steps == r.depth(a) - r.depth(c.at)
+            assert c.at == r.ancestor(
+                a,
+                max(r.depth(a) - t, 0),
+            )! and c.steps == r.depth(a) - r.depth(c.at)
         for b in V: assert l.lca(a, b) == Some(r.lca(a, b))
     for size in 0..6:
         var keys = List<V>()
@@ -2910,7 +2920,11 @@ pub struct PermTree<I, V, Node>:
                     while open:
                         k -= 1
                         let t = st[k]
-                        (lo, hi, cnt) = (min(lo, b.lo[t]), max(hi, b.hi[t]), cnt + b.last[t] - b.first[t] + 1)
+                        (lo, hi, cnt) = (
+                            min(lo, b.lo[t]),
+                            max(hi, b.hi[t]),
+                            cnt + b.last[t] - b.first[t] + 1,
+                        )
                         open = hi - lo + 1 != cnt
                     var acc = st[k]
                     for j in k + 1..st.len: acc = b.join(acc, st[j], Partial)
@@ -3077,14 +3091,20 @@ fn perm_tree_of_a_small_permutation():
     let pt = PermTree(p)
     let (a, d) = (pt.left(pt.root), pt.right(pt.root))
     assert pt.kind[pt.root] == PermKind.Full and d == pt.leaf(3)
-    assert pt.kind[a] == PermKind.Partial and pt.right(a) == pt.leaf(2) and [i.ord for i in pt.span(a)] == [0, 1, 2]
+    assert pt.kind[a] == PermKind.Partial and pt.right(a) == pt.leaf(2) and [i.ord for i in pt.span(a)] == [
+        0,
+        1,
+        2,
+    ]
     let b = pt.left(a)
     assert pt.kind[b] == PermKind.Partial and pt.left(b) == pt.leaf(0) and pt.right(b) == pt.leaf(1)
     domain J = 0..3
     let q: [J]J = [0, 1, 2]
     let qt = PermTree(q)
     assert qt.kind[qt.root] == PermKind.Incr and qt.right(qt.root) == qt.leaf(2)
-    assert qt.kind[qt.left(qt.root)] == PermKind.Incr and [i.ord for i in qt.span(qt.left(qt.root))] == [0, 1]
+    assert qt.kind[qt.left(qt.root)] == PermKind.Incr and [
+        i.ord for i in qt.span(qt.left(qt.root))
+    ] == [0, 1]
     let s: [J]J = [2, 1, 0]
     let st = PermTree(s)
     assert st.kind[st.root] == PermKind.Decr and st.kind[st.left(st.root)] == PermKind.Decr

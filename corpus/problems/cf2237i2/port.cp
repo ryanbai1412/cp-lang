@@ -117,10 +117,18 @@ for p in t.Pre.rev:
                     for d1 in 0..dp[c].len:
                         for ca in Active:
                             for cr in Bool if dp[c][d1][ca, cr] != Z(0):
-                                merge(State(d0, pa, pr), State(d1, ca, cr), label[c], cur[d0][pa, pr] * dp[c][d1][ca, cr], mut next)
+                                merge(
+                                    State(d0, pa, pr),
+                                    State(d1, ca, cr),
+                                    label[c],
+                                    cur[d0][pa, pr] * dp[c][d1][ca, cr],
+                                    mut next,
+                                )
         cur = next
         dp[c] = []
     dp[u] = cur
 
 // Exclude Active.Deferred at the root: no parent edge exists to close it.
-print([row[a, r] for row in dp[V.first!] for a in Active if a != Active.Deferred for r in Bool].sum())
+print(
+    [row[a, r] for row in dp[V.first!] for a in Active if a != Active.Deferred for r in Bool].sum()
+)

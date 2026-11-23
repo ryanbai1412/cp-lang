@@ -424,7 +424,10 @@ pub struct PrimePowerComb(p: Int, e: Int, pe: Int):
         if k < 0 or k > n: return 0
         let c = self.p_count(n) - self.p_count(k) - self.p_count(n - k)
         if c >= e: return 0
-        var r = self.free_fact(n) * inv_mod(self.free_fact(k) * self.free_fact(n - k) % pe, pe)! % pe
+        var r = self.free_fact(n) * inv_mod(
+            self.free_fact(k) * self.free_fact(n - k) % pe,
+            pe,
+        )! % pe
         for _ in 0..c: r = r * p % pe
         r
 

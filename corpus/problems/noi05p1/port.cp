@@ -12,27 +12,27 @@ let start: Cell = read()
 let q: 1..=200 = read()
 let hall: [Row, Col]Char = read()
 domain Tilt = 1..=q
-let tilts: [Tilt](from: Int, to: Int, way: 1..=4) = read()   // WISH L2: way: Dir4, numbered N S W E
+let tilts: [Tilt](from: Int, to: Int, way: 1..=4) = read()  // WISH L2: way: Dir4, numbered N S W E
 
 // Every row or column of the hall, walked in the direction of the tilt.
-fn lines(way: Int) -> List<List<Cell>>:                   // WISH L3: for line in Cell.lines(way)
+fn lines(way: Int) -> List<List<Cell>>:  // WISH L3: for line in Cell.lines(way)
     if way == 1: return [[(r, c) for r in Row.rev] for c in Col]
     if way == 2: return [[(r, c) for r in Row] for c in Col]
     if way == 3: return [[(r, c) for c in Col.rev] for r in Row]
     return [[(r, c) for c in Col] for r in Row]
 
-var far: [Row, Col]?Int = none                            // longest slide that ends here
+var far: [Row, Col]?Int = none  // longest slide that ends here
 far[start] = 0
 for (from, to, way) in tilts:
     let seconds = to - from + 1
     var next: [Row, Col]?Int = none
     for line in lines(way):
         // (slide minus place, place) of the starts still in reach, best first
-        var reach: List<(Int, Int)> = []                  // WISH L15: sliding(max, xs, width) over a MonoQueue
+        var reach: List<(Int, Int)> = []  // WISH L15: sliding(max, xs, width) over a MonoQueue
         var head = 0
         for i in 0..line.len:
             let p = line[i]
-            if hall[p] == 'x':                            // WISH L16: for run in line.split(p => hall[p] == 'x')
+            if hall[p] == 'x':  // WISH L16: for run in line.split(p => hall[p] == 'x')
                 reach = []
                 head = 0
             else:

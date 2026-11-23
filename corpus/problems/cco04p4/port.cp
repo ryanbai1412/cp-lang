@@ -8,7 +8,7 @@ enum Axis:
     Y
 type Pt = (x: Int, y: Int)
 
-fn read_moves() -> List<Pt>:            // one lap as unit steps
+fn read_moves() -> List<Pt>:  // one lap as unit steps
     let n: 1..=100 = read()
     var moves: List<Pt> = []
     for _ in 0..n:
@@ -27,7 +27,7 @@ var q: Pt = read()
 let b = read_moves()
 var best = inf
 if a.len > 0 and b.len > 0:
-    for t in 0..lcm(a.len, b.len):      // after that both lists start again together
+    for t in 0..lcm(a.len, b.len):  // after that both lists start again together
         best min= (p.x - q.x) * (p.x - q.x) + (p.y - q.y) * (p.y - q.y)
         let da = a[t % a.len]
         let db = b[t % b.len]

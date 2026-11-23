@@ -22,7 +22,11 @@ protocol Cave:
 struct Judge(open: [Switch]Pos, door: Perm<Switch, Door>):
     fn try_combination(mut self, s: [Switch]Pos) -> ?Door =
         min(door[w] for w in Switch if s[w] != open[w])
-    fn answer(mut self, o: [Switch]Pos, d: [Switch]Door) -> Bool = o == open and d == door.to_array()
+    fn answer(
+        mut self,
+        o: [Switch]Pos,
+        d: [Switch]Door,
+    ) -> Bool = o == open and d == door.to_array()
 
 @graded fn explore_cave(judge: Cave):
     var open: [Switch]Pos = Up

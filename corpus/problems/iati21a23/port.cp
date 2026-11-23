@@ -3,7 +3,7 @@
 let n: 1..=1000 = read()
 let s: 0..=1000 = read()
 let c: 0..=1000 = read()
-let period: 1..=2000 = s + c          // the statement rules out s = c = 0
+let period: 1..=2000 = s + c  // the statement rules out s = c = 0
 var shots: List<Int> = []
 
 if s <= c:

@@ -9,19 +9,57 @@
 //! compiler. A library module says what it uses: only the program being
 //! checked or run gets the prelude.
 
-use std.algebra.{Action, Commutative, Desc, Group, Idempotent, Monoid, Op, Ordering, Selective, Semiring, add, affine, assign, cmp, desc, each, flip, fold, minmax}
-use std.beats.{BeatsSegTree}
+use std.algebra.{
+    Action,
+    Commutative,
+    Desc,
+    Group,
+    Idempotent,
+    Monoid,
+    Op,
+    Ordering,
+    Selective,
+    Semiring,
+    add,
+    affine,
+    assign,
+    cmp,
+    desc,
+    each,
+    flip,
+    fold,
+    minmax,
+}
 use std.bag.{SortedBag, SortedMap, SortedSet}
+use std.beats.{BeatsSegTree}
 use std.bitset.{Bitset}
 use std.deque.{Deque}
-use std.dp.{LiChao, Line, LineContainer, MonotoneHull, aliens}
-use std.ntt.{Curved, convolve}
 use std.derive.{Hash}
+use std.dp.{LiChao, Line, LineContainer, MonotoneHull, aliens}
 use std.dsu.{Dsu, DsuOf, ParityDsu, PotentialDsu}
 use std.fenwick.{Fenwick, Fenwick2D}
 use std.flow.{Arc, FlowGraph, max_closure}
 use std.geometry.{ByAngle, Location, Pt, locate, turn}
-use std.graph.{Functional, Graph, Lit, Target, Tree, TwoSat, Visit, bfs, condense, dfs, dijkstra, floyd_warshall, kruskal, peel, reachable, scc, topo}
+use std.ntt.{Curved, convolve}
+use std.graph.{
+    Functional,
+    Graph,
+    Lit,
+    Target,
+    Tree,
+    TwoSat,
+    Visit,
+    bfs,
+    condense,
+    dfs,
+    dijkstra,
+    floyd_warshall,
+    kruskal,
+    peel,
+    reachable,
+    scc,
+    topo,
+}
 use std.grid.{Dir4, Dir8, adj4, adj8, ray, step}
 use std.heap.{Heap, MaxHeap, MinHeap, Settle}
 use std.interval.{IntervalMap}
@@ -29,11 +67,35 @@ use std.io.{Wire, io, read_all, yes}
 use std.lazy.{Flip}
 use std.marks.{Marks}
 use std.matrix.{Mat}
-use std.math.{Ratio, Sieve, bit, ceil_div, choose2, digits, divmod, fixed, floor_quotients, gcd, inf, lcm, phi, pow_mod, sign, to_str}
+use std.math.{
+    Ratio,
+    Sieve,
+    bit,
+    ceil_div,
+    choose2,
+    digits,
+    divmod,
+    fixed,
+    floor_quotients,
+    gcd,
+    inf,
+    lcm,
+    phi,
+    pow_mod,
+    sign,
+    to_str,
+}
 use std.mod.{Comb, Mod}
 use std.opt.{is_none_or, is_some_and}
 use std.prefix.{Diff, Prefix, scan}
-use std.search.{bsearch_real, split_best, ternary_max, ternary_max_real, ternary_min, ternary_min_real}
+use std.search.{
+    bsearch_real,
+    split_best,
+    ternary_max,
+    ternary_max_real,
+    ternary_min,
+    ternary_min_real,
+}
 use std.segtree.{SegTree}
 use std.window.{Sweep, Track, Undo, Undoing, Window, track, undoing}
 use std.seq.{
@@ -87,11 +149,11 @@ use std.seq.{
     windows,
     zip,
 }
+use std.hashmap.{Counter}
+use std.pair.{Pair}
 use std.poly.{eval}
 use std.sparse.{SparseTable}
-use std.pair.{Pair}
 use std.subset.{Subset}
-use std.hashmap.{Counter}
 use std.strings.{
     RollingHash,
     SuffixArray,
@@ -112,4 +174,3 @@ use std.strings.{
     z_function,
 }
 use std.tree.{JumpTree, KruskalTree, LcaTable, Lift, PreferredPaths, Rooted, kruskal_tree}
-

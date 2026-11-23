@@ -24,7 +24,12 @@ pub struct Dsu<V>:
     /// cost: O(n) for n = `V.count`; one `[V]` array
     /// traps: never
     /// example: `let d = Dsu<0..3>(); d.components == 3`
-    pub fn new(rollback: Bool = false) -> Dsu<V> = Dsu(List.filled(V.count, -1), V.count, [], rollback)
+    pub fn new(rollback: Bool = false) -> Dsu<V> = Dsu(
+        List.filled(V.count, -1),
+        V.count,
+        [],
+        rollback,
+    )
 
     fn find_ord(self, start: Int) -> Int:
         var x = start
@@ -742,7 +747,12 @@ pub struct PersistentDsu<V>:
     /// cost: O(log² n)
     /// traps: when `ver` is not a version handle of `self`
     /// example: `var d = PersistentDsu<0..3>(); let v1 = d.unite(d.base, 0, 1); d.same(v1, 0, 1) and not d.same(d.base, 0, 1)`
-    pub fn same(self, ver: Int, a: V, b: V) -> Bool = self.root_ord(ver, a.ord) == self.root_ord(ver, b.ord)
+    pub fn same(
+        self,
+        ver: Int,
+        a: V,
+        b: V,
+    ) -> Bool = self.root_ord(ver, a.ord) == self.root_ord(ver, b.ord)
 
     /// The number of positions in `v`'s set in version `ver`, `v` included.
     ///
@@ -990,7 +1000,9 @@ fn parity_matches_a_brute_colouring_and_rolls_back():
     assert d.consistent == (saved_conflicts == 0)
     for u in V:
         for v in V:
-            let want: ?Bool = if saved_label[u] == saved_label[v]: Some(saved_side[u] != saved_side[v]) else: None
+            let want: ?Bool = if saved_label[u] == saved_label[v]: Some(
+                saved_side[u] != saved_side[v]
+            ) else: None
             assert d.diff(u, v) == want
 
 @test

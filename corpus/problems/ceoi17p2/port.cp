@@ -4,14 +4,14 @@
 // possible.
 // original: corpus/submissions/5324109.cpp
 let n: 1..=1e5 = read()
-let odds: [n](a: 1.0..=1000.0, b: 1.0..=1000.0) = read()            // WISH R9
-let a = sorted((o.a for o in odds), desc)                           // WISH K10
+let odds: [n](a: 1.0..=1000.0, b: 1.0..=1000.0) = read()  // WISH R9
+let a = sorted((o.a for o in odds), desc)                 // WISH K10
 let b = sorted((o.b for o in odds), desc)
 
 // Only the best odds of each outcome are worth a bet, and the next bet
 // always goes on the outcome that would pay less.
 var (i, j, pays_a, pays_b, sure) = (0, 0, 0.0, 0.0, 0.0)
-while i < n or j < n:                                               // WISH R8: two lists, two hand-moved places
+while i < n or j < n:  // WISH R8: two lists, two hand-moved places
     if j == n or (i < n and pays_a <= pays_b):
         pays_a += a[i]
         i += 1

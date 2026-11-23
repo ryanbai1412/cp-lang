@@ -24,7 +24,16 @@ fn next_rand() -> Int:
     g_seed = (g_seed * 1103515245 + 12345) % 2147483647
     return g_seed
 
-fn mat_mul(a00: Int, a01: Int, a10: Int, a11: Int, b00: Int, b01: Int, b10: Int, b11: Int) -> (Int, Int, Int, Int):
+fn mat_mul(
+    a00: Int,
+    a01: Int,
+    a10: Int,
+    a11: Int,
+    b00: Int,
+    b01: Int,
+    b10: Int,
+    b11: Int,
+) -> (Int, Int, Int, Int):
     return (
         (a00 * b00 + a01 * b10) % MODV,
         (a00 * b01 + a01 * b11) % MODV,
@@ -50,7 +59,16 @@ fn pull(u: Int):
     let l = g_nodes[u].lc
     if l != -1:
         sz += g_nodes[l].sz
-        let p = mat_mul(g_nodes[l].a00, g_nodes[l].a01, g_nodes[l].a10, g_nodes[l].a11, m00, m01, m10, m11)
+        let p = mat_mul(
+            g_nodes[l].a00,
+            g_nodes[l].a01,
+            g_nodes[l].a10,
+            g_nodes[l].a11,
+            m00,
+            m01,
+            m10,
+            m11,
+        )
         m00 = p.0
         m01 = p.1
         m10 = p.2
@@ -58,7 +76,16 @@ fn pull(u: Int):
     let r = g_nodes[u].rc
     if r != -1:
         sz += g_nodes[r].sz
-        let p = mat_mul(m00, m01, m10, m11, g_nodes[r].a00, g_nodes[r].a01, g_nodes[r].a10, g_nodes[r].a11)
+        let p = mat_mul(
+            m00,
+            m01,
+            m10,
+            m11,
+            g_nodes[r].a00,
+            g_nodes[r].a01,
+            g_nodes[r].a10,
+            g_nodes[r].a11,
+        )
         m00 = p.0
         m01 = p.1
         m10 = p.2

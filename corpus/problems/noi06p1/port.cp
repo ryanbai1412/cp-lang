@@ -46,7 +46,10 @@ for d in (0..=m).rev:
                     let cflag = (Int(cnt > csz) << d) | par
                     for acnt in max(0, cnt - csz)..=min(csz, cnt):
                         let bcnt = cnt - acnt
-                        best min= dp[u * 2, (acnt << (d + 1)) | cflag] + dp[u * 2 + 1, (bcnt << (d + 1)) | cflag]
+                        best min= dp[u * 2, (acnt << (d + 1)) | cflag] + dp[
+                            u * 2 + 1,
+                            (bcnt << (d + 1)) | cflag,
+                        ]
                     dp[u, state] = best
 
 var ans: ?Int = none

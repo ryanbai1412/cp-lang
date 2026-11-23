@@ -10,7 +10,7 @@ type Cell = (Row, Col)
 type M = Mod<998244353>
 let a: [Row, Col]Int = read()
 
-fn adj4(p: Cell) -> List<Cell>:               // v2: p.adj4
+fn adj4(p: Cell) -> List<Cell>:  // v2: p.adj4
     var out: List<Cell> = []
     if let r = p.0 - 1: out.push((r, p.1))
     if let r = p.0 + 1: out.push((r, p.1))

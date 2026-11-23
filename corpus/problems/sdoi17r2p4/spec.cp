@@ -20,10 +20,12 @@ domain Node = Road + Aux
 var arcs = List<(from: Node, arc: (to: Node, w: Int))>()
 var used = 0
 for x in V:
-    let here = List(chain(
-        enter.out(x).map(a => (road: a.e, enters: true)),
-        leave.out(x).map(a => (road: a.e, enters: false)),
-    )).sorted(by: it => trie.pos(roads[it.road].word))
+    let here = List(
+        chain(
+            enter.out(x).map(a => (road: a.e, enters: true)),
+            leave.out(x).map(a => (road: a.e, enters: false)),
+        )
+    ).sorted(by: it => trie.pos(roads[it.road].word))
     for line in [here, List(here.rev)]:
         let t = line.len
         let (pre, suf) = ((i: Int) => Node(Aux(used + i)), (i: Int) => Node(Aux(used + t + i)))
@@ -39,6 +41,9 @@ for x in V:
                 arcs.push((from: pre(i), arc: (to: suf(i + 1), w: gap)))
         used += 2 * t
 
-let dist = dijkstra(Graph.of(arcs), from: leave.out(V.first!).map(a => (Node(a.e), roads[a.e].w))).dist
+let dist = dijkstra(
+    Graph.of(arcs),
+    from: leave.out(V.first!).map(a => (Node(a.e), roads[a.e].w)),
+).dist
 for v in V.drop(1):
     print(enter.out(v).filter_map(a => dist[Node(a.e)]).min()!)

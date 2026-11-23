@@ -39,7 +39,7 @@ fn shared(x: Amount, d: Int) -> Amount:
 let (n, m): (Int, Int) = read()
 domain Junction = 1..=n
 var pipes: [Junction]List<Junction> = [Junction] u => []
-var waiting: [Junction]Int = [Junction] u => 0     // pipes in, not yet drained
+var waiting: [Junction]Int = [Junction] u => 0  // pipes in, not yet drained
 for u in Junction:
     let d: Int = read()
     for _ in 0..d:
@@ -47,7 +47,10 @@ for u in Junction:
         pipes[u].push(v)
         waiting[v] += 1
 
-var holds: [Junction]Amount = [Junction] u => (num: Wide.of(if u.label <= m: 1 else: 0), exp: [Small] p => 0)
+var holds: [Junction]Amount = [Junction] u => (
+    num: Wide.of(if u.label <= m: 1 else: 0),
+    exp: [Small] p => 0,
+)
 var ready = [u for u in Junction if waiting[u] == 0]
 while ready.len > 0:
     let u = ready.pop()

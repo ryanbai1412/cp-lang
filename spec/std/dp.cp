@@ -837,7 +837,6 @@ pub fn lis_ends<D, T, K>(self: [D]T, strict: Bool = true, by: T -> K = x => x) -
         out[i] = lo + 1
     out
 
-
 /// Every mask of `bits` bits containing `m`, increasing from `m` to `2^bits - 1`.
 ///
 /// cost: O(2^(bits - popcount(m)))

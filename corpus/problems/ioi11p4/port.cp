@@ -14,10 +14,10 @@ let halls: [Hall](u: Room, v: Room, len: Int) = read()
 let exits: [X]Room = read()
 let g = Graph<Room, Hall>.undirected(halls)
 
-var offers: [Room]Int = 0                   // ways out seen so far, cheapest first
+var offers: [Room]Int = 0  // ways out seen so far, cheapest first
 var heap = MinHeap<(Int, Room)>()
 for x in exits:
-    offers[x] = 1                           // an exit needs no second way out
+    offers[x] = 1  // an exit needs no second way out
     heap.push((0, x))
 while let (t, u) = heap.pop():
     offers[u] += 1

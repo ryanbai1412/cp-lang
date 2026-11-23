@@ -385,10 +385,19 @@ pub struct HistoricBeatsSegTree<D>:
         let n = D.K
         let sz = max(1, 4 * n)
         var t = HistoricBeatsSegTree<D>(
-            n, List.filled(sz, 0), List.filled(sz, 0), List.filled(sz, Int.MIN),
-            List.filled(sz, Int.MIN), List.filled(sz, Int.MIN), List.filled(sz, 0),
-            List.filled(sz, Int.MAX), List.filled(sz, Int.MAX), List.filled(sz, 0),
-            List.filled(9 * sz, 0), 0)
+            n,
+            List.filled(sz, 0),
+            List.filled(sz, 0),
+            List.filled(sz, Int.MIN),
+            List.filled(sz, Int.MIN),
+            List.filled(sz, Int.MIN),
+            List.filled(sz, 0),
+            List.filled(sz, Int.MAX),
+            List.filled(sz, Int.MAX),
+            List.filled(sz, 0),
+            List.filled(9 * sz, 0),
+            0,
+        )
         if n == 0: return t
         var vals: List<Int> = []
         if let init = a:
@@ -452,7 +461,20 @@ pub struct HistoricBeatsSegTree<D>:
         tg[b] += a
         tg[b + 2] += cc
 
-    fn apply(mut self, u: Int, len: Int, a1: Int, h1: Int, c1: Int, a2: Int, h2: Int, c2: Int, a3: Int, h3: Int, c3: Int):
+    fn apply(
+        mut self,
+        u: Int,
+        len: Int,
+        a1: Int,
+        h1: Int,
+        c1: Int,
+        a2: Int,
+        h2: Int,
+        c2: Int,
+        a3: Int,
+        h3: Int,
+        c3: Int,
+    ):
         if mx1[u] == mn1[u]:
             hm[u] = max(hm[u], mx1[u] + h1)
             s[u] += a1 * len
@@ -484,8 +506,19 @@ pub struct HistoricBeatsSegTree<D>:
         let b = 9 * u
         let k1 = if mx1[v] == pmax: 0 elif mx1[v] == mn1[v] and mn1[v] == pmin: 1 else: 2
         let k2 = if mx1[v] == mn1[v]: k1 elif mn1[v] == pmin: 1 else: 2
-        self.apply(v, len, tg[b + 3 * k1], tg[b + 3 * k1 + 1], tg[b + 3 * k1 + 2],
-            tg[b + 3 * k2], tg[b + 3 * k2 + 1], tg[b + 3 * k2 + 2], tg[b + 6], tg[b + 7], tg[b + 8])
+        self.apply(
+            v,
+            len,
+            tg[b + 3 * k1],
+            tg[b + 3 * k1 + 1],
+            tg[b + 3 * k1 + 2],
+            tg[b + 3 * k2],
+            tg[b + 3 * k2 + 1],
+            tg[b + 3 * k2 + 2],
+            tg[b + 6],
+            tg[b + 7],
+            tg[b + 8],
+        )
 
     fn push(mut self, u: Int, nl: Int, nr: Int):
         let b = 9 * u
@@ -507,7 +540,19 @@ pub struct HistoricBeatsSegTree<D>:
         if ql <= nl and nr <= qr:
             let len = nr - nl
             if op == 2:
-                self.apply(u, len, x, max(0, x), -ver * x, x, max(0, x), -ver * x, x, max(0, x), -ver * x)
+                self.apply(
+                    u,
+                    len,
+                    x,
+                    max(0, x),
+                    -ver * x,
+                    x,
+                    max(0, x),
+                    -ver * x,
+                    x,
+                    max(0, x),
+                    -ver * x,
+                )
                 return
             if op == 0 and x > mx2[u]:
                 let d = x - mx1[u]
@@ -600,7 +645,10 @@ pub struct HistoricBeatsSegTree<D>:
     /// traps: when a non-empty `r` reaches outside `D`
     /// example: `var t = HistoricBeatsSegTree([1, 2]); t.add(0..1, 3); t.hist_sum(0..2) == 9`
     /// example: `var t = HistoricBeatsSegTree([1, 2]); t.add(0..1, 3); t.hist_sum(1..2) == 4`
-    pub fn hist_sum(mut self, r: Range<D>) -> Int = (self.query(r, 1) ?? 0) + (ver + 1) * self.sum(r)
+    pub fn hist_sum(
+        mut self,
+        r: Range<D>,
+    ) -> Int = (self.query(r, 1) ?? 0) + (ver + 1) * self.sum(r)
 
 @test
 fn beats_segtree_chmin_chmax_add_matches_brute():

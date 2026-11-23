@@ -24,7 +24,7 @@ for d in Day:
     (a[d], b[d], rate[d]) = (pa, pb, r)
 
 let by_ratio = sorted(Day, by: d => a[d] / b[d])
-var rank: [Day]Int = 0                      // a day's place among the ratios
+var rank: [Day]Int = 0  // a day's place among the ratios
 var ratio: List<F64> = []
 for d in by_ratio:
     rank[d] = ratio.len
@@ -58,7 +58,7 @@ fn highest(i: Int) -> F64:
         let mid = (lo + hi) / 2
         if i <= mid: (at, hi) = (2 * at, mid) else: (at, lo) = (2 * at + 1, mid + 1)
 
-var best = money                            // the most money held so far
+var best = money  // the most money held so far
 for d in Day:
     best max= b[d] * highest(rank[d])
     let coupons_b = best / (a[d] * rate[d] + b[d])

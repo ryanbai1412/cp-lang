@@ -13,12 +13,12 @@ let (k, q, d, m): (Int, Int, Int, Int) = read()
 domain Digit = 0..d
 domain Residue = 0..k
 let digits: [Digit]Int = read()
-var ending: [Residue]List<Int> = [Residue] _ => []      // the digits by residue
+var ending: [Residue]List<Int> = [Residue] _ => []  // the digits by residue
 for i in Digit: ending[Residue(digits[i] % k)].push(digits[i])
 
 fn spell(x: Int) -> ?List<Int>:
     // WISH C4: `HashMap<Int, Int>` is on the cheat sheet; the interpreter only has `Map`.
-    var via = Map<Int, Int>()           // via[y]: a digit b with y * k + b reached
+    var via = Map<Int, Int>()  // via[y]: a digit b with y * k + b reached
     var frontier = [x]
     for _ in 0..100:
         var next: List<Int> = []

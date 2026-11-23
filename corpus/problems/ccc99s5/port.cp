@@ -15,7 +15,7 @@ domain Row = 0..3
 let puzzles: Int = read()
 for _ in 0..puzzles:
     let read_rows: [Row]Str = read()
-    let rows = [read_rows[r] for r in Row]      // as a list: `fill` steps through rows by number
+    let rows = [read_rows[r] for r in Row]  // as a list: `fill` steps through rows by number
     let width = max(row.len for row in rows)
     var digit: [Letter]?Int = none
     var used: [Digit]Bool = false

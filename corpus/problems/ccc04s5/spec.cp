@@ -16,7 +16,9 @@ while true:
             for k in path.take_while(k => g[k, c] != '*'):
                 gold += if g[k, c].is_digit: g[k, c].digit else: 0
                 yield (k, gold)
-        best = R.map(r => chain(reach(r..), reach((..=r).rev))
-            .filter_map(p => best[p.k].map(x => x + p.gold))
-            .max()).collect()
+        best = R.map(
+            r => chain(reach(r..), reach((..=r).rev)).filter_map(
+                p => best[p.k].map(x => x + p.gold)
+            ).max()
+        ).collect()
     print(best[R.last!]!)

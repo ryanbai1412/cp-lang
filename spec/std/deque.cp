@@ -458,7 +458,6 @@ pub struct LinkedList<T>:
         _len -= 1
         Some(x)
 
-
     /// Remove and return the front element, or `None` if empty.
     ///
     /// cost: O(1)

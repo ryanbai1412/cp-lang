@@ -12,14 +12,14 @@ let t: s..=10 = read()
 let m: 1..=100 = read()
 let stones: [m]1..len = read()
 
-var spot: List<Int> = []                    // the stones, moved closer together
+var spot: List<Int> = []  // the stones, moved closer together
 var (before, shrunk) = (0, 0)
 for x in stones.sorted():
     let gap = x - before
     shrunk += if gap > CYCLE: gap % CYCLE + CYCLE else: gap
     spot.push(shrunk)
     before = x
-let end = shrunk + 1                        // past the last stone nothing matters
+let end = shrunk + 1  // past the last stone nothing matters
 
 var stone: [0..end]Bool = false
 for x in spot: stone[x] = true

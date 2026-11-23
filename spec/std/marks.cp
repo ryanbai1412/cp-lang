@@ -522,6 +522,7 @@ fn interval_map_cross_module_assign():
     var sum_old = 0
     im.assign(P(4)..=P(7), 3, on_old: (r, old) =>
         total_len += r.len
-        sum_old += r.len * old)
+        sum_old += r.len * old
+    )
     assert total_len == 4 and sum_old == 6
     assert im.runs == 3 and im.run_at(P(5)).range.len == 6

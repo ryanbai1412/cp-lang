@@ -5,7 +5,7 @@
 // is verified on small and medium cases only.
 let T: 1..=10 = read()
 
-var rem: List<Int> = []          // grams left of each ingredient of this case
+var rem: List<Int> = []  // grams left of each ingredient of this case
 var k = 0
 
 // Uses up the ingredients in `group` with exactly `dishes` dishes

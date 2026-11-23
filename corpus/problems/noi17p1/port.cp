@@ -7,8 +7,8 @@ let t3: Int = read()
 
 // x = up - down, both only ever growing, in 30-bit digits; a carry chain on a
 // number that only grows is amortised O(1)
-const BASE = 1073741824             // 2^30
-let digits = q + 4                  // b <= 30 q, plus room for the carries
+const BASE = 1073741824  // 2^30
+let digits = q + 4       // b <= 30 q, plus room for the carries
 domain Digit = 0..digits
 var up: [Digit]Int = 0
 var down: [Digit]Int = 0

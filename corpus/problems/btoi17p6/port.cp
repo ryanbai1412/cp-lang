@@ -20,8 +20,8 @@ fn join(a: Pick, b: Pick) -> Pick:
     if a.near + b.near >= d: (a.count + b.count, min(a.near, b.near))
     else: (a.count + b.count - 1, max(a.near, b.near))
 
-var pick: [V]Pick = (1, 0)              // on its own, a node marks itself
-for k in Kid.rev:                       // children are finished before parents
+var pick: [V]Pick = (1, 0)  // on its own, a node marks itself
+for k in Kid.rev:           // children are finished before parents
     let below = pick[V(k.label)]
     pick[parent[k]] = join(pick[parent[k]], (below.count, below.near + 1))
 print(pick[V.first].count)

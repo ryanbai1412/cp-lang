@@ -55,8 +55,9 @@ let row_heads: [Row]Bool = [Row] r => count(grid[r, c] == 'H' for c in Col) % 2 
 
 // Part 3: clear rows in peel order. Removing a row flips its neighbours, so a
 // row with an even number of heads is cleared with its coins read inverted.
-let moves = [(r, c) for r in peel(row_heads)
-                    for c in peel([Col] c => (grid[r, c] == 'H') == row_heads[r])]
+let moves = [
+    (r, c) for r in peel(row_heads) for c in peel([Col] c => (grid[r, c] == 'H') == row_heads[r])
+]
 
 // Part 4: output the order only if every coin was removed.
 if moves.len == Row.len * Col.len:

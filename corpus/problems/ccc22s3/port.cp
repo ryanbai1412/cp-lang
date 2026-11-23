@@ -15,6 +15,6 @@ for i in Note:
     let most = min(i.idx + 1, m)
     let take = min(most, left - (n - 1 - i.idx))
     if take < 1: break
-    tune[i] = if take == most: Pitch.nth(i.idx % m) else: tune[(i - take)!]    // repeat the note `take` back
+    tune[i] = if take == most: Pitch.nth(i.idx % m) else: tune[(i - take)!]  // repeat the note `take` back
     left -= take
 if left == 0: print(tune) else: print(-1)

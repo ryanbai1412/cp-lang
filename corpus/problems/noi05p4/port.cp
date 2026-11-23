@@ -29,13 +29,13 @@ for target in Node:
 
 var step: [Node, Node]Node = Node.first
 for cat in Node:
-    for mouse in Node if cat != mouse:                            // WISH P9
-        step[cat, mouse] = min_by(g.out(cat), v => (dist[mouse, v], v)).item   // WISH P13
+    for mouse in Node if cat != mouse:                                        // WISH P9
+        step[cat, mouse] = min_by(g.out(cat), v => (dist[mouse, v], v)).item  // WISH P13
 
 // Expected turns from (cat, mouse): the cat moves up to twice deterministically,
 // then the mouse stays or moves uniformly to one of its neighbors.
-@memo                                                             // WISH P4
-fn expected(cat: Node, mouse: Node) -> F64:                     // WISH P4
+@memo                                        // WISH P4
+fn expected(cat: Node, mouse: Node) -> F64:  // WISH P4
     if cat == mouse: return 0.0
     let c1 = step[cat, mouse]
     if c1 == mouse: return 1.0
@@ -44,6 +44,6 @@ fn expected(cat: Node, mouse: Node) -> F64:                     // WISH P4
     let deg = g.out(mouse).len
     var total = expected(c2, mouse)
     for nxt in g.out(mouse): total += expected(c2, nxt)
-    1.0 + total / F64(deg + 1)                                  // WISH P4
+    1.0 + total / F64(deg + 1)  // WISH P4
 
-print(expected(start_cat, start_mouse), prec: 3)                  // WISH P4
+print(expected(start_cat, start_mouse), prec: 3)  // WISH P4

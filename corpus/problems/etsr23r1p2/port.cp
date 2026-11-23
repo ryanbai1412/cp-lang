@@ -21,7 +21,7 @@ for _ in 0..q: orders.push(read_order())
 let ends = [o.l for o in orders] + [o.r for o in orders]
 let (X, coord) = compress(ends)
 var starts = SegTree<X, Int>(0, (a, b) => max(a, b))
-var end_of: [X]Int = 0                  // where the range that starts here ends
+var end_of: [X]Int = 0  // where the range that starts here ends
 var held = 0
 fn throw_out(x: X) -> Int:
     starts.set(x, 0)
@@ -36,7 +36,7 @@ for o in orders:
     var gone = 0
     while starts.query(first, last) > 0: gone += throw_out(X(starts.query(first, last) - 1))
     if let before = first - 1:
-        let top = starts.query(X.first, before)     // the last range that starts before l
+        let top = starts.query(X.first, before)  // the last range that starts before l
         if top > 0 and end_of[X(top - 1)] >= o.l: gone += throw_out(X(top - 1))
     starts.set(first, first.idx + 1)
     end_of[first] = o.r

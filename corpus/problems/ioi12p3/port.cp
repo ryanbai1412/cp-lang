@@ -12,13 +12,13 @@
 // each node keeps one long jump upwards, chosen so that the climb takes
 // O(log n) steps and a new node needs no table.
 let n: Int = read()
-domain Text = 0..=n                 // Text.first is the empty text
+domain Text = 0..=n  // Text.first is the empty text
 var len: [Text]Int = 0
 var last: [Text]Char = ' '
 var up = [Text] t => t
 var jump = [Text] t => t
 
-var texts = 0                       // texts made so far, not counting the empty one
+var texts = 0  // texts made so far, not counting the empty one
 var history: List<Text> = [Text.first]
 for _ in 0..n:
     let op: Char = read()

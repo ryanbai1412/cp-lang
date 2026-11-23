@@ -8,7 +8,7 @@ domain Ship = 1..=n
 
 fn menu() -> [Ship]Char:
     let kinds: List<Char> = ['M', 'F', 'B']
-    [Ship] _ => kinds[rand(0, 2)]           // WISH: "MFB"[rand(0, 2)]
+    [Ship] _ => kinds[rand(0, 2)]  // WISH: "MFB"[rand(0, 2)]
 
 let food: [Ship]Char = read(gen: menu)
 

@@ -34,7 +34,9 @@ for bot in Row:
     for c in Col:
         if let ch = Letter.at(Int(g[bot, c]) - Int('A')):
             last[c, ch] = bot
-    var free = [Letter.subsets] s => FreeSpans.new([Col] c => s.items.count(ch => last[c, ch] != None))
+    var free = [Letter.subsets] s => FreeSpans.new(
+        [Col] c => s.items.count(ch => last[c, ch] != None)
+    )
     let leaving = last.buckets()
     for top in ..=bot:
         count += Letter.subsets.sum(of: s => if s.len % 2 == 0: free[s].total else: -free[s].total)

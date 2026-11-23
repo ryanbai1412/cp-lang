@@ -11,7 +11,7 @@
 // collected once.
 use std.seq.{merge_sorted}
 
-enum Side:  Left | Right
+enum Side: Left | Right
 fn flip(s: Side) -> Side = match s:
     Left => Side.Right
     Right => Side.Left

@@ -10,11 +10,4 @@
 @!multitest
 domain I = read(1..=5_000)
 let p: [I]1..=5_000 = read()
-print(
-    sum(
-        min(
-            I.before(i).count(j => p[j] > p[i]),
-            I.after(i).count(j => p[j] > p[i]),
-        ) for i in I
-    )
-)
+print(sum(min(I.before(i).count(j => p[j] > p[i]), I.after(i).count(j => p[j] > p[i])) for i in I))

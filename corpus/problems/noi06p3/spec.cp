@@ -14,8 +14,13 @@ fn comb(depth: List<Int>) -> Int:
         let j = i.next ?? return if cur == Low: 0 else: inf
         let keep = Int(h) - depth[Int(j)] + best(j, h, cur, cur)
         let step = if cur == Low: -1 else: 1
-        let nudge = if prev == cur: inf else: (h + step).map(g => step + best(i, g, prev, cur)) ?? inf
-        let turn_to = if cur == Low: max(Int(h) + 1, depth[Int(j)]) else: min(Int(h) - 1, depth[Int(j)])
+        let nudge = if prev == cur: inf else: (h + step).map(
+            g => step + best(i, g, prev, cur)
+        ) ?? inf
+        let turn_to = if cur == Low: max(Int(h) + 1, depth[Int(j)]) else: min(
+            Int(h) - 1,
+            depth[Int(j)],
+        )
         let flip = if cur == Low: High else: Low
         let turn = H.at(turn_to).map(g => Int(g) - depth[Int(j)] + best(j, g, cur, flip)) ?? inf
         min(keep, nudge, turn)

@@ -4,7 +4,7 @@
 // original: corpus/submissions/3618571.cpp
 let n: 2..=2e5 = read()
 domain V = 1..=n
-domain Kid = 2..=n                             // every city but the first has a parent
+domain Kid = 2..=n  // every city but the first has a parent
 let a: [V]1..=1e4 = read()
 
 fn random_parents() -> [Kid]V:
@@ -22,11 +22,11 @@ while at < order.len:
     for c in kids[order[at]]: order.push(c)
     at += 1
 
-var below: [V]Int = [V] v => a[v]              // people at or under v
+var below: [V]Int = [V] v => a[v]  // people at or under v
 for v in order.rev:
     for c in kids[v]: below[v] += below[c]
 
-fn sums(xs: List<Int>) -> List<Int>:           // the total of every subset
+fn sums(xs: List<Int>) -> List<Int>:  // the total of every subset
     var out = [0]
     for x in xs:
         for more in [s + x for s in out]: out.push(more)
@@ -36,13 +36,13 @@ fn sums(xs: List<Int>) -> List<Int>:           // the total of every subset
 fn near_half(parts: List<Int>) -> Int:
     let whole = parts.sum()
     let big = parts.max()!
-    if 2 * big >= whole: return whole - big    // one part outweighs the rest
+    if 2 * big >= whole: return whole - big  // one part outweighs the rest
     // Meet in the middle: all subsets of each half, then one sweep over both.
     let cut = parts.len / 2
     let ls = sums([parts[i] for i in 0..cut]).sorted()
     let rs = sums([parts[i] for i in cut..parts.len]).sorted()
     var best = 0
-    var i = 0                                  // ls[i]: the largest that fits beside r
+    var i = 0  // ls[i]: the largest that fits beside r
     for r in rs.rev:
         if 2 * r > whole: continue
         while i + 1 < ls.len and 2 * (ls[i + 1] + r) <= whole: i += 1

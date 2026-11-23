@@ -12,7 +12,7 @@ let holes: [q]Pt<F64> = read()
 
 // Unfold backwards: paper at p after a fold was at p or at its mirror image
 // before it, and nothing is left on the right of the fold line.
-fn layers(done: Cut<Fold>, p: Pt<F64>) -> Int:                                     // the folds before `done` have been made
+fn layers(done: Cut<Fold>, p: Pt<F64>) -> Int:                                        // the folds before `done` have been made
     let last = done.l else: return if 0 <= p.x <= 100 and 0 <= p.y <= 100: 1 else: 0  // WISH F5-like: the fold left of a boundary
     let (a, b) = folds[last]
     if cross(b - a, p - a) < 0: return 0

@@ -38,7 +38,7 @@ for p in order.rev:
 print(line([p.to_idx + 1 for p in sorted([p for p in Plane], by: p => due[p])]))
 
 fn earliest(u: Plane) -> Int:
-    var first: [Plane]Bool = false          // u and everything that must precede it
+    var first: [Plane]Bool = false  // u and everything that must precede it
     var stack = [u]
     first[u] = true
     while not stack.is_empty:

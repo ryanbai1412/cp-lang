@@ -13,5 +13,8 @@ let deals = chain(
 domain Free = 0..=comps.sum(of: .cores)
 var best: [Free]?Int = [Free] f => if f == 0: 0 else: None
 for d in deals:
-    best = [Free] f => max(best[f], (if let g = Free.at(Int(f) - d.cores): best[g] else: None).map(p => p + d.cash))
+    best = [Free] f => max(
+        best[f],
+        (if let g = Free.at(Int(f) - d.cores): best[g] else: None).map(p => p + d.cash),
+    )
 print(Free.filter_map(f => best[f]).max()!)

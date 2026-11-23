@@ -4,7 +4,15 @@
 // to hold them; then the only useful stops are walk ends and, at each end's
 // building, the highest walk passing just below it. Dijkstra over those stops.
 @grader
-fn min_distance(x: List<Int>, h: List<Int>, l: List<Int>, r: List<Int>, y: List<Int>, s: Int, g: Int) -> Int:
+fn min_distance(
+    x: List<Int>,
+    h: List<Int>,
+    l: List<Int>,
+    r: List<Int>,
+    y: List<Int>,
+    s: Int,
+    g: Int,
+) -> Int:
     domain B = [x.len]
     let tall = SparseTable(max, [B] b => h[Int(b)])
     let (start, goal) = (B(s), B(g))
@@ -14,7 +22,11 @@ fn min_distance(x: List<Int>, h: List<Int>, l: List<Int>, r: List<Int>, y: List<
             return [w]
         let left = (w.span.first!..=at).last_true(b => tall.fold(b..=at) >= w.y)!
         let right = (at..=w.span.last!).first_true(b => tall.fold(at..=b) >= w.y)!
-        [(span: w.span.first!..=left, y: w.y), (span: left..=right, y: w.y), (span: right..=w.span.last!, y: w.y)]
+        [
+            (span: w.span.first!..=left, y: w.y),
+            (span: left..=right, y: w.y),
+            (span: right..=w.span.last!, y: w.y),
+        ]
             .filter(p => p.span.len > 1).collect()
 
     let raw = [(span: B(l[i])..=B(r[i]), y: y[i]) for i in 0..l.len]
@@ -41,7 +53,13 @@ fn min_distance(x: List<Int>, h: List<Int>, l: List<Int>, r: List<Int>, y: List<
     var links: List<(u: Stop, v: Stop, w: Int)> = []
     for i in walks.keys:
         for (p, q) in on[i].sorted().dedup().adjacent:
-            links.push((u: at.at((b: p, y: walks[i].y)), v: at.at((b: q, y: walks[i].y)), w: x[Int(q)] - x[Int(p)]))
+            links.push(
+                (
+                    u: at.at((b: p, y: walks[i].y)),
+                    v: at.at((b: q, y: walks[i].y)),
+                    w: x[Int(q)] - x[Int(p)],
+                )
+            )
     for (p, q) in Stop.with_next:
         if let Some(q) = q:
             if at.get(p).b == at.get(q).b:

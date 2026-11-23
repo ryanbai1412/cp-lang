@@ -140,7 +140,6 @@ pub struct IntervalMap<D, T>:
                     new_hi = nseg.hi
         segs[new_lo] = (hi: new_hi, val:)
 
-
     /// Give position `i` the value `val` and return the value it had.
     ///
     /// cost: O(log runs)
@@ -626,7 +625,6 @@ pub struct SparseIntervalMap<T>:
         segs[a] = (hi: b, val: val)
         self.merge_at(b)
         self.merge_at(a)
-
 
     /// Replace the value `v` of every run overlapping `r`, clipped to `r`, with `f(v)`, then merge
     /// equal neighbours. `f` is called once per piece, in ascending order.

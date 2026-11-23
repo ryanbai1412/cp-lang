@@ -44,7 +44,7 @@ for p in (0..k).rev:
 // exactly |sum of signed positions| over the block.
 var cost: List<Int> = []
 cost.push(0)
-var last: [0..=2 * k]Int = -1        // balance + k -> latest prefix with that balance
+var last: [0..=2 * k]Int = -1  // balance + k -> latest prefix with that balance
 var bal = k
 var signed = 0
 var signed_at: List<Int> = []

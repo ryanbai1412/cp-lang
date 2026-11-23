@@ -31,9 +31,7 @@ let peak = SparseTable<I, Int>(max, a)
 
 fn feasible(v: Int) -> Bool:
     let pre = prefix_fold((x, y) => x ^ y, [I] i => a[i] & v)
-    var cuts = [
-        (class: min(pre[c], pre[c] ^ v), at: c, odd: (pre[c] ^ v) < pre[c]) for c in I.cuts
-    ]
+    var cuts = [(class: min(pre[c], pre[c] ^ v), at: c, odd: (pre[c] ^ v) < pre[c]) for c in I.cuts]
     cuts.sort()
     var stk: List<(top: Int, ends: Ends)> = []
     for (t, b) in cuts.items:

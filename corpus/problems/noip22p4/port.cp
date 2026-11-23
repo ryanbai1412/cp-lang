@@ -32,7 +32,7 @@ let id_tag = HistTag(false, 0, false, 0, 0, 0, 0, 0)
 
 let hist_monoid = Monoid<HistNode>(
     id: HistNode(0, 0, 0, 0, 0),
-    op: (x, y) => HistNode(x.len + y.len, x.sa + y.sa, x.sb + y.sb, x.sab + y.sab, x.hist + y.hist)
+    op: (x, y) => HistNode(x.len + y.len, x.sa + y.sa, x.sb + y.sb, x.sab + y.sab, x.hist + y.hist),
 )
 
 // Compose `f` (newer) after `g` (older).
@@ -81,7 +81,7 @@ let hist_action = Action<HistNode, HistTag>(
     id: id_tag,
     compose: (f, g) => compose_tag(f, g),
     apply: (f, x, len) => apply_tag(f, x),
-    over: hist_monoid
+    over: hist_monoid,
 )
 
 var by_r: [I]List<Q> = [I] _ => []

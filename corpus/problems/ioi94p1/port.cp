@@ -1,7 +1,7 @@
 // IOI 1994 The Triangle: the largest sum on a path from the top of a number
 // triangle to its base, each step going down-left or down-right.
 let n: 1..=100 = read()
-var best: List<Int> = []                // best path sum ending at each cell of the row above
+var best: List<Int> = []  // best path sum ending at each cell of the row above
 for r in 1..=n:
     var row: List<Int> = []
     for c in 0..r:

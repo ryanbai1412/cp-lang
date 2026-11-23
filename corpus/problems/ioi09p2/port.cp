@@ -42,7 +42,9 @@ fn sweep(stop: ?Worker) -> ?Plan:
         while points * ask[i].s > w * ask[i].q:
             points -= hired.pop()!.0
         let plan: Plan = (setter: i, size: hired.len, points:)
-        if best == none or plan.size > best!.size or (plan.size == best!.size and cheaper(plan, best!)):
+        if best == none or plan.size > best!.size or (
+            plan.size == best!.size and cheaper(plan, best!)
+        ):
             best = plan
         if stop == i:
             print(hired.len)

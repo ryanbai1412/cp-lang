@@ -23,7 +23,7 @@ for left in 0..m:
             lo[r] min= h[r * m + right]
             hi[r] max= h[r * m + right]
         var (hi_head, hi_tail, lo_head, lo_tail) = (0, 0, 0, 0)
-        var bottom = 0                       // one past the last row of the window
+        var bottom = 0  // one past the last row of the window
         for top in 0..n:
             bottom max= top
             while bottom < n:

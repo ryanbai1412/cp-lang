@@ -10,7 +10,7 @@ domain V = 1..=n
 domain Stick = 0..m
 let sticks: [Stick](lo: V, hi: V) = read()
 
-var above = [V] v => Set<V>()               // the higher neighbours of v
+var above = [V] v => Set<V>()  // the higher neighbours of v
 for (lo, hi) in sticks: above[lo].add(hi)
 
 var total = 0

@@ -28,9 +28,15 @@ var lens = SortedBag<Int>()
 
 fn refresh(l: X, r: X):
     let at_r = gaps.get(r)
-    gaps.set(r, Gap(end_l: lefts_ending.get(r).and_then(b => b.last), start_r: at_r.start_r, span: None))
+    gaps.set(
+        r,
+        Gap(end_l: lefts_ending.get(r).and_then(b => b.last), start_r: at_r.start_r, span: None),
+    )
     let at_l = gaps.get(l)
-    gaps.set(l, Gap(end_l: at_l.end_l, start_r: rights_starting.get(l).and_then(b => b.first), span: None))
+    gaps.set(
+        l,
+        Gap(end_l: at_l.end_l, start_r: rights_starting.get(l).and_then(b => b.first), span: None),
+    )
 
 for op in read<[q]Op>():
     match op:

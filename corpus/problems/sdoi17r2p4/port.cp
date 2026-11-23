@@ -14,9 +14,15 @@ for _ in 0..tests:
     domain Word = 1..=k
     domain Letter = 1..k
 
-    fn reaching() -> [Road](u: Town, v: Town, cost: 1..=5e4, word: Word):     // generator: every town can be reached
-        [Road] r => (if r.idx < n - 1: (Town(rand(1, r.idx + 1)), Town(r.idx + 2), rand(1, 50000), Word(rand(1, k)))
-                     else: (Town(rand(1, n)), Town(rand(1, n)), rand(1, 50000), Word(rand(1, k))))
+    fn reaching() -> [Road](u: Town, v: Town, cost: 1..=5e4, word: Word):  // generator: every town can be reached
+        [Road] r => (
+            if r.idx < n - 1: (
+                Town(rand(1, r.idx + 1)),
+                Town(r.idx + 2),
+                rand(1, 50000),
+                Word(rand(1, k)),
+            ) else: (Town(rand(1, n)), Town(rand(1, n)), rand(1, 50000), Word(rand(1, k)))
+        )
     fn random_tree() -> [Letter](u: Word, v: Word, ch: 1..=2e4):
         [Letter] l => (Word(rand(1, l.label)), Word(l.label + 1), l.label)
 

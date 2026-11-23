@@ -9,7 +9,7 @@ let n: 3..=2e5 = read()
 let w: 0..=2e5 = read()
 let d: 1..=2e5 = read()
 domain Station = 1..=n
-domain Stop = 1..=n                         // position on the line; the train is there at minute stop.ord
+domain Stop = 1..=n  // position on the line; the train is there at minute stop.ord
 let walkways: [w](from: Station, to: Station) = read()
 
 // for generated tests: station 1 first, then the others in a rotated order
@@ -22,7 +22,7 @@ let swaps: [d](x: Stop, y: Stop) = read() where all(s.x != s.y for s in swaps)
 
 var into: [Station]List<Station> = []
 for (from, to) in walkways: into[to].push(from)
-let on_foot = bfs(s => into[s], from: [Station.last])   // minutes to walk to station n, none if impossible
+let on_foot = bfs(s => into[s], from: [Station.last])  // minutes to walk to station n, none if impossible
 
 // Ride to a stop, get off and walk. The best stop is kept under the swaps.
 fn arrival(i: Stop) -> ?Int: i.ord + on_foot[line[i]]?

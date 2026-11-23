@@ -10,8 +10,13 @@ let m: n - 1..=1e6 = read()
 domain City = 1..=n
 domain Road = 0..m
 
-fn connected() -> [Road](u: City, v: City):     // generator: a random tree, then extra roads
-    [Road] r => (if r.idx < n - 1: (City(rand(1, r.idx + 1)), City(r.idx + 2)) else: (City(rand(1, n)), City(rand(1, n))))
+fn connected() -> [Road](u: City, v: City):  // generator: a random tree, then extra roads
+    [Road] r => (
+        if r.idx < n - 1: (
+            City(rand(1, r.idx + 1)),
+            City(r.idx + 2),
+        ) else: (City(rand(1, n)), City(rand(1, n)))
+    )
 
 let roads: [Road](u: City, v: City) = read(gen: connected)
 let land = Graph.undirected(roads)
@@ -38,8 +43,8 @@ for v in tree.at:
 // every bridge that has to be guarded.
 // held: non-empty sets of barracks in the blocks below b's bridge and on,
 // with every bridge between them and b guarded.
-var some: [City]Z = 1       // over b's child blocks: no barracks there, or a held set and its bridge
-var one: [City]Z = 0        // sets that lie inside a single child block and its bridge
+var some: [City]Z = 1  // over b's child blocks: no barracks there, or a held set and its bridge
+var one: [City]Z = 0   // sets that lie inside a single child block and its bridge
 var total: Z = 0
 let two = Z(2)
 for b in tree.at.rev:

@@ -44,5 +44,8 @@ for _ in 0..t:
                 // every range but the highest hangs from the path by one more edge
                 if l != peak:
                     let above = tree.sub(tree.parent(who[l])!).l
-                    if stamp.sum(l, l) != 0 and stamp.sum(l, l) == stamp.sum(above, above): heavy += 1
+                    if stamp.sum(l, l) != 0 and stamp.sum(l, l) == stamp.sum(
+                        above,
+                        above,
+                    ): heavy += 1
             print(heavy)

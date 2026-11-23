@@ -29,7 +29,15 @@ pub struct FlatMap<V>:
     pub fn new(default_val: V, cap: Int = 16) -> FlatMap<V>:
         var size = 2
         while size < 2 * cap: size *= 2
-        FlatMap(List.filled(size, 0), List.filled(size, default_val), List.filled(size, 0), default_val, splitmix64(U64(size) ^ U64(0x5bd1e995)), 0, 0)
+        FlatMap(
+            List.filled(size, 0),
+            List.filled(size, default_val),
+            List.filled(size, 0),
+            default_val,
+            splitmix64(U64(size) ^ U64(0x5bd1e995)),
+            0,
+            0,
+        )
 
     /// Number of live key-value pairs.
     ///

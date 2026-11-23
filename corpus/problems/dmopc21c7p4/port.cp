@@ -12,8 +12,8 @@ let node_monoid = Monoid<Node>(
         max(x.mxb, y.mxb),
         if y.cnt > 0: y.lastd else: x.lastd,
         x.cnt + y.cnt,
-        x.sm + y.sm
-    )
+        x.sm + y.sm,
+    ),
 )
 
 let n: Int = read()

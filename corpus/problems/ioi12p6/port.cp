@@ -15,9 +15,9 @@
 
 let (n, c, r): (Int, Int, Int) = read()
 domain Pos = 0..n
-domain Gap = 0..n - 1                       // gap g is between positions g and g + 1
-domain Node = 0..n + c                      // the leaves, then the rounds
-let rank: [Gap]Int = read()                 // the fixed knight who fills gap g
+domain Gap = 0..n - 1        // gap g is between positions g and g + 1
+domain Node = 0..n + c       // the leaves, then the rounds
+let rank: [Gap]Int = read()  // the fixed knight who fills gap g
 var kids: [Node]List<Node> = [Node] _ => []
 
 // alive[p] = 1 while the group whose leftmost starting position is p is

@@ -26,7 +26,9 @@ fn solve():
     sort(tiles)
     for t in tiles.rev:
         domain R = 0..rows.len
-        if let r = R.first_where(r => rows[r.idx][rows[r.idx].len - 1].b >= t.b): rows[r.idx].push(t)
+        if let r = R.first_where(
+            r => rows[r.idx][rows[r.idx].len - 1].b >= t.b
+        ): rows[r.idx].push(t)
         else: rows.push([t])
     print(rows.len)
     for row in rows:

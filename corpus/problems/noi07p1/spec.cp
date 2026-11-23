@@ -23,4 +23,9 @@ fn share(s: V, v: V, t: V) -> F64:
     let st = best[s, t]!
     if sv.d + vt.d == st.d: F64(sv.ways * vt.ways) / F64(st.ways) else: 0.0
 for v in V:
-    print([(s, t) for s in V for t in V if s != t and s != v and t != v].sum(of: p => share(p.0, v, p.1)), digits: 3)
+    print(
+        [
+            (s, t) for s in V for t in V if s != t and s != v and t != v
+        ].sum(of: p => share(p.0, v, p.1)),
+        digits: 3,
+    )

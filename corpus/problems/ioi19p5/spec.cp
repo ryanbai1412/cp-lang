@@ -16,7 +16,11 @@ fn construct_network(h: Int, w: Int, k: Int):
     fn lines(key: (R, C) -> Int) -> List<Int>:
         let cells = [(r, c) for r in R for c in C]
         let by_line = cells.group(by: rc => key(rc.0, rc.1))
-        [add_or(by_line[d].map(rc => wire(rc.0, rc.1)).collect()) for d in by_line.keys.collect().sorted()]
+        [
+            add_or(
+                by_line[d].map(rc => wire(rc.0, rc.1)).collect()
+            ) for d in by_line.keys.collect().sorted()
+        ]
 
     fn gap_exactly(ls: List<Int>, d: Int) -> Int =
         any([add_and([ls[i], ls[i + d]]) for i in 0..ls.len - d])

@@ -10,7 +10,7 @@ const BUTTONS = "ABXY"
 protocol Combo:
     fn press(p: Str) -> Int
     limit press: n + 2
-    require p.len <= 4 * n                          // a call that breaks this fails the run
+    require p.len <= 4 * n  // a call that breaks this fails the run
 
 // The hidden word. Its rule ("the first letter never comes back") is not a
 // type: the generator builds it that way, and `valid` states the rule once

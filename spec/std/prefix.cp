@@ -280,8 +280,20 @@ pub struct _FillPrefix2 < R, C, T >:
         if rev:
             let in_filled = rows.start.ord * C.K + cols.start.ord > next
             assert in_filled
-            return self.p[rows.start, cols.start] - self.p[rows.end, cols.start] - self.p[rows.start, cols.end] + self.p[rows.end, cols.end]
-        self.prefix(rows.end, cols.end) - self.prefix(rows.start, cols.end) - self.prefix(rows.end, cols.start) + self.prefix(rows.start, cols.start)
+            return self.p[
+                rows.start,
+                cols.start,
+            ] - self.p[rows.end, cols.start] - self.p[
+                rows.start,
+                cols.end,
+            ] + self.p[rows.end, cols.end]
+        self.prefix(rows.end, cols.end) - self.prefix(rows.start, cols.end) - self.prefix(
+            rows.end,
+            cols.start,
+        ) + self.prefix(
+            rows.start,
+            cols.start,
+        )
 
 /// Internal 2-D shape of `Prefix<R, C, T>`, constructed by `Prefix(a)` or `Prefix<R, C, T>.filling(...)`.
 pub struct _Prefix2 < R, C, T >:
@@ -328,7 +340,13 @@ pub struct _Prefix2 < R, C, T >:
     /// traps: never
     /// example: `domain R = 0..2; domain C = 0..3; let p = Prefix<R, C, Int>([R, C] (r, c) => 1 + 3 * Int(r) + Int(c)); p.fold(0..=1, 1..=2) == 16`
     pub fn fold(self, rows: Range<R>, cols: Range<C>) -> T:
-        self.p[rows.end, cols.end] - self.p[rows.start, cols.end] - self.p[rows.end, cols.start] + self.p[rows.start, cols.start]
+        self.p[rows.end, cols.end] - self.p[rows.start, cols.end] - self.p[
+            rows.end,
+            cols.start,
+        ] + self.p[
+            rows.start,
+            cols.start,
+        ]
 
 /// Internal append-only list prefix/suffix sum table returned by `Prefix<T>.filling(n, ...)`.
 pub struct _FillPrefixList < T >:
@@ -418,10 +436,7 @@ pub struct _PrefixList < T >:
     /// traps: when `r` is non-empty and reaches outside `0..n`
     /// example: `Prefix<Int>([3, 1, 4]).fold(1..3) == 5`
     /// example: `Prefix<Int>([3, 1, 4]).fold(2..2) == 0`
-    pub fn fold(
-        self,
-        r: Range<Int>,
-    ) -> T:
+    pub fn fold(self, r: Range<Int>) -> T:
         self.p[r.end] - self.p[r.start]
 
 /// Prefix monoid folds of `a`, indexed by `Cut<D>`: `p[b]` is the fold of `..b`,

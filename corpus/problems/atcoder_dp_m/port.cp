@@ -14,7 +14,7 @@ var ways: [Given]Z = 0
 ways[Given.first] = 1
 for most in a:
     var next: [Given]Z = 0
-    var window: Z = 0// ways[g - most ..= g]
+    var window: Z = 0  // ways[g - most ..= g]
     for g in Given:
         window += ways[g]
         if let gone = g - (most + 1): window -= ways[gone]

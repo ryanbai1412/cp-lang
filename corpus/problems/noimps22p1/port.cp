@@ -46,7 +46,7 @@ for line in lines:
         let rest = line[8..].trim_start(' ')
         let (name, body) = rest.split_once(' ') ?? (rest, "")
         macros[name] = body.trim_start(' ')
-        print("") // directive lines output an empty line
+        print("")  // directive lines output an empty line
     elif line.starts_with("#undef "):
         let name = line[7..].trim(' ')
         macros.remove(name)
@@ -56,7 +56,7 @@ for line in lines:
 
 // WISH B19-3: stateful constructive `gen` for valid preprocessor programs (never `#undef`s an
 // undefined macro, exercises recursive/mutual macro cycles, multi-space indentation, and empty lines)
-gen (n, lines):
+gen(n, lines):
     let pool = ["A", "B", "C", "FOO", "BAR", "x_1", "y_2"]
     let n = rng.int(1..=min(size, 40))
     var defined: List<Str> = []
@@ -65,11 +65,13 @@ gen (n, lines):
         let kind = rng.int(0..4)
         if kind == 0:
             let name = rng.choice(pool)
-            let body = rng.choice([
-                f"{rng.choice(pool)} + {rng.choice(pool)}",
-                f"  {rng.choice(pool)}({rng.choice(pool)})  ",
-                "",
-            ])
+            let body = rng.choice(
+                [
+                    f"{rng.choice(pool)} + {rng.choice(pool)}",
+                    f"  {rng.choice(pool)}({rng.choice(pool)})  ",
+                    "",
+                ]
+            )
             if name not in defined: defined.push(name)
             out.push(f"#define {name} {body}")
         elif kind == 1 and defined.len > 0:

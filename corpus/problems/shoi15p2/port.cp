@@ -13,9 +13,13 @@ struct Run:
     suf: Int
 
 fn join(a: Run, b: Run) -> Run:
-    Run(a.holes + b.holes, a.cells + b.cells, max(max(a.best, b.best), a.suf + b.pre),
+    Run(
+        a.holes + b.holes,
+        a.cells + b.cells,
+        max(max(a.best, b.best), a.suf + b.pre),
         if a.cells == 0: a.holes + b.pre else: a.pre,
-        if b.cells == 0: b.holes + a.suf else: b.suf)
+        if b.cells == 0: b.holes + a.suf else: b.suf,
+    )
 
 fn solid(hole: Bool, len: Int) -> Run:
     if hole: Run(len, 0, len, len, len) else: Run(0, len, 0, 0, 0)
@@ -75,5 +79,8 @@ for _ in 0..q:
         if moved > 0:
             assign(1, 1, n, l, r, 1)
             // fill holes of to_l..=to_r left to right until the tissue runs out
-            let lo = bsearch_first(to_l..to_r, mid => fold(1, 1, n, to_l, mid).holes >= moved) ?? to_r
+            let lo = bsearch_first(
+                to_l..to_r,
+                mid => fold(1, 1, n, to_l, mid).holes >= moved,
+            ) ?? to_r
             assign(1, 1, n, to_l, lo, 0)

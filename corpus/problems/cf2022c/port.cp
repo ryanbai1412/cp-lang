@@ -10,7 +10,7 @@
 
 @!multitest
 let n: 3..=100_000 = read()
-enum Row:  Top | Bottom
+enum Row: Top | Bottom
 let s: [Row]Str = [Row] _ => read()
 fn other(r: Row) -> Row = if r == Row.Top: Row.Bottom else: Row.Top
 fn vote(r: Row, c: Int) -> Int = Int(s[r][c] == 'A')
@@ -26,7 +26,9 @@ fn best(c: 0..=n, f: Front) -> Int = match f:
     Flush if c == n => 0
     Flush =>
         let stacked = bar(Row.Top, c) + bar(Row.Bottom, c) + best(c + 3, Front.Flush)
-        let by_ell = [Row.Top, Row.Bottom].map(z => open_ell(z, c) + best(c + 1, Front.Behind(z))).max()
+        let by_ell = [Row.Top, Row.Bottom].map(
+            z => open_ell(z, c) + best(c + 1, Front.Behind(z))
+        ).max()
         max(stacked, by_ell)
     Behind(z) =>
         let close = close_ell(z, c) + best(c + 2, Front.Flush)

@@ -1,7 +1,13 @@
 // NOI 2008 "Candy Rain": clouds bounce between 0 and m; add and remove clouds
 // and count clouds over [l, r] at time t. A cloud is a point (phase, len) on
 // a 2m cycle; a query is two rectangles, one per direction of travel.
-enum Op = @tag(1) Add(t: Int, c: Int, l: Int, r: Int, d: -1..=1) | @tag(2) Ask(t: Int, l: Int, r: Int) | @tag(3) Remove(t: Int, c: Int)
+enum Op = @tag(1) Add(
+    t: Int,
+    c: Int,
+    l: Int,
+    r: Int,
+    d: -1..=1,
+) | @tag(2) Ask(t: Int, l: Int, r: Int) | @tag(3) Remove(t: Int, c: Int)
 
 let (q, m) = read<(1..=1e6, 1..=1000)>()
 let cycle = 2 * m
@@ -27,7 +33,10 @@ for op in read<[q]Op>():
             let base = (-t) % cycle
             let up = rising.fold(span(base, base + r), span(base + l, X.size - 1))
             let b = base + cycle
-            let down = falling.fold(span(b + max(r + 1, cycle - r), b + cycle - 1), span(0, b + cycle - l))
+            let down = falling.fold(
+                span(b + max(r + 1, cycle - r), b + cycle - 1),
+                span(0, b + cycle - l),
+            )
             print(up + down)
         Remove(_, c) =>
             let x = cloud.remove(c)!

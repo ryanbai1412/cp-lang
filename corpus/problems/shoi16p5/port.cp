@@ -22,7 +22,10 @@ fn leaf(i: I) -> Affine:
     let closes = if at == n - 1: 1 else: 2 * pow3[n - 2 - at] % MOD
     Affine(a[i] % MOD, a[i] % MOD * closes % MOD)
 
-var chain = SegTree<I, Affine>(Affine(1, 0), (f, g) => Affine(f.mul * g.mul % MOD, (f.mul * g.add + f.add) % MOD))
+var chain = SegTree<I, Affine>(
+    Affine(1, 0),
+    (f, g) => Affine(f.mul * g.mul % MOD, (f.mul * g.add + f.add) % MOD),
+)
 for i in I: chain.set(i, leaf(i))
 for _ in 0..q:
     let i: 1..=n = read()

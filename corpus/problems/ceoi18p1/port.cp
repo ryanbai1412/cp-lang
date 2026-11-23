@@ -8,11 +8,13 @@ let m: 1..=2000 = read()
 let orders: [0..m]Offer = read()
 
 // (rate, cores, gain); fastest first, at equal rate machines (positive cores) before orders
-var deals = [(o.rate, o.cores, -o.price) for o in machines] + [(o.rate, -o.cores, o.price) for o in orders]
+var deals = [
+    (o.rate, o.cores, -o.price) for o in machines
+] + [(o.rate, -o.cores, o.price) for o in orders]
 deals.sort()
 
 let top = 50 * n
-var best: [0..=top]?Int = none          // best profit leaving this many spare cores
+var best: [0..=top]?Int = none  // best profit leaving this many spare cores
 best[0] = 0
 for (_, cores, gain) in deals.rev:
     // each deal is taken at most once: walk away from where the cores come from

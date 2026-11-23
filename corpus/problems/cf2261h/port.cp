@@ -21,7 +21,10 @@ fn untwist(h: Int, s: Str) -> Str:
     out
 
 fn data_slots(h: Int) -> List<Int> = [i for i in (0..size(h)).rev if i == 0 or i & (i - 1) != 0]
-fn parity(s: Str, bit: Int) -> Bool = (0..s.len).filter(j => j & bit != 0).count(j => s[j] == '1') % 2 == 1
+fn parity(
+    s: Str,
+    bit: Int,
+) -> Bool = (0..s.len).filter(j => j & bit != 0).count(j => s[j] == '1') % 2 == 1
 
 fn encode(h: Int, b: Str) -> Str:
     var s = "0".repeat(size(h))

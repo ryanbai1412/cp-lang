@@ -16,7 +16,9 @@ fn social_engineering(n: Int, edges: List<(Int, Int)>):
     var route = Map<V, List<V>>()
 
     fn pair_up(u: V) -> ?List<V>:
-        let open = List(chain(if friend[u]: [List<V>()] else: [], forest.children(u).filter_map(pair_up)))
+        let open = List(
+            chain(if friend[u]: [List<V>()] else: [], forest.children(u).filter_map(pair_up))
+        )
         for pair in open.chunks(2) if pair.len == 2:
             let path = pair[0] + [u] + pair[1].rev
             route[path.first!] = path

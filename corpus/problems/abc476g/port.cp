@@ -12,7 +12,11 @@ for k in 1..=MAXB:
             var best = 0
             for c in b..=a:
                 let left = if c > k - 1: 0 else: f[k - 1, min(a, k - 1), c]
-                let right = if c == 0 or b - 1 > k - 1: 0 else: f[k - 1, min(c - 1, k - 1), max(0, b - 1)]
+                let right = if c == 0 or b - 1 > k - 1: 0 else: f[
+                    k - 1,
+                    min(c - 1, k - 1),
+                    max(0, b - 1),
+                ]
                 best max= left + right
             f[k, a, b] = best
 

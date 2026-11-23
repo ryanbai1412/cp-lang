@@ -15,7 +15,7 @@ let signs: [Gap]Char = read(gen: random_signs)
 var ways: [Rank]Z = 0
 ways[Rank.first] = 1
 for g in Gap:
-    let placed = Rank(g.label)          // how many values are placed already
+    let placed = Rank(g.label)  // how many values are placed already
     var next: [Rank]Z = 0
     var run: Z = 0
     if signs[g] == '<':

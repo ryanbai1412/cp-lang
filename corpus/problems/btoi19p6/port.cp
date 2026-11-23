@@ -9,8 +9,8 @@ domain P = 0..N
 domain Ev = 0..K
 let score: [P, Ev]Int = read()
 
-var teams: List<Int> = []        // K members per subproblem
-var bans: List<Bool> = []        // N flags per subproblem
+var teams: List<Int> = []  // K members per subproblem
+var bans: List<Bool> = []  // N flags per subproblem
 var forced: List<Int> = []
 var count = 0
 var heap = MinHeap<(Int, Int)>()

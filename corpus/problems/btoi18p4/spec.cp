@@ -48,7 +48,10 @@ fn spread(side: T -> Bool) -> ?[Wire]Bool:
 // Top t can share its neighbour's direction when its own nested wires and its two neighbouring
 // tops still cover it from the other side.
 fn alone(t: T) -> Bool =
-    covers(kids(t) + [tops[Int(T.ring.prev(t))], tops[Int(T.ring.next(t))]], (lo: lo[tops[Int(t)]], hi: hi[tops[Int(t)]]))
+    covers(
+        kids(t) + [tops[Int(T.ring.prev(t))], tops[Int(T.ring.next(t))]],
+        (lo: lo[tops[Int(t)]], hi: hi[tops[Int(t)]]),
+    )
 
 let answer: ?[Wire]Bool =
     if T.len % 2 == 0 or T.len == 1:
@@ -65,9 +68,13 @@ let answer: ?[Wire]Bool =
             let (wb, wc) = (tops[Int(b)], tops[Int(c)])
             let pair = (lo: lo[wb], hi: hi[wc] + (if lo[wc] < lo[wb]: n else: 0))
             let others = [tops[Int(T.ring.prev(b))], tops[Int(T.ring.next(c))]]
-            if good - Int(free[b]) - Int(free[c]) == T.len - 2 and covers(kids(b) + kids(c) + others, pair):
+            if good - Int(free[b]) - Int(free[c]) == T.len - 2 and covers(
+                kids(b) + kids(c) + others,
+                pair,
+            ):
                 spread(t => T.ring.dist(c, t) % 2 == 0)
-            else: None)
+            else: None
+        )
 
 match answer:
     Some(dir) => print(dir.map(d => Int(d)), sep: "")

@@ -9,7 +9,7 @@ domain V = 0..n
 domain E = 1..=m
 type Trail = (a: V, b: V, t: 1..=1e4)
 
-fn forest() -> [E]Trail:                    // the last m billabongs each hang off an earlier one
+fn forest() -> [E]Trail:  // the last m billabongs each hang off an earlier one
     [E] e => (V(rand(0, e.label + n - 2 - m)), V(e.label + n - 1 - m), rand(1, 1e4))
 
 let trails: [E]Trail = read(gen: forest)
@@ -32,7 +32,7 @@ fn spread(from: V) -> List<Walk>:
             if v != back: todo.push((v, u, d + t))
     walks
 
-fn farthest(walks: List<Walk>) -> V:        // WISH: max(walks, by: .dist).to
+fn farthest(walks: List<Walk>) -> V:  // WISH: max(walks, by: .dist).to
     var far = walks[0]
     for w in walks:
         if w.dist > far.dist: far = w
@@ -41,7 +41,7 @@ fn farthest(walks: List<Walk>) -> V:        // WISH: max(walks, by: .dist).to
 // In each tree: a is farthest from anywhere, b is farthest from a, and every
 // billabong's longest walk ends at a or b. The tree's best meeting point is
 // the billabong whose longest walk is shortest (the radius).
-var reach: [V]Int = 0                       // longest walk from each billabong
+var reach: [V]Int = 0  // longest walk from each billabong
 var seen: [V]Bool = false
 var longest = 0
 var radii: List<Int> = []

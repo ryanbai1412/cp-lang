@@ -10,7 +10,7 @@ pub const PI = 3.141592653589793
 /// Never an exponent, never "-0". `x` must be finite and `|x| * 10^digits`
 /// must fit in an `Int`.
 pub fn fixed(x: F64, digits: Int) -> Str:
-    assert x == x and abs(x) < F64.MAX    // not NaN, not infinite
+    assert x == x and abs(x) < F64.MAX  // not NaN, not infinite
     var scale = 1
     for _ in 0..digits: scale *= 10
     let units = Int(abs(x) * scale + 0.5)
@@ -40,7 +40,7 @@ pub fn sin_cos(x: F64) -> (sin: F64, cos: F64):
     while abs(t) > 0.125:
         t /= 2
         halvings += 1
-    var (s, c, term) = (0.0, 0.0, 1.0)      // term = t^k / k!
+    var (s, c, term) = (0.0, 0.0, 1.0)  // term = t^k / k!
     for k in 0..14:
         if k % 4 == 0: c += term
         elif k % 4 == 1: s += term

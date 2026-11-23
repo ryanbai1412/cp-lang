@@ -8,7 +8,7 @@ let pts: [0..n]Pt = read()
 
 var pairs = 0
 for i in 0..n:
-    var top: ?Pt = none                 // steepest and shallowest directions so far
+    var top: ?Pt = none  // steepest and shallowest directions so far
     var low: ?Pt = none
     for j in i + 1..n:
         let cur = pts[j] - pts[i]

@@ -2,8 +2,8 @@
 // original: corpus/submissions/4727898.cpp
 let s: [domain I]Char = read()
 
-var ops: List<Int> = []        // 0 = min, 1 = max
-var vals: List<(Int, Int)> = [] // (min_smaller, min_larger)
+var ops: List<Int> = []          // 0 = min, 1 = max
+var vals: List<(Int, Int)> = []  // (min_smaller, min_larger)
 var leaves = 0
 var i = 0
 

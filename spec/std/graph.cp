@@ -14,13 +14,13 @@
 //!
 //! Customizing a graph is a lambda over `g.out(u)`; nothing is rebuilt.
 //! Unreachable is `None`. Whole-graph algorithms need `V: Domain`.
-use std.heap.{Heap, MinHeap}
-use std.dsu.{Dsu}
-use std.seq.{reverse, count}
-use std.deque.{Deque}
-use std.bitset.{Bitset}
 use std.algebra.{Monoid, Semiring}
+use std.bitset.{Bitset}
+use std.deque.{Deque}
+use std.dsu.{Dsu}
+use std.heap.{Heap, MinHeap}
 use std.math.{gcd}
+use std.seq.{reverse, count}
 
 /// O(deg u) per walk of `out(u)`.
 /// What every graph algorithm walks: the arcs out of `u`. Implemented by
@@ -131,7 +131,9 @@ pub struct Graph<V: Domain, A: Target<V>>:
     /// example: `domain V = 0..3; domain E = 0..2; let es: [E](u: V, v: V) = [(u: 0, v: 2), (u: 0, v: 1)]; Graph.directed(es, keep: a => (to: a.to)).out(0).collect() == [(to: 2), (to: 1)]`
     pub fn directed<E: Domain, R: (u: V, v: V, ..), B: Target<V>>(
         edges: [E]R,
-        keep: EdgeArc<V, E, R> -> B = a => a,
+        keep: EdgeArc<V,
+        E,
+        R> -> B = a => a,
     ) -> Graph<V, B>:
         let n = V.K
         var deg: [V]Int = 0
@@ -171,7 +173,9 @@ pub struct Graph<V: Domain, A: Target<V>>:
     /// example: `domain V = 0..1; domain E = 0..1; let es: [E](u: V, v: V) = [(u: 0, v: 0)]; Graph.undirected(es).deg(0) == 2`
     pub fn undirected<E: Domain, R: (u: V, v: V, ..), B: Target<V>>(
         edges: [E]R,
-        keep: EdgeArc<V, E, R> -> B = a => a,
+        keep: EdgeArc<V,
+        E,
+        R> -> B = a => a,
     ) -> Graph<V, B>:
         let n = V.K
         var deg: [V]Int = 0
@@ -393,9 +397,7 @@ pub struct Graph<V: Domain, A: Target<V>>:
     /// order: removal order
     /// traps: never
     /// example: `domain V = 0..4; domain E = 0..4; let es: [E](u: V, v: V) = [(u: 0, v: 1), (u: 0, v: 2), (u: 1, v: 3), (u: 2, v: 3)]; Graph.directed(es).peel() == [0, 1, 2, 3]`
-    pub fn peel(
-        self, ready: ?(V -> Bool) = None, on_remove: ?((V, A) -> ()) = None,
-    ) -> List<V>:
+    pub fn peel(self, ready: ?(V -> Bool) = None, on_remove: ?((V, A) -> ()) = None) -> List<V>:
         var indeg: [V]Int = 0
         var removed: [V]Bool = false
         for u in V:
@@ -481,7 +483,9 @@ pub struct Graph<V: Domain, A: Target<V>>:
 /// example: `domain V = 0..4; let g: [V]List<V> = [[1, 2], [3], [3], []]; peel(g) == [0, 1, 2, 3]`
 /// example: `domain V = 0..3; let g: [V]List<V> = [[1], [2], [1]]; peel(g) == [0]`
 pub fn peel<V, G: Next<V>>(
-    g: G, ready: ?(V -> Bool) = None, on_remove: ?((V, G.Arc) -> ()) = None,
+    g: G,
+    ready: ?(V -> Bool) = None,
+    on_remove: ?((V, G.Arc) -> ()) = None,
 ) -> List<V>:
     var order = List<V>()
     if let is_ready = ready:
@@ -833,7 +837,9 @@ fn csr_keeps_edge_ids_and_order():
 @test
 fn bfs_over_a_stored_graph_and_over_a_lambda():
     domain V = 0..10
-    let next = [V] v => [V.nth(x) for x in [v.to_idx + 1, v.to_idx * 2, v.to_idx - 3] if 0 <= x < 10]
+    let next = [V] v => [
+        V.nth(x) for x in [v.to_idx + 1, v.to_idx * 2, v.to_idx - 3] if 0 <= x < 10
+    ]
     let es = [(v, w) for v in V for w in next[v]]
     let stored = bfs(Graph.directed(es), from: [V(1)])
     let lambda = bfs::<V>(v => next[v], from: [V(1)])
@@ -954,7 +960,13 @@ fn bridges_and_cut_vertices_match_removing_them():
             var splits = false
             for a in V:
                 for b in V:
-                    if a != v and b != v and linked(edges, a, b, None, None) and not linked(edges, a, b, None, Some(v)):
+                    if a != v and b != v and linked(edges, a, b, None, None) and not linked(
+                        edges,
+                        a,
+                        b,
+                        None,
+                        Some(v),
+                    ):
                         splits = true
             assert cut[v] == splits
 
@@ -1002,7 +1014,9 @@ fn two_color_finds_a_colouring_or_an_odd_cycle():
 fn vertexless_closure_graphs_with_turbofish():
     domain V = 0..6
     // arcs u -> u + 1 and u -> u + 2, given only as a closure
-    let order = peel::<V>(u => [v for v in V if v.to_idx == u.to_idx + 1 or v.to_idx == u.to_idx + 2])
+    let order = peel::<V>(
+        u => [v for v in V if v.to_idx == u.to_idx + 1 or v.to_idx == u.to_idx + 2]
+    )
     assert order == [V(0), V(1), V(2), V(3), V(4), V(5)]
     assert peel::<V>(u => [V.nth((u.to_idx + 1) % 6)]) == []
 
@@ -1133,7 +1147,13 @@ pub struct Paths<V, W, A>:
 /// example: `domain V = 0..4; let g: [V]List<V> = [[1, 2], [3], [3], []]; bfs(g, from: [V(0)])[3] == Some(2)`
 /// example: `domain V = 0..4; let g: [V]List<V> = [[1, 2], [3], [3], []]; bfs(g, from: [V(0)], enter: (v, d) => v != 1).path(3) == Some([0, 2, 3])`
 /// example: `domain V = 0..4; let g: [V]List<V> = [[1, 2], [3], [3], []]; let p = bfs(g, from: [V(0)], until: V(1)); p[1] == Some(1) and p[2] == None`
-pub fn bfs<V, G: Next<V>>(g: G, from: Seq<V>, until: ?V = None, enter: (V, Int) -> Bool = (v, d) => true, hashed: Bool = false) -> Paths<V, Int, G.Arc>:
+pub fn bfs<V, G: Next<V>>(
+    g: G,
+    from: Seq<V>,
+    until: ?V = None,
+    enter: (V, Int) -> Bool = (v, d) => true,
+    hashed: Bool = false,
+) -> Paths<V, Int, G.Arc>:
     var dist: [V]?Int = None
     var back: [V]?(from: V, via: G.Arc) = None
     var order = List<V>()
@@ -1175,7 +1195,12 @@ pub fn bfs<V, G: Next<V>>(g: G, from: Seq<V>, until: ?V = None, enter: (V, Int) 
 /// ties: a vertex's back pointer is the first arc to give it its final distance
 /// traps: on an arc whose weight is not 0 or 1, when it is read
 /// example: `domain V = 0..3; domain E = 0..3; let es: [E](u: V, v: V, w: Int) = [(u: 0, v: 1, w: 1), (u: 0, v: 2, w: 0), (u: 2, v: 1, w: 0)]; let p = bfs01(Graph.directed(es), from: [V(0)]); p[1] == Some(0) and p.path(1) == Some([0, 2, 1])`
-pub fn bfs01<V, G: WeightedNext<V, Int>>(g: G, from: Seq<V>, until: ?V = None, hashed: Bool = false) -> Paths<V, Int, G.Arc>:
+pub fn bfs01<V, G: WeightedNext<V, Int>>(
+    g: G,
+    from: Seq<V>,
+    until: ?V = None,
+    hashed: Bool = false,
+) -> Paths<V, Int, G.Arc>:
     var dist: [V]?Int = None
     var back: [V]?(from: V, via: G.Arc) = None
     var done: [V]Bool = false
@@ -1315,7 +1340,10 @@ pub fn fixed_cost_paths<S: Eq, M, W: Add + Ord>(
 /// traps: never
 /// example: `domain V = 0..3; domain E = 0..3; let es: [E](u: V, v: V, w: Int) = [(u: 0, v: 1, w: 4), (u: 0, v: 2, w: 5), (u: 2, v: 1, w: -3)]; bellman_ford(Graph.directed(es), from: [(V(0), 0)])![1] == Some(2)`
 /// example: `domain V = 0..2; domain E = 0..2; let es: [E](u: V, v: V, w: Int) = [(u: 0, v: 1, w: 1), (u: 1, v: 0, w: -2)]; bellman_ford(Graph.directed(es), from: [(V(0), 0)]) == None`
-pub fn bellman_ford<V, W: Add + Ord, G: WeightedNext<V, W>>(g: G, from: Seq<(V, W)>) -> ?Paths<V, W, G.Arc>:
+pub fn bellman_ford<V, W: Add + Ord, G: WeightedNext<V, W>>(
+    g: G,
+    from: Seq<(V, W)>,
+) -> ?Paths<V, W, G.Arc>:
     var dist: [V]?W = None
     var back: [V]?(from: V, via: G.Arc) = None
     for (s, d0) in from:
@@ -1721,7 +1749,15 @@ fn fixed_cost_paths_match_dijkstra_on_the_same_moves():
         let ea: [E](u: S, v: S, w: Int) = [E] e => es[e.to_idx]
         let src = S.nth(rand(0, 19))
         let want = dijkstra(Graph.directed(ea), from: [(src, 0)])
-        let got = fixed_cost_paths([src], [0, 1, 2, 3], cost: j => price[j], step: (j, s) => if s.to_idx + moves[j] >= 0 and s.to_idx + moves[j] < 20: Some(S.nth(s.to_idx + moves[j])) else: None)
+        let got = fixed_cost_paths(
+            [src],
+            [0, 1, 2, 3],
+            cost: j => price[j],
+            step: (
+                j,
+                s,
+            ) => if s.to_idx + moves[j] >= 0 and s.to_idx + moves[j] < 20: Some(S.nth(s.to_idx + moves[j])) else: None,
+        )
         for s in S: assert got[s] == want[s]
 
 @test
@@ -1742,12 +1778,26 @@ fn until_stops_at_the_target_with_its_exact_distance():
         let h = Graph.directed(ws)
         let plain: [V]List<V> = [V] u => [es[e].v for e in E if es[e].u == u]
         let s = V.nth(rand(0, 7))
-        let (fb, f01, fd) = (bfs(plain, from: [s]), bfs01(g, from: [s]), dijkstra(h, from: [(s, 0)]))
+        let (fb, f01, fd) = (
+            bfs(plain, from: [s]),
+            bfs01(g, from: [s]),
+            dijkstra(h, from: [(s, 0)]),
+        )
         for t in V:
             assert closer_settled([V] v => fb[v], [V] v => bfs(plain, from: [s], until: t)[v], t)
             assert closer_settled([V] v => f01[v], [V] v => bfs01(g, from: [s], until: t)[v], t)
-            assert closer_settled([V] v => fd[v], [V] v => dijkstra(h, from: [(s, 0)], until: t)[v], t)
-            let fc = fixed_cost_paths([s], [e for e in E], cost: e => ws[e].w, step: (e, x) => if ws[e].u == x: Some(ws[e].v) else: None, until: t)
+            assert closer_settled(
+                [V] v => fd[v],
+                [V] v => dijkstra(h, from: [(s, 0)], until: t)[v],
+                t,
+            )
+            let fc = fixed_cost_paths(
+                [s],
+                [e for e in E],
+                cost: e => ws[e].w,
+                step: (e, x) => if ws[e].u == x: Some(ws[e].v) else: None,
+                until: t,
+            )
             assert closer_settled([V] v => fd[v], [V] v => fc[v], t)
 
 @test
@@ -1972,7 +2022,12 @@ pub enum Visit<V, A>: Enter(v: V, via: ?A), Exit(v: V, via: ?A), Again(from: V, 
 /// ties: FIFO within a bucket; a vertex's back pointer is the first arc to give it its final distance
 /// traps: on a weight outside `0..=max_w`, when it is read
 /// example: `domain V = 0..3; domain E = 0..3; let es: [E](u: V, v: V, w: Int) = [(u: 0, v: 1, w: 5), (u: 0, v: 2, w: 1), (u: 2, v: 1, w: 2)]; dial(Graph.directed(es), from: [V(0)], max_w: 5)[1] == Some(3)`
-pub fn dial<V, G: WeightedNext<V, Int>>(g: G, from: Seq<V>, max_w: Int, until: ?V = None) -> Paths<V, Int, G.Arc>:
+pub fn dial<V, G: WeightedNext<V, Int>>(
+    g: G,
+    from: Seq<V>,
+    max_w: Int,
+    until: ?V = None,
+) -> Paths<V, Int, G.Arc>:
     assert max_w >= 0, "dial: max_w must be non-negative"
     let nb = max_w + 1
     var dist: [V]?Int = None
@@ -2871,7 +2926,13 @@ pub fn triangles<V: Ord>(g: Next<V>) -> yields (V, V, V):
             for w in up[v]:
                 if mark[w] == Some(u): yield (u, v, w)
 
-fn clique_rec<V: Ord>(adj: [V]Bitset<V>, mut r: List<V>, p: Bitset<V>, x: Bitset<V>, mut best: List<V>):
+fn clique_rec<V: Ord>(
+    adj: [V]Bitset<V>,
+    mut r: List<V>,
+    p: Bitset<V>,
+    x: Bitset<V>,
+    mut best: List<V>,
+):
     if p.is_empty and x.is_empty:
         var c = [y for y in r]
         sort(mut c)
@@ -2974,7 +3035,10 @@ pub fn de_bruijn(k: Int, n: Int) -> List<Int>:
 /// traps: never
 /// example: `domain V = 0..3; domain E = 0..3; let es: [E](u: V, v: V, w: Int) = [(u: 0, v: 1, w: 1), (u: 1, v: 2, w: 2), (u: 0, v: 2, w: 2)]; kruskal(es) == (total: 3, take: [true, true, false])`
 /// example: `domain V = 0..3; domain E = 0..3; let es: [E](u: V, v: V, w: Int) = [(u: 0, v: 1, w: 1), (u: 1, v: 2, w: 2), (u: 0, v: 2, w: 2)]; kruskal(es, by: e => desc(e.w)).take == [false, true, true]`
-pub fn kruskal<V, E, W, R: (u: V, v: V, w: W, ..), K: Ord>(edges: [E]R, by: R -> K = e => e.w) -> (total: W, take: [E]Bool):
+pub fn kruskal<V, E, W, R: (u: V, v: V, w: W, ..), K: Ord>(
+    edges: [E]R,
+    by: R -> K = e => e.w,
+) -> (total: W, take: [E]Bool):
     var order = [e for e in E]
     order.sort(by: e => by(edges[e]))
     var dsu = Dsu<V>()
@@ -3031,7 +3095,9 @@ pub fn prim<V, W>(w: [V, V]?W) -> ?(total: W, parent: [V]?V):
 /// empty: an empty `V` gives total 0 and no edges
 /// traps: when `cheapest` returns a list whose length is not the number of components
 /// example: `domain V = 0..2; let r = boruvka(comp => [Some((u: V(0), v: V(1), w: 5)), Some((u: V(0), v: V(1), w: 5))]); r.total == 5 and r.edges == [(u: 0, v: 1)]`
-pub fn boruvka<V, C, W>(cheapest: ([V]Int) -> List<?(u: V, v: V, w: W)>) -> (total: W, edges: List<(u: V, v: V)>):
+pub fn boruvka<V, C, W>(
+    cheapest: ([V]Int) -> List<?(u: V, v: V, w: W)>
+) -> (total: W, edges: List<(u: V, v: V)>):
     var total = W.zero
     var edges = List<(u: V, v: V)>()
     if V.K <= 1: return (total: total, edges: edges)
@@ -3070,7 +3136,10 @@ pub fn boruvka<V, C, W>(cheapest: ([V]Int) -> List<?(u: V, v: V, w: W)>) -> (tot
 /// traps: never
 /// example: `domain V = 0..3; domain E = 0..4; let es: [E](u: V, v: V, w: Int) = [(u: 0, v: 1, w: 5), (u: 0, v: 2, w: 1), (u: 2, v: 1, w: 1), (u: 1, v: 2, w: 1)]; arborescence(es, root: V(0)) == Some((total: 2, parent: [None, Some(2), Some(1)]))`
 /// example: `domain V = 0..2; domain E = 0..1; let es: [E](u: V, v: V, w: Int) = [(u: 1, v: 0, w: 1)]; arborescence(es, root: V(0)) == None`
-pub fn arborescence<V, E, W: Add + Sub, R: (u: V, v: V, w: W, ..)>(edges: [E]R, root: V) -> ?(total: W, parent: [V]?E):
+pub fn arborescence<V, E, W: Add + Sub, R: (u: V, v: V, w: W, ..)>(edges: [E]R, root: V) -> ?(
+    total: W,
+    parent: [V]?E,
+):
     let n0 = V.K
     var cur_n = n0
     var cur_root = root.to_idx
@@ -3541,7 +3610,11 @@ pub fn adjacency<V>(arcs: List<(u: V, v: V)>) -> [V]List<V>:
 /// traps: never
 /// example: `domain V = 0..3; let g: [V]List<V> = [[1, 2], [2], []]; g.only(keep: v => v != 1).out(0).collect() == [2]`
 /// example: `domain V = 0..3; let g: [V]List<V> = [[1, 2], [2], []]; reachable(g.only(from: v => v != 1), from: [V(0)]).collect() == [0, 1, 2]`
-pub fn only<V, G: Next<V>>(self: G, keep: V -> Bool = v => true, from: V -> Bool = v => true) -> Only<V, G> =
+pub fn only<V, G: Next<V>>(
+    self: G,
+    keep: V -> Bool = v => true,
+    from: V -> Bool = v => true,
+) -> Only<V, G> =
     Only(self, keep, from)
 
 /// `g.only(keep)`; see `only`. Implements every arc capability `G` has.

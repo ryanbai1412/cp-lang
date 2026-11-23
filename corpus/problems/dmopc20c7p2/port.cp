@@ -6,10 +6,7 @@ domain Tile = 0..n
 let raw: [Tile](x: Int, y: Int) = read()
 
 let sq = [Pt(0, 0), Pt(0, 1), Pt(1, 1), Pt(1, 0)]
-let oct = [
-    Pt(-1, 0), Pt(-1, 1), Pt(0, 2), Pt(1, 2),
-    Pt(2, 1), Pt(2, 0), Pt(1, -1), Pt(0, -1),
-]
+let oct = [Pt(-1, 0), Pt(-1, 1), Pt(0, 2), Pt(1, 2), Pt(2, 1), Pt(2, 0), Pt(1, -1), Pt(0, -1)]
 
 struct Step(to: Pt<Int>, tile: Tile)
 

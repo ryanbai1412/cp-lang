@@ -7,12 +7,12 @@ domain Slot = 1..=2 * n
 let kind: [Slot]1..=1e9 = read()
 
 let (K, name) = compress(kind)
-var slots: [K]List<Slot> = []           // where the problems of each kind are
+var slots: [K]List<Slot> = []  // where the problems of each kind are
 for s in Slot: slots[name.first_ge(kind[s])!].push(s)
 
 // Pair the two kinds that have the most problems left, again and again; a
 // kind is paired with itself only when it is the last one left.
-var left = MinHeap<(Int, Int)>()        // (-count, -kind): the largest count is on top
+var left = MinHeap<(Int, Int)>()  // (-count, -kind): the largest count is on top
 fn put_back(count: Int, k: Int):
     if count < 0: left.push((count, k))
 for k in K: put_back(-slots[k].len, -k.idx)

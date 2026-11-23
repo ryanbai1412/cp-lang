@@ -1,9 +1,8 @@
 //! Range-update helpers that are not segment trees: `Flip`, `LazyTreap`, `Rope`. Range apply on a segment tree is `SegTree(op, a, act:)` (`segtree.cp`).
 use std.algebra.{Action, MaxCount, MinCount, Monoid, add, affine, assign}
-use std.segtree.{SegTree}
 use std.rand.Rng
+use std.segtree.{SegTree}
 use std.seq.{ends}
-
 
 /// Paired aggregate `(now, flipped)` for range-toggle / complement updates (`SegTree(op, a, act: flip)`).
 /// Build the toggle action with `flip_action(m)` (tag `Bool`: `true` swaps `now` and `flipped`).
@@ -61,10 +60,17 @@ fn act_laws<T, F>(act: Action<T, F>, ts: List<T>, fs: List<F>) -> Bool:
         if act.apply(act.id, x, 1) != x: return false
         for y in ts:
             for f in fs:
-                if act.apply(f, act.over.op(x, y), 2) != act.over.op(act.apply(f, x, 1), act.apply(f, y, 1)): return false
+                if act.apply(f, act.over.op(x, y), 2) != act.over.op(
+                    act.apply(f, x, 1),
+                    act.apply(f, y, 1),
+                ): return false
         for f in fs:
             for g in fs:
-                if act.apply(act.compose(f, g), x, 1) != act.apply(f, act.apply(g, x, 1), 1): return false
+                if act.apply(act.compose(f, g), x, 1) != act.apply(
+                    f,
+                    act.apply(g, x, 1),
+                    1,
+                ): return false
     true
 
 @test
@@ -72,8 +78,24 @@ fn the_stock_actions_match_brute_force():
     domain V = 1..=10
     for k in 0..3:
         var a = [V] v => rand(-9, 9)
-        var st = if k == 0: SegTree(+, a.clone(), act: add) elif k == 1: SegTree(min, a.clone(), act: add) else: SegTree(max, a.clone(), act: add)
-        var sa = if k == 0: SegTree(+, a.clone(), act: assign) elif k == 1: SegTree(min, a.clone(), act: assign) else: SegTree(max, a.clone(), act: assign)
+        var st = if k == 0: SegTree(+, a.clone(), act: add) elif k == 1: SegTree(
+            min,
+            a.clone(),
+            act: add,
+        ) else: SegTree(
+            max,
+            a.clone(),
+            act: add,
+        )
+        var sa = if k == 0: SegTree(+, a.clone(), act: assign) elif k == 1: SegTree(
+            min,
+            a.clone(),
+            act: assign,
+        ) else: SegTree(
+            max,
+            a.clone(),
+            act: assign,
+        )
         var b = a.clone()
         for _ in 0..60:
             let l = V.nth(rand(0, 9))
@@ -90,7 +112,11 @@ fn the_stock_actions_match_brute_force():
                 assert st.fold(..l) == brute(a, ..l, k) and sa.fold(..l) == brute(b, ..l, k)
                 assert st.fold(l..) == brute(a, l.., k) and sa.fold(l..) == brute(b, l.., k)
         for v in V: assert st.get(v) == a[v] and sa.get(v) == b[v]
-        assert st.all == brute(a, V.nth(0)..=V.nth(9), k) and sa.all == brute(b, V.nth(0)..=V.nth(9), k)
+        assert st.all == brute(a, V.nth(0)..=V.nth(9), k) and sa.all == brute(
+            b,
+            V.nth(0)..=V.nth(9),
+            k,
+        )
 
 @test
 fn at_writes_through_pending_tags():
@@ -157,7 +183,12 @@ fn an_action_of_your_own():
         (Int.MIN, 0),
         (a, b) => if a.0 > b.0: a else: if b.0 > a.0: b else: (a.0, a.1 + b.1),
     )
-    let shift = Action<(Int, Int), Int>(0, (f, g) => f + g, (f, x, len) => (x.0 + f, x.1), count_max)
+    let shift = Action<(Int, Int), Int>(
+        0,
+        (f, g) => f + g,
+        (f, x, len) => (x.0 + f, x.1),
+        count_max,
+    )
     domain V = 0..8
     var a = [V] v => 0
     var st = SegTree(count_max, [V] v => (0, 1), act: shift)
@@ -215,7 +246,12 @@ fn ccc02s4hard_dual_field_cross_overwrite_and_interleaved_point_set():
         (Int.MAX, Int.MAX, 0),
         (x, y) => (min(x.0, y.0), min(x.1, y.1), x.2 + y.2),
     )
-    let act = Action<(Int, Int, Int), (?Int, ?Int, Int)>((None, None, 0), ccc_compose, ccc_apply, over)
+    let act = Action<(Int, Int, Int), (?Int, ?Int, Int)>(
+        (None, None, 0),
+        ccc_compose,
+        ccc_apply,
+        over,
+    )
     domain V = 0..11
     var a = [V] v => rand(-10, 10)
     var b = [V] v => rand(-10, 10)
@@ -242,7 +278,11 @@ fn ccc02s4hard_dual_field_cross_overwrite_and_interleaved_point_set():
             b[l] = nb
             st.set(l, (na, nb, na))
         else:
-            let want = ([a[v] for v in l..=r].min()!, [b[v] for v in l..=r].min()!, sum(a[v] for v in l..=r))
+            let want = (
+                [a[v] for v in l..=r].min()!,
+                [b[v] for v in l..=r].min()!,
+                sum(a[v] for v in l..=r),
+            )
             assert st.fold(l..=r) == want
     for v in V: assert st.get(v) == (a[v], b[v], a[v])
 
@@ -320,7 +360,12 @@ fn fill_and_affine_sum_match_brute():
 fn dual_segtree_non_commutative_tags_match_brute():
     domain V = 1..=11
     var a = [V] _ => rand(-5, 5)
-    let aff = Action<Int, (Int, Int)>((1, 0), (nf, of) => (nf.0 * of.0, nf.0 * of.1 + nf.1), (f, x, n) => f.0 * x + f.1 * n, Monoid<Int>.of(+))
+    let aff = Action<Int, (Int, Int)>(
+        (1, 0),
+        (nf, of) => (nf.0 * of.0, nf.0 * of.1 + nf.1),
+        (f, x, n) => f.0 * x + f.1 * n,
+        Monoid<Int>.of(+),
+    )
     var st = SegTree(+, a.clone(), act: aff)
     for _ in 0..100:
         let kind = rand(0, 3)
@@ -433,7 +478,10 @@ pub struct LazyTreap<T, F>(
     fn push_tag(mut self, i: Int):
         unchecked:
             if let f = nodes[i].tag:
-                let (a, b) = if nodes[i].rev: (nodes[i].r, nodes[i].l) else: (nodes[i].l, nodes[i].r)
+                let (a, b) = if nodes[i].rev: (nodes[i].r, nodes[i].l) else: (
+                    nodes[i].l,
+                    nodes[i].r,
+                )
                 let (fa, fb) = split_fn(f, self.sz_of(a))
                 self.put(a, fa)
                 self.put(b, fb)

@@ -16,16 +16,22 @@ for _ in 1..n:
     let j: (P, Int) = read()
     joins.push((host: j.0, how: j.1))
 
-var with_: [P]Int = copy(conf)      // best of the group with its person picked
+var with_: [P]Int = copy(conf)  // best of the group with its person picked
 var without: [P]Int = 0
 for u in P.rev:
     if u == P.first: break
     let (h, how) = joins[u.to_idx - 1]
     let either = max(with_[u], without[u])
-    if how == 0:            // friends with the host: not both
+    if how == 0:  // friends with the host: not both
         (with_[h], without[h]) = (with_[h] + without[u], without[h] + either)
-    elif how == 1:          // same friends as the host: both or either
-        (with_[h], without[h]) = (max(with_[h] + either, without[h] + with_[u]), without[h] + without[u])
-    else:                   // both rules: exactly one of the two, or neither
-        (with_[h], without[h]) = (max(with_[h] + without[u], without[h] + with_[u]), without[h] + without[u])
+    elif how == 1:  // same friends as the host: both or either
+        (with_[h], without[h]) = (
+            max(with_[h] + either, without[h] + with_[u]),
+            without[h] + without[u],
+        )
+    else:  // both rules: exactly one of the two, or neither
+        (with_[h], without[h]) = (
+            max(with_[h] + without[u], without[h] + with_[u]),
+            without[h] + without[u],
+        )
 print(max(with_[P.first], without[P.first]))

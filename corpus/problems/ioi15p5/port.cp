@@ -7,8 +7,8 @@ let start: [0..n]Int = read()
 let m: 1..=600000 = read()
 let ermek: [0..2 * m]Int = read()
 
-var val: List<Int> = []              // val[slot]: scratch copy of the row
-var slot_of: List<Int> = []          // inverse of val
+var val: List<Int> = []      // val[slot]: scratch copy of the row
+var slot_of: List<Int> = []  // inverse of val
 for i in 0..n:
     val.push(0)
     slot_of.push(0)

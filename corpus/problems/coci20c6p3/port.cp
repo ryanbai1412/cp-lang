@@ -17,7 +17,7 @@ for _ in 0..n:
     class_size[letters] += 1
 
 domain Size = 0..=n
-var choose: [Size, Size]Z = Z(0)            // Pascal's triangle
+var choose: [Size, Size]Z = Z(0)  // Pascal's triangle
 for i in Size:
     choose[i, Size.first] = Z(1)
     for j in ..=i:

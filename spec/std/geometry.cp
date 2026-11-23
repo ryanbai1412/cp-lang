@@ -145,7 +145,10 @@ pub struct Pt(x: Int, y: Int):
     /// cost: O(1)
     /// traps: when the result overflows `I128` (coordinates beyond about `4e18` apart)
     /// example: `Pt(0, 0).dist2_128(Pt(3, 4)) == 25`
-    pub fn dist2_128(self, o: Pt) -> I128 = (I128(o.x) - I128(x)) * (I128(o.x) - I128(x)) + (I128(o.y) - I128(y)) * (I128(o.y) - I128(y))
+    pub fn dist2_128(
+        self,
+        o: Pt,
+    ) -> I128 = (I128(o.x) - I128(x)) * (I128(o.x) - I128(x)) + (I128(o.y) - I128(y)) * (I128(o.y) - I128(y))
 
     /// The Euclidean distance from `self` to `o`, as `F64`.
     ///
@@ -539,12 +542,24 @@ pub struct OnlineHull:
         let m = hull.len
         if m == 0: return Location.Outside
         if m == 1: return if p == hull[0]: Location.Boundary else: Location.Outside
-        if m == 2: return if on_segment(p, hull[0], hull[1]): Location.Boundary else: Location.Outside
+        if m == 2: return if on_segment(
+            p,
+            hull[0],
+            hull[1],
+        ): Location.Boundary else: Location.Outside
         let c1 = cross128_3(hull[0], hull[1], p)
         let c2 = cross128_3(hull[0], hull[m - 1], p)
         if c1 < 0 or c2 > 0: return Location.Outside
-        if c1 == 0: return if on_segment(p, hull[0], hull[1]): Location.Boundary else: Location.Outside
-        if c2 == 0: return if on_segment(p, hull[0], hull[m - 1]): Location.Boundary else: Location.Outside
+        if c1 == 0: return if on_segment(
+            p,
+            hull[0],
+            hull[1],
+        ): Location.Boundary else: Location.Outside
+        if c2 == 0: return if on_segment(
+            p,
+            hull[0],
+            hull[m - 1],
+        ): Location.Boundary else: Location.Outside
         var lo = 1
         var hi = m - 1
         while hi - lo > 1:
@@ -740,7 +755,10 @@ pub fn minkowski_upper(a: List<Pt>, b: List<Pt>) -> List<Pt>:
 /// example: `minkowski_lower([Pt(0, 0), Pt(1, -1), Pt(2, 0)], [Pt(0, 0), Pt(1, 0)]) == [Pt(0, 0), Pt(1, -1), Pt(2, -1), Pt(3, 0)]`
 pub fn minkowski_lower(a: List<Pt>, b: List<Pt>) -> List<Pt>:
     assert a.len > 0 and b.len > 0, "minkowski_lower requires non-empty hulls"
-    let up = minkowski_upper([-a[a.len - 1 - i] for i in 0..a.len], [-b[b.len - 1 - i] for i in 0..b.len])
+    let up = minkowski_upper(
+        [-a[a.len - 1 - i] for i in 0..a.len],
+        [-b[b.len - 1 - i] for i in 0..b.len],
+    )
     [-up[up.len - 1 - i] for i in 0..up.len]
 
 /// Whether two non-empty counter-clockwise convex polygons share at least one point, boundary
@@ -768,11 +786,7 @@ pub fn convex_polygons_overlap(a: List<Pt>, b: List<Pt>) -> Bool:
 /// traps: never
 /// example: `convex_polygon_intersect([Vec(0.0, 0.0), Vec(2.0, 0.0), Vec(2.0, 2.0), Vec(0.0, 2.0)], [Vec(1.0, 1.0), Vec(3.0, 1.0), Vec(3.0, 3.0), Vec(1.0, 3.0)]) == [Vec(1.0, 1.0), Vec(2.0, 1.0), Vec(2.0, 2.0), Vec(1.0, 2.0)]`
 /// example: `convex_polygon_intersect([Vec(0.0, 0.0), Vec(1.0, 0.0), Vec(0.0, 1.0)], [Vec(5.0, 5.0), Vec(6.0, 5.0), Vec(5.0, 6.0)]) == []`
-pub fn convex_polygon_intersect(
-    a: List<Vec>,
-    b: List<Vec>,
-    eps: F64 = 1e-9,
-) -> List<Vec>:
+pub fn convex_polygon_intersect(a: List<Vec>, b: List<Vec>, eps: F64 = 1e-9) -> List<Vec>:
     if a.is_empty or b.is_empty: return []
     half_plane_intersect(edge_planes(a) + edge_planes(b), eps:)
 
@@ -1171,7 +1185,9 @@ fn cp_solve(
 /// example: `closest_pair2([Pt(3, 3), Pt(3, 3)]) == 0`
 pub fn closest_pair2(pts: List<Pt>) -> Int:
     assert pts.len >= 2, "closest_pair2 requires at least 2 points"
-    var ord: List<(x: Int, y: Int, id: Int)> = [(x: pts[i].x, y: pts[i].y, id: i) for i in 0..pts.len]
+    var ord: List<(x: Int, y: Int, id: Int)> = [
+        (x: pts[i].x, y: pts[i].y, id: i) for i in 0..pts.len
+    ]
     ord.sort()
     for i in 1..ord.len:
         if ord[i].x == ord[i - 1].x and ord[i].y == ord[i - 1].y: return 0
@@ -1276,13 +1292,18 @@ pub fn farthest_pair<D>(pts: [D]Pt) -> (a: D, b: D, dist2: Int):
     let consider = (i: D, j: D) =>
         let (x, y) = if i.to_idx < j.to_idx: (i, j) else: (j, i)
         let d = pts[x].dist2(pts[y])
-        if d > best.d or (d == best.d and (x.to_idx < best.a.to_idx or (x == best.a and y.to_idx < best.b.to_idx))):
+        if d > best.d or (
+            d == best.d and (x.to_idx < best.a.to_idx or (x == best.a and y.to_idx < best.b.to_idx))
+        ):
             best = (d:, a: x, b: y)
     let n = h.len
     if n == 2:
         consider(h[0], h[1])
         return (best.a, best.b, best.d)
-    let area = (i: Int, k: Int) => cross128(pts[h[(i + 1) % n]] - pts[h[i]], pts[h[k % n]] - pts[h[i]])
+    let area = (i: Int, k: Int) => cross128(
+        pts[h[(i + 1) % n]] - pts[h[i]],
+        pts[h[k % n]] - pts[h[i]],
+    )
     var j = 1
     for i in 0..n:
         while area(i, j + 1) > area(i, j): j = (j + 1) % n
@@ -1419,7 +1440,11 @@ pub fn polygon_triangulate(poly: List<Pt>) -> List<(Int, Int, Int)>:
                 let qi = rem[j]
                 if qi == ai or qi == bi or qi == ci: continue
                 let q = poly[qi]
-                if cross128_3(a, b, q) >= 0 and cross128_3(b, c, q) >= 0 and cross128_3(c, a, q) >= 0:
+                if cross128_3(a, b, q) >= 0 and cross128_3(b, c, q) >= 0 and cross128_3(
+                    c,
+                    a,
+                    q,
+                ) >= 0:
                     ok = false
                     break
             if ok:
@@ -2116,12 +2141,24 @@ pub fn half_plane_intersect(
     var dq: List<(p: Vec, dir: Vec, ang: F64)> = []
     var head = 0
     for h in uniq:
-        while dq.len - head >= 2 and hp_out(h, hp_cross(dq[dq.len - 1], dq[dq.len - 2]), eps): dq.pop()
+        while dq.len - head >= 2 and hp_out(
+            h,
+            hp_cross(dq[dq.len - 1], dq[dq.len - 2]),
+            eps,
+        ): dq.pop()
         while dq.len - head >= 2 and hp_out(h, hp_cross(dq[head], dq[head + 1]), eps): head += 1
         if dq.len - head >= 1 and vcross(dq[dq.len - 1].dir, h.dir) <= eps: return []
         dq.push(h)
-    while dq.len - head >= 3 and hp_out(dq[head], hp_cross(dq[dq.len - 1], dq[dq.len - 2]), eps): dq.pop()
-    while dq.len - head >= 3 and hp_out(dq[dq.len - 1], hp_cross(dq[head], dq[head + 1]), eps): head += 1
+    while dq.len - head >= 3 and hp_out(
+        dq[head],
+        hp_cross(dq[dq.len - 1], dq[dq.len - 2]),
+        eps,
+    ): dq.pop()
+    while dq.len - head >= 3 and hp_out(
+        dq[dq.len - 1],
+        hp_cross(dq[head], dq[head + 1]),
+        eps,
+    ): head += 1
     let m = dq.len - head
     if m < 3: return []
     var pts: List<Vec> = []
@@ -2265,7 +2302,14 @@ fn tri_circle_area(a: Vec, b: Vec, r: F64, eps: F64) -> F64:
 /// example: `circle_polygon_area(Circle(Vec(0.0, 0.0), 10.0), [Vec(0.0, 0.0), Vec(0.0, 1.0), Vec(1.0, 1.0), Vec(1.0, 0.0)]) == -1.0`
 /// example: `close(circle_polygon_area(Circle(Vec(0.0, 0.0), 1.0), [Vec(-2.0, -2.0), Vec(2.0, -2.0), Vec(2.0, 2.0), Vec(-2.0, 2.0)]), PI)`
 pub fn circle_polygon_area(circle: Circle, poly: List<Vec>, eps: F64 = 1e-9) -> F64:
-    let acc = 0.0 + sum(tri_circle_area(poly[i] - circle.c, poly[(i + 1) % poly.len] - circle.c, circle.r, eps) for i in 0..poly.len)
+    let acc = 0.0 + sum(
+        tri_circle_area(
+            poly[i] - circle.c,
+            poly[(i + 1) % poly.len] - circle.c,
+            circle.r,
+            eps,
+        ) for i in 0..poly.len
+    )
     acc
 
 // ---- Shamos-Hoey segment intersection detection
@@ -2560,7 +2604,10 @@ pub struct Rect(x: Range<Int>, y: Range<Int>):
     /// traps: never
     /// example: `Rect(0..3, 0..2).contains(Pt(2, 1)) == true`
     /// example: `Rect(0..3, 0..2).contains(Pt(3, 1)) == false`
-    pub fn contains(self, p: Pt) -> Bool = x.start <= p.x and p.x < x.end and y.start <= p.y and p.y < y.end
+    pub fn contains(
+        self,
+        p: Pt,
+    ) -> Bool = x.start <= p.x and p.x < x.end and y.start <= p.y and p.y < y.end
 
     /// The common part of two rectangles, or `None` when it is empty (including rectangles that only
     /// touch along an edge).
@@ -2570,7 +2617,10 @@ pub struct Rect(x: Range<Int>, y: Range<Int>):
     /// example: `Rect(0..3, 0..3).intersect(Rect(1..5, 2..4)) == Some(Rect(1..3, 2..3))`
     /// example: `Rect(0..1, 0..1).intersect(Rect(1..2, 0..1)) == None`
     pub fn intersect(self, o: Rect) -> ?Rect:
-        let r = Rect(max(x.start, o.x.start)..min(x.end, o.x.end), max(y.start, o.y.start)..min(y.end, o.y.end))
+        let r = Rect(
+            max(x.start, o.x.start)..min(x.end, o.x.end),
+            max(y.start, o.y.start)..min(y.end, o.y.end),
+        )
         if r.is_empty: None else: Some(r)
 
 /// The area of the union of `rects`, by a sweep over x with a segment tree over the compressed y
@@ -2615,7 +2665,17 @@ fn lower_idx(xs: List<Int>, v: Int) -> Int:
     let lo = xs.first_ge(v) ?? xs.len
     lo
 
-fn cover(mut cnt: List<Int>, mut len: List<Int>, ys: List<Int>, v: Int, l: Int, r: Int, lo: Int, hi: Int, k: Int):
+fn cover(
+    mut cnt: List<Int>,
+    mut len: List<Int>,
+    ys: List<Int>,
+    v: Int,
+    l: Int,
+    r: Int,
+    lo: Int,
+    hi: Int,
+    k: Int,
+):
     if hi <= l or r <= lo: return
     if lo <= l and r <= hi:
         cnt[v] += k
@@ -2728,11 +2788,7 @@ fn least_rotation(cyc: List<Int>) -> List<Int>:
 /// order: one answer per query, in query order; a new `List`, keyed from 0
 /// traps: as `planar_faces`
 /// example: `point_location_planar([Pt(0, 0), Pt(4, 0), Pt(0, 4)], [(0, 1), (1, 2), (2, 0)], [Pt(1, 1), Pt(0, 0), Pt(5, 5)]) == [Some(0), None, None]`
-pub fn point_location_planar<V>(
-    pts: [V]Pt,
-    edges: List<(V, V)>,
-    queries: List<Pt>,
-) -> List<?Int>:
+pub fn point_location_planar<V>(pts: [V]Pt, edges: List<(V, V)>, queries: List<Pt>) -> List<?Int>:
     let keys = [k for k in pts.keys]
     locate_planar([pts[k] for k in keys], [(a.to_idx, b.to_idx) for (a, b) in edges], queries)
 
@@ -2773,7 +2829,13 @@ fn locate_planar(ps: List<Pt>, edges: List<(Int, Int)>, queries: List<Pt>) -> Li
     for i in 0..probed.len: parent[probed[i]] = below[queries.len + i].0
     var verts: List<(Int, Int)> = [(p.x, p.y) for p in ps]
     verts.sort()
-    var upright: List<(Int, Int, Int)> = [(ps[u].x, min(ps[u].y, ps[v].y), max(ps[u].y, ps[v].y)) for (u, v) in edges if ps[u].x == ps[v].x]
+    var upright: List<(Int, Int, Int)> = [
+        (
+            ps[u].x,
+            min(ps[u].y, ps[v].y),
+            max(ps[u].y, ps[v].y),
+        ) for (u, v) in edges if ps[u].x == ps[v].x
+    ]
     upright.sort()
     var out: List<?Int> = []
     for i in 0..queries.len:
@@ -2798,7 +2860,12 @@ fn locate_planar(ps: List<Pt>, edges: List<(Int, Int)>, queries: List<Pt>) -> Li
         out.push(f)
     out
 
-fn sweep_below(ps: List<Pt>, edges: List<(Int, Int)>, walk: PlanarWalk, probes: List<Pt>) -> List<(?Int, Bool)>:
+fn sweep_below(
+    ps: List<Pt>,
+    edges: List<(Int, Int)>,
+    walk: PlanarWalk,
+    probes: List<Pt>,
+) -> List<(?Int, Bool)>:
     with lint(unproven_list_index: allow)
     var segs: List<(Int, Int)> = []
     for (u, v) in edges:
@@ -2907,7 +2974,11 @@ struct DelQuads:
         let da = s[a].norm2_128 - q2
         let db = s[b].norm2_128 - q2
         let dc = s[c].norm2_128 - q2
-        cross128_3(s[q], s[a], s[b]) * dc + cross128_3(s[q], s[b], s[c]) * da + cross128_3(s[q], s[c], s[a]) * db > I128(0)
+        cross128_3(s[q], s[a], s[b]) * dc + cross128_3(s[q], s[b], s[c]) * da + cross128_3(
+            s[q],
+            s[c],
+            s[a],
+        ) * db > I128(0)
 
     fn edge(mut self, a: Int, b: Int) -> Int:
         with lint(unproven_list_index: allow)
@@ -2945,7 +3016,11 @@ struct DelQuads:
         self.splice(e, self.prev(e))
         self.splice(self.r(e), self.prev(self.r(e)))
 
-    fn above(self, e: Int, base: Int) -> Bool = self.turn(self.dest(e), self.dest(base), p[base]) > 0
+    fn above(self, e: Int, base: Int) -> Bool = self.turn(
+        self.dest(e),
+        self.dest(base),
+        p[base],
+    ) > 0
 
     fn rec(mut self, lo: Int, hi: Int) -> (Int, Int):
         let m = hi - lo
@@ -2977,7 +3052,12 @@ struct DelQuads:
                     lc = t
             var rc = self.prev(base)
             if self.above(rc, base):
-                while self.in_circle(self.dest(self.prev(rc)), self.dest(base), p[base], self.dest(rc)):
+                while self.in_circle(
+                    self.dest(self.prev(rc)),
+                    self.dest(base),
+                    p[base],
+                    self.dest(rc),
+                ):
                     let t = self.prev(rc)
                     self.cut(rc)
                     rc = t
@@ -3094,7 +3174,10 @@ pub struct Pt3(x: Int, y: Int, z: Int):
     /// cost: O(1)
     /// traps: when the sum overflows `I128`
     /// example: `Pt3(1, 2, 3).dot128(Pt3(4, 5, 6)) == 32`
-    pub fn dot128(self, o: Pt3) -> I128 = I128(x) * I128(o.x) + I128(y) * I128(o.y) + I128(z) * I128(o.z)
+    pub fn dot128(
+        self,
+        o: Pt3,
+    ) -> I128 = I128(x) * I128(o.x) + I128(y) * I128(o.y) + I128(z) * I128(o.z)
 
     /// The cross product `Pt3(y*o.z - z*o.y, z*o.x - x*o.z, x*o.y - y*o.x)`, perpendicular to both by
     /// the right-hand rule.
@@ -3200,7 +3283,12 @@ pub fn convex_hull_3d(pts: List<Pt3>) -> List<(Int, Int, Int)>:
             i3 = i
             break
     if i3 == -1: return []
-    var faces: List<(Int, Int, Int)> = if face_side128(pts[i0], pts[i1], pts[i2], pts[i3]) > I128(0):
+    var faces: List<(Int, Int, Int)> = if face_side128(
+        pts[i0],
+        pts[i1],
+        pts[i2],
+        pts[i3],
+    ) > I128(0):
         [(i0, i2, i1), (i0, i1, i3), (i1, i2, i3), (i2, i0, i3)]
     else:
         [(i0, i1, i2), (i0, i3, i1), (i1, i3, i2), (i2, i3, i0)]
@@ -3249,7 +3337,17 @@ fn hull3_facets(pts: List<Pt3>, faces: List<(Int, Int, Int)>) -> List<(Int, Int,
             for e in by_edge[v]:
                 if e.v == u:
                     let g = faces[e.f]
-                    if face_side128(pts[a], pts[b], pts[c], pts[g.0]) == I128(0) and face_side128(pts[a], pts[b], pts[c], pts[g.1]) == I128(0) and face_side128(pts[a], pts[b], pts[c], pts[g.2]) == I128(0):
+                    if face_side128(pts[a], pts[b], pts[c], pts[g.0]) == I128(0) and face_side128(
+                        pts[a],
+                        pts[b],
+                        pts[c],
+                        pts[g.1],
+                    ) == I128(0) and face_side128(
+                        pts[a],
+                        pts[b],
+                        pts[c],
+                        pts[g.2],
+                    ) == I128(0):
                         let ra = find(mut up, k)
                         let rb = find(mut up, e.f)
                         if ra != rb: up[ra] = rb
@@ -3286,7 +3384,13 @@ fn hull3_facets(pts: List<Pt3>, faces: List<(Int, Int, Int)>) -> List<(Int, Int,
         var uniq: List<Int> = []
         for v in vs:
             if uniq.is_empty or uniq[uniq.len - 1] != v: uniq.push(v)
-        let proj = (v: Int) => if axis == 0: Pt(pts[v].y, pts[v].z) else: if axis == 1: Pt(pts[v].z, pts[v].x) else: Pt(pts[v].x, pts[v].y)
+        let proj = (v: Int) => if axis == 0: Pt(pts[v].y, pts[v].z) else: if axis == 1: Pt(
+            pts[v].z,
+            pts[v].x,
+        ) else: Pt(
+            pts[v].x,
+            pts[v].y,
+        )
         var hull = hull2_strict(uniq, proj)
         if not pos: hull = [hull[hull.len - 1 - i] for i in 0..hull.len]
         var s = 0
@@ -3305,7 +3409,10 @@ fn hull2_strict(vs: List<Int>, proj: (Int) -> Pt) -> List<Int>:
         let start = h.len
         for t in 0..order.len:
             let v = if pass == 0: order[t] else: order[order.len - 1 - t]
-            while h.len >= start + 2 and cross128(proj(h[h.len - 1]) - proj(h[h.len - 2]), proj(v) - proj(h[h.len - 2])) <= I128(0): h.pop()
+            while h.len >= start + 2 and cross128(
+                proj(h[h.len - 1]) - proj(h[h.len - 2]),
+                proj(v) - proj(h[h.len - 2]),
+            ) <= I128(0): h.pop()
             h.push(v)
         h.pop()
     h
@@ -3337,7 +3444,11 @@ pub fn polyhedron_volume6(pts: List<Pt3>, faces: List<(Int, Int, Int)>) -> I128:
         let p = pts[a]
         let q = pts[b]
         let r = pts[c]
-        v += I128(p.x) * (I128(q.y) * I128(r.z) - I128(q.z) * I128(r.y)) + I128(p.y) * (I128(q.z) * I128(r.x) - I128(q.x) * I128(r.z)) + I128(p.z) * (I128(q.x) * I128(r.y) - I128(q.y) * I128(r.x))
+        v += I128(p.x) * (I128(q.y) * I128(r.z) - I128(q.z) * I128(r.y)) + I128(p.y) * (
+            I128(q.z) * I128(r.x) - I128(q.x) * I128(r.z)
+        ) + I128(p.z) * (
+            I128(q.x) * I128(r.y) - I128(q.y) * I128(r.x)
+        )
     v
 
 /// O(1) value type. A 3D floating-point point or vector.
@@ -3378,7 +3489,11 @@ pub struct Vec3(x: F64, y: F64, z: F64):
     /// cost: O(1)
     /// traps: never
     /// example: `Vec3(1.0, 0.0, 0.0).cross(Vec3(0.0, 1.0, 0.0)) == Vec3(0.0, 0.0, 1.0)`
-    pub fn cross(self, o: Vec3) -> Vec3 = Vec3(y * o.z - z * o.y, z * o.x - x * o.z, x * o.y - y * o.x)
+    pub fn cross(self, o: Vec3) -> Vec3 = Vec3(
+        y * o.z - z * o.y,
+        z * o.x - x * o.z,
+        x * o.y - y * o.x,
+    )
 
     /// The squared Euclidean distance from `self` to `o`.
     ///
@@ -3508,10 +3623,16 @@ fn vdot(a: Vec, b: Vec) -> F64 = a.x * b.x + a.y * b.y
 fn vcross(a: Vec, b: Vec) -> F64 = a.x * b.y - a.y * b.x
 fn vdist(a: Vec, b: Vec) -> F64 = (a - b).len
 fn dot3(a: Pt3, b: Pt3) -> Int = a.x * b.x + a.y * b.y + a.z * b.z
-fn cross3(a: Pt3, b: Pt3) -> Pt3 = Pt3(a.y * b.z - a.z * b.y, a.z * b.x - a.x * b.z, a.x * b.y - a.y * b.x)
+fn cross3(a: Pt3, b: Pt3) -> Pt3 = Pt3(
+    a.y * b.z - a.z * b.y,
+    a.z * b.x - a.x * b.z,
+    a.x * b.y - a.y * b.x,
+)
 fn dist2_3(a: Pt3, b: Pt3) -> Int = (a - b).norm2
 
-fn random_points(n: Int, span: Int) -> List<Pt> = [Pt(rand(-span, span), rand(-span, span)) for _ in 0..n]
+fn random_points(n: Int, span: Int) -> List<Pt> = [
+    Pt(rand(-span, span), rand(-span, span)) for _ in 0..n
+]
 
 @test
 fn vectors_traits_and_large_coords():
@@ -3983,9 +4104,16 @@ fn test_float_eps_guards():
     // Degenerate and near-degenerate segments use eps rather than bare == 0.0.
     assert close(seg_dist(Vec(3.0, 4.0), Vec(0.0, 0.0), Vec(1e-12, 0.0)), 5.0)
     // Large-radius tangency: linear eps stays valid when r^2 ~ 1e12.
-    let cl = circle_line_intersect(Circle(Vec(0.0, 0.0), 1000000.0), Vec(-1.0, 1000000.0 + 1e-11), Vec(1.0, 1000000.0 + 1e-11))
+    let cl = circle_line_intersect(
+        Circle(Vec(0.0, 0.0), 1000000.0),
+        Vec(-1.0, 1000000.0 + 1e-11),
+        Vec(1.0, 1000000.0 + 1e-11),
+    )
     assert cl.len == 1 and close(cl[0].y, 1000000.0, eps: 1e-6)
-    let cc = circle_intersect(Circle(Vec(0.0, 0.0), 1000000.0), Circle(Vec(2000000.0 + 1e-11, 0.0), 1000000.0))
+    let cc = circle_intersect(
+        Circle(Vec(0.0, 0.0), 1000000.0),
+        Circle(Vec(2000000.0 + 1e-11, 0.0), 1000000.0),
+    )
     assert cc.len == 1 and close(cc[0].x, 1000000.0, eps: 1e-6)
 
 @test
@@ -4145,7 +4273,9 @@ fn planar_faces_cover_each_side_once_and_satisfy_euler():
         for i in 0..n:
             if i % k + 1 < k and rand(0, 2) > 0: edges.push((i, i + 1))
             if i + k < n and rand(0, 2) > 0: edges.push((i + k, i))
-        let faces = [[g.to_idx for g in f] for f in planar_faces(pts, [(G(u), G(v)) for (u, v) in edges])]
+        let faces = [
+            [g.to_idx for g in f] for f in planar_faces(pts, [(G(u), G(v)) for (u, v) in edges])
+        ]
         assert faces.map(f => f.len).sum() == 2 * edges.len
         var sides: List<(Int, Int)> = []
         for f in faces:
@@ -4248,7 +4378,16 @@ fn point_location_planar_matches_the_least_enclosing_face():
             var on = ps.contains(q)
             for (u, v) in edges:
                 let (a, b) = (ps[u], ps[v])
-                if (b - a).cross128(q - a) == I128(0) and min(a.x, b.x) <= q.x and q.x <= max(a.x, b.x) and min(a.y, b.y) <= q.y and q.y <= max(a.y, b.y): on = true
+                if (b - a).cross128(q - a) == I128(0) and min(a.x, b.x) <= q.x and q.x <= max(
+                    a.x,
+                    b.x,
+                ) and min(
+                    a.y,
+                    b.y,
+                ) <= q.y and q.y <= max(
+                    a.y,
+                    b.y,
+                ): on = true
             var want: ?Int = None
             var best = 0
             if not on:

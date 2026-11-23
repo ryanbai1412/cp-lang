@@ -17,6 +17,8 @@ var joined = Dsu<V>()
 var answers: List<Int> = []
 for (kind, u, v) in queries.rev:
     if kind == 2: joined.unite(u, v)
-    elif joined.same(u, v): answers.push(tree.depth(u) + tree.depth(v) - 2 * tree.depth(tree.lca(u, v)))
+    elif joined.same(u, v): answers.push(
+        tree.depth(u) + tree.depth(v) - 2 * tree.depth(tree.lca(u, v))
+    )
     else: answers.push(-1)
 for a in answers.rev: print(a)

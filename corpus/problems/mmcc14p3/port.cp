@@ -16,8 +16,8 @@ let g = Graph<V, E>.undirected(edges)
 let t = Rooted(u => g.out(u), V.first)
 
 fn outposts(radius: Int) -> Int:
-    var open: [V]?Int = [V] _ => none      // farthest uncovered vertex below, if any
-    var post: [V]?Int = [V] _ => none      // nearest outpost below, if any
+    var open: [V]?Int = [V] _ => none  // farthest uncovered vertex below, if any
+    var post: [V]?Int = [V] _ => none  // nearest outpost below, if any
     var used = 0
     for v in t.at.rev:
         var far = 0

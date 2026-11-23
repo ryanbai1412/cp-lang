@@ -238,7 +238,10 @@ pub struct Fenwick2D<R, C, T>:
     pub fn get(self, r: R, c: C) -> T:
         let p = r.to_idx
         let q = c.to_idx
-        self.corner(p + 1, q + 1) - self.corner(p, q + 1) - self.corner(p + 1, q) + self.corner(p, q)
+        self.corner(
+            p + 1,
+            q + 1,
+        ) - self.corner(p, q + 1) - self.corner(p + 1, q) + self.corner(p, q)
 
     /// Reset every cell to zero, keeping the domains and the allocation.
     ///
@@ -557,7 +560,13 @@ pub struct SparseFenwick2D<T>:
     pub fn fold(self, xs: Range<Int>, ys: Range<Int>) -> T:
         assert built, "`fold` before `build`"
         if xs.start >= xs.end or ys.start >= ys.end: return T.zero
-        self.corner(xs.end, ys.end) - self.corner(xs.start, ys.end) - self.corner(xs.end, ys.start) + self.corner(xs.start, ys.start)
+        self.corner(xs.end, ys.end) - self.corner(xs.start, ys.end) - self.corner(
+            xs.end,
+            ys.start,
+        ) + self.corner(
+            xs.start,
+            ys.start,
+        )
 
 @test
 fn sums_match_a_plain_array():

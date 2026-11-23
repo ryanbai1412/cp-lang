@@ -6,7 +6,7 @@ domain I = 0..n
 fn word() -> [I]Char: [I] _ => 'a' + rand(0, 2)
 let s: [I]Char = read(gen: word)
 
-var inner: [I]Int = 0                   // the row for i + 1
+var inner: [I]Int = 0  // the row for i + 1
 for i in I.rev:
     var need: [I]Int = 0
     for j in I:

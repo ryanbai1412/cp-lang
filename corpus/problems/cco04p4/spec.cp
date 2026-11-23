@@ -3,7 +3,10 @@
 fn walker() -> (at: Pt, steps: List<Pt>):
     let (x, y, n) = read<(Int, Int, 0..=10_000)>()
     let moves = read<[n](d: Int, axis: Char)>()
-    let unit = (m: (d: Int, axis: Char)) => if m.axis == 'X': Pt(Int(sign(m.d)), 0) else: Pt(0, Int(sign(m.d)))
+    let unit = (m: (d: Int, axis: Char)) => if m.axis == 'X': Pt(Int(sign(m.d)), 0) else: Pt(
+        0,
+        Int(sign(m.d)),
+    )
     (Pt(x, y), moves.flat_map(m => [unit(m) for _ in 0..abs(m.d)]).collect())
 var (s, t) = (walker(), walker())
 var best = s.at.dist(t.at)

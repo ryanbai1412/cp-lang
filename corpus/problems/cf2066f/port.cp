@@ -63,9 +63,7 @@ struct Plan(piece: [Seg](from: PosB.cuts, to: PosB.cuts), free: Seg)
 fn plan(x: Int) -> ?Plan:
     var came: [Seg.cuts, PosB.cuts, Bool]?Back = none
     fn fit(k: Seg.cuts, j: PosB.cuts, spent: Bool) -> Bool =
-        came[k, j, spent] != none or (
-            k == Seg.cuts.first and j == PosB.cuts.first and not spent
-        )
+        came[k, j, spent] != none or (k == Seg.cuts.first and j == PosB.cuts.first and not spent)
     for s in Seg:
         if total[s] < x:
             for spent in [false, true]:
@@ -83,7 +81,10 @@ fn plan(x: Int) -> ?Plan:
                     if j > i: came[s.r, j, true] = Back(i, false)
     var at = Back(PosB.cuts.last!, true)
     if not fit(Seg.cuts.last!, at.from, true): return none
-    var piece: [Seg](from: PosB.cuts, to: PosB.cuts) = (from: PosB.cuts.first!, to: PosB.cuts.first!)
+    var piece: [Seg](from: PosB.cuts, to: PosB.cuts) = (
+        from: PosB.cuts.first!,
+        to: PosB.cuts.first!,
+    )
     var free: ?Seg = none
     for s in Seg.rev:
         let back = came[s.r, at.from, at.spent]!
@@ -109,7 +110,13 @@ for s in Seg.filter(s => total[s] >= x).sorted(by: s => desc(total[s])):
     let into = if s == plan_x.free: [x] else: b[plan_x.piece[s].from..plan_x.piece[s].to].to_list()
     ops.push((start(s) + 1, start(s) + len[s], into))
     len[s] = into.len
-ops.push((start(plan_x.free) + 1, start(plan_x.free) + 1, b[plan_x.piece[plan_x.free].from..plan_x.piece[plan_x.free].to].to_list()))
+ops.push(
+    (
+        start(plan_x.free) + 1,
+        start(plan_x.free) + 1,
+        b[plan_x.piece[plan_x.free].from..plan_x.piece[plan_x.free].to].to_list(),
+    )
+)
 
 print(ops.len)
 for (l, r, into) in ops:

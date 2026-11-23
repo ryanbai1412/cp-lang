@@ -7,20 +7,20 @@
 // moves are then the inversions of the order chosen, counted as it is built.
 
 let n: Int = read()
-domain Ex = 1..=n                           // an exercise, by where it starts
+domain Ex = 1..=n  // an exercise, by where it starts
 domain Day = 1..=n
 let due: [Ex]Day = read()
 var due_on: [Day]List<Ex> = []
 for e in Ex: due_on[due[e]].push(e)
 
 fn moves() -> ?Int:
-    var free = MaxHeap<Ex>()                // not placed yet, and allowed on this day
-    var placed = Fenwick<Ex, Int>()         // 1 for every exercise given a later day
+    var free = MaxHeap<Ex>()         // not placed yet, and allowed on this day
+    var placed = Fenwick<Ex, Int>()  // 1 for every exercise given a later day
     var total = 0
     for day in Day.rev:
         for e in due_on[day]: free.push(e)
         if let e = free.pop():
-            total += placed.prefix(e.l)     // later days, but started further left
+            total += placed.prefix(e.l)  // later days, but started further left
             placed.add(e, 1)
         else: return none
     total

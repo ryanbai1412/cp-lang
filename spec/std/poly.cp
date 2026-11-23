@@ -459,16 +459,32 @@ fn drop_low<P>(a: List<Mod<P>>, k: Int) -> List<Mod<P>>:
     if a.len <= k: return []
     [a[i] for i in k..a.len]
 
-fn hgcd_apply<P>(m: (List<Mod<P>>, List<Mod<P>>, List<Mod<P>>, List<Mod<P>>), a: List<Mod<P>>, b: List<Mod<P>>) -> (List<Mod<P>>, List<Mod<P>>):
+fn hgcd_apply<P>(
+    m: (List<Mod<P>>, List<Mod<P>>, List<Mod<P>>, List<Mod<P>>),
+    a: List<Mod<P>>,
+    b: List<Mod<P>>,
+) -> (List<Mod<P>>, List<Mod<P>>):
     let one = Mod<P>(1)
     (poly_add(times(m.0, a), times(m.1, b), one), poly_add(times(m.2, a), times(m.3, b), one))
 
-fn hgcd_mul<P>(x: (List<Mod<P>>, List<Mod<P>>, List<Mod<P>>, List<Mod<P>>), y: (List<Mod<P>>, List<Mod<P>>, List<Mod<P>>, List<Mod<P>>)) -> (List<Mod<P>>, List<Mod<P>>, List<Mod<P>>, List<Mod<P>>):
+fn hgcd_mul<P>(
+    x: (List<Mod<P>>, List<Mod<P>>, List<Mod<P>>, List<Mod<P>>),
+    y: (List<Mod<P>>, List<Mod<P>>, List<Mod<P>>, List<Mod<P>>),
+) -> (List<Mod<P>>, List<Mod<P>>, List<Mod<P>>, List<Mod<P>>):
     let one = Mod<P>(1)
-    (poly_add(times(x.0, y.0), times(x.1, y.2), one), poly_add(times(x.0, y.1), times(x.1, y.3), one),
-        poly_add(times(x.2, y.0), times(x.3, y.2), one), poly_add(times(x.2, y.1), times(x.3, y.3), one))
+    (
+        poly_add(times(x.0, y.0), times(x.1, y.2), one),
+        poly_add(times(x.0, y.1), times(x.1, y.3), one),
+        poly_add(times(x.2, y.0), times(x.3, y.2), one),
+        poly_add(times(x.2, y.1), times(x.3, y.3), one),
+    )
 
-fn half_gcd<P>(a0: List<Mod<P>>, b0: List<Mod<P>>) -> (List<Mod<P>>, List<Mod<P>>, List<Mod<P>>, List<Mod<P>>):
+fn half_gcd<P>(a0: List<Mod<P>>, b0: List<Mod<P>>) -> (
+    List<Mod<P>>,
+    List<Mod<P>>,
+    List<Mod<P>>,
+    List<Mod<P>>,
+):
     let one: List<Mod<P>> = [Mod<P>(1)]
     let zero: List<Mod<P>> = []
     let id = (one, zero, zero, one)

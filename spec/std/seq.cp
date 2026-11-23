@@ -10,7 +10,6 @@
 //! - Monotone stack & sliding extrema: `prev_less`, `next_less`, `prev_greater`, `next_greater`, `sliding_min`, `sliding_max`.
 //! - Coordinate compression: `let (domain C, xs) = compress(all)` -> `Compressed<C, T>` (`at`, `try_at`, `contains`, `first_ge`, `first_gt`, `last_le`, `last_lt`).
 
-
 /// Every value of `V` once, in some order. `cpl stress` makes and shrinks it as a permutation.
 pub type Perm<V> = [V]V
 
@@ -236,7 +235,9 @@ pub fn sort<S: IndexedMut, T, K: Ord>(mut self: S, by: T -> K = x => x, desc: Bo
             let hi = if lo + 2 * w < n: lo + 2 * w else: n
             var (i, j) = (lo, mid)
             for k in lo..hi:
-                let right = j < hi and (i >= mid or (if desc: a[i].0 < a[j].0 else: a[j].0 < a[i].0))
+                let right = j < hi and (
+                    i >= mid or (if desc: a[i].0 < a[j].0 else: a[j].0 < a[i].0)
+                )
                 if right:
                     b[k] = a[j]
                     j += 1
@@ -446,11 +447,7 @@ fn sift_down<S: IndexedMut, T>(mut self: S, lo: Int, from: Int, m: Int, less: (T
 /// order: non-decreasing by `by`; a new `List`, keyed from 0
 /// traps: never; unsorted inputs give an unspecified interleaving
 /// example: `merge_sorted([1, 3], [2, 3]) == [1, 2, 3, 3]`
-pub fn merge_sorted<A: Indexed, B: Indexed, T, K>(
-    a: A,
-    b: B,
-    by: T -> K = x => x,
-) -> List<T>:
+pub fn merge_sorted<A: Indexed, B: Indexed, T, K>(a: A, b: B, by: T -> K = x => x) -> List<T>:
     var out: List<T> = []
     var (i, j) = (0, 0)
     while i < a.len and j < b.len:
@@ -724,7 +721,11 @@ pub fn prev_permutation<S: IndexedMut>(mut self: S) -> Bool:
 /// traps: never
 /// example: `[r.len for r in "aabccc".runs()] == [2, 1, 3]`
 /// example: `[r.len for r in [1, 2, 4, 5, 6].runs(link: (x, y) => y == x + 1)] == [2, 3]`
-pub fn runs<S: Indexed, T, K>(self: S, by: T -> K = x => x, link: ?((T, T) -> Bool) = None) -> yields Slice<S>:
+pub fn runs<S: Indexed, T, K>(
+    self: S,
+    by: T -> K = x => x,
+    link: ?((T, T) -> Bool) = None,
+) -> yields Slice<S>:
     let n = self.len
     var i = 0
     if link is Some(linked):
@@ -1245,7 +1246,9 @@ pub fn swap_at<D, T>(mut self: [D]T, i: D, j: D):
 /// order: a new `List`, keyed from 0
 /// traps: when `n < 0`
 /// example: `[1, 2, 3].resized(5, 0) == [1, 2, 3, 0, 0]`
-pub fn resized<S: Indexed, T>(self: S, n: Int, fill: T) -> List<T> = [if i < self.len: self.nth(i) else: fill for i in 0..n]
+pub fn resized<S: Indexed, T>(self: S, n: Int, fill: T) -> List<T> = [
+    if i < self.len: self.nth(i) else: fill for i in 0..n
+]
 
 /// O(1). Pop the last element if `ok` holds for it, else leave `self` alone and give `None`.
 /// A monotonic stack is `while let top = st.pop_if(t => t.h >= h): ...`.
@@ -1254,7 +1257,10 @@ pub fn resized<S: Indexed, T>(self: S, n: Int, fill: T) -> List<T> = [if i < sel
 /// empty: `None`
 /// traps: never
 /// example: `var s = [1, 5]; s.pop_if(x => x > 3) == Some(5)`
-pub fn pop_if<T>(mut self: List<T>, ok: T -> Bool) -> ?T = if self.len > 0 and ok(self[self.len - 1]): self.pop() else: None
+pub fn pop_if<T>(
+    mut self: List<T>,
+    ok: T -> Bool,
+) -> ?T = if self.len > 0 and ok(self[self.len - 1]): self.pop() else: None
 
 /// O(popped). Pop from the back while `ok` holds for the last element; the popped
 /// elements, last first. The back twin of `Deque.pop_front_while`.
@@ -1396,7 +1402,11 @@ pub struct Slice<S>():
 /// order: keeps the keys of `self`
 /// traps: when `k < 0`
 /// example: `[1, 2, 3].drop(1).collect() == [2, 3]`
-pub fn drop<S: Indexed>(self: S, k: Int = 1) -> Slice<S> = piece(self, clamp_count(k, self.len), self.len)
+pub fn drop<S: Indexed>(self: S, k: Int = 1) -> Slice<S> = piece(
+    self,
+    clamp_count(k, self.len),
+    self.len,
+)
 
 /// O(1). The view without its last `k` elements, clamped (traps if `k < 0`).
 ///
@@ -1405,7 +1415,11 @@ pub fn drop<S: Indexed>(self: S, k: Int = 1) -> Slice<S> = piece(self, clamp_cou
 /// order: keeps the keys of `self`
 /// traps: when `k < 0`
 /// example: `[1, 2, 3].drop_last(2).collect() == [1]`
-pub fn drop_last<S: Indexed>(self: S, k: Int = 1) -> Slice<S> = piece(self, 0, self.len - clamp_count(k, self.len))
+pub fn drop_last<S: Indexed>(self: S, k: Int = 1) -> Slice<S> = piece(
+    self,
+    0,
+    self.len - clamp_count(k, self.len),
+)
 
 /// O(1). The first `min(k, len)` elements, as a view (traps if `k < 0`).
 ///
@@ -1423,7 +1437,11 @@ pub fn take<S: Indexed>(self: S, k: Int) -> Slice<S> = piece(self, 0, clamp_coun
 /// order: keeps the keys of `self`
 /// traps: when `k < 0`
 /// example: `[1, 2, 3].take_last(2).collect() == [2, 3]`
-pub fn take_last<S: Indexed>(self: S, k: Int) -> Slice<S> = piece(self, self.len - clamp_count(k, self.len), self.len)
+pub fn take_last<S: Indexed>(self: S, k: Int) -> Slice<S> = piece(
+    self,
+    self.len - clamp_count(k, self.len),
+    self.len,
+)
 
 /// O(1). The element `k` steps from the start, 0-based whatever the keys: `s[l..].nth(k)` is
 /// `s[l + k]`, `w.nth(0)` is `w.first!`. Traps when `k` is outside `0..len`.
@@ -1481,7 +1499,11 @@ pub fn collect<S: Seq, T>(self: S) -> List<T>:
 /// order: input order, with the k-th key of `keys` or `by(x)`
 /// traps: when both `keys` and `by` are given; when `keys` runs out first
 /// example: `"ab".keyed().items.collect() == [(0, 'a'), (1, 'b')]`
-pub fn keyed<S: Seq, I: Indexed, T, K>(self: S, keys: I = 0.., by: ?(T -> K) = None) -> Keys<S, I, K> = todo
+pub fn keyed<S: Seq, I: Indexed, T, K>(
+    self: S,
+    keys: I = 0..,
+    by: ?(T -> K) = None,
+) -> Keys<S, I, K> = todo
 
 /// The view `keyed` returns.
 pub struct Keys<S, I, K>(src: S, keys: I, by: ?K)
@@ -1812,7 +1834,11 @@ pub fn max_k<S: Seq, T, K>(self: S, k: Int, by: T -> K = x => x) -> List<T>:
     assert k >= 0, "max_k requires k >= 0"
     var ps: List<(K, Int, T)> = []
     for x in self: ps.push((by(x), ps.len, x))
-    if k < ps.len and k > 0: select(mut ps, k - 1, cmp: (p, q) => q.0 < p.0 or (p.0 == q.0 and p.1 < q.1))
+    if k < ps.len and k > 0: select(
+        mut ps,
+        k - 1,
+        cmp: (p, q) => q.0 < p.0 or (p.0 == q.0 and p.1 < q.1),
+    )
     [ps[i].2 for i in 0..(if k < ps.len: k else: ps.len)]
 
 /// O(n). Unstable in-place partition moving `keep(x)` elements to `0..mid`; returns `mid`.
@@ -2199,7 +2225,6 @@ pub fn partial_inverse<I, V>(self: [I]?V) -> [V]?I:
             out[v] = i
     out
 
-
 /// O(k) per combination. All `k`-element combinations in lexicographic index order (`k = 2` is unordered pairs).
 ///
 /// cost: O(k) per combination
@@ -2362,14 +2387,21 @@ pub fn lcs<A: Indexed, B: Indexed, T>(a: A, b: B) -> List<(Int, Int)>:
 /// order: arrays keyed by `D`
 /// traps: never
 /// example: `[3, 1, 2].cartesian_tree().root == Some(1)`
-pub fn cartesian_tree<D, T>(self: [D]T, min_root: Bool = true) -> (root: ?D, left: [D]?D, right: [D]?D, parent: [D]?D):
+pub fn cartesian_tree<D, T>(self: [D]T, min_root: Bool = true) -> (
+    root: ?D,
+    left: [D]?D,
+    right: [D]?D,
+    parent: [D]?D,
+):
     var left: [D]?D = None
     var right: [D]?D = None
     var parent: [D]?D = None
     var st: List<D> = []
     for i in D:
         var last: ?D = None
-        while st.len > 0 and (if min_root: self[st[st.len - 1]] > self[i] else: self[st[st.len - 1]] < self[i]):
+        while st.len > 0 and (
+            if min_root: self[st[st.len - 1]] > self[i] else: self[st[st.len - 1]] < self[i]
+        ):
             last = st.pop()
         if let l = last:
             left[i] = l
@@ -2657,7 +2689,14 @@ fn compress_gives_the_values_their_own_domain():
 
 @test
 fn min_max_by_tie_breaking():
-    let items = [(10, "first_min"), (5, "a"), (5, "b"), (20, "first_max"), (20, "second_max"), (5, "c")]
+    let items = [
+        (10, "first_min"),
+        (5, "a"),
+        (5, "b"),
+        (20, "first_max"),
+        (20, "second_max"),
+        (5, "c"),
+    ]
     assert items.min(by: p => p.0) == Some((5, "a"))
     assert items.max(by: p => p.0) == Some((20, "first_max"))
     assert [("x", 1), ("y", 1), ("z", 1)].min(by: p => p.1) == Some(("x", 1))
@@ -3025,7 +3064,13 @@ fn seq_and_indexed_traits_unify_sequences_and_views():
     assert sum(r) == 15 and r.prod() == 120
     let vs = [1, 3, 5, 2, 4, 6]
     assert merge_sorted([1, 3, 5], [2, 4, 6]) == [1, 2, 3, 4, 5, 6]
-    assert [p for p in zip(vs, [10, 10, 20, 30, 30])] == [(1, 10), (3, 10), (5, 20), (2, 30), (4, 30)]
+    assert [p for p in zip(vs, [10, 10, 20, 30, 30])] == [
+        (1, 10),
+        (3, 10),
+        (5, 20),
+        (2, 30),
+        (4, 30),
+    ]
     assert inversions(vs) == 3 and inversions(arr) == 0 and inversions(r) == 0
 
 @test
@@ -3116,7 +3161,12 @@ pub enum Anchor = Start | End
 /// order: keyed by `D`, by right end (or left end with `Anchor.Start`)
 /// traps: never in release; debug traps when `ok` fails on a single element after a shrink
 /// example: `[1, 1, 2].maximal(state: Counter<Int, Int>(0), ok: c => c.len <= 1).map(w => w.len) == [1, 2, 1]`
-pub fn maximal<D, T, St>(self: [D]T, state: St, ok: St -> Bool, anchor: Anchor = Anchor.End) -> [D]Slice<[D]T>:
+pub fn maximal<D, T, St>(
+    self: [D]T,
+    state: St,
+    ok: St -> Bool,
+    anchor: Anchor = Anchor.End,
+) -> [D]Slice<[D]T>:
     with lint(unproven_list_index: allow)
     let n = self.len
     var st = state
@@ -3152,7 +3202,12 @@ pub fn maximal<D, T, St>(self: [D]T, state: St, ok: St -> Bool, anchor: Anchor =
 /// order: keyed by `D`, by right end (or left end with `Anchor.Start`)
 /// traps: never
 /// example: `[1, 2, 3].minimal(state: Window(+), ok: w => (w.all ?? 0) >= 3).map(w => w.map(.len)) == [None, Some(2), Some(1)]`
-pub fn minimal<D, T, St>(self: [D]T, state: St, ok: St -> Bool, anchor: Anchor = Anchor.End) -> [D]?Slice<[D]T>:
+pub fn minimal<D, T, St>(
+    self: [D]T,
+    state: St,
+    ok: St -> Bool,
+    anchor: Anchor = Anchor.End,
+) -> [D]?Slice<[D]T>:
     with lint(unproven_list_index: allow)
     let n = self.len
     var st = state
@@ -3291,7 +3346,10 @@ pub struct Ring<D, T>(src: [D]T):
                 st.pop(src[D.nth(l % n)])
                 l += 1
             if t >= n and best >= 0 and t - best + 1 <= n:
-                out[D.nth(t - n)] = Some(RingSlice<D, T>(rr: self.span(D.nth(best % n), t - best + 1)))
+                out[D.nth(t - n)] = Some(
+                    RingSlice<D,
+                    T>(rr: self.span(D.nth(best % n), t - best + 1)),
+                )
         out
 
 /// A run of positions of `D` read cyclically, possibly wrapping past the last position, at most
@@ -3415,7 +3473,9 @@ pub fn valleys<D, T>(self: [D]T) -> yields Range<D>:
 pub fn spans<D, T, K>(self: [D]T, by: T -> K = x => x) -> [D]Range<D>:
     let left = self.prev_smaller(by: by, strict: false)
     let right = self.next_smaller(by: by, strict: true)
-    [D] i => (if let l = left[i]: l.r else: D.cuts.nth(0))..(if let r = right[i]: r.l else: D.cuts.nth(D.K))
+    [D] i => (if let l = left[i]: l.r else: D.cuts.nth(0))..(
+        if let r = right[i]: r.l else: D.cuts.nth(D.K)
+    )
 
 /// Nearest earlier position with a smaller key (`strict: false`: smaller or equal).
 ///
@@ -3429,7 +3489,9 @@ pub fn prev_smaller<D, T, K>(self: [D]T, by: T -> K = x => x, strict: Bool = tru
     var out: [D]?D = None
     var st: List<D> = []
     for i in D:
-        while st.len > 0 and (if strict: by(self[st[st.len - 1]]) >= by(self[i]) else: by(self[st[st.len - 1]]) > by(self[i])):
+        while st.len > 0 and (
+            if strict: by(self[st[st.len - 1]]) >= by(self[i]) else: by(self[st[st.len - 1]]) > by(self[i])
+        ):
             let _ = st.pop()
         if st.len > 0: out[i] = st[st.len - 1]
         st.push(i)
@@ -3448,7 +3510,9 @@ pub fn next_smaller<D, T, K>(self: [D]T, by: T -> K = x => x, strict: Bool = tru
     var st: List<D> = []
     for k in (0..D.K).rev:
         let i = D.nth(k)
-        while st.len > 0 and (if strict: by(self[st[st.len - 1]]) >= by(self[i]) else: by(self[st[st.len - 1]]) > by(self[i])):
+        while st.len > 0 and (
+            if strict: by(self[st[st.len - 1]]) >= by(self[i]) else: by(self[st[st.len - 1]]) > by(self[i])
+        ):
             let _ = st.pop()
         if st.len > 0: out[i] = st[st.len - 1]
         st.push(i)

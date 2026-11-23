@@ -15,7 +15,7 @@ let start: Cell = read()
 let coin_at: [0..coins](Row, Col, Tick) = read()
 let bomb_at: [0..bombs](Row, Col, Tick) = read()
 
-fn adj4(p: Cell) -> List<Cell>:               // v2: p.adj4
+fn adj4(p: Cell) -> List<Cell>:  // v2: p.adj4
     var out: List<Cell> = []
     if let r = p.0 - 1: out.push((r, p.1))
     if let r = p.0 + 1: out.push((r, p.1))

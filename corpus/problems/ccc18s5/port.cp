@@ -5,13 +5,15 @@
 let (n, m, p, q): (1..=1e5, 1..=1e5, 1..=1e5, 1..=1e5) = read()
 domain Planet = 1..=n
 domain City = 1..=m
-let flights: [0..p](a: City, b: City, cost: 1..=1e8) = read()       // one copy per planet
-let portals: [0..q](a: Planet, b: Planet, cost: 1..=1e8) = read()   // one copy per city
+let flights: [0..p](a: City, b: City, cost: 1..=1e8) = read()      // one copy per planet
+let portals: [0..q](a: Planet, b: Planet, cost: 1..=1e8) = read()  // one copy per city
 
 enum Link:
     Flight(a: City, b: City)
     Portal(a: Planet, b: Planet)
-let links: List<(cost: Int, link: Link)> = [(f.cost, Flight(f.a, f.b)) for f in flights] + [(g.cost, Portal(g.a, g.b)) for g in portals]
+let links: List<(cost: Int, link: Link)> = [(f.cost, Flight(f.a, f.b)) for f in flights] + [
+    (g.cost, Portal(g.a, g.b)) for g in portals
+]
 
 // Kruskal on the product graph without building it: a flight that joins two
 // groups of cities is kept once for each group of planets, and vice versa.

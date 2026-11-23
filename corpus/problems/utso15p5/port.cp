@@ -9,8 +9,13 @@ domain Road = 0..m
 
 // generator: mostly connected maps, with few different costs so that ties are common
 fn tied() -> [Road](u: Town, v: Town, cost: 1..=1e6):
-    [Road] r => (if r.idx < n - 1 and n > 1: (Town(rand(1, r.idx + 1)), Town(min(n, r.idx + 2)), rand(1, 4))
-                 else: (Town(rand(1, n)), Town(rand(1, n)), rand(1, 4)))
+    [Road] r => (
+        if r.idx < n - 1 and n > 1: (
+            Town(rand(1, r.idx + 1)),
+            Town(min(n, r.idx + 2)),
+            rand(1, 4),
+        ) else: (Town(rand(1, n)), Town(rand(1, n)), rand(1, 4))
+    )
 
 let roads: [Road](u: Town, v: Town, cost: 1..=1e6) = read(gen: tied)
 

@@ -35,8 +35,8 @@ fn gen_walls() -> [W](u: P, v: P):
     let near = [(p, q) for p in P for d in [Pt(1, 0), Pt(0, 1)] if let q = at.get(pts[p] + d)]
     sample(near, m)
 
-enum Dir: East, North, West, South                  // counter-clockwise
-domain Side = 0..2 * m                              // wall w has sides 2w and 2w + 1
+enum Dir: East, North, West, South  // counter-clockwise
+domain Side = 0..2 * m              // wall w has sides 2w and 2w + 1
 fn side(w: W, first: Bool) -> Side = Side.nth(2 * w.ord + if first: 0 else: 1)
 
 fn heading(a: Pt, b: Pt) -> Dir:
@@ -55,8 +55,8 @@ var faces = Dsu<Side>.new()
 for p in P:
     for d in Dir:
         let here = out[p, d] else: continue
-        let next = first(out[p, d.cyc(k)] for k in 1..=4)!       // the next wall round p
-        faces.unite(here, next.flip)                             // WISH: Side.flip = the other side
+        let next = first(out[p, d.cyc(k)] for k in 1..=4)!  // the next wall round p
+        faces.unite(here, next.flip)                        // WISH: Side.flip = the other side
 
 var across: [Side]List<Side> = []
 for w in W:
@@ -80,6 +80,8 @@ for p in sorted(P, by: p => (pts[p].x, pts[p].y)):
                 wet_at[b] = wet_at[a]! + 1
                 queue.push(b)
 
-let standing = [w for w in W if wet_at[faces.find(side(w, true))] == wet_at[faces.find(side(w, false))]]
+let standing = [
+    w for w in W if wet_at[faces.find(side(w, true))] == wet_at[faces.find(side(w, false))]
+]
 print(standing.len)
 for w in standing: print(w)

@@ -19,14 +19,14 @@ for (a, b, _) in branches:
     adj[a].push(b)
     adj[b].push(a)
 let tree = Rooted(adj, Fruit.first)
-var up: [Fruit]Int = 0                  // cost of the branch to the parent
+var up: [Fruit]Int = 0  // cost of the branch to the parent
 for (a, b, cost) in branches:
     up[if tree.parent(a) == b: a else: b] = cost
 
 // Only two things matter about a fruit: whether the big head eats it, and if
 // not, whether the small heads can avoid meeting across a branch. With two or
 // more small heads they always can, by alternating down the tree.
-domain Who = 0..2                       // 0: a small head, 1: the big head
+domain Who = 0..2  // 0: a small head, 1: the big head
 let big = Who(1)
 // cost[v, w, x]: cheapest sharing of v's subtree where w eats v and the big
 // head eats x fruits of the subtree
@@ -34,7 +34,7 @@ var cost: [Fruit, Who, 0..=n]?Int = none
 for v in Fruit:
     cost[v, Who(0), 0] = 0
     cost[v, big, 1] = 0
-for c in tree.at.rev:             // children are complete before parents
+for c in tree.at.rev:  // children are complete before parents
     if let p = tree.parent(c):
         var merged: [Who, 0..=n]?Int = none
         for wp in Who:
@@ -44,7 +44,10 @@ for c in tree.at.rev:             // children are complete before parents
                 for x in 0..=n:
                     if let above = cost[p, wp, x]:
                         for y in 0..=n - x:
-                            if let below = cost[c, wc, y]: merged[wp, x + y] min= above + below + join
+                            if let below = cost[c, wc, y]: merged[
+                                wp,
+                                x + y,
+                            ] min= above + below + join
         for w in Who:
             for x in 0..=n: cost[p, w, x] = merged[w, x]
 print(if heads - 1 + k > n: -1 else: cost[Fruit.first, big, k]!)

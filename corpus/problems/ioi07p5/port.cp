@@ -50,8 +50,8 @@ fn grid() -> Int:
 
 fn cube() -> Int:
     domain Z = 1..=m
-    domain U = 1..=2 * m                    // x + y is 2..=2m; row 1 stays empty
-    domain V = 0..=2 * m - 1                // x - y + m is 1..=2m-1; column 0 stays empty
+    domain U = 1..=2 * m      // x + y is 2..=2m; row 1 stays empty
+    domain V = 0..=2 * m - 1  // x - y + m is 1..=2m-1; column 0 stays empty
     var at: List<(z: Int, u: Int, v: Int)> = []
     var seen: [Z, U, V]Int = 0
     for _ in 0..n:
@@ -64,7 +64,11 @@ fn cube() -> Int:
         for u in U:
             for v in V:
                 if u.label > 1 and v.label > 0:
-                    seen[z, u, v] += seen[z, u.prev!, v] + seen[z, u, v.prev!] - seen[z, u.prev!, v.prev!]
+                    seen[z, u, v] += seen[z, u.prev!, v] + seen[z, u, v.prev!] - seen[
+                        z,
+                        u.prev!,
+                        v.prev!,
+                    ]
     // animals of layer z with u in (u0..=u1) and v in (v0..=v1), all clamped to the board
     fn boxed(z: Z, u0: Int, u1: Int, v0: Int, v1: Int) -> Int:
         let (a, b) = (U(max(u0 - 1, 1)), U(min(u1, 2 * m)))

@@ -34,7 +34,12 @@ fn add(f: Line, node: Node, lo: Stone, hi: Stone):
     winner[node] = keep
     if lo == hi: return
     if value(sink, lo) < value(keep, lo): add(sink, Node(2 * node.label), lo, mid)
-    elif value(sink, hi) < value(keep, hi): add(sink, Node(2 * node.label + 1), Stone(mid.label + 1), hi)
+    elif value(sink, hi) < value(keep, hi): add(
+        sink,
+        Node(2 * node.label + 1),
+        Stone(mid.label + 1),
+        hi,
+    )
 
 fn lowest(s: Stone) -> Int:
     var node = Node.first
@@ -51,7 +56,7 @@ fn lowest(s: Stone) -> Int:
         else:
             node = Node(2 * node.label + 1)
             lo = Stone(mid.label + 1)
-    best ?? 0                               // never empty: stone 1 is added before any query
+    best ?? 0  // never empty: stone 1 is added before any query
 
 var cost: [Stone]Int = 0
 for s in Stone:

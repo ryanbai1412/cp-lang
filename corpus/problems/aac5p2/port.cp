@@ -2,7 +2,7 @@
 // "? i j" returns a[i] * a[j]. Find the permutation.
 let n: 2..=1e5 = read()
 domain I = 1..=n
-domain Gap = 1..n                           // between positions g and g + 1
+domain Gap = 1..n  // between positions g and g + 1
 
 // the products of neighbours pin everything down once one value is known
 var product: [Gap]Int = 0

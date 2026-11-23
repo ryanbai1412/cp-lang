@@ -6,7 +6,7 @@
 // starting at b merges leftward, or in the final flush, where everything
 // still on the stack merges from the right. A query [l, r] ends as two
 // blocks split at the boundary inside it that merged last.
-enum Dir:  Left | Right
+enum Dir: Left | Right
 
 let n: Int = read()
 domain Ball = 0..n

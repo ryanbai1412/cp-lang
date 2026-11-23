@@ -46,7 +46,11 @@ fn main_solve():
         let c = max(0, yl)
         let d = min(lim - 1, yr)
         if a > b or c > d: return 0
-        return b_pref(which, b + 1, d + 1) - b_pref(which, a, d + 1) - b_pref(which, b + 1, c) + b_pref(which, a, c)
+        return b_pref(
+            which,
+            b + 1,
+            d + 1,
+        ) - b_pref(which, a, d + 1) - b_pref(which, b + 1, c) + b_pref(which, a, c)
 
     fn ds_query(which: Int, xl: Int, xr: Int, yl: Int, yr: Int) -> Int:
         return q_clamped(which, xl, xr, yl, yr) + q_clamped(which, xl - p, xr - p, yl - p, yr - p)

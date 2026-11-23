@@ -4,7 +4,7 @@ let k: 1..=26 = read()
 domain L = 'A'..'A' + k
 let orders: [n]Perm<L> = read()
 
-var ahead: [L, L]Bool = true             // ahead[x, y]: x before y in every order
+var ahead: [L, L]Bool = true  // ahead[x, y]: x before y in every order
 for o in orders:
     for (x, y) in o.pairs():
         ahead[y, x] = false

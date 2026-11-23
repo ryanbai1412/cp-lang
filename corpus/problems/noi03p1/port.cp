@@ -9,12 +9,12 @@
 // match and another gaining it.
 // original: corpus/submissions/3738358.cpp
 const STICKS = [6, 2, 5, 5, 4, 5, 6, 3, 7, 6]
-const RESHAPE = [(0, 6), (0, 9), (2, 3), (3, 5), (6, 9)]                    // same count, one match moved
-const ONE_OFF = [(0, 8), (1, 7), (3, 9), (5, 6), (5, 9), (6, 8), (8, 9)]    // one match added or removed
+const RESHAPE = [(0, 6), (0, 9), (2, 3), (3, 5), (6, 9)]                  // same count, one match moved
+const ONE_OFF = [(0, 8), (1, 7), (3, 9), (5, 6), (5, 9), (6, 8), (8, 9)]  // one match added or removed
 
 fn linked(pairs: List<(Int, Int)>, a: Int, b: Int) -> Bool = pairs.contains((min(a, b), max(a, b)))
 
-struct Digit(weight: Int, value: Int, at: Int)      // weight = sign * place value
+struct Digit(weight: Int, value: Int, at: Int)  // weight = sign * place value
 
 let text: Str = read()
 var eq = Str()
@@ -24,7 +24,7 @@ for c in text:
 
 var digits: List<Digit> = []
 var total = 0
-var (side, i) = (1, 0)                              // side: +1 left of '=', -1 right of it
+var (side, i) = (1, 0)  // side: +1 left of '=', -1 right of it
 while i < eq.len:
     var sign = side
     if eq[i] == '=':
@@ -35,7 +35,7 @@ while i < eq.len:
     let start = i
     while i < eq.len and eq[i].is_digit: i += 1
     var place = sign
-    for at in (start..i).rev:                       // units first
+    for at in (start..i).rev:  // units first
         let d = eq[at].ord - '0'.ord
         digits.push(Digit(place, d, at))
         total += place * d

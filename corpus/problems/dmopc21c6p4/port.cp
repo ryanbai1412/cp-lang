@@ -12,7 +12,7 @@ let a: V = read()
 let b: V = read()
 let c: V = read()
 let d: V = read()
-domain Seen = 0..4                             // bit 0: met c, bit 1: met d
+domain Seen = 0..4  // bit 0: met c, bit 1: met d
 
 fn mark(u: V, seen: Seen) -> Seen:
     var s = seen.idx

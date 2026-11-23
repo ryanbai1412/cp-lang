@@ -6,8 +6,8 @@
 //! Floating-point elimination uses partial pivoting with an explicit tolerance `eps` via
 //! `det_real`, `rank_real`, `solve_real`, and `inverse_real`.
 use std.algebra.{Monoid, Semiring}
-use std.mod.{Mod}
 use std.math.{mul_mod}
+use std.mod.{Mod}
 use std.rand.{Rng}
 
 /// A dense `rows x cols` matrix stored flat in row-major order.
@@ -377,7 +377,9 @@ pub struct Mat<T>:
                 while a[r * n + col] != 0:
                     let q = a[col * n + col] / a[r * n + col]
                     if q != 0:
-                        for c in col..n: a[col * n + c] = (a[col * n + c] - mul_mod(q, a[r * n + c], m) + m) % m
+                        for c in col..n: a[col * n + c] = (
+                            a[col * n + c] - mul_mod(q, a[r * n + c], m) + m
+                        ) % m
                     for c in col..n: a.swap(col * n + c, r * n + c)
                     ans = (m - ans) % m
             if a[col * n + col] == 0: return 0
@@ -507,7 +509,6 @@ pub struct Mat<T>:
         for i in 0..n:
             for j in 0..n: out[i * n + j] = lam * x[i] * y[j]
         Mat(n, n, out)
-
 
 impl Add for Mat<T>:
     fn add(a, b):
@@ -1184,7 +1185,11 @@ pub struct PrefixXorBasis:
 /// example: `let e: List<(Int, Int, Mod<998244353>)> = [(0, 0, Mod(1)), (0, 1, Mod(1))]; sparse_det(2, e) == Mod<998244353>(0)`
 pub fn sparse_det<P>(n: Int, entries: List<(Int, Int, Mod<P>)>) -> Mod<P>:
     assert n >= 0, "sparse_det requires n >= 0"
-    for (r, c, _) in entries: assert 0 <= r and r < n and 0 <= c and c < n, "sparse_det entry outside 0..n"
+    for (
+        r,
+        c,
+        _,
+    ) in entries: assert 0 <= r and r < n and 0 <= c and c < n, "sparse_det entry outside 0..n"
     if n == 0: return Mod<P>(1)
     var rng = Rng(998_244_353)
     loop:
@@ -1209,7 +1214,11 @@ pub fn sparse_det<P>(n: Int, entries: List<(Int, Int, Mod<P>)>) -> Mod<P>:
 pub fn sparse_solve<P>(n: Int, entries: List<(Int, Int, Mod<P>)>, b: List<Mod<P>>) -> ?List<Mod<P>>:
     assert n >= 0, "sparse_solve requires n >= 0"
     assert b.len == n, "sparse_solve requires b.len == n"
-    for (r, c, _) in entries: assert 0 <= r and r < n and 0 <= c and c < n, "sparse_solve entry outside 0..n"
+    for (
+        r,
+        c,
+        _,
+    ) in entries: assert 0 <= r and r < n and 0 <= c and c < n, "sparse_solve entry outside 0..n"
     if n == 0: return Some([])
     var rng = Rng(998_244_353)
     loop:
@@ -1229,12 +1238,21 @@ pub fn sparse_solve<P>(n: Int, entries: List<(Int, Int, Mod<P>)>, b: List<Mod<P>
                 if ax[k] != b[k]: ok = false
             if ok: return Some(x)
 
-fn sparse_apply<P>(n: Int, entries: List<(Int, Int, Mod<P>)>, diag: List<Mod<P>>, v: List<Mod<P>>) -> List<Mod<P>>:
+fn sparse_apply<P>(
+    n: Int,
+    entries: List<(Int, Int, Mod<P>)>,
+    diag: List<Mod<P>>,
+    v: List<Mod<P>>,
+) -> List<Mod<P>>:
     var out = List.filled(n, Mod<P>(0))
     for (r, c, a) in entries: out[r] += a * diag[c] * v[c]
     out
 
-fn wiedemann<P>(n: Int, entries: List<(Int, Int, Mod<P>)>, mut rng: Rng) -> (f: List<Mod<P>>, diag: List<Mod<P>>, singular: Bool):
+fn wiedemann<P>(
+    n: Int,
+    entries: List<(Int, Int, Mod<P>)>,
+    mut rng: Rng,
+) -> (f: List<Mod<P>>, diag: List<Mod<P>>, singular: Bool):
     var diag = [Mod<P>(rng.int(1, 2_000_000_000)) for _ in 0..n]
     for k in 0..n:
         if diag[k] == Mod<P>(0): diag[k] = Mod<P>(1)
@@ -1291,7 +1309,12 @@ fn berlekamp_massey<P>(s: List<Mod<P>>) -> List<Mod<P>>:
 /// example: `let r = simplex(Mat<F64>.from_rows([[1.0, 0.0], [0.0, 1.0]]), [1.0, 2.0], [1.0, 1.0])!; abs(r.val - 3.0) < 1e-9 and abs(r.x[1] - 2.0) < 1e-9`
 /// example: `simplex(Mat<F64>.from_rows([[1.0]]), [-1.0], [1.0]) == None`
 /// example: `simplex(Mat<F64>.from_rows([[-1.0]]), [0.0], [1.0]) == None`
-pub fn simplex(a: Mat<F64>, b: List<F64>, c: List<F64>, eps: F64 = 1e-9) -> ?(val: F64, x: List<F64>):
+pub fn simplex(
+    a: Mat<F64>,
+    b: List<F64>,
+    c: List<F64>,
+    eps: F64 = 1e-9,
+) -> ?(val: F64, x: List<F64>):
     assert b.len == a.rows, "simplex requires b.len == a.rows"
     assert c.len == a.cols, "simplex requires c.len == a.cols"
     let (m, n) = (a.rows, a.cols)
@@ -1329,7 +1352,9 @@ pub fn simplex(a: Mat<F64>, b: List<F64>, c: List<F64>, eps: F64 = 1e-9) -> ?(va
             var s = -1
             for j in 0..=n:
                 if nn[j] != -phase:
-                    if s == -1 or d[x * w + j] < d[x * w + s] or (d[x * w + j] == d[x * w + s] and nn[j] < nn[s]): s = j
+                    if s == -1 or d[x * w + j] < d[x * w + s] or (
+                        d[x * w + j] == d[x * w + s] and nn[j] < nn[s]
+                    ): s = j
             if d[x * w + s] >= -eps: return true
             var r = -1
             for i in 0..m:
@@ -1353,7 +1378,9 @@ pub fn simplex(a: Mat<F64>, b: List<F64>, c: List<F64>, eps: F64 = 1e-9) -> ?(va
                 if bb[i] == -1:
                     var s = 0
                     for j in 1..=n:
-                        if d[i * w + j] < d[i * w + s] or (d[i * w + j] == d[i * w + s] and nn[j] < nn[s]): s = j
+                        if d[i * w + j] < d[i * w + s] or (
+                            d[i * w + j] == d[i * w + s] and nn[j] < nn[s]
+                        ): s = j
                     pivot(i, s)
     if not run(1): return None
     var x = List.filled(n, 0.0)

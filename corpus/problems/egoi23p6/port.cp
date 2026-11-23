@@ -16,8 +16,10 @@ var best: [Take, Pos, Swaps]Int = 0
 for i in (0..m).rev:
     for j in (i..n).rev:
         for s in (j - i)..cap:
-            best[Take(i), Pos(j), Swaps(s)] = max(best[Take(i), Pos(j + 1), Swaps(s)],
-                a[Box(j)] + best[Take(i + 1), Pos(j + 1), Swaps(s - (j - i))])
+            best[Take(i), Pos(j), Swaps(s)] = max(
+                best[Take(i), Pos(j + 1), Swaps(s)],
+                a[Box(j)] + best[Take(i + 1), Pos(j + 1), Swaps(s - (j - i))],
+            )
 
 var ans: ?Int = none
 for s in 0..cap:

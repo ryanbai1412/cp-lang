@@ -15,20 +15,20 @@ assert k <= n
 domain Spot = 1..=n
 let score: [Spot]1..=1e9 = read()
 
-domain Cut = 0..=n                      // number of attractions already seen
+domain Cut = 0..=n  // number of attractions already seen
 
 fn most(score: [Spot]1..=1e9) -> Int:
     var best: [Cut]Int = 0
     // Suffix maxima over the previous block's cuts j: best[j] and best[j] + tail[j].
     var plain: [Cut]Int = 0
     var tailed: [Cut]Int = 0
-    var lo = 0                          // current block covers cuts lo+1..=hi
+    var lo = 0  // current block covers cuts lo+1..=hi
     while lo < n:
         let hi = min(lo + k, n)
         var head = 0
         for i in lo + 1..=hi:
             head max= score[Spot(i)]
-            let j = max(i - k, 0)       // earliest cut the day may start from
+            let j = max(i - k, 0)  // earliest cut the day may start from
             best[Cut(i)] = if lo == 0: head else: max(tailed[Cut(j)], plain[Cut(j)] + head)
         var tail = 0
         var run_plain = 0

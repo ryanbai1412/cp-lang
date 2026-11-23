@@ -9,7 +9,7 @@ let pts = raw.sorted()
 var ys: List<Int> = [0]
 for p in pts:
     ys.push(p.y)
-let (H, height) = compress(ys)              // H.first is height 0
+let (H, height) = compress(ys)  // H.first is height 0
 
 // tallest allowed height index for a rectangle spanning pts[l]..pts[i]
 fn tallest(l: P, i: P) -> H:

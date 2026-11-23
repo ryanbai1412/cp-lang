@@ -1195,7 +1195,11 @@ pub struct SortedSet<K>:
     /// traps: when both `after` and `before` are given
     /// example: `var s = SortedSet.of([1, 2, 5, 8]); s.drain(after: 1, while: x => x < 6) == [2, 5] and s.to_list() == [1, 8]`
     /// example: `var s = SortedSet.of([1, 2, 5, 8]); s.drain(before: 8, while: x => x > 1) == [5, 2]`
-    pub fn drain(mut self; after: ?K = None, before: ?K = None, while ok: K -> Bool) -> List<K> = bag.drain(after:, before:, while: ok)
+    pub fn drain(
+        mut self; after: ?K = None,
+        before: ?K = None,
+        while ok: K -> Bool
+    ) -> List<K> = bag.drain(after:, before:, while: ok)
 
     /// The keys of `self` inside `r`, as an O(1) view; replaces `first_ge`, `first_gt`, `last_le`,
     /// `last_lt` and `count_range` (decision 103). `r` is any ordered range: `a..b`, `a..=b`, `..b`,
@@ -1207,11 +1211,29 @@ pub struct SortedSet<K>:
     /// example: `SortedSet.of([1, 3, 7]).range(..7).last == Some(3)`
     pub fn range(self, r: Range<K>) -> SortedRange<K> = todo
 
-    fn range_first(self, lo: ?K, lo_inc: Bool, hi: ?K, hi_inc: Bool) -> ?K = bag.range_first(lo, lo_inc, hi, hi_inc)
+    fn range_first(
+        self,
+        lo: ?K,
+        lo_inc: Bool,
+        hi: ?K,
+        hi_inc: Bool,
+    ) -> ?K = bag.range_first(lo, lo_inc, hi, hi_inc)
 
-    fn range_last(self, lo: ?K, lo_inc: Bool, hi: ?K, hi_inc: Bool) -> ?K = bag.range_last(lo, lo_inc, hi, hi_inc)
+    fn range_last(
+        self,
+        lo: ?K,
+        lo_inc: Bool,
+        hi: ?K,
+        hi_inc: Bool,
+    ) -> ?K = bag.range_last(lo, lo_inc, hi, hi_inc)
 
-    fn range_len(self, lo: ?K, lo_inc: Bool, hi: ?K, hi_inc: Bool) -> Int = bag.range_len(lo, lo_inc, hi, hi_inc)
+    fn range_len(
+        self,
+        lo: ?K,
+        lo_inc: Bool,
+        hi: ?K,
+        hi_inc: Bool,
+    ) -> Int = bag.range_len(lo, lo_inc, hi, hi_inc)
 
     fn range_each(self, lo: ?K, lo_inc: Bool, hi: ?K, hi_inc: Bool) -> yields K:
         for k in bag.range_each(lo, lo_inc, hi, hi_inc): yield k
@@ -1302,7 +1324,9 @@ pub struct SortedMap<K, V>:
 
     fn entry(self, k: ?K) -> ?(K, V) = if let x = k: Some((x, vals.get(x)!)) else: None
 
-    fn at(self, c: ?BagCursor) -> ?(K, V) = if let x = c: Some((ks.key_of(x), vals.get(ks.key_of(x))!)) else: None
+    fn at(self, c: ?BagCursor) -> ?(K, V) = if let x = c: Some(
+        (ks.key_of(x), vals.get(ks.key_of(x))!)
+    ) else: None
 
     /// Create an empty `SortedMap<K, V>`.
     ///
@@ -1528,7 +1552,11 @@ pub struct SortedMap<K, V>:
     /// order: ascending key with `after` or no bound, descending with `before`; a new `List`, keyed from 0
     /// traps: when both `after` and `before` are given
     /// example: `var m: SortedMap<Int, Int> = SortedMap(); m.set(1, 10); m.set(4, 40); m.set(6, 60); m.drain(after: 1, while: (k, v) => v < 50) == [(4, 40)] and m.len == 2`
-    pub fn drain(mut self; after: ?K = None, before: ?K = None, while ok: (K, V) -> Bool) -> List<(K, V)>:
+    pub fn drain(
+        mut self; after: ?K = None,
+        before: ?K = None,
+        while ok: (K, V) -> Bool
+    ) -> List<(K, V)>:
         let gone = ks.drain(after:, before:, while: k => ok(k, vals.get(k)!))
         let out: List<(K, V)> = [(k, vals.remove(k)!) for k in gone]
         out
@@ -1723,7 +1751,11 @@ pub struct AugSortedBag<K, T>:
     /// cost: O(1)
     /// traps: never
     /// example: `var b: AugSortedBag<Int, Int> = AugSortedBag((x, y) => x + y, 0, k => k); b.all == 0`
-    pub fn new(op: (T, T) -> T, id: T, leaf: K -> T) -> AugSortedBag<K, T> = AugSortedBag<K, T>(_len: 0, op:, id:, leaf:)
+    pub fn new(
+        op: (T, T) -> T,
+        id: T,
+        leaf: K -> T,
+    ) -> AugSortedBag<K, T> = AugSortedBag<K, T>(_len: 0, op:, id:, leaf:)
 
     /// Preallocate treap node pool for at least `cap` elements.
     ///
@@ -1930,7 +1962,10 @@ pub struct AugSortedSet<K, T>:
     /// cost: O(1)
     /// traps: never
     /// example: `var s: AugSortedSet<Int, Int> = AugSortedSet((x, y) => x + y, 0, k => k); s.all == 0`
-    pub fn new(op: (T, T) -> T, id: T, leaf: K -> T) -> AugSortedSet<K, T> = AugSortedSet<K, T>(_len: 0, bag: AugSortedBag(op, id, leaf))
+    pub fn new(op: (T, T) -> T, id: T, leaf: K -> T) -> AugSortedSet<K, T> = AugSortedSet<K, T>(
+        _len: 0,
+        bag: AugSortedBag(op, id, leaf),
+    )
 
     /// Preallocate treap node pool for at least `cap` keys.
     ///

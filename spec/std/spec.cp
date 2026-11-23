@@ -95,7 +95,10 @@ pub fn unimodality_break(xs: List<Int>) -> ?Int:
 pub fn monge_break(cost: (Int, Int) -> Int, rows: Int, cols: Int) -> ?(Int, Int):
     for i in 0..rows - 1:
         for j in 0..cols - 1:
-            if cost(i, j) + cost(i + 1, j + 1) > cost(i, j + 1) + cost(i + 1, j): return Some((i, j))
+            if cost(i, j) + cost(
+                i + 1,
+                j + 1,
+            ) > cost(i, j + 1) + cost(i + 1, j): return Some((i, j))
     None
 
 /// The leftmost column of a minimum in each row of `cost` over `0..rows` by `0..cols`, by brute
@@ -132,7 +135,10 @@ pub fn argmins(cost: (Int, Int) -> Int, rows: Int, cols: Int) -> List<Int>:
 pub fn dnc_break(cost: (Int, Int) -> Int, n: Int) -> ?(Int, Int):
     for a in 0..n - 3:
         for c in a + 2..n - 1:
-            if cost(a, c) + cost(a + 1, c + 1) > cost(a, c + 1) + cost(a + 1, c): return Some((a, c))
+            if cost(a, c) + cost(
+                a + 1,
+                c + 1,
+            ) > cost(a, c + 1) + cost(a + 1, c): return Some((a, c))
     None
 
 /// The first interval `[i, j)` of cuts `0..=n` whose best split `opt(i, j)` breaks Knuth's bound

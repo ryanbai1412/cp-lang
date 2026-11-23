@@ -36,10 +36,10 @@ fn tour(colour: Bool) -> ?List<City>:
     if sum(1 for c in City if seen[c]) == n: walk else: none
 
 var walk = tour(false) ?? tour(true)!
-walk.pop()                      // closed: drop the repeated start
+walk.pop()  // closed: drop the repeated start
 // WISH C3: `walk.rotate_to(walk.find(c)!)`, then `print(walk)`; today the
 // rotation is an offset carried by hand and the search is a loop.
-var start = 0                   // where the previous city's walk started
+var start = 0  // where the previous city's walk started
 for c in City:
     while walk[start % walk.len] != c: start += 1
     start %= walk.len

@@ -23,7 +23,7 @@ fn settle(mut sq: Square) -> Bool:
             let v = [sq[i][j] for (i, j) in line]
             if sum(1 for x in v if x == none) != 1: continue
             let (a, b, c) = (v[0] ?? 0, v[1] ?? 0, v[2] ?? 0)
-            var x = 2 * b - a                                   // the third term
+            var x = 2 * b - a  // the third term
             var (i, j) = line[2]
             if v[0] == none:
                 x = 2 * b - c

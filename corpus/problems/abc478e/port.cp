@@ -1,7 +1,6 @@
 // ABC478 E — Inequality Sequence Construction
 // Directed graph + std.graph.scc (fresh domain C in topological order) + DAG DP + @checker
 
-
 let (n, q): (1..=2e5, 1..=2e5) = read()
 domain V = 1..=n
 domain E = 0..q

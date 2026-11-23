@@ -6,7 +6,9 @@ let (geese_won, geese): (Str, [0..n]1..=1e6) = read()
 let (hawks_won, hawks): (Str, [0..n]1..=1e6) = read()
 
 fn rivals(g: 0..n, h: 0..n) -> Bool =
-    geese_won[g] != hawks_won[h] and (if geese_won[g] == 'W': geese[g] > hawks[h] else: geese[g] < hawks[h])
+    geese_won[g] != hawks_won[h] and (
+        if geese_won[g] == 'W': geese[g] > hawks[h] else: geese[g] < hawks[h]
+    )
 
 // best[g, h]: the most points from the first g geese games and h hawks games
 var best: [0..=n, 0..=n]Int = 0

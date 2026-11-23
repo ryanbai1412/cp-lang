@@ -11,13 +11,13 @@ type Cell = (Row, Col)
 var at: Cell = read()
 let facing: Char = read()
 
-const DIRS = [(-1, 0), (0, 1), (1, 0), (0, -1)]           // N E S W, clockwise
-fn step(p: Cell, d: (Int, Int)) -> ?Cell:                 // WISH L1: p.step(d) over Dir4
+const DIRS = [(-1, 0), (0, 1), (1, 0), (0, -1)]  // N E S W, clockwise
+fn step(p: Cell, d: (Int, Int)) -> ?Cell:        // WISH L1: p.step(d) over Dir4
     if let r = p.0 + d.0 and let c = p.1 + d.1:
         return (r, c)
     return none
 
-var face = 0                                              // WISH L2: var face: Dir4 = read(); face.cw, face.ccw
+var face = 0  // WISH L2: var face: Dir4 = read(); face.cw, face.ccw
 if facing == 'E': face = 1
 if facing == 'S': face = 2
 if facing == 'W': face = 3
@@ -42,7 +42,7 @@ fn explore():
         if let q = step(at, DIRS[face]) and not open[q] and not wall[q]:
             if forward():
                 explore()
-                right()                                   // WISH L14: with forward(): explore() steps back by itself
+                right()  // WISH L14: with forward(): explore() steps back by itself
                 right()
                 forward()
                 left()
