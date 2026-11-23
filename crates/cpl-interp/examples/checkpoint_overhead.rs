@@ -11,8 +11,9 @@ const LIMITS: Limits = Limits {
     stack_bytes: 1 << 20,
 };
 
-/// A loop in main, and a run that is mostly calls, two deep.
-const SOURCES: [(&str, &str); 3] = [
+/// A loop in main, a run that is mostly calls, two deep, loops over
+/// sequences, and loops in closures and over calls to function values.
+const SOURCES: [(&str, &str); 4] = [
     (
         "loop",
         "var s = 0\nfor i in 0..10000000:\n    s = (s + i * i) % 1000003\nprint(s)\n",
@@ -27,6 +28,12 @@ const SOURCES: [(&str, &str); 3] = [
         "seqs",
         "var a: List<Int> = []\nfor i in 0..10000:\n    a.push(i * 37 % 101)\n\
          var s = 0\nfor r in 0..500:\n    for x in a:\n        s = (s + x * r) % 1000003\n    for x in a.rev:\n        s = (s * 3 + x) % 1000003\nprint(s)\n",
+    ),
+    (
+        "closures",
+        "fn apply(f: (Int) -> Int, n: Int) -> Int:\n    var s = 0\n    for i in 0..n:\n        s = (s + f(i)) % 1000003\n    return s\n\
+         let k = 3\nlet walk = (n: Int) -> Int =>\n    var s = 0\n    for i in 0..n:\n        s = (s * 7 + i + k) % 1000003\n    s\n\
+         var t = 0\nfor r in 0..500:\n    t = (t + apply(x => x * k + r, 5000) + walk(5000)) % 1000003\nprint(t)\n",
     ),
 ];
 

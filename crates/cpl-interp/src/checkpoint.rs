@@ -60,8 +60,7 @@ impl LoopAt {
 /// One call under way at a checkpoint.
 #[derive(Clone)]
 struct FrameAt {
-    /// `None` for main.
-    fn_id: Option<FnId>,
+    body: Body,
     locals: Vec<Value>,
     loops: Vec<LoopAt>,
     /// The statement, then the call in it, the frame waits on, by address;
@@ -75,6 +74,14 @@ struct FrameAt {
     before: Vec<(usize, Value)>,
     /// The sequences its `for` loops walk.
     held: Vec<Value>,
+}
+
+/// Whose body a frame runs.
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Body {
+    Main,
+    Fn(FnId),
+    Closure(cpl_ir::ClosureId),
 }
 
 /// A run's state at the start of a round of a loop.
@@ -135,7 +142,7 @@ pub(crate) struct Suspended {
     regs_v: *const Value,
     n_v: usize,
     base: usize,
-    fn_id: u16,
+    callee: Body,
     depth: usize,
     doms: usize,
     span: Span,
@@ -200,7 +207,14 @@ pub(crate) struct Clock {
     /// In a run from a checkpoint, the sequence the next `for` over one
     /// walks, and the round it starts from.
     seq_from: Option<(Value, i64)>,
+    /// How many more looks at the clock may come one tick apart while a
+    /// checkpoint is due.
+    soon: u32,
 }
+
+/// How many looks one tick apart a due checkpoint gets, after each one
+/// taken.
+const SOON: u32 = 4096;
 
 impl Default for Clock {
     fn default() -> Clock {
@@ -223,6 +237,7 @@ impl Default for Clock {
             resume: None,
             range_from: None,
             seq_from: None,
+            soon: SOON,
         }
     }
 }
@@ -255,6 +270,27 @@ impl Clock {
     /// Counts the ticks just used up and loads `next` more.
     pub(crate) fn reload(&mut self, next: u32) -> u32 {
         self.done += u64::from(self.loaded);
+        self.loaded = next;
+        next
+    }
+
+    /// The countdown to load after a look at the clock that loaded `next`.
+    /// While a checkpoint is due, the next tick looks again: the tick that
+    /// came due may be one no checkpoint is taken at, a call or a statement
+    /// on the tree-walker, and a loop's rounds can bring every look to the
+    /// same such tick.
+    pub(crate) fn after_look(&mut self, next: u32) -> u32 {
+        if self.due() && self.soon > 0 {
+            self.soon -= 1;
+            self.loaded = 1;
+            return 1;
+        }
+        next
+    }
+
+    /// Loads `next` in place of the load the look just made, none of which
+    /// is used yet.
+    pub(crate) fn load_instead(&mut self, next: u32) -> u32 {
         self.loaded = next;
         next
     }
@@ -376,11 +412,11 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
         pc: usize,
         base_i: usize,
         regs_v: &[Value],
-        fn_id: u16,
+        callee: Body,
         base: usize,
     ) {
         if self.ckpt.on() {
-            self.suspend_recording(chunk, pc, base_i, regs_v, fn_id, base);
+            self.suspend_recording(chunk, pc, base_i, regs_v, callee, base);
         }
     }
 
@@ -393,7 +429,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
         pc: usize,
         base_i: usize,
         regs_v: &[Value],
-        fn_id: u16,
+        callee: Body,
         base: usize,
     ) {
         self.ckpt.frames.push(Suspended {
@@ -403,7 +439,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
             regs_v: regs_v.as_ptr(),
             n_v: regs_v.len(),
             base,
-            fn_id,
+            callee,
             depth: self.call_frames.len() - 1,
             doms: self.saved_domains.len(),
             span: chunk.spans[pc],
@@ -475,7 +511,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
             regs_v: at.regs_v,
             n_v: at.n_v,
             base,
-            fn_id: fn_id as u16,
+            callee: Body::Fn(fn_id),
             depth: at.depth,
             doms,
             span,
@@ -584,6 +620,8 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
     ) {
         if let Some(taken) = self.checkpoint_here(compiled, chunk, pc, base_i, vm_regs_i, regs_v) {
             self.ckpt.next_at = taken.ticks + self.ckpt.every;
+            self.ckpt.soon = SOON;
+            self.countdown = self.ckpt.load_instead(crate::stop::EVERY);
             self.ckpt.taken.push(taken);
             if self.ckpt.taken.len() > self.ckpt.keep {
                 self.ckpt.taken.remove(0);
@@ -625,16 +663,15 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
             .find(|&k| frames[k].volatile)
             .unwrap_or(depth);
         let (up, caller, caller_fn, span, doms) = match self.ckpt.frames.last() {
-            None => (None, &compiled.main, None, Span::default(), 0),
+            None => (None, &compiled.main, Body::Main, Span::default(), 0),
             Some(s) => {
                 let Snap::Yes(up) = &s.snap else {
                     return None;
                 };
-                let id = usize::from(s.fn_id);
                 (
                     Some(up.clone()),
-                    compiled.fns[id].as_ref()?,
-                    Some(id),
+                    chunk_of(compiled, s.callee)?,
+                    s.callee,
                     s.span,
                     s.doms,
                 )
@@ -678,24 +715,27 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
     fn snap_caller(&self, compiled: &CompiledProgram<'p>, vm_regs_i: &[i64], k: usize) -> Snap {
         let s = &self.ckpt.frames[k];
         let (caller, caller_fn, span, doms, up) = match k.checked_sub(1) {
-            None => (&compiled.main, None, Span::default(), 0, None),
+            None => (&compiled.main, Body::Main, Span::default(), 0, None),
             Some(outer) => {
                 let o = &self.ckpt.frames[outer];
                 let Snap::Yes(up) = &o.snap else {
                     return Snap::No;
                 };
-                let id = usize::from(o.fn_id);
-                let Some(caller) = compiled.fns[id].as_ref() else {
+                let Some(caller) = chunk_of(compiled, o.callee) else {
                     return Snap::No;
                 };
-                (caller, Some(id), o.span, o.doms, Some(up.clone()))
+                (caller, o.callee, o.span, o.doms, Some(up.clone()))
             }
         };
         if s.depth != k || !std::ptr::eq(s.caller, caller as *const Chunk<'p> as *const ()) {
             return Snap::No;
         }
-        let callee = &self.program.fns[usize::from(s.fn_id)];
-        if callee.params.iter().any(|p| p.mutable) {
+        let lends = match s.callee {
+            Body::Fn(id) => self.program.fns[id].params.iter().any(|p| p.mutable),
+            Body::Closure(cid) => !self.program.closures[cid].muts.is_empty(),
+            Body::Main => true,
+        };
+        if lends {
             return Snap::No;
         }
         let Some(site) = (caller.call_sites.iter()).find(|c| c.pc == s.pc && c.call.span == s.span)
@@ -711,9 +751,12 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
         let regs_v = unsafe { std::slice::from_raw_parts(s.regs_v, s.n_v) };
         let at = (s.base, span, doms);
         let site_at = Some((site.stmt, site.call));
-        // A caller with closures keeps its locals on the stack during calls,
-        // where a closure the callee runs may change them.
-        let from_stack = caller.has_by_ref_closure || s.fallback.is_some();
+        // A caller with closures keeps its locals on the stack during calls
+        // to fns, where a closure the callee runs may change them. A closure
+        // the VM runs takes its captures by value, so during a call to one
+        // they stay in the caller's registers.
+        let to_fn = !matches!(s.callee, Body::Closure(_));
+        let from_stack = (caller.has_by_ref_closure && to_fn) || s.fallback.is_some();
         let Some(mut frame) = self.frame_at(
             caller,
             caller_fn,
@@ -738,13 +781,13 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
     }
 
     #[cfg(not(target_arch = "wasm32"))]
-    /// One frame: `chunk`'s, run for `fn_id` (main for `None`) on the stack
+    /// One frame: `chunk`'s, run for `callee` on the stack
     /// at `base`, in `loops`, waiting on `site` unless it is the innermost.
     #[allow(clippy::too_many_arguments)]
     fn frame_at(
         &self,
         chunk: &Chunk<'p>,
-        fn_id: Option<FnId>,
+        callee: Body,
         (base, span, doms): (usize, Span, usize),
         regs_i: &[i64],
         regs_v: &[Value],
@@ -752,14 +795,8 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
         site: Option<(&'p Stmt, &'p cpl_ir::Expr)>,
         from_stack: bool,
     ) -> Option<FrameAt> {
-        let (n, body) = match fn_id {
-            None => (self.program.main_locals.len(), &self.program.main),
-            Some(id) => (
-                self.program.fns[id].locals.len(),
-                &self.program.fns[id].body,
-            ),
-        };
-        let stacked = fn_id.is_none() || chunk.needs_stack;
+        let (n, body) = self.body_of(callee);
+        let stacked = callee == Body::Main || chunk.needs_stack;
         let mut locals = match stacked {
             true => self.stack.get(base..base + n)?.to_vec(),
             false => vec![Value::Unit; n],
@@ -771,9 +808,22 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
             // A register reads 0 before its local is declared, where the
             // tree-walker has none: a local with no value yet is taken as
             // undeclared unless it surely is declared by now.
-            let params = fn_id.map_or(0, |id| self.program.fns[id].params.len());
             let mut surely = vec![false; n];
-            surely.iter_mut().take(params).for_each(|d| *d = true);
+            match callee {
+                Body::Main => {}
+                Body::Fn(id) => (surely.iter_mut())
+                    .take(self.program.fns[id].params.len())
+                    .for_each(|d| *d = true),
+                Body::Closure(cid) => {
+                    let def = &self.program.closures[cid];
+                    let given = def.captures.iter().map(|cap| cap.inner);
+                    def.params
+                        .iter()
+                        .copied()
+                        .chain(given)
+                        .for_each(|k| surely[k] = true);
+                }
+            }
             let site_stmt = site.map(|s| s.0 as *const Stmt as usize);
             let ids: Vec<LoopId> = loops.iter().map(LoopReg::id).collect();
             declared(body, &ids, site_stmt, &mut surely);
@@ -787,10 +837,17 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 };
             }
         }
-        if locals
-            .iter()
-            .any(|v| matches!(v, Value::Alias(..) | Value::Part(_)))
-        {
+        // A place a frame names, or a closure taking one by reference, is
+        // where the run left it on the stack, not where a run from here does.
+        let names_place = |v: &Value| match v {
+            Value::Alias(..) | Value::Part(_) => true,
+            Value::Closure(_, caps) => (caps.iter()).any(|c| {
+                use crate::value::CaptureVal;
+                matches!(c, CaptureVal::StackRef(_) | CaptureVal::PartRef(_))
+            }),
+            _ => false,
+        };
+        if locals.iter().any(names_place) {
             return None;
         }
         let mut held = Vec::new();
@@ -835,7 +892,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
             return None;
         }
         Some(FrameAt {
-            fn_id,
+            body: callee,
             locals,
             loops,
             site,
@@ -877,17 +934,64 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
 
     /// Frame `k` of `frames`, from where it was to its end.
     fn resume_frame(&mut self, frames: &[FrameAt], k: usize) -> Res<Flow> {
-        let program = self.program;
-        let body = frames[k]
-            .fn_id
-            .map_or(&program.main, |id| &program.fns[id].body);
+        let body = self.body_of(frames[k].body).1;
         self.resume_block(body, &frames[k].loops, frames, k)
+    }
+
+    /// How many locals `body` has, and its block.
+    fn body_of(&self, body: Body) -> (usize, &'p Block) {
+        let program = self.program;
+        match body {
+            Body::Main => (program.main_locals.len(), &program.main),
+            Body::Fn(id) => (program.fns[id].locals.len(), &program.fns[id].body),
+            Body::Closure(cid) => {
+                let def = &program.closures[cid];
+                (def.locals.len(), &def.body)
+            }
+        }
+    }
+
+    /// The closure call frame `k` of `frames` makes, from where it was, as
+    /// `call_lending` makes it; what it returns.
+    fn resume_closure(
+        &mut self,
+        frames: &[FrameAt],
+        k: usize,
+        cid: cpl_ir::ClosureId,
+    ) -> Res<Value> {
+        let frame = &frames[k];
+        let program = self.program;
+        let base = self.stack.len();
+        self.stack.extend(frame.locals.iter().cloned());
+        let saved = std::mem::replace(&mut self.base, base);
+        self.frame_locals.push(&program.closures[cid].locals);
+        self.call_frames.push(("<closure>", frame.span));
+        let in_closure = std::mem::replace(&mut self.in_closure, true);
+        let flow = self.resume_frame(frames, k);
+        while self.saved_domains.len() > frame.doms {
+            let (id, prev) = self.saved_domains.pop().unwrap();
+            self.domains[id] = prev;
+        }
+        self.in_closure = in_closure;
+        self.frame_locals.pop();
+        self.base = saved;
+        let flow = flow?;
+        self.call_frames.pop();
+        self.stack.truncate(base);
+        Ok(match flow {
+            Flow::Return(value) | Flow::Give(value) => value,
+            _ => Value::Unit,
+        })
     }
 
     /// The call frame `k` of `frames` makes, from where it was; what it returns.
     fn resume_callee(&mut self, frames: &[FrameAt], k: usize) -> Res<Value> {
         let frame = &frames[k];
-        let id = frame.fn_id.expect("a callee frame is a fn's");
+        let id = match frame.body {
+            Body::Fn(id) => id,
+            Body::Closure(cid) => return self.resume_closure(frames, k, cid),
+            Body::Main => unreachable!("a callee frame is a fn's or a closure's"),
+        };
         let f = &self.program.fns[id];
         let span = frame.span;
         let base = self.stack.len();
@@ -1079,6 +1183,16 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
         let (_, frames) = self.ckpt.pending.take().unwrap();
         self.ckpt.returned.clear();
         self.resume_callee(&frames, 0).map(Some)
+    }
+}
+
+/// The chunk the VM runs `body` on, if it does.
+#[cfg(not(target_arch = "wasm32"))]
+fn chunk_of<'c, 'p>(compiled: &'c CompiledProgram<'p>, body: Body) -> Option<&'c Chunk<'p>> {
+    match body {
+        Body::Main => Some(&compiled.main),
+        Body::Fn(id) => compiled.fns[id].as_ref(),
+        Body::Closure(cid) => compiled.closures[cid].as_ref(),
     }
 }
 

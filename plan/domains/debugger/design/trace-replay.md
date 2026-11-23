@@ -204,3 +204,43 @@ on write, so a checkpoint copies main's locals and the globals, not the heap.
   a 1500-round forward plus reverse walk of a 10^4 list runs 530 ms against
   538 ms on the base commit (interleaved, best of 9).
 
+## Closures and function values (2026-11-23, tech-debt for compiler)
+
+- **Shape:** a loop inside a closure or a nested fn, and a loop calling a
+  function value (`f(i)` on a `(Int) -> Int` parameter, a `let` holding a
+  lambda, a lambda passed inline), at any depth, e.g. `apply(x => x * k + 1,
+  n)` or `t = (t + walk(3000) + step(r)) % p` in a fn whose `walk` and
+  `step` are closures.
+- **Mechanism:** a frame now says whose body it runs (`checkpoint::Body`:
+  main, a fn or a closure) instead of only a fn id, so the VM's
+  `CallClosure` suspends its caller like a fn call does, and a run from a
+  checkpoint makes the closure's frame again on the tree-walker
+  (`resume_closure`, as `call_lending` makes it, captures already in the
+  saved locals). A call to a function value is a call site like a fn call
+  (`Order::walk`, `call_op`, `call_result` know `CallExpr` and
+  `CallClosure`), so the calls before it in its statement are kept and not
+  run again, on the VM and on the tree-walker (`ExprKind::CallExpr` resumes
+  and keeps like `call_or_resume`).
+- **Not taken:** a frame holding a closure that captures a stack place by
+  reference (`CaptureVal::StackRef`/`PartRef`) takes no checkpoint, as with
+  aliases; nor a closure with `var` parameters.
+- **Found on the way:** a checkpoint came due on a tick no checkpoint is
+  taken at (a call, a statement on the tree-walker) and the clock looked
+  again only 4096 ticks later; when a loop's round has the same ticks every
+  time, every look fell on such a tick, so a traced `print(apply(...))`
+  took no checkpoint at all. While one is due the clock now looks again on
+  the next tick, for up to 4096 looks after each checkpoint taken
+  (`Clock::after_look`, cold path only).
+- **Tests (`tests/checkpoint.rs`, fixture `CLOSURE`: an inline lambda
+  passed to a fn's loop, a nested fn and a block lambda each looping, called
+  in one statement from a loop):** the run, traced-run, window, tail and
+  timeline tests, and every checkpoint of a counted run resumes to the rest
+  of the output.
+- **Overhead (`examples/checkpoint_overhead.rs`, new `closures` workload,
+  release, best of 5):** 1.124x-1.140x the untraced run at a checkpoint every
+  4096, 65536 or 2^20 ticks: each closure call now records its frame while
+  checkpoints are on. Without checkpoints, 3000 rounds of the
+  same workload run 1479 ms against 1487 ms on the base commit
+  (interleaved, best of 9). cpl.wasm gzipped grows 25 bytes, to
+  1,662,878 under the 1,720,000 cap.
+

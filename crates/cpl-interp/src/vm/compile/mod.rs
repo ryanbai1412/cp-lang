@@ -286,7 +286,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 before: before.clone(),
             });
             if fallback.is_none() {
-                let Some(result) = self.call_result(pc) else {
+                let Some(result) = self.call_result(pc, call) else {
                     break;
                 };
                 self.keeps.push((pc, result, call as *const Expr as usize));
@@ -300,7 +300,10 @@ impl<'p, 'f> Compiler<'p, 'f> {
     fn call_op(&self, start: usize, call: &Expr) -> Option<u32> {
         let mut calls = (start..self.ops.len()).filter(|&pc| {
             self.spans[pc] == call.span
-                && matches!(self.ops[pc], Op::CallVmI { .. } | Op::CallVmMix { .. })
+                && matches!(
+                    self.ops[pc],
+                    Op::CallVmI { .. } | Op::CallVmMix { .. } | Op::CallClosure { .. }
+                )
         });
         match (calls.next(), calls.next()) {
             (Some(pc), None) => Some(pc as u32),
@@ -309,7 +312,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
     }
 
     /// Where the call op at `pc` puts what it returns (`None` for `Unit`).
-    fn call_result(&self, pc: u32) -> Option<Option<SlotLoc>> {
+    fn call_result(&self, pc: u32, call: &Expr) -> Option<Option<SlotLoc>> {
         let ret = |fn_id: u16| &self.program.fns[usize::from(fn_id)].ret;
         Some(match self.ops[pc as usize] {
             Op::CallVmI { fn_id, dst, .. } => Some(SlotLoc::I(
@@ -333,6 +336,25 @@ impl<'p, 'f> Compiler<'p, 'f> {
                     val: dst_i,
                     some: dst_some,
                     kind: ScalarKind::of_opt_ty(ret(fn_id), self.program)?,
+                }),
+                CallRet::V => Some(SlotLoc::V(dst_v)),
+            },
+            Op::CallClosure {
+                dst_i,
+                dst_v,
+                dst_some,
+                ret_mode,
+                ..
+            } => match ret_mode {
+                CallRet::Unit => None,
+                CallRet::I => Some(SlotLoc::I(
+                    dst_i,
+                    ScalarKind::of_ty(&call.ty, self.program)?,
+                )),
+                CallRet::OptI => Some(SlotLoc::OptI {
+                    val: dst_i,
+                    some: dst_some,
+                    kind: ScalarKind::of_opt_ty(&call.ty, self.program)?,
                 }),
                 CallRet::V => Some(SlotLoc::V(dst_v)),
             },
@@ -1762,10 +1784,7 @@ impl<'p> Order<'p> {
         match &e.kind {
             // What these evaluate more than once, or runs code no call op
             // shows, is one effect.
-            ExprKind::Fill(..)
-            | ExprKind::Sort(..)
-            | ExprKind::Closure(_)
-            | ExprKind::CallExpr(..) => self.calls.push(None),
+            ExprKind::Fill(..) | ExprKind::Sort(..) => self.calls.push(None),
             // What `print` and the like lower to: values bound, then used.
             ExprKind::Do(block) => {
                 for stmt in &block.stmts {
@@ -1781,7 +1800,7 @@ impl<'p> Order<'p> {
                 let mut effects = Effects::default();
                 effects.walk_one(e);
                 match &e.kind {
-                    ExprKind::Call(..) => self.calls.push(Some(e)),
+                    ExprKind::Call(..) | ExprKind::CallExpr(..) => self.calls.push(Some(e)),
                     _ if effects.count > 0 => self.calls.push(None),
                     _ => {}
                 }

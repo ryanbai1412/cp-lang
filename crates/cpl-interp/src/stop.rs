@@ -126,7 +126,8 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
     #[cold]
     fn look_at_stop(&mut self, span: Span) -> Res<bool> {
         let watched = self.stop.is_some() || self.ckpt.on() || self.tracer.is_some();
-        self.countdown = self.ckpt.reload(if watched { EVERY } else { u32::MAX });
+        let next = self.ckpt.reload(if watched { EVERY } else { u32::MAX });
+        self.countdown = self.ckpt.after_look(next);
         if let Some(reason) = self.stop.as_mut().and_then(Stop::reason) {
             return trap(span, reason);
         }

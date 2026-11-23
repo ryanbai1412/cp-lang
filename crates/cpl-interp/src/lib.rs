@@ -11,6 +11,7 @@
 pub mod checkpoint;
 mod closed_form;
 mod float_fn;
+mod fn_value;
 mod input;
 mod io;
 use io::Feed;
@@ -2175,80 +2176,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 _ => return trap(span, "internal: a block ended without its value"),
             },
             ExprKind::Call(id, args) => self.call_or_resume(e, *id, args, span)?,
-            ExprKind::CallExpr(callee, args) => {
-                let fv = self.eval(callee)?;
-                if !self.observed()
-                    && self.profiler.is_none()
-                    && args.len() <= 4
-                    && args.iter().all(|a| matches!(a, Arg::Value(_)))
-                {
-                    if let Value::Closure(cid, _) = &fv {
-                        if let Some(fast) = self.fast_closures[*cid].clone() {
-                            let mut evaled = [Value::Unit, Value::Unit, Value::Unit, Value::Unit];
-                            for (slot, arg) in evaled.iter_mut().zip(args) {
-                                let Arg::Value(e) = arg else { unreachable!() };
-                                *slot = self.eval(e)?;
-                            }
-                            // A parameter may appear more than once in the body (`x => x + x`).
-                            let arg = |i: usize| evaled[i].clone();
-                            return match fast {
-                                FastClosure::MinMax { is_max, a, b, ty } => {
-                                    let (va, vb) = (arg(a), arg(b));
-                                    let ord = self.cmp_ty_val(&ty, &vb, &va, span)?;
-                                    let take_b = if is_max { ord.is_gt() } else { ord.is_lt() };
-                                    Ok(if take_b { vb } else { va })
-                                }
-                                FastClosure::Bin { op, a, b } => binary(op, arg(a), arg(b), span),
-                                FastClosure::IntAddMul { x, f, w } => {
-                                    let prod = binary(BinOp::Mul, arg(f), arg(w), span)?;
-                                    binary(BinOp::Add, arg(x), prod, span)
-                                }
-                                FastClosure::IntCmpConst { op, a, c } => {
-                                    let va = arg(a).int();
-                                    Ok(Value::Bool(match op {
-                                        CmpOp::Eq => va == c,
-                                        CmpOp::Ne => va != c,
-                                        CmpOp::Lt => va < c,
-                                        CmpOp::Le => va <= c,
-                                        CmpOp::Gt => va > c,
-                                        CmpOp::Ge => va >= c,
-                                        _ => false,
-                                    }))
-                                }
-                                FastClosure::Identity(a) => Ok(arg(a)),
-                            };
-                        }
-                    }
-                }
-                let mut vals = vec![Value::Unit; args.len()];
-                for (i, arg) in args.iter().enumerate() {
-                    if let Arg::Value(e) = arg {
-                        vals[i] = self.eval(e)?;
-                    }
-                }
-                // `mut` arguments are lent for the call, as to a
-                // top-level fn.
-                let mut lent: Vec<(usize, &'p Place, Vec<Value>)> = Vec::new();
-                for (i, arg) in args.iter().enumerate() {
-                    if let Arg::Mut(place) = arg {
-                        let mut indices = Vec::new();
-                        self.indices(place, &mut indices)?;
-                        let cell = self.resolve(place, &mut indices.iter())?;
-                        let value = std::mem::replace(cell, Value::Moved);
-                        if matches!(value, Value::Moved) {
-                            return trap(place.span, LENT);
-                        }
-                        vals[i] = value;
-                        lent.push((i, place, indices));
-                    }
-                }
-                let at: Vec<usize> = lent.iter().map(|(i, ..)| *i).collect();
-                let (value, back) = self.call_lending(fv, vals, &at, span)?;
-                for ((_, place, indices), value) in lent.into_iter().zip(back) {
-                    *self.resolve(place, &mut indices.iter())? = value;
-                }
-                value
-            }
+            ExprKind::CallExpr(callee, args) => self.call_expr(e, callee, args, span)?,
             ExprKind::Closure(cid) => {
                 let def = &self.program.closures[*cid];
                 let mut caps = Vec::with_capacity(def.captures.len());
@@ -3104,70 +3032,6 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
             Value::Part(part) => self.part(part).unwrap_or(&Value::Moved),
             value => value,
         }
-    }
-
-    fn call_value(&mut self, fv: Value, args: Vec<Value>, span: Span) -> Res<Value> {
-        Ok(self.call_lending(fv, args, &[], span)?.0)
-    }
-
-    /// Calls a fn value. The arguments at `lent` are `mut`: what the fn
-    /// left in them comes back, in that order, next to its result.
-    fn call_lending(
-        &mut self,
-        fv: Value,
-        args: Vec<Value>,
-        lent: &[usize],
-        span: Span,
-    ) -> Res<(Value, Vec<Value>)> {
-        let Value::Closure(cid, caps) = fv else {
-            return trap(span, "internal: tried to call a non-function value");
-        };
-        let def = &self.program.closures[cid];
-        self.stack_left(span, None)?;
-        let base = self.stack.len();
-        self.stack.resize(base + def.locals.len(), Value::Unit);
-        for (slot, val) in def.params.iter().zip(args) {
-            self.stack[base + slot] = val;
-        }
-        for (cap, cval) in def.captures.iter().zip(caps.iter()) {
-            let v = match cval {
-                CaptureVal::Val(v) => v.clone(),
-                // Captured by reference: the slot names the variable, so
-                // every call, however deep, reads and writes the one value.
-                CaptureVal::StackRef(at) => Value::Alias(false, *at),
-                CaptureVal::GlobalRef(id) => Value::Alias(true, *id),
-                CaptureVal::PartRef(part) => Value::Part(Rc::clone(part)),
-            };
-            self.stack[base + cap.inner] = v;
-        }
-        let saved = std::mem::replace(&mut self.base, base);
-        self.frame_locals.push(&def.locals);
-        self.call_frames.push(("<closure>", span));
-        let in_closure = std::mem::replace(&mut self.in_closure, true);
-        let dom_mark = self.saved_domains.len();
-        for &d in &self.closure_guarded[cid] {
-            self.saved_domains.push((d, self.domains[d]));
-        }
-        let flow = self.block(&def.body);
-        while self.saved_domains.len() > dom_mark {
-            let (id, prev) = self.saved_domains.pop().unwrap();
-            self.domains[id] = prev;
-        }
-        self.in_closure = in_closure;
-        self.frame_locals.pop();
-        self.base = saved;
-        let flow = flow?;
-        self.call_frames.pop();
-        let back = lent
-            .iter()
-            .map(|i| std::mem::take(&mut self.stack[base + def.params[*i]]))
-            .collect();
-        self.stack.truncate(base);
-        let value = match flow {
-            Flow::Return(v) | Flow::Give(v) => v,
-            _ => Value::Unit,
-        };
-        Ok((value, back))
     }
 
     fn eq_ty_val(&mut self, ty: &Ty, l: &Value, r: &Value, span: Span) -> Res<bool> {

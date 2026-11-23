@@ -1,3 +1,4 @@
+use crate::checkpoint::Body;
 use crate::observe::Observer;
 use crate::value::{Array, ArrayData, OptVal, TupleVal, Value};
 use crate::vm::helpers::*;
@@ -600,7 +601,14 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     self.frame_locals.push(&f.locals);
                 }
                 self.call_frames.push((f.name.as_str(), spans[cur_pc]));
-                self.suspend(chunk, cur_pc, base_i, regs_v, fn_id, saved_base);
+                self.suspend(
+                    chunk,
+                    cur_pc,
+                    base_i,
+                    regs_v,
+                    Body::Fn(usize::from(fn_id)),
+                    saved_base,
+                );
                 let res = self.exec_chunk(compiled, callee, &arg_buf[..n], vm_regs_i);
                 self.unsuspend();
                 if needs_stack {
@@ -675,7 +683,14 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     self.frame_locals.push(&f.locals);
                 }
                 self.call_frames.push((f.name.as_str(), spans[cur_pc]));
-                self.suspend(chunk, cur_pc, base_i, regs_v, fn_id, saved_base);
+                self.suspend(
+                    chunk,
+                    cur_pc,
+                    base_i,
+                    regs_v,
+                    Body::Fn(usize::from(fn_id)),
+                    saved_base,
+                );
                 let res = self.exec_chunk_mix(
                     compiled,
                     callee,
@@ -825,6 +840,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                             }
                             CallRet::V => regs_v[dst_v as usize] = Value::Int(res_i),
                         }
+                        self.keep_result(chunk, cur_pc, regs_i, regs_v);
                         return Ok(None);
                     }
                 }
@@ -867,6 +883,14 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         self.frame_locals.push(&def.locals);
                     }
                     self.call_frames.push(("<closure>", spans[cur_pc]));
+                    self.suspend(
+                        chunk,
+                        cur_pc,
+                        base_i,
+                        regs_v,
+                        Body::Closure(cid),
+                        saved_base,
+                    );
                     let prev_in_closure = std::mem::replace(&mut self.in_closure, true);
                     let c_base_i = vm_regs_i.len();
                     vm_regs_i.resize(c_base_i + callee.num_i, 0);
@@ -924,6 +948,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     }
                     let res =
                         self.exec_chunk_inner(compiled, callee, c_base_i, vm_regs_i, &mut c_regs_v);
+                    self.unsuspend();
                     while self.saved_domains.len() > dom_mark {
                         let (id, prev) = self.saved_domains.pop().unwrap();
                         self.domains[id] = prev;
@@ -992,6 +1017,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     }
                     CallRet::V => regs_v[dst_v as usize] = val,
                 }
+                self.keep_result(chunk, cur_pc, regs_i, regs_v);
             }
             Op::RetI { src } => {
                 let raw = regs_i[src as usize];

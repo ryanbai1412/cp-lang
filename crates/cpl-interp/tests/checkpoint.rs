@@ -102,6 +102,32 @@ for x in a.rev:
 print(t)
 ";
 
+const CLOSURE: &str = "fn apply(f: (Int) -> Int, n: Int) -> Int:
+    var s = 0
+    for i in 0..n:
+        s = (s + f(i)) % 1000003
+    return s
+fn solve(m: Int) -> Int:
+    let d = m % 5
+    fn walk(n: Int) -> Int:
+        var s = 0
+        for i in 0..n:
+            s = (s * 7 + i + d) % 1000003
+        return s
+    let step = (n: Int) -> Int =>
+        var s = 1
+        for i in 0..n:
+            s = (s * 3 + i + m) % 1000003
+        s
+    var t = 0
+    for r in 0..12:
+        t = (t + walk(3000) + step(2000 + r)) % 1000003
+    return t
+let k = 3
+print(apply(x => x * k + 1, 40000))
+print(solve(7))
+";
+
 const MULTITEST_RAND: &str = "@!multitest
 let n: Int = read()
 var s = 0
@@ -154,6 +180,7 @@ fn a_run_from_a_checkpoint_prints_the_rest_of_the_output() {
         (DEEP, &b""[..]),
         (SHARED, &b""[..]),
         (SEQ, &b""[..]),
+        (CLOSURE, &b""[..]),
         (MULTITEST_RAND, MULTITEST_INPUT),
     ] {
         let (program, whole, taken) = record(source, input);
@@ -181,6 +208,7 @@ fn a_traced_run_from_a_checkpoint_records_the_whole_trace_from_there() {
         (DEEP, &b""[..]),
         (SHARED, &b""[..]),
         (SEQ, &b""[..]),
+        (CLOSURE, &b""[..]),
         (MULTITEST_RAND, MULTITEST_INPUT),
     ] {
         let (program, _, taken) = record(source, input);
@@ -244,6 +272,7 @@ fn the_tail_from_a_checkpoint_is_the_whole_runs_last_steps() {
         (MULTITEST_RAND, MULTITEST_INPUT, 2000),
         (SHARED, &b""[..], 3000),
         (SEQ, &b""[..], 3000),
+        (CLOSURE, &b""[..], 3000),
         (NESTED, &b""[..], 1),
     ] {
         let program = program(source);
@@ -304,6 +333,7 @@ fn a_window_from_a_checkpoint_is_the_whole_runs_window() {
         (DEEP, &b""[..]),
         (SHARED, &b""[..]),
         (SEQ, &b""[..]),
+        (CLOSURE, &b""[..]),
         (MULTITEST_RAND, MULTITEST_INPUT),
     ] {
         let program = program(source);
@@ -343,7 +373,7 @@ fn a_window_from_a_checkpoint_is_the_whole_runs_window() {
 
 #[test]
 fn a_timeline_keeps_checkpoints_across_the_whole_run() {
-    for source in [LONG, DEEP, ONE_CALL, SHARED, SEQ] {
+    for source in [LONG, DEEP, ONE_CALL, SHARED, SEQ, CLOSURE] {
         let program = program(source);
         let timeline = cpl_interp::trace::Timeline::record_on_this_thread(
             &program,
@@ -368,7 +398,7 @@ fn a_timeline_keeps_checkpoints_across_the_whole_run() {
 
 #[test]
 fn a_counted_runs_checkpoints_resume_to_the_rest_of_the_output() {
-    for source in [ONE_CALL, DEEP, SHARED, SEQ] {
+    for source in [ONE_CALL, DEEP, SHARED, SEQ, CLOSURE] {
         let (program, whole, _) = record(source, b"");
         let (counted, taken) = cpl_interp::checkpoint::count_on_this_thread(
             &program,
