@@ -17,6 +17,10 @@ pub(crate) const PIECES: &[Piece] = &[
         code: "\
 // Output is collected here and written once at the end.
 std::string out;
+#ifdef _WIN32
+// Binary mode, so Windows writes \\n as \\n, not \\r\\n: the same bytes on every OS.
+inline const int binary_stdout = _setmode(_fileno(stdout), _O_BINARY);
+#endif
 inline void flush() { fwrite(out.data(), 1, out.size(), stdout); out.clear(); }
 inline void put_char(u8 c) { out.push_back((char)c); if (out.size() >= (1u << 16)) flush(); }
 inline void put_str(const std::string& s) { out += s; }

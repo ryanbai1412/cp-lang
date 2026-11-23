@@ -4,6 +4,7 @@
 use crate::emit;
 
 mod lend;
+mod runtime;
 
 pub(crate) fn cpp(source: &str) -> String {
     let mut db = cpl_check::Database::new();
@@ -797,13 +798,6 @@ fn a_fn_is_declared_ahead_only_when_it_is_named_before_it_is_defined() {
         cpp.find("ll second(").unwrap() < cpp.find("ll first(").unwrap(),
         "{cpp}"
     );
-}
-
-#[test]
-fn interactive_flushes_after_each_print() {
-    let said = "cpl::put_line(); cpl::flush(); fflush(stdout);";
-    assert!(cpp("@!interactive\nprint(1)\n").contains(said));
-    assert!(!cpp("print(1)\n").contains(said));
 }
 
 #[test]

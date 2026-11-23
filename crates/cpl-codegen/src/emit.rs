@@ -1533,7 +1533,7 @@ impl<'p> Emitter<'p> {
         }
         out.push_str(
             "#include <algorithm>\n#include <array>\n#include <cmath>\n#include <cstdint>\n#include <cstdio>\n#include <cstdlib>\n\
-             #include <map>\n#include <optional>\n#include <set>\n#include <string>\n#include <tuple>\n#include <utility>\n#include <vector>\n#include <unistd.h>\n",
+             #include <map>\n#include <optional>\n#include <set>\n#include <string>\n#include <tuple>\n#include <utility>\n#include <vector>\n#include <unistd.h>\n#ifdef _WIN32\n#include <fcntl.h>\n#include <io.h>\n#endif\n",
         );
         if types.contains("std::function")
             || vars.contains("std::function")

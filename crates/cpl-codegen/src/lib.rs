@@ -205,11 +205,9 @@ pub fn emit_profiled(
     emitter.counted = cpl_ir::sites::user_stmts(&program);
     let (cpp, sites) = emitter.file_with_sites(name, None);
     let tally = PROFILE_TALLY.replace("SITES", &sites.len().max(1).to_string());
-    let head = cpp.find("\nnamespace ").unwrap_or(cpp.len());
-    let at = cpp[..head]
-        .rfind("#include")
-        .and_then(|at| cpp[at..].find('\n').map(|end| at + end + 1))
-        .unwrap_or(0);
+    // Before the first namespace, after every include and `#if` block, so
+    // the tally never lands inside a platform-only block.
+    let at = cpp.find("\nnamespace ").map_or(0, |at| at + 1);
     (format!("{}{tally}{}", &cpp[..at], &cpp[at..]), sites)
 }
 
