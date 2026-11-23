@@ -373,8 +373,9 @@ fn download(url: &str) -> Result<String, String> {
         })?;
     if !out.status.success() {
         return Err(format!(
-            "could not download {url}: {}; save the page from the browser and pass it \
-             with `--html page.html`",
+            "could not download {url}: {}; import it in one click with `cpl new --listen` and \
+             the Competitive Companion browser extension, or save the page from the browser \
+             and pass it with `--html page.html`",
             String::from_utf8_lossy(&out.stderr).trim()
         ));
     }

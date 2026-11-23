@@ -372,7 +372,7 @@ fn test_reports_each_case_and_expands_failures() {
         .collect();
     assert_eq!(
         report,
-        "  1     ok N ms\n  2     WA N ms\n     expected: 9\n     got:      4\n     first difference at line 1, token 1: expected `9`, got `4`\n  hand  ran N ms\n     output: 8\n  2/3 passed (1 had no expected output)\n"
+        "  1     ok N ms\n  2     WA N ms\n     expected: 9\n     got:      4\n     first difference at line 1, token 1: expected `9`, got `4`\n  hand  ran N ms\n     output: 8\n  2/3 passed (1 had no expected output)\n  if any valid answer is accepted, add a `@check fn` that reads the output with `read_output()`\n"
     );
     std::fs::remove_dir_all(dir).unwrap();
 }
@@ -389,7 +389,7 @@ fn the_test_command_judges_with_a_checker_or_an_interactor() {
     let (code, out, _) = cli(test::run, &[path, "--fast", &solution]);
     assert_eq!(code, 1);
     assert!(
-        out.ends_with("  2/3 passed (1 had no expected output)\n"),
+        out.ends_with("  2/3 passed (1 had no expected output)\n  if any valid answer is accepted, add a `@check fn` that reads the output with `read_output()`\n"),
         "{out}"
     );
     let (code, out, _) = cli(test::run, &[path, "--fast", &solution, "--format", "json"]);
@@ -708,7 +708,7 @@ fn a_watch_round_checks_then_tests_and_recovers_after_a_fix() {
     assert!(!passed);
     assert!(
         out.starts_with("  check: no errors\n")
-            && out.ends_with("  2/3 passed (1 had no expected output)\n"),
+            && out.ends_with("  2/3 passed (1 had no expected output)\n  if any valid answer is accepted, add a `@check fn` that reads the output with `read_output()`\n"),
         "{out}"
     );
 
