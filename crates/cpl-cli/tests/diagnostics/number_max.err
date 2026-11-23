@@ -1,0 +1,15 @@
+error[E0302]: `.max` takes a sequence's max, and `Int` is one number
+  --> number_max.cp:2:7
+  |
+2 | print(x.max(3), x.min(9))
+  |       ^^^^^^^^
+  = help: the max of two values is the fn `max(x, 3)`
+
+error[E0302]: `.min` takes a sequence's min, and `Int` is one number
+  --> number_max.cp:2:17
+  |
+2 | print(x.max(3), x.min(9))
+  |                 ^^^^^^^^
+  = help: the min of two values is the fn `min(x, 9)`
+
+number_max.cp: 2 errors

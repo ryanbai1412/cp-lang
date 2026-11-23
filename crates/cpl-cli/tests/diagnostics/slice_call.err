@@ -1,0 +1,8 @@
+error[E0203]: a `List<Int>` has no method `slice` that `cpl run` knows
+  --> slice_call.cp:2:10
+  |
+2 | print(xs.slice(0, 2))
+  |          ^^^^^
+  = help: a slice indexes a range of positions: `xs[0..2]`
+
+slice_call.cp: 1 error

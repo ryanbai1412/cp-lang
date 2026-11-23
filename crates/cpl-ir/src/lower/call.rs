@@ -9816,6 +9816,9 @@ impl<'a> Lowerer<'a> {
                     };
                     return self.method(whole, &all, name, args, hint);
                 }
+                if self.number_max_call(&ty, base, method, args, span) {
+                    return self.err_expr(span);
+                }
                 // UFCS free function with `self` first parameter (e.g. `p.step(d)`, `p.ray(d)`).
                 if let Some(res) = self.try_ufcs_call(method, base, args, span) {
                     return res;
@@ -9827,6 +9830,7 @@ impl<'a> Lowerer<'a> {
                 self.error(codes::UNKNOWN_FIELD, name.span, message);
                 self.member_typo(&ty, method, name.span);
                 self.foreign_call_fix(&ty, base, method, span);
+                self.slice_call_fix(&ty, base, method, args, span);
                 // Without the method's signature the arguments (and the
                 // lambdas' parameters) have no types to check against.
                 let reported = self.diags.len();

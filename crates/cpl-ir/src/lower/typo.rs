@@ -255,4 +255,67 @@ impl<'a> Lowerer<'a> {
             last.suggest(span, s);
         }
     }
+
+    /// `x.max(3)` on a number: the larger of two values is `max(x, 3)`.
+    pub(super) fn number_max_call(
+        &mut self,
+        ty: &Ty,
+        base: &ast::Expr,
+        method: &str,
+        args: &[ast::Arg],
+        span: Span,
+    ) -> bool {
+        let (Ty::Int | Ty::I128 | Ty::U64 | Ty::Float, "max" | "min", [arg]) = (ty, method, args)
+        else {
+            return false;
+        };
+        let new = format!(
+            "{method}({}, {})",
+            self.source(base.span),
+            self.source(arg.value.span)
+        );
+        let message = format!(
+            "`.{method}` takes a sequence's {method}, and `{}` is one number",
+            self.show(ty)
+        );
+        self.error(codes::TYPE_MISMATCH, span, message);
+        let edit = self.span(span);
+        if let Some(last) = self.diags.last_mut() {
+            last.help = Some(format!("the {method} of two values is the fn `{new}`"));
+            last.fix(format!("write `{new}`"), edit, new);
+        }
+        true
+    }
+
+    /// JavaScript's `xs.slice(a, b)` or `s.substring(a, b)`: a slice indexes a range, `xs[a..b]`.
+    pub(super) fn slice_call_fix(
+        &mut self,
+        ty: &Ty,
+        base: &ast::Expr,
+        method: &str,
+        args: &[ast::Arg],
+        span: Span,
+    ) {
+        let (Ty::Str | Ty::List(_), "slice" | "substring", [a, b]) = (ty, method, args) else {
+            return;
+        };
+        if !matches!(
+            base.kind,
+            ast::ExprKind::Name(_) | ast::ExprKind::Field { .. } | ast::ExprKind::Call { .. }
+        ) {
+            return;
+        }
+        let new = format!(
+            "{}[{}..{}]",
+            self.source(base.span),
+            self.source(a.value.span),
+            self.source(b.value.span)
+        );
+        let edit = self.span(span);
+        if let Some(last) = self.diags.last_mut() {
+            last.help = Some(format!("a slice indexes a range of positions: `{new}`"));
+            last.fixes.clear();
+            last.fix(format!("write `{new}`"), edit, new);
+        }
+    }
 }
