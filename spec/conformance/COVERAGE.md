@@ -7,7 +7,7 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 3045 (1089 passing). Rules: 583.
+Cases: 3046 (1089 passing). Rules: 583.
 
 ## Summary per chapter
 
@@ -23,7 +23,7 @@ Cases: 3045 (1089 passing). Rules: 583.
 - R08 (08-traits-generics.md): 29 rules, 92 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R09 (09-contexts-checks.md): 27 rules, 61 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R10 (10-io.md): 19 rules, 111 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R11 (11-modules-prelude.md): 16 rules, 51 cases; 0 uncovered, 0 happy-path only, 1 negative only
+- R11 (11-modules-prelude.md): 16 rules, 52 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R12 (12-powers.md): 17 rules, 37 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R13 (13-lowering.md): 22 rules, 30 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - Rbundle (bundle.md): 3 rules, 3 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -57,7 +57,7 @@ negative case. Complete: rules with no gap in `rule-gaps.txt`.
 | R08 | 29 | 29 (100%) | 12 | 12 (100%) | 29 (100%) |
 | R09 | 27 | 27 (100%) | 15 | 15 (100%) | 27 (100%) |
 | R10 | 19 | 19 (100%) | 9 | 9 (100%) | 19 (100%) |
-| R11 | 16 | 15 (93%) | 10 | 10 (100%) | 15 (93%) |
+| R11 | 16 | 16 (100%) | 10 | 10 (100%) | 16 (100%) |
 | R12 | 17 | 17 (100%) | 6 | 6 (100%) | 17 (100%) |
 | R13 | 22 | 22 (100%) | 5 | 5 (100%) | 22 (100%) |
 | Rbundle | 3 | 3 (100%) | 0 | 0 (0%) | 3 (100%) |
@@ -67,7 +67,7 @@ negative case. Complete: rules with no gap in `rule-gaps.txt`.
 | Rlint | 2 | 2 (100%) | 2 | 2 (100%) | 2 (100%) |
 | Rlsp | 5 | 5 (100%) | 1 | 1 (100%) | 5 (100%) |
 | Rstress | 1 | 1 (100%) | 0 | 0 (0%) | 1 (100%) |
-| all | 583 | 582 (99%) | 234 | 234 (100%) | 582 (99%) |
+| all | 583 | 583 (100%) | 234 | 234 (100%) | 583 (100%) |
 
 ## Rules
 
@@ -638,7 +638,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R11.3.5 [2+ 0-]: The LSP offers an import quick fix for any non-prelude stdlib name, and `cpl fmt` sorts `u...
 - R11.4.1 [1+ 0-]: The first line of a solution is a compiler stamp, added by the formatter: `// cpl 0.3.0`, ...
 - R11.4.2 [1+ 0-]: `cp.toml` pins the stdlib and each library root by content hash. Old solutions rebuild byt...
-- R11.4.3 [0+ 1-] *negative only*: A breaking stdlib change ships a codemod: `cpl migrate` rewrites solutions and personal li...
+- R11.4.3 [1+ 2-]: A breaking stdlib change ships a codemod: `cpl migrate` rewrites solutions and personal li...
 
 ### R12: 12-powers.md
 
