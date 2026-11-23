@@ -1,21 +1,7 @@
-// Codeforces 2066 F: Curse, tuned: port.cp with `came` laid out
-// `[Seg.cuts, Bool, PosB.cuts]`, so the sweeps over cuts of b read and write
-// contiguous cells.
-//
-// The cool partition splits a at its widest maximum-sum segment and recurses on
-// the two sides. An operation only ever replaces one cool segment whole, and never
-// raises the sum the next operation may pick. So b is reachable iff, for some
-// threshold x among the segment sums, b is the cool segments in order where
-//   - a segment with sum < x stays as it is,
-//   - a segment with sum >= x becomes a non-empty array with max subarray sum <= x,
-//   - except one, the free segment, which becomes anything non-empty.
-// For each threshold, largest first, `came[k, j, spent]` is how the segments
-// before cut k make b[..j], the free segment spent or not. A tame piece that may
-// start at cut j may start at any later cut too (a subarray's max subarray sum is
-// no larger), so the latest reachable start is the only one to try.
-//
-// Output: replace the segments with sum >= x in decreasing sum order, the free one
-// by [x], then replace [x] by its piece. Each step replaces a maximum-sum segment.
+// Codeforces 2066 F: Curse, tuned: port.cp with the two O(m^2) and O(nm) tables
+// narrowed to what they hold (a max subarray sum of b fits in 32 bits, an agreement
+// length in 16), as orig.cpp's `int` tensors, so the dp's reads of them touch half the
+// cache lines.
 @!multitest
 use std.algebra.{MaxSub}
 domain PosA = read(1..=500)
@@ -44,7 +30,7 @@ domain Seg = 0..spans.len
 let span = [Seg] s => spans[s.ord]
 let total = [Seg] s => a[span[s]].sum()
 
-var mss: [PosB.cuts, PosB.cuts]Int = 0
+var mss: [PosB.cuts, PosB.cuts]-500_000_000..=500_000_000 = 0
 for l in PosB:
     var acc = MaxSub.empty()
     for r in l..=PosB.last!:
@@ -52,7 +38,7 @@ for l in PosB:
         mss[l.l, r.r] = acc.best
 
 // agree[i, j]: how long a from cut i and b from cut j run equal.
-var agree: [PosA.cuts, PosB.cuts]Int = 0
+var agree: [PosA.cuts, PosB.cuts]0..=500 = 0
 for p in PosA.rev:
     for q in PosB.rev:
         if a[p] == b[q]: agree[p.l, q.l] = agree[p.r, q.r] + 1
@@ -64,24 +50,24 @@ struct Back(from: PosB.cuts, spent: Bool)
 struct Plan(piece: [Seg](from: PosB.cuts, to: PosB.cuts), free: Seg)
 
 fn plan(x: Int) -> ?Plan:
-    var came: [Seg.cuts, Bool, PosB.cuts]?Back = None
+    var came: [Seg.cuts, PosB.cuts, Bool]?Back = None
     fn fit(k: Seg.cuts, j: PosB.cuts, spent: Bool) -> Bool =
-        came[k, spent, j] != None or (k == Seg.cuts.first and j == PosB.cuts.first and not spent)
+        came[k, j, spent] != None or (k == Seg.cuts.first and j == PosB.cuts.first and not spent)
     for s in Seg:
         if total[s] < x:
             for spent in [false, true]:
                 for j in PosB.cuts:
                     if let k = matches(j, s) and fit(s.l, j, spent):
-                        came[s.r, spent, k] = Back(j, spent)
+                        came[s.r, k, spent] = Back(j, spent)
         else:
             for spent in [false, true]:
                 var latest: ?PosB.cuts = None
                 for j in PosB.cuts:
-                    if let i = latest and mss[i, j] <= x: came[s.r, spent, j] = Back(i, spent)
+                    if let i = latest and mss[i, j] <= x: came[s.r, j, spent] = Back(i, spent)
                     if fit(s.l, j, spent): latest = j
-            if let i = PosB.cuts.first(j => fit(s.l, j, false)):
+            if let i = PosB.cuts.find(j => fit(s.l, j, false)):
                 for j in PosB.cuts:
-                    if j > i: came[s.r, true, j] = Back(i, false)
+                    if j > i: came[s.r, j, true] = Back(i, false)
     var at = Back(PosB.cuts.last!, true)
     if not fit(Seg.cuts.last!, at.from, true): return None
     var piece: [Seg](from: PosB.cuts, to: PosB.cuts) = (
@@ -90,7 +76,7 @@ fn plan(x: Int) -> ?Plan:
     )
     var free: ?Seg = None
     for s in Seg.rev:
-        let back = came[s.r, at.spent, at.from]!
+        let back = came[s.r, at.from, at.spent]!
         piece[s] = (from: back.from, to: at.from)
         if back.spent != at.spent: free = s
         at = back
