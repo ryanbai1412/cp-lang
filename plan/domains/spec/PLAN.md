@@ -2,6 +2,19 @@
 
 Dated 2026-11-22. Numbers cite `metrics.toml`.
 
+## Milestone 1 order (2026-11-22, `plan/product/MILESTONE-1.md`)
+
+Milestone 1 sets the order; the workstreams below are means to it.
+
+1. **Freeze the subset.** `spec/SUBSET.md`: per chapter section and lib family, *supported* (cases pass), *documented*, or *known gap* with its owner line. Built from `cpl-conform conformance` per chapter; what fails in a *supported* row is routed or the row moves to *known gap*, never hidden.
+2. **Finish range keys** (decision 289): audit lib chapters and std docs; 3 of 7 cases fail on the compiler and stay visible.
+3. **Examples in the subset run** (workstream 4 narrowed to supported chapters).
+4. **Writable from the docs** (workstream 5): rebuild rounds on Div. 2 A-D problems; contradictions inside the subset first.
+5. **Journey tool contracts**: rule ids and cases for `check`, `run`, `test`, `stress`, `build` (cli, fmt, lint, bundle, stress landed).
+6. Deferred to after the milestone: trait/matrix cells outside the subset, trace/DAP/explain/LSP rule ids, more bug-catch rounds, R11.4.3.
+
+Workstreams 1-3 below are landed; 4-6 continue in the order above.
+
 ## Workstreams, in order
 
 1. **Land what exists** (hours). Rebase `devin/wip-conformance-matrix` (6 commits, `git cherry` shows all unlanded) on main, regenerate `COVERAGE.md`, gate, land. Adds the matrix generator (`scripts/conformance-matrix.py`, `spec/conformance/matrix.toml`, 211 cases) and 108 hand cases with rulings 211-215.

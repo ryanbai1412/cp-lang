@@ -20,6 +20,24 @@ Say exactly what CP Lang is, in one place, so that a contestant, a model or a se
 
 Spec writes cases, never compiler code: a failing case goes to the owning domain's worklog as a list of paths.
 
+## Milestone 1
+
+`plan/product/MILESTONE-1.md`: a Codeforces 1500+ friend learns CPL, solves unfamiliar problems, tests, submits and competes, unaided. What it needs from spec: "a coherent, documented, sufficiently complete subset ... gaps clearly identified rather than disguised", and "documentation examples must actually work".
+
+Exit criteria (each checkable):
+1. **Subset frozen.** `spec/SUBSET.md` tags every core chapter section and lib family *supported*, *documented* (spec only) or *known gap* (with the owner worklog line). No conformance case citing a *supported* rule fails in `cpl-conform conformance`.
+2. **Examples run.** Every code block in a *supported* chapter passes `cpl-conform spec-blocks` or is `spec-only` with a reason (today 85/185 pass over all chapters).
+3. **Writable from the docs.** A cold rebuild on ten Codeforces/AtCoder Div. 2 A-D problems, reading only `spec/` and `std/`, records 0 contradictions and < 5 holes inside the subset.
+4. **Range keys folded.** Decision 289 is in every chapter and its 7 cases pass (today 4/7; `r[x]`, the outside-key trap and a lent-slice case are compiler-owned).
+5. **Journey tools pinned.** The `check`, `run`, `test`, `stress`, `build` contracts carry rule ids with passing cases (cli, fmt, lint, bundle, stress done).
+
+Deferred (milestone's "what can wait"): trait/matrix cells outside the subset, rule ids for trace, DAP, explain and LSP, more bug-catch rounds, `cpl migrate` (R11.4.3), advanced lib chapters (flows, geometry, sequence patterns) beyond *documented*, prelude gaps for non-subset names. New language features only where a journey step is blocked.
+
+Top 3 next steps:
+1. Write `spec/SUBSET.md` from per-chapter conformance results; route each failing *supported* case to its owner.
+2. Finish the range-key fold: audit `spec/lib` and `std` docs for positional range reads, keep the 3 failing cases visible and routed.
+3. Rebuild round on M1-style problems (round 6, CSES, is running); fix every contradiction inside the subset.
+
 ## Success criteria for v0.3
 
 1. Every rule that forbids, traps or limits has a reject case; every rule has an accept case unless it only forbids. (2 forbidding rules lack a reject case today; 3 rule gaps in all; 26 rules that only permit or define are listed with a reason in `spec/conformance/permits.txt`.)
