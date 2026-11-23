@@ -303,4 +303,5 @@ documented. The stdlib's own gaps are in `std/GAPS.md`.
 - std-prefix/first-ge-negative-element-traps.cp: stdlib
 - std-segtree/closure-op-picks-index.cp: compiler
 - std-strings/split-trailing-and-leading.cp: stdlib
+- std-seq/split-on-separator-predicate.cp: stdlib
 - std-heap/drain-break-keeps-the-rest.cp: compiler

@@ -7,7 +7,7 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 2755 (995 passing). Rules: 573.
+Cases: 2756 (995 passing). Rules: 573.
 
 ## Summary per chapter
 
@@ -19,7 +19,7 @@ Cases: 2755 (995 passing). Rules: 573.
 - R04b (04b-keys.md): 27 rules, 66 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R05 (05-ownership.md): 43 rules, 166 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R06 (06-control-functions.md): 24 rules, 101 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R07 (07-sequences.md): 90 rules, 158 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R07 (07-sequences.md): 90 rules, 159 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R08 (08-traits-generics.md): 29 rules, 91 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R09 (09-contexts-checks.md): 26 rules, 56 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R10 (10-io.md): 19 rules, 110 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -461,7 +461,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R07.2.14 [1+ 0-]: **Slices are the views that narrow keys.** Every other indexed view keeps its source's key...
 - R07.2.15 [1+ 1-]: **Ranges are indexed sequences but not views:** they have no source. Slicing *with* a rang...
 - R07.2.16 [1+ 1-]: **Lazy means a view or generator.** Its work happens at each walk or read, never up front....
-- R07.3.1 [2+ 0-]: | `Seq<T>` | `for x in s` walks it in order; each `for` runs it from the start | generator...
+- R07.3.1 [3+ 0-]: | `Seq<T>` | `for x in s` walks it in order; each `for` runs it from the start | generator...
 - R07.3.2 [3+ 0-]: | `Keyed<D, T>` | `Seq` + `s.items` walks `(key, x)`; keys survive `filter` | everything `...
 - R07.3.3 [2+ 0-]: | `Sized` | \(O(1)\) `s.len` | collections, ranges, `Indexed` views, sets, maps
 - R07.3.4 [1+ 0-]: | `Bidir<T>` | `s.rev` walks backwards; `s.last` is \(O(1)\) | everything `Indexed`, sorte...
