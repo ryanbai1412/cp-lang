@@ -414,9 +414,8 @@ pub struct Bitset<D>:
     /// example: `domain D = 0..10; Bitset<D>.of([D(1), D(3), D(8)]).prev(D(0)) == None`
     pub fn prev(self, i: D) -> ?D:
         let idx = i.to_idx
-        if idx == 0: return None
         var k = idx / 64
-        var x = w[k] & low(idx % 64)
+        var x = w[k] & low(idx % 64 + 1)
         while true:
             if x != 0: return D.nth(64 * k + msb(x))
             if k == 0: return None
@@ -1302,10 +1301,12 @@ fn nav_helpers_and_in_place_shifts():
     assert b.first() == None and b.rfind(_ => true) == None
     for idx in [0, 63, 64, 127, 128, 194]: b.add(P(idx))
     assert b.first() == Some(P(0)) and b.rfind(_ => true) == Some(P(194))
-    assert b.prev(P(0)) == None
-    assert b.prev(P(64)) == Some(P(63))
-    assert b.prev(P(128)) == Some(P(127))
-    assert b.prev(P(194)) == Some(P(128))
+    assert b.prev(P(0)) == Some(P(0))
+    assert b.prev(P(64)) == Some(P(64)) and b.prev(P(65)) == Some(P(64))
+    assert b.prev(P(126)) == Some(P(64)) and b.prev(P(127)) == Some(P(127))
+    assert b.prev(P(193)) == Some(P(128)) and b.prev(P(194)) == Some(P(194))
+    b.remove(P(0))
+    assert b.prev(P(0)) == None and b.prev(P(62)) == None
     assert b.count_below(P(0)) == 0
     assert b.count_below(P(64)) == 2
     assert b.count_below(P(128)) == 4
