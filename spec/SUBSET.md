@@ -14,8 +14,11 @@ unaided. Each rule section of `core/` and `tools/` is one row:
 a known gap that starts passing must be dropped. `--draft` regenerates the
 table and the list; statuses and owner notes are kept.
 
-Library families (`lib/`, `std/`) follow their chapters' status lines until
-they carry rule ids; the stdlib's own gaps are in `std/GAPS.md`.
+Library families are rows too, one per `conformance/std-*` folder
+(`std-heap` is every case there). The contest staples (heaps, graphs and
+trees, DSU, prefix sums, Fenwick and segment trees, sequences, strings,
+grids, modular math, I/O, search and DP) are supported; the rest are
+documented. The stdlib's own gaps are in `std/GAPS.md`.
 
 `Rlsp` has no `cpl-conform` cases; the LSP's own suites hold it (`tools/lsp.md`).
 
@@ -23,24 +26,24 @@ they carry rule ids; the stdlib's own gaps are in `std/GAPS.md`.
 
 | Section | Heading | Status | Note |
 |---|---|---|---|
-| R01.1 | 1.1 Source text | supported | 6 pass |
+| R01.1 | 1.1 Source text | supported | 7 pass |
 | R01.2 | 1.2 Layout | supported | 14 pass |
 | R01.3 | 1.3 Names | supported | 16 pass |
 | R01.4 | 1.4 Literals | supported | 10 pass |
-| R01.5 | 1.5 Operators and precedence | supported | 15 pass |
+| R01.5 | 1.5 Operators and precedence | supported | 16 pass |
 | R01.6 | 1.6 Statements | supported | 19 pass, 2 known gaps |
 | R01.7 | 1.7 Control flow | supported | 8 pass |
 | R01.8 | 1.8 Expressions | supported | 10 pass |
 | R01.9 | 1.9 Items | supported | 1 pass |
-| R01.10 | 1.10 Grammar | supported | 8 pass, 1 known gaps |
+| R01.10 | 1.10 Grammar | supported | 10 pass |
 | R01.11 | 1.11 Rejected spellings | supported | 4 pass, 1 known gaps |
 | R02.1 | 2.1 The kinds of value | supported | 9 pass |
 | R02.2 | 2.2 Scalars | supported | 4 pass |
-| R02.3 | 2.3 Strings | supported | 4 pass |
+| R02.3 | 2.3 Strings | supported | 4 pass, 2 known gaps |
 | R02.4 | 2.4 Optionals | supported | 18 pass, 3 known gaps |
-| R02.5 | 2.5 Tuples and records | supported | 7 pass |
-| R02.6 | 2.6 Structs | supported | 13 pass, 2 known gaps |
-| R02.7 | 2.7 Enums | supported | 16 pass, 1 known gaps |
+| R02.5 | 2.5 Tuples and records | supported | 11 pass |
+| R02.6 | 2.6 Structs | supported | 16 pass, 2 known gaps |
+| R02.7 | 2.7 Enums | supported | 15 pass, 1 known gaps |
 | R02.8 | 2.8 Arrays and lists | supported | 12 pass |
 | R02.9 | 2.9 Fresh types: domains and runtime-parameterized types | supported | 9 pass |
 | R02.10 | 2.10 Type inference | supported | 6 pass |
@@ -50,7 +53,7 @@ they carry rule ids; the stdlib's own gaps are in `std/GAPS.md`.
 | R03.3 | 3. Operations on niche types | supported | 6 pass |
 | R03.4 | 4. Overflow, in one table | supported | 9 pass |
 | R03.5 | 5. Modular numbers | supported | 6 pass |
-| R04.2 | Domains | supported | 41 pass, 6 known gaps |
+| R04.2 | Domains | supported | 42 pass, 10 known gaps |
 | R04.3 | Positions and cuts move the same way | supported | 7 pass |
 | R04.4 | Two kinds of range, one type | supported | 38 pass, 5 known gaps |
 | R04.7 | Middle of a range | supported | 2 pass |
@@ -60,9 +63,9 @@ they carry rule ids; the stdlib's own gaps are in `std/GAPS.md`.
 | R05.6 | 6. `lends` fns and projections | supported | 8 pass, 1 known gaps |
 | R05.7 | 7. Lent values (R6 to R8) | supported | 41 pass, 5 known gaps |
 | R05.8 | 8. Overlap and order (R9 to R11) | supported | 20 pass, 2 known gaps |
-| R05.9 | 9. Generators and views (R12) | supported | 15 pass, 3 known gaps |
+| R05.9 | 9. Generators and views (R12) | supported | 15 pass, 4 known gaps |
 | R05.10 | 10. Closures and nested fns | supported | 37 pass |
-| R06.1 | 6.1 Functions | supported | 25 pass, 1 known gaps |
+| R06.1 | 6.1 Functions | supported | 28 pass, 1 known gaps |
 | R06.2 | 6.2 Nested functions and lambdas | supported | 14 pass, 1 known gaps |
 | R06.3 | 6.3 Generators | supported | 12 pass |
 | R06.4 | 6.4 Decorators | supported | 12 pass, 9 known gaps |
@@ -70,15 +73,15 @@ they carry rule ids; the stdlib's own gaps are in `std/GAPS.md`.
 | R07.1 | Key decisions | supported | 13 pass, 1 known gaps |
 | R07.2 | Terms | supported | 24 pass, 3 known gaps |
 | R07.3 | The capabilities | supported | 8 pass, 1 known gaps |
-| R07.4 | Slices: which keys survive | supported | 22 pass, 1 known gaps |
+| R07.4 | Slices: which keys survive | supported | 23 pass, 1 known gaps |
 | R07.5 | Under the hood | supported | 17 pass, 2 known gaps |
 | R07.6 | Generators | supported | 10 pass |
-| R07.7 | Adapters (each makes a view: \(O(1)\), lazy) | supported | 18 pass |
+| R07.7 | Adapters (each makes a view: \(O(1)\), lazy) | supported | 19 pass |
 | R07.8 | Making containers | supported | 1 pass |
-| R07.9 | Folds | supported | 8 pass |
+| R07.9 | Folds | supported | 9 pass, 2 known gaps |
 | R07.11 | Ordering and grouping | supported | 8 pass |
 | R07.12 | More vocabulary | supported | 10 pass |
-| R08.1 | 8.1 Traits and impls | supported | 29 pass, 2 known gaps |
+| R08.1 | Folds | supported | 30 pass, 3 known gaps |
 | R08.2 | 8.2 Generics | supported | 19 pass, 2 known gaps |
 | R08.3 | 8.3 Laws | supported | 5 pass |
 | R08.4 | 8.4 Record row types (trial) | supported | 11 pass |
@@ -90,11 +93,11 @@ they carry rule ids; the stdlib's own gaps are in `std/GAPS.md`.
 | R09.5 | 9.5 Trust tiers | supported | 5 pass |
 | R09.6 | 9.6 Recursion and the stack | supported | 1 pass |
 | R10.1 | 10.1 Program shape | supported | 15 pass, 1 known gaps |
-| R10.2 | 10.2 Reading | supported | 37 pass |
-| R10.3 | 10.3 Printing | supported | 19 pass, 1 known gaps |
-| R11.1 | 11.1 Program files and library files | supported | 4 pass, 4 known gaps |
-| R11.2 | 11.2 `use` | supported | 6 pass, 1 known gaps |
-| R11.3 | 11.3 The prelude | supported | 16 pass, 3 known gaps |
+| R10.2 | 10.2 Reading | supported | 44 pass |
+| R10.3 | 10.3 Printing | supported | 20 pass, 1 known gaps |
+| R11.1 | 11.1 Program files and library files | supported | 7 pass, 3 known gaps |
+| R11.2 | 11.2 `use` | supported | 8 pass, 1 known gaps |
+| R11.3 | 11.3 The prelude | supported | 17 pass, 3 known gaps |
 | R11.4 | 11.4 Versions, pins and migration | documented | `cpl migrate` and pinned rebuilds wait (milestone: "full backward compatibility" can wait) |
 | R12.4 | W4. Sequences, views and index spaces (P4) | documented | user-library powers: specified, not promised for the milestone |
 | R12.11 | W10a. Records, associated types and inline bounds (P10) | documented | user-library powers: specified, not promised for the milestone |
@@ -113,13 +116,55 @@ they carry rule ids; the stdlib's own gaps are in `std/GAPS.md`.
 | R04b.1 | Methods | supported | 38 pass, 8 known gaps |
 | R04b.3 | User helpers | supported | 3 pass |
 | R04b.4 | Library code | supported | 5 pass, 1 known gaps |
-| R04b.5 | Spec changes this implies | supported | 15 pass, 3 known gaps |
+| R04b.5 | Spec changes this implies | supported | 17 pass, 3 known gaps |
 | Rbundle | Bundling and submission | supported | 3 pass |
 | Rcli | The `cpl` command | supported | 6 pass |
 | Rfmt | `cpl fmt` | supported | 2 pass |
-| Rjudge | Judge profiles | supported | 0 pass |
+| Rjudge | Judge profiles | supported | 3 pass |
 | Rlint | `cpl lint` | supported | 3 pass |
 | Rlsp | Language server and editors | supported | 0 pass |
+| std-algebra | library: algebra | documented | stdlib: outside the Milestone 1 contest staples |
+| std-bag | library: bag | supported | 49 pass |
+| std-beats | library: beats | documented | stdlib: outside the Milestone 1 contest staples |
+| std-bitset | library: bitset | supported | 15 pass |
+| std-compress | library: compress | documented | stdlib: outside the Milestone 1 contest staples |
+| std-deque | library: deque | supported | 22 pass |
+| std-derive | library: derive | documented | stdlib: outside the Milestone 1 contest staples |
+| std-dp | library: dp | supported | 21 pass, 1 known gaps |
+| std-dsu | library: dsu | supported | 19 pass |
+| std-fenwick | library: fenwick | supported | 13 pass |
+| std-flow | library: flow | documented | stdlib: outside the Milestone 1 contest staples |
+| std-geometry | library: geometry | documented | stdlib: outside the Milestone 1 contest staples |
+| std-graph | library: graph | supported | 88 pass, 2 known gaps |
+| std-grid | library: grid | supported | 10 pass, 1 known gaps |
+| std-hashmap | library: hashmap | supported | 37 pass |
+| std-heap | library: heap | supported | 60 pass |
+| std-interval | library: interval | supported | 13 pass |
+| std-io | library: io | supported | 4 pass |
+| std-lazy | library: lazy | supported | 10 pass |
+| std-marks | library: marks | supported | 18 pass |
+| std-math | library: math | supported | 51 pass |
+| std-matrix | library: matrix | documented | stdlib: outside the Milestone 1 contest staples |
+| std-mo | library: mo | documented | stdlib: outside the Milestone 1 contest staples |
+| std-mod | library: mod | supported | 25 pass |
+| std-ntt | library: ntt | documented | stdlib: outside the Milestone 1 contest staples |
+| std-opt | library: opt | documented | stdlib: outside the Milestone 1 contest staples |
+| std-pair | library: pair | documented | stdlib: outside the Milestone 1 contest staples |
+| std-persistent | library: persistent | documented | stdlib: outside the Milestone 1 contest staples |
+| std-poly | library: poly | documented | stdlib: outside the Milestone 1 contest staples |
+| std-prefix | library: prefix | supported | 7 pass, 1 known gaps |
+| std-rand | library: rand | documented | stdlib: outside the Milestone 1 contest staples |
+| std-search | library: search | supported | 18 pass |
+| std-segtree | library: segtree | supported | 22 pass, 1 known gaps |
+| std-seq | library: seq | supported | 108 pass |
+| std-slope | library: slope | documented | stdlib: outside the Milestone 1 contest staples |
+| std-sparse | library: sparse | supported | 3 pass |
+| std-spec | library: spec | documented | stdlib: outside the Milestone 1 contest staples |
+| std-strings | library: strings | supported | 68 pass, 1 known gaps |
+| std-subset | library: subset | documented | stdlib: outside the Milestone 1 contest staples |
+| std-timetree | library: timetree | documented | stdlib: outside the Milestone 1 contest staples |
+| std-tree | library: tree | supported | 63 pass, 3 known gaps |
+| std-window | library: window | supported | 10 pass |
 | Rstress | Stress, shrinking and laws | supported | 2 pass |
 
 ## Known gaps
@@ -131,12 +176,9 @@ they carry rule ids; the stdlib's own gaps are in `std/GAPS.md`.
 - core-02/getter-needs-defaults.cp: compiler
 - core-02/question-extent-let-stays-optional.cp: compiler
 - core-02/question-not-early-return.cp: compiler
-- core-07/range-folds-are-ranges-own.cp: stdlib
-- core-08/extension-concrete-and-generic-ambiguous.cp: compiler
-- core-12/user-seq-gets-folds.cp: compiler
-- core-02/str-len-runtime-bound.cp: compiler
-- core-02/str-len-runtime-bound-rejects.cp: compiler
 - core-02/spec-block-enums.cp: compiler
+- core-02/str-len-runtime-bound-rejects.cp: compiler
+- core-02/str-len-runtime-bound.cp: compiler
 - core-03/field-bound-from-input.cp: compiler
 - core-03/memory-over-profile.cp: compiler
 - core-04/a11-rebase-reads-from-zero.cp: compiler
@@ -187,19 +229,20 @@ they carry rule ids; the stdlib's own gaps are in `std/GAPS.md`.
 - core-06/checker-is-removed.cp: compiler
 - core-06/gen-array-over-domain.cp: compiler
 - core-06/gen-graph-simple-connected.cp: compiler
-- core-06/variadic-named-args-make-record.cp: compiler
 - core-06/gen-int-in-range.cp: compiler
 - core-06/gen-perm.cp: compiler
 - core-06/gen-rooted-shape.cp: compiler
 - core-06/gen-str-of-alphabet.cp: compiler
 - core-07/assign-into-range.cp: compiler
+- core-07/fold-without-parens-warns.cp: compiler
 - core-07/grid-row-index-and-block-order.cp: compiler
 - core-07/keys-survive-filter.cp: compiler
 - core-07/prefix-scan-cuts.cp: compiler
+- core-07/range-folds-are-ranges-own.cp: stdlib
 - core-07/slice-past-source-traps.cp: compiler
-- core-07/fold-without-parens-warns.cp: compiler
 - core-07/spec-block-divisors-break.cp: compiler
 - core-08/const-param-arithmetic.cp: compiler
+- core-08/extension-concrete-and-generic-ambiguous.cp: compiler
 - core-08/static-fn-default-param-mismatch.cp: compiler
 - core-08/trait-assoc-type-bound.cp: compiler
 - core-08/trait-message-bound-holds.cp: compiler
@@ -220,3 +263,13 @@ they carry rule ids; the stdlib's own gaps are in `std/GAPS.md`.
 - core-13/build-warns-near-size-limit.cp: compiler
 - diagnostics/graph-edge-field-names.cp: diagnostics
 - diagnostics/sum-of-str.cp: diagnostics
+- std-dp/ranges-key-first-is-not-optional.cp: stdlib
+- std-graph/graph-only-and-transpose.cp: stdlib
+- std-graph/user-impl-next-weighted-arc-runs-dijkstra.cp: stdlib
+- std-grid/step-on-product-domain-position.cp: stdlib
+- std-prefix/first-ge-negative-element-traps.cp: stdlib
+- std-segtree/dual-add-point-read.cp: stdlib
+- std-strings/split-trailing-and-leading.cp: stdlib
+- std-tree/from-prufer-empty-code-is-one-edge.cp: stdlib
+- std-tree/from-prufer-round-trip.cp: stdlib
+- std-tree/from-prufer-wrong-length-traps.cp: stdlib

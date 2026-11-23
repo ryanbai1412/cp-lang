@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- Checkpoint 23:10: landed the receiver-type cost rule (decision 326, f75754b0b), its reject case (44c426011), the LaTeX math convention (decision 335, f158806e4), stable doc-case ids, the cpl-conform interpreter timeout, and library families as `SUBSET.md` rows. The last answers round 7's H-LIB-SUBSET-STATUS: 24 contest-staple `std-*` families are supported and 18 documented. `conformance-subset.py --check`: 119 supported, 21 documented, 104 known-gap cases, 0 problems. The full conformance run now takes 24 s, down from a 19 min hang. Next: bug-catch round on the 3 new compiler fixes, then spec fixes for round 7's silent holes.
 - Math convention (decision 335): 515 cost spans in spec prose and tables converted to `\( ... \)`; all 74 distinct spans compile under KaTeX. Code-block listings follow once std converts.
 - Doc example cases are now keyed `file#item:k` (`docs::example_ids`), not by a hash of their text, so an edited example keeps its id. The committed docs baseline is rewritten to the new ids.
 - `cpl-conform` now bounds each interpreted conformance run by `CPL_CONFORM_CASE_TIMEOUT`. Before this, a case past the limit hung the whole suite: `range-folds-are-ranges-own.cp` ran for 19 min.

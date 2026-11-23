@@ -9,6 +9,9 @@ R04.4.*, `Rcli` is Rcli.*), its heading, a status and a note:
   documented  specified, not promised for the milestone
   gap         a known gap as a whole; the note names the owner worklog
 
+A library family is a row too: `std-heap` holds the cases under
+`spec/conformance/std-heap/`, whatever rules they cite.
+
 --check fails when a section is missing from the table or unknown, when a
 case citing a supported section fails without a known-gap line, when a
 known-gap line names no owner or a case that passes, or a gap no owner.
@@ -51,6 +54,8 @@ def sections():
             for m in RULE_DEF.finditer(line):
                 key = section_of(m.group(1))
                 out.setdefault(key, (path.name, heading))
+    for fam in sorted(d for d in CONF.glob("std-*") if d.is_dir() and any(d.glob("*.cp"))):
+        out[fam.name] = ("conformance/" + fam.name, f"library: {fam.name[4:]}")
     return out
 
 
@@ -62,7 +67,10 @@ def case_rules():
             s = line.strip()
             if s.startswith("//") and s[2:].strip().startswith("rule:"):
                 cited += s[2:].strip()[5:].split()
-        out[str(path.relative_to(CONF))] = cited
+        rel = str(path.relative_to(CONF))
+        if rel.startswith("std-"):
+            cited.append(rel.split("/")[0])
+        out[rel] = cited
     return out
 
 
@@ -77,8 +85,10 @@ def table():
         return rows
     for line in SUBSET.read_text().split("\n"):
         cells = [c.strip() for c in line.strip().strip("|").split("|")]
-        if len(cells) >= 3 and cells[0].startswith("R") and cells[2] in STATUSES:
-            rows[cells[0][1:]] = (cells[2], cells[3] if len(cells) > 3 else "")
+        if len(cells) >= 3 and cells[0][:1] in "Rs" and cells[2] in STATUSES:
+            key = cells[0][1:] if cells[0].startswith("R") else cells[0]
+            if key.startswith("std-") or cells[0].startswith("R"):
+                rows[key] = (cells[2], cells[3] if len(cells) > 3 else "")
     return rows
 
 
@@ -106,6 +116,10 @@ def fresh_board():
     cmd = ["cargo", "run", "-q", "-p", "cpl-conform", "--", "conformance"]
     subprocess.run([*cmd, "--write", "--scoreboard", str(out)], cwd=ROOT, check=False, stdout=subprocess.DEVNULL)
     return str(out)
+
+
+def label(k):
+    return k if k.startswith("std-") else f"R{k}"
 
 
 def key_order(k):
@@ -138,7 +152,8 @@ def main():
             note = f"{ok} pass" + (f", {len(bad)} known gaps" if bad and st == "supported" else "")
             if st != "supported" and key in rows:
                 note = rows[key][1]
-            print(f"| R{key} | {secs[key][1]} | {st} | {note} |")
+            label = key if key.startswith("std-") else f"R{key}"
+            print(f"| {label} | {secs[key][1]} | {st} | {note} |")
             if st == "supported":
                 listed |= set(bad)
         print("\n## Known gaps\n")
@@ -150,15 +165,15 @@ def main():
     gaps = known_gaps()
     errs = [f"{c}: known gap names no owner" for c, n in gaps.items() if not OWNERS.search(n)]
     errs += [f"{c}: known gap now passes; drop the line" for c in gaps if status.get(c) == "pass"]
-    errs += [f"R{k}: no row in spec/SUBSET.md" for k in secs if k not in rows]
-    errs += [f"R{k}: not a rule section" for k in rows if k not in secs]
+    errs += [f"{label(k)}: no row in spec/SUBSET.md" for k in secs if k not in rows]
+    errs += [f"{label(k)}: not a rule section" for k in rows if k not in secs]
     for k, (st, note) in rows.items():
         unlisted = [c for c in tally[k][1] if c not in gaps]
         if st == "supported" and unlisted:
-            errs.append(f"R{k} is supported but {len(unlisted)} failing cases are not known gaps: "
+            errs.append(f"{label(k)} is supported but {len(unlisted)} failing cases are not known gaps: "
                         + ", ".join(unlisted[:3]))
         if st == "gap" and not OWNERS.search(note):
-            errs.append(f"R{k} is a gap with no owner in its note")
+            errs.append(f"{label(k)} is a gap with no owner in its note")
     counts = defaultdict(int)
     for st, _ in rows.values():
         counts[st] += 1
