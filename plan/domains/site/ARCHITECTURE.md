@@ -39,7 +39,7 @@ A static site plus one Worker. `next build` (Next.js App Router, `output: 'expor
 | `web/scripts/links.mjs` | Internal link check over `web/out` |
 | `web/worker/` | Share links: `share.ts` (snapshot format, ids, limits), `index.ts` (routes, OG tags), `share.test.ts` |
 | `web/tests/run.mjs`, `smoke.mjs`, `learn-smoke.mjs`, `browser.mjs` | Browser smoke: `run.mjs` serves `web/out` on a free port and runs both suites |
-| `web/scripts/wasm-size.mjs` | Fails the build when `cpl.wasm` is over 2,000,000 gzipped bytes (a shrink-only cap) |
+| `web/scripts/wasm-size.mjs` | Fails the build when `cpl.wasm` is over 1,980,000 gzipped bytes (a shrink-only cap) |
 | `scripts/site-check.sh` | The site's gate: wasm build, site build (cap, snippet gate), links, browser smoke; cached |
 
 ## The snippet gate

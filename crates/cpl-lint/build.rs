@@ -49,6 +49,10 @@ fn main() {
             );
         }
     }
+    // The playground lints but never explains (the site's lint pages come
+    // from these records), so the wasm build leaves the long texts out:
+    // about 29 KB gzipped.
+    let texts = std::env::var("CARGO_CFG_TARGET_ARCH").as_deref() != Ok("wasm32");
     let mut out = String::new();
     for (code, name, fields, dir) in &records {
         let level = match fields[1].as_str() {
@@ -90,12 +94,16 @@ fn main() {
         for (field, file) in FILES {
             let path = dir.join(file);
             println!("cargo:rerun-if-changed={}", path.display());
-            writeln!(
-                out,
-                "    {field}: include_str!({:?}),",
-                path.display().to_string()
-            )
-            .unwrap();
+            if texts {
+                writeln!(
+                    out,
+                    "    {field}: include_str!({:?}),",
+                    path.display().to_string()
+                )
+                .unwrap();
+            } else {
+                writeln!(out, "    {field}: \"\",").unwrap();
+            }
         }
         out.push_str("};\n");
     }
