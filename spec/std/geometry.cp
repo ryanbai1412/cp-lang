@@ -3492,10 +3492,23 @@ pub fn line_plane_intersect(a: Vec3, b: Vec3, plane: Plane3, eps: F64 = 1e-9) ->
 /// example: `sphere_dist(Vec3(1.0, 0.0, 0.0), Vec3(-3.0, 0.0, 0.0), r: 2.0) == 2.0 * PI`
 pub fn sphere_dist(a: Vec3, b: Vec3, r: F64 = 1.0) -> F64 = r * atan2(a.cross(b).len, a.dot(b))
 
+/// The dot product `a.x * b.x + a.y * b.y`, the free form of `a.dot(b)`.
+///
+/// cost: O(1)
+/// traps: overflow when a product leaves `Int`; use `dot128` style `I128` maths for coordinates past about 3e9
+/// example: `dot(Pt(1, 2), Pt(3, 4)) == 11`
+pub fn dot(a: Pt, b: Pt) -> Int = a.x * b.x + a.y * b.y
+
+/// The cross product `a.x * b.y - a.y * b.x`, the free form of `a.cross(b)`: positive when
+/// `b` is counter-clockwise from `a`.
+///
+/// cost: O(1)
+/// traps: overflow when a product leaves `Int`
+/// example: `cross(Pt(1, 0), Pt(0, 1)) == 1 and cross(Pt(0, 1), Pt(1, 0)) == -1`
+pub fn cross(a: Pt, b: Pt) -> Int = a.x * b.y - a.y * b.x
+
 // ---- tests
 
-fn dot(a: Pt, b: Pt) -> Int = a.x * b.x + a.y * b.y
-fn cross(a: Pt, b: Pt) -> Int = a.x * b.y - a.y * b.x
 fn dot128(a: Pt, b: Pt) -> I128 = I128(a.x) * I128(b.x) + I128(a.y) * I128(b.y)
 fn cross128(a: Pt, b: Pt) -> I128 = I128(a.x) * I128(b.y) - I128(a.y) * I128(b.x)
 fn dist2(a: Pt, b: Pt) -> Int = (a - b).norm2
