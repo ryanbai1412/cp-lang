@@ -246,24 +246,62 @@ pub(super) fn quiet_node(e: &Expr) -> bool {
     )
 }
 
-/// Whether the indices of `place` are [`quiet`] and do not read its root,
-/// so that evaluating them after the write gives the cell that was written.
+/// Whether the indices of `place` are [`quiet`] and read nothing of its root
+/// the write can change, so that evaluating them after the write gives the
+/// cell that was written.
 pub(super) fn quiet_place(place: &Place, root: (bool, usize)) -> bool {
+    quiet_place_under(place, root, &written_fields(place).0)
+}
+
+fn quiet_place_under(place: &Place, root: (bool, usize), written: &[usize]) -> bool {
     match &place.kind {
         PlaceKind::Local(_) | PlaceKind::Global(_) => true,
         PlaceKind::Index(base, indices) => {
-            quiet_place(base, root)
-                && indices.iter().all(|index| {
-                    let mut reads_root = false;
-                    cpl_ir::walk::deep_expr(index, &mut |e| {
-                        reads_root |= matches!(e.kind, ExprKind::Global(id) if root == (true, id))
-                            || matches!(e.kind, ExprKind::Local(slot) if root == (false, slot));
-                    });
-                    quiet(index) && !reads_root
-                })
+            quiet_place_under(base, root, written)
+                && (indices.iter())
+                    .all(|index| quiet(index) && !reads_written(index, root, written))
         }
-        PlaceKind::Field(base, _) => quiet_place(base, root),
+        PlaceKind::Field(base, _) => quiet_place_under(base, root, written),
         PlaceKind::Some(_) => false,
+    }
+}
+
+/// The fields from its root down to the first index or `?` of `place`: a
+/// write to `place` changes nothing of the root outside them.
+fn written_fields(place: &Place) -> (Vec<usize>, bool) {
+    match &place.kind {
+        PlaceKind::Local(_) | PlaceKind::Global(_) => (Vec::new(), true),
+        PlaceKind::Field(base, field) => {
+            let (mut fields, open) = written_fields(base);
+            if open {
+                fields.push(*field);
+            }
+            (fields, open)
+        }
+        PlaceKind::Index(base, _) | PlaceKind::Some(base) => (written_fields(base).0, false),
+    }
+}
+
+/// Whether `e` reads a part of `root` that overlaps its `written` fields.
+fn reads_written(e: &Expr, root: (bool, usize), written: &[usize]) -> bool {
+    if let Some(read) = root_fields(e, root) {
+        return read.iter().zip(written).all(|(r, w)| r == w);
+    }
+    let mut reads = false;
+    cpl_ir::walk::children(e, &mut |child| reads |= reads_written(child, root, written));
+    reads
+}
+
+/// The fields `e` reads of `root`, when `e` is `root` or a field path of it.
+fn root_fields(e: &Expr, root: (bool, usize)) -> Option<Vec<usize>> {
+    match e.kind {
+        ExprKind::Global(id) if root == (true, id) => Some(Vec::new()),
+        ExprKind::Local(slot) if root == (false, slot) => Some(Vec::new()),
+        ExprKind::Field(ref base, field) => root_fields(base, root).map(|mut fields| {
+            fields.push(field);
+            fields
+        }),
+        _ => None,
     }
 }
 
