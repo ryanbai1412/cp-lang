@@ -232,6 +232,39 @@ impl<'a> Lowerer<'a> {
         }
     }
 
+    /// JavaScript's `x.toFixed(2)`: a float's digits are set in its
+    /// interpolation, `"{x:.2}"` (R10).
+    pub(super) fn to_fixed_fix(
+        &mut self,
+        ty: &Ty,
+        base: &ast::Expr,
+        method: &str,
+        args: &[ast::Arg],
+        span: Span,
+    ) {
+        let (Ty::Float, "toFixed", [d]) = (ty, method, args) else {
+            return;
+        };
+        if !matches!(base.kind, ast::ExprKind::Name(_))
+            || !matches!(d.value.kind, ast::ExprKind::Int(_))
+        {
+            return;
+        }
+        let new = format!(
+            "\"{{{}:.{}}}\"",
+            self.source(base.span),
+            self.source(d.value.span)
+        );
+        let edit = self.span(span);
+        if let Some(last) = self.diags.last_mut() {
+            last.help = Some(format!(
+                "a float's digits are set in its interpolation: `{new}`"
+            ));
+            last.fixes.clear();
+            last.fix(format!("write `{new}`"), edit, new);
+        }
+    }
+
     /// Python's `sorted(xs, reverse=True)`: CP Lang's sort says `desc: true`.
     pub(super) fn sort_reverse_arg(&mut self, args: &[ast::Arg]) -> bool {
         let Some(name) = args
@@ -296,6 +329,7 @@ impl<'a> Lowerer<'a> {
         args: &[ast::Arg],
         span: Span,
     ) {
+        self.to_fixed_fix(ty, base, method, args, span);
         let (Ty::Str | Ty::List(_), "slice" | "substring", [a, b]) = (ty, method, args) else {
             return;
         };

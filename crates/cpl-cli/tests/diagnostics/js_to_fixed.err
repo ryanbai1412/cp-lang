@@ -1,0 +1,8 @@
+error[E0203]: a `F64` has no method `toFixed` that `cpl run` knows
+  --> js_to_fixed.cp:2:9
+  |
+2 | print(x.toFixed(2))
+  |         ^^^^^^^
+  = help: a float's digits are set in its interpolation: `"{x:.2}"`
+
+js_to_fixed.cp: 1 error
