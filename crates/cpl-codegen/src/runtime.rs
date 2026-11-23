@@ -18,7 +18,7 @@ pub(crate) const PIECES: &[Piece] = &[
 // Output is collected here and written once at the end.
 std::string out;
 inline void flush() { fwrite(out.data(), 1, out.size(), stdout); out.clear(); }
-inline void put_char(u8 c) { out.push_back((char)c); }
+inline void put_char(u8 c) { out.push_back((char)c); if (out.size() >= (1u << 16)) flush(); }
 inline void put_str(const std::string& s) { out += s; }
 inline void put_str(const char* s) { out += s; }
 inline void put_line() { out.push_back('\\n'); if (out.size() >= (1u << 16)) flush(); }
@@ -28,14 +28,24 @@ inline void put_line() { out.push_back('\\n'); if (out.size() >= (1u << 16)) flu
         name: "put_int",
         needs: &["out"],
         code: "\
-inline void put_int(ll x) { char b[24]; out.append(b, (size_t)snprintf(b, sizeof b, \"%lld\", x)); }
+inline void put_int(ll x) {
+  unsigned long long u = x < 0 ? 0ULL - (unsigned long long)x : (unsigned long long)x;
+  char b[24]; int i = 24;
+  do { b[--i] = char('0' + u % 10); u /= 10; } while (u);
+  if (x < 0) b[--i] = '-';
+  out.append(b + i, (size_t)(24 - i));
+}
 ",
     },
     Piece {
         name: "put_u64",
         needs: &["out"],
         code: "\
-inline void put_u64(unsigned long long x) { char b[24]; out.append(b, (size_t)snprintf(b, sizeof b, \"%llu\", x)); }
+inline void put_u64(unsigned long long x) {
+  char b[24]; int i = 24;
+  do { b[--i] = char('0' + x % 10); x /= 10; } while (x);
+  out.append(b + i, (size_t)(24 - i));
+}
 ",
     },
     Piece {
