@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- Landed (this): the site builds `cli.json` from `cpl --help --json` and `cpl judges --json` (identical output, compared as JSON); note in the site worklog.
 - Landed (this): `cpl explain` with no argument or an unknown code names the problem and shows its usage (it printed a stale usage line, or none); golden `misused` checks for both.
 - Landed (this): every help but `stress` fits 80 columns (report, profile, bench, replay, root `fix` rewrapped); golden test `every_help_fits_80_columns`; asked debugger to rewrap `stress --help`.
 - Landed (this): golden success and exit-code tests for `fmt` (--check writes nothing, exit 1; rewrite; clean exit 0), `lint` (L0201 warning, exit 0; --list), `explain` (a code; unknown code exit 2; --json).
