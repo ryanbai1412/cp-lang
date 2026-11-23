@@ -14,7 +14,10 @@ expectation:
 ```
 
 Line numbers count from the first line after the header, so `at 1` is the
-first line of the program. A second header line `// rule: 05.4.2 05.4.3`
+first line of the program. The header is the `// key: value` lines only: a
+plain `// ...` comment after them is line 1, so in a case with three header
+lines and one comment, a diagnostic on file line 6 is `at 2`. A failing case
+names the `at N` its diagnostic is on. A second header line `// rule: 05.4.2 05.4.3`
 names the numbered rules (`(R05.4.2)` in `spec/core`) the case tests,
 without the `R`; `cpl-conform --rules` lists the rules no case cites.
 A rule is defined where `(Rnn.n.n)` ends its sentence; a reference to a
