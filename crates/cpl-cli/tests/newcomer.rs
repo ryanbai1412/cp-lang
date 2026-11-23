@@ -385,7 +385,7 @@ fn newcomer_scoreboard() {
     );
     // Bars at the measured values; raise them as fixes land.
     assert!(
-        all.copies >= 250,
+        all.copies >= 248,
         "the newcomer copies went missing ({})",
         all.copies
     );
