@@ -249,16 +249,6 @@ impl<'a> Parser<'a> {
         lhs
     }
 
-    /// Python's `is None` or `is not None`; any other `is` is a pattern test.
-    fn at_python_is(&self) -> bool {
-        let none_at = if self.peek_n(1) == T::Not { 2 } else { 1 };
-        self.at_ident("is")
-            && self
-                .tokens
-                .get(self.pos + none_at)
-                .is_some_and(|t| t.kind == T::Ident && t.span.text(self.src) == "None")
-    }
-
     fn at_is_pattern(&self) -> bool {
         self.at_ident("is") && self.same_line() && matches!(self.peek_n(1), T::Ident | T::LParen)
     }

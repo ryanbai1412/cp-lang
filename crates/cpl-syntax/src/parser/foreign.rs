@@ -3,6 +3,16 @@
 use super::*;
 
 impl<'a> Parser<'a> {
+    /// Python's `is None` or `is not None`; any other `is` is a pattern test.
+    pub(super) fn at_python_is(&self) -> bool {
+        let none_at = if self.peek_n(1) == T::Not { 2 } else { 1 };
+        self.at_ident("is")
+            && self
+                .tokens
+                .get(self.pos + none_at)
+                .is_some_and(|t| t.kind == T::Ident && t.span.text(self.src) == "None")
+    }
+
     /// `xs[::-1]`: Python's reversed copy. One error with the `xs.rev` fix.
     fn reversed_slice(&mut self) -> Option<Expr> {
         let t = |k: usize| self.tokens.get(self.pos + k);
