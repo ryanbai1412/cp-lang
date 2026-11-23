@@ -150,3 +150,23 @@ fn a_variable_holding_two_closures_keeps_its_struct_whole() {
     ));
     assert!(out.contains("std::function<ll(ll)> op;"), "{out}");
 }
+
+#[test]
+fn each_clone_of_a_split_fn_gets_its_own_name() {
+    let out = cpp(concat!(
+        "struct Box(op: Int -> Int)\n",
+        "fn walk(b: Box, x: Int, stop: Int -> Bool) -> Int:\n",
+        "    var y = x\n",
+        "    while not stop(y): y = b.op(y)\n",
+        "    y\n",
+        "let k = read::<Int>()\n",
+        "let b = Box(x => x + 1)\n",
+        "print(walk(b, k, y => y > 9), walk(b, k, y => y > k))\n",
+    ));
+    let heads: Vec<&str> = out
+        .lines()
+        .filter(|l| !l.starts_with(' ') && l.ends_with(") {") && l.contains("walk"))
+        .collect();
+    let unique: std::collections::BTreeSet<&&str> = heads.iter().collect();
+    assert_eq!(heads.len(), unique.len(), "{out}");
+}

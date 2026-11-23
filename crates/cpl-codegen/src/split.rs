@@ -817,8 +817,13 @@ fn apply(program: &mut Program, tracked: &BTreeSet<StructId>, plan: Plan) {
     for (g, key) in &plan.global_keys {
         program.globals[*g].ty = ty_of(key);
     }
+    let mut clones: BTreeMap<FnId, usize> = BTreeMap::new();
     for &(old, _) in &plan.new_fns {
-        program.fns.push(program.fns[old].clone());
+        let mut clone = program.fns[old].clone();
+        let n = clones.entry(old).or_default();
+        clone.name = format!("{}_k{n}", clone.name);
+        *n += 1;
+        program.fns.push(clone);
         program.fn_display.push(program.fn_display[old].clone());
         program.library_fns.push(program.library_fns[old]);
         let copied: Vec<(ElemLoc, cpl_ir::NarrowLayout)> = program
