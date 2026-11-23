@@ -45,11 +45,6 @@ A port fails review if any of these hold and the gap is not reported:
 - It mixes index spaces through raw `Int` where a domain would keep them
   apart, or pads with sentinels where a type or `?T` says it.
 - Each fact is not in one place: the bound, base or modulus is repeated.
-- A name or formula hides its meaning: a one-to-three-letter or generic helper
-  (`net`, `bs`, `lb`, `fix`, `calc`) or an arithmetic trick (`twice ... / 2`,
-  `c * (c - (n - 3))`) whose meaning the reader must reverse-engineer. Name it after
-  the editorial's quantity (`twice_excess(inside)`) and state any trick in one line
-  (Ryan, 2026-11-22, cf1146h).
 - It is slower than the C++ by more than 1.1x on max input without a
   performance friction filed.
 - It drops a statement constraint today's types can hold
