@@ -1764,10 +1764,16 @@ const POSIX_THREAD: &str = "
 #else
 #define CPL_LINKED 1
 #endif
+#ifdef __GLIBC__
+#include <malloc.h>  // one arena: a thread's own is slower
+#endif
 static void* cpl_go(void*) { cpl_main(); return 0; }
 static bool cpl_on(size_t n) {
     pthread_attr_t a;
     pthread_t t;
+#ifdef __GLIBC__
+    mallopt(M_ARENA_MAX, 1);
+#endif
     return CPL_LINKED && !pthread_attr_init(&a) && !pthread_attr_setstacksize(&a, n) &&
            !pthread_create(&t, &a, cpl_go, 0) && (pthread_join(t, 0), true);
 }

@@ -828,6 +828,7 @@ fn the_program_runs_on_a_thread_with_the_profile_stack() {
         cpp.contains("pthread_attr_setstacksize") && !cpp.contains("CreateThread"),
         "{cpp}"
     );
+    assert!(cpp.contains("mallopt(M_ARENA_MAX, 1);"), "{cpp}");
     let mut db = cpl_check::Database::new();
     db.set_file("t.cp", source);
     let program = cpl_ir::lower(&db.analyze("t.cp").expect("set")).expect("lowers");
