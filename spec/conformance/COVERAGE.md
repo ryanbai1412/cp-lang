@@ -7,7 +7,7 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 2834 (995 passing). Rules: 576.
+Cases: 2835 (995 passing). Rules: 576.
 
 ## Summary per chapter
 
@@ -19,7 +19,7 @@ Cases: 2834 (995 passing). Rules: 576.
 - R04b (04b-keys.md): 28 rules, 70 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R05 (05-ownership.md): 43 rules, 180 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R06 (06-control-functions.md): 24 rules, 104 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R07 (07-sequences.md): 90 rules, 179 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R07 (07-sequences.md): 90 rules, 180 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R08 (08-traits-generics.md): 29 rules, 92 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R09 (09-contexts-checks.md): 27 rules, 61 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R10 (10-io.md): 19 rules, 111 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -440,7 +440,7 @@ Each rule: positive / negative case counts, then the gap if any.
 ### R07: 07-sequences.md
 
 - R07.5.3 [1+ 1-]: **Lint: literal index into a slice** (`w[0]`, `w[1]` on a slice whose keys start elsewhere...
-- R07.3.5 [2+ 2-]: Both work unchanged on `a` and on `a[l..=r]`, and their results index the source. A revers...
+- R07.3.5 [3+ 2-]: Both work unchanged on `a` and on `a[l..=r]`, and their results index the source. A revers...
 - R07.1.1 [1+ 1-]: **Generators are the only iterator.** `-> yields T`, no `next()`; values are pushed into t...
 - R07.1.2 [2+ 1-]: **Six capabilities.** `Seq` walks; `Keyed` walks `(key, x)`; `Sized` has \(O(1)\) `.len`; ...
 - R07.1.3 [3+ 1-]: **Laziness is explicit.** A chain reruns on every walk. Allocation happens only at `.colle...

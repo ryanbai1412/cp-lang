@@ -541,7 +541,7 @@ type Z = Mod<998_244_353>
 
 let t: 1..=10_000 = read()
 let ns: [0..t](1..=20_000_000) = read()
-let lim = ns.max() + 1
+let lim = ns.max()! + 1
 
 let comb = Comb<Z>(lim)
 let odd_div_sum = sieve_multiplicative(
