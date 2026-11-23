@@ -1448,6 +1448,7 @@ impl<'a> Lowerer<'a> {
                         if ok {
                             let message = format!("`{name}` needs the argument `{}`", param.name);
                             self.error(codes::WRONG_ARG_COUNT, span, message);
+                            self.split_on_space(&name, &param.name, span);
                         }
                         ok = false;
                     }

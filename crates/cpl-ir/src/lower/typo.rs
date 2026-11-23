@@ -630,6 +630,19 @@ impl<'a> Lowerer<'a> {
         }
     }
 
+    /// Python's `line.split()`: CP Lang splits on one `Char`, and a line's
+    /// tokens are split on `' '`.
+    pub(super) fn split_on_space(&mut self, name: &str, param: &str, call: Span) {
+        if (name, param) != ("split", "sep") || !self.source(call).ends_with("()") {
+            return;
+        }
+        let at = self.span(call);
+        if let Some(last) = self.diags.last_mut() {
+            last.help = Some("a string splits on one `Char`: `split(' ')`".to_string());
+            last.fix("write `split(' ')`", Span::point(at.end - 1), "' '");
+        }
+    }
+
     pub(super) fn suggest_last(&mut self, span: Span, s: String) {
         let span = self.span(span);
         if let Some(last) = self.diags.last_mut() {
