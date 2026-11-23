@@ -1,4 +1,13 @@
-// NOI '22 MPTS P4 - Card (runnable on proto/cp.py lib-run today)
+// Source: NOI '22 MPTS P4 (Card), https://dmoj.ca/problem/noimps22p4
+// Problem: n <= 1e6 cards with values s_i <= 2000, then m <= 1500 queries, each a list of primes
+//   <= 2000 (total length <= 18000). For each query count the subsets of cards whose product is
+//   divisible by every listed prime, mod 998244353.
+// Solution: a value <= 2000 has at most one prime factor above 41, so split primes into the 13
+//   small ones (a bitmask) and the big one. Subset sums (SOS) over small masks count cards whose
+//   small primes lie inside a mask, overall and per big prime. A query does inclusion-exclusion
+//   over subsets S of its small primes: of the cards avoiding S, each queried big prime b needs
+//   one of its c_b cards (2^c_b - 1) and the rest are free (2^rest), sign (-1)^|S|. Cost: SOS
+//   over 2^13 masks per big prime, then 2^|small| * |big| per query.
 
 type Z = Mod<998244353>
 

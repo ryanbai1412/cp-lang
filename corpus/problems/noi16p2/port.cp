@@ -1,16 +1,13 @@
-// NOI 2016 Grid: given an n x m grid with k blocked (black) cells, find the
-// minimum number of additional white cells to block so the remaining white
-// cells become disconnected (or -1 if <= 2 white cells remain).
-//
-// Answer is always in {-1, 0, 1, 2}:
-//   - 0 if the white cells are already disconnected, checked by sweeping
-//     blocked rows and uniting overlapping white horizontal segments;
-//   - -1 if n * m - k <= 2;
-//   - 1 if any white cell adjacent (8-way) to a blocked cell or grid border
-//     is an articulation point of the radius-2 neighborhood around blocked
-//     cells (or when k = 0 and min(n, m) = 1);
-//   - 2 otherwise.
-// Uses `scout.connectivity.articulation_points` and `std.graph.components`.
+// Source: NOI 2016 Day 1 P2 (Grid), https://dmoj.ca/problem/noi16p2
+// Problem: multitest, T <= 20. An n x m grid (n, m <= 1e9) has c crickets in given cells (sum
+//   of c <= 1e5) and fleas everywhere else, linked by side adjacency. Print the least number of
+//   fleas to turn into crickets so that some two fleas are disconnected, or -1 if impossible.
+// Solution: the answer is -1, 0, 1 or 2. 0 if the fleas are already split: sweep the rows that
+//   hold crickets, cut each into free segments, link segments that overlap in consecutive rows
+//   (an empty band of rows is one segment) and count components. -1 if at most 2 fleas remain.
+//   1 if some articulation point of the graph of free cells within distance 2 (3 on a 1-wide
+//   grid) of a cricket touches a cricket or the border 8-way; with no crickets, iff n or m is 1.
+//   Otherwise 2. O(c log c) per test.
 // original: corpus/submissions/4798070.cpp
 use std.graph.{components}
 use scout.connectivity.{articulation_points}

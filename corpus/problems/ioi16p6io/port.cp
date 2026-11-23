@@ -1,5 +1,13 @@
-// IOI 2016 Aliens: cover n points in an m x m grid with at most k diagonal
-// squares of minimum total area. WQS (Aliens) binary search + Li Chao tree DP.
+// Source: IOI 2016 Day 2 (Aliens), standard I/O version, https://dmoj.ca/problem/ioi16p6io
+// Problem: n <= 1e5 points (r, c) in an m x m grid, m <= 1e6. Take at most k <= n photos, each
+//   a square with two opposite corners on the main diagonal, covering every point; print the
+//   least number of cells photographed at least once.
+// Solution: point (r, c) needs the diagonal range [min, max]; drop ranges inside others and the
+//   rest sort with both ends increasing, so each photo covers a run of them. Aliens trick: charge
+//   lam per photo and binary search the least lam whose optimum uses <= k photos, then answer
+//   cost - k * lam. For fixed lam a DP from the right takes a run i..j-1 for (r_{j-1}+1 - l_i)^2
+//   minus the overlap with range i-1; the square is a line in l_i, so a Li Chao tree over 0..=m
+//   (ties toward fewer photos) makes it O(n log m) per lam, O(n log m log m^2) overall.
 // original: corpus/submissions/4730558.cpp
 let n: 1..=100000 = read()
 let m: 1..=1000000 = read()

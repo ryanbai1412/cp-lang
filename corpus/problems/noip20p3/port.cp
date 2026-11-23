@@ -1,5 +1,13 @@
-// Runnable today/ port of NOIP '20 P3 (Ball Move) for real Rust `cpl build`.
-// Stdin: n, m, then n rows of m ball colors (1..=n). Prints move count and 1-based (u, v) moves.
+// Source: NOIP 2020 P3 (Ball Move), https://dmoj.ca/problem/noip20p3
+// Problem: n + 1 pillars of capacity m (2 <= n <= 50, 2 <= m <= 400); pillars 1..n each hold
+//   m balls and pillar n + 1 is empty; each of the n colours has m balls. A move takes the top
+//   ball of one pillar to another that is not full. Print any plan of at most 820000 moves that
+//   gathers every colour on one pillar: the count, then each move as (from, to).
+// Solution: divide and conquer on colours: solve(pillars, lo..hi) splits at mid into small and
+//   big colours. First each pillar is sorted into a small block and a big block using a helper
+//   pillar and the empty one; then two mixed pillars with the same bottom kind are merged so one
+//   becomes pure (the empty pillar may change), until at most two mixed ones are left and one
+//   swap fixes them. Recurse on the pillars by bottom kind. O(n m log n) moves.
 // Uses top-level recursive fn (working around cpl-emit recursive nested-fn self-capture bug).
 // original: corpus/submissions/5445674.cpp
 

@@ -1,4 +1,13 @@
-// CCO '22 P4 — Good Groups / Binary Tree Parking (today form for proto/cpc)
+// Source: CCO 2022 Day 2 (Bi-ing Lottery Treekets), https://dmoj.ca/problem/cco22p4
+// Problem: a rooted binary tree of N <= 4000 nodes; K <= 4000 numbered balls each have a drop
+//   node. Balls are dropped in any order; a ball falls into an empty child, picks either side
+//   when both are empty on its drop, keeps its direction afterwards, and stops when no child is
+//   empty. Count the distinct final ball placements with every ball dropped, mod 1e9+7.
+// Solution: spare(u) = subtree size - balls dropped in it; any negative spare means 0. dp(u, k)
+//   counts placements in u's subtree when k balls arrive from above (they keep their direction).
+//   The incoming balls fill the child on their side first; for each split i of the balls dropped
+//   at u, multiply binomials for which balls go where and falling factorials for their order
+//   among the arrivals; when both children fill, one ball stops at u. Memoized over (u, k).
 // original: corpus/submissions/4801884.cpp
 let n: 1..=4000 = read()
 let m: 0..=4000 = read()

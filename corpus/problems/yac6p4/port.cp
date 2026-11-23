@@ -1,4 +1,14 @@
-// YAC 6 P4 (today/ runnable subset) — original: corpus/submissions/5149666.cpp
+// Source: Yet Another Contest 6 P4 (No More Nails!), https://dmoj.ca/problem/yac6p4
+// Problem: N <= 1e6 square boards of sides s_i <= 100, each with a nail in its bottom-right
+//   cell. A move picks one board and cuts it along a row or column line keeping the nail's part,
+//   or moves the nail X >= 1 cells left, up, or both left and up by X. Nils moves first; whoever
+//   cannot move loses. Print the least side <= M <= 100 of one more square board that makes
+//   Mike win, or -1.
+// Solution: Sprague-Grundy: the boards are independent games, so Mike wins iff the XOR of all
+//   Grundy values is 0. The Grundy values of sides 0..=100 are a table precomputed offline by
+//   the original author; XOR the given boards into need and print the least side in 1..=M whose
+//   value is need. O(N + M).
+// original: corpus/submissions/5149666.cpp
 
 // Grundy values of pile sizes 0..=100, precomputed offline by the original author
 let grundy: List<Int> = [

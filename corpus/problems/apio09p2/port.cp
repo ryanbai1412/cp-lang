@@ -1,6 +1,13 @@
-// APIO '09 P2 (Siruseri Convention Centre): lexicographically smallest max
-// independent set of closed intervals.
-// Runnable on proto/cpc today.
+// Source: APIO 2009 (The Siruseri Convention Centre), https://dmoj.ca/problem/apio09p2
+// Problem: n <= 2e5 requests, each a closed range of days [s, e] within 1..1e9. Choose the most
+//   pairwise disjoint requests; among those choices, the lexicographically smallest list of
+//   request numbers. Print the count, then the numbers in increasing order.
+// Solution: sort by start; the greedy next pick after a request is the one with the least end
+//   that starts after it (a sparse table of min end), and binary lifting over those links counts
+//   how many fit in an open window of days in O(log n). Free windows are blocks of the sorted
+//   order, found through a max SegTree of block starts. Try requests in input order: take one iff
+//   the counts left and right of it plus one equal its window's count, then split the window.
+//   O(n log n).
 // original: corpus/submissions/5536701.cpp
 let n: 1..=2e5 = read()
 domain I = 0..n

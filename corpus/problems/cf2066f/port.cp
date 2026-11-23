@@ -1,18 +1,15 @@
-// Codeforces 2066 F: Curse.
-// The cool partition splits a at its widest maximum-sum segment and recurses on
-// the two sides. An operation only ever replaces one cool segment whole, and never
-// raises the sum the next operation may pick. So b is reachable iff, for some
-// threshold x among the segment sums, b is the cool segments in order where
-//   - a segment with sum < x stays as it is,
-//   - a segment with sum >= x becomes a non-empty array with max subarray sum <= x,
-//   - except one, the free segment, which becomes anything non-empty.
-// For each threshold, largest first, `came[k, j, spent]` is how the segments
-// before cut k make b[..j], the free segment spent or not. A tame piece that may
-// start at cut j may start at any later cut too (a subarray's max subarray sum is
-// no larger), so the latest reachable start is the only one to try.
-//
-// Output: replace the segments with sum >= x in decreasing sum order, the free one
-// by [x], then replace [x] by its piece. Each step replaces a maximum-sum segment.
+// Source: Codeforces 2066F (Curse), https://codeforces.com/contest/2066/problem/F
+// Problem: multitest, t <= 200. Arrays a and b (n, m <= 500, sums over tests <= 500, |values|
+//   <= 1e6). An operation picks any maximum-sum non-empty subarray of a and replaces it with any
+//   non-empty array. Print -1 if b is unreachable, else the operations, with replacements of
+//   total length <= n + m and values within 1e9.
+// Solution: the cool partition splits a at its widest max-sum segment and recurses on both sides;
+//   operations replace cool segments whole. b is reachable iff for some threshold x among the
+//   segment sums, b is the segments in order: sum < x kept, sum >= x replaced by a non-empty array
+//   with max subarray sum <= x, except one free segment that becomes anything. For each x,
+//   largest first, a DP came[segment cut, b cut, free used] matches the pieces; a tame piece
+//   only needs the latest reachable start. Replay in decreasing sum, the free one by [x] and
+//   then by its piece. O(n^2 m).
 @!multitest
 use std.algebra.{MaxSub}
 domain PosA = read(1..=500)

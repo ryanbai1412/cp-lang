@@ -1,5 +1,13 @@
-// Runnable today/ port of CTSC '04 P4 for real Rust `cpl build`.
-// Stdin: n, raw_m, n vertex costs, n-1 weighted edges (u, v, w) 1-based.
+// Source: CTSC 2004 (Network Upgrade), https://dmoj.ca/problem/ctsc04p4
+// Problem: a tree of n <= 400 switches with edge lengths < 20000 and upgrade costs c_i. Upgrade
+//   1..p switches to cores; cost is the sum of their c_i plus, for every other switch, the tree
+//   distance to its nearest core. Print the least cost, then the number of cores used.
+// Solution: all-pairs distances by n tree walks. dp(u)[v] is a list (cores opened in u's
+//   subtree, least cost) for that subtree when u's nearest core is at most dist(u, v) away and v
+//   is open for free: children merge knapsack-style capped by subtree size; then, scanning v
+//   by distance from u, either u uses v or a closer core a opened at c_a. Lists keep only points
+//   where the cost drops. Answer: min over v of dp(root)[v] with <= p - 1 cores, plus c_v.
+//   About O(n^2 p).
 // Uses top-level recursive fns (working around cpl-emit recursive nested-fn self-capture bug).
 // original: corpus/submissions/4529641.cpp
 

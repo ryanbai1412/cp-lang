@@ -1,4 +1,13 @@
-// Runnable port (proto/cp.py lib-run) of statement-first ioi13p3io.cp
+// Source: IOI 2013 Day 1 (Wombats), standard I/O version, https://dmoj.ca/problem/ioi13p3io
+// Problem: an R x C grid of roads (R <= 5000, C <= 200) with wombat counts on the segments;
+//   people move east or west on horizontal roads and only south on vertical ones. Up to 500
+//   events change one segment's count; up to 200000 events ask the fewest wombats on a route from
+//   (0, V1) to (R-1, V2).
+// Solution: cut the rows into blocks of 8 and give each block its C x C matrix of least costs
+//   from top column to bottom column, built by C row-by-row relaxations in O(8 C^2). A SegTree
+//   over blocks composes matrices by min-plus product; the matrices are Monge, so the optimal
+//   middle column is monotone and Knuth's bound makes a product O(C^2). A change rebuilds one
+//   block and its path, O(C^2 log(R/8)); the root product is kept, so an escape is one lookup.
 // original: corpus/submissions/4722412.cpp
 
 let (r_cnt, c_cnt): (Int, Int) = read()
