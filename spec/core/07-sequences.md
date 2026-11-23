@@ -344,7 +344,8 @@ query (`pref_min[v]`) is the common one and needs no `.r`.
 | `s.tally(by: k)` | `Counter<K>` | \(O(n)\) expected (R07.11.4) |
 | `compress(s)` | `(domain C, comp)`: values sorted and deduped, as a fresh domain | \(O(n \log n)\) (R07.11.5) |
 
-Sorts are stable. Descending is a key, not a flag: `by: x => desc(x.score)`.
+Sorts are stable. Descending is a key, not a flag: `by: x => desc(x.score)`;
+`sort` and `sorted` take no `desc:` argument (decision 366).
 Every in-place verb that has a result-named twin follows the same pattern
 (`sort`/`sorted`, `dedup`/`deduped`); `.rev` (view) and `reverse()` (in
 place) are different jobs, not twins.

@@ -7,22 +7,22 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 2560 (995 passing). Rules: 567.
+Cases: 2566 (995 passing). Rules: 567.
 
 ## Summary per chapter
 
-- R01 (01-lexical-grammar.md): 56 rules, 143 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R01 (01-lexical-grammar.md): 56 rules, 145 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R02 (02-values-types.md): 52 rules, 132 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R03 (03-numbers-layout.md): 24 rules, 64 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R04 (04-indices.md): 68 rules, 124 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R03 (03-numbers-layout.md): 24 rules, 65 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R04 (04-indices.md): 68 rules, 125 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04a (04a-identity-vs-offset.md): 39 rules, 53 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04b (04b-keys.md): 27 rules, 66 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R05 (05-ownership.md): 43 rules, 154 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R06 (06-control-functions.md): 24 rules, 88 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R07 (07-sequences.md): 90 rules, 138 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R07 (07-sequences.md): 90 rules, 139 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R08 (08-traits-generics.md): 29 rules, 86 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R09 (09-contexts-checks.md): 26 rules, 56 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R10 (10-io.md): 18 rules, 91 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R10 (10-io.md): 18 rules, 92 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R11 (11-modules-prelude.md): 16 rules, 44 cases; 0 uncovered, 0 happy-path only, 1 negative only
 - R12 (12-powers.md): 17 rules, 36 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R13 (13-lowering.md): 22 rules, 27 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -45,18 +45,18 @@ negative case. Complete: rules with no gap in `rule-gaps.txt`.
 
 | Chapter | Rules | Accept | Forbidding | Reject | Complete |
 |---|---|---|---|---|---|
-| R01 | 56 | 56 (100%) | 30 | 30 (100%) | 56 (100%) |
+| R01 | 56 | 56 (100%) | 31 | 31 (100%) | 56 (100%) |
 | R02 | 52 | 52 (100%) | 28 | 28 (100%) | 52 (100%) |
 | R03 | 24 | 24 (100%) | 13 | 13 (100%) | 24 (100%) |
 | R04 | 68 | 68 (100%) | 15 | 15 (100%) | 68 (100%) |
 | R04a | 39 | 39 (100%) | 3 | 3 (100%) | 39 (100%) |
 | R04b | 27 | 27 (100%) | 7 | 7 (100%) | 27 (100%) |
 | R05 | 43 | 43 (100%) | 21 | 21 (100%) | 43 (100%) |
-| R06 | 24 | 24 (100%) | 16 | 16 (100%) | 24 (100%) |
+| R06 | 24 | 24 (100%) | 15 | 15 (100%) | 24 (100%) |
 | R07 | 90 | 90 (100%) | 25 | 25 (100%) | 90 (100%) |
 | R08 | 29 | 29 (100%) | 12 | 12 (100%) | 29 (100%) |
 | R09 | 26 | 26 (100%) | 14 | 14 (100%) | 26 (100%) |
-| R10 | 18 | 18 (100%) | 7 | 7 (100%) | 18 (100%) |
+| R10 | 18 | 18 (100%) | 8 | 8 (100%) | 18 (100%) |
 | R11 | 16 | 15 (93%) | 10 | 10 (100%) | 15 (93%) |
 | R12 | 17 | 17 (100%) | 6 | 6 (100%) | 17 (100%) |
 | R13 | 22 | 22 (100%) | 5 | 5 (100%) | 22 (100%) |
@@ -67,7 +67,7 @@ negative case. Complete: rules with no gap in `rule-gaps.txt`.
 | Rlint | 2 | 2 (100%) | 2 | 2 (100%) | 2 (100%) |
 | Rlsp | 5 | 5 (100%) | 1 | 1 (100%) | 5 (100%) |
 | Rstress | 1 | 1 (100%) | 0 | 0 (0%) | 1 (100%) |
-| all | 567 | 566 (99%) | 218 | 218 (100%) | 566 (99%) |
+| all | 567 | 566 (99%) | 219 | 219 (100%) | 566 (99%) |
 
 ## Rules
 
@@ -110,7 +110,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R01.6.1 [3+ 0-]: `let p = e` binds immutably; `var p = e` mutably; `const N = e` is a compile-time constant...
 - R01.6.2 [7+ 2-]: `let p = e else: block` binds or runs the block, which must leave (`return`, `break`, `con...
 - R01.6.3 [1+ 0-]: `var` inside a pattern makes that one binding mutable: `for (var left, v) in items:`.
-- R01.6.4 [1+ 0-]: Assignment `place = e`, destructuring `(a, b) = (b, a)`, compound assignment `x op= e` for...
+- R01.6.4 [2+ 1-]: Assignment `place = e`, destructuring `(a, b) = (b, a)`, compound assignment `x op= e` for...
 - R01.6.5 [2+ 0-]: `return e` exists for early exits; a block's value is its last expression. At top level `r...
 - R01.6.6 [1+ 1-]: `assert cond` and `assert cond, "message {x}"`: checked builds only, unless opted in for r...
 - R01.6.7 [3+ 2-]: `todo` is an expression of any type that traps when run; library stubs use it as a body.
@@ -197,7 +197,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R03.1.6 [3+ 0-]: **Narrow arithmetic when proven.** Semantically every operation is in `Int`. When the rang...
 - R03.1.7 [4+ 1-]: To force a width, name the type parameter: `SegTree<0..=4e9>(+, a)`. Every node write is t...
 - R03.1.9 [1+ 1-]: A static peak above the judge profile's memory limit is an error (E0904) naming the three ...
-- R03.1.8 [1+ 1-]: **Lint `wide_array`**: an array with a static size of at least 1e6 whose element type is `...
+- R03.1.8 [2+ 1-]: **Lint `wide_array`**: an array with a static size of at least 1e6 whose element type is `...
 - R03.2.1 [1+ 0-]: Every type has a fixed set of **spare values**: bit patterns of its storage that no valid ...
 - R03.2.2 [3+ 0-]: **`?S` borrows the first field, in declaration order, that has a spare value.** It writes ...
 - R03.2.3 [1+ 1-]: **No user `Niche` trait** (decision 28.10). A library could name a value its own code late...
@@ -257,7 +257,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R04.4.25 [1+ 2-]: . For a domain with a runtime count (`domain V = 1..=n`, `n: 1..=2e5`), a literal outside ...
 - R04.4.26 [2+ 0-]: **Cut range to piece:** a literal `j..i` whose ends are cuts, where a `Range<V>` is expect...
 - R04.4.27 [2+ 1-]: **Scalar to array fill:** a value `x: T` where `[D]T` is expected is the array over `D` wi...
-- R04.4.28 [2+ 0-]: **`Int` to `Mod<P>`:** an integer (a literal or any `Int` value) where a `Mod<P>` is expec...
+- R04.4.28 [3+ 0-]: **`Int` to `Mod<P>`:** an integer (a literal or any `Int` value) where a `Mod<P>` is expec...
 - R04.4.30 [1+ 0-]: **Integer ranges as domains.** An integer range `lo..hi` (or `lo..=hi`, or a counted `[n]`...
 - R04.4.12 [1+ 0-]: | `r.len`, `r.is_empty`, `x in r` | count of positions; membership of a position | count o...
 - R04.4.31 [1+ 1-]: | `r[x]`, `r.keys`, `r.items` | a range's keys are its own elements: `r[x] == x` for `x in...
@@ -411,7 +411,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R06.1.4 [3+ 1-]: A lambda with k parameters, passed where the callee expects a function of one k-tuple, unp...
 - R06.1.5 [8+ 3-]: Named and positional arguments, defaults, named-only parameters after `;`, and a variadic ...
 - R06.1.6 [2+ 1-]: No overloading by type: one name and label set has one generic signature (decision 127). O...
-- R06.1.7 [3+ 1-]: Functions hoist within their block; every capture must be initialized before the first cal...
+- R06.1.7 [3+ 1-]: .
 - R06.1.8 [7+ 1-]: A `fn` passed where a function of fewer parameters is expected takes only those, when ever...
 - R06.2.1 [5+ 2-]: **Captures act as call-time arguments.** A closure holds no lend between calls: each call ...
 - R06.2.2 [1+ 2-]: A captured variable cannot be moved while the closure is alive, and a closure cannot outli...
@@ -508,7 +508,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R07.9.4 [1+ 0-]: | `s.count(p)`, `s.any(p)`, `s.all(p)` | `Int`, `Bool` | \(O(n)\)
 - R07.9.5 [3+ 0-]: | `s.find(p)`, `s.rfind(p)` | `?T`, linear scan (binary search is `r.first_true`) | \(O(n)...
 - R07.9.6 [3+ 2-]: , generic code included, and the compiler never pattern matches a pipeline. User types get...
-- R07.11.1 [3+ 1-]: | `s.sort(by: k)`, `s.reverse()`, `s.dedup()`, `s.fill(x)` | in place: needs a `var` sourc...
+- R07.11.1 [3+ 2-]: | `s.sort(by: k)`, `s.reverse()`, `s.dedup()`, `s.fill(x)` | in place: needs a `var` sourc...
 - R07.11.2 [1+ 0-]: | `s.sorted(by: k)`, `s.deduped()` | new `List` | same, allocates
 - R07.11.3 [2+ 0-]: | `s.group(by: k)` | `Map<K, List<T>>` | \(O(n)\) expected
 - R07.11.4 [3+ 0-]: | `s.tally(by: k)` | `Counter<K>` | \(O(n)\) expected
@@ -586,12 +586,12 @@ Each rule: positive / negative case counts, then the gap if any.
 
 ### R10: 10-io.md
 
-- R10.1.1 [12+ 3-]: .
+- R10.1.1 [12+ 3-]: Functions hoist within their block; every capture must be initialized before the first cal...
 - R10.1.2 [4+ 0-]: Top-level `return` ends the program, or the current case under `@!multitest`.
 - R10.1.3 [1+ 0-]: IOI-style tasks mark entry points with `@grader`, `@grader(interactive)` or `@grader(two_p...
 - R10.2.1 [5+ 1-]: `read<T>()` dispatches on the expected type, so `let n: 1..=2e5 = read()` and `read<[n]Int...
 - R10.2.2 [7+ 1-]: Range types read with their contract. A domain written with explicit ends (`1..=n`, `0..n`...
-- R10.2.3 [17+ 3-]: Arrays `[D]T` read `D.count` values; `[R, C]Char` reads rows of characters with no separat...
+- R10.2.3 [18+ 3-]: Arrays `[D]T` read `D.count` values; `[R, C]Char` reads one line per `R` position (the fir...
 - R10.2.4 [3+ 0-]: `s.parse<T>()` reads a `T` from a string by these same rules, `None` on a bad or leftover ...
 - R10.2.5 [1+ 1-]: Graphs are built from an edge list read as records, `read<[E](u: V, v: V)>()`, then `Graph...
 - R10.2.6 [1+ 4-]: A bad token traps with the input position and the expected type.
@@ -720,7 +720,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0007 Malformed character literal: 1 case(s)
 - E0101 Unclosed delimiter: 1 case(s)
 - E0102 Expected expression: 4 case(s)
-- E0103 Expected token: 5 case(s)
+- E0103 Expected token: 6 case(s)
 - E0104 Expected indented block: 2 case(s)
 - E0105 Expected type: 2 case(s)
 - E0106 Expected pattern: 1 case(s)
@@ -740,7 +740,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0208 Uppercase value name: 2 case(s)
 - E0301 Wrong index domain: 16 case(s)
 - E0302 Type mismatch: 41 case(s)
-- E0303 Wrong number of arguments: 6 case(s)
+- E0303 Wrong number of arguments: 7 case(s)
 - E0304 Value is not callable: 1 case(s)
 - E0305 Value is not indexable: 4 case(s)
 - E0306 Invalid arithmetic on domain position (reserved): exempt (reserved in the registry)
@@ -883,8 +883,8 @@ prepends it.
 - 03-numbers-layout.md: 2 blocks, 2 with a case, 0 spec-only, 0 neither
 - 04-indices.md: 7 blocks, 1 with a case, 3 spec-only, 3 neither
   - line 161: `for j in ..i:`
-  - line 255: `let k = (0..=n).last_true(k => cost(k) <= budget) ?? -1`
-  - line 276: `fn inversions(r: Range<Pos>) -> Int:`
+  - line 257: `let k = (0..=n).last_true(k => cost(k) <= budget) ?? -1`
+  - line 278: `fn inversions(r: Range<Pos>) -> Int:`
 - 04b-keys.md: 13 blocks, 3 with a case, 6 spec-only, 4 neither
   - line 72: `fn solve(r: Range<V>) -> Int:`
   - line 100: `let z = z_function(s[l..])`

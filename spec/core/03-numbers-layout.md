@@ -118,7 +118,10 @@ type is an `Int` wherever it is read: `max(lo - k, s.l)` with `s.l:
   of those). It suggests the annotation, e.g. `[V]0..=1e9`. Purely local:
   it looks only at the writes in the same function. (R03.1.8)
 - Override with an explicit type in either direction: `[V]Int` widens,
-  `[V]0..=4e9` stores 4 bytes.
+  `[V]0..=4e9` stores 4 bytes. The annotation also widens a fresh value
+  it is initialized with: `var a: [I]Int = read<[I]0..=n>()` checks each
+  token against `0..=n` and stores `Int`s, so later `+=` cannot overflow
+  the read's range (decision 366).
 - **The editor shows the same facts** from the same computation:
   - hover on a type or variable gives its size, field storage order,
     padding and where `None` lives (`?Edge 8 B: None = all-ones in to`);

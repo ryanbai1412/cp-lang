@@ -236,7 +236,9 @@ So `-x ** 2` is `-(x ** 2)`, `not a == b` is `not (a == b)`, and
   assignment `x op= e` for every binary operator and for `min=` /
   `max=`. Compound assignment is a statement, except that `min=` and
   `max=` used as a condition are `true` when the target strictly
-  improved, including from `None` (decision 129):
+  improved, including from `None` (decision 129). A `None` target takes
+  the value, so `var best: ?Int = None` then `best min= c` is a running
+  minimum with no sentinel:
   `if dist[v] min= dist[u] + w: parent[v] = u`. (R01.6.4)
 - `return e` exists for early exits; a block's value is its last
   expression. At top level `return` ends the program (or the test case

@@ -7647,7 +7647,7 @@ Cases `core-08/if-bound-*`, `core-08/getter-trait-struct-opt-in`. Reverse:
 let structs satisfy by shape too, or drop shape satisfaction from
 `if T: Trait` (then `arc_len` needs `Graph` arcs to `impl Weighted`).
 
-## 360. JetBrains: built-in LSP client where it exists, LSP4IJ in Community (tools, 2026-11-23)
+## 364. JetBrains: built-in LSP client where it exists, LSP4IJ in Community (tools, 2026-11-23)
 
 The plugin required `com.intellij.modules.ultimate` because the platform's LSP
 API ships only in the commercial IDEs, so IntelliJ IDEA Community refused it.
@@ -7691,7 +7691,7 @@ lowercase const bind in patterns (a silent wrong answer when the reader means
 the constant), or look names up in patterns (loses "patterns read without
 lookup"). Reverse by allowing lowercase consts and making R01.3.3 do a lookup.
 
-## 363. Std marks a member `pub` when it is documented or named outside its module (stdlib, 2026-11-23)
+## 365. Std marks a member `pub` when it is documented or named outside its module (stdlib, 2026-11-23)
 
 Decision 358 makes members private unless `pub`, so std had to mark its API
 before compiler's E0207 check lands. Rule, applied by script: a field or
@@ -7721,3 +7721,23 @@ print diagnostics in one JSON shape, so its serializer moved from
 cpl-cli's `json_out.rs` to `cpl_diag::json::diagnostic`. Both crates are
 leaves, with no dependencies of their own, so the edge adds no cycle and no
 weight. Reverse: move `json.rs` back into cpl-cli and give cpl-contest a copy.
+
+## 366. Rebuild-13 rulings: annotation widens a fresh read, no `desc:` flag (2026-11-23)
+
+Round 13 of the cold rebuild guessed these. An annotation widens the fresh value
+it initializes: `var a: [I]Int = read<[I]0..=n>()` checks each token against
+`0..=n` and stores `Int`s (R03.1.8). The read writes each element once anyway, so
+storing it wide costs nothing, and the alternative, `read<[I]Int>()`, drops the
+statement's bound. Only a fresh value (a read, literal or comprehension) widens;
+an existing array still needs an explicit copy, since widening it would copy
+silently. Reverse by requiring `[Int(x) for x in read<[I]0..=n>()]`.
+
+`sort`/`sorted` take no `desc:` flag: R07.11 already said descending is a key
+(`by: x => desc(x)`), and std also had the flag, so there were two spellings.
+Reverse by restoring the parameter in std/seq.cp.
+
+The rest were already decided and now say so where readers looked: `g[p]` with a
+tuple position (decision 16.5) in the product-domain table, `Int` operands of
+`Mod<P>` arithmetic (R04.4.28), the first factor of `[R, C]Char` is the row
+(R10.2.3), counted arrays take `Int` keys (R10.2.2), a `fn` below `@!multitest`
+captures the case (R06.1.7), and `min=` on a `None` target (R01.6.4).

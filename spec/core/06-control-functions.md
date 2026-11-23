@@ -47,7 +47,8 @@ fn solve(n: Int, mut seen: [V]Bool; limit: Int = 10) -> ?Int:
   signature (decision 127). Operators are functions:
   `fn (a: Frac) + (b: Frac) -> Frac`. (R06.1.6)
 - Functions hoist within their block; every capture must be initialized
-  before the first call. (R06.1.7)
+  before the first call. A `fn` below `@!multitest` is in the per-test
+  body and captures that case's names (R10.1.1). (R06.1.7)
 - A `fn` passed where a function of fewer parameters is expected takes
   only those, when every omitted trailing parameter has a default; the
   defaults fill them: `vis.map(yes)` is `vis.map(b => yes(b))`. An omitted

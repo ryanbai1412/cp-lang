@@ -185,7 +185,7 @@ documented. The stdlib's own gaps are in `std/GAPS.md`.
 - core-02/str-len-runtime-bound-rejects.cp: compiler
 - core-02/str-len-runtime-bound.cp: compiler
 - core-02/str-len-runtime-bound.cp: compiler
-- core-02/literal-union-read.cp: compiler
+- core-03/annotation-widens-fresh-read.cp: compiler
 - core-03/field-bound-from-input.cp: compiler
 - core-03/memory-over-profile.cp: compiler
 - core-04/a11-rebase-reads-from-zero.cp: compiler
@@ -209,8 +209,6 @@ documented. The stdlib's own gaps are in `std/GAPS.md`.
 - core-04/prod-call-traps.cp: compiler
 - core-04/product-domain-array-is-the-parts-array.cp: compiler
 - core-04/product-domain-grid-reads-and-indexes.cp: compiler
-- core-04/product-position-is-its-tuple.cp: compiler
-- core-04/product-position-tuple-method.cp: compiler
 - core-04/product-type-array-is-the-parts-array.cp: compiler
 - core-04/range-key-is-element.cp: compiler
 - core-04/range-key-outside-traps.cp: compiler
@@ -245,6 +243,7 @@ documented. The stdlib's own gaps are in `std/GAPS.md`.
 - core-06/gen-rooted-shape.cp: compiler
 - core-06/gen-str-of-alphabet.cp: compiler
 - core-07/assign-into-range.cp: compiler
+- core-07/sorted-has-no-desc-flag.cp: stdlib
 - core-07/fold-without-parens-warns.cp: compiler
 - core-07/grid-row-index-and-block-order.cp: compiler
 - core-07/keys-survive-filter.cp: compiler

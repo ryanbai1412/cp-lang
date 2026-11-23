@@ -37,7 +37,7 @@ enum Dir = N | E | S | W               // a fieldless enum is a domain too: [Dir
 | `V.at(x)` | integer to position, `?V`: `None` outside `V` | \(O(1)\) (R04.2.8) |
 | `P.nth(k)` | a product domain walks row-major (the last factor fastest), so `P.nth(k)` decodes a flat 0-based cell number and `for (r, c) in P` visits rows in order | \(O(1)\) (R04.2.9) |
 | `P.at((x, y))`, `P((x, y))` | for a product domain `P = (A, B)`, a tuple of integers to a position: `None` (or a trap) unless every part lies in its factor, so a neighbour that may fall off is `if let q = P.at((r - 1, c))` | \(O(1)\) (R04.2.10) |
-| `let (r, c) = p`, `p.0` | a position of a product domain is a tuple of factor positions: tuple patterns and `.0`/`.1` work on it, named factors too | \(O(1)\) (R04.2.10) |
+| `let (r, c) = p`, `p.0` | a position of a product domain is a tuple of factor positions: tuple patterns and `.0`/`.1` work on it, named factors too, and `g[p]` is the same access as `g[r, c]` (decision 16.5), so a neighbour from `p.adj4` indexes directly | \(O(1)\) (R04.2.10) |
 | `v.after`, `v.before` | the pieces `v.r..` and `..v.l` of `v`'s domain, so `for j in v.after` walks the positions after `v`; each is a `Range<D>` and goes wherever one is taken | \(O(1)\) (R04.2.19) |
 | `a[p]`, `a[x, y]` | for `P = (A, B)`, `[P]T` and `[A, B]T` are the same type: a `p: P` indexes it whole, its parts index it one by one, and `[P] p => f(p)` builds it | \(O(1)\) (R04.2.11) |
 | `Pair<V>` | the unordered pairs `{u, v}` of distinct positions, `V.count * (V.count - 1) / 2` of them, walked by `hi` then `lo` (lower-triangle order); `[Pair<V>]T` is packed, and `d[u, v] == d[v, u]` (decision 164); `Int(p)` is its rank in that order (`{0, 1}` is 0) and `print(p)` writes the rank (decision 291) | \(O(1)\) (R04.2.12) |
@@ -199,7 +199,9 @@ operand fixes the type. Nothing else converts. (R04.4.22)
    never a table. (R04.4.27)
 6. **`Int` to `Mod<P>`:** an integer (a literal or any `Int` value) where
    a `Mod<P>` is expected is `Mod<P>.from_int(x)`, reduced mod `P`:
-   `var ways: [0..=n]Z = 0`, `ways[0] = 1`, `cnt[v] = deg[v]`. (R04.4.28)
+   `var ways: [0..=n]Z = 0`, `ways[0] = 1`, `cnt[v] = deg[v]`; an `Int`
+   operand of `+`, `-` or `*` beside a `Mod<P>` is expected too, so
+   `before[i] + 1` is `Mod<P>` arithmetic. (R04.4.28)
 
 **Integer ranges as domains.** An integer range `lo..hi` (or `lo..=hi`,
 or a counted `[n]`, which is `0..n`) used as an answer space or array
