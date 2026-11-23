@@ -6,7 +6,7 @@
 //! for any other `Mod` or `Int`, FFT for `F64`), and `cpl explain` names it. `cyclic: Bool = false`:
 //! - linear (`cyclic: false`): length `a.len + b.len - 1` (or `[]` if either input is empty)
 //! - cyclic (`cyclic: true`): requires `a.len == b.len`, length `n = a.len`, index `(i + j) % n`.
-use std.algebra.{Semiring}
+use std.algebra.{Monoid, Semiring}
 use std.math.{is_pow2, mul_mod, pow_mod, primitive_root}
 use std.mod.{Mod}
 
@@ -238,9 +238,20 @@ pub fn ntt<P>(mut a: List<Mod<P>>, inverse: Bool = false, bit_reversed: Bool = f
 /// it fast: convex for `min`, concave for `max`. `Neither` asks for the O(n m) loop by name.
 pub enum Curved = Both | Right | Neither
 
-/// The index op of a subset convolution: `i | j` over disjoint pairs `i & j == 0`. A value with a
-/// transform impl, so user libraries can define more index ops the same way.
+/// A custom index op for `convolve(on:)`: `a[i] * b[j]` lands at `at(i, j)`, or nowhere when it
+/// is `None`; the output has `len(a.len, b.len)` entries. User libraries implement it the same way.
+pub trait IndexOp:
+    fn len(self, na: Int, nb: Int) -> Int
+    fn at(self, i: Int, j: Int) -> ?Int
+
+/// The index op of a subset convolution: `i | j` over disjoint pairs `i & j == 0`.
 pub struct Disjoint
+
+impl IndexOp for Disjoint:
+    fn len(self, na: Int, nb: Int) -> Int:
+        assert na == nb and na.is_pow2, "a subset convolution needs equal power-of-two lengths"
+        na
+    fn at(self, i: Int, j: Int) -> ?Int = if i & j == 0: Some(i | j) else: None
 
 /// `on: subset` in `convolve`.
 pub const subset = Disjoint()
@@ -256,12 +267,13 @@ pub const subset = Disjoint()
 ///   pairs with `i & j == 0`;
 /// - `on: gcd` and `on: lcm`: index from 1 (position 0 contributes nothing and `c[0]` is zero),
 ///   length `max(a.len, b.len)`; `lcm` values at or past that length are dropped.
+/// - any other `IndexOp` value: length `on.len(a.len, b.len)`, `a[i] * b[j]` lands at `on.at(i, j)`.
 ///
 /// Any `over:` but `Semiring(+, *)` needs `shape:` (`Both`: both inputs convex for `min`, concave
 /// for `max`, slopes merged; `Right`: only `b`, `monotone_minima`; `Neither`: the O(n m) loop by
 /// name). Leaving `shape:` out there, or giving it with `Semiring(+, *)`, is a compile error.
 ///
-/// cost: O((n + m) log(n + m)) for the product; O(n log n) bitwise; O(k^2 2^k) `subset`; O(n log log n) `gcd`/`lcm`; O(n + m) `Both`; O((n + m) log n) `Right`; O(n m) `Neither`
+/// cost: O(n log n) bitwise; O(n + m) `Both`; O(n m) today for the product, `subset`, `gcd`/`lcm`, `Right`, `Neither` and any `IndexOp` (the transforms are planned)
 /// empty: `[]` for the linear product when either input is empty
 /// order: by output index `0..len`; a new `List`, keyed from 0
 /// traps: when `cyclic: true` and `a.len != b.len`; when a bitwise or `subset` input is not a power-of-two length equal to the other's; when an `Int` output overflows
@@ -286,15 +298,74 @@ pub fn convolve<T, O, R>(
     let nb = b.len
     if cyclic:
         assert na == nb, "cyclic convolution requires equal-length inputs"
+    if not (same(over.add, +) and same(over.mul, *)):
+        return semiring_convolve(a, b, over, shape)
+    if same(on, ^) or same(on, |) or same(on, &):
+        assert na == nb and na.is_pow2, "a bitwise convolution needs equal power-of-two lengths"
+        var fa = a
+        var fb = b
+        if same(on, ^):
+            fwht(mut fa)
+            fwht(mut fb)
+        elif same(on, |):
+            sos(mut fa)
+            sos(mut fb)
+        else:
+            sos(mut fa, over: Sup)
+            sos(mut fb, over: Sup)
+        for i in 0..na: fa[i] = fa[i] * fb[i]
+        if same(on, ^): fwht(mut fa, inverse: true)
+        elif same(on, |): sos(mut fa, inverse: true)
+        else: sos(mut fa, over: Sup, inverse: true)
+        return fa
     if na == 0 or nb == 0: return []
-    let n_out = if cyclic: na else: na + nb - 1
+    var n_out = if cyclic: na else: na + nb - 1
+    if O: IndexOp:
+        n_out = on.len(na, nb)
     var out = List.filled(n_out, T.zero)
     for i in 0..na:
         for j in 0..nb:
-            let idx = if cyclic: on(i, j) % na else: on(i, j)
-            if idx >= 0 and idx < n_out:
-                out[idx] = out[idx] + a[i] * b[j]
+            var k = -1
+            if O: IndexOp:
+                if let x = on.at(i, j): k = x
+            else:
+                k = on(i, j)
+            if cyclic and k >= 0: k = k % na
+            if k >= 0 and k < n_out:
+                out[k] = out[k] + a[i] * b[j]
     out
+
+fn same<A, B>(a: A, b: B) -> Bool = a == b
+
+/// `convolve` over another semiring: `out[i + j]` folds `over.mul(a[i], b[j])` with `over.add`.
+/// `shape: Both` merges slopes (both inputs convex for `min`, concave for `max`, `mul` is `+`).
+fn semiring_convolve<T, R>(a: List<T>, b: List<T>, over: R, shape: ?Curved) -> List<T>:
+    with lint(unproven_list_index: allow)
+    if a.is_empty or b.is_empty: return []
+    let add = Monoid<T>.of(over.add)
+    let mul = Monoid<T>.of(over.mul)
+    if shape == Some(Curved.Both):
+        assert same(over.mul, +), "`shape: Both` needs `mul` to be `+`"
+        let low = same(over.add, min)
+        var out = [a[0] + b[0]]
+        var i = 0
+        var j = 0
+        while i + 1 < a.len or j + 1 < b.len:
+            let take_a = if j + 1 >= b.len: true elif i + 1 >= a.len: false elif low: a[i + 1] - a[i] <= b[j + 1] - b[j] else: a[i + 1] - a[i] >= b[j + 1] - b[j]
+            let last = out[out.len - 1]
+            if take_a:
+                out.push(last + (a[i + 1] - a[i]))
+                i += 1
+            else:
+                out.push(last + (b[j + 1] - b[j]))
+                j += 1
+        return out
+    var acc: List<?T> = List.filled(a.len + b.len - 1, None)
+    for i in 0..a.len:
+        for j in 0..b.len:
+            let v = mul.op(a[i], b[j])
+            acc[i + j] = if let c = acc[i + j]: Some(add.op(c, v)) else: Some(v)
+    [x! for x in acc]
 
 /// Direction of a sum-over-subsets (SOS) zeta/Mobius transform.
 pub enum SosOver = Sub | Sup
