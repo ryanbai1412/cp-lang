@@ -49,7 +49,13 @@ impl Backend<'_> {
             Backend::Linked(db) => {
                 let compiled = runner::compile_program(db, path, text)
                     .map_err(|CompileError::Diagnostics(d)| d)?;
-                let run = runner::run_interp_bounded(&compiled.program, path, text, input)?;
+                let run = runner::run_interp_within(
+                    &compiled.program,
+                    path,
+                    text,
+                    input,
+                    case_limit(text),
+                )?;
                 Ok(Ran {
                     stdout: run.stdout,
                     trapped: run.trap.is_some(),
@@ -61,7 +67,7 @@ impl Backend<'_> {
                 if release() {
                     args.push("--release");
                 }
-                let (code, out, err) = cli(cpl, &args, input)?;
+                let (code, out, err) = cli_within(cpl, &args, input, case_limit(text))?;
                 Ok(Ran {
                     stdout: out.into_bytes(),
                     trapped: code != 0,
@@ -104,10 +110,27 @@ fn cli_override() -> Option<PathBuf> {
 /// Runs `cpl`, killed after `CPL_CONFORM_CASE_TIMEOUT` seconds (default
 /// 20): an old compiler can hang on a case a later fix made finish.
 fn cli(cpl: &Path, args: &[&str], input: &[u8]) -> Result<(i32, String, String), String> {
+    cli_within(cpl, args, input, runner::case_timeout())
+}
+
+/// Seconds a case's run may take: `case_timeout()`, or its `// timeout: <secs>`
+/// header when that is longer (a trap case that has to exhaust a budget).
+fn case_limit(text: &str) -> u64 {
+    header_values(text, "timeout:")
+        .iter()
+        .filter_map(|v| v.parse().ok())
+        .fold(runner::case_timeout(), u64::max)
+}
+
+fn cli_within(
+    cpl: &Path,
+    args: &[&str],
+    input: &[u8],
+    limit: u64,
+) -> Result<(i32, String, String), String> {
     use std::io::{Read, Write};
     use std::process::{Command, Stdio};
     use std::time::{Duration, Instant};
-    let limit = runner::case_timeout();
     let mut child = Command::new(cpl)
         .args(args)
         .stdin(Stdio::piped())
@@ -394,7 +417,7 @@ fn run_tool_case(
     }
 }
 
-/// Parses `// expect: ...` and computes the line offset after the `// expect:`, `// rule:` and `// input:` headers.
+/// Parses `// expect: ...` and computes the line offset after the header lines (`// expect:`, `// rule:`, `// input:`, `// timeout:` ...).
 pub fn parse_header(text: &str) -> Result<(Expect, usize), String> {
     let lines: Vec<&str> = text.split('\n').collect();
     let head = lines.first().copied().unwrap_or("").trim();
@@ -411,7 +434,8 @@ pub fn parse_header(text: &str) -> Result<(Expect, usize), String> {
                     || rest.starts_with("file:")
                     || rest.starts_with("has:")
                     || rest.starts_with("lacks:")
-                    || rest.starts_with("rewritten:"))
+                    || rest.starts_with("rewritten:")
+                    || rest.starts_with("timeout:"))
             } else {
                 true
             }
@@ -848,6 +872,17 @@ mod tests {
         assert_eq!(header_input(text), b"3 4\n");
         assert_eq!(parse_header(text).unwrap().1, 2);
         assert!(header_input("// expect: ok\nprint(1)\n").is_empty());
+    }
+
+    #[test]
+    fn a_timeout_header_only_lengthens_the_case_limit() {
+        let base = runner::case_timeout();
+        assert_eq!(case_limit("// expect: ok\nprint(1)\n"), base);
+        assert_eq!(
+            case_limit("// expect: R0601\n// timeout: 900\nf()\n"),
+            base.max(900)
+        );
+        assert_eq!(case_limit("// timeout: 1\nf()\n"), base);
     }
 }
 

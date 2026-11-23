@@ -28,6 +28,9 @@ expects the program to check, run and trap with that code on that line.
 An `L` code runs `cpl lint` (default levels) after the check. An optional
 header line `// input: "3\n1 2 3\n"` gives the run its standard input,
 escaped like `output "..."`; without it the input is empty.
+A case whose run must exhaust a budget before it traps (deep recursion)
+may raise its run's time limit with `// timeout: <secs>`; a value below the
+runner's default (`CPL_CONFORM_CASE_TIMEOUT`, 20 s) has no effect.
 
 A case for a rule only a tool can show names the tool in a header line
 `// tool: build -o -`: the runner copies the case to a scratch directory
