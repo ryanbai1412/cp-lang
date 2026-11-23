@@ -3326,7 +3326,7 @@ fn suffix_less<T>(s: List<T>, a: Int, b: Int) -> Bool:
 fn z_and_prefix_function_match_their_definitions():
     assert z_function("aaabaab") == [7, 2, 1, 0, 2, 1, 0]
     assert prefix_function("abacaba") == [0, 0, 1, 0, 1, 2, 3]
-    assert z_function("") == [] and prefix_function("") == []
+    assert z_function("").len == 0 and prefix_function("").len == 0
     for _ in 0..40:
         let s = random_word(rand(1, 14), 2)
         let n = s.len
