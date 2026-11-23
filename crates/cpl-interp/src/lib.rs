@@ -111,17 +111,45 @@ impl Trap {
             let mut current_line = lines.line_of(self.span.start) + 1;
             for frame in &self.call_stack {
                 if frame.call_span == Span::default() && frame.name.starts_with("...") {
-                    parts.push(frame.name.clone());
+                    let n = frame.name.split(' ').nth(1).and_then(|n| n.parse().ok());
+                    parts.push((None, n.unwrap_or(0)));
                     continue;
                 }
-                parts.push(format!("{} ({path}:{current_line})", frame.name));
+                parts.push((Some(format!("{} ({path}:{current_line})", frame.name)), 1));
                 current_line = lines.line_of(frame.call_span.start) + 1;
             }
-            parts.push(format!("top level ({path}:{current_line})"));
+            parts.push((Some(format!("top level ({path}:{current_line})")), 1));
+            let parts = runs(&parts);
             diagnostic = diagnostic.with_note(format!("call stack: {}", parts.join(" <- ")));
         }
         diagnostic
     }
+}
+
+/// A call stack's frames with each run of one call written once and counted,
+/// `spin (a.cp:2) 40000 times`; the omitted middle (`None`, with its count)
+/// joins a run on both sides of it.
+fn runs(parts: &[(Option<String>, usize)]) -> Vec<String> {
+    let mut out: Vec<(Option<String>, usize)> = Vec::new();
+    for (i, (text, n)) in parts.iter().enumerate() {
+        let around = |j: usize| parts.get(j).and_then(|p| p.0.as_ref());
+        let text = match text {
+            None if i > 0 && around(i - 1).is_some() && around(i - 1) == around(i + 1) => {
+                around(i - 1).cloned()
+            }
+            t => t.clone(),
+        };
+        match out.last_mut() {
+            Some((last, count)) if last.is_some() && *last == text => *count += n,
+            _ => out.push((text, *n)),
+        }
+    }
+    let show = |(text, n): (Option<String>, usize)| match text {
+        None => format!("... {n} frames omitted ..."),
+        Some(t) if n > 1 => format!("{t} {n} times"),
+        Some(t) => t,
+    };
+    out.into_iter().map(show).collect()
 }
 
 /// Stack for the interpreter thread: deep recursion in the program is deep

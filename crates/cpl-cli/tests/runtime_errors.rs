@@ -287,11 +287,35 @@ print(spin(0))
     let (code, err) = run_stderr(source, "");
     assert_eq!(code, 3);
     assert!(err.contains("never stops calling itself?"), "got:\n{err}");
+    let stack = err
+        .lines()
+        .find(|l| l.contains("call stack:"))
+        .unwrap_or("");
     assert!(
-        err.contains("frames omitted"),
-        "expected deep call stack to be summarized, got:\n{err}"
+        stack.starts_with("  = note: call stack: spin (a.cp:2) ")
+            && stack.ends_with(" times <- top level (a.cp:4)"),
+        "expected one counted run of `spin`, got:\n{err}"
     );
-    assert!(err.contains("<- top level (a.cp:4)"), "got:\n{err}");
+}
+
+#[test]
+fn golden_deep_mutual_recursion_keeps_the_omitted_middle() {
+    let source = "\
+fn ping(x: Int) -> Int:
+    return pong(x + 1)
+fn pong(x: Int) -> Int:
+    return ping(x + 1)
+
+print(ping(0))
+";
+    let (code, err) = run_stderr(source, "");
+    assert_eq!(code, 3);
+    assert!(err.contains("frames omitted"), "got:\n{err}");
+    assert!(
+        err.contains("ping (a.cp:2) <- pong (a.cp:4)"),
+        "got:\n{err}"
+    );
+    assert!(err.contains("<- top level (a.cp:6)"), "got:\n{err}");
 }
 
 fn build_and_run_cpp(source: &str) -> (i32, String) {
