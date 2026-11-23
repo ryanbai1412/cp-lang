@@ -7,7 +7,7 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 3092 (1092 passing). Rules: 583.
+Cases: 3093 (1092 passing). Rules: 583.
 
 ## Summary per chapter
 
@@ -19,7 +19,7 @@ Cases: 3092 (1092 passing). Rules: 583.
 - R04b (04b-keys.md): 28 rules, 70 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R05 (05-ownership.md): 49 rules, 227 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R06 (06-control-functions.md): 25 rules, 114 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R07 (07-sequences.md): 90 rules, 208 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R07 (07-sequences.md): 90 rules, 209 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R08 (08-traits-generics.md): 29 rules, 92 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R09 (09-contexts-checks.md): 27 rules, 61 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R10 (10-io.md): 19 rules, 112 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -452,7 +452,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R07.1.2 [2+ 1-]: **Six capabilities.** `Seq` walks; `Keyed` walks `(key, x)`; `Sized` has \(O(1)\) `.len`; ...
 - R07.1.3 [3+ 1-]: **Laziness is explicit.** A chain reruns on every walk. Allocation happens only at `.colle...
 - R07.1.4 [1+ 1-]: **Identity everywhere.** Every slice keeps its source's keys (`a[l..=r][i] == a[i]`, `s[2....
-- R07.1.5 [1+ 1-]: **Views are lent values with the rules of `mut a[i]`.** A value built from a lent part is ...
+- R07.1.5 [1+ 2-]: **Views are lent values with the rules of `mut a[i]`.** A value built from a lent part is ...
 - R07.1.6 [5+ 0-]: **Prefix scans are indexed by cuts.** `pre[c]` folds left of `c`; `pre[v]` folds through `...
 - R07.1.7 [1+ 1-]: **Costs show.** \(O(1)\) things are getters or views, allocation is named, options are nam...
 - R07.2.1 [2+ 0-]: | **sequence** (`Seq<T>`) | anything a `for` can walk, in order | either | everything in t...
@@ -940,7 +940,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - L0609 A `@cache` field written outside its type: 1 case(s)
 - L0610 A `mut` parameter the fn never changes: **no case**
 - R0001 Runtime trap: 11 case(s)
-- R0101 Index out of range: 24 case(s)
+- R0101 Index out of range: 25 case(s)
 - R0102 Value outside a domain: 6 case(s)
 - R0201 Range store out of range: 10 case(s)
 - R0202 Integer overflow: 46 case(s)
