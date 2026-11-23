@@ -45,7 +45,8 @@ const editors: { id: string; name: string; body: ReactNode }[] = [
     body: (
       <>
         <p>
-          Neovim 0.10 or later. One command installs the plugin as a package, with nothing to add to your config: every{' '}
+          Neovim 0.10 or later (Ubuntu 22.04&apos;s apt has 0.6: take the AppImage or tarball from{' '}
+          <a href="https://github.com/neovim/neovim/releases">Neovim&apos;s releases</a>). One command installs the plugin as a package, with nothing to add to your config: every{' '}
           <code>.cp</code> buffer gets highlighting and <code>cpl lsp</code> (diagnostics, completion, hover, go to
           definition with <code>vim.lsp.buf.definition()</code>, formatting with <code>vim.lsp.buf.format()</code>), and{' '}
           <code>:Cpl test</code>, <code>:Cpl stress</code> and <code>:Cpl submit</code> run on the current file.

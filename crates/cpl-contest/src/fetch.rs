@@ -113,7 +113,9 @@ fn counts_test_cases(html: &str) -> bool {
     };
     let first = text(prefix(rest, 800)).to_ascii_lowercase();
     let first = &first[..first.find(". ").map_or(first.len(), |end| end + 1)];
-    ["number of test cases", "number of testcases"]
+    // "the number of test cases" (the first line holds t) or "each test
+    // contains multiple test cases" (the sentence before it says so).
+    ["number of test", "multiple test", "several test"]
         .iter()
         .any(|phrase| first.contains(phrase))
 }
@@ -476,6 +478,11 @@ YES
             "<p>The first line contains one integer <span>t</span> (1 &le; t &le; 10<sup>4</sup>) &mdash; the number of test cases. Each test case is one line.</p>",
         );
         assert!(parse(Judge::Codeforces, "u", &multi).unwrap().multitest);
+        let stated = html.replace(
+            "<p>w</p>",
+            "<p>Each test contains multiple test cases. The first line contains the number of test cases <span>t</span>.</p>",
+        );
+        assert!(parse(Judge::Codeforces, "u", &stated).unwrap().multitest);
         let later = html.replace(
             "<p>w</p>",
             "<p>The first line contains n. The answer is the number of test cases you pass.</p>",

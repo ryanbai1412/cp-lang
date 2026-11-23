@@ -149,7 +149,33 @@ pub(crate) fn setup(args: &[&str], stdout: &mut (dyn Write + Send), stderr: &mut
         "installed CP Lang for {editor} in {}\nopen a .cp file to start; `cpl` must be on the PATH (or set g:cpl_path)",
         dir.display()
     );
+    if matches!(editor, "neovim" | "nvim") {
+        let version = std::process::Command::new("nvim").arg("--version").output();
+        if let Some(warning) = version
+            .ok()
+            .and_then(|out| old_neovim(&String::from_utf8_lossy(&out.stdout)))
+        {
+            *stderr += &warning;
+        }
+    }
     0
+}
+
+/// A warning when `nvim --version` printed a Neovim older than the 0.10 the
+/// plugin needs (Ubuntu 22.04's apt has 0.6), with where to get a new one.
+fn old_neovim(version: &str) -> Option<String> {
+    let number = version.lines().next()?.strip_prefix("NVIM v")?;
+    let mut parts = number
+        .split(|c: char| !c.is_ascii_digit())
+        .map(|p| p.parse::<u32>().ok());
+    let (major, minor) = (parts.next()??, parts.next()??);
+    ((major, minor) < (0, 10)).then(|| {
+        format!(
+            "cpl: warning: this is Neovim {major}.{minor}, but CP Lang needs 0.10 or later; get it from \
+             https://github.com/neovim/neovim/releases (Linux: the .appimage or tarball; macOS: \
+             `brew install neovim`; Windows: `winget install Neovim.Neovim`)\n"
+        )
+    })
 }
 
 /// Installs the extension in `vsix`, or the edge release's, into VS Code.
@@ -319,6 +345,24 @@ fn usage(stderr: &mut String, message: &str) -> u8 {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_neovim_older_than_0_10_gets_a_warning_with_where_to_upgrade() {
+        let apt = "NVIM v0.6.1\nBuild type: Release\nLuaJIT 2.1.0-beta3\n";
+        let warning = old_neovim(apt).expect("0.6 is too old");
+        assert!(
+            warning.contains("Neovim 0.6") && warning.contains("0.10 or later"),
+            "{warning}"
+        );
+        assert!(
+            warning.contains("github.com/neovim/neovim/releases"),
+            "{warning}"
+        );
+        assert_eq!(old_neovim("NVIM v0.10.0\n"), None);
+        assert_eq!(old_neovim("NVIM v0.11.0-dev-1234+g5678\n"), None);
+        assert_eq!(old_neovim("NVIM v1.0.0\n"), None);
+        assert_eq!(old_neovim("not neovim\n"), None);
+    }
 
     /// Every runtime file in editors/neovim ships, so a new one can't be left out.
     #[test]
