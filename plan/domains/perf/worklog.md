@@ -106,3 +106,9 @@ Newest first: what landed (commit), evidence, next, blocked, requests from other
   `v -> u` (the C++ adds `u -> v` at infinite capacity). `python3 bench/v03_perf_bench.py
   --suite bench --only flow/bounded,...,flow/wgeneral --runs 3`: 9/9 ok, p50 1.014x,
   max 1.306x (`flow/matching` 97 ms vs 74 ms, next to look at).
+- 2026-11-22 `flow/matching` (1.31x): the gap is the std body of `max_matching`, not
+  codegen. Hand edits to the emitted C++, best of 9 user+sys (same output each):
+  emitted 91.5 ms; stop the `open` scan at the first free arc as `matching.cpp` does
+  85.1; `next: [L]Int` as 32-bit 83.9; unchecked `adj[u][next[u]]` and `path.last!`
+  82.7; reference 72.7. Rest is `alternating_layers` (30% of samples), where the
+  `?(0..2_147_483_648)` level type keeps a `check_range` on every store. Asked stdlib.

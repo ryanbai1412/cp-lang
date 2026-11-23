@@ -242,3 +242,8 @@ Newest first: what landed (commit), evidence, next, blocked, requests from other
 - Note from perf (2026-11-22): withdraw the `V.K` part of perf's 15-pair request; it was
   in `bench/flow/*.cp`, fixed there. `spec/std/flow.cp`, `beats.cp`, `bitset.cp` still say
   `D.K` where R04.2.2 names it `V.count` (H-DOMAIN-COUNT-NAME), but they build today.
+- Request from perf (2026-11-22): `max_matching` (`bench/flow/matching`, 1.31x vs C++).
+  In `grow_matching`, the `open` scan visits every arc where `matching.cpp` stops at the
+  first free one (`L.any(...)`): 91.5 -> 85.1 ms by hand. `next: [L]Int` could be
+  `[L]0..=...` (32-bit), and `alternating_layers`'s `?(0..2_147_483_648)` level could be
+  `?(0..=L.count)` so its `+ 1` store needs no range check. Evidence in perf worklog.
