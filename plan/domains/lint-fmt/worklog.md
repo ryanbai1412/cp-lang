@@ -288,3 +288,4 @@ Newest first: what landed (commit), evidence, next, blocked, requests from other
 - 2026-11-23: L0557 binom_by_hand needs a product or quotient: a prefix-sum difference `ps[x] - (ps[n] - ps[n - x])` (n51) no longer reads as `n` choose `x`. Newcomer 149/150: that false positive had credited n51's `missing group-by-key-loop` mark 3 lines below.
 - 2026-11-23: newcomer score made honest (decision 346): `missing` marks no longer credited by a nearby unrelated lint; 8 marks relabelled to the lint that teaches them, 6 genuine unmarked findings marked. 132/150 (88%).
 - 2026-11-23: L0507 push_loop teaches `xs.rev.collect()` for a loop pushing `xs[N - 1 - i]` over `0..N` (n47, n74). Newcomer 138/154 (90%).
+- 2026-11-23: L0580 `submask_loop` (`s = (s - 1) & m` → `submasks(m)`) and L0581 `ternary_search_by_hand` (two `/ 3` probes → `ternary_min`/`ternary_max`), from n69 and n71. Newcomer 140/154 (91%).

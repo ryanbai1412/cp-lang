@@ -3,7 +3,7 @@ let a: [0..n]Int = read()
 fn cost(x: Int) -> Int = sum(abs(v - x) for v in a)
 var lo = -1000000000
 var hi = 1000000000  // expect: repeated_literal
-while hi - lo > 2:  // expect: missing ternary_search_by_hand
+while hi - lo > 2:  // expect: ternary_search_by_hand
     let m1 = lo + (hi - lo) / 3
     let m2 = hi - (hi - lo) / 3
     if cost(m1) < cost(m2):

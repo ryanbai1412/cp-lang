@@ -21,6 +21,7 @@ mod hand_graph;
 mod hand_input;
 mod hand_loops;
 mod hand_math;
+mod hand_search;
 mod heap_skip;
 mod imports;
 mod isqrt;
@@ -90,6 +91,7 @@ pub(crate) fn run(file: &File, config: &Config) -> Vec<Finding> {
     findings.extend(hand_ds::check(file));
     findings.extend(hand_input::check(file));
     findings.extend(count_until::check(file));
+    findings.extend(hand_search::check(file));
     findings.extend(read_loop::check(file));
     findings
 }

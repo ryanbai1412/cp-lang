@@ -153,6 +153,8 @@ prefix_sum}, L0522 copy_sort_writeback, L0523 chmin_chmax_if, L0524 bool_ternary
 | L0577 | query_index_shift | a position read as `1..=n` and indexed as `a[l - 1]`: declare the array over `1..=n` |
 | L0578 | tuple_points | `xs` and `ys` read as parallel coordinate arrays and indexed together: `[D] i => Pt(xs[i], ys[i])` |
 | L0579 | counter_by_map | `cnt[x] = (cnt.get(x) ?? 0) + 1` on a `Map<K, Int>`: `Counter<K>` (`std.hashmap`), where a key it never saw reads 0 |
+| L0580 | submask_loop | `while s > 0: ..; s = (s - 1) & m`: `for s in submasks(m)` (`std.math`) |
+| L0581 | ternary_search_by_hand | a `while` loop probing `lo + (hi - lo) / 3` and `hi - (hi - lo) / 3`: `ternary_min` / `ternary_max` (`std.search`) |
 | L0601 | same_place_read_write | `a[l] += inc(mut a[l])`, `xs[0] = xs.pop()!` |
 | L0602 | chain_walked_twice | a lazy chain value consumed twice |
 | L0603 | map_recomputed | `.map(f)` view read many times by index |

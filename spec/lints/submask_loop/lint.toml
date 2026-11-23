@@ -1,0 +1,6 @@
+code = "L0580"
+level = "warn"
+group = "idiom"
+title = "Submasks walked by hand"
+summary = "`while s > 0: ..; s = (s - 1) & m`: `for s in submasks(m)`"
+no_fix = "`submasks` also yields `0`, and whether the loop body may see it is the author's call"
