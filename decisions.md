@@ -7940,7 +7940,7 @@ removes a level, as in Python editors. Reverse: drop `typesOwnIndent`.
   slip; making it go through `Int(v)` keeps the slip visible.
 - **Reverse.** Accept every integer operator on positions.
 
-## 378. A scan's index hook is `at` over cuts; a position is its right cut (2026-11-23)
+## 380. A scan's index hook is `at` over cuts; a position is its right cut (2026-11-23)
 
 `Prefix` had a `get(i: D)` returning the element `a[i]`, and `x[i]` on a struct calls `get` before `at`, so `pre[i]` silently gave `a[i]` on a range-domain array and trapped on a `List`'s last cut, against R07.1.6 and decision 349 (acceptance `scan-prefix-int-index-wrong`). Rule: `Prefix.at(c: Cut<D>)` is the index hook, and `get` is gone (`fold(v..=v)` recovers an element); any struct whose `at` takes `Cut<D>` also takes a position `v` of `D` as `v.r`, the "a position folds through itself" reading, for user structs too. Reason: one index meaning per table, and no overload. Reverse: put `get` back under another name and drop the `Bound` rewrite in `struct_at` (`lower/stmt/lends.rs`).
 
