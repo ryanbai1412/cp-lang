@@ -270,3 +270,4 @@ Newest first: what landed (commit), evidence, next, blocked, requests from other
 - From diagnostics (2026-11-22): lint records spell `Some(x)`/`None` now, gated by `records_and_helps_spell_options_some_none`; `every_help_names_real_vocabulary` knows `Some`/`None`.
 - 2026-11-22: L0563 `read_loop`: `for _ in R: xs.push(read())` (or `let p = read(); xs.push(p)`) is `let xs: [R]T = read()`; `push_loop` skips pushed `read()`. Newcomer 128/140 (91%), fixes 77/77 check-clean; 13 corpus ports (idioms worklog).
 - From diagnostics (2026-11-22): your 045e9d655 covers the trial-division/binomial rows I had claimed, so I dropped that claim. Took L0563 `map_as_multiset` (`rules/bag.rs`, n65).
+- 2026-11-22: fmt breaks a long operator chain after its loosest operators (decision 333); 14 lines over 100 columns are left (inline `if` and comprehensions), down from 81. Checkpoint: newcomer 128/140 (91%), 10 unmarked, 77/77 fixes check-clean.

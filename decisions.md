@@ -7208,3 +7208,18 @@ table (PLAN.md). 13 corpus ports carry it, listed for idioms. Reverse: delete
 ## 332. Named variadic args, field-wise `fields` and `T(...)` grow three capped compiler files (stdlib, 2026-11-22)
 
 The call: `check/stmt.rs` (+24), `lower/call.rs` (+17) and `lower/mono.rs` (+9) take the debt ratchet's `--update rs_over_cap` so that named variadic args make a record (decision 324), `fields(a, b, ...)` walks values of different types with as many fields, and `T(...)` builds a tuple or record type parameter; together they make `each` over `Monoid` components the field-wise monoid. Why: the logic belongs beside the code it extends, and splitting these files is tech-debt's ongoing work, not this change's. Reverse: move the `fields` checks into a `check/fields.rs` and the constructor into `lower/fields.rs`, then shrink the allowlist.
+
+## 333. `cpl fmt` breaks a long operator chain after its loosest operators (2026-11-22)
+
+A line over the width with no bracket worth opening used to be left long.
+It now breaks after each of its loosest binary operators (`or`, then `and`,
+`??`, comparisons, `|`, `^`, `&`, `<<`, `+`/`-`, the rest), one operand per
+line, one level deeper (two in a block header, so the condition stands apart
+from the body). A line that ends in an operator continues
+(`TokenKind::continues_line`), so this adds no brackets, unlike Black: only
+whitespace changes and the meaning cannot. Brackets are still opened first,
+so already-formatted files keep their layout (whole-corpus fmt check: 0
+meaning changes, 0 non-idempotent; ports and std stay fmt-clean). Inline
+`if`-`else` and comprehensions are not split at an operator: their clauses
+are the place to break, owed in PLAN.md. Reverse: drop `Emitter::chain`.
+
