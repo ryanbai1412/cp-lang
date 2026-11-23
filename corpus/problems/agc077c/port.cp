@@ -1,21 +1,15 @@
-// AtCoder Grand Contest 077 C: decide whether an orientation reachable by
-// flipping non-forbidden pairs can give the target out-degree parity profile.
-//
-// Start from the transitive tournament (i -> j for i < j), where vertex i has
-// out-degree parity (n - 1 - i) mod 2, and flip both endpoints for each given
-// backward edge (u > v).
-// - When k is even, every allowed k-step parity balance reduces to a condition
-//   satisfied by every tournament, so the answer is always "Yes".
-// - When k is odd, we need exactly `target = floor(n / 2)` vertices with odd
-//   out-degree. Because the sum of all out-degrees in any tournament is
-//   `n * (n - 1) / 2`, and `n * (n - 1) / 2 ≡ floor(n / 2) (mod 2)` for every
-//   n (both n = 2t and n = 2t + 1 give parity t mod 2), the total number of
-//   odd-out-degree vertices ALWAYS has the same parity as `target`.
-// Each allowed flip toggles two endpoints of an edge in the complement graph,
-// so inside a complement component of size sz with `odd` initially-odd vertices
-// we can achieve any odd count in [odd % 2, sz - (sz - odd) % 2] of the same
-// parity as `odd`. Summing these intervals gives [lo, hi] with the same parity
-// as `target`, so `lo <= target <= hi` is both necessary and sufficient.
+// Source: AtCoder AGC077 C (Reverse and DAG), https://atcoder.jp/contests/agc077/tasks/agc077_c
+// Problem: a simple directed graph, n <= 2e5 vertices and m <= 2e5 edges with no pair joined
+//   both ways, and 2 <= K <= n - 2. An operation picks K vertices and reverses every edge
+//   inside them. Can some sequence make the graph acyclic? Multitest, sum n, m <= 2e5.
+// Solution: the answer is always Yes for even K. For odd K, complete the graph to a
+//   tournament (missing pairs oriented low -> high); an operation then keeps every out-degree
+//   parity, so we need a completion with floor(n/2) odd out-degrees, as in the transitive
+//   tournament. Orienting a missing pair the other way toggles both ends, so a component of
+//   the complement graph with sz vertices, odd of them odd, can reach any count of odd's
+//   parity in [odd % 2, sz - (sz - odd) % 2]; sum the intervals and test floor(n/2). The
+//   complement components come from a DFS over a sorted set of unvisited vertices,
+//   O((n + m) log n).
 
 @!multitest
 let n: 1..=200_000 = read()

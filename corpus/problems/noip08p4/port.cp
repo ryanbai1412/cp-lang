@@ -1,8 +1,15 @@
-// NOIP 2008 P4, twin-stack sorting: the lexicographically least a/b/c/d script that sorts a permutation (buildable today-form)
-// original: corpus/submissions/5185830.cpp
+// Source: NOIP 2008 Senior P4 (Two-Stack Sorting), https://www.luogu.com.cn/problem/P1155
+// Problem: a permutation of 1..n, n <= 1000, is sorted onto the output with two stacks:
+//   a pushes the next input onto stack 1, b pops stack 1 to the output, c and d do the same
+//   for stack 2. Print the lexicographically least op sequence (space-separated), or 0.
+// Solution: positions i < j cannot share a stack when a[i] < a[j] and some later value is
+//   below a[i]; the permutation is sortable iff this clash graph is bipartite. Colour each
+//   component with its earliest position on stack 1, then simulate greedily, trying b (when
+//   due), a, d, c in that order. O(n^2).
 // The clash graph is an adjacency list coloured by a hand-rolled walk, and the
 // script is built as a List<Char> printed with write: the prototype has no
 // two_color and no join.
+// original: corpus/submissions/5185830.cpp
 let n: 1..=1000 = read()
 let a: [0..n]Int = read()
 

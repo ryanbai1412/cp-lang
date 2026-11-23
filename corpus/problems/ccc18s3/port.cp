@@ -1,7 +1,11 @@
-// CCC 2018 S3, RoboThieves: a robot walks a factory grid from S. Cameras
-// (C) see along their row and column until a wall; conveyors (L R U D)
-// carry the robot one cell for free and cannot be seen. Print the fewest
-// steps to every empty cell, or -1.
+// Source: CCC 2018 S3 (RoboThieves), https://dmoj.ca/problem/ccc18s3
+// Problem: an n x m grid (4 <= n, m <= 100) walled on the border: '.', 'W', cameras 'C',
+//   conveyors L R U D and the start S. Cameras see along rows and columns up to a wall, over
+//   conveyors; the robot may not stand on a seen cell or a camera. Conveyors move it for free.
+//   For each '.' in row-major order print the fewest steps to reach it, or -1.
+// Solution: walk each camera's four rays and mark every seen non-conveyor cell. Then a 0-1
+//   BFS by levels: a conveyor moves to its next cell at cost 0, any other cell steps to its
+//   four neighbours at cost 1, skipping walls and seen cells. O(nm) plus the rays.
 // original: corpus/submissions/4329580.cpp
 let n: 4..=100 = read()
 let m: 4..=100 = read()

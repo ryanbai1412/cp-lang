@@ -1,15 +1,12 @@
-// IOI '18 P3 - Werewolf (30pt): n cities joined by m roads. A trip goes from
-// s to e; it starts in human form, which may only visit cities >= l, and
-// ends in wolf form, which may only visit cities <= r, changing once in a
-// city that is allowed in both. For each of q trips print 1 if it can be
-// made, else 0.
-// Add the cities from the largest down, hanging the tops of the components
-// each one joins beneath it: in that tree the cities a human can reach from
-// s are the subtree of the highest ancestor of s that is still >= l. The
-// mirror tree (smallest city first) does the same for the wolf walking back
-// from e. A trip works when the two subtrees share a city, i.e. when some
-// city falls in a rectangle of (human preorder, wolf preorder) positions:
-// one sweep over the human order with a Fenwick tree over the wolf order.
+// Source: IOI 2018 P3 (Werewolf), https://dmoj.ca/problem/ioi18p3
+// Problem: a connected graph, n <= 2e5 cities and m <= 4e5 roads. For each of q <= 2e5 trips
+//   (s, e, l, r) print 1 if one can walk from s to e visiting only cities >= l in human form,
+//   then turn into a wolf once and visit only cities <= r, else 0.
+// Solution: add cities from the largest down, hanging the components each joins beneath it
+//   (a Kruskal reconstruction tree): the cities a human reaches from s are the subtree of the
+//   highest ancestor of s still >= l. The mirror tree (smallest first) does the same for the
+//   wolf from e. A trip works when the two subtrees share a city, a point in a rectangle of
+//   (human preorder, wolf preorder): one offline sweep with a Fenwick tree, O((n + m + q) log n).
 // original: corpus/submissions/4727179.cpp (the grader interface; check.py
 // wraps it in the stdin/stdout main of the DMOJ version)
 

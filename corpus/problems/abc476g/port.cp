@@ -1,5 +1,14 @@
-// ABC476 G — Good Integer Sequence (Popcount Antichain)
-// Precomputation above @!multitest + bitwise dyadic DP + @brute(main)
+// Source: AtCoder ABC476 G (Increasing Popcount),
+//   https://atcoder.jp/contests/abc476/tasks/abc476_g
+// Problem: given 1 <= L <= R <= 1e18, give each integer i in [L, R] a value A_i so that equal
+//   values at i < j need popcount(i) < popcount(j); print the least possible max A.
+//   Multitest, T <= 1e4.
+// Solution: each value is a chain of strictly rising popcount, so by Dilworth the answer is
+//   the longest subsequence of L..R with non-increasing popcount. f[k][a][b]: the longest
+//   such subsequence in [0, 2^k) starting at popcount <= a and ending at >= b, built from its
+//   two halves in O(60^4) once. [L, R + 1) splits into O(60) aligned blocks (prefix ones o,
+//   height k); a DP over them keeps dp[p], the best so far ending at popcount >= p,
+//   O(60^3) per block. `@brute(main)` is the direct O(R - L) scan.
 
 // F[k][a][b] = max weakly-decreasing-popcount subsequence in [0, 2^k)
 // starting with popcount allowance <= a and ending with allowance >= b (0 <= b <= a <= k).

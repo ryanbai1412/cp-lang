@@ -1,8 +1,15 @@
-// Every version appends each position's value to that position's history, so a range tag
-// is a function on (value, history summary). Negate and clamp only look at the sign, and
-// scale with |value|: before the first assignment a tag maps each sign to a new sign and
-// a history per unit of |value|; after it, the value is a constant and the history is fixed.
-// Tags compose in O(1), so one `SegTree` with `act:` and no fold op (range apply, point get) handles every query.
+// Source: Codeforces 2255E1 (What Will Remain at the End? (Easy Version)),
+//   https://codeforces.com/contest/2255/problem/E1
+// Problem: n, q <= 5e5 and an array a with values in {-1, 0, 1}. Operations, each making a
+//   new version: 1 l r x (assign x in {-1, 0, 1}), 2 l r (negate), 3 l r (a = max(a, 0)),
+//   4 p (print the max non-empty subarray sum of position p's values over all earlier
+//   versions). Positions are XOR-encoded with the last answer mod 2^64. Multitest.
+// Solution: each version appends every position's value to its history, kept as a MaxSub
+//   summary. Negate and clamp see only the sign and scale with |value|, so a range tag maps
+//   each sign to a new sign plus a history per unit of |value|; after an assignment the value
+//   and the added history are constants. Tags compose in O(1): a SegTree with range apply and
+//   point get, plus a `record` tag on the whole array after each operation, O((n + q) log n).
+//   The code is the hard version's (any |a|, |x| <= 1e9).
 use std.algebra.{Action, Monoid}
 use std.algebra.{MaxSub}
 

@@ -1,15 +1,13 @@
-// IOI 2016 Paint By Numbers: a row of n cells (n <= 200000), each known
-// black 'X', known white '_' or unknown '.', and k clues (k <= 100): the
-// lengths of the black blocks from left to right, with at least one white
-// cell between blocks. At least one painting fits. Print the row again with
-// each cell as 'X' if it is black in every painting that fits, '_' if white
-// in every one, and '?' if it can be either.
-//
-// fits(row, clues)[i][j]: can the first i cells hold exactly the first j
-// blocks? Run it on the row and on the row reversed. A cell can be white if
-// some split of the blocks fits on its two sides; block j can sit at a place
-// if no white is under it, no black touches it, and the rest fits on both
-// sides. The places it can sit are added as ranges and read back once.
+// Source: IOI 2016 P4 (Paint By Numbers), https://dmoj.ca/problem/ioi16p4
+// Problem: a row of n <= 200000 cells, each known black 'X', known white '_' or unknown '.',
+//   and k <= 100 clues: the lengths of the black blocks from left to right. At least one
+//   painting fits. Print each cell as 'X' (black in every fitting painting), '_' (white in
+//   every one) or '?'. Input: the row, k, then the clues.
+// Solution: fits[i][j]: can the first i cells hold exactly the first j blocks; run it on the
+//   row and on the reversed row (blocks reversed). A cell can be white if some split j fits
+//   on both sides of it; block j can start at s if no known white lies under it, the cells
+//   beside it are not 'X' and both sides fit. Every such placement is a +1/-1 range in a
+//   difference array, so a cell can be black when its prefix sum is positive. O(nk).
 // original: corpus/submissions/4686585.cpp
 let row: Str = read()
 let k: Int = read()

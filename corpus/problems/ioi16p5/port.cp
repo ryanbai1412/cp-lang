@@ -1,4 +1,14 @@
-// IOI 2016 P5, Unscrambling a Messy Bug (two-phase interactive, stdio-adapted today-form)
+// Source: IOI 2016 P5 (Unscrambling a Messy Bug), https://dmoj.ca/problem/ioi16p5
+// Problem: interactive. A hidden permutation p of n bits (n = 2^b <= 128). Add at most w
+//   n-bit strings to a set, compile once (every string's bits get reordered by p), then ask
+//   at most r membership queries; recover p. Hardest subtask: n = 128, w = r = 896.
+// Solution: divide and conquer on the bits of the index. At depth d the positions of a group
+//   share their lower d bits; write, for each position a in the group with bit d set, the
+//   string of 1s outside the group, 0s inside except at a. After compiling, query the same
+//   shape for every image position: the query hits exactly when it lands on a written
+//   string, which gives bit d of its preimage and splits the group. (n/2) log n writes,
+//   n log n reads.
+// Stdio-adapted: "A s", "C" and "Q s" are the three library calls, "!" prints the answer.
 // original: corpus/submissions/4692325.cpp
 let n: 2..=128 = read()
 let w_lim: 1..=10000 = read()

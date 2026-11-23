@@ -1,16 +1,13 @@
-// IOI 2011 Tropical Garden: n fountains and m trails, listed from the most
-// beautiful down. A walker always takes the most beautiful trail at a
-// fountain, unless that is the trail they just arrived by and there is
-// another one; then they take the second most beautiful. For each of q
-// lengths k, count the starting fountains from which exactly k trails lead
-// to fountain p.
-//
-// What the walker does next depends on the fountain and on whether they
-// arrived by its best trail, so there are 2n states and each has exactly
-// one next state. Walk that map backwards from each of the two states at p
-// to get the distance of every start, and note that p's state can only be
-// revisited by going once around its own cycle.
-//
+// Source: IOI 2011 P1 (Tropical Garden), https://dmoj.ca/problem/ioi11p1
+// Problem: n <= 150000 fountains and m <= 150000 trails listed from most to least
+//   beautiful. A walker takes the most beautiful trail at a fountain, unless it is the one
+//   just used and there is another; then the second. For each of q <= 2000 lengths
+//   k <= 1e9, count the start fountains from which exactly k trails end at fountain p.
+// Solution: the next move depends only on (fountain, arrived by its best trail), so 2n states
+//   each with one successor. BFS the reversed map from both states at p to get every start's
+//   distance; if the goal state lies on a cycle of length lap, a start at distance d also
+//   ends there after d + lap, d + 2 lap, ... Fold counts by lap up to 2n and reduce larger k
+//   by whole laps. O(n + m + q).
 // The original is a grader function; this port reads `n m p q`, the m
 // trails, then the q lengths.
 // original: corpus/submissions/3732440.cpp

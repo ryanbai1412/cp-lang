@@ -1,4 +1,15 @@
-// WAC 6 P6 (Hard) (today/ runnable subset) — original: corpus/submissions/5122001.cpp
+// Source: Wesley's Anger Contest 6 P6 (Santa's Candy Factory, Easy Version),
+//   https://dmoj.ca/problem/wac6p6
+// Problem: interactive, T = 100 factories. Given counts A + B + C = 100 of three colours (not
+//   which is which), 100 candy canes arrive one by one (R, G or B); place each in one of two
+//   single-colour bowls or discard it, emptying bowls at will. Full score needs at least 43
+//   kept in every factory.
+// Solution: sort the counts a <= b <= c. If a + b >= 46, bowl 1 takes R and bowl 2 takes G
+//   (any two colours total at least a + b). Else if b + c - 2a >= 46, discard each colour's
+//   first a canes and give a bowl to each colour that goes past a. Else start with R and G
+//   in the bowls; a colour without a bowl that passes b copies takes over R's bowl.
+//   O(100) per factory.
+// original: corpus/submissions/5122001.cpp
 
 let tcs: 1..=10_000 = read()
 domain Col = 0..3
