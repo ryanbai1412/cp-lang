@@ -89,7 +89,7 @@ impl<'p> Emitter<'p> {
         }
         for &slot in &def.params {
             let ty = &def.locals[slot].ty;
-            let cpp = self.ty(ty);
+            let cpp = self.value_ty(ty);
             let cpp = if def.muts.contains(&slot) {
                 format!("{cpp}&")
             } else if ty.is_scalar() || self.caches_on_read(ty) {
@@ -192,5 +192,42 @@ impl<'p> Emitter<'p> {
         self.continue_targets = saved_cont;
 
         Code::primary(text)
+    }
+}
+
+impl Emitter<'_> {
+    /// The C++ type of a value that is stored or passed: a `()` held in a
+    /// tuple, a list or a parameter is a `cpl::Unit`, since C++ has no
+    /// `void` value.
+    pub(crate) fn value_ty(&self, ty: &Ty) -> String {
+        match ty {
+            Ty::Unit => {
+                self.niche_types.set(self.niche_types.get() | 1 << 7);
+                "cpl::Unit".into()
+            }
+            _ => self.ty(ty),
+        }
+    }
+
+    /// `e` where a value is stored or passed. A `()` there is a
+    /// `cpl::Unit`, made after whatever `e` runs.
+    pub(crate) fn stored(&mut self, e: &Expr) -> String {
+        let text = self.expr(e).text;
+        self.as_stored(e, text)
+    }
+
+    pub(crate) fn as_stored(&self, e: &Expr, text: String) -> String {
+        if e.ty != Ty::Unit {
+            return text;
+        }
+        self.niche_types.set(self.niche_types.get() | 1 << 7);
+        match e.kind {
+            ExprKind::Index(..) | ExprKind::Field(..) => text,
+            _ if text == "(void)0" || text == "void()" => "cpl::Unit()".into(),
+            ExprKind::Unit | ExprKind::Tuple(_) | ExprKind::Local(_) | ExprKind::Global(_) => {
+                "cpl::Unit()".into()
+            }
+            _ => format!("({text}, cpl::Unit())"),
+        }
     }
 }

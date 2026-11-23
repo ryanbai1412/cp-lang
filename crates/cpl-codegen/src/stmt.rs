@@ -1087,7 +1087,10 @@ impl<'p> Emitter<'p> {
                 self.line(out, &format!("auto {tmp} = {};", v.text));
                 self.line(out, &format!("{p} = std::move({tmp});"));
             }
-            AssignOp::Set => self.line(out, &format!("{p} = {};", v.text)),
+            AssignOp::Set => {
+                let v = self.as_stored(value, v.text);
+                self.line(out, &format!("{p} = {v};"))
+            }
             AssignOp::Max => twice(self, out, &|p, v| {
                 format!("{p} = std::max<{ty}>({p}, {v});")
             }),

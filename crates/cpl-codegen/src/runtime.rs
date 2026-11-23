@@ -649,6 +649,21 @@ template <class T, int K> Grid<T, K> grid(std::array<ll, K> n, const T& fill) {
 ",
     },
     Piece {
+        name: "unit",
+        needs: &[],
+        code: "\
+// `()` where C++ needs a value: in a tuple, a list or a parameter.
+struct Unit {
+    friend bool operator==(Unit, Unit) { return true; }
+    friend bool operator!=(Unit, Unit) { return false; }
+    friend bool operator<(Unit, Unit) { return false; }
+    friend bool operator>(Unit, Unit) { return false; }
+    friend bool operator<=(Unit, Unit) { return true; }
+    friend bool operator>=(Unit, Unit) { return true; }
+};
+",
+    },
+    Piece {
         name: "niche",
         needs: &[],
         code: "\

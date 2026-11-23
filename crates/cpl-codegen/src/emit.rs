@@ -367,6 +367,7 @@ impl<'p> Emitter<'p> {
             "cpl::OptInt",
             "cpl::OptField",
             "cpl::OptI32",
+            "cpl::Unit",
         ]
         .iter()
         .enumerate()
@@ -1557,6 +1558,7 @@ impl<'p> Emitter<'p> {
             "niche_int",
             "niche_field",
             "niche_i32",
+            "unit",
         ]
         .into_iter()
         .enumerate()

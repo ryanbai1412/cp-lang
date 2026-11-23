@@ -391,6 +391,9 @@ impl<'p> Emitter<'p> {
     /// An element of a `{...}` list, which C++ refuses to narrow: a
     /// `Char` or position that C++ computed as a wider type is cast back.
     fn braced(&mut self, e: &Expr) -> String {
+        if e.ty == Ty::Unit {
+            return self.stored(e);
+        }
         let code = self.expr(e);
         let typed = matches!(
             e.kind,
@@ -447,7 +450,7 @@ impl<'p> Emitter<'p> {
                     let text = self.expr(v).text;
                     format!("{n}, {}", self.narrow_cell_value(&text, l))
                 }
-                None => format!("{n}, {}", self.expr(v).text),
+                None => format!("{n}, {}", self.stored(v)),
             },
             None => n,
         }
@@ -1427,10 +1430,7 @@ impl<'p> Emitter<'p> {
                     })
                 } else {
                     let p = self.place(place);
-                    let arg = args
-                        .first()
-                        .map(|arg| self.expr(arg).text)
-                        .unwrap_or_default();
+                    let arg = args.first().map(|arg| self.stored(arg)).unwrap_or_default();
                     let arg2 = args
                         .get(1)
                         .map(|arg| self.expr(arg).text)
@@ -1724,7 +1724,7 @@ impl<'p> Emitter<'p> {
         let mut codes = codes.into_iter();
         args.iter()
             .map(|arg| match arg {
-                Arg::Value(_) => codes.next().expect("one per value").text,
+                Arg::Value(v) => self.as_stored(v, codes.next().expect("one per value").text),
                 Arg::Mut(place) => self.place(place),
             })
             .collect()

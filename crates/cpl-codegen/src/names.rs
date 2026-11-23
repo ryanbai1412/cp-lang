@@ -278,13 +278,13 @@ pub(crate) fn cty(program: &Program, niches: Niches, ty: &Ty) -> String {
             _ => format!("std::optional<{}>", cty(program, niches, inner)),
         },
         Ty::Tuple(items) => {
-            let items: Vec<String> = items.iter().map(|t| cty(program, niches, t)).collect();
+            let items: Vec<String> = items.iter().map(|t| value_ty(program, niches, t)).collect();
             format!("std::tuple<{}>", items.join(", "))
         }
         Ty::Record(fields) => {
             let items: Vec<String> = fields
                 .iter()
-                .map(|(_, t)| cty(program, niches, t))
+                .map(|(_, t)| value_ty(program, niches, t))
                 .collect();
             format!("std::tuple<{}>", items.join(", "))
         }
@@ -300,19 +300,22 @@ pub(crate) fn cty(program: &Program, niches: Niches, ty: &Ty) -> String {
         }
         Ty::Map(key, value) => format!(
             "std::map<{}, {}>",
-            cty(program, niches, key),
-            cty(program, niches, value)
+            value_ty(program, niches, key),
+            value_ty(program, niches, value)
         ),
         Ty::HashMap(key, value) => format!(
             "cpl::HashMap<{}, {}, cpl::CpHash>",
-            cty(program, niches, key),
-            cty(program, niches, value)
+            value_ty(program, niches, key),
+            value_ty(program, niches, value)
         ),
-        Ty::Set(elem) => format!("std::set<{}>", cty(program, niches, elem)),
-        Ty::HashSet(elem) => format!("cpl::HashSet<{}, cpl::CpHash>", cty(program, niches, elem)),
+        Ty::Set(elem) => format!("std::set<{}>", value_ty(program, niches, elem)),
+        Ty::HashSet(elem) => format!(
+            "cpl::HashSet<{}, cpl::CpHash>",
+            value_ty(program, niches, elem)
+        ),
         Ty::Mut(of) => format!("{}&", cty(program, niches, of)),
         Ty::Fn(args, ret) => {
-            let ps: Vec<String> = args.iter().map(|t| cty(program, niches, t)).collect();
+            let ps: Vec<String> = args.iter().map(|t| value_ty(program, niches, t)).collect();
             format!(
                 "std::function<{}({})>",
                 cty(program, niches, ret),
@@ -329,6 +332,15 @@ pub(crate) fn cty(program: &Program, niches: Niches, ty: &Ty) -> String {
 pub(crate) fn elem_ty(program: &Program, niches: Niches, ty: &Ty) -> String {
     match ty {
         Ty::Bool => "char".into(),
+        other => value_ty(program, niches, other),
+    }
+}
+
+/// The C++ type of a value that is stored or passed: C++ has no `void`
+/// value, so a `()` held in a tuple, a list or a parameter is `cpl::Unit`.
+pub(crate) fn value_ty(program: &Program, niches: Niches, ty: &Ty) -> String {
+    match ty {
+        Ty::Unit => "cpl::Unit".into(),
         other => cty(program, niches, other),
     }
 }
