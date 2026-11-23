@@ -1922,3 +1922,15 @@ fn a_c_decrement_is_one_error_with_the_compound_fix() {
     let fixed: Vec<_> = d.iter().map(|d| d.fixes[0].edits[0].1.as_str()).collect();
     assert_eq!(fixed, [" -= 1", " -= 1"], "{d:?}");
 }
+
+#[test]
+fn a_reversed_python_slice_is_one_error_with_the_rev_fix() {
+    let d = parse_file("print(s[::-1])\nprint(xs[::2])\n").diagnostics;
+    assert_eq!(d[0].fixes[0].edits[0].1, ".rev", "{d:?}");
+    assert!(
+        d.iter()
+            .skip(1)
+            .all(|d| d.fixes.iter().all(|f| f.edits[0].1 != ".rev")),
+        "{d:?}"
+    );
+}

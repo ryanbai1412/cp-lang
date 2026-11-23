@@ -3,6 +3,42 @@
 use super::*;
 
 impl<'a> Parser<'a> {
+    /// `xs[::-1]`: Python's reversed copy. One error with the `xs.rev` fix.
+    fn reversed_slice(&mut self) -> Option<Expr> {
+        let t = |k: usize| self.tokens.get(self.pos + k);
+        let one = t(2).is_some_and(|t| {
+            t.kind == T::Int && &self.src[t.span.start as usize..t.span.end as usize] == "1"
+        });
+        let open = self.pos.checked_sub(1).map(|p| self.tokens[p]);
+        if !self.at(T::ColonColon)
+            || self.peek_n(1) != T::Minus
+            || !one
+            || self.peek_n(3) != T::RBracket
+            || open.is_none_or(|o| o.kind != T::LBracket)
+        {
+            return None;
+        }
+        let close = self.tokens[self.pos + 3].span;
+        let whole = self.rel(Span::new(open?.span.start, close.end));
+        let span = self.span();
+        self.recovered(
+            Diagnostic::error(
+                codes::EXPECTED_TOKEN,
+                span,
+                "CP Lang reverses with `.rev`, not `[::-1]`",
+            )
+            .with_help("`xs.rev` is the reversed view; `List(xs.rev)` copies it")
+            .with_fix("write `.rev`", whole, ".rev"),
+        );
+        for _ in 0..3 {
+            self.bump();
+        }
+        Some(Expr {
+            kind: ExprKind::Error,
+            span,
+        })
+    }
+
     /// Steps over a comparison operator, reading `!in` as `not in` and
     /// Python's `x is None` and `x is not None` as `==` and `!=`, each one
     /// error with a fix.
@@ -430,6 +466,9 @@ impl<'a> Parser<'a> {
     /// the `xs[a..b]` fix, read as that range.
     pub(super) fn index_item(&mut self) -> Expr {
         let start = self.start();
+        if let Some(e) = self.reversed_slice() {
+            return e;
+        }
         let lo = (!self.at(T::Colon)).then(|| self.expr());
         let Some(colon) = self.at(T::Colon).then(|| self.span()) else {
             return lo.unwrap_or(Expr {
