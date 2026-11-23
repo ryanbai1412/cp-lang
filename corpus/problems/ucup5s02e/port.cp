@@ -15,9 +15,8 @@ domain P = 1..=n
 let rank: [0..3][0..n]P = read()
 
 var good: [0..n - 1]Bool = false
-for z in 0..3:
-    for y in z + 1..3:
-        let place = rank[y].inverse()
-        let reach = scan([0..n - 1] i => place[rank[z][i]], max)
-        for i in 0..n - 1 if reach.prefix(i + 1) == i: good[i] = true
+for (lo, hi) in rank.pairs():
+    let place = hi.inverse()
+    let reach = scan([0..n - 1] i => place[lo[i]], max)
+    for i in 0..n - 1 if reach.prefix(i + 1) == i: good[i] = true
 print(1 + good.count(b => b))
