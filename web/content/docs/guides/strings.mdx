@@ -76,6 +76,6 @@ The standard library provides `z_function(s)`, `prefix_function(s)`, `palindrome
 ```cp
 let s: Str = "banana"
 print(yes(s.starts_with("ba")), yes(s.ends_with("na")), yes("an" in s))  // YES YES YES
-print(s.find("an"), s.rfind("an"), s.rfind('a'))                         // 1 3 5
+print(s.find("an")!, s.rfind("an")!, s.rfind('a')!)                      // 1 3 5
 print('a'.upper, 'Q'.lower)                                              // A q
 ```
