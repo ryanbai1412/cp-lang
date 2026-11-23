@@ -850,7 +850,11 @@ impl<'p> Emitter<'p> {
                     }
                     held
                 } else {
-                    self.expr(seq).at(PRIMARY)
+                    let text = self.expr(seq).at(PRIMARY);
+                    match text.strip_suffix(".vec()") {
+                        Some(row) if self.is_row(seq) => row.to_string(),
+                        _ => text,
+                    }
                 };
                 let items = if is_grid {
                     format!("{holder}.d")

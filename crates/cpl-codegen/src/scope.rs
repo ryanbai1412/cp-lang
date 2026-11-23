@@ -369,11 +369,10 @@ pub(crate) fn rows(
         }
         // A Bitset<D> over a domain with a small static upper bound (<= 4096 bits)
         // keeps its U64 words inline in a `cpl::Row<U64, W>` instead of heap-allocating.
-        if def.name.starts_with("Bitset")
-            && def.fields.len() == 1
-            && def.fields[0].0 == "w"
-            && matches!(&def.fields[0].1, Ty::List(elem) if elem.as_ref() == &Ty::U64)
-        {
+        let words = def.fields.iter().position(|(name, ty)| {
+            name == "w" && matches!(ty, Ty::List(elem) if elem.as_ref() == &Ty::U64)
+        });
+        if let (true, Some(words_field)) = (def.name.starts_with("Bitset"), words) {
             let prefix = format!("{}_", crate::names::fn_name(&def.name));
             let mut domain_id = None;
             for f in &program.fns {
@@ -403,7 +402,7 @@ pub(crate) fn rows(
                 if let Some(max_k) = facts.domain_max_len(d) {
                     if (0..=4096).contains(&max_k) {
                         let words = ((max_k + 63) / 64).max(1) as u32;
-                        rows.insert((id, 0), words);
+                        rows.insert((id, words_field), words);
                     }
                 }
             }

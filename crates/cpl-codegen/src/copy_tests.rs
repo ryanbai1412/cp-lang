@@ -162,3 +162,44 @@ fn a_view_of_a_temporary_holds_the_temporary() {
     let name = owner.trim().split_whitespace().nth(1).unwrap();
     assert!(cpp.contains(&format!("take_Lst_Int_2({name}, n)")), "{cpp}");
 }
+
+const SMALL_BITSETS: &str = concat!(
+    "let n: 1..=300 = read()\n",
+    "domain V = 0..n\n",
+    "let a = Bitset<V>.full\n",
+    "let b = Bitset<V>.single(V(0))\n",
+    "let c = Bitset<V>.full\n",
+    "print((a & b & c).len)\n",
+);
+
+#[test]
+fn small_domain_bitset_keeps_its_words_inline() {
+    let cpp = cpp(SMALL_BITSETS);
+    assert!(cpp.contains("cpl::Row<unsigned long long, 5> w;"), "{cpp}");
+    assert!(
+        cpp.contains("cpl::Row<unsigned long long, 5>::filled("),
+        "{cpp}"
+    );
+    assert!(!cpp.contains("std::vector<unsigned long long>("), "{cpp}");
+    assert!(
+        !cpp.contains(".w.vec()"),
+        "a loop over the words copies them: {cpp}"
+    );
+}
+
+#[test]
+#[ignore = "`(a & b & c).len` builds both sets: no fused popcount yet"]
+fn small_domain_bitset_uses_inline_row_and_fused_popcount() {
+    let cpp = cpp(SMALL_BITSETS);
+    assert!(cpp.contains("cpl::Row<unsigned long long, 5> w;"), "{cpp}");
+    assert!(
+        cpp.contains("cpl::Row<unsigned long long, 5>::filled("),
+        "{cpp}"
+    );
+    assert!(
+        !cpp.contains("std::vector<unsigned long long>("),
+        "Bitset.new() return must construct cpl::Row directly without temp std::vector: {cpp}"
+    );
+    assert!(cpp.contains("__builtin_popcountll("), "{cpp}");
+    assert!(!cpp.contains("_bitand(a, b)"), "{cpp}");
+}

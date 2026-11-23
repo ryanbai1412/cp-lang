@@ -1821,7 +1821,7 @@ impl<'p> Emitter<'p> {
     }
 
     /// True for a field read that is a row kept inside its struct.
-    fn is_row(&self, e: &Expr) -> bool {
+    pub(crate) fn is_row(&self, e: &Expr) -> bool {
         matches!(&e.kind, ExprKind::Field(base, index)
             if matches!(base.ty, Ty::Struct(id) if self.rows.contains_key(&(id, *index))))
     }

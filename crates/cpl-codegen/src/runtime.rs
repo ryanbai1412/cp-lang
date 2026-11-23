@@ -1225,6 +1225,10 @@ template <class T, int K> struct Row {
     std::vector<T> vec() const { return std::vector<T>(a.begin(), a.end()); }
     operator std::vector<T>() const { return vec(); }
     size_t size() const { return (size_t)K; }
+    auto begin() const { return a.begin(); }
+    auto end() const { return a.end(); }
+    auto rbegin() const { return a.rbegin(); }
+    auto rend() const { return a.rend(); }
     T& operator[](size_t i) { return a[i]; }
     const T& operator[](size_t i) const { return a[i]; }
     bool operator==(const Row& o) const { return a == o.a; }

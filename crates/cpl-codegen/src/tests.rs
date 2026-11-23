@@ -1161,29 +1161,6 @@ fn cheap_pure_sort_key_avoids_sort_by_buffers() {
 }
 
 #[test]
-#[ignore = "std/bitset.cp stores `w: List<U64>`: no inline Row for small domains yet"]
-fn small_domain_bitset_uses_inline_row_and_fused_popcount() {
-    let cpp = cpp(concat!(
-        "let n: 1..=300 = read()\n",
-        "domain V = 0..n\n",
-        "let a = Bitset<V>.full\n",
-        "let b = Bitset<V>.single(V(0))\n",
-        "let c = Bitset<V>.full\n",
-        "print((a & b & c).len)\n",
-    ));
-    assert!(cpp.contains("cpl::Row<unsigned long long, 5> w;"), "{cpp}");
-    assert!(
-        cpp.contains("cpl::Row<unsigned long long, 5>::filled("),
-        "{cpp}"
-    );
-    assert!(
-        !cpp.contains("std::vector<unsigned long long>("),
-        "Bitset.new() return must construct cpl::Row directly without temp std::vector: {cpp}"
-    );
-    assert!(cpp.contains("__builtin_popcountll("), "{cpp}");
-    assert!(!cpp.contains("_bitand(a, b)"), "{cpp}");
-}
-#[test]
 #[ignore = "spec/conformance/std-lazy/flip-action-on-a-segtree.cp"]
 fn higher_order_combinator_devirtualizes_to_zero_std_function() {
     let cpp = cpp(concat!(
