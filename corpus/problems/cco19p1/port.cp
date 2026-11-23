@@ -1,13 +1,13 @@
-// CCO 2019 P1, Human Error: Justin (J) and Donald (D) take turns on a
-// small board full of their pieces. A move slides one of your pieces onto
-// a neighbouring piece and captures it; whoever cannot move loses. Each
-// player picks at random among his best few moves. Print the chance that
-// Justin, who moves first, wins.
+// Source: CCO 2019 P1 (Human Error), https://dmoj.ca/problem/cco19p1
+// Problem: an R x C board (R * C <= 13) with a piece on every cell, each J (Justin) or D
+//   (Donald). Justin moves first; a move takes one of your pieces onto an orthogonally
+//   adjacent piece (either colour) and captures it; a player who cannot move loses. Each
+//   player picks uniformly among his J (resp. D) <= 13 best moves (all, if fewer). Print the
+//   chance Justin wins, to 3 decimals.
+// Solution: at most 13 cells, so search every reachable board, memoized on the board in base
+//   3 plus the side to move. A position's chance for the mover is the mean of 1 - (the
+//   opponent's chance) over his best `slack` moves, or 0 with no move.
 // original: corpus/submissions/3613457.cpp
-//
-// At most 13 cells, so search every reachable board. A board's chance for
-// the player to move is the mean of `1 - chance` after his `slack` best
-// moves (0 with no move); memoize on the board and whose turn it is.
 let n: 1..=13 = read()
 let m: 1..=13 = read()                                    // at most 13 cells in all
 domain Row = 0..n

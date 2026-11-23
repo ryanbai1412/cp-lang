@@ -1,17 +1,14 @@
-// Codeforces 2138 F: Triangle Strip.
-// Grow a strip of triangles from the base segment `p1 = (0, 0)`, `p2 = (1, 0)`
-// to `t = (p, q)`: each new point joins two earlier points with both edge
-// lengths in `[1/2, 1]`.
-//   - Even `m = 2k`: a ladder of `k` rungs stepping by `d = t / k`, with the
-//     off-rail shifted to `(0.5, d.y - 0.5)`.
-//   - Odd `m = 2k + 1`: three opening steps bring the strip onto the ray to `t`
-//     at `t1 = t - (k - 1) * t.unit`, followed by `k - 1` unit rungs.
-//     `start` is `t0 = t - k * t.unit` when `fits(t0, p2)`, else the upper
-//     intersection of the unit circles centered at `p2 = (1, 0)` and `(0, 1.5)`
-//     (midpoint `(0.5, 0.75)` plus perpendicular `(0.75, 0.5) * sqrt(3 / 13)`).
-//     Because the 5 annuli `0.5 <= |c - e| <= 1` around `[p1, p2, t0, t1, start]`
-//     always contain a disc of radius > 1/32 inside `[-1, 1]^2`, the 1/64 grid
-//     is guaranteed to contain a valid bridge point `s`.
+// Source: Codeforces 2138 F (Ode to the Bridge Builder),
+//   https://codeforces.com/contest/2138/problem/F
+// Problem: start from points (0, 0), (1, 0) joined by a segment; an operation picks a
+//   segment AB and adds a point C with triangle ABC's sides all in [1/2, 1]. Reach integer
+//   (p, q) (1 <= p, q <= 1e4) within 1e-4 using at most m = ceil(2 |(p, q)|) operations; print
+//   them. Multitest, sum of m <= 1e5.
+// Solution: build a ladder of triangles toward t = (p, q), two operations per rung. Even
+//   m = 2k: k rungs stepping by t / k (length <= 1), the second rail shifted to
+//   (0.5, d.y - 0.5). Odd m = 2k + 1: three opening operations reach t - (k - 1) t.unit on
+//   the ray, then k - 1 unit rungs; the bridge point is taken from the 1/64 grid in [-1, 1]^2,
+//   which always holds a point within [1/2, 1] of the five anchors. O(m) per test.
 
 use std.geometry.Vec
 

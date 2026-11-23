@@ -1,13 +1,13 @@
-// Codeforces 2129 D: Permutation Blackhole.
-// Coloring cells `0..n` in a uniformly random permutation charges +1 to the
-// nearest already-colored neighbor of each newly colored cell (ties go left).
-// Each charge to a boundary halves the remaining distance from that side, so
-// one side of `0..n` can deliver at most `max_score = bit_width(n) + 1` charges.
-// `dp[l, r, vl, vr]` is the probability that coloring half-open `l..r`
-// (bounded by already-colored `l - 1` when `l > 0`, and `r` when `r < n`)
-// delivers `vl` charges to `l - 1` and `vr` charges to `r` (tracked as 0 when
-// that boundary is unconstrained) while satisfying every constraint in `l..r`.
-// Multiplying by `n!` converts probability back to permutation count.
+// Source: Codeforces 2129 D (Permutation Blackhole), https://codeforces.com/contest/2129/problem/D
+// Problem: cells 1..=n turn black in the order of a permutation p; each newly coloured cell
+//   (after the first) adds 1 to the score of its nearest black cell, ties to the left. Some
+//   final scores s_i are fixed (-1 = free); count permutations matching them modulo
+//   998244353. Multitest, n <= 100, sum of n^2 <= 1e4.
+// Solution: each charge to a black cell halves the gap on that side, so a score is at most
+//   bit_width(n) + 1. dp[l, r, vl, vr] is the probability that colouring the gap l..r (between
+//   black cells l - 1 and r) charges vl to l - 1 and vr to r and meets every fixed score
+//   inside: the first cell k is uniform, charges its nearer side, and splits the gap, with
+//   s_k shared between its two halves. Multiply by n!. O(n^3 log^3 n).
 
 type Z = Mod<998_244_353>
 let comb = Comb<Z>()

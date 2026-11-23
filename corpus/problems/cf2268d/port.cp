@@ -1,21 +1,12 @@
-// Codeforces 2268 D: from i you may step left to any j < i (cost 1) or jump
-// right to the next greater element up[i] (cost 1); sum all finite pairwise
-// distances.
-//
-// - Pairs (a, b) with a > b have distance 1 -> base n * (n - 1) / 2.
-// - Pairs with a < b have finite distance iff they share a prefix-max block
-//   [l..=r], where r is the root of l's spine in the next-greater forest.
-// - Each spine edge i -> u = up[i] on l -> .. -> r is charged for:
-//   1. Cross-edge pairs a in [l..=i], b in (i..=r]: every such pair crosses
-//      i -> u (+1), and b in (i, u) also steps left from u (+1 more).
-//   2. Exiting (i, u) to b in (u..=r]: direct children of u other than i
-//      (kids[u] - 1 vertices) reach u in 1 step; the rest of (i, u) take 2.
-//   3. Pairs (a, b) with i < a < b <= u (total (u - i) * inside / 2):
-//      * dist 1: a -> up[a] = b (one per a in (i, u), so `inside` pairs).
-//      * dist 2: jump past b then step left (`up[a] - a - 1` per a in (i, u)),
-//        or step into a child of b (`b - first[b] - kids[b]` per b in (i, u],
-//        plus `kids[first[b]]` when b < u for paths through first[b]).
-//      * dist 3: all remaining pairs in (i, u].
+// Source: Codeforces 2268 D (AghaBalaSar and Hamed), https://codeforces.com/contest/2268/problem/D
+// Problem: a permutation p of length n; from i one step goes to any j < i or to the first
+//   j > i with p_j > p_i. f(i, j) is the fewest steps from i to j (0 if unreachable); print
+//   the sum of f over all pairs. Multitest, sum of n <= 1e6.
+// Solution: pairs a > b cost 1 each. a < b is reachable iff both lie in one prefix-max
+//   block [l..=r], the spine l -> up[l] -> ... -> r of the next-greater forest. Charge each
+//   spine edge i -> u in closed form: pairs crossing it, pairs leaving (i, u) to the right
+//   (1 step via u's other children, else 2), and pairs inside (i, u] at distance 1, 2 or 3,
+//   counted from up[], first child and child counts. Every block is O(its length): O(n).
 use std.seq.*
 
 @!multitest
