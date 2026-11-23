@@ -7,7 +7,7 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 2813 (995 passing). Rules: 574.
+Cases: 2814 (995 passing). Rules: 575.
 
 ## Summary per chapter
 
@@ -21,7 +21,7 @@ Cases: 2813 (995 passing). Rules: 574.
 - R06 (06-control-functions.md): 24 rules, 104 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R07 (07-sequences.md): 90 rules, 174 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R08 (08-traits-generics.md): 29 rules, 92 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R09 (09-contexts-checks.md): 26 rules, 58 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R09 (09-contexts-checks.md): 27 rules, 59 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R10 (10-io.md): 19 rules, 111 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R11 (11-modules-prelude.md): 16 rules, 46 cases; 0 uncovered, 0 happy-path only, 1 negative only
 - R12 (12-powers.md): 17 rules, 36 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -55,7 +55,7 @@ negative case. Complete: rules with no gap in `rule-gaps.txt`.
 | R06 | 24 | 24 (100%) | 16 | 16 (100%) | 24 (100%) |
 | R07 | 90 | 90 (100%) | 27 | 27 (100%) | 90 (100%) |
 | R08 | 29 | 29 (100%) | 12 | 12 (100%) | 29 (100%) |
-| R09 | 26 | 26 (100%) | 15 | 15 (100%) | 26 (100%) |
+| R09 | 27 | 27 (100%) | 15 | 15 (100%) | 27 (100%) |
 | R10 | 19 | 19 (100%) | 9 | 9 (100%) | 19 (100%) |
 | R11 | 16 | 15 (93%) | 10 | 10 (100%) | 15 (93%) |
 | R12 | 17 | 17 (100%) | 6 | 6 (100%) | 17 (100%) |
@@ -67,7 +67,7 @@ negative case. Complete: rules with no gap in `rule-gaps.txt`.
 | Rlint | 2 | 2 (100%) | 2 | 2 (100%) | 2 (100%) |
 | Rlsp | 5 | 5 (100%) | 1 | 1 (100%) | 5 (100%) |
 | Rstress | 1 | 1 (100%) | 0 | 0 (0%) | 1 (100%) |
-| all | 574 | 573 (99%) | 229 | 229 (100%) | 573 (99%) |
+| all | 575 | 574 (99%) | 229 | 229 (100%) | 574 (99%) |
 
 ## Rules
 
@@ -584,6 +584,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R09.4.2 [1+ 0-]: `with checks(...: off)` removes a check in checked builds too, for a hot loop whose stress...
 - R09.4.3 [1+ 1-]: `unchecked:` is the greppable escape: a statement block with every check off in every buil...
 - R09.4.4 [1+ 3-]: Lints are contexts: `with lint(name: allow)` silences one in a scope, and is the only in-c...
+- R09.4.5 [1+ 0-]: A check or `assert` that fails inside library code, whether a library fn or a library doma...
 - R09.5.1 [1+ 0-]: **proved**: the type checker, range analysis or borrow rules establish it; no runtime cost...
 - R09.5.2 [1+ 1-]: **trapped**: not proved; checked builds trap, release assumes it.
 - R09.5.3 [1+ 0-]: **promised**: the author states it and tooling samples it: `law` declarations, `@cache` co...

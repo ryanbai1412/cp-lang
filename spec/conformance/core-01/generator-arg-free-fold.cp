@@ -4,7 +4,7 @@
 domain Row = 0..2
 domain Col = 0..3
 let xs = [3, 1, 2]
-let g: [Row, Col]Char = [Row, Col] (r, c) => if (r + c) % 2 == 0: '#' else: '.'
+let g: [Row, Col]Char = [Row, Col] (r, c) => if (Int(r) + Int(c)) % 2 == 0: '#' else: '.'
 print(max(x * 2 for x in xs)!)
 print(min(x * 2 for x in xs)!)
 print(min(x for x in xs[0..0]) ?? -1)
