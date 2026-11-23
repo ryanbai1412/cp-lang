@@ -14,6 +14,8 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
         src: &'a str,
         base: u32,
         fns: Vec<(String, &'a str)>,
+        /// Names earlier fixes bind, so nested fixes never shadow each other.
+        taken: Vec<String>,
         out: Vec<Finding>,
     }
     impl Visitor for Tests<'_> {
@@ -117,12 +119,13 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
                 Some((name, _)) => name.clone(),
                 None => match ["v", "got", "found", "entry", "stored"]
                     .into_iter()
-                    .find(|n| !has_word(src, n))
+                    .find(|n| !has_word(src, n) && !self.taken.iter().any(|t| t == n))
                 {
                     Some(n) => n.to_string(),
                     None => return,
                 },
             };
+            self.taken.push(name.clone());
             let lookup = format!("let {name} = {map}.get({key})");
             let (written, message) = match exit {
                 Some(exit) => (
@@ -182,6 +185,7 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
         src: file.src,
         base: 0,
         fns,
+        taken: Vec::new(),
         out: Vec::new(),
     };
     file.walk(&mut v, |v, base| v.base = base);
