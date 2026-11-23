@@ -4,7 +4,7 @@ let n = read<2..=1_000_000>()
 var sign = 1
 var c = 0
 var ok = 1..
-for a in read<[n - 1]Int>():
+for a in read<[n - 1]1..=1e9>():
     sign = -sign
     c = a - c
     ok = ok.clip(if sign < 0: ..c else: 1 - c..)
