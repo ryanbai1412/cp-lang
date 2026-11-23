@@ -1,6 +1,6 @@
 // ucrpc21h: four couriers share round trips from the depot, each courier's day at most 600. A
 // round trip to v costs 2 dist(v), so split the shortest distances into four loads of at most 300:
-// a 3-D subset-sum over three loads, the fourth taking the rest.
+// a subset-sum over three loads, the third load a bitset, the fourth taking the rest.
 const limit = 300
 let (n, m) = read<(1..=100, 0..=10_000)>()
 domain V = [n]
@@ -14,16 +14,16 @@ fn busiest() -> ?Int:
     if d.max()! > limit or total > 4 * limit:
         return None
     domain Load = 0..=min(limit, total)
-    domain Split = (Load, Load, Load)
-    var can: [Split]Bool = false
-    can[0, 0, 0] = true
+    var can: [Load, Load]Bitset<Load> = Bitset<Load>.new()
+    can[0, 0] = Bitset<Load>.single(Load(0))
     for v in V:
         if d[v] > 0:
-            for (a, b, c) in Split.rev:
-                for from in [(a - d[v], b, c), (a, b - d[v], c), (a, b, c - d[v])]:
-                    if let p = Split.at(from):
-                        can[a, b, c] = can[a, b, c] or can[p]
-    Split.filter(p => can[p]).map(((a, b, c)) => max(max(a, b), max(c, total - a - b - c))).min()
+            for (a, b) in (Load, Load).rev:
+                var next = can[a, b].shifted(d[v])
+                if let a2 = Load.at(a - d[v]): next.union(can[a2, b])
+                if let b2 = Load.at(b - d[v]): next.union(can[a, b2])
+                can[a, b].union(next)
+    (Load, Load).flat_map(((a, b)) => can[a, b].each().map(c => max(Int(a), Int(b), Int(c), total - Int(a) - Int(b) - Int(c)))).min()
 if let day = busiest() and day <= limit:
     print(2 * day)
 else:
