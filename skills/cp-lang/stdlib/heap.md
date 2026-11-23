@@ -96,7 +96,7 @@ Meldable min-heap (skew / leftist heap) with \(O(\log n)\) `meld` and, when `T: 
 - `fn push(mut self, x: T)` — \(O(\log n)\); Push `x` into the heap.
 - `fn push_all(mut self, items: List<T>)` — \(O(k \log n)\) for `k` items; Push all elements of `items`.
 - `fn pop(mut self) -> ?T` — \(O(\log n)\); Remove and return the smallest element, or `None` if empty.
-- `fn meld(mut self, other: MeldHeap<T>)` — \(O(\log n)\); Meld `other` into `self` (consuming `other`).
+- `fn meld(mut self, other: MeldHeap<T>)` — \(O(k + \log n)\) for the smaller heap's `k` nodes; melding `n` one-element heaps; Meld `other` into `self` (consuming `other`).
 - `fn absorb(mut self, mut other: MeldHeap<T>)` — \(O(\log n)\); Meld `other` into `self`, leaving `other` empty.
 - `fn add_all(mut self, delta: T) where T: Add` — \(O(1)\); Add `delta` lazily to every element (for additive types).; traps: never (overflow wraps in release, traps in debug)
 - `fn clear(mut self)` — \(O(1)\); Remove all elements.
