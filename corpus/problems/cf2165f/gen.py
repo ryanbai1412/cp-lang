@@ -1,5 +1,11 @@
 import sys, random
 
+if sys.argv[1] == "--max":
+    # One test at the limit (the sum of n over tests is at most 1e6): a random
+    # permutation of 1..1e6.
+    r = random.Random(0); n = 10**6; a = list(range(1, n + 1)); r.shuffle(a)
+    print(1); print(n); print(*a)
+    sys.exit()
 r = random.Random(int(sys.argv[1]))
 S = int(sys.argv[2])
 t = r.randint(1, 4)
