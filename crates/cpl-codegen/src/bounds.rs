@@ -1001,6 +1001,19 @@ mod tests {
     }
 
     #[test]
+    fn a_bool_or_enum_axis_needs_no_check() {
+        let code = cpp(concat!(
+            "enum Side = L | R\n",
+            "domain P = read(1..=500)\n",
+            "var g: [P.cuts, Bool, Side]Int = 0\n",
+            "fn f(j: P.cuts, s: Bool, d: Side) -> Int = g[j, s, d]\n",
+            "g[P.cuts.first!, true, R] = 1\n",
+            "print(f(P.cuts.first!, true, R))\n",
+        ));
+        assert!(!code.contains(".ck("), "{code}");
+    }
+
+    #[test]
     fn a_grid_loop_that_prints_keeps_its_checks() {
         let code = cpp(&GRID.replace("+ min(k, 3)", "\n        print(k)"));
         assert!(inner(&code).contains(".ck("), "{code}");

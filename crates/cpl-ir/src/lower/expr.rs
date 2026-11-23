@@ -3120,15 +3120,16 @@ impl<'a> Lowerer<'a> {
                     }
                     // A `Bool` picks a cell of a `[Bool]T`: `false` the
                     // first, `true` the second. The checker has made
-                    // sure the array is one.
+                    // sure the array is one, so the cell needs no check.
                     if (*dim, &value.ty) == (Dim::Int, &Ty::Bool) {
                         let (one, zero) =
                             (self.int_lit(1, index.span), self.int_lit(0, index.span));
-                        out.push(self.mk(
+                        let cell = self.mk(
                             ExprKind::If(Box::new(value), Box::new(one), Box::new(zero)),
                             Ty::Int,
                             index.span,
-                        ));
+                        );
+                        out.push(self.cast(Cast::Raw, cell, Ty::Int));
                         continue;
                     }
                     // A fieldless enum variant picks a cell of `[E]T` by its tag.
@@ -3163,7 +3164,7 @@ impl<'a> Lowerer<'a> {
                                 }
                                 stmts.push(Stmt::Give(acc));
                             });
-                            out.push(tag_expr);
+                            out.push(self.cast(Cast::Raw, tag_expr, Ty::Int));
                             continue;
                         }
                     }
