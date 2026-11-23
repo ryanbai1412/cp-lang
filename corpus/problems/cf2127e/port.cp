@@ -1,17 +1,12 @@
-// Codeforces 2127 E — Ancient Tree
-//
-// A vertex `l` is "cute" (bad, costing w[l]) iff two distinct vertices of the
-// same color c != col[l] have LCA equal to `l`.
-//
-// For each color c, sorting its initially colored vertices by DFS preorder
-// means every LCA of two color-c vertices already appears as `lca(u, v)` of
-// an adjacent pair `(u, v)` in that order. For each such LCA `l`:
-// - If `col[l]` is unset (`none`), assigning `col[l] = c` avoids paying `w[l]`
-//   for color c.
-// - If `col[l]` is already set to a different color, `l` is unavoidably bad
-//   (`is_bad[l] = true`).
-// Finally, any still-uncolored vertex inherits its parent's color (or Color(1)
-// at the root) in top-down preorder so no new bad LCAs are created.
+// Source: Codeforces 2127E (Ancient Tree), https://codeforces.com/contest/2127/problem/E
+// Problem: a tree rooted at 1 with vertex weights w and colors in 1..k, some lost (0). v is cutie
+//   if lca(x, y) = v for some x, y of one color other than v's. Recolor the lost vertices to
+//   minimise the weight of cutie vertices; print it and the coloring. n <= 2e5, sum of n <= 2e5;
+//   multitest.
+// Solution: the LCAs of a color's vertex pairs are the LCAs of its neighbours in preorder.
+//   Such an LCA without a color takes this one; one colored differently is cutie anyway and
+//   pays. Every vertex still uncolored copies its parent (the root takes 1), which makes no new
+//   cutie vertex. Sorting plus LCA queries, O(n log n).
 
 @!multitest
 let (n, k): (2..=200_000, 1..=200_000) = read()

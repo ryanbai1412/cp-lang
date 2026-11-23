@@ -1,16 +1,12 @@
-// Codeforces 2124 F1 — Cyclic-Block Partition DP (Easy Version)
-//
-// Group forbidden pairs `(pos, val)` by diagonal `diag(pos, val) = pos - val + n - 1`
-// (sorted descending so `next_bad(off) = bads[off].last ?? n` is the earliest
-// forbidden position `>= i`).
-//
-// `dp[i]` counts valid partitions of `0..i` into cyclic-shift blocks of
-// `1..=len` (each avoiding all forbidden `(pos, val)` pairs). From `i`:
-// - Add every valid cyclic block `[i..j + x0)` shifted by `x0` (starting at
-//   `x0 + 1` on `[i..j)` and wrapping to `1..=x0` on `[j..j + x0)`).
-// - Subtract `dp[i]` for adjacent identity blocks `[i..j)` + `[j..end)` with
-//   `end - j < j - i` that would otherwise be double-counted as a single
-//   unshifted + shifted split.
+// Source: Codeforces 2124F1 (Appending Permutations, Easy Version),
+//   https://codeforces.com/contest/2124/problem/F1
+// Problem: build an array of length n by appending cyclic shifts [r..s, 1..r-1] of [1..s], with
+//   m bans a[i] != x. Count the distinct arrays mod 998244353. n <= 100, m <= 5000, sums over
+//   tests too; multitest.
+// Solution: dp[i] counts arrays of length i; a block from i is a run x0+1, x0+2, ... up to j,
+//   then 1..x0. Bans are grouped by diagonal pos - val, so a run is ban-free when the next ban
+//   on its diagonal is past it (bans sorted, popped as i passes). [1..L] then [1..M] with M < L
+//   is also [1..M] then the shift [M+1..L, 1..M], so dp subtracts each such pair once. O(n^3).
 
 @!multitest
 type Z = Mod<998_244_353>

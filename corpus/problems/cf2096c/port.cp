@@ -1,15 +1,11 @@
-// Codeforces 2096 C — Wonderful City
-//
-// Incrementing row i adds 1 to h[i, j] for all j, which preserves every
-// horizontal difference `h[i, j] - h[i, j - 1]`; symmetrically, incrementing
-// column j preserves every vertical difference `h[i, j] - h[i - 1, j]`.
-// Hence row choices and column choices decouple completely.
-//
-// Between adjacent rows i - 1 and i, choosing shifts p, q in {0, 1} causes a
-// collision iff some column j has h[i, j] + q == h[i - 1, j] + p, i.e.
-// h[i, j] - h[i - 1, j] == p - q in {-1, 0, 1}. Marking those forbidden
-// transitions in `row_bad` (and symmetrically `col_bad`) reduces each axis to
-// a 2-state chain DP; the answer is the sum of the two optimal costs (or -1).
+// Source: Codeforces 2096C (Wonderful City), https://codeforces.com/contest/2096/problem/C
+// Problem: an n x n grid of heights; raising all of row i by 1 costs a[i], all of column j costs
+//   b[j], each at most once. Print the least cost that leaves no two side-adjacent cells equal,
+//   or -1. n <= 1000, sum of n <= 1000; multitest.
+// Solution: a row raise keeps every horizontal difference and a column raise every vertical
+//   one, so rows and columns are independent. Rows i - 1, i raised by p, q in {0, 1} clash when
+//   some column has h[i, j] - h[i - 1, j] = p - q; mark those pairs, then a 2-state chain DP
+//   gives the cheapest rows (and, the same way, columns). Answer: the sum, O(n^2).
 
 @!multitest
 let n: 1..=1000 = read()

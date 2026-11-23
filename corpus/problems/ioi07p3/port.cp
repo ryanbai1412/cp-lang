@@ -1,3 +1,11 @@
+// Source: IOI 2007 P3 (Sails), https://dmoj.ca/problem/ioi07p3
+// Problem: N <= 1e5 masts, mast i of height H_i <= 1e5 with K_i <= H_i sails, at most one per
+//   unit height. A sail costs the number of sails behind it at its height. Print the least total.
+// Solution: only the count c at each height matters (total sum c(c - 1) / 2), not the mast order.
+//   Taking masts by height, each greedily puts its K sails on the K least-used heights in 1..=H.
+//   Counts stay non-increasing in height, so those are the heights below v = count[H - K + 1] up
+//   to H, plus the leftmost end of the block equal to v; adding there keeps the order. A range-add
+//   segment tree with binary searches, O(N log^2 H).
 // Runnable port (proto/cp.py lib-run) of statement-first ioi07p3.cp
 // original: corpus/submissions/5120005.cpp
 

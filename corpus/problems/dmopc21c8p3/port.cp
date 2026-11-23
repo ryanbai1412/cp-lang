@@ -1,3 +1,12 @@
+// Source: DMOPC '21 Contest 8 P3 (Weaker Data), https://dmoj.ca/problem/dmopc21c8p3
+// Problem: print the lexicographically smallest permutation of 1..N with exactly K valleys,
+//   triples i < j < k with P_i > P_j < P_k, or -1. N <= 1e6, K <= 1e18.
+// Solution: place values from the smallest up: the smallest unplaced value is the middle of
+//   l * r valleys, l and r the free positions left and right of it. ways[i], the most valleys
+//   i values make (l, r split evenly each time), is capped at K + 1. A value takes the first
+//   free position while the rest can still make the remaining count, else the middle one (offset
+//   1 in the lone case of 5 left and 4 needed). A Fenwick tree over free positions finds the
+//   chosen one. O(N log N).
 // Runnable port (proto/cp.py lib-run) of dmopc21c8p3.cp
 // original: corpus/submissions/4537755.cpp
 

@@ -1,3 +1,11 @@
+// Source: DMOPC '21 Contest 8 P2 (Kanna Market), https://dmoj.ca/problem/dmopc21c8p2
+// Problem: a 2 x N grid, some cells known, the rest 0 (unknown); fill each unknown with 1..M so
+//   that every 2 x 2 square has the same sum. Count the fillings mod 1e9 + 7. N, M <= 1e6.
+// Solution: equal 2 x 2 sums means columns two apart have the same sum, so each parity class
+//   picks one sum x and the classes are independent. A full column forces x, a half-known column
+//   with value c allows c + 1..=c + M (a difference array counts how many columns allow x), and
+//   each blank column has min(x - 1, 2M + 1 - x) fillings. A class gives the sum over allowed x of
+//   ways(x)^blanks; multiply the two. O(N + M log N).
 // Runnable port (proto/cp.py lib-run) of dmopc21c8p2.cp
 // original: corpus/submissions/4522631.cpp
 
