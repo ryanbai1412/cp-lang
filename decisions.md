@@ -6096,3 +6096,17 @@ constants and the `exit(3)` in the C++ runtime, and the sentence in
 - **Why.** M1's exit ("0 happy-path-only rules") counted rules nobody can
   write a reject case for, which hid the ones that need one.
 - **Reverse.** Delete `permits.txt`; the rules return to `rule-gaps.txt`.
+
+## 248. An undirected graph's `edges()` gives the end first in `V` as `u` (2026-11-22)
+
+- **Decision.** `Graph.edges()` yields `Edge(e, u, v)` with the ends as built
+  for `Graph.directed`, and with `u` the end that comes first in `V` for
+  `Graph.undirected`. Case:
+  `spec/conformance/std-graph/edges-undirected-ends-in-v-order.cp`.
+- **Why.** The doc said "as given to the build", but `Graph.undirected`
+  stores the arcs `u -> v` and `v -> u` for each edge and nothing else, so
+  edges `(1, 0)` and `(0, 1)` build equal graphs and the order can't be
+  recovered. Keeping it would cost a stored bit or end per edge in every
+  undirected graph, for a method no port or spec chapter calls.
+- **Reverse.** Store each edge's `u` (or an orientation bit) in `Graph` at
+  build, have `edges()` read it, and make the case expect `0 1 0`.

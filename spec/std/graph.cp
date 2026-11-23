@@ -362,13 +362,14 @@ pub struct Graph<V: Domain, A: Target<V>>:
             assert head == V.K, "hops: graph is not strongly connected"
         out
 
-    /// Every edge once, as `Edge(e, u, v)` with its ends as given to the build. Needs arcs that
-    /// keep `e`; the graph keeps one source arc per edge.
+    /// Every edge once, as `Edge(e, u, v)`. A directed graph gives the ends as built; an
+    /// undirected one stores the same two arcs for `(u, v)` and `(v, u)`, so `u` is the end that
+    /// comes first in `V` (decision 248). Needs arcs that keep `e`.
     ///
     /// cost: O(1) to make, O(1) per edge
     /// order: increasing `e`
     /// traps: never
-    /// example: `domain V = 0..3; domain E = 0..2; let es: [E](u: V, v: V) = [(u: 1, v: 0), (u: 0, v: 2)]; Graph.undirected(es).edges().collect() == [Edge(0, 1, 0), Edge(1, 0, 2)]`
+    /// example: `domain V = 0..3; domain E = 0..2; let es: [E](u: V, v: V) = [(u: 1, v: 0), (u: 0, v: 2)]; Graph.undirected(es).edges().collect() == [Edge(0, 0, 1), Edge(1, 0, 2)] and Graph.directed(es).edges().collect() == [Edge(0, 1, 0), Edge(1, 0, 2)]`
     pub fn edges<E>(self) -> yields Edge<V, E> where A: Edged<E>:
         var seen: [E]Bool = false
         var us: [E]?V = None
@@ -3515,7 +3516,8 @@ pub struct IncrementalBridges<V>:
     pub fn same(mut self, u: V, v: V) -> Bool =
         self._find_cc(u.to_idx) == self._find_cc(v.to_idx)
 
-/// O(1): one edge of a `Graph`: its id and its ends as given.
+/// O(1): one edge of a `Graph`: its id and its ends (as built for a directed graph, first in
+/// `V` order for an undirected one).
 pub struct Edge<V, E>(e: E, u: V, v: V)
 
 /// `directed_of_pairs` on named `(u, v)` arcs: neighbour lists indexed by vertex.
