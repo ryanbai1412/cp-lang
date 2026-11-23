@@ -53,7 +53,7 @@ fn build1(u: Int):
             return
 
 // --- kv == 2 ---
-let NEG = -1_000_000_000_000_000_000
+let neg = -1_000_000_000_000_000_000
 domain S2 = 0..4 * n
 var memo2: [S2]Int = -1
 
@@ -92,7 +92,7 @@ struct Res2:
 fn opt2(u: Int, k1: Int, k2: Int) -> Res2:
     let t1 = topk_children(u, 2, k1)
     let t2 = topk_children(u, 2, k2)
-    var bv = NEG
+    var bv = neg
     var b1 = -1
     var b2 = -1
     for i in 0..t1.len:
@@ -115,7 +115,7 @@ fn opt3(u: Int, k1: Int, k2: Int, k3: Int) -> Res3:
     let t1 = topk_children(u, 3, k1)
     let t2 = topk_children(u, 3, k2)
     let t3 = topk_children(u, 3, k3)
-    var bv = NEG
+    var bv = neg
     var b1 = -1
     var b2 = -1
     var b3 = -1

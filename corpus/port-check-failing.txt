@@ -86,7 +86,6 @@ cco22p4
 cco22p5
 cco23p1
 cco23p2
-cco23p5
 cco23p6
 cco24p2
 cco24p5
