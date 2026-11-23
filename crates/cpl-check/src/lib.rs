@@ -25,8 +25,9 @@ mod prelude;
 mod ty;
 
 pub use builtins::{
-    builtin_member, builtin_members, foreign_iter_call, foreign_member, foreign_str_fn,
-    prelude_names, BuiltinMember, MemberKind, PreludeKind, Receiver, BUILTIN_MEMBERS,
+    builtin_member, builtin_members, char_literal, foreign_iter_call, foreign_member,
+    foreign_str_fn, prelude_names, BuiltinMember, MemberKind, PreludeKind, Receiver,
+    BUILTIN_MEMBERS,
 };
 pub use check::{closest, GlobalRef, HoverEntry, TypedIndex};
 pub use db::{

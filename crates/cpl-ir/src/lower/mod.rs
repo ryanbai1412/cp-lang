@@ -1034,7 +1034,7 @@ impl<'a> Lowerer<'a> {
             return;
         }
         let message = crate::show::mismatch(&self.show(want), &self.show(found), found);
-        self.error(codes::TYPE_MISMATCH, span, message);
+        self.type_mismatch(span, want, found, message);
     }
 
     /// Each domain by the name it is written with: one made for a `D`

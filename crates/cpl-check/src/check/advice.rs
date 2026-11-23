@@ -102,6 +102,18 @@ impl Checker<'_> {
         diag.fix(format!("write `{ours}`"), call.span, ours);
     }
 
+    /// `"a"` where a `Char` is wanted: a character is in single quotes.
+    pub(super) fn char_literal_fix(&mut self, got: &Ty, want: &Ty, at: &Expr) -> bool {
+        if let (Ty::Str, Ty::Char, Some(c)) = (got, want, crate::char_literal(&self.text(at.span)))
+        {
+            if let Some(diag) = self.sink.last_mut().filter(|d| d.span == at.span) {
+                diag.help = Some(format!("a character is written in single quotes: `{c}`"));
+                diag.fix(format!("write `{c}`"), at.span, c);
+            }
+        }
+        false
+    }
+
     /// `x in xs` on a list: `in` is sub-linear only, so a scan is spelled
     /// out as `xs.contains(x)`.
     pub(super) fn list_in(&mut self, op: CmpOp, x: &Expr, xs: &Expr, ty: &Ty, alone: bool) {

@@ -232,6 +232,37 @@ impl<'a> Lowerer<'a> {
         }
     }
 
+    /// A one-character string where a `Char` or a `Char` test is wanted:
+    /// `'a'`, or `c => c == 'a'`.
+    pub(super) fn type_mismatch(&mut self, span: Span, want: &Ty, found: &Ty, message: String) {
+        self.error(codes::TYPE_MISMATCH, span, message);
+        let Some(c) = cpl_check::char_literal(&self.source(span)) else {
+            return;
+        };
+        let (new, help) = match (found, want) {
+            (Ty::Str, Ty::Char) => (c.clone(), "a character is written in single quotes"),
+            (Ty::Str, Ty::Fn(args, ret))
+                if matches!(args.as_slice(), [Ty::Char]) && matches!(**ret, Ty::Bool) =>
+            {
+                (
+                    format!("c => c == {c}"),
+                    "a test on each character is a lambda",
+                )
+            }
+            _ => return,
+        };
+        let edit = self.span(span);
+        if let Some(last) = self
+            .diags
+            .last_mut()
+            .filter(|d| d.code == codes::TYPE_MISMATCH)
+        {
+            last.help = Some(format!("{help}: `{new}`"));
+            last.fixes.clear();
+            last.fix(format!("write `{new}`"), edit, new);
+        }
+    }
+
     /// JavaScript's `x.toFixed(2)`: a float's digits are set in its
     /// interpolation, `"{x:.2}"` (R10).
     pub(super) fn to_fixed_fix(

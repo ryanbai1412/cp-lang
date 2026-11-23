@@ -1,0 +1,8 @@
+error[E0302]: expected `(Char) -> Bool`, found `Str`
+  --> char_literal_count.cp:2:15
+  |
+2 | print(s.count("a"))
+  |               ^^^
+  = help: a test on each character is a lambda: `c => c == 'a'`
+
+char_literal_count.cp: 1 error

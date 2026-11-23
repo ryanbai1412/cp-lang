@@ -3661,7 +3661,7 @@ impl<'a> Checker<'a> {
                 diag.help = Some(help);
             }
         }
-        false
+        self.char_literal_fix(got, want, at)
     }
 }
 

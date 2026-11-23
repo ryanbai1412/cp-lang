@@ -118,6 +118,15 @@ pub fn foreign_iter_call(name: &str) -> bool {
     matches!(name, "iter" | "into_iter" | "chars")
 }
 
+/// A one-character string literal's `Char` spelling: `"a"` is `'a'`.
+pub fn char_literal(text: &str) -> Option<String> {
+    let inner = text.strip_prefix('"')?.strip_suffix('"')?;
+    let mut chars = inner.chars();
+    let c = chars.next()?;
+    (chars.next().is_none() && !matches!(c, '\'' | '\\' | '{' | '}' | '"'))
+        .then(|| format!("'{c}'"))
+}
+
 /// Another language's name for a std `Str` function: Python's `upper`
 /// or `strip`, Java's `toUpperCase`.
 pub fn foreign_str_fn(name: &str) -> Option<&'static str> {

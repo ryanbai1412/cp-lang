@@ -1,0 +1,8 @@
+error[E0302]: `c` is declared a Char, but `"a"` is a Str
+  --> char_literal_let.cp:1:15
+  |
+1 | let c: Char = "a"
+  |               ^^^
+  = help: a character is written in single quotes: `'a'`
+
+char_literal_let.cp: 1 error
