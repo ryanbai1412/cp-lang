@@ -137,7 +137,7 @@ Marker type for the stock `flip` action.
 - `fn desc<T>(x: T) -> Desc<T>` — \(O(1)\); `x` wrapped so that it compares the other way round: `desc(a) < desc(b)` exactly when `b < a`.
 - `fn fold<T, M, S: Seq>(m: M, xs: S) -> T` — \(O(n)\) calls of `op`; `xs` folded left to right with `m`: `op(op(op(id, x0), x1), x2)`, so a non-commutative `m` sees elements in sequence order.; traps: never (an `m` without a known identity is a compile-time error)
 - `fn point_action<T, F, M>(id: F, compose: (F, F) -> F, apply: (F, T) -> T, over: M) -> Action<T, F>` — \(O(1)\); An `Action` whose `apply` ignores the span: `apply(f, val, span) == apply(f, val)`.
-- `fn cmp<T: Ord>(a: T, b: T) -> Ordering` — \(O(1)\) plus one or two comparisons of `T`; The three-way comparison of `a` and `b` under `Ord`.
+- `fn cmp<T: Ord>(self: T, other: T) -> Ordering` — \(O(1)\) plus one or two comparisons of `T`; The three-way comparison of `self` and `other` under `Ord`: `cmp(a, b)` or `a.cmp(b)`.
 - `fn minmax<T: Ord>(a: T, b: T) -> (T, T)` — \(O(1)\) plus one comparison of `T`; The pair `(min(a, b), max(a, b))` in the operands' own type: two `Cut`s give two `Cut`s.
 - `fn each<Ms>(..ms: Ms) -> Each<Ms>` — \(O(1)\) to build; each call costs the sum of its components; One operation per component of a tuple (positional) or record (named): `op((a0, a1), (b0, b1)) == (m0(a0, b0), m1(a1, b1))`.
 

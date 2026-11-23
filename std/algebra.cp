@@ -495,15 +495,16 @@ pub enum Ordering:
     Equal
     Greater
 
-/// The three-way comparison of `a` and `b` under `Ord`.
+/// The three-way comparison of `self` and `other` under `Ord`: `cmp(a, b)` or `a.cmp(b)`.
 ///
 /// cost: \(O(1)\) plus one or two comparisons of `T`
 /// traps: never
 /// example: `cmp(1, 2) == Ordering.Less`
 /// example: `cmp("b", "a") == Ordering.Greater`
 /// example: `cmp(3, 3) == Ordering.Equal`
-pub fn cmp<T: Ord>(a: T, b: T) -> Ordering =
-    if a < b: Ordering.Less elif b < a: Ordering.Greater else: Ordering.Equal
+/// example: `3.cmp(5) == Ordering.Less`
+pub fn cmp<T: Ord>(self: T, other: T) -> Ordering =
+    if self < other: Ordering.Less elif other < self: Ordering.Greater else: Ordering.Equal
 
 /// The pair `(min(a, b), max(a, b))` in the operands' own type: two `Cut`s give two `Cut`s.
 ///
