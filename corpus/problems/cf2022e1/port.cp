@@ -35,6 +35,6 @@ fn unite(a: Line, b: Line, v: Label) -> Bool:
     true
 
 let cells = read<[k](r: 1..=n, c: 1..=m, v: Label)>()
-let consistent = cells.all(x => unite(Line(x.r), Line(n + x.c), x.v))
+let consistent = cells.all((r, c, v) => unite(Line(r), Line(n + c), v))
 let parts = Line.count(x => up[x] == x)
 print(if consistent: Z(2) ** (30 * (parts - 1)) else: 0)
