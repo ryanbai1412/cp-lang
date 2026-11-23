@@ -1,4 +1,4 @@
-// expect: E0608 at 10
+// expect: E0608 at 8
 // rule: 02.1.2
 // After `let k = B(n, xs).m()` moves `xs`, reading `xs` again is a use after move.
 struct B(n: Int, d: List<Int>):

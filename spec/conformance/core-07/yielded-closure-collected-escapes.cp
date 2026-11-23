@@ -1,4 +1,4 @@
-// expect: E0603 at 8
+// expect: E0603 at 6
 // rule: 05.10.2
 // A closure a generator yields may write the generator's locals only while a plain `for` runs between its yields;
 // collecting the values keeps the closures after the generator returns, as `return`ing one would.
