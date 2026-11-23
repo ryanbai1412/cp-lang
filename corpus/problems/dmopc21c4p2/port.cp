@@ -1,4 +1,10 @@
-// Runnable port (proto/cp.py lib-run) of dmopc21c4p2.cp
+// Source: DMOPC '21 Contest 4 P2 (Festive Groups), https://dmoj.ca/problem/dmopc21c4p2
+// Problem: split N <= 2e6 numbers J_i <= 5e6 into the fewest groups such that each group's
+//   minimum divides every member; print the number of groups.
+// Solution: an element needs its own group exactly when no element before it in sorted order
+//   divides it; otherwise it joins that divisor's group. Sort, then for each x list its
+//   divisors from a sieve factorization and keep x only if no divisor is kept already.
+//   O(J log log J + sum of divisor counts).
 // original: corpus/submissions/4125290.cpp
 
 let n: Int = read()

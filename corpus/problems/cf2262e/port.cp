@@ -1,9 +1,13 @@
-// Codeforces 2262 E — Catalan-Squared Generating Function & Taylor Shift
-//
-// Compute `ans[k] = choose(2n, k) / (k + 1) * [u^(n+1)] (u * sum C_i^2 u^i)^(k+1)`
-// modulo the runtime prime `m` (`convolve` over `Mod<m>` takes three primes
-// and CRT), then apply the binomial Taylor shift `ans(x - 1)`:
-// `out[j] = sum_{k=j..n} ans[k] * choose(k, j) * (-1)^(k - j)`.
+// Source: Codeforces 2262E (Paired Bracket Sequences),
+//   https://codeforces.com/contest/2262/problem/E
+// Problem: for each k = 0..n, count ordered pairs (s, t) of balanced bracket sequences of length
+//   2n with exactly k common pairings (matched pairs (i, j) in both), modulo a prime M in
+//   [1e8, 1e9]. n <= 500, multitest, sum n <= 500.
+// Solution: ans[k] counts pairs with k marked common pairings: the marks cut the sequence into
+//   k + 1 balanced regions, a region of length 2i has C_i^2 choices of (s, t), and Lagrange
+//   inversion gives ans[k] = C(2n, k) / (k + 1) [u^(n+1)] S^(k+1), S = sum C_i^2 u^(i+1).
+//   Powers of S by convolve over Mod<M> (three NTT primes and CRT), O(n^2 log n); then exact
+//   counts by inclusion-exclusion, out[j] = sum_k (-1)^(k-j) C(k, j) ans[k], O(n^2).
 
 @!multitest
 let (n, m): (1..=500, 2..=2 * 10 ** 9) = read()

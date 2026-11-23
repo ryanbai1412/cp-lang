@@ -1,5 +1,10 @@
-// EGOI '23 P1 (Inflation): prices as a multiset keyed by (price - global
-// inflation); SET x y merges bucket x into bucket y.
+// Source: EGOI 2023 Day 1 P1 (Inflation), https://dmoj.ca/problem/egoi23p1
+// Problem: N <= 3e5 prices p_i <= 1e6, then Q <= 1e5 days, each "INFLATION x" (add x to every
+//   price) or "SET x y" (every price equal to x becomes y), x, y <= 1e6. After each day print
+//   the sum of all prices (needs 64 bits).
+// Solution: keep a global offset and a map from price - offset to its count; the sum is the
+//   sum of keys + N * offset. SET moves the whole count at key x - offset onto y - offset and
+//   adds (y - x) * count to the key sum. O((N + Q) log N).
 // Runnable on proto/cpc today.
 // original: corpus/submissions/5678049.cpp
 let n: Int = read()

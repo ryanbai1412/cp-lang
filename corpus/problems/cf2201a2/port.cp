@@ -1,15 +1,12 @@
-// Codeforces 2201 A2 — Lost Civilization (Hard Version)
-//
-// Sum the minimum remaining size over all subarrays `a[l..=r]`. Without any
-// absorptions, the sum of all subarray lengths is
-// `sum_{len=1..n} len * (n - len + 1) = n * (n + 1) * (n + 2) / 6`.
-//
-// Processing indices in descending `a[i]` (ties left-to-right) on the live
-// doubly linked list `(prv, nxt)`, element `i` is absorbed by its nearest
-// surviving predecessor `p = prv[i]` with `a[p] == a[i] - 1`. That absorption
-// occurs in every subarray `[l, r]` containing both `p` and `i` (`l <= p` and
-// `r >= i`), of which there are `(p + 1) * (n - i)`, so unlinking `i`
-// subtracts `(p + 1) * (n - i)` from the total.
+// Source: Codeforces 2201A2 (Lost Civilization, Hard Version),
+//   https://codeforces.com/contest/2201/problem/A2
+// Problem: a generator repeatedly inserts x + 1 right after some element x; f(b) is the shortest
+//   start sequence that can produce b. Given a of n <= 3e5 values (a_i <= 1e9), print the sum
+//   of f over all subarrays. Multitest, sum n <= 3e5.
+// Solution: start from the sum of all lengths, n(n + 1)(n + 2) / 6, and subtract each removal.
+//   Take indices by decreasing a (ties left to right) on a linked list of survivors: i is
+//   removed by its nearest surviving left neighbour p when a[p] = a[i] - 1, in every subarray
+//   holding both, (p + 1)(n - i) of them; then unlink i. O(n log n) for the sort.
 
 @!multitest
 let n: 1..=300_000 = read()

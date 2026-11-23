@@ -1,8 +1,10 @@
-// DWITE 2010 R3 #3 Dominos Tiling: five test cases, each the number of ways
-// to tile a 3 by n board with dominoes, modulo 10^6.
-// Column by column. `filled` is the set of this column's cells already
-// covered by dominoes lying across from the previous column; choose which
-// free cells start a lying domino, and the rest must pair up vertically.
+// Source: DWITE '10 R3 #3 (Dominos Tiling), https://dmoj.ca/problem/dwite10c3p3
+// Problem: five lines, each a width 0 <= N <= 30; for each print the number of domino tilings
+//   of a 3 x N board, modulo 10^6.
+// Solution: DP column by column over the set of the column's cells already covered by dominoes
+//   lying in from the left: choose which free cells start a lying domino into the next
+//   column; the rest must pair up vertically (none, the top two or the bottom two).
+//   O(N * 8 * 8) per width.
 // original: corpus/submissions/4804312.cpp
 const MOD = 1_000_000
 domain Cell = 0..3  // the cells of one column, top to bottom

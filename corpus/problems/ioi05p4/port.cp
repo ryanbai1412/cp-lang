@@ -1,5 +1,13 @@
-// IOI 2005 Birthday, as it builds today: the circular gaps are a loop over
-// list offsets with the wrap-around written beside it (batch 6 S17).
+// Source: IOI 2005 Day 2 (Birthday), https://dmoj.ca/problem/ioi05p4
+// Problem: n <= 1e6 children sit in order 1..n around a round table; reseat them so the circle
+//   reads p_1..p_n in either direction, each child moving left or right. Print the minimum
+//   possible largest distance any child moves.
+// Solution: for one direction and a rotation s, the child put on seat i moves the circular
+//   distance between s and its shift (i - p_i) mod n. Sort the n shifts: the best s is the
+//   middle of the shortest arc holding them all, n minus the largest gap, so the answer is
+//   (n - gap + 1) / 2. Take the better of p and its mirror. O(n log n).
+// As it builds today: the circular gaps are a loop over list offsets with the wrap-around
+// written beside it (batch 6 S17).
 // original: corpus/submissions/5044895.cpp
 let n: 1..=1e6 = read()
 domain Seat = 1..=n

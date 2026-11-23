@@ -1,10 +1,10 @@
-// Codeforces 2137 D — Replace with Occurrences
-//
-// Every distinct label assigned to positions with `b[i] == x` must appear
-// exactly `x` times, so a valid array `a` exists iff for every `x in 1..=n`,
-// the count of positions with `b[i] == x` is divisible by `x`. When valid,
-// partition each `groups[x]` into chunks of size `x` and assign a fresh label
-// to each chunk.
+// Source: Codeforces 2137D (Replace with Occurrences),
+//   https://codeforces.com/contest/2137/problem/D
+// Problem: given b of length n <= 2e5 (1 <= b_i <= n), build a with 1 <= a_i <= n where the
+//   value a_i occurs exactly b_i times in a, or print -1. Multitest, sum n <= 2e5.
+// Solution: positions with b_i = x split into groups of x sharing one label, so a exists iff
+//   the count of each x is a multiple of x. Bucket positions by b, cut each bucket into chunks
+//   of x, and give each chunk a fresh label (numbered by first position). O(n log n).
 
 @!multitest
 let n: 1..=200_000 = read()
