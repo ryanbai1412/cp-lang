@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- Accept cases for 4 more negative-only rules (all pass): R08.5.4 `core-08/match-stored-shape-only.cp`, R08.5.3 `core-08/generic-over-seq-capability.cp`, R04a.9.5 `core-04/filter-iterates-without-keys.cp`, R07.1.7 `core-07/costs-show-getters-vs-calls.cp`. `conformance-coverage.py` -> 47 rule gaps.
 - First accept cases for 5 negative-only rules: `core-11/mod-uses-sibling.cp` (fails: sibling `use` unresolved, compiler request), `core-06/generator-lend-ends-at-last-use.cp`, `core-07/slice-view-then-write.cp`, `core-08/default-method-override-once.cp`, `core-05/cache-field-own-method-writes.cp` (pass).
 - R07.2.5 probe: writing into a range element is an internal R0001 trap, not a compile error; `Range.push` names `Counter`. Compiler and diagnostics requests; no reject case until a code exists.
 - `701193ef` still missed after two cases aimed at it (both pass, `uv run scripts/conformance-bugcatch.py --commits 701193ef` -> `0/1 caught`); no checker-accepted program reaches the changed IR path that I could find, so the repro is asked of compiler.

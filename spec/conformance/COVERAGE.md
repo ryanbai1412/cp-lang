@@ -7,7 +7,7 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 2232 (995 passing). Rules: 531.
+Cases: 2236 (995 passing). Rules: 531.
 
 ## Summary per chapter
 
@@ -15,12 +15,12 @@ Cases: 2232 (995 passing). Rules: 531.
 - R02 (02-values-types.md): 51 rules, 100 cases; 0 uncovered, 7 happy-path only, 0 negative only
 - R03 (03-numbers-layout.md): 24 rules, 58 cases; 0 uncovered, 6 happy-path only, 1 negative only
 - R04 (04-indices.md): 61 rules, 89 cases; 0 uncovered, 1 happy-path only, 0 negative only
-- R04a (04a-identity-vs-offset.md): 39 rules, 50 cases; 0 uncovered, 1 happy-path only, 3 negative only
+- R04a (04a-identity-vs-offset.md): 39 rules, 51 cases; 0 uncovered, 1 happy-path only, 2 negative only
 - R04b (04b-keys.md): 27 rules, 62 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R05 (05-ownership.md): 43 rules, 144 cases; 0 uncovered, 3 happy-path only, 2 negative only
 - R06 (06-control-functions.md): 24 rules, 75 cases; 0 uncovered, 1 happy-path only, 0 negative only
-- R07 (07-sequences.md): 88 rules, 109 cases; 0 uncovered, 2 happy-path only, 1 negative only
-- R08 (08-traits-generics.md): 29 rules, 73 cases; 0 uncovered, 2 happy-path only, 4 negative only
+- R07 (07-sequences.md): 88 rules, 110 cases; 0 uncovered, 2 happy-path only, 0 negative only
+- R08 (08-traits-generics.md): 29 rules, 75 cases; 0 uncovered, 2 happy-path only, 2 negative only
 - R09 (09-contexts-checks.md): 25 rules, 48 cases; 0 uncovered, 6 happy-path only, 0 negative only
 - R10 (10-io.md): 16 rules, 66 cases; 0 uncovered, 1 happy-path only, 0 negative only
 - R11 (11-modules-prelude.md): 15 rules, 30 cases; 0 uncovered, 1 happy-path only, 1 negative only
@@ -39,18 +39,18 @@ negative case. Complete: rules with no gap in `rule-gaps.txt`.
 | R02 | 51 | 51 (100%) | 29 | 22 (75%) | 44 (86%) |
 | R03 | 24 | 23 (95%) | 17 | 11 (64%) | 17 (70%) |
 | R04 | 61 | 61 (100%) | 14 | 13 (92%) | 60 (98%) |
-| R04a | 39 | 36 (92%) | 4 | 3 (75%) | 35 (89%) |
+| R04a | 39 | 37 (94%) | 4 | 3 (75%) | 36 (92%) |
 | R04b | 27 | 27 (100%) | 6 | 6 (100%) | 27 (100%) |
 | R05 | 43 | 41 (95%) | 23 | 20 (86%) | 38 (88%) |
 | R06 | 24 | 24 (100%) | 17 | 16 (94%) | 23 (95%) |
-| R07 | 88 | 87 (98%) | 24 | 22 (91%) | 85 (96%) |
-| R08 | 29 | 25 (86%) | 15 | 13 (86%) | 23 (79%) |
+| R07 | 88 | 88 (100%) | 24 | 22 (91%) | 86 (97%) |
+| R08 | 29 | 27 (93%) | 15 | 13 (86%) | 25 (86%) |
 | R09 | 25 | 25 (100%) | 18 | 12 (66%) | 19 (76%) |
 | R10 | 16 | 16 (100%) | 8 | 7 (87%) | 15 (93%) |
 | R11 | 15 | 14 (93%) | 9 | 8 (88%) | 13 (86%) |
 | R12 | 17 | 17 (100%) | 6 | 6 (100%) | 17 (100%) |
 | R13 | 22 | 22 (100%) | 7 | 4 (57%) | 19 (86%) |
-| all | 531 | 518 (97%) | 225 | 187 (83%) | 480 (90%) |
+| all | 531 | 522 (98%) | 225 | 187 (83%) | 484 (91%) |
 
 ## Rules
 
@@ -286,7 +286,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R04a.9.2 [1+ 1-]: | `.rev` | source keys, walked backwards | renumbered from the far end
 - R04a.9.3 [1+ 1-]: | `.even`, `.step(k)` | source keys, strided | renumbered `0, 1, 2…`
 - R04a.9.4 [1+ 0-]: | `.map(f)` | source keys | renumbered
-- R04a.9.5 [0+ 1-] *negative only*: | `.filter(p)`, generators | no keys (`Seq`) | no keys
+- R04a.9.5 [1+ 1-]: | `.filter(p)`, generators | no keys (`Seq`) | no keys
 - R04a.9.6 [1+ 0-]: | `.keyed().items` | `(counter, x)`, counter from 0 | `(counter, x)`
 - R04a.9.7 [1+ 0-]: | `.items` | `(key, x)` | `(offset, x)`
 - R04a.11.1 [3+ 0-]: **Order-based pairing** for every operation that combines two sequences (group A).
@@ -407,7 +407,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R07.1.4 [1+ 1-]: **Identity everywhere.** Every slice keeps its source's keys (`a[l..=r][i] == a[i]`, `s[2....
 - R07.1.5 [1+ 1-]: **Views are lent values with the rules of `mut a[i]`.** A value built from a lent part is ...
 - R07.1.6 [1+ 0-]: **Prefix scans are indexed by cuts.** `pre[c]` folds left of `c`; `pre[v]` folds through `...
-- R07.1.7 [0+ 1-] *negative only*: **Costs show.** O(1) things are getters or views, allocation is named, options are named a...
+- R07.1.7 [1+ 1-]: **Costs show.** O(1) things are getters or views, allocation is named, options are named a...
 - R07.2.1 [2+ 0-]: | **sequence** (`Seq<T>`) | anything a `for` can walk, in order | either | everything in t...
 - R07.2.2 [2+ 0-]: | **indexed sequence** (`Indexed<K, T>`) | a sequence that also has O(1) `s[k]`, `.keys` a...
 - R07.2.3 [2+ 0-]: | **key** | what an indexed sequence is indexed by: a domain position (`V`) or an `Int` of...
@@ -519,8 +519,8 @@ Each rule: positive / negative case counts, then the gap if any.
 - R08.4.4 [0+ 4-] *negative only*: Nine safety rules (decision 146): no hidden heap copies, no field reordering visible to th...
 - R08.5.1 [1+ 1-]: No inheritance, subclassing or default-method overriding chains.
 - R08.5.2 [1+ 2-]: No overloading by type, no implicit conversions, no orphan impls.
-- R08.5.3 [0+ 1-] *negative only*: No higher-kinded types; capability traits on sequences (`07-sequences.md`) and associated ...
-- R08.5.4 [0+ 1-] *negative only*: No user-defined patterns (decision 132) and no macros.
+- R08.5.3 [1+ 1-]: No higher-kinded types; capability traits on sequences (`07-sequences.md`) and associated ...
+- R08.5.4 [1+ 1-]: No user-defined patterns (decision 132) and no macros.
 
 ### R09: 09-contexts-checks.md
 
