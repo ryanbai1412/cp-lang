@@ -14,7 +14,7 @@ domain Slot = 0..=moduli.len
 // exponent counts modulo phi(m), plus phi(m)).
 fn power(e: Int, big: Bool, m: Int) -> (big: Bool, val: Int):
     let exp = if big: e + phi(m) else: e
-    var (val, reached, acc) = (1 % m, false, 1)
+    var (reached, acc) = (false, 1)
     for _ in 0..min(exp, 64):
         acc = min(acc * base, m)
         reached = reached or acc >= m
