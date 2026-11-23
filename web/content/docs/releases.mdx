@@ -38,6 +38,10 @@ lists what is still open.
 
 - `none` becomes `None` and `some` becomes `Some`. The 0.2.2 compiler
   already accepts both spellings.
+- `D.bounds` is now `D.cuts`, `(+, max)` is `each(+, max)`,
+  `.enumerate()` is `.keyed().items`, `@alt(main)` is `@alt(program)`, and
+  `@allow(x)` is `with lint(x: allow)`. Each old spelling is error E0503,
+  whose fix writes the new one; `cpl migrate` applies them all.
 
 ## 0.2.2 (2026-11-20)
 

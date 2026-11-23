@@ -9,14 +9,14 @@ rows naming no existing check, from `scripts/debt-ratchet.json`; they only go do
 |---|---|---|---|
 | [compiler](domains/compiler/README.md) | 15 | 1 | 2 |
 | [debugger](domains/debugger/README.md) | 19 | 14 | 0 |
-| [diagnostics](domains/diagnostics/README.md) | 19 | 1 | 0 |
+| [diagnostics](domains/diagnostics/README.md) | 20 | 1 | 0 |
 | [idioms](domains/idioms/README.md) | 13 | 1 | 3 |
 | [infra](domains/infra/README.md) | 15 | 0 | 0 |
 | [lint-fmt](domains/lint-fmt/README.md) | 20 | 0 | 0 |
 | [perf](domains/perf/README.md) | 18 | 3 | 0 |
-| [site](domains/site/README.md) | 17 | 8 | 3 |
-| [spec](domains/spec/README.md) | 21 | 6 | 0 |
-| [stdlib](domains/stdlib/README.md) | 19 | 30 | 3 |
+| [site](domains/site/README.md) | 17 | 7 | 3 |
+| [spec](domains/spec/README.md) | 21 | 5 | 0 |
+| [stdlib](domains/stdlib/README.md) | 19 | 29 | 3 |
 | [tech-debt](domains/tech-debt/README.md) | 30 | 0 | 3 |
 | [tools](domains/tools/README.md) | 18 | 22 | 0 |
 
@@ -87,6 +87,7 @@ rows naming no existing check, from `scripts/debt-ratchet.json`; they only go do
 | golden errors with a help line | 40 help lines / 58 errors (38 of 58 errors, 66%) | >= 90% |
 | front end: cold check of a 5002-line file (release) | 34 ms median, 48 ms max (5002 lines); keystroke 4 ms | < 50 ms (the test's budget) |
 | budget: cpl run answers < 200 ms, cpl build < 1 s and fits 64 KB (release) | 2 of 2 pass | 2 of 2 |
+| diag_mutation_score | 0.997 (288 caught, 1 missed, 1 timeout, 15 unviable of 305) | >= 0.98 |
 
 ## idioms
 
@@ -312,10 +313,10 @@ catalogue was first written and only go down; M1 readiness gaps are every open M
 
 | Area | Use cases | Supported | Partial | Gap | Claimed without evidence | M1 baseline gaps | M1 readiness gaps |
 |---|---|---|---|---|---|---|---|
-| play | 12 | 6 | 6 | 0 | 0 | 1 | 1 |
+| play | 12 | 7 | 5 | 0 | 0 | 1 | 1 |
 | seq | 67 | 35 | 16 | 15 | 0 | 4 | 21 |
-| stress | 27 | 20 | 5 | 2 | 0 | 1 | 1 |
-| all | 106 | 61 | 27 | 17 | 0 | 6 | 23 |
+| stress | 33 | 20 | 6 | 7 | 0 | 1 | 5 |
+| all | 112 | 62 | 27 | 22 | 0 | 6 | 27 |
 
 ## Open questions (`plan/QUESTIONS.md`)
 
