@@ -1049,11 +1049,17 @@ impl<'a> Checker<'a> {
     /// L0610: a `mut` parameter the body never changes. Its callers must
     /// pass a place as `mut` for nothing.
     pub(crate) fn unchanged_mut_params(&mut self, f: &cpl_syntax::ast::FnDecl) {
+        let lends_mut = |name: &str| {
+            f.lends.as_ref().is_some_and(|l| {
+                l.mutable && (l.sources.is_empty() || l.sources.iter().any(|s| s.text == name))
+            })
+        };
         for p in &f.params {
             if !p.mutable
                 || p.variadic
                 || p.name.text == "self"
                 || self.changed_params.contains(&p.name.span)
+                || lends_mut(&p.name.text)
             {
                 continue;
             }
@@ -1071,6 +1077,20 @@ impl<'a> Checker<'a> {
                 diag.fix(format!("take `{name}` without `mut`"), at, String::new());
             }
             self.sink.push(diag);
+        }
+    }
+
+    /// `sol.recv()` or `st.get(i)` on a `mut` parameter may change it, so
+    /// L0610 stays quiet about that parameter.
+    fn method_call_on_param(&mut self, base: &cpl_syntax::ast::Expr) {
+        if let Some((name, _)) = Self::root_name(base) {
+            if let Some(local) = self
+                .local(name)
+                .filter(|l| l.mutable && l.keyword == "param")
+            {
+                let span = local.span;
+                self.changed_params.insert(span);
+            }
         }
     }
 

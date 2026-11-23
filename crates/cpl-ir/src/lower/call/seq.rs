@@ -219,6 +219,37 @@ impl<'a> Lowerer<'a> {
             }
             [ast::Arg {
                 name: Some(by),
+                value:
+                    ast::Expr {
+                        kind: ast::ExprKind::Lambda { params, .. },
+                        ..
+                    },
+                ..
+            }] if by.text == "by" && params.len() > 1 => {
+                let (first, last) = (&params[0], &params[params.len() - 1]);
+                let message = format!(
+                    "`sort(by:)` takes a key of one element, but this lambda takes {} parameters",
+                    params.len()
+                );
+                self.error(codes::WRONG_ARG_COUNT, first.span.to(last.span), message);
+                let key = match &elem {
+                    Ty::Record(fields) => format!(
+                        "x => ({})",
+                        fields
+                            .iter()
+                            .map(|(f, _)| format!("x.{f}"))
+                            .collect::<Vec<_>>()
+                            .join(", ")
+                    ),
+                    _ => "x => x".to_string(),
+                };
+                self.help(&format!(
+                    "take one element and return its key, e.g. `{key}`; wrap a part in `desc(..)` to reverse it"
+                ));
+                return self.err_expr(span);
+            }
+            [ast::Arg {
+                name: Some(by),
                 value,
                 ..
             }] if by.text == "by" => {

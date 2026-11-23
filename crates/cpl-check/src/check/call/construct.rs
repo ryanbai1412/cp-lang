@@ -367,6 +367,17 @@ impl Checker<'_> {
                 Ty::Fn { params: wanted, .. },
             ) = (&arg.value.kind, &want)
             {
+                let takes: Vec<Ty> = wanted.iter().map(|p| p.ty.clone()).collect();
+                let destructures =
+                    matches!(takes.as_slice(), [Ty::Tuple(items)] if items.len() == params.len());
+                if !takes.is_empty()
+                    && params.len() != takes.len()
+                    && !destructures
+                    && param_tys.iter().all(Option::is_none)
+                {
+                    self.lambda_arity_mismatch(params, &takes);
+                    continue;
+                }
                 self.type_lambda_params(params, param_tys, wanted);
             }
             // `Node([none, none], 0)`: a list written out where an array is

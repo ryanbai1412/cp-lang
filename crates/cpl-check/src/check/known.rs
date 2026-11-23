@@ -427,6 +427,37 @@ impl<'a> Checker<'a> {
         Ty::Unknown
     }
 
+    /// `rows.sort(by: (a, b) => ..)`: the call passes the lambda one
+    /// element, so a key of two parameters is a comparator it can't take.
+    pub(crate) fn lambda_arity_mismatch(
+        &mut self,
+        params: &[cpl_syntax::ast::Pattern],
+        given: &[Ty],
+    ) {
+        let (Some(first), Some(last)) = (params.first(), params.last()) else {
+            return;
+        };
+        let passed = given.len();
+        let noun = if passed == 1 { "argument" } else { "arguments" };
+        let what = given
+            .iter()
+            .map(|t| format!("`{t}`"))
+            .collect::<Vec<_>>()
+            .join(", ");
+        let message = format!(
+            "this lambda takes {} parameters, but the call passes it {passed} {noun}: {what}",
+            params.len()
+        );
+        let help = if passed == 1 {
+            "take one parameter".to_string()
+        } else {
+            format!("take {passed} parameters")
+        };
+        if let Some(diag) = self.error(codes::WRONG_ARG_COUNT, first.span.to(last.span), message) {
+            diag.help = Some(help);
+        }
+    }
+
     /// `c.bump()` where `bump` takes `mut self` changes `c`, so `c` is a
     /// `var`, a `mut` parameter, or the `mut self` of the calling method.
     /// Without this the call works on a copy and the change is lost.

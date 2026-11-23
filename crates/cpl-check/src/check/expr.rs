@@ -275,6 +275,9 @@ impl<'a> Checker<'a> {
                 self.infer(walk)
             }
             ExprKind::Call { callee, args } => {
+                if let ExprKind::Field { base, .. } = &callee.kind {
+                    self.method_call_on_param(base);
+                }
                 let ty = self.call(expr, callee, args);
                 self.member_for_call(expr, callee, args);
                 ty
@@ -454,6 +457,13 @@ impl<'a> Checker<'a> {
                     if params.len() > 1 && items.len() == params.len() {
                         given = items.clone();
                     }
+                }
+                if !given.is_empty()
+                    && params.len() != given.len()
+                    && param_tys.iter().all(Option::is_none)
+                {
+                    self.lambda_arity_mismatch(params, &given);
+                    given = vec![Ty::Error; params.len()];
                 }
                 self.push_scope();
                 let mut sig_params = Vec::with_capacity(params.len());
