@@ -651,6 +651,43 @@ impl<'a> Taste<'a> {
             }
         }
 
+        // Form 3 (4 statements): `var sub: List<T> = []` + `for k in l..r: sub.push(xs[k])` +
+        // `sub.sort(..)` + writeback
+        if matches!(&init.kind, ExprKind::List(items) if items.is_empty()) {
+            let &(loop_base, loop_stmt) = stmts.get(i + 1)?;
+            let StmtKind::For {
+                pat, iter, body, ..
+            } = &loop_stmt.kind
+            else {
+                return None;
+            };
+            let PatternKind::Name(var) = &pat.kind else {
+                return None;
+            };
+            let ExprKind::Range { lo, step: None, .. } = &iter.kind else {
+                return None;
+            };
+            let [push] = body.stmts.as_slice() else {
+                return None;
+            };
+            let StmtKind::Expr(call) = &push.kind else {
+                return None;
+            };
+            let (base, ix) = plain_index(pushed_onto(call, sub_name)?)?;
+            if expr_name(ix) != Some(var.as_str()) || base == sub_name {
+                return None;
+            }
+            let (method, args) = match_in_place_mut_stmt(self.src, stmts.get(i + 2)?, sub_name)?;
+            return Some(CopyMutate {
+                target: base.to_string(),
+                range: at(loop_base, iter.span).to_string(),
+                lo: lo.as_ref().map(|e| at(loop_base, e.span).to_string()),
+                method,
+                args,
+                wb_idx: i + 3,
+            });
+        }
+
         None
     }
 

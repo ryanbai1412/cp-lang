@@ -1499,6 +1499,20 @@ fn dropping_leading_prelude_imports_leaves_no_leading_blank_line() {
     assert_eq!(fixed(src), "let x = 1\n");
 }
 #[test]
+fn newcomer_sieve_and_push_copy_sort() {
+    let sieve = "let n: 1..=1000 = read()\nvar comp: [0..=n]Bool = false\nvar primes: List<Int> = []\nfor i in 2..=n:\n    if not comp[i]:\n        primes.push(i)\n        var j = i * i\n        while j <= n:\n            comp[j] = true\n            j += i\nprint(primes.len)\n";
+    assert!(taste_codes(sieve).contains(&"L0518"), "{:?}", codes(sieve));
+    let copy = "let (n, l, r): (1..=100, 0..=99, 1..=100) = read()\nvar a: [0..n]Int = read()\nvar tmp: List<Int> = []\nfor i in l..r:\n    tmp.push(a[i])\ntmp.sort()\nfor i in l..r:\n    a[i] = tmp[i - l]\nprint(a)\n";
+    assert!(taste_codes(copy).contains(&"L0522"), "{:?}", codes(copy));
+    let out = fixed(copy);
+    assert!(
+        out.contains("a[l..r].sort()") && !out.contains("tmp"),
+        "{out}"
+    );
+    assert!(crate::fix_tests::checker_errors(&out).is_empty(), "{out}");
+}
+
+#[test]
 fn running_totals_teach_prefix() {
     let push = "let a: List<Int> = read()\nvar cur = 0\nvar out: List<Int> = []\nfor x in a:\n    cur += x\n    out.push(cur)\nprint(out)\n";
     let store = "let n: 1..=9 = read()\ndomain I = 0..n\nlet a: [I]Int = read()\nvar s: [I]Int = 0\nvar run = 0\nfor i in I:\n    run += a[i]\n    s[i] = run\nprint(s)\n";

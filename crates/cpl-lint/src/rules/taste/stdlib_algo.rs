@@ -306,7 +306,7 @@ pub(super) fn is_sieve_loop(outer_var: &str, body: &Block) -> bool {
                         if let Some(v) = expr_name(inner) {
                             let marks = matches!(
                                 &walk::unparen(value).kind,
-                                ExprKind::Bool(false) | ExprKind::Int(0)
+                                ExprKind::Bool(_) | ExprKind::Int(0)
                             ) || expr_name(value) == Some(self.outer);
                             if marks {
                                 self.marked_vars.push(v.to_string());
