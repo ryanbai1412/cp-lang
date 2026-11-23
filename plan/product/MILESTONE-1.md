@@ -48,7 +48,6 @@ Afterwards they can give meaningful feedback on expressiveness, correctness mech
 These don't block the milestone unless testing shows they are essential:
 
 - Comprehensive advanced standard-library coverage.
-- Polished time-travel debugging and trace visualization.
 - Automatic generation and shrinking for arbitrary input structures.
 - Advanced static performance analysis and inline resource annotations.
 - Direct submission to judges.
@@ -56,5 +55,9 @@ These don't block the milestone unless testing shows they are essential:
 - Long-range backward compatibility across language versions.
 - Exhaustive beginner tutorials.
 - Compiler optimization beyond competitive parity.
+
+## Milestone 1.5
+
+Debugger replay: time-travel through a run and view the trace, at most +20% over the interpreter. Work on it in parallel as soon as the milestone's stress loop works everywhere.
 
 Scope is set by whether friends can realistically use CPL, not by whether every planned component is finished.
