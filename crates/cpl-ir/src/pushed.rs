@@ -4,7 +4,8 @@
 //! same way in each.
 
 use crate::walk::{self, Effects};
-use crate::{Arg, Block, Expr, ExprKind, Function, LoopId, Program, Stmt};
+use crate::{Arg, Block, Expr, ExprKind, Function, Iter, LoopId, Program, Stmt};
+use cpl_diag::{codes, Diagnostic};
 use std::collections::{BTreeMap, BTreeSet};
 
 /// What a fn does beyond computing its result, counting the fns it calls.
@@ -226,4 +227,83 @@ pub fn returns(body: &Block) -> bool {
     let mut returns = false;
     walk::deep_stmts(body, &mut |stmt| returns |= matches!(stmt, Stmt::Return(_)));
     returns
+}
+
+/// `yields` fns that yield closures writing one of their own locals, each
+/// with the name of such a local: those closures live only while it runs.
+fn yields_lent_closures(program: &Program) -> BTreeMap<usize, String> {
+    let mut lent = BTreeMap::new();
+    for (id, f) in program.fns.iter().enumerate() {
+        if !f
+            .locals
+            .iter()
+            .any(|l| l.name == "__yields" && l.ty.has_fn())
+        {
+            continue;
+        }
+        walk::deep_exprs(&f.body, &mut |e| {
+            if let ExprKind::Closure(cid) = e.kind {
+                let caps = &program.closures[cid].captures;
+                if let Some(cap) = caps.iter().find(|c| c.by_ref && !c.is_global) {
+                    lent.entry(id)
+                        .or_insert_with(|| f.locals[cap.outer].name.clone());
+                }
+            }
+        });
+    }
+    lent
+}
+
+/// A call of such a fn anywhere but as a `for` that runs its body as the
+/// fn yields would keep its closures after its frame is gone, as a
+/// `return`ed closure would (R05.10.2): each is E0603.
+pub fn escaping_yields(program: &Program) -> Vec<Diagnostic> {
+    let lent = yields_lent_closures(program);
+    if lent.is_empty() {
+        return Vec::new();
+    }
+    let feeds = Feeds::of(program);
+    // Loops in a closure or in a fn that may itself be feeding are never fed.
+    let mut fed: BTreeSet<*const Expr> = BTreeSet::new();
+    let fed_bodies = [&program.main, &program.setup].into_iter().chain(
+        (program.fns.iter().enumerate())
+            .filter(|(id, _)| !feeds.pushers.contains_key(id))
+            .map(|(_, f)| &f.body),
+    );
+    for body in fed_bodies {
+        walk::deep_stmts(body, &mut |stmt| {
+            if let Stmt::For(id, _, Iter::Seq(seq, false), inner) = stmt {
+                if feeds.feeds(*id, seq, inner).is_some() {
+                    fed.insert(seq as *const Expr);
+                }
+            }
+        });
+    }
+    let mut diags = Vec::new();
+    let bodies = [&program.main, &program.setup]
+        .into_iter()
+        .chain(program.fns.iter().map(|f| &f.body))
+        .chain(program.closures.iter().map(|c| &c.body));
+    for body in bodies {
+        walk::deep_exprs(body, &mut |e| {
+            let ExprKind::Call(callee, _) = e.kind else {
+                return;
+            };
+            let Some(local) = lent.get(&callee) else {
+                return;
+            };
+            if fed.contains(&(e as *const Expr)) {
+                return;
+            }
+            let name = &program.fns[callee].name;
+            diags.push(Diagnostic::error(
+                codes::LENT_ESCAPES,
+                e.span,
+                format!(
+                    "`{name}` yields closures that write its local `{local}`, and this use keeps them after `{name}` returns; loop over it with a plain `for` instead"
+                ),
+            ));
+        });
+    }
+    diags
 }

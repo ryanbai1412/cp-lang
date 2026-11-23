@@ -408,7 +408,7 @@ impl Lowerer<'_> {
                 }
             }
         }
-        Ok(Program {
+        let program = Program {
             warnings: lw.warnings,
             struct_shown,
             unordered_maps: Vec::new(),
@@ -434,7 +434,12 @@ impl Lowerer<'_> {
             entry_fns,
             raw_lists: lw.raw_lists,
             narrow_elems: lw.narrow_elems,
-        })
+        };
+        let escapes = crate::pushed::escaping_yields(&program);
+        if !escapes.is_empty() {
+            return Err(escapes);
+        }
+        Ok(program)
     }
 }
 
