@@ -1,8 +1,8 @@
 //! `cpl lint`.
 
 use crate::{
-    apply_fixes, checked, fix_checked_removed_syntax, fix_removed_syntax, is_taste, lint, Config,
-    LINTS,
+    apply_fixes, check_errors, checked, fix_checked_removed_syntax, fix_removed_syntax, is_taste,
+    lint, Config, LINTS,
 };
 use cpl_diag::{Diagnostic, Severity};
 use std::collections::BTreeMap;
@@ -165,7 +165,9 @@ pub fn run_with(
         let parsed = cpl_syntax::parse_file(&src);
         if !parsed.diagnostics.is_empty() {
             if !as_json && !taste {
-                show(stdout, &parsed.diagnostics, &name, &src);
+                // What `cpl check` shows, so each root cause is reported
+                // once, as in the editor.
+                show(stdout, &check_errors(Some(file), &src), &name, &src);
             }
             let _ = writeln!(
                 stderr,

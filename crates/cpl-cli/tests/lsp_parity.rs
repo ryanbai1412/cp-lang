@@ -160,19 +160,37 @@ fn the_editor_reports_what_check_and_lint_report_on_every_v03_file() {
     assert!(files.len() > 1000, "only {} v0.3 files found", files.len());
     let mut want = BTreeMap::new();
     rendered("check", &files, &mut want);
-    // `cpl lint` also shows what `cpl check` reported (its lints, L06xx,
-    // and the errors it cannot see past); the editor shows each once, and
-    // its errors are the checker's.
+    // `cpl lint` also shows what `cpl check` reported (the checker's L06xx
+    // lints and the errors lints can't see past); the editor shows each
+    // once. Lint never shows an error `cpl check` doesn't.
     let mut lints = BTreeMap::new();
     rendered("lint", &files, &mut lints);
+    let mut strays = Vec::new();
     for (file, diags) in lints {
-        let checked: &mut Vec<Diag> = want.entry(file).or_default();
-        let fresh: Vec<Diag> = diags
-            .into_iter()
-            .filter(|d| !(d.1.starts_with('E') || checked.contains(d)))
-            .collect();
+        let checked: &mut Vec<Diag> = want.entry(file.clone()).or_default();
+        let errors = |ds: &[Diag]| -> Vec<Diag> {
+            ds.iter()
+                .filter(|d| d.1.starts_with('E'))
+                .cloned()
+                .collect()
+        };
+        if errors(&diags).iter().any(|d| !checked.contains(d)) {
+            strays.push(format!(
+                "{}:\n  cpl check: {:?}\n  cpl lint:  {:?}",
+                file,
+                errors(checked),
+                errors(&diags)
+            ));
+        }
+        let fresh: Vec<Diag> = diags.into_iter().filter(|d| !checked.contains(d)).collect();
         checked.extend(fresh);
     }
+    assert!(
+        strays.is_empty(),
+        "{} files where `cpl lint` shows errors `cpl check` doesn't:\n{}",
+        strays.len(),
+        strays.join("\n")
+    );
     let chunks: Vec<Vec<PathBuf>> = files
         .chunks(files.len().div_ceil(8))
         .map(<[_]>::to_vec)

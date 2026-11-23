@@ -37,7 +37,7 @@ mod walk;
 
 pub mod cli;
 
-pub use checker::{checked, checker_lints, Checked, CheckerLint, CHECKER_LINTS};
+pub use checker::{check_errors, checked, checker_lints, Checked, CheckerLint, CHECKER_LINTS};
 pub use config::{Config, ConfigError};
 pub use facts::Facts;
 pub use typed::{lint_analysis, refine_with_analysis};

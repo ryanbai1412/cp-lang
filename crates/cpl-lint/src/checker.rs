@@ -55,6 +55,23 @@ pub struct Checked {
     pub problems: Vec<Diagnostic>,
 }
 
+/// The errors `cpl check` reports for `src`, one per root cause, for a
+/// file lints cannot parse.
+pub fn check_errors(path: Option<&Path>, src: &str) -> Vec<Diagnostic> {
+    let key = path
+        .map(|p| p.to_string_lossy().into_owned())
+        .unwrap_or_else(|| "<lint>.cp".to_string());
+    let mut db = cpl_check::Database::new();
+    db.set_file(&key, src);
+    let Some(analysis) = db.analyze(&key) else {
+        return Vec::new();
+    };
+    (analysis.diagnostics.iter())
+        .filter(|d| d.severity == Severity::Error)
+        .cloned()
+        .collect()
+}
+
 pub fn checked(path: Option<&Path>, src: &str, config: &Config) -> Checked {
     let Some(regions) = with_parsed(src, |file| Some(Allows::collect(file).regions)) else {
         return Checked::default();
