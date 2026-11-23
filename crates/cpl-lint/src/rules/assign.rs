@@ -1,11 +1,14 @@
 //! `compound_self_ref` (L0210): `x = x + e` is `x += e`, and `chmin_chmax_if`
-//! (L0523): `x = max(x, e)` is `x max= e`; one place written once instead of
+//! (L0523): `x = max(x, e)` and `if e > x: x = e` are `x max= e`; one place written once instead of
 //! two copies that must agree.
 
 use crate::walk::{walk_expr, Visitor};
 use crate::{File, Finding, CHMIN_CHMAX_IF, COMPOUND_SELF_REF};
 use cpl_diag::{Diagnostic, Fix, Span};
-use cpl_syntax::ast::{AssignOp, BinOp, Expr, ExprKind, Stmt, StmtKind};
+use cpl_syntax::ast::{AssignOp, BinOp, CmpOp, Cond, Expr, ExprKind, Stmt, StmtKind};
+
+/// The calls `min=` and `max=` stand for (R01.6.4).
+const MIN_MAX: [&str; 2] = ["min", "max"];
 
 pub(crate) fn check(file: &File) -> Vec<Finding> {
     struct Assigns<'a> {
@@ -15,6 +18,9 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
     }
     impl Visitor for Assigns<'_> {
         fn stmt(&mut self, stmt: &Stmt) {
+            if let StmtKind::Expr(expr) = &stmt.kind {
+                return self.if_min_max(stmt, expr);
+            }
             let StmtKind::Assign {
                 target,
                 op: AssignOp::Set,
@@ -68,9 +74,12 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
             let ExprKind::Name(f) = &callee.kind else {
                 return;
             };
-            let ([a, b], "max" | "min") = (&args[..], f.as_str()) else {
+            let [a, b] = &args[..] else {
                 return;
             };
+            if !MIN_MAX.contains(&f.as_str()) {
+                return;
+            }
             if [a, b].iter().any(|arg| arg.name.is_some() || arg.mutable) || calls(target) {
                 return;
             }
@@ -103,6 +112,79 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
                     Span::new(target.span.end, value.span.end).shift(self.base),
                     format!(" {f}= {}", text(other)),
                 )],
+            });
+            self.out.push(Finding {
+                lint: &CHMIN_CHMAX_IF,
+                diag,
+            });
+        }
+    }
+    impl Assigns<'_> {
+        /// `if e > x: x = e`, `if x > e: x = e`.
+        fn if_min_max(&mut self, stmt: &Stmt, expr: &Expr) {
+            let ExprKind::If {
+                branches,
+                otherwise: None,
+            } = &expr.kind
+            else {
+                return;
+            };
+            let [(Cond::Expr(cond), body)] = &branches[..] else {
+                return;
+            };
+            let ExprKind::Compare { first, rest } = &cond.kind else {
+                return;
+            };
+            let [(op, second)] = &rest[..] else {
+                return;
+            };
+            let [Stmt {
+                kind:
+                    StmtKind::Assign {
+                        target,
+                        op: AssignOp::Set,
+                        value,
+                    },
+                ..
+            }] = &body.stmts[..]
+            else {
+                return;
+            };
+            let greater = match op {
+                CmpOp::Gt | CmpOp::Ge => true,
+                CmpOp::Lt | CmpOp::Le => false,
+                _ => return,
+            };
+            let whole = stmt.span.shift(self.base);
+            if calls(target) || calls(value) || whole.text(self.src).contains("//") {
+                return;
+            }
+            let text = |e: &Expr| e.span.shift(self.base).text(self.src);
+            let squash = |e: &Expr| text(e).split_whitespace().collect::<String>();
+            let sides = (squash(first), squash(second));
+            let (place, val) = (squash(target), squash(value));
+            // `if v > best: best = v` keeps the max; `if best > v` the min.
+            let f = if sides == (val.clone(), place.clone()) {
+                MIN_MAX[greater as usize]
+            } else if sides == (place, val) {
+                MIN_MAX[!greater as usize]
+            } else {
+                return;
+            };
+            let rewrite = format!("{} {f}= {}", text(target), text(value));
+            let mut diag = Diagnostic::warning(
+                CHMIN_CHMAX_IF.code,
+                whole,
+                format!(
+                    "this `if` keeps the {f} in `{}`; this is `{f}=`",
+                    text(target)
+                ),
+            )
+            .with_label(target.span.shift(self.base), "the place it updates")
+            .with_help(format!("write `{rewrite}`"));
+            diag.fixes.push(Fix {
+                title: format!("use `{f}=`"),
+                edits: vec![(whole, rewrite)],
             });
             self.out.push(Finding {
                 lint: &CHMIN_CHMAX_IF,

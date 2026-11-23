@@ -42,9 +42,13 @@ pub(crate) fn refine_with_facts(diags: &mut Vec<Diagnostic>, facts: &Facts) {
     });
 }
 
-/// Whether the place `diag` rewrites, from its start to where its fix
-/// inserts `op=`, has a known type that is not optional.
+/// Whether the place `diag` rewrites, its first label or else from its
+/// start to where its fix inserts `op=`, has a known type that is not
+/// optional.
 fn plain_place(diag: &Diagnostic, facts: &Facts) -> bool {
+    if let Some(label) = diag.labels.first() {
+        return plain_type(facts.place_type(label.span));
+    }
     let Some(end) = diag
         .fixes
         .first()
@@ -53,7 +57,9 @@ fn plain_place(diag: &Diagnostic, facts: &Facts) -> bool {
     else {
         return false;
     };
-    facts
-        .place_type(Span::new(diag.span.start, end))
-        .is_some_and(|ty| !ty.has_vague() && !matches!(ty, Ty::Optional(_)))
+    plain_type(facts.place_type(Span::new(diag.span.start, end)))
+}
+
+fn plain_type(ty: Option<&Ty>) -> bool {
+    ty.is_some_and(|ty| !ty.has_vague() && !matches!(ty, Ty::Optional(_)))
 }
