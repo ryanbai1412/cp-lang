@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- Source-level fn names in traces, DAP frames and trap call stacks (`Box.get`, not the lowered `Box_<type args>_<id>.get`): `Program::fn_display` from `crates/cpl-ir/src/lower/names.rs`, mapped in `crates/cpl-interp/src/trace/lines.rs` and the trap call stack. Made in compiler's crates per the coordinator, noted in their worklog.
 - `perf record` of the budget test (scalar 5.39x, array 5.62x) shows no hot spot left (exec_chunk_core 28%, exec_trace 14%, the rest 1-4%), so further tweaks are noise. Proposed the structural fix in `plan/domains/debugger/design/trace-replay.md`: record lines and frames only, plus snapshots, and recompute values by deterministic replay.
 - `crates/cpl-cli/tests/trace_browser.rs` now fails instead of skipping when `CI` is set and no Chrome is found, so CI cannot pass it silently; no completed CI run since the test landed shows it either way (`gh run list --workflow ci`: 119 cancelled, 45 failed, none in the browser test's partition).
 - Trace overhead, null result: a 64-slot span-to-line cache in `Tracer::line` (instead of the one-entry cache) measured scalar 6.11x/5.69x and array 5.63x/5.61x against a same-build baseline of 5.61x/5.67x (`cargo test --release -p cpl-interp --test trace_log ten_million -- --ignored --nocapture`). Line lookup is not the cost; reverted. The budget test stays red.

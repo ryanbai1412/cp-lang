@@ -531,3 +531,22 @@ print(heap.len)
     assert!(lines.contains(&3), "{lines:?}");
     assert!(lines.contains(&5), "{lines:?}");
 }
+
+#[test]
+fn frames_name_a_generic_method_as_the_source_does() {
+    let source = "\
+struct Box<T>:
+    x: T
+    fn get(self) -> T:
+        let y = x
+        return y
+let b = Box(x: 3)
+print(b.get())
+";
+    let rec = record(source, "", TraceConfig::default());
+    let inside = rec
+        .steps(0..rec.len())
+        .find(|s| s.frames.len() == 2)
+        .expect("a step inside the call");
+    assert_eq!(inside.frames[0].0, "Box.get");
+}

@@ -14,6 +14,7 @@ mod fresh;
 mod keyed;
 mod memo;
 mod mono;
+mod names;
 mod prefix;
 mod range;
 mod stmt;
@@ -362,12 +363,7 @@ impl Lowerer<'_> {
             .map(|s| s.name)
             .collect();
         let mut used_fn_names: HashSet<String> = HashSet::new();
-        let library_fns: Vec<bool> = lw
-            .sigs
-            .iter()
-            .take(lw.bodies.len())
-            .map(|sig| sig.mod_id != 0)
-            .collect();
+        let (library_fns, fn_display) = lw.fn_names();
         let fns = lw
             .bodies
             .into_iter()
@@ -408,6 +404,7 @@ impl Lowerer<'_> {
             globals: lw.globals,
             fns,
             library_fns,
+            fn_display,
             closures: lw.closures,
             main: lw.main_body,
             main_locals: lw.main_locals,

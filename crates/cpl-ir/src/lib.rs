@@ -1173,6 +1173,9 @@ pub struct Program {
     pub fns: Vec<Function>,
     /// By [`FnId`]: whether the fn is an imported module's, not the file's.
     pub library_fns: Vec<bool>,
+    /// Per fn, its name as the source writes it: `Heap.pop` for the method
+    /// lowered as `Heap_Tup2_Int_P0_10.pop`. What traces and call stacks show.
+    pub fn_display: Vec<String>,
     pub closures: Vec<ClosureDef>,
     /// Declared 32-bit element storage layouts for ranged-`Int` arrays, grids,
     /// nested arrays, lists, and all-ranged tuple elements.
@@ -1496,5 +1499,14 @@ impl Program {
             }
             _ => {}
         }
+    }
+}
+
+impl Program {
+    /// The source name of the fn lowered as `name`, or `name` itself.
+    pub fn shown_fn<'a>(&'a self, name: &'a str) -> &'a str {
+        let at = self.fns.iter().position(|f| f.name == name);
+        at.and_then(|i| self.fn_display.get(i))
+            .map_or(name, String::as_str)
     }
 }

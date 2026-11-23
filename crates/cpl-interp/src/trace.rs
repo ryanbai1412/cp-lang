@@ -429,6 +429,8 @@ pub(crate) struct Tracer {
     last_line: std::cell::Cell<(u32, u32)>,
     /// The names of the imported modules' fns (see [`Tracer::step_line`]).
     library: HashSet<String>,
+    /// A fn's source name by its lowered one, where they differ.
+    shown: HashMap<String, String>,
     /// No option drops or filters steps: every write is a step.
     unfiltered: bool,
     source: String,
@@ -554,6 +556,7 @@ impl Tracer {
                 .filter(|(_, &library)| library)
                 .map(|(f, _)| f.name.clone())
                 .collect(),
+            shown: lines::shown_names(program),
             unfiltered: false,
             source: config.source.clone(),
             include_fns,
@@ -942,14 +945,7 @@ impl Tracer {
             fits.then_some((var, path))
         });
         let checkpoint = checkpoint.map(|name| self.checkpoint(name));
-        let frame = self.record_frames.then(|| {
-            let stack: Vec<(&str, u32)> = view
-                .call_frames
-                .iter()
-                .map(|(name, at)| (*name, self.line(*at).max(1)))
-                .collect();
-            self.rec.log.frame(&stack)
-        });
+        let frame = self.record_frames.then(|| self.frame_of(view));
         let stage = self.stage_id();
         self.rec
             .log

@@ -2,6 +2,8 @@
 
 use super::{Tracer, View};
 use cpl_diag::Span;
+use cpl_ir::Program;
+use std::collections::HashMap;
 
 impl Tracer {
     pub fn line(&self, span: Span) -> u32 {
@@ -30,5 +32,34 @@ impl Tracer {
             }
         }
         self.line(at).max(1)
+    }
+}
+
+/// A fn's source name by its lowered one, where they differ.
+pub(super) fn shown_names(program: &Program) -> HashMap<String, String> {
+    (program.fns.iter().zip(&program.fn_display))
+        .filter(|(f, shown)| f.name != **shown)
+        .map(|(f, shown)| (f.name.clone(), shown.clone()))
+        .collect()
+}
+
+impl Tracer {
+    /// The step's call stack, under the names the source gives its fns.
+    pub(super) fn frame_of(&mut self, view: &View) -> u32 {
+        // Taken out so the names it lends outlive the borrow of `self`;
+        // its strings stay where they are, which `Log::frame` relies on.
+        let shown = std::mem::take(&mut self.shown);
+        let stack: Vec<(&str, u32)> = view
+            .call_frames
+            .iter()
+            .map(|(name, at)| {
+                let name = shown.get(*name).map_or(*name, String::as_str);
+                (name, self.line(*at).max(1))
+            })
+            .collect();
+        let frame = self.rec.log.frame(&stack);
+        drop(stack);
+        self.shown = shown;
+        frame
     }
 }

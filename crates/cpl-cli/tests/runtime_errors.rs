@@ -798,3 +798,21 @@ fn prefix_filling_traps_in_interp_and_checked_cpp() {
         );
     }
 }
+
+#[test]
+fn call_stack_names_a_generic_method_as_the_source_does() {
+    let source = "\
+struct Box<T>:
+    xs: List<T>
+    fn at(self, i: Int) -> T:
+        return xs[i]
+let b = Box(xs: [1, 2])
+print(b.at(5))
+";
+    let (code, err) = run_stderr(source, "");
+    assert_eq!(code, 3, "got:\n{err}");
+    assert!(
+        err.contains("note: call stack: Box.at (a.cp:"),
+        "got:\n{err}"
+    );
+}

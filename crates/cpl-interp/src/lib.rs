@@ -430,7 +430,7 @@ fn run_io(
                     .iter()
                     .rev()
                     .map(|&(name, call_span)| Frame {
-                        name: name.to_string(),
+                        name: interp.program.shown_fn(name).to_string(),
                         call_span,
                     })
                     .collect();
@@ -438,7 +438,7 @@ fn run_io(
                 let mut stack = Vec::with_capacity(25);
                 for &(name, call_span) in frames[frames.len() - 16..].iter().rev() {
                     stack.push(Frame {
-                        name: name.to_string(),
+                        name: interp.program.shown_fn(name).to_string(),
                         call_span,
                     });
                 }
@@ -448,7 +448,7 @@ fn run_io(
                 });
                 for &(name, call_span) in frames[..8].iter().rev() {
                     stack.push(Frame {
-                        name: name.to_string(),
+                        name: interp.program.shown_fn(name).to_string(),
                         call_span,
                     });
                 }
