@@ -735,7 +735,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0109 Unmatched closing delimiter: 1 case(s)
 - E0110 Unparenthesized `??` with arithmetic: 1 case(s)
 - E0111 Mixed comparison chain: 2 case(s)
-- E0112 else_falls_through *(0.3)*: 1 case(s)
+- E0112 `let ... else` block falls through: 1 case(s)
 - E0201 Unresolved name: 8 case(s)
 - E0202 Duplicate definition: 3 case(s)
 - E0203 Unknown field or method: 13 case(s)
