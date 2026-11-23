@@ -3,13 +3,15 @@
 //! (`ternary_search_by_hand`), a palindrome test (`palindrome_by_hand`),
 //! nearest smaller or greater positions (`monotone_stack_by_hand`), every
 //! subset by its mask (`subset_masks_by_hand`), neighbouring pairs by index
-//! (`adjacent_by_index`) and the sort order of positions by value
-//! (`argsort_loop`).
+//! (`adjacent_by_index`), the sort order of positions by value
+//! (`argsort_loop`), a factorial table (`fact_tables_by_hand`) and the top
+//! `k` of a heap (`manual_heap_drain`).
 
 use crate::walk::Visitor;
 use crate::{
-    File, Finding, ADJACENT_BY_INDEX, ARGSORT_LOOP, MONOTONE_STACK_BY_HAND, PALINDROME_BY_HAND,
-    SUBMASK_LOOP, SUBSET_MASKS_BY_HAND, TERNARY_SEARCH_BY_HAND,
+    File, Finding, ADJACENT_BY_INDEX, ARGSORT_LOOP, FACT_TABLES_BY_HAND, MANUAL_HEAP_DRAIN,
+    MONOTONE_STACK_BY_HAND, PALINDROME_BY_HAND, SUBMASK_LOOP, SUBSET_MASKS_BY_HAND,
+    TERNARY_SEARCH_BY_HAND,
 };
 use cpl_diag::Diagnostic;
 use cpl_syntax::ast::*;
@@ -84,6 +86,27 @@ fn monotone_pop(c: &str) -> Option<(String, &'static str, &str, &str)> {
         _ => ("next_smaller(strict: false)", "smaller or equal"),
     };
     Some((format!("{a}.{call}"), what, st, i))
+}
+
+/// Whether a `fn` in `src` pushes into `h`: a loop that calls it refills the
+/// heap it pops.
+fn pushed_in_fn(src: &str, h: &str) -> bool {
+    let lines: Vec<&str> = src.lines().collect();
+    let indent = |l: &str| l.len() - l.trim_start().len();
+    lines.iter().enumerate().any(|(n, line)| {
+        if !line.contains(&format!("{h}.push(")) {
+            return false;
+        }
+        let mut depth = indent(line);
+        lines[..n].iter().rev().any(|above| {
+            if above.trim().is_empty() || indent(above) >= depth || depth == 0 {
+                return false;
+            }
+            depth = indent(above);
+            let head = above.trim_start();
+            head.starts_with("fn ") || head.starts_with("pub fn ")
+        })
+    })
 }
 
 /// Whether squashed `body` assigns an element of `xs` (`xs[..] = ..`,
@@ -218,6 +241,125 @@ impl HandSearch<'_> {
         ));
         self.out.push(Finding {
             lint: &SUBSET_MASKS_BY_HAND,
+            diag,
+        });
+    }
+
+    /// `for i in 1..=n: fact[i] = fact[i - 1] * i % P` (or `.push(..)`, or
+    /// `* Z(i)` over a modular type).
+    fn fact_table(&mut self, pat: &Pattern, iter: &Expr, body: &Block) {
+        let text = |s: cpl_diag::Span| squash(s.shift(self.base).text(self.src));
+        let i = text(pat.span);
+        let [only] = body.stmts.as_slice() else {
+            return;
+        };
+        let it = text(iter.span);
+        let Some(n) = it
+            .strip_prefix("1..=")
+            .or_else(|| it.strip_prefix("1.."))
+            .or_else(|| it.strip_prefix("2..="))
+        else {
+            return;
+        };
+        if !ident(&i) {
+            return;
+        }
+        let t = text(only.span);
+        let Some(product) = t
+            .split_once('=')
+            .and_then(|(x, rhs)| {
+                let x = x.strip_suffix(&format!("[{i}]"))?;
+                ident(x).then_some(())?;
+                rhs.strip_prefix(&format!("{x}[{i}-1]*"))
+            })
+            .or_else(|| {
+                let (x, rest) = t.split_once(".push(")?;
+                ident(x).then_some(())?;
+                let rest = rest.strip_suffix(')')?;
+                rest.strip_prefix(&format!("{x}[{i}-1]*"))
+                    .or_else(|| rest.strip_prefix(&format!("{x}.last!*")))
+            })
+        else {
+            return;
+        };
+        let (factor, modulus) = match product.split_once('%') {
+            Some((f, m)) => (f, Some(m)),
+            None => (product, None),
+        };
+        let ty = if factor == i {
+            None
+        } else {
+            let Some(ty) = factor
+                .strip_suffix(&format!("({i})"))
+                .filter(|ty| ident(ty))
+            else {
+                return;
+            };
+            Some(ty)
+        };
+        let z = match (modulus, ty) {
+            (Some(p), None) if p.chars().all(|c| c.is_ascii_digit() || c == '_') => {
+                format!("Mod<{p}>")
+            }
+            (None, Some(ty)) => ty.to_string(),
+            _ => return,
+        };
+        let diag = Diagnostic::warning(
+            FACT_TABLES_BY_HAND.code,
+            only.span.shift(self.base),
+            "a factorial table built by hand",
+        )
+        .with_help(format!(
+            "write `let comb = Comb<{z}>({n})` (`std.mod`): `comb.fact(i)` is `i!`, `comb.inv_fact(i)` is `1 / i!` and `comb.choose(a, b)` the binomial, with no table or `%` to keep in step"
+        ));
+        self.out.push(Finding {
+            lint: &FACT_TABLES_BY_HAND,
+            diag,
+        });
+    }
+
+    /// `for _ in 0..k:` popping a heap with `h.pop()!` and never pushing it.
+    fn heap_drain(&mut self, stmt: &Stmt, iter: &Expr, body: &Block) {
+        let raw = iter.span.shift(self.base).text(self.src).trim();
+        let Some(k) = raw.strip_prefix("0..").map(str::trim) else {
+            return;
+        };
+        let whole = squash(body.span.shift(self.base).text(self.src));
+        let file = squash(self.src);
+        let pops: Vec<_> = whole.match_indices(".pop()").collect();
+        let [(at, _)] = pops.as_slice() else {
+            return;
+        };
+        if !whole[*at..].starts_with(".pop()!") {
+            return;
+        }
+        let Some(h) = whole[..*at]
+            .rsplit(|c: char| !(c.is_alphanumeric() || c == '_'))
+            .next()
+            .filter(|h| ident(h))
+        else {
+            return;
+        };
+        let heap = ["=", ":"].iter().any(|sep| {
+            ["MinHeap<", "MaxHeap<", "Heap<"]
+                .iter()
+                .any(|ty| file.contains(&format!("var {h}{sep}{ty}")))
+        });
+        if !heap || whole.contains(&format!("{h}.push(")) || pushed_in_fn(self.src, h) {
+            return;
+        }
+        let head = stmt.span.shift(self.base);
+        let head = cpl_diag::Span::new(head.start, iter.span.shift(self.base).end);
+        let diag = Diagnostic::warning(
+            MANUAL_HEAP_DRAIN.code,
+            head,
+            format!("the top `{k}` of `{h}` popped one by one"),
+        )
+        .with_help(format!(
+            "write `for x in {h}.drain().take({k})` (`std.heap`): the same elements in the same order, each named, stopping early when `{h}` runs out instead of trapping on `pop()!`"
+        ));
+        self.out.push(Finding {
+            lint: &MANUAL_HEAP_DRAIN,
             diag,
         });
     }
@@ -364,6 +506,8 @@ impl Visitor for HandSearch<'_> {
             self.palindrome(stmt, pat, iter, body);
             self.subset_masks(stmt, pat, iter, body);
             self.adjacent(stmt, pat, iter, body);
+            self.fact_table(pat, iter, body);
+            self.heap_drain(stmt, iter, body);
         }
         let StmtKind::While {
             cond: Cond::Expr(cond),

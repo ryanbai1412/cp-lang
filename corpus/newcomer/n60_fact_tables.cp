@@ -1,7 +1,7 @@
 let (n, q): (1..=1000000, 1..=200000) = read()
 var fact: List<Int> = [1 for _ in 0..=n]
 for i in 1..=n:
-    fact[i] = fact[i - 1] * i % 998244353  // expect: missing fact_tables_by_hand, manual_mod_reduce
+    fact[i] = fact[i - 1] * i % 998244353  // expect: fact_tables_by_hand
 fn inv(x: Int) -> Int:  // expect: hand_rolled_pow
     var b = x
     var e = 998244351
