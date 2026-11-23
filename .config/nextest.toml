@@ -3,6 +3,12 @@
 [profile.default]
 slow-timeout = { period = "60s", terminate-after = 4 }
 
+# These walk every std item or corpus token through the LSP; std_items takes
+# ~210 s in a debug build on a busy VM, so the job's own cap bounds them.
+[[profile.default.overrides]]
+filter = 'binary_id(cpl-lsp::std_items) | binary_id(cpl-lsp::hover_tokens)'
+slow-timeout = { period = "60s", terminate-after = 10 }
+
 # Start the longest tests first so none of them begins near the end of the
 # run and becomes its tail. Ordered by measured wall time on the fast gate.
 [[profile.default.overrides]]
