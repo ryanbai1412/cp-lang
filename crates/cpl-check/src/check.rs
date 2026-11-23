@@ -1149,8 +1149,13 @@ pub fn closest<'c>(name: &str, candidates: impl Iterator<Item = &'c str>) -> Opt
         2..=4 => 1,
         _ => 2,
     };
+    // A value named like a type (`cnt` for `Int`) is a different name, not
+    // a slip, unless only the capital differs (`vec` for `Vec`).
+    let upper = |s: &str| s.chars().next().is_some_and(char::is_uppercase);
+    let head = |s: &str| s.chars().next().map(|c| c.to_ascii_lowercase());
     candidates
         .filter(|c| *c != name)
+        .filter(|c| upper(c) == upper(name) || head(c) == head(name))
         .map(|c| (edit_distance(name, c), c))
         .filter(|(d, _)| *d <= limit)
         // A word stopped short (`sorte`) means the longer name.
