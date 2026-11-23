@@ -168,7 +168,7 @@ const steps: { id: string; title: string; body: ReactNode }[] = [
         <p className="mt-3">Windows (PowerShell):</p>
         <Code>{'& ([scriptblock]::Create((irm https://cp-lang.org/install.ps1))) -Channel edge'}</Code>
         <p className="mt-3">
-          Then open a new terminal and run <code>cpl --version</code>. <code>cpl self update</code> fetches newer builds
+          Then open a new terminal and run <code>cpl --version</code>: edge builds print <code>cpl 0.3.0-dev+&lt;commit&gt;</code>, the version these docs describe, and an older <code>0.2.x</code> install needs <code>cpl self update</code>, which also fetches newer builds
           later. On a platform without a binary, build it with Rust:
         </p>
         <Code>{'cargo install --locked --git https://github.com/ryanbai1412/cp-lang cpl-cli\ncpl --version'}</Code>
