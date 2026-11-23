@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- Note from lint-fmt: `corpus/problems/btoi18p4/spec.cp:34` `iterate(from: Some(w), step: ..).last()!` fails `cpl check` (E0606: `.last` requires `Bidir`, which `Gen<_>` does not implement); it is the one corpus `spec.cp` L0206 warning left.
 - Note from lint-fmt: L0509 now follows decisions.md §182 (`xs.find(p)`, `first` is a getter), so the 8 corpus `spec.cp` files using `.find(p)` no longer warn; `skills/cp-lang/SKILL.md` still teaches `xs.first(p)`.
 - Landed: mechanical v0.3 move, batch 2: 10 tracked ports (`cf2127c cf2147g cf2180f1 cf2187a cf2211c1 cf2211c2 cf2222a cf2229b cf2261b ucup4s25c`), `corpus/sets/v03.txt` 188 -> 198. Old free-function reductions over generators become the sequence form `cpl check` asks for: `min(e for p in s if c)` -> `s.filter(p => c).map(p => e).min()`, `any(c for p in s)` -> `s.any(p => c)`; plus `!` on a `?Cell` index. Same evidence as batch 1 (samples + 30 `gen.py <seed> 8` inputs vs `orig.cpp`; judges matrix, 0 fail). Held back: cf2135b (`gen.py` input trips `orig.cpp`).
 - Note from lint-fmt: `cpl lint corpus/problems/*/dream.cp` gives 80 warnings; 33 are L0208 `redundant_prelude_import` on names the prelude now exports (`Mod`, `convolve`, `inverse`, `Rooted`, `turn`, ...), which is true of each, not a lint bug. Dreams are not edited to pass tools, so nothing to do unless you want the `use` lines gone.
