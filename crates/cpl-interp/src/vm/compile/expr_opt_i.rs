@@ -831,6 +831,49 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 }
                 (dst_val, dst_some)
             }
+            ExprKind::Mutate(Mutation::Take, place, args) if args.is_empty() => {
+                // Taking an optional scalar leaves it in place.
+                if let PlaceKind::Local(slot) = place.kind {
+                    if let SlotLoc::OptI { val, some, .. } = self.slot_loc(slot) {
+                        let dst_val = self.alloc_i();
+                        let dst_some = self.alloc_i();
+                        self.emit(
+                            Op::MoveI {
+                                dst: dst_val,
+                                src: val,
+                            },
+                            span,
+                        );
+                        self.emit(
+                            Op::MoveI {
+                                dst: dst_some,
+                                src: some,
+                            },
+                            span,
+                        );
+                        return (dst_val, dst_some);
+                    }
+                }
+                let src_v = match self.compile_place_path(place) {
+                    Some(path) => {
+                        let dst = self.alloc_v();
+                        self.emit(Op::TakePlaceV { dst, path }, span);
+                        dst
+                    }
+                    None => self.emit_fallback_expr_v(expr),
+                };
+                let dst_val = self.alloc_i();
+                let dst_some = self.alloc_i();
+                self.emit(
+                    Op::UnboxOptI {
+                        dst_val,
+                        dst_some,
+                        src_v,
+                    },
+                    span,
+                );
+                (dst_val, dst_some)
+            }
             _ => {
                 let src_v = self.emit_fallback_expr_v(expr);
                 let dst_val = self.alloc_i();

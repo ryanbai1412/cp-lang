@@ -1014,6 +1014,15 @@ impl<'p, 'f> Compiler<'p, 'f> {
                     }
                     _ => {}
                 }
+                // Taking a scalar leaves it in place: a read of the place.
+                if let Some(path) = self.compile_place_path(place) {
+                    let src_v = self.alloc_v();
+                    self.emit(Op::TakePlaceV { dst: src_v, path }, span);
+                    let dst_i = self.alloc_i();
+                    self.emit(Op::UnboxI { dst_i, src_v }, span);
+                    self.emit(Op::ClearV { reg: src_v }, span);
+                    return dst_i;
+                }
                 self.emit_fallback_expr_i(expr)
             }
             ExprKind::Binary(BinOp::Coalesce, lhs, rhs)

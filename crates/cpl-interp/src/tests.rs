@@ -1494,3 +1494,15 @@ print(u)
         "{msg}"
     );
 }
+
+#[test]
+fn vm_swaps_optional_elements_itself() {
+    let out = vm_runs_alone(
+        include_str!("../../cpl-cli/tests/programs/vm_swap_opt_elements.cp"),
+        include_str!("../../cpl-cli/tests/programs/vm_swap_opt_elements.in"),
+    );
+    assert_eq!(
+        out,
+        include_str!("../../cpl-cli/tests/programs/vm_swap_opt_elements.out")
+    );
+}
