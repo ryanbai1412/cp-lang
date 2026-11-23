@@ -8,6 +8,6 @@ ways[0, 0] = 1
 for (r, c) in (Row, Col):
     if grid[r, c] == '#':
         continue
-    if let (pr, pc) = (r, c).step(Dir4.up()):
+    if let (pr, pc) = (r, c).step(Dir4.up):
         ways[r, c] += ways[pr, pc]
 print(ways[Row(h - 1), Col(w - 1)])

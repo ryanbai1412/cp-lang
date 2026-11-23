@@ -9,7 +9,7 @@ use crate::{File, Finding, DX_DY_ARRAYS, GRID_BOUNDS_CHECK, GRID_NEIGHBOUR_STEP}
 use cpl_diag::Diagnostic;
 use cpl_syntax::ast::{BinOp, CmpOp, Cond, Expr, ExprKind, PatternKind, Stmt, StmtKind};
 
-const STEP_HELP: &str = "declare `domain R = 0..h`, `domain C = 0..w` and the grid over `[R, C]`, then read the neighbour with `if let (pr, pc) = (r, c).step(Dir4.up())` (`std.grid`): a step off the grid is `none`, so there is no edge test to get wrong";
+const STEP_HELP: &str = "declare `domain R = 0..h`, `domain C = 0..w` and the grid over `[R, C]`, then read the neighbour with `if let (pr, pc) = (r, c).up` (`std.grid`): a step off the grid is `none`, so there is no edge test to get wrong";
 const BOUNDS_HELP: &str = "declare the grid over `[R, C]` (`domain R = 0..h`), then step with `for d in Dir4.all()` and `if let (nx, ny) = (x, y).step(d)` (`std.grid`): a step off the grid is `none`, so there are no bounds to write";
 
 pub(crate) fn check(file: &File) -> Vec<Finding> {
