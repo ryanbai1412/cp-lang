@@ -632,6 +632,15 @@ pub fn proven_indexes_parsed(src: &str, items: &[(u32, &ParsedItem)]) -> Vec<Pro
     rules::proven_indexes(&File { src, items })
 }
 
+/// `proven_loops_parsed` and `proven_indexes_parsed` from one proof of the
+/// file, for a caller that wants both: each alone proves the whole file.
+pub fn proven_loops_and_indexes_parsed(
+    src: &str,
+    items: &[(u32, &ParsedItem)],
+) -> (Vec<ProvenLoop>, Vec<ProvenIndex>) {
+    rules::proven_loops_and_indexes(&File { src, items })
+}
+
 /// Each `for` over a bounded range or domain, with how often it runs.
 pub fn proven_loops(src: &str) -> Vec<ProvenLoop> {
     with_parsed(src, rules::proven_loops)

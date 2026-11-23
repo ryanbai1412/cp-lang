@@ -717,3 +717,26 @@ fn parsed_entry_points_match_source_entry_points_and_isolate_local_fn_shadowing(
     assert_eq!(range_of(src, "let y"), None);
     assert_eq!(range_of(src, "let ok"), Some((1, 10)));
 }
+
+#[test]
+fn loops_and_indexes_together_match_each_alone() {
+    let dir = concat!(env!("CARGO_MANIFEST_DIR"), "/../../corpus/problems");
+    let mut seen = 0;
+    for name in ["ioi12p6", "coci25c3p4", "cf2124d"] {
+        let Ok(src) = std::fs::read_to_string(format!("{dir}/{name}/port.cp")) else {
+            continue;
+        };
+        let parsed = cpl_syntax::parse_file(&src);
+        let items: Vec<(u32, &cpl_syntax::ParsedItem)> =
+            parsed.items.iter().map(|(o, p)| (*o, p)).collect();
+        let (loops, indexes) = crate::proven_loops_and_indexes_parsed(&src, &items);
+        assert_eq!(loops, crate::proven_loops_parsed(&src, &items), "{name}");
+        assert_eq!(
+            indexes,
+            crate::proven_indexes_parsed(&src, &items),
+            "{name}"
+        );
+        seen += 1;
+    }
+    assert!(seen >= 2, "corpus ports moved");
+}

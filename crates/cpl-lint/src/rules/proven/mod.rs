@@ -29,6 +29,13 @@ pub(crate) fn proven_indexes(file: &File) -> Vec<crate::ProvenIndex> {
     proven(file).indexes
 }
 
+pub(crate) fn proven_loops_and_indexes(
+    file: &File,
+) -> (Vec<crate::ProvenLoop>, Vec<crate::ProvenIndex>) {
+    let p = proven(file);
+    (p.loops, p.indexes)
+}
+
 pub(crate) fn domain_sizes(file: &File) -> Vec<(String, u128)> {
     bounds::Bounds::of(file).domains()
 }
