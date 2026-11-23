@@ -7,11 +7,11 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 2825 (995 passing). Rules: 575.
+Cases: 2826 (995 passing). Rules: 576.
 
 ## Summary per chapter
 
-- R01 (01-lexical-grammar.md): 56 rules, 170 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R01 (01-lexical-grammar.md): 57 rules, 172 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R02 (02-values-types.md): 52 rules, 149 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R03 (03-numbers-layout.md): 24 rules, 69 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04 (04-indices.md): 73 rules, 176 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -45,7 +45,7 @@ negative case. Complete: rules with no gap in `rule-gaps.txt`.
 
 | Chapter | Rules | Accept | Forbidding | Reject | Complete |
 |---|---|---|---|---|---|
-| R01 | 56 | 56 (100%) | 31 | 31 (100%) | 56 (100%) |
+| R01 | 57 | 57 (100%) | 32 | 32 (100%) | 57 (100%) |
 | R02 | 52 | 52 (100%) | 30 | 30 (100%) | 52 (100%) |
 | R03 | 24 | 24 (100%) | 13 | 13 (100%) | 24 (100%) |
 | R04 | 73 | 73 (100%) | 17 | 17 (100%) | 73 (100%) |
@@ -67,7 +67,7 @@ negative case. Complete: rules with no gap in `rule-gaps.txt`.
 | Rlint | 2 | 2 (100%) | 2 | 2 (100%) | 2 (100%) |
 | Rlsp | 5 | 5 (100%) | 1 | 1 (100%) | 5 (100%) |
 | Rstress | 1 | 1 (100%) | 0 | 0 (0%) | 1 (100%) |
-| all | 575 | 574 (99%) | 228 | 228 (100%) | 574 (99%) |
+| all | 576 | 575 (99%) | 229 | 229 (100%) | 575 (99%) |
 
 ## Rules
 
@@ -127,6 +127,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R01.8.6 [1+ 1-]: **Optional chaining**: `x?.f`, `f(x?)` propagate `None`; `x ?? y` falls back lazily; `x!` ...
 - R01.8.7 [1+ 2-]: Members without parentheses are \(O(1)\) (`xs.len`, `t.parent[v]`); anything that does wor...
 - R01.9.1 [2+ 0-]: Decorators are `@name` or `@name(args)` on the next item; the set is closed and listed in ...
+- R01.10.4 [1+ 1-]: EBNF over the token stream. `NL` ends a logical line; `INDENT` and `DEDENT` come from layo...
 - R01.10.3 [1+ 0-]: expr        := lambda | if_expr | match_expr | binary lambda      := lparams '=>' (expr | ...
 - R01.10.1 [5+ 2-]: Call arguments: positional first, named after in any order, each parameter at most once; p...
 - R01.10.2 [1+ 4-]: A program the grammar does not derive is a syntax error, E0103: `var x: Int` with no `= ex...
@@ -993,7 +994,6 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 
 ## Core cases without a `// rule:` line
 
-- core-01/else-if-names-elif.cp
 - core-01/for-filter-on-inner-clause.cp
 - core-01/inline-if-binds-loosest.cp
 - core-01/while-let-tuple-pattern.cp
