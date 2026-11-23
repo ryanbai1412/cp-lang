@@ -2707,7 +2707,7 @@ impl<'a> Lowerer<'a> {
                     self.error(
                         codes::UNKNOWN_TYPE,
                         name.span,
-                        format!("`{}` is not a type `cpl run` knows", name.text),
+                        format!("`{}` is not a type", name.text),
                     );
                     Ty::Error
                 }

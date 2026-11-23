@@ -1,4 +1,4 @@
-error[E0203]: an `Int` has no method `gcd` that `cpl run` knows
+error[E0203]: an `Int` has no method `gcd`
   --> int_method_article.cp:2:9
   |
 2 | print(x.gcd(4))

@@ -1,4 +1,4 @@
-error[E0203]: a `?Int` has no method `unwrap` that `cpl run` knows
+error[E0203]: a `?Int` has no method `unwrap`
   --> optional_unwrap.cp:1:42
   |
 1 | fn best(xs: List<Int>) -> Int = xs.max().unwrap()

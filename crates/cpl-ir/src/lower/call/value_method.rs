@@ -1874,10 +1874,7 @@ impl<'a> Lowerer<'a> {
                     self.error(codes::WRONG_ARG_COUNT, name.span, message);
                     return self.err_expr(span);
                 }
-                let message = format!(
-                    "{} has no method `{method}` that `cpl run` knows",
-                    self.a_ty(&ty)
-                );
+                let message = format!("{} has no method `{method}`", self.a_ty(&ty));
                 self.error(codes::UNKNOWN_FIELD, name.span, message);
                 self.member_typo(&ty, method, name.span);
                 self.foreign_call_fix(&ty, base, method, span);

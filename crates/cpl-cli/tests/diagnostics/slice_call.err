@@ -1,4 +1,4 @@
-error[E0203]: a `List<Int>` has no method `slice` that `cpl run` knows
+error[E0203]: a `List<Int>` has no method `slice`
   --> slice_call.cp:2:10
   |
 2 | print(xs.slice(0, 2))

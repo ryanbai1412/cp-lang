@@ -1,4 +1,4 @@
-error[E0203]: a `List<Int>` has no method `zip` that `cpl run` knows
+error[E0203]: a `List<Int>` has no method `zip`
   --> a_free_fn_called_as_a_method.cp:3:14
   |
 3 | print(List(a.zip(b)))

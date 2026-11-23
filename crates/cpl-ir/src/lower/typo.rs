@@ -152,10 +152,7 @@ impl<'a> Lowerer<'a> {
     /// `List.name(..)` with no such static fn: one error, and `filled` if
     /// it is a typo of that.
     pub(super) fn list_static_typo(&mut self, name: &ast::Name, span: Span) -> Expr {
-        let message = format!(
-            "a `List` has no method `{}` that `cpl run` knows",
-            name.text
-        );
+        let message = format!("a `List` has no method `{}`", name.text);
         self.error(codes::UNKNOWN_FIELD, name.span, message);
         if let Some(s) = cpl_check::closest(&name.text, ["filled"].into_iter()) {
             self.suggest_last(name.span, s);

@@ -1,4 +1,4 @@
-error[E0203]: a `F64` has no method `toFixed` that `cpl run` knows
+error[E0203]: a `F64` has no method `toFixed`
   --> js_to_fixed.cp:2:9
   |
 2 | print(x.toFixed(2))

@@ -1084,11 +1084,7 @@ impl<'a> Lowerer<'a> {
                 {
                     return res;
                 }
-                let message = format!(
-                    "{} has no member `{}` that `cpl run` knows",
-                    self.a_ty(&ty),
-                    name.text
-                );
+                let message = format!("{} has no member `{}`", self.a_ty(&ty), name.text);
                 self.error(codes::UNKNOWN_FIELD, name.span, message);
                 self.member_typo(&ty, &name.text, name.span);
                 match (&ty, name.text.as_str()) {
