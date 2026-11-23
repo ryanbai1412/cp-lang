@@ -173,9 +173,9 @@ def mismatch(interp, cxx):
         return f"interp exit {interp[0]}, c++ timed out twice after {TIMEOUT} s"
     say = f"interp exit {interp[0]}, c++ exit {cxx[0]}"
     for side, out in (("interp", interp), ("c++", cxx)):
-        err = getattr(out, "err", b"").strip().split(b"\n")[0]
+        err = b" | ".join(l.strip() for l in getattr(out, "err", b"").splitlines() if l.strip())
         if out[0] and err:
-            say += f", {side} stderr {err[:120]!r}"
+            say += f", {side} stderr {err[:400]!r}"
     a, b = interp[1].split(b"\n"), cxx[1].split(b"\n")
     for i, (x, y) in enumerate(zip(a, b)):
         if x != y:

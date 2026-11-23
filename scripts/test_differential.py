@@ -43,11 +43,11 @@ class Compare(unittest.TestCase):
         f = self.outcomes((0, b"a\n"), (-11, b""))
         self.assertTrue(df.DETAIL[f].startswith("interp exit 0, c++ exit -11"))
 
-    def test_a_failing_side_names_its_first_stderr_line(self):
+    def test_a_failing_side_shows_its_stderr(self):
         interp = df.Out((3, b""))
         interp.err = b"error[R0001]: internal: lost frame\n  at 4:2\n"
         f = self.outcomes(interp, (0, b"4\n"))
-        self.assertIn("interp exit 3, c++ exit 0, interp stderr b'error[R0001]: internal: lost frame'", df.DETAIL[f])
+        self.assertIn("interp exit 3, c++ exit 0, interp stderr b'error[R0001]: internal: lost frame | at 4:2'", df.DETAIL[f])
 
 
 if __name__ == "__main__":
