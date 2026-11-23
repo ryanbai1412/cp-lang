@@ -3,6 +3,8 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- Rebuild round 8 started at `e254eb449`: ten new Codeforces problems, same brief as round 7. The target is fewer holes than round 7's 33.
+- Release baseline at `808b184eb` (`CPL_CONFORM_RELEASE=1`): 2148 of 2444 cases pass, against 2283 in the interpreter. All 135 that pass only in the interpreter are trap cases. Release runs no checks (R09.2.2), so traps there are out of scope, not disagreements. 0 `ok` or diagnostic cases differ between the interpreter and the C++, and none pass only in release.
 - cpl-conform `CPL_CONFORM_RELEASE=1` runs each case as `cpl run --release` (the judge's C++), and `conformance-bugcatch.py --release` measures backend fixes with it. Closes round 9's blind spot for the two codegen fixes; a full release baseline is running.
 - Seven more of round 7's silent holes pinned as passing cases: pair-destructuring lambdas, `print` of a list of pairs with `sep:`, `min=` with `None`, a domain's `.rev`, `sorted()` of a mapped domain, a runtime range bound, and `abs` on `Int`. Still to do: `abs` has no std declaration (std/math.cp calls it free), so it goes to stdlib.
 - Round 7 silent holes pinned as passing cases: inline `elif` expression, comprehension `if`, `Int(v)` is the written value, top-level `return` under `@!multitest`, an expression count in an array read, an array of a negative range. Each case names its hole.
