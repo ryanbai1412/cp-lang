@@ -11,4 +11,4 @@ The one JSON implementation: value type, RFC 8259 parser, deterministic writer.
 
 Inline `#[cfg(test)]` module in `src/lib.rs`.
 
-Where it sits among the crates: `plan/ARCHITECTURE.md`.
+Where it sits among the crates: `handbook/design/architecture.md`.

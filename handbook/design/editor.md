@@ -117,4 +117,4 @@ targets and current numbers are in `plan/domains/tools/metrics.toml`.
 ## Changes
 
 - 2026-11-23: first version, from `plan/domains/tools/ARCHITECTURE.md` and
-  `plan/ARCHITECTURE.md` (one analysis pipeline).
+  `plan/rearchitecture.md` (one analysis pipeline).

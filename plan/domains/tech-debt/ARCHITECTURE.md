@@ -2,14 +2,14 @@
 
 Read from `main` at `4e2de3cd` (2026-11-22). Counts come from
 `python3 scripts/debt-ratchet.py --show` (offenders: `--list NAME`) unless another command is named.
-The cross-domain target design is [plan/ARCHITECTURE.md](../../ARCHITECTURE.md)
+The cross-domain target design is [handbook/design/architecture.md](../../ARCHITECTURE.md)
 part A; this file is the measured present.
 
 ## Modules this lane owns
 
 | Path | What it is for |
 |---|---|
-| `plan/ARCHITECTURE.md` | Cross-domain map: target layers (part A) and the migration (part B) |
+| `handbook/design/architecture.md` | Cross-domain map: target layers (part A) and the migration (part B) |
 | `scripts/debt-ratchet.py`, `scripts/debt-ratchet.json` | Gate ratchet (step in `scripts/check.sh`): files over 2,000 lines (allowlist), the shipped crate-edge list, and every count in `COUNTERS`, each shrink-only; `--show`/`--list` print the counts behind [metrics.toml](metrics.toml) |
 | `scripts/test_debt_ratchet.py` | Unit tests for the ratchet, run by the fast gate |
 
@@ -45,7 +45,7 @@ cpl-syntax 11,178; cpl-stress 10,561; prover 7,313; cpl-cli 7,226; cpl-lsp
 
 | Interface | Where | Consumers | This lane's job |
 |---|---|---|---|
-| Crate edges | `crates/*/Cargo.toml` | every lane | Edge list frozen; a new edge lands with a `plan/ARCHITECTURE.md` change (M2) |
+| Crate edges | `crates/*/Cargo.toml` | every lane | Edge list frozen; a new edge lands with a `handbook/design/architecture.md` change (M2) |
 | Debt ratchet | `scripts/debt-ratchet.py --check`, baseline `.json` | gate (infra), every lane's commits | Counts only go down; a bump needs a `decisions.md` line |
 | Shared core | [compiler/ARCHITECTURE.md](../compiler/ARCHITECTURE.md) | lint-fmt, tools, diagnostics, perf, debugger, stdlib | Review every interface change against all consumers |
 | Cold-review findings | each lane's `worklog.md` | owning lane | Findings come before that lane's feature work |
@@ -55,7 +55,7 @@ cpl-syntax 11,178; cpl-stress 10,561; prover 7,313; cpl-cli 7,226; cpl-lsp
 - Back ends read the IR, never the checker or syntax (holds in shipped code today).
 - No Rust file over 2,000 lines unless allowlisted in `scripts/debt-ratchet.json`; the allowlist only shrinks.
 - `#[ignore]`, std TODO bodies and pending tests never increase (gate step "debt ratchet").
-- A migration deletes what it replaces (`plan/ARCHITECTURE.md` B2).
+- A migration deletes what it replaces (`plan/rearchitecture.md` B2).
 
 ## Known debt
 
@@ -72,4 +72,4 @@ Ranked; the top 10 is the same list as the [README](README.md#top-10-architectur
 9. **Repository leftovers** (this lane, with stdlib and idioms). The library implementation lives at `std/` (40 files, 151 references to the path); 877 v0.2 `corpus/problems/*/port.cp` files remain; 57 of 68 `origin/devin/*` branches hold commits not on `main`; 13 direct `python3` calls in the gate and `justfile` bypass `uv`.
 10. **Copied helpers** (tools, lint-fmt, compiler). `debt-ratchet.py --list dup_fn_bodies`: `collect` (19 lines) in `crates/cpl-fmt/src/cli.rs:133` and `crates/cpl-lint/src/cli.rs:229` copies `crates/cpl-doc/src/cli.rs:163`; `refutable` in `cpl-ir/src/lower/stmt.rs:6429` copies `cpl-check/src/check/stmt.rs:3159`; `prefix_shape_struct` in `cpl-ir/src/lower/mod.rs:22` copies `cpl-check/src/check.rs:1036`; `block_hash` twice in `crates/cpl-conform`.
 
-Also: 19 `#[ignore]` tests; `plan/ARCHITECTURE.md` part B1 describes `stdlib/` and other pre-restructure paths that no longer match the tree; `research/` holds 1,367 tracked files.
+Also: 19 `#[ignore]` tests; `plan/rearchitecture.md` B1 describes `stdlib/` and other pre-restructure paths that no longer match the tree; `research/` holds 1,367 tracked files.

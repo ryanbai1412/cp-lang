@@ -12,4 +12,4 @@ The incremental front end: `Database` behind `cpl check`, `run`, `build` and `ls
 
 `src/tests.rs` and `src/tests/` (checks, cost, domains), `src/db/tests.rs`, `tests/std_acyclic.rs`; spec cases in `spec/conformance/`.
 
-Where it sits among the crates: `plan/ARCHITECTURE.md`.
+Where it sits among the crates: `handbook/design/architecture.md`.

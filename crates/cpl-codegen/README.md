@@ -12,4 +12,4 @@ Lowers the IR to one deterministic, self-contained C++17 file: layout, widths, f
 
 `src/tests.rs`, `src/copy_tests.rs`, `src/devirt_tests.rs`; end-to-end in `cpl-cli/tests/` and `cpl-conform diff`.
 
-Where it sits among the crates: `plan/ARCHITECTURE.md`.
+Where it sits among the crates: `handbook/design/architecture.md`.

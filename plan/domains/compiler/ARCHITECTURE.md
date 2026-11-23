@@ -1,6 +1,6 @@
 # compiler architecture
 
-The owning lane keeps this current in the same commit as any structural change. It says: the modules and what they are for, the boundaries and invariants, the interfaces other lanes may use (and their consumers), and the known debt. The architecture & tech-debt lane reviews it against the code. Read from main `4b8f504f`, 2026-11-22; line counts from `wc -l`. The target shape is [plan/ARCHITECTURE.md](../../ARCHITECTURE.md); this file is what exists.
+The owning lane keeps this current in the same commit as any structural change. It says: the modules and what they are for, the boundaries and invariants, the interfaces other lanes may use (and their consumers), and the known debt. The architecture & tech-debt lane reviews it against the code. Read from main `4b8f504f`, 2026-11-22; line counts from `wc -l`. The target shape is [handbook/design/architecture.md](../../ARCHITECTURE.md); this file is what exists.
 
 ## Pipeline
 

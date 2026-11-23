@@ -11,4 +11,4 @@ The language server (`cpl lsp`): diagnostics as you type, hover, go-to-definitio
 
 `src/tests.rs` and `src/tests/` (complete, fixes, format, rename), `tests/fixtures.rs`, `tests/fuzz.rs`, `tests/latency.rs`, `tests/ports.rs`.
 
-Where it sits among the crates: `plan/ARCHITECTURE.md`.
+Where it sits among the crates: `handbook/design/architecture.md`.

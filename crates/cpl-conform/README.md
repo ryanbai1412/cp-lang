@@ -12,4 +12,4 @@ One harness for the spec and the corpus: `cpl-conform conformance` (spec cases),
 
 `tests/ratchet.rs`, `tests/shared_database.rs`, `tests/std_cycle_cache.rs`; it is itself the test runner for `spec/conformance/` and `corpus/`.
 
-Where it sits among the crates: `plan/ARCHITECTURE.md`.
+Where it sits among the crates: `handbook/design/architecture.md`.

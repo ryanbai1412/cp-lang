@@ -78,7 +78,7 @@ These run on a schedule, without anyone asking:
 - **Architecture first:** a change that adds a crate, a crate dependency,
   a module or a concept updates the matching design document in
   `handbook/design/` in the same commit. A new crate dependency fails the
-  gate until the crate map in `plan/ARCHITECTURE.md` lists it.
+  gate until the crate map in `handbook/design/architecture.md` lists it.
 - **Change-cost probes** (tech-debt): a fixed set of everyday changes made
   by a fresh agent; files touched and time taken must trend down.
 - **Lane review** (coordinator): every lane's latest report is read; a lane

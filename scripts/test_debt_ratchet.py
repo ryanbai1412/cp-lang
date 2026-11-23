@@ -109,7 +109,7 @@ class DebtRatchetTest(unittest.TestCase):
                         '[package]\nname = "cpl-lint"\n[dependencies]\ncpl-check = "0"\n'
                         '[target.\'cfg(not(target_arch = "wasm32"))\'.dependencies]\ncpl-prover = "0"\n'
                         '[dev-dependencies]\ncpl-cli = "0"\n')
-            self._write(root, "plan/ARCHITECTURE.md", "`crates/cpl-lint` and `crates/gone/x.rs`\n")
+            self._write(root, "handbook/design/architecture.md", "`crates/cpl-lint` and `crates/gone/x.rs`\n")
             self._write(root, "std/zz.cp", "pub fn rotate(self: Int) -> Int = self\n")
             self._write(root, "crates/cpl-lint/src/rules/a.rs", 'if m == "rotate" || m == "tmp" {}\n')
             self._write(root, "crates/cpl-lint/src/rules/tests.rs", 'let _ = "rotate";\n')
@@ -123,7 +123,7 @@ class DebtRatchetTest(unittest.TestCase):
             self.assertEqual(dr.crate_edges(root), ["cpl-lint -> cpl-check", "cpl-lint -> cpl-prover"])
             self.assertEqual(dr.dev_crate_edges(root), ["cpl-lint -> cpl-cli"])
             self.assertEqual(dr.layer_violations(root), ["cpl-lint -> cpl-prover"])
-            self.assertEqual(dr.stale_arch_paths(root), ["plan/ARCHITECTURE.md:1 crates/gone/x.rs"])
+            self.assertEqual(dr.stale_arch_paths(root), ["handbook/design/architecture.md:1 crates/gone/x.rs"])
 
     def test_prelude_privilege(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -230,8 +230,8 @@ class DebtRatchetTest(unittest.TestCase):
     def test_a4_documented_edge_is_accepted(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
-            self._write(root, "plan/ARCHITECTURE.md",
-                        "## A4. Crates\n| Crate | Job |\n|---|---|\n"
+            self._write(root, "handbook/design/architecture.md",
+                        "## Crates\n| Crate | Job |\n|---|---|\n"
                         "| `cpl-diag` | renderers; JSON through `cpl-json` |\n"
                         "| `cpl-fmt`, `cpl-lint` | tools over `cpl-check` queries |\n"
                         "## A5. Other\n| `cpl-x` | uses cpl-y |\n")

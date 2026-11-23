@@ -9,7 +9,7 @@ saying why. Lower counts pass and print a hint to tighten the baseline.
   rs_file_size_allowlist  `.rs` files under `crates/` over `max_rs_lines` (2000);
                           an allowlisted file may not grow, a new one fails
   crate_edges             shipped `[dependencies]` between workspace crates; a
-                          new edge fails until the baseline and plan/ARCHITECTURE.md
+                          new edge fails until the baseline and handbook/design/architecture.md
                           both list it
   rs_near_cap             `.rs` files in the last 100 lines under the cap; a file
                           entering the band fails (one shrinking into it from over
@@ -300,12 +300,13 @@ def _crate_edges(root: Path, kind: str = "dependencies") -> set[tuple[str, str]]
 
 
 def a4_edges(root: Path) -> list[str]:
-    """Edges plan/ARCHITECTURE.md A4 documents: a crate's row naming another crate."""
+    """Edges handbook/design/architecture.md (Crates) documents: a crate's row naming another crate."""
     try:
-        text = (root / "plan" / "ARCHITECTURE.md").read_text(encoding="utf-8")
+        text = (root / "handbook/design/architecture.md").read_text(encoding="utf-8")
     except OSError:
         return []
-    section = text.partition("## A4.")[2].partition("\n## ")[0]
+    section = re.split(r"^## Crates\n", text, maxsplit=1, flags=re.M)[-1].partition("\n## ")[0] if re.search(
+        r"^## Crates\n", text, re.M) else ""
     edges = set()
     for line in section.splitlines():
         cells = line.split("|")
@@ -461,7 +462,8 @@ def stale_arch_paths(root: Path) -> list[str]:
     Skips gitignored build output and the "Known debt" section, which may
     name a missing file on purpose.
     """
-    docs = [root / "plan/ARCHITECTURE.md", *sorted((root / "plan/domains").glob("*/ARCHITECTURE.md"))]
+    docs = [root / "handbook/design/architecture.md", root / "plan/rearchitecture.md",
+            *sorted((root / "plan/domains").glob("*/ARCHITECTURE.md"))]
     found = []
     for d in (d for d in docs if d.is_file()):
         in_debt = False
@@ -734,10 +736,10 @@ def evaluate(actual: dict, baseline: dict) -> tuple[list[str], list[str], list[s
         documented = set(actual.get("a4_edges", []))
         for edge in sorted(now - known):
             if edge in documented:
-                notes.append(f"crate edge {edge} added; plan/ARCHITECTURE.md A4 documents it")
+                notes.append(f"crate edge {edge} added; handbook/design/architecture.md (Crates) documents it")
                 continue
             errors.append(
-                f"new crate edge {edge}: add it to plan/ARCHITECTURE.md (A4. Crates) and run --update"
+                f"new crate edge {edge}: add it to handbook/design/architecture.md (Crates) and run --update"
             )
         for edge in sorted(known - now):
             notes.append(f"crate edge {edge} removed")

@@ -48,7 +48,7 @@ The detail behind [README.md](README.md). Dated 2026-11-22.
    `layer_violations`, `tree_walker`, `direct_python`; `stale_arch_paths` is
    counted and becomes gated once round 1 findings are fixed.
    The crate-edge list becomes a baseline that may only grow in a commit that
-   also edits `plan/ARCHITECTURE.md`. Hook it into the gate step that already
+   also edits `handbook/design/architecture.md`. Hook it into the gate step that already
    runs the ratchet, so infra's gate time is not affected (0.4 s today).
 3. **Cold reviews and probes (M2, M3).** Rotate through the 12 lanes, two per
    week of work: read the lane's landed diffs since its last review, score the
@@ -61,7 +61,7 @@ The detail behind [README.md](README.md). Dated 2026-11-22.
    stdlib), one bound analysis (lint-fmt + compiler), std names out of the
    back ends (compiler + perf), one member catalog (compiler + tools), wasm
    lints (lint-fmt). This lane does the pure-move file splits (decision 267).
-5. **Keep `plan/ARCHITECTURE.md` true.** Rewrite part B1 from `debt-ratchet.py --show`
+5. **Keep `handbook/design/architecture.md` true.** Rewrite part B1 from `debt-ratchet.py --show`
    output; every path it cites is checked by `stale_arch_paths`.
 
 ## General fixes owed

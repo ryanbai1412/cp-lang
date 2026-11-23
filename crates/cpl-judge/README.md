@@ -11,4 +11,4 @@ Judge profiles: compiler, flags, platform, stack and source-size limit a submiss
 
 `src/tests.rs`; builds against a profile in `cpl-cli/tests/`.
 
-Where it sits among the crates: `plan/ARCHITECTURE.md`.
+Where it sits among the crates: `handbook/design/architecture.md`.

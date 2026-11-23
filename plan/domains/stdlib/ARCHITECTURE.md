@@ -72,7 +72,7 @@ Lines and public items per file, purpose from each file's `//!` header.
 
 ## Invariants
 
-- Std is ordinary CP Lang: a module uses public language features, documented intrinsics and other std modules, nothing else (`plan/ARCHITECTURE.md`). **Partly broken today**, see debt.
+- Std is ordinary CP Lang: a module uses public language features, documented intrinsics and other std modules, nothing else (`handbook/design/architecture.md`). **Partly broken today**, see debt.
 - One list of prelude names: `std/prelude.cp`; nothing else adds a name to every program.
 - A library module gets no prelude; it `use`s what it needs.
 - Std imports are acyclic (0 explicit cycles today; a gate test is on `devin/wip-std-import-cycles`).
@@ -90,5 +90,5 @@ Lines and public items per file, purpose from each file's `//!` header.
 - **Prelude size.** 192 names vs the 80 in `scripts/check.sh` (a warning, not a failure).
 - **Doc gaps.** 32 public fns missing labels; `ternary_max`/`ternary_min` in `std/prelude.cp` are in no spec chapter (`spec-stub.py --check`, 13 problems).
 - **Big files.** `std/geometry.cp` 3599, `std/seq.cp` 3373, `std/strings.cp` 3347 lines.
-- **Location.** Std lives under `spec/` and is bundled into the compiler at build time; the move to `std/` and the removal of `CPL_SPEC`/`CPL_STD` mode switches are in `plan/ARCHITECTURE.md` (tech-debt runs it).
+- **Location.** Std lives under `spec/` and is bundled into the compiler at build time; the move to `std/` and the removal of `CPL_SPEC`/`CPL_STD` mode switches are in `handbook/design/architecture.md` (tech-debt runs it).
 - **Untracked no-privilege test.** No test copies a std module into a user library and runs it.

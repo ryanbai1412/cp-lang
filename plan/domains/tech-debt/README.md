@@ -9,7 +9,7 @@ and cold-reviews every lane's landed diffs.
 
 Detail: [PLAN.md](PLAN.md) · [metrics.toml](metrics.toml) ·
 [ARCHITECTURE.md](ARCHITECTURE.md) · [worklog.md](worklog.md) ·
-cross-domain map: [plan/ARCHITECTURE.md](../../ARCHITECTURE.md) ·
+cross-domain map: [handbook/design/architecture.md](../../../handbook/design/architecture.md) ·
 ratchet and counts: `scripts/debt-ratchet.py` (`--show`, `--list NAME`; 0.4 s, in the fast gate)
 
 ## Milestone 1
@@ -57,7 +57,7 @@ Next three steps (hours from 21:30 PST):
 
 ## Milestone 2
 
-Most ambitious complete version: a stranger reads `plan/ARCHITECTURE.md` and changes any
+Most ambitious complete version: a stranger reads `handbook/design/architecture.md` and changes any
 layer in its own crate; the core has no name std can't override; every generated file is
 built, not hand-kept; the interpreter and C++ agree on the whole corpus with zero skips.
 
@@ -80,7 +80,7 @@ capped `tests.rs` files; derive corpus answers once tools' shared cache lands.
 
 | Covers (this lane) | Not covered (owner) |
 |---|---|
-| `plan/ARCHITECTURE.md`: crates, edges, shared core | Shared-core code itself (compiler) |
+| `handbook/design/architecture.md`: crates, edges, shared core | Shared-core code itself (compiler) |
 | Crate/file layout; pure-move splits of oversized files | Behaviour changes in those files (owning lane) |
 | Dead code, duplicated helpers, 0.2 leftovers | Stdlib bodies and their TODOs (stdlib) |
 | Stdlib privilege: measuring it, proposing the floor | Moving builtins into std (compiler + stdlib) |
@@ -107,10 +107,10 @@ capped `tests.rs` files; derive corpus answers once tools' shared cache lands.
 
 **M2. The gates hold the shape.**
 - [x] Ratchets in `scripts/debt-ratchet.py` for every metric below (one script, one baseline)
-- [x] A new crate edge fails the gate until the baseline and `plan/ARCHITECTURE.md` list it
+- [x] A new crate edge fails the gate until the baseline and `handbook/design/architecture.md` list it
 - [x] Round 1 cold review of the 11 other lanes, scores in the worklog, findings in owners' worklogs (2026-11-22)
 - [x] Probe baseline P1-P4 recorded (files, crates, minutes, where stuck) (2026-11-22)
-- [x] `plan/ARCHITECTURE.md` part B1 rewritten to measured current state (2026-11-22)
+- [x] `plan/rearchitecture.md` B1 rewritten to measured current state (2026-11-22)
 
 **M3. v0.3 shape** (exit = success criteria above).
 - [ ] `tree_walker` 0, `layer_violations` 0, `backend_std_names` 0, `dup_fn_bodies` 0
@@ -190,7 +190,7 @@ of `git log --grep 'Domain: <lane>'`.
 4. One VM: file the tree-walker removal plan with compiler; split `vm.rs` first.
 5. One bound analysis: lint reads checker facts (proposal to lint-fmt + compiler).
 6. Run cold-review round 1 and the probe baseline; findings go to owners' worklogs.
-7. Rewrite `plan/ARCHITECTURE.md` B1 from measurements, not memory.
+7. Rewrite `plan/rearchitecture.md` B1 from measurements, not memory.
 
 ## Ryan's role
 

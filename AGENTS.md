@@ -22,7 +22,8 @@ order:
    together; a disagreement is a bug to resolve, not a rule to pick from.
 6. `plan/STATUS.md` (generated: every domain's metrics and open questions)
    and `spec/README.md`: where the work stands today.
-7. As needed: `handbook/design/` and `plan/ARCHITECTURE.md` (architecture),
+7. As needed: `handbook/design/` (architecture; the target is
+   `handbook/design/architecture.md`),
    `REPO.md` (where everything lives), `decisions.md` (every design call,
    searchable), `handbook/process/porting.md` (porting solutions).
 

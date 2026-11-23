@@ -11,4 +11,4 @@ Lexer, parser and lossless syntax tree: `lex` makes layout tokens explicit, `spl
 
 `src/tests.rs`, `src/foreign_tests.rs` (`cargo nextest run -p cpl-syntax`); grammar cases in `spec/conformance/core-01`.
 
-Where it sits among the crates: `plan/ARCHITECTURE.md`.
+Where it sits among the crates: `handbook/design/architecture.md`.

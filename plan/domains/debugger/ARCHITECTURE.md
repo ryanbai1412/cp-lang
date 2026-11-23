@@ -50,7 +50,7 @@ cpl-stress: Program (spec.rs typed reads) -> gen.rs/choices.rs -> engine.rs (pro
 |---|---|
 | `cpl_stress::{args::Args, fit, make, Case, Exit, InputSpec, Pick, Program, Rng, Shape, TreeShape, Value, Outcome, gen::MAX_LEN}` | `crates/cpl-contest/src/bench.rs`, `corpus_bench.rs` (perf/tools: `cpl bench`) |
 | `cpl_stress::stress_source`, `InterpEngine` | `crates/cpl-wasm/src/lib.rs` (site playground) |
-| `cpl_interp::observe_on_this_thread(program, io, output, limits, Option<TraceConfig>)`, the one trace entry (`plan/ARCHITECTURE.md` B6), with `run_observed` the same on a large-stack thread; `cpl_interp::trace::{TraceConfig, Recording}` | `crates/cpl-cli` (`trace.rs`, `live.rs`, `dap.rs`, `replay.rs`, `interact.rs`), `crates/cpl-stress/src/engine.rs`, `cpl-wasm` |
+| `cpl_interp::observe_on_this_thread(program, io, output, limits, Option<TraceConfig>)`, the one trace entry (`plan/rearchitecture.md` B6), with `run_observed` the same on a large-stack thread; `cpl_interp::trace::{TraceConfig, Recording}` | `crates/cpl-cli` (`trace.rs`, `live.rs`, `dap.rs`, `replay.rs`, `interact.rs`), `crates/cpl-stress/src/engine.rs`, `cpl-wasm` |
 | Trace JSON, `tools/trace/trace-schema.json` | the viewer, `editors/vscode/src/traceView.ts` (tools), `web/scripts/gen-debug.mjs` (site) |
 | `tools/trace/index.html` (raw file) | `crates/cpl-cli/src/trace.rs` (`include_str!`), `web/scripts/gen-debug.mjs`, the VS Code webview |
 

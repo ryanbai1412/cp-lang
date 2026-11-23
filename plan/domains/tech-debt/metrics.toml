@@ -76,7 +76,7 @@ milestone = "M2"
 name = "crate_edges"
 command = "python3 scripts/debt-ratchet.py --show crate_edges"
 today = 75
-target = "no new edge without plan/ARCHITECTURE.md in the same commit"
+target = "no new edge without handbook/design/architecture.md in the same commit"
 milestone = "M2"
 
 [[metric]]

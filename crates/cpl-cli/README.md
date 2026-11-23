@@ -11,4 +11,4 @@ The `cpl` binary: wires every subcommand (`check`, `run`, `build`, `test`, `stre
 
 `tests/` (end-to-end: `cli.rs`, `corpus.rs`, `catalogue.rs`, `differential.rs`, `debugger.rs`, `cases/` and more), `src/unit_tests.rs`.
 
-Where it sits among the crates: `plan/ARCHITECTURE.md`.
+Where it sits among the crates: `handbook/design/architecture.md`.

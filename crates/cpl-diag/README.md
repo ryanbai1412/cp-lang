@@ -11,4 +11,4 @@ Spans, stable error codes and rendering shared by every tool, so an error reads 
 
 Inline `#[cfg(test)]` modules; catalogue checks in `cpl-cli/tests/catalogue.rs`.
 
-Where it sits among the crates: `plan/ARCHITECTURE.md`.
+Where it sits among the crates: `handbook/design/architecture.md`.

@@ -66,7 +66,7 @@ What codegen needs from the shared core (`cpl-ir`): the typed `Program`, `Narrow
 - `src/expr.rs` (2883) and `src/emit.rs` (2214) are over the 2000-line cap, allowlisted in `scripts/debt-ratchet.json` (ratcheted down when fusion and `/` `%` moved out).
 - Bounds-check proof is syntactic (`proven()`): ignores `ranges.rs` facts and `prover`; `for i in 1..n` over `[0; n]` still emits `cpl::at` (root of `strings/z_prefix`, `cf2178h`).
 - `src/devirt.rs` tracks only `Home::Field` and `Home::Param`: `let f = mon.op; f(a, b)` falls back to `std::function` (root of `dryrun/p10_matching`).
-- `src/ranges.rs` and `src/niche.rs` duplicate fact/layout reasoning that `plan/ARCHITECTURE.md` B3 step 6 moves into `cpl-ir` (shared with the interpreter and `prover`).
+- `src/ranges.rs` and `src/niche.rs` duplicate fact/layout reasoning that `plan/rearchitecture.md` B3 step 6 moves into `cpl-ir` (shared with the interpreter and `prover`).
 - IR-shape recognizers (`map_remove_do` in `src/expr.rs`) pattern-match lowered blocks; a lowering change silently loses the fast path. They need contract tests in `cpl-ir` or an explicit IR node.
 - Benchmarks are scattered across two Rust runners and four Python scripts in `bench/` with different suites and bars; none runs in `scripts/check.sh`, so perf and size can regress silently.
 - `research/perf/corpus-p95-report.md` is a 0.2 run at `6145b0b`; nothing current replaces it.

@@ -69,4 +69,4 @@ committed generated file that differs from a fresh regeneration is stale.
 
 ## Changes
 
-- 2026-11-23: first draft, from Part B of `plan/ARCHITECTURE.md`.
+- 2026-11-23: first draft, from `plan/rearchitecture.md`.

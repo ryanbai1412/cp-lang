@@ -11,4 +11,4 @@ The debug interpreter (`cpl run`): a register VM over `cpl_ir::Program` that che
 
 `src/tests.rs`, `tests/trace_log.rs`; agreement with C++ in `cpl-conform diff`.
 
-Where it sits among the crates: `plan/ARCHITECTURE.md`.
+Where it sits among the crates: `handbook/design/architecture.md`.

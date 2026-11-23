@@ -79,4 +79,4 @@ the ratchet until it's added to the list in a reviewed commit, and
 
 ## Changes
 
-- 2026-11-23: first draft, from Part A of `plan/ARCHITECTURE.md`.
+- 2026-11-23: first draft, from Part A of `handbook/design/architecture.md`.

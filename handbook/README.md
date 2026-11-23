@@ -95,7 +95,7 @@ How far along each milestone is, and what blocks it, stays in `plan/`.
 | `process/change.md` | How any change flows: observe, find the right layer, decide, update the design and spec, implement with tests, verify, update docs, land. Small fixes collapse most steps | coordinator | Scattered rules in `AGENTS.md` and `plan/OPERATING.md` |
 | `process/ownership.md` | Roles (domain owner, milestone owner, task owner), what each may decide, who may edit vs who may change a contract, what comes to Ryan | coordinator | `plan/DOMAINS.md` intro, decision rules in `AGENTS.md` |
 | `process/factory.md` | How the factory runs: lanes, the coordinator, hourly status, unblocking yourself | coordinator | `plan/OPERATING.md`, parts of `plan/agent-context.md` |
-| `process/quality.md` | How we ensure quality: the toolkit, quality registers, which test to write for which change, how suites are measured, accountability | tech-debt | New, plus test rules in `AGENTS.md` and `plan/ARCHITECTURE.md` A6 |
+| `process/quality.md` | How we ensure quality: the toolkit, quality registers, which test to write for which change, how suites are measured, accountability | tech-debt | New, plus test rules in `AGENTS.md` and `handbook/design/architecture.md` A6 |
 | `process/landing-and-ci.md` | How commits land, what runs where, time budgets, who keeps main green | infra | `plan/domains/infra/design/gate-tiers.md` |
 | `process/release.md` | Channels (edge, stable), versioning, what makes a commit shippable, installers, promoting a release | infra | `plan/domains/infra/RELEASE.md` |
 | `process/porting.md` | Porting accepted solutions into the corpus: the bar and the review | idioms | `plan/PORTING.md` |
@@ -138,7 +138,8 @@ reasoning spread through `decisions.md`.
 | File | What it answers | Owner | Absorbs |
 |---|---|---|---|
 | `design/overview.md` | Text to C++: the pipeline, the crates, which layer may depend on which | tech-debt | `plan/ARCHITECTURE.md` Part A |
-| `design/sources-of-truth.md` | One owner per fact and one entry point per job in the code: what's generated from what, what must never be written twice, and the detector for each | tech-debt | `plan/ARCHITECTURE.md` B2 |
+| `design/architecture.md` | The target architecture in full: what shapes it, each layer, the crate map the gate checks, testing, the repository | tech-debt | `plan/ARCHITECTURE.md` Part A |
+| `design/sources-of-truth.md` | One owner per fact and one entry point per job in the code: what's generated from what, what must never be written twice, and the detector for each | tech-debt | `plan/rearchitecture.md` B2 |
 | `design/compiler.md` | Syntax, names, types, IR, facts, VM, codegen: each part's job, data, invariants, and what it must never do | compiler | `plan/domains/compiler/ARCHITECTURE.md` |
 | `design/editor.md` | The query database, LSP and playground sharing one analysis | tools | `plan/domains/tools/ARCHITECTURE.md` |
 | `design/std-mechanisms.md` | How std gets its powers without privilege | stdlib | `plan/domains/stdlib/library-domains.md` |
@@ -176,7 +177,7 @@ The domain's `PLAN.md`, `metrics.toml` and `worklog.md` stay in
   agent loads it automatically, and points here. Its rule that `spec/` is
   the only normative source becomes the rule above.
 - `plan/OPERATING.md`, `plan/DOMAINS.md`, `plan/LAYOUT.md`, `REPO.md`,
-  `plan/PORTING.md` and `plan/ARCHITECTURE.md` Part A are folded in.
+  `plan/PORTING.md` and `handbook/design/architecture.md` are folded in.
 - `plan/product/` has moved to `product/`; `BLOCKERS.md` and `notes.md` stay
   in `plan/product/`.
 - `plan/agent-context.md` (Ryan's own words) moves to

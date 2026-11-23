@@ -38,7 +38,7 @@ Deferred past both: the rest of workstream 4 (the split, the VM on wasm) and wor
 ## Alternatives considered
 
 - **Split the crate first, then optimize.** Rejected for now: the hot hooks are inside the VM's dispatch; moving them before the observer interface exists either copies VM internals or adds a dynamic call per step.
-- **Keep two engines (tree for trace, VM for run).** Rejected: two semantics to keep equal, and `plan/ARCHITECTURE.md` already says one interpreter.
+- **Keep two engines (tree for trace, VM for run).** Rejected: two semantics to keep equal, and `handbook/design/architecture.md` already says one interpreter.
 - **Print every local on a trap.** Rejected: noisy in a 200-line DP; name the locals in the failing expression, then the frame, then "more in the trace".
 - **Move the viewer into the site's React app.** Rejected: the CLI and VS Code need it offline without a build; see decision 3.
 

@@ -29,7 +29,7 @@ Contract tests run alongside all of it: each interface change adds or updates th
 ## Alternatives considered
 
 - **Refactor first, then conformance.** Cleaner code sooner, but refactors with 94 failing cases have a weaker net, and Ryan's v0.3 bar is behaviour. Rejected; refactor where it pays for the next fix.
-- **Rewrite to the target query pipeline (`plan/ARCHITECTURE.md`) now.** The right end state, but a rewrite stalls the numbers for weeks. Rejected for v0.3; migrate by seams (facts pass, intrinsics table, one VM).
+- **Rewrite to the target query pipeline (`handbook/design/architecture.md`) now.** The right end state, but a rewrite stalls the numbers for weeks. Rejected for v0.3; migrate by seams (facts pass, intrinsics table, one VM).
 - **Keep the tree-walker as an oracle.** The C++ diff already is a second implementation; a third costs every feature twice. Recommend delete (Q2).
 - **Fix std-name privilege by adding more names to `builtins.rs`.** Moves the problem; the goal says user libraries get the same powers. Table first, general mechanism second (tech-debt's builtin-floor question).
 - **Product positions packed as one row-major `Int`.** Smallest storage, but neighbours cost a div/mod and `(r, c)` destructuring needs it everywhere. Recommend tuple (Q1).

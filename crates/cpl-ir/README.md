@@ -11,4 +11,4 @@ The typed program `cpl run` and `cpl build` share: `lower` turns the checker's `
 
 No unit tests of its own: it is tested through `cpl-interp`, `cpl-codegen` and `cpl-conform diff` (interpreter vs C++ on every case).
 
-Where it sits among the crates: `plan/ARCHITECTURE.md`.
+Where it sits among the crates: `handbook/design/architecture.md`.
