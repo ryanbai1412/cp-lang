@@ -10,15 +10,7 @@ type Cell = (Row, Col)
 type M = Mod<998244353>
 let a: [Row, Col]Int = read()
 
-fn adj4(p: Cell) -> List<Cell>:  // v2: p.adj4
-    var out: List<Cell> = []
-    if let r = p.0 - 1: out.push((r, p.1))
-    if let r = p.0 + 1: out.push((r, p.1))
-    if let c = p.1 - 1: out.push((p.0, c))
-    if let c = p.1 + 1: out.push((p.0, c))
-    out
-
-var at: [1..=n * n]Cell = (Row.first, Col.first)
+var at: [1..=n * n]Cell = (Row.first!, Col.first!)
 for r in Row:
     for c in Col: at[a[r, c]] = (r, c)
 
@@ -28,7 +20,7 @@ var total: M = 0
 for v in 1..=n * n:
     let p = at[v]
     var valley = true
-    for q in adj4(p):
+    for q in p.adj4:
         if a[q] < v:
             valley = false
             ways[p] += ways[q]

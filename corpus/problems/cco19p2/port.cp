@@ -14,14 +14,6 @@ domain Col = 0..m
 type Cell = (Row, Col)
 let g: [Row, Col]Char = read()
 
-fn adj4(p: Cell) -> List<Cell>:  // v2: p.adj4
-    var out: List<Cell> = []
-    if let r = p.0 - 1: out.push((r, p.1))
-    if let r = p.0 + 1: out.push((r, p.1))
-    if let c = p.1 - 1: out.push((p.0, c))
-    if let c = p.1 + 1: out.push((p.0, c))
-    out
-
 // Label the shapes 1, 2, ...; 0 is the floor.
 var shape: [Row, Col]Int = 0
 var shapes = 0
@@ -32,7 +24,7 @@ for r in Row:
         shape[r, c] = shapes
         var stack: List<Cell> = [(r, c)]
         while let p = stack.pop():
-            for q in adj4(p):
+            for q in p.adj4:
                 if g[q] == '#' and shape[q] == 0:
                     shape[q] = shapes
                     stack.push(q)

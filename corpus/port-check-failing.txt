@@ -91,7 +91,6 @@ coci25c3p4
 coi06p2
 cpc21c1p5
 csps21p2
-dmopc19c4p2
 dmopc20c4p3
 dmopc20c7p4
 dmopc20c7p5
@@ -110,7 +109,6 @@ etsr23r3p1
 etsr23r3p2
 etsr23r3p3
 etsr23r4p2
-imo22p6checker
 ioi00p4
 ioi04p2
 ioi05p2
@@ -204,8 +202,6 @@ shoi15p2
 shoi16p4
 shoi16p5
 ucrpc21d
-ucrpc21f
-ucrpc21g
 ucup4s24f
 utso15p5
 wossoly21s3

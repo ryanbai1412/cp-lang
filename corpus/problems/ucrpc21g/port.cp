@@ -15,14 +15,6 @@ let start: Cell = read()
 let coin_at: [0..coins](Row, Col, Tick) = read()
 let bomb_at: [0..bombs](Row, Col, Tick) = read()
 
-fn adj4(p: Cell) -> List<Cell>:  // v2: p.adj4
-    var out: List<Cell> = []
-    if let r = p.0 - 1: out.push((r, p.1))
-    if let r = p.0 + 1: out.push((r, p.1))
-    if let c = p.1 - 1: out.push((p.0, c))
-    if let c = p.1 + 1: out.push((p.0, c))
-    out
-
 // Coins appearing per (tick, cell); -1 marks a bomb.
 var event: [Tick, Row, Col]Int = 0
 for (r, c, t) in coin_at: event[t, r, c] += 1
@@ -37,7 +29,7 @@ for t in Tick:
     for (p, held) in cur:
         let e = event[t, p.0, p.1]
         let have = if e == -1: held / 2 else: held + e
-        var targets = adj4(p)
+        var targets = p.adj4
         targets.push(p)
         for q in targets:
             if stamp[q.0, q.1, have] != t.idx:

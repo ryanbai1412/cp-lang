@@ -13,14 +13,6 @@ let t: Cell = read()
 let e1: Cell = read()
 let e2: Cell = read()
 
-fn adj4(p: Cell) -> List<Cell>:  // v2: p.adj4
-    var out: List<Cell> = []
-    if let r = p.0 - 1: out.push((r, p.1))
-    if let r = p.0 + 1: out.push((r, p.1))
-    if let c = p.1 - 1: out.push((p.0, c))
-    if let c = p.1 + 1: out.push((p.0, c))
-    out
-
 // The token starts on one of the two given cells; the hole is the other.
 let hole0 = if s == e1: e2 else: e1
 var dist: [Row, Col, Row, Col]?Int = None
@@ -38,7 +30,7 @@ while head < q.len:
         ans = d
         break
     var next: List<(Cell, Cell)> = []
-    for h2 in adj4(h):
+    for h2 in h.adj4:
         if h2 == p: next.push((h, p))  // token slides into the hole
         else: next.push((p, h2))
     for st in next:
