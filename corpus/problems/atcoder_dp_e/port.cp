@@ -8,4 +8,4 @@ var lightest: [0..=top]?Int = None
 lightest[0] = 0
 for (w, v) in items:
     for total in (v..=top).rev: lightest[total] min= lightest[total - v] + w
-print(max(total for total in 0..=top if lightest[total] != None and lightest[total]! <= cap))
+print([total for total in 0..=top if lightest[total] != None and lightest[total]! <= cap].max()!)

@@ -16,7 +16,7 @@ let puzzles: Int = read()
 for _ in 0..puzzles:
     let read_rows: [Row]Str = read()
     let rows = [read_rows[r] for r in Row]  // as a list: `fill` steps through rows by number
-    let width = max(row.len for row in rows)
+    let width = [row.len for row in rows].max()!
     var digit: [Letter]?Int = None
     var used: [Digit]Bool = false
     var leads: [Letter]Bool = false

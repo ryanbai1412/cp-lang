@@ -11,7 +11,7 @@ type Z = Mod<P>
 let t: Int = read()
 domain Ask = 0..t
 let asks: [Ask](n: Int, m: Int) = read()  // n, m <= 1e6
-let top = max(max(a.n, a.m) for a in asks)
+let top = [max(a.n, a.m) for a in asks].max()!
 
 // Mobius function from smallest prime factors
 let sieve = Sieve(top)

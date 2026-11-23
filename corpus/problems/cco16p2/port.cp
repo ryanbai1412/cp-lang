@@ -49,4 +49,4 @@ fn best_through(pivot: Hare) -> Int:
         if s.ahead: right += s.w
     p.w + best
 
-print(max(0, max(best_through(h) for h in Hare)))  // taking nothing is allowed
+print(max(0, [best_through(h) for h in Hare].max()!))  // taking nothing is allowed

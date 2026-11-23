@@ -6,7 +6,7 @@
 let t: Int = read()
 domain Case = 0..t
 let ns: [Case]Int = read()
-let sieve = Sieve(2 * max(ns[c] for c in Case))
+let sieve = Sieve(2 * [ns[c] for c in Case].max()!)
 for c in Case:
     for a in sieve.primes:
         if sieve.is_prime(2 * ns[c] - a):

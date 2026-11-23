@@ -45,7 +45,7 @@ fn peaceful(m: Int) -> Bool:
     true
 
 fn smallest() -> Int:
-    var m = max(x.cave for x in men)
+    var m = [x.cave for x in men].max()!
     while not peaceful(m): m += 1
     m
 

@@ -9,5 +9,5 @@ let pre = prefix(a)
 @memo
 fn cost(l: I, r: I) -> Int:
     if l == r: return 0
-    min(cost(l, m) + cost(m.next!, r) for m in l..r)! + pre.sum(l..=r)
+    [cost(l, m) + cost(m.next!, r) for m in l..r].min()!! + pre.sum(l..=r)
 print(cost(I.first!, I.last!))

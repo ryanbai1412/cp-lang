@@ -42,4 +42,4 @@ for (from, to, way) in tilts:
                 if head < reach.len and reach[head].1 < i - seconds: head += 1
                 if head < reach.len: next[p] = reach[head].0 + i
     far = next
-print(max(far[r, c] ?? 0 for r in Row for c in Col))
+print([far[r, c] ?? 0 for r in Row for c in Col].max()!)

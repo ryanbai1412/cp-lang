@@ -10,4 +10,4 @@ for r in 1..=n:
         let right = if c < r - 1: best[c] else: 0
         row.push(x + max(left, right))
     best = row
-print(max(b for b in best))
+print([b for b in best].max()!)

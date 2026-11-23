@@ -16,7 +16,7 @@ fn join(a: Run, b: Run) -> Run:
 fn reach(i: Len) -> Len: Len(min(n, 2 * i.label - 1))
 var ending: [Len]Int = 0
 var pairs = 0
-var runs = SegTree<Len, Run>(join, fill: Run(0, 0, 0))
+var runs = SegTree<Len, Run>(Monoid(Run(0, 0, 0), join))
 fn refresh(i: Len):
     runs.set(i, join(Run(0, have[i] % 2, 0), Run(0, 0, ending[i])))
 fn count(i: Len, sign: Int):

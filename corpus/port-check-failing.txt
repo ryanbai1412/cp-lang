@@ -5,7 +5,6 @@ apio07p1
 apio07p3
 apio23p1
 apio23p2
-atcoder_dp_e
 atcoder_dp_g
 atcoder_dp_h
 atcoder_dp_j
@@ -34,7 +33,6 @@ ccc10s4
 ccc14s4
 ccc14s4hard
 ccc18s3
-ccc19s2
 ccc20s1
 ccc20s5
 ccc21s4
@@ -42,10 +40,8 @@ ccc22s3
 ccc22s4
 ccc22s5
 ccc23s4
-ccc99s5
 cco02p3
 cco04p2
-cco16p2
 cco16p4
 cco16p6
 cco17p4
@@ -62,7 +58,6 @@ cco21p3
 cco21p5
 cco22p1
 cco23p2
-cco23p6
 ceoi09p3
 ceoi17p2
 ceoi22p1
@@ -145,7 +140,6 @@ ioi18p1
 ioi18p3
 ioi19p2
 ioi21p4
-ioi94p1
 joi16fp2
 mccc4j5
 mmcc14p3
@@ -157,10 +151,8 @@ nccc9s4
 neerc10k
 noi01p1
 noi01p5
-noi02p4
 noi03p2
 noi03p4
-noi05p1
 noi05p4
 noi07p1
 noi07p2
@@ -204,7 +196,6 @@ sac22cc1p3
 sac22cc2p5
 sac22cc3p5
 saspeed
-sdoi17r1p1
 sdoi17r1p2
 sdoi17r1p6
 sdoi17r2p1
@@ -222,4 +213,3 @@ yac1p4
 yac6p2
 yac7p3
 yac7p4
-year2018p7

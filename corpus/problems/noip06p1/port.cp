@@ -10,10 +10,8 @@ let mark: [Bead]1..=1000 = read()
 // going round the ring; the last merge joins the first k to the rest
 @memo
 fn best(i: Bead, len: 1..=n) -> Int =
-    max(
-        best(i, k) + best(
+    [best(i, k) + best(
             i.cyc(k),
             len - k,
-        ) + mark[i] * mark[i.cyc(k)] * mark[i.cyc(len)] for k in 1..len
-    ) ?? 0
+        ) + mark[i] * mark[i.cyc(k)] * mark[i.cyc(len)] for k in 1..len].max()! ?? 0
 print(max(best(i, n) for i in Bead))

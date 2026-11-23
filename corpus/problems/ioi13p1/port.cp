@@ -53,7 +53,7 @@ for root in V:
         for (v, d) in from_a: reach[v] = d
         for (v, d) in from_b: reach[v] max= d
         for (v, _) in tree: seen[v] = true
-        longest max= max(d for (_, d) in from_b) ?? 0
+        longest max= [d for (_, d) in from_b].max()! ?? 0
         radii.push(min(reach[v] for (v, _) in tree) ?? 0)
 
 // Hang every other tree's centre off the centre of the tree with the largest
