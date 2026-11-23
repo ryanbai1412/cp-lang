@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- Rebuild-4 H-REVERSED-RANGE: new R04.4.29 (a range past its end is empty, never a trap), case `core-04/reversed-range-empty.cp` (passes).
 - Rebuild-4 H-AND-SHORT-CIRCUIT: new R01.5.7 (`and`/`or` skip a decided right side), case `core-01/and-or-short-circuit.cp` (passes).
 - Rebuild round 4 landed in `spec/delta/rebuild-4/`: 20 holes (13 silent, 5 contradiction, 2 missing-stdlib) on ten problems round 3 did not use; round 3 was 21. Top three: `p[v]` vs `p.dist[v]` for distances, `Int` indexing a `[n]T`, whether `and` short-circuits. Next: rule, case or question for each.
 - Rerun `cpl-conform conformance` on main 4f2d3b7fa: 2099/2262 pass (163 fail); metrics refreshed.
