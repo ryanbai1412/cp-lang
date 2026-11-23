@@ -1,13 +1,14 @@
 //! Generates the lint registry from the records in `spec/lints/<name>/`:
 //! one `pub const <NAME>: Lint` per record and `LINTS`, every lint in code
-//! order. A record's `lint.toml` holds `code`, `level`, `group`, `title` and `summary`,
-//! each a one-line basic string, and `no_fix` when the lint has no
-//! machine fix: why not.
+//! order. A record's `lint.toml` holds `code`, `level`, `group`, `title`,
+//! `summary` and `rule` (the checklist rule it enforces, as `<topic>/R<n>`,
+//! which `handbook/guidelines/<topic>-checklist.md` must define), each a one-line basic
+//! string, and `no_fix` when the lint has no machine fix: why not.
 
 use std::fmt::Write as _;
 use std::path::PathBuf;
 
-const KEYS: [&str; 5] = ["code", "level", "title", "summary", "group"];
+const KEYS: [&str; 6] = ["code", "level", "title", "summary", "group", "rule"];
 const OPTIONAL: [&str; 1] = ["no_fix"];
 const FILES: [(&str, &str); 4] = [
     ("explanation", "explain.md"),
@@ -85,10 +86,12 @@ fn main() {
             fields[2], fields[3]
         )
         .unwrap();
+        check_rule(&manifest.join("../.."), name, &fields[5]);
+        writeln!(out, "    rule: {:?},", fields[5]).unwrap();
         writeln!(
             out,
             "    no_fix: {:?},",
-            fields.get(5).filter(|v| !v.is_empty())
+            fields.get(6).filter(|v| !v.is_empty())
         )
         .unwrap();
         for (field, file) in FILES {
@@ -114,6 +117,36 @@ fn main() {
     out.push_str("];\n");
     let dest = PathBuf::from(std::env::var_os("OUT_DIR").expect("set by cargo")).join("lints.rs");
     std::fs::write(dest, out).expect("a writable OUT_DIR");
+}
+
+/// Panics unless `rule` is a rule id, `idiomatic-code/R3`, that its
+/// checklist `handbook/guidelines/idiomatic-code-checklist.md` defines with a
+/// heading `### idiomatic-code/R3` or `### R3. <title>`.
+fn check_rule(root: &std::path::Path, name: &str, rule: &str) {
+    let at = format!("spec/lints/{name}/lint.toml: rule {rule:?}");
+    let (topic, id) = rule
+        .split_once('/')
+        .filter(|(_, id)| {
+            id.strip_prefix('R')
+                .is_some_and(|n| !n.is_empty() && n.bytes().all(|b| b.is_ascii_digit()))
+        })
+        .unwrap_or_else(|| panic!("{at} is not `<topic>/R<n>`"));
+    let doc = format!("handbook/guidelines/{topic}-checklist.md");
+    let path = root.join(&doc);
+    println!("cargo:rerun-if-changed={}", path.display());
+    let text = std::fs::read_to_string(&path).unwrap_or_else(|_| panic!("{at}: no {doc}"));
+    let found = text
+        .lines()
+        .filter_map(|l| l.strip_prefix("### "))
+        .any(|h| {
+            let h = h
+                .strip_prefix(topic)
+                .and_then(|h| h.strip_prefix('/'))
+                .unwrap_or(h);
+            h.strip_prefix(id)
+                .is_some_and(|rest| !rest.starts_with(|c: char| c.is_ascii_digit()))
+        });
+    assert!(found, "{at}: {doc} has no rule {id}");
 }
 
 /// The values of `KEYS` in `text`, in that order; anything else is an error.

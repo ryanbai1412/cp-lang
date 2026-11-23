@@ -56,7 +56,7 @@ a stable id that reviews, lints and tests cite. The ideas behind them are in
 
 ### idiomatic-code/R7
 
-**Rule:** no side effect inside an expression, no discarded result, no state threaded by hand where a closure can own it.
+**Rule:** no side effect inside an expression, no discarded result, no state threaded by hand where a closure can own it, and no state carried from one test to the next.
 **Why:** hidden effects make the code lie about what it does.
 **Example:** not `first(xs, x => try_add(x))`; not `let _ = f()`.
 **Enforced by:** review.
@@ -88,3 +88,17 @@ a stable id that reviews, lints and tests cite. The ideas behind them are in
 **Why:** unverified gaps send other domains after problems that are already solved.
 **Example:** `cpl run` output with `error[E0504]` pasted in `research/frictions/<id>.md`.
 **Enforced by:** review.
+
+### idiomatic-code/R12
+
+**Rule:** every operation's inputs are in its domain, by type or by a check the reader can see.
+**Why:** a zero divisor, an overflowing product, a too-wide shift or a `!` on an absent value passes the samples and fails the system tests.
+**Example:** `n.isqrt`, not `floor(sqrt(n))`; floats compare with a tolerance; `xs.max()!` only after `if xs.len > 0:`.
+**Enforced by:** the correctness lints citing it in `spec/lints/<name>/lint.toml`.
+
+### idiomatic-code/R13
+
+**Rule:** every line has an effect the reader can see.
+**Why:** unreachable code, unused bindings, checks that always pass and silent shadowing are where a revision goes wrong.
+**Example:** `let` for a binding never reassigned, not `var`; no `with lint(...)` naming no lint.
+**Enforced by:** the style lints citing it in `spec/lints/<name>/lint.toml`.

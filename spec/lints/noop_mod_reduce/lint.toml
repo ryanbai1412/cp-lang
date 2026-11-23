@@ -2,5 +2,6 @@ code = "L0308"
 level = "warn"
 group = "style"
 title = "Remainder of a value already below the modulus"
+rule = "idiomatic-code/R8"
 summary = "`k % n` where `k`'s declared range is already in `0..n`: the remainder is `k`; write `k`"
 # Rule: errors/R16 (handbook/guidelines/errors-checklist.md#r16-a-warning-about-declared-ranges-shows-its-witness), errors/R10.

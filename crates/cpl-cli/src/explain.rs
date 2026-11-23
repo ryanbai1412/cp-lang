@@ -34,7 +34,7 @@ pub(crate) fn explain_code(rest: &[&str], stdout: &mut dyn Write, stderr: &mut S
                 first = false;
                 let _ = write!(
                     stdout,
-                    "  {{\"code\":{},\"title\":{},\"summary\":{},\"explanation\":{},\"trigger\":{},\"fix\":{},\"mode\":\"lint\",\"lint_name\":{}}}",
+                    "  {{\"code\":{},\"title\":{},\"summary\":{},\"explanation\":{},\"trigger\":{},\"fix\":{},\"mode\":\"lint\",\"lint_name\":{},\"rule\":{}}}",
                     cpl_json::escape_string(lint.code.0),
                     cpl_json::escape_string(lint.title),
                     cpl_json::escape_string(lint.summary),
@@ -42,6 +42,7 @@ pub(crate) fn explain_code(rest: &[&str], stdout: &mut dyn Write, stderr: &mut S
                     cpl_json::escape_string(lint.trigger),
                     cpl_json::escape_string(lint.fix),
                     cpl_json::escape_string(lint.name),
+                    cpl_json::escape_string(lint.rule),
                 );
             }
             let _ = writeln!(stdout, "\n]");
@@ -77,6 +78,15 @@ pub(crate) fn explain_code(rest: &[&str], stdout: &mut dyn Write, stderr: &mut S
                 let _ = writeln!(stdout, "\n{text}");
                 let _ = writeln!(stdout, "\nTrigger:\n{}", lint.trigger.trim_end());
                 let _ = writeln!(stdout, "\nFix:\n{}", lint.fix.trim_end());
+                let topic = lint
+                    .rule
+                    .split_once('/')
+                    .map_or(lint.rule, |(topic, _)| topic);
+                let _ = writeln!(
+                    stdout,
+                    "\nRule: {} (handbook/guidelines/{topic}-checklist.md)",
+                    lint.rule
+                );
                 return 0;
             }
             *stderr += &format!(

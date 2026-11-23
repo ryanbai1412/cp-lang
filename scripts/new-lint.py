@@ -69,6 +69,7 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("name", nargs="?", help="snake_case lint name, also the record directory")
     p.add_argument("--series", type=int, default=5, help="hundreds of the code: 2, 4, 5, 6 (default 5)")
     p.add_argument("--group", default="idiom", help="correctness, perf, idiom, style or pedantic")
+    p.add_argument("--rule", required=True, help="the checklist rule it enforces, e.g. idiomatic-code/R3")
     p.add_argument("--level", default="warn", help="allow, warn or deny")
     p.add_argument("--next", action="store_true", help="print the next free code and stop")
     p.add_argument("--no-fetch", action="store_true", help="don't fetch origin/main first")
@@ -87,7 +88,9 @@ def main(argv: list[str] | None = None) -> int:
     os.makedirs(rec)
     with open(os.path.join(rec, "lint.toml"), "w", encoding="utf-8") as fh:
         fh.write(f'code = "{code}"\nlevel = "{a.level}"\ngroup = "{a.group}"\n'
-                 'title = "TODO: a short title"\nsummary = "TODO: `what fires`: `what to write`"\n')
+                 'title = "TODO: a short title"\n'
+                 f'rule = "{a.rule}"\n'
+                 'summary = "TODO: `what fires`: `what to write`"\n')
     for f in FILES:
         open(os.path.join(rec, f), "w", encoding="utf-8").close()
     print(f"{code} {a.name}: spec/lints/{a.name}/ scaffolded")
