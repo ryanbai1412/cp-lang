@@ -55,10 +55,11 @@ Every word below means one thing in this doc, in the stubs and in errors.
 | **place** | something assignable: an element or a `mut` view | | `a[i]`, `mut a[l..r]` (R07.2.12) |
 
 How they relate:
-- **Two capabilities.** A view is indexed when its adapter can answer
-  `w[k]` in \(O(1)\): slices, `.rev`, `.map`, `.items`, `zip`, `take`/`drop`.
-  It is only a sequence (walk-only) otherwise: `filter`, `take_while`,
-  `chain`, generators. (R07.2.13)
+- **Two capabilities.** A view is indexed when it walks in key order and
+  can answer `w[k]` in \(O(1)\): slices, `.map`, `.items`, `zip`,
+  `take`/`drop`. `.rev` reads `w.nth(k)` in \(O(1)\) but walks against its
+  keys, so it is not indexed. Everything else is only a sequence
+  (walk-only): `filter`, `take_while`, `chain`, generators. (R07.2.13)
 - **Slices are the views that narrow keys.** Every other indexed view keeps
   its source's keys unchanged. (R07.2.14)
 - **Ranges are indexed sequences but not views:** they have no source.
@@ -241,7 +242,9 @@ for d in divisors(n):
   This is ordinary library code; any user generator can do it. (R07.6.3)
 - **No lockstep.** Two generators can't be walked in step, because each
   wants to own the loop. Materialize one (`List(g)`), or zip indexed
-  sequences. `zip` takes only `Indexed`. (R07.6.4)
+  sequences. `zip`'s first argument is `Indexed` and keys the pairs; each
+  later one is `Indexed` or the `.rev` of an `Indexed`, read by walk
+  position, so `zip(a, a.rev)` pairs each element with its mirror. (R07.6.4)
 
 ## Adapters (each makes a view: \(O(1)\), lazy)
 

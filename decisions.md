@@ -8298,3 +8298,8 @@ tag move fatal again.
 
 - **Call.** `Window` had an inherent `pop()` and `Track.pop(x)`: one name with two arities on one type, which broke `maximal(Window(+), ...)` for five rebuild rounds. Only `pop(x)` survives, so direct use and `maximal`/`minimal`/`mo` share one protocol. In checked builds `pop(x)` asserts that `x` is the front element (R0401), so the argument the caller passes also checks the window. Renaming to `drop_front()` was rejected because it gives two words for one act.
 - **Reverse.** Restore the inherent `pop()` and route `Track` through a separate name.
+
+## 415. `zip` takes a `.rev` after its first argument (spec, 2026-11-23)
+
+- **Call.** Once `Rev` stopped being `Indexed` (R07.3.5), `zip(gaps, gaps.rev)` became an error, though zip pairs by walk order (R07.4.2) and a `.rev` gives its k-th element in O(1). Now each argument after the first may be the `.rev` of an `Indexed`. The first stays `Indexed` because it keys the result. R07.2.13 no longer lists `.rev` among indexed views, which had contradicted R07.3.5. This is the same Rev-overload pattern stdlib uses for other helpers, not a new capability.
+- **Reverse.** Make zip Indexed-only again and write `List(a.rev)`.

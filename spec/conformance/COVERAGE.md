@@ -7,7 +7,7 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 2835 (995 passing). Rules: 576.
+Cases: 2836 (995 passing). Rules: 576.
 
 ## Summary per chapter
 
@@ -19,7 +19,7 @@ Cases: 2835 (995 passing). Rules: 576.
 - R04b (04b-keys.md): 28 rules, 70 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R05 (05-ownership.md): 43 rules, 180 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R06 (06-control-functions.md): 24 rules, 104 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R07 (07-sequences.md): 90 rules, 180 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R07 (07-sequences.md): 90 rules, 181 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R08 (08-traits-generics.md): 29 rules, 92 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R09 (09-contexts-checks.md): 27 rules, 61 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R10 (10-io.md): 19 rules, 111 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -460,7 +460,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R07.2.10 [4+ 1-]: | **generator** | a fn declared `-> yields T`; calling it gives a sequence that reruns the...
 - R07.2.11 [1+ 2-]: | **materialize** | copy a sequence into a new collection: the only allocation step | | `....
 - R07.2.12 [1+ 0-]: | **place** | something assignable: an element or a `mut` view | | `a[i]`, `mut a[l..r]`
-- R07.2.13 [1+ 1-]: **Two capabilities.** A view is indexed when its adapter can answer `w[k]` in \(O(1)\): sl...
+- R07.2.13 [1+ 1-]: **Two capabilities.** A view is indexed when it walks in key order and can answer `w[k]` i...
 - R07.2.14 [1+ 0-]: **Slices are the views that narrow keys.** Every other indexed view keeps its source's key...
 - R07.2.15 [1+ 1-]: **Ranges are indexed sequences but not views:** they have no source. Slicing *with* a rang...
 - R07.2.16 [1+ 1-]: **Lazy means a view or generator.** Its work happens at each walk or read, never up front....
@@ -496,7 +496,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R07.6.1 [2+ 0-]: **Push, not pull.** The generator runs and the `for` body runs at each `yield`, so a non-r...
 - R07.6.2 [2+ 2-]: **A generator value is a closure you walk instead of call.** `let g = divisors(n)` stores ...
 - R07.6.3 [2+ 0-]: **Steering.** The yielded item may carry methods the generator reads after `yield` returns...
-- R07.6.4 [1+ 1-]: **No lockstep.** Two generators can't be walked in step, because each wants to own the loo...
+- R07.6.4 [2+ 1-]: **No lockstep.** Two generators can't be walked in step, because each wants to own the loo...
 - R07.7.1 [1+ 0-]: | `s.map(f)` | `Indexed` if `s` is, else `Seq` | `f` runs on every read
 - R07.7.2 [1+ 1-]: | `s.filter(p)`, `s.take_while(p)`, `s.skip_while(p)` | `Seq` |
 - R07.7.3 [3+ 0-]: | `s.take(k)`, `s.drop(k)` | an \(O(1)\) view on an `Indexed`; a `Seq` otherwise | consumi...
@@ -919,7 +919,7 @@ prepends it.
   - line 963: `var xs = [1, 2]`
 - 06-control-functions.md: 3 blocks, 0 with a case, 3 spec-only, 0 neither
 - 07-sequences.md: 7 blocks, 0 with a case, 6 spec-only, 1 neither
-  - line 217: `fn divisors(n: Int) -> yields Int:`
+  - line 218: `fn divisors(n: Int) -> yields Int:`
 - 08-traits-generics.md: 4 blocks, 0 with a case, 4 spec-only, 0 neither
 - 09-contexts-checks.md: 3 blocks, 0 with a case, 3 spec-only, 0 neither
 - 10-io.md: 3 blocks, 1 with a case, 2 spec-only, 0 neither

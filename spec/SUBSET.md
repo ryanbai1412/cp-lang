@@ -218,6 +218,7 @@ documented. The stdlib's own gaps are in `std/GAPS.md`.
 - core-05/lent-var-reassigned-from-itself.cp: compiler
 - std-seq/maximal-window-sum.cp: stdlib
 - std-window/track-infers-element-from-sequence.cp: compiler
+- core-07/zip-takes-a-rev.cp: stdlib
 - core-07/rev-pieces-cut-in-walk-order.cp: compiler
 - std-window/window-pop-checks-front.cp: stdlib
 - std-window/window-pop-empty-traps.cp: stdlib
