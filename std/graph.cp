@@ -1936,8 +1936,8 @@ fn at_most_one_forbids_every_pair_and_allows_each_single():
 /// empty: an empty `from` yields nothing
 /// order: `Enter` in preorder, `Exit` in postorder, `Again` when its arc is scanned, interleaved as the walk goes
 /// traps: never
-/// example: `domain V = 0..3; let g: [V]List<V> = [[1, 2], [], []]; dfs(g, from: [V(0)]).collect() == [Enter(0, None), Enter(1, Some(1)), Exit(1, Some(1)), Enter(2, Some(2)), Exit(2, Some(2)), Exit(0, None)]`
-/// example: `domain V = 0..3; let g: [V]List<V> = [[1, 2], [2], []]; dfs(g, from: [V(0)]).collect() == [Enter(0, None), Enter(1, Some(1)), Enter(2, Some(2)), Exit(2, Some(2)), Exit(1, Some(1)), Again(0, 2), Exit(0, None)]`
+/// example: `domain V = 0..3; let g: [V]List<V> = [[1, 2], [], []]; dfs(g, from: [V(0)]).collect() == [Visit.Enter(0, None), Visit.Enter(1, Some(1)), Visit.Exit(1, Some(1)), Visit.Enter(2, Some(2)), Visit.Exit(2, Some(2)), Visit.Exit(0, None)]`
+/// example: `domain V = 0..3; let g: [V]List<V> = [[1, 2], [2], []]; dfs(g, from: [V(0)]).collect() == [Visit.Enter(0, None), Visit.Enter(1, Some(1)), Visit.Enter(2, Some(2)), Visit.Exit(2, Some(2)), Visit.Exit(1, Some(1)), Visit.Again(0, 2), Visit.Exit(0, None)]`
 pub fn dfs<V, G: Next<V>>(g: G, from: Seq<V>, seen: ?mut [V]Bool = None) -> yields Visit<V, G.Arc>:
     var vis: [V]Bool = false
     let no_via: ?G.Arc = None
@@ -3201,8 +3201,8 @@ pub fn arborescence<V, E, W: Add + Sub, R: (u: V, v: V, w: W, ..)>(edges: [E]R, 
         hist_n.push(cur_n)
         hist_root.push(cur_root)
         hist_in_idx.push(in_idx)
-        hist_v_of.push(cur_v.clone())
-        hist_orig_e.push(cur_orig.clone())
+        hist_v_of.push(cur_v)
+        hist_orig_e.push(cur_orig)
         if cnt == 0:
             hist_id.push([i for i in 0..cur_n])
             hist_prev_idx.push(List<Int>())
@@ -3211,7 +3211,7 @@ pub fn arborescence<V, E, W: Add + Sub, R: (u: V, v: V, w: W, ..)>(edges: [E]R, 
             if id[i] == -1:
                 id[i] = cnt
                 cnt += 1
-        hist_id.push(id.clone())
+        hist_id.push(id)
         var nxt_u = List<Int>()
         var nxt_v = List<Int>()
         var nxt_w = List<W>()
