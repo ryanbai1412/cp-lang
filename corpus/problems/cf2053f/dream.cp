@@ -8,15 +8,15 @@ domain R = 0..n
 domain V = 1..=k
 let a: [R][m]?V = read(none: -1)
 let blank = [R] i => a[i].count(None)
-let cnt = [R] i => a[i].present.tally()
+let cnt = [R] i => a[i].present().tally()
 
-var credit = sum(blank[i] * blank[j] + cnt[i].dot(cnt[j]) for (i, j) in R.range.pairs())
+var credit = sum(blank[i] * blank[j] + sum(cnt[i][k] * cnt[j][k] for k in cnt[i].keys) for i in R if let j = i.next)
 var stay: [V]Int = 0
 var fresh = 0
 var best = 0
 for i in R:
-    for j in [i.prev, i.next].flatten(), (v, c) in cnt[j]:
+    for j in [i.prev, i.next].present(), (v, c) in cnt[j].items:
         stay[v] = max(stay[v], fresh) + c * blank[i]
         best max= stay[v]
-    if let j = R.next(i): fresh max= best - blank[i] * blank[j]
+    if let j = i.next: fresh max= best - blank[i] * blank[j]
 print(credit + max(fresh, best))
