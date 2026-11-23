@@ -13,10 +13,14 @@ after a rollout shows up at once.
 """
 
 import json
+import os
 import re
 import subprocess
 import sys
 import time
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from domain_of import domain_of  # noqa: E402
 
 DEVEX = re.compile(r"regenerat|re-?bless|renumber|ratchet|baseline|stale (derived|generated)|"
                    r"satisfy clippy|fix (the )?(gate|ci)|not mine", re.I)
@@ -29,12 +33,16 @@ AUTO = {"factory: regenerate generated files"}
 def commits(ref, hours):
     out = subprocess.run(
         ["git", "log", ref, f"--since={int(hours * 60)} minutes ago",
-         "--format=%ct%x09%(trailers:key=Domain,valueonly,separator=%x2C)%x09%s"],
+         "--format=%x00%ct%x09%(trailers:key=Domain,valueonly,separator=%x2C)%x09%s", "--name-only"],
         capture_output=True, text=True, check=True).stdout
     rows = []
-    for line in out.splitlines():
-        ts, domain, subject = (line.split("\t", 2) + ["", ""])[:3]
-        rows.append((int(ts), domain.split(",")[0].strip().split()[0].rstrip(".") if domain.strip() else "?", subject))
+    for entry in out.split("\0")[1:]:
+        head, _, files = entry.partition("\n")
+        ts, domain, subject = (head.split("\t", 2) + ["", ""])[:3]
+        # A commit without a trailer counts for the lane whose worklog it touches.
+        lane = (domain.split(",")[0].strip().split()[0].rstrip(".") if domain.strip()
+                else domain_of(files.split()) or "?")
+        rows.append((int(ts), lane, subject))
     return rows
 
 

@@ -11,3 +11,16 @@ if ! grep -qE "^($areas)(\([a-z0-9._/-]+\))?: [^ ].{0,70}$" <<<"$subject"; then
     echo "  e.g. \`stdlib: add interval map\` or \`port(cf2237h): rethink with interval map\`" >&2
     exit 1
 fi
+# Every commit names its lane (land.sh and the velocity numbers read it). A
+# missing trailer is added from $CPL_DOMAIN or the one plan/domains/<d>/ the
+# commit touches; when neither says, warn rather than refuse.
+if ! git interpret-trailers --parse "$1" | grep -q '^Domain: '; then
+    root="$(git rev-parse --show-toplevel)"
+    # shellcheck disable=SC2046
+    d="$(python3 "$root/scripts/domain_of.py" $(git diff --cached --name-only) 2>/dev/null || true)"
+    if [ -n "$d" ]; then
+        git interpret-trailers --in-place --trailer "Domain: $d" "$1"
+    else
+        echo "commit-msg: no Domain: trailer; add one (e.g. \`Domain: compiler\`) or set CPL_DOMAIN" >&2
+    fi
+fi
