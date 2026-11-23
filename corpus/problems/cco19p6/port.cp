@@ -14,8 +14,8 @@ fn starts_with(s: Str, head: Str) -> Bool = head.len <= s.len and s[0..head.len]
 
 /// Put `b` beside `a`, both starting at the same place: what sticks out, and how much is shared.
 fn overhang(a: Str, b: Str) -> ?(Str, Int):
-    if starts_with(a, b): Some((a[b.len..a.len], b.len))
-    elif starts_with(b, a): Some((b[a.len..b.len], a.len))
+    if starts_with(a, b): Some((a[b.len..a.len].to_str(), b.len))
+    elif starts_with(b, a): Some((b[a.len..b.len].to_str(), a.len))
     else: None
 
 let (n, m): (Int, Int) = read()

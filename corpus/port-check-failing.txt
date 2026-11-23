@@ -4,7 +4,6 @@ apio23p2
 atcoder_dp_j
 atcoder_dp_o
 atcoder_dp_u
-atcoder_dp_v
 btoi17p1
 btoi18p3
 btoi18p6
@@ -14,13 +13,11 @@ btoi19p5
 ccc02s4hard
 ccc05s5
 ccc10s4
-ccc14s4hard
 ccc20s1
 ccc23s4
 cco04p2
 cco16p4
 cco19p1
-cco19p6
 cco20p1
 cco21p5
 ceoi09p3

@@ -22,10 +22,10 @@ domain Strip = 0..ys.len - 1  // strip s lies between ys[s] and ys[s + 1]
 var first_strip = Map<Int, Int>()
 for i in 0..ys.len: first_strip[ys[i]] = i
 
-let size = max(1, isqrt(Strip.K))
-domain Block = 0..(Strip.K + size - 1) / size
+let size = max(1, isqrt(Strip.len))
+domain Block = 0..(Strip.len + size - 1) / size
 fn strips(b: Block) -> Range<Strip> = Strip.nth(b.to_idx * size)..=Strip.nth(
-    min(Strip.K, (b.to_idx + 1) * size) - 1
+    min(Strip.len, (b.to_idx + 1) * size) - 1
 )
 
 var tint: [Strip]Int = 0
