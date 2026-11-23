@@ -955,8 +955,18 @@ fn samples_instead(args: &RunArgs, typed: bool) -> Option<Vec<String>> {
 }
 
 fn next_after_test(file: &str, code: u8) -> String {
-    let src = std::fs::read_to_string(cpl_contest::problem::source_path(file)).unwrap_or_default();
+    let path = cpl_contest::problem::source_path(file);
+    let src = std::fs::read_to_string(&path).unwrap_or_default();
     match code {
+        0 if cpl_judge::named_in(&src).is_none()
+            && cpl_judge::resolve(path.as_ref(), &src, None).is_ok_and(|p| p.name == "generic") =>
+        {
+            format!(
+                "next: `cpl submit {file}` builds what the judge gets and checks it on these cases; \
+                 it builds for judge `generic` until the file starts with `// judge: codeforces` \
+                 (or another of `cpl judges`)\n"
+            )
+        }
         0 => format!(
             "next: `cpl submit {file}` builds what the judge gets and checks it on these cases\n"
         ),

@@ -1186,6 +1186,20 @@ fn passing_samples_point_at_submit() {
         "{}",
         text(&out.stderr)
     );
+    // With no `// judge:` line, submit would check `generic`'s limits only.
+    assert!(text(&out.stderr)
+        .contains("for judge `generic` until the file starts with `// judge: codeforces`"));
+    std::fs::write(
+        dir.join("a.cp"),
+        "// judge: codeforces\nlet n: Int = read()\nprint(n + 1)\n",
+    )
+    .unwrap();
+    let out = cpl(&dir, &["test", "a"]);
+    assert!(
+        !text(&out.stderr).contains("generic"),
+        "{}",
+        text(&out.stderr)
+    );
     let out = cpl(&dir, &["test", "a", "--json"]);
     assert_eq!(text(&out.stderr), "");
     std::fs::write(dir.join("a.tests/1.out"), "3\n").unwrap();
