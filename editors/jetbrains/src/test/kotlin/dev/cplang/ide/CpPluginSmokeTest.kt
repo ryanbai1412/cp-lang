@@ -5,6 +5,8 @@ import com.google.gson.JsonNull
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
 import com.intellij.execution.actions.ConfigurationContext
+import com.intellij.execution.configurations.GeneralCommandLine
+import com.intellij.execution.process.OSProcessHandler
 import com.intellij.openapi.actionSystem.IdeActions
 import com.intellij.openapi.extensions.ExtensionPointName
 import com.intellij.openapi.fileTypes.FileTypeManager
@@ -13,6 +15,7 @@ import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.vfs.newvfs.impl.VfsRootAccess
 import com.intellij.xdebugger.ui.DebuggerColors
+import com.intellij.testFramework.PlatformTestUtil
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import org.junit.Assume
 import java.io.File
@@ -96,6 +99,33 @@ class CpPluginSmokeTest : BasePlatformTestCase() {
         source.writeText(planted.replace("for c in 0..=cap:", "for c in (0..=cap).rev:"))
         val (passed, fixed) = run("test")
         assertEquals(fixed, 0, passed)
+    }
+
+    fun `test a wrong call is drawn on its line until the next run`() {
+        val dir = Files.createTempDirectory("cpl").toFile()
+        VfsRootAccess.allowRootAccess(testRootDisposable, dir.canonicalPath)
+        val part = File(dir, "p.cp").apply { writeText(File(repo, "crates/cpl-cli/tests/debugger/part_planted.cp").readText()) }
+        val one = File(dir, "one.in").apply { writeText("1\n") }
+        myFixture.configureFromExistingVirtualFile(LocalFileSystem.getInstance().refreshAndFindFileByIoFile(part)!!)
+        fun locate() {
+            val handler = OSProcessHandler(GeneralCommandLine(cpl.path, "locate", part.path, one.path))
+            CplWrongCall.follow(project, part, handler)
+            handler.startNotify()
+            assertTrue(handler.waitFor(60_000))
+            PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue()
+        }
+        fun notes() = myFixture.editor.inlayModel.getAfterLineEndElementsInRange(0, myFixture.editor.document.textLength)
+            .map { it.renderer }.filterIsInstance<CplWrongCall.Note>()
+        fun warned() = myFixture.editor.markupModel.allHighlighters.filter { it.errorStripeTooltip != null }
+        locate()
+        val note = notes().single()
+        assertTrue(note.text, note.text.startsWith("← first wrong call: `tri(k: 1)`"))
+        assertEquals(3, myFixture.editor.document.getLineNumber(myFixture.editor.inlayModel
+            .getAfterLineEndElementsInRange(0, myFixture.editor.document.textLength).single().offset))
+        assertEquals(3, myFixture.editor.document.getLineNumber(warned().single().startOffset))
+        locate()
+        assertEquals("a rerun replaces the old note", 1, notes().size)
+        assertEquals(1, warned().size)
     }
 
     fun `test fn main has a run marker`() {

@@ -109,6 +109,24 @@ object Cpl {
             re.findAll(text).map { m -> m.groups[1]!!.range to m.groupValues[2].toInt() }.toList()
         }.sortedBy { it.first.first }
 
+    data class WrongCall(val line: Int, val message: String)
+
+    /**
+     * The solution's line of the first wrong call `cpl stress` printed (`solution tri(k: 1) = 0 at line 4`
+     * under `first wrong call: ...`), and that headline; the same report Neovim and VS Code draw.
+     */
+    fun wrongCall(lines: List<String>): WrongCall? {
+        val head = Regex("^\\s*((first wrong call|first differing value): .*?)\\s*$")
+        val at = Regex("^\\s+solution\\s.*\\sat line (\\d+)\\s*$")
+        var headline: String? = null
+        for (line in lines) {
+            head.find(line)?.let { headline = it.groupValues[1] }
+            val h = headline ?: continue
+            at.find(line)?.let { return WrongCall(it.groupValues[1].toInt(), h) }
+        }
+        return null
+    }
+
     /** The top-level `fn` the offset is in, for `cpl run --trace FN`. */
     fun enclosingFn(text: CharSequence, offset: Int): String? {
         val fn = Regex("^fn\\s+([A-Za-z_][A-Za-z0-9_]*)", RegexOption.MULTILINE)

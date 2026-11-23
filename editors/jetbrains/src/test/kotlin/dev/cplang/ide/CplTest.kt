@@ -49,6 +49,20 @@ class CplTest {
     }
 
     @Test
+    fun `the first wrong call cpl stress names is the line to mark`() {
+        val report = listOf(
+            "  FAIL on case 1 (seed 1): WA",
+            "  first wrong call: `tri(k: 1)`, the 1st call of `tri`\r",
+            "    solution tri(k: 1) = 0 at line 4",
+            "    alt      tri(k: 1) = 1 at line 10",
+        )
+        assertEquals(Cpl.WrongCall(4, "first wrong call: `tri(k: 1)`, the 1st call of `tri`"), Cpl.wrongCall(report))
+        // A solution line before any headline is not a wrong call.
+        assertNull(Cpl.wrongCall(report.drop(1).drop(1)))
+        assertNull(Cpl.wrongCall(listOf("  first difference at line 1, token 1: expected `1`, got `2`")))
+    }
+
+    @Test
     fun `the fn at the caret is the one to trace`() {
         val text = "use x\n\n/// d\n@memo\nfn dfs(v: Int):\n    go(v)\n\n// c\nfn main():\n    dfs(0)\nlet top = 1\n"
         assertNull(Cpl.enclosingFn(text, text.indexOf("use")))

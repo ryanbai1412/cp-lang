@@ -18,11 +18,25 @@ import com.intellij.execution.configurations.RunProfileState
 import com.intellij.execution.configurations.RuntimeConfigurationError
 import com.intellij.execution.lineMarker.ExecutorAction
 import com.intellij.execution.lineMarker.RunLineMarkerContributor
+import com.intellij.execution.process.ProcessAdapter
+import com.intellij.execution.process.ProcessEvent
 import com.intellij.execution.process.ProcessHandler
 import com.intellij.execution.process.ProcessHandlerFactory
 import com.intellij.execution.process.ProcessTerminatedListener
 import com.intellij.execution.runners.ExecutionEnvironment
 import com.intellij.icons.AllIcons
+import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.editor.colors.CodeInsightColors
+import com.intellij.openapi.editor.EditorCustomElementRenderer
+import com.intellij.openapi.editor.Inlay
+import com.intellij.openapi.editor.colors.EditorFontType
+import com.intellij.openapi.editor.markup.HighlighterLayer
+import com.intellij.openapi.editor.markup.TextAttributes
+import com.intellij.openapi.fileEditor.FileEditorManager
+import com.intellij.openapi.fileEditor.TextEditor
+import com.intellij.openapi.util.Disposer
+import com.intellij.openapi.util.Key
+import com.intellij.ui.JBColor
 import com.intellij.openapi.options.SettingsEditor
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.LocalFileSystem
@@ -34,6 +48,8 @@ import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.psi.util.elementType
 import com.intellij.ui.components.JBTextField
 import com.intellij.util.ui.FormBuilder
+import java.awt.Graphics
+import java.awt.Rectangle
 import java.io.File
 import javax.swing.JComponent
 
@@ -99,6 +115,7 @@ class CplRunConfiguration(project: Project, factory: ConfigurationFactory, name:
             override fun startProcess(): ProcessHandler {
                 val handler = ProcessHandlerFactory.getInstance().createColoredProcessHandler(commandLine())
                 ProcessTerminatedListener.attach(handler)
+                CplWrongCall.follow(project, File(options.file ?: "").absoluteFile, handler)
                 return handler
             }
         }
@@ -179,5 +196,60 @@ class CplLineFilter(private val project: Project, private val file: File) : Filt
         return Filter.Result(refs.map { (range, n) ->
             Filter.ResultItem(start + range.first, start + range.last + 1, OpenFileHyperlinkInfo(project, vfile, n - 1))
         })
+    }
+}
+
+/**
+ * `cpl stress`'s first wrong call drawn on that line of the file, as VS Code and Neovim do: a warning
+ * on the line with the headline after it, until the next run of the file.
+ */
+object CplWrongCall {
+    private val shown = mutableMapOf<String, List<() -> Unit>>()
+
+    fun follow(project: Project, file: File, handler: ProcessHandler) {
+        val out = StringBuffer()
+        later(project) { show(project, file, null) }
+        handler.addProcessListener(object : ProcessAdapter() {
+            override fun onTextAvailable(event: ProcessEvent, outputType: Key<*>) {
+                out.append(event.text)
+            }
+
+            override fun processTerminated(event: ProcessEvent) {
+                val found = Cpl.wrongCall(out.toString().lines())
+                later(project) { show(project, file, found) }
+            }
+        })
+    }
+
+    private fun later(project: Project, action: () -> Unit) =
+        ApplicationManager.getApplication().invokeLater { if (!project.isDisposed) action() }
+
+    fun show(project: Project, file: File, found: Cpl.WrongCall?) {
+        shown.remove(file.path)?.forEach { it() }
+        found ?: return
+        val vfile = LocalFileSystem.getInstance().findFileByIoFile(file) ?: return
+        shown[file.path] = FileEditorManager.getInstance(project).getAllEditors(vfile)
+            .filterIsInstance<TextEditor>().map { it.editor }
+            .filter { found.line in 1..it.document.lineCount }
+            .flatMap { editor ->
+                val line = found.line - 1
+                val mark = editor.markupModel.addLineHighlighter(CodeInsightColors.WARNINGS_ATTRIBUTES, line, HighlighterLayer.WARNING)
+                mark.errorStripeTooltip = found.message
+                val note = editor.inlayModel.addAfterLineEndElement(editor.document.getLineEndOffset(line), true, Note("← ${found.message}"))
+                listOfNotNull({ mark.dispose() }, note?.let { { Disposer.dispose(it) } })
+            }
+    }
+
+    class Note(val text: String) : EditorCustomElementRenderer {
+        private fun font(inlay: Inlay<*>) = inlay.editor.colorsScheme.getFont(EditorFontType.ITALIC)
+
+        override fun calcWidthInPixels(inlay: Inlay<*>) =
+            inlay.editor.contentComponent.getFontMetrics(font(inlay)).stringWidth(text) + 16
+
+        override fun paint(inlay: Inlay<*>, g: Graphics, r: Rectangle, textAttributes: TextAttributes) {
+            g.font = font(inlay)
+            g.color = JBColor.GRAY
+            g.drawString(text, r.x + 8, r.y + g.fontMetrics.ascent)
+        }
     }
 }
