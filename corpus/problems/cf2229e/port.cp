@@ -17,20 +17,20 @@ let g = Graph.undirected(edges)
 let root = V.last!
 let t = Rooted(g, root:)
 
-let max_leaf = V.filter(u => g[u].len == 1).map(u => u).max()!
+let max_leaf = V.filter(u => g[u].len == 1).max()!
 var sub_max = [V] u => u
 var prv_val: [V]?V = None
 for u in t.at.rev:
-    let ch = [sub_max[c] for c in t.children(u) if not (u == root and sub_max[c] == root.prev!)]
-    let max_ch: ?V = if ch.is_empty: None else: Some(ch.max())
+    let kids = t.children(u).map(c => sub_max[c])
+    let max_ch = kids.filter(m => not (u == root and m == root.prev!)).max(by: m => m)
     prv_val[u] = max_ch
     if let mc = max_ch: sub_max[u] max= mc
 
-var dp = Prefix<Z>.filling(n)
+var dp = Prefix<V, Z>.filling()
 for u in V:
     let val = if u == max_leaf: Z(1)
     elif u > max_leaf:
-        if let pv = prv_val[u], pv < u: dp.fold(pv.ord + 1..u.ord) else: Z(0)
+        if let pv = prv_val[u], pv < u: dp.fold(pv.next!..u) else: Z(0)
     else: Z(0)
-    dp.set(u.ord, val)
-print(dp.fold(root.ord..root.ord + 1))
+    dp.set(u, val)
+print(dp.fold(root..=root))
