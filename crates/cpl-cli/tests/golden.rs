@@ -1140,4 +1140,16 @@ fn passing_samples_point_at_submit() {
         "{}",
         text(&out.stderr)
     );
+    // With a brute to compare against, a failure points at stress.
+    std::fs::write(
+        dir.join("a.cp"),
+        "let n: 1..=9 = read()\nprint(n + 1)\n\n@alt(program)\nfn brute():\n    let n: 1..=9 = read()\n    print(n + 1)\n",
+    )
+    .unwrap();
+    let out = cpl(&dir, &["test", "a"]);
+    assert!(
+        text(&out.stderr).contains("next: `cpl stress a` looks for"),
+        "{}",
+        text(&out.stderr)
+    );
 }

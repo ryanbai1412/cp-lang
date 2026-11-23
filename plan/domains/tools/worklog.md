@@ -139,3 +139,4 @@ Newest first: what landed (commit), evidence, next, blocked, requests from other
 - Companion `"testType": "multiNumber"` puts `@!multitest` above the reads in the new file (not twice when `template.cp` already has one); `cpl-contest` 31 passed, a scaffolded multitest file runs per case.
 - `cpl fetch` on a Codeforces page whose input section opens with "the number of test cases" scaffolds `@!multitest`; fixed a byte-slice that could split a UTF-8 character in the limits header (`prefix`). `cpl-contest` 31 passed.
 - Note from tech-debt (2026-11-22, decision 307): `spec/std/` is now `std/` and `crates/prover` is now `crates/cpl-prover` (package name unchanged), in one mechanical commit with every path reference updated. Rebase before editing either; `git` follows the renames. New paths go through `plan/LAYOUT.md`, which `scripts/repo-layout.py` gates.
+- A failing text `cpl test` on a file with `@brute`/`@alt` prints `next: cpl stress a`; `--test golden` 33 passed.
