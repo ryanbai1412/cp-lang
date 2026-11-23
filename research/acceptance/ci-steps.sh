@@ -40,7 +40,18 @@ check size "" sh -c 'test "$(wc -c < sum.cpp)" -lt 65536 && wc -c < sum.cpp'
 check crlf-source 14 sh -c 'cpl run crlf.cp < in.txt'
 check crlf-input 14 sh -c 'cpl run sum.cp < in-crlf.txt'
 check fmt "" cpl fmt sum.cp
-check lsp-starts "" sh -c 'printf "Content-Length: 58\r\n\r\n{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"initialize\",\"params\":{}}" | timeout 20 cpl lsp | head -c 200 | grep -q capabilities && echo ok'
+check lsp-starts capabilities python3 -c '
+import subprocess
+body = b"{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"initialize\",\"params\":{}}"
+p = subprocess.Popen(["cpl", "lsp"], stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+p.stdin.write(b"Content-Length: %d\r\n\r\n" % len(body) + body)
+p.stdin.flush()
+try:
+    out = p.stdout.read1(4096) if hasattr(p.stdout, "read1") else p.stdout.read(200)
+finally:
+    p.kill()
+print(out.decode(errors="replace"))
+'
 
 printf '{"os": "%s", "checks": [' "$os"
 ( IFS=,; printf '%s' "${checks[*]}" )
