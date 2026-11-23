@@ -505,7 +505,7 @@ pub struct PersistentLazySegTree<D, T, F>(act: Action<T, F>):
     /// cost: \(O(1)\)
     /// empty: the monoid identity when `D` is empty
     /// traps: when `v` did not come from this tree
-    /// example: `var t = PersistentLazySegTree(Action<Int, Int>(apply: (d, x, span) => x + d * span), a: [1, 2, 3]); t.all(t.apply(t.base, 0..3, 2)) == 12`
+    /// example: `var t = PersistentLazySegTree(Action<Int, Int>(apply: (d, x, span) => x + d * span), a: [1, 2, 3]); let v = t.apply(t.base, 0..3, 2); t.all(v) == 12`
     pub fn all(self, v: Version) -> T:
         val[v.root]
 
