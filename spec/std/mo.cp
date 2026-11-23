@@ -256,7 +256,7 @@ pub fn mo_rollback<D, M, R>(
 /// ties: equal keys keep the earlier query first
 /// order: `result[i]` answers `queries[i]`
 /// traps: when a `time` is outside `0..=updates.len`
-/// example: `var a = [1, 2, 3]; let qs = [(range: 0..2, time: 1), (range: 1..3, time: 0)]; mo_with_updates(qs, [(pos: 1, by: 10)], add: _ => (), remove: _ => (), apply_update: (u, _) => a[u.pos] += u.by, undo_update: (u, _) => a[u.pos] -= u.by, answer: qi => a.slice(qs[qi].range).sum()) == [13, 5]`
+/// example: `var a = [1, 2, 3]; let qs = [(range: 0..2, time: 1), (range: 1..3, time: 0)]; mo_with_updates(qs, [(pos: 1, by: 10)], add: _ => (), remove: _ => (), apply_update: (u, _) => a[u.pos] += u.by, undo_update: (u, _) => a[u.pos] -= u.by, answer: qi => a[qs[qi].range].sum()) == [13, 5]`
 pub fn mo_with_updates<D, U, R>(
     queries: List<(range: Range<D>, time: Int)>,
     updates: List<U>,

@@ -708,7 +708,7 @@ pub struct XorBasis:
     /// cost: O(W)
     /// traps: when `x < 0`
     /// example: `var b = XorBasis(); let p = b.add(6); let q = b.add(5); let r = b.add(3); p and q and not r`
-    /// example: `not XorBasis().add(0)`
+    /// example: `var b = XorBasis(); not b.add(0)`
     pub fn add(mut self, x: Int) -> Bool:
         assert x >= 0
         var v = x

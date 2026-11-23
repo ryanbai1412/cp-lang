@@ -70,7 +70,7 @@ pub struct Rng(s: U64):
     /// empty: `None`, and no draw
     /// traps: never
     /// example: `var r = Rng(1); r.pick([7]) == Some(7)`
-    /// example: `var r = Rng(1); let x = r.pick([4, 5, 6]).unwrap(); 4 <= x and x <= 6`
+    /// example: `var r = Rng(1); let x = r.pick([4, 5, 6])!; 4 <= x and x <= 6`
     /// example: `let e: List<Int> = []; var r = Rng(1); r.pick(e) == None`
     pub fn pick<S: Indexed, T>(mut self, xs: S) -> ?T:
         if xs.len == 0: return None
