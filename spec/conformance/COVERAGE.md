@@ -7,7 +7,7 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 2362 (995 passing). Rules: 548.
+Cases: 2364 (995 passing). Rules: 549.
 
 ## Summary per chapter
 
@@ -30,6 +30,7 @@ Cases: 2362 (995 passing). Rules: 548.
 - Rcli (cli.md): 2 rules, 6 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - Rfmt (fmt-lint.md): 1 rules, 2 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - Rlint (fmt-lint.md): 2 rules, 3 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- Rstress (stress.md): 1 rules, 2 cases; 0 uncovered, 0 happy-path only, 0 negative only
 
 26 rules match a forbidding word but only permit or define something;
 `permits.txt` lists them with the reason, so they need no reject case.
@@ -61,7 +62,8 @@ negative case. Complete: rules with no gap in `rule-gaps.txt`.
 | Rcli | 2 | 2 (100%) | 1 | 1 (100%) | 2 (100%) |
 | Rfmt | 1 | 1 (100%) | 1 | 1 (100%) | 1 (100%) |
 | Rlint | 2 | 2 (100%) | 2 | 2 (100%) | 2 (100%) |
-| all | 548 | 547 (99%) | 211 | 211 (100%) | 547 (99%) |
+| Rstress | 1 | 1 (100%) | 0 | 0 (0%) | 1 (100%) |
+| all | 549 | 548 (99%) | 211 | 211 (100%) | 548 (99%) |
 
 ## Rules
 
@@ -671,6 +673,10 @@ Each rule: positive / negative case counts, then the gap if any.
 
 - Rlint.1 [1+ 1-]: Lints flag legal code that is probably wrong, slow or unidiomatic. They never block a buil...
 - Rlint.2 [1+ 1-]: A lint is declared by the library that owns the names it mentions; the linter has no hard-...
+
+### Rstress: stress.md
+
+- Rstress.1 [2+ 1-]: On failure, shrink the recorded `gen` choices to a minimal input that still fails, then re...
 
 ## Diagnostics
 

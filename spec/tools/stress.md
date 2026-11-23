@@ -14,7 +14,7 @@ Status: draft for 0.3.0. The library side is `lib/random-stress.md`.
 4. On failure, shrink the recorded `gen` choices to a minimal input that
    still fails, then report it, each implementation's output, the first
    differing line, and the first part whose alt disagrees, with values in
-   the file's base. Save it to `d.tests/stress-<seed>.in`.
+   the file's base. Save it to `d.tests/stress-<seed>.in`. (Rstress.1)
 
 Options: `--time`, `--threads`, `--seed`, `--max-size`, `--laws=off`.
 Runs are deterministic per seed and parallel across threads. `cpl
