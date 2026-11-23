@@ -190,6 +190,15 @@ fn new_creates_the_solution_and_its_tests_folder() {
     assert!(text(&again.stderr).contains("won't overwrite"));
     let kept = std::fs::read_to_string(dir.join("sum.cp")).unwrap();
     assert_eq!(kept, "print(1)\n");
+    for json in [&["--json"][..], &["--format", "json"]] {
+        let name = format!("j{}", json.len());
+        let out = cpl(&dir, &[&["new", name.as_str()][..], json].concat());
+        assert_eq!(out.status.code(), Some(0), "{}", text(&out.stderr));
+        assert_eq!(
+            text(&out.stdout),
+            format!("{{\"path\":\"{name}.cp\",\"created\":true,\"tests\":\"{name}.tests\",\"samples\":0}}\n")
+        );
+    }
 }
 
 #[test]
@@ -385,7 +394,7 @@ fn help_json_lists_every_command_with_its_usage_summary_json_and_help() {
         .filter(|c| c.at(&["json"]).as_str().is_none())
         .map(|c| c.at(&["name"]).as_str().unwrap())
         .collect();
-    assert_eq!(no_json, ["new", "watch", "lsp", "dap", "replay", "self"]);
+    assert_eq!(no_json, ["watch", "lsp", "dap", "replay", "self"]);
     for command in commands {
         let name = command.at(&["name"]).as_str().unwrap();
         let usage = command.at(&["usage"]).as_str().unwrap();

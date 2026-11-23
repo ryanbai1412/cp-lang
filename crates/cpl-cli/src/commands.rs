@@ -137,7 +137,7 @@ pub(crate) const COMMANDS: &[Command] = &[
         name: "new",
         args: "<name>",
         summary: &["create a problem from its constraints or samples"],
-        json: Json::None,
+        json: Json::Flag,
         options: None,
     },
     Command {

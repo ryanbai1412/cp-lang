@@ -24,7 +24,7 @@ today = "25/25"
 name = "commands offering --json"
 command = "python3 plan/domains/tools/measure.py json"
 target = "every command that prints results (all but dap, lsp, self, watch)"
-today = "19/25 (without: dap lsp new replay self watch); new and replay left"
+today = "20/25 (without: dap lsp replay self watch); replay left (asked debugger)"
 
 [[metric]]
 name = "cpl check wall time over corpus ports, p95"

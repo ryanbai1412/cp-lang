@@ -6,7 +6,7 @@ most recently edited `.cp` file in the folder.
 
 | Command | Does |
 |---|---|
-| `cpl new d` | creates `d.cp` from the template and `d.tests/` |
+| `cpl new d` | creates `d.cp` from the template and `d.tests/`; `--json` prints `{"path", "created", "tests", "samples"}` as `cpl fetch --json` does |
 | `cpl fetch <url> [d]` | downloads the samples of a Codeforces or AtCoder problem page into `d.tests/`, and creates `d.cp` with the title and limits if it is new; `--html` reads a page saved from the browser (Codeforces refuses scripts) |
 | `cpl check d...` | every error in the files: names, types, borrows, input ranges; nothing runs |
 | `cpl fix d...` | applies each error's suggested fix and reports what is left |

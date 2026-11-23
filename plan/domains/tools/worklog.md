@@ -113,3 +113,6 @@ Newest first: what landed (commit), evidence, next, blocked, requests from other
 
 ## 2026-11-22: tools-1..4 settled by their recommendations
 - Per the coordinator's 20:42 rule (reversible calls are decided, not held): tools-2 is decisions.md 264 and tools-3 is 265; tools-1 and tools-4 already were 244 and 245. All four left plan/QUESTIONS.md; README's "Decisions for Ryan" is now "Decisions taken". All four were already applied, so no code changes. Ryan's new targets: the one tools metric they touch, corpus C++ under 32 KB, already targets 0 files over 32 KB.
+
+## 2026-11-22: `cpl new --json`
+- `cpl new d --json` (or `--format json`, and per problem under `--listen`) prints `{"path", "created", "tests", "samples"}`, the shape `cpl fetch --json` prints. `new_creates_the_solution_and_its_tests_folder` checks both spellings. JSON coverage 20/25, without dap, lsp, replay, self, watch (`python3 plan/domains/tools/measure.py json`); `replay` is debugger's, asked in their worklog. Tests: `cargo test -p cpl-cli --test golden` 28 passed, `-p cpl-contest` 29 passed.

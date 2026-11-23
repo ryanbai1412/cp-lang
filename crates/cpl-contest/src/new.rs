@@ -38,6 +38,7 @@ options:
                        the ports the extension sends to out of the box)
   --time-limit MS      the problem's time limit in milliseconds
   --memory-limit MB    the problem's memory limit in megabytes
+  --json               print what was created as JSON, as `cpl fetch --json`
 ";
 
 /// One of the ports Competitive Companion posts to by default.
@@ -381,7 +382,7 @@ pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u
             "--memory-limit",
             "--port",
         ],
-        &["--listen"],
+        &["--listen", "--json"],
     );
     if let Ok(args) = &parsed {
         if args.has("--listen") {
@@ -430,7 +431,8 @@ pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u
             return 2;
         }
     };
-    report(&scaffold, &source, stdout, stderr)
+    let json = args.iter().any(|arg| arg == "--json");
+    report(&scaffold, &source, json, stdout, stderr)
 }
 
 /// `cpl new --listen`: every problem the extension sends becomes a file.
@@ -472,6 +474,7 @@ fn run_listen(args: &Args, stdout: &mut dyn Write, stderr: &mut dyn Write) -> u8
         code = code.max(report(
             &scaffold,
             &crate::problem::source_path(&name),
+            args.has("--json"),
             stdout,
             &mut errors,
         ));
@@ -496,13 +499,23 @@ fn run_listen(args: &Args, stdout: &mut dyn Write, stderr: &mut dyn Write) -> u8
 fn report(
     scaffold: &Scaffold,
     source: &Path,
+    json: bool,
     stdout: &mut dyn Write,
     stderr: &mut dyn Write,
 ) -> u8 {
     match scaffold.create(source) {
         Ok(created) => {
-            let _ = writeln!(stdout, "  created {}", created[0].display());
             let samples = scaffold.samples.len();
+            if json {
+                let _ = writeln!(
+                    stdout,
+                    "{{\"path\":{},\"created\":true,\"tests\":{},\"samples\":{samples}}}",
+                    cpl_json::escape_string(&created[0].display().to_string()),
+                    cpl_json::escape_string(&created[1].display().to_string()),
+                );
+                return 0;
+            }
+            let _ = writeln!(stdout, "  created {}", created[0].display());
             let _ = writeln!(
                 stdout,
                 "  created {}/ ({})",
