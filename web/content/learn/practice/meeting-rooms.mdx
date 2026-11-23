@@ -1,0 +1,23 @@
+---
+title: Meeting rooms
+description: "Level B. Teaches Heap: the earliest free room on top, peek and pop as optionals."
+level: B
+chapter: 8
+teaches: "`Heap<Int>`, `peek`, `if let ... and`"
+---
+
+There are n meetings (1 ≤ n ≤ 2·10⁵). Meeting i uses a room from sᵢ up to, but not including, eᵢ (0 ≤ sᵢ < eᵢ ≤ 10⁹). A room can host a meeting starting exactly when its last one ends. Print the fewest rooms that fit all meetings.
+
+**Input:** n, then n lines `s e`. **Output:** one integer.
+
+| Input | Output |
+|---|---|
+| `4`<br/>`1 4`<br/>`2 5`<br/>`4 6`<br/>`6 7` | `2` |
+
+<Judge id="meeting-rooms">
+
+- Take meetings by start time and keep the end time of every room in a min-heap, `Heap<Int>.new()`. If the room that frees first is free by `t.s`, reuse it; otherwise open a new one. See [`Heap`](/docs/ref/std/heap).
+- `ends.peek` is a `?Int`, `None` when there are no rooms yet, so one condition covers both: `if let first = ends.peek and first <= t.s: ends.pop()`.
+- The heap holds one entry per room, so the answer is the largest `ends.len`.
+
+</Judge>

@@ -1,0 +1,23 @@
+---
+title: Fibonacci mod
+description: "Level C. Teaches matrix power: Mat<Z> ** n with the modulus in the element type, O(log n)."
+level: C
+chapter: 8
+teaches: "`Mat<Z>`, `**` on a matrix, `Mod<P>`"
+---
+
+With F(0) = 0, F(1) = 1 and F(k) = F(k − 1) + F(k − 2), print F(n) modulo 10⁹ + 7 for 0 ≤ n ≤ 10¹⁸.
+
+**Input:** n. **Output:** one integer.
+
+| Input | Output |
+|---|---|
+| `10` | `55` |
+
+<Judge id="fibonacci-mod">
+
+- One step maps (F(k + 1), F(k)) to (F(k + 2), F(k + 1)), which is multiplication by the matrix `[[1, 1], [1, 0]]`. So F(n) is an entry of that matrix to the n-th power.
+- `Mat<Z>.of([[Z(1), Z(1)], [Z(1), Z(0)]])` with `type Z = Mod<1_000_000_007>` reduces every entry for you, and `step ** n` squares its way there in O(log n) multiplications; see [`Mat`](/docs/ref/std/matrix).
+- `(step ** n).get(0, 1)` is F(n), and `** 0` gives the identity, so n = 0 needs no special case.
+
+</Judge>

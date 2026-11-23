@@ -1,0 +1,23 @@
+---
+title: Prime count
+description: "Level B. Teaches Sieve plus scan: precompute once above the queries, answer each in O(1)."
+level: B
+chapter: 8
+teaches: "`Sieve(n).is_prime`, `[D] x => ...` tables, `scan` and `fold`"
+---
+
+Answer q queries (1 ≤ q ≤ 2·10⁵): each gives x (1 ≤ x ≤ 10⁶); print how many primes are at most x.
+
+**Input:** q, then q lines each with x. **Output:** q lines.
+
+| Input | Output |
+|---|---|
+| `3`<br/>`1`<br/>`10`<br/>`1000000` | `0`<br/>`4`<br/>`78498` |
+
+<Judge id="prime-count">
+
+- `Sieve(top)` finds every prime up to `top` once; `s.is_prime(x)` is then O(1). See [math](/docs/ref/std/math).
+- Build a 0/1 table with `[0..=top] x => if s.is_prime(x): 1 else: 0`, then `scan(+)` it: `pre.fold(0..=x)` counts the primes up to x in O(1).
+- Name the bound once, `let top = 1_000_000`, and use it in both the sieve and the input type, so they can't drift apart.
+
+</Judge>

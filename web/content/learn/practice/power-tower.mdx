@@ -1,0 +1,23 @@
+---
+title: Power tower
+description: "Level B. Teaches Mod<P> ** with a reduced exponent: Fermat's little theorem via pow_mod(b, c, P - 1)."
+level: B
+chapter: 8
+teaches: "`Mod<P>` `**`, `pow_mod`, `const` above `@!multitest`"
+---
+
+There are t test cases (1 ≤ t ≤ 10⁵). Each gives a, b, c (1 ≤ a ≤ 10⁹, 0 ≤ b, c ≤ 10⁹); print a^(b^c) modulo 10⁹ + 7. Here 0⁰ = 1.
+
+**Input:** t, then t lines `a b c`. **Output:** t lines.
+
+| Input | Output |
+|---|---|
+| `3`<br/>`3 7 1`<br/>`15 2 2`<br/>`3 4 5` | `2187`<br/>`50625`<br/>`763327764` |
+
+<Judge id="power-tower">
+
+- `b^c` has up to 9·10⁹ digits. Since 10⁹ + 7 is prime and a is never a multiple of it, a^(P − 1) = 1, so the exponent only matters modulo P − 1: `pow_mod(b, c, P - 1)`.
+- `type Z = Mod<P>` and `Z(a) ** e` is fast exponentiation with the modulus built in; see [`Mod`](/docs/ref/std/mod).
+- Put `const P` and `type Z` above `@!multitest`: code above the divider runs once, code below once per test; see [Multitest and state](/learn/language/multitest-state).
+
+</Judge>

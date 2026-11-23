@@ -1,0 +1,23 @@
+---
+title: Shortest period
+description: "Level C. Teaches prefix_function: the longest border gives the shortest period in O(n)."
+level: C
+chapter: 5
+teaches: "`prefix_function(s)`, borders and periods"
+---
+
+A string s of lowercase letters (1 ≤ |s| ≤ 10⁶) has period p if s[i] = s[i − p] for every i ≥ p. Print the smallest period of s. (The period need not divide |s|: `abcabcab` has period 3.)
+
+**Input:** s. **Output:** one integer.
+
+| Input | Output |
+|---|---|
+| `abcabcab` | `3` |
+
+<Judge id="shortest-period">
+
+- s has period p exactly when its first |s| − p characters equal its last |s| − p, a border. The longest border gives the shortest period.
+- `prefix_function(s)` gives, for each position, the longest border of the prefix ending there, in O(|s|); its last entry is the longest border of all of s. See [strings](/docs/ref/std/strings).
+- [Pattern count](/learn/practice/pattern-count) uses the same machinery through `find_all`.
+
+</Judge>

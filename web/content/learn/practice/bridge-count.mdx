@@ -1,0 +1,23 @@
+---
+title: Bridge count
+description: "Level D. Teaches bridges: a [E]Bool keyed by the edge domain, parallel edges and loops handled."
+level: D
+chapter: 9
+teaches: "`bridges(g)`, edge domains, `count`"
+---
+
+A road network has n towns (1 ≤ n ≤ 2·10⁵) and m roads (0 ≤ m ≤ 2·10⁵); road `u v` joins u and v, and two roads may join the same pair, or a road may join a town to itself. A road is critical if closing it alone splits some pair of towns that could reach each other before. Print the number of critical roads.
+
+**Input:** n and m, then m lines `u v`. **Output:** one integer.
+
+| Input | Output |
+|---|---|
+| `4 4`<br/>`1 2`<br/>`2 3`<br/>`3 1`<br/>`3 4` | `1` |
+
+<Judge id="bridge-count">
+
+- Give the roads their own domain, `domain E = 0..m`, and read `es: [E](u: V, v: V)`. `bridges(Graph.undirected(es))` returns a `[E]Bool`, one answer per road; see [`Graph`](/docs/ref/std/graph).
+- Each arc carries its road, so a second road between the same pair is not mistaken for the way back: parallel roads and loops are never bridges, with no special case in your code.
+- `bridges` isn't in the prelude: `use std.graph.{bridges}`. Then `.count(b => b)`.
+
+</Judge>

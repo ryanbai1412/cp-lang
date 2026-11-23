@@ -20,10 +20,12 @@ Solve these in the editor on each page. Your code is judged in the browser again
 | [Mirror word](/learn/practice/mirror-word) | A | `Str`, indexing, `yes()` | 5 |
 | [Run length](/learn/practice/run-length) | A | building a `Str`, interpolation | 5 |
 | [Pattern count](/learn/practice/pattern-count) | B | `s.find_all(p)`, `.count()` | 5 |
+| [Shortest period](/learn/practice/shortest-period) | C | `prefix_function(s)`, borders and periods | 5 |
 | [Closest values](/learn/practice/closest-values) | A | `sorted()`, `min=` over neighbours | 6 |
 | [Leaderboard](/learn/practice/leaderboard) | B | records, reading records, `sort(by:)` | 6 |
 | [At most](/learn/practice/at-most) | B | binary search with `first_gt` | 6 |
 | [Cut ropes](/learn/practice/cut-ropes) | C | `(lo..=hi).last_true(p)`, a monotone predicate, `?? 0` | 6 |
+| [Count in range](/learn/practice/count-in-range) | A | `sorted()`, `first_true`, `??` | 6 |
 | [Boat pairs](/learn/practice/boat-pairs) | B | `@!multitest`, a greedy after sorting, two pointers | 7 |
 | [Budget window](/learn/practice/budget-window) | B | a sliding window | 7 |
 | [Window maximum](/learn/practice/window-max) | B | `Window(max)`, `push`, `pop`, `all` | 7 |
@@ -36,6 +38,11 @@ Solve these in the editor on each page. Your code is judged in the browser again
 | [Choose](/learn/practice/choose) | B | `type Z = Mod<1_000_000_007>`, `Comb<Z>(limit)`, `choose` | 8 |
 | [Range add, range minimum](/learn/practice/range-add-min) | D | `SegTree(min, a, act: add)`, `apply(l..=r, x)`, `fold` | 8 |
 | [Xor stretches](/learn/practice/xor-stretches) | C | running `^=`, `Counter`, prefix trick | 8 |
+| [Prime count](/learn/practice/prime-count) | B | `Sieve(n).is_prime`, `[D] x => ...` tables, `scan` and `fold` | 8 |
+| [Range gcd](/learn/practice/range-gcd) | C | `SparseTable(gcd, a)`, `fold(l..=r)`, 1-based input into a 0-based domain | 8 |
+| [Power tower](/learn/practice/power-tower) | B | `Mod<P>` `**`, `pow_mod`, `const` above `@!multitest` | 8 |
+| [Fibonacci mod](/learn/practice/fibonacci-mod) | C | `Mat<Z>`, `**` on a matrix, `Mod<P>` | 8 |
+| [Meeting rooms](/learn/practice/meeting-rooms) | B | `Heap<Int>`, `peek`, `if let ... and` | 8 |
 | [Fewest hops](/learn/practice/fewest-hops) | B | a vertex domain, reading edges, `bfs` | 9 |
 | [Maze walk](/learn/practice/maze-walk) | B | a grid as a graph, `adj4` | 9 |
 | [Friend groups](/learn/practice/friend-groups) | B | `Dsu<V>`, `unite` returning whether it merged, `size` | 9 |
@@ -47,6 +54,10 @@ Solve these in the editor on each page. Your code is judged in the browser again
 | [Tree distance](/learn/practice/tree-distance) | C | `Rooted.new`, `lca`, `depth` | 9 |
 | [Two teams](/learn/practice/two-teams) | B | `two_color(g)`, `?[V]Bool`, `!= None` | 9 |
 | [Ancestor jump](/learn/practice/ancestor-jump) | C | `Rooted.ancestor(v, k)`, `?V`, `if let ... else` | 9 |
+| [Bridge count](/learn/practice/bridge-count) | D | `bridges(g)`, edge domains, `count` | 9 |
+| [Grid escape](/learn/practice/grid-escape) | B | `[R, C]Char`, `c.adj4`, `bfs` with a neighbour function | 9 |
+| [All pairs](/learn/practice/all-pairs) | B | `[V, V]?Int`, `floyd_warshall(mut d)`, `min=` on `None` | 9 |
+| [Max flow](/learn/practice/max-flow) | D | `FlowGraph<V>`, `add(u, v, Some(c))`, `max_flow` | 9 |
 | [Fewest coins](/learn/practice/fewest-coins) | B | a DP over `?Int` | 10 |
 | [Stepping stones](/learn/practice/stepping-stones) | B | a 1-D DP table, `min=` | 10 |
 | [Edit steps](/learn/practice/edit-steps) | C | a 2-D DP table over prefixes | 10 |
@@ -55,5 +66,6 @@ Solve these in the editor on each page. Your code is judged in the browser again
 | [Common subsequence](/learn/practice/common-subsequence) | B | 2D table `[0..=s.len, 0..=t.len]Int`, `if ... else` as a value | 10 |
 | [Round trip](/learn/practice/round-trip) | D | bitmask DP, `[0..1 << n, T]?Int`, `min=` on `None` | 10 |
 | [Coin ways](/learn/practice/coin-ways) | B | `[0..=x]Z` table, `Mod<P>` `+=`, loop order | 10 |
+| [Longest chain](/learn/practice/longest-chain) | C | `topo(g)`, DP over a DAG, `max=` | 10 |
 | [Best stretch](/learn/practice/best-stretch) | B | a linear scan checked by stress | 11 |
 | [Parity pick](/learn/practice/parity-pick) | A | `@!multitest`, `any`, `yes` | 11 |

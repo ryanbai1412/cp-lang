@@ -1,0 +1,23 @@
+---
+title: All pairs
+description: "Level B. Teaches floyd_warshall: a [V, V]?Int table with None for no road, updated in place."
+level: B
+chapter: 9
+teaches: "`[V, V]?Int`, `floyd_warshall(mut d)`, `min=` on `None`"
+---
+
+There are n towns (1 ≤ n ≤ 400) and m one-way roads (0 ≤ m ≤ 10⁵); road `u v w` goes from u to v in w minutes (1 ≤ w ≤ 10⁹), and there may be several roads between the same towns. Answer q queries (1 ≤ q ≤ 10⁵): the shortest time from u to v, or −1 if v can't be reached. A town is 0 minutes from itself.
+
+**Input:** n, m and q, then m lines `u v w`, then q lines `u v`. **Output:** q lines.
+
+| Input | Output |
+|---|---|
+| `3 3 3`<br/>`1 2 4`<br/>`2 3 1`<br/>`1 3 7`<br/>`1 3`<br/>`3 1`<br/>`2 2` | `5`<br/>`-1`<br/>`0` |
+
+<Judge id="all-pairs">
+
+- With n ≤ 400 and many queries, compute every distance once: O(n³) is 6.4·10⁷ steps.
+- `var d: [V, V]?Int = None`, then `d[e.u, e.v] min= e.w` keeps the cheapest of parallel roads. `floyd_warshall(mut d)` turns it into distances in place and sets the diagonal to 0; see [`Graph`](/docs/ref/std/graph).
+- It returns `false` on a negative cycle. Weights here are positive, so `assert` it rather than dropping the result.
+
+</Judge>

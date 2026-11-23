@@ -1,0 +1,23 @@
+---
+title: Range gcd
+description: "Level C. Teaches SparseTable: O(1) folds of an idempotent operation such as gcd over a static array."
+level: C
+chapter: 8
+teaches: "`SparseTable(gcd, a)`, `fold(l..=r)`, 1-based input into a 0-based domain"
+---
+
+You are given n numbers (1 ≤ n ≤ 2·10⁵, 1 ≤ aᵢ ≤ 10⁹) that never change, and q queries (1 ≤ q ≤ 2·10⁵). Each query gives l and r (1 ≤ l ≤ r ≤ n); print the gcd of a_l … a_r.
+
+**Input:** n and q, the n numbers, then q lines `l r`. **Output:** q lines.
+
+| Input | Output |
+|---|---|
+| `5 3`<br/>`12 18 24 6 9`<br/>`1 3`<br/>`2 5`<br/>`4 4` | `6`<br/>`3`<br/>`6` |
+
+<Judge id="range-gcd">
+
+- `gcd(g, g) == g`, so two overlapping halves of a range give its gcd. That is what a sparse table needs: `SparseTable(gcd, a)` builds in O(n log n) and `t.fold(l..=r)` answers in O(1); see [`SparseTable`](/docs/ref/std/sparse).
+- The queries are 1-based and the array is over `0..n`: convert once with `I(l - 1)..=I(r - 1)`, and the domain checks the rest.
+- Sums aren't idempotent; for them use [`scan`](/docs/ref/std/prefix) or [`Fenwick`](/docs/ref/std/fenwick).
+
+</Judge>

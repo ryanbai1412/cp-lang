@@ -1,0 +1,23 @@
+---
+title: Grid escape
+description: "Level B. Teaches grid BFS: cells are (R, C) vertices and adj4 gives in-bounds neighbours, no bounds checks."
+level: B
+chapter: 9
+teaches: "`[R, C]Char`, `c.adj4`, `bfs` with a neighbour function"
+---
+
+A maze has h rows and w columns (1 ≤ h, w ≤ 1000, at least 2 cells). Each cell is `.` (open), `#` (wall), `S` (start) or `E` (exit); there is exactly one `S` and one `E`. Each step moves to an open, `S` or `E` cell up, down, left or right. Print the fewest steps from `S` to `E`, or −1 if `E` can't be reached.
+
+**Input:** h and w, then h lines of w characters. **Output:** one integer.
+
+| Input | Output |
+|---|---|
+| `3 4`<br/>`S.#.`<br/>`.##E`<br/>`....` | `6` |
+
+<Judge id="grid-escape">
+
+- `let grid: [R, C]Char = read()` reads the rows into a table over two domains. A cell is an `(R, C)` pair, and `c.adj4` yields only the neighbours inside the grid; see [`std.grid`](/docs/ref/std/grid).
+- No graph to build: `bfs(c => [q for q in c.adj4 if grid[q] != '#'], [start])` searches from a neighbour function. [Graphs](/learn/read/graphs) shows the same shape.
+- Find `S` with `grid.items.find(e => e.1 == 'S')!.0`; `p[goal] ?? -1` prints the distance or −1.
+
+</Judge>

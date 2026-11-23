@@ -1,0 +1,22 @@
+---
+title: Count in range
+description: "Level A. Teaches sorted plus first_true: binary search as a question about the first index where something holds."
+level: A
+chapter: 6
+teaches: "`sorted()`, `first_true`, `??`"
+---
+
+You are given n numbers (1 ≤ n ≤ 2·10⁵, 1 ≤ aᵢ ≤ 10⁹) and q queries (1 ≤ q ≤ 2·10⁵). Each query gives l and r (1 ≤ l, r ≤ 10⁹); print how many numbers lie in [l, r], or 0 if l > r.
+
+**Input:** n and q, the n numbers, then q lines `l r`. **Output:** q lines.
+
+| Input | Output |
+|---|---|
+| `5 3`<br/>`5 1 3 3 9`<br/>`3 3`<br/>`1 10`<br/>`6 8` | `2`<br/>`5`<br/>`0` |
+
+<Judge id="count-in-range">
+
+- Sort once with `a.sorted()`. Then "how many are below x" is the first index whose value is at least x: `(0..n).first_true(i => b[i] >= x) ?? n`, where `None` means every value is below x. See [`first_true`](/docs/ref/std/seq) and [Sorting and searching](/learn/read/sorting-and-searching).
+- The count in [l, r] is `below(r + 1) - below(l)`, which is already 0 when l > r.
+
+</Judge>
