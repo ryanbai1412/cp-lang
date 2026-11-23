@@ -42,7 +42,9 @@ impl<'a> Lowerer<'a> {
             return None;
         }
         let info = &self.structs[sid];
-        let has_at = info.methods.contains_key("at") || info.projections.contains_key("at");
+        let has_at = info.methods.contains_key("at")
+            || info.gen_methods.contains_key("at")
+            || info.projections.contains_key("at");
         if self.counter_key.contains_key(&sid) || !has_at {
             return None;
         }

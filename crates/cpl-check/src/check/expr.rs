@@ -2842,6 +2842,11 @@ impl<'a> Checker<'a> {
     }
 
     fn index(&mut self, expr: &Expr, base: &Expr, indices: &[Expr]) -> Ty {
+        if let [index] = indices {
+            if let Some(at) = self.index_by_at(expr, base, index) {
+                return at;
+            }
+        }
         let base_ty = self.infer(base);
         if self.double_index(base, indices) {
             return Ty::Error;
@@ -4087,5 +4092,50 @@ impl Checker<'_> {
             index: vec![Ty::Pos(format!("{name}.Idx"))],
             elem: Box::new(elem),
         })
+    }
+}
+
+impl Checker<'_> {
+    /// R12.4.13: `s[k]` on a struct with an `at` method is `s.at(k)`.
+    fn index_by_at(&mut self, expr: &Expr, base: &Expr, index: &Expr) -> Option<Ty> {
+        if matches!(index.kind, ExprKind::Range { .. }) {
+            return None;
+        }
+        let base_ty = self.quietly(|c| c.infer(base));
+        let Ty::Named { name, .. } = &base_ty else {
+            return None;
+        };
+        let name = name.clone();
+        let def = self.type_def(&name)?;
+        let Def::Struct { methods, .. } = &*def else {
+            return None;
+        };
+        // A struct's own `get` is its `[]`, as in lowering (`Compressed`).
+        if !methods.iter().any(|(m, _)| m == "at") || methods.iter().any(|(m, _)| m == "get") {
+            return None;
+        }
+        let callee = Expr {
+            kind: ExprKind::Field {
+                base: Box::new(base.clone()),
+                name: ast::Name {
+                    text: "at".to_string(),
+                    span: index.span,
+                },
+            },
+            span: expr.span,
+        };
+        let args = vec![ast::Arg {
+            name: None,
+            mutable: false,
+            value: index.clone(),
+        }];
+        let call = Expr {
+            kind: ExprKind::Call {
+                callee: Box::new(callee),
+                args,
+            },
+            span: expr.span,
+        };
+        Some(self.infer(&call))
     }
 }

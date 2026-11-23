@@ -1880,3 +1880,11 @@ fn a_method_form_lambda_body_and_tuple_receiver_method_hover() {
         hover(src, "all((u")
     );
 }
+
+#[test]
+fn indexing_a_struct_with_an_at_method_calls_it() {
+    // R12.4.13: `s[k]` is `s.at(k)`.
+    let src = "struct Doubled(pub xs: List<Int>):\n    pub fn at(self, i: Int) -> Int = 2 * xs[i]\nlet d = Doubled([3, 4])\nlet y = d[1]\nprint(y)\n";
+    assert_eq!(codes(src), Vec::<&str>::new());
+    assert_eq!(hover(src, "y = d"), "y: Int");
+}
