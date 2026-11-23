@@ -11,6 +11,20 @@ pub(crate) struct Command {
     pub args: &'static str,
     /// The summary as `cpl --help` wraps it.
     pub summary: &'static [&'static str],
+    /// How the command spells JSON output.
+    pub json: Json,
+    /// Every option, for the commands whose arguments `cpl` parses itself;
+    /// `None` where the command's crate parses its own.
+    pub options: Option<&'static [&'static str]>,
+}
+
+#[derive(PartialEq)]
+pub(crate) enum Json {
+    None,
+    /// `--json`
+    Flag,
+    /// `--format json`
+    Format,
 }
 
 pub(crate) const COMMANDS: &[Command] = &[
@@ -18,16 +32,22 @@ pub(crate) const COMMANDS: &[Command] = &[
         name: "check",
         args: "<file>...",
         summary: &["report every error in the files"],
+        json: Json::Flag,
+        options: Some(&["--json"]),
     },
     Command {
         name: "fix",
         args: "<file>...",
         summary: &["apply each error's suggested fix, report what is left"],
+        json: Json::Flag,
+        options: Some(&["--json"]),
     },
     Command {
         name: "migrate",
         args: "[path]...",
         summary: &["rewrite removed spellings to the current ones"],
+        json: Json::Flag,
+        options: Some(&["--check", "--json"]),
     },
     Command {
         name: "run",
@@ -39,6 +59,8 @@ pub(crate) const COMMANDS: &[Command] = &[
             "(`cpl run --help` has the options for traces);",
             "`--release` runs the C++ that `cpl build` writes",
         ],
+        json: Json::Format,
+        options: None,
     },
     Command {
         name: "judge",
@@ -48,6 +70,8 @@ pub(crate) const COMMANDS: &[Command] = &[
             "standard input and output, or with an output its",
             "`@checker`; exit status 0 accepts",
         ],
+        json: Json::Flag,
+        options: Some(&["--json"]),
     },
     Command {
         name: "build",
@@ -58,11 +82,15 @@ pub(crate) const COMMANDS: &[Command] = &[
             "`--checked` also builds it with sanitizers to run here;",
             "`--judge <name>` writes it for that judge",
         ],
+        json: Json::Flag,
+        options: Some(&["-o", "--judge", "--checked", "--size", "--copy", "--json"]),
     },
     Command {
         name: "judges",
         args: "[file]",
         summary: &["list the judge profiles, marking the one a build uses"],
+        json: Json::Flag,
+        options: Some(&["--json"]),
     },
     Command {
         name: "submit",
@@ -71,16 +99,22 @@ pub(crate) const COMMANDS: &[Command] = &[
             "build for the file's judge, run its cases on that",
             "build, and say whether it is ready to send",
         ],
+        json: Json::Flag,
+        options: Some(&["--copy", "--json"]),
     },
     Command {
         name: "fmt",
         args: "[path]...",
         summary: &["format files in the one canonical style"],
+        json: Json::Flag,
+        options: None,
     },
     Command {
         name: "lint",
         args: "[path]...",
         summary: &["warn about code that is legal but probably wrong or slow"],
+        json: Json::None,
+        options: None,
     },
     Command {
         name: "explain",
@@ -89,71 +123,99 @@ pub(crate) const COMMANDS: &[Command] = &[
             "show a diagnostic or lint explanation, or a file's",
             "representations and view costs",
         ],
+        json: Json::Flag,
+        options: Some(&["--json"]),
     },
     Command {
         name: "doc",
         args: "[path]...",
         summary: &["build HTML documentation from `///` comments"],
+        json: Json::Format,
+        options: None,
     },
     Command {
         name: "new",
         args: "<name>",
         summary: &["create a problem from its constraints or samples"],
+        json: Json::None,
+        options: None,
     },
     Command {
         name: "fetch",
         args: "<url> [name]",
         summary: &["download a Codeforces or AtCoder problem's samples"],
+        json: Json::Flag,
+        options: None,
     },
     Command {
         name: "test",
         args: "<problem>",
         summary: &["run every case in <problem>.tests/"],
+        json: Json::Format,
+        options: None,
     },
     Command {
         name: "stress",
         args: "<file>",
         summary: &["run against a brute on random inputs; shrink the failure"],
+        json: Json::Format,
+        options: None,
     },
     Command {
         name: "bench",
         args: "<problem>",
         summary: &["run on maximum-size worst-case inputs against the limits"],
+        json: Json::Format,
+        options: None,
     },
     Command {
         name: "profile",
         args: "<file> [input]",
         summary: &["run, then show each line's hits and share of the time"],
+        json: Json::Format,
+        options: Some(&["--native", "--format"]),
     },
     Command {
         name: "cover",
         args: "<file> [input]...",
         summary: &["list the lines and branches no input reached"],
+        json: Json::Format,
+        options: Some(&["--native", "--format"]),
     },
     Command {
         name: "watch",
         args: "<problem>",
         summary: &["check, lint and test on every save"],
+        json: Json::None,
+        options: None,
     },
     Command {
         name: "report",
         args: "<file>",
         summary: &["write a paste-ready bug report (`--last` after an ICE)"],
+        json: Json::Flag,
+        options: None,
     },
     Command {
         name: "lsp",
         args: "",
         summary: &["serve the language server protocol on stdio"],
+        json: Json::None,
+        options: Some(&["--stdio"]),
     },
     Command {
         name: "dap",
         args: "",
         summary: &["serve the time-travel debug adapter (DAP) on stdio"],
+        json: Json::None,
+        options: Some(&["--stdio"]),
     },
     Command {
         name: "replay",
         args: "<file> --trace <t.json> --step <n>",
         summary: &["run one recorded call again with the file's edited fn"],
+        json: Json::None,
+        options: None,
     },
     Command {
         name: "self",
@@ -163,6 +225,8 @@ pub(crate) const COMMANDS: &[Command] = &[
             "(`cpl self --help`); `cpl +<toolchain> <command>` runs",
             "one command with another, e.g. `cpl +edge run a.cp`",
         ],
+        json: Json::None,
+        options: None,
     },
 ];
 
@@ -413,24 +477,18 @@ options:
                     Fast, and without the interpreter's checks
 ";
 
-/// Commands whose JSON output is `--format json`; `JSON_FLAG` ones say `--json`.
-const JSON_FORMAT: &[&str] = &["run", "doc", "test", "stress", "bench", "profile", "cover"];
-const JSON_FLAG: &[&str] = &[
-    "check", "fix", "build", "submit", "judge", "judges", "explain", "report", "fmt", "fetch",
-    "migrate",
-];
-
 /// Both spellings of JSON output, `--json` and `--format json`, work on every
 /// command that has one (decisions.md 230).
 pub(crate) fn json_spelling<'a>(command: &str, args: Vec<&'a str>) -> Vec<&'a str> {
-    if JSON_FORMAT.contains(&command) {
+    let json = COMMANDS.iter().find(|c| c.name == command).map(|c| &c.json);
+    if json == Some(&Json::Format) {
         let spell = |arg| match arg {
             "--json" => vec!["--format", "json"],
             arg => vec![arg],
         };
         return args.into_iter().flat_map(spell).collect();
     }
-    if !JSON_FLAG.contains(&command) {
+    if json != Some(&Json::Flag) {
         return args;
     }
     let mut spelled = Vec::new();
@@ -449,19 +507,26 @@ pub(crate) fn json_spelling<'a>(command: &str, args: Vec<&'a str>) -> Vec<&'a st
 /// The first argument that looks like an option (`-x`, `--x`; a lone `-` is
 /// a path) but is none of the command's, for the commands parsed here.
 pub(crate) fn unknown_option<'a>(command: &str, args: &[&'a str]) -> Option<&'a str> {
-    let options: &[&str] = match command {
-        "check" | "fix" | "judge" => &["--json"],
-        "judges" => &["--json"],
-        "migrate" => &["--check", "--json"],
-        "build" => &["-o", "--judge", "--checked", "--size", "--copy", "--json"],
-        "submit" => &["--copy", "--json"],
-        "explain" => &["--json"],
-        "profile" | "cover" => &["--native", "--format"],
-        "lsp" | "dap" => &["--stdio"],
-        _ => return None,
-    };
+    let options = COMMANDS.iter().find(|c| c.name == command)?.options?;
     args.iter()
         .copied()
         .filter(|arg| !matches!(*arg, "-h" | "--help"))
         .find(|arg| arg.len() > 1 && arg.starts_with('-') && !options.contains(arg))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{Json, COMMANDS};
+
+    #[test]
+    fn a_parsed_command_accepts_its_own_json_spelling() {
+        for c in COMMANDS {
+            let Some(options) = c.options else { continue };
+            match c.json {
+                Json::Flag => assert!(options.contains(&"--json"), "{}", c.name),
+                Json::Format => assert!(options.contains(&"--format"), "{}", c.name),
+                Json::None => {}
+            }
+        }
+    }
 }
