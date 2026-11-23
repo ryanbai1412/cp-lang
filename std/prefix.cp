@@ -183,7 +183,7 @@ pub struct Prefix<D, T: Add + Sub>:
     ///
     /// cost: \(O(1)\)
     /// traps: never
-    /// example: `domain D = 0..3; let p = Prefix<D, Int>([D] v => 1 + Int(v)); p[D(1)] == 3`
+    /// example: `domain D = 0..3; let a: [D]Int = [D] v => 1 + Int(v); a.scan(+)[D(1)] == 3`
     /// example: `[5, -3, -2].scan(+)[3] == 0`
     pub fn at(self, c: Cut<D>) -> T = self.p[c]
 
