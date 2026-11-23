@@ -1,7 +1,16 @@
-// Runnable today/ port of EGOI '22 P3 (Social Engineering) for proto/cpc.
+// Source: EGOI 2022 Day 1 Social Engineering, https://dmoj.ca/problem/egoi22p3
+// Problem: interactive: a connected graph, n <= 2e5, m <= 4e5, Maria at vertex 1. Moves walk
+//   along unused edges, Maria choosing hers and you everyone else's; whoever cannot move loses.
+//   Give up at once if Maria wins, else play until she has no move.
+// Solution: Maria loses iff her neighbours pair up by edge-disjoint paths avoiding her: then each
+//   move into a neighbour goes along its path to its partner and back to her. That needs an even
+//   degree and an even number of neighbours in each component of the graph without her. DFS
+//   trees per component; bottom up each vertex pairs its open neighbours through itself and
+//   passes at most one up. O(n + m).
 // Stdin protocol: n, m, then m edges (u, v) in 1..=n.
 // Prints "NO" if the strategy gives up, else "YES" followed by the number of paired paths
-// and each path (len then 1-based vertices) so the checker verifies edge-disjointness for all games.
+// and each path (len then 1-based vertices) so the checker verifies edge-disjointness
+// for all games.
 // original: corpus/submissions/5199301.cpp
 
 fn main_solve():

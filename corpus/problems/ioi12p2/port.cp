@@ -1,4 +1,12 @@
-// IOI 2012 Day 1 P2, Parachute Rings (buildable today-form)
+// Source: IOI 2012 Day 1 Parachute Rings, https://dmoj.ca/problem/ioi12p2
+// Problem: n <= 1e6 rings, then up to 1e6 calls in total: Link(a, b) joins two distinct rings not
+//   yet linked; CountCritical() asks how many rings leave nothing but chains (paths, single rings
+//   included) when removed.
+// Solution: while all degrees are <= 2, a DSU tracks cycles: none means all n are critical, one
+//   means its rings, two or more means none. The first ring to reach degree 3 and its three
+//   neighbours are the only candidates; for each keep a DSU and degrees of the graph without it,
+//   replaying all links so far and then each new one, and count the candidates whose graph has
+//   no degree > 2 and no cycle. O((n + calls) alpha(n)), five layers of n.
 // original: corpus/submissions/4689474.cpp (grader functions Init / Link / CountCritical)
 // stdin: n and the number of calls, then one call per line: "u v" for
 // Link(u, v), "-1 -1" for CountCritical. stdout: one count per CountCritical.

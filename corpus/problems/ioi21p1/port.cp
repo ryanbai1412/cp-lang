@@ -1,4 +1,12 @@
-// IOI 2021 Day 1 P1, Distributing Candies (buildable today-form)
+// Source: IOI 2021 Day 1 Distributing Candies, https://dmoj.ca/problem/ioi21p1
+// Problem: n <= 2e5 boxes with capacities c <= 1e9, all empty, and q <= 2e5 days l r v
+//   (|v| <= 1e9, v != 0): every box in l..=r gets p -> min(c, p + v) or max(0, p + v). Print the
+//   final counts.
+// Solution: sweep the boxes, keeping a segment tree over days of each day's change to the current
+//   box, with each node's end, highest and lowest prefix sums. For box capacity c, walk down for
+//   the latest day p from which the walk spans at least c: from then on the walls bind once, so
+//   the answer is c - (top - end) or end - low of the days after p by the sign of v[p], and
+//   end - low of all days if no such p. O((n + q) log q).
 // original: corpus/submissions/4698803.cpp (grader function distribute_candies)
 // stdin: n, the n capacities, q, then q lines l r v. stdout: the final counts.
 let n: 1..=200000 = read()

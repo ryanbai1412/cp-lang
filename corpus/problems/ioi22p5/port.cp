@@ -1,3 +1,12 @@
+// Source: IOI 2022 Day 2 Rarest Insects, https://dmoj.ca/problem/ioi22p5
+// Problem: interactive: N <= 2000 insects of hidden types. Operations: move an insect into or out
+//   of a machine, or press its button, which tells the size of the largest type group inside;
+//   at most 4e4 of each, scored by the most of any kind. Return the size of the rarest type.
+// Solution: in a shuffled order, keep each insect that leaves the button at 1: that gives one of
+//   each of the k types. Then binary-search the answer t in 1..=N / k: add the outside insects
+//   while the button stays <= t, stopping at t * k inside. Reaching t * k means each type has
+//   >= t: keep them and drop the rejected ones from the pool; else undo and search below t
+//   among the ones just added. O(N log N) operations.
 // Runnable today/ port of IOI '22 P5 (Insects) for real Rust `cpl build`.
 // Stdin: n, then hidden bug color IDs c[0..n] (in 0..n). Simulates move_inside,
 // move_outside, press_button, verifies <= 3*n button/move calls, prints min_cardinality(n).

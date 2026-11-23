@@ -1,4 +1,11 @@
-// SHOI 2015 P2, brain surgery: a row of cells, dig out, transplant, longest hole (buildable today-form)
+// Source: SHOI 2015 Brain Hole Therapy Device, https://dmoj.ca/problem/shoi15p2
+// Problem: n <= 2e5 cells, all tissue at first, and m <= 2e5 operations: "0 l r" digs out
+//   l..=r; "1 l0 r0 l1 r1" digs out l0..=r0 and fills the holes of l1..=r1 left to right with the
+//   tissue taken (the rest is thrown away); "2 l r" prints the longest run of holes in l..=r.
+// Solution: a lazy assign segment tree whose nodes keep holes, tissue, and the best, prefix and
+//   suffix hole runs. A transplant counts the tissue in l0..=r0, digs it out, binary-searches the
+//   least end in l1..=r1 whose prefix has that many holes and assigns tissue up to it (all of
+//   l1..=r1 if there are too few). O(m log^2 n).
 // original: corpus/submissions/5450923.cpp
 // The lazy tree is written out by hand: the prototype has no LazySegTree
 // with a custom Action and no max_right.

@@ -1,4 +1,13 @@
-// NOIP 2022 P2, clear a deck of paired cards through n stacks with "place" and "match two bottoms" (buildable today-form)
+// Source: NOIP 2022 Meow Meow (Cards and Stacks), https://dmoj.ca/problem/noip22p2
+// Problem: T tests, total m <= 2e6: n <= 300 empty stacks and a deck of m cards with k <= 2n - 1
+//   patterns, each appearing an even number of times. Moves: put the top deck card on
+//   a stack (two equal cards on top cancel), or cancel two equal bottom cards of two stacks. Print
+//   a plan of m..=2m moves that clears everything (one is guaranteed).
+// Solution: simulate the deck greedily, knowing when each card's twin comes. A first card goes
+//   on a fresh empty stack while two are empty, else on a lone card, else on a two-card stack
+//   whose bottom leaves first, else on the last spare; with no empty stack it sits on the lone
+//   card that stays longest. A twin cancels on top, or through the spare stack when its card is
+//   at a bottom. Ordered sets of empty, single and ripe stacks; O(m n) worst case.
 // original: corpus/submissions/5445681.cpp
 // The three stack pools are plain Set<Int> refreshed by hand and the script
 // is a List of (kind, a, b) printed line by line: the prototype has no

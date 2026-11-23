@@ -1,4 +1,13 @@
-// Runnable port (proto/cp.py lib-run) of dmopc20c6p6.cp
+// Source: DMOPC 2020 Contest 6 P6 Buckets, https://dmoj.ca/problem/dmopc20c6p6
+// Problem: interactive: N <= 4e4 full buckets of unknown capacities in 1..=M, M <= 1e4. Within
+//   1e5 operations (empty i, fill i, dump i into j, answered with how much j rose) find every
+//   capacity.
+// Solution: measure one empty bucket cur at a time: pour the next unmeasured full bucket into it
+//   (the probe), then top it up from a bucket known to be full (the last one measured, else the
+//   largest known one refilled). While cur still takes water the probe gave all of it, so its
+//   capacity is what it gave; once cur takes nothing or holds M, its capacity is the total in it
+//   and it is the next full source, and the probe it overflowed, now empty, is the next cur.
+//   O(N) operations.
 // original: corpus/submissions/5200785.cpp
 // Runs with an inline local grader (matching `-DLOCAL` in the C++ original)
 // because `proto/cpi` buffers all stdin tokens upfront.

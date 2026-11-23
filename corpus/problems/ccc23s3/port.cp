@@ -1,4 +1,11 @@
-// CCC 2023 S3, Palindromic Poster (multi-answer constructive, buildable today-form)
+// Source: CCC 2023 S3 Palindromic Poster, https://dmoj.ca/problem/ccc23s3
+// Problem: N, M in 2..=2000, R in 0..=N, C in 0..=M. Print an N x M grid of lowercase letters with
+//   exactly R palindromic rows and C palindromic columns (any one), or IMPOSSIBLE.
+// Solution: cases. 0 < R < N and 0 < C < M: all 'a' but 'b' in the bottom-right block below row
+//   R and right of column C. R = 0 (C = 0 the transpose): an a/b/c/d frame for C = 0, else a 'b'
+//   right column and 'c' in the bottom row from column C on. R = N (C = M the transpose): all
+//   'a' when C = M; impossible if M is even and C odd; else a symmetric bottom row of 'b' with C
+//   'a's from both ends and the middle. O(N M).
 // original: corpus/submissions/5350806.cpp
 let n: 2..=2000 = read()
 let m: 2..=2000 = read()

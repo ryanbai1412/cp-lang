@@ -1,4 +1,12 @@
-// DMPG '18 S5 (today/ runnable subset) — original: corpus/submissions/3476383.cpp
+// Source: DMPG 2018 S5 Mimi and Division, https://dmoj.ca/problem/dmpg18s5
+// Problem: N, Q <= 2e5 and an array A; queries "1 l r x" print how many of A[l..=r] are divisible
+//   by x, "2 u v" sets A[u] = v; values and x are at most 2e5.
+// Solution: sqrt decomposition: blocks of sqrt(N) keep, for every d, how many of their values d
+//   divides, updated through the divisor lists of all values up to the max (a harmonic sieve). A
+//   query scans its partial blocks and adds the counts at x of the whole ones; an update moves
+//   the old value's divisors out and the new one's in. O(V log V + (N + Q) (sqrt N + D)), D the
+//   most divisors, with N / sqrt(N) * V counters.
+// original: corpus/submissions/3476383.cpp
 
 let n: 1..=200_000 = read()
 let q: 1..=200_000 = read()

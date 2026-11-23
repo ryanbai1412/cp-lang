@@ -1,4 +1,14 @@
-// Runnable port (proto/cp.py lib-run) of statement-first noi07p4.cp
+// Source: NOI 2007 Necklace Factory, https://dmoj.ca/problem/noi07p4
+// Problem: a necklace of n <= 5e5 beads with colours <= 1000 at fixed positions 1..=n clockwise,
+//   and q <= 5e5 commands: R k rotates the beads k places clockwise, F reflects them in the axis
+//   through position 1, S i j swaps two beads, P i j x paints positions i..=j clockwise colour x,
+//   C prints the number of same-colour parts round the whole necklace, CS i j that of the segment
+//   i..=j clockwise (still a segment when it has all n beads).
+// Solution: beads stay where they are in a lazy segment tree over physical slots, nodes holding
+//   (left colour, right colour, parts) and paint as the action. Rotation and flip only change the
+//   map from position to slot, x -> (dir * x + off) mod n. A segment maps to a slot range,
+//   reversed when flipped and split in two when it wraps; C merges the ends if they match.
+//   O((n + q) log n).
 // original: corpus/submissions/5032746.cpp
 
 let (n, c_max): (Int, Int) = read()
