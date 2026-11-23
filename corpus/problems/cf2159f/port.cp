@@ -1,23 +1,13 @@
-// Codeforces 2159 F: Grand Finale: Snakes (interactive).
-// An `n x n` grid holds a permutation of `Val = 1..=n^2`. A snake of length
-// `len` (`1 <= len <= n`) advances across `Time = 1..=2n - 1`; `query(len, t)`
-// returns the maximum value currently on the snake.
-//
-// Arrival diagonal: at `t = 1` the snake covers row 0 from column `n - 1` down
-// to `0`, so cell `(0, j)` enters at `diag = (n - 1) - j`; cells on rows
-// `i >= 1` enter along anti-diagonals `i + j` at `diag = (n - 1) + i + j`.
-// Over any stride `[t0, t1]` of length `<= len`, cells leaving the snake have
-// `diag < t0.ord + n` while newly entering cells have `diag >= t0.ord + n`, so
-// `query(len, t)` is bitonic (decreasing until the old max leaves, then
-// increasing as new maxima enter).
-//
-// Partitioning each stride: binary search maintains `(lo, hi)` straddling the
-// valley. Probing `mid` lands on either the decreasing half (emitting the
-// strictly increasing run `mid` down to `lo + 1`, then raising `lo = mid`) or
-// the increasing half (emitting `mid` up to `hi - 1`, then lowering `hi = mid`).
-// Together with the endpoints `t0` and `t1`, the pushed runs partition `[t0, t1]`
-// into disjoint monotone runs — emitting each `(len, t)` once — in
-// `O(sum_{len=1}^n (n / len) log(len) + m) = O(n log^2 n + m)` queries.
+// Source: Codeforces 2159F, Grand Finale: Snakes, https://codeforces.com/contest/2159/problem/F
+// Problem: an n x n grid (n <= 500) holds a permutation of 1..=n^2; hidden snakes of length
+//   l = 1..=n start on row 1 and move down/right to (n, n) by second 2n - 1. Query f(l, T), the
+//   max cell under snake l at second T, at most 120n + m times; print the m smallest f values.
+//   Interactive multitest, sum n <= 500, sum m <= 5e4.
+// Solution: order cells by when a snake reaches them (row 1 right to left, then by i + j);
+//   snake l at second T covers the last l cells reached, so over l seconds f first falls, then
+//   rises. Per l, query each stride's ends and binary-search the valley, pushing each probed
+//   value as the head of a monotone run into a MinHeap. Pop the m smallest, querying a run's
+//   next value only when its head pops: O(n log^2 n + m) queries.
 
 @!interactive
 

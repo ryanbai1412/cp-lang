@@ -1,12 +1,12 @@
-// Codeforces 2237 G: two runs. The first sees a and writes b; the second sees
-// only gcd(b_i, b_j) for pairs it asks about, and must rebuild a.
-//
-// Every a_i <= 1e6 < 2^20, so a is a stream of 20-bit words, recut into 18-bit
-// symbols. Symbol s is written as the s-th number at most V whose primes are all
-// among the first P = 150; more than 2^18 such numbers exist. After the symbols,
-// b holds q_p, the largest power of each of those primes that is at most V. For
-// such an x <= V, gcd(x, q_p) is exactly the p-part of x, so the product of the
-// P gcds is x itself, which the second run looks up.
+// Source: Codeforces 2237G, Send GCDs, https://codeforces.com/contest/2237/problem/G
+// Problem: run-twice interactive, multitest, sum n <= 1000. Run 1 gets a (a_i <= 1e6) and
+//   prints b, k <= ceil(10n/9) + 150 values <= 1e6. Run 2 gets only n and k and may ask
+//   gcd(b_i, b_j) at most 180n + 150 times; it must print a.
+// Solution: a is a stream of 20-bit words, recut into ceil(20n/18) 18-bit symbols. Symbol s is
+//   sent as the s-th 150-smooth number <= 1e6 (there are over 2^18, listed once each by a
+//   sieve walk); the last 150 entries of b are q_p, the largest power <= 1e6 of each of the
+//   first 150 primes. A smooth x is the product of gcd(x, q_p), so 150 queries decode a symbol
+//   by table lookup: 150 ceil(10n/9) <= 180n + 150 queries; recut the symbols to 20-bit words.
 @!interactive
 const V = 1_000_000
 const P = 150

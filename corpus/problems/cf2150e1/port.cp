@@ -1,18 +1,12 @@
-// Codeforces 2150 E1: Hidden Single (Easy Version, interactive).
-// An array of length `2n - 1` holds every value in `1..=n` twice except one
-// hidden single `v*` that appears once. Shuffling positions with a fixed seed
-// breaks adversarial clustering so each halving drops ~half the active pairs
-// within the `4n + 2 log n` query budget.
-//
-// Binary-search `[lo, hi)` (while `alive.len > 1`, `hi - lo >= 2` so `mid > lo`):
-// every value in `Val` has known multiplicity `copies[v]` in `[lo, hi)` (`None`,
-// `One`, or `Both`). Querying `left[v]` on `[lo, mid)` determines `right[v] =
-// copies[v] - left[v]`:
-//   - `Both`: absent on left -> `left = None`; else present on right -> `One`;
-//     else `Both`.
-//   - `One`: present on right -> `left = None`, else `One`.
-// Every non-singleton contributes 2 units and `v*` contributes 1, so the half
-// whose total weight exceeds its length contains `v*`.
+// Source: Codeforces 2150E1, Hidden Single (Easy), https://codeforces.com/contest/2150/problem/E1
+// Problem: a hidden array of length 2n - 1 (n <= 300) holds each of 1..=n twice except one
+//   value once. Ask whether x occurs at some position of a set S; find the single value in at
+//   most 4n + 2 ceil(log2 n) queries. Interactive multitest, sum n^2 <= 4e5.
+// Solution: shuffle positions with a fixed seed, then binary-search a range [lo, hi) holding
+//   the single, knowing each value's copies in it (None, One, Both; the single counts as Both).
+//   Per halving, ask each Both value on the left half and, if present, on the right; ask each
+//   One value on the right. The single lies in the half whose counted copies exceed its
+//   length; stop when one Both value is left. About 4n queries, O(n^2) time.
 
 @!interactive
 use std.rand.Rng

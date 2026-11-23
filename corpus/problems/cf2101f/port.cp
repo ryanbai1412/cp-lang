@@ -1,21 +1,13 @@
-// Codeforces 2101 F: Shoo Shatters the Sunshine.
-//
-// Colour each vertex red, blue or not at all; a colouring is worth the
-// largest red-blue distance, and we sum that over all 3^n colourings.
-// Subdivide every edge with a midpoint node so that every set of vertices has
-// a centre node: the coloured vertices lie within some radius d of a centre c
-// and the outermost layer, d from c, is reached in at least two branches of c.
-// Each colouring has exactly one such (c, d). With inner layers coloured
-// freely and outer ones blank:
-// - if the outermost layer holds both colours in different branches, the
-//   value is 2d;
-// - if it holds one colour (red, say; double for blue) in two or more
-//   branches, the value is d + d', where d' < d is the layer of the
-//   outermost vertex of the other colour, because some red vertex at distance
-//   d lies in another branch from it through c.
-// Counting layer d in two or more branches is the whole layer minus each
-// branch alone. Distances in the subdivided tree are doubled, hence the
-// final halving.
+// Source: Codeforces 2101F, https://codeforces.com/contest/2101/problem/F
+// Problem: a tree on n <= 3000 vertices (multitest, sum n <= 3000). Colour each vertex red,
+//   blue or white; a colouring scores the max distance between a red and a blue vertex (0 if
+//   either is missing). Sum the score over all 3^n colourings mod 998244353.
+// Solution: subdivide every edge; a colouring's farthest pair then has a centre c with radius
+//   d, its coloured vertices within d of c and those at d in >= 2 branches of c. Per centre,
+//   DFS each branch for layer sizes; "in >= 2 branches" is the whole layer minus each branch
+//   alone. If layer d holds both colours the score is 2d, else it is all red (x2 for blue) and
+//   scores d + d' for the outermost blue depth d', summed by a running scan over d. O(n) per
+//   centre, O(n^2) total; halve for the subdivision.
 
 type Z = Mod<998_244_353>
 

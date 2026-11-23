@@ -1,20 +1,13 @@
-// AtCoder AGC 077 A: Reverse A…B.
-//
-// A reversal keeps the B count, so the counts must match. Let l..=r span the
-// first and last differences. Every plan here spends one reversal on all of
-// l..=r (the big one) with X_l = A and X_r = B, so those must hold. Other
-// reversals go before it, on X, or after it, where we undo them from Y. The
-// big one mirrors the middle, so a stretch that reads left to right on one
-// side reads right to left on the other, and a reversal is legal on exactly
-// the side where its A…B reads left to right.
-//
-// Reconcile the middle block by block. Strip the ends that already agree. At
-// the first difference, the running B-count gap of x over y is ±1; take a
-// prefix where it returns to 0 (binary search finds a crossing, since the gap
-// is nonzero after one letter and 0 over the whole block). That prefix is
-// A…B in one string and B…A in the other, so one reversal on its legal side
-// makes both ends agree; recurse into it, then into the rest. Each reversal
-// fixes two positions, so at most n / 2 of them.
+// Source: AtCoder AGC 077 A, Reverse A…B, https://atcoder.jp/contests/agc077/tasks/agc077_a
+// Problem: strings X, Y over {A, B} of length N <= 5e5 (multitest, sum N <= 5e5). A move picks
+//   l < r with X_l = A, X_r = B and reverses X[l..=r]. Turn X into Y in at most floor(N/2)
+//   moves: print No, or Yes and the moves.
+// Solution: moves keep the B count, so counts must match. Strip the common prefix and suffix
+//   to the differing span l..=r; one big move reverses all of it (so X_l = A, X_r = B), with
+//   other moves before it on X or after it on Y (undone, last first). The big move mirrors the
+//   middle, so reconcile X's middle with Y's reversed middle: past equal heads, binary-search
+//   the shortest prefix whose B counts agree again (A…B on one side, B…A on the other), reverse
+//   it on the side where it reads left to right, recurse into both parts. O(N log N).
 
 @!multitest
 let n: 2..=500_000 = read()

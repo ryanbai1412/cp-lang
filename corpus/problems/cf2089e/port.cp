@@ -1,18 +1,14 @@
-// Codeforces 2089 E.
-//
-// Vertices are labelled in preorder (each parent is the smaller endpoint) and
-// are retired from n down to 2; after each retirement the answer is the
-// constant term of the root's state. Every series is an EGF in the number of
-// pending steps:
-//   sub[v]     the subtree of v: f + integral(f) of its children's product;
-//   before[v]  the product of the subtrees of v's earlier siblings;
-//   dp[v]      the states parked at v, weighted by k! for k pending steps.
-// Retiring t moves the states parked at t + 1 onto the path from t up to (not
-// including) parent(t + 1), picking up the earlier siblings of each child on
-// the way, then lifts every state on the path from t to the root, taking the
-// siblings it climbs past back out of the carried sum. Because states carry
-// k!, taking the steps of b out of a is the transposed product
-// (a.transposed_mul(b))[i] = sum_j a[i + j] * b[j].
+// Source: Codeforces 2089E, Black Cat Collapse, https://codeforces.com/contest/2089/problem/E
+// Problem: tree rooted at 1 whose labels 1..=n form a DFS order, n <= 80 (multitest, sum
+//   n <= 80). Each day explore an uncollapsed node u, which collapses u's subtree; at the end of
+//   day i node n - i + 1 also collapses. For each i <= n count the schemes of exactly i days
+//   whose last exploration is node 1, mod 998244353.
+// Solution: labels are preorder, so a parent is the smaller endpoint. Retire nodes n down to 2
+//   and keep EGF series in the number of pending steps: sub[v] (f + integral f over v's
+//   children's product), before[v] (its earlier siblings' product), dp[v] (states parked at v,
+//   weighted by k!). Retiring t moves the states parked at t + 1 down to t's path and lifts
+//   every state on the path to the root, taking siblings out by transposed products; the
+//   root's constant term is the next answer. O(n^2) series products of length <= n.
 use std.poly.{integral}
 
 type Z = Mod<998_244_353>
