@@ -3,5 +3,6 @@ error[E0103]: expected `:` or `=` to start the body of `f`, found the end of the
   |
 1 | fn f(a: Int) -> Int
   |                    ^
+  = help: insert `:`
 
 missing_block_colon.cp: 1 error

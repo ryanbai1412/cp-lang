@@ -3,6 +3,7 @@ error[E0102]: expected a value after `*`, found `*`
   |
 1 | let a = 1 * * 2
   |             ^
+  = help: remove the extra `*`
 
 error[E0102]: expected a value after `+`, found `)`
   --> doubled_operator.cp:3:10

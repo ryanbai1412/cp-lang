@@ -797,8 +797,16 @@ impl<'a> Lexer<'a> {
             self.peek() == b'0' && matches!(self.peek_at(1), b'x' | b'X' | b'b' | b'B');
         let mut float = false;
         if radix_prefix {
+            let binary = matches!(self.peek_at(1), b'b' | b'B');
             self.pos += 2;
-            while self.peek().is_ascii_hexdigit() || self.peek() == b'_' {
+            let digit = |b: u8| {
+                if binary {
+                    matches!(b, b'0' | b'1')
+                } else {
+                    b.is_ascii_hexdigit()
+                }
+            };
+            while digit(self.peek()) || self.peek() == b'_' {
                 self.pos += 1;
             }
         } else {
@@ -828,7 +836,15 @@ impl<'a> Lexer<'a> {
                 Diagnostic::error(
                     codes::BAD_NUMBER,
                     Span::new(start as u32, self.pos as u32),
-                    format!("`{text}` isn't a number"),
+                    match self.bytes[digits_end] {
+                        d @ b'2'..=b'9' if text.starts_with("0b") => {
+                            format!(
+                                "`{text}` isn't a number: `{}` isn't a binary digit",
+                                d as char
+                            )
+                        }
+                        _ => format!("`{text}` isn't a number"),
+                    },
                 )
                 .with_help("numbers look like `42`, `1_000_000`, `1e9`, `0xff`, `0b1010` or `0.5`"),
             );

@@ -1057,8 +1057,7 @@ impl<'a> Checker<'a> {
                     elem,
                 })
             }
-            // `adj.out(u)` is `adj[u]` for a table of neighbour lists, and
-            // for no other table.
+            // `adj.out(u)` is `adj[u]` for a table of neighbour lists only.
             Ty::Array { index, elem }
                 if name.text == "out"
                     && !elem.is_vague()
@@ -1203,7 +1202,8 @@ impl<'a> Checker<'a> {
                                                     codes::ROW_MISSING_FIELD,
                                                     call.span,
                                                     format!(
-                                                        "record `{actual}` does not satisfy row bound for `{param}`: missing or incompatible field `{req_name}: {req_ty}`"
+                                                        "`{callee_text}` needs a record with `{req_name}: {req_ty}`, but `{actual}` {}",
+                                                        found.map_or(format!("has no `{req_name}`"), |(_, t)| format!("has `{req_name}: {t}`"))
                                                     ),
                                                 );
                                                 suggest_rename(diag, args, actual_fs, &req_fields);
@@ -1217,7 +1217,7 @@ impl<'a> Checker<'a> {
                                         codes::ROW_MISSING_FIELD,
                                         call.span,
                                         format!(
-                                            "row bound on `{param}` requires a record, found `{other}`"
+                                            "`{callee_text}` needs a record for `{param}`, but this is `{other}`"
                                         ),
                                     );
                                 }

@@ -3,5 +3,6 @@ error[E0004]: `$` isn't used in cp
   |
 1 | let $x = 1
   |     ^
+  = help: remove `$`
 
 unreadable_character.cp: 1 error

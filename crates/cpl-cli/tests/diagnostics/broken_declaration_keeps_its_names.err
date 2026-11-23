@@ -3,12 +3,14 @@ error[E0004]: `$` isn't used in cp
   |
 1 | let ($l, b) = (4, 6)
   |      ^
+  = help: remove `$`
 
 error[E0004]: `$` isn't used in cp
   --> broken_declaration_keeps_its_names.cp:3:4
   |
 3 | fn $f(a: Int) -> Int:
   |    ^
+  = help: remove `$`
 
 error[E0201]: no `missing` in scope, and not in the stdlib (yet)
   --> broken_declaration_keeps_its_names.cp:6:7

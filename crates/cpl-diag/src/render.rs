@@ -64,7 +64,9 @@ pub fn render(diag: &Diagnostic, path: &str, text: &str, lines: &LineIndex) -> S
     for note in &diag.notes {
         let _ = writeln!(out, "{:width$} = note: {note}", "");
     }
-    if let Some(help) = &diag.help {
+    // A fix with no help still says what it would do.
+    let fix = diag.fixes.first().map(|f| &f.title);
+    if let Some(help) = diag.help.as_ref().or(fix) {
         let _ = writeln!(out, "{:width$} = help: {help}", "");
     }
     out

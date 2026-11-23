@@ -130,7 +130,7 @@ impl<'a> Lowerer<'a> {
             ));
             if let Some(last) = self.warnings.last_mut() {
                 last.help =
-                    Some("keep it (`let ys = ...`), or call the form that changes in place".into());
+                    Some("use it (`let y = ...` or `print(...)`), or delete the line".into());
             }
         }
     }

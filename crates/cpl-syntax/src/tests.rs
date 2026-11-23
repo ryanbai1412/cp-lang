@@ -1630,3 +1630,14 @@ fn unclosed_paren_closes_before_arrow_and_comprehension_for() {
     fixed.replace_range(span.start as usize..span.end as usize, text);
     assert_eq!(fixed, "let ys = [x.bit(b) for x in xs for b in 0..3]\n");
 }
+
+#[test]
+fn a_bad_binary_digit_is_named() {
+    let d = one_diag("let x = 0b102\n");
+    assert_eq!(d.code.0, "E0005");
+    assert_eq!(
+        d.message,
+        "`0b102` isn't a number: `2` isn't a binary digit"
+    );
+    assert_eq!(codes("let x = 0b101\nprint(x)\n"), Vec::<&str>::new());
+}
