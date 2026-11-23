@@ -8,6 +8,9 @@ use cpl_ir::{Block, Expr, ExprKind, Function, Local, LoopId, Program, Stmt, Ty};
 use std::collections::{BTreeMap, BTreeSet};
 
 mod layout;
+mod text;
+
+use text::{header, inline_hint, names, Proto};
 
 /// A C++ expression and how tightly it binds, so that it is wrapped in
 /// parentheses only where C++ would otherwise read it differently.
@@ -1250,6 +1253,9 @@ impl<'p> Emitter<'p> {
 
         let mut protos: Vec<Proto> = Vec::new();
         let mut fns = String::new();
+        // The list form of each `yields` fn that also has a `cpl_each_f`
+        // form: its name, where it sits in `fns`, and its chunk.
+        let mut list_forms: Vec<(String, std::ops::Range<usize>, usize)> = Vec::new();
         let mut judge_decls = String::new();
         let mut entries = String::new();
         for id in crate::order::callee_first(program, &reachable) {
@@ -1355,6 +1361,9 @@ impl<'p> Emitter<'p> {
             if inline_hint(&fns[def_at..], &signature, &fn_name(&f.name)) {
                 fns.insert_str(def_at + 1, "inline ");
             }
+            let list_form =
+                (self.pushers.contains_key(&id) && !hook && !program.entry_fns.contains(&id))
+                    .then(|| (fn_name(&f.name), def_at..fns.len()));
             if let Some(acc) = self.pushers.get(&id).copied() {
                 // The same fn handing each value to `cpl_f` as it is made,
                 // with no list. It may be running twice (a loop body can
@@ -1407,6 +1416,9 @@ impl<'p> Emitter<'p> {
             }
             self.chunks
                 .push((part, f.name.clone(), fns[start..].to_string()));
+            if let Some((name, range)) = list_form {
+                list_forms.push((name, range, self.chunks.len() - 1));
+            }
         }
         let start = fns.len();
         if program.multitest {
@@ -1621,6 +1633,17 @@ impl<'p> Emitter<'p> {
         if !vars.is_empty() {
             out.push('\n');
         }
+        let elsewhere: Vec<&str> = [direct.as_str(), &entries, &vars]
+            .into_iter()
+            .chain(self.shows.iter().map(String::as_str))
+            .collect();
+        text::drop_unread_list_forms(
+            &mut fns,
+            &mut protos,
+            &mut self.chunks,
+            list_forms,
+            &elsewhere,
+        );
         // A fn is declared ahead only when something written above it
         // names it: a closure called by name, a `show`, or a fn that
         // comes first. The rest are defined before they are used.
@@ -1813,84 +1836,3 @@ template <class T> auto operator>(const T& a, const T& b) -> decltype(a.cpl_tie(
 template <class T> auto operator>=(const T& a, const T& b) -> decltype(a.cpl_tie() >= b.cpl_tie()) { return a.cpl_tie() >= b.cpl_tie(); }
 
 ";
-
-/// The comment that opens the file: what it is, and the source it was
-/// built from, so that whoever reads the C++ can read the program.
-/// GCC at -O2 inlines a fn not declared `inline` only when it is tiny, so
-/// the many small helpers a library method lowers to (a node's size, one
-/// tag push) stay calls. A short, non-recursive, non-template definition
-/// gets the hint; recursion and long bodies are left to the compiler.
-fn inline_hint(def: &str, signature: &str, name: &str) -> bool {
-    const MAX_LINES: usize = 16;
-    let body = def
-        .trim_start_matches('\n')
-        .split_once('\n')
-        .map_or("", |(_, b)| b);
-    let stmts = body
-        .lines()
-        .map(str::trim)
-        .filter(|l| !l.is_empty() && *l != "}" && *l != "} else {" && !l.starts_with("cpl::fail("))
-        .count();
-    !signature.starts_with("template")
-        && !signature.contains(" main(")
-        && stmts <= MAX_LINES
-        && !body.contains(&format!("{name}("))
-}
-
-fn header(name: &str, source: Option<&str>, stamp: Option<&str>) -> String {
-    let version = match (option_env!("CPL_CHANNEL"), option_env!("CPL_COMMIT")) {
-        (Some(channel), Some(commit)) => {
-            format!(
-                "{} ({channel} {})",
-                env!("CARGO_PKG_VERSION"),
-                &commit[..commit.len().min(8)]
-            )
-        }
-        _ => env!("CARGO_PKG_VERSION").to_string(),
-    };
-    let stamp = stamp
-        .map(|stamp| format!("// For {stamp}.\n"))
-        .unwrap_or_default();
-    let Some(source) = source else {
-        return format!(
-            "// {name}: C++17 written by cpl {version} (https://cp-lang.org) from CP Lang source, which is left out\n\
-             // here to keep this file within the size a judge accepts.\n{stamp}\n"
-        );
-    };
-    let mut out =
-        format!("// {name}: C++17 written by cpl {version} (https://cp-lang.org) from the CP Lang source below.\n{stamp}//\n");
-    for line in source.lines() {
-        let line = line.trim_end();
-        if line.is_empty() {
-            out.push_str("//\n");
-        } else if line.ends_with('\\') {
-            // A `\` at the end would join the next line to this comment.
-            out.push_str(&format!("//     {line} .\n"));
-        } else {
-            out.push_str(&format!("//     {line}\n"));
-        }
-    }
-    out.push('\n');
-    out
-}
-
-/// A fn's declaration, and where its definition starts in the text of
-/// the fns.
-struct Proto {
-    name: String,
-    line: String,
-    at: usize,
-    /// Named by text that is written elsewhere: a struct's operators, the
-    /// judge's side.
-    always: bool,
-}
-
-/// True when `text` has `name` as a whole word.
-fn names(text: &str, name: &str) -> bool {
-    let word = |b: u8| b.is_ascii_alphanumeric() || b == b'_';
-    text.match_indices(name).any(|(at, _)| {
-        let before = text.as_bytes()[..at].last().copied();
-        let after = text.as_bytes().get(at + name.len()).copied();
-        !before.is_some_and(word) && !after.is_some_and(word)
-    })
-}
