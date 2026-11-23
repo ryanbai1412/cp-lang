@@ -5,7 +5,7 @@ import org.jetbrains.intellij.platform.gradle.tasks.VerifyPluginTask
 plugins {
     id("java")
     id("org.jetbrains.kotlin.jvm") version "2.0.21"
-    id("org.jetbrains.intellij.platform") version "2.2.1"
+    id("org.jetbrains.intellij.platform") version "2.10.5"
 }
 
 group = "dev.cplang"
@@ -13,8 +13,14 @@ group = "dev.cplang"
 version = Regex("""(?ms)^\[workspace\.package\][^\[]*?^version = "([^"]+)"""")
     .find(rootDir.resolve("../../Cargo.toml").readText())!!.groupValues[1]
 
+// `./gradlew test -PfreeIde`: build and test in the unified IntelliJ IDEA
+// `freeIdeVersion` instead, where CpLsp4ijTest is `cpl lsp` as free users get it.
+val freeIde = providers.gradleProperty("freeIde").isPresent
+
 kotlin {
     jvmToolchain(21)
+    // Newer platforms are built with a newer Kotlin than this plugin's.
+    if (freeIde) compilerOptions.freeCompilerArgs.add("-Xskip-metadata-version-check")
 }
 
 repositories {
@@ -29,7 +35,7 @@ dependencies {
         // The built-in LSP client ships only in the commercial IDEs (IntelliJ IDEA
         // Ultimate, CLion, PyCharm Professional, ...), so the plugin builds against
         // one; Community IDEs get `cpl lsp` through LSP4IJ. Both are optional.
-        intellijIdeaUltimate(providers.gradleProperty("platformVersion"))
+        intellijIdeaUltimate(providers.gradleProperty(if (freeIde) "freeIdeVersion" else "platformVersion"))
         plugin("com.redhat.devtools.lsp4ij", providers.gradleProperty("lsp4ijVersion").get())
         testFramework(TestFrameworkType.Platform)
         pluginVerifier()
