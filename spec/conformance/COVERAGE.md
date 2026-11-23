@@ -7,7 +7,7 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 2547 (995 passing). Rules: 566.
+Cases: 2551 (995 passing). Rules: 566.
 
 ## Summary per chapter
 
@@ -16,7 +16,7 @@ Cases: 2547 (995 passing). Rules: 566.
 - R03 (03-numbers-layout.md): 24 rules, 64 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04 (04-indices.md): 68 rules, 124 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04a (04a-identity-vs-offset.md): 39 rules, 53 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R04b (04b-keys.md): 27 rules, 65 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R04b (04b-keys.md): 27 rules, 66 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R05 (05-ownership.md): 43 rules, 154 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R06 (06-control-functions.md): 24 rules, 88 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R07 (07-sequences.md): 90 rules, 138 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -330,7 +330,7 @@ Each rule: positive / negative case counts, then the gap if any.
 
 - R04b.1.4 [3+ 1-]: | `r.nth(k)` | the element `k` steps from `r.first`, 0-based, a trap past the end: the pos...
 - R04b.1.1 [3+ 1-]: **An index names the same element everywhere it is valid.** A slice narrows which keys are...
-- R04b.1.2 [4+ 0-]: a prefix table is indexed by the input's cuts.
+- R04b.1.2 [5+ 0-]: a prefix table is indexed by the input's cuts.
 - R04b.1.3 [4+ 1-]: **Combining two sequences pairs them by walk order, never by key.** This covers `==`, `<`,...
 - R04b.1.5 [3+ 1-]: **An array can cover any run of keys.** `[r]T` for a range `r` of `K` is indexed by `K` an...
 - R04b.1.6 [4+ 0-]: To keep `w`'s keys, build a table over them: `[w.keys] k => w[k]`.
@@ -958,8 +958,8 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **rand** (10/10 named by a case)
 - **search** (9/9 named by a case)
 - **segtree** (54/54 named by a case)
-- **seq** (205/216 named by a case)
-  - uncovered: `Compressed`, `Filtered`, `Mapped`, `Rev`, `Slice`, `Rebased`, `Keys`, `SubseqStep`, `Ring`, `RingRange`, `RingSlice`
+- **seq** (206/216 named by a case)
+  - uncovered: `Compressed`, `Filtered`, `Mapped`, `Rev`, `Rebased`, `Keys`, `SubseqStep`, `Ring`, `RingRange`, `RingSlice`
 - **slope** (39/39 named by a case)
 - **sparse** (23/23 named by a case)
 - **spec** (8/16 named by a case)
@@ -973,7 +973,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **window** (20/22 named by a case)
   - uncovered: `Tracked`, `Undo`
 
-2166 of 2292 std items are named by a case.
+2167 of 2292 std items are named by a case.
 
 ## Core cases without a `// rule:` line
 
