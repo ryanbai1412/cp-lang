@@ -33,6 +33,8 @@ SITE = ["web/*", "docs/*"]
 DATA_TESTS = [(f"corpus/problems/*/{leaf}", "package(cpl-lint) & test(/corpus_warnings/)")
               for leaf in ("spec.cp", "port.cp")]
 # Editor files a crate embeds or its tests read; the rest are CI's editor jobs'.
+# Programs no test reads but that must still pass `cpl check`.
+CHECK_ONLY = ["research/acceptance/solutions/*.cp", "corpus/problems/*/perf.cp"]
 EDITOR_CRATES = {"editors/neovim/": "cpl-cli", "editors/vscode/": "cpl-cli",
                  "editors/jetbrains/": "cpl-cli", "editors/tree-sitter-cp/": "cpl-cli",
                  "editors/lsp-matrix.json": "cpl-lsp"}
@@ -86,6 +88,8 @@ def select(paths, dirs):
         elif expr := next((e for p, e in DATA_TESTS if fnmatch.fnmatch(path, p)), None):
             if expr not in data:
                 data.append(expr)
+            sel["check_files"].append(path)
+        elif path.endswith(".cp") and matches(path, CHECK_ONLY):
             sel["check_files"].append(path)
         elif matches(path, PROSE):
             continue
