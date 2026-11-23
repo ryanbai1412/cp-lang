@@ -4,6 +4,8 @@ target/ as built at HEAD (ci/R32), and releases are signed (ci/R33); handbook/gu
 import glob
 import os
 import re
+import subprocess
+import tempfile
 import unittest
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -63,6 +65,31 @@ class WorkflowTest(unittest.TestCase):
             deployable = f.read()
         self.assertIn('.conclusion != "cancelled"', deployable)
         self.assertIn('[ "$sha" != "$live" ]', deployable)
+
+    def test_site_selection_stops_at_runs_older_than_the_live_build(self):
+        # The live commit's own run is usually cancelled, so it never matches
+        # `$live`; without the time stop every listed run cost a `gh run view`
+        # and the selection hit the API rate limit (ci/R25).
+        with tempfile.TemporaryDirectory() as d:
+            calls = os.path.join(d, "calls")
+            for name, body in (
+                ("curl", 'echo \'{"commit":"live","built":"2026-11-23T16:15:00Z"}\''),
+                ("gh", f'echo "$*" >>{calls}\n[ "$2" = list ] && printf "%s\\n" '
+                       '"2 new 2026-11-23T17:00:00Z" "1 old 2026-11-23T16:00:00Z" "0 older 2026-11-23T15:00:00Z"\ntrue'),
+            ):
+                path = os.path.join(d, name)
+                with open(path, "w", encoding="utf-8") as f:
+                    f.write("#!/usr/bin/env bash\n" + body + "\n")
+                os.chmod(path, 0o755)
+            env = {**os.environ, "PATH": d + os.pathsep + os.environ["PATH"], "GITHUB_REPOSITORY": "o/r"}
+            env.pop("GITHUB_OUTPUT", None)
+            out = subprocess.run(["bash", os.path.join(ROOT, "scripts", "site-deployable.sh")],
+                                 env=env, capture_output=True, text=True)
+            self.assertEqual(out.returncode, 0, out.stderr)
+            self.assertEqual(out.stdout, "")
+            with open(calls, encoding="utf-8") as f:
+                views = [l for l in f if l.startswith("run view")]
+            self.assertEqual(len(views), 1, "only the run newer than the live build is inspected")
 
     def test_a_stale_live_site_turns_the_schedule_red(self):
         # The alert for the site falling behind main (ci/R25) never blocks a
