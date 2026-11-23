@@ -4,6 +4,22 @@
   "description": "CP Lang 0.2.2 syntax highlighting, contest snippets, cpl lsp integration, inlay hints, live sample overlays, and stress/trace commands.",
   "version": "0.2.2",
   "publisher": "cp-lang",
+  "icon": "icon.png",
+  "homepage": "https://cp-lang.org/setup/",
+  "bugs": {
+    "url": "https://github.com/ryanbai1412/cp-lang/issues"
+  },
+  "keywords": [
+    "competitive programming",
+    "codeforces",
+    "atcoder",
+    "cp",
+    "cpl"
+  ],
+  "galleryBanner": {
+    "color": "#1e1e2e",
+    "theme": "dark"
+  },
   "private": true,
   "license": "MIT OR Apache-2.0",
   "repository": {

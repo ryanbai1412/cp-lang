@@ -12,6 +12,10 @@ export interface ResolveOptions {
     exists?: (file: string) => boolean;
     /** When `file` was last written, in ms. */
     modified?: (file: string) => number;
+    /** The user's home folder, where the installer and cargo put `cpl`. */
+    home?: string;
+    /** `$CPL_HOME`, when the installer was pointed elsewhere. */
+    cplHome?: string;
 }
 
 function modifiedAt(file: string): number {
@@ -70,7 +74,14 @@ export function resolveServer(configured: string, options: ResolveOptions): stri
             .sort((a, b) => b.at - a.at)
             .map(({ dir }) => dir),
     );
-    return firstIn(onPath) ?? firstIn(built);
+    // An editor started from the dock does not see the shell's PATH, so look where
+    // the installer (`$CPL_HOME/bin`, by default `~/.cpl/bin`) and cargo put `cpl`.
+    const installed = [
+        options.cplHome ? paths.join(options.cplHome, 'bin') : undefined,
+        options.home ? paths.join(options.home, '.cpl', 'bin') : undefined,
+        options.home ? paths.join(options.home, '.cargo', 'bin') : undefined,
+    ].filter((dir): dir is string => dir !== undefined);
+    return firstIn(onPath) ?? firstIn(installed) ?? firstIn(built);
 }
 
 export interface CplResult {

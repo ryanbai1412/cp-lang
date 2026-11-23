@@ -35,7 +35,7 @@ class CplConfigurable : BoundConfigurable("CP Lang") {
             textField()
                 .columns(COLUMNS_LARGE)
                 .bindText({ options.path ?: "" }, { options.path = it })
-                .comment("Empty: \$CPL, then cpl on the PATH, then ~/.cargo/bin/cpl.")
+                .comment("Empty: \$CPL, then cpl on the PATH, then ~/.cpl/bin/cpl, then ~/.cargo/bin/cpl.")
         }
     }
 }
@@ -48,7 +48,19 @@ object Cpl {
         CplSettings.get().state.path?.takeIf { it.isNotBlank() }?.let { return it }
         System.getenv("CPL")?.takeIf { it.isNotBlank() }?.let { return it }
         PathEnvironmentVariableUtil.findInPath("cpl")?.let { return it.path }
-        return File(System.getProperty("user.home"), ".cargo/bin/cpl").takeIf { it.canExecute() }?.path
+        val windows = System.getProperty("os.name").startsWith("Windows")
+        return installed(System.getProperty("user.home"), System.getenv("CPL_HOME"), windows)
+            .firstOrNull { it.canExecute() }?.path
+    }
+
+    /**
+     * Where the installer (`$CPL_HOME/bin`, by default `~/.cpl/bin`) and cargo put `cpl`, in
+     * order: an IDE started from the dock does not see the shell's PATH.
+     */
+    fun installed(home: String, cplHome: String?, windows: Boolean): List<File> {
+        val name = if (windows) "cpl.exe" else "cpl"
+        return listOfNotNull(cplHome?.takeIf { it.isNotBlank() }?.let { File(it, "bin") }, File(home, ".cpl/bin"), File(home, ".cargo/bin"))
+            .map { File(it, name) }
     }
 
     fun commandLine(args: List<String>, workDirectory: File?): GeneralCommandLine {

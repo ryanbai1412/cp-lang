@@ -37,6 +37,31 @@ test('the newer of the release and debug builds wins', () => {
     assert.equal(newest(release), release);
 });
 
+test('without PATH, the installed cpl comes before a workspace build', () => {
+    const built = path.posix.join('/work/cp-lang', 'target', 'debug', 'cpl');
+    const find = (files: string[], cplHome?: string) =>
+        resolveServer('cpl', {
+            pathEnv: '/usr/bin',
+            workspaceFolders: ['/work/cp-lang'],
+            platform: 'linux',
+            exists: file => files.includes(file),
+            home: '/home/u',
+            cplHome,
+        });
+    assert.equal(find(['/home/u/.cpl/bin/cpl', built]), '/home/u/.cpl/bin/cpl');
+    assert.equal(find(['/home/u/.cargo/bin/cpl', built]), '/home/u/.cargo/bin/cpl');
+    assert.equal(find(['/opt/cpl/bin/cpl', '/home/u/.cpl/bin/cpl'], '/opt/cpl'), '/opt/cpl/bin/cpl');
+    assert.equal(find(['/usr/bin/cpl', '/home/u/.cpl/bin/cpl']), '/usr/bin/cpl');
+    const windows = resolveServer('cpl', {
+        pathEnv: '',
+        workspaceFolders: [],
+        platform: 'win32',
+        exists: file => file === 'C:\\Users\\u\\.cpl\\bin\\cpl.exe',
+        home: 'C:\\Users\\u',
+    });
+    assert.equal(windows, 'C:\\Users\\u\\.cpl\\bin\\cpl.exe');
+});
+
 test('a path is taken as written', () => {
     assert.equal(resolve('/abs/cpl', ['/abs/cpl']), '/abs/cpl');
     assert.equal(resolve('/abs/cpl', ['/usr/bin/cpl']), undefined);

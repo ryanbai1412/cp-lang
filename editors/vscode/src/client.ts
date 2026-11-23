@@ -1,3 +1,4 @@
+import * as os from 'node:os';
 // The language client: starts `cpl lsp` and hands the editor's requests to
 // it. Diagnostics, hover, go-to-definition, references, rename, the outline,
 // quick fixes, completion, signature help and inlay hints all come from the
@@ -27,6 +28,8 @@ export function serverBinary(): string | undefined {
     return resolveServer(configured, {
         pathEnv: process.env.PATH ?? '',
         workspaceFolders: (vscode.workspace.workspaceFolders ?? []).map(folder => folder.uri.fsPath),
+        home: os.homedir(),
+        cplHome: process.env.CPL_HOME,
     });
 }
 
