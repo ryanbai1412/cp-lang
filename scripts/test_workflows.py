@@ -49,6 +49,11 @@ class WorkflowTest(unittest.TestCase):
         self.assertIn("subject-path: dist/*", sign)
         self.assertIn("id-token: write", sign)
 
+    def test_the_conform_corpus_part_caches_generated_tests(self):
+        with open(os.path.join(ROOT, ".github", "workflows", "ci.yml"), encoding="utf-8") as f:
+            ci = f.read()
+        self.assertRegex(ci, r"if: matrix.part == 'conform:corpus\+docs'\n\s+with:\n\s+path: target/corpus-tests")
+
     def test_site_selection_skips_superseded_runs(self):
         # Superseded ci runs end `cancelled` ~100 times an hour and ran no job;
         # scanning each one spent the repo's API rate limit (ci/R25).

@@ -78,6 +78,14 @@ jobs:
             cxx-${{ runner.os }}-${{ matrix.part }}-
             cxx-${{ runner.os }}-${{ startsWith(matrix.part, 'conform:diff') && 'conform:diff' || matrix.part }}
             cxx-${{ runner.os }}-
+      # scripts/corpus-tests.py writes each generated problem's tests here,
+      # stamp-cached by content; cold, it compiles every accepted C++ (~1 min).
+      - uses: actions/cache@v4
+        if: matrix.part == 'conform:corpus+docs'
+        with:
+          path: target/corpus-tests
+          key: corpus-tests-${{ github.run_id }}
+          restore-keys: corpus-tests-
       - name: Fast gate
         # A hung test holds main's only run slot; a shard takes about 5 min.
         timeout-minutes: 12
