@@ -5,14 +5,16 @@
 let n: 2..=100 = read()
 let k: 1..=50 = read()
 domain Village = 1..=n
-type Site = WithMin<Village>  // Site.bottom is Bytetown, label 0
+domain Site = 0..=n  // where logs can go: Bytetown (label 0) or a village
+fn site(v: Village) -> Site = Site.at(v.label)!
+fn village(s: Site) -> ?Village = if s.label == 0: None else: Village.at(s.label)
 type Info = (trees: 0..=1e4, down: Site, len: 1..=1e4)
 
 fn drains(rows: [Village]Info) -> Bool:
     for v in Village:
-        var s: Site = v
+        var s = site(v)
         var steps = 0
-        while let u = s.elem:
+        while let u = village(s):
             s = rows[u].down
             steps += 1
             if steps > n:
@@ -22,11 +24,12 @@ fn drains(rows: [Village]Info) -> Bool:
 fn random_river() -> [Village]Info:
     [Village] v => (
         trees: rand(0, 10000),
-        down: Site(rand(0, v - Village.first)),
+        down: Site.at(rand(0, v.label - 1))!,
         len: rand(1, 10000),
     )
 
-let rows: [Village]Info = read(gen: random_river) where drains(rows)
+let rows: [Village]Info = read(gen: random_river)
+assert drains(rows)
 
 var kids: [Site]List<Village> = []
 for v in Village:
@@ -34,7 +37,7 @@ for v in Village:
 
 @memo
 fn depth(s: Site) -> Int:
-    if let v = s.elem:
+    if let v = village(s):
         return depth(rows[v].down) + rows[v].len
     0
 
@@ -52,9 +55,9 @@ fn spread(cs: List<Village>, mill: Site) -> Row:
 // v's subtree; v's logs reach `mill` unless v builds its own
 @memo
 fn cost(v: Village, mill: Site) -> Row:
-    let haul = rows[v].trees * (depth(v) - depth(mill))
-    let open = spread(kids[v], mill)
-    let milled = spread(kids[v], v)
+    let haul = rows[v].trees * (depth(site(v)) - depth(mill))
+    let open = spread(kids[site(v)], mill)
+    let milled = spread(kids[site(v)], site(v))
     [Mills] j => if j == Mills.first: haul + open[j] else: min(haul + open[j], milled[j.prev!])
 
-print(spread(kids[Site.bottom], Site.bottom)[Mills.last!])
+print(spread(kids[Site.first!], Site.first!)[Mills.last!])
