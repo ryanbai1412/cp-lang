@@ -1,7 +1,9 @@
 """cco04p4 generator: `seed size`; two closed orbits, each `x y m` then m <= 100 moves `d axis`.
 
-Small sizes give short random orbits (some empty or with d = 0); size >= 10000 gives two laps of
-about 1e4 unit steps whose lengths share only the factor 2, so the joint period is about 5e7.
+Small sizes give short random orbits (some with d = 0 moves); 13 <= size < 10000 gives laps of
+up to `size` unit steps in moves of up to 100; size >= 10000 gives two laps of about 1e4 unit
+steps whose lengths share only the factor 2, so the joint period is about 5e7. Every lap has
+positive length: the accepted reference indexes an empty lap out of bounds.
 """
 import random
 import sys
@@ -46,8 +48,17 @@ if size >= 10000:
                 break
         w = 5 * 10**8 if seed % 2 else 10**4
         emit(rng.randint(-w, w), rng.randint(-w, w), ms)
+elif size > 12:
+    for _ in range(2):
+        half = rng.randint(1, min(size, 9800) // 2)
+        while True:
+            ms = orbit(half, rng.randint(1, 100), zeros=rng.randint(0, 3))
+            if len(ms) <= 100:
+                break
+        w = size // 8
+        emit(rng.randint(-w, w), rng.randint(-w, w), ms)
 else:
     for _ in range(2):
-        half = rng.randint(0, max(1, min(size, 12)))
+        half = rng.randint(1, max(1, min(size, 12)))
         ms = orbit(half, rng.randint(1, 5), zeros=rng.randint(0, 2))[:100]
         emit(rng.randint(-20, 20), rng.randint(-20, 20), ms)
