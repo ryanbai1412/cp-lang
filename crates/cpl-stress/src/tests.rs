@@ -320,7 +320,7 @@ fn programs_resolve_by_extension() {
     std::fs::write(dir.join("a.py"), "print(1)\n").unwrap();
     assert_eq!(
         Program::resolve(&dir.join("a.py")).unwrap().argv[0],
-        "python3"
+        crate::program::python()[0]
     );
     // A `.cp` file goes through the compiler; its errors are the reason.
     std::fs::write(dir.join("bad.cp"), "print(m)\n").unwrap();
@@ -365,6 +365,8 @@ fn the_token_judge_names_each_way_of_failing() {
         verdict("echo 'index 9 is out of range' >&2; exit 1", Some("4\n")),
         Verdict::RuntimeError("exit code 1: index 9 is out of range".to_string())
     );
+    // Windows has no signals: MSYS reports a killed shell as an exit code.
+    #[cfg(unix)]
     assert_eq!(
         verdict("kill -SEGV $$", None),
         Verdict::RuntimeError("crashed".to_string())
