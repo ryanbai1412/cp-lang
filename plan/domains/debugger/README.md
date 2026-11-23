@@ -11,20 +11,21 @@ The loop Ryan reviews: **WA -> `cpl stress` -> minimal input -> trap or first di
 
 ## Milestone 1
 
-What [MILESTONE-1](../../product/MILESTONE-1.md) needs from this domain: the integrated loop **WA → `cpl stress` with a brute in the same file → minimized counterexample in seconds → fix → rerun**, smooth from the CLI and VS Code. Exit criteria:
-- Every seeded bug (`bench/stress/`, 24 today) is found and shrunk; median < 1 s, max < 5 s (`cargo test --release -p cpl-cli --test seeded_bugs`).
-- The shrunk case lands in `<file>.tests/` with the brute's answer; after the fix, `cpl test` and `cpl stress` both pass on it, in one end-to-end test.
-- Single-test, multitest, `@check` (several right answers) and `@interactor` problems all run the loop.
-- VS Code's Stress command and lens run it, show the failing case and rerun, covered by an extension test; its wording is v0.3's (`@alt(program)`, `@check`).
-- Every trap names the rule, the place and the locals in source terms (done: all 12 R-codes in `runtime_errors.rs`).
-- A cold run: an agent, given only the docs, takes 3 unfamiliar problems through the loop on the CLI and in VS Code, and each friction it hits is fixed or logged.
+Due about 09:30 PST 11/23, on edge; checkpoints every 2 h in the [worklog](worklog.md). What [MILESTONE-1](../../product/MILESTONE-1.md) needs from this domain: the loop **WA → `cpl stress` with a brute in the same file → minimized counterexample in seconds → fix → rerun**, smooth from the CLI, Neovim/Vim and VS Code, on Linux, macOS and Windows. Exit criteria:
+- [x] The loop passes end to end on the CLI for `@alt(program)`, `@check` and `@interactor` multitests (`cargo nextest run -p cpl-cli --test debugger`: `stress_loop` tests).
+- [ ] Every seeded bug (`bench/stress/`, 24) found and shrunk; median < 1 s, max < 5 s (`cargo test --release -p cpl-cli --test seeded_bugs`).
+- [ ] The loop tests pass on Linux, macOS and Windows CI: paths, CRLF in saved cases, no `g++` or `sh` needed for a same-file brute.
+- [ ] Neovim: `:Cpl stress` (or the LSP Stress lens) then `:Cpl test` runs the loop from the documented one-step setup (`editors/neovim/plugin/cplang.lua`); Vim: `:!cpl stress %` then `:!cpl test %`, documented. Tools owns `editors/` and the LSP; debugger writes the scenario.
+- [ ] VS Code: Stress lens shows the failing case, Run All Samples reruns `<file>.tests/`; wording is v0.3's (`@alt(program)`, `@check`).
+- [x] Traps name the rule, the place and the locals (all 12 R-codes in `runtime_errors.rs`).
+- [ ] Stress guide (`web/content/docs/guides/stress.mdx`, site's) teaches the whole loop including the rerun; its examples run (they do today).
 
-Deferred until after the milestone: the +20% trace target and replay (snapshot/restore), the `crates/cpl-trace` split, the VM in the browser, `gen<T>` generators beyond a row, DAP and viewer polish. What works there stays working.
+Deferred: the +20% trace target and replay (snapshot/restore), the `crates/cpl-trace` split, the VM in the browser, `gen<T>` generators beyond a row, DAP and viewer polish. They continue in parallel only after the blockers; what works stays working.
 
 Next:
-1. The end-to-end test of WA → stress → fix → rerun on the CLI, fixing what it trips on.
-2. The cold run on 3 unfamiliar problems (multitest and `@check` among them), CLI first.
-3. VS Code: the Stress command end to end, with tools, who own `editors/` (extension test, v0.3 wording).
+1. The loop tests on macOS and Windows: run them in CI there (infra's workflow) and fix what breaks in `cpl-stress`.
+2. Neovim/Vim: drive the loop from the documented setup, fix stress's side, request the rest from tools.
+3. The guide's loop section and the VS Code rerun path, with site and tools.
 
 ## Covers / not covered
 
