@@ -1,6 +1,10 @@
-// SHOI 2016 P4 Black-box Company: count spanning trees that use one road of
-// every company. Inclusion-exclusion over the skipped companies, each term a
-// Kirchhoff matrix-tree determinant (city n dropped) in Mod<1_000_000_007>.
+// Source: SHOI 2016 P4 (Darkness Before Fantasyland), https://dmoj.ca/problem/shoi16p4
+// Problem: n <= 17 cities and n - 1 companies, each able to build its own list of roads.
+//   Count, mod 1e9+7, the spanning trees whose n - 1 edges come from distinct companies (each
+//   company builds exactly one), as sets of (road, company) choices.
+// Solution: inclusion-exclusion over the set of companies left out: (-1)^|skipped| times the
+//   spanning trees of the remaining companies' roads, by the matrix-tree theorem (Laplacian
+//   minus city n, Gaussian determinant in Mod). O(2^(n-1) n^3).
 // original: corpus/submissions/5635192.cpp
 type Z = Mod<1_000_000_007>
 

@@ -1,11 +1,11 @@
-// Codeforces 2062 G: Permutation Factory.
-// View p as points (i, p[i]) and q as points (j, q[j]). Every swap of cost
-// min(|i - j|, |p[i] - p[j]|) reduces total Manhattan distance to any target
-// matching by at most 2, so half the minimum Manhattan matching cost is a lower
-// bound. It is achieved in two stages: first sort positions i -> mate[i] by
-// swaps reducing position distance, then sort values p[i] -> q[mate[i]] by
-// swaps reducing value distance.
-//
+// Source: Codeforces 2062G (Permutation Factory), https://codeforces.com/contest/2062/problem/G
+// Problem: permutations p, q of n <= 100. Swapping p_i and p_j costs min(|i - j|, |p_i - p_j|);
+//   print a cheapest sequence of at most n^2 swaps turning p into q. Multitest,
+//   sum of n^3 <= 1e6.
+// Solution: as points (i, p_i) a swap of cost c moves the matching to q's points by at most 2c
+//   in Manhattan distance, so half the minimum Manhattan matching (Hungarian, O(n^3)) bounds
+//   the cost. It is met in two stages: sort positions to their mates, then values, each by
+//   swaps whose cost is half the distance they remove. O(n^3).
 // In any nontrivial permutation, let r be the leftmost index with perm[r] < r,
 // and l be the largest index < r in r's cycle. By minimality of r, perm[l] > l;
 // by maximality of l in r's cycle, perm[r] <= l < r <= perm[l]. Swapping (l, r)

@@ -1,11 +1,10 @@
-// Codeforces 2222 E — Interactive Bitwise Operation & Mask Recovery
-//
-// The judge hides an operation `k in {1: AND (&), 2: OR (|), 3: XOR (^)}` and
-// a non-zero n-bit mask `v in 1..2^n`. We first choose the initial element of
-// the set `S` by printing `0`, so `S = {0}`.
-// - `ask('I', x)` inserts `x op v` into `S` and returns `|S|`.
-// - `ask('Q', x)` returns `|{z in S : z >= x}|`.
-//
+// Source: Codeforces 2222E (Seek the Truth), https://codeforces.com/contest/2222/problem/E
+// Problem: interactive, multitest (t <= 1e4, 2 <= n <= 60). Hidden k in {AND, OR, XOR} and a
+//   mask 1 <= c < 2^n; f(x) = x k c. Pick a start a for a set S = {a}; "I x" inserts f(x) and
+//   returns |S|, "Q y" counts z in S with z >= y. Within n + 3 interactions print "A k c".
+// Solution: start at 0; "I 0" gives |S| = 1 only for AND, which "I 2^n-1" then turns to
+//   S = {0, c}. With S = {0, c}, n Q queries read c bit by bit from the top. One last insert
+//   (u = c & (c - 1)) or query (a 2-bit supermask of c, for powers of two) tells OR from XOR.
 // 1. Identify `k == 1` vs `{2, 3}`: `ask('I', 0)` inserts `0 & v == 0`
 //    (leaving `|S| == 1`) when `k == 1`, or `0 | v == 0 ^ v == v > 0`
 //    (giving `|S| == 2`) when `k in {2, 3}`. If `k == 1`, inserting

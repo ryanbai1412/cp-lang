@@ -1,7 +1,11 @@
+// Source: NOI 2002 P1 (Galactic Heroes), https://dmoj.ca/problem/noi02p1
+// Problem: 30000 ships, each its own column. T <= 5e5 lines: "M i j" moves i's whole column
+//   behind j's (they differ); "C i j" prints how many ships stand between i and j, or -1 if
+//   they are in different columns.
+// Solution: weighted union-find: each ship keeps its distance to its parent and each root its
+//   column's size; a merge hangs i's root under j's at distance size(j). Path compression adds
+//   up distances, so a query is |d_i - d_j| - 1. O((T + n) alpha(n)).
 // cp: 0.1 8ef64b9+dirty
-// NOI 2002 Galactic Heroes. Every ship starts as its own column.
-// Merge(a, b) moves a's whole column behind b's; Ask(a, b) prints how many
-// ships stand between a and b, or -1 if they are in different columns.
 domain Ship = 1..=30000
 
 @tags("M", "C")

@@ -1,7 +1,13 @@
+// Source: NOI 2021 P1 (Light and Heavy Edges), https://dmoj.ca/problem/noi21p1
+// Problem: a tree of n <= 1e5 vertices, every edge light. m <= 1e5 operations: "1 a b" makes
+//   every edge with an endpoint on the a-b path light, then the path's edges heavy; "2 a b"
+//   prints the number of heavy edges on the a-b path. Multitest, T <= 3.
+// Solution: an edge is heavy iff both ends were last stamped by the same update (stamp 0 =
+//   never), so an update stamps its path. On a heavy-light layout, a stamp tree holds each
+//   vertex's stamp and a tied tree marks edges to the parent inside one chain range: an update
+//   sets its ranges tied, then unties each range's first cell and the cell after it. A query sums
+//   tied over its ranges and compares stamps across each range's top edge. O(m log^2 n).
 // original: corpus/submissions/3859087.cpp
-// NOI 2021 Heavy and Light Edges: a tree whose edges all start light.
-// "1 a b": every edge touching the path from a to b turns light, then the
-// edges on the path turn heavy. "2 a b": count the heavy edges on the path.
 let t: 1..=3 = read()
 for _ in 0..t:
     let n: 1..=1e5 = read()

@@ -1,4 +1,11 @@
-// Runnable port (proto/cp.py lib-run) of dmopc20c7p2.cp
+// Source: DMOPC '20 Contest 7 P2 (Alice and Tiles), https://dmoj.ca/problem/dmopc20c7p2
+// Problem: N <= 2e5 tiles of the square-octagon tiling, given by coordinates |x|, |y| <= 1e9,
+//   form one polygon without holes. Print its vertices clockwise, starting from the one with
+//   least x, then least y.
+// Solution: each tile lists its own edges clockwise, square or octagon by its coordinates, in a
+//   map from each vertex to its outgoing steps. Start at the least vertex on only one tile and
+//   walk; where two tiles meet, leave by the tile that was not just walked, skipping the shared
+//   edge, until back at the start. O(N log N).
 // original: corpus/submissions/3686612.cpp
 
 let n: Int = read()

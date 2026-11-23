@@ -1,12 +1,11 @@
-// NOI 2003 Editor: a text, empty at first, and a cursor between two of its
-// characters. "Move k" puts the cursor after the k-th character, "Prev" and
-// "Next" step it, "Insert n" inserts the n characters that follow at the
-// cursor, "Delete n" removes the n characters after it and "Get n" prints
-// them. The cursor stays where it is through an edit.
-//
-// The original uses a rope. There are at most 4000 edits, so a piece table
-// is enough: the text is a list of strings, cut wherever an edit has landed,
-// and an edit replaces a few whole pieces. Moving the cursor costs nothing.
+// Source: NOI 2003 P2 (Text Editor), https://dmoj.ca/problem/noi03p2
+// Problem: a text, empty at first, and a cursor. t commands: "Move k", "Prev", "Next" place the
+//   cursor; "Insert n" inserts the n characters (ASCII 32-126) that follow, line breaks
+//   ignored; "Delete n" removes and "Get n" prints the n characters after the cursor. At most
+//   4000 inserts and deletes, 2 MB inserted, 3 MB printed.
+// Solution: with so few edits a piece table is enough: the text is a list of strings, cut
+//   wherever an edit lands, and an edit replaces a few whole pieces; moving is free. Each edit
+//   and each Get costs O(pieces), a Get also O(n) to print; the original uses a rope.
 let t: Int = read()
 var pieces: List<Str> = []
 var cursor = 0

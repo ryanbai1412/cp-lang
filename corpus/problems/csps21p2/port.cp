@@ -1,5 +1,11 @@
-// CSP-S 2021 Bracket Sequences: count valid bracket-and-star strings matching
-// a pattern with '?' wildcards, with at most k consecutive '*' in any run.
+// Source: CSP-S 2021 P2 (Bracket Sequence), https://dmoj.ca/problem/csps21p2
+// Problem: a pattern of n <= 500 characters from ( ) * ?, and k <= n. Count, mod 1e9+7, the
+//   fillings of the ?s that are super bracket sequences: (), (S), AB, ASB, (AS), (SA) with
+//   A, B super sequences and S a run of 1 to k stars (in () and (S), up to k stars inside).
+// Solution: interval DP. wrap[l, r]: l and r match, holding stars, or stars then a sequence,
+//   or a sequence then at least one star. seq[l, r] = wrap[l, r] + sum over the first matched
+//   block wrap[l, i] times star_seq[i, r], 0 to k stars after i and then a sequence; each string
+//   splits one way. The star runs stop at their first non-star: O(n^3).
 // original: corpus/submissions/4819734.cpp
 const P = 1000000007
 type Z = Mod<P>
