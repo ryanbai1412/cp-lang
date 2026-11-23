@@ -34,7 +34,7 @@ use cpl_syntax::ParsedItem;
 use std::sync::Arc;
 
 mod impls;
-use impls::impls_by_target;
+use impls::{impls_by_target, ImplNames};
 
 /// Counters for how much work the database did, so tests can prove what
 /// was reused.
@@ -1680,9 +1680,6 @@ struct FileCtx<'d> {
     /// Every impl in reach, by the type it is for, once a lookup needs it.
     impl_names: Option<ImplNames>,
 }
-
-/// Each impl's name and trait, by the type it is for.
-type ImplNames = HashMap<String, Vec<(String, Option<String>)>>;
 
 impl FileCtx<'_> {
     fn record(&mut self, key: &str, fingerprint: u64) {
