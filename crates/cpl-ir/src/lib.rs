@@ -302,6 +302,40 @@ impl Ty {
         }
     }
 
+    /// `[V]T == [a, b]`: an array and a list of the same cells compare as lists, cell by
+    /// cell, also inside an optional, tuple or record.
+    pub fn list_meet(&self, other: &Ty) -> Option<Ty> {
+        match (self, other) {
+            (Ty::Array { dims, elem }, Ty::List(e)) | (Ty::List(e), Ty::Array { dims, elem })
+                if dims.len() == 1 && elem == e =>
+            {
+                Some(Ty::List(e.clone()))
+            }
+            (Ty::Opt(a), Ty::Opt(b)) => a.list_meet(b).map(|t| Ty::Opt(Box::new(t))),
+            (Ty::Tuple(xs), Ty::Tuple(ys)) if self.same_shape(other) => {
+                let met: Vec<_> = xs.iter().zip(ys).map(|(x, y)| x.list_meet(y)).collect();
+                let pick = |(i, m): (usize, &Option<Ty>)| m.clone().unwrap_or(xs[i].clone());
+                met.iter()
+                    .any(Option::is_some)
+                    .then(|| Ty::Tuple(met.iter().enumerate().map(pick).collect()))
+            }
+            (Ty::Record(xs), Ty::Record(ys)) if self.same_shape(other) => {
+                let met: Vec<_> = xs
+                    .iter()
+                    .zip(ys)
+                    .map(|(x, y)| x.1.list_meet(&y.1))
+                    .collect();
+                let pick = |(x, m): (&(String, Ty), &Option<Ty>)| {
+                    (x.0.clone(), m.clone().unwrap_or(x.1.clone()))
+                };
+                met.iter()
+                    .any(Option::is_some)
+                    .then(|| Ty::Record(xs.iter().zip(&met).map(pick).collect()))
+            }
+            _ => None,
+        }
+    }
+
     /// Two tuples, or two records with the same field names, of one length and differing somewhere.
     pub fn same_shape(&self, other: &Ty) -> bool {
         match (self, other) {
