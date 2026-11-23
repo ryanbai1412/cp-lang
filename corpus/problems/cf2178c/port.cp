@@ -1,14 +1,10 @@
-// Codeforces 2178 C — First or Second
-//
-// One element `a[k]` is left unchosen (weight `0`), `a[0]` gets `+1` (when
-// `k > 0`), each `a[1..k]` can freely take `+1` or `-1`, and every `a[k + 1..n]`
-// gets `-1`. Measuring each weight relative to `-1` (subtracting `a.sum()` at
-// the end):
-// - `cur` holds the best prefix delta over `a[0..i]`: `a[0]` contributes `+2 * a[0]`
-//   (from `-1` to `+1`), and each `x` in `a[1..i]` contributes `max(0, 2 * x)`
-//   (keep `-1` or flip to `+1`).
-// - Skipping `a[i]` changes its weight from `-1` to `0` (`+x`), giving delta `cur + x`.
-// - Initializing `best = a[0]` covers `k = 0` (skip `a[0]`, all others `-1`).
+// Source: Codeforces 2178C (First or Second), https://codeforces.com/contest/2178/problem/C
+// Problem: n <= 2e5 children with niceness |a_i| <= 1e9 in a line. n - 1 times remove the
+//   first child (X += a) or the second (X -= a); one child stays. Print the max X. Multitest.
+// Solution: fix the child k that stays: a[0] is added (if k > 0), each of a[1..k] can be
+//   added or subtracted freely, and every later child is subtracted. Relative to all -1:
+//   `cur` is 2 a[0] + sum of max(0, 2x) over a[1..k], leaving a[k] adds a[k], and k = 0
+//   gives a[0]; answer = best - a.sum(). One scan, O(n).
 
 @!multitest
 let n: 2..=200_000 = read()

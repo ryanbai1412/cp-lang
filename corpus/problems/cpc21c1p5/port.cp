@@ -1,6 +1,14 @@
-// CPC '21 Contest 1 P5 (interactive), as it builds today: a reply needs a
-// `let` of its own (R10).
+// Source: CPC '21 Contest 1 P5 (AQT and Modern Art), https://dmoj.ca/problem/cpc21c1p5
+// Problem: interactive. N <= 500 hidden rectangles [x1, x2] x [y1, y2], coordinates in
+//   1..1e9, duplicates possible. "? a b c d" returns how many lie fully inside
+//   [a, b] x [c, d]; at most 61000 queries; then print "!" and all N rectangles.
+// Solution: left(box) is the reply minus the rectangles already found inside it. Binary
+//   search the least x2 with an unfound rectangle in [1, x2] x all, then the greatest x1
+//   with one in [x1, x2], then the least y2 and greatest y1 likewise: that pins one
+//   rectangle exactly, and one more query gives its multiplicity. About 4 * 30 + 1 queries
+//   per distinct rectangle.
 // original: corpus/submissions/4899391.cpp; judge: cpc21c1p5_judge.py
+// As it builds today: a reply needs a `let` of its own (R10).
 let n: 1..=100 = read()
 type Box = (x1: Int, x2: Int, y1: Int, y2: Int)
 var found: List<Box> = []

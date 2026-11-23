@@ -1,6 +1,9 @@
-// NOI 2001 P5: count x in [1..=m]^n with sum of k_i * x_i^p_i == 0.
-// Meet in the middle: all sums of the first half, then look up each
-// negated sum of the second half.
+// Source: NOI 2001 P5 (Equation Solutions), https://dmoj.ca/problem/noi01p5
+// Problem: n <= 6 terms (k_i, p_i), M <= 150, p_i >= 1, sum of |k_i M^p_i| < 2^31. Count
+//   x in [1..=M]^n with k_1 x_1^p_1 + ... + k_n x_n^p_n = 0.
+// Solution: meet in the middle: every value of the first half's sum (at most M^3 = 3.4e6)
+//   into a counts map, then for each sum s of the second half add the count of -s.
+//   O(M^(n/2)) values per half.
 let n: 1..=6 = read()
 let m: 1..=150 = read()
 domain T = 0..n

@@ -1,9 +1,12 @@
-// Codeforces 2268 B — Even Popcount Point Updates
-//
-// Each non-negative value `x in 0..2^30` is good iff `popcount(x)` is even
-// (the binary-parity invariant preserved by even-weight operations). Maintain
-// the count `good` in O(1) per point assignment `a[p] = x` via
-// `good += even(x) - even(a[p])`.
+// Source: Codeforces 2268B (What a SauSaGe! It's All Meat),
+//   https://codeforces.com/contest/2268/problem/B
+// Problem: n <= 2e5 values a_i < 16. An operation XORs a_i and a_{i+1} with the same 3k,
+//   1 <= k <= 5. Before the q <= 2e5 point assignments a_p := x and after each, print the
+//   most a_i that operations can make divisible by 3. Multitest.
+// Solution: 3, 6, 9, 12, 15 all have even popcount, so each a_i keeps its popcount parity;
+//   every multiple of 3 below 16 has even popcount, and all even-popcount values can be
+//   made multiples of 3 at once. So the answer is the count of even-popcount values,
+//   kept in O(1) per update.
 
 const MAX_V = (1 << 30) - 1
 fn even(x: 0..=MAX_V) -> Int: Int(popcount(x) % 2 == 0)

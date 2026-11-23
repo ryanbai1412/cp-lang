@@ -1,4 +1,11 @@
-// Runnable port (proto/cp.py lib-run) of dmopc20c5p2.cp
+// Source: DMOPC '20 Contest 5 P2 (On The Clock), https://dmoj.ca/problem/dmopc20c5p2
+// Problem: an N x M pixel grid (N, M <= 1e6), and the segment from its bottom-left to its
+//   top-right corner. Print the number of pixels whose interior it crosses (touching a
+//   corner does not count), then those pixels sorted by (row, column).
+// Solution: the line meets the gridline x = c at height n c / m; if that is not an integer,
+//   it crosses into the pixels on both sides in row floor(n c / m). Same for the
+//   horizontal gridlines; only when n = m does it go corner to corner, through the
+//   diagonal. Collect in a set and sort: O((n + m) log(n + m)).
 // original: corpus/submissions/3591332.cpp
 
 let (n, m): (Int, Int) = read()

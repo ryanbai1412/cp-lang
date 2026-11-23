@@ -1,14 +1,13 @@
-// Codeforces 2152 D — Division Versus Addition
-//
-// Reducing `x >= 2` to `1` by halving (`x /= 2`) takes `bit_width(x - 1)` base
-// moves (`ceil(log2(x))`). The opponent's `+1` bump adds an extra halving move
-// iff `x = 2^k + 1` (`k >= 1`), where `bit_width(x - 2)` is `1` less than
-// `bit_width(x - 1)` (while `x = 2` has `cnt_trade = 1 = bit_width(1)` since
-// bumping `2 -> 3` also costs 1 extra move).
-//
-// Because players alternate bumping and halving across `[l, r]`, half of the
-// bump-sensitive elements (`floor`) receive a bump, so the total moves equal
-// the average `(cnt_ops.sum(l..=r) + cnt_trade.sum(l..=r)) / 2`.
+// Source: Codeforces 2152D (Division Versus Addition),
+//   https://codeforces.com/contest/2152/problem/D
+// Problem: a game on b (b_i >= 2): Poby halves (floor) some b_i >= 2, Rekkles adds 1 to some
+//   b_i >= 2, alternating, Poby first, until all are 1; Poby minimises his own move count,
+//   Rekkles maximises it. For q <= 250000 ranges of a (n <= 250000, 2 <= a_i <= 1e9), print
+//   the game's value on a[l..=r]. Multitest.
+// Solution: an element x takes ceil(log2 x) halvings if Rekkles bumps it before each one,
+//   ceil(log2(x - 1)) (1 for x = 2) if Poby halves it first; these differ by 1 only for
+//   x = 2^k + 1, and the players split those elements evenly, so the value is the floor of
+//   the mean of the two sums. Two prefix sums (`bit_width`), O(1) per query.
 
 @!multitest
 let (n, q): (1..=250_000, 1..=250_000) = read()

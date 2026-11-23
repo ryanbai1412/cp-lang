@@ -1,10 +1,13 @@
-// Codeforces 2183 F: Jumping Man.
-// The sum of squared counts is the number of ordered pairs of jump chains in
-// the subtree that spell the same string. Let f(u, v) count pairs whose chains
-// start at u and v: zero unless the letters match, else one (stop here) plus
-// every pair that starts strictly below u and strictly below v. In preorder a
-// subtree is a range, so "strictly below u and below v" is a rectangle of a 2D
-// suffix sum over the cuts of t.Pre, and the answer for i is sub(i) x sub(i).
+// Source: Codeforces 2183F (Jumping Man), https://codeforces.com/contest/2183/problem/F
+// Problem: a tree rooted at 1, n <= 5000 (sum over tests), a letter per node. For each i,
+//   take every chain u_1, u_2, ... in i's subtree with each node strictly inside the previous
+//   one's subtree; print the sum over strings of (number of chains spelling it)^2, mod
+//   998244353. Multitest.
+// Solution: the sum of squared counts is the number of ordered pairs of chains that spell
+//   the same string. f(u, v) counts such pairs starting at u and v: 0 unless the letters
+//   match, else 1 plus the sum of f over (strictly below u) x (strictly below v). In
+//   preorder that is a rectangle of a 2D suffix sum filled in reverse preorder, and the
+//   answer for i is the sum over sub(i) x sub(i). O(n^2) time and memory.
 type Z = Mod<998_244_353>
 
 @!multitest
