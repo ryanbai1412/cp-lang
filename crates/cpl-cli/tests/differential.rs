@@ -473,12 +473,12 @@ print(total, full.len, full.without(Item(1)).len, one.first!.ord)
             "filled_none_inference",
             "\
 fn make_grid(n: Int) -> List<List<?Int>>:
-    var out = List.filled(n, List.filled(n, none))
+    var out = List.filled(n, List.filled(n, None))
     out[0][1] = 7
     out
 
 let g = make_grid(2)
-var dp = List.filled(3, none)
+var dp = List.filled(3, None)
 dp[2] = 42
 print(g[0][0] ?? -1, g[0][1] ?? -1, dp[0] ?? -1, dp[2] ?? -1)
 ",

@@ -14,7 +14,7 @@ fn parks(r: Int) -> List<V>:
         for (a, s) in kids:
             if s.far.is_some_and(f => f + a.w > r):
                 open.push(a.to)
-            elif s.far is Some(f):
+            else if s.far is Some(f):
                 far = Some(max(far!, f + a.w))
         (far: if far! + near <= r: None else: far, near))
     if state[t.root].far is Some(_): open.push(t.root)

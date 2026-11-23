@@ -752,7 +752,7 @@ fn definitions_point_at_the_declaring_name() {
 
 #[test]
 fn a_type_named_inside_a_fn_or_its_own_body_has_a_definition() {
-    let src = "struct Run:\n    len: Int\n    fn grown() -> Run = Run(len + 1)\nfn main():\n    let n = read<1..=9>()\n    domain R = 0..n\n    let best: [R]?Int = [R] r => none\n    print(best[R.first!], Run(1).grown().len)\n";
+    let src = "struct Run:\n    len: Int\n    fn grown() -> Run = Run(len + 1)\nfn main():\n    let n = read<1..=9>()\n    domain R = 0..n\n    let best: [R]?Int = [R] r => None\n    print(best[R.first!], Run(1).grown().len)\n";
     let mut db = Database::new();
     db.set_file("a.cp", src);
     let at = |needle: &str| src.find(needle).unwrap() as u32;

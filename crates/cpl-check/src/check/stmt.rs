@@ -475,8 +475,7 @@ impl<'a> Checker<'a> {
                 }
             }
             PatternKind::Variant { path, args } => {
-                if path.len() == 1 && path[0].text == "some" {
-                    self.old_optional_spelling(path[0].span, "Some");
+                if self.some_pattern(path) {
                     let inner = match ty {
                         Ty::Optional(inner) => (**inner).clone(),
                         _ => Ty::Unknown,

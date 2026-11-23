@@ -5,6 +5,25 @@ use cpl_diag::Fix;
 use cpl_syntax::ast::{Arg, CmpOp, Expr, ExprKind, FnBody, FnDecl, Name, StmtKind};
 
 impl Checker<'_> {
+    /// The `None` literal; where `none` is bound, the lowercase word is that name.
+    pub(super) fn none_literal(&mut self, span: Span) -> Ty {
+        let bound = self.local("none").is_some() || self.global("none").is_some();
+        if self.text(span) == "none" && bound {
+            return self.name_ty("none", span);
+        }
+        self.old_optional_spelling(span, "None");
+        Ty::Unknown
+    }
+
+    /// Whether `path` is the `Some(x)` pattern, reporting the old `some` spelling.
+    pub(super) fn some_pattern(&mut self, path: &[Name]) -> bool {
+        let is_some = path.len() == 1 && path[0].text == "some";
+        if is_some {
+            self.old_optional_spelling(path[0].span, "Some");
+        }
+        is_some
+    }
+
     /// `some(x)` and `none`, the spellings before `Some(x)` and `None`
     /// (decision 157): an error whose fix `cpl migrate` applies.
     pub(super) fn old_optional_spelling(&mut self, span: Span, new: &str) {

@@ -3,7 +3,7 @@
 // Two presses find the first letter; each middle letter costs one press of four candidates;
 // the last costs two.
 fn guess_sequence(n: Int) -> Str:
-    fn among(s: Str, two: List<Char>) -> Char:
+    fn among(s: Str, two: [Char]) -> Char:
         if press(s + two[0]) > s.len: two[0] else: two[1]
     let first = among("", if press("AB") > 0: ['A', 'B'] else: ['X', 'Y'])
     let [p, q, r] = "ABXY".filter(c => c != first)

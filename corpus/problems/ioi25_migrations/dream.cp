@@ -18,7 +18,7 @@ mod migrations:
         fn pairs(self) -> List<(Int, Int)> =
             [(x, y) for x in 0..self.b for y in (if self.first: x else: 0)..self.b]
 
-    fn phase:lan(n: Int) -> List<Phase>:
+    fn phase_plan(n: Int) -> List<Phase> =
         for start in 4..n - 3:
             var plan: List<Phase> = []
             var (m, at) = (start - 1, start - 1)

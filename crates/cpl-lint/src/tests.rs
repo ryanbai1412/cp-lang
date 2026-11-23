@@ -1143,11 +1143,11 @@ for i in 0..n:
     let trie_loop = "\
 struct Node:
     kid: [0..2]?Int
-var nodes: List<Node> = [Node([0..2] _ => none)]
+var nodes: List<Node> = [Node([0..2] _ => None)]
 var o = 0
 var rest = 12
 while rest > 1:
-    nodes[o].kid[rest % 2] ??= nodes.push_id(Node([0..2] _ => none))
+    nodes[o].kid[rest % 2] ??= nodes.push_id(Node([0..2] _ => None))
     o = nodes[o].kid[rest % 2]!
     rest /= 2
 ";

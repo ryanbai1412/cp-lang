@@ -778,7 +778,7 @@ var xs: List<?Int> = []
 for _ in 0..n:
     let r: Int = read()
     if r == 0:
-        xs.push(none)
+        xs.push(None)
     else:
         xs.push(r)
 print(xs.max() ?? -100, xs.min() ?? 100)

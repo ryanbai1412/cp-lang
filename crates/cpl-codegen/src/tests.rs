@@ -355,7 +355,7 @@ fn every_optional_int_is_one_int_with_int64_min_as_none() {
         PACKED
     );
     // A list filled by `push`, a grid, a local, a parameter and a result.
-    let cpp = cpp("fn half(x: ?Int) -> ?Int: x\nlet n: 0..=9 = read()\nvar xs: List<?Int> = []\nvar g: [n, n]?Int = None\nfor i in 0..n:\n    xs.push(none)\n    xs.push(i)\n    g[i, 0] = i\nlet best: ?Int = xs.pop()\nprint(xs.len, xs[0] ?? -1, g[0, 0] ?? -1, half(best) ?? -1)\n");
+    let cpp = cpp("fn half(x: ?Int) -> ?Int: x\nlet n: 0..=9 = read()\nvar xs: List<?Int> = []\nvar g: [n, n]?Int = None\nfor i in 0..n:\n    xs.push(None)\n    xs.push(i)\n    g[i, 0] = i\nlet best: ?Int = xs.pop()\nprint(xs.len, xs[0] ?? -1, g[0, 0] ?? -1, half(best) ?? -1)\n");
     assert_eq!(decl(&cpp, "xs"), "std::vector<cpl::OptInt>", "{cpp}");
     assert_eq!(decl(&cpp, "g"), "cpl::Grid<cpl::OptInt, 2>", "{cpp}");
     assert_eq!(decl(&cpp, "best"), "cpl::OptInt", "{cpp}");
@@ -538,7 +538,7 @@ print(s)
 #[test]
 fn a_bounded_optional_list_is_stored_in_four_bytes() {
     let code = cpp(
-        "fn f(n: Int) -> List<?(0..2_147_483_648)>:\n    var a: List<?(0..2_147_483_648)> = List.filled(n, none)\n    a[0] = n\n    return a\nlet n: Int = read()\nlet b = f(n)\nvar c: List<?(0..100)> = [None]\nvar d: List<?Int> = [None]\nprint(b[0] ?? -1, c[0] ?? -1, d[0] ?? -1)\n",
+        "fn f(n: Int) -> List<?(0..2_147_483_648)>:\n    var a: List<?(0..2_147_483_648)> = List.filled(n, None)\n    a[0] = n\n    return a\nlet n: Int = read()\nlet b = f(n)\nvar c: List<?(0..100)> = [None]\nvar d: List<?Int> = [None]\nprint(b[0] ?? -1, c[0] ?? -1, d[0] ?? -1)\n",
     );
     let decl = |ty: &str| {
         code.lines()
@@ -944,7 +944,7 @@ fn unread_fn_fields_are_dropped_instead_of_std_function() {
         "    pick: ?(Int -> Int)\n",
         "let k = read::<Int>()\n",
         "let a = Acc(1, x => x * k)\n",
-        "var b = Acc(2, none)\n",
+        "var b = Acc(2, None)\n",
         "b.hook = x => x + k\n",
         "let t = Tagged(x => x - k)\n",
         "print(a.total + b.total, yes(t.pick == None))\n",
@@ -1281,7 +1281,7 @@ fn trie_row_field_niches_opt_int_and_avoids_temp_vector() {
         "struct Trie(cnt: Int, kid: [0..2]?Int)\n",
         "var nodes = List<Trie>()\n",
         "fn add(bit: Int):\n",
-        "    nodes.push(Trie(1, [0..2] _ => none))\n",
+        "    nodes.push(Trie(1, [0..2] _ => None))\n",
         "    let below = nodes.len - 1\n",
         "    nodes.push(Trie(1, [0..2] b => if b == bit: below else: None))\n",
         "add(read<Int>() & 1)\n",
