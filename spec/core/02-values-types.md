@@ -127,6 +127,10 @@ keep source positions, as for every sequence (`04b-keys.md`). (R02.3.1)
   fields, and `..R without (u, v)` names the rest. There is no record
   subtyping and no implicit field dropping: a function that wants fewer
   fields says so with a row bound (chapter 8). (R02.5.4)
+- A record pattern names fields: `(u: a, v: b)` binds `a` and `b`, and
+  `(u:, v:)` is shorthand for `(u: u, v: v)`, in `let`, `for`, `match`
+  and parameters. Fields not named must be written as `..`:
+  `(u:, ..)`. (R02.5.5)
 
 ## 2.6 Structs
 
