@@ -1,4 +1,4 @@
-// expect: ok, output "YES\n"
+// expect: ok, output "YES"
 // `Comb` grows its tables in several steps; every `fact` and `inv_fact` matches a running product.
 use std.mod.Comb
 

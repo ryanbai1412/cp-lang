@@ -1,4 +1,4 @@
-// expect: ok, output "YES\n"
+// expect: ok, output "YES"
 // SortedBag, SortedSet and SortedMap split_at then join round-trip against sorted lists.
 for _ in 0..200:
     let xs = [rand(0, 20) for _ in 0..rand(0, 30)].sorted()

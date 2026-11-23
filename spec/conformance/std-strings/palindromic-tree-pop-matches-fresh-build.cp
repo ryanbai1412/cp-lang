@@ -1,4 +1,4 @@
-// expect: ok, output "YES\n"
+// expect: ok, output "YES"
 // `PalindromicTree.pop` after random pushes and pops leaves the tree a fresh build of the same string gives.
 use std.strings.{PalindromicTree}
 
