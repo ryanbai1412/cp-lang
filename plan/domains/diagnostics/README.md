@@ -37,6 +37,26 @@ Next, in hours: (1) `auto x =` and the other worst newcomer rows, one
 commit each (2-4 h); (2) CRLF test and fixes (1 h); (3) traps on the
 practice problems (2 h); worklog checkpoint every 2 hours.
 
+## Milestone 2 (plan/product/MILESTONE-2.md, stable; after M1 passes)
+The complete version: every error and lint in every tool says one root
+cause, the place, the rule and a fix that is right, in the spec's words,
+for strangers as well as the newcomer. Exit criteria:
+1. **Root causes.** Broken-ports cascades <= 2% on a base of every
+   `spec.cp` that checks clean; `cpl-ir` emits no second error for a
+   reported root.
+2. **Fixes.** >= 95% of common-mistake errors carry a fix, and every
+   offered fix restores a clean program (`--test catalogue`, scoreboards).
+3. **Catalogue.** Every E/R/L code has a spec row, an example, a
+   `cpl explain` page and a `/lints` or `/errors` page; the full lint
+   catalog of `spec/idioms/lints.md`, checker-fact rows included.
+4. **Traps.** Every R-code names the values and the CPL fix, and the
+   interpreter and the built C++ report the same trap on the corpus.
+5. **Tools.** CLI, LSP (Neovim, VS Code, JetBrains), playground and trace
+   show the same diagnostics and fixes on all three platforms.
+
+Next: type-check-guided closer placement in `cpl fix`, the cascade base
+from every `spec.cp`, then the remaining `ty`/`flow`/`bound` lint rows.
+
 ## Covers
 Error codes and their catalogue (`spec/diagnostics.md`, `cpl explain`),
 message wording, spans, parser and checker recovery, cascade suppression,

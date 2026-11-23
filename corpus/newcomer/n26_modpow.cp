@@ -5,7 +5,7 @@ fn power(b0: Int, e0: Int) -> Int:  // expect: missing hand-rolled-modpow
     var r = 1
     while x > 0:
         if x % 2 == 1:
-            r = r * b % 998244353
+            r = r * b % 998244353  // expect: manual_mod_reduce
         b = b * b % 998244353
         x /= 2
     return r

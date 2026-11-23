@@ -338,7 +338,7 @@ One sub-family per module. Each says: you rebuilt something the library has.
 
 | Lint | Catches | Write instead | Tier | P | Engine | Status |
 |---|---|---|---|---|---|---|
-| manual_mod_reduce | `% MOD` after every op on `Int` | `type Z = Mod<P>` | fix? | #6 | ty | |
+| manual_mod_reduce | `% MOD` after every op on `Int` | `type Z = Mod<P>` | fix? | #6 | ty | ✓manual_mod_reduce |
 | neg_mod_fixup | `(a - b + MOD) % MOD` | `Mod` subtraction | fix | #6 | syn | ✓neg_mod_fixup |
 | fermat_inverse | `pow(a, MOD - 2)` | `a.inv` | fix | #1 | ty | |
 | fact_tables_by_hand | `fact[]`, `inv_fact[]` arrays | `Comb<Z>` / `ModComb` | fix? | #1 | loop | |

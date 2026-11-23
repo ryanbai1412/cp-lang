@@ -1,0 +1,3 @@
+C++ works modulo a prime by writing `% MOD` after every product (`f = f * i % 1000000007`). Each one is a place to forget it, and a forgotten one overflows or prints a wrong answer only on large tests. `Mod<P>` from `std.mod` is an integer modulo `P` that reduces after every `*`, `+` and `-` (subtraction never goes negative), so the arithmetic reads like the formula: declare `type Z = Mod<1000000007>` once, wrap the inputs (`Z(a)`), and compute in `Z`. Division by a `Z` multiplies by its inverse.
+
+The lint fires on `x * y % P` with a literal `P` of at least `10**8`, once per file at the first such reduction. It has no fix: which values become `Z` is a choice of the whole program.

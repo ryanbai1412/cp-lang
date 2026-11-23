@@ -136,8 +136,8 @@ fn is_int(ty: &cpl_syntax::ast::Type) -> bool {
     matches!(&ty.kind, TypeKind::Named { name, args } if name.text == "Int" && args.is_empty())
 }
 
-/// `-1`, `10**18`, `1000000000000000000` and their negations.
-fn constant(e: &Expr) -> Option<i128> {
+/// `-1`, `10**18`, `10**9 + 7`, `1000000000000000000` and their negations.
+pub(crate) fn constant(e: &Expr) -> Option<i128> {
     match &e.kind {
         ExprKind::Int(v) => Some(*v),
         ExprKind::Paren(inner) => constant(inner),
@@ -151,6 +151,12 @@ fn constant(e: &Expr) -> Option<i128> {
             rhs,
             ..
         } => constant(lhs)?.checked_pow(u32::try_from(constant(rhs)?).ok()?),
+        ExprKind::Binary {
+            op: BinOp::Add,
+            lhs,
+            rhs,
+            ..
+        } => constant(lhs)?.checked_add(constant(rhs)?),
         _ => None,
     }
 }

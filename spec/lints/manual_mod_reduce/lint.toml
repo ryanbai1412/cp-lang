@@ -1,0 +1,5 @@
+code = "L0531"
+level = "warn"
+group = "idiom"
+title = "Modular arithmetic by hand"
+summary = "`a * b % 1000000007` after each product: `type Z = Mod<1000000007>`"
