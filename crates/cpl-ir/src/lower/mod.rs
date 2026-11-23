@@ -20,6 +20,7 @@ mod hoist;
 mod index_set;
 mod keyed;
 mod lambda_infer;
+mod library_domain;
 mod memo;
 mod mono;
 mod names;
