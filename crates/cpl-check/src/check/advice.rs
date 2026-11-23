@@ -34,6 +34,10 @@ impl Checker<'_> {
                 format!("({t})")
             }
         };
+        let simple = |t: &str| {
+            t.chars()
+                .all(|ch| ch.is_alphanumeric() || ch == '_' || ch == '.')
+        };
         let input = args.first().and_then(|x| match &x.value.kind {
             ExprKind::Call { callee, args } if args.is_empty() => {
                 matches!(&callee.kind, ExprKind::Name(n) if n == "input").then_some(callee.span)
@@ -87,6 +91,17 @@ impl Checker<'_> {
                 };
                 (range, "a range is written")
             }
+            ("str", [x]) if simple(self.text(x.value.span)) => (
+                format!("\"{{{}}}\"", self.text(x.value.span)),
+                "a string is made by interpolation",
+            ),
+            ("to_string" | "toString", []) => match &callee.kind {
+                ExprKind::Field { base, .. } if simple(self.text(base.span)) => (
+                    format!("\"{{{}}}\"", self.text(base.span)),
+                    "a string is made by interpolation",
+                ),
+                _ => return,
+            },
             ("pow", [a, b]) => (
                 format!("{} ** {}", operand(self, a), operand(self, b)),
                 "power is the operator `**`",

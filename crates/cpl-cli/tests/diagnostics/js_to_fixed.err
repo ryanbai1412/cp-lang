@@ -3,6 +3,6 @@ error[E0203]: a `F64` has no method `toFixed` that `cpl run` knows
   |
 2 | print(x.toFixed(2))
   |         ^^^^^^^
-  = help: a float's digits are set in its interpolation: `"{x:.2}"`
+  = help: a float's text is an interpolation: `"{x:.2}"`
 
 js_to_fixed.cp: 1 error

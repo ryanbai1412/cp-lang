@@ -263,9 +263,9 @@ impl<'a> Lowerer<'a> {
         }
     }
 
-    /// JavaScript's `x.toFixed(2)`: a float's digits are set in its
-    /// interpolation, `"{x:.2}"` (R10).
-    pub(super) fn to_fixed_fix(
+    /// JavaScript's `x.toFixed(2)` and `x.to_string()` on a float: its
+    /// text is an interpolation, `"{x:.2}"` or `"{x}"` (R10).
+    pub(super) fn float_text_fix(
         &mut self,
         ty: &Ty,
         base: &ast::Expr,
@@ -273,24 +273,20 @@ impl<'a> Lowerer<'a> {
         args: &[ast::Arg],
         span: Span,
     ) {
-        let (Ty::Float, "toFixed", [d]) = (ty, method, args) else {
-            return;
-        };
-        if !matches!(base.kind, ast::ExprKind::Name(_))
-            || !matches!(d.value.kind, ast::ExprKind::Int(_))
-        {
+        if !matches!(base.kind, ast::ExprKind::Name(_)) {
             return;
         }
-        let new = format!(
-            "\"{{{}:.{}}}\"",
-            self.source(base.span),
-            self.source(d.value.span)
-        );
+        let x = self.source(base.span);
+        let new = match (ty, method, args) {
+            (Ty::Float, "toFixed", [d]) if matches!(d.value.kind, ast::ExprKind::Int(_)) => {
+                format!("\"{{{x}:.{}}}\"", self.source(d.value.span))
+            }
+            (Ty::Float, "to_string" | "toString", []) => format!("\"{{{x}}}\""),
+            _ => return,
+        };
         let edit = self.span(span);
         if let Some(last) = self.diags.last_mut() {
-            last.help = Some(format!(
-                "a float's digits are set in its interpolation: `{new}`"
-            ));
+            last.help = Some(format!("a float's text is an interpolation: `{new}`"));
             last.fixes.clear();
             last.fix(format!("write `{new}`"), edit, new);
         }
@@ -360,7 +356,7 @@ impl<'a> Lowerer<'a> {
         args: &[ast::Arg],
         span: Span,
     ) {
-        self.to_fixed_fix(ty, base, method, args, span);
+        self.float_text_fix(ty, base, method, args, span);
         let (Ty::Str | Ty::List(_), "slice" | "substring", [a, b]) = (ty, method, args) else {
             return;
         };

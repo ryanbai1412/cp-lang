@@ -1,0 +1,8 @@
+error[E0201]: no `str` in scope
+  --> to_string.cp:3:7
+  |
+3 | print(str(n) + "!")
+  |       ^^^
+  = help: a string is made by interpolation in CP Lang: `"{n}"`
+
+to_string.cp: 1 error
