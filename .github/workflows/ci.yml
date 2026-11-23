@@ -185,6 +185,9 @@ jobs:
     name: jetbrains
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    # JetBrains is deferred past Milestone 1 and its Gradle plugin download
+    # flakes; it reports but does not block main.
+    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
       - name: Install the pinned Rust toolchain
