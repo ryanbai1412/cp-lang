@@ -9,12 +9,13 @@ on:
 permissions:
   contents: read
 
-# sccache keeps every rustc output in the Actions cache, so a crate whose
-# inputs are unchanged is not recompiled by any job or any later run.
+# Every Rust job restores the newest target/ its group saved on main (dev:
+# tests, conform, timing; clippy: checks; release: site), and
+# scripts/ci-mtime.sh re-stamps only the files changed since, so cargo
+# rebuilds only the crates and test binaries whose inputs changed.
 env:
-  RUSTC_WRAPPER: sccache
-  SCCACHE_GHA_ENABLED: "true"
   CARGO_INCREMENTAL: "0"
+  TARGET_KEY: target-${{ github.workflow }}-v1
 
 # On main a started run always finishes, and at most one more waits: a newer
 # push replaces the waiting run, so CI checks the newest tip next instead of
@@ -40,7 +41,18 @@ jobs:
       - name: Install the pinned Rust toolchain
         run: rustup show active-toolchain || rustup toolchain install
       - uses: Swatinem/rust-cache@v2
-      - uses: mozilla-actions/sccache-action@v0.0.9
+        with:
+          cache-targets: "false"
+      - name: Restore target/ (${{ matrix.part == 'checks' && 'clippy' || 'dev' }})
+        uses: actions/cache/restore@v4
+        with:
+          path: target
+          key: ${{ env.TARGET_KEY }}-${{ matrix.part == 'checks' && 'clippy' || 'dev' }}-${{ hashFiles('Cargo.lock', 'rust-toolchain.toml') }}-${{ github.run_id }}
+          restore-keys: |
+            ${{ env.TARGET_KEY }}-${{ matrix.part == 'checks' && 'clippy' || 'dev' }}-${{ hashFiles('Cargo.lock', 'rust-toolchain.toml') }}-
+            ${{ env.TARGET_KEY }}-${{ matrix.part == 'checks' && 'clippy' || 'dev' }}-
+      - name: Reuse unchanged build outputs
+        run: scripts/ci-mtime.sh
       - uses: taiki-e/install-action@v2
         with:
           tool: cargo-nextest
@@ -60,11 +72,21 @@ jobs:
         with:
           path: ~/.cache/cpl/cxx
           key: cxx-${{ runner.os }}-${{ matrix.part }}-${{ github.run_id }}
-          restore-keys: cxx-${{ runner.os }}-${{ matrix.part }}-
+          restore-keys: |
+            cxx-${{ runner.os }}-${{ matrix.part }}-
+            cxx-${{ runner.os }}-
       - name: Fast gate
         env:
           CPL_GATE_PART: ${{ matrix.part }}
         run: scripts/check.sh --fast
+      - name: Save target/ (${{ matrix.part == 'checks' && 'clippy' || 'dev' }})
+        if: ${{ !cancelled() && github.ref == 'refs/heads/main' && (matrix.part == 'checks' || matrix.part == 'tests:hash:6/6') }}
+        run: git rev-parse HEAD > target/.ci-sha && rm -rf target/check-cache target/tmp target/judge-probes
+      - uses: actions/cache/save@v4
+        if: ${{ !cancelled() && github.ref == 'refs/heads/main' && (matrix.part == 'checks' || matrix.part == 'tests:hash:6/6') }}
+        with:
+          path: target
+          key: ${{ env.TARGET_KEY }}-${{ matrix.part == 'checks' && 'clippy' || 'dev' }}-${{ hashFiles('Cargo.lock', 'rust-toolchain.toml') }}-${{ github.run_id }}
 
   # A main push with stale generated files (skill pages, COVERAGE.md, fixed
   # prelude gaps) gets them regenerated and committed here, under the pushed
@@ -112,7 +134,18 @@ jobs:
       - name: Install the pinned Rust toolchain
         run: rustup show active-toolchain || rustup toolchain install
       - uses: Swatinem/rust-cache@v2
-      - uses: mozilla-actions/sccache-action@v0.0.9
+        with:
+          cache-targets: "false"
+      - name: Restore target/ (dev)
+        uses: actions/cache/restore@v4
+        with:
+          path: target
+          key: ${{ env.TARGET_KEY }}-dev-${{ hashFiles('Cargo.lock', 'rust-toolchain.toml') }}-${{ github.run_id }}
+          restore-keys: |
+            ${{ env.TARGET_KEY }}-dev-${{ hashFiles('Cargo.lock', 'rust-toolchain.toml') }}-
+            ${{ env.TARGET_KEY }}-dev-
+      - name: Reuse unchanged build outputs
+        run: scripts/ci-mtime.sh
       - uses: taiki-e/install-action@v2
         with:
           tool: cargo-nextest
@@ -128,13 +161,29 @@ jobs:
       - name: Install the pinned Rust toolchain
         run: rustup show active-toolchain || rustup toolchain install
       - uses: Swatinem/rust-cache@v2
-      - uses: mozilla-actions/sccache-action@v0.0.9
+        with:
+          cache-targets: "false"
+      - name: Restore target/ (release)
+        uses: actions/cache/restore@v4
+        with:
+          path: target
+          key: ${{ env.TARGET_KEY }}-release-${{ hashFiles('Cargo.lock', 'rust-toolchain.toml') }}-${{ github.run_id }}
+          restore-keys: |
+            ${{ env.TARGET_KEY }}-release-${{ hashFiles('Cargo.lock', 'rust-toolchain.toml') }}-
+            ${{ env.TARGET_KEY }}-release-
+      - name: Reuse unchanged build outputs
+        run: scripts/ci-mtime.sh
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
           node-version: "24"
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
+      - uses: actions/cache@v4
+        with:
+          path: web/.next/cache
+          key: next-${{ hashFiles('pnpm-lock.yaml') }}-${{ github.run_id }}
+          restore-keys: next-${{ hashFiles('pnpm-lock.yaml') }}-
       - name: Install
         run: pnpm install --frozen-lockfile
       - name: Build cpl
@@ -148,3 +197,11 @@ jobs:
         run: pnpm --filter cp-lang-web test
       - name: Installers are served
         run: test -s web/out/install.sh && test -s web/out/install.ps1
+      - name: Save target/ (release)
+        if: ${{ !cancelled() && github.ref == 'refs/heads/main' }}
+        run: git rev-parse HEAD > target/.ci-sha && rm -rf target/check-cache target/tmp target/judge-probes
+      - uses: actions/cache/save@v4
+        if: ${{ !cancelled() && github.ref == 'refs/heads/main' }}
+        with:
+          path: target
+          key: ${{ env.TARGET_KEY }}-release-${{ hashFiles('Cargo.lock', 'rust-toolchain.toml') }}-${{ github.run_id }}

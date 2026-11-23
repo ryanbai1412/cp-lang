@@ -238,7 +238,7 @@ fi
 # CI splits --fast across parallel jobs (.github/workflows/ci.yml):
 # CPL_GATE_PART=checks runs everything but the workspace tests and the
 # conformance ratchet, CPL_GATE_PART=conform runs the ratchet and the script
-# unit tests, and CPL_GATE_PART=tests:<nextest partition> (e.g. tests:hash:1/4)
+# unit tests, and CPL_GATE_PART=tests:<nextest partition> (e.g. tests:hash:1/6)
 # runs only that share of the tests, plus the doctests in share 1. Unset runs
 # all of --fast.
 script_tests=(scripts/test_dream_gaps.py scripts/test_review_check.py scripts/test_check_cache.py scripts/test_cxx_cache.py scripts/test_release.py scripts/test_debt_ratchet.py scripts/test_fmt_check.py scripts/test_skill_gen.py scripts/test_affected.py scripts/test_land_stats.py)
