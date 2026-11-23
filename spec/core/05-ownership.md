@@ -101,6 +101,7 @@ move in one branch of an `if` or in an earlier iteration of a loop;
 `x.clone()` is the explicit O(n) copy. A move is O(1) (a few words), never
 a deep copy. (R05.2.2)
 
+<!-- rejects: E0608 -->
 ```python
 var xs = List(1, 2)
 let ys = xs                 // xs moves into ys
@@ -145,6 +146,7 @@ the call says so: `f(mut a)`. A method receiver is the same, with no marker
 at the call: `fn add(mut self, x: Int)` is called as `st.add(x)` and needs
 `st` to be a mutable place.
 
+<!-- rejects: E0402 -->
 ```python
 fn grow(mut xs: List<Int>): xs.push(1)
 var a = List<Int>()
@@ -163,6 +165,7 @@ the struct lent (R6). That is how a library struct holds a closure or a
 source: `Filter(self, keep)`. A custom constructor (`SegTree(max, a)`) is a
 static fn and follows R4/R5 below (chapter 2.6 has the one rule).
 
+<!-- rejects: E0608 -->
 ```python
 struct Holder: xs: List<Int>
 var a = List(1, 2)
@@ -177,6 +180,7 @@ Returning moves, and is O(1). Returning a parameter, part of one, or
 anything built from one is returning a lent value, which needs `lends` in
 the signature (§6), or `.clone()`.
 
+<!-- rejects: E0603 -->
 ```python
 fn make(n: Int) -> List<Int>:
     var xs = List<Int>()
@@ -282,6 +286,7 @@ var best = List<Int>()
 for r in rows:
     if r.len > best.len: best = r      // error: r is lent for one iteration; write r.clone()
 ```
+<!-- rejects: E0603 -->
 ```python
 fn keep(mut out: List<Str>, s: Str): out.push(s)
 // error: out belongs to the caller; push s.clone()
@@ -410,6 +415,7 @@ inc()
 print(cnt)                  // fine: inc borrows cnt only during each call
 inc()
 ```
+<!-- rejects: E0603 -->
 ```python
 fn counter() -> (() -> Int):
     var c = 0
@@ -593,6 +599,7 @@ print(ys.len)
 <details><summary>Answer</summary>Yes. <code>xs</code> moves into <code>ys</code> (R2); <code>xs</code> is never used again.</details>
 
 **2.**
+<!-- rejects: E0608 -->
 ```python
 var xs = List(1, 2)
 let ys = xs
@@ -618,6 +625,7 @@ fn twice(xs: List<Int>) -> List<Int>:
 <details><summary>Answer</summary>No. <code>xs</code> is a lent parameter; <code>var ys = xs</code> would take ownership of a lent heap value ("Binding a lent value", before R8). Fix: <code>var ys = xs.clone()</code>.</details>
 
 **5.**
+<!-- rejects: E0403 -->
 ```python
 fn grow(mut xs: List<Int>): xs.push(0)
 let b = List<Int>()
@@ -719,6 +727,7 @@ bump()
 <details><summary>Answer</summary>Yes. Captures are borrowed per call (R10).</details>
 
 **18.**
+<!-- rejects: E0603 -->
 ```python
 fn counter() -> (() -> Int):
     var c = 0
@@ -741,6 +750,7 @@ st[i] = i
 <details><summary>Answer</summary>Yes. <code>st</code> is lent from <code>ws</code> and declared after it in the same block (R8). (<code>SegTree</code>'s element type here is <code>V</code>.)</details>
 
 **21.**
+<!-- rejects: E0602 -->
 ```python
 var xs = List(3, 1, 2)
 xs.sort(by: x => xs.len - x)
@@ -781,24 +791,28 @@ for d in gs[0]: print(d)
 <details><summary>Answer</summary>Yes. <code>divisors(12)</code> captures only an <code>Int</code>, so it is owned and can live in a list (§9).</details>
 
 **26.**
+<!-- rejects: E0603 -->
 ```python
 fn tail(xs: [V]Int, l: V) -> [V]Int = xs[l..]
 ```
 <details><summary>Answer</summary>No. It returns a lent slice without <code>lends</code> (R5). Fix: <code>lends [V]Int</code>, or return the range <code>l..</code> and slice at the caller.</details>
 
 **27.**
+<!-- rejects: E0603 -->
 ```python
 fn pick(x: List<Int>, y: List<Int>) -> lends(x) List<Int> = y[..]
 ```
 <details><summary>Answer</summary>No. The body lends from <code>y</code> but the signature says only <code>x</code> (§6).</details>
 
 **28.**
+<!-- rejects: E0603 -->
 ```python
 fn keep(mut out: List<Str>, s: Str): out.push(s)
 ```
 <details><summary>Answer</summary>No. <code>s</code> is lent, and <code>out</code> belongs to the caller (R8). Fix: <code>out.push(s.clone())</code>.</details>
 
 **29.**
+<!-- rejects: E0601 -->
 ```python
 struct Pair: left: List<Int>, right: List<Int>
 fn both(mut x: List<Int>, mut y: List<Int>) = todo
@@ -823,6 +837,7 @@ visit(V.first!, None)
 <details><summary>Answer</summary>Yes. A nested fn after a <code>var</code> may write it; the capture is borrowed only during each call (§10, R10).</details>
 
 **31.**
+<!-- rejects: E0607 -->
 ```python
 var xs = List(1, 2)
 let f = () => xs.len
