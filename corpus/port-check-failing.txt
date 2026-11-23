@@ -33,7 +33,6 @@ noi15p5
 noi21p1
 noi21p3
 noi21p4
-noimps22p1
 noip01p4
 noip19p5
 noip20p1
