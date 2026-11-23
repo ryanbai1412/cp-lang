@@ -529,6 +529,33 @@ impl<'a> Checker<'a> {
         }
     }
 
+    /// Fresh domains a returned value packs existentially: a user struct's domain
+    /// arguments (`Rooted<V, P>` packs `P` as `t.Pre`), also as fields of a returned
+    /// tuple or record unless another field names the domain outside a struct.
+    pub(crate) fn packed_domains(&mut self, value_ty: &Ty) -> Vec<String> {
+        let parts: Vec<&Ty> = match value_ty {
+            Ty::Tuple(ts) => ts.iter().collect(),
+            Ty::Record(fs) => fs.iter().map(|(_, t)| t).collect(),
+            t => vec![t],
+        };
+        let (mut packed, mut bare) = (Vec::new(), Vec::new());
+        for part in parts {
+            match part {
+                Ty::Named { name, args }
+                    if matches!(self.global(name).as_deref(), Some(Def::Struct { .. })) =>
+                {
+                    packed.extend(args.iter().filter_map(|a| match a {
+                        Ty::Pos(d) | Ty::Domain(d) => Some(d.clone()),
+                        _ => None,
+                    }))
+                }
+                t => bare.extend(t.mentioned_domains()),
+            }
+        }
+        packed.retain(|d| !bare.contains(d));
+        packed
+    }
+
     /// Checks both `ty` and any local variables captured by a lambda expression
     /// against `max_depth`.
     pub(crate) fn check_expr_domain_escape(

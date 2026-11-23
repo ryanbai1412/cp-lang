@@ -1938,31 +1938,7 @@ impl<'a> Checker<'a> {
         }
         // Existential domains declared in the return type may escape.
         let mut allowed = ret.existential_domains();
-        // A returned user-defined struct that carries a fresh domain as a type
-        // argument (e.g. `Compressed<D, T>`, `Rooted<V, P>`) packs that domain
-        // existentially as a value-owned domain (`xs.D`, `t.Pre`).
-        // So does such a struct in a returned tuple or record, unless another
-        // field names the domain outside a struct.
-        let parts: Vec<&Ty> = match value_ty {
-            Ty::Tuple(ts) => ts.iter().collect(),
-            Ty::Record(fs) => fs.iter().map(|(_, t)| t).collect(),
-            t => vec![t],
-        };
-        let (mut packed, mut bare) = (Vec::new(), Vec::new());
-        for part in parts {
-            match part {
-                Ty::Named { name: sname, args }
-                    if matches!(self.global(sname).as_deref(), Some(Def::Struct { .. })) =>
-                {
-                    packed.extend(args.iter().filter_map(|a| match a {
-                        Ty::Pos(d) | Ty::Domain(d) => Some(d.clone()),
-                        _ => None,
-                    }))
-                }
-                t => bare.extend(t.mentioned_domains()),
-            }
-        }
-        allowed.extend(packed.into_iter().filter(|d| !bare.contains(d)));
+        allowed.extend(self.packed_domains(value_ty));
         // If `ret` has existential `domain P` slots and `value_ty` returns a local
         // domain `Q` in that slot, rename `P -> Q` for type checking and allow `Q`.
         if declared {
