@@ -3,4 +3,3 @@ range update and range query
 range minimum query
 merge overlapping intervals
 knapsack
-convert from c++
