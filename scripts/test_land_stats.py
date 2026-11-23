@@ -28,6 +28,11 @@ class LandStatsTest(unittest.TestCase):
         self.assertEqual(s["commits_per_hour_by_domain"], {"infra": 1.0, "site": 2.0})
         self.assertIsNone(s["land_p95_s"])
 
+    def test_a_trailer_with_a_sentence_after_it_counts_for_its_lane(self):
+        self.assertEqual(land_stats.lane("diagnostics. A cut value has no fix."), "diagnostics")
+        self.assertEqual(land_stats.lane("lint-fmt (std/strings.cp: one call site)"), "lint-fmt")
+        self.assertEqual(land_stats.lane(""), "none")
+
     def test_the_real_log_and_history_parse(self):
         self.assertIsInstance(land_stats.log_rows(), list)
         self.assertIsInstance(land_stats.trailer_rows(1, "HEAD"), list)

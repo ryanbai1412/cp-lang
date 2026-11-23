@@ -29,8 +29,11 @@ DEVEX = re.compile(r"regenerat|re-?bless|renumber|ratchet|baseline|stale (derive
 # land.sh and CI's regen job write these themselves: machine time, not lane time.
 AUTO = {"factory: regenerate generated files"}
 
-# A lane whose product is the ratchets: building one is its work, not friction.
-OWN_WORK = {"tech-debt": re.compile(r"ratchet|baseline", re.I)}
+# Lanes whose product is the ratchets or the gate: building or tightening their
+# own is their work, not friction.
+OWN_WORK = {"tech-debt": re.compile(r"ratchet|baseline", re.I),
+            "lint-fmt": re.compile(r"ratchet|(warning )?baselines?", re.I),
+            "infra": re.compile(r"ratchet|baseline|regenerat|fix (the )?(gate|ci)", re.I)}
 
 
 def is_devex(lane, subject):

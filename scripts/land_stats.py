@@ -12,6 +12,7 @@ origin/main) over the same window. Only the last H hours count (default 24).
 
 import json
 import os
+import re
 import subprocess
 import sys
 import time
@@ -35,6 +36,12 @@ def log_rows(path=None):
     return rows
 
 
+def lane(trailer):
+    """The lane a `Domain:` trailer names; some lanes add a sentence after it."""
+    m = re.match(r"\s*([a-z][\w-]*)", trailer)
+    return m.group(1) if m else "none"
+
+
 def trailer_rows(hours, ref="origin/main"):
     out = subprocess.run(["git", "log", f"--since={int(hours * 3600)} seconds ago", "--format=%ct %(trailers:key=Domain,valueonly,separator=)", ref],
                          capture_output=True, text=True).stdout
@@ -42,7 +49,7 @@ def trailer_rows(hours, ref="origin/main"):
     for line in out.splitlines():
         ts, _, domain = line.partition(" ")
         if ts.isdigit():
-            rows.append({"domain": domain.strip() or "none", "landed": int(ts)})
+            rows.append({"domain": lane(domain), "landed": int(ts)})
     return rows
 
 

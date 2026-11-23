@@ -24,6 +24,9 @@ class DevexStats(unittest.TestCase):
         self.assertFalse(ds.is_devex("tech-debt", "factory: ratchet allow(dead_code)"))
         self.assertTrue(ds.is_devex("tech-debt", "factory: re-bless the trace goldens"))
         self.assertTrue(ds.is_devex("stdlib", "stdlib: update the ratchet baseline"))
+        self.assertFalse(ds.is_devex("lint-fmt", "lint: lower the corpus warning baselines the ports cleared"))
+        self.assertFalse(ds.is_devex("infra", "factory: run the corpus lint ratchet when a commit touches a corpus program"))
+        self.assertTrue(ds.is_devex("lint-fmt", "lint: re-bless the fmt goldens"))
 
 
 if __name__ == "__main__":
