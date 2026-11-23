@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- Measured: conformance 2118/2286 (168 fail), up from 2109/2281 after owner fixes.
 - Rebuild round 5 started: cold reader at 66f8d9c93, ten new CSES problems (Labyrinth, Coin Combinations I, Restaurant Customers, Shortest Routes II, Range Update Queries, Tree Matching, Finding Periods, Course Schedule, Exponentiation II, Planets and Kingdoms). Result lands as spec/delta/rebuild-5.
 - Routed to stdlib: keyed `monotone_minima` (lib/search-dp table and D&C example vs `dp.cp` Int counts). All 31 spec-block errors now have an owner request or a held question.
 - Prelude gate also reads Markdown table rows: 106 gaps (was 86 from fenced `fn` lines only); stdlib told.
