@@ -17,7 +17,7 @@ with a stable id that audits and tests cite. The ideas behind them are in
 **Rule:** every expected output is what an accepted submission prints on that input.
 **Why:** a hand-written or copied answer passes wrong solutions and fails right ones.
 **Example:** `python3 scripts/corpus-tests.py make <id>` writes `tests/NN.ans` from the accepted C++.
-**Enforced by:** `scripts/corpus-tests.py verify`.
+**Enforced by:** `scripts/corpus-tests.py verify`; `corpus/audit.py` (`no-reference`: tests but no accepted C++ with a `main`).
 
 ### problem-packages/R2
 
@@ -73,4 +73,4 @@ with a stable id that audits and tests cite. The ideas behind them are in
 **Rule:** no literal test data is committed under `corpus/`: a problem's tests are its `gen.py` plus a seed list in `tests.toml`, with only tiny hand-picked inputs inline there.
 **Why:** committed inputs can't be regenerated or resized and bloat the repository forever; a seed list is reviewable and a size change is a one-line edit.
 **Example:** `[[case]] seed = 7 size = 200000` in `tests.toml`; `scripts/corpus-tests.py make` writes inputs and answers to `target/corpus-tests/<id>/`.
-**Enforced by:** `scripts/corpus-tests.py make` writes only under `target/`; a shrink-only gate on committed `corpus/problems/*/tests/` files: `missing`.
+**Enforced by:** `scripts/corpus-tests.py make` writes only under `target/`; `scripts/debt-ratchet.py` (`corpus_test_files`, shrink-only) and `scripts/check.sh --commit`, which refuses a newly added test file.
