@@ -63,10 +63,9 @@ CLI. A suite of real mistakes, each one a user actually hit, checks that the
 error names the place, the rule and a working fix. Gates keep every code
 catalogued and no error pointing into `std/`.
 
-The weakest areas are labels for the second place an error involves, one
-vocabulary across messages, checks that every suggestion names a real item,
-a front-end fuzzer, and cascades from the lowerer, which does not yet report
-through `Sink`. The quality register below lists every quality with the
+The weakest areas are labels for the second place an error involves, checks
+that every suggestion names a real item, and cascades from the lowerer, which
+does not yet report through `Sink`. The quality register below lists every quality with the
 check behind it, and marks the ones with none as `missing`.
 
 ## Where to start
@@ -139,7 +138,7 @@ with no real check yet. Targets and current values are in
 | The first error is on the line to edit | first error on the broken line, over every clean port broken 12 ways | `errors/R2`: generated suite, gated | `crates/cpl-cli/tests/recovery.rs` `recovery_scoreboard` |
 | One error per root cause | cascaded errors per broken file | `errors/R1`: design (`Sink` poisoning) plus generated suite; lowering in `cpl-ir` still bypasses `Sink` | `crates/cpl-cli/tests/recovery.rs` |
 | No broken program checks clean | silent broken copies | `errors/R1`: generated suite, gated at 0 | `crates/cpl-cli/tests/recovery.rs` |
-| The primary span is never inside `std/` | user-facing errors whose primary span is in `std/` | `errors/R3`: gate over the goldens; `missing` over generated programs | `crates/cpl-cli/tests/diagnostics.rs` `no_golden_error_points_into_std` |
+| The primary span is never inside `std/` | user-facing errors whose primary span is in `std/` | `errors/R3`: gate over the goldens and over generated wrong-shape calls to every std `pub fn` | `crates/cpl-cli/tests/diagnostics.rs` `no_golden_error_points_into_std`, `crates/cpl-cli/tests/std_spans.rs` |
 | An error inside `std` names the std line and the user's call chain | chain present | `errors/R3`: hand-written | `crates/cpl-cli/tests/cli.rs` `an_error_inside_std_names_the_library_calls_that_led_there` |
 | Spans are right on CRLF and non-ASCII sources | span and fix differences between LF and CRLF copies | `errors/R12`: hand-written | `crates/cpl-cli/tests/lsp_parity.rs` |
 | Labels point at the other half (the declaration of a written `let`, the first of two borrows) | errors needing a second place that have a label | `errors/R4`: `missing` | — |
