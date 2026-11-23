@@ -7,7 +7,7 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 2814 (995 passing). Rules: 575.
+Cases: 2816 (995 passing). Rules: 575.
 
 ## Summary per chapter
 
@@ -21,7 +21,7 @@ Cases: 2814 (995 passing). Rules: 575.
 - R06 (06-control-functions.md): 24 rules, 104 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R07 (07-sequences.md): 90 rules, 174 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R08 (08-traits-generics.md): 29 rules, 92 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R09 (09-contexts-checks.md): 27 rules, 59 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R09 (09-contexts-checks.md): 27 rules, 61 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R10 (10-io.md): 19 rules, 111 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R11 (11-modules-prelude.md): 16 rules, 46 cases; 0 uncovered, 0 happy-path only, 1 negative only
 - R12 (12-powers.md): 17 rules, 36 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -584,7 +584,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R09.4.2 [1+ 0-]: `with checks(...: off)` removes a check in checked builds too, for a hot loop whose stress...
 - R09.4.3 [1+ 1-]: `unchecked:` is the greppable escape: a statement block with every check off in every buil...
 - R09.4.4 [1+ 3-]: Lints are contexts: `with lint(name: allow)` silences one in a scope, and is the only in-c...
-- R09.4.5 [1+ 0-]: A check or `assert` that fails inside library code, whether a library fn or a library doma...
+- R09.4.5 [2+ 1-]: A check or `assert` that fails inside library code, whether a library fn or a library doma...
 - R09.5.1 [1+ 0-]: **proved**: the type checker, range analysis or borrow rules establish it; no runtime cost...
 - R09.5.2 [1+ 1-]: **trapped**: not proved; checked builds trap, release assumes it.
 - R09.5.3 [1+ 0-]: **promised**: the author states it and tooling samples it: `law` declarations, `@cache` co...
@@ -870,7 +870,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - R0202 Integer overflow: 10 case(s)
 - R0203 Division by zero: 3 case(s)
 - R0301 Unwrap of None: 7 case(s)
-- R0401 Assertion failed: 72 case(s)
+- R0401 Assertion failed: 73 case(s)
 - R0402 todo reached: 2 case(s)
 - R0501 Bad input token: 10 case(s)
 - R0502 Input outside its read contract: 4 case(s)
