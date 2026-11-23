@@ -19,6 +19,7 @@ mod prefix;
 mod range;
 mod stmt;
 mod typo;
+mod views;
 
 use crate::*;
 use cpl_check::Analysis;
@@ -498,9 +499,8 @@ struct FnSig<'a> {
     is_generator: bool,
     /// If the return type is `(domain C, ...)`, the allocated DomainId + name.
     new_domain_slots: Vec<(String, DomainId)>,
-    /// True if the lowered return type carries a domain created inside this fn
-    /// (e.g. `compress` returning `Compressed<D, T>`), so each call site needs
-    /// its own fresh instantiation and domain id.
+    /// The return type carries a domain made inside this fn (`compress`'s
+    /// `Compressed<D, T>`): each call site gets its own copy and domain.
     returns_fresh_domain: bool,
     /// True once a call site has claimed this `returns_fresh_domain` fn.
     used_fresh_call: bool,
@@ -575,9 +575,8 @@ struct FnCx {
     /// The outermost loop a `break` out of a nested loop's innermost
     /// one leaves, for one source loop lowered as several.
     break_out: HashMap<LoopId, LoopId>,
-    /// For loops with a trailing `else:` (decision 125), maps the loop's
-    /// break target `LoopId` to the `Bool` flag that stays `true` unless
-    /// a `break` targets that loop.
+    /// A loop with a trailing `else:` (decision 125): its break target's
+    /// `Bool` flag, `true` unless a `break` targets that loop.
     loop_else: HashMap<LoopId, Slot>,
     dos: Vec<DoFrame>,
     /// The loop a `?` leaves when it is inside the left side of `??`
@@ -664,6 +663,7 @@ struct Lowerer<'a> {
     io_base: Option<i64>,
     counted_domains: HashSet<DomainId>,
     range_keyed: HashSet<DomainId>,
+    view_fns: HashMap<(FnId, Vec<(usize, Ty)>), FnId>,
     io_global: Option<GlobalId>,
     context_defs: HashMap<String, (GlobalId, Vec<(String, Ty)>)>,
     /// Inside `g[r, ..]`: the loop variable that stands where the `..` is.
@@ -881,6 +881,7 @@ impl<'a> Lowerer<'a> {
             io_base: None,
             counted_domains: HashSet::new(),
             range_keyed: HashSet::new(),
+            view_fns: HashMap::new(),
             io_global: None,
             context_defs: HashMap::new(),
             whole_axes: Vec::new(),

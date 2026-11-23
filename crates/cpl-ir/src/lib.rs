@@ -325,6 +325,14 @@ impl Ty {
         }
     }
 
+    /// The type of a sequence's keys: a domain's positions, else `Int`.
+    pub fn key_ty(&self) -> Ty {
+        match self.seq_key() {
+            Some(Dim::Pos(d)) => Ty::Pos(d),
+            _ => Ty::Int,
+        }
+    }
+
     /// What a sequence is indexed by: its keys (R04b.1).
     pub fn seq_key(&self) -> Option<Dim> {
         match self {

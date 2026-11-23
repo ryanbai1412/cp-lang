@@ -1125,6 +1125,7 @@ impl<'a> Lowerer<'a> {
         if self.sigs[id].returns_fresh_domain && self.sigs[id].used_fresh_call {
             id = self.clone_fresh_domain_fn(id);
         }
+        id = self.view_param_fn(id, args);
         self.queue_fn(id);
         let thunked: Vec<ast::Arg>;
         let decl_params: Vec<&ast::Param> = self.sigs[id]
@@ -5633,6 +5634,7 @@ impl<'a> Lowerer<'a> {
                         .unwrap_or_else(|| self.int_lit(0, span)),
                     _ => self.int_lit(0, span),
                 };
+                let key = value.ty.key_ty();
                 let len = self.len_of(value, span);
                 let hi = self.mk(
                     ExprKind::Binary(BinOp::Add, Box::new(lo.clone()), Box::new(len)),
@@ -5644,7 +5646,7 @@ impl<'a> Lowerer<'a> {
                         lo: Box::new(lo),
                         hi: Box::new(hi),
                     },
-                    Ty::Range(Box::new(Ty::Int)),
+                    Ty::Range(Box::new(key)),
                     span,
                 )
             }
@@ -5771,10 +5773,7 @@ impl<'a> Lowerer<'a> {
                 } else {
                     self.int_sum(lo.clone(), len)
                 };
-                let key = match ty.seq_key() {
-                    Some(Dim::Pos(d)) => Ty::Pos(d),
-                    _ => Ty::Int,
-                };
+                let key = ty.key_ty();
                 self.mk(
                     ExprKind::Range {
                         lo: Box::new(lo),
