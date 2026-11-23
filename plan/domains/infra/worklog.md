@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- CI speed step 1: sccache (Actions cache backend, `CARGO_INCREMENTAL=0`) in every Rust job, and 6 test partitions instead of 4. Baseline, run 45111468382: 4.2 min end to end; slowest shard 4.2 min = 30 s setup + 89 s compile + 127 s tests (judges port test 85 s alone); checks 3.3 min (clippy 46 s, cpl fmt check 44 s, site snippet gate 61 s); conform 2.5 min (ratchet 107 s).
 - `land.sh` is back to trailer check, rebase, push, retry (35 lines). Regeneration moved to CI's `regen` job (`scripts/regen.sh`), which commits stale skill pages, `COVERAGE.md` and fixed prelude gaps on main and re-dispatches CI, so a bare `git push` is enough (decision 280). The marker and ratchet guards and their 3 tests left `land.sh`.
 - Correction: the site deploy is not blocked on a Cloudflare token; `site.yml` deployed from green CI at 04:28Z (72ef82a1). Earlier entries saying otherwise were wrong.
 - release.yml now runs after every green main CI run (skipped if `edge` was published under an hour ago) and on `v*` tag pushes (stable; the tag must be v<workspace version>). No release had ever been published: the nightly cron never fired and nobody dispatched it.
