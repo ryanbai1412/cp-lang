@@ -29,10 +29,14 @@ fn errors(diags: Vec<Diagnostic>) -> Vec<(String, String)> {
 
 /// `diags` less the [`RECHECKED`] findings whose fix changes how `src` checks.
 pub(crate) fn recheck(diags: &mut Vec<Diagnostic>, src: &str) {
-    let mut db = None;
-    keep_if_unchanged(diags, src, |text| {
-        verdict(db.get_or_insert_with(cpl_check::Database::new), text)
-    });
+    CHECKER.with_borrow_mut(|db| keep_if_unchanged(diags, src, |text| verdict(db, text)));
+}
+
+thread_local! {
+    /// Kept between rechecks, so the modules a file imports are checked once
+    /// per thread rather than on every keystroke.
+    static CHECKER: std::cell::RefCell<cpl_check::Database> =
+        std::cell::RefCell::new(cpl_check::Database::new());
 }
 
 pub(crate) fn keep_if_unchanged(
@@ -63,6 +67,19 @@ pub(crate) fn keep_if_unchanged(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_recheck_reuses_the_modules_an_earlier_one_checked() {
+        let src = "use std.graph.{Graph}\nlet g = Graph.undirected([(0, 1)])\nprint(g.n)\n";
+        let lexed = || CHECKER.with_borrow(|db| db.stats().files_lexed);
+        let mut diags = crate::lint(src, &crate::Config::default());
+        recheck(&mut diags, src);
+        let first = lexed();
+        recheck(&mut diags, &src.replace("(0, 1)", "(1, 0)"));
+        let again = lexed() - first;
+        assert!(first > 2, "the first recheck checks std.graph: {first}");
+        assert!(again <= 2, "only the file itself is checked again: {again}");
+    }
 
     #[test]
     fn an_import_the_file_checks_differently_without_stays() {
