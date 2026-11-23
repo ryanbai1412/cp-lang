@@ -289,6 +289,9 @@ impl Scaffold {
         for line in [&self.title, &self.url].into_iter().flatten() {
             out.push_str(&format!("// {line}\n"));
         }
+        if let Some(judge) = self.url.as_deref().and_then(crate::fetch::judge_profile_of) {
+            out.push_str(&format!("// judge: {judge}\n"));
+        }
         if let Some(limits) = self.limits {
             out.push_str(&limits.header());
             out.push('\n');

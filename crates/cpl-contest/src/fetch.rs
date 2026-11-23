@@ -52,6 +52,20 @@ pub fn judge_of(url: &str) -> Option<Judge> {
     }
 }
 
+/// The built-in judge profile for the judge whose problem page `url` is,
+/// for the `// judge:` line of a new file.
+pub fn judge_profile_of(url: &str) -> Option<&'static str> {
+    let rest = url.split_once("://").map_or(url, |(_, rest)| rest);
+    let host = rest.split(['/', '?', '#']).next()?.to_ascii_lowercase();
+    let is = |domain: &str| host == domain || host.ends_with(&format!(".{domain}"));
+    match judge_of(url) {
+        Some(Judge::Codeforces) => Some("codeforces"),
+        Some(Judge::AtCoder) => Some("atcoder"),
+        None if is("cses.fi") => Some("cses"),
+        None => None,
+    }
+}
+
 /// The title, limits and samples on a problem page.
 pub fn parse(judge: Judge, url: &str, html: &str) -> Result<Scaffold, String> {
     let (title, limits, samples) = match judge {
@@ -373,6 +387,17 @@ mod tests {
         );
         assert_eq!(judge_of("https://notcodeforces.com/x"), None);
         assert_eq!(judge_of("https://example.com/?u=codeforces.com"), None);
+        for (url, judge) in [
+            (cf, Some("codeforces")),
+            ("atcoder.jp/contests/abc300/tasks/abc300_a", Some("atcoder")),
+            ("https://cses.fi/problemset/task/1068", Some("cses")),
+            ("https://example.com/problem/1", None),
+        ] {
+            assert_eq!(judge_profile_of(url), judge, "{url}");
+            if let Some(judge) = judge {
+                assert!(cpl_judge::builtin(judge).is_some(), "{judge}");
+            }
+        }
     }
 
     /// Codeforces' two sample layouts: one `<div>` per line, and `<br />`.

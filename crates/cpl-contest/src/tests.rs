@@ -143,7 +143,7 @@ fn the_new_source_has_a_header_the_reads_and_the_template() {
     let source = scaffold.source(Some("fn solve():\n    0\n\n"));
     assert_eq!(
         source,
-        "// D. Range Max\n// https://codeforces.com/problemset/problem/1/D\n// limits: 1500 ms, 512 MB\n\nlet n: 1..=2e5 = read()\nlet a: [0..n]0..=1e9 = read()\n\nfn solve():\n    0\n"
+        "// D. Range Max\n// https://codeforces.com/problemset/problem/1/D\n// judge: codeforces\n// limits: 1500 ms, 512 MB\n\nlet n: 1..=2e5 = read()\nlet a: [0..n]0..=1e9 = read()\n\nfn solve():\n    0\n"
     );
     // The limits line is read back by test and bench.
     assert_eq!(
