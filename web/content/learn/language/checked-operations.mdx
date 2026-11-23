@@ -94,10 +94,12 @@ alternative, keeping every check in release, costs hot-loop time on every accept
 turn one kind of failing verdict into another. The reversal is one line: default
 `release_checks` to the checked set.
 
-**Proofs, not annotations.** The ranges that drive the proofs are the constraints from the
-statement, written once as types; they also pick storage widths and drive input validation. A
-proven operation costs nothing in either build, which is why the zero-cost forms exist for every
-check.
+**Proofs, not annotations.** The alternatives were C++'s, where you pick `int` or `long long` by
+hand and an overflow is silent, and Rust's, where every operation is checked in debug builds and
+the width is still yours to choose. Both make you restate a fact the statement already gave. Here
+the ranges that drive the proofs are the statement's constraints, written once as types; they
+also pick storage widths and drive input validation. A proven operation costs nothing in either
+build, which is why the zero-cost forms exist for every check.
 
 **Checks never call user code.** <Decision n={180} />: a checked build makes exactly the calls to
 user functions, closures and input that release makes, in the same order. A check only inspects

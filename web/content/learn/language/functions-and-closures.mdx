@@ -92,17 +92,19 @@ Generators (`-> yields T`) are in <a href="/learn/language/sequences-and-views">
 
 ## Why it's designed this way
 
-**`mut` at both ends.** Mutation surprises are a P0 bug class. Marking the call costs four
-characters and makes every possible change visible where it happens, which a C++ `vector<int>&`
-does not.
+**`mut` at both ends.** Mutation surprises are a P0 bug class. A C++ `vector<int>&` parameter
+is invisible at the call, so `f(a)` may or may not change `a`; Python's shared references are the
+same with no marker at all. Marking the call costs four characters and makes every possible change
+visible where it happens.
 
 **No overloading.** <Decision n={127} /> chose one name, one signature, so a call never depends on
 which overload inference happens to pick, and an error names one function instead of listing
 candidates. It also allowed recursive lambdas. <Decision n={60} /> made options named arguments
 instead of `sort_by`-style twins, and <Decision n={324} /> settled variadic named arguments.
 
-**Lambda and nested fn are the same.** <Decision n={144} /> removed the difference so a helper can
-move between the two spellings without changing what it may capture. <Decision n={159} /> lets
+**Lambda and nested fn are the same.** In Rust a nested `fn` can't capture and a closure can,
+so turning one into the other changes what the body may touch. <Decision n={144} /> removed the
+difference so a helper can move between the two spellings without changing what it may capture. <Decision n={159} /> lets
 a lambda unpack a tuple argument without changing the callee's signature, which is why it isn't
 overloading.
 
@@ -110,5 +112,7 @@ overloading.
 life as in Rust, would forbid the everyday pattern of a DFS helper and the main loop both updating
 `seen`. Borrowing per call keeps that legal and still checks every conflicting use.
 
-**Specialized calls.** A comparator or fold operation must cost what an inlined C++ lambda costs, so
-function values are never type-erased.
+**Specialized calls.** A comparator or fold operation must cost what an inlined C++ lambda costs.
+The alternative, a type-erased function value like `std::function`, puts an indirect call (and
+sometimes an allocation) in the hot loop where nothing in the source shows it, so function values
+are never type-erased.

@@ -108,11 +108,13 @@ hand-written loop, and recursive enumeration (DFS, subsets) is just recursion. T
 lockstep: two generators can't be walked in step, so you materialize one. <Decision n={126} />
 settled `break` and `return` through recursive generators.
 
-**Identity everywhere.** Re-keying slices from 0 is the source of a classic off-by-one: an argmax
+**Identity everywhere.** The alternative, re-keying every slice from 0 as Python and C++ spans do,
+is the source of a classic off-by-one: an argmax
 in a window that indexes the wrong element of the array. <Decision n={143} /> keeps every key
 valid on the source, and lints a literal `w[0]` into a slice.
 
-**Costs show.** <Decision n={140} /> made parentheses mean work, so `.rev` is free and `.sorted()`
+**Costs show.** In most languages a property may hide a traversal (`len` of a filtered view, a
+sorted copy behind a getter), so cost has to be looked up. <Decision n={140} /> made parentheses mean work, so `.rev` is free and `.sorted()`
 is not, and <Decision n={326} /> lets a type override a fold with its own documented cost, as a
 range does for `sum()`. Changing a source's length while a view of it is alive is a compile error
 (<Decision n={128} />), so a view can't be invalidated.

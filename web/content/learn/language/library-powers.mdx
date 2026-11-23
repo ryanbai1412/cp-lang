@@ -82,13 +82,18 @@ A type defines what `x[k]` is as a place with `IndexMut` (a real place, as `Map`
 second class, and contestants copy std code instead of extending it. Keeping the list closed and
 shared means a technique you write once has std's ergonomics and speed.
 
-**Operators spelled as they read.** <Decision n={133} /> replaced hand-written `impl Add for T`
-with `fn (a: T) + (b: T)`, one spelling that is still the trait impl underneath.
+**Operators spelled as they read.** Rust's `impl Add for T { type Output = T; fn add(self, ...) }`
+is five lines of protocol for one line of meaning, and C++'s `operator+` is a separate rule from
+every other method. <Decision n={133} /> replaced hand-written `impl Add for T` with
+`fn (a: T) + (b: T)`, one spelling that is still the trait impl underneath.
 
 **Operations are values, not trait impls.** A segment tree of `max` and one of `+` over the same
 `Int` are both common; making the operation a value instead of an `impl Monoid for Int` keeps
 both one line. <Decision n={127} /> keeps one function per name, so `SegTree(+)` names exactly one
 function.
 
-**Places are a protocol.** <Decision n={128} /> defined the two place protocols so a structure that
-must do work on write can still be written with `t[i] = v`, and the borrow rules still apply.
+**Places are a protocol.** The alternatives were `t.set(i, v)` methods, which make a Fenwick tree
+or a lazy segment tree read differently from an array, and C++'s proxy reference returned from
+`operator[]`, which hides the work and can dangle. <Decision n={128} /> defined the two place
+protocols so a structure that must do work on write can still be written with `t[i] = v`, and the
+borrow rules still apply.

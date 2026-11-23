@@ -82,8 +82,9 @@ collision, not a count, which is why common local names are excluded and locals 
 when the prelude changed. <Decision n={241} /> gives inline modules in a program the program's
 prelude, since they are part of it.
 
-**Modules, not files.** One output file is what every judge accepts, so the bundler inlines and
-tree-shakes instead of linking; personal libraries get the standard library's speed because they
+**Modules, not files.** Separate compilation and linking, as in C++ or Rust, would need the judge
+to accept several files, and none does; pasting a template by hand drifts from its source. One
+output file is what every judge accepts, so the bundler inlines and tree-shakes instead of linking; personal libraries get the standard library's speed because they
 are specialized at the use site the same way.
 
 **Pins and codemods.** Old code should keep paying off. A content-hash pin makes rebuilds exact,

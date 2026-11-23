@@ -108,8 +108,9 @@ validation and overflow proofs at the same time. Choosing a width is automatic o
 choice never loses: same operations, never more bytes, never slower. The rejected alternative,
 narrowing locals, saves nothing in a register and costs conversions.
 
-**No second integer family.** Decision 1.7, in the data-modeling table, keeps four number types. A range already says how many bytes a slot needs, so `I32` and `U8`
-would only add casts and a second, narrower place to overflow.
+**No second integer family.** Rust and C++ offer `i32`, `u8` and the rest as types of their
+own. Decision 1.7 keeps four number types instead: a range already says how many bytes a slot
+needs, so `I32` and `U8` would only add casts and a second, narrower place to overflow.
 
 **Range stores are checked.** <Decision n={100} /> made every store into a range-typed place
 go through one check. Before it, a narrowed field silently truncated in C++ while `cpl run`
@@ -119,4 +120,4 @@ and valid programs pay nothing on the judge.
 **Euclidean `/` and `%`.** C++'s truncating `%` gives negative remainders for negative inputs,
 the source of the `((a % m) + m) % m` idiom and of the bugs where it was forgotten. Euclidean
 division removes the idiom, and the proof-based lowering keeps the common non-negative case at
-C++ speed (row 1.9 of the same table).
+C++ speed (decision 1.9).
