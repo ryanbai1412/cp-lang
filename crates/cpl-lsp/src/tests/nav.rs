@@ -49,6 +49,26 @@ fn type_definition_jumps_from_a_value_to_its_struct() {
 }
 
 #[test]
+fn type_definition_jumps_from_a_record_value_to_the_alias_naming_it() {
+    let (mut server, diagnostics) =
+        open("type P = (x: Int, y: Int)\nlet p: P = (x: 1, y: 2)\nlet q = p\nprint(q.x)\n");
+    assert!(diagnostics.is_empty(), "{diagnostics:?}");
+    for (line, character) in [(1, 4), (2, 4), (3, 6)] {
+        let def = at(&mut server, "textDocument/typeDefinition", line, character);
+        assert_eq!(
+            def.at(&["range", "start"]),
+            &pos(0, 5),
+            "at {line}:{character}"
+        );
+        assert_eq!(
+            def.at(&["range", "end"]),
+            &pos(0, 6),
+            "at {line}:{character}"
+        );
+    }
+}
+
+#[test]
 fn implementation_lists_every_impl_of_a_type_or_a_trait() {
     let (mut server, _) = open(ROADS);
     let road = at(&mut server, "textDocument/implementation", 0, 8);

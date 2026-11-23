@@ -2,7 +2,7 @@
 //! and every `impl` of a type or trait.
 
 use crate::db::{Analysis, Database};
-use crate::def::{impl_parts, DeclKind};
+use crate::def::{impl_parts, DeclKind, Def};
 use crate::hover::{innermost, Definition};
 use crate::ty::Ty;
 
@@ -13,7 +13,22 @@ impl Database {
         let analysis = self.analyze(path)?;
         let (item, at) = analysis.item_at(offset)?;
         let entry = innermost(&item.check.hovers, at)?;
-        declared(&analysis, path, type_name(&entry.ty)?)
+        if let Some(name) = type_name(&entry.ty) {
+            return declared(&analysis, path, name);
+        }
+        // A record or tuple type is structural: its value's type is the alias
+        // that names it, as `P` names `(x: Int, y: Int)`.
+        let aliases: Vec<String> = analysis
+            .items
+            .iter()
+            .flat_map(|item| &item.syntax.decls)
+            .filter(|decl| decl.kind == DeclKind::Alias)
+            .map(|decl| decl.name.clone())
+            .collect();
+        let alias = aliases.into_iter().find(|name| {
+            matches!(self.lookup(path, &analysis, name).as_deref(), Some(Def::Alias { ty }) if *ty == entry.ty)
+        })?;
+        declared(&analysis, path, &alias)
     }
 
     /// Every `impl` of the type or trait named at `offset`, in this file and
