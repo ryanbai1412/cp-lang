@@ -2,7 +2,7 @@
 use std.prefix.{Prefix, Diff, SweepAdd, ArithDiff, prefix_excl}
 domain D = 0..3
 let p = Prefix<D, Int>([D] v => 1 + Int(v))
-print(p.fold(D(1)..=D(2)), p.get(D(1)), p.all, p.suffix(D.cuts.nth(1)))
+print(p.fold(D(1)..=D(2)), p.fold(D(1)..=D(1)), p.all, p.suffix(D.cuts.nth(1)))
 print(Int(p.first_ge(3)!), yes(p.first_ge(7) == None), Int(p.first_gt(3)!))
 var f = Prefix<D, Int>.filling(order: FillOrder.Reverse)
 f.set(D(2), 4)

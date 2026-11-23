@@ -161,13 +161,15 @@ pub struct Prefix<D, T: Add + Sub>:
         if s.ord <= e.ord: return self.p[e.r] - self.p[s.l]
         (self.p[D.cuts.nth(D.K)] - self.p[s.l]) + (self.p[e.r] - self.p[D.cuts.nth(0)])
 
-    /// Recover the original element `a[i]`, as `prefix(i.r) - prefix(i.l)`.
+    /// `p[c]`: the sum of everything left of cut `c`, the same as `prefix(c)`; at a position `v`,
+    /// `p[v]` is the sum through `v`, the same as `p[v.r]` (R07.1.6). On `Int` keys an index is the
+    /// cut (decision 349).
     ///
     /// cost: \(O(1)\)
     /// traps: never
-    /// example: `domain D = 0..3; let p = Prefix<D, Int>([D] v => 1 + Int(v)); p.get(1) == 2`
-    pub fn get(self, i: D) -> T:
-        self.p[i.r] - self.p[i.l]
+    /// example: `domain D = 0..3; let p = Prefix<D, Int>([D] v => 1 + Int(v)); p[D(1)] == 3`
+    /// example: `[5, -3, -2].scan(+)[3] == 0`
+    pub fn at(self, c: Cut<D>) -> T = self.p[c]
 
     /// The sum of everything right of boundary `b`: `all - prefix(b)`, zero at the last cut.
     ///

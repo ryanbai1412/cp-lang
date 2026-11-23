@@ -27,9 +27,10 @@ impl<'a> Lowerer<'a> {
         })
     }
 
-    /// `g[u]` on a struct with an `at` method and no `get` is `g.at(u)` (R05.6.3).
+    /// `g[u]` on a struct with an `at` method and no `get` is `g.at(u)` (R05.6.3). When `at`
+    /// takes a cut of `D`, a position `v` of `D` is its right cut `v.r` (R07.1.6).
     pub(in crate::lower) fn struct_at(
-        &self,
+        &mut self,
         sid: StructId,
         base: &ast::Expr,
         indices: &[ast::Expr],
@@ -46,6 +47,33 @@ impl<'a> Lowerer<'a> {
             return None;
         }
         let span = Span::new(base.span.start, index.span.end + 1);
+        let index = match self.structs[sid]
+            .methods
+            .get("at")
+            .map(|&f| &self.sigs[f].params)
+        {
+            Some(params) if matches!(params.last().map(|p| &p.ty), Some(Ty::Bound(_))) => {
+                let Some(Ty::Bound(d)) = params.last().map(|p| p.ty.clone()) else {
+                    unreachable!()
+                };
+                if self.probe_ty_silent(index) == Some(Ty::Pos(d)) {
+                    let name = ast::Name {
+                        text: "r".into(),
+                        span: index.span,
+                    };
+                    &ast::Expr {
+                        kind: ast::ExprKind::Field {
+                            base: Box::new(index.clone()),
+                            name,
+                        },
+                        span: index.span,
+                    }
+                } else {
+                    index
+                }
+            }
+            _ => index,
+        };
         let name = ast::Name {
             text: "at".into(),
             span: index.span,
