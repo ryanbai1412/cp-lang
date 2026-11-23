@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- Doc fixes from spec-block errors: lib/flows.md cf863F uses `Val.first!`/`Val.last!` (a domain's `first` is `?`), and lib/ops-ranges.md's inline `Action` says `compose:` like std (was `tags:`). Requests: compiler (impl of a trait alias, `min(by:)` value, `Graph.directed` on records), stdlib (`SegTree(act: assign)`, `Filter` vs `Filtered`). Hole: `labels("S", "T")` in a sum domain (lib/flows.md) is in no core chapter.
 - Fixed 21 `// rule:` cites that named no rule: section cites (`07.7`, `06.1`, `8.1`, `04.2`), `2.7.6` for `02.7.6`, `05.4.1` (no such rule; now `06.1.2`), and two prose lines; std cases now cite their `std.*` function. No case body changed; rule gaps 58 -> 57.
 - P0 probe: a `let`/`var` with no initializer is accepted and reads 0, though the grammar requires `= expr`. Cases `core-01/var-needs-initializer.cp` and `core-02/array-needs-initializer.cp` (R02.8.3); both fail; compiler request. Index-space mixing (assign, compare, argument, array, index, map key) is already rejected.
 - Two more R03.5.1 reject cases, `core-03/mod-assign-other-modulus.cp` and `core-03/mod-arg-other-modulus.cp`: the compiler never compares moduli (both fail; added to the compiler request). Two runtime moduli (`Mod(p)`, `Mod(q)`) also mix silently, but the spec doesn't say they are distinct types, so no case.

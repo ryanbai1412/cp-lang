@@ -321,8 +321,8 @@ reduction, re-derived. `max_closure` names it, and its `take` answers the
 // 2k - 1, so total cost is sum cnt^2. Min-cost flow of n units.
 domain Pos = read(1..=50)
 domain Val = 1..=Pos.count
-var lo: [Pos]Val = Val.first
-var hi: [Pos]Val = Val.last
+var lo: [Pos]Val = Val.first!
+var hi: [Pos]Val = Val.last!
 for _ in 0..read<0..=100>():
     let (t, l, r, v) = read<(1..=2, Pos, Pos, Val)>()
     for x in l..=r:

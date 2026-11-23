@@ -278,7 +278,7 @@ not a wrong answer. Today's combined names (`AddMax`, `AddSum`,
 A custom action, written inline:
 
 ```python
-let shift = Action(tags: +, apply: (d, l: Low, n) => (..l, cover: l.cover + d))
+let shift = Action(compose: +, apply: (d, l: Low, n) => (..l, cover: l.cover + d))
 var low = SegTree(Low.join, [Cut] c => Low(0, c, c, 0), act: shift)
 ```
 
