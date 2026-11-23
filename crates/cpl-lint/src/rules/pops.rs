@@ -73,7 +73,7 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
                 ),
             )
             .with_label(popped.span.shift(self.base), "the list")
-            .with_help(format!("write `{}{take}`", head.text(self.src)));
+            .with_help(format!("write `{}{take}`; `pop()` already returns the last element, so one call reads and removes it", head.text(self.src)));
             diag.fixes.push(Fix {
                 title: format!("use `{take}`"),
                 edits: vec![

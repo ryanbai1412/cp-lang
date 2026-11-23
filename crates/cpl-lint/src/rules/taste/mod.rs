@@ -1097,7 +1097,7 @@ impl<'a> Taste<'a> {
             expr.span,
             format!("`{name}` of one sequence reads as its method"),
         )
-        .with_help(format!("write `{call}`"));
+        .with_help(format!("write `{call}`; the method follows the sequence, so a chain like `xs.filter(..).sum()` reads in order"));
         diag.fixes.push(Fix {
             title: format!("use `.{method}`"),
             edits: vec![(expr.span, call)],
@@ -1121,7 +1121,7 @@ impl<'a> Taste<'a> {
             name.span,
             format!("`{}` is the preorder array `{to}`", name.text),
         )
-        .with_help(format!("write `.{to}`"));
+        .with_help(format!("write `.{to}`; the tree already keeps that order, so there is no array to build or keep in step"));
         diag.fixes.push(Fix {
             title: format!("use `.{to}`"),
             edits: vec![(name.span, to.to_string())],
@@ -1184,7 +1184,7 @@ impl<'a> Taste<'a> {
                 method.span,
                 format!("`{}` is replaced by `.{base}(.., by:)`", method.text),
             )
-            .with_help(format!("use `.{base}(.., by:)`"));
+            .with_help(format!("use `.{base}(.., by:)`; options are named arguments, so there is one `{base}` and no `_by` twin to remember"));
             diag.fixes.push(Fix {
                 title: format!("use `.{base}(.., by:)`"),
                 edits,
@@ -1241,7 +1241,7 @@ impl<'a> Taste<'a> {
             expr.span,
             format!("`{name}` is replaced by `{base}` with `by:`"),
         )
-        .with_help(format!("write `{call}`"));
+        .with_help(format!("write `{call}`; options are named arguments, so there is one `{base}` and no `_by` twin to remember"));
         diag.fixes.push(Fix {
             title: format!("use `{base}(.., by:)`"),
             edits: vec![(expr.span, call)],

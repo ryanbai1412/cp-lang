@@ -51,7 +51,10 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
                 span,
                 format!("`{place}` is written in terms of itself; this is `{place} {op} ...`"),
             )
-            .with_help(format!("write `{place} {op} {}`", text(rhs)));
+            .with_help(format!(
+                "write `{place} {op} {}`; `{op}` names the place once, so the read and the write cannot drift apart",
+                text(rhs)
+            ));
             diag.fixes.push(Fix {
                 title: format!("use `{op}`"),
                 edits: vec![(

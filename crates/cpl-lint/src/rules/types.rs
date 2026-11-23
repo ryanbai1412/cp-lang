@@ -273,7 +273,7 @@ impl Types<'_> {
                         span,
                         format!("`{kw}` headers bind with `let`, not `is`"),
                     )
-                    .with_help(format!("write `{kw} {replacement}`"));
+                    .with_help(format!("write `{kw} {replacement}`; `let` is the one way to bind a name, in a header as anywhere else"));
                     diag.fixes.push(cpl_diag::Fix {
                         title: format!("rewrite to `{replacement}`"),
                         edits: vec![(span, replacement)],
@@ -300,7 +300,7 @@ impl Types<'_> {
                 span,
                 format!("`{0}: {0}` can be shortened to `{0}:`", label.text),
             )
-            .with_help(format!("write `{replacement}`"));
+            .with_help(format!("write `{replacement}`; an argument name with no value passes the variable of that name"));
             diag.fixes.push(cpl_diag::Fix {
                 title: format!("shorten to `{replacement}`"),
                 edits: vec![(span, replacement)],
@@ -435,7 +435,7 @@ impl Visitor for Types<'_> {
                             span,
                             "power uses `**`, not `.pow(...)`",
                         )
-                        .with_help(format!("write `{replacement}`"));
+                        .with_help(format!("write `{replacement}`; `**` is the power operator, so there is no `.pow` to remember"));
                         diag.fixes.push(cpl_diag::Fix {
                             title: format!("replace with `{replacement}`"),
                             edits: vec![(span, replacement)],
@@ -466,7 +466,7 @@ impl Visitor for Types<'_> {
                                 name.text
                             ),
                         )
-                        .with_help(format!("write `{callee_text}`"));
+                        .with_help(format!("write `{callee_text}`; a getter costs O(1) and reads as a field, while `()` marks a call that does work"));
                         diag.fixes.push(cpl_diag::Fix {
                             title: format!("drop `()` to read `{callee_text}`"),
                             edits: vec![(parens, String::new())],
