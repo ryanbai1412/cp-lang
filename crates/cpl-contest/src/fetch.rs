@@ -375,7 +375,7 @@ pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u
         );
         return 2;
     }
-    let parsed = Args::parse(args, &["--html"], &["--json"]).and_then(|args| {
+    let parsed = Args::parse("fetch", args, &["--html"], &["--json"]).and_then(|args| {
         let (url, name) = match args.positional.as_slice() {
             [url] => (url.clone(), None),
             [url, name] => (url.clone(), Some(name.clone())),

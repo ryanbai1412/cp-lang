@@ -85,6 +85,7 @@ struct Args {
 
 fn parse(args: &[String]) -> Result<Args, String> {
     let raw = crate::args::Args::parse(
+        "stress",
         args,
         &[
             "--brute",

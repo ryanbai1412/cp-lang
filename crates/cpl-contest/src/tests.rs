@@ -226,7 +226,10 @@ fn new_creates_the_file_and_samples_and_never_overwrites() {
         (&[][..], "`new` needs a name"),
         (&["a", "b"][..], "`new` takes one name; `b` is a second"),
         (&["a", "--constraints", "n"][..], "`n` has no type"),
-        (&["a", "--loud"][..], "unknown option `--loud`"),
+        (
+            &["a", "--loud"][..],
+            "`new` has no option `--loud`; `cpl new --help` lists them",
+        ),
     ] {
         let (code, _, err) = cli(new::run, args);
         assert_eq!(code, 2, "{args:?}");

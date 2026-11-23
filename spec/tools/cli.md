@@ -40,7 +40,9 @@ JSON output) for tools; exit codes are
 0 success; 1 the files have errors or a check failed (compile errors, a
 failing test case, `fmt --check` or `lint` findings); 2 usage error, as
 POSIX tools and getopt use it; 3 the program itself failed (a trap, a failed
-`assert`, a nonzero exit), the same code the emitted C++ exits with. (Rcli.1) Everything is deterministic given the seed.
+`assert`, a nonzero exit), the same code the emitted C++ exits with. (Rcli.1) An option a command
+doesn't have reads the same on every command,
+``cpl: `test` has no option `--loud`; `cpl test --help` lists them``, then that command's usage. Everything is deterministic given the seed.
 
 `cpl check --json` prints `{"files": [{"path", "ok", "diagnostics"}]}`; each
 diagnostic has `code`, `severity`, `message`, `start`, `end`, `labels`,

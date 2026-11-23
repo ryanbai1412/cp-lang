@@ -703,7 +703,10 @@ mod cli {
                 "`--cases` takes a whole number, not `many`",
             ),
             (&["a.cp", "--brute"][..], "`--brute` needs a value"),
-            (&["a.cp", "--loud"][..], "unknown option `--loud`"),
+            (
+                &["a.cp", "--loud"][..],
+                "`stress` has no option `--loud`; `cpl stress --help` lists them",
+            ),
             (
                 &["a.cp", "--checker", "c", "--interactor", "i"][..],
                 "a checker or an interactor, not both",

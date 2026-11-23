@@ -396,7 +396,8 @@ pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u
             }
             arg if !arg.starts_with('-') => dir = PathBuf::from(arg),
             other => {
-                let _ = writeln!(stderr, "cpl bench --zero-cost: unknown option `{other}`");
+                let message = cpl_diag::usage::no_option("bench", other);
+                let _ = writeln!(stderr, "cpl: {message}");
                 return 2;
             }
         }

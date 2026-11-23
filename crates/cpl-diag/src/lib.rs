@@ -9,6 +9,7 @@ pub mod plain;
 pub mod registry;
 mod render;
 mod source;
+pub mod usage;
 
 pub use registry::{lookup, CodeInfo, REGISTRY};
 pub use render::{render, render_all};

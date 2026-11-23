@@ -641,7 +641,10 @@ mod cli {
         assert!(out.starts_with("usage: cpl lint"), "{out}");
         let (code, _, err) = lint(&["--loud"]);
         assert_eq!(code, 2);
-        assert!(err.contains("unknown option `--loud`"), "{err}");
+        assert!(
+            err.contains("cpl: `lint` has no option `--loud`; `cpl lint --help` lists them"),
+            "{err}"
+        );
         let (code, _, err) = lint(&["/no/such/file.cp"]);
         assert_eq!(code, 1);
         assert!(err.contains("can't read /no/such/file.cp"), "{err}");

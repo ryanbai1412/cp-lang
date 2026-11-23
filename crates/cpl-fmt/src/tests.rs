@@ -521,7 +521,10 @@ mod cli {
     fn rejects_unknown_options_and_missing_files() {
         let (code, _, err) = fmt(&["--fast"]);
         assert_eq!(code, 2);
-        assert!(err.contains("unknown option `--fast`"), "{err}");
+        assert!(
+            err.contains("cpl: `fmt` has no option `--fast`; `cpl fmt --help` lists them"),
+            "{err}"
+        );
         let (code, _, err) = fmt(&["/no/such/file.cp"]);
         assert_eq!(code, 1);
         assert!(err.contains("can't read /no/such/file.cp"), "{err}");

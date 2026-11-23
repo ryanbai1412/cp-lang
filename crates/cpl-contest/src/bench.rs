@@ -379,6 +379,7 @@ pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u
         return crate::corpus_bench::run(args, stdout, stderr);
     }
     let parsed = Args::parse(
+        "bench",
         args,
         &[
             "--fast",

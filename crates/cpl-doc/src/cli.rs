@@ -33,7 +33,7 @@ pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u
         let mut value = |flag: &str| {
             args.next()
                 .cloned()
-                .ok_or_else(|| format!("`{flag}` needs a value"))
+                .ok_or_else(|| cpl_diag::usage::needs_value(flag))
         };
         let result = match arg.as_str() {
             "--out" => value("--out").map(|dir| out_dir = PathBuf::from(dir)),
@@ -54,7 +54,7 @@ pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u
                 let _ = write!(stdout, "{USAGE}");
                 return 0;
             }
-            flag if flag.starts_with('-') => Err(format!("unknown option `{flag}`")),
+            flag if flag.starts_with('-') => Err(cpl_diag::usage::no_option("doc", flag)),
             path => {
                 paths.push(PathBuf::from(path));
                 Ok(())

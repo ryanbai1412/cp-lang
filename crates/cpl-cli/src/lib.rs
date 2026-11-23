@@ -157,9 +157,9 @@ pub fn exec<S: AsRef<str>>(
             let _ = stdout.write_all(usage.unwrap_or(main_usage()).as_bytes());
             0
         }
-        Some(c) if unknown_option(c, &rest).is_some() => usage_error(format!(
-            "unknown option `{}` for `{c}`",
-            unknown_option(c, &rest).unwrap()
+        Some(c) if unknown_option(c, &rest).is_some() => usage_error(cpl_diag::usage::no_option(
+            c,
+            unknown_option(c, &rest).unwrap(),
         )),
         Some("replay") => replay::cli(&rest, stdout, stderr),
         Some("profile") => profile::profile(&rest, stdout, stderr),
@@ -569,9 +569,7 @@ impl<'a> RunArgs<'a> {
                     args.only_fn = Some(&flag["--trace=".len()..]);
                 }
                 flag if flag.starts_with('-') && flag.len() > 1 => {
-                    return Err(format!(
-                        "`run` has no option `{flag}`; `cpl run --help` lists them"
-                    ))
+                    return Err(cpl_diag::usage::no_option("run", flag))
                 }
                 path => paths.push(path),
             }

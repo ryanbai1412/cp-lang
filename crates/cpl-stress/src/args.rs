@@ -14,6 +14,7 @@ impl Args {
     /// Splits `args` into positionals, `valued` options (`--seed 3`), and
     /// `switches` (`--once`).
     pub fn parse(
+        command: &str,
         args: &[String],
         valued: &[&'static str],
         switches: &[&'static str],
@@ -24,14 +25,14 @@ impl Args {
             if let Some(flag) = valued.iter().find(|flag| *flag == arg) {
                 let value = iter
                     .next()
-                    .ok_or_else(|| format!("`{arg}` needs a value"))?;
+                    .ok_or_else(|| cpl_diag::usage::needs_value(arg))?;
                 parsed.values.insert(flag, value.clone());
             } else if let Some(flag) = switches.iter().find(|flag| *flag == arg) {
                 parsed.switches.push(flag);
             } else if arg.starts_with("--")
                 || (arg.starts_with('-') && arg.len() > 1 && !arg.as_bytes()[1].is_ascii_digit())
             {
-                return Err(format!("unknown option `{arg}`"));
+                return Err(cpl_diag::usage::no_option(command, arg));
             } else {
                 parsed.positional.push(arg.clone());
             }
@@ -80,6 +81,7 @@ mod tests {
     #[test]
     fn parses_positionals_values_and_switches() {
         let args = Args::parse(
+            "stress",
             &words(&["d.cp", "--seed", "42", "--trace"]),
             &["--seed"],
             &["--trace", "--explain"],
@@ -93,10 +95,10 @@ mod tests {
 
     #[test]
     fn rejects_missing_value_bad_number_and_unknown_option() {
-        assert!(Args::parse(&words(&["--seed"]), &["--seed"], &[]).is_err());
-        assert!(Args::parse(&words(&["--bogus"]), &[], &[]).is_err());
-        assert!(Args::parse(&words(&["-x"]), &[], &[]).is_err());
-        let args = Args::parse(&words(&["--seed", "abc"]), &["--seed"], &[]).unwrap();
+        assert!(Args::parse("stress", &words(&["--seed"]), &["--seed"], &[]).is_err());
+        assert!(Args::parse("stress", &words(&["--bogus"]), &[], &[]).is_err());
+        assert!(Args::parse("stress", &words(&["-x"]), &[], &[]).is_err());
+        let args = Args::parse("stress", &words(&["--seed", "abc"]), &["--seed"], &[]).unwrap();
         assert!(args.number("--seed").is_err());
     }
 }

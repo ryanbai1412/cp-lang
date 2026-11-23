@@ -299,6 +299,7 @@ pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u
         return 0;
     }
     let parsed = Args::parse(
+        "test",
         args,
         &[VALUED, &["--format", "--case", "--add", "--expect"]].concat(),
         &[],

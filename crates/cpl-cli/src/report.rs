@@ -205,7 +205,8 @@ pub fn report(
                 input_path = Some(&arg["--input=".len()..]);
             }
             arg if arg.starts_with('-') => {
-                *stderr += &format!("cpl: unknown option `{arg}` for `report`\n\n{USAGE}");
+                let message = cpl_diag::usage::no_option("report", arg);
+                *stderr += &format!("cpl: {message}\n\n{USAGE}");
                 return EXIT_USAGE;
             }
             arg => {

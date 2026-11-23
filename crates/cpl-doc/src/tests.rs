@@ -539,7 +539,10 @@ mod cli {
                 "`--format` is html or json, not `pdf`",
             ),
             (&["--out"][..], "`--out` needs a value"),
-            (&["--loud"][..], "unknown option `--loud`"),
+            (
+                &["--loud"][..],
+                "`doc` has no option `--loud`; `cpl doc --help` lists them",
+            ),
         ] {
             let (code, _, stderr) = doc(args);
             assert_eq!(code, 2);

@@ -104,7 +104,8 @@ pub fn run_with(
                 return 0;
             }
             flag if flag.starts_with('-') => {
-                let _ = write!(stderr, "error: unknown option `{flag}`\n\n{USAGE}");
+                let message = cpl_diag::usage::no_option("lint", flag);
+                let _ = write!(stderr, "cpl: {message}\n\n{USAGE}");
                 return 2;
             }
             path => paths.push(PathBuf::from(path)),

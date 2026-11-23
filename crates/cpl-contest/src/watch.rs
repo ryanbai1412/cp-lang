@@ -113,7 +113,7 @@ impl Watch {
         let (config, _) = cpl_lint::Config::discover(&self.source);
         let lints = cpl_lint::lint(&text, &config);
 
-        let args = Args::parse(args, VALUED, FLAGS)?;
+        let args = Args::parse("watch", args, VALUED, FLAGS)?;
         let dir = args
             .value("--tests")
             .map(PathBuf::from)
@@ -240,7 +240,7 @@ pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u
         let _ = write!(stdout, "{USAGE}");
         return 0;
     }
-    let parsed = Args::parse(args, VALUED, FLAGS).and_then(|args| {
+    let parsed = Args::parse("watch", args, VALUED, FLAGS).and_then(|args| {
         args.file("watch")
             .map(source_path)
             .map(|source| (args, source))

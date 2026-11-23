@@ -206,7 +206,11 @@ fn new_creates_the_solution_and_its_tests_folder() {
 #[test]
 fn doc_writes_each_comment_as_json_or_a_site() {
     helps("doc");
-    misused("doc", &["doc", "--bogus"], "unknown option `--bogus`");
+    misused(
+        "doc",
+        &["doc", "--bogus"],
+        "`doc` has no option `--bogus`; `cpl doc --help` lists them",
+    );
     let dir = scratch("doc");
     std::fs::write(
         dir.join("inc.cp"),
@@ -1286,7 +1290,8 @@ fn b_is_build() {
     let out = cpl(&dir, &["b", "a", "-x"]);
     assert_eq!(out.status.code(), Some(EXIT_USAGE as i32));
     assert!(
-        text(&out.stderr).contains("unknown option `-x` for `build`"),
+        text(&out.stderr)
+            .contains("cpl: `build` has no option `-x`; `cpl build --help` lists them"),
         "{}",
         text(&out.stderr)
     );

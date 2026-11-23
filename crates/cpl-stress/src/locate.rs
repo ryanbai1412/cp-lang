@@ -55,7 +55,8 @@ pub fn run_with(
         .filter(|a| *a != "--json")
         .collect();
     if let Some(flag) = rest.iter().find(|a| a.starts_with('-')) {
-        let _ = write!(stderr, "cpl: `locate` has no option `{flag}`\n\n{USAGE}");
+        let message = cpl_diag::usage::no_option("locate", flag);
+        let _ = write!(stderr, "cpl: {message}\n\n{USAGE}");
         return 2;
     }
     let (file, input) = match rest.as_slice() {

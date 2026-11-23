@@ -619,7 +619,8 @@ pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u
                 limit = args.get(i).and_then(|s| s.parse::<usize>().ok());
             }
             other => {
-                let _ = writeln!(stderr, "cpl bench --corpus: unknown option `{other}`");
+                let message = cpl_diag::usage::no_option("bench", other);
+                let _ = writeln!(stderr, "cpl: {message}");
                 return 2;
             }
         }
