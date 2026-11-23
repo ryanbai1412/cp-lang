@@ -29,7 +29,7 @@ fn ask(kind: Char, x: Int) -> Int:
     read()
 
 @!multitest
-let n: 1..=20 = read()
+let n: 2..=60 = read()
 print(0)
 
 let n_sz = ask('I', 0)
