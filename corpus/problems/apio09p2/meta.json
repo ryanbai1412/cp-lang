@@ -26,5 +26,5 @@
  "difficulty": "hard",
  "dream": "draft",
  "spec": "draft",
- "notes": "Greedy-next links as a forest: Rooted.from_parents + jump_while counts picks. Suffix argmin via rev.scan(min(by:))."
+ "notes": "Greedy-next links as a forest: Rooted.from_parents + jump_while counts picks. Suffix argmin via suffix_fold(min) over (end, id); free gaps in an IntervalMap."
 }

@@ -4,15 +4,16 @@
 // after it. Those links form a forest, so "how many fit inside a gap" is a depth difference. Free
 // gaps are ranges of compressed cuts; taking an interval splits its gap in two, and it is taken
 // iff the two halves still fit as many as the whole gap minus one.
+use std.prefix.{suffix_fold}
 let n = read<1..=2e5>()
 domain I = 1..=n
 domain X = 1..=1e9
 let iv = read<[I]Range<X>>()
 
 let by_start = I.sort(by: i => iv[i].l)
-let soonest = by_start.rev.scan(min(by: i => iv[i].r))
-fn first_from(c: Cut<X>) -> ?I = soonest[by_start.partition_point(i => iv[i].l < c).r?]
-let chain = Lift.of(i => first_from(iv[i].r))
+let soonest = suffix_fold(min, by_start.map(i => Some((iv[i].r, i))))
+fn first_from(c: Cut<X>) -> ?I = soonest[by_start.partition_point(i => iv[i].l >= c)]?.1
+let chain = Lift<I, ()>.of(i => first_from(iv[i].r))
 fn fit(gap: Range<X>) -> Int:
     let u = first_from(gap.l) ?? return 0
     if iv[u].r > gap.r:
@@ -24,7 +25,7 @@ gaps.assign(X.range, fit(X.range))
 var picked = List<I>()
 for i in I:
     let (gap, Some(best)) = gaps.run_at(iv[i].first!) else: continue
-    if not gap.contains(iv[i]):
+    if gap.clip(iv[i]) != iv[i]:
         continue
     let (left, right) = (gap.l..iv[i].l, iv[i].r..gap.r)
     let (a, b) = (fit(left), fit(right))
