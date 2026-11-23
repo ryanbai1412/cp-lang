@@ -1185,6 +1185,70 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 }
                 true
             }
+            Iter::Range {
+                lo,
+                hi,
+                step: Some(step),
+                rev: false,
+                closed,
+            } => {
+                let r_lo = self.compile_expr_i(lo);
+                // The body may change a variable the bounds were read from.
+                let [r_hi, r_step] = [hi, step].map(|e| {
+                    let src = self.compile_expr_i(e);
+                    let dst = self.alloc_i();
+                    self.emit(Op::MoveI { dst, src }, e.span);
+                    dst
+                });
+                let enter = self.emit(
+                    Op::ForStepEnter {
+                        r_lo,
+                        r_hi,
+                        r_step,
+                        closed: *closed,
+                        skip: 0,
+                    },
+                    step.span,
+                );
+                if r_var != r_lo {
+                    self.emit(
+                        Op::MoveI {
+                            dst: r_var,
+                            src: r_lo,
+                        },
+                        lo.span,
+                    );
+                }
+                let body_pc = self.ops.len() as u32;
+                self.loops.push(LoopTargets {
+                    id,
+                    breaks: Vec::new(),
+                    continues: Vec::new(),
+                    resumable: None,
+                });
+                self.compile_stmts(&body.stmts);
+                let lt = self.loops.pop().unwrap();
+                let step_pc = self.ops.len() as u32;
+                for c in lt.continues {
+                    self.patch(c, step_pc);
+                }
+                self.emit(
+                    Op::ForStepNext {
+                        r_i: r_var,
+                        r_hi,
+                        r_step,
+                        closed: *closed,
+                        target: body_pc,
+                    },
+                    hi.span,
+                );
+                let end_pc = self.ops.len() as u32;
+                self.patch(enter, end_pc);
+                for b in lt.breaks {
+                    self.patch(b, end_pc);
+                }
+                true
+            }
             _ => false,
         }
     }

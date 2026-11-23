@@ -1242,6 +1242,8 @@ impl<'p, 'f> Compiler<'p, 'f> {
             | Op::JmpNeI { target: t, .. }
             | Op::ForInc { target: t, .. }
             | Op::ForIncClosed { target: t, .. }
+            | Op::ForStepEnter { skip: t, .. }
+            | Op::ForStepNext { target: t, .. }
             | Op::ForDec { target: t, .. } => *t = target,
             _ => unreachable!("patch on non-jump op"),
         }

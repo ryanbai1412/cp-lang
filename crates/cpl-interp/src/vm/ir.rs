@@ -567,6 +567,23 @@ pub(crate) enum Op {
         r_hi: u16,
         target: u32,
     },
+    /// Enters `lo..hi by step` (`..=hi` when `closed`): traps on a step
+    /// that is not positive, and jumps to `skip` when no value is in range.
+    ForStepEnter {
+        r_lo: u16,
+        r_hi: u16,
+        r_step: u16,
+        closed: bool,
+        skip: u32,
+    },
+    /// Steps `r_i` by `r_step` and jumps to `target` while still in range.
+    ForStepNext {
+        r_i: u16,
+        r_hi: u16,
+        r_step: u16,
+        closed: bool,
+        target: u32,
+    },
     ForDec {
         r_i: u16,
         r_lo: u16,

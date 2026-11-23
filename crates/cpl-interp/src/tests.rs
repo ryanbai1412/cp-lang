@@ -1325,3 +1325,15 @@ fn vm_mutates_places_itself() {
         include_str!("../../cpl-cli/tests/programs/vm_mutate_place.out")
     );
 }
+
+#[test]
+fn vm_steps_ranges_itself() {
+    let out = vm_runs_alone(
+        include_str!("../../cpl-cli/tests/programs/vm_for_step.cp"),
+        include_str!("../../cpl-cli/tests/programs/vm_for_step.in"),
+    );
+    assert_eq!(
+        out,
+        include_str!("../../cpl-cli/tests/programs/vm_for_step.out")
+    );
+}

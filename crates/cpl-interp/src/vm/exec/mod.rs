@@ -1054,6 +1054,46 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         pc = target as usize;
                     }
                 }
+                Op::ForStepEnter {
+                    r_lo,
+                    r_hi,
+                    r_step,
+                    closed,
+                    skip,
+                } => {
+                    let step = regs_i[r_step as usize];
+                    if step <= 0 {
+                        return trap(
+                            spans[cur_pc],
+                            format!("a range steps forward: `by {step}` is not positive"),
+                        );
+                    }
+                    // One past the last value, which an `Int` may not hold.
+                    let end = i128::from(regs_i[r_hi as usize]) + i128::from(closed);
+                    if i128::from(regs_i[r_lo as usize]) >= end {
+                        pc = skip as usize;
+                    }
+                }
+                Op::ForStepNext {
+                    r_i,
+                    r_hi,
+                    r_step,
+                    closed,
+                    target,
+                } => {
+                    let next =
+                        i128::from(regs_i[r_i as usize]) + i128::from(regs_i[r_step as usize]);
+                    if next < i128::from(regs_i[r_hi as usize]) + i128::from(closed) {
+                        regs_i[r_i as usize] = next as i64;
+                        if self.tick(spans[cur_pc])? {
+                            self.take_checkpoint(
+                                compiled, chunk, cur_pc, base_i, vm_regs_i, regs_v,
+                            );
+                            regs_i = &mut vm_regs_i[base_i..base_i + chunk.num_i];
+                        }
+                        pc = target as usize;
+                    }
+                }
                 Op::ForDec { r_i, r_lo, target } => {
                     let cur = regs_i[r_i as usize];
                     if cur > regs_i[r_lo as usize] {
