@@ -1548,3 +1548,12 @@ fn vm_feeds_loops_from_fns_with_mut_args_itself() {
         include_str!("../../cpl-cli/tests/programs/yields_mut_arg_feeds.out")
     );
 }
+
+#[test]
+fn vm_feeds_loops_from_fns_with_an_assert_itself() {
+    let out = vm_runs_alone(include_str!("../../cpl-cli/tests/programs/zip_rev.cp"), "");
+    assert_eq!(
+        out,
+        include_str!("../../cpl-cli/tests/programs/zip_rev.out")
+    );
+}

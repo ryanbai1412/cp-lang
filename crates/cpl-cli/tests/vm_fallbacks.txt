@@ -1,5 +1,6 @@
 # (mode, tag) kinds of tree-walker fallback over tests/programs; shrink-only (tests/vm_fallbacks.rs)
 # interim (compiler lane d): `traced fn:take_all(feeding)` stays until a traced fed loop with a fn param runs on the VM
+# interim (compiler lane d): `traced stmt:Return` (yields_generic_from_body) stays until a traced fed loop runs on the VM
 expr:Binary(Coalesce)
 expr:Call(SortedBag_Int.drain)
 expr:Call(m1_get_or_insert_with_Int_Int)
@@ -46,6 +47,7 @@ traced stmt:Let(CallExpr)
 traced stmt:Let(Closure)
 traced stmt:Let(Uninit)
 traced stmt:Let(Unwrap)
+traced stmt:Return
 traced stmt:Trap
 traced stmt:While
 untraced fn:SortedBag_Int.drain(part)

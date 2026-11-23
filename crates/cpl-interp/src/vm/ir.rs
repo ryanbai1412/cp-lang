@@ -1739,7 +1739,13 @@ impl<'p> CompiledProgram<'p> {
                 fc.compile_block(&f.body, None, false);
                 fc.emit(Op::FeedEnd, Span::default());
                 let mut fchunk = fc.finish();
-                if fchunk.fallback_stmts.is_empty() && fchunk.fallback_exprs.is_empty() {
+                // A fallback the tree-walker runs (an assert's trap) is fine
+                // as long as it never yields.
+                let yields_on_vm = (fchunk.fallback_stmts.iter())
+                    .all(|s| !Compiler::stmt_mentions_slot(s, acc_slot))
+                    && (fchunk.fallback_exprs.iter())
+                        .all(|e| !Compiler::expr_mentions_slot(e, acc_slot));
+                if yields_on_vm {
                     fchunk.param_count = f.params.len();
                     fchunk.ret_kind = None;
                     fchunk.guarded_domains = guarded_domains;
