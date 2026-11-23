@@ -65,8 +65,8 @@ export function toCmDiagnostics(diagnostics: Diagnostic[], length: number): CmDi
         apply: (view: EditorView) =>
           view.dispatch({ changes: f.edits.map((e) => ({ from: e.start, to: e.end, insert: e.text })) }),
       })),
-      ...(/^L\d{4}$/.test(d.code)
-        ? [{ name: 'Why?', apply: () => window.open(`/lints/${d.code}`, '_blank', 'noopener') }]
+      ...(/^[LEWR]\d{4}$/.test(d.code)
+        ? [{ name: 'Why?', apply: () => window.open(`/${d.code[0] === 'L' ? 'lints' : 'errors'}/${d.code}`, '_blank', 'noopener') }]
         : []),
     ],
   }));

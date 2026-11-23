@@ -36,7 +36,7 @@ Deferring (milestone "what can wait", or not on a scenario step; continues only 
 Top 3 next steps:
 1. Docs examples: the gate still reports `spec: 7` (blocks waiting on the compiler); badge and list each with its owner, or run them as the compiler lands them.
 2. The P5 cold read of the homepage (3 advantages over C++ after 3 minutes), now that the program and Install are on the first phone screen.
-3. Milestone 2's first items: the error-code index generated from `spec/` diagnostics, and stress and trace in the playground.
+3. Milestone 2: stress and trace in the playground (the error-code index landed: `/errors`, from `cpl explain --json`).
 
 (Landed since the last list: practice hints before acceptance on all 21 problems, linked to docs and lints (`7fec61823`); all 9 Language chapters; the std reference with runnable examples, KaTeX costs and intra-doc links.)
 

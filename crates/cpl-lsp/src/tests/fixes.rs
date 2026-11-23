@@ -301,3 +301,17 @@ fn compound_self_ref_is_offered_only_where_the_place_is_not_optional() {
         "a lint links to its page"
     );
 }
+
+#[test]
+fn an_error_links_to_its_errors_page() {
+    let (_, diagnostics) = open("let x = (1 + 2\n");
+    let error = diagnostics
+        .iter()
+        .find(|d| d.at(&["code"]).as_str() == Some("E0101"));
+    let href = error.map(|d| d.at(&["codeDescription", "href"]).as_str());
+    assert_eq!(
+        href,
+        Some(Some("https://cp-lang.org/errors/E0101")),
+        "{diagnostics:?}"
+    );
+}
