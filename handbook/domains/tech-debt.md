@@ -95,7 +95,7 @@ means no real check exists yet. Targets and current numbers are in
 | Allowlists, xfails and known-difference lists don't grow | Entries across every such list | Ratchet | `scripts/debt-ratchet.py` (`skip_lists`) |
 | Every register row names a real check | Rows naming no existing test, command or job, across every domain | Ratchet | `scripts/debt-ratchet.py` (`register_rows`) |
 | Expected output changes for a reason | Commits that edit expectations and code together | Post-land detector, read in the hourly review | `scripts/expectation-edits.py` |
-| Suites catch the bugs they claim to | Mutation score of `cpl-check` and `cpl-lint` suites | Mutation testing | `missing` |
+| Suites catch the bugs they claim to | Mutation score of `cpl-check` and `cpl-lint` suites | Mutation testing on the code each change touched | `scripts/mutation-score.py` |
 | Escaped bugs fix the suite | Escapes whose suite isn't fixed, or that name no register row | Escape log, checked by a count | `plan/escapes.toml`, `scripts/debt-ratchet.py` (`escapes_open`) |
 | Every feature works in every tool | Features (syntax forms, std items) with no case in the checker, VM, C++ backend, trace, fmt, lint, LSP or docs | Generated coverage matrix | `missing` |
 | Every builtin with two engine paths agrees at its edges | Builtins without an interpreter-vs-C++ case at negative, empty, overflow and boundary inputs | Generated differential cases | `missing` |
@@ -122,6 +122,7 @@ means no real check exists yet. Targets and current numbers are in
 | Walked-statement counts | Tree-walker statements, including inside fallbacks | `CPL_VM_STATS=1 cpl run ...` |
 | Entry-point parity | CLI and playground disagreeing | `cargo nextest run -p cpl-wasm --test parity` |
 | Handbook check | Text only its writer can follow | `python3 scripts/check-handbook.py` |
+| Mutation score | Code changes no test notices | `python3 scripts/mutation-score.py -p cpl-lint --since <rev>` |
 | Expectation edits | Commits that change saved output beside the code that makes it | `python3 scripts/expectation-edits.py --since "1 hour ago"` |
 
 A count goes down by fixing the cause and re-recording the baseline in the
