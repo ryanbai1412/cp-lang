@@ -391,6 +391,7 @@ One sub-family per module. Each says: you rebuilt something the library has.
 
 | Lint | Catches | Write instead | Tier | P | Engine | Status |
 |---|---|---|---|---|---|---|
+| interval_dp_by_length | `for len in 2..=n: for l in ..: let r = l + len - 1` filling `dp[l, r]` | a table over `[I.ranges]` read in its order (Ryan, 2026-11-22: atcoder_dp_l) | fix? | #3 | loop | |
 | memo_table_by_hand | `-1`-initialised table + recursive check | `@memo` | fix? | #1 | flow | |
 | memo_key_space | `@memo` table too big at the input bounds | `@memo(map)` / iterative DP | warn | #10 | bound | ✓memo_key_space |
 | inf_seeded_dp | DP seeded with `INF` / `-INF` | `?T` with `min=` / `max=` | fix? | #5 | ty | |
@@ -421,6 +422,7 @@ One sub-family per module. Each says: you rebuilt something the library has.
 | dx_dy_arrays | `dx = [0, 1, 0, -1]` | `p.adj4` / `p.step(d)` with `Dir` | fix? | #3 | syn | |
 | grid_bounds_check | `0 <= r < h and 0 <= c < w` | domain membership / `adj4` already filters | fix? | #3 | syn | |
 | grid_flatten | `r * w + c` | `[h, w]` domain | fix? | #3 | syn | |
+| grid_neighbour_step | a `[Row, Col]` loop that reads neighbours as `r - 1` / `c - 1` (or `if r > 0`) | `type Cell = (Row, Col)` and `p.step(Dir4.U)` / `p.adj4`; absent neighbours are `None` (Ryan, 2026-11-22: atcoder_dp_h) | fix? | #3 | ty | |
 | transpose_loop | `t[j][i] = g[i][j]` | `g.transposed()` | fix | #1 | loop | |
 | ray_walk_loop | step while in bounds | `p.ray(d)` | fix? | #1 | loop | |
 | shuffle_by_hand | Fisher–Yates loop | `rng.shuffle(mut xs)` | fix | #1 | loop | |

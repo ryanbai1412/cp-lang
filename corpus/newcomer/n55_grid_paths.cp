@@ -7,8 +7,8 @@ for r in 0..h:
     for c in 0..w:
         if grid[r, c] == '#':
             continue
-        if r > 0:  // expect: missing grid-neighbour-arithmetic
+        if r > 0:  // expect: missing grid_neighbour_step
             ways[r, c] += ways[r - 1, c]
-        if c > 0:  // expect: missing grid-neighbour-arithmetic
+        if c > 0:  // expect: missing grid_neighbour_step
             ways[r, c] += ways[r, c - 1]
 print(ways[h - 1, w - 1])
