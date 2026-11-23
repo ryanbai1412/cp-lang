@@ -201,12 +201,12 @@ The keys of a `SortedBag` or `SortedSet` inside a range, made by `range(r)`.
 
 Fields: `lo: ?K`, `lo_inc: Bool`, `hi: ?K`, `hi_inc: Bool`.
 
-- `fn first(self) -> ?K` — O(log n) expected; The smallest key in the range.
-- `fn last(self) -> ?K` — O(log n) expected; The largest key in the range.
-- `fn len(self) -> Int` — O(log n) expected; The number of keys in the range, counting copies.
-- `fn is_empty(self) -> Bool` — O(log n) expected; True when the range holds no key.
+- `@get fn first(self) -> ?K` — O(log n) expected; The smallest key in the range.
+- `@get fn last(self) -> ?K` — O(log n) expected; The largest key in the range.
+- `@get fn len(self) -> Int` — O(log n) expected; The number of keys in the range, counting copies.
+- `@get fn is_empty(self) -> Bool` — O(log n) expected; True when the range holds no key.
 - `fn each(self) -> yields K` — O(log n + k) expected for `k` keys visited; The keys in ascending order, copies included.
-- `fn rev(self) -> yields K` — O(log n + k) expected for `k` keys visited; The keys in descending order, copies included.
+- `@get fn rev(self) -> yields K` — O(log n + k) expected for `k` keys visited; The keys in descending order, copies included.
 
 ## Example
 
