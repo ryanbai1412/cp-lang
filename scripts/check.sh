@@ -444,6 +444,9 @@ uv run scripts/conformance-matrix.py --check || fail "matrix gate failed; see ab
 step "conformance traits: every claimed trait method has a case or a gap line"
 uv run scripts/conformance-traits.py --check || fail "trait gate failed; see above"
 
+step "conformance sigs: named args in spec/core and spec/lib exist in spec/std"
+uv run scripts/conformance-sigs.py --check || fail "sig gate failed; see above"
+
 # Taste reviews: always run (fast, checks working-tree/staged ports).
 step "taste reviews (scripts/review-check.py --check)"
 python3 scripts/review-check.py --check \

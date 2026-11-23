@@ -77,6 +77,12 @@ today = "3 gaps of 116 (std and core claimers; the 3 wait on a range's keys in Q
 target = "0, over std and core claimers"
 
 [[metric]]
+name = "named args in spec/core and spec/lib that no spec/std fn takes"
+command = "uv run scripts/conformance-sigs.py --check"
+today = "6 (sig-gaps.txt: convolve(concave:), dijkstra(step:), each(sum:, hi:), pow(op:), runs(link:))"
+target = "0"
+
+[[metric]]
 name = "rebuild holes (probe P1, cold agent, spec/ only)"
 command = "grep -m1 'There are' spec/delta/rebuild-3/HOLES.md"
 today = "21 (round 3, at e04eb0d70: 7 silent, 11 contradiction, 3 missing-stdlib; round 2 was 32)"

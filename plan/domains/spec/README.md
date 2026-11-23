@@ -53,6 +53,7 @@ All values measured 2026-11-22 on `4b8f504f` with a release build; commands in [
 | Untagged code blocks (skipped) | `awk` in metrics.toml | 27 | 0 | M2 |
 | Matrix empty cells | `conformance-matrix.py --check` | 0 (gated) | 0 | M2 |
 | Trait methods without a case | `conformance-traits.py --check` | 3 of 116 (held range triples) | 0 | M2 |
+| Named args in core/lib that std lacks | `conformance-sigs.py --check` | 6 (`sig-gaps.txt`) | 0 | M3 |
 | Rebuild holes (cold agent) | probe P1 | 21 (round 3; round 2 was 32) | < 5 | M3 |
 | Reverted compiler fixes caught | `conformance-bugcatch.py`, [bugcatch.md](bugcatch.md) | 8/10 revertible (80%); 15 of 25 no longer revert or build | >= 90% | M3 |
 | Banned spellings in spec | `spec-vocab.py` | 0 | 0 | - |
