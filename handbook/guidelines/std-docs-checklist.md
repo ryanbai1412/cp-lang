@@ -69,7 +69,7 @@ Each `example:` line is a `Bool` expression that is `true`, run on both engines.
 
 - **Why:** contestants copy examples; a stale one teaches a wrong call.
 - **Example:** ``example: `[3, 1, 4].scan(+).fold(1..=2) == 5` ``.
-- **Enforced by:** `cpl-conform docs`, ratcheted in `cpl-conform all --check`; `missing` as a hard gate per example.
+- **Enforced by:** `cpl-conform docs`, ratcheted in `cpl-conform all --check`; per example, `web/scripts/gen-ref.mjs` fails the site build on one that stops running (`site/R1`; the known failures are the shrink-only `web/scripts/doc-examples-failing.txt`).
 
 ### R7. The first example is the common case
 

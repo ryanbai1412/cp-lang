@@ -237,7 +237,7 @@ and `cargo-semver-checks`. Targets and today's numbers are in
 
 | Quality | Metric | Mechanism |
 |---|---|---|
-| Every doc example compiles and runs | failing `example:` lines | rule `std-docs/R6`; `cpl-conform docs`, ratcheted by the scoreboard; a hard gate per example is `missing` |
+| Every doc example compiles and runs | failing `example:` lines | rule `std-docs/R6`; `cpl-conform docs`, ratcheted by the scoreboard; `web/scripts/gen-ref.mjs` fails the site build on a newly failing example (`site/R1`, shrink-only `web/scripts/doc-examples-failing.txt`) |
 | Every spec/lib example compiles and runs | failing code blocks in `spec/lib/*.md` | `crates/cpl-conform/src/spec_blocks.rs` in `cpl-conform all --check` |
 | Every public fn states cost, traps and edge cases | fns missing a required label | rule `std-docs/R1`; `scripts/spec-stub.py --audit` |
 | The documented cost is the real cost | fns slower than their `cost:` | rule `std-docs/R3`; `missing` (scaling test per fn: time at n and 4n) |
@@ -254,7 +254,7 @@ and `cargo-semver-checks`. Targets and today's numbers are in
 | No hidden allocation or copy | std fns that allocate without saying so | `missing` (allocation counter in the interpreter checked against docs) |
 | Fixed-size `windows(k)` for a compile-time `k` does not allocate | allocations per window | rule `std-api/R17`; `missing` (allocation counter in the interpreter) |
 | Small submissions | bytes of std code per emitted solution | `crates/cpl-cli/tests/read_only_copies.rs` counts std fns; a size budget is `missing` |
-| Fast front end with std loaded | check time of an empty program | `missing` (timing test, budget under 500 ms) |
+| Fast front end with std loaded | `check` and `explain` time of a program that uses every std module | `crates/cpl-cli/tests/cold_start.rs` (500 ms median, release build; about 110 ms today) |
 | Compiles fast on the judge | g++ time of std-heavy solutions | `missing` |
 
 ### Debuggable (J6, J7)

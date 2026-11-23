@@ -7,6 +7,9 @@
 //! The commands come from `cpl --help`, so a new one is covered without an
 //! edit here. Each answers `--help`, the front-end commands also run on the
 //! largest corpus ports, and `cpl test` on the largest ports with cases.
+//! A program that `use`s every std module has the front-end budget instead,
+//! 500 ms (`handbook/principles.md`, stdlib's "fast front end with std
+//! loaded" row): today `check` takes about 110 ms and `explain` 210 ms on it.
 //!
 //! The budget describes the optimized build people run: `cargo test
 //! --release` asserts it everywhere. An unoptimized build asserts it for
@@ -105,6 +108,24 @@ fn largest_ports(tested: bool) -> Vec<String> {
         .collect()
 }
 
+/// A program that imports every module in `std/` and calls the prelude.
+fn every_std_module_program() -> String {
+    let mut modules: Vec<String> = std::fs::read_dir(root().join("std"))
+        .unwrap()
+        .flatten()
+        .filter_map(|e| {
+            let name = e.file_name().into_string().ok()?;
+            let stem = name.strip_suffix(".cp")?;
+            (stem != "prelude").then(|| stem.to_string())
+        })
+        .collect();
+    modules.sort();
+    assert!(modules.len() >= 30, "std/ has {modules:?}");
+    let mut src: String = modules.iter().map(|m| format!("use std.{m}.*\n")).collect();
+    src.push_str("let a = [5, 1, 4]\nprint(a.sorted())\n");
+    src
+}
+
 #[test]
 fn every_command_starts_cold_in_under_100_ms() {
     let optimized = !cfg!(debug_assertions);
@@ -152,6 +173,29 @@ fn every_command_starts_cold_in_under_100_ms() {
     assert!(
         over.is_empty(),
         "over the {BUDGET:?} cold-start budget:\n{}",
+        over.join("\n")
+    );
+}
+
+#[test]
+fn every_std_module_loads_within_the_front_end_budget() {
+    const FRONT_END: Duration = Duration::from_millis(500);
+    let program =
+        std::env::temp_dir().join(format!("cpl-cold-start-std-{}.cp", std::process::id()));
+    std::fs::write(&program, every_std_module_program()).unwrap();
+    let path = program.to_str().unwrap();
+    let mut over = Vec::new();
+    for cmd in ["check", "explain"] {
+        let (median, p90) = time(&[cmd, path]);
+        println!("{median:>10.1?} median {p90:>10.1?} p90  cpl {cmd} <every std module>");
+        if !cfg!(debug_assertions) && (median > FRONT_END || p90 > 2 * FRONT_END) {
+            over.push(format!("cpl {cmd}: median {median:.1?}, p90 {p90:.1?}"));
+        }
+    }
+    let _ = std::fs::remove_file(&program);
+    assert!(
+        over.is_empty(),
+        "over the {FRONT_END:?} front-end budget with all of std:\n{}",
         over.join("\n")
     );
 }
