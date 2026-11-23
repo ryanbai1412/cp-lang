@@ -1338,7 +1338,8 @@ impl<'a> Lowerer<'a> {
         self.mk(ExprKind::Do(Block { stmts: pre_stmts }), out_ty, span)
     }
 
-    /// `let name = xs.map(f)` as a lazy view, when `rest` only indexes it (see [`only_indexed`]).
+    /// `let name = xs.map(f)` as a lazy view, which calls `f` on every read (R07.4.9); only an
+    /// effect-free `f` (see [`effect_free_lambda`]) may be mapped once when `rest` reads it whole.
     pub(in crate::lower) fn map_view_if_indexed(
         &mut self,
         expr: &ast::Expr,
@@ -1346,7 +1347,9 @@ impl<'a> Lowerer<'a> {
         rest: &[ast::Stmt],
         out: &mut Vec<Stmt>,
     ) -> Option<MapView> {
-        if !only_indexed(name, rest) {
+        let effect_free = matches!(&expr.kind, ast::ExprKind::Call { args, .. }
+            if args.len() == 1 && effect_free_lambda(&args[0].value));
+        if effect_free && !only_indexed(name, rest) {
             return None;
         }
         self.map_view_from_expr(expr, out)
@@ -1761,4 +1764,33 @@ fn only_indexed(name: &str, rest: &[ast::Stmt]) -> bool {
         cpl_syntax::visit::walk_stmt(stmt, &mut reads);
     }
     reads.all == reads.cheap
+}
+
+/// A lambda whose body has no calls, writes or I/O and cannot trap (no arithmetic, index or
+/// `!`), so calling it once per element or once per read gives the same run.
+fn effect_free_lambda(func: &ast::Expr) -> bool {
+    struct Quiet(bool);
+    impl cpl_syntax::visit::Visitor for Quiet {
+        fn expr(&mut self, e: &ast::Expr) {
+            self.0 &= matches!(
+                e.kind,
+                ast::ExprKind::Int(_)
+                    | ast::ExprKind::Char(_)
+                    | ast::ExprKind::Bool(_)
+                    | ast::ExprKind::None
+                    | ast::ExprKind::Name(_)
+                    | ast::ExprKind::SelfValue
+                    | ast::ExprKind::Paren(_)
+                    | ast::ExprKind::Tuple(_)
+                    | ast::ExprKind::Field { .. }
+                    | ast::ExprKind::Compare { .. }
+            );
+        }
+    }
+    let ast::ExprKind::Lambda { body, .. } = &func.kind else {
+        return false;
+    };
+    let mut quiet = Quiet(true);
+    cpl_syntax::visit::walk_expr(body, &mut quiet);
+    quiet.0
 }
