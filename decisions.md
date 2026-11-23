@@ -6033,3 +6033,15 @@ the size cost against the 32 KB goal. cf2062f went from 1.94x to 1.29x of
 its C++ (`python3 bench/v03_perf_bench.py --suite corpus --only cf2062f
 --runs 5 --min-ms 10 --jobs 1`). Reverse: drop `version` from
 `check_ahead` in `crates/cpl-codegen/src/bounds.rs`.
+
+## 243. `with lint(...)` is the one way to silence a lint (2026-11-22)
+
+R09.4.4 already made lints contexts (`with lint(name: allow)`), but the
+linter, `spec/std` and the lint catalog also took `@allow(name)`: two
+spellings for one idea, and the attribute is a one-off where a general
+mechanism exists. lint-fmt asked; spec confirms. `@allow(name)` is removed
+syntax (E0503, naming `with lint(name: allow)`), like the other 0.3
+renames. Case: `spec/conformance/core-09/allow-attribute-removed.cp`.
+Reverse: list `@allow` as a fn-scoped sugar for `with lint` in R09.4.4 and
+delete the case.
+

@@ -7,7 +7,7 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 2284 (995 passing). Rules: 535.
+Cases: 2286 (995 passing). Rules: 535.
 
 ## Summary per chapter
 
@@ -21,7 +21,7 @@ Cases: 2284 (995 passing). Rules: 535.
 - R06 (06-control-functions.md): 24 rules, 75 cases; 0 uncovered, 1 happy-path only, 0 negative only
 - R07 (07-sequences.md): 88 rules, 111 cases; 0 uncovered, 1 happy-path only, 0 negative only
 - R08 (08-traits-generics.md): 29 rules, 77 cases; 0 uncovered, 2 happy-path only, 0 negative only
-- R09 (09-contexts-checks.md): 25 rules, 51 cases; 0 uncovered, 5 happy-path only, 0 negative only
+- R09 (09-contexts-checks.md): 25 rules, 52 cases; 0 uncovered, 5 happy-path only, 0 negative only
 - R10 (10-io.md): 17 rules, 71 cases; 0 uncovered, 1 happy-path only, 0 negative only
 - R11 (11-modules-prelude.md): 15 rules, 33 cases; 0 uncovered, 1 happy-path only, 1 negative only
 - R12 (12-powers.md): 17 rules, 36 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -547,7 +547,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R09.4.1 [1+ 1-]: `with checks(...: on)` keeps those checks in release for a block or file. A judge profile ...
 - R09.4.2 [1+ 0-]: `with checks(...: off)` removes a check in checked builds too, for a hot loop whose stress...
 - R09.4.3 [1+ 1-]: `unchecked:` is the greppable escape: a statement block with every check off in every buil...
-- R09.4.4 [1+ 2-]: Lints are contexts: `with lint(name: allow)` silences one in a scope. Lints are declared b...
+- R09.4.4 [1+ 3-]: Lints are contexts: `with lint(name: allow)` silences one in a scope, and is the only way ...
 - R09.5.1 [1+ 0-] *happy-path only*: **proved**: the type checker, range analysis or borrow rules establish it; no runtime cost...
 - R09.5.2 [1+ 1-]: **trapped**: not proved; checked builds trap, release assumes it.
 - R09.5.3 [1+ 0-] *happy-path only*: **promised**: the author states it and tooling samples it: `law` declarations, `@cache` co...
@@ -695,7 +695,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0408 assign_into_range *(0.3)*: 1 case(s)
 - E0501 Unsupported construct in backend: 7 case(s)
 - E0502 Non-ASCII character in source or string: 1 case(s)
-- E0503 Removed syntax from an older version: 6 case(s)
+- E0503 Removed syntax from an older version: 7 case(s)
 - E0504 Planned syntax, not implemented yet: 1 case(s)
 - E0601 Aliased mutable lend: 12 case(s)
 - E0602 Variable mutated while lent: 33 case(s)
@@ -834,7 +834,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **fenwick** (31/31 named by a case)
 - **flow** (57/65 named by a case)
   - uncovered: `max_weight_matching`, `min_weight_matching`, `general_matching`, `max_weight_general_matching`, `max_bounded_flow`, `min_bounded_flow`, `global_min_cut`, `Matroid`
-- **geometry** (151/158 named by a case)
+- **geometry** (153/160 named by a case)
   - uncovered: `ByAngle`, `PI`, `Vec.from_angle`, `planar_faces`, `point_location_planar`, `delaunay`, `voronoi_cells`
 - **graph** (106/122 named by a case)
   - uncovered: `Weighted`, `Edged`, `WeightedNext`, `EdgedNext`, `EdgeArc`, `Reweighted`, `SimpleGraph`, `ConnectedGraph`, `Dag`, `Digraph`, `Graph.weighted`, `Walk`, `Lit.flip`, `TwoSat.add_or`, `Complement`, `Only`
@@ -877,4 +877,4 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **window** (20/22 named by a case)
   - uncovered: `Tracked`, `Undo`
 
-2119 of 2245 std items are named by a case.
+2121 of 2247 std items are named by a case.

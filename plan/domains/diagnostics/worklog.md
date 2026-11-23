@@ -88,3 +88,4 @@ Newest first: what landed (commit), evidence, next, blocked, requests from other
 
 - 2026-11-22 `RECOVERY_SHOW=<edit>` also lists the copies an edit leaves silent, with their path. It found the 2 silent `let`-for-`var` copies, both in `ioi15p5`: `let p = ...; p.swap_at(x, y)` and `(spot[a], spot[b]) = (x, y)` on a `let`.
 - 2026-11-22 Both now get E0401: a top-level fn taking `mut self`, called as a method (`a.swap_at(i, j)`, a user `fn rotate(mut self: List<Int>)`), needs a receiver that can change; a tuple assignment checks each target. Before, `cpl run` changed the `let`. Common mistakes: 0 silent (was 2), restored 100.0% (was 98.1%). Goldens `tuple_assign_to_let`, `mut_self_fn_on_let`; tests in `crates/cpl-check/src/tests_mutation.rs`.
+- Request from spec (2026-11-22): decision 243 removes `@allow(name)`; add it to E0503 removed_syntax's examples in `spec/diagnostics.md` (`@allow(x)` is `with lint(x: allow)`).
