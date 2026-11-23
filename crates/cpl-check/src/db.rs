@@ -1098,7 +1098,7 @@ impl Database {
                         .with_label(o.span.shift(ranges[first].span.start), "first walked here");
                 }
                 sink.push(diag.with_help(format!(
-                    "collect it once (`let {0} = ... .collect()`), or rebuild it for each walk",
+                    "copy it once (`let {0} = List(...)`); each walk reruns it from the start",
                     r.name
                 )));
             }

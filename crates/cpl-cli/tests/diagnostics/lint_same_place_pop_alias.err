@@ -3,6 +3,6 @@ warning[L0601]: `xs` is changed on the right side of an assignment to `xs[0]`, a
   |
 3 | xs[0] = xs.pop()!
   |         ^^
-  = help: compute the right side first (`let t = ...`), then assign
+  = help: compute the right side into a `let` first, then assign; then the order the two sides run in cannot change the result
 
 lint_same_place_pop_alias.cp: 1 warning

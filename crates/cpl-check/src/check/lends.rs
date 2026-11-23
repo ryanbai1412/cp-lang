@@ -2311,7 +2311,7 @@ impl<'a> Checker<'a> {
             );
             self.sink.push(
                 Diagnostic::warning(codes::SAME_PLACE_READ_WRITE, place.span, message)
-                    .with_help("compute the right side first (`let t = ...`), then assign"),
+                    .with_help("compute the right side into a `let` first, then assign; then the order the two sides run in cannot change the result"),
             );
         }
     }
