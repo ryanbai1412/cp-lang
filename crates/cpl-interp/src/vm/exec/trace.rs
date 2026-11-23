@@ -31,6 +31,22 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
             TracePoint::Cell(place, ref indices)
                 if self.trace_raw_cell(&chunk.slot_map, regs_i, regs_v, place, indices) => {}
             ref point => {
+                // A local's step in a call that the tracer skips needs no
+                // view, so no copy of the registers to the stack.
+                let local = match *point {
+                    TracePoint::Let(slot, _) | TracePoint::Loop(slot, _) => Some(slot),
+                    TracePoint::Assign(place) | TracePoint::Cell(place, _) => {
+                        crate::root_local(place)
+                    }
+                    _ => None,
+                };
+                if local.is_some_and(|slot| self.trace_local_unseen(slot)) {
+                    if let TracePoint::Let(slot, _) | TracePoint::Loop(slot, _) = *point {
+                        // Declared: later syncs and checkpoints read its register.
+                        self.stack[self.base + slot] = Value::Moved;
+                    }
+                    return;
+                }
                 let mut quiet = false;
                 if let TracePoint::Let(slot, _) | TracePoint::Loop(slot, _) = *point {
                     // A top-level local takes no step: only its own

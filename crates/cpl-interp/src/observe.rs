@@ -53,6 +53,11 @@ pub(crate) trait Observer {
     fn mutated(&mut self, _id: usize, _view: &View, _at: Span) {}
     /// Local `name` of the running call changed.
     fn local_changed(&mut self, _view: &View, _at: Span, _name: &str) {}
+    /// [`Observer::local_changed`] at call depth `depth` with no view:
+    /// true when the observer took note and wants none.
+    fn local_changed_unseen(&mut self, _depth: usize, _name: &str) -> bool {
+        false
+    }
     fn assigned_local(&mut self, _view: &View, _at: Span, _name: &str) {}
     fn assigned_global(&mut self, _view: &View, _at: Span, _id: usize) {}
     fn printed(&mut self, _view: &View, _at: Span, _text: &str) {}
@@ -118,6 +123,9 @@ impl Observer for Tracer {
     }
     fn quiet_write(&mut self, place: &Place, depth: usize) -> bool {
         Tracer::quiet_write(self, place, depth)
+    }
+    fn local_changed_unseen(&mut self, depth: usize, name: &str) -> bool {
+        Tracer::local_changed_unseen(self, depth, name)
     }
     fn declared(&mut self, id: usize, view: &View, at: Span) {
         Tracer::declared(self, id, view, at)
@@ -241,11 +249,25 @@ impl<O: Observer> Interp<'_, '_, O> {
     /// A step for local `slot` of a running call, which just changed.
     pub(crate) fn trace_local(&mut self, slot: usize, span: Span) {
         // Top-level locals are loop counters and the like: no step of their own.
-        if !self.observed() || self.call_frames.is_empty() {
+        if !self.observed() || self.call_frames.is_empty() || self.trace_local_unseen(slot) {
             return;
         }
         let name = self.locals()[slot].name.as_str();
         self.traced(|tracer, view| tracer.local_changed(view, span, name));
+    }
+
+    /// [`Interp::trace_local`] in a call, and with no assignments traced,
+    /// when the tracer needs no view of it, as for a step it skips: true
+    /// when it is done.
+    pub(crate) fn trace_local_unseen(&mut self, slot: usize) -> bool {
+        if !self.observed() || self.call_frames.is_empty() || self.assignments() {
+            return false;
+        }
+        let depth = self.call_frames.len();
+        let name = self.locals()[slot].name.as_str();
+        self.tracer
+            .as_mut()
+            .is_some_and(|tracer| tracer.local_changed_unseen(depth, name))
     }
 
     pub(crate) fn trace_assigned_local(&mut self, slot: usize, span: Span) {
