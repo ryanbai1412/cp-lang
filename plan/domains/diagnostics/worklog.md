@@ -442,3 +442,9 @@ Landed since 23:10: four type/flow lints from `spec/idioms/lints.md`, L0571 `neg
   the lexer closes the inner call before the line's `,` and keeps the next
   line in the outer call. 0 cascades, 99.8% first error right, 100% of
   recoverable copies get a fix. 51 unclean specs logged for idioms.
+- Recovery's last first-line miss (noi08p5, a variant's `)` dropped before
+  `| Ask(..)`): after a `,` no item starts with an infix operator, so the
+  lexer closes before it, and an unclosed bracket whose fix is on a later
+  line labels that spot "the `)` most likely goes here". Broken ports:
+  100% first error right (577), 0 cascades. `RECOVERY_SHOW="wrong line"`
+  lists misses. Tests in layout_tests.rs.

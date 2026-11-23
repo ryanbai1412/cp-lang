@@ -50,3 +50,19 @@ fn a_missing_close_paren_inside_a_multiline_call_is_one_error() {
     );
     assert_eq!(file.items.len(), 2);
 }
+
+/// A variant's `)` dropped before `| Next(..)` (noi08p5): after a `,` no
+/// field starts with `|`, so the fix and its label go before it.
+#[test]
+fn a_missing_close_paren_before_an_infix_line_goes_before_it() {
+    let src = "enum Op = Add(\n    t: Int,\n    c: Int,\n | Ask(t: Int)\nlet x = 1\n";
+    let file = parse_file(src);
+    assert_eq!(file.diagnostics.len(), 1, "{:#?}", file.diagnostics);
+    let d = &file.diagnostics[0];
+    let at = src.find("| Ask").unwrap() as u32;
+    assert_eq!(
+        d.fixes[0].edits[0],
+        (cpl_diag::Span::point(at), ")".to_string())
+    );
+    assert_eq!(d.labels[0].span, cpl_diag::Span::point(at));
+}

@@ -320,6 +320,15 @@ fn score(b: &Broken, restore: bool) -> (Tally, Option<(String, FirstFix)>) {
     let on_line = |span: cpl_diag::Span| index.line_of(span.start) == b.line;
     t.first_right =
         (on_line(errs[0].span) || errs[0].labels.iter().any(|l| on_line(l.span))) as u32;
+    if std::env::var("RECOVERY_SHOW").is_ok_and(|e| e == "wrong line") && t.first_right == 0 {
+        let at = index.line_of(errs[0].span.start) + 1;
+        println!(
+            "--- {} line {}: first error on {at}: {}",
+            b.path,
+            b.line + 1,
+            errs[0].message
+        );
+    }
     let mut first = FirstFix {
         count: 1,
         ..FirstFix::default()

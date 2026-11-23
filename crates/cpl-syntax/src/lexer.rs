@@ -637,7 +637,12 @@ impl<'a> Lexer<'a> {
                         close,
                     );
                 }
-                if next_line > close_at {
+                if split.is_some() && self.src[opener.span.end as usize..fix_at].contains('\n') {
+                    diag = diag.with_label(
+                        Span::point(fix_at as u32),
+                        format!("the `{close}` most likely goes here"),
+                    );
+                } else if next_line > close_at {
                     diag = diag
                         .with_label(Span::point(next_line as u32), "a new statement starts here");
                 }
@@ -731,6 +736,14 @@ impl<'a> Lexer<'a> {
                 }
                 For if opener.kind == LParen && indexing && in_bracket => {
                     return Some((i, tokens[i - 1].span.end as usize, true));
+                }
+                // `Add(\n    d: Int,\n | Ask(..)`: after a `,` no item starts
+                // with an infix operator, so the closer goes before it.
+                Pipe | Star | StarStar | Slash | Percent | EqEq | NotEq | LtEq | GtEq | Caret
+                | Amp | And | Or
+                    if tokens[i - 1].kind == Comma && gap.contains('\n') =>
+                {
+                    return Some((i, t.span.start as usize, true));
                 }
                 _ => {}
             }
