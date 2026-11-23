@@ -47,6 +47,7 @@ Each local fix tonight, and the mechanism that would remove its whole class.
 | Instance (local fix) | General fix | Owner |
 |---|---|---|
 | `cpl test cf2272A` read the g++ binary `cf2272A` beside `cf2272A.cp` as source (BLOCKERS 41) | done: one resolver for every command that takes a file or problem; a bare name that is missing or not text is its `.cp` | tools |
+| `cpl listen` (BLOCKERS 14) was "unknown command" though `cpl new --listen` exists | done: every unknown command names the one meant, from other tools' spellings or within two edits; one `cpl_diag::edit_distance` replaces cpl-check's and cpl-lint's copies | tools |
 | `build-wasm.sh` ran `wasm-opt` when installed: binaryen 132 rejected rustc's bulk-memory output, and when it ran the file gzipped larger | done: no optional size step, so the bytes match on every machine | tools |
 | `cpl.wasm` is 1,912,009 B gz; std text is 166 KB of it | std modules past the prelude fetched by the playground when a program `use`s them (a module-provider hook in `cpl-check`, as `CPL_STD_DIR` is natively) | site + tools |
 | The interpreter is built twice in wasm (traced and untraced, 395 KB raw) | one interpreter with a dynamic observer in the wasm build, if debug-mode speed allows | debugger |

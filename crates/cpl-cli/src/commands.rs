@@ -529,6 +529,39 @@ const SHORT_COMMANDS: &[(&str, &str)] = &[("b", "build"), ("r", "run"), ("t", "t
 const SHORT_OPTIONS: &[(&str, &str, &str)] =
     &[("build", "-c", "--copy"), ("submit", "-c", "--copy")];
 
+/// Commands other contest tools spell differently, by what a contestant
+/// would type.
+const OTHER_SPELLINGS: &[(&str, &str)] = &[
+    ("listen", "new --listen"),
+    ("import", "new --listen"),
+    ("parse", "new --listen"),
+    ("init", "new"),
+    ("compile", "build"),
+    ("format", "fmt"),
+    ("check-all", "test"),
+    ("debug", "dap"),
+    ("brute", "stress"),
+    ("install", "setup"),
+    ("update", "self update"),
+    ("upgrade", "self update"),
+];
+
+/// The command an unknown `name` most likely meant: another tool's spelling,
+/// else a command at most two edits away.
+pub(crate) fn guess(name: &str) -> Option<String> {
+    if let Some((_, command)) = OTHER_SPELLINGS.iter().find(|(other, _)| *other == name) {
+        return Some(command.to_string());
+    }
+    COMMANDS
+        .iter()
+        .map(|c| c.name)
+        .chain(SHORT_COMMANDS.iter().map(|(_, long)| *long))
+        .map(|command| (cpl_diag::edit_distance(name, command), command))
+        .filter(|(distance, command)| *distance <= 2.min(command.len() / 2))
+        .min()
+        .map(|(_, command)| command.to_string())
+}
+
 /// `args` with each short command and option replaced by its long form.
 pub(crate) fn long_forms<S: AsRef<str>>(args: &[S]) -> Vec<String> {
     let mut long: Vec<String> = args.iter().map(|arg| arg.as_ref().to_string()).collect();
@@ -703,6 +736,20 @@ mod tests {
                 .options
                 .unwrap();
             assert!(options.contains(long), "{command} {long}");
+        }
+    }
+
+    #[test]
+    fn an_unknown_command_names_the_one_meant() {
+        assert_eq!(super::guess("listen").as_deref(), Some("new --listen"));
+        assert_eq!(super::guess("compile").as_deref(), Some("build"));
+        assert_eq!(super::guess("tset").as_deref(), Some("test"));
+        assert_eq!(super::guess("strss").as_deref(), Some("stress"));
+        assert_eq!(super::guess("frobnicate"), None);
+        assert_eq!(super::guess("x"), None, "too short to guess from");
+        for (_, command) in super::OTHER_SPELLINGS {
+            let name = command.split(' ').next().unwrap();
+            assert!(COMMANDS.iter().any(|c| c.name == name), "{command}");
         }
     }
 

@@ -342,7 +342,10 @@ pub fn exec<S: AsRef<str>>(
                 "`{other}` is a file, not a command: `cpl run {other}` runs it"
             ))
         }
-        Some(other) => usage_error(format!("unknown command `{other}`")),
+        Some(other) => usage_error(match commands::guess(other) {
+            Some(guess) => format!("unknown command `{other}`; did you mean `cpl {guess}`?"),
+            None => format!("unknown command `{other}`"),
+        }),
     }
 }
 

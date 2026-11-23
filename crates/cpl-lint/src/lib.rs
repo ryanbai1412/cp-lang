@@ -662,20 +662,7 @@ pub(crate) fn closest_lint(name: &str) -> Option<&'static str> {
         .map(|(_, name)| name)
 }
 
-fn edit_distance(a: &str, b: &str) -> usize {
-    let (a, b) = (a.as_bytes(), b.as_bytes());
-    let mut row: Vec<usize> = (0..=b.len()).collect();
-    for i in 1..=a.len() {
-        let mut diagonal = row[0];
-        row[0] = i;
-        for j in 1..=b.len() {
-            let substitute = diagonal + usize::from(a[i - 1] != b[j - 1]);
-            diagonal = row[j];
-            row[j] = substitute.min(row[j] + 1).min(row[j - 1] + 1);
-        }
-    }
-    row[b.len()]
-}
+use cpl_diag::edit_distance;
 
 /// The removed spellings the parser offers a rewrite for (`where` as a
 /// filter, `--- multitest ---`), applied to a fixed point. Parser recovery

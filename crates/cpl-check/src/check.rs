@@ -1247,30 +1247,7 @@ pub fn closest<'c>(name: &str, candidates: impl Iterator<Item = &'c str>) -> Opt
         .map(|(_, c)| c.to_string())
 }
 
-/// Edits to turn `a` into `b`, counting a swap of two neighbours as one:
-/// `raods` is one edit from `roads`.
-fn edit_distance(a: &str, b: &str) -> usize {
-    let a: Vec<char> = a.chars().collect();
-    let b: Vec<char> = b.chars().collect();
-    let mut rows = vec![vec![0usize; b.len() + 1]; a.len() + 1];
-    for (i, row) in rows.iter_mut().enumerate() {
-        row[0] = i;
-    }
-    for (j, cell) in rows[0].iter_mut().enumerate() {
-        *cell = j;
-    }
-    for i in 1..=a.len() {
-        for j in 1..=b.len() {
-            let substitute = rows[i - 1][j - 1] + usize::from(a[i - 1] != b[j - 1]);
-            let mut best = substitute.min(rows[i - 1][j] + 1).min(rows[i][j - 1] + 1);
-            if i > 1 && j > 1 && a[i - 1] == b[j - 2] && a[i - 2] == b[j - 1] {
-                best = best.min(rows[i - 2][j - 2] + 1);
-            }
-            rows[i][j] = best;
-        }
-    }
-    rows[a.len()][b.len()]
-}
+use cpl_diag::edit_distance;
 
 fn collect_expr_names(expr: &cpl_syntax::ast::Expr, out: &mut Vec<(String, Span)>) {
     use cpl_syntax::visit::{walk_expr, Visitor};
