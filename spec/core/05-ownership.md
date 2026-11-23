@@ -196,7 +196,12 @@ are lent for the call and its result is owned unless it says `lends`. An
 owned result never keeps its source busy: the source is free again when
 the call returns.
 
-<!-- spec-only: fragment over an unnamed `g` and `r` -->
+<!-- given:
+  domain V = 0..3
+  let g = Graph.undirected([(V(0), V(1)), (V(1), V(2))])
+  let r = V(0)
+  let xs = [1, 2, 3]
+  fn p(x: Int) -> Bool = x > 1 -->
 ```python
 let t = Rooted(g, root: r)        // reads g, owns its arrays: g is free
 let fast = LcaTable(t)            // reads t, owns its table: t is free

@@ -88,7 +88,10 @@ while l < s.len:
 **A per-element result on a piece (E2).** The table is keyed like the
 piece, so `i` from `s[l..]` reads it directly.
 
-<!-- spec-only: fragment over `s`, `l` and `k` from the text -->
+<!-- given:
+  let s = "abacaba"
+  let l = 1
+  let k = 2 -->
 ```python
 let z = z_function(s[l..])               // [l..s.len]Int
 let hits = s[l..].keys.count(i => z[i] >= k)   // suffixes starting with s[l..l + k]
@@ -96,7 +99,13 @@ let hits = s[l..].keys.count(i => z[i] >= k)   // suffixes starting with s[l..l 
 
 **Parallel arrays over a range (B3).**
 
-<!-- spec-only: fragment over `a`, `w` and `best` from the text -->
+<!-- given:
+  domain I = 0..6
+  let a: [I]Int = 1
+  let w: [I]Int = 2
+  var best: [I]Int = 0
+  let l = I(1)
+  let r = I(4) -->
 ```python
 for (i, x) in a[l..=r].items:            // i runs over l..=r
     best[i] = x * w[i]
@@ -145,7 +154,11 @@ let col = grid[.., c]                    // [Row]T view
 **A 0-based algorithm on a piece (rule 7).** `rebase` gives a domain for
 the piece, and the domain's own tools (`wrap`) do the arithmetic.
 
-<!-- spec-only: fragment over `s`, `l`, `r` and `k` from the text -->
+<!-- given:
+  let s = "abcdef"
+  let l = 1
+  let r = 5
+  let k = 2 -->
 ```python
 let t = s[l..r].rebase                   // t: [t.Idx]Char, keys 0..r - l
 let rotated = Str(t[t.Idx.wrap(Int(i) + k)] for i in t.keys)

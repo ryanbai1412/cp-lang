@@ -225,10 +225,19 @@ which always exists, for answers that are boundaries: insertion points,
 counts, prefix lengths. They agree: `r.first_true(ok)` is `r.bsearch(ok).r`
 and `r.last_true(ok)` is `r.bsearch(ok, last: true).l`.
 
-<!-- spec-only: fragment over `cost`, `budget`, `pre` and `a` from the text -->
+<!-- given:
+  let n = 10
+  fn cost(k: Int) -> Int = k * k
+  let budget = 50
+  let x = 30
+  domain V = 0..5
+  let pre: [V.cuts]Int = 0
+  let s = 0
+  let a: [V]Int = 0
+  let t = 1 -->
 ```python
 let k = (0..=n).last_true(k => cost(k) <= budget) ?? -1      // largest k that fits
-let k = (0..=n).first_true(k => cost(k) >= x)!               // smallest k that reaches x
+let reach = (0..=n).first_true(k => cost(k) >= x)!           // smallest k that reaches x
 let c = V.cuts.range.last_true(c => pre[c] <= s)!              // longest prefix with sum <= s: a cut
 let below = Int(a.keys.bsearch(i => a[i] >= t))               // how many of sorted a are < t
 ```

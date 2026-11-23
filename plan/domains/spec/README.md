@@ -49,7 +49,7 @@ All values measured 2026-11-22 on `4b8f504f` with a release build; commands in [
 | Core cases with no `// rule:` | `conformance-coverage.py` | 10 | 0 | M1 |
 | Diagnostic codes with no reject case | `conformance-coverage.py` | 1/136 | 0 | M1 |
 | Std items named by a case | `conformance-coverage.py` | 2037/2245 | 2245 | M2 |
-| Spec code blocks passing | `cpl-conform spec-blocks` | 71/185 (30 error, 84 skip) | all or spec-only | M2 |
+| Spec code blocks passing | `cpl-conform spec-blocks` | 75/185 (32 error, 78 skip) | all or spec-only | M2 |
 | Untagged code blocks (skipped) | `awk` in metrics.toml | 27 | 0 | M2 |
 | Matrix empty cells | `conformance-matrix.py --check` | 0 (gated) | 0 | M2 |
 | Trait methods without a case | `conformance-traits.py --check` | 3 of 118 (held range triples) | 0 | M2 |

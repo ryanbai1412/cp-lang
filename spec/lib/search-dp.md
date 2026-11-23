@@ -96,7 +96,9 @@ O(1) to make, nothing allocated; the cut itself is `left.r`. A `Range<V>` goes w
 contract, proved when it can be and checked in checked builds otherwise, so
 `best(r.first!.next!..=r.last!)` needs no conversion.
 
-<!-- spec-only: fragment over a domain `V` and a weight `w` -->
+<!-- given:
+  domain V = 0..5
+  fn w(r: Range<V>) -> Int = r.len -->
 ```python
 var dp: [V.ranges]Int = 0                       // merging stones, matrix chain, ...
 for r in V.ranges if r.len >= 2:
