@@ -8316,3 +8316,9 @@ tag move fatal again.
 - **Why.** A key type had one way to make a multi-index (the name arm) only when it was built in. User library domains get the same form with no new mechanism, and errors and traps are the constructor's.
 - **Reverse.** Restore the `Sym | Pair` arm in `cpl-check` `index` and require `d[Pair(u, v)]` everywhere else.
 
+
+## 418. A `var` takes its type from its initializer only; rebuild round 35 triage
+
+- **Decision.** `var res = [a.keys].filled(None)` is E0302: an optional needs its element type at the declaration (`var res: [K]?K = ...`), never from a later assignment or from the fn's result type. The `next_greater` example in `spec/core/04b-keys.md` gets the annotation. Rebuild round 35 found 30 holes (23 silent, 22 guesses held; 3 contradictions; 1 missing stdlib; 3 found late), 26 of them inside Milestone 1. Its three new items were already on the gap ratchets: `bfs01` missing from the prelude (`prelude-gaps.txt`), `dijkstra(step:)` (`sig-gaps.txt`), and a positional `Monoid(id, op)` in a std doc. They go to stdlib to burn those lists down. Two `cpl explain` items go to tools: phantom copies, and an inferred `Int` shown as unbounded.
+- **Why.** Each declaration then reads alone, as a `fn` signature does (R06.1.2), and inference stays local and linear. The round shows that the gap lists record debt but nothing drains them, so their size became a register row.
+- **Reverse.** Infer a `var`'s element type from its first assignment in the same block, and drop the annotation from the example.
