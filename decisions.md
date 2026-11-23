@@ -8401,3 +8401,9 @@ tag move fatal again.
 - **Call.** `max`, `min`, `argmax` and `argmin` take `ties: Ties = Ties.First`; `Ties.Last` returns the last of equal best elements. `Ties` is an enum in `std/seq.cp`, in the prelude next to `Anchor`.
 - **Why.** "the leftmost/rightmost maximum" is common in statements, and the corpus hand-wrote it with `>=` loops. One option shared by every extreme replaces `_last` variants. A widest-tie rule is a segment fold, not a tie rule (`seq/U69`). Use case `seq/U3` in `handbook/product/std/sequences-usecases.md`.
 - **Reverse.** Drop the parameter and the enum from `std/seq.cp` and `std/prelude.cp`.
+
+## 432. Lent-arg closure calls go back to the tree-walker for now (tech-debt, 2026-11-23)
+
+- **Call.** Calls that pass a lent argument and a fn-valued param run on the tree-walker again, and `vm_fallbacks` goes from 63 back to 75. On the VM, a frame with a lent param synced its registers around every closure call. When the closure wasn't compiled, the `call_value` path synced a second time and wrote cleared registers over the lent `self`, so `std-interval/sparse-interval-map-matches-array` failed with "expected closure".
+- **Why.** Main has to stay green, and the fix needs its own regression test before it lands.
+- **Reverse.** Land the VM path again with one sync per call and a program where a method with `mut self` calls a closure that writes a caller's local. Then delete the 12 lines and lower `vm_fallbacks`.
