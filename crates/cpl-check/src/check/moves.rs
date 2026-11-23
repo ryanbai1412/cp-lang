@@ -100,10 +100,8 @@ impl Checker<'_> {
         if !is_generated_ctor {
             return;
         }
+        // A later move of a moved name is where the next use's fix goes.
         for &src in moved {
-            if self.moved.contains_key(src) {
-                continue;
-            }
             let ty = match self.env.global(src).as_deref() {
                 Some(Def::Value { ty, .. }) => Some(ty.clone()),
                 _ => None,
