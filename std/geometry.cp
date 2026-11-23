@@ -3956,7 +3956,7 @@ fn min_enclosing_circle_and_circle_polygon_area():
         let got = min_enclosing_circle(pts)
         for p in pts:
             assert vdist(got.c, p) <= got.r + 1e-6
-        var best_r = 1.0e18
+        var best_r = F64(1e18)
         for i in 0..pts.len:
             for j in i + 1..pts.len:
                 let c2 = (pts[i] + pts[j]) * 0.5
@@ -3966,7 +3966,7 @@ fn min_enclosing_circle_and_circle_polygon_area():
                     if let c3 = circumcenter(pts[i], pts[j], pts[k]):
                         let r3 = vdist(c3, pts[i])
                         if pts.all(q => vdist(c3, q) <= r3 + 1e-7): best_r min= r3
-        if best_r < 1.0e17:
+        if best_r < F64(1e17):
             assert close(got.r, best_r, eps: 1e-5)
     // Circle-polygon intersection area
     let pi = 4.0 * atan2(1.0, 1.0)
