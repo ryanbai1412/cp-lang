@@ -25,9 +25,12 @@ pub fn check_spec(db: &mut Database, path: &str, text: &str) -> (String, bool) {
 
 /// What `cpl lint` reports for `text` at `path`, rendered: an `L` code in
 /// a case header names a lint, not a check error.
-pub fn lint_spec(path: &str, text: &str) -> String {
+pub fn lint_spec(db: &mut Database, path: &str, text: &str) -> String {
     let (config, _) = cpl_lint::Config::discover(Path::new(path));
-    let lints = cpl_lint::lint(text, &config);
+    db.set_file(path, text);
+    let analysis = db.analyze(path).expect("the file was just set");
+    db.remove_file(path);
+    let lints = cpl_lint::lint_analysis(&analysis, &config);
     if lints.is_empty() {
         String::new()
     } else {

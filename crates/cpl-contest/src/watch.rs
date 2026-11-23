@@ -100,7 +100,8 @@ impl Watch {
         let text =
             std::fs::read_to_string(&self.source).map_err(|e| format!("can't read {name}: {e}"))?;
         self.db.set_file(&name, text.as_str());
-        let errors = self.db.diagnostics(&name);
+        let analysis = (self.db.analyze(&name)).ok_or_else(|| format!("can't check {name}"))?;
+        let errors = analysis.diagnostics.clone();
         let round = |diagnostics, errors, test| Round {
             text: text.clone(),
             diagnostics,
@@ -111,7 +112,7 @@ impl Watch {
             return Ok(round(errors, true, Tested::Stopped));
         }
         let (config, _) = cpl_lint::Config::discover(&self.source);
-        let lints = cpl_lint::lint(&text, &config);
+        let lints = cpl_lint::lint_analysis(&analysis, &config);
 
         let args = Args::parse("watch", args, VALUED, FLAGS)?;
         let dir = args

@@ -36,7 +36,7 @@ impl Backend<'_> {
 
     fn lint(&mut self, path: &str, text: &str) -> String {
         match self {
-            Backend::Linked(_) => runner::lint_spec(path, text),
+            Backend::Linked(db) => runner::lint_spec(db, path, text),
             Backend::Cli(cpl) => cli(cpl, &["lint", path], &[])
                 .map(|(_, out, err)| out + &err)
                 .unwrap_or_default(),
