@@ -28,6 +28,23 @@ fn slow():
 
 `cpl stress` derives a generator and constraint-respecting shrinker from `n: 1..=10` and `a: [0..n]1..=100`, runs cases deterministically from `--seed 1`, and shrinks any failing case before saving it to `<file>.tests/stress-<seed>.in`.
 
+## The loop: from a wrong answer to accepted
+
+When the judge says Wrong Answer and the samples pass:
+
+```bash
+cpl stress solution.cp   # finds a failing case, shrinks it, saves solution.cp.tests/stress-<seed>.in and .out
+cpl test solution.cp     # reruns the samples and every saved case: the shrunk one fails
+# fix the solution, then
+cpl test solution.cp     # every saved case passes
+cpl stress solution.cp   # and no new case disagrees
+```
+
+The saved case stays in `<file>.tests/`, so every later edit is checked against it. The same loop runs
+from the editors: the Stress lens or `:Cpl stress` and `:Cpl test` in Neovim, `:!cpl stress %` and
+`:!cpl test %` in Vim, the Stress lens and Run All Samples in VS Code, and the `stress` and `test`
+run configurations in JetBrains.
+
 ## 2. Custom generator with `@gen`
 
 When inputs have structure beyond independent ranges (sorted sequences, trees, graphs, or problem-specific invariants), write a `@gen fn` that prints one test case using `rand(...)` and `shuffle(...)`:
