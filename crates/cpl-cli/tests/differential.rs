@@ -301,6 +301,25 @@ fn compile_and_run(
     Ok((ran.stdout, ran.status.code()))
 }
 
+/// The expected output of a program too long to commit as a `.out` file.
+fn generated_golden(name: &str) -> Option<Vec<u8>> {
+    let joined = |it: &mut dyn Iterator<Item = usize>| {
+        it.map(|i| i.to_string()).collect::<Vec<_>>().join(" ")
+    };
+    match name {
+        "output_over_64k_in_a_string" => {
+            let mut out: String = (0..6000).map(|i| format!("line {i}\n")).collect();
+            let xs = joined(&mut (0..20000));
+            out += &format!(
+                "{xs}\n20000 items {xs}\ntail {}\nend\n",
+                joined(&mut (0..20000).rev())
+            );
+            Some(out.into_bytes())
+        }
+        _ => None,
+    }
+}
+
 fn check(program: &Path, group: &str) -> Result<(), String> {
     let name = program
         .file_stem()
@@ -318,11 +337,17 @@ fn check(program: &Path, group: &str) -> Result<(), String> {
         ));
     }
     let golden = program.with_extension("out");
-    if std::env::var_os("CPL_BLESS").is_some() {
-        std::fs::write(&golden, &interpreted.stdout).map_err(|e| e.to_string())?;
-    }
-    let expected = std::fs::read(&golden)
-        .map_err(|_| format!("no {}: run with CPL_BLESS=1 to record it", golden.display()))?;
+    let expected = match generated_golden(&name) {
+        Some(expected) => expected,
+        None => {
+            if std::env::var_os("CPL_BLESS").is_some() {
+                std::fs::write(&golden, &interpreted.stdout).map_err(|e| e.to_string())?;
+            }
+            std::fs::read(&golden).map_err(|_| {
+                format!("no {}: run with CPL_BLESS=1 to record it", golden.display())
+            })?
+        }
+    };
     if interpreted.stdout != expected {
         return Err(format!(
             "`cpl run` printed\n{}\nbut {} holds\n{}",
