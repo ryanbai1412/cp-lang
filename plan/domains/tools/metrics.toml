@@ -48,7 +48,7 @@ today = "check 5 ms; open-to-diagnostics 5 ms; hover 3 ms; completion 2 ms; rena
 name = "LSP latency, 5,000-line file, median"
 command = "cargo test --release -p cpl-lsp --test latency -- --nocapture"
 target = "check < 50 ms; open-to-diagnostics < 100 ms; test green"
-today = "check 65 ms (p90 72); open-to-diagnostics 61 ms (p90 82); hover in the edited fn 44 ms (p90 91); fails only front_end_check_is_under_50_ms (checker, requested from compiler)"
+today = "check 58 ms (p90 71); open-to-diagnostics 50 ms (p90 65); hover in the edited fn 22 ms (p90 45); fails only the 5,000-line cold check (next hot spots filed in compiler's worklog)"
 
 [[metric]]
 name = "LSP unit tests"
