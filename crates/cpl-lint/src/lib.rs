@@ -443,7 +443,7 @@ fn lint_file(file: &File, config: &Config) -> Vec<Diagnostic> {
             .iter()
             .any(|(span, name)| *name == lint.name && span.contains(diag.span));
         let library_only = library && LIBRARY_LOOPS.iter().any(|l| l.code == lint.code);
-        if level == Level::Allow || allowed || library_only || fns.defines(lint, &diag) {
+        if level == Level::Allow || allowed || library_only || fns.defines(lint, &diag, library) {
             continue;
         }
         diag.severity = if level == Level::Deny {
@@ -517,7 +517,9 @@ const LIBRARY_LOOPS: &[&Lint] = &[
 const NAME_THE_CALL: &[&Lint] = &[&FREE_FOLD, &HAND_ROLLED_ANSWER_SEARCH];
 
 /// Each fn of a file, so a finding that says "this is `first`" is not
-/// reported inside `fn first` itself.
+/// reported inside `fn first` itself. In a library module that holds for
+/// every lint whose help names the call `first(..)`: the fn is where the
+/// library writes the loop the lint teaches.
 #[derive(Default)]
 struct Fns {
     base: u32,
@@ -534,12 +536,16 @@ impl Visitor for Fns {
 }
 
 impl Fns {
-    fn defines(&self, lint: &Lint, diag: &Diagnostic) -> bool {
-        NAME_THE_CALL.iter().any(|l| l.code == lint.code)
-            && self
-                .spans
-                .iter()
-                .any(|(span, quoted)| span.contains(diag.span) && diag.message.contains(quoted))
+    fn defines(&self, lint: &Lint, diag: &Diagnostic, library: bool) -> bool {
+        let names_call = NAME_THE_CALL.iter().any(|l| l.code == lint.code);
+        let named = |quoted: &str| {
+            let call = format!("{}(", quoted.trim_end_matches('`'));
+            (names_call && diag.message.contains(quoted))
+                || (library && diag.help.as_deref().is_some_and(|h| h.contains(&call)))
+        };
+        self.spans
+            .iter()
+            .any(|(span, quoted)| span.contains(diag.span) && named(quoted))
     }
 }
 

@@ -1821,3 +1821,15 @@ fn newcomer_fixes_still_check() {
     assert!(fixed(all).contains("(0..n / 2).all(i => s[i] == s[i + 1])"));
     assert!(fixed(any).contains("let ok = a.any(x => x > 1)"));
 }
+
+#[test]
+fn library_fn_is_not_told_to_call_itself() {
+    // std/math.cp: `divisors` is where std writes the trial division L0561 teaches.
+    let body = "fn divisors(x: Int) -> List<Int>:\n    var (small, large) = (List<Int>(), List<Int>())\n    var d = 1\n    while d * d <= x:\n        if x % d == 0:\n            small.push(d)\n            if d * d != x: large.push(x / d)\n        d += 1\n    small + large.rev\n";
+    assert!(!codes(&format!("pub {body}")).contains(&"L0561"));
+    // Outside a library module the lint still teaches: std's `divisors` replaces it.
+    assert!(codes(&format!("{body}print(divisors(12))\n")).contains(&"L0561"));
+    // The fn a help names is not enough when it is another one.
+    let other = body.replacen("fn divisors", "fn my_divs", 1);
+    assert!(codes(&format!("pub {other}")).contains(&"L0561"));
+}
