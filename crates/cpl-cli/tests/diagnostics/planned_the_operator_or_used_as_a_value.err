@@ -1,0 +1,8 @@
+error[E0504]: not implemented yet: the operator `/`, `%`, `<<` or `>>` used as a value (see spec/lib/ops-ranges.md §1.)
+  --> planned_the_operator_or_used_as_a_value.cp:1:19
+  |
+1 | let ops = (split: /, n: 2)
+  |                   ^
+  = help: write the operation as a lambda, `(a, b) => a / b`
+
+planned_the_operator_or_used_as_a_value.cp: 1 error

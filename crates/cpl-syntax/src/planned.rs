@@ -235,10 +235,10 @@ pub const CUT_DOMAIN: Planned = Planned {
 };
 
 pub const OPERATOR_VALUE: Planned = Planned {
-    feature: "an operator used as a value, `compose: +`",
+    feature: "the operator `/`, `%`, `<<` or `>>` used as a value",
     see: Some("spec/lib/ops-ranges.md §1."),
-    now: "write the operation as a lambda, `(a, b) => a + b`",
-    example: "let ops = (count: +, n: 2)\nprint(ops.n)\n",
+    now: "write the operation as a lambda, `(a, b) => a / b`",
+    example: "let ops = (split: /, n: 2)\nprint(ops.n)\n",
 };
 
 pub const PLANNED: &[&Planned] = &[

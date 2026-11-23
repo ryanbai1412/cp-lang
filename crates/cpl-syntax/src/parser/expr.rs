@@ -1322,6 +1322,11 @@ impl<'a> Parser<'a> {
                     Some(T::Colon | T::Comma | T::LParen | T::Eq)
                 ) =>
             {
+                // `over: M = (+)`, `(count: +, n: 2)`: an operator alone is
+                // `(a, b) => a + b` wherever a value goes, as in an argument.
+                if let Some(e) = self.fn_shorthand() {
+                    return e;
+                }
                 let span = self.span();
                 self.bump();
                 self.planned(span, &crate::planned::OPERATOR_VALUE);
