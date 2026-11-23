@@ -2590,13 +2590,8 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 _ => return trap(span, "`Char + Int` left ASCII (0..=127)"),
             },
             Cast::IntToChar => match u8::try_from(value.int()) {
-                Ok(c) => Value::Char(c),
-                Err(_) => {
-                    return trap(
-                        span,
-                        format!("{} is not a byte, so it is not a `Char`", value.int()),
-                    )
-                }
+                Ok(c) if c.is_ascii() => Value::Char(c),
+                _ => return trap(span, format!("{} is outside `0..=127`", value.int())),
             },
             Cast::EnumOrd(_) => match value {
                 Value::Enum(tag, _) => Value::Int(tag as i64),

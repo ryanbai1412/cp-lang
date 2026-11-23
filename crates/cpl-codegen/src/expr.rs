@@ -791,7 +791,7 @@ impl<'p> Emitter<'p> {
                         self.need("narrow");
                         Code::primary(format!("cpl::to_int({})", code.text))
                     }
-                    Cast::IntToChar if matches!(inner.kind, ExprKind::Int(0..=255)) => {
+                    Cast::IntToChar if matches!(inner.kind, ExprKind::Int(0..=127)) => {
                         c_cast("cpl::u8")
                     }
                     Cast::IntToChar => {

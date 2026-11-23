@@ -1,0 +1,10 @@
+"variables":{"stdout":{"name":"stdout","type":"what the program printed, a line at a time","kind":"json"},"i":{"name":"i","type":"Int","kind":"scalar"}},"runs":{"fast":{"label":"cpl run","steps":[{"id":0,"line":2,"label":"let i = read\u003cInt>()","stage":"main","values":{"stdout":[],"i":194},"locals":{},"frames":[{"fn":"main","line":2}]},
+{"id":1,"line":3,"label":"print → ^ ","stage":"main","values":{"stdout":["^ "],"i":194},"locals":{},"checkpoint":"print 1","frames":[{"fn":"main","line":3}]},
+{"id":2,"line":4,"label":"failed: 194 is outside `0..=127`","stage":"main","values":{"stdout":["^ "],"i":194},"locals":{},"frames":[{"fn":"main","line":4}]}]}}}
+stderr:
+error[R0201]: 194 is outside `0..=127`
+  --> char_non_ascii_traps.cp:4:7
+  |
+4 | print(Char(i))
+  |       ^^^^^^^
+  = help: the value leaves the range its variable was declared with: widen the type, or check the value first

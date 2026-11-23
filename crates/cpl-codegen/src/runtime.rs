@@ -134,7 +134,7 @@ inline u8 char_step(ll c) { if (c < 0 || c > 127) fail(\"`Char + Int` left ASCII
         needs: &["fail"],
         code: "\
 // A value written as a smaller type must be one of that type's values.
-inline u8 to_char(ll c) { if ((unsigned long long)c > 255) fail(\"not a byte, so not a `Char`\"); return (u8)c; }
+inline u8 to_char(ll c) { if ((unsigned long long)c > 127) { flush(); fprintf(stderr, \"%lld is outside `0..=127`\\n\", c); exit(3); } return (u8)c; }
 inline ll to_int(__int128 x) { if (x < -(__int128)9223372036854775807LL || x > (__int128)9223372036854775807LL) fail(\"an `I128` outside `Int`\"); return (ll)x; }
 inline ll to_int(unsigned long long x) { if (x > 9223372036854775807ULL) fail(\"a `U64` outside `Int`\"); return (ll)x; }
 inline ll to_int(double x) { if (!(x > -9223372036854775809.0 && x < 9223372036854775808.0)) fail(\"a float outside `Int`\"); return (ll)x; }
