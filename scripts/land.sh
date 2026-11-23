@@ -24,7 +24,7 @@ for c in $(git rev-list "FETCH_HEAD..HEAD"); do
         { echo "land: $(git log -1 --format='%h %s' "$c") has no Domain: trailer" >&2; exit 1; }
 done
 domain=$(git log -1 --format='%(trailers:key=Domain,valueonly,separator=)' HEAD)
-git pull -q --rebase "$remote" main
+git pull -q --rebase --autostash "$remote" main
 changed=$(git diff --name-only --diff-filter=ACMR FETCH_HEAD HEAD)
 seen="$(git rev-parse --git-dir)/cpl-last-land"
 if [ -s "$seen" ] && git cat-file -e "$(cat "$seen")^{commit}" 2>/dev/null; then
@@ -81,7 +81,7 @@ if [ -n "$regen" ]; then
     echo "land: regenerated $(echo $regen)"
 fi
 for try in $(seq "$tries"); do
-    [ "$try" = 1 ] || git pull -q --rebase "$remote" main
+    [ "$try" = 1 ] || git pull -q --rebase --autostash "$remote" main
     if git push -q --no-verify "$remote" HEAD:main; then
         secs=$(( $(date +%s) - t0 ))
         printf '{"domain":"%s","landed":%s,"seconds":%s,"tries":%s,"commit":"%s"}\n' \
