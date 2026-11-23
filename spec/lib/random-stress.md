@@ -67,7 +67,7 @@ fn brute(): ...
 ## Interactors
 
 `@interactor fn judge(w: Wire)` is the other end of the pipes for an
-interactive problem; `cpl stress` and `cpl interact` run the program
+interactive problem; `cpl stress` and `cpl run` run the program
 against it with generated hidden data.
 
 ## Laws

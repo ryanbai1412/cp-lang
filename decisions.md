@@ -6045,3 +6045,28 @@ renames. Case: `spec/conformance/core-09/allow-attribute-removed.cp`.
 Reverse: list `@allow` as a fn-scoped sugar for `with lint` in R09.4.4 and
 delete the case.
 
+## 244. The spec's command list follows tools-1's option C (2026-11-22)
+`spec/tools/cli.md` and `cpl --help` differed on 14 commands. Pending
+Ryan's answer to tools-1 (plan/QUESTIONS.md), the recommended default is
+applied: the spec lists `check`, `fix`, `judge`, `replay`, `dap`, `report`
+and `self`; `cpl trace` is `cpl run --trace`, `cpl interact` is `cpl run` on
+a file with an `@interactor`, `cpl debug` is the editors' debugger over
+`cpl dap`, and `cpl selftest` is gone (the differential tests in
+`scripts/check.sh` do it). One verb per job keeps the set guessable.
+`fetch`, `locate` and `migrate` stay in the spec, to build for v0.3
+(`python3 plan/domains/tools/measure.py spec-sync`: 3 spec-only, 0
+CLI-only). Reverse: restore the rows in `spec/tools/cli.md`,
+`tools/trace-debug.md`, `lib/random-stress.md` and `core/10-io.md`, and add
+the commands as aliases in `crates/cpl-cli/src/commands.rs`.
+
+## 245. `cpl`'s exit codes are the binary's: 1 errors, 2 usage, 3 the program failed (2026-11-22)
+The spec said 1 program or test failure, 2 compile error, 3 usage error;
+the binary has always used `EXIT_ERRORS` 1, `EXIT_USAGE` 2, `EXIT_FAILED` 3
+(`crates/cpl-cli/src/lib.rs`), and editors, `cpl test`, `cpl stress` and the
+emitted C++ (which exits 3 on a trap) read them. Pending tools-4, the
+recommended default A is applied: the spec states the binary's codes.
+2 for usage matches POSIX tools and getopt. Measured: a failing `cpl test`
+case exits 1, `cpl run` on `print(xs[5])` exits 3, `cpl check` on a type
+error exits 1, `cpl stress` with no file exits 2. Reverse: swap the three
+constants and the `exit(3)` in the C++ runtime, and the sentence in
+`spec/tools/cli.md`.

@@ -230,7 +230,7 @@ Meanwhile: (a) only.
 - C. Mixed: the spec adopts `check`, `fix`, `judge`, `self`, `report`, `replay`, `dap`; `trace` stays `cpl run a --trace` (one verb for running, as today), `debug` stays the editor's debugger over `cpl dap`, `interact` stays `cpl run a` on a file with an `@interactor` (`crates/cpl-cli/src/interact.rs`), `selftest` is dropped (it is `scripts/check.sh`); `fetch`, `locate`, `migrate` are built for v0.3.
 Recommendation: C. One verb per job keeps the set guessable, and the three additions are real contest needs (samples, smallest failing input, library upgrades).
 How to reverse it: the command table is data; adding an alias (`cpl trace` → `cpl run --trace`) or dropping a command is a one-line change plus its golden test.
-Meanwhile: the tools lane works on C; the spec/CLI sync test records the remaining mismatches as a list that may only shrink.
+Meanwhile: C is applied (decisions.md 244): `spec/tools/cli.md` lists the binary's commands; `fetch`, `locate`, `migrate` are the 3 left to build (`measure.py spec-sync`).
 
 ### tools: which editors are tier 1 (tools-2)
 `editors/` has VS Code, Neovim, Vim, Emacs, JetBrains, Helix, Zed. On a lane VM only keyword parity runs; the rest skip for lack of binaries, and JetBrains fails to fetch Gradle artifacts (`CPL=target/release/cpl editors/smoke.sh`).
@@ -256,7 +256,7 @@ Option A: change the spec to the binary. 2 for usage matches POSIX tools, getopt
 Option B: renumber the binary and the emitted C++ to the spec.
 Recommendation: A. It costs one spec sentence. B changes three constants plus every script and editor that reads them, and gains nothing.
 How to reverse it: swap the three constants in `crates/cpl-cli/src/lib.rs` and the `exit(3)` in the C++ runtime; the tests name the constants, not numbers (`crates/cpl-cli/tests/golden.rs`).
-Meanwhile: the binary's codes; `spec/tools/cli.md` stays as written until answered.
+Meanwhile: A is applied (decisions.md 245): `spec/tools/cli.md` states the binary's codes.
 
 ### spec: what are a range's keys, its own elements or positions from 0?
 Chapter 7 lists ranges as `Indexed<D, T>` (R07.3.5: `s[i]` in O(1), `s.keys: Range<D>`), but chapter 4's range methods (R04.4.12-21) never say what `r[i]`, `r.keys` or `r.items` mean. Today `let r = 2..5` gives `r[3]` = R0101 "index 3 is outside a range of length 3" (so `r[0]` is 2), and `r.keys`, `r.items` do not compile.

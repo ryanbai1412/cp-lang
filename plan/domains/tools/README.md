@@ -33,7 +33,7 @@ All measured 2026-11-22 on this VM (2 cores), release build at `4e2de3cd`.
 
 | Metric | Command | Today | Target | M |
 |---|---|---|---|---|
-| spec/CLI command mismatches | `measure.py spec-sync` | 14 (7 spec-only, 7 CLI-only) | 0 | M1 |
+| spec/CLI command mismatches | `measure.py spec-sync` | 3 (spec-only: fetch, locate, migrate, to build) | 0 | M1 |
 | commands with `--help` | `measure.py help` | 23/23 | 23/23 | M1 |
 | end-to-end tests per command | `measure.py golden` | 23/23 with help, usage error, success and exit tested (`judges` has no failing exit) | each >= 4 | M1 |
 | commands offering `--json` | `measure.py json` | 18/23 (not: dap, fmt, lsp, self, watch) | all that print results (all but dap, lsp, self, watch) | M2 |
