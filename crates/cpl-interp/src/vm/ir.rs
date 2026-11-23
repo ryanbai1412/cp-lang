@@ -1719,6 +1719,9 @@ pub(super) fn recognize_fast_closure(
 
 pub(crate) struct CompiledProgram<'p> {
     pub main: Chunk<'p>,
+    /// What is above `@!multitest`. It ends in `RetI` of 1, so a run
+    /// that falls off its end is told apart from a top-level `return`.
+    pub setup: Option<Chunk<'p>>,
     pub fns: Vec<Option<Chunk<'p>>>,
     pub fed_fns: Vec<Option<Chunk<'p>>>,
     pub closures: Vec<Option<Chunk<'p>>>,
@@ -1831,8 +1834,23 @@ impl<'p> CompiledProgram<'p> {
         if main.has_by_ref_closure {
             main.needs_stack = true;
         }
+        let setup = program.multitest.then(|| {
+            let mut c = Compiler::new(program, feeds, &fed_ok, &program.main_locals, None, 0);
+            c.traced = traced;
+            c.compile_block(&program.setup, None, false);
+            let done = c.alloc_i();
+            c.emit_const_i(done, 1, Span::default());
+            c.emit(Op::RetI { src: done }, Span::default());
+            let mut setup = c.finish();
+            setup.has_by_ref_closure = block_has_by_ref_closure(&program.setup, program);
+            if setup.has_by_ref_closure {
+                setup.needs_stack = true;
+            }
+            setup
+        });
         CompiledProgram {
             main,
+            setup,
             fns,
             fed_fns,
             closures,

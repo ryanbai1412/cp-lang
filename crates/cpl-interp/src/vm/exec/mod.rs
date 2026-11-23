@@ -91,6 +91,19 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
         Ok(())
     }
 
+    /// The code above `@!multitest` on the VM: true when a top-level
+    /// `return` there ended the program.
+    pub(crate) fn run_setup_vm(
+        &mut self,
+        compiled: &CompiledProgram<'p>,
+        setup: &Chunk<'p>,
+    ) -> Res<bool> {
+        let mut vm_regs_i = std::mem::take(&mut self.vm_regs_i);
+        let res = self.exec_chunk(compiled, setup, &[], &mut vm_regs_i);
+        self.vm_regs_i = vm_regs_i;
+        Ok(!matches!(res?, Value::Int(1)))
+    }
+
     /// Closure `cid`'s body on the VM, in the frame at `self.base` that
     /// holds its parameters and captures, all values.
     pub(crate) fn run_closure_vm_from_stack(

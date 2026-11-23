@@ -798,7 +798,14 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
         if let Some(tracer) = &mut self.tracer {
             tracer.begin_cases();
         }
-        if let Flow::Return(_) = self.block(&program.setup)? {
+        let returned = match self.vm.clone() {
+            Some(compiled) => match &compiled.setup {
+                Some(setup) => self.run_setup_vm(&compiled, setup)?,
+                None => unreachable!("a multitest program compiles its setup"),
+            },
+            None => matches!(self.block(&program.setup)?, Flow::Return(_)),
+        };
+        if returned {
             return Ok(());
         }
         if let Some(tracer) = &mut self.tracer {
