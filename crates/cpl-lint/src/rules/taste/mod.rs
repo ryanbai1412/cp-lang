@@ -503,9 +503,14 @@ impl<'a> Taste<'a> {
             "{}[{}].{}({})",
             found.target, found.range, found.method, found.args
         );
+        let end = trim_end(self.src, wb_base, wb_stmt.span) + wb_base - first_base;
+        let span = Span {
+            start: first_stmt.span.start,
+            end,
+        };
         let mut diag = Diagnostic::warning(
             COPY_SORT_WRITEBACK.code,
-            first_stmt.span,
+            span,
             format!(
                 "copies `{}[{}]`, mutates it, and writes it back: use `{replacement}`",
                 found.target, found.range
@@ -517,11 +522,6 @@ impl<'a> Taste<'a> {
             .iter()
             .any(|&(b, s)| mentions(at(b, s.span), sub_name));
         if !sub_used_after {
-            let end = trim_end(self.src, wb_base, wb_stmt.span) + wb_base - first_base;
-            let span = Span {
-                start: first_stmt.span.start,
-                end,
-            };
             diag.fixes.push(Fix {
                 title: format!("use `{replacement}`"),
                 edits: vec![(span, replacement)],

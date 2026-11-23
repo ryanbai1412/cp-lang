@@ -496,12 +496,14 @@ fn lint_file(file: &File, config: &Config) -> Vec<Diagnostic> {
 
 /// A finding inside a wider one that rewrites the same code better, or whose
 /// labelled evidence is inside it: the wider one is shown alone (`s = s + x`
-/// in a loop that is one `sum`; `var found = -1` set by a search loop).
+/// in a loop that is one `sum`; `var found = -1` set by a search loop; the
+/// push loop that copies a slice only to sort it and write it back).
 const SUPERSEDED_BY: &[(&Lint, &Lint)] = &[
     (&COMPOUND_SELF_REF, &LOOP_REDUCTION),
     (&CHMIN_CHMAX_IF, &LOOP_REDUCTION),
     (&SENTINEL_SCALAR, &LOOP_REDUCTION),
     (&SENTINEL_SCALAR, &SEARCH_LOOP),
+    (&PUSH_LOOP, &COPY_SORT_WRITEBACK),
 ];
 
 /// Lints that point to a std structure: a library module is where the

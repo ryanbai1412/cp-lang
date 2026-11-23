@@ -1875,3 +1875,10 @@ fn binom_from_a_factorial_and_an_inverse_factorial_table_is_flagged() {
         codes(convolution)
     );
 }
+
+#[test]
+fn a_slice_copied_sorted_and_written_back_is_one_finding() {
+    // corpus/newcomer/n33_copy_sort.cp: the push loop is part of the copy.
+    let src = "let (n, l, r): (1..=100, 0..=99, 1..=100) = read()\nvar a: [0..n]Int = read()\nvar tmp: List<Int> = []\nfor i in l..r:\n    tmp.push(a[i])\ntmp.sort()\nfor i in l..r:\n    a[i] = tmp[i - l]\nprint(a)\n";
+    assert_eq!(codes(src), ["L0522"]);
+}
