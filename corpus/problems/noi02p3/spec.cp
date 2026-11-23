@@ -7,7 +7,7 @@ domain F = 1..=n
 let branches = read<[n - 1](a: F, b: F, cost: 0..=100_000)>()
 let t = Rooted(Graph.undirected(branches), root: F.first!)
 let tropical = Semiring(min, +)
-enum Head: Small, Big
+enum Head = Small | Big
 fn clash(w: Head, wc: Head, c: F) -> Int:
     if w == wc and (w == Head.Big or heads == 2): t.up_arc(c)!.cost else: 0
 // eat(v)[w][x]: the cheapest for v's subtree when head w eats v and the big head eats x of its

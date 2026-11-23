@@ -13,7 +13,7 @@ var base: [V]Int = 0
 var offset = 0
 for cycle in g.cycles():
     for (i, v) in cycle.items:
-        idx[v] = i
+        idx[v] = (cycle.len - i) % cycle.len
         base[v] = offset
     offset += cycle.len
 fn label(v: V) -> Int:

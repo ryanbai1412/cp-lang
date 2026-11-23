@@ -6,7 +6,7 @@ let n = read<1..=500>()
 domain Row = [n]
 domain Col = [n]
 let g = read<[Row, Col]Char>()
-enum Letter: A, B, C, D, E
+enum Letter = A | B | C | D | E
 fn spans(k: Int) -> Int = k * (k + 1) / 2
 struct FreeSpans:
     var blocked: [Col]Int

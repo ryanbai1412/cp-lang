@@ -1,7 +1,7 @@
 // coci21c1p1 Ljestvica: each basket is worth 100, or 150 when the same player scored within the
 // last 10 seconds. Players 1..=4 are team A, 5..=8 team B.
 let n = read<1..=1_000>()
-enum Team: Home, Away
+enum Team = Home | Away
 domain Player = 1..=8
 var last: [Player]?Int = None
 var score: [Team]Int = 0
