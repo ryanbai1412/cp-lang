@@ -1,4 +1,4 @@
-use std.seq.{suffix_scan}
+use std.prefix.{suffix_fold}
 
 let n = 10_000
 domain Pos = 0..n
@@ -12,7 +12,7 @@ var acc = 0
 for r in 0..2000:
     let ps = a.scan(+)
     let pm = a.scan(min)
-    let sm = a.suffix_scan(max)
-    acc += ps[Pos(n - 1 - (r % n))] + pm[Pos(n - 1 - (r % n))] + sm[Pos(r % n)]
+    let sm = suffix_fold(max, a)
+    acc += ps.prefix(Pos(n - 1 - (r % n)).r) + pm.prefix(Pos(n - 1 - (r % n)).r) + sm[Pos(r % n).l]
 
 print(acc)
