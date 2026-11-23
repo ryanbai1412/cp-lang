@@ -19,7 +19,7 @@ let x: [V]1..=200_000 = read()
 
 fn build_perm() -> ?[V]Int:
     var last_at_depth: [0..=n]?V = none
-    last_at_depth[x[V.first]] = V.first
+    last_at_depth[x[V.first!]] = V.first
     var par: [V]?V = none
     var is_ext: [V]Bool = false
 
@@ -35,13 +35,13 @@ fn build_perm() -> ?[V]Int:
 
     let tree = Rooted.from_parents(par)
     var order: List<V> = []
-    var stack: List<(V, Bool)> = [(V.first, false)]
+    var stack: List<(V, Bool)> = [(V.first!, false)]
     while let (u, post) = stack.pop():
         if post:
             order.push(u)
         else:
             if is_ext[u]: order.push(u) else: stack.push((u, true))
-            for c in tree.children(u).rev: stack.push((c, false))
+            for c in [c for c in tree.children(u)].rev: stack.push((c, false))
 
     let pos = order.inverse()
     let rank: [V]Int = [V] u => pos[u] + 1

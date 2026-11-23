@@ -20,9 +20,9 @@ let edges: [E](u: V, v: V) = read()
 var peeled: [V]Bool = false
 for v in peel(Graph.directed(edges)): peeled[v] = true
 
-let dist = bfs01(
-    Graph.undirected(edges),
-    [v for v in V if not peeled[v]],
-    a => if edges[a.e].v == a.to: 0 else: 1,
-)
-print(if all(dist.reached(v) for v in V): sum(dist[v]! for v in V) else: -1)
+domain Arc = 0..2 * m
+let arcs: [Arc](u: V, v: V, w: Int) = [Arc] k =>
+    let e = edges[E(Int(k) / 2)]
+    if Int(k) % 2 == 0: (u: e.u, v: e.v, w: 0) else: (u: e.v, v: e.u, w: 1)
+let dist = bfs01(Graph.directed(arcs), from: [v for v in V if not peeled[v]])
+print(if V.all(v => dist.reached(v)): sum(dist[v]! for v in V) else: -1)

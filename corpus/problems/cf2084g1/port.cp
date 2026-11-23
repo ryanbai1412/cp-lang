@@ -20,7 +20,7 @@ for k in 0..n:
     for c in 0..=min(k, half):
         if let x = dp[c]:
             let gain = (2 * c - k) * (2 * (half - c) - (n - k))
-            for z in [false, true] if c + Int(z) <= half and forced in [none, some(z)]:
+            for z in [false, true] if c + Int(z) <= half and (forced == none or forced == some(z)):
                 next[c + Int(z)] max= x + gain
     dp = next
 print((dp[half]! + n * (n + 1) * (n + 1) / 2) / 2)
