@@ -54,10 +54,10 @@ for nid in 0..st_t.len:
     let s = st_t[nid]
     if not closed[Q(s)]: add_span(1, 0, q - 1, s, q - 1, st_v[nid])
 
-let INF = 1_000_000_000
-let B = 1_000_005
-let W = 2_000_011
-let PINF = (2 * B) * W + 2 * B
+let inf = 1_000_000_000
+let b = 1_000_005
+let w = 2_000_011
+let pinf = (2 * b) * w + 2 * b
 var bits: [0..2, 0..top + 2]Int = 0
 var h_s: List<Int> = []
 var h_j: List<Int> = []
@@ -81,7 +81,7 @@ fn ins(s: Int, l: Int, r: Int, cur: Int) -> Int:
         j += j & -j
     nb
 
-var ans: [Q]Int = INF
+var ans: [Q]Int = inf
 
 fn dfs(o: Int, l: Int, r: Int, dj0: Int, dj1: Int, p0: Int, p1: Int, ml: Int):
     let mark = h_s.len
@@ -96,16 +96,16 @@ fn dfs(o: Int, l: Int, r: Int, dj0: Int, dj1: Int, p0: Int, p1: Int, ml: Int):
         let cr = v % width
         d0 = ins(0, cl, cr, d0)
         d1 = ins(1, top - cr, top - cl, d1)
-        b0 min= (cr + B) * W + (-cl + B)
-        b1 min= (-cl + B) * W + (cr + B)
+        b0 min= (cr + b) * w + (-cl + b)
+        b1 min= (-cl + b) * w + (cr + b)
         b2 min= cr - cl
     if l == r:
         var bi = b2
         var bu = b2
-        let r1 = b0 / W - B
-        let l1 = -(b0 % W - B)
-        let l2 = -(b1 / W - B)
-        let r2 = b1 % W - B
+        let r1 = b0 / w - b
+        let l1 = -(b0 % w - b)
+        let l2 = -(b1 / w - b)
+        let r2 = b1 % w - b
         if r1 >= l2:
             let ci = r1 - l2
             let cu = r2 - l1
@@ -113,7 +113,7 @@ fn dfs(o: Int, l: Int, r: Int, dj0: Int, dj1: Int, p0: Int, p1: Int, ml: Int):
                 bi = ci
                 bu = cu
         let d = min(d0, d1)
-        if d < INF and (0 < bi or (0 == bi and d < bu)):
+        if d < inf and (0 < bi or (0 == bi and d < bu)):
             bu = d
         ans[Q(l)] = bu
     else:
@@ -127,5 +127,5 @@ fn dfs(o: Int, l: Int, r: Int, dj0: Int, dj1: Int, p0: Int, p1: Int, ml: Int):
         h_j.pop()
         h_v.pop()
 
-dfs(1, 0, q - 1, INF, INF, PINF, PINF, INF)
+dfs(1, 0, q - 1, inf, inf, pinf, pinf, inf)
 for i in Q: print(ans[i])

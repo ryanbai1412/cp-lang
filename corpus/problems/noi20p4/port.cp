@@ -60,29 +60,29 @@ for t in 0..T:
         for i in 0..n:
             mn min= mn + rem[i] - k
             mx max= mx + rem[i] - k
-        let W = mx - mn + 1
+        let w = mx - mn + 1
         var reach: List<Bool> = []
-        for o in 0..W:
+        for o in 0..w:
             reach.push(o == -mn)
         for i in 0..n:
             let c = rem[i] - k
-            for o in 0..W:
-                var r = reach[i * W + o]
-                if o - c >= 0 and o - c < W and reach[i * W + o - c]:
+            for o in 0..w:
+                var r = reach[i * w + o]
+                if o - c >= 0 and o - c < w and reach[i * w + o - c]:
                     r = true
                 reach.push(r)
         var off = -k - mn
-        if off < 0 or not reach[n * W + off]:
+        if off < 0 or not reach[n * w + off]:
             print(-1)
         else:
-            var S: List<Int> = []
+            var s: List<Int> = []
             var rest: List<Int> = []
             for back in 0..n:
                 let i = n - 1 - back
-                if reach[i * W + off]:
+                if reach[i * w + off]:
                     rest.push(i)
                 else:
-                    S.push(i)
+                    s.push(i)
                     off -= rem[i] - k
-            greedy(S, S.len - 1)
+            greedy(s, s.len - 1)
             greedy(rest, rest.len - 1)

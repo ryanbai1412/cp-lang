@@ -1,9 +1,9 @@
 // IOI '09 P3, POI (buildable today-form)
 // original: corpus/submissions/5106576.cpp
-let N: 1..=2000 = read()
+let n: 1..=2000 = read()
 let T: 1..=2000 = read()
-let P: 1..=N = read()
-domain C = 0..N
+let p: 1..=n = read()
+domain C = 0..n
 domain Task = 0..T
 let solved: [C, Task]0..=1 = read()
 
@@ -24,6 +24,6 @@ for c in C:
     ranking.push((-score, -tasks, c.to_idx + 1))
 ranking.sort()
 
-for r in 0..N:
-    if ranking[r].2 == P:
+for r in 0..n:
+    if ranking[r].2 == p:
         print(-ranking[r].0, r + 1)
