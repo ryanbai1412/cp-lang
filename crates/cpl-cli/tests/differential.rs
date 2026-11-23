@@ -1228,3 +1228,59 @@ fn builtin_members_agree_between_interp_and_sanitized_cpp_at_the_edges() {
         wrong.join("\n\n")
     );
 }
+
+/// The C++ rounds `a * b - c` twice, as the interpreter does, even when the
+/// judge's `-march` has a fused multiply-add (cf2138f on an FMA runner).
+#[test]
+fn float_ops_round_as_the_interpreter_under_fma_flags() {
+    let has_fma = std::fs::read_to_string("/proc/cpuinfo").is_ok_and(|s| s.contains(" fma"));
+    if !has_fma {
+        return;
+    }
+    let dir = std::env::temp_dir().join(format!("cpl-no-fma-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let (src, cpp, exe) = (dir.join("fma.cp"), dir.join("fma.cpp"), dir.join("fma"));
+    let source = "let (a, b, c): (F64, F64, F64) = read()\nprint(\"{a * b - c:.20f}\")\n";
+    std::fs::write(&src, source).unwrap();
+    let input = b"0.1 10 1\n";
+    let run = |cmd: &mut Command| {
+        let mut child = cmd
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .spawn()
+            .unwrap();
+        child.stdin.take().unwrap().write_all(input).unwrap();
+        child.wait_with_output().unwrap()
+    };
+    let interp = run(Command::new(env!("CARGO_BIN_EXE_cpl")).arg("run").arg(&src));
+    assert!(interp.status.success());
+    let built = Command::new(env!("CARGO_BIN_EXE_cpl"))
+        .args(["build", "--judge", "codeforces"])
+        .arg(&src)
+        .arg("-o")
+        .arg(&cpp)
+        .output()
+        .unwrap();
+    assert!(
+        built.status.success(),
+        "{}",
+        String::from_utf8_lossy(&built.stderr)
+    );
+    let compiled = Command::new("g++")
+        .args(["-std=c++17", "-O2", "-mfma", "-ffp-contract=fast", "-o"])
+        .arg(&exe)
+        .arg(&cpp)
+        .output()
+        .unwrap();
+    assert!(
+        compiled.status.success(),
+        "{}",
+        String::from_utf8_lossy(&compiled.stderr)
+    );
+    let native = run(&mut Command::new(&exe));
+    let _ = std::fs::remove_dir_all(&dir);
+    assert_eq!(
+        String::from_utf8_lossy(&native.stdout),
+        String::from_utf8_lossy(&interp.stdout)
+    );
+}
