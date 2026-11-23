@@ -1,8 +1,7 @@
-// SHOI 2016 P4, Black-box Company (CP Lang 0.2.2): inclusion-exclusion over
-// `Subset<Company>` with Kirchoff matrix-tree determinant in `Mod<1_000_000_007>`.
+// SHOI 2016 P4 Black-box Company: count spanning trees that use one road of
+// every company. Inclusion-exclusion over the skipped companies, each term a
+// Kirchhoff matrix-tree determinant (city n dropped) in Mod<1_000_000_007>.
 // original: corpus/submissions/5635192.cpp
-use std.mod.{Mod}
-
 type Z = Mod<1_000_000_007>
 
 let n: Int = read()
@@ -20,7 +19,7 @@ fn det(mut a: [Rest, Rest]Z) -> Z:
     var ans = Z.one
     for i in Rest:
         var pivot: ?Rest = None
-        for r in i..:
+        for r in Rest if r >= i:
             if a[r, i] != Z.zero:
                 pivot = r
                 break
@@ -29,10 +28,10 @@ fn det(mut a: [Rest, Rest]Z) -> Z:
             for c in Rest: (a[i, c], a[p, c]) = (a[p, c], a[i, c])
             ans = -ans
         ans *= a[i, i]
-        let inv = a[i, i].inv
-        for r in i.r..:
+        let inv = a[i, i].inv()
+        for r in Rest if r > i:
             let f = a[r, i] * inv
-            for c in i..: a[r, c] -= f * a[i, c]
+            for c in Rest if c >= i: a[r, c] -= f * a[i, c]
     ans
 
 var total = Z.zero
@@ -42,12 +41,12 @@ for skipped in Subset<Company>:
         if c in skipped: continue
         for e in roads[c]:
             if e.u == e.v: continue
-            if let u = Rest.from_idx(e.u.label): lap[u, u] += Z.one
-            if let v = Rest.from_idx(e.v.label): lap[v, v] += Z.one
-            if let u = Rest.from_idx(e.u.label):
-                if let v = Rest.from_idx(e.v.label):
-                    lap[u, v] -= Z.one
-                    lap[v, u] -= Z.one
+            let (u, v) = (Rest.at(e.u.label), Rest.at(e.v.label))
+            if let u = u: lap[u, u] += 1
+            if let v = v: lap[v, v] += 1
+            if let u = u, let v = v:
+                lap[u, v] -= 1
+                lap[v, u] -= 1
     let trees = det(mut lap)
-    if popcount(skipped.idx) % 2 == 0: total += trees else: total -= trees
+    if skipped.len % 2 == 0: total += trees else: total -= trees
 print(total)
