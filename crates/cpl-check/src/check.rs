@@ -5,6 +5,7 @@
 //! with every type. It also never reports inside a span the parser
 //! poisoned.
 
+mod advice;
 mod call;
 mod expr;
 mod known;

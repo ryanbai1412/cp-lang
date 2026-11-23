@@ -367,7 +367,7 @@ pub const REGISTRY: &[CodeInfo] = &[
         summary: "An operator was applied to operand types it does not support.",
         explanation: "Check the operand types and convert explicitly when mixing `Int`, `F64`, `U64`, `Str`, or `Bool`.",
         trigger: "let x = \"a\" + 1\n",
-        fix: "let x = \"a\" + \"1\"\nprint(x)\n",
+        fix: "let x = \"a{1}\"\nprint(x)\n",
         mode: "check",
         input: "",
     },

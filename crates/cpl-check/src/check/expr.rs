@@ -1376,14 +1376,19 @@ impl<'a> Checker<'a> {
                 let primitive = |t: &Ty| t.is_numeric() || matches!(t, Ty::Bool | Ty::Str);
                 let clear = primitive(&left) && primitive(&right);
                 if clear {
+                    let into_string = (op == BinOp::Add)
+                        .then(|| self.into_string(lhs, rhs))
+                        .flatten();
                     let message = format!(
                         "`{}` can't combine {} and {}",
                         op.text(),
-                        left.with_article(),
-                        right.with_article()
+                        left.widen().with_article(),
+                        right.widen().with_article()
                     );
                     if let Some(diag) = self.error(codes::BAD_OPERANDS, op_span, message) {
-                        if left == Ty::Str || right == Ty::Str {
+                        if let Some((span, text)) = into_string {
+                            diag.fix("put the value in the string", span, text);
+                        } else if left == Ty::Str || right == Ty::Str {
                             diag.help = Some("put the value in the string: `\"{x}\"`".into());
                         }
                     }

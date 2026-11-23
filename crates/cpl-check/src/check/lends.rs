@@ -1313,26 +1313,14 @@ impl<'a> Checker<'a> {
                 let Some(why) = self.overlap(&p, &q) else {
                     continue;
                 };
-                let message = format!(
-                    "`{}` and `{}` may be the same storage, and {} lent `mut` to this call: {why}",
-                    show(&a.value),
-                    show(&b.value),
-                    if a.mutable && b.mutable {
-                        "both are"
-                    } else {
-                        "one is"
-                    }
-                );
+                let (message, help) = super::advice::lent_twice(a, b, &why);
                 let first_span = a.value.span;
                 if let Some(diag) = self.error(codes::LENT_TWICE, b.value.span, message) {
                     diag.labels.push(cpl_diag::Label {
                         span: first_span,
                         message: "also lent here".into(),
                     });
-                    diag.help = Some(
-                        "guard it (`if i != j: ...`), state it (`assert i != j`), or copy the read-only one first"
-                            .into(),
-                    );
+                    diag.help = Some(help);
                 }
             }
         }

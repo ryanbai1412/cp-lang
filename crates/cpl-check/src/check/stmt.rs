@@ -1345,10 +1345,7 @@ impl<'a> Checker<'a> {
                             if let Some(diag) =
                                 self.error(codes::DUPLICATE_VARIANT_TAG, tag_expr.span, message)
                             {
-                                diag.labels.push(cpl_diag::Label {
-                                    span: *prev_span,
-                                    message: "first `@tag` here".to_string(),
-                                });
+                                super::advice::duplicate_tag(diag, *prev_span);
                             }
                         } else {
                             seen_tags.push((tag_text, tag_expr.span));

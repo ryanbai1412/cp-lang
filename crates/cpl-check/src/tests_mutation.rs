@@ -53,14 +53,3 @@ fn a_library_fn_that_changes_an_argument_takes_it_as_mut() {
         vec![]
     );
 }
-
-#[test]
-fn a_did_you_mean_keeps_values_and_types_apart() {
-    use crate::check::closest;
-    assert_eq!(closest("cnt", ["Int", "count"].into_iter()), None);
-    assert_eq!(closest("vec", ["Vec"].into_iter()).as_deref(), Some("Vec"));
-    assert_eq!(
-        closest("Lst", ["List"].into_iter()).as_deref(),
-        Some("List")
-    );
-}

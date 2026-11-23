@@ -1297,7 +1297,13 @@ impl<'a> Checker<'a> {
             ty if ty.is_numeric() || matches!(ty, Ty::Bool | Ty::Str | Ty::Char | Ty::Pos(_)) => {
                 self.plain_args(args);
                 let message = format!("`{callee_text}` is {}, not a fn", ty.widen().with_article());
-                self.error(codes::NOT_CALLABLE, callee.span, message);
+                let product =
+                    (ty.is_numeric() && args.len() == 1).then(|| self.quote(args[0].value.span));
+                if let Some(diag) = self.error(codes::NOT_CALLABLE, callee.span, message) {
+                    if let Some(arg) = product {
+                        diag.help = Some(format!("to multiply, write `{callee_text} * ({arg})`"));
+                    }
+                }
                 Ty::Error
             }
             _ => {
