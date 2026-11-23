@@ -83,3 +83,35 @@ fn a_comparison_of_two_literals_keeps_only_the_branch_taken() {
     assert!(!cpp.contains("998244353 < 3037000500"), "{cpp}");
     assert!(!cpp.contains("mul_mod("), "{cpp}");
 }
+
+#[test]
+fn an_optional_comparator_nobody_passes_is_never_tested() {
+    let cpp = cpp(concat!(
+        "var h = MinHeap<Int>()\n",
+        "let n: 1..=10 = read()\n",
+        "for i in 0..n: h.push(n - i)\n",
+        "print(h.pop()!)\n",
+    ));
+    let start = cpp.find("_less(").expect("a less fn");
+    let less = &cpp[start..start + cpp[start..].find("\n}").expect("its end")];
+    assert!(!less.contains("has_value()"), "{less}");
+    let start = cpp.find("_new_").expect("a new fn");
+    let new = &cpp[start..start + cpp[start..].find("\n}").expect("its end")];
+    assert!(!new.contains("has_value()"), "{new}");
+}
+
+#[test]
+fn an_optional_comparator_some_heap_gets_is_still_tested() {
+    let cpp = cpp(concat!(
+        "var h = MinHeap<Int>()\n",
+        "var g: Heap<Int> = Heap(by: x => -x)\n",
+        "let n: 1..=10 = read()\n",
+        "for i in 0..n:\n",
+        "    h.push(n - i)\n",
+        "    g.push(i)\n",
+        "print(h.pop()!, g.pop()!)\n",
+    ));
+    let start = cpp.find("_less(").expect("a less fn");
+    let less = &cpp[start..start + cpp[start..].find("\n}").expect("its end")];
+    assert!(less.contains("has_value()"), "{less}");
+}

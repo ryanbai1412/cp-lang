@@ -43,9 +43,10 @@ fn if_let_on_a_field_reads_it_in_place_when_the_branch_copies_out() {
         "        if let f = self.lt: return f(a, b)\n",
         "        a < b\n",
         "let h = H(lt: None)\n",
+        "let g = H(lt: Some((a, b) => a > b))\n",
         "var c = 0\n",
         "for i in 0..10:\n",
-        "    if h.less(i, 5): c += 1\n",
+        "    if h.less(i, 5) and g.less(i, 5): c += 1\n",
         "print(c)\n",
     ));
     assert!(
