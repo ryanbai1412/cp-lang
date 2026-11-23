@@ -1,4 +1,13 @@
-// CCO '24 P5 — Parity-Alternating Subarray Partition DP (today form for proto/cpc)
+// Source: CCO 2024 Day 2 (Heavy Light Decomposition), https://dmoj.ca/problem/cco24p5
+// Problem: an array a of N <= 5e5 values in 1..N. A value is heavy in an array if it occurs
+//   more than once there, else light; an array is good if light and heavy elements alternate.
+//   Count the ways to cut a into good subarrays, mod 1000003.
+// Solution: dp[i] = sum of dp[j] over ends j > i with a[i..j) good, filled from the right. The
+//   first element is light or heavy, so a good array follows one of two parity patterns, one
+//   lazy SegTree each over ends j: it keeps the least number of violated conditions and the sum
+//   of dp[j] where that least is reached. Prepending a[i] adds or removes violations on ranges
+//   of ends from the next occurrences of its value: a light one must not repeat, a heavy one
+//   needs a later copy at a heavy place. dp[i] adds the sums where 0 are violated. O(N log N).
 // original: corpus/submissions/6435483.cpp
 let mod = 1_000_003
 let n: 1..=500_000 = read()

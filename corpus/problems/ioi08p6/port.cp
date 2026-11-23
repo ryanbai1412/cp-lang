@@ -1,14 +1,13 @@
-// IOI 2008 Pyramid Base: on an m by n field with p rectangular obstacles,
-// each with a removal cost, find the largest square base whose obstacles
-// can all be removed for at most `budget`.
-//
-// Both halves sweep the x axis and keep the y axis in a segment tree.
-//   budget > 0 (p <= 30000): binary search the side k. Every obstacle makes
-//     a box of base corners more expensive, so sweep the corners' x and keep
-//     the cost per corner y under "add on a range, smallest of all".
-//   budget = 0 (p <= 400000): slide a window of columns. `Cover` counts how
-//     many obstacles of the window lie over each y and knows the longest
-//     free run; the window grows while a square of its width still fits.
+// Source: IOI 2008 Day 2 (Pyramid Base), https://dmoj.ca/problem/ioi08p6
+// Problem: an M x N grid (M, N <= 1e6) with P possibly overlapping rectangular obstacles, each
+//   removable whole for cost C_i <= 7000. With budget B, print the largest side of a square base
+//   whose cells can be cleared within B (0 if none). Either B = 0 and P <= 400000, or
+//   0 < B <= 2e9 and P <= 30000.
+// Solution: B > 0: binary search the side k. An obstacle charges its cost to a box of lowest
+//   corners; sweep the corners' x with a lazy min/add SegTree over y and test the cheapest
+//   corner: O((M + P) log N) per k. B = 0: two pointers over columns; a SegTree counting the
+//   obstacles over each y (whole removals only, so no push-down) knows the longest free run, and
+//   the window shrinks until a square of its width fits. O((M + P) log N).
 // original: corpus/submissions/5637805.cpp
 
 let m: Int = read()

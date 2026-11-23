@@ -1,7 +1,15 @@
-// Runnable port (proto/cp.py lib-run) of statement-first noip22p4.cp
-// original: corpus/submissions/5445685.cpp
+// Source: NOIP 2022 P4 (Match), https://dmoj.ca/problem/noip22p4
+// Problem: permutations a and b of 1..n and Q queries (l, r), n, Q <= 2.5e5 (the first line also
+//   has a test id). For each query print the sum over all l <= p <= q <= r of
+//   max(a[p..=q]) * max(b[p..=q]), mod 2^64.
+// Solution: offline by right end r. A lazy SegTree over left ends p keeps A_p = max a[p..=r],
+//   B_p = max b[p..=r] and the history sum H_p of A_p * B_p over all r so far. Monotone stacks
+//   turn each new r into range assignments of A and of B; then every p <= r adds A_p * B_p to
+//   H_p. Tags compose assignments with history coefficients (on AB, A, B and 1); a query with
+//   right end r folds H over l..=r. O((n + Q) log n).
 // Note: proto/cpc lacks U64 today, so Int (64-bit signed) is used; exact on all
 // inputs where historical sum < 2^63 (see friction backlog for U64 wrapping gap).
+// original: corpus/submissions/5445685.cpp
 
 let (test_id, n): (Int, Int) = read()
 domain I = 1..=n

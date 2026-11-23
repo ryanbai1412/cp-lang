@@ -1,5 +1,14 @@
-// EGOI '23 P7 (Find the Tree): component contraction + complement-graph DFS.
-// Runnable on proto/cpc today.
+// Source: EGOI 2023 Day 2 (Sopsug), https://dmoj.ca/problem/egoi23p7
+// Problem: N <= 3e5 buildings, M <= 3e5 existing directed tubes (u sends garbage to v) that
+//   must be used and K <= 3e5 ordered pairs where no tube may be built. Print N - 1 tubes that
+//   form a tree directed toward one root, including the existing ones, or "NO".
+// Solution: the existing tubes must form a forest: a DFS from every building without an
+//   outgoing tube, reporting NO on a revisit or an unreached building. Contract each tree to
+//   its root; the root of tree c may hang below tree k unless it is forbidden from all of k's
+//   buildings (counted per tree from c's root's forbidden list). DFS the complement of those
+//   bans, keeping a set of unvisited trees so each step scans only bans; a tree whose DFS ended
+//   stays available to hang below later ones. NO unless N_trees - 1 links are found; each link
+//   takes the first allowed building. O((N + M + K) log N).
 // original: corpus/submissions/5678057.cpp
 let n: 1..=3e5 = read()
 let m1: 0..=3e5 = read()

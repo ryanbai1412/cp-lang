@@ -1,4 +1,14 @@
-// Runnable port (proto/cp.py lib-run) of dmopc21c2p6.cp
+// Source: DMOPC '21 Contest 2 P6 (Strange Function), https://dmoj.ca/problem/dmopc21c2p6
+// Problem: a permutation p of 1..N and Q queries, N, Q <= 3e5. f(l, r) finds the minimum of
+//   p[l..=r] at i, rotates p[l..=i] right by one so it lands at l, then calls f(i + 1, r).
+//   Query 1: apply f(1, N). Query 2 i: print p_i. Query 3 i: print j with p_j = i.
+// Solution: fix a threshold and call larger values big. After k passes the big positions are the
+//   original ones shifted right by k, except a suffix packed against the end: position i is big
+//   iff i - k is big or the bigs in [i - k, N) number at least N - i. All queries are offline
+//   with their pass count k. Query 2: parallel binary search on the value with a Fenwick tree of
+//   big positions. Query 3: sweep thresholds down; Fenwicks of big count and index sum give the
+//   sum of big positions after k passes, and x's position is that sum with x minus without.
+//   O((N + Q) log^2 N).
 // original: corpus/submissions/3968585.cpp
 
 let (n, q): (Int, Int) = read()

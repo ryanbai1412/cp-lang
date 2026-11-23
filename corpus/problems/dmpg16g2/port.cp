@@ -1,4 +1,12 @@
-// DMPG '16 G2 (today/ runnable subset) — original: corpus/submissions/4653887.cpp
+// Source: DMPG '16 G2 (Kabane Apocalypse), https://dmoj.ca/problem/dmpg16g2
+// Problem: an N x N grid (N <= 1000) of cells, each '.' or one of the letters A..E. Count the
+//   axis-aligned sub-grids that contain all five letters.
+// Solution: inclusion-exclusion over the 32 sets S of letters left out: add (-1)^|S| times the
+//   sub-grids avoiding S. Fix the bottom row; a column is free for S while none of S's letters
+//   occurs in it between the top and bottom rows. Raising the top from row 0 frees columns as
+//   the last occurrence of a letter drops out; free runs merge in a Dsu per S, which keeps the
+//   count of column spans inside free runs. O(32 N^2) Dsu steps.
+// original: corpus/submissions/4653887.cpp
 
 const M = 5
 const MASKS = 32

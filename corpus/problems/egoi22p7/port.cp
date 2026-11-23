@@ -1,4 +1,14 @@
-// Runnable today/ port of EGOI '22 P7 (Toy Design) for proto/cpc.
+// Source: EGOI 2022 Day 2 (Toy Design), https://dmoj.ca/problem/egoi22p7
+// Problem: interactive. n <= 200 pins with hidden wires (design 0). Connected(a, i, j) says
+//   whether pins i and j are joined in design a; if not, it creates a new design: a plus wire
+//   (i, j). Using at most max_ops = 1350 calls, describe any design whose connectivity equals
+//   design 0's.
+// Solution: divide and conquer over pin ranges as a segment tree; each node keeps a design in
+//   which its whole range is joined. To merge halves, start from the right child's design and
+//   take one pin per known component of the left half: if Connected says no, keep the new
+//   design; if yes, the pin is joined in design 0 to a right component not yet matched, found by
+//   descending the right child's subtree with one query per level (subranges with only matched
+//   components are skipped). A Dsu records the joins; O(n log n) queries.
 // Embeds the local persistent-DSU grader from stdin (n, m, then m hidden edges) and runs
 // the D&C segment tree solver with generation-stamped Marks<Pin> (O(1) clear).
 // Prints the query count and the reconstructed spanning forest edges.

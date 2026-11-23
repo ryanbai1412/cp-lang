@@ -1,4 +1,14 @@
-// CCO '22 P5 — Phone Plans / Two-Graph Connectivity (today form for proto/cpc)
+// Source: CCO 2022 Day 2 (Phone Plans), https://dmoj.ca/problem/cco22p5
+// Problem: N <= 2e5 houses; companies A and B each have up to 2e5 lines (u, v, level <= 1e9).
+//   Buying level l from a company gives its lines of level <= l, for price l (0 allowed). Two
+//   houses can talk iff joined by one company's lines. Print the least total price that makes
+//   at least K pairs talk, or -1.
+// Solution: two pointers: raise A's level edge by edge while lowering B's. B is built with all
+//   its lines, merging small sets into large ones and logging every relabel, so lines can be
+//   undone from the top. Talking pairs = pairs in A + pairs in B - pairs together in both, the
+//   last counted with a HashMap over (A label, B label) updated on every relabel. After each A
+//   line drop B lines while the count stays >= K and take A's level plus the last kept B level.
+//   O((N log N + A + B)) expected.
 // original: corpus/submissions/4801885.cpp
 let n: 1..=200_000 = read()
 let ma: 0..=200_000 = read()
