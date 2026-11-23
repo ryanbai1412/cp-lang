@@ -6,7 +6,7 @@
 //   breaks at most one of each, and max of the two counts moves suffice. One scan, O(n).
 // Buildable under proto/cpc today. See ../nccc9s3.cp.
 // original: corpus/submissions/4051697.cpp
-let n: 1..=1_000_000 = read()
+let n: 1..=1e5 = read()
 let s: [0..2 * n]Char = read()
 var uu = Int(s[0] == 'U')
 var ii = 0
