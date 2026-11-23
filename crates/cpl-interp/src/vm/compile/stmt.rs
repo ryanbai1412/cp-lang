@@ -162,6 +162,11 @@ impl<'p, 'f> Compiler<'p, 'f> {
                     self.emit_trace(TracePoint::Let(*slot, init), init.span);
                 }
             }
+            Stmt::Let(slot, Some(init))
+                if self.feed_acc != Some(*slot) && self.writing_let(*slot, init) =>
+            {
+                self.compile_traced_writing_let(*slot, init);
+            }
             Stmt::Break(_) | Stmt::Continue(_) | Stmt::Return(None) => return false,
             Stmt::Assign(place, AssignOp::Set, value)
                 if quiet_place(place, cpl_ir::walk::root(place)) && self.traced_take(value) =>
@@ -199,6 +204,9 @@ impl<'p, 'f> Compiler<'p, 'f> {
             Stmt::Return(Some(value)) | Stmt::Give(value) if self.traced_quiet(value) => {
                 return false
             }
+            Stmt::Return(Some(value)) if self.returns_after_writes(value) => {
+                self.compile_traced_writing_return(value);
+            }
             Stmt::Expr(e) if self.traced_call(e).is_some() => {
                 let dst = self.compile_expr_v(e);
                 if dst >= self.num_local_v {
@@ -228,7 +236,9 @@ impl<'p, 'f> Compiler<'p, 'f> {
                     ExprKind::Local(slot) => slot as u16 + 1,
                     _ => 0,
                 };
+                let fallbacks = self.fallback_exprs.len();
                 let src = self.compile_expr_v(arg);
+                self.trace_writes_of(arg, fallbacks);
                 let point = self.trace_points.len() as u32;
                 self.trace_points.push(TracePoint::Assign(place));
                 let at = self.emit(
@@ -441,7 +451,9 @@ impl<'p, 'f> Compiler<'p, 'f> {
         let acc = *self.feeds.pushers.get(&self.cur_fn?)?;
         match &e.kind {
             ExprKind::Mutate(Mutation::Push, place, args) => match (&place.kind, args.as_slice()) {
-                (PlaceKind::Local(slot), [arg]) if *slot == acc && quiet(arg) => {
+                (PlaceKind::Local(slot), [arg])
+                    if *slot == acc && (quiet(arg) || self.only_writes_places(arg)) =>
+                {
                     Some((acc, place, arg))
                 }
                 _ => None,
@@ -1378,7 +1390,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
 /// The places a condition the tree-walker evaluates changes in place, in
 /// order, when those are its only writes: calls without `mut` arguments
 /// report their own steps. `None` for any other write.
-fn cond_writes(cond: &Expr) -> Option<Vec<(&Place, Span)>> {
+pub(super) fn cond_writes(cond: &Expr) -> Option<Vec<(&Place, Span)>> {
     let mut writes = Some(vec![]);
     cpl_ir::walk::deep_expr(cond, &mut |e| match &e.kind {
         ExprKind::Mutate(_, place, _) => {

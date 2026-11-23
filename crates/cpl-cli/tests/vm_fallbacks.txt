@@ -1,6 +1,4 @@
 # (mode, tag) kinds of tree-walker fallback over tests/programs; shrink-only (tests/vm_fallbacks.rs)
-# interim (compiler lane d): `traced fn:take_all(feeding)` stays until a traced fed loop with a fn param runs on the VM
-# interim (compiler lane d): `traced stmt:Return` (yields_generic_from_body) stays until a traced fed loop runs on the VM
 expr:Binary(Coalesce)
 expr:Call(SortedBag_Int.drain)
 expr:Call(m1_get_or_insert_with_Int_Int)
@@ -10,16 +8,10 @@ expr:CallExpr
 expr:Closure
 expr:DomainVal
 expr:Read
-traced fn:SortedBag_Int.drain(part)
-traced fn:SortedSet_Int.drain(part)
 traced fn:m1_get_or_insert_with_Int_Int(part)
 traced fn:m1_get_or_insert_with_Str_D0_P(part)
 traced fn:m1_get_or_insert_with_Str_D1_P(part)
-traced fn:m6_get_or_insert_with_Int_Int(part)
-traced fn:m6_get_or_insert_with_Str_Int(part)
-traced fn:take_all(feeding)
 traced stmt:Assert
-traced stmt:Assign(Field,Set)
 traced stmt:Assign(Global,Binary(Add))
 traced stmt:Assign(Global,Binary(Div))
 traced stmt:Assign(Global,Binary(Mul))
@@ -30,7 +22,6 @@ traced stmt:Assign(Index1D,Binary(Mul))
 traced stmt:Assign(Index2D,Max)
 traced stmt:Assign(IndexND,Set)
 traced stmt:Assign(Local,Binary(Add))
-traced stmt:Assign(Local,Set)
 traced stmt:DefDomain
 traced stmt:DefDomainFromVal
 traced stmt:Expr(CallExpr)
@@ -41,16 +32,13 @@ traced stmt:Expr(Sort)
 traced stmt:For(Range)
 traced stmt:For(Seq)
 traced stmt:For(SeqRev)
-traced stmt:Let(Binary)
 traced stmt:Let(Call)
 traced stmt:Let(CallExpr)
 traced stmt:Let(Closure)
 traced stmt:Let(Uninit)
 traced stmt:Let(Unwrap)
-traced stmt:Return
 traced stmt:Trap
 traced stmt:While
-untraced fn:SortedBag_Int.drain(part)
 untraced fn:SortedSet_Int.each(feeding)
 untraced fn:m1_get_or_insert_with_Int_Int(part)
 untraced fn:m1_get_or_insert_with_Str_D0_P(part)

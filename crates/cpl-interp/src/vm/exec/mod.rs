@@ -1820,7 +1820,19 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         regs_v[src as usize].clone()
                     };
                     let span = spans[cur_pc];
-                    let updated = self.feed(val, span)?;
+                    // The loop's body shows a lent argument in its caller's
+                    // place, so the argument's slot holds its latest value.
+                    let lends = self.lends();
+                    if lends {
+                        let (slots, base) = (&chunk.slot_map, self.base);
+                        sync_to_stack(slots, regs_i, regs_v, &mut self.stack, base, true);
+                    }
+                    let updated = self.feed(val, span);
+                    if lends {
+                        let (slots, base) = (&chunk.slot_map, self.base);
+                        sync_from_stack(slots, regs_i, regs_v, &mut self.stack, base, true);
+                    }
+                    let updated = updated?;
                     if back != 0 {
                         write_slot(&chunk.slot_map[back as usize - 1], regs_i, regs_v, updated);
                     }

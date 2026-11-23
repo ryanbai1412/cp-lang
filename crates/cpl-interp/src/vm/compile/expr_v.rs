@@ -649,12 +649,14 @@ impl<'p, 'f> Compiler<'p, 'f> {
                     if let SlotLoc::V(src) = self.slot_loc(slot) {
                         let dst = self.alloc_v();
                         self.emit(Op::TakeLocalV { dst, src }, span);
+                        self.note_take(place, span);
                         return dst;
                     }
                 }
                 if let Some(path) = self.compile_place_path(place) {
                     let dst = self.alloc_v();
                     self.emit(Op::TakePlaceV { dst, path }, span);
+                    self.note_take(place, span);
                     return dst;
                 }
                 self.emit_fallback_expr_v(expr)

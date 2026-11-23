@@ -2788,11 +2788,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
         let has_alias = self.stack[self.base..self.base + f.params.len()]
             .iter()
             .any(|v| matches!(v, Value::Alias(..) | Value::Part(_)));
-        let has_fn_param = f
-            .locals
-            .iter()
-            .take(f.params.len())
-            .any(|l| matches!(l.ty, Ty::Fn(..)));
+        let has_fn_param = has_alias && self.fn_args_may_see_lent(id);
         // A traced chunk leaves a `yield` to the tree-walker, which feeds the loop.
         let fed_ok = !feeding || self.vm.as_ref().is_some_and(|c| c.main.traced);
         let mut flow = if fed_ok && !(has_alias && has_fn_param) {

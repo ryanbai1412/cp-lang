@@ -115,7 +115,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
         }
     }
 
-    fn lends(&self) -> bool {
+    pub(super) fn lends(&self) -> bool {
         self.lent
             .last()
             .is_some_and(|&(held, ..)| held >= self.base)

@@ -186,4 +186,57 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
             false => Value::Part(Rc::new(part)),
         })
     }
+
+    /// Whether a fn value among fn `id`'s arguments, now on the stack, may
+    /// read or write a variable lent to the call. A closure that captures
+    /// nothing by reference, touches no lent global, and calls nothing
+    /// cannot.
+    pub(crate) fn fn_args_may_see_lent(&self, id: cpl_ir::FnId) -> bool {
+        let f = &self.program.fns[id];
+        let params = self.base..self.base + f.params.len();
+        let lent: Vec<usize> = (self.stack[params].iter())
+            .filter_map(|v| {
+                let (mut global, mut at) = match v {
+                    Value::Alias(global, at) => (*global, *at),
+                    Value::Part(part) => (part.global, part.at),
+                    _ => return None,
+                };
+                while let Value::Alias(g, a) = match global {
+                    true => &self.globals[at],
+                    false => &self.stack[at],
+                } {
+                    (global, at) = (*g, *a);
+                }
+                global.then_some(at)
+            })
+            .collect();
+        let touches = |place: &Place| match cpl_ir::walk::root(place) {
+            (true, g) => lent.contains(&g),
+            _ => false,
+        };
+        (f.locals.iter().take(f.params.len()).enumerate())
+            .filter(|(_, l)| matches!(l.ty, Ty::Fn(..)))
+            .any(|(i, _)| match &self.stack[self.base + i] {
+                Value::Closure(cid, _) => {
+                    let def = &self.program.closures[*cid];
+                    let mut sees = (def.captures.iter())
+                        .any(|c| c.by_ref || (c.is_global && lent.contains(&c.outer)));
+                    cpl_ir::walk::deep_exprs(&def.body, &mut |e| {
+                        sees |= match &e.kind {
+                            ExprKind::Call(..) | ExprKind::CallExpr(..) | ExprKind::Closure(..) => {
+                                true
+                            }
+                            ExprKind::Global(g) => lent.contains(g),
+                            ExprKind::Mutate(_, place, _) => touches(place),
+                            _ => false,
+                        }
+                    });
+                    cpl_ir::walk::deep_stmts(&def.body, &mut |stmt| {
+                        sees |= matches!(stmt, Stmt::Assign(place, ..) if touches(place))
+                    });
+                    sees
+                }
+                _ => true,
+            })
+    }
 }
