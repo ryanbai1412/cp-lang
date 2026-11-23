@@ -7,7 +7,7 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 2544 (995 passing). Rules: 566.
+Cases: 2546 (995 passing). Rules: 566.
 
 ## Summary per chapter
 
@@ -19,7 +19,7 @@ Cases: 2544 (995 passing). Rules: 566.
 - R04b (04b-keys.md): 27 rules, 65 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R05 (05-ownership.md): 43 rules, 154 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R06 (06-control-functions.md): 24 rules, 88 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R07 (07-sequences.md): 90 rules, 137 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R07 (07-sequences.md): 90 rules, 138 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R08 (08-traits-generics.md): 29 rules, 85 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R09 (09-contexts-checks.md): 26 rules, 56 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R10 (10-io.md): 18 rules, 91 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -498,7 +498,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R07.7.7 [1+ 0-]: | `s.with_prev` | `Seq<(?T, T)>`, starting `(None, first)` | path walks that treat the fir...
 - R07.7.8 [1+ 0-]: | `s.cyclic_pairs` | `Seq<(T, T)>`, plus (last, first) | polygons, rings
 - R07.7.9 [2+ 0-]: | `a.windows(k)`, `a.chunks(k)` | `Seq` of views of `a` | each view keeps `a`'s indices
-- R07.7.10 [5+ 0-]: | `a.runs(by: k)` | `Seq` of views: maximal equal-key runs | `.keys` of each is its range
+- R07.7.10 [5+ 1-]: | `a.runs(by: k)` | `Seq` of views: maximal equal-key runs | `.keys` of each is its range
 - R07.7.11 [1+ 0-]: | `s.step(k)` | every k-th element | ranges and indexed
 - R07.8.1 [2+ 0-]: `.collect()` and the constructors are one operation, \(O(n)\) and allocating; the postfix ...
 - R07.9.1 [3+ 0-]: | `s.sum()`, `s.prod()` | `T`; empty is the identity | \(O(n)\)
@@ -731,14 +731,14 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0112 else_falls_through *(0.3)*: 1 case(s)
 - E0201 Unresolved name: 6 case(s)
 - E0202 Duplicate definition: 3 case(s)
-- E0203 Unknown field or method: 9 case(s)
+- E0203 Unknown field or method: 10 case(s)
 - E0204 Unknown type: 3 case(s)
 - E0205 Used before initialization: 2 case(s)
 - E0206 Unresolved module: 2 case(s)
 - E0207 Private item: 3 case(s)
 - E0208 Uppercase value name: 1 case(s)
 - E0301 Wrong index domain: 16 case(s)
-- E0302 Type mismatch: 40 case(s)
+- E0302 Type mismatch: 41 case(s)
 - E0303 Wrong number of arguments: 6 case(s)
 - E0304 Value is not callable: 1 case(s)
 - E0305 Value is not indexable: 4 case(s)
