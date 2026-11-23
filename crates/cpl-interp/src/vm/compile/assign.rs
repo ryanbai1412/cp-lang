@@ -1104,6 +1104,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                     | Ty::Array { .. }
                     | Ty::Str
                     | Ty::Set(_)
+                    | Ty::HashSet(_)
                     | Ty::Map(_, _)
                     | Ty::HashMap(_, _)
             )

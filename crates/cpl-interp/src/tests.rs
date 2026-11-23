@@ -1361,3 +1361,15 @@ fn vm_walks_map_entries_itself() {
         include_str!("../../cpl-cli/tests/programs/vm_map_key_place.out")
     );
 }
+
+#[test]
+fn vm_walks_sets_maps_and_optionals_itself() {
+    let out = vm_runs_alone(
+        include_str!("../../cpl-cli/tests/programs/vm_for_items.cp"),
+        include_str!("../../cpl-cli/tests/programs/vm_for_items.in"),
+    );
+    assert_eq!(
+        out,
+        include_str!("../../cpl-cli/tests/programs/vm_for_items.out")
+    );
+}

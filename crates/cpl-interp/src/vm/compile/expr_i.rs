@@ -681,6 +681,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                     && matches!(
                         args[0].ty,
                         Ty::Set(_)
+                            | Ty::HashSet(_)
                             | Ty::Map(_, _)
                             | Ty::HashMap(_, _)
                             | Ty::List(_)
@@ -703,11 +704,12 @@ impl<'p, 'f> Compiler<'p, 'f> {
             ExprKind::Mutate(m @ (Mutation::Insert | Mutation::Remove), place, args)
                 if args.len() == 1
                     && !crate::value::ty_has_cached(&args[0].ty, self.program)
-                    && ((matches!(m, Mutation::Insert) && matches!(place.ty, Ty::Set(_)))
+                    && ((matches!(m, Mutation::Insert)
+                        && matches!(place.ty, Ty::Set(_) | Ty::HashSet(_)))
                         || (matches!(m, Mutation::Remove)
                             && matches!(
                                 place.ty,
-                                Ty::Set(_) | Ty::Map(_, _) | Ty::HashMap(_, _)
+                                Ty::Set(_) | Ty::HashSet(_) | Ty::Map(_, _) | Ty::HashMap(_, _)
                             ))) =>
             {
                 let saved_ops = self.ops.len();

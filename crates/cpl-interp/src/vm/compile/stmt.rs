@@ -1305,14 +1305,19 @@ impl<'p, 'f> Compiler<'p, 'f> {
             Ty::Array { dims, .. } if dims.len() == 1 => SeqKind::Array,
             Ty::List(_) | Ty::ListView(_, _) | Ty::Keyed(_, _) => SeqKind::List,
             Ty::Str | Ty::StrView => SeqKind::Str,
+            Ty::Set(_) | Ty::HashSet(_) | Ty::Map(..) | Ty::HashMap(..) => SeqKind::List,
             _ => return false,
         };
+        let items = matches!(
+            seq_expr.ty,
+            Ty::Set(_) | Ty::HashSet(_) | Ty::Map(..) | Ty::HashMap(..)
+        );
         let slot_loc = self.slot_loc(slot);
         match (seq_kind, slot_loc) {
             (SeqKind::Str, SlotLoc::I(..)) => {}
             (SeqKind::Str, _) => return false,
             (_, SlotLoc::I(..) | SlotLoc::V(_) | SlotLoc::SmallTuple { .. }) => {}
-            (_, SlotLoc::OptI { .. }) => return false,
+            (_, SlotLoc::OptI { .. }) => {}
         }
         let r_idx = self.alloc_i();
         let r_len = self.alloc_i();
@@ -1322,7 +1327,12 @@ impl<'p, 'f> Compiler<'p, 'f> {
             }
             _ => None,
         };
-        let local_v = if global_id.is_none() {
+        let local_v = if items {
+            let src = self.compile_expr_v(seq_expr);
+            let dst = self.alloc_v();
+            self.emit(Op::SeqItems { dst, src }, seq_expr.span);
+            Some(dst)
+        } else if global_id.is_none() {
             Some(self.compile_expr_v(seq_expr))
         } else {
             None
@@ -1550,7 +1560,61 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 }
                 (SeqKind::Str, _) => unreachable!(),
             },
-            SlotLoc::OptI { .. } => unreachable!(),
+            SlotLoc::OptI { val, some, .. } => match (seq_kind, global_id) {
+                (SeqKind::Array, Some(gid)) => {
+                    self.emit(
+                        Op::LoadGArr1OptI {
+                            dst_val: val,
+                            dst_some: some,
+                            gid,
+                            r_i: r_idx,
+                        },
+                        seq_expr.span,
+                    );
+                }
+                (SeqKind::Array, None) => {
+                    self.emit(
+                        Op::LoadLArr1OptI {
+                            dst_val: val,
+                            dst_some: some,
+                            arr_v: local_v.unwrap(),
+                            r_i: r_idx,
+                        },
+                        seq_expr.span,
+                    );
+                }
+                (SeqKind::List, None) => {
+                    self.emit(
+                        Op::LoadLList1OptI {
+                            dst_val: val,
+                            dst_some: some,
+                            list_v: local_v.unwrap(),
+                            r_i: r_idx,
+                        },
+                        seq_expr.span,
+                    );
+                }
+                (SeqKind::List, Some(gid)) => {
+                    let cell = self.alloc_v();
+                    self.emit(
+                        Op::LoadGList1V {
+                            dst: cell,
+                            gid,
+                            r_i: r_idx,
+                        },
+                        seq_expr.span,
+                    );
+                    self.emit(
+                        Op::UnboxOptI {
+                            dst_val: val,
+                            dst_some: some,
+                            src_v: cell,
+                        },
+                        seq_expr.span,
+                    );
+                }
+                (SeqKind::Str, _) => unreachable!(),
+            },
         }
         let own = LoopReg::Seq {
             id,

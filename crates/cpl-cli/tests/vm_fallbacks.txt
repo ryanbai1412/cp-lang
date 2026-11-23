@@ -13,8 +13,6 @@ expr:CallExpr
 expr:Closure
 expr:DomainVal
 expr:Index
-expr:Mutate(Insert)
-expr:Mutate(Remove)
 expr:Read
 traced fn:SortedBag_Int.drain(part)
 traced fn:SortedSet_Int.drain(part)
@@ -91,7 +89,6 @@ untraced stmt:Expr(Sort)
 untraced stmt:For(Other)
 untraced stmt:For(Range)
 untraced stmt:For(Seq)
-untraced stmt:For(SeqRev)
 untraced stmt:Let(Uninit)
 untraced stmt:Return
 untraced stmt:Trap

@@ -787,7 +787,10 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 b @ (Builtin::FirstGe | Builtin::FirstGt | Builtin::LastLe | Builtin::LastLt),
                 args,
             ) if args.len() == 2
-                && matches!(args[0].ty, Ty::Set(_) | Ty::Map(_, _) | Ty::HashMap(_, _))
+                && matches!(
+                    args[0].ty,
+                    Ty::Set(_) | Ty::HashSet(_) | Ty::Map(_, _) | Ty::HashMap(_, _)
+                )
                 && !crate::value::ty_has_cached(&args[1].ty, self.program) =>
             {
                 let mode = match b {
@@ -819,7 +822,10 @@ impl<'p, 'f> Compiler<'p, 'f> {
             }
             ExprKind::Mutate(m @ (Mutation::PopFirst | Mutation::PopLast), place, args)
                 if args.is_empty()
-                    && matches!(place.ty, Ty::Set(_) | Ty::Map(_, _) | Ty::HashMap(_, _)) =>
+                    && matches!(
+                        place.ty,
+                        Ty::Set(_) | Ty::HashSet(_) | Ty::Map(_, _) | Ty::HashMap(_, _)
+                    ) =>
             {
                 let saved_ops = self.ops.len();
                 let saved_spans = self.spans.len();
@@ -908,7 +914,10 @@ impl<'p, 'f> Compiler<'p, 'f> {
         }
         if matches!(op, Mutation::PopFirst | Mutation::PopLast)
             && args.is_empty()
-            && matches!(place.ty, Ty::Set(_) | Ty::Map(_, _) | Ty::HashMap(_, _))
+            && matches!(
+                place.ty,
+                Ty::Set(_) | Ty::HashSet(_) | Ty::Map(_, _) | Ty::HashMap(_, _)
+            )
         {
             let saved_ops = self.ops.len();
             let saved_spans = self.spans.len();

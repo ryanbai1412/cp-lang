@@ -1953,6 +1953,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
             | Op::LoadGList1V { .. }
             | Op::LoadLList1V { .. }
             | Op::LoadLList1OptI { .. }
+            | Op::SeqItems { .. }
             | Op::ListPopFieldOptIL { .. }
             | Op::ListPopFieldLV { .. }
             | Op::MakeRange { .. }

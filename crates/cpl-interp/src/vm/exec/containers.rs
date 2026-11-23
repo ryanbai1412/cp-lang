@@ -762,6 +762,17 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 regs_i[dst_val as usize] = v;
                 regs_i[dst_some as usize] = s;
             }
+            Op::SeqItems { dst, src } => {
+                let items: Vec<Value> = match &regs_v[src as usize] {
+                    Value::Set(members) => members.iter().cloned().collect(),
+                    Value::Map(entries) => entries
+                        .iter()
+                        .map(|(k, v)| Value::tuple(vec![k.clone(), v.clone()]))
+                        .collect(),
+                    _ => return trap(spans[cur_pc], "internal: expected a set or a map"),
+                };
+                regs_v[dst as usize] = Value::List(Rc::new(items));
+            }
             Op::ListPopFieldOptIL {
                 dst_val,
                 dst_some,

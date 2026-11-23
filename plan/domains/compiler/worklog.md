@@ -776,3 +776,5 @@ on input `2 / 1 / 2` prints `7` once in `cpl run` and in the C++ (`cpl_main` cal
 - 2026-11-23 A domain-keyed view given for `[D]T` binds `D` to its source domain (`a[V(2)..=V(4)].scan(+)` is a `Prefix<V, Int>`, not over a fresh list domain), and `scan` walks the view's own keys (`self.items`), so `p.prefix(V.cuts(3))` works on a slice (core-04/b4-prefix-of-range, programs/scan_of_a_view). Open: `a.rev.scan(+)` (core-07/prefix-scan-cuts) still mints a fresh domain and fills cuts left-to-right.
 
 2026-11-23: `vm/ir.rs` reached the last 100 lines under its cap; `ScalarKind` and `small_tuple_shape` move to `vm/scalar.rs` unchanged (ir re-exports them).
+
+2026-11-23: a `for` over a set or a map (ordered or hash), or over a list or array of `?Int`, was a tree-walker fallback (`stmt:For(Seq)`). `SeqItems` takes the members, or the `(key, value)` pairs, as a list when the loop begins (the snapshot the tree-walker walks), and the list loop walks it; an `?Int` element loads into its optional registers. `HashSet` insert, remove and contains run on the VM like `Set`. Test: `vm_walks_sets_maps_and_optionals_itself`, program `vm_for_items`.

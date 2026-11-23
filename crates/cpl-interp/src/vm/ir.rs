@@ -977,6 +977,12 @@ pub(crate) enum Op {
         list_v: u16,
         r_i: u16,
     },
+    /// The members of a set, or the `(key, value)` pairs of a map, as a
+    /// list: what a `for` loop over it walks, as it was when the loop began.
+    SeqItems {
+        dst: u16,
+        src: u16,
+    },
     ListPopFieldOptIL {
         dst_val: u16,
         dst_some: u16,
