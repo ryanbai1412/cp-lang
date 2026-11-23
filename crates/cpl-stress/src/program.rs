@@ -646,6 +646,7 @@ impl Program {
     /// Runs the program on `input` for at most `limit`.
     pub fn run(&self, input: &str, limit: Duration) -> std::io::Result<Outcome> {
         let start = Instant::now();
+        eprintln!("DEBUG run spawn {:?}", self.argv);
         let mut child = self
             .to_command()
             .stdin(Stdio::piped())
@@ -687,7 +688,10 @@ impl Program {
                     Err(_) => break Exit::Signal,
                 }
             };
-            (out.join().unwrap(), err.join().unwrap(), exit, peak)
+            eprintln!("DEBUG run exit {:?} after {:?}; joining pipes", exit, start.elapsed());
+            let joined = (out.join().unwrap(), err.join().unwrap(), exit, peak);
+            eprintln!("DEBUG run joined after {:?}", start.elapsed());
+            joined
         });
         Ok(Outcome {
             // LF everywhere: a Windows program's `\r\n` never reaches a compare, report or saved case.
