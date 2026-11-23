@@ -100,18 +100,19 @@ numbers and layout; `W` warnings; `L` lints; `R` runtime traps.
 
 ## Lints
 
-Emitted by 0.2.x: L0001 unknown_lint, L0101 position_arithmetic,
-L0201 var_never_reassigned, L0202 unread_field, L0203
-shadows_top_level, L0204 turbofish_type_args, L0205 pow_method, L0206
-getter_parens, L0207 is_in_cond_header, L0208 redundant_prelude_import,
-L0301 float_equality, L0412 domain_keyed_map, L0413 memo_key_space,
-L0414 unproven_list_index, L0415 loop_invariant_mod_div, L0501
-search_loop, L0502 discarded_result, L0503 symmetric_write, L0504
+Emitted by 0.2.x: L0001 unknown_lint, L0101 position_arithmetic, L0201
+var_never_reassigned, L0202 unread_field, L0203 shadows_top_level, L0204
+turbofish_type_args, L0205 pow_method, L0206 getter_parens, L0207
+is_in_cond_header, L0208 redundant_prelude_import, L0209
+redundant_arg_name, L0301 float_equality, L0412 domain_keyed_map, L0413
+memo_key_space, L0414 unproven_list_index, L0415 loop_invariant_mod_div,
+L0501 search_loop, L0502 discarded_result, L0503 symmetric_write, L0504
 loop_reduction, L0505 index_only_loop, L0506 repeated_literal, L0507
 push_loop, L0508 none_check_unwrap, L0509 free_fold, L0510 by_twin,
-L0511 tree_order, L0512 domain_spelling, L0513 prefix_twin, L0514-L0521
-hand_rolled_{range_tree, sorted_range_method, string_algo, dsu, sieve,
-binary_lifting, answer_search, prefix_sum}.
+L0511 tree_order, L0512 domain_spelling, L0513 prefix_twin, L0514
+hand_rolled_range_tree, L0515 sorted_range_method, L0516-L0521
+hand_rolled_{string_algo, dsu, sieve, binary_lifting, answer_search,
+prefix_sum}, L0522 copy_sort_writeback.
 
 *(0.3)*:
 
