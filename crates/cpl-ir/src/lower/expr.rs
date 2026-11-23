@@ -395,7 +395,11 @@ impl<'a> Lowerer<'a> {
                             | Ty::StrView
                     )
                 {
-                    if let Some(Ty::Range(_)) = self.probe_ty_silent(&indices[0]) {
+                    // A `[V.ranges]T` cell is one range, not a slice.
+                    let range_cells = matches!(&base_expr.ty, Ty::Array { dims, .. } if matches!(dims.as_slice(), [Dim::Sym(_)]));
+                    if let Some(Ty::Range(_)) =
+                        self.probe_ty_silent(&indices[0]).filter(|_| !range_cells)
+                    {
                         let range_val = self.expr(&indices[0], None);
                         if self.mut_slice_inits.contains(&self.span(span))
                             && self.is_mutable_place(base)
@@ -3019,6 +3023,11 @@ impl<'a> Lowerer<'a> {
                         )
                     } else if indices.len() == 1 {
                         let pair = self.expr(&indices[0], None);
+                        if matches!(&pair.ty, Ty::Range(inner) if matches!(**inner, Ty::Int) || **inner == Ty::Pos(*d))
+                        {
+                            let flat = self.piece_idx(pair, *d, span);
+                            return (vec![flat], (**elem).clone());
+                        }
                         let (ft0, ft1) = match &pair.ty {
                             Ty::Tuple(ts) if ts.len() == 2 => (ts[0].clone(), ts[1].clone()),
                             Ty::Record(fs) if fs.len() == 2 => (fs[0].1.clone(), fs[1].1.clone()),

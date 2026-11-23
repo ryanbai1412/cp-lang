@@ -9377,8 +9377,16 @@ impl<'a> Lowerer<'a> {
                 })
             }
             // `r.drop(k)` / `r.take(k)` on `Range<Int>` or `Range<D>`: sub-range.
-            (Ty::Range(inner), "drop" | "take") if **inner != Ty::I128 => {
-                let is_drop = method == "drop";
+            (Ty::Range(inner), "drop" | "take" | "drop_last" | "take_last")
+                if **inner != Ty::I128 =>
+            {
+                // The new end is `shift` in from `lo` or from `hi`, and replaces `lo` or `hi`.
+                let (from_hi, cut_lo) = match &*method {
+                    "drop" => (false, true),
+                    "take" => (false, false),
+                    "drop_last" => (true, false),
+                    _ => (true, true),
+                };
                 let range_ty = value.ty.clone();
                 let Some(k) = self.one_arg(method, args, &Ty::Int, span) else {
                     return self.err_expr(span);
@@ -9426,32 +9434,20 @@ impl<'a> Lowerer<'a> {
                         Ty::Int,
                         span,
                     );
-                    let (new_lo, new_hi) = if is_drop {
-                        (
-                            lw.mk(
-                                ExprKind::Binary(
-                                    BinOp::Add,
-                                    Box::new(lw.local(lo_s, span)),
-                                    Box::new(shift),
-                                ),
-                                Ty::Int,
-                                span,
-                            ),
-                            lw.local(hi_s, span),
-                        )
+                    let (end, op) = if from_hi {
+                        (hi_s, BinOp::Sub)
                     } else {
-                        (
-                            lw.local(lo_s, span),
-                            lw.mk(
-                                ExprKind::Binary(
-                                    BinOp::Add,
-                                    Box::new(lw.local(lo_s, span)),
-                                    Box::new(shift),
-                                ),
-                                Ty::Int,
-                                span,
-                            ),
-                        )
+                        (lo_s, BinOp::Add)
+                    };
+                    let point = lw.mk(
+                        ExprKind::Binary(op, Box::new(lw.local(end, span)), Box::new(shift)),
+                        Ty::Int,
+                        span,
+                    );
+                    let (new_lo, new_hi) = if cut_lo {
+                        (point, lw.local(hi_s, span))
+                    } else {
+                        (lw.local(lo_s, span), point)
                     };
                     let res = lw.mk(
                         ExprKind::Range {
@@ -10389,6 +10385,17 @@ impl<'a> Lowerer<'a> {
             _ => {}
         }
         None
+    }
+
+    /// `V.ranges` in a `for`: the domain whose non-empty ranges it walks.
+    pub(super) fn domain_ranges_iter(&self, iter: &ast::Expr) -> Option<DomainId> {
+        match &iter.kind {
+            ast::ExprKind::Field { base, name } if name.text == "ranges" => match self.sym(base) {
+                Some(Sym::Domain(id)) => Some(id),
+                _ => None,
+            },
+            _ => None,
+        }
     }
 
     pub(super) fn is_bitset_of(&self, sid: StructId, dom: DomainId) -> bool {

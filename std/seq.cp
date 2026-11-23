@@ -1012,6 +1012,20 @@ pub fn halve<D>(self: Range<D>) -> ?(Range<D>, Range<D>):
     let m = self.mid
     Some((self.start..m, m..self.end))
 
+/// Every way to cut the range into two non-empty pieces, as `(left, right)` with
+/// `left.r == right.l`: one pair per cut strictly inside, so `len - 1` of them. Interval DP over
+/// `V.ranges` folds over them, and every piece is already done when its range comes up.
+///
+/// cost: O(1) to make, O(1) per pair, nothing allocated
+/// empty: yields nothing, as for one element
+/// order: by the cut, left to right
+/// traps: never
+/// example: `(0..4).splits.map((l, r) => (l.len, r.len)).collect() == [(1, 3), (2, 2), (3, 1)]`
+@get pub fn splits<D>(self: Range<D>) -> yields (Range<D>, Range<D>):
+    for k in 1..self.len:
+        let m = (self[k]..self[k]).start
+        yield (self.start..m, m..self.end)
+
 /// O(1). The middle cut: ⌊len/2⌋ elements before it; `r.l` when empty. Its `.r` is the
 /// middle element only when `r` is non-empty, so guard with `if r.is_empty` first.
 ///

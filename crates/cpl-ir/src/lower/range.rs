@@ -968,4 +968,75 @@ impl<'a> Lowerer<'a> {
         out.push(Stmt::Assign(place, AssignOp::Set, value));
         true
     }
+
+    /// The cell of the non-empty range `piece` in a `[V.ranges]T`; an empty range traps, and so
+    /// does a `Range<Int>` reaching outside `V`.
+    pub(super) fn piece_idx(&mut self, piece: Expr, d: DomainId, span: Span) -> Expr {
+        let ty = piece.ty.clone();
+        let of_ints = matches!(&ty, Ty::Range(inner) if **inner == Ty::Int);
+        let sym = self.do_expr(Some(&Ty::Int), span, |lw, out| {
+            let r = lw.new_slot("piece", ty);
+            out.push(Stmt::Let(r, Some(piece)));
+            let (lo, hi) = (lw.new_slot("lo", Ty::Int), lw.new_slot("hi", Ty::Int));
+            for (slot, end) in [(lo, Builtin::RangeLo), (hi, Builtin::RangeHi)] {
+                let value = lw.local(r, span);
+                let value = lw.mk(ExprKind::Builtin(end, vec![value]), Ty::Int, span);
+                out.push(Stmt::Let(slot, Some(value)));
+            }
+            let (l, h) = (lw.local(lo, span), lw.local(hi, span));
+            let empty = lw.mk(
+                ExprKind::Cmp(CmpOp::Le, Box::new(h), Box::new(l)),
+                Ty::Bool,
+                span,
+            );
+            let trap = Stmt::Trap(
+                "an empty range has no cell in `V.ranges`".into(),
+                lw.span(span),
+            );
+            out.push(Stmt::If(
+                empty,
+                Block { stmts: vec![trap] },
+                Block::default(),
+            ));
+            if of_ints {
+                let (l, h) = (lw.local(lo, span), lw.local(hi, span));
+                let zero = lw.int_lit(0, span);
+                let n = lw.mk(ExprKind::DomainLen(d), Ty::Int, span);
+                let below = lw.mk(
+                    ExprKind::Cmp(CmpOp::Lt, Box::new(l), Box::new(zero)),
+                    Ty::Bool,
+                    span,
+                );
+                let above = lw.mk(
+                    ExprKind::Cmp(CmpOp::Gt, Box::new(h), Box::new(n)),
+                    Ty::Bool,
+                    span,
+                );
+                let outside = lw.mk(
+                    ExprKind::Binary(BinOp::Or, Box::new(below), Box::new(above)),
+                    Ty::Bool,
+                    span,
+                );
+                let trap = Stmt::Trap(
+                    "the range reaches outside the domain of `V.ranges`".into(),
+                    lw.span(span),
+                );
+                out.push(Stmt::If(
+                    outside,
+                    Block { stmts: vec![trap] },
+                    Block::default(),
+                ));
+            }
+            let last = lw.local(hi, span);
+            let last = lw.int_add(last, -1);
+            let first = lw.local(lo, span);
+            let idx = lw.mk(
+                ExprKind::Builtin(Builtin::SymIdx, vec![first, last]),
+                Ty::Int,
+                span,
+            );
+            out.push(Stmt::Give(idx));
+        });
+        self.cast(Cast::Raw, sym, Ty::Int)
+    }
 }

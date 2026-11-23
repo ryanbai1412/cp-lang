@@ -292,6 +292,11 @@ impl<'a> Checker<'a> {
                     self.planned(member_span, &cpl_syntax::planned::CUT_DOMAIN);
                     Ty::Error
                 }
+                // `V.ranges`: its cells are the non-empty ranges of `V`.
+                Ty::Pos(domain) if member == "ranges" => Ty::Named {
+                    name: "Range".into(),
+                    args: vec![Ty::Pos(domain)],
+                },
                 Ty::Pos(domain) => Ty::Pos(format!("{domain}.{member}")),
                 Ty::Named { name: owner, .. } => match self.owned_member(&owner, member) {
                     Some(Ty::Domain(domain)) => Ty::Pos(domain),

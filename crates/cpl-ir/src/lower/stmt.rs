@@ -1318,6 +1318,39 @@ impl<'a> Lowerer<'a> {
                     );
                     return;
                 }
+                // `for r in V.ranges`: by length, then left end, so every sub-piece comes first.
+                if let Some(dom_id) = self.domain_ranges_iter(iter) {
+                    let span = iter.span;
+                    let n = self.mk(ExprKind::DomainLen(dom_id), Ty::Int, span);
+                    let (len_slot, lo_slot) = (self.temp(Ty::Int), self.temp(Ty::Int));
+                    let len_var = self.mk(ExprKind::Local(len_slot), Ty::Int, span);
+                    let lo_var = self.mk(ExprKind::Local(lo_slot), Ty::Int, span);
+                    let n1 = self.int_add(n, 1);
+                    let lo_end = BinOp::Sub;
+                    let lo_end = self.mk(
+                        ExprKind::Binary(lo_end, Box::new(n1.clone()), Box::new(len_var.clone())),
+                        Ty::Int,
+                        span,
+                    );
+                    let heads = vec![
+                        (len_slot, self.int_lit(1, span), n1),
+                        (lo_slot, self.int_lit(0, span), lo_end),
+                    ];
+                    let hi = BinOp::Add;
+                    let hi = self.mk(
+                        ExprKind::Binary(hi, Box::new(lo_var.clone()), Box::new(len_var)),
+                        Ty::Int,
+                        span,
+                    );
+                    let piece = ExprKind::Range {
+                        lo: Box::new(lo_var),
+                        hi: Box::new(hi),
+                    };
+                    let piece = self.mk(piece, Ty::Range(Box::new(Ty::Pos(dom_id))), span);
+                    let (label, else_body) = (label.as_ref(), else_body.as_ref());
+                    self.nested_for(label, heads, pat, piece, body, else_body, out);
+                    return;
+                }
                 if let Some((heads, cell)) = self.product_heads(pat, iter) {
                     self.nested_for(
                         label.as_ref(),

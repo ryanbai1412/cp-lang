@@ -2814,6 +2814,14 @@ impl<'a> Lowerer<'a> {
                     return Spec::Plain(Ty::Bound(d));
                 }
             }
+            if rest == "ranges" {
+                if let Some(GenArg::Domain(d)) = self.gen_env.get(prefix).cloned() {
+                    return Spec::Plain(Ty::Range(Box::new(Ty::Pos(d))));
+                }
+                if let Some(Sym::Domain(d)) = self.get_sym(prefix) {
+                    return Spec::Plain(Ty::Range(Box::new(Ty::Pos(d))));
+                }
+            }
             if rest == "subsets" {
                 if let Some(GenArg::Domain(d)) = self.gen_env.get(prefix).cloned() {
                     return Spec::Plain(Ty::Pos(self.subset_domain(d)));
@@ -3220,6 +3228,15 @@ impl<'a> Lowerer<'a> {
                     }
                     if let Some(Sym::Domain(id)) = self.get_sym(domain) {
                         return Some(DimSpec::Bound(id));
+                    }
+                }
+                // `[V.ranges]T`: a non-empty range `l..r` is the pair `(l, r - 1)`, `l <= r - 1`.
+                if let Some(domain) = name.text.strip_suffix(".ranges") {
+                    if let Some(GenArg::Domain(id)) = self.gen_env.get(domain).cloned() {
+                        return Some(DimSpec::Sym(id));
+                    }
+                    if let Some(Sym::Domain(id)) = self.get_sym(domain) {
+                        return Some(DimSpec::Sym(id));
                     }
                 }
                 if let Some(domain) = name.text.strip_suffix(".subsets") {

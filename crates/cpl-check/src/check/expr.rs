@@ -2249,9 +2249,11 @@ impl<'a> Checker<'a> {
                 }
             }
         }
-        // `r.drop(k)` / `r.take(k)` on `Range<T>` returns `Range<T>`.
-        if matches!(name.text.as_str(), "drop" | "take")
-            && matches!(&base_ty, Ty::Named { name: r, .. } if r == "Range")
+        // `r.drop(k)`, `r.take(k)`, `r.drop_last(k)`, `r.take_last(k)` on `Range<T>` return `Range<T>`.
+        if matches!(
+            name.text.as_str(),
+            "drop" | "take" | "drop_last" | "take_last"
+        ) && matches!(&base_ty, Ty::Named { name: r, .. } if r == "Range")
         {
             return Ty::Fn {
                 params: vec![crate::ty::Param {
@@ -2591,6 +2593,13 @@ impl<'a> Checker<'a> {
                         self.planned(name.span, &cpl_syntax::planned::CUT_DOMAIN);
                         Ty::Error
                     }
+                    "ranges" => Ty::Named {
+                        name: "List".into(),
+                        args: vec![Ty::Named {
+                            name: "Range".into(),
+                            args: vec![Ty::Pos(domain.clone())],
+                        }],
+                    },
                     "pairs" => Ty::Named {
                         name: "List".into(),
                         args: vec![Ty::Tuple(vec![
@@ -3034,6 +3043,22 @@ impl<'a> Checker<'a> {
                         )
                     });
                 }
+                (**elem).clone()
+            }
+            // `[V.ranges]T`: a non-empty range of `V` is one cell, not a slice.
+            Ty::Array { index, elem }
+                if indices.len() == 1
+                    && matches!(index.as_slice(), [Ty::Named { name, .. }] if name == "Range") =>
+            {
+                self.expect_fits(&index_tys[0], &index[0], &indices[0], |c, got, want| {
+                    format!(
+                        "`{}` is indexed by {}, but `{}` is {}",
+                        c.quote(base.span),
+                        want,
+                        c.quote(indices[0].span),
+                        got.with_article()
+                    )
+                });
                 (**elem).clone()
             }
             // `g[p]` with `p: (Row, Col)`: `a[i, j]` is sugar for `a[(i, j)]`.
