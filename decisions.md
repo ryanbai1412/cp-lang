@@ -7584,20 +7584,6 @@ with `@tag`. The E0309 on `"DR" | "DL"` is a compiler gap
 (`core-02/literal-union-read.cp`), not a diagnostic to improve. Reverse:
 restore 356's sentence in R02.7.2.
 
-## 358. Fields and methods are private to their module unless `pub` (tools, 2026-11-23)
-
-A struct field or method is visible outside its module only when marked
-`pub`, as top-level names already are; std marks its API fields (`Rooted`'s
-`parent`, `SegTree`'s `source`) and methods `pub`. Today `t.lz` and a
-non-`pub` `t.push(1)` on a std `SegTree` check from user code, so a type's
-state is not its own and editors must guess what its API is (decision 351).
-Single-file contest programs are unaffected: everything there is one module.
-Routed: spec writes the rule (`pub` on `field`), compiler adds the check,
-stdlib marks its API `pub`; decision 351's editor filter stays until the check
-lands, then completion follows the checker. Reverse: drop the check; existing
-code keeps working, since only cross-module access changes.
-
-
 ## 358. Fields and methods are private to their module unless `pub` (2026-11-23)
 
 Decided by the coordinator on tools' question: members follow the rule
@@ -7606,5 +7592,6 @@ representation private and hover/completion show only the API. A
 single-file program is one module and is unaffected. Trait methods take
 the trait's visibility, since a trait is an interface. Spec R11.1.4 and
 the grammar's `field` take `pub`; compiler adds the E0207 check and
-stdlib marks its API members. Reverse: drop R11.1.4 and treat every member
-as public.
+stdlib marks its API members. Decision 351's editor filter stays until
+the check lands; then completion follows the checker. Reverse: drop R11.1.4
+and treat every member as public.
