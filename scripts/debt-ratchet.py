@@ -612,6 +612,47 @@ def skip_lists(root: Path) -> list[str]:
 
 REGISTER_SPAN_RE = re.compile(r"`([^`]+)`")
 REGISTER_COMMANDS = {"cargo", "cpl", "cpl-conform", "just"}
+REGISTER_CARGO_GATES = {"test", "nextest", "clippy", "fuzz", "mutants"}
+
+
+def _register_command(root: Path, words: list[str]) -> tuple[bool, str | None]:
+    """Whether a command span is a gate that can fail, and the span if it names a command that doesn't exist.
+
+    Rule: handbook/process/quality.md#accountability. `cargo test`-like runs,
+    `cpl-conform` suites, `just` recipes and `cpl ... --check` can fail; a
+    command that only produces something (`cpl doc`, `cpl check`) is a
+    feature, not its check.
+    """
+    tool, args = words[0], words[1:]
+    sub = next((a for a in args if not a.startswith("-")), None)
+    span = " ".join(words)
+    if tool == "cargo":
+        if not args or args[0] not in REGISTER_CARGO_GATES:
+            return False, None
+        for flag, exists in (("-p", lambda n: (root / "crates" / n / "Cargo.toml").exists()),
+                             ("--test", lambda n: any(root.glob(f"crates/*/tests/{n}.rs")))):
+            i = args.index(flag) + 1 if flag in args else 0
+            if 0 < i < len(args) and not exists(args[i]):
+                return False, span
+        return True, None
+    if tool == "cpl-conform":
+        lib = root / "crates/cpl-conform/src/lib.rs"
+        suites = set(re.findall(r'"([a-z][a-z-]*)"[^=\n]*=> Some\(Suite', lib.read_text(encoding="utf-8"))) \
+            if lib.is_file() else set()
+        return (True, None) if sub is None or sub in suites | {"all", "fast", "fuzz"} else (False, span)
+    if tool == "just":
+        jf = root / "justfile"
+        recipes = set(re.findall(r"^([a-z][\w-]*)[^:\n=]*:", jf.read_text(encoding="utf-8"), re.M)) \
+            if jf.is_file() else set()
+        return (True, None) if sub in recipes else (False, span)
+    lib = root / "crates/cpl-cli/src/lib.rs"
+    subs = set(re.findall(r'"([a-z][a-z-]*)"\)?\s*(?:if [^\n]*)?=>', lib.read_text(encoding="utf-8"))) \
+        if lib.is_file() else set()
+    if sub is None:
+        return False, None
+    if sub not in subs:
+        return False, span
+    return "--check" in args, None
 
 
 def _register_check(root: Path, check: str) -> tuple[bool, list[str]]:
@@ -623,10 +664,22 @@ def _register_check(root: Path, check: str) -> tuple[bool, list[str]]:
             continue
         if words[0] == "python3" and len(words) > 1:
             words = words[1:]
-        elif words[0] in REGISTER_COMMANDS or (len(words) == 1 and words[0] in COUNTERS):
+        elif words[0] in REGISTER_COMMANDS:
+            gate, unknown = _register_command(root, words)
+            named |= gate
+            gone += [unknown] if unknown else []
+            continue
+        elif len(words) == 1 and words[0] in COUNTERS:
             named = True
             continue
-        if "/" not in words[0] or "*" in words[0] or "<" in words[0]:
+        if ("/" not in words[0] or any(c in words[0] for c in "*<") or "..." in words[0]
+                or words[0].startswith(".git/")):
+            continue
+        if "#" in words[0]:
+            # A cited rule neither names the check nor goes missing, unless its anchor is gone.
+            doc, anchor = words[0].split("#", 1)
+            if anchor.lower() not in _anchors(root / doc) | _checklist_ids(root / doc):
+                gone.append(words[0])
             continue
         path = words[0].rstrip("/")
         if (root / path).exists():
@@ -640,7 +693,7 @@ def register_rows(root: Path) -> list[str]:
     """Quality-register rows in handbook/domains/*.md that name no existing check.
 
     A row's cells after the metric (mechanism, then check, where or status)
-    name the test files, scripts, commands or CI jobs that check it, say
+    name the test files, scripts, commands that can fail or CI jobs that check it, say
     `missing`, or start with "process" where no mechanism can decide. Rows marked `missing`, rows naming no check, and rows naming a
     path that doesn't exist count.
     """

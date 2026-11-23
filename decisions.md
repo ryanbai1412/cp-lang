@@ -8365,3 +8365,9 @@ tag move fatal again.
 - **Call.** `scripts/release/shippable.sh` picks the newest main commit whose CI shipping jobs (conformance parts, `cli` on every OS, acceptance) include every one that was green at the commit edge last shipped; one already red there may stay red. The release run's build, archive smoke and installer smoke still gate the publish. This replaces 408's "every shipping job passed"; stable is unchanged (ci/R26).
 - **Why.** At about 200 commits an hour some shipping job is usually red for a reason fixed within the hour, so "all green" left edge 7.5 h without a shippable commit. Not worse than edge still blocks every new regression, and one lingering red can't stall shipping.
 - **Reverse.** Drop the baseline in `shippable.sh` so every shipping job must pass.
+
+## 426. A register row's command counts only if it can fail (tech-debt, 2026-11-23)
+
+- **Call.** `scripts/debt-ratchet.py` (`register_rows`) resolves each command a row names: `cargo test`, `nextest`, `clippy`, `fuzz` or `mutants` with an existing `-p` crate and `--test` file; a `cpl-conform` suite; a `just` recipe; `cpl <subcommand> --check`. A command that only produces something (`cpl doc`, `cpl check`) no longer names the check, and an unknown command or subcommand counts as gone. A cited rule (`<doc>.md#<anchor>`, `errors/R2`) is neither a check nor a gap unless its anchor is gone. Paths under `.git/` and git ranges aren't checks. Perf rose 3 to 4 and site 16 to 17 for rows that named only a command (handbook/process/quality.md#accountability); idioms and tools fell for rows that cited a rule beside a real check.
+- **Why.** 20 rows passed on a command alone, such as "Std reference is readable :: `cpl doc`", so the count said a row was checked when nothing could fail.
+- **Reverse.** Count any span starting with `cpl`, `cargo`, `cpl-conform` or `just` as a check again.

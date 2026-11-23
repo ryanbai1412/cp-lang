@@ -215,6 +215,10 @@ class DebtRatchetTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             self._write(root, "scripts/ok.py", "")
+            self._write(root, "handbook/guidelines/t-checklist.md", "# T\n\n- **R8** A rule.\n")
+            self._write(root, "crates/x/Cargo.toml", "")
+            self._write(root, "crates/cpl-cli/src/lib.rs", 'Some("doc") => doc(),\n"fmt" => fmt,\n')
+            self._write(root, "crates/cpl-conform/src/lib.rs", '"corpus" => Some(Suite::Corpus),\n')
             self._write(root, "handbook/domains/x.md", "\n".join([
                 "| Attribute | Check |", "|---|---|",
                 "| outside | `missing` |",
@@ -229,12 +233,28 @@ class DebtRatchetTest(unittest.TestCase):
                 "| h | m | `scripts/ok.py` | enforced |",
                 "| k | m | a generator | missing |",
                 "| l | m | `vm_fallbacks` ratchet | enforced |",
+                "| m | m | `handbook/guidelines/t-checklist.md#r8`, `scripts/ok.py` |",
+                "| n | m | `handbook/guidelines/t-checklist.md#r8` |",
+                "| o | m | `handbook/guidelines/t-checklist.md#r9`, `scripts/ok.py` |",
+                "| p | m | `cpl doc` |",
+                "| q | m | `cpl fmt --check` |",
+                "| r | m | `cpl nosuch --check` |",
+                "| s | m | `cpl-conform corpus`, `cpl-conform bogus` |",
+                "| t | m | `cargo nextest run -p y` |",
+                "| u | m | `cargo build -p x` |",
                 "## Suites", "| e | `missing` |", ""]))
             self.assertEqual(dr.register_rows(root), [
                 "handbook/domains/x.md:9 missing: b",
                 "handbook/domains/x.md:10 no such check scripts/gone.py: c",
                 "handbook/domains/x.md:15 missing: g",
                 "handbook/domains/x.md:17 missing: k",
+                "handbook/domains/x.md:20 missing: n",
+                "handbook/domains/x.md:21 no such check handbook/guidelines/t-checklist.md#r9: o",
+                "handbook/domains/x.md:22 missing: p",
+                "handbook/domains/x.md:24 no such check cpl nosuch --check: r",
+                "handbook/domains/x.md:25 no such check cpl-conform bogus: s",
+                "handbook/domains/x.md:26 no such check cargo nextest run -p y: t",
+                "handbook/domains/x.md:27 missing: u",
             ])
 
     def test_written_twice_counts_hand_kept_copies_of_a_sourced_list(self) -> None:

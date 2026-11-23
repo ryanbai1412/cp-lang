@@ -75,8 +75,13 @@ the rule.
 
 ## Accountability
 
-- **Every row names a real check.** Empty rows are counted per domain,
-  shown in `plan/STATUS.md`, and each domain's count only goes down.
+- **Every row names a real check.** A check is something that can fail:
+  a test file, a script, a ratchet, a CI job, or a command run as a gate
+  (`cargo nextest run`, a `cpl-conform` suite, `cpl fmt --check`). A
+  command that only produces something, like `cpl doc` or `cpl check`, is
+  the feature, not its check, and a cited rule (`errors/R2`) is not a check
+  either. Empty rows are counted per domain, shown in `plan/STATUS.md`, and
+  each domain's count only goes down.
 - **Every lint and gate cites its rule.** See
   [Rules live in guidelines](#rules-live-in-guidelines).
 - **Skips only shrink.** Ignored tests, xfails, allowlists and lists of
