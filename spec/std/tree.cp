@@ -1403,10 +1403,67 @@ fn path_and_diameter_match_pairwise_distances():
                 assert r.parent(p[k]) == p[k + 1] or r.parent(p[k + 1]) == p[k]
 
 @test
-fn heavy_light_and_subtree_cover_the_children() = todo
+fn heavy_light_and_subtree_cover_the_children():
+    domain V = 0..16
+    let adj = random_tree(V.first!)
+    let r = Rooted(adj, V.first!)
+    for v in V:
+        let kids = r.children(v).collect()
+        let light = r.light(v).collect()
+        assert light.len == max(kids.len - 1, 0)
+        for c in kids:
+            if c not in light:
+                for d in kids: assert r.size(d) <= r.size(c)
+        for c in light: assert c in kids
+        if let p = r.parent(v):
+            assert r.top(v) == (if v in r.light(p).collect(): v else: r.top(p))
+        else:
+            assert r.top(v) == v
+        let chain = r.chain(v).map(q => r.at[q]).collect()
+        assert chain.first == r.top(v) and r.children(chain.last!).count() == 0
+        for k in 1..chain.len:
+            assert r.parent(chain[k]) == Some(chain[k - 1]) and chain[k] not in r.light(chain[k - 1]).collect()
+        var lights = 0
+        for a in r.ancestors(v):
+            if let p = r.parent(a):
+                if a in r.light(p).collect(): lights += 1
+        assert (1 << lights) <= V.count
+        for root in V:
+            var got = [r.at[q] for g in r.sub_at(v, root) for q in g]
+            got.sort()
+            var want = Rooted(adj, root).subtree(v).collect()
+            want.sort()
+            assert got == want
 
 @test
-fn a_forest_keeps_each_tree_in_one_range() = todo
+fn a_forest_keeps_each_tree_in_one_range():
+    domain V = 0..14
+    var par: [V]?V = None
+    var adj: [V]List<V> = []
+    var roots = [V.first!]
+    for i in 1..V.count:
+        if rand(0, 3) == 0:
+            roots.push(V(i))
+        else:
+            let p = V(rand(0, i - 1))
+            par[V(i)] = Some(p)
+            adj[V(i)].push(p)
+            adj[p].push(V(i))
+    shuffle(mut roots)
+    let t = Rooted.forest(adj, from: roots)
+    assert t.roots.collect() == roots and t.root == roots[0]
+    var top: [V]V = [V] v => v
+    for v in V:
+        while let p = par[top[v]]: top[v] = p
+    for v in V:
+        assert t.parent(v) == par[v] and t.root_of(v) == top[v]
+        for u in V: assert (t.pos(u) in t.sub(top[v])) == (top[u] == top[v])
+    var n = 0
+    for k in 0..roots.len:
+        assert t.sub(roots[k]).len == [v for v in V if top[v] == roots[k]].len
+        if k > 0: assert t.pos(roots[k - 1]) < t.pos(roots[k])
+        n += t.sub(roots[k]).len
+    assert n == V.count
 
 @test
 fn down_and_up_match_depth_size_and_height():
@@ -1439,7 +1496,24 @@ fn reroot_matches_up_from_every_root():
     for v in V: assert all[v] == Rooted(adj, v).up(+, lift:, finish:)[v]
 
 @test
-fn shapes_match_the_canonical_string() = todo
+fn shapes_match_the_canonical_string():
+    for n in 1..=10:
+        domain V = 0..n
+        let adj = random_tree(V.first!)
+        let r = Rooted(adj, V.first!)
+        let (domain S, of) = r.shapes()
+        var enc: [V]List<Int> = []
+        for d in (0..V.count).rev:
+            for v in V:
+                if r.depth(v) == d:
+                    var kids = [enc[c] for c in r.children(v)]
+                    kids.sort()
+                    enc[v] = [1] + [x for k in kids for x in k] + [0]
+        var seen = Set<List<Int>>()
+        for v in V: seen.insert(enc[v])
+        assert S.count == seen.len
+        for a in V:
+            for b in V: assert (of[a] == of[b]) == (enc[a] == enc[b])
 
 @test
 fn centroid_ancestors_split_every_path():
