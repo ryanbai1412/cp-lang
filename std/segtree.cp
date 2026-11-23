@@ -127,6 +127,7 @@ pub struct SegTree<D, T, F = Int>(m: Monoid<T>):
     /// traps: when a non-empty `r` reaches outside `D`
     /// example: `var s = SegTree(+, [1, 2, 3], act: add); s.apply(0..2, 10); s.all == 26`
     /// example: `var s = SegTree(max, [1, 2, 3], act: add); s.apply(0..1, 5); s.all == 6`
+    /// example: `var s = SegTree(+, [1, 2, 3], act: affine); s.apply(0..2, (2, 1)); s.all == 11`
     pub fn apply(mut self, r: Range<D>, f: F):
         assert act != None, "apply requires `act:` on SegTree"
         let (lo, hi) = r.ends

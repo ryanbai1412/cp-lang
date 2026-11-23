@@ -546,15 +546,16 @@ pub struct AffineAction
 /// Marker type for the stock `flip` action.
 pub struct FlipAction
 
-/// Stock action: add a tag to every element. On `+` a span of `n` changes by `f * n`; on
+/// Stock action: add a tag to every element; the tag is a `T`. On `+` a span of `n` changes by `f * n`; on
 /// `min`/`max` by `f`. Tags commute, so a `SegTree` with it never pushes down. O(1).
 pub const add: AddAction = AddAction()
 
-/// Stock action: assign a tag to every element (`?T` tags, `None` is no-op). O(1) on `+`,
+/// Stock action: assign a tag to every element; the tag is a `?T` (`None` is a no-op). O(1) on `+`,
 /// `min`, `max`; O(log n) folding `f` `n` times for other ops.
 pub const assign: AssignAction = AssignAction()
 
 /// Stock action: `x -> a * x + b` on `+` folds (span `n`: `a * s + b * n`). Not commutative.
+/// The tag is the tuple `(a, b)`, not `Affine`: `s.apply(r, (2, 1))` doubles and adds 1.
 pub const affine: AffineAction = AffineAction()
 
 /// Stock action: swap the two halves of a `Flip<T>` value.
