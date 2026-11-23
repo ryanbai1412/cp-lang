@@ -723,11 +723,15 @@ impl<'a> Parser<'a> {
     }
 
     pub(super) fn arg(&mut self) -> Arg {
-        let name = self.at_label().then(|| {
-            let name = self.name();
-            self.bump();
-            name
-        });
+        let name = if self.at(T::Ident) && self.peek_n(1) == T::Eq {
+            Some(self.keyword_arg())
+        } else {
+            self.at_label().then(|| {
+                let name = self.name();
+                self.bump();
+                name
+            })
+        };
         if matches!(self.peek(), T::Comma | T::RParen) {
             if let Some(ref label) = name {
                 return Arg {

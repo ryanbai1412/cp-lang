@@ -3,6 +3,32 @@
 use super::*;
 
 impl<'a> Parser<'a> {
+    /// `sorted(xs, reverse=True)`: Python's keyword argument. One error
+    /// with the `:` fix, read as the named argument.
+    pub(super) fn keyword_arg(&mut self) -> Name {
+        let (name_end, eq) = (
+            self.tokens[self.pos].span.end,
+            self.tokens[self.pos + 1].span,
+        );
+        let value = self
+            .tokens
+            .get(self.pos + 2)
+            .map_or(eq.end, |t| t.span.start);
+        let gap = self.rel(Span::new(name_end, value));
+        self.recovered(
+            Diagnostic::error(
+                codes::EXPECTED_TOKEN,
+                self.rel(eq),
+                "a named argument takes `:`, not `=`",
+            )
+            .with_help("write `name: value`, as in `print(xs, sep: \", \")`")
+            .with_fix("write `:`", gap, ": "),
+        );
+        let name = self.name();
+        self.bump();
+        name
+    }
+
     /// `for (x in xs):`: parentheses around the header, as in C and
     /// JavaScript. One error with the fix that drops them, read without them.
     pub(super) fn paren_for(&mut self) -> bool {
