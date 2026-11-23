@@ -95,7 +95,8 @@ jobs:
           git rev-parse HEAD > target/.ci-sha && rm -rf target/check-cache target/tmp target/judge-probes
           echo built=true >>"$GITHUB_OUTPUT"
       - uses: actions/cache/save@v4
-        if: ${{ steps.stamp.outputs.built == 'true' && (matrix.part == 'checks' || matrix.part == 'tests:hash:6/6') }}
+        # Without !cancelled() a red test skips the save, and the cache goes hours stale.
+        if: ${{ !cancelled() && steps.stamp.outputs.built == 'true' && (matrix.part == 'checks' || matrix.part == 'tests:hash:6/6') }}
         with:
           path: target
           key: ${{ env.TARGET_KEY }}-${{ matrix.part == 'checks' && 'clippy' || 'dev' }}-${{ hashFiles('Cargo.lock', 'rust-toolchain.toml') }}-${{ github.run_id }}
@@ -230,7 +231,9 @@ jobs:
       - name: Install Emacs, Helix and the tree-sitter CLI
         run: |
           try() { for n in 1 2 3; do timeout 180 "$@" && return; echo "::warning::try $n failed: $*"; done; return 1; }
-          try sudo apt-get install -y -q -o DPkg::Lock::Timeout=60 emacs-nox >/dev/null
+          # man-db's trigger alone can take minutes on a hosted runner.
+          sudo rm -f /var/lib/man-db/auto-update
+          try sudo apt-get install -y -q --no-install-recommends -o DPkg::Lock::Timeout=60 emacs-nox >/dev/null
           try sh -c 'curl -sSfL --retry 3 https://github.com/helix-editor/helix/releases/download/25.07.1/helix-25.07.1-x86_64-linux.tar.xz | tar xJ -C "$RUNNER_TEMP"'
           echo "HX=$RUNNER_TEMP/helix-25.07.1-x86_64-linux/hx" >> "$GITHUB_ENV"
           try npm install --prefix "$RUNNER_TEMP/ts" --no-audit --no-fund tree-sitter-cli@0.25.10 >/dev/null
@@ -424,7 +427,7 @@ jobs:
           git rev-parse HEAD > target/.ci-sha && rm -rf target/check-cache target/tmp target/judge-probes
           echo built=true >>"$GITHUB_OUTPUT"
       - uses: actions/cache/save@v4
-        if: ${{ steps.stamp.outputs.built == 'true' }}
+        if: ${{ !cancelled() && steps.stamp.outputs.built == 'true' }}
         with:
           path: target
           key: ${{ env.TARGET_KEY }}-release-${{ hashFiles('Cargo.lock', 'rust-toolchain.toml') }}-${{ github.run_id }}
