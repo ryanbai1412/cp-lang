@@ -1,0 +1,3 @@
+`vector<vector<int>> g(n, vector<int>(m))` is how C++ makes a grid, and `[[0 for _ in 0..m] for _ in 0..n]` is its literal translation: `n` separate lists, each with its own length, so nothing says the rows are all `m` long and every `g[i][j]` is checked twice. CP Lang's array type says the shape: `var g: [n, m]Int = 0` is one block over the domain `n` by `m`, read and written as `g[i, j]`, and an index the loop bounds prove needs no check at all. Rows that really differ in length (a triangle, an adjacency list) stay a `List<List<T>>`.
+
+The lint fires on a comprehension of a comprehension over two ranges whose cell does not depend on the loop variables. It has no fix, since each `g[i][j]` becomes `g[i, j]`.

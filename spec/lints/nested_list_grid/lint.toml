@@ -1,0 +1,5 @@
+code = "L0532"
+level = "warn"
+group = "idiom"
+title = "List of lists for a fixed grid"
+summary = "`[[0 for _ in 0..m] for _ in 0..n]`: `[n, m]Int = 0`"

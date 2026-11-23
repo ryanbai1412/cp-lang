@@ -697,7 +697,7 @@ One sub-family per module. Each says: you rebuilt something the library has.
 | temp_swap | `let t = a; a = b; b = t` | `swap(mut a, mut b)` / `xs.swap(i, j)` | fix | #13 | flow | |
 | test_count_loop | `for _ in 0..read<Int>():` wrapping the solution | `@!multitest` | fix | #11 | syn | |
 | maxn_arrays | arrays sized by a literal bound | arrays over the declared domain | fix? | #6 | ty | |
-| nested_list_grid | `List<List<T>>` for a fixed rectangle | `[R, C]T` | fix? | #3 | ty | |
+| nested_list_grid | `List<List<T>>` for a fixed rectangle | `[R, C]T` | fix? | #3 | ty | ✓nested_list_grid |
 | pair_first_second | `.0`/`.1` read far from construction | named record fields | warn | B6 | ty | |
 | int_enum_constants | `let UP = 0, RIGHT = 1` | `enum Dir = Up \| Right \| ...` | fix? | #3 | ty | |
 | bool_flag_state | several `Bool`s encoding one state | an `enum` | warn | #3 | flow | |
