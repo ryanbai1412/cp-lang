@@ -1580,9 +1580,13 @@ impl<'a> Checker<'a> {
         match ty {
             Ty::Domain(name) => Ty::Pos(name.clone()),
             Ty::TypeName(name) if name == "Bool" => Ty::Bool,
-            Ty::TypeName(name) => Ty::Named {
-                name: name.clone(),
-                args: Vec::new(),
+            // `type Group = Subset<R>`: walking `Group` walks the aliased type.
+            Ty::TypeName(name) => match self.type_def(name).as_deref() {
+                Some(Def::Alias { ty }) => ty.clone(),
+                _ => Ty::Named {
+                    name: name.clone(),
+                    args: Vec::new(),
+                },
             },
             Ty::Tuple(items)
                 if !items.is_empty()
@@ -2802,24 +2806,7 @@ impl<'a> Checker<'a> {
                     }
                 }
                 None => {
-                    let has_range = methods.iter().any(|(m, _)| m == "range_first");
-                    let known = field_names
-                        .iter()
-                        .chain(methods.iter().map(|(m, _)| m))
-                        .map(String::as_str)
-                        .chain(has_range.then_some("range"));
-                    let suggestion = closest(&name.text, known);
-                    let message = format!("{} has no field or method `{}`", base_ty, name.text);
-                    if let Some(diag) = self.error(codes::UNKNOWN_FIELD, name.span, message) {
-                        match suggestion {
-                            Some(s) => diag.suggest(name.span, s),
-                            None if !field_names.is_empty() => {
-                                diag.help =
-                                    Some(format!("its fields are {}", list_names(&field_names)));
-                            }
-                            None => {}
-                        }
-                    }
+                    self.unknown_member(name, &base_ty, &field_names, &methods);
                     return Ty::Error;
                 }
             },

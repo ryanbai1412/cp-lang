@@ -12,6 +12,6 @@ struct TrieNode:
 let n: Int = read()
 var nodes: List<TrieNode> = []
 for i in 0..n:
-    var ch: [0..2]?Int = none
+    var ch: [0..2]?Int = None
     nodes.push(TrieNode(ch, i))
 print(nodes.len)

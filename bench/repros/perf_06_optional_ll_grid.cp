@@ -9,7 +9,7 @@
 
 let (h, w, kmax): (Int, Int, Int) = read()
 domain KDom = 0..=kmax
-var dp: [0..h, 0..w, KDom]?Int = none
+var dp: [0..h, 0..w, KDom]?Int = None
 dp[0, 0, KDom(0)] = 0
 for i in 0..h:
     for j in 0..w:

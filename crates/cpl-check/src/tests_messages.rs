@@ -298,3 +298,16 @@ fn the_old_optional_spellings_are_removed_with_a_fix_and_none_stays_a_name() {
         assert!(check(named).is_empty(), "{named}: {:?}", check(named));
     }
 }
+
+#[test]
+fn walking_a_type_alias_walks_the_aliased_type() {
+    let src = "domain R = 0..3\ntype G = Subset<R>\nvar s: [G]Int = 0\nfor g in G: s[g] = g.len\nprint(s[G.empty])\n";
+    assert!(check(src).is_empty(), "{:?}", check(src));
+}
+
+#[test]
+fn is_empty_on_a_type_with_len_is_fixed_to_len_zero() {
+    let d = check("domain B = 0..4\nlet s = Subset<B>.empty\nif not s.is_empty: print(1)\n");
+    assert_eq!(d.len(), 1, "{d:?}");
+    assert_eq!(d[0].fixes[0].edits[0].1, "len == 0", "{d:?}");
+}

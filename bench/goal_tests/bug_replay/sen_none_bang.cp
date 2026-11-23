@@ -1,2 +1,2 @@
-let x: ?Int = none
+let x: ?Int = None
 print(x!)

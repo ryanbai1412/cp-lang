@@ -9,18 +9,18 @@ struct Trie:
 var nodes = List<Trie>()
 
 fn merge(x: ?Int, y: ?Int) -> ?Int:
-    if x == none: return y
-    if y == none: return x
+    if x == None: return y
+    if y == None: return x
     nodes[x].cnt += nodes[y].cnt
     for b in 0..2: nodes[x].kid[b] = merge(nodes[x].kid[b], nodes[y].kid[b])
     x
 
 fn chain(x: Int) -> Int:
-    nodes.push(Trie(1, [0..2] _ => none))
+    nodes.push(Trie(1, [0..2] _ => None))
     for z in 0..L:
         let below = nodes.len - 1
         let bit = Int(x.bit(z))
-        nodes.push(Trie(1, [0..2] b => if b == bit: below else: none))
+        nodes.push(Trie(1, [0..2] b => if b == bit: below else: None))
     nodes.len - 1
 
 fn query_trie(root: Int, mask: Int, want: Int) -> Int:

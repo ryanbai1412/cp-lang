@@ -5,6 +5,42 @@ use cpl_diag::Fix;
 use cpl_syntax::ast::{Arg, CmpOp, Expr, ExprKind, FnBody, FnDecl, Name, StmtKind};
 
 impl Checker<'_> {
+    /// E0203 for `name` on a value with these fields and methods: the closest
+    /// member, or `len == 0` for an `is_empty` the type spells with `len`.
+    pub(super) fn unknown_member(
+        &mut self,
+        name: &Name,
+        base_ty: &Ty,
+        field_names: &[String],
+        methods: &[(String, Ty)],
+    ) {
+        let has =
+            |m: &str| methods.iter().any(|(n, _)| n == m) || field_names.iter().any(|f| f == m);
+        let empty_by_len = name.text == "is_empty" && has("len");
+        let known = field_names
+            .iter()
+            .chain(methods.iter().map(|(m, _)| m))
+            .map(String::as_str)
+            .chain(has("range_first").then_some("range"));
+        let suggestion = closest(&name.text, known);
+        let message = format!("{base_ty} has no field or method `{}`", name.text);
+        let Some(diag) = self.error(codes::UNKNOWN_FIELD, name.span, message) else {
+            return;
+        };
+        match suggestion {
+            _ if empty_by_len => {
+                diag.help = Some(format!("a {base_ty} is empty when its `len` is 0"));
+                diag.fix("write `len == 0`".to_string(), name.span, "len == 0");
+            }
+            Some(s) => diag.suggest(name.span, s),
+            None if !field_names.is_empty() => {
+                let fields = super::expr::list_names(field_names);
+                diag.help = Some(format!("its fields are {fields}"));
+            }
+            None => {}
+        }
+    }
+
     /// The `None` literal; where `none` is bound, the lowercase word is that name.
     pub(super) fn none_literal(&mut self, span: Span) -> Ty {
         let bound = self.local("none").is_some() || self.global("none").is_some();

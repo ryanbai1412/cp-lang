@@ -5,7 +5,7 @@ for _ in 0..m:
     let (u, v): (V, V) = read()
     adj[u].push(v)
     adj[v].push(u)
-var dist: [V]?Int = none
+var dist: [V]?Int = None
 dist[V(0)] = 0
 var q: List<V> = [V(0)]
 var head = 0
@@ -14,7 +14,7 @@ while head < q.len:
     head += 1
     let d = dist[u]!
     for v in adj[u]:
-        if dist[v] == none:
+        if dist[v] == None:
             dist[v] = d + 1
             q.push(v)
 print(dist[V(n - 1)] ?? -1)

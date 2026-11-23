@@ -2,7 +2,7 @@ let (h, w): (Int, Int) = read()
 domain R = 0..h
 domain C = 0..w
 let g: [R, C]Int = read()
-var dp: [R, C]?Int = none
+var dp: [R, C]?Int = None
 if g[R(0), C(0)] >= 0:
     dp[R(0), C(0)] = g[R(0), C(0)]
 for r in R:

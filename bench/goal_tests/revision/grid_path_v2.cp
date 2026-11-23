@@ -3,7 +3,7 @@ domain R = 0..h
 domain C = 0..w
 domain K = 0..=1
 let g: [R, C]Int = read()
-var dp: [R, C, K]?Int = none
+var dp: [R, C, K]?Int = None
 if g[R(0), C(0)] >= 0:
     dp[R(0), C(0), K(0)] = g[R(0), C(0)]
 for r in R:

@@ -33,7 +33,6 @@ coci20c6p3
 coci25c3p4
 coi06p2
 dmopc20c7p5
-dwite10c3p3
 egoi22p3
 egoi23p2
 etsr23r3p1
@@ -75,7 +74,6 @@ noi21p3
 noi21p4
 noi23p2
 noimps22p1
-noip00p4
 noip01p4
 noip19p5
 noip20p1

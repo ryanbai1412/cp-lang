@@ -6,11 +6,11 @@ let items: [0..n](w: 1..=1e9, v: 1..=1000) = read()
 
 fn best(items: List<(w: Int, v: Int)>) -> Int:
     let top = sum(v for (_, v) in items)
-    var lightest: List<?Int> = List.filled(top + 1, none)
+    var lightest: List<?Int> = List.filled(top + 1, None)
     lightest[0] = 0
     for (w, v) in items:
         for total in v..=top: lightest[total] min= lightest[total - v] + w
-    [total for total in 0..=top if lightest[total] != none and lightest[total]! <= cap].max()!
+    [total for total in 0..=top if lightest[total] != None and lightest[total]! <= cap].max()!
 
 @brute(best)
 fn best_slow(items: List<(w: Int, v: Int)>) -> Int:
