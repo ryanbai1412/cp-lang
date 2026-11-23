@@ -1045,6 +1045,26 @@ impl<'p, 'f> Compiler<'p, 'f> {
     }
 
     pub(super) fn compile_place_path(&mut self, place: &'p Place) -> Option<u16> {
+        self.compile_place_path_to(place, false)
+    }
+
+    fn keyed_map(&self, ty: &Ty) -> bool {
+        matches!(ty, Ty::Map(k, _) | Ty::HashMap(k, _) if !crate::value::ty_has_cached(k, self.program))
+    }
+
+    /// A path to `place`, through map entries too. A path that ends at a
+    /// map entry is only for an op that walks it whole (`key_leaf`): the
+    /// ops that store to the last step take list and array cells.
+    pub(super) fn compile_place_path_to(
+        &mut self,
+        place: &'p Place,
+        key_leaf: bool,
+    ) -> Option<u16> {
+        if let PlaceKind::Index(base, indices) = &place.kind {
+            if !key_leaf && indices.len() == 1 && self.keyed_map(&base.ty) {
+                return None;
+            }
+        }
         let mut chain: Vec<&'p Place> = Vec::new();
         let mut cur = place;
         let root = loop {
@@ -1055,6 +1075,12 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 },
                 PlaceKind::Global(gid) => break PlaceRoot::Global(*gid as u16),
                 PlaceKind::Field(base, _) => {
+                    chain.push(cur);
+                    cur = base;
+                }
+                PlaceKind::Index(base, indices)
+                    if indices.len() == 1 && self.keyed_map(&base.ty) =>
+                {
                     chain.push(cur);
                     cur = base;
                 }
@@ -1085,8 +1111,13 @@ impl<'p, 'f> Compiler<'p, 'f> {
             return None;
         }
         let mut steps = Vec::with_capacity(chain.len());
+        let mut keys = Vec::new();
         for p in chain.into_iter().rev() {
             match &p.kind {
+                PlaceKind::Index(base, indices) if self.keyed_map(&base.ty) => {
+                    steps.push(PlaceStep::Key(keys.len() as u16));
+                    keys.push(self.compile_expr_v(&indices[0]));
+                }
                 PlaceKind::Field(_, field) => steps.push(PlaceStep::Field(*field as u16)),
                 PlaceKind::Index(_, indices) if indices.len() == 1 => {
                     let r_i = self.compile_expr_i(&indices[0]);
@@ -1101,7 +1132,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
             }
         }
         let idx = u16::try_from(self.places.len()).ok()?;
-        self.places.push(PlacePath { root, steps });
+        self.places.push(PlacePath { root, steps, keys });
         Some(idx)
     }
 

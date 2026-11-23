@@ -77,9 +77,10 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
             Op::StorePlaceI { path, r_val, kind } => {
                 let pp = &chunk.places[path as usize];
                 let raw = regs_i[r_val as usize];
+                let keys = place_keys(pp, regs_v);
                 let root = place_root_mut(pp.root, regs_v, &mut self.globals);
                 let (&last, prefix) = pp.steps.split_last().expect("non-empty place path");
-                let container = walk_place_mut(root, prefix, regs_i, spans[cur_pc])?;
+                let container = walk_place_mut(root, prefix, regs_i, &keys, spans[cur_pc])?;
                 store_place_leaf_scalar(container, last, raw, kind, regs_i, spans[cur_pc])?;
             }
             Op::StorePlaceOptI {
@@ -91,9 +92,10 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 let pp = &chunk.places[path as usize];
                 let raw = regs_i[r_val as usize];
                 let some = regs_i[r_some as usize];
+                let keys = place_keys(pp, regs_v);
                 let root = place_root_mut(pp.root, regs_v, &mut self.globals);
                 let (&last, prefix) = pp.steps.split_last().expect("non-empty place path");
-                let container = walk_place_mut(root, prefix, regs_i, spans[cur_pc])?;
+                let container = walk_place_mut(root, prefix, regs_i, &keys, spans[cur_pc])?;
                 store_place_leaf_opt_scalar(
                     container,
                     last,
@@ -107,9 +109,10 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
             Op::StorePlaceV { path, r_val } => {
                 let pp = &chunk.places[path as usize];
                 let val = regs_v[r_val as usize].clone();
+                let keys = place_keys(pp, regs_v);
                 let root = place_root_mut(pp.root, regs_v, &mut self.globals);
                 let (&last, prefix) = pp.steps.split_last().expect("non-empty place path");
-                let container = walk_place_mut(root, prefix, regs_i, spans[cur_pc])?;
+                let container = walk_place_mut(root, prefix, regs_i, &keys, spans[cur_pc])?;
                 store_place_leaf_val(container, last, val, regs_i, spans[cur_pc])?;
             }
             Op::AssignPlaceI {
@@ -120,15 +123,17 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
             } => {
                 let pp = &chunk.places[path as usize];
                 let rhs = regs_i[r_rhs as usize];
+                let keys = place_keys(pp, regs_v);
                 let root = place_root_mut(pp.root, regs_v, &mut self.globals);
                 let (&last, prefix) = pp.steps.split_last().expect("non-empty place path");
-                let container = walk_place_mut(root, prefix, regs_i, spans[cur_pc])?;
+                let container = walk_place_mut(root, prefix, regs_i, &keys, spans[cur_pc])?;
                 assign_place_leaf_scalar(container, last, rhs, op, kind, regs_i, spans[cur_pc])?;
             }
             Op::ListPopDiscardPlace { path } => {
                 let pp = &chunk.places[path as usize];
+                let keys = place_keys(pp, regs_v);
                 let root = place_root_mut(pp.root, regs_v, &mut self.globals);
-                let target = walk_place_mut(root, &pp.steps, regs_i, spans[cur_pc])?;
+                let target = walk_place_mut(root, &pp.steps, regs_i, &keys, spans[cur_pc])?;
                 match target {
                     Value::List(items) => {
                         Rc::make_mut(items).pop();
@@ -139,8 +144,9 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
             Op::ListPushPlaceI { path, val_i, kind } => {
                 let pp = &chunk.places[path as usize];
                 let val = kind.box_val(regs_i[val_i as usize]);
+                let keys = place_keys(pp, regs_v);
                 let root = place_root_mut(pp.root, regs_v, &mut self.globals);
-                let target = walk_place_mut(root, &pp.steps, regs_i, spans[cur_pc])?;
+                let target = walk_place_mut(root, &pp.steps, regs_i, &keys, spans[cur_pc])?;
                 match target {
                     Value::List(items) => {
                         Rc::make_mut(items).push(val);
@@ -151,8 +157,9 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
             Op::ListPushPlaceV { path, val_v } => {
                 let pp = &chunk.places[path as usize];
                 let val = regs_v[val_v as usize].clone();
+                let keys = place_keys(pp, regs_v);
                 let root = place_root_mut(pp.root, regs_v, &mut self.globals);
-                let target = walk_place_mut(root, &pp.steps, regs_i, spans[cur_pc])?;
+                let target = walk_place_mut(root, &pp.steps, regs_i, &keys, spans[cur_pc])?;
                 match target {
                     Value::List(items) => {
                         Rc::make_mut(items).push(val);
@@ -163,8 +170,9 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
             Op::SortPlace { path, desc_r } => {
                 let pp = &chunk.places[path as usize];
                 let desc = desc_r != u16::MAX && regs_i[desc_r as usize] != 0;
+                let keys = place_keys(pp, regs_v);
                 let root = place_root_mut(pp.root, regs_v, &mut self.globals);
-                let target = walk_place_mut(root, &pp.steps, regs_i, spans[cur_pc])?;
+                let target = walk_place_mut(root, &pp.steps, regs_i, &keys, spans[cur_pc])?;
                 exec_sort_place(target, desc, spans[cur_pc])?;
             }
             Op::RangeCheckI {
@@ -207,8 +215,9 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
             }
             Op::ReversePlace { path } => {
                 let pp = &chunk.places[path as usize];
+                let keys = place_keys(pp, regs_v);
                 let root = place_root_mut(pp.root, regs_v, &mut self.globals);
-                let target = walk_place_mut(root, &pp.steps, regs_i, spans[cur_pc])?;
+                let target = walk_place_mut(root, &pp.steps, regs_i, &keys, spans[cur_pc])?;
                 match target {
                     Value::List(items) => Rc::make_mut(items).reverse(),
                     Value::Array(arr) => Rc::make_mut(arr).reverse(),
@@ -286,8 +295,9 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
             } => {
                 let arg = regs_v[val_v as usize].clone();
                 let pp = &chunk.places[path as usize];
+                let keys = place_keys(pp, regs_v);
                 let root = place_root_mut(pp.root, regs_v, &mut self.globals);
-                let target = walk_place_mut(root, &pp.steps, regs_i, spans[cur_pc])?;
+                let target = walk_place_mut(root, &pp.steps, regs_i, &keys, spans[cur_pc])?;
                 let ok = match (is_remove, target) {
                     (false, Value::Set(items)) => Rc::make_mut(items).insert(arg),
                     (true, Value::Set(items)) => Rc::make_mut(items).remove(&arg),
@@ -311,8 +321,9 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 let key = regs_v[key_v as usize].clone();
                 let value = regs_v[val_v as usize].clone();
                 let pp = &chunk.places[path as usize];
+                let keys = place_keys(pp, regs_v);
                 let root = place_root_mut(pp.root, regs_v, &mut self.globals);
-                let target = walk_place_mut(root, &pp.steps, regs_i, spans[cur_pc])?;
+                let target = walk_place_mut(root, &pp.steps, regs_i, &keys, spans[cur_pc])?;
                 if let Value::Map(entries) = target {
                     let map = Rc::make_mut(entries);
                     if op == AssignOp::Set {
@@ -392,8 +403,9 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
             }
             Op::SetMapPopEndPlace { dst, path, is_last } => {
                 let pp = &chunk.places[path as usize];
+                let keys = place_keys(pp, regs_v);
                 let root = place_root_mut(pp.root, regs_v, &mut self.globals);
-                let target = walk_place_mut(root, &pp.steps, regs_i, spans[cur_pc])?;
+                let target = walk_place_mut(root, &pp.steps, regs_i, &keys, spans[cur_pc])?;
                 regs_v[dst as usize] = match target {
                     Value::Set(items) => {
                         let items = Rc::make_mut(items);
@@ -869,11 +881,12 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
             }
             Op::TakePlaceV { dst, path } => {
                 let pp = &chunk.places[path as usize];
+                let keys = place_keys(pp, regs_v);
                 let root = match pp.root {
                     PlaceRoot::LocalV(v) => &mut regs_v[v as usize],
                     PlaceRoot::Global(gid) => &mut self.globals[gid as usize],
                 };
-                let cell = walk_place_mut(root, &pp.steps, regs_i, spans[cur_pc])?;
+                let cell = walk_place_mut(root, &pp.steps, regs_i, &keys, spans[cur_pc])?;
                 regs_v[dst as usize] = take_value(cell, spans[cur_pc])?;
             }
             Op::CallVmFeed { spec } => {
@@ -1184,8 +1197,9 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 let (arg, arg2) = (arg(0), arg(1));
                 let program = self.program;
                 let pp = &chunk.places[path as usize];
+                let keys = place_keys(pp, regs_v);
                 let root = place_root_mut(pp.root, regs_v, &mut self.globals);
-                let cell = walk_place_mut(root, &pp.steps, regs_i, spans[cur_pc])?;
+                let cell = walk_place_mut(root, &pp.steps, regs_i, &keys, spans[cur_pc])?;
                 regs_v[dst as usize] = crate::mutation::mutate_cell(
                     *op,
                     cell,

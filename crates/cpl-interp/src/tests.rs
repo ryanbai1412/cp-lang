@@ -1349,3 +1349,15 @@ fn vm_reads_and_stores_hash_maps_itself() {
         include_str!("../../cpl-cli/tests/programs/vm_hash_map.out")
     );
 }
+
+#[test]
+fn vm_walks_map_entries_itself() {
+    let out = vm_runs_alone(
+        include_str!("../../cpl-cli/tests/programs/vm_map_key_place.cp"),
+        include_str!("../../cpl-cli/tests/programs/vm_map_key_place.in"),
+    );
+    assert_eq!(
+        out,
+        include_str!("../../cpl-cli/tests/programs/vm_map_key_place.out")
+    );
+}

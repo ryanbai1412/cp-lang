@@ -151,12 +151,16 @@ pub(crate) enum PlaceStep {
     Field(u16),
     Index1(u16),
     Index2(u16, u16),
+    /// A map entry, keyed by the `n`th of the path's `keys`.
+    Key(u16),
 }
 
 #[derive(Clone, Debug)]
 pub(crate) struct PlacePath {
     pub root: PlaceRoot,
     pub steps: Vec<PlaceStep>,
+    /// The registers holding each `Key` step's key.
+    pub keys: Vec<u16>,
 }
 
 #[derive(Clone, Copy, Debug)]

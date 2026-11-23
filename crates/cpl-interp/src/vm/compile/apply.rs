@@ -87,7 +87,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
             return None;
         }
         let saved = (self.ops.len(), self.spans.len(), self.places.len());
-        let Some(path) = self.compile_place_path(place) else {
+        let Some(path) = self.compile_place_path_to(place, true) else {
             self.ops.truncate(saved.0);
             self.spans.truncate(saved.1);
             self.places.truncate(saved.2);
