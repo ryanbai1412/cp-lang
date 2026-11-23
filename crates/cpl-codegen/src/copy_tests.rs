@@ -36,3 +36,17 @@ fn a_loop_over_one_field_that_writes_another_walks_it_in_place() {
     assert!(body("recount").contains(": self.w)"), "{cpp}");
     assert!(body("refill").contains("= self.w;"), "{cpp}");
 }
+
+#[test]
+fn a_let_bound_comprehension_moves_its_list() {
+    let cpp = cpp(concat!(
+        "let a: [0..3]Int = read()\n",
+        "fn f(v: Int) -> Int:\n",
+        "    let signs = [Int(x >= v) - 1 for x in a]\n",
+        "    let nz = [s for s in signs if s != 0]\n",
+        "    nz.len\n",
+        "print(f(2))\n",
+    ));
+    assert!(cpp.contains("signs = std::move("), "{cpp}");
+    assert!(cpp.contains("nz = std::move("), "{cpp}");
+}

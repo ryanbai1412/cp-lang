@@ -1396,6 +1396,7 @@ impl<'p> Emitter<'p> {
                     self.line(out, &format!("{name}.clear();"));
                     return;
                 }
+                let whole = init;
                 let init = self.flatten(init, out);
                 match &init.kind {
                     ExprKind::Read(spec) => {
@@ -1459,6 +1460,18 @@ impl<'p> Emitter<'p> {
                             self.expr_with_elem_layout(init, elem_l.as_ref()).text
                         }
                     }
+                };
+                // A value its own block built (a comprehension) is not read again: it moves.
+                let text = match init.kind {
+                    ExprKind::Local(built)
+                        if text == self.names[built]
+                            && !init.ty.is_scalar()
+                            && !matches!(init.ty, Ty::Fn(..))
+                            && built_in(whole, built) =>
+                    {
+                        format!("std::move({text})")
+                    }
+                    _ => text,
                 };
                 let auto = matches!(ty, Ty::Fn(..))
                     && self.closure_id.is_none()
@@ -1939,4 +1952,18 @@ fn fields_untouched(seq: &Expr, body: &Block) -> bool {
         let (global, root, path, _) = stored_fields(place);
         global || root != slot || (!path.starts_with(&walked) && !walked.starts_with(&path))
     })
+}
+
+/// Whether one of the value blocks around `e` declares `slot`.
+fn built_in(mut e: &Expr, slot: usize) -> bool {
+    while let Some((stmts, value)) = flat(e) {
+        if stmts
+            .iter()
+            .any(|stmt| matches!(stmt, Stmt::Let(s, _) if *s == slot))
+        {
+            return true;
+        }
+        e = value;
+    }
+    false
 }
