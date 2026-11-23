@@ -725,6 +725,21 @@ fn an_optional_struct_with_an_int_field_has_no_flag() {
 }
 
 #[test]
+fn an_optional_tuple_with_a_position_inside_a_tuple_has_no_flag() {
+    let cpp = cpp(concat!(
+        "let n: Int = read()\n",
+        "domain V = 0..n\n",
+        "var back: ?(from: (Int, V), via: Int) = None\n",
+        "back = ((7, V.first!), 3)\n",
+        "print(back!.from.0, back!.via)\n",
+    ));
+    assert!(
+        cpp.contains("cpl::OptTuple<std::tuple<std::tuple<ll, int>, ll>, 0, 1> back"),
+        "{cpp}"
+    );
+}
+
+#[test]
 fn an_optional_tuple_with_a_position_has_no_flag() {
     let cpp = cpp(concat!(
         "let n: Int = read()\n",
@@ -740,7 +755,7 @@ fn an_optional_tuple_with_a_position_has_no_flag() {
         "{cpp}"
     );
     assert!(
-        cpp.contains("template <class T, size_t K> struct OptTuple {"),
+        cpp.contains("template <class T, size_t... P> struct OptTuple {"),
         "{cpp}"
     );
     // No `Int` of a tuple is free to say `none`.

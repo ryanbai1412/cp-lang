@@ -635,15 +635,22 @@ using OptChar = Niche<u8, short, -1>;
         name: "niche_tuple",
         needs: &[],
         code: "\
-// `?(.., V, ..)`: a tuple that holds a position is `none` when that position
-// is -1, so there is no flag beside the tuple.
-template <class T, size_t K> struct OptTuple {
+// `?(.., V, ..)`: a tuple that holds a position, here or in a tuple inside
+// it (`P` is the path to it), is `none` when that position is -1, so there
+// is no flag beside the tuple.
+template <size_t K, size_t... P> struct NichePath {
+    template <class T> static auto& at(T& t) {
+        if constexpr (sizeof...(P) == 0) return std::get<K>(t);
+        else return NichePath<P...>::at(std::get<K>(t));
+    }
+};
+template <class T, size_t... P> struct OptTuple {
     T raw = empty();
-    static T empty() { T t{}; std::get<K>(t) = -1; return t; }
+    static T empty() { T t{}; NichePath<P...>::at(t) = -1; return t; }
     OptTuple() = default;
     explicit OptTuple(const T& x) : raw(x) {}
     explicit OptTuple(const std::optional<T>& o) : raw(o ? *o : empty()) {}
-    bool has_value() const { return std::get<K>(raw) != -1; }
+    bool has_value() const { return NichePath<P...>::at(raw) != -1; }
     explicit operator bool() const { return has_value(); }
     const T& operator*() const { return raw; }
     T& operator*() { return raw; }

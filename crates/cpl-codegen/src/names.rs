@@ -238,13 +238,11 @@ pub(crate) fn cty(program: &Program, niches: Niches, ty: &Ty) -> String {
             // A tuple with a position in it: `none` is that position at -1.
             Ty::Tuple(_) | Ty::Record(_) => {
                 let held = cty(program, niches, inner);
-                let at = inner
-                    .fields()
-                    .unwrap_or_default()
-                    .iter()
-                    .position(|item| matches!(item, Ty::Pos(_) | Ty::Bound(_)));
-                match at {
-                    Some(at) => format!("cpl::OptTuple<{held}, {at}>"),
+                match pos_path(inner) {
+                    Some(path) => {
+                        let path: Vec<String> = path.iter().map(usize::to_string).collect();
+                        format!("cpl::OptTuple<{held}, {}>", path.join(", "))
+                    }
                     None => format!("std::optional<{held}>"),
                 }
             }
@@ -359,4 +357,21 @@ pub(crate) fn is_bitset_ty(ty: &Ty, program: &Program) -> bool {
         && s.fields.iter().any(|(name, ty)| {
             name == "w" && matches!(ty, Ty::List(elem) if elem.as_ref() == &Ty::U64)
         })
+}
+
+/// The path through nested tuples to a position in `ty`, which `?ty` keeps
+/// at -1 for `none`: one directly in `ty` first, else the first one nested.
+fn pos_path(ty: &Ty) -> Option<Vec<usize>> {
+    let fields = ty.fields()?;
+    if let Some(at) = fields
+        .iter()
+        .position(|f| matches!(f, Ty::Pos(_) | Ty::Bound(_)))
+    {
+        return Some(vec![at]);
+    }
+    fields.iter().enumerate().find_map(|(at, f)| {
+        let mut path = pos_path(f)?;
+        path.insert(0, at);
+        Some(path)
+    })
 }
