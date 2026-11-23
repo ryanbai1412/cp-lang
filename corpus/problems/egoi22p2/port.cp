@@ -1,4 +1,12 @@
-// EGOI '22 P2 - Lego Wall (runnable on proto/cp.py lib-run today)
+// Source: EGOI 2022 Day 1 (Lego Wall), https://dmoj.ca/problem/egoi22p2
+// Problem: count the walls of width w and height h (w * h <= 5e5) built from 1x1 and 2x1
+//   bricks with no holes that are connected (bricks touching one above the other link),
+//   mod 1e9+7.
+// Solution: a row of width i has fib(i) tilings, so total[i] = fib(i)^h walls of width i.
+//   A wall is disconnected exactly when some vertical line cuts every row; split off the
+//   connected part before the first such line: solid[i] = total[i] - sum over j < i of
+//   solid[j] * total[i - j]. O(w^2).
+// Note: runnable on proto/cp.py lib-run today.
 
 type Z = Mod<1000000007>
 

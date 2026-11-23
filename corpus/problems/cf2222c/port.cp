@@ -1,13 +1,12 @@
-// Codeforces 2222 C — Odd-Length Equal-Median Partition
-//
-// Every odd-length segment has strictly more than half of its elements `<= m`
-// and strictly more than half `>= m`, where `m` is its median. If all segments
-// share the same median `m`, summing those inequalities over all segments
-// forces strictly more than half of the whole array to be `<= m` and `>= m`, so
-// `m` must equal the global median `med = a.sorted()[n / 2]`.
-//
-// Because `n` is odd, the single-segment partition `[0..n)` always has median
-// `med`, guaranteeing `dp[n]!` is present (`>= 1`). Complexity: O(n^2) (`n <= 5_000`).
+// Source: Codeforces 2222C (Median Partition), https://codeforces.com/contest/2222/problem/C
+// Problem: an array of odd length n < 5000 (a_i <= 1e9). Cut it into the most subarrays of
+//   odd length that all have the same median; print that number. Multitest, sum of n^2 <=
+//   5000^2.
+// Solution: in each odd segment more than half the elements are <= its median and more than
+//   half >= it, so a common median m does the same for the whole array: m is the global
+//   median med. dp[j] = most segments for the prefix of length j, over odd segments (i, j]
+//   with median med (count < med and <= med by prefix sums). The whole array always works.
+//   O(n^2).
 
 @!multitest
 let n: 1..=5_000 = read()

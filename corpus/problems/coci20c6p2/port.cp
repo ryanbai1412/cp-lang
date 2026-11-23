@@ -1,6 +1,9 @@
-// COCI 2020/21 #6 Alias: a directed weighted graph whose n vertices are
-// named by words, given as m lines `from to time`. For each of q queries
-// `a b` print the shortest time from a to b, or "Roger" if b is unreachable.
+// Source: COCI 2020/2021 Contest 6 (Alias), https://dmoj.ca/problem/coci20c6p2
+// Problem: n <= 1000 words and m <= 1000 directed associations `x y t` (t <= 1e9): hearing x
+//   makes you think of y after t ms. For each of q <= 1000 queries `a b`, print the shortest
+//   time from a to b, or "Roger" if b is never reached.
+// Solution: give each word an id on first sight (a hash map) and build the weighted digraph;
+//   run Dijkstra from a for each query: O(q (n + m) log n).
 // original: corpus/submissions/4188022.cpp
 use std.seq.{get_or_insert_with}
 

@@ -1,11 +1,10 @@
-// CTSC 2006 Singing Kingdom: letters 1..m are drawn uniformly at random until
-// a given name appears as a block of consecutive draws. Print the expected
-// number of draws modulo 10^4, as four digits, for each of t names.
-//
-// The original solves a recurrence over the failure function. The closed
-// form is shorter: the expected wait is the sum of m^b over every border b
-// of the name, the whole name included (a border is a prefix that is also a
-// suffix).
+// Source: CTSC 2006 (Singing Kingdom), https://dmoj.ca/problem/ctsc06p1
+// Problem: letters 1..m (m <= 1e5) are drawn uniformly at random until a given name appears
+//   as a block of consecutive draws. For each of t <= 50 names (length <= 1e5), print the
+//   last 4 digits of the expected number of draws (an integer), zero-padded.
+// Solution: the expected wait is the sum of m^b over every border b of the name (a prefix
+//   that is also a suffix), the whole name included. The failure function lists the borders
+//   in O(len); add the powers mod 10^4 and print four digits.
 // original: corpus/submissions/4528855.cpp
 use std.strings.{borders}
 

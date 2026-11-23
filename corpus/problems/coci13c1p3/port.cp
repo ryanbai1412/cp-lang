@@ -1,6 +1,10 @@
-// COCI 2013 Ratar: count pairs of rectangles that touch at exactly one corner
-// point and have equal sums. For every grid point, compare the rectangles on
-// opposite sides of it, one diagonal at a time.
+// Source: COCI 2013/2014 Contest 1 (Ratar), https://dmoj.ca/problem/coci13c1p3
+// Problem: an n x n grid (n <= 50) of values in [-1000, 1000]. Count the pairs of rectangles
+//   that have exactly one corner point in common (touching diagonally) and equal sums.
+// Solution: such a pair meets at one grid point, in opposite quadrants. For every grid point,
+//   list the sums of all rectangles with a corner there in each quadrant (2-D prefix sums),
+//   and count equal pairs between top-left and bottom-right, and between top-right and
+//   bottom-left, with a count map: O(n^2) points times O(n^2) rectangles, O(n^4).
 let n: 1..=50 = read()
 domain I = 1..=n
 let a: [I, I]-1000..=1000 = read()

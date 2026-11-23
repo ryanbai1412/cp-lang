@@ -1,10 +1,11 @@
-// IOI 2014 Wall: n columns of height 0 and k operations in order. "add"
-// raises every column of a range that is below h up to h; "remove" lowers
-// every column above h down to h. Print the final heights.
-//
-// Both operations clamp a height to an interval, and clamps compose into a
-// clamp. So this is a range update with no range query: push the clamps
-// down a segment tree's range action and read each leaf at the end.
+// Source: IOI 2014 Day 1 (Wall), https://dmoj.ca/problem/ioi14p2
+// Problem: n <= 2e6 columns start at height 0. Apply k <= 5e5 operations `t l r h` (h <= 1e5)
+//   in order: add (t = 1) raises every column of [l, r] below h to h, remove (t = 2) lowers
+//   every column of [l, r] above h to h. Print the final heights.
+// Solution: both operations clamp a height into an interval [lo, hi], and clamps compose
+//   into a clamp. So it is a range update with no range query: a SegTree with a lazy clamp
+//   action applies each operation in O(log n), then each column is read once:
+//   O((n + k) log n).
 
 let (n, k): (Int, Int) = read()
 domain Col = 0..n
