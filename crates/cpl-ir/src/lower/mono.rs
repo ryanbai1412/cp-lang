@@ -259,7 +259,13 @@ impl<'a> Lowerer<'a> {
                 return Some(local_sym);
             }
         }
-        self.mod_syms[self.cur_mod].get(name).copied()
+        let mut m = self.cur_mod;
+        loop {
+            if let Some(sym) = self.mod_syms[m].get(name) {
+                return Some(*sym);
+            }
+            m = self.inline_mods.get(&m)?.0;
+        }
     }
 
     pub(super) fn mangle_arg(&self, arg: &GenArg) -> String {
