@@ -608,6 +608,10 @@ uv run scripts/conformance-sigs.py --check || fail "sig gate failed; see above"
 step "conformance prelude: table fns of spec/lib chapters are prelude names (R11.3.2)"
 uv run scripts/conformance-prelude.py --check || fail "prelude gate failed; see above"
 
+step "std containers print, walk and have is_empty (scripts/std-trait-matrix.py)"
+uv run --quiet python scripts/std-trait-matrix.py --max 79 \
+    || fail "a std container lacks a common trait; see above"
+
 step "std docs follow the std-docs checklist (scripts/std-docs-lint.py)"
 uv run --quiet python scripts/std-docs-lint.py --max 113 \
     || fail "a std doc breaks a std-docs rule; see above"

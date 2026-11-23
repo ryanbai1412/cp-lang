@@ -655,6 +655,8 @@ pub fn max_rotation<S: Indexed<K, T>, K, T>(s: S) -> ?K:
     Some(s.keys.nth(min(a, b)))
 
 /// \(O(\lvert \mathit{pat} \rvert \cdot \lvert A \rvert)\). Prefix (KMP) automaton over alphabet domain `A`, for \(O(1)\) transitions in DP.
+///
+/// not a container: an automaton; `len` counts states, which are walked by `step`.
 pub struct KmpAutomaton<A>:
     alpha: 0..=2_000_000_000
     goto: List<0..=2_000_000_000>
@@ -1448,6 +1450,8 @@ pub trait Hashable:
 /// Built in \(O(n)\); substring queries `.get(l..r)` / `.slice(l, r)` and `.combine(a, b, b_len)`
 /// are \(O(1)\). Each constructor draws independent random salted bases unless `bases:` is passed
 /// explicitly, so 2D row and column hashes never collide on transposes.
+///
+/// not a container: `len` is the hashed string's length; it holds hashes, not elements.
 pub struct RollingHash:
     pub bases: (Int, Int)
     p1: List<Int>
@@ -1788,6 +1792,8 @@ fn rh61_tok(t: Int) -> U64:
 pub struct Hash61(v: U64)
 
 /// \(O(n)\) build, \(O(1)\) query. Single-modulus `2^61 - 1` polynomial rolling hash with randomized base.
+///
+/// not a container: `len` is the hashed string's length; it holds hashes, not elements.
 pub struct RollingHash61:
     base: U64
     pre: List<U64>
@@ -1946,6 +1952,8 @@ pub struct RollingHash61:
 
 /// \(O(n)\) build, \(O(\log n)\) point update and range hash. Mutable double-mod rolling hash over domain `D`.
 /// Supports `h[i] = x` via W8 `IndexSet`.
+///
+/// not a container: `len` is the hashed string's length; it holds hashes, not elements.
 pub struct DynamicHash<D>:
     bases: (Int, Int)
     tok1: List<Int>
@@ -2110,6 +2118,8 @@ fn dh_sum(tree: List<Int>, e: Int, m: Int) -> Int:
 
 /// \(O(n \cdot \lvert A \rvert)\) space, \(O(1)\) amortized push. Online suffix automaton over alphabet domain `A`.
 /// \(O(n \cdot \lvert A \rvert)\) flat memory, \(O(n)\) amortized build, \(O(\mathit{states})\) `topo_order` and `occurrences`.
+///
+/// not a container: an automaton; `len` counts states, which are walked by `step`.
 pub struct SuffixAutomaton<A>:
     alpha: 0..=2_000_000_000
     next: List<-1..=2_000_000_000>
@@ -2499,6 +2509,8 @@ pub fn lcs_all<A, S: Seq>(words: List<S>) -> Int:
 /// \(O(n \cdot \lvert A \rvert)\) space, \(O(1)\) amortized push. Online palindromic tree (eertree) over alphabet domain `A`, with `diff` and `series_link`
 /// for \(O(n \log n)\) palindromic partition DP.
 /// State `0` is the odd root (`pal_len == -1`); state `1` is the even root (`pal_len == 0`).
+///
+/// not a container: an automaton; `len` counts states, which are walked by `step`.
 pub struct PalindromicTree<A>:
     alpha: 0..=2_000_000_000
     next: List<-1..=2_000_000_000>
@@ -3021,6 +3033,8 @@ pub struct Trie<A>:
 
 /// \(O(\mathit{total} \cdot \lvert A \rvert)\) build, \(O(1)\) step. Aho-Corasick multi-pattern automaton over alphabet domain `A`.
 /// Built in \(O(\mathit{sum} \lvert p \rvert \cdot \lvert A \rvert)\) flat memory and time; `step`, `link`, and `hit` are \(O(1)\).
+///
+/// not a container: an automaton; `len` counts states, which are walked by `step`.
 pub struct AhoCorasick<A>:
     alpha: 0..=2_000_000_000
     goto: List<-1..=2_000_000_000>
@@ -3215,6 +3229,8 @@ pub struct AhoCorasick<A>:
 
 /// \(O(\lvert \mathit{pat} \rvert \cdot \lvert A \rvert \cdot \log n)\) amortized insert/delete, \(O(\lvert \mathit{text} \rvert \cdot \log n)\) query.
 /// Online multi-pattern Aho-Corasick via log-decomposed static buckets.
+///
+/// not a container: an automaton; `len` counts patterns, which are walked by `step`.
 pub struct DynamicAhoCorasick<A>:
     alpha: 0..=2_000_000_000
     pub n: Int
