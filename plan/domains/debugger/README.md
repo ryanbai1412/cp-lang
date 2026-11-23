@@ -11,11 +11,12 @@ The loop Ryan reviews: **WA -> `cpl stress` -> minimal input -> trap or first di
 
 ## Milestone 1
 
-Due about 09:30 PST 11/23, on edge; checkpoints every 2 h in the [worklog](worklog.md). What [MILESTONE-1](../../product/MILESTONE-1.md) needs from this domain: the loop **WA → `cpl stress` with a brute in the same file → minimized counterexample in seconds → fix → rerun**, smooth from the CLI, Neovim/Vim and VS Code, on Linux, macOS and Windows. Exit criteria:
+Due about 09:30 PST 11/23, on edge; checkpoints every 2 h in the [worklog](worklog.md). What [MILESTONE-1](../../product/MILESTONE-1.md) needs from this domain: the loop **WA → `cpl stress` with a brute in the same file → minimized counterexample in seconds → fix → rerun**, smooth from the CLI, Neovim/Vim, VS Code and JetBrains, on Linux, macOS and Windows. Exit criteria:
 - [x] The loop passes end to end on the CLI for `@alt(program)`, `@check` and `@interactor` multitests (`cargo nextest run -p cpl-cli --test debugger`: `stress_loop` tests).
 - [ ] Every seeded bug (`bench/stress/`, 24) found and shrunk; median < 1 s, max < 5 s (`cargo test --release -p cpl-cli --test seeded_bugs`).
 - [ ] The loop tests pass on Linux, macOS and Windows CI: paths, CRLF in saved cases, no `g++` or `sh` needed for a same-file brute.
 - [ ] Neovim: `:Cpl stress` (or the LSP Stress lens) then `:Cpl test` runs the loop from the documented one-step setup (`editors/neovim/plugin/cplang.lua`); Vim: `:!cpl stress %` then `:!cpl test %`, documented. Tools owns `editors/` and the LSP; debugger writes the scenario.
+- [ ] JetBrains: a `cpl` run configuration with command `stress`, then `test` (`editors/jetbrains/src/main/kotlin/dev/cplang/ide/CplRun.kt`), runs the loop; its output names the saved case.
 - [ ] VS Code: Stress lens shows the failing case, Run All Samples reruns `<file>.tests/`; wording is v0.3's (`@alt(program)`, `@check`).
 - [x] Traps name the rule, the place and the locals (all 12 R-codes in `runtime_errors.rs`).
 - [ ] Stress guide (`web/content/docs/guides/stress.mdx`, site's) teaches the whole loop including the rerun; its examples run (they do today).
@@ -24,7 +25,7 @@ Deferred: the +20% trace target and replay (snapshot/restore), the `crates/cpl-t
 
 Next:
 1. The loop tests on macOS and Windows: run them in CI there (infra's workflow) and fix what breaks in `cpl-stress`.
-2. Neovim/Vim: drive the loop from the documented setup, fix stress's side, request the rest from tools.
+2. Neovim/Vim and JetBrains: drive the loop from the documented setup, fix stress's side, request the rest from tools.
 3. The guide's loop section and the VS Code rerun path, with site and tools.
 
 ## Covers / not covered

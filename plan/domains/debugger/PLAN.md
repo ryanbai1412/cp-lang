@@ -8,7 +8,7 @@ Milestone 1 ([README](README.md#milestone-1)) sets the order, in hours: due abou
 1. **The stress loop, CLI.** Done: `stress_loop` tests in `crates/cpl-cli/tests/debugger.rs` for `@alt(program)`, `@check` and `@interactor`.
 2. **Three platforms.** The loop tests and seeded bugs on macOS and Windows CI (request to infra for the runners); fix in `cpl-stress` what breaks: paths, CRLF in saved cases, the `sh` used to precompile `g++` headers (`crates/cpl-stress/src/program.rs`), which a same-file brute must not need.
 3. **Neovim/Vim.** `:Cpl stress` / the LSP Stress lens, then `:Cpl test`, from the documented setup; `:!cpl stress %` / `:!cpl test %` for Vim. Tools owns `editors/` and the LSP: requests in their worklog, stress-side fixes here.
-4. **VS Code.** Stress lens, failing-case overlay, Run All Samples over `<file>.tests/`, v0.3 wording (requested in tools' worklog).
+4. **VS Code and JetBrains.** JetBrains: the `cpl` run configuration with `stress` then `test`. VS Code: Stress lens, failing-case overlay, Run All Samples over `<file>.tests/`, v0.3 wording (requested in tools' worklog).
 5. **The guide.** `stress.mdx` gains the rerun step (site's file: request); its examples stay runnable.
 6. **Keep it green.** Seeded bugs and trap evidence stay in the gate.
 Deferred: workstream 4 (trace speed, replay, the split, the VM on wasm) and workstream 6 (generators beyond a row); they go on in parallel only behind the blockers. Workstream 5 only for regressions.
