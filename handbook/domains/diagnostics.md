@@ -102,7 +102,7 @@ check behind it, and marks the ones with none as `missing`.
 |---|---|---|
 | `Diagnostic`, `Span`, `Severity`, `Fix`, `Sink` | every front-end and tool crate | `crates/cpl-diag` unit tests |
 | `codes::*`, one constant per catalogue code | every error site | `crates/cpl-cli/tests/catalogue.rs` |
-| `REGISTRY`: title, explanation, a trigger that emits exactly the code, a fix that makes it check clean | `cpl explain`, the catalogue test, `scripts/conformance-coverage.py` | `catalogue.rs` |
+| `REGISTRY`: title, explanation, a trigger that emits exactly the code, a fix that makes it check clean | `cpl explain`, the catalogue test, `scripts/conformance-coverage.py` | `crates/cpl-cli/tests/catalogue.rs` |
 | `render`, `render_all`: the text form `error[E0301]: ... --> f.cp:7:17` | `cpl check/run/build`, goldens | `crates/cpl-cli/tests/diagnostics.rs` |
 | `cpl_ir::fix`: picks among an error's candidate fixes by re-checking, applies them in rounds | `cpl fix`, `cpl-lsp`, `cpl-wasm` | `crates/cpl-ir/src/fix.rs` tests, `crates/cpl-lsp/src/tests/parity.rs`, `crates/cpl-wasm/tests/parity.rs` |
 
@@ -137,8 +137,8 @@ with no real check yet. Targets and current values are in
 | Quality | Metric | Mechanism | Where |
 |---|---|---|---|
 | The first error is on the line to edit | first error on the broken line, over every clean port broken 12 ways | `errors/R2`: generated suite, gated | `crates/cpl-cli/tests/recovery.rs` `recovery_scoreboard` |
-| One error per root cause | cascaded errors per broken file | `errors/R1`: design (`Sink` poisoning) plus generated suite; lowering in `cpl-ir` still bypasses `Sink` | `recovery.rs` |
-| No broken program checks clean | silent broken copies | `errors/R1`: generated suite, gated at 0 | `recovery.rs` |
+| One error per root cause | cascaded errors per broken file | `errors/R1`: design (`Sink` poisoning) plus generated suite; lowering in `cpl-ir` still bypasses `Sink` | `crates/cpl-cli/tests/recovery.rs` |
+| No broken program checks clean | silent broken copies | `errors/R1`: generated suite, gated at 0 | `crates/cpl-cli/tests/recovery.rs` |
 | The primary span is never inside `std/` | user-facing errors whose primary span is in `std/` | `errors/R3`: gate over the goldens; `missing` over generated programs | `crates/cpl-cli/tests/diagnostics.rs` `no_golden_error_points_into_std` |
 | An error inside `std` names the std line and the user's call chain | chain present | `errors/R3`: hand-written | `crates/cpl-cli/tests/cli.rs` `an_error_inside_std_names_the_library_calls_that_led_there` |
 | Spans are right on CRLF and non-ASCII sources | span and fix differences between LF and CRLF copies | `errors/R12`: hand-written | `crates/cpl-cli/tests/lsp_parity.rs` |
@@ -150,11 +150,11 @@ with no real check yet. Targets and current values are in
 |---|---|---|---|
 | Real mistakes get errors that name the place, the rule and a working fix | share of the real-mistake suite meeting all three | `errors/R15`: hand-written suite, graded on all three, with no known-failure list | `crates/cpl-cli/tests/mistakes/`, `diagnostics.rs` `real_mistakes_name_the_place_the_rule_and_a_fix` |
 | C++, Python and Rust habits get the CP Lang way | habits on the practice solutions whose first error is on the line and whose fix makes the tests pass | `errors/R8`: generated suite, gated | `crates/cpl-cli/tests/newcomer.rs` |
-| Common mistakes (`&&`, `!x`, `let` for `var`, typos) get a fix | errors with a fix; fixes that restore the program | `errors/R8`: generated suite, gated | `recovery.rs` `fix_it_scoreboard` |
+| Common mistakes (`&&`, `!x`, `let` for `var`, typos) get a fix | errors with a fix; fixes that restore the program | `errors/R8`: generated suite, gated | `crates/cpl-cli/tests/recovery.rs` `fix_it_scoreboard` |
 | Messages use the spec's vocabulary, one spelling per idea | banned spellings in messages | `errors/R5`: `missing`: `scripts/spec-vocab.py` checks the spec only | — |
 | Every suggestion names something that exists and runs | did-you-means, helps and habit renames naming a missing or private item | `errors/R7`: generated suite for the editor's member catalogue; `missing` for every other advice path | `crates/cpl-cli/tests/builtin_catalog.rs` |
-| Types read as the user wrote them (aliases, domains, views like `Rev<List<Int>>`) | goldens showing internal names | `errors/R6`: hand-written | `diagnostics.rs` |
-| Unfinished code still gets useful errors | first error right on copies with a value cut off | `errors/R2`: generated suite | `recovery.rs` (cut-value class) |
+| Types read as the user wrote them (aliases, domains, views like `Rev<List<Int>>`) | goldens showing internal names | `errors/R6`: hand-written | `crates/cpl-cli/tests/diagnostics.rs` |
+| Unfinished code still gets useful errors | first error right on copies with a value cut off | `errors/R2`: generated suite | `crates/cpl-cli/tests/recovery.rs` (cut-value class) |
 | A message is understood in one read | rewrites needed by a cold reader on sampled errors | `errors/R5`: process: rubric in `handbook/guidelines/errors.md` | — |
 
 ### Fixes
@@ -171,8 +171,8 @@ with no real check yet. Targets and current values are in
 
 | Quality | Metric | Mechanism | Where |
 |---|---|---|---|
-| Every emitted code is catalogued with a trigger that emits exactly it and a clean fix | uncatalogued or untriggered codes | `errors/R13`: gate | `catalogue.rs` |
-| Every code has a `cpl explain` page | codes without an explanation | `errors/R13`: gate | `catalogue.rs` |
+| Every emitted code is catalogued with a trigger that emits exactly it and a clean fix | uncatalogued or untriggered codes | `errors/R13`: gate | `crates/cpl-cli/tests/catalogue.rs` |
+| Every code has a `cpl explain` page | codes without an explanation | `errors/R13`: gate | `crates/cpl-cli/tests/catalogue.rs` |
 | Every lint has a record whose `before.cp` fires and `after.cp`, `near_miss.cp` don't | records failing | `errors/R13`: generated suite | `crates/cpl-lint/src/record_tests.rs`, `checker_tests.rs` |
 | Codes never change meaning; retired codes are never reused | a code whose name changed or a retired code emitted | `errors/R14`: process: append-only table in `spec/diagnostics.md`; `missing` as a check | — |
 | A diagnostic links to a web page for its code | codes with no page | `errors/R13`: `missing` (with site) | — |
@@ -206,8 +206,8 @@ with no real check yet. Targets and current values are in
 
 | Quality | Metric | Mechanism | Where |
 |---|---|---|---|
-| No input crashes the front end | panics on generated and mutated sources | `missing`: no front-end fuzzer asserts no panic | — |
-| Diagnostics are deterministic | output differing between runs | `missing` as a check (goldens catch some) | — |
+| No input crashes the front end | panics on generated and mutated sources | fuzzer: seeded mutations of every corpus `spec.cp` through checker, lowering and linter | `crates/cpl-cli/tests/front_end_fuzz.rs` |
+| Diagnostics are deterministic | copies whose diagnostics differ between a warm and a fresh database | differential: every fuzzed copy is checked twice, once in a fresh database | `crates/cpl-cli/tests/front_end_fuzz.rs` |
 | The front end answers in under 500 ms per corpus file; diagnostics add under 10% | worst file, overhead | gate for the front end; `missing` for the overhead | `crates/cpl-cli/tests/cold_start.rs`, `budget.rs`, CI job `lsp-latency` |
 | Suites catch regressions | mutation score of the error-quality suites | `missing` | — |
 | Every escaped error-quality bug becomes a suite case | escaped bugs without a case | `errors/R15`: process: each bug report lands with its golden | `crates/cpl-cli/tests/diagnostics/` |

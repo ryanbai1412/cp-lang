@@ -619,6 +619,8 @@ def _register_check(root: Path, check: str) -> tuple[bool, list[str]]:
     named, gone = False, []
     for span in REGISTER_SPAN_RE.findall(check):
         words = span.split()
+        if CHECKLIST_ID_RE.fullmatch(span):
+            continue
         if words[0] == "python3" and len(words) > 1:
             words = words[1:]
         elif words[0] in REGISTER_COMMANDS or (len(words) == 1 and words[0] in COUNTERS):
