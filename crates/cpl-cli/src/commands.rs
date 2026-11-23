@@ -22,7 +22,7 @@ pub(crate) const COMMANDS: &[Command] = &[
     Command {
         name: "fix",
         args: "<file>...",
-        summary: &["apply the fix each error suggests, then report what is left"],
+        summary: &["apply each error's suggested fix, report what is left"],
     },
     Command {
         name: "run",

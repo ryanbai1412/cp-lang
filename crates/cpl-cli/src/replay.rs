@@ -14,15 +14,16 @@ usage: cpl replay <file.cp> --trace <trace.json> --step <n> [--input <file>]
 
 Runs one call of a recorded run again with the file's edited fn: the call
 open at step <n> of the trace (the innermost one; --frame <k> picks the
-k-th caller out), or else the call that returned into step <n>. The run before the call is the same, so the call gets the
-same arguments, globals and input. Prints what the call returns and writes
-now and before the edit, and the first step where it differs.
+k-th caller out), or else the call that returned into step <n>. The run
+before the call is the same, so the call gets the same arguments, globals
+and input. Prints what the call returns and writes now and before the edit,
+and the first step where it differs.
 
 The trace is the page `cpl run --trace` writes, or its JSON (`--format
-json`); it holds the source that was recorded. The input is --input, or the case `cpl stress`
-saved last for the file. When the edit changes what the fn takes or returns,
-or the call reads past the input, the whole file runs again and the report
-says so.
+json`); it holds the source that was recorded. The input is --input, or the
+case `cpl stress` saved last for the file. When the edit changes what the
+fn takes or returns, or the call reads past the input, the whole file runs
+again and the report says so.
 ";
 
 pub(crate) use cpl_interp::replay::call_at;

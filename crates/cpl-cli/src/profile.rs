@@ -20,8 +20,9 @@ output is not shown.
 
 options:
   --native         profile the C++ of `cpl build`, built with a counter at
-                   each statement (with the flags of the file's judge, on its stack); the counts are the
-                   interpreter's, the times are the judge's
+                   each statement (with the flags of the file's judge, on its
+                   stack); the counts are the interpreter's, the times are
+                   the judge's
   --format json    one JSON object: the lines with their hits and nanoseconds
 ";
 

@@ -16,8 +16,8 @@ usage: cpl report <file.cp> [--input <in.txt> | < stdin] [--shrink]
 Write a paste-ready Markdown bug report (`cpl-report-<hash>.md`) containing:
   - cpl version (version, channel, commit), OS/arch, g++ version, judge profile
   - source and input (truncated if large; `--shrink` minimizes failing input)
-  - interpreter and C++ build stdout, stderr, exit codes, and first differing line
-  - any ICE backtrace (with `--last`, from the newest `~/.cpl/crashes/<ts>/` bundle)
+  - interpreter and C++ stdout, stderr, exit codes, and the first differing line
+  - any ICE backtrace (`--last`: from the newest `~/.cpl/crashes/<ts>/` bundle)
 
 Privacy: omits environment variables, absolute paths (basenames only), hostname,
 and username. When the report is under 6 KB, also prints a prefilled GitHub
@@ -25,7 +25,7 @@ issue URL.
 
 options:
   -i, --input <file>  read program input from <file> instead of stdin
-  --shrink            minimize input while the failure or mismatch still reproduces
+  --shrink            minimize the input while the failure still reproduces
   --last              build the report from the newest ICE crash bundle
   -h, --help          print this help
 ";

@@ -380,3 +380,30 @@ fn explain_shows_a_code_and_rejects_an_unknown_one() {
         .iter()
         .any(|e| e.at(&["code"]).as_str() == Some("E0302")));
 }
+
+/// Help fits an 80-column terminal. `stress` is the debugger domain's, which
+/// has the request (plan/domains/debugger/worklog.md).
+#[test]
+fn every_help_fits_80_columns() {
+    let json = cpl_json::parse(&text(&cpl(Path::new("."), &["--help", "--json"]).stdout)).unwrap();
+    let mut helps = vec![(
+        "cpl".to_string(),
+        text(&cpl(Path::new("."), &["--help"]).stdout),
+    )];
+    for command in json.at(&["commands"]).as_array().unwrap() {
+        let name = command.at(&["name"]).as_str().unwrap();
+        if name != "stress" {
+            helps.push((
+                name.into(),
+                command.at(&["help"]).as_str().unwrap_or("").into(),
+            ));
+        }
+    }
+    let wide: Vec<String> = helps
+        .iter()
+        .flat_map(|(name, help)| help.lines().map(move |line| (name, line)))
+        .filter(|(_, line)| line.chars().count() > 80)
+        .map(|(name, line)| format!("{name}: {line}"))
+        .collect();
+    assert!(wide.is_empty(), "{wide:#?}");
+}
