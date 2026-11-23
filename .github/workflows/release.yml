@@ -78,9 +78,16 @@ jobs:
                 age=$(( $(date +%s) - $(date -d "${last:-1970-01-01T00:00:00Z}" +%s) ))
                 busy=$(gh run list -R "$GITHUB_REPOSITORY" --workflow release.yml --status in_progress \
                   --json databaseId --jq "[.[] | select(.databaseId < $GITHUB_RUN_ID)] | length")
-                if [ "$age" -lt 3600 ] || [ "$busy" != 0 ]; then
-                  echo "edge is ${age}s old and $busy other release run(s) are going; skipping"; go=false
+                if [ "$busy" != 0 ]; then
+                  echo "$busy older release run(s) are going; skipping"; go=false
                 else
+                  # Edge moved under an hour ago: this run becomes the hourly
+                  # timer, so a commit that turns shippable after a publish
+                  # still ships within the hour even if no later run ends.
+                  if [ "$age" -lt 3600 ]; then
+                    echo "edge moved ${age}s ago; waiting $((3600 - age))s, then selecting"
+                    sleep $((3600 - age))
+                  fi
                   sha=$(scripts/release/shippable.sh || true)
                   [ -n "$sha" ] || { echo "no shippable main commit yet; skipping"; sha=$RUN_SHA; go=false; }
                 fi

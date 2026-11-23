@@ -8258,7 +8258,7 @@ tag move fatal again.
 ## 408. Edge ships hourly from the newest shippable main commit (infra, 2026-11-23)
 
 - **Call.** At 200+ commits an hour a fully green main tip can be hours apart, and edge waited for one. An hourly scheduled release now publishes edge from the newest main commit whose shipping jobs passed (`scripts/release/shippable.sh`: the conformance gate parts, the cli jobs on macOS and Windows, the acceptance solutions), even if ratchet, editor, latency or unit-test jobs are red. The release run still builds every target and smoke-tests the archives, `install.sh` and `cpl run` before publishing. A green CI run still publishes edge at once, and stable still needs a fully green run.
-- **Red runs trigger it too.** GitHub ran none of the `41 * * * *` crons in the first hours, so a red main CI run now also starts the selector when edge is over an hour old and no other release run is going.
+- **Red runs trigger it too.** GitHub ran none of the `41 * * * *` crons in the first hours, so a red or cancelled main CI run now also starts the selector. Only the oldest such run going at once selects; if edge moved under an hour ago it first waits out the hour, so it doubles as the hourly timer.
 - **Reverse.** Drop the hourly cron, the `schedule` branch and the red-run branch in `release.yml`'s green step, and the `failure` conclusion in the plan job's `if`.
 
 ## 409. Rebuild round 32: fills, chain, reversed helpers (spec, 2026-11-23)
