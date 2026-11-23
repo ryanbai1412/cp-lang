@@ -127,7 +127,7 @@ export default defineConfig({
     remarkPlugins: [[remarkMath, { singleDollarTextMath: false }], remarkLive, remarkRun, remarkDecisions],
     rehypePlugins: (v) => [rehypeKatex, ...v],
     rehypeCodeOptions: {
-      themes: { light: 'github-light', dark: 'github-dark' },
+      themes: { light: 'github-light-default', dark: 'github-dark-default' },
       langs: [{ ...cpGrammar, name: 'cp', aliases: ['cplang'] }, 'cpp', 'python', 'java', 'rust', 'sh', 'json'],
     },
   },

@@ -10,6 +10,6 @@ const cpGrammar = {
 let highlighter: Promise<Highlighter> | null = null;
 
 export async function highlight(code: string, lang: 'cp' | 'cpp' | 'python' | 'java' | 'rust') {
-  highlighter ??= createHighlighter({ themes: ['github-light', 'github-dark'], langs: [cpGrammar, 'cpp', 'python', 'java', 'rust'] });
-  return (await highlighter).codeToHtml(code, { lang, themes: { light: 'github-light', dark: 'github-dark' } });
+  highlighter ??= createHighlighter({ themes: ['github-light-default', 'github-dark-default'], langs: [cpGrammar, 'cpp', 'python', 'java', 'rust'] });
+  return (await highlighter).codeToHtml(code, { lang, themes: { light: 'github-light-default', dark: 'github-dark-default' } });
 }

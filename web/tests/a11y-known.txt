@@ -1,16 +1,4 @@
 # `route rule` pairs axe-core flags today; delete a line once it passes.
 / color-contrast
 / scrollable-region-focusable
-/docs/guides/tour color-contrast
-/docs/ref/std/algebra color-contrast
 /docs/ref/std/algebra scrollable-region-focusable
-/docs/ref/std/segtree color-contrast
-/learn/start color-contrast
-/learn/intro color-contrast
-/learn/read/standard-library color-contrast
-/play color-contrast
-/lints color-contrast
-/lints/search_loop color-contrast
-/errors color-contrast
-/errors/E0301 color-contrast
-/decisions color-contrast
