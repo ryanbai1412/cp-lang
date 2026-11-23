@@ -6,6 +6,93 @@ use cpl_check::Database;
 use crate::runner::{self, CompileError};
 use crate::scoreboard::{CaseOutcome, SuiteReport};
 
+/// What checks and runs a case: the linked compiler, or, when
+/// `CPL_CONFORM_CLI` names a `cpl` binary, that binary. The second lets
+/// HEAD's runner and cases measure an older compiler
+/// (`scripts/conformance-bugcatch.py`).
+enum Backend<'a> {
+    Linked(&'a mut Database),
+    Cli(PathBuf),
+}
+
+struct Ran {
+    stdout: Vec<u8>,
+    trapped: bool,
+    trap_rendered: String,
+}
+
+impl Backend<'_> {
+    fn check(&mut self, path: &str, text: &str) -> (String, bool) {
+        match self {
+            Backend::Linked(db) => runner::check_spec(db, path, text),
+            Backend::Cli(cpl) => match cli(cpl, &["check", path], &[]) {
+                Ok((code, out, err)) => (out + &err, code != 0),
+                Err(e) => (format!("error[cli]: {e}"), true),
+            },
+        }
+    }
+
+    fn lint(&mut self, path: &str, text: &str) -> String {
+        match self {
+            Backend::Linked(_) => runner::lint_spec(path, text),
+            Backend::Cli(cpl) => cli(cpl, &["lint", path], &[])
+                .map(|(_, out, err)| out + &err)
+                .unwrap_or_default(),
+        }
+    }
+
+    /// `Err` holds the compile diagnostics.
+    fn run(&mut self, path: &str, text: &str, input: &[u8]) -> Result<Ran, String> {
+        match self {
+            Backend::Linked(db) => {
+                let compiled = runner::compile_program(db, path, text)
+                    .map_err(|CompileError::Diagnostics(d)| d)?;
+                let run = runner::run_interp(&compiled.program, path, text, input);
+                Ok(Ran {
+                    stdout: run.stdout,
+                    trapped: run.trap.is_some(),
+                    trap_rendered: run.trap_rendered,
+                })
+            }
+            Backend::Cli(cpl) => {
+                let (code, out, err) = cli(cpl, &["run", path], input)?;
+                Ok(Ran {
+                    stdout: out.into_bytes(),
+                    trapped: code != 0,
+                    trap_rendered: err,
+                })
+            }
+        }
+    }
+}
+
+fn cli_override() -> Option<PathBuf> {
+    std::env::var_os("CPL_CONFORM_CLI").map(PathBuf::from)
+}
+
+fn cli(cpl: &Path, args: &[&str], input: &[u8]) -> Result<(i32, String, String), String> {
+    use std::io::Write;
+    use std::process::{Command, Stdio};
+    let mut child = Command::new(cpl)
+        .args(args)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .map_err(|e| format!("cannot run {}: {e}", cpl.display()))?;
+    if let Some(mut stdin) = child.stdin.take() {
+        let _ = stdin.write_all(input);
+    }
+    let out = child
+        .wait_with_output()
+        .map_err(|e| format!("cpl failed: {e}"))?;
+    Ok((
+        out.status.code().unwrap_or(-1),
+        String::from_utf8_lossy(&out.stdout).into_owned(),
+        String::from_utf8_lossy(&out.stderr).into_owned(),
+    ))
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Expect {
     Ok,
@@ -75,9 +162,12 @@ struct ToolRun {
 fn run_tool(case: &ConformanceCase, text: &str, args: &str) -> Result<ToolRun, String> {
     use std::io::Write;
     use std::process::{Command, Stdio};
-    let cpl = std::env::current_exe()
-        .map_err(|e| format!("cannot find cpl-conform: {e}"))?
-        .with_file_name(if cfg!(windows) { "cpl.exe" } else { "cpl" });
+    let cpl = match cli_override() {
+        Some(cpl) => cpl,
+        None => std::env::current_exe()
+            .map_err(|e| format!("cannot find cpl-conform: {e}"))?
+            .with_file_name(if cfg!(windows) { "cpl.exe" } else { "cpl" }),
+    };
     if !cpl.exists() {
         return Err(format!("no `cpl` next to cpl-conform ({})", cpl.display()));
     }
@@ -350,7 +440,11 @@ pub fn run_one(db: &mut Database, case: &ConformanceCase) -> CaseOutcome {
         return run_tool_case(case, &text, args, expect, offset);
     }
     let path_str = case.path.to_string_lossy();
-    let (diag, check_failed) = runner::check_spec(db, &path_str, &text);
+    let mut backend = match cli_override() {
+        Some(cpl) => Backend::Cli(cpl),
+        None => Backend::Linked(db),
+    };
+    let (diag, check_failed) = backend.check(&path_str, &text);
 
     match expect {
         Expect::Exit(_) => CaseOutcome {
@@ -368,9 +462,9 @@ pub fn run_one(db: &mut Database, case: &ConformanceCase) -> CaseOutcome {
                 };
             }
             let target_line = line + offset;
-            let compiled = match runner::compile_program(db, &path_str, &text) {
-                Ok(c) => c,
-                Err(CompileError::Diagnostics(d)) => {
+            let run = match backend.run(&path_str, &text, &header_input(&text)) {
+                Ok(r) => r,
+                Err(d) => {
                     return CaseOutcome {
                         status: "fail".into(),
                         detail: format!(
@@ -380,8 +474,7 @@ pub fn run_one(db: &mut Database, case: &ConformanceCase) -> CaseOutcome {
                     };
                 }
             };
-            let run = runner::run_interp(&compiled.program, &path_str, &text, &header_input(&text));
-            if run.trap.is_some()
+            if run.trapped
                 && run.trap_rendered.contains(&code)
                 && run.trap_rendered.contains(&format!(":{target_line}"))
             {
@@ -401,7 +494,7 @@ pub fn run_one(db: &mut Database, case: &ConformanceCase) -> CaseOutcome {
         }
         Expect::Diag { code, line } => {
             let diag = if code.starts_with('L') {
-                diag + &runner::lint_spec(&path_str, &text)
+                diag + &backend.lint(&path_str, &text)
             } else {
                 diag
             };
@@ -450,9 +543,9 @@ pub fn run_one(db: &mut Database, case: &ConformanceCase) -> CaseOutcome {
                     ),
                 };
             }
-            let compiled = match runner::compile_program(db, &path_str, &text) {
-                Ok(c) => c,
-                Err(CompileError::Diagnostics(d)) => {
+            let run = match backend.run(&path_str, &text, &header_input(&text)) {
+                Ok(r) => r,
+                Err(d) => {
                     return CaseOutcome {
                         status: "fail".into(),
                         detail: format!(
@@ -462,7 +555,6 @@ pub fn run_one(db: &mut Database, case: &ConformanceCase) -> CaseOutcome {
                     };
                 }
             };
-            let run = runner::run_interp(&compiled.program, &path_str, &text, &header_input(&text));
             let stdout = String::from_utf8_lossy(&run.stdout);
             let actual = stdout.trim_end_matches('\n');
             if actual == want {

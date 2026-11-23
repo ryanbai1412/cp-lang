@@ -63,12 +63,17 @@ def broken(base, got):
     return sorted(k for k, v in base.items() if v == "pass" and got.get(k) != "pass")
 
 
-def run_suite(wt, env, board):
-    build = subprocess.run(["cargo", "build", "--release", "-q", "-p", "cpl-conform", "-p", "cpl-cli"], cwd=wt, env=env,
+def run_suite(wt, env, board, runner=None):
+    """`runner` is HEAD's cpl-conform, for a tree too old to have one: it
+    drives that tree's `cpl` binary through `CPL_CONFORM_CLI`."""
+    crates = ["-p", "cpl-cli"] if runner else ["-p", "cpl-conform", "-p", "cpl-cli"]
+    build = subprocess.run(["cargo", "build", "--release", "-q", *crates], cwd=wt, env=env,
                            capture_output=True, text=True, check=False)
     if build.returncode:
         return None
     exe = Path(env["CARGO_TARGET_DIR"]) / "release" / "cpl-conform"
+    if runner:
+        exe, env = runner, dict(env, CPL_CONFORM_CLI=str(Path(env["CARGO_TARGET_DIR"]) / "release" / "cpl"))
     try:
         subprocess.run([str(exe), "conformance", "--write", "--scoreboard", str(board)], cwd=wt, env=env,
                        capture_output=True, text=True, check=False, timeout=SUITE_TIMEOUT)
@@ -84,7 +89,8 @@ def at_fix(wt, env, work, sha, files, head):
     git("checkout", "-f", "-q", sha, cwd=wt)
     git("clean", "-fdq", cwd=wt)
     git("checkout", head, "--", "spec/conformance", cwd=wt)
-    fixed = run_suite(wt, env, work / "fix.json")
+    runner = None if (wt / "crates" / "cpl-conform").is_dir() else work / "runner" / "cpl-conform"
+    fixed = run_suite(wt, env, work / "fix.json", runner)
     if fixed is None or fixed is HUNG:
         return "fix commit does not build or hangs", []
     gone = [f for f in files if git("cat-file", "-e", f"{sha}^:{f}", cwd=wt, check=False).returncode]
@@ -93,7 +99,7 @@ def at_fix(wt, env, work, sha, files, head):
         git("checkout", f"{sha}^", "--", *keep, cwd=wt)
     for f in gone:
         (wt / f).unlink(missing_ok=True)
-    got = run_suite(wt, env, work / "rev.json")
+    got = run_suite(wt, env, work / "rev.json", runner)
     git("checkout", "-f", "-q", head, cwd=wt)
     git("clean", "-fdq", cwd=wt)
     if got is None:
@@ -127,6 +133,8 @@ def main():
         base = run_suite(wt, env, work / "base.json")
         if base is None or base is HUNG:
             sys.exit("bugcatch: HEAD does not build or the suite hangs")
+        (work / "runner").mkdir(exist_ok=True)
+        shutil.copy2(Path(env["CARGO_TARGET_DIR"]) / "release" / "cpl-conform", work / "runner" / "cpl-conform")
         for sha, subj in todo:
             git("checkout", "-f", "-q", head, cwd=wt)
             git("clean", "-fdq", cwd=wt)
