@@ -59,6 +59,8 @@ def std_params():
             names = params[m.group(1)]
             names.add("")
             for p in top_level_parts(inner, angle=True):
+                if p.strip().startswith(".."):
+                    names.add("*")  # a variadic `..xs` takes any name (R06.1.5, decision 324)
                 n = re.match(r"(?:mut\s+)?(\w+)\s*[:=]", p)
                 if n:
                     names.add(n.group(1))
@@ -95,7 +97,7 @@ def mismatches():
                     continue
                 for p in top_level_parts(inner):
                     k = re.match(r"(\w+):(?!:)", p)
-                    if k and k.group(1) not in params[name]:
+                    if k and k.group(1) not in params[name] and "*" not in params[name]:
                         out.add(f"{rel}: {m.group(1)}{name}({k.group(1)}:)")
     return out
 
