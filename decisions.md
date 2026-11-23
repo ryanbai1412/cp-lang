@@ -7263,3 +7263,14 @@ Vim's `gq` honours `[fmt]`. Reverse: restore the `"."` default in
 ## 335. Math is LaTeX inside `\( ... \)` (2026-11-22)
 
 Ryan's call, relayed by the coordinator: math in doc comments, the spec and lint records is LaTeX inside `\( ... \)` (`/// cost: \(O(n \log n)\)`). The site renders it with KaTeX at build time, LSP hover and CLI output get a plain-Unicode fallback (`O(n log n)`), and a docs check fails a `cost:` line or math-looking span that isn't valid LaTeX. Spec converted its prose and table cost spans (515 spans, 74 distinct, all accepted by KaTeX 0.16 with `throwOnError`). Sizes use `\lvert x \rvert` so table cells need no `\|`; code blocks keep `// O(n)` comments as source. Lost: plain `O(n)` source, which reads fine raw but can't be typeset or checked. Reverse: strip the delimiters (a mechanical rewrite).
+## 336. Lint codes come from `scripts/new-lint.py`, not by hand (2026-11-22)
+
+Two lanes picking "the next L05xx" from stale checkouts collided twice
+(L0553, L0563), each costing a renumber commit. `scripts/new-lint.py NAME`
+takes the next code in a series after every code used by a lint.toml or a
+`spec/diagnostics.md` row in the working tree and on a freshly fetched
+origin/main, and scaffolds `spec/lints/NAME/`. It is a repo script rather
+than `cpl lint --new`, since allocating codes is for people working on the
+linter, not contestants. Allocations made before either lands can still
+collide; `record_codes_are_unique` catches those. Reverse: delete the script.
+

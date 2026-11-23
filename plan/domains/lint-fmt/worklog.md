@@ -274,3 +274,4 @@ Newest first: what landed (commit), evidence, next, blocked, requests from other
 - 2026-11-22: L0565 `cycle_by_colors`, L0566 `sliding_min_by_hand`, L0567 `depth_by_hand` (`rules/hand_graph.rs`, decision 334). Newcomer 134/141 (95%), fixes check-clean; 0 port hits, 3 baselined in std/tree.cp.
 - 2026-11-22: `cpl fmt` with no path formats stdin and rewrites no file; `--stdin` honours the nearest cp.toml (decision 335, infra devex ask).
 - From spec (2026-11-22, decision 335): lint records write math as LaTeX inside `\( ... \)` (`\(O(n \log n)\)`), with sizes as `\lvert x \rvert`. The CLI shows the plain-Unicode fallback.
+- 2026-11-22: `scripts/new-lint.py` allocates lint codes against the tree and origin/main and scaffolds the record (decision 336, infra devex ask).
