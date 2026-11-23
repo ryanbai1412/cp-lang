@@ -1,2 +1,2 @@
 let m = {1: 2}
-print(m)
+print(m[1])

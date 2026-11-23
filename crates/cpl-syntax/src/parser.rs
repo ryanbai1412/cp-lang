@@ -555,6 +555,54 @@ impl<'a> Parser<'a> {
             self.sink.poison(span);
         }
     }
+
+    /// `{k: v}`, a map written the other languages' way: `[k: v]` in cp.
+    fn brace_map(&mut self, span: Span, open: Span, close: Span) {
+        let mut diag = Diagnostic::error(
+            codes::REMOVED_SYNTAX,
+            span,
+            "a map literal is written in brackets, `[k: v]`, not braces",
+        )
+        .with_help("braces make a block; brackets make lists and maps");
+        diag.fixes.push(cpl_diag::Fix {
+            title: "write it in brackets".into(),
+            edits: vec![(open, "[".into()), (close, "]".into())],
+        });
+        self.error(diag);
+    }
+
+    /// `{k: v}` (`Some(None)`) or `{x for x in xs}` on one line: a map or
+    /// set, not a block.
+    fn brace_literal(&self) -> Option<Option<&'static crate::planned::Planned>> {
+        let (mut depth, mut colon, mut comp, mut keyword) = (0u32, false, false, false);
+        for (i, t) in self.tokens.iter().enumerate().skip(self.pos) {
+            match t.kind {
+                T::LParen | T::LBracket | T::LBrace => depth += 1,
+                T::RParen | T::RBracket | T::RBrace => {
+                    depth -= 1;
+                    if depth == 0 {
+                        return if comp && !colon {
+                            Some(Some(&crate::planned::BRACE_SET))
+                        } else if colon {
+                            Some(None)
+                        } else {
+                            None
+                        };
+                    }
+                }
+                T::Newline | T::Indent | T::Dedent | T::Eof => return None,
+                T::Colon if depth == 1 && !keyword && i > self.pos + 1 => colon = true,
+                T::If | T::Elif | T::Else | T::While | T::Let | T::Var | T::Match | T::Return
+                    if depth == 1 =>
+                {
+                    keyword = true
+                }
+                T::For | T::In if depth == 1 && i > self.pos + 1 => comp = true,
+                _ => {}
+            }
+        }
+        None
+    }
 }
 
 /// Finds the token after the bracket group that opens at `tokens[open]`.

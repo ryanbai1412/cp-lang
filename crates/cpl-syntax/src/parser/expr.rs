@@ -1244,9 +1244,13 @@ impl<'a> Parser<'a> {
             }
             T::LBrace if self.brace_literal().is_some() => {
                 let planned = self.brace_literal().unwrap();
+                let open = self.tokens[self.pos].span;
                 self.pos = after_group(self.tokens, self.pos);
                 let span = self.span_from(start);
-                self.planned(span, planned);
+                match planned {
+                    Some(planned) => self.planned(span, planned),
+                    None => self.brace_map(span, open, self.tokens[self.pos - 1].span),
+                }
                 ExprKind::Error
             }
             T::Let if self.let_in() => {
@@ -1582,38 +1586,6 @@ impl<'a> Parser<'a> {
             None
         };
         Cond::Let { pat, value, and }
-    }
-
-    /// `{k: v}` or `{x for x in xs}` on one line: a map or set, not a block.
-    fn brace_literal(&self) -> Option<&'static crate::planned::Planned> {
-        let (mut depth, mut colon, mut comp, mut keyword) = (0u32, false, false, false);
-        for (i, t) in self.tokens.iter().enumerate().skip(self.pos) {
-            match t.kind {
-                T::LParen | T::LBracket | T::LBrace => depth += 1,
-                T::RParen | T::RBracket | T::RBrace => {
-                    depth -= 1;
-                    if depth == 0 {
-                        return if comp && !colon {
-                            Some(&crate::planned::BRACE_SET)
-                        } else if colon {
-                            Some(&crate::planned::BRACE_MAP)
-                        } else {
-                            None
-                        };
-                    }
-                }
-                T::Newline | T::Indent | T::Dedent | T::Eof => return None,
-                T::Colon if depth == 1 && !keyword && i > self.pos + 1 => colon = true,
-                T::If | T::Elif | T::Else | T::While | T::Let | T::Var | T::Match | T::Return
-                    if depth == 1 =>
-                {
-                    keyword = true
-                }
-                T::For | T::In if depth == 1 && i > self.pos + 1 => comp = true,
-                _ => {}
-            }
-        }
-        None
     }
 
     /// `let y = x in y + 1`: an `in` after the `=` on the same line.

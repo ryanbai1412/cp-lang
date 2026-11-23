@@ -146,13 +146,6 @@ pub const LET_IN: Planned = Planned {
     example: "fn f(x: Int) -> Int = let y = x - 1 in y * 2\nprint(f(3))\n",
 };
 
-pub const BRACE_MAP: Planned = Planned {
-    feature: "a map literal in braces, `{k: v}`",
-    see: None,
-    now: "write a map literal in brackets, `[k: v]`",
-    example: "let m = {1: 2}\nprint(m)\n",
-};
-
 pub const BRACE_SET: Planned = Planned {
     feature: "a set written in braces, `{x for x in xs}`",
     see: None,
@@ -275,7 +268,6 @@ pub const PLANNED: &[&Planned] = &[
     &OPERATOR_VALUE,
     &INLINE_MATCH,
     &LET_IN,
-    &BRACE_MAP,
     &BRACE_SET,
     &MAP_DEFAULT,
     &LAZY_ARRAY,
