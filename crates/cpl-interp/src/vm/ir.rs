@@ -1771,7 +1771,6 @@ impl<'p> CompiledProgram<'p> {
                 let guarded_domains = program.fn_guarded_domains(&def.ret, &def.body);
                 let mut c =
                     Compiler::new(program, feeds, &fed_ok, &def.locals, None, def.params.len());
-                c.allow_fed_loops = false;
                 c.traced = traced;
                 let ret_kind = ScalarKind::of_ty(&def.ret, program);
                 c.compile_block(&def.body, ret_kind, true);

@@ -853,6 +853,28 @@ print(evens(7))
 }
 
 #[test]
+fn vm_fed_loop_inside_a_closure_stays_lazy() {
+    let src = "\
+fn nat() -> yields Int:
+    var i = 0
+    while true:
+        yield i
+        i += 1
+
+let below = (n: Int) => do:
+    var s = 0
+    for x in nat():
+        if x >= n: break
+        s += x
+    s
+print(below(5), below(3))
+";
+    let (out, trap) = outcome(src, "");
+    assert!(trap.is_none(), "unexpected trap: {trap:?}");
+    assert_eq!(out, "10 3\n");
+}
+
+#[test]
 fn vm_one_int_struct_custom_ord_cmp() {
     let src = "\
 use std.heap.{MaxHeap}
