@@ -4,6 +4,7 @@
 Usage:
     python3 scripts/check-doc-links.py [file ...]
 """
+import glob
 import os
 import re
 import sys
@@ -51,7 +52,10 @@ def check_markdown(rel_path: str, text: str, root: str = ROOT) -> list[str]:
 
 
 def main(argv: list[str] | None = None) -> int:
-    docs = argv if argv else DEFAULT_DOCS
+    docs = argv if argv else DEFAULT_DOCS + sorted(
+        os.path.relpath(p, ROOT)
+        for p in glob.glob(os.path.join(ROOT, "handbook", "**", "*.md"), recursive=True)
+    )
     errors: list[str] = []
     for rel in docs:
         full = os.path.join(ROOT, rel)
