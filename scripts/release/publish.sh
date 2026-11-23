@@ -48,7 +48,7 @@ for tag in $tags; do
             for asset in $(gh release view edge --json assets --jq '.assets[].name'); do
                 case "$names" in *" $asset "*) ;; *) gh release delete-asset edge "$asset" --yes ;; esac
             done
-            gh release edit edge --title "CP Lang edge" --notes "$edge_notes" --prerelease --latest=false
+            gh release edit edge --target "$commit" --title "CP Lang edge" --notes "$edge_notes" --prerelease --latest=false
             ;;
         edge-*)
             gh release create "$tag" "${files[@]}" --target "$commit" --prerelease --latest=false \
