@@ -1,0 +1,546 @@
+{
+ "date": "2026-11-23",
+ "run_id": "2026-11-23-4",
+ "os": "Ubuntu 22.04.5 LTS (Linux 6.8.0-1060-aws, x86_64)",
+ "site_commit": "unknown",
+ "agent": "Devin (Cognition AI) autonomous agent harness on a Linux VM with shell and Chrome; underlying model not exposed to the agent",
+ "cpl_version": {
+  "before": "cpl 0.3.0-edge+2ada23ba",
+  "after": "cpl 0.3.0-edge+081c509c",
+  "update": "`cpl self update` 404, re-ran plain install.sh"
+ },
+ "steps": {
+  "understand": {
+   "pass": true,
+   "minutes": 1,
+   "edge": "2ada23ba"
+  },
+  "try": {
+   "pass": true,
+   "minutes": 2,
+   "edge": "playground",
+   "exercises": [
+    "second place 6/6",
+    "run length 5/5",
+    "range sums 4/4"
+   ]
+  },
+  "install": {
+   "pass": false,
+   "minutes": 27,
+   "edge": "2ada23ba then 081c509c",
+   "reason": "JetBrains: plugin loads in free IntelliJ IDEA 2025.3 on 081c509c, but no LSP (no diagnostics/completion/format/definition); on 2ada23ba it refused to load (requires Ultimate). Plain Vim needed an outside LSP client."
+  },
+  "solve": {
+   "pass": true,
+   "minutes": 7,
+   "edge": "081c509c",
+   "samples_pass": "10/10",
+   "self_pass": true,
+   "judged": "10/10 AC"
+  },
+  "test": {
+   "pass": true,
+   "minutes": 4,
+   "edge": "081c509c",
+   "planted_bug": "cf2289B_bug.cp, found by cpl stress (n=2 k=1 a=[1,2] expected 0 got 1)"
+  },
+  "submit": {
+   "pass": true,
+   "minutes": 3,
+   "edge": "081c509c",
+   "gxx": "10/10 compile with g++ -std=c++17 -O2",
+   "competitive_companion": "works via cpl new --listen; skeleton lacks @!multitest"
+  },
+  "compete": {
+   "pass": true,
+   "minutes": 4,
+   "edge": "081c509c",
+   "samples_pass": "5/5",
+   "window": "11:17-11:21 UTC, no pauses",
+   "self_pass": true,
+   "judged": "5/5 AC"
+  },
+  "design": {
+   "pass": true,
+   "minutes": 3,
+   "edge": "081c509c",
+   "predictions": "5/5",
+   "chapters": [
+    "/docs/ref/core/05-ownership (+ /docs/guides/borrowing)",
+    "/docs/ref/core/04-indices (+ /docs/guides/indices)"
+   ],
+   "reasons_given": [
+    true,
+    true
+   ]
+  }
+ },
+ "problems": [
+  {
+   "id": "cf2285A",
+   "set": "div2",
+   "verdict": "samples-pass",
+   "minutes": 1,
+   "attempts": 2,
+   "judge": "AC (1 samples, 200 generated, max input 0.00 s)"
+  },
+  {
+   "id": "cf2285B",
+   "set": "div2",
+   "verdict": "samples-pass",
+   "minutes": 1,
+   "attempts": 1,
+   "judge": "AC (1 samples, 200 generated, max input 0.00 s)"
+  },
+  {
+   "id": "cf2285C",
+   "set": "div2",
+   "verdict": "samples-pass",
+   "minutes": 1,
+   "attempts": 1,
+   "judge": "AC (1 samples, 200 generated, max input 0.03 s)"
+  },
+  {
+   "id": "cf2285D",
+   "set": "div2",
+   "verdict": "samples-pass",
+   "minutes": 1,
+   "attempts": 2,
+   "judge": "AC (1 samples, 200 generated, max input 0.10 s)"
+  },
+  {
+   "id": "cf2285E",
+   "set": "div2",
+   "verdict": "samples-pass",
+   "minutes": 1,
+   "attempts": 1,
+   "judge": "AC (1 samples, 200 generated, max input 0.12 s)"
+  },
+  {
+   "id": "cf2289A",
+   "set": "div2",
+   "verdict": "samples-pass",
+   "minutes": 1,
+   "attempts": 1,
+   "judge": "AC (1 samples, 200 generated, max input 0.00 s)"
+  },
+  {
+   "id": "cf2289B",
+   "set": "div2",
+   "verdict": "samples-pass",
+   "minutes": 1,
+   "attempts": 1,
+   "judge": "AC (1 samples, 200 generated, max input 0.01 s)"
+  },
+  {
+   "id": "cf2289C",
+   "set": "div2",
+   "verdict": "samples-pass",
+   "minutes": 1,
+   "attempts": 1,
+   "judge": "AC (1 samples, 200 generated, max input 0.01 s)"
+  },
+  {
+   "id": "cf2289D",
+   "set": "div2",
+   "verdict": "samples-pass",
+   "minutes": 1,
+   "attempts": 2,
+   "judge": "AC (1 samples, 200 generated, max input 0.01 s)"
+  },
+  {
+   "id": "cf2289E",
+   "set": "div2",
+   "verdict": "samples-pass",
+   "minutes": 1,
+   "attempts": 2,
+   "judge": "AC (1 samples, 200 generated, max input 0.07 s)"
+  },
+  {
+   "id": "cf2272A",
+   "set": "virtual",
+   "verdict": "samples-pass",
+   "minutes": 2,
+   "attempts": 2,
+   "start": "11:18 UTC",
+   "finish": "11:20 UTC",
+   "judge": "AC (1 samples, 200 generated, max input 0.00 s)"
+  },
+  {
+   "id": "cf2272B",
+   "set": "virtual",
+   "verdict": "samples-pass",
+   "minutes": 1,
+   "attempts": 2,
+   "start": "11:19 UTC",
+   "finish": "11:20 UTC",
+   "judge": "AC (1 samples, 200 generated, max input 0.00 s)"
+  },
+  {
+   "id": "cf2272C",
+   "set": "virtual",
+   "verdict": "samples-pass",
+   "minutes": 1,
+   "attempts": 1,
+   "start": "11:19 UTC",
+   "finish": "11:20 UTC",
+   "judge": "AC (1 samples, 200 generated, max input 0.04 s)"
+  },
+  {
+   "id": "cf2272D",
+   "set": "virtual",
+   "verdict": "samples-pass",
+   "minutes": 1,
+   "attempts": 1,
+   "start": "11:20 UTC",
+   "finish": "11:20 UTC",
+   "judge": "AC (1 samples, 200 generated, max input 0.01 s)"
+  },
+  {
+   "id": "cf2272E",
+   "set": "virtual",
+   "verdict": "samples-pass",
+   "minutes": 1,
+   "attempts": 2,
+   "start": "11:20 UTC",
+   "finish": "11:21 UTC",
+   "judge": "AC (1 samples, 200 generated, max input 0.02 s)"
+  }
+ ],
+ "findings": [
+  {
+   "id": "playground-indent-on-paste-typing",
+   "step": "try",
+   "kind": "workaround",
+   "lane": "site",
+   "summary": "Typing an indented body into the practice editor doubles indentation (auto-indent plus typed spaces); I retyped without leading spaces.",
+   "minutes_lost": 1,
+   "evidence": "https://cp-lang.org/learn/practice/range-sums/ : type 'for _ in 0..q:\\n    let (l, r): (V, V) = read()\\n    print(0)' -> line 3 indented 8+ columns with an error marker",
+   "edge": "2ada23ba"
+  },
+  {
+   "id": "install-cmd-three-spellings",
+   "step": "understand",
+   "kind": "hesitation",
+   "lane": "site",
+   "summary": "Install command differs across pages: /setup says 'sh -s -- --channel edge', getting-started says 'sh -s -- --edge', the brief's plain 'curl | sh' is said to install edge too.",
+   "minutes_lost": 1,
+   "evidence": "https://cp-lang.org/setup/ vs https://cp-lang.org/docs/guides/getting-started",
+   "edge": "2ada23ba"
+  },
+  {
+   "id": "setup-page-omits-cpl-setup",
+   "step": "install",
+   "kind": "hesitation",
+   "lane": "site",
+   "summary": "/setup step 2 tells you to download a VSIX by hand and never mentions 'cpl setup <editor>', which only getting-started documents.",
+   "minutes_lost": 1,
+   "evidence": "https://cp-lang.org/setup/ step 2 vs https://cp-lang.org/docs/guides/getting-started#editor-support",
+   "edge": "2ada23ba"
+  },
+  {
+   "id": "jetbrains-community-refuses-plugin",
+   "step": "install",
+   "kind": "blocker",
+   "lane": "tools",
+   "summary": "The plugin unpacked by `cpl setup jetbrains` still declares <depends>com.intellij.modules.ultimate</depends>, so free IntelliJ IDEA 2025.3 (no licence; Community is now this unified free mode) disables it on startup; the run-3 'now loads in Community' claim is refuted.",
+   "minutes_lost": 4,
+   "evidence": "cpl 0.3.0-edge+2ada23ba; cpl setup jetbrains -> ~/.local/share/JetBrains/IntelliJIdea2025.3/cp-lang-jetbrains; unzip -p .../lib/*.jar META-INF/plugin.xml shows <depends>com.intellij.modules.ultimate</depends>; idea.log: \"Plugin 'CP Lang' (dev.cplang.ide) requires plugin with id=com.intellij.modules.ultimate to be enabled\" and \"Disabled plugins: JetBrains Ultimate (253.28294.334)\"",
+   "edge": "2ada23ba"
+  },
+  {
+   "id": "jetbrains-setup-needs-ide-opened-first",
+   "step": "install",
+   "kind": "hesitation",
+   "lane": "tools",
+   "summary": "`cpl setup jetbrains` on a freshly unpacked IDE fails until the IDE has been launched once, which the getting-started page does not say.",
+   "minutes_lost": 1,
+   "evidence": "fresh ~/apps/idea-IU-253.28294.334, never started: `cpl setup jetbrains` -> \"cpl: no JetBrains IDE found (open one once first), or pass --dir PLUGINS\"",
+   "edge": "2ada23ba"
+  },
+  {
+   "id": "plain-vim-no-lsp-docs",
+   "step": "install",
+   "kind": "workaround",
+   "lane": "tools",
+   "summary": "`cpl setup vim` alone gives highlighting and gq formatting but no diagnostics, completion or go-to-definition; the reference (Rlsp.5) names vim-lsp/yegappan but no page says how to install either, so I git-cloned vim-lsp into ~/.vim/pack and used :LspDefinition (gd is not mapped).",
+   "minutes_lost": 4,
+   "evidence": "vim 8.2, no vimrc: `cpl setup vim`; open t.cp with `undefined_name` -> no sign; after `git clone https://github.com/prabirshrestha/vim-lsp ~/.vim/pack/lsp/start/vim-lsp` -> E> sign, :LspDefinition jumps to 1:4, omnifunc=lsp#complete pops `print built-in`",
+   "edge": "2ada23ba"
+  },
+  {
+   "id": "vscode-restricted-mode-plain-text",
+   "step": "install",
+   "kind": "hesitation",
+   "lane": "tools",
+   "summary": "Opening a .cp file in a fresh VS Code window starts in Restricted Mode with the file shown as Plain Text and no diagnostics until you click Trust; the docs do not mention it.",
+   "minutes_lost": 1,
+   "evidence": "cpl setup vscode; code ~/x.cp -> status bar 'Restricted Mode', language 'Plain Text'; Manage -> Trust -> 'CP Lang', diagnostics appear",
+   "edge": "2ada23ba"
+  },
+  {
+   "id": "lsp-type-definition-empty",
+   "step": "install",
+   "kind": "workaround",
+   "lane": "tools",
+   "summary": "textDocument/typeDefinition returns an empty result for variables of a named record type, refuting the run-3 claim that go-to-type-definition works; plain definition works.",
+   "minutes_lost": 2,
+   "evidence": "t2.cp: `type P = (x: Int, y: Int)` / `let p: P = (x: 1, y: 2)` / `let q = p` / `print(q.x)`; nvim 0.11.5 vim.lsp.buf_request_sync(0,'textDocument/typeDefinition',{line=2,character=4}) -> { {} } (same at 3:6 and 1:4)",
+   "edge": "2ada23ba"
+  },
+  {
+   "id": "self-update-no-edge-fallback",
+   "step": "install",
+   "kind": "workaround",
+   "lane": "tools",
+   "summary": "`cpl self update` (the documented way to update) looks only for a stable release and fails with a 404 even though the install was edge via the installer's fallback; re-running the plain installer worked.",
+   "minutes_lost": 1,
+   "evidence": "on edge-2026-11-23-2ada23ba: `cpl self update` -> \"cpl: could not download https://github.com/ryanbai1412/cp-lang/releases/latest/download/latest.json: curl: (22) The requested URL returned error: 404\"; `cpl self update --help` -> \"cpl: `--help` is not a toolchain: use stable, edge, ...\"; `curl -fsSL https://cp-lang.org/install.sh | sh` then installed edge-2026-11-23-081c509c",
+   "edge": "2ada23ba"
+  },
+  {
+   "id": "jetbrains-community-refuses-plugin",
+   "step": "install",
+   "kind": "workaround",
+   "lane": "tools",
+   "summary": "FIXED on edge 081c509c: the plugin now loads in free IntelliJ IDEA 2025.3 (`Loaded custom plugins: CP Lang (0.3.0)`, `cpl setup jetbrains --check` -> `IntelliJIdea2025.3: CP Lang loaded`); recorded on 2ada23ba as a hard failure.",
+   "minutes_lost": 0,
+   "evidence": "edge 081c509c: cpl setup jetbrains; start idea.sh; cpl setup jetbrains --check",
+   "edge": "081c509c"
+  },
+  {
+   "id": "jetbrains-free-ide-no-lsp",
+   "step": "install",
+   "kind": "blocker",
+   "lane": "tools",
+   "summary": "On edge 081c509c the JetBrains plugin gives only highlighting in free IntelliJ IDEA 2025.3: `cpl setup jetbrains` does not install LSP4IJ for the unified free IDE (directory IntelliJIdea2025.3), and even with LSP4IJ 0.30.1 installed by hand `cpl lsp` never starts, so no diagnostics, completion, format or go-to-definition.",
+   "minutes_lost": 12,
+   "evidence": "cpl 0.3.0-edge+081c509c; cpl setup jetbrains; ls ~/.local/share/JetBrains/IntelliJIdea2025.3 -> only cp-lang-jetbrains; open a .cp file with `print(undefined_name)`: no error mark, Ctrl+Space 'No suggestions', Ctrl+B 'Cannot find declaration to go to'; idea.sh installPlugins com.redhat.devtools.lsp4ij, restart: pgrep -x cpl empty",
+   "edge": "081c509c"
+  },
+  {
+   "id": "map-get-copies-list",
+   "step": "solve",
+   "kind": "workaround",
+   "lane": "stdlib",
+   "summary": "FIXED on edge 081c509c: `pos.get(c) ?? []` on a Map<Int, List<Int>> no longer copies; 6e5 lookups of a 2e5-long list take 0.2 s.",
+   "minutes_lost": 0,
+   "evidence": "sol/cf2285D.cp with a = [1]*2e5, q = 2e5: `cpl run --release cf2285D.cp < Dbig.in` 0.2 s",
+   "edge": "081c509c"
+  },
+  {
+   "id": "if-branch-literal-not-mod",
+   "step": "solve",
+   "kind": "hesitation",
+   "lane": "compiler",
+   "summary": "An int literal in one branch of an if-expression is not lifted to Mod when the other branch is Mod, so `if c: 0 else: cb.choose(a, b)` fails with E0302.",
+   "minutes_lost": 1,
+   "evidence": "type Z = Mod<1_000_000_007>; let cb = Comb<Z>(10); print(if true: 0 else: cb.choose(3, 1))  -> error[E0302]: expected `Int`, found `Mod<1000000007>`",
+   "edge": "081c509c"
+  },
+  {
+   "id": "scan-returns-prefix-not-seq",
+   "step": "solve",
+   "kind": "non-idiomatic",
+   "lane": "stdlib",
+   "summary": "`scan(a, +)` returns a Prefix that is not a Seq, so `.min()` and `inversions()` reject it and the running sum becomes a manual push loop.",
+   "minutes_lost": 2,
+   "evidence": "use std.seq.*; let s = scan([1, -2, 3], +); print(s.min()) -> error[E0203]: Prefix<Int, Int> has no field or method `min`; inversions(s) -> error[E0606]. Wanted: `let s = a.scan(+)` then `s.min()`, `inversions(s)`; wrote `var s: List<Int> = []; var run = 0; for x in a: run += x; s.push(run)`",
+   "edge": "081c509c"
+  },
+  {
+   "id": "prefix-sum-manual-push",
+   "step": "solve",
+   "kind": "non-idiomatic",
+   "lane": "stdlib",
+   "summary": "Still on 081c509c: I wanted the inclusive prefix sums as a plain list and wrote a manual push loop (2289D) or a hand-indexed `s[i + 1] = s[i] + a[i]` loop (2285D).",
+   "minutes_lost": 1,
+   "evidence": "sol/cf2289D.cp lines 10-14; sol/cf2285D.cp `for i in 0..n: s[i + 1] = s[i] + a[i]`",
+   "edge": "081c509c"
+  },
+  {
+   "id": "inversions-documented-not-implemented",
+   "step": "solve",
+   "kind": "workaround",
+   "lane": "stdlib",
+   "summary": "FIXED on edge 081c509c: `inversions(list)` from std.seq exists and gives the right answers (2289D samples pass).",
+   "minutes_lost": 0,
+   "evidence": "use std.seq.*; print(inversions([5, 2, 0, 4])) -> 4 (sol/cf2289D.cp)",
+   "edge": "081c509c"
+  },
+  {
+   "id": "seq-module-table-old-names",
+   "step": "solve",
+   "kind": "hesitation",
+   "lane": "site",
+   "summary": "The stdlib module table lists `prev_less`/`next_less`, but the reference and the compiler only have `prev_smaller`/`next_smaller`.",
+   "minutes_lost": 1,
+   "evidence": "cp-lang.org stdlib overview row `std.seq` (... `prev_less`, `next_less` ...) vs the std.seq reference `## prev_smaller` / `## next_smaller`",
+   "edge": "081c509c"
+  },
+  {
+   "id": "heap-peek-bang-trap",
+   "step": "solve",
+   "kind": "hesitation",
+   "lane": "stdlib",
+   "summary": "`while heaps[h].peek! > limit` traps once the heap empties; I needed `(peek ?? 0) > limit` and wanted a `while let x = h.peek if x > limit` form.",
+   "minutes_lost": 1,
+   "evidence": "var h = MaxHeap<Int>(); print(h.peek! > 0) -> error[R0301]: `!` on `None`: there is no value here (sol/cf2289E.cp line 29)",
+   "edge": "081c509c"
+  },
+  {
+   "id": "test-no-checker-any-answer",
+   "step": "test",
+   "kind": "hesitation",
+   "lane": "tools",
+   "summary": "Improved on 081c509c: an any-answer problem still fails the exact compare (`0/1 passed`), but `cpl test` now hints to add a `@check fn` with `read_output()`, which works in `cpl test` and `cpl submit`.",
+   "minutes_lost": 2,
+   "evidence": "sol/cf2285A.cp without the @check: `cpl test cf2285A.cp` -> first difference at line 2, token 2: expected `3`, got `2`; 0/1 passed; with @check: 2/2 passed",
+   "edge": "081c509c"
+  },
+  {
+   "id": "tuple-read-dependent-bound",
+   "step": "test",
+   "kind": "hesitation",
+   "lane": "spec",
+   "summary": "With `let (n, k): (1..=2e5, 1..=2e5) = read()` stress generated k > n and trapped; I split it into `let n = ...; let k: 1..=n = read()` and could not tell from the docs whether a tuple field's bound can name an earlier field.",
+   "minutes_lost": 2,
+   "evidence": "sol/cf2289B.cp with the tuple read: `cpl stress cf2289B.cp` -> n = 1 k = 2 a = [1], error[R0101]: index 1 is outside an array dimension of length 1",
+   "edge": "081c509c"
+  },
+  {
+   "id": "competitive-companion-not-published",
+   "step": "submit",
+   "kind": "workaround",
+   "lane": "tools",
+   "summary": "FIXED on 081c509c: the contest guide documents Competitive Companion + `cpl new --listen`, and it works with the Chrome Web Store extension 2.65.0.",
+   "minutes_lost": 0,
+   "evidence": "cd cc; cpl new --listen; open https://codeforces.com/contest/2285/problem/A; Ctrl+Shift+U -> created a.cp, created a.tests/ (1 sample)",
+   "edge": "081c509c"
+  },
+  {
+   "id": "fetch-template-misses-multitest",
+   "step": "submit",
+   "kind": "hesitation",
+   "lane": "tools",
+   "summary": "Half fixed on 081c509c: the `cpl fetch --html` skeleton adds `@!multitest`, but the Competitive Companion skeleton for the same multitest page does not, and it guesses `let n: 1..=2e5` where the statement says 1 <= n <= 100.",
+   "minutes_lost": 1,
+   "evidence": "cpl new --listen + CC on https://codeforces.com/contest/2285/problem/A -> a.cp has `let n: 1..=2e5 = read()` and no @!multitest; `cpl fetch <same url> x --html page.html` -> x.cp has @!multitest",
+   "edge": "081c509c"
+  },
+  {
+   "id": "first-bang-trap-on-full-prefix",
+   "step": "compete",
+   "kind": "hesitation",
+   "lane": "stdlib",
+   "summary": "2272A: `(0..n).first(v => ...)!` trapped with error[R0301] when the mex is n; needed `?? n`.",
+   "minutes_lost": 1,
+   "evidence": "round/cf2272A.cp: `fn mex(b: [P]Int) -> Int = (0..n).first(v => not (1..=m).any(i => b[P(i)] == v)) ?? n`",
+   "edge": "081c509c"
+  },
+  {
+   "id": "checker-shares-only-input",
+   "step": "compete",
+   "kind": "non-idiomatic",
+   "lane": "spec",
+   "summary": "A @check cannot see solution-level `let m = n - k + 1`, so the checker restates the same fact as `let mm = n - k + 1`.",
+   "minutes_lost": 1,
+   "evidence": "round/cf2272A.cp @check: referencing `m` -> `checker: error[E0201]: \\`m\\` is the solution's own work: a brute or a checker shares only the input`",
+   "edge": "081c509c"
+  },
+  {
+   "id": "str-no-split",
+   "step": "compete",
+   "kind": "non-idiomatic",
+   "lane": "stdlib",
+   "summary": "2272B: no `Str.split(ch)`; the suggested `splits` is something else, so I wrote a manual run-length loop.",
+   "minutes_lost": 2,
+   "evidence": "`for part in s.split('o')` -> `error[E0203]: a \\`Str\\` has no method \\`split\\` that \\`cpl run\\` knows` / `help: did you mean \\`splits\\`?`; wanted `s.split('o').map(p => p.len / 2).sum()`",
+   "edge": "081c509c"
+  },
+  {
+   "id": "elif-not-else-if",
+   "step": "compete",
+   "kind": "hesitation",
+   "lane": "idioms",
+   "summary": "Muscle memory `else if` and `a if c else b` are rejected; the diagnostics name the CPL spelling immediately.",
+   "minutes_lost": 1,
+   "evidence": "`else if p > 0:` -> `help: write \\`elif cond:\\``; `['R' if c else 'W' for ...]` -> `error[E0503]: CP Lang writes \\`a if c else b\\` as \\`if c: a else: b\\``",
+   "edge": "081c509c"
+  },
+  {
+   "id": "stress-default-gen-ignores-str-length",
+   "step": "compete",
+   "kind": "workaround",
+   "lane": "debugger",
+   "summary": "Default `cpl stress` generator for `let (n, m) = read(); let (s, t): (Str, Str) = read()` makes strings unrelated to n/m (n=149108 with a 7-char string), so I had to write a @gen.",
+   "minutes_lost": 2,
+   "evidence": "round/cf2272E.cp without @gen: `cpl stress cf2272E.cp` prints cases like `9 149108 / aicide / feii`",
+   "edge": "081c509c"
+  },
+  {
+   "id": "gen-multitest-needs-count",
+   "step": "compete",
+   "kind": "hesitation",
+   "lane": "diagnostics",
+   "summary": "Under @!multitest a @gen must print the test count itself; omitting it gives only `the brute ... failed on this input (Code(3))` with no hint.",
+   "minutes_lost": 1,
+   "evidence": "@gen printing `n m / s / t` without a leading `1` -> `error: the brute cf2272E.cp (\\`brute\\`) failed on this input (Code(3)), so there is nothing to compare with`",
+   "edge": "081c509c"
+  },
+  {
+   "id": "char-list-join-silent-empty",
+   "step": "compete",
+   "kind": "workaround",
+   "lane": "compiler",
+   "summary": "`['R', 'W'].join(\"\")` type-checks and prints an empty line: join is called on the separator, and a List<Char> silently passes as a Str separator, while `[\"ab\"].join(\",\")` is a clear type error.",
+   "minutes_lost": 2,
+   "evidence": "`print(['R', 'W'].join(\"\"))` prints `` (empty); `print(['R', 'W'])` prints `RW`; `print([\"ab\", \"c\"].join(\",\"))` -> error[E0302] help: `join` is called on the separator",
+   "edge": "081c509c"
+  },
+  {
+   "id": "check-fn-skips-move-check",
+   "step": "design",
+   "kind": "hesitation",
+   "lane": "compiler",
+   "summary": "Move checking is not applied inside @check: `var b = a` in a loop compiles there, while the same code in the solution is error[E0608] as the ownership spec says.",
+   "minutes_lost": 2,
+   "evidence": "design/p9.cp (@check with `for i in 0..3: var b = a`) -> `cpl check`: no errors; design/p8.cp (same loop in main) -> `error[E0608]: \\`a\\` moves here in one round of the loop, so the next round finds it already moved`",
+   "edge": "081c509c"
+  },
+  {
+   "id": "copy-clone-two-spellings",
+   "step": "design",
+   "kind": "hesitation",
+   "lane": "stdlib",
+   "summary": "The borrowing guide uses `a.copy()` while the spec and every diagnostic say `a.clone()`; both run, two spellings for one idea.",
+   "minutes_lost": 1,
+   "evidence": "https://cp-lang.org/docs/guides/borrowing `let saved = a.copy()` vs https://cp-lang.org/docs/ref/core/05-ownership R2 `x.clone()`; design/p10.cp prints `1 2 1 2 1 2`",
+   "edge": "081c509c"
+  },
+  {
+   "id": "design-cites-unpublished-decisions",
+   "step": "design",
+   "kind": "hesitation",
+   "lane": "site",
+   "summary": "Spec chapters justify choices by pointing to `decision 137`, `plan/14-state.md`, `plan/19-index-and-lends.md` which the site does not publish; the inline Rejected:/§13a text is enough, but the links dead-end.",
+   "minutes_lost": 1,
+   "evidence": "https://cp-lang.org/docs/ref/core/05-ownership intro ('supersedes ... plan/14-state.md ... §13 lists every difference and why'); https://cp-lang.org/docs/ref/core/04-indices '## Decided (decision 137)'",
+   "edge": "081c509c"
+  }
+ ],
+ "fixed": [
+  "vscode-needs-node-build",
+  "jetbrains-no-prebuilt-plugin",
+  "jetbrains-plugin-needs-ultimate",
+  "jetbrains-gradle-429-blocker",
+  "editor-setup-needs-repo-checkout"
+ ],
+ "ci": {
+  "run": "45160365817 on edge 081c509c",
+  "linux": "15/15",
+  "macos": "15/15",
+  "windows": "15/15"
+ }
+}

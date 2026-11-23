@@ -38,6 +38,10 @@ the advanced chapters to understand the model and the reasons behind it.
 | `design` (J2, advanced) | As a PL-curious reader, read the ownership and mutation chapter and one other in-depth chapter. Predict the result (output, compile error or trap) of 5 probe snippets before running them. | At least 4/5 predictions right, and both chapters explain why each design was chosen, not just what it does. A wrong prediction the docs should have prevented, or a missing reason, is a `blocker`. |
 
 ## What the agent records
+A run may also carry `fixed` (ids of earlier findings this run confirms fixed) and `ci`
+(`run`, `linux`, `macos`, `windows` scores of `ci-steps.sh`). A finding whose latest report has
+`"status": "fixed"` (or a summary starting `FIXED`) leaves the ranking for the Fixed list.
+
 One JSON object per run, saved as `runs/<YYYY-MM-DD>-<n>.json`:
 
 ```json
