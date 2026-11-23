@@ -581,6 +581,19 @@ impl<'a> Lowerer<'a> {
                 }
                 (None, None)
             }
+            // Non-negative operands: no bit above the larger one's top bit.
+            ExprKind::Binary(BinOp::BitXor | BinOp::BitOr, a, b) => {
+                match (self.expr_const_bounds(a), self.expr_const_bounds(b)) {
+                    ((Some(alo), Some(ahi)), (Some(blo), Some(bhi))) if alo >= 0 && blo >= 0 => {
+                        let top = ahi.max(bhi);
+                        (
+                            Some(0),
+                            Some(u64::MAX.checked_shr(top.leading_zeros()).unwrap_or(0) as i64),
+                        )
+                    }
+                    _ => (None, None),
+                }
+            }
             ExprKind::Binary(BinOp::BitAnd, a, b) => {
                 if let Some(m) = const_int_expr(a).filter(|&v| v >= 0) {
                     return (Some(0), Some(m));

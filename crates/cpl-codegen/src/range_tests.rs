@@ -50,3 +50,24 @@ fn a_let_and_a_branch_on_it_carry_bounds_into_a_range_store() {
     let wrong_side = store("let", "if r < 0: r else: r + 10");
     assert!(wrong_side.contains("check_range"), "{wrong_side}");
 }
+
+#[test]
+fn xor_or_of_non_negative_ranges_stays_under_the_top_bit() {
+    let pair = |range: &str| {
+        cpp(&format!(
+            "struct Arc(id: {range}):\n    fn rev(self) -> Arc = Arc(self.id ^ 1)\nprint(Arc(read()).rev().id)\n"
+        ))
+    };
+    let arc = pair("0..2_147_483_648");
+    let rev = &arc[arc.find("Arc_rev(").unwrap()..];
+    assert!(
+        !rev[..rev.find("\n}").unwrap()].contains("check_range"),
+        "{arc}"
+    );
+    let three = pair("0..3");
+    let rev = &three[three.find("Arc_rev(").unwrap()..];
+    assert!(
+        rev[..rev.find("\n}").unwrap()].contains("check_range"),
+        "2 ^ 1 is 3: {three}"
+    );
+}
