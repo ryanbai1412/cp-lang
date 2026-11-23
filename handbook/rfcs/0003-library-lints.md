@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | Owner | lint-fmt |
-| Status | Draft: spec to accept or reject the `@lint` decorator |
+| Status | Accepted: spec accepted it, asking for an exact definition of a pure hole and one error per malformed declaration |
 | Ryan to review | no |
 | Changes | `spec/core/06-control-functions.md` (6.4 decorators), `spec/core/12-powers.md` (W12), `handbook/design/lint-fmt.md`, `handbook/guidelines/lints-checklist.md` |
 
@@ -37,7 +37,7 @@ pub fn sq(x: Int) -> Int:
 ```
 
 A program that does `use mylib` and writes `let d2 = (xa - xb) * (xa - xb)`
-gets `warning[mylib.square_by_hand]: write sq(xa - xb)`, and `cpl fix`
+gets `warning[square_by_hand]: write sq(xa - xb)`, and `cpl fix`
 rewrites it. `xs[i] * xs[j]` stays quiet: the two sides differ.
 
 The rules:
@@ -52,15 +52,15 @@ The rules:
    any name consistently.
 3. `to` uses only holes and must call the decorated function. The fix
    substitutes the matched expressions, so it keeps the user's own spelling.
-4. The finding's name is `<module>.<name>`; it is in the `idiom` group, at
-   `warn`, and `with lint(mylib.square_by_hand: allow)` or `cp.toml [lints]`
+4. The finding is named by the lint (`warning[square_by_hand]`); it is in
+   the `idiom` group, at `warn`, and `with lint(square_by_hand: allow)`
    turns it off like any other lint.
-5. A hole matches only an expression without side effects when it appears
-   more than once in `from` or not at all in `to`, so a fix never drops or
-   repeats a call.
-6. The checker reports a malformed `@lint` where it is written: `from` or
-   `to` that does not parse, a hole missing from `to`, or a `to` that does
-   not call the function.
+5. A hole written twice in `from` matches only an expression that calls
+   nothing, so a fix never drops a repeated call.
+6. The checker reports a malformed `@lint` where it is written (E0505):
+   `from` or `to` that is not one expression or statement, a parameter
+   `from` matches that `to` drops, a `to` that does not call the function,
+   or a name declared twice in one module.
 
 Matching is syntactic, on the parsed tree: one pass per file over the
 patterns of the modules it uses, as fast as the existing rules.

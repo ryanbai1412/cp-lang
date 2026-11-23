@@ -31,6 +31,7 @@ pub(crate) use std_source;
 mod checker;
 mod config;
 pub mod facts;
+mod library;
 mod recheck;
 mod rules;
 mod typed;
@@ -502,16 +503,28 @@ pub fn lint_parsed(
     facts: Option<&Facts>,
     config: &Config,
 ) -> Vec<Diagnostic> {
-    lint_file(&File { src, items, facts }, config)
+    lint_file(&File { src, items, facts }, config, &[])
 }
 
-fn lint_file(file: &File, config: &Config) -> Vec<Diagnostic> {
-    let allows = Allows::collect(file);
+/// [`lint_parsed`] with the `@lint` declarations the file can see.
+pub(crate) fn lint_parsed_library(
+    src: &str,
+    items: &[(u32, &ParsedItem)],
+    facts: Option<&Facts>,
+    config: &Config,
+    library: &[library::Declared],
+) -> Vec<Diagnostic> {
+    lint_file(&File { src, items, facts }, config, library)
+}
+
+fn lint_file(file: &File, config: &Config, declared: &[library::Declared]) -> Vec<Diagnostic> {
+    let allows = Allows::collect(file, declared);
     let library = file.top_level().any(|(_, stmt)| stmt.public);
     let mut fns = Fns::default();
     file.walk(&mut fns, |fns, base| fns.base = base);
     let mut findings = allows.unknown;
     findings.extend(rules::run(file, config));
+    findings.extend(library::find(file, declared));
 
     let mut out: Vec<Diagnostic> = Vec::new();
     for Finding { lint, mut diag } in findings {
@@ -638,7 +651,7 @@ struct Allows {
 }
 
 impl Allows {
-    fn collect(file: &File) -> Allows {
+    fn collect(file: &File, library: &[library::Declared]) -> Allows {
         let mut out = Allows {
             regions: Vec::new(),
             unknown: Vec::new(),
@@ -646,6 +659,7 @@ impl Allows {
         let mut contexts = Contexts {
             base: 0,
             out: &mut out,
+            library: library.iter().map(|d| d.lint.name).collect(),
         };
         let mut leading = Vec::new();
         for (base, stmt) in file.top_level() {
@@ -669,6 +683,8 @@ impl Allows {
 struct Contexts<'a> {
     base: u32,
     out: &'a mut Allows,
+    /// The names of the `@lint`s the file can see.
+    library: Vec<&'static str>,
 }
 
 impl Contexts<'_> {
@@ -681,7 +697,9 @@ impl Contexts<'_> {
         }
         for arg in args {
             let Some(field) = &arg.name else { continue };
-            match any_lint_named(&field.text) {
+            match any_lint_named(&field.text)
+                .or_else(|| self.library.iter().find(|n| **n == field.text).copied())
+            {
                 Some(name) if matches!(&arg.value.kind, ExprKind::Name(v) if v == "allow") => {
                     self.out.regions.push((covered, name))
                 }
@@ -856,6 +874,8 @@ mod corpus_tests;
 
 #[cfg(test)]
 mod fuzz_tests;
+#[cfg(test)]
+mod library_tests;
 #[cfg(test)]
 mod plant_tests;
 #[cfg(test)]

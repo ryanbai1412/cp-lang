@@ -292,9 +292,11 @@ A graph is read as its edge records and built from them; there is no
 
 Every public signature's doc comment states its cost as LaTeX math:
 `/// cost: \(O(\log n)\)` (the math convention in `spec/README.md`).
-`cpl explain` and hover show it. Libraries may declare lints with a code,
-message and codemod (`#lint(L7001, "...")`) and `#on_unimplemented("...")`
-messages on traits. `assert` runs in checked builds and, opted in as `asserts`, in release (chapter 9). Status: doc convention only.
+`cpl explain` and hover show it. Libraries declare lints with
+`@lint(name, from: "...", to: "...")` on the fn they suggest (R06.4.9),
+and `#on_unimplemented("...")` messages on traits. `assert` runs in checked
+builds and, opted in as `asserts`, in release (chapter 9). Status: `@lint`
+implemented; costs are a doc convention; `#on_unimplemented` planned.
 
 ## W13. Modules, pins and codemods (P13)
 

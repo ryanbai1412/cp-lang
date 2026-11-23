@@ -173,7 +173,7 @@ in `plan/domains/lint-fmt/metrics.toml`.
 | One line turns a lint or a group off: `cp.toml [lints]` or `with lint(name: allow)` | lints and groups that ignore either | hand-written suite | `crates/cpl-lint/src/checker_tests.rs` `with_lint_allows_a_checker_lint_by_name`, `cp_toml_sets_a_checker_lint_level`, `crates/cpl-lint/src/tests.rs` |
 | A misspelt lint name is told, with the nearest name | silent unknown names | hand-written suite | `crates/cpl-lint/src/checker_tests.rs` `a_misspelt_checker_lint_suggests_its_name` |
 | Every tool honours the same levels and `with lint` regions | CLI and editor findings differing under a config | differential suite | `crates/cpl-cli/tests/lsp_parity.rs` |
-| Library authors declare their own lints with `@lint`, without Rust | a user-library `@lint` that fires and fixes | `missing` | — |
+| Library authors declare their own lints with `@lint`, without Rust | a user-library `@lint` that fires and fixes; each malformed declaration is E0505 (R06.4.9) | conformance cases and a fix test | `crates/cpl-lint/src/library_tests.rs`, `spec/conformance/lints/library-lint.cp` |
 
 ### Fmt safety
 

@@ -460,11 +460,18 @@ pub fn parse_header(text: &str) -> Result<(Expect, usize), String> {
     Err(format!("first line is not `// expect: ...`: {head}"))
 }
 
+/// `E0601`, or the name of a library's `@lint` (`square_by_hand`, R06.4.9).
 fn is_diag_code(s: &str) -> bool {
     let bytes = s.as_bytes();
-    bytes.len() == 5
+    let numbered = bytes.len() == 5
         && matches!(bytes[0], b'E' | b'L' | b'R' | b'W')
-        && bytes[1..].iter().all(|b| b.is_ascii_digit())
+        && bytes[1..].iter().all(|b| b.is_ascii_digit());
+    let named = bytes.first().is_some_and(u8::is_ascii_lowercase)
+        && bytes.contains(&b'_')
+        && bytes
+            .iter()
+            .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || *b == b'_');
+    numbered || named
 }
 
 fn unescape_python_like(s: &str) -> String {
@@ -589,7 +596,7 @@ pub fn run_one(db: &mut Database, case: &ConformanceCase) -> CaseOutcome {
             }
         }
         Expect::Diag { code, line } => {
-            let diag = if code.starts_with('L') {
+            let diag = if code.starts_with('L') || code.contains('_') {
                 diag + &backend.lint(&path_str, &text)
             } else {
                 diag

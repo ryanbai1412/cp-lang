@@ -1219,8 +1219,8 @@ impl<'a> Lowerer<'a> {
                             "get" | "brute" | "alt" | "test" | "solution" | "tags" | "memo"
                             | "law" | "gen" | "checker" | "check" | "interactor" | "grader"
                             | "on_unimplemented" | "droppable" | "" => {}
-                            // For `cpl lint` alone: it changes nothing a run does.
-                            "allow" => {}
+                            // For `cpl lint` alone: they change nothing a run does.
+                            "allow" | "lint" => {}
                             other => self
                                 .unsupported(decorator.span, &format!("the `@{other}` decorator")),
                         }

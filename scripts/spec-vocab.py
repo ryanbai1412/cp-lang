@@ -7,6 +7,7 @@ BANNED = [
     (r"\bMint\b(?!`\))", "write `Mod<P>`", r"not `Mint`"),
     (r"->\s*Order\b(?!ing)", "`cmp` returns `Ordering`", None),
     (r"\)\s+lends\s", "write `-> lends T`", None),
+    (r"#lint\b", "a library declares a lint with `@lint(name, from:, to:)` (R06.4.9)", None),
     (r"\bpub\s+@get\b", "decorators come before `pub`: `@get pub fn`", None),
     (r"\bsome\(", "the variant is `Some`", None),
     (r"(?<![\"'\w])none(?=\s*(\)|,|$|\?\?| else| =>|\bor\b))", "the variant is `None`", r'none:|"none"|none possible|none of|or none'),

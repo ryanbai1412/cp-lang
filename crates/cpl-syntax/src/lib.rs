@@ -15,6 +15,7 @@ pub mod ast;
 pub mod const_int;
 mod items;
 mod lexer;
+pub mod library_lint;
 pub mod literal;
 pub mod narrow;
 pub mod order;

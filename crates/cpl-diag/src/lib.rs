@@ -180,6 +180,8 @@ pub mod codes {
     pub const REMOVED_SYNTAX: Code = Code("E0503");
     /// Syntax the 0.3 design has and this version does not implement yet.
     pub const NOT_IMPLEMENTED: Code = Code("E0504");
+    /// An `@lint` a library fn declares that cannot be used (R06.4.9).
+    pub const BAD_LIBRARY_LINT: Code = Code("E0505");
 
     pub const AMBIGUOUS_METHOD: Code = Code("E0701");
     /// `(+, max)`: a tuple of operators is not an operation.

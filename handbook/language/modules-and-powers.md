@@ -215,7 +215,7 @@ The full list, each with what needs it:
 | W10 protocols and laws | traits, `law`, operation values | range structures, `Ord`, `Hash` |
 | W10a records and associated types | `G.Arc`, trait aliases, field traits, row bounds | graphs |
 | W11 reading and printing | `Read`, `Show` | input shapes |
-| W12 costs and library lints | `/// cost:`, `#lint`, `#on_unimplemented` | every signature |
+| W12 costs and library lints | `/// cost:`, `@lint`, `#on_unimplemented` | every signature |
 | W13 modules and pins | `use`, `#deprecated(use: ...)`, codemods | migrations |
 | W14 inline C++ | `@cpp("...")` with a checked signature | intrinsics |
 | W15 precomputation | top-level `let` computed once before the first test | `Comb`, `Sieve` |

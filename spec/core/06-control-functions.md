@@ -158,6 +158,23 @@ library or by this spec:
   `let _ = f()` is the same drop and gets the same lint; to drop one on purpose, write
   `with lint(discarded_result: allow)`. Dropping a `?T` is an error (see
   R02.4.7). (R06.4.8)
+- `@lint(name, from: "<code>", to: "<code>")` on a `pub fn`: a lint the
+  library declares, so its users are told to call the fn where they write
+  the code it replaces. `from` and `to` are plain strings, each one
+  expression or statement. The fn's parameter names are the holes: in
+  `from` a hole matches any expression (a bracketed one with its
+  brackets), a hole written twice matches the same tokens twice and only
+  an expression that calls nothing, and every other name matches itself,
+  except names `from` binds (lambda parameters, a `for` variable), which
+  match any name consistently. A finding names the lint (`warning[name]`),
+  is in the `idiom` group, warns by default, and `with lint(name: allow)`
+  turns it off; its fix is `to` with each hole replaced by what it matched.
+  It applies in every file that uses the module, and in the module outside
+  the fn. E0505 (`bad_library_lint`) when `@lint` is not on a fn, lacks a
+  name, `from:` or `to:`, when `from` or `to` is not one expression or
+  statement, when `to` drops a parameter `from` matches or uses one it does
+  not, when `to` does not call the fn, or when one module declares a name
+  twice. (R06.4.9)
 
 User libraries declare their own decorators as ordinary generic
 functions over function types, and their own tool roles with `marker`

@@ -92,7 +92,7 @@ pub fn checked_analysis(
         items: &items,
         facts: None,
     };
-    let regions = Allows::collect(&file).regions;
+    let regions = Allows::collect(&file, &[]).regions;
     let mut out = Vec::new();
     let mut problems = Vec::new();
     for diag in reported {
