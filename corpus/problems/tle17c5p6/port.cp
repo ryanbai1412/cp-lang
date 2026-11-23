@@ -9,8 +9,8 @@
 // original: corpus/submissions/5142110.cpp
 // note: as it builds today, "the last count that still works" is a first_true on the
 // negation with a `- 1` (R1).
-let n: 1..=1000 = read()
-let m: 1..=1000 = read()
+let n: 1..=1e5 = read()
+let m: 1..=2e5 = read()
 domain Wire = 1..=n + m
 domain Gate = 1..=m
 

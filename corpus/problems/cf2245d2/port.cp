@@ -2,13 +2,15 @@
 //   https://codeforces.com/contest/2245/problem/D2
 // Problem: find integers a[1..n], |a| <= 1e9, meeting m constraints (o, i, j), i <= j: o = 1
 //   needs a[i] + a[j] >= 0, o = 2 needs a[i] + a[j] < 0; print YES and a, or NO.
-//   n <= 2e5, m <= 1e6 (sums too); multitest.
+//   n <= 2e5, m <= min(1e6, n(n + 1) / 2), each pair i <= j at most once; multitest, sum of
+//   n <= 2e5, sum of m <= 1e6.
 // Solution: peel any vertex whose remaining constraints are all one kind and give the z-th
 //   peeled vertex magnitude n - z, positive for kind 1, negative for kind 2: it outweighs every
 //   later neighbour, so its sign settles all its remaining constraints (self-loops included).
 //   A queue of ready vertices with per-kind counts; if peeling stalls, print NO. O(n + m).
 @!multitest
-let (n, m): (1..=2e5, 0..=2e5) = read()
+let n: 1..=2e5 = read()
+let m: 0..=min(1e6, n * (n + 1) / 2) = read()
 domain V = 1..=n
 domain E = 0..m
 domain Kind = 1..=2
