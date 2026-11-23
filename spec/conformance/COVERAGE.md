@@ -7,7 +7,7 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 2773 (995 passing). Rules: 573.
+Cases: 2775 (995 passing). Rules: 573.
 
 ## Summary per chapter
 
@@ -17,9 +17,9 @@ Cases: 2773 (995 passing). Rules: 573.
 - R04 (04-indices.md): 73 rules, 168 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04a (04a-identity-vs-offset.md): 39 rules, 54 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04b (04b-keys.md): 27 rules, 66 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R05 (05-ownership.md): 43 rules, 171 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R05 (05-ownership.md): 43 rules, 172 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R06 (06-control-functions.md): 24 rules, 103 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R07 (07-sequences.md): 90 rules, 166 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R07 (07-sequences.md): 90 rules, 167 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R08 (08-traits-generics.md): 29 rules, 91 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R09 (09-contexts-checks.md): 26 rules, 58 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R10 (10-io.md): 19 rules, 110 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -378,7 +378,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R05.7.1 [1+ 2-]: a parameter (R4), and anything a `lends` fn returns (§6);
 - R05.7.2 [2+ 1-]: a struct, tuple or enum with a lent field (`Filter(self, keep)`);
 - R05.7.3 [2+ 1-]: a generator value with a lent argument (`dfs(g, from: [s])`, `dfs(g, from: [s], seen: mut ...
-- R05.7.4 [1+ 5-]: a loop item, for the iteration (§9);
+- R05.7.4 [1+ 6-]: a loop item, for the iteration (§9);
 - R05.7.5 [2+ 3-]: a closure or nested fn that captures a local `var`, a local heap value or a parameter (§10...
 - R05.7.6 [7+ 11-]: **Read lend:** the sources can be read, but not written, resized or moved.
 - R05.7.7 [1+ 3-]: **`mut` lend:** the sources can't be touched at all except through it.
@@ -389,7 +389,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R05.8.2 [6+ 7-]: Two elements need the projection's `disjoint` law proven from facts at that point (`if i !...
 - R05.8.3 [1+ 2-]: Different projections of one receiver always conflict (`g.row(r)` and `g.col(c)`).
 - R05.8.4 [1+ 9-]: A container's length can't change while any place in it is lent: `let x = mut xs[i]` then ...
-- R05.9.1 [4+ 9-]: The generator's lends are live for the walk, so `B` may read a read-lent source but not wr...
+- R05.9.1 [4+ 10-]: The generator's lends are live for the walk, so `B` may read a read-lent source but not wr...
 - R05.9.2 [1+ 2-]: The item `x` is the body's parameter: plain items copy, heap items are lent for one iterat...
 - R05.9.3 [1+ 1-]: `break`, `continue` and `return` in `B` act on the loop and the enclosing fn, through recu...
 - R05.9.4 [1+ 4-]: Walking a `mut`-lent generator value twice is legal and linted: the second walk sees what ...
@@ -505,7 +505,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R07.7.8 [1+ 0-]: | `s.cyclic_pairs` | `Seq<(T, T)>`, plus (last, first) | polygons, rings
 - R07.7.9 [3+ 0-]: | `a.windows(k)`, `a.chunks(k)` | `Seq` of views of `a` | each view keeps `a`'s indices
 - R07.7.10 [5+ 1-]: | `a.runs(by: k)` | `Seq` of views: maximal equal-key runs | `.keys` of each is its range
-- R07.7.11 [1+ 0-]: | `s.step(k)` | every k-th element | ranges and indexed
+- R07.7.11 [2+ 0-]: | `s.step(k)` | every k-th element | ranges and indexed
 - R07.8.1 [2+ 2-]: `.collect()` and the constructors are one operation, \(O(n)\) and allocating; the postfix ...
 - R07.9.1 [3+ 0-]: | `s.sum()`, `s.prod()` | `T`; empty is the identity | \(O(n)\)
 - R07.9.2 [3+ 1-]: | `s.fold(op)` | `T` when `op` has an identity (`+`, `max` on a bounded type, `gcd`), else...
@@ -774,7 +774,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0503 Removed syntax from an older version: 10 case(s)
 - E0504 Planned syntax, not implemented yet: 1 case(s)
 - E0601 Aliased mutable lend: 14 case(s)
-- E0602 Variable mutated while lent: 39 case(s)
+- E0602 Variable mutated while lent: 40 case(s)
 - E0603 Lent value escapes its scope: 19 case(s)
 - E0604 Invalid `lends` projection: 1 case(s)
 - E0605 Invalid `Index` implementation: 2 case(s)

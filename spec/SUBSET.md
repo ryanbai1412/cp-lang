@@ -304,4 +304,6 @@ documented. The stdlib's own gaps are in `std/GAPS.md`.
 - core-05/chunks-walk-lends-parent.cp: compiler
 - core-05/windows-walk-lends-parent.cp: compiler
 - core-05/runs-walk-lends-parent.cp: compiler
+- core-05/filter-map-walk-lends-parent.cp: compiler
+- core-07/step-on-list.cp: stdlib
 - std-heap/drain-break-keeps-the-rest.cp: compiler
