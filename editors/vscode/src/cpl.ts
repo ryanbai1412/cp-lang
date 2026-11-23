@@ -84,6 +84,13 @@ export function resolveServer(configured: string, options: ResolveOptions): stri
     return firstIn(onPath) ?? firstIn(installed) ?? firstIn(built);
 }
 
+/** How to get `cpl` when `resolveServer` finds none: the installer, not a source build. */
+export function installHint(platform: NodeJS.Platform = process.platform): string {
+    return platform === 'win32'
+        ? 'Install it with `irm https://cp-lang.org/install.ps1 | iex` in PowerShell (it goes in `%USERPROFILE%\\.cpl\\bin`), or point `cp.server.path` at the binary.'
+        : 'Install it with `curl -fsSL https://cp-lang.org/install.sh | sh` (it goes in `~/.cpl/bin`), or point `cp.server.path` at the binary.';
+}
+
 export interface CplResult {
     /** The exit status, or null when the process was killed or never started. */
     code: number | null;

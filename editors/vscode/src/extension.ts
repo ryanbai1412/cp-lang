@@ -1,6 +1,7 @@
 import * as path from 'node:path';
 import * as vscode from 'vscode';
 import { CpClient, SELECTOR, serverBinary } from './client';
+import { installHint } from './cpl';
 import { LensProvider } from './lenses';
 import { Overlays } from './overlays';
 import { Runner } from './runner';
@@ -69,7 +70,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<CpApi>
                 const binary = serverBinary();
                 if (!binary) {
                     void vscode.window.showErrorMessage(
-                        "Couldn't find `cpl`. Build it with `cargo build --release -p cpl-cli`, or set `cp.server.path`.",
+                        `Couldn't find \`cpl\`. ${installHint()}`,
                     );
                     return undefined;
                 }

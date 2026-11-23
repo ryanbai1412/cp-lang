@@ -1,7 +1,7 @@
 import * as assert from 'node:assert/strict';
 import * as path from 'node:path';
 import { test } from 'node:test';
-import { resolveServer, runCpl } from '../../src/cpl';
+import { installHint, resolveServer, runCpl } from '../../src/cpl';
 
 function resolve(configured: string, files: string[], platform: NodeJS.Platform = 'linux'): string | undefined {
     return resolveServer(configured, {
@@ -91,4 +91,16 @@ test('runCpl stops a run that takes too long, honours AbortSignal, and reports a
     assert.equal(cancelled.timedOut, false);
     const missing = await runCpl('/nonexistent/cpl', ['lsp']);
     assert.ok(missing.spawnError, 'expected a spawn error');
+});
+
+test('a missing cpl points at the installer and where it puts cpl, not at a source build', () => {
+    const unix = installHint('darwin');
+    assert.match(unix, /curl -fsSL https:\/\/cp-lang\.org\/install\.sh \| sh/);
+    assert.match(unix, /~\/\.cpl\/bin/);
+    const windows = installHint('win32');
+    assert.match(windows, /install\.ps1/);
+    assert.match(windows, /%USERPROFILE%\\\.cpl\\bin/);
+    for (const hint of [unix, windows]) {
+        assert.doesNotMatch(hint, /cargo/);
+    }
 });

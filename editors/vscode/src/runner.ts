@@ -8,7 +8,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import * as vscode from 'vscode';
 import { serverBinary } from './client';
-import { CplResult, EXIT_FAILED, EXIT_NOT_BUILT, runCpl } from './cpl';
+import { CplResult, EXIT_FAILED, EXIT_NOT_BUILT, installHint, runCpl } from './cpl';
 import { samplesOf } from './lenses';
 import { Overlays } from './overlays';
 import {
@@ -238,7 +238,7 @@ export class Runner {
         const binary = serverBinary();
         if (!binary) {
             void vscode.window.showErrorMessage(
-                "Couldn't find `cpl`. Build it with `cargo build --release -p cpl-cli`, or set `cp.server.path`.",
+                `Couldn't find \`cpl\`. ${installHint()}`,
             );
             return;
         }
@@ -468,7 +468,7 @@ export class Runner {
         const binary = serverBinary();
         if (!binary) {
             void vscode.window.showErrorMessage(
-                "Couldn't find `cpl`. Build it with `cargo build --release -p cpl-cli`, or set `cp.server.path`.",
+                `Couldn't find \`cpl\`. ${installHint()}`,
             );
             return undefined;
         }

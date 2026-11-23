@@ -14,7 +14,7 @@ import {
     State,
 } from 'vscode-languageclient/node';
 import { inAttribute, registerDecoratorCompletion, registerFallbackCompletion } from './completion';
-import { resolveServer } from './cpl';
+import { installHint, resolveServer } from './cpl';
 import { registerFallbackInlayHints } from './inlayHints';
 
 export const SELECTOR = [
@@ -203,7 +203,7 @@ export class CpClient implements vscode.Disposable {
         void vscode.window
             .showWarningMessage(
                 `Couldn't find \`${configured}\`, so live diagnostics, hover and quick fixes are off. ` +
-                    'Build it with `cargo build --release -p cpl-cli`, or point `cp.server.path` at the binary.',
+                    installHint(),
                 choose,
             )
             .then(choice => {
