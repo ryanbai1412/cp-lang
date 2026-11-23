@@ -7,13 +7,13 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 2166 (995 passing). Rules: 528.
+Cases: 2168 (995 passing). Rules: 528.
 
 ## Summary per chapter
 
 - R01 (01-lexical-grammar.md): 50 rules, 96 cases; 0 uncovered, 4 happy-path only, 1 negative only
 - R02 (02-values-types.md): 50 rules, 92 cases; 0 uncovered, 7 happy-path only, 0 negative only
-- R03 (03-numbers-layout.md): 24 rules, 51 cases; 0 uncovered, 7 happy-path only, 3 negative only
+- R03 (03-numbers-layout.md): 24 rules, 53 cases; 0 uncovered, 7 happy-path only, 1 negative only
 - R04 (04-indices.md): 61 rules, 86 cases; 0 uncovered, 2 happy-path only, 0 negative only
 - R04a (04a-identity-vs-offset.md): 39 rules, 50 cases; 0 uncovered, 1 happy-path only, 3 negative only
 - R04b (04b-keys.md): 27 rules, 62 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -37,7 +37,7 @@ negative case. Complete: rules with no gap in `rule-gaps.txt`.
 |---|---|---|---|---|---|
 | R01 | 50 | 49 (98%) | 28 | 24 (85%) | 45 (90%) |
 | R02 | 50 | 50 (100%) | 29 | 22 (75%) | 43 (86%) |
-| R03 | 24 | 21 (87%) | 17 | 10 (58%) | 14 (58%) |
+| R03 | 24 | 23 (95%) | 17 | 10 (58%) | 16 (66%) |
 | R04 | 61 | 61 (100%) | 14 | 12 (85%) | 59 (96%) |
 | R04a | 39 | 36 (92%) | 4 | 3 (75%) | 35 (89%) |
 | R04b | 27 | 27 (100%) | 6 | 6 (100%) | 27 (100%) |
@@ -50,7 +50,7 @@ negative case. Complete: rules with no gap in `rule-gaps.txt`.
 | R11 | 14 | 12 (85%) | 7 | 6 (85%) | 11 (78%) |
 | R12 | 17 | 17 (100%) | 6 | 6 (100%) | 17 (100%) |
 | R13 | 22 | 22 (100%) | 7 | 4 (57%) | 19 (86%) |
-| all | 528 | 508 (96%) | 222 | 182 (81%) | 468 (88%) |
+| all | 528 | 510 (96%) | 222 | 182 (81%) | 470 (89%) |
 
 ## Rules
 
@@ -171,8 +171,8 @@ Each rule: positive / negative case counts, then the gap if any.
 - R03.1.5 [2+ 2-]: **No `I32`, `U32` or `U8`.** A narrow slot is a range: `[V]0..=255` is one byte per elemen...
 - R03.1.6 [3+ 0-] *happy-path only*: **Narrow arithmetic when proven.** Semantically every operation is in `Int`. When the rang...
 - R03.1.7 [1+ 1-]: To force a width, name the type parameter: `SegTree<0..=4e9>(+, a)`. Every node write is t...
-- R03.1.9 [0+ 1-] *negative only*: A static peak above the judge profile's memory limit is an error (E0904) naming the three ...
-- R03.1.8 [0+ 1-] *negative only*: **Lint `wide_array`**: an array with a static size of at least 1e6 whose element type is `...
+- R03.1.9 [1+ 1-]: A static peak above the judge profile's memory limit is an error (E0904) naming the three ...
+- R03.1.8 [1+ 1-]: **Lint `wide_array`**: an array with a static size of at least 1e6 whose element type is `...
 - R03.2.1 [1+ 0-] *happy-path only*: Every type has a fixed set of **spare values**: bit patterns of its storage that no valid ...
 - R03.2.2 [3+ 0-]: **`?S` borrows the first field, in declaration order, that has a spare value.** It writes ...
 - R03.2.3 [1+ 1-]: **No user `Niche` trait** (decision 28.10). A library could name a value its own code late...

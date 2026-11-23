@@ -15,8 +15,6 @@ R02.7.5 no reject case
 R02.8.5 no reject case
 R03.1.3 no reject case
 R03.1.6 no reject case
-R03.1.8 no accept case
-R03.1.9 no accept case
 R03.2.1 no reject case
 R03.2.6 no reject case
 R03.2.7 no reject case
