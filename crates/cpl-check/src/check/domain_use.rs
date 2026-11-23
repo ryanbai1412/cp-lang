@@ -3,6 +3,7 @@
 //! a parameter holds `R: Domain`, so `p + 1` on a position is an `Int` with
 //! no operator bound, as on a declared domain.
 
+use super::{Checker, Ty};
 use cpl_syntax::ast::{self, ExprKind, FnBody, StmtKind, Type, TypeKind};
 use cpl_syntax::visit::{walk_block, walk_expr, Visitor};
 
@@ -92,5 +93,18 @@ impl Visitor for Uses<'_> {
                 }
             }
         }
+    }
+}
+
+impl Checker<'_> {
+    /// The branch `body` of `cond`, checked with the bounds `cond` tests:
+    /// inside `if T: Add:` every `T` is an `Add`.
+    pub(super) fn tested_block(&mut self, cond: &ast::Cond, body: &ast::Block) -> Ty {
+        let outer = self.param_bounds.len();
+        self.param_bounds
+            .extend(cpl_syntax::narrow::tested_bounds(cond));
+        let ty = self.block(body);
+        self.param_bounds.truncate(outer);
+        ty
     }
 }

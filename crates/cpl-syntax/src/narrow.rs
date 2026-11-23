@@ -371,3 +371,21 @@ pub fn after<'a>(stmt: &'a Stmt, rest: &[Stmt], calls: &mut Calls) -> Vec<&'a st
         rest.iter().for_each(|stmt| walk_stmt(stmt, writes))
     })
 }
+
+/// The `T: Trait` tests `cond` makes: inside `if T: Add:` every `T` is an
+/// `Add`.
+pub fn tested_bounds(cond: &Cond) -> Vec<(String, Vec<String>)> {
+    match cond {
+        Cond::Expr(Expr {
+            kind: ExprKind::HasBound { param, trait_name },
+            ..
+        }) => vec![(param.text.clone(), vec![trait_name.text.clone()])],
+        Cond::Guard { test, and } => {
+            let mut out = tested_bounds(&Cond::Expr(test.clone()));
+            out.extend(tested_bounds(and));
+            out
+        }
+        Cond::Let { and: Some(and), .. } => tested_bounds(and),
+        _ => Vec::new(),
+    }
+}

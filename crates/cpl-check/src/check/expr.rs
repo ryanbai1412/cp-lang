@@ -556,7 +556,7 @@ impl<'a> Checker<'a> {
                     let held = narrow::in_branch(cond, body, &mut |f, x| self.call_writes(f, x));
                     self.present.extend(held.into_iter().map(String::from));
                     self.branch += value;
-                    let ty = self.block(body);
+                    let ty = self.tested_block(cond, body);
                     self.branch -= value;
                     let branch_leaves = matches!(
                         body.stmts.last().map(|s| &s.kind),

@@ -1,0 +1,5 @@
+"variables":{"stdout":{"name":"stdout","type":"what the program printed, a line at a time","kind":"json"}},"runs":{"fast":{"label":"cpl run","steps":[{"id":0,"line":6,"label":"if let x = o: return Some(plus(x, d) + d)","stage":"main","values":{"stdout":[]},"locals":{"o":2,"d":3,"x":2},"frames":[{"fn":"bump","line":6},{"fn":"main","line":8}]},
+{"id":1,"line":6,"label":"if let x = o: return Some(plus(x, d) + d)","stage":"main","values":{"stdout":[]},"locals":{"o":"a","d":"b","x":"a"},"frames":[{"fn":"bump","line":6},{"fn":"main","line":8}]},
+{"id":2,"line":8,"label":"print → 8 abb YES","stage":"main","values":{"stdout":["8 abb YES"]},"locals":{},"checkpoint":"print 1","frames":[{"fn":"main","line":8}]},
+{"id":3,"line":8,"label":"the program ended","stage":"main","values":{"stdout":["8 abb YES"]},"locals":{},"checkpoint":"end","frames":[{"fn":"main","line":8}]}]}}}
+stderr:

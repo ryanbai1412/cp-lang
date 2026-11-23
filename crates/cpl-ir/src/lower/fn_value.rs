@@ -70,7 +70,7 @@ impl<'a> Lowerer<'a> {
             }),
             Some(GenArg::Ty(ty)) => {
                 let ty = ty.clone();
-                self.has_plain_impl(&ty, trait_name)
+                builtin_has(&ty, trait_name) || self.has_plain_impl(&ty, trait_name)
             }
             _ => false,
         };
@@ -180,4 +180,18 @@ pub(super) fn trait_members(body: &ast::Block) -> (Vec<&ast::FnDecl>, Vec<(&str,
         }
     }
     (methods, fields)
+}
+
+/// Whether a built-in type has a built-in operator or comparison trait, as
+/// the checker's bound says (R08.1.7): `if T: Add:` holds for `Int` and `Str`.
+fn builtin_has(ty: &Ty, trait_name: &str) -> bool {
+    let number = matches!(ty, Ty::Int | Ty::I128 | Ty::U64 | Ty::Float);
+    let scalar = number || matches!(ty, Ty::Bool | Ty::Char | Ty::Str);
+    match trait_name {
+        "Add" => number || *ty == Ty::Str,
+        "Sub" | "Mul" | "Div" | "Rem" | "Neg" | "Num" => number,
+        "Eq" | "Ord" | "Show" => scalar,
+        "Hash" => scalar && *ty != Ty::Float,
+        _ => false,
+    }
 }
