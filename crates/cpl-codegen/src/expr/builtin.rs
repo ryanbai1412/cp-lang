@@ -34,6 +34,10 @@ impl<'p> Emitter<'p> {
                     Builtin::WrapSub => "-",
                     _ => "*",
                 };
+                if self.facts.plain_wrap(self.fn_id, e).is_some() {
+                    let prec = if op == Builtin::WrapMul { MUL } else { ADD };
+                    return infix(&codes[0], sym, &codes[1], prec);
+                }
                 let int = self.ty(&Ty::Int);
                 Code::primary(format!(
                     "{int}(uint64_t({}) {sym} uint64_t({}))",

@@ -4,6 +4,7 @@
 use crate::emit;
 
 mod lend;
+mod loops;
 mod runtime;
 
 pub(crate) fn cpp(source: &str) -> String {
@@ -567,19 +568,6 @@ fn unchecked_drops_domain_positions_but_keeps_range_stores() {
     let raw = cpp(&src(&format!("unchecked:\n{indented}")));
     assert!(!raw.contains("cpl::pos("), "{raw}");
     assert!(raw.contains("cpl::check_range(i, 0, 100"), "{raw}");
-}
-
-#[test]
-fn an_inclusive_loop_to_a_bound_below_int_max_is_a_plain_loop() {
-    let open = cpp("let n: Int = read()\nfor i in 0..=n:\n    print(i)\n");
-    assert!(open.contains("i_go"), "{open}");
-    let len = cpp("let xs = [1, 2, 3]\nfor i in 0..=xs.len:\n    print(i)\n");
-    assert!(len.contains("i <= "), "{len}");
-    assert!(!len.contains("i_go"), "{len}");
-    let tuple = cpp(
-        "domain D = 0..5\nlet n: Int = read()\nlet (k, m) = (n, D.count)\nfor i in 1..=m - 1:\n    print(i, k)\n",
-    );
-    assert!(!tuple.contains("i_go"), "{tuple}");
 }
 
 #[test]

@@ -55,6 +55,8 @@ pub(crate) struct Facts<'p> {
     nonneg_vars: BTreeSet<Var>,
     /// Loop variables: the low end of the range they run over.
     loop_lo: BTreeMap<Var, &'p Expr>,
+    /// Loop variables: the high end of the range, and whether it is reached.
+    loop_hi: BTreeMap<Var, (&'p Expr, bool)>,
     /// Each domain's length expression, when defined once.
     domain_len: BTreeMap<usize, Option<(Option<usize>, &'p Expr)>>,
     /// Struct fields whose declared range narrows to unsigned 32-bit (`>= 0`).
@@ -206,8 +208,15 @@ impl<'p> Facts<'p> {
                     *self.stores.entry(v).or_default() += 1;
                     self.tainted.insert(v);
                     match iter {
-                        Iter::Range { lo, hi, step, .. } => {
+                        Iter::Range {
+                            lo,
+                            hi,
+                            step,
+                            closed,
+                            ..
+                        } => {
                             self.loop_lo.insert(v, lo);
+                            self.loop_hi.insert(v, (hi, *closed));
                             self.expr(fn_id, lo);
                             self.expr(fn_id, hi);
                             if let Some(step) = step {
@@ -389,6 +398,10 @@ impl<'p> Facts<'p> {
             },
             ExprKind::Local(slot) => {
                 let v = (fn_id, false, *slot);
+                if let (1, Some(&(hi, closed))) = (self.stores(v), self.loop_hi.get(&v)) {
+                    let hi = self.upper_bound(fn_id, hi, depth + 1)?;
+                    return if closed { Some(hi) } else { hi.checked_sub(1) };
+                }
                 if self.stores(v) == 1 {
                     self.init
                         .get(&v)
@@ -419,6 +432,21 @@ impl<'p> Facts<'p> {
                 } else {
                     None
                 }
+            }
+            ExprKind::Builtin(op @ (Builtin::WrapAdd | Builtin::WrapSub | Builtin::WrapMul), a)
+                if self.plain_wrap(fn_id, e).is_some() =>
+            {
+                let (l, r) = (&a[0], &a[1]);
+                let l_hi = self.upper_bound(fn_id, l, depth + 1)?;
+                match op {
+                    Builtin::WrapAdd => l_hi.checked_add(self.upper_bound(fn_id, r, depth + 1)?),
+                    Builtin::WrapMul => l_hi.checked_mul(self.upper_bound(fn_id, r, depth + 1)?),
+                    _ => Some(l_hi),
+                }
+            }
+            // Euclidean `l / r` with `r > 0` is at most `max(l, 0)`.
+            ExprKind::Binary(BinOp::Div, l, r) if self.sign(fn_id, r) == Sign::Positive => {
+                Some(self.upper_bound(fn_id, l, depth + 1)?.max(0))
             }
             ExprKind::Builtin(Builtin::Max, args) if !args.is_empty() => {
                 let mut hi = i64::MIN;
@@ -542,6 +570,36 @@ impl<'p> Facts<'p> {
 
     /// What is known about the sign of the `Int` expression `e`, which
     /// appears in fn `fn_id`.
+    /// The plain operator an `unchecked:` wrapping `+`, `-` or `*` computes
+    /// when its operands are `>= 0` and bounded so that it can't wrap.
+    pub fn plain_wrap(&self, fn_id: Option<usize>, e: &Expr) -> Option<BinOp> {
+        let ExprKind::Builtin(op, a) = &e.kind else {
+            return None;
+        };
+        let [l, r] = a.as_slice() else {
+            return None;
+        };
+        if self.sign(fn_id, l) == Sign::Unknown || self.sign(fn_id, r) == Sign::Unknown {
+            return None;
+        }
+        let his = || {
+            Some((
+                self.upper_bound(fn_id, l, 1)?,
+                self.upper_bound(fn_id, r, 1)?,
+            ))
+        };
+        match op {
+            Builtin::WrapAdd => his()
+                .and_then(|(x, y)| x.checked_add(y))
+                .map(|_| BinOp::Add),
+            Builtin::WrapMul => his()
+                .and_then(|(x, y)| x.checked_mul(y))
+                .map(|_| BinOp::Mul),
+            Builtin::WrapSub => Some(BinOp::Sub),
+            _ => None,
+        }
+    }
+
     pub fn sign(&self, fn_id: Option<usize>, e: &Expr) -> Sign {
         self.sign_at(fn_id, e, 0)
     }
@@ -627,6 +685,16 @@ impl<'p> Facts<'p> {
             },
             ExprKind::Builtin(Builtin::Len | Builtin::AxisLen, _) => NonNeg,
             ExprKind::Builtin(Builtin::Abs, _) => NonNeg,
+            ExprKind::Builtin(Builtin::WrapAdd | Builtin::WrapMul, a) => {
+                match self.plain_wrap(fn_id, e) {
+                    Some(BinOp::Add) => match (of(&a[0]), of(&a[1])) {
+                        (NonNeg, NonNeg) => NonNeg,
+                        _ => Positive,
+                    },
+                    Some(_) => both(of(&a[0]), of(&a[1])),
+                    None => Unknown,
+                }
+            }
             ExprKind::Builtin(Builtin::Min, args) => {
                 args.iter().map(of).reduce(both).unwrap_or(Unknown)
             }
