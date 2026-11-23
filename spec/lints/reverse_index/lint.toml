@@ -1,0 +1,5 @@
+code = "L0528"
+level = "warn"
+group = "idiom"
+title = "Hand-written reversed copy"
+summary = "`[xs[xs.len - 1 - i] for i in 0..xs.len]`: the copy is `xs.reversed()`"

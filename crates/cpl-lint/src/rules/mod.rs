@@ -15,6 +15,7 @@ mod memo;
 mod mod_div;
 mod pops;
 mod proven;
+mod reverse;
 mod scopes;
 mod taste;
 mod types;
@@ -32,6 +33,7 @@ pub(crate) fn run(file: &File, config: &Config) -> Vec<Finding> {
     findings.extend(pops::check(file));
     findings.extend(ceil::check(file));
     findings.extend(euclid::check(file));
+    findings.extend(reverse::check(file));
     findings.extend(floats::check(file));
     findings.extend(imports::check(file));
     findings.extend(fields::check(file));

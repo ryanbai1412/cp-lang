@@ -7,12 +7,13 @@
 use crate::facts::Facts;
 use crate::{
     CEIL_DIV_FORMULA, CHMIN_CHMAX_IF, COMPOUND_SELF_REF, NEG_MOD_FIXUP, PEEK_THEN_POP,
-    UNPROVEN_LIST_INDEX,
+    REVERSE_INDEX, UNPROVEN_LIST_INDEX,
 };
 use cpl_check::{Analysis, Ty};
 use cpl_diag::{Diagnostic, Span};
 
-const TYPED: [cpl_diag::Code; 6] = [
+const TYPED: [cpl_diag::Code; 7] = [
+    REVERSE_INDEX.code,
     NEG_MOD_FIXUP.code,
     CEIL_DIV_FORMULA.code,
     PEEK_THEN_POP.code,
@@ -49,7 +50,7 @@ fn keep(d: &Diagnostic, facts: &Facts) -> bool {
     let label = || d.labels.first().map(|l| facts.place_type(l.span));
     match d.code {
         c if c == COMPOUND_SELF_REF.code || c == CHMIN_CHMAX_IF.code => plain_place(d, facts),
-        c if c == PEEK_THEN_POP.code => {
+        c if c == PEEK_THEN_POP.code || c == REVERSE_INDEX.code => {
             matches!(label(), Some(Some(Ty::Named { name, .. })) if name == "List")
         }
         c if c == CEIL_DIV_FORMULA.code => match label() {

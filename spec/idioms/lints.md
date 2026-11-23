@@ -690,7 +690,7 @@ One sub-family per module. Each says: you rebuilt something the library has.
 | Lint | Catches | Write instead | Tier | P | Engine | Status |
 |---|---|---|---|---|---|---|
 | while_counter_loop | `var i = 0; while i < n: ...; i += 1` | `for i in 0..n` | fix | #2 | loop | |
-| reverse_index | `xs[n - 1 - i]` | `xs.rev` / `D.mirror(i)` | fix | #3 | syn | |
+| reverse_index | `xs[n - 1 - i]` | `xs.rev` / `D.mirror(i)` | fix | #3 | syn | ✓reverse_index |
 | mod_index_ring | `(i + 1) % n` on positions | ring domain / `xs.ring.next(i)` | fix? | #3 | syn | |
 | temp_swap | `let t = a; a = b; b = t` | `swap(mut a, mut b)` / `xs.swap(i, j)` | fix | #13 | flow | |
 | test_count_loop | `for _ in 0..read<Int>():` wrapping the solution | `@!multitest` | fix | #11 | syn | |

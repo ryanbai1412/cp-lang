@@ -6911,3 +6911,16 @@ Reverse: `git mv` each file back and delete `scripts/status.py`.
 - **Call.** A rule in `spec/tools/<tool>.md` is cited as `(R<tool>.<n>)`, e.g. `(Rcli.1)` for `cpl`'s exit codes, and a case cites it as `// rule: cli.1`. `scripts/conformance-coverage.py` reads `spec/tools/` beside `spec/core/` and gates those rules the same way.
 - **Why.** Tool behaviour (exit codes, `--json` shapes) had no citable rules, so a tool regression broke no rule and coverage could not see it; numbered chapters belong to the core, and a tool name reads better than a fake chapter number.
 - **Reverse.** Drop the `(R<tool>.<n>)` marks from `spec/tools/`, the `tools` glob and the `[a-z]+` alternative from `RULE_DEF`, and the `// rule: <tool>.<n>` lines from `spec/conformance/tools-cli/`.
+
+## 312. L0528 `reverse_index` covers only the whole-list reversed copy (2026-11-22)
+
+- **Decision.** `[xs[xs.len - 1 - i] for i in 0..xs.len]` warns with a fix to
+  `xs.reversed()` when `xs` is a plain path the checker types as `List`.
+  Other mirrored indexes (`a[n - 1 - i]` in a loop body, a bound `n` that
+  only equals `xs.len` at run time, a `Str`) get no finding; the catalog's
+  `D.mirror(i)` suggestion waits for a fact that ties `n` to a list's length.
+- **Why.** Only the whole-copy shape has a fix that keeps meaning by
+  construction (same O(n), same new list). 3 `std` findings, 0 corpus
+  `spec.cp`; the 67 other `[n - 1 - i]` sites in corpus/std are left alone.
+- **Reverse.** Delete `crates/cpl-lint/src/rules/reverse.rs` and
+  `spec/lints/reverse_index/`.
