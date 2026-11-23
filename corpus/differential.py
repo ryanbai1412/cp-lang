@@ -6,8 +6,10 @@ For each id in corpus/sets/v03.txt, `cpl run port.cp` and the C++ from
 `tests/`, or in `target/corpus-tests/<id>/` once it has moved there. A
 finding is `differ <id> <test>`: the two print different bytes or exit
 differently (AGENTS.md goal 5: the interpreter and the C++ agree on every
-program, including on input they reject). A case the interpreter can't
-finish in TIMEOUT seconds is skipped and counted, never a finding.
+program, including on input they reject); a new one names both exit codes and
+the first stdout line that differs. A case the interpreter can't finish in
+TIMEOUT seconds is skipped and counted, never a finding; a C++ timeout is
+retried once, since the C++ outruns the interpreter that just finished.
 
 The same builds give two more findings: `over-32kb <id> -`, a Codeforces
 build over the 32 KB every solution should fit (goal 5), and
@@ -35,6 +37,7 @@ SKIPPED = []
 TARGET_BYTES = 32 * 1024
 BYTES = {}
 COMPARED = []
+DETAIL = {}
 
 
 def tests(pid):
@@ -117,7 +120,7 @@ def ratchet(name, path, found, a, what):
         print("\n".join(found))
     print(f"{name}: {what}, {len(found)} findings, {len(new)} new, {len(known - set(found))} fixed", file=sys.stderr)
     for f in new if a.check else []:
-        print("  new: " + f, file=sys.stderr)
+        print("  new: " + f + (f"  ({DETAIL[f]})" if f in DETAIL else ""), file=sys.stderr)
     return 1 if a.check and new else 0
 
 
@@ -132,16 +135,43 @@ def check(pid, cpl):
     if not exe:
         return [f"no-build {pid} -"]
     found = [f"over-32kb {pid} -"] if BYTES.get(pid, 0) > TARGET_BYTES else []
-    for inp in ins:
-        interp = run([cpl, "run", port], inp)
-        if interp is None:
-            SKIPPED.append(f"{pid} {os.path.basename(inp)}")
-            continue
-        cxx = run([exe], inp)
-        COMPARED.append(pid)
-        if cxx != interp:
-            found.append(f"differ {pid} {os.path.relpath(inp, ROOT)}")
+    found += [f for inp in ins if (f := compare(pid, port, exe, inp, cpl))]
     return found + cpl_test(pid, port, cpl)
+
+
+def compare(pid, port, exe, inp, cpl):
+    """`differ <id> <test>` when the interpreter and the C++ disagree on `inp`, else None.
+
+    A C++ run that times out once is retried: the C++ runs far faster than the
+    interpreter that just finished, so one timeout is a stalled runner, and only
+    a second one is the C++ hanging."""
+    interp = run([cpl, "run", port], inp)
+    if interp is None:
+        SKIPPED.append(f"{pid} {os.path.basename(inp)}")
+        return None
+    cxx = run([exe], inp)
+    if cxx is None:
+        cxx = run([exe], inp)
+    COMPARED.append(pid)
+    if cxx == interp:
+        return None
+    finding = f"differ {pid} {os.path.relpath(inp, ROOT)}"
+    DETAIL[finding] = mismatch(interp, cxx)
+    return finding
+
+
+def mismatch(interp, cxx):
+    """Which side did what: both exit codes, then the first stdout line that differs."""
+    if cxx is None:
+        return f"interp exit {interp[0]}, c++ timed out twice after {TIMEOUT} s"
+    say = f"interp exit {interp[0]}, c++ exit {cxx[0]}"
+    a, b = interp[1].split(b"\n"), cxx[1].split(b"\n")
+    for i, (x, y) in enumerate(zip(a, b)):
+        if x != y:
+            return f"{say}; stdout line {i + 1}: interp {x[:80]!r}, c++ {y[:80]!r}"
+    if len(a) != len(b):
+        return f"{say}; stdout: interp {len(a)} lines, c++ {len(b)}"
+    return say
 
 
 def cpl_test(pid, port, cpl):
