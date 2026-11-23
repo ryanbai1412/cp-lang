@@ -263,3 +263,31 @@ fn check_json_reports_each_file_and_its_diagnostics() {
         Some(EXIT_USAGE.into())
     );
 }
+
+#[test]
+fn judges_json_lists_every_profile_and_marks_the_chosen_one() {
+    let out = cpl(Path::new("."), &["judges", "--json"]);
+    assert_eq!(out.status.code(), Some(0), "{}", text(&out.stderr));
+    let json = cpl_json::parse(&text(&out.stdout)).expect("cpl judges --json is JSON");
+    let judges = json.at(&["judges"]).as_array().unwrap();
+    let listed = text(&cpl(Path::new("."), &["judges"]).stdout);
+    assert_eq!(
+        judges.len(),
+        listed.lines().filter(|l| !l.starts_with("    ")).count()
+    );
+    let chosen: Vec<_> = judges
+        .iter()
+        .filter(|j| j.at(&["chosen"]).as_bool() == Some(true))
+        .collect();
+    assert_eq!(chosen.len(), 1, "{judges:?}");
+    for judge in judges {
+        assert!(
+            !judge.at(&["command"]).as_str().unwrap().is_empty(),
+            "{judge:?}"
+        );
+        assert!(
+            judge.at(&["source_limit_kb"]).as_i64().unwrap() > 0,
+            "{judge:?}"
+        );
+    }
+}

@@ -3,6 +3,8 @@
 
 use std::io::Write;
 
+use cpl_json::{obj, Value};
+
 use crate::{build_file, EXIT_ERRORS, EXIT_USAGE};
 
 /// `cpl submit`: `cpl build`, then `cpl test` on what it built.
@@ -157,6 +159,7 @@ pub(crate) fn size_report(sizes: &[cpl_codegen::Size], limit: usize, judge: &str
 /// `cpl judges`: every judge profile, and with a file, the one its build is for.
 pub(crate) fn list_judges(
     file: Option<&str>,
+    json: bool,
     stdout: &mut (dyn Write + Send),
     stderr: &mut String,
 ) -> u8 {
@@ -179,10 +182,41 @@ pub(crate) fn list_judges(
         }
     };
     let config = cpl_judge::project_config(path).unwrap_or_default();
+    let mut profiles = Vec::new();
     for name in config.names() {
         let Some(profile) = config.profile(&name) else {
             continue;
         };
+        if json {
+            let text = |s: &str| Value::String(s.to_string());
+            let int = |n: u64| Value::Int(n as i64);
+            profiles.push(obj([
+                ("name", text(&profile.name)),
+                ("title", text(&profile.title)),
+                ("chosen", Value::Bool(profile.name == chosen.name)),
+                ("command", text(&profile.command())),
+                (
+                    "os",
+                    text(if profile.os == cpl_judge::Os::Windows {
+                        "windows"
+                    } else {
+                        "linux"
+                    }),
+                ),
+                ("stack", text(&profile.stack_text())),
+                (
+                    "thread_stack_mb",
+                    profile
+                        .thread_stack
+                        .map_or(Value::Null, |b| int(b as u64 >> 20)),
+                ),
+                ("source_limit_kb", int(profile.limit() as u64 / 1024)),
+                ("time_ms", int(profile.time_ms as u64)),
+                ("memory_mb", int(profile.memory_mb as u64)),
+                ("evidence", text(&profile.evidence)),
+            ]));
+            continue;
+        }
         let mark = if profile.name == chosen.name {
             "*"
         } else {
@@ -205,6 +239,10 @@ pub(crate) fn list_judges(
             profile.memory_mb,
             profile.evidence
         );
+    }
+    if json {
+        let judges = obj([("judges", Value::Array(profiles))]);
+        let _ = writeln!(stdout, "{}", cpl_json::to_string(&judges));
     }
     0
 }

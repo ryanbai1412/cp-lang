@@ -235,13 +235,20 @@ pub fn exec<S: AsRef<str>>(
                 ),
             }
         }
-        Some("judges") => match rest.as_slice() {
-            [] => list_judges(None, stdout, stderr),
-            [file] => list_judges(Some(file), stdout, stderr),
-            _ => usage_error(
-                "`judges` takes at most a file: `cpl judges` or `cpl judges a.cp`".into(),
-            ),
-        },
+        Some("judges") => {
+            let json = rest.contains(&"--json");
+            match rest
+                .iter()
+                .filter(|arg| **arg != "--json")
+                .collect::<Vec<_>>()[..]
+            {
+                [] => list_judges(None, json, stdout, stderr),
+                [file] => list_judges(Some(file), json, stdout, stderr),
+                _ => usage_error(
+                    "`judges` takes at most a file: `cpl judges` or `cpl judges a.cp`".into(),
+                ),
+            }
+        }
         Some("test") if should_run_unit_tests(&rest) => run_unit_tests(&rest, stdout, stderr),
         Some(command) if tool(command).is_some() => {
             let args: Vec<String> = rest.iter().map(|arg| arg.to_string()).collect();

@@ -290,11 +290,15 @@ and says where the bytes go. The same file and judge give the same bytes.
 ";
 
 const JUDGES_USAGE: &str = "\
-usage: cpl judges [file.cp]
+usage: cpl judges [file.cp] [--json]
 
 Lists the judge profiles: compiler, flags, stack and source limit. With a
 file, marks the one its build uses (the `// judge:` line, else the nearest
 cp.toml, else `generic`).
+
+  --json    print `{\"judges\": [...]}`, each profile with its name, title,
+            chosen, command, os, stack, thread_stack_mb, source_limit_kb,
+            time_ms, memory_mb and evidence
 ";
 
 const EXPLAIN_USAGE: &str = "\
@@ -389,7 +393,8 @@ options:
 pub(crate) fn unknown_option<'a>(command: &str, args: &[&'a str]) -> Option<&'a str> {
     let options: &[&str] = match command {
         "check" => &["--json"],
-        "fix" | "judge" | "judges" => &[],
+        "judges" => &["--json"],
+        "fix" | "judge" => &[],
         "build" => &["-o", "--judge", "--checked", "--size", "--copy"],
         "submit" => &["--copy"],
         "explain" => &["--json"],
