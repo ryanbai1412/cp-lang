@@ -8,6 +8,7 @@
     "domains-and-index-spaces",
     "types-widths-proofs",
     "optionals",
+    "traits-and-generics",
     "multitest-state",
     "checked-operations",
     "standard-library",

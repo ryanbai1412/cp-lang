@@ -1,0 +1,138 @@
+---
+title: "Traits and generics"
+description: "Traits name capabilities, impls give them, generic code is checked once and monomorphized, laws pick specializations, and row bounds take any record with the fields you need."
+---
+
+A trait names a capability (`Ord`, `Monoid<T>`, `Next<V>`), an `impl` gives a type that capability,
+and generic code takes type parameters bounded by traits. Operators are trait methods too, so
+`a < b` on your type and `xs.sorted()` read the same `Ord` impl. User libraries declare traits,
+laws and impls exactly as the standard library does. The normative rules are
+<Spec file="core/08-traits-generics">chapter 8 of the spec</Spec>.
+
+## Traits and impls
+
+A trait declares methods, which may have default bodies. `impl Trait for T` implements it: one impl
+per trait and type, declared next to the trait or the type.
+
+```cp run
+trait Shape:
+    fn area(self) -> Int
+    fn describe(self) -> Int = self.area() * 2
+
+struct Sq:
+    s: Int
+
+impl Shape for Sq:
+    fn area(self) -> Int = self.s * self.s
+
+print(Sq(s: 3).describe())
+```
+
+Method lookup tries the type's own methods first, then the traits in scope that the type implements.
+Two candidates at one step is an error naming both; `Shape.area(x)` picks one. There is no auto-ref,
+no auto-deref and no overloading by argument type, so a name means one function
+(<Spec file="core/08-traits-generics" section="8.1 Traits and impls">§8.1</Spec>).
+
+Tuples, records, structs and enums get `Eq`, `Ord`, `Hash`, `Show` and `Read` structurally when
+every field has them: fields compare in declaration order. Writing your own impl replaces the
+derived one, so a fraction can compare by value instead of field by field:
+
+```cp status=spec
+struct Frac:
+    p: Int
+    q: Int
+
+impl Ord for Frac:
+    fn cmp(self, o: Frac) -> Ordering = (self.p * o.q).cmp(o.p * self.q)
+
+let xs = [Frac(p: 1, q: 2), Frac(p: 1, q: 3), Frac(p: 2, q: 3)]
+print(xs.sorted()[0].q)  // 3: one third is the smallest
+```
+
+## Generics
+
+Bounds go inline (`T: Ord + Hash`), in a `where` clause, or as the parameter's type
+(`g: WeightedNext<V, W>` means "some type that implements it"). A generic body is checked once,
+against its bounds, so an error points at the generic or at the call, never inside one
+instantiation.
+
+```cp run
+trait Area:
+    fn area(self) -> Int
+
+struct Rect:
+    w: Int
+    h: Int
+
+impl Area for Rect:
+    fn area(self) -> Int = self.w * self.h
+
+fn larger<T: Ord>(a: T, b: T) -> T = if a > b: a else: b
+fn total<T: Area>(xs: List<T>) -> Int = sum(x.area() for x in xs)
+
+print(larger(3, 7), larger("ab", "b"))
+print(total([Rect(w: 2, h: 3), Rect(w: 1, h: 4)]))
+```
+
+Every generic is monomorphized: each instantiation compiles to its own C++ function, with no vtables
+and no `dyn`. `domain` is a kind of type parameter (`fn f<domain I>(a: [I]Int)`), and
+`const N: Int` parameters take compile-time values (`Mod<998244353>`)
+(<Spec file="core/08-traits-generics" section="8.2 Generics">§8.2</Spec>).
+
+## Laws
+
+A `law` is a Boolean property a trait promises, such as `Op`'s associativity. The type checker never
+assumes a law. Laws select documented specializations that keep the answer the same: a segment tree
+skips push-down when its tags commute, and `cpl explain` names each choice. `cpl stress` samples the
+laws on the values your program builds, so a false promise shows up as a counterexample. A false law
+can give a wrong answer but never undefined behaviour
+(<Spec file="core/08-traits-generics" section="8.3 Laws">§8.3</Spec>).
+
+```cp run
+use std.segtree.*
+let a = [5, 3, 8, 1]
+let t = SegTree(min, a)
+print(t.fold(1..3))
+```
+
+`min` is a lawful operation with an identity, so `SegTree(min, a)` needs no monoid spelled out.
+
+## Row bounds
+
+`(u: Int, ..)` is a bound: any record with at least those fields, in any order. It is the only
+way a record with more fields fits where fewer are named; there is no subtyping
+(<Spec file="core/08-traits-generics" section="8.4 Record row types (trial)">§8.4, a trial</Spec>).
+
+```cp run
+fn first_end<R: (u: Int, ..)>(r: R) -> Int = r.u
+print(first_end((u: 3, w: 9)))
+```
+
+Each record type gets its own monomorphized copy, so a field read through a row costs what a direct
+field read costs.
+
+## Why it's designed this way
+
+**One mechanism for operators, methods and library powers.** Operators are trait methods and user
+libraries declare traits, laws and impls the same way std does, so nothing in std is privileged.
+<Decision n={59} /> made the operator traits heterogeneous (`Rhs`, `Out`) so mixed-width arithmetic
+is an impl, not a compiler rule.
+
+**No overloading.** <Decision n={127} /> rejected method overloading: one name, one function, so a
+call never depends on which argument types happen to be inferred. The alternative, C++-style
+overload sets, makes error messages list candidates instead of naming the mistake.
+
+**Bounds as parameter types.** <Decision n={146} /> lets `g: WeightedNext<V, W>` stand for "some
+type implementing it" and gives graphs their arc capabilities as traits, so a weighted graph and a
+grid both feed `dijkstra` without an adapter.
+
+**Monomorphization, not vtables.** Abstractions must cost what direct C++ costs. Dynamic dispatch
+would put an indirect call in the hot loop and hide it, so there is no `dyn`.
+
+**Laws pick specializations, never proofs.** Trusting a law to type-check would make a wrong
+promise undefined behaviour. Here a law only selects an answer-preserving implementation, and
+stress tests it, so a false law is a wrong answer you can find.
+
+**What's missing on purpose.** No inheritance, no implicit conversions, no orphan impls, no
+higher-kinded types and no macros (<Spec file="core/08-traits-generics" section="8.5 What is deliberately missing">§8.5</Spec>).
+Each would add a rule to remember without removing a contest bug class.
