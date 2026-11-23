@@ -180,6 +180,6 @@ milestone = "M2, M3"
 [[metric]]
 name = "register_rows"
 command = "python3 scripts/debt-ratchet.py --list register_rows"
-today = 74
+today = 219
 target = "0"
 milestone = "M2"

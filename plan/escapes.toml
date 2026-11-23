@@ -1,0 +1,45 @@
+# Escape log: bugs that got past the suite meant to catch them.
+# One [[escape]] per bug. `domain` and `row` name the Quality register row in
+# handbook/domains/<domain>.md that should have caught it; `suite_fix` is the
+# commit that made that suite catch the class (empty until it lands).
+# `python3 scripts/debt-ratchet.py --list escapes_open` lists open entries.
+
+[[escape]]
+date = "2026-11-23"
+bug = "Printing a HashMap lists entries in a different order in the interpreter and the C++"
+found_by = "tech-debt side-effect corpus variants"
+domain = "stdlib"
+row = "Prints, walks and hash orders are deterministic"
+suite_fix = ""
+
+[[escape]]
+date = "2026-11-23"
+bug = "Printing an Interner lists entries in a different order in the interpreter and the C++"
+found_by = "tech-debt side-effect corpus variants"
+domain = "stdlib"
+row = "Prints, walks and hash orders are deterministic"
+suite_fix = ""
+
+[[escape]]
+date = "2026-11-23"
+bug = "Printing a SortedSet shows treap internals in the interpreter and does not compile in C++"
+found_by = "tech-debt side-effect corpus variants"
+domain = "stdlib"
+row = "Interpreter and C++ agree"
+suite_fix = ""
+
+[[escape]]
+date = "2026-11-23"
+bug = "ir_builtin_names skipped std names matched in tuple match arms, so it counted 94 instead of 163"
+found_by = "tech-debt review of landed diffs"
+domain = "tech-debt"
+row = "The ratchet measures what it claims"
+suite_fix = "d409eaa1a"
+
+[[escape]]
+date = "2026-11-23"
+bug = "The ratchet's upstream test failed under the pre-commit hook after `git commit -a`, because its scratch worktree inherited the hook's git index"
+found_by = "lint-fmt"
+domain = "tech-debt"
+row = "The ratchet measures what it claims"
+suite_fix = "cfffc9d5f"

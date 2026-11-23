@@ -96,7 +96,7 @@ means no real check exists yet. Targets and current numbers are in
 | Every register row names a real check | Rows naming no existing test, command or job, across every domain | Ratchet | `scripts/debt-ratchet.py` (`register_rows`) |
 | Expected output changes for a reason | Commits that edit expectations and code together | Post-land detector, read in the hourly review | `scripts/expectation-edits.py` |
 | Suites catch the bugs they claim to | Mutation score of `cpl-check` and `cpl-lint` suites | Mutation testing | `missing` |
-| Escaped bugs fix the suite | Escapes traced to the register row that should have caught them | Escape log | `missing` |
+| Escaped bugs fix the suite | Escapes whose suite isn't fixed, or that name no register row | Escape log, checked by a count | `plan/escapes.toml`, `scripts/debt-ratchet.py` (`escapes_open`) |
 | Every feature works in every tool | Features (syntax forms, std items) with no case in the checker, VM, C++ backend, trace, fmt, lint, LSP or docs | Generated coverage matrix | `missing` |
 | Every builtin with two engine paths agrees at its edges | Builtins without an interpreter-vs-C++ case at negative, empty, overflow and boundary inputs | Generated differential cases | `missing` |
 | Stdlib privilege gone, not hidden | Std items that compile only because the compiler knows their name | Re-architecture: build std as a user library in a test | `missing` |

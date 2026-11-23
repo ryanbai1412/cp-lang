@@ -169,6 +169,19 @@ class DebtRatchetTest(unittest.TestCase):
                 "spec/rule-gaps.txt", "spec/rule-gaps.txt",
             ])
 
+    def test_escapes_open_needs_a_real_row_and_a_suite_fix(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self._write(root, "handbook/domains/x.md",
+                        "## Quality register\n| Attribute | Check |\n|---|---|\n| Agree | `missing` |\n")
+            entry = '[[escape]]\nbug = "{}"\ndomain = "x"\nrow = "{}"\nsuite_fix = "{}"\n'
+            self._write(root, "plan/escapes.toml", entry.format("a", "Agree", "abc1234")
+                        + entry.format("b", "Agree", "") + entry.format("c", "Nope", "abc1234"))
+            self.assertEqual(dr.escapes_open(root), [
+                "#2 x: b (suite not fixed)",
+                "#3 x: c (no such register row: 'Nope')",
+            ])
+
     def test_register_rows_counts_missing_and_unknown_checks(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -183,10 +196,12 @@ class DebtRatchetTest(unittest.TestCase):
                 "| b | m | `missing` |",
                 "| c | m | `scripts/gone.py` |",
                 "| d | m | process |",
+                "### Sub", "| A | M | C |", "|---|---|---|", "| g | m | `missing` |",
                 "## Suites", "| e | `missing` |", ""]))
             self.assertEqual(dr.register_rows(root), [
                 "handbook/domains/x.md:9 missing: b",
                 "handbook/domains/x.md:10 no such check scripts/gone.py: c",
+                "handbook/domains/x.md:15 missing: g",
             ])
 
     def test_upstream_on_a_fresh_tip_is_measured_except_in_ci(self) -> None:

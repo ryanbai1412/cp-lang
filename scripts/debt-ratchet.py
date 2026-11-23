@@ -567,14 +567,11 @@ def register_rows(root: Path) -> list[str]:
     """
     found = []
     for d in sorted((root / "handbook/domains").glob("*.md")):
-        lines, in_register = _lines(d), False
-        for i, line in enumerate(lines, 1):
-            if line.startswith("#"):
-                in_register = line.lstrip("#").strip().lower() == "quality register"
-                continue
+        lines = _lines(d)
+        for i, line in _register_lines(d):
             is_row = line.startswith("|") and not set(line) <= set("|-: ")
             header = i < len(lines) and set(lines[i].strip()) <= set("|-: ") and "-" in lines[i]
-            if not in_register or not is_row or header:
+            if not is_row or header:
                 continue
             cells = [c.strip() for c in line.strip().strip("|").split("|")]
             check, where = cells[-1], f"{_rel(root, d)}:{i}"
@@ -586,6 +583,44 @@ def register_rows(root: Path) -> list[str]:
             elif "`missing`" in check or not named:
                 found.append(f"{where} missing: {cells[0]}")
     return found
+
+def _register_lines(path: Path) -> list[tuple[int, str]]:
+    """(line number, line) of the Quality register section, subsections included."""
+    out, level = [], 0
+    for i, line in enumerate(_lines(path) if path.is_file() else [], 1):
+        if line.startswith("#"):
+            depth = len(line) - len(line.lstrip("#"))
+            if line.lstrip("#").strip().lower() == "quality register":
+                level = depth
+                continue
+            if level and depth <= level:
+                level = 0
+        if level:
+            out.append((i, line))
+    return out
+
+
+def _register_attributes(root: Path, domain: str) -> set[str]:
+    """First cells of the Quality register rows in handbook/domains/<domain>.md."""
+    return {line.strip().strip("|").split("|")[0].strip()
+            for _, line in _register_lines(root / "handbook/domains" / f"{domain}.md") if line.startswith("|")}
+
+
+def escapes_open(root: Path) -> list[str]:
+    """Escapes in plan/escapes.toml whose suite isn't fixed or whose row doesn't exist."""
+    log = root / "plan/escapes.toml"
+    if not log.is_file():
+        return []
+    import tomllib
+    found = []
+    for i, e in enumerate(tomllib.loads(log.read_text(encoding="utf-8")).get("escape", []), 1):
+        what = f"#{i} {e.get('domain', '?')}: {e.get('bug', '?')}"
+        if e.get("row") not in _register_attributes(root, e.get("domain", "")):
+            found.append(f"{what} (no such register row: {e.get('row')!r})")
+        elif not e.get("suite_fix"):
+            found.append(f"{what} (suite not fixed)")
+    return found
+
 
 # name -> (label, measure, ratcheted). Informational counts are shown, never gated.
 COUNTERS = {
@@ -620,6 +655,7 @@ COUNTERS = {
     "spec_std_refs": ("spec/std references", spec_std_refs, False),
     # Shown, not gated: a register that lists a missing check is better than one that hides it.
     "register_rows": ("quality-register rows naming no existing check", register_rows, False),
+    "escapes_open": ("escaped bugs whose suite isn't fixed yet", escapes_open, False),
 }
 
 

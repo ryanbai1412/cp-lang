@@ -96,9 +96,11 @@ owns, and by asking how mature projects measure the same thing.
 - **Expected output changes for a reason.** A commit that edits expected
   output together with the code that produces it is flagged for post-land
   review: it may have blessed a bug.
-- **Escapes fix the suite.** Each escaped bug is logged with the register
-  row that should have caught it, and that domain fixes the suite as well
-  as the bug.
+- **Escapes fix the suite.** Each escaped bug is logged in
+  `plan/escapes.toml` with the domain and register row that should have
+  caught it. That domain fixes the suite as well as the bug, and records the
+  commit as `suite_fix`. `python3 scripts/debt-ratchet.py --list
+  escapes_open` lists the entries still open.
 - **Process costs under 10% of your time.** Above that, skip it and write
   `Skipped: <process>, <reason>` in the commit. The post-land review picks
   it up.
