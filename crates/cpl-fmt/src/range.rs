@@ -233,7 +233,9 @@ fn edit(src: &str, range: Range<usize>, new: &str) -> Option<Edit> {
         .zip(new.bytes())
         .take_while(|(a, b)| a == b)
         .count();
-    while !old.is_char_boundary(pre) || !new.is_char_boundary(pre) {
+    // Both share the bytes before `pre`, so a char cut in one is cut the
+    // same way in the other: checking `old` is enough.
+    while !old.is_char_boundary(pre) {
         pre -= 1;
     }
     let (old_rest, new_rest) = (&old[pre..], &new[pre..]);
@@ -243,9 +245,7 @@ fn edit(src: &str, range: Range<usize>, new: &str) -> Option<Edit> {
         .zip(new_rest.bytes().rev())
         .take_while(|(a, b)| a == b)
         .count();
-    while !old_rest.is_char_boundary(old_rest.len() - suf)
-        || !new_rest.is_char_boundary(new_rest.len() - suf)
-    {
+    while !old_rest.is_char_boundary(old_rest.len() - suf) {
         suf -= 1;
     }
     Some(Edit {

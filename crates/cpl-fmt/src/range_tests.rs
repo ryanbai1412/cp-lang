@@ -149,3 +149,45 @@ fn every_line_of_the_newcomer_files_formats_alone() {
     }
     assert!(lines > 500, "only {lines} lines formatted");
 }
+
+/// The edit an editor applies is the smallest one, and never splits a
+/// character. Rule: `lints/R22`.
+#[test]
+fn an_edit_is_the_smallest_change_on_char_boundaries() {
+    let span = |e: Option<Edit>| e.map(|e| (e.range, e.text));
+    assert_eq!(span(edit("let b=2", 0..7, "let b=2")), None);
+    assert_eq!(
+        span(edit("let b=2", 0..7, "let b = 2")),
+        Some((5..6, " = ".to_string()))
+    );
+    assert_eq!(
+        span(edit("xxlet b=2", 2..9, "let b = 2")),
+        Some((7..8, " = ".to_string()))
+    );
+    assert_eq!(
+        span(edit("// é", 0..5, "// è")),
+        Some((3..5, "è".to_string()))
+    );
+    assert_eq!(
+        span(edit("// é", 0..5, "// ɩ")),
+        Some((3..5, "ɩ".to_string()))
+    );
+}
+
+/// A range in a CRLF file names the same lines it does with LF ends,
+/// including a cursor between `\r` and `\n`.
+#[test]
+fn a_crlf_range_maps_to_its_own_lines() {
+    let src = "let a=1\r\nlet b=2\r\nlet c=3\r\n";
+    assert_eq!(ranged(src, 18..25), "let a=1\r\nlet b=2\r\nlet c = 3\r\n");
+    assert_eq!(ranged(src, 8..8), "let a = 1\r\nlet b=2\r\nlet c=3\r\n");
+}
+
+/// A selected statement with a trailing comma formats as the whole file
+/// would.
+#[test]
+fn a_range_with_a_trailing_comma_formats_like_the_file() {
+    let src = "let a=1\nlet xs=[1,2,]\n";
+    let want = format!("let a=1\n{}", format("let xs=[1,2,]\n").unwrap());
+    assert_eq!(ranged(src, line(src, 2)), want);
+}
