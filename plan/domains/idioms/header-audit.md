@@ -2,124 +2,126 @@
 
 The header pass (Source, Problem, Solution on every port, `plan/PORTING.md`) read each
 port against its statement. 849 of 877 ports now have the header. These are the agents'
-doubts and skips, grouped. Each line names the port; fixed ones are marked.
+doubts and skips, grouped. Each line names the port; fixed ones are marked. The bounds and
+behaviour sections were burned down on 2026-11-23: each fixed port now reads the statement's
+bounds and matches an accepted C++ at full statement size.
 
 ## Behaviour or output differs from the statement (fix or note) (25)
 
-- iati21a13: insert_sorted shifts linearly in the merge-sort-tree node lists, so the worst case is O(N^2), not O((N+Q) log^2 N); dfs_act also rescans each depth bag on every update
-- noip22p4: the port uses signed 64-bit Int instead of the U64 wrapping mod 2^64 the statement needs; the existing caveat lines are kept
-- ioi14p1: port reads hidden locations/types from stdin and simulates getDistance (O(n) per call), and looks up placed stations by linear scan (O(n^2)); exact n and call limits were unreadable in the PDF, so the Problem line states them generically
-- noi08p5: Delete finds the colour by a linear scan over all inserted clouds, O(n) per delete (O(n^2) worst for n = 2e5)
-- cco24p2: port only solves the judged subtasks (flavours <= 2, or distinct a); for general input it prints nothing
-- ceoi22p3: old comment labelled it 25pt, but the code asks only K-1 questions with a tree-1 preorder prefix, i.e. the full-score scheme; the code also prints the chosen labels one per line where the statement says space-separated
-- rpeng3: no public DMOJ problem rpeng3 exists; the statement came from the official IOI 2009 Salesman task (research notes identify the submission as Salesman). The Source URL stays dmoj.ca/problem/rpeng3 because the pre-commit hook blocks ioinformatics.org links. The port does a linear scan for each arrival, O(N*L), instead of the C++'s segment trees, which is too slow for N = 5e5; the header says so
-- cco24p4: output-only partial-score task (N = 100). The port prints one fixed schedule in which both agents climb toward a centre root, with hard-coded phase lengths from the C++; whatever max f/d it reaches is untested here, and nothing guarantees the full-score bound S <= 15
+- iati21a13: **fixed** insert_sorted shifts linearly in the merge-sort-tree node lists, so the worst case is O(N^2), not O((N+Q) log^2 N); dfs_act also rescans each depth bag on every update
+- noip22p4: **fixed** the port uses signed 64-bit Int instead of the U64 wrapping mod 2^64 the statement needs; the existing caveat lines are kept
+- ioi14p1: **fixed** port reads hidden locations/types from stdin and simulates getDistance (O(n) per call), and looks up placed stations by linear scan (O(n^2)); exact n and call limits were unreadable in the PDF, so the Problem line states them generically
+- noi08p5: **fixed** Delete finds the colour by a linear scan over all inserted clouds, O(n) per delete (O(n^2) worst for n = 2e5)
+- cco24p2: **noted** (left as is, reason in the idioms worklog) port only solves the judged subtasks (flavours <= 2, or distinct a); for general input it prints nothing
+- ceoi22p3: **fixed** old comment labelled it 25pt, but the code asks only K-1 questions with a tree-1 preorder prefix, i.e. the full-score scheme; the code also prints the chosen labels one per line where the statement says space-separated
+- rpeng3: **fixed** no public DMOJ problem rpeng3 exists; the statement came from the official IOI 2009 Salesman task (research notes identify the submission as Salesman). The Source URL stays dmoj.ca/problem/rpeng3 because the pre-commit hook blocks ioinformatics.org links. The port does a linear scan for each arrival, O(N*L), instead of the C++'s segment trees, which is too slow for N = 5e5; the header says so
+- cco24p4: **fixed** output-only partial-score task (N = 100). The port prints one fixed schedule in which both agents climb toward a centre root, with hard-coded phase lengths from the C++; whatever max f/d it reaches is untested here, and nothing guarantees the full-score bound S <= 15
 - ioi15p5: **fixed** (searches 0..=m; 60/60 minimal and sorting, was 46/60 wrong)  the binary search runs over the empty range (0..0).first_true(...), so rounds is always 0; it should search 0..=m
-- noimps22p5: x = y = 0 is allowed by the statement (answer 0) but the code prints nothing for it
-- cco16p2: code asserts no three collinear points, but the full statement allows collinear points
-- noi03p2: Insert reads text as whitespace-separated Str tokens, so spaces in inserted text (ASCII 32 allowed) are dropped and the length count is off
-- cco20p4: every start prints the 2n-2 DFS closed walk in one colour, which is only a partial-score answer (statement asks for minimum length, scored floor(8+8(2K-M)/(K-1)) unless optimal); the header says so
-- cco21p2: port prints each digit on its own line; statement and tests/*.ans put a representation's digits space-separated on one line
-- noi07p6: the plan uses leaves - 1 detectives, not the minimum S the statement asks for (it only gets partial score); the port also requires n >= 3, but the statement allows N >= 1
-- ceoi22p5: the statement asks for the M answers on one line, but the port prints one per line
-- cco04p4: statement asks for the least Euclidean distance to 2 decimals; the port prints the least squared distance (the old caveat is kept as a Note line)
-- etsr23r4p3: statement read as ZJOI 2016 Small Stars via the Luogu mirror P3349, not on DMOJ itself; the original uses wrapping u64 because intermediate inclusion-exclusion values can overflow signed 64-bit, but the port uses signed Int
-- sdoi17r2p1: not on DMOJ; statement read from Luogu P3779 (Source has no URL, same host rule). The port's exact window DP is O(X Y^2) per test, far too slow for Y up to 2e5
-- dmopc20c4p4: the statement asks for space-separated output and the code prints one value per line; the Solution charges i - j the way the code does, which I did not prove
-- aac4p3: code declares n, m: 1..=2000 and slopes 1..=1e9, statement has N <= 1e5, M <= 20 and signed nonzero k, d (sample has -1 1); negative slopes would be rejected
-- aac5p4: the port prints the closed-form count M and then 1..M as the moves; that is not a valid move sequence, so it can earn at most the 25% partial credit per test. The closed form is taken from the original and I did not re-derive it
+- noimps22p5: **fixed** x = y = 0 is allowed by the statement (answer 0) but the code prints nothing for it
+- cco16p2: **fixed** code asserts no three collinear points, but the full statement allows collinear points
+- noi03p2: **fixed** Insert reads text as whitespace-separated Str tokens, so spaces in inserted text (ASCII 32 allowed) are dropped and the length count is off
+- cco20p4: **fixed** every start prints the 2n-2 DFS closed walk in one colour, which is only a partial-score answer (statement asks for minimum length, scored floor(8+8(2K-M)/(K-1)) unless optimal); the header says so
+- cco21p2: **fixed** port prints each digit on its own line; statement and tests/*.ans put a representation's digits space-separated on one line
+- noi07p6: **fixed** the plan uses leaves - 1 detectives, not the minimum S the statement asks for (it only gets partial score); the port also requires n >= 3, but the statement allows N >= 1
+- ceoi22p5: **fixed** the statement asks for the M answers on one line, but the port prints one per line
+- cco04p4: **fixed** statement asks for the least Euclidean distance to 2 decimals; the port prints the least squared distance (the old caveat is kept as a Note line)
+- etsr23r4p3: **fixed** statement read as ZJOI 2016 Small Stars via the Luogu mirror P3349, not on DMOJ itself; the original uses wrapping u64 because intermediate inclusion-exclusion values can overflow signed 64-bit, but the port uses signed Int
+- sdoi17r2p1: **fixed** not on DMOJ; statement read from Luogu P3779 (Source has no URL, same host rule). The port's exact window DP is O(X Y^2) per test, far too slow for Y up to 2e5
+- dmopc20c4p4: **fixed** the statement asks for space-separated output and the code prints one value per line; the Solution charges i - j the way the code does, which I did not prove
+- aac4p3: **fixed** code declares n, m: 1..=2000 and slopes 1..=1e9, statement has N <= 1e5, M <= 20 and signed nonzero k, d (sample has -1 1); negative slopes would be rejected
+- aac5p4: **fixed** the port prints the closed-form count M and then 1..M as the moves; that is not a valid move sequence, so it can earn at most the 25% partial credit per test. The closed form is taken from the original and I did not re-derive it
 - ccc20s2: **kept**: the accepted C++ also prints no for a 1x1 grid not holding 1  when M = N = 1 the port prints yes only if the cell holds 1, but you start on the exit, so the answer should be yes. Edge case, possibly not in the tests
-- cf2152b: the code never prints -1, though the statement allows it; the header says so
+- cf2152b: **fixed** the code never prints -1, though the statement allows it; the header says so
 - coci12c1p4: **fixed** (assert dropped; 40/40 vs accepted C++, which divides by zero on the other 20)  `assert marbles.sum() > kids` rejects valid inputs where there are no more marbles than children (answer 1). The binary search alone would handle them.
 
 ## Read bounds differ from the statement (86)
 
-- wtf26d: port declares n in 1..=200_000 but the statement allows N <= 1e6 (sum N <= 1e6)
-- agc079c: port declares n in 1..=2e5 but the statement allows N <= 250000
-- yac6p4: the code limits n to 1..=200_000, but the statement allows N <= 1e6
-- dmpg16g2: the code limits n to 1..=500 (old comment: runnable subset), but the statement allows N <= 1000
-- cf2127h: port declares n <= 3e5, m <= 6e5 while the statement has n <= 30; the series-parallel reduction relies on a degree <= 2 vertex always remaining, which I did not verify follows from the 5-cycles bound
-- noi19p1: port reads B, C as 0..=10_000 but the statement allows 0 <= B, C <= 1e6, so valid inputs would fail validation
-- sdoi17r2p4: the DMOJ page could not be reached, so the statement came from Luogu P3783; the port reads T in 1..=3 and c in 1..=5e4, but the statement says T <= 10 and 0 <= c <= 2e4
-- noi23p1: the port names the first two numbers rows/cols, but the statement gives n columns then m rows (both unused, so no effect)
-- cf2089e: port reads n <= 250000 while the statement bounds n <= 80 (sum n <= 80)
-- aac4p4: port caps n, m, s, f <= 50 and L, R <= 2500, statement has N, M <= 2000 and L, R <= N*M, so full input is rejected (header notes the runnable subset)
-- noip00p4: not on public DMOJ; the statement came from Luogu P1004 and the Source URL stays dmoj.ca. The port caps the number of numbered cells at 20 (m: 0..=20, O(2^m m) SOS), but the statement allows up to all 81 cells; the port also reads the end marker as '0 0 0' where the statement says a single 0 line
-- coci21c6p3: port declares m <= 2e5 but the statement allows m <= 5e5
-- cf2089c2: code reads k as 0..=100 while the statement bounds k <= 25 (a harmless superset; the header states the statement bound)
-- cf2261g: port declares n: 1..=2e5 but the statement allows n <= 4e5; the Solution states the f formula the code relies on without re-deriving it
-- cf2261f1: old comment described a reachability walk; header follows the statement's count-of-ones protocol, construction not re-proven
-- cco16p6: code declares n <= 5e5 and K <= 1e12, but the statement says N <= 1e6 and K <= 1e18; the cutoff bucket is found by a linear range .find over prefix folds, not by first_where as the old comment said
-- cf2268d: code declares n <= 5e5, but the statement allows n <= 1e6 (sum of n <= 1e6)
-- ioi99p2: code accepts end - start <= 1000 (a covering sequence of length 1001), but the statement caps the length at 1000
-- coci25c3p4: the port accepts n <= 5000 but the statement allows n <= 3000; its O(36 n^2) cost depends on the statement's diameter < 36 guarantee, which the code never checks
-- noi02p4: reads life as 1..=1e6 but statement allows L_i = 0, so valid input would be rejected
-- etsr23r3p3: dmoj.ca/problem/etsr23r3p3 is not public (API 404); Problem line taken from the NOI 2018 D1 P1 'Return' statement (LOJ 2718), which spec.cp and the code match
-- wtf26b: port bounds n to 1..=200 while the statement has N <= 50 (looser, not wrong); the Solution line describes the DP state and transitions but not why the characterization holds
-- cf2245d2: the port bounds m to 2e5, but the statement allows m <= min(1e6, n(n+1)/2)
-- cf2262a2: the port bounds n to 2e5, but the statement says n <= 1e5 (harmless)
-- etsr23r2p4: not on public DMOJ; statement read from the SDOI 2009 School Canteen mirror. Source line uses the DMOJ code URL because the commit hook rejects luogu links
-- ucrpc21d: statement allows r, c <= 1000 but the port reads n, m in 1..=500
-- sdoi17r1p1: statement read from Luogu P3704; cited DMOJ URL as other SDOI ports do (Luogu host rejected by public-history hook)
-- cf2237f: the port reads n, m <= 2e5, but the statement allows 5e5
-- cf2201c: the port reads n in 1..=2e5, but the statement allows 2 <= n <= 3e5
-- cf2219c: the port reads n >= 2, but the statement allows n = 1
-- yac6p5: the port reads n <= 2e5, but the statement allows N <= 1e6 (2 <= N)
-- cf2152h1: port declares n, q <= 2500, the statement allows n <= 2.5e5 (sum) and q <= 10 per test
-- cco07p5: port declares n <= 1000, the statement allows N <= 1e5
-- cf2229f: old title 'Maximum Minimum Block Sum' did not match the statement (Load Unbalancing); port declares n, k <= 21 against the statement's 18
-- cf2201f2: port is identical to cf2201f1 and declares n, q as 1..=200_000, but F2 allows n, q up to 2e6, so the largest F2 inputs would be rejected
-- cf2178g: port declares n as 1..=200_000, but the statement allows n up to 5e5 (sum of n <= 5e5)
-- noip02p4: statement allows k <= 4, but the port only handles k <= 3 (the header says so); not on DMOJ, cited as Luogu P1034 without a URL
-- noi23p2: port reads the test count as 1..=10 but the statement (Luogu copy) allows t <= 15; the Solution's description of the bitmask DP comes from reading the code, not the editorial
+- wtf26d: **fixed** port declares n in 1..=200_000 but the statement allows N <= 1e6 (sum N <= 1e6)
+- agc079c: **fixed** port declares n in 1..=2e5 but the statement allows N <= 250000
+- yac6p4: **fixed** the code limits n to 1..=200_000, but the statement allows N <= 1e6
+- dmpg16g2: **fixed** the code limits n to 1..=500 (old comment: runnable subset), but the statement allows N <= 1000
+- cf2127h: **fixed** port declares n <= 3e5, m <= 6e5 while the statement has n <= 30; the series-parallel reduction relies on a degree <= 2 vertex always remaining, which I did not verify follows from the 5-cycles bound
+- noi19p1: **fixed** port reads B, C as 0..=10_000 but the statement allows 0 <= B, C <= 1e6, so valid inputs would fail validation
+- sdoi17r2p4: **fixed** the DMOJ page could not be reached, so the statement came from Luogu P3783; the port reads T in 1..=3 and c in 1..=5e4, but the statement says T <= 10 and 0 <= c <= 2e4
+- noi23p1: **fixed** the port names the first two numbers rows/cols, but the statement gives n columns then m rows (both unused, so no effect)
+- cf2089e: **fixed** port reads n <= 250000 while the statement bounds n <= 80 (sum n <= 80)
+- aac4p4: **fixed** port caps n, m, s, f <= 50 and L, R <= 2500, statement has N, M <= 2000 and L, R <= N*M, so full input is rejected (header notes the runnable subset)
+- noip00p4: **fixed** not on public DMOJ; the statement came from Luogu P1004 and the Source URL stays dmoj.ca. The port caps the number of numbered cells at 20 (m: 0..=20, O(2^m m) SOS), but the statement allows up to all 81 cells; the port also reads the end marker as '0 0 0' where the statement says a single 0 line
+- coci21c6p3: **fixed** port declares m <= 2e5 but the statement allows m <= 5e5
+- cf2089c2: **fixed** code reads k as 0..=100 while the statement bounds k <= 25 (a harmless superset; the header states the statement bound)
+- cf2261g: **fixed** port declares n: 1..=2e5 but the statement allows n <= 4e5; the Solution states the f formula the code relies on without re-deriving it
+- cf2261f1: **fixed** old comment described a reachability walk; header follows the statement's count-of-ones protocol, construction not re-proven
+- cco16p6: **fixed** code declares n <= 5e5 and K <= 1e12, but the statement says N <= 1e6 and K <= 1e18; the cutoff bucket is found by a linear range .find over prefix folds, not by first_where as the old comment said
+- cf2268d: **fixed** code declares n <= 5e5, but the statement allows n <= 1e6 (sum of n <= 1e6)
+- ioi99p2: **fixed** code accepts end - start <= 1000 (a covering sequence of length 1001), but the statement caps the length at 1000
+- coci25c3p4: **fixed** the port accepts n <= 5000 but the statement allows n <= 3000; its O(36 n^2) cost depends on the statement's diameter < 36 guarantee, which the code never checks
+- noi02p4: **fixed** reads life as 1..=1e6 but statement allows L_i = 0, so valid input would be rejected
+- etsr23r3p3: **fixed** dmoj.ca/problem/etsr23r3p3 is not public (API 404); Problem line taken from the NOI 2018 D1 P1 'Return' statement (LOJ 2718), which spec.cp and the code match
+- wtf26b: **fixed** port bounds n to 1..=200 while the statement has N <= 50 (looser, not wrong); the Solution line describes the DP state and transitions but not why the characterization holds
+- cf2245d2: **fixed** the port bounds m to 2e5, but the statement allows m <= min(1e6, n(n+1)/2)
+- cf2262a2: **fixed** the port bounds n to 2e5, but the statement says n <= 1e5 (harmless)
+- etsr23r2p4: **fixed** not on public DMOJ; statement read from the SDOI 2009 School Canteen mirror. Source line uses the DMOJ code URL because the commit hook rejects luogu links
+- ucrpc21d: **fixed** statement allows r, c <= 1000 but the port reads n, m in 1..=500
+- sdoi17r1p1: **fixed** statement read from Luogu P3704; cited DMOJ URL as other SDOI ports do (Luogu host rejected by public-history hook)
+- cf2237f: **fixed** the port reads n, m <= 2e5, but the statement allows 5e5
+- cf2201c: **fixed** the port reads n in 1..=2e5, but the statement allows 2 <= n <= 3e5
+- cf2219c: **fixed** the port reads n >= 2, but the statement allows n = 1
+- yac6p5: **fixed** the port reads n <= 2e5, but the statement allows N <= 1e6 (2 <= N)
+- cf2152h1: **fixed** port declares n, q <= 2500, the statement allows n <= 2.5e5 (sum) and q <= 10 per test
+- cco07p5: **fixed** port declares n <= 1000, the statement allows N <= 1e5
+- cf2229f: **fixed** old title 'Maximum Minimum Block Sum' did not match the statement (Load Unbalancing); port declares n, k <= 21 against the statement's 18
+- cf2201f2: **fixed** port is identical to cf2201f1 and declares n, q as 1..=200_000, but F2 allows n, q up to 2e6, so the largest F2 inputs would be rejected
+- cf2178g: **fixed** port declares n as 1..=200_000, but the statement allows n up to 5e5 (sum of n <= 5e5)
+- noip02p4: **fixed** statement allows k <= 4, but the port only handles k <= 3 (the header says so); not on DMOJ, cited as Luogu P1034 without a URL
+- noi23p2: **fixed** port reads the test count as 1..=10 but the statement (Luogu copy) allows t <= 15; the Solution's description of the bitmask DP comes from reading the code, not the editorial
 - ucup4s25b, ucup5s03a: Source gives qoj.ac/... without  because qoj.ac is not in scripts/public-hosts.txt and check.sh rejects http(s) links to unlisted hosts
-- sac22cc4p4: port caps n <= 2e5 and B, T <= 1e9 (a 'runnable subset'), below the statement's n <= 1e6 and T <= 2e9; kept as a note line
-- tle17c5p6: port declares n, m <= 1000 while the statement has n <= 1e5, m <= 2e5
-- ceoi09p3: DMOJ page not reachable; statement read from the Luogu mirror P5975, whose bounds (A <= 2e6, coordinates <= 1e5) are wider than the port's types (A, x <= 3e5), so the port may reject that judge's valid input
-- cf2135e1: the E1 statement has n <= 1e6 (sum of n <= 1e6), but the port reads n: 1..=2e5 and sizes its sieve/factorials to 2e5+2
-- ucup4s25c: the statement has m <= 2e5 and values <= 2e5 (sum of m <= 2e5), but the port types m: 1..=1e5 and values 1..=1e9
-- cf2207b: port reads n, m, l in 1..=2000, but the statement allows l up to 2e5 (only m*l <= 2e5), so valid inputs are rejected
-- cf2207d: port reads n, k, v in 1..=200000, but the statement allows n <= 5e5
-- cf2261e: port reads n <= 200000, but the statement allows n <= 4e5
-- cf2152c: port reads n, q in 1..=200_000 but the statement allows up to 250000
-- cf2201b: port reads k in 1..=600_000 but the statement allows k up to 1e6 (the answer is NO there, but the port rejects the input)
-- coci25c3p1: not on DMOJ (No such problem); statement from the official COCI 2025/26 Round 3 PDF on hsin.hr, cited without a URL because hsin.hr is not in scripts/public-hosts.txt. The port declares n <= 100, k <= 200 but the statement says n, k <= 50 (harmless, wider than needed)
-- cf2138b: header relies on the port's characterization (perfect iff no decreasing triple), checked against the statement's definition only by reasoning, not by running
-- sac22cc4jp4: code declares n as 1..=2e5 while the statement bound is n <= 1e5 (looser, harmless)
-- cf2089c1: code declares n as 1..=5000 while the statement bound is n <= 100 (looser, harmless)
-- ccc23s4: port reads road length as 1..=1e9 but the statement allows 0 <= l_i <= 1e9 (subtask 1 is all l_i = 0), so valid inputs with length 0 are rejected
-- noip06p2: not on DMOJ; statement from Luogu P1064. Source names 'Luogu P1064' without a URL because luogu.com.cn is not in scripts/public-hosts.txt and check.sh rejects links to it
-- ioi10p6: reads fans per city as 1..=2000, but the statement only bounds the total (2e9), so valid inputs with a larger city would be rejected
-- egoi23p6: reads t as 1..=1e11, but the statement allows T = 0
-- ccc23s5: reads n as 3..=1e9, but the statement allows N = 2
-- cco09p4: reads n as 1..=1000, but the statement allows N <= 10000; it also splits the bottles with two fit() passes (about 3 queries per element per level), so expected queries at N = 1e4 are about 5.5e5, above the 5e5 limit
-- ucup5s06g: read bounds (n, m <= 5e5) are wider than the statement's (n <= 1e5, m <= 2e5); harmless
-- cco18p4: reads `k: 1..=100` but the statement allows K <= 170, so the K = 170 subtask would trap on input; and Row.find / Col.find scan linearly (std: O(visited)), asking up to R + C questions with R, C <= 1e7, far over the K budget (spec.cp uses ternary_min instead)
-- noip10p2: the DMOJ API returns 404 for noip10p2 (not public), so I read the statement on Luogu P1541; Source links dmoj.ca/problem/noip10p2 because the land hook rejects the luogu.com.cn host
-- cco16p4: code declares g: 1..=100 but statement allows G <= 10000
-- cco24p1: the port types v_i and c_i as 1..=1e9 but the statement allows 0 <= v_i, c_i <= 1e9, so valid inputs with a zero treasure or a zero-cost route would be rejected by validation
-- cf2255b: port reads n: 1..=200_000 but the statement allows n up to 1e6 (sum), so valid large tests would be rejected
-- sac22cc3p3: port reads n: 1..=1000 (old comment said 'runnable subset'); statement has N <= 1e5
-- ccc21s5: port reads q: 1..=100000 but the statement allows M <= 150000
-- cpc21c1p5: port reads n: 1..=100 (reply type 0..=100) but the statement allows N <= 500
-- mccc4j5: port bounds n <= 2e5, time 0..=1e4 are wider than the statement's N <= 5000, T_i >= 1 (harmless)
-- cf2268b: old title said 'Even Popcount Point Updates' and the port allows values up to 2^30-1; statement has a_i < 16 and asks for multiples of 3. The code counts even-popcount values, which matches the statement only through the invariant (checked by brute force for n <= 3)
-- ucup5s06a: the Solution restates the editorial's formula cyc(B + x) - 2 cyc(B) from the old comment without a proof of the bijection; I checked it by hand against samples 1 and 2 (20 and 1). The URL has no scheme (qoj.ac/...) because the pre-commit host check rejects contest.ucup.ac and qoj.ac, the same way the other ucup ports get past it
-- cco17p5: the code types price as 1..=1e9, but the statement allows 0 <= B_i <= 10000, so input with B_i = 0 is rejected
-- cf2229d: the old title '2xN Threshold Binary Search' is wrong (the problem is 'Me When Median Problem'). The +1-columns-vs-(-1)-runs rule comes from the code and only the sample was checked by hand; the code types n as 1..=2e5, but the statement says 1e5
-- agc079a: the code types n as 2..=3e5, but the statement says 2.5e5 (harmless)
-- cheerio1s3: code declares n: 1..=2000, statement allows N <= 5000
-- yac1p1: code declares a_i, b_i: 1..=1e9, statement allows up to 2e9
+- sac22cc4p4: **fixed** port caps n <= 2e5 and B, T <= 1e9 (a 'runnable subset'), below the statement's n <= 1e6 and T <= 2e9; kept as a note line
+- tle17c5p6: **fixed** port declares n, m <= 1000 while the statement has n <= 1e5, m <= 2e5
+- ceoi09p3: **fixed** DMOJ page not reachable; statement read from the Luogu mirror P5975, whose bounds (A <= 2e6, coordinates <= 1e5) are wider than the port's types (A, x <= 3e5), so the port may reject that judge's valid input
+- cf2135e1: **fixed** the E1 statement has n <= 1e6 (sum of n <= 1e6), but the port reads n: 1..=2e5 and sizes its sieve/factorials to 2e5+2
+- ucup4s25c: **fixed** the statement has m <= 2e5 and values <= 2e5 (sum of m <= 2e5), but the port types m: 1..=1e5 and values 1..=1e9
+- cf2207b: **fixed** port reads n, m, l in 1..=2000, but the statement allows l up to 2e5 (only m*l <= 2e5), so valid inputs are rejected
+- cf2207d: **fixed** port reads n, k, v in 1..=200000, but the statement allows n <= 5e5
+- cf2261e: **fixed** port reads n <= 200000, but the statement allows n <= 4e5
+- cf2152c: **fixed** port reads n, q in 1..=200_000 but the statement allows up to 250000
+- cf2201b: **fixed** port reads k in 1..=600_000 but the statement allows k up to 1e6 (the answer is NO there, but the port rejects the input)
+- coci25c3p1: **fixed** not on DMOJ (No such problem); statement from the official COCI 2025/26 Round 3 PDF on hsin.hr, cited without a URL because hsin.hr is not in scripts/public-hosts.txt. The port declares n <= 100, k <= 200 but the statement says n, k <= 50 (harmless, wider than needed)
+- cf2138b: **fixed** header relies on the port's characterization (perfect iff no decreasing triple), checked against the statement's definition only by reasoning, not by running
+- sac22cc4jp4: **fixed** code declares n as 1..=2e5 while the statement bound is n <= 1e5 (looser, harmless)
+- cf2089c1: **fixed** code declares n as 1..=5000 while the statement bound is n <= 100 (looser, harmless)
+- ccc23s4: **fixed** port reads road length as 1..=1e9 but the statement allows 0 <= l_i <= 1e9 (subtask 1 is all l_i = 0), so valid inputs with length 0 are rejected
+- noip06p2: **fixed** not on DMOJ; statement from Luogu P1064. Source names 'Luogu P1064' without a URL because luogu.com.cn is not in scripts/public-hosts.txt and check.sh rejects links to it
+- ioi10p6: **fixed** reads fans per city as 1..=2000, but the statement only bounds the total (2e9), so valid inputs with a larger city would be rejected
+- egoi23p6: **fixed** reads t as 1..=1e11, but the statement allows T = 0
+- ccc23s5: **fixed** reads n as 3..=1e9, but the statement allows N = 2
+- cco09p4: **fixed** reads n as 1..=1000, but the statement allows N <= 10000; it also splits the bottles with two fit() passes (about 3 queries per element per level), so expected queries at N = 1e4 are about 5.5e5, above the 5e5 limit
+- ucup5s06g: **fixed** read bounds (n, m <= 5e5) are wider than the statement's (n <= 1e5, m <= 2e5); harmless
+- cco18p4: **fixed** reads `k: 1..=100` but the statement allows K <= 170, so the K = 170 subtask would trap on input; and Row.find / Col.find scan linearly (std: O(visited)), asking up to R + C questions with R, C <= 1e7, far over the K budget (spec.cp uses ternary_min instead)
+- noip10p2: **noted** (left as is, reason in the idioms worklog) the DMOJ API returns 404 for noip10p2 (not public), so I read the statement on Luogu P1541; Source links dmoj.ca/problem/noip10p2 because the land hook rejects the luogu.com.cn host
+- cco16p4: **fixed** code declares g: 1..=100 but statement allows G <= 10000
+- cco24p1: **fixed** the port types v_i and c_i as 1..=1e9 but the statement allows 0 <= v_i, c_i <= 1e9, so valid inputs with a zero treasure or a zero-cost route would be rejected by validation
+- cf2255b: **fixed** port reads n: 1..=200_000 but the statement allows n up to 1e6 (sum), so valid large tests would be rejected
+- sac22cc3p3: **fixed** port reads n: 1..=1000 (old comment said 'runnable subset'); statement has N <= 1e5
+- ccc21s5: **fixed** port reads q: 1..=100000 but the statement allows M <= 150000
+- cpc21c1p5: **fixed** port reads n: 1..=100 (reply type 0..=100) but the statement allows N <= 500
+- mccc4j5: **fixed** port bounds n <= 2e5, time 0..=1e4 are wider than the statement's N <= 5000, T_i >= 1 (harmless)
+- cf2268b: **fixed** old title said 'Even Popcount Point Updates' and the port allows values up to 2^30-1; statement has a_i < 16 and asks for multiples of 3. The code counts even-popcount values, which matches the statement only through the invariant (checked by brute force for n <= 3)
+- ucup5s06a: **fixed** the Solution restates the editorial's formula cyc(B + x) - 2 cyc(B) from the old comment without a proof of the bijection; I checked it by hand against samples 1 and 2 (20 and 1). The URL has no scheme (qoj.ac/...) because the pre-commit host check rejects contest.ucup.ac and qoj.ac, the same way the other ucup ports get past it
+- cco17p5: **fixed** the code types price as 1..=1e9, but the statement allows 0 <= B_i <= 10000, so input with B_i = 0 is rejected
+- cf2229d: **fixed** the old title '2xN Threshold Binary Search' is wrong (the problem is 'Me When Median Problem'). The +1-columns-vs-(-1)-runs rule comes from the code and only the sample was checked by hand; the code types n as 1..=2e5, but the statement says 1e5
+- agc079a: **fixed** the code types n as 2..=3e5, but the statement says 2.5e5 (harmless)
+- cheerio1s3: **fixed** code declares n: 1..=2000, statement allows N <= 5000
+- yac1p1: **fixed** code declares a_i, b_i: 1..=1e9, statement allows up to 2e9
 - aac4p2: **fixed** (queries read as 0..=1e9; 60/60 vs accepted C++, sample 2 now passes)  the statement allows t = 0 (sample 2 has query 0, expected -1), but the port reads each query as 1..=1e9, so it would reject sample 2
-- coci25c3p2: not on DMOJ (dmoj.ca/problem/coci25c3p2 says no such problem). The statement is COCI 2025/26 Round 3 task Festival, in hsin.hr/coci/archive/2025_2026/contest3_tasks.pdf, and the code matches it. hsin.hr is not in scripts/public-hosts.txt and the pre-commit hook rejected the link, so Source names the archive without a URL. coci25c3p5 on main already carries that hsin.hr link
-- nccc10s2: the code reads n: 1..=1000, but the statement allows N <= 10^4 ballots, so valid large inputs would be rejected (code not changed)
+- coci25c3p2: **fixed** not on DMOJ (dmoj.ca/problem/coci25c3p2 says no such problem). The statement is COCI 2025/26 Round 3 task Festival, in hsin.hr/coci/archive/2025_2026/contest3_tasks.pdf, and the code matches it. hsin.hr is not in scripts/public-hosts.txt and the pre-commit hook rejected the link, so Source names the archive without a URL. coci25c3p5 on main already carries that hsin.hr link
+- nccc10s2: **fixed** the code reads n: 1..=1000, but the statement allows N <= 10^4 ballots, so valid large inputs would be rejected (code not changed)
 - noip06p1, noip10p1, noip10p3: not on DMOJ ('No such problem'). The statements come from Luogu P1063/P1540/P1525, cited without a URL because pre-commit rejects luogu.com.cn (not in scripts/public-hosts.txt)
-- cf2261c: port bounds n to 1..=200_000 but the statement allows n <= 1e6 (sum n <= 1e6), so max-size valid inputs would be rejected
-- modinv: the statement allows N, M up to 1e19 (u64) and N = 0; the port reads x in 1..=1e18 and m <= 1e18, a caveat its kept top comment already notes
-- nccc9s3: the statement says n <= 1e5 but the port declares n in 1..=1_000_000 (looser, harmless)
-- cf2229a: the old title 'Half the Span' was wrong (the problem is 'Slimes on a Line'). The declared bounds (n <= 2e5, a in +-1e9) are wider than the statement (2 <= n <= 1000, 1 <= a <= 1000, sum n <= 1000). The formula is still correct.
-- cf2237a: the old title 'Prefix Minima Sum' was wrong (the problem is 'Destroying Towers'). The prefix-minima sum the code prints is the correct answer, but the declared bounds (n <= 2e5, a <= 1e9) are wider than the statement (n <= 100, a <= 1000).
-- nccc9s1: the code declares a, b, c up to 1e9 but the statement bound is 1e8 (harmless).
+- cf2261c: **fixed** port bounds n to 1..=200_000 but the statement allows n <= 1e6 (sum n <= 1e6), so max-size valid inputs would be rejected
+- modinv: **fixed** the statement allows N, M up to 1e19 (u64) and N = 0; the port reads x in 1..=1e18 and m <= 1e18, a caveat its kept top comment already notes
+- nccc9s3: **fixed** the statement says n <= 1e5 but the port declares n in 1..=1_000_000 (looser, harmless)
+- cf2229a: **fixed** the old title 'Half the Span' was wrong (the problem is 'Slimes on a Line'). The declared bounds (n <= 2e5, a in +-1e9) are wider than the statement (2 <= n <= 1000, 1 <= a <= 1000, sum n <= 1000). The formula is still correct.
+- cf2237a: **fixed** the old title 'Prefix Minima Sum' was wrong (the problem is 'Destroying Towers'). The prefix-minima sum the code prints is the correct answer, but the declared bounds (n <= 2e5, a <= 1e9) are wider than the statement (n <= 100, a <= 1000).
+- nccc9s1: **fixed** the code declares a, b, c up to 1e9 but the statement bound is 1e8 (harmless).
 
 ## Old top comment was wrong (header now follows the statement) (25)
 
