@@ -1,15 +1,49 @@
 # The CP Lang handbook
 
-> **Status: proposed.** This index describes the target structure. Files
-> listed here don't exist until they land. Old files are deleted only after
-> their content is reconciled into the new ones and every link to them works.
+CP Lang is a programming language for competitive programming: you write
+a solution in it, check and test it locally, and submit the single C++17
+file it generates. This handbook describes how the project works today:
+what we are building and for whom, what we value, how work flows, and why
+the language and its tools are shaped the way they are. It is written for
+someone who has never seen the project, whether a new contributor, a
+curious reader or a freshly started agent.
 
-This is how the CP Lang project works **today**: what we're building and for
-whom, what we value, how work flows, how to do each kind of work well, how
-the language and toolchain are designed, and who owns what. It's written for
-someone who has never seen the project, a new contributor or a newly started
-agent. Before your first change, read `principles.md`, then the charter of
-the domain you're working in.
+## How it is organised
+
+- **Product** says who CP Lang is for, the journeys we owe them, and the
+  milestones we are working toward. Start here to understand why anything
+  matters.
+- **Principles** are the goals every change is judged against and the
+  rules that settle design questions.
+- **Language** explains why the language is shaped the way it is. The
+  spec in `spec/` then states the same design exactly, rule by rule.
+- **Design** explains how the compiler, editor support and the other tools
+  are built, and which component owns each fact.
+- **Process** covers how work flows from an idea to a release, who decides
+  what, and how quality is kept high. The process budget is part of it:
+  process takes under 10% of anyone's time, and anyone may skip a process
+  that costs more.
+- **Guidelines** explain how to do one kind of work well, such as designing
+  a std API or writing an error message, each with an exhaustive checklist.
+- **Domains** has one charter per area of the project: what it owns, what
+  good looks like, and every quality it tracks.
+
+Each topic follows the same pattern: a readable document that gives the
+picture, paired with an exhaustive reference (the spec, a checklist, a
+quality register) that tests and lints cite. See `guidelines/writing.md`.
+
+## Where to begin
+
+- **New to the project:** `product/vision.md`, then `principles.md`.
+- **Starting work in a domain:** `domains/README.md`, then your domain's
+  charter, then `process/factory.md` and `process/change.md`.
+- **Changing the language:** the matching document in `language/`, then
+  the spec chapter it leads; both change together.
+- **Proposing a big change:** `process/handbook-and-rfcs.md`.
+
+---
+
+# Reference
 
 ## Where each kind of fact lives
 
