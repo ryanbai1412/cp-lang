@@ -3,7 +3,7 @@
 // In the DAG with backbone edges i -> i + 1 plus m forward edges u -> v, the
 // optimal next move from every non-sink vertex i is the farthest reachable
 // vertex nxt[i] = max(i + 1, max_{(i, v)} v) > i. These parent pointers form
-// a tree rooted at the sink V.last.
+// a tree rooted at the sink V.last!.
 //
 // For any pair of starting vertices (x, y) whose LCA in this tree is p, the
 // game ends after min(depth(x) - depth(p), depth(y) - depth(p)) steps. To sum
@@ -45,7 +45,7 @@ var ans = 0
 for i in V:
     sz[i] += 1
     by_depth[i].push(Bucket(1, sz[i]))
-    if i < V.last:
+    if i < V.last!:
         let p = nxt[i]
         assert p != i
         sz[p] += sz[i]

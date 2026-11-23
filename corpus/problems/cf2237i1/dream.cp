@@ -67,7 +67,7 @@ fn merge(parent: State, child: State, lbl: Label) -> List<(State, Int)>:
 let n: 1..=500 = read()
 domain V = 1..=n
 let label_str: Str = read()
-let label: [V]Label = [V] v => if v == V.first: Label.Zero else: parse_label(label_str[v.ord - 1])
+let label: [V]Label = [V] v => if v == V.first!: Label.Zero else: parse_label(label_str[v.ord - 1])
 
 // Keep the input child order: sibling tie-breaking is order-sensitive, and Rooted.from_parents discards it.
 var par: [V]?V = None
@@ -93,4 +93,4 @@ for p in t.Pre.rev:
         cur = next
     dp[u] = cur
 
-print([w for (_, w) in dp[V.first].items].sum())
+print([w for (_, w) in dp[V.first!].items].sum())
