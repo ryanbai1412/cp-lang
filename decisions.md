@@ -7010,3 +7010,22 @@ Reverse: delete the 11 files.
 ## 317. Unix-only test setup is `#[cfg(unix)]`, so the tests compile on Windows (2026-11-22)
 
 The `os` workflow builds the workspace tests on Windows; the shell-script helpers in cpl-stress and cpl-contest set the exec bit only on unix, which grows `cpl-stress/src/tests.rs` past its ratchet cap by 1 line. Reverse: gate those test modules on unix instead.
+
+## 318. Keep mimalloc and its four dependencies (2026-11-22)
+
+Call: the workspace's only third-party crates, `mimalloc`, `libmimalloc-sys`
+and the build-time-only `cc`, `shlex`, `find-msvc-tools` (they compile
+mimalloc's C), stay. The rule replaces "zero crates": a crate stays if it adds
+little build time and clearly pays for itself, with the numbers logged here.
+Cost: cold `cargo build --release -p mimalloc` in an empty target dir is
+5.2 s and runs beside the Rust crates; a cold `cargo build --release -p
+cpl-cli` took 95.3 s without mimalloc and 85.5 s with it (no measurable cost
+within noise); a warm build never rebuilds them.
+Benefit: `cpl run` over every test of 80 corpus problems (two alternating
+rounds, unloaded machine): 16.3 s and 17.7 s without, 13.4 s and 13.9 s with,
+about 1.24x; a cold check of the 5,000-line LSP latency file went from
+79-136 ms to 54-70 ms (decision 249).
+Reason: a quarter off interpreter time and a third off cold checks for no
+measurable build cost.
+Reverse: decision 249's reverse; drop a crate when a measurement here stops
+favouring it.
