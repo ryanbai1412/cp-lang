@@ -1011,3 +1011,80 @@ let m = [3: 30, 1: 10]
 for (k, v) in m: print(k, v)
 """
 out = "1 10\\n3 30"
+
+[case."Matroid/GraphicMatroid/rebuild"]
+code = """
+use std.flow.{GraphicMatroid}
+domain V = 0..3
+domain E = 0..3
+let es: [E](u: V, v: V) = [(u: V(0), v: V(1)), (u: V(1), v: V(2)), (u: V(0), v: V(2))]
+var m = GraphicMatroid(es)
+let before = m.can_add(E(2))
+m.rebuild([true, true, false])
+print(yes(before), yes(m.can_add(E(2))))
+"""
+out = "YES NO"
+
+[case."Matroid/GraphicMatroid/can_add"]
+code = """
+use std.flow.{GraphicMatroid}
+domain V = 0..3
+domain E = 0..3
+let es: [E](u: V, v: V) = [(u: V(0), v: V(1)), (u: V(1), v: V(2)), (u: V(0), v: V(2))]
+var m = GraphicMatroid(es)
+m.rebuild([true, false, false])
+print(yes(m.can_add(E(1))), yes(m.can_add(E(0))))
+"""
+out = "YES NO"
+
+[case."Matroid/GraphicMatroid/can_swap"]
+code = """
+use std.flow.{GraphicMatroid}
+domain V = 0..3
+domain E = 0..3
+let es: [E](u: V, v: V) = [(u: V(0), v: V(1)), (u: V(1), v: V(2)), (u: V(0), v: V(2))]
+var m = GraphicMatroid(es)
+m.rebuild([true, true, false])
+print(yes(m.can_swap(E(0), E(2))), yes(m.can_swap(E(2), E(0))))
+"""
+out = "YES NO"
+
+[case."Matroid/ColorMatroid/rebuild"]
+code = """
+use std.flow.{ColorMatroid}
+domain E = 0..3
+domain C = 0..2
+let col: [E]C = [C(0), C(0), C(1)]
+let lim: [C]Int = [1, 1]
+var m = ColorMatroid(col, lim)
+let before = m.can_add(E(1))
+m.rebuild([true, false, false])
+print(yes(before), yes(m.can_add(E(1))))
+"""
+out = "YES NO"
+
+[case."Matroid/ColorMatroid/can_add"]
+code = """
+use std.flow.{ColorMatroid}
+domain E = 0..3
+domain C = 0..2
+let col: [E]C = [C(0), C(0), C(1)]
+let lim: [C]Int = [1, 1]
+var m = ColorMatroid(col, lim)
+m.rebuild([true, false, false])
+print(yes(m.can_add(E(1))), yes(m.can_add(E(2))))
+"""
+out = "NO YES"
+
+[case."Matroid/ColorMatroid/can_swap"]
+code = """
+use std.flow.{ColorMatroid}
+domain E = 0..3
+domain C = 0..2
+let col: [E]C = [C(0), C(0), C(1)]
+let lim: [C]Int = [1, 1]
+var m = ColorMatroid(col, lim)
+m.rebuild([true, false, false])
+print(yes(m.can_swap(E(0), E(1))), yes(m.can_swap(E(1), E(2))))
+"""
+out = "YES NO"

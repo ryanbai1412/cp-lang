@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- Trait table: stdlib's new `Matroid` impls (`GraphicMatroid`, `ColorMatroid`) had no cases, so `conformance-traits.py --check` failed on main; 6 cases added, all pass. traits: 116 methods over claims, 113 with a case, 3 gaps (the held range triples).
 - Silent hole (found running lib/strings): R10.3.2 now says `{x:6}` space-pads and `{x:04}` zero-pads after the sign, as `cpl run` does (`0007 -005 [    42] 123`); case `core-10/interpolation-width.cp`.
 - core/04b, core/07, lib/search-dp, lib/strings: 4 blocks given setup, `f".."` -> `".."` in a strings example (there is no f prefix); spec-blocks 50 -> 52/185, errors 71 -> 69. Three given blocks fail on compiler disagreements (E0603 on R8-legal slices, `n.isqrt()`), in compiler/worklog.md.
 - lib/sequence-patterns, graphs-trees, containers: 3 blocks given setup, 2 std excerpts/listings spec-only, `!x` -> `not x` and `let RT` -> `const RT` in examples; spec-blocks 48 -> 50/185 pass, errors 75 -> 71. `runs(link:)`, `gcd(xs)` filed with stdlib; a `List<Int>` vs `List<Int>` E0302 with diagnostics.
