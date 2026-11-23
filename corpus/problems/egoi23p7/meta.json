@@ -20,5 +20,5 @@
  "difficulty": null,
  "dream": "draft",
  "spec": "draft",
- "notes": ""
+ "notes": "5678057 answers NO on some solvable inputs, e.g. 5 0 9 / 0 1 / 1 4 / 1 3 / 4 3 / 1 0 / 0 4 / 4 1 / 1 2 / 3 1, where 2 1, 0 2, 3 2, 4 2 is a valid tree. Answers are not unique; checker.py judges, accepting any valid tree."
 }
