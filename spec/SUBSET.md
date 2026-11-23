@@ -124,7 +124,6 @@ they carry rule ids; the stdlib's own gaps are in `std/GAPS.md`.
 
 ## Known gaps
 
-- core-01/generator-argument.cp: compiler
 - core-01/let-else-falls-through.cp: compiler
 - core-01/let-else-some-pattern-top-level.cp: compiler
 - core-01/list-repeat-times-n.cp: compiler
@@ -183,6 +182,7 @@ they carry rule ids; the stdlib's own gaps are in `std/GAPS.md`.
 - core-06/checker-is-removed.cp: compiler
 - core-06/gen-array-over-domain.cp: compiler
 - core-06/gen-graph-simple-connected.cp: compiler
+- core-06/variadic-named-args-make-record.cp: compiler
 - core-06/gen-int-in-range.cp: compiler
 - core-06/gen-perm.cp: compiler
 - core-06/gen-rooted-shape.cp: compiler

@@ -38,7 +38,10 @@ fn solve(n: Int, mut seen: [V]Bool; limit: Int = 10) -> ?Int:
   takes one parameter (`p => p.0`). This is not overloading: the
   signature is fixed and only the lambda's spelling adapts (decision 159). (R06.1.4)
 - Named and positional arguments, defaults, named-only parameters after
-  `;`, and a variadic `..xs: Ts` tuple parameter. Options are always
+  `;`, and a variadic `..xs: Ts` tuple parameter. Positional arguments to
+  `..xs` make `xs` a tuple; named ones make it a named tuple with those
+  fields in written order (`each(sum: +, hi: max)` gets `(sum: +, hi: max)`),
+  and one call does not mix the two (decision 324). Options are always
   named (`by:`, `desc`), never `_by` twins (decision 60). (R06.1.5)
 - No overloading by type: one name and label set has one generic
   signature (decision 127). Operators are functions:

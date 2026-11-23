@@ -7086,3 +7086,7 @@ that decision 53 names as canonical. Like the binary `min`/`max` exception
 checker (`known.rs::generator_test`) and lowering (`names::core_over_std`); a local
 or user fn of that name still wins. Spec corrected `count-on-bools-counts-every-element.cp` to match
 (d908df023); `core-01/generator-test-counts-trues.cp` pins it. Reverse: drop both guards.
+
+## 324. Named arguments to a variadic parameter make a named tuple (2026-11-22)
+
+`lib/ops-ranges.md` §2 writes `each(sum: +, hi: max)` for an op on records, but R06.1.5 only said `..xs: Ts` is a tuple, so a library could not declare it and `cpl run` reports E0310 (`each` has no parameter named `sum`). Rule: positional arguments to `..xs` make a tuple, named ones a named tuple with fields in written order; one call does not mix them. It is the general mechanism behind `each`, so user libraries get it too (no stdlib privilege). Lost: a separate `each_named` (a `_by`-style twin, decision 60) or a record literal argument `each((sum: +, hi: max))` (extra parentheses at every use). Cases: `core-06/variadic-named-args-make-record.cp`, `std-algebra/each-named-components.cp`. Reverse: drop the sentence from R06.1.5 and write `each((sum: +, hi: max))` in ops-ranges.
