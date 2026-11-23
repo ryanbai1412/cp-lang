@@ -175,13 +175,7 @@ impl<'a> Checker<'a> {
                 let message = format!(
                     "`{name}` takes 2 arguments, but 1 was given; use `.{name}()` on a sequence"
                 );
-                let xs = self.text(args[0].value.span);
-                let xs = if xs.contains(' ') && !xs.starts_with('[') {
-                    format!("({xs})")
-                } else {
-                    xs.to_string()
-                };
-                let ours = format!("{xs}.{name}()!");
+                let ours = format!("{}.{name}()!", self.seq_text(&args[0].value));
                 if let Some(diag) = self.error(codes::WRONG_ARG_COUNT, call.span, message) {
                     diag.fix(format!("write `{ours}`"), call.span, ours);
                 }
@@ -431,5 +425,43 @@ fn optional_print_help(ty: &Ty, snippet: &str) -> Option<String> {
             ))
         }
         _ => None,
+    }
+}
+
+impl Checker<'_> {
+    /// `xs` as the receiver of a sequence method: a bare generator
+    /// `f(x) for x in xs if c` is `xs.filter(x => c).map(x => f(x))`, since
+    /// `(f(x) for x in xs)` is no value.
+    fn seq_text(&self, xs: &Expr) -> String {
+        let recv = |e: &Expr| {
+            let t = self.text(e.span);
+            if t.contains(' ') || t.contains("..") {
+                format!("({t})")
+            } else {
+                t.to_string()
+            }
+        };
+        let text = self.text(xs.span);
+        if let ExprKind::Comprehension { body, clauses } = &xs.kind {
+            if text.starts_with('[') {
+                return text.to_string();
+            }
+            if let [clause] = clauses.as_slice() {
+                let pat = self.text(clause.pat.span);
+                let mut out = recv(&clause.iter);
+                for cond in &clause.conds {
+                    let cpl_syntax::ast::Cond::Expr(c) = cond else {
+                        return format!("[{text}]");
+                    };
+                    out += &format!(".filter({pat} => {})", self.text(c.span));
+                }
+                if !matches!(&body.kind, ExprKind::Name(n) if *n == pat) {
+                    out += &format!(".map({pat} => {})", self.text(body.span));
+                }
+                return out;
+            }
+            return format!("[{text}]");
+        }
+        recv(xs)
     }
 }

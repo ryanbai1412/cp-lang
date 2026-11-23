@@ -1,0 +1,29 @@
+error[E0303]: `max` takes 2 arguments, but 1 was given; use `.max()` on a sequence
+  --> max_of_a_generator.cp:2:7
+  |
+2 | print(max(x * 2 for x in a))
+  |       ^^^^^^^^^^^^^^^^^^^^^
+  = help: write `a.map(x => x * 2).max()!`
+
+error[E0303]: `min` takes 2 arguments, but 1 was given; use `.min()` on a sequence
+  --> max_of_a_generator.cp:3:7
+  |
+3 | print(min(x for x in 0..3 if a[x] > 1))
+  |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  = help: write `(0..3).filter(x => a[x] > 1).min()!`
+
+error[E0303]: `max` takes 2 arguments, but 1 was given; use `.max()` on a sequence
+  --> max_of_a_generator.cp:4:7
+  |
+4 | print(max(a))
+  |       ^^^^^^
+  = help: write `a.max()!`
+
+error[E0303]: `min` takes 2 arguments, but 1 was given; use `.min()` on a sequence
+  --> max_of_a_generator.cp:5:7
+  |
+5 | print(min([x for x in a]))
+  |       ^^^^^^^^^^^^^^^^^^^
+  = help: write `[x for x in a].min()!`
+
+max_of_a_generator.cp: 4 errors
