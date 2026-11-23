@@ -20,6 +20,7 @@ use std::sync::Arc;
 
 mod calls;
 mod diagnostics;
+pub(crate) mod format;
 mod nav;
 mod proven;
 use proven::Proven;
@@ -901,6 +902,7 @@ impl Server {
             _ => self
                 .navigate(method, params)
                 .or_else(|| self.calls(method, params))
+                .or_else(|| self.format_part(method, params))
                 .unwrap_or_else(|| Err((METHOD_NOT_FOUND, format!("`{method}` is not supported")))),
         }
     }
@@ -1157,6 +1159,11 @@ fn capabilities() -> Value {
                     ]),
                 ),
                 ("documentFormattingProvider", true.into()),
+                ("documentRangeFormattingProvider", true.into()),
+                (
+                    "documentOnTypeFormattingProvider",
+                    obj([("firstTriggerCharacter", "\n".into())]),
+                ),
                 ("inlayHintProvider", true.into()),
                 (
                     "codeActionProvider",
