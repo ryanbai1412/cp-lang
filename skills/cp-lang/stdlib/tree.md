@@ -45,7 +45,7 @@ Fields: `root: V`, `par: [V]?V`, `far: [V]Int`, `bfs: List<V>`, `heavy: [V]?V`, 
 - `fn lca(self, a: V, b: V) -> V` — O(log n); The lowest common ancestor of `a` and `b`, by heavy-path climbing.; traps: when `a` and `b` are in different trees of a forest
 - `fn dist(self, a: V, b: V) -> Int` — O(log n); The length of the path between `a` and `b`: its number of edges, or the total of its edge lengths in a tree built from `Weighted` arcs.; traps: when `a` and `b` are in different trees of a forest
 - `fn path(self, a: V, b: V) -> List<V>` — O(log n + |path|); The simple path of vertices from `a` to `b`, both included.; traps: when `a` and `b` are in different trees of a forest
-- `fn diameter(self) -> (len: Int, u: V, v: V)` — O(n); A longest simple path in the tree holding `t.root`: `(len, u, v)` with `t.dist(u, v) == len`, by two sweeps: `u` is farthest from the root, `v` farthest from `u`.
+- `fn diameter(self) -> (len: Int, u: V, v: V)` — O(n); A longest simple path in the tree holding `t.root`: `(len, u, v)` with `t.dist(u, v) == len` as large as it gets, found in one bottom-up sweep that joins, at each vertex, its two deepest child branches.
 - `fn ancestor(self, v: V, k: Int) -> ?V` — O(log n); The ancestor `k` edges above `v` (`v` itself for `k == 0`), or `None` if that is above the root.; traps: when `k` is negative
 - `fn jump(self, a: V, b: V, k: Int) -> ?V` — O(log n); The vertex `k` edges from `a` on the path to `b` (`a` for `k == 0`), or `None` if the path is shorter.; traps: when `k` is negative, or `a` and `b` are in different trees
 - `fn jump_while(self, v: V, pred: V -> Bool) -> ?V` — O(log² n) calls of `pred`; The highest ancestor `u` of `v` such that `pred(u)` holds, or `None` when `pred(v)` is false.
