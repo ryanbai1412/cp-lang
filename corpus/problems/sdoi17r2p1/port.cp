@@ -8,7 +8,6 @@
 // and skips products of two tiny terms (below 1e-5) to stay fast; the
 // window needs no threshold and drops nothing.
 // original: corpus/submissions/5481972.cpp
-use real.float.{fixed}
 
 let tests: Int = read()
 for _ in 0..tests:
@@ -20,7 +19,7 @@ for _ in 0..tests:
     for die in 1..=n:
         var next: [Total]F64 = 0.0
         var window = 0.0  // chance[t - m + 1] + ... + chance[t]
-        for t in Total.first..=Total(die * (m - 1)):
+        for t in Total.first!..=Total(die * (m - 1)):
             window += chance[t]
             if let out = t.offset(-m): window -= chance[out]
             next[t] = window / m
@@ -30,4 +29,4 @@ for _ in 0..tests:
     for _ in 0..10:
         let lo: Int = read()
         let hi: Int = read()
-        print(fixed(below[hi + 1] - below[lo], 6))
+        print(below[hi + 1] - below[lo], precision: 6)

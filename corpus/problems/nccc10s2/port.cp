@@ -2,12 +2,12 @@
 let n: 1..=1000 = read()
 let k: 1..=26 = read()
 domain L = 'A'..'A' + k
-let orders: [n]Perm<L> = read()
+let orders: [n]Str = read()  // WISH: read each word as a `Perm<L>` (filed with stdlib)
 
 var ahead: [L, L]Bool = true  // ahead[x, y]: x before y in every order
 for o in orders:
     for (x, y) in o.pairs():
-        ahead[y, x] = false
+        ahead[L(y), L(x)] = false
 
 @memo
 fn chain(u: L) -> Int:

@@ -34,7 +34,6 @@ coci25c3p4
 coi06p2
 dmopc20c7p5
 egoi22p3
-egoi23p2
 etsr23r3p1
 etsr23r3p2
 etsr23r3p3
@@ -56,7 +55,6 @@ ioi18p1
 ioi18p3
 ioi21p4
 mccc4j5
-nccc10s2
 nccc10s3
 nccc8s1
 nccc9s4
@@ -81,10 +79,8 @@ noip22p3
 noip22p4
 sac22cc2p5
 sac22cc3p5
-saspeed
 sdoi17r1p2
 sdoi17r1p6
-sdoi17r2p1
 sdoi17r2p4
 shoi15p2
 shoi16p4

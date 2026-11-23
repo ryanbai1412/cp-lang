@@ -28,7 +28,7 @@ fn add_time(p: Player, delta: Int):
     board.insert((cnt[p], -p.idx))
 
 var ans: [Player]Int = 0
-fn dfs(u: Event, next_time: Int):
+fn dfs(u: Event, next_time: Int) -> ():
     let dt = next_time - u.idx
     let w = winner[u]
     add_time(w, dt)
