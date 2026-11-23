@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 """Generate the corpus acceptance tests (`tests/NN.in` and `NN.ans`).
 
-`make` writes `corpus/problems/<id>/tests/NN.in` and `NN.ans` for every
+`make` writes `target/corpus-tests/<id>/NN.in` and `NN.ans` for every
 problem with a `spec.cp`: inputs from `corpus/problems/<id>/gen.py` or
-`bench/*` SPECS, answers from the problem's accepted C++ submission.
+`bench/*` SPECS, answers from the problem's accepted C++ submission. It
+never writes into `corpus/`: committed test data is being retired
+(handbook/guidelines/problem-packages-checklist.md#r9).
 
 Running corpus acceptance tests now lives in `crates/cpl-conform`:
     cargo run -p cpl-conform -- corpus [filter]
@@ -12,8 +14,8 @@ Usage:
     python3 scripts/corpus-tests.py make [ids...] [--cases 8] [--out DIR]
     python3 scripts/corpus-tests.py verify [ids...]
 
-`--out DIR` writes `DIR/<id>/NN.in` and `NN.ans` instead of the problem's
-own `tests/`, so a fresh set can be compared with the committed one.
+`--out DIR` writes `DIR/<id>/NN.in` and `NN.ans` instead of
+`target/corpus-tests/<id>/`.
 
 `verify` reruns the accepted C++ on every committed `tests/*.in` and counts
 the answers it reproduces byte for byte: the evidence a committed answer is
@@ -24,6 +26,7 @@ import argparse, hashlib, inspect, json, os, random, subprocess, sys, tempfile
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PROBLEMS = os.path.join(ROOT, "corpus", "problems")
 CACHE = os.path.join(ROOT, "target", "corpus-cxx")
+OUT = os.path.join(ROOT, "target", "corpus-tests")
 
 
 def problems(ids):
@@ -117,7 +120,7 @@ def make(args):
                 continue
             try:
                 exe = binary(cpp)
-                tests = os.path.join(args.out, p) if args.out else os.path.join(PROBLEMS, p, "tests")
+                tests = os.path.join(args.out or OUT, p)
                 os.makedirs(tests, exist_ok=True)
                 for i in range(1, args.cases + 1):
                     inp = generate(*gens[p], seed=1000 + i, idx=i, tmp=tmp)

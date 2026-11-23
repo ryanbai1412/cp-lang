@@ -7,12 +7,14 @@
 | Describes | `corpus/problems/*/port.cp`, `dream.cp`, `spec.cp`, `skills/cp-lang/`, `spec/idioms/`, examples in docs and on the site |
 
 Read this before you write a port, a dream, a skill page or a docs example.
-Every program we publish is read as the way CP Lang is meant to be written,
-by people and by models, so each one has to be the version we would teach.
+People and models read every program we publish as the way CP Lang is meant
+to be written, so each one has to be the version we would teach. The
+exhaustive rules, each with an id that reviews and lints cite, are in
+`handbook/guidelines/idiomatic-code-checklist.md`.
 
-## By example
+## What good looks like
 
-A translated loop from the C++:
+A loop translated from the C++:
 
 ```cp
 var best = -1
@@ -32,97 +34,40 @@ let a: [I]1..=1e9 = read()
 print(I.max(by: i => a[i]))
 ```
 
-The statement's bound is a type, the index space is a domain, so there is
-no `+ 1` to forget, and the search is a named library call with no `-1`
-sentinel.
+The statement's bound is a type and the index space is a domain, so there
+is no `+ 1` to forget. The search is a named library call, with no `-1`
+standing in for "none".
 
-## The rules
+## The ideas behind the rules
 
-### Read like the editorial
+**Say the idea, not the bookkeeping.** A reader should see the editorial's
+invariant, recurrence or algorithm. The header says the idea before the
+code does. When std or the language has the structure the editorial names,
+use it: a hand-rolled copy is longer, can be wrong, and hides what std is
+missing.
 
-The invariant, recurrence or algorithm is visible, not buried in index
-bookkeeping. The header (`Source:`, `Problem:`, `Solution:`) says the idea
-before the code does, and derives every constant and closing formula the
-code uses. Keep the C++ construction only when the editorial uses it too.
+**Write each fact once, as a type where you can.** The statement's bounds
+become types, index spaces become domains, and "absent" becomes `?T`. Then
+the compiler checks the input, picks the width and keeps vertices apart
+from edges, and a change of mind is a one-line edit.
 
-### Use the standard structure or algorithm
+**Nothing surprising.** An expression doesn't hide a side effect, a result
+isn't silently dropped, and the program uses the one spelling the spec
+gives each idea, so whoever learns from it learns the current language.
 
-Don't hand-roll what std or the language provides: a DFS for a tree path or
-diameter, a search loop with a `?T` flag where `find`, `first` or `any`
-belongs, a run-length loop where `runs()` belongs. If std lacks it or is
-measured too slow, keep the hand-rolled version and report the gap with a
-run that shows it.
+**Clean and fast, or say why not.** Published code checks and lints clean,
+and runs about as fast as the matched C++. When it can't, the gap is a
+friction report with a run that shows it, sent to the domain that can fix
+it.
 
-### Each fact in one place
+## Deciding a case nobody wrote down
 
-A bound, base or modulus is written once. Nothing is kept in sync by hand:
-no symmetric matrices filled twice, no parallel arrays, no sentinel
-bookkeeping. A loop or formula is never written twice.
-
-### Constraints are types
-
-Every bound from the statement that today's types can hold is in a type:
-`let x: 1..=10_000_000 = read()`, not `let x: Int = read()`. Absent values
-are `?T`, never `-1` or another sentinel.
-
-### Index spaces are domains
-
-When two index spaces differ (vertices and edges, positions and cuts, raw
-and compressed), each is a `domain`, and values never cross through a raw
-`Int`.
-
-### No hidden effects
-
-An expression doesn't hide a side effect (`first(xs, x => try_add(x))`). No
-result is discarded with `let _ =`. State a closure could own isn't
-threaded by hand.
-
-### One spelling per idea
-
-Use the spec's spelling and only that: `@!multitest`, `Some(x)` and `None`,
-`Mod<P>`, `read<T>`, `struct`, `.items` for index and element, and methods
-for sequence operations on one sequence (`xs.sum()`, `xs.any(p)`,
-`xs.sorted()`). The free form stays canonical over a generator
-(`sum(f(x) for x in xs)`) and over two or more values (`min(a, b)`).
-
-### No new warnings
-
-`cpl check` and `cpl lint` pass, and the corpus warning counts don't go up.
-A lint you believe is wrong goes to its owner, not into an `allow`.
-
-### As fast as the C++
-
-On a max input a port runs within 1.1x of its matched C++. If it doesn't,
-file a performance friction with the measurement
-(`handbook/guidelines/performance.md`).
-
-### A gap is a claim that needs a run
-
-A friction saying the language lacks something includes the dream line run
-under a freshly built `cpl` and the error it gives.
-
-## Checklist
-
-- [ ] The header has `Source:`, `Problem:` and `Solution:`.
-- [ ] No hand-rolled standard algorithm without a reported gap.
-- [ ] Every bound and index space from the statement is a type or domain.
-- [ ] No sentinel, duplicated fact or hidden effect.
-- [ ] Only the spec's spellings.
-- [ ] `cpl check` and `cpl lint` are clean.
-- [ ] Within 1.1x of the C++ on a max input, or a friction is filed.
-
-## What enforces this
-
-| Rule | Check |
-|---|---|
-| Use the standard structure or algorithm | the hand-rolled-std lint family; `crates/cpl-lint/src/corpus_tests.rs` (`corpus_warnings_only_go_down`) |
-| No new warnings | the commit tier's `cpl check` and lint ratchet on staged ports |
-| Read like the editorial; each fact in one place | cold taste review (`handbook/process/porting.md#review`), ratcheted by `scripts/review-check.py` |
-| The header | `corpus/header.py` |
-| One spelling per idea | the spec's removed-spelling errors in `cpl check`; a scan of the skill and docs: `missing` |
-| Constraints are types | `missing` (bounds in `meta.json` and a max-bound run) |
-| As fast as the C++ | perf's corpus bench |
+Ask what a contestant reading the editorial would expect to see, and what a
+model copying this program would learn. If the honest answer is "a
+workaround", write the workaround and report the gap; don't polish it into
+something that looks intended.
 
 ## Changes
 
 - 2026-11-23: first version, from the taste checklist in `handbook/process/porting.md` and `research/reviews/README.md`.
+- 2026-11-23: rules moved to `idiomatic-code-checklist.md`; this document keeps the ideas.

@@ -2,6 +2,7 @@
 # Every corpus port (corpus/problems/*/port.cp) passes `cpl check`, check only,
 # in parallel. Ports in corpus/port-check-failing.txt may still fail (ratchet:
 # the list only shrinks); a port that newly fails turns the gate red.
+# Enforces idiomatic-code/R9 (handbook/guidelines/idiomatic-code-checklist.md#r9).
 #   scripts/port-check.sh [cpl]       check against the list
 #   scripts/port-check.sh --update    rewrite the list from today's failures
 set -euo pipefail

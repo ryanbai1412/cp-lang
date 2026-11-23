@@ -15,13 +15,14 @@ exemplars, not "it passes the tests".
 
 Codeforces 2147F lives in `corpus/problems/cf2147f/`:
 
-| File | What it is |
-|---|---|
-| `orig.cpp` | The accepted C++ submission |
-| `dream.cp` | The program as it should read in ideal CP Lang, written first |
-| `port.cp` | The program as close to the dream as today's language allows |
-| `tests/`, `gen.py` | Cases (`1.in`, `1.out`) and a generator for more |
-| `meta.json` | Source, artifacts and tags |
+```text
+corpus/problems/cf2147f/
+  orig.cpp    the accepted C++ submission
+  dream.cp    the program as it should read in ideal CP Lang, written first
+  port.cp     the program as close to the dream as today's language allows
+  gen.py      a generator; tests.toml lists its seeds (older problems: tests/)
+  meta.json   source, artifacts and tags
+```
 
 Its port opens with the standard header, then the program:
 
@@ -107,14 +108,14 @@ the rest, longest first.
 ## Taste checklist
 
 A port fails review if it breaks a rule in
-`handbook/guidelines/idiomatic-code.md` and the gap is not reported in its
-friction file. Its checklist is the one to self-review against.
+`handbook/guidelines/idiomatic-code-checklist.md` and the gap is not
+reported in its friction file. Self-review against that checklist.
 
 A dream fails review, and caps at 3, if it breaks one of those rules: it
 keeps the C++ construction where the editorial names an object or rule
-(`#read-like-the-editorial`), hides a side effect (`#no-hidden-effects`),
-writes a fact twice (`#each-fact-in-one-place`), or mixes spellings
-(`#one-spelling-per-idea`).
+(`idiomatic-code/R2`), hides a side effect (`idiomatic-code/R7`),
+writes a fact twice (`idiomatic-code/R4`), or mixes spellings
+(`idiomatic-code/R8`).
 
 ## Review
 
@@ -144,3 +145,4 @@ The review lives in `research/reviews/<id>.md` (format and score scale in
 
 - 2026-11-23: first version, absorbing `plan/PORTING.md`.
 - 2026-11-23: the taste rules moved to `handbook/guidelines/idiomatic-code.md`.
+- 2026-11-23: rules cited by checklist id; the example layout is a tree.
