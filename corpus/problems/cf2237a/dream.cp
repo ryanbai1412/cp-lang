@@ -5,4 +5,5 @@
 @!multitest
 let n: 1..=200_000 = read()
 let a: [0..n]1..=10 ** 9 = read()
-print(scan(a, min).sum())
+let low = a.scan(min)
+print(sum(low.prefix(i) for i in 1..=n))
