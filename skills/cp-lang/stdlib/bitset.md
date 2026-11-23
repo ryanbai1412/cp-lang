@@ -49,7 +49,7 @@ Fields: `w: List<U64>`, `n: Int`.
 - `fn next(self, i: D) -> ?D` — \(O(K / 64)\); The first position in the set at or after `i`, or `None`.
 - `fn prev(self, i: D) -> ?D` — \(O(K / 64)\); The last position in the set at or before `i`, or `None` (the mirror of `next`).
 - `fn count_below(self, i: D) -> Int` — \(O(K / 64)\); The number of positions in the set strictly before `i`.
-- `fn subset_sums(weights: List<Int>) -> Bitset<D>` — \(O(K \sqrt{S} / 64)\) time, where S is the sum of `weights`; \(O(K / 64)\) space; All subset sums in `0..D.K` reachable from non-negative `weights`: the position with ordinal `s` is set exactly when some sub-multiset of `weights` sums to `s`.; traps: when a weight is negative
+- `fn subset_sums(weights: List<Int>) -> Bitset<D>` — \(O(K \sqrt{S} / 64)\) time, where S is the sum of `weights`; \(O(K / 64)\) space; All subset sums in `0..D.count` reachable from non-negative `weights`: the position with ordinal `s` is set exactly when some sub-multiset of `weights` sums to `s`.; traps: when a weight is negative
 - `fn shift_down(mut self, k: Int)` — \(O(K / 64)\); Shift all bits down by `k >= 0` positions in place (`i -> i - k`); bits below `D` drop.; traps: when `k < 0`
 - `fn count_range(self, r: Range<D>) -> Int` — \(O(r.\mathit{len} / 64 + 1)\); Count set bits in `r` (accepts cut ranges via decision 124).
 - `fn set_range(mut self, r: Range<D>, on: Bool = true)` — \(O(r.\mathit{len} / 64 + 1)\); Set (or, with `on: false`, clear) every bit in `r` in place.

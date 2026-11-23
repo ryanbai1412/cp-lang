@@ -121,7 +121,7 @@ Fields: `base: U64`, `pre: List<U64>`, `pow: List<U64>`.
 Fields: `bases: (Int, Int)`, `tok1: List<Int>`, `tok2: List<Int>`, `fwd1: List<Int>`, `fwd2: List<Int>`, `bwd1: List<Int>`, `bwd2: List<Int>`, `pow1: List<Int>`, `pow2: List<Int>`, `inv1: List<Int>`, `inv2: List<Int>`.
 
 - `fn new<S: Indexed>(seq: S, bases: ?(Int, Int) = None) -> DynamicHash<D>` — \(O(n)\); A double-modulus rolling hash of `seq` that supports point updates, kept forwards and backwards in a segment tree; call it as `DynamicHash(seq)`.; traps: when a given base is outside `2..M`
-- `@get fn len(self) -> Int` — \(O(1)\); The number of hashed positions, `D.K`.
+- `@get fn len(self) -> Int` — \(O(1)\); The number of hashed positions, `D.count`.
 - `@get fn is_empty(self) -> Bool` — \(O(1)\); True when there are no positions.
 - `@get fn all(self) -> HashVal` — \(O(1)\); The hash of the whole sequence, `self.get(..)`.
 - `fn set<T: Hashable>(mut self, i: D, x: T)` — \(O(\log n)\); Replaces the element at position `i` with `x`; `h[i] = x` means the same.; traps: never (`i` is a `D`)
