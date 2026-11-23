@@ -1,0 +1,5 @@
+code = "L0601"
+level = "warn"
+group = "correctness"
+title = "Right side changes the place it writes"
+summary = "`xs[0] = xs.pop()!`: the right side changes the place being written"

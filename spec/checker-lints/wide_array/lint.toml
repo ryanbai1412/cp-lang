@@ -1,0 +1,5 @@
+code = "L0606"
+level = "warn"
+group = "perf"
+title = "Wide `Int` array with narrow values"
+summary = "a large `[n]Int` whose every write fits a narrower range"

@@ -8,7 +8,7 @@ import { groups, lints } from '@/lib/lints';
 
 type Props = { params: Promise<{ name: string }> };
 
-const repo = 'https://github.com/ryanbai1412/cp-lang/tree/main/spec/lints';
+const repo = 'https://github.com/ryanbai1412/cp-lang/tree/main';
 const levels = { deny: 'deny: `cpl lint` exits 1', warn: 'warn', allow: 'off by default' };
 
 export function generateStaticParams() {
@@ -99,8 +99,8 @@ export default async function Page({ params }: Props) {
       </p>
       <p className="mt-8 text-sm text-muted-foreground">
         Generated from{' '}
-        <a className="underline" href={`${repo}/${l.name}`}>
-          spec/lints/{l.name}
+        <a className="underline" href={`${repo}/${l.dir}`}>
+          {l.dir}
         </a>
         , the same record the linter is built from.
       </p>

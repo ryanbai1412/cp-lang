@@ -1,0 +1,5 @@
+code = "L0609"
+level = "warn"
+group = "correctness"
+title = "`@cache` field written outside its type"
+summary = "an `@cache` field written outside its type's methods"

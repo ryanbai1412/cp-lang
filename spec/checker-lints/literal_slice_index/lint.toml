@@ -1,0 +1,5 @@
+code = "L0605"
+level = "warn"
+group = "correctness"
+title = "Literal index into a slice"
+summary = "`w[0]` on a slice that keeps its source's keys: `w.first!` or `w.nth(0)`"

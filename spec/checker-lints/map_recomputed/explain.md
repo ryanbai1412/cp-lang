@@ -1,0 +1,1 @@
+`xs.map(f)` is a view: `sq[i]` calls `f(xs[i])` each time it is read (R07.2.11), so reading it by index inside a loop pays for `f` on every read, not once per item. `List(xs.map(f))` computes every item once and makes each `sq[i]` a plain read.

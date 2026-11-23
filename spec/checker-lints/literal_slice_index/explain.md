@@ -1,0 +1,1 @@
+A slice keeps its source's keys (R04b): `w = xs[1..3]` is indexed by `1` and `2`, so `w[1]` is `xs[1]`, the first item, and `w[0]` is out of range. C++ and Python count a subarray from 0; CP Lang does not, so the same index can never mean two things. Read by position with `w.nth(k)` or `w.first!`, walk it with `for x in w`, or call `w.rebase` to count from 0.

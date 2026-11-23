@@ -7055,3 +7055,18 @@ L0609 `cache_field_written_outside` had no help; a lint help that says why and w
 the answer word, so L0524 reads a branch that is one `print` of a string
 literal (`crates/cpl-lint/src/rules/answers.rs` `word`); `lint_std_names`
 rises 138 -> 139. Reverse: drop the `print` arm in `word` and re-run `--update`.
+
+## 321. Checker lints get page records in `spec/checker-lints/` (2026-11-22)
+
+- **Decision.** Each L06xx checker lint (`CHECKER_LINTS`) has a record in
+  `spec/checker-lints/<name>/` (the same five files as `spec/lints/`), so the
+  site builds a `/lints/<name>` page for it and the LSP's `/lints/L06xx` link
+  resolves. `checker_tests.rs` checks each record: `before.cp` fires the lint,
+  `after.cp` and `near_miss.cp` check clean, and only `before.cp` fires it.
+  `parens_on_o1` is spec-named but `xs.len()` is error E0304 (decision 140),
+  so its `before.cp` is that error.
+- **Why.** `crates/cpl-lint/build.rs` turns every `spec/lints/` record into a
+  syntax lint and its record test runs the syntax engine; a separate root
+  keeps lint-fmt's engine and test untouched.
+- **Reverse.** Move the directories into `spec/lints/` once `build.rs` and the
+  record test know checker lints, and drop the second root in `web/lib/lints.ts`.

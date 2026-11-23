@@ -1,0 +1,1 @@
+`xs.filter(f)`, `.map(f)`, `.take(k)` and the rest are lazy views (R07.2): they compute each item as it is walked and store nothing. A view kept in a `let` and walked twice runs its whole chain twice, calling `f` again on every item. Copy it once with `List(...)` when you need it more than once; walk it directly when once is enough.

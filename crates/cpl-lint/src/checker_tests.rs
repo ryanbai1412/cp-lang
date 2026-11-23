@@ -94,3 +94,52 @@ fn a_file_that_does_not_check_is_not_reported_clean() {
         "{err}"
     );
 }
+
+/// Every checker lint has a record in `spec/checker-lints/<name>/` for its
+/// `/lints/<name>` page: `before.cp` fires it, `after.cp` checks clean and
+/// fires nothing, `near_miss.cp` checks clean and does not fire it.
+#[test]
+fn every_checker_lint_has_a_page_record_that_fires_on_before_only() {
+    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../spec/checker-lints");
+    let config = Config::default();
+    for l in CHECKER_LINTS {
+        let read = |f: &str| {
+            std::fs::read_to_string(root.join(l.name).join(f))
+                .unwrap_or_else(|e| panic!("spec/checker-lints/{}/{f}: {e}", l.name))
+        };
+        assert!(
+            read("lint.toml").contains(&format!("code = \"{}\"", l.code.0)),
+            "{}: lint.toml names another code",
+            l.name
+        );
+        assert!(
+            !read("explain.md").trim().is_empty(),
+            "{}: no explain.md",
+            l.name
+        );
+        let before = crate::checked(None, &read("before.cp"), &config);
+        if l.name == "parens_on_o1" {
+            // `xs.len()` is error E0304 (decision 140); the record is its page.
+            assert_eq!(before.errors, 1, "parens_on_o1: before.cp is not one error");
+        } else {
+            assert!(
+                before.lints.iter().any(|d| d.code == l.code),
+                "{}: before.cp does not fire",
+                l.name
+            );
+        }
+        let src = read("after.cp");
+        let after = crate::checked(None, &src, &config);
+        assert!(
+            after.errors == 0 && after.lints.is_empty() && lint(&src, &config).is_empty(),
+            "{}: after.cp does not check clean",
+            l.name
+        );
+        let near = crate::checked(None, &read("near_miss.cp"), &config);
+        assert!(
+            near.errors == 0 && !near.lints.iter().any(|d| d.code == l.code),
+            "{}: near_miss.cp fires or does not check",
+            l.name
+        );
+    }
+}

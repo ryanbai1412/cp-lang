@@ -1,0 +1,5 @@
+code = "L0602"
+level = "warn"
+group = "perf"
+title = "Lazy chain walked twice"
+summary = "a `.filter`/`.map` chain kept in a `let` and walked twice redoes the work"

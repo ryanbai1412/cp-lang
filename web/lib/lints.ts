@@ -2,8 +2,10 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 // Lint pages are generated from lint-fmt's records in spec/lints/<name>/, the
-// same files crates/cpl-lint/build.rs builds the registry from.
-const root = join(process.cwd(), '../spec/lints');
+// same files crates/cpl-lint/build.rs builds the registry from, and from the
+// checker's lints' records in spec/checker-lints/<name>/ (L06xx).
+const repoRoot = join(process.cwd(), '..');
+const roots = ['spec/lints', 'spec/checker-lints'];
 
 export const groups = {
   correctness: {
@@ -25,6 +27,8 @@ export type Principle = { n: number; title: string };
 
 export type Lint = {
   name: string;
+  /** The record's directory under the repo root, e.g. `spec/lints/search_loop`. */
+  dir: string;
   code: string;
   level: 'allow' | 'warn' | 'deny';
   group: Group;
@@ -89,14 +93,20 @@ let cache: Lint[] | null = null;
 
 export function lints(): Lint[] {
   const cat = catalog();
-  cache ??= readdirSync(root, { withFileTypes: true })
-    .filter((e) => e.isDirectory() && existsSync(join(root, e.name, 'lint.toml')))
-    .map((e) => {
-      const file = (f: string) =>
-        existsSync(join(root, e.name, f)) ? readFileSync(join(root, e.name, f), 'utf8').trimEnd() : '';
+  cache ??= roots
+    .flatMap((root) =>
+      existsSync(join(repoRoot, root))
+        ? readdirSync(join(repoRoot, root), { withFileTypes: true }).map((e) => ({ e, root }))
+        : [],
+    )
+    .filter(({ e, root }) => e.isDirectory() && existsSync(join(repoRoot, root, e.name, 'lint.toml')))
+    .map(({ e, root }) => {
+      const at = join(repoRoot, root, e.name);
+      const file = (f: string) => (existsSync(join(at, f)) ? readFileSync(join(at, f), 'utf8').trimEnd() : '');
       const t = toml(file('lint.toml'));
       return {
         name: e.name,
+        dir: `${root}/${e.name}`,
         code: t.code,
         level: t.level as Lint['level'],
         group: t.group as Group,

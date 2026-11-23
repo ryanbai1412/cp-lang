@@ -1,0 +1,1 @@
+An `Int` is 8 bytes. When every value written into a large array is a constant in a small range, declaring that range as the element type (`[n]0..=2`) stores each one in the fewest bytes the range allows (R03.1.8), so the array takes a fraction of the memory and more of it fits in cache. A write outside the range then traps instead of storing a value you did not expect.

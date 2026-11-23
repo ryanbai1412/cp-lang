@@ -1,0 +1,5 @@
+code = "L0608"
+level = "warn"
+group = "style"
+title = "Parentheses on an O(1) member"
+summary = "`xs.len()`: an O(1) member reads without `()`"

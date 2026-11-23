@@ -1,0 +1,5 @@
+code = "L0608"
+level = "warn"
+group = "style"
+title = "Work without parentheses"
+summary = "`xs.sum`: a member that does work takes `()`"

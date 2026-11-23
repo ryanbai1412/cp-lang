@@ -1,0 +1,1 @@
+`xs[0] = xs.pop()!` changes `xs` while it is writing into `xs`: the pop shortens the list, so whether `xs[0]` still names the slot you meant depends on the order the two sides run. In C++ the same line is unspecified or undefined. Compute the right side into a `let` first (`let last = xs.pop()!`), then assign; the order is then the one you wrote.

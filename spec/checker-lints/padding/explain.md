@@ -1,0 +1,1 @@
+A tuple or struct element is aligned to its widest field, so `(w: Int, b: Bool)` holds 9 bytes of data in 16. Over a large array that is memory and cache spent on nothing. Store it as `Packed<S>` (data only, unaligned loads), with `layout: columns` (one array per field), or as separate arrays per field when only some fields are read together.

@@ -1,0 +1,1 @@
+A generator (`-> yields T`) runs its body again from the top each time it is walked. When it holds a `mut` lend, the first walk changes what it lends, so the second walk starts from different data: `drain(mut v)` empties `v`, and walking it again yields nothing. Copy it once with `List(...)` if you need the items twice.

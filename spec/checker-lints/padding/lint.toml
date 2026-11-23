@@ -1,0 +1,5 @@
+code = "L0607"
+level = "warn"
+group = "perf"
+title = "Padding in a large array's elements"
+summary = "over 20% of a large array's element is padding"

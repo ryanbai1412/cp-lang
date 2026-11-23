@@ -4082,7 +4082,7 @@ impl Checker<'_> {
         );
         self.sink.push(
             Diagnostic::warning(codes::LITERAL_SLICE_INDEX, index.span, message).with_help(format!(
-                "write `{w}.nth({v})!` (or `{w}.first!`) for the element by position, or `{w}.rebase` to count from 0"
+                "write `{w}.nth({v})` (or `{w}.first!`) for the element by position, or `{w}.rebase` to count from 0"
             )),
         );
     }
