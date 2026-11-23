@@ -11413,17 +11413,12 @@ impl<'a> Lowerer<'a> {
         })
     }
 
-    pub(super) fn lower_filter(
-        &mut self,
-        base: &ast::Expr,
-        pred_ast: &ast::Expr,
-        span: Span,
-    ) -> Expr {
+    pub(super) fn lower_filter(&mut self, base: &ast::Expr, test: &ast::Expr, span: Span) -> Expr {
         let (iter, elem_ty) = self.iter(base);
         if matches!(elem_ty, Ty::Error) {
             return self.err_expr(span);
         }
-        if let ast::ExprKind::Lambda { params, body, .. } = &pred_ast.kind {
+        if let ast::ExprKind::Lambda { params, body, .. } = &test.kind {
             if let Some(param) = ast::Pattern::single_param(params) {
                 return self.collected(elem_ty.clone(), span, |lw, out, push| {
                     lw.cx.scopes.push(HashMap::new());
@@ -11446,7 +11441,7 @@ impl<'a> Lowerer<'a> {
             }
         }
         let fn_ty = Ty::Fn(vec![elem_ty.clone()], Box::new(Ty::Bool));
-        let pred = self.expect(pred_ast, &fn_ty);
+        let pred = self.expect(test, &fn_ty);
         self.collected(elem_ty.clone(), span, |lw, out, push| {
             let pred_val = lw.hold(pred, out);
             let item = lw.temp(elem_ty.clone());

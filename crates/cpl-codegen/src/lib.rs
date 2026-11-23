@@ -423,3 +423,5 @@ mod sink_tests;
 mod splice_tests;
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod walk_tests;
