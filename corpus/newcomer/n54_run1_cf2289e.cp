@@ -24,7 +24,7 @@ var ans: [0..=n]Int = 0
 for k in n + 1..=m:
     let (x, y) = kids[k - n - 1]
     for (c, cap) in [(x, top[y] + d - 1), (y, top[x] + d - 1)]:
-        while (sets[id[c]].last ?? 0) > cap:
+        while (sets[id[c]].last ?? 0) > cap:  // expect: coalesce_test_then_unwrap
             let w = sets[id[c]].last!  // expect: pop_min_loop
             sets[id[c]].remove(w)
             ans[w] = depth[w] - depth[k]

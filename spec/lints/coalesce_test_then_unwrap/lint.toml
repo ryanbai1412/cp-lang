@@ -1,0 +1,5 @@
+code = "L0595"
+level = "warn"
+group = "idiom"
+title = "Stand-in test, then unwrap"
+summary = "`while (e ?? c) > y:` then `let w = e!`: `while let w = e, w > y:`"

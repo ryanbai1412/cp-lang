@@ -255,3 +255,28 @@ fn a_key_guard_then_index_is_let_else() {
     let other = "fn f(m: Map<Int, Int>, k: Int) -> Int:\n    if k not in m: return 0\n    m[k + 1]\nprint(f(Map(), 1))\n";
     assert!(!codes(other).contains(&"L0594"), "{:?}", codes(other));
 }
+
+#[test]
+fn a_stand_in_test_then_unwrap_is_a_let_header() {
+    // Acceptance run 3, n54: `while (sets[id[c]].last ?? 0) > cap:` then `let w = sets[id[c]].last!`.
+    let src = "var s: List<Int> = [1, 5, 9]\nlet cap = 4\nvar n = 0\nwhile (s.last ?? 0) > cap:\n    let w = s.last!\n    n += w\n    s = [x for x in s if x != w]\nprint(n)\n";
+    assert!(codes(src).contains(&"L0595"), "{:?}", codes(src));
+    let out = fixed(src);
+    assert!(
+        out.contains("while let w = s.last, w > cap:\n    n += w\n"),
+        "{out}"
+    );
+    assert!(crate::fix_tests::checker_errors(&out).is_empty(), "{out}");
+    let elif = "let a = [3, 8]\nlet best = a.find(x => x > 5)\nif a.len == 0:\n    print(0)\nelif (best ?? 0) >= 6:\n    let b = best!\n    print(b)\n";
+    let out = fixed(elif);
+    assert!(
+        out.contains("elif let b = best, b >= 6:\n    print(b)\n"),
+        "{out}"
+    );
+    assert!(crate::fix_tests::checker_errors(&out).is_empty(), "{out}");
+    // A call may answer differently when it runs again.
+    let call = "var q = [1, 2]\nwhile (q.pop() ?? 0) > 0:\n    let w = q.pop()!\n    print(w)\n";
+    assert!(!codes(call).contains(&"L0595"), "{:?}", codes(call));
+    let tuple = "let a = [(1, 2)]\nlet p = a.find(t => t.0 > 0)\nif (p ?? (0, 0)) > (0, 1):\n    let (x, y) = p!\n    print(x + y)\n";
+    assert!(!codes(tuple).contains(&"L0595"), "{:?}", codes(tuple));
+}

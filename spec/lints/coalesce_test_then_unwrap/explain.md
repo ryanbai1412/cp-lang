@@ -1,0 +1,5 @@
+A C++ habit is to give an empty container a stand-in value so one comparison covers both cases: `while (!s.empty() && s.back() > cap)`. Written in CP Lang as `while (s.last ?? 0) > cap:` followed by `let w = s.last!`, the code says the same fact twice. The `?? 0` invents a value for "empty", and the `!` then asserts it was not empty after all. The stand-in also has to fail the comparison: a cap below 0 would make `0 > cap` true, and the `!` would trap.
+
+`while let w = s.last, w > cap:` binds the value once and compares the real value. When `s.last` is `None` the loop simply stops, so there is no stand-in to choose and no `!` to keep in step with the test. The same rewrite applies to `if` and `elif`: `if let b = best, b > 4:`.
+
+The lint fires when the condition is `(e ?? c) op y`, `e` is a name, field or index path with no call, and the branch's first statement is `let w = e!` on its own line. The fix rewrites the condition and deletes the `let`. It changes behaviour only where the original trapped: an empty `e` whose stand-in passed the test now skips the branch instead of failing the `!`.
