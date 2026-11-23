@@ -1,4 +1,12 @@
-// Runnable port (proto/cp.py lib-run) of statement-first noi05p2.cp
+// Source: NOI 2005 P2 (Sequence Maintenance), https://dmoj.ca/problem/noi05p2
+// Problem: a sequence of N ints in [-1000, 1000] and M <= 20000 ops: INSERT tot numbers after
+//   posi; DELETE, MAKE-SAME c, REVERSE, GET-SUM (tot may be 0) the tot numbers from posi; MAX-SUM
+//   (best non-empty subarray). Print each query; <= 5e5 numbers alive, <= 4e6 inserted in all.
+// Solution: an implicit treap whose nodes keep size, sum, best prefix, suffix and subarray sums,
+//   with lazy assign and reverse tags. Each op splits out positions posi..posi+tot, tags or reads
+//   that piece and merges back; INSERT builds its tot values into a treap in O(tot) with a
+//   Cartesian-tree stack, and DELETE recycles the piece's node ids into a free list.
+//   O(log n) expected per op plus O(tot) for INSERT and DELETE.
 // original: corpus/submissions/7249409.cpp
 // Note: proto/cpc lacks `Pool<Node>` + `Node.Id` and `I32`/`U32` today, so
 // parallel List<Int> arrays model the recycled implicit-treap node pool.

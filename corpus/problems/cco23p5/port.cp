@@ -1,4 +1,13 @@
-// CCO '23 P5 — Tree Walk / K-Jump Path (today form for proto/cpc)
+// Source: CCO 2023 P5 (Travelling Trader), https://dmoj.ca/problem/cco23p5
+// Problem: a tree of n <= 2e5 cities with profits p_i <= 1e9, and K in 1..=3. The trader does
+//   business in city 1, walks one road per day and may go at most K days in a row without doing
+//   business in a new city. Print the max total profit, then how many cities and which, in order.
+// Solution: root at city 1. K = 1: the route is a downward path; dp1 = best root-to-leaf sum.
+//   K = 3: every city fits: list even depths in preorder and odd depths in postorder, so
+//   consecutive cities are at most 3 roads apart. K = 2: memoised dp2(u, me, bk) (me: u is done
+//   on arrival, bk: the walk must come back up to u); every child of u is a 1-step side trip
+//   except up to 3 special ones (descent, round trip, early entry), picked among each kind's top
+//   3 children. Rebuild the route by retracing the dp. O(n log n) for sorting children.
 // original: corpus/submissions/5580402.cpp
 let n: 1..=200_000 = read()
 let kv: 1..=3 = read()

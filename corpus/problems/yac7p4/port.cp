@@ -1,4 +1,14 @@
-// YAC 7 P4 (today/ runnable subset) — original: corpus/submissions/5705324.cpp
+// Source: YAC 7 P4, https://dmoj.ca/problem/yac7p4
+// Problem: a tree of n <= 2e5 towns, one paparazzo in each. For each of m <= 2e5 appearances at a
+//   town a, every paparazzo moves one road towards a (staying put at a); print the number of
+//   occupied towns after each appearance.
+// Solution: the occupied towns always form a connected subtree. An appearance deletes all its
+//   leaves except a, and if a is outside adds the next town from the subtree towards a. Find it
+//   with a min segment tree over the preorder of active towns (the topmost active town) and
+//   binary lifting from a to the highest ancestor with no active town below it. Active adjacency
+//   sets and a leaf list do the deletions; each deletion pays for an earlier insertion, so the
+//   total is O((n + m) log n).
+// original: corpus/submissions/5705324.cpp
 // Uses a SegTree over Euler preorder positions to support first_ge/min active tin
 // since proto/cpc Set<T> lacks ordered first/first_ge.
 use std.math.{bit_len}

@@ -1,6 +1,13 @@
-// Baltic OI '18 P4 (Alternating Current): 2-color circular arcs so both
-// colors cover the whole circle of n segments.
-// Runnable on proto/cpc today.
+// Source: BOI 2018 P4 (Alternating Current), https://dmoj.ca/problem/btoi18p4
+// Problem: a circle of n <= 1e5 segments and m <= 1e5 wires, each covering a cyclic range a..b.
+//   Direct each wire (0 or 1) so every segment is covered by wires of both directions; print
+//   the m digits, or "impossible".
+// Solution: a wire inside another takes its container's opposite direction, so only the k
+//   maximal arcs, in circle order, matter (sort by (l, -r), sweep the doubled circle). k even
+//   or 1: alternate them. k <= 3: try every rotation. Otherwise k is odd, so two neighbours b, c
+//   share a direction: that works iff every other maximal arc is covered by its children and
+//   neighbours, and b..c by the children of b and c plus the arcs either side; try each pair,
+//   alternate from c and verify with a coverage sweep. O((n + m) log m).
 // original: corpus/submissions/4656863.cpp
 let n: 1..=1e5 = read()
 let m: 1..=1e5 = read()

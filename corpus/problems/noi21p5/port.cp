@@ -1,6 +1,13 @@
-// Runnable today/ port of NOI '21 P5 (Code) for real Rust `cpl build`.
-// Stdin: n, q, initial W/E string, then q operations (APPEND c | FLIP l r | REVERSE l r).
-// Uses top-level recursive fns (working around cpl-emit recursive nested-fn self-capture bug).
+// Source: NOI 2021 P5 (Code), https://dmoj.ca/problem/noi21p5
+// Problem: a string of n <= 1e5 ops W/E builds a sequence from (0, 1): W adds 1 to the last term;
+//   E adds 1 to the second-to-last if the last is 1, else decrements it, appends 1, 1. Print the
+//   continued fraction a0 + 1/(a1 + ...) as a b mod 998244353, then after each of q <= 1e5
+//   updates: APPEND c, FLIP l r (swap W and E), REVERSE l r.
+// Solution: W and E act on the fraction as the matrices [[1,0],[1,1]] and [[1,1],[0,1]], so the
+//   answer is the row sums of their product. An implicit treap keeps each subtree's product mod p
+//   with lazy flip and reverse tags: flipping swaps the anti-diagonal and the diagonal, and since
+//   E is W transposed, reversing just swaps the diagonal. Updates split out l..r, tag and merge
+//   back, O(log n) expected each.
 // original: corpus/submissions/3927923.cpp
 
 struct Node:

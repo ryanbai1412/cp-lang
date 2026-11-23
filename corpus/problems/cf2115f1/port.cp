@@ -1,11 +1,14 @@
-// Codeforces 2115 F1: Gellyfish and Lycoris Radiata.
-// Maintain n sets under online prefix-insert of query id q, prefix-reverse,
-// global delete of a query id, and point query for the smallest alive id.
-// Store the sequence of positions in a reversible implicit treap. Each node
-// holds `own` (tags at this node) and `lazy` (tags pending push to its
-// subtree) as mergeable binary segment trees over Query. Reversal pushes
-// lazily; queries walk root-to-node without pushing tags down, lazily pruning
-// dead leaves in place so every deleted leaf is visited once.
+// Source: Codeforces 2115F1 (Gellyfish and Lycoris Radiata, Easy Version),
+//   https://codeforces.com/contest/2115/problem/F1
+// Problem: n sets, all empty, and q ops (n, q <= 1e5), decoded online with the last answer. Op i
+//   first inserts i into sets 1..r, reverses the order of sets 1..r, or deletes x from every set;
+//   then print the smallest element of set p (0 if empty).
+// Solution: keep the sets' order in an implicit treap with lazy reversal; each node carries the
+//   ids tagged on it (`own`) and pending for its subtree (`lazy`) as shared mergeable binary
+//   segment trees over the op ids. Insert tags the split-off prefix; splits and merges push tags
+//   down, so every id at a node is smaller than those at its ancestors. A query walks root to p
+//   without pushing and returns the deepest alive id (leftmost alive leaf), pruning dead leaves in
+//   place so each is visited once. O(log) treap work per op plus the segment-tree merges.
 use std.rand.Rng
 
 struct SegNode:

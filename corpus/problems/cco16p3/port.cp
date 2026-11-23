@@ -1,7 +1,15 @@
-// CCO '16 P3 — Legends (corpus/submissions/5568296.cpp)
-// Five subtasks of forbidden subgraph / graph-connectivity detection on
-// undirected simple graphs, combining cycle-chords via DSU, DFS back-edge
-// depth checks, and vertex-biconnected components (`biconnected_components`).
+// Source: CCO 2016 P3 (Legends), https://dmoj.ca/problem/cco16p3
+// Problem: subtask S in 1..=5 fixes a pattern: Flask (two vertices joined by three disjoint
+//   paths), Moon (a cycle), Sun (a 4-cycle), Talon (a claw), Fox (a triangle with pendants on
+//   two corners). For each connected simple graph, print YES if it can grow from the pattern by
+//   adding edges and vertices and splitting vertices. Sum of n, m <= 1000 (S = 3: <= 1e5).
+// Solution: growing from a pattern means containing it as a subdivided subgraph. S1: for each
+//   DFS cycle, DSU the edges off the cycle; YES if two cycle vertices join, O(m^2). S2: any cycle
+//   (DSU). S3: a back edge spanning >= 3 levels, or two back-edge vertices that are parent and
+//   child or siblings. S4: a vertex of degree >= 3. S5: a triangle or 4-cycle (from each edge
+//   pair) with exits at two corners, else a 5-vertex biconnected block holding a 5-cycle with
+//   such exits, or a larger block with two vertices of degree > 2.
+// original: corpus/submissions/5568296.cpp
 
 use std.dsu.{Dsu}
 use std.graph.{Graph}

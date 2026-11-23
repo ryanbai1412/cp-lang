@@ -1,5 +1,13 @@
-// Runnable today/ port of NOI '19 P3 (Sequence) for real Rust `cpl build`.
-// Stdin: t testcases, each with n, k, l, then a[0..n], b[0..n]. Prints max sum per case.
+// Source: NOI 2019 P3 (Sequence), https://dmoj.ca/problem/noi19p3
+// Problem: multitest (T <= 10). Given a, b of length n <= 2e5 (sum n <= 1e6, values <= 1e9) and
+//   1 <= L <= K <= n, pick K indices c and K indices d sharing at least L indices; print the max
+//   of the a-sum over c plus the b-sum over d.
+// Solution: a simulated cost flow. Each index is a-only, b-only, both or neither; start with the
+//   K largest a+b as both. While more than L are both, demote the worst both index to neither,
+//   give a-only and b-only one slot each and re-optimise with two augmentations: try every order
+//   of up to three state moves starting from neither, each move taking the best index from a
+//   lazy-deletion max-heap of value deltas per state pair. The answer is the best total over all
+//   rounds; O(n log n) per test.
 // original: corpus/submissions/5669058.cpp
 
 fn ri() -> Int:
