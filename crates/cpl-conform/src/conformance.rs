@@ -70,9 +70,16 @@ fn cli_override() -> Option<PathBuf> {
     std::env::var_os("CPL_CONFORM_CLI").map(PathBuf::from)
 }
 
+/// Runs `cpl`, killed after `CPL_CONFORM_CASE_TIMEOUT` seconds (default
+/// 20): an old compiler can hang on a case a later fix made finish.
 fn cli(cpl: &Path, args: &[&str], input: &[u8]) -> Result<(i32, String, String), String> {
-    use std::io::Write;
+    use std::io::{Read, Write};
     use std::process::{Command, Stdio};
+    use std::time::{Duration, Instant};
+    let limit = std::env::var("CPL_CONFORM_CASE_TIMEOUT")
+        .ok()
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(20);
     let mut child = Command::new(cpl)
         .args(args)
         .stdin(Stdio::piped())
@@ -83,13 +90,43 @@ fn cli(cpl: &Path, args: &[&str], input: &[u8]) -> Result<(i32, String, String),
     if let Some(mut stdin) = child.stdin.take() {
         let _ = stdin.write_all(input);
     }
-    let out = child
-        .wait_with_output()
-        .map_err(|e| format!("cpl failed: {e}"))?;
+    let drain = |pipe: Option<Box<dyn Read + Send>>| {
+        std::thread::spawn(move || {
+            let mut buf = Vec::new();
+            if let Some(mut p) = pipe {
+                let _ = p.read_to_end(&mut buf);
+            }
+            String::from_utf8_lossy(&buf).into_owned()
+        })
+    };
+    let out = drain(
+        child
+            .stdout
+            .take()
+            .map(|p| Box::new(p) as Box<dyn Read + Send>),
+    );
+    let err = drain(
+        child
+            .stderr
+            .take()
+            .map(|p| Box::new(p) as Box<dyn Read + Send>),
+    );
+    let deadline = Instant::now() + Duration::from_secs(limit);
+    let status = loop {
+        if let Some(status) = child.try_wait().map_err(|e| format!("cpl failed: {e}"))? {
+            break status;
+        }
+        if Instant::now() > deadline {
+            let _ = child.kill();
+            let _ = child.wait();
+            return Err(format!("`cpl {}` timed out after {limit}s", args.join(" ")));
+        }
+        std::thread::sleep(Duration::from_millis(5));
+    };
     Ok((
-        out.status.code().unwrap_or(-1),
-        String::from_utf8_lossy(&out.stdout).into_owned(),
-        String::from_utf8_lossy(&out.stderr).into_owned(),
+        status.code().unwrap_or(-1),
+        out.join().unwrap_or_default(),
+        err.join().unwrap_or_default(),
     ))
 }
 
