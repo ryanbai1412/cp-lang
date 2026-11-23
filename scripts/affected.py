@@ -69,6 +69,24 @@ def script_test(path):
     return test if os.path.exists(os.path.join(ROOT, test)) else None
 
 
+# What runs scripts locally; a script none of them names runs only in CI.
+LOCAL_RUNNERS = ["scripts/check.sh", "scripts/land.sh", "justfile", ".githooks/pre-commit",
+                 ".githooks/pre-push", ".githooks/commit-msg"]
+
+
+def ci_only(path):
+    """A script only a workflow runs: the commit tier has nothing to test."""
+    name = os.path.basename(path)
+    for runner in LOCAL_RUNNERS:
+        try:
+            with open(os.path.join(ROOT, runner), encoding="utf-8") as f:
+                if name in f.read():
+                    return False
+        except FileNotFoundError:
+            pass
+    return path.endswith(".sh")
+
+
 def select(paths, dirs):
     sel = {"all": False, "reason": "", "packages": [], "rust_files": [],
            "script_tests": [], "site": False, "conform_cases": [], "data_filter": "",
@@ -101,6 +119,8 @@ def select(paths, dirs):
             sel["site"] = True
         elif path.startswith("scripts/") and (t := script_test(path)):
             tests.add(t)
+        elif path.startswith("scripts/") and ci_only(path):
+            continue
         elif path.startswith("handbook/"):
             tests.add("scripts/test_check_handbook.py")
         elif path.startswith(".githooks/"):

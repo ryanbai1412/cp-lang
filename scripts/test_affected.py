@@ -31,13 +31,17 @@ class AffectedTest(unittest.TestCase):
             self.assertEqual(self.sel(path)["packages"], sorted(DIRS.values()), path)
 
     def test_an_unknown_path_selects_the_whole_fast_gate(self):
-        for path in ("corpus/problems/a/sol.cp", "spec/core/types.md", "new-dir/x", "scripts/no-test.sh"):
+        for path in ("corpus/problems/a/sol.cp", "spec/core/types.md", "new-dir/x", "scripts/no-test.py"):
             s = self.sel("crates/cpl-fmt/src/lib.rs", path)
             self.assertEqual((s["all"], s["reason"]), (True, path))
 
     def test_scripts_select_their_unit_tests(self):
         s = self.sel("scripts/land.sh", "scripts/affected.py", ".githooks/pre-commit")
         self.assertEqual(s["script_tests"], ["scripts/test_affected.py", "scripts/test_check_cache.py"])
+
+    def test_a_script_only_ci_runs_selects_nothing(self):
+        self.assertFalse(self.sel("scripts/site-deployable.sh")["all"])
+        self.assertTrue(self.sel("scripts/gen-unmapped-thing.py")["all"])
 
     def test_editor_files_select_the_crate_that_reads_them(self):
         s = self.sel("editors/neovim/autoload/cplang.vim", "editors/lsp-matrix.json")
