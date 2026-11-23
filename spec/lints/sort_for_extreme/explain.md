@@ -1,0 +1,1 @@
+`xs.sorted()[0]` copies and sorts the whole list, \(O(n \log n)\) and an allocation, to read one element. `xs.min()` (and `xs.max()` for `.last!`) reads it in one \(O(n)\) pass with no copy, and traps on an empty list just as `[0]` does; keys carry over as `xs.min(by: f)`. When the sorted list is used again, keep it in a `let` and the lint stays quiet.

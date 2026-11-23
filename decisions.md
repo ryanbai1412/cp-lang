@@ -7346,3 +7346,15 @@ name in a lint rule, so the ratchet's `--update lint_std_names` moves
 164 -> 165; the general fix (lint rules match std items by resolved
 symbol, not by name) stays owed with lint-fmt. Reverse: delete
 `spec/lints/negated_heap/` and `rules/neg_heap.rs`.
+
+## 340. `xs.sorted()[0]` teaches `xs.min()`: L0572 `sort_for_extreme`; `lint_std_names` 165 -> 171 (2026-11-23)
+
+Sorting a copy to read one end costs O(n log n) and an allocation where
+`xs.min()` / `xs.max()` is one pass, and both trap on an empty list, so
+the machine fix keeps the program's meaning; `by:` carries over. L0572
+fires on `xs.sorted()[0]`, `.first!` and `.last!`, and the fact table
+keeps it only on a `List` or an array. Matching `sorted`, `first`,
+`last`, `min` and `max` by name adds six std names to lint rules, so
+`--update lint_std_names` moves 165 -> 171; resolving std items by
+symbol stays the general fix owed with lint-fmt. Reverse: delete
+`spec/lints/sort_for_extreme/` and `rules/extreme.rs`.

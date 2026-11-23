@@ -94,7 +94,7 @@ One sub-family per module. Each says: you rebuilt something the library has.
 | all_some_loop | collect `?T`s, fail if any `None` | `xs.all_some()` | fix | #5 | loop | |
 | majority_loop | Boyer–Moore vote by hand | `xs.majority()` | fix | #1 | loop | |
 | loop_min_k | sort then take first k | `xs.min_k(k, by:)` / `max_k` | fix? | #10 | ty | |
-| sort_for_extreme | `xs.sorted()[0]` or `.last` | `xs.min()` / `xs.max()` | fix | #10 | ty | |
+| sort_for_extreme | `xs.sorted()[0]` or `.last` | `xs.min()` / `xs.max()` | fix | #10 | ty | ✓sort_for_extreme |
 | free_fold | `sum(xs)`, `count(xs, p)`, `sort(mut xs)` | method on the sequence | fix | #13 | ty | ✓free_fold |
 
 ### S.seq: building

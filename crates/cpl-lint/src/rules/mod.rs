@@ -9,6 +9,7 @@ mod bounds;
 mod ceil;
 mod count_until;
 mod euclid;
+mod extreme;
 mod fields;
 mod floats;
 mod grid;
@@ -48,6 +49,7 @@ pub(crate) fn run(file: &File, config: &Config) -> Vec<Finding> {
     findings.extend(heap_skip::check(file));
     findings.extend(bag::check(file));
     findings.extend(neg_heap::check(file));
+    findings.extend(extreme::check(file));
     findings.extend(scopes::check(file));
     findings.extend(types::check(file));
     findings.extend(assign::check(file));

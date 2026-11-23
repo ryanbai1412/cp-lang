@@ -1,0 +1,5 @@
+code = "L0572"
+level = "warn"
+group = "idiom"
+title = "Sorting to read the smallest or largest"
+summary = "`xs.sorted()[0]` / `xs.sorted().last!` sorts a copy for one element: `xs.min()` / `xs.max()`"
