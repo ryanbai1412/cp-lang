@@ -46,7 +46,7 @@ Python harnesses under `bench/`: `corpus_p95_bench.py` (0.2 corpus sweep; last r
 | `emit_profiled` | `cpl profile` / `cpl cover` (`crates/cpl-cli/src/profile.rs`) | `crates/cpl-cli/tests/profile.rs` |
 | `explain_closures`, `explain_dropped_fields`, `ClosureMode` | `cpl explain` (`crates/cpl-cli/src/lib.rs`) | `crates/cpl-cli` tests |
 | `Target` (stamp, thread stack, windows) | built from `cpl-judge` profiles; `TARGET_BYTES` 32 KB / `HARD_BYTES` 64 KB in `crates/cpl-judge/src/lib.rs` | `crates/cpl-judge/src/tests.rs` |
-| `bench/corpus-p95-results.json` schema | site (`web/lib/bench.ts`) | none yet |
+| `bench/corpus-p95-results.json` schema | site (`web/lib/bench.ts`) | `corpus_bench::schema_tests` (both the writer and the committed file, checked against the TS interfaces) |
 
 What codegen needs from the shared core (`cpl-ir`): the typed `Program`, `NarrowLayout`/`IntWidth`/`ElemLoc`, `pushed::{Feeds, FnSummary}`, `sites::user_stmts`, `walk`.
 

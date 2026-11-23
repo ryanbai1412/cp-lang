@@ -742,3 +742,187 @@ pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u
         1
     }
 }
+
+#[cfg(test)]
+mod schema_tests {
+    use super::*;
+    use cpl_json::Value;
+    use std::collections::BTreeMap;
+
+    enum Ty {
+        Num,
+        Str,
+        Bool,
+        Named(String),
+        Array(Box<Ty>),
+        Object(Vec<(String, bool, Ty)>),
+    }
+
+    fn root() -> PathBuf {
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("../..")
+    }
+
+    /// Splits `body` on `;` and newlines outside braces.
+    fn members(body: &str) -> Vec<&str> {
+        let (mut depth, mut start, mut out) = (0, 0, vec![]);
+        for (i, c) in body.char_indices() {
+            match c {
+                '{' => depth += 1,
+                '}' => depth -= 1,
+                ';' | '\n' if depth == 0 => {
+                    out.push(body[start..i].trim());
+                    start = i + 1;
+                }
+                _ => {}
+            }
+        }
+        out.push(body[start..].trim());
+        out.into_iter().filter(|m| !m.is_empty()).collect()
+    }
+
+    fn ty(text: &str) -> Ty {
+        let text = text.trim();
+        if let Some(inner) = text.strip_suffix("[]") {
+            return Ty::Array(Box::new(ty(inner)));
+        }
+        if let Some(body) = text.strip_prefix('{').and_then(|t| t.strip_suffix('}')) {
+            return Ty::Object(
+                members(body)
+                    .into_iter()
+                    .map(|m| {
+                        let (name, t) = m.split_once(':').expect("`name: type`");
+                        let (name, opt) = match name.trim().strip_suffix('?') {
+                            Some(n) => (n, true),
+                            None => (name.trim(), false),
+                        };
+                        (name.to_string(), opt, ty(t))
+                    })
+                    .collect(),
+            );
+        }
+        match text {
+            "number" => Ty::Num,
+            "string" => Ty::Str,
+            "boolean" => Ty::Bool,
+            name => Ty::Named(name.to_string()),
+        }
+    }
+
+    /// Every `export interface` in the site's reader of the results file.
+    fn site_schema() -> BTreeMap<String, Ty> {
+        let ts = std::fs::read_to_string(root().join("web/lib/bench.ts")).unwrap();
+        let mut out = BTreeMap::new();
+        for chunk in ts.split("export interface ").skip(1) {
+            let (name, rest) = chunk.split_once('{').unwrap();
+            let (mut depth, mut end) = (1, 0);
+            for (i, c) in rest.char_indices() {
+                depth += match c {
+                    '{' => 1,
+                    '}' => -1,
+                    _ => 0,
+                };
+                if depth == 0 {
+                    end = i;
+                    break;
+                }
+            }
+            out.insert(
+                name.trim().to_string(),
+                ty(&format!("{{{}}}", &rest[..end])),
+            );
+        }
+        out
+    }
+
+    fn check(v: &Value, t: &Ty, schema: &BTreeMap<String, Ty>, path: &str) -> Vec<String> {
+        let ok = |good: bool| {
+            if good {
+                vec![]
+            } else {
+                vec![format!("{path}: wrong type")]
+            }
+        };
+        match t {
+            Ty::Num => ok(v.as_f64().is_some()),
+            Ty::Str => ok(v.as_str().is_some()),
+            Ty::Bool => ok(v.as_bool().is_some()),
+            Ty::Named(n) => check(v, &schema[n], schema, path),
+            Ty::Array(e) => match v.as_array() {
+                Some(xs) => xs
+                    .iter()
+                    .enumerate()
+                    .flat_map(|(i, x)| check(x, e, schema, &format!("{path}[{i}]")))
+                    .collect(),
+                None => ok(false),
+            },
+            Ty::Object(fields) => match v.as_object() {
+                Some(o) => fields
+                    .iter()
+                    .flat_map(|(name, opt, ft)| match o.get(name) {
+                        Some(fv) => check(fv, ft, schema, &format!("{path}.{name}")),
+                        None if *opt => vec![],
+                        None => vec![format!("{path}.{name}: missing")],
+                    })
+                    .collect(),
+                None => ok(false),
+            },
+        }
+    }
+
+    fn record(problem: &str, measured: bool) -> PortRecord {
+        PortRecord {
+            problem: problem.into(),
+            port: format!("corpus/problems/{problem}/port.cp"),
+            tuned: measured,
+            emitted_bytes: 1234,
+            input: measured.then(|| "max-N".into()),
+            orig_s: measured.then_some(0.02),
+            port_s: measured.then_some(0.021),
+            orig_rss_kb: measured.then_some(4000),
+            port_rss_kb: measured.then_some(4100),
+            time_ratio: measured.then_some(1.05),
+            rss_ratio: measured.then_some(1.025),
+            above_floor: measured,
+            skip: (!measured).then(|| "orig run: \"timeout\"".into()),
+        }
+    }
+
+    #[test]
+    fn the_written_results_match_the_site_schema() {
+        let schema = site_schema();
+        assert!(schema.contains_key("Bench") && schema.contains_key("Port"));
+        let json = build_json(&[record("a", true), record("b", false)], 3, 2, true);
+        let v = cpl_json::parse(&json).unwrap();
+        assert_eq!(
+            check(&v, &schema["Bench"], &schema, "$"),
+            Vec::<String>::new()
+        );
+        assert_eq!(v.at(&["ports"]).as_array().unwrap().len(), 2);
+    }
+
+    #[test]
+    fn the_committed_results_match_the_site_schema() {
+        let schema = site_schema();
+        let text = std::fs::read_to_string(root().join(DEFAULT_OUT_JSON)).unwrap();
+        let v = cpl_json::parse(&text).unwrap();
+        let errors = check(&v, &schema["Bench"], &schema, "$");
+        assert!(errors.is_empty(), "{:?}", &errors[..errors.len().min(10)]);
+    }
+
+    #[test]
+    fn a_missing_field_breaks_the_schema() {
+        let schema = site_schema();
+        let json =
+            build_json(&[record("a", true)], 3, 1, true).replace("\"emitted_bytes\"", "\"bytes\"");
+        let errors = check(
+            &cpl_json::parse(&json).unwrap(),
+            &schema["Bench"],
+            &schema,
+            "$",
+        );
+        assert_eq!(
+            errors,
+            vec!["$.ports[0].emitted_bytes: missing".to_string()]
+        );
+    }
+}
