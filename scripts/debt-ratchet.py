@@ -47,6 +47,7 @@ DEFAULT_RATCHET = ROOT / "scripts" / "debt-ratchet.json"
 DEFAULT_MAX_RS_LINES = 2000
 
 TODO_STUB_RE = re.compile(r"(?:=\s*todo|^\s*todo)(?:\s*(?://.*)?$)")
+DEAD_CODE_RE = re.compile(r"allow\([^)]*\bdead_code\b")
 RUST_IGNORE_RE = re.compile(r"^\s*#\[ignore\b")
 EDITION_RE = re.compile(r"is_v03|spec_edition|CPL_EDITION|Edition::V02|edition::")
 # A match arm on string literals: `"name" | "other" =>`.
@@ -137,6 +138,21 @@ def stdlib_todo(root: Path) -> list[str]:
 def rust_ignore(root: Path) -> list[str]:
     return [f"{_rel(root, p)}:{i}" for p in _rs_files(root)
             for i, line in enumerate(_lines(p), 1) if RUST_IGNORE_RE.match(line)]
+
+
+def dead_code_allows(root: Path) -> list[str]:
+    """`allow(dead_code)` attributes: dead code is deleted, not silenced."""
+    return [f"{_rel(root, p)}:{i}" for p in _rs_files(root)
+            for i, line in enumerate(_lines(p), 1) if DEAD_CODE_RE.search(line)]
+
+
+def external_crates(root: Path) -> list[str]:
+    """Third-party packages in Cargo.lock; each new one is a reviewed decision."""
+    lock = root / "Cargo.lock"
+    text = lock.read_text(encoding="utf-8") if lock.is_file() else ""
+    return sorted(f"{m.group(1)} {m.group(2)}" for block in text.split("[[package]]")
+                  if "\nsource = " in block
+                  for m in [re.search(r'name = "([^"]+)"\nversion = "([^"]+)"', block)] if m)
 
 
 def pending_tests(root: Path) -> list[str]:
@@ -688,6 +704,8 @@ COUNTERS = {
     "stdlib_todo": ("stdlib todo stubs", stdlib_todo, True),
     "rust_ignore": ("Rust #[ignore] attributes", rust_ignore, True),
     "pending_tests": ("crates/cpl-cli/tests/pending/ files", pending_tests, True),
+    "dead_code_allows": ("allow(dead_code) attributes", dead_code_allows, True),
+    "external_crates": ("third-party packages in Cargo.lock", external_crates, True),
     "skip_lists": ("entries in skip, xfail, known-failure and gap lists", skip_lists, True),
     "edition_refs": ("dead 0.2 edition references", edition_refs, True),
     "ir_builtin_names": ("names string-matched in lower/call.rs and lower/call/", ir_builtin_names, True),

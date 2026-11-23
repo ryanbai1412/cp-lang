@@ -32,6 +32,19 @@ class DebtRatchetTest(unittest.TestCase):
         (root / "std/seq.cp").write_text("pub fn foo() = todo\nfn bar():\n    todo\n")
         (root / "crates/cpl-cli/tests/pending/case1.cp").write_text("print(1)\n")
 
+    def test_dead_code_allows_and_external_crates(self) -> None:
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            (root / "crates/demo/src").mkdir(parents=True)
+            (root / "crates/demo/src/lib.rs").write_text(
+                "#[allow(dead_code)]\nfn a() {}\n#![allow(unused, dead_code)]\n// dead_code\n")
+            (root / "Cargo.lock").write_text(
+                '[[package]]\nname = "cpl-demo"\nversion = "0.1.0"\n\n'
+                '[[package]]\nname = "shlex"\nversion = "1.3.0"\n'
+                'source = "registry+https://github.com/rust-lang/crates.io-index"\n')
+            self.assertEqual(dr.dead_code_allows(root), ["crates/demo/src/lib.rs:1", "crates/demo/src/lib.rs:3"])
+            self.assertEqual(dr.external_crates(root), ["shlex 1.3.0"])
+
     def test_measure_counts_accurately(self) -> None:
         with tempfile.TemporaryDirectory() as d:
             root = Path(d)
