@@ -199,3 +199,50 @@ fn the_editor_reports_what_check_and_lint_report_on_every_v03_file() {
         differ.join("\n")
     );
 }
+
+#[test]
+fn check_json_reports_what_check_prints_on_every_v03_file() {
+    let files = v03_files();
+    let mut want = BTreeMap::new();
+    rendered("check", &files, &mut want);
+    let out = Command::new(env!("CARGO_BIN_EXE_cpl"))
+        .arg("check")
+        .args(&files)
+        .arg("--json")
+        .output()
+        .expect("cpl runs");
+    let json = cpl_json::parse(&String::from_utf8_lossy(&out.stdout)).expect("JSON");
+    let mut got: BTreeMap<String, Vec<Diag>> = BTreeMap::new();
+    for file in json.at(&["files"]).as_array().unwrap() {
+        let path = file.at(&["path"]).as_str().unwrap();
+        for d in file.at(&["diagnostics"]).as_array().unwrap() {
+            let s = |key: &str| d.at(&[key]).as_str().unwrap().to_string();
+            let at = |key: &str| d.at(&["start", key]).as_i64().unwrap() as usize;
+            let message = s("message").lines().next().unwrap_or("").to_string();
+            got.entry(path.to_string()).or_default().push((
+                s("severity"),
+                s("code"),
+                at("line"),
+                at("col"),
+                message,
+            ));
+        }
+    }
+    for diags in want.values_mut().chain(got.values_mut()) {
+        diags.sort();
+    }
+    let differ: Vec<_> = want
+        .keys()
+        .chain(got.keys())
+        .filter(|key| want.get(*key) != got.get(*key))
+        .map(|key| {
+            format!(
+                "{key}:\n  text: {:?}\n  json: {:?}",
+                want.get(key),
+                got.get(key)
+            )
+        })
+        .collect();
+    assert!(differ.is_empty(), "{}", differ.join("\n"));
+    assert!(want.values().map(Vec::len).sum::<usize>() > 100);
+}

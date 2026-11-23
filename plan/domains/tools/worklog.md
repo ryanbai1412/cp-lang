@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- Landed (this): contract test `check_json_reports_what_check_prints_on_every_v03_file` (`crates/cpl-cli/tests/lsp_parity.rs`): on every v0.3 file, `cpl check --json` and the text output agree on severity, code, line, column and message.
 - Landed (this): the site builds `cli.json` from `cpl --help --json` and `cpl judges --json` (identical output, compared as JSON); note in the site worklog.
 - Landed (this): `cpl explain` with no argument or an unknown code names the problem and shows its usage (it printed a stale usage line, or none); golden `misused` checks for both.
 - Landed (this): every help but `stress` fits 80 columns (report, profile, bench, replay, root `fix` rewrapped); golden test `every_help_fits_80_columns`; asked debugger to rewrap `stress --help`.
