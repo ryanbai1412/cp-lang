@@ -56,3 +56,23 @@ for t in 0..n:
         "each part is bound from its own closure, never through a tuple:\n{out}"
     );
 }
+
+#[test]
+fn an_optional_fn_param_every_call_fills_alike_is_called_directly() {
+    let out = cpp(concat!(
+        "fn top(xs: List<Int>, key: ?(Int -> Int) = None) -> Int:\n",
+        "    if key != None:\n",
+        "        return key!(xs[0])\n",
+        "    xs[1]\n",
+        "fn both(xs: List<Int>, cmp: ?((Int, Int) -> Bool)) -> Bool:\n",
+        "    let less = (a: Int, b: Int) => if let c = cmp: c(a, b) else: a < b\n",
+        "    less(xs[0], xs[1])\n",
+        "let k = read::<Int>()\n",
+        "print(top([4, 7]), yes(both([1, 2], (a, b) => a > b + k)))\n",
+    ));
+    assert!(!out.contains("std::function<"), "{out}");
+    assert!(
+        out.contains("inline ll top(const std::vector<ll>& xs) {\n  return cpl::at(xs, 1);"),
+        "{out}"
+    );
+}

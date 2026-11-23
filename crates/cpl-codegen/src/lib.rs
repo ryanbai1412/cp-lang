@@ -12,6 +12,7 @@ mod inline;
 mod lend;
 mod names;
 mod niche;
+mod optfn;
 mod order;
 mod presize;
 mod prune;
@@ -176,6 +177,7 @@ fn prepared(program: &cpl_ir::Program, target: &Target) -> cpl_ir::Program {
     prune::prune(&mut program, target.checks != Checks::None);
     splice::splice(&mut program);
     unpack::unpack(&mut program);
+    optfn::known_options(&mut program);
     program
 }
 
