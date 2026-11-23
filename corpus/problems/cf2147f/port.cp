@@ -28,7 +28,7 @@ let act = Action<?Low, Int>(
     apply: (f, x, _) => if let l = x: Low(l.cover + f, l.first, l.last, l.gaps) else: none,
     over: Monoid(id: none, op: merge),
 )
-var low = LazySegTree<Cut, ?Low>(act, [Cut] c => Low(0, c, c, 0))
+var low = SegTree<Cut, ?Low, Int>(Monoid(id: none, op: merge), [Cut] c => Low(0, c, c, 0), act: act)
 
 fn cover(i: Item, d: Int):
     let (lo, hi) = minmax(p[i], s[i])
