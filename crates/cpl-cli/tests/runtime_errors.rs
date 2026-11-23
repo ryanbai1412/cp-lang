@@ -1021,3 +1021,24 @@ fn a_negative_index_says_how_to_reach_the_end() {
     let (_, err) = run_stderr(source, "3\n");
     assert!(!err.contains("negative"), "got:\n{err}");
 }
+
+#[test]
+fn golden_an_index_past_the_end_and_a_read_past_the_input_say_the_bound() {
+    let src = "let n: Int = read()\nlet a: [0..n]Int = read()\nvar s = 0\nfor i in 0..=n:\n    s += a[i]\nprint(s)\n";
+    let (code, err) = run_stderr(src, "3\n1 2 3\n");
+    assert_eq!(code, 3);
+    assert!(
+        err.contains("index 3 is outside an array dimension of length 3"),
+        "got:\n{err}"
+    );
+    assert!(
+        err.contains("the indexes are 0 to 2: a loop over `0..=n` reaches `n`"),
+        "got:\n{err}"
+    );
+
+    let src = "let n: Int = read()\nvar s = 0\nfor _ in 0..=n:\n    let x: Int = read()\n    s += x\nprint(s)\n";
+    let (code, err) = run_stderr(src, "3\n1 2 3\n");
+    assert_eq!(code, 3);
+    assert!(err.contains("error[R0501]: the input ended"), "got:\n{err}");
+    assert!(err.contains("`0..=n` reads n + 1"), "got:\n{err}");
+}
