@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """`cpl fmt` is idempotent and meaning-preserving on every tracked .cp file.
 
-    scripts/fmt_check.py [--cpl PATH] [--jobs N] [--list]
+    scripts/fmt_check.py [--cpl PATH] [--jobs N] [--list] [--snippets]
 
 Formats a copy of every tracked `.cp` file (plus `cp.toml`) in a scratch
 tree, then checks:
@@ -16,6 +16,9 @@ tree, then checks:
 
 A file the lexer rejects is reported by `cpl fmt` and left alone, so it
 counts as preserved; a formatter bug (`formatter bug:`) fails the check.
+With `--snippets`, the same checks run on every ```cp block in tracked
+`.md` and `.mdx` files instead, each as its own file.
+
 Exit status 1 when any file fails.
 """
 
@@ -79,8 +82,8 @@ def run(cpl, cwd, args, stdin=b""):
     return p.returncode, p.stdout if args[0] == "run" else b"", sorted(CODE.findall(err))
 
 
-def compare(cpl, scratch, path, original):
-    a = run(cpl, ROOT, ["check", path])
+def compare(cpl, scratch, path, original, base=ROOT):
+    a = run(cpl, base, ["check", path])
     b = run(cpl, scratch, ["check", path])
     if a is None:
         return None
@@ -89,7 +92,7 @@ def compare(cpl, scratch, path, original):
     if a[0] != 0:
         return None
     stdin = sample_input(path, original)
-    a = run(cpl, ROOT, ["run", path], stdin)
+    a = run(cpl, base, ["run", path], stdin)
     if a is None:
         return None
     b = run(cpl, scratch, ["run", path], stdin)
@@ -99,6 +102,18 @@ def compare(cpl, scratch, path, original):
         what = "exit status" if a[0] != b[0] else "output" if a[1] != b[1] else "diagnostics"
         return f"cpl run {what} differs: original {a[0]} {a[2][:5]}, formatted {b[0]} {b[2][:5]}"
     return None
+
+
+SNIPPET = re.compile(r"^```cp(?:[ \t][^\n]*)?\n(.*?)^```", re.S | re.M)
+
+
+def snippets(docs):
+    """Each ```cp block of each (path, text), as a flat file name and its text."""
+    out = {}
+    for path, text in docs:
+        for n, m in enumerate(SNIPPET.finditer(text)):
+            out[f"{path.replace(os.sep, '__')}__{n}.cp"] = m.group(1)
+    return out
 
 
 def fmt_tree(cpl, tree):
@@ -111,21 +126,36 @@ def main():
     ap.add_argument("--cpl", default=os.path.join(os.environ.get("CARGO_TARGET_DIR", os.path.join(ROOT, "target")), "release", "cpl"))
     ap.add_argument("--jobs", type=int, default=os.cpu_count() or 4)
     ap.add_argument("--list", action="store_true", help="list every failing file, not just the first 20")
+    ap.add_argument("--snippets", action="store_true", help="check the ```cp blocks in .md and .mdx files")
     args = ap.parse_args()
     cpl = os.path.abspath(args.cpl)
-    files = tracked((".cp",))
     with tempfile.TemporaryDirectory(prefix="fmt-check-") as tmp:
         once, twice = os.path.join(tmp, "once"), os.path.join(tmp, "twice")
-        for path in files + tracked(("cp.toml",)):
-            dst = os.path.join(once, path)
-            os.makedirs(os.path.dirname(dst), exist_ok=True)
-            shutil.copyfile(os.path.join(ROOT, path), dst)
+        base = ROOT
+        if args.snippets:
+            docs = []
+            for path in tracked((".md", ".mdx")):
+                with open(os.path.join(ROOT, path), encoding="utf-8", errors="surrogateescape") as f:
+                    docs.append((path, f.read()))
+            base = os.path.join(tmp, "orig")
+            os.makedirs(base)
+            for name, text in snippets(docs).items():
+                with open(os.path.join(base, name), "w", encoding="utf-8", errors="surrogateescape") as f:
+                    f.write(text)
+            files = sorted(os.listdir(base))
+            shutil.copytree(base, once)
+        else:
+            files = tracked((".cp",))
+            for path in files + tracked(("cp.toml",)):
+                dst = os.path.join(once, path)
+                os.makedirs(os.path.dirname(dst), exist_ok=True)
+                shutil.copyfile(os.path.join(ROOT, path), dst)
         bugs = fmt_tree(cpl, once)
         shutil.copytree(once, twice)
         fmt_tree(cpl, twice)
         originals, formatted, changed, unstable = {}, {}, [], []
         for path in files:
-            with open(os.path.join(ROOT, path), encoding="utf-8", errors="surrogateescape") as f:
+            with open(os.path.join(base, path), encoding="utf-8", errors="surrogateescape") as f:
                 originals[path] = f.read()
             with open(os.path.join(once, path), encoding="utf-8", errors="surrogateescape") as f:
                 formatted[path] = f.read()
@@ -136,9 +166,9 @@ def main():
             if again != formatted[path]:
                 unstable.append(path)
         with cf.ThreadPoolExecutor(args.jobs) as pool:
-            verdicts = dict(zip(changed, pool.map(lambda p: compare(cpl, once, p, originals[p]), changed)))
+            verdicts = dict(zip(changed, pool.map(lambda p: compare(cpl, once, p, originals[p], base), changed)))
     altered = {p: v for p, v in verdicts.items() if v}
-    print(f"fmt-check: {len(files)} files, {len(changed)} changed by cpl fmt, "
+    print(f"fmt-check: {len(files)} {'snippets' if args.snippets else 'files'}, {len(changed)} changed by cpl fmt, "
           f"{len(unstable)} not idempotent, {len(altered)} change meaning, {len(bugs)} formatter bugs")
     limit = None if args.list else 20
     for title, items in (("not idempotent (fmt(fmt(x)) != fmt(x))", [(p, "") for p in unstable]),

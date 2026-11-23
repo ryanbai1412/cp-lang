@@ -26,5 +26,14 @@ class SampleInputTest(unittest.TestCase):
                 fmt_check.ROOT = old
 
 
+class SnippetTest(unittest.TestCase):
+    def test_takes_each_cp_block_with_or_without_attributes(self):
+        doc = "# t\n```cp\nprint(1)\n```\n```cpp\nint x;\n```\n```cp run input=\"5\"\nprint(2)\n```\n"
+        self.assertEqual(
+            fmt_check.snippets([("docs/a.md", doc)]),
+            {"docs__a.md__0.cp": "print(1)\n", "docs__a.md__1.cp": "print(2)\n"},
+        )
+
+
 if __name__ == "__main__":
     unittest.main()

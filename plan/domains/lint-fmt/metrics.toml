@@ -96,6 +96,13 @@ target = 0
 note = "was 1 (c_operators.cp), fixed in 361f22b0; the gate in scripts/check.sh --fast keeps it 0"
 
 [[metric]]
+name = "fmt_snippets_meaning_or_idempotence"
+command = "scripts/fmt_check.py --snippets"
+today = "1785 snippets, 716 changed by cpl fmt, 0 not idempotent, 0 change meaning, 0 formatter bugs"
+target = "0 not idempotent, 0 change meaning"
+note = "every ```cp block in tracked .md and .mdx files (spec, skills, web/content); not in the fast gate"
+
+[[metric]]
 name = "fmt_unclean_corpus_spec"
 command = "target/release/cpl fmt --check corpus/problems/*/spec.cp | tail -1"
 today = "100 files checked, 28 would change"
