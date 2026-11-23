@@ -64,7 +64,9 @@ jobs:
               # Publish whenever edge is behind this green commit; the
               # concurrency group keeps one release in flight, and the newest
               # waiting trigger replaces any older one.
-              edge=$(gh api "repos/$GITHUB_REPOSITORY/commits/edge" --jq .sha 2>/dev/null || true)
+              # Edge's commit is latest.json's: the tag lags when GITHUB_TOKEN
+              # can't move it (decision 386).
+              edge=$(curl -fsSL "https://github.com/$GITHUB_REPOSITORY/releases/download/edge/latest.json" | jq -r '.commit // empty' 2>/dev/null || true)
               if [ -n "$edge" ]; then
                 rel=$(gh api "repos/$GITHUB_REPOSITORY/compare/$sha...$edge" --jq .status 2>/dev/null || true)
                 if [ "$rel" = identical ] || [ "$rel" = ahead ]; then

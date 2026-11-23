@@ -8003,3 +8003,13 @@ so it guards main without setting CI's wall time. Reverse: delete the job.
   `N.out` (H04, H05).
 - **Reverse.** Make `[]` always per-cell and require `List<Int>()` for the
   fill; add an `@sample` attribute.
+
+## 386. Edge's commit is latest.json's; moving the tag is best-effort (infra, 2026-11-23)
+
+GITHUB_TOKEN gets HTTP 403 pointing a ref at a commit whose .github/workflows
+differ from main's (all four publishes of 2026-11-23 fit; a range rule
+didn't). Rule: publish.sh tries to move `edge` and on failure still uploads
+the assets and latest.json; install.sh, install.ps1, `cpl self update`, the
+site and release.yml's skip check read latest.json, never the tag or release
+target. Reverse: publish with a token that has workflows write and make the
+tag move fatal again.
