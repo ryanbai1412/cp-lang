@@ -1761,14 +1761,21 @@ fn newcomer_fixes_still_check() {
         out.contains("(1..1000000001).first_true(mid => mid * 2 >= k)"),
         "{out}"
     );
-    // n25: `all`/`any` take a predicate, not a generator.
-    let all = "let s: Str = \"abba\"\nlet n = s.len\nvar ok = true\nfor i in 0..n / 2:\n    if s[i] != s[n - 1 - i]:\n        ok = false\n        break\nprint(yes(ok))\n";
+    // n25: `all`/`any` take a predicate, not a generator. (n25's own mirrored
+    // compare is `palindrome_by_hand`, which supersedes the search.)
+    let palindrome = "let s: Str = \"abba\"\nlet n = s.len\nvar ok = true\nfor i in 0..n / 2:\n    if s[i] != s[n - 1 - i]:\n        ok = false\n        break\nprint(yes(ok))\n";
+    let found = codes(palindrome);
+    assert!(
+        found.contains(&"L0583") && !found.contains(&"L0501"),
+        "{found:?}"
+    );
+    let all = "let s: Str = \"abba\"\nlet n = s.len\nvar ok = true\nfor i in 0..n / 2:\n    if s[i] != s[i + 1]:\n        ok = false\n        break\nprint(yes(ok))\n";
     let any = "let a = [1, 2]\nvar ok = false\nfor x in a:\n    if x > 1:\n        ok = true\n        break\nprint(yes(ok))\n";
     for src in [search, all, any] {
         let out = fixed(src);
         assert!(crate::fix_tests::checker_errors(&out).is_empty(), "{out}");
     }
-    assert!(fixed(all).contains("(0..n / 2).all(i => not (s[i] != s[n - 1 - i]))"));
+    assert!(fixed(all).contains("(0..n / 2).all(i => not (s[i] != s[i + 1]))"));
     assert!(fixed(any).contains("let ok = a.any(x => x > 1)"));
 }
 

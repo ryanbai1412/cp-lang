@@ -500,6 +500,7 @@ fn lint_file(file: &File, config: &Config) -> Vec<Diagnostic> {
 /// push loop that copies a slice only to sort it and write it back; code
 /// inside a hand-written algorithm the std call replaces whole).
 const SUPERSEDED_BY: &[(&Lint, &Lint)] = &[
+    (&SEARCH_LOOP, &PALINDROME_BY_HAND),
     (&COMPOUND_SELF_REF, &LOOP_REDUCTION),
     (&CHMIN_CHMAX_IF, &LOOP_REDUCTION),
     (&SENTINEL_SCALAR, &LOOP_REDUCTION),

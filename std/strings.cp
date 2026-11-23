@@ -2771,8 +2771,7 @@ pub struct PalindromicTree<A>:
         let m = w.len
         if m == 0: return true
         unchecked:
-            for i in 0..m / 2:
-                if w[i] != w[m - 1 - i]: return false
+            if not is_palindrome(w): return false
             var at = if m % 2 == 1: 0 else: 1
             for i in ((m - 1) / 2 + 1..m):
                 let t = next[at * alpha + w[i].to_idx]

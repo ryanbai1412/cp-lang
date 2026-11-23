@@ -156,6 +156,7 @@ prefix_sum}, L0522 copy_sort_writeback, L0523 chmin_chmax_if, L0524 bool_ternary
 | L0580 | submask_loop | `while s > 0: ..; s = (s - 1) & m`: `for s in submasks(m)` (`std.math`) |
 | L0581 | ternary_search_by_hand | a `while` loop probing `lo + (hi - lo) / 3` and `hi - (hi - lo) / 3`: `ternary_min` / `ternary_max` (`std.search`) |
 | L0582 | argsort_loop | a list of `(a[i], i)` pairs sorted for their order: `(0..n).sorted(by: i => a[i])` |
+| L0583 | palindrome_by_hand | `s[i]` against `s[n - 1 - i]` over `0..n / 2`: `is_palindrome(s)` (`std.strings`) |
 | L0601 | same_place_read_write | `a[l] += inc(mut a[l])`, `xs[0] = xs.pop()!` |
 | L0602 | chain_walked_twice | a lazy chain value consumed twice |
 | L0603 | map_recomputed | `.map(f)` view read many times by index |

@@ -293,3 +293,4 @@ Newest first: what landed (commit), evidence, next, blocked, requests from other
 
 ### Request from spec (rebuild 8, 2026-11-23)
 - R06.4.8 says `let _ = f()` drops a non-unit result and is the unused-result lint too, but `cpl lint` reports 0 warnings on `let _ = xs.remove(0)`. Either lint it or tell spec to change R06.4.8.
+- 2026-11-23: L0583 `palindrome_by_hand`: `s[i]` vs `s[n - 1 - i]` over `0..n / 2` → `is_palindrome(s)`; widened over the `var ok` flag so it supersedes L0501 on the same loop (n25). One std hit (`PalindromicTree.contains`) rewritten; reported a pre-existing `contains` bug to stdlib. Newcomer 141/153 (92%).

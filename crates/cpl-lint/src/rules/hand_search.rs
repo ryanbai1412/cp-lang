@@ -1,10 +1,13 @@
 //! Walks newcomers spell by hand where std names them: the submasks of a
 //! mask (`submask_loop`), a ternary search over integers
-//! (`ternary_search_by_hand`) and the sort order of positions by value
+//! (`ternary_search_by_hand`), a palindrome test (`palindrome_by_hand`)
+//! and the sort order of positions by value
 //! (`argsort_loop`).
 
 use crate::walk::Visitor;
-use crate::{File, Finding, ARGSORT_LOOP, SUBMASK_LOOP, TERNARY_SEARCH_BY_HAND};
+use crate::{
+    File, Finding, ARGSORT_LOOP, PALINDROME_BY_HAND, SUBMASK_LOOP, TERNARY_SEARCH_BY_HAND,
+};
 use cpl_diag::Diagnostic;
 use cpl_syntax::ast::*;
 
@@ -69,6 +72,68 @@ impl HandSearch<'_> {
     }
 }
 
+impl HandSearch<'_> {
+    /// `span` widened to a `var ok = true` (or `false`) on the line above: the
+    /// flag the loop sets is part of the same test.
+    fn with_flag(&self, span: cpl_diag::Span) -> cpl_diag::Span {
+        let head = &self.src[..span.start as usize];
+        let above = head.trim_end_matches([' ', '\t']);
+        let above = above.strip_suffix('\n').unwrap_or(above);
+        let line_start = above.rfind('\n').map_or(0, |i| i + 1);
+        let line = above[line_start..].split("//").next().unwrap_or("").trim();
+        let flag =
+            line.starts_with("var ") && (line.ends_with("= true") || line.ends_with("= false"));
+        if !flag {
+            return span;
+        }
+        let indent = above[line_start..].len() - above[line_start..].trim_start().len();
+        cpl_diag::Span::new((line_start + indent) as u32, span.end)
+    }
+
+    /// `for i in 0..n / 2:` comparing `s[i]` with `s[n - 1 - i]`.
+    fn palindrome(&mut self, stmt: &Stmt, pat: &Pattern, iter: &Expr, body: &Block) {
+        let text = |s: cpl_diag::Span| squash(s.shift(self.base).text(self.src));
+        let i = text(pat.span);
+        let Some(n) = text(iter.span)
+            .strip_prefix("0..")
+            .and_then(|r| r.strip_suffix("/2"))
+            .map(str::to_string)
+        else {
+            return;
+        };
+        let whole = text(body.span);
+        let mirror = format!("[{n}-1-{i}]");
+        let Some(s) = whole.match_indices(&mirror).find_map(|(at, _)| {
+            let before = &whole[..at];
+            let s = before
+                .rsplit(|c: char| !(c.is_alphanumeric() || c == '_'))
+                .next()?;
+            let before = &before[..before.len() - s.len()];
+            ["!=", "=="]
+                .iter()
+                .any(|op| before.ends_with(&format!("{s}[{i}]{op}")))
+                .then(|| s.to_string())
+        }) else {
+            return;
+        };
+        if !ident(&i) || !ident(&s) {
+            return;
+        }
+        let diag = Diagnostic::warning(
+            PALINDROME_BY_HAND.code,
+            self.with_flag(stmt.span.shift(self.base)),
+            format!("`{s}[{i}]` against `{s}[{n} - 1 - {i}]` tests whether `{s}` is a palindrome"),
+        )
+        .with_help(format!(
+            "write `is_palindrome({s})` (`use std.strings.{{is_palindrome}}`): a `Bool`, with no mirrored index or half-length bound to get wrong"
+        ));
+        self.out.push(Finding {
+            lint: &PALINDROME_BY_HAND,
+            diag,
+        });
+    }
+}
+
 impl Visitor for HandSearch<'_> {
     fn expr(&mut self, expr: &Expr) {
         let span = expr.span.shift(self.base);
@@ -94,6 +159,12 @@ impl Visitor for HandSearch<'_> {
     }
 
     fn stmt(&mut self, stmt: &Stmt) {
+        if let StmtKind::For {
+            pat, iter, body, ..
+        } = &stmt.kind
+        {
+            self.palindrome(stmt, pat, iter, body);
+        }
         let StmtKind::While {
             cond: Cond::Expr(cond),
             body,

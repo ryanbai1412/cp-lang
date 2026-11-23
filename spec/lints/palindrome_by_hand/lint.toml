@@ -1,0 +1,6 @@
+code = "L0583"
+level = "warn"
+group = "idiom"
+title = "Palindrome test by hand"
+summary = "`s[i]` against `s[n - 1 - i]` over `0..n / 2`: `is_palindrome(s)`"
+no_fix = "the loop sets a flag or breaks, and what reads that flag afterwards has to be read"
