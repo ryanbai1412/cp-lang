@@ -75,6 +75,26 @@ fn a_top_level_move_points_at_the_move_after_an_edit_above_it() {
 }
 
 #[test]
+fn a_var_cannot_take_a_lent_heap_parameter() {
+    let mut db = Database::new();
+    let src = "fn f(xs: List<Int>) -> List<Int>:\n    var ys = xs\n    ys\n";
+    db.set_file("a.cp", src);
+    let diags = db.diagnostics("a.cp");
+    assert_eq!(diags.len(), 1, "{diags:?}");
+    assert_eq!(diags[0].code.0, "E0608");
+    let at = src.find("= xs").unwrap() as u32 + 2;
+    assert_eq!(diags[0].span, Span::new(at, at + 2));
+    for ok in [
+        "fn f(xs: List<Int>) -> List<Int>:\n    var ys = xs.clone()\n    ys\n",
+        "fn f(xs: List<Int>) -> Int:\n    let ys = xs\n    ys.len\n",
+        "fn f(n: Int) -> Int:\n    var m = n\n    m\n",
+    ] {
+        db.set_file("a.cp", ok);
+        assert!(db.diagnostics("a.cp").is_empty(), "{ok}");
+    }
+}
+
+#[test]
 fn a_move_inside_a_top_level_if_or_loop_reaches_the_items_after_it() {
     let mut db = Database::new();
     for body in [

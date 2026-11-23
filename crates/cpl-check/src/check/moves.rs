@@ -114,4 +114,27 @@ impl Checker<'_> {
             }
         }
     }
+
+    /// `var ys = xs` with `xs` a heap parameter: a `var` owns what it holds,
+    /// and `xs` is lent by the caller, so it can't be taken (R05.7.1).
+    pub(crate) fn no_var_of_lent_param(&mut self, init: &Expr, init_ty: Option<&Ty>) {
+        let ExprKind::Name(src) = &unparen(init).kind else {
+            return;
+        };
+        let lent = self.local(src).is_some_and(|l| l.keyword == "param");
+        if !lent || !init_ty.is_some_and(|t| self.is_heap_type(t)) {
+            return;
+        }
+        let message = format!(
+            "`{src}` is lent by the caller, so a `var` can't take it: a `var` owns what it holds"
+        );
+        if let Some(diag) = self.error(codes::USE_AFTER_MOVE, init.span, message) {
+            diag.help = Some(format!("copy it: `{src}.clone()`"));
+            diag.fix(
+                format!("clone `{src}`"),
+                Span::point(init.span.end),
+                ".clone()",
+            );
+        }
+    }
 }
