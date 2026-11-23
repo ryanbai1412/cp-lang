@@ -1,6 +1,8 @@
-// NOIP 2001 Splitting a Number: the ways to write n as a sum of exactly k
-// positive parts, order ignored. Either some part is 1 (drop it), or every
-// part is at least 2 (take 1 off each).
+// Source: NOIP 2001 Senior P2 (Splitting a Number), https://dmoj.ca/problem/noip01p2
+// Problem: 6 < n <= 200, 2 <= k <= 6. Count the ways to split n into exactly k positive parts,
+//   order ignored.
+// Solution: either some part is 1 (drop it: ways(n - 1, k - 1)) or every part is >= 2 (take 1
+//   off each: ways(n - k, k)). Memoised over (total, parts): O(nk).
 let n: 1..=200 = read()
 let k: 1..=6 = read()
 

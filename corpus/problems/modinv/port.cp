@@ -1,3 +1,8 @@
+// Source: DMOJ modinv (Modular Multiplicative Inverse), https://dmoj.ca/problem/modinv
+// Problem: 0 <= N < M <= 1e19 with N coprime to M (they fit in u64, not i64). Print the inverse
+//   of N modulo M, nonnegative.
+// Solution: extended Euclid gives x with N x + M y = 1; print x mod M (Euclidean, so
+//   nonnegative). O(log M).
 // Modular inverse, as it has to be written today: Int only, so inputs stop
 // at 1e18 where the judge goes to 2^64. Builds; stress OK against 5034440.cpp
 // on coprime inputs.
