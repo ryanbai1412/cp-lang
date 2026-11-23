@@ -1850,11 +1850,12 @@ fn a_for_header_in_parentheses_or_with_of_is_one_error_with_a_fix() {
 #[test]
 fn pythons_floor_division_is_one_error_with_the_slash_fix() {
     let d = parse_file(
-        "print(n // 3)\nlet m = xs[i // 2]\nlet k = f(a, // first\n    b)\nprint(n) // done\n",
+        "print(n // 3)\nlet m = xs[i // 2]\nlet k = f(a, // first\n    b)\nprint(n) // done\n\
+         x = if x % 2 == 0: x // 2 else: 3 * x + 1\nprint(x) // else: a comment\n",
     )
     .diagnostics;
     let fixed: Vec<_> = d.iter().map(|d| d.fixes[0].edits[0].1.as_str()).collect();
-    assert_eq!(fixed, ["/", "/"], "{d:?}");
+    assert_eq!(fixed, ["/", "/", "/"], "{d:?}");
 }
 
 #[test]

@@ -164,7 +164,7 @@ impl<'a> Lexer<'a> {
     }
 
     /// `n // 3)`: Python's floor division, which here starts a comment
-    /// and hides the closer. One error with the `/` fix, read as `/`.
+    /// and hides the closer (or an inline `else:`). One error with the `/` fix, read as `/`.
     fn floor_division(&mut self) -> bool {
         use TokenKind::{Float, Ident, Int, RBracket, RParen};
         let start = self.pos;
@@ -179,11 +179,9 @@ impl<'a> Lexer<'a> {
         );
         let operand_after =
             rest.starts_with(|c: char| c.is_ascii_alphanumeric() || c == '_' || c == '(');
-        if self.openers.is_empty()
-            || !operand_before
-            || !operand_after
-            || !rest.contains([')', ']'])
-        {
+        let hides_closer = !self.openers.is_empty() && rest.contains([')', ']']);
+        let hides_else = rest.contains(" else:") || rest.contains(" else :");
+        if !operand_before || !operand_after || !(hides_closer || hides_else) {
             return false;
         }
         let span = Span::new(start as u32, start as u32 + 2);
