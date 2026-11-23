@@ -346,7 +346,8 @@ fn score(b: &Broken, restore: bool) -> (Tally, Option<(String, FirstFix)>) {
         count: 1,
         ..FirstFix::default()
     };
-    if let Some(fix) = errs[0].fixes.first() {
+    let mut db = cpl_check::Database::new();
+    if let Some(fix) = cpl_cli::checked_fix(&mut db, &b.path, &b.src, &errs[0]) {
         let fixed = apply(&b.src, &fix.edits);
         first.fixed = 1;
         let line = |src: &str| src.lines().nth(b.line as usize).map(str::to_string);

@@ -1,6 +1,7 @@
 //! The `cpl` command-line tool. `cpl` is the working name of the binary
 //! (`cp` clashes with Unix `cp`); source files end in `.cp`.
 
+mod checked_fix;
 mod commands;
 use commands::{command_usage, unknown_option, usage as main_usage};
 
@@ -18,6 +19,7 @@ mod sha256;
 mod submit;
 use submit::{copy_to_clipboard, list_judges, size_report, submit};
 pub mod toolchain;
+pub use checked_fix::checked_fix;
 mod trace;
 
 pub use report::{install_ice_hook, set_crash_context};
@@ -1559,8 +1561,10 @@ pub fn apply_error_fixes(path: &str, text: &str) -> (String, usize) {
     let mut db = cpl_check::Database::new();
     let mut text = text.to_string();
     let mut applied = 0;
+    let mut budget = checked_fix::MAX_CHECKS;
     for _ in 0..8 {
-        let errors = errors_in(&mut db, path, &text);
+        let mut errors = errors_in(&mut db, path, &text);
+        checked_fix::rank_checked(&mut db, path, &text, &mut errors, &mut budget);
         let (next, n) = cpl_lint::apply_fixes(&text, &errors);
         if n == 0 || next == text {
             break;

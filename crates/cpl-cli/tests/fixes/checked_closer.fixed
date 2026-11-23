@@ -1,0 +1,3 @@
+fn shout(s: Str) -> Str: s + "!"
+let n = shout("hi").len
+print(n)
