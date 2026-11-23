@@ -836,7 +836,9 @@ impl<'a> Checker<'a> {
                 prelude::TYPE_NAMES.contains(&s)
                     || prelude::std_names().iter().any(|(n, _)| *n == s)
             });
-        let unknown = (suggestion.is_none() || near_builtin)
+        let mut free_twin = advice::free_by_twin(self.src, name, span).filter(|_| value);
+        let unknown = free_twin.is_none()
+            && (suggestion.is_none() || near_builtin)
             && field_of_self.is_none()
             && name.chars().nth(1).is_some()
             && advice::foreign_call(name).is_none()
@@ -882,6 +884,12 @@ impl<'a> Checker<'a> {
                     let title = format!("change to `{range}`");
                     let edits = vec![(span, range.to_string())];
                     diag.fixes.push(cpl_diag::Fix { title, edits });
+                }
+                _ if free_twin.is_some() => {
+                    if let Some((help, fix)) = free_twin.take() {
+                        diag.help = Some(help);
+                        diag.fixes = vec![fix];
+                    }
                 }
                 _ if field_of_self.is_some() => {
                     let owner = field_of_self.map(|t| t.to_string()).unwrap_or_default();

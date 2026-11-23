@@ -1,0 +1,22 @@
+error[E0201]: no `min_by` in scope
+  --> a_free_by_twin.cp:2:7
+  |
+2 | print(min_by(xs, s => s.len))
+  |       ^^^^^^
+  = help: write `xs.min(by: ..)`: options are named arguments, so there is one `min` and no `_by` twin
+
+error[E0201]: no `max_by` in scope
+  --> a_free_by_twin.cp:3:7
+  |
+3 | print(max_by(xs, s => s.len))
+  |       ^^^^^^
+  = help: write `xs.max(by: ..)`: options are named arguments, so there is one `max` and no `_by` twin
+
+error[E0201]: no `sorted_by_key` in scope
+  --> a_free_by_twin.cp:4:7
+  |
+4 | print(sorted_by_key(xs, s => s.len))
+  |       ^^^^^^^^^^^^^
+  = help: write `xs.sorted(by: ..)`: options are named arguments, so there is one `sorted` and no `_by` twin
+
+a_free_by_twin.cp: 3 errors

@@ -496,3 +496,9 @@ Landed since 23:10: four type/flow lints from `spec/idioms/lints.md`, L0571 `neg
   were blank and now say ✓name. `plus_mod_percent_mod` now says
   `(a - b) % P` is enough, since `%` floors; the `rem_euclid` stdlib wish
   notes the same.
+- E0201 on a `_by` twin called as a free function (`min_by(xs, f)`,
+  `sorted_by_key(xs, f)`) now gets the fix `xs.min(by: f)`, sharing the
+  method form's base table (`by_base`), instead of the nearest-name import
+  `use std.seq.{min_k}`, which still failed to check (lint-fmt's report on
+  spec/lints/by_twin/before.cp). Golden `a_free_by_twin`; after `cpl fix`
+  it runs (`a`, `bbb`, `a cc bbb`).
