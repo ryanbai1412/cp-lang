@@ -4,7 +4,7 @@
 //! `Show`).
 
 use crate::observe::Observer;
-use crate::value::{OptVal, TupleVal, Value};
+use crate::value::{Array, OptVal, TupleVal, Value};
 use crate::*;
 
 /// Loop rounds and calls one `show` call gets while tracing.
@@ -115,6 +115,21 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 }
                 Ok((Value::List(Rc::new(out)), Ty::List(Box::new(elem))))
             }
+            (Value::Array(array), Ty::Array { dims, elem }, _) => {
+                let mut out = Vec::with_capacity(array.len());
+                let mut shown = (**elem).clone();
+                for v in array.to_values() {
+                    let (v, t) = self.show_parts(&v, elem, span)?;
+                    out.push(v);
+                    shown = t;
+                }
+                let array = Array::from_values(array.dims.clone(), out);
+                let ty = Ty::Array {
+                    dims: dims.clone(),
+                    elem: Box::new(shown),
+                };
+                Ok((Value::Array(Rc::new(array)), ty))
+            }
             _ => Ok((value.clone(), ty.clone())),
         }
     }
@@ -131,7 +146,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
             }
             Ty::Tuple(ts) => ts.iter().any(|t| self.has_show_hook(t, seen)),
             Ty::Record(fs) => fs.iter().any(|(_, t)| self.has_show_hook(t, seen)),
-            Ty::Opt(t) | Ty::List(t) => self.has_show_hook(t, seen),
+            Ty::Opt(t) | Ty::List(t) | Ty::Array { elem: t, .. } => self.has_show_hook(t, seen),
             _ => false,
         }
     }
