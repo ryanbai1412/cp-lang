@@ -7647,7 +7647,7 @@ Cases `core-08/if-bound-*`, `core-08/getter-trait-struct-opt-in`. Reverse:
 let structs satisfy by shape too, or drop shape satisfaction from
 `if T: Trait` (then `arc_len` needs `Graph` arcs to `impl Weighted`).
 
-## 364. JetBrains: built-in LSP client where it exists, LSP4IJ in Community (tools, 2026-11-23)
+## 367. JetBrains: built-in LSP client where it exists, LSP4IJ in Community (tools, 2026-11-23)
 
 The plugin required `com.intellij.modules.ultimate` because the platform's LSP
 API ships only in the commercial IDEs, so IntelliJ IDEA Community refused it.
