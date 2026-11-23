@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- R05.2.1 reject gap: a closure outliving its captured variable is accepted and has no fitting code; asked diagnostics for one and compiler to reject. No case until a code exists.
 - Routed to stdlib: `runs(link:)` vs `runs_linked`, free `pow(x, k, op:)`, labelled `each(sum: +, hi: max)` (spec-block errors in lib/sequence-patterns and lib/ops-ranges).
 - `Potentials<V>(op)` (lib/ops-ranges) vs `PotentialDsu<V>` (lib/containers, spec/std): asked stdlib which API stays before aligning the chapters.
 - `lib/strings.md` squares excerpt imported `scan` from `std.seq`; it lives in `std.prefix`. spec-blocks 70/185 (31 error, 84 skip).
