@@ -41,5 +41,21 @@ Order: 1 → 2 → (3 ∥ 4) → 5. 1 first because it is done work rotting agai
 - **Editor tests need binaries the VM lacks** (nvim ≥ 0.10, emacs, hx, tree-sitter) and Gradle downloads are blocked or rate-limited. Mitigation: ask infra to add nvim to the environment; JetBrains stays CI-only.
 - **Touching `lib.rs` collides with other lanes** (debugger code and tests live there). Mitigation: split by command in small commits, land each fast, move debugger files only with the debugger lane.
 
+## General fixes owed
+Each local fix tonight, and the mechanism that would remove its whole class.
+
+| Instance (local fix) | General fix | Owner |
+|---|---|---|
+| Windows CI: editor tests split CRLF repo files (normalized in the test) | `.gitattributes` `* text=auto eol=lf`, with `-text` on the CRLF test fixtures, so every checkout is LF | infra |
+| Built C++ prints `\r\n` on Windows, the interpreter `\n` (cpl-cli tests normalize) | binary stdout in runtime.rs's `out` piece, so both agree byte for byte | perf |
+| The LSP spells Windows paths `c:/...`; VS Code's memory-lens test compares via `Uri.file` | one URI-to-path function in `cpl-lsp/src/uri.rs` that returns native paths, used by every command argument | tools |
+| cpl-contest tests drive `#!` shell scripts, so they're `cfg(unix)` | a portable test-program helper (tiny `.cp` programs run by `cpl`) so they run on Windows too | tools |
+| `peak_memory` reads `/proc`: no MB and no MLE on macOS and Windows (bench test checks MB on Linux only) | per-platform peak memory (`proc_pid_rusage`, `GetProcessMemoryInfo`) in cpl-stress | debugger |
+| Hand-kept VS Code tables missed `IndexOp` (and earlier `dot`, `cross`) | generate `languageData.ts` and the grammar's name lists from the checker (`cpl` symbols as JSON) at build time | tools |
+| Stale `d.cp` fixture (`.after` as a cut) broke the VS Code integration | `cpl check` every editor fixture in the gate | tools |
+| clippy's `items_after_test_module` in cpl-lsp reached main | the land step runs `cargo clippy --all-targets -D warnings` on touched crates | infra |
+| `@vscode/test-electron` 2.5 couldn't launch VS Code 1.147 on macOS (moved to 3.1) | dependency updates for `editors/vscode` on a schedule | tools |
+| Headless Neovim on Windows draws no terminal output; the smoke runs the lens's command itself there | smoke tests check commands' output directly and the editor's terminal only where it renders | tools |
+
 ## Next
 Milestone 1 order, items 1-3, each a small commit with its golden test.
