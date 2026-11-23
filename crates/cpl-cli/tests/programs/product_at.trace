@@ -1,0 +1,13 @@
+"variables":{"stdout":{"name":"stdout","type":"what the program printed, a line at a time","kind":"json"},"n":{"name":"n","type":"Int","kind":"scalar"}},"runs":{"fast":{"label":"cpl run","steps":[{"id":0,"line":6,"label":"print → 1 2","stage":"main","values":{"stdout":["1 2"]},"locals":{},"checkpoint":"print 1","frames":[{"fn":"main","line":6}]},
+{"id":1,"line":7,"label":"print → 1 2","stage":"main","values":{"stdout":["1 2","1 2"]},"locals":{},"checkpoint":"print 2","frames":[{"fn":"main","line":7}]},
+{"id":2,"line":8,"label":"print → YES YES","stage":"main","values":{"stdout":["1 2","1 2","YES YES"]},"locals":{},"checkpoint":"print 3","frames":[{"fn":"main","line":8}]},
+{"id":3,"line":9,"label":"var n = 0","stage":"main","values":{"stdout":["1 2","1 2","YES YES"],"n":0},"locals":{},"frames":[{"fn":"main","line":9}]},
+{"id":4,"line":11,"label":"if let q = P.at((Int(r), Int(c) + 1)): n += q.ord","stage":"main","values":{"stdout":["1 2","1 2","YES YES"],"n":1},"locals":{"r":0,"c":0,"q":1},"frames":[{"fn":"main","line":11}]},
+{"id":5,"line":11,"label":"if let q = P.at((Int(r), Int(c) + 1)): n += q.ord","stage":"main","values":{"stdout":["1 2","1 2","YES YES"],"n":3},"locals":{"r":0,"c":1,"q":2},"frames":[{"fn":"main","line":11}]},
+{"id":6,"line":11,"label":"if let q = P.at((Int(r), Int(c) + 1)): n += q.ord","stage":"main","values":{"stdout":["1 2","1 2","YES YES"],"n":7},"locals":{"r":1,"c":0,"q":4},"frames":[{"fn":"main","line":11}]},
+{"id":7,"line":11,"label":"if let q = P.at((Int(r), Int(c) + 1)): n += q.ord","stage":"main","values":{"stdout":["1 2","1 2","YES YES"],"n":12},"locals":{"r":1,"c":1,"q":5},"frames":[{"fn":"main","line":11}]},
+{"id":8,"line":11,"label":"if let q = P.at((Int(r), Int(c) + 1)): n += q.ord","stage":"main","values":{"stdout":["1 2","1 2","YES YES"],"n":19},"locals":{"r":2,"c":0,"q":7},"frames":[{"fn":"main","line":11}]},
+{"id":9,"line":11,"label":"if let q = P.at((Int(r), Int(c) + 1)): n += q.ord","stage":"main","values":{"stdout":["1 2","1 2","YES YES"],"n":27},"locals":{"r":2,"c":1,"q":8},"frames":[{"fn":"main","line":11}]},
+{"id":10,"line":12,"label":"print → 27","stage":"main","values":{"stdout":["1 2","1 2","YES YES","27"],"n":27},"locals":{"r":2,"c":2,"q":8},"checkpoint":"print 4","frames":[{"fn":"main","line":12}]},
+{"id":11,"line":12,"label":"the program ended","stage":"main","values":{"stdout":["1 2","1 2","YES YES","27"],"n":27},"locals":{"r":2,"c":2,"q":8},"checkpoint":"end","frames":[{"fn":"main","line":12}]}]}}}
+stderr:

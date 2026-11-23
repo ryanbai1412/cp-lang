@@ -657,12 +657,7 @@ impl<'a> Lowerer<'a> {
                         None => self.err_expr(span),
                     };
                 }
-                "at" => {
-                    return match self.one_arg("at", args, &Ty::Int, span) {
-                        Some(label) => self.domain_try_label(id, label, span),
-                        None => self.err_expr(span),
-                    };
-                }
+                "at" => return self.domain_at(id, args, span),
                 "nth" => {
                     return match self.one_arg(&name.text, args, &Ty::Int, span) {
                         Some(value) => self.mk(
