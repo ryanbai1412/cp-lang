@@ -13,7 +13,7 @@ A fix that no longer reverse-applies on HEAD is measured at the fix commit with 
 | `ea103bd3` | ir(lower): unify generic aliases, defer elem fallback, fix new() inference | caught | `std-graph/dag-fold-self-loop-is-none.cp`, `std-graph/dag-fold-single-vertex.cp` |
 | `632c70b1` | ir(lower): fix empty array literals and tuple/some comparison hints | caught at fix | `core-04/empty-array-literal-fits-empty-domain.cp`, `std-seq/partition-empty-and-all-kept.cp` |
 | `26df7a03` | ir(lower): lower Slice<S> to view types and fix windows/chunks | caught at fix | `std-seq/chunks-uneven-and-empty.cp`, `std-seq/windows-k-at-and-past-len.cp`, `std-seq/windows-longer-than-list.cp` +2 |
-| `701193ef` | ir(lower): fix 2-arg min/max shadowing and expr-bodied yields fns | missed |  |
+| `701193ef` | ir(lower): fix 2-arg min/max shadowing and expr-bodied yields fns | missed | still missed after `core-11/min-max-beside-seq-min.cp` and `core-07/generator-expression-body-for.cp` (rerun: `0/1 caught`); repro asked of compiler |
 | `98afba3a` | check: reject Bool in print under v0.3 (R10.3.3) | caught at fix | `core-10/bool-not-print.cp`, `core-10/bool-var-not-print.cp`, `core-10/rb1-q39-bool-not-print.cp` |
 | `6a2cfcf8` | interp: accept @droppable; it only silences the unused-result lint | caught | `core-06/droppable-unused-silent.cp` |
 | `aa9d0b11` | syntax: accept where clauses, which 0.3 brings back (R08.2.1) | caught | `core-08/bounds-three-ways.cp` |
