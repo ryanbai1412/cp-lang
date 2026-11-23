@@ -769,7 +769,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - L0606 Wide array of `Int`: 1 case(s)
 - L0607 Large array of padded elements: 1 case(s)
 - L0608 Parentheses do not match the cost: 1 case(s)
-- L0609 cache_field_written_outside: 1 case(s)
+- L0609 A `@cache` field written outside its type: 1 case(s)
 - R0001 Runtime trap: 3 case(s)
 - R0101 Index out of range: 22 case(s)
 - R0102 Value outside a domain: 4 case(s)
