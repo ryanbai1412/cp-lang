@@ -1653,7 +1653,8 @@ fn an_unclosed_paren_offers_each_closer_spot() {
         [
             "insert `)`",
             "insert `)` after `s`",
-            "insert `)` after `s.distinct()`"
+            "insert `)` after `s.distinct()`",
+            "insert `)` right after `(`"
         ]
     );
     let after_s = src.find("(s").unwrap() as u32 + 2;

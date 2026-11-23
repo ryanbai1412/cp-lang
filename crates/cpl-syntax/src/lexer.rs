@@ -494,7 +494,10 @@ impl<'a> Lexer<'a> {
                 };
                 for (at, piece) in others.into_iter().filter(|c| c.0 != fix_at).take(7) {
                     diag.fix(
-                        format!("insert `{close}` after `{piece}`"),
+                        match piece.is_empty() {
+                            true => format!("insert `{close}` right after `{open}`"),
+                            false => format!("insert `{close}` after `{piece}`"),
+                        },
                         Span::point(at as u32),
                         close,
                     );
@@ -601,8 +604,10 @@ impl<'a> Lexer<'a> {
     }
 
     /// Other places the closer may belong, nearest first, then the end of
-    /// the line: before each `.name` or binary operator at depth 0, as in
-    /// `SuffixArray(s.distinct() + 1`. Only types can choose between them.
+    /// the line, then right after the opener: before each `.name`, `,`,
+    /// `!` or binary operator at depth 0, as in `SuffixArray(s.distinct() + 1`,
+    /// or before the `:`, `=` or `=>` that ends the expression. Only types
+    /// can choose between them.
     fn closer_candidates(&self, opener: &Opener, close_at: usize) -> Vec<(usize, String)> {
         use TokenKind::*;
         let tokens = &self.out.tokens;
@@ -631,9 +636,14 @@ impl<'a> Lexer<'a> {
                 LParen | LBracket | LBrace => depth += 1,
                 RParen | RBracket | RBrace => depth = depth.saturating_sub(1),
                 _ if depth > 0 => {}
-                Colon | Eq | OpEq | FatArrow | Arrow | In => return out,
+                Colon | Eq | OpEq | FatArrow | Arrow | In => {
+                    let end = tokens[i - 1].span.end as usize;
+                    out.push((end, piece(end)));
+                    return out;
+                }
                 Dot | Plus | Minus | Star | Slash | Percent | EqEq | NotEq | Lt | LtEq | Gt
-                | GtEq | Spaceship | DotDot | DotDotEq | And | Or | QuestionQuestion => {
+                | GtEq | Spaceship | DotDot | DotDotEq | And | Or | QuestionQuestion | Bang
+                | Comma => {
                     let end = tokens[i - 1].span.end as usize;
                     out.push((end, piece(end)));
                 }
@@ -642,6 +652,7 @@ impl<'a> Lexer<'a> {
         }
         let end = tokens.last().map_or(close_at, |t| t.span.end as usize);
         out.push((end, piece(end)));
+        out.push((opener.span.end as usize, String::new()));
         out
     }
 
