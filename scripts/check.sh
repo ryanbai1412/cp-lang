@@ -453,13 +453,22 @@ step "tech-debt ratchet (scripts/debt-ratchet.py --check)"
 python3 scripts/debt-ratchet.py --check \
     || fail "tech-debt ratchet failed; see scripts/debt-ratchet.json"
 
+# On a main push CI sets CPL_DERIVED_HEALED=1: the regen job in the same run
+# commits these files (and goes red if it can't), so staleness only warns.
+derived() {
+    if [ "${CPL_DERIVED_HEALED:-}" = 1 ]; then
+        echo "warning: $1 (the regen job commits the fix)" >&2
+    else
+        fail "$1"
+    fi
+}
 step "bundled skill (scripts/skill-gen.py --check)"
 uv run python scripts/skill-gen.py --check --cpl "$cpl" \
-    || fail "bundled skill check failed; rerun: uv run python scripts/skill-gen.py, then with --check"
+    || derived "bundled skill check failed; rerun: uv run python scripts/skill-gen.py, then with --check"
 
 step "conformance coverage: COVERAGE.md current, no new rule gaps"
 uv run scripts/conformance-coverage.py --check ||
-    fail "rule coverage gate failed; see above, then rerun: uv run scripts/conformance-coverage.py"
+    derived "rule coverage gate failed; see above, then rerun: uv run scripts/conformance-coverage.py"
 
 step "conformance matrix: generated cases current, every cell a case or n/a"
 uv run scripts/conformance-matrix.py --check || fail "matrix gate failed; see above"

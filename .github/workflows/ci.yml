@@ -78,6 +78,7 @@ jobs:
       - name: Fast gate
         env:
           CPL_GATE_PART: ${{ matrix.part }}
+          CPL_DERIVED_HEALED: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && '1' || '' }}
         run: scripts/check.sh --fast
       - name: Save target/ (${{ matrix.part == 'checks' && 'clippy' || 'dev' }})
         id: stamp
@@ -241,8 +242,11 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          changed=$(scripts/regen.sh)
-          [ -n "$changed" ] || { echo "generated files are current"; exit 0; }
+          changed=$(scripts/regen.sh 2> >(tee regen.err >&2))
+          # The gate only warns on stale generated files on main, so a
+          # generator that fails must turn this job red.
+          failed() { ! grep -q 'regen: failed' regen.err || { echo "::error::a generator failed; see above"; exit 1; }; }
+          [ -n "$changed" ] || { echo "generated files are current"; failed; exit 0; }
           echo "$changed"
           domain=$(git log -1 --format='%(trailers:key=Domain,valueonly,separator=)' HEAD)
           git config user.name "github-actions[bot]"
@@ -254,6 +258,7 @@ jobs:
             sleep 5
           done
           gh workflow run ci.yml --ref main
+          failed
 
   # Timing budgets report here and never turn main red (decision 225).
   timing:
