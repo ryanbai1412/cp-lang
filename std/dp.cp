@@ -13,7 +13,7 @@ use std.algebra.{Monoid}
 
 /// O(1) per evaluation.
 /// The line `k * x + m`, the usual entry of a `LiChao`.
-pub struct Line(k: Int, m: Int):
+pub struct Line(pub k: Int, pub m: Int):
     /// Evaluate the line at `x`: `k * x + m`.
     ///
     /// cost: O(1)

@@ -1320,10 +1320,10 @@ pub fn suffix_array<S: Indexed>(s: S) -> SuffixArray = SuffixArray.new(s)
 
 /// O(1) value. One edge of the compressed suffix tree of a sequence, built in O(n) from SA + LCP.
 pub struct SuffixTreeEdge(
-    top_size: Int,
-    bottom_size: Int,
-    parent_len: Int,
-    edge_len: Int,
+    pub top_size: Int,
+    pub bottom_size: Int,
+    pub parent_len: Int,
+    pub edge_len: Int,
     pub rank_range: Range<Int>,
 )
 
@@ -1427,7 +1427,7 @@ const RH_M2 = 1_000_000_009
 
 /// O(1) space and comparison. A 64-bit double-mod polynomial hash value (`Copy + Eq + Ord + Hash`).
 /// Can itself be fed into another `RollingHash` (e.g. hashing rows into a column hash for 2D grids).
-pub struct HashVal(h1: Int, h2: Int):
+pub struct HashVal(pub h1: Int, pub h2: Int):
     /// One integer that identifies the pair, `(h1 << 31) | h2`, so a `RollingHash` can hash a
     /// sequence of `HashVal` (rows of a grid, say).
     ///

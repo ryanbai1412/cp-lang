@@ -1617,7 +1617,7 @@ pub fn euler_walk<V, E>(edges: [E](u: V, v: V), directed: Bool) -> ?Walk<V, E>:
 
 /// O(1).
 /// A variable or its negation: `Lit(x, true)` is "x holds".
-pub struct Lit<X>(x: X, value: Bool):
+pub struct Lit<X>(pub x: X, pub value: Bool):
     /// The opposite literal: `Lit(x, v).flip == Lit(x, not v)`.
     ///
     /// cost: O(1)
@@ -3469,7 +3469,7 @@ pub struct Functional<V>:
 
 /// O(log n) amortized per edge: 2-edge-connectivity under edge insertions.
 pub struct IncrementalBridges<V>:
-    bridges: Int
+    pub bridges: Int
     _par: List<Int>
     _cc: List<Int>
     _cc_sz: List<Int>
@@ -3606,7 +3606,7 @@ pub struct IncrementalBridges<V>:
 
 /// O(1): one edge of a `Graph`: its id and its ends (as built for a directed graph, first in
 /// `V` order for an undirected one).
-pub struct Edge<V, E>(pub e: E, u: V, v: V)
+pub struct Edge<V, E>(pub e: E, pub u: V, pub v: V)
 
 /// `directed_of_pairs` on named `(u, v)` arcs: neighbour lists indexed by vertex.
 ///

@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-23
+- Main red after 42f3d8496 (E0207 for non-`pub` members): 8 std cases read std fields decision 365's marking left private (`Line.k/m`, `Edge.u/v`, `Lit.x/value`, `HashVal.h1/h2`, `IncrementalBridges.bridges`, `SuffixTreeEdge` sizes); marked them `pub`, they pass. `core-07/costs-show-getters-vs-calls` printed a `?Int`, which R10.3 now rejects: it prints `xs.first ?? 0`. Dropped 10 known gaps that now pass (core-08 trait satisfaction, core-11 members and inline mods, dual SegTree).
 - Checkpoint 02:25: landed rebuild-13 triage (975db6863, decision 366), rebuild-14 triage (3c0c95b43: 7 holes, 0 contradictions; seeded `fold` and list-of-pairs `print` routed to compiler) and bug-catch round 11 (dbe8e9d85, 8/9). Next: rebuild round 15 (dbe8e9d85, now also runs the C++ backend), then its triage.
 - Bug-catch round 11 (rerun at ff7970052): 8/9 fixes caught (4 at HEAD, 4 at fix). The miss, e8675309, only reorders a tracer check for speed (no observable change), so conformance cannot catch it; 8/8 behaviour-changing fixes caught.
 - Rebuild round 14 (387d89061): 7 holes (r13: 13), 5 silent, 0 contradiction, 2 missing-stdlib, plus 14 found-late; 9/10 solutions check and pass their samples. All 5 silent guesses ran as guessed; now written down (comprehension clauses and `if` elements, swapping array places, `print(Str)`, `s[i] = c`, `sorted()` keys, seeded `fold` row). 7 cases: 5 pass, `fold-with-init` and `print-list-of-pairs-one-line` fail (compiler).

@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- From spec (2026-11-23): after 42f3d8496, 8 conformance cases failed E0207 on std fields decision 365 left private; spec marked `Line(k, m)`, `Edge.u/v`, `Lit(x, value)`, `HashVal(h1, h2)`, `IncrementalBridges.bridges` and `SuffixTreeEdge`'s sizes `pub`. General fix owed (stdlib): count names used in `spec/lib/` and `spec/conformance/` as "named outside the module" when deciding what is `pub`, and rerun the marking.
 - Request from site: spec W10 (`spec/core/12-powers.md`) writes a custom identity as `SegTree(op: f, id: e)`, but `SegTree.new` has no `id:` parameter (E0310); std takes `Monoid(id, op)`. One of spec or std should change so they agree. `/learn/language/library-powers` uses `Monoid(1, f)` since it runs.
 - Sheriff (infra): the trait gate failed gate (checks) on run 45125619295: `IndexOp/Disjoint/at` and `IndexOp/Disjoint/len` (from f56963d96) had no conformance case. They are recorded as gaps in `spec/conformance/trait-gaps.txt`; write the two cases and drop the gap lines.
 - Owed (infra's new port-check gate): `corpus/problems/cf1943b/port.cp` fails `cpl check` (E0203, `[Pos]Char` has no `nth` that `cpl run` knows, via `manacher(s)`); it starts in `corpus/port-check-failing.txt`; fix it and run `scripts/port-check.sh --update`.
