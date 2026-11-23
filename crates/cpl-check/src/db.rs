@@ -1173,8 +1173,11 @@ impl Database {
             text: text.clone(),
             lines,
             has_syntax_errors,
-            diagnostics: crate::check::drop_mut_cascades(
-                crate::check::rename_values(sink.finish(), &ranges, &checks, &text),
+            diagnostics: crate::check::declare_on_first_assignment(
+                crate::check::drop_mut_cascades(
+                    crate::check::rename_values(sink.finish(), &ranges, &checks, &text),
+                    &text,
+                ),
                 &text,
             ),
             items: ranges

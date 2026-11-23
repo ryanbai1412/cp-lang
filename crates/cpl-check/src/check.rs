@@ -951,7 +951,9 @@ impl<'a> Checker<'a> {
         } else {
             None
         };
+        let assigned = value && self.assigning_name == Some(span);
         let message = match (value, unknown) {
+            _ if assigned => format!("`{name}` is assigned before it is declared"),
             (true, false) => format!("no `{name}` in scope"),
             (false, false) => format!("no type or domain named `{name}`"),
             (true, true) => format!("no `{name}` in scope, and not in the stdlib (yet)"),
@@ -1062,6 +1064,18 @@ impl<'a> Checker<'a> {
                         title: format!("change to `{s}` and add `{import}`"),
                         edits: vec![(Span::point(0), format!("{import}\n")), (span, s)],
                     });
+                }
+                None if assigned => {
+                    // `declare_on_first_assignment` makes it `var` when assigned again.
+                    let kw = "let";
+                    diag.help = Some(format!(
+                        "a name is declared where it first gets a value: `{kw} {name} = ...`"
+                    ));
+                    diag.fix(
+                        format!("declare `{name}` with `{kw}`"),
+                        Span::point(span.start),
+                        format!("{kw} "),
+                    );
                 }
                 None if value => {
                     diag.help = Some(format!("declare it first: `let {name} = todo`"));
@@ -1311,6 +1325,18 @@ impl<'a> Checker<'a> {
     }
 }
 
+/// Whether `line` assigns `name`: `name = ..`, `name += ..`, `name min= ..`.
+fn assigns(line: &str, name: &str) -> bool {
+    let Some(rest) = line.strip_prefix(name) else {
+        return false;
+    };
+    let rest = rest.trim_start();
+    let op = rest.trim_start_matches(|c: char| c.is_alphabetic() || "+-*/%&|^<>".contains(c));
+    let word_ends =
+        !rest.starts_with(|c: char| c.is_alphanumeric() || c == '_') || op.len() < rest.len();
+    word_ends && op.starts_with('=') && !op.starts_with("==")
+}
+
 /// The `let` keyword on the line of `name` in `src`, before it: where
 /// "declare it with `var`" edits.
 /// "declare it with `var`", pointing at the `let` and offering the change.
@@ -1332,6 +1358,67 @@ pub(crate) fn declare_with_var(
             edits: vec![(at, "var".into())],
         });
     }
+}
+
+/// Python's `best = 0` with no `let`: every later `best = ..` and read of
+/// `best` is the same root cause, so only the first assignment keeps its
+/// error, and its fix declares `var` when `best` is assigned again
+/// (errors/R1). Runs on the whole file, as each top-level statement is
+/// checked as its own item.
+pub(crate) fn declare_on_first_assignment(
+    mut diags: Vec<Diagnostic>,
+    src: &str,
+) -> Vec<Diagnostic> {
+    const ASSIGNED: &str = "` is assigned before it is declared";
+    let assigned = |d: &Diagnostic| {
+        let name = d.message.strip_prefix('`')?.strip_suffix(ASSIGNED)?;
+        (d.code == codes::UNRESOLVED_NAME).then(|| name.to_string())
+    };
+    let named = |d: &Diagnostic| {
+        let (name, rest) = d.message.strip_prefix("no `")?.split_once('`')?;
+        (d.code == codes::UNRESOLVED_NAME && rest.starts_with(" in scope"))
+            .then(|| name.to_string())
+    };
+    let mut first: HashMap<String, Span> = HashMap::default();
+    for d in &diags {
+        if let Some(name) = assigned(d) {
+            let at = first.entry(name).or_insert(d.span);
+            if d.span.start < at.start {
+                *at = d.span;
+            }
+        }
+    }
+    diags.retain(
+        |d| match assigned(d).or_else(|| named(d)).and_then(|n| first.get(&n)) {
+            Some(at) => d.span == *at || d.span.start < at.start,
+            None => true,
+        },
+    );
+    for d in &mut diags {
+        let Some(name) = assigned(d) else { continue };
+        let later = src.get(d.span.end as usize..).unwrap_or_default();
+        if !later
+            .lines()
+            .skip(1)
+            .any(|l| assigns(l.trim_start(), &name))
+        {
+            continue;
+        }
+        let let_ = format!("`let {name}");
+        d.help = d
+            .help
+            .take()
+            .map(|h| h.replace(&let_, &format!("`var {name}")));
+        for fix in &mut d.fixes {
+            fix.title = fix.title.replace("`let`", "`var`");
+            for (_, text) in &mut fix.edits {
+                if text == "let " {
+                    *text = "var ".to_string();
+                }
+            }
+        }
+    }
+    diags
 }
 
 /// Drops "`f` doesn't change `a`, so `mut` doesn't belong here" at a call
