@@ -1781,3 +1781,18 @@ fn a_c_for_header_is_one_error_with_a_range_fix() {
         Vec::<&str>::new()
     );
 }
+
+#[test]
+fn an_unindented_body_line_is_read_as_the_body() {
+    let file = parse_file("let n = 3\nfor i in 0..n:\nprint(i)\nprint(n)\n");
+    assert_eq!(
+        file.diagnostics
+            .iter()
+            .map(|d| d.code.0)
+            .collect::<Vec<_>>(),
+        ["E0104"]
+    );
+    assert_eq!(file.items.len(), 3, "{:?}", file.items);
+    let nested = "fn f(x: Int) -> Int:\n    for i in 0..x:\n    print(i)\n    x\n";
+    assert_eq!(codes(nested), ["E0104"]);
+}

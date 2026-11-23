@@ -40,7 +40,9 @@ pub fn split_items(tokens: &[Token]) -> Vec<ItemRange> {
                 T::Dedent => depth -= 1,
                 T::Newline if depth == 0 && brackets == 0 => {
                     let next = tokens.get(i + 1).map_or(T::Eof, |t| t.kind);
-                    let continues = decorator_line || matches!(next, T::Indent | T::Elif | T::Else);
+                    let continues = decorator_line
+                        || matches!(next, T::Indent | T::Elif | T::Else)
+                        || body_left_unindented(tokens, first, i);
                     if !continues {
                         i += 1;
                         break;
@@ -85,4 +87,23 @@ fn is_directive_line(tokens: &[Token], i: usize) -> bool {
         || (tokens.get(i).is_some_and(|t| t.kind == T::Minus)
             && tokens.get(i + 1).is_some_and(|t| t.kind == T::Minus)
             && tokens.get(i + 2).is_some_and(|t| t.kind == T::Minus))
+}
+
+/// `for i in 0..n:` with the next line not indented under it: that line is
+/// read as its body (the parser reports the missing indent once), so the
+/// names the header binds stay in scope.
+fn body_left_unindented(tokens: &[Token], first: usize, newline: usize) -> bool {
+    let header = matches!(tokens[first].kind, T::For | T::While | T::If);
+    let after = &tokens[newline + 1..];
+    let line_end = after
+        .iter()
+        .position(|t| matches!(t.kind, T::Newline | T::Eof));
+    header
+        && newline > first
+        && tokens[newline - 1].kind == T::Colon
+        && !matches!(
+            after.first().map(|t| t.kind),
+            None | Some(T::Indent | T::Dedent | T::Eof | T::Newline)
+        )
+        && line_end.is_some_and(|e| e > 0 && after[e - 1].kind != T::Colon)
 }

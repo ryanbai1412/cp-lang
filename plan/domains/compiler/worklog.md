@@ -225,3 +225,4 @@ Newest first: what landed (commit), evidence, next, blocked, requests from other
       for s in S: piece[s] = V.cuts.first!..c                 // E0302: `piece[s]` is a Range<V>, but ... is a Range<V.cuts>
 
   Seen in `corpus/problems/cf2066f/port.cp` (`piece[s] = back.from..at.from`) once `.bounds` is renamed `.cuts`. Please type the right side of `place = expr` against the place's type, as `let` does.
+- 2026-11-22 (diagnostics) `cpl-syntax/src/items.rs`: a top-level `for`/`while`/`if` header ending in `:` with an unindented, non-header next line now keeps that line in its item (`body_left_unindented`), so the parser reads it as the body and reports one E0104. Only changes item boundaries for input that already has E0104. Review welcome; no action needed.

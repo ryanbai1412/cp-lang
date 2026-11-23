@@ -1748,6 +1748,26 @@ impl<'a> Parser<'a> {
                 let span = Span::new(at.start - lead as u32, at.start);
                 diag = diag.with_fix("indent the next line", span, " ".repeat(indent + 4));
             }
+            let text = &self.src[abs(at.start)..abs(at.end)];
+            let simple = lead == indent && at.start != at.end && !text.ends_with(':');
+            if simple
+                && self.at(T::Newline)
+                && !matches!(self.peek_n(1), T::Indent | T::Dedent | T::Eof)
+            {
+                self.error(diag);
+                self.bump();
+                let start = self.start();
+                let mut stmts = Vec::new();
+                self.stmt_into(&mut stmts);
+                // The header's own statement ends at the body's newline.
+                if self.tokens[self.pos - 1].kind == T::Newline {
+                    self.pos -= 1;
+                }
+                return Block {
+                    stmts,
+                    span: self.span_from(start),
+                };
+            }
             self.error(diag);
             return Block {
                 stmts: Vec::new(),
