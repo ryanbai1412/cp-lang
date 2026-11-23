@@ -1222,7 +1222,9 @@ pub struct MergeSegs<D>:
     /// example: `var p = MergeSegs<0..10>(); var m = p.merge(p.singleton(7), p.singleton(3)); p.first_alive(mut m, x => true) == Some(3)`
     pub fn merge(mut self, a: MergeSeg<D>, b: MergeSeg<D>) -> MergeSeg<D> = MergeSeg(self.cat(a.root, b.root, 0, D.count))
 
-    /// The smallest position `x` in `s` with `alive(x)`, or `None`. Every position found dead on the
+    /// The smallest position `x` in `s` with `alive(x)`, or `None`.
+    ///
+    /// Every position found dead on the
     /// way is removed for good, from `s` and from every set sharing its nodes, so `alive` must be
     /// monotone over time: a position never comes back to life.
     ///

@@ -330,7 +330,9 @@ pub struct Graph<V: Domain, A: Target<V>>:
                 yield arcs[i].to
 
     /// The induced view on the vertices `keep` accepts: arcs from or to a rejected vertex are
-    /// skipped. `from` also skips the arcs leaving a vertex it rejects, so that vertex can be
+    /// skipped.
+    ///
+    /// `from` also skips the arcs leaving a vertex it rejects, so that vertex can be
     /// reached but not left. Rejected vertices stay in `V` with no arcs. See the free `only`.
     ///
     /// cost: \(O(1)\) to make; `keep` and `from` run per arc walked
@@ -3726,7 +3728,9 @@ pub fn adjacency<V>(arcs: List<(u: V, v: V)>) -> [V]List<V>:
     adj
 
 /// The graph restricted to the vertices `keep` accepts: arcs from or to a dropped vertex
-/// are skipped as `out` walks. `from` drops only the arcs leaving a vertex it rejects, so
+/// are skipped as `out` walks.
+///
+/// `from` drops only the arcs leaving a vertex it rejects, so
 /// the vertex can be reached but not left. A view; vertices keep their domain.
 ///
 /// cost: \(O(1)\) to make; `keep` and `from` run per arc walked

@@ -20,7 +20,9 @@ use std.segtree.{SegTree}
 use std.seq.{collect, dedup, drop, first_true, get_or_insert, span, take}
 use std.math.{bit}
 
-/// A BFS spanning tree rooted at `V.first`, as a `Rooted`. Each vertex's parent is the
+/// A BFS spanning tree rooted at `V.first`, as a `Rooted`.
+///
+/// Each vertex's parent is the
 /// vertex whose arc first reached it, scanning vertices in BFS order and arcs in input
 /// order. Any graph works: a `Graph`, or the adjacency list `Graph.undirected` gives for edges
 /// indexed by a plain range. A forest is `spanning_forest`.
