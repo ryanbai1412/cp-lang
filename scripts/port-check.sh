@@ -8,7 +8,10 @@ set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
 update=0
 [ "${1:-}" != --update ] || { update=1; shift; }
-cpl=${1:-target/debug/cpl}
+# Default: the newest of the debug and release builds, so a stale one never
+# reports false regressions.
+cpl=${1:-$(ls -t target/release/cpl target/debug/cpl 2>/dev/null | head -1)}
+cpl=${cpl:-target/debug/cpl}
 list=corpus/port-check-failing.txt
 jobs=$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 4)
 start=$(date +%s)

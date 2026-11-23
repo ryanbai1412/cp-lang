@@ -200,5 +200,16 @@ class DebtRatchetTest(unittest.TestCase):
             self.assertEqual(dr.main(["--check", "--root", str(root), "--ratchet", str(ratchet)]), 0)
 
 
+    def test_debt_already_on_main_is_not_this_changes_error(self):
+        base = {"lint_std_names": 10, "rs_file_size_allowlist": {"a.rs": 2100}}
+        main = {"lint_std_names": 12, "rs_file_size_allowlist": {"a.rs": 2200}}
+        eff = dr.inherited_baseline(base, main)
+        same = {"lint_std_names": 12, "rs_file_size_allowlist": {"a.rs": 2200}}
+        self.assertEqual(dr.evaluate(same, eff)[0], [])
+        more = {"lint_std_names": 13, "rs_file_size_allowlist": {"a.rs": 2201}}
+        self.assertEqual(len(dr.evaluate(more, eff)[0]), 2)
+        self.assertEqual(base["lint_std_names"], 10)
+
+
 if __name__ == "__main__":
     unittest.main()
