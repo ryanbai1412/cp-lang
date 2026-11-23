@@ -90,11 +90,13 @@ def ci_only(path):
 def select(paths, dirs):
     sel = {"all": False, "reason": "", "packages": [], "rust_files": [],
            "script_tests": [], "site": False, "conform_cases": [], "data_filter": "",
-           "check_files": [], "audit": False}
+           "check_files": [], "audit": False, "idioms_catalog": False}
     packages, tests, data = set(), set(), []
     for path in paths:
         if path.startswith("corpus/problems/"):
             sel["audit"] = True
+        if path.startswith(("spec/idioms/", "std/", "crates/cpl-check/src/")):
+            sel["idioms_catalog"] = True
         crate = next((n for d, n in dirs.items() if path.startswith(d)), None)
         if path.endswith(".rs"):
             sel["rust_files"].append(path)
@@ -169,6 +171,7 @@ def main(argv):
     print("data_filter=" + sel["data_filter"])
     print("check_files=" + " ".join(sel["check_files"]))
     print(f"audit={int(sel['audit'])}")
+    print(f"idioms_catalog={int(sel['idioms_catalog'])}")
     return 0
 
 

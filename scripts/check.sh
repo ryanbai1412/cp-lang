@@ -407,6 +407,11 @@ if [ "$mode" = commit ]; then
         uv run --quiet python corpus/differential.py --check --changed staged --cpl "$cpl" \
             || fail "a staged port's cpl run disagrees with its C++; the finding above names the port and test"
     fi
+    if [ "${sel_idioms_catalog:-0}" = 1 ]; then
+        step "lint catalog names only real APIs (scripts/idioms-catalog.py --check)"
+        uv run --quiet python scripts/idioms-catalog.py --check \
+            || fail "a spec/idioms/lints.md row names an API std doesn't define; the finding above names the lint and the name"
+    fi
     if [ -n "$sel_script_tests" ]; then
         step "script unit tests: $sel_script_tests"
         read -ra tests <<<"$sel_script_tests"

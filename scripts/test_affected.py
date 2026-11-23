@@ -63,6 +63,11 @@ class AffectedTest(unittest.TestCase):
         self.assertTrue(self.sel("corpus/problems/cf2/spec.cp")["audit"])
         self.assertFalse(self.sel("research/acceptance/solutions/x/linux/cf1.cp")["audit"])
 
+    def test_idioms_std_and_checker_changes_run_the_lint_catalog_check(self):
+        for path in ("spec/idioms/lints.md", "std/seq.cp", "crates/cpl-check/src/lib.rs"):
+            self.assertTrue(self.sel(path)["idioms_catalog"], path)
+        self.assertFalse(self.sel("crates/cpl-lint/src/lib.rs")["idioms_catalog"])
+
     def test_acceptance_and_perf_programs_get_cpl_check_only(self):
         s = self.sel("research/acceptance/solutions/2026-11-23-5/linux/cf1.cp",
                      "corpus/problems/cf2/perf.cp")
