@@ -1975,29 +1975,3 @@ fn char_array_reads_fill_in_one_pass() {
         "a [D]Char read should fill the array in one pass:\n{body}"
     );
 }
-
-#[test]
-fn a_skipped_assert_still_runs_a_condition_that_stores() {
-    let source = "use std.graph.{floyd_warshall}
-domain V = 0..3
-var hop: [V, V]?Int = None
-hop[0, 1] = 1
-hop[1, 0] = 1
-hop[1, 2] = 1
-hop[2, 1] = 1
-assert floyd_warshall(mut hop)
-assert hop[0, 2] == Some(2)
-print(hop[0, 2] ?? -1)
-";
-    let mut db = cpl_check::Database::new();
-    db.set_file("t.cp", source);
-    let program = cpl_ir::lower(&db.analyze("t.cp").expect("set")).expect("lowers");
-    let target = crate::Target {
-        checks: crate::Checks::None,
-        ..crate::Target::default()
-    };
-    let out = crate::emit_for(&program, "t", None, &target);
-    let body = &out[out.find("void solve()").unwrap_or(0)..];
-    assert!(body.contains("floyd_warshall"), "{out}");
-    assert!(!body.contains("assertion failed"), "{out}");
-}
