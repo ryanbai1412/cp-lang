@@ -1,0 +1,108 @@
+---
+title: "Number theory and modular arithmetic"
+description: "Mod<P> values, pow_mod, Comb, Sieve and Mat powers: answers modulo a prime without a % in sight."
+---
+
+"Print the answer modulo 10⁹ + 7" is the most common output line in
+competitive programming, and a forgotten `% MOD` after one product is one
+of its most common wrong answers. In CP Lang the modulus is part of the
+type: declare it once, and every operation on those values reduces.
+
+## `Mod<P>`
+
+`type Z = Mod<1_000_000_007>` names the residues modulo P. `Z(x)` turns an
+integer into one, and from then on `+`, `-`, `*`, `/` and `**` stay
+modulo P. A negative value wraps to its residue, and `/` multiplies by
+the inverse, so dividing by 2 gives 500000004 rather than 0:
+
+```cp run
+type Z = Mod<1_000_000_007>
+let half = Z(1) / Z(2)
+print(half)
+print(half * Z(2))
+print(Z(-1))
+print(Z(2) ** 100)
+```
+
+There's no `% MOD` to forget: a `Z` can't be added to a plain `Int`
+without saying `Z(...)`, so mixing a reduced and an unreduced value is a
+type error rather than a wrong answer on test 40.
+
+## Powers, and exponents modulo P − 1
+
+`Z(a) ** k` is fast exponentiation, O(log k). When the exponent is itself
+a power, reduce it modulo P − 1 (Fermat) with `pow_mod`, which works on
+plain integers with any modulus:
+
+```cp run input="3\n3 7 1\n15 2 2\n3 4 5\n"
+const P = 1_000_000_007
+type Z = Mod<P>
+@!multitest
+let (a, b, c): (1..=1e9, 0..=1e9, 0..=1e9) = read()
+print(Z(a) ** pow_mod(b, c, P - 1))
+```
+
+## Binomials: `Comb`
+
+`Comb<Z>(n)` precomputes factorials and inverse factorials up to n in
+O(n), and `c.choose(n, k)` is then O(1). It returns 0 when k > n, which is
+what counting formulas want:
+
+```cp run input="3\n5 2\n10 0\n3 5\n"
+type Z = Mod<1_000_000_007>
+let q: 1..=2e5 = read()
+let c = Comb<Z>(1e6)
+for _ in 0..q:
+    let (n, k): (0..=1e6, 0..=1e6) = read()
+    print(c.choose(n, k))
+```
+
+## Primes: `Sieve`
+
+`Sieve(n)` sieves `0..=n` once in O(n). `is_prime` is then O(1), and with
+a prefix sum over the result, counting primes in a range is O(1) too:
+
+```cp run input="2\n1 10\n10 20\n"
+const N = 100_000
+let sv = Sieve(N)
+let pre = Prefix([1..=N] k => if sv.is_prime(k): 1 else: 0)
+@!multitest
+let (l, r): (1..=1e5, 1..=1e5) = read()
+print(pre.fold(l..=r))
+```
+
+The sieve and the prefix sum sit above `@!multitest`, so they're built
+once for all test cases, not once per test.
+
+## Linear recurrences: `Mat`
+
+A linear recurrence is a matrix power. `Mat<Z>.of(rows)` builds a small
+matrix and `**` raises it in O(k³ log n), so the 10¹⁸-th Fibonacci number
+is three lines:
+
+```cp run input="10\n"
+type Z = Mod<1_000_000_007>
+let n: 0..=1e18 = read()
+let step = Mat<Z>.of([[Z(1), Z(1)], [Z(1), Z(0)]])
+print((step ** n).get(0, 1))
+```
+
+## Why it's designed this way
+
+- **The modulus is a type, not a habit.** The C++ habit is a global `MOD`
+  and a `% MOD` after every operation. One missed reduction overflows
+  silently. A `ModInt` class fixes that in C++, but each contestant
+  writes their own. `Mod<P>` is that class in the standard library, with
+  the modulus as a type parameter, so two moduli in one program are two
+  types that don't mix.
+- **Division means the inverse.** `/` on `Mod<P>` multiplies by the
+  modular inverse, because that's the only division that makes sense on
+  residues. Integer division of a residue is never what a formula means.
+- **Precomputation is a value you name.** `Sieve(n)` and `Comb<Z>(n)`
+  take their bound explicitly, so the cost (O(n) time and memory) is
+  visible where it's paid, and building them above `@!multitest` shares
+  them across tests.
+
+Practice: [Choose](/learn/practice/choose), [Power tower](/learn/practice/power-tower),
+[Prime count](/learn/practice/prime-count), [Prime ranges](/learn/practice/prime-ranges)
+and [Fibonacci mod](/learn/practice/fibonacci-mod).

@@ -13,6 +13,7 @@
     "graphs",
     "dynamic-programming",
     "stress-and-trace",
-    "range-queries-and-trees"
+    "range-queries-and-trees",
+    "number-theory-and-mod"
   ]
 }

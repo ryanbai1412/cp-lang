@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- 2026-11-23: M2 Learn: Read chapter 13, Number theory and modular arithmetic (Mod<P>, /, **, pow_mod, Comb, Sieve, Mat), examples from judged practice refs; Choose, Power tower, Prime count, Prime ranges and Fibonacci mod now follow it.
 - 2026-11-23: M2 Learn for Div 2 C+: new Read chapter 12, Range queries and trees (SegTree, act:, SparseTable, Fenwick, Rooted depth/lca/ancestor/subtree_sizes), every example the reference solution of a judged practice problem; those 7 problems now follow chapter 12. Build, gate (877 snippets) and links pass.
 - 2026-11-23: site CI time: gen-ref ran both of a doc example's programs (print, then assert); it now runs the assert only where print failed. 5,421 -> 3,712 programs, 21 s -> 12 s locally (cold cache), same 41 static. The site job is ~4m12s against the 3 min budget; overlapping the cpl and wasm builds is with infra.
 - 2026-11-23: lint pages: examples that read input now run, on a small random case from their `read()` types made at build time by a new `sample` call in cpl-build.wasm (the generator `cpl stress` uses). Write instead runs on 121 of 123 lints, up from 62; 184 examples get an input. 7 can't yet: the stress generator can't evaluate `10**12` or `1 << n` in a bound (sent to debugger). Smoke runs hand_rolled_gcd's Write instead on its input.
