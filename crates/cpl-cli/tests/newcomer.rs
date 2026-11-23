@@ -163,6 +163,21 @@ const HABITS: &[(&str, Habit)] = &[
         let new = format!("{}{}", &ls[head][..w], ls[i].trim_start());
         Some(replace_line(ls, i, new))
     }),
+    // A paste that keeps the indentation of the copied context.
+    ("a stray extra indent", |ls, i| {
+        let prev = ls[..i].iter().rposition(|l| !l.trim().is_empty())?;
+        let l = code(ls[i]).trim_end();
+        let p = code(ls[prev]).trim_end();
+        let shape = |s: &str| !s.trim().is_empty() && !s.ends_with([':', ',', '(', '[', '{']);
+        (indent(ls[i]) == indent(ls[prev]) && shape(l) && shape(p) && !header(ls[prev]))
+            .then_some(())?;
+        let t = l.trim_start();
+        (!["elif", "else", ")", "]", "}", "."]
+            .iter()
+            .any(|k| t.starts_with(k)))
+        .then_some(())?;
+        Some(replace_line(ls, i, format!("    {}", ls[i])))
+    }),
     ("`let` for a changed `var`", |ls, i| {
         let rest = ls[i].trim_start().strip_prefix("var ")?;
         let end = rest.find(|c: char| !(c.is_alphanumeric() || c == '_'))?;
@@ -370,7 +385,7 @@ fn newcomer_scoreboard() {
     );
     // Bars at the measured values; raise them as fixes land.
     assert!(
-        all.copies >= 191,
+        all.copies >= 250,
         "the newcomer copies went missing ({})",
         all.copies
     );
