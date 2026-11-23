@@ -288,7 +288,6 @@ documented. The stdlib's own gaps are in `std/GAPS.md`.
 - core-11/prelude-has-components.cp: compiler
 - core-11/runtime-domain-use-before-definition.cp: compiler
 - core-11/strings-table-in-prelude.cp: compiler
-- core-13/build-warns-near-size-limit.cp: compiler
 - diagnostics/graph-edge-field-names.cp: diagnostics
 - diagnostics/sum-of-str.cp: diagnostics
 - std-graph/dfs-shares-seen.cp: stdlib
@@ -298,7 +297,6 @@ documented. The stdlib's own gaps are in `std/GAPS.md`.
 - std-segtree/closure-op-picks-index.cp: compiler
 - std-strings/split-trailing-and-leading.cp: stdlib
 - std-seq/split-on-separator-predicate.cp: stdlib
-- core-06/check-multitest-reads-own-shape.cp: tools
 - core-05/chunks-walk-lends-parent.cp: compiler
 - core-05/windows-walk-lends-parent.cp: compiler
 - core-05/runs-walk-lends-parent.cp: compiler
