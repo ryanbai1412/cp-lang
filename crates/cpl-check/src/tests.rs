@@ -1591,11 +1591,15 @@ fn a_fn_cant_be_handed_what_it_changes_directly() {
     for rest in [
         "fn grow_and_sum(ys: List<Int>) -> Int:\n    xs.push(99)\n    sum(ys)\nprint(grow_and_sum(xs))\n",
         "fn go(x: Int, i: V):\n    a[i] += x\ngo(a[l], l)\n",
-        "fn go(mut x: Int, y: Int):\n    x += y\ngo(mut a[l], a[r])\n",
+        "fn go(mut x: Int, y: Int):\n    x += y\nif l != r: go(mut a[l], a[r])\n",
+        "fn go(mut xs: [V]Int, y: Int):\n    xs[l] += y\ngo(mut a, a[r])\n",
     ] {
         let src = with_globals(rest);
         assert!(codes(&src).is_empty(), "{rest}: {:?}", check(&src));
     }
+    // A read of an element that may be the `mut` one is an access too (R9).
+    let src = with_globals("fn go(mut x: Int, y: Int):\n    x += y\ngo(mut a[l], a[r])\n");
+    assert_eq!(codes(&src), vec!["E0601"]);
 }
 
 #[test]

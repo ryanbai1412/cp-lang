@@ -1308,20 +1308,19 @@ impl<'a> Checker<'a> {
         if args.len() < 2 || !args.iter().any(|a| a.mutable) {
             return;
         }
-        let mut lent: Vec<(&Arg, Place)> = Vec::new();
+        let mut lent: Vec<(&Arg, Place, bool)> = Vec::new();
         for arg in args {
-            let Some(place) = self.place(&arg.value) else {
-                continue;
-            };
-            if !self.by_reference(arg) {
-                continue;
+            if let Some(place) = self.place(&arg.value) {
+                lent.push((arg, place, !self.by_reference(arg)));
             }
-            lent.push((arg, place));
         }
         for second in 1..lent.len() {
             for first in 0..second {
-                let ((a, p), (b, q)) = (&lent[first], &lent[second]);
-                if !(a.mutable || b.mutable) || p.root != q.root {
+                let ((a, p, a_copy), (b, q, b_copy)) = (&lent[first], &lent[second]);
+                // A copied read beside a `mut` lend conflicts if it may be the same storage
+                // (`f(mut a[i], a[j])`, R9), not as a part read first (`f(mut a, a.len)`, R11).
+                let part = (*a_copy || *b_copy) && p.steps.len() != q.steps.len();
+                if !(a.mutable || b.mutable) || p.root != q.root || part {
                     continue;
                 }
                 let (p, q) = (p.steps.clone(), q.steps.clone());
