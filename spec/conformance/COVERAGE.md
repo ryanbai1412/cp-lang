@@ -7,11 +7,11 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 3077 (1092 passing). Rules: 583.
+Cases: 3078 (1092 passing). Rules: 583.
 
 ## Summary per chapter
 
-- R01 (01-lexical-grammar.md): 57 rules, 174 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R01 (01-lexical-grammar.md): 57 rules, 175 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R02 (02-values-types.md): 52 rules, 152 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R03 (03-numbers-layout.md): 24 rules, 116 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04 (04-indices.md): 73 rules, 183 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -114,7 +114,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R01.6.5 [2+ 0-]: `return e` exists for early exits; a block's value is its last expression. At top level `r...
 - R01.6.6 [1+ 1-]: `assert cond` and `assert cond, "message {x}"`: checked builds only, unless opted in for r...
 - R01.6.7 [3+ 2-]: `todo` is an expression of any type that traps when run; library stubs use it as a body.
-- R01.7.1 [6+ 1-]: `if let` / `while let` bind in headers; `x is pat` (with `and cond`) is the value-position...
+- R01.7.1 [6+ 2-]: `if let` / `while let` bind in headers; `x is pat` (with `and cond`) is the value-position...
 - R01.7.2 [4+ 1-]: `for` and `while` (there is no `loop`: `while true:` with a `break` is the loop that exits...
 - R01.7.3 [3+ 2-]: `match` is exhaustive over enums, literal unions, `Bool` and `?T`. Arms may have guards `p...
 - R01.7.4 [1+ 0-]: Loops over library generators support `break`, `continue`, `return`, labels and `else` exa...
@@ -740,7 +740,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0104 Expected indented block: 2 case(s)
 - E0105 Expected type: 2 case(s)
 - E0106 Expected pattern: 1 case(s)
-- E0107 Unexpected token: 10 case(s)
+- E0107 Unexpected token: 11 case(s)
 - E0108 Expected identifier: 1 case(s)
 - E0109 Unmatched closing delimiter: 1 case(s)
 - E0110 Unparenthesized `??` with arithmetic: 1 case(s)
