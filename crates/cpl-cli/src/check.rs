@@ -62,18 +62,6 @@ pub(crate) fn check(args: &[&str], stdout: &mut (dyn Write + Send), stderr: &mut
     code
 }
 
-/// The errors `cpl check` prints for `text` read as the file at `path`;
-/// `cpl lint` shows this same list.
-pub(crate) fn reported_errors(path: &std::path::Path, text: &str) -> Vec<cpl_diag::Diagnostic> {
-    let key = path.to_string_lossy();
-    let mut db = cpl_check::Database::new();
-    db.set_file(&key, text);
-    let analysis = db.analyze(&key).expect("the file was just set");
-    let mut out = cpl_ir::reported(&analysis);
-    out.retain(|d| d.severity == cpl_diag::Severity::Error);
-    out
-}
-
 /// `text` with the lint fixes `cpl lint --fix` would make, and how many.
 fn apply_lint_fixes(db: &mut cpl_check::Database, path: &str, text: String) -> (String, usize) {
     let (config, _) = cpl_lint::Config::discover(std::path::Path::new(path));

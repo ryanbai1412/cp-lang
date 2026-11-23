@@ -20,7 +20,7 @@ pub(crate) fn lint(
         stdout,
         stderr,
         Some(&lint_files),
-        Some(&crate::check::reported_errors),
+        Some(&|analysis: &cpl_check::Analysis| cpl_ir::reported(analysis)),
     )
 }
 

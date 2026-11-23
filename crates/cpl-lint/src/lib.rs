@@ -38,7 +38,9 @@ mod walk;
 
 pub mod cli;
 
-pub use checker::{check_errors, checked, checker_lints, Checked, CheckerLint, CHECKER_LINTS};
+pub use checker::{
+    check_errors, checked, checked_analysis, checker_lints, Checked, CheckerLint, CHECKER_LINTS,
+};
 pub use config::{Config, ConfigError};
 pub use facts::Facts;
 pub use typed::{apply_lint_fixes, lint_analysis, refine_with_analysis};
@@ -707,15 +709,23 @@ pub fn fix_removed_syntax(src: &str) -> (String, usize) {
 /// removed syntax (such as `Range.lo`/`.hi` -> `.start`/`.end`, leaving user
 /// struct fields named `lo`/`hi` untouched) and a getter called with `()`.
 pub fn fix_checked_removed_syntax(path: Option<&std::path::Path>, src: &str) -> (String, usize) {
-    let mut src = src.to_string();
-    let mut total = 0;
     let key = path
         .map(|p| p.to_string_lossy().into_owned())
         .unwrap_or_else(|| "<fix>.cp".to_string());
-    let mut db = cpl_check::Database::new();
+    fix_checked_removed_syntax_in(&mut cpl_check::Database::new(), &key, src)
+}
+
+/// [`fix_checked_removed_syntax`] on `key` in a warm `db`.
+pub fn fix_checked_removed_syntax_in(
+    db: &mut cpl_check::Database,
+    key: &str,
+    src: &str,
+) -> (String, usize) {
+    let mut src = src.to_string();
+    let mut total = 0;
     loop {
-        db.set_file(&key, src.as_str());
-        let Some(analysis) = db.analyze(&key) else {
+        db.set_file(key, src.as_str());
+        let Some(analysis) = db.analyze(key) else {
             return (src, total);
         };
         let codemods: Vec<_> = analysis

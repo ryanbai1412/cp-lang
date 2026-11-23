@@ -3,7 +3,7 @@
 //! names them, so `cp.toml [lints]` and `with lint(name: allow)` set
 //! their level and `cpl lint` reports them.
 
-use crate::{with_parsed, Allows, Config, Group, Level};
+use crate::{Allows, Config, Group, Level};
 use cpl_diag::{Code, Diagnostic, Severity};
 use std::path::Path;
 
@@ -73,9 +73,6 @@ pub fn check_errors(path: Option<&Path>, src: &str) -> Vec<Diagnostic> {
 }
 
 pub fn checked(path: Option<&Path>, src: &str, config: &Config) -> Checked {
-    let Some(regions) = with_parsed(src, |file| Some(Allows::collect(file).regions)) else {
-        return Checked::default();
-    };
     let key = path
         .map(|p| p.to_string_lossy().into_owned())
         .unwrap_or_else(|| "<lint>.cp".to_string());
@@ -84,9 +81,31 @@ pub fn checked(path: Option<&Path>, src: &str, config: &Config) -> Checked {
     let Some(analysis) = db.analyze(&key) else {
         return Checked::default();
     };
+    checked_analysis(&analysis, &analysis.diagnostics, config)
+}
+
+/// [`checked`] on a warm `analysis`, sorting what `cpl check` reported for
+/// it (`reported`, the checker's diagnostics or more) into lints at their
+/// levels and the errors lints can't see past.
+pub fn checked_analysis(
+    analysis: &cpl_check::Analysis,
+    reported: &[Diagnostic],
+    config: &Config,
+) -> Checked {
+    if analysis.has_syntax_errors {
+        return Checked::default();
+    }
+    let items: Vec<_> = (analysis.items.iter())
+        .map(|i| (i.offset, &i.syntax.parsed))
+        .collect();
+    let file = crate::File {
+        src: &analysis.text,
+        items: &items,
+    };
+    let regions = Allows::collect(&file).regions;
     let mut out = Vec::new();
     let mut problems = Vec::new();
-    for diag in &analysis.diagnostics {
+    for diag in reported {
         if diag.severity == Severity::Error && !CHECKER_LINTS.iter().any(|l| l.code == diag.code) {
             problems.push(diag.clone());
         }

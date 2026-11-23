@@ -1,8 +1,8 @@
 //! `cpl lint`.
 
 use crate::{
-    apply_fixes, check_errors, checked, fix_checked_removed_syntax, fix_removed_syntax, is_taste,
-    lint, Config, CHECKER_LINTS, LINTS,
+    apply_fixes, checked_analysis, fix_checked_removed_syntax_in, fix_removed_syntax, is_taste,
+    lint_analysis, Config, LINTS,
 };
 use cpl_diag::{Diagnostic, Severity};
 use std::collections::BTreeMap;
@@ -57,7 +57,7 @@ pub type Json = dyn Fn(&[FileReport]) -> String;
 
 /// The errors `cpl check` reports for a file's text, so `cpl lint` shows
 /// the same list: `cpl-lint` cannot lower to IR, so `cpl-cli` hands it in.
-pub type Errors = dyn Fn(&Path, &str) -> Vec<Diagnostic>;
+pub type Errors = dyn Fn(&cpl_check::Analysis) -> Vec<Diagnostic>;
 
 pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u8 {
     run_with(args, stdout, stderr, None, None)
@@ -72,10 +72,13 @@ pub fn run_with(
     json: Option<&Json>,
     check: Option<&Errors>,
 ) -> u8 {
-    let errors_of = |file: &Path, src: &str| match check {
-        Some(check) => check(file, src),
-        None => check_errors(Some(file), src),
+    let reported_of = |analysis: &cpl_check::Analysis| match check {
+        Some(check) => check(analysis),
+        None => analysis.diagnostics.clone(),
     };
+    // One database for the run, as the editor keeps one: std and shared
+    // modules are checked once, and every step below reads the same analysis.
+    let mut db = cpl_check::Database::new();
     let mut as_json = false;
     let mut fix = false;
     let mut taste = false;
@@ -134,6 +137,7 @@ pub fn run_with(
     let mut bad_configs: Vec<PathBuf> = Vec::new();
     for file in &files {
         let name = file.display().to_string();
+        let key = file.to_string_lossy().into_owned();
         let mut src = match std::fs::read_to_string(file) {
             Ok(src) => src,
             Err(e) => {
@@ -162,7 +166,7 @@ pub fn run_with(
                     failed += 1;
                 }
             }
-            let (text, applied) = fix_checked_removed_syntax(Some(file), &src);
+            let (text, applied) = fix_checked_removed_syntax_in(&mut db, &key, &src);
             if applied > 0 {
                 fixed += applied;
                 src = text;
@@ -177,7 +181,12 @@ pub fn run_with(
             if !as_json && !taste {
                 // What `cpl check` shows, so each root cause is reported
                 // once, as in the editor.
-                show(stdout, &errors_of(file, &src), &name, &src);
+                db.set_file(&key, src.as_str());
+                let mut errors = (db.analyze(&key).as_deref())
+                    .map(reported_of)
+                    .unwrap_or_default();
+                errors.retain(|d| d.severity == Severity::Error);
+                show(stdout, &errors, &name, &src);
             }
             let _ = writeln!(
                 stderr,
@@ -192,7 +201,9 @@ pub fn run_with(
             });
             continue;
         }
-        let mut diagnostics = lint(&src, &config);
+        db.set_file(&key, src.as_str());
+        let mut analysis = db.analyze(&key).expect("the file was just set");
+        let mut diagnostics = lint_analysis(&analysis, &config);
         diagnostics.retain(keep);
         if fix {
             // A fix can uncover another, and two that overlap take two
@@ -204,7 +215,9 @@ pub fn run_with(
                 }
                 fixed += applied;
                 src = text;
-                diagnostics = lint(&src, &config);
+                db.set_file(&key, src.as_str());
+                analysis = db.analyze(&key).expect("the file was just set");
+                diagnostics = lint_analysis(&analysis, &config);
                 diagnostics.retain(keep);
             }
             if let Err(e) = std::fs::write(file, &src) {
@@ -212,13 +225,8 @@ pub fn run_with(
                 failed += 1;
             }
         }
-        let found = checked(Some(file), &src, &config);
-        let problems: Vec<Diagnostic> = match check {
-            Some(_) => (errors_of(file, &src).into_iter())
-                .filter(|d| !CHECKER_LINTS.iter().any(|l| l.code == d.code))
-                .collect(),
-            None => found.problems,
-        };
+        let found = checked_analysis(&analysis, &reported_of(&analysis), &config);
+        let problems = found.problems;
         if !problems.is_empty() {
             let _ = writeln!(
                 stderr,
