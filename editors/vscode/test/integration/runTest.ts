@@ -38,17 +38,18 @@ async function main(): Promise<void> {
             ],
         });
         // As a desktop launcher starts it: a home with only the installer's
-        // `.cpl/bin/cpl`, no setting, and a PATH without `cpl`. Not on macOS,
-        // where VS Code under a fresh HOME waits on CI with no output.
-        if (process.platform === 'darwin') {
-            return;
-        }
+        // `.cpl/bin/cpl`, no setting, and a PATH without `cpl`.
         const windows = process.platform === 'win32';
         const home = path.join(scratch, 'home');
         const installed = path.join(home, '.cpl', 'bin', windows ? 'cpl.exe' : 'cpl');
         fs.mkdirSync(path.dirname(installed), { recursive: true });
         fs.copyFileSync(cpl, installed);
         fs.chmodSync(installed, 0o755);
+        // macOS' VS Code waits forever on a home with no login keychain.
+        if (process.platform === 'darwin') {
+            fs.mkdirSync(path.join(home, 'Library'), { recursive: true });
+            fs.symlinkSync(path.join(os.homedir(), 'Library', 'Keychains'), path.join(home, 'Library', 'Keychains'));
+        }
         const bare = path.join(scratch, 'bare');
         fs.cpSync(path.join(extensionRoot, 'test', 'fixtures', 'workspace'), bare, { recursive: true });
         const system = windows ? path.join(process.env.SystemRoot ?? 'C:\\Windows', 'System32') : '/usr/bin:/bin';
