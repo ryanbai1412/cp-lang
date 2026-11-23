@@ -1,4 +1,12 @@
-// SHOI 2016 P5: the expected value of a random +/* expression under point updates, as a segment tree of affine maps over Mod<P>.
+// Source: SHOI 2016 (Random Sequence), https://dmoj.ca/problem/shoi16p5
+// Problem: n <= 1e5 numbers a_i <= 1e4 in a row; putting +, - or * between each neighbouring
+//   pair gives 3^(n-1) expressions. After each of q <= 1e5 point updates a_t = v, print the
+//   sum of the values of all expressions, mod 1e9+7.
+// Solution: flipping a + to - negates the term after it, so every term but the first product
+//   run cancels: the sum is sum over i of (a_1 * ... * a_i) * (sign choices where the first
+//   run ends at i), which is 2 * 3^(n-1-i) for i < n and 1 for i = n. Each position is the
+//   affine map x => a_i * x + a_i * that count, and a SegTree of their compositions keeps
+//   the whole sum: O(log n) per update.
 // original: corpus/submissions/5445695.cpp
 const MOD = 1000000007
 type Z = Mod<MOD>

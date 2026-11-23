@@ -1,5 +1,10 @@
-// BOI 2018 Paths: count simple paths of at least two vertices whose colours
-// are all distinct (at most 5 colours, so a path has at most 5 vertices).
+// Source: Baltic OI 2018 Day 2 (Paths), https://dmoj.ca/problem/btoi18p6
+// Problem: an undirected graph, n, m <= 3e5, each vertex coloured 1..k with k <= 5. Count the
+//   paths of at least two vertices whose colours are all distinct, each direction separately.
+// Solution: distinct colours make a path simple and at most k long. ways[s, v] counts paths
+//   ending at v that use exactly the colour set s: 1 if s is v's colour alone, else the sum
+//   of ways[s minus v's colour, u] over neighbours u. Subsets in increasing order come after
+//   their own subsets; add every ways[s, v] with |s| >= 2. O(2^k (n + m)).
 let n: 1..=3e5 = read()
 let m: 0..=3e5 = read()
 let k: 1..=5 = read()

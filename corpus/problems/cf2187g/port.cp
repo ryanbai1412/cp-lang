@@ -1,14 +1,11 @@
-// Codeforces 2187 G — Tree Walk Reconstruction
-//
-// `s[u][v] == '1'` marks reachability in the ordered binary tree on `0..n`
-// (`ch1[i]` = rightmost child of `i` to its right). Starting at node `0`
-// (value `1`), each step follows the unique valid successor:
-// - Move up to the leftmost left-parent `p0 < cur` iff `cur` is `p0`'s
-//   rightmost child (`ch1[p0] == cur`);
-// - Otherwise step to the rightmost right-parent `p1 > cur`.
-// Because every non-root node has a unique next edge in this traversal and only
-// the final node (`v == n`) has neither, the walk visits each index of `0..n`
-// exactly once and assigns a permutation of `1..=n`.
+// Source: Codeforces 2187G (Many Cartesian Trees), https://codeforces.com/contest/2187/problem/G
+// Problem: for a permutation q (n <= 3000), p_1 = q and each p_i adds n to the minimum of
+//   p_(i-1). Given the n x n 0/1 matrix of S, the union of the (child, parent) edges of the
+//   Cartesian trees of p_1..p_n, print any q that gives S. Multitest, sum of n^2 <= 9e6.
+// Solution: S only sees the cyclic order of the values, so put value 1 at position 0 and
+//   hand out values 2, 3, ... by walking: from the position cur just given a value, go to
+//   p0, its leftmost parent in S, when cur is p0's rightmost right child in S, else to its
+//   rightmost parent. Each step scans a row: O(n^2).
 
 @!multitest
 let n: 1..=3_000 = read()

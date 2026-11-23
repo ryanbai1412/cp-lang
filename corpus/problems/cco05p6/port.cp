@@ -1,7 +1,10 @@
-// CCO 2005 P6, Windows: n rectangular windows are opened in order on a
-// screen, each on top of the earlier ones. Each of q clicks hits the
-// topmost window containing the point: print its number (0 if none) and
-// bring that window to the top.
+// Source: CCO 2005 Day 2 P3 (Windows), https://dmoj.ca/problem/cco05p6
+// Problem: n <= 5e4 rectangular windows (borders included) on a C x R screen (<= 1e4), each
+//   later one on top of the earlier ones. Each of m <= 5e4 clicks at (x, y) hits the topmost
+//   window containing the point: print its number (0 if none) and bring it to the top.
+// Solution: keep the windows in a list from bottom to top. A click scans the whole list for
+//   the last window containing the point, then shifts the rest down and puts it on top:
+//   O(n) per click, O(n m) in all.
 // input: the screen size (unused), n, then `left top right bottom` per
 // window, q, then `x y` per click
 // original: corpus/submissions/5150823.cpp

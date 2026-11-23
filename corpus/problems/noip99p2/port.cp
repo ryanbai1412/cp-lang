@@ -1,5 +1,11 @@
-// NOIP 1999 Palindromic numbers, as it has to be written today: mirror
-// images by index arithmetic. Builds; stress OK against 5044551.cpp.
+// Source: NOIP 1999 Junior (Palindromic Numbers), https://dmoj.ca/problem/noip99p2
+// Problem: a number M of at most 100 digits in base N (2 <= N <= 10 or N = 16). One step adds
+//   the number to its own digit reversal in base N. Print `STEP=k` for the fewest steps that
+//   give a palindrome, or `Impossible!` if it takes more than 30.
+// Solution: simulate. Keep the digits as a list, test for a palindrome, else add the mirror
+//   with carries; at most 31 tests of O(len) each.
+// Note: mirror images by index arithmetic, as it has to be written today; builds, and
+//   stress OK against 5044551.cpp.
 let base: 2..=16 = read()
 let word: [domain W]Char = read()
 fn value(c: Char) -> Int:

@@ -1,10 +1,10 @@
-// Baltic OI '15 P3 - Network (15pt): add as few links as possible to a tree
-// so that it stays connected when any one link fails. Print the number of
-// new links and the links (any optimal answer).
-// Every leaf needs a new link, so ceil(leaves / 2) is a lower bound. List the
-// leaves in preorder from an inner root and join leaf i to leaf i + k/2:
-// the two ends of each new link lie on different sides of every tree edge
-// that has leaves on both halves, which covers every edge.
+// Source: Baltic OI 2015 (Network), https://dmoj.ca/problem/btoi15p3
+// Problem: a tree on 3 <= n <= 5e5 computers. Add the fewest links so that the network stays
+//   connected after any one link breaks; print their number and the links (any optimal set).
+// Solution: every leaf needs a new link, so ceil(L / 2) for L leaves is a lower bound, and it
+//   is reached: root the tree at an inner vertex, list the leaves in preorder and join leaf i
+//   to leaf i + L/2 for i < ceil(L / 2). The leaves under any tree edge are a block of that
+//   list, shorter than L, so some new link leaves the block and covers the edge. O(n).
 // original: corpus/submissions/5640865.cpp
 
 let n: 3..=5e5 = read()

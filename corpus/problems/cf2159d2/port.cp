@@ -1,13 +1,15 @@
-// Codeforces 2159 D2: Inverse Minimum Partition (Hard), summed over all
-// subarrays.
-//
-// As in D1, a partition's last segment ends at i and costs l when every value
-// in it is at least ceil(a[i] / l), and costs of 2 and 3 are the only ones
-// worth trying (a longer segment splits no worse). The suffix minima of the
-// prefix form a strictly increasing stack, and each entry keeps `starts`:
-// `starts[z]` is how many left ends l make the cheapest partition of
-// a[l..=i] cost more than z. Summing `starts` sums those costs over every
-// left end, and a list ends at its first 0.
+// Source: Codeforces 2159D2 (Inverse Minimum Partition, Hard Version),
+//   https://codeforces.com/contest/2159/problem/D2
+// Problem: a segment costs ceil(last / min); f(c) is the cheapest total cost of cutting c
+//   into segments. Print the sum of f over all subarrays of a (n <= 4e5, a_i <= 1e18).
+//   Multitest, sum of n <= 4e5.
+// Solution: a last segment of cost above 3 never beats splitting it, and f(a[l..=i]) only
+//   grows as l moves left, so starts[z], the number of left ends with f > z, describes every
+//   f. The suffix minima of a[..=i] form an increasing stack, each entry with its starts. For
+//   x = a[i]: a cost-1 last segment starts after the previous smaller value (its starts,
+//   shifted by one); cost c in {2, 3} starts after the last value < ceil(x / c), found by
+//   binary search, giving starts[z] min= that entry's starts[z - c]. Add sum(starts). The
+//   lists hold O(log max a) entries: O(n log max a).
 @!multitest
 let n: Int = read()
 let a: [0..n]Int = read()

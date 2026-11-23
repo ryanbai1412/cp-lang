@@ -1,13 +1,12 @@
-// Codeforces 2201 A1 — Lost Civilization (Easy Version)
-//
-// An element `a[i]` can be absorbed by a preceding element of value `a[i] - 1`
-// once every larger element between them has been absorbed. Processing indices
-// in descending order of `a[i]` (ties left-to-right) ensures that when `i` is
-// visited, all elements `> a[i]` have already been resolved, and any earlier
-// equal element `a[j] == a[i]` has already been removed if it could be; thus
-// `i` is absorbable iff its live predecessor `p = prv[i]` has `a[p] == a[i] - 1`.
-// Unlinking `i` from the doubly linked list `(prv, nxt)` decreases the
-// remaining count by 1.
+// Source: Codeforces 2201A1 (Lost Civilization, Easy Version),
+//   https://codeforces.com/contest/2201/problem/A1
+// Problem: a sequence grows by inserting x + 1 right after some element x. Given the result a
+//   (n <= 3e5, a_i <= 1e9), print the length of the shortest sequence that can produce it.
+//   Multitest, sum of n <= 3e5.
+// Solution: undo insertions from the largest value down, ties left to right: an element goes
+//   when the live element just before it is one smaller (everything larger between them has
+//   already gone). Keep the live elements in a doubly linked list; the answer is n minus the
+//   removals. O(n log n) for the sort.
 
 @!multitest
 let n: 1..=300_000 = read()

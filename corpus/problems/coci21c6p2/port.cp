@@ -1,4 +1,11 @@
-// Zemljište, in the forms proto/cpc builds today. See ../coci21c6p2.cp.
+// Source: COCI 2021/2022 Contest 6 (Zemljiste), https://dmoj.ca/problem/coci21c6p2
+// Problem: an r x s grid (r, s <= 500) of prices c <= 1e9, and a, b <= 1e9. A non-empty
+//   subrectangle with total m costs |m - a| + |m - b|; print the smallest cost.
+// Solution: the cost falls until min(a, b), is flat up to max(a, b), then rises, so with
+//   positive prices, for each left end only two sums matter: the smallest >= min(a, b) and
+//   the largest below it. Fix the top and bottom rows, collapse to column sums and sweep
+//   with two pointers: O(r^2 s).
+// Note: written in the forms proto/cpc builds today.
 // original: corpus/submissions/4529998.cpp
 let n: Int = read()
 let m: Int = read()
