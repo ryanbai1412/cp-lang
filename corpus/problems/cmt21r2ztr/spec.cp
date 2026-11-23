@@ -6,25 +6,26 @@ enum Side: Below | Above
 let (n, m) = read<(1..=100_000, 1..=100_000)>()
 domain V = 1..=n
 let qs = read<[m](i: V, j: V, k: V, x: 1..=1_000_000_000)>()
-let (domain P, pins) = compress(qs.flat_map(q => [q.i, q.j, q.k].map(v => (v:, x: q.x))))
-fn on(p: P, s: Side) = Lit((p, s), true)
-var sat = TwoSat<(P, Side)>()
+let (domain P, pins) = compress([(v:, x: q.x) for q in qs for v in [q.i, q.j, q.k]])
+domain Var = (P, Side)
+fn on(p: P, s: Side) -> Lit<Var> = Lit(Var((p, s)), true)
+var sat = TwoSat<Var>()
 for q in qs:
-    let ps = [q.i, q.j, q.k].map(v => pins.at((v:, x: q.x)))
+    let ps = [pins.at((v:, x: q.x)) for v in [q.i, q.j, q.k]]
     for s in Side:
-        sat.at_most_one(ps.map(p => on(p, s)).collect())
+        sat.at_most_one([on(p, s) for p in ps])
 for p in P:
     sat.add_or(on(p, Below).flip, on(p, Above).flip)
-for (p, q) in P.adjacent if pins.get(p).v == pins.get(q).v:
+for (p, q) in [p for p in P].adjacent if pins.get(p).v == pins.get(q).v:
     sat.add_xor(on(p, Above), on(q, Below))
 if let value = sat.solve():
     print("YES")
     var a: [V]Int = 1
     for p in P:
         let pin = pins.get(p)
-        if value[(p, Above)]:
+        if value[Var((p, Above))]:
             a[pin.v] max= pin.x + 1
-        elif not value[(p, Below)]:
+        elif not value[Var((p, Below))]:
             a[pin.v] max= pin.x
     print(a)
 else:
