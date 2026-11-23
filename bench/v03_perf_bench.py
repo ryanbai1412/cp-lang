@@ -9,7 +9,10 @@ Measures median runtime ratio (emitted C++ / matched C++ original) across:
   3. zero-cost -- bench/zero-cost/* via `cpl bench --zero-cost`
 
 The emitted C++ is compiled with `g++ -std=c++17 -O2 -w`, originals with
-`-std=gnu++20` (judge originals use C++20 headers), and outputs are verified for exact
+`-std=gnu++20` (judge originals use C++20 headers). An original g++ cannot build
+(C++23: deducing `this`, <format>) is built with `--cxx23 CMD` (a clang, e.g.
+`python3 -m ziglang c++`) at `-std=c++23`, and its pair's emitted C++ with the same
+CMD, so both sides of a ratio use one compiler. Outputs are verified for exact
 token-level output agreement (1e-6 float tolerance). Also reported: peak RSS
 of each run (emitted / original) and g++ time on the emitted C++ (taken while
 `--jobs` builds run at once, so compare runs made with the same `--jobs`).
@@ -115,10 +118,14 @@ def run_once(binary, inp, outp, timeout):
     return wall, "ok" if pr.returncode == 0 else f"exit {pr.returncode}", usage.ru_maxrss
 
 
-def timed_gxx(src, out, std="c++17"):
-    """g++ on `src`; returns (CompletedProcess, ms)."""
+CXX23_SHIM = os.path.join(ROOT, "bench", "cxx23-shim")
+
+
+def timed_gxx(src, out, std="c++17", cxx=None):
+    """g++ (or the `cxx` command line) on `src`; returns (CompletedProcess, ms)."""
+    cmd = (cxx or ["g++"]) + [f"-std={std}", "-O2", "-w"] + (["-I", CXX23_SHIM] if cxx else [])
     t0 = time.perf_counter()
-    r = subprocess.run(["g++", f"-std={std}", "-O2", "-w", src, "-o", out], capture_output=True, text=True)
+    r = subprocess.run(cmd + [src, "-o", out], capture_output=True, text=True)
     ms = (time.perf_counter() - t0) * 1000.0
     return r, ms
 
@@ -130,13 +137,13 @@ def compile_ms(bin_path):
         return None
 
 
-def compile_cpp_cached(src, cache_dir, tag):
-    key = f"{tag}_{sha256_file(src)}"
+def compile_cpp_cached(src, cache_dir, tag, std="gnu++20", cxx=None):
+    key = f"{tag}_{'cxx23_' if cxx else ''}{std}_{sha256_file(src)}"
     bin_path = os.path.join(cache_dir, key)
     if os.path.exists(bin_path):
         return bin_path, None
     tmp = bin_path + f".tmp.{os.getpid()}.{threading.get_ident()}"
-    r, ms = timed_gxx(src, tmp, "gnu++20")
+    r, ms = timed_gxx(src, tmp, std, cxx)
     if r.returncode != 0:
         if os.path.exists(tmp):
             os.remove(tmp)
@@ -407,7 +414,13 @@ def main():
     ap.add_argument("--jobs", type=int, default=min(8, os.cpu_count() or 4))
     ap.add_argument("--cache", default="/tmp/cpl-perf-cache")
     ap.add_argument("--json-out", default="")
+    ap.add_argument(
+        "--cxx23",
+        default=os.environ.get("CPL_BENCH_CXX23", ""),
+        help="C++23 compiler command for originals g++ cannot build, e.g. 'python3 -m ziglang c++'",
+    )
     args = ap.parse_args()
+    cxx23 = args.cxx23.split() or None
 
     os.makedirs(args.cache, exist_ok=True)
     cpl_hash = sha256_file(CPL)
@@ -420,7 +433,20 @@ def main():
         pbin, cpp_path, perr = build_cpl_cached(cp, args.cache, cpl_hash)
         if perr:
             return {"suite": suite, "name": name, "status": "skip", "reason": perr}
-        obin, oerr = compile_cpp_cached(orig, args.cache, f"orig_{name.replace('/', '__')}")
+        tag = f"orig_{name.replace('/', '__')}"
+        obin, oerr = compile_cpp_cached(orig, args.cache, tag)
+        cxx = None
+        if oerr and cxx23:
+            obin, cerr = compile_cpp_cached(orig, args.cache, tag, "c++23", cxx23)
+            if cerr:
+                return {"suite": suite, "name": name, "status": "skip", "reason": f"g++ and --cxx23 orig: {cerr}"}
+            gxx_pbin, pbin = pbin, None
+            pbin, perr = compile_cpp_cached(cpp_path, args.cache, "emitted", "c++17", cxx23)
+            if perr:
+                return {"suite": suite, "name": name, "status": "skip", "reason": f"--cxx23 emitted: {perr}"}
+            if os.path.exists(gxx_pbin + ".ms"):
+                open(pbin + ".ms", "w").write(open(gxx_pbin + ".ms").read())
+            cxx, oerr = args.cxx23, None
         if oerr:
             return {"suite": suite, "name": name, "status": "skip", "reason": f"g++ orig: {oerr}"}
         inp = input_fn()
@@ -433,6 +459,7 @@ def main():
             "obin": obin,
             "cpp_path": cpp_path,
             "inp": inp,
+            "cxx": cxx,
             "status": "built",
         }
 
@@ -495,6 +522,7 @@ def main():
                 "compile_ms": compile_ms(b["pbin"]),
                 "orig_compile_ms": compile_ms(b["obin"]),
                 "cpp_path": b["cpp_path"],
+                **({"cxx": b["cxx"]} if b["cxx"] else {}),
             }
         )
 

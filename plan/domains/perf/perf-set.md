@@ -29,7 +29,7 @@ Ports are idioms-owned (`corpus/`); perf does not edit them. Requests are in `pl
 |---|---|---|
 | 54 | port calls a std API v0.3 does not have (stdlib or port drift) | idioms (port drift) / stdlib (missing API) |
 | 40 | other type/check error in the port | idioms |
-| 29 | orig.cpp does not build with g++ 11 -std=gnu++20 (C++20/23 headers: <format>, std::span, concepts) | perf (harness: needs a g++ with C++23; the VM has g++ 11 only) |
+| 29 | orig.cpp does not build with g++ 11 -std=gnu++20 (C++20/23 headers: <format>, std::span, concepts) | perf (harness): `--cxx23 'python3 -m ziglang c++'` (zig 0.15.1, clang + libc++) builds 22 of 29, both sides of each pair on that compiler; 8 measured, the rest skip for no input, a mismatch, or a front-end crash; `wtf26a` needs `std::ranges::iota` (missing in that libc++) |
 | 21 | port uses a 0.2 call shape (min/max/any/all arity) | idioms |
 | 13 | output differs from orig.cpp on the sampled input (idioms: port or reference wrong) | idioms |
 | 13 | no input: neither tests/ nor a generator | idioms |
