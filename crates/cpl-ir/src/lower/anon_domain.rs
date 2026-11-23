@@ -5,11 +5,15 @@
 use super::*;
 
 impl<'a> Lowerer<'a> {
-    /// Unify argument `arg`'s type with its parameter's. A bare generic standing where the
-    /// argument's type is a range (`List<R>` given a `List<0..2>`) is bound to that range, so the
-    /// generic can be used as the anonymous domain the range is (R04.4.30).
+    /// Unify argument `arg`'s type with its parameter's. A bare generic that `decl` uses as a
+    /// domain and that stands where the argument's type is a range (`List<R>` given a
+    /// `List<0..2>`) is bound to that range, so it is the anonymous domain the range is
+    /// (R04.4.30). Any other generic keeps the range's `Int`, so `scan<D, T>` over `[I]-9..=9`
+    /// still names `Monoid<T>`.
+    #[allow(clippy::too_many_arguments)]
     pub(super) fn unify_arg(
         &mut self,
+        decl: &ast::FnDecl,
         pty: &ast::Type,
         concrete: &Ty,
         arg: &ast::Arg,
@@ -26,7 +30,12 @@ impl<'a> Lowerer<'a> {
         let lowered = self.expr(&arg.value, None);
         self.diags.truncate(saved);
         if let Some(info) = self.expr_range(&lowered) {
-            bind_range_generics(pty, &info, gen_names, env);
+            let domains: Vec<String> = gen_names
+                .iter()
+                .filter(|g| fn_uses_domain(decl, g))
+                .cloned()
+                .collect();
+            bind_range_generics(pty, &info, &domains, env);
         }
     }
 
@@ -199,17 +208,7 @@ fn expr_uses_domain(e: &ast::Expr, name: &str) -> bool {
 }
 fn stmt_uses_domain(s: &ast::Stmt, name: &str) -> bool {
     match &s.kind {
-        ast::StmtKind::Fn(f) => {
-            f.params
-                .iter()
-                .any(|p| p.ty.as_ref().is_some_and(|t| ty_uses_domain(t, name)))
-                || f.ret.as_ref().is_some_and(|t| ty_uses_domain(t, name))
-                || match &f.body {
-                    ast::FnBody::Expr(e) => expr_uses_domain(e, name),
-                    ast::FnBody::Block(b) => b.stmts.iter().any(|s| stmt_uses_domain(s, name)),
-                    _ => false,
-                }
-        }
+        ast::StmtKind::Fn(f) => fn_uses_domain(f, name),
         ast::StmtKind::Let { ty, init, .. } => {
             ty.as_ref().is_some_and(|t| ty_uses_domain(t, name))
                 || init.as_ref().is_some_and(|e| expr_uses_domain(e, name))
@@ -230,6 +229,19 @@ fn stmt_uses_domain(s: &ast::Stmt, name: &str) -> bool {
         _ => false,
     }
 }
+/// Whether fn `f` uses `name` as a domain in its signature or body.
+fn fn_uses_domain(f: &ast::FnDecl, name: &str) -> bool {
+    f.params
+        .iter()
+        .any(|p| p.ty.as_ref().is_some_and(|t| ty_uses_domain(t, name)))
+        || f.ret.as_ref().is_some_and(|t| ty_uses_domain(t, name))
+        || match &f.body {
+            ast::FnBody::Expr(e) => expr_uses_domain(e, name),
+            ast::FnBody::Block(b) => b.stmts.iter().any(|s| stmt_uses_domain(s, name)),
+            _ => false,
+        }
+}
+
 pub(super) fn struct_uses_param_as_domain(decl: &ast::StructDecl, name: &str) -> bool {
     decl.fields.iter().any(|f| ty_uses_domain(&f.ty, name))
         || decl.methods.iter().any(|m| stmt_uses_domain(m, name))
