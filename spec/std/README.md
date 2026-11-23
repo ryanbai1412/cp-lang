@@ -169,9 +169,8 @@ Sequences `push` and `pop` at the back, `push_front` and `pop_front` at
 the front; `first` and `last` read the ends as `?T`.
 
 **Range structures.** `t.get(i)`, `t.set(i, x)`, `t.update(i, f)` for a
-point; `t.fold(r)` for a range under the structure's monoid, `t.sum(r)`
-where the operation is addition and nothing else makes sense
-(`Fenwick`, `Prefix`); `t.apply(r, f)` for a lazy action; `t.all` for
+point; `t.fold(r)` for a range under the structure's monoid, addition
+included (`Fenwick`, `Prefix` and their 2D forms fold by `+`); `t.apply(r, f)` for a lazy action; `t.all` for
 the fold of everything; `t.max_right(from, ok)` and `t.min_left(to, ok)`
 for searches, returning boundaries.
 
@@ -991,7 +990,7 @@ struct Fenwick<D, T> // O(n), O(log n)
     fn new(a: ?[D]T = none) -> Fenwick<D, T>
     fn add(mut self, i: D, x: T)
     fn prefix(self, b: Cut<D>) -> T
-    fn sum(self, r: Range<D>) -> T
+    fn fold(self, r: Range<D>) -> T
     fn first_ge(self, target: Int) -> ?Cut<D> // O(log n)
     fn kth(self, k: Int) -> ?D // O(log n)
 struct DualFenwick<D, T> // [new] range add, point get; O(n), O(log n)
@@ -1002,7 +1001,7 @@ struct RangeFenwick<D> // [new] range add, range sum (Int); O(n), O(log n)
     fn new(a: ?[D]Int = none) -> RangeFenwick<D>
     fn add(mut self, r: Range<D>, x: Int)
     fn prefix(self, b: Cut<D>) -> Int
-    fn sum(self, r: Range<D>) -> Int
+    fn fold(self, r: Range<D>) -> Int
 struct XorFenwick<D, T> // O(n), O(log n)
     fn new(a: ?[D]T = none) -> XorFenwick<D, T>
     fn flip(mut self, i: D, x: T)
@@ -1011,13 +1010,13 @@ struct XorFenwick<D, T> // O(n), O(log n)
 struct Fenwick2D<R, C, T> // O(log R * log C)
     fn new() -> Fenwick2D<R, C, T>
     fn add(mut self, r: R, c: C, x: T)
-    fn sum(self, rows: Range<R>, cols: Range<C>) -> T
+    fn fold(self, rows: Range<R>, cols: Range<C>) -> T
 enum FillOrder = Forward | Reverse
 struct Prefix<D, T> // also Prefix<R, C, T> for 2D grids and Prefix<T> for List<T>
     fn new(a: [D]T) -> Prefix<D, T> // O(|D|); also [R, C]T in O(|R|*|C|) and List<T> in O(n)
-    fn filling(order: FillOrder = FillOrder.Forward) -> FillPrefix<D, T> // O(|D|) / O(|R|*|C|) / O(n) (takes n: Int for List<T>); append-only prefix/suffix table (`FillPrefix<D, T>`, `FillPrefix<R, C, T>`, `FillPrefix<T>`) with O(1) `.set`, `.prefix`, `.sum`
+    fn filling(order: FillOrder = FillOrder.Forward) -> FillPrefix<D, T> // O(|D|) / O(|R|*|C|) / O(n) (takes n: Int for List<T>); append-only prefix/suffix table (`FillPrefix<D, T>`, `FillPrefix<R, C, T>`, `FillPrefix<T>`) with O(1) `.set`, `.prefix`, `.fold`
     fn prefix(self, b: Cut<D>) -> T // O(1); (r: Cut<R>, c: Cut<C>) for 2D, (k: Int) for List<T>
-    fn sum(self, r: Range<D>) -> T // O(1); (rows: Range<R>, cols: Range<C>) for 2D, (r: Range<Int>) for List<T>
+    fn fold(self, r: Range<D>) -> T // O(1); (rows: Range<R>, cols: Range<C>) for 2D, (r: Range<Int>) for List<T>
 fn prefix(a) // prelude shape dispatch over [D]T, [R, C]T, and List<T>; L0513 + checker error migrate removed prefix1/prefix2/prefix_n/Prefix1/Prefix2/PrefixN/Diff1/Diff2
 fn prefix_fold<D, T, M>(op: M, a: [D]T) -> [D.cuts]T // [new] O(n)
 fn suffix_fold<D, T, M>(op: M, a: [D]T) -> [D.cuts]T // [new] O(n)
