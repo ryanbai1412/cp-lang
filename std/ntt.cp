@@ -380,25 +380,28 @@ impl FastProduct for Mod<P>:
         Some(fa)
 
 impl FastProduct for Int:
-    /// Three NTT primes and CRT. Their product is about 7.9e25, so the result is exact while
-    /// `max |a| * max |b| * min(a.len, b.len)` stays under 1e25; past that it is `None` and
-    /// `convolve` runs its loop, which traps on an overflow.
+    /// Two NTT primes and CRT while `max |a| * max |b| * min(a.len, b.len)` stays under 8e16
+    /// (their product is about 1.7e17), three under 1e25 (about 7.9e25); past that it is `None`
+    /// and `convolve` runs its loop, which traps on an overflow.
     fn product(a: List<Int>, b: List<Int>) -> ?List<Int>:
         let (na, nb) = (a.len, b.len)
         if min(na, nb) <= 60: return None
         var (ma, mb) = (0, 0)
         for x in a: ma = max(ma, abs(x))
         for x in b: mb = max(mb, abs(x))
-        if I128(ma) * I128(mb) * I128(min(na, nb)) >= I128(10_000_000_000_000) * I128(1_000_000_000_000):
-            return None
+        let bound = I128(ma) * I128(mb) * I128(min(na, nb))
+        if bound >= I128(10_000_000_000_000) * I128(1_000_000_000_000): return None
         type P1 = Mod<998_244_353>
         type P2 = Mod<167_772_161>
         type P3 = Mod<469_762_049>
         let r1 = convolve([P1(x) for x in a], [P1(x) for x in b])
         let r2 = convolve([P2(x) for x in a], [P2(x) for x in b])
-        let r3 = convolve([P3(x) for x in a], [P3(x) for x in b])
         let (p1, p2) = (998_244_353, 167_772_161)
         let inv1 = P2(p1).inv()
+        if bound < I128(80_000_000_000_000_000):
+            let half = p1 * p2 / 2
+            return Some([if c > half: c - p1 * p2 else: c for c in [r1[k].v + ((P2(r2[k].v) - P2(r1[k].v)) * inv1).v * p1 for k in 0..na + nb - 1]])
+        let r3 = convolve([P3(x) for x in a], [P3(x) for x in b])
         let inv12 = (P3(p1) * P3(p2)).inv()
         let whole = I128(p1) * I128(p2) * I128(469_762_049)
         var out = List.filled(na + nb - 1, 0)
@@ -780,7 +783,7 @@ fn convolve_matches_brute_force_for_every_value_type():
         for k in 0..want.len: assert abs(got[k] - F64(want[k])) < 1e-6
 
 @test
-fn int_convolve_takes_three_primes_and_folds_the_cyclic_form():
+fn int_convolve_takes_two_or_three_primes_and_folds_the_cyclic_form():
     for _ in 0..6:
         let (n, m) = (rand(61, 140), rand(61, 140))
         let big = if rand(0, 1) == 0: 50 else: 50_000_000
