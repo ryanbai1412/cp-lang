@@ -491,6 +491,7 @@ pub const VALUE_NAMES: &[&str] = &[
     "len",
     "counts",
     "prefix",
+    "span",
     "take",
     "columns",
     "List",

@@ -6267,3 +6267,17 @@ constants and the `exit(3)` in the C++ runtime, and the sentence in
   3072 KB.
 - **Reverse.** Restore `lower_span` and the `known.rs` row from this
   commit's parent and put `"span"` back in `VALUE_NAMES`.
+
+## 259. `span` is a compiler builtin again: ports use its hull form (2026-11-22)
+
+- **Decision.** Decision 258 is reverted. `span(a, b)` keeps the compiler's
+  form: two positions or cuts of one domain, in either order, giving the
+  range that covers both. `std.seq.span(lo: Cut<D>, hi: Cut<D>)` stays the
+  spec's stub until a std body can express that form.
+- **Why.** 258 said nothing used the hull form; that was wrong. Ports
+  `coci06c1p6` and `coci13c1p3` pass cuts in either order, and the CLI
+  cases `ergo/ranges.cp` and `ergo/prefix.cp` mix positions with cuts.
+  The cut-only body breaks all four. One std signature can take both a
+  position and a cut only with a trait both implement, which std lacks.
+- **Reverse.** Reapply 258's commit once a std trait for "a position or a
+  cut of `D`" exists and the std body orders its ends with `min`/`max`.

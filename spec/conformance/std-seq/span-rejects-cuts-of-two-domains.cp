@@ -1,4 +1,4 @@
-// expect: E0302 at 3
+// expect: E0301 at 3
 // rule: std.seq.span
 domain I = 0..4
 domain J = 0..4
