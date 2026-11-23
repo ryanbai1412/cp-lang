@@ -7405,3 +7405,15 @@ statements as one run, since they come in several items. Evidence:
 newcomer 140/140; 4 port hits (cf2261d2 x2, noi19p4, yac1p2), all real
 1-based shifts; 0 on std. Reverse: delete the two records and
 `hand_input.rs`.
+
+## 344. `cnt[x] = (cnt.get(x) ?? 0) + d` on a `Map`/`HashMap` of `Int` teaches `Counter<K>`: L0579 `counter_by_map`; `lint_std_names` 179 -> 180 (2026-11-23)
+
+Every update of a hand-rolled counter repeats the key and `?? 0`;
+`Counter<K>` (`std.hashmap`) reads 0 for a key it never saw and bumps with
+`push(x)` / `add(x, d)`. Help only, no machine fix: the declaration moves
+and `Counter` is hashed, so code that walks the counts in key order keeps
+its `Map`. The fact table keeps it only on a `Map` or `HashMap` whose
+values are `Int`. Matching `get` by name moves `--update lint_std_names`
+179 -> 180. One std hit (`std/geometry.cp` `edges`) is counted in
+`corpus_warnings.txt`. Reverse: delete `spec/lints/counter_by_map/` and
+`rules/counter.rs`.

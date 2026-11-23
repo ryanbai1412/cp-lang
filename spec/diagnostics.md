@@ -152,6 +152,7 @@ prefix_sum}, L0522 copy_sort_writeback, L0523 chmin_chmax_if, L0524 bool_ternary
 | L0570 | interval_dp_by_length | `for len in ..: for l in ..: let r = l + len - 1`: `[I.ranges]` read in its order |
 | L0577 | query_index_shift | a position read as `1..=n` and indexed as `a[l - 1]`: declare the array over `1..=n` |
 | L0578 | tuple_points | `xs` and `ys` read as parallel coordinate arrays and indexed together: `[D] i => Pt(xs[i], ys[i])` |
+| L0579 | counter_by_map | `cnt[x] = (cnt.get(x) ?? 0) + 1` on a `Map<K, Int>`: `Counter<K>` (`std.hashmap`), where a key it never saw reads 0 |
 | L0601 | same_place_read_write | `a[l] += inc(mut a[l])`, `xs[0] = xs.pop()!` |
 | L0602 | chain_walked_twice | a lazy chain value consumed twice |
 | L0603 | map_recomputed | `.map(f)` view read many times by index |

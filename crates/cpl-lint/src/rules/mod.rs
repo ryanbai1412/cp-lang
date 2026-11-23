@@ -8,6 +8,7 @@ mod bag;
 mod bounds;
 mod ceil;
 mod count_until;
+mod counter;
 mod euclid;
 mod extreme;
 mod fermat;
@@ -59,6 +60,7 @@ pub(crate) fn run(file: &File, config: &Config) -> Vec<Finding> {
     findings.extend(letters::check(file));
     findings.extend(push_pop::check(file));
     findings.extend(pop_end::check(file));
+    findings.extend(counter::check(file));
     findings.extend(scopes::check(file));
     findings.extend(types::check(file));
     findings.extend(assign::check(file));

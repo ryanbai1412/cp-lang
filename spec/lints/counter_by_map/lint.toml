@@ -1,0 +1,5 @@
+code = "L0579"
+level = "warn"
+group = "idiom"
+title = "Map used as a counter"
+summary = "`cnt[x] = (cnt.get(x) ?? 0) + 1` on a `Map<K, Int>`: `Counter<K>` (`std.hashmap`)"
