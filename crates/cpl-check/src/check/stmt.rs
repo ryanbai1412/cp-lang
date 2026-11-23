@@ -2234,17 +2234,14 @@ impl<'a> Checker<'a> {
                 }
             }
         }
-        let own_fields: Vec<String> = match self.resolve_type(target) {
-            Ty::Named { name, .. } => match self.global(&name).as_deref() {
-                Some(Def::Struct { fields, .. }) => fields.iter().map(|f| f.name.clone()).collect(),
-                _ => Vec::new(),
-            },
-            _ => Vec::new(),
+        let own = match self.resolve_type(target) {
+            Ty::Named { name, .. } => self.members_of(&name).map(|m| m.fields),
+            _ => None,
         };
         let missing: Vec<String> = methods
             .iter()
             .filter(|m| m.required && defined.iter().all(|d| d.text != m.name))
-            .filter(|m| !own_fields.contains(&m.name))
+            .filter(|m| own.iter().flatten().all(|f| f.name != m.name))
             .map(|m| m.name.clone())
             .collect();
         if !missing.is_empty() {
