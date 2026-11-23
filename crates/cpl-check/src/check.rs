@@ -834,6 +834,15 @@ impl<'a> Checker<'a> {
                 }
                 _ if advice::foreign_call(name).is_some() => {
                     diag.help = advice::foreign_call(name).map(str::to_string);
+                    let own = match name {
+                        "ord" => "Int",
+                        "chr" => "Char",
+                        _ => "",
+                    };
+                    if !own.is_empty() {
+                        diag.fixes.clear();
+                        diag.fix(format!("write `{own}`"), span, own);
+                    }
                 }
                 _ if name == "range" => {
                     diag.help = Some(

@@ -340,6 +340,8 @@ pub(super) fn foreign_call(name: &str) -> Option<&'static str> {
             Some("read a number from a string with `s.parse<F64>()!`")
         }
         "input" => Some("read the input with `read`: `let n: Int = read()`"),
+        "ord" => Some("a character's code is `Int(c)`"),
+        "chr" => Some("the character with code `i` is `Char(i)`"),
         "math" | "Math" => Some("math functions are methods here: `x.sqrt`, `x.abs`, `x.isqrt`"),
         _ => None,
     }

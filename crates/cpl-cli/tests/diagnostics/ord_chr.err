@@ -1,0 +1,15 @@
+error[E0201]: no `ord` in scope
+  --> ord_chr.cp:3:11
+  |
+3 |     print(ord(c), chr(ord(c) + 1))
+  |           ^^^
+  = help: a character's code is `Int(c)`
+
+error[E0201]: no `chr` in scope
+  --> ord_chr.cp:3:19
+  |
+3 |     print(ord(c), chr(ord(c) + 1))
+  |                   ^^^
+  = help: the character with code `i` is `Char(i)`
+
+ord_chr.cp: 2 errors
