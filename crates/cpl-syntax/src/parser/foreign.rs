@@ -23,13 +23,13 @@ impl<'a> Parser<'a> {
         true
     }
 
-    /// Python's `is None` or `is not None`; any other `is` is a pattern test.
+    /// Python's `is not None`. `x is None` is our own pattern test, so it stays.
     pub(super) fn at_python_is(&self) -> bool {
-        let none_at = if self.peek_n(1) == T::Not { 2 } else { 1 };
         self.at_ident("is")
+            && self.peek_n(1) == T::Not
             && self
                 .tokens
-                .get(self.pos + none_at)
+                .get(self.pos + 2)
                 .is_some_and(|t| t.kind == T::Ident && t.span.text(self.src) == "None")
     }
 

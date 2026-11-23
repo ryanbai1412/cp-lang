@@ -1901,7 +1901,7 @@ fn pythons_conditional_expression_is_one_error_with_the_inline_if_fix() {
 }
 
 #[test]
-fn pythons_is_and_is_not_are_one_error_with_the_comparison_fix() {
+fn pythons_is_not_is_one_error_and_is_none_stays_a_pattern() {
     let src = "if x is not None:\n    print(1)\nprint(yes(y is None))\n";
     let d = parse_file(src).diagnostics;
     let fixed: Vec<_> = d
@@ -1913,7 +1913,7 @@ fn pythons_is_and_is_not_are_one_error_with_the_comparison_fix() {
             )
         })
         .collect();
-    assert_eq!(fixed, [("is not", "!="), ("is", "==")], "{d:?}");
+    assert_eq!(fixed, [("is not", "!=")], "{d:?}");
 }
 
 #[test]

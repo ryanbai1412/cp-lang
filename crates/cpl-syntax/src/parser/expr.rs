@@ -358,8 +358,7 @@ impl<'a> Parser<'a> {
             T::Gt => CmpOp::Gt,
             T::GtEq => CmpOp::Ge,
             T::Spaceship => CmpOp::Order,
-            T::Ident if self.at_python_is() && self.peek_n(1) == T::Not => CmpOp::Ne,
-            T::Ident if self.at_python_is() => CmpOp::Eq,
+            T::Ident if self.at_python_is() => CmpOp::Ne,
             T::In => CmpOp::In,
             T::Not if self.peek_n(1) == T::In => CmpOp::NotIn,
             T::Bang

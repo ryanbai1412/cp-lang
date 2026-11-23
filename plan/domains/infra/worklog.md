@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- Sheriff: narrowed diagnostics' Python `is` fix to `is not None` only; `is None` is valid CP and 4 conformance cases had regressed. cpl-syntax + cpl-lint 225/225, `cpl-conform all --check` 0 regressions.
 - Sheriff: my 3cc5ea0d7 left a one-element `for` in `lsp_v03.rs` (clippy `single_element_loop`, run 45107372240). Replaced it with one assert; clippy on cpl-cli is clean.
 - `land.sh` now refuses a change that grows a file the debt ratchet caps (only files in the change, so a red ratchet on main from someone else does not block you). The ratchet has turned main red 5 times today through direct pushes, once from my own `&&` chain that piped `--check` into `grep`. Test: `test_land_refuses_only_a_change_that_grows_a_capped_file`; `test_check_cache.py -k land` passes 6/6.
 - Sheriff: diagnostics 7ff7decee turned `x is Some(v)` patterns into `==` comparisons (cpl-lint record/std/is_in_cond tests red). Forward fix: only `is None`/`is not None` are the Python comparison; 224/224 syntax+lint tests pass.
