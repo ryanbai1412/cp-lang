@@ -1,0 +1,1 @@
+Euclid's algorithm, a function that calls itself as `f(b, a % b)`, is `gcd(a, b)` from `std.math` (in the prelude), and the gcd of a list is `xs.fold(gcd, 0)`. The lint fires on a two-parameter function that recurses this way. There is no automatic fix, since the call replaces the whole function.

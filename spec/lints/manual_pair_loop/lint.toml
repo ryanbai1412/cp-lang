@@ -1,0 +1,5 @@
+code = "L0543"
+level = "warn"
+group = "idiom"
+title = "C++ pair loop"
+summary = "`for i ..: for j in i + 1..n`: `xs.pairs()` walks each pair once"

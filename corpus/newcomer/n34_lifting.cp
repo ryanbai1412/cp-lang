@@ -10,6 +10,6 @@ for _ in 0..q:
     let (v0, d): (0..n, 0..=200000) = read()
     var v = v0
     for k in 0..18:
-        if (d >> k) & 1 == 1:  // expect: missing manual-bit-test
+        if (d >> k) & 1 == 1:  // expect: manual_bit_test
             v = up[k, v]
     print(v)

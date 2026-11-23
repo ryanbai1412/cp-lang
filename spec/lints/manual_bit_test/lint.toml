@@ -1,0 +1,5 @@
+code = "L0540"
+level = "warn"
+group = "idiom"
+title = "C++ bit test"
+summary = "`(x >> i) & 1 == 1`: `x.bit(i)` reads one bit"

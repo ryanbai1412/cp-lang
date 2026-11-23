@@ -1,0 +1,5 @@
+code = "L0546"
+level = "warn"
+group = "idiom"
+title = "hand-rolled gcd"
+summary = "`f(b, a % b)`: `gcd(a, b)` is in `std.math`"

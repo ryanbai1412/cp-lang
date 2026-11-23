@@ -4,7 +4,7 @@ var best = 0
 for mask in 0..(1 << n):  // expect: missing manual-subset-enumeration
     var s = 0
     for i in 0..n:
-        if (mask >> i) & 1 == 1:  // expect: missing manual-bit-test
+        if (mask >> i) & 1 == 1:  // expect: manual_bit_test
             s += a[i]
     if s % 3 == 0:
         best = max(best, s)  // expect: chmin_chmax_if

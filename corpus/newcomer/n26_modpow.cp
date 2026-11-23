@@ -1,5 +1,5 @@
 let (a, e): (0..=1000000000, 0..=1000000000000000000) = read()
-fn power(b0: Int, e0: Int) -> Int:  // expect: missing hand-rolled-modpow
+fn power(b0: Int, e0: Int) -> Int:  // expect: hand_rolled_pow
     var b = b0 % 998244353
     var x = e0
     var r = 1

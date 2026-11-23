@@ -1,0 +1,5 @@
+code = "L0542"
+level = "warn"
+group = "idiom"
+title = "last element by `len - 1`"
+summary = "`xs[xs.len - 1]`: `xs.last!` is the last element"

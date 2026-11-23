@@ -6,13 +6,15 @@
 
 use crate::facts::Facts;
 use crate::{
-    CEIL_DIV_FORMULA, CHMIN_CHMAX_IF, COMPOUND_SELF_REF, FLOAT_SQRT_FOR_INT, NEG_MOD_FIXUP,
-    PEEK_THEN_POP, REVERSE_INDEX, UNPROVEN_LIST_INDEX,
+    CEIL_DIV_FORMULA, CHMIN_CHMAX_IF, COMPOUND_SELF_REF, FLOAT_SQRT_FOR_INT, LAST_VIA_LEN,
+    MANUAL_BIT_TEST, NEG_MOD_FIXUP, PEEK_THEN_POP, REVERSE_INDEX, UNPROVEN_LIST_INDEX,
 };
 use cpl_check::{Analysis, Ty};
 use cpl_diag::{Diagnostic, Span};
 
-const TYPED: [cpl_diag::Code; 8] = [
+const TYPED: [cpl_diag::Code; 10] = [
+    MANUAL_BIT_TEST.code,
+    LAST_VIA_LEN.code,
     FLOAT_SQRT_FOR_INT.code,
     REVERSE_INDEX.code,
     NEG_MOD_FIXUP.code,
@@ -82,6 +84,13 @@ fn keep(d: &Diagnostic, facts: &Facts) -> bool {
             None => true,
             Some(ty) => matches!(ty, Some(Ty::Int | Ty::I128 | Ty::Range { .. })),
         },
+        c if c == MANUAL_BIT_TEST.code => {
+            matches!(label(), Some(Some(Ty::Int | Ty::Range { .. })))
+        }
+        c if c == LAST_VIA_LEN.code => {
+            matches!(label(), Some(Some(Ty::Str | Ty::Array { .. })))
+                || matches!(label(), Some(Some(Ty::Named { name, .. })) if name == "List")
+        }
         c if c == UNPROVEN_LIST_INDEX.code => facts.typed_index(d.span).is_none(),
         _ => true,
     }

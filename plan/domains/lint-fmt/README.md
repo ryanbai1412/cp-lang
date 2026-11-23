@@ -50,6 +50,33 @@ port evidence, lint speed work.
 3. By 06:00: audit the top 10 messages and fixes, highest count first; then
    more teaching lints by port evidence until the deadline.
 
+## Milestone 2 (plan/product/MILESTONE-2.md; stable release, no date)
+
+**Most ambitious complete version.** Lint is the teacher a newcomer never
+needs: every C++ habit and every stdlib idiom in `spec/idioms/lints.md` has a
+rule with a record (before, after, near miss, why), each finding links its
+page and carries a fix that `cpl check` accepts, rules read the checker's fact
+table instead of syntax guesses, and libraries declare their own lints with
+`@lint`. `cpl fmt` is the one layout, configurable through `cp.toml [fmt]`,
+idempotent and meaning-preserving on every file, and on save in every
+supported editor on Linux, macOS and Windows.
+
+**Exit criteria**
+- At least 95% of marked spots flagged on the newcomer set and on the skill-eval
+  first tries, with 0 fixes that fail `cpl check`.
+- Every catalog family with port or newcomer evidence has a rule; the rest
+  are logged as deferred, each with its reason.
+- Corpus and `spec/std` warnings at 0, or each one a recorded real finding.
+- Fact-table lints only: no rule re-derives a type from syntax.
+- Library `@lint` declarations work for user libraries the same way as for std.
+- The fmt gate passes on the whole corpus, and format on save is tested in
+  VS Code, Neovim, Vim and JetBrains on all three platforms.
+
+**Next steps**
+1. Finish M1's 90% newcomer target, then score the skill-eval outputs.
+2. Move `bounds.rs` and the typed arms onto the fact table.
+3. Library `@lint` (M3 recognizers).
+
 ## Covers
 - **Lint.** The engine (levels, `with lint(...)`, `cp.toml [lints]`, fix
   application), every `L0xxx` lint, its record and tests, `cpl lint`,

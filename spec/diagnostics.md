@@ -121,6 +121,13 @@ prefix_sum}, L0522 copy_sort_writeback, L0523 chmin_chmax_if, L0524 bool_ternary
 
 | Code | Name | Fires on |
 |---|---|---|
+| L0540 | manual_bit_test | `(x >> i) & 1 == 1`; use `x.bit(i)` |
+| L0541 | sort_desc_by_negation | `xs.sorted(by: x => -x)`; use `desc: true` |
+| L0542 | last_via_len | `xs[xs.len - 1]` read; use `xs.last!` |
+| L0543 | manual_pair_loop | `for j in i + 1..n` inside `for i in 0..n`; use `pairs()` |
+| L0544 | manual_digit_loop | `while y > 0:` with `y /= 10`; use `y.digits()` |
+| L0545 | hand_rolled_pow | a square-and-halve loop; use `pow_mod` or `Mod<P>` |
+| L0546 | hand_rolled_gcd | `f(b, a % b)`; use `gcd` |
 | L0601 | same_place_read_write | `a[l] += inc(mut a[l])`, `xs[0] = xs.pop()!` |
 | L0602 | chain_walked_twice | a lazy chain value consumed twice |
 | L0603 | map_recomputed | `.map(f)` view read many times by index |

@@ -893,11 +893,11 @@ fn turbofish_type_args_offers_plain_generic_fix() {
 #[test]
 fn free_fold_becomes_a_method() {
     // proto/ports: `sum(a)`, `count(xs, p)`, `sort(mut xs, by:)` beside `xs.all(p)`.
-    let src = "let xs = [3, 1, 4]\nvar ys = [2, 7]\nsort(mut ys, by: y => -y)\nprint(sum(xs), count(xs, x => x > 2), max(xs[1..]), sorted(xs + ys))\n";
+    let src = "let xs = [3, 1, 4]\nvar ys = [2, 7]\nsort(mut ys, by: y => y % 5)\nprint(sum(xs), count(xs, x => x > 2), max(xs[1..]), sorted(xs + ys))\n";
     assert_eq!(taste_codes(src), ["L0509"; 5]);
     assert_eq!(
         fixed(src),
-        "let xs = [3, 1, 4]\nvar ys = [2, 7]\nys.sort(by: y => -y)\nprint(xs.sum(), xs.count(x => x > 2), xs[1..].max(), (xs + ys).sorted())\n"
+        "let xs = [3, 1, 4]\nvar ys = [2, 7]\nys.sort(by: y => y % 5)\nprint(xs.sum(), xs.count(x => x > 2), xs[1..].max(), (xs + ys).sorted())\n"
     );
     let first = "let xs = [3, 1, 4]\nprint(xs.first(x => x > 3), xs.first)\n";
     assert_eq!(

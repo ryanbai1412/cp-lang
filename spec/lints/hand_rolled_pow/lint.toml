@@ -1,0 +1,5 @@
+code = "L0545"
+level = "warn"
+group = "idiom"
+title = "hand-rolled fast power"
+summary = "a square-and-halve loop: `pow_mod(b, e, m)` or `Mod<P>` with `**`"

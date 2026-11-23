@@ -21,6 +21,7 @@ mod proven;
 mod reverse;
 mod scopes;
 mod sentinel;
+mod spelled;
 mod taste;
 mod types;
 
@@ -50,5 +51,6 @@ pub(crate) fn run(file: &File, config: &Config) -> Vec<Finding> {
     findings.extend(mod_div::check(file));
     findings.extend(taste::check(file));
     findings.extend(literals::check(file));
+    findings.extend(spelled::check(file));
     findings
 }
