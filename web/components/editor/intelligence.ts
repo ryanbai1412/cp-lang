@@ -16,6 +16,8 @@ import {
   EditorView,
   hoverTooltip,
   keymap,
+  showTooltip,
+  type Tooltip,
   tooltips,
   type ViewUpdate,
   ViewPlugin,
@@ -137,6 +139,44 @@ export const inlayHintsOn = () =>
 export function setInlayHints(on: boolean) {
   localStorage.setItem(hintsKey, on ? "on" : "off");
   window.dispatchEvent(new Event(hintsEvent));
+}
+
+type SignatureHelp = {
+  signatures: {
+    label: string;
+    parameters?: { label: string | [number, number] }[];
+  }[];
+  activeSignature?: number;
+  activeParameter?: number;
+};
+
+const setSignature = StateEffect.define<Tooltip | null>();
+const signatureField = StateField.define<Tooltip | null>({
+  create: () => null,
+  update(tip, tr) {
+    for (const e of tr.effects) if (e.is(setSignature)) return e.value;
+    return tip && tr.docChanged ? { ...tip, pos: tr.changes.mapPos(tip.pos) } : tip;
+  },
+  provide: (f) => showTooltip.from(f),
+});
+
+// The signature with the parameter being typed in bold.
+function signatureDom(help: SignatureHelp) {
+  const sig = help.signatures[help.activeSignature ?? 0];
+  const dom = document.createElement("div");
+  dom.className = "cm-lsp-doc cm-signature-help";
+  const param = sig.parameters?.[help.activeParameter ?? 0]?.label;
+  const [from, to] =
+    typeof param === "string"
+      ? [sig.label.indexOf(param), sig.label.indexOf(param) + param.length]
+      : (param ?? [-1, -1]);
+  if (from < 0) dom.textContent = sig.label;
+  else {
+    const b = document.createElement("b");
+    b.textContent = sig.label.slice(from, to);
+    dom.append(sig.label.slice(0, from), b, sig.label.slice(to));
+  }
+  return dom;
 }
 
 class HintWidget extends WidgetType {
@@ -359,6 +399,39 @@ export function intelligence(prefix: string, editable: boolean): Extension {
     );
   }
 
+  // Parameter hints while typing a call, from `textDocument/signatureHelp`.
+  const signature = ViewPlugin.fromClass(
+    class {
+      timer = 0;
+      asked = 0;
+      constructor(readonly view: EditorView) {}
+      update(u: ViewUpdate) {
+        if (!(u.docChanged || u.selectionSet) || !u.view.hasFocus) return;
+        clearTimeout(this.timer);
+        this.timer = window.setTimeout(() => void this.refresh(), 150);
+      }
+      async refresh() {
+        const view = this.view;
+        const ask = ++this.asked;
+        const pos = view.state.selection.main.head;
+        const help = await view
+          .plugin(server)!
+          .doc.request<SignatureHelp>("textDocument/signatureHelp", {
+            position: toLsp(view, pos),
+          })
+          .catch(() => null);
+        if (ask !== this.asked || pos !== view.state.selection.main.head) return;
+        const tip: Tooltip | null = help?.signatures?.length
+          ? { pos, above: true, create: () => ({ dom: signatureDom(help) }) }
+          : null;
+        view.dispatch({ effects: setSignature.of(tip) });
+      }
+      destroy() {
+        clearTimeout(this.timer);
+      }
+    },
+  );
+
   return [
     // In the page body, so an editor that scrolls its own content can't clip them.
     tooltips({ parent: document.body }),
@@ -367,6 +440,7 @@ export function intelligence(prefix: string, editable: boolean): Extension {
     hintField,
     hints,
     editable ? autocompletion({ override: [complete] }) : [],
+    editable ? [signatureField, signature] : [],
     keymap.of([
       {
         key: "F12",

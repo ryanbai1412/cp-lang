@@ -141,6 +141,14 @@ await page.getByTitle("Show inlay type hints").click();
 await hints.first().waitFor({ timeout: 30000 }).catch(() => fail("inlay hints don't come back on"));
 console.log("inlay hints switch off, stay off across a reload, and back on");
 
+await page.locator(".cm-content").first().click();
+await page.keyboard.press("ControlOrMeta+End");
+await page.keyboard.insertText("\nprint(twice(");
+const sig = page.locator(".cm-signature-help");
+await sig.waitFor({ timeout: 30000 }).catch(() => fail("no parameter hints after typing `twice(`"));
+if ((await sig.locator("b").innerText()) !== "x: Int") fail(`parameter hints for \`twice(\` don't bold \`x: Int\`: ${await sig.innerHTML()}`);
+console.log("parameter hints:", await sig.innerText());
+
 // Ctrl/Cmd-click on a search result opens it in a new tab.
 await page.keyboard.press("ControlOrMeta+k");
 await page.keyboard.insertText("SegTree");

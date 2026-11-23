@@ -238,3 +238,4 @@ print(k, n)' -> print ends up inside the loop
 - prebuild's per-stage limit is 240 s, under CI's 8-minute Build-step cap, so a hung stage is named in the log before the step is killed; the slowest stages take about 46 s on CI.
 - Intro and Read 1 print `a.max()!` now that `max()` returns an optional; Read 1 says why.
 - 2026-11-23: playground inlay type hints from the language server, with a remembered on/off switch; Cmd/Ctrl-click or middle click on a search result opens a new tab; std reference entries get a parameter table and labelled cost/empty/order/traps rows. Charter reshaped prose-first; site rules moved to handbook/guidelines/site.md and site-checklist.md (site/R1-R8), cited by the checks that enforce them.
+- 2026-11-23: browser parameter hints (textDocument/signatureHelp) while typing a call; lsp-parity unit test: every server capability is used by the browser editor or a named gap in web/lib/lsp-features.ts (18 gaps today).
