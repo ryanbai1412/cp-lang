@@ -421,10 +421,16 @@ pub fn proven_ranges_parsed(src: &str, items: &[(u32, &ParsedItem)]) -> Vec<(u32
 /// A file with a syntax error gets no lints: what the parser could not read
 /// may hold the assignment or the read a lint would say is missing.
 pub fn lint(src: &str, config: &Config) -> Vec<Diagnostic> {
-    let mut diags = with_parsed(src, |file| lint_file(file, config));
-    typed::refine(&mut diags, src);
-    recheck::recheck(&mut diags, src);
-    diags
+    (analyze_alone(src).as_deref())
+        .map(|analysis| lint_analysis(analysis, config))
+        .unwrap_or_default()
+}
+
+/// `src` checked in a database of its own, for callers that hold none.
+pub(crate) fn analyze_alone(src: &str) -> Option<std::sync::Arc<cpl_check::Analysis>> {
+    let mut db = cpl_check::Database::new();
+    db.set_file("<lint>.cp", src);
+    db.analyze("<lint>.cp")
 }
 
 /// `diags` less the lints at the place of one of `errors`: the error
@@ -728,6 +734,7 @@ pub fn fix_checked_removed_syntax_in(
                 [
                     cpl_diag::codes::REMOVED_SYNTAX,
                     cpl_diag::codes::NOT_CALLABLE,
+                    cpl_diag::codes::WRONG_ARG_COUNT,
                 ]
                 .contains(&d.code)
                     && !d.fixes.is_empty()

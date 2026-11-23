@@ -31,7 +31,7 @@ Depends on `cpl-syntax`, `cpl-diag`, and, outside wasm only, `cpl-check` and
 | File | Lines | What it is for |
 |---|---|---|
 | `build.rs` | | Generates the `LINTS` registry (one const per `spec/lints/<name>/`, code order) from each record's `lint.toml` (code, level, title, summary) and its `explain.md`, `before.cp`, `after.cp`, `near_miss.cp` |
-| `src/lib.rs` | 704 | `Level`, `Lint`, `include!` of the generated registry; `lint` (source only, for tests), `fix_in`, `apply_fixes`; `with lint(name: allow)` regions; removed-syntax codemods behind `cpl fix`; the `Proven*` analysis API |
+| `src/lib.rs` | 704 | `Level`, `Lint`, `include!` of the generated registry; `lint` (a source checked on its own, through `lint_analysis`), `fix_in`, `apply_fixes`; `with lint(name: allow)` regions; removed-syntax codemods behind `cpl fix`; the `Proven*` analysis API |
 | `src/checker.rs` | 74 | `CHECKER_LINTS`: the names of L0601-L0609, which `cpl-check` emits; `checked_analysis` sorts what `cpl check` reported into checker lints at their levels and `with lint` regions, and the errors lints can't see past |
 | `src/config.rs` | 153 | `Config` from `cp.toml [lints]` (levels by name) plus `memory_mb` |
 | `src/walk.rs` | 513 | Tree walkers over `cpl_syntax` items shared by the rules |
@@ -73,7 +73,8 @@ Found with `grep -rhoE 'cpl_(lint|fmt)::[A-Za-z_]+' crates --include=*.rs`.
 One entry (ARCHITECTURE.md B6 #2): a tool lints through `lint_analysis` on
 the analysis it already has and never builds a `Database` for lint. When
 `cpl_check::Session` lands it becomes `cpl_lint::lint(&session, file)`;
-`lint(src)` stays a test helper.
+`lint(src)` checks `src` in a database of its own and calls `lint_analysis`, so even
+the source-only entry lints like the tools.
 
 The `Proven*` API is the checker's job living in the wrong crate; it moves to
 `cpl-check` in M3 and `cpl-lsp` follows (request in the compiler worklog).

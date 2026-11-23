@@ -234,18 +234,21 @@ fn float_equality_follows_floats_through_names() {
         .contains("`abs(x - 0.5) < EPS`"));
     // Through an inferred `let`, a fn result, a field and arithmetic.
     assert_eq!(
-        codes("let half = 1.0 / 2.0\nlet twice = half * 2\nprint(twice != 1)\n"),
+        codes("let half = 1.0 / 2.0\nlet twice = half * 2\nprint(yes(twice != 1))\n"),
         ["L0301"]
     );
     assert_eq!(
-        codes("fn area(r: Int) -> F64 = 3.14 * r * r\nprint(area(2) == area(3))\n"),
+        codes("fn area(r: Int) -> F64 = 3.14 * r * r\nprint(yes(area(2) == area(3)))\n"),
         ["L0301"]
     );
     assert_eq!(
-        codes("struct P:\n    x: F64\nlet p: P = read()\nprint(p.x == 0)\n"),
+        codes("struct P:\n    x: F64\nlet p: P = read()\nprint(yes(p.x == 0))\n"),
         ["L0301"]
     );
-    assert_eq!(codes("let d = sqrt(read())\nprint(d == 2)\n"), ["L0301"]);
+    assert_eq!(
+        codes("let d = sqrt(read())\nprint(yes(d == 2))\n"),
+        ["L0301"]
+    );
     // Ordering floats is fine, and so is `==` on integers.
     assert_eq!(
         codes("let x: F64 = read()\nprint(x < 0.5, 1 == 2)\n"),
@@ -362,7 +365,7 @@ fn an_unknown_lint_name_is_reported_with_the_closest_one() {
 
 #[test]
 fn cp_toml_sets_levels() {
-    let src = "var total = 0\nlet x: F64 = read()\nprint(total, x == 1.0)\n";
+    let src = "var total = 0\nlet x: F64 = read()\nprint(total, yes(x == 1.0))\n";
     assert_eq!(codes(src), ["L0201", "L0301"]);
     let toml = "[project]\nname = \"x\"\n\n[lints]\nvar_never_reassigned = \"allow\"  # noisy here\nfloat_equality = \"deny\"\n\n[judge]\nfloat_equality = \"allow\"\n";
     let (config, errors) = Config::from_toml(toml);
@@ -377,7 +380,7 @@ fn cp_toml_sets_levels() {
 
 #[test]
 fn cp_toml_sets_a_level_for_a_whole_group() {
-    let src = "var total = 0\nlet x: F64 = read()\nprint(total, x == 1.0)\n";
+    let src = "var total = 0\nlet x: F64 = read()\nprint(total, yes(x == 1.0))\n";
     let toml = "[lints]\nstyle = \"allow\"\ncorrectness = \"deny\"\nfloat_equality = \"warn\"\n";
     let (config, errors) = Config::from_toml(toml);
     assert_eq!(errors, []);
@@ -947,10 +950,11 @@ fn turbofish_type_args_offers_plain_generic_fix() {
 fn free_fold_becomes_a_method() {
     // proto/ports: `sum(a)`, `count(xs, p)`, `sort(mut xs, by:)` beside `xs.all(p)`.
     let src = "let xs = [3, 1, 4]\nvar ys = [2, 7]\nsort(mut ys, by: y => y % 5)\nprint(sum(xs), count(xs, x => x > 2), max(xs[1..]), sorted(xs + ys))\n";
-    assert_eq!(taste_codes(src), ["L0509"; 5]);
+    // `max(xs[1..])` is the checker's E0303, which carries the fix.
+    assert_eq!(taste_codes(src), ["L0509"; 4]);
     assert_eq!(
-        fixed(src),
-        "let xs = [3, 1, 4]\nvar ys = [2, 7]\nys.sort(by: y => y % 5)\nprint(xs.sum(), xs.count(x => x > 2), xs[1..].max(), (xs + ys).sorted())\n"
+        fix(src, &Config::default()).0,
+        "let xs = [3, 1, 4]\nvar ys = [2, 7]\nys.sort(by: y => y % 5)\nprint(xs.sum(), xs.count(x => x > 2), xs[1..].max()!, (xs + ys).sorted())\n"
     );
     let first = "let xs = [3, 1, 4]\nprint(xs.first(x => x > 3), xs.first)\n";
     assert_eq!(
@@ -1836,7 +1840,7 @@ fn float_equality_asks_the_checker_about_fields() {
 struct Vec(x: F64, y: F64)\n\
 let p = Pt(1, 2)\n\
 let v = Vec(1.0, 2.0)\n\
-print(p.x == 0, v.x == 0)\n";
+print(yes(p.x == 0), yes(v.x == 0))\n";
     let found = lint(src, &all_on());
     let floats: Vec<_> = found
         .iter()

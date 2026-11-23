@@ -67,24 +67,6 @@ pub fn lint_analysis(analysis: &Analysis, config: &crate::Config) -> Vec<Diagnos
     diags
 }
 
-/// `diags` less the findings the facts of `src` rule out; `src` is checked
-/// only when a finding needs it.
-pub(crate) fn refine(diags: &mut Vec<Diagnostic>, src: &str) {
-    if !diags.iter().any(|d| TYPED.contains(&d.code)) {
-        return;
-    }
-    match Facts::check("<lint>.cp", src) {
-        Some(facts) => refine_with_facts(diags, &facts),
-        None => diags.retain_mut(|d| {
-            count_spelling(d, None);
-            d.code == LOOP_REDUCTION.code
-                || (d.code == UNPROVEN_LIST_INDEX.code && d.labels.is_empty())
-                || d.code == FLOAT_EQUALITY.code
-                || !TYPED.contains(&d.code)
-        }),
-    }
-}
-
 pub(crate) fn refine_with_facts(diags: &mut Vec<Diagnostic>, facts: &Facts) {
     diags.retain(|d| keep(d, facts));
     for d in diags.iter_mut() {
