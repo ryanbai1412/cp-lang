@@ -4,8 +4,9 @@
 
 For each `ok` conformance case, runs `cpl explain`; where it lists copies
 (`[copy]` lines and `explicit copy` views), builds the judge C++ and counts
-the deep copies in it: a container or string constructed from another
-(`= std::vector<T>(x);`, `= std::string(x);`) and `cpl::to_list(...)`. A
+the deep copies in it with the counter explain_accuracy.rs uses (a
+container initialised from a place, a by-value capture), plus a container
+constructed from another (`= std::vector<T>(x);`) and `cpl::to_list(...)`. A
 case whose explain lists more copies than its C++ makes is a false claim
 (spec/tools/explain.md: each heap value the judge build copies, R05.3.5).
 
@@ -23,6 +24,51 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 COPY = re.compile(r"=\s*(?:std::vector<[^;]*?>|std::string)\(\w+\);|cpl::to_list\(")
+CONTAINERS = ("std::vector<", "std::map<", "std::set<", "std::unordered_map<", "std::deque<", "std::string")
+NAME = re.compile(r"[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*")
+
+
+def is_place(text):
+    text = text.strip()
+    return bool(NAME.fullmatch(text)) or (text.startswith("cpl::at(") and text.endswith(")") and "::" not in text[8:])
+
+
+def deep_copies(cpp):
+    """Mirrors deep_copies in crates/cpl-cli/tests/support/cpp_counts.rs, plus
+    copies spelled as a constructor call or `cpl::to_list`."""
+    held, count = set(), len(COPY.findall(cpp))
+    for line in cpp.splitlines():
+        line = line.strip()
+        decl = line.removeprefix("const ")
+        if decl.startswith(CONTAINERS):
+            depth, end = 0, len(decl)
+            for i, c in enumerate(decl):
+                if c == "<":
+                    depth += 1
+                elif c == ">":
+                    depth -= 1
+                elif c in "=(;,){" and depth == 0:
+                    end = i
+                    break
+            head = decl[:end].rstrip()
+            name = re.split(r"[ &]", head)[-1]
+            if name and len(name) < len(head):
+                held.add(name)
+                by_value = not head[: len(head) - len(name)].rstrip().endswith("&")
+                rest = decl[end:]
+                if by_value and rest.startswith("=") and rest.endswith(";") and is_place(rest[1:-1]):
+                    count += 1
+        if line.startswith("std::tuple<") and any(c in line for c in CONTAINERS) and ".first, " in line and ".second)" in line:
+            count += 1
+    for line in cpp.splitlines():
+        open_ = line.find("= [")
+        close = line.find("](", open_) if open_ >= 0 else -1
+        if close < 0:
+            continue
+        for cap in line[open_ + 3 : close].split(", "):
+            if not cap.startswith("&") and " = " in cap and cap.split(" = ", 1)[1].strip() in held:
+                count += 1
+    return count
 
 
 def one(cpl, case, tmp):
@@ -36,7 +82,7 @@ def one(cpl, case, tmp):
     out = Path(tmp) / (case.stem + ".cpp")
     if subprocess.run([cpl, "build", str(case), "-o", str(out)], capture_output=True, timeout=120).returncode:
         return None
-    made = len(COPY.findall(out.read_text()))
+    made = deep_copies(out.read_text())
     return case.relative_to(ROOT), claimed, made
 
 
