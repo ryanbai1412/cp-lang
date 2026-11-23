@@ -8,7 +8,13 @@ on:
   push:
     branches: [main]
   pull_request:
+  # A lane can run some tests alone: `filter` is a nextest filterset, e.g.
+  # `binary(debugger)`; infra dispatches it for lanes whose token can't.
   workflow_dispatch:
+    inputs:
+      filter:
+        description: nextest filterset (default every test)
+        default: all()
 
 permissions:
   contents: read
@@ -50,4 +56,6 @@ jobs:
       - name: Compiler versions
         run: g++ --version | head -1 && rustc --version
       - name: Workspace tests
-        run: cargo nextest run --workspace --no-fail-fast
+        env:
+          FILTER: ${{ inputs.filter || 'all()' }}
+        run: cargo nextest run --workspace --no-fail-fast -E "$FILTER"
