@@ -52,3 +52,21 @@ Port 3/5 (reported gap), rescored cold on current main; dream 4/5 holds. The owe
 - Minor: the walk (lines 47-55) can be `while let at = cursor and let nxt = unvisited.first_ge(at):`, which drops the `else: break` (probed).
 - Minor: `dfs` recurses once per vertex of a component, up to `n = 200_000` deep; say the judge's stack covers it.
 - Minor: the even-`k` case (lines 7-8) is still only asserted.
+
+## Cold rescore (c7798b6c1)
+
+Port 3/5 (reported, measured gap), rescored cold after 3a822d3c5; dream 4/5 holds. `cpl check` and `cpl lint` are clean.
+
+Better:
+- The cursor walk, merge pointer `ai` and n-deep recursion are gone: `complement_components` (lines 38-53) is the standard unvisited-list BFS (stamp `near`, `partition`, queue the rest), O(n + m) as the header (lines 15-17) argues.
+- Statement bounds are types now (`n: 4..=200_000`, `k: 2..=n - 2`, lines 21-23), and `yes()` under `with io(answers:)` replaces the string literals.
+- The header derives the even-`k` parity flip (lines 6-7), and the closing `lo <= target <= hi` (line 64) follows from the parity argument (lines 13-15).
+
+Still fails:
+- Hand-rolled standard algorithm (lines 38-53): `components(complement(joined))` checks but is O(n^2) (28.6 s on n = m = 2e5, friction file), so the BFS stays hand-written. Reported and measured, which is the definition of a 3; it reaches 4 once `std.graph` gives `Complement` searches the unvisited-set walk its doc promises.
+- Owed, mixed spelling: line 42 binds `while let s = unvisited.pop()`, line 46 `while let Some(u) = queue.pop_front()`; `while let u = queue.pop_front():` checks and runs (probed).
+- Owed: order is irrelevant, so the `Deque` (lines 44-46, 50) can be a stack, `var todo = [s]` / `while let u = todo.pop():` / `todo.extend(apart)`; probed, agrees with the port on 150 `gen.py` inputs.
+- Owed: the even-`k` exit (lines 32-34) runs after the parity setup (lines 27-30) it discards; move it right after `let edges` (probed, same 150 inputs).
+- Minor: the even-`k` "always Yes" (lines 7-8) still cites the editorial instead of deriving it, and line 8 is a stray short wrap.
+
+Dream notes: its bounds (`n: 1..`, `k: 1..=1_000_000_000`, lines 24-26) are looser than the statement the port now encodes, and it prints with `if ...: "Yes" else: "No"` where the port has `yes()`.
