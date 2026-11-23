@@ -41,4 +41,4 @@ for i in (1..=n).rev:
     window.push(i, dp[i])
 
 let first_0 = last_occ.get(0) ?? (n + 1)
-print(min(dp[i] for i in 1..=first_0)!)
+print(dp[1..=first_0].min()!)

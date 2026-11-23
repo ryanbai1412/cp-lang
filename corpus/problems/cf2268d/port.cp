@@ -52,5 +52,5 @@ while let l = cur:
     while let u = up[i]:
         ans += charge_edge(l, r, i, u)
         i = u
-    cur = r + 1
+    cur = r.next
 print(ans)

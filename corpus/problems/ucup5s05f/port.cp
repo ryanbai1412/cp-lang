@@ -37,9 +37,9 @@ fn descend(seg: List<List<Z>>, node: Int, lo: Int, hi: Int, c: List<Z>, mut res:
         res[lo] = c[1] - Z(lo) * c[0]
         return
     let mid = (lo + hi) / 2
-    descend(seg, 2 * node, lo, mid, c[..mid - lo + 1], mut res)
+    descend(seg, 2 * node, lo, mid, List(c[..mid - lo + 1]), mut res)
     let full = convolve(c, seg[2 * node])
-    descend(seg, 2 * node + 1, mid, hi, full[mid - lo..=hi - lo], mut res)
+    descend(seg, 2 * node + 1, mid, hi, List(full[mid - lo..=hi - lo]), mut res)
 
 // Walk the suffix tree in LCP order, recording (top_size, bottom_size) per edge.
 fn suffix_tree_edges(s: Str) -> (below: List<Z>, above: List<Z>):
