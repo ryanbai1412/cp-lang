@@ -14,7 +14,8 @@ The emitted C++ is compiled with `g++ -std=c++17 -O2 -w`, originals with
 (C++23: deducing `this`, <format>) is built with `--cxx23 CMD` (a clang; default
 `python3 -m ziglang c++` when the running interpreter has `pip install ziglang`) at `-std=c++23`, and its pair's emitted C++ with the same
 CMD, so both sides of a ratio use one compiler. Outputs are verified for exact
-token-level output agreement (1e-6 float tolerance). Also reported: peak RSS
+token-level output agreement (1e-6 float tolerance), or by the problem's
+`checker.py` where it has one (problems with many valid answers). Also reported: peak RSS
 of each run (emitted / original) and g++ time on the emitted C++ (taken while
 `--jobs` builds run at once, so compare runs made with the same `--jobs`).
 Every pair that does not reach a ratio is listed with its reason.
@@ -102,6 +103,18 @@ def same_tokens(a, b):
         if not math.isclose(fx, fy, rel_tol=1e-6, abs_tol=1e-6):
             return False
     return True
+
+
+def outputs_agree(cp, inp, out, ans):
+    """Exact tokens, or, where the problem ships a `checker.py` (many valid
+    answers), the checker's verdict on `out` against the original's `ans`."""
+    if same_tokens(open(out, errors="replace").read(), open(ans, errors="replace").read()):
+        return True
+    checker = os.path.join(os.path.dirname(cp), "checker.py")
+    if not os.path.exists(checker):
+        return False
+    r = subprocess.run([sys.executable, checker, inp, out, ans], capture_output=True, timeout=300)
+    return r.returncode == 0
 
 
 # A child forked from this process starts with its resident set, so its own
@@ -546,6 +559,7 @@ def main():
             "name": name,
             "pbin": pbin,
             "obin": obin,
+            "cp": cp,
             "cpp_path": cpp_path,
             "inp": inp,
             "cxx": cxx,
@@ -579,7 +593,7 @@ def main():
             if s_p != "ok":
                 tried.append(f"port {s_p}")
                 continue
-            if not same_tokens(open(out_p, errors="replace").read(), open(out_o, errors="replace").read()):
+            if not outputs_agree(b["cp"], inp, out_p, out_o):
                 tried.append("outputs differ")
                 continue
             agreed.append((t_o, t_p, rss_o, rss_p, inp))
@@ -606,7 +620,7 @@ def main():
             ts_t = []
             for _ in range(len(ts_p)):
                 tt, s_t, _ = run_once(b["tbin"], b["inp"], out_p, args.timeout)
-                if s_t != "ok" or not same_tokens(open(out_p, errors="replace").read(), open(out_o, errors="replace").read()):
+                if s_t != "ok" or not outputs_agree(b["cp"], b["inp"], out_p, out_o):
                     ts_t = []
                     tuned = {"tuned_error": f"tuned {s_t if s_t != 'ok' else 'output differs'} on {b['inp']}"}
                     break
