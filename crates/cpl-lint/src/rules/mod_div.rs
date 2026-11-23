@@ -951,7 +951,7 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
             ),
         )
         .with_help(format!(
-            "hoist `let {} = {}` before the loop and multiply instead",
+            "hoist `let {} = {}` before the loop and multiply instead: one O(log P) inverse in place of one per iteration",
             hit.base_name, hit.inv_expr
         ));
         if hit.fixable {

@@ -81,7 +81,7 @@ impl Visitor for Memo {
         )
         .with_note(format!("one entry per combination of arguments: {product}"))
         .with_help(
-            "narrow a parameter's type to the values it really takes, or fill a table in order and keep only the rows the recurrence reads",
+            "narrow a parameter's type to the values it really takes, or fill a table in order and keep only the rows the recurrence reads: the memo holds one entry per combination, so each narrower parameter divides its size",
         );
         self.findings.push(Finding {
             lint: &MEMO_KEY_SPACE,
