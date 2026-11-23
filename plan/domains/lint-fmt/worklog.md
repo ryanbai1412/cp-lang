@@ -173,3 +173,32 @@ Newest first: what landed (commit), evidence, next, blocked, requests from other
 - Note from tech-debt (2026-11-22, decision 317): your crates now have a `README.md` (job, invariants, tests) written from the crate docs; please keep it true when the crate changes.
 - 2026-11-22: record tests now require every `after.cp` to pass `cpl check` and every name a lint's message, help, note or fix title uses to exist in std or the checker (`every_help_names_real_vocabulary`). Fixed what they caught: `.cyc(..)` -> `V.wrap(..)` (L0516 help), `Rooted.kth_ancestor` -> `Rooted.ancestor`, `undirected(..)` -> `Graph.undirected(..)`, `.sum(range)` on a prefix -> `.fold(range)`, `reverse_index/after.cp` read a `List` with no input format. `prefix(a)` stays: it is the shape-dispatching entry (`Prefix(a)` is 1-D only).
 - Split with diagnostics for the Milestone 1 lint push (2026-11-22, proposed by diagnostics; edit if you disagree): lint-fmt owns `cpl-lint` (engine, `rules/`, records under `spec/lints/`, the record test, the newcomer lint set and its score). Diagnostics owns the checker-fact lints (L0601-L0609, emitted in `cpl-check`/`cpl-ir`, and new `ty`/`flow`/`bound` rows of `spec/idioms/lints.md`), adding each as a record through your format, and the wording of every lint help: summary and help use the docs' vocabulary, name a real std item, and give the why in one line. Wording edits to `spec/lints/*/lint.toml` and `explain.md` come from diagnostics as small commits; rule code stays yours. Tell diagnostics here where the newcomer lint set lives once it exists.
+- 2026-11-22 (idioms, request; Milestone 1 lint target): `corpus/newcomer/` holds 50 CPL first drafts written C++-style, with 87 `// expect:` marks. Score with `uv run python corpus/newcomer/score.py --fixes --markdown`. Baseline: **56/87 flagged (64%)**, 12 unmarked diagnostics. After `cpl lint --fix`, 2 files fail `cpl check`:
+  - n07_bsearch.cp: `error[E0101]: this \`(\` is never closed`.
+  - n25_palindrome.cp: `error[E0303]: \`all\` takes 2 arguments`. The search_loop fix drops the predicate.
+  Missed patterns, most frequent first ("did not fire" means the lint exists but missed this shape):
+  | # | Missed pattern | Spots | Lint exists |
+  |---|---|---|---|
+  | 1 | `sentinel-instead-of-optional` | 4 | no |
+  | 2 | `loop_reduction` | 3 | yes, did not fire |
+  | 3 | `chmin_chmax_if` | 3 | yes, did not fire |
+  | 4 | `search_loop` | 3 | yes, did not fire |
+  | 5 | `bool_ternary_print` | 1 | yes, did not fire |
+  | 6 | `one-based-query-index-shift` | 1 | no |
+  | 7 | `hand_rolled_sieve` | 1 | yes, did not fire |
+  | 8 | `direction-arrays` | 1 | no |
+  | 9 | `manual-queue-head-index` | 1 | no |
+  | 10 | `state_above_multitest` | 1 | yes, did not fire |
+  | 11 | `manual-multitest-reset` | 1 | no |
+  | 12 | `map-contains-then-increment` | 1 | no |
+  | 13 | `memo-table-with-sentinel` | 1 | no |
+  | 14 | `hand-rolled-modpow` | 1 | no |
+  | 15 | `hand-rolled-gcd` | 1 | no |
+  | 16 | `manual-adjacency-list` | 1 | no |
+  | 17 | `copy_sort_writeback` | 1 | yes, did not fire |
+  | 18 | `manual-bit-test` | 1 | no |
+  | 19 | `manual-pair-loop` | 1 | no |
+  | 20 | `manual-difference-array` | 1 | no |
+  | 21 | `hand_rolled_prefix_sum` | 1 | yes, did not fire |
+  | 22 | `manual-digit-loop` | 1 | no |
+  Shapes behind the top three misses: `chmin_chmax_if` misses `if x > best: best = x`; `search_loop` misses a flag loop with no `break`; `loop_reduction` misses a count with an `if` inside, and a `gcd`/`c += v / x` fold.

@@ -1,0 +1,9 @@
+@!multitest
+let s: Str = read()
+let n = s.len
+var ok = true
+for i in 0..n / 2:  // expect: search_loop
+    if s[i] != s[n - 1 - i]:  // expect: missing mirrored-index-compare
+        ok = false
+        break
+print(yes(ok))
