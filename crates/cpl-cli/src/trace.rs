@@ -239,9 +239,9 @@ pub fn run_report(
     out
 }
 
-/// With `@alt(f)` fns swapped in, the first call of a part `f` that returns
-/// something else than the same call of its alt: where the two first
-/// disagree, in the terms of the part's own arguments.
+/// With `@alt(f)` fns swapped in, the call of a part `f` that first
+/// returns something else than its alt does on the same arguments, with
+/// every part it calls right: in a recursion, the innermost wrong call.
 fn first_call_divergence(source: &str, fast: &Recording, slow: &Recording) -> Option<Divergence> {
     let alts = cpl_stress::cli::part_alts(source);
     let line_of = |name: &str| {
@@ -251,19 +251,37 @@ fn first_call_divergence(source: &str, fast: &Recording, slow: &Recording) -> Op
             .position(|line| line.trim_start().starts_with(&head)))
         .map_or(0, |at| at as u32 + 1)
     };
-    fast.calls.iter().find_map(|ours| {
-        let (_, alt) = alts.iter().find(|(part, _)| *part == ours.name)?;
-        let theirs = (slow.calls.iter())
-            .find(|call| call.name == ours.name && call.ordinal == ours.ordinal)?;
-        let (Some(a), Some(b)) = (&ours.returned, &theirs.returned) else {
-            return None;
-        };
-        (a != b && ours.args == theirs.args).then(|| Divergence {
-            name: format!("{}({})", ours.name, shown_args(&ours.args)),
-            nth: ours.ordinal,
-            fast: Some((line_of(&ours.name), a.clone())),
-            brute: Some((line_of(alt), b.clone())),
+    let wrong: Vec<_> = (fast.calls.iter().enumerate())
+        .filter_map(|(at, ours)| {
+            let (_, alt) = alts.iter().find(|(part, _)| *part == ours.name)?;
+            let theirs = (slow.calls.iter())
+                .find(|call| call.name == ours.name && call.args == ours.args)?;
+            match (&ours.returned, &theirs.returned) {
+                (Some(a), Some(b)) if a != b => Some((at, ours, alt, a, b)),
+                _ => None,
+            }
         })
+        .collect();
+    // The calls made inside a call follow it, deeper than it: they end
+    // where a call no deeper starts.
+    let mut ends = vec![fast.calls.len(); fast.calls.len()];
+    let mut open: Vec<usize> = Vec::new();
+    for (at, call) in fast.calls.iter().enumerate() {
+        while let Some(&o) = open.last().filter(|&&o| fast.calls[o].depth >= call.depth) {
+            ends[o] = at;
+            open.pop();
+        }
+        open.push(at);
+    }
+    let &(_, ours, alt, a, b) = wrong.iter().enumerate().find_map(|(k, entry)| {
+        let next_wrong = wrong.get(k + 1).map_or(usize::MAX, |(other, ..)| *other);
+        (next_wrong >= ends[entry.0]).then_some(entry)
+    })?;
+    Some(Divergence {
+        name: format!("{}({})", ours.name, shown_args(&ours.args)),
+        nth: ours.ordinal,
+        fast: Some((line_of(&ours.name), a.clone())),
+        brute: Some((line_of(alt), b.clone())),
     })
 }
 
