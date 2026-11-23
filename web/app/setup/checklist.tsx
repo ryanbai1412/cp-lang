@@ -60,12 +60,27 @@ function Soon() {
   );
 }
 
+// The one-step install `cpl setup <editor>` does, shown above each tab's manual steps.
+function SetupCmd({ editor }: { editor: string }) {
+  return (
+    <>
+      <p>
+        With <code>cpl</code> installed, one command sets it up on Linux, macOS
+        and Windows (run it again after <code>cpl self update</code>):
+      </p>
+      <Code>{`cpl setup ${editor}`}</Code>
+      <p className="mt-3">Or by hand:</p>
+    </>
+  );
+}
+
 const editors: { id: string; name: string; body: ReactNode }[] = [
   {
     id: "vscode",
     name: "VS Code",
     body: (
       <>
+        <SetupCmd editor="vscode" />
         <p>
           Download the extension, then in VS Code (or Cursor, Windsurf,
           VSCodium) open Extensions → ⋯ → Install from VSIX… and pick the file.
@@ -88,6 +103,7 @@ const editors: { id: string; name: string; body: ReactNode }[] = [
     name: "Neovim",
     body: (
       <>
+        <SetupCmd editor="neovim" />
         <p>
           Neovim 0.10 or later (Ubuntu 22.04&apos;s apt has 0.6: take the
           AppImage or tarball from{" "}
@@ -126,6 +142,7 @@ const editors: { id: string; name: string; body: ReactNode }[] = [
     name: "Vim",
     body: (
       <>
+        <SetupCmd editor="vim" />
         <p>
           The same package gives Vim 8.2 or later the filetype, highlighting and
           indent, with no LSP client needed: <code>:make</code> runs{" "}
@@ -202,6 +219,7 @@ const editors: { id: string; name: string; body: ReactNode }[] = [
     name: "JetBrains",
     body: (
       <>
+        <SetupCmd editor="jetbrains" />
         <p>
           IntelliJ IDEA Ultimate, CLion, PyCharm Professional or another
           commercial JetBrains IDE, 2024.3 or later: the free Community editions

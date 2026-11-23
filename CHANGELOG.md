@@ -6,8 +6,9 @@ file.
 
 ## 0.3.0 (unreleased)
 
-The 0.3.0 language is specified but not yet implemented. Its normative
-source is `spec/`; `spec/STATUS.md` says how far the work has got.
+The 0.3.0 language runs on the edge channel (`cpl --version` prints
+`0.3.0-dev+<commit>`). Its normative source is `spec/`; `spec/STATUS.md`
+lists what is still open.
 
 ### Language
 
@@ -22,8 +23,7 @@ source is `spec/`; `spec/STATUS.md` says how far the work has got.
 ### Library
 
 - The library is respecified in `spec/std/`: about 1,700 documented
-  signatures, each with its cost. Bodies are `todo` until the library is
-  built.
+  signatures, each with its cost.
 - Prefix sums and Fenwick trees answer range queries with `fold(r)`, not
   `sum`.
 - Substring search is `s.search(p)` and `s.rsearch(p)`; `find` and `rfind`
