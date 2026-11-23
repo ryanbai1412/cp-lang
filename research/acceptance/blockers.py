@@ -63,7 +63,13 @@ def load():
 
 
 def is_fixed(f):
-    return f.get("status") == "fixed" or f["summary"].startswith("FIXED")
+    s = f["summary"]
+    return f.get("status") == "fixed" or s.startswith("FIXED") or (s.startswith("NOW WORKS") and not s.startswith("NOW WORKS (partly)"))
+
+
+def run_base(run):
+    """One run id for the agents of a run on several OSes (`2026-11-23-5-linux` -> `2026-11-23-5`)."""
+    return re.sub(r"-(linux|macos|windows)$", "", Path(run["_name"]).stem)
 
 
 def quality(run):
@@ -75,21 +81,24 @@ def quality(run):
 
 def render(runs):
     rows = {}
-    for run in sorted(runs, key=lambda r: r["date"]):
+    for run in sorted(runs, key=lambda r: (r["date"], run_base(r))):
+        grp = (run["date"], run_base(run))
         for f in run["findings"]:
             r = rows.setdefault(f["id"], {"runs": set(), "minutes": 0.0, "kind": f["kind"], "step": f["step"], "p0": False})
             r["p0"] |= bool(f.get("p0"))
-            r["fixed"] = is_fixed(f)
+            # Fixed only when every OS agent of the latest run that reports it says so.
+            r["fixed"] = is_fixed(f) and (r.get("grp") != grp or r["fixed"])
+            r["grp"] = grp
             r.update(lane=f["lane"], summary=f["summary"], last=run["date"], evidence=f.get("evidence", ""))
-            r["runs"].add(run["_name"])
+            r["runs"].add(run_base(run))
             r["minutes"] += float(f.get("minutes_lost", 0))
             if KINDS.index(f["kind"]) < KINDS.index(r["kind"]):
                 r["kind"] = f["kind"]
             if STEPS.index(f["step"]) < STEPS.index(r["step"]):
                 r["step"] = f["step"]
         for fid in run.get("fixed", []):
-            if fid in rows:
-                rows[fid].update(fixed=True, last=run["date"])
+            if fid in rows and (rows[fid].get("grp") != grp or rows[fid]["fixed"]):
+                rows[fid].update(fixed=True, last=run["date"], grp=grp)
     fixed = sorted((kv for kv in rows.items() if kv[1]["fixed"]), key=lambda kv: (kv[1]["lane"], kv[0]))
     ranked = sorted((kv for kv in rows.items() if not kv[1]["fixed"]), key=lambda kv: (
         not kv[1]["p0"], KINDS.index(kv[1]["kind"]), -len(kv[1]["runs"]), -kv[1]["minutes"], STEPS.index(kv[1]["step"]), kv[0]))
@@ -102,14 +111,14 @@ def render(runs):
            "then minutes lost, then the earliest scenario step. Each lane's rows are also sent to its `plan/domains/<lane>/worklog.md`.", ""]
     if runs:
         latest = max(runs, key=lambda r: (r["date"], r["_name"]))
-        base = re.sub(r"-(linux|macos|windows)$", "", latest["_name"])
-        group = sorted((r for r in runs if re.sub(r"-(linux|macos|windows)$", "", r["_name"]) == base),
+        base = run_base(latest)
+        group = sorted((r for r in runs if run_base(r) == base),
                        key=lambda r: r["_name"])
         if len(group) > 1:
             out += [f"Latest run: `{base}` ({latest['date']}), one agent per OS:", ""]
             for r in group:
                 passed = [s for s in STEPS if r["steps"][s]["pass"]]
-                out += [f"- `{r['_name']}` ({r['os']}, site `{r['site_commit']}`): "
+                out += [f"- `{Path(r['_name']).stem}` ({r['os']}, site `{r['site_commit']}`): "
                         f"{len(passed)}/{len(STEPS)} steps pass. " + quality(r)]
             out += [""]
         else:
@@ -122,7 +131,7 @@ def render(runs):
             out += [f"CLI on every OS (CI {ci['run']}): Linux {ci['linux']}, macOS {ci['macos']}, Windows {ci['windows']}.", ""]
         out += ["| Step | " + " | ".join(STEPS) + " |", "|---|" + "---|" * len(STEPS)]
         for r in group:
-            tag = f" ({r['_name'][len(base) + 1:]})" if len(group) > 1 else ""
+            tag = f" ({Path(r['_name']).stem[len(base) + 1:]})" if len(group) > 1 else ""
             out += [f"| Pass{tag} | " + " | ".join("yes" if r["steps"][s]["pass"] else "**no**" for s in STEPS) + " |",
                     f"| Minutes{tag} | " + " | ".join(f"{r['steps'][s]['minutes']:g}" for s in STEPS) + " |"]
         out += [""]

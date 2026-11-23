@@ -1,0 +1,416 @@
+{
+  "date": "2026-11-23",
+  "run_id": "2026-11-23-5-macos",
+  "os": "macOS 26.6.2 (25G83), arm64",
+  "site_commit": "unknown",
+  "agent": "Devin (Cognition AI), VM harness with shell and Chrome; cpl 0.3.0-edge+4b3d07d4",
+  "cpl_version": {
+    "before": "cpl 0.3.0-edge+4b3d07d4",
+    "after": "cpl 0.3.0-edge+4b3d07d4"
+  },
+  "steps": {
+    "understand": {
+      "pass": true,
+      "minutes": 6
+    },
+    "try": {
+      "pass": true,
+      "minutes": 4
+    },
+    "install": {
+      "pass": false,
+      "minutes": 8
+    },
+    "solve": {
+      "pass": true,
+      "minutes": 8,
+      "self_pass": true,
+      "judged": "10/10 AC"
+    },
+    "test": {
+      "pass": true,
+      "minutes": 2
+    },
+    "submit": {
+      "pass": true,
+      "minutes": 3
+    },
+    "compete": {
+      "pass": true,
+      "minutes": 5,
+      "self_pass": true,
+      "judged": "5/5 AC"
+    },
+    "design": {
+      "pass": true,
+      "minutes": 2
+    }
+  },
+  "problems": [
+    {
+      "id": "cf2285A",
+      "set": "div2",
+      "verdict": "samples-pass",
+      "minutes": 3,
+      "attempts": 1,
+      "judge": "AC (1 samples, 200 generated, max input 0.00 s)"
+    },
+    {
+      "id": "cf2285B",
+      "set": "div2",
+      "verdict": "samples-pass",
+      "minutes": 1,
+      "attempts": 1,
+      "judge": "AC (1 samples, 200 generated, max input 0.00 s)"
+    },
+    {
+      "id": "cf2285C",
+      "set": "div2",
+      "verdict": "samples-pass",
+      "minutes": 1,
+      "attempts": 2,
+      "judge": "AC (1 samples, 200 generated, max input 0.05 s)"
+    },
+    {
+      "id": "cf2285D",
+      "set": "div2",
+      "verdict": "samples-pass",
+      "minutes": 1,
+      "attempts": 1,
+      "judge": "AC (1 samples, 200 generated, max input 0.07 s)"
+    },
+    {
+      "id": "cf2285E",
+      "set": "div2",
+      "verdict": "samples-pass",
+      "minutes": 1,
+      "attempts": 1,
+      "judge": "AC (1 samples, 200 generated, max input 0.31 s)"
+    },
+    {
+      "id": "cf2289A",
+      "set": "div2",
+      "verdict": "samples-pass",
+      "minutes": 1,
+      "attempts": 1,
+      "judge": "AC (1 samples, 200 generated, max input 0.01 s)"
+    },
+    {
+      "id": "cf2289B",
+      "set": "div2",
+      "verdict": "samples-pass",
+      "minutes": 1,
+      "attempts": 1,
+      "judge": "AC (1 samples, 200 generated, max input 0.02 s)"
+    },
+    {
+      "id": "cf2289C",
+      "set": "div2",
+      "verdict": "samples-pass",
+      "minutes": 1,
+      "attempts": 1,
+      "judge": "AC (1 samples, 200 generated, max input 0.04 s)"
+    },
+    {
+      "id": "cf2289D",
+      "set": "div2",
+      "verdict": "samples-pass",
+      "minutes": 2,
+      "attempts": 3,
+      "judge": "AC (1 samples, 200 generated, max input 0.01 s)"
+    },
+    {
+      "id": "cf2289E",
+      "set": "div2",
+      "verdict": "samples-pass",
+      "minutes": 1,
+      "attempts": 1,
+      "judge": "AC (1 samples, 200 generated, max input 0.06 s)"
+    },
+    {
+      "id": "cf2272A",
+      "set": "compete",
+      "verdict": "samples-pass",
+      "minutes": 1,
+      "attempts": 2,
+      "judge": "AC (1 samples, 200 generated, max input 0.01 s)"
+    },
+    {
+      "id": "cf2272B",
+      "set": "compete",
+      "verdict": "samples-pass",
+      "minutes": 1,
+      "attempts": 1,
+      "judge": "AC (1 samples, 200 generated, max input 0.00 s)"
+    },
+    {
+      "id": "cf2272C",
+      "set": "compete",
+      "verdict": "samples-pass",
+      "minutes": 1,
+      "attempts": 1,
+      "judge": "AC (1 samples, 200 generated, max input 0.05 s)"
+    },
+    {
+      "id": "cf2272D",
+      "set": "compete",
+      "verdict": "samples-pass",
+      "minutes": 1,
+      "attempts": 1,
+      "judge": "AC (1 samples, 200 generated, max input 0.01 s)"
+    },
+    {
+      "id": "cf2272E",
+      "set": "compete",
+      "verdict": "samples-pass",
+      "minutes": 2,
+      "attempts": 2,
+      "judge": "AC (1 samples, 200 generated, max input 0.04 s)"
+    }
+  ],
+  "findings": [
+    {
+      "id": "install-flag-three-spellings",
+      "step": "install",
+      "kind": "hesitation",
+      "lane": "site",
+      "summary": "The edge channel is spelled `sh -s -- --channel edge` on /setup and `sh -s -- --edge` in getting-started, and /setup says edge prints `0.3.0-dev+<commit>` while the binary prints `0.3.0-edge+4b3d07d4`.",
+      "minutes_lost": 1,
+      "evidence": "https://cp-lang.org/setup/ vs https://cp-lang.org/docs/guides/getting-started ; `curl -fsSL https://cp-lang.org/install.sh | sh && cpl --version`"
+    },
+    {
+      "id": "self-update-404",
+      "step": "install",
+      "kind": "workaround",
+      "lane": "tools",
+      "summary": "`cpl self update` 404s on the GitHub latest.json; `cpl self update edge` works (run-4 claim CONFIRMED).",
+      "minutes_lost": 1,
+      "evidence": "`cpl self update` -> cpl: could not download https://github.com/ryanbai1412/cp-lang/releases/latest/download/latest.json: curl: (56) The requested URL returned error: 404"
+    },
+    {
+      "id": "jetbrains-community-refuses-plugin",
+      "step": "install",
+      "kind": "hesitation",
+      "lane": "site",
+      "summary": "Now works on IDEA Community 2025.2.5 (plugin + LSP4IJ), but the /setup JetBrains tab still says the free Community editions lack the language server API, contradicting getting-started.",
+      "minutes_lost": 1,
+      "evidence": "https://cp-lang.org/setup/ JetBrains tab: \"the free Community editions lack the language server API the plugin uses\"; `cpl setup jetbrains --check` -> IdeaIC2025.2: CP Lang loaded (CP Lang (0.3.0))"
+    },
+    {
+      "id": "jetbrains-setup-needs-ide-opened",
+      "step": "install",
+      "kind": "hesitation",
+      "lane": "tools",
+      "summary": "`cpl setup jetbrains` on a freshly installed IDE fails until the IDE has been opened once.",
+      "minutes_lost": 2,
+      "evidence": "fresh IDEA CE install, `cpl setup jetbrains` -> cpl: no JetBrains IDE found (open one once first), or pass --dir PLUGINS"
+    },
+    {
+      "id": "nvim-codelens-deprecated",
+      "step": "install",
+      "kind": "hesitation",
+      "lane": "tools",
+      "summary": "Opening a .cp in Neovim 0.12.6 prints a deprecation warning from the CPL plugin.",
+      "minutes_lost": 0,
+      "evidence": "nvim 0.12.6 + `cpl setup neovim`, open x.cp -> vim.lsp.codelens.refresh({ bufnr = bufnr}) is deprecated"
+    },
+    {
+      "id": "vim-completion-not-demonstrated",
+      "step": "install",
+      "kind": "blocker",
+      "lane": "tools",
+      "summary": "In plain Vim 9.1 with the vim-lsp snippet from the /setup Vim tab, go-to-definition worked but I could not demonstrate completion; my headless run failed loading vim-lsp twice.",
+      "minutes_lost": 5,
+      "evidence": "vim 9.1, ~/.vim/pack/lsp/start/vim-lsp + `cpl setup vim`, headless omni completion -> E969: Property type vim-lsp-folding-linenr already defined"
+    },
+    {
+      "id": "prefix-sum-manual-push",
+      "step": "try",
+      "kind": "non-idiomatic",
+      "lane": "site",
+      "summary": "The intro guide still teaches a hand-rolled cuts prefix sum that the playground lint immediately rejects in favor of `Prefix(a)`.",
+      "minutes_lost": 1,
+      "evidence": "playground: `for v in V: pre[v.r] = pre[v.l] + a[v]` -> lint L0521 \"A hand-rolled prefix sum into 'pre': use Prefix(...)\""
+    },
+    {
+      "id": "codeforces-statements-browser-only",
+      "step": "solve",
+      "kind": "workaround",
+      "lane": "infra",
+      "summary": "Codeforces returns a Cloudflare 403 to curl, so I copied statements through Chrome DevTools fetch() on the problem pages.",
+      "minutes_lost": 3,
+      "evidence": "curl -s -o t.html -w '%{http_code}' https://codeforces.com/contest/2285/problem/A -> 403 \"Just a moment...\""
+    },
+    {
+      "id": "test-no-checker-any-answer",
+      "step": "solve",
+      "kind": "hesitation",
+      "lane": "tools",
+      "summary": "`cpl test` still compares a constructive answer token by token; it now prints a hint to add a `@check fn`, and the checker workflow worked.",
+      "minutes_lost": 2,
+      "evidence": "cf2285A (any valid permutation): `cpl test cf2285A.cp` -> first difference at line 2, token 2: expected `3`, got `2` ... 0/1 passed; hint: add a `@check fn` that reads the output with `read_output()`"
+    },
+    {
+      "id": "scan-prefix-int-index-wrong",
+      "step": "solve",
+      "kind": "workaround",
+      "lane": "stdlib",
+      "summary": "Indexing a `scan(+)` Prefix by Int cuts gives wrong values silently on a domain array and traps on the last cut of a List, so I wrote the running sum by hand.",
+      "minutes_lost": 6,
+      "evidence": "`let a: [0..3]Int = [5, -3, -2]; let pre = a.scan(+); print([pre[i] for i in 0..3])` prints `5 -3 -2`; `let pb = [5,-3,-2].scan(+); pb[3]` -> R0102: 3 is not in `D_1`, which is 0..=2 (locals: pb = (p: [0, 5, 2, 0]))"
+    },
+    {
+      "id": "scan-doc-says-inclusive",
+      "step": "solve",
+      "kind": "hesitation",
+      "lane": "site",
+      "summary": "The stdlib overview calls `scan(a, +)` an inclusive running fold, but it returns a `Prefix` of n+1 exclusive folds with no `min` and no `Seq`.",
+      "minutes_lost": 3,
+      "evidence": "llms-full stdlib overview: \"`scan(a, +)` ... inclusive running folds\"; `let s = scan(a, +); s.min()` -> E0203 Prefix<Int, Int> has no field or method `min`; `inversions(s)` -> E0606 `Prefix<Int, Int>` does not implement `Seq`"
+    },
+    {
+      "id": "prefix-sums-manual-loop",
+      "step": "solve",
+      "kind": "non-idiomatic",
+      "lane": "stdlib",
+      "summary": "In 2289D I wanted `let s = a.scan(+); if s.min()! < 0 ...; print(s.inversions())`, but had to write `var cur = 0; for x in a: cur += x; s.push(cur)`.",
+      "minutes_lost": 2,
+      "evidence": "sol/cf2289D.cp lines 4-8"
+    },
+    {
+      "id": "prev-less-renamed",
+      "step": "solve",
+      "kind": "hesitation",
+      "lane": "site",
+      "summary": "The stdlib module table still lists `prev_less`/`next_less`, but the round-5 page says they merged into `prev_smaller`/`next_smaller`.",
+      "minutes_lost": 1,
+      "evidence": "https://cp-lang.org/llms-full.txt std.seq row lists prev_less, next_less; the 'What goes away' table maps them to prev_smaller/next_smaller with by:"
+    },
+    {
+      "id": "optional-index-default",
+      "step": "solve",
+      "kind": "non-idiomatic",
+      "lane": "idioms",
+      "summary": "An absent previous-smaller position needed `i - (if let j = l[i]: j + 1 else: 0)` where I wanted `i - l[i] ?? -1` or `l[i].map(+1) ?? 0`.",
+      "minutes_lost": 1,
+      "evidence": "sol/cf2289C.cp line 8"
+    },
+    {
+      "id": "join-on-separator",
+      "step": "test",
+      "kind": "hesitation",
+      "lane": "idioms",
+      "summary": "Run-4 `print([..].join(\"\"))` empty line REFUTED: it is now a compile error with a fix hint, because join is Python-style `\"\".join(xs)`.",
+      "minutes_lost": 1,
+      "evidence": "`print([\"a\",\"b\",\"c\"].join(\"\"))` -> E0302 expected `Str`, found `List<Str>`; help: `join` is called on the separator: `\"\".join([\"a\", \"b\", \"c\"])`; `print(\"\".join([\"a\",\"b\",\"c\"]))` -> abc"
+    },
+    {
+      "id": "copy-clone-two-spellings",
+      "step": "test",
+      "kind": "non-idiomatic",
+      "lane": "stdlib",
+      "summary": "Run-4 claim CONFIRMED: `.copy()` and `.clone()` both make independent copies of a List, giving two spellings for one idea.",
+      "minutes_lost": 0,
+      "evidence": "`var a=[1,2,3]; var b=a.copy(); var c=a.clone(); b[0]=9; c[1]=8; print(a,b,c)` -> 1 2 3 9 2 3 1 8 3"
+    },
+    {
+      "id": "cc-icon-not-pinned",
+      "step": "submit",
+      "kind": "hesitation",
+      "lane": "site",
+      "summary": "The docs say to click Competitive Companion's green plus, but Chrome hides the new extension's icon, so I used its Shift+Cmd+U shortcut from chrome://extensions/shortcuts.",
+      "minutes_lost": 1,
+      "evidence": "https://cp-lang.org/docs/guides/getting-started 'A contest, start to finish' step 1"
+    },
+    {
+      "id": "fetch-template-misses-multitest",
+      "step": "compete",
+      "kind": "hesitation",
+      "lane": "tools",
+      "summary": "The Competitive Companion skeleton is `let n: 1..=2e5 = read()` with no `@!multitest` even though every 2272 statement is multitest.",
+      "minutes_lost": 1,
+      "evidence": "`cpl new --listen`, Shift+Cmd+U on https://codeforces.com/contest/2272 -> 2272/a.cp body `let n: 1..=2e5 = read()`"
+    },
+    {
+      "id": "judge-codeforces-stack-macos",
+      "step": "compete",
+      "kind": "workaround",
+      "lane": "tools",
+      "summary": "CC files carry `// judge: codeforces`, and on macOS `cpl test` then fails because it cannot provide the 256 MB stack, so I rewrote the header to `// judge: generic`.",
+      "minutes_lost": 2,
+      "evidence": "cc/2272/a.cp with `// judge: codeforces`: `cpl test a.cp` -> exit code 125: cpl: can't give the program the 256 MB stack of judge `codeforces` here"
+    },
+    {
+      "id": "test-judge-flag-confusing",
+      "step": "compete",
+      "kind": "hesitation",
+      "lane": "diagnostics",
+      "summary": "`cpl test --judge generic` says the judge does not exist even though `cpl judges` lists `generic`.",
+      "minutes_lost": 1,
+      "evidence": "`cpl test a.cp --judge generic` -> cpl: `generic` does not exist"
+    },
+    {
+      "id": "checker-duplicates-solution",
+      "step": "compete",
+      "kind": "non-idiomatic",
+      "lane": "idioms",
+      "summary": "A `@check` cannot reuse the solution's values, so the 2272A checker repeats the whole O(n^2) swap search (the E0201 message is clear).",
+      "minutes_lost": 2,
+      "evidence": "cc/2272/a.cp judge(): using `best` -> E0201 `best` is the solution's own work: a brute or a checker shares only the input"
+    },
+    {
+      "id": "stress-str-unconstrained",
+      "step": "compete",
+      "kind": "hesitation",
+      "lane": "debugger",
+      "summary": "For `let (s, t): (Str, Str) = read()`, the default stress generator makes random lowercase strings of any length, ignoring n and m, so a `@gen` is needed.",
+      "minutes_lost": 2,
+      "evidence": "cc/2272/e.cp without @gen: `cpl stress e.cp` -> brute failed on input `9 127849 / jiacdei / n ...`"
+    },
+    {
+      "id": "stress-gen-multitest-header",
+      "step": "compete",
+      "kind": "hesitation",
+      "lane": "debugger",
+      "summary": "A `@gen` in a `@!multitest` file must print the test count itself (not documented), and when it is missing the only message is an opaque `Code(3)`.",
+      "minutes_lost": 3,
+      "evidence": "cc/2272/e.cp @gen without print(1): `cpl stress e.cp` -> error: the brute e.cp (`brute`) failed on this input (Code(3)), so there is nothing to compare with: 4 3 / WRWR / RRW"
+    },
+    {
+      "id": "brute-two-spellings",
+      "step": "compete",
+      "kind": "hesitation",
+      "lane": "site",
+      "summary": "The docs write the brute as `@alt(program)`, but `cpl run --help` says `--brute` runs a `@brute(main)` fn.",
+      "minutes_lost": 1,
+      "evidence": "`cpl run --help` -> --brute run the file's `@brute(main)` fn; llms-full stress guide uses `@alt(program) fn brute()`"
+    },
+    {
+      "id": "cf-virtual-needs-login",
+      "step": "compete",
+      "kind": "workaround",
+      "lane": "infra",
+      "summary": "Codeforces virtual participation needs a login, which the rules forbid, so I self-timed an offline round on the problem pages.",
+      "minutes_lost": 0,
+      "evidence": "https://codeforces.com/contest/2272 'Start virtual contest'"
+    },
+    {
+      "id": "design-cites-unpublished-decisions",
+      "step": "design",
+      "kind": "hesitation",
+      "lane": "site",
+      "summary": "The ownership chapter says it supersedes plan/14-state.md, plan/19-index-and-lends.md and core/12-powers.md, but those plan docs are not on the site.",
+      "minutes_lost": 1,
+      "evidence": "https://cp-lang.org/docs/ref/core/05-ownership intro paragraph and section 13"
+    },
+    {
+      "id": "design-heap-element-disjoint",
+      "step": "design",
+      "kind": "hesitation",
+      "lane": "spec",
+      "summary": "I wrongly predicted that `let r = m[0]` (sharp edge 1: let lends a heap element) freezes all of `m`, but `m[1].push(3)` compiles because constant indices are proved disjoint; the rule is in R9-R11, but sharp edge 1 does not mention it.",
+      "minutes_lost": 1,
+      "evidence": "`var m = [[1], [2]]; let r = m[0]; m[1].push(3); print(r, m[1])` -> 1 2 3"
+    }
+  ]
+}

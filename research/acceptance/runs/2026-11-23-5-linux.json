@@ -1,0 +1,450 @@
+{
+  "date": "2026-11-23",
+  "run_id": "2026-11-23-5-linux",
+  "os": "Ubuntu 22.04.5 LTS, Linux 6.8.0-1060-aws x86_64",
+  "site_commit": "unknown",
+  "agent": "Devin (Cognition AI), Devin agent harness",
+  "cpl_version": "cpl 0.3.0-edge+4b3d07d4",
+  "steps": {
+    "understand": {
+      "pass": true,
+      "minutes": 6
+    },
+    "try": {
+      "pass": true,
+      "minutes": 2
+    },
+    "install": {
+      "pass": true,
+      "minutes": 16
+    },
+    "solve": {
+      "pass": true,
+      "minutes": 5,
+      "samples_pass": "10/10",
+      "self_pass": true,
+      "judged": "10/10 AC"
+    },
+    "test": {
+      "pass": true,
+      "minutes": 1
+    },
+    "submit": {
+      "pass": true,
+      "minutes": 2
+    },
+    "compete": {
+      "pass": true,
+      "minutes": 3,
+      "samples_pass": "5/5",
+      "start": "12:15:13",
+      "finish": "12:18:11",
+      "self_pass": true,
+      "judged": "5/5 AC"
+    },
+    "design": {
+      "pass": false,
+      "minutes": 3,
+      "predictions_right": "2/5",
+      "chapters_give_reasons": {
+        "ownership": true,
+        "indices": false
+      }
+    }
+  },
+  "problems": [
+    {
+      "id": "cf2285A",
+      "set": "div2",
+      "verdict": "samples-pass",
+      "minutes": 1,
+      "attempts": 2,
+      "judge": "AC (1 samples, 200 generated, max input 0.01 s)"
+    },
+    {
+      "id": "cf2285B",
+      "set": "div2",
+      "verdict": "samples-pass",
+      "minutes": 1,
+      "attempts": 1,
+      "judge": "AC (1 samples, 200 generated, max input 0.00 s)"
+    },
+    {
+      "id": "cf2285C",
+      "set": "div2",
+      "verdict": "samples-pass",
+      "minutes": 1,
+      "attempts": 1,
+      "judge": "AC (1 samples, 200 generated, max input 0.03 s)"
+    },
+    {
+      "id": "cf2285D",
+      "set": "div2",
+      "verdict": "samples-pass",
+      "minutes": 1,
+      "attempts": 3,
+      "judge": "AC (1 samples, 200 generated, max input 0.11 s)"
+    },
+    {
+      "id": "cf2285E",
+      "set": "div2",
+      "verdict": "samples-pass",
+      "minutes": 1,
+      "attempts": 1,
+      "judge": "AC (1 samples, 200 generated, max input 1.78 s)"
+    },
+    {
+      "id": "cf2289A",
+      "set": "div2",
+      "verdict": "samples-pass",
+      "minutes": 1,
+      "attempts": 1,
+      "judge": "AC (1 samples, 200 generated, max input 0.02 s)"
+    },
+    {
+      "id": "cf2289B",
+      "set": "div2",
+      "verdict": "samples-pass",
+      "minutes": 1,
+      "attempts": 2,
+      "judge": "AC (1 samples, 200 generated, max input 0.04 s)"
+    },
+    {
+      "id": "cf2289C",
+      "set": "div2",
+      "verdict": "samples-pass",
+      "minutes": 1,
+      "attempts": 1,
+      "judge": "AC (1 samples, 200 generated, max input 0.02 s)"
+    },
+    {
+      "id": "cf2289D",
+      "set": "div2",
+      "verdict": "samples-pass",
+      "minutes": 1,
+      "attempts": 2,
+      "judge": "AC (1 samples, 200 generated, max input 0.02 s)"
+    },
+    {
+      "id": "cf2289E",
+      "set": "div2",
+      "verdict": "samples-pass",
+      "minutes": 1,
+      "attempts": 3,
+      "judge": "AC (1 samples, 200 generated, max input 0.49 s)"
+    },
+    {
+      "id": "cf2272A",
+      "set": "virtual-2272",
+      "verdict": "samples-pass",
+      "minutes": 1,
+      "attempts": 2,
+      "start": "12:15:59",
+      "finish": "12:16:39",
+      "judge": "AC (1 samples, 200 generated, max input 0.00 s)"
+    },
+    {
+      "id": "cf2272B",
+      "set": "virtual-2272",
+      "verdict": "samples-pass",
+      "minutes": 1,
+      "attempts": 1,
+      "start": "12:16:39",
+      "finish": "12:16:57",
+      "judge": "AC (1 samples, 200 generated, max input 0.00 s)"
+    },
+    {
+      "id": "cf2272C",
+      "set": "virtual-2272",
+      "verdict": "samples-pass",
+      "minutes": 1,
+      "attempts": 1,
+      "start": "12:16:57",
+      "finish": "12:17:18",
+      "judge": "AC (1 samples, 200 generated, max input 0.06 s)"
+    },
+    {
+      "id": "cf2272D",
+      "set": "virtual-2272",
+      "verdict": "samples-pass",
+      "minutes": 1,
+      "attempts": 1,
+      "start": "12:17:18",
+      "finish": "12:17:43",
+      "judge": "AC (1 samples, 200 generated, max input 0.01 s)"
+    },
+    {
+      "id": "cf2272E",
+      "set": "virtual-2272",
+      "verdict": "samples-pass",
+      "minutes": 1,
+      "attempts": 1,
+      "start": "12:17:43",
+      "finish": "12:18:11",
+      "judge": "AC (1 samples, 200 generated, max input 0.04 s)"
+    }
+  ],
+  "findings": [
+    {
+      "id": "self-update-404",
+      "step": "install",
+      "kind": "workaround",
+      "lane": "tools",
+      "summary": "`cpl self update` fails with a 404 on releases/latest/download/latest.json; `cpl self update edge` works.",
+      "minutes_lost": 2,
+      "evidence": "cpl self update -> cpl: could not download https://github.com/ryanbai1412/cp-lang/releases/latest/download/latest.json: curl: (22) The requested URL returned error: 404"
+    },
+    {
+      "id": "install-docs-disagree",
+      "step": "install",
+      "kind": "hesitation",
+      "lane": "site",
+      "summary": "/setup/ says `sh -s -- --channel edge` and version `cpl 0.3.0-dev+<commit>`, getting-started says `sh -s -- --edge`, and the binary prints `cpl 0.3.0-edge+4b3d07d4`.",
+      "minutes_lost": 1,
+      "evidence": "https://cp-lang.org/setup/ vs https://cp-lang.org/docs/guides/getting-started; cpl --version"
+    },
+    {
+      "id": "jetbrains-docs-contradict",
+      "step": "install",
+      "kind": "hesitation",
+      "lane": "site",
+      "summary": "/setup/ JetBrains tab says Community editions lack the language-server API, while getting-started says `cpl setup jetbrains` installs LSP4IJ in Community (which is what happens).",
+      "minutes_lost": 1,
+      "evidence": "https://cp-lang.org/setup/ (JetBrains tab) vs https://cp-lang.org/docs/guides/getting-started"
+    },
+    {
+      "id": "vim-setup-silent-on-vim-lsp",
+      "step": "install",
+      "kind": "hesitation",
+      "lane": "tools",
+      "summary": "`cpl setup vim` reports success ('open a .cp file to start') without mentioning that LSP needs the vim-lsp plugin, which only the /setup/ Vim tab documents.",
+      "minutes_lost": 1,
+      "evidence": "cpl setup vim on a Vim with no plugins; no diagnostics until vim-lsp is cloned into ~/.vim/pack/vendor/start"
+    },
+    {
+      "id": "jetbrains-needs-ide-opened-once",
+      "step": "install",
+      "kind": "hesitation",
+      "lane": "tools",
+      "summary": "On a freshly extracted IDEA, `cpl setup jetbrains` fails until the IDE has been launched once.",
+      "minutes_lost": 1,
+      "evidence": "cpl setup jetbrains -> cpl: no JetBrains IDE found (open one once first), or pass --dir PLUGINS"
+    },
+    {
+      "id": "jetbrains-lightedit-no-lsp",
+      "step": "install",
+      "kind": "hesitation",
+      "lane": "tools",
+      "summary": "Opening a .cp file directly in IDEA puts it in LightEdit mode with no LSP; it has to be reopened as a trusted project.",
+      "minutes_lost": 1,
+      "evidence": "idea.sh a.cp -> LightEdit, highlighting only; 'Open in Project' -> cpl lsp starts, E0302 tooltip shows"
+    },
+    {
+      "id": "vscode-restricted-mode-plain-text",
+      "step": "install",
+      "kind": "hesitation",
+      "lane": "tools",
+      "summary": "In an untrusted VS Code workspace the extension is disabled and the .cp file opens as Plain Text, with no hint from CPL.",
+      "minutes_lost": 1,
+      "evidence": "code ~/edtest/a.cp in Restricted Mode -> language mode 'Plain Text'; after Trust -> 'CP Lang'"
+    },
+    {
+      "id": "codeforces-curl-403",
+      "step": "solve",
+      "kind": "workaround",
+      "lane": "infra",
+      "summary": "Codeforces problem pages return 403 to curl from the VM, so statements were read through the browser over CDP.",
+      "minutes_lost": 2,
+      "evidence": "curl -s -o /dev/null -w '%{http_code}' https://codeforces.com/contest/2285/problem/A -> 403"
+    },
+    {
+      "id": "map-index-push-no-autoinsert",
+      "step": "solve",
+      "kind": "non-idiomatic",
+      "lane": "stdlib",
+      "summary": "`at[h].push(x)` on a missing HashMap<Int, List<Int>> key traps instead of starting an empty list, so a manual `in` branch is needed.",
+      "minutes_lost": 3,
+      "evidence": "var at: HashMap<Int, List<Int>> = HashMap(); at[5].push(1) -> error[R0001]: this key is not in the map; store with `m[k] = v` first. Wanted `at[h].push(x)`; wrote `if h in at: at[h].push(x)\\nelse: at[h] = [x]`"
+    },
+    {
+      "id": "scan-returns-prefix",
+      "step": "solve",
+      "kind": "hesitation",
+      "lane": "site",
+      "summary": "Docs call `scan(a, +)` an 'inclusive running fold', but it returns a Prefix<Int, Int> of n+1 values starting with 0 that has no list methods.",
+      "minutes_lost": 5,
+      "evidence": "print(scan([1, 2, 3], +)) -> 0 1 3 6; scan(a, +).min() -> error[E0203]: Prefix<Int, Int> has no field or method `min`"
+    },
+    {
+      "id": "scan-list-vs-array",
+      "step": "solve",
+      "kind": "hesitation",
+      "lane": "stdlib",
+      "summary": "On a `[0..n]` array, indexing scan(a, +) at n is out of domain, while on a List it has n+1 entries, so the same code behaves differently.",
+      "minutes_lost": 2,
+      "evidence": "let a: [0..5]Int = read(); let pre = scan(a, +); pre[5] -> error[R0102]: 5 is not in `D_0`, which is 0..=4"
+    },
+    {
+      "id": "fill-spelling-hesitation",
+      "step": "solve",
+      "kind": "non-idiomatic",
+      "lane": "idioms",
+      "summary": "A zero array is `[n].filled(0)`, which reads like a one-element list; the diagnostic for `[0; n]` is good.",
+      "minutes_lost": 1,
+      "evidence": "var start = [0; n] -> error[E0503]: Rust's `[x; n]` is a fill here: `[n].filled(x)`"
+    },
+    {
+      "id": "rev-getter-no-parens",
+      "step": "solve",
+      "kind": "hesitation",
+      "lane": "idioms",
+      "summary": "`.rev` is a getter, so `(n + 1..=m).rev()` fails to compile (clear fix hint).",
+      "minutes_lost": 1,
+      "evidence": "for k in (2..=5).rev(): ... -> error[E0304]: `rev` is read without parentheses"
+    },
+    {
+      "id": "optional-last-loop-guard",
+      "step": "solve",
+      "kind": "non-idiomatic",
+      "lane": "idioms",
+      "summary": "Looping while a SortedSet's maximum is >= lim needs a sentinel coalesce, because `.last!` traps on an empty set.",
+      "minutes_lost": 2,
+      "evidence": "while pool[s].last! >= lim -> error[R0301]: `!` on `None`: there is no value here; wrote `while (pool[s].last ?? 0) >= lim`, wanted e.g. `while pool[s].last is some x and x >= lim`"
+    },
+    {
+      "id": "stress-explain-no-common-vars",
+      "step": "test",
+      "kind": "hesitation",
+      "lane": "debugger",
+      "summary": "`cpl stress --explain` found the planted bug but explained nothing, because fast and brute share no variable names; a manual debug() line was needed.",
+      "minutes_lost": 2,
+      "evidence": "bug/cf2289C_bug.cp: cpl stress cf2289C_bug.cp --explain -> first differing value: none; no variable both name takes different values"
+    },
+    {
+      "id": "cpp-size-warning-2289E",
+      "step": "submit",
+      "kind": "hesitation",
+      "lane": "perf",
+      "summary": "A 30-line SortedSet small-to-large solution produces 27877 bytes of C++, which triggers the near-limit size warning.",
+      "minutes_lost": 1,
+      "evidence": "cpl submit sol/cf2289E.cp -> cpl: warning: the C++ for `cf2289E.cp` is 27877 bytes, over 24576 bytes, near the 32768-byte target"
+    },
+    {
+      "id": "fetch-needs-saved-html",
+      "step": "submit",
+      "kind": "workaround",
+      "lane": "tools",
+      "summary": "`cpl fetch <codeforces url>` gets 403; it works only on a saved page via `--html`.",
+      "minutes_lost": 2,
+      "evidence": "cpl fetch https://codeforces.com/contest/2289/problem/A -> curl: (22) ... 403; cpl fetch --html 2289B.html -> b.cp + b.tests"
+    },
+    {
+      "id": "fetch-template-misses-multitest",
+      "step": "submit",
+      "kind": "hesitation",
+      "lane": "tools",
+      "summary": "The `cpl new --listen` (Competitive Companion) template for multitest 2289C lacks `@!multitest`, while the `--html` template for 2289B has it.",
+      "minutes_lost": 1,
+      "evidence": "cc/c.cp created from a CC JSON POST to 127.0.0.1:10043 starts with `let n: 1..=2e5 = read()` and no @!multitest"
+    },
+    {
+      "id": "competitive-companion-not-installable",
+      "step": "submit",
+      "kind": "workaround",
+      "lane": "infra",
+      "summary": "The linked Competitive Companion extension can't be installed in the VM's Chromium, so the listener was driven by a hand-POSTed CC JSON.",
+      "minutes_lost": 3,
+      "evidence": "https://chromewebstore.google.com/detail/competitive-companion/cjnmckjndlpiamhfimnnjmnckgghkjbl -> 'Switch to Chrome to install extensions and themes'; curl -X POST 127.0.0.1:10043 -d @cc.json -> created c.cp, c.tests/ (1 sample)"
+    },
+    {
+      "id": "checker-shares-only-input",
+      "step": "compete",
+      "kind": "hesitation",
+      "lane": "debugger",
+      "summary": "An @check that reads a top-level solution variable is rejected only when the tests run (shown as a failing test), not by `cpl check`.",
+      "minutes_lost": 1,
+      "evidence": "comp/cf2272A.cp with `assert value(b) == base` in judge() -> checker: error[E0201]: `base` is the solution's own work: a brute or a checker shares only the input"
+    },
+    {
+      "id": "rev-view-index-not-reversed",
+      "step": "test",
+      "kind": "workaround",
+      "lane": "stdlib",
+      "summary": "Still broken: indexing a `.rev` view returns the unreversed element.",
+      "minutes_lost": 0,
+      "evidence": "let a = [5, 1, 4]; print(a.rev[0]) -> 5 (expected 4); r4/old.cp"
+    },
+    {
+      "id": "count-of-bools-counts-all",
+      "step": "test",
+      "kind": "workaround",
+      "lane": "stdlib",
+      "summary": "Still broken: `.count()` on a List<Bool> returns the length, not the number of trues.",
+      "minutes_lost": 0,
+      "evidence": "print([true, false, true].count()) -> 3 (expected 2); r4/old.cp"
+    },
+    {
+      "id": "copy-clone-two-spellings",
+      "step": "design",
+      "kind": "hesitation",
+      "lane": "spec",
+      "summary": "The borrowing guide teaches `.copy()`, while the normative chapter and the move diagnostic say `.clone()`; both work.",
+      "minutes_lost": 1,
+      "evidence": "https://cp-lang.org/docs/guides/borrowing ('let saved = a.copy()') vs /docs/ref/core/05-ownership R2 ('x.clone() is the explicit O(n) copy'); E0608 help: use `a.clone()`"
+    },
+    {
+      "id": "join-on-separator",
+      "step": "design",
+      "kind": "hesitation",
+      "lane": "idioms",
+      "summary": "`list.join(\"\")` is a compile error; join is Python-style on the separator (`\"\".join(w)`).",
+      "minutes_lost": 1,
+      "evidence": "print([\"a\", \"b\"].join(\"\")) -> error[E0302]: expected `Str`, found `List<Str>` help: `join` is called on the separator"
+    },
+    {
+      "id": "design-two-ownership-chapters",
+      "step": "design",
+      "kind": "hesitation",
+      "lane": "site",
+      "summary": "There are two ownership chapters (a guide and the normative ref), and the guide omits rules the ref states.",
+      "minutes_lost": 1,
+      "evidence": "https://cp-lang.org/llms.txt lists /docs/guides/borrowing and /docs/ref/core/05-ownership"
+    },
+    {
+      "id": "design-guide-omits-move",
+      "step": "design",
+      "kind": "blocker",
+      "lane": "site",
+      "summary": "The borrowing guide never says heap values move on `let b = a`, so I predicted a copy-required error; the ref chapter (R2) does say it.",
+      "minutes_lost": 2,
+      "evidence": "design/p1.cp: var a = [1, 2, 3]; var b = a; print(a) -> error[E0608]: `a` was already moved"
+    },
+    {
+      "id": "design-mut-read-overlap-accepted",
+      "step": "design",
+      "kind": "blocker",
+      "lane": "compiler",
+      "summary": "The guide and R9 say a `mut` element lend plus a read of a possibly equal element is rejected, but the compiler accepts it (two `mut` lends are rejected with E0601).",
+      "minutes_lost": 2,
+      "evidence": "design/p4.cp: merge_into(mut counts[i], counts[j]) with no i != j proof compiles and runs (input 2 2 -> 1 2 1); design/p4b.cp swap(mut a[i], mut a[j]) -> E0601"
+    },
+    {
+      "id": "design-guide-lend-var-plain-copy",
+      "step": "design",
+      "kind": "blocker",
+      "lane": "site",
+      "summary": "The guide says a lent value 'cannot escape into ... a var' with no exception, but for plain values `var keep = owner.get()` copies and runs, as only the ref chapter says.",
+      "minutes_lost": 1,
+      "evidence": "design/p5.cp: fn get(self) -> lends Int; var keep = owner.get(); print(keep) -> 7"
+    },
+    {
+      "id": "design-indices-no-alternatives",
+      "step": "design",
+      "kind": "blocker",
+      "lane": "site",
+      "summary": "The index-spaces guide gives the motivation (positions vs cuts vs counts) but no alternatives considered or why this design won.",
+      "minutes_lost": 1,
+      "evidence": "https://cp-lang.org/docs/guides/indices (no comparison or rationale section; contrast \u00a713a of /docs/ref/core/05-ownership)"
+    }
+  ]
+}

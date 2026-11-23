@@ -1,0 +1,726 @@
+{
+  "date": "2026-11-23",
+  "run_id": "2026-11-23-5-windows",
+  "os": "Windows Server 2022 Datacenter 10.0.20348 (PowerShell 5.1.20348)",
+  "site_commit": "unknown (site shows no commit; installed binary cpl 0.3.0-edge+4b3d07d4, commit 4b3d07d403d215a8652688d492102ff541daf841)",
+  "agent": "Devin (Cognition AI), Windows VM harness with shell, Chrome and desktop tools",
+  "cpl_version": {
+    "before": "cpl 0.3.0-edge+4b3d07d4",
+    "after": "cpl 0.3.0-edge+4b3d07d4"
+  },
+  "steps": {
+    "understand": {
+      "pass": true,
+      "minutes": 1
+    },
+    "try": {
+      "pass": true,
+      "minutes": 3
+    },
+    "install": {
+      "pass": false,
+      "minutes": 18,
+      "why": "JetBrains IDEA gets highlighting only (no diagnostics/completion/format/go-to-def, even with LSP4IJ hand-installed); plain Vim LSP needed an outside plugin (yegappan/lsp)"
+    },
+    "solve": {
+      "pass": true,
+      "minutes": 10,
+      "samples_pass": "10/10",
+      "self_pass": true,
+      "judged": "10/10 AC"
+    },
+    "test": {
+      "pass": true,
+      "minutes": 2,
+      "why": "samples + custom for all 10; off-by-one in a copy of 2289C found by cpl stress (shrunk to a 3-token case)"
+    },
+    "submit": {
+      "pass": false,
+      "minutes": 4,
+      "why": "codegen-runs-dangling-temporary: generated C++ of the original 2285C printed garbage while cpl test passed; needed a rewrite. Competitive Companion works."
+    },
+    "compete": {
+      "pass": true,
+      "minutes": 4,
+      "samples_pass": "5/5",
+      "start": "12:27:58",
+      "end": "12:32:15",
+      "times": {
+        "2272A": [
+          "12:28:00",
+          "12:29:36"
+        ],
+        "2272B": [
+          "12:29:36",
+          "12:30:10"
+        ],
+        "2272C": [
+          "12:30:10",
+          "12:30:41"
+        ],
+        "2272D": [
+          "12:30:41",
+          "12:31:30"
+        ],
+        "2272E": [
+          "12:31:30",
+          "12:31:52"
+        ]
+      },
+      "self_pass": true,
+      "judged": "5/5 AC"
+    },
+    "design": {
+      "pass": true,
+      "minutes": 2,
+      "score": "4/5",
+      "why": "threshold met (4/5, both chapters give a reason); probe 4 wrong because the documented i != j proof is not enforced (blocker design-disjoint-law-not-enforced)"
+    }
+  },
+  "problems": [
+    {
+      "id": "cf2285A",
+      "set": "div2",
+      "verdict": "samples-pass",
+      "minutes": 1,
+      "attempts": 2,
+      "judge": "AC (1 samples, 200 generated, max input 0.00 s)"
+    },
+    {
+      "id": "cf2285B",
+      "set": "div2",
+      "verdict": "samples-pass",
+      "minutes": 1,
+      "attempts": 1,
+      "judge": "AC (1 samples, 200 generated, max input 0.00 s)"
+    },
+    {
+      "id": "cf2285C",
+      "set": "div2",
+      "verdict": "samples-pass",
+      "minutes": 2,
+      "attempts": 2,
+      "judge": "AC (1 samples, 200 generated, max input 0.05 s)"
+    },
+    {
+      "id": "cf2285D",
+      "set": "div2",
+      "verdict": "samples-pass",
+      "minutes": 18,
+      "attempts": 4,
+      "judge": "AC (1 samples, 200 generated, max input 0.11 s)"
+    },
+    {
+      "id": "cf2285E",
+      "set": "div2",
+      "verdict": "samples-pass",
+      "minutes": 10,
+      "attempts": 1,
+      "judge": "AC (1 samples, 200 generated, max input 0.21 s)"
+    },
+    {
+      "id": "cf2289A",
+      "set": "div2",
+      "verdict": "samples-pass",
+      "minutes": 1,
+      "attempts": 1,
+      "judge": "AC (1 samples, 200 generated, max input 0.01 s)"
+    },
+    {
+      "id": "cf2289B",
+      "set": "div2",
+      "verdict": "samples-pass",
+      "minutes": 1,
+      "attempts": 1,
+      "judge": "AC (1 samples, 200 generated, max input 0.01 s)"
+    },
+    {
+      "id": "cf2289C",
+      "set": "div2",
+      "verdict": "samples-pass",
+      "minutes": 1,
+      "attempts": 1,
+      "judge": "AC (1 samples, 200 generated, max input 0.02 s)"
+    },
+    {
+      "id": "cf2289D",
+      "set": "div2",
+      "verdict": "samples-pass",
+      "minutes": 1,
+      "attempts": 1,
+      "judge": "AC (1 samples, 200 generated, max input 0.02 s)"
+    },
+    {
+      "id": "cf2289E",
+      "set": "div2",
+      "verdict": "samples-pass",
+      "minutes": 4,
+      "attempts": 2,
+      "judge": "AC (1 samples, 200 generated, max input 0.23 s)"
+    },
+    {
+      "id": "cf2272A",
+      "set": "div2",
+      "verdict": "samples-pass",
+      "minutes": 2,
+      "attempts": 2,
+      "judge": "AC (1 samples, 200 generated, max input 0.00 s)"
+    },
+    {
+      "id": "cf2272B",
+      "set": "div2",
+      "verdict": "samples-pass",
+      "minutes": 1,
+      "attempts": 2,
+      "judge": "AC (1 samples, 200 generated, max input 0.00 s)"
+    },
+    {
+      "id": "cf2272C",
+      "set": "div2",
+      "verdict": "samples-pass",
+      "minutes": 1,
+      "attempts": 2,
+      "judge": "AC (1 samples, 200 generated, max input 0.03 s)"
+    },
+    {
+      "id": "cf2272D",
+      "set": "div2",
+      "verdict": "samples-pass",
+      "minutes": 1,
+      "attempts": 1,
+      "judge": "AC (1 samples, 200 generated, max input 0.01 s)"
+    },
+    {
+      "id": "cf2272E",
+      "set": "div2",
+      "verdict": "samples-pass",
+      "minutes": 1,
+      "attempts": 1,
+      "judge": "AC (1 samples, 200 generated, max input 0.03 s)"
+    }
+  ],
+  "findings": [
+    {
+      "id": "install-sh-404",
+      "step": "install",
+      "kind": "hesitation",
+      "lane": "infra",
+      "summary": "NOW WORKS: https://cp-lang.org/install.sh and install.ps1 both return 200.",
+      "minutes_lost": 0,
+      "evidence": "curl -sSI https://cp-lang.org/install.sh -> HTTP/1.1 200 OK"
+    },
+    {
+      "id": "install-flag-spelling-inconsistent",
+      "step": "install",
+      "kind": "hesitation",
+      "lane": "site",
+      "summary": "Getting-started says `sh -s -- --edge`, /setup says `sh -s -- --channel edge`, and the edge version is documented as `0.3.0-dev+<commit>` but prints `0.3.0-edge+4b3d07d4`.",
+      "minutes_lost": 1,
+      "evidence": "https://cp-lang.org/docs/guides/getting-started vs https://cp-lang.org/setup/ ; cpl --version -> cpl 0.3.0-edge+4b3d07d4"
+    },
+    {
+      "id": "playground-indent-on-paste-typing",
+      "step": "try",
+      "kind": "hesitation",
+      "lane": "site",
+      "summary": "Paste now keeps indentation exactly; typing keeps the body indent after a block so the dedented line after a while-body had to be fixed by hand (Backspace dedents one level, which works).",
+      "minutes_lost": 1,
+      "evidence": "https://cp-lang.org/learn/practice/halving-game/ : type 'while n % 2 == 0:\n    n /= 2\n    k += 1\nprint(k, n)' -> print ends up inside the loop"
+    },
+    {
+      "id": "idioms-binary-search-contradicts-intro",
+      "step": "understand",
+      "kind": "hesitation",
+      "lane": "site",
+      "summary": "Idioms guide section 6 recommends a manual lo/hi/mid loop while the 30-minute intro says first_true removes lo/hi/mid; unclear which is idiomatic.",
+      "minutes_lost": 1,
+      "evidence": "https://cp-lang.org/docs/guides/idioms (6. Binary search) vs https://cp-lang.org/learn/intro/ (7. first_true)"
+    },
+    {
+      "id": "self-update-404",
+      "step": "install",
+      "kind": "hesitation",
+      "lane": "tools",
+      "minutes_lost": 1,
+      "summary": "NOW WORKS (run-4 404 REFUTED): `cpl self update` reported up to date at install, and later in the run it really updated edge 4b3d07d4 -> ae6edeb2; `cpl self rollback` went back so the run stays on 4b3d07d4.",
+      "evidence": "cpl self update -> edge updated: edge-2026-11-23-4b3d07d4 -> edge-2026-11-23-ae6edeb2 (`cpl self rollback` goes back); cpl self rollback -> rolled back: edge is edge-2026-11-23-4b3d07d4"
+    },
+    {
+      "id": "jetbrains-community-refuses-plugin",
+      "step": "install",
+      "kind": "blocker",
+      "lane": "tools",
+      "summary": "On IntelliJ IDEA 2026.3 (the unified free edition, dir IntelliJIdea2026.3) `cpl setup jetbrains` installs only cp-lang-jetbrains, not LSP4IJ; idea.log says `plugin com.redhat.devtools.lsp4ij is not resolved ... 'cp-lang-lsp4ij.xml' of plugin dev.cplang.ide excluded` and the built-in-LSP config is excluded too, so the plugin loads but gives highlighting only.",
+      "minutes_lost": 8,
+      "evidence": "choco install intellijidea-community; open IDE once; cpl setup jetbrains; restart; cpl setup jetbrains --check -> CP Lang loaded; open bad.cp -> no diagnostic, Ctrl+Space 'No suggestions', Ctrl+Click 'Cannot find declaration to go to', Ctrl+Alt+L no change"
+    },
+    {
+      "id": "jetbrains-lsp4ij-manual-still-no-lsp",
+      "step": "install",
+      "kind": "workaround",
+      "lane": "tools",
+      "summary": "Installing LSP4IJ 0.30.1 by hand (`idea64.exe installPlugins com.redhat.devtools.lsp4ij`) starts a `cpl lsp` process after restart, but the editor still shows no diagnostics or completion for .cp files.",
+      "minutes_lost": 4,
+      "evidence": "idea64.exe installPlugins com.redhat.devtools.lsp4ij; restart; idea.log: Loaded custom plugins: CP Lang (dev.cplang.ide, 0.3.0), LSP4IJ (com.redhat.devtools.lsp4ij, 0.30.1); bad.cp line 2 `let y: Int = \"hello\"` shows green check, Ctrl+Space -> No suggestions"
+    },
+    {
+      "id": "jetbrains-setup-needs-ide-opened-first",
+      "step": "install",
+      "kind": "hesitation",
+      "lane": "tools",
+      "summary": "`cpl setup jetbrains` on a freshly installed IDE fails until the IDE has been started once.",
+      "minutes_lost": 1,
+      "evidence": "cpl setup jetbrains -> cpl: no JetBrains IDE found (open one once first), or pass --dir PLUGINS (exit 1)"
+    },
+    {
+      "id": "jetbrains-plugin-no-update-source",
+      "step": "install",
+      "kind": "hesitation",
+      "lane": "tools",
+      "summary": "IDEA shows a 'Cannot update plugin: Unable to identify where CP Lang was installed from' balloon on every start after cpl setup jetbrains.",
+      "minutes_lost": 0,
+      "evidence": "idea.log: Plugin dev.cplang.ide is not found in custom repositories and is not in the safe list"
+    },
+    {
+      "id": "plain-vim-no-lsp-docs",
+      "step": "install",
+      "kind": "workaround",
+      "lane": "tools",
+      "summary": "Plain Vim gets only highlighting/fmt from `cpl setup vim`; LSP needs vim-lsp or yegappan/lsp which the setup page does not link or install (only the LSP reference page names them); after cloning yegappan/lsp from GitHub, diagnostics, completion, format and go-to-definition all work.",
+      "minutes_lost": 4,
+      "evidence": "cpl setup vim; vim bad.cp -> no diagnostics; git clone https://github.com/yegappan/lsp ~/vimfiles/pack/lsp/start/lsp; vim bad.cp -> E> sign on line 2, LspGotoDefinition jumps to 1:4, LspFormat fixes spacing; https://cp-lang.org/docs/ref/tools/lsp (Rlsp.5)"
+    },
+    {
+      "id": "editor-setup-needs-repo-checkout",
+      "step": "install",
+      "kind": "hesitation",
+      "lane": "tools",
+      "summary": "NOW WORKS: all four `cpl setup` commands run from the installed binary with no checkout.",
+      "minutes_lost": 0,
+      "evidence": "cpl setup neovim|vim|vscode|jetbrains -> installed CP Lang for ..."
+    },
+    {
+      "id": "vscode-needs-node-build",
+      "step": "install",
+      "kind": "hesitation",
+      "lane": "tools",
+      "summary": "NOW WORKS: `cpl setup vscode` installs a bundled cp-lang-0.3.0 .vsix, no Node build; diagnostics, completion, format and F12 work.",
+      "minutes_lost": 0,
+      "evidence": "cpl setup vscode -> installed CP Lang for VS Code (cp-lang.cp-lang@0.3.0) from ...\\cp-lang-6600.vsix"
+    },
+    {
+      "id": "jetbrains-no-prebuilt-plugin",
+      "step": "install",
+      "kind": "hesitation",
+      "lane": "tools",
+      "summary": "NOW WORKS (partly): a prebuilt JetBrains plugin is installed by `cpl setup jetbrains` and loads, but see jetbrains-community-refuses-plugin.",
+      "minutes_lost": 0,
+      "evidence": "cpl setup jetbrains --check -> IntelliJIdea2026.3: CP Lang loaded (CP Lang (dev.cplang.ide)"
+    },
+    {
+      "id": "nvim-codelens-deprecated-warning",
+      "step": "install",
+      "kind": "hesitation",
+      "lane": "tools",
+      "summary": "On Neovim 0.12 the CPL plugin prints a deprecation warning for vim.lsp.codelens.refresh on every .cp file.",
+      "minutes_lost": 0,
+      "evidence": "nvim t.cp -> vim.lsp.codelens.refresh({ bufnr = bufnr}) is deprecated. Run \":checkhealth vim.deprecated\" for more information"
+    },
+    {
+      "id": "editors-need-gui-trust-dialogs",
+      "step": "install",
+      "kind": "hesitation",
+      "lane": "tools",
+      "summary": "VS Code opens .cp in Restricted Mode as Plain Text and IDEA in Safe mode until trusted; nothing in the setup docs mentions it.",
+      "minutes_lost": 1,
+      "evidence": "code bad.cp -> status bar 'Restricted Mode', language 'Plain Text', no diagnostics until Trust"
+    },
+    {
+      "id": "fetch-needs-saved-html",
+      "step": "solve",
+      "kind": "hesitation",
+      "lane": "tools",
+      "summary": "NOW WORKS: `cpl fetch https://codeforces.com/contest/2285/problem/A cf2285A` downloads samples directly, no saved HTML needed.",
+      "minutes_lost": 0,
+      "evidence": "cpl fetch https://codeforces.com/contest/2285/problem/A cf2285A -> created cf2285A.cp, created cf2285A.tests/ (1 sample)"
+    },
+    {
+      "id": "fetch-template-misses-multitest",
+      "step": "solve",
+      "kind": "hesitation",
+      "lane": "tools",
+      "summary": "NOW WORKS: the fetched template starts with `@!multitest`, though it always guesses `let n: 1..=2e5 = read()` instead of the statement's bound (n <= 100 in 2285A).",
+      "minutes_lost": 0,
+      "evidence": "cpl fetch https://codeforces.com/contest/2285/problem/A cf2285A; cat cf2285A.cp"
+    },
+    {
+      "id": "test-no-checker-any-answer",
+      "step": "test",
+      "kind": "workaround",
+      "lane": "tools",
+      "summary": "Still reproduces for any-answer problems: `cpl test` marks a valid answer WA by exact token compare, but now prints a hint to add a `@check fn` using `read_output()`.",
+      "minutes_lost": 2,
+      "evidence": "cpl test cf2285A.cp -> 1 WA ... first difference at line 2, token 2: expected `3`, got `2` ... if any valid answer is accepted, add a `@check fn` that reads the output with `read_output()`"
+    },
+    {
+      "id": "runs-yields-list-not-tuple",
+      "step": "solve",
+      "kind": "hesitation",
+      "lane": "stdlib",
+      "summary": "The stdlib guide says `a.runs()` gives run-length `(val, len)` pairs, but destructuring them as a tuple fails to compile.",
+      "minutes_lost": 2,
+      "evidence": "for (r, (v, len)) in a.sorted(by: desc).runs().items: -> error[E0302]: a `List<Int>` can't be taken apart into 2 names"
+    },
+    {
+      "id": "runs-doc-contradiction-slice-key",
+      "step": "solve",
+      "kind": "non-idiomatic",
+      "lane": "site",
+      "summary": "Getting a run's value needs `run[run.keys.first!]` because runs() yields slices (ref) though the stdlib guide promises `(val, len)` pairs; I wanted `for (v, len) in a.runs()`.",
+      "minutes_lost": 2,
+      "evidence": "https://cp-lang.org/docs/guides/stdlib ('a.runs() ... run-length (val, len) pairs') vs /docs/ref/std/seq runs; cf2285C.cp: let v = run[run.keys.first!]"
+    },
+    {
+      "id": "map-of-list-push-traps",
+      "step": "solve",
+      "kind": "non-idiomatic",
+      "lane": "stdlib",
+      "summary": "`m[k] += 1` auto-inserts for Map<Int, Int> but `m[k].push(x)` on a missing key of Map<Int, List<Int>> traps at run time, so I had to write `if d not in at: at[d] = []` first (C++ `at[d].push_back(s)` just works).",
+      "minutes_lost": 2,
+      "evidence": "var at: Map<Int, List<Int>> = Map(); at[5].push(1) -> error[R0001]: this key is not in the map; store with `m[k] = v` first"
+    },
+    {
+      "id": "map-get-copies-list",
+      "step": "solve",
+      "kind": "workaround",
+      "lane": "perf",
+      "summary": "`at.get(d) ?? []` on a Map<Int, List<Int>> copies the whole list (cpl::map_get returns std::optional<std::vector>), and each partition_point call copies it again, so 2285D's 2e5 queries over one 2e5-long list did not finish in 70 s.",
+      "minutes_lost": 6,
+      "evidence": "cf2285D.cpp (cpl build --judge codeforces): std::optional<std::vector<ll>> t2 = cpl::map_get(at, d); return t2.has_value() ? *t2 : std::vector<ll>(); ... m5_partition_point(...[&]() -> std::vector<ll> { ...; return ps; }(), ...)"
+    },
+    {
+      "id": "partition-point-copies-list",
+      "step": "solve",
+      "kind": "workaround",
+      "lane": "perf",
+      "summary": "`xs.partition_point(ok)` on a top-level List copies the whole vector into the call every time (generated lambda `return keyed;` by value), making the documented O(log n) search O(n); rewriting as `(0..len).first_true(i => keyed[i] > (d, hi)) ?? len` ran the 2e5x2e5 test in 0.12 s.",
+      "minutes_lost": 5,
+      "evidence": "cf2285D.cp variant `keyed.partition_point(p => p > (d, hi))`; cpl build --judge codeforces -> cf2285D.cpp lines 226-227 `D_0_len = ...keyed.size(); return keyed;`; >20 s on n=q=2e5 all-equal input"
+    },
+    {
+      "id": "inversions-documented-not-implemented",
+      "step": "solve",
+      "kind": "hesitation",
+      "lane": "stdlib",
+      "summary": "NOW WORKS: `sums.inversions()` is implemented and solved 2289D (samples pass, O(n log n)).",
+      "minutes_lost": 0,
+      "evidence": "cf2289D.cp: print(if sums.min() < 0: -1 else: sums.inversions()); cpl test cf2289D.cp -> 1/1 passed"
+    },
+    {
+      "id": "prefix-sum-manual-push",
+      "step": "solve",
+      "kind": "non-idiomatic",
+      "lane": "stdlib",
+      "summary": "NOW MOSTLY WORKS: `prefix(a)` replaces the manual push loop, but getting the list of prefix sums S1..Sn needs `[s.prefix(i) for i in 1..=n]` instead of a direct `a.scan(+)`/`partial_sum`.",
+      "minutes_lost": 1,
+      "evidence": "cf2289D.cp: let s = prefix(a); let sums = [s.prefix(i) for i in 1..=n]"
+    },
+    {
+      "id": "absorb-mut-temporary",
+      "step": "solve",
+      "kind": "hesitation",
+      "lane": "diagnostics",
+      "summary": "Passing the moved-out temporary `win[r].take()` to `absorb` fails with a mut-annotation error that does not say a temporary can never be `mut`; `absorb(mut win[r])` (which already empties it) was the fix.",
+      "minutes_lost": 1,
+      "evidence": "win[k].absorb(win[r].take()) -> error[E0402]: `absorb` changes `other`, so pass it with `mut`"
+    },
+    {
+      "id": "cpl-test-flaky-mod-pow",
+      "step": "test",
+      "kind": "hesitation",
+      "lane": "compiler",
+      "summary": "Once, `cpl test cf2285C.cp` printed 401652671 instead of 1 for the sample case `n=1, a=[1]` (answer 1 + Z(0)**1), then passed 13 reruns in a row; I could not reproduce it.",
+      "minutes_lost": 3,
+      "evidence": "cpl test cf2285C.cp (first run in a loop over all files) -> first difference at line 5, token 1: expected `1`, got `401652671`; 12 reruns -> 2/2 passed"
+    },
+    {
+      "id": "stress-gen-needs-gpp-on-path",
+      "step": "test",
+      "kind": "hesitation",
+      "lane": "tools",
+      "summary": "`cpl stress` with an `@gen` fn needs g++ on PATH, which the Windows setup page never mentions; plain `cpl test`/`cpl run` work without it.",
+      "minutes_lost": 1,
+      "evidence": "cpl stress c_bug.cp (PowerShell/Git Bash without MinGW on PATH) -> error: there is no g++ here to build the `@gen` fn of c_bug.cp; install it or pass `--gen <program>`"
+    },
+    {
+      "id": "slice-min-optional",
+      "step": "test",
+      "kind": "hesitation",
+      "lane": "stdlib",
+      "summary": "`p[l..l + len].min()` returns `?Int` even on a slice that is provably non-empty, so a brute-force oracle needs `!`; I wanted plain `min()` like `*min_element`.",
+      "minutes_lost": 1,
+      "evidence": "cnt[p[l..l + len].min()] += 1 -> error[E0302]: expected `Int`, found `?Int`"
+    },
+    {
+      "id": "gen-multitest-prints-t",
+      "step": "test",
+      "kind": "hesitation",
+      "lane": "site",
+      "summary": "For an `@!multitest` file the docs do not say whether `@gen` prints one case or the whole input with `t`; my per-case gen made the brute crash and stress only reported `failed on this input (Code(3))` without the read error.",
+      "minutes_lost": 3,
+      "evidence": "cpl stress c_bug.cp -> error: the brute c_bug.cp (`slow`) failed on this input (Code(3)), so there is nothing to compare with: 2 / 2 1; fixed by adding print(1) at the top of @gen"
+    },
+    {
+      "id": "codegen-runs-dangling-temporary",
+      "step": "submit",
+      "kind": "blocker",
+      "lane": "compiler",
+      "summary": "`for (r, run) in a.sorted(by: desc).runs().items:` compiles to C++ that takes ListViews into a temporary sorted vector which dies before the loop, so the Codeforces build of cf2285C prints garbage (different on every run) while `cpl test` passes; binding `let b = a.sorted(by: desc)` first fixes it.",
+      "minutes_lost": 8,
+      "evidence": "cpl build cf2285C.cp --judge codeforces; g++ -std=c++17 -O2; ./cf2285C.exe < cf2285C.tests/1.in -> `1 138973942 92656696 138973879 301558176` (expected 1 1000000000 32 9 1); generated: m5_runs_Lst_Int_Int_Int_141([&]() -> std::vector<ll> { std::vector<ll> t2 = a; ...; return t2; }(), ...) returns std::vector<cpl::ListView<ll>>"
+    },
+    {
+      "id": "test-exact-case-yes-no",
+      "step": "test",
+      "kind": "hesitation",
+      "lane": "tools",
+      "summary": "NOW WORKS: `cpl test cf2289A.cp` accepts my `YES`/`NO` against the sample's `Yes`/`No`.",
+      "minutes_lost": 0,
+      "evidence": "cpl test cf2289A.cp -> 2/2 passed; ./cf2289A.exe prints YES/NO while cf2289A.tests/1.out has Yes/No"
+    },
+    {
+      "id": "locate-needs-alt-fn",
+      "step": "test",
+      "kind": "hesitation",
+      "lane": "debugger",
+      "summary": "`cpl locate` refuses a whole-program `@alt(program)` oracle, so after stress shrank the case I fell back to `cpl run --trace`.",
+      "minutes_lost": 1,
+      "evidence": "cpl locate c_bug.cp c_bug.tests/stress-1.in -> cpl: c_bug.cp has no `@alt(f)` fn to swap in: write one beside the part you doubt"
+    },
+    {
+      "id": "trace-default-input-not-stress-case",
+      "step": "test",
+      "kind": "hesitation",
+      "lane": "debugger",
+      "summary": "`cpl run --help` says `--trace` with no input records the case `cpl stress` saved last, but from a non-interactive shell it read empty stdin and failed; naming the file worked.",
+      "minutes_lost": 1,
+      "evidence": "cpl run c_bug.cp --trace --watch ans --format json -> label: failed: reading the number of tests: the input ended where a number was expected (input line 1, column 1)"
+    },
+    {
+      "id": "take-into-other-index-lint",
+      "step": "submit",
+      "kind": "non-idiomatic",
+      "lane": "idioms",
+      "summary": "Moving one array slot into another (`win[k] = win[l].take()`, k > l always) triggers lint L0601 about evaluation order, so I had to split it into `let merged = win[l].take()` / `win[k] = merged`; the lint only shows at `cpl check`/`cpl submit`, not in `cpl test`.",
+      "minutes_lost": 2,
+      "evidence": "cpl check cf2289E.cp -> warning[L0601]: `win[l]` is changed on the right side of an assignment to `win[k]`, and Array.at lends disjoint parts only when `i != j`, and that is not known here"
+    },
+    {
+      "id": "build-size-warning-near-limit",
+      "step": "submit",
+      "kind": "hesitation",
+      "lane": "compiler",
+      "summary": "A 36-line cf2289E.cp produces 25-26 KB of C++ and a size warning, though the judge limit is 64 KB.",
+      "minutes_lost": 0,
+      "evidence": "cpl build cf2289E.cp --judge codeforces -> cpl: warning: the C++ for `cf2289E.cp` is 25970 bytes, over 24576 bytes, near the 32768-byte target and 39% of the 65536-byte limit of judge `codeforces`"
+    },
+    {
+      "id": "competitive-companion-not-published",
+      "step": "submit",
+      "kind": "hesitation",
+      "lane": "tools",
+      "summary": "NOW WORKS: with cpl new --listen running and the Competitive Companion 2.65.0 Chrome extension, Ctrl+Shift+U on a Codeforces problem page created a.cp plus a.tests/ with the sample.",
+      "minutes_lost": 2,
+      "evidence": "cpl new --listen -> waiting for Competitive Companion on 127.0.0.1:10043 ... created a.tests/ (1 sample); Ctrl+Shift+U on https://codeforces.com/contest/2285/problem/A"
+    },
+    {
+      "id": "companion-template-misses-multitest",
+      "step": "submit",
+      "kind": "hesitation",
+      "lane": "tools",
+      "summary": "The Competitive Companion template for multitest 2285A has no @!multitest and guesses let n: 1..=2e5 against the statement n <= 100, unlike cpl fetch which adds @!multitest.",
+      "minutes_lost": 1,
+      "evidence": "cpl new --listen + Ctrl+Shift+U on codeforces.com/contest/2285/problem/A -> a.cp holds only header comments and let n: 1..=2e5 = read()"
+    },
+    {
+      "id": "join-on-separator",
+      "step": "design",
+      "kind": "hesitation",
+      "lane": "stdlib",
+      "minutes_lost": 1,
+      "summary": "Run-4 `print([..].join(\"\"))` printing an empty line is REFUTED: it is now a type error whose help says join is called on the separator, Python style; `\"\".join([\"a\", \"b\", \"c\"])` prints abc.",
+      "evidence": "print([\"a\", \"b\", \"c\"].join(\"\")) -> error[E0302]: expected `Str`, found `List<Str>` ... help: `join` is called on the separator: `\"\".join([\"a\", \"b\", \"c\"])`"
+    },
+    {
+      "id": "copy-clone-two-spellings",
+      "step": "design",
+      "kind": "hesitation",
+      "lane": "diagnostics",
+      "minutes_lost": 1,
+      "summary": "The ownership chapter says `.copy()` for an owned copy, but the move/lend diagnostics suggest `.clone()`; both work (run-4 claim CONFIRMED), so there are two spellings for one thing.",
+      "evidence": "var a = [1, 2, 3]; var b = a.copy(); var c = a.clone(); b[0] = 9; c[1] = 8; print(a, b, c) -> 1 2 3 9 2 3 1 8 3; p1_alias.cp help: use `a.clone()` where it was moved"
+    },
+    {
+      "id": "move-on-assign-undocumented",
+      "step": "design",
+      "kind": "hesitation",
+      "lane": "site",
+      "minutes_lost": 1,
+      "summary": "`var b = a` on a List moves `a`, but /docs/guides/borrowing only covers own/borrow/copy for parameters and lends and never says plain assignment moves.",
+      "evidence": "var a = [1, 2, 3]; var b = a; b[0] = 9; print(a, b) -> error[E0608]: `a` was already moved ... help: use `a.clone()` where it was moved if you still need `a`"
+    },
+    {
+      "id": "design-disjoint-law-not-enforced",
+      "step": "design",
+      "kind": "blocker",
+      "lane": "compiler",
+      "minutes_lost": 3,
+      "summary": "/docs/guides/borrowing says `merge_into(mut counts[i], counts[j])` needs a proof of `i != j`, but with unchecked input indices it compiles and, for i == j, aliases (dst += src doubles the cell) instead of being rejected.",
+      "evidence": "design/p4_twoidx.cp: let (i, j): (0..3, 0..3) = read(); var c = [1, 2, 3]; fn merge_into(mut dst: Int, src: Int): dst += src; merge_into(mut c[i], c[j]); print(c); echo \"1 1\" | cpl run p4_twoidx.cp -> 1 4 3 (no error)"
+    },
+    {
+      "id": "design-indices-alternatives-implicit",
+      "step": "design",
+      "kind": "hesitation",
+      "lane": "site",
+      "minutes_lost": 0,
+      "summary": "/docs/guides/indices gives the reason for domains (positions, gaps and counts mixed in one int cause off-by-ones) but compares only implicitly with plain ints, with no alternatives considered (e.g. 0- vs 1-based conventions, asserts); the borrowing chapter does compare with Rust lifetimes.",
+      "evidence": "https://cp-lang.org/docs/guides/indices first paragraph vs https://cp-lang.org/docs/guides/borrowing \"Why there are no lifetime annotations\""
+    },
+    {
+      "id": "powershell-utf8-bom-rejected",
+      "step": "design",
+      "kind": "workaround",
+      "lane": "compiler",
+      "minutes_lost": 1,
+      "summary": "A .cp file written by Windows PowerShell 5.1 `Set-Content -Encoding utf8` starts with a BOM, and cpl rejects it as a stray character instead of skipping it.",
+      "evidence": "PowerShell 5.1: Set-Content -Encoding utf8 r.cp 'print(1)'; cpl run r.cp -> error[E0004]: `\ufeff` isn't used in CP Lang ... help: names are ASCII; other characters go in strings and comments"
+    },
+    {
+      "id": "version-panics-on-closed-pipe",
+      "step": "install",
+      "kind": "hesitation",
+      "lane": "tools",
+      "minutes_lost": 0,
+      "summary": "`cpl --version | head -1` panics (ICE) when the pipe closes early, printing `this is a cpl bug: run cpl report --last`.",
+      "evidence": "cpl --version | head -1 -> this is a cpl bug: run `cpl report --last`; report: panic: failed printing to stdout: The pipe is being closed. (os error 232)"
+    },
+    {
+      "id": "fetch-name-positional",
+      "step": "compete",
+      "kind": "hesitation",
+      "lane": "tools",
+      "minutes_lost": 1,
+      "summary": "I guessed `cpl fetch <url> -o cf2272A.cp`; the name is a positional argument without extension (`cpl fetch <url> cf2272A`), shown only after the usage error.",
+      "evidence": "cpl fetch https://codeforces.com/contest/2272/problem/A -o cf2272A.cp -> usage: cpl fetch <url> [name] [options]"
+    },
+    {
+      "id": "if-expr-else-needs-colon",
+      "step": "compete",
+      "kind": "hesitation",
+      "lane": "idioms",
+      "minutes_lost": 1,
+      "summary": "The ternary form needs a colon after `else` too (`if c: s else: t`); the diagnostic is clear.",
+      "evidence": "let row = if top >= bot: s else t -> error[E0103]: expected `:` after `else`, found a name ... help: insert `:`"
+    },
+    {
+      "id": "checker-cannot-see-solution",
+      "step": "compete",
+      "kind": "hesitation",
+      "lane": "debugger",
+      "minutes_lost": 1,
+      "summary": "A `@check` fn may not use the solution top-level bindings (here m = n - k + 1), so derived values must be recomputed from the input; the error says so clearly.",
+      "evidence": "cf2272A.cp @check using m -> checker: error[E0201]: `m` is the solution's own work: a brute or a checker shares only the input"
+    },
+    {
+      "id": "brutes-written-in-python",
+      "step": "compete",
+      "kind": "workaround",
+      "lane": "debugger",
+      "minutes_lost": 3,
+      "summary": "For any-answer 2272D (tree MIS) and brute checks of 2272B/C/E I wrote Python brutes/verifiers instead of `@alt`/`@check`, because the cpl tree-DP checker and @gen setup would cost more minutes under the clock.",
+      "evidence": "compete/dchk.py, bb.py, cbr.py, ebr.py; cf2272D.cp @check only reads the k-1 edges"
+    },
+    {
+      "id": "windows-native-no-sh",
+      "step": "test",
+      "kind": "hesitation",
+      "lane": "tools",
+      "minutes_lost": 0,
+      "summary": "Run-4 claim CONFIRMED: with no sh/Git on PATH (System32 + .cpl + mingw only) cpl test, stress (with @gen) and build work in PowerShell.",
+      "evidence": "PowerShell: $env:Path = \".cpl\bin;mingw64\bin;System32;Windows\"; Get-Command sh -> none; cpl stress c_bug.cp -> FAIL on case 1 (seed 1): WA, shrunk; cpl test cf2289C.cp -> 2/2 passed"
+    },
+    {
+      "id": "companion-chrome-for-testing-banner",
+      "step": "submit",
+      "kind": "hesitation",
+      "lane": "site",
+      "minutes_lost": 1,
+      "summary": "The Chrome Web Store shows \"Switch to Chrome to install extensions\" in Chrome for Testing, but Add to Chrome still installed Competitive Companion; /setup gives no hint which browser build works.",
+      "evidence": "https://chromewebstore.google.com/detail/competitive-companion/cjnmckjndlpiamhfimnnjmnckgghkjbl -> banner + Add extension dialog"
+    },
+    {
+      "id": "rev-view-index-not-reversed",
+      "step": "design",
+      "kind": "hesitation",
+      "lane": "stdlib",
+      "summary": "STILL OPEN: `a.rev` iterates backwards but indexing the view is not reversed: `a.rev[0]` is the first element, not the last.",
+      "minutes_lost": 1,
+      "evidence": "let a = [10, 20, 30]; let r = a.rev; print(r[0]) -> 10 (expected 30); for (i, x) in a.rev.items -> 2 30 / 1 20 / 0 10"
+    },
+    {
+      "id": "count-of-bools-counts-all",
+      "step": "design",
+      "kind": "hesitation",
+      "lane": "stdlib",
+      "summary": "STILL OPEN: `count()` with no predicate on a List<Bool> returns the length, not the number of trues.",
+      "minutes_lost": 1,
+      "evidence": "let b = [true, false, true, false]; print(b.count()) -> 4; print(b.count(x => x)) -> 2"
+    },
+    {
+      "id": "compress-two-spellings",
+      "step": "design",
+      "kind": "hesitation",
+      "lane": "stdlib",
+      "summary": "NOW ONE SPELLING: only the free `let (domain C, comp) = compress(xs)` exists; `a.compress()` is rejected with an error.",
+      "minutes_lost": 0,
+      "evidence": "print([30, 10, 20].compress()) -> error[E0203]: a `List<Int>` has no method `compress` that `cpl run` knows; docs: https://cp-lang.org/docs (Coordinate compression with compress(all))"
+    },
+    {
+      "id": "argmax-on-range-confusing-error",
+      "step": "design",
+      "kind": "hesitation",
+      "lane": "stdlib",
+      "summary": "NOW WORKS: `(0..3).argmax(i => a[i])` and `a.argmax()` both return 1 for a = [3, 9, 2].",
+      "minutes_lost": 0,
+      "evidence": "design/q_argmax.cp -> 1 / 1"
+    },
+    {
+      "id": "no-sort-desc-spelling",
+      "step": "solve",
+      "kind": "hesitation",
+      "lane": "stdlib",
+      "summary": "NOW WORKS: `sorted(by: desc)` exists and was used in 2285C.",
+      "minutes_lost": 0,
+      "evidence": "print([3, 1, 2].sorted(by: desc)) -> 3 2 1"
+    },
+    {
+      "id": "range-sorted-empty",
+      "step": "design",
+      "kind": "hesitation",
+      "lane": "stdlib",
+      "summary": "NOT REPRODUCED: sorting a domain range by a key returns all elements in the right order.",
+      "minutes_lost": 0,
+      "evidence": "domain V = 1..=3; d = [5, 1, 3]; print(V.all.sorted(by: v => d[v])) -> 2 3 1"
+    },
+    {
+      "id": "design-cites-unpublished-decisions",
+      "step": "design",
+      "kind": "hesitation",
+      "lane": "site",
+      "summary": "STILL OPEN: the published spec cites numbered decisions and an archived chapter (design/spec/10-syntax.md) that the site does not publish.",
+      "minutes_lost": 1,
+      "evidence": "https://cp-lang.org/llms-full.txt: \"Sources: decisions 10 (archived chapter design/spec/10-syntax.md), 20, 22, 70, 93, 98 ...\"; \"matching dedent (decision 98)\""
+    }
+  ]
+}
