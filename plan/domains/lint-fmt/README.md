@@ -13,39 +13,42 @@ slow or unidiomatic, says why in source terms, and offers only fixes that are
 verified to check and to print the same output. Both are gated on the
 idiomatic corpus, so a finding there is a bug in the lint, not the port.
 
-## Milestone 1 (plan/product/MILESTONE-1.md)
+## Milestone 1 (plan/product/MILESTONE-1.md; due ~09:30 PST 2026-11-23)
 Lint is passive teaching (J2, J5): a 1500+ newcomer's C++-shaped code gets the
-CPL spelling, in VS Code and in the browser playground. Fmt runs on save.
-Measured 2026-11-22: the playground editor calls `cpl.check`
-(`web/components/editor/code-editor.tsx:67`), whose wasm `check`
-(`crates/cpl-wasm/src/lib.rs:92`) runs the checker only, so the browser shows
-no lints; VS Code sets no format-on-save default (`editors/vscode/package.json`)
-and LSP formatting ignores `cp.toml [fmt]` (`crates/cpl-lsp/src/server.rs:858`).
+CPL spelling, in the editor (Neovim/Vim first, VS Code too) and in the browser
+playground. Format on save just works on Linux, macOS and Windows. Lint and
+fmt don't touch the generated C++, so the Codeforces profile needs nothing
+from this domain. Checkpoints every 2 h in `worklog.md`.
 
 **Exit criteria**
-1. Playground: each record's `before.cp` shows its `L` warning and quick fix in
-   the browser, same findings as `cpl lint` (test in `cpl-wasm`).
-2. VS Code: a new `.cp` file is formatted on save with no settings, honouring
-   `cp.toml [fmt]` (LSP test plus extension default).
-3. Newcomer ranking: lints ranked by hits on the 1,160 corpus `port.cp` files
+1. Playground: each record's `before.cp` warns, with its fix, exactly as
+   `cpl lint` does. Wasm side landed (`Playground::lint`, test
+   `the_playground_lints_like_cpl_lint`); the editor calling it is site's.
+2. Format on save, no setup: LSP formatting follows `cp.toml [fmt]` (landed);
+   VS Code defaults it on (landed); the Neovim plugin formats on write
+   through the LSP, and Vim gets a documented `cpl fmt` hook; both smoke
+   tests cover it.
+3. Windows: `cpl fmt` keeps a CRLF file CRLF, so `cpl fmt --check` passes on
+   a `core.autocrlf` checkout (test in `cpl-fmt`).
+4. Newcomer ranking: lints ranked by hits on the 1,160 corpus `port.cp` files
    (C++ translations, the nearest proxy for newcomer code; today L0414 279,
-   L0504 57, L0503 42, L0523 37, L0507 36, L0524 33). Each of the top 10 has a
-   message that names the CPL spelling, a verified fix where meaning allows,
-   and an explain page; 0 false positives on corpus `spec.cp` and `std`.
-4. The top-ranked lint is worth seeing: L0414 (279 port hits) is either
-   precise enough to teach or moved out of the default set.
+   L0504 57, L0503 42, L0523 37, L0507 36, L0524 33), kept in
+   `metrics.toml`. Each of the top 10 names the CPL spelling, has a verified
+   fix where meaning allows and an explain page; 0 false positives on corpus
+   `spec.cp` and `std`.
+5. The top-ranked lint is worth seeing: L0414 (279 port hits) is precise
+   enough to teach, or leaves the default set.
 
-**Deferred** (milestone "can wait", or not newcomer-facing): M3 recognizers and
-library `@lint`, moving `bounds.rs` onto the fact table, sorted `use` and the
-line-1 stamp, catalog families with no port evidence, lint speed work.
+**Deferred** (milestone "can wait", or not newcomer-facing; continues only
+after the above): M3 recognizers and library `@lint`, moving `bounds.rs` onto
+the fact table, sorted `use` and the line-1 stamp, catalog families with no
+port evidence, lint speed work.
 
-**Next 3**
-1. Lints in the playground: a `cpl_lint` entry over the playground's analysis,
-   wired into wasm `check` (site/tools own the wiring; requests filed).
-2. Format on save: LSP formatting reads `cp.toml [fmt]`; extension default
-   `editor.formatOnSave` for `cp` (tools).
-3. Newcomer ranking in `metrics.toml`, then audit the top 10 messages and
-   L0414's default, highest count first.
+**Next 3** (in hours)
+1. By 23:30: Neovim format on write and the Vim hook; CRLF kept by `cpl fmt`.
+2. By 02:00: the newcomer ranking in `metrics.toml`, then the L0414 call.
+3. By 06:00: audit the top 10 messages and fixes, highest count first; then
+   more teaching lints by port evidence until the deadline.
 
 ## Covers
 - **Lint.** The engine (levels, `with lint(...)`, `cp.toml [lints]`, fix

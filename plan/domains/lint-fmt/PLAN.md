@@ -5,17 +5,17 @@ The detail behind [README.md](README.md). Target design:
 
 ## Workstreams, in order
 Milestone 1 (`plan/product/MILESTONE-1.md`) sets the order: what a newcomer
-meets in the browser and VS Code first, architecture after.
+meets in the browser and the editor (Neovim/Vim, VS Code) first,
+architecture after. Deadline ~09:30 PST 2026-11-23; hours, not days.
 
-1. **Lints in the playground (M1, with site/tools).** The browser editor runs
-   wasm `check`, checker only. Add one `cpl_lint` entry that lints a checked
-   analysis (fact-table refinement included) and returns diagnostics with
-   fixes; site/tools call it from `Playground.check`. Test: every record's
-   `before.cp` warns through wasm as it does through `cpl lint`.
-2. **Format on save (M1, with tools).** LSP `textDocument/formatting` uses
-   `cpl_fmt::format_with` and the file's `cp.toml [fmt]`; the VS Code extension
-   defaults `editor.formatOnSave` for `cp`. Fmt gate (0 not idempotent, 0
-   meaning changes) stays in the fast gate.
+1. **Lints in the playground (M1, with site).** Landed: `cpl_lint::lint_analysis`
+   (shared with the LSP) and `Playground::lint` / `cpl_lint()`, tested on
+   every record. Left: site calls it from the editor's `checkLinter`.
+2. **Format on save on every editor and OS (M1, with tools).** Landed: LSP
+   formatting follows `cp.toml [fmt]`; VS Code defaults `editor.formatOnSave`.
+   Next: Neovim plugin formats on write through the LSP, Vim hook on
+   `cpl fmt --stdin`, both in the editor smoke tests; `cpl fmt` keeps CRLF
+   files CRLF for Windows checkouts. Fmt gate stays in the fast gate.
 3. **Newcomer ranking (M1).** Count `L` codes on corpus `port.cp` as the
    newcomer proxy; record it in `metrics.toml`; audit the top 10 by count:
    message names the CPL spelling, fix verified, explain teaches the idiom.
