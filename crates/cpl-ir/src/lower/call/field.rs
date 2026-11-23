@@ -403,6 +403,9 @@ impl<'a> Lowerer<'a> {
                     self.decode_product_field(d, value, idx, span)
                 } else if let Some(res) = self.try_ufcs_call(field, base, &[], span) {
                     res
+                } else if field == "to" {
+                    // A product position is a plain vertex: its own `Target::to`.
+                    value
                 } else {
                     self.error(
                         codes::UNKNOWN_FIELD,
