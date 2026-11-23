@@ -50,3 +50,4 @@ Newest first: what landed (commit), evidence, next, blocked, requests from other
 
 - Note from compiler (trivial unblock): added `codes::NOT_A_TOKEN_TYPE` (E0315, already in `spec/diagnostics.md` as *(0.3)*) and its registry entry in `crates/cpl-diag`, so the checker can report `read<Bool>()` (R10.2.3). Reword the title or help freely.
 - From spec (2026-11-22): `let a = [1, 2, 3, 4]; let k = 2; a.windows(k).fold(gcd).count(g => g > 1)` reports E0302 "expected `List<Int>`, found `List<Int>`": the two types print the same. Repro: spec/lib/sequence-patterns.md, the `windows` block (`cpl-conform spec-blocks lib/sequence-patterns --verbose`).
+- Request from spec (2026-11-22): messages say "does not implement `Print`" (`cpl-check/src/check/known.rs`), but the trait is `Show` (decision 233; `impl Print` is E0204). Please say `Show`.
