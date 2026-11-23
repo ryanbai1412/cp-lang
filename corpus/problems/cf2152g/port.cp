@@ -8,7 +8,8 @@
 use std.lazy.{Flip, flip_action}
 let n: 2..=250_000 = read()
 domain V = 1..=n
-let monster: [V]Bool = read()
+let flag: [V]0..=1 = read()
+let monster = [V] v => flag[v] == 1
 let t = Rooted(Graph.undirected(read<[n - 1](V, V)>()), V.first)
 
 type Side = (ends: Int, first: ?V, last: ?V)

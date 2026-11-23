@@ -26,7 +26,7 @@ var by_right: [Rank]List<Rank> = []
 var total_intervals = 0
 
 fn force_between(after: ?Rank, before: ?Rank):
-    let lo: ?Rank = if let a = after: a + 1 else: some(Rank.first)
+    let lo: ?Rank = if let a = after: a.next else: Rank.first
     if let s = lo:
         if let b = before:
             for j in s..b: must_rank[j] = true
