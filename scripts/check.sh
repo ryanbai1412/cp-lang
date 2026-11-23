@@ -106,7 +106,10 @@ step_end() {
 bare_home() {
     local home status=0
     home=$(mktemp -d)
-    env HOME="$home" XDG_CONFIG_HOME="$home/.config" GIT_CONFIG_NOSYSTEM=1 \
+    # A commit hook exports GIT_DIR and GIT_INDEX_FILE; a test inheriting them
+    # writes its scratch repo into the real index.
+    env -u GIT_DIR -u GIT_INDEX_FILE -u GIT_WORK_TREE -u GIT_OBJECT_DIRECTORY -u GIT_PREFIX \
+        HOME="$home" XDG_CONFIG_HOME="$home/.config" GIT_CONFIG_NOSYSTEM=1 \
         CARGO_HOME="${CARGO_HOME:-$HOME/.cargo}" RUSTUP_HOME="${RUSTUP_HOME:-$HOME/.rustup}" \
         MISE_DATA_DIR="${MISE_DATA_DIR:-$HOME/.local/share/mise}" \
         MISE_CONFIG_DIR="${MISE_CONFIG_DIR:-$HOME/.config/mise}" \
