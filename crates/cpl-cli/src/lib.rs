@@ -1182,8 +1182,10 @@ fn run_file(
     }
 }
 
-/// The longest run whose trap is run again, recorded, to name its locals.
-const TRAP_RERUN: std::time::Duration = std::time::Duration::from_secs(1);
+/// The longest run whose trap is run again to name its locals. The rerun,
+/// untraced with checkpoints and traced from the last one, takes about
+/// twice the run.
+const TRAP_RERUN: std::time::Duration = std::time::Duration::from_secs(3);
 
 /// `cpl run --trace --live`: the input is read once and pinned; with no
 /// input named, it is the case `cpl stress` last saved for the file.

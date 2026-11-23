@@ -238,7 +238,8 @@ print(inner(a))
 
 #[test]
 fn a_long_run_that_traps_names_its_locals() {
-    // 6*10^7 steps: tracing the whole run again took longer than its 10 s cap.
+    // 1.5*10^7 steps, past the 10^7 a trace keeps: tracing the whole run
+    // again took longer than its 10 s cap.
     let source = "\
 let n: Int = read()
 var s = 0
@@ -249,9 +250,9 @@ while i < n:
 let d = s - s
 print(i / d)
 ";
-    let (code, err) = run_stderr(source, "20000000\n");
+    let (code, err) = run_stderr(source, "5000000\n");
     assert_eq!(code, 3);
-    assert!(err.contains("note: locals: i = 20000000"), "got:\n{err}");
+    assert!(err.contains("note: locals: i = 5000000"), "got:\n{err}");
 }
 
 #[test]
