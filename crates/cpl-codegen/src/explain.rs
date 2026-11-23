@@ -1,7 +1,7 @@
 //! `cpl explain <file>` as text: how each closure, view and copy lowers to
 //! C++. `cpl explain` prints it and the playground shows it.
 
-use crate::{explain_closures, explain_dropped_fields, ClosureMode};
+use crate::ClosureMode;
 use std::fmt::Write;
 
 const DROPPED: &str = "never read; it and its stores are left out";
@@ -25,12 +25,14 @@ pub fn report_with(
     let mut out = storage.unwrap_or_default().to_string();
     let shown = usize::from(storage.is_some()) * 2;
     let stdout = &mut out;
-    let entries = explain_closures(program);
-    let dropped = explain_dropped_fields(program);
+    let crate::Lowered {
+        closures: entries,
+        copies,
+        dropped,
+    } = crate::explain_lowered(program);
     let view_ops = explain_views(text, program);
     let sunk = explain_sunk(text, program);
     let hashed = explain_hashed(program);
-    let copies = crate::explain_copies(program);
     if !copies.is_empty() {
         let _ = writeln!(
             stdout,

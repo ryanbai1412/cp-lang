@@ -87,3 +87,20 @@ print(f([[1], [2]]))
         [crate::uses::SET_AGAIN]
     );
 }
+
+#[test]
+fn explain_reads_closures_copies_and_dropped_fields_off_one_write() {
+    let program = lower(
+        "struct S:\n    f: (Int) -> Int\n    unused: Int\nvar a = [3, 1, 2]\nvar b = a.clone()\nb.push(4)\nlet s = S(f: x => x + 1, unused: 0)\nprint(s.f(b[0]))\n",
+    );
+    let once = crate::explain_lowered(&program);
+    assert_eq!(
+        format!("{:?}", once.closures),
+        format!("{:?}", crate::explain_closures(&program))
+    );
+    assert_eq!(once.copies, crate::explain_copies(&program));
+    assert_eq!(
+        once.dropped,
+        crate::devirt::explain_dropped_fields(&program)
+    );
+}

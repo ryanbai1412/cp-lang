@@ -8,6 +8,7 @@ use cpl_ir::{Block, Expr, ExprKind, Function, Local, LoopId, OrdHook, Program, S
 use std::collections::{BTreeMap, BTreeSet};
 
 mod layout;
+mod lowered;
 mod text;
 
 use text::{header, inline_hint, names, Proto};
@@ -659,21 +660,6 @@ impl<'p> Emitter<'p> {
     /// The whole file.
     pub fn file(mut self, name: &str, source: Option<&str>) -> String {
         self.write(name, source)
-    }
-
-    /// The copies [`Emitter::file`] writes, each with where and why.
-    pub fn copies(mut self) -> Vec<(cpl_diag::Span, String, &'static str)> {
-        self.write("", None);
-        crate::lend::copy_sites(self.program, &self.copies)
-    }
-
-    /// The closures the written file calls by name, and the structs it defines.
-    pub fn called_and_written(mut self) -> (BTreeSet<usize>, BTreeSet<usize>) {
-        self.write("", None);
-        (
-            std::mem::take(&mut self.direct),
-            std::mem::take(&mut self.written_structs),
-        )
     }
 
     /// [`Emitter::file`], with the profiled statements' spans.

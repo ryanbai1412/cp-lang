@@ -1612,8 +1612,12 @@ fn recursive_fns(program: &Program) -> BTreeSet<FnId> {
 /// 142), as `struct S.f`. Dropped fn fields are reported by
 /// [`explain_closures`].
 pub fn explain_dropped_fields(program: &Program) -> Vec<String> {
+    dropped_fields(program, &crate::emit(program, "", None))
+}
+
+/// [`explain_dropped_fields`] for the judge build's C++ `cpp`.
+pub(crate) fn dropped_fields(program: &Program, cpp: &str) -> Vec<String> {
     let devirt = Devirt::collect(program);
-    let cpp = crate::emit(program, "", None);
     devirt
         .unread_fields
         .iter()

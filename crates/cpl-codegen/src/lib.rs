@@ -204,6 +204,33 @@ pub fn explain_closures(program: &cpl_ir::Program) -> Vec<ClosureLowering> {
     lowerings
 }
 
+/// What `cpl explain` reads off the judge build's C++, written once:
+/// [`explain_closures`], [`explain_copies`] and the dropped fields.
+pub struct Lowered {
+    pub closures: Vec<ClosureLowering>,
+    pub copies: Vec<(cpl_diag::Span, String, &'static str)>,
+    pub dropped: Vec<String>,
+}
+
+pub fn explain_lowered(program: &cpl_ir::Program) -> Lowered {
+    let target = Target::default();
+    let prepared = prepared(program, &target);
+    let (cpp, copies, called, written) = emit::Emitter::new(&prepared, &target).lowered();
+    let mut closures = devirt::explain_closures(&prepared, &written);
+    for lowering in &mut closures {
+        if let ClosureMode::StaticDirect { closure } = lowering.mode {
+            if !called.contains(&closure) {
+                lowering.mode = ClosureMode::Unread;
+            }
+        }
+    }
+    Lowered {
+        closures,
+        copies,
+        dropped: devirt::dropped_fields(program, &cpp),
+    }
+}
+
 /// Each heap value the judge build's C++ for `program` copies: the span
 /// of the source that is copied, what it is and why the copy must own it.
 pub fn explain_copies(program: &cpl_ir::Program) -> Vec<(cpl_diag::Span, String, &'static str)> {
