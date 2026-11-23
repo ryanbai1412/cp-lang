@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- Spec-block errors 29: 10 are std `pub fn`s `cpl run` can't resolve (routed to compiler as one family), 6 core blocks routed to compiler, 2 SegTree lambda-op blocks to stdlib. Ratchet fix: the scoreboard baseline follows lint-fmt's move of `lints/unproven-list-index.cp` (55d558027). Full gate set green: coverage, matrix, traits, sigs, prelude, debt-ratchet, fmt, `cargo nextest run -p cpl-conform` 11/11.
 - `core-05/lent-generator-blocks-overlapping-write.cp` (R05.9.1, E0608) makes exercise 33's P0 a conformance known gap, owner compiler. Flow functions that never resolve routed to stdlib.
 - Spec-block triage of the core errors: `core/05-ownership.md` exercise 33 used a made-up `Filtered` type and had no marker though its answer is "No"; it is now `given:` + `rejects: E0608` over `lends Seq<Int>`, and fails because the compiler accepts the overlapping write (P0, routed to compiler with four other E0603/E0402/E0305/E0203 blocks). SegTree lambda-op blocks routed to stdlib.
 - Overviews ("The model in one paragraph") for lib/containers, math, strings, flows and geometry, so every core and lib chapter now opens with one; names checked against `std/`, `ps.sort(by: ByAngle)` run.
