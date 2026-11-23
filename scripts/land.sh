@@ -43,6 +43,11 @@ pull() {
     done
 }
 pull
+# Only committed work lands (handbook/guidelines/ci-checklist.md ci/R27): a
+# commit whose hook failed left nothing new, and pushing the regeneration
+# alone would ship generated files without their source.
+[ -n "$(git rev-list FETCH_HEAD..HEAD)" ] ||
+    { echo "land: nothing to land: HEAD is already on main (did the commit or its hook fail?)" >&2; exit 1; }
 changed=$(git diff --name-only --diff-filter=ACMR FETCH_HEAD HEAD)
 seen="$(git rev-parse --git-dir)/cpl-last-land"
 if [ -s "$seen" ] && git cat-file -e "$(cat "$seen")^{commit}" 2>/dev/null; then
@@ -93,7 +98,14 @@ print(" ".join("-p " + n for n in sorted(seen)))
            echo "land: WARNING: clippy fails on $users (maybe already on main); landing, CI's regen applies clippy --fix" >&2 ;;
     esac
 fi
-regen=$([ ! -x scripts/regen.sh ] || scripts/regen.sh)
+# Regenerating reads the working tree, so with uncommitted changes it would
+# commit output of source that isn't landing; CI's regen job does it then.
+if [ -n "$(git status --porcelain)" ]; then
+    regen=""
+    [ ! -x scripts/regen.sh ] || echo "land: uncommitted changes; not regenerating (CI's regen job will)" >&2
+else
+    regen=$([ ! -x scripts/regen.sh ] || scripts/regen.sh)
+fi
 if [ -n "$regen" ]; then
     git add -- $regen
     git commit -q --no-verify -m "factory: regenerate generated files" -m "Domain: $domain" -- $regen

@@ -247,6 +247,42 @@ class CheckCacheTest(unittest.TestCase):
             self.assertIn("push rejected (try 1 of 5)", r.stderr)
             self.assertEqual(git("rev-parse", "main", cwd=remote), git("rev-parse", "HEAD"))
 
+    def test_land_refuses_when_nothing_is_ahead_of_main(self):
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        env = hermetic_env()
+        with tempfile.TemporaryDirectory() as tmp:
+            remote, work, git = self.land_repos(tmp, env)
+            r = subprocess.run([os.path.join(root, "scripts", "land.sh")], cwd=work,
+                               capture_output=True, text=True, env=env)
+            self.assertNotEqual(r.returncode, 0)
+            self.assertIn("nothing to land", r.stderr)
+
+    def test_land_never_regenerates_from_uncommitted_changes(self):
+        # A hook rejected the source edit, so it is still uncommitted; the
+        # regenerated file must not land without it.
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        env = hermetic_env()
+        with tempfile.TemporaryDirectory() as tmp:
+            remote, work, git = self.land_repos(tmp, env)
+            os.makedirs(os.path.join(work, "scripts"))
+            regen = os.path.join(work, "scripts", "regen.sh")
+            with open(regen, "w", encoding="utf-8") as f:
+                f.write("#!/bin/sh\ncp src.txt gen.txt\ngit diff --quiet -- gen.txt || echo gen.txt\n")
+            os.chmod(regen, 0o755)
+            for name in ("src.txt", "gen.txt"):
+                with open(os.path.join(work, name), "w", encoding="utf-8") as f:
+                    f.write("old\n")
+            git("add", "scripts/regen.sh", "src.txt", "gen.txt")
+            git("commit", "-qm", "factory: regen\n\nDomain: infra")
+            self.commit(git, work, "c.md")
+            with open(os.path.join(work, "src.txt"), "w", encoding="utf-8") as f:
+                f.write("new\n")
+            r = subprocess.run([os.path.join(root, "scripts", "land.sh")], cwd=work,
+                               capture_output=True, text=True, env=env)
+            self.assertEqual(r.returncode, 0, r.stderr)
+            self.assertEqual(git("show", "main:gen.txt", cwd=remote), "old")
+            self.assertNotIn("regenerate", git("log", "--format=%s", "main", cwd=remote))
+
     def test_land_refuses_a_commit_without_a_domain_trailer(self):
         root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         env = hermetic_env()

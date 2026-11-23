@@ -233,5 +233,75 @@ class ShippableTest(unittest.TestCase):
         self.assertEqual(self.pick(), "a1")
 
 
+WATCH_GH = """#!/bin/sh
+echo "$*" >>"$FAKE_CI/calls"
+case "$1 $2" in
+  "api repos/o/r/actions/"*) cat "$FAKE_CI/ran" ;;
+  "api repos/o/r/commits/"*) cat "$FAKE_CI/live-at" ;;
+  "api repos/o/r/compare/"*) echo behind ;;
+  "release view") cat "$FAKE_CI/shipped" ;;
+  "run list") cat "$FAKE_CI/runs" 2>/dev/null ;;
+  "run view") printf 'success site build\\nsuccess site browser tests\\n' ;;
+  "issue list") cat "$FAKE_CI/open" 2>/dev/null || true ;;
+  "issue "*) ;;
+  *) exit 2 ;;
+esac
+"""
+WATCH_CURL = """#!/bin/sh
+printf '{"commit":"live1"}'
+"""
+
+
+class WatchdogTest(unittest.TestCase):
+    """scripts/ci-watchdog.sh (handbook/guidelines/ci-checklist.md ci/R23)."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.ci = Path(self.tmp.name)
+        bin_dir = self.ci / "bin"
+        bin_dir.mkdir()
+        for name, body in (("gh", WATCH_GH), ("curl", WATCH_CURL)):
+            (bin_dir / name).write_text(body)
+            (bin_dir / name).chmod(0o755)
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def watch(self, ran=5, shipped=30, live=30, deployable=False):
+        """Runs the watchdog with ages in minutes; returns its issue calls."""
+        def at(minutes):
+            return subprocess.run(["date", "-u", "-d", f"-{minutes} min", "+%Y-%m-%dT%H:%M:%SZ"],
+                                  capture_output=True, text=True, check=True).stdout
+        (self.ci / "ran").write_text(at(ran))
+        (self.ci / "shipped").write_text(at(shipped))
+        (self.ci / "live-at").write_text(at(live))
+        if deployable:
+            (self.ci / "runs").write_text("7 new1\n")
+        env = dict(os.environ, GITHUB_REPOSITORY="o/r", FAKE_CI=str(self.ci),
+                   PATH=f"{self.ci / 'bin'}:{os.environ['PATH']}")
+        subprocess.run([str(ROOT / "scripts/ci-watchdog.sh")], env=env, capture_output=True, text=True, check=True)
+        return [c for c in (self.ci / "calls").read_text().splitlines() if c.startswith("issue ") and "list" not in c]
+
+    def test_all_fresh_opens_nothing(self):
+        self.assertEqual(self.watch(deployable=True), [])
+
+    def test_a_stalled_queue_opens_the_issue(self):
+        self.assertTrue(any("issue create" in c for c in self.watch(ran=45)))
+
+    def test_a_stale_edge_opens_the_issue(self):
+        self.assertTrue(any("issue create" in c for c in self.watch(shipped=150)))
+
+    def test_a_site_behind_a_deployable_commit_opens_the_issue(self):
+        self.assertTrue(any("issue create" in c for c in self.watch(live=150, deployable=True)))
+        self.assertIn("cp-lang.org serves live1", (self.ci / "calls").read_text())
+
+    def test_an_old_live_site_with_nothing_newer_to_deploy_is_fine(self):
+        self.assertEqual(self.watch(live=150), [])
+
+    def test_recovery_closes_the_open_issue(self):
+        (self.ci / "open").write_text("12\n")
+        self.assertTrue(any(c.startswith("issue close") for c in self.watch()))
+
+
 if __name__ == "__main__":
     unittest.main()

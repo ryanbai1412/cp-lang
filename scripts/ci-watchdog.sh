@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Opens one "main CI stalled" issue when no main CI run has finished (success
-# or failure) in 30 min, or edge is over 2 h old, and closes it once both are
-# fresh again (handbook/guidelines/ci-checklist.md#cir23).
+# or failure) in 30 min, edge is over 2 h old, or cp-lang.org has lacked a
+# deployable commit for over 2 h, and closes it once all are fresh again
+# (handbook/guidelines/ci-checklist.md#cir23).
 set -euo pipefail
 repo=${GITHUB_REPOSITORY:?}
 now=$(date +%s)
@@ -16,10 +17,21 @@ ci_age=$(age "$ran"); edge_age=$(age "$shipped")
 problems=()
 [ "$ci_age" -le 1800 ] || problems+=("no main CI run has finished for $((ci_age / 60)) min (last: ${ran:-none})")
 [ "$edge_age" -le 7200 ] || problems+=("edge was last published $((edge_age / 60)) min ago (${shipped:-never})")
+# The site is behind when a commit whose site jobs passed isn't live and the
+# live commit is over 2 h old.
+here=$(dirname "$0")
+deployable=$("$here/site-deployable.sh" 2>/dev/null || true)
+if [ -n "$deployable" ]; then
+    live=$(curl -fsSL https://cp-lang.org/version.json 2>/dev/null | jq -r '.commit // empty' || true)
+    live_at=$([ -n "$live" ] && gh api "repos/$repo/commits/$live" --jq .commit.committer.date 2>/dev/null || true)
+    site_age=$(age "$live_at")
+    [ "$site_age" -le 7200 ] ||
+        problems+=("cp-lang.org serves ${live:-nothing} from $((site_age / 60)) min ago; ${deployable:0:9} passed its site jobs")
+fi
 title="main CI stalled"
 open=$(gh issue list -R "$repo" --state open --search "\"$title\" in:title" --json number --jq '.[0].number // ""')
 if [ ${#problems[@]} -eq 0 ]; then
-    echo "watchdog: ok (last finished run ${ci_age}s ago, edge ${edge_age}s old)"
+    echo "watchdog: ok (last finished run ${ci_age}s ago, edge ${edge_age}s old, site current)"
     [ -z "$open" ] || gh issue close -R "$repo" "$open" -c "Recovered: a main run finished ${ci_age}s ago and edge is ${edge_age}s old."
     exit 0
 fi

@@ -143,17 +143,17 @@ Targets and today's numbers live in `plan/domains/infra/metrics.toml`.
 
 | Quality | Metric | Mechanism | Check |
 |---|---|---|---|
-| Edge ships often | hours since the last edge publish | Hourly timer plus CI-completion fallback, from the newest commit no worse than the last edge (ci/R26) | `scripts/release/shippable.sh`, `scripts/test_release.py` `ShippableTest`, `release.yml`; **missing**: an alert past 90 min |
-| Edge is never broken | edge releases that fail install smoke | Shipping checks before publish; install smoke after | `release.yml` `install-smoke`; **missing**: smoke before marking latest |
-| Stable is full green | stable releases from a commit with any red job | Gate in `release.yml` stable path | `release.yml`; never published without Ryan |
-| One line installs on every OS | install failures per OS | Install smoke on Ubuntu, macOS, Windows after each publish | `release.yml` `install-smoke` |
+| Edge ships often | hours since the last edge publish | Hourly timer plus CI-completion fallback, from the newest commit no worse than the last edge (ci/R26) | `scripts/release/shippable.sh`, `scripts/test_release.py` `ShippableTest`, `.github/workflows/release.yml`; `scripts/ci-watchdog.sh` alerts past 2 h (ci/R23) |
+| Edge is never broken | edge releases that fail install smoke | Shipping checks before publish; install smoke after | `.github/workflows/release.yml` `install-smoke`; **missing**: smoke before marking latest |
+| Stable is full green | stable releases from a commit with any red job | Gate in `.github/workflows/release.yml` stable path | `.github/workflows/release.yml`; never published without Ryan |
+| One line installs on every OS | install failures per OS | Install smoke on Ubuntu, macOS, Windows after each publish | `.github/workflows/release.yml` `install-smoke` |
 | Downloads are verified | archives installed without a matching sha256 | Installers check `SHA256SUMS` | `crates/cpl-cli/tests/toolchain.rs` |
 | Releases are reproducible | archives that differ when rebuilt from the same commit | `SOURCE_DATE_EPOCH`, fixed archive order | `scripts/test_release.py`; **missing**: a rebuild-and-compare job |
 | Releases are signed | archives without a signature | **missing** | none |
 | `cpl self update` moves to the newest release | update failures | Tested against local release fixtures | `crates/cpl-cli/tests/toolchain.rs`; **missing** against the live release |
-| Editor assets ship and install | releases missing the `.vsix`, JetBrains zip, Neovim/Vim setup | `release.yml` `editors` job | **missing**: install smoke for each editor asset |
-| The binary says what it is | `cpl --version` without channel and commit | Stamped at build (`CPL_CHANNEL`, `CPL_COMMIT`) | `release.yml` build smoke |
-| The live site is current | minutes from a green main commit to cp-lang.org | `site.yml` deploys after CI | **missing**: an alert when it falls behind |
+| Editor assets ship and install | releases missing the `.vsix`, JetBrains zip, Neovim/Vim setup | `.github/workflows/release.yml` `editors` job | **missing**: install smoke for each editor asset |
+| The binary says what it is | `cpl --version` without channel and commit | Stamped at build (`CPL_CHANNEL`, `CPL_COMMIT`) | `.github/workflows/release.yml` build smoke |
+| The live site is current | minutes from a green main commit to cp-lang.org | `site.yml` deploys from the newest commit whose site jobs passed (ci/R25) | `scripts/site-deployable.sh`; `scripts/ci-watchdog.sh` alerts past 2 h (ci/R23), tested in `scripts/test_release.py` `WatchdogTest` |
 
 ### Contributors
 

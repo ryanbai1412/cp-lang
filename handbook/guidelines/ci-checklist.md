@@ -169,7 +169,8 @@ The browser build matches the native compiler.
 ### ci/R23
 
 An open "main CI stalled" issue exists exactly while no main run has
-finished in 30 min or edge is over 2 hours old.
+finished in 30 min, edge is over 2 hours old, or cp-lang.org has served a
+commit over 2 hours old while a newer one passed its site jobs.
 *Why:* a stuck queue or a stale edge is silent otherwise, and every lane
 lands blind until someone notices. *Example:* a hung job holds main's run
 slot for 40 min; the issue opens at 30 and closes when the next run ends.
@@ -205,3 +206,15 @@ is exactly what must not ship. *Example:* a conformance part red at edge and
 still red now doesn't block; a `cli` job green at edge and red now does.
 *Enforced by:* `scripts/release/shippable.sh` (tested in
 `scripts/test_release.py` `ShippableTest`), `.github/workflows/release.yml`.
+
+### ci/R27
+
+`land.sh` pushes only committed work: it stops when nothing is ahead of
+main, and never regenerates files from uncommitted changes.
+*Why:* a commit whose hook failed leaves its edits uncommitted, and
+regenerating from them pushed generated files without their source, so main
+went red. *Example:* the hook rejects a stdlib fix; `land.sh` then says
+"nothing to land" instead of pushing the new conformance case alone.
+*Enforced by:* `scripts/land.sh`, tested in `scripts/test_check_cache.py`
+`test_land_refuses_when_nothing_is_ahead_of_main` and
+`test_land_never_regenerates_from_uncommitted_changes`.
