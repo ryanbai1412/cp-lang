@@ -29,6 +29,14 @@ DEVEX = re.compile(r"regenerat|re-?bless|renumber|ratchet|baseline|stale (derive
 # land.sh and CI's regen job write these themselves: machine time, not lane time.
 AUTO = {"factory: regenerate generated files"}
 
+# A lane whose product is the ratchets: building one is its work, not friction.
+OWN_WORK = {"tech-debt": re.compile(r"ratchet|baseline", re.I)}
+
+
+def is_devex(lane, subject):
+    own = OWN_WORK.get(lane)
+    return subject not in AUTO and bool(DEVEX.search(own.sub("", subject) if own else subject))
+
 
 def commits(ref, hours):
     out = subprocess.run(
@@ -51,7 +59,7 @@ def stats(rows, hours, now):
     for _, lane, subject in rows:
         c = lanes.setdefault(lane, {"commits": 0, "devex": 0})
         c["commits"] += 1
-        c["devex"] += subject not in AUTO and bool(DEVEX.search(subject))
+        c["devex"] += is_devex(lane, subject)
     for c in lanes.values():
         c["share"] = round(c["devex"] / c["commits"], 3)
     windows = int(hours * 4)

@@ -20,6 +20,11 @@ class DevexStats(unittest.TestCase):
         self.assertEqual(s["lanes"]["stdlib"]["devex"], 0)
         self.assertEqual(s["velocity_per_15min"], [1, 3])
 
+    def test_a_ratchet_is_tech_debts_work_and_other_lanes_friction(self):
+        self.assertFalse(ds.is_devex("tech-debt", "factory: ratchet allow(dead_code)"))
+        self.assertTrue(ds.is_devex("tech-debt", "factory: re-bless the trace goldens"))
+        self.assertTrue(ds.is_devex("stdlib", "stdlib: update the ratchet baseline"))
+
 
 if __name__ == "__main__":
     unittest.main()
