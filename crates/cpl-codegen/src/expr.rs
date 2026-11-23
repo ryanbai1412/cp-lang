@@ -146,7 +146,10 @@ impl<'p> Emitter<'p> {
                         touch.reads_domain.extend(t.reads_domain);
                         touch.writes_domain.extend(t.writes_domain);
                     }
-                    None => touch.io = true,
+                    None => {
+                        touch.io = true;
+                        touch.opaque = true;
+                    }
                 }
                 for arg in args {
                     if let Arg::Mut(place) = arg {

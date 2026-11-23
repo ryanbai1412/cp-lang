@@ -190,7 +190,7 @@ mod tests {
             !main[..main.find("print").unwrap_or(main.len())].contains("roles("),
             "{code}"
         );
-        assert!(main.contains("2 * n"), "{code}");
+        assert!(main.contains("cpl::imul(2, n)"), "{code}");
         assert!(main.contains("_Pragma(\"GCC unroll 2\") for ("), "{code}");
     }
 

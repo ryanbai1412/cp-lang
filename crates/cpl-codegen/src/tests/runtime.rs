@@ -1,4 +1,5 @@
-//! What the runtime around the program does: flushing and output bytes.
+//! What the runtime around the program does: flushing, output bytes and
+//! `Int` arithmetic C++ can't overflow.
 
 use super::cpp;
 
@@ -23,4 +24,16 @@ fn interactive_flushes_after_each_print() {
     let said = "cpl::put_line(); cpl::flush(); fflush(stdout);";
     assert!(cpp("@!interactive\nprint(1)\n").contains(said));
     assert!(!cpp("print(1)\n").contains(said));
+}
+
+#[test]
+fn an_int_op_not_proved_in_range_never_overflows_cpp() {
+    let out = cpp("let n: Int = read()\nfor i in 0..n: print(n * 2, i + 1, n - i)\n");
+    assert!(out.contains("cpl::imul(n, 2)"), "{out}");
+    assert!(out.contains("cpl::isub(n, i)"), "{out}");
+    assert!(out.contains("i + 1"), "{out}");
+    assert!(
+        out.contains("(ll)((unsigned long long)a * (unsigned long long)b)"),
+        "{out}"
+    );
 }

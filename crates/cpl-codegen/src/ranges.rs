@@ -499,7 +499,12 @@ impl<'p> Facts<'p> {
             ExprKind::DomainLen(_)
             | ExprKind::Builtin(Builtin::Len | Builtin::AxisLen, _)
             | ExprKind::Cast(Cast::Ord, _) => true,
-            ExprKind::Local(slot) => set_once((fn_id, false, *slot)),
+            ExprKind::Local(slot) => {
+                let v = (fn_id, false, *slot);
+                set_once(v)
+                    || matches!((self.stores(v), self.loop_hi.get(&v)), (1, Some(&(hi, closed)))
+                        if !closed || self.below_max_at(fn_id, hi, depth + 1))
+            }
             ExprKind::Global(id) => set_once((None, true, *id)),
             ExprKind::Field(base, index) => {
                 let v = match &base.kind {
@@ -585,8 +590,32 @@ impl<'p> Facts<'p> {
         let [l, r] = a.as_slice() else {
             return None;
         };
+        let op = match op {
+            Builtin::WrapAdd => BinOp::Add,
+            Builtin::WrapSub => BinOp::Sub,
+            Builtin::WrapMul => BinOp::Mul,
+            _ => return None,
+        };
+        self.fits(fn_id, op, l, r).then_some(op)
+    }
+
+    /// Whether the `Int`s `l op r` (`+`, `-` or `*`) is proved to stay an
+    /// `Int`: both sides are `>= 0` and their bounds keep it in range, so
+    /// no build needs an overflow check (R09.3.4).
+    pub fn fits(&self, fn_id: Option<usize>, op: BinOp, l: &Expr, r: &Expr) -> bool {
+        let (a, b) = (self.const_int(fn_id, l, 0), self.const_int(fn_id, r, 0));
+        let one_more = |c: Option<i64>, x: &Expr| c == Some(1) && self.below_max(fn_id, x);
+        let trivial = match op {
+            BinOp::Add => a == Some(0) || b == Some(0) || one_more(a, r) || one_more(b, l),
+            BinOp::Sub => b == Some(0),
+            BinOp::Mul => matches!(a, Some(-1..=1)) || matches!(b, Some(-1..=1)),
+            _ => false,
+        };
+        if trivial {
+            return true;
+        }
         if self.sign(fn_id, l) == Sign::Unknown || self.sign(fn_id, r) == Sign::Unknown {
-            return None;
+            return false;
         }
         let his = || {
             Some((
@@ -595,14 +624,10 @@ impl<'p> Facts<'p> {
             ))
         };
         match op {
-            Builtin::WrapAdd => his()
-                .and_then(|(x, y)| x.checked_add(y))
-                .map(|_| BinOp::Add),
-            Builtin::WrapMul => his()
-                .and_then(|(x, y)| x.checked_mul(y))
-                .map(|_| BinOp::Mul),
-            Builtin::WrapSub => Some(BinOp::Sub),
-            _ => None,
+            BinOp::Add => his().and_then(|(x, y)| x.checked_add(y)).is_some(),
+            BinOp::Mul => his().and_then(|(x, y)| x.checked_mul(y)).is_some(),
+            BinOp::Sub => true,
+            _ => false,
         }
     }
 

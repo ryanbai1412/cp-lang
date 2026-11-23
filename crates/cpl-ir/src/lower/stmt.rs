@@ -4981,7 +4981,7 @@ impl<'a> Lowerer<'a> {
                         value
                     }
                 };
-                (AssignOp::Binary(bin), value)
+                self.compound_step(&place, bin, value, span)
             }
         };
         self.emit_assign(place, op, value, span, out);

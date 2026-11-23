@@ -100,10 +100,31 @@ impl<'p> Emitter<'p> {
         }
     }
 
+    /// The runtime fn for `+`, `-` or `*` on `Int`s or `I128`s not proved
+    /// in range: it traps with the operands in a checked build (`-DLOCAL`)
+    /// and wraps in a judge build, never overflowing C++'s signed integers
+    /// (R09.3.4).
+    pub(crate) fn overflow_checked(&mut self, ty: &Ty, op: BinOp) -> String {
+        self.need("iarith");
+        let name = match op {
+            BinOp::Add => "add",
+            BinOp::Sub => "sub",
+            _ => "mul",
+        };
+        let wide = if *ty == Ty::I128 { "128" } else { "" };
+        format!("cpl::i{name}{wide}")
+    }
+
     /// `l op r` for operands already emitted as `a` and `b`.
     pub fn arith(&mut self, op: BinOp, l: &Expr, r: &Expr, a: &Code, b: &Code) -> Code {
         let both_narrow = a.narrow && b.narrow;
         match (&l.ty, op) {
+            (Ty::Int, BinOp::Add | BinOp::Sub | BinOp::Mul)
+                if !both_narrow && !self.facts.fits(self.fn_id, op, l, r) =>
+            {
+                let f = self.overflow_checked(&l.ty, op);
+                Code::primary(format!("{f}({}, {})", a.text, b.text))
+            }
             (Ty::Int, BinOp::Add | BinOp::Sub | BinOp::Mul) => {
                 let (sym, prec) = match op {
                     BinOp::Add => ("+", ADD),
@@ -112,6 +133,10 @@ impl<'p> Emitter<'p> {
                 };
                 let a = if both_narrow { widen(a) } else { a.clone() };
                 infix(&a, sym, b, prec)
+            }
+            (Ty::I128, BinOp::Add | BinOp::Sub | BinOp::Mul) => {
+                let f = self.overflow_checked(&l.ty, op);
+                Code::primary(format!("{f}({}, {})", a.text, b.text))
             }
             (Ty::Int, BinOp::Div | BinOp::Rem) => {
                 self.divrem(op == BinOp::Div, l, r, a, b, both_narrow)

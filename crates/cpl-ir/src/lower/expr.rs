@@ -2393,20 +2393,8 @@ impl<'a> Lowerer<'a> {
                 return self.err_expr(span);
             }
         };
-        if (self.unchecked > 0 || self.overflow_checks_off > 0)
-            && ty == Ty::Int
-            && l.ty == Ty::Int
-            && r.ty == Ty::Int
-        {
-            let wrap = match op {
-                Add => Some(Builtin::WrapAdd),
-                Sub => Some(Builtin::WrapSub),
-                Mul => Some(Builtin::WrapMul),
-                _ => None,
-            };
-            if let Some(wrap) = wrap {
-                return self.mk(ExprKind::Builtin(wrap, vec![l, r]), ty, span);
-            }
+        if let Some(wrap) = self.wrapping(op, &ty).filter(|_| l.ty == ty && r.ty == ty) {
+            return self.mk(ExprKind::Builtin(wrap, vec![l, r]), ty, span);
         }
         self.mk(ExprKind::Binary(op, Box::new(l), Box::new(r)), ty, span)
     }

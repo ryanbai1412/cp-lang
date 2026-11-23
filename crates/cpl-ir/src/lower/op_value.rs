@@ -157,3 +157,40 @@ impl<'a> Lowerer<'a> {
         self.op_of_type(ty)
     }
 }
+
+impl Lowerer<'_> {
+    /// The builtin for an `Int` `+`, `-` or `*` written in an `unchecked:`
+    /// or `with checks(overflow: off)` block, where it wraps in every build
+    /// (R09.4.2, R09.4.3).
+    pub(super) fn wrapping(&self, op: BinOp, ty: &Ty) -> Option<Builtin> {
+        if (self.unchecked == 0 && self.overflow_checks_off == 0) || *ty != Ty::Int {
+            return None;
+        }
+        match op {
+            BinOp::Add => Some(Builtin::WrapAdd),
+            BinOp::Sub => Some(Builtin::WrapSub),
+            BinOp::Mul => Some(Builtin::WrapMul),
+            _ => None,
+        }
+    }
+
+    /// `place op= value` once `value` is typed: where `op` wraps, it is
+    /// `place = place op value` with the wrapping builtin, so `x += 1` and
+    /// `x = x + 1` wrap alike.
+    pub(super) fn compound_step(
+        &mut self,
+        place: &Place,
+        op: BinOp,
+        value: Expr,
+        span: Span,
+    ) -> (AssignOp, Expr) {
+        match self.wrapping(op, &place.ty) {
+            Some(wrap) if value.ty == place.ty => {
+                let read = super::stmt::place_to_expr(place);
+                let step = ExprKind::Builtin(wrap, vec![read, value]);
+                (AssignOp::Set, self.mk(step, place.ty.clone(), span))
+            }
+            _ => (AssignOp::Binary(op), value),
+        }
+    }
+}

@@ -1094,18 +1094,6 @@ const EDGE_FIXTURES: [(&str, &str); 4] = [
     ),
 ];
 
-/// Rows known to disagree, as (`Receiver.member`, fixture or `*`). Each is
-/// a bug in one engine; delete its entry with the fix.
-const KNOWN_EDGE_DIFFERS: [(&str, &str); 4] = [
-    // The interpreter stops on a `while` that isn't monotone; the C++ answers.
-    ("Str.reach", "extreme"),
-    ("[D]T.reach", "extreme"),
-    // `x * 2` and `x + 1` overflow inside the lambda: the interpreter runs
-    // on, and the C++ overflows a signed integer, which is undefined.
-    ("List.map", "extreme"),
-    ("[D]T.map", "extreme"),
-];
-
 /// A catalog row's example as statements that print what it gives and,
 /// when it changes its receiver, the receiver after.
 fn edge_body(member: &cpl_check::BuiltinMember) -> String {
@@ -1155,9 +1143,13 @@ fn builtin_members_agree_between_interp_and_sanitized_cpp_at_the_edges() {
         std::fs::write(&path, source).unwrap();
         path.to_string_lossy().into_owned()
     };
-    let agree = |name: &str, path: &str| -> Result<(), String> {
+    // A row that `cpl run` stops may stop on a check only checked builds
+    // keep (overflow, a `while` that isn't monotone), so it is held to the
+    // C++ at `--checks all`, which keeps every check `cpl run` has
+    // (decision 299); a row that runs through is held to it at `traps`.
+    let agree = |name: &str, path: &str, checks: &str| -> Result<(), String> {
         let interpreted = cpl_cli::run_with_input(&["run", path], b"");
-        let built = cpl_cli::run(&["build", path, "--checks", "traps", "-o", "-"]);
+        let built = cpl_cli::run(&["build", path, "--checks", checks, "-o", "-"]);
         if built.code != 0 {
             return Err(format!(
                 "`cpl build {path}` exited with {}:\n{}",
@@ -1182,13 +1174,6 @@ fn builtin_members_agree_between_interp_and_sanitized_cpp_at_the_edges() {
         // Rows that run through, a few to a program so each stays under a judge's 64 KB.
         let mut together: Vec<String> = Vec::new();
         for (i, member) in cpl_check::BUILTIN_MEMBERS.iter().enumerate() {
-            let who = format!("{}.{}", member.receiver.name(), member.name);
-            if KNOWN_EDGE_DIFFERS
-                .iter()
-                .any(|&(w, f)| w == who && (f == "*" || f == fixture))
-            {
-                continue;
-            }
             let func = format!(
                 "fn row{i}():\n{}{}",
                 indented(values),
@@ -1211,7 +1196,7 @@ fn builtin_members_agree_between_interp_and_sanitized_cpp_at_the_edges() {
         for (k, rows) in together.chunks(25).enumerate() {
             let name = format!("{fixture}_{k}");
             let path = write(&name, &rows.concat());
-            if let Err(why) = agree(&name, &path) {
+            if let Err(why) = agree(&name, &path, "traps") {
                 wrong.push(why);
             }
         }
@@ -1224,7 +1209,7 @@ fn builtin_members_agree_between_interp_and_sanitized_cpp_at_the_edges() {
             .map(|part| {
                 scope.spawn(|| {
                     part.iter()
-                        .filter_map(|(name, path)| agree(name, path).err())
+                        .filter_map(|(name, path)| agree(name, path, "all").err())
                         .collect::<Vec<_>>()
                 })
             })

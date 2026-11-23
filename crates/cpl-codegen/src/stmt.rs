@@ -1133,6 +1133,10 @@ impl<'p> Emitter<'p> {
                 (Ty::Float, BinOp::Pow) => {
                     twice(self, out, &|p, v| format!("{p} = std::pow({p}, {v});"))
                 }
+                (Ty::Int | Ty::I128, BinOp::Add | BinOp::Sub | BinOp::Mul) => {
+                    let f = self.overflow_checked(&place.ty, bop);
+                    twice(self, out, &|p, v| format!("{p} = {f}({p}, {v});"));
+                }
                 _ => {
                     let sym = match bop {
                         BinOp::Sub => "-",

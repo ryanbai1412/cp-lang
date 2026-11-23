@@ -792,6 +792,34 @@ inline std::optional<u8> pop(std::string& s) { if (s.empty()) return std::nullop
 ",
     },
     Piece {
+        name: "iarith",
+        needs: &["fail"],
+        code: "\
+#ifdef LOCAL
+template <class T> [[noreturn]] void overflow(T a, char op, T b) {
+    char why[128];
+    if constexpr (sizeof(T) == 8) snprintf(why, sizeof why, \"integer overflow: `%lld %c %lld` does not fit in an `Int` (64 bits)\", (ll)a, op, (ll)b);
+    else snprintf(why, sizeof why, \"integer overflow: the result of `%c` does not fit in an `I128` (128 bits)\", op);
+    fail(why);
+}
+inline ll iadd(ll a, ll b) { ll r; if (__builtin_add_overflow(a, b, &r) || r == std::numeric_limits<ll>::min()) overflow(a, '+', b); return r; }
+inline ll isub(ll a, ll b) { ll r; if (__builtin_sub_overflow(a, b, &r) || r == std::numeric_limits<ll>::min()) overflow(a, '-', b); return r; }
+inline ll imul(ll a, ll b) { ll r; if (__builtin_mul_overflow(a, b, &r) || r == std::numeric_limits<ll>::min()) overflow(a, '*', b); return r; }
+inline __int128 iadd128(__int128 a, __int128 b) { __int128 r; if (__builtin_add_overflow(a, b, &r)) overflow(a, '+', b); return r; }
+inline __int128 isub128(__int128 a, __int128 b) { __int128 r; if (__builtin_sub_overflow(a, b, &r)) overflow(a, '-', b); return r; }
+inline __int128 imul128(__int128 a, __int128 b) { __int128 r; if (__builtin_mul_overflow(a, b, &r)) overflow(a, '*', b); return r; }
+#else
+inline ll iadd(ll a, ll b) { return (ll)((unsigned long long)a + (unsigned long long)b); }
+inline ll isub(ll a, ll b) { return (ll)((unsigned long long)a - (unsigned long long)b); }
+inline ll imul(ll a, ll b) { return (ll)((unsigned long long)a * (unsigned long long)b); }
+typedef unsigned __int128 u128;
+inline __int128 iadd128(__int128 a, __int128 b) { return (__int128)((u128)a + (u128)b); }
+inline __int128 isub128(__int128 a, __int128 b) { return (__int128)((u128)a - (u128)b); }
+inline __int128 imul128(__int128 a, __int128 b) { return (__int128)((u128)a * (u128)b); }
+#endif
+",
+    },
+    Piece {
         name: "first",
         needs: &[],
         code: "\

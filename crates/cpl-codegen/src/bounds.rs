@@ -1153,7 +1153,10 @@ mod tests {
                 "w[i] += w[i - words]\n            words = 1",
             ));
         let body = &code[code.find("for (ll i").unwrap()..];
-        assert!(body.contains("cpl::at(self.w, i - words)"), "{code}");
+        assert!(
+            body.contains("cpl::at(self.w, cpl::isub(i, words))"),
+            "{code}"
+        );
     }
 
     #[test]
@@ -1173,7 +1176,7 @@ mod tests {
         assert!(
             code.contains("(unsigned long long)(bits) >= 64")
                 && !fast[..fast.find('}').unwrap()].contains("cpl::at(")
-                && slow.contains("cpl::at(self.w, i - words)"),
+                && slow.contains("cpl::at(self.w, cpl::isub(i, words))"),
             "{code}"
         );
     }

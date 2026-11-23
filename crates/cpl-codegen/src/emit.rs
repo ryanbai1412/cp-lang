@@ -65,6 +65,9 @@ impl Code {
 pub(crate) struct Touch {
     /// Reads input or writes output.
     pub io: bool,
+    /// Calls a fn value it can't see into, which may read or write
+    /// anything it captured.
+    pub opaque: bool,
     pub reads: BTreeSet<(bool, usize)>,
     pub writes: BTreeSet<(bool, usize)>,
     pub reads_domain: BTreeSet<usize>,
@@ -74,7 +77,11 @@ pub(crate) struct Touch {
 impl Touch {
     /// True when running `self` before `later` can differ from after.
     pub fn conflicts(&self, later: &Touch) -> bool {
+        let effects =
+            |t: &Touch| t.io || t.opaque || !t.writes.is_empty() || !t.writes_domain.is_empty();
         (self.io && later.io)
+            || (self.opaque && effects(later))
+            || (later.opaque && effects(self))
             || self
                 .writes
                 .iter()
