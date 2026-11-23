@@ -92,3 +92,18 @@ pub(super) fn foreign_value(name: &str) -> Option<&'static str> {
         _ => None,
     }
 }
+
+/// Python's conversion builtins and `math.`, as CP Lang writes them.
+pub(super) fn foreign_call(name: &str) -> Option<&'static str> {
+    match name {
+        "str" | "to_string" | "toString" => Some("make a string by interpolation: `\"{x}\"`"),
+        "int" | "stoi" | "atoi" | "parseInt" => {
+            Some("read a number from a string with `s.parse<Int>()!`")
+        }
+        "float" | "stod" | "parseFloat" => {
+            Some("read a number from a string with `s.parse<F64>()!`")
+        }
+        "math" | "Math" => Some("math functions are methods here: `x.sqrt`, `x.abs`, `x.isqrt`"),
+        _ => None,
+    }
+}

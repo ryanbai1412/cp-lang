@@ -111,3 +111,11 @@ fn pythons_range_says_how_a_range_is_written() {
         "{diags:?}"
     );
 }
+
+#[test]
+fn pythons_conversions_say_how_ours_are_written() {
+    let help = |src: &str| check(src)[0].help.clone().unwrap_or_default();
+    assert!(help("let x = 5\nprint(str(x))\n").contains("`\"{x}\"`"));
+    assert!(help("let s = \"1\"\nprint(int(s))\n").contains("s.parse<Int>()!"));
+    assert!(help("let a = 4\nprint(math.sqrt(a))\n").contains("`x.sqrt`"));
+}

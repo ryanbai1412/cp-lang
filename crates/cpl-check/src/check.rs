@@ -770,6 +770,7 @@ impl<'a> Checker<'a> {
         let unknown = (suggestion.is_none() || near_builtin)
             && field_of_self.is_none()
             && name.chars().nth(1).is_some()
+            && advice::foreign_call(name).is_none()
             && !matches!(name, "enumerate" | "range")
             && prelude::std_module(name).is_none()
             && cpl_syntax::removed_keyword(name).is_none();
@@ -822,6 +823,9 @@ impl<'a> Checker<'a> {
                 _ if cpl_syntax::removed_keyword(name).is_some() => {
                     let fix = cpl_syntax::removed_keyword(name).unwrap_or_default();
                     diag.help = Some(format!("`{name}` was removed in CP Lang 0.2.2: {fix}"));
+                }
+                _ if advice::foreign_call(name).is_some() => {
+                    diag.help = advice::foreign_call(name).map(str::to_string);
                 }
                 _ if name == "range" => {
                     diag.help = Some(
