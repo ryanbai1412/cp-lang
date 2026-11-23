@@ -157,7 +157,7 @@ export declare class Cpl {
   /**
    * `cpl run --trace`: the run, recorded. `trace` is a document of
    * `tools/trace/trace-schema.json` for the trace viewer, null when the
-   * source has errors; with a `@brute(main)` fn in the file it has the
+   * source has errors; with a `@alt(program)` fn in the file it has the
    * brute's run too, as `runs.slow`. `debug` is what `debug(...)` showed.
    */
   trace(source: string, stdin?: string | Uint8Array, options?: Options): TraceOutcome;
@@ -175,7 +175,7 @@ export declare class Cpl {
   ): ReplayOutcome | { error: string };
   /**
    * `cpl stress --explain --format json`: generates inputs, compares against
-   * `@brute(main)` / `@alt(program)` / `@checker` / `@check`, and shrinks the
+   * `@alt(program)` / `@alt(program)` / `@check` / `@check`, and shrinks the
    * first counterexample with the same Rust shrinker as the CLI.
    */
   stress(source: string, options?: StressOptions): StressOutcome;
@@ -193,5 +193,9 @@ export type Worker = {
   ) => Promise<ReturnType<Cpl[Method]>>;
 } & { terminate(): void };
 
+/** Where `cpl-build.wasm`, the module with `build`, `explain` and `stress`, is. */
+export declare const BUILD_WASM: URL;
+/** The methods only `cpl-build.wasm` has; on `cpl.wasm` they throw a `CplError` of kind "load". */
+export declare const BUILD_CALLS: readonly ["stress", "build", "explain"];
 export declare function load(wasm?: string | URL | BufferSource | WebAssembly.Module): Promise<Cpl>;
 export declare function spawn(options?: { timeoutMs?: number }): Worker;
