@@ -3,7 +3,7 @@
 import { execFileSync, spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import katex from 'katex';
-import { commonSetup, layoutSignature, mathSpans, parseExample, texSpans } from './doc-examples.mjs';
+import { commonSetup, layoutSignature, mathSpans, parseExample, plainSpans, texSpans } from './doc-examples.mjs';
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { basename, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -252,7 +252,7 @@ write(
       '',
       '| Item | Module | Cost |',
       '| --- | --- | --- |',
-      ...index.map((i) => `| \`${esc(i.name)}\` | [${i.module}](/docs/ref/std/${i.module}) | ${esc(texSpans(i.cost, { legacyCost: true }))} |`),
+      ...index.map((i) => `| \`${esc(i.name)}\` | [${i.module}](/docs/ref/std/${i.module}) | ${esc(plainSpans(texSpans(i.cost, { legacyCost: true })))} |`),
     ].join('\n'),
   ),
 );

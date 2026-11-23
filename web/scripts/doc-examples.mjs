@@ -138,3 +138,20 @@ export function texSpans(text, { legacyCost = false } = {}) {
 
 // Every `$$...$$` span of `text`, for checking with KaTeX.
 export const mathSpans = (text) => [...outsideCode(text, (p) => p.replace(/[^$]+(?=\$\$)|^[^$]*/g, (x) => x)).matchAll(/\$\$([^$]+)\$\$/g)].map((m) => m[1]);
+
+// Math as plain Unicode, as `cpl_doc::plain::math` writes it: for places
+// where KaTeX markup would cost more than it reads, like a 2,000-row table.
+export function plainMath(tex) {
+  const words = [['\\log', 'log'], ['\\ln', 'ln'], ['\\min', 'min'], ['\\max', 'max'], ['\\cdot', '·'], ['\\times', '×'], ['\\alpha', 'α'], ['\\Theta', 'Θ'], ['\\Omega', 'Ω'], ['\\le', '≤'], ['\\ge', '≥'], ['\\infty', '∞'], ['\\,', ' '], ['\\;', ' ']];
+  const sup = { 0: '⁰', 1: '¹', 2: '²', 3: '³', 4: '⁴', 5: '⁵', 6: '⁶', 7: '⁷', 8: '⁸', 9: '⁹', n: 'ⁿ' };
+  let s = tex.trim().replace(/\\sqrt\{([^}]*)\}/g, '√$1');
+  for (const [from, to] of words) s = s.split(from).join(to);
+  s = s.replace(/\^(\{([^}]*)\}|(.))/g, (_, __, group, one) => {
+    const e = group ?? one;
+    return [...e].every((c) => sup[c]) ? [...e].map((c) => sup[c]).join('') : `^(${e})`;
+  });
+  return s.replace(/\s*·\s*/g, ' · ').replace(/\s+/g, ' ').replace(/\( /g, '(').replace(/ \)/g, ')');
+}
+
+// `text` with its math spans written in plain Unicode.
+export const plainSpans = (text) => text.replace(/\$\$([^$]+)\$\$/g, (_, tex) => plainMath(tex));
