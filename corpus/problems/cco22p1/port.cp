@@ -14,7 +14,7 @@ fn consistent(x: Spot, y: Spot) -> Bool:
     var taller: [Student]List<Student> = []
     var low = true
     for i in x..y:
-        let j = i + 1
+        let j = Spot.at(i + 1)!
         if low: taller[line[i]].push(line[j])
         else: taller[line[j]].push(line[i])
         low = not low
@@ -32,10 +32,10 @@ fn consistent(x: Spot, y: Spot) -> Bool:
 
 let reach: [Spot]Spot = [Spot] x => do:
     var lo = x
-    var hi = Spot.last
+    var hi = Spot.last!
     while lo < hi:
         let mid = Spot((lo.label + hi.label + 1) / 2)
         if consistent(x, mid): lo = mid
-        else: hi = (mid - 1)!
+        else: hi = Spot.at(mid - 1)!
     lo
 for (x, y) in asks: print(if y <= reach[x]: "YES" else: "NO")

@@ -9,7 +9,6 @@ atcoder_dp_o
 atcoder_dp_u
 atcoder_dp_v
 btoi17p1
-btoi18p2
 btoi18p3
 btoi18p6
 btoi19p3
@@ -21,7 +20,6 @@ ccc05s5
 ccc10s4
 ccc14s4hard
 ccc20s1
-ccc21s4
 ccc23s4
 cco04p2
 cco16p4
@@ -30,9 +28,7 @@ cco19p1
 cco19p5
 cco19p6
 cco20p1
-cco21p1
 cco21p5
-cco22p1
 ceoi09p3
 ceoi17p2
 cf2062e1

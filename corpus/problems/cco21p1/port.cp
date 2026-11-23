@@ -24,8 +24,8 @@ fn count_before(xs: List<Int>, ys: List<Int>) -> Int:
 var bit = Fenwick<Val, Int>.new()
 var inv = 0
 for i in Pos:
-    if a[i] < Val.last:
-        inv += bit.fold(a[i].r..Val.last.r)
+    if a[i] < Val.last!:
+        inv += bit.fold(a[i].r..Val.last!.r)
     bit.add(a[i], 1)
 
 var order = [Val] v => v
