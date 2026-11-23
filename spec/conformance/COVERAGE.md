@@ -7,7 +7,7 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 2443 (995 passing). Rules: 561.
+Cases: 2444 (995 passing). Rules: 561.
 
 ## Summary per chapter
 
@@ -19,7 +19,7 @@ Cases: 2443 (995 passing). Rules: 561.
 - R04b (04b-keys.md): 27 rules, 64 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R05 (05-ownership.md): 43 rules, 149 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R06 (06-control-functions.md): 24 rules, 80 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R07 (07-sequences.md): 90 rules, 121 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R07 (07-sequences.md): 90 rules, 122 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R08 (08-traits-generics.md): 29 rules, 80 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R09 (09-contexts-checks.md): 26 rules, 55 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R10 (10-io.md): 18 rules, 81 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -497,7 +497,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R07.7.10 [5+ 0-]: | `a.runs(by: k)` | `Seq` of views: maximal equal-key runs | `.keys` of each is its range
 - R07.7.11 [1+ 0-]: | `s.step(k)` | every k-th element | ranges and indexed
 - R07.8.1 [2+ 0-]: `.collect()` and the constructors are one operation, \(O(n)\) and allocating; the postfix ...
-- R07.9.1 [1+ 0-]: | `s.sum()`, `s.prod()` | `T`; empty is the identity | \(O(n)\)
+- R07.9.1 [2+ 0-]: | `s.sum()`, `s.prod()` | `T`; empty is the identity | \(O(n)\)
 - R07.9.2 [1+ 1-]: | `s.fold(op)` | `T` when `op` has an identity (`+`, `max` on a bounded type, `gcd`), else...
 - R07.9.3 [1+ 1-]: | `s.min()`, `s.max()`, `s.min(by: k)` | `?T`, `None` when empty; first on ties | \(O(n)\)
 - R07.9.4 [1+ 0-]: | `s.count(p)`, `s.any(p)`, `s.all(p)` | `Int`, `Bool` | \(O(n)\)
