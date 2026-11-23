@@ -8,6 +8,7 @@ use cpl_ir::{
 
 mod apply;
 mod assign;
+mod assign_v;
 mod call_mix;
 mod expr_i;
 mod expr_opt_i;

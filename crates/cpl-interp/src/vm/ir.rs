@@ -1206,6 +1206,12 @@ pub(crate) enum Op {
         op: AssignOp,
         kind: ScalarKind,
     },
+    /// `place op= r_val` for a boxed value, combined as the tree-walker does.
+    AssignPlaceV {
+        path: u16,
+        r_val: u16,
+        op: AssignOp,
+    },
     ListPopDiscardPlace {
         path: u16,
     },

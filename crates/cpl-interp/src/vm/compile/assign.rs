@@ -1223,6 +1223,9 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 _ => {}
             }
         }
+        if op != AssignOp::Set && val_kind.is_none() && opt_kind.is_none() {
+            return self.try_compile_assign_op_v(place, op, value);
+        }
         if matches!(place.kind, PlaceKind::Local(_) | PlaceKind::Global(_)) {
             return false;
         }

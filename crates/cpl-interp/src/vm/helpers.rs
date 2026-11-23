@@ -571,6 +571,18 @@ pub(super) fn place_keys(pp: &PlacePath, regs_v: &[Value]) -> Vec<Value> {
 
 /// Runs `f` on the cell at `steps`. An element of a packed array (`[V]Int`)
 /// has no `Value` cell, so `f` changes a copy that is stored back.
+/// `cell op= val`, moving the old value into the combination so a list or
+/// string grows where it is.
+pub(super) fn combine_in_place(cell: &mut Value, op: AssignOp, val: Value, span: Span) -> Res<()> {
+    let old = std::mem::take(cell);
+    if matches!(old, Value::Moved) {
+        *cell = old;
+        return trap(span, LENT);
+    }
+    *cell = crate::combine(op, old, val, span)?;
+    Ok(())
+}
+
 pub(super) fn with_place_cell<R>(
     root: &mut Value,
     steps: &[PlaceStep],

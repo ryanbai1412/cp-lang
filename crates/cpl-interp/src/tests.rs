@@ -1564,3 +1564,15 @@ fn vm_feeds_loops_from_fns_with_an_assert_itself() {
         include_str!("../../cpl-cli/tests/programs/zip_rev.out")
     );
 }
+
+#[test]
+fn vm_combines_boxed_values_in_place_itself() {
+    let out = vm_runs_alone(
+        include_str!("../../cpl-cli/tests/programs/vm_assign_op_values.cp"),
+        include_str!("../../cpl-cli/tests/programs/vm_assign_op_values.in"),
+    );
+    assert_eq!(
+        out,
+        include_str!("../../cpl-cli/tests/programs/vm_assign_op_values.out")
+    );
+}

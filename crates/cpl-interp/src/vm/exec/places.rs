@@ -129,6 +129,16 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 let container = walk_place_mut(root, prefix, regs_i, &keys, spans[cur_pc])?;
                 assign_place_leaf_scalar(container, last, rhs, op, kind, regs_i, spans[cur_pc])?;
             }
+            Op::AssignPlaceV { path, r_val, op } => {
+                let pp = &chunk.places[path as usize];
+                let val = regs_v[r_val as usize].clone();
+                let keys = place_keys(pp, regs_v);
+                let root = place_root_mut(pp.root, regs_v, &mut self.globals);
+                let span = spans[cur_pc];
+                with_place_cell(root, &pp.steps, regs_i, &keys, span, |cell| {
+                    combine_in_place(cell, op, val, span)
+                })?;
+            }
             Op::ListPopDiscardPlace { path } => {
                 let pp = &chunk.places[path as usize];
                 let keys = place_keys(pp, regs_v);

@@ -9,15 +9,7 @@ expr:Closure
 expr:DomainVal
 expr:Read
 traced stmt:Assert
-traced stmt:Assign(Global,Binary(Add))
-traced stmt:Assign(Global,Binary(Div))
-traced stmt:Assign(Global,Binary(Mul))
-traced stmt:Assign(Global,Binary(Sub))
-traced stmt:Assign(Global,Min)
 traced stmt:Assign(Global,Set)
-traced stmt:Assign(Index1D,Binary(Mul))
-traced stmt:Assign(Index2D,Max)
-traced stmt:Assign(Local,Binary(Add))
 traced stmt:DefDomain
 traced stmt:DefDomainFromVal
 traced stmt:Expr(CallExpr)
@@ -35,14 +27,6 @@ traced stmt:Trap
 traced stmt:While
 untraced fn:SortedSet_Int.each(feeding)
 untraced stmt:Assert
-untraced stmt:Assign(Global,Binary(Add))
-untraced stmt:Assign(Global,Binary(Div))
-untraced stmt:Assign(Global,Binary(Mul))
-untraced stmt:Assign(Global,Binary(Sub))
-untraced stmt:Assign(Global,Min)
-untraced stmt:Assign(Index1D,Binary(Mul))
-untraced stmt:Assign(Index2D,Max)
-untraced stmt:Assign(Local,Binary(Add))
 untraced stmt:DefDomain
 untraced stmt:Expr(Call)
 untraced stmt:Expr(CallExpr)
