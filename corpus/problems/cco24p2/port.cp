@@ -3,9 +3,10 @@
 //   then people b_1..b_N each take a pizza of their flavour from some stack top (N <= 1e6,
 //   flavours <= N). Print the fewest stacks K, each pizza's stack and each person's stack, or
 //   -1 if impossible.
-// Solution: only the judged subtasks (flavours <= 2, or distinct a) are handled; otherwise
-//   nothing is printed. Flavour counts must match. Flavours <= 2: one stack if b is a
-//   reversed, else stack = flavour. Distinct a: a person must take a pizza laid later than
+// Solution: partial: subtasks 1-3 only (flavours <= 2, or distinct a: the judged ones, the
+//   statement notes 4-5 may have no efficient solution); other input prints nothing. Flavour
+//   counts must match. Flavours <= 2: one stack if b is a reversed, else stack = flavour.
+//   Distinct a: a person must take a pizza laid later than
 //   the next person's, so cover b by chains decreasing in placement order: greedy patience
 //   piles, binary-searching the first pile top below the new placement. O(N log N).
 // original: corpus/submissions/6435481.cpp
@@ -20,14 +21,14 @@ var max_a = 0
 var max_b = 0
 
 for i in 0..n:
-    let x: Int = read()
+    let x: 1..=n = read()
     let v = x - 1
     arra[I(i)] = v
     cnt_a[I(v)] += 1
     if v > max_a: max_a = v
 
 for i in 0..n:
-    let x: Int = read()
+    let x: 1..=n = read()
     let v = x - 1
     arrb[I(i)] = v
     cnt_b[I(v)] += 1

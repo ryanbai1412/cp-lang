@@ -1,13 +1,15 @@
 // Source: Codeforces 2127H (23 Rises Again), https://codeforces.com/contest/2127/problem/H
-// Problem: a simple connected graph, n <= 30 vertices, each vertex on at most 5 simple cycles
-//   (multitest, sum of n^2 <= 900). Print the most edges of a subgraph in which every vertex
-//   has degree at most 2.
+// Problem: a simple connected graph, 3 <= n <= 30 vertices, n - 1 <= m <= n(n - 1)/2 edges,
+//   each vertex on at most 5 simple cycles (t <= 50 tests, sum of n^2 <= 900). Print the most
+//   edges of a subgraph in which every vertex has degree at most 2.
 // Solution: reduce the graph series-parallel style: fold a degree-1 vertex into its
 //   neighbour, splice out a degree-2 vertex, merge parallel edges. A generalised edge keeps
 //   best[du, dv] (most edges inside it using at most du, dv edges at its ends), a vertex
 //   best[d] over the leaves folded into it; series, parallel and fold are max-plus products
 //   over Deg = 0..=2. A queue holds vertices of degree <= 2 and the last one left gives
-//   best[2]: O((n + m) log m) per test.
+//   best[2]: O((n + m) log m) per test. One always remains: a K4 subdivision puts each branch
+//   vertex on 6 simple cycles, so the graph has no K4 minor, and reduced K4-minor-free graphs
+//   keep a vertex of degree <= 2.
 
 domain Deg = 0..=2
 type Edge = [Deg, Deg]Int
@@ -49,8 +51,8 @@ fn absorb_leaf(host: Vert, e: Edge, leaf: Vert) -> Vert:
     res
 
 @!multitest
-let n: 1..=300_000 = read()
-let m: 0..=600_000 = read()
+let n: 3..=30 = read()
+let m: n - 1..=n * (n - 1) / 2 = read()
 domain V = 1..=n
 
 fn canon(u: V, v: V) -> (V, V) = if u < v: (u, v) else: (v, u)
