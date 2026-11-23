@@ -131,24 +131,32 @@ impl<'a> Checker<'a> {
         }
     }
 
-    /// R08.5.2: inherent methods live with their type.
+    /// R08.1.3, R08.5.2: inherent methods live with their type, so
+    /// `impl m.P:` and `impl Range<Int>:` (a type declared elsewhere)
+    /// are errors, not blocks no call reaches.
     fn impl_home(
         &mut self,
         trait_name: Option<&cpl_syntax::ast::Type>,
         target: &cpl_syntax::ast::Type,
+        self_ty: &Ty,
     ) {
+        if trait_name.is_some() || matches!(self_ty, Ty::Param(_) | Ty::Unknown | Ty::Error) {
+            return;
+        }
         let shown = self.quote(target.span);
-        match trait_name {
-            None if shown.contains('.') => {
-                let message =
-                    format!("`impl {shown}:` adds inherent methods outside `{shown}`'s module");
-                if let Some(diag) = self.error(codes::UNSUPPORTED, target.span, message) {
-                    diag.help = Some(format!(
-                        "move the methods into `{shown}`'s module, or declare a trait and `impl` it"
-                    ));
-                }
+        let message = match type_head(target) {
+            _ if shown.contains('.') => {
+                format!("`impl {shown}:` adds inherent methods outside `{shown}`'s module")
             }
-            _ => {}
+            Some(head) if !self.env.declared().contains(&head) => format!(
+                "`impl {shown}:` adds inherent methods to `{head}`, which is declared outside this module"
+            ),
+            _ => return,
+        };
+        if let Some(diag) = self.error(codes::UNSUPPORTED, target.span, message) {
+            diag.help = Some(format!(
+                "move the methods into the type's module, or declare a trait and `impl` it for `{shown}`"
+            ));
         }
     }
 
@@ -1445,15 +1453,9 @@ impl<'a> Checker<'a> {
                 let scope = self.enter_body(&generics, Ty::Unknown);
                 let self_ty = self.resolve_type(target);
                 self.self_ty = Some(self_ty.clone());
-                self.impl_home(trait_name.as_ref(), target);
+                self.impl_home(trait_name.as_ref(), target, &self_ty);
                 self.bounds_exist(bounds);
-                if trait_name.is_none() && self.quote(target.span).contains('.') {
-                    self.error(
-                        codes::UNSUPPORTED,
-                        target.span,
-                        "inherent `impl` must be in the same module as the type".to_string(),
-                    );
-                } else if let Some(tr) = trait_name {
+                if let Some(tr) = trait_name {
                     let file_names = self.env.declared();
                     let target_head = type_head(target);
                     let trait_head = type_head(tr);

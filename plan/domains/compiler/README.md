@@ -27,6 +27,21 @@ Order of work (hours, not days): divergences, then wrong outputs, then traps and
 2. The 11 `wrong output` conformance cases and `aac5p4`, by cause; where a construct can't be made right yet, reject it with an error instead.
 3. Internal traps to named errors (`etsr23r4p2`), then the corpus `error` cases split by owner, compiler causes fixed biggest first.
 
+## Milestone 2
+
+[Milestone 2](../../product/MILESTONE-2.md), the stable release, which starts once the Milestone 1 table passes. The most ambitious complete compiler: every program the spec defines runs and means the same thing in the interpreter and the C++. Every program it rejects gets one error naming the rule and the fix. There is one front end and one interpreter engine, std has no privilege in the compiler, and the shared core answers every editor query from the incremental database.
+
+Exit criteria:
+- `cpl-conform conformance` passes every case with `--causes` empty; `cpl-conform diff` has 0 skipped and 0 failing; `cpl-conform corpus` has 0 wrong, trapping or erroring programs with a compiler cause.
+- No known correctness bugs: every entry under General fixes owed in [PLAN.md](PLAN.md) is done or handed to spec as a decision, and a differential program generator runs 100k programs with 0 interpreter/C++ mismatches, checked builds trapping alike.
+- No std privilege: closed forms such as range `sum`/`min`/`max`/`count` live in std and resolve by ordinary method resolution; `ir_builtin_names`, `prelude_privilege` and `backend_std_names` in `scripts/debt-ratchet.py` are 0; `cpl check std/*.cp` reports 0 errors, gated.
+- Refinements are types: range bounds, non-empty `V.ranges` keys and view keys (`rev`, `filter`, `zip`) are part of the IR type, so they flow through bindings and generics.
+- One engine: the tree-walker is deleted, the VM runs every IR construct (also on wasm) within 5x of C++, and it supports snapshot/restore for time-travel debugging (deferred from Milestone 1).
+- The front end stays under 500 ms on every corpus program. LSP type-definition, implementations, call hierarchy and representation (including peak memory) all come from the shared core, each with a cpl-lsp consumer test.
+- No edition branches, and no owned non-test file over 2000 lines.
+
+Next steps: method resolution prefers a type's own method over a `Seq` default, so range folds can move to std and `RangeSum` can be deleted; put view keys and refinements into the IR type; add peak memory to the representation query.
+
 ## Covers
 
 - Lexer, parser, syntax tree (`cpl-syntax`); names, types, domains, lends, the incremental database and its query API (`cpl-check`); lowering to the typed IR, monomorphization (`cpl-ir`); the checked interpreter, its VM, traces and replay (`cpl-interp`); the integer prover (`prover`).
