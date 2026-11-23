@@ -364,6 +364,15 @@ fn lint_warns_with_its_code_and_exits_0_on_warnings_alone() {
     let list = cpl(&dir, &["lint", "--list"]);
     assert_eq!(list.status.code(), Some(0));
     assert!(text(&list.stdout).contains("L0201  var_never_reassigned"));
+    std::fs::write(
+        dir.join("cp.toml"),
+        "[lints]\nvar_never_reassigned = \"deny\"\n",
+    )
+    .unwrap();
+    let denied = cpl(&dir, &["lint", "w.cp"]);
+    assert_eq!(denied.status.code(), Some(EXIT_ERRORS.into()));
+    let report = text(&denied.stdout) + &text(&denied.stderr);
+    assert!(report.contains("error[L0201]"), "{report}");
 }
 
 #[test]
@@ -452,6 +461,24 @@ fn replay_names_what_it_needs() {
         &["replay", "a.cp"],
         "`replay` needs a file, --trace and --step",
     );
+    let dir = scratch("replay");
+    let source = "fn sq(x: Int) -> Int:\n    return x * x\nprint(sq(3))\n";
+    std::fs::write(dir.join("b.cp"), source).unwrap();
+    let trace = cpl(&dir, &["run", "b.cp", "--trace", "--format", "json"]);
+    assert_eq!(trace.status.code(), Some(0), "{}", text(&trace.stderr));
+    std::fs::write(dir.join("t.json"), &trace.stdout).unwrap();
+    let call = cpl(
+        &dir,
+        &["replay", "b.cp", "--trace", "t.json", "--step", "1"],
+    );
+    assert_eq!(call.status.code(), Some(0), "{}", text(&call.stderr));
+    assert!(text(&call.stdout).contains("returns 9 (as before)"));
+    let none = cpl(
+        &dir,
+        &["replay", "b.cp", "--trace", "t.json", "--step", "3"],
+    );
+    assert_eq!(none.status.code(), Some(EXIT_ERRORS.into()));
+    assert!(text(&none.stderr).contains("no fn call is running at step 3"));
 }
 
 #[test]
