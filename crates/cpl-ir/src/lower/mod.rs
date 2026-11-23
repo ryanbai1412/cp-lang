@@ -2795,7 +2795,20 @@ impl<'a> Lowerer<'a> {
                     {
                         self.resolve_ty(d)
                     }
-                    None => return None,
+                    // `domain P = (A, B)` names its grid too.
+                    None => {
+                        return match self.get_sym(&name.text) {
+                            Some(Sym::Domain(id)) => self.product_grid(id).map(|g| {
+                                g.into_iter()
+                                    .map(|d| match d {
+                                        Dim::Pos(d) => DimSpec::Pos(d),
+                                        _ => unreachable!("a product grid has position dimensions"),
+                                    })
+                                    .collect()
+                            }),
+                            _ => None,
+                        }
+                    }
                 }
             }
             ast::TypeKind::Tuple(items) if items.len() >= 2 => self.resolve_ty(d),
