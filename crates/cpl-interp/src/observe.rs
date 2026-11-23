@@ -38,6 +38,10 @@ pub(crate) trait Observer {
     fn assignments(&self) -> bool {
         false
     }
+    /// Whether the run is past its time limit, asked at each trace point.
+    fn out_of_time(&mut self) -> bool {
+        false
+    }
     /// Global `id` was given its first value.
     fn declared(&mut self, _id: usize, _view: &View, _at: Span) {}
     /// A cell of global `id`, at `path`, changed.
@@ -98,6 +102,9 @@ impl Observer for Tracer {
     }
     fn assignments(&self) -> bool {
         self.assignments
+    }
+    fn out_of_time(&mut self) -> bool {
+        Tracer::out_of_time(self)
     }
     fn declared(&mut self, id: usize, view: &View, at: Span) {
         Tracer::declared(self, id, view, at)

@@ -165,6 +165,7 @@ pub fn against_brute(
         let io = cpl_interp::Io::fixed(input.as_bytes());
         let config = cpl_interp::trace::TraceConfig {
             assignments: explain,
+            time_limit: Some(std::time::Duration::from_secs(10)),
             ..config(&source, None)
         };
         cpl_interp::run_observed(program, io, &mut sink, Some(config))

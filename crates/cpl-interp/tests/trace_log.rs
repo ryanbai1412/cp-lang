@@ -634,3 +634,24 @@ for i in 0..40:
         );
     }
 }
+
+#[test]
+fn a_traced_run_that_never_ends_stops_at_its_time_limit() {
+    let source = "var i = 0\nwhile i >= 0:\n    i = (i + 1) % 2\nprint(i)\n";
+    let config = TraceConfig {
+        source: source.to_string(),
+        time_limit: Some(std::time::Duration::from_millis(200)),
+        ..TraceConfig::default()
+    };
+    let started = Instant::now();
+    let mut out = Vec::new();
+    let observed = cpl_interp::run_observed(
+        &program(source),
+        cpl_interp::Io::fixed(b""),
+        &mut out,
+        Some(config),
+    );
+    let trap = observed.trap.map(|trap| trap.message);
+    assert_eq!(trap.as_deref(), Some(cpl_interp::trace::OUT_OF_TIME));
+    assert!(started.elapsed().as_secs() < 5, "{:?}", started.elapsed());
+}

@@ -692,6 +692,8 @@ impl Session {
             source: compiled.text.clone(),
             record_frames: true,
             max_steps: Some(MAX_STEPS),
+            // A program that never ends still lets the editor step through it.
+            time_limit: Some(std::time::Duration::from_secs(10)),
             ..TraceConfig::default()
         };
         let mut printed = Vec::new();

@@ -1614,7 +1614,16 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         _ => return trap(spans[cur_pc], "internal: expected array"),
                     }
                 }
-                Op::Trace { idx } => self.exec_trace(chunk, idx, regs_i, regs_v),
+                Op::Trace { idx } => {
+                    self.exec_trace(chunk, idx, regs_i, regs_v);
+                    if self
+                        .tracer
+                        .as_mut()
+                        .is_some_and(|tracer| tracer.out_of_time())
+                    {
+                        return trap(spans[cur_pc], crate::trace::OUT_OF_TIME);
+                    }
+                }
                 other => {
                     if let Some(exit) = self.exec_ext_op(
                         other,
