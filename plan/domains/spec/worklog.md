@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- Spec-block triage: the `dijkstra` signature excerpt in lib/ops-ranges.md is `spec-only`; 3 E0603 blocks the spec calls valid went to compiler, 9 missing std items to stdlib (by block id).
 - Build-output cases `core-13/runtime-array-not-on-stack.cp` (R13.2.9, R02.8.5) and `core-03/optional-array-no-side-bitset.cp` (R03.2.7), both pass (the second first matched its own file name in the echoed source; now it looks for `std::bitset`).
 - R02.1.3: lists of and returns of distinct closures check clean and emit `std::function`; routed to compiler (reject), diagnostics (code) and perf. No case until a code exists.
 - Accept cases `core-05/cache-plain-copy-closure-before-lend.cp` (R05.10.9, R05.10.12) and `core-03/range-proof-within-fn.cp` (R03.4.2), both pass.

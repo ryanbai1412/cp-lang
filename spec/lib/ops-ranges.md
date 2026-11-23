@@ -221,6 +221,7 @@ A shortest-path search needs two things from weights: how a path's cost
 grows by one arc, and which of two costs is better. That is a `Monoid` and
 an `Ord`, the same two concepts:
 
+<!-- spec-only: signature excerpt; the body is in spec/std -->
 ```python
 pub fn dijkstra<V, W: Ord, G: WeightedNext<V, W>, M: Monoid<W> = Plus>(
     g: G, from: Seq<(V, W)>, step: M = +, until: ?V = None,
