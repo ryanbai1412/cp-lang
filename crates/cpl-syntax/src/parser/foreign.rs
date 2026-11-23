@@ -3,6 +3,42 @@
 use super::*;
 
 impl<'a> Parser<'a> {
+    /// `let a, b = t`: Python's unpacking without parentheses. One error
+    /// with the fix that adds them, read as the tuple pattern.
+    pub(super) fn bare_tuple_pattern(&mut self, first: Pattern) -> Pattern {
+        let mut n = 0;
+        while self.peek_n(n) == T::Comma && self.peek_n(n + 1) == T::Ident {
+            n += 2;
+        }
+        if n == 0 || self.peek_n(n) != T::Eq {
+            return first;
+        }
+        let start = first.span.start;
+        let mut items = vec![first];
+        while self.eat(T::Comma) {
+            items.push(self.pattern());
+        }
+        let span = self.span_from(start);
+        let mut diag = Diagnostic::error(
+            codes::EXPECTED_TOKEN,
+            span,
+            "unpacking a tuple takes parentheses in CP Lang",
+        )
+        .with_help("write `let (a, b) = t`");
+        diag.fixes.push(cpl_diag::Fix {
+            title: "add the parentheses".into(),
+            edits: vec![
+                (Span::new(span.start, span.start), "(".into()),
+                (Span::new(span.end, span.end), ")".into()),
+            ],
+        });
+        self.recovered(diag);
+        Pattern {
+            kind: PatternKind::Tuple(items),
+            span,
+        }
+    }
+
     /// `if x == 3 then`: Lua's and Pascal's `then` at the end of a header.
     /// One error with the `:` fix, read as the `:`.
     pub(super) fn foreign_then(&mut self) -> bool {

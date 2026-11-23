@@ -839,6 +839,9 @@ impl<'a> Parser<'a> {
                 span: self.span_from(start),
             };
         }
+        if matches!(&pat.kind, PatternKind::Name(_)) && self.at(T::Comma) {
+            pat = self.bare_tuple_pattern(pat);
+        }
         let shared_elem_ty = self.eat(T::Colon).then(|| self.ty());
         let ty = tuple_elem_tys.or_else(|| {
             shared_elem_ty.as_ref().map(|elem| {
