@@ -270,7 +270,7 @@ Fields: `val: [V]T`, `lc: List<?Int>`, `rc: List<?Int>`, `pa: List<?Int>`, `agg:
 
 The Kruskal reconstruction tree: each edge that merges two components, in increasing weight, becomes a node above them.
 
-Fields: `lift: Lift<N, Int>`.
+Fields: `edge: [N]Int`, `lift: Lift<N, Int>`.
 
 - `@get fn tree(self) -> Rooted<N, _>` — \(O(1)\); built with the tree; The nodes as a `Rooted` forest over `N`: subtree ranges, LCA and folds.
 - `fn reach(self, v: V, limit: W) -> N` — \(O(\log n)\); The highest node above `leaf[v]` whose weight is at most `limit` (`leaf[v]` itself when None is); its leaves are what `v` reaches by edges of weight at most `limit`.
