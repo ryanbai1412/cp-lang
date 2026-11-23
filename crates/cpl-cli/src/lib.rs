@@ -1169,7 +1169,7 @@ fn run_file(
     match observed.trap {
         None => 0,
         Some(trap) => {
-            // The recorded run is several times slower: only a quick one is repeated.
+            // Naming the locals runs it again: only a quick one is repeated.
             let locals = (started.elapsed() < TRAP_RERUN).then(|| {
                 let read = read.lock().unwrap();
                 let input = if whole.is_empty() {

@@ -54,11 +54,9 @@ pub fn trap_locals(
     if [cpl_interp::OUT_OF_TIME, cpl_interp::CANCELLED].contains(&trap.message.as_str()) {
         return None;
     }
-    let mut sink = Vec::new();
+    // Untraced again with checkpoints, and only the end traced from the last one.
     let config = cpl_interp::trace::trap_config(source);
-    let io = cpl_interp::Io::fixed(input)
-        .until(cpl_interp::Stop::after(std::time::Duration::from_secs(10)));
-    let observed = cpl_interp::run_observed(program, io, &mut sink, Some(config));
+    let observed = cpl_interp::trace::resumed_tail(program, input, &mut std::io::sink(), config, 1);
     (observed.trap?.message == trap.message).then_some(())?;
     let at = source.get(trap.span.start as usize..trap.span.end as usize);
     cpl_interp::trace::trap_locals(&observed.recording?, source, at.unwrap_or(""))

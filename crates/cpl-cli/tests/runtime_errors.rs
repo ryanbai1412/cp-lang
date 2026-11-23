@@ -237,6 +237,24 @@ print(inner(a))
 }
 
 #[test]
+fn a_long_run_that_traps_names_its_locals() {
+    // 6*10^7 steps: tracing the whole run again took longer than its 10 s cap.
+    let source = "\
+let n: Int = read()
+var s = 0
+var i = 0
+while i < n:
+    s = (s * 31 + i) % 1000003
+    i += 1
+let d = s - s
+print(i / d)
+";
+    let (code, err) = run_stderr(source, "20000000\n");
+    assert_eq!(code, 3);
+    assert!(err.contains("note: locals: i = 20000000"), "got:\n{err}");
+}
+
+#[test]
 fn golden_multitest_reports_case_number_and_call_stack() {
     let source = "\
 @!multitest
