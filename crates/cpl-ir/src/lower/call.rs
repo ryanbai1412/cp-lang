@@ -9360,6 +9360,17 @@ impl<'a> Lowerer<'a> {
                 };
                 self.expr(&at, None)
             }
+            // `r.nth(k)` on a range of positions is `r[k]`, checked against `r`.
+            (Ty::Range(inner), "nth") if matches!(**inner, Ty::Pos(_)) && args.len() == 1 => {
+                let at = ast::Expr {
+                    kind: ast::ExprKind::Index {
+                        base: Box::new(base.clone()),
+                        indices: vec![args[0].value.clone()],
+                    },
+                    span,
+                };
+                self.expr(&at, None)
+            }
             // `r.nth(k)` on an Int range: its `k`-th value, `r.start + k` (R04b.5.9).
             (Ty::Range(inner), "nth") if **inner == Ty::Int && args.len() == 1 => {
                 let Some(k) = self.one_arg("nth", args, &Ty::Int, span) else {

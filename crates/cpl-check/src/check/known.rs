@@ -7,11 +7,20 @@ impl<'a> Checker<'a> {
     /// What the checker knows about a prelude fn it otherwise takes on
     /// trust: `span(a, b)` covers two ends of one domain, and the `max` or
     /// `min` of a slice is optional, since `a[l..l]` is empty.
+    /// `min(a, b)`: two or more plain values call the core binary `min`
+    /// or `max`, even beside `std.seq`'s fold of that name (R11.3.3).
+    pub(super) fn binary_min_max(callee: &Expr, args: &[Arg]) -> bool {
+        matches!(&callee.kind, ExprKind::Name(n) if matches!(n.as_str(), "min" | "max"))
+            && args.len() >= 2
+            && args.iter().all(|a| a.name.is_none() && !a.mutable)
+    }
+
     pub(super) fn prelude_call(&mut self, call: &Expr, callee: &Expr, args: &[Arg]) -> Option<Ty> {
         let ExprKind::Name(name) = &callee.kind else {
             return None;
         };
-        if self.local(name).is_some() || (self.global(name).is_some() && name != "zip") {
+        let shadowed = name != "zip" && !Self::binary_min_max(callee, args);
+        if self.local(name).is_some() || (self.global(name).is_some() && shadowed) {
             return None;
         }
         let tys: Vec<Ty> = args

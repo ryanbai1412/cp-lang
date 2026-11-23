@@ -129,6 +129,14 @@ impl<'a> Checker<'a> {
                 }
             }
         }
+        if Self::binary_min_max(callee, args) {
+            for arg in args {
+                self.infer(&arg.value);
+            }
+            if let Some(ty) = self.prelude_call(call, callee, args) {
+                return ty;
+            }
+        }
         if let Some(on_self) = self.implicit_self_method(callee) {
             return self.call(call, &on_self, args);
         }
