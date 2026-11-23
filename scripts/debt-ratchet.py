@@ -110,7 +110,8 @@ def _lines(p: Path) -> list[str]:
 
 
 def _git(root: Path, *args: str, env: dict[str, str] | None = None) -> list[str]:
-    out = subprocess.run(["git", *args], cwd=root, capture_output=True, text=True, env=env)
+    out = subprocess.run(["git", *args], cwd=root, capture_output=True, text=True,
+                         env=_git_env() if env is None else env)
     return out.stdout.splitlines() if out.returncode == 0 else []
 
 
