@@ -871,6 +871,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - L0607 Large array of padded elements: 1 case(s)
 - L0608 Parentheses do not match the cost: 2 case(s)
 - L0609 A `@cache` field written outside its type: 1 case(s)
+- L0610 A `mut` parameter the fn never changes: **no case**
 - R0001 Runtime trap: 10 case(s)
 - R0101 Index out of range: 23 case(s)
 - R0102 Value outside a domain: 5 case(s)
@@ -886,7 +887,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - W0101 Unused expression value: 1 case(s)
 - W0201 Submission near the size limit: 1 case(s)
 
-60 of 161 testable codes have no negative case.
+61 of 162 testable codes have no negative case.
 
 ## Spec code blocks
 
