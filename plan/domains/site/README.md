@@ -34,7 +34,7 @@ What it needs from site, each checkable:
 Deferring (milestone "what can wait", or not on a scenario step; continues only after the blockers): interval DP and practice problems past Div 2 C; trace viewer and `cpl doc` polish; the 0.3-only landing tabs; the Problems and Performance pages; page-weight and search tuning beyond the existing caps.
 
 Top 3 next steps (the first two run in parallel):
-1. The Language section: `/learn/language/`, starting with ownership and mutation, then domains and range keys, then the other six.
+1. Practice hints on at least 12 Div 2 A/B problems, linking to the std docs and `/lints` pages. (The Language section has all 9 chapters, each build-checked against the `spec/` headings and `decisions.md` entries it cites.)
 2. Live lint and practice hints. Tools landed a wasm `lint` call (`25b19e064`, decision 313); site wires it into the practice and playground editors, then adds hints that link to the docs to at least 12 Div 2 A/B problems.
 3. A homepage pass: the value proposition and 3 differentiators above the fold, Install visible at every width, and a baseline for the P5 cold read.
 

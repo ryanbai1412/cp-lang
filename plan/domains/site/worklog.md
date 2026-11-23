@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- Landed `site(learn): language chapter on C++ and the judge model`: the one deterministic C++ file and its size limits, judge profiles and how one is chosen, why local runs match the judge; citing decisions 34 and 148. The Language section now has all 9 chapters Ryan listed.
 - Landed `site(learn): language chapter on standard library design`: one vocabulary, operation values, named options instead of `_by` twins, visible costs, no privilege; 3 examples (1 rejected), citing decisions 26, 28 and 60.
 - Landed `site(learn): language chapter on values`: the four kinds of value, structs with `var` fields, enums and exhaustive `match`, literal unions, nothing implicit, local inference; 8 examples (4 rejected on purpose), citing decisions 127, 131, 132 and 136. Variant patterns use positional fields: `Add(x:)` (R02.7.6) doesn't parse yet; filed in the compiler worklog.
 - Landed `site(learn): language chapter on types, widths and proofs`: four number types, range types as contracts, storage widths, proved and unproved stores, Euclidean division, `Mod<P>`; 6 examples (2 traps the gate verifies), citing decisions 1 (rows 1.7 and 1.9), 100 and 149.

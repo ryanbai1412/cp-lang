@@ -1,0 +1,82 @@
+---
+title: "C++ and the judge model"
+description: "What cpl build writes, how judge profiles fix compiler, flags and stack, and why what passed locally passes on the judge."
+---
+
+Judges run C++. CP Lang never asks a judge to run anything else: `cpl build` writes one C++ file,
+and that file is what you submit. This chapter covers what is in the file, how a judge profile
+decides how it is built, and what keeps local runs and the judge in agreement. The normative rules
+are <Spec file="core/13-lowering" section="13.1 The output file">lowering §13.1</Spec> and
+<Spec file="tools/judge-profiles">judge profiles</Spec>.
+
+## One file, deterministic
+
+Every program becomes **one deterministic C++17 file**: a header stamp, the runtime pieces the
+program uses, the library instances it uses, and `main`. The same source and the same library pins
+give the same bytes. The target is under 32 KB for every solution; above 32 KB the build warns,
+and at the profile's source limit (64 KB on Codeforces) it fails, so the size is never a surprise
+at submission.
+
+```cp run input="3\n5 6 7\n"
+let n: 1..=2e5 = read()
+domain V = 1..=n
+let a: [V]0..=1e9 = read()
+print(a.sum())
+```
+
+`cpl build --judge codeforces` turns this into a file of about 5 KB. Its first lines quote the
+source, and the second line says how the file must be compiled:
+
+```text
+// For judge `codeforces`: g++ -std=c++20 -O2 -DONLINE_JUDGE -static -Wl,--stack=268435456; 256 MB stack.
+```
+
+Input is one bulk read and a hand-written parser, output is one buffer, and `main` runs the
+program on a thread with a large stack, so deep recursion (a DFS on a 2e5-vertex path) doesn't
+overflow the judge's default stack.
+
+## Judge profiles
+
+A **profile** fixes everything that differs between judges: compiler and flags, OS, the stack,
+the source limit, `__int128`, the usual time and memory limits, and which checks stay in release.
+The built-in profiles include `generic` (the default), `codeforces`, `atcoder`, `cses`, `icpc`,
+`kattis` and `dmoj`; `cpl judges` lists them with their commands and where each fact comes from.
+
+A profile is chosen by `--judge`, else a `// judge: name` line in the source, else `cp.toml`. A
+`[judge.<name>]` table in `cp.toml` can change a built-in's fields or extend one, so a school or
+course judge needs no code. Local release runs use the profile's command, as far as the compiler
+installed here accepts it, and report any flag they had to drop.
+
+## Same program, same answer
+
+Three things keep "passed locally" meaning "passes on the judge":
+
+- **The interpreter and the C++ agree** on every valid program, including on input they reject.
+  `cpl run` and the playground use the interpreter; the judge runs the C++.
+- **Valid programs behave the same in every build.** The checked build used by `cpl run`, tests and
+  stress traps where release would go wrong; see [checked operations](/learn/language/checked-operations).
+- **The lowering adds no undefined behaviour to valid programs**, and avoids it wherever that is
+  free: arithmetic that may overflow goes through unsigned and back, shifts are masked, and every
+  array is filled at construction. So `-O2` can't miscompile the valid code around a bug.
+
+Every construct has a stated C++ shape and cost: a domain index is a plain array access, an
+optional with a niche is the value itself, an operation value is inlined. The cost tables are in
+<Spec file="core/13-lowering" section="13.8 Cost model tables (migrated from design/COST.md)">lowering §13.8</Spec>.
+
+## Why it's designed this way
+
+**Submit C++, not a runtime.** Every judge accepts C++, and its speed is the standard the
+time limits are set against. Writing one readable file, with the source quoted at the top, means a
+submission works on any judge that takes C++ and can be read by anyone looking at it. The
+rejected alternatives, an interpreter or a bundled runtime, would depend on each judge's
+languages and run slower than the solutions the limits were set for.
+
+**A judge is a profile in its own crate.** <Decision n={34} />: the CLI, the playground and the
+stress tools share one profile type, and the code generator only knows a target (a header stamp and
+the stack it may assume), never a judge by name. The flag beats the source line, which beats the
+project, which beats `generic`, so the most local statement wins. A profile records the judge's
+real command and marks any fact that couldn't be read from a public source as unconfirmed.
+
+**No checks on the judge by default.** <Decision n={148} />: release optimizes for valid programs,
+and the checked build catches the bug before you submit. A profile can keep checks with
+`release_checks:` when a judge's limits leave room for them.

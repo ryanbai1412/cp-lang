@@ -10,6 +10,7 @@
     "optionals",
     "multitest-state",
     "checked-operations",
-    "standard-library"
+    "standard-library",
+    "cpp-and-the-judge"
   ]
 }
