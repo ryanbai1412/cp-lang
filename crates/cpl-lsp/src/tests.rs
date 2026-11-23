@@ -13,7 +13,7 @@ const SOURCE: &str = "\
 let n: 1..=2e5 = read()
 domain V = 1..=n
 domain E = 0..n
-let dist: [V]?Int = none
+let dist: [V]?Int = None
 var total = 0
 for v in V:
     total ^= dist[v] ?? 0
@@ -698,7 +698,7 @@ fn stdlib_methods_hover_with_their_docs_and_jump_into_the_stdlib() {
 const V22: &str = "\
 let (n, x): (1..=100, 1..=1e6) = read()
 let coins: [0..n]Int = read()
-var dp: [0..=x]?Int = none
+var dp: [0..=x]?Int = None
 dp[0] = 0
 for s in 1..=x:
     for c in coins:

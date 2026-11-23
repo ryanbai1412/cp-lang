@@ -3740,8 +3740,8 @@ fn trie_add_remove_and_prefix_counts():
                 words.push(w)
             else:
                 let i = words.find(w)
-                assert t.remove(w) == (i != none)
-                if i != none: words = [words[j] for j in 0..words.len if j != i!]
+                assert t.remove(w) == (i != None)
+                if i != None: words = [words[j] for j in 0..words.len if j != i!]
             let q = [A(rand(0, 2)) for _ in 0..rand(0, 3)]
             assert t.count(q) == sum(Int(w == q) for w in words)
             assert t.count_prefix(q) == sum(

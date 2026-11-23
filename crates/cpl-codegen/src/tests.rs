@@ -288,7 +288,7 @@ fn decl(cpp: &str, name: &str) -> String {
         .to_string()
 }
 
-const TABLE: &str = "let n: 1..=100 = read()\ndomain V = 0..n\nlet w: [V]0..=1000 = read()\nlet any: Int = read()\nvar dp: [V]?Int = none\n";
+const TABLE: &str = "let n: 1..=100 = read()\ndomain V = 0..n\nlet w: [V]0..=1000 = read()\nlet any: Int = read()\nvar dp: [V]?Int = None\n";
 
 fn table(rest: &str) -> String {
     let cpp = cpp(&format!("{TABLE}{rest}\nprint(dp[V.first!] ?? -1)\n"));
@@ -298,7 +298,7 @@ fn table(rest: &str) -> String {
 #[test]
 fn an_optional_of_a_position_a_bool_or_a_char_is_one_scalar() {
     let cpp = cpp(
-        "let n: 1..=9 = read()\ndomain V = 0..n\nvar p: [V]?V = none\nvar b: [V]?Bool = none\nvar c: [V]?Char = none\n\
+        "let n: 1..=9 = read()\ndomain V = 0..n\nvar p: [V]?V = None\nvar b: [V]?Bool = None\nvar c: [V]?Char = None\n\
          p[V.first!] = V.first!.next\nb[V.first!] = true\nc[V.first!] = 'a'\n\
          print(p[V.first!] ?? V.last!, yes(b[V.first!] ?? false), c[V.first!] ?? '-')\n",
     );
@@ -323,7 +323,7 @@ fn a_program_without_optionals_carries_none_of_the_packing() {
 
 #[test]
 fn the_inside_of_a_small_optional_taken_as_a_place_keeps_it_unpacked() {
-    let cpp = cpp("var f: ?Bool = none\nvar c: ?Char = none\n(f ??= false) = true\nprint(yes(f ?? false), c ?? '-')\n");
+    let cpp = cpp("var f: ?Bool = None\nvar c: ?Char = None\n(f ??= false) = true\nprint(yes(f ?? false), c ?? '-')\n");
     assert_eq!(decl(&cpp, "f"), "std::optional<bool>", "{cpp}");
     // A Char is still packed: only the Bool is opened in place.
     assert_eq!(decl(&cpp, "c"), "cpl::OptChar", "{cpp}");
@@ -355,7 +355,7 @@ fn every_optional_int_is_one_int_with_int64_min_as_none() {
         PACKED
     );
     // A list filled by `push`, a grid, a local, a parameter and a result.
-    let cpp = cpp("fn half(x: ?Int) -> ?Int: x\nlet n: 0..=9 = read()\nvar xs: List<?Int> = []\nvar g: [n, n]?Int = none\nfor i in 0..n:\n    xs.push(none)\n    xs.push(i)\n    g[i, 0] = i\nlet best: ?Int = xs.pop()\nprint(xs.len, xs[0] ?? -1, g[0, 0] ?? -1, half(best) ?? -1)\n");
+    let cpp = cpp("fn half(x: ?Int) -> ?Int: x\nlet n: 0..=9 = read()\nvar xs: List<?Int> = []\nvar g: [n, n]?Int = None\nfor i in 0..n:\n    xs.push(none)\n    xs.push(i)\n    g[i, 0] = i\nlet best: ?Int = xs.pop()\nprint(xs.len, xs[0] ?? -1, g[0, 0] ?? -1, half(best) ?? -1)\n");
     assert_eq!(decl(&cpp, "xs"), "std::vector<cpl::OptInt>", "{cpp}");
     assert_eq!(decl(&cpp, "g"), "cpl::Grid<cpl::OptInt, 2>", "{cpp}");
     assert_eq!(decl(&cpp, "best"), "cpl::OptInt", "{cpp}");
@@ -538,7 +538,7 @@ print(s)
 #[test]
 fn a_bounded_optional_list_is_stored_in_four_bytes() {
     let code = cpp(
-        "fn f(n: Int) -> List<?(0..2_147_483_648)>:\n    var a: List<?(0..2_147_483_648)> = List.filled(n, none)\n    a[0] = n\n    return a\nlet n: Int = read()\nlet b = f(n)\nvar c: List<?(0..100)> = [none]\nvar d: List<?Int> = [none]\nprint(b[0] ?? -1, c[0] ?? -1, d[0] ?? -1)\n",
+        "fn f(n: Int) -> List<?(0..2_147_483_648)>:\n    var a: List<?(0..2_147_483_648)> = List.filled(n, none)\n    a[0] = n\n    return a\nlet n: Int = read()\nlet b = f(n)\nvar c: List<?(0..100)> = [None]\nvar d: List<?Int> = [None]\nprint(b[0] ?? -1, c[0] ?? -1, d[0] ?? -1)\n",
     );
     let decl = |ty: &str| {
         code.lines()
@@ -658,13 +658,13 @@ fn an_if_let_payload_nothing_changes_is_a_reference_not_a_copy() {
         "    for i in 0..n:\n",
         "        if let e = end: s += e[i % e.len]\n",
         "    s\n",
-        "var best: ?List<Int> = some([1])\n",
+        "var best: ?List<Int> = Some([1])\n",
         "fn swap() -> Int:\n",
         "    if let kept = best:\n",
-        "        best = some([2, 3])\n",
+        "        best = Some([2, 3])\n",
         "        return kept.len\n",
         "    0\n",
-        "print(total(5, some([1, 2, 3])), swap())\n",
+        "print(total(5, Some([1, 2, 3])), swap())\n",
     ));
     assert!(
         cpp.contains("const std::optional<std::vector<ll>>& t0 = end;"),
@@ -719,11 +719,11 @@ fn an_optional_struct_with_an_int_field_has_no_flag() {
     let cpp = cpp(concat!(
         "struct Edge(to: Int, w: Int)\n",
         "struct Tag(c: Char)\n",
-        "var best: ?Edge = none\n",
+        "var best: ?Edge = None\n",
         "best = Edge(3, 4)\n",
-        "var t: ?Tag = none\n",
+        "var t: ?Tag = None\n",
         "t = Tag('a')\n",
-        "print(yes(best == none), yes(t == none))\n",
+        "print(yes(best == None), yes(t == None))\n",
     ));
     assert!(cpp.contains("cpl::OptField<&Edge::to> best"), "{cpp}");
     // A `Char` has no free value, so `?Tag` keeps its flag.
@@ -735,9 +735,9 @@ fn an_optional_tuple_with_a_position_has_no_flag() {
     let cpp = cpp(concat!(
         "let n: Int = read()\n",
         "domain V = 0..n\n",
-        "var far: ?(depth: Int, child: V) = none\n",
+        "var far: ?(depth: Int, child: V) = None\n",
         "far = (3, V.first!)\n",
-        "var plain: ?(Int, Int) = none\n",
+        "var plain: ?(Int, Int) = None\n",
         "plain = (1, 2)\n",
         "print(far!.depth, plain!.0)\n",
     ));
@@ -947,7 +947,7 @@ fn unread_fn_fields_are_dropped_instead_of_std_function() {
         "var b = Acc(2, none)\n",
         "b.hook = x => x + k\n",
         "let t = Tagged(x => x - k)\n",
-        "print(a.total + b.total, yes(t.pick == none))\n",
+        "print(a.total + b.total, yes(t.pick == None))\n",
     );
     let out = cpp(src);
     let acc = &out[out.find("struct Acc {").expect("Acc")..];
@@ -1283,7 +1283,7 @@ fn trie_row_field_niches_opt_int_and_avoids_temp_vector() {
         "fn add(bit: Int):\n",
         "    nodes.push(Trie(1, [0..2] _ => none))\n",
         "    let below = nodes.len - 1\n",
-        "    nodes.push(Trie(1, [0..2] b => if b == bit: below else: none))\n",
+        "    nodes.push(Trie(1, [0..2] b => if b == bit: below else: None))\n",
         "add(read<Int>() & 1)\n",
         "print(nodes.len)\n",
     ));
@@ -1898,7 +1898,7 @@ fn a_field_nothing_reads_is_dropped_with_its_stores_and_the_local_feeding_it() {
         "    order: List<V>\n",
         "fn walk(k: Int) -> Paths:\n",
         "    var dist: [V]Int = 0\n",
-        "    var back: [V]?(Int, V) = none\n",
+        "    var back: [V]?(Int, V) = None\n",
         "    var order: List<V> = []\n",
         "    for i in V:\n",
         "        dist[i] = k\n",

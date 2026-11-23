@@ -2,4 +2,4 @@
 fn f(a: ?Int) -> Int:
     let (x, y) = (a, 3) else: return 0
     x + y
-print(f(none))
+print(f(None))

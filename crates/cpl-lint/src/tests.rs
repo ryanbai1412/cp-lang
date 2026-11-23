@@ -720,14 +720,14 @@ fn taste_codes(src: &str) -> Vec<&'static str> {
 #[test]
 fn search_loop_becomes_first_from_shoi16p4() {
     // proto/ports/scout_batch_29/shoi16p4.cp: the pivot of a Gaussian elimination.
-    let src = "fn pivot_of(a: List<Int>, i: Int) -> ?Int:\n    var pivot: ?Int = none\n    for r in i..a.len:\n        if a[r] != 0:\n            pivot = r\n            break\n    pivot\nprint(pivot_of([0, 3], 0))\n";
+    let src = "fn pivot_of(a: List<Int>, i: Int) -> ?Int:\n    var pivot: ?Int = None\n    for r in i..a.len:\n        if a[r] != 0:\n            pivot = r\n            break\n    pivot\nprint(pivot_of([0, 3], 0))\n";
     assert_eq!(taste_codes(src), ["L0501"]);
     assert_eq!(
         fixed(src),
         "fn pivot_of(a: List<Int>, i: Int) -> ?Int:\n    let pivot: ?Int = first(r for r in i..a.len if a[r] != 0)\n    pivot\nprint(pivot_of([0, 3], 0))\n"
     );
     // An open range is bracketed, so its `if` is not read as its end.
-    let open = "fn f(a: List<Int>):\n    var at: ?Int = none\n    for r in 0..:\n        if a[r] != 0:\n            at = r\n            break\n    print(at)\n";
+    let open = "fn f(a: List<Int>):\n    var at: ?Int = None\n    for r in 0..:\n        if a[r] != 0:\n            at = r\n            break\n    print(at)\n";
     assert!(fixed(open).contains("first(r for r in (0..) if a[r] != 0)"));
 }
 
@@ -851,15 +851,15 @@ fn push_loop_becomes_a_comprehension_from_ioi16p6io_and_dmopc21c5p5() {
 
 #[test]
 fn none_check_unwrap_from_cco16p3() {
-    // proto/ports/scout_batch_15/cco16p3.cp: `if p != none and v == p!: continue`.
-    let src = "fn f(p: ?Int, v: Int) -> Bool = p != none and v == p!\nprint(f(none, 1))\n";
+    // proto/ports/scout_batch_15/cco16p3.cp: `if p != None and v == p!: continue`.
+    let src = "fn f(p: ?Int, v: Int) -> Bool = p != None and v == p!\nprint(f(None, 1))\n";
     let found = only(src);
     assert_eq!(found.code, NONE_CHECK_UNWRAP.code);
     assert_eq!(
         found.message,
         "`p != None` and then `p!`: the check is said twice"
     );
-    let other = "fn f(p: ?Int, q: ?Int) -> Bool = p != none and q! == 1\nprint(f(none, 1))\n";
+    let other = "fn f(p: ?Int, q: ?Int) -> Bool = p != None and q! == 1\nprint(f(None, 1))\n";
     assert_eq!(taste_codes(other), Vec::<&str>::new());
 }
 
@@ -1297,7 +1297,7 @@ fn find(v: V) -> V:
 
     let dsu_two_pass = "\
 domain V = 0..4
-var up: [V]?V = none
+var up: [V]?V = None
 fn find(v: V) -> V:
     var r = v
     while let p = up[r]: r = p
@@ -1376,34 +1376,34 @@ for k in 1..4:
 #[test]
 fn is_in_cond_header_lint_warns_and_fixes_to_let() {
     let src = "\
-let a: ?Int = some(3)
-let b: ?Int = some(5)
+let a: ?Int = Some(3)
+let b: ?Int = Some(5)
 let ok = a is v and v > 0
 if a is x and x > 1:
     print(x)
 elif b is y:
     print(y)
-var cur: ?Int = some(2)
+var cur: ?Int = Some(2)
 while cur is n and n > 0:
     print(n)
-    cur = none
+    cur = None
 print(ok)
 ";
     assert_eq!(codes(src), vec!["L0207", "L0207", "L0207"]);
     assert_eq!(
         fixed(src),
         "\
-let a: ?Int = some(3)
-let b: ?Int = some(5)
+let a: ?Int = Some(3)
+let b: ?Int = Some(5)
 let ok = a is v and v > 0
 if let x = a, x > 1:
     print(x)
 elif let y = b:
     print(y)
-var cur: ?Int = some(2)
+var cur: ?Int = Some(2)
 while let n = cur, n > 0:
     print(n)
-    cur = none
+    cur = None
 print(ok)
 "
     );
@@ -1797,8 +1797,8 @@ fn search_loops_newcomers_write_from_corpus_newcomer() {
         .as_deref()
         .unwrap()
         .contains("keep the `?Int`"));
-    // n12: `and x == none` is a first match; a variable named `first` gets no fix.
-    let guard = "let a = [1, 2]\nvar at: ?Int = none\nfor x in a:\n    if x % 2 == 0 and at == none:\n        at = x\nprint(at ?? -1)\n";
+    // n12: `and x == None` is a first match; a variable named `first` gets no fix.
+    let guard = "let a = [1, 2]\nvar at: ?Int = None\nfor x in a:\n    if x % 2 == 0 and at == None:\n        at = x\nprint(at ?? -1)\n";
     assert!(
         fixed(guard).contains("let at: ?Int = first(x for x in a if x % 2 == 0)"),
         "{}",

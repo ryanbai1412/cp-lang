@@ -29,7 +29,7 @@ for _ in 0..tests:
             size[u] += size[v]
             below.push(shape[v])
         below.sort()
-        if names.get(below) == none: names[below] = names.len
+        if names.get(below) == None: names[below] = names.len
         shape[u] = names[below]
     name(roots[0])
     name(roots[1])

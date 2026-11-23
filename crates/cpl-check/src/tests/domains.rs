@@ -272,15 +272,15 @@ struct P<V, A>:
 struct Q<V, A>:
     back: [V]?(V, A)
 fn mk_rec<S, M>(s: S, m: M) -> P<S, M>:
-    var b: [S]?(from: S, via: M) = none
+    var b: [S]?(from: S, via: M) = None
     b[s] = (from: s, via: m)
     P(b)
 fn mk_tup<S, M>(s: S, m: M) -> Q<S, M>:
-    var b: [S]?(S, M) = none
+    var b: [S]?(S, M) = None
     b[s] = (s, m)
     Q(b)
 fn mk_one_renamed<V, M>(s: V, m: M) -> P<V, M>:
-    var b: [V]?(from: V, via: M) = none
+    var b: [V]?(from: V, via: M) = None
     b[s] = (from: s, via: m)
     P(b)
 print(mk_rec(V(1), 2).back[V(1)]!.via, mk_tup(V(1), 3).back[V(1)]!.1, mk_one_renamed(V(1), 4).back[V(1)]!.via)
@@ -349,16 +349,16 @@ domain P = 1..=5
 domain V = 0..4
 enum Dir = N | E | S | W
 
-var a: [P]?V = none
+var a: [P]?V = None
 let inv_a: [V]?P = a.inverse()
 let _ = inv_a[V(0)]
 
 let n: 1..=5 = 5
-var b: [P]?(1..=n) = none
+var b: [P]?(1..=n) = None
 let inv_b: [1..=n]?P = b.inverse()
 let _ = inv_b[1]
 
-var c: [P]?Dir = none
+var c: [P]?Dir = None
 let inv_c: [Dir]?P = c.inverse()
 let _ = inv_c[Dir.N]
 
@@ -372,7 +372,7 @@ let _ = inv_perm[J(1)]
 
     let bad = "\
 domain P = 1..=5
-var xs: [P]?Int = none
+var xs: [P]?Int = None
 let _ = xs.inverse()
 ";
     assert!(
@@ -434,7 +434,7 @@ let b: ?D = p.back(1)
 let r: Range<D> = D(1)..=D(5)
 let r2: Range<D> = r.drop(1).take(2)
 let r3: Range<Int> = (0..10).drop(2).take(3)
-print(yes(a == none), yes(b == none), r2.len, r3.len)
+print(yes(a == None), yes(b == None), r2.len, r3.len)
 ";
     assert!(
         check(src).is_empty(),
@@ -506,10 +506,10 @@ let _ = (b.count[1], b.delta[0])
 
 domain P = 1..=4
 fn is_even(p: P) -> Bool = p.label % 2 == 0
-let x: ?P = some(P(2))
+let x: ?P = Some(P(2))
 let y: ?Bool = x.map(is_even)
 let z: ?Int = x.filter(p => p.label > 1).map(p => p.ord)
-let n_opt: ?P = none
+let n_opt: ?P = None
 let w: ?Int = n_opt.map(p => p.ord)
 let _ = (y ?? false, z ?? -1, w ?? -1)
 ";
@@ -798,7 +798,7 @@ fn an_int_literal_is_a_position_of_an_integer_domain() {
 
 #[test]
 fn a_struct_declared_in_a_fn_is_a_type_and_a_constructor_there() {
-    let src = "fn f(n: Int) -> Int:\n    struct Acc(sum: Int, count: Int)\n    var best: ?Acc = none\n    best = Acc(n, 1)\n    best!.sum\n";
+    let src = "fn f(n: Int) -> Int:\n    struct Acc(sum: Int, count: Int)\n    var best: ?Acc = None\n    best = Acc(n, 1)\n    best!.sum\n";
     assert_eq!(check(src), Vec::new());
 }
 

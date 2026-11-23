@@ -51,7 +51,7 @@ fn depths(
     while let x = queue.pop_front():
         let dx = depth[x]!
         for e in ties[x]:
-            if depth[e.to] != none: continue
+            if depth[e.to] != None: continue
             depth[e.to] = dx + e.d
             queue.push(e.to)
     [V] v => depth[v] ?? 0

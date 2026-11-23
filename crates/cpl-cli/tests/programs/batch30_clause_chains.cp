@@ -18,7 +18,7 @@ fn show(o: ?Int, p: ?Int):
     else: print("else1")
     if let a = o, a == 1, let b = p, b == 3: print("a1 b3")
     elif let a = o, let b = p, a == 1 and b == 2, not (a > b): print("elif", a, b)
-    elif o == none, let b = p: print("only b", b)
+    elif o == None, let b = p: print("only b", b)
     else: print("else2")
     if let a = o, let b = p, a == 5 or b == 2, a < b: print("or", a, b)
     if let a = o, a == 1, a == 2: print("never")
@@ -26,13 +26,13 @@ fn show(o: ?Int, p: ?Int):
     else: print("else3")
     let v = if let a = o, let b = p, a < b: a + b else: -1
     print(v)
-for o in [none, some(1), some(99), some(50)]:
-    for p in [none, some(2), some(3)]:
+for o in [None, Some(1), Some(99), Some(50)]:
+    for p in [None, Some(2), Some(3)]:
         show(o, p)
 var calls = 0
 fn tick() -> ?Int:
     calls += 1
-    some(calls)
+    Some(calls)
 if let a = tick(), a > 5, let b = tick(): print("no", b)
 print(calls)
-print([a + b for o in [some(1), none, some(3)] if let a = o and let b = tick() and a < b])
+print([a + b for o in [Some(1), None, Some(3)] if let a = o and let b = tick() and a < b])

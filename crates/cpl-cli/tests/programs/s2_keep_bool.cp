@@ -1,13 +1,13 @@
 // Synthesis #2 rule 1: `x min= y` / `x max= y` is a Bool, true when the place changed.
 let n: 1..=10 = read()
 domain V = 0..n
-var dist: [V]?Int = none
+var dist: [V]?Int = None
 var ways: [V]Int = 0
 dist[V(0)] = 5
 if dist[V(0)] min= 3: ways[V(0)] = 1          // 5 -> 3: changed
 if dist[V(0)] min= 7: ways[V(0)] = 99         // stays 3: not changed
 if dist[V(1)] min= 4: ways[V(1)] = 2          // none takes the value: changed
-if dist[V(1)] min= none: ways[V(1)] = 98      // none on the right is skipped
+if dist[V(1)] min= None: ways[V(1)] = 98      // none on the right is skipped
 print(dist[V(0)]!, ways[V(0)], dist[V(1)]!, ways[V(1)])
 
 // a record compares field by field, so the id rides along with the key

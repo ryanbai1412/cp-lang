@@ -25,7 +25,7 @@ let edges: [E](u: V, v: V, w: 1..=1e9) = read()
 //                         ^ variable.parameter.label.cp
 //                                ^^^ constant.numeric.integer.decimal.cp
 
-var dist: [V]?Int = none
+var dist: [V]?Int = None
 // <--- storage.type.var.cp
 //         ^ entity.name.type.cp
 //           ^ keyword.operator.optional.cp

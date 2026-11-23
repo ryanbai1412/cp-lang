@@ -6,6 +6,6 @@ var m: Map<Int, Str> = Map()
 m[1] = "one"
 m[5] = "five"
 print(m.first_ge(2), m.last_le(4), m.first_gt(1), m.last_lt(5))
-if m.first_ge(6) == none: print("nothing at or after 6")
+if m.first_ge(6) == None: print("nothing at or after 6")
 let (k, v) = m.first_ge(0) ?? (0, "")
 print(k, v)

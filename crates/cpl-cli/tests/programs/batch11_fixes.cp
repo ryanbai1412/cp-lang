@@ -10,7 +10,7 @@ for d in D:
     best[d] += loot[d]
 print(total(D.all), best)
 print(count_all(D.all))
-var opt: [D]?Int = none
+var opt: [D]?Int = None
 var m: [D]Mod<7> = 0
 for d in D:
     m[d] += loot[d]

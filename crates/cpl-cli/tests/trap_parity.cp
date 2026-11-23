@@ -11,7 +11,7 @@ var fixed: [0..3]Int = 0
 var grid: [0..3, 0..3]Int = 0
 var table: [D]Int = 0
 let s = "abc"
-let nothing: ?Int = if z == 0: none else: 1
+let nothing: ?Int = if z == 0: None else: 1
 var st = SegTree<D, Int>.of(+, _ => 0)
 var out = 0
 if which == 1: out = xs[three]

@@ -32,11 +32,11 @@ for c in Color:
     by_col[c].sort(by: v => tree.pos(v).ord)
     for (u, v) in by_col[c].adjacent:
         let l = tree.lca(u, v)
-        if col[l] == none: col[l] = c
+        if col[l] == None: col[l] = c
         elif col[l] != c: is_bad[l] = true
 
 let ans = sum(w[v] for v in V if is_bad[v])
-for v in tree.at if col[v] == none:
+for v in tree.at if col[v] == None:
     col[v] = if let p = tree.parent(v): col[p] else: Color(1)
 
 print(ans)

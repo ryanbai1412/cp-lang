@@ -111,7 +111,7 @@ fn division_and_remainder_are_euclidean() {
 #[test]
 fn unwrapping_none_stops_the_program() {
     assert_eq!(
-        failure("var m: ?Int = none\nprint(m!)\n", ""),
+        failure("var m: ?Int = None\nprint(m!)\n", ""),
         "`!` on `None`: there is no value here @ m!"
     );
 }
@@ -175,7 +175,7 @@ fn vm_handles_optionals_arrays_lists_structs_and_recursion() {
 let n: 1..=100 = read()
 domain I = 1..=n
 var a: [I]Int = read()
-var memo: [I]?Int = none
+var memo: [I]?Int = None
 var list: List<Int> = []
 for i in I:
     list.push(a[i])
@@ -240,11 +240,11 @@ struct State(a: Int, b: ?Int, s: Str)
 
 fn step(st: State, i: Int) -> State:
     let ch = st.s[i].ord
-    let next_b: ?Int = if let prev = st.b: some(prev + ch) else: some(ch)
+    let next_b: ?Int = if let prev = st.b: Some(prev + ch) else: Some(ch)
     State(st.a + 1, next_b, st.s)
 
 fn find_first(s: Str, target: Char, i: Int) -> ?Int:
-    if i >= s.len: return none
+    if i >= s.len: return None
     if s[i] == target: return i
     find_first(s, target, i + 1)
 
@@ -398,9 +398,9 @@ assert(st.first! == 0)
 assert(st.last! == 18)
 let popped = st.pop()!
 st.pop()
-var opt: ?Pair = none
+var opt: ?Pair = None
 let p = opt ?? Pair(popped, st.last!)
-opt = some(p)
+opt = Some(p)
 let r = 2..10
 print(p.a, p.b, opt!.a, r.start, r.end, bit_ceil(9))
 ";
@@ -579,8 +579,8 @@ for c in s.rev:
     if c == 'a': ch_sum += 1
     if c == 'd': ch_sum += 4
 
-let opt1: ?Int = none
-let opt2: ?Int = some(42)
+let opt1: ?Int = None
+let opt2: ?Int = Some(42)
 let c1 = opt1 ?? 7
 let c2 = opt2 ?? 7
 print(sum, ch_sum, c1, c2)
@@ -1009,18 +1009,18 @@ print(ge, gt, le, lt, pf, pl, s.len, mk, mv, pk, pv, m.len)
 fn vm_opt_minmax_nested_arr_list_tuple_and_idx_field_idx() {
     let src = "\
 struct Node(kid: [0..2]?Int)
-var dp: [4][3]?Int = none
+var dp: [4][3]?Int = None
 dp[0][0] = 5
 let transitions = [(0, 1, 7), (0, 1, 3), (1, 2, 4)]
 for step in 0..3:
     for (u, v, w) in transitions:
         dp[step + 1][v] min= dp[step][u] + w
-var best: [3, 3]?Int = none
+var best: [3, 3]?Int = None
 best[0, 0] = 1
 best[0, 1] max= best[0, 0] + 9
 best[0, 1] max= best[0, 0] + 2
 var nodes = List<Node>()
-nodes.push(Node([0..2] b => if b == 1: 42 else: none))
+nodes.push(Node([0..2] b => if b == 1: 42 else: None))
 let k0 = nodes[0].kid[0] ?? -1
 let k1 = nodes[0].kid[1] ?? -1
 print(dp[1][1]!, dp[2][2]!, best[0, 1]!, k0, k1)

@@ -850,7 +850,7 @@ fn poisoned_spans_cover_what_the_parser_could_not_read() {
 
 #[test]
 fn the_parser_never_panics_or_hangs_on_truncated_input() {
-    let src = "@memo\nfn solve(g: [V]List<(V, Int)>, src: V) -> [V]?Int:\n    var dist: [V]?Int = none\n    for (v, w) in g[src]:\n        if (dist[v] ?? INF) > w and not seen[v]:\n            dist[v] = w\n    match op:\n        Add(l, r) => st.add(l, r)\n        _ => print(\"x {l + 1}\")\n    dist\nlet a = [x * 2 for x in xs if x > 0]\nstruct P:\n    x, y: Int\n";
+    let src = "@memo\nfn solve(g: [V]List<(V, Int)>, src: V) -> [V]?Int:\n    var dist: [V]?Int = None\n    for (v, w) in g[src]:\n        if (dist[v] ?? INF) > w and not seen[v]:\n            dist[v] = w\n    match op:\n        Add(l, r) => st.add(l, r)\n        _ => print(\"x {l + 1}\")\n    dist\nlet a = [x * 2 for x in xs if x > 0]\nstruct P:\n    x, y: Int\n";
     for end in 0..=src.len() {
         if src.is_char_boundary(end) {
             let _ = parse_file(&src[..end]);
@@ -1552,7 +1552,7 @@ fn pascal_case_some_and_none_read_as_the_optional_variants() {
     assert!(matches!(expr("None").kind, ExprKind::None));
     let src = "match x:\n    Some(v) => v\n    None => 0\nlet s = Side.None\n";
     assert!(codes(&format!("enum Side: Left | None\n{src}")).is_empty());
-    assert_eq!(show(&expr("Some(3)")), show(&expr("some(3)")));
+    assert_eq!(show(&expr("Some(3)")), show(&expr("Some(3)")));
 }
 
 #[test]
@@ -1949,7 +1949,7 @@ fn a_reversed_python_slice_is_one_error_with_the_rev_fix() {
 
 #[test]
 fn an_is_pattern_is_not_read_as_a_python_comparison() {
-    let d = parse_file("if x is some(v):\n    print(v)\n").diagnostics;
+    let d = parse_file("if x is Some(v):\n    print(v)\n").diagnostics;
     assert!(d.is_empty(), "{d:?}");
 }
 

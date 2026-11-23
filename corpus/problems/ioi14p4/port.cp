@@ -44,7 +44,7 @@ if task == 2:
 if not ok:
     print(0)
     return
-var ways: Z = if shift == none: Z(n) else: 1
+var ways: Z = if shift == None: Z(n) else: 1
 var prev = n
 var open = count(x > n for x in seq)
 for g in sorted_seq if g > n:

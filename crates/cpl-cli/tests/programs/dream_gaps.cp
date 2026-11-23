@@ -26,9 +26,9 @@ print(sum)
 domain P = 1..=4
 fn is_even(p: P) -> Bool = p.label % 2 == 0
 let label_x10: [P]Int = [P] p => p.label * 10
-let p2: ?P = some(P(2))
-let p3: ?P = some(P(3))
-let pn: ?P = none
+let p2: ?P = Some(P(2))
+let p3: ?P = Some(P(3))
+let pn: ?P = None
 print(yes(p2.map(is_even) ?? false), yes(p3.map(is_even) ?? false), yes(pn.map(is_even) ?? false))
 print(p2.map(label_x10) ?? -1, pn.map(label_x10) ?? -1)
 print(p2.filter(is_even).map(p => p.label) ?? -1, p3.filter(is_even).map(p => p.label) ?? -1)

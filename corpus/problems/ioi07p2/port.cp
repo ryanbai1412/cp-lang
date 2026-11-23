@@ -71,7 +71,7 @@ for p in sorted(P, by: p => (pts[p].x, pts[p].y)):
     // east wall, or left of its north wall if it has no east wall.
     let outer = out[p, East] ?? out[p, North]?.flip else: continue
     let f = faces.find(outer)
-    if wet_at[f] != none: continue
+    if wet_at[f] != None: continue
     wet_at[f] = 0
     queue.push(f)
     while let a = queue.pop_front():

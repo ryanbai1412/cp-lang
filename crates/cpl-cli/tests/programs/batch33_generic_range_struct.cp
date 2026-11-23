@@ -6,8 +6,8 @@ struct Box<D>:
 
     pub fn first_at_least(self, x: Int) -> ?D:
         for i in D:
-            if a[i] >= x: return some(i)
-        none
+            if a[i] >= x: return Some(i)
+        None
 
     pub fn at(self, i: D) -> Int = a[i]
 

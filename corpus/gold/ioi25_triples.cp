@@ -43,7 +43,7 @@ fn construct_range(m: 3..=2e5, _k: Int) -> List<Int>:
         let size = isqrt(6 * m)
         let evens = (-m / 2 .. 3 * m / 2).filter(x => x % 2 == 0)
         let s = rng.sample(rng.int(2 * size / 3, 4 * size / 3), from: evens).sorted()
-        var h: [0..m]?Int = none
+        var h: [0..m]?Int = None
         for (x, y) in s.pairs() if (x + y) / 2 in 0..m and (y - x) / 2 in 1..m:
             h[(x + y) / 2] min= (y - x) / 2              // min= skips none
         h.map(v => v ?? rng.int(1, 2))

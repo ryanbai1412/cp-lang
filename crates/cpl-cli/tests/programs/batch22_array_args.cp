@@ -22,15 +22,15 @@ fn mul(a: List<Z>, b: List<Z>) -> List<Z>:
     out
 
 let n: Int = read()
-var t = [Node([none, none], 0)]
-t.push(Node([some(1), none], 2))
-t.push(Node(kid: [none, some(n)], cnt: 5))
-t[0].kid[1] = some(7)
+var t = [Node([None, None], 0)]
+t.push(Node([Some(1), None], 2))
+t.push(Node(kid: [None, Some(n)], cnt: 5))
+t[0].kid[1] = Some(7)
 for node in t: print(node.kid[0] ?? -1, node.kid[1] ?? -1, node.cnt)
 let tri = Tri([n, n + 1, n + 2], "tri")
 print(tri.at[1], tri.at[3], tri.name)
 print(take([1, 2, 3]), take([n, 0, n]))
-print(first([none, none], 4), first([none, some(n)], 4), first([some(2), none], 4))
+print(first([None, None], 4), first([None, Some(n)], 4), first([Some(2), None], 4))
 
 var a: [0..n]Z = 1
 var b: [0..n]Z = 2

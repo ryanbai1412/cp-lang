@@ -30,7 +30,7 @@ print(groups[6], groups[0], groups[1], groups[2])
 
 // `F64` and `{x:.2f}`.
 let mean: F64 = F64(a) / F64(b)
-var best: ?F64 = none
+var best: ?F64 = None
 best max= mean
 print("{mean:.2f} {mean:.0f} {best ?? 0.0:.3f} {mean}")
 

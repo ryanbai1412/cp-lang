@@ -34,7 +34,7 @@ while head < order.len:
             order.push(v)
 
 fn plus(x: ?Int, y: ?Int) -> ?Int:
-    if x == None or y == none: return None
+    if x == None or y == None: return None
     x! + y!
 
 @memo

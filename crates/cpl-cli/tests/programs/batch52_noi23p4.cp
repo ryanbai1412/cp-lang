@@ -19,8 +19,8 @@ for _ in 0..m:
     let (u, v, w): (V, V, Int) = read()
     g[u].push((v, w))
 
-var dist: [V]?Int = none
-var cache: [0..logn, V]?Int = none
+var dist: [V]?Int = None
+var cache: [0..logn, V]?Int = None
 var active = 0
 var sum_dist: Z = 0
 var ans: Z = 0

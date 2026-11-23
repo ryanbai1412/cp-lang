@@ -8,7 +8,7 @@ fn fib(i: I) -> Int:
 
 dp[I.nth(5)] = 100
 print(fib(I.last!))
-print(count(dp[i] != none for i in I), dp[I.nth(7)] ?? -1)
+print(count(dp[i] != None for i in I), dp[I.nth(7)] ?? -1)
 
 domain J = 0..3
 @memo(into: grid)

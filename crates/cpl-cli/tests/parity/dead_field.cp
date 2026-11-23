@@ -11,7 +11,7 @@ struct Pair:
 
 fn walk(k: Int, steps: List<Int>) -> Paths:
     var dist: [V]Int = 0
-    var back: [V]?(from: V, step: Int) = none
+    var back: [V]?(from: V, step: Int) = None
     var order = List<V>()
     for v in V:
         dist[v] = k * v.to_idx

@@ -1,3 +1,3 @@
-auto (n, k) = (3, 4)
-int total = n + k
+let (n, k) = (3, 4)
+let total = n + k
 print(total)

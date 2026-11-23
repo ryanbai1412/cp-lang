@@ -2,7 +2,7 @@
 let a: 0..=10 = read()
 let b: 0..=10 = read()
 fn half(x: Int) -> ?Int:
-    if x % 2 == 0: return x / 2 else: return none
+    if x % 2 == 0: return x / 2 else: return None
 
 fn f(x: Int, y: Int) -> Int:
     let r: ?Int = do:
@@ -10,7 +10,7 @@ fn f(x: Int, y: Int) -> Int:
         if h == 0:
             return 100
         let g = half(y)?
-        if h > g: none else: h + g
+        if h > g: None else: h + g
     r ?? -1
 
 print(f(a, b))

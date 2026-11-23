@@ -3,7 +3,7 @@
 let (n, x): (1..=100, 1..=1e6) = read()
 let coins: [0..n]Int = read()
 
-var dp: [0..=x]?Int = none
+var dp: [0..=x]?Int = None
 dp[0] = 0
 for s in 1..=x:
     for c in coins:

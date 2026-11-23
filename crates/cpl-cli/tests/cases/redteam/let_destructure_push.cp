@@ -22,9 +22,9 @@ match ops[0]:
         print(x, y, ops.len)
     Skip =>
         print(0)
-var zs: List<?(Int, Int)> = [(1, 2), none]
+var zs: List<?(Int, Int)> = [(1, 2), None]
 if let (a, b) = zs[0]:
-    for k in 0..100: zs.push(none)
+    for k in 0..100: zs.push(None)
     print(a, b, zs.len)
 // and a later write to the table does not change what the `let` bound
 var tab: [0..3](Int, Int) = (1, 2)

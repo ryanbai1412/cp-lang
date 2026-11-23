@@ -40,4 +40,4 @@ for i in Op:
             up[j, i] = up[lower, half]
     // WISH C2: `print(if let t = below(i, 1): ops[t] else: 0)`; `if let` is a statement only.
     let typed = below(i, 1)
-    print(if typed == none: 0 else: ops[typed!])
+    print(if typed == None: 0 else: ops[typed!])

@@ -10,7 +10,7 @@ pub fn min_cardinality(n: Int) -> Int:
 
     fn fill(cap: Int) -> List<Insect>:
         var added = List<Insect>()
-        for i in Insect where not inside[i]:
+        for i in Insect if not inside[i]:
             move_inside(Int(i))
             if press_button() > cap:
                 move_outside(Int(i))

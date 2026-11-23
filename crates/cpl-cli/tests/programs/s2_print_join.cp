@@ -1,10 +1,10 @@
 let xs = [1, 2, 3]
 print(xs, sep: ", ")
-let o: ?Int = none
+let o: ?Int = None
 print(o, none: "-1")
 print(" ".join(xs))
 print(xs.get(1) ?? -1, xs.get(7) ?? -1)
-let os: List<?Int> = [1, none, 3]
+let os: List<?Int> = [1, None, 3]
 print(os, none: "x")
 print(3, xs, sep: "\n")
 domain D = 0..3

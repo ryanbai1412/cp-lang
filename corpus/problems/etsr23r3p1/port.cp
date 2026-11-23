@@ -29,13 +29,13 @@ fn compose_op(newer: Op, older: Op) -> Op:
     )
 
 fn apply_op(op: Op, c: ?Cell, _len: Int) -> ?Cell:
-    if c == none: return None
+    if c == None: return None
     let x = c!
     Cell(x.lo_orig, eval_op(op, x.lo_orig, x.lo_val), x.hi_orig, eval_op(op, x.hi_orig, x.hi_val))
 
 fn merge_cell(a: ?Cell, b: ?Cell) -> ?Cell:
-    if a == none: return b
-    if b == none: return a
+    if a == None: return b
+    if b == None: return a
     Cell(a!.lo_orig, a!.lo_val, b!.hi_orig, b!.hi_val)
 
 let (n, ql, qr): (Int, Int, Int) = read()
@@ -76,10 +76,10 @@ for k in 0..n:
     elif t == 3: tag = Op(false, 0, x, 0, 0)
     st.apply(U.first.., tag)
 
-    let left_end = st.max_right(U.first.l, c => if c == none: true else: c!.hi_val < ql)
+    let left_end = st.max_right(U.first.l, c => if c == None: true else: c!.hi_val < ql)
     st.apply(U.first.l..left_end, Op(true, ql, 1, 0, 0))
 
-    let right_start = st.min_left(U.last.r, c => if c == none: true else: c!.lo_val > qr)
+    let right_start = st.min_left(U.last.r, c => if c == None: true else: c!.lo_val > qr)
     st.apply(right_start..U.last.r, Op(true, qr, 1, 0, 0))
 
 var idx_of = Map<Int, Int>()

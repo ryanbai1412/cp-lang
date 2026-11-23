@@ -120,7 +120,7 @@ fn golden_bounds_domain_and_container_errors_include_values() {
             "`!` on `None`: there is no value here",
         ),
         (
-            "var o: ?Int = none\nprint(o!)\n",
+            "var o: ?Int = None\nprint(o!)\n",
             "",
             "`!` on `None`: there is no value here",
         ),
@@ -589,12 +589,12 @@ fn range_typed_stores_trap_in_interp_and_checked_cpp() {
             "10 is outside `0..=5`",
         ),
         (
-            "let k: Int = read()\nvar xs: List<?(0..100)> = [none, none]\nxs[1] = k\nprint(xs[1] ?? -1)\n",
+            "let k: Int = read()\nvar xs: List<?(0..100)> = [None, None]\nxs[1] = k\nprint(xs[1] ?? -1)\n",
             "500\n",
             "500 is outside `0..100`",
         ),
         (
-            "let k: Int = read()\nvar xs: List<?(0..2_147_483_648)> = [none]\nxs[0] = k\nprint(xs[0] ?? -1)\n",
+            "let k: Int = read()\nvar xs: List<?(0..2_147_483_648)> = [None]\nxs[0] = k\nprint(xs[0] ?? -1)\n",
             "4294967296\n",
             "4294967296 is outside `0..2_147_483_648`",
         ),
@@ -639,7 +639,7 @@ fn range_typed_stores_trap_in_interp_and_checked_cpp() {
             "2147483648 is outside `0..2_147_483_648`",
         ),
         (
-            "struct Node:\n    l: ?Int\n    pri: 0..2_147_483_648\n    var sz: 0..2_147_483_648\nlet k: Int = read()\nvar n = Node(none, 0, 1)\nn.sz += k\nprint(n.sz)\n",
+            "struct Node:\n    l: ?Int\n    pri: 0..2_147_483_648\n    var sz: 0..2_147_483_648\nlet k: Int = read()\nvar n = Node(None, 0, 1)\nn.sz += k\nprint(n.sz)\n",
             "2147483647\n",
             "2147483648 is outside `0..2_147_483_648`",
         ),

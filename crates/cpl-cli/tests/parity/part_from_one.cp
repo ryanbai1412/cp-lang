@@ -11,8 +11,8 @@ one[1, 2..=3] += one[2, 2..=3]
 one[.., 1] = 0
 print(one[1, ..], one[.., 1], one[2, ..])
 fn last_index<D, T>(xs: [D]T) -> ?D:
-    var at: ?D = none
-    for i in D: at = some(i)
+    var at: ?D = None
+    for i in D: at = Some(i)
     at
 fn total<D>(xs: [D]Int) -> Int = sum(xs[i] for i in D)
 print(last_index(a[..]) ?? -1, last_index(a[2..=4]) ?? -1, total(a[2..=4]), a[2..=4].argmax ?? -1)

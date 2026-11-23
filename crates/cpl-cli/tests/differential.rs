@@ -727,7 +727,7 @@ fn partial_inverse_duplicate_image_traps_in_interp_and_cpp() {
     let source = "\
 domain P = 1..=4
 domain V = 0..3
-var a: [P]?V = none
+var a: [P]?V = None
 a[P(1)] = V(2)
 a[P(3)] = V(2)
 let inv = a.inverse()

@@ -214,10 +214,10 @@ impl<'p> Emitter<'p> {
             ..
         } = iter
         else {
-            return none;
+            return None;
         };
         if self.closure_id.is_some() || self.locals()[slot].ty != Ty::Int {
-            return none;
+            return None;
         }
         let mut scan = Scan {
             emitter: self,
@@ -235,7 +235,7 @@ impl<'p> Emitter<'p> {
             floored: Vec::new(),
         };
         if !scan.block(body, true) {
-            return none;
+            return None;
         }
         let Scan {
             stored,
@@ -257,7 +257,7 @@ impl<'p> Emitter<'p> {
             || !end(hi, &stored)
             || !shifts.iter().all(|e| bound(e, &moving))
         {
-            return none;
+            return None;
         }
         // An index under `if i > e` is checked from `e + 1` when `e` stays put.
         let mut any = any;
@@ -1054,7 +1054,7 @@ mod tests {
             "let (lo, hi) = (Stage(0), Stage(1))\n",
             "fn roles(b: Int) -> List<(Stage, Stage, Int)> = [(lo, hi, b), (hi, lo, 2 * b)]\n",
             "let n: Int = read()\n",
-            "var g: [0..n + 1, Stage]?Int = none\n",
+            "var g: [0..n + 1, Stage]?Int = None\n",
             "for k in (0..n).rev, (from, to, w) in roles(k):\n",
             "    g[k + 1, to] min= g[k, from] + w\n",
             "print(g[0, lo]!)\n",

@@ -20,11 +20,11 @@ fn check(ok: Bool, lazy why: () -> Str):
 
 let x: ?Int = 3
 print(or_else(x, costly()), calls)
-print(or_else(none, costly()), calls)
-print(either(x, costly()), either(none, d: costly()), calls)
+print(or_else(None, costly()), calls)
+print(either(x, costly()), either(None, d: costly()), calls)
 check(true, "never {costly()}")
 check(false, "n = {calls}")
-print(calls, or_else(none, () => 9))
+print(calls, or_else(None, () => 9))
 
 struct Cache(v: ?Int)
 impl Cache:
@@ -32,4 +32,4 @@ impl Cache:
         if let x = self.v:
             return x
         d()
-print(Cache(4).get_or(costly()), calls, Cache(none).get_or(costly()), calls)
+print(Cache(4).get_or(costly()), calls, Cache(None).get_or(costly()), calls)

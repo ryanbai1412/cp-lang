@@ -5,6 +5,26 @@ use cpl_diag::Fix;
 use cpl_syntax::ast::{Arg, CmpOp, Expr, ExprKind, FnBody, FnDecl, Name, StmtKind};
 
 impl Checker<'_> {
+    /// `some(x)` and `none`, the spellings before `Some(x)` and `None`
+    /// (decision 157): an error whose fix `cpl migrate` applies.
+    pub(super) fn old_optional_spelling(&mut self, span: Span, new: &str) {
+        let old = self.text(span);
+        if old == new || old != new.to_lowercase() || self.local(old).is_some() {
+            return;
+        }
+        // A top-level `let none = ...` is a name; `some` is also the prelude's.
+        if old == "none" && self.global(old).is_some() {
+            return;
+        }
+        let message = format!("`{old}` is spelled `{new}` since 0.3");
+        if let Some(diag) = self.error(codes::REMOVED_SYNTAX, span, message) {
+            diag.help = Some(format!(
+                "optionals are `Some(x)` and `None`; `cpl migrate` rewrites every `{old}` in a folder"
+            ));
+            diag.fix(format!("write `{new}`"), span, new);
+        }
+    }
+
     /// `s.reverse()` on a `let`: the reversed view needs no `var`.
     pub(super) fn reverse_view_help(&mut self, name: &str, base: &Expr) {
         let copy = match name {

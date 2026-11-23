@@ -2,8 +2,8 @@
 // unit-variant `is` test, and `match` on an enum with a payload variant.
 domain D = 1..=5
 let p = D(3)
-print(p.back(0)!, p.back(2)!, yes(p.back(3) == none))
-print(p.ahead(0)!, p.ahead(2)!, yes(p.ahead(3) == none))
+print(p.back(0)!, p.back(2)!, yes(p.back(3) == None))
+print(p.ahead(0)!, p.ahead(2)!, yes(p.ahead(3) == None))
 
 let r: Range<D> = D(1)..=D(5)
 print([x for x in r.drop(2)])

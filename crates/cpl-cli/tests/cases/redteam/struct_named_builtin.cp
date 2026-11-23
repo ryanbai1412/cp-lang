@@ -9,7 +9,7 @@ struct Dsu:
     p: List<Int>
     fn find(self, x: Int) -> Int:
         if self.p[x] == x: x else: self.find(self.p[x])
-var t = SegTree(2, [none, none])
+var t = SegTree(2, [None, None])
 t.update(1, 5)
 let d = Dsu([0, 0])
 print(t.v[1] ?? -1, d.find(1))

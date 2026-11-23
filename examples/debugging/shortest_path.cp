@@ -12,20 +12,20 @@ for e in E:
     adj[roads[e].u].push((to: roads[e].v, w: roads[e].w))
     adj[roads[e].v].push((to: roads[e].u, w: roads[e].w))
 
-var dist: [V]?Int = none
+var dist: [V]?Int = None
 var heap = MinHeap<(Int, V)>()
 dist[V.first!] = 0
 heap.push((0, V.first!))
 while let (d, u) = heap.pop():
     for road in adj[u]:
-        if dist[road.to] == none:
+        if dist[road.to] == None:
             dist[road.to] = d + road.w
             heap.push((d + road.w, road.to))
 print(dist[V.last!] ?? -1)
 
 @alt(program)
 fn bellman_ford():
-    var far: [V]?Int = none
+    var far: [V]?Int = None
     far[V.first!] = 0
     for _ in V:
         for e in E:

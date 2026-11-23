@@ -5,8 +5,8 @@ fn total<D, T: Num>(xs: [D]T) -> T:
     s
 
 fn last_index<D, T>(xs: [D]T) -> ?D:
-    var at: ?D = none
-    for i in D: at = some(i)
+    var at: ?D = None
+    for i in D: at = Some(i)
     at
 
 fn dot<D>(a: [D]Int, b: [D]Int) -> Int:

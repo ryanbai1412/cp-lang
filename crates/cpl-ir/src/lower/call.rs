@@ -8609,7 +8609,7 @@ impl<'a> Lowerer<'a> {
                                 Ty::Str,
                                 span,
                             )),
-                            text: "not (after != none and before != none)".into(),
+                            text: "not (after != None and before != None)".into(),
                             line: lw.line(span),
                             span,
                         });

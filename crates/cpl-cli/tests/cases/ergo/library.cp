@@ -40,7 +40,7 @@ print([w.len for w in V.windows(3)].len, sum(w.lo.ord for w in V.windows(2)))
 print(V.first.cyc(-1), V.last.cyc(2), V(2).cyc(n))
 let cnt = prefix([V] v => v.ord % 2 == 0)
 print(cnt.sum(V.all), cnt.sum(from: V.last, len: 3))
-fn f(v: V) -> ?Int: if v.ord % 3 == 0: none else: v.ord
+fn f(v: V) -> ?Int: if v.ord % 3 == 0: None else: v.ord
 var seg = SegTree<V, ?Int>.of(min, f)
 print(seg.all ?? -1, seg.query(V(1), V(1)) ?? -1)
 var sums = SegTree<V, Int>.of(+, v => v.ord)

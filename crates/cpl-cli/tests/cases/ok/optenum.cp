@@ -6,7 +6,7 @@ enum Op:
     Add(x: Int)
     Neg
 
-var plan: [I]?Op = none
+var plan: [I]?Op = None
 for i in I:
     if i.idx % 3 == 0: plan[i] = Add(i.idx)
     elif i.idx % 3 == 1: plan[i] = Neg
@@ -16,4 +16,4 @@ for i in I:
         match op:
             Add(x) => v += x
             Neg => v = -v
-print(v, count(plan[i] == none for i in I))
+print(v, count(plan[i] == None for i in I))

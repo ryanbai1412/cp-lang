@@ -6,7 +6,7 @@ struct Paths:
 
 fn walk(k: Int, steps: List<Int>) -> Paths:
     var dist: [V]Int = 0
-    var back: [V]?(from: V, step: Int) = none
+    var back: [V]?(from: V, step: Int) = None
     for v in V:
         dist[v] = k * v.to_idx
         back[v] = (from: v, step: steps[v.to_idx])

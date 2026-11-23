@@ -6,11 +6,11 @@ fn total(n: Int, end: ?List<Int>) -> Int:
         if let e = end: s += e[i % e.len]
     s
 
-var best: ?List<Int> = some([1])
+var best: ?List<Int> = Some([1])
 
 fn swap_best() -> Int:
     if let e = best:
-        best = some([2, 3, 4])
+        best = Some([2, 3, 4])
         return e.len
     0
 
@@ -23,15 +23,15 @@ fn drain(var stack: List<(dies: Int, val: Int)>) -> Int:
         s += top.val
     s
 
-var rows: List<?List<Int>> = [some([5, 6]), none, some([7])]
+var rows: List<?List<Int>> = [Some([5, 6]), None, Some([7])]
 
 fn bump(r: Int) -> Int:
     if let row = rows[r]:
-        rows[r] = some([0])
+        rows[r] = Some([0])
         return row[0]
     -1
 
-print(total(5, some([1, 2, 3])), total(3, none))
+print(total(5, Some([1, 2, 3])), total(3, None))
 print(swap_best(), best!.len)
 print(drain([(dies: 2, val: 10), (dies: 1, val: 3)]))
 print(bump(0), bump(1), bump(2), rows[0]!.len)

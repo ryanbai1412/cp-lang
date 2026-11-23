@@ -120,7 +120,7 @@ impl<'a> Lowerer<'a> {
                         span,
                         "can't tell which optional this `none` is",
                     );
-                    self.help("say the type where it is stored: `let best: ?Int = none`");
+                    self.help("say the type where it is stored: `let best: ?Int = None`");
                     self.err_expr(span)
                 }
             },

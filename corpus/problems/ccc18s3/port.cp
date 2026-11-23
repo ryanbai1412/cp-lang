@@ -33,7 +33,7 @@ for cam in cells():  // WISH L5: `for cam in Cell` over a product domain
             var at: ?Cell = cam  // WISH L3: for q in cam.ray(d).take_while(q => g[q] != 'W')
             while let q = at:
                 if g[q] == 'W': break
-                if belt(g[q]) == none: seen[q] = true
+                if belt(g[q]) == None: seen[q] = true
                 at = step(q, d)
 
 // Zero-one search: riding a conveyor is free, a step off any other cell costs one.
@@ -54,8 +54,8 @@ while near.len > 0 or far.len > 0:
         done[p] = true
         let here = dist[p]!
         let ride = belt(g[p])
-        let cost = if ride == none: 1 else: 0
-        let moves = if ride == none: DIRS else: [ride!]
+        let cost = if ride == None: 1 else: 0
+        let moves = if ride == None: DIRS else: [ride!]
         for d in moves:
             if let q = step(
                 p,

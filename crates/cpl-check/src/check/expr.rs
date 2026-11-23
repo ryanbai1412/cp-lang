@@ -40,8 +40,16 @@ impl<'a> Checker<'a> {
             ExprKind::Float(_) => Ty::Float,
             ExprKind::Char(_) => Ty::Char,
             ExprKind::Bool(_) => Ty::Bool,
-            ExprKind::None if self.local("none").is_some() => self.name_ty("none", expr.span),
-            ExprKind::None => Ty::Unknown,
+            ExprKind::None
+                if self.text(expr.span) == "none"
+                    && (self.local("none").is_some() || self.global("none").is_some()) =>
+            {
+                self.name_ty("none", expr.span)
+            }
+            ExprKind::None => {
+                self.old_optional_spelling(expr.span, "None");
+                Ty::Unknown
+            }
             ExprKind::Str(pieces) => {
                 for piece in pieces {
                     if let StrPiece::Expr(inner) | StrPiece::Spec(inner, _) = piece {

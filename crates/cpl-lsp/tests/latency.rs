@@ -43,7 +43,7 @@ fn program(lines: usize) -> String {
     let mut src = String::from(
         "let n: 1..=2e5 = read()\nlet m: 1..=2e5 = read()\ndomain V = 1..=n\ndomain E = 0..m\n\n\
          struct Road:\n    u, v: V\n    len: 1..=1e9\n    cost: 1..=1e9\n\n\
-         let roads: [E]Road = read()\nvar dist: [V]?Int = none\nvar deg: [V]Int = 0\nvar total = 0\n\n",
+         let roads: [E]Road = read()\nvar dist: [V]?Int = None\nvar deg: [V]Int = 0\nvar total = 0\n\n",
     );
     let mut i = 0usize;
     while src.lines().count() + 12 < lines {

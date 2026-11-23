@@ -20,7 +20,7 @@ fn done_in(minutes: Int) -> Bool:
             left.push(-by_weight[next].size)
             next += 1
         for _ in 0..minutes:
-            if left.pop() == none: break
+            if left.pop() == None: break
     while next < t:
         left.push(-by_weight[next].size)
         next += 1

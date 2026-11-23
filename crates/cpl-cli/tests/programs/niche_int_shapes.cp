@@ -7,26 +7,26 @@ var calls = 0
 fn bump() -> Int:
     calls += 1
     calls % 3
-var g: [n, n]?Int = none
+var g: [n, n]?Int = None
 var t: List<?Int> = []
 for i in 0..n:
     t.push(i * 2)
     g[i, 0] = i
     if i % 2 == 0:
-        var inner: [n]?Int = none
+        var inner: [n]?Int = None
         inner[i] = i + 100
         t.push(inner[i])
         t.push(inner[0])
-print(g[bump(), bump() - bump() + 0] ?? -1, t[bump()] ?? -1, yes(g[1 % n, 0] == none), calls, t.len)
-var late: [n]?Int = none
+print(g[bump(), bump() - bump() + 0] ?? -1, t[bump()] ?? -1, yes(g[1 % n, 0] == None), calls, t.len)
+var late: [n]?Int = None
 if n > 2:
     late[2] = 7
-print(late[n - 1] ?? -1, yes(late[0] == none))
+print(late[n - 1] ?? -1, yes(late[0] == None))
 fn work(k: Int) -> Int:
     var acc = 0
     for r in 0..k:
         var row: List<?Int> = []
-        for j in 0..=r: row.push(if j % 2 == 0: none else: j)
+        for j in 0..=r: row.push(if j % 2 == 0: None else: j)
         row[0] = r
         for j in 0..=r: acc += row[j] ?? 1
     acc

@@ -17,8 +17,8 @@ print(a)
 var b = [1, 2, 3, 4, 5]
 b[..2] = [9, 9]
 print(b)
-var opt: [0..2, 0..3]?Int = none
-let some_row: [0..3]?Int = [some(1), none, some(3)]
+var opt: [0..2, 0..3]?Int = None
+let some_row: [0..3]?Int = [Some(1), None, Some(3)]
 opt[1, ..] = some_row
 print(opt[1, 0] ?? -1, opt[1, 1] ?? -1, opt[0, 2] ?? -1)
 print("short")

@@ -41,7 +41,7 @@ fn lsp_serves_diagnostics_and_hover_over_stdio() {
         .spawn()
         .expect("cpl lsp starts");
     let text =
-        "let n: 1..=2e5 = read()\\ndomain V = 1..=n\\nvar dist: [V]?Int = none\\nprint(dist[n])\\n";
+        "let n: 1..=2e5 = read()\\ndomain V = 1..=n\\nvar dist: [V]?Int = None\\nprint(dist[n])\\n";
     let session = [
         r#"{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}"#.to_string(),
         r#"{"jsonrpc":"2.0","method":"initialized","params":{}}"#.to_string(),
@@ -1287,7 +1287,7 @@ fn max_assign_on_a_grid_or_optional_rows_says_what_to_write() {
 
     let rows = check_errors(
         "min_opt_rows",
-        "var a: [0..3]?Int = none\nvar b: [0..3]?Int = none\na min= b\nprint(a[1] ?? 0)\n",
+        "var a: [0..3]?Int = None\nvar b: [0..3]?Int = None\na min= b\nprint(a[1] ?? 0)\n",
     );
     assert!(rows.contains("a `?Int` cell may be `none`"), "{rows}");
     assert!(rows.contains("`a[i] min= b[i]`"), "{rows}");

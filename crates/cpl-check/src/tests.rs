@@ -17,7 +17,7 @@ struct Road:
     cost: 1..=1e9
 
 let roads: [E]Road = read()
-var dist: [V]?Int = none
+var dist: [V]?Int = None
 var deg: [V]Int = 0
 
 fn link(mut g: [V]List<(V, Int)>, r: Road):

@@ -1,19 +1,19 @@
 // v2.2 optionals: `+`, `-` and unary `-` pass `none` on, `min`/`max` and
 // `min=`/`max=` skip it, and `??` can leave instead of giving a default.
 let a: ?Int = 3
-let b: ?Int = none
+let b: ?Int = None
 let half: ?F64 = 0.5
 print((a + 1) ?? -1, (b + 1) ?? -1, (a - b) ?? -1, (1 - a) ?? -1, (-a) ?? 0, (-b) ?? 0)
 print((half + 1) ?? -1.0, (half - a) ?? -1.0)
 var best = 10
 best min= b
 best min= a
-var top: ?Int = none
+var top: ?Int = None
 top max= 4
 top max= b
 top max= a + 4
 print(best, top ?? -1, min(5, a), min(a, b) ?? -1, max(b, 7), max(1, b, a))
-print(yes(a == 3), yes(b == 3), yes(a != 3), yes(b == none))
+print(yes(a == 3), yes(b == 3), yes(a != 3), yes(b == None))
 
 fn first_gap(xs: List<?Int>) -> Int:
     var seen = 0
@@ -22,13 +22,13 @@ fn first_gap(xs: List<?Int>) -> Int:
         seen += v
     -1
 
-print(first_gap([1, 2, none, 4]), first_gap([1, 2]))
+print(first_gap([1, 2, None, 4]), first_gap([1, 2]))
 var stack: List<Int> = [1, 2, 3]
 var total = 0
 while true:
     let t = stack.pop() ?? break
     total += t
-let ys: List<?Int> = [1, none, 3, none]
+let ys: List<?Int> = [1, None, 3, None]
 for y in ys:
     let v = y ?? continue
     total += v * 10
@@ -39,7 +39,7 @@ var calls = 0
 fn fresh() -> Int:
     calls += 1
     calls * 100
-var slot: ?Int = none
+var slot: ?Int = None
 slot ??= fresh()
 slot ??= fresh()
 print(slot ?? -1, calls)

@@ -8,7 +8,7 @@ fn total(c: [0..=k]Int) -> Int:
 let t = total(cnt)
 let b: [V]Int = [V] v => a[v] * 2
 var seen: [V]?Int = 1
-seen.fill(none)
+seen.fill(None)
 let c0 = cnt[0]
 cnt.fill(2)
 print(b[V(1)], b[V(2)], b[V(3)], c0, t, t - 7, cnt[k], seen[V(1)], none: "none")

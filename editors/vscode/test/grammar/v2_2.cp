@@ -140,15 +140,15 @@ fn judge(sol: Interactor):
 //                                                          ^^^ constant.other.placeholder.format.cp
 
 // Tropical Optionals: ?T, ??Int, ?[V]Int, ?(Int, V), min=, max=, ??=
-var opt_a: ?Int = none
+var opt_a: ?Int = None
 //         ^ meta.type.optional.cp keyword.operator.optional.cp
 //          ^^^ support.type.builtin.cp
 var opt_b: ??Int = none
 //         ^^ meta.type.optional.cp keyword.operator.optional.cp
 //           ^^^ support.type.builtin.cp
-var opt_c: ?[V]Int = none
+var opt_c: ?[V]Int = None
 //         ^ meta.type.optional.cp keyword.operator.optional.cp
-var opt_d: [V]?(Int, V) = none
+var opt_d: [V]?(Int, V) = None
 //            ^ meta.type.optional.cp keyword.operator.optional.cp
 var opt_e: List<?V> = []
 //              ^ meta.type.optional.cp keyword.operator.optional.cp

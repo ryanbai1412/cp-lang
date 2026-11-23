@@ -49,10 +49,10 @@ var total: Z = 0
 let two = Z(2)
 for b in tree.at.rev:
     if top[b] != b: continue
-    let held = two ** cities[b] * some[b] - 1
+    let held = two ** cities[b] * Some[b] - 1
     // the sets whose highest block is b: all but those held through one child alone
     total += held - one[b]
     if let p = tree.parent(b):
-        some[top[p]] *= 1 + held / 2
+        Some[top[p]] *= 1 + held / 2
         one[top[p]] += held / 2
 print(total * two ** m)

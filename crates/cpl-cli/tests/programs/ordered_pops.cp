@@ -10,8 +10,8 @@ print(s.first!, s.last!, m.first!, m.last!)
 print(s.pop_first()!, s.pop_last()!, s.len, s)
 let (k, v) = m.pop_first()!
 print(k, v, m.pop_last()!, m.len)
-while s.pop_first() != none: m.pop_last()
-print(s.len, m.len, yes(s.first == none), yes(m.last == none))
+while s.pop_first() != None: m.pop_last()
+print(s.len, m.len, yes(s.first == None), yes(m.last == None))
 domain P = 0..70
 var b = Bitset<P>()
 b.add(P(3))

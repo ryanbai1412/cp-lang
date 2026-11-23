@@ -6,7 +6,7 @@ print(primes[Small(0)], primes[Small(1)], primes[Small(2)], sum(primes))
 struct St:
     h: [Small]Int
     k: Int
-var state: ?St = none
+var state: ?St = None
 state = St([Small] _ => 0, 1)
 state!.h[Small(1)] = 9             // writes the state in place, not a copy of it
 state!.k += 4

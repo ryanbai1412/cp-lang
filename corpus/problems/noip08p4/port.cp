@@ -23,7 +23,7 @@ for i in 0..n:
 var side: [0..n]?Int = None
 var ok = true
 for s in 0..n:
-    if side[s] != none: continue
+    if side[s] != None: continue
     side[s] = 0
     var todo: List<Int> = [s]
     while let i = todo.pop():

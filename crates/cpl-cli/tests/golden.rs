@@ -800,7 +800,7 @@ fn replay_names_what_it_needs() {
         &dir,
         &["replay", "b.cp", "--trace", "t.json", "--step", "3"],
     );
-    assert_eq!(none.status.code(), Some(EXIT_ERRORS.into()));
+    assert_eq!(None.status.code(), Some(EXIT_ERRORS.into()));
     assert!(text(&none.stderr).contains("no fn call is running at step 3"));
 }
 

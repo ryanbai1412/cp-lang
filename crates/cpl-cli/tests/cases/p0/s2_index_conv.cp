@@ -6,7 +6,7 @@ print(Int(v), v.to_idx, v)         // the label back; the 0-based position; prin
 let first = V.from_idx(0)          // -> V, trapping inverse of to_idx
 let past = V.try_from_idx(n)       // -> ?V, fallible inverse
 let neg = V.try_from_idx(-1)
-print(Int(first), Int(past == none), Int(neg == none))
+print(Int(first), Int(past == None), Int(neg == None))
 var tot = 0
 for u in V: tot += Int(u) * 10 + u.to_idx
 print(tot, Int('a'), Int(true))

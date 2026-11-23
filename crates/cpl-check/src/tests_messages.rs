@@ -267,14 +267,34 @@ fn foreign_strip_names_become_trim() {
 
 #[test]
 fn an_optional_print_says_how_to_give_none_a_text() {
-    let d = check("let x: ?Int = none\nprint(x + 1)\n");
+    let d = check("let x: ?Int = None\nprint(x + 1)\n");
     assert_eq!(d.len(), 1, "{d:?}");
     let help = d[0].help.as_deref().unwrap_or_default();
     assert!(
         help.contains("`(x + 1)!`") && help.contains("`(x + 1) ?? d`"),
         "{help}"
     );
-    let d = check("let xs: List<?Int> = [1, none]\nprint(xs)\n");
+    let d = check("let xs: List<?Int> = [1, None]\nprint(xs)\n");
     let help = d[0].help.as_deref().unwrap_or_default();
     assert!(help.contains("`print(xs, none: d)`"), "{d:?}");
+}
+
+#[test]
+fn the_old_optional_spellings_are_removed_with_a_fix_and_none_stays_a_name() {
+    let d = check(
+        "let a: ?Int = some(3)\nlet b: ?Int = none\nif let some(y) = b: print(y)\nprint(a ?? 0)\n",
+    );
+    let fixed: Vec<_> = d
+        .iter()
+        .filter(|d| d.code == cpl_diag::codes::REMOVED_SYNTAX)
+        .map(|d| d.fixes[0].edits[0].1.as_str())
+        .collect();
+    assert_eq!(fixed, ["Some", "None", "Some"], "{d:?}");
+    for named in [
+        "let none: List<Int> = []\nprint(none.len)\n",
+        "fn f(some: Int) -> Int = some + 1\nprint(f(1))\n",
+        "fn g() -> ?Int:\n    let none = 2\n    return None\nprint(g() ?? 0)\n",
+    ] {
+        assert!(check(named).is_empty(), "{named}: {:?}", check(named));
+    }
 }

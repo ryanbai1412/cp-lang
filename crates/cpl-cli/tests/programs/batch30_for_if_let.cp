@@ -1,4 +1,4 @@
-let dp: [0..4]?Int = [some(4), none, some(6), some(9)]
+let dp: [0..4]?Int = [Some(4), None, Some(6), Some(9)]
 for p in 0..4 if let cur = dp[p]:
     print(p, cur)
 for p in 0..4 if let cur = dp[p], cur > 4:
@@ -19,4 +19,4 @@ print(seen)
 fn pick(xs: List<?Int>) -> Int:
     for x in xs if let v = x, v % 2 == 0: return v
     -1
-print(pick([some(3), none, some(8)]), pick([none]))
+print(pick([Some(3), None, Some(8)]), pick([None]))

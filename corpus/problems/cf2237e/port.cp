@@ -42,9 +42,9 @@ fn solve() -> ?[I]I:
         if unused_ind[len].len != unused_val[len].len: return None
         for k in 0..unused_ind[len].len: b[unused_ind[len][k]] = Some(unused_val[len][k])
 
-    for st in I if b[st] != none:
+    for st in I if b[st] != None:
         var (i, v) = (st, b[st]!)
-        while b[a[i]] == none:
+        while b[a[i]] == None:
             (i, v) = (a[i], a[v])
             b[i] = v
         if b[a[i]] != a[v]: return None

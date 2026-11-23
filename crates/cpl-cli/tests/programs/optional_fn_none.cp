@@ -3,9 +3,9 @@
 struct Box:
     f: ?(Int -> Int)
     pub fn get(self, x: Int) -> Int:
-        if f == none: return -1
-        assert f != none
+        if f == None: return -1
+        assert f != None
         f!(x)
-let a = Box(none)
+let a = Box(None)
 let b = Box(x => x * 2)
 print(a.get(3), b.get(3))

@@ -252,16 +252,16 @@ fn the_untaken_branch_of_an_if_const_is_not_checked() {
 fn a_tested_optional_reads_as_its_value() {
     let head = "fn f(x: ?Int) -> Int:\n";
     for body in [
-        "    if x == none: return 0\n    x + 1\n",
-        "    if x != none: return x + 1\n    0\n",
-        "    if x == none or x < 0: return 0\n    x\n",
-        "    if x != none: return x! + 1\n    x ?? 0\n",
+        "    if x == None: return 0\n    x + 1\n",
+        "    if x != None: return x + 1\n    0\n",
+        "    if x == None or x < 0: return 0\n    x\n",
+        "    if x != None: return x! + 1\n    x ?? 0\n",
     ] {
         let src = format!("{head}{body}");
         assert!(codes(&src).is_empty(), "{src}\n{:?}", check(&src));
     }
     // Assigned in the code the test covers: still an optional there.
-    let src = "fn g(x: ?Int) -> Int:\n    var y = x\n    if y == none: return 0\n    y = none\n    y + 1\n";
+    let src = "fn g(x: ?Int) -> Int:\n    var y = x\n    if y == None: return 0\n    y = None\n    y + 1\n";
     assert!(!codes(src).is_empty(), "{:?}", check(src));
 }
 
@@ -554,15 +554,15 @@ fn one_variable_lent_twice_to_a_call_is_refused() {
 #[test]
 fn a_try_is_refused_where_it_is_not_always_run() {
     for source in [
-        "fn f(c: Bool, x: ?Int) -> ?Bool:\n    some(c and x? > 0)\n",
-        "fn f(c: Bool, x: ?Int) -> ?Bool:\n    some(c or 1 + x? > 0)\n",
-        "fn f(p: ?Int, x: ?Int) -> ?Int:\n    some(p ?? (1 + x?))\n",
+        "fn f(c: Bool, x: ?Int) -> ?Bool:\n    Some(c and x? > 0)\n",
+        "fn f(c: Bool, x: ?Int) -> ?Bool:\n    Some(c or 1 + x? > 0)\n",
+        "fn f(p: ?Int, x: ?Int) -> ?Int:\n    Some(p ?? (1 + x?))\n",
     ] {
         let found = codes(source);
         assert_eq!(found, ["E0309"], "{source}");
     }
     assert_eq!(
-        codes("fn f(n: Int, x: ?Int) -> ?Int:\n    var i = 0\n    while i + x? < n: i += 1\n    some(i)\n"),
+        codes("fn f(n: Int, x: ?Int) -> ?Int:\n    var i = 0\n    while i + x? < n: i += 1\n    Some(i)\n"),
         ["E0803"]
     );
 }
@@ -756,7 +756,7 @@ trait Index:
 
     let impl_src = "\
 impl<T: Add> Add for ?T:
-    fn add(a, b) -> ?T = if let x = a, y = b: x + y else: none
+    fn add(a, b) -> ?T = if let x = a, y = b: x + y else: None
 impl<T: Eq> Eq for ?T
 ";
     assert_eq!(codes(impl_src), ["E0501", "E0501"]);
@@ -777,7 +777,7 @@ fn fresh_domain_escapes_are_rejected_with_e0313() {
         // Returning a value of a local fresh domain from a function.
         "fn bad(k: Int):\n    domain Local = 0..k\n    return Local(0)\n",
         // Assigning a fresh-domain value to an outer variable.
-        "var saved: Int = 0\nif true:\n    domain Inner = 0..5\n    let v = Inner(0)\n    var outer: ?Inner = none\n    outer = v\n",
+        "var saved: Int = 0\nif true:\n    domain Inner = 0..5\n    let v = Inner(0)\n    var outer: ?Inner = None\n    outer = v\n",
         // Storing a fresh-domain value into an outer list.
         "var bag = []\nif true:\n    domain Inner = 0..5\n    bag.push(Inner(0))\n",
         // Capturing a fresh-domain value in a returned closure.

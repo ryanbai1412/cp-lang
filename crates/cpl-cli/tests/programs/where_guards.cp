@@ -7,7 +7,7 @@ print(evens)
 
 let a: ?Int = 5
 let b: ?Int = 6
-let c: ?Int = none
+let c: ?Int = None
 if let x = a and x > 3:
     print(x)
 if let x = a, y = b and x + y == 11:
@@ -21,5 +21,5 @@ var cur: ?Int = 3
 var sum_w = 0
 while let v = cur and v > 0:
     sum_w += v
-    cur = if v > 1: v - 1 else: none
+    cur = if v > 1: v - 1 else: None
 print(sum_w)

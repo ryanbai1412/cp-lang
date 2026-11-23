@@ -49,7 +49,7 @@ for i in I: insert_state(3, i)
 for i in sorted(I, by: i => -(a[i] + b[i]))[..k]: move_item(i, 3, 2)
 
 fn augment():
-    var best: ?Int = none
+    var best: ?Int = None
     var best_path: List<Int> = []
     var perm = [0, 1, 2]
     while true:
@@ -69,7 +69,7 @@ fn augment():
             else:
                 ok = false
                 break
-        if ok and cap[path.last!] > 0 and (best == none or gain > best!):
+        if ok and cap[path.last!] > 0 and (best == None or gain > best!):
             best = gain
             best_path = path.copy()
         if not next_permutation(mut perm): break

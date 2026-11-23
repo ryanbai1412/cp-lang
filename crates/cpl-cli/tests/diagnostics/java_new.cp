@@ -1,4 +1,4 @@
 struct P:
     x: Int
-let p = new P(x: 1)
+let p = P(x: 1)
 print(p.x)

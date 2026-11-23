@@ -35,8 +35,8 @@ let rail_monoid = Monoid<SegVal>(
 
 let assign_slope = Action<SegVal, ?Int>(
     id: None,
-    compose: (f, g) => if f == none: g else: f,
-    apply: (f, x, len) => if f == none: x else: SegVal(f! * x.len, max(0, f! * x.len), x.len),
+    compose: (f, g) => if f == None: g else: f,
+    apply: (f, x, len) => if f == None: x else: SegVal(f! * x.len, max(0, f! * x.len), x.len),
     over: rail_monoid,
 )
 

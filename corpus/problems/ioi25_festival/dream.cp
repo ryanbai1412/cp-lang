@@ -15,7 +15,7 @@ fn max_coupons(a0: 0..=1e9, p: [C]1..=1e9, t: [C]1..=4) -> List<C>:
     var a: Int = a0
     var free: List<C> = []
     var rest = mult.view
-    while let c = rest.first where buy(a, c) >= a:
+    while let c = rest.first and buy(a, c) >= a:
         a = buy(a, c)
         free.push(c)
         rest = rest.drop(1)

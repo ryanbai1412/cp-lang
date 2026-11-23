@@ -35,5 +35,5 @@ for (u, v) in edges:
 for u in V:
     if let x = a[u]: force(comp[u], x)
 for c in C:
-    if want[c] == none: ans *= Z(lim)
+    if want[c] == None: ans *= Z(lim)
 print(ans)

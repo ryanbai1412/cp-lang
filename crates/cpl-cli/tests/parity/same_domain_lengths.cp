@@ -5,7 +5,7 @@ fn dot<D: Index>(a: [D]Int, b: [D]Int) -> Int:
 fn add<D: Index>(mut a: [D]Int, b: [D]Int):
     for i in D: a[i] += b[i]
 fn both<D: Index>(mut a: [D]Int, mut b: [D]Int) -> ?D:
-    var at: ?D = none
+    var at: ?D = None
     for i in D:
         a[i] += b[i]
         b[i] = 0

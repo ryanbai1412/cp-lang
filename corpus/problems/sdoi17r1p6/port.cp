@@ -50,7 +50,7 @@ fn edit(f: Edit, t: Sums, len: Int) -> Sums:
     )
 
 /// `f` after `g`.
-fn then(f: Edit, g: Edit) -> Edit = if f.set != none: f else: (
+fn then(f: Edit, g: Edit) -> Edit = if f.set != None: f else: (
     set: g.set,
     dx: g.dx + f.dx,
     dy: g.dy + f.dy,

@@ -66,7 +66,7 @@ assert n >= 1 and sum(a) <= 2e5
 //            ^^^ keyword.operator.logical.and.cp
 //                ^^^ support.function.builtin.cp
 
-let u = opt ?? return (none, none)
+let u = opt ?? return (None, None)
 //          ^^ keyword.operator.coalesce.cp
 //             ^^^^^^ keyword.control.return.cp
 //                     ^^^^ constant.language.none.cp

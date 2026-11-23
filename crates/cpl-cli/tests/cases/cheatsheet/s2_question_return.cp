@@ -1,7 +1,7 @@
 // cp: 0.1 bea787c+dirty
 fn maybe(x: Int) -> ?Int:
     if x > 0: return x
-    return none
+    return None
 fn g(x: Int) -> ?Int:
     let y = maybe(x)?
     return y + 1

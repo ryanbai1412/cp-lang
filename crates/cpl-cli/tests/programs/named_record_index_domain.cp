@@ -5,7 +5,7 @@ domain A = 0..3
 domain B = 0..2
 type P = (a: A, b: B)
 type Q = (A, B)
-var named: [P]?Int = none
+var named: [P]?Int = None
 var plain: [Q]Int = 0
 var k = 0
 for a in A:
@@ -15,7 +15,7 @@ for a in A:
         k += 1
         plain[(a, b)] += named[p]!
 fn twice<S>(s: S, x: Int) -> Int:
-    var seen: [S]?Int = none
+    var seen: [S]?Int = None
     seen[s] = x
     seen[s]! * 2
 let p: P = (a: A(2), b: B(1))

@@ -4,6 +4,6 @@ struct Box:
     x: ?Int
 
 let b = Box(x: 42)
-if b.x != none:
+if b.x != None:
     let y: Int = b.x
     print(y)

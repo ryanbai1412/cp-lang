@@ -12,16 +12,16 @@ use std.dsu.{ParityDsu}
 /// O(n + m), iterative Tarjan low-link.
 pub fn two_edge_components<V, A>(adj: V -> Iter<A>) -> (domain C, comp: [V]C):
     let out = [V] v => [a for a in adj(v)]
-    var tin: [V]?Int = none
+    var tin: [V]?Int = None
     var low: [V]Int = 0
-    var cid: [V]?Int = none
+    var cid: [V]?Int = None
     var stack = List<V>()
     // (u, next arc index, parent edge id or none)
     var frames = List<(V, Int, ?Int)>()
     var (timer, k) = (0, 0)
     for root in V:
-        if tin[root] != none: continue
-        frames.push((root, 0, none))
+        if tin[root] != None: continue
+        frames.push((root, 0, None))
         while not frames.is_empty:
             let (u, i, pe) = frames.last!
             if i == 0:
@@ -33,9 +33,9 @@ pub fn two_edge_components<V, A>(adj: V -> Iter<A>) -> (domain C, comp: [V]C):
                 frames.last! = (u, i + 1, pe)
                 let a = out[u][i]
                 let eid = a.e.to_idx
-                if pe == some(eid): continue
+                if pe == Some(eid): continue
                 let v = a.to
-                if tin[v] == none:
+                if tin[v] == None:
                     frames.push((v, 0, eid))
                 else:
                     low[u] min= tin[v]!
@@ -57,7 +57,7 @@ pub fn two_edge_components<V, A>(adj: V -> Iter<A>) -> (domain C, comp: [V]C):
 /// Handles disconnected graphs and root child count. O(n + m), iterative.
 pub fn articulation_points<V, A>(adj: V -> Iter<A>) -> [V]Bool:
     let out = [V] v => [a.to for a in adj(v)]
-    var tin: [V]?Int = none
+    var tin: [V]?Int = None
     var low: [V]Int = 0
     var is_cut: [V]Bool = false
     var children: [V]Int = 0
@@ -65,8 +65,8 @@ pub fn articulation_points<V, A>(adj: V -> Iter<A>) -> [V]Bool:
     var frames = List<(V, Int, ?V)>()
     var timer = 0
     for root in V:
-        if tin[root] != none: continue
-        frames.push((root, 0, none))
+        if tin[root] != None: continue
+        frames.push((root, 0, None))
         while not frames.is_empty:
             let (u, i, p) = frames.last!
             if i == 0:
@@ -76,15 +76,15 @@ pub fn articulation_points<V, A>(adj: V -> Iter<A>) -> [V]Bool:
             if i < out[u].len:
                 frames.last! = (u, i + 1, p)
                 let v = out[u][i]
-                if p == some(v): continue
-                if tin[v] == none:
+                if p == Some(v): continue
+                if tin[v] == None:
                     children[u] += 1
                     frames.push((v, 0, u))
                 else:
                     low[u] min= tin[v]!
             else:
                 frames.pop()
-                if p == none:
+                if p == None:
                     if children[u] >= 2: is_cut[u] = true
                 else:
                     let par = p!
@@ -99,7 +99,7 @@ pub fn articulation_points<V, A>(adj: V -> Iter<A>) -> [V]Bool:
 /// every block that shares them. O(n + m), iterative Tarjan.
 pub fn biconnected_components<V, A>(adj: V -> Iter<A>) -> List<List<V>>:
     let out = [V] v => [a.to for a in adj(v)]
-    var tin: [V]?Int = none
+    var tin: [V]?Int = None
     var low: [V]Int = 0
     var stack = List<V>()
     var blocks = List<List<V>>()
@@ -107,8 +107,8 @@ pub fn biconnected_components<V, A>(adj: V -> Iter<A>) -> List<List<V>>:
     var frames = List<(V, Int, ?V)>()
     var timer = 0
     for root in V:
-        if tin[root] != none: continue
-        frames.push((root, 0, none))
+        if tin[root] != None: continue
+        frames.push((root, 0, None))
         while not frames.is_empty:
             let (u, i, p) = frames.last!
             if i == 0:
@@ -119,8 +119,8 @@ pub fn biconnected_components<V, A>(adj: V -> Iter<A>) -> List<List<V>>:
             if i < out[u].len:
                 frames.last! = (u, i + 1, p)
                 let v = out[u][i]
-                if p == some(v): continue
-                if tin[v] == none:
+                if p == Some(v): continue
+                if tin[v] == None:
                     frames.push((v, 0, u))
                 else:
                     low[u] min= tin[v]!
@@ -144,9 +144,9 @@ pub fn biconnected_components<V, A>(adj: V -> Iter<A>) -> List<List<V>>:
 /// exists, otherwise a coloring `side: [V]Bool` with `side[u] != side[v]` on
 /// every edge. O(n + m).
 pub fn two_color<V, A>(adj: V -> Iter<A>) -> ?[V]Bool:
-    var side: [V]?Bool = none
+    var side: [V]?Bool = None
     for root in V:
-        if side[root] != none: continue
+        if side[root] != None: continue
         side[root] = false
         var q = [root]
         var head = 0
@@ -156,11 +156,11 @@ pub fn two_color<V, A>(adj: V -> Iter<A>) -> ?[V]Bool:
             let next_c = not side[u]!
             for a in adj(u):
                 let v = a.to
-                if side[v] == none:
+                if side[v] == None:
                     side[v] = next_c
                     q.push(v)
                 elif side[v]! != next_c:
-                    return none
+                    return None
     [V] v => side[v]!
 
 @test

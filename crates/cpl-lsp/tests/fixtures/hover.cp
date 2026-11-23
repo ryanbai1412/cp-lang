@@ -140,12 +140,12 @@ struct Ed$0ge:
     w: Int
     used: Bool
 let e$0s: [V]Edge = [V] v => Edge(v, 0, false)
-let fl$0ag: [V]?Bool = none
+let fl$0ag: [V]?Bool = None
 let pa$0irs: [V](V, Int) = [V] v => (v, 0)
 let ad$0j: [V]List<V> = [V] v => []
 struct Ru$0ns:
     first: [V]Int
     seen: List<V>
 let na$0mes: [V](name: Str, t: 1..=1000) = [V] v => (name: "", t: 1)
-let di$0sts: [V][V]?Int = [V] u => [V] v => none
+let di$0sts: [V][V]?Int = [V] u => [V] v => None
 print(es[V.first!].to, es[V.first!].w, yes(es[V.first!].used), yes(flag[V.first!] ?? false), pairs, adj, names, dists[V.first!][V.first!] ?? 0, Runs([V] v => 0, []).seen)
