@@ -7191,3 +7191,16 @@ Other steps (`x = (x + 1) / 2`, `/=`) have no closed form and are skipped.
 Ryan on `corpus/problems/cf2096g/port.cp`, its one corpus finding. Reverse:
 delete `spec/lints/count_until/` and `rules/count_until.rs`.
 
+## 330. `read_loop` (L0563): a list read one item per step is one typed read; `lint_std_names` 151 -> 152 (2026-11-22)
+
+`var xs: List<T> = []` followed by `for _ in R:` whose body is `xs.push(read())`,
+or `let P[: T] = read()` then `xs.push(P)`, is the input format written by
+hand: the help writes `let xs: [R]T = read()`. The loop pattern must be `_`
+and the pushed value must be what was read, so `edges.push((u - 1, v - 1))`
+is not reported. `push_loop` (L0507) no longer reports a pushed `read()`, so
+the two never fire on one loop. `idiom`, `warn`, help only (the type may need
+the statement's bounds). Matching the call `read` by name is the one new
+`lint_std_names` entry; the general fix is resolving `read` through the fact
+table (PLAN.md). 13 corpus ports carry it, listed for idioms. Reverse: delete
+`spec/lints/read_loop/`, `rules/read_loop.rs` and the `push_loop` skip.
+

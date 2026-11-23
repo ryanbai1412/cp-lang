@@ -920,6 +920,9 @@ impl<'a> Taste<'a> {
             self.text(init.span),
         );
         let c = cond.map(|c| self.ntext(c.span));
+        if super::read_loop::is_read(value) {
+            return;
+        }
         if mentions(v, name) || c.is_some_and(|c| mentions(c, name)) || mentions(&it, name) {
             return;
         }

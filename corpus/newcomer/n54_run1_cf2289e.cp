@@ -2,7 +2,7 @@
 @!multitest
 let (n, d): (2..=2e5, 1..=2e5) = read()
 let m = 2 * n - 1
-var kids: List<(Int, Int)> = []  // expect: push_loop
+var kids: List<(Int, Int)> = []  // expect: read_loop
 for _ in 0..n - 1:
     let (x, y): (1..=m, 1..=m) = read()
     kids.push((x, y))

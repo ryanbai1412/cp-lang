@@ -24,6 +24,7 @@ mod mod_div;
 mod mod_reduce;
 mod pops;
 mod proven;
+mod read_loop;
 mod reverse;
 mod scopes;
 mod sentinel;
@@ -67,5 +68,6 @@ pub(crate) fn run(file: &File, config: &Config) -> Vec<Finding> {
     findings.extend(hand_loops::check(file));
     findings.extend(hand_math::check(file));
     findings.extend(count_until::check(file));
+    findings.extend(read_loop::check(file));
     findings
 }

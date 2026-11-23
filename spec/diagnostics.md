@@ -143,6 +143,7 @@ prefix_sum}, L0522 copy_sort_writeback, L0523 chmin_chmax_if, L0524 bool_ternary
 | L0560 | components_by_dfs | `for u ..: if not seen[u]: count += 1; visit(u)`: `components(adj)` |
 | L0561 | trial_division | `while d * d <= x: if x % d == 0`: `divisors(x)` / `factor(x)` from `std.math` |
 | L0562 | count_until | `while p < n: p *= 3; k += 1`: `(0..).find(k => 3 ** k >= n)!` names the smallest `k` |
+| L0563 | read_loop | `for _ in 0..k: xs.push(read())`: `let xs: [0..k]T = read()` reads them all |
 | L0601 | same_place_read_write | `a[l] += inc(mut a[l])`, `xs[0] = xs.pop()!` |
 | L0602 | chain_walked_twice | a lazy chain value consumed twice |
 | L0603 | map_recomputed | `.map(f)` view read many times by index |
