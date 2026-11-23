@@ -429,7 +429,7 @@ fn ten_million_steps_fit_the_debugging_budgets() {
         let plain = least(&mut || {
             cpl_interp::run_observed(&program, cpl_interp::Io::fixed(b""), &mut Vec::new(), None);
         });
-        // The tracer runs on the tree-walking engine: the same run, observed but not recorded.
+        // Hooks on, nothing kept: the traced VM under a filter that matches no fn.
         let observed = TraceConfig {
             source: source.into(),
             only_fn: Some("not_a_fn".into()),

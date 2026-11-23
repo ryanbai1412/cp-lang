@@ -8,6 +8,16 @@ use cpl_diag::Span;
 use cpl_ir::Ty;
 
 impl Tracer {
+    /// [`crate::observe::Observer::quiet_write`]: outside the traced fns a
+    /// write only marks its global for the next kept step.
+    pub(crate) fn quiet_write(&mut self, id: usize, depth: usize) -> bool {
+        if self.assignments || !self.visible[id] || self.recording(depth) {
+            return false;
+        }
+        self.touch(id, None);
+        true
+    }
+
     pub(super) fn raw_locals(&mut self, raw: &[(&str, i64)]) {
         let (mut names, mut ints) = (
             std::mem::take(&mut self.local_names),

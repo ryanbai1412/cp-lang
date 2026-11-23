@@ -42,6 +42,11 @@ pub(crate) trait Observer {
     fn out_of_time(&mut self) -> bool {
         false
     }
+    /// Global `id`, or a part of it, was written where no step is kept:
+    /// true when the observer has taken note and wants no view.
+    fn quiet_write(&mut self, _id: usize, _depth: usize) -> bool {
+        false
+    }
     /// Global `id` was given its first value.
     fn declared(&mut self, _id: usize, _view: &View, _at: Span) {}
     /// A cell of global `id`, at `path`, changed.
@@ -105,6 +110,9 @@ impl Observer for Tracer {
     }
     fn out_of_time(&mut self) -> bool {
         Tracer::out_of_time(self)
+    }
+    fn quiet_write(&mut self, id: usize, depth: usize) -> bool {
+        Tracer::quiet_write(self, id, depth)
     }
     fn declared(&mut self, id: usize, view: &View, at: Span) {
         Tracer::declared(self, id, view, at)
@@ -205,6 +213,16 @@ impl<O: Observer> Interp<'_, '_, O> {
         );
         self.traced(|tracer, view| tracer.changed(global, view, place.span, &path));
         self.trace_path = path;
+    }
+
+    /// A write to global `place` that the observer takes note of without
+    /// a view, as when the running fn is not traced.
+    pub(crate) fn quiet_write(&mut self, place: &Place) -> bool {
+        let depth = self.call_frames.len();
+        match (root_global(place), self.tracer.as_mut()) {
+            (Some(id), Some(tracer)) if O::ON => tracer.quiet_write(id, depth),
+            _ => false,
+        }
     }
 
     pub(crate) fn assignments(&self) -> bool {

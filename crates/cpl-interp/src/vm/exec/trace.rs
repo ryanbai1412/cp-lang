@@ -27,6 +27,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     regs_i[r as usize] = ScalarKind::unbox_val(held);
                 }
             }
+            TracePoint::Cell(place, _) | TracePoint::Assign(place) if self.quiet_write(place) => {}
             TracePoint::Cell(place, ref indices)
                 if self.trace_raw_cell(&chunk.slot_map, regs_i, regs_v, place, indices) => {}
             ref point => {
