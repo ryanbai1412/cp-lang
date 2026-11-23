@@ -18,7 +18,6 @@
 // query since `depth(u) <= max_d`), take suffix maxima of `Best` (deepest
 // vertex and deepest vertex in a different branch), and query `best_other(br)`.
 
-use std.seq.suffix_scan_in_place
 use std.tree.Centroids
 
 type Far<V> = (depth: Int, branch: V)
@@ -52,12 +51,12 @@ for round in 2..:
     var next_dist: [V]Int = 0
     for c in V:
         let piece = cd.piece(c)
-        let max_d = max(d for (_, d, _) in piece) ?? 0
+        let max_d = [d for (_, d, _) in piece].max() ?? 0
         var bests = List.filled(max_d + 1, Best<V>(none, none))
         for (u, d, br) in piece if max_budget[u] > 0 and max_budget[u] >= d:
             let idx = min(max_d, max_budget[u] - d)
             bests[idx] = merge(bests[idx], Best((d, br), none))
-        bests.suffix_scan_in_place((a, b) => merge(a, b))
+        for i in (0..bests.len - 1).rev: bests[i] = merge(bests[i], bests[i + 1])
         for (u, d, br) in piece if s[u] == '1':
             if let far = bests[d].best_other(br): next_dist[u] max= d + far
 
