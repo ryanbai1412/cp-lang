@@ -621,7 +621,10 @@ impl<'a> Parser<'a> {
         if matches!(self.peek_n(1), T::Comma | T::RParen | T::RBracket) {
             return self.power();
         }
-        if self.at(T::Star) && matches!(self.peek_n(1), T::Ident | T::LParen) {
+        if self.at(T::Star)
+            && !self.after_operator()
+            && matches!(self.peek_n(1), T::Ident | T::LParen)
+        {
             self.c_deref();
             return self.unary();
         }

@@ -318,6 +318,39 @@ impl<'a> Parser<'a> {
         );
     }
 
+    /// Whether the last token is a binary operator: `a + * b` is an
+    /// operator typed twice, not a dereference.
+    pub(super) fn after_operator(&self) -> bool {
+        self.pos.checked_sub(1).is_some_and(|i| {
+            matches!(
+                self.tokens[i].kind,
+                T::Plus
+                    | T::Minus
+                    | T::Star
+                    | T::StarStar
+                    | T::Slash
+                    | T::Percent
+                    | T::Caret
+                    | T::Amp
+                    | T::Pipe
+                    | T::Shl
+                    | T::Shr
+                    | T::EqEq
+                    | T::NotEq
+                    | T::Lt
+                    | T::LtEq
+                    | T::Gt
+                    | T::GtEq
+                    | T::Spaceship
+                    | T::And
+                    | T::Or
+                    | T::QuestionQuestion
+                    | T::DotDot
+                    | T::DotDotEq
+            )
+        })
+    }
+
     /// `print(*a)`: Python's unpacking. `print` already prints a list's
     /// items, so there the `*` just goes.
     fn python_splat(&mut self, star: Span) {
