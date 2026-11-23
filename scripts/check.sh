@@ -26,7 +26,8 @@
 #         7. the site's snippet gate (node web/scripts/gate.mjs): every
 #            program on the site is at least at its declared status,
 #            and the trace viewer's node tests (tools/trace/*.test.cjs)
-# --full  8. the prover's products fuzzer
+# --full  8. the prover's products fuzzer, and 100 random programs
+#            (scripts/gen-programs.py) against an independent model
 #         9. the budget tests and the front-end latency test, each alone
 #        10. the WebAssembly build and crates/cpl-wasm/tests/smoke.mjs
 #            and scripts/site-check.sh: the site build (with the
@@ -651,6 +652,10 @@ if [ "$mode" = full ]; then
 
     step "cargo test: the prover fuzzer"
     cargo test -p cpl-prover --test fuzz -- --exact products_and_variable_divisors_are_never_decided_wrongly
+
+    step "random programs: interpreter, C++ and sanitized C++ match an independent model (conformance/R6)"
+    python3 scripts/gen-programs.py -n 100 --seed 1 --jobs "$(nproc)" --out "$tmp/gen" --avoid rev-pieces \
+        --cxxflags '-O1 -g -fsanitize=address,undefined -D_GLIBCXX_DEBUG'
 
     step "cargo test: every port compiled with every judge profile's flags"
     cargo test -p cpl-cli --test judges -- --ignored --exact every_port_compiles_with_every_judges_flags
