@@ -591,6 +591,20 @@ pub(super) fn typed_read<'a>(
     if let Some(read) = generic(init) {
         return Some((Cow::Borrowed(read), None));
     }
+    if let Some((lo, hi, inclusive)) = read_size(init) {
+        let range = TypeKind::Range {
+            lo: Some(Box::new(lo.clone())),
+            hi: Some(Box::new(hi.clone())),
+            inclusive,
+        };
+        return Some((
+            Cow::Owned(Type {
+                kind: range,
+                span: init.span,
+            }),
+            None,
+        ));
+    }
     if let ExprKind::Table {
         domains,
         params,

@@ -1222,3 +1222,18 @@ print(n + k + w.len + r)
         assert_eq!(tokens.len(), 3 + (1 << k), "{}", case.render());
     }
 }
+
+#[test]
+fn a_read_of_a_range_is_a_field_of_that_range() {
+    let src = "let n: 1..=5 = read()\nlet k = read(0..10)\nprint(n + k)\n";
+    let spec = InputSpec::from_source(src).unwrap();
+    for seed in 0..30 {
+        let case = generate(&spec, &mut Rng::new(seed), Size::Full).unwrap();
+        let tokens: Vec<i128> = case
+            .render()
+            .split_whitespace()
+            .map(|t| t.parse().unwrap())
+            .collect();
+        assert!(matches!(tokens[..], [n, k] if (1..=5).contains(&n) && (0..10).contains(&k)));
+    }
+}

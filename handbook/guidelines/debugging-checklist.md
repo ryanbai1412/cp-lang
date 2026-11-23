@@ -100,6 +100,18 @@ configuration of it, not a new entry point.
 Check: process: review of new `pub fn` in `crates/cpl-interp/src/lib.rs`
 and `checkpoint.rs`.
 
+## R10: A generated input is one the program reads
+
+Every case stress writes for a program is accepted by that program's own
+`read()`s: no read runs out of input, meets the wrong token or gets a value
+outside its declared range. A case the program rejects tests the reader,
+not the solution, and stress reports it as a bug the contestant never wrote.
+
+Example: `let k = read(0..10)` is a field of `0..10`, not skipped, so the
+case has a value for `k`.
+
+Check: `crates/cpl-cli/tests/stress_inputs.rs`.
+
 ## Changes
 
 - 2026-11-23: first version.
