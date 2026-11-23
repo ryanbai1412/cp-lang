@@ -406,6 +406,10 @@ operations support it:
 | huge index range | `SegTree(op, over: lo..hi)` | O(1) | O(log range) | nodes made on first touch |
 | chmin/chmax with sums | `BeatsSegTree(a)` | O(n) | O(log² n) amortized | its own structure |
 
+A tree built with `act:` and no fold op reads one point at a time: `st[k]` is
+`a[k]` with every `apply` whose range covers `k` composed onto it, in the order
+the applies were made (`std-segtree/dual-add-point-read.cp`).
+
 **What merges:**
 - `LazySegTree` and `DualSegTree` become `SegTree` with `act:`.
 - `DisjointSparseTable` stays its own type: `SparseTable` needs `Idempotent`.
