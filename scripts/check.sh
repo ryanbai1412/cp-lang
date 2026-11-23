@@ -609,7 +609,7 @@ step "conformance prelude: table fns of spec/lib chapters are prelude names (R11
 uv run scripts/conformance-prelude.py --check || fail "prelude gate failed; see above"
 
 step "std containers print, walk and have is_empty (scripts/std-trait-matrix.py)"
-uv run --quiet python scripts/std-trait-matrix.py --max 79 \
+uv run --quiet python scripts/std-trait-matrix.py --max 76 \
     || fail "a std container lacks a common trait; see above"
 
 step "std docs follow the std-docs checklist (scripts/std-docs-lint.py)"

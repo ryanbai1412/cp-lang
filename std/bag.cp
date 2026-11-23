@@ -733,6 +733,26 @@ pub struct SortedBag<K>:
             yield (key: nodes[c.id].key, count: nodes[c.id].cnt)
             cur = self.prev_cursor(c)
 
+    /// Visit every element, duplicates included, in ascending order; `for x in b` uses this.
+    ///
+    /// cost: \(O(1)\) amortized per step
+    /// empty: yields nothing
+    /// order: ascending, each key `count` times
+    /// traps: never
+    /// example: `SortedBag.of([5, 2, 2]).each().collect() == [2, 2, 5]`
+    pub fn each(self) -> yields K:
+        for k in self.range_each(None, false, None, false): yield k
+
+    /// Visit every element, duplicates included, in descending order.
+    ///
+    /// cost: \(O(1)\) amortized per step
+    /// empty: yields nothing
+    /// order: descending, each key `count` times
+    /// traps: never
+    /// example: `SortedBag.of([5, 2, 2]).each_rev().collect() == [5, 2, 2]`
+    pub fn each_rev(self) -> yields K:
+        for k in self.range_each_rev(None, false, None, false): yield k
+
     /// Every element in ascending order, repeated by multiplicity.
     ///
     /// cost: \(O(n)\)
@@ -2497,3 +2517,19 @@ pub struct SortedRange<K>:
     /// traps: never
     /// example: `SortedSet.of([1, 3, 7]).range(..7).rev.collect() == [3, 1]`
     @get pub fn rev(self) -> yields K = todo
+
+impl Show for SortedBag<K>:
+    fn show(b):
+        var out = ""
+        for x in b.each():
+            if not out.is_empty: out += " "
+            out += "{x}"
+        out
+
+impl Show for SortedSet<K>:
+    fn show(s):
+        var out = ""
+        for x in s.each():
+            if not out.is_empty: out += " "
+            out += "{x}"
+        out
