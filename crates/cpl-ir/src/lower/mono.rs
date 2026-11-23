@@ -183,7 +183,6 @@ impl<'a> Lowerer<'a> {
     /// Collects the transitive module graph starting from the root `Analysis` (`ModId = 0`).
     pub(super) fn load_modules(&mut self, root: &'a Analysis) {
         self.mods.push(root);
-        self.mod_names.push(String::new());
         self.mod_syms.push(HashMap::new());
         let mut path_to_mod: HashMap<String, ModId> = HashMap::new();
         let mut queue = vec![0usize];
@@ -199,7 +198,6 @@ impl<'a> Lowerer<'a> {
                     // SAFETY: imported.analysis lives inside `root`'s Arc tree for lifetime `'a`.
                     let ptr: *const Analysis = &*imported.analysis;
                     self.mods.push(unsafe { &*ptr });
-                    self.mod_names.push(imported.name.clone());
                     self.mod_syms.push(HashMap::new());
                     match imported.name.as_str() {
                         "std.mod" => self.std_mod = Some(id),

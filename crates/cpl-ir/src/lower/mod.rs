@@ -19,6 +19,7 @@ mod mono;
 mod names;
 mod prefix;
 mod range;
+mod report;
 mod stmt;
 mod typo;
 mod views;
@@ -644,8 +645,6 @@ pub(super) struct SumEnumInfo {
 struct Lowerer<'a> {
     mods: Vec<&'a Analysis>,
     path_to_mod: HashMap<String, ModId>,
-    /// Each module's name (`std.strings`), by `ModId`; the root's is empty.
-    mod_names: Vec<String>,
     /// The module `std.mod`, when the program uses it.
     std_mod: Option<ModId>,
     io_mod: Option<ModId>,
@@ -819,7 +818,6 @@ impl<'a> Lowerer<'a> {
         Lowerer {
             mods: Vec::new(),
             path_to_mod: HashMap::new(),
-            mod_names: Vec::new(),
             std_mod: None,
             io_mod: None,
             mod_syms: Vec::new(),
@@ -927,67 +925,12 @@ impl<'a> Lowerer<'a> {
 
     // ----- reporting -----
 
-    /// Where an error at `span` is shown. One inside library code is
-    /// shown at the user's expression that asked for that code, since the
-    /// file on screen is the user's.
-    fn span(&self, span: Span) -> Span {
-        if self.cur_mod == 0 {
-            span.shift(self.offset)
-        } else {
-            self.asked_at
-        }
-    }
-
     /// The checker accepted every name, so a name lowering does not know
     /// after an earlier lowering error lost its binding to that error.
     fn reported_an_error(&self) -> bool {
         self.diags
             .iter()
             .any(|d| d.severity == cpl_diag::Severity::Error)
-    }
-
-    fn error(&mut self, code: cpl_diag::Code, span: Span, message: impl Into<String>) {
-        let at = span.shift(self.offset);
-        let span = self.span(span);
-        let mut message = message.into();
-        let mut note = None;
-        if self.cur_mod != 0 {
-            if let Some((module, line, inside)) = self.library_place(at) {
-                message = format!(
-                    "`{inside}` (`{module}`) does not work on the types it was given here: {message}"
-                );
-                note = Some(format!(
-                    "{}.cp:{line}: inside `{inside}`; the gap is in `{module}`, not in your code",
-                    module.replace('.', "/")
-                ));
-            }
-            self.in_library.insert(message.clone());
-        }
-        let diag = Diagnostic::error(code, span, message);
-        self.diags.push(match note {
-            Some(note) => diag.with_note(note),
-            None => diag,
-        });
-    }
-
-    /// The module, one-based line and innermost declaration holding `at`,
-    /// a position in the current library module.
-    fn library_place(&self, at: Span) -> Option<(String, u32, String)> {
-        let module = self.mod_names.get(self.cur_mod)?;
-        let analysis = self.mods.get(self.cur_mod)?;
-        let item = analysis
-            .items
-            .iter()
-            .find(|item| item.span.touches(at.start))?;
-        let inside = item
-            .syntax
-            .decls
-            .iter()
-            .filter(|d| d.span.shift(item.offset).touches(at.start))
-            .min_by_key(|d| (d.kind != cpl_check::DeclKind::Fn, d.span.end - d.span.start))
-            .or(item.syntax.decls.first())?;
-        let line = analysis.lines.line_of(at.start) + 1;
-        Some((module.clone(), line, inside.name.clone()))
     }
 
     /// The fns that cross to the judge's grader: those it supplies (no
