@@ -892,12 +892,10 @@ pub struct MatPow<T>:
     pub fn new(a: Mat<T>, max_exp: Int) -> MatPow<T>:
         assert a.rows == a.cols and max_exp >= 0
         var pw = List<Mat<T>>()
-        var cur = a
         var k = 1
         while k <= max_exp:
-            pw.push(cur)
+            pw.push(if pw.len == 0: copy(a) else: pw.last! * pw.last!)
             k *= 2
-            if k <= max_exp: cur = pw.last! * pw.last!
         MatPow(a.rows, pw)
 
     /// Compute `a^e * v` for `0 <= e <= max_exp`, as matrix-vector products with the stored powers

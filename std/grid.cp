@@ -147,7 +147,7 @@ pub struct Dir8(k: Int):
 /// example: `domain R = 0..3; domain C = 0..3; (R(1), C(2)).up == Some((R(0), C(2)))`
 /// example: `domain R = 0..3; domain C = 0..3; (R(0), C(2)).up == None`
 @get pub fn up<R, C>(self: (R, C)) -> ?(R, C):
-    if let r = R.at(self.0 - 1): (r, self.1) else: None
+    if let r = self.0.prev: (r, self.1) else: None
 
 /// The cell one row down from `self`, or `None` on the bottom row. A getter, like `r.next`.
 ///
@@ -156,7 +156,7 @@ pub struct Dir8(k: Int):
 /// example: `domain R = 0..3; domain C = 0..3; (R(1), C(2)).down == Some((R(2), C(2)))`
 /// example: `domain R = 0..3; domain C = 0..3; (R(2), C(2)).down == None`
 @get pub fn down<R, C>(self: (R, C)) -> ?(R, C):
-    if let r = R.at(self.0 + 1): (r, self.1) else: None
+    if let r = self.0.next: (r, self.1) else: None
 
 /// The cell one column left of `self`, or `None` in the first column. A getter, like `r.prev`.
 ///
@@ -165,7 +165,7 @@ pub struct Dir8(k: Int):
 /// example: `domain R = 0..3; domain C = 0..3; (R(1), C(2)).left == Some((R(1), C(1)))`
 /// example: `domain R = 0..3; domain C = 0..3; (R(1), C(0)).left == None`
 @get pub fn left<R, C>(self: (R, C)) -> ?(R, C):
-    if let c = C.at(self.1 - 1): (self.0, c) else: None
+    if let c = self.1.prev: (self.0, c) else: None
 
 /// The cell one column right of `self`, or `None` in the last column. A getter, like `r.next`.
 ///
@@ -174,7 +174,7 @@ pub struct Dir8(k: Int):
 /// example: `domain R = 0..3; domain C = 0..3; (R(1), C(1)).right == Some((R(1), C(2)))`
 /// example: `domain R = 0..3; domain C = 0..3; (R(1), C(2)).right == None`
 @get pub fn right<R, C>(self: (R, C)) -> ?(R, C):
-    if let c = C.at(self.1 + 1): (self.0, c) else: None
+    if let c = self.1.next: (self.0, c) else: None
 
 /// The cell one step from `self` in direction `d` (a `Dir4` or a `Dir8`), or `None` when that
 /// step leaves the grid `(R, C)`.
