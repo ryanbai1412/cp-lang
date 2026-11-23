@@ -21,7 +21,7 @@ Due about 09:30 PST 11/23, on edge; checkpoints every 2 h in the [worklog](workl
 - [x] Traps name the rule, the place and the locals (all 12 R-codes in `runtime_errors.rs`).
 - [ ] Stress guide (`web/content/docs/guides/stress.mdx`, site's) teaches the whole loop including the rerun; its examples run (they do today).
 
-Deferred: the +20% trace target and replay (snapshot/restore), the `crates/cpl-trace` split, the VM in the browser, `gen<T>` generators beyond a row, DAP and viewer polish. They continue in parallel only after the blockers; what works stays working.
+Milestone 1.5, started the moment the loop above works on all 3 OSes and in all 3 editors: replay (time travel, the +20% trace target) per [design/trace-replay.md](design/trace-replay.md), needing compiler's Interp snapshot/restore. Deferred past both: the `crates/cpl-trace` split, the VM in the browser, `gen<T>` generators beyond a row, DAP and viewer polish. What works stays working.
 
 Next:
 1. The loop tests on macOS and Windows: run them in CI there (infra's workflow) and fix what breaks in `cpl-stress`.

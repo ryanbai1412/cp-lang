@@ -11,7 +11,8 @@ Milestone 1 ([README](README.md#milestone-1)) sets the order, in hours: due abou
 4. **VS Code and JetBrains.** JetBrains: the `cpl` run configuration with `stress` then `test`. VS Code: Stress lens, failing-case overlay, Run All Samples over `<file>.tests/`, v0.3 wording (requested in tools' worklog).
 5. **The guide.** `stress.mdx` gains the rerun step (site's file: request); its examples stay runnable.
 6. **Keep it green.** Seeded bugs and trap evidence stay in the gate.
-Deferred: workstream 4 (trace speed, replay, the split, the VM on wasm) and workstream 6 (generators beyond a row); they go on in parallel only behind the blockers. Workstream 5 only for regressions.
+7. **Milestone 1.5: replay.** Starts as soon as items 2 to 4 are done: record lines on the untraced build with snapshots, rebuild a window by restore and replay (workstream 4, `design/trace-replay.md`); the +20% target is its bar. Needs compiler's Interp snapshot/restore.
+Deferred past both: the rest of workstream 4 (the split, the VM on wasm) and workstream 6 (generators beyond a row). Workstream 5 only for regressions.
 
 ## Workstreams
 
