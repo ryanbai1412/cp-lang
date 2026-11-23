@@ -1,8 +1,9 @@
-//! `compound_self_ref` (L0210): `x = x + e` is `x += e`, one place written
-//! once instead of two copies that must agree.
+//! `compound_self_ref` (L0210): `x = x + e` is `x += e`, and `chmin_chmax_if`
+//! (L0523): `x = max(x, e)` is `x max= e`; one place written once instead of
+//! two copies that must agree.
 
 use crate::walk::{walk_expr, Visitor};
-use crate::{File, Finding, COMPOUND_SELF_REF};
+use crate::{File, Finding, CHMIN_CHMAX_IF, COMPOUND_SELF_REF};
 use cpl_diag::{Diagnostic, Fix, Span};
 use cpl_syntax::ast::{AssignOp, BinOp, Expr, ExprKind, Stmt, StmtKind};
 
@@ -23,7 +24,7 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
                 return;
             };
             let ExprKind::Binary { op, lhs, rhs, .. } = &value.kind else {
-                return;
+                return self.min_max(target, value);
             };
             // R11: a compound assignment runs its right side before the
             // target's indices, so the rewrite is exact only when neither
@@ -54,6 +55,57 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
             });
             self.out.push(Finding {
                 lint: &COMPOUND_SELF_REF,
+                diag,
+            });
+        }
+    }
+    impl Assigns<'_> {
+        /// `x = max(x, e)` or `x = min(e, x)`.
+        fn min_max(&mut self, target: &Expr, value: &Expr) {
+            let ExprKind::Call { callee, args } = &value.kind else {
+                return;
+            };
+            let ExprKind::Name(f) = &callee.kind else {
+                return;
+            };
+            let ([a, b], "max" | "min") = (&args[..], f.as_str()) else {
+                return;
+            };
+            if [a, b].iter().any(|arg| arg.name.is_some() || arg.mutable) || calls(target) {
+                return;
+            }
+            let text = |e: &Expr| e.span.shift(self.base).text(self.src);
+            let squash = |s: &str| s.split_whitespace().collect::<String>();
+            let place = squash(text(target));
+            let other = match (
+                squash(text(&a.value)) == place,
+                squash(text(&b.value)) == place,
+            ) {
+                (true, false) => &b.value,
+                (false, true) => &a.value,
+                _ => return,
+            };
+            if calls(other) {
+                return;
+            }
+            let place = text(target);
+            let span = Span::new(target.span.start, value.span.end).shift(self.base);
+            let rewrite = format!("{place} {f}= {}", text(other));
+            let mut diag = Diagnostic::warning(
+                CHMIN_CHMAX_IF.code,
+                span,
+                format!("`{place}` keeps the {f} of itself and a value; this is `{f}=`"),
+            )
+            .with_help(format!("write `{rewrite}`"));
+            diag.fixes.push(Fix {
+                title: format!("use `{f}=`"),
+                edits: vec![(
+                    Span::new(target.span.end, value.span.end).shift(self.base),
+                    format!(" {f}= {}", text(other)),
+                )],
+            });
+            self.out.push(Finding {
+                lint: &CHMIN_CHMAX_IF,
                 diag,
             });
         }

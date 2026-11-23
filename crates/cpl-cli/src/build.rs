@@ -203,7 +203,7 @@ pub(crate) fn take_judge<'a>(
 
 /// What a judge build checks unless `--checks` says: hand-written C++'s
 /// checks, since on the judge a crash and a wrong answer cost the same
-/// (decisions.md 283).
+/// (decisions.md 299).
 pub(crate) const JUDGE_CHECKS: cpl_codegen::Checks = cpl_codegen::Checks::None;
 
 /// `--checks <level>`, taken out of `rest`. Where it is absent,

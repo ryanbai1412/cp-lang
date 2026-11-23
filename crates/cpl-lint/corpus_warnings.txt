@@ -4,12 +4,12 @@ spec L0204 1
 spec L0207 6
 spec L0209 14
 spec L0412 3
-spec L0414 14
+spec L0414 8
 spec L0503 1
-spec L0504 1
 spec L0506 1
 spec L0509 1
 spec L0512 1
+spec L0523 4
 std L0201 12
 std L0204 13
 std L0206 3
@@ -28,3 +28,4 @@ std L0508 6
 std L0509 6
 std L0516 2
 std L0520 19
+std L0523 13

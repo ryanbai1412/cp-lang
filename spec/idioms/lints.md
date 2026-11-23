@@ -712,7 +712,7 @@ One sub-family per module. Each says: you rebuilt something the library has.
 
 | Lint | Catches | Write instead | Tier | P | Engine | Status |
 |---|---|---|---|---|---|---|
-| chmin_chmax_if | `if x < best: best = x` or `best = min(best, x)` (from C++ `chmin`/`ckmin`) | `best min= x` / `best max= x` | fix | #13 | syn | |
+| chmin_chmax_if | `if x < best: best = x` or `best = min(best, x)` (from C++ `chmin`/`ckmin`) | `best min= x` / `best max= x` | fix | #13 | syn | ✓chmin_chmax_if |
 | peek_then_pop | `let x = s.last!; s.pop()` (from C++ `.back(); .pop_back()` / `.top(); .pop()`) | `let x = s.pop()!` (same for `Deque.pop_front()`, `Heap.pop()`) | fix | #13 | syn | |
 | shift_mul_div_two | `x << 1` or `x >> 1` for doubling/halving a non-bitmask integer | `x * 2` or `x / 2` | fix? | #13 | ty | |
 | xor_one_bool_toggle | `var turn = 0; ...; turn ^= 1` (C++ parity toggle for 2-state flag) | `var turn = false; ...; turn = not turn` | fix? | #3 | flow | |

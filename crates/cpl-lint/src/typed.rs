@@ -5,11 +5,15 @@
 //! (L0414) is dropped where the checker proves the index by its type.
 
 use crate::facts::Facts;
-use crate::{COMPOUND_SELF_REF, UNPROVEN_LIST_INDEX};
+use crate::{CHMIN_CHMAX_IF, COMPOUND_SELF_REF, UNPROVEN_LIST_INDEX};
 use cpl_check::{Analysis, Ty};
 use cpl_diag::{Diagnostic, Span};
 
-const TYPED: [cpl_diag::Code; 2] = [COMPOUND_SELF_REF.code, UNPROVEN_LIST_INDEX.code];
+const TYPED: [cpl_diag::Code; 3] = [
+    COMPOUND_SELF_REF.code,
+    CHMIN_CHMAX_IF.code,
+    UNPROVEN_LIST_INDEX.code,
+];
 
 /// `diags` less the findings `analysis`'s facts rule out.
 pub fn refine_with_analysis(diags: &mut Vec<Diagnostic>, analysis: &Analysis) {
@@ -26,13 +30,13 @@ pub(crate) fn refine(diags: &mut Vec<Diagnostic>, src: &str) {
     }
     match Facts::check("<lint>.cp", src) {
         Some(facts) => refine_with_facts(diags, &facts),
-        None => diags.retain(|d| d.code != COMPOUND_SELF_REF.code),
+        None => diags.retain(|d| d.code != COMPOUND_SELF_REF.code && d.code != CHMIN_CHMAX_IF.code),
     }
 }
 
 pub(crate) fn refine_with_facts(diags: &mut Vec<Diagnostic>, facts: &Facts) {
     diags.retain(|d| match d.code {
-        c if c == COMPOUND_SELF_REF.code => plain_place(d, facts),
+        c if c == COMPOUND_SELF_REF.code || c == CHMIN_CHMAX_IF.code => plain_place(d, facts),
         c if c == UNPROVEN_LIST_INDEX.code => facts.typed_index(d.span).is_none(),
         _ => true,
     });
