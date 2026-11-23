@@ -98,9 +98,11 @@ impl<'p, 'f> Compiler<'p, 'f> {
     }
 
     pub(super) fn compile_stmt(&mut self, stmt: &'p Stmt) {
+        let start = self.ops.len();
         if !self.traced || !self.compile_traced_stmt(stmt) {
             self.compile_untraced_stmt(stmt);
         }
+        self.note_call_site(start, stmt);
     }
 
     /// A write to `place` the VM reports with raw values: a global, or a

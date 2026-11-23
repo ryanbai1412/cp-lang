@@ -25,8 +25,8 @@ mod exec;
 mod helpers;
 mod ir;
 
-pub(crate) use helpers::read_slot;
 pub(crate) use helpers::VmStats;
+pub(crate) use helpers::{read_slot, undeclared};
 pub(crate) use ir::CompiledProgram;
 #[cfg(test)]
 pub(crate) use ir::Op;

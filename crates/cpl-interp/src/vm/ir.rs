@@ -1532,6 +1532,17 @@ pub(crate) struct BackEdge {
     pub loops: Vec<LoopReg>,
 }
 
+/// The op of `call`, the one effect of statement `stmt` before its
+/// body, where a checkpoint taken inside the callee can stand: the loops
+/// around it, outermost first.
+#[derive(Clone, Debug)]
+pub(crate) struct CallSite<'p> {
+    pub pc: u32,
+    pub loops: Vec<LoopReg>,
+    pub stmt: &'p Stmt,
+    pub call: &'p Expr,
+}
+
 pub(crate) struct Chunk<'p> {
     pub ops: Vec<Op>,
     pub spans: Vec<Span>,
@@ -1558,6 +1569,7 @@ pub(crate) struct Chunk<'p> {
     pub needs_stack: bool,
     pub has_by_ref_closure: bool,
     pub back_edges: Vec<BackEdge>,
+    pub call_sites: Vec<CallSite<'p>>,
 }
 
 #[derive(Clone, Copy)]

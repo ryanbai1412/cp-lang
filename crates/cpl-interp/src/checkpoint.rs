@@ -1,26 +1,36 @@
-//! Checkpoints: the state of a run at a round of one of main's loops, taken
-//! on the untraced run, and a run that starts again from one.
+//! Checkpoints: the state of a run at a round of a loop, taken on the
+//! untraced run, and a run that starts again from one.
 //!
-//! Every value is shared and copied on write, so a checkpoint copies main's
-//! locals and the globals, not the heap. A run from a checkpoint runs on the
-//! tree-walker, traced or not, and reads and prints exactly what the whole
-//! run did from there on. Checkpoints are taken only at a jump back to the
-//! top of a `while` or a `for v in lo..hi` of main's whose enclosing loops
-//! are the same kinds; a run spent inside one call takes none until it
-//! returns (an explicit VM frame stack would lift that).
+//! A checkpoint holds each call under way as a frame, outermost (main)
+//! first: its locals, the loops it is in, and the statement whose call it
+//! waits on. Every value is shared and copied on write, so a checkpoint
+//! copies locals and globals, not the heap. A run from a checkpoint runs on
+//! the tree-walker, traced or not, and reads and prints exactly what the
+//! whole run did from there on.
+//!
+//! The VM keeps the calls under way on the Rust stack; while checkpoints are
+//! on, each VM call also pushes a [`Suspended`] record of its caller, so a
+//! checkpoint can read every frame. A checkpoint is taken only at a jump
+//! back to the top of a `while` or a `for v in lo..hi` whose enclosing loops
+//! are the same kinds, and only when every call under way is a VM call that
+//! is the whole value of a `let`, an assignment to a local, a `return` or an
+//! expression statement, to a fn without `mut` parameters.
 
 use crate::observe::{Observer, Unobserved};
 use crate::value::Value;
+use crate::vm::{Chunk, CompiledProgram, LoopReg};
 use crate::{trace, trap, Flow, Interp, Io, Limits, Observed, Res};
 use cpl_diag::Span;
-use cpl_ir::{Block, Iter, LoopId, Program, Stmt};
+use cpl_ir::{Block, FnId, Iter, LoopId, Program, Stmt};
 use std::io::Write;
+use std::rc::Rc;
 
-/// Where one of main's loops was, outermost first.
+/// Where one of a frame's loops was, outermost first.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum LoopAt {
     While(LoopId),
-    /// In the round with `v`; for the innermost loop, the round about to start.
+    /// In the round with `v`; for the innermost loop of the innermost frame,
+    /// the round about to start.
     Range {
         id: LoopId,
         v: i64,
@@ -36,7 +46,23 @@ impl LoopAt {
     }
 }
 
-/// A run's state at the start of a round of one of main's loops.
+/// One call under way at a checkpoint.
+#[derive(Clone)]
+struct FrameAt {
+    /// `None` for main.
+    fn_id: Option<FnId>,
+    locals: Vec<Value>,
+    loops: Vec<LoopAt>,
+    /// The statement, then the call in it, the frame waits on, by address;
+    /// `None` for the innermost frame.
+    site: Option<(usize, usize)>,
+    /// Where the frame was called from.
+    span: Span,
+    /// How many saved domains there were before the call.
+    doms: usize,
+}
+
+/// A run's state at the start of a round of a loop.
 #[derive(Clone)]
 pub struct Checkpoint {
     /// Loop rounds and calls before it: the run's step clock.
@@ -45,13 +71,63 @@ pub struct Checkpoint {
     pub printed: u64,
     /// Trace steps before it, on a counted run ([`count_on_this_thread`]).
     pub steps: usize,
-    loops: Vec<LoopAt>,
-    stack: Vec<Value>,
+    /// How many calls were under way.
+    depth: usize,
+    /// The innermost frame, and up from it the frames that called it.
+    frames: Rc<Chain>,
     globals: Vec<Value>,
     domains: Vec<(i64, i64)>,
+    saved_domains: Vec<(cpl_ir::DomainId, (i64, i64))>,
     input_at: usize,
     rng_state: u64,
     queries: i64,
+    /// Under `@!multitest`: the case, and how many are left after it.
+    case: Option<(u64, Option<i64>)>,
+}
+
+impl Checkpoint {
+    /// How many calls were under way.
+    pub fn depth(&self) -> usize {
+        self.depth
+    }
+
+    /// Under `@!multitest`, the test case, from 1.
+    pub fn case(&self) -> Option<u64> {
+        self.case.map(|(case, _)| case)
+    }
+}
+
+/// A frame and, up from it, the frames that called it.
+struct Chain {
+    frame: FrameAt,
+    up: Option<Rc<Chain>>,
+}
+
+/// Whether a checkpoint can stand inside a caller's call, and its frame
+/// with the ones around it when it can.
+enum Snap {
+    Unknown,
+    No,
+    Yes(Rc<Chain>),
+}
+
+/// A VM caller waiting on its call: where its registers are and where the
+/// call is.
+pub(crate) struct Suspended {
+    caller: *const (),
+    pc: u32,
+    base_i: usize,
+    regs_v: *const Value,
+    n_v: usize,
+    base: usize,
+    fn_id: u16,
+    depth: usize,
+    doms: usize,
+    span: Span,
+    snap: Snap,
+    /// Whether the caller's frame can change during the call, so each
+    /// checkpoint reads it again.
+    volatile: bool,
 }
 
 /// The step clock, the checkpoints taken, and the one a run starts from.
@@ -63,6 +139,15 @@ pub(crate) struct Clock {
     keep: usize,
     spread: usize,
     taken: Vec<Checkpoint>,
+    /// The VM calls under way, outermost first, while checkpoints are on.
+    frames: Vec<Suspended>,
+    /// How many of `frames`, outermost first, have their [`Snap`] worked out.
+    known: usize,
+    /// The test cases still to run after the current one.
+    pub(crate) cases_left: Option<i64>,
+    /// In a run from a checkpoint, the call (by address) the caller waits
+    /// on, and the frames from its callee in.
+    pending: Option<(usize, Vec<FrameAt>)>,
     pub(crate) printed: u64,
     pub(crate) resume: Option<Checkpoint>,
     pub(crate) range_from: Option<(i64, i64)>,
@@ -78,6 +163,10 @@ impl Default for Clock {
             keep: usize::MAX,
             spread: usize::MAX,
             taken: Vec::new(),
+            frames: Vec::new(),
+            known: 0,
+            cases_left: None,
+            pending: None,
             printed: 0,
             resume: None,
             range_from: None,
@@ -86,6 +175,12 @@ impl Default for Clock {
 }
 
 impl Clock {
+    /// Whether a run from a checkpoint still waits on a call.
+    #[inline]
+    pub(crate) fn waits(&self) -> bool {
+        self.pending.is_some()
+    }
+
     pub(crate) fn on(&self) -> bool {
         self.every > 0
     }
@@ -106,8 +201,8 @@ impl Clock {
     }
 }
 
-/// The untraced run, with a checkpoint at a round of one of main's loops
-/// about every `every` loop rounds and calls.
+/// The untraced run, with a checkpoint about every `every` loop rounds and
+/// calls, at a round of a loop of main's or of a fn's.
 pub fn record_on_this_thread(
     program: &Program,
     input: &[u8],
@@ -136,9 +231,8 @@ pub fn record_last_on_this_thread(
         ..Clock::default()
     };
     let io = Io::fixed(input);
-    let (observed, mut clock) =
+    let (observed, clock) =
         crate::run_from::<Unobserved>(program, io, output, limits, None, false, ckpt);
-    clock.taken.retain(|c| locates(&program.main, &c.loops));
     (observed, clock.taken)
 }
 
@@ -168,7 +262,7 @@ pub fn count_on_this_thread(
     };
     let tracer = Some(Box::new(trace::Tracer::new(config, program)));
     let io = Io::fixed(input);
-    let (observed, mut clock) = crate::run_from(
+    let (observed, clock) = crate::run_from(
         program,
         io,
         &mut std::io::sink(),
@@ -177,7 +271,6 @@ pub fn count_on_this_thread(
         false,
         ckpt,
     );
-    clock.taken.retain(|c| locates(&program.main, &c.loops));
     (observed, clock.taken)
 }
 
@@ -207,27 +300,259 @@ pub fn resume_on_this_thread(
 }
 
 impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
-    /// At the jump back at `pc` of main's chunk, once a checkpoint is due.
+    /// Before a VM call at `pc` of `chunk` to `fn_id`.
+    #[inline(always)]
+    pub(crate) fn suspend(
+        &mut self,
+        chunk: &Chunk<'p>,
+        pc: usize,
+        base_i: usize,
+        regs_v: &[Value],
+        fn_id: u16,
+        base: usize,
+    ) {
+        if self.ckpt.on() {
+            self.suspend_recording(chunk, pc, base_i, regs_v, fn_id, base);
+        }
+    }
+
+    #[cold]
+    #[inline(never)]
+    fn suspend_recording(
+        &mut self,
+        chunk: &Chunk<'p>,
+        pc: usize,
+        base_i: usize,
+        regs_v: &[Value],
+        fn_id: u16,
+        base: usize,
+    ) {
+        self.ckpt.frames.push(Suspended {
+            caller: chunk as *const Chunk<'p> as *const (),
+            pc: pc as u32,
+            base_i,
+            regs_v: regs_v.as_ptr(),
+            n_v: regs_v.len(),
+            base,
+            fn_id,
+            depth: self.call_frames.len() - 1,
+            doms: self.saved_domains.len(),
+            span: chunk.spans[pc],
+            snap: Snap::Unknown,
+            volatile: chunk.has_by_ref_closure,
+        });
+    }
+
+    /// After that call.
+    #[inline(always)]
+    pub(crate) fn unsuspend(&mut self) {
+        if self.ckpt.on() {
+            self.unsuspend_recording();
+        }
+    }
+
+    #[cold]
+    #[inline(never)]
+    fn unsuspend_recording(&mut self) {
+        self.ckpt.frames.pop();
+        self.ckpt.known = self.ckpt.known.min(self.ckpt.frames.len());
+    }
+
+    /// At the jump back at `pc` of `chunk`, once a checkpoint is due.
     #[cfg(not(target_arch = "wasm32"))]
     pub(crate) fn take_checkpoint(
         &mut self,
-        chunk: &crate::vm::Chunk<'p>,
+        compiled: &CompiledProgram<'p>,
+        chunk: &Chunk<'p>,
         pc: usize,
-        regs_i: &[i64],
+        base_i: usize,
+        vm_regs_i: &[i64],
         regs_v: &[Value],
     ) {
-        use crate::vm::LoopReg;
-        let Some(edge) = chunk.back_edges.iter().find(|e| e.pc as usize == pc) else {
-            return;
-        };
+        if let Some(taken) = self.checkpoint_here(compiled, chunk, pc, base_i, vm_regs_i, regs_v) {
+            self.ckpt.next_at = taken.ticks + self.ckpt.every;
+            self.ckpt.taken.push(taken);
+            if self.ckpt.taken.len() > self.ckpt.keep {
+                self.ckpt.taken.remove(0);
+            }
+            if self.ckpt.taken.len() > self.ckpt.spread {
+                let mut left = self.ckpt.taken.len();
+                self.ckpt.taken.retain(|_| {
+                    left -= 1;
+                    left.is_multiple_of(2)
+                });
+                self.ckpt.every *= 2;
+            }
+        }
+    }
+
+    fn checkpoint_here(
+        &mut self,
+        compiled: &CompiledProgram<'p>,
+        chunk: &Chunk<'p>,
+        pc: usize,
+        base_i: usize,
+        vm_regs_i: &[i64],
+        regs_v: &[Value],
+    ) -> Option<Checkpoint> {
         if !self.fed_loops.is_empty() || self.peer.is_some() || self.program.interactive {
-            return;
+            return None;
         }
-        let mut stack = self.stack[..self.program.main_locals.len()].to_vec();
-        for (held, loc) in stack.iter_mut().zip(&chunk.slot_map) {
-            *held = crate::vm::read_slot(loc, regs_i, regs_v);
+        let edge = chunk.back_edges.iter().find(|e| e.pc as usize == pc)?;
+        let depth = self.ckpt.frames.len();
+        if self.call_frames.len() != depth {
+            return None;
         }
-        let loops = (edge.loops.iter())
+        for k in self.ckpt.known..depth {
+            self.ckpt.frames[k].snap = self.snap_caller(compiled, vm_regs_i, k);
+        }
+        let frames = &self.ckpt.frames;
+        self.ckpt.known = (self.ckpt.known..depth)
+            .find(|&k| frames[k].volatile)
+            .unwrap_or(depth);
+        let (up, caller, caller_fn, span, doms) = match self.ckpt.frames.last() {
+            None => (None, &compiled.main, None, Span::default(), 0),
+            Some(s) => {
+                let Snap::Yes(up) = &s.snap else {
+                    return None;
+                };
+                let id = usize::from(s.fn_id);
+                (
+                    Some(up.clone()),
+                    compiled.fns[id].as_ref()?,
+                    Some(id),
+                    s.span,
+                    s.doms,
+                )
+            }
+        };
+        if !std::ptr::eq(chunk, caller) {
+            return None;
+        }
+        let regs_i = &vm_regs_i[base_i..base_i + chunk.num_i];
+        let at = (self.base, span, doms);
+        let frame = self.frame_at(
+            chunk,
+            caller_fn,
+            at,
+            regs_i,
+            regs_v,
+            &edge.loops,
+            None,
+            false,
+        )?;
+        Some(Checkpoint {
+            ticks: self.ckpt.ticks(self.countdown),
+            printed: self.ckpt.printed + self.out.len() as u64,
+            steps: self.tracer.as_ref().map_or(0, |t| t.steps()),
+            depth,
+            frames: Rc::new(Chain { frame, up }),
+            globals: self.globals.clone(),
+            domains: self.domains.clone(),
+            saved_domains: self.saved_domains.clone(),
+            input_at: self.input.cursor(),
+            rng_state: self.rng_state,
+            queries: self.queries,
+            case: self.current_case.map(|case| (case, self.ckpt.cases_left)),
+        })
+    }
+
+    /// The frame of the `k`th VM caller waiting on its call, with the frames
+    /// around it: what every checkpoint until that call returns shares, since
+    /// a caller's locals stay as they are while it waits.
+    fn snap_caller(&self, compiled: &CompiledProgram<'p>, vm_regs_i: &[i64], k: usize) -> Snap {
+        let s = &self.ckpt.frames[k];
+        let (caller, caller_fn, span, doms, up) = match k.checked_sub(1) {
+            None => (&compiled.main, None, Span::default(), 0, None),
+            Some(outer) => {
+                let o = &self.ckpt.frames[outer];
+                let Snap::Yes(up) = &o.snap else {
+                    return Snap::No;
+                };
+                let id = usize::from(o.fn_id);
+                let Some(caller) = compiled.fns[id].as_ref() else {
+                    return Snap::No;
+                };
+                (caller, Some(id), o.span, o.doms, Some(up.clone()))
+            }
+        };
+        if s.depth != k || !std::ptr::eq(s.caller, caller as *const Chunk<'p> as *const ()) {
+            return Snap::No;
+        }
+        let callee = &self.program.fns[usize::from(s.fn_id)];
+        if callee.params.iter().any(|p| p.mutable) {
+            return Snap::No;
+        }
+        let Some(site) = caller.call_sites.iter().find(|c| c.pc == s.pc) else {
+            return Snap::No;
+        };
+        let regs_i = &vm_regs_i[s.base_i..s.base_i + caller.num_i];
+        // SAFETY: a caller waiting on its call neither moves nor touches
+        // its value registers until the call returns.
+        let regs_v = unsafe { std::slice::from_raw_parts(s.regs_v, s.n_v) };
+        let at = (s.base, span, doms);
+        let site_at = Some((site.stmt, site.call));
+        // A caller with closures keeps its locals on the stack during calls,
+        // where a closure the callee runs may change them.
+        let from_stack = caller.has_by_ref_closure;
+        match self.frame_at(
+            caller,
+            caller_fn,
+            at,
+            regs_i,
+            regs_v,
+            &site.loops,
+            site_at,
+            from_stack,
+        ) {
+            Some(frame) => Snap::Yes(Rc::new(Chain { frame, up })),
+            None => Snap::No,
+        }
+    }
+
+    /// One frame: `chunk`'s, run for `fn_id` (main for `None`) on the stack
+    /// at `base`, in `loops`, waiting on `site` unless it is the innermost.
+    #[allow(clippy::too_many_arguments)]
+    fn frame_at(
+        &self,
+        chunk: &Chunk<'p>,
+        fn_id: Option<FnId>,
+        (base, span, doms): (usize, Span, usize),
+        regs_i: &[i64],
+        regs_v: &[Value],
+        loops: &[LoopReg],
+        site: Option<(&'p Stmt, &'p cpl_ir::Expr)>,
+        from_stack: bool,
+    ) -> Option<FrameAt> {
+        let (n, body) = match fn_id {
+            None => (self.program.main_locals.len(), &self.program.main),
+            Some(id) => (
+                self.program.fns[id].locals.len(),
+                &self.program.fns[id].body,
+            ),
+        };
+        let stacked = fn_id.is_none() || chunk.needs_stack;
+        let mut locals = match stacked {
+            true => self.stack.get(base..base + n)?.to_vec(),
+            false => vec![Value::Unit; n],
+        };
+        if from_stack && !stacked {
+            return None;
+        }
+        if !from_stack {
+            for (held, loc) in locals.iter_mut().zip(&chunk.slot_map) {
+                if !(stacked && crate::vm::undeclared(chunk.traced, loc, held)) {
+                    *held = crate::vm::read_slot(loc, regs_i, regs_v);
+                }
+            }
+        }
+        if locals
+            .iter()
+            .any(|v| matches!(v, Value::Alias(..) | Value::Part(_)))
+        {
+            return None;
+        }
+        let loops: Vec<LoopAt> = (loops.iter())
             .map(|l| match *l {
                 LoopReg::While(id) => LoopAt::While(id),
                 LoopReg::Range { id, r_var, r_hi } => LoopAt::Range {
@@ -237,52 +562,128 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 },
             })
             .collect();
-        let ticks = self.ckpt.ticks(self.countdown);
-        self.ckpt.taken.push(Checkpoint {
-            ticks,
-            printed: self.ckpt.printed + self.out.len() as u64,
-            steps: self.tracer.as_ref().map_or(0, |t| t.steps()),
+        let site =
+            site.map(|(s, c)| (s as *const Stmt as usize, c as *const cpl_ir::Expr as usize));
+        if !locates(body, &loops, site.map(|s| s.0)) {
+            return None;
+        }
+        Some(FrameAt {
+            fn_id,
+            locals,
             loops,
-            stack,
-            globals: self.globals.clone(),
-            domains: self.domains.clone(),
-            input_at: self.input.cursor(),
-            rng_state: self.rng_state,
-            queries: self.queries,
-        });
-        if self.ckpt.taken.len() > self.ckpt.keep {
-            self.ckpt.taken.remove(0);
-        }
-        if self.ckpt.taken.len() > self.ckpt.spread {
-            let mut left = self.ckpt.taken.len();
-            self.ckpt.taken.retain(|_| {
-                left -= 1;
-                left.is_multiple_of(2)
-            });
-            self.ckpt.every *= 2;
-        }
-        self.ckpt.next_at = ticks + self.ckpt.every;
+            site,
+            span,
+            doms,
+        })
     }
 
-    /// Main, from `from` on.
+    /// The run from `from` on.
     pub(crate) fn resume(&mut self, from: Checkpoint) -> Res<()> {
-        self.stack = from.stack;
         self.globals = from.globals;
         self.domains = from.domains;
+        self.saved_domains = from.saved_domains;
         self.input.rewind(from.input_at);
         self.rng_state = from.rng_state;
         self.queries = from.queries;
         self.ckpt.printed = from.printed;
-        let program = self.program;
-        self.resume_block(&program.main, &from.loops).map(|_| ())
+        let mut frames = Vec::with_capacity(from.depth + 1);
+        let mut at = Some(&from.frames);
+        while let Some(chain) = at {
+            frames.push(chain.frame.clone());
+            at = chain.up.as_ref();
+        }
+        frames.reverse();
+        self.stack = frames[0].locals.clone();
+        self.base = 0;
+        if let Some((case, left)) = from.case {
+            self.current_case = Some(case);
+            if let Some(tracer) = &mut self.tracer {
+                tracer.resume_case(case);
+            }
+            self.resume_frame(&frames, 0)?;
+            return self.run_cases(left, case);
+        }
+        self.resume_frame(&frames, 0).map(|_| ())
     }
 
-    fn resume_block(&mut self, block: &'p Block, at: &[LoopAt]) -> Res<Flow> {
-        let Some(k) = block.stmts.iter().position(|s| holds(s, at[0].id())) else {
-            return trap(Span::default(), "the checkpoint's loop is not in main");
+    /// Frame `k` of `frames`, from where it was to its end.
+    fn resume_frame(&mut self, frames: &[FrameAt], k: usize) -> Res<Flow> {
+        let program = self.program;
+        let body = frames[k]
+            .fn_id
+            .map_or(&program.main, |id| &program.fns[id].body);
+        self.resume_block(body, &frames[k].loops, frames, k)
+    }
+
+    /// The call frame `k` of `frames` makes, from where it was; what it returns.
+    fn resume_callee(&mut self, frames: &[FrameAt], k: usize) -> Res<Value> {
+        let frame = &frames[k];
+        let id = frame.fn_id.expect("a callee frame is a fn's");
+        let f = &self.program.fns[id];
+        let span = frame.span;
+        let base = self.stack.len();
+        self.stack.extend(frame.locals.iter().cloned());
+        let saved = std::mem::replace(&mut self.base, base);
+        self.frame_locals.push(&f.locals);
+        self.call_frames.push((f.name.as_str(), span));
+        let entered = self.tracer.as_mut().map(|tracer| tracer.enter_fn(&f.name));
+        let in_closure = std::mem::replace(&mut self.in_closure, false);
+        let mut flow = self.resume_frame(frames, k);
+        while self.saved_domains.len() > frame.doms {
+            let (id, prev) = self.saved_domains.pop().unwrap();
+            self.domains[id] = prev;
+        }
+        self.in_closure = in_closure;
+        if let (Some(entered), Some(tracer)) = (entered, &mut self.tracer) {
+            tracer.leave_fn(entered);
+        }
+        if self.observed() {
+            self.traced(|tracer, view| {
+                let returned = match &flow {
+                    Ok(Flow::Return(value)) if tracer.keeps_call() && f.ret != cpl_ir::Ty::Unit => {
+                        Some(trace::json_of(value, &f.ret, view))
+                    }
+                    _ => None,
+                };
+                tracer.leave_call(returned);
+            });
+            flow = flow.and_then(|flow| self.unstopped(span).map(|()| flow));
+        }
+        if flow.is_err() {
+            self.keep_trap_frame();
+        }
+        self.frame_locals.pop();
+        self.base = saved;
+        let flow = flow?;
+        self.call_frames.pop();
+        self.stack.truncate(base);
+        Ok(match flow {
+            Flow::Return(value) => value,
+            _ => Value::Unit,
+        })
+    }
+
+    fn resume_block(
+        &mut self,
+        block: &'p Block,
+        at: &[LoopAt],
+        frames: &[FrameAt],
+        k: usize,
+    ) -> Res<Flow> {
+        let Some(mark) = mark(at, frames[k].site.map(|s| s.0)) else {
+            return trap(Span::default(), "the checkpoint is at no loop and no call");
         };
-        let mut flow = self.resume_stmt(&block.stmts[k], at)?;
-        for stmt in &block.stmts[k + 1..] {
+        let Some(i) = block.stmts.iter().position(|s| holds(s, mark)) else {
+            return trap(Span::default(), "the checkpoint does not match the program");
+        };
+        let stmt = &block.stmts[i];
+        let mut flow = match mark {
+            Mark::Site(site) if stmt as *const Stmt as usize == site => {
+                self.resume_call(stmt, frames, k)?
+            }
+            _ => self.resume_stmt(stmt, at, frames, k)?,
+        };
+        for stmt in &block.stmts[i + 1..] {
             if !matches!(flow, Flow::Next) {
                 break;
             }
@@ -291,29 +692,37 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
         Ok(flow)
     }
 
-    fn resume_stmt(&mut self, stmt: &'p Stmt, at: &[LoopAt]) -> Res<Flow> {
-        let rest = &at[1..];
-        match (stmt, at[0]) {
+    fn resume_stmt(
+        &mut self,
+        stmt: &'p Stmt,
+        at: &[LoopAt],
+        frames: &[FrameAt],
+        k: usize,
+    ) -> Res<Flow> {
+        let inside = at.len() > 1 || frames[k].site.is_some();
+        let rest = at.get(1..).unwrap_or(&[]);
+        match (stmt, at.first()) {
             (Stmt::If(_, then, otherwise), _) => {
-                let branch = if block_holds(then, at[0].id()) {
+                let mark = mark(at, frames[k].site.map(|s| s.0)).expect("resume_block found one");
+                let branch = if block_holds(then, mark) {
                     then
                 } else {
                     otherwise
                 };
-                self.resume_block(branch, at)
+                self.resume_block(branch, at, frames, k)
             }
-            (Stmt::While(id, _, body), LoopAt::While(_)) => {
-                if !rest.is_empty() {
-                    if let Some(left) = left_loop(self.resume_block(body, rest)?, *id) {
+            (Stmt::While(id, _, body), Some(LoopAt::While(_))) => {
+                if inside {
+                    if let Some(left) = left_loop(self.resume_block(body, rest, frames, k)?, *id) {
                         return Ok(left);
                     }
                 }
                 self.stmt(stmt)
             }
-            (Stmt::For(id, _, iter, body), LoopAt::Range { v, hi, .. }) => {
+            (Stmt::For(id, _, iter, body), Some(&LoopAt::Range { v, hi, .. })) => {
                 let mut from = v;
-                if !rest.is_empty() {
-                    if let Some(left) = left_loop(self.resume_block(body, rest)?, *id) {
+                if inside {
+                    if let Some(left) = left_loop(self.resume_block(body, rest, frames, k)?, *id) {
                         return Ok(left);
                     }
                     if matches!(iter, Iter::Range { closed: true, .. }) && v == hi {
@@ -324,8 +733,65 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 self.ckpt.range_from = Some((from, hi));
                 self.stmt(stmt)
             }
-            _ => trap(Span::default(), "the checkpoint does not match main"),
+            _ => trap(Span::default(), "the checkpoint does not match the program"),
         }
+    }
+
+    /// `stmt`, whose call frame `k + 1` is: `stmt` again, untraced up to
+    /// that call, which goes on from where it was.
+    fn resume_call(&mut self, stmt: &'p Stmt, frames: &[FrameAt], k: usize) -> Res<Flow> {
+        let (_, call) = frames[k].site.expect("a caller frame waits on a call");
+        self.ckpt.pending = Some((call, frames[k + 1..].to_vec()));
+        let flow = self.stmt(stmt);
+        if self.ckpt.pending.take().is_some() {
+            return trap(Span::default(), "the checkpoint does not match the program");
+        }
+        flow
+    }
+
+    /// The call `e` to `id`, or the rest of it when a run from a checkpoint
+    /// waits on it.
+    #[inline]
+    pub(crate) fn call_or_resume(
+        &mut self,
+        e: &cpl_ir::Expr,
+        id: FnId,
+        args: &'p [cpl_ir::Arg],
+        span: Span,
+    ) -> Res<Value> {
+        if self.ckpt.waits() {
+            if let Some(value) = self.resume_pending(e)? {
+                return Ok(value);
+            }
+        }
+        self.call(id, args, span)
+    }
+
+    /// At the call `e`: when it is the call a run from a checkpoint waits
+    /// on, that call from where it was, and what it returns.
+    #[cold]
+    pub(crate) fn resume_pending(&mut self, e: &cpl_ir::Expr) -> Res<Option<Value>> {
+        if !matches!(&self.ckpt.pending, Some((call, _)) if *call == e as *const cpl_ir::Expr as usize)
+        {
+            return Ok(None);
+        }
+        let (_, frames) = self.ckpt.pending.take().unwrap();
+        self.resume_callee(&frames, 0).map(Some)
+    }
+}
+
+/// What a frame's position is found by: its outermost loop, or with none,
+/// the statement whose call it waits on.
+#[derive(Clone, Copy)]
+enum Mark {
+    Loop(LoopId),
+    Site(usize),
+}
+
+fn mark(at: &[LoopAt], site: Option<usize>) -> Option<Mark> {
+    match at.first() {
+        Some(first) => Some(Mark::Loop(first.id())),
+        None => site.map(Mark::Site),
     }
 }
 
@@ -340,38 +806,48 @@ fn left_loop(flow: Flow, id: LoopId) -> Option<Flow> {
     }
 }
 
-fn holds(stmt: &Stmt, id: LoopId) -> bool {
+fn holds(stmt: &Stmt, mark: Mark) -> bool {
+    if let Mark::Site(site) = mark {
+        if stmt as *const Stmt as usize == site {
+            return true;
+        }
+    }
     match stmt {
-        Stmt::If(_, then, otherwise) => block_holds(then, id) || block_holds(otherwise, id),
+        Stmt::If(_, then, otherwise) => block_holds(then, mark) || block_holds(otherwise, mark),
         Stmt::While(own, _, body) | Stmt::For(own, _, _, body) => {
-            *own == id || block_holds(body, id)
+            matches!(mark, Mark::Loop(id) if *own == id) || block_holds(body, mark)
         }
         _ => false,
     }
 }
 
-fn block_holds(block: &Block, id: LoopId) -> bool {
-    block.stmts.iter().any(|s| holds(s, id))
+fn block_holds(block: &Block, mark: Mark) -> bool {
+    block.stmts.iter().any(|s| holds(s, mark))
 }
 
-/// Whether `at` names a nest of loops in `block` a run can start again in.
-fn locates(block: &Block, at: &[LoopAt]) -> bool {
-    let Some(&first) = at.first() else {
-        return true;
-    };
-    let Some(stmt) = block.stmts.iter().find(|s| holds(s, first.id())) else {
+/// Whether `at`, then `site`, names a place in `block` a run can start
+/// again from.
+fn locates(block: &Block, at: &[LoopAt], site: Option<usize>) -> bool {
+    let Some(mark) = mark(at, site) else {
         return false;
     };
-    match (stmt, first) {
+    let Some(stmt) = block.stmts.iter().find(|s| holds(s, mark)) else {
+        return false;
+    };
+    match (stmt, at.first()) {
+        (_, None) if stmt as *const Stmt as usize == site.unwrap_or(0) => true,
         (Stmt::If(_, then, otherwise), _) => locates(
-            if block_holds(then, first.id()) {
+            if block_holds(then, mark) {
                 then
             } else {
                 otherwise
             },
             at,
+            site,
         ),
-        (Stmt::While(id, _, body), LoopAt::While(want)) => *id == want && locates(body, &at[1..]),
+        (Stmt::While(id, _, body), Some(&LoopAt::While(want))) => {
+            *id == want && locates_inside(body, &at[1..], site)
+        }
         (
             Stmt::For(
                 id,
@@ -383,8 +859,13 @@ fn locates(block: &Block, at: &[LoopAt]) -> bool {
                 },
                 body,
             ),
-            LoopAt::Range { id: want, .. },
-        ) => *id == want && locates(body, &at[1..]),
+            Some(&LoopAt::Range { id: want, .. }),
+        ) => *id == want && locates_inside(body, &at[1..], site),
         _ => false,
     }
+}
+
+/// Inside a loop's body: the innermost frame may stop at the loop itself.
+fn locates_inside(body: &Block, rest: &[LoopAt], site: Option<usize>) -> bool {
+    (rest.is_empty() && site.is_none()) || locates(body, rest, site)
 }

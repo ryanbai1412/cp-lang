@@ -600,7 +600,9 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     self.frame_locals.push(&f.locals);
                 }
                 self.call_frames.push((f.name.as_str(), spans[cur_pc]));
+                self.suspend(chunk, cur_pc, base_i, regs_v, fn_id, saved_base);
                 let res = self.exec_chunk(compiled, callee, &arg_buf[..n], vm_regs_i);
+                self.unsuspend();
                 if needs_stack {
                     self.frame_locals.pop();
                     self.stack.truncate(self.base);
@@ -672,6 +674,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     self.frame_locals.push(&f.locals);
                 }
                 self.call_frames.push((f.name.as_str(), spans[cur_pc]));
+                self.suspend(chunk, cur_pc, base_i, regs_v, fn_id, saved_base);
                 let res = self.exec_chunk_mix(
                     compiled,
                     callee,
@@ -680,6 +683,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     &f.params,
                     vm_regs_i,
                 );
+                self.unsuspend();
                 if needs_stack {
                     self.frame_locals.pop();
                     self.stack.truncate(self.base);

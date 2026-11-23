@@ -106,3 +106,39 @@ on write, so a checkpoint copies main's locals and the globals, not the heap.
 - **Owed (the maximal version):** an explicit VM frame stack, so a checkpoint
   can be taken inside calls (a run spent in one deep call takes none until it
   returns), plus multitest cases and loops over sequences.
+
+## Checkpoints inside calls and test cases (2026-11-23, tech-debt for compiler)
+
+- **Frames as data:** while recording, every VM call pushes a `Suspended`
+  record (caller chunk, call pc, register base, value registers, stack base,
+  guarded domains) and pops it on return. A checkpoint due at any loop back
+  edge, in main or in a callee at any depth, copies the innermost frame
+  (locals, loop path) and each suspended caller (locals, loop path, the
+  statement and the call expression it waits on) into an immutable `Rc`
+  chain. A caller's snapshot is cached until it returns, so the next
+  checkpoint in the same call copies only the innermost frame; a caller with
+  closures is read again each time, from the stack its locals live on during
+  the call. `Checkpoint::depth()` and `Checkpoint::case()` say where it is.
+- **Restore:** the tree-walker re-enters main at the recorded loop round,
+  runs the waiting statement up to the recorded call (nothing before it in
+  that statement has an effect, checked when compiling), and enters the
+  callee with its saved locals, down to the innermost frame. Multitest runs
+  resume in the recorded case with the cases left.
+- **Tests (`tests/checkpoint.rs`):** a resume prints exactly the rest of the
+  output, and a traced resume records exactly the whole trace's last steps,
+  for nested loops, calls, input, `rand`, 4-deep recursion (checkpoints at
+  every depth 1-4) and multitest (checkpoints in several cases); the
+  `resumed_tail` and `Timeline` window tests run on both too, and a counted
+  (traced) run takes checkpoints inside calls as well, stamped with `steps`. On the
+  corpus, sampled checkpoints of 335 programs all resume to the same output;
+  12 of the 26 programs running at least 2^17 ticks take checkpoints.
+- **Overhead (`examples/checkpoint_overhead.rs`, release, best of 5, two quiet
+  runs):** a 10^7-round loop costs 0.990x-1.012x the untraced run, and a
+  call-heavy run checkpointing inside calls 1.002x-1.013x, at a checkpoint
+  every 4096, 65536 or 2^20 ticks. Without checkpoints, `cpl run` of
+  `fib(32)` is within 2% of the base commit (best of 9, 647 vs 635 ms).
+- **Not covered (no checkpoint is taken there; the run takes the next one it
+  can):** a statement with a call and another effect, calls from a feed loop,
+  closure or function value, `for` over a sequence, `var` parameters,
+  interactive programs. The VM still recurses on the Rust stack; the frames
+  are mirrored as data, not run from it. Step numbers to ticks is still owed.

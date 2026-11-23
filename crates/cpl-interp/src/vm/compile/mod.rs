@@ -93,6 +93,7 @@ pub(super) struct Compiler<'p, 'f> {
     /// The `for` whose body is compiled next, whose variable each round reports.
     traced_loop_var: Option<(Slot, Span)>,
     back_edges: Vec<BackEdge>,
+    call_sites: Vec<CallSite<'p>>,
 }
 
 impl<'p, 'f> Compiler<'p, 'f> {
@@ -163,6 +164,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
             trace_points: Vec::new(),
             traced_loop_var: None,
             back_edges: Vec::new(),
+            call_sites: Vec::new(),
         }
     }
 
@@ -196,25 +198,68 @@ impl<'p, 'f> Compiler<'p, 'f> {
             needs_stack,
             has_by_ref_closure: false,
             back_edges: self.back_edges,
+            call_sites: self.call_sites,
         }
     }
 
-    /// Notes the jump back at `pc` of a loop that `own` reads, when it and
-    /// every loop around it are main's and a checkpoint can read them.
-    pub(super) fn note_back_edge(&mut self, pc: usize, own: Option<LoopReg>) {
-        if self.cur_fn.is_some() || self.inline_slots.is_some() || self.feed_acc.is_some() {
-            return;
+    /// The loops around the code compiled next, then `own`, when a
+    /// checkpoint can read every one of them.
+    fn resumable_loops(&self, own: Option<Option<LoopReg>>) -> Option<Vec<LoopReg>> {
+        if self.inline_slots.is_some() || self.feed_acc.is_some() {
+            return None;
         }
-        let loops: Option<Vec<LoopReg>> = self
-            .loops
-            .iter()
-            .map(|l| l.resumable)
-            .chain(std::iter::once(own))
-            .collect();
-        if let Some(loops) = loops {
+        (self.loops.iter().map(|l| l.resumable))
+            .chain(own)
+            .collect()
+    }
+
+    /// Notes the jump back at `pc` of a loop that `own` reads, when a
+    /// checkpoint can read it and every loop around it.
+    pub(super) fn note_back_edge(&mut self, pc: usize, own: Option<LoopReg>) {
+        if let Some(loops) = self.resumable_loops(Some(own)) {
             self.back_edges.push(BackEdge {
                 pc: pc as u32,
                 loops,
+            });
+        }
+    }
+
+    /// Notes the call op `stmt` just compiled to, from `start`, when that
+    /// call is the only effect of what `stmt` evaluates before its body: a
+    /// run from a checkpoint inside the callee can then evaluate `stmt` again
+    /// up to the call and go on with what the callee returns.
+    pub(super) fn note_call_site(&mut self, start: usize, stmt: &'p Stmt) {
+        let mut heads: Vec<&'p Expr> = Vec::new();
+        match stmt {
+            Stmt::Let(_, Some(e)) | Stmt::Expr(e) | Stmt::Return(Some(e)) => heads.push(e),
+            Stmt::If(e, ..) | Stmt::While(_, e, _) => heads.push(e),
+            Stmt::Assign(place, _, e) => {
+                heads.push(e);
+                cpl_ir::walk::place_exprs(place, &mut |i| heads.push(i));
+            }
+            _ => return,
+        }
+        let mut effects = Effects::default();
+        heads.iter().for_each(|e| effects.walk(e));
+        let (1, Some(call)) = (effects.count, effects.call) else {
+            return;
+        };
+        if call.span == Span::default() {
+            return;
+        }
+        let mut calls = (start..self.ops.len()).filter(|&pc| {
+            self.spans[pc] == call.span
+                && matches!(self.ops[pc], Op::CallVmI { .. } | Op::CallVmMix { .. })
+        });
+        let (Some(pc), None) = (calls.next(), calls.next()) else {
+            return;
+        };
+        if let Some(loops) = self.resumable_loops(None) {
+            self.call_sites.push(CallSite {
+                pc: pc as u32,
+                loops,
+                stmt,
+                call,
             });
         }
     }
@@ -1626,5 +1671,42 @@ impl<'p, 'f> Compiler<'p, 'f> {
         let end_pc = self.ops.len() as u32;
         self.patch(j_skip, end_pc);
         true
+    }
+}
+
+/// The calls and other effects in an expression: what evaluating it again
+/// could do twice.
+#[derive(Default)]
+struct Effects<'p> {
+    count: usize,
+    call: Option<&'p Expr>,
+}
+
+impl<'p> Effects<'p> {
+    fn walk(&mut self, e: &'p Expr) {
+        match &e.kind {
+            ExprKind::Call(..) => {
+                self.count += 1;
+                self.call = Some(e);
+            }
+            ExprKind::CallExpr(..)
+            | ExprKind::Read(_)
+            | ExprKind::Parse(..)
+            | ExprKind::Print(..)
+            | ExprKind::Mutate(..)
+            | ExprKind::Sort(..)
+            | ExprKind::MutSlice(..)
+            | ExprKind::Debug(..)
+            | ExprKind::Do(_)
+            | ExprKind::Builtin(
+                cpl_ir::Builtin::Rand
+                | cpl_ir::Builtin::Flush
+                | cpl_ir::Builtin::CountQuery
+                | cpl_ir::Builtin::SwapInput,
+                _,
+            ) => self.count += 1,
+            _ => {}
+        }
+        cpl_ir::walk::children(e, &mut |c| self.walk(c));
     }
 }

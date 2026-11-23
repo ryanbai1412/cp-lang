@@ -19,6 +19,8 @@ pub(crate) trait Observer {
     /// The output between two cases.
     fn divider(&mut self) {}
     fn start_case(&mut self, _case: u64) {}
+    /// A run from a checkpoint starts inside test case `case`.
+    fn resume_case(&mut self, _case: u64) {}
     /// A fn is entered: what [`Observer::leave_fn`] gets back.
     fn enter_fn(&mut self, _name: &str) -> (bool, bool) {
         (false, false)
@@ -89,6 +91,9 @@ impl Observer for Tracer {
     }
     fn start_case(&mut self, case: u64) {
         Tracer::start_case(self, case)
+    }
+    fn resume_case(&mut self, case: u64) {
+        self.case = Some(case);
     }
     fn enter_fn(&mut self, name: &str) -> (bool, bool) {
         Tracer::enter_fn(self, name)

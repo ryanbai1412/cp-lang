@@ -804,7 +804,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
         if let Some(tracer) = &mut self.tracer {
             tracer.divider();
         }
-        let mut left = if program.until_eof {
+        let left = if program.until_eof {
             None
         } else {
             match self.input.int() {
@@ -826,7 +826,12 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 }
             }
         };
-        let mut case = 0;
+        self.run_cases(left, 0)
+    }
+
+    /// The test cases after the first `case`, while `left` (or the input) has more.
+    pub(crate) fn run_cases(&mut self, mut left: Option<i64>, mut case: u64) -> Res<()> {
+        let program = self.program;
         loop {
             match &mut left {
                 Some(left) if *left <= 0 => break,
@@ -835,6 +840,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 None => {}
             }
             case += 1;
+            self.ckpt.cases_left = left;
             self.current_case = Some(case);
             // `ask(.., limit: K)` allows `K` queries in each test case.
             self.queries = 0;
@@ -2166,7 +2172,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 Flow::Give(value) => value,
                 _ => return trap(span, "internal: a block ended without its value"),
             },
-            ExprKind::Call(id, args) => self.call(*id, args, span)?,
+            ExprKind::Call(id, args) => self.call_or_resume(e, *id, args, span)?,
             ExprKind::CallExpr(callee, args) => {
                 let fv = self.eval(callee)?;
                 if !self.observed()

@@ -48,6 +48,33 @@ for i in 0..n:
 print(s)
 ";
 
+/// Most of the run is inside calls, three deep, each called partway
+/// through an expression.
+const DEEP: &str = "fn walk(n: Int, d: Int) -> Int:
+    var s = 0
+    var i = 0
+    while i < n:
+        s = (s * 7 + i + d) % 1000003
+        i += 1
+    if d == 0:
+        return s
+    return (s + walk(n, d - 1) * 3) % 1000003
+var t = 0
+for r in 0..4:
+    t = (t + 2 * walk(3000, 3)) % 1000003
+    print(t)
+";
+
+const MULTITEST_RAND: &str = "@!multitest
+let n: Int = read()
+var s = 0
+for i in 0..n:
+    s = (s + i * i + rand(0, 3)) % 1000003
+print(s)
+";
+
+const MULTITEST_INPUT: &[u8] = b"3\n4000\n5000\n6000\n";
+
 fn reads_input() -> Vec<u8> {
     let mut input = b"12000\n".to_vec();
     for i in 0..12000 {
@@ -83,7 +110,13 @@ fn step_text(recording: &Recording, step: usize) -> String {
 #[test]
 fn a_run_from_a_checkpoint_prints_the_rest_of_the_output() {
     let input = reads_input();
-    for (source, input) in [(NESTED, &b""[..]), (CALLS, &b""[..]), (READS, &input[..])] {
+    for (source, input) in [
+        (NESTED, &b""[..]),
+        (CALLS, &b""[..]),
+        (READS, &input[..]),
+        (DEEP, &b""[..]),
+        (MULTITEST_RAND, MULTITEST_INPUT),
+    ] {
         let (program, whole, taken) = record(source, input);
         assert!(taken.len() >= 2, "{} checkpoints: {source}", taken.len());
         for from in &taken {
@@ -103,12 +136,17 @@ fn a_run_from_a_checkpoint_prints_the_rest_of_the_output() {
 
 #[test]
 fn a_traced_run_from_a_checkpoint_records_the_whole_trace_from_there() {
-    for source in [NESTED, CALLS] {
-        let (program, _, taken) = record(source, b"");
+    for (source, input) in [
+        (NESTED, &b""[..]),
+        (CALLS, &b""[..]),
+        (DEEP, &b""[..]),
+        (MULTITEST_RAND, MULTITEST_INPUT),
+    ] {
+        let (program, _, taken) = record(source, input);
         let mut out = Vec::new();
         let whole = observe_on_this_thread(
             &program,
-            Io::fixed(b""),
+            Io::fixed(input),
             &mut out,
             LIMITS,
             Some(config(source)),
@@ -118,10 +156,16 @@ fn a_traced_run_from_a_checkpoint_records_the_whole_trace_from_there() {
         assert!(!whole.truncated);
         for from in [&taken[0], &taken[taken.len() / 2], &taken[taken.len() - 1]] {
             let mut rest = Vec::new();
-            let part =
-                resume_on_this_thread(&program, b"", from, &mut rest, LIMITS, Some(config(source)))
-                    .recording
-                    .unwrap();
+            let part = resume_on_this_thread(
+                &program,
+                input,
+                from,
+                &mut rest,
+                LIMITS,
+                Some(config(source)),
+            )
+            .recording
+            .unwrap();
             let skip = whole.len() - part.len();
             assert!(
                 !part.is_empty() && skip > 0,
@@ -155,6 +199,8 @@ fn the_tail_from_a_checkpoint_is_the_whole_runs_last_steps() {
         (NESTED, &b""[..], 1 << 22),
         (MULTITEST, &b"2\n3000\n4000\n"[..], 900),
         (ONE_CALL, &b""[..], 400),
+        (DEEP, &b""[..], 3000),
+        (MULTITEST_RAND, MULTITEST_INPUT, 2000),
         (NESTED, &b""[..], 1),
     ] {
         let program = program(source);
@@ -212,6 +258,8 @@ fn a_window_from_a_checkpoint_is_the_whole_runs_window() {
         (MULTITEST, &b"2\n3000\n4000\n"[..]),
         (ONE_CALL, &b""[..]),
         (LONG, &b""[..]),
+        (DEEP, &b""[..]),
+        (MULTITEST_RAND, MULTITEST_INPUT),
     ] {
         let program = program(source);
         let replay = cpl_interp::trace::Replay::start_every(
@@ -297,4 +345,15 @@ fn a_window_stops_the_run_once_it_is_full() {
         assert!(rec.truncated, "from {from}");
         assert_eq!((rec.skipped, rec.len()), (from, 50));
     }
+}
+
+#[test]
+fn a_checkpoint_can_stand_inside_calls_and_test_cases() {
+    let (_, _, taken) = record(DEEP, b"");
+    let depths: std::collections::BTreeSet<usize> = taken.iter().map(Checkpoint::depth).collect();
+    assert_eq!(depths, (1..=4).collect(), "{depths:?}");
+    let (_, _, taken) = record(MULTITEST_RAND, MULTITEST_INPUT);
+    let cases: std::collections::BTreeSet<u64> =
+        taken.iter().filter_map(Checkpoint::case).collect();
+    assert!(cases.len() >= 2, "{cases:?}");
 }
