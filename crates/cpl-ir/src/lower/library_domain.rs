@@ -145,6 +145,15 @@ impl<'a> Lowerer<'a> {
 }
 
 impl<'a> Lowerer<'a> {
+    /// The `nth` of the `impl Index` type whose positions `dim` runs over.
+    pub(super) fn library_walk_nth(&self, dim: &DimSpec) -> Option<FnId> {
+        let DimSpec::Pos(d) = dim else { return None };
+        self.structs
+            .iter()
+            .find(|s| s.index_domain == Some(*d))
+            .and_then(|s| s.methods.get("nth").copied())
+    }
+
     /// The walk of a library domain: `nth(k)` for `k` in `0..count`.
     pub(super) fn walk(&mut self, dom: DomainId, nth: FnId, span: Span) -> Iter {
         Iter::Walk {

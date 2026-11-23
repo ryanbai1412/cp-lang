@@ -522,8 +522,19 @@ impl Lowerer<'_> {
             }
             let (ty, lo, hi) = self.table_axis(dim, span);
             let mut pre = Vec::new();
-            let slot = match whole {
-                Whole::No => self.loop_var(&params[i], ty.clone(), &mut pre),
+            let slot = match (&whole, self.library_walk_nth(dim)) {
+                // `[Subset<B>] s => …`: `s` is each value of the type, `nth` of the position.
+                (Whole::No, Some(nth)) => {
+                    let k = self.temp(ty.clone());
+                    let pos = self.mk(ExprKind::Local(k), ty.clone(), span);
+                    let ord = self.cast(Cast::Ord, pos, Ty::Int);
+                    let item_ty = self.sigs[nth].ret.clone().unwrap_or(Ty::Unit);
+                    let item = self.loop_var(&params[i], item_ty.clone(), &mut pre);
+                    let value = self.mk(ExprKind::Call(nth, vec![Arg::Value(ord)]), item_ty, span);
+                    pre.insert(0, Stmt::Let(item, Some(value)));
+                    k
+                }
+                (Whole::No, None) => self.loop_var(&params[i], ty.clone(), &mut pre),
                 _ => self.temp(ty.clone()),
             };
             let id = self.next_loop;

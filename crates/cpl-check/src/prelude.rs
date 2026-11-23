@@ -276,6 +276,7 @@ pub const BUILT_ON: &[(&str, &str)] = &[
     ("adjacency", "Bitset"),
     ("all", "Bitset"),
     ("without", "Bitset"),
+    ("subsets", "Subset"),
 ];
 
 /// Internal shape specializations brought in from a stdlib module when a
