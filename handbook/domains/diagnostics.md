@@ -181,7 +181,7 @@ with no real check yet. Targets and current values are in
 | Quality | Metric | Mechanism | Where |
 |---|---|---|---|
 | No false positives on idiomatic code | lint warnings on the corpus, `std` and the practice solutions | `errors/R10`: ratchet, only goes down | `crates/cpl-lint/src/corpus_tests.rs` `corpus_warnings_only_go_down`, `std_tests.rs` |
-| A bound lint's claim is true (the named input really overflows, divides by 0, empties the range) | claims whose witness does not trap when run | `errors/R16`: design: the witness comes from the range prover; `missing` as a suite that runs it | `crates/cpl-lint/src/rules/proven/` |
+| A bound lint's claim is true (the named input really overflows, divides by 0, empties the range) | claims whose witness does not trap when run | `errors/R16`: generated suite: each witness is pinned into the declared ranges, `cpl-stress` fills the rest of a valid input, and the run must trap on the flagged line | `crates/cpl-cli/tests/lint_witnesses.rs` |
 | Lints catch the bugs they name | mutation score of lint suites | `errors/R10`: `missing` | — |
 
 ### Runtime traps

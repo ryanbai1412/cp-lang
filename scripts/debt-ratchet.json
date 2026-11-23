@@ -136,13 +136,13 @@
   "register_rows_by_domain": {
     "compiler": 1,
     "debugger": 14,
-    "diagnostics": 5,
+    "diagnostics": 4,
     "idioms": 1,
     "infra": 0,
     "lint-fmt": 1,
     "perf": 4,
     "site": 9,
-    "spec": 8,
+    "spec": 7,
     "stdlib": 30,
     "tech-debt": 0,
     "tools": 22
