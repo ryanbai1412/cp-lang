@@ -8,12 +8,11 @@ use crate::{
     File, Finding, BY_TWIN, COPY_SORT_WRITEBACK, DISCARDED_RESULT, DOMAIN_SPELLING, FREE_FOLD,
     HAND_ROLLED_ANSWER_SEARCH, HAND_ROLLED_BINARY_LIFTING, HAND_ROLLED_DSU, HAND_ROLLED_PREFIX_SUM,
     HAND_ROLLED_RANGE_TREE, HAND_ROLLED_SIEVE, HAND_ROLLED_STRING_ALGO, INDEX_ONLY_LOOP,
-    LOOP_REDUCTION, NONE_CHECK_UNWRAP, PUSH_LOOP, SEARCH_LOOP, SORTED_RANGE_METHOD,
-    SYMMETRIC_WRITE, TREE_ORDER,
+    LOOP_REDUCTION, NONE_CHECK_UNWRAP, PUSH_LOOP, SEARCH_LOOP, SYMMETRIC_WRITE, TREE_ORDER,
 };
 use cpl_diag::{Diagnostic, Fix, Span};
 use cpl_syntax::ast::*;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 
 mod forms;
 mod range_tree;
@@ -37,7 +36,6 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
         next_base: 0,
         valued_fns: HashSet::new(),
         declared: HashSet::new(),
-        sorted_containers: HashMap::new(),
         idents: idents(file.src),
         unchecked: unchecked_spans(file),
         findings: Vec::new(),
@@ -51,25 +49,15 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
     }
     let top: Vec<(u32, &Stmt)> = file.top_level().collect();
     rule.sequence(&top);
-    struct Declared<'s>(&'s mut HashSet<String>, &'s mut HashMap<String, bool>);
+    struct Declared<'s>(&'s mut HashSet<String>);
     impl Visitor for Declared<'_> {
         fn stmt(&mut self, stmt: &Stmt) {
             if let StmtKind::Fn(decl) = &stmt.kind {
                 self.0.insert(decl.name.text.clone());
             }
-            if let StmtKind::Let { pat, ty, init, .. } = &stmt.kind {
-                if let PatternKind::Name(vname) = &pat.kind {
-                    if let Some(is_int) = sorted_container_binding(ty.as_ref(), init.as_ref()) {
-                        self.1.insert(vname.clone(), is_int);
-                    }
-                }
-            }
         }
     }
-    file.walk(
-        &mut Declared(&mut rule.declared, &mut rule.sorted_containers),
-        |_, _| {},
-    );
+    file.walk(&mut Declared(&mut rule.declared), |_, _| {});
     let mut blocks = Blocks { taste: &mut rule };
     file.walk(&mut blocks, |b, base| b.taste.base = base);
     rule.findings.extend(hand_rolled_range_trees(file));
@@ -106,7 +94,6 @@ impl Visitor for Blocks<'_, '_> {
         self.taste.by_twin(expr);
         self.taste.tree_order(expr);
         self.taste.domain_spelling(expr);
-        self.taste.sorted_range_method(expr);
         match &expr.kind {
             ExprKind::Block(body) => self.taste.block(&body.stmts),
             ExprKind::If {
@@ -138,8 +125,6 @@ struct Taste<'a> {
     /// Every fn and method the file declares: a rewrite to `count(..)`
     /// would call the file's own `count`.
     declared: HashSet<String>,
-    /// Variables known to hold `SortedBag<K>` or `SortedSet<K>` (`bool` = integer key).
-    sorted_containers: HashMap<String, bool>,
     /// Every identifier-like word in the file, for picking fresh names.
     idents: HashSet<&'a str>,
     findings: Vec<Finding>,
@@ -1335,75 +1320,6 @@ impl<'a> Taste<'a> {
                 }
             }
         }
-    }
-
-    /// `s.first_ge(k)` / `first_gt(k)` / `last_le(k)` / `last_lt(k)` / `count_range(lo, hi)`
-    /// on `SortedBag`/`SortedSet` -> `s.range(...)`.
-    fn sorted_range_method(&mut self, expr: &Expr) {
-        let ExprKind::Call { callee, args } = &expr.kind else {
-            return;
-        };
-        let ExprKind::Field { base, name } = &callee.kind else {
-            return;
-        };
-        if !matches!(
-            name.text.as_str(),
-            "first_ge" | "first_gt" | "last_le" | "last_lt" | "count_range"
-        ) {
-            return;
-        }
-        let is_int_key = match &base.kind {
-            ExprKind::Name(v) => match self.sorted_containers.get(v) {
-                Some(&b) => b,
-                None if name.text == "count_range" => true,
-                None => return,
-            },
-            _ if name.text == "count_range" => true,
-            _ => return,
-        };
-        let replacement = match (name.text.as_str(), args.as_slice()) {
-            ("first_ge", [a]) if a.name.is_none() => {
-                format!("range({}..).first", self.text(a.value.span))
-            }
-            ("last_le", [a]) if a.name.is_none() => {
-                format!("range(..={}).last", self.text(a.value.span))
-            }
-            ("last_lt", [a]) if a.name.is_none() => {
-                format!("range(..{}).last", self.text(a.value.span))
-            }
-            ("first_gt", [a]) if a.name.is_none() => {
-                let q = self.text(a.value.span);
-                if is_int_key {
-                    format!("range({q} + 1..).first")
-                } else {
-                    format!("first_true(x => x > {q})")
-                }
-            }
-            ("count_range", [lo, hi]) if lo.name.is_none() && hi.name.is_none() => format!(
-                "range({}..{}).len",
-                self.text(lo.value.span),
-                self.text(hi.value.span)
-            ),
-            _ => return,
-        };
-        let replace_span = Span {
-            start: name.span.start,
-            end: expr.span.end,
-        };
-        let mut diag = Diagnostic::warning(
-            SORTED_RANGE_METHOD.code,
-            expr.span,
-            format!("use `.{replacement}` instead of `.{}`", name.text),
-        )
-        .with_help(format!(
-            "`cpl fix` rewrites `.{}` to `.{replacement}`",
-            name.text
-        ));
-        diag.fixes.push(Fix {
-            title: format!("rewrite `.{}` to `.{replacement}`", name.text),
-            edits: vec![(replace_span, replacement)],
-        });
-        self.push(&SORTED_RANGE_METHOD, diag);
     }
 
     #[allow(clippy::too_many_arguments)]

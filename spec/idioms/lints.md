@@ -142,7 +142,7 @@ One sub-family per module. Each says: you rebuilt something the library has.
 | counting_sort_loop | bucket count then prefix-place | `counting_sort` / `radix_sort` | warn | #1 | loop | |
 | next_permutation_loop | hand-rolled next permutation | `xs.next_permutation()` | fix | #1 | loop | |
 | perm_cycles_loop | visited-array cycle walk on a permutation | `p.perm_cycles()` | fix? | #1 | loop | |
-| sorted_range_method | `first_ge`/`first_gt`/... spelled out by search | the sorted method | fix | #13 | ty | ✓sorted_range_method |
+| sorted_range_method | `first_ge`/`first_gt`/... spelled out by search | the sorted method | fix | #13 | ty | ✓E0203 (checker, with fix) |
 
 ### S.seq: grouping and runs
 

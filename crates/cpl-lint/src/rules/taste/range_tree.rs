@@ -1,4 +1,4 @@
-//! L0514 `hand_rolled_range_tree` and L0515 `sorted_range_method`.
+//! L0514 `hand_rolled_range_tree`.
 
 use super::*;
 
@@ -459,45 +459,4 @@ pub(super) fn is_recursive_segtree_fn(decl: &FnDecl, body: &Block) -> bool {
     };
     walk_block(&mut c, body);
     c.has_mid && c.has_left_rec && c.has_right_rec && c.has_range_or_point_guard
-}
-pub(super) fn sorted_container_binding(ty: Option<&Type>, init: Option<&Expr>) -> Option<bool> {
-    let key_is_int = |args: &[Type]| match args.first() {
-        Some(Type {
-            kind: TypeKind::Named { name, .. },
-            ..
-        }) => matches!(name.text.as_str(), "Int" | "I128" | "U64"),
-        None => true,
-        _ => false,
-    };
-    if let Some(Type {
-        kind: TypeKind::Named { name, args },
-        ..
-    }) = ty
-    {
-        if matches!(name.text.as_str(), "SortedBag" | "SortedSet" | "OrderedSet") {
-            return Some(key_is_int(args));
-        }
-    }
-    let init = init?;
-    let ExprKind::Call { callee, .. } = &walk::unparen(init).kind else {
-        return None;
-    };
-    let head = match &callee.kind {
-        ExprKind::Field { base, .. } => base.as_ref(),
-        _ => callee.as_ref(),
-    };
-    match &head.kind {
-        ExprKind::Generic { base, args } => {
-            if let ExprKind::Name(n) = &base.kind {
-                if matches!(n.as_str(), "SortedBag" | "SortedSet" | "OrderedSet") {
-                    return Some(key_is_int(args));
-                }
-            }
-            None
-        }
-        ExprKind::Name(n) if matches!(n.as_str(), "SortedBag" | "SortedSet" | "OrderedSet") => {
-            Some(true)
-        }
-        _ => None,
-    }
 }

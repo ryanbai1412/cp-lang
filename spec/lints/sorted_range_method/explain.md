@@ -1,1 +1,0 @@
-`SortedBag.range(r)` and `SortedSet.range(r)` return an \(O(1)\) view whose `.first`, `.last`, and `.len` cost \(O(\log n)\) and whose iteration costs \(O(\log n + k)\). `cpl fix` rewrites `first_ge`/`first_gt`/`last_le`/`last_lt`/`count_range` to `.range(...)` calls.

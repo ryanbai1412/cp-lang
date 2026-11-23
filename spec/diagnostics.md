@@ -113,7 +113,7 @@ L0501 search_loop, L0502 discarded_result, L0503 symmetric_write, L0504
 loop_reduction, L0505 index_only_loop, L0506 repeated_literal, L0507
 push_loop, L0508 none_check_unwrap, L0509 free_fold, L0510 by_twin,
 L0511 tree_order, L0512 domain_spelling, L0514
-hand_rolled_range_tree, L0515 sorted_range_method, L0516-L0521
+hand_rolled_range_tree, L0516-L0521
 hand_rolled_{string_algo, dsu, sieve, binary_lifting, answer_search,
 prefix_sum}, L0522 copy_sort_writeback, L0523 chmin_chmax_if, L0524 bool_ternary_print, L0525 peek_then_pop, L0526 ceil_div_formula, L0527 neg_mod_fixup, L0528 reverse_index, L0529 float_sqrt_for_int, L0530 sentinel_table, L0531 manual_mod_reduce, L0532 nested_list_grid, L0534 grid_neighbour_step, L0535 grid_bounds_check, L0536 sentinel_scalar, L0537 manual_adjacency_list, L0539 dx_dy_arrays, L0553 stale_entry_skip, L0563 map_as_multiset, L0571 negated_heap, L0572 sort_for_extreme, L0573 fermat_inverse, L0574 char_offset_index, L0575 push_pop_pair, L0576 pop_min_loop.
 

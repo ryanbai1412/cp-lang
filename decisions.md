@@ -8244,3 +8244,8 @@ tag move fatal again.
 
 - **Call.** `a.pow(e)` on a number or `Mod` is E0203 "power uses `**`, not `.pow(...)`", and E0203 carries the `a ** e` fix `cpl fix` applies (parenthesised where needed). A struct's own `pow` is neither an error nor a lint. L0205 found the same calls from syntax, so it only repeated the error; retired with its record, as L0206 and L0513 were (decisions 401, 404).
 - **Reverse.** Restore `spec/lints/pow_method/` and the `.pow` arm in `rules/types.rs`.
+
+## 406. Retire L0515 `sorted_range_method` for the checker's E0203 fix (lint-fmt, 2026-11-23)
+
+- **Call.** `first_ge`/`first_gt`/`last_le`/`last_lt`/`count_range` on `SortedBag`/`SortedSet` are E0203 "was replaced by `range(..)...`", each with the rewrite `cpl fix` applies (`first_true(x => x > k)` for a non-Int `first_gt`). L0515 guessed the same calls from `let` bindings, so it only repeated the error; retired with its record, as L0205 was (decision 405).
+- **Reverse.** Restore `spec/lints/sorted_range_method/` and `sorted_range_method` in `rules/taste/mod.rs`.
