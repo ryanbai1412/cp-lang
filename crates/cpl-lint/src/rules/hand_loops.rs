@@ -192,6 +192,12 @@ impl HandLoops<'_> {
         if !matches!(iter.kind, ExprKind::Range { .. }) {
             diag = diag.with_label(iter.span.shift(self.base), "the iterable");
         }
+        // `typed.rs` keeps the fix only where both spellings are a `List` of
+        // the same elements.
+        diag.fixes.push(Fix {
+            title: format!("write `{it}.collect()`"),
+            edits: vec![(expr.span.shift(self.base), format!("{it}.collect()"))],
+        });
         self.out.push(Finding {
             lint: &COPY_COMPREHENSION,
             diag,

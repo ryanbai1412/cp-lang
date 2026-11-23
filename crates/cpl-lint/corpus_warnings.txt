@@ -28,7 +28,7 @@ std L0542 13
 std L0543 6
 std L0545 2
 std L0547 1
-std L0549 99
+std L0549 78
 std L0550 14
 std L0551 18
 std L0567 4

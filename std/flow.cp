@@ -1804,7 +1804,7 @@ fn bounded_flows_match_brute_force():
         let got = circulation(arcs)
         assert (got == None) == every.is_empty
         if let f = got:
-            assert every.contains((0, [x for x in f]))
+            assert every.contains((0, f.collect()))
             circ += 1
         let (s, t) = (V.first!, V.last!)
         let st = [x for x in all_bounded_flows(arcs, s, t) if x.0 >= 0]
@@ -1813,8 +1813,8 @@ fn bounded_flows_match_brute_force():
         if big == None: continue
         feasible += 1
         assert big!.value == [x.0 for x in st].max()! and small!.value == [x.0 for x in st].min()!
-        assert st.contains((big!.value, [x for x in big!.flow]))
-        assert st.contains((small!.value, [x for x in small!.flow]))
+        assert st.contains((big!.value, big!.flow.collect()))
+        assert st.contains((small!.value, small!.flow.collect()))
     assert circ > 0 and feasible > 10
 
 @test

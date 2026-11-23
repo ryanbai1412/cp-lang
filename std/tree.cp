@@ -1317,7 +1317,7 @@ fn a_table_of_neighbour_lists_roots_like_the_fn_that_reads_it():
     domain V = 0..9
     let adj = random_tree(V.first!)
     let (a, b) = (Rooted(adj, V.first!), Rooted(v => adj[v], V.first!))
-    assert [v for v in a.at] == [v for v in b.at] and a.par == b.par and a.sz == b.sz
+    assert a.at.collect() == b.at.collect() and a.par == b.par and a.sz == b.sz
 
 @test
 fn lca_dist_ancestor_and_step_match_climbing():

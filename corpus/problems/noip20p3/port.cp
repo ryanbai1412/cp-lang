@@ -64,7 +64,7 @@ fn solve_range(cols: List<Int>, ql: Int, qr: Int):
             transfer(helper, a, c0)
         transfer(g_empty, helper, c0)
 
-    var cur_cols: List<Int> = [x for x in cols]
+    var cur_cols: List<Int> = cols.collect()
 
     while true:
         var changed = false

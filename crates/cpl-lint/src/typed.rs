@@ -76,6 +76,26 @@ pub(crate) fn refine(diags: &mut Vec<Diagnostic>, src: &str) {
 
 pub(crate) fn refine_with_facts(diags: &mut Vec<Diagnostic>, facts: &Facts) {
     diags.retain(|d| keep(d, facts));
+    for d in diags.iter_mut() {
+        if !fix_checks(d, facts) {
+            d.fixes.clear();
+        }
+    }
+}
+
+/// Whether the fix of the kept finding `d` means what the code it replaces does.
+fn fix_checks(d: &Diagnostic, facts: &Facts) -> bool {
+    match d.code {
+        // `collect` copies a list or an array into the `List` the
+        // comprehension builds; a `Str` or a generator may collect into
+        // whatever the context asks for. A range literal has no label: in a
+        // generic fn `cpl run` has no `Range.collect` yet (std `sa_order`).
+        c if c == COPY_COMPREHENSION.code => d.labels.first().is_some_and(|l| {
+            matches!(facts.place_type(l.span), Some(Ty::Array { .. }))
+                || matches!(facts.place_type(l.span), Some(Ty::Named { name, .. }) if name == "List")
+        }),
+        _ => true,
+    }
 }
 
 /// Whether `facts` leave the finding `d` standing.

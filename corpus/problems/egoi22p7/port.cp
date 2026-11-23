@@ -47,7 +47,7 @@ fn main_solve():
     fn query_conn(a: Int, u: Pin, v: Pin) -> Int:
         queries += 1
         if g_find(a, u.idx) == g_find(a, v.idx): return a
-        var copy: List<Int> = [x for x in g_par[a]]
+        var copy: List<Int> = g_par[a].collect()
         let nv = g_par.len
         g_par.push(copy)
         g_unite(nv, u.idx, v.idx)

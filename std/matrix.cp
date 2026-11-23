@@ -177,7 +177,7 @@ pub struct Mat<T: Add + Sub + Mul + Div>:
     pub fn det(self) -> T:
         assert rows == cols, "det requires a square matrix"
         let n = rows
-        var m = [x for x in data]
+        var m = data.collect()
         var ans = T.one
         for col in 0..n:
             var piv = col
@@ -203,7 +203,7 @@ pub struct Mat<T: Add + Sub + Mul + Div>:
     /// traps: never for a field `T`
     /// example: `Mat<Mod<7>>.from_rows([[1, 2], [2, 4]]).rank() == 1`
     pub fn rank(self) -> Int:
-        var m = [x for x in data]
+        var m = data.collect()
         var r = 0
         for col in 0..cols:
             if r == rows: break
@@ -336,7 +336,7 @@ pub struct Mat<T: Add + Sub + Mul + Div>:
     /// traps: never for a field `T`
     /// example: `let (mat: e, rank: k, pivots: p) = Mat<Mod<7>>.from_rows([[2, 4], [1, 2]]).rref(); k == 1 and p == [0] and e.get(0, 1) == Mod<7>(2) and e.get(1, 1) == Mod<7>(0)`
     pub fn rref(self) -> (mat: Mat<T>, rank: Int, pivots: List<Int>):
-        var m = [x for x in data]
+        var m = data.collect()
         var pivots = List<Int>()
         var r = 0
         for col in 0..cols:
@@ -397,7 +397,7 @@ pub struct Mat<T: Add + Sub + Mul + Div>:
     pub fn char_poly(self) -> List<T>:
         assert rows == cols, "char_poly requires a square matrix"
         let n = rows
-        var h = [x for x in data]
+        var h = data.collect()
         for col in 0..n - 2:
             var piv = col + 1
             while piv < n and h[piv * n + col] == T.zero: piv += 1
@@ -559,7 +559,7 @@ impl Pow for Mat<T>:
 pub fn det_real(a: Mat<F64>, eps: F64 = 1e-9) -> F64:
     assert a.rows == a.cols, "det_real requires a square matrix"
     let n = a.rows
-    var m = [x for x in a.data]
+    var m = a.data.collect()
     var ans = 1.0
     for col in 0..n:
         var piv = col
@@ -586,7 +586,7 @@ pub fn det_real(a: Mat<F64>, eps: F64 = 1e-9) -> F64:
 /// example: `rank_real(Mat<F64>.from_rows([[1.0, 0.0], [0.0, 1e-12]])) == 1`
 pub fn rank_real(a: Mat<F64>, eps: F64 = 1e-9) -> Int:
     let (rows, cols) = (a.rows, a.cols)
-    var m = [x for x in a.data]
+    var m = a.data.collect()
     var r = 0
     for col in 0..cols:
         if r == rows: break
@@ -976,7 +976,7 @@ pub struct BitMat(pub rows: Int, pub cols: Int):
     /// traps: never
     /// example: `var m = BitMat(2, 2); m.set(0, 0, true); m.set(0, 1, true); m.set(1, 0, true); m.set(1, 1, true); m.rank() == 1`
     pub fn rank(self) -> Int:
-        var a = [x for x in bits]
+        var a = bits.collect()
         bit_rref(rows, cols, mut a).len
 
     /// Any solution to `self * x == b` over GF(2), or `None`: the one with every free (non-pivot)

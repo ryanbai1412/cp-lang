@@ -54,7 +54,7 @@ fn compute_dt(k: Int, x: Int, y: Int) -> (List<Int>, List<List<Int>>, List<List<
                         break
                     tbl[r] = m
                 if ok_leaf:
-                    var qcopy: List<Int> = [z for z in p2]
+                    var qcopy: List<Int> = p2.collect()
                     leaf_q.push(qcopy)
                     leaf_res.push(tbl)
                     found_leaf = true
@@ -64,7 +64,7 @@ fn compute_dt(k: Int, x: Int, y: Int) -> (List<Int>, List<List<Int>>, List<List<
                 ok_root = false
                 break
         if ok_root:
-            var rcopy: List<Int> = [z for z in p]
+            var rcopy: List<Int> = p.collect()
             return (rcopy, leaf_q, leaf_res)
         if not p.next_permutation(): break
     return ([], [], [])

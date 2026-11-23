@@ -3190,7 +3190,7 @@ pub struct AhoCorasick<A>:
     /// order: non-decreasing depth; ties by smaller state number
     /// traps: never
     /// example: `AhoCorasick<Char>(["a", "ab", "b"]).fail_order() == [0, 1, 3, 2]`
-    pub fn fail_order(self) -> List<Int> = [v for v in order]
+    pub fn fail_order(self) -> List<Int> = order.collect()
 
     /// The nearest state strictly up the failure links of `state` at which a pattern ends, or
     /// `None` when there is None.

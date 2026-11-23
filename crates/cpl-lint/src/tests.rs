@@ -1866,3 +1866,12 @@ fn split_range_check_fixes_to_a_chain() {
     let kept = "let (x, n): (Int, 1..=100) = read()\nif x > 0 and x < n and n > 5:\n    print(1)\nif x < n.min(9) and x >= abs(n):\n    print(2)\n";
     assert_eq!(fixed(kept), kept);
 }
+
+#[test]
+fn copy_comprehension_fixes_only_a_list_copy() {
+    let src = "let a = [3, 1]\nvar b = [x for x in a]\nb.push(0)\nprint(b, [c for c in \"ab\"])\n";
+    let out = fixed(src);
+    assert!(out.contains("var b = a.collect()"), "{out}");
+    // A `Str` collects into what the context asks for, so it keeps only the help.
+    assert!(out.contains("[c for c in \"ab\"]"), "{out}");
+}

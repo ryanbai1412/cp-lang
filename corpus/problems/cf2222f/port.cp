@@ -17,7 +17,7 @@ domain W = 0..=m
 let edges: [0..m](u: V, v: V, w: W) = read()
 let colors: [0..q]V = read()
 
-let good = Bitset<V>.of([v for v in colors])
+let good = Bitset<V>.of(colors.collect())
 let need = good.len - 1
 
 var by_w: [W]List<(u: V, v: V)> = []

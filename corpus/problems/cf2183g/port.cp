@@ -15,7 +15,7 @@ fn ask(s: Str) -> List<Int>:
     print("?", s)
     let k: Int = read()
     let got: [0..k]Int = read()
-    [x for x in got]
+    got.collect()
 
 @!multitest
 let n: 1..=200_000 = read()

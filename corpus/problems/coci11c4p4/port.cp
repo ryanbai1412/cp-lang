@@ -26,7 +26,7 @@ fn rank(i: I) -> Rank:
     let falling = pull > 0 or (pull == 0 and old[i.prev!] > old[i])
     (pull, falling, if falling: -i.idx else: i.idx)
 
-var pile = sorted([b for b in boards], by: b => -b)  // the shortest board is on top
+var pile = sorted(boards.collect(), by: b => -b)  // the shortest board is on top
 var fence: [I]Int = 0
 for i in sorted([i for i in I], by: i => rank(i)): fence[i] = pile.pop()!
 print(sum(abs(fence[i] - fence[j]) for i in I if let j = I.at(i + 1)))

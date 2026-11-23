@@ -13,4 +13,4 @@ for r in 1..=n:
         let right = if c < r - 1: best[c] else: 0
         row.push(x + max(left, right))
     best = row
-print([b for b in best].max()!)
+print(best.collect().max()!)

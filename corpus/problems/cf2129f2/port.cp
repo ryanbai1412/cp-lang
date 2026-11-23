@@ -33,7 +33,7 @@ fn holding(q: Q) -> List<Val> = [v for v in Val if v.ord < n and masks[v].bit(q.
 fn ask_positions(vals: List<Val>) -> List<Pos>:
     print(2, vals.len, vals)
     let found: [0..vals.len]Pos = read()
-    [p for p in found]
+    found.collect()
 
 var sig: [Pos]Int = 0
 for q in Q:

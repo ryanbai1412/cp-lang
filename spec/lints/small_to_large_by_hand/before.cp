@@ -1,6 +1,6 @@
 let (n, q): (1..=100000, 1..=100000) = read()
 var sets: List<SortedSet<Int>> = [SortedSet.of([x]) for x in 0..n]
-var id: List<Int> = [x for x in 0..n]
+var id: List<Int> = (0..n).collect()
 for _ in 0..q:
     let (x, y): (0..n, 0..n) = read()
     if x == y:

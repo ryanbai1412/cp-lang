@@ -518,7 +518,7 @@ pub struct OnlineHull:
     pub fn add(mut self, p: Pt) -> Bool:
         with lint(unproven_list_index: allow)
         if self.locate(p) != Location.Outside: return false
-        var pts = [q for q in hull]
+        var pts = hull.collect()
         pts.push(p)
         hull = convex_hull(pts, collinear: false)
         var a2: I128 = 0
@@ -622,7 +622,7 @@ pub struct OnlineHull:
     /// order: counter-clockwise, starting at the least `(x, y)`; a new `List`, keyed from 0
     /// traps: never
     /// example: `var h = OnlineHull(); h.add(Pt(0, 4)); h.add(Pt(4, 0)); h.add(Pt(0, 0)); h.vertices() == [Pt(0, 0), Pt(4, 0), Pt(0, 4)]`
-    pub fn vertices(self) -> List<Pt> = [p for p in hull]
+    pub fn vertices(self) -> List<Pt> = hull.collect()
 
     /// The current hull corners, yielded in `vertices()` order without building a list.
     ///

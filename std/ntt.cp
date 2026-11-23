@@ -664,7 +664,7 @@ fn ranked<P>(a: List<Mod<P>>, exp: Bool) -> List<Mod<P>>:
 fn ntt_round_trip_and_convolve():
     type Z = Mod<998_244_353>
     var a = [Z(i * 7 + 3) for i in 0..16]
-    let orig = [x for x in a]
+    let orig = a.collect()
     ntt(mut a)
     ntt(mut a, inverse: true)
     assert a == orig
@@ -711,12 +711,12 @@ fn sos_and_bitwise_convolutions():
         let n = 1 << bits
         let a = [rand(-20, 20) for _ in 0..n]
         let b = [rand(-20, 20) for _ in 0..n]
-        var s = [x for x in a]
+        var s = a.collect()
         sos(mut s)
         for mask in 0..n: assert s[mask] == sum(a[sub] for sub in 0..n if (sub & mask) == sub)
         sos(mut s, inverse: true)
         assert s == a
-        var u = [x for x in a]
+        var u = a.collect()
         sos(mut u, over: Sup)
         for mask in 0..n: assert u[mask] == sum(a[sup] for sup in 0..n if (sup & mask) == mask)
         sos(mut u, over: Sup, inverse: true)
@@ -735,7 +735,7 @@ fn sos_and_bitwise_convolutions():
         assert convolve(a, b, on: &) == want_and
         assert convolve(a, b, on: ^) == want_xor
         assert convolve(a, b, on: subset) == want_sub
-        var w = [x for x in a]
+        var w = a.collect()
         fwht(mut w)
         fwht(mut w, inverse: true)
         assert w == a
@@ -743,7 +743,7 @@ fn sos_and_bitwise_convolutions():
     type Z = Mod<998_244_353>
     let ma = [Z(1), Z(2), Z(3), Z(4), Z(5), Z(6), Z(7), Z(8)]
     let mb = [Z(9), Z(10), Z(11), Z(12), Z(13), Z(14), Z(15), Z(16)]
-    var mw = [x for x in ma]
+    var mw = ma.collect()
     fwht(mut mw)
     fwht(mut mw, inverse: true)
     assert mw == ma

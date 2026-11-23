@@ -2962,7 +2962,7 @@ fn clique_rec<V: Ord>(
     mut best: List<V>,
 ):
     if p.is_empty and x.is_empty:
-        var c = [y for y in r]
+        var c = r.collect()
         sort(mut c)
         if c.len > best.len or (c.len == best.len and c < best): best = c
         return

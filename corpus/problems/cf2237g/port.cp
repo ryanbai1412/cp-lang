@@ -63,7 +63,7 @@ for _ in 0..t:
         let n: Int = read()
         let a: [0..n]Int = read()
         let b = [
-            symbols[s] for s in recut([x for x in a], WORD, SYMBOL, ceil_div(n * WORD, SYMBOL))
+            symbols[s] for s in recut(a.collect(), WORD, SYMBOL, ceil_div(n * WORD, SYMBOL))
         ] + powers
         print(b.len)
         print(b)
