@@ -5797,3 +5797,15 @@ the struct entirely, like any unread field, instead of a `bool` placeholder.
   ratchet allowance is raised in the same commit.
 - **Reverse.** Drop `TracePoint::Cell` from `cell_point`; every write goes
   through `TracePoint::Assign` again.
+
+## 224. The spec-block recovery probe skips signature-only blocks (2026-11-22)
+
+- **Decision.** `plan_blocks` in `crates/cpl-cli/tests/recovery.rs` skips
+  a block whose every line is a body-less `fn`/`struct`/`trait`/`enum`/
+  `type` signature (attributes and `// cost` comments allowed). 41 of 154
+  blocks are such API synopses (`fn z_function<S: Indexed>(s: S) ->
+  List<Int>  // O(n)`).
+- **Why.** A synopsis is not a program and can never compile, so its
+  "expected `:` ... found the end of the line" said nothing about recovery;
+  it was 37 of the 75 generic first errors the M2 metric counts.
+- **Reverse.** Drop `!synopsis(&body)` from `plan_blocks`.

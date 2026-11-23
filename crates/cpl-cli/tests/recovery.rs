@@ -490,7 +490,7 @@ fn plan_blocks() -> Vec<(String, String)> {
                                 .iter()
                                 .any(|k| t.starts_with(k))
                         });
-                        if code && !body.lines().any(|l| l.starts_with("$ ")) {
+                        if code && !synopsis(&body) && !body.lines().any(|l| l.starts_with("$ ")) {
                             out.push((format!("{name}:{}", start + 1), body));
                         }
                     }
@@ -506,6 +506,34 @@ fn plan_blocks() -> Vec<(String, String)> {
         }
     }
     out
+}
+
+/// A block that only lists signatures (`fn z_function(s: Str) -> List<Int>
+/// // O(n)`), an API synopsis rather than a program.
+fn synopsis(body: &str) -> bool {
+    let decl = |l: &str| {
+        let mut l = l;
+        while let Some(rest) = l.strip_prefix('@') {
+            l = rest.split_once(' ').map_or("", |(_, r)| r.trim_start());
+        }
+        let mut depth = 0i32;
+        let outside: String = l
+            .chars()
+            .filter(|&c| {
+                depth += (c == '(') as i32 - (c == ')') as i32;
+                depth == 0 && c != ')'
+            })
+            .collect();
+        ["fn ", "struct ", "trait ", "enum ", "type "]
+            .iter()
+            .any(|k| l.starts_with(k))
+            && !l.ends_with(':')
+            && !outside.contains(" = ")
+    };
+    let mut lines = body
+        .lines()
+        .map(|l| l.split("//").next().unwrap_or("").trim());
+    lines.all(|l| l.is_empty() || decl(l))
 }
 
 /// Errors in a plan block that name something an earlier error's line

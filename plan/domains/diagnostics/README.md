@@ -59,7 +59,7 @@ common-mistake cascades <= 3; benchmark base = every clean `spec.cp`
 | Common mistakes: fix-it | 100.0% (106/106) | >= 95% | M1/M2 |
 | Common mistakes: fix restores | 97.2% | >= 95% | M1/M2 |
 | Common mistakes: cascaded | 1/107 | <= 3 | M3 |
-| Spec blocks: first error generic `expected` | 75/137 | <= 20 | M2 |
+| Spec blocks: first error generic `expected` | 38/96 (signature-only blocks skipped) | <= 20 | M2 |
 | Scoreboards gated | 2 of 2 | 2 of 2 | M1 |
 | Benchmark base (clean `spec.cp`) | 37 of 100 | all clean, auto | M3 |
 | Emitted codes with trigger + clean fix | 83 of 84 | all | M1 |
