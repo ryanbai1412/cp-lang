@@ -1219,9 +1219,10 @@ pub fn perm_pow<V>(p: [V]V, k: Int) -> [V]V:
 /// empty: `0`
 /// ties: equal values are not an inversion
 /// traps: never
+/// example: `[3, 1, 2].inversions() == 2`
 /// example: `inversions([3, 1, 2]) == 2`
-pub fn inversions<S: Seq, T>(a: S) -> Int:
-    var cur: List<T> = [x for x in a]
+pub fn inversions<S: Seq, T>(self: S) -> Int:
+    var cur: List<T> = [x for x in self]
     let n = cur.len
     var tmp = cur.copy()
     var total = 0

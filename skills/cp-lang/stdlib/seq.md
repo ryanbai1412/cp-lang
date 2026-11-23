@@ -202,7 +202,7 @@ A contiguous piece of a ring, possibly wrapping past the end, at most n elements
 - `fn compose<A, B, C>(f: [A]B, g: [B]C) -> [A]C` — O(|A|); Function composition: `compose(f, g)[a] == g[f[a]]`.
 - `fn perm_cycles<V>(p: [V]V) -> List<List<V>>` — O(|V|); Disjoint cycle decomposition of permutation `p`, each cycle starting at its smallest element.; traps: never in release; debug traps when `p` is not a permutation
 - `fn perm_pow<V>(p: [V]V, k: Int) -> [V]V` — O(|V|); `k`-th iterate of permutation `p` (`k >= 0`), computed via cycle decomposition.; traps: when `k < 0`
-- `fn inversions<S: Seq, T>(a: S) -> Int` — O(n log n); Number of inversions: pairs `(i, j)` with `i < j` and `a[i] > a[j]`.
+- `fn inversions<S: Seq, T>(self: S) -> Int` — O(n log n); Number of inversions: pairs `(i, j)` with `i < j` and `a[i] > a[j]`.
 - `fn swap_at<D, T>(mut self: [D]T, i: D, j: D)` — O(1); Swap two positions of a domain array in place; safely a no-op when `i == j`.
 - `fn resized<S: Indexed, T>(self: S, n: Int, fill: T) -> List<T>` — O(n); `self` cut or padded with `fill` to length `n`: `a.resized(size, Z(0))` instead of `[if i < a.len: a[i] else: Z(0) for i in 0..size]`.; traps: when `n < 0`
 - `fn pop_if<T>(mut self: List<T>, ok: T -> Bool) -> ?T` — O(1)
