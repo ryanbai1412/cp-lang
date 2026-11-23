@@ -1,4 +1,4 @@
-// expect: E0302 at 8
+// expect: E0302 at 6
 // rule: 04.2.10
 // A record names the factors it fills, so one listing them out of order is no position, even when both factors have the same type.
 domain C = 0..3
