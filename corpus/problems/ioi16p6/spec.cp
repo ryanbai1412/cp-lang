@@ -9,7 +9,7 @@ domain Diag = 0..m
 let spans = read<[n](r: Diag, c: Diag)>().map(p => min(p.r, p.c)..=max(p.r, p.c)).outermost()
 
 struct Photo(line: Line, count: Int):
-    fn at(self, x: Int) -> (val: Int, count: Int) = (val: line.at(x), count: count)
+    fn at(self, x: Int) -> (val: Int, count: Int) = (val: line.at(x), count:)
 
 fn cover(fee: Int) -> (val: Int, count: Int):
     var photos = LiChao<Photo, (val: Int, count: Int)>(min, over: 0..=m)

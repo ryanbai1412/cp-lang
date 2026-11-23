@@ -63,7 +63,7 @@ for _ in 0..cases:
         var run = 0
         var others = List<T>()
         for i in T.filter(i => at[i].along == h):
-            if lead is Some(l):
+            if let Some(l) = lead:
                 if same(l, i): run += 1 else: others.push(i)
             else:
                 lead = Some(i)

@@ -14,14 +14,14 @@ let hi = [Wire] w => Int(ends[w].b) + (if ends[w].b < ends[w].a: n else: 0)
 // Whether the arcs `on`, each repeated one lap either way, cover segments lo..=hi.
 // O(s log s) in the number of arcs, never O(n), so the per-top checks stay O(m log m) in total.
 fn covers(on: List<Wire>, part: (lo: Int, hi: Int)) -> Bool:
-    var reach = part.lo - 1
+    var upto = part.lo - 1
     for (l, h) in [(lo[w] + s, hi[w] + s) for w in on for s in [-n, 0, n]].sorted():
-        if reach >= part.hi:
+        if upto >= part.hi:
             break
-        if l > reach + 1:
+        if l > upto + 1:
             return false
-        reach max= h
-    reach >= part.hi
+        upto max= h
+    upto >= part.hi
 
 let whole = (lo: 1, hi: n)
 var holder: [Wire]?Wire = None

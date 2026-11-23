@@ -1,4 +1,4 @@
-use std.graph.{complement, components, reachable}
+use std.graph.{complement, components}
 // egoi23p7 Sopsug: N - 1 tubes forming a tree directed toward one root, using every existing
 // tube and no banned pair, or NO. The existing tubes must form a forest; each of its trees is a
 // block whose root needs one new tube into another block. Block c may hang under block k unless
@@ -24,10 +24,10 @@ fn solve() -> ?List<(from: V, to: V)>:
     let bans_from = banned.map(.from).buckets()
     var cannot: [B]List<B> = []
     for c in B:
-        for (k, hits) in bans_from[top.get(c)].tally(by: i => block[banned[i].to]).items:
-            if k != c and hits == members[k].len:
-                cannot[k].push(c)
-    let blocked = Set([(k, c) for k in B for c in cannot[k]])
+        for (kb, hits) in bans_from[top.get(c)].tally(by: i => block[banned[i].to]).items:
+            if kb != c and hits == members[kb].len:
+                cannot[kb].push(c)
+    let blocked = Set([(kb, c) for kb in B for c in cannot[kb]])
     let hang = complement(cannot)
     // A full search forest's last tree is started by the only block that can reach all others.
     let (domain C, comp) = components(hang)
@@ -38,9 +38,9 @@ fn solve() -> ?List<(from: V, to: V)>:
     let ban = Set(banned)
     var out = List(existing)
     for b in order.drop(1):
-        let k = order.find(x => x != b and (x, b) not in blocked)!
+        let via = order.find(x => x != b and (x, b) not in blocked)!
         let c = top.get(b)
-        out.push((from: c, to: members[k].find(x => (from: c, to: x) not in ban)!))
+        out.push((from: c, to: members[via].find(x => (from: c, to: x) not in ban)!))
     out
 
 if let tubes = solve():
