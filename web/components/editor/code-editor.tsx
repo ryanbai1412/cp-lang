@@ -1,7 +1,7 @@
 'use client';
 
 import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirror/commands';
-import { bracketMatching, HighlightStyle, indentUnit, syntaxHighlighting } from '@codemirror/language';
+import { bracketMatching, HighlightStyle, indentOnInput, indentUnit, syntaxHighlighting } from '@codemirror/language';
 import { blockIndent, typedIndent } from './indent';
 import { type Diagnostic as CmDiagnostic, linter, lintGutter } from '@codemirror/lint';
 import { EditorState, StateField, Transaction } from '@codemirror/state';
@@ -137,6 +137,7 @@ export function CodeEditor({ value, onChange, onRun, readOnly, live = true, clas
         indentUnit.of('    '),
         blockIndent,
         typedIndent,
+        indentOnInput(),
         cpLanguage,
         syntaxHighlighting(highlight),
         theme,

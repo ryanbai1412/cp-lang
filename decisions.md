@@ -7913,3 +7913,16 @@ no-predicate form reads as a different question. P0
 compiler types `xs.rev` as `List<T>`, so `xs.rev[0]` checks. The hover for
 `rev` now says the view keeps keys and names `.nth(0)`. Reverse the `count`
 error by deleting the rule; the cases mark both.
+
+## 378. Site editors follow the typist's own indentation (2026-11-23)
+
+Someone typing code with its own indentation into a site editor (from a
+statement, from memory, from another editor) ended the line after a loop
+body inside the loop, because Enter kept the body's indent and the typed
+line brought none. Typed indentation already replaced Enter's
+(`web/components/editor/indent.ts`); now, once a line's typed
+indentation has replaced Enter's, a line typed with none starts at column 0.
+A typist who relies on auto-indent never types leading spaces, so nothing
+changes for them, and a click resets it. Enter also dedents after `return`,
+`break` and `continue`, `elif`/`else` line up with their `if`, and Shift-Tab
+removes a level, as in Python editors. Reverse: drop `typesOwnIndent`.
