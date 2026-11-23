@@ -1,7 +1,7 @@
 # ucup5s05f
 
 Score: 3/5
-Dream: 4/5
+Dream: 3/5
 
 Scored cold against `design/EXEMPLARS-PORTS.md` (previous score 2/5; awaiting rescore).
 
@@ -23,3 +23,20 @@ Port 3/5: it hand-writes the subproduct tree (`product`/`descend` with `2 * node
 
 Port 3/5, rescored cold on current main; dream 4/5 holds. The port checks with zero errors. The header derives the power-sum route. `product`/`descend` (lines 17-42) hand-write the reported subproduct tree on raw heap indices, and the port stays at 3 until it lands.
 - Minor: `suffix_tree_edges` (lines 45-72) handles each finished edge twice (lines 56-59, 63-66); name that once.
+
+## Cold rescore (bc366c27f)
+
+Port 3/5 (reported, measured gap), rescored cold after the re-port ae9d57012; dream 4 → 3/5. `cpl check` and `cpl lint` are clean (0.3 and `CPL_EDITION=0.2`), `cpl test` passes.
+
+Dream re-judged: its closing formula (line 6) is not derived, and the call that is meant to compute it, `tree.eval_transposed(sums)` (lines 29-30), goes the other way (weights to power sums, per its std doc and the friction file), so the dream's key line is wrong; it also hand-writes `power_sums` (lines 13-17), drops the alphabet (line 21), swaps `above`/`below` (lines 23-24) and shifts `inv_fact(i + 1)` unexplained (line 31). The dream should be the port's lines 28-33 with the editorial line `let answer = compose(egf, log([Z(1), Z(1)], n + 1), n + 1)`, `egf[j] = p[j] / j!`, derived in the header from `sum_s (1 + y)^s = sum_j p[j] log(1 + y)^j / j!`. The port is judged against that.
+
+Better:
+- The subproduct tree on `2 * node` indices and the monotone-stack walk are gone: `suffix_tree_edges` and `power_sums` from the stdlib (lines 30-32), and the names now match (`bottom`, `top`).
+- The header (lines 3-7) derives the route: the per-edge telescope, why power sums, and the weights on `0..=n` read off a Taylor shift; lines 14-16 derive the weights by partial fractions.
+- `s: Str of "abcdefghijklmnopqrstuvwxyz"` (line 29) keeps the alphabet; the missing length bound is the logged E0504.
+
+Still fails:
+- Hand-rolled standard algorithm (lines 17-25): `binomial_sums` is transposed interpolation on `0..=n` written out (the `[deg + 1..]` slice of a convolution, line 21; `1 / q'(m)` spelled as sign times two inverse factorials, lines 23-24). The editorial `compose` line runs 2.1x orig.cpp (`compose` 1.87 s at n = 2e5) and `SubproductTree.interpolate_transposed` is missing; both reported and measured, which is the definition of a 3. It reaches 4 when either lands.
+- Owed, header: lines 1-7 are not the `// Source:` / `// Problem:` / `// Solution:` blocks (`corpus/header.py` lists the port).
+- Owed, perf: ae9d57012 measured 1.38x orig.cpp on max random `ab` input (2.04 s vs 1.48 s), over the 1.1x bar, and no perf friction names it (the filed one is `compose`'s 2.1x).
+- Minor (probed, same output as the port on `gen.py` inputs): the `sign` closure (line 23) is `(-Z(1)) ** (deg - m)` inline, and `print(answer[1..=n])` prints `Mod` without `.map(a => a.v)` (line 34).
