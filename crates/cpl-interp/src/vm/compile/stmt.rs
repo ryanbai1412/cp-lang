@@ -807,6 +807,31 @@ impl<'p, 'f> Compiler<'p, 'f> {
                     self.emit(Op::RetUnit, Span::default());
                 }
             }
+            Stmt::DefDomain { id, lo, len } => {
+                let (lo_r, len_r) = (self.compile_expr_i(lo), self.compile_expr_i(len));
+                let dom = *id as u16;
+                self.emit(
+                    Op::DefDomain {
+                        dom,
+                        lo: lo_r,
+                        len: len_r,
+                    },
+                    len.span,
+                );
+            }
+            Stmt::DefDomainFromVal { id, val } => {
+                let src = self.compile_expr_v(val);
+                self.emit(
+                    Op::DefDomainFromVal {
+                        dom: *id as u16,
+                        src,
+                    },
+                    val.span,
+                );
+                if src >= self.num_local_v {
+                    self.emit(Op::ClearV { reg: src }, val.span);
+                }
+            }
             _ => self.emit_fallback_stmt(stmt),
         }
     }

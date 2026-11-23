@@ -1192,6 +1192,8 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 | Op::FallbackExprI { .. }
                 | Op::FallbackExprV { .. }
                 | Op::ApplyV { sync: true, .. }
+                | Op::DefDomain { .. }
+                | Op::DefDomainFromVal { .. }
         ) {
             self.in_dom.clear();
             self.dom_clears += 1;

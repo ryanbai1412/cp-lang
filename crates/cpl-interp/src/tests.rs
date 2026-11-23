@@ -1301,3 +1301,15 @@ fn vm_reads_specs_with_bounds_in_registers() {
         include_str!("../../cpl-cli/tests/programs/vm_read_specs.out")
     );
 }
+
+#[test]
+fn vm_defines_domains_itself() {
+    let out = vm_runs_alone(
+        include_str!("../../cpl-cli/tests/programs/vm_def_domain.cp"),
+        include_str!("../../cpl-cli/tests/programs/vm_def_domain.in"),
+    );
+    assert_eq!(
+        out,
+        include_str!("../../cpl-cli/tests/programs/vm_def_domain.out")
+    );
+}

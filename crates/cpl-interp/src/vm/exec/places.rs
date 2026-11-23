@@ -1128,6 +1128,14 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     .collect();
                 regs_v[dst as usize] = self.format_values(spec.pieces, &vals, spans[cur_pc])?;
             }
+            Op::DefDomain { dom, lo, len } => {
+                self.domains[dom as usize] = (regs_i[lo as usize], regs_i[len as usize].max(0));
+            }
+            Op::DefDomainFromVal { dom, src } => {
+                if let Value::DomainVal(lo, len) = regs_v[src as usize] {
+                    self.domains[dom as usize] = (lo, len.max(0));
+                }
+            }
             Op::ApplyV { idx, dst, sync } => {
                 let spec = &chunk.applies[idx as usize];
                 let vals: Vec<Value> = spec

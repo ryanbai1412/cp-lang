@@ -1459,6 +1459,17 @@ pub(crate) enum Op {
         idx: u32,
         dst: u16,
     },
+    /// Fixes domain `dom` to start at label `lo` and hold `len` positions.
+    DefDomain {
+        dom: u16,
+        lo: u16,
+        len: u16,
+    },
+    /// Fixes domain `dom` to the `(lo, len)` of the domain value in `src`.
+    DefDomainFromVal {
+        dom: u16,
+        src: u16,
+    },
     /// `dst` = `Interp::apply` of `applies[idx]` to its operand registers;
     /// `sync` hands the frame to the stack first, for user code it calls.
     ApplyV {

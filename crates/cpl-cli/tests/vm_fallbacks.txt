@@ -135,7 +135,6 @@ untraced stmt:Assign(IndexND,Set)
 untraced stmt:Assign(Local,Binary(Add))
 untraced stmt:Assign(Local,Set)
 untraced stmt:DefDomain
-untraced stmt:DefDomainFromVal
 untraced stmt:Expr(Builtin)
 untraced stmt:Expr(Call)
 untraced stmt:Expr(CallExpr)
