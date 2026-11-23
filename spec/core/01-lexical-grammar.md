@@ -190,9 +190,7 @@ Tightest first:
 So `-x ** 2` is `-(x ** 2)`, `not a == b` is `not (a == b)`, and
 `s & (s << 1) == 0` is `(s & (s << 1)) == 0`. (R01.5.1)
 
-- `and` and `or` short-circuit: the right side runs only when the left
-  doesn't decide the result, so `i == 0 or a[i - 1] < a[i]` never reads
-  `a[-1]`. On `Bool`, `!=` is exclusive or; `^`, `&` and `|` are integer
+- On `Bool`, `!=` is exclusive or; `^`, `&` and `|` are integer
   operators only, and on `Bool` the error names `!=`, `and` or `or`.
   (R01.5.9)
 

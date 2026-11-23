@@ -7677,7 +7677,8 @@ and rewrite those examples with `.clone()`.
 ## 363. Rebuild-12 rulings: short-circuit, Bool xor, array fill, lowercase `const` (2026-11-23)
 
 Round 12 of the cold rebuild guessed these; the compiler already did the first
-four, the spec now says so. `and`/`or` short-circuit (R01.5.9). `!=` is `Bool`
+four, the spec now says so (short-circuit was already R01.5.7; it gained a
+case). `!=` is `Bool`
 exclusive or and `^ & |` stay integer-only, so there is one spelling (R01.5.9).
 A single value fills an array whose size is computed at run time (R01.6.1).
 `(a, b) => e` takes the fields of one tuple argument (R01.8.1). `+` joins `Str`
