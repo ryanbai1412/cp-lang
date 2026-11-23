@@ -144,8 +144,7 @@ impl Checker<'_> {
 
     /// `"a"` where a `Char` is wanted: a character is in single quotes.
     pub(super) fn char_literal_fix(&mut self, got: &Ty, want: &Ty, at: &Expr) -> bool {
-        if let (Ty::Str, Ty::Char, Some(c)) = (got, want, crate::char_literal(&self.text(at.span)))
-        {
+        if let (Ty::Str, Ty::Char, Some(c)) = (got, want, crate::char_literal(self.text(at.span))) {
             if let Some(diag) = self.sink.last_mut().filter(|d| d.span == at.span) {
                 diag.help = Some(format!("a character is written in single quotes: `{c}`"));
                 diag.fix(format!("write `{c}`"), at.span, c);
