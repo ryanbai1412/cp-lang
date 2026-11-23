@@ -115,7 +115,7 @@ export const STDLIB_VALUES: readonly string[] = [
     'convex_hull', 'convex_hull_3d', 'convex_hull_3d_idx', 'convex_hull_idx',
     'convex_polygon_intersect', 'convex_polygons_overlap', 'convexity_break', 'convolve_all',
     'count_paths', 'counting_sort', 'covering', 'cross', 'crt', 'crt_all', 'cut_vertices', 'cycle',
-    'dag_fold', 'de_bruijn', 'decrease', 'delaunay', 'deriv', 'det_real', 'dfs_tree', 'dial',
+    'dag_fold', 'de_bruijn', 'decrease', 'deg', 'delaunay', 'deriv', 'det_real', 'dfs_tree', 'dial',
     'diameter2', 'differences', 'dinkelbach', 'dirichlet_convolve', 'dirichlet_inv', 'div_mod',
     'divisors_from_factors', 'dnc_break', 'dnc_layer', 'dominators', 'dot', 'drop', 'drop_last',
     'each_divisor', 'edge_coloring', 'eq_fields', 'euler_walk', 'eval_all', 'exp', 'ext_gcd',

@@ -155,6 +155,7 @@ The complement of `missing` over a domain `V`: an arc `u -> v` for every `v != u
 - `fn scc<V>(g: Next<V>) -> (domain C, comp: [V]C)` — \(O(n + m)\); The strongly connected components, as a fresh domain `C` and each vertex's component.
 - `fn directed_of_pairs<V>(edges: List<(V, V)>) -> [V]List<V>` — \(O(n + m)\); `Graph.directed` on a plain list of `(u, v)` pairs: no edge domain, and each arc is the target vertex itself.
 - `fn undirected_of_pairs<V>(edges: List<(V, V)>) -> [V]List<V>` — \(O(n + m)\); `Graph.undirected` on a plain list of `(u, v)` pairs: each pair gives arcs both ways, each arc the target vertex itself.
+- `fn deg<V, A>(self: [V]List<A>, u: V) -> Int` — \(O(1)\); The number of arcs out of `u` in an adjacency list, as `Graph.deg` is for a `Graph`.
 - `fn components<V, G: Next<V>>(g: G) -> (domain C, comp: [V]C)` — \(O(n + m)\); The connected components of an undirected graph, as a fresh domain `C` and each vertex's component.
 - `fn condense<V, C>(g: Next<V>, comp: [V]C) -> [C]List<(to: C)>` — \(O(n + m)\); The arcs between components: `out[comp[u]]` gets `(to: comp[a.to])` for every arc `a` of `u` that leaves its component.
 - `fn two_edge_components<V, E>(g: EdgedNext<V, E>) -> (domain C, comp: [V]C)` — \(O(n + m)\), iterative Tarjan low-link; The two-edge-connected components (bridge blocks) of an undirected graph, as a fresh domain `C` and each vertex's component.; traps: in checked builds, when the graph is not undirected (an arc without its reverse on the same `e`)
