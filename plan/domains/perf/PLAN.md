@@ -75,6 +75,7 @@ Local fixes that landed, and the mechanism that would remove the whole class.
 | cf2062f: tuned perf.cp spells the nine role moves over a flat `Int` row with a sentinel; port.cp's `roles(a, b)` list over `Stage` values held in module `let`s rebuilds a 9-tuple array per `k` and indexes by runtime stage ids | module `let`s bound to literal domain values lower as constants, so the unrolled role loop folds its indexes; `?Int` `min=` over a grid cell reads the cell once | compiler (constant lets), perf (`min=` cell read) |
 | cf2183e: `cpl bench` derived five tests of `m = 3000`, past the statement's sum of `m` <= 3000 | derived inputs honor per-file sum constraints declared on multitest reads; meanwhile gen.py `--max` | tools |
 | bench/v03_perf_bench.py wrote `out_o.txt`/`out_p.txt` in the shared cache, so two concurrent benches compared each other's output (spurious `tuned output differs`) | per-process output files (done here) | perf |
+| cf2115c: tuned perf.cp double-buffers the round DP and swaps (0.74x); port.cp's `dp = step(dp)` through `diagonal` builds a fresh `[0..=shines, 0..n]F64` each of ~m rounds (1.363x) | a call whose result replaces the argument it consumed (`x = f(x)` with `f` building a same-shape fixed array) writes into a reused buffer: codegen passes the old storage as the destination, as swap-based C++ does | perf |
 
 ## Next
 
