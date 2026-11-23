@@ -3534,6 +3534,7 @@ impl<'a> Checker<'a> {
             || matches!(at.kind, ExprKind::None)
             || got.has_error()
             || want.has_error()
+            || self.expected_variants(at, want)
         {
             return true;
         }

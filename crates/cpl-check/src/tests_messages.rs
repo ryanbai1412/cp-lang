@@ -657,3 +657,12 @@ fn a_call_with_type_arguments_is_called_so_it_gets_no_parens_warning() {
     let bare = check("let a = [2, 1]\nprint(a.sorted)\n");
     assert!(bare.iter().any(|d| d.code.0 == "L0608"), "{bare:?}");
 }
+
+#[test]
+fn a_bare_variant_two_enums_declare_reads_as_the_expected_enum() {
+    let src = "enum Turn = Left | Back\nenum Side = Left | Right\nfn f() -> Turn = Left\nlet t: Turn = if true: Left else: Back\nlet s: List<Side> = [Left, Right]\nprint(f(), t, s.len)\n";
+    assert!(check(src).is_empty(), "{:?}", check(src));
+    let d =
+        one("enum Turn = Left | Back\nenum Side = Left | Right\nlet t: Turn = Right\nprint(t)\n");
+    assert_eq!(d.code.0, "E0302");
+}

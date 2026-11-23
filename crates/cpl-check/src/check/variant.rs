@@ -23,32 +23,68 @@ impl<'a> Checker<'a> {
         }
     }
 
-    /// `e`'s value positions: itself, a tuple's items, and what a block, `if`
-    /// or `match` ends with.
+    /// A bare variant two enums declare, at one of `e`'s value positions.
     fn shared_bare_variants(&mut self, e: &Expr) {
-        let tail = |b: &Block| match b.stmts.last().map(|s| &s.kind) {
-            Some(StmtKind::Expr(e)) => Some(e.clone()),
-            _ => None,
-        };
-        let values: Vec<Expr> = match &e.kind {
-            ExprKind::Name(name) => return self.shared_bare_variant(name, e.span),
-            ExprKind::Paren(inner) => vec![(**inner).clone()],
-            ExprKind::Tuple(items) => items.clone(),
-            ExprKind::Block(b) => tail(b).into_iter().collect(),
-            ExprKind::If {
-                branches,
-                otherwise,
-            } => branches
-                .iter()
-                .map(|(_, b)| b)
-                .chain(otherwise)
-                .filter_map(tail)
-                .collect(),
-            ExprKind::Match { arms, .. } => arms.iter().filter_map(|a| tail(&a.body)).collect(),
-            _ => Vec::new(),
-        };
-        for value in &values {
-            self.shared_bare_variants(value);
+        for value in value_positions(e, true) {
+            if let ExprKind::Name(name) = &value.kind {
+                self.shared_bare_variant(name, value.span);
+            }
+        }
+    }
+
+    /// Whether every value position of `at` is a unit variant of the enum
+    /// `want` (or, in a list or tuple literal, of the enum its part wants),
+    /// one of them a bare one another enum declares too: the expected type
+    /// says which it is. (R02.7.1)
+    pub(crate) fn expected_variants(&mut self, at: &Expr, want: &Ty) -> bool {
+        let mut shared = false;
+        self.variants_fit(at, want, &mut shared) && shared
+    }
+
+    fn variants_fit(&mut self, at: &Expr, want: &Ty, shared: &mut bool) -> bool {
+        for value in value_positions(at, false) {
+            let fits = match (&value.kind, want) {
+                (ExprKind::Name(name), Ty::Named { name: want, args }) => {
+                    self.variant_fits(name, want, args.is_empty(), shared)
+                }
+                (ExprKind::List(items), Ty::Named { name, args }) if name == "List" => {
+                    let elem = args.first().cloned().unwrap_or(Ty::Unknown);
+                    items
+                        .iter()
+                        .all(|item| self.variants_fit(item, &elem, shared))
+                }
+                (ExprKind::List(items), Ty::Array { elem, .. }) => items
+                    .iter()
+                    .all(|item| self.variants_fit(item, elem, shared)),
+                (ExprKind::Tuple(items), Ty::Tuple(parts)) if items.len() == parts.len() => {
+                    let mut all = true;
+                    for (item, part) in items.iter().zip(parts) {
+                        all &= self.variants_fit(item, part, shared);
+                    }
+                    all
+                }
+                _ => false,
+            };
+            if !fits {
+                return false;
+            }
+        }
+        true
+    }
+
+    fn variant_fits(&mut self, name: &str, want: &str, plain: bool, shared: &mut bool) -> bool {
+        if self.local(name).is_some() {
+            return false;
+        }
+        match self.global(name).as_deref() {
+            Some(Def::Variant { of, fields, .. }) if of == want => fields.is_empty(),
+            Some(Def::Variant { .. })
+                if plain && self.env.variant_enums(name).iter().any(|e| e == want) =>
+            {
+                *shared = true;
+                true
+            }
+            _ => false,
         }
     }
 
@@ -69,4 +105,33 @@ impl<'a> Checker<'a> {
             diag.help = Some(help);
         }
     }
+}
+
+/// `e`'s value positions: itself, what a block, `if` or `match` ends with,
+/// and with `tuples`, a tuple's items.
+fn value_positions(e: &Expr, tuples: bool) -> Vec<Expr> {
+    let tail = |b: &Block| match b.stmts.last().map(|s| &s.kind) {
+        Some(StmtKind::Expr(e)) => Some(e.clone()),
+        _ => None,
+    };
+    let inner: Vec<Expr> = match &e.kind {
+        ExprKind::Paren(inner) => vec![(**inner).clone()],
+        ExprKind::Tuple(items) if tuples => items.clone(),
+        ExprKind::Block(b) => tail(b).into_iter().collect(),
+        ExprKind::If {
+            branches,
+            otherwise,
+        } => branches
+            .iter()
+            .map(|(_, b)| b)
+            .chain(otherwise)
+            .filter_map(tail)
+            .collect(),
+        ExprKind::Match { arms, .. } => arms.iter().filter_map(|a| tail(&a.body)).collect(),
+        _ => return vec![e.clone()],
+    };
+    inner
+        .iter()
+        .flat_map(|e| value_positions(e, tuples))
+        .collect()
 }

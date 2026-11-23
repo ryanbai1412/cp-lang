@@ -97,12 +97,12 @@ rows naming no existing check, from `scripts/debt-ratchet.json`; they only go do
 | blind_skill_eval | 20/20 pass, 12/20 first attempt (16/20 without compile fixes), 0 workarounds, 3 lint kept (research/skill-eval/v3/REPORT.md) | 20/20 first-attempt pass, 0 workarounds, 0 non-idiomatic lint flags; then 20/20 on an unseen set |
 | skill_check | ok on main, 50 files, 76 cp blocks verified | on main, in the fast gate, 0 drift, every cp block checks |
 | ports_check_v03 | 289/305 (corpus/sets/v03.txt has 308 entries; cf2066f checks but stays out for the stored-range P0) | 305/305 v0.3 re-ports (as spec.cp or migrated port.cp) |
-| dreams_check_v03 | 145/305 | tracked, not a gate: each failing dream is a logged gap in plan/domains/spec/delta/hillclimb.md |
+| dreams_check_v03 | 170/305 (2026-11-23) | tracked, not a gate: each failing dream is a logged gap in plan/domains/spec/delta/hillclimb.md |
 | ports_judge_proven | 275/305 tracked ports (277 entries in corpus/sets/v03.txt) pass every_v03_port_checks; 276 of the 277 were also validated against orig.cpp on samples and/or 30 generated cases (interactive ones through interactor.py); ucup5s02f has no statement, gen or tests yet | 305/305 tracked ports compile with every judge's flags and pass their tests under the profile |
-| corpus_suite | 29/100 pass (36 error, 2 trap, 32 untested, 1 wrong); research/scoreboard.json rewritten from this run | 100/100 hill-climb spec.cp pass; untested 0 (every problem has tests) |
+| corpus_suite | 98/100 pass (1 error: noi09p4, a product-domain graph gap in std.graph; 1 trap: dmopc21c9p1, an open range with a negative start overflows) (2026-11-23) | 100/100 hill-climb spec.cp pass; untested 0 (every problem has tests) |
 | port_lint_warnings | 21 warnings over the 275 v0.3 ports after cpl lint --fix (L0414 13, L0101 4, L0203 3, L0412 1); 5 are false positives, filed with lint-fmt | 0 false positives on the re-ported corpus (lint-fmt's FP gate) |
 | taste_reviews | 305/305 scored, median 4, 18 under 4; dreams median 4, 0 sent back | median >= 4 and 0 under 3 on v0.3 re-ports (today's scores are for pre-0.3 ports) |
-| token_ratio | port.cp median 0.52x, max 1.10x, 1 over 1.0x (n=294, 11 originals strip to nothing); dream.cp median 0.49x, max 0.97x, 0 over | contestant tokens median <= 0.6x C++, none > 1.0x (AGENTS.md goal 1) |
+| token_ratio | port.cp median 0.51x, max 0.97x, 0 over 1.0x (n=294, 11 originals strip to nothing); dream.cp median 0.48x, max 0.97x, 0 over (2026-11-23 on 0d43fd76e) | contestant tokens median <= 0.6x C++, none > 1.0x (AGENTS.md goal 1) |
 | writable_from_docs | 49/55 passed (52 compiled), run of 2026-11-21; read, not re-run | 55/55; re-run with each skill release |
 | acceptance_steps | run 6 (2026-11-23-6, edge e9c6b2eb, one agent per OS): Linux 7/8 (install), macOS 7/8 (install), Windows 6/8 (install, design); judge solve 10/10 / 10/10 / 9/10 (Windows cf2285E TLE), compete 5/5 each; P0 open: rev-view-index-not-reversed, runs-slice-index-silent-in-cpp, partition-point-copies-list | 8/8 steps on Linux, macOS and Windows; solve >= 8/10, compete >= 4/5 in 2 h; 0 open blocker rows (Milestone 1) |
 | newcomer_lint_flagged | 82/110 marked spots (75%), 59 files, 7 unmarked diagnostics, 59/59 still pass cpl check after --fix (2026-11-22 22:20, main 395e1a17a) | >= 90% flagged, 0 files broken by fixes (Milestone 1, 09:30 PST 2026-11-23) |
@@ -167,7 +167,7 @@ rows naming no existing check, from `scripts/debt-ratchet.json`; they only go do
 | perf set outliers over 1.1x after tuning | 3 over 1.1x after tuning, re-timed alone: cf2066f 1.157x, cf2255e2 1.127x, ucup5s05f 1.112x (no tuned variant); 32 over 1.1x idiomatic (2026-11-23 full `python3 bench/v03_perf_bench.py --suite corpus,bench --jobs 4` on 5d0673826, outliers re-timed with `--runs 7 --jobs 1` on e46206cb9) | 0, or each a logged language gap |
 | perf set programs over 1.5x idiomatic (tuned bar: none over 1.1x, runtime_tuned_max) | 13 over 1.5x, 32 over 1.1x idiomatic (2026-11-23 full `python3 bench/v03_perf_bench.py --suite corpus,bench --jobs 4` on 5d0673826, n=142 >= 10 ms both sides; outliers re-timed alone with `--runs 7 --jobs 1` on e46206cb9) | 0 |
 | largest emitted C++, v0.3 dry runs (codeforces profile) | 21688 bytes (research/dryrun/v03/p06_labyrinth.cp); 35/35 build (2026-11-22 on 61e3d27c8) | < 32768 bytes |
-| programs over 32 KB, every v0.3 program bench/sizes.py builds | 0; largest corpus/problems/cco21p4/spec.cp 31928 bytes (runtime 14961), the only one over 24 KB; 161 of 263 v0.3 programs build (2026-11-22 on 61e3d27c8) | 0 (64 KB hard limit: 0) |
+| programs over 32 KB, every v0.3 program bench/sizes.py builds | 8, listed in bench/oversize.txt; largest corpus/problems/cf2229i/port.cp 48022 bytes (library fns 29129); 173 over 24 KB; 1144 of 1172 programs build; the 22 bench ones that do not are in bench/unbuilt.txt (2026-11-23) | 0 (64 KB hard limit: 0) |
 | front end, largest v0.3 dry run | 3 ms | < 500 ms |
 | codegen shape tests | 91 | grows with every optimisation |
 | codegen files over the 2000-line cap | 2 (expr.rs 2900, emit.rs 2233) | 0 |
@@ -315,8 +315,8 @@ catalogue was first written and only go down; M1 readiness gaps are every open M
 |---|---|---|---|---|---|---|---|
 | play | 12 | 7 | 5 | 0 | 0 | 1 | 1 |
 | seq | 67 | 35 | 16 | 15 | 0 | 4 | 21 |
-| stress | 33 | 20 | 6 | 7 | 0 | 1 | 5 |
-| all | 112 | 62 | 27 | 22 | 0 | 6 | 27 |
+| stress | 34 | 21 | 6 | 7 | 0 | 1 | 5 |
+| all | 113 | 63 | 27 | 22 | 0 | 6 | 27 |
 
 ## Open questions (`plan/QUESTIONS.md`)
 

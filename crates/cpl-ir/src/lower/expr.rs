@@ -3,6 +3,7 @@
 use super::stmt::place_to_expr;
 use super::*;
 
+mod expected_variant;
 mod unwrap_cells;
 
 /// True for a bare `..`, which as an index is all of one axis.
@@ -1138,6 +1139,7 @@ impl<'a> Lowerer<'a> {
             Some(Sym::Global(id)) => return self.global_read(id, span),
             Some(Sym::ModConst(mcid)) => return self.ensure_mod_const(mcid, span),
             Some(Sym::Variant(id, tag)) => {
+                let (id, tag) = self.expected_variant(name, hint).unwrap_or((id, tag));
                 if let Some(&d) = self.enum_to_sum_domain.get(&id) {
                     if self.sum_enums[&d].variants[tag].1.is_empty() {
                         return self.encode_sum_variant(d, tag, Vec::new(), span);

@@ -7,12 +7,12 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 3063 (1092 passing). Rules: 583.
+Cases: 3064 (1092 passing). Rules: 583.
 
 ## Summary per chapter
 
 - R01 (01-lexical-grammar.md): 57 rules, 174 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R02 (02-values-types.md): 52 rules, 151 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R02 (02-values-types.md): 52 rules, 152 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R03 (03-numbers-layout.md): 24 rules, 116 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04 (04-indices.md): 73 rules, 181 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04a (04a-identity-vs-offset.md): 39 rules, 54 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -135,7 +135,7 @@ Each rule: positive / negative case counts, then the gap if any.
 
 ### R02: 02-values-types.md
 
-- R02.7.1 [5+ 1-]: Values, functions, fields and modules are `snake_case` or lower camel; a `let` or `var` bi...
+- R02.7.1 [6+ 1-]: Values, functions, fields and modules are `snake_case` or lower camel; a `let` or `var` bi...
 - R02.1.1 [2+ 0-]: a **plain value**: numbers, `Bool`, `Char`, positions and cuts of a domain, `?T` of a plai...
 - R02.1.2 [2+ 3-]: a **heap value**: `List<T>`, `Str`, `[D]T` arrays, `Map`, `Set`, every library container, ...
 - R02.1.3 [2+ 1-]: a **function value**: `fn` items, lambdas and operation values. They are zero-size when th...
