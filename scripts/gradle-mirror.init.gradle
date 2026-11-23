@@ -1,0 +1,10 @@
+// Puts Google's Maven Central mirror ahead of Maven Central for plugins and
+// dependencies, so CI's cold Gradle runs don't hit Maven Central's HTTP 429.
+// Use: ./gradlew --init-script <this file> ...
+def mirror = 'https://maven-central.storage-download.googleapis.com/maven2/'
+beforeSettings { settings ->
+    settings.pluginManagement.repositories { maven { url = mirror } }
+}
+allprojects {
+    repositories { maven { url = mirror } }
+}
