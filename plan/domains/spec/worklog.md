@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- Round 6 H-KEEP-RECORD and H-BFS-LAMBDA-VERTEX pinned with passing std-graph cases. Of 26 round 6 holes, 20 now have a rule, a case or a routed request; open: H-STR-FROM-CHARS, H-DIR-FROM-STEP (stdlib naming), H-SEGTREE-NO-OP, H-RANGEFENWICK-GONE, H-STD-K-COUNT (stdlib, routed), H-GRID-FIND (compiler, routed).
 - Round 6 H-MOD-CTOR decided (R02.6.3: a declared `new` wins over the generated constructor, as the implementation does), H-ROOTED-TEMP and H-TREE-EDGES pinned; 4 cases, all pass. H-STAMP is answered by R11.4.1 (stamp optional).
 - Round 6 H-GRID-FIND: two failing cases (`grid.keys` yields flat integers; inline `(R, C)` is not a `Seq`) routed to compiler and listed as known gaps in SUBSET.md.
 - Round 6 H-PRINT-POSITIONS (R10.2.2: explicit ends never shift under `io(base: 1)`) and H-FN-PLACEMENT (R06.1.7: a `fn` between statements captures an earlier `let`) pinned with passing cases. H-FW-RESULT-DROP is answered by R09.3.7 (`assert` is skipped in release, so bind the result first).
