@@ -130,7 +130,7 @@ pub fn maximal<D, T, S: Track<T>>(self: [D]T, mut state: S, ok: S -> Bool,
 |---|---|---|
 | `Window(op)` | fold queue | `w.all <= k` |
 | `Counter<K>` | count up / down; `.len` is the distinct count | `c.len <= k` |
-| `Bag<T>` (sorted multiset) | insert / erase one | `b.max! - b.min! <= d` |
+| `SortedBag<T>` (sorted multiset) | insert / erase one | `b.last! - b.first! <= d` |
 | `track(s, add:, remove:)` (a `Tracked`) over any structure `s` | your two closures on `mut s` | a predicate on `t.state` |
 | `undoing(s, add:)` (an `Undoing`) over any `Undo` (`mark`/`undo_to`: rollback `Dsu`, `ParityDsu`, `RollbackArray`) | apply / queue-undo: each element re-applied \(O(\log n)\) times amortized | `u => not u.state.consistent` |
 

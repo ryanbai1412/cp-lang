@@ -300,3 +300,4 @@ documented. The stdlib's own gaps are in `std/GAPS.md`.
 - std-prefix/scan-of-list-int-is-cut.cp: stdlib
 - std-segtree/closure-op-picks-index.cp: compiler
 - std-strings/split-trailing-and-leading.cp: stdlib
+- std-heap/drain-break-keeps-the-rest.cp: compiler

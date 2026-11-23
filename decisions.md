@@ -7926,3 +7926,16 @@ A typist who relies on auto-indent never types leading spaces, so nothing
 changes for them, and a click resets it. Enter also dedents after `return`,
 `break` and `continue`, `elif`/`else` line up with their `if`, and Shift-Tab
 removes a level, as in Python editors. Reverse: drop `typesOwnIndent`.
+
+## 379. Position arithmetic is `v ± k` and `v - w`; rebuild round 22 (spec, 2026-11-23)
+
+- **Decision.** R04.3.3 lists the position arithmetic: `v + k`, `v - k` and
+  `v - w` give an `Int`; any other operator takes `Int(v)` first, and a
+  position compares with positions and integer literals, not with an `Int`
+  variable. This is what the compiler does; the old "arithmetic on a
+  position gives an `Int`" read as every operator (round 22, H05/H06/H16).
+- **Also.** spec/lib's Track table names `SortedBag` with `.first`/`.last`,
+  the type std has (H02).
+- **Why.** `v * 2` or `v ^ w` on a vertex is almost always an index-space
+  slip; making it go through `Int(v)` keeps the slip visible.
+- **Reverse.** Accept every integer operator on positions.

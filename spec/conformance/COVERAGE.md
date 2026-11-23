@@ -7,14 +7,14 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 2675 (995 passing). Rules: 569.
+Cases: 2678 (995 passing). Rules: 569.
 
 ## Summary per chapter
 
 - R01 (01-lexical-grammar.md): 56 rules, 158 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R02 (02-values-types.md): 52 rules, 148 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R03 (03-numbers-layout.md): 24 rules, 67 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R04 (04-indices.md): 70 rules, 144 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R04 (04-indices.md): 70 rules, 146 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04a (04a-identity-vs-offset.md): 39 rules, 54 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04b (04b-keys.md): 27 rules, 66 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R05 (05-ownership.md): 43 rules, 157 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -243,7 +243,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R04.2.18 [5+ 4-]: | `5` where a `V` or `V.cuts` is expected | integer literal is that position or cut (integ...
 - R04.3.1 [2+ 1-]: | position `v` | `v.prev`, `v.next`: `?V` | `v.l`, `v.r`: its cuts
 - R04.3.2 [1+ 0-]: | cut `c` | `c.prev`, `c.next`: `?V.cuts` | `c.l`, `c.r`: the positions beside it, `?V`
-- R04.3.3 [2+ 1-]: Arithmetic on a position gives an `Int` (`v + 1`); getting back into the domain is explici...
+- R04.3.3 [3+ 2-]: Arithmetic on a position gives an `Int`: `v + k`, `v - k` and `v - w` (two positions of on...
 - R04.4.1 [6+ 0-]: | written | `l..r`, `l..=r` with position ends | `j..i`, `j..=i` with cut ends
 - R04.4.2 [1+ 0-]: | elements (`for`, `in`, `len`) | positions | cuts
 - R04.4.29 [1+ 0-]: **The rule: a range's elements are the kind of its ends.** Cuts in, cuts out: `for k in a....
@@ -748,7 +748,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0306 Invalid arithmetic on domain position (reserved): exempt (reserved in the registry)
 - E0307 Condition is not `Bool`: 1 case(s)
 - E0308 Ordering comparison on optional: 2 case(s)
-- E0309 Incompatible operands for operator: 2 case(s)
+- E0309 Incompatible operands for operator: 3 case(s)
 - E0310 Unknown named argument: 2 case(s)
 - E0311 Invalid `@memo` function: 2 case(s)
 - E0312 Mutating expression inside `debug(...)`: 1 case(s)
@@ -884,9 +884,9 @@ prepends it.
 - 02-values-types.md: 3 blocks, 2 with a case, 1 spec-only, 0 neither
 - 03-numbers-layout.md: 2 blocks, 2 with a case, 0 spec-only, 0 neither
 - 04-indices.md: 7 blocks, 1 with a case, 3 spec-only, 3 neither
-  - line 165: `for j in ..i:`
-  - line 261: `let k = (0..=n).last_true(k => cost(k) <= budget) ?? -1`
-  - line 282: `fn inversions(r: Range<Pos>) -> Int:`
+  - line 169: `for j in ..i:`
+  - line 265: `let k = (0..=n).last_true(k => cost(k) <= budget) ?? -1`
+  - line 286: `fn inversions(r: Range<Pos>) -> Int:`
 - 04b-keys.md: 13 blocks, 3 with a case, 6 spec-only, 4 neither
   - line 72: `fn solve(r: Range<V>) -> Int:`
   - line 100: `let z = z_function(s[l..])`

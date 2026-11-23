@@ -80,8 +80,12 @@ One rule: `.l`/`.r` switch kind (left or right side), `.prev`/`.next` keep it.
 The receiver's kind is static, so a mix-up is a type error. `v.l..v.r` is
 exactly `v`; a prefix DP reads `dp[v.r] = f(dp[v.l], a[v])`.
 
-Arithmetic on a position gives an `Int` (`v + 1`); getting back into the
-domain is explicit (`v.next`, `V(x)`). (R04.3.3) Arrays over an anonymous range
+Arithmetic on a position gives an `Int`: `v + k`, `v - k` and `v - w`
+(two positions of one domain) are the position arithmetic; any other
+operator (`*`, `%`, `^`, `k - v`) takes `Int(v)` first, as `Int(v) % 4`. A
+position compares with positions of its domain and with integer literals
+(`v < 3`); against an `Int` variable it is `Int(v) <= r`. Getting back into
+the domain is explicit (`v.next`, `V(x)`) (decision 379). (R04.3.3) Arrays over an anonymous range
 (`[0..=n]Int`) take any `Int`, checked, so ordinary DP tables stay plain.
 
 ## Ranges
