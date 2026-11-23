@@ -10,3 +10,10 @@ for _ in 0..n:
     let (i, x): (1..=n, 1..=n) = read()
     bads[diag(i, x)].push(i - 1)
 print(bads[0].len)
+domain V = 1..=n
+var children: [V]List<V> = []
+for u in V:
+    repeat read<Int>():
+        let c: V = read()
+        children[u].push(c)
+print(children[V(1)].len)
