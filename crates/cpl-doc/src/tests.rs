@@ -379,9 +379,9 @@ fn json_carries_every_field_and_escapes_strings() {
     )]);
     assert_eq!(
         text,
-        "{\"modules\":[{\"name\":\"m\",\"path\":\"m.cp\",\"doc\":\"\",\"examples\":[],\"items\":[\
+        "{\"modules\":[{\"name\":\"m\",\"path\":\"m.cp\",\"doc\":\"\",\"examples\":[],\"links\":[],\"items\":[\
          {\"kind\":\"fn\",\"name\":\"hi\",\"signature\":\"fn hi()\",\"doc\":\"Says \\\"hi\\\"\\\\n.\",\
-         \"summary\":\"Says \\\"hi\\\"\\\\n.\",\"cost\":\"O(1)\",\"line\":3,\"examples\":[],\"members\":[]}]}]}\n"
+         \"summary\":\"Says \\\"hi\\\"\\\\n.\",\"cost\":\"O(1)\",\"line\":3,\"examples\":[],\"links\":[],\"members\":[]}]}]}\n"
     );
     assert_eq!(json::string("a\tb\u{1}"), "\"a\\tb\\u0001\"");
     assert_eq!(json::render(&[]), "{\"modules\":[]}\n");
@@ -549,4 +549,89 @@ mod cli {
         assert_eq!(code, 1);
         assert!(stderr.contains("can't read /no/such/dir"), "{stderr}");
     }
+}
+
+const LINKED: &str = "\
+/// A rooted tree.
+struct Tree:
+    n: Int
+
+    /// Bottom-up DP.
+    fn up(self) -> Int = 0
+
+    /// The same as [`up`] for every root; see [`Tree.up`], [`total`], [`Bag.len`] and [`size`](Bag.len).
+    fn reroot(self) -> Int = 0
+
+/// Sums a tree; [`missing`] is not a name, plain `missing` is fine.
+fn total(t: Tree) -> Int = 0
+";
+
+const BAG: &str = "\
+/// A bag.
+struct Bag:
+    k: Int
+
+    /// Its size.
+    fn len(self) -> Int = 0
+";
+
+#[test]
+fn intra_doc_links_resolve_from_the_items_scope() {
+    let modules = vec![extract(LINKED, "tree.cp"), extract(BAG, "bag.cp")];
+    let reroot = &modules[0].items[0]
+        .members
+        .iter()
+        .find(|m| m.name == "reroot")
+        .unwrap();
+    let targets = links::targets(&modules, 0, Some("Tree"), &reroot.doc);
+    let got: Vec<(&str, &str)> = targets
+        .iter()
+        .map(|t| (t.module.as_str(), t.anchor.as_str()))
+        .collect();
+    assert_eq!(
+        got,
+        [
+            ("tree", "Tree.up"),
+            ("tree", "Tree.up"),
+            ("tree", "total"),
+            ("bag", "Bag.len"),
+            ("bag", "Bag.len")
+        ]
+    );
+}
+
+#[test]
+fn a_link_that_names_no_item_is_reported_and_plain_code_is_not() {
+    let modules = vec![extract(LINKED, "tree.cp"), extract(BAG, "bag.cp")];
+    let broken = links::unresolved(&modules);
+    assert_eq!(broken.len(), 1, "{broken:?}");
+    assert_eq!(
+        (broken[0].item.as_str(), broken[0].text.as_str()),
+        ("total", "missing")
+    );
+}
+
+#[test]
+fn json_carries_each_items_resolved_links() {
+    let modules = vec![extract(LINKED, "tree.cp"), extract(BAG, "bag.cp")];
+    let out = json::render(&modules);
+    assert!(
+        out.contains("\"links\":[{\"text\":\"up\",\"path\":\"up\",\"module\":\"tree\",\"anchor\":\"Tree.up\"}"),
+        "{out}"
+    );
+}
+
+#[test]
+fn html_turns_resolved_links_into_anchors_on_the_right_page() {
+    let modules = vec![extract(LINKED, "tree.cp"), extract(BAG, "bag.cp")];
+    let site = html::render(&modules, &html::Options::default());
+    let tree = &site.iter().find(|(name, _)| name == "tree.html").unwrap().1;
+    assert!(
+        tree.contains("<a href=\"#Tree.up\"><code>up</code></a>"),
+        "{tree}"
+    );
+    assert!(
+        tree.contains("<a href=\"bag.html#Bag.len\"><code>size</code></a>"),
+        "{tree}"
+    );
 }

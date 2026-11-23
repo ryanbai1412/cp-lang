@@ -24,9 +24,10 @@ mod model;
 pub mod cli;
 pub mod examples;
 pub mod html;
+pub mod links;
 
 pub mod json {
-    use crate::{Example, Item, Module};
+    use crate::{links, Example, Item, Module};
     use cpl_json::escape_string;
 
     pub(crate) fn string(text: &str) -> String {
@@ -45,9 +46,22 @@ pub mod json {
         )
     }
 
-    fn item(item: &Item) -> String {
+    fn link(target: &links::Target) -> String {
         format!(
-            "{{\"kind\":{},\"name\":{},\"signature\":{},\"doc\":{},\"summary\":{},\"cost\":{},\"line\":{},\"examples\":{},\"members\":{}}}",
+            "{{\"text\":{},\"path\":{},\"module\":{},\"anchor\":{}}}",
+            string(&target.text),
+            string(&target.path),
+            string(&target.module),
+            string(&target.anchor)
+        )
+    }
+
+    /// `owner` scopes its intra-doc links: the type it is a member of.
+    fn item(modules: &[Module], m: usize, owner: Option<&str>, item: &Item) -> String {
+        let scope = owner.or((!item.members.is_empty()).then_some(item.name.as_str()));
+        let links = links::targets(modules, m, scope, &item.doc);
+        format!(
+            "{{\"kind\":{},\"name\":{},\"signature\":{},\"doc\":{},\"summary\":{},\"cost\":{},\"line\":{},\"examples\":{},\"links\":{},\"members\":{}}}",
             string(item.kind.as_str()),
             string(&item.name),
             string(&item.signature),
@@ -56,20 +70,25 @@ pub mod json {
             item.cost.as_deref().map_or("null".to_string(), string),
             item.line,
             list(&item.examples, example),
-            list(&item.members, self::item),
+            list(&links, link),
+            list(&item.members, |member| self::item(modules, m, Some(&item.name), member)),
         )
     }
 
     /// Every module as one JSON document.
     pub fn render(modules: &[Module]) -> String {
-        let modules = list(modules, |module| {
+        let all = modules;
+        let indexed: Vec<usize> = (0..modules.len()).collect();
+        let modules = list(&indexed, |&m| {
+            let module = &all[m];
             format!(
-                "{{\"name\":{},\"path\":{},\"doc\":{},\"examples\":{},\"items\":{}}}",
+                "{{\"name\":{},\"path\":{},\"doc\":{},\"examples\":{},\"links\":{},\"items\":{}}}",
                 string(&module.name),
                 string(&module.path),
                 string(&module.doc),
                 list(&module.examples, example),
-                list(&module.items, item),
+                list(&links::targets(all, m, None, &module.doc), link),
+                list(&module.items, |i| item(all, m, None, i)),
             )
         });
         format!("{{\"modules\":{modules}}}\n")

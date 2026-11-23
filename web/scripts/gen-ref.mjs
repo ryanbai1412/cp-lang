@@ -116,14 +116,27 @@ function renderExample(text, module, shared, ran, failing, at) {
   return ['```cp', ...own, e.expr, '```', ...result, ''];
 }
 
+// The heading id fumadocs gives `### \`Rooted.up\``.
+const slug = (anchor) => anchor.toLowerCase().replace(/[^\p{L}\p{N}_\- ]/gu, '').replace(/ /g, '-');
+
+// [`up`] and [`text`](Rooted.up) become links to the item `cpl doc` resolved
+// them to; plain `up` stays code, and a link to a URL is left alone.
+function linked(text, links) {
+  const to = new Map(links.map((l) => [`${l.text}\0${l.path}`, `/docs/ref/std/${l.module}#${slug(l.anchor)}`]));
+  return text.replace(/\[`([^`\]]+)`\](?:\(([\w.]+)\))?/g, (all, name, path) => {
+    const url = to.get(`${name}\0${path ?? name}`);
+    return url ? `[\`${name}\`](${url})` : all;
+  });
+}
+
 function renderItem(item, level, prefix, parentDoc, index, module, ctx, shared = []) {
   const name = prefix ? `${prefix}.${item.name}` : item.name;
   const own = item.doc && item.doc !== parentDoc ? item.doc : '';
   const { facts, examples, prose } = splitDoc(own);
   const lines = [`${'#'.repeat(level)} \`${name}\``, '', '```cp', layoutSignature(item.signature), '```', ''];
-  if (prose) lines.push(ctx.math(prose, name), '');
+  if (prose) lines.push(linked(ctx.math(prose, name), item.links ?? []), '');
   if (facts.length) {
-    for (const [k, v] of facts) lines.push(`- **${k}**: ${ctx.math(v, name, k === 'cost')}`);
+    for (const [k, v] of facts) lines.push(`- **${k}**: ${linked(ctx.math(v, name, k === 'cost'), item.links ?? [])}`);
     lines.push('');
   }
   if (examples.length) {
@@ -210,7 +223,7 @@ for (const m of modules) {
   const body = [
     `Generated from [std/${m.name}.cp](${blob}/std/${m.name}.cp) by \`cpl doc --format json\`.`,
     '',
-    m.doc,
+    linked(m.doc, m.links ?? []),
     '',
     ...m.items.filter((i) => !fields.includes(i)).map((i) => renderItem(i, 2, '', '', index, m.name, ctx)),
   ].join('\n');

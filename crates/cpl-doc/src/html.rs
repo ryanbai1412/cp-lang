@@ -4,7 +4,7 @@
 
 use crate::highlight::{escape, highlight};
 use crate::markdown;
-use crate::{Item, Kind, Module};
+use crate::{links, Item, Kind, Module};
 
 /// The stylesheet every page links.
 pub const STYLE: &str = include_str!("style.css");
@@ -136,7 +136,40 @@ fn sidebar(modules: &[Module], files: &[String], here: Option<usize>) -> String 
     out
 }
 
-fn item_html(module: &Module, item: &Item, owner: Option<&str>, options: &Options) -> String {
+/// Where the items of a site live, for intra-doc links.
+struct Site<'a> {
+    modules: &'a [Module],
+    files: &'a [String],
+    index: usize,
+}
+
+impl Site<'_> {
+    fn doc(&self, owner: Option<&str>, doc: &str) -> String {
+        let targets = links::targets(self.modules, self.index, owner, doc);
+        let here = &self.modules[self.index].name;
+        let doc = links::rewrite(doc, &targets, |t| {
+            let page = self
+                .modules
+                .iter()
+                .position(|m| m.name == t.module)
+                .map(|m| self.files[m].as_str());
+            match page {
+                Some(_) if &t.module == here => format!("#{}", t.anchor),
+                Some(page) => format!("{page}#{}", t.anchor),
+                None => format!("#{}", t.anchor),
+            }
+        });
+        markdown::render(&doc)
+    }
+}
+
+fn item_html(
+    site: &Site,
+    module: &Module,
+    item: &Item,
+    owner: Option<&str>,
+    options: &Options,
+) -> String {
     let anchor = item.anchor(owner);
     let class = if owner.is_some() {
         "item member"
@@ -164,9 +197,10 @@ fn item_html(module: &Module, item: &Item, owner: Option<&str>, options: &Option
         ));
     }
     out.push_str("</div>\n");
-    out.push_str(&markdown::render(&item.doc));
+    let scope = owner.or((!item.members.is_empty()).then_some(item.name.as_str()));
+    out.push_str(&site.doc(scope, &item.doc));
     for member in &item.members {
-        out.push_str(&item_html(module, member, Some(&item.name), options));
+        out.push_str(&item_html(site, module, member, Some(&item.name), options));
     }
     out.push_str("</section>\n");
     out
@@ -179,7 +213,12 @@ fn module_page(modules: &[Module], files: &[String], index: usize, options: &Opt
         escape(&module.name),
         escape(&module.path)
     );
-    main.push_str(&markdown::render(&module.doc));
+    let site = Site {
+        modules,
+        files,
+        index,
+    };
+    main.push_str(&site.doc(None, &module.doc));
     if module.items.is_empty() {
         main.push_str("<p class=\"empty\">This file declares nothing.</p>\n");
     }
@@ -194,7 +233,7 @@ fn module_page(modules: &[Module], files: &[String], index: usize, options: &Opt
         }
         main.push_str(&format!("<h2 class=\"group\">{}</h2>\n", kind.plural()));
         for item in items {
-            main.push_str(&item_html(module, item, None, options));
+            main.push_str(&item_html(&site, module, item, None, options));
         }
     }
     let crumb = format!("<span class=\"crumb\">/ {}</span>", escape(&module.name));

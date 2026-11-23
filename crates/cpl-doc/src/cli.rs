@@ -1,6 +1,6 @@
 //! `cpl doc`.
 
-use crate::{examples, extract, html, json, Module};
+use crate::{examples, extract, html, json, links, Module};
 use std::io::Write;
 use std::path::{Path, PathBuf};
 
@@ -89,12 +89,21 @@ pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u
         }
     }
 
+    let broken = links::unresolved(&modules);
+    for link in &broken {
+        let _ = writeln!(
+            stderr,
+            "{}:{}: [`{}`] in the comment of `{}` names no item; link a name in scope, or write plain `{}`",
+            link.path, link.line, link.text, link.item, link.text
+        );
+    }
+    let links_code = u8::from(!broken.is_empty());
     if test {
-        return run_examples(&modules, stdout, stderr);
+        return run_examples(&modules, stdout, stderr).max(links_code);
     }
     if as_json {
         let _ = write!(stdout, "{}", json::render(&modules));
-        return 0;
+        return links_code;
     }
     if let Err(e) = std::fs::create_dir_all(&out_dir) {
         let _ = writeln!(stderr, "cpl: can't create {}: {e}", out_dir.display());
