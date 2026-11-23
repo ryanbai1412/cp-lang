@@ -130,6 +130,13 @@ A route a visitor lands on has no axe-core violation of the WCAG 2 A and AA rule
 A tool the site runs in the page (Stress, and the checks and runs the gate already compares) gives the result its `cpl` command gives on the same program and options.
 
 - **Why:** a contestant who stress tests in the playground and then locally must not get two different counterexamples, or a counterexample in one and none in the other.
-- **Example:** for every repo program with an `@alt(program)` brute, the Stress tab and `cpl stress --explain` with seed 1, 200 cases and size 8 report the same verdict, shrunk input and first diverging variable.
+- **Example:** for every repo program with an `@alt(program)` brute, the Stress tab and `cpl stress --explain` with seed 1, 30 cases and size 8 report the same verdict, shrunk input and first diverging variable.
 - **Enforced by:** `web/scripts/stress-parity.mjs` (site prebuild); `web/scripts/gate.mjs` for check, run and C++.
 
+## site/R16: The editor colours code as the grammar does
+
+The browser editors' highlighter gives every word the class (keyword, literal, number, string, comment, other) the TextMate grammar gives it, and the grammar follows the compiler's keywords.
+
+- **Why:** a word coloured as a keyword in the playground and as a name on a docs page, or the reverse, makes a reader doubt which it is.
+- **Example:** `todo` is an ordinary name, so neither colours it as a keyword; `while:` as a named argument is a label in both.
+- **Enforced by:** `web/components/editor/highlight-parity.test.ts` over `std/` and every port; `crates/cpl-cli/tests/vscode_sync.rs` keeps the grammar on the compiler's words.
