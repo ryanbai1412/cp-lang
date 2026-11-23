@@ -243,3 +243,4 @@ print(k, n)' -> print ends up inside the loop
 - 2026-11-23: browser tests (smoke, learn-smoke, intelligence, phone, page-weight) run in CI's site build job; 57 s headless here.
 - 2026-11-23: std examples that don't run fail the site build unless listed in web/scripts/doc-examples-failing.txt (35 today, shrink-only; decisions 423). A listed line that runs again also fails, so the list falls as std fixes land.
 - 2026-11-23: the stdlib guide's hand-kept module table (36 of 42 modules) is replaced by a link to the generated library reference; the reference index and module page descriptions read each module's `//!` doc, which cpl doc drops today (sent to tools).
+- 2026-11-23: register rows for lint and error pages now cite their real mechanism: the pages render the records that crates/cpl-lint record/checker tests and crates/cpl-cli/tests/catalogue.rs already run, so no site-side rerun is needed.
