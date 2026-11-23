@@ -667,7 +667,7 @@ use std.interval.{IntervalMap}
 let (n, m, q): (2..=100_000, 2..=100_000, 1..=100_000) = read()
 domain V = 1..=n
 let edges: [0..n - 1](u: V, v: V) = read()
-let tree = Rooted(Graph.undirected(edges), V.first)
+let tree = Rooted(Graph.undirected(edges), V.first!)
 
 let init_slime: [0..m]V = read()
 var cur = init_slime[m - 1]
@@ -683,7 +683,7 @@ bucket.set(Time(2), (prv: None, cnt: m))
 var tot_ans = 0
 var ans: List<Int> = []
 for t_now in Time(3)..:
-    let c = read::<V>().cyc(tot_ans)
+    let c = V.wrap(read<V>() + tot_ans)
     var chunks: List<(t: Time, w: Int)> = []
     for (range, _) in tree.chains(cur, c):
         segs.assign(range, t_now, on_old: (r, t) => chunks.push((t: t, w: r.len)))
@@ -703,7 +703,7 @@ for t_now in Time(3)..:
             if take == cnt:
                 if let p = prv: bucket.unite(u, p) else: it = None
         cur_ans += w
-    bucket.set(t_now, (prv: t_now - 1, cnt: cur_cnt))
+    bucket.set(t_now, (prv: t_now.prev, cnt: cur_cnt))
     tot_ans += cur_ans
     ans.push(tot_ans)
 print(ans)
