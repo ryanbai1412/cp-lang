@@ -85,8 +85,9 @@ jobs:
         id: stamp
         if: ${{ !cancelled() && github.ref == 'refs/heads/main' && (matrix.part == 'checks' || matrix.part == 'tests:hash:6/6') }}
         # A job that failed before building leaves target/ near empty; saving it would replace the warm cache.
+        # Cargo 1.100 keeps no target/<profile>/deps, so look for build/.
         run: |
-          [ -n "$(ls target/*/deps 2>/dev/null | head -1)" ] || { echo "target/ has no build; not saving"; exit 0; }
+          [ -n "$(ls target/*/build 2>/dev/null | head -1)" ] || { echo "target/ has no build; not saving"; exit 0; }
           git rev-parse HEAD > target/.ci-sha && rm -rf target/check-cache target/tmp target/judge-probes
           echo built=true >>"$GITHUB_OUTPUT"
       - uses: actions/cache/save@v4
@@ -417,8 +418,9 @@ jobs:
         id: stamp
         if: ${{ !cancelled() && github.ref == 'refs/heads/main' }}
         # A job that failed before building leaves target/ near empty; saving it would replace the warm cache.
+        # Cargo 1.100 keeps no target/<profile>/deps, so look for build/.
         run: |
-          [ -n "$(ls target/*/deps 2>/dev/null | head -1)" ] || { echo "target/ has no build; not saving"; exit 0; }
+          [ -n "$(ls target/*/build 2>/dev/null | head -1)" ] || { echo "target/ has no build; not saving"; exit 0; }
           git rev-parse HEAD > target/.ci-sha && rm -rf target/check-cache target/tmp target/judge-probes
           echo built=true >>"$GITHUB_OUTPUT"
       - uses: actions/cache/save@v4
