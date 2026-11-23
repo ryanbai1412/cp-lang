@@ -1310,7 +1310,22 @@ fn lca_dist_ancestor_and_step_match_climbing():
 fn weighted_dist_adds_the_lengths_on_the_path() = todo
 
 @test
-fn path_folds_keep_the_order_from_a_to_b() = todo
+fn path_folds_keep_the_order_from_a_to_b():
+    domain V = 0..10
+    let adj = random_tree(V.first!)
+    let r = Rooted(adj, V.first!)
+    let words = Monoid<Word>(id: Word(""), op: (x, y) => Word(x.s + y.s))
+    let seg = SegTree(words, r.reorder([V] v => Word(Str(v.to_idx))))
+    for a in V:
+        for b in V:
+            let p = slow_path(r, a, b)
+            var all = ""
+            var cut = ""
+            for v in p:
+                all = all + Str(v.to_idx)
+                if v != r.lca(a, b): cut = cut + Str(v.to_idx)
+            assert r.fold_path(a, b, seg) == Word(all)
+            assert r.fold_path(a, b, seg, edges: true) == Word(cut)
 
 struct Word(s: Str)
 
@@ -1354,7 +1369,56 @@ fn excl_fold_folds_the_other_children():
 fn rerooting_counts_connected_sets_through_every_vertex() = todo
 
 @test
-fn orders_lifting_and_the_virtual_tree() = todo
+fn orders_lifting_and_the_virtual_tree():
+    domain V = 0..14
+    let adj = random_tree(V.first!)
+    let r = Rooted(adj, V.first!)
+    let up: [V]?(V, Word) = [V] v => if let p = r.parent(v): Some((p, Word(Str(v.to_idx)))) else: None
+    let l = Lift(up, op: (x, y) => Word(x.s + y.s), identity: Word(""))
+    let cost: [V]?(V, Int) = [V] v => if let p = r.parent(v): Some((p, v.to_idx + 1)) else: None
+    let lc = Lift(cost, op: (x, y) => x + y, identity: 0)
+    for a in V:
+        assert l.parent(a) == r.parent(a) and l.depth(a) == r.depth(a)
+        for k in 0..r.depth(a) + 2: assert l.ancestor(a, k) == r.ancestor(a, k)
+        var word = ""
+        var sum = 0
+        for u in r.ancestors(a):
+            assert l.fold(a, up_to: u) == Word(word.clone()) and lc.fold(a, up_to: u) == sum
+            for lim in [sum - 1, sum, sum + 1]:
+                var want = a
+                for x in r.ancestors(a):
+                    if lc.fold(a, up_to: x) <= lim: want = x
+                if lim >= 0: assert lc.climb_while(a, s => s <= lim) == want
+            word = word + Str(u.to_idx)
+            sum += u.to_idx + 1
+        for t in 0..r.depth(a) + 1:
+            let c = l.climb(a, u => r.depth(u) >= t)
+            assert c.at == r.ancestor(a, max(r.depth(a) - t, 0))! and c.steps == r.depth(a) - r.depth(c.at)
+        for b in V: assert l.lca(a, b) == Some(r.lca(a, b))
+    for size in 0..6:
+        var keys = List<V>()
+        for _ in 0..size: keys.push(V(rand(0, V.count - 1)))
+        let vt = r.virtual(keys)
+        var kept = List<V>()
+        for v in V:
+            var on = keys.any(k => k == v)
+            for a in keys:
+                for b in keys:
+                    if r.lca(a, b) == v: on = true
+            if on: kept.push(v)
+        sort(mut kept, by: v => r.pos(v))
+        assert [vt.at[x] for x in vt.K] == kept
+        for x in vt.K:
+            let v = vt.at[x]
+            assert vt.key[x] == keys.any(k => k == v)
+            var want: ?V = None
+            for u in kept:
+                if u != v and r.is_anc(u, v):
+                    if want == None or r.depth(u) > r.depth(want!): want = Some(u)
+            if let y = vt.parent[x]:
+                assert Some(vt.at[y]) == want and vt.w[x] == r.dist(v, vt.at[y])
+            else:
+                assert want == None and vt.w[x] == 0
 
 @test
 fn a_tree_from_a_stored_graph():
@@ -1373,7 +1437,34 @@ fn a_tree_from_a_stored_graph():
     assert r.children(V(2)) == [V(4), V(5)] and r.parent(V(6)) == V(5)
 
 @test
-fn from_parents_tour_pos_and_value_owned_pre() = todo
+fn from_parents_tour_pos_and_value_owned_pre():
+    domain V = 0..13
+    var label = [v for v in V]
+    shuffle(mut label)
+    var par: [V]?V = None
+    for i in 1..V.count: par[label[i]] = Some(label[rand(0, i - 1)])
+    let t = Rooted.from_parents(par)
+    assert t.root == label[0] and Rooted.try_from_parents(par) != None
+    let deep = t.reorder([V] v => t.depth(v))
+    for v in V:
+        assert t.parent(v) == par[v] and t.at[t.pos(v)] == v and deep[t.pos(v)] == t.depth(v)
+        assert t.children(v).collect() == [u for u in V if par[u] == Some(v)]
+    var entered = List<V>()
+    var st = List<V>()
+    for e in t.tour:
+        match e:
+            Enter(v, via) =>
+                assert via == par[v]
+                entered.push(v)
+                st.push(v)
+            Exit(v, via) =>
+                assert via == par[v] and st.last == Some(v)
+                st.pop()
+            _ => assert false
+    assert st.len == 0 and entered == [t.at[q] for q in t.sub(t.root)]
+    domain W = 0..3
+    let cyc: [W]?W = [None, Some(2), Some(1)]
+    assert Rooted.try_from_parents(cyc) == None
 
 @test
 fn weighted_rooted_bfs_tree_on_cyclic_graph() = todo
