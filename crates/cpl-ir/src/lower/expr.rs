@@ -3111,15 +3111,17 @@ impl<'a> Lowerer<'a> {
                         out.push(self.cast(Cast::Raw, ord, Ty::Int));
                         continue;
                     }
-                    if let (Dim::Pos(d), Ty::Struct(sid)) = (dim, &value.ty) {
-                        if self.structs[*sid].index_domain == Some(*d) {
-                            if let Some(ord) = self.structs[*sid].methods.get("ord").copied() {
+                    if let (Dim::Pos(d), &Ty::Struct(sid)) = (dim, &value.ty) {
+                        if self.structs[sid].index_domain == Some(*d) {
+                            if let Some(ord) = self.structs[sid].methods.get("ord").copied() {
+                                // `ord` is the impl's own code: check it lands in
+                                // `0..T.count` before it picks a cell.
                                 let ord = self.mk(
                                     ExprKind::Call(ord, vec![Arg::Value(value)]),
                                     Ty::Int,
                                     index.span,
                                 );
-                                out.push(self.cast(Cast::Trust, ord, Ty::Pos(*d)));
+                                out.push(self.cast(Cast::FromOrd(*d), ord, Ty::Pos(*d)));
                                 continue;
                             }
                         }

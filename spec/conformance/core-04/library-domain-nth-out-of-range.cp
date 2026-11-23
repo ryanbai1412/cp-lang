@@ -1,4 +1,4 @@
-// expect: R0201 at 16 (checked)
+// expect: R0001 at 16 (checked)
 // input: "6\n"
 // R04.2.26: `T.nth(k)` outside `0..T.count` traps; the impl's `nth` never sees it.
 struct Two(a: Int, b: Int)

@@ -1282,8 +1282,7 @@ impl<'a> Lowerer<'a> {
             // Handle `impl Index for S`: allocate backing domain for `let count = ...`.
             if imp_trait.as_deref() == Some("Index") && self.structs[sid].index_domain.is_none() {
                 let dom_id = self.domains.len();
-                self.domains
-                    .push(format!("{}_Index", self.structs[sid].def.name));
+                self.domains.push(self.structs[sid].def.name.clone());
                 self.structs[sid].index_domain = Some(dom_id);
             }
 

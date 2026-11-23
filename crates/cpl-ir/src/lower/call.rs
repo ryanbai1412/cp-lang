@@ -7617,7 +7617,7 @@ impl<'a> Lowerer<'a> {
                 if let Some(&fn_id) = self.structs[id].methods.get(&name.text) {
                     let call = self.method_call(fn_id, None, args, span);
                     return match self.structs[id].index_domain {
-                        Some(d) if name.text == "nth" => self.checked_nth(id, d, call, span),
+                        Some(d) if name.text == "nth" => self.checked_nth(d, call, span),
                         _ => call,
                     };
                 }
@@ -13045,7 +13045,7 @@ fn sqrt_operand(text: &str) -> Option<String> {
 impl<'a> Lowerer<'a> {
     /// `S.nth(k)` from user code: `k` must lie in `0..S.count`. Walks call the
     /// impl's `nth` directly, unchecked.
-    fn checked_nth(&mut self, sid: StructId, dom: DomainId, call: Expr, span: Span) -> Expr {
+    fn checked_nth(&mut self, dom: DomainId, call: Expr, span: Span) -> Expr {
         let Expr {
             kind: ExprKind::Call(fid, mut args),
             ty,
@@ -13055,20 +13055,17 @@ impl<'a> Lowerer<'a> {
             return call;
         };
         if let Some(Arg::Value(k)) = args.first_mut() {
-            let len = self.mk(ExprKind::DomainLen(dom), Ty::Int, span);
             let value = std::mem::replace(k, self.int_lit(0, span));
-            *k = self.mk(
-                ExprKind::RangeCheck {
-                    value: Box::new(value),
-                    lo: Some(Box::new(self.int_lit(0, span))),
-                    hi: Some(Box::new(self.int_add(len, -1))),
-                    text: format!("0..{}.count", self.structs[sid].def.name),
-                },
-                Ty::Int,
-                span,
-            );
+            *k = self.ord_in_range(dom, value);
         }
         self.mk(ExprKind::Call(fid, args), ty, span)
+    }
+
+    /// `k`, trapping unless it is an ordinal of the domain, `0..T.count`:
+    /// the same check `V.at(k)` makes.
+    fn ord_in_range(&mut self, dom: DomainId, k: Expr) -> Expr {
+        let pos = self.cast(Cast::FromOrd(dom), k, Ty::Pos(dom));
+        self.cast(Cast::Ord, pos, Ty::Int)
     }
 }
 
