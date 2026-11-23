@@ -147,3 +147,18 @@ fn a_yields_fn_run_as_pushes_reserves_no_list() {
     assert!(body.contains("cpl_f(x)"), "{cpp}");
     assert!(!body.contains(".reserve("), "{cpp}");
 }
+
+#[test]
+fn a_view_of_a_temporary_holds_the_temporary() {
+    let cpp = cpp(concat!(
+        "let n: Int = read()\n",
+        "let v = chain([1, 3, 2], 4..=n).take(n)\n",
+        "print(v)\n",
+    ));
+    let owner = cpp
+        .lines()
+        .find(|l| l.contains("std::vector<ll> t") && l.contains("chain"))
+        .unwrap_or_else(|| panic!("{cpp}"));
+    let name = owner.trim().split_whitespace().nth(1).unwrap();
+    assert!(cpp.contains(&format!("take_Lst_Int_2({name}, n)")), "{cpp}");
+}
