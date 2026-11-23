@@ -71,10 +71,17 @@ HUNG = {"(suite timed out: the revert hangs a case)": "hang"}
 SUITE_TIMEOUT = 900
 
 
+def known_gaps():
+    """Known-gap cases fail or flake by design, so a revert that only breaks one proves nothing."""
+    text = (ROOT / "spec" / "SUBSET.md").read_text()
+    return set(re.findall(r"^- ([\w./-]+\.cp):", text, re.MULTILINE))
+
+
 def broken(base, got):
     if got is HUNG:
         return list(HUNG)
-    return sorted(k for k, v in base.items() if v == "pass" and got.get(k) != "pass")
+    gaps = known_gaps()
+    return sorted(k for k, v in base.items() if v == "pass" and got.get(k) != "pass" and k not in gaps)
 
 
 def run_suite(wt, env, board, runner=None):

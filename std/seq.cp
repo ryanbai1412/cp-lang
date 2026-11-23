@@ -158,8 +158,9 @@ pub fn filter<S: Seq, T>(self: S, p: T -> Bool) -> Filtered<S> = todo
 /// example: `domain V = 1..=3; let a: [V]Int = [4, 5, 6]; a.map(x => -x)[V(2)] == -5`
 pub fn map<S: Seq, T, U>(self: S, f: T -> U) -> Mapped<S, U> = todo
 
-/// \(O(1)\). A view walking `self` backwards. Keys survive: `a.rev[i]` is still `a[i]`; only the
-/// walk order changes.
+/// \(O(1)\). A view walking `self` backwards. Keys survive: `.items` and `.keys` give source keys,
+/// only the walk order changes, so `a.rev[i]` is a compile error and `a.rev.nth(0)` is the last
+/// element (decision 354).
 ///
 /// cost: \(O(1)\)
 /// empty: an empty view

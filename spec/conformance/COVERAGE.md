@@ -7,7 +7,7 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 2731 (995 passing). Rules: 573.
+Cases: 2732 (995 passing). Rules: 573.
 
 ## Summary per chapter
 
@@ -901,10 +901,10 @@ prepends it.
   - line 105: `var xs = [1, 2]`
   - line 170: `struct Holder: xs: List<Int>`
   - line 520: `let d = build_dsu(edges)`
-  - line 640: `var xs = [1, 2]`
-  - line 649: `var xs = [1, 2]`
-  - line 855: `var xs = [3, 1, 2]`
-  - line 961: `var xs = [1, 2]`
+  - line 642: `var xs = [1, 2]`
+  - line 651: `var xs = [1, 2]`
+  - line 857: `var xs = [3, 1, 2]`
+  - line 963: `var xs = [1, 2]`
 - 06-control-functions.md: 3 blocks, 0 with a case, 3 spec-only, 0 neither
 - 07-sequences.md: 7 blocks, 0 with a case, 6 spec-only, 1 neither
   - line 201: `fn divisors(n: Int) -> yields Int:`
@@ -1002,6 +1002,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - core-04/char-from-idx.cp
 - core-04/list-literal-sizes-a-generic-domain.cp
 - core-04/literal-range-table-int-keys.cp
+- core-07/list-literal-of-range-is-one-element.cp
 - core-07/yielded-closure-writes-generator-local.cp
 - core-08/has-bound-generic-impl.cp
 - core-09/asin-outside-domain-trap.cp

@@ -67,3 +67,20 @@ Rerun of round 9's two backend-only fixes with cases run as `cpl run --release`.
 | `d80f7a08` | drop the `D(x)` position trap at `--checks none` | only changes a program whose index is out of range at `--checks none`, where R09.3.2 makes it unchecked; a valid program prints the same either way. |
 
 So the release runner closed the harness blind spot but found no missed backend bug. The combined rate stays 23 of 25 behavioural fixes (92%); fixes that only change cost are counted separately from now on.
+
+## Round 15 (10 newest compiler fixes, `--commits`)
+
+**7 of 9 revertible fixes caught**; `84a2e395`'s revert doesn't build. A case that is a known gap no longer counts as a catch: `core-09/deep-recursion-trap.cp` flakes, and it was `36b26383`'s only failing case. Both misses keep output the same: `36b26383` avoids a copy in C++ and `34557320` speeds traced runs, which conformance doesn't exercise.
+
+| commit | subject | result | cases that fail |
+|---|---|---|---|
+| `4fbf17d9` | check(ir): build a product position from a tuple of integers | caught | `core-04/prod-call-traps.cp`, `core-04/product-domain-grid-reads-and-indexes.cp`, `core-04/product-tuple-part-outside-factor-traps.cp` +14 |
+| `84a2e395` | interp: run yields fns of structs on the vm fed path | revert does not build |  |
+| `7fcc600f` | check: catch pop and clear on a container while a place in it is lent | caught | `core-05/pop-while-place-lent.cp` |
+| `e1ddb55b` | check: annotated lambda parameters drive generic call inference | caught | `std-window/undoing-infers-from-annotated-lambda.cp` |
+| `036745e3` | check: a type parameter used as a domain moves by + k with no Add bound | caught | `core-08/generic-domain-position-step.cp` |
+| `b7455a0a` | interp: read first/last of any held view through one seq_end | caught | `core-07/held-window-first-last.cp` |
+| `36b26383` | codegen: borrow captures through a closure only handed to a call | missed (only the flaky known gap failed) |  |
+| `23c34787` | check: walk Subset supersets upward, self first | caught | `std-subset/supersets-walk-up.cp` |
+| `34557320` | interp: run fns with mut params on the traced vm | missed at fix |  |
+| `54f06417` | check: a read beside a mut lend of the same storage is E0601 | caught | `core-05/call-mut-element-and-read-maybe-same.cp`, `core-05/mut-and-read-maybe-same.cp` |

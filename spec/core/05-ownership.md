@@ -613,6 +613,8 @@ a container, since each closure has its own type and nothing lowers to
 **Sharp edges** (errors and hovers must carry these):
 
 1. `let` copies a plain element, lends a heap element, moves a variable.
+   The lend covers that element only: `let r = m[0]` leaves `m[1].push(3)`
+   legal, since constant indices are proved apart (R9).
 2. The mode is not in the type: `xs.filter(p)` is lent, `Filter(xs, p)`
    owned; hover shows which.
 3. Passing `mut seen` freezes it for the value's life; capturing it

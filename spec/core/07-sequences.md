@@ -259,6 +259,7 @@ cost isn't \(O(1)\) to make.
 [V] v => f(v)                  // [V]U, filled by f
 s.filter(p).map(f).collect()   // end of a chain: the type the context expects, else List
 List(s)   Set(s)   Str(s)      // conversions of anything that isn't a chain: List(0..n)
+[1..=n]                       // a one-element list holding a range; the list 1..n is List(1..=n)
 ```
 
 `.collect()` and the constructors are one operation, \(O(n)\) and allocating;
