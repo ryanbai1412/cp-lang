@@ -1,5 +1,1 @@
 # Task phrasings search misses today; this list only shrinks (site/R18).
-range update and range query
-range minimum query
-merge overlapping intervals
-knapsack
