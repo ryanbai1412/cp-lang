@@ -401,6 +401,21 @@ class DebtRatchetTest(unittest.TestCase):
         self.assertEqual(len(dr.evaluate(more, eff)[0]), 2)
         self.assertEqual(base["lint_std_names"], 10)
 
+    def test_last_touched_never_blames_a_shallow_clones_boundary(self) -> None:
+        with tempfile.TemporaryDirectory() as d:
+            src, clone = Path(d, "src"), Path(d, "clone")
+            src.mkdir()
+            git = lambda root, *a: subprocess.run(["git", "-C", str(root), *a], check=True, capture_output=True,
+                                                  text=True, env=dr._git_env()).stdout
+            git(src, "init", "-q")
+            for msg, name in (("grow a.rs", "a.rs"), ("touch b.rs", "b.rs")):
+                Path(src, name).write_text(msg + "\n")
+                git(src, "add", name)
+                git(src, "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qm", msg)
+            self.assertEqual([l.split(" ", 1)[1] for l in dr.last_touched(src, "a.rs")], ["grow a.rs"])
+            git(Path(d), "clone", "-q", "--depth", "1", f"file://{src}", str(clone))
+            self.assertEqual(dr.last_touched(clone, "a.rs"), [])
+
     def test_lint_dup_helpers_and_vm_fallbacks(self) -> None:
         with tempfile.TemporaryDirectory() as d:
             root = Path(d)

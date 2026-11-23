@@ -472,6 +472,19 @@ def unrun_script_tests(root: Path) -> list[str]:
     return sorted(_rel(root, p) for p in (root / "scripts").glob("test_*.py") if p.name not in text)
 
 
+def last_touched(root: Path, rel: str, n: int = 3) -> list[str]:
+    """The last `n` commits to change `rel`, minus a shallow clone's boundary
+    commit: it holds every file without having changed them, so naming it
+    would blame whoever pushed the checked-out tip."""
+    shallow = _git(root, "rev-parse", "--git-path", "shallow")
+    path = Path(shallow[0]) if shallow else None
+    if path is not None and not path.is_absolute():
+        path = root / path
+    graft = set(path.read_text().split()) if path is not None and path.is_file() else set()
+    by = [l.split(" ", 1) for l in _git(root, "log", f"-{n}", "--format=%H %h %s", "--", rel)]
+    return [rest for full, rest in by if full not in graft]
+
+
 def _git_env() -> dict[str, str]:
     """The environment without GIT_*: a hook's GIT_DIR must not redirect `git -C`."""
     return {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
@@ -1155,9 +1168,9 @@ def main(argv: list[str] | None = None) -> int:
     for i, e in enumerate(errors):
         rel = e.partition(": grew from ")[0] if ": grew from " in e else None
         if rel:
-            by = _git(args.root, "log", "-3", "--format=%h %s", "--", rel)
-            if by:
-                errors[i] = f"{e}; last touched by: {'; '.join(by)}"
+            by = last_touched(args.root, rel)
+            errors[i] = f"{e}; last touched by: {'; '.join(by)}" if by else \
+                f"{e}; run `git log -3 -- {rel}` in a full clone for who grew it"
 
     for w in warnings:
         print(f"debt-ratchet: WARNING: {w}", file=sys.stderr)
