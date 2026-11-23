@@ -56,3 +56,20 @@ fn a_consumer_calling_a_fn_that_may_trap_keeps_the_list() {
     let cpp = consumer("100 / x");
     assert!(!cpp.contains("cpl_sink_"), "{cpp}");
 }
+
+#[test]
+fn a_build_without_traps_sinks_a_consumer_that_divides() {
+    let source = concat!(
+        "let n: 1..=1000 = read()\n",
+        "print(sum([i for i in 0..n if i % 2 == 0], of: x => 100 / x))\n",
+    );
+    let mut db = cpl_check::Database::new();
+    db.set_file("t.cp", source);
+    let program = cpl_ir::lower(&db.analyze("t.cp").expect("set")).expect("lowers");
+    let target = crate::Target {
+        checks: crate::Checks::None,
+        ..crate::Target::default()
+    };
+    let cpp = crate::emit_for(&program, "t.cp", None, &target);
+    assert!(cpp.contains("cpl_sink_"), "{cpp}");
+}

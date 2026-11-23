@@ -208,7 +208,7 @@ pub(crate) fn pad(indent: usize) -> String {
 }
 
 impl<'p> Emitter<'p> {
-    pub fn new(program: &'p Program) -> Emitter<'p> {
+    pub fn new(program: &'p Program, target: &crate::Target) -> Emitter<'p> {
         // What a local must not hide: the names at the top of the file.
         let mut top_names = BTreeSet::new();
         top_names.extend(program.structs.iter().map(|s| ident(&s.name)));
@@ -274,7 +274,7 @@ impl<'p> Emitter<'p> {
             indent: 0,
             sites: None,
             counted: Default::default(),
-            target: crate::Target::default(),
+            target: target.clone(),
             chunks: Vec::new(),
         };
         let feeds = cpl_ir::pushed::Feeds::of(program);

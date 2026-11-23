@@ -119,8 +119,7 @@ pub fn sizes(
 ) -> Vec<Size> {
     let total = fitted.cpp.len();
     let program = prepared(program, target);
-    let mut emitter = emit::Emitter::new(&program);
-    emitter.target = target.clone();
+    let mut emitter = emit::Emitter::new(&program, target);
     let (_, chunks) = emitter.file_with_chunks(name, source);
     let fit = |part: Part, text: &str| {
         let text = match fitted.comments || part == Part::Header {
@@ -185,8 +184,7 @@ pub fn emit_for(
     target: &Target,
 ) -> String {
     let program = prepared(program, target);
-    let mut emitter = emit::Emitter::new(&program);
-    emitter.target = target.clone();
+    let mut emitter = emit::Emitter::new(&program, target);
     narrow(&emitter.file(name, source))
 }
 
@@ -201,8 +199,7 @@ pub fn emit_profiled(
     target: &Target,
 ) -> (String, Vec<cpl_diag::Span>) {
     let program = prepared(program, target);
-    let mut emitter = emit::Emitter::new(&program);
-    emitter.target = target.clone();
+    let mut emitter = emit::Emitter::new(&program, target);
     emitter.sites = Some(Vec::new());
     emitter.devirt = devirt::Devirt::collect_unmerged(&program);
     emitter.counted = cpl_ir::sites::user_stmts(&program);
