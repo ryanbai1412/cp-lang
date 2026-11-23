@@ -2,7 +2,8 @@
 
 Status: draft for 0.3.0. Sources: `plan/40-tooling.md` §8, decisions 34,
 36. Every command takes a file (`d`, `d.cp`, a path) and defaults to the
-most recently edited `.cp` file in the folder.
+most recently edited `.cp` file in the folder. A path may use `/` on every
+platform and `\` on Windows too; `d.tests/` sits beside `d.cp`.
 
 | Command | Does |
 |---|---|

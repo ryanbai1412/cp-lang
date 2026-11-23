@@ -30,6 +30,10 @@ text. (R01.1.1)
   `cpl doc`. Labelled lines after the prose (`cost:`, `traps:`,
   `example:`, `empty:`, `ties:`, `order:`) state the facts every public
   library function documents (`std/README.md`). (R01.1.3)
+- A source line may end in `\n` or `\r\n` on every platform. The `\r` is
+  part of the line end, never of a token, comment or string, so a file
+  saved on Windows means the same program; `cpl fmt` keeps the file's line
+  ending. (R01.1.4)
 
 ## 1.2 Layout
 

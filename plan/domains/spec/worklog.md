@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- Portability (M1 exit 6): R01.1.4 CRLF source with case `core-01/crlf-source.cp` (passes; CRLF input was already R10.2.8 with two cases); path separators in `tools/cli.md`; Windows evidence requested from tools.
 - Answered site's `@cache`/`@memo` question: functions keep `@memo(array|map)`, `@cache` is the field form (decision 145); fixed the two wrong `CHANGELOG.md` lines directly, noted to infra.
 - Rlsp.5 names the one-step `cpl setup neovim` / `cpl setup vim` that `cpl` ships, instead of a runtime-path line into a checkout; editors README routed to tools.
 - Decision 324: named arguments to a variadic parameter make a named tuple (R06.1.5), the mechanism behind `each(sum: +, hi: max)`. Three cases, all failing: core one routed to compiler (SUBSET known gap), `each` return type to stdlib.
