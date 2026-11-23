@@ -357,7 +357,7 @@ impl Scan<'_, '_> {
                 init.as_ref().is_none_or(|e| self.expr(e, every))
             }
             Stmt::Assign(place, _, value) => self.place(place, every) && self.expr(value, every),
-            Stmt::Expr(e) => self.expr(e, every),
+            Stmt::Expr(e) | Stmt::Give(e) => self.expr(e, every),
             Stmt::If(cond, then, otherwise) => {
                 self.expr(cond, every) && self.block(then, false) && self.block(otherwise, false)
             }
@@ -371,6 +371,15 @@ impl Scan<'_, '_> {
             ) => {
                 self.stored.insert((false, *at));
                 self.expr(lo, every) && self.expr(hi, every) && self.block(body, false)
+            }
+            Stmt::For(_, at, Iter::Seq(seq, _), body) => {
+                self.stored.insert((false, *at));
+                // Walking a sequence cannot fail; the body is reached on
+                // every round only when the sequence is a nonempty literal.
+                let full = self.emitter.inline_list_call(seq).is_some_and(
+                    |l| matches!(&l.kind, ExprKind::Tuple(items) if !items.is_empty()),
+                );
+                self.expr(seq, every) && self.block(body, every && full)
             }
             _ => false,
         })
@@ -429,7 +438,18 @@ impl Scan<'_, '_> {
             | ExprKind::Field(x, _)
             | ExprKind::IsSome(x)
             | ExprKind::IsVariant(x, _)
-            | ExprKind::Cast(Cast::IntToFloat, x) => self.expr(x, every),
+            | ExprKind::Unwrap(x, false)
+            | ExprKind::Cast(
+                Cast::IntToFloat
+                | Cast::EnumOrd(_)
+                | Cast::EnumVal(_)
+                | Cast::Ord
+                | Cast::Label(_)
+                | Cast::CharToInt
+                | Cast::Trust
+                | Cast::Raw,
+                x,
+            ) => self.expr(x, every),
             ExprKind::Unary(op, x) => *op != UnOp::Neg && self.expr(x, every),
             ExprKind::Binary(op, l, r) => {
                 let short = matches!(op, BinOp::And | BinOp::Or | BinOp::Coalesce);
@@ -454,6 +474,14 @@ impl Scan<'_, '_> {
             {
                 args.iter().all(|x| self.expr(x, every))
             }
+            // A `give` before the last statement may skip the rest.
+            ExprKind::Do(block) => match block.stmts.split_last() {
+                Some((Stmt::Give(_), init)) => {
+                    let every = every && !init.iter().any(gives);
+                    self.block(block, every)
+                }
+                _ => false,
+            },
             ExprKind::Call(f, args) => {
                 args.iter()
                     .all(|a| matches!(a, Arg::Value(x) if self.expr(x, every)))
@@ -461,6 +489,15 @@ impl Scan<'_, '_> {
             }
             _ => leaf(&e.kind),
         }
+    }
+}
+
+fn gives(stmt: &Stmt) -> bool {
+    match stmt {
+        Stmt::Give(_) => true,
+        Stmt::If(_, then, otherwise) => then.stmts.iter().chain(&otherwise.stmts).any(gives),
+        Stmt::For(.., body) => body.stmts.iter().any(gives),
+        _ => false,
     }
 }
 
@@ -644,5 +681,54 @@ mod tests {
             "print(g[0, 0])\n",
         ));
         assert!(!inner(&code).contains(".ck("), "{code}");
+    }
+
+    const STAGES: &str = concat!(
+        "enum Stage = Low | High\n",
+        "fn roles(b: Int) -> List<(Stage, Stage, Int)> = [(Low, High, b), (High, Low, 2 * b)]\n",
+        "let n: Int = read()\n",
+        "var g: [0..n + 1, Stage]Int = 0\n",
+        "for k in (0..n).rev:\n",
+        "    for (from, to, w) in SEQ:\n",
+        "        g[k + 1, to] = max(g[k + 1, to], g[k, from] + w)\n",
+        "print(g[0, Low])\n",
+    );
+
+    #[test]
+    fn an_optional_min_assign_reads_its_cell_unchecked() {
+        let code = cpp(concat!(
+            "domain Stage = 0..2\n",
+            "let (lo, hi) = (Stage(0), Stage(1))\n",
+            "fn roles(b: Int) -> List<(Stage, Stage, Int)> = [(lo, hi, b), (hi, lo, 2 * b)]\n",
+            "let n: Int = read()\n",
+            "var g: [0..n + 1, Stage]?Int = none\n",
+            "for k in (0..n).rev, (from, to, w) in roles(k):\n",
+            "    g[k + 1, to] min= g[k, from] + w\n",
+            "print(g[0, lo]!)\n",
+        ));
+        let body = &code[code.find("for (ll k").unwrap()..];
+        assert!(body.contains("= g(k, from)"), "{code}");
+        // The store runs only when the new cost is smaller, so it keeps its check.
+        assert!(body.contains("g.ck(k + 1, to) = "), "{code}");
+    }
+
+    #[test]
+    fn a_grid_loop_over_a_literal_fn_checks_ahead() {
+        let code = cpp(&STAGES.replace("SEQ", "roles(k)"));
+        let body = &code[code.find("for (ll k").unwrap()..];
+        assert!(
+            !body[..body.find("put_int").unwrap()].contains(".ck("),
+            "{code}"
+        );
+    }
+
+    #[test]
+    fn a_grid_loop_over_a_list_that_may_be_empty_keeps_its_checks() {
+        let code = cpp(&STAGES.replace("SEQ", "[(Low, High, k) for _ in 0..k]"));
+        let body = &code[code.find("for (ll k").unwrap()..];
+        assert!(
+            body[..body.find("put_int").unwrap()].contains(".ck("),
+            "{code}"
+        );
     }
 }
