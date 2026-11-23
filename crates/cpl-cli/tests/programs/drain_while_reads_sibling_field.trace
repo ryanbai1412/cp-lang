@@ -1,0 +1,8 @@
+"variables":{"stdout":{"name":"stdout","type":"what the program printed, a line at a time","kind":"json"},"h":{"name":"h","type":"HashMap\u003cInt, Int>","kind":"json"},"w":{"name":"w","type":"W","kind":"json"}},"runs":{"fast":{"label":"cpl run","steps":[{"id":0,"line":8,"label":"var h = HashMap\u003cInt, Int>()","stage":"main","values":{"stdout":[],"h":[]},"locals":{},"frames":[{"fn":"main","line":8}]},
+{"id":1,"line":9,"label":"h[4] = 40","stage":"main","values":{"stdout":[],"h":[[4,40]]},"locals":{},"frames":[{"fn":"main","line":9}]},
+{"id":2,"line":10,"label":"h[6] = 60","stage":"main","values":{"stdout":[],"h":[[4,40],[6,60]]},"locals":{},"frames":[{"fn":"main","line":10}]},
+{"id":3,"line":11,"label":"var w = W(SortedBag.of([1, 4, 6]), h)","stage":"main","values":{"stdout":[],"h":[[4,40],[6,60]],"w":{"ks":"1 4 6","h":[[4,40],[6,60]]}},"locals":{},"frames":[{"fn":"main","line":11}]},
+{"id":4,"line":7,"label":"fn go(mut self) -> List\u003cInt> = ks.drain(after: 1, while: k => h.get(k)! \u003c 50)","stage":"main","values":{"stdout":[],"h":[[4,40],[6,60]],"w":{"ks":"1 6","h":[[4,40],[6,60]]}},"locals":{"self":{"ks":"1 6","h":[[4,40],[6,60]]}},"frames":[{"fn":"W.go","line":7},{"fn":"main","line":12}]},
+{"id":5,"line":12,"label":"print → 4","stage":"main","values":{"stdout":["4"],"h":[[4,40],[6,60]],"w":{"ks":"1 6","h":[[4,40],[6,60]]}},"locals":{},"checkpoint":"print 1","frames":[{"fn":"main","line":12}]},
+{"id":6,"line":12,"label":"the program ended","stage":"main","values":{"stdout":["4"],"h":[[4,40],[6,60]],"w":{"ks":"1 6","h":[[4,40],[6,60]]}},"locals":{},"checkpoint":"end","frames":[{"fn":"main","line":12}]}]}}}
+stderr:
