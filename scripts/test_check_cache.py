@@ -244,6 +244,20 @@ class CheckCacheTest(unittest.TestCase):
             self.assertIn("docs: no trailer has no Domain: trailer", r.stderr)
             self.assertNotEqual(git("rev-parse", "main", cwd=remote), git("rev-parse", "HEAD"))
 
+    def test_land_refuses_a_change_that_adds_a_conflict_marker(self):
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        env = hermetic_env()
+        with tempfile.TemporaryDirectory() as tmp:
+            remote, work, git = self.land_repos(tmp, env)
+            with open(os.path.join(work, "a.md"), "a", encoding="utf-8") as f:
+                f.write("||||||| parent of 1234567 (docs: x)\n")
+            git("commit", "-qam", "docs: x\n\nDomain: infra")
+            r = subprocess.run([os.path.join(root, "scripts", "land.sh")], cwd=work,
+                               capture_output=True, text=True, env=env)
+            self.assertNotEqual(r.returncode, 0)
+            self.assertIn("conflict markers", r.stderr)
+            self.assertNotEqual(git("rev-parse", "main", cwd=remote), git("rev-parse", "HEAD"))
+
     def test_append_only_shared_files_rebase_without_conflicts(self):
         root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         env = hermetic_env()
