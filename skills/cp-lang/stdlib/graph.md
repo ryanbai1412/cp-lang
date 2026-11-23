@@ -70,7 +70,7 @@ A graph whose arcs carry edge ids: bridges, two-edge components, edge blocks.
 
 \(O(n)\) memory.
 
-Fields: `back: [V]?(from: V, via: A)`, `order: List<V>`.
+Fields: `order: List<V>`.
 
 - `fn get(self, v: V) -> ?W` — \(O(1)\) dense, \(O(1)\) expected `hashed`; `p[v]`: the distance to `v`, or `None` if no source reaches it (or the search stopped at `until` first).
 - `fn iter(self) -> yields (v: V, d: W)` — \(O(1)\) to make, \(O(1)\) per item; The reached vertices with their distances, in settling order: `for (v, d) in bfs(g, from: [s])`.

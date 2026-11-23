@@ -14,7 +14,7 @@ A point in the history of a structure that can step back in time, returned by `m
 
 Union-find with path halving and union by size.
 
-Fields: `parts: Int`, `marked: Bool`.
+Fields: `marked: Bool`.
 
 - `fn new(rollback: Bool = false) -> Dsu<V>` — \(O(n)\) for n = `V.count`; one `[V]` array; A union-find over `V` with every position in its own set.
 - `fn find(self, v: V) -> V` — \(O(\alpha(n))\) amortized; \(O(\log n)\) after the first `mark`; The representative of `v`'s set: the root that union by size kept.

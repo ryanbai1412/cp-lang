@@ -6,7 +6,7 @@ Flows, cuts and matchings: Dinic's max flow and min cut, min-cost flow, maximum 
 
 In prelude (no `use` needed): `Arc`, `FlowGraph`, `max_closure`.
 
-## `struct Arc(id: 0..2_147_483_648)`
+## `struct Arc(pub id: 0..2_147_483_648)`
 
 A handle to one arc of a `FlowGraph`.
 

@@ -64,7 +64,7 @@ fn same<A, B>(a: A, b: B) -> Bool = a == b
 /// The positional form `Action(id, compose, apply, over: op)` is the same call. A flipped
 /// `compose` still type-checks, so check a hand-written action once with
 /// `laws_hold(act, T: [...], F: [...])`.
-pub struct Action<T, F>(pub id: F, pub compose: (F, F) -> F, apply: (F, T, Int) -> T, pub over: Monoid<T>):
+pub struct Action<T, F>(pub id: F, pub compose: (F, F) -> F, pub apply: (F, T, Int) -> T, pub over: Monoid<T>):
     law ident(a: T) = apply(id, a, 1) == a
     // `compose(f, g)` applies `g` first, then `f`.
     law composes(f: F, g: F, a: T) = apply(compose(f, g), a, 1) == apply(f, apply(g, a, 1), 1)
@@ -116,7 +116,7 @@ pub struct Action<T, F>(pub id: F, pub compose: (F, F) -> F, apply: (F, T, Int) 
         a
 
 /// `x` with its order reversed. Build it with `desc(x)`.
-pub struct Desc<T>(x: T)
+pub struct Desc<T>(pub x: T)
 
 impl Ord for Desc<T>:
     fn lt(a, b) = b.x < a.x
@@ -159,7 +159,7 @@ pub fn fold<T, M, S: Seq>(m: M, xs: S) -> T:
 /// Concatenation (`+` or `MaxSub.join`) is associative with identity `MaxSub.empty` in \(O(1)\);
 /// `s.scale(k)` scales every element by non-negative `k` in \(O(1)\).
 /// Implements `Reversible` (swapping `pre` and `suf`) for tree-path folds.
-pub struct MaxSub(has: Bool, pub best: Int, total: Int, pub pre: Int, pub suf: Int):
+pub struct MaxSub(has: Bool, pub best: Int, pub total: Int, pub pre: Int, pub suf: Int):
     /// The summary of no elements: the identity of `join`. It has no best subarray.
     ///
     /// cost: \(O(1)\)
@@ -237,7 +237,7 @@ pub struct Semigroup<T>(pub op: (T, T) -> T):
 
 /// \(O(1)\) construction. Associative operation with identity and inverse (`inv`),
 /// for generalized Fenwick trees and difference structures.
-pub struct Group<T>(pub id: T, pub op: (T, T) -> T, inv: T -> T):
+pub struct Group<T>(pub id: T, pub op: (T, T) -> T, pub inv: T -> T):
     law assoc(a: T, b: T, c: T) = op(op(a, b), c) == op(a, op(b, c))
     law ident(a: T) = op(id, a) == a and op(a, id) == a
     law inverse(a: T) = op(a, inv(a)) == id and op(inv(a), a) == id
@@ -508,7 +508,7 @@ pub fn minmax<T: Ord>(a: T, b: T) -> (T, T) = if b < a: (b, a) else: (a, b)
 /// `add` is a commutative monoid, `mul` a monoid that distributes over it; zero and one are
 /// their identities. Matrix products (`Mat(over:)`), path algebras and `convolve(over:)` take
 /// it. `Semiring(+, *)` is the default wherever one is accepted.
-pub struct Semiring<A, M>(add: A, mul: M)
+pub struct Semiring<A, M>(pub add: A, pub mul: M)
 
 /// An associative operation, possibly without an identity (round 5). Bare operators
 /// (`+ * ^ | & min max gcd and or`) implement it. Folds over an `Op` of an empty range

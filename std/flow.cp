@@ -10,7 +10,7 @@ use std.heap.{MinHeap}
 use std.seq.{next_permutation}
 
 /// A handle to one arc of a `FlowGraph`. Handles from `add` stay valid as arcs are added.
-pub struct Arc(id: 0..2_147_483_648):
+pub struct Arc(pub id: 0..2_147_483_648):
     /// The paired arc in the opposite direction, what `e ^ 1` means in C++. Every `add` makes an
     /// arc and its reverse together, so `a.rev.rev == a`.
     ///

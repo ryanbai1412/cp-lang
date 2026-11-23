@@ -13,7 +13,7 @@ pub struct Mark(at: 0..=2_000_000_000)
 /// operation is \(O(\log n)\) and each `unite` costs one entry of memory until it is undone.
 pub struct Dsu<V>:
     @cache p: List<-2_147_483_648..=2_147_483_647>
-    parts: Int
+    pub parts: Int
     /// Pairs `[child_ord, old_neg_size]` pushed flat since the first `mark`.
     pub joined: List<Int>
     marked: Bool

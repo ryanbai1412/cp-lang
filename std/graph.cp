@@ -1063,7 +1063,7 @@ fn a_plain_edge_list_needs_no_edge_domain():
 /// without it is a compile error that names `hashed: true`.
 pub struct Paths<V, W, A>:
     pub dist: [V]?W
-    back: [V]?(from: V, via: A)
+    pub back: [V]?(from: V, via: A)
     order: List<V>
 
     /// `p[v]`: the distance to `v`, or `None` if no source reaches it (or the search stopped

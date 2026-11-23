@@ -20,14 +20,14 @@ An associative operation with an identity: the pair `(id, op)`, written `Monoid<
 - `fn of<M>(m: M) -> Monoid<T>` — \(O(1)\); The monoid a structure was handed: a `Monoid` is itself, and a bare operator brings its identity: zero for `+`, `^`, `\|` and `gcd`, one for `*`, all bits for `&`, and for `min` / `max` the far end of `T` (`None` on a `?T`).; traps: never (an operator without a known identity is a compile-time error)
 - `fn monoid(self) -> Monoid<T>` — \(O(1)\); A monoid is its own monoid: what [`Monoid.of`] gives back for anything that is not a bare operator.
 
-## `struct Action<T, F>(pub id: F, pub compose: (F, F) -> F, apply: (F, T, Int) -> T, pub over: Monoid<T>)`
+## `struct Action<T, F>(pub id: F, pub compose: (F, F) -> F, pub apply: (F, T, Int) -> T, pub over: Monoid<T>)`
 
 A lazy update `F` on values `T` folded with `over`.
 
 - `fn new<M>(id: F = F.zero, compose: (F, F) -> F = (+), apply: (F, T, Int) -> T, over: M = (+)) -> Action<T, F>` — \(O(1)\); A lazy action of tags `F` on values `T` folded with `over`.; traps: never (laws are not checked here; use `laws_hold`)
 - `fn of<A, M>(a: A, op: M) -> Action<T, F>` — \(O(1)\); Resolve a stock action (`add`, `assign`, `affine`) or an `Action` against fold `op`.
 
-## `struct Desc<T>(x: T)`
+## `struct Desc<T>(pub x: T)`
 
 `x` with its order reversed.
 
@@ -35,7 +35,7 @@ A lazy update `F` on values `T` folded with `over`.
 
 A folded value that can be read from the other end.
 
-## `struct MaxSub(has: Bool, pub best: Int, total: Int, pub pre: Int, pub suf: Int)`
+## `struct MaxSub(has: Bool, pub best: Int, pub total: Int, pub pre: Int, pub suf: Int)`
 
 Maximum non-empty subarray summary (Kadane monoid).
 
@@ -50,7 +50,7 @@ Maximum non-empty subarray summary (Kadane monoid).
 
 \(O(1)\) construction.
 
-## `struct Group<T>(pub id: T, pub op: (T, T) -> T, inv: T -> T)`
+## `struct Group<T>(pub id: T, pub op: (T, T) -> T, pub inv: T -> T)`
 
 \(O(1)\) construction.
 
@@ -85,7 +85,7 @@ Maximum non-empty subarray summary (Kadane monoid).
 
 \(O(1)\).
 
-## `struct Semiring<A, M>(add: A, mul: M)`
+## `struct Semiring<A, M>(pub add: A, pub mul: M)`
 
 \(O(1)\).
 
