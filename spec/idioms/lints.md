@@ -794,7 +794,7 @@ One sub-family per module. Each says: you rebuilt something the library has.
 | sentinel_char_or_empty_str | `'?'`, `'\0'`, or `""` stored in table to mean "unset" | `?[D]Char` / `?[D]Str` | warn | #5 | flow | |
 | sentinel_zero_for_unset | `0` used as "unvisited/unset" in array whose valid values can include `0` | `?[D]Int` | warn | #5 | bound | |
 | map_contains_then_index | `if m.contains(k): use(m[k])` (double hash lookup + trap risk) | `if let v = m.get(k): use(v)` | fix | #5 | flow |✓map_contains_then_index |
-| unwrap_on_possibly_empty | `xs.min()!`, `xs.max()!`, `xs.first!`, `xs.last!` when `xs.len` can be `0` from bounds | handle `None` or tighten `n: 1..=N` | warn | #5 | bound | |
+| unwrap_on_possibly_empty | `xs.min()!`, `xs.max()!`, `xs.first!`, `xs.last!` when `xs.len` can be `0` from bounds | handle `None` or tighten `n: 1..=N` | warn | #5 | bound | ✓unwrap_on_possibly_empty |
 | option_assign_none_then_branch | `var res: ?T = None; ...; if res == None: return None; Some(res!)` | `return` directly or use `?` propagation | fix? | #5 | flow | |
 | option_unwrap_in_loop_invariant | `opt!` called on every iteration of a loop when `opt` is loop-invariant | unwrap once before loop: `let v = opt!` | fix | #5 | loop | |
 

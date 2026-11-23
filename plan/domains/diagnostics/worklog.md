@@ -537,3 +537,8 @@ Landed since 23:10: four type/flow lints from `spec/idioms/lints.md`, L0571 `neg
   Lowering now reports E0303 "`parse` needs the type it reads" on the
   name, with the fix `parse<T>()` (T from the expected `?T`, else `Int`),
   and no cascade. Golden: parse_without_a_type_names_it.
+- Lint L0305 `unwrap_on_possibly_empty` (lints.md bound row), in the L0304
+  rule: `a.max()!`, `a.first!` and any other no-argument member of a
+  top-level array unwrapped, when its declared index range can be empty
+  and the file never tests the end or the length. Both lints now match no
+  std member names (ratchet 146 -> 144). 0 hits on corpus, newcomer and std.
