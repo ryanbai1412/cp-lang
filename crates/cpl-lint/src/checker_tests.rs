@@ -28,6 +28,18 @@ fn checker_lints_match_the_spec_table() {
 }
 
 #[test]
+fn every_checker_lint_has_a_registry_entry_for_cpl_explain() {
+    for lint in crate::CHECKER_LINTS {
+        assert!(
+            cpl_diag::lookup(lint.code.0).is_some(),
+            "{} {}",
+            lint.code.0,
+            lint.name
+        );
+    }
+}
+
+#[test]
 fn cpl_lint_reports_a_checker_lint() {
     assert_eq!(codes(PADDED, &Config::default()), ["L0607"]);
 }

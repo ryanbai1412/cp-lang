@@ -752,6 +752,16 @@ pub const REGISTRY: &[CodeInfo] = &[
         input: "",
     },
     CodeInfo {
+        code: Code("L0609"),
+        title: "A `@cache` field written outside its type",
+        summary: "A `@cache` field is assigned from code that is not one of its type's methods.",
+        explanation: "A `@cache` field may change how a type stores its answers, never what they are, and only the type's own methods know how to keep it consistent. Write it inside a method, or drop `@cache` if it is ordinary state.",
+        trigger: "struct Memo:\n    @cache best: Int\n    n: Int\n\nvar m = Memo(best: 0, n: 3)\nm.best = 5\nprint(m.n)\n",
+        fix: "struct Memo:\n    @cache best: Int\n    n: Int\n\nlet m = Memo(best: 0, n: 3)\nprint(m.n)\n",
+        mode: "check",
+        input: "",
+    },
+    CodeInfo {
         code: Code("E0901"),
         title: "No fixed-width integer types",
         summary: "`U8`, `I32` and similar are not types; storage width comes from a range.",
