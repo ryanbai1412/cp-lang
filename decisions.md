@@ -6896,3 +6896,12 @@ tech-debt questions decided by 266-268 move to "Answered".
 line 88); fixed as a trivial unblocking edit.
 Reason: the layout doc (decision 303); `spec/` holds only normative rules.
 Reverse: `git mv` each file back and delete `scripts/status.py`.
+
+## 310. decisions.md merges with `merge=union` (2026-11-22)
+
+- **Call.** `.gitattributes` gives `decisions.md` the union merge driver, as the
+  worklogs and `plan/QUESTIONS.md` already have (217).
+- **Why.** Lanes append entries at once and rebase onto each other; a
+  hand-resolved conflict left a stray `|||||||` line three times on
+  2026-11-22, and each one failed every CI job and every push.
+- **Reverse.** Delete the `decisions.md merge=union` line.

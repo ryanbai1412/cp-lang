@@ -3,5 +3,6 @@
 
 # Append-only logs many lanes write at once: a rebase keeps both sides'
 # lines instead of conflicting (decisions.md 217).
+decisions.md merge=union
 plan/QUESTIONS.md merge=union
 plan/domains/*/worklog.md merge=union
