@@ -7,7 +7,7 @@ domain I = 0..n
 let a = read<[I]Int>()
 var lead: [I.ranges]Int = 0
 for r in I.ranges:
-    lead[r] = if r.len == 1: a[r.first!] else: max(a[r.first!] - lead[r.drop(1)], a[r.last!] - lead[r.drop_last(1)])
+    lead[r] = if r.len == 1: a[r.first] else: max(a[r.first] - lead[r.drop(1)], a[r.last] - lead[r.drop_last(1)])
 print(lead[I.range])
 domain V = 0..4
 var cost: [V.ranges]Int = 0

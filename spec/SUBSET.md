@@ -173,7 +173,6 @@ documented. The stdlib's own gaps are in `std/GAPS.md`.
 - core-01/stepped-range-is-a-value.cp: compiler
 - core-02/question-extent-let-stays-optional.cp: compiler
 - core-02/question-not-early-return.cp: compiler
-- core-02/str-len-runtime-bound-rejects.cp: compiler
 - core-02/unwrap-shadow-below-multitest.cp: compiler
 - core-02/bare-variant-needs-expected-enum.cp: compiler
 - core-02/counted-array-never-grows.cp: compiler
@@ -199,7 +198,6 @@ documented. The stdlib's own gaps are in `std/GAPS.md`.
 - core-04/rebased-str-indexes-from-zero.cp: stdlib
 - core-04/runtime-domain-literal-between-traps.cp: compiler
 - core-04/spec-block-drop-rest.cp: compiler
-- core-04/spec-block-first-drop-next-greater.cp: compiler
 - core-04/spec-block-split-by-search.cp: compiler
 - core-04/zip-keyed-by-first.cp: compiler
 - core-04/char-domain-position-to-char.cp: compiler
@@ -256,7 +254,6 @@ documented. The stdlib's own gaps are in `std/GAPS.md`.
 - diagnostics/sum-of-str.cp: diagnostics
 - std-graph/dfs-shares-seen.cp: stdlib
 - std-graph/user-impl-next-weighted-arc-runs-dijkstra.cp: stdlib
-- std-dp/interval-ranges-deque-game.cp: stdlib
 - std-prefix/first-ge-negative-element-traps.cp: stdlib
 - std-segtree/closure-op-picks-index.cp: compiler
 - std-strings/split-trailing-and-leading.cp: stdlib

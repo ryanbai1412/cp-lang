@@ -1,4 +1,4 @@
-// expect: R0501 at 6 (checked)
+// expect: R0501 at 3 (checked)
 // rule: 02.3.2
 // input: "3\nab\n"
 // A string shorter than its exact length traps on read.
