@@ -44,7 +44,7 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
                 }
                 StmtKind::For { body, .. } => {
                     let reads = body.stmts.iter().any(
-                        |s| matches!(&s.kind, StmtKind::Let { init: Some(e), .. } if is_read(e)),
+                        |s| matches!(&s.kind, StmtKind::Let { init: Some(e), .. } if is_read_call(e)),
                     );
                     if !reads {
                         return;
@@ -108,6 +108,6 @@ fn is_empty_list(e: &Expr) -> bool {
     matches!(&e.kind, ExprKind::List(xs) if xs.is_empty())
 }
 
-fn is_read(e: &Expr) -> bool {
+fn is_read_call(e: &Expr) -> bool {
     matches!(&e.kind, ExprKind::Call { callee, .. } if matches!(&callee.kind, ExprKind::Name(n) if n == "read"))
 }

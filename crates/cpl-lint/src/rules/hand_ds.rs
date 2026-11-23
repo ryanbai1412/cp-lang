@@ -10,7 +10,7 @@ use crate::{
 use cpl_diag::{Diagnostic, Span};
 use cpl_syntax::ast::*;
 
-use super::shapes::{compare, int, name, single};
+use super::shapes::{compare, int, name, single, squash};
 
 pub(crate) fn check(file: &File) -> Vec<Finding> {
     let mut v = HandDs {
@@ -26,10 +26,6 @@ struct HandDs<'a> {
     src: &'a str,
     base: u32,
     out: Vec<Finding>,
-}
-
-fn squash(text: &str) -> String {
-    text.chars().filter(|c| !c.is_whitespace()).collect()
 }
 
 /// `recv.method(args)`, the receiver as written.

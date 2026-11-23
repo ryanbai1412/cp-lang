@@ -35,7 +35,7 @@ struct HandSearch<'a> {
 
 /// `text` without comments and without spaces, except one between two words
 /// (`if a[i]`, `for i in 0..n`), so a keyword never fuses with a name.
-fn squash(text: &str) -> String {
+fn squash_code(text: &str) -> String {
     let word = |c: char| c.is_alphanumeric() || c == '_';
     let mut out = String::new();
     for line in text.lines() {
@@ -145,7 +145,7 @@ impl HandSearch<'_> {
     /// The pairs sorted by `sorted`: `(x, i, range)` when `recv` is a list of
     /// `(x[i], i)` built by a comprehension or a push loop over `range`.
     fn argsort(&self, recv: &str) -> Option<(String, String, String)> {
-        let src = squash(self.src);
+        let src = squash_code(self.src);
         let comp = |c: &str| {
             let (x, i) = value_index(c.strip_prefix('[')?)?;
             let rest = c.split_once(&format!("for {i} in "))?.1;
@@ -190,7 +190,7 @@ impl HandSearch<'_> {
 
     /// `for mask in 0..(1 << n):` testing `(mask >> i) & 1` to pick `a[i]`.
     fn subset_masks(&mut self, stmt: &Stmt, pat: &Pattern, iter: &Expr, body: &Block) {
-        let text = |s: cpl_diag::Span| squash(s.shift(self.base).text(self.src));
+        let text = |s: cpl_diag::Span| squash_code(s.shift(self.base).text(self.src));
         let m = text(pat.span);
         let it = text(iter.span);
         let Some(n) = it
@@ -249,7 +249,7 @@ impl HandSearch<'_> {
     /// `for i in 1..=n: fact[i] = fact[i - 1] * i % P` (or `.push(..)`, or
     /// `* Z(i)` over a modular type).
     fn fact_table(&mut self, pat: &Pattern, iter: &Expr, body: &Block) {
-        let text = |s: cpl_diag::Span| squash(s.shift(self.base).text(self.src));
+        let text = |s: cpl_diag::Span| squash_code(s.shift(self.base).text(self.src));
         let i = text(pat.span);
         let [only] = body.stmts.as_slice() else {
             return;
@@ -341,7 +341,7 @@ impl HandSearch<'_> {
         let Some(key) = key.trim_end().strip_suffix(']') else {
             return;
         };
-        let Some(v) = squash(rest)
+        let Some(v) = squash_code(rest)
             .strip_prefix("[]).push(")
             .and_then(|v| v.strip_suffix(')'))
             .map(|_| {
@@ -383,7 +383,7 @@ impl HandSearch<'_> {
 
     /// `cur += a[i] - a[i - k]` in a loop over `k..n`.
     fn sliding_sum(&mut self, pat: &Pattern, iter: &Expr, body: &Block) {
-        let text = |s: cpl_diag::Span| squash(s.shift(self.base).text(self.src));
+        let text = |s: cpl_diag::Span| squash_code(s.shift(self.base).text(self.src));
         let i = text(pat.span);
         let it = text(iter.span);
         let Some((k, _)) = it.split_once("..") else {
@@ -427,8 +427,8 @@ impl HandSearch<'_> {
         let Some(k) = raw.strip_prefix("0..").map(str::trim) else {
             return;
         };
-        let whole = squash(body.span.shift(self.base).text(self.src));
-        let file = squash(self.src);
+        let whole = squash_code(body.span.shift(self.base).text(self.src));
+        let file = squash_code(self.src);
         let pops: Vec<_> = whole.match_indices(".pop()").collect();
         let [(at, _)] = pops.as_slice() else {
             return;
@@ -470,7 +470,7 @@ impl HandSearch<'_> {
     /// `if v != V.last!:` or `if i + 1 < n and ..` guarding a read of the next
     /// position, in a loop over positions.
     fn adjacent(&mut self, stmt: &Stmt, pat: &Pattern, iter: &Expr, body: &Block) {
-        let text = |s: cpl_diag::Span| squash(s.shift(self.base).text(self.src));
+        let text = |s: cpl_diag::Span| squash_code(s.shift(self.base).text(self.src));
         let v = text(pat.span);
         if !ident(&v) {
             return;
@@ -535,7 +535,7 @@ impl HandSearch<'_> {
 
     /// `for i in 0..n / 2:` comparing `s[i]` with `s[n - 1 - i]`.
     fn palindrome(&mut self, stmt: &Stmt, pat: &Pattern, iter: &Expr, body: &Block) {
-        let text = |s: cpl_diag::Span| squash(s.shift(self.base).text(self.src));
+        let text = |s: cpl_diag::Span| squash_code(s.shift(self.base).text(self.src));
         let i = text(pat.span);
         let Some(n) = text(iter.span)
             .strip_prefix("0..")
@@ -580,7 +580,7 @@ impl HandSearch<'_> {
 impl Visitor for HandSearch<'_> {
     fn expr(&mut self, expr: &Expr) {
         let span = expr.span.shift(self.base);
-        let text = squash(span.text(self.src));
+        let text = squash_code(span.text(self.src));
         let Some(recv) = text.strip_suffix(".sorted()") else {
             return;
         };
@@ -623,7 +623,7 @@ impl Visitor for HandSearch<'_> {
             return;
         };
         let span = stmt.span.shift(self.base);
-        let text = |s: cpl_diag::Span| squash(s.shift(self.base).text(self.src));
+        let text = |s: cpl_diag::Span| squash_code(s.shift(self.base).text(self.src));
         let c = text(cond.span);
         let Some(last) = body.stmts.last() else {
             return;

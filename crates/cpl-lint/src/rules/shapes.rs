@@ -51,3 +51,16 @@ pub(crate) fn is_step(stmt: &Stmt, var: &str) -> bool {
     matches!(&stmt.kind, StmtKind::Assign { target, op: AssignOp::Binary(BinOp::Add), value }
         if name(target) == Some(var) && int(value) == Some(1))
 }
+
+/// `text` without whitespace, to compare code as written.
+pub(crate) fn squash(text: &str) -> String {
+    text.chars().filter(|c| !c.is_whitespace()).collect()
+}
+
+/// The operator and operands of a binary expression.
+pub(crate) fn binary(e: &Expr) -> Option<(BinOp, &Expr, &Expr)> {
+    match &e.kind {
+        ExprKind::Binary { op, lhs, rhs, .. } => Some((*op, lhs, rhs)),
+        _ => None,
+    }
+}

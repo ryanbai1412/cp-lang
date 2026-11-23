@@ -8,7 +8,7 @@ use crate::{File, Finding, Lint, CYCLE_BY_COLORS, DEPTH_BY_HAND, SLIDING_MIN_BY_
 use cpl_diag::{Diagnostic, Span};
 use cpl_syntax::ast::*;
 
-use super::shapes::{compare, index1, int, name};
+use super::shapes::{compare, index1, int, name, squash};
 
 pub(crate) fn check(file: &File) -> Vec<Finding> {
     let mut v = HandGraph {
@@ -67,10 +67,6 @@ fn conjuncts<'e>(e: &'e Expr, out: &mut Vec<&'e Expr>) {
         }
         _ => out.push(e),
     }
-}
-
-fn squash(text: &str) -> String {
-    text.chars().filter(|c| !c.is_whitespace()).collect()
 }
 
 fn ident(c: char) -> bool {

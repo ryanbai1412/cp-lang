@@ -7,6 +7,8 @@ use crate::{File, Finding, REVERSE_INDEX};
 use cpl_diag::{Diagnostic, Fix};
 use cpl_syntax::ast::{BinOp, Expr, ExprKind};
 
+use super::shapes::binary;
+
 pub(crate) fn check(file: &File) -> Vec<Finding> {
     struct Reverse<'a> {
         src: &'a str,
@@ -101,11 +103,4 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
     };
     file.walk(&mut v, |v, base| v.base = base);
     v.out
-}
-
-fn binary(e: &Expr) -> Option<(BinOp, &Expr, &Expr)> {
-    match &e.kind {
-        ExprKind::Binary { op, lhs, rhs, .. } => Some((*op, lhs, rhs)),
-        _ => None,
-    }
 }

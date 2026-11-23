@@ -6,7 +6,7 @@ use crate::{File, Finding, READ_LOOP};
 use cpl_diag::{Diagnostic, Span};
 use cpl_syntax::ast::*;
 
-use super::shapes::name;
+use super::shapes::{name, squash};
 
 pub(crate) fn check(file: &File) -> Vec<Finding> {
     let mut v = ReadLoop {
@@ -46,10 +46,6 @@ fn push(stmt: &Stmt) -> Option<(&str, &Expr)> {
         [arg] if method.text == "push" && arg.name.is_none() => Some((name(base)?, &arg.value)),
         _ => None,
     }
-}
-
-fn squash(text: &str) -> String {
-    text.chars().filter(|c| !c.is_whitespace()).collect()
 }
 
 impl ReadLoop<'_> {

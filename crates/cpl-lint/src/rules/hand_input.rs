@@ -7,6 +7,8 @@ use crate::{File, Finding, Lint, QUERY_INDEX_SHIFT, TUPLE_POINTS};
 use cpl_diag::{Diagnostic, Span};
 use cpl_syntax::ast::*;
 
+use super::shapes::squash;
+
 pub(crate) fn check(file: &File) -> Vec<Finding> {
     let mut v = HandInput {
         src: file.src,
@@ -29,10 +31,6 @@ struct HandInput<'a> {
     src: &'a str,
     base: u32,
     out: Vec<Finding>,
-}
-
-fn squash(text: &str) -> String {
-    text.chars().filter(|c| !c.is_whitespace()).collect()
 }
 
 /// Splits `(a, b)` into its top-level parts; any other text is one part.

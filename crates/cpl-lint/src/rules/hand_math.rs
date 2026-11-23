@@ -68,7 +68,7 @@ struct HandMath<'a> {
     out: Vec<Finding>,
 }
 
-fn binary(e: &Expr, want: BinOp) -> Option<(&Expr, &Expr)> {
+fn binary_with(e: &Expr, want: BinOp) -> Option<(&Expr, &Expr)> {
     match &unparen(e).kind {
         ExprKind::Binary { op, lhs, rhs, .. } if *op == want => Some((lhs, rhs)),
         _ => None,
@@ -124,7 +124,7 @@ impl HandMath<'_> {
             return;
         };
         // `d * d <= x` or `d <= x / d`.
-        let (d, x) = match (binary(lhs, BinOp::Mul), binary(rhs, BinOp::Div)) {
+        let (d, x) = match (binary_with(lhs, BinOp::Mul), binary_with(rhs, BinOp::Div)) {
             (Some((a, b)), _) if name(a).is_some() && name(a) == name(b) => (name(a), name(rhs)),
             (_, Some((x, b))) if name(lhs).is_some() && name(lhs) == name(b) => {
                 (name(lhs), name(x))
@@ -238,10 +238,11 @@ impl HandMath<'_> {
     }
 
     fn cross(&mut self, expr: &Expr) {
-        let Some((l, r)) = binary(expr, BinOp::Sub) else {
+        let Some((l, r)) = binary_with(expr, BinOp::Sub) else {
             return;
         };
-        let (Some((a, b)), Some((c, d))) = (binary(l, BinOp::Mul), binary(r, BinOp::Mul)) else {
+        let (Some((a, b)), Some((c, d))) = (binary_with(l, BinOp::Mul), binary_with(r, BinOp::Mul))
+        else {
             return;
         };
         let (Some((xs, i)), Some((ys, j)), Some((xs2, j2)), Some((ys2, i2))) =
