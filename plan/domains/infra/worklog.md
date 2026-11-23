@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- Sheriff: run 45111951302 (72ef82a16) red on stale COVERAGE.md and corpus `span` from stdlib aeccc9b9a (stdlib reverted it in 3b4557519). Regenerated COVERAGE.md.
 - Sheriff: prelude-gaps.txt stale after tech-debt ab626a6ef (choose2); regenerated with `conformance-prelude.py --update`.
 - Sheriff: run 45108912223 (bb4b92621) passed conform and all 4 test shards. Checks failed only on stale COVERAGE.md from stdlib direct pushes; regenerated.
 - Sheriff: narrowed diagnostics' Python `is` fix to `is not None` only; `is None` is valid CP and 4 conformance cases had regressed. cpl-syntax + cpl-lint 225/225, `cpl-conform all --check` 0 regressions.

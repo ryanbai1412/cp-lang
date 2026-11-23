@@ -7,7 +7,7 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 2323 (995 passing). Rules: 537.
+Cases: 2325 (995 passing). Rules: 537.
 
 ## Summary per chapter
 
@@ -673,7 +673,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0206 Unresolved module: 2 case(s)
 - E0207 Private item: 1 case(s)
 - E0208 Uppercase value name: 1 case(s)
-- E0301 Wrong index domain: 15 case(s)
+- E0301 Wrong index domain: 16 case(s)
 - E0302 Type mismatch: 37 case(s)
 - E0303 Wrong number of arguments: 6 case(s)
 - E0304 Value is not callable: 1 case(s)
