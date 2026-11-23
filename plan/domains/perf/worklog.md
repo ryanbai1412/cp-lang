@@ -100,3 +100,9 @@ Newest first: what landed (commit), evidence, next, blocked, requests from other
   `%`/`/` were already plain; on a synthetic n=200, q=2e5 input
   (`python3 /tmp/alt.py` interleaved fastest-of runs) 296.2 -> 281.8 ms, same output
   as before. The remaining gap is checked `Grid::ck` access (compiler range proof).
+- 2026-11-22 bench: the 9 `flow/*` pairs build and match again. The `V.K` error was in
+  the bench sources, not `spec/std/flow.cp` as perf-set.md said: `V.K` -> `V.count`,
+  `V.first`/`V.last` -> `!`, `max_closure(before, profit:)` with `u` needs `v` as arc
+  `v -> u` (the C++ adds `u -> v` at infinite capacity). `python3 bench/v03_perf_bench.py
+  --suite bench --only flow/bounded,...,flow/wgeneral --runs 3`: 9/9 ok, p50 1.014x,
+  max 1.306x (`flow/matching` 97 ms vs 74 ms, next to look at).

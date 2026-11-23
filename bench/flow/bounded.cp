@@ -8,11 +8,11 @@ fn next(n: Int) -> Int:
     seed = seed * 48271 % 2147483647
     seed % n
 
-let (s, t) = (V.first, V.last)
+let (s, t) = (V.first!, V.last!)
 var arcs = List<(u: V, v: V, lo: Int, hi: Int)>()
 for _ in 0..200000:
-    let u = next(V.K)
-    let v = next(V.K)
+    let u = next(V.count)
+    let v = next(V.count)
     let hi = next(1000) + 1
     let lo = next(hi / 4 + 1)
     arcs.push((u: V(u), v: V(v), lo: lo, hi: hi))

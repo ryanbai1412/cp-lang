@@ -9,10 +9,11 @@ fn next(n: Int) -> Int:
 
 var profit: [V]Int = 0
 for v in V: profit[v] = next(2000001) - 1000000
-var needs = List<(u: V, v: V)>()
+// `u` needs `v`: taking `u` forces taking `v`, an arc `v -> u` of `before`.
+var before: [V]List<V> = []
 for _ in 0..300000:
-    let u = next(V.K)
-    let v = next(V.K)
-    needs.push((u: V(u), v: V(v)))
-let (value, take) = max_closure(profit, needs)
+    let u = next(V.count)
+    let v = next(V.count)
+    before[V(v)].push(V(u))
+let (value, take) = max_closure(before, profit: v => profit[v])
 print(value, [v for v in V if take[v]].len)

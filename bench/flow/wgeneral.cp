@@ -8,5 +8,5 @@ fn next(n: Int) -> Int:
     seed = seed * 48271 % 2147483647
     seed % n
 
-let edges = [E] _ => (u: V(next(V.K)), v: V(next(V.K)), w: next(1000000))
+let edges = [E] _ => (u: V(next(V.count)), v: V(next(V.count)), w: next(1000000))
 print(max_weight_general_matching(edges).total)

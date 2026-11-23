@@ -9,8 +9,8 @@ fn next(n: Int) -> Int:
 
 var adj: [V]List<V> = []
 for _ in 0..15000:
-    let u = next(V.K)
-    let v = next(V.K)
+    let u = next(V.count)
+    let v = next(V.count)
     adj[V(u)].push(V(v))
     adj[V(v)].push(V(u))
 print(general_matching(adj).size)

@@ -8,7 +8,7 @@ fn next(n: Int) -> Int:
 
 var g = FlowGraph<V>()
 for _ in 0..200000:
-    let u = next(V.K)
-    let v = next(V.K)
+    let u = next(V.count)
+    let v = next(V.count)
     g.add(V(u), V(v), next(1000000) + 1)
-print(g.max_flow(V.first, V.last))
+print(g.max_flow(V.first!, V.last!))

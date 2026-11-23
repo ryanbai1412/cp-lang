@@ -9,8 +9,8 @@ fn next(n: Int) -> Int:
 
 var edges = List<(u: V, v: V, w: Int)>()
 for _ in 0..20000:
-    let u = next(V.K)
-    let v = next(V.K)
+    let u = next(V.count)
+    let v = next(V.count)
     edges.push((u: V(u), v: V(v), w: next(100) + 1))
 let (w, side) = global_min_cut(edges)
 print(w, [v for v in V if side[v]].len)

@@ -10,6 +10,6 @@ fn next(n: Int) -> Int:
 
 var adj: [L]List<R> = []
 for _ in 0..400000:
-    let u = next(L.K)
-    adj[L(u)].push(R(next(R.K)))
+    let u = next(L.count)
+    adj[L(u)].push(R(next(R.count)))
 print(max_matching(adj).size)

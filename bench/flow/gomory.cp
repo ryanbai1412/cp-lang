@@ -9,8 +9,8 @@ fn next(n: Int) -> Int:
 
 var edges = List<(u: V, v: V, w: Int)>()
 for _ in 0..5000:
-    let u = next(V.K)
-    let v = next(V.K)
+    let u = next(V.count)
+    let v = next(V.count)
     edges.push((u: V(u), v: V(v), w: next(100) + 1))
 var sum = 0
 for e in gomory_hu(edges): sum += e.w

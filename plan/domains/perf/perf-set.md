@@ -5,18 +5,17 @@ Measured 2026-11-22 with `python3 bench/v03_perf_bench.py --suite dryrun,corpus,
 | suite | pairs | measured or ok | not building / not comparable |
 |---|---|---|---|
 | dryrun (`research/dryrun/v03`) | 11 | 11 | 0 (p06_labyrinth fixed by the `(char)` cast commit) |
-| bench (`bench/*/`) | 54 | 40 timed >= 10 ms (42 ok) | 12 (below; 8 fixed in `bench/` by perf) |
+| bench (`bench/*/`) | 54 | 49 timed >= 10 ms (51 ok) | 3 (below; 17 fixed in `bench/` by perf) |
 | corpus (`corpus/problems/*`) | 307 | 190 ok, 70 timed >= 10 ms (rerun on main 88a62fca8) | 117 (the 187 below, minus those that build since) |
 
 Pairs that build but compare different algorithms are listed in `bench/unmatched.txt`; the bench times them and leaves them out of p50/max (`cf2101c`, `cf2115a`, `cf2137d`).
 
-## bench: 12 pairs that cannot build yet
+## bench: 3 pairs that cannot build yet
 
-Fixed by perf in `bench/`: `containers/bitset` (copy via `shifted(0)`; `Bitset` has no `.clone()`), `containers/flatmap` (`FlatMap.new(0, cap:)`), `strings/trie` (`var` fields), `strings/palindromic_tree` and `strings/suffix_automaton` (`occ_counts`), `containers/monodeque` (`Window(min)`, which keeps a monotone deque for a selective op).
+Fixed by perf in `bench/`: `containers/bitset` (copy via `shifted(0)`; `Bitset` has no `.clone()`), `containers/flatmap` (`FlatMap.new(0, cap:)`), `strings/trie` (`var` fields), `strings/palindromic_tree` and `strings/suffix_automaton` (`occ_counts`), `containers/monodeque` (`Window(min)`, which keeps a monotone deque for a selective op), the 9 `flow/*` pairs (`V.K` in the bench sources is `V.count`, `V.first` is `?V`, `max_closure` takes a `before` graph and a `profit` fn; 9/9 match, p50 1.014x, max 1.306x `flow/matching`, `v03_perf_bench.py --suite bench --only flow/... --runs 3`).
 
 | pairs | why | owner |
 |---|---|---|
-| flow/bounded, flow/closure, flow/dinic, flow/general, flow/globalcut, flow/gomory, flow/matching, flow/pushrelabel, flow/wgeneral | `spec/std/flow.cp` uses `V.K` (domain size), which no std module declares on v0.3 (`r.len` is the spec's name, `spec/core/04-indices.md`) | stdlib |
 | math/ntt | builds, but times out: generic `convolve<T>` is the O(n·m) loop for `Mod<p>`; the NTT path (`convolve_prime`) is not reachable from `Mod` lists | stdlib |
 | seq/scan_in_place | `std.seq` has no `scan_in_place` / `suffix_scan_in_place` | stdlib |
 | seq/slice_nth_element | `nth_element` is now `select`, but `select` on a list slice fails: `List<Int>` slice is not `IndexedMut` | stdlib + compiler |
