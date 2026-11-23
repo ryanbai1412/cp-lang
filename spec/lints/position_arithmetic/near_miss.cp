@@ -6,4 +6,4 @@ let d = Deg(1)
 let k = 1
 print(Deg(d.ord + k))
 let big: U64 = 7
-print(V(Int(big % U64(3)) + 1))
+print(V(Int(big % U64(3)) + 2))

@@ -8,7 +8,7 @@ use crate::{
 };
 use cpl_diag::{Diagnostic, Span};
 use cpl_syntax::ast::{BinOp, Cond, Expr, ExprKind, PatternKind, Stmt, StmtKind, Type, TypeKind};
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 /// The names of the file's domains, wherever they are declared.
 pub(crate) fn domains(file: &File) -> HashSet<String> {
@@ -25,21 +25,21 @@ pub(crate) fn domains(file: &File) -> HashSet<String> {
     found.0
 }
 
-/// The domains whose first label is 0, where a label and a position agree.
-fn zero_based(file: &File) -> HashSet<String> {
-    struct Zero(HashSet<String>);
-    impl Visitor for Zero {
+/// Each domain's first label, where its definition writes it as a literal.
+fn first_labels(file: &File) -> HashMap<String, i128> {
+    struct Firsts(HashMap<String, i128>);
+    impl Visitor for Firsts {
         fn stmt(&mut self, stmt: &Stmt) {
             if let StmtKind::Domain { name, def } = &stmt.kind {
                 if let ExprKind::Range { lo: Some(lo), .. } = &unparen(def).kind {
-                    if matches!(unparen(lo).kind, ExprKind::Int(0)) {
-                        self.0.insert(name.text.clone());
+                    if let ExprKind::Int(first) = unparen(lo).kind {
+                        self.0.insert(name.text.clone(), first);
                     }
                 }
             }
         }
     }
-    let mut found = Zero(HashSet::new());
+    let mut found = Firsts(HashMap::new());
     file.walk(&mut found, |_, _| {});
     found.0
 }
@@ -48,7 +48,8 @@ struct Types<'a> {
     src: &'a str,
     base: u32,
     domains: HashSet<String>,
-    zero_based: HashSet<String>,
+    /// Each domain's literal first label: a label and a position agree when it is 0.
+    firsts: HashMap<String, i128>,
     lines: cpl_diag::LineIndex,
     /// Sets that are walked in order (`s.first`, `s.pop_last()`), by name:
     /// an array of `Bool` has no order to ask.
@@ -109,6 +110,47 @@ impl Types<'_> {
     }
 }
 
+/// `e` of `Int(e)`.
+fn int_arg(e: &Expr) -> Option<&Expr> {
+    match &unparen(e).kind {
+        ExprKind::Call { callee, args }
+            if args.len() == 1 && matches!(&callee.kind, ExprKind::Name(n) if n == "Int") =>
+        {
+            Some(&args[0].value)
+        }
+        _ => None,
+    }
+}
+
+/// A name or a field: a value read, not a computed number.
+fn is_value_read(e: &Expr) -> bool {
+    matches!(unparen(e).kind, ExprKind::Name(_) | ExprKind::Field { .. })
+}
+
+/// `Int(e) + first` or `first + Int(e)`, `e` computed and `first` the
+/// domain's first label: the `Int(e)` is a 0-based count.
+fn count_from(expr: &Expr, first: Option<i128>) -> Option<&Expr> {
+    let first = first.filter(|&f| f != 0)?;
+    let ExprKind::Binary {
+        op: BinOp::Add,
+        lhs,
+        rhs,
+        ..
+    } = &unparen(expr).kind
+    else {
+        return None;
+    };
+    let count = |side: &Expr| int_arg(side).is_some_and(|a| !is_value_read(a));
+    let is_first = |side: &Expr| matches!(unparen(side).kind, ExprKind::Int(c) if c == first);
+    if count(lhs) && is_first(rhs) {
+        Some(lhs)
+    } else if count(rhs) && is_first(lhs) {
+        Some(rhs)
+    } else {
+        None
+    }
+}
+
 /// `v.ord + 1` or `1 + v.ord`: the value whose position is taken, and the
 /// signed offset as written (`1`, `-2`, `-k`).
 fn position_offset<'a>(expr: &'a Expr, src: &str, base: u32) -> Option<(&'a Expr, String)> {
@@ -119,18 +161,8 @@ fn position_offset<'a>(expr: &'a Expr, src: &str, base: u32) -> Option<(&'a Expr
         ExprKind::Field { base, name } if matches!(name.text.as_str(), "ord" | "idx") => {
             Some(&**base)
         }
-        ExprKind::Call { callee, args }
-            // `Int(v)` of a value read, not of a computed number.
-            if args.len() == 1
-                && matches!(&callee.kind, ExprKind::Name(n) if n == "Int")
-                && matches!(
-                    unparen(&args[0].value).kind,
-                    ExprKind::Name(_) | ExprKind::Field { .. }
-                ) =>
-        {
-            Some(&args[0].value)
-        }
-        _ => None,
+        // `Int(v)` of a value read, not of a computed number.
+        _ => int_arg(side).filter(|a| is_value_read(a)),
     };
     let text = |side: &Expr| side.span.shift(base).text(src).to_string();
     match op {
@@ -378,7 +410,28 @@ impl Visitor for Types<'_> {
                 let [arg] = args.as_slice() else {
                     return;
                 };
-                if !self.domains.contains(domain) || self.zero_based.contains(domain) {
+                if !self.domains.contains(domain) {
+                    return;
+                }
+                let first = self.firsts.get(domain).copied();
+                if let Some(count) = count_from(&arg.value, first) {
+                    let count = count.span.shift(self.base).text(self.src);
+                    let written = expr.span.shift(self.base).text(self.src);
+                    let diag = Diagnostic::warning(
+                        POSITION_ARITHMETIC.code,
+                        expr.span.shift(self.base),
+                        format!("`{written}` builds a `{domain}` from a 0-based count"),
+                    )
+                    .with_help(format!(
+                        "write `{domain}.nth({count})`: the `{domain}` that many steps from `{domain}.first`"
+                    ));
+                    self.findings.push(Finding {
+                        lint: &POSITION_ARITHMETIC,
+                        diag,
+                    });
+                    return;
+                }
+                if first == Some(0) {
                     return;
                 }
                 let Some((value, offset)) = position_offset(&arg.value, self.src, self.base) else {
@@ -422,7 +475,7 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
         src: file.src,
         base: 0,
         domains: domains(file),
-        zero_based: zero_based(file),
+        firsts: first_labels(file),
         ordered: ordered(file),
         inner: HashSet::new(),
         walked: HashSet::new(),
@@ -448,5 +501,15 @@ mod tests {
             messages.contains(&"`Map<X, List<X>>` is keyed by the domain `X`".to_string()),
             "{messages:?}"
         );
+    }
+
+    /// `V(Int(e) + 1)` over `domain V = 1..=n` takes a 0-based count: the help
+    /// names `V.nth(..)`, not `.next` on an Int. Rule: `lints/R9`.
+    #[test]
+    fn position_arithmetic_suggests_nth_for_a_count() {
+        let src = "domain V = 1..=3\nlet big: U64 = 7\nprint(V(Int(big % U64(3)) + 1))\n";
+        let found = format!("{:?}", crate::lint(src, &crate::Config::default()));
+        assert!(found.contains("V.nth(Int(big % U64(3)))"), "{found}");
+        assert!(!found.contains(".next"), "{found}");
     }
 }
