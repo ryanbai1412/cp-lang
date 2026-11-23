@@ -15,7 +15,7 @@ fn longest<T: Indexed>(s: Str, t: T) -> (Int, Int, Int):
     var best = (0, 0, 0)
     for cut in 0..=n:
         let y = prefix_matches(t, s[cut..n])
-        let x = prefix_matches(t.rev, s[0..cut].rev)
+        let x = prefix_matches(List(t.rev), List(s[0..cut].rev))
         for j in 0..=m:
             let yv = if j == 0: 0 else: y[j - 1]
             let xv = if j == m: 0 else: x[m - j - 1]
@@ -25,7 +25,7 @@ fn longest<T: Indexed>(s: Str, t: T) -> (Int, Int, Int):
 let s: Str = read()
 let t: Str = read()
 let (len, in_s, in_t) = longest(s, t)
-let (flipped, flipped_s, flipped_t) = longest(s, t.rev)
+let (flipped, flipped_s, flipped_t) = longest(s, List(t.rev))
 if len >= flipped:
     print(len)
     print(in_s, in_t)
