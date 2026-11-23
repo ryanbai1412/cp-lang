@@ -1492,11 +1492,11 @@ mod tests {
         assert_eq!(out.code, 0);
         assert_eq!(
             std::fs::read_to_string(&path).unwrap(),
-            "let x = read<Int>()\nif x > 1 and x < 5:\n    print(x)\n"
+            "let x = read<Int>()\nif 1 < x < 5:\n    print(x)\n"
         );
         assert_eq!(
             String::from_utf8_lossy(&out.stdout),
-            format!("{path}: 2 fixes applied, no errors\n")
+            format!("{path}: 3 fixes applied, no errors\n")
         );
     }
 
