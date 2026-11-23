@@ -485,6 +485,11 @@ impl<'p> Devirt<'p> {
                 _ => {}
             });
             walk::deep_exprs(block, &mut |e| {
+                if let ExprKind::CallExpr(callee, _) = &e.kind {
+                    if skippable(callee) && self.target(home, callee).is_some() {
+                        feeds.insert(&**callee as *const Expr);
+                    }
+                }
                 if let (ExprKind::Tuple(items), Ty::Struct(s)) = (&e.kind, &e.ty) {
                     for (idx, item) in items.iter().enumerate() {
                         if self.unread_fields.contains(&(*s, idx))

@@ -43,7 +43,6 @@ Local fixes that landed, and the mechanism that would remove the whole class.
 
 | Instance | General fix | Owner |
 |---|---|---|
-| cf2035f `Rooted.up`: `let f = mon.op` now calls its one closure directly, but the C++ still declares and copies `std::function f = mon.op` once per call | a fn-valued local whose every call devirtualizes is never declared (dead-local elision for `Made::Field` locals, as `dead_locals` does for closures) | perf |
 | `(0..b).start` emits `0`, not `Range::make(0, b).lo` (`expr/builtin.rs`; noi17p2 34530 -> 32521 B) | lowering stops building `Range::make(0, 0 + len).lo + i + 0` around view indexes; failing that, one IR simplifier pass (pure projections of literals, `x + 0`) in `lib.rs::prepared` beside `prune` | compiler (lowering), perf (pass) |
 | `if` on a known `same(op, op)` pruned in `prune.rs`, but only when `on:` is passed | `same` folds for a default-valued op parameter too (request in compiler's worklog) | compiler |
 | Bitset fusion keyed on the field list (`is_bitset_ty`, `scope::rows`), stale twice | recognise std types by declaration, one predicate shared by codegen | perf |
