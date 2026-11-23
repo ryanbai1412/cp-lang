@@ -1540,7 +1540,7 @@ impl<'a> Checker<'a> {
                                 );
                                 if is_cached {
                                     self.sink.push(Diagnostic::warning(
-                                        cpl_diag::Code("L0609"),
+                                        codes::CACHE_FIELD_WRITTEN_OUTSIDE,
                                         target.span,
                                         format!(
                                             "`{}.{}` is a `@cache` field and should only be written inside `{sname}`",

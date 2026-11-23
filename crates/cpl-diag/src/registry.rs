@@ -12,7 +12,10 @@ pub struct CodeInfo {
     pub title: &'static str,
     pub summary: &'static str,
     pub explanation: &'static str,
+    /// A program that reports exactly this code and nothing else
+    /// (`crates/cpl-cli/tests/catalogue.rs`).
     pub trigger: &'static str,
+    /// The trigger corrected; it reports nothing.
     pub fix: &'static str,
     pub mode: &'static str,
     /// Standard input for a `run` trigger and its fix.
