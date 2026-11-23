@@ -824,6 +824,8 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - L0582 argsort_loop: **no case**
 - L0583 palindrome_by_hand: **no case**
 - L0584 monotone_stack_by_hand: **no case**
+- L0585 subset_masks_by_hand: **no case**
+- L0586 adjacent_by_index: **no case**
 - L0601 Right side changes the place it assigns: 2 case(s)
 - L0602 Lazy chain walked twice: 1 case(s)
 - L0603 `.map` view read many times by index: 1 case(s)
@@ -848,7 +850,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - W0101 Unused expression value: 1 case(s)
 - W0201 size_near_limit *(0.3)*: 1 case(s)
 
-38 of 138 testable codes have no negative case.
+40 of 140 testable codes have no negative case.
 
 ## Spec code blocks
 
