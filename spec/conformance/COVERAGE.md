@@ -7,7 +7,7 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 2372 (995 passing). Rules: 552.
+Cases: 2372 (995 passing). Rules: 557.
 
 ## Summary per chapter
 
@@ -31,6 +31,7 @@ Cases: 2372 (995 passing). Rules: 552.
 - Rfmt (fmt-lint.md): 1 rules, 2 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - Rjudge (judge-profiles.md): 2 rules, 3 cases; 0 uncovered, 1 happy-path only, 0 negative only
 - Rlint (fmt-lint.md): 2 rules, 3 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- Rlsp (lsp.md): 5 rules, 0 cases; 5 uncovered, 0 happy-path only, 0 negative only
 - Rstress (stress.md): 1 rules, 2 cases; 0 uncovered, 0 happy-path only, 0 negative only
 
 26 rules match a forbidding word but only permit or define something;
@@ -64,8 +65,9 @@ negative case. Complete: rules with no gap in `rule-gaps.txt`.
 | Rfmt | 1 | 1 (100%) | 1 | 1 (100%) | 1 (100%) |
 | Rjudge | 2 | 2 (100%) | 1 | 0 (0%) | 1 (50%) |
 | Rlint | 2 | 2 (100%) | 2 | 2 (100%) | 2 (100%) |
+| Rlsp | 5 | 0 (0%) | 2 | 0 (0%) | 0 (0%) |
 | Rstress | 1 | 1 (100%) | 0 | 0 (0%) | 1 (100%) |
-| all | 552 | 551 (99%) | 212 | 211 (99%) | 550 (99%) |
+| all | 557 | 551 (98%) | 214 | 211 (98%) | 550 (98%) |
 
 ## Rules
 
@@ -681,6 +683,14 @@ Each rule: positive / negative case counts, then the gap if any.
 
 - Rlint.1 [1+ 1-]: Lints flag legal code that is probably wrong, slow or unidiomatic. They never block a buil...
 - Rlint.2 [1+ 1-]: A lint is declared by the library that owns the names it mentions; the linter has no hard-...
+
+### Rlsp: lsp.md
+
+- Rlsp.1 [0+ 0-] **uncovered**: **Diagnostics** as you type, cheapest first (syntax, names, types, domains, borrows, range...
+- Rlsp.2 [0+ 0-] **uncovered**: **Completion** ranked by type (positions of `V` inside `a[` for `a: [V]T`, operation value...
+- Rlsp.3 [0+ 0-] **uncovered**: **Navigation and refactoring**: definition, references, rename, extract nested fn, inline,...
+- Rlsp.4 [0+ 0-] **uncovered**: **Formatting**: `textDocument/formatting` returns exactly what `cpl fmt` writes, so an edi...
+- Rlsp.5 [0+ 0-] **uncovered**: **Neovim and Vim** (the Milestone 1 editors): Neovim 0.10 or later gets diagnostics, compl...
 
 ### Rstress: stress.md
 

@@ -17,6 +17,8 @@ table and the list; statuses and owner notes are kept.
 Library families (`lib/`, `std/`) follow their chapters' status lines until
 they carry rule ids; the stdlib's own gaps are in `std/GAPS.md`.
 
+`Rlsp` has no `cpl-conform` cases; the LSP's own suites hold it (`tools/lsp.md`).
+
 ## Sections
 
 | Section | Heading | Status | Note |
@@ -116,6 +118,7 @@ they carry rule ids; the stdlib's own gaps are in `std/GAPS.md`.
 | Rfmt | `cpl fmt` | supported | 2 pass |
 | Rjudge | Judge profiles | supported | 0 pass |
 | Rlint | `cpl lint` | supported | 3 pass |
+| Rlsp | Language server and editors | supported | 0 pass |
 | Rstress | Stress, shrinking and laws | supported | 2 pass |
 
 ## Known gaps

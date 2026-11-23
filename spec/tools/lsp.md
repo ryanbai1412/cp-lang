@@ -6,7 +6,7 @@ Status: draft for 0.3.0. Sources: `plan/60-editor.md`, decisions 29,
 - **Diagnostics** as you type, cheapest first (syntax, names, types,
   domains, borrows, ranges); one error per root cause; each with its
   code, an index link and fixes as code actions. Cost and overflow
-  warnings show the estimate on hover.
+  warnings show the estimate on hover. (Rlsp.1)
 - **Hover**: the type, where `None` lives, storage width and peak bytes,
   proven ranges, the cost of a call, and representation choices
   (niche, width from a range, specialization chosen by a law).
@@ -22,10 +22,22 @@ Status: draft for 0.3.0. Sources: `plan/60-editor.md`, decisions 29,
 - **Completion** ranked by type (positions of `V` inside `a[` for
   `a: [V]T`, operation values where an `Op<T>` is expected, unimported
   stdlib names with the `use` edit); signature help with bound
-  explanations.
+  explanations. (Rlsp.2)
 - **Navigation and refactoring**: definition, references, rename,
   extract nested fn, inline, add dimension to a DP table, convert array
-  to map.
+  to map. Go to definition reaches stdlib sources too. (Rlsp.3)
 - **Editors**: a VS Code extension (highlighting, run/test/stress
   buttons, debugger, trace panel, judge in the status bar); any LSP
   client works for the rest.
+- **Formatting**: `textDocument/formatting` returns exactly what `cpl fmt`
+  writes, so an editor's format-on-save and the CLI agree. (Rlsp.4)
+- **Neovim and Vim** (the Milestone 1 editors): Neovim 0.10 or later gets
+  diagnostics, completion, formatting and definition from one runtime-path
+  line (`editors/README.md`), with no plugin manager or lspconfig needed;
+  Vim gets highlighting from the same folder and the server through any
+  LSP client running `cpl lsp`. (Rlsp.5)
+
+Evidence: these rules are tested by the LSP's own suites rather than
+`cpl-conform`: `crates/cpl-lsp/tests/fixtures/` (diagnostics, completion,
+navigation), `crates/cpl-lsp/src/tests/format.rs` and
+`editors/neovim/test/smoke.lua`.
