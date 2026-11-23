@@ -784,7 +784,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0502 Non-ASCII character in source or string: 1 case(s)
 - E0503 Removed syntax from an older version: 11 case(s)
 - E0504 Planned syntax, not implemented yet: 1 case(s)
-- E0505 bad_library_lint: 6 case(s)
+- E0505 Library lint that cannot be used: 6 case(s)
 - E0601 Aliased mutable lend: 14 case(s)
 - E0602 Variable mutated while lent: 42 case(s)
 - E0603 Lent value escapes its scope: 37 case(s)

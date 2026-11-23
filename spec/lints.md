@@ -102,7 +102,7 @@ those, then run `just gen`. `cpl explain <code>` prints a lint's page.
 | L0576 | pop_min_loop | `let x = s.first!` then `s.remove(x)`: `s.pop_first()!` (`std.bag`) |
 | L0577 | query_index_shift | `let l: 1..=n = read()` then `a[l - 1]`: declare the array over `1..=n` |
 | L0578 | tuple_points | `let xs: [D]Int = read()` and `let ys: [D]Int = read()` indexed together: `[D] i => Pt(xs[i], ys[i])` |
-| L0579 | counter_by_map | `cnt[x] = (cnt.get(x) ?? 0) + 1` on a `Map<K, Int>`: `Counter<K>` (`std.hashmap`) |
+| L0579 | counter_by_map | `cnt[x] = (cnt.get(x) ?? 0) + 1`, or `for x in a: cnt[x] += 1` filling a fresh `Map<K, Int>`: `a.tally()` or `Counter<K>` (`std.hashmap`) |
 | L0580 | submask_loop | `while s > 0: ..; s = (s - 1) & m`: `for s in submasks(m)` |
 | L0581 | ternary_search_by_hand | a `while` loop probing `lo + (hi - lo) / 3` and `hi - (hi - lo) / 3`: `ternary_min(lo..hi, f)!` |
 | L0582 | argsort_loop | `(a[i], i)` pairs sorted for their order: `(0..n).sorted(by: i => a[i])` |
