@@ -394,7 +394,7 @@ fn help_json_lists_every_command_with_its_usage_summary_json_and_help() {
         .filter(|c| c.at(&["json"]).as_str().is_none())
         .map(|c| c.at(&["name"]).as_str().unwrap())
         .collect();
-    assert_eq!(no_json, ["watch", "lsp", "dap", "setup", "self"]);
+    assert_eq!(no_json, ["watch", "lsp", "dap", "self"]);
     for command in commands {
         let name = command.at(&["name"]).as_str().unwrap();
         let usage = command.at(&["usage"]).as_str().unwrap();
@@ -1304,6 +1304,24 @@ fn setup_writes_the_editor_files() {
     assert!(
         dir.join("vim/plugin/cplang.vim").is_file() && !dir.join("vim/plugin/cplang.lua").exists()
     );
+
+    let out = cpl(&dir, &["setup", "nvim", "--dir", "nvim", "--json"]);
+    assert_eq!(out.status.code(), Some(0), "{}", text(&out.stderr));
+    let json = cpl_json::parse(&text(&out.stdout)).expect("JSON");
+    assert_eq!(json.at(&["editor"]).as_str(), Some("neovim"));
+    assert_eq!(json.at(&["ok"]).as_bool(), Some(true));
+    assert!(json.at(&["message"]).as_str().unwrap().contains("in nvim"));
+    // A folder that is a file: the same failure, as JSON on stdout.
+    std::fs::write(dir.join("taken"), "").unwrap();
+    let out = cpl(&dir, &["setup", "vim", "--dir", "taken", "--json"]);
+    assert_eq!(out.status.code(), Some(1), "{}", text(&out.stdout));
+    let json = cpl_json::parse(&text(&out.stdout)).expect("JSON");
+    assert_eq!(json.at(&["ok"]).as_bool(), Some(false));
+    assert!(json
+        .at(&["error"])
+        .as_str()
+        .unwrap()
+        .starts_with("can't write taken"));
 
     let out = cpl(&dir, &["setup", "emacs"]);
     assert_eq!(out.status.code(), Some(EXIT_USAGE as i32));

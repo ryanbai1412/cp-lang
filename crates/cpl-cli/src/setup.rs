@@ -24,7 +24,10 @@ options:
   --dir DIR     write into DIR instead (a `pack/*/start/<name>` folder)
   --vsix FILE   install this extension file instead of downloading it
   --zip FILE    install this JetBrains plugin file instead of downloading it
-  --check       JetBrains: say whether each IDE loaded the plugin at its last start
+  --check       JetBrains: say whether each IDE loaded the plugin when it
+                last started
+  --json        print one JSON object: the `editor`, `ok`, and the `message`
+                (or the `error`) the text output gives
 ";
 
 const LUA: (&str, &str) = (
@@ -96,6 +99,7 @@ pub(crate) fn setup(args: &[&str], stdout: &mut (dyn Write + Send), stderr: &mut
     let mut vsix = None;
     let mut zip = None;
     let mut check = false;
+    let mut json = false;
     let mut rest = args.iter();
     while let Some(arg) = rest.next() {
         match *arg {
@@ -108,6 +112,7 @@ pub(crate) fn setup(args: &[&str], stdout: &mut (dyn Write + Send), stderr: &mut
                 None => return usage(stderr, "`--zip` needs a file"),
             },
             "--check" => check = true,
+            "--json" => json = true,
             "--vsix" => match rest.next() {
                 Some(f) => vsix = Some(PathBuf::from(f)),
                 None => return usage(stderr, "`--vsix` needs a file"),
@@ -122,44 +127,47 @@ pub(crate) fn setup(args: &[&str], stdout: &mut (dyn Write + Send), stderr: &mut
             "name the editor: `cpl setup neovim`, `vim`, `vscode` or `jetbrains`",
         );
     };
-    let installed = match editor {
-        "vscode" | "code" => Some(install_vscode(vsix)),
-        "jetbrains" | "intellij" | "idea" if check => Some(check_jetbrains()),
-        "jetbrains" | "intellij" | "idea" => Some(install_jetbrains(zip, dir.take())),
-        _ => None,
+    let editor = match editor {
+        "code" => "vscode",
+        "nvim" => "neovim",
+        "intellij" | "idea" => "jetbrains",
+        other => other,
     };
-    if let Some(installed) = installed {
-        return match installed {
+    let outcome = match editor {
+        "vscode" => install_vscode(vsix),
+        "jetbrains" if check => check_jetbrains(),
+        "jetbrains" => install_jetbrains(zip, dir.take()),
+        _ => {
+            let Some(files) = files(editor) else {
+                return usage(
+                    stderr,
+                    &format!("no setup for `{editor}`: `neovim`, `vim`, `vscode` or `jetbrains`"),
+                );
+            };
+            write_files(editor, &files, dir)
+        }
+    };
+    let ok = outcome.is_ok();
+    if json {
+        let (key, said) = match &outcome {
+            Ok(done) => ("message", done),
+            Err(e) => ("error", e),
+        };
+        let _ = writeln!(
+            stdout,
+            "{{\"editor\":{},\"ok\":{ok},\"{key}\":{}}}",
+            cpl_json::escape_string(editor),
+            cpl_json::escape_string(said.trim_end())
+        );
+    } else {
+        match outcome {
             Ok(done) => {
                 let _ = writeln!(stdout, "{done}");
-                0
             }
-            Err(e) => {
-                *stderr += &format!("cpl: {e}\n");
-                1
-            }
-        };
+            Err(e) => *stderr += &format!("cpl: {e}\n"),
+        }
     }
-    let Some(files) = files(editor) else {
-        return usage(
-            stderr,
-            &format!("no setup for `{editor}`: `neovim`, `vim`, `vscode` or `jetbrains`"),
-        );
-    };
-    let Some(dir) = dir.or_else(|| package_dir(editor)) else {
-        *stderr += "cpl: no home folder to install into; pass --dir\n";
-        return 1;
-    };
-    if let Err(e) = write_all(&dir, &files) {
-        *stderr += &format!("cpl: can't write {}: {e}\n", dir.display());
-        return 1;
-    }
-    let _ = writeln!(
-        stdout,
-        "installed CP Lang for {editor} in {}\nopen a .cp file to start; `cpl` must be on the PATH (or set g:cpl_path)",
-        dir.display()
-    );
-    if matches!(editor, "neovim" | "nvim") {
+    if ok && editor == "neovim" {
         let version = std::process::Command::new("nvim").arg("--version").output();
         if let Some(warning) = version
             .ok()
@@ -168,7 +176,24 @@ pub(crate) fn setup(args: &[&str], stdout: &mut (dyn Write + Send), stderr: &mut
             *stderr += &warning;
         }
     }
-    0
+    u8::from(!ok)
+}
+
+/// Writes Neovim's or Vim's `files` into `dir` (by default where the editor
+/// loads packages), and says where.
+fn write_files(
+    editor: &str,
+    files: &[(&str, &str)],
+    dir: Option<PathBuf>,
+) -> Result<String, String> {
+    let dir = dir
+        .or_else(|| package_dir(editor))
+        .ok_or("no home folder to install into; pass --dir")?;
+    write_all(&dir, files).map_err(|e| format!("can't write {}: {e}", dir.display()))?;
+    Ok(format!(
+        "installed CP Lang for {editor} in {}\nopen a .cp file to start; `cpl` must be on the PATH (or set g:cpl_path)",
+        dir.display()
+    ))
 }
 
 /// A warning when `nvim --version` printed a Neovim older than the 0.10 the

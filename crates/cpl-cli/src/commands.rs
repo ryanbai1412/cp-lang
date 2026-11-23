@@ -236,8 +236,8 @@ pub(crate) const COMMANDS: &[Command] = &[
         name: "setup",
         args: "<neovim | vim | vscode | jetbrains>",
         summary: &["install the editor support: `cpl setup neovim`"],
-        json: Json::None,
-        options: Some(&["--dir", "--vsix", "--zip", "--check"]),
+        json: Json::Flag,
+        options: Some(&["--dir", "--vsix", "--zip", "--check", "--json"]),
     },
     Command {
         name: "self",
