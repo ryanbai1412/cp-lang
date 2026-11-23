@@ -14,8 +14,8 @@ for e in E:
 
 var vis: [V]Bool = false
 var ans: [V]Z = 0
-vis[V.first] = true
-var groups: List<List<V>> = [[V.first]]
+vis[V.first!] = true
+var groups: List<List<V>> = [[V.first!]]
 
 while not groups.is_empty:
     var next_groups: List<List<V>> = []
@@ -37,14 +37,14 @@ while not groups.is_empty:
                 next_groups.push(ng)
     groups = next_groups
 
-let out = [ans[v] for v in V if v != V.first]
+let out = [ans[v] for v in V if v != V.first!]
 print(out, sep: "\n")
 
 @brute(main)
 fn slow():
     var best_len: [V]?Int = None
     var best_str: [V]Str = ""
-    best_len[V.first] = 0
+    best_len[V.first!] = 0
     for step in 0..n:
         for e in E:
             let u = edges[e].u
@@ -59,7 +59,7 @@ fn slow():
                     best_len[v] = nd
                     best_str[v] = cand
     for v in V:
-        if v != V.first:
+        if v != V.first!:
             var acc: Z = 0
             for i in 0..best_str[v].len:
                 acc = acc * 10 + (best_str[v][i] - '0')

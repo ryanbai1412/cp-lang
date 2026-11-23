@@ -45,8 +45,8 @@ let total = all_entries.len
 domain Slot = 0..total
 domain Tag = 0..(n + q)
 
-var slot_of: [Tag]Slot = [Tag] _ => Slot.first
-var cur_slot: [Item]Slot = [Item] _ => Slot.first
+var slot_of: [Tag]Slot = [Tag] _ => Slot.first!
+var cur_slot: [Item]Slot = [Item] _ => Slot.first!
 var init: [Slot]Node = [Slot] _ => Node.empty()
 var pos_count = 0
 

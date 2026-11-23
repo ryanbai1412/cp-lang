@@ -13,7 +13,7 @@ domain E = 0..(n - 1)
 let edges: [E](u: V, v: V) = read()
 let g = Graph<V, E>.undirected(edges)
 
-var root = V.first
+var root = V.first!
 for v in V:
     if g.deg(v) > 1: root = v
 let t = Rooted(u => g.out(u), root)

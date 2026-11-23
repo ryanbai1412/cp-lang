@@ -7,7 +7,7 @@ domain E = 1..n
 let edges: [E](u: V, v: V) = read()
 
 let g = Graph.undirected(edges)
-let t = Rooted(g, V.first)
+let t = Rooted(g, V.first!)
 
 var base = 0
 var diff: [V]Int = 0
@@ -50,7 +50,7 @@ fn slow():
             for nb in adj[u]:
                 if nb.1 != ban and not vis[nb.0]:
                     dfs(nb.0)
-        dfs(V.first)
+        dfs(V.first!)
         if comp.len > n - comp.len:
             for u in comp: out[u] += ban
         else:

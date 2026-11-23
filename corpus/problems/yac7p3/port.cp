@@ -46,7 +46,7 @@ fn run_cycles():
 run_cycles()
 
 var depth: [V]Int = -1
-var anchor: [V]V = V.first
+var anchor: [V]V = V.first!
 
 fn dfs_depth(u: V, root: V, d: Int):
     depth[u] = d
@@ -61,14 +61,14 @@ for v in V:
         dfs_depth(v, v, -1)
 
 var best_d = 0
-var u_nv = V.first
+var u_nv = V.first!
 for v in V:
     if depth[v] > best_d or (depth[v] == best_d and v.idx > u_nv.idx):
         best_d = depth[v]
         u_nv = v
 
 let target_root = anchor[u_nv]
-var u_ind = V.first
+var u_ind = V.first!
 for v in V:
     if on_cyc[v] and par[v] == target_root:
         u_ind = v

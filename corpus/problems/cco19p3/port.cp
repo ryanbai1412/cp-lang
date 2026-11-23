@@ -16,7 +16,7 @@ let everyone = a.sum()
 // Every vertex after its parent, so the tree can be scanned up or down.
 var kids: [V]List<V> = []
 for v in Kid: kids[parent[v]].push(V(v.idx + 2))
-var order = [V.first]
+var order = [V.first!]
 var at = 0
 while at < order.len:
     for c in kids[order[at]]: order.push(c)
@@ -61,7 +61,7 @@ for v in order:
 var best = 0
 for v in V:
     var parts = [below[c] for c in kids[v]]
-    if v != V.first: parts.push(everyone - below[v])
+    if v != V.first!: parts.push(everyone - below[v])
     let s = near_half(parts)
     best max= chain[v] + s * (everyone - a[v] - s)
 print(best + sum(x * (x - 1) for x in a))

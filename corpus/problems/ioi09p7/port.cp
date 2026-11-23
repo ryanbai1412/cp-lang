@@ -11,12 +11,12 @@ let (n, r, q): (1..=2e5, 1..=25000, 1..=2e5) = read()
 domain V = 1..=n
 domain Region = 1..=r
 
-var home: [V]Region = [V] _ => Region.first
+var home: [V]Region = [V] _ => Region.first!
 var boss: [V]?V = None
 let head: Region = read()
 home[V.first!] = head
 for v in V:
-    if v == V.first: continue
+    if v == V.first!: continue
     let (b, h): (V, Region) = read()
     boss[v] = b
     home[v] = h

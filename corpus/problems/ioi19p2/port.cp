@@ -19,7 +19,7 @@ fn bushy() -> [Link](u: Spot, v: Spot):
         if l.idx < n - 1: (
             Spot(rand(0, l.idx) / 3),
             Spot(l.idx + 1),
-        ) elif rand(0, 3) > 0: (Spot.first, Spot(rand(0, n - 1))) else: (
+        ) elif rand(0, 3) > 0: (Spot.first!, Spot(rand(0, n - 1))) else: (
             Spot(rand(0, n - 1)),
             Spot(rand(0, n - 1)),
         )
@@ -36,8 +36,8 @@ let (_, big_part) = by_size[2]
 
 // Take any spanning tree and its hub: the spot whose removal leaves no
 // branch with more than half of the spots.
-let tree = Rooted(land, Spot.first)
-var hub = Spot.first
+let tree = Rooted(land, Spot.first!)
+var hub = Spot.first!
 for v in Spot:
     if 2 * (n - tree.size(v)) <= n and all(2 * tree.size(c) <= n for c in tree.children(v)): hub = v
 

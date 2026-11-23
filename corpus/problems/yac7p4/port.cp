@@ -27,7 +27,7 @@ var par: [V]?V = None
 var depth: [V]Int = 0
 var tin: [V]Int = 0
 var tout: [V]Int = 0
-var ord: [0..n]V = V.first
+var ord: [0..n]V = V.first!
 var timer = 0
 
 // Recursive DFS to compute tin, tout, par, depth
@@ -47,7 +47,7 @@ fn dfs(u: V, p: ?V):
             dfs(v, u)
     tout[u] = timer
 
-dfs(V.first, None)
+dfs(V.first!, None)
 
 var lift: [0..logn, V]?V = None
 for v in V:

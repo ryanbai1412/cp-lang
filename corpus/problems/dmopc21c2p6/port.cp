@@ -6,7 +6,7 @@ domain Pos = 0..n
 domain Val = 0..n
 domain Q = 0..q
 
-var pos_of: [Val]Pos = [Val] _ => Pos.first
+var pos_of: [Val]Pos = [Val] _ => Pos.first!
 for p in Pos:
     let raw: Int = read()
     pos_of[Val(raw - 1)] = p

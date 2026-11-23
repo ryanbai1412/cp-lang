@@ -8,7 +8,7 @@ let deck: [Pos]Card = read()
 domain Q = 0..q
 let qs: [Q](t: Int, i: Pos) = read()
 
-var pos_of: [Card]Pos = [Card] _ => Pos.first
+var pos_of: [Card]Pos = [Card] _ => Pos.first!
 for p in Pos:
     pos_of[deck[p]] = p
 

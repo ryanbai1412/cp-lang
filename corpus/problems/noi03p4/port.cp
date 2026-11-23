@@ -24,7 +24,7 @@ fn dists(src: Home) -> [Home]Int:
     d
 
 fn farthest(d: [Home]Int) -> Home:
-    var best = Home.first
+    var best = Home.first!
     for v in Home:
         if d[v] > d[best]: best = v
     best

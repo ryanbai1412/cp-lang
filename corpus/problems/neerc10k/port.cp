@@ -17,7 +17,7 @@ if k % 2 == 0: k += 1
 // Start a BFS at a vertex with a spare colour (degree < k; n odd guarantees
 // one), then colour in reverse: everyone but the start still has an
 // uncoloured BFS parent, so at most k - 1 colours are taken around it.
-var start = V.first
+var start = V.first!
 for v in V:
     if adj[v].len < k: start = v
 var order: List<V> = []

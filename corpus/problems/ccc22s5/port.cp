@@ -21,7 +21,7 @@ fn opt_min(a: ?Int, b: ?Int) -> ?Int:
     else: b
 
 let g = Graph<V, E>.undirected(edges)
-let tree = Rooted(u => g.out(u), V.first)
+let tree = Rooted(u => g.out(u), V.first!)
 
 var need: [V]?Int = [V] _ => None
 var done: [V]?Int = [V] _ => None

@@ -42,9 +42,9 @@ fn add(f: Line, node: Node, lo: Stone, hi: Stone):
     )
 
 fn lowest(s: Stone) -> Int:
-    var node = Node.first
-    var lo = Stone.first
-    var hi = Stone.last
+    var node = Node.first!
+    var lo = Stone.first!
+    var hi = Stone.last!
     var best: ?Int = None
     while true:
         if let g = winner[node]: best min= value(g, s)
@@ -60,6 +60,6 @@ fn lowest(s: Stone) -> Int:
 
 var cost: [Stone]Int = 0
 for s in Stone:
-    if s != Stone.first: cost[s] = lowest(s) + h[s] * h[s] + c
+    if s != Stone.first!: cost[s] = lowest(s) + h[s] * h[s] + c
     add((-2 * h[s], cost[s] + h[s] * h[s]), Node.first!, Stone.first!, Stone.last!)
 print(cost[Stone.last!])

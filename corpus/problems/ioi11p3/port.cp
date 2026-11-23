@@ -21,7 +21,7 @@ fn cost(l: Field, r: Field) -> Int:
     (pre.fold(mid..=r) - pre.fold(l..=mid)) - x[mid] * ((r - mid) - (mid - l))
 
 var best = 0
-var l = Field.first
+var l = Field.first!
 for r in Field:
     while cost(l, r) > budget: l = l.next!
     best max= r - l + 1
