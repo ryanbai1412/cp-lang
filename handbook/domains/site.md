@@ -170,7 +170,7 @@ Each row is a quality a user can feel on the site, the metric, and the strongest
 | Fast first load | `/` bytes gzipped, its wasm bytes, LCP | [site/R7](../guidelines/site-checklist.md); Browser measurement; wasm loads only on first use | `web/tests/page-weight.mjs`, CI job `site browser tests` |
 | Every route works on a phone | routes wider than 390 px | [site/R7](../guidelines/site-checklist.md); Browser measurement over every route | `web/tests/phone.mjs`, CI job `site browser tests` |
 | Pages run without errors | console errors and failed requests per route | Browser smoke | `web/tests/smoke.mjs`, `learn-smoke.mjs`, CI job `site browser tests`; **missing** over every route |
-| Links shared on social sites preview well | pages without title, description and preview image | **missing** | none |
+| Links shared on social sites preview well | pages without title, description and preview image | [site/R13](../guidelines/site-checklist.md): the build fails on an exported page without its own title, description, preview image or card tag | `web/scripts/social.mjs` (site postbuild) |
 | One product | layout and theme bugs at 390, 768 and 1440 px, light and dark | Process: UI pass with screenshots | **missing**: no recurring pass or screenshot diff |
 | Accessible | axe-core violations per route; keyboard reach of Run, tabs and search | **missing** | none |
 
@@ -192,7 +192,7 @@ Each row is a quality a user can feel on the site, the metric, and the strongest
 | Search finds the abstraction without its name | task phrasings ("binary search on answer", "prefix sums") whose first results miss the right item | **missing**: a query set with expected results | none |
 | Search stays small | search index bytes gzipped | Budget | `web/scripts/budgets.mjs` in postbuild |
 | Writable from the docs | docs-only eval pass rate | Process: a model solves unseen problems from `/llms-full.txt` | `scripts/writable-from-docs.py`; **missing**: it cannot run (no statements, no model key) |
-| The docs bundle for models is complete | std items, guides and chapters missing from `/llms-full.txt` | [site/R2](../guidelines/site-checklist.md): the build fails when a docs or Learn page it exports is not in `/llms-full.txt`; the five pages drawn from code are on a list that only shrinks | `web/scripts/llms-complete.mjs` (site postbuild) |
+| The docs bundle for models is complete | std items, guides and chapters missing from `/llms-full.txt` | [site/R2](../guidelines/site-checklist.md): the build fails when a docs or Learn page it exports is not in the one-file bundle; the five pages drawn from code are on a list that only shrinks | `web/scripts/llms-complete.mjs` (site postbuild) |
 
 ### J3. Install and configure
 

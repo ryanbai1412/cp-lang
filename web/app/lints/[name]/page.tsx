@@ -18,7 +18,7 @@ export function generateStaticParams() {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { name } = await params;
-  const l = lints().find((x) => x.name === name);
+  const l = lints().find((x) => x.name === name || x.code === name);
   return { title: l ? `${l.name} (${l.code}) · Lints` : 'Lints', description: l?.summary.replace(/`/g, '') };
 }
 

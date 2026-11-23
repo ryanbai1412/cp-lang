@@ -108,3 +108,11 @@ A reader's edit to any editor on the site, in the playground, an example or a pr
 
 - 2026-11-23: first version, from the site guideline.
 - 2026-11-23: site/R9 to R11 from the invariants in the former `plan/domains/site/ARCHITECTURE.md`.
+
+## site/R13: A shared link previews its page
+
+Every page the site exports carries its own title and description, and the site's image, as Open Graph and Twitter card tags, so a link pasted into a chat app or a social site shows what the page is.
+
+- **Why:** contestants share a std page or a practice problem in a team chat; a bare URL with no title gets no clicks and looks broken.
+- **Example:** a link to `/docs/ref/std/segtree` previews as "segtree · CP Lang" with the module's one-line summary and the CP Lang card.
+- **Enforced by:** `web/scripts/social.mjs` (site postbuild).

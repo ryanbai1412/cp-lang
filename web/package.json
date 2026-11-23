@@ -17,7 +17,7 @@
     "phone": "node tests/run.mjs phone.mjs",
     "wasm-size": "node scripts/wasm-size.mjs",
     "prebuild": "node scripts/prebuild.mjs",
-    "postbuild": "node scripts/links.mjs && node scripts/budgets.mjs && node scripts/llms-complete.mjs"
+    "postbuild": "node scripts/links.mjs && node scripts/budgets.mjs && node scripts/llms-complete.mjs && node scripts/social.mjs"
   },
   "dependencies": {
     "@codemirror/autocomplete": "6.20.4",
