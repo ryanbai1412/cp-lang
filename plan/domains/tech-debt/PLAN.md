@@ -64,6 +64,14 @@ The detail behind [README.md](README.md). Dated 2026-11-22.
 5. **Keep `plan/ARCHITECTURE.md` true.** Rewrite part B1 from `debt-ratchet.py --show`
    output; every path it cites is checked by `stale_arch_paths`.
 
+## General fixes owed
+
+| Instance (local fix) | General fix | Owner |
+|---|---|---|
+| Free `count`/`all`/`any` of a generator counted elements: std.seq's fold shadowed the core reduce; a name-and-shape guard keeps the core form (3f8186fcf, decision 323) | No core reduce beside a std fn of the same name: std declares the generator form itself (`count(g: Gen<Bool>)`), so overloads, not checker/lowering guards, pick it. Folds the binary `min`/`max` exception (R11.3.3) into the same mechanism | compiler + stdlib |
+| `print(V.count)` above `domain V = 0..5` printed 0: the checker hoists constant items, lowering ran them in source order (3fabf485b, decision 324) | One item order computed by `cpl-check` (which items hoist, in what order, at every block level) that lowering consumes, so the two can never disagree; covers local blocks and `type`/`const` too | compiler |
+| 9 of the 11 "silent wrong answers" in conformance were spec cases written ahead of the implementation, or wrong expectations, not regressions | A case for an unimplemented rule carries `// pending: <owner>`, and `cpl-conform` reports pending cases apart from failures, so a wrong answer on a supported feature is always a real bug | spec + infra |
+
 ## Why these milestones
 
 - **M1 first** because the work is already written and every week unlanded

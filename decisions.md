@@ -7106,3 +7106,15 @@ or user fn of that name still wins. Spec corrected `count-on-bools-counts-every-
 ## 325. Cell neighbours are getters; directions are constants (2026-11-22)
 
 Ryan's request: `p.up`, `p.down`, `p.left`, `p.right` on a `(Row, Col)` cell return `?(Row, Col)`, `None` off the grid, and take no parens, like `r.prev` (a cheap, total lookup reads as a property). `Dir4.up`, `Dir4.right`, `Dir4.down`, `Dir4.left` become constants, not calls, so `p.step(Dir4.up) == p.up`. Lost: `p.step(Dir4.up())` as the only spelling (two calls for one neighbour) and hand-written `(R.at(r - 1), c)` neighbours (an off-by-one site per move). Spec: `lib/graphs-trees.md` "Also in the prelude". Cases: `std-grid/cell-neighbour-getters.cp`, and the `Dir4` constant spelling in `std-grid/*` and `matrix/index/product--step.cp`. Reverse: restore the `()` on the four `Dir4` names and drop the four getters.
+
+## 324. Constant top-level domains hoist; lower/mod.rs cap 5959 -> 5961 (2026-11-22)
+
+`print(V.count)` above `domain V = 0..5` printed 0 in both engines: the checker
+accepts it (R11.1.1 hoists items whose value is compile-time), but lowering ran
+the domain's definition in source order. `main()` now first defines every
+top-level domain whose bounds `eval_const_int` folds (`a..b`, `a..=b`, `[n]`),
+and any integer `const` before them, via the new `lower/hoist.rs`; a runtime
+domain still runs where written. The two lines it adds to `lower/mod.rs` are
+offset by `lower/call.rs` shrinking 2 (net 0 across the capped files). Pinned by
+`core-11/constant-domain-hoists.cp` and `constant-domain-hoists-counted.cp`.
+Reverse: drop the `hoist_constant_domains` call.

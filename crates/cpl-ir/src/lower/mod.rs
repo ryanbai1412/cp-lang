@@ -13,6 +13,7 @@ mod call;
 mod comprehension;
 mod expr;
 mod fresh;
+mod hoist;
 mod keyed;
 mod memo;
 mod mono;
@@ -3550,10 +3551,11 @@ impl<'a> Lowerer<'a> {
         };
         let mut out = Vec::new();
         let items: Vec<(u32, &'a ast::Stmt)> = self.mod_items(0).collect();
+        let hoisted = self.hoist_constant_domains(&items, &mut out);
         for (idx, &(offset, stmt)) in items.iter().enumerate() {
             self.offset = offset;
             // Skip `@test` functions in normal `cpl run`/`cpl build`.
-            if stmt.decorators.iter().any(|d| d.name.text == "test") {
+            if hoisted.contains(&idx) || stmt.decorators.iter().any(|d| d.name.text == "test") {
                 continue;
             }
             for decorator in &stmt.decorators {
