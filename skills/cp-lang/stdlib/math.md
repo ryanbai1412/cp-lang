@@ -4,7 +4,7 @@
 
 Number theory on plain `Int`s.
 
-In prelude (no `use` needed): `Ratio`, `Sieve`, `bit`, `ceil_div`, `choose2`, `digits`, `divmod`, `fixed`, `floor_quotients`, `gcd`, `inf`, `lcm`, `phi`, `pow_mod`, `sign`, `to_str`.
+In prelude (no `use` needed): `Ratio`, `Sieve`, `bit`, `ceil_div`, `choose2`, `digits`, `divmod`, `fixed`, `floor_quotients`, `gcd`, `inf`, `isqrt`, `lcm`, `phi`, `pow_mod`, `sign`, `to_str`.
 
 ## Types & Constants
 
@@ -64,8 +64,8 @@ O(n) storage in base-10^9 limbs.
 
 - `fn gcd(a: Int, b: Int) -> Int` — O(log min(|a|, |b|)); The greatest common divisor of `a` and `b`, never negative; `gcd(0, 0) == 0`.; traps: when the result is `2^63` (`gcd(Int.MIN, 0)` or `gcd(Int.MIN, Int.MIN)`)
 - `fn lcm(a: Int, b: Int) -> Int` — O(log min(|a|, |b|)); The least common multiple of `a` and `b`, never negative; 0 when either is 0.; traps: when the result overflows `Int`
-- `fn isqrt(x: Int) -> Int` — O(1); The exact floor square root `floor(sqrt(x))` of `x >= 0`, with no float rounding loss.; traps: when `x < 0`
-- `fn ceil_sqrt(x: Int) -> Int` — O(1); The exact ceiling square root `ceil(sqrt(x))` of `x >= 0`.; traps: when `x < 0`
+- `@get fn isqrt(self: Int) -> Int` — O(1); The exact floor square root `floor(sqrt(x))` of `x >= 0`, with no float rounding loss.; traps: when `self < 0`
+- `fn ceil_sqrt(x: Int) -> Int` — O(1); The exact ceiling square root `ceil(sqrt(x))` of `x >= 0`.; traps: when `self < 0`
 - `fn iroot(x: Int, k: Int) -> Int` — O(log x); The exact floor `k`-th root of `x >= 0`, `k >= 1`: `iroot(x, 3)` is `floor(cbrt(x))`.; traps: when `x < 0` or `k < 1`
 - `fn fixed(num: Int, den: Int, k: Int) -> Str` — O(k + digits of the result); `num / den` with exactly `k` digits after the point, as text, from integers alone.; traps: when `den == 0`, `k < 0`, or `|num| * 10^k * 2` overflows
 - `fn choose(n: Int, k: Int) -> Int` — O(min(k, n - k)); The number of ways to pick `k` of `n` things, exactly; 0 when `k` is outside `0..=n`.; traps: when the result overflows `Int`
@@ -74,7 +74,7 @@ O(n) storage in base-10^9 limbs.
 - `fn ceil_div(self: Int, b: Int) -> Int` — O(1); `ceil(self / b)` for any non-zero `b`; `n.ceil_div(k)` or `ceil_div(n, k)`.; traps: when `b == 0`, or on overflow (`ceil_div(Int.MIN, -1)`)
 - `fn divmod(self: Int, d: Int) -> (Int, Int)` — O(1); The Euclidean quotient and remainder `(self / d, self % d)`: `0 <= r < \|d\|` and `self == q * d + r`.; traps: when `d == 0`, or on overflow (`Int.MIN.divmod(-1)`)
 - `fn sieve_multiplicative<T>(n: Int, prime_pow: (Int, Int, Int) -> T) -> List<T>` — O(n) time and memory, plus one `prime_pow` call per prime power; Tabulate a multiplicative function `f` on `0..=n` in O(n) with a linear sieve.; traps: when `n < 0`
-- `fn bit_len(x: Int) -> Int` — O(1); The number of bits needed to write `x >= 0`: `bit_len(0) == 0`, `bit_len(5) == 3`.; traps: when `x < 0`
+- `fn bit_len(x: Int) -> Int` — O(1); The number of bits needed to write `x >= 0`: `bit_len(0) == 0`, `bit_len(5) == 3`.; traps: when `self < 0`
 - `fn digits(self: Int, base: Int = 10) -> List<Int>` — O(log_base x); The digits of `x >= 0` in `base`, lowest first; `0` has the one digit `0`.; traps: when `self < 0` or `base < 2`
 - `fn to_str(self: Int, base: Int = 10) -> Str` — O(log |self|); `self` written in `base` (2..=36), highest digit first, lowercase letters past 9, a leading `-` when negative.; traps: when `base` is outside `2..=36`
 - `@get fn sign(self: Int) -> Sign` — O(1); The side of zero `self` is on: `Neg`, `Zero` or `Pos`.
