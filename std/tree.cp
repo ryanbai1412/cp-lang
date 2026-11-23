@@ -14,7 +14,7 @@ use std.algebra.{Reversible}
 use std.algebra.{add}
 use std.dp.{Step}
 use std.dsu.{Dsu}
-use std.graph.{Next, Target, Graph, Visit, Edged, arc_len}
+use std.graph.{Next, Target, Graph, Visit, Edged, Tree, arc_len}
 use std.rand.{Rng}
 use std.segtree.{SegTree}
 use std.seq.{dedup, first_true, get_or_insert, span}
