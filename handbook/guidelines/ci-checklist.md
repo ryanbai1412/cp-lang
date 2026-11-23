@@ -301,3 +301,17 @@ those may block.
 `test_every_short_timing_budget_is_kept_out_of_the_blocking_tiers` until its
 test is listed.
 *Enforced by:* `scripts/test_wall_clock.py`, run by `scripts/check.sh`.
+
+### ci/R35
+
+CI's test partitions retry a failed test once, and every test that passed
+only on the retry is named as a `flaky test` warning on the run and in its
+summary.
+*Why:* a test that fails one run in twenty turned main red with no code
+change, and lanes then spent time on a red they could not reproduce. The
+retry keeps main shipping, and the warning keeps the flake visible so the
+sheriff routes it to its owner.
+*Example:* a test that races a temp file fails, passes on try 2, and the run
+shows `flaky test (failed, then passed on retry): cpl-cli::corpus <name>`.
+*Enforced by:* `scripts/flaky.py`, tested by `scripts/test_flaky.py`, run by
+`scripts/check.sh`.
