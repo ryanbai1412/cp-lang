@@ -1,8 +1,8 @@
 //! A quick fix keeps what the program does: every runnable program in the
 //! repository (lint records' `before.cp`, the conformance cases and the
 //! `tests/programs` and `tests/parity` programs, with the `.in` beside
-//! each, and the corpus ports on their first tests) runs to the same exit
-//! status and output after `cpl fix`.
+//! each, and the corpus ports on their three smallest tests) runs to the
+//! same exit status and output after `cpl fix`.
 //!
 //! Only programs that run cleanly before the fix are held to this: a fix
 //! for a checker error is meant to change what happens.
@@ -72,7 +72,7 @@ fn programs() -> Vec<String> {
     out
 }
 
-/// The first few `tests/*.in` of a port's directory.
+/// The three smallest `tests/*.in` of a port's directory.
 fn port_inputs(dir: &Path) -> Vec<PathBuf> {
     let Ok(entries) = std::fs::read_dir(dir.join("tests")) else {
         return Vec::new();
@@ -81,7 +81,8 @@ fn port_inputs(dir: &Path) -> Vec<PathBuf> {
         .map(|e| e.unwrap().path())
         .filter(|p| p.extension().is_some_and(|e| e == "in"))
         .collect();
-    ins.sort();
+    // The smallest run fastest in a debug build and still exercise the fix.
+    ins.sort_by_key(|p| (std::fs::metadata(p).unwrap().len(), p.clone()));
     ins.truncate(3);
     ins
 }
@@ -131,36 +132,22 @@ fn run(path: &Path, input: &[u8]) -> Option<(i32, Vec<u8>)> {
     status.map(|s| (s.code().unwrap_or(-1), out))
 }
 
-/// What fixing `rel` changed, when it changed what the program does.
-fn changed(rel: &str, scratch: &Path) -> Option<String> {
-    let src = root().join(rel);
-    let text = std::fs::read_to_string(&src).unwrap();
-    let inputs = inputs(&src);
-    std::fs::create_dir_all(scratch).unwrap();
-    let file = scratch.join(src.file_name().unwrap());
-    std::fs::write(&file, &text).unwrap();
-    // Most programs have nothing to fix; only a changed one is run.
-    cpl_cli::run(&["fix", file.to_str().unwrap()]);
-    let fixed = std::fs::read_to_string(&file).unwrap();
-    if fixed == text {
-        let _ = std::fs::remove_dir_all(scratch);
-        return None;
-    }
-    let runs = |file: &Path| -> Vec<_> { inputs.iter().map(|i| run(file, i)).collect() };
-    std::fs::write(&file, &text).unwrap();
+/// What fixing `rel` from `text` to `fixed` changed, when it changed what
+/// the program does; `file` is the scratch copy to run.
+fn changed(rel: &str, file: &Path, text: &str, fixed: &str) -> Option<String> {
+    let inputs = inputs(&root().join(rel));
+    std::fs::write(file, text).unwrap();
     let mut before = Vec::new();
     for input in &inputs {
-        let r = run(&file, input);
+        let r = run(file, input);
         let clean = matches!(r, Some((0, _)));
         before.push(r);
         if !clean {
-            let _ = std::fs::remove_dir_all(scratch);
             return None;
         }
     }
-    std::fs::write(&file, &fixed).unwrap();
-    let after = runs(&file);
-    let _ = std::fs::remove_dir_all(scratch);
+    std::fs::write(file, fixed).unwrap();
+    let after: Vec<_> = inputs.iter().map(|i| run(file, i)).collect();
     let show = |r: &Option<(i32, Vec<u8>)>| match r {
         Some((code, _)) => format!("exit {code}"),
         None => "no exit in 20 s".to_string(),
@@ -176,12 +163,34 @@ fn changed(rel: &str, scratch: &Path) -> Option<String> {
 
 fn shard(n: usize) {
     let scratch = std::env::temp_dir().join(format!("cpl-fix-behavior-{}-{n}", std::process::id()));
-    let mut wrong = Vec::new();
-    for (i, rel) in programs().iter().enumerate() {
+    let mut copies = Vec::new();
+    for (i, rel) in programs().into_iter().enumerate() {
         if i % SHARDS != n {
             continue;
         }
-        wrong.extend(changed(rel, &scratch.join(i.to_string())));
+        let src = root().join(&rel);
+        let dir = scratch.join(i.to_string());
+        std::fs::create_dir_all(&dir).unwrap();
+        let file = dir.join(src.file_name().unwrap());
+        let text = std::fs::read_to_string(&src).unwrap();
+        std::fs::write(&file, &text).unwrap();
+        copies.push((rel, file, text));
+    }
+    // One `cpl fix` over the shard checks the stdlib once; only the
+    // programs it edits are run.
+    let mut args = vec!["fix".to_string()];
+    args.extend(
+        copies
+            .iter()
+            .map(|(_, file, _)| file.to_string_lossy().into_owned()),
+    );
+    cpl_cli::run(&args);
+    let mut wrong = Vec::new();
+    for (rel, file, text) in &copies {
+        let fixed = std::fs::read_to_string(file).unwrap();
+        if fixed != *text {
+            wrong.extend(changed(rel, file, text, &fixed));
+        }
     }
     let _ = std::fs::remove_dir_all(&scratch);
     assert!(
