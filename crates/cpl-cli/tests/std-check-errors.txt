@@ -1,7 +1,6 @@
 # `cpl check std/<file>.cp` errors per std file, ratcheted down to 0.
 # A count may only drop: lower it here when std gets cleaner. A file not
 # listed must check clean.
-std/graph.cp 3
 std/grid.cp 6
 std/matrix.cp 2
 std/search.cp 1

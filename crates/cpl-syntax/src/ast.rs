@@ -99,6 +99,8 @@ pub enum StmtKind {
         name: Name,
         generics: Vec<Name>,
         ty: Type,
+        /// `type Arc: Target<V>` in a trait: the traits the implementor's type must have.
+        bounds: Vec<Type>,
     },
     Trait {
         name: Name,
@@ -108,6 +110,8 @@ pub enum StmtKind {
         body: Block,
         /// `trait Both = Sh + Nm`: a name for its bounds, never implemented.
         alias: bool,
+        /// `where Self.Arc: Weighted<W>` on an alias: bounds on the traits' associated types.
+        bounds: Vec<Bound>,
     },
     /// `mod name:` — an inline module whose `pub` items are accessed as `name.item`.
     Mod {

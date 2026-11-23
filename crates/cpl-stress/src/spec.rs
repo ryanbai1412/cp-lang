@@ -678,7 +678,9 @@ impl InputSpec {
                         }
                     }
                 }
-                StmtKind::TypeAlias { name, generics, ty } if generics.is_empty() => {
+                StmtKind::TypeAlias {
+                    name, generics, ty, ..
+                } if generics.is_empty() => {
                     builder
                         .aliases
                         .insert(name.text.clone(), (builder.base, ty.clone()));

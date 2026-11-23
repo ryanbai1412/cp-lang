@@ -1054,7 +1054,9 @@ impl<'a> Lowerer<'a> {
                     self.declare(&name.text, value, false, out);
                 }
             }
-            ast::StmtKind::TypeAlias { name, generics, ty } if !self.at_top_level() => {
+            ast::StmtKind::TypeAlias {
+                name, generics, ty, ..
+            } if !self.at_top_level() => {
                 if generics.is_empty() {
                     let resolved = self.resolve_ty(ty);
                     self.cx
@@ -1066,12 +1068,8 @@ impl<'a> Lowerer<'a> {
                         Ty::Pos(id) => Some(Sym::Domain(id)),
                         _ => None,
                     };
-                    if let Some(sym) = sym {
-                        self.cx
-                            .local_syms
-                            .last_mut()
-                            .unwrap()
-                            .insert(name.text.clone(), sym);
+                    if let (Some(sym), Some(scope)) = (sym, self.cx.local_syms.last_mut()) {
+                        scope.insert(name.text.clone(), sym);
                     }
                 }
             }

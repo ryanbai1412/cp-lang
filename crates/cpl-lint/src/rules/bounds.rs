@@ -198,7 +198,9 @@ impl Bounds {
                         bounds.declare_fn(&name.text);
                     }
                 }
-                StmtKind::TypeAlias { name, generics, ty } if generics.is_empty() => {
+                StmtKind::TypeAlias {
+                    name, generics, ty, ..
+                } if generics.is_empty() => {
                     Rc::make_mut(&mut bounds.file)
                         .aliases
                         .insert(name.text.clone(), ty.clone());

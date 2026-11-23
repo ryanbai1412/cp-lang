@@ -1382,7 +1382,9 @@ impl<'a> Checker<'a> {
                     );
                 }
             }
-            StmtKind::TypeAlias { name, generics, ty } => {
+            StmtKind::TypeAlias {
+                name, generics, ty, ..
+            } => {
                 let outer = self.generics.len();
                 self.generics
                     .extend(generics.iter().map(|g| g.text.clone()));

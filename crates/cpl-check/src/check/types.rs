@@ -1160,7 +1160,9 @@ impl<'a> Checker<'a> {
             S::Domain { name, def } => {
                 vec![(name.text.clone(), Def::Domain(self.domain_info(def)))]
             }
-            S::TypeAlias { name, generics, ty } => {
+            S::TypeAlias {
+                name, generics, ty, ..
+            } => {
                 let outer = self.generics.len();
                 self.generics
                     .extend(generics.iter().map(|g| g.text.clone()));
@@ -1174,6 +1176,7 @@ impl<'a> Checker<'a> {
                 supers,
                 body,
                 alias,
+                ..
             } => {
                 let generics: Vec<String> = generics.iter().map(|g| g.text.clone()).collect();
                 let scope = self.enter_body(&generics, Ty::Param("Self".into()));

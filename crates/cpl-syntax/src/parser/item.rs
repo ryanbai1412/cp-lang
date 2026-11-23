@@ -826,17 +826,57 @@ impl<'a> Parser<'a> {
         self.bump();
         let name = self.expect_name("a type name after `type`");
         let (generics, _) = self.generic_params();
-        // `type Elem` in a trait: the implementor says which type.
+        // `type Elem` or `type Arc: Target<V>` in a trait: the implementor says which type.
+        let bounds = if self.in_trait && self.eat(T::Colon) {
+            self.bound_traits()
+        } else {
+            Vec::new()
+        };
         if self.in_trait && self.at_line_end() {
             let ty = Type {
                 kind: TypeKind::Error,
                 span: Span::point(self.prev_end()),
             };
-            return StmtKind::TypeAlias { name, generics, ty };
+            return StmtKind::TypeAlias {
+                name,
+                generics,
+                ty,
+                bounds,
+            };
         }
         self.expect(T::Eq, "`=` and the type this names");
         let ty = self.ty();
-        StmtKind::TypeAlias { name, generics, ty }
+        StmtKind::TypeAlias {
+            name,
+            generics,
+            ty,
+            bounds,
+        }
+    }
+
+    /// `where Self.Arc: Weighted<W>, ...` on a trait alias, if it is here.
+    fn assoc_where_clause(&mut self) -> Vec<Bound> {
+        let mut bounds = Vec::new();
+        if !self.at_ident("where") {
+            return bounds;
+        }
+        self.bump();
+        loop {
+            let start = self.start();
+            let mut name = self.expect_name("`Self.` and an associated type after `where`");
+            while self.eat(T::Dot) {
+                let part = self.expect_name("an associated type name after `.`");
+                name.text = format!("{}.{}", name.text, part.text);
+            }
+            name.span = self.span_from(start);
+            self.expect(T::Colon, "`:` and the traits the type must have");
+            let traits = self.bound_traits();
+            bounds.push(Bound { name, traits });
+            if !self.eat(T::Comma) {
+                break;
+            }
+        }
+        bounds
     }
 
     pub(super) fn trait_decl(&mut self) -> StmtKind {
@@ -850,6 +890,7 @@ impl<'a> Parser<'a> {
             while self.eat(T::Plus) {
                 supers.push(self.ty());
             }
+            let bounds = self.assoc_where_clause();
             let body = Block {
                 stmts: Vec::new(),
                 span: Span::point(self.prev_end()),
@@ -860,6 +901,7 @@ impl<'a> Parser<'a> {
                 supers,
                 body,
                 alias: true,
+                bounds,
             };
         }
         if self.eat(T::LParen) {
@@ -917,6 +959,7 @@ impl<'a> Parser<'a> {
             supers,
             body,
             alias: false,
+            bounds: Vec::new(),
         }
     }
 

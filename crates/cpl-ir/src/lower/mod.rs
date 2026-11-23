@@ -1699,11 +1699,9 @@ impl<'a> Lowerer<'a> {
                 continue;
             }
             let alias = body.stmts.iter().find_map(|s| match &s.kind {
-                ast::StmtKind::TypeAlias { name, generics, ty }
-                    if name.text == item && generics.is_empty() =>
-                {
-                    Some(ty)
-                }
+                ast::StmtKind::TypeAlias {
+                    name, generics, ty, ..
+                } if name.text == item && generics.is_empty() => Some(ty),
                 _ => None,
             });
             let Some(alias) = alias else { continue };

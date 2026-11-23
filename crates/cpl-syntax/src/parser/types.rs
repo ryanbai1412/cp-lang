@@ -750,7 +750,7 @@ impl<'a> Parser<'a> {
     }
 
     /// `Ord + Bounded`.
-    fn bound_traits(&mut self) -> Vec<Type> {
+    pub(super) fn bound_traits(&mut self) -> Vec<Type> {
         let mut traits = vec![self.ty_atom()];
         while self.eat(T::Plus) {
             traits.push(self.ty_atom());

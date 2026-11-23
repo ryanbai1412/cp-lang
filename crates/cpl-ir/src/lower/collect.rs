@@ -204,7 +204,9 @@ impl<'a> Lowerer<'a> {
                 }
                 register_pat_domains(pat, m, &mut self.domains, &mut self.mod_syms);
             }
-            ast::StmtKind::TypeAlias { name, generics, ty } => {
+            ast::StmtKind::TypeAlias {
+                name, generics, ty, ..
+            } => {
                 if !generics.is_empty() {
                     let gaid = self.gen_aliases.len();
                     self.gen_aliases.push(GenAliasTemplate {
@@ -313,6 +315,7 @@ impl<'a> Lowerer<'a> {
                 body,
                 supers,
                 alias,
+                ..
             } => {
                 let tid = self.traits.len();
                 let alias_of = alias.then(|| {

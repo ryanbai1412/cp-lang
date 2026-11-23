@@ -84,3 +84,5 @@ mod foreign_tests;
 mod layout_tests;
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod trait_tests;
