@@ -219,3 +219,89 @@ fn every_emitted_code_has_an_exact_trigger_and_a_clean_fix() {
     );
     assert!(failures.is_empty(), "{}", failures.join("\n"));
 }
+
+/// Single-code rows of a catalogue text: code, name, and the marker
+/// (*(retired)*, *(reserved)*, *(0.3)*) if any.
+fn named_rows(text: &str) -> std::collections::BTreeMap<String, (String, Option<&'static str>)> {
+    let mut out = std::collections::BTreeMap::new();
+    for line in text.lines() {
+        let cells: Vec<&str> = line.split('|').map(str::trim).collect();
+        let (Some(code), Some(name)) = (cells.get(1), cells.get(2)) else {
+            continue;
+        };
+        if code.contains('-')
+            || !code.starts_with(['E', 'W', 'R', 'L'])
+            || !code[1..].starts_with(|c: char| c.is_ascii_digit())
+        {
+            continue;
+        }
+        let marker = ["*(retired)*", "*(reserved)*", "*(0.3)*"]
+            .into_iter()
+            .find(|m| name.contains(m));
+        let base = name.split_whitespace().next().unwrap_or("").to_string();
+        out.insert(code.to_string(), (base, marker));
+    }
+    out
+}
+
+/// The catalogue as committed at `rev`, or `None` outside a git checkout.
+fn catalogue_at(rev: &str) -> Option<String> {
+    let mut text = String::new();
+    let mut found = false;
+    for f in ["spec/diagnostics.md", "spec/lints.md"] {
+        let out = Command::new("git")
+            .args(["show", &format!("{rev}:{f}")])
+            .current_dir(root())
+            .output()
+            .ok()?;
+        if out.status.success() {
+            found = true;
+            text.push_str(&String::from_utf8_lossy(&out.stdout));
+        }
+    }
+    found.then_some(text)
+}
+
+/// A code keeps its meaning forever: once catalogued, it is never deleted
+/// or renamed, and once retired it stays retired, so an old error message
+/// or a search for the code still finds what it meant. A *(reserved)* or
+/// *(0.3)* code may be given its name. Checked for the change being made
+/// (the working tree against `HEAD`) and for the last commit.
+/// Rule: `errors/R14`, handbook/guidelines/errors-checklist.md#r14-a-code-never-changes-meaning.
+#[test]
+fn codes_never_change_meaning() {
+    let now = ["spec/diagnostics.md", "spec/lints.md"]
+        .map(|f| std::fs::read_to_string(root().join(f)).unwrap())
+        .concat();
+    let pairs = [("HEAD", Some(now)), ("HEAD~1", catalogue_at("HEAD"))];
+    let mut broken = Vec::new();
+    let mut compared = 0;
+    for (old_rev, new) in pairs {
+        let (Some(old), Some(new)) = (catalogue_at(old_rev), new) else {
+            continue;
+        };
+        compared += 1;
+        let (old, new) = (named_rows(&old), named_rows(&new));
+        for (code, (name, marker)) in &old {
+            let open = matches!(marker, Some("*(reserved)*" | "*(0.3)*"));
+            match new.get(code) {
+                None => broken.push(format!("{code} `{name}` was deleted (since {old_rev})")),
+                Some((n, _)) if n != name && !open => {
+                    broken.push(format!("{code} was `{name}`, now `{n}` (since {old_rev})"))
+                }
+                Some((_, m)) if *marker == Some("*(retired)*") && *m != Some("*(retired)*") => {
+                    broken.push(format!(
+                        "{code} `{name}` was retired and is back (since {old_rev})"
+                    ))
+                }
+                _ => {}
+            }
+        }
+    }
+    eprintln!("catalogue compared with {compared} earlier versions");
+    assert!(
+        broken.is_empty(),
+        "a code changed meaning; give the new meaning a new code and mark the old one *(retired)*:\n{}",
+        broken.join("\n")
+    );
+}

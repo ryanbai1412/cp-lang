@@ -143,8 +143,8 @@ A new code lands with its row in `spec/diagnostics.md`, a `REGISTRY` entry whose
 A code keeps its meaning forever, and a retired code is never reused.
 
 - **Why:** users search for codes, and old answers must stay right.
-- **Example:** a retired lint's `L05xx` stays listed as retired in `spec/diagnostics.md`.
-- **Enforced by:** review of the append-only table in `spec/diagnostics.md`; `missing` as a check.
+- **Example:** `E0306 position_arithmetic` stays listed as *(retired)* in `spec/diagnostics.md`, and new meanings get new codes.
+- **Enforced by:** `crates/cpl-cli/tests/catalogue.rs` `codes_never_change_meaning`, which compares the catalogue with the last commit and fails on a deleted, renamed or un-retired code.
 
 ### R15. Every mistake a user hits becomes a case
 
