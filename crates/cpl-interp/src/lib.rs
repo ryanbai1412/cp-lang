@@ -13,6 +13,7 @@ mod input;
 mod observe;
 pub mod profile;
 pub mod replay;
+mod threads;
 pub mod trace;
 mod trap_help;
 mod unwind;
@@ -32,6 +33,7 @@ use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::io::Write;
 use std::rc::Rc;
+pub use threads::{run_for, run_on_this_thread, run_with_on_this_thread};
 use value::{
     show, zero, Array, CaptureVal, ListViewVal, MutViewVal, OptVal, Part, Step, StrViewVal,
     TupleVal, Value,
@@ -342,34 +344,6 @@ fn observe(
         }
         failed("could not start the interpreter thread")
     })
-}
-
-/// [`run`] on the calling thread, for a host that cannot start one. The
-/// caller says how much of its stack the program's calls may take, since
-/// only it knows how much there is.
-pub fn run_on_this_thread(
-    program: &Program,
-    input: &[u8],
-    output: &mut (dyn Write + Send),
-    limits: Limits,
-) -> Result<(), Trap> {
-    match run_io(program, Io::fixed(input), output, limits, None, false).trap {
-        Some(trap) => Err(trap),
-        None => Ok(()),
-    }
-}
-
-/// [`run_with`] on the calling thread, for a host that cannot start one.
-pub fn run_with_on_this_thread(
-    program: &Program,
-    io: Io,
-    output: &mut (dyn Write + Send),
-    limits: Limits,
-) -> Result<(), Trap> {
-    match run_io(program, io, output, limits, None, false).trap {
-        Some(trap) => Err(trap),
-        None => Ok(()),
-    }
 }
 
 /// [`run_on_this_thread`], keeping what [`run_observed`] keeps.

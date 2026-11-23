@@ -812,6 +812,40 @@ fn edges_with_other_field_names_are_told_which_to_rename() {
     assert_eq!(text.matches("4 | let g").count(), 1, "{text}");
 }
 
+#[test]
+fn a_test_that_never_ends_fails_at_the_time_limit_and_the_rest_still_run() {
+    let source = "\
+fn spin() -> Int:
+    var i = 0
+    while i >= 0:
+        i = i
+    return i
+
+@test
+fn never_ends():
+    assert spin() == 1
+
+@test
+fn ends():
+    assert 1 + 1 == 2
+";
+    let path = scratch("test-never-ends", "spin.cp", source.as_bytes());
+    let started = std::time::Instant::now();
+    let out = cpl(&["test".as_ref(), path.as_os_str()], b"");
+    let stdout = String::from_utf8_lossy(&out.stdout);
+    assert_eq!(out.status.code(), Some(3), "{stdout}");
+    assert!(
+        stdout.contains("FAIL") && stdout.contains("::never_ends: still running after"),
+        "{stdout}"
+    );
+    assert!(stdout.contains("1 passed, 1 failed"), "{stdout}");
+    assert!(
+        started.elapsed() < std::time::Duration::from_secs(30),
+        "{:?}",
+        started.elapsed()
+    );
+}
+
 const LAWS: &str = "\
 fn add(a: Int, b: Int) -> Int = a + b
 fn clamp(x: Int) -> Int:

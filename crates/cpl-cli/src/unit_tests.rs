@@ -135,12 +135,23 @@ pub(crate) fn run_unit_tests(
             failed += tests.len();
             continue;
         }
+        // A test that never ends fails at the judge's time limit, as a run would.
+        let limit = cpl_judge::resolve(path, &text, None).map_or(2000, |judge| judge.time_ms);
+        let limit = std::time::Duration::from_millis(limit);
         for (idx, name) in tests.iter().enumerate() {
             let label = format!("{path_str}::{name}");
             match cpl_ir::lower_test(&analysis, name) {
                 Ok(program) => {
-                    let mut out = Vec::new();
-                    if let Err(trap) = cpl_interp::run(&program, &[], &mut out) {
+                    let Some((out, ran)) = cpl_interp::run_for(&program, &[], limit) else {
+                        let _ = writeln!(
+                            stdout,
+                            "  FAIL {label}: still running after the {} ms time limit",
+                            limit.as_millis()
+                        );
+                        failed += 1;
+                        continue;
+                    };
+                    if let Err(trap) = ran {
                         let _ = writeln!(stdout, "  FAIL {label}: {}", trap.message);
                         failed += 1;
                         continue;
