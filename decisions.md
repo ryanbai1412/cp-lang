@@ -8455,3 +8455,9 @@ Revised (2026-11-23): a twentieth left the browser's 5 s limit at 250 ms a candi
 - **Why.** R12.4.13 makes `s[k]` mean `s.at(k)`, so `at` takes the same key as `[]`. `Compressed.at` took a value and returned an index, the inverse of `xs[i]`, and read as evaluation next to `Line.at(x)`. Every corpus and conformance caller is renamed in the same commit.
 - **Reverse.** Rename `index_of`/`try_index_of` back to `at`/`try_at` in std/seq.cp and their callers.
 
+## 440. The `cpl.wasm` gzip cap rises to 1,875,000 for ordinary feature growth (site, 2026-11-23)
+
+- **Call.** `web/scripts/wasm-size.mjs` caps `cpl.wasm` at 1,875,000 bytes gzipped, up from 1,850,000. CI measured 1,862,540 at 654c50c92.
+- **Why.** No single commit grew it. A bisect of the 66 compiler and std commits in 0d43fd76e..654c50c92 grew it in four nearly even steps (about 4 KB per 16 commits), with the largest function deltas spread over `cpl-check`, `cpl-syntax`, `cpl-interp`, `cpl-ir` and `cpl-lint`, plus 7.8 KB of raw data. Cheap cuts don't cover it: `wasm-opt -Oz` (binaryen 132) makes the gzipped file 30 KB larger, and the std bundled into the browser build already drops its comments and `@test` fns. 0.7% more first-load bytes cost a visitor less than a blocked deploy.
+- **Reverse.** Lower the cap to the measured size plus about 1% once a cut lands, for example when the tree-walker is deleted.
+
