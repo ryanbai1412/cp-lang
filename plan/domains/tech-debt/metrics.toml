@@ -152,6 +152,6 @@ milestone = "M2, M3"
 [[metric]]
 name = "probe_files_touched"
 command = "probes P1-P4 logged in plan/domains/tech-debt/worklog.md"
-today = "unmeasured"
+today = "cold run 2026-11-22: P1 8, P2 7, P3 11, P4 5"
 target = "<= 3 files each"
 milestone = "M2, M3"

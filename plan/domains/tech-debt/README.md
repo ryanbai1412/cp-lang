@@ -77,7 +77,7 @@ ratchet and counts: `scripts/debt-ratchet.py` (`--show`, `--list NAME`; 0.4 s, i
 | Std TODO bodies (ratchet; stdlib drives) | `python3 scripts/debt-ratchet.py --check` | 162 | never up |
 | `devin/*` branches with unlanded commits | `git branch -r \| grep -c origin/devin/` | 47 remote, triage in worklog.md | 0 |
 | Cold-review rubric median | review log in worklog.md | 3 (round 1, 11 lanes x 5 questions) | >= 4 |
-| Change-cost probes, files touched | probe log in worklog.md | P1 2, P2 5-6, P3 ~8, P4 2-3 | <= 3 each |
+| Change-cost probes, files touched | probe log in worklog.md | cold run 2026-11-22: P1 8, P2 7, P3 11, P4 5; P5 3/5 | <= 3 each |
 
 ## Judgment rubric (cold review of every lane's landed diffs)
 
