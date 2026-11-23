@@ -1,5 +1,15 @@
-// Runnable port (proto/cp.py lib-run) of statement-first rpeng3.cp
-// original: corpus/submissions/4811952.cpp
+// Source: IOI 2009 Day 2 (Salesman), https://dmoj.ca/problem/rpeng3
+//   (not public on DMOJ; statement from the official IOI 2009 task)
+// Problem: N <= 5e5 fairs, each a day T <= 5e5, a distinct location L <= 500001 and a gain
+//   M <= 4000. A metre upstream (towards smaller L) costs U, downstream D, 1 <= D <= U <= 10.
+//   Start and end at home S; fairs go in day order, same-day fairs in any order. Print the
+//   largest total gain minus travel cost.
+// Solution: best[p] = profit standing at location p. Reaching x from p <= x costs (x - p) D
+//   and from p >= x costs (p - x) U, so keep best[p] + p D and best[p] - p U and take the max
+//   on each side of x. A day's fairs, sorted by location, are a contiguous stretch: enter at
+//   one, sweep to an end and back to the exit; two prefix and two suffix running-max passes
+//   over prefix gains give every exit. A fair at home on day 2^19 ends the trip. This port
+//   scans the two arrays for each arrival, O(N L); the C++ uses max segment trees, O(N log L).
 let (n, up, down, home): (Int, Int, Int, Int) = read()
 let neg = -1000000000000000000
 

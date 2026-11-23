@@ -1,4 +1,15 @@
-// CCO '24 P4 — Infiltration / Tree Rendezvous (today form for proto/cpc)
+// Source: CCO 2024 Day 2 P1 (Infiltration), https://dmoj.ca/problem/cco24p4
+// Problem: output-only strategy on a tree of N = 100 rooms (N - 1 edges given). Two agents
+//   start in different unknown rooms u, v; Ondrej may step to a neighbour on odd minutes,
+//   Edward on even ones. Print T <= 1440, then each agent's room at times 1..T for every
+//   start room, so they always meet; f(u, v) = first common time. Partial score: the
+//   smaller max f(u, v) / dist(u, v), the better (full marks at <= 15).
+// Solution: both agents only ever climb toward a centre root (depth <= 50), on one fixed
+//   schedule of phases where one climbs while the other waits: Edward 3, Ondrej 11, Edward
+//   22, Ondrej 10, Edward 25, Ondrej 25, Edward 30, Ondrej 30 steps (constants tuned in the
+//   C++). Each has over 50 climbs, so they meet at the root at worst; the phases make the
+//   lower one catch the other early. An idle minute is reused when the turn switches.
+//   O(N^2) to find the root, O(N T) output.
 // original: corpus/submissions/6435484.cpp
 let n: 1..=100 = read()
 

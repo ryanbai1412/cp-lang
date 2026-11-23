@@ -1,6 +1,13 @@
-// DMOPC '21 Contest 9 P4: remove every coin of a grid; removing a heads-up coin
-// flips its neighbours. Rows reduce to a 1-D game on row parities, then each row
-// is the same 1-D game on its own coins.
+// Source: DMOPC '21 Contest 9 P4 (Ace of Diamonds), https://dmoj.ca/problem/dmopc21c9p4
+// Problem: an N x M grid of coins, each H or T, N * M <= 1e6, N and M both odd. Remove every
+//   coin one at a time; only a heads coin may be removed, and removing it flips the coins
+//   still in the edge-adjacent cells. Print a removal order (r c per line), or -1.
+// Solution: on a line, removing the leftmost heads coin each time (an ordered set of ready
+//   coins) clears it whenever that is possible. Since M is odd, clearing a whole row flips
+//   every coin of its neighbouring rows once and so their heads parity: a row acts like one
+//   coin that is heads iff it holds an odd number of heads. Peel the rows as such coins; at
+//   its turn a row has been flipped iff its parity was even, so peel its coins inverted
+//   then. If the order misses a coin, print -1: O(NM log M).
 let rows: 1..=1000 = read()
 let cols: 1..=1000 = read()
 domain Row = 1..=rows

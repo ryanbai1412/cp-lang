@@ -1,7 +1,14 @@
-// SHOI 2016 P1, cheapest guards so every marked node is within k of one (buildable today-form)
+// Source: JLOI/SHOI 2016 (Scout Guards), https://dmoj.ca/problem/shoi16p1
+//   (not public on DMOJ; statement from Luogu P3267)
+// Problem: a tree on N <= 5e5 nodes; a guard at v costs W_v <= 1000 and watches every node
+//   within distance D <= 20. Given M marked nodes, print the cheapest set of guards
+//   watching all of them.
+// Solution: tree DP on reach d in -D..D. need[u][d], d >= 0: u's subtree is settled and
+//   a guard in it still covers d levels above u; d < 0: all is settled except its top -d
+//   levels, left to a guard outside. need[u][d] is a suffix min over d. Reach D puts a guard
+//   on u; 0 <= d < D lets one child bring reach d + 1 while the others need only -d; d < 0
+//   asks d + 1 of every child; an unmarked u may leave itself open at d = 0. O(N D).
 // original: corpus/submissions/5445691.cpp
-// Children and the bottom-up order are built by hand (no Rooted in the
-// prototype for this shape), and reach -k..=k is shifted to 0..=2k.
 let n: 1..=5e5 = read()
 let k: 0..=20 = read()
 domain V = 1..=n

@@ -1,12 +1,13 @@
-// NOI 2003 Matchstick Equation: an equation such as 1+1=3# is laid out in
-// seven-segment matchstick digits. Move exactly one match, between digits
-// only (signs and '=' stay), so that it becomes true, and print it; or No.
-//
-// Parsing is the whole problem. `terms` turns the text into signed numbers
-// (everything right of '=' counts negative, so the equation holds when the
-// total is 0), and each digit remembers its place value and its position in
-// the text. A move is then either one digit reshaped, or one digit losing a
-// match and another gaining it.
+// Source: NOI 2003 P1 (Stick Game), https://dmoj.ca/problem/noi03p1
+// Problem: one line (<= 1000 chars) holds a false equation ending in '#': numbers below 1e7
+//   in seven-segment matchsticks, joined by + and -, with one '='. Move exactly one stick of
+//   a digit (signs stay) so it becomes true, and print the new equation with its '#' (the
+//   answer is unique; new leading zeros are fine), or No.
+// Solution: parse into digits, each with weight = sign * place value (the right side counts
+//   negative), so the equation holds when sum(weight * digit) is 0. Try every digit reshaped
+//   with the same stick count (0-6, 0-9, 2-3, 3-5, 6-9), then every ordered pair where one
+//   digit loses a stick and the other gains one, checking the new total in O(1):
+//   O(D^2 * 100) for D digits.
 // original: corpus/submissions/3738358.cpp
 const STICKS = [6, 2, 5, 5, 4, 5, 6, 3, 7, 6]
 const RESHAPE = [(0, 6), (0, 9), (2, 3), (3, 5), (6, 9)]                  // same count, one match moved

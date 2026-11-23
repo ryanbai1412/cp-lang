@@ -1,6 +1,13 @@
-// Runnable port (proto/cp.py lib-run) of statement-first cco16p5.cp
+// Source: CCO 2016 Day 2 P2 (Zombie Apocalypse), https://dmoj.ca/problem/cco16p5
+// Problem: an N x M grid (N, M <= 1e9) holds K <= 2000 zombies in distinct cells. Each cell
+//   is marked with its king-move (Chebyshev) distance to the nearest zombie. Given Q
+//   (0 <= Q <= N + M), print how many cells are marked Q.
+// Solution: the cells within distance Q are the union of the K squares of radius Q
+//   clipped to the grid, so the answer is area(Q) - area(Q - 1). Each union area is
+//   Klee's measure: sweep the square edges along rows over coordinate-compressed columns,
+//   with a segment tree whose nodes keep a cover count and the covered length (no lazy
+//   push): O(K log K).
 // original: corpus/submissions/4580695.cpp
-// Klee's Measure Problem (2D coordinate-compressed sweep-line + tag-free Cover-Count SegTree).
 let (n, m): (Int, Int) = read()
 let k: Int = read()
 domain Z = 0..k

@@ -1,12 +1,12 @@
-// CCO 2017 #3 Vera and Modern Art: an endless grid of zeros. A stroke
-// x y v adds v to the cells (x + i a, y + j b) for all i, j >= 0, where a
-// is the largest power of two not above x and b the same for y. After n
-// strokes, print the value of each of q cells.
-//
-// Write x as a leading 1 followed by k low bits. The stroke reaches row r
-// exactly when r has the same k low bits and at least k + 1 bits. Reading
-// each coordinate from its lowest bit upwards gives a binary trie over x
-// where each node optionally owns a binary trie over y.
+// Source: CCO 2017 Day 1 P3 (Vera and Modern Art), https://dmoj.ca/problem/cco17p3
+// Problem: N <= 2e5 strokes x y v (x, y <= 1e18, v <= 1e4): with a, b the largest powers of
+//   two not above x and y, add v to every point (x + a p, y + b q), p, q >= 0. Then answer
+//   Q <= 2e5 queries: the total colour at point (r, c), r, c <= 1e18.
+// Solution: write x as a leading 1 and k low bits; a stroke reaches row r exactly when r
+//   has the same k low bits and more than k bits. So insert each x's low bits, lowest
+//   first, into a binary trie, each x node owning a binary trie over y holding the colour
+//   sums. A query walks r's bits down the x trie and, at every node on that path, walks c's
+//   bits down its y trie adding the totals: O(60) per stroke, O(60^2) per query.
 use std.strings.{Trie}
 
 domain Bit = 0..2
