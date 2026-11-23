@@ -25,7 +25,7 @@
     "crates/cpl-lint/src/rules/mod.rs": 2146,
     "crates/cpl-lsp/src/server.rs": 2111
   },
-  "stdlib_todo": 159,
+  "stdlib_todo": 104,
   "rust_ignore": 17,
   "pending_tests": 0,
   "edition_refs": 0,
