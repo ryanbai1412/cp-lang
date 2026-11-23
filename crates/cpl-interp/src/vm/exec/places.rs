@@ -1140,9 +1140,16 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 );
                 let stmt = chunk.fallback_stmts[idx as usize];
                 let outer = self.enter_fallback(chunk, cur_pc, regs_i, regs_v);
+                let hosts = !chunk.fed_bodies.is_empty();
+                if hosts {
+                    self.fed_hosts.push((self.base, chunk as *const Chunk<'p>));
+                }
                 self.show_lent();
                 let flow = self.stmt(stmt);
                 self.hide_lent();
+                if hosts {
+                    self.fed_hosts.pop();
+                }
                 self.leave_fallback(outer);
                 sync_from_stack(
                     &chunk.slot_map,

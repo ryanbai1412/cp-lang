@@ -417,6 +417,8 @@ fn run_from<O: Observer>(
         vm_regs_i: Vec::new(),
         fed_bodies: 0,
         #[cfg(not(target_arch = "wasm32"))]
+        fed_hosts: Vec::new(),
+        #[cfg(not(target_arch = "wasm32"))]
         lent: Vec::new(),
         #[cfg(not(target_arch = "wasm32"))]
         vm_pool_v: Vec::new(),
@@ -651,6 +653,10 @@ struct Interp<'p, 'o, O: Observer> {
     vm_regs_i: Vec<i64>,
     /// Fed loop bodies running, which take no checkpoint.
     fed_bodies: u32,
+    /// Traced VM frames, by stack base, running a fallback that may feed
+    /// a loop whose body their chunk holds.
+    #[cfg(not(target_arch = "wasm32"))]
+    fed_hosts: Vec<(usize, *const vm::Chunk<'p>)>,
     /// The `mut` params of running traced VM calls: the stack slot holding
     /// each one's value, and the caller's place it was lent from.
     #[cfg(not(target_arch = "wasm32"))]
@@ -2859,6 +2865,12 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
         self.fed_bodies += 1;
         #[cfg(not(target_arch = "wasm32"))]
         self.feeding();
+        #[cfg(not(target_arch = "wasm32"))]
+        let flow = match self.fed_body_vm(id, caller) {
+            Some(flow) => flow,
+            None => self.block(body),
+        };
+        #[cfg(target_arch = "wasm32")]
         let flow = self.block(body);
         self.fed_bodies -= 1;
         let updated = self.stack[caller + slot].clone();

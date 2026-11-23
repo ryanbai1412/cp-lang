@@ -1301,6 +1301,19 @@ pub(crate) enum Op {
     FeedYieldExtend {
         src: u16,
     },
+    /// A `yield` in a traced chunk: when the fn feeds a loop, the value
+    /// in `src` goes to the body as the tree-walker's `yield` sends it,
+    /// the yielded local `back - 1` (if not 0) takes the loop variable
+    /// back, the push to list `acc` (the `Assign` trace point `point`) is
+    /// reported, and the run goes on at `skip`. Otherwise the next op, a
+    /// fallback, pushes it.
+    FeedTree {
+        src: u16,
+        back: u16,
+        acc: u16,
+        point: u32,
+        skip: u32,
+    },
     FeedBodyNext,
     FeedBodyBreak,
     FeedEnd,
@@ -1581,6 +1594,9 @@ pub(crate) struct Chunk<'p> {
     pub places: Vec<PlacePath>,
     pub closure_specs: Vec<ClosureMakeSpec>,
     pub feed_calls: Vec<FeedCallSpec>,
+    /// In a traced chunk, the bodies of fed loops it leaves to the
+    /// tree-walker, which runs each from here as the fn yields.
+    pub fed_bodies: Vec<(LoopId, u32)>,
     pub consts_v: Vec<Value>,
     pub prints: Vec<PrintSpec<'p>>,
     pub formats: Vec<FormatSpec<'p>>,

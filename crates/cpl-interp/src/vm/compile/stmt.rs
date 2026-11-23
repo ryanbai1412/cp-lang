@@ -168,6 +168,11 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 return false
             }
             Stmt::Return(Some(value)) | Stmt::Give(value) if quiet(value) => return false,
+            Stmt::For(id, _, Iter::Seq(seq, false), body) if self.fed_body_ok(*id, seq, body) => {
+                self.emit_fallback_stmt(stmt);
+                self.emit_escapes();
+                self.compile_fed_body(*id, body);
+            }
             Stmt::For(_, slot, iter, _) if self.feed_acc.is_none() => match quiet_iter(iter) {
                 Some(span) => {
                     self.traced_loop_var = Some((*slot, span));
@@ -180,12 +185,96 @@ impl<'p, 'f> Compiler<'p, 'f> {
                     self.emit_escapes();
                 }
             },
+            Stmt::Expr(e) if self.traced_yield(e).is_some() => {
+                let (acc, place, arg) = self.traced_yield(e).unwrap();
+                let back = match arg.kind {
+                    ExprKind::Local(slot) => slot as u16 + 1,
+                    _ => 0,
+                };
+                let src = self.compile_expr_v(arg);
+                let point = self.trace_points.len() as u32;
+                self.trace_points.push(TracePoint::Assign(place));
+                let at = self.emit(
+                    Op::FeedTree {
+                        src,
+                        back,
+                        acc: acc as u16,
+                        point,
+                        skip: 0,
+                    },
+                    e.span,
+                );
+                if src >= self.num_local_v {
+                    self.emit(Op::ClearV { reg: src }, e.span);
+                }
+                self.emit_fallback_stmt(stmt);
+                self.emit_escapes();
+                let skip = self.ops.len() as u32;
+                if let Op::FeedTree { skip: s, .. } = &mut self.ops[at] {
+                    *s = skip;
+                }
+            }
             _ => {
                 self.emit_fallback_stmt(stmt);
                 self.emit_escapes();
             }
         }
         true
+    }
+
+    /// A `yield` of the `yields` fn this chunk is: its list, the place
+    /// and the value.
+    fn traced_yield(&self, e: &'p Expr) -> Option<(usize, &'p Place, &'p Expr)> {
+        let acc = *self.feeds.pushers.get(&self.cur_fn?)?;
+        match &e.kind {
+            ExprKind::Mutate(Mutation::Push, place, args) => match (&place.kind, args.as_slice()) {
+                (PlaceKind::Local(slot), [arg]) if *slot == acc && quiet(arg) => {
+                    Some((acc, place, arg))
+                }
+                _ => None,
+            },
+            _ => None,
+        }
+    }
+
+    /// Whether the tree-walker can run the body of the fed loop `id` from
+    /// this traced chunk.
+    fn fed_body_ok(&self, id: LoopId, seq: &'p Expr, body: &'p Block) -> bool {
+        self.allow_fed_loops
+            && self.feed_acc.is_none()
+            && self.inline_slots.is_none()
+            && self.inline_ret.is_none()
+            && self.give_targets.is_empty()
+            && self.feeds.feeds(id, seq, body).is_some()
+            && !Self::block_has_outer_loop_jump(body, id)
+    }
+
+    /// The body of fed loop `id`, out of the way of the chunk's own flow:
+    /// a `break` ends at `FeedBodyBreak`, the end and `continue` at
+    /// `FeedBodyNext`.
+    fn compile_fed_body(&mut self, id: LoopId, body: &'p Block) {
+        let j_over = self.emit(Op::Jmp { target: 0 }, Span::default());
+        self.fed_bodies.push((id, self.ops.len() as u32));
+        self.loops.push(LoopTargets {
+            id,
+            breaks: Vec::new(),
+            continues: Vec::new(),
+            resumable: None,
+        });
+        self.compile_stmts(&body.stmts);
+        let lt = self.loops.pop().unwrap();
+        let next_pc = self.ops.len() as u32;
+        for c in lt.continues {
+            self.patch(c, next_pc);
+        }
+        self.emit(Op::FeedBodyNext, Span::default());
+        let break_pc = self.ops.len() as u32;
+        for b in lt.breaks {
+            self.patch(b, break_pc);
+        }
+        self.emit(Op::FeedBodyBreak, Span::default());
+        let after = self.ops.len() as u32;
+        self.patch(j_over, after);
     }
 
     /// After a fallback statement inside loops: where its `break` or

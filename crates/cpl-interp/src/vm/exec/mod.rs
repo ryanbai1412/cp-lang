@@ -2,6 +2,7 @@ use crate::observe::Observer;
 use crate::value::{TupleVal, Value};
 use crate::vm::helpers::*;
 use crate::vm::ir::*;
+use crate::Flow;
 use crate::{describe, trap, Interp, Res};
 use cpl_ir::{CmpOp, FnId, LoopId};
 use std::rc::Rc;
@@ -27,6 +28,56 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
             v.clear();
             self.vm_pool_v.push(v);
         }
+    }
+
+    /// The body of fed loop `id` in the frame at `caller`, on the traced
+    /// chunk that left the loop to the tree-walker, if one holds it.
+    pub(crate) fn fed_body_vm(&mut self, id: LoopId, caller: usize) -> Option<Res<Flow>> {
+        let &(_, host) = self.fed_hosts.iter().rev().find(|h| h.0 == caller)?;
+        let compiled = self.vm.clone()?;
+        // SAFETY: the host chunk is in `compiled`, held here, and is
+        // running the fallback this body is run from.
+        let chunk: &Chunk<'p> = unsafe { &*host };
+        let &(_, pc) = chunk.fed_bodies.iter().find(|b| b.0 == id)?;
+        let mut vm_regs_i = std::mem::take(&mut self.vm_regs_i);
+        let base_i = vm_regs_i.len();
+        vm_regs_i.resize(base_i + chunk.num_i, 0);
+        let mut regs_v = self.take_regs_v(chunk.num_v);
+        let regs_i = &mut vm_regs_i[base_i..base_i + chunk.num_i];
+        sync_from_stack(
+            &chunk.slot_map,
+            regs_i,
+            &mut regs_v,
+            &mut self.stack,
+            self.base,
+            true,
+        );
+        let exit = self.exec_chunk_core(
+            &compiled,
+            chunk,
+            base_i,
+            &mut vm_regs_i,
+            &mut regs_v,
+            pc as usize,
+            None,
+        );
+        let regs_i = &mut vm_regs_i[base_i..base_i + chunk.num_i];
+        sync_to_stack(
+            &chunk.slot_map,
+            regs_i,
+            &mut regs_v,
+            &mut self.stack,
+            self.base,
+            true,
+        );
+        self.return_regs_v(regs_v);
+        vm_regs_i.truncate(base_i);
+        self.vm_regs_i = vm_regs_i;
+        Some(exit.map(|exit| match exit {
+            ExecExit::FeedNext => Flow::Next,
+            ExecExit::FeedBreak => Flow::Break(Some(id)),
+            ExecExit::Return(value) => Flow::Return(value),
+        }))
     }
 
     pub(crate) fn run_main_vm(&mut self, compiled: &CompiledProgram<'p>) -> Res<()> {
@@ -1684,6 +1735,35 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         _ => return trap(spans[cur_pc], "internal: expected array"),
                     }
                 }
+                Op::FeedTree {
+                    src,
+                    back,
+                    acc,
+                    point,
+                    skip,
+                } if self
+                    .fed_loops
+                    .last()
+                    .is_some_and(|f| f.callee == self.base && f.acc == acc as usize) =>
+                {
+                    let moved = back != 0 && chunk.slot_map[back as usize - 1] == SlotLoc::V(src);
+                    let val = if moved || src >= chunk.num_local_v as u16 {
+                        std::mem::replace(&mut regs_v[src as usize], Value::Unit)
+                    } else {
+                        regs_v[src as usize].clone()
+                    };
+                    let span = spans[cur_pc];
+                    let updated = self.feed(val, span)?;
+                    if back != 0 {
+                        write_slot(&chunk.slot_map[back as usize - 1], regs_i, regs_v, updated);
+                    }
+                    if let TracePoint::Assign(place) = chunk.trace_points[point as usize] {
+                        self.trace_local(acc as usize, span);
+                        self.trace_assigned(place);
+                    }
+                    pc = skip as usize;
+                }
+                Op::FeedTree { .. } => {}
                 Op::Trace { idx } => {
                     self.exec_trace(chunk, idx, regs_i, regs_v);
                 }

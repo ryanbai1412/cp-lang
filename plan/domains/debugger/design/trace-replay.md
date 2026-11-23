@@ -291,6 +291,14 @@ on write, so a checkpoint copies main's locals and the globals, not the heap.
 - **Not taken:** in the body of a fed loop (`Interp::fed_bodies`): it runs
   in the caller's frame inside the fn's, which a resume does not make
   again.
+- **Traced speed:** the traced VM also runs the rest. A traced chunk that
+  leaves a fed `for` to the tree-walker compiles the body out of line
+  (`Chunk::fed_bodies`), and the tree-walker's `feed` runs it there
+  (`fed_body_vm`, found through `Interp::fed_hosts`). The fn's `yield` is
+  `Op::FeedTree`, which feeds the loop and reports the push as the
+  tree-walker's `yield` does, with no fallback. A counted run of a 4×10^6
+  `yield` loop with a one-line body takes 490 ms against 160 ms
+  untraced (3.1x), from about 7x.
 - **Tests:** fixture `FEED` (fed loops in main and in a fn, with a body
   loop) is in the run, traced-resume, window, tail, `Timeline` and counted
   tests.
