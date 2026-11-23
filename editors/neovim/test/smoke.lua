@@ -85,7 +85,12 @@ vim.lsp.commands['cpl.exec'](run, {})
 local term = vim.api.nvim_get_current_buf()
 check(vim.bo[term].buftype == 'terminal', 'cpl.exec did not open a terminal')
 check(vim.wait(10000, function() return vim.v.shell_error ~= nil and vim.b[term].terminal_job_id ~= nil and vim.fn.jobwait({ vim.b[term].terminal_job_id }, 0)[1] ~= -1 end), 'cpl run did not finish')
-local shown = table.concat(vim.api.nvim_buf_get_lines(term, 0, -1, false), '\n')
+-- Windows's pseudo-console can draw the output after the job has exited.
+local shown = ''
+vim.wait(10000, function()
+    shown = table.concat(vim.api.nvim_buf_get_lines(term, 0, -1, false), '\n')
+    return shown:find('Str', 1, true) ~= nil
+end, 100)
 check(shown:find('Str', 1, true) ~= nil, 'the run lens showed ' .. vim.inspect(shown))
 
 -- `:Cpl check` runs on the file in a terminal split and completes command names.
