@@ -178,8 +178,9 @@ impl<'p> Emitter<'p> {
             },
         ));
         let inside = walk::inside_list(*inner_slot, inner_iter, inner_body, self.locals());
-        self.inside
-            .extend(inside.map(|(l, i)| crate::bounds::Inside::List((false, l), i, 0, 0)));
+        self.inside.extend(
+            inside.map(|(l, i)| crate::bounds::Inside::List((false, l, None), i, None, 0, 0)),
+        );
         self.for_stmt(*inner_id, *inner_slot, inner_iter, inner_body, out);
         self.inside
             .truncate(self.inside.len() - usize::from(inside.is_some()));

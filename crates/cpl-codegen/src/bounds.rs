@@ -18,15 +18,19 @@ use cpl_ir::{
 };
 use std::collections::{BTreeMap, BTreeSet};
 
-/// A variable: `(global, slot or id)`.
-pub(crate) type Var = (bool, usize);
+/// A variable, or one field of a struct variable: `(global, slot or id,
+/// field)`.
+pub(crate) type Var = (bool, usize, Option<usize>);
+
+/// A loop-invariant `Int` an index adds (`false`) or takes away (`true`).
+pub(crate) type Term = (bool, Var);
 
 /// What a check before a loop covers.
 #[derive(Clone, Debug)]
 pub(crate) enum Inside {
-    /// `(list, index, lo, hi)`: `list[index + c]` is inside the list for
-    /// every `c` in `lo..=hi`.
-    List(Var, usize, i64, i64),
+    /// `(list, index, term, lo, hi)`: `list[index ± term + c]` is inside
+    /// the list for every `c` in `lo..=hi`.
+    List(Var, usize, Option<Term>, i64, i64),
     /// `(grid, index, dims)`: `grid[e0, e1, ..]` is inside the grid when
     /// each `e` fits its `Dim`.
     Grid(Var, usize, Vec<Dim>),
@@ -55,7 +59,9 @@ fn dim_fits(dim: &Dim, slot: usize, e: &Expr) -> bool {
     match dim {
         Dim::Proven => true,
         Dim::Fixed(f) => same(f, e),
-        Dim::Slot(lo, hi) => offset(e).is_some_and(|(s, c)| s == slot && *lo <= c && c <= *hi),
+        Dim::Slot(lo, hi) => {
+            offset(e, slot).is_some_and(|(t, c)| t.is_none() && *lo <= c && c <= *hi)
+        }
     }
 }
 
@@ -87,18 +93,32 @@ fn same_shape(a: &[Dim], b: &[Dim]) -> bool {
 
 pub(crate) fn var_of(e: &ExprKind) -> Option<Var> {
     match e {
-        ExprKind::Local(slot) => Some((false, *slot)),
-        ExprKind::Global(id) => Some((true, *id)),
+        ExprKind::Local(slot) => Some((false, *slot, None)),
+        ExprKind::Global(id) => Some((true, *id, None)),
+        ExprKind::Field(x, f) if matches!(x.ty, Ty::Struct(_)) => match var_of(&x.kind)? {
+            (global, at, None) => Some((global, at, Some(*f))),
+            _ => None,
+        },
         _ => None,
     }
 }
 
 fn place_var(p: &PlaceKind) -> Option<Var> {
     match p {
-        PlaceKind::Local(slot) => Some((false, *slot)),
-        PlaceKind::Global(id) => Some((true, *id)),
+        PlaceKind::Local(slot) => Some((false, *slot, None)),
+        PlaceKind::Global(id) => Some((true, *id, None)),
+        PlaceKind::Field(x, f) if matches!(x.ty, Ty::Struct(_)) => match place_var(&x.kind)? {
+            (global, at, None) => Some((global, at, Some(*f))),
+            _ => None,
+        },
         _ => None,
     }
+}
+
+/// Whether the body may change `v`: it stores the variable, or a field of
+/// that name in any variable (two references may be one struct).
+fn moved(stored: &BTreeSet<Var>, v: &Var) -> bool {
+    stored.contains(&(v.0, v.1, None)) || v.2.is_some() && stored.iter().any(|s| s.2 == v.2)
 }
 
 impl<'p> Emitter<'p> {
@@ -106,10 +126,11 @@ impl<'p> Emitter<'p> {
     pub(crate) fn inside_at(&self, list: Option<Var>, indices: &[Expr]) -> bool {
         list.is_some()
             && self.inside.iter().any(|cover| match cover {
-                Inside::List(l, i, lo, hi) => {
+                Inside::List(l, i, t, lo, hi) => {
                     Some(*l) == list
                         && indices.len() == 1
-                        && offset(&indices[0]).is_some_and(|(s, c)| s == *i && *lo <= c && c <= *hi)
+                        && offset(&indices[0], *i)
+                            .is_some_and(|(u, c)| u == *t && *lo <= c && c <= *hi)
                 }
                 Inside::Grid(g, i, dims) => {
                     Some(*g) == list
@@ -132,22 +153,27 @@ impl<'p> Emitter<'p> {
         }
     }
 
-    fn var_expr(&self, var: Var) -> Expr {
-        Expr {
-            kind: match var {
-                (true, id) => ExprKind::Global(id),
-                (false, at) => ExprKind::Local(at),
+    fn var_expr(&self, (global, at, field): Var) -> Expr {
+        let root = Expr {
+            kind: if global {
+                ExprKind::Global(at)
+            } else {
+                ExprKind::Local(at)
             },
-            ty: self.var_ty(var).clone(),
+            ty: if global {
+                self.program.globals[at].ty.clone()
+            } else {
+                self.locals()[at].ty.clone()
+            },
             span: Default::default(),
-        }
-    }
-
-    fn var_ty(&self, (global, at): Var) -> &'p Ty {
-        if global {
-            &self.program.globals[at].ty
-        } else {
-            &self.locals()[at].ty
+        };
+        match (field, &root.ty) {
+            (Some(f), Ty::Struct(id)) => Expr {
+                ty: self.program.structs[*id].fields[f].1.clone(),
+                kind: ExprKind::Field(Box::new(root), f),
+                span: Default::default(),
+            },
+            _ => root,
         }
     }
 
@@ -203,7 +229,7 @@ impl<'p> Emitter<'p> {
             sometimes,
             ..
         } = scan;
-        if stored.contains(&(false, slot)) || !end(lo, &stored) || !end(hi, &stored) {
+        if stored.contains(&(false, slot, None)) || !end(lo, &stored) || !end(hi, &stored) {
             return none;
         }
         let (lo, hi) = (self.expr(lo).text, self.expr(hi).text);
@@ -282,7 +308,7 @@ impl<'p> Emitter<'p> {
         let mut slow = ahead.inside;
         slow.extend(
             walk::inside_list(slot, iter, body, self.locals())
-                .map(|(l, i)| Inside::List((false, l), i, 0, 0)),
+                .map(|(l, i)| Inside::List((false, l, None), i, None, 0, 0)),
         );
         let fast = ahead.version.and_then(|(guard, mut fast)| {
             fast.extend(slow.iter().cloned());
@@ -342,7 +368,7 @@ impl<'p> Emitter<'p> {
     fn covers(
         &mut self,
         b: &Bounds,
-        lists: Vec<(Var, (i64, i64))>,
+        lists: Vec<(List, (i64, i64))>,
         grids: Vec<(Var, Vec<Dim>)>,
     ) -> Vec<(Option<String>, Inside)> {
         let (lo, last) = (b.lo, b.last);
@@ -367,7 +393,7 @@ impl<'p> Emitter<'p> {
             let bad = (!bad.is_empty()).then(|| bad.join(" || "));
             covers.push((bad, Inside::Grid(grid, b.slot, dims)));
         }
-        for (list, (min, max)) in lists {
+        for ((list, term), (min, max)) in lists {
             let of = self.var_expr(list);
             let len = self
                 .expr(&Expr {
@@ -376,8 +402,16 @@ impl<'p> Emitter<'p> {
                     span: Default::default(),
                 })
                 .text;
-            let bad = format!("(ll)({lo}) + {min} < 0 || {last} + {max} >= (ll)({len})");
-            covers.push((Some(bad), Inside::List(list, b.slot, min, max)));
+            let plus = match term {
+                Some((neg, t)) => {
+                    let sign = if neg { '-' } else { '+' };
+                    format!(" {sign} (ll)({})", self.expr(&self.var_expr(t)).text)
+                }
+                None => String::new(),
+            };
+            let bad =
+                format!("(ll)({lo}){plus} + {min} < 0 || {last}{plus} + {max} >= (ll)({len})");
+            covers.push((Some(bad), Inside::List(list, b.slot, term, min, max)));
         }
         covers
     }
@@ -397,20 +431,28 @@ struct Bounds<'a> {
     last: &'a str,
 }
 
-fn fixed_lists(lists: BTreeMap<Var, (i64, i64)>, stored: &BTreeSet<Var>) -> Vec<(Var, (i64, i64))> {
+/// A list, with the loop-invariant term its indexes add to the loop's.
+type List = (Var, Option<Term>);
+
+fn fixed_lists(
+    lists: BTreeMap<List, (i64, i64)>,
+    stored: &BTreeSet<Var>,
+) -> Vec<(List, (i64, i64))> {
     lists
         .into_iter()
-        .filter(|(list, _)| !stored.contains(list))
+        .filter(|((list, term), _)| {
+            !moved(stored, list) && term.is_none_or(|(_, t)| !moved(stored, &t))
+        })
         .collect()
 }
 
 /// The cells of grids the body does not replace, one cover per shape.
 fn merge(cells: Vec<(Var, Vec<Dim>)>, stored: &BTreeSet<Var>, slot: usize) -> Vec<(Var, Vec<Dim>)> {
     let mut moving = stored.clone();
-    moving.insert((false, slot));
+    moving.insert((false, slot, None));
     let mut grids: Vec<(Var, Vec<Dim>)> = Vec::new();
     for (grid, dims) in cells {
-        if stored.contains(&grid)
+        if moved(stored, &grid)
             || dims
                 .iter()
                 .any(|d| matches!(d, Dim::Fixed(e) if !bound(e, &moving)))
@@ -434,19 +476,35 @@ fn merge(cells: Vec<(Var, Vec<Dim>)>, stored: &BTreeSet<Var>, slot: usize) -> Ve
     grids
 }
 
-/// `i`, `i + c` or `i - c`: the slot and `c`.
-fn offset(e: &Expr) -> Option<(usize, i64)> {
+/// `slot + c`, or `slot ± v + c` for one other `Int` variable `v`: the
+/// term and `c`.
+fn offset(e: &Expr, slot: usize) -> Option<(Option<Term>, i64)> {
+    let mut terms = Vec::new();
+    let c = linear(e, false, &mut terms)?;
+    let at = terms
+        .iter()
+        .position(|&(neg, v)| !neg && v == (false, slot, None))?;
+    terms.remove(at);
+    match terms.as_slice() {
+        [] => Some((None, c)),
+        [t] if t.1 != (false, slot, None) => Some((Some(*t), c)),
+        _ => None,
+    }
+}
+
+/// `e` as a sum of `Int` variables and a constant, which it gives.
+fn linear(e: &Expr, neg: bool, terms: &mut Vec<Term>) -> Option<i64> {
     match &e.kind {
-        ExprKind::Local(slot) => Some((*slot, 0)),
-        ExprKind::Binary(BinOp::Add, a, b) => match (&a.kind, &b.kind) {
-            (ExprKind::Local(slot), ExprKind::Int(c))
-            | (ExprKind::Int(c), ExprKind::Local(slot)) => Some((*slot, *c)),
-            _ => None,
-        },
-        ExprKind::Binary(BinOp::Sub, a, b) => match (&a.kind, &b.kind) {
-            (ExprKind::Local(slot), ExprKind::Int(c)) => Some((*slot, c.checked_neg()?)),
-            _ => None,
-        },
+        ExprKind::Int(c) if neg => c.checked_neg(),
+        ExprKind::Int(c) => Some(*c),
+        ExprKind::Binary(op @ (BinOp::Add | BinOp::Sub), a, b) if e.ty == Ty::Int => {
+            let l = linear(a, neg, terms)?;
+            l.checked_add(linear(b, neg != (*op == BinOp::Sub), terms)?)
+        }
+        _ if e.ty == Ty::Int && terms.len() < 2 => {
+            terms.push((neg, var_of(&e.kind)?));
+            Some(0)
+        }
         _ => None,
     }
 }
@@ -457,12 +515,15 @@ fn bound(e: &Expr, stored: &BTreeSet<Var>) -> bool {
     match &e.kind {
         ExprKind::Int(_) => true,
         ExprKind::Local(_) | ExprKind::Global(_) => {
-            e.ty == Ty::Int && var_of(&e.kind).is_some_and(|v| !stored.contains(&v))
+            e.ty == Ty::Int && var_of(&e.kind).is_some_and(|v| !moved(stored, &v))
+        }
+        ExprKind::Field(..) => {
+            e.ty == Ty::Int && var_of(&e.kind).is_some_and(|v| !moved(stored, &v))
         }
         ExprKind::Builtin(Builtin::Len, of) => match of.as_slice() {
             [list] => {
                 matches!(list.ty, Ty::List(_))
-                    && var_of(&list.kind).is_some_and(|v| !stored.contains(&v))
+                    && var_of(&list.kind).is_some_and(|v| !moved(stored, &v))
             }
             _ => false,
         },
@@ -478,7 +539,7 @@ fn end(e: &Expr, stored: &BTreeSet<Var>) -> bool {
     match &e.kind {
         ExprKind::Index(list, at) => {
             matches!(list.ty, Ty::List(_) | Ty::Array { .. })
-                && var_of(&list.kind).is_some_and(|v| !stored.contains(&v))
+                && var_of(&list.kind).is_some_and(|v| !moved(stored, &v))
                 && at.iter().all(|i| bound(i, stored))
         }
         ExprKind::Binary(BinOp::Add | BinOp::Sub, a, b) => end(a, stored) && end(b, stored),
@@ -493,11 +554,11 @@ struct Scan<'e, 'p> {
     stored: BTreeSet<Var>,
     /// Per list, the least and greatest `c` of `list[slot + c]` reached on
     /// every round.
-    every: BTreeMap<Var, (i64, i64)>,
+    every: BTreeMap<List, (i64, i64)>,
     /// Grid cells reached on every round, each index as a `Dim`.
     every_grid: Vec<(Var, Vec<Dim>)>,
     /// The same for every index, reached on every round or not.
-    any: BTreeMap<Var, (i64, i64)>,
+    any: BTreeMap<List, (i64, i64)>,
     any_grid: Vec<(Var, Vec<Dim>)>,
     /// Whether an index is reached on only some rounds.
     sometimes: bool,
@@ -513,7 +574,7 @@ impl Scan<'_, '_> {
     fn block(&mut self, block: &Block, every: bool) -> bool {
         block.stmts.iter().all(|stmt| match stmt {
             Stmt::Let(at, init) => {
-                self.stored.insert((false, *at));
+                self.stored.insert((false, *at, None));
                 init.as_ref().is_none_or(|e| self.expr(e, every))
             }
             Stmt::Assign(place, _, value) => self.place(place, every) && self.expr(value, every),
@@ -529,11 +590,11 @@ impl Scan<'_, '_> {
                 },
                 body,
             ) => {
-                self.stored.insert((false, *at));
+                self.stored.insert((false, *at, None));
                 self.expr(lo, every) && self.expr(hi, every) && self.block(body, false)
             }
             Stmt::For(_, at, Iter::Seq(seq, _), body) => {
-                self.stored.insert((false, *at));
+                self.stored.insert((false, *at, None));
                 // Walking a sequence cannot fail; the body is reached on
                 // every round only when the sequence is a nonempty literal.
                 let full = self.emitter.inline_list_call(seq).is_some_and(
@@ -570,8 +631,8 @@ impl Scan<'_, '_> {
                 if crate::expr::proven(std::slice::from_ref(e)) {
                     Dim::Proven
                 } else {
-                    match offset(e) {
-                        Some((s, c)) if s == self.slot => Dim::Slot(c, c),
+                    match offset(e, self.slot) {
+                        Some((None, c)) => Dim::Slot(c, c),
                         _ => Dim::Fixed(e.clone()),
                     }
                 }
@@ -588,7 +649,7 @@ impl Scan<'_, '_> {
 
     fn index(&mut self, list: Var, index: &Expr, every: bool) -> bool {
         self.lists = true;
-        if let Some((_, c)) = offset(index).filter(|&(at, _)| at == self.slot) {
+        if let Some((term, c)) = offset(index, self.slot) {
             let mut maps = vec![&mut self.any];
             if every {
                 maps.push(&mut self.every);
@@ -596,7 +657,7 @@ impl Scan<'_, '_> {
                 self.sometimes = true;
             }
             for map in maps {
-                let range = map.entry(list).or_insert((c, c));
+                let range = map.entry((list, term)).or_insert((c, c));
                 *range = (range.0.min(c), range.1.max(c));
             }
         }
@@ -930,5 +991,42 @@ mod tests {
             body[..body.find("put_int").unwrap()].contains(".ck("),
             "{code}"
         );
+    }
+
+    const FIELD: &str = concat!(
+        "struct Bits:\n",
+        "    w: List<Int>\n",
+        "    fn add_from(mut self, words: Int):\n",
+        "        for i in (words..w.len).rev:\n",
+        "            w[i] += w[i - words]\n",
+        "var b = Bits([1, 2, 3, 4])\n",
+        "b.add_from(1)\n",
+        "print(b.w[3])\n",
+    );
+
+    #[test]
+    fn a_field_list_at_an_offset_by_a_variable_checks_ahead() {
+        let code = cpp(FIELD);
+        let body = &code[code.find("for (ll i").unwrap()..];
+        let body = &body[..body.find('}').unwrap()];
+        assert!(
+            code.contains("cpl::fail(\"index outside the list\")") && !body.contains("cpl::at("),
+            "{code}"
+        );
+    }
+
+    #[test]
+    fn an_offset_by_a_variable_the_loop_stores_keeps_its_check() {
+        let code = cpp(&FIELD
+            .replace(
+                "add_from(mut self, words: Int):",
+                "add_from(mut self, k: Int):\n        var words = k",
+            )
+            .replace(
+                "w[i] += w[i - words]",
+                "w[i] += w[i - words]\n            words = 1",
+            ));
+        let body = &code[code.find("for (ll i").unwrap()..];
+        assert!(body.contains("cpl::at(self.w, i - words)"), "{code}");
     }
 }
