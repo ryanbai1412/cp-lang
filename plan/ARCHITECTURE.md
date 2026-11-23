@@ -217,7 +217,7 @@ Crate names follow jobs; a crate whose job already matches keeps its name.
 | `cpl-rt` | the intrinsics table: Rust and C++ for each primitive, in one place |
 | `cpl-interp` | the one interpreter: register VM, event stream, traces, replay, profiler; WASM build |
 | `cpl-codegen` | C++ emitter, runtime tree-shaking, judge profiles |
-| `cpl-diag` | diagnostic model and renderers |
+| `cpl-diag` | diagnostic model and renderers; its JSON shape is printed with `cpl-json` |
 | `cpl-cli` | `cpl check/run/build/test/stress/doc/fmt/lint/explain/judge/dap` |
 | `cpl-fmt`, `cpl-lint`, `cpl-doc`, `cpl-stress`, `cpl-judge` | tools over `cpl-check` queries |
 | `cpl-lsp` | the language server. `lib.rs` only re-exports `Server` and `serve`; dispatch is in `server.rs`. Hover facts come from `cpl-check/src/hover.rs`; the LSP renders them as markdown. Uses `cpl-check`, `cpl-lint`, `cpl-fmt`, `cpl-judge`, `cpl-ir`, and `cpl-doc` for doc text without Markdown math or links (`cpl_doc::plain`). `transport` framing is shared with the DAP in `cpl-cli/src/dap.rs`. `build.rs` lists the std modules for `use std.` completion |

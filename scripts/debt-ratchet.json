@@ -62,6 +62,7 @@
     "cpl-contest -> cpl-lint",
     "cpl-contest -> cpl-stress",
     "cpl-contest -> cpl-syntax",
+    "cpl-diag -> cpl-json",
     "cpl-doc -> cpl-diag",
     "cpl-doc -> cpl-json",
     "cpl-doc -> cpl-syntax",

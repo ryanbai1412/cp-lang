@@ -7705,3 +7705,12 @@ field (`pub x: Int`, `pub var`, header `S(pub x: Int)`, one-line bodies;
 `FieldDecl.public`), as the grammar already said. Reverse: drop the `pub`s
 (sed) and `FieldDecl.public`. `lower/mod.rs` grows 3 lines (6008): `with_implicit_generics` takes an
 inline `mod` body, whose names have no `self.mods` entry, instead of panicking.
+
+## 364. `cpl-diag` depends on `cpl-json` (infra, 2026-11-23)
+
+0efdc8f63 gave every tool one diagnostic JSON shape, printed by `cpl-diag`
+through `cpl-json`, the shared dependency-free JSON crate; the edge was on
+main without a baseline entry, so the debt ratchet failed every main run.
+The edge fits A4 (`cpl-json` exists to be shared by every tool that speaks
+JSON) and adds no cycle, so the baseline takes it. Reverse: give `cpl-diag`
+its own printer and drop the edge with `--update crate_edges`.
