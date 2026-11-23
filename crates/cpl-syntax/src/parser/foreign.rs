@@ -326,9 +326,13 @@ impl<'a> Parser<'a> {
         if self.at(T::Bang) {
             let span = self.span();
             self.error(
-                Diagnostic::error(codes::UNEXPECTED_TOKEN, span, "`!` doesn't negate in cp")
-                    .with_help("write `not in` instead of `!in`")
-                    .with_fix("replace with `not `", span, "not "),
+                Diagnostic::error(
+                    codes::UNEXPECTED_TOKEN,
+                    span,
+                    "`!` doesn't negate in CP Lang",
+                )
+                .with_help("write `not in` instead of `!in`")
+                .with_fix("replace with `not `", span, "not "),
             );
         }
         if !self.at_ident("is") {

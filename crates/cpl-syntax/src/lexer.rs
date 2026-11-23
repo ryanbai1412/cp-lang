@@ -892,7 +892,7 @@ impl<'a> Lexer<'a> {
                 let mut diag = Diagnostic::error(
                     codes::UNKNOWN_CHAR,
                     span,
-                    format!("`{ch}` isn't used in cp"),
+                    format!("`{ch}` isn't used in CP Lang"),
                 );
                 diag.help = match ch {
                     '#' => Some("comments start with `//`".into()),

@@ -173,7 +173,7 @@ impl<'a> Parser<'a> {
         if !inclusive && self.at(T::Lt) && self.span().start == self.prev_end() {
             let span = self.span();
             self.error(
-                Diagnostic::error(codes::UNEXPECTED_TOKEN, span, "`..<` is `..` in cp")
+                Diagnostic::error(codes::UNEXPECTED_TOKEN, span, "`..<` is `..` in CP Lang")
                     .with_help("`lo..hi` already leaves out `hi`; `lo..=hi` keeps it")
                     .with_fix("write `..`", span, ""),
             );

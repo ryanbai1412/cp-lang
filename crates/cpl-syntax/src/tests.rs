@@ -1566,20 +1566,32 @@ fn c_style_logic_and_ranges_are_reported_with_the_cp_spelling_as_a_fix() {
     let cases = [
         (
             "let a = true\nlet b = a && a\n",
-            "`&&` is `and` in cp",
+            "`&&` is `and` in CP Lang",
             "and",
         ),
-        ("let a = true\nlet b = a || a\n", "`||` is `or` in cp", "or"),
-        ("for i in 0..<3:\n    print(i)\n", "`..<` is `..` in cp", ""),
-        ("let a: [0..<3]Int = read()\n", "`..<` is `..` in cp", ""),
+        (
+            "let a = true\nlet b = a || a\n",
+            "`||` is `or` in CP Lang",
+            "or",
+        ),
+        (
+            "for i in 0..<3:\n    print(i)\n",
+            "`..<` is `..` in CP Lang",
+            "",
+        ),
+        (
+            "let a: [0..<3]Int = read()\n",
+            "`..<` is `..` in CP Lang",
+            "",
+        ),
         (
             "if let x = f() && x > 0:\n    print(x)\n",
-            "`&&` is `and` in cp",
+            "`&&` is `and` in CP Lang",
             "and",
         ),
         (
             "while x > 0 || y > 0:\n    x -= 1\n",
-            "`||` is `or` in cp",
+            "`||` is `or` in CP Lang",
             "or",
         ),
     ];
@@ -1595,7 +1607,7 @@ fn c_style_logic_and_ranges_are_reported_with_the_cp_spelling_as_a_fix() {
 #[test]
 fn rust_let_mut_is_reported_as_var_and_read_as_one() {
     let d = one_diag("let mut x = 1\nx += 1\n");
-    assert_eq!(d.message, "`let mut` is `var` in cp");
+    assert_eq!(d.message, "`let mut` is `var` in CP Lang");
     assert_eq!(d.fixes[0].edits[0].1, "var");
     let d = one_diag("var xs = [1]\nwhile let mut c = xs.pop():\n    print(c)\n");
     assert_eq!(d.message, "a binding in a `let` condition can't be `mut`");

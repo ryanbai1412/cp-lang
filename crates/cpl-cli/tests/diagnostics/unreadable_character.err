@@ -1,4 +1,4 @@
-error[E0004]: `$` isn't used in cp
+error[E0004]: `$` isn't used in CP Lang
   --> unreadable_character.cp:1:5
   |
 1 | let $x = 1

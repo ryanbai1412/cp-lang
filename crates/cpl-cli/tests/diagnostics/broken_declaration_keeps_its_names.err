@@ -1,11 +1,11 @@
-error[E0004]: `$` isn't used in cp
+error[E0004]: `$` isn't used in CP Lang
   --> broken_declaration_keeps_its_names.cp:1:6
   |
 1 | let ($l, b) = (4, 6)
   |      ^
   = help: remove `$`
 
-error[E0004]: `$` isn't used in cp
+error[E0004]: `$` isn't used in CP Lang
   --> broken_declaration_keeps_its_names.cp:3:4
   |
 3 | fn $f(a: Int) -> Int:

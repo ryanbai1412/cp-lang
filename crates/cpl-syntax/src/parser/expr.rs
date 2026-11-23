@@ -325,7 +325,7 @@ impl<'a> Parser<'a> {
             Diagnostic::error(
                 codes::UNEXPECTED_TOKEN,
                 span,
-                format!("`{op}` is `{word}` in cp"),
+                format!("`{op}` is `{word}` in CP Lang"),
             )
             .with_fix(format!("replace with `{word}`"), span, word),
         );
@@ -1303,9 +1303,13 @@ impl<'a> Parser<'a> {
             T::Bang => {
                 let span = self.span();
                 self.error(
-                    Diagnostic::error(codes::UNEXPECTED_TOKEN, span, "`!` doesn't negate in cp")
-                        .with_help("write `not x` to negate, or `x!` to unwrap an optional")
-                        .with_fix("replace with `not `", span, "not "),
+                    Diagnostic::error(
+                        codes::UNEXPECTED_TOKEN,
+                        span,
+                        "`!` doesn't negate in CP Lang",
+                    )
+                    .with_help("write `not x` to negate, or `x!` to unwrap an optional")
+                    .with_fix("replace with `not `", span, "not "),
                 );
                 self.bump();
                 return self.unary();

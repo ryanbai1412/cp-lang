@@ -782,8 +782,12 @@ impl<'a> Parser<'a> {
         if !mutable && self.at(T::Mut) {
             let span = Span::new(stmt_start, self.span().end);
             self.error(
-                Diagnostic::error(codes::UNEXPECTED_TOKEN, span, "`let mut` is `var` in cp")
-                    .with_fix("replace with `var`", span, "var"),
+                Diagnostic::error(
+                    codes::UNEXPECTED_TOKEN,
+                    span,
+                    "`let mut` is `var` in CP Lang",
+                )
+                .with_fix("replace with `var`", span, "var"),
             );
             self.bump();
             mutable = true;
