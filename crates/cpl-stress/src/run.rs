@@ -419,8 +419,8 @@ pub fn stress_with(
 }
 
 /// How much sooner a candidate is stopped while a time limit shrinks:
-/// a stuck run costs a twentieth of the limit, not all of it.
-const TLE_SHRINK_SPLIT: u32 = 20;
+/// a stuck run costs a hundredth of the limit, not all of it.
+const TLE_SHRINK_SPLIT: u32 = 100;
 
 /// The limits a failure shrinks under. A time limit shrinks under a short
 /// one first; the case it reaches must still run past the full limit, or
