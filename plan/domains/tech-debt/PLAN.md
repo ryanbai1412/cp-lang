@@ -4,6 +4,19 @@ The detail behind [README.md](README.md). Dated 2026-11-22.
 
 ## Workstreams, in order
 
+0. **Milestone 1 first (2026-11-22).** Ordered by what blocks the
+   [acceptance scenario](../../product/MILESTONE-1.md):
+   (a) builtin divergence: for each name in `ir_builtin_names` and
+   `backend_std_names`, find its interpreter and C++ implementations, add
+   `cpl-conform diff` cases at the edges, fix behaviour-free mismatches or
+   route the rest to compiler/stdlib with the failing case; `choose2` was one
+   (decision 266 era: compiler said `choose2(-3) == 6`, std said `0`);
+   (b) a user-library test in the fast gate that uses every std power
+   (`--list prelude_privilege`), each failure filed with its case;
+   (c) the third-party crate verdict, crate READMEs, and the remaining layout
+   moves, each only when it does not collide with a milestone lane.
+   Workstreams 1-5 below continue only where they serve (a)-(c) or are cheap.
+
 1. **Land what is written (M1).** The restructure and 0.2 deletion exist as
    branches: `devin/drop-edition` (edition refs), `devin/v02-ports-delete*`
    and `devin/v02-delete*` (corpus and tests), `devin/wip-split-vm`,
@@ -86,6 +99,7 @@ The detail behind [README.md](README.md). Dated 2026-11-22.
 - Old branches may contain work a lane still wants; deleting needs the
   owner's confirmation in its worklog, never a silent delete.
 
-## First action in phase 2
+## First action now
 
-Rebase `devin/drop-edition` on `main`, check, land; then `devin/wip-split-vm`.
+The builtin divergence audit, workstream 0(a), starting with `span` and the
+list search functions.

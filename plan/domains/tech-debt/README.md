@@ -12,6 +12,41 @@ Detail: [PLAN.md](PLAN.md) · [metrics.toml](metrics.toml) ·
 cross-domain map: [plan/ARCHITECTURE.md](../../ARCHITECTURE.md) ·
 ratchet and counts: `scripts/debt-ratchet.py` (`--show`, `--list NAME`; 0.4 s, in the fast gate)
 
+## Milestone 1
+
+[Milestone 1](../../product/MILESTONE-1.md) is the priority: a Codeforces
+1500+ friend understands, tries, installs, solves, tests, submits and competes
+with CPL without help. Debt that causes a milestone bug comes first; cosmetic
+debt waits. This lane never blocks a milestone lane: moves land as one
+announced commit, and the only gate it owns is the shrink-only ratchet.
+
+What the milestone needs from this lane (exit criteria):
+1. **No interpreter/C++ divergence from duplicated builtin semantics.** Every
+   compiler builtin with its own interpreter and C++ paths has a
+   `cpl-conform diff` case at its edges (negative, empty, overflow, both
+   argument orders); the known disagreements (`span`, list
+   `first_ge`/`first_gt`/`last_le`, `counts`) are settled in one body.
+   Check: no `cpl-conform diff` failure traces to a builtin.
+2. **A user library can do what std does on the milestone path.** A user
+   library in the fast gate exercises each by-name power std relies on today
+   (`prelude_privilege`, `backend_std_names`), or the power is listed as a gap
+   with its user-reachable alternative. There is no such test today: the old
+   `examples/local-lib` is in `research/archive/local-lib-v02`.
+3. **Main never goes red on a stale generated file.** `scripts/gen.py --check`
+   runs in the commit tier (done: decisions 294, 303).
+
+Deferring: `plan/DECISIONS.md` curation, the 877 v0.2 `port.cp` files,
+file-size shrinking and duplicate helpers, probe reruns, cold-review rounds
+beyond findings that cause milestone bugs.
+
+Next three steps:
+1. Builtin divergence audit: list each builtin's interpreter and C++
+   implementations, add diff cases at the edges, fix or route each mismatch.
+2. User-library privilege test: a small library using each std power, in the
+   fast gate; each failure goes to compiler or stdlib.
+3. Third-party crate verdict (build and install time is release quality),
+   then crate READMEs and the rest of the layout when cheap.
+
 ## Covers / not covered
 
 | Covers (this lane) | Not covered (owner) |

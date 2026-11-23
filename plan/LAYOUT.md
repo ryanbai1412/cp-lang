@@ -98,7 +98,7 @@ Results are not stored here: they go to `research/perf/`.
 
 | Path | Job |
 |---|---|
-| `examples/local-lib/` | A user library proving user code gets stdlib powers. |
+| `examples/local-lib/` | A user library proving user code gets stdlib powers (target; the v0.2 one is in `research/archive/local-lib-v02`). |
 | `examples/debugging/` | Programs for the time-travel debugging demo. |
 
 ## `skills/`: the AI skill
