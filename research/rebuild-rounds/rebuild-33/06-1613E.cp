@@ -20,4 +20,4 @@ while head < queue.len:
         if open[v] <= 1:
             g[v] = '+'
             queue.push(v)
-for row in g.rows: print(row)
+for r in R: print(g[r])

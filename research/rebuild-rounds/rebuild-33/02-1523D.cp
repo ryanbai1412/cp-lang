@@ -1,6 +1,8 @@
 // cf1523d Love-Hate: the answer is liked by some friend among the >= ceil(n/2) who like it,
 // so a random friend is in that group with probability >= 1/2. Restrict every friend to that
 // friend's <= 15 currencies, count masks, and take superset sums over `B.subsets`.
+use std.rand.{Rng}
+
 let n: 1..=2e5 = read()
 let m: 1..=60 = read()
 let p: 1..=15 = read()
@@ -26,5 +28,5 @@ for _ in 0..30:
     for s in B.subsets if cnt[s] >= need and s.len > best_len:
         best_len = s.len
         best = [Cur] c => false
-        for b in s.items: best[mine[b.ord]] = true
+        for b in B if b in s: best[mine[b.ord]] = true
 print(Str(if best[c]: '1' else: '0' for c in Cur))
