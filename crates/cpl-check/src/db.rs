@@ -49,7 +49,7 @@ pub struct Stats {
 
 /// One top-level item's syntax, shared by every revision in which its text
 /// is unchanged.
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct ItemSyntax {
     pub text: String,
     /// Column of the item's first token.
@@ -447,8 +447,6 @@ impl Database {
             };
             items.push(item);
         }
-
-        product_aliases(&mut items);
 
         // The file's scope: the first declaration of a name wins, and later
         // ones are reported below.
@@ -1468,71 +1466,6 @@ fn pattern_binds(pat: &ast::Pattern, name: &str) -> bool {
     match &pat.kind {
         ast::PatternKind::Name(n) => n == name,
         _ => pat.parts().any(|i| pattern_binds(i, name)),
-    }
-}
-
-/// `type Cell = (Row, Col)` over the file's domains is the product domain
-/// `domain Cell = (Row, Col)` (decision 16.5): `[Cell]T` is `[Row, Col]T`
-/// and `for p in Cell` walks it. Rewritten here, after parsing, because
-/// whether `Row` is a domain takes the whole file.
-fn product_aliases(items: &mut [Arc<ItemSyntax>]) {
-    let domains: std::collections::HashSet<&str> = items
-        .iter()
-        .flat_map(|item| &item.parsed.stmts)
-        .filter_map(|stmt| match &stmt.kind {
-            StmtKind::Domain { name, .. } => Some(name.text.as_str()),
-            _ => None,
-        })
-        .collect();
-    let product = |kind: &StmtKind| -> Option<StmtKind> {
-        let StmtKind::TypeAlias { name, generics, ty } = kind else {
-            return None;
-        };
-        let ast::TypeKind::Tuple(factors) = &ty.kind else {
-            return None;
-        };
-        if !generics.is_empty() || factors.len() < 2 {
-            return None;
-        }
-        let factors = factors
-            .iter()
-            .map(|f| match &f.kind {
-                ast::TypeKind::Named { name, args }
-                    if args.is_empty() && domains.contains(name.text.as_str()) =>
-                {
-                    Some(ast::Expr {
-                        kind: ast::ExprKind::Name(name.text.clone()),
-                        span: f.span,
-                    })
-                }
-                _ => None,
-            })
-            .collect::<Option<Vec<_>>>()?;
-        Some(StmtKind::Domain {
-            name: name.clone(),
-            def: ast::Expr {
-                kind: ast::ExprKind::Tuple(factors),
-                span: ty.span,
-            },
-        })
-    };
-    let rewrites: Vec<(usize, usize, StmtKind)> = items
-        .iter()
-        .enumerate()
-        .flat_map(|(i, item)| {
-            item.parsed
-                .stmts
-                .iter()
-                .enumerate()
-                .filter_map(move |(j, stmt)| Some((i, j, product(&stmt.kind)?)))
-                .collect::<Vec<_>>()
-        })
-        .collect();
-    for (i, j, kind) in rewrites {
-        let item = Arc::make_mut(&mut items[i]);
-        item.parsed.stmts[j].kind = kind;
-        item.decls = decls_of(&item.parsed.stmts);
-        item.flow = flow_of(&item.parsed.stmts);
     }
 }
 

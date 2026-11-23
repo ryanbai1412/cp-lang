@@ -50,11 +50,3 @@ Contract tests run alongside all of it: each interface change adds or updates th
 1. `dmopc21c5p2`: bisect the first differing value between `cpl run` and the C++, fix, regression.
 2. `--causes` `wrong output`, one cause per commit.
 3. `etsr23r4p2` internal trap to a named error.
-
-## General fixes owed
-
-Each local fix whose general mechanism is still owed: the instance, the general fix, the owner.
-
-- `type Cell = (Row, Col)` as a product domain: rewritten to `domain Cell = (Row, Col)` per file in `cpl-check/src/db.rs` (`product_aliases`). General: resolve any alias whose type is a tuple of domains, including an imported or generic one, to the product domain in name resolution, so every consumer (checker, IR, LSP hover) sees one definition. Owner: compiler.
-- `a[(i, j)]` vs `a[i, j]`: the checker now flattens a tuple literal index over a multi-dimensional array (`index` in `cpl-check/src/check/expr.rs`). General: desugar decision 2.5 once, before checking and lowering, so no back end sees two forms. Owner: compiler.
-- `D.first` of a provably non-empty domain is still `?D` (R04.2.3, R04.8.4; two conformance cases). General: one non-emptiness fact from domain bounds (`DomainInfo.min_size`, IR `domain_lens`) that types `D.first`/`D.last` as `D`. Patch ready; waiting on the spec call. Owner: spec, then compiler.
