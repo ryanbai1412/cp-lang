@@ -174,7 +174,10 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           shared-key: neovim
+      # bash, so the first failing command fails the step: Windows' default
+      # PowerShell reports only the last command's status.
       - name: CLI tests
+        shell: bash
         run: |
           cargo test -p cpl-cli --lib --test golden --test cli
           cargo test -p cpl-contest
