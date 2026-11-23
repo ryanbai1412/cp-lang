@@ -18,7 +18,7 @@ for _ in 0..(r_cnt - 1):
         row.push(x)
     v_cost.push(row)
 
-let inf = 1000000000
+let inf: Int = 1000000000
 let block = 8
 
 fn relax_row(r: Int, mut dist: List<Int>):

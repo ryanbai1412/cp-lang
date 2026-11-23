@@ -12,8 +12,8 @@ for _ in 0..m:
     let (u, v, l, w): (Int, Int, Int, Int) = read()
     edges.push((u: V(u), v: V(v), l:, w:))
 
-let g = Graph<V, E>.undirected([E] e => (u: edges[e.idx].u, v: edges[e.idx].v))
-let dist = dijkstra(u => g.out(u), [(V.first, 0)], a => edges[a.e.idx].l)
+let g = Graph<V, E>.undirected([E] e => (u: edges[e.ord].u, v: edges[e.ord].v, w: edges[e.ord].l))
+let dist = dijkstra(g, from: [(V.first!, 0)])
 
 var dsu = Dsu<V>()
 var root_of: [V]Int = [V] v => v.idx
@@ -44,6 +44,6 @@ for _ in 0..q:
     let (u0, t0): (Int, Int) = read()
     let u = K((u0 + online * last_ans - 1) % n)
     let t = (t0 + online * last_ans) % (tmax + 1)
-    let top = ktree.lift_while(u, p => if let gval = gate[p.idx]: gval > t else: true)!
+    let top = ktree.jump_while(u, p => if let gval = gate[p.ord]: gval > t else: true)!
     last_ans = mn[top.idx]!
     print(last_ans)
