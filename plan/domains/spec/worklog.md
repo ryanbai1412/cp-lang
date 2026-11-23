@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- Rebuild round 4 landed in `spec/delta/rebuild-4/`: 20 holes (13 silent, 5 contradiction, 2 missing-stdlib) on ten problems round 3 did not use; round 3 was 21. Top three: `p[v]` vs `p.dist[v]` for distances, `Int` indexing a `[n]T`, whether `and` short-circuits. Next: rule, case or question for each.
 - Rerun `cpl-conform conformance` on main 4f2d3b7fa: 2099/2262 pass (163 fail); metrics refreshed.
 - Rebuild round 4 started: a cold agent reads only `spec/` at f6ff5434d and writes ten new CSES problems (flood fill, knapsack, two pointers, Dijkstra, range min, LIS, subtree sizes, borders, DAG longest path, distinct values); its HOLES.md lands under `spec/delta/rebuild-4/` for M3.
 - `core-02/no-boxed-fn-type.cp` (passes): R02.1.3's reject, `Box<Int -> Int>` is E0204. 30 rule gaps, 29 forbidding rules without a reject.

@@ -33,7 +33,7 @@ Spec writes cases, never compiler code: a failing case goes to the owning domain
 
 - **M1 Every rule tested both ways.** Exit: `conformance-coverage.py` reports 0 happy-path-only rules, 0 unknown cites, 0 rule-less core cases, 0 diagnostic codes without a reject case; `conformance-coverage.py --check` runs in the fast gate.
 - **M2 Generated coverage.** Exit: `devin/wip-conformance-matrix` landed and `conformance-matrix.py --check` gates 0 empty cells; `conformance-traits.py --check` gates the trait table, `trait-gaps.txt` only shrinks; spec-blocks: every fence is a case or `spec-only`.
-- **M3 Independently rebuildable.** Exit: rebuild round 3 (cold agent, `spec/` only, 40 questions + 10 programs) records < 5 holes; the bug-catch probe catches >= 90% of reverted compiler fixes.
+- **M3 Independently rebuildable.** Exit: a rebuild round (cold agent, `spec/` only, 40 questions + 10 programs) records < 5 holes; the bug-catch probe catches >= 90% of reverted compiler fixes.
 
 ## Metrics
 
@@ -54,7 +54,7 @@ All values measured 2026-11-22 on `4b8f504f` with a release build; commands in [
 | Matrix empty cells | `conformance-matrix.py --check` | 0 (gated) | 0 | M2 |
 | Trait methods without a case | `conformance-traits.py --check` | 3 of 116 (held range triples) | 0 | M2 |
 | Named args in core/lib that std lacks | `conformance-sigs.py --check` | 6 (`sig-gaps.txt`) | 0 | M3 |
-| Rebuild holes (cold agent) | probe P1 | 21 (round 3; round 2 was 32) | < 5 | M3 |
+| Rebuild holes (cold agent) | probe P1 | 20 (round 4; 21 in round 3, 32 in round 2) | < 5 | M3 |
 | Reverted compiler fixes caught | `conformance-bugcatch.py`, [bugcatch.md](bugcatch.md) | 9/10 revertible (90%); 15 of 25 no longer revert or build | >= 90% | M3 |
 | Banned spellings in spec | `spec-vocab.py` | 0 | 0 | - |
 | Suite wall time (2 cores) | `time cpl-conform conformance spec-blocks` | 8.7 s | < 20 s | - |
