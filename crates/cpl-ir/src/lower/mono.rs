@@ -2037,20 +2037,16 @@ impl<'a> Lowerer<'a> {
                         && gen_names.contains(&name.text)
                         && !inferred.contains_key(&name.text)
                     {
-                        if lparams.len() == 1 {
-                            let dom_ty =
-                                inferred
-                                    .get("V")
-                                    .or_else(|| inferred.get("D"))
-                                    .and_then(|ga| match ga {
-                                        GenArg::Domain(d) => Some(Ty::Pos(*d)),
-                                        GenArg::Ty(t) => Some(t.clone()),
-                                        _ => None,
-                                    });
+                        let vertex = inferred.get("V").or_else(|| inferred.get("D"));
+                        let vertex = vertex.and_then(|ga| match ga {
+                            GenArg::Domain(d) => Some(Ty::Pos(*d)),
+                            GenArg::Ty(t) => Some(t.clone()),
+                            _ => None,
+                        });
+                        if let Some(param) = self.one_param(lparams, vertex.as_ref()) {
                             // `peel(v => adj[v])`: with nothing else to say what a
                             // vertex is, it is what the lambda indexes with `v`.
-                            let dom_ty =
-                                dom_ty.or_else(|| self.indexed_by_param(&lparams[0], lbody));
+                            let dom_ty = vertex.or_else(|| self.indexed_by_param(&param, lbody));
                             if let (Some(Ty::Pos(d)), false) = (&dom_ty, inferred.contains_key("V"))
                             {
                                 if gen_names.iter().any(|g| g == "V") {
@@ -2059,7 +2055,7 @@ impl<'a> Lowerer<'a> {
                             }
                             if let Some(vty) = dom_ty {
                                 if let Some(ret_ty) = self.probe_lambda_ret(
-                                    lparams,
+                                    std::slice::from_ref(&param),
                                     std::slice::from_ref(&vty),
                                     lbody,
                                 ) {
@@ -2822,47 +2818,7 @@ impl<'a> Lowerer<'a> {
         (probed.ty != Ty::Error).then_some(probed.ty)
     }
 
-    /// The fn type a one-parameter lambda passed as `g: Next<V>` (any trait whose first argument
-    /// is the type of what the lambda takes) has, once `V` is known: `scc::<N>(u => adj[u])`.
-    fn trait_lambda_hint(
-        &mut self,
-        pty: &ast::Type,
-        arg: &ast::Expr,
-        inferred: &HashMap<String, GenArg>,
-    ) -> Option<Ty> {
-        let ast::ExprKind::Lambda { params, body, .. } = &arg.kind else {
-            return None;
-        };
-        let ast::TypeKind::Named { args: targs, .. } = &pty.kind else {
-            return None;
-        };
-        let [param] = params.as_slice() else {
-            return None;
-        };
-        let Some(ast::Type {
-            kind: ast::TypeKind::Named { name, args },
-            ..
-        }) = targs.first()
-        else {
-            return None;
-        };
-        if !args.is_empty() {
-            return None;
-        }
-        let pty = match inferred.get(&name.text)? {
-            GenArg::Domain(d) => Ty::Pos(*d),
-            GenArg::Ty(t) => t.clone(),
-            _ => return None,
-        };
-        let ret = self.probe_lambda_ret(
-            std::slice::from_ref(param),
-            std::slice::from_ref(&pty),
-            body,
-        )?;
-        Some(Ty::Fn(vec![pty], Box::new(ret)))
-    }
-
-    fn probe_lambda_ret(
+    pub(super) fn probe_lambda_ret(
         &mut self,
         lparams: &[ast::Pattern],
         p_tys: &[Ty],
