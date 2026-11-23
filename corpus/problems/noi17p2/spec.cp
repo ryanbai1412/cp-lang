@@ -6,26 +6,28 @@
 use std.strings.{HashVal}
 
 type Z = Mod<998244353>
-enum Op = Join(i: W, j: W) | Split(i: W) | Ask(s: Str, k: 1..=50)
+let longest = 50
+enum Op = @tag(1) Join(i: W, j: W) | @tag(2) Split(i: W) | @tag(3) Ask(s: Str, k: 1..=longest)
 
 let (n, q) = read<(1..=2e5, 1..=5e5)>()
 domain W = 1..=n
 let len = read<[W]1..=6>()
 var next: [W]?W = None
 var prev: [W]?W = None
-let hasher = RollingHash.new(List<Int>())
+let hasher = RollingHash.new(List.filled(longest, 0))
 var seen = Counter<HashVal, Int>(0)
 for w in W:
     seen.add(hasher.hash_of([len[w]]), 1)
 
+/// Count (`sign = 1`) or forget (`sign = -1`) every window with `j` right behind `i`.
 fn crossing(i: W, j: W, sign: Int):
-    let left = List(iterate(Some(i), w => prev[w]).take(49))
-    let right = List(iterate(Some(j), w => next[w]).take(49))
-    for a in 1..=left.len:
-        var h = RollingHash.new(left.take(a).rev.map(w => len[w]))
-        for w in right.take(50 - a):
-            h.push(len[w])
-            seen.add(h.all, sign)
+    let left = List(iterate(Some(i), w => prev[w]).take(longest - 1))
+    let right = RollingHash.new(List(iterate(Some(j), w => next[w]).take(longest - 1)).map(w => len[w]), bases: hasher.bases)
+    var tail = HashVal(0, 0)
+    for (a, w) in left.items:
+        tail = hasher.combine(hasher.hash_of([len[w]]), tail, a)
+        for b in 1..=min(right.len, longest - 1 - a):
+            seen.add(hasher.combine(tail, right.get(0..b), b), sign)
 
 for op in read<[q]Op>():
     match op:
@@ -37,4 +39,5 @@ for op in read<[q]Op>():
             crossing(i, j, -1)
             (next[i], prev[j]) = (None, None)
         Ask(s, k) =>
-            print(s.windows(k).map(w => Z(seen.get(hasher.hash_of(w.map(c => c.digit()))))).prod())
+            let h = RollingHash.new(s.map(c => c.digit()), bases: hasher.bases)
+            print((0..=s.len - k).map(at => Z(seen.get(h.get(at..at + k)))).prod())
