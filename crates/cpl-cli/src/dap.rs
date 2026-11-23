@@ -9,7 +9,7 @@
 
 use crate::{compile_side, render_trap, Side};
 use cpl_diag::Shown;
-use cpl_interp::trace::{first_change, string as json_str, Change, Recording, TraceConfig};
+use cpl_interp::trace::{first_change, string as json_str, Change, Recording, Replay, TraceConfig};
 pub(crate) use cpl_json::Value as Json;
 use std::collections::{BTreeMap, HashSet};
 use std::io::{self, BufRead, BufReader, Write};
@@ -57,14 +57,19 @@ struct Session {
     source_name: String,
     recording: Recording,
     trap_message: Option<String>,
-    /// 0-based index of the step it stands at.
+    /// 0-based index in `recording` of the step it stands at.
     cursor: usize,
+    /// The run's step that `recording` starts at: past 0 on a long run.
+    base: usize,
+    /// A run longer than one recording holds traces its other steps again from
+    /// its checkpoints, a window at a time.
+    pager: Option<Replay>,
+    /// How `recording` was traced.
+    config: TraceConfig,
     /// 1-based line breakpoints for the launched file.
     breakpoints: HashSet<u32>,
     stop_on_entry: bool,
     launched: bool,
-    /// Step index that holds the final trap step, if the run trapped.
-    trap_step: Option<usize>,
     brute: bool,
     /// What every recording of this session reads, restarts included.
     input: Vec<u8>,
@@ -83,10 +88,12 @@ impl Session {
             recording: Recording::default(),
             trap_message: None,
             cursor: 0,
+            base: 0,
+            pager: None,
+            config: TraceConfig::default(),
             breakpoints: HashSet::new(),
             stop_on_entry: true,
             launched: false,
-            trap_step: None,
             brute: false,
             input: Vec::new(),
             change: None,
@@ -392,7 +399,7 @@ impl Session {
                     None => {
                         let msg = format!(
                             "can't evaluate `{expr}` at step {}: {}",
-                            self.cursor + 1,
+                            self.base + self.cursor + 1,
                             self.eval_error(expr)
                         );
                         self.send_response(writer, req_seq, command, false, Some(&msg), None)?;
@@ -414,102 +421,117 @@ impl Session {
                 self.send_response(writer, req_seq, command, true, None, None)?;
                 let depth = self.current_depth();
                 let start_line = self.recording.line(self.cursor).unwrap_or(0);
-                if self.cursor + 1 >= self.recording.len() {
-                    self.send_terminated(writer)?;
-                } else {
-                    let mut i = self.cursor + 1;
-                    while i < self.recording.len() {
-                        let (line, d) =
-                            (self.recording.line(i).unwrap_or(0), self.recording.depth(i));
-                        if self.trap_step == Some(i) {
-                            self.cursor = i;
-                            let msg = self.trap_message.clone();
-                            self.send_stopped(writer, "exception", msg.as_deref())?;
-                            return Ok(false);
+                let mut i = self.cursor + 1;
+                loop {
+                    if i >= self.recording.len() {
+                        if self.page_forward() {
+                            i = 0;
+                            continue;
                         }
-                        if self.breakpoints.contains(&line) {
-                            self.cursor = i;
-                            self.send_stopped(writer, "breakpoint", None)?;
-                            return Ok(false);
-                        }
-                        if d <= depth && (line != start_line || i + 1 == self.recording.len()) {
-                            self.cursor = i;
-                            self.send_stopped(writer, "step", None)?;
-                            return Ok(false);
-                        }
-                        i += 1;
+                        self.cursor = self.recording.len().saturating_sub(1);
+                        self.send_terminated(writer)?;
+                        break;
                     }
-                    self.cursor = self.recording.len() - 1;
-                    self.send_terminated(writer)?;
-                }
-            }
-            "stepIn" => {
-                self.send_response(writer, req_seq, command, true, None, None)?;
-                if self.cursor + 1 >= self.recording.len() {
-                    self.send_terminated(writer)?;
-                } else {
-                    self.cursor += 1;
-                    if self.trap_step == Some(self.cursor) {
-                        let msg = self.trap_message.clone();
-                        self.send_stopped(writer, "exception", msg.as_deref())?;
-                    } else {
-                        self.send_stopped(writer, "step", None)?;
-                    }
-                }
-            }
-            "stepOut" => {
-                self.send_response(writer, req_seq, command, true, None, None)?;
-                let target_depth = self.current_depth().saturating_sub(1);
-                let mut found = None;
-                for i in (self.cursor + 1)..self.recording.len() {
-                    if self.trap_step == Some(i) {
+                    let (line, d) = (self.recording.line(i).unwrap_or(0), self.recording.depth(i));
+                    if self.is_trap(i) {
                         self.cursor = i;
                         let msg = self.trap_message.clone();
                         self.send_stopped(writer, "exception", msg.as_deref())?;
                         return Ok(false);
                     }
-                    let d = self.recording.depth(i);
-                    if d <= target_depth
-                        || self
-                            .breakpoints
-                            .contains(&self.recording.line(i).unwrap_or(0))
-                    {
-                        found = Some(i);
+                    if self.breakpoints.contains(&line) {
+                        self.cursor = i;
+                        self.send_stopped(writer, "breakpoint", None)?;
+                        return Ok(false);
+                    }
+                    if d <= depth && (line != start_line || self.is_last(i)) {
+                        self.cursor = i;
+                        self.send_stopped(writer, "step", None)?;
+                        return Ok(false);
+                    }
+                    i += 1;
+                }
+            }
+            "stepIn" => {
+                self.send_response(writer, req_seq, command, true, None, None)?;
+                let moved = if self.cursor + 1 < self.recording.len() {
+                    self.cursor += 1;
+                    true
+                } else {
+                    self.page_forward()
+                };
+                if !moved {
+                    self.send_terminated(writer)?;
+                } else if self.is_trap(self.cursor) {
+                    let msg = self.trap_message.clone();
+                    self.send_stopped(writer, "exception", msg.as_deref())?;
+                } else {
+                    self.send_stopped(writer, "step", None)?;
+                }
+            }
+            "stepOut" => {
+                self.send_response(writer, req_seq, command, true, None, None)?;
+                let target_depth = self.current_depth().saturating_sub(1);
+                let mut i = self.cursor + 1;
+                loop {
+                    if i >= self.recording.len() {
+                        if self.page_forward() {
+                            i = 0;
+                            continue;
+                        }
+                        self.send_terminated(writer)?;
                         break;
                     }
-                }
-                match found {
-                    Some(i) => {
+                    if self.is_trap(i) {
                         self.cursor = i;
-                        let reason = if self
-                            .breakpoints
-                            .contains(&self.recording.line(i).unwrap_or(0))
-                        {
-                            "breakpoint"
-                        } else {
-                            "step"
-                        };
-                        self.send_stopped(writer, reason, None)?;
+                        let msg = self.trap_message.clone();
+                        self.send_stopped(writer, "exception", msg.as_deref())?;
+                        break;
                     }
-                    None => self.send_terminated(writer)?,
+                    let at_breakpoint =
+                        (self.breakpoints).contains(&self.recording.line(i).unwrap_or(0));
+                    if self.recording.depth(i) <= target_depth || at_breakpoint {
+                        self.cursor = i;
+                        let reason = if at_breakpoint { "breakpoint" } else { "step" };
+                        self.send_stopped(writer, reason, None)?;
+                        break;
+                    }
+                    i += 1;
                 }
             }
             "stepBack" => {
                 self.send_response(writer, req_seq, command, true, None, None)?;
                 if self.cursor > 0 {
                     self.cursor -= 1;
+                } else {
+                    self.page_back();
                 }
                 self.send_stopped(writer, "step", None)?;
             }
             "reverseContinue" => {
                 self.send_response(writer, req_seq, command, true, None, None)?;
                 let mut i = self.cursor;
-                while i > 0 {
+                loop {
+                    if i == 0 {
+                        // With nothing to stop at on the way, only the first steps are traced again.
+                        let earlier_change = matches!(&self.change, Some(c) if c.step < self.base);
+                        if self.breakpoints.is_empty() && !earlier_change && self.goto(0) {
+                            self.send_stopped(writer, "step", None)?;
+                            break;
+                        }
+                        if self.page_back() {
+                            i = self.recording.len();
+                            continue;
+                        }
+                        self.cursor = 0;
+                        self.send_stopped(writer, "step", None)?;
+                        break;
+                    }
                     i -= 1;
-                    if let Some(text) = self.change_at(i) {
+                    if let Some(text) = self.change_at(self.base + i) {
                         self.cursor = i;
                         self.send_stopped(writer, "divergence", Some(&text))?;
-                        return Ok(false);
+                        break;
                     }
                     if self
                         .breakpoints
@@ -517,11 +539,9 @@ impl Session {
                     {
                         self.cursor = i;
                         self.send_stopped(writer, "breakpoint", None)?;
-                        return Ok(false);
+                        break;
                     }
                 }
-                self.cursor = 0;
-                self.send_stopped(writer, "step", None)?;
             }
             // Records the file on disk again, on the same input, and stops
             // where the old run stood: the same visit to the same line.
@@ -537,18 +557,25 @@ impl Session {
                         }
                     }
                 }
-                let (at, place) = (self.cursor, self.recording.place(self.cursor));
+                // On a long run the place is the step's number: visits count from the window.
+                let (at, base) = (self.base + self.cursor, self.base);
+                let place = (base == 0)
+                    .then(|| self.recording.place(self.cursor))
+                    .flatten();
                 let before = std::mem::take(&mut self.recording);
-                let (trap_message, trap_step) = (self.trap_message.clone(), self.trap_step);
                 if let Err(msg) = self.record(writer)? {
-                    (self.recording, self.trap_message, self.trap_step) =
-                        (before, trap_message, trap_step);
+                    (self.recording, self.base) = (before, base);
                     let msg = format!("{msg}\nkept the last good recording");
                     self.send_response(writer, req_seq, command, false, Some(&msg), None)?;
                     return Ok(false);
                 }
-                self.cursor = place.map_or(0, |p| self.recording.find(p, at));
-                self.change = first_change(&before, &self.recording);
+                self.cursor = place.map_or(at, |p| self.recording.find(p, at));
+                if self.cursor >= self.recording.len() && !self.goto(at) {
+                    self.cursor = self.recording.len().saturating_sub(1);
+                }
+                self.change = (base == 0)
+                    .then(|| first_change(&before, &self.recording))
+                    .flatten();
                 self.send_response(writer, req_seq, command, true, None, None)?;
                 if self.recording.is_empty() {
                     self.send_terminated(writer)?;
@@ -580,7 +607,7 @@ impl Session {
                     .and_then(|a| a.get("fn"))
                     .and_then(Json::as_str)
                     .map(str::to_string);
-                let step = self.cursor;
+                let step = self.base + self.cursor;
                 let pick = |recorded: &Recording| match &name {
                     None => crate::replay::call_at(recorded, step, frame),
                     Some(name) => {
@@ -695,6 +722,7 @@ impl Session {
             max_steps: Some(MAX_STEPS),
             ..TraceConfig::default()
         };
+        self.config = config.clone();
         let mut printed = Vec::new();
         let observed = cpl_interp::run_observed(
             &compiled.program,
@@ -705,15 +733,23 @@ impl Session {
             Some(config),
         );
         self.recording = observed.recording.unwrap_or_default();
+        self.base = 0;
         self.source = compiled.text.clone();
         self.trap_message = observed
             .trap
             .as_ref()
             .map(|t| render_trap(&program, &compiled.text, t));
-        self.trap_step = observed
-            .trap
-            .as_ref()
-            .and_then(|_| self.recording.len().checked_sub(1));
+        // A run stopped from outside would not end at the same step again.
+        let ended = !observed.trap.as_ref().is_some_and(|t| {
+            [cpl_interp::OUT_OF_TIME, cpl_interp::CANCELLED].contains(&t.message.as_str())
+        });
+        self.pager = (self.recording.truncated && ended).then(|| {
+            Replay::start(
+                compiled.program.clone(),
+                self.input.clone(),
+                self.config.clone(),
+            )
+        });
         self.change = None;
         if !printed.is_empty() {
             self.send_output(writer, "stdout", &String::from_utf8_lossy(&printed))?;
@@ -732,31 +768,124 @@ impl Session {
         writer: &mut dyn Write,
         include_current: bool,
     ) -> io::Result<()> {
-        let start = if include_current {
+        let mut start = if include_current {
             self.cursor
         } else {
             self.cursor + 1
         };
-        for i in start..self.recording.len() {
-            if self.trap_step == Some(i) {
-                self.cursor = i;
-                let msg = self.trap_message.clone();
-                return self.send_stopped(writer, "exception", msg.as_deref());
+        let mut jumped = false;
+        loop {
+            for i in start..self.recording.len() {
+                if self.is_trap(i) {
+                    self.cursor = i;
+                    let msg = self.trap_message.clone();
+                    return self.send_stopped(writer, "exception", msg.as_deref());
+                }
+                if let Some(text) = self.change_at(self.base + i) {
+                    self.cursor = i;
+                    return self.send_stopped(writer, "divergence", Some(&text));
+                }
+                if self
+                    .breakpoints
+                    .contains(&self.recording.line(i).unwrap_or(0))
+                {
+                    self.cursor = i;
+                    return self.send_stopped(writer, "breakpoint", None);
+                }
             }
-            if let Some(text) = self.change_at(i) {
-                self.cursor = i;
-                return self.send_stopped(writer, "divergence", Some(&text));
+            // With nothing to stop at on the way, only the run's end is traced again.
+            let later_change = matches!(&self.change, Some(c) if c.step >= self.base);
+            let jump = !jumped && self.breakpoints.is_empty() && !later_change;
+            jumped |= jump;
+            let turned = if jump {
+                self.page_last()
+            } else {
+                self.page_forward()
+            };
+            if !turned {
+                break;
             }
-            if self
-                .breakpoints
-                .contains(&self.recording.line(i).unwrap_or(0))
-            {
-                self.cursor = i;
-                return self.send_stopped(writer, "breakpoint", None);
-            }
+            start = self.cursor;
         }
         self.cursor = self.recording.len().saturating_sub(1);
         self.send_terminated(writer)
+    }
+
+    /// Whether step `i` of `recording` is the run's last.
+    fn is_last(&self, i: usize) -> bool {
+        i + 1 == self.recording.len() && !(self.recording.truncated && self.pager.is_some())
+    }
+
+    /// Whether step `i` of `recording` is where the run trapped.
+    fn is_trap(&self, i: usize) -> bool {
+        self.trap_message.is_some() && self.is_last(i)
+    }
+
+    /// Traces the run's steps `from..from + steps` again, as `recording`.
+    fn load(&mut self, from: usize, steps: usize) -> bool {
+        let Some(pager) = &self.pager else {
+            return false;
+        };
+        let config = TraceConfig {
+            from_step: Some(from),
+            max_steps: Some(steps),
+            ..self.config.clone()
+        };
+        match pager.window(config).recording {
+            Some(rec) if !rec.is_empty() => {
+                (self.base, self.recording) = (rec.skipped, rec);
+                true
+            }
+            _ => false,
+        }
+    }
+
+    /// Moves on to the steps after `recording`, standing at the first.
+    fn page_forward(&mut self) -> bool {
+        let from = self.base + self.recording.len();
+        let turned = self.recording.truncated && self.load(from, PAGE);
+        if turned {
+            self.cursor = 0;
+        }
+        turned
+    }
+
+    /// Moves back to the steps before `recording`, standing at the last.
+    fn page_back(&mut self) -> bool {
+        let from = self.base.saturating_sub(PAGE);
+        let turned = self.base > 0 && self.load(from, self.base - from);
+        if turned {
+            self.cursor = self.recording.len() - 1;
+        }
+        turned
+    }
+
+    /// Moves to the run's last steps, standing at the last.
+    fn page_last(&mut self) -> bool {
+        let Some(pager) = &self.pager else {
+            return false;
+        };
+        let counted = pager.window(TraceConfig {
+            from_step: Some(usize::MAX),
+            ..self.config.clone()
+        });
+        let Some(steps) = counted.recording.map(|rec| rec.skipped) else {
+            return false;
+        };
+        let turned = self.load(steps.saturating_sub(PAGE), PAGE);
+        if turned {
+            self.cursor = self.recording.len() - 1;
+        }
+        turned
+    }
+
+    /// Moves to the run's step `at`, in a window that starts at it.
+    fn goto(&mut self, at: usize) -> bool {
+        let turned = self.load(at, PAGE);
+        if turned {
+            self.cursor = 0;
+        }
+        turned
     }
 
     /// A watch or console expression over the recorded state at the cursor:
@@ -1119,6 +1248,9 @@ fn read_input(program: &str, args: Option<&Json>) -> Result<(Vec<u8>, Option<Str
 
 /// What a debug session records: a run of 10^7 steps fits in a few hundred MB.
 const MAX_STEPS: usize = 10_000_000;
+
+/// The steps of a longer run traced again at a time, from its checkpoints.
+const PAGE: usize = 1_000_000;
 
 fn describe_change(change: &Change) -> String {
     let source = |json: &Option<String>, ended: &str| match json.as_deref().map(cpl_json::parse) {

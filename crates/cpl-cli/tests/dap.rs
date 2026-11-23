@@ -566,6 +566,57 @@ fn dap_replays_one_call_with_the_edited_fn() {
 }
 
 #[test]
+fn dap_reaches_every_step_of_a_run_longer_than_a_recording() {
+    // About 1.5*10^7 steps, more than one recording keeps: the trap is past it.
+    let path = write_temp(
+        "long_dap",
+        "\
+let n: Int = read()
+var i = 0
+while i < n:
+    i += 1
+let d = i - i
+print(i / d)
+",
+    );
+    let p = path.to_str().unwrap().replace('\\', "\\\\");
+    let mut dap = DapClient::spawn();
+    dap.send("initialize", Some("{\"adapterID\":\"cp\"}"));
+    let _ = dap.recv_until("\"event\":\"initialized\"");
+    dap.send(
+        "launch",
+        Some(&format!(
+            "{{\"program\":\"{p}\",\"stopOnEntry\":false,\"inputText\":\"15000000\\n\"}}"
+        )),
+    );
+    let _ = dap.recv_until("\"command\":\"launch\"");
+    dap.send("configurationDone", None);
+    let stopped = dap.recv_until("\"event\":\"stopped\"");
+    assert!(stopped.contains("division by zero"), "{stopped}");
+    dap.send("evaluate", Some("{\"expression\":\"i\"}"));
+    let i = dap.recv_until("\"command\":\"evaluate\"");
+    assert!(
+        i.contains("\"result\":\"15000000\""),
+        "stopped at the trap: {i}"
+    );
+    dap.send("stackTrace", Some("{\"threadId\":1}"));
+    let frame = dap.recv_until("\"command\":\"stackTrace\"");
+    assert!(frame.contains("\"line\":6"), "{frame}");
+    // Back through every window to the first step.
+    dap.send("reverseContinue", Some("{\"threadId\":1}"));
+    let _ = dap.recv_until("\"event\":\"stopped\"");
+    dap.send("stackTrace", Some("{\"threadId\":1}"));
+    let frame = dap.recv_until("\"command\":\"stackTrace\"");
+    assert!(frame.contains("\"line\":1,"), "{frame}");
+    dap.send("next", Some("{\"threadId\":1}"));
+    let _ = dap.recv_until("\"event\":\"stopped\"");
+    dap.send("evaluate", Some("{\"expression\":\"n\"}"));
+    let n = dap.recv_until("\"command\":\"evaluate\"");
+    assert!(n.contains("\"result\":\"15000000\""), "{n}");
+    dap.finish();
+}
+
+#[test]
 fn a_message_without_a_content_length_ends_the_session_with_exit_1() {
     let mut client = DapClient::spawn();
     use std::io::Write;
