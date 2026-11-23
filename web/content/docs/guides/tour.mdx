@@ -9,7 +9,7 @@ You already know how to solve the problem. This chapter is about expressing the 
 
 Use `let` by default, `var` for bindings that change, and `const` for compile-time constants. `Int` is the default 64-bit signed integer. A range type states the problem's constraint right where the value enters the program.
 
-```cp
+```cp input="4\n3 1 4 1\n"
 let n: 1..=100 = read()
 domain V = 1..=n
 let a: [V]0..=1000 = read()
@@ -23,7 +23,7 @@ Range-typed storage uses the smallest fitting integer width while arithmetic run
 
 When you want a plain integer-indexed array without introducing a nominal domain, write the bounds directly and reset with `.fill`:
 
-```cp
+```cp input="5 3\n0 1 3 1 3\n"
 let n: 1..=100 = read()
 let k: 1..=100 = read()
 let a: [0..n]0..=k = read()
@@ -40,7 +40,7 @@ In CP Lang, `cnt.fill(0)` resets the entire array in place (and `seen.fill(none)
 
 `?T` means “a `T`, or `none`”. `??` supplies a fallback, `if let` binds a present value, and `opt!` unwraps when you know it exists. A missing answer is not `-1`, and an unreachable distance is not `1e18`.
 
-```cp
+```cp input="4\n3 8 5 2\n"
 let n: 1..=100 = read()
 domain V = 1..=n
 let a: [V]Int = read()
@@ -155,7 +155,7 @@ match move:
 
 A program is its top-level statements, run in order from top to bottom. There is no `fn main()` and no `fn solve()` wrapper, with one test case or with many:
 
-```cp
+```cp input="3\n1 2 3\n"
 let n: 0..=2e5 = read()
 if n == 0:
     print("empty")
@@ -169,7 +169,7 @@ A top-level `return` ends the program. It takes no value and works from inside a
 
 When the input holds many test cases, add one line. `@!multitest` is a divider. The `!` marks a directive for the rest of the file, where a plain `@` decorates only the one item below it: everything above it runs once, and everything below it runs once per test case. The number of test cases is read for you at the divider.
 
-```cp
+```cp input="2\n3\n1 2 3\n0\n"
 let sv = Sieve(1e6)             // above the divider: built once, shared by every test case
 
 @!multitest
