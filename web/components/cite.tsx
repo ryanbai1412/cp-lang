@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import Link from 'next/link';
+import { decisionHrefs } from '@/lib/decisions';
 
 // Citations in the Language chapters. Each reads the cited file at build time
 // and fails the build if the decision or the spec heading is gone, so a
@@ -22,10 +23,11 @@ const headings = (file: string) =>
 
 export function Decision({ n, children }: { n: number; children?: React.ReactNode }) {
   const heading = headings('decisions.md').find((h) => h.startsWith(`${n}. `));
-  if (!heading) throw new Error(`<Decision n={${n}}>: decisions.md has no "## ${n}." entry`);
+  const href = decisionHrefs().get(String(n));
+  if (!heading || !href) throw new Error(`<Decision n={${n}}>: decisions.md has no "## ${n}." entry`);
   const title = heading.slice(`${n}. `.length).replace(/\s*\([^)]*\d{4}-\d\d-\d\d[^)]*\)$/, '');
   return (
-    <a href={`${blob}/decisions.md#${slug(heading)}`} title={title}>
+    <a href={href} title={title}>
       {children ?? `decision ${n}`}
     </a>
   );

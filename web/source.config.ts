@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { relative, resolve } from 'node:path';
 import { defineConfig, defineDocs } from 'fumadocs-mdx/config';
+import { decisionHrefs } from './lib/decisions';
 import rehypeKatex from 'rehype-katex';
 import remarkMath from 'remark-math';
 
@@ -21,6 +22,43 @@ function sourceAttrs(value = '') {
 }
 
 // A fence written ```cp run input="..." becomes a live <Runner>; the snippet gate reads the same fence.
+// "decision 128", "decisions 53 and 61", and links into decisions.md on
+// GitHub: each number that names an entry links to its page on /decisions.
+const decided = decisionHrefs();
+const cite = /\b([Dd]ecisions?) (\d+(?:\.\d+)?(?:(?:, | and | or )\d+(?:\.\d+)?)*)/g;
+const github = /decisions\.md#(\d+)(?:-|$)/;
+type MdNode = { type: string; value?: string; url?: string; children?: MdNode[] };
+function remarkDecisions() {
+  const walk = (node: MdNode) => {
+    const gh = node.type === 'link' && github.exec(node.url ?? '');
+    if (gh && decided.has(gh[1])) node.url = decided.get(gh[1]);
+    if (!node.children || node.type === 'link' || node.type === 'heading') return;
+    node.children = node.children.flatMap((child) => {
+      if (child.type !== 'text' || !child.value) {
+        walk(child);
+        return [child];
+      }
+      const out: MdNode[] = [];
+      let last = 0;
+      for (const m of child.value.matchAll(cite)) {
+        out.push({ type: 'text', value: child.value.slice(last, m.index) + m[1] + ' ' });
+        for (const piece of m[2].split(/(, | and | or )/)) {
+          out.push(
+            decided.has(piece)
+              ? { type: 'link', url: decided.get(piece), children: [{ type: 'text', value: piece }] }
+              : { type: 'text', value: piece },
+          );
+        }
+        last = m.index + m[0].length;
+      }
+      if (!out.length) return [child];
+      out.push({ type: 'text', value: child.value.slice(last) });
+      return out;
+    });
+  };
+  return (tree: MdNode) => walk(tree);
+}
+
 function remarkRun() {
   const visit = (node: Node) => {
     node.children?.forEach((child, i) => {
@@ -76,7 +114,7 @@ function remarkLive() {
 
 export default defineConfig({
   mdxOptions: {
-    remarkPlugins: [[remarkMath, { singleDollarTextMath: false }], remarkLive, remarkRun],
+    remarkPlugins: [[remarkMath, { singleDollarTextMath: false }], remarkLive, remarkRun, remarkDecisions],
     rehypePlugins: (v) => [rehypeKatex, ...v],
     rehypeCodeOptions: {
       themes: { light: 'github-light', dark: 'github-dark' },
