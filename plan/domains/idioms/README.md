@@ -23,6 +23,18 @@ Packet: [PLAN.md](PLAN.md) (detail), [metrics.toml](metrics.toml) (commands + to
 2. Score run 1, publish BLOCKERS.md, send each lane its rows, then rerun every 2 hours, with a worklog checkpoint each time.
 3. A CI job on Linux, macOS and Windows that follows the site's install and CLI steps and writes its results into the run.
 
+## Milestone 2 (after the Milestone 1 exit criteria pass)
+[plan/product/MILESTONE-2.md](../../product/MILESTONE-2.md): stable, for strangers. The most ambitious version of idioms: **every CPL program a model or a person writes from the docs is correct, idiomatic and fast on the first try, and we can prove it on every release.**
+- **Acceptance for strangers.** The run covers J1-J10 on all three OSes for each release candidate. It uses several personas: beginner, Codeforces 1500+, an elite contestant, and a PL-curious reader. Each run gets a fresh unseen set: 10 Div2, 5 Div1, plus a timed round. Stable is promoted only when every step passes on every OS and BLOCKERS.md has no P0.
+- **Idiomatic corpus.** All 305 ports are re-ported from `dream.cp`. Taste-review median is at least 4, with none under 3. Contestant tokens: median at most 0.6x C++, none above 1.0x. Every port is judge-covered and checks byte for byte across releases, with pins and codemods. The corpus reaches 100/100 on `cpl-conform corpus`.
+- **Performance, on the corpus.** Idiomatic code runs at p50 <= 1.1x, p95 <= 1.2x and max <= 1.5x of matched C++. Tuned code runs at max <= 1.1x. Every solution is under 32 KB.
+- **Full lint catalog.** Every catalog row is implemented or explicitly rejected. The newcomer set reaches >= 95% flagged, with 0 broken fixes and every lint linked to its `/lints/<name>` page. Every port is lint-clean, or carries a reason.
+- **Skill and docs.** The bundled skill and the site pass a fresh unseen set of 20 problems blind each release. Writable-from-docs is 55/55.
+
+**Exit criteria:** the latest release-candidate run passes J1-J10 on Linux, macOS and Windows for every persona; the corpus, perf, lint and skill numbers above are met and measured by `metrics.toml` commands; BLOCKERS.md has 0 open P0 or blocker rows.
+
+**Next steps (once Milestone 1 passes):** fresh unseen sets per run; the beginner and elite personas; idiomatic re-ports, worst-reviewed first.
+
 ## Mission
 What idiomatic v0.3 looks like, written down (skill, principles, idiom catalog) and proven (re-ports on every judge, dry runs, blind evals, new problems). A cold model given the skill writes code that says the editorial's idea, and the corpus proves it is accepted on every judge.
 

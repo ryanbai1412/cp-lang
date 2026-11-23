@@ -76,11 +76,11 @@ note = "Re-running needs a cold model; site shares this eval."
 [[metric]]
 name = "acceptance_steps"
 command = "uv run python research/acceptance/blockers.py && head -12 plan/product/BLOCKERS.md"
-today = "no scored run yet; run 1 started 2026-11-22 21:29 (Linux, Neovim); CI install+CLI 11/11 on linux and windows, 10/11 on macos (run 45119359976, timeout(1) missing, fixed)"
+today = "run 1 (2026-11-23-1, Linux, Neovim): 7/8 steps (install fails); judge solve 9/10, compete 5/5; 3 P0; CI install+CLI 11/11 linux and windows, 10/11 macos (timeout(1), fixed)"
 target = "8/8 steps on Linux, macOS and Windows; solve >= 8/10, compete >= 4/5 in 2 h; 0 open blocker rows (Milestone 1)"
 
 [[metric]]
 name = "newcomer_lint_flagged"
 command = "uv run python corpus/newcomer/score.py --fixes"
-today = "56/87 marked spots (64%), 12 unmarked diagnostics, 2/50 files fail cpl check after --fix (2026-11-22)"
+today = "65/105 marked spots (62%), 58 files, 7 unmarked diagnostics, 58/58 still pass cpl check after --fix (2026-11-22 22:15, main after 64c7bc5f3)"
 target = ">= 90% flagged, 0 files broken by fixes (Milestone 1, 09:30 PST 2026-11-23)"
