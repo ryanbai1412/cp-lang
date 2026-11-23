@@ -17,6 +17,6 @@ var f = Prefix<t.Pre, t.Pre, Z>.filling(order: FillOrder.Reverse)
 for u in t.at.rev:
     let (x, su, bu) = (t.pos(u), s[u], t.below(u))
     for v in t.at.rev:
-        let val = if su == s[v]: 1 + f.sum(bu, t.below(v)) else: 0
+        let val = if su == s[v]: 1 + f.fold(bu, t.below(v)) else: 0
         f.set(x, t.pos(v), val)
-print([f.sum(t.sub(v), t.sub(v)) for v in V])
+print([f.fold(t.sub(v), t.sub(v)) for v in V])

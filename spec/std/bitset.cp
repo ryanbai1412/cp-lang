@@ -1194,6 +1194,7 @@ impl Sub for Bitset<D>:
     fn sub(a, b):
         var out = Bitset<D>.new()
         for k in 0..a.w.len: out.w[k] = a.w[k] & ~b.w[k]
+        out.recount()
         out
 
 /// Index of the highest set bit in non-zero `x` (0..64).
@@ -1251,6 +1252,7 @@ fn set_algebra_matches_bool_arrays():
         assert s.contains(p) == (x[p] != y[p])
     assert bx.meets(by) != n.is_empty
     assert bx.len == sum(1 for p in P if x[p])
+    assert (bx - by).len == d.len
 
 @test
 fn shifted_matches_moving_each_position():
