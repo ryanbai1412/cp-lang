@@ -227,21 +227,33 @@ async function runAll(sources) {
   return new Map([...sources].map((src) => [src, cache[key(src)]]));
 }
 
+// Runs each example's first program, and the next only where the one before
+// failed: most print, so the assert fallbacks rarely run.
+async function runInTurn(tries) {
+  const ran = new Map();
+  for (let turn = 0; ; turn++) {
+    const next = new Set(tries.filter((t) => t.length > turn && !t.slice(0, turn).some((src) => ran.get(src))).map((t) => t[turn]));
+    if (!next.size) return ran;
+    for (const [src, ok] of await runAll(next)) ran.set(src, ok);
+  }
+}
+
 const index = [];
 const modules = std.modules.filter((m) => m.items.some((i) => /^pub\b/.test(i.signature))).sort((a, b) => a.name.localeCompare(b.name));
-const sources = new Set();
+// Each example's programs, in the order renderExample tries them.
+const tries = [];
 const collect = (item, module, parentDoc, shared) => {
   const own = item.doc && item.doc !== parentDoc ? item.doc : '';
   for (const e of splitDoc(own).examples) {
     const { setup, bodies } = programs(e, module, shared);
-    for (const b of bodies) sources.add(`${setup}\n${b}\n`);
+    tries.push(bodies.map((b) => `${setup}\n${b}\n`));
   }
   const memberShared = item.members?.length ? commonSetup(memberExamples(item).map(parseExample)) : [];
   for (const m of item.members ?? []) collect(m, module, item.doc, memberShared);
 };
 for (const m of modules) for (const i of m.items) collect(i, m.name, '', []);
 const ctx = {
-  ran: await runAll(sources),
+  ran: await runInTurn(tries),
   failing: [],
   anchors: [],
   math(text, where, cost = false) {
@@ -300,7 +312,7 @@ for (const [module, list] of Object.entries(items)) {
 }
 const failingFile = join(web, 'node_modules/.cache/doc-examples-failing.txt');
 writeFileSync(failingFile, ctx.failing.join('\n') + '\n');
-console.log(`ref: ${specPages} spec pages, ${modules.length} library modules, ${index.length} items; examples: ${sources.size} programs, ${ctx.failing.length} shown static (listed in ${failingFile.slice(repo.length + 1)})`);
+console.log(`ref: ${specPages} spec pages, ${modules.length} library modules, ${index.length} items; examples: ${ctx.ran.size} programs, ${ctx.failing.length} shown static (listed in ${failingFile.slice(repo.length + 1)})`);
 if (mathErrors.length) {
   console.error(`gen-ref: ${mathErrors.length} math spans KaTeX can't render:\n${mathErrors.slice(0, 20).join('\n')}`);
   process.exit(1);
