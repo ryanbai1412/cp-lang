@@ -1116,6 +1116,10 @@ fn signature_of(
     } else {
         scope_entry(cursor, std, name)
     };
+    // A method the receiver's type doesn't offer (another module's internals).
+    if method && declared.is_none() {
+        return None;
+    }
     let rel = callee_end as u32 - item.offset;
     let checked = item
         .check

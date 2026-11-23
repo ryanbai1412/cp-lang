@@ -457,6 +457,14 @@ fn a_library_type_offers_its_api_not_its_internals() {
         sort_of("fold"),
         sort_of("source")
     );
+    // Signature help offers the API and not the internals.
+    let call = src.replace("t.|", "t.fold(|");
+    assert!(
+        !ask_at("textDocument/signatureHelp", &call).is_null(),
+        "{call}"
+    );
+    let call = src.replace("t.|", "t.push(|");
+    assert_eq!(ask_at("textDocument/signatureHelp", &call), Value::Null);
     // Hover on the type shows the same.
     let (mut server, _) = open(&src.replace("t.|\n", "print(t)\n"));
     let hover = hover_at(&mut server, 1, 10);
