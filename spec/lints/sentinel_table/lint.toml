@@ -1,0 +1,5 @@
+code = "L0530"
+level = "warn"
+group = "idiom"
+title = "Sentinel value meaning absent"
+summary = "`var memo: [D]Int = -1` tested with `== -1`: `[D]?Int` starting at `none`"

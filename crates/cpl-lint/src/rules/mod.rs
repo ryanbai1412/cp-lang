@@ -18,6 +18,7 @@ mod pops;
 mod proven;
 mod reverse;
 mod scopes;
+mod sentinel;
 mod taste;
 mod types;
 
@@ -36,6 +37,7 @@ pub(crate) fn run(file: &File, config: &Config) -> Vec<Finding> {
     findings.extend(euclid::check(file));
     findings.extend(reverse::check(file));
     findings.extend(isqrt::check(file));
+    findings.extend(sentinel::check(file));
     findings.extend(floats::check(file));
     findings.extend(imports::check(file));
     findings.extend(fields::check(file));

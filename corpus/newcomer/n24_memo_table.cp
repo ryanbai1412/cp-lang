@@ -1,5 +1,5 @@
 let n: 1..=90 = read()
-var memo: [0..=90]Int = -1  // expect: missing memo-table-with-sentinel
+var memo: [0..=90]Int = -1  // expect: sentinel_table
 fn fib(i: Int) -> Int:
     if i < 2:
         return i
