@@ -7,19 +7,73 @@
 | Status | Active |
 | Describes | `crates/cpl-cli`, `crates/cpl-contest`, `crates/cpl-lsp`, `crates/cpl-doc`, `crates/cpl-json`, `editors/`, `spec/tools/cli.md`, `spec/tools/bundle.md`, `spec/tools/explain.md` |
 
-## Mission
+The tools domain owns everything a contestant touches to drive CP Lang:
+the `cpl` command, the language server behind every editor, the editor
+packages themselves, and the contest workflow that turns a problem page into
+a folder of tests. If you have used CP Lang from a terminal or an editor,
+you have used this domain's work.
 
-A contestant who has never used CP Lang installs it, opens a problem in
-their editor, and goes from Competitive Companion's button to an accepted
-submission without reading anything but `cpl --help`. Every `cpl` command
-and every editor answers fast, does what its name says, and tells the truth
-about the program, with one vocabulary and one JSON contract, all on the
-compiler's query API.
+## What good looks like
 
-Example: on a Codeforces problem page the contestant clicks Competitive
-Companion, gets `a.cp` and `a.tests/` with the samples, types a solution
-with completion and hover, runs `cpl test a` (or the editor's test panel),
-and pastes `cpl b -c`'s single C++17 file into the judge.
+A contestant who has never used CP Lang should be able to install it, open
+a problem in their own editor, and get to an accepted submission without
+reading anything except `cpl --help`.
+
+Concretely: on a Codeforces problem page they click Competitive Companion
+and get `a.cp` with the samples beside it. They type the solution with
+completion and hover that never lie, run `cpl test a` or press the editor's
+test button, and paste the single C++17 file from `cpl b -c` into the judge.
+Every step answers within a fraction of a second, and works the same on
+Linux, macOS and Windows, in Neovim, VS Code and JetBrains.
+
+## How it fits together
+
+There is one program, `cpl`, and every surface is a thin client of it.
+
+- **Commands** (`check`, `run`, `test`, `build`, `fix`, `explain` and
+  the rest) are plain functions that take arguments and write output. They
+  never exit the process, so tests and the browser can call them directly.
+- **The language server** (`cpl lsp`) gives every editor the same
+  diagnostics, hover, completion, navigation and fixes. The browser
+  playground runs the same server compiled to WebAssembly, so the website
+  and your editor can't disagree.
+- **Editor packages** add only what an editor needs: starting the server,
+  syntax highlighting and a test panel. The intelligence lives in the server.
+- **None of it reimplements the compiler.** Commands and the server ask the
+  compiler's shared, incremental analysis for answers, so what an editor
+  shows is exactly what `cpl check` reports.
+
+## How we know it is good
+
+Each command has snapshot tests of its help, output, errors and exit codes,
+checked against the CLI spec. The language server has fixture tests that
+place a cursor in a program and assert the answer, plus fuzzing and latency
+budgets. Parity tests check that the editor, the browser and the command
+line give the same answers. Each editor runs a smoke test in CI on all
+three operating systems.
+
+The weakest areas today are completion (we check that it answers, not that
+it offers the right thing first), hover coverage of every token, and making
+hover, signature help, completion and docs come from one description of a
+function. Those are first in line. The full list of qualities, with the
+check behind each, is the quality register at the end of this document.
+
+## Where to start
+
+- **Adding or changing a command:** update `spec/tools/cli.md`, then the
+  command in `crates/cpl-cli`, then its snapshot in the golden suite.
+- **Adding an editor feature:** implement it once in `crates/cpl-lsp` with
+  a fixture test, and add a parity case so the browser gets it too.
+- **Fixing an editor package:** `editors/<editor>/`, and run
+  `editors/smoke.sh`.
+
+---
+
+# Reference
+
+The rest of this document is for looking things up: the exact scope, the
+interfaces other domains rely on, every quality we track and the suites
+that check them.
 
 ## Scope
 
