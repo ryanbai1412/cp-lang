@@ -1135,3 +1135,6 @@ mod record_tests;
 
 #[cfg(test)]
 mod std_tests;
+
+#[cfg(test)]
+mod corpus_tests;
