@@ -13,10 +13,10 @@ came of each mutant it planted.
 | state | mutants |
 |---|---|
 | caught at `d711d1a27` | 5 |
-| caught by a case added since | 3 |
+| caught by a case added since | 5 |
 | case landed, passes once the interpreter's trap code is fixed | 1 |
 | equivalent: no checked program behaves differently | 6 |
-| open: asked compiler for a program or an equivalence proof | 5 |
+| open: asked compiler for a program or an equivalence proof | 3 |
 
 | site | state | evidence |
 |---|---|---|
@@ -31,9 +31,9 @@ came of each mutant it planted.
 | `cpl-interp/src/vm/compile/call_mix.rs:72` | equivalent | `false` only sends a list cell's `mut` argument down the slow path; `core-05/mut-cell-of-2d-array-as-argument` (`e107dbf2b`) covers the 2-D side |
 | `cpl-codegen/src/ranges.rs:520` | equivalent (unproven) | `depth - 1` only cuts the proof's recursion short, which keeps a check the proof would drop; output is the same |
 | `cpl-check/src/lends.rs:1875` (the hold for a named view) | caught | 3 cases; compiler finds the flag otherwise unobservable and logged removing it |
-| `cpl-check/src/check/expr.rs:3389` (Tuple arm of `fits`) | open | checking against the named-record cases (`be27b372a`) |
-| `cpl-interp/src/vm/exec/calls.rs:508` | open | asked compiler |
-| `cpl-interp/src/vm/compile/expr_i.rs:479` | open | asked compiler |
+| `cpl-check/src/check/expr.rs:3389` (Tuple arm of `fits`) | open | rebuilt at `6b33d2b21`: no case changes, and neither does a `(Int, Int)` passed where `(Int, ?Int)` is wanted; asked compiler |
+| `cpl-interp/src/vm/exec/calls.rs:508` | caught since | `core-04/global-2d-str-array-column-0-store` (`6b33d2b21`): the mutant traps a store into column 0 of a boxed global 2-D array |
+| `cpl-interp/src/vm/compile/expr_i.rs:479` | caught since | `core-04/second-position-of-a-user-index-is-checked-too` (`6b33d2b21`): the mutant lets one checked position vouch for another |
 | `cpl-codegen/src/stmt.rs:493` | open | asked compiler |
 | `cpl-ir/src/lower/expr.rs:3655` | open | asked compiler |
 
