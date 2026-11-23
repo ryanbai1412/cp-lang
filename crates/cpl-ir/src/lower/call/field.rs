@@ -799,14 +799,15 @@ impl<'a> Lowerer<'a> {
                     Ty::ListView(Box::new(elem), Dim::Int),
                 )
             }
+            // `a.rev` keeps the keys of its source (R07.3.5).
             (Ty::Array { dims, elem }, "rev") if dims.len() == 1 => {
-                let elem = (**elem).clone();
+                let (elem, dim) = ((**elem).clone(), dims[0]);
                 let value = self.hoist_view_base(value, span);
                 builtin(
                     self,
                     Builtin::Reversed,
                     vec![value],
-                    Ty::ListView(Box::new(elem), Dim::Int),
+                    Ty::ListView(Box::new(elem), dim),
                 )
             }
             (Ty::Range(_), "rev") => self.reversed_range(value, span),
