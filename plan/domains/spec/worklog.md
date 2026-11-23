@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- Rebuild-4 H-BORDERS-NOT-IN-PRELUDE: R11.3.2 decides it (table names are prelude names); `core-11/strings-table-in-prelude.cp` fails until `prelude.cp` adds `borders`, `prefix_matches`, `overlap` (stdlib request).
 - Rebuild-4 H-PREFIX-FUNCTION-RETURN: `lib/strings.md` §3.2 now gives `z_function`, `prefix_function` and `prefix_matches` the `[K]Int` return of `spec/std/strings.cp` (keyed by the string's own keys) instead of `List<Int>`.
 - Rebuild-4 H-EMPTY-SEQ-PRINT: R10.3.1 says an empty sequence prints an empty line; case `core-10/print-empty-seq.cp` (passes).
 - Rebuild-4 H-IO-BASE-STATUS: `12-powers.md` W16 no longer calls `with io(base: 1)` deferred; it is R10.2.2 and its cases pass.
