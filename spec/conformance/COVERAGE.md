@@ -7,14 +7,14 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 2576 (995 passing). Rules: 567.
+Cases: 2581 (995 passing). Rules: 568.
 
 ## Summary per chapter
 
-- R01 (01-lexical-grammar.md): 56 rules, 148 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R02 (02-values-types.md): 52 rules, 133 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R01 (01-lexical-grammar.md): 56 rules, 151 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R02 (02-values-types.md): 52 rules, 134 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R03 (03-numbers-layout.md): 24 rules, 65 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R04 (04-indices.md): 68 rules, 126 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R04 (04-indices.md): 69 rules, 127 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04a (04a-identity-vs-offset.md): 39 rules, 53 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04b (04b-keys.md): 27 rules, 66 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R05 (05-ownership.md): 43 rules, 154 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -45,10 +45,10 @@ negative case. Complete: rules with no gap in `rule-gaps.txt`.
 
 | Chapter | Rules | Accept | Forbidding | Reject | Complete |
 |---|---|---|---|---|---|
-| R01 | 56 | 56 (100%) | 31 | 31 (100%) | 56 (100%) |
+| R01 | 56 | 56 (100%) | 32 | 32 (100%) | 56 (100%) |
 | R02 | 52 | 52 (100%) | 28 | 28 (100%) | 52 (100%) |
 | R03 | 24 | 24 (100%) | 13 | 13 (100%) | 24 (100%) |
-| R04 | 68 | 68 (100%) | 15 | 15 (100%) | 68 (100%) |
+| R04 | 69 | 69 (100%) | 15 | 15 (100%) | 69 (100%) |
 | R04a | 39 | 39 (100%) | 3 | 3 (100%) | 39 (100%) |
 | R04b | 27 | 27 (100%) | 7 | 7 (100%) | 27 (100%) |
 | R05 | 43 | 43 (100%) | 21 | 21 (100%) | 43 (100%) |
@@ -67,7 +67,7 @@ negative case. Complete: rules with no gap in `rule-gaps.txt`.
 | Rlint | 2 | 2 (100%) | 2 | 2 (100%) | 2 (100%) |
 | Rlsp | 5 | 5 (100%) | 1 | 1 (100%) | 5 (100%) |
 | Rstress | 1 | 1 (100%) | 0 | 0 (0%) | 1 (100%) |
-| all | 567 | 566 (99%) | 220 | 220 (100%) | 566 (99%) |
+| all | 568 | 567 (99%) | 221 | 221 (100%) | 567 (99%) |
 
 ## Rules
 
@@ -106,7 +106,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R01.5.4 [1+ 0-]: Operands and arguments evaluate left to right. Assignment evaluates the right side first, ...
 - R01.5.5 [1+ 0-]: `and`, `or`, `+`, `*`, `min`, `max`, `gcd`, `^`, `&`, `|` are also operation values (`xs.f...
 - R01.5.6 [1+ 1-]: `??` written next to `+ - * / %` without parentheses is an error: `a ?? 0 + 1` must be wri...
-- R01.5.7 [1+ 0-]: `and` and `or` evaluate their right side only when the left side does not decide the resul...
+- R01.5.7 [1+ 0-]: `and` and `or` short-circuit: they evaluate their right side only when the left side does ...
 - R01.6.1 [3+ 0-]: `let p = e` binds immutably; `var p = e` mutably; `const N = e` is a compile-time constant...
 - R01.6.2 [7+ 2-]: `let p = e else: block` binds or runs the block, which must leave (`return`, `break`, `con...
 - R01.6.3 [1+ 0-]: `var` inside a pattern makes that one binding mutable: `for (var left, v) in items:`.
@@ -115,14 +115,14 @@ Each rule: positive / negative case counts, then the gap if any.
 - R01.6.6 [1+ 1-]: `assert cond` and `assert cond, "message {x}"`: checked builds only, unless opted in for r...
 - R01.6.7 [3+ 2-]: `todo` is an expression of any type that traps when run; library stubs use it as a body.
 - R01.7.1 [3+ 1-]: `if let` / `while let` bind in headers; `x is pat` (with `and cond`) is the value-position...
-- R01.7.2 [3+ 0-]: `for` and `while` take an `else:` that runs when the loop ended without `break`; a labelle...
+- R01.7.2 [4+ 1-]: `for` and `while` (there is no `loop`: `while true:` with a `break` is the loop that exits...
 - R01.7.3 [1+ 1-]: `match` is exhaustive over enums, literal unions, `Bool` and `?T`. Arms may have guards `p...
 - R01.7.4 [1+ 0-]: Loops over library generators support `break`, `continue`, `return`, labels and `else` exa...
 - R01.7.5 [1+ 0-]: `@!multitest` on its own line is the multitest divider: code above it runs once, code belo...
 - R01.8.1 [2+ 0-]: **Lambdas** `x => e`, `(a, b) => e`, `(d: Int, l: Low) => e`, `_ => e`, `(mut d, e) => d.u...
 - R01.8.2 [2+ 0-]: **Comprehensions** `[f(x) for x in xs if p(x)]` build a `List`, or an array when the expec...
 - R01.8.3 [1+ 0-]: **Record update** `e with f: v, g: w` and `(..e, f: v)` copy `e` with some fields replaced...
-- R01.8.4 [2+ 0-]: **Ranges** `a..b`, `a..=b`, `a..`, `..b`, `..=b`, `..` (the full range wherever a range is...
+- R01.8.4 [3+ 0-]: **Ranges** `a..b`, `a..=b`, `a..`, `..b`, `..=b`, `..` (the full range wherever a range is...
 - R01.8.5 [1+ 1-]: **Indexing** `a[i]`, `g[r, c]` (never `g[r][c]`); `a[i]` on `[I, J]T` is the row place. `a...
 - R01.8.6 [1+ 1-]: **Optional chaining**: `x?.f`, `f(x?)` propagate `None`; `x ?? y` falls back lazily; `x!` ...
 - R01.8.7 [1+ 2-]: Members without parentheses are \(O(1)\) (`xs.len`, `t.parent[v]`); anything that does wor...
@@ -138,7 +138,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R02.1.2 [1+ 2-]: a **heap value**: `List<T>`, `Str`, `[D]T` arrays, `Map`, `Set`, every library container, ...
 - R02.1.3 [2+ 1-]: a **function value**: `fn` items, lambdas and operation values. They are zero-size when th...
 - R02.1.4 [1+ 1-]: Whether a value is owned or lent is not part of its type (chapter 5).
-- R02.2.1 [2+ 1-]: There are exactly four number types (decision 1.7). Narrow storage is a range type, never ...
+- R02.2.1 [2+ 2-]: There are exactly four number types (decision 1.7). Narrow storage is a range type, never ...
 - R02.2.2 [2+ 1-]: Literal-union types are scalars too: `'+' | '-'` or `"add" | "del"` has exactly those valu...
 - R02.3.1 [1+ 0-]: `Str` is a flat sequence of `Char` indexed by `0..len`, with the sequence capabilities of ...
 - R02.3.2 [2+ 2-]: `Str of "01?"` is a string whose characters come from the literal's alphabet. The alphabet...
@@ -235,6 +235,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R04.2.13 [4+ 0-]: | `V.wrap(x)` | integer to position, Euclidean mod `V.count` (`V.wrap(-1)` is the last pos...
 - R04.2.14 [2+ 1-]: | `if let V(j) = i - 10:` | the pattern form of `V.at`: matches only inside `V` | \(O(1)\)
 - R04.2.15 [2+ 0-]: | `Int(v)` | position to its integer (for `1..=n`, that's 1..n) | free
+- R04.2.24 [1+ 0-]: | `Char(l)` | a position of a `Char` domain to its `Char`; `Int(l)` is its code (99 for `L...
 - R04.2.16 [5+ 1-]: | `Int(c)` | cut to its integer: the number of positions before it, 0..=n whatever the bas...
 - R04.2.22 [1+ 0-]: | `v.ord` | position to its 0-based ordinal: 0 for the first position whatever the base, t...
 - R04.2.17 [2+ 1-]: | `V.cuts(k)`, `V.cuts.at(k)` | integer to cut, the inverse of `Int(c)`: `k` positions bef...
@@ -730,7 +731,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0110 Unparenthesized `??` with arithmetic: 1 case(s)
 - E0111 Mixed comparison chain: 2 case(s)
 - E0112 else_falls_through *(0.3)*: 1 case(s)
-- E0201 Unresolved name: 6 case(s)
+- E0201 Unresolved name: 7 case(s)
 - E0202 Duplicate definition: 3 case(s)
 - E0203 Unknown field or method: 10 case(s)
 - E0204 Unknown type: 3 case(s)
@@ -853,7 +854,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - R0001 Runtime trap: 6 case(s)
 - R0101 Index out of range: 22 case(s)
 - R0102 Value outside a domain: 4 case(s)
-- R0201 Range store out of range: 8 case(s)
+- R0201 Range store out of range: 9 case(s)
 - R0202 Integer overflow: 10 case(s)
 - R0203 Division by zero: 3 case(s)
 - R0301 Unwrap of None: 7 case(s)
@@ -882,9 +883,9 @@ prepends it.
 - 02-values-types.md: 3 blocks, 2 with a case, 1 spec-only, 0 neither
 - 03-numbers-layout.md: 2 blocks, 2 with a case, 0 spec-only, 0 neither
 - 04-indices.md: 7 blocks, 1 with a case, 3 spec-only, 3 neither
-  - line 161: `for j in ..i:`
-  - line 257: `let k = (0..=n).last_true(k => cost(k) <= budget) ?? -1`
-  - line 278: `fn inversions(r: Range<Pos>) -> Int:`
+  - line 163: `for j in ..i:`
+  - line 259: `let k = (0..=n).last_true(k => cost(k) <= budget) ?? -1`
+  - line 280: `fn inversions(r: Range<Pos>) -> Int:`
 - 04b-keys.md: 13 blocks, 3 with a case, 6 spec-only, 4 neither
   - line 72: `fn solve(r: Range<V>) -> Int:`
   - line 100: `let z = z_function(s[l..])`
