@@ -49,6 +49,12 @@ impl Block {
 }
 
 impl Expr {
+    /// A bare generator argument, `max(x for x in xs)`, not a list
+    /// comprehension `[x for x in xs]`, which starts at its `[`.
+    pub fn is_generator(&self) -> bool {
+        matches!(&self.kind, ExprKind::Comprehension { body, .. } if body.span.start == self.span.start)
+    }
+
     /// Running the expression never gives a value; see [`Block::leaves`].
     pub fn leaves(&self) -> bool {
         match &self.kind {

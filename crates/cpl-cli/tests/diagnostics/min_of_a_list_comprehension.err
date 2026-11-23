@@ -1,0 +1,15 @@
+error[E0303]: `min` takes 2 arguments, but 1 was given; use `.min()` on a sequence
+  --> min_of_a_list_comprehension.cp:2:7
+  |
+2 | print(min([x for x in a]))
+  |       ^^^^^^^^^^^^^^^^^^^
+  = help: write `[x for x in a].min()!`
+
+error[E0303]: `max` takes 2 arguments, but 1 was given; use `.max()` on a sequence
+  --> min_of_a_list_comprehension.cp:3:7
+  |
+3 | print(max([x * 2 for x in a]))
+  |       ^^^^^^^^^^^^^^^^^^^^^^^
+  = help: write `[x * 2 for x in a].max()!`
+
+min_of_a_list_comprehension.cp: 2 errors

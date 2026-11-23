@@ -1376,6 +1376,23 @@ impl<'a> Lowerer<'a> {
                     None => self.err_expr(span),
                 }
             }
+            // `r.nth(k)` on an I128 range: its `k`-th value, `r.start + k`.
+            (Ty::Range(inner), "nth") if **inner == Ty::I128 && args.len() == 1 => {
+                let Some(k) = self.one_arg("nth", args, &Ty::Int, span) else {
+                    return self.err_expr(span);
+                };
+                let k = self.cast(Cast::IntToI128, k, Ty::I128);
+                let lo = self.mk(
+                    ExprKind::Builtin(Builtin::RangeLo, vec![value]),
+                    Ty::I128,
+                    span,
+                );
+                self.mk(
+                    ExprKind::Binary(BinOp::Add, Box::new(lo), Box::new(k)),
+                    Ty::I128,
+                    span,
+                )
+            }
             // `r.nth(k)` on an Int range: its `k`-th value, `r.start + k` (R04b.5.9).
             (Ty::Range(inner), "nth") if **inner == Ty::Int && args.len() == 1 => {
                 let Some(k) = self.one_arg("nth", args, &Ty::Int, span) else {

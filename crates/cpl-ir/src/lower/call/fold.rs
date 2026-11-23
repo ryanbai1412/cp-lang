@@ -404,7 +404,7 @@ impl<'a> Lowerer<'a> {
                 self.err_expr(span)
             }
             [one] => {
-                let generator = matches!(one.value.kind, ast::ExprKind::Comprehension { .. });
+                let generator = one.value.is_generator();
                 self.min_max_reduce(is_max, &one.value, generator, span)
             }
             _ => {

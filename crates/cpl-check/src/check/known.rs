@@ -206,9 +206,7 @@ impl<'a> Checker<'a> {
             }
             // `max(e for x in s)` is the free form of `s.map(x => e).max()` (R01.10.1).
             ("max" | "min", [over])
-                if matches!(args[0].value.kind, ExprKind::Comprehension { .. })
-                    && args[0].name.is_none()
-                    && !args[0].mutable =>
+                if args[0].value.is_generator() && args[0].name.is_none() && !args[0].mutable =>
             {
                 Some(Ty::Optional(Box::new(self.element_ty(over))))
             }
