@@ -1845,3 +1845,12 @@ fn trial_division_under_an_if_factors() {
         "{d:#?}"
     );
 }
+
+#[test]
+fn copy_comprehension_needs_a_seq() {
+    // std/bag.cp: a `SortedSet` walks in `for` but has no `collect`.
+    let set = "var s = SortedSet<Int>.of([1, 3])\nassert [x for x in s] == [1, 3]\n";
+    assert!(!codes(set).contains(&"L0549"));
+    let seqs = "domain V = 0..3\nlet a = [3, 1]\nprint([x for x in a], [v for v in V], [c for c in \"ab\"], [i for i in 0..3])\n";
+    assert_eq!(codes(seqs).iter().filter(|c| **c == "L0549").count(), 4);
+}

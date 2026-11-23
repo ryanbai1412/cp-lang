@@ -176,15 +176,26 @@ impl HandLoops<'_> {
             ExprKind::Name(_) | ExprKind::Field { .. } | ExprKind::Index { .. } => it.to_string(),
             _ => format!("({it})"),
         };
-        self.warn(
-            &COPY_COMPREHENSION,
-            expr.span,
+        let mut diag = Diagnostic::warning(
+            COPY_COMPREHENSION.code,
+            expr.span.shift(self.base),
             format!(
                 "`{}` copies a sequence one element at a time",
                 self.text(expr.span)
             ),
-            format!("write `{it}.collect()`: it copies any sequence into a new `List`"),
-        );
+        )
+        .with_help(format!(
+            "write `{it}.collect()`: it copies any sequence into a new `List`"
+        ));
+        // `collect` takes a `Seq`; `typed.rs` drops the finding where the
+        // checker types the iterable as something else. A range always is one.
+        if !matches!(iter.kind, ExprKind::Range { .. }) {
+            diag = diag.with_label(iter.span.shift(self.base), "the iterable");
+        }
+        self.out.push(Finding {
+            lint: &COPY_COMPREHENSION,
+            diag,
+        });
     }
 
     /// Each statement with its offset: top-level ones come from different items.

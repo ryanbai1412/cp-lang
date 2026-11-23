@@ -7,15 +7,15 @@
 
 use crate::facts::Facts;
 use crate::{
-    CEIL_DIV_FORMULA, CHMIN_CHMAX_IF, COMPOUND_SELF_REF, CONTAINS_THEN_ADD, COUNTER_BY_MAP,
-    FLOAT_SQRT_FOR_INT, LAST_VIA_LEN, MANUAL_BIT_TEST, MANUAL_STARTS_WITH, MAP_AS_MULTISET,
-    NEGATED_HEAP, NEG_MOD_FIXUP, PEEK_THEN_POP, POP_MIN_LOOP, PUSH_POP_PAIR, REVERSE_INDEX,
-    SORT_FOR_EXTREME, STALE_ENTRY_SKIP, UNPROVEN_LIST_INDEX,
+    CEIL_DIV_FORMULA, CHMIN_CHMAX_IF, COMPOUND_SELF_REF, CONTAINS_THEN_ADD, COPY_COMPREHENSION,
+    COUNTER_BY_MAP, FLOAT_SQRT_FOR_INT, LAST_VIA_LEN, MANUAL_BIT_TEST, MANUAL_STARTS_WITH,
+    MAP_AS_MULTISET, NEGATED_HEAP, NEG_MOD_FIXUP, PEEK_THEN_POP, POP_MIN_LOOP, PUSH_POP_PAIR,
+    REVERSE_INDEX, SORT_FOR_EXTREME, STALE_ENTRY_SKIP, UNPROVEN_LIST_INDEX,
 };
 use cpl_check::{Analysis, Ty};
 use cpl_diag::{Diagnostic, Span};
 
-const TYPED: [cpl_diag::Code; 19] = [
+const TYPED: [cpl_diag::Code; 20] = [
     MANUAL_BIT_TEST.code,
     MANUAL_STARTS_WITH.code,
     LAST_VIA_LEN.code,
@@ -35,6 +35,7 @@ const TYPED: [cpl_diag::Code; 19] = [
     POP_MIN_LOOP.code,
     COUNTER_BY_MAP.code,
     CONTAINS_THEN_ADD.code,
+    COPY_COMPREHENSION.code,
 ];
 
 /// `diags` less the findings `analysis`'s facts rule out.
@@ -119,6 +120,11 @@ fn keep(d: &Diagnostic, facts: &Facts) -> bool {
         }
         c if c == COUNTER_BY_MAP.code => matches!(label(), Some(Some(Ty::Named { name, args }))
             if (name == "Map" || name == "HashMap") && matches!(args.as_slice(), [_, Ty::Int | Ty::Range { .. }])),
+        // `collect` is a `Seq` method: a `SortedSet` walks in `for` but has
+        // none. Domains, generic `S: Seq` and generators are `Seq` too.
+        c if c == COPY_COMPREHENSION.code => {
+            !matches!(label(), Some(Some(ty @ Ty::Named { .. })) if !ty.is_seq())
+        }
         c if c == CONTAINS_THEN_ADD.code => {
             matches!(label(), Some(Some(Ty::Named { name, args }))
                 if (name == "Map" || name == "HashMap") && matches!(args.as_slice(), [_, Ty::Int | Ty::Range { .. }]))
