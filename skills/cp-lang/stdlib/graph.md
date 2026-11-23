@@ -161,6 +161,7 @@ O(1): one edge of a `Graph`: its id and its ends (as built for a directed graph,
 
 ## Functions
 
+- `fn arc_len<A>(a: A) -> Int` — \(O(1)\); The length of arc `a` as every graph algorithm reads it: `a.w` for a [`Weighted`] arc, 1 otherwise.
 - `fn peel<V, G: Next<V>>(g: G, ready: ?(V -> Bool) = None, on_remove: ?((V, G.Arc) -> ()) = None) -> List<V>` — O(n + m) plus the calls of `ready` and `on_remove`; Kahn's peeling: repeatedly removes a vertex with no arcs left coming in, and returns the vertices in removal order.
 - `fn topo<V>(g: Next<V>) -> ?List<V>` — O(n + m); A topological order (every arc goes forward in it), or `None` if there is a directed cycle: a `peel` that removed every vertex.
 - `fn scc<V>(g: Next<V>) -> (domain C, comp: [V]C)` — O(n + m); The strongly connected components, as a fresh domain `C` and each vertex's component.
