@@ -1,7 +1,7 @@
 //! String algorithms. They only compare elements, so they work on a `Str`
 //! (ASCII bytes) and on any `List<T>` alike. Positions are 0-based.
 
-use std.seq.{nth, last_true}
+use std.seq.{collect, nth, last_true}
 
 /// `self` written `n` times in a row, as a new `Str`: `"0".repeat(4)` is `"0000"`.
 ///

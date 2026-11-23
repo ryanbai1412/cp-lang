@@ -9,6 +9,7 @@ use std.algebra.{Monoid, Semiring}
 use std.math.{mul_mod, bit}
 use std.mod.{Mod}
 use std.rand.{Rng}
+use std.seq.{collect}
 
 /// A dense `rows x cols` matrix stored flat in row-major order.
 pub struct Mat<T: Add + Sub + Mul + Div>:

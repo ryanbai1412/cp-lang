@@ -9,6 +9,7 @@
 use std.algebra.{Monoid, Semiring}
 use std.math.{is_pow2, mul_mod, pow_mod, primitive_root, bit}
 use std.mod.{Mod}
+use std.seq.{collect}
 
 const P1 = 998_244_353
 const P2 = 469_762_049
