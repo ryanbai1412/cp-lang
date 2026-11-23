@@ -1057,6 +1057,7 @@ impl<'a> Lexer<'a> {
         let (ours, kind) = match word {
             "def" | "func" | "function" => ("fn", TokenKind::Fn),
             "import" => ("use", TokenKind::Use),
+            "switch" => ("match", TokenKind::Match),
             _ => return None,
         };
         let line = self.src[..start].rfind('\n').map_or(0, |i| i + 1);
@@ -1071,16 +1072,17 @@ impl<'a> Lexer<'a> {
             .next()?;
         let shaped = match kind {
             TokenKind::Fn => after[name.len()..].starts_with('('),
+            TokenKind::Match => after.lines().next().unwrap_or("").trim_end().ends_with(':'),
             _ => after[name.len()..].starts_with('.'),
         };
-        if name.is_empty() || !shaped {
+        if (name.is_empty() && kind != TokenKind::Match) || !shaped {
             return None;
         }
         let span = Span::new(start as u32, self.pos as u32);
-        let what = if ours == "fn" {
-            "declares a function"
-        } else {
-            "imports a module"
+        let what = match ours {
+            "fn" => "declares a function",
+            "use" => "imports a module",
+            _ => "matches a value",
         };
         self.out.diagnostics.push(
             Diagnostic::error(
@@ -1090,6 +1092,7 @@ impl<'a> Lexer<'a> {
             )
             .with_help(match kind {
                 TokenKind::Fn => format!("write `fn {name}(...)`"),
+                TokenKind::Match => "write `match x:` with `pattern => value` arms".to_string(),
                 _ => format!(
                     "write `use {}`",
                     after.split_whitespace().next().unwrap_or(name)

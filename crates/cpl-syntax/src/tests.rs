@@ -1796,3 +1796,12 @@ fn an_unindented_body_line_is_read_as_the_body() {
     let nested = "fn f(x: Int) -> Int:\n    for i in 0..x:\n    print(i)\n    x\n";
     assert_eq!(codes(nested), ["E0104"]);
 }
+
+#[test]
+fn a_switch_reads_as_a_match_with_one_error_per_foreign_word() {
+    let d =
+        parse_file("switch x:\n    case 1:\n        print(1)\n    default:\n        print(0)\n")
+            .diagnostics;
+    let fixed: Vec<_> = d.iter().map(|d| d.fixes[0].edits[0].1.as_str()).collect();
+    assert_eq!(fixed, ["match", "", "_"], "{d:?}");
+}

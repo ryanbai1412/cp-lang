@@ -41,6 +41,36 @@ impl<'a> Parser<'a> {
             },
         ))
     }
+
+    /// `case 1:` or `default:` opening a `match` arm, as a `switch` writes
+    /// it: one error, read as the arm `1:` or `default:` (a catch-all).
+    pub(super) fn c_case(&mut self) {
+        let next = self.peek_n(1);
+        let (span, ours, fix) =
+            if self.at_ident("case") && !matches!(next, T::FatArrow | T::Colon | T::If) {
+                let span = Span::new(
+                    self.span().start,
+                    self.rel(self.tokens[self.pos + 1].span).start,
+                );
+                let pat = self.tokens[self.pos + 1].span.text(self.src).to_string();
+                self.bump();
+                (span, format!("{pat}:"), "")
+            } else if self.at_ident("default") && next == T::Colon {
+                (self.span(), "_:".to_string(), "_")
+            } else {
+                return;
+            };
+        let theirs = if fix.is_empty() { "case" } else { "default" };
+        self.error(
+            Diagnostic::error(
+                codes::REMOVED_SYNTAX,
+                span,
+                format!("a `match` arm has no `{theirs}`"),
+            )
+            .with_help(format!("write the pattern itself: `{ours}`"))
+            .with_fix(format!("remove `{theirs}`"), span, fix),
+        );
+    }
 }
 
 /// The loop variable of `i = lo; i < hi; i++`, and `lo..hi` when it counts

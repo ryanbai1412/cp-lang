@@ -1731,6 +1731,7 @@ impl<'a> Parser<'a> {
         while !matches!(self.peek(), T::Dedent | T::Eof) {
             let before = self.pos;
             let start = self.start();
+            self.c_case();
             let pat = self.pattern();
             let guard = self.eat(T::If).then(|| self.expr());
             // `Pat => value` or, for an arm of statements, `Pat:` and a
