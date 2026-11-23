@@ -80,7 +80,7 @@ fn measure() -> BTreeSet<String> {
                     let mut found = Vec::new();
                     for (p, traced) in chunk {
                         let mode = if traced { "traced" } else { "untraced" };
-                        for tag in fallbacks(&p, traced) {
+                        for tag in fallbacks(&p, traced).iter().map(|t| unnumbered(t)) {
                             // Both engines compile an expression alike.
                             match tag.starts_with("expr:") {
                                 true => found.push(tag),
@@ -99,6 +99,58 @@ fn measure() -> BTreeSet<String> {
     })
 }
 
+/// `tag` without the instance numbers in its fn names (`SortedBag_Int_13.pull`
+/// is `SortedBag_Int.pull`), which shift whenever std gains an instance.
+fn unnumbered(tag: &str) -> String {
+    let once = unnumbered_once(tag);
+    match once == tag {
+        true => once,
+        false => unnumbered(&once),
+    }
+}
+
+fn unnumbered_once(tag: &str) -> String {
+    let mut out = String::with_capacity(tag.len());
+    let mut rest = tag;
+    while let Some(at) = rest.find('_') {
+        out.push_str(&rest[..at]);
+        let after = &rest[at + 1..];
+        let digits = after.len() - after.trim_start_matches(|c: char| c.is_ascii_digit()).len();
+        let ends = after[digits..]
+            .chars()
+            .next()
+            .is_none_or(|c| matches!(c, '.' | '(' | ')' | ' '));
+        if digits > 0 && ends {
+            rest = &after[digits..];
+        } else {
+            out.push('_');
+            rest = after;
+        }
+    }
+    out.push_str(rest);
+    out
+}
+
+#[test]
+fn unnumbered_drops_only_instance_numbers() {
+    assert_eq!(
+        unnumbered("traced fn:SortedBag_Int_13.pull(part)"),
+        "traced fn:SortedBag_Int.pull(part)"
+    );
+    assert_eq!(
+        unnumbered("untraced fn:m7_find_all_Str_193(feeding)"),
+        "untraced fn:m7_find_all_Str(feeding)"
+    );
+    assert_eq!(
+        unnumbered("traced stmt:Assign(Index1D,Set)"),
+        "traced stmt:Assign(Index1D,Set)"
+    );
+    assert_eq!(
+        unnumbered("traced fn:m1_get_or_insert_with_Int_Int_1_2(part)"),
+        "traced fn:m1_get_or_insert_with_Int_Int(part)"
+    );
+}
+
 #[test]
 fn tree_walker_fallbacks_only_shrink() {
     let path = tests_dir().join("vm_fallbacks.txt");
@@ -106,7 +158,7 @@ fn tree_walker_fallbacks_only_shrink() {
     let baseline: BTreeSet<String> = text
         .lines()
         .filter(|l| !l.is_empty() && !l.starts_with('#'))
-        .map(str::to_string)
+        .map(unnumbered)
         .collect();
     let actual = measure();
     let added: Vec<_> = actual.difference(&baseline).collect();

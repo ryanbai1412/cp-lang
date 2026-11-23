@@ -1832,6 +1832,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
             | Op::CmpV { .. }
             | Op::CallVmI { .. }
             | Op::CallVmMix { .. }
+            | Op::CallTraced { .. }
             | Op::CallClosure { .. }
             | Op::RetI { .. }
             | Op::RetV { .. }

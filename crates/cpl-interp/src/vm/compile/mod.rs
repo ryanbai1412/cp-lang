@@ -194,7 +194,8 @@ impl<'p, 'f> Compiler<'p, 'f> {
         let needs_stack = !self.fallback_stmts.is_empty()
             || !self.fallback_exprs.is_empty()
             || self.applies_sync
-            || !self.trace_points.is_empty();
+            || !self.trace_points.is_empty()
+            || (self.ops.iter()).any(|op| matches!(op, Op::CallTraced { .. }));
         Chunk {
             ops: self.ops,
             spans: self.spans,
@@ -357,7 +358,10 @@ impl<'p, 'f> Compiler<'p, 'f> {
             self.spans[pc] == call.span
                 && matches!(
                     self.ops[pc],
-                    Op::CallVmI { .. } | Op::CallVmMix { .. } | Op::CallClosure { .. }
+                    Op::CallVmI { .. }
+                        | Op::CallVmMix { .. }
+                        | Op::CallTraced { .. }
+                        | Op::CallClosure { .. }
                 )
         });
         match (calls.next(), calls.next()) {
@@ -374,6 +378,18 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 dst,
                 ScalarKind::of_ty(ret(fn_id), self.program)?,
             )),
+            Op::CallTraced {
+                fn_id,
+                dst_i,
+                dst_v,
+                ..
+            } => match ret(fn_id) {
+                Ty::Unit => None,
+                ty if dst_i != u16::MAX => {
+                    Some(SlotLoc::I(dst_i, ScalarKind::of_ty(ty, self.program)?))
+                }
+                _ => Some(SlotLoc::V(dst_v)),
+            },
             Op::CallVmMix {
                 fn_id,
                 dst_i,
@@ -1165,6 +1181,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
             op,
             Op::CallVmI { .. }
                 | Op::CallVmMix { .. }
+                | Op::CallTraced { .. }
                 | Op::CallClosure { .. }
                 | Op::CallVmFeed { .. }
                 | Op::FeedYieldI { .. }

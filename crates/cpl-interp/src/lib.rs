@@ -2812,6 +2812,18 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 base
             }
         };
+        self.call_at(id, base, span, fed)
+    }
+
+    /// Runs fn `id` in the frame at `base`, which holds its arguments.
+    pub(crate) fn call_at(
+        &mut self,
+        id: FnId,
+        base: usize,
+        span: Span,
+        fed: Option<Fed<'p>>,
+    ) -> Res<Value> {
+        let f = &self.program.fns[id];
         let saved = std::mem::replace(&mut self.base, base);
         self.frame_locals.push(&f.locals);
         self.call_frames.push((f.name.as_str(), span));

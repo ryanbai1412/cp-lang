@@ -146,7 +146,9 @@ impl<'p, 'f> Compiler<'p, 'f> {
     pub(super) fn compile_traced_stmt(&mut self, stmt: &'p Stmt) -> bool {
         let fallbacks = self.fallback_stmts.len();
         match stmt {
-            Stmt::Let(slot, Some(init)) if self.feed_acc != Some(*slot) && quiet(init) => {
+            Stmt::Let(slot, Some(init))
+                if self.feed_acc != Some(*slot) && self.traced_quiet(init) =>
+            {
                 self.compile_untraced_stmt(stmt);
                 if self.fallback_stmts.len() == fallbacks {
                     self.emit_trace(TracePoint::Let(*slot, init), init.span);
@@ -154,7 +156,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
             }
             Stmt::Break(_) | Stmt::Continue(_) | Stmt::Return(None) => return false,
             Stmt::Assign(place, _, value)
-                if quiet_place(place, cpl_ir::walk::root(place)) && quiet(value) =>
+                if quiet_place(place, cpl_ir::walk::root(place)) && self.traced_quiet(value) =>
             {
                 self.compile_untraced_stmt(stmt);
                 if self.fallback_stmts.len() == fallbacks {
@@ -167,7 +169,15 @@ impl<'p, 'f> Compiler<'p, 'f> {
             {
                 return false
             }
-            Stmt::Return(Some(value)) | Stmt::Give(value) if quiet(value) => return false,
+            Stmt::Return(Some(value)) | Stmt::Give(value) if self.traced_quiet(value) => {
+                return false
+            }
+            Stmt::Expr(e) if self.traced_call(e).is_some() => {
+                let dst = self.compile_expr_v(e);
+                if dst >= self.num_local_v {
+                    self.emit(Op::ClearV { reg: dst }, e.span);
+                }
+            }
             Stmt::For(id, _, Iter::Seq(seq, false), body) if self.fed_body_ok(*id, seq, body) => {
                 self.emit_fallback_stmt(stmt);
                 self.emit_escapes();
@@ -222,6 +232,69 @@ impl<'p, 'f> Compiler<'p, 'f> {
             }
         }
         true
+    }
+
+    /// A call a traced chunk makes itself: by-value arguments, and a
+    /// result kept in one register.
+    pub(super) fn traced_call(&self, e: &'p Expr) -> Option<(FnId, &'p [Arg])> {
+        let ExprKind::Call(fn_id, args) = &e.kind else {
+            return None;
+        };
+        let f = &self.program.fns[*fn_id];
+        let ok = self.traced
+            && args.len() == f.params.len()
+            && args.iter().all(|a| matches!(a, Arg::Value(_)))
+            && !self.program.judge_fns.contains(fn_id)
+            && ScalarKind::of_opt_ty(&e.ty, self.program).is_none()
+            && (ScalarKind::of_ty(&e.ty, self.program).is_some()
+                || !matches!(e.ty, Ty::Tuple(_) | Ty::Struct(_)));
+        ok.then_some((*fn_id, args.as_slice()))
+    }
+
+    /// [`quiet`], but for the calls a traced chunk makes itself.
+    pub(super) fn traced_quiet(&self, e: &'p Expr) -> bool {
+        let mut ok = true;
+        cpl_ir::walk::deep_expr(e, &mut |e| {
+            ok &= match e.kind {
+                ExprKind::Call(..) => self.traced_call(e).is_some(),
+                _ => quiet_node(e),
+            };
+        });
+        ok
+    }
+
+    pub(super) fn emit_traced_call(
+        &mut self,
+        e: &'p Expr,
+        fn_id: FnId,
+        args: &'p [Arg],
+        scalar: bool,
+    ) -> u16 {
+        let regs: Vec<u16> = args.iter().map(|_| self.alloc_v()).collect();
+        for (arg, &dst) in args.iter().zip(&regs) {
+            let Arg::Value(arg) = arg else {
+                unreachable!("traced_call takes values")
+            };
+            let src = self.compile_expr_v(arg);
+            self.emit(Op::MoveV { dst, src }, arg.span);
+        }
+        let dst_v = self.alloc_v();
+        let dst_i = if scalar { self.alloc_i() } else { u16::MAX };
+        self.emit(
+            Op::CallTraced {
+                fn_id: fn_id as u16,
+                arg_base_v: regs.first().copied().unwrap_or(0),
+                argc: args.len() as u8,
+                dst_v,
+                dst_i,
+            },
+            e.span,
+        );
+        if scalar {
+            dst_i
+        } else {
+            dst_v
+        }
     }
 
     fn quiet_print(e: &Expr) -> bool {

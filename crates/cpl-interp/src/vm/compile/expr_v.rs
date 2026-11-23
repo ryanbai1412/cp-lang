@@ -10,6 +10,11 @@ use std::rc::Rc;
 impl<'p, 'f> Compiler<'p, 'f> {
     pub(super) fn compile_expr_v(&mut self, expr: &'p Expr) -> u16 {
         let span = expr.span;
+        if let Some((fn_id, args)) = self.traced_call(expr) {
+            if ScalarKind::of_ty(&expr.ty, self.program).is_none() {
+                return self.emit_traced_call(expr, fn_id, args, false);
+            }
+        }
         if let Some(kind) = ScalarKind::of_ty(&expr.ty, self.program) {
             let src_i = self.compile_expr_i(expr);
             let dst_v = self.alloc_v();

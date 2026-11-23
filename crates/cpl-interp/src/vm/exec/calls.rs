@@ -632,6 +632,55 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 regs_i[dst as usize] = ScalarKind::unbox_val(&val);
                 self.keep_result(chunk, cur_pc, regs_i, regs_v);
             }
+            Op::CallTraced {
+                fn_id,
+                arg_base_v,
+                argc,
+                dst_v,
+                dst_i,
+            } => {
+                let id = usize::from(fn_id);
+                let f = &self.program.fns[id];
+                let span = spans[cur_pc];
+                self.stack_left(span, Some(&f.name))?;
+                let abv = arg_base_v as usize;
+                let args: Vec<Value> = regs_v[abv..abv + argc as usize]
+                    .iter_mut()
+                    .map(|r| std::mem::replace(r, Value::Unit))
+                    .collect();
+                let caller = self.base;
+                sync_to_stack(
+                    &chunk.slot_map,
+                    regs_i,
+                    regs_v,
+                    &mut self.stack,
+                    caller,
+                    true,
+                );
+                let outer = self.enter_fallback(chunk, cur_pc, regs_i, regs_v);
+                self.show_lent();
+                let base = self.stack.len();
+                self.stack.extend(args);
+                self.stack.resize(base + f.locals.len(), Value::Unit);
+                let returned = self.call_at(id, base, span, None);
+                self.hide_lent();
+                self.leave_fallback(outer);
+                sync_from_stack(
+                    &chunk.slot_map,
+                    regs_i,
+                    regs_v,
+                    &mut self.stack,
+                    caller,
+                    true,
+                );
+                let value = returned?;
+                if dst_i != u16::MAX {
+                    regs_i[dst_i as usize] = ScalarKind::unbox_val(&value);
+                } else {
+                    regs_v[dst_v as usize] = value;
+                }
+                self.keep_result(chunk, cur_pc, regs_i, regs_v);
+            }
             Op::CallVmMix {
                 fn_id,
                 arg_base_i,

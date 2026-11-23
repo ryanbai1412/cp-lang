@@ -803,6 +803,15 @@ pub(crate) enum Op {
         dst_some: u16,
         ret_mode: CallRet,
     },
+    /// A traced chunk's call: the tracer sees it enter and leave, as when
+    /// the tree-walker calls. `dst_i` is `u16::MAX` unless it returns a scalar.
+    CallTraced {
+        fn_id: u16,
+        arg_base_v: u16,
+        argc: u8,
+        dst_v: u16,
+        dst_i: u16,
+    },
     CallClosure {
         callee_v: u16,
         arg_base_i: u16,

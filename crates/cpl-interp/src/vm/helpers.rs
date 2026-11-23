@@ -157,7 +157,16 @@ pub(super) fn write_array_i(arr: &mut Array, at: usize, val: i64) {
             ArrayData::Int(v) | ArrayData::OneIntStruct(v) => *v.get_unchecked_mut(at) = val,
             ArrayData::Bool(v) => *v.get_unchecked_mut(at) = u8::from(val != 0),
             ArrayData::Char(v) => *v.get_unchecked_mut(at) = val as u8,
-            ArrayData::Values(v) => *v.get_unchecked_mut(at) = Value::Int(val),
+            ArrayData::Values(v) => {
+                // Keeps the element's shape: a `[D]Mod<M>` built boxed holds structs.
+                match v.get_unchecked_mut(at) {
+                    Value::Tuple(TupleVal::OneInt(x)) => *x = val,
+                    Value::U64(x) => *x = val as u64,
+                    Value::Bool(x) => *x = val != 0,
+                    Value::Char(x) => *x = val as u8,
+                    slot => *slot = Value::Int(val),
+                }
+            }
             ArrayData::OptInt(v) => *v.get_unchecked_mut(at) = Some(val),
             ArrayData::Float(_) | ArrayData::SmallIntTuple { .. } => {}
         }
@@ -204,21 +213,24 @@ pub(super) fn set_scalar(slot: &mut Value, kind: ScalarKind, raw: i64) {
 
 pub(super) fn quiet(e: &Expr) -> bool {
     let mut quiet = true;
-    cpl_ir::walk::deep_expr(e, &mut |e| {
-        quiet &= !matches!(
-            e.kind,
-            ExprKind::Call(..)
-                | ExprKind::CallExpr(..)
-                | ExprKind::Closure(..)
-                | ExprKind::Do(_)
-                | ExprKind::MutSlice(..)
-                | ExprKind::Mutate(..)
-                | ExprKind::Sort(..)
-                | ExprKind::Print(..)
-                | ExprKind::Debug(..)
-        );
-    });
+    cpl_ir::walk::deep_expr(e, &mut |e| quiet &= quiet_node(e));
     quiet
+}
+
+/// Whether `e` itself, not counting its operands, writes or calls nothing.
+pub(super) fn quiet_node(e: &Expr) -> bool {
+    !matches!(
+        e.kind,
+        ExprKind::Call(..)
+            | ExprKind::CallExpr(..)
+            | ExprKind::Closure(..)
+            | ExprKind::Do(_)
+            | ExprKind::MutSlice(..)
+            | ExprKind::Mutate(..)
+            | ExprKind::Sort(..)
+            | ExprKind::Print(..)
+            | ExprKind::Debug(..)
+    )
 }
 
 /// Whether the indices of `place` are [`quiet`] and do not read its root,

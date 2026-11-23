@@ -8,6 +8,9 @@ use cpl_ir::{
 impl<'p, 'f> Compiler<'p, 'f> {
     pub(super) fn compile_expr_i(&mut self, expr: &'p Expr) -> u16 {
         let span = expr.span;
+        if let Some((fn_id, args)) = self.traced_call(expr) {
+            return self.emit_traced_call(expr, fn_id, args, true);
+        }
         match &expr.kind {
             ExprKind::Int(v) => {
                 let dst = self.alloc_i();

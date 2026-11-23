@@ -80,3 +80,11 @@ Newest first: what landed (commit), evidence, next, blocked, requests from other
 
 - A traced chunk now runs a `print` whose arguments are quiet itself. `print_values` tells the tracer what was printed, as in the tree-walker; for that view, the `Print` op copies the registers onto the stack and back. Every saved `.trace` is unchanged.
 - `vm_fallbacks` keys `expr:` tags without the mode, because both engines compile an expression the same way. A print's argument that falls back is then the same debt the untraced run already has. 242 -> 215 kinds.
+
+## Traced statements on the VM: calls (2026-11-23)
+
+- A traced chunk now makes a call with by-value arguments itself (`Op::CallTraced`): it puts the arguments on the stack and runs the callee through `call_at`, which tells the tracer it entered and left, as when the tree-walker calls. A `let`, assignment, `return` or statement whose only effects are such calls no longer falls back. Every saved `.trace` is unchanged.
+- Checkpoints: `call_op`/`call_result` know the op, it keeps its result for a resume, and a chunk with one keeps its locals on the stack (`needs_stack`), so a `return f(x)` frame is resumable.
+- Fixed on the way: a scalar store into a boxed array wrote an `Int` over a one-field struct (`[Bool]Mod<M>`), which the trace showed as `1` instead of `{"v":1}`.
+- `vm_fallbacks` drops instance numbers from fn names (`SortedBag_Int_13` is `SortedBag_Int`), which shifted whenever std gained an instance (175 -> 154 kinds on main). With the calls: 150.
+
