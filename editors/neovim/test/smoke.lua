@@ -33,6 +33,26 @@ vim.cmd('syntax on')
 
 local file = dir .. '/a.cp'
 vim.fn.writefile({ '5' }, dir .. '/i1')
+--- Whether the terminal buffer `term` shows `want`. Headless Neovim on Windows draws nothing in a
+--- terminal buffer (the job runs: CI shows `[Process exited 1]`), so there the check runs
+--- `cpl <args>` itself and looks at what it prints.
+local function terminal_shows(term, want, args)
+    local shown = ''
+    -- Windows's pseudo-console can draw the output after the job has exited.
+    vim.wait(10000, function()
+        shown = table.concat(vim.api.nvim_buf_get_lines(term, 0, -1, false), '\n')
+        return shown:find(want, 1, true) ~= nil
+    end, 100)
+    if shown:find(want, 1, true) or vim.fn.has('win32') == 0 then
+        if not shown:find(want, 1, true) then io.stderr:write('terminal: ' .. vim.inspect(shown) .. '\n') end
+        return shown:find(want, 1, true) ~= nil
+    end
+    local direct = vim.system(vim.list_extend({ cpl }, vim.deepcopy(args))):wait()
+    local printed = (direct.stdout or '') .. (direct.stderr or '')
+    io.stderr:write(('`cpl %s` gives %d: %s\n'):format(table.concat(args, ' '), direct.code, printed))
+    return printed:find(want, 1, true) ~= nil
+end
+
 vim.fn.writefile({ 'fn main():', '    let n: Int = read()', '    let s: Str = n', '    print(n + 1)' }, file)
 vim.cmd.edit(file)
 check(vim.bo.filetype == 'cp', 'filetype is ' .. vim.bo.filetype)
@@ -85,21 +105,7 @@ vim.lsp.commands['cpl.exec'](run, {})
 local term = vim.api.nvim_get_current_buf()
 check(vim.bo[term].buftype == 'terminal', 'cpl.exec did not open a terminal')
 check(vim.wait(10000, function() return vim.v.shell_error ~= nil and vim.b[term].terminal_job_id ~= nil and vim.fn.jobwait({ vim.b[term].terminal_job_id }, 0)[1] ~= -1 end), 'cpl run did not finish')
--- Windows's pseudo-console can draw the output after the job has exited.
-local shown = ''
-vim.wait(10000, function()
-    shown = table.concat(vim.api.nvim_buf_get_lines(term, 0, -1, false), '\n')
-    return shown:find('Str', 1, true) ~= nil
-end, 100)
-if not shown:find('Str', 1, true) then
-    -- Headless Neovim on Windows draws nothing in a terminal buffer (the job ran: CI shows
-    -- `[Process exited 1]`), so check what the lens's command prints instead.
-    local direct = vim.system(vim.list_extend({ cpl }, vim.deepcopy(run.arguments or {}))):wait()
-    local printed = (direct.stdout or '') .. (direct.stderr or '')
-    check(vim.fn.has('win32') == 1 and direct.code == 1 and printed:find('Str', 1, true) ~= nil,
-        ('the run lens showed %s; `cpl %s` gives %d: %s'):format(vim.inspect(shown),
-            table.concat(run.arguments or {}, ' '), direct.code, printed))
-end
+check(terminal_shows(term, 'Str', run.arguments or {}), 'the run lens showed no `Str` error')
 
 -- `:Cpl check` runs on the file in a terminal split and completes command names.
 vim.cmd('wincmd k')
@@ -110,8 +116,7 @@ vim.cmd('Cpl check')
 term = vim.api.nvim_get_current_buf()
 check(vim.bo[term].buftype == 'terminal', ':Cpl did not open a terminal')
 check(vim.wait(10000, function() return vim.fn.jobwait({ vim.b[term].terminal_job_id }, 0)[1] ~= -1 end), 'cpl check did not finish')
-shown = table.concat(vim.api.nvim_buf_get_lines(term, 0, -1, false), '\n')
-check(shown:find('a.cp:3', 1, true) ~= nil, ':Cpl check showed ' .. vim.inspect(shown))
+check(terminal_shows(term, 'a.cp:3', { 'check', file }), ':Cpl check showed no `a.cp:3` error')
 
 -- Writing a .cp buffer formats it through the server.
 local fmt_file = dir .. '/b.cp'

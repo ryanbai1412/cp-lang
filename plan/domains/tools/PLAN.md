@@ -58,6 +58,8 @@ Each local fix tonight, and the mechanism that would remove its whole class.
 | VS Code ran a stale `target/release/cpl` over a fresh debug build | done: `resolveServer` takes the newer workspace build | tools |
 | Edge release stays at an old commit while any CI job is red, so `cpl setup` isn't installable | publish edge from the newest commit whose required jobs pass, not only fully green runs | infra |
 | Headless Neovim on Windows draws no terminal output; the smoke runs the lens's command itself there | smoke tests check commands' output directly and the editor's terminal only where it renders | tools |
+| Windows Neovim: `:Cpl check` and the run lens draw nothing in a headless terminal buffer | done: every terminal check in smoke.lua goes through `terminal_shows`, which runs the command itself on Windows | tools |
+| VS Code: a debug session one integration test left stopped added Replay lenses to the lens test | done: the runner stops debugging after every test | tools |
 
 ## Next
 Milestone 1 order, items 1-3, each a small commit with its golden test.

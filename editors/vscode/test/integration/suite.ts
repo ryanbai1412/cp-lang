@@ -406,6 +406,9 @@ export async function run(): Promise<void> {
             failed.push(name);
             console.error(`not ok - ${name}\n${error instanceof Error ? error.stack : error}`);
         }
+        // Each test starts clean: a debug session left stopped would add Replay lenses to the next.
+        await vscode.debug.stopDebugging();
+        await until('no debug session', () => (vscode.debug.activeDebugSession ? undefined : true));
     }
     console.log(`${tests.length - failed.length} of ${tests.length} integration tests passed`);
     if (failed.length > 0) {
