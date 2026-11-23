@@ -24,8 +24,8 @@ Fields: `ks: List<Int>`, `vs: List<V>`, `state: List<Int>`, `default_val: V`, `s
 - `fn reserve(mut self, cap: Int)` — O(cap) when the table grows, O(1) otherwise; Reserve space for at least `cap` entries without rehashing.
 - `fn take(mut self) -> FlatMap<V>` — O(1); Move the map's contents out in O(1), leaving `self` empty.
 - `@get fn items(self) -> yields (Int, V)` — O(1) to make, O(capacity) to walk; O(1) to make.
-- `@get fn keys(self) -> yields Int` — O(1) to make, O(capacity) to walk
-- `@get fn values(self) -> yields V` — O(1) to make, O(capacity) to walk
+- `@get fn keys(self) -> yields Int` — O(1) to make, O(capacity) to walk; The keys, one per entry.
+- `@get fn values(self) -> yields V` — O(1) to make, O(capacity) to walk; The values, one per entry.
 - `fn absorb(mut self, mut other: FlatMap<V>, join: ?((V, V) -> V) = None)` — O(min(|self|, |other|)) expected; Merge all entries from `other` into `self` (emptying `other`), combining collisions with `join` or overwriting.
 
 ## `struct Counter<K, V = Int>`
@@ -50,13 +50,13 @@ Fields: `m: HashMap<K, V>`, `init: V`.
 - `fn total(self) -> V` — O(n); Sum of all stored values.; traps: never (overflow wraps in release, traps in debug)
 - `fn most_common(self, k: Int) -> List<(K, V)>` — O(n log n); Top `k` entries sorted by descending value.; traps: when `k < 0`
 - `@get fn items(self) -> yields (K, V)` — O(1) to make, O(1) per step; O(1) to make.
-- `@get fn keys(self) -> yields K` — O(1) to make, O(1) per step
-- `@get fn values(self) -> yields V` — O(1) to make, O(1) per step
+- `@get fn keys(self) -> yields K` — O(1) to make, O(1) per step; The keys, one per distinct element.
+- `@get fn values(self) -> yields V` — O(1) to make, O(1) per step; The counts, one per key.
 
 ## Functions
 
-- `fn push<K>(mut self: Counter<K, Int>, x: K)`
-- `fn pop<K>(mut self: Counter<K, Int>, x: K)`
+- `fn push<K>(mut self: Counter<K, Int>, x: K)` — O(1) expected; Count one more `x`: `c.add(x, 1)`, so a `Counter` fills like a bag.
+- `fn pop<K>(mut self: Counter<K, Int>, x: K)` — O(1) expected; Count one fewer `x`: `c.add(x, -1)`, the undo of `push`.
 
 ## Example
 

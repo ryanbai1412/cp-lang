@@ -34,8 +34,8 @@ Fields: `p: [D.cuts]T`.
 - `fn get(self, i: D) -> T` — O(1); Recover the original element `a[i]`, as `prefix(i.r) - prefix(i.l)`.
 - `fn suffix(self, b: Cut<D>) -> T` — O(1); The sum of everything right of boundary `b`: `all - prefix(b)`, zero at the last cut.
 - `@get fn all(self) -> T` — O(1); The sum of the entire domain: `prefix` at the last cut, zero for an empty domain.
-- `fn first_ge(self, target: T) -> ?Cut<D>` — O(log |D|); a checked build's first search on a table also reads every prefix, O(|D|); The first boundary `b` with `prefix(b) >= target`, or `None` when even `all` is smaller.; traps: when some element is negative
-- `fn first_gt(self, target: T) -> ?Cut<D>` — O(log |D|); a checked build's first search on a table also reads every prefix, O(|D|); The first boundary `b` with `prefix(b) > target`, or `None` when `all <= target`.; traps: when some element is negative
+- `fn first_ge(self, target: T) -> ?Cut<D>` — O(log |D|); The first boundary `b` with `prefix(b) >= target`, or `None` when even `all` is smaller.; traps: when some element is negative
+- `fn first_gt(self, target: T) -> ?Cut<D>` — O(log |D|); The first boundary `b` with `prefix(b) > target`, or `None` when `all <= target`.; traps: when some element is negative
 
 ## `struct _FillPrefix2 <R, C, T>`
 
