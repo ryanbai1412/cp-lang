@@ -428,6 +428,36 @@ jobs:
       - name: Wall-clock budgets
         run: scripts/check.sh --timing
 
+  # Milestone 1 acceptance: rejudge every committed acceptance-run solution
+  # (research/acceptance/solutions/) with the release cpl and the
+  # Codeforces profile; any non-AC blocks. Parallel on the runner's 4 cores
+  # (about 2 min), restoring the release target/ the site job saves.
+  acceptance:
+    name: acceptance solutions stay AC
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install the pinned Rust toolchain
+        run: rustup show active-toolchain || rustup toolchain install
+      - uses: Swatinem/rust-cache@v2
+        with:
+          cache-targets: "false"
+      - name: Restore target/ (release)
+        uses: actions/cache/restore@v4
+        with:
+          path: target
+          key: ${{ env.TARGET_KEY }}-release-${{ hashFiles('Cargo.lock', 'rust-toolchain.toml') }}-${{ github.run_id }}
+          restore-keys: |
+            ${{ env.TARGET_KEY }}-release-${{ hashFiles('Cargo.lock', 'rust-toolchain.toml') }}-
+            ${{ env.TARGET_KEY }}-release-
+      - name: Reuse unchanged build outputs
+        run: scripts/ci-mtime.sh
+      - name: Build cpl
+        run: cargo build --release --bin cpl
+      - name: Rejudge the acceptance solutions
+        run: python3 research/acceptance/regress.py target/release/cpl -j "$(nproc)"
+
   site:
     name: site build
     runs-on: ubuntu-latest

@@ -7984,3 +7984,11 @@ diff, or always on a manual run); every OS always runs the LSP handshake.
 Gradle is not cached; cold runs resolve through the Maven mirror and retry with
 backoff. Reverse: restore setup-java's `cache: gradle` and the Linux-always
 branch of the `plugin` step.
+
+## 384. CI rejudges the acceptance solutions on every run (infra, 2026-11-23)
+
+The committed acceptance-run solutions (research/acceptance/solutions/) are
+the Milestone 1 evidence; edge ae6edeb2 turned two of them TLE unnoticed.
+Rule: a blocking `acceptance` job in ci.yml builds the release cpl and runs
+`regress.py -j $(nproc)`; it runs beside the gate, about 2 min on 4 cores,
+so it guards main without setting CI's wall time. Reverse: delete the job.
