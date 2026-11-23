@@ -7,7 +7,17 @@
 | Status | Active |
 | Describes | `.github/workflows/release.yml`, `scripts/release/`, `web/public/install.{sh,ps1}` |
 
-What ships, on which channel, and how to install, update and roll back.
+A release is how `cpl` reaches a contestant's machine. There are two
+channels: edge, built at least hourly from the newest main commit that
+works, for people who want fixes now; and stable, which Ryan cuts from a
+fully green commit. One command installs either on Linux, macOS or Windows,
+checks the download's checksum, and needs no root. Every release can be
+rolled back to the previous toolchain with one command.
+
+We know a release works because each edge is install-smoked on all three
+OSes before users see it. The weakest areas today are that releases aren't
+signed yet and builds aren't checked for reproducibility. The rules are in
+[the CI checklist](../guidelines/ci-checklist.md#releases).
 
 ## Install
 
@@ -28,6 +38,8 @@ is no stable release.
 
 From source, at any commit: `cargo install --locked --git
 https://github.com/ryanbai1412/cp-lang cpl-cli --rev <sha>`.
+
+# Reference
 
 ## Channels
 
