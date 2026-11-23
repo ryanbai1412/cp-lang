@@ -1,13 +1,11 @@
-// Codeforces 2183 A — Binary Array Game
-//
-// A move replaces a subarray of length >= 2 with `1 - min(subarray)`; Alice
-// wins iff the final single element is `0`.
-// - If `a[0] == 1` or `a[n - 1] == 1`: Alice collapses the complementary `n - 1`
-//   elements (or the whole array if all `1`s), reaching either `[0]` or `[1, 1]`
-//   where Bob's only move leaves `[0]`, so Alice wins.
-// - If `a[0] == 0` and `a[n - 1] == 0`: collapsing the whole array yields `[1]`
-//   (Bob wins), and any proper subarray leaves a `0` at an end so Bob collapses
-//   the whole array to `[1]` on the next turn.
+// Source: Codeforces 2183A (Binary Array Game), https://codeforces.com/contest/2183/problem/A
+// Problem: a 0/1 array of n <= 100 (multitest). Alice and Bob alternate, Alice first, replacing
+//   a subarray of length >= 2 by 1 - its min, until one element is left; Alice wins if it is 0.
+//   Print the winner.
+// Solution: if an end is 1, Alice collapses an all-1 array to [0], else the other n - 1
+//   elements (which hold a 0) to 1, leaving [1, 1], which Bob must turn into [0]. If both ends
+//   are 0, collapsing everything gives 1 and any shorter move keeps a 0 at an end, so Bob then
+//   collapses all to 1. Alice iff a[0] or a[n - 1] is 1: O(1).
 
 @!multitest
 let n: 3..=100 = read()

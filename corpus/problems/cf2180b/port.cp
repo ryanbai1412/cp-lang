@@ -1,10 +1,10 @@
-// Codeforces 2180 B — Ashmal
-//
-// Append or prepend each incoming string `a` (`n <= 1_000`, total length
-// `L <= 4_000`) to minimize the final string. For equal-length strings `s1 < s2`,
-// both `s1 + a < s2 + a` and `a + s1 < a + s2`, so keeping the lexicographically
-// smallest `s = min(s + a, a + s)` at each step is globally optimal.
-// Complexity: O(L^2) character copies (`<= 1.6e7` at `L = 4_000`).
+// Source: Codeforces 2180B (Ashmal), https://codeforces.com/contest/2180/problem/B
+// Problem: strings a_1..a_n (n <= 1000, total length L <= 4000, multitest) are added in order,
+//   each to the front or the back of an initially empty s. Print the lexicographically smallest
+//   final s.
+// Solution: all candidates after a step have the same length, and s1 < s2 gives both
+//   s1 + a < s2 + a and a + s1 < a + s2, so keeping only s = min(s + a, a + s) is optimal.
+//   O(n L) character copies.
 
 @!multitest
 let n: 1..=1_000 = read()

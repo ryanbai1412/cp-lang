@@ -1,6 +1,9 @@
-// Mock CCC '21 S1: given an alphabet and a word s, print in sorted order,
-// without repeats, every word other than s one edit away: delete a letter,
-// replace a letter, or insert a letter of the alphabet anywhere.
+// Source: Mock CCC '21 S1 (Edit Distance), https://dmoj.ca/problem/nccc8s1
+// Problem: an alphabet and a word s (|s| <= 100): print, sorted and without repeats, every word
+//   other than s one edit away: delete a letter, replace one, or insert a letter of the
+//   alphabet anywhere.
+// Solution: generate every deletion, replacement and insertion, O(|s| |alphabet|) words of
+//   length O(|s|), then sort, drop duplicates and skip s itself.
 // original: corpus/submissions/3381111.java
 let al: Str = read()
 let s: Str = read()
