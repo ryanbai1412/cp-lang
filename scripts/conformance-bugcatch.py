@@ -89,8 +89,12 @@ def at_fix(wt, env, work, sha, files, head):
     git("checkout", "-f", "-q", sha, cwd=wt)
     git("clean", "-fdq", cwd=wt)
     git("checkout", head, "--", "spec/conformance", cwd=wt)
-    runner = None if (wt / "crates" / "cpl-conform").is_dir() else work / "runner" / "cpl-conform"
+    head_runner = work / "runner" / "cpl-conform"
+    runner = None if (wt / "crates" / "cpl-conform").is_dir() else head_runner
     fixed = run_suite(wt, env, work / "fix.json", runner)
+    if fixed is None and runner is None:
+        runner = head_runner
+        fixed = run_suite(wt, env, work / "fix.json", runner)
     if fixed is None or fixed is HUNG:
         return "fix commit does not build or hangs", []
     gone = [f for f in files if git("cat-file", "-e", f"{sha}^:{f}", cwd=wt, check=False).returncode]
@@ -125,6 +129,7 @@ def main():
         git("worktree", "remove", "--force", str(wt), check=False)
         shutil.rmtree(wt, ignore_errors=True)
     head = git("rev-parse", "HEAD").stdout.strip()
+    git("worktree", "prune")
     git("worktree", "add", "--detach", str(wt), "HEAD")
     env = dict(os.environ, CARGO_TARGET_DIR=str(work / "target"))
     todo = [(c, git("log", "-1", "--format=%s", c).stdout.strip()) for c in a.commits] if a.commits else candidates(a.limit)
