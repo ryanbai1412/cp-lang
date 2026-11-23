@@ -11,8 +11,8 @@ for _ in 0..t_cases:
     domain Q = 0..q
     let raw_qs: [Q](v0: Int, p0: Int) = read()
 
-    let g = Graph<V, E>.undirected([E] e => (u: edges[e].u, v: edges[e].v))
-    let dist = dijkstra::<V>(u => g.out(u), [(V.first, 0)], a => edges[a.e].len)
+    let g = Graph<V, E>.undirected([E] e => (u: edges[e].u, v: edges[e].v, w: edges[e].len))
+    let dist = dijkstra(g, from: [(V.first!, 0)])
 
     let max_nodes = if 2 * n - 1 > 1: 2 * n - 1 else: 1
     domain KNode = 0..max_nodes

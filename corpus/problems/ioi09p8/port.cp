@@ -26,8 +26,8 @@ fn most() -> Int:
 
     fn reach(x: Loc) -> Int:
         max(
-            from_above.fold(Loc.first..=x) - down * x.label,
-            from_below.fold(x..=Loc.last) + up * x.label,
+            from_above.fold(Loc.first!..=x) - down * x.label,
+            from_below.fold(x..=Loc.last!) + up * x.label,
         )
 
     fn stand(x: Loc, money: Int):
@@ -43,7 +43,7 @@ fn most() -> Int:
         // Fairs i..j share a day, sorted by location.
         let g = j - i
         let arrive = [reach(order[i + t].at) for t in 0..g]
-        var going_down = arrive
+        var going_down = arrive.copy()
         var going_up = arrive
         for t in 0..g:
             if t > 0:

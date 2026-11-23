@@ -20,7 +20,7 @@ for _ in 0..tests:
     let edges: [E](u: V, v: V) = read()
     let g = Graph<V, E>.undirected(edges)
 
-    let c = Rooted.new(g, V.first).centroid
+    let c = Rooted.new(g, V.first!).centroid()
     let t = Rooted.new(g, c)
 
     fn heavy(x: V) -> Int:

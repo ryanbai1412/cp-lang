@@ -11,7 +11,6 @@
 // over the days in order of ratio, and no two reals are ever compared for
 // equality. (The original runs the days backwards with a dynamic hull.)
 // original: corpus/submissions/3767248.cpp
-use real.float.{fixed}
 
 let n: Int = read()
 let money: F64 = read()
@@ -63,4 +62,4 @@ for d in Day:
     best max= b[d] * highest(rank[d])
     let coupons_b = best / (a[d] * rate[d] + b[d])
     add(Line(coupons_b * rate[d], coupons_b))
-print(fixed(best, 3))
+print(best, precision: 3)

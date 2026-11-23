@@ -22,7 +22,7 @@ let roads: [Road](u: Town, v: Town, cost: 1..=1e6) = read(gen: tied)
 // the cheapest set: take roads cheapest first, skipping any that close a loop
 var joined = Dsu<Town>()
 var kept: List<(u: Town, v: Town, cost: Int)> = []
-for (u, v, cost) in roads.sorted_by(.cost):
+for (u, v, cost) in roads.sorted(by: r => r.cost):
     if joined.unite(u, v): kept.push((u, v, cost))
 
 // The two largest different costs in a set of roads; 0 where there is none.
@@ -38,7 +38,7 @@ else:
     // runner-up: add a road, and drop the dearest kept road on the path
     // between its ends that is strictly cheaper. Each kept road is stored
     // at its lower town, laid out so that a path is a few ranges.
-    let tree = Rooted(kept, Town.first)
+    let tree = Rooted(kept, Town.first!)
     var above = SegTree<tree.Pre, Top>((0, 0), (a, b) => both(a, b))
     for (u, v, cost) in kept:
         above.set(tree.sub(if tree.parent(u) == v: u else: v).l, (cost, 0))
@@ -50,8 +50,8 @@ else:
         let peak = tree.sub(tree.lca(u, v)).l
         var path: Top = (0, 0)
         for (l, r) in tree.chains(u, v):
-            if l != peak: path = both(path, above.fold(l, r))
-            elif let below = l + 1 and l != r: path = both(path, above.fold(below, r))
+            if l != peak: path = both(path, above.fold(l..=r))
+            elif let below = l + 1 and l != r: path = both(path, above.fold(below..=r))
         let out = if path.hi < cost: path.hi else: path.lo
         if out != 0: best min= base + cost - out
     print(best ?? -1)

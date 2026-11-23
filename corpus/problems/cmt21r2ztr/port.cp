@@ -15,7 +15,7 @@ fn key(s: Slot, x: Int) -> Int: s.label * SPAN + x
 var keys: List<Int> = []
 for f in facts:
     for s in [f.i, f.j, f.k]: keys.push(key(s, f.x))
-let (Mark, mark) = compress(keys)
+let (domain Mark, mark) = compress(keys)
 fn at(s: Slot, x: Int) -> Mark: mark.first_ge(key(s, x))!
 fn slot(q: Mark) -> Slot: Slot(mark[q] / SPAN)
 fn value(q: Mark) -> Int: mark[q] % SPAN
@@ -26,7 +26,7 @@ domain Claim = 0..4 * Mark.len
 fn below(q: Mark) -> Claim: Claim(4 * q.idx)
 fn above(q: Mark) -> Claim: Claim(4 * q.idx + 2)
 fn no(c: Claim) -> Claim: Claim(c.idx ^ 1)
-var arcs: List<(u: Claim, v: Claim)> = []
+var arcs: List<(Claim, Claim)> = []
 fn either(a: Claim, b: Claim):
     arcs.push((no(a), b))
     arcs.push((no(b), a))
@@ -41,9 +41,11 @@ for q in Mark:
     // marks of one slot are neighbours, in order of value: a number is
     // above this value or below the next one, and never both, because a
     // number strictly between two values can be moved down onto one
-    if let r = q + 1 and slot(q) == slot(r):
-        either(above(q), below(r))
-        either(no(above(q)), no(below(r)))
+    if q.ord + 1 < Mark.len:  // WISH: `q.right`, the next mark (filed with stdlib)
+        let r = Mark.nth(q.ord + 1)
+        if slot(q) == slot(r):
+            either(above(q), below(r))
+            either(no(above(q)), no(below(r)))
 
 // Claims that force each other hold or fail together. If a claim forces its
 // own denial round a cycle there is no answer. Otherwise believe whichever

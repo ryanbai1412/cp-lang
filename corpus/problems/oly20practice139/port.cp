@@ -18,8 +18,8 @@ var order: List<(Int, Int)> = []
 for i in I: order.push((xs[i], ys_in[i]))
 order.sort()
 
-let (Y, yvals) = compress(ys_in)
-let m = Y.K
+let (domain Y, yvals) = compress(ys_in)
+let m = Y.len
 let nb = (m + B - 1) / B
 domain Bk = 0..nb
 
@@ -39,7 +39,7 @@ fn rebuild(bi: Bk):
     var qr = ql + B
     if qr > m: qr = m
     for idx in ql..qr:
-        let sl = yvals[Y.from_idx(idx)!]
+        let sl = yvals[Y.nth(idx)]
         let ic = sl * b_v[idx]
         while h_at[bi].len > 0:
             let last = h_at[bi].len - 1
@@ -72,15 +72,15 @@ fn query_all() -> Int:
     best
 
 fn add_y(y: Int):
-    let lo = (0..m).first_true(mid => yvals[Y.from_idx(mid)!] > y) ?? m
+    let lo = (0..m).first_true(mid => yvals[Y.nth(mid)] > y) ?? m
     let pos = lo
     let bind = pos / B
-    for i in 0..bind: b_add[Bk.from_idx(i)!] += 1
+    for i in 0..bind: b_add[Bk.nth(i)] += 1
     let rem = pos % B
     if rem > 0:
         let base = bind * B
         for i in base..(base + rem): b_v[i] += 1
-        rebuild(Bk.from_idx(bind)!)
+        rebuild(Bk.nth(bind))
 
 var rem = n
 var ans = 0
