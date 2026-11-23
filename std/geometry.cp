@@ -41,7 +41,7 @@ pub struct Pt(pub x: Int, pub y: Int):
     /// cost: \(O(1)\)
     /// traps: when the result overflows `I128` (only for coordinates near `Int.MIN`)
     /// example: `Pt(3, 4).norm2_128 == 25`
-    /// example: `Pt(3_000_000_000, 4_000_000_000).norm2_128 == 25_000_000_000_000_000_000`
+    /// example: `Pt(3_000_000_000, 4_000_000_000).norm2_128 == I128(5_000_000_000) * 5_000_000_000`
     @get pub fn norm2_128(self) -> I128 = I128(x) * I128(x) + I128(y) * I128(y)
 
     /// The Euclidean length `sqrt(x*x + y*y)` as `F64` (`hypot`, so no intermediate overflow).
@@ -1546,14 +1546,13 @@ pub struct Vec(pub x: F64, pub y: F64):
     /// example: `Vec(0.0, 1.0).angle == PI / 2.0`
     @get pub fn angle(self) -> F64 = atan2(y, x)
 
-    // blocked: no `cos`/`sin` in scope (GAPS.md geometry `Vec.from_angle`)
     /// The unit vector `Vec(cos(rad), sin(rad))`.
     ///
     /// cost: \(O(1)\)
     /// traps: never
     /// example: `Vec.from_angle(0.0) == Vec(1.0, 0.0)`
     /// example: `close(Vec.from_angle(PI / 2.0).y, 1.0)`
-    pub fn from_angle(rad: F64) -> Vec = todo
+    pub fn from_angle(rad: F64) -> Vec = Vec(cos(rad), sin(rad))
 
     /// The unit vector in the direction of `self`: each coordinate divided by `self.len`.
     ///
@@ -3485,8 +3484,7 @@ pub struct Vec3(pub x: F64, pub y: F64, pub z: F64):
     /// example: `Vec3(0.0, 0.0, 0.0).dist(Vec3(1.0, 2.0, 2.0)) == 3.0`
     pub fn dist(self, o: Vec3) -> F64 = (o - self).len
 
-    // blocked: no `cos`/`sin` in scope (GAPS.md geometry `Vec.from_angle`, `Vec3.rot`)
-    /// `self` rotated by `rad` radians counter-clockwise about the unit vector `axis` (seen with
+        /// `self` rotated by `rad` radians counter-clockwise about the unit vector `axis` (seen with
     /// `axis` pointing at the viewer), by Rodrigues' formula
     /// `v cos t + axis.cross(v) sin t + axis * axis.dot(v) * (1 - cos t)`.
     ///
@@ -3496,7 +3494,9 @@ pub struct Vec3(pub x: F64, pub y: F64, pub z: F64):
     /// traps: never
     /// example: `Vec3(1.0, 2.0, 3.0).rot(Vec3(0.0, 0.0, 1.0), 0.0) == Vec3(1.0, 2.0, 3.0)`
     /// example: `let v = Vec3(1.0, 0.0, 0.0).rot(Vec3(0.0, 0.0, 1.0), PI / 2.0); close(v.x, 0.0) and close(v.y, 1.0) and close(v.z, 0.0)`
-    pub fn rot(self, axis: Vec3, rad: F64) -> Vec3 = todo
+    pub fn rot(self, axis: Vec3, rad: F64) -> Vec3:
+        let (c, s) = (cos(rad), sin(rad))
+        self * c + axis.cross(self) * s + axis * (axis.dot(self) * (1.0 - c))
 
 impl Add for Vec3:
     fn add(a, b) = Vec3(a.x + b.x, a.y + b.y, a.z + b.z)

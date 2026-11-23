@@ -447,6 +447,19 @@ inline double fsqrt(double x) {
 ",
     },
     Piece {
+        name: "farc",
+        needs: &["out"],
+        code: "\
+inline void farc_check(const char* f, double x) {
+#ifdef LOCAL
+    if (!(x >= -1.0 && x <= 1.0)) { cpl::flush(); fprintf(stderr, \"%s(%g) is outside -1..=1\\n\", f, x); exit(3); }
+#endif
+}
+inline double fasin(double x) { farc_check(\"asin\", x); return std::asin(x); }
+inline double facos(double x) { farc_check(\"acos\", x); return std::acos(x); }
+",
+    },
+    Piece {
         name: "check_range",
         needs: &["out"],
         code: "\

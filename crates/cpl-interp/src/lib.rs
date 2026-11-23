@@ -10,6 +10,7 @@
 
 pub mod checkpoint;
 mod closed_form;
+mod float_fn;
 mod input;
 mod io;
 use io::Feed;
@@ -3738,22 +3739,18 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 Value::Float(v) => Value::Float(v.abs()),
                 other => other,
             },
-            Builtin::Sqrt => {
-                let x = first.float();
-                if x < 0.0 {
-                    return trap(span, format!("sqrt({x}) of a negative number"));
-                }
-                Value::Float(x.sqrt())
-            }
+            Builtin::Sqrt
+            | Builtin::Atan2
+            | Builtin::Sin
+            | Builtin::Cos
+            | Builtin::Tan
+            | Builtin::Asin
+            | Builtin::Acos => float_fn::eval(op, first.float(), values.next(), span)?,
             Builtin::Flush => {
                 let _ = self.sink.write_all(&self.out);
                 let _ = self.sink.flush();
                 self.out.clear();
                 Value::Unit
-            }
-            Builtin::Atan2 => {
-                let x = values.next().unwrap_or_default().float();
-                Value::Float(first.float().atan2(x))
             }
             Builtin::Floor | Builtin::Ceil | Builtin::Round => {
                 let v = match op {

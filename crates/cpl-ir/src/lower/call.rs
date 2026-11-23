@@ -1116,7 +1116,13 @@ impl<'a> Lowerer<'a> {
         Some(args.iter().map(|a| &a.value).collect())
     }
 
-    fn one_arg(&mut self, what: &str, args: &[ast::Arg], want: &Ty, span: Span) -> Option<Expr> {
+    pub(super) fn one_arg(
+        &mut self,
+        what: &str,
+        args: &[ast::Arg],
+        want: &Ty,
+        span: Span,
+    ) -> Option<Expr> {
         let exprs = self.positional_any(what, args, 1, span)?;
         Some(self.expect(exprs[0], want))
     }
@@ -2089,14 +2095,9 @@ impl<'a> Lowerer<'a> {
                     }
                 }
             }
-            "sqrt" => match self.one_arg(name, args, &Ty::Float, span) {
-                Some(value) => self.mk(
-                    ExprKind::Builtin(Builtin::Sqrt, vec![value]),
-                    Ty::Float,
-                    span,
-                ),
-                None => self.err_expr(span),
-            },
+            "sqrt" | "atan2" | "sin" | "cos" | "tan" | "asin" | "acos" => {
+                self.float_fn(name, args, span)
+            }
             // A program that flushes is read by someone who answers: it
             // reads as it goes.
             "flush" => match self.positional_any(name, args, 0, span) {
@@ -2105,18 +2106,6 @@ impl<'a> Lowerer<'a> {
                     self.mk(
                         ExprKind::Builtin(Builtin::Flush, Vec::new()),
                         Ty::Unit,
-                        span,
-                    )
-                }
-                None => self.err_expr(span),
-            },
-            "atan2" => match self.positional_any(name, args, 2, span) {
-                Some(exprs) => {
-                    let y = self.expect(exprs[0], &Ty::Float);
-                    let x = self.expect(exprs[1], &Ty::Float);
-                    self.mk(
-                        ExprKind::Builtin(Builtin::Atan2, vec![y, x]),
-                        Ty::Float,
                         span,
                     )
                 }

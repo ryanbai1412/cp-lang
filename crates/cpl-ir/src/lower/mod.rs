@@ -13,6 +13,7 @@ mod call;
 mod collect;
 mod comprehension;
 mod expr;
+mod float_fn;
 mod fn_value;
 mod fresh;
 mod hoist;

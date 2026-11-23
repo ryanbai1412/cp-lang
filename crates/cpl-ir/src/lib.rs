@@ -738,6 +738,12 @@ pub enum Builtin {
     WrapMul,
     Sqrt,
     Atan2,
+    /// `sin`, `cos`, `tan`, `asin`, `acos` of an `F64`, in radians.
+    Sin,
+    Cos,
+    Tan,
+    Asin,
+    Acos,
     /// `flush()`: what was printed so far is written out now.
     Flush,
     Floor,
