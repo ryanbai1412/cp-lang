@@ -7,14 +7,14 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 2270 (995 passing). Rules: 535.
+Cases: 2271 (995 passing). Rules: 535.
 
 ## Summary per chapter
 
 - R01 (01-lexical-grammar.md): 52 rules, 110 cases; 0 uncovered, 3 happy-path only, 0 negative only
-- R02 (02-values-types.md): 51 rules, 106 cases; 0 uncovered, 4 happy-path only, 0 negative only
+- R02 (02-values-types.md): 51 rules, 107 cases; 0 uncovered, 4 happy-path only, 0 negative only
 - R03 (03-numbers-layout.md): 24 rules, 60 cases; 0 uncovered, 5 happy-path only, 0 negative only
-- R04 (04-indices.md): 62 rules, 91 cases; 0 uncovered, 2 happy-path only, 0 negative only
+- R04 (04-indices.md): 62 rules, 92 cases; 0 uncovered, 2 happy-path only, 0 negative only
 - R04a (04a-identity-vs-offset.md): 39 rules, 53 cases; 0 uncovered, 1 happy-path only, 0 negative only
 - R04b (04b-keys.md): 27 rules, 62 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R05 (05-ownership.md): 43 rules, 148 cases; 0 uncovered, 2 happy-path only, 0 negative only
@@ -147,7 +147,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R02.7.4 [1+ 2-]: `match` is exhaustive. Patterns match only the stored shape; there are no user-defined pat...
 - R02.7.6 [4+ 0-]: A record pattern names the fields it binds, `(to: u, w: c)`, and `..` skips the rest; `(to...
 - R02.7.5 [1+ 0-] *happy-path only*: Layout uses niche filling, so `Ev` is 8 bytes with no tag when `V` positions are 4 bytes (...
-- R02.8.1 [1+ 2-]: `[D]T` is a fixed-size array indexed by domain `D` (positions of `D`, never raw `Int`). `[...
+- R02.8.1 [2+ 2-]: `[D]T` is a fixed-size array indexed by domain `D` (positions of `D`, never raw `Int`; an ...
 - R02.8.2 [1+ 0-]: `List<T>` grows, is indexed by `0..len` positions, and its slices keep source positions.
 - R02.8.3 [2+ 1-]: `[D]T` arrays are built by tables (`[V] v => 0`), typed reads (`read<[V]Int>()`), comprehe...
 - R02.8.4 [1+ 0-]: `xs[i]` on a heap element lends it (`let row = rows[i]`); on a plain element it copies.
@@ -216,7 +216,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R04.2.18 [2+ 3-]: | `5` where a `V` or `V.cuts` is expected | integer literal is that position or cut (integ...
 - R04.3.1 [2+ 1-]: | position `v` | `v.prev`, `v.next`: `?V` | `v.l`, `v.r`: its cuts
 - R04.3.2 [1+ 0-]: | cut `c` | `c.prev`, `c.next`: `?V.cuts` | `c.l`, `c.r`: the positions beside it, `?V`
-- R04.3.3 [1+ 1-]: Arithmetic on a position gives an `Int` (`v + 1`); getting back into the domain is explici...
+- R04.3.3 [2+ 1-]: Arithmetic on a position gives an `Int` (`v + 1`); getting back into the domain is explici...
 - R04.4.1 [4+ 0-]: | written | `l..r`, `l..=r` with position ends | `j..i`, `j..=i` with cut ends
 - R04.4.2 [1+ 0-]: | elements (`for`, `in`, `len`) | positions | cuts
 - R04.4.29 [1+ 0-] *happy-path only*: **The rule: a range's elements are the kind of its ends.** Cuts in, cuts out: `for k in a....

@@ -186,7 +186,8 @@ enum Ev:
 ## 2.8 Arrays and lists
 
 - `[D]T` is a fixed-size array indexed by domain `D` (positions of `D`,
-  never raw `Int`). `[R, C]T` is a dense row-major 2-D array indexed
+  never raw `Int`; an array over an anonymous range such as `[n]T` or
+  `[0..=n]T` takes any `Int`, checked, R04.3.3). `[R, C]T` is a dense row-major 2-D array indexed
   `g[r, c]`; `[(R, C)]T` is the same type. `g[r]` is the row place. A
   counted dimension `[n]T` means `[0..n]T`. (R02.8.1)
 - `List<T>` grows, is indexed by `0..len` positions, and its slices keep
