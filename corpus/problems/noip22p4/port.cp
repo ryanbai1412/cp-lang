@@ -1,45 +1,45 @@
 // Source: NOIP 2022 P4 (Match), https://dmoj.ca/problem/noip22p4
 // Problem: permutations a and b of 1..n and Q queries (l, r), n, Q <= 2.5e5 (the first line also
 //   has a test id). For each query print the sum over all l <= p <= q <= r of
-//   max(a[p..=q]) * max(b[p..=q]), mod 2^64.
+//   max(a[p..=q]) * max(b[p..=q]), mod 2^64 (test id T in 0..=25; T = 0 on samples).
 // Solution: offline by right end r. A lazy SegTree over left ends p keeps A_p = max a[p..=r],
 //   B_p = max b[p..=r] and the history sum H_p of A_p * B_p over all r so far. Monotone stacks
 //   turn each new r into range assignments of A and of B; then every p <= r adds A_p * B_p to
 //   H_p. Tags compose assignments with history coefficients (on AB, A, B and 1); a query with
-//   right end r folds H over l..=r. O((n + Q) log n).
-// Note: proto/cpc lacks U64 today, so Int (64-bit signed) is used; exact on all
-// inputs where historical sum < 2^63 (see friction backlog for U64 wrapping gap).
+//   right end r folds H over l..=r. All sums and products are U64, which wraps mod 2^64
+//   exactly as the answer asks. O((n + Q) log n).
 // original: corpus/submissions/5445685.cpp
 
-let (test_id, n): (Int, Int) = read()
+let (test_id, n): (0..=25, 1..=250_000) = read()
 domain I = 1..=n
-let a: [I]Int = read()
-let b: [I]Int = read()
-let q: Int = read()
+let a: [I]1..=n = read()
+let b: [I]1..=n = read()
+let q: 1..=250_000 = read()
 domain Q = 0..q
 let qs: [Q](l: I, r: I) = read()
 
 struct HistNode:
-    len: Int
-    sa: Int
-    sb: Int
-    sab: Int
-    hist: Int
+    len: U64
+    sa: U64
+    sb: U64
+    sab: U64
+    hist: U64
 
 struct HistTag:
     has_a: Bool
-    ta: Int
+    ta: U64
     has_b: Bool
-    tb: Int
-    cab: Int
-    ca: Int
-    cb: Int
-    c1: Int
+    tb: U64
+    cab: U64
+    ca: U64
+    cb: U64
+    c1: U64
 
-let id_tag = HistTag(false, 0, false, 0, 0, 0, 0, 0)
+const Z = U64(0)
+let id_tag = HistTag(false, Z, false, Z, Z, Z, Z, Z)
 
 let hist_monoid = Monoid<HistNode>(
-    id: HistNode(0, 0, 0, 0, 0),
+    id: HistNode(Z, Z, Z, Z, Z),
     op: (x, y) => HistNode(x.len + y.len, x.sa + y.sa, x.sb + y.sb, x.sab + y.sab, x.hist + y.hist),
 )
 
@@ -96,27 +96,27 @@ var by_r: [I]List<Q> = [I] _ => []
 for qi in Q:
     by_r[qs[qi].r].push(qi)
 
-let init = [I] _ => HistNode(1, 0, 0, 0, 0)
+let init = [I] _ => HistNode(U64(1), Z, Z, Z, Z)
 var st = SegTree(hist_action.over, init, act: hist_action)
 
 var stk_a: List<Int> = []
 var stk_b: List<Int> = []
-var ans: [Q]Int = [Q] _ => 0
+var ans: [Q]U64 = [Q] _ => Z
 
 for r in I:
     while stk_a.len > 0 and a[I.nth(stk_a.last!)] <= a[r]:
         stk_a.pop()
     let la = if stk_a.len == 0: 0 else: stk_a.last! + 1
     stk_a.push(r.to_idx)
-    st.apply(I.nth(la)..=r, HistTag(true, a[r], false, 0, 0, 0, 0, 0))
+    st.apply(I.nth(la)..=r, HistTag(true, U64(a[r]), false, Z, Z, Z, Z, Z))
 
     while stk_b.len > 0 and b[I.nth(stk_b.last!)] <= b[r]:
         stk_b.pop()
     let lb = if stk_b.len == 0: 0 else: stk_b.last! + 1
     stk_b.push(r.to_idx)
-    st.apply(I.nth(lb)..=r, HistTag(false, 0, true, b[r], 0, 0, 0, 0))
+    st.apply(I.nth(lb)..=r, HistTag(false, Z, true, U64(b[r]), Z, Z, Z, Z))
 
-    st.apply(..=r, HistTag(false, 0, false, 0, 1, 0, 0, 0))
+    st.apply(..=r, HistTag(false, Z, false, Z, U64(1), Z, Z, Z))
 
     for qi in by_r[r]:
         ans[qi] = st.fold(qs[qi].l..=r).hist
