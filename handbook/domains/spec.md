@@ -177,6 +177,46 @@ In order of what a user would feel:
 8. Grammar fuzzing.
 9. Cross-reference checks, the changelog, and the handbook/spec sync check.
 
+## Invariants
+
+- A case is never deleted or weakened to make an implementation pass. A
+  wrong case is fixed, with the reason in the commit
+  ([conformance/R2](../guidelines/conformance-checklist.md)).
+- Cases test the language through `cpl`, never through crate internals, so
+  the suite stays independent of the compiler.
+- Each rule id is defined once, where `(Rnn.n.n)` ends its sentence. A case
+  cites it as `// rule: nn.n.n`, without the `R`.
+- `at N` in a case header counts from the first line after the header lines.
+- A new case that fails today is recorded as known-failing. A passing case
+  that starts failing blocks the land.
+- Normative rules live only in `spec/`. The handbook explains them and
+  `plan/domains/spec/` tracks work on them; neither restates them.
+
+## Judgment rubric and probes
+
+Numbers miss some things, so a cold reader also scores fixed samples from 1
+to 5, with a reason, and the trend is the signal:
+
+1. **Rebuildable:** could an implementer build this rule from the chapter
+   alone, with no guess?
+2. **Three answers:** does each checked operation say what it means, what
+   the compiler proves, and what each build checks?
+3. **One spelling:** do the chapter, the `std` signature, the error text and
+   the cases say it the same way?
+4. **Sharp case:** is each case minimal, about one rule, and would it fail
+   on a plausible compiler bug, not just today's?
+5. **Worth the rule:** does each rule earn the thing a contestant must
+   remember?
+
+Three probes put the rubric to work:
+
+- **Rebuild:** a cold agent with only `spec/` answers snippet questions and
+  writes solutions; every guess is a hole (`research/rebuild-rounds/`).
+- **Bug-catch:** revert past compiler fixes one at a time; the suite should
+  go red (`scripts/conformance-bugcatch.py`).
+- **Add a rule:** add a rule with accept and reject cases from
+  `spec/conformance/README.md` alone; the gate is green on the first try.
+
 ## Suites and tools
 
 | Tool | What it catches | Run it |

@@ -75,3 +75,17 @@ Each local fix, and the mechanism that would remove its whole class.
 - Instance: std fields used by spec cases stayed private under decision 365 and broke when E0207 landed. General fix: the `pub` marking counts `spec/lib/` and `spec/conformance/` uses as outside the module, and the compiler lands a visibility check only after the conformance suite passes with it. Owner: stdlib (marking), compiler (ordering).
 - Instance: every rebase of a spec commit conflicts on the generated `spec/conformance/COVERAGE.md` and is fixed by hand (`--theirs`, regenerate). General fix: a `merge=regen` driver for every `gen.toml` file, so a rebase takes either side and land.sh's regen step rewrites it. Owner: infra (gen.toml, .gitattributes, land.sh).
 - The v0.2 CLI program suite (438 files at `6f487909a~1:crates/cpl-cli/tests/programs/`) was never classified against the spec. General fix: run it through `cpl-conform`, turn each program that tests a rule with no case into a conformance case, and drop the rest. Owner: spec.
+
+## v0.3 success criteria and milestones
+
+1. Every rule that forbids, traps or limits has a reject case; every rule has an accept case unless it only forbids. (2 forbidding rules lack a reject case today; 3 rule gaps in all; 26 rules that only permit or define are listed with a reason in `spec/conformance/permits.txt`.)
+2. Every case cites a rule, a std item or a diagnostic code that exists. (0 bad cites, 0 rule-less core cases today.)
+3. The feature x consumer matrix and the trait x claimer x method table have no empty cell (case or written n/a reason).
+4. Every spec code block is a case or is marked spec-only. (19 of 185 tagged blocks pass, most fail as fragments naming undefined values; 27 untagged blocks are skipped.)
+5. A cold agent rebuilding from `spec/` alone finds fewer than 5 holes. (Round 2 found 32.)
+6. All of the above are ratchets in `scripts/check.sh --fast`.
+
+
+- **M1 Every rule tested both ways.** Exit: `conformance-coverage.py` reports 0 happy-path-only rules, 0 unknown cites, 0 rule-less core cases, 0 diagnostic codes without a reject case; `conformance-coverage.py --check` runs in the fast gate.
+- **M2 Generated coverage.** Exit: `devin/wip-conformance-matrix` landed and `conformance-matrix.py --check` gates 0 empty cells; `conformance-traits.py --check` gates the trait table, `trait-gaps.txt` only shrinks; spec-blocks: every fence is a case or `spec-only`.
+- **M3 Independently rebuildable.** Exit: a rebuild round (cold agent, `spec/` only, 40 questions + 10 programs) records < 5 holes; the bug-catch probe catches >= 90% of reverted compiler fixes.
