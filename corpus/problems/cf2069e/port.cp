@@ -14,7 +14,6 @@
 // (`ab` or `ba`), convert its largest runs to the other side: dropping a run of
 // `l` native pairs yields `l - 1` opposite-side pairs (reducing `need` by
 // `l - 1`) while freeing `l` from the overfull side.
-use std.seq.{chunk_by}
 
 @!multitest
 let s: Str = read()
@@ -40,10 +39,10 @@ fn possible() -> Bool:
     var wild = 0
     var ab_runs = List<Int>()
     var ba_runs = List<Int>()
-    for r in s.chunk_by((x, y) => x != y):
+    for r in s.runs(link: (x, y) => x != y):
         if r.len % 2 == 1:
             wild += r.len / 2
-        elif s[r.first!] == 'A':
+        elif r.first! == 'A':
             ab_runs.push(r.len / 2)
         else:
             ba_runs.push(r.len / 2)
