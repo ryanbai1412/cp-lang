@@ -51,8 +51,8 @@ corpus port against its contestant's C++ with matched algorithms, and the
 zero-cost pairs time each abstraction against its hand-written form.
 
 The weakest areas are that runtime is measured but not gated at landing,
-nothing checks optimizations against programs nobody wrote (a generated
-program fuzzer, as Csmith does for GCC), and `cpl explain` names copies and
+the generated-program fuzzer covers only a fixed grammar of statements
+around perf's rewrites, and `cpl explain` names copies and
 closures but not yet fusion, sinking, check elision or widths. The rules
 behind all of this are in `handbook/guidelines/performance.md` and its
 checklist; the full list of qualities, with the check behind each, is the
@@ -137,7 +137,7 @@ numbers live in `plan/domains/perf/metrics.toml`. Journeys are from
 | Quality | Metric | Mechanism | Status |
 |---|---|---|---|
 | Optimizations never change behaviour (J6, J9) | programs whose C++ output, effect count or trap differs from the interpreter | `cpl-conform diff`; `crates/cpl-cli/tests/differential.rs` (ASan/UBSan) with `crates/cpl-cli/tests/parity/`; `crates/cpl-cli/tests/fuzz_three_way.rs` ([performance/R9](../guidelines/performance-checklist.md)) | enforced for written programs |
-| Same, on programs nobody wrote | mismatches per generated program (as Csmith does for GCC) | a generator of effectful programs run through both engines ([performance/R9](../guidelines/performance-checklist.md)) | missing |
+| Same, on programs nobody wrote | mismatches per generated program (as Csmith does for GCC) | `crates/cpl-cli/tests/effect_fuzz.rs`: seeded effectful programs, interpreter against ASan/UBSan C++ on trap and non-trap inputs ([performance/R9](../guidelines/performance-checklist.md)) | partial: one statement grammar |
 | Each optimization is gated on proven purity | rewrites that reorder, drop or repeat a call not proven pure by `cpl_ir::effects` | the Uses/Effects tables (one decision point); `crates/cpl-codegen/src/sink_tests.rs`, `copy_tests.rs` ([performance/R10](../guidelines/performance-checklist.md)) | partial: per-pass gates remain |
 | Each expression runs once (J5, J6) | calls evaluated more often than written | `crates/cpl-cli/tests/parity/view_receiver_runs_once.cp`; conformance `core-07` view cases ([performance/R9](../guidelines/performance-checklist.md)) | partial: no generated suite |
 | Idiomatic code is as fast as matched C++ (J8, J9) | p50, p95, max runtime ratio on the perf set | `bench/v03_perf_bench.py` ([performance/R5](../guidelines/performance-checklist.md)) | measured, not gated |

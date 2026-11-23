@@ -19,52 +19,21 @@
 //! `research/archive/audits/fuzz-three-way-findings.md`; run those with
 //! `cargo test -p cpl-cli --test fuzz_three_way -- --ignored`.
 
-use std::hash::{Hash, Hasher};
-use std::io::Write;
 use std::path::{Path, PathBuf};
-use std::process::{Command, Stdio};
-use std::sync::OnceLock;
+use std::process::Command;
+
+#[path = "support/sanitized.rs"]
+mod sanitized;
+use sanitized::{run, sanitized_binary, Rng};
 
 /// Seeds per family in every run.
 const SEEDS: u64 = 6;
-
-const GXX_FLAGS: [&str; 5] = [
-    "-std=c++17",
-    "-fsanitize=address,undefined",
-    "-fno-sanitize-recover=all",
-    "-w",
-    "-o",
-];
 
 /// What a program must do on one input.
 #[derive(Clone, Debug, PartialEq)]
 enum Expect {
     Prints(String),
     Traps,
-}
-
-/// xorshift64*: the same cases on every machine.
-struct Rng(u64);
-
-impl Rng {
-    fn new(seed: u64) -> Rng {
-        Rng(seed.wrapping_mul(0x9e37_79b9_7f4a_7c15) | 1)
-    }
-    fn next(&mut self) -> u64 {
-        self.0 ^= self.0 >> 12;
-        self.0 ^= self.0 << 25;
-        self.0 ^= self.0 >> 27;
-        self.0.wrapping_mul(0x2545_f491_4f6c_dd1d)
-    }
-    fn below(&mut self, n: u64) -> u64 {
-        self.next() % n.max(1)
-    }
-    fn range(&mut self, lo: i64, hi: i64) -> i64 {
-        lo + self.below((hi - lo + 1) as u64) as i64
-    }
-    fn pick<T: Copy>(&mut self, xs: &[T]) -> T {
-        xs[self.below(xs.len() as u64) as usize]
-    }
 }
 
 fn dir() -> PathBuf {
@@ -79,70 +48,6 @@ fn program(name: &str, src: &str) -> PathBuf {
         std::fs::write(&path, src).unwrap();
     }
     path
-}
-
-fn run(mut command: Command, input: &str) -> std::process::Output {
-    let mut child = command
-        .stdin(Stdio::piped())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()
-        .expect("starts");
-    // A program that stops early closes its input; that is not an error.
-    let _ = child
-        .stdin
-        .take()
-        .expect("piped")
-        .write_all(input.as_bytes());
-    child.wait_with_output().expect("exits")
-}
-
-fn gxx_version() -> &'static [u8] {
-    static VERSION: OnceLock<Vec<u8>> = OnceLock::new();
-    VERSION.get_or_init(|| {
-        Command::new("g++")
-            .arg("--version")
-            .output()
-            .map(|out| out.stdout)
-            .unwrap_or_default()
-    })
-}
-
-/// The sanitized binary of `cpp`, compiled now or kept from an earlier run.
-fn sanitized_binary(cpp: &[u8]) -> Result<PathBuf, String> {
-    let mut hasher = std::collections::hash_map::DefaultHasher::new();
-    (gxx_version(), GXX_FLAGS, cpp).hash(&mut hasher);
-    let key = format!("{:016x}", hasher.finish());
-    let cache = dir().join("cache");
-    std::fs::create_dir_all(&cache).map_err(|e| e.to_string())?;
-    let (source, binary) = (cache.join(format!("{key}.cpp")), cache.join(&key));
-    if binary.exists() && std::fs::read(&source).is_ok_and(|kept| kept == cpp) {
-        return Ok(binary);
-    }
-    let unique = format!(
-        "{key}.{}.{:?}",
-        std::process::id(),
-        std::thread::current().id()
-    )
-    .replace(|c: char| !c.is_ascii_alphanumeric() && c != '.', "");
-    let (tmp_source, tmp_binary) = (cache.join(format!("{unique}.cpp")), cache.join(&unique));
-    std::fs::write(&tmp_source, cpp).map_err(|e| e.to_string())?;
-    let compiled = Command::new("g++")
-        .args(GXX_FLAGS)
-        .arg(&tmp_binary)
-        .arg(&tmp_source)
-        .output()
-        .map_err(|e| format!("g++ did not start ({e}); these tests need it"))?;
-    if !compiled.status.success() {
-        return Err(format!(
-            "g++ failed on {}:\n{}",
-            tmp_source.display(),
-            String::from_utf8_lossy(&compiled.stderr)
-        ));
-    }
-    std::fs::rename(&tmp_binary, &binary).map_err(|e| e.to_string())?;
-    std::fs::rename(&tmp_source, &source).map_err(|e| e.to_string())?;
-    Ok(binary)
 }
 
 /// Runs `name` on every input three ways; returns one line per disagreement.
@@ -165,7 +70,7 @@ fn three_way(name: &str, src: &str, cases: &[(String, Expect)]) -> Vec<String> {
             String::from_utf8_lossy(&built.stderr)
         )];
     }
-    let binary = match sanitized_binary(&built.stdout) {
+    let binary = match sanitized_binary(&dir().join("cache"), &built.stdout) {
         Ok(binary) => binary,
         Err(message) => return vec![format!("{name}: {message}")],
     };

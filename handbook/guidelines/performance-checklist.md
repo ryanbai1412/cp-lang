@@ -81,7 +81,8 @@ traps, or how often a lazy view is evaluated.
 Reason: a faster program that prints something else is a miscompile.
 Example: `let m = xs.map(f)` read twice calls an effectful `f` twice per
 element.
-Enforced by: `crates/cpl-cli/tests/differential.rs`, `cpl-conform diff`.
+Enforced by: `crates/cpl-cli/tests/differential.rs`, `cpl-conform diff`,
+`crates/cpl-cli/tests/effect_fuzz.rs` (generated programs).
 
 **performance/R10.** Each rewrite that can change evaluation is gated on a
 proven fact: `cpl_ir::effects` says the call is pure, or the Uses table says
