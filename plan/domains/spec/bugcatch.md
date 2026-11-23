@@ -116,3 +116,14 @@ New commits: 6347f91fb (leading-operator continuation), 084b5e680 (VM skips prov
 ## Round 17, partial (2026-11-23)
 
 So far 1 caught, 1 missed, 1 with no behaviour to catch. Missed: `02e44dcc1`, which rejects a lone `\r` anywhere. The existing cases covered code and strings, which an earlier path already rejects; a lone `\r` in a comment wasn't covered, and `core-01/lone-cr-in-comment-is-error` now covers it. `0fbf88e3c` (ranged sums typed `Int`) counted as having no behaviour because its case, `core-03/window-plus-over-ranged-is-int`, landed after the fix. The script measures each fix with the cases from its own commit, so that's an artefact of the measurement, not a miss.
+
+## Adversarial round A5 (2026-11-23)
+
+New commits checked: 353a26177 (`[x] * n` copies), e5afe5003 (lend the payload of an unwrap), 44cee3a41 (walk lends for any fn), c28e80b8a (`List(w)`), c46a95752 (a mapped let materialized once), 669ce0d1f (range indexed by key), 7899dba9b (enum cuts and product printing). 14 probes under ASan, UBSan and `_GLIBCXX_DEBUG`. These held, with both engines agreeing: `[row] * n` rows are independent copies, unwrap payload and walk-lend rejections, `List` of views, range key traps, and `t[1, Dir.S]`.
+
+Bugs: 3, all compiler.
+- c46a95752 caches a map view's `f`, so a side-effecting `f` runs once instead of once per read (R07.4.9). Both engines are affected. It is the suspected cause of the map-view-lazy regression.
+- `.ord` on an enum value is E0203 in `cpl run` and `cpl build` (R04.2.22).
+- A table over a named product, `[P] (i, d) => e`, is E0303 (R01.8.1).
+
+Cases added: 3, all known gaps.
