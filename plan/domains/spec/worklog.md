@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- Ryan review: `lib/search-dp.md` item 1 settled as decision 322 (`V.ranges` + `r.splits`, key `first` is `V`, inner pieces `r.drop(1)`/`r.drop_last(1)`), 3 `std-dp/ranges-*` cases, settled with stdlib. Decision 16.5 / R04.2.11: `core-04/product-index-tuple-and-parts-same-type.cp` passes; `product-{type,domain}-array-is-the-parts-array.cp` fail (E0305 / E0302), known gaps routed to compiler.
 - Spec-block errors 29: 10 are std `pub fn`s `cpl run` can't resolve (routed to compiler as one family), 6 core blocks routed to compiler, 2 SegTree lambda-op blocks to stdlib. Ratchet fix: the scoreboard baseline follows lint-fmt's move of `lints/unproven-list-index.cp` (55d558027). Full gate set green: coverage, matrix, traits, sigs, prelude, debt-ratchet, fmt, `cargo nextest run -p cpl-conform` 11/11.
 - `core-05/lent-generator-blocks-overlapping-write.cp` (R05.9.1, E0608) makes exercise 33's P0 a conformance known gap, owner compiler. Flow functions that never resolve routed to stdlib.
 - Spec-block triage of the core errors: `core/05-ownership.md` exercise 33 used a made-up `Filtered` type and had no marker though its answer is "No"; it is now `given:` + `rejects: E0608` over `lends Seq<Int>`, and fails because the compiler accepts the overlapping write (P0, routed to compiler with four other E0603/E0402/E0305/E0203 blocks). SegTree lambda-op blocks routed to stdlib.

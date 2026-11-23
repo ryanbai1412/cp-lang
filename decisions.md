@@ -7070,3 +7070,8 @@ rises 138 -> 139. Reverse: drop the `print` arm in `word` and re-run `--update`.
   keeps lint-fmt's engine and test untouched.
 - **Reverse.** Move the directories into `spec/lints/` once `build.rs` and the
   record test know checker lints, and drop the second root in `web/lib/lints.ts`.
+
+## 322. Interval DP is `[V.ranges]T` with `r.splits`; a key's `first` is `V` (2026-11-22)
+
+Ryan's review closed `lib/search-dp.md` open item 1: adopt `V.ranges` (the domain of non-empty ranges of `V`, a triangle in walk order by length) and `r.splits` (the `len - 1` two-piece cuts). A key of `V.ranges` is non-empty by its type, so `r.first`/`r.last` are `V` rather than `?V`, the type carrying the proof instead of a `!` at every use; a plain `Range<V>` keeps `?V` (R04.4.14). Inner pieces use the existing `Indexed` spellings `r.drop(1)` and `r.drop_last(1)`, no new name. Lost: `[V, V.cuts]Int` with `l <= r` by hand (half the table unused, the invariant unchecked) and an optional `first` on keys (a `!` per use for a fact the type knows). Cases: `std-dp/ranges-*.cp`. Reverse: make key `first` `?V` and restore the `!`s in `lib/search-dp.md`.
+

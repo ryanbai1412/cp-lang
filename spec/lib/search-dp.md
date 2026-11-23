@@ -103,7 +103,11 @@ pair per cut strictly inside `r`, so `len - 1` of them, none for one element.
 O(1) to make, nothing allocated; the cut itself is `left.r`. A `Range<V>` goes wherever a
 `V.ranges` is expected, the way an `Int` goes into a range-typed slot: non-emptiness is a
 contract, proved when it can be and checked in checked builds otherwise, so
-`best(r.first!.next!..=r.last!)` needs no conversion.
+`best(r.drop(1))` needs no conversion. A key of `V.ranges` is non-empty by
+its type, so its `first` and `last` are `V`, not `?V` (a plain `Range<V>`
+keeps `?V`, R04.4.14). Its inner pieces are `r.drop(1)` and
+`r.drop_last(1)`: plain `Range<V>`s, which go back into a `V.ranges` slot
+under the same contract.
 
 <!-- given:
   domain V = 0..5
@@ -200,8 +204,12 @@ partial function.)
 
 ## Open
 
-1. **`V.ranges` and `r.splits`.** A domain of pieces makes interval DP a
-   table like any other. Alternative: `[V, V.cuts]Int` with `l <= r`
-   checked by hand (C++'s way, half the table unused).
-2. **`if` without `else` as `?T`.** Makes partial cost functions one line.
+1. **`if` without `else` as `?T`.** Makes partial cost functions one line.
    Alternative: write `if c: x else: None`.
+
+## Settled
+
+- **`V.ranges` and `r.splits`** (decision 322). A domain of pieces makes
+  interval DP a table like any other. Lost: `[V, V.cuts]Int` with `l <= r`
+  checked by hand (C++'s way, half the table unused). Keys are non-empty, so
+  `r.first`/`r.last` are `V`; inner pieces are `r.drop(1)`/`r.drop_last(1)`.

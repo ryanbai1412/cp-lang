@@ -153,8 +153,10 @@ they carry rule ids; the stdlib's own gaps are in `std/GAPS.md`.
 - core-04/prefix-and-z-function-over-domain-array-and-range.cp: compiler
 - core-04/prod-at-neighbour.cp: compiler
 - core-04/prod-call-traps.cp: compiler
+- core-04/product-domain-array-is-the-parts-array.cp: compiler
 - core-04/product-domain-grid-reads-and-indexes.cp: compiler
 - core-04/product-position-tuple-method.cp: compiler
+- core-04/product-type-array-is-the-parts-array.cp: compiler
 - core-04/range-key-is-element.cp: compiler
 - core-04/range-key-outside-traps.cp: compiler
 - core-04/range-len-walk-ends.cp: compiler
