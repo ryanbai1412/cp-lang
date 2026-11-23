@@ -2470,7 +2470,7 @@ impl<'a> Lowerer<'a> {
                     .iter()
                     .map(|(_, t)| t.clone())
                     .collect();
-                fields.iter().all(|t| self.ordered(t))
+                self.structs[*id].def.lt_fn.is_some() || fields.iter().all(|t| self.ordered(t))
             }
             Ty::Enum(id) => {
                 let payloads: Vec<Ty> = self.enums[*id]

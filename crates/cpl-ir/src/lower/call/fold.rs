@@ -1504,13 +1504,13 @@ impl<'a> Lowerer<'a> {
                     }
                     None => (None, value),
                 };
+                let mut keep = Vec::new();
+                self.emit_assign(place(acc, &ty), op, local(cur, &ty), span, &mut keep);
                 let inner = vec![
                     Stmt::Let(cur, Some(value)),
                     Stmt::If(
                         local(have, &Ty::Bool),
-                        Block {
-                            stmts: vec![Stmt::Assign(place(acc, &ty), op, local(cur, &ty))],
-                        },
+                        Block { stmts: keep },
                         Block {
                             stmts: vec![
                                 Stmt::Assign(place(acc, &ty), AssignOp::Set, local(cur, &ty)),

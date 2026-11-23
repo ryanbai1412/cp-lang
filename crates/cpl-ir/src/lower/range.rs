@@ -946,6 +946,10 @@ impl<'a> Lowerer<'a> {
         out: &mut Vec<Stmt>,
     ) {
         let value = self.keys_like_place(&place, op, value, span);
+        if matches!(op, AssignOp::Max | AssignOp::Min) && self.user_ordered(&place.ty) {
+            self.keep_by_order(place, op == AssignOp::Max, value, span, out);
+            return;
+        }
         if let (Ty::Opt(_), AssignOp::Set, ExprKind::Some(_)) = (&place.ty, op, &value.kind) {
             if let Some(RangeInfo::Opt(inner)) = self.place_range(&place) {
                 if let RangeInfo::Scalar(bounds) = *inner {
@@ -1088,5 +1092,49 @@ impl<'a> Lowerer<'a> {
             out.push(Stmt::Give(idx));
         });
         self.cast(Cast::Raw, sym, Ty::Int)
+    }
+}
+
+impl<'a> Lowerer<'a> {
+    /// Whether `ty`'s order calls a user `Ord` somewhere inside it.
+    fn user_ordered(&self, ty: &Ty) -> bool {
+        match ty {
+            Ty::Struct(id) => {
+                let def = &self.structs[*id].def;
+                def.lt_fn.is_some() || def.fields.iter().any(|(_, t)| self.user_ordered(t))
+            }
+            Ty::Tuple(items) => items.iter().any(|t| self.user_ordered(t)),
+            Ty::Record(fields) => fields.iter().any(|(_, t)| self.user_ordered(t)),
+            Ty::List(elem) | Ty::Opt(elem) => self.user_ordered(elem),
+            _ => false,
+        }
+    }
+
+    /// `place max= value` on a type ordered by a user `Ord`: the order is a
+    /// call, so it is `if value > place: place = value`, as the C++ reads it.
+    fn keep_by_order(
+        &mut self,
+        place: Place,
+        is_max: bool,
+        value: Expr,
+        span: Span,
+        out: &mut Vec<Stmt>,
+    ) {
+        let slot = self.temp(place.ty.clone());
+        out.push(Stmt::Let(slot, Some(value)));
+        let held = self.local(slot, span);
+        let op = if is_max { CmpOp::Gt } else { CmpOp::Lt };
+        let current = super::stmt::place_to_expr(&place);
+        let better = self.mk(
+            ExprKind::Cmp(op, Box::new(held.clone()), Box::new(current)),
+            Ty::Bool,
+            span,
+        );
+        let set = Stmt::Assign(place, AssignOp::Set, held);
+        out.push(Stmt::If(
+            better,
+            Block { stmts: vec![set] },
+            Block::default(),
+        ));
     }
 }

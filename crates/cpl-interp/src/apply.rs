@@ -155,15 +155,12 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                             }));
                         }
                     }
-                    let ord = self.cmp_ty_val(&lhs.ty, &l, &r, span)?;
-                    let res = match op {
-                        CmpOp::Lt => ord.is_lt(),
-                        CmpOp::Le => ord.is_le(),
-                        CmpOp::Gt => ord.is_gt(),
-                        CmpOp::Ge => ord.is_ge(),
-                        _ => unreachable!(),
-                    };
-                    return Ok(Value::Bool(res));
+                    // `a > b` is `b < a` and `a <= b` is `!(b < a)`, as in
+                    // C++, so a user `lt` inside a tuple runs the same calls.
+                    let flip = matches!(op, CmpOp::Gt | CmpOp::Le);
+                    let (a, b) = if flip { (&r, &l) } else { (&l, &r) };
+                    let less = self.cmp_ty_val(&lhs.ty, a, b, span)?.is_lt();
+                    return Ok(Value::Bool(less != matches!(op, CmpOp::Le | CmpOp::Ge)));
                 }
                 Value::Bool(compare(*op, &l, &r))
             }
