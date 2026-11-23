@@ -454,6 +454,8 @@ jobs:
           cat "$RUNNER_TEMP/wasm.log"
       # The build generates content/generated/ (from cpl), which typecheck reads.
       - name: Build
+        # It takes about 2 min; twice it hung until the job's limit with no log.
+        timeout-minutes: 8
         env:
           CPL: ${{ github.workspace }}/target/ci/cpl
         run: pnpm --filter cp-lang-web build
