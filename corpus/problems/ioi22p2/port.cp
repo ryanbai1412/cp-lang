@@ -1,17 +1,13 @@
-// IOI '22 P2 - Prisoner Challenge (DMOJ: ioi22p2): two bags hold distinct
-// coin counts in 1..=n (n <= 5000). Prisoners read the whiteboard (0..=x),
-// open one bag, and either overwrite the whiteboard or name the smaller bag
-// (-1: A is smaller, -2: B is smaller), using x = 20 (21 states).
-//
-// A fixed tree over 1..=5588: a node [lo, hi] keeps lo and hi as its own
-// endpoints and splits the interior evenly among b children, with
-// FANOUT = [3, 3, 3, 3, 3, 2, 2, 1] by depth (sizes 2 -> 4 -> 10 -> 22 ->
-// 68 -> 206 -> 620 -> 1862 -> 5588 >= 5000). Whiteboard state (depth t,
-// child c) means "both bags lie inside the same depth-(t - 1) node and the
-// bag opened last went into child c". Bags alternate by depth (`t % 2`).
-// The reader walks its own count down the tree: an endpoint or a different
-// child settles the order; the same child descends one level. Total states:
-// 1 + sum(FANOUT) = 21, and every play terminates in at most `DEPTH + 1` steps.
+// Source: IOI 2022 P2 Prisoner Challenge, https://dmoj.ca/problem/ioi22p2
+// Problem: bags A and B hold distinct coin counts in 1..=n (n <= 5000). Prisoners enter one at
+//   a time, read the whiteboard i in 0..=x, open one bag (chosen by i) and see its count j, then
+//   overwrite the whiteboard or name the smaller bag. Print a strategy table s[i][j] that always
+//   names it correctly; full score needs x <= 20 (here 21 states).
+// Solution: a fixed tree over 1..=5588: a node [lo, hi] keeps lo and hi itself and splits the
+//   interior evenly among b children, b = 3, 3, 3, 3, 3, 2, 2, 1 by depth. State (depth t, child
+//   c) means both counts share a depth t - 1 node and the last bag opened went into child c;
+//   bags alternate by depth. A count at an endpoint or in another child settles the order, the
+//   same child descends a level. 1 + sum b = 21 states, O(n * states * depth) to print.
 // original: corpus/submissions/4783608.cpp
 
 enum Step: Low | High | Child(Int)

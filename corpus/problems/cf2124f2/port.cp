@@ -1,16 +1,14 @@
-// Codeforces 2124 F2: Appending Permutations (hard version).
-// Each appended block is a cyclic shift of 1..k: a rising run starting at
-// x0 + 1 on diagonal (pos - val = c - x0), followed by a wrap run 1..=x0
-// starting at cut `j`: placing value `t` (1 <= t <= x0) at 1-based position
-// `j + t` fixes `pos - val = j`, so the wrap run's validity limit is the first
-// forbidden cell on diagonal `j` (`wrap_limit(j)`).
-//
-// Sweeping the cut c in `Cut = 0..=n` accumulates `dp[c]` into online
-// range-add sweeps per wrap length `x0`, and subtracts the double-counted
-// split where a 1-starting run `[c..j)` of length L = j - c >= 2 is followed
-// by a shorter 1-starting run `[j..k)` of length <= L - 1 (so k <= 2j - c - 1)
-// that is itself valid on diagonal `j` (so k <= wrap_limit(j)), which is
-// already counted as a single cyclic shift.
+// Source: Codeforces 2124F2 (Appending Permutations, hard),
+//   https://codeforces.com/contest/2124/problem/F2
+// Problem: build an array of length n by appending cyclic shifts [r, ..., s, 1, ..., r - 1] of
+//   1..=s; m restrictions a_i != x. Count distinct valid arrays mod 998244353. Multitest,
+//   sum n <= 5000, sum m <= 5000.
+// Solution: dp over cuts c. A block from c is a rising run x0 + 1, x0 + 2, ... on diagonal
+//   pos - val = c - x0 up to a cut j, then the wrap 1..=x0 on diagonal j; a run is valid up to
+//   its diagonal's first forbidden cell (sorted per diagonal). One difference-array sweep per x0
+//   range-adds dp[c] over the allowed j and is read back when the scan reaches j. A 1-starting
+//   run of length L followed by a shorter 1-starting run valid on diagonal j is the same array
+//   as one cyclic shift, so another sweep subtracts it. O(n^2) time and memory.
 
 type Z = Mod<998_244_353>
 

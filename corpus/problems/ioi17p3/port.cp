@@ -1,5 +1,13 @@
-// IOI '17 P3 — Toy Train (CP Lang 0.2.2): `Marks<V>` (O(1) clear) + `Deque<V>`
-// replace 4x per-iteration `List.filled(n, false)` resets and 2x manual queues.
+// Source: IOI 2017 P3 Toy Train, https://dmoj.ca/problem/ioi17p3
+// Problem: a directed graph (n <= 5000 stations, m <= 20000 tracks, self-loops allowed, every
+//   station has an out-track); each station is owned by Arezou or Borzou and may be a charging
+//   station. The owner of the current station picks the next track; Arezou wins iff charging
+//   stations are visited infinitely often. For each start station print whether Arezou wins.
+// Solution: repeat on the stations still alive: good = Arezou's attractor of "reach a charging
+//   station in >= 1 step" (her stations need one edge into it, Borzou's all live out-edges),
+//   by BFS over reverse edges. If every live station is good, stop. Otherwise Borzou's
+//   attractor of the non-good stations loses for Arezou: remove it, update live out-degrees
+//   and repeat. Marks give O(1) clears; O(n (n + m)) in all.
 // original: corpus/submissions/5656304.cpp
 
 let (n, m): (Int, Int) = read()

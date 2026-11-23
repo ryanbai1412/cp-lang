@@ -1,12 +1,13 @@
-// Codeforces 2129 E: Induced Subgraph Queries.
-// f(u) is the xor of u's neighbours inside l..r; answer the k-th smallest f.
-// Lay every vertex's arcs out in vertex order: the arcs leaving l..r are one
-// contiguous window. An edge is inside G[l..r] iff both of its arcs are in the
-// window, so Mo's algorithm over arc windows flips f at both ends exactly when an
-// edge's arc count crosses 2, at O(1) per step. The window's f values live in a
-// count with O(1) update and O(sqrt) k-th query; the r - l + 1 vertices of l..r
-// are among the n counted values, so the k-th of the window is the
-// (k + n - (r - l + 1))-th of all, the others sitting at f = 0 below them.
+// Source: Codeforces 2129E (Induced Subgraph Queries),
+//   https://codeforces.com/contest/2129/problem/E
+// Problem: a simple undirected graph, n, m <= 1.5e5. Each of q <= 1.5e5 queries (l, r, k): in the
+//   subgraph induced by l..=r, f(u) is the XOR of u's neighbours' labels; print the k-th
+//   smallest f(u) over u in l..=r. Multitest, sums of n, m, q <= 1.5e5.
+// Solution: list every vertex's arcs in vertex order; the arcs leaving l..=r form one window, and
+//   an edge is induced iff both its arcs are in it. Mo's algorithm over arc windows flips f at
+//   both ends when an edge's arc count crosses 2, O(1) per step. All n values of f sit in a
+//   sqrt-bucketed count (O(1) update, O(sqrt n) k-th); the vertices outside l..=r have f = 0,
+//   so the answer is the (k + n - (r - l + 1))-th overall. O(m sqrt q + q sqrt n).
 @!multitest
 use std.mo.{mo}
 let (n, m): (2..=150_000, 1..=150_000) = read()

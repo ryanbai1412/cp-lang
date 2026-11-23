@@ -1,4 +1,11 @@
-// Baltic OI '19 P6, Olympiads (buildable today-form)
+// Source: Baltic OI 2019 P6 Olympiads, https://dmoj.ca/problem/btoi19p6
+// Problem: n <= 500 contestants each score 0..=1e6 in k <= 6 events. A team is k contestants
+//   and scores the sum over events of its best member's score. Print the score of the c-th best
+//   team (c <= 2000, teams differ as sets).
+// Solution: Lawler-style partitioning. The best team under a ban set with a forced prefix of
+//   slots takes, for each free slot j, the best unbanned unused contestant in event j. A max-heap
+//   holds subproblems; popping one spawns, per free slot i, a child that keeps slots < i and
+//   bans slot i's member. The c-th pop is the answer. O(c k^3 n) time and O(c k n) memory.
 // original: corpus/submissions/4475247.cpp
 // Subproblems live in parallel flat lists (team, banned) because the
 // prototype heap only orders tuples of Int.

@@ -1,13 +1,14 @@
-// Codeforces 2207 H1: recover a hidden min/max circuit over n leaves
-// (interactive).
-//
-// `ask(x)` shows the circuit the permutation `x` and answers which position's
-// value comes out. `solve(span, gate, m)` builds the subcircuit over `span`
-// whose output position is `m`: leaves left of `m` are joined with the same
-// gate, leaves right of it (shown reversed) with the other one. What it
-// returns is the chain of subtrees whose spans tile `span` left to right; the
-// two chains hanging off `m` are zipped by asking, with the outermost pair of
-// spans reversed, whether the output moves left of `m`'s subtree.
+// Source: Codeforces 2207H1 (Bowser's Castle, easy),
+//   https://codeforces.com/contest/2207/problem/H1
+// Problem: interactive. A hidden min-max function f of x_1..x_n (only min and max calls, each
+//   variable once, in order), n <= 70. Ask "? x_1 .. x_n" to get f (at most 1e4 asks in all),
+//   print "!", then answer the judge's inputs with f until a line "0". Multitest, sum n <= 70.
+// Solution: asking a permutation tells which position's value comes out. Comparing the output
+//   of 1..n and its reverse gives the root gate. solve(span, gate, m) builds the subcircuit with
+//   output position m: leaves left of m join with the gate, right of m (shown reversed) with the
+//   other one, recursively; the two chains of subtrees hanging off m are zipped by asking, with
+//   the outermost pair of spans reversed, whether the output moves left of m's subtree. About 2n
+//   asks; each judge input is evaluated on the tree in O(n).
 
 struct Node:
     span: Range<Int>
