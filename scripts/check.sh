@@ -604,6 +604,10 @@ uv run scripts/conformance-sigs.py --check || fail "sig gate failed; see above"
 step "conformance prelude: table fns of spec/lib chapters are prelude names (R11.3.2)"
 uv run scripts/conformance-prelude.py --check || fail "prelude gate failed; see above"
 
+step "prelude exports what its fns return (scripts/prelude-signatures.py)"
+uv run --quiet python scripts/prelude-signatures.py \
+    || fail "a prelude fn returns a std type the prelude does not export; see above"
+
 step "std trap examples trap (scripts/std-trap-examples.py)"
 uv run --quiet python scripts/std-trap-examples.py --cpl "$cpl" \
     || fail "a std \`trap:\` doc example did not trap; see above"

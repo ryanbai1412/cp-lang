@@ -227,7 +227,7 @@ and `cargo-semver-checks`. Targets and today's numbers are in
 
 | Quality | Metric | Mechanism |
 |---|---|---|
-| Any value a program gets, it can name without a `use` | std types named by prelude signatures but not exported | rule `std-api/R18`; `missing` (signature-walk test over `std/prelude.cp`) |
+| Any value a program gets, it can name without a `use` | std types named by prelude signatures but not exported | rule `std-api/R18`; `scripts/prelude-signatures.py` (in `scripts/check.sh`) |
 | Spec tables and the prelude agree | missing prelude names | `scripts/conformance-prelude.py --check`; `scripts/spec-stub.py --check` the other way |
 | Findable without knowing the name (`lower_bound` finds `first_ge`) | common C++/Python names with no alias line in docs | `missing` (alias table checked against the docs index) |
 | Hover and completion show the full signature, options and bounds | std fns whose `cpl doc --format json` lacks bounds or defaults | rule `std-docs/R5`; `missing` (doc JSON shape test) |
@@ -274,7 +274,7 @@ and `cargo-semver-checks`. Targets and today's numbers are in
 | A std module copied into a user library runs the same | modules that fail when copied | `missing` (copy-a-module test) |
 | std passes the rules a user library meets | `cpl check std/<m>.cp` errors per file | `crates/cpl-cli/tests/std_checks.rs`, each count only drops |
 | No unimplemented bodies | `todo` stubs | `scripts/debt-ratchet.py` (`stdlib_todo`) |
-| Modules import without cycles | explicit import cycles | `measure.py cycles`; a gate test is `missing` |
+| Modules import without cycles | explicit import cycles | `crates/cpl-check/tests/std_acyclic.rs`; `measure.py cycles` for the graph |
 | Public API changes are never silent | signature changes with no codemod or release note | rule `std-api/R20`; `missing` (public-signature snapshot test, like `cargo-semver-checks`) |
 | Old solutions keep building | corpus ports broken by a std change | corpus in `cpl-conform all --check` |
 | Lint-clean std | lint hits in std (`L0301` float equality and others) | `cpl-lint` baselines, shrink-only; each kept hit is marked `with lint(...: allow)` |

@@ -10,6 +10,7 @@
 //! checked or run gets the prelude.
 
 use std.algebra.{
+    Each,
     Action,
     Commutative,
     Desc,
@@ -68,6 +69,8 @@ use std.lazy.{Flip}
 use std.marks.{Marks}
 use std.matrix.{Mat}
 use std.math.{
+    BigInt,
+    Sign,
     Ratio,
     Sieve,
     bit,
@@ -102,6 +105,9 @@ use std.search.{
 use std.segtree.{SegTree}
 use std.window.{Sweep, Track, Undo, Undoing, Window, track, undoing}
 use std.seq.{
+    Compressed,
+    RingSlice,
+    Slice,
     Perm,
     buckets,
     chain,
@@ -159,6 +165,7 @@ use std.poly.{eval}
 use std.sparse.{SparseTable}
 use std.subset.{Subset}
 use std.strings.{
+    Palindromes,
     RollingHash,
     SuffixArray,
     common_prefix_len,

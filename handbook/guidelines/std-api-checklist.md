@@ -206,7 +206,7 @@ The prelude exports every std type that a prelude signature names (spec R11.3.2)
 
 - **Why:** a contestant who can get a value can annotate it without hunting for a `use`.
 - **Example:** `(w: RingSlice<M, Int>) => w.len` over `a.ring.minimal(...)` needs no `use`.
-- **Enforced by:** `spec/conformance/core-11/prelude-exports-signature-types.cp`; `missing` (signature-walk test over `std/prelude.cp`).
+- **Enforced by:** `spec/conformance/core-11/prelude-exports-signature-types.cp`; `scripts/prelude-signatures.py` (in `scripts/check.sh`).
 
 ### R19. std uses only powers a user library has
 
