@@ -121,9 +121,11 @@ fn list_of_len(len: &Expr) -> Option<&str> {
     receiver(len, "len")
 }
 
-/// The list `iter` walks the indices of: `0..xs.len`, `xs.indices`.
+/// The list `iter` walks the indices of: `0..xs.len`, `xs.indices`, and
+/// either one `.rev`.
 fn indexed_list(iter: &Expr) -> Option<&str> {
     match &unparen(iter).kind {
+        ExprKind::Field { base, name } if name.text == "rev" => indexed_list(base),
         ExprKind::Range {
             lo: Some(lo),
             hi: Some(hi),
@@ -415,6 +417,13 @@ mod tests {
         ] {
             assert_eq!(codes(&last(test)), Vec::<&str>::new(), "{test}");
         }
+        // Reversed index loops prove their index too.
+        let rev = |iter: &str| {
+            format!("var ws: List<Int> = []\nws.push(read())\nvar total = 0\nfor i in 0..3:\n    for j in {iter}:\n        total += ws[j]\nprint(total)\n")
+        };
+        assert_eq!(codes(&rev("(0..ws.len).rev")), Vec::<&str>::new());
+        assert_eq!(codes(&rev("ws.indices.rev")), Vec::<&str>::new());
+        assert_eq!(codes(&rev("(1..ws.len).rev")), ["L0414"]);
         // So is an enclosing `if` or `while` test.
         let body = |test: &str, index: &str| {
             format!("var ws: List<Int> = []\nws.push(read())\nvar total = 0\nfor i in 0..3:\n    for j in 0..3:\n        if {test}:\n            total += {index}\nprint(total)\n")
