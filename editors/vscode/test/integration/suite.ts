@@ -347,9 +347,9 @@ const tests: [string, () => Promise<void>][] = [
             const decorators = await labels(document.lineCount - 2, 1);
             assert.ok(
                 decorators.includes('@memo') &&
-                    decorators.includes('@brute') &&
+                    decorators.includes('@alt') &&
                     decorators.includes('@grader') &&
-                    decorators.includes('@checker') &&
+                    decorators.includes('@check') &&
                     decorators.includes('@interactor') &&
                     decorators.includes('@law'),
                 decorators.join(', '),
