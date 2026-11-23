@@ -516,4 +516,4 @@ jobs:
         run: |
           chmod +x "$CPL"
           pnpm exec playwright install --with-deps chromium
-          node tests/run.mjs smoke.mjs learn-smoke.mjs intelligence.mjs phone.mjs page-weight.mjs drafts.mjs diagnostics.mjs lint-fixes.mjs a11y.mjs resilience.mjs
+          node tests/run.mjs smoke.mjs learn-smoke.mjs intelligence.mjs phone.mjs page-weight.mjs drafts.mjs diagnostics.mjs lint-fixes.mjs a11y.mjs resilience.mjs search-tasks.mjs

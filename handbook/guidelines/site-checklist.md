@@ -148,3 +148,11 @@ When a service the site calls (the share API, a short link's lookup, the `cpl.wa
 - **Why:** a contestant mid-contest who can't share or whose compiler download dropped must still have their code, and a retry must work without a reload.
 - **Example:** with the share API down, Share copies the full link, which needs no service; with `cpl.wasm` unreachable, Run says the compiler failed to load, and the next Run after it is reachable works.
 - **Enforced by:** `web/tests/resilience.mjs` (site browser tests).
+
+## site/R18: Search finds the item from the task
+
+A contestant who types the task ("range minimum query", "union find") rather than the item's name finds the std module or topic page that answers it in the first five results.
+
+- **Why:** a contestant who doesn't know the name yet is the one who most needs search; if it only matches names, they fall back to scrolling the module list.
+- **Example:** "union find" finds `std/dsu`; "convex hull" finds the geometry topic page.
+- **Enforced by:** `web/tests/search-tasks.mjs` (site browser tests); phrasings missed today are in `web/tests/search-known.txt`, which only shrinks.
