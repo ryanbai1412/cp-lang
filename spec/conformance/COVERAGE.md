@@ -804,6 +804,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E9999 Internal compiler error: exempt (internal compiler error)
 - L0302 int_shift_overflow_at_bounds: **no case**
 - L0303 reversed_range_literal: **no case**
+- L0304 domain_empty_first_last: **no case**
 - L0540 manual_bit_test: **no case**
 - L0541 sort_desc_by_negation: **no case**
 - L0542 last_via_len: **no case**
@@ -880,7 +881,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - W0101 Unused expression value: 1 case(s)
 - W0201 Submission near the size limit: 1 case(s)
 
-55 of 155 testable codes have no negative case.
+56 of 156 testable codes have no negative case.
 
 ## Spec code blocks
 
