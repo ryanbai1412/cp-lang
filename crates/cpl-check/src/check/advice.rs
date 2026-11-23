@@ -450,6 +450,15 @@ impl Checker<'_> {
                 format!("{} ** {}", operand(self, a), operand(self, b)),
                 "power is the operator `**`",
             ),
+            ("pow", [a, e, m]) => (
+                format!(
+                    "pow_mod({}, {}, {})",
+                    self.text(a.value.span),
+                    self.text(e.value.span),
+                    self.text(m.value.span)
+                ),
+                "a power modulo `m` is `pow_mod`",
+            ),
             ("charAt", [i]) => match &callee.kind {
                 ExprKind::Field { base, .. } => (
                     format!("{}[{}]", self.text(base.span), self.text(i.value.span)),

@@ -3,6 +3,49 @@
 use super::*;
 
 impl<'a> Parser<'a> {
+    /// The help for a token where a statement should have ended: `;`
+    /// from C, or the comma of Python's swap.
+    pub(super) fn statement_end_help(&self, found: T, span: Span, diag: Diagnostic) -> Diagnostic {
+        if found == T::Semi {
+            return diag
+                .with_help(
+                    "statements end at the end of the line; `;` is only used inside `{ ... }`",
+                )
+                .with_fix("remove `;`", span, "");
+        }
+        match (found == T::Comma).then(|| self.tuple_assign()).flatten() {
+            Some((at, both)) => diag
+                .with_help("several names are assigned at once in parentheses: `(a, b) = (b, a)`")
+                .with_fix(format!("write `{both}`"), at, both.clone()),
+            None => diag,
+        }
+    }
+
+    /// `a, b = b, a`, Python's swap: the line as a tuple assignment.
+    fn tuple_assign(&self) -> Option<(Span, String)> {
+        let at = self.tokens.get(self.pos)?.span.start as usize;
+        let begin = self.src[..at].rfind('\n').map_or(0, |i| i + 1);
+        let end = self.src[at..].find('\n').map_or(self.src.len(), |i| at + i);
+        let line = self.src[begin..end].trim_end();
+        let indent = line.len() - line.trim_start().len();
+        let (lhs, rhs) = line[indent..].split_once(" = ")?;
+        let place = |c: char| c.is_alphanumeric() || matches!(c, '_' | ',' | ' ' | '.' | '[' | ']');
+        if !lhs.contains(',')
+            || !lhs.chars().all(place)
+            || rhs.contains(" = ")
+            || rhs.contains("//")
+        {
+            return None;
+        }
+        let rhs = if rhs.starts_with('(') {
+            rhs.to_string()
+        } else {
+            format!("({rhs})")
+        };
+        let span = Span::new((begin + indent) as u32, (begin + line.len()) as u32);
+        Some((self.rel(span), format!("({lhs}) = {rhs}")))
+    }
+
     /// `fn f(x: Int): Int = x`, TypeScript's return type: CP Lang writes
     /// `->`. One error, then the type is read as the return type.
     pub(super) fn colon_return_type(&mut self) -> bool {

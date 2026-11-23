@@ -417,12 +417,8 @@ impl<'a> Parser<'a> {
             );
             if found.is_closer() {
                 diag = diag.with_fix("remove it", span, "");
-            } else if found == T::Semi {
-                diag = diag
-                    .with_help(
-                        "statements end at the end of the line; `;` is only used inside `{ ... }`",
-                    )
-                    .with_fix("remove `;`", span, "");
+            } else {
+                diag = self.statement_end_help(found, span, diag);
             }
             self.error(diag);
             self.skip_line();
