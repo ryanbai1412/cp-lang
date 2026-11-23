@@ -1,9 +1,25 @@
 //! The words and fixes of a few errors, kept out of the passes that find them.
 
 use super::*;
+use cpl_diag::Fix;
 use cpl_syntax::ast::{Arg, Expr, ExprKind};
 
 impl Checker<'_> {
+    /// `let N = 5` as `const N = 5`: only a literal can be a constant as is.
+    pub(super) fn const_fix(&self, keyword: &str, name: Span, init: Option<&Expr>) -> Option<Fix> {
+        let literal = |e: &Expr| {
+            matches!(
+                e.kind,
+                ExprKind::Int(_) | ExprKind::Float(_) | ExprKind::Bool(_)
+            )
+        };
+        let at = Span::new(name.start.checked_sub(4)?, name.start - 1);
+        (keyword == "let" && init.is_some_and(literal) && self.text(at) == "let").then(|| Fix {
+            title: "make it a `const`".into(),
+            edits: vec![(at, "const".into())],
+        })
+    }
+
     /// `"a" + n` as `"a{n}"`, and `n + "a"` as `"{n}a"`.
     pub(super) fn into_string(&self, lhs: &Expr, rhs: &Expr) -> Option<(Span, String)> {
         let literal = |e: &Expr| {

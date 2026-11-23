@@ -55,3 +55,12 @@ fn calling_a_number_suggests_the_product() {
         Some("to multiply, write `x * (1)`")
     );
 }
+
+#[test]
+fn an_uppercase_literal_let_becomes_a_const() {
+    assert_eq!(fixed("let N = 5\nprint(N)\n"), "const N = 5\nprint(N)\n");
+    let diags = check("let N = read()\nprint(N)\n");
+    assert!(diags.iter().all(|d| d.fixes.is_empty()), "{diags:?}");
+    let diags = check("var N = 5\nN += 1\n");
+    assert!(diags.iter().all(|d| d.fixes.is_empty()), "{diags:?}");
+}

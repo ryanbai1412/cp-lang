@@ -232,7 +232,13 @@ impl<'a> Checker<'a> {
     }
 
     /// R01.3.2: a `let`/`var` name is lowercase; `N` would read as a type.
-    fn value_case(&mut self, keyword: &str, pat: &Pattern, init_ty: Option<&Ty>) {
+    fn value_case(
+        &mut self,
+        keyword: &str,
+        pat: &Pattern,
+        init: Option<&Expr>,
+        init_ty: Option<&Ty>,
+    ) {
         if matches!(init_ty, Some(Ty::Domain(_) | Ty::Error)) {
             return;
         }
@@ -249,10 +255,10 @@ impl<'a> Checker<'a> {
         let lower = name.to_lowercase();
         let message =
             format!("`{keyword} {name}`: values are lowercase; `{name}` would read as a type");
+        let fix = self.const_fix(keyword, pat.span, init);
         if let Some(diag) = self.error(codes::VALUE_NAME_CASE, pat.span, message) {
-            diag.help = Some(format!(
-                "rename it `{lower}`, or write `const {name}` for a constant"
-            ));
+            diag.help = Some(format!("rename it `{lower}`, or write `const {name}`"));
+            diag.fixes.extend(fix);
         }
     }
 
@@ -1004,7 +1010,7 @@ impl<'a> Checker<'a> {
                         init_ty = Some(rebased);
                     }
                 }
-                self.value_case(keyword, pat, init_ty.as_ref());
+                self.value_case(keyword, pat, init.as_ref(), init_ty.as_ref());
                 if let PatternKind::Name(name) = &pat.kind {
                     let known = match (keyword, &declared, init.as_ref()) {
                         ("let", None, Some(init)) => self.const_range(init),
