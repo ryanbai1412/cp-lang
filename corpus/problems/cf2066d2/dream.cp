@@ -16,21 +16,21 @@ let (n, c, m): (1..=100, 1..=100, c..=n * c) = read()
 domain Floor = 1..=n
 domain Time = 1..=m
 domain Used = 0..=m - c
-let a: [Time]?Floor = read(None: 0)
+let a: [Time]?Floor = read(none: 0)
 
 let open = prefix([Time] t => Int(a[t] == None))
 var dp: [Used]M = 0
 dp[Used.first!] = 1
 var fixed_below = 0
 
-for f in Floor.range.drop_last():
+for f in Floor.range.drop_last(1):
     let fixed = a.count(x => x == f)
     let min_used = match Time.range.last(t => a[t] == f):
         Some(t) => Used(max(0, t.ord + 1 - c))
-        None => Used.first
+        None => Used.first!
     var next: [Used]M = 0
-    for used in min_used..=Used.last if dp[used] != 0:
-        let avail = open.sum(..=Time(used.ord + c)) + fixed_below - used.ord
+    for used in min_used..=Used.last! if dp[used] != 0:
+        let avail = open.fold(..=Time(used.ord + c)) + fixed_below - used.ord
         for k in fixed..=min(c, m - c - used.ord):
             next[Used(used.ord + k)] += dp[used] * comb.choose(avail, k - fixed)
     dp = next
