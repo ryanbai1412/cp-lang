@@ -9,7 +9,7 @@ A finding is keyed by its `id`, so the same blocker seen in several runs is one 
 The score is language quality (Ryan, 2026-11-22): rank by kind (blocker, workaround,
 non-idiomatic, hesitation), then the most runs seen in, then the most minutes lost, then
 the earliest scenario step. A finding is fixed when its latest report says so (`"status":
-"fixed"`, a summary starting `FIXED`, or its id in the run's `fixed` list); fixed rows leave
+"fixed"`, a summary starting `FIXED` or `REFUTED`, or its id in the run's `fixed` list); fixed rows leave
 the ranking and are listed under "Fixed".
 """
 import json
@@ -64,7 +64,7 @@ def load():
 
 def is_fixed(f):
     s = f["summary"]
-    return f.get("status") == "fixed" or s.startswith("FIXED") or (s.startswith("NOW WORKS") and not s.startswith("NOW WORKS (partly)"))
+    return f.get("status") == "fixed" or s.startswith(("FIXED", "REFUTED")) or (s.startswith("NOW WORKS") and not s.startswith("NOW WORKS (partly)"))
 
 
 def run_base(run):

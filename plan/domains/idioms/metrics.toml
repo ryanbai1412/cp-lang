@@ -76,7 +76,7 @@ note = "Re-running needs a cold model; site shares this eval."
 [[metric]]
 name = "acceptance_steps"
 command = "uv run python research/acceptance/blockers.py && head -12 plan/product/BLOCKERS.md"
-today = "run 1 (2026-11-23-1, Linux, Neovim): 7/8 steps (install fails); judge solve 9/10, compete 5/5; 3 P0; CI install+CLI 11/11 linux and windows, 10/11 macos (timeout(1), fixed)"
+today = "run 6 (2026-11-23-6, edge e9c6b2eb, one agent per OS): Linux 7/8 (install), macOS 7/8 (install), Windows 6/8 (install, design); judge solve 10/10 / 10/10 / 9/10 (Windows cf2285E TLE), compete 5/5 each; P0 open: rev-view-index-not-reversed, runs-slice-index-silent-in-cpp, partition-point-copies-list"
 target = "8/8 steps on Linux, macOS and Windows; solve >= 8/10, compete >= 4/5 in 2 h; 0 open blocker rows (Milestone 1)"
 
 [[metric]]

@@ -1,0 +1,423 @@
+{
+  "date": "2026-11-23",
+  "os": "Ubuntu 22.04.5 LTS (Linux 6.8.0-1060-aws x86_64)",
+  "site_commit": "unknown (cpl 0.3.0-edge+e9c6b2eb at install, 0.3.0-edge+0878bfa8 after self update)",
+  "agent": "Devin (Cognition AI) agent harness",
+  "steps": {
+    "understand": {
+      "pass": true,
+      "minutes": 1
+    },
+    "try": {
+      "pass": true,
+      "minutes": 2
+    },
+    "install": {
+      "pass": false,
+      "minutes": 20
+    },
+    "solve": {
+      "pass": true,
+      "minutes": 10,
+      "self_pass": true,
+      "judged": "10/10 AC"
+    },
+    "test": {
+      "pass": true,
+      "minutes": 3
+    },
+    "submit": {
+      "pass": true,
+      "minutes": 4
+    },
+    "compete": {
+      "pass": true,
+      "minutes": 3,
+      "self_pass": true,
+      "judged": "5/5 AC"
+    },
+    "design": {
+      "pass": true,
+      "minutes": 2
+    }
+  },
+  "problems": [
+    {
+      "id": "cf2285A",
+      "set": "div2",
+      "verdict": "samples-pass",
+      "minutes": 1,
+      "attempts": 2,
+      "judge": "AC (1 samples, 200 generated, max input 0.00 s)"
+    },
+    {
+      "id": "cf2285B",
+      "set": "div2",
+      "verdict": "samples-pass",
+      "minutes": 1,
+      "attempts": 1,
+      "judge": "AC (1 samples, 200 generated, max input 0.00 s)"
+    },
+    {
+      "id": "cf2285C",
+      "set": "div2",
+      "verdict": "samples-pass",
+      "minutes": 1,
+      "attempts": 1,
+      "judge": "AC (1 samples, 200 generated, max input 0.03 s)"
+    },
+    {
+      "id": "cf2285D",
+      "set": "div2",
+      "verdict": "samples-pass",
+      "minutes": 2,
+      "attempts": 2,
+      "judge": "AC (1 samples, 200 generated, max input 0.11 s)"
+    },
+    {
+      "id": "cf2285E",
+      "set": "div2",
+      "verdict": "samples-pass",
+      "minutes": 4,
+      "attempts": 4,
+      "judge": "AC (1 samples, 200 generated, max input 0.60 s)"
+    },
+    {
+      "id": "cf2289A",
+      "set": "div2",
+      "verdict": "samples-pass",
+      "minutes": 1,
+      "attempts": 1,
+      "judge": "AC (1 samples, 200 generated, max input 0.00 s)"
+    },
+    {
+      "id": "cf2289B",
+      "set": "div2",
+      "verdict": "samples-pass",
+      "minutes": 1,
+      "attempts": 1,
+      "judge": "AC (1 samples, 200 generated, max input 0.01 s)"
+    },
+    {
+      "id": "cf2289C",
+      "set": "div2",
+      "verdict": "samples-pass",
+      "minutes": 1,
+      "attempts": 1,
+      "judge": "AC (1 samples, 200 generated, max input 0.01 s)"
+    },
+    {
+      "id": "cf2289D",
+      "set": "div2",
+      "verdict": "samples-pass",
+      "minutes": 1,
+      "attempts": 1,
+      "judge": "AC (1 samples, 200 generated, max input 0.01 s)"
+    },
+    {
+      "id": "cf2289E",
+      "set": "div2",
+      "verdict": "samples-pass",
+      "minutes": 1,
+      "attempts": 2,
+      "judge": "AC (1 samples, 200 generated, max input 0.06 s)"
+    },
+    {
+      "id": "cf2272A",
+      "set": "div2-virtual",
+      "verdict": "samples-pass",
+      "minutes": 2,
+      "attempts": 2,
+      "judge": "AC (1 samples, 200 generated, max input 0.01 s)"
+    },
+    {
+      "id": "cf2272B",
+      "set": "div2-virtual",
+      "verdict": "samples-pass",
+      "minutes": 1,
+      "attempts": 1,
+      "judge": "AC (1 samples, 200 generated, max input 0.01 s)"
+    },
+    {
+      "id": "cf2272C",
+      "set": "div2-virtual",
+      "verdict": "samples-pass",
+      "minutes": 1,
+      "attempts": 1,
+      "judge": "AC (1 samples, 200 generated, max input 0.03 s)"
+    },
+    {
+      "id": "cf2272D",
+      "set": "div2-virtual",
+      "verdict": "samples-pass",
+      "minutes": 1,
+      "attempts": 1,
+      "judge": "AC (1 samples, 200 generated, max input 0.01 s)"
+    },
+    {
+      "id": "cf2272E",
+      "set": "div2-virtual",
+      "verdict": "samples-pass",
+      "minutes": 1,
+      "attempts": 2,
+      "judge": "AC (1 samples, 200 generated, max input 0.05 s)"
+    }
+  ],
+  "findings": [
+    {
+      "id": "install-flag-two-spellings",
+      "step": "install",
+      "kind": "hesitation",
+      "lane": "site",
+      "summary": "The install one-liner is given two ways: /setup says `sh -s -- --channel edge`, getting-started says `sh -s -- --edge`, and both say edge prints `0.3.0-dev+<commit>` while the binary prints `0.3.0-edge+e9c6b2eb`.",
+      "minutes_lost": 1,
+      "evidence": "https://cp-lang.org/setup/ step 1 vs https://cp-lang.org/docs/guides/getting-started#install; `cpl --version` -> cpl 0.3.0-edge+e9c6b2eb"
+    },
+    {
+      "id": "vim-completion-not-demonstrated",
+      "step": "install",
+      "kind": "workaround",
+      "lane": "tools",
+      "summary": "After `cpl setup vim` (vim-lsp bundled) diagnostics, go-to-definition and format work, but completion does not: omnifunc stays empty and Ctrl-X Ctrl-O does nothing until `:setlocal omnifunc=lsp#complete` is set by hand.",
+      "minutes_lost": 4,
+      "evidence": "cpl setup vim; vim e.cp; :setlocal omnifunc? -> `omnifunc=`; ~/.vim/pack/cpl/start/cplang/plugin/cplang.vim only calls lsp#register_server; after :setlocal omnifunc=lsp#complete, Ctrl-X Ctrl-O lists print/prim/prime_count"
+    },
+    {
+      "id": "did-you-mean-prim-not-print",
+      "step": "install",
+      "kind": "hesitation",
+      "lane": "diagnostics",
+      "summary": "An unknown name `pri` is answered with `did you mean prim, from std.graph?` instead of the obvious `print`.",
+      "minutes_lost": 0,
+      "evidence": "echo 'pri' > x.cp; cpl check x.cp -> no `pri` in scope, and not in the stdlib (yet) help: did you mean `prim`, from `std.graph`?"
+    },
+    {
+      "id": "jetbrains-setup-needs-first-launch",
+      "step": "install",
+      "kind": "hesitation",
+      "lane": "tools",
+      "summary": "`cpl setup jetbrains` on a fresh IDEA install fails with `no JetBrains IDE found (open one once first)`; the setup page does not mention launching the IDE first.",
+      "minutes_lost": 2,
+      "evidence": "fresh ideaIC-2025.2.4 tarball; cpl setup jetbrains -> cpl: no JetBrains IDE found (open one once first), or pass --dir PLUGINS"
+    },
+    {
+      "id": "fetch-needs-saved-html",
+      "step": "solve",
+      "kind": "workaround",
+      "lane": "tools",
+      "summary": "`cpl fetch <codeforces url>` still fails with HTTP 403 and asks for Competitive Companion or a saved page via `--html`.",
+      "minutes_lost": 1,
+      "evidence": "cpl fetch https://codeforces.com/contest/2285/problem/A -> cpl: could not download https://codeforces.com/contest/2285/problem/A: curl: (22) The requested URL returned error: 403; import it in one click with `cpl new --listen` and the Competitive Companion browser extension, or save the page from the browser and pass it with `--html page.html`"
+    },
+    {
+      "id": "inline-if-python-order",
+      "step": "solve",
+      "kind": "hesitation",
+      "lane": "spec",
+      "summary": "Wrote Python's `x if c else y`; CPL wants `if c: x else: y` (clear E0503 with the fix, but a C++/Python user guesses wrong first).",
+      "minutes_lost": 1,
+      "evidence": "fn pre(s: Int) -> Int = 0 if s == 0 else sc[s - 1] -> error[E0503]: CP Lang writes `a if c else b` as `if c: a else: b`"
+    },
+    {
+      "id": "test-no-checker-any-answer",
+      "step": "solve",
+      "kind": "workaround",
+      "lane": "tools",
+      "summary": "`cpl test` compares exactly, so a correct any-answer construction (2285A) shows WA until a hand-written `@check fn` is added; the WA output does now suggest `@check`.",
+      "minutes_lost": 3,
+      "evidence": "cf2285A.cp without @check: cpl test -> 1 WA ... first difference at line 2, token 2: expected `3`, got `2` / if any valid answer is accepted, add a `@check fn` that reads the output with `read_output()`"
+    },
+    {
+      "id": "scan-exclusive-surprise",
+      "step": "solve",
+      "kind": "hesitation",
+      "lane": "site",
+      "summary": "Assumed `a.scan(+)` is an inclusive partial_sum of length n (as std::partial_sum) and indexed `sc[s - 1]`; it is an exclusive `Prefix` with n + 1 cuts, giving silent wrong answers on 2285D until I read the seq reference.",
+      "minutes_lost": 4,
+      "evidence": "let sc = [1, 2, 3, 2, 1].scan(+); print(sc) -> `0 1 3 6 8 9`; drafts/cf2285D.inclusive-scan-wrong.cp prints 0 0 0 ... on the sample"
+    },
+    {
+      "id": "prev-less-two-spellings",
+      "step": "solve",
+      "kind": "hesitation",
+      "lane": "site",
+      "summary": "The std.seq module table lists `prev_less`/`next_less`, but the reference pages and the compiler spell them `prev_smaller`/`next_smaller`.",
+      "minutes_lost": 1,
+      "evidence": "https://cp-lang.org/llms-full.txt: `| std.seq | ... prev_less, next_less ...` vs `## prev_smaller` / `## next_smaller` in docs/ref/std/seq"
+    },
+    {
+      "id": "partition-point-copies-list",
+      "step": "solve",
+      "kind": "workaround",
+      "lane": "perf",
+      "summary": "Still present for a list element of a List of Lists: `ends[r].partition_point(...)` copies the inner vector on every call (generated `std::vector<...> t1 = cpl::at(ends, ...); return t1;`), so 2285E took 12.45 s on a 6666x1500 case until I wrote the binary search by hand (0.28 s).",
+      "minutes_lost": 8,
+      "evidence": "drafts/cf2285E.partition-point-copies-12s.cp; cpl build --judge codeforces; g++ -std=c++17 -O2; ./a.out < e_sq.in (n=6666,k=1500,a_i=i*i+1) -> 12.45s; cf2285E.cp with manual lo/hi loop -> 0.28s",
+      "p0": true
+    },
+    {
+      "id": "let-list-element-copies",
+      "step": "solve",
+      "kind": "non-idiomatic",
+      "lane": "compiler",
+      "summary": "Spec R05.3.5 says `let row = rows[i]` on a heap element binds a lend, not a copy, but codegen deep-copies it (`std::vector<ll> r; r = cpl::at(rows, 0);`), which made 2285E's `let prev = ends[p % w]` O(k) per lookup (10.4 s); I had to repeat `ends[r][...]` everywhere instead.",
+      "minutes_lost": 4,
+      "evidence": "design/p5.cp: var rows = [[1, 2], [3]]; let r = rows[0]; rows[1].push(9); print(r.len) -> cpl build --judge codeforces: `std::vector<ll> r;` ... `r = cpl::at(rows, 0);`; drafts/cf2285E.let-prev-copies-10s.cp 10.38s on e_sq.in; spec /docs/ref/core/05-ownership \u00a73 R05.3.5",
+      "p0": true
+    },
+    {
+      "id": "hashmap-tuple-key-memory",
+      "step": "solve",
+      "kind": "workaround",
+      "lane": "perf",
+      "summary": "My first two 2285E designs (List of chain Lists, then HashMap<(Int,Int),(Int,Int,Int)> with periodic pruning) used 1.7 GB and 1.2 GB on a 1e7-pair case, so I redesigned around a ring of sorted lists; partly my design, but a C++ unordered_map of the same shape is ~4x smaller.",
+      "minutes_lost": 8,
+      "evidence": "drafts/cf2285E.list-chains-1.7GB.cp, drafts/cf2285E.hashmap-chains-1.2GB.cp; /usr/bin/time -f %MKB on e_sq.in -> 1756492KB, 1207120KB"
+    },
+    {
+      "id": "peek-none-trap-on-empty-heap",
+      "step": "solve",
+      "kind": "hesitation",
+      "lane": "stdlib",
+      "summary": "`while heaps[hb].peek! > tb:` trapped with R0301 when the heap emptied; `(h.peek ?? 0) > t` works but a C++ user wants `while !h.empty() and h.top() > t`; the trap message was clear and pointed at the line.",
+      "minutes_lost": 1,
+      "evidence": "drafts/cf2289E.peek-none-trap.cp -> error[R0301]: `!` on `None`: there is no value here --> cf2289E.cp:27:11"
+    },
+    {
+      "id": "stress-perm-needs-gen",
+      "step": "test",
+      "kind": "hesitation",
+      "lane": "debugger",
+      "summary": "`p: [0..n]1..=n` does not say \"distinct\", so the derived stress generator fed `1 1` to a permutation problem and I needed a `@gen`; `Perm<V>` exists but only for domain-valued (0-based/domain) permutations, not the 1..=n list a Codeforces statement gives.",
+      "minutes_lost": 3,
+      "evidence": "cf2289C.cp with only @alt: cpl stress -> saved cf2289C.tests/stress-1.in = `1\\n2\\n1 1` (expected 1, got 4)"
+    },
+    {
+      "id": "gen-multitest-must-print-t",
+      "step": "test",
+      "kind": "hesitation",
+      "lane": "debugger",
+      "summary": "Under `@!multitest` a `@gen fn` must print the test count `t` itself, which the stress guide does not say; forgetting it gives `the brute ... failed on this input (Code(3)), so there is nothing to compare with` with no hint about the missing t line.",
+      "minutes_lost": 3,
+      "evidence": "cf2289C.cp @gen printing only `print(m); print(q)` -> cpl stress: error: the brute cf2289C.cp (`slow`) failed on this input (Code(3)) ... `2\\n2 1`; adding `print(1)` first -> 500 cases agree"
+    },
+    {
+      "id": "nullish-minus-precedence",
+      "step": "test",
+      "kind": "hesitation",
+      "lane": "diagnostics",
+      "summary": "Good: `ns[i] ?? n - 1` is a compile error E0110 that offers both parenthesisations, which prevented a real precedence bug.",
+      "minutes_lost": 0,
+      "evidence": "let right = (ns[i] ?? n - 1) - i -> error[E0110]: `??` mixed with `+ - * / %` needs parentheses ... help: write `(ns[i] ?? n) - 1` ... or `ns[i] ?? (n - 1)`"
+    },
+    {
+      "id": "codegen-runs-dangling-temporary",
+      "step": "test",
+      "kind": "hesitation",
+      "lane": "compiler",
+      "summary": "REFUTED (fixed): looping `.runs()` over `xs.sorted()` and `xs.sorted(by: desc).runs().items` now binds the sorted temporary to a named vector (`std::vector<ll> t6 = cpl::sorted(xs);`) and cpl run, g++ -O2 and -O1 -g -fsanitize=address,undefined all print the same output with no sanitizer report.",
+      "minutes_lost": 0,
+      "evidence": "reg/runs_tmp.cp: `let n: 1..=20 = read(); let xs: [0..n]1..=9 = read(); for r in xs.sorted().runs(): print(r.first!, r.len); for r in xs.sorted(by: desc).runs().items: print(r.0, r.1.len, r.1)`; input `8\\n3 1 3 2 1 3 9 9`; cpl test runs_tmp.cp; cpl build runs_tmp.cp --judge codeforces -o runs_tmp.cpp; g++ -std=c++17 -O2 runs_tmp.cpp -o r_o2; g++ -std=c++17 -O1 -g -fsanitize=address,undefined runs_tmp.cpp -o r_san; all three print `1 2/2 1/3 3/9 2/0 2 9 9/1 3 3 3 3/2 1 2/3 2 1 1`, sanitizer exit 0, empty stderr"
+    },
+    {
+      "id": "design-disjoint-law-not-enforced",
+      "step": "test",
+      "kind": "hesitation",
+      "lane": "compiler",
+      "summary": "REFUTED (fixed): `merge_into(mut c[i], c[j])` with runtime i, j and no proof is now rejected with E0601.",
+      "minutes_lost": 0,
+      "evidence": "reg/merge.cp -> error[E0601]: `c[i]` and `c[j]` may be the same storage, and one is lent `mut` to this call: Array.at lends disjoint parts only when `i != j`, and that is not known here ... help: guard it (`if i != j: ...`), state it (`assert i != j`), or copy the read-only one first"
+    },
+    {
+      "id": "scan-int-index-wrong",
+      "step": "test",
+      "kind": "hesitation",
+      "lane": "compiler",
+      "summary": "REFUTED (fixed): `a.scan(+)` indexed by an Int variable gives the right exclusive prefix values.",
+      "minutes_lost": 0,
+      "evidence": "probe/scan.cp: let a = [1, 2, 3, 2, 1]; let sc = a.scan(+); let i: Int = 2; print(sc[i], sc[a.len - 1]) -> `3 8`; print(sc) -> `0 1 3 6 8 9`"
+    },
+    {
+      "id": "rev-view-index-not-reversed",
+      "step": "test",
+      "kind": "blocker",
+      "lane": "stdlib",
+      "summary": "CONFIRMED (still broken on 0878bfa8): indexing a `.rev` view returns the unreversed element (`a.rev[0]` is a[0]) while iterating it and `.first!` are reversed, in both `cpl run` and the g++ build.",
+      "minutes_lost": 2,
+      "evidence": "reg/rev2.cp: let a = [10, 20, 30]; print(a.rev[0], a.rev[2]); print([x for x in a.rev]); let r = a.rev; print(r[0], r.first!, r.last!) -> `10 30` / `30 20 10` / `10 30 10` (cpl run and cpl build --judge codeforces + g++ -std=c++17 -O2 agree); expected `30 10` and `30 30 10`"
+    },
+    {
+      "id": "self-update-404",
+      "step": "test",
+      "kind": "hesitation",
+      "lane": "tools",
+      "summary": "REFUTED (fixed): `cpl self update` works; mid-run it moved edge from e9c6b2eb to 0878bfa8, so steps 5-8 ran on cpl 0.3.0-edge+0878bfa8.",
+      "minutes_lost": 0,
+      "evidence": "cpl self update -> edge updated: edge-2026-11-23-e9c6b2eb -> edge-2026-11-23-0878bfa8 (`cpl self rollback` goes back); cpl --version -> cpl 0.3.0-edge+0878bfa8"
+    },
+    {
+      "id": "jetbrains-free-ide-no-lsp",
+      "step": "install",
+      "kind": "hesitation",
+      "lane": "tools",
+      "summary": "REFUTED (fixed): IntelliJ IDEA Community 2025.2 gets diagnostics and completion through LSP4IJ installed by `cpl setup jetbrains`, after one full IDE restart.",
+      "minutes_lost": 0,
+      "evidence": "cpl setup jetbrains --check -> IdeaIC2025.2: CP Lang loaded (CP Lang (0.3.0)); idea.log: Loaded custom plugins: LSP4IJ (0.30.1), CP Lang (0.3.0); completion popup print/prim/prime_count/primes_in/primitive_root"
+    },
+    {
+      "id": "fetch-template-misses-multitest",
+      "step": "submit",
+      "kind": "hesitation",
+      "lane": "tools",
+      "summary": "REFUTED (fixed): the `cpl new --listen` template for a multiNumber Competitive Companion task starts with `@!multitest`.",
+      "minutes_lost": 0,
+      "evidence": "cpl new --listen; curl -X POST localhost:10043 with Competitive Companion JSON (testType multiNumber, url codeforces 2289/A) -> a.cp: `// A. Test ... // judge: codeforces ... @!multitest\\nlet n: 1..=2e5 = read()`, a.tests/1.in,1.out"
+    },
+    {
+      "id": "competitive-companion-simulated",
+      "step": "submit",
+      "kind": "workaround",
+      "lane": "tools",
+      "summary": "I did not install the Competitive Companion extension into the session browser and instead POSTed its JSON payload to `cpl new --listen` with curl; the listener accepted it.",
+      "minutes_lost": 2,
+      "evidence": "cc/listen.log: created a.cp / created a.tests/ (1 sample) / waiting for Competitive Companion on 127.0.0.1:10043"
+    },
+    {
+      "id": "partition-point-flipped-vs-cpp",
+      "step": "compete",
+      "kind": "hesitation",
+      "lane": "stdlib",
+      "summary": "`partition_point(ok)` returns the cut before the first true (false prefix, true suffix), the opposite predicate polarity from std::partition_point, so my C++ habit `gaps.partition_point(g => g < len)` gave a silent wrong answer on 2272E.",
+      "minutes_lost": 1,
+      "evidence": "drafts/cf2272E.partition-point-pred-flipped.cp: sample 3 line 6 expected `3`, got `4`; docs/ref/std/seq `partition_point`: Cut between the false prefix and true suffix of monotone `ok`"
+    },
+    {
+      "id": "check-cannot-see-solution-globals",
+      "step": "compete",
+      "kind": "hesitation",
+      "lane": "spec",
+      "summary": "A `@check fn` cannot read the solution's globals (only the input), so for 2272A I had to duplicate the whole O(n^3) optimum search inside the checker; the error itself was clear.",
+      "minutes_lost": 1,
+      "evidence": "drafts/cf2272A.check-uses-solution-globals.cp -> checker: error[E0201]: `best` is the solution's own work: a brute or a checker shares only the input"
+    },
+    {
+      "id": "design-element-lend-disjoint-constants",
+      "step": "design",
+      "kind": "hesitation",
+      "lane": "site",
+      "summary": "I predicted `let r = rows[0]` then `rows[1].push(9)` is rejected (R05.3.5 + R6), but it compiles because `Array.at` lends disjoint parts for provably distinct constants; the rule is in the disjointness section, not next to the element-lend rule, so my one wrong prediction (4/5) is my misreading rather than a docs gap.",
+      "minutes_lost": 1,
+      "evidence": "design/p5.cp prints `2`; design/p5b.cp (rows[0].push(9)) -> error[E0602]: `rows[0]` can't be changed here: `rows` is lent to `r` until its last use (both are the same part of it; Array.at lends disjoint parts only when `i != j`)"
+    },
+    {
+      "id": "count-of-bools-counts-all",
+      "step": "solve",
+      "kind": "hesitation",
+      "lane": "stdlib",
+      "status": "fixed",
+      "summary": "FIXED (recheck after the run, not by the agent): on edge e9c6b2eb a bare `count()` on a List<Bool> is error E0303, with the help to write `count(x => x)`.",
+      "minutes_lost": 0,
+      "evidence": "let b = [true, false, true, false]; print(b.count()) -> error[E0303]: `count()` with no test counts every element, the falses too"
+    }
+  ]
+}
