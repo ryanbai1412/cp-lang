@@ -294,6 +294,7 @@ impl<'a> Lowerer<'a> {
                 }
             }
             _ if self.sort_reverse_arg(args) => return self.err_expr(span),
+            _ if self.sort_unknown_arg(args) => return self.err_expr(span),
             _ => {
                 self.error(
                     codes::WRONG_ARG_COUNT,

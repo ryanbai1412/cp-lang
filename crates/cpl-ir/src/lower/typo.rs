@@ -428,6 +428,38 @@ impl<'a> Lowerer<'a> {
         true
     }
 
+    pub(super) fn sort_unknown_arg(&mut self, args: &[ast::Arg]) -> bool {
+        let Some(named) = args
+            .iter()
+            .find_map(|a| a.name.as_ref().filter(|n| n.text != "by"))
+        else {
+            return false;
+        };
+        let message = format!("`sort` has no parameter named `{}`", named.text);
+        self.unknown_arg_name(message, named, &["by", "desc"]);
+        true
+    }
+
+    /// A named argument the callee lacks; suggests the label meant, including
+    /// Python's names for the same option (`key=` and `cmp=` are `by:`).
+    pub(super) fn unknown_arg_name(&mut self, message: String, name: &ast::Name, labels: &[&str]) {
+        self.error(codes::UNKNOWN_ARG_NAME, name.span, message);
+        let foreign = match name.text.as_str() {
+            "key" | "cmp" => Some("by"),
+            "reverse" => Some("desc"),
+            _ => None,
+        };
+        if let Some(label) = foreign.filter(|l| labels.contains(l)) {
+            let at = self.span(name.span);
+            if let Some(last) = self.diags.last_mut() {
+                last.help = Some(format!("CP Lang names this argument `{label}`"));
+                last.fix(format!("write `{label}`"), at, label);
+            }
+        } else if let Some(label) = cpl_check::closest(&name.text, labels.iter().copied()) {
+            self.suggest_last(name.span, label);
+        }
+    }
+
     pub(super) fn suggest_last(&mut self, span: Span, s: String) {
         let span = self.span(span);
         if let Some(last) = self.diags.last_mut() {

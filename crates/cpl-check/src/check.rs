@@ -939,6 +939,7 @@ impl<'a> Checker<'a> {
             && field_of_self.is_none()
             && name.chars().nth(1).is_some()
             && advice::foreign_call(name).is_none()
+            && advice::foreign_value(name).is_none()
             && !matches!(name, "enumerate" | "range")
             && prelude::std_module(name).is_none()
             && cpl_syntax::removed_keyword(name).is_none();

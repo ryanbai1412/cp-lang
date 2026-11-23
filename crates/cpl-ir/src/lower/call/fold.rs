@@ -391,7 +391,7 @@ impl<'a> Lowerer<'a> {
         }
         if let Some(named) = args.iter().find_map(|a| a.name.as_ref()) {
             let message = format!("`{name}` has no argument named `{}`", named.text);
-            self.error(codes::UNKNOWN_ARG_NAME, named.span, message);
+            self.unknown_arg_name(message, named, &["by"]);
             return self.err_expr(span);
         }
         match args {

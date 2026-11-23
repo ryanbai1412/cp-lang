@@ -1219,7 +1219,8 @@ impl<'a> Lowerer<'a> {
                     None => {
                         let message =
                             format!("`{name}` has no parameter named `{}`", arg_name.text);
-                        self.error(codes::UNKNOWN_ARG_NAME, arg_name.span, message);
+                        let labels: Vec<&str> = params.iter().map(|p| p.label.as_str()).collect();
+                        self.unknown_arg_name(message, arg_name, &labels);
                         ok = false;
                         continue;
                     }
