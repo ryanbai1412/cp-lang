@@ -11,8 +11,8 @@ fastest user+sys CPU time over its runs, across:
 
 The emitted C++ is compiled with `g++ -std=c++17 -O2 -w`, originals with
 `-std=gnu++20` (judge originals use C++20 headers). An original g++ cannot build
-(C++23: deducing `this`, <format>) is built with `--cxx23 CMD` (a clang, e.g.
-`python3 -m ziglang c++`) at `-std=c++23`, and its pair's emitted C++ with the same
+(C++23: deducing `this`, <format>) is built with `--cxx23 CMD` (a clang; default
+`python3 -m ziglang c++` when the running interpreter has `pip install ziglang`) at `-std=c++23`, and its pair's emitted C++ with the same
 CMD, so both sides of a ratio use one compiler. Outputs are verified for exact
 token-level output agreement (1e-6 float tolerance). Also reported: peak RSS
 of each run (emitted / original) and g++ time on the emitted C++ (taken while
@@ -32,6 +32,7 @@ import argparse
 import concurrent.futures
 import glob
 import hashlib
+import importlib.util
 import json
 import math
 import os
@@ -139,6 +140,11 @@ def run_once(binary, inp, outp, timeout):
 
 
 CXX23_SHIM = os.path.join(ROOT, "bench", "cxx23-shim")
+
+
+# Originals that use C++23 (deducing `this`, <format>) need a newer compiler
+# than the system g++; the ziglang wheel ships one clang on every platform.
+DEFAULT_CXX23 = f"{sys.executable} -m ziglang c++" if importlib.util.find_spec("ziglang") else ""
 
 
 def timed_gxx(src, out, std="c++17", cxx=None):
@@ -492,8 +498,9 @@ def main():
     ap.add_argument("--json-out", default="")
     ap.add_argument(
         "--cxx23",
-        default=os.environ.get("CPL_BENCH_CXX23", ""),
-        help="C++23 compiler command for originals g++ cannot build, e.g. 'python3 -m ziglang c++'",
+        default=os.environ.get("CPL_BENCH_CXX23", DEFAULT_CXX23),
+        help="C++23 compiler command for originals g++ cannot build (default: the ziglang"
+        " package's clang when installed, `pip install ziglang`)",
     )
     args = ap.parse_args()
     cxx23 = args.cxx23.split() or None
