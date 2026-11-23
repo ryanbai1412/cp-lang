@@ -1,7 +1,11 @@
 name: site
 
+# Deploys only main commits CI passed: it runs when a CI run on main
+# finishes green, on that run's commit. A manual dispatch deploys its ref.
 on:
-  push:
+  workflow_run:
+    workflows: [ci]
+    types: [completed]
     branches: [main]
   workflow_dispatch:
 
@@ -16,6 +20,7 @@ concurrency:
 
 jobs:
   deploy:
+    if: github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push')
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
@@ -24,6 +29,8 @@ jobs:
       WRANGLER: pnpm dlx wrangler@4.162.0
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
       - name: Install the pinned Rust toolchain
         run: rustup show active-toolchain || rustup toolchain install
       - uses: Swatinem/rust-cache@v2
@@ -45,7 +52,9 @@ jobs:
           test -n "$CLOUDFLARE_ACCOUNT_ID" || { echo "::error::set the CLOUDFLARE_ACCOUNT_ID repository secret"; exit 1; }
       - name: Deploy
         working-directory: web/worker
-        run: $WRANGLER deploy --message "$GITHUB_SHA"
+        env:
+          DEPLOY_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+        run: $WRANGLER deploy --message "$DEPLOY_SHA"
       - name: Smoke
         run: |
           for path in / /docs/ /play/ /install.sh; do

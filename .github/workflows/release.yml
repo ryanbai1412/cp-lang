@@ -19,6 +19,7 @@ on:
 
 permissions:
   contents: read
+  actions: read
 
 concurrency:
   group: release-${{ inputs.channel || 'edge' }}
@@ -35,7 +36,18 @@ jobs:
       toolchain: ${{ steps.plan.outputs.toolchain }}
       tags: ${{ steps.plan.outputs.tags }}
     steps:
+      # Releases build only a main commit CI passed: the newest one.
+      - id: green
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          sha=$(gh run list -R "$GITHUB_REPOSITORY" --workflow ci.yml --branch main --event push \
+            --status success -L 1 --json headSha --jq '.[0].headSha // empty')
+          test -n "$sha" || { echo "::error::no main commit has passed CI"; exit 1; }
+          echo "sha=$sha" >>"$GITHUB_OUTPUT"
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.green.outputs.sha }}
       - id: plan
         env:
           GH_TOKEN: ${{ github.token }}
@@ -65,6 +77,8 @@ jobs:
         shell: bash
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.plan.outputs.commit }}
       - name: Install the pinned Rust toolchain
         run: rustup show active-toolchain || rustup toolchain install
       - uses: Swatinem/rust-cache@v2
@@ -102,6 +116,8 @@ jobs:
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.plan.outputs.commit }}
       - uses: actions/setup-node@v4
         with:
           node-version: "24"
@@ -141,6 +157,8 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.plan.outputs.commit }}
       - uses: actions/download-artifact@v4
         with:
           path: dist
