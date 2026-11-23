@@ -7,7 +7,7 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 2839 (995 passing). Rules: 576.
+Cases: 2840 (995 passing). Rules: 576.
 
 ## Summary per chapter
 
@@ -23,7 +23,7 @@ Cases: 2839 (995 passing). Rules: 576.
 - R08 (08-traits-generics.md): 29 rules, 92 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R09 (09-contexts-checks.md): 27 rules, 61 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R10 (10-io.md): 19 rules, 111 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R11 (11-modules-prelude.md): 16 rules, 46 cases; 0 uncovered, 0 happy-path only, 1 negative only
+- R11 (11-modules-prelude.md): 16 rules, 47 cases; 0 uncovered, 0 happy-path only, 1 negative only
 - R12 (12-powers.md): 17 rules, 36 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R13 (13-lowering.md): 22 rules, 30 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - Rbundle (bundle.md): 3 rules, 3 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -625,7 +625,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R11.2.3 [3+ 1-]: A local name shadows a prelude name; a `use` that collides with a local name is an error n...
 - R11.2.4 [1+ 1-]: Everything is inlined into the one output file and tree-shaken: only called functions and ...
 - R11.3.1 [5+ 1-]: Only programs get the prelude; library modules `use` what they need, so a library never de...
-- R11.3.2 [3+ 1-]: The prelude is the vocabulary of the `lib/` chapters, by rule rather than by request (deci...
+- R11.3.2 [4+ 1-]: The prelude is the vocabulary of the `lib/` chapters, by rule rather than by request (deci...
 - R11.3.3 [6+ 2-]: Two exclusions keep that safe. A name a contestant commonly gives a local (`n`, `a`, `g`, ...
 - R11.3.4 [2+ 1-]: A method call needs no import: `xs.sorted()`, `g.adjacent(v)` and `p.adj4` find the method...
 - R11.3.5 [2+ 0-]: The LSP offers an import quick fix for any non-prelude stdlib name, and `cpl fmt` sorts `u...
@@ -981,8 +981,8 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **rand** (10/10 named by a case)
 - **search** (9/9 named by a case)
 - **segtree** (54/54 named by a case)
-- **seq** (206/216 named by a case)
-  - uncovered: `Compressed`, `Filtered`, `Mapped`, `Rev`, `Rebased`, `Keys`, `SubseqStep`, `Ring`, `RingRange`, `RingSlice`
+- **seq** (207/216 named by a case)
+  - uncovered: `Compressed`, `Filtered`, `Mapped`, `Rev`, `Rebased`, `Keys`, `SubseqStep`, `Ring`, `RingRange`
 - **slope** (39/39 named by a case)
 - **sparse** (23/23 named by a case)
 - **spec** (8/16 named by a case)
@@ -996,7 +996,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **window** (20/22 named by a case)
   - uncovered: `Tracked`, `Undo`
 
-2191 of 2318 std items are named by a case.
+2192 of 2318 std items are named by a case.
 
 ## Core cases without a `// rule:` line
 

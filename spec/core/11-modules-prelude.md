@@ -67,7 +67,9 @@ built-in list. Rules:
   prelude (decision 241). (R11.3.1)
 - The prelude is the vocabulary of the `lib/` chapters, by rule rather
   than by request (decision 150): every pub type and free function in a
-  chapter's main tables is in it, and nothing else is.
+  chapter's main tables is in it, together with every std type a prelude
+  signature names (parameters, results, getters, yields), so any value a
+  program can get it can also annotate; nothing else is.
   `std/prelude.cp` is the authoritative list; `scripts/spec-stub.py`
   checks it against the tables. Adding an API to a
   chapter's table adds it to the prelude; a helper the tables don't list
