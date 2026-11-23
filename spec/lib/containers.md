@@ -629,8 +629,8 @@ fn insert_barrel(v: Int):
         let nxt = cur.next_cursor(c)
         if prv != None and nxt != None:
             upd_gap(cur.key_of(prv!), cur.key_of(nxt!), false)
-        if prv != none: upd_gap(cur.key_of(prv!), v, true)
-        if nxt != none: upd_gap(v, cur.key_of(nxt!), true)
+        if prv != None: upd_gap(cur.key_of(prv!), v, true)
+        if nxt != None: upd_gap(v, cur.key_of(nxt!), true)
 
 fn has_bad_k() -> Bool:
     var first_step = true

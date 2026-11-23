@@ -2,6 +2,7 @@ pub mod conformance;
 pub mod corpus;
 pub mod diff;
 pub mod docs;
+mod lsp;
 pub mod runner;
 pub mod scoreboard;
 pub mod spec_blocks;

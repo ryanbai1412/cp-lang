@@ -39,7 +39,7 @@ Status: draft for 0.3.0. Sources: `plan/60-editor.md`, decisions 29,
   yegappan/lsp when either is installed; any other LSP client runs
   `cpl lsp`. (Rlsp.5)
 
-Evidence: these rules are tested by the LSP's own suites rather than
-`cpl-conform`: `crates/cpl-lsp/tests/fixtures/` (diagnostics, completion,
+Evidence: `spec/conformance/tools-lsp/` drives `cpl lsp --stdio` for each
+rule, and the LSP's own suites go deeper: `crates/cpl-lsp/tests/fixtures/` (diagnostics, completion,
 navigation), `crates/cpl-lsp/src/tests/format.rs` and
 `editors/neovim/test/smoke.lua`.

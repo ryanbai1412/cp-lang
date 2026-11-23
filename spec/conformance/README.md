@@ -40,6 +40,15 @@ can't match them. Each `// file: <path> "..."` line (tool cases only)
 writes one more file, escaped like `// input:`, at that path below the
 scratch directory before the run: a `cp.toml` and a library module, say.
 
+A word holding `{case}` or `{dir}` takes the copy's path or the scratch
+directory there, and the copy is not passed first:
+`// tool: setup neovim --dir {dir}/nvim`. `// tool: lsp <feature>` opens the
+copy in `cpl lsp --stdio` and prints what the server sends, one JSON
+message per line, with the document's URI as `<case>`: `diagnostics` (the
+published diagnostics), `formatting`, and `hover`, `completion` or
+`definition` at a needle's `|`, as in `// tool: lsp completion h.|` (the
+first non-comment line holding `h.`).
+
 They double as the spec's exercises and as the regression suite: the
 runner (`cpl-conform conformance`, in `crates/cpl-conform`) checks each expectation
 against `cpl check`/`cpl run`, and reports which cases 0.2.x does not

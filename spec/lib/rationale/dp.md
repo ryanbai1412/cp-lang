@@ -561,7 +561,7 @@ Signatures above that today's public language cannot write.
 
 1. **Debug-only law checks.** `knuth`, `dnc_layer`, `smawk`, `ternary_*`,
    `Concave.add_quadratic`, `bsearch_*`. Example: `law quadrangle_break(cost)
-   == none` checked in debug builds on sampled inputs and free in release.
+   == None` checked in debug builds on sampled inputs and free in release.
    Today `add_quadratic` checks in every build.
 2. **Real ranges.** `bsearch_real`, `ternary_*_real`, `dinkelbach` as
    `bsearch_first(0.0..1e9, ok, eps: 1e-9)`: `Range<F64>` with a resolution.

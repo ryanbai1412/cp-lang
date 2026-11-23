@@ -205,13 +205,14 @@ fn unquote(v: &str) -> String {
     unescape_python_like(body)
 }
 
-struct ToolRun {
-    status: i32,
-    stdout: String,
-    stderr: String,
+pub(crate) struct ToolRun {
+    pub(crate) status: i32,
+    pub(crate) stdout: String,
+    pub(crate) stderr: String,
 }
 
-/// Runs `cpl <sub> <copy of the case> <rest>` on a copy in a scratch directory,
+/// Runs `cpl <sub> <copy of the case> <rest>` on a copy in a scratch directory
+/// (a `{case}` or `{dir}` word in `<rest>` places the copy or the directory instead),
 /// so a tool that rewrites its input (`fmt`) never edits the case. The copy
 /// blanks the `// has:`/`// lacks:` lines so a tool that echoes the source
 /// (`build`) can't match them.
@@ -251,7 +252,7 @@ fn run_tool(case: &ConformanceCase, text: &str, args: &str) -> Result<ToolRun, S
             }
         })
         .collect();
-    std::fs::write(&copy, shown).map_err(|e| format!("cannot write {}: {e}", copy.display()))?;
+    std::fs::write(&copy, &shown).map_err(|e| format!("cannot write {}: {e}", copy.display()))?;
     for spec in header_values(text, "file:") {
         let (rel, body) = spec
             .split_once(char::is_whitespace)
@@ -271,10 +272,26 @@ fn run_tool(case: &ConformanceCase, text: &str, args: &str) -> Result<ToolRun, S
     }
     let mut words = args.split_whitespace();
     let sub = words.next().ok_or("empty `// tool:` header")?;
+    if sub == "lsp" {
+        let args: Vec<&str> = words.collect();
+        let run = crate::lsp::session(&cpl, &copy, &shown, &args);
+        let _ = std::fs::remove_dir_all(&dir);
+        return run;
+    }
+    let rest: Vec<String> = words.map(str::to_string).collect();
+    let placed = rest
+        .iter()
+        .any(|w| w.contains("{case}") || w.contains("{dir}"));
+    let mut argv = vec![sub.to_string()];
+    if !placed {
+        argv.push(copy.to_string_lossy().into_owned());
+    }
+    argv.extend(rest.iter().map(|w| {
+        w.replace("{case}", &copy.to_string_lossy())
+            .replace("{dir}", &dir.to_string_lossy())
+    }));
     let mut child = Command::new(&cpl)
-        .arg(sub)
-        .arg(&copy)
-        .args(words)
+        .args(&argv)
         .current_dir(&dir)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())

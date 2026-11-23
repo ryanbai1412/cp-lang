@@ -28,3 +28,4 @@ R09.5.4 defines "unsafe" sites
 R10.3.6 output shape; "counts are never written" is tested by accept cases
 R13.1.4 release lowering adds no UB; a codegen property
 R13.3.5 views lower without allocation; a codegen property
+Rlsp.5 one-step editor setup; "no checkout, plugin manager or lspconfig needed" promises less setup and rejects no program

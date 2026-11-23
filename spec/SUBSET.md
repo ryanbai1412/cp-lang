@@ -20,7 +20,7 @@ trees, DSU, prefix sums, Fenwick and segment trees, sequences, strings,
 grids, modular math, I/O, search and DP) are supported; the rest are
 documented. The stdlib's own gaps are in `std/GAPS.md`.
 
-`Rlsp` has no `cpl-conform` cases; the LSP's own suites hold it (`tools/lsp.md`).
+`Rlsp` cases drive `cpl lsp --stdio` (`tools-lsp/`); the LSP's own suites go deeper (`tools/lsp.md`).
 
 ## Sections
 
