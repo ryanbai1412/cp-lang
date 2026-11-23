@@ -3,33 +3,28 @@
 Read this first if you are working on CP Lang, agent or person: what we are
 building, what it owes the contestant, and the rules every change follows.
 
-The handbook (`handbook/README.md`) is becoming the one home for how we
-work: read `handbook/process/handbook-and-rfcs.md` for how it is kept true,
-when to write an RFC, and the escape hatch (process over 10% of your time
-may be skipped). Its sections land one at a time; until a section lands, the
-files below remain authoritative.
+The handbook (`handbook/README.md`) is the home for how we work. Read, in
+order:
 
-Start with `handbook/product/`: `vision.md` (who CP Lang is for and why),
-`journeys.md` (the journeys we owe them) and `milestones.md` (the
-milestone every lane works toward). Product docs say what users get, `spec/`
-says what the language is. When choosing what to do next, unblock a step of
-the milestone's acceptance scenario first.
-
-Then read, in order:
-0. `plan/STATUS.md` (generated: every domain's metrics and open questions) and `spec/README.md`: where the 0.3.0 work stands today,
-   how the spec and corpus fit together, the checks to run, and what is open.
-   `spec/` (`spec/core/`, `spec/lib/`, `spec/tools/`) and the stdlib in
-   `std/` state the language precisely; where anything else disagrees with
-   them, they win. Once `handbook/language/` lands, it leads: it says what
-   the design means, the spec states it precisely, and the two change
-   together.
-1. `plan/OPERATING.md`: settled decisions and the loop we work in.
-2. `plan/DOMAINS.md`: the domains (one domain = one lane = one owner);
-   find yours, then read `plan/domains/<domain>/` and `plan/QUESTIONS.md`.
-3. `plan/ARCHITECTURE.md`: compiler, IR, interpreter, and crate architecture.
-4. `decisions.md`: every design call, its reason and how to reverse it.
-5. `REPO.md`: where everything lives.
-6. `handbook/process/porting.md`: if you port solutions, the bar and the review.
+1. `handbook/product/`: `vision.md` (who CP Lang is for and why),
+   `journeys.md` (the journeys we owe them) and `milestones.md` (the
+   milestone every lane works toward). When choosing what to do next,
+   unblock a step of the milestone's acceptance scenario first.
+2. `handbook/principles.md` (summarised below) and
+   `handbook/process/handbook-and-rfcs.md`: how the handbook is kept true,
+   when to write an RFC, and the escape hatch.
+3. `handbook/process/`: `factory.md` (the loop), `ownership.md` (who
+   decides), `change.md` (how a change flows), `quality.md`.
+4. `handbook/domains/README.md`: find your domain, read its charter, then
+   `plan/domains/<domain>/` and `plan/QUESTIONS.md`.
+5. `handbook/language/` leads the language design; `spec/` (`spec/core/`,
+   `spec/lib/`, `spec/tools/`) and `std/` state it precisely. The two change
+   together; a disagreement is a bug to resolve, not a rule to pick from.
+6. `plan/STATUS.md` (generated: every domain's metrics and open questions)
+   and `spec/README.md`: where the work stands today.
+7. As needed: `handbook/design/` and `plan/ARCHITECTURE.md` (architecture),
+   `REPO.md` (where everything lives), `decisions.md` (every design call,
+   searchable), `handbook/process/porting.md` (porting solutions).
 
 `plan/agent-context.md` has Ryan's own words; historical design debates live
 under `research/design-history/`.

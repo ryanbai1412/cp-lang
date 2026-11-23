@@ -43,6 +43,19 @@ decide. How registers work, and how suites are judged, is in
 | [site](site.md) | `web/` | A cold reader writes correct code from the site alone |
 | [debugger](debugger.md) | `crates/cpl-stress`, tracing, the trace viewer | A wrong answer becomes a minimal counterexample in seconds |
 
+## How involved Ryan is
+
+Domains differ in how many judgment calls need Ryan, which decides how a
+lane is run:
+
+| Kind | Domains | Ryan's involvement |
+|---|---|---|
+| Service | infra | Almost none: approves irreversible operations. Interrupts from other lanes beat roadmap work. |
+| Metric | compiler, perf, diagnostics, tech-debt | Agrees a target once; the lane then climbs it alone. |
+| Design, then build | lint-fmt, tools | One design review, then the lane builds alone and becomes a metric lane. |
+| Taste and co-design | spec, stdlib, idioms | The lane proposes; Ryan reviews calls that change the language's character, afterwards, through `plan/QUESTIONS.md`. |
+| Experience | site, debugger | Builds, then iterates on how it feels in use, with Ryan's reviews of the live surface. |
+
 Who may change what, and how decisions cross domains, is in
 `../process/ownership.md`.
 

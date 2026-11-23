@@ -13,7 +13,7 @@
 How work on CP Lang runs: what is already decided, and the loop that moves
 the project forward. The mission, goals and principles every change follows
 are in `AGENTS.md`; read that first. Where each domain stands, its success criteria and its
-next steps are in `plan/DOMAINS.md` and `plan/domains/<domain>/`.
+next steps are in `handbook/domains/` and `plan/domains/<domain>/`.
 
 ## Settled decisions
 
