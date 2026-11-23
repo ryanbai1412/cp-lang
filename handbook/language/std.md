@@ -17,8 +17,8 @@ use std.bag.{SortedBag}
 var bag = SortedBag<Int>()
 for x in a:
     bag.add(x)
-print(bag.count(1))     // 2
-print(bag.pop_first()!) // 1: `pop_first` gives `?Int`, `!` unwraps it
+print(bag.count(1))      // 2
+print(bag.pop_first()!)  // 1: `pop_first` gives `?Int`, `!` unwraps it
 ```
 
 ## The model

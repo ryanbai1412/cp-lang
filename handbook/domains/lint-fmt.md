@@ -225,7 +225,7 @@ in `plan/domains/lint-fmt/metrics.toml`.
 | Lint and fmt add little to the editor's response (`lints/R24`) | lint and fmt time on the largest ports, against a tenth of the 500 ms front-end budget; the largest `std` modules printed | gate in optimized builds | `crates/cpl-lint/src/speed_tests.rs` `lint_and_fmt_of_the_largest_files_fit_a_tenth_of_the_front_end_budget` |
 | One analysis: no tool re-checks a file to lint it | checker databases built outside the session | ratchet `own_databases` | `scripts/debt-ratchet.py` |
 | Lint knows no std API by name | std names in rules | ratchet `lint_std_names` | `scripts/debt-ratchet.py` |
-| Suites catch regressions in the rules | mutation score of `cpl-lint` and `cpl-fmt` suites | `missing` | — |
+| Suites catch regressions in the rules | mutation score of the `cpl-fmt` and `cpl-lint` suites (`fmt_mutation_score` in metrics) | mutation testing; `cpl-lint` not yet scored | `scripts/mutation-score.py` |
 | Every escaped lint or fmt bug becomes a case | escaped bugs without a record near miss or test | process: a false positive lands as a `near_miss.cp` case | `spec/lints/*/near_miss.cp` |
 
 ## Suites and tools

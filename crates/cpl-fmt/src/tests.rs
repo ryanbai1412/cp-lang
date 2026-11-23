@@ -767,3 +767,60 @@ fn keeps_crlf_line_endings_of_a_windows_checkout() {
     // Mixed endings are not a Windows checkout: they become LF.
     assert_eq!(fmt("let  x=1\r\nprint( x )\n"), "let x = 1\nprint(x)\n");
 }
+
+/// A long chain breaks after its loosest operator only, for each pair of
+/// neighbouring binding strengths from `??` down to `+` against `*`.
+/// Rule: `lints/R22`, handbook/guidelines/lints-checklist.md#r22-formatting-is-idempotent-and-keeps-meaning.
+#[test]
+fn a_long_chain_breaks_after_its_loosest_operator() {
+    let narrow = Style {
+        indent: 4,
+        line_width: 40,
+    };
+    let levels = ["or", "and", "??", "==", "|", "^", "&", "<<", "+", "*"];
+    for pair in levels.windows(2) {
+        let (loose, tight) = (pair[0], pair[1]);
+        let src = format!(
+            "let r = alpha_one1 {tight} beta_two22 {loose} gamma_three {tight} delta_four\n"
+        );
+        let out = format_with(&src, &narrow).unwrap_or_else(|e| panic!("{e}\n{src}"));
+        let ends: Vec<&str> = out
+            .lines()
+            .filter_map(|l| l.trim_end().rsplit(' ').next())
+            .collect();
+        assert_eq!(
+            ends.iter().filter(|e| **e == loose).count(),
+            1,
+            "`{loose}` against `{tight}`:\n{out}"
+        );
+        assert!(
+            !ends.contains(&tight),
+            "`{loose}` against `{tight}`:\n{out}"
+        );
+        assert_eq!(format_with(&out, &narrow).unwrap(), out);
+    }
+}
+
+/// A comment anywhere inside a bracket, however deep, keeps every bracket
+/// around it open, and stays where it was written.
+/// Rule: `lints/R22`, handbook/guidelines/lints-checklist.md#r22-formatting-is-idempotent-and-keeps-meaning.
+#[test]
+fn a_comment_deep_in_brackets_keeps_them_open() {
+    for src in [
+        "let x = f(g(1,  // one\n2), 3)\n",
+        "let x = f(g(1,\n// two\n2), 3)\n",
+        "let x = f(g(h(1),  // three\n2), 3)\n",
+        "let x = f(g(  // four\n1, 2), 3)\n",
+    ] {
+        let out = fmt(src);
+        let comment = src.split("//").nth(1).unwrap().split('\n').next().unwrap();
+        assert!(
+            out.contains(&format!("//{comment}")),
+            "{src:?} lost its comment:\n{out}"
+        );
+        assert!(
+            out.lines().next().unwrap().trim_end().ends_with("f("),
+            "{src:?} put the outer call on one line:\n{out}"
+        );
+    }
+}

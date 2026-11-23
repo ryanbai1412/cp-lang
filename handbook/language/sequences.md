@@ -166,9 +166,9 @@ one list is `[xs]` (decision 348; R07.3.2):
 
 ```cp
 let xs = [1, 2, 3]
-let a = List(xs)     // a copy of xs: 3 elements
-let b = [xs]         // one element, the list xs
-let c = List(0..4)   // any sequence: 4 elements
+let a = List(xs)    // a copy of xs: 3 elements
+let b = [xs]        // one element, the list xs
+let c = List(0..4)  // any sequence: 4 elements
 print(a.len, b.len, c.len)
 ```
 

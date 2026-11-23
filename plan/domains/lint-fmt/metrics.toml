@@ -128,3 +128,10 @@ command = "target/debug/cpl lint corpus/problems/*/port.cp 2>&1 | grep -o 'warni
 today = "L0504 66, L0549 45, L0503 44, L0537 39, L0524 38, L0507 38, L0523 36, L0201 31, L0203 29, L0208 28 (750 in all)"
 target = "each of the top 10 names real CPL vocabulary, has a fix where meaning allows and an explain page"
 note = "C++-translated ports are the newcomer proxy (Milestone 1, J2/J5); L0414 left the default set (decision 319)"
+
+[[metric]]
+name = "fmt_mutation_score"
+command = "python3 scripts/mutation-score.py -p cpl-fmt"
+today = 0.843
+target = 0.95
+note = "2026-11-23: 644 caught, 120 missed, 4 timeout, 18 unviable of 786; most misses are in layout.rs line breaking and spacing.rs"
