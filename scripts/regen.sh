@@ -9,7 +9,7 @@ cd "$(git rev-parse --show-toplevel)"
 py() { if command -v uv >/dev/null; then uv run --quiet python "$@"; else python3 "$@"; fi; }
 # Each step runs even when another fails (the gate still reports the failure),
 # so one broken generator never leaves every other file stale.
-run() { "$@" >/dev/null || echo "regen: failed: $*" >&2; }
+run() { local out; out=$("$@" 2>&1) || { printf '%s\n' "$out" | tail -20 >&2; echo "regen: failed: $*" >&2; }; }
 [ ! -f scripts/skill-gen.py ] || run py scripts/skill-gen.py
 [ ! -f scripts/conformance-coverage.py ] || run py scripts/conformance-coverage.py
 if [ -f scripts/conformance-prelude.py ] && py scripts/conformance-prelude.py 2>&1 | grep -q ' 0 new,'; then
