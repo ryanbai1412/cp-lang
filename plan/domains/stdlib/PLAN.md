@@ -43,7 +43,9 @@ W2 runs before W3 because writing bodies whose examples fail for a compiler reas
 
 ## General fixes owed
 
-- **`convolve`'s product is \(O(n m)\) for every `T`.** `Poly<T>` methods (`inv`, `log`, `exp`, `pow`, `sqrt`) run Newton over `*` = `convolve`, so they are \(O(n^2)\) where the free `List<Mod<P>>` functions are \(O(n \log n)\). General fix: `convolve` picks NTT / three-prime CRT / FFT by value type, as its doc promises, through an `if T: Trait` dispatch that user number types can join; then every `Poly` method gets \(O(n \log n)\) with no change (stdlib).
+- **`convolve`'s fast product covers only NTT-prime `Mod<P>`.** Other moduli, `Int` and `F64` still take the \(O(n m)\) loop. General fix: three-prime CRT and FFT as further `FastProduct` impls (stdlib).
+- **`same(over.add, +)` is a run-time test,** so `convolve`'s semiring branch is lowered for every `T` and a user ring type must define `one` even for the plain product (`std-ntt/convolve-fast-product`). General fix: settle `same` of two operation values at compile time, as `if T: Trait` now is, so an untaken branch imposes nothing (compiler).
+- **A missing `T.zero` inside std reports "`cpl run` doesn't know the name `T`"** instead of "`Tal` has no `zero`, which `convolve` needs" at the call. General fix: the type-qualified lookup error names the bound type and the missing member (compiler, diagnostics).
 - **A generic domain bound by a literal-sized table dimension is just `Int`** (5 `sparse.cp`
   `SparseTable2D` doc examples, `[2, 2] (r, c) => ..`): `R.K`, `R.first!` and `for r in R` need the
   size, which `Int` loses ("doesn't know the name `R`"). Works with declared domains. General fix:

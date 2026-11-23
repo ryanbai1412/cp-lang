@@ -249,7 +249,7 @@ fn ntt<P>(mut a: List<Mod<P>>, inverse: Bool = false, bit_reversed: Bool = false
 fn convolve<T, O, R>(
     a: List<T>,
     b: List<T>,
-    on: O = (x, y) => x + y,   // ^ | & subset gcd lcm
+    on: O = +,                 // ^ | & subset gcd lcm
     over: R = Semiring(+, *),  // Semiring(min, +) needs shape:
     shape: ?Curved = None,     // Both | Right | Neither
     cyclic: Bool = false,

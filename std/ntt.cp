@@ -274,7 +274,7 @@ pub const subset = Disjoint()
 /// for `max`, slopes merged; `Right`: only `b`, `monotone_minima`; `Neither`: the \(O(n m)\) loop by
 /// name). Leaving `shape:` out there, or giving it with `Semiring(+, *)`, is a compile error.
 ///
-/// cost: \(O(n \log n)\) bitwise; \(O(n + m)\) `Both`; \(O(n m)\) today for the product, `subset`, `gcd`/`lcm`, `Right`, `Neither` and any `IndexOp` (the transforms are planned)
+/// cost: \(O(n \log n)\) bitwise and for the product over a [`FastProduct`] type (NTT for `Mod<P>` when `P - 1` has the power of two); \(O(n + m)\) `Both`; \(O(n m)\) today for any other product, `subset`, `gcd`/`lcm`, `Right`, `Neither` and any `IndexOp` (the transforms are planned)
 /// empty: `[]` for the linear product when either input is empty
 /// order: by output index `0..len`; a new `List`, keyed from 0
 /// traps: when `cyclic: true` and `a.len != b.len`; when a bitwise or `subset` input is not a power-of-two length equal to the other's; when an `Int` output overflows
@@ -289,7 +289,7 @@ pub const subset = Disjoint()
 pub fn convolve<T: Add + Sub + Mul, O, R>(
     a: List<T>,
     b: List<T>,
-    on: O = (x, y) => x + y,
+    on: O = +,
     over: R = Semiring(+, *),
     shape: ?Curved = None,
     cyclic: Bool = false,
@@ -320,6 +320,9 @@ pub fn convolve<T: Add + Sub + Mul, O, R>(
         else: sos(mut fa, over: Sup, inverse: true)
         return fa
     if na == 0 or nb == 0: return []
+    if T: FastProduct:
+        if same(on, +) and not cyclic:
+            if let c = T.product(a, b): return c
     let by_divisor = same(on, gcd) or same(on, lcm)
     var n_out = if by_divisor: max(na, nb) elif cyclic: na else: na + nb - 1
     if O: IndexOp:
@@ -338,6 +341,41 @@ pub fn convolve<T: Add + Sub + Mul, O, R>(
     out
 
 fn same<A, B>(a: A, b: B) -> Bool = a == b
+
+/// A number type with a fast linear product, which `convolve` uses for its default `on: +`,
+/// `over: Semiring(+, *)` form. `Mod<P>` has one (NTT); a user number type joins by implementing
+/// it the same way.
+pub trait FastProduct:
+    /// `convolve(a, b)` for nonempty `a` and `b`, or `None` when this type has no fast product for
+    /// these lengths (then `convolve` runs its \(O(n m)\) loop).
+    fn product(a: List<Self>, b: List<Self>) -> ?List<Self>
+
+impl FastProduct for Mod<P>:
+    fn product(a: List<Mod<P>>, b: List<Mod<P>>) -> ?List<Mod<P>>:
+        let (na, nb) = (a.len, b.len)
+        let n_out = na + nb - 1
+        if min(na, nb) <= 60:
+            var out = List.filled(n_out, Mod<P>(0))
+            unchecked:
+                for i in 0..na:
+                    let ai = a[i]
+                    if ai.v == 0: continue
+                    for j in 0..nb: out[i + j] += ai * b[j]
+            return Some(out)
+        let need = bit_ceil(n_out)
+        if (P - 1) % need != 0: return None
+        var fa = List.filled(need, Mod<P>(0))
+        var fb = List.filled(need, Mod<P>(0))
+        unchecked:
+            for i in 0..na: fa[i] = a[i]
+            for i in 0..nb: fb[i] = b[i]
+        ntt(mut fa, bit_reversed: true)
+        ntt(mut fb, bit_reversed: true)
+        unchecked:
+            for i in 0..need: fa[i] *= fb[i]
+        ntt(mut fa, inverse: true, bit_reversed: true)
+        fa.truncate(n_out)
+        Some(fa)
 
 /// `convolve` over another semiring: `out[i + j]` folds `over.mul(a[i], b[j])` with `over.add`.
 /// `shape: Both` merges slopes (both inputs convex for `min`, concave for `max`, `mul` is `+`).

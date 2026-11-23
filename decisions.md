@@ -7867,8 +7867,6 @@ Amended (2026-11-23): `exp`, `ln` and `hypot` from 1.5 join them the same way, r
 the ratchet to 95. `ln` traps on a negative number in checked runs; `ln(0.0)` is
 `-inf`, which the 1.5 rule already traps once printed or compared. `std.poly`'s free
 `exp(a, n)` still wins where it is imported.
-and the 5 names raise the `ir_builtin_names` ratchet from 87 to 92. `exp`, `ln` and
-`hypot` from 1.5 are still missing. Reverse: write them in std over a C++ escape.
 
 ## 376. The browser compiler is two modules (2026-11-23)
 
@@ -7890,3 +7888,16 @@ predicate (`first_true` false-then-true); an array's axes may be plain ranges
 (`[0..=n, 0..=k]Int`); `print` of an `F64` with no precision gives 10
 decimals in both backends. The spec now states them. Reverse the float
 default by changing `io.precision`'s default and this rule together.
+
+## 377. `convolve` takes its fast product from a `FastProduct` impl (2026-11-23)
+
+`convolve`'s doc promised NTT for an NTT-prime `Mod<P>`, but its body was the \(O(n m)\)
+loop for every type, and `std.poly` kept a private NTT `times`. Now `std.ntt` has `trait
+FastProduct` with `product(a, b) -> ?List<Self>`; `convolve` calls it through `if T:
+FastProduct` for its default form (`on: +`, `over: Semiring(+, *)`, not cyclic), and
+`Mod<P>` implements it with NTT when `P - 1` has the power of two, else `None` and the loop.
+A user number type joins the same way (no stdlib privilege). For that, `if T: Trait` now holds for an instance of a generic struct with `impl Trait for S<P>` (it used to be false, so `Mod<P>` never took the branch), and the branch a type can't take is not lowered, like `if const` (`core-08/has-bound-generic-impl`). The default `on:` became the
+bare `+` (spec/lib/math.md), so `convolve` can recognize it as it does `^`, `|` and `&`.
+`poly`'s `times` is gone, and `Poly<T>`'s Newton methods are \(O(n \log n)\) over `Mod<P>`.
+Three-prime CRT for other moduli and FFT for `F64` are still owed. Reverse: drop the
+`if T: FastProduct` branch and give `poly` its `times` back.

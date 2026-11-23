@@ -7,34 +7,6 @@ use std.math.{mod_sqrt, pow_mod}
 use std.mod.{Mod}
 use std.ntt.{convolve, ntt}
 
-fn times<P>(a: List<Mod<P>>, b: List<Mod<P>>) -> List<Mod<P>>:
-    if a.is_empty or b.is_empty: return []
-    let na = a.len
-    let nb = b.len
-    let n_out = na + nb - 1
-    if min(na, nb) <= 60:
-        var out = List.filled(n_out, Mod<P>(0))
-        unchecked:
-            for i in 0..na:
-                let ai = a[i]
-                if ai.v == 0: continue
-                for j in 0..nb: out[i + j] += ai * b[j]
-        return out
-    let need = bit_ceil(n_out)
-    assert (P - 1) % need == 0, "modulus p - 1 must be divisible by n"
-    var fa = List.filled(need, Mod<P>(0))
-    var fb = List.filled(need, Mod<P>(0))
-    unchecked:
-        for i in 0..na: fa[i] = a[i]
-        for i in 0..nb: fb[i] = b[i]
-    ntt(mut fa, bit_reversed: true)
-    ntt(mut fb, bit_reversed: true)
-    unchecked:
-        for i in 0..need: fa[i] *= fb[i]
-    ntt(mut fa, inverse: true, bit_reversed: true)
-    if fa.len > n_out: fa.truncate(n_out)
-    fa
-
 /// The formal derivative `a'(x)`: coefficient `k` is `(k + 1) * a[k + 1]`. Length
 /// `max(0, a.len - 1)`, trailing zeros kept.
 ///
@@ -132,7 +104,7 @@ pub fn log<P>(a: List<Mod<P>>, n: Int) -> List<Mod<P>>:
     unchecked:
         for i in 1..take: da[i - 1] = a[i] * Mod<P>(i)
     let ia = inv(a, n - 1)
-    var q = times(da, ia)
+    var q = convolve(da, ia)
     if q.len > n - 1: q.truncate(n - 1)
     while q.len < n - 1: q.push(Mod<P>(0))
     integral(q)
@@ -160,7 +132,7 @@ pub fn exp<P>(a: List<Mod<P>>, n: Int) -> List<Mod<P>>:
             for i in 0..m:
                 let ai = if m + i < a.len: a[m + i] else: Mod<P>(0)
                 hi[i] = ai - lg[m + i]
-        let delta = times(g, hi)
+        let delta = convolve(g, hi)
         unchecked:
             for i in 0..m: g.push(if i < delta.len: delta[i] else: Mod<P>(0))
         m = lim
@@ -262,7 +234,7 @@ pub fn sqrt<P>(a: List<Mod<P>>, n: Int) -> ?List<Mod<P>>:
                 let hi = if cur + i < h_len: h[cur + i] else: Mod<P>(0)
                 diff[i] = (hi - g2[cur + i]) * inv2
         let ig = inv(g, cur)
-        let delta = times(diff, ig)
+        let delta = convolve(diff, ig)
         unchecked:
             for i in 0..cur: g.push(if i < delta.len: delta[i] else: Mod<P>(0))
         cur = lim
@@ -351,11 +323,11 @@ pub fn div_mod<P>(a: List<Mod<P>>, b: List<Mod<P>>) -> (q: List<Mod<P>>, r: List
     unchecked:
         for i in 0..q_len: ra[i] = ta[ta.len - 1 - i]
     let rb = rev_poly(tb)
-    var q_rev = times(ra, inv(rb, q_len))
+    var q_rev = convolve(ra, inv(rb, q_len))
     if q_rev.len > q_len: q_rev.truncate(q_len)
     while q_rev.len < q_len: q_rev.push(Mod<P>(0))
     let q = rev_poly(q_rev)
-    let qb = times(q, tb)
+    let qb = convolve(q, tb)
     let r_len = tb.len - 1
     var r = List.filled(r_len, Mod<P>(0))
     unchecked:
@@ -371,7 +343,7 @@ fn subproduct_tree<P>(xs: List<Mod<P>>) -> List<List<Mod<P>>>:
     var nodes: List<List<Mod<P>>> = List.filled(2 * n, [])
     unchecked:
         for i in 0..n: nodes[n + i] = [-xs[i], Mod<P>(1)]
-        for i in (1..n).rev: nodes[i] = times(nodes[2 * i], nodes[2 * i + 1])
+        for i in (1..n).rev: nodes[i] = convolve(nodes[2 * i], nodes[2 * i + 1])
     nodes
 
 /// The monic polynomial `prod_{r in roots} (x - r)`, of length `roots.len + 1`.
@@ -410,7 +382,7 @@ pub fn taylor_shift<P>(a: List<Mod<P>>, c: Mod<P>) -> List<Mod<P>>:
             u[n - 1 - i] = a[i] * fact[i]
             v[i] = cp * ifact[i]
             cp *= c
-    let prod = times(u, v)
+    let prod = convolve(u, v)
     var out = List.filled(n, Mod<P>(0))
     unchecked:
         for k in 0..n: out[k] = prod[n - 1 - k] * ifact[k]
@@ -424,7 +396,7 @@ fn eval_on_tree<P>(a: List<Mod<P>>, nodes: List<List<Mod<P>>>, n: Int) -> List<M
         for i in 0..reduced.len: r_pad[i] = reduced[i]
     let rev_r = rev_poly(r_pad)
     let inv_rev_m = inv(rev_poly(root), n)
-    var top = times(rev_r, inv_rev_m)
+    var top = convolve(rev_r, inv_rev_m)
     if top.len > n: top.truncate(n)
     while top.len < n: top.push(Mod<P>(0))
     var down: List<List<Mod<P>>> = List.filled(2 * n, [])
@@ -441,8 +413,8 @@ fn numer_on_tree<P>(nodes: List<List<Mod<P>>>, c: List<Mod<P>>, n: Int) -> List<
     var num: List<List<Mod<P>>> = List.filled(2 * n, [])
     for i in 0..n: num[n + i] = [c[i]]
     for i in (1..n).rev:
-        let l = times(num[2 * i], nodes[2 * i + 1])
-        let r = times(num[2 * i + 1], nodes[2 * i])
+        let l = convolve(num[2 * i], nodes[2 * i + 1])
+        let r = convolve(num[2 * i + 1], nodes[2 * i])
         var s = List.filled(max(l.len, r.len), Mod<P>(0))
         for k in 0..l.len: s[k] += l[k]
         for k in 0..r.len: s[k] += r[k]
@@ -465,7 +437,7 @@ fn hgcd_apply<P>(
     b: List<Mod<P>>,
 ) -> (List<Mod<P>>, List<Mod<P>>):
     let one = Mod<P>(1)
-    (poly_add(times(m.0, a), times(m.1, b), one), poly_add(times(m.2, a), times(m.3, b), one))
+    (poly_add(convolve(m.0, a), convolve(m.1, b), one), poly_add(convolve(m.2, a), convolve(m.3, b), one))
 
 fn hgcd_mul<P>(
     x: (List<Mod<P>>, List<Mod<P>>, List<Mod<P>>, List<Mod<P>>),
@@ -473,10 +445,10 @@ fn hgcd_mul<P>(
 ) -> (List<Mod<P>>, List<Mod<P>>, List<Mod<P>>, List<Mod<P>>):
     let one = Mod<P>(1)
     (
-        poly_add(times(x.0, y.0), times(x.1, y.2), one),
-        poly_add(times(x.0, y.1), times(x.1, y.3), one),
-        poly_add(times(x.2, y.0), times(x.3, y.2), one),
-        poly_add(times(x.2, y.1), times(x.3, y.3), one),
+        poly_add(convolve(x.0, y.0), convolve(x.1, y.2), one),
+        poly_add(convolve(x.0, y.1), convolve(x.1, y.3), one),
+        poly_add(convolve(x.2, y.0), convolve(x.3, y.2), one),
+        poly_add(convolve(x.2, y.1), convolve(x.3, y.3), one),
     )
 
 fn half_gcd<P>(a0: List<Mod<P>>, b0: List<Mod<P>>) -> (
@@ -589,7 +561,7 @@ pub fn compose<P>(f: List<Mod<P>>, g: List<Mod<P>>, n: Int) -> List<Mod<P>>:
     let ql_lim = min(k + 1, m)
     unchecked:
         for i in 0..ql_lim: ql[i] = q_arr[2 * i]
-    let p_base = times(rev_f, inv(ql, m))
+    let p_base = convolve(rev_f, inv(ql, m))
     var p_arr = List.filled(b_sz, Mod<P>(0))
     unchecked:
         for i in 0..m: p_arr[k - m + i] = p_base[i]
@@ -697,8 +669,8 @@ pub fn interpolate<P>(xs: List<Mod<P>>, ys: List<Mod<P>>) -> List<Mod<P>>:
             assert w[i].v != 0, "poly.interpolate requires distinct xs"
             num[n + i] = [ys[i] * w[i].inv()]
         for i in (1..n).rev:
-            let l = times(num[2 * i], nodes[2 * i + 1])
-            let r = times(num[2 * i + 1], nodes[2 * i])
+            let l = convolve(num[2 * i], nodes[2 * i + 1])
+            let r = convolve(num[2 * i + 1], nodes[2 * i])
             let m = max(l.len, r.len)
             var res = List.filled(m, Mod<P>(0))
             for k in 0..l.len: res[k] += l[k]
@@ -1021,7 +993,7 @@ pub struct SubproductTree<P>:
         let num = numer_on_tree(self.nodes, c, n)
         var r = List.filled(n, Mod<P>(0))
         for i in 0..num.len: r[n - 1 - i] = num[i]
-        var out = times(r, inv(q, n))
+        var out = convolve(r, inv(q, n))
         out.truncate(n)
         out
 
@@ -1061,8 +1033,8 @@ pub fn bostan_mori<P>(p: List<Mod<P>>, q: List<Mod<P>>, n: Int) -> Mod<P>:
     var (a, b, k) = (p, q, n)
     while k > 0:
         let bn = [if i % 2 == 0: b[i] else: -b[i] for i in 0..b.len]
-        let u = times(a, bn)
-        let v = times(b, bn)
+        let u = convolve(a, bn)
+        let v = convolve(b, bn)
         a = [u[i] for i in (k % 2..u.len).step(2)]
         b = [v[i] for i in (0..v.len).step(2)]
         k /= 2
@@ -1099,7 +1071,7 @@ pub fn compose_inv<P>(f: List<Mod<P>>, n: Int) -> List<Mod<P>>:
         len = min(2 * len, n)
         var fg = compose(f, g, len)
         fg[1] -= Mod<P>(1)
-        let corr = times(fg, inv(compose(df, g, len), len))
+        let corr = convolve(fg, inv(compose(df, g, len), len))
         var ng = List.filled(len, Mod<P>(0))
         for i in 0..len:
             let gi = if i < g.len: g[i] else: Mod<P>(0)
@@ -1127,9 +1099,9 @@ pub fn pow_mod_poly<P>(a: List<Mod<P>>, k: Int, mod_p: List<Mod<P>>) -> List<Mod
     var acc: List<Mod<P>> = [Mod<P>(1)]
     var e = k
     while e > 0:
-        if e % 2 == 1: acc = div_mod(times(acc, base), m).r
+        if e % 2 == 1: acc = div_mod(convolve(acc, base), m).r
         e /= 2
-        if e > 0: base = div_mod(times(base, base), m).r
+        if e > 0: base = div_mod(convolve(base, base), m).r
     var out = List.filled(d, Mod<P>(0))
     for i in 0..min(d, acc.len): out[i] = acc[i]
     out
@@ -1240,7 +1212,7 @@ pub fn power_sums<P>(xs: List<Mod<P>>, deg: Int) -> List<Mod<P>>:
     out[0] = Mod<P>(xs.len)
     if deg == 0: return out
     let p = rev_poly(prod_linear(xs))
-    let q = times(deriv(p), inv(p, deg))
+    let q = convolve(deriv(p), inv(p, deg))
     for k in 1..=deg: out[k] = if k - 1 < q.len: -q[k - 1] else: Mod<P>(0)
     out
 
@@ -1286,7 +1258,7 @@ pub fn stirling2_row<P>(n: Int) -> List<Mod<P>>:
     for i in 0..=n:
         a[i] = Mod<P>(pow_mod(i, n, P)) * inv_fact[i]
         b[i] = if i % 2 == 0: inv_fact[i] else: -inv_fact[i]
-    var prod = times(a, b)
+    var prod = convolve(a, b)
     if prod.len > n + 1: prod.truncate(n + 1)
     while prod.len < n + 1: prod.push(Mod<P>(0))
     prod
@@ -1402,7 +1374,7 @@ fn eval_div_shift_mpe_laws():
     let b = [Z((i * 7 + 5) % 23) for i in 0..19]
     let (q, r) = div_mod(a, b)
     assert r.len < b.len
-    let qb = times(q, b)
+    let qb = convolve(q, b)
     for i in 0..a.len:
         let qi = if i < qb.len: qb[i] else: Z(0)
         let ri = if i < r.len: r[i] else: Z(0)
@@ -1430,7 +1402,7 @@ fn eval_div_shift_mpe_laws():
     // Negative power law: a^k * a^{-k} == 1 (mod x^n)
     let p_pos = pow(b, 5, 16)
     let p_neg = pow(b, -5, 16)
-    let p_id = times(p_pos, p_neg)
+    let p_id = convolve(p_pos, p_neg)
     assert p_id[0] == Z(1)
     for i in 1..16: assert p_id[i] == Z(0)
 
@@ -1443,7 +1415,7 @@ fn eval_div_shift_mpe_laws():
         var gp: List<Z> = [Z(1)]
         for i in 0..f_c.len:
             for j in 0..min(gp.len, 12): brute[j] += f_c[i] * gp[j]
-            gp = times(gp, g_c)
+            gp = convolve(gp, g_c)
             if gp.len > 12: gp.truncate(12)
         assert comp == brute
 
@@ -1463,7 +1435,7 @@ fn inv_log_exp_laws():
     type Z = Mod<998_244_353>
     let a = [Z(1 + (i * 7 + 3) % 19) for i in 0..17]
     let ia = inv(a, 17)
-    let prod = times(a, ia)
+    let prod = convolve(a, ia)
     assert prod[0] == Z(1)
     for i in 1..17: assert prod[i] == Z(0)
     assert inv(a, 0).is_empty
@@ -1482,7 +1454,7 @@ fn pow_and_sqrt_laws():
     let p3 = pow(a, 3, 10)
     var naive: List<Z> = [Z(1)]
     for _ in 0..3:
-        naive = times(naive, a)
+        naive = convolve(naive, a)
         if naive.len > 10: naive.truncate(10)
     while naive.len < 10: naive.push(Z(0))
     assert p3 == naive
@@ -1491,7 +1463,7 @@ fn pow_and_sqrt_laws():
 
     let s_in: List<Z> = [Z(0), Z(0), Z(4), Z(12), Z(9), Z(5), Z(7)]
     let g = sqrt(s_in, 7)!
-    let gg = times(g, g)
+    let gg = convolve(g, g)
     for i in 0..7: assert gg[i] == s_in[i]
     let odd_zero: List<Z> = [Z(0), Z(4), Z(1)]
     assert sqrt(odd_zero, 3) == None
