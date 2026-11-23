@@ -34,10 +34,14 @@ pub fn scan<D, T, M>(self: [D]T, f: M, from: ?T = None) -> Prefix<D, T>:
     let sums = same(f, +)
     var p: [D.cuts]T = from ?? m.id
     var acc = from ?? m.id
+    var rises = true
     for (i, x) in self.items:
+        let before = acc
         acc = m.op(acc, x)
+        if T: Ord:
+            if acc < before: rises = false
         p[i.r] = acc
-    Prefix<D, T>.of_cuts(p, sums)
+    Prefix<D, T>.of_cuts(p, sums, rises)
 
 fn same<A, B>(a: A, b: B) -> Bool = a == b
 
@@ -107,6 +111,7 @@ pub struct FillPrefix<D, T: Add + Sub>:
 pub struct Prefix<D, T: Add + Sub>:
     p: [D.cuts]T
     sums: Bool
+    rises: Bool
 
     /// Build 1-D prefix sums over `a: [D]T`; `Prefix(a)` calls it.
     ///
@@ -116,9 +121,12 @@ pub struct Prefix<D, T: Add + Sub>:
     /// example: `domain D = 0..3; let p = Prefix<D, Int>([D] v => 1 + Int(v)); p.all == 6`
     pub fn new(a: [D]T) -> Prefix<D, T>:
         var p: [D.cuts]T = T.zero
+        var rises = true
         for i in D:
             p[i.r] = p[i.l] + a[i]
-        Prefix(p, true)
+            if T: Ord:
+                if a[i] < T.zero: rises = false
+        Prefix(p, true, rises)
 
     /// Create an append-only 1-D prefix/suffix sum table filled via `.set(i, x)` in `order`.
     ///
@@ -141,7 +149,7 @@ pub struct Prefix<D, T: Add + Sub>:
     /// example: `domain D = 0..3; let p = Prefix<D, Int>([D] v => 1 + Int(v)); p.prefix(0) == 0`
     pub fn prefix(self, b: Cut<D>) -> T = self.p[b]
 
-    fn of_cuts(p: [D.cuts]T, sums: Bool) -> Prefix<D, T> = Prefix(p, sums)
+    fn of_cuts(p: [D.cuts]T, sums: Bool, rises: Bool) -> Prefix<D, T> = Prefix(p, sums, rises)
 
     /// The sum of `a[i]` for `i` in `r`, or `0` when `r` is empty: `prefix(r.r) - prefix(r.l)`.
     ///
@@ -211,6 +219,7 @@ pub struct Prefix<D, T: Add + Sub>:
     /// example: `Int([2, 0, 3].scan(+).first_ge(2)!) == 1`
     /// example: `[2, 0, 3].scan(+).first_ge(6) == None`
     pub fn first_ge(self, target: T) -> ?Cut<D>:
+        assert rises, "this binary search needs the prefix never to fall, so no element may be negative"
         if self.all < target: return None
         let lo = (0..D.count).first_true(mid => self.p[D.cuts.nth(mid)] >= target) ?? D.count
         Some(D.cuts.nth(lo))
@@ -226,6 +235,7 @@ pub struct Prefix<D, T: Add + Sub>:
     /// example: `Int([2, 0, 3].scan(+).first_gt(2)!) == 3`
     /// example: `[2, 0, 3].scan(+).first_gt(5) == None`
     pub fn first_gt(self, target: T) -> ?Cut<D>:
+        assert rises, "this binary search needs the prefix never to fall, so no element may be negative"
         if self.all <= target: return None
         let lo = (0..D.count).first_true(mid => self.p[D.cuts.nth(mid)] > target) ?? D.count
         Some(D.cuts.nth(lo))
