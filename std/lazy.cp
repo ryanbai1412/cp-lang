@@ -812,13 +812,13 @@ pub struct Rope<D, T>:
     fn pull(mut self, t: Int):
         sz[t] = self.size(ls[t]) + 1 + self.size(rs[t])
 
+    // `val[t]` leaves out `tg[t]`, which reaches it only when `down` pushes the tag.
     fn tag_node(mut self, t: Int, x: T):
         if t < 0: return
-        if let m = mg:
-            val[t] = m(x, val[t])
-            tg[t] = if has[t]: m(x, tg[t]) else: x
+        if has[t]:
+            if let m = mg: tg[t] = m(x, tg[t])
+            else: tg[t] = x
         else:
-            val[t] = x
             tg[t] = x
         has[t] = true
 
@@ -831,8 +831,11 @@ pub struct Rope<D, T>:
             if rs[t] >= 0: rv[rs[t]] = not rv[rs[t]]
             rv[t] = false
         if has[t]:
-            self.tag_node(ls[t], tg[t])
-            self.tag_node(rs[t], tg[t])
+            let x = tg[t]
+            self.tag_node(ls[t], x)
+            self.tag_node(rs[t], x)
+            if let m = mg: val[t] = m(x, val[t])
+            else: val[t] = x
             has[t] = false
 
     // (first k values, the rest)
@@ -974,7 +977,9 @@ pub struct Rope<D, T>:
         let sw = flip != rv[t]
         let (l, r) = if sw: (rs[t], ls[t]) else: (ls[t], rs[t])
         let s = self.size(l)
-        if k == s: return f(mut val[t])
+        if k == s:
+            if let x = f(mut val[t]): return Some(x)
+            return if has[t]: f(mut tg[t]) else: None
         let below = if k < s: self.path_first(l, k, sw, f) else: self.path_first(r, k - s - 1, sw, f)
         if let x = below: return Some(x)
         if has[t]: f(mut tg[t]) else: None
