@@ -140,8 +140,16 @@ markers=$(git grep -nE '^(<{7}|>{7}|\|{7})( |$)' -- ':!*.png' ':!*.gz' || true)
 [ -z "$markers" ] || fail "merge conflict markers left in:
 $markers"
 # Every test program has its saved trace: trace_goldens fails without one,
-# and the commit tier can stop before it runs.
-untraced=$(git ls-files 'crates/cpl-cli/tests/programs/*.cp' |
+# and the commit tier can stop before it runs. A commit answers only for
+# the programs it adds or changes, so one already on main blocks no lane.
+programs() {
+    if [ "$mode" = commit ]; then
+        git diff --cached --name-only --diff-filter=AM -- 'crates/cpl-cli/tests/programs/*.cp'
+    else
+        git ls-files 'crates/cpl-cli/tests/programs/*.cp'
+    fi
+}
+untraced=$(programs |
     while read -r f; do [ -e "${f%.cp}.trace" ] || echo "$f"; done)
 [ -z "$untraced" ] || fail "test programs with no saved trace; record them with
 CPL_BLESS=1 cargo nextest run -p cpl-cli --test trace_goldens, read the .trace, commit it:
