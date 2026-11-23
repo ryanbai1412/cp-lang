@@ -32,23 +32,23 @@ milestone = "M2"
 
 [[metric]]
 name = "perf set p50 runtime vs matched C++"
-command = "E python3 bench/v03_perf_bench.py --suite dryrun,corpus,bench --runs 5 --min-ms 10 --jobs 1 --json-out /tmp/perf.json  # branch"
+command = "E python3 bench/v03_perf_bench.py --suite dryrun,corpus,bench --runs 5 --min-ms 10 --jobs 1 --json-out /tmp/perf.json"
 target = "<= 1.1"
-today = "0.987 (n=48 >= 10 ms both sides); bench/ alone 1.028, dryrun 0.529, corpus n=4"
+today = "0.948 (2026-11-22 on main 88a62fca8, n=118 >= 10 ms both sides, 238 ok rows); bench/ 1.040 (n=38), corpus 0.879 (n=70), dryrun 0.910 (n=10)"
 milestone = "M3"
 
 [[metric]]
 name = "perf set max runtime vs matched C++"
 command = "same as perf set p50"
 target = "<= 1.5"
-today = "2.431 (bench/ranges/mo)"
+today = "6.027 (dryrun p06_labyrinth); bench/ max 1.749 (containers/bitset)"
 milestone = "M3"
 
 [[metric]]
 name = "perf set programs over 1.5x"
 command = "same as perf set p50"
 target = "0"
-today = "3 (ranges/mo 2.431, corpus cf2178h 1.761, dryrun p10_matching 1.530); 14 over 1.1"
+today = "16 (dryrun p06_labyrinth 6.03, cf1146h 3.86, wtf26b 3.59, p10_matching 2.45, cf2115c 2.34, cf2229d 2.04, cf2178h 1.91, cf2124d 1.77, bitset 1.75, cf2137d 1.68, ucup5s03f 1.66, cf1284e 1.63, cf2201b 1.61, cf2084e 1.58, ranges/mo 1.55, sorted_set 1.51); 40 over 1.1"
 milestone = "M3"
 
 [[metric]]
@@ -90,14 +90,14 @@ milestone = "M2"
 name = "perf set peak RSS vs matched C++ (p50, max)"
 command = "E python3 bench/v03_perf_bench.py --suite dryrun,corpus,bench --runs 5 --min-ms 10 --jobs 1 --json-out /tmp/perf.json  # rss_ratio_p50, rss_ratio_max, rss_max_mb"
 target = "p50 <= 1.05, max <= 1.5; no program over the judge's 256 MB"
-today = "p50 1.000, max 2.006, largest 99.6 MB (n=164 ok rows, 2026-11-22 on a083b364)"
+today = "p50 1.000, max 10.26 (cf2053i1 270 MB vs 26 MB), largest 862 MB (cf2124h, orig 432 MB on the same generated input) (238 ok rows, 2026-11-22)"
 milestone = "M1"
 
 [[metric]]
 name = "g++ -O2 time on emitted C++ (p50, max)"
 command = "E python3 bench/v03_perf_bench.py --suite dryrun,corpus,bench --runs 5 --min-ms 10 --jobs 1 --json-out /tmp/perf.json  # compile_ms_p50, compile_ms_max"
 target = "p50 <= 1000 ms, max <= 3000 ms (judge compile limits are ~10 s)"
-today = "p50 516 ms, max 1126 ms (n=164 ok rows, 2026-11-22 on a083b364)"
+today = "p50 542 ms, max 1283 ms (238 ok rows, 2026-11-22)"
 milestone = "M1"
 
 [[metric]]
