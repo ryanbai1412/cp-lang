@@ -225,10 +225,8 @@ impl<'a> Lowerer<'a> {
             return call;
         }
         let span = whole.span;
-        if let ast::ExprKind::Field { base, name } = &callee.kind {
-            if let Some(piece) = self.map_view_piece(base, &name.text, args, span) {
-                return piece;
-            }
+        if let Some(piece) = self.map_view_piece(whole, None) {
+            return piece;
         }
         match &callee.kind {
             ast::ExprKind::Paren(inner) => self.call(whole, inner, args, hint),

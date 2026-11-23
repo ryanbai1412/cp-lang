@@ -11,28 +11,12 @@ impl<'a> Lowerer<'a> {
         hint: Option<&Ty>,
     ) -> Expr {
         let span = whole.span;
-        if matches!(name.text.as_str(), "len" | "is_empty") {
-            if let ast::ExprKind::Name(n) = &base.kind {
-                if let Some(slot) = self.lookup(n) {
-                    if let Some(view) = self.cx.map_views.get(&slot).cloned() {
-                        let base_expr = self.local(view.base_slot, span);
-                        let len = self.mk(
-                            ExprKind::Builtin(Builtin::Len, vec![base_expr]),
-                            Ty::Int,
-                            span,
-                        );
-                        if name.text == "is_empty" {
-                            let zero = self.int_lit(0, span);
-                            return self.mk(
-                                ExprKind::Cmp(CmpOp::Eq, Box::new(len), Box::new(zero)),
-                                Ty::Bool,
-                                span,
-                            );
-                        }
-                        return len;
-                    }
-                }
-            }
+        let then = matches!(name.text.as_str(), "len" | "is_empty").then_some(name);
+        if let Some(e) = then.and_then(|n| self.map_view_piece(base, Some(n))) {
+            return e;
+        }
+        if let Some(piece) = self.map_view_piece(whole, None) {
+            return piece;
         }
         if matches!(name.text.as_str(), "first" | "last" | "len" | "is_empty")
             && self.is_sorted_range_expr(base)

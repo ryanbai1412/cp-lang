@@ -1355,62 +1355,71 @@ impl<'a> Lowerer<'a> {
         self.map_view_from_expr(expr, out)
     }
 
-    /// `m.drop(k)` on a map view `m = xs.map(f)` is `xs.drop(k).map(f)`, so `f` runs only on
-    /// what the piece keeps (R07.4.9): any library fn that returns a `Slice` or `Rev` of `self`.
+    /// `m.rev.take(k)` on a map view `m = xs.map(f)` is `xs.rev.take(k).map(f)`, so `f` runs
+    /// only on what the pieces keep, and `then` (`.len`) reads none of it (R07.4.9). A piece is
+    /// any library fn that returns a `Slice` or `Rev` of `self`.
     pub(in crate::lower) fn map_view_piece(
         &mut self,
-        base: &ast::Expr,
-        method: &str,
-        args: &[ast::Arg],
-        span: Span,
+        e: &ast::Expr,
+        then: Option<&ast::Name>,
     ) -> Option<Expr> {
-        let ast::ExprKind::Name(n) = &base.kind else {
-            return None;
-        };
-        let view = self.cx.map_views.get(&self.lookup(n)?)?.clone();
-        let Sym::GenFn(gfid) = self
-            .get_sym(&cpl_check::std_method(method))
-            .or_else(|| self.get_sym(method))?
-        else {
-            return None;
-        };
-        if !piece_of_self(self.gen_fns[gfid].decl) {
+        if then.is_none() && matches!(e.kind, ast::ExprKind::Name(_)) {
             return None;
         }
-        let hidden = "\u{0}map view base".to_string();
-        let name = ast::Name {
-            text: method.to_string(),
-            span,
-        };
-        let receiver = ast::Expr {
-            kind: ast::ExprKind::Name(hidden.clone()),
-            span: base.span,
-        };
-        let callee = ast::Expr {
-            kind: ast::ExprKind::Field {
-                base: Box::new(receiver),
-                name,
-            },
-            span,
-        };
-        let call = ast::Expr {
-            kind: ast::ExprKind::Call {
-                callee: Box::new(callee),
-                args: args.to_vec(),
-            },
-            span,
-        };
+        let hidden = "\u{0}map view base";
+        let (mut chain, view) = self.map_view_chain(e, hidden)?;
+        if let Some(name) = then {
+            chain = ast::Expr {
+                kind: ast::ExprKind::Field {
+                    base: Box::new(chain),
+                    name: name.clone(),
+                },
+                span: e.span,
+            };
+        }
         self.cx
             .scopes
-            .push(HashMap::from([(hidden, view.base_slot)]));
-        let piece = self.expr(&call, None);
+            .push(HashMap::from([(hidden.to_string(), view.base_slot)]));
+        let piece = self.expr(&chain, None);
         self.cx.scopes.pop();
+        if then.is_some() {
+            return Some(piece);
+        }
         let elem_ty = match &piece.ty {
             Ty::List(e) | Ty::ListView(e, _) | Ty::MutView(e) | Ty::Keyed(e, _) => (**e).clone(),
             Ty::Str | Ty::StrView => Ty::Char,
-            _ => return Some(piece),
+            _ => return None,
         };
-        Some(self.map_seq(piece, elem_ty, &view.func, span))
+        Some(self.map_seq(piece, elem_ty, &view.func, e.span))
+    }
+
+    /// `e` with the map view at its root renamed to `hidden`, when every step is a piece.
+    fn map_view_chain(&mut self, e: &ast::Expr, hidden: &str) -> Option<(ast::Expr, MapView)> {
+        let mut out = e.clone();
+        let base = match &mut out.kind {
+            ast::ExprKind::Name(n) => {
+                let view = self.cx.map_views.get(&self.lookup(n)?)?.clone();
+                *n = hidden.to_string();
+                return Some((out, view));
+            }
+            ast::ExprKind::Paren(inner) => return self.map_view_chain(inner, hidden),
+            ast::ExprKind::Call { callee, .. } => match &mut callee.kind {
+                ast::ExprKind::Field { base, name } if self.is_piece(&name.text) => base,
+                _ => return None,
+            },
+            ast::ExprKind::Field { base, name } if self.is_piece(&name.text) => base,
+            _ => return None,
+        };
+        let (inner, view) = self.map_view_chain(base, hidden)?;
+        **base = inner;
+        Some((out, view))
+    }
+
+    fn is_piece(&self, method: &str) -> bool {
+        let sym = self
+            .get_sym(&cpl_check::std_method(method))
+            .or_else(|| self.get_sym(method));
+        matches!(sym, Some(Sym::GenFn(gfid)) if piece_of_self(self.gen_fns[gfid].decl))
     }
 
     pub(in crate::lower) fn map_view_from_expr(
