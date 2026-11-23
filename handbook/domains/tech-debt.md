@@ -7,21 +7,64 @@
 | Status | Active |
 | Describes | `scripts/debt-ratchet.py`, `scripts/test_debt_ratchet.py`, `scripts/check-handbook.py`, `plan/domains/tech-debt/` |
 
-## Mission
+The tech-debt domain keeps the codebase simple enough that an everyday
+change touches one obvious place. It measures the shape of the code, makes
+every measure of debt shrink-only, reviews what other domains land, and
+builds the checks that hold every domain to its own quality promises. If
+you have added a std method or a lint and found exactly one place to put
+it, that was this domain's work.
 
-The codebase gets simpler every week. Each concept lives in one place, the
-stdlib gets no power the compiler grants it by name, each job (check, lint,
-fix, run, trace) has one entry point that the CLI, the editor and the
-playground all call, and an everyday change (a std method, a diagnostic, a
-lint, an editor feature) touches one obvious place. This domain measures the
-shape of the code, keeps every measure shrink-only, reviews what other
-domains land, and builds the checks that hold every domain's quality
-register to account.
+## What good looks like
 
-For example: two crates each compare real-number output tokens with their
-own tolerance. The near-duplicate detector counts both. This domain routes
-the merge to the owner, and once one comparison remains, the count drops and
-can't rise again.
+A contributor adds a std function. They write it in `std/`, with doc
+examples, and nothing else: the checker, the interpreter, the C++ back end
+and the editor all pick it up, because none of them knows std functions by
+name. Their commit runs one gate. If it copies a function body that exists
+elsewhere, or adds a crate dependency the architecture doesn't allow, the
+gate says so with the exact file and line. If the commit also changes saved
+expected output, the hourly review reads why.
+
+A week later the codebase is a little smaller than it was: one interpreter
+engine instead of two, one output comparison instead of three, and the
+counts that measure each of these can't rise again.
+
+## How it fits together
+
+- **The debt ratchet** (`scripts/debt-ratchet.py`) measures structural
+  debt from the tree: tree-walker fallbacks, std names matched in the
+  compiler, duplicated function bodies, files over the size cap, crate
+  edges, skip lists. Each count is compared with a baseline that may only
+  go down. It runs inside the normal gate, so there is no separate step.
+- **Accountability checks** grade the other domains' quality registers:
+  every row must name a real check, rules cite their guideline, escaped
+  bugs are traced to the row that should have caught them, and mutation
+  testing shows whether a suite catches the bugs it claims to.
+- **Reviews** read what landed: hourly for duplicated mechanisms and
+  privilege by name, and a cold read of each domain's design every few
+  hours. Findings go to the owning domain, which fixes the cause.
+- **Cross-domain moves** that no single owner can make, such as deleting a
+  duplicate mechanism used by four crates, land here as one change.
+
+## How we know it is good
+
+The counts in `python3 scripts/debt-ratchet.py --show` go down over time
+and never up, and the near-duplicate and re-derivation detectors find
+little that is new. The weakest areas today are the second interpreter
+engine, which still runs part of every traced program; std functions the
+IR lowers by name; and the register rows across all domains that name no
+check yet.
+
+## Where to start
+
+- **A ratchet failed on your commit:** run the command it prints
+  (`--list <name>`) to see each entry; fix the cause, or lower the
+  baseline if you removed debt.
+- **Adding a new kind of check:** read `handbook/process/quality.md`, then
+  add a counter to `scripts/debt-ratchet.py` with a test in
+  `scripts/test_debt_ratchet.py`.
+- **Finding where a fact or job lives:** `handbook/design/sources-of-truth.md`.
+
+# Reference
 
 ## Scope
 
@@ -134,3 +177,4 @@ the same amount elsewhere, or records why in `decisions.md`.
 
 - 2026-11-23: first draft, folding in the stable parts of
   `plan/domains/tech-debt/README.md` and `ARCHITECTURE.md`.
+- 2026-11-23: prose overview first; scope, interfaces and register under Reference.

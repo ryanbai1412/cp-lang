@@ -33,6 +33,22 @@ playground's error panel all come from the same call on the same session.
 If they ever disagree, that's a bug in the shared code, never a reason to
 patch one client.
 
+## Layering
+
+A crate depends only on crates at an earlier stage, plus the report crates.
+Tools and editors depend on the front end, never on each other's internals.
+
+- **Allowed:** `cpl-lint` uses `cpl-check`'s facts; `cpl-lsp` calls
+  `cpl-lint`'s one entry point.
+- **Refused:** `cpl-check` depending on `cpl-ir`, or `cpl-codegen` calling
+  into `cpl-interp`. Back ends share the IR, not each other.
+
+The allowed edges are listed in `scripts/debt-ratchet.py`. A new edge fails
+the ratchet until it's added to the list in a reviewed commit, and
+`layer_violations` counts edges that point the wrong way.
+
+# Reference
+
 ## Stages and their crates
 
 | Stage | Crate | Job |
@@ -53,20 +69,6 @@ The stdlib is CP Lang source in `std/`. It gets its powers from general
 mechanisms (`design/std-mechanisms.md`), never from the compiler knowing a
 std name.
 
-## Layering
-
-A crate depends only on crates at an earlier stage, plus the report crates.
-Tools and editors depend on the front end, never on each other's internals.
-
-- **Allowed:** `cpl-lint` uses `cpl-check`'s facts; `cpl-lsp` calls
-  `cpl-lint`'s one entry point.
-- **Refused:** `cpl-check` depending on `cpl-ir`, or `cpl-codegen` calling
-  into `cpl-interp`. Back ends share the IR, not each other.
-
-The allowed edges are listed in `scripts/debt-ratchet.py`. A new edge fails
-the ratchet until it's added to the list in a reviewed commit, and
-`layer_violations` counts edges that point the wrong way.
-
 ## What every stage preserves
 
 | Concern | Every stage keeps | Checked by |
@@ -80,3 +82,4 @@ the ratchet until it's added to the list in a reviewed commit, and
 ## Changes
 
 - 2026-11-23: first draft, from Part A of `handbook/design/architecture.md`.
+- 2026-11-23: overview first, reference sections last.

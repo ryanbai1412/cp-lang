@@ -41,54 +41,6 @@ For example, interpreter and C++ disagreeing on how a `HashMap` prints is a
 level-2 find (a generated differential variant). Its fix is level 1: one
 display rule per type that both back ends use.
 
-## Quality registers
-
-Each domain charter in `handbook/domains/` has a *Quality register*: every
-quality attribute the domain must be high on, found by walking every
-journey in `handbook/product/journeys.md` and every feature the domain
-owns, and by asking how mature projects measure the same thing.
-
-| Attribute | Metric | Mechanism | Check |
-|---|---|---|---|
-| Interpreter and C++ agree | Programs whose outputs differ | Differential runs on generated programs | `crates/cpl-cli/tests/fuzz_three_way.rs` |
-| Every builtin agrees at its edges | Builtins with no edge case | Generated differential cases | `missing` |
-
-- The cells after the metric name a real test file, script, command or CI
-  job, or say `missing`, or start with `process` where nothing mechanical
-  can decide. A final status column (`enforced`, `partial`, `missing`) is
-  allowed; a row whose status says `missing` counts as missing.
-- Targets and current numbers live in `plan/domains/<domain>/metrics.toml`,
-  never in the charter.
-- `python3 scripts/debt-ratchet.py --list register_rows` lists every row
-  across all domains that names no existing check.
-- Build `missing` rows in order of user impact across the whole register.
-
-## Which test to write
-
-| Change | Write |
-|---|---|
-| A language rule | A conformance case citing the rule, with a reject case if it forbids something |
-| A bug fix | The program that exposed it, as a regression test in the suite whose row should have caught it |
-| A std function | Doc examples that run, plus an interpreter-vs-C++ case at its edges |
-| A diagnostic | A golden diagnostic case, and its fix applied by `cpl fix` |
-| A lint | Firing and non-firing cases, and its fix |
-| An editor feature | An LSP fixture, plus a parity case against the CLI |
-| A new entry point or client | A parity case in `crates/cpl-wasm/tests/parity.rs` or `crates/cpl-cli/tests/lsp_parity.rs` |
-| A trace or debugger change | A saved trace recorded on both engines |
-| A performance change | A matched-algorithm benchmark; behavior never changes |
-| A refactor | Nothing new if the suites already cover it; if the mutation score of the touched code is low, raise it first |
-
-## How suites are measured
-
-- **Mutation score.** Change the code in small ways (flip a comparison,
-  drop a statement) and count how many changes some test catches. A suite
-  that passes on broken code isn't checking it. `cargo-mutants` runs on
-  `cpl-check` and `cpl-lint` first.
-- **Coverage matrices.** For generated suites, the cells (feature by
-  context, type by consumer) that have no case.
-- **Escapes.** Bugs found by users or other domains that the suite should
-  have caught.
-
 ## Rules live in guidelines
 
 A rule is written once, with its reason and an example, and everything
@@ -141,6 +93,56 @@ the rule.
   `Skipped: <process>, <reason>` in the commit. The post-land review picks
   it up.
 
+# Reference
+
+## Quality registers
+
+Each domain charter in `handbook/domains/` has a *Quality register*: every
+quality attribute the domain must be high on, found by walking every
+journey in `handbook/product/journeys.md` and every feature the domain
+owns, and by asking how mature projects measure the same thing.
+
+| Attribute | Metric | Mechanism | Check |
+|---|---|---|---|
+| Interpreter and C++ agree | Programs whose outputs differ | Differential runs on generated programs | `crates/cpl-cli/tests/fuzz_three_way.rs` |
+| Every builtin agrees at its edges | Builtins with no edge case | Generated differential cases | `missing` |
+
+- The cells after the metric name a real test file, script, command or CI
+  job, or say `missing`, or start with `process` where nothing mechanical
+  can decide. A final status column (`enforced`, `partial`, `missing`) is
+  allowed; a row whose status says `missing` counts as missing.
+- Targets and current numbers live in `plan/domains/<domain>/metrics.toml`,
+  never in the charter.
+- `python3 scripts/debt-ratchet.py --list register_rows` lists every row
+  across all domains that names no existing check.
+- Build `missing` rows in order of user impact across the whole register.
+
+## Which test to write
+
+| Change | Write |
+|---|---|
+| A language rule | A conformance case citing the rule, with a reject case if it forbids something |
+| A bug fix | The program that exposed it, as a regression test in the suite whose row should have caught it |
+| A std function | Doc examples that run, plus an interpreter-vs-C++ case at its edges |
+| A diagnostic | A golden diagnostic case, and its fix applied by `cpl fix` |
+| A lint | Firing and non-firing cases, and its fix |
+| An editor feature | An LSP fixture, plus a parity case against the CLI |
+| A new entry point or client | A parity case in `crates/cpl-wasm/tests/parity.rs` or `crates/cpl-cli/tests/lsp_parity.rs` |
+| A trace or debugger change | A saved trace recorded on both engines |
+| A performance change | A matched-algorithm benchmark; behavior never changes |
+| A refactor | Nothing new if the suites already cover it; if the mutation score of the touched code is low, raise it first |
+
+## How suites are measured
+
+- **Mutation score.** Change the code in small ways (flip a comparison,
+  drop a statement) and count how many changes some test catches. A suite
+  that passes on broken code isn't checking it. `cargo-mutants` runs on
+  `cpl-check` and `cpl-lint` first.
+- **Coverage matrices.** For generated suites, the cells (feature by
+  context, type by consumer) that have no case.
+- **Escapes.** Bugs found by users or other domains that the suite should
+  have caught.
+
 ## Checklist
 
 - [ ] The change has a test from the table above.
@@ -151,3 +153,4 @@ the rule.
 ## Changes
 
 - 2026-11-23: first draft.
+- 2026-11-23: overview first, reference sections last.

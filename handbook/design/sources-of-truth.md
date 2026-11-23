@@ -15,47 +15,26 @@ For example, the list of lints exists once, in the lint registry. The
 editor's code actions, `cpl lint --list` and the docs page all read the
 registry. A second hand-written list would drift, so none is allowed.
 
-## One entry point per job
+## How it fits together
 
-The CLI, the language server and the playground call the same function
-for each job and add only presentation.
+There are three kinds of single source, each with its own check.
 
-| Job | Entry point | Owner |
-|---|---|---|
-| check | `cpl_check::Session`, being built. Until it lands, each client builds its own database, counted by `own_databases` | compiler |
-| lint | `cpl_lint::lint_analysis` on the shared analysis | lint-fmt |
-| fix | `cpl_ir::fix`, over `cpl_diag::apply_fixes` for the text edits | diagnostics |
-| run | `cpl_interp::run_with` | compiler |
-| trace | `cpl_interp::observe_on_this_thread`, with `checkpoint::observe_on_this_thread` for runs that take or resume checkpoints | debugger |
-| compare output | `cpl_stress::judge::first_difference` | tools |
-
-Parity tests run each job through every client and compare:
-`crates/cpl-wasm/tests/parity.rs` for the playground and
-`crates/cpl-cli/tests/lsp_parity.rs` for the editor. A job with a second
-entry point is a bug in whichever one is newer.
-
-## Generated, never written
-
-| Fact | Owner | Generated into | By |
-|---|---|---|---|
-| Conformance coverage and rule gaps | the cases in `spec/conformance/` | `spec/conformance/` reports | `scripts/conformance-coverage.py` |
-| Agent skill pages | the spec and the std sources | `skills/` | `scripts/skill-gen.py` |
-| Editor language data | the operator table and keyword lists | `editors/vscode/` | `editors/vscode/scripts/language-data.js` |
-| Current numbers for each domain | the measuring commands | `plan/domains/<domain>/metrics.toml` | each metric's `command` |
-
-`scripts/regen.sh` regenerates them all and prints what changed. A
-committed generated file that differs from a fresh regeneration is stale.
-
-## Never written twice
-
-| Rule | Example of a break | Detector |
-|---|---|---|
-| A mechanism lives in one crate | Two crates each compare real-number output tokens with their own tolerance | `scripts/debt-ratchet.py` (`near_dup_fns`, `dup_fn_bodies`, `lint_dup_helpers`) |
-| Clients read checker facts, never re-derive them | A lint re-computes a type the checker already knows | `scripts/debt-ratchet.py` (`consumer_rederived`) |
-| One analysis per process | A tool builds its own query database | `scripts/debt-ratchet.py` (`own_databases`) |
-| One engine runs programs | A statement runs on the tree-walker instead of the VM | `scripts/debt-ratchet.py` (`vm_fallbacks`, `tree_walker`), `crates/cpl-cli/tests/vm_fallbacks.rs` |
-| The stdlib's behavior lives in the stdlib | The IR lowers a std method by its name | `scripts/debt-ratchet.py` (`ir_builtin_names`, `backend_std_names`, `lint_std_names`, `prelude_privilege`) |
-| Docs cite code that exists | An architecture doc names a deleted file | `scripts/debt-ratchet.py` (`stale_arch_paths`) |
+- **One entry point per job.** Checking, linting, fixing, running and
+  tracing a program each have one function. The CLI, the language server
+  and the playground call it and add only presentation. Parity tests run
+  each job through every client and compare the results:
+  `crates/cpl-wasm/tests/parity.rs` for the playground and
+  `crates/cpl-cli/tests/lsp_parity.rs` for the editor. A job with a second
+  entry point is a bug in whichever one is newer.
+- **Generated, never written.** Where a fact must appear in more than one
+  file, such as coverage reports, skill pages or editor keyword lists, one
+  file owns it and the rest are generated. `scripts/regen.sh` regenerates
+  them all and prints what changed; a committed file that differs from a
+  fresh regeneration is stale and fails the gate.
+- **Never written twice.** A mechanism, such as comparing output tokens
+  or running a statement, lives in one crate, and clients read the
+  checker's facts instead of re-deriving them. `scripts/debt-ratchet.py`
+  counts each kind of duplicate, and the counts only go down.
 
 ## Replacing a mechanism
 
@@ -67,6 +46,46 @@ committed generated file that differs from a fresh regeneration is stale.
 4. Reuse existing code only when it already has the target shape.
 5. No step leaves a ratchet higher.
 
+# Reference
+
+## One entry point per job
+
+Each job, its one entry point, and the domain that owns it.
+
+| Job | Entry point | Owner |
+|---|---|---|
+| check | `cpl_check::Session`, being built. Until it lands, each client builds its own database, counted by `own_databases` | compiler |
+| lint | `cpl_lint::lint_analysis` on the shared analysis | lint-fmt |
+| fix | `cpl_ir::fix`, over `cpl_diag::apply_fixes` for the text edits | diagnostics |
+| run | `cpl_interp::run_with` | compiler |
+| trace | `cpl_interp::observe_on_this_thread`, with `checkpoint::observe_on_this_thread` for runs that take or resume checkpoints | debugger |
+| compare output | `cpl_stress::judge::first_difference` | tools |
+
+## Generated, never written
+
+Each generated fact, the file that owns it, and the script that generates it.
+
+| Fact | Owner | Generated into | By |
+|---|---|---|---|
+| Conformance coverage and rule gaps | the cases in `spec/conformance/` | `spec/conformance/` reports | `scripts/conformance-coverage.py` |
+| Agent skill pages | the spec and the std sources | `skills/` | `scripts/skill-gen.py` |
+| Editor language data | the operator table and keyword lists | `editors/vscode/` | `editors/vscode/scripts/language-data.js` |
+| Current numbers for each domain | the measuring commands | `plan/domains/<domain>/metrics.toml` | each metric's `command` |
+
+## Never written twice
+
+Each kind of duplicate and the counter that detects it.
+
+| Rule | Example of a break | Detector |
+|---|---|---|
+| A mechanism lives in one crate | Two crates each compare real-number output tokens with their own tolerance | `scripts/debt-ratchet.py` (`near_dup_fns`, `dup_fn_bodies`, `lint_dup_helpers`) |
+| Clients read checker facts, never re-derive them | A lint re-computes a type the checker already knows | `scripts/debt-ratchet.py` (`consumer_rederived`) |
+| One analysis per process | A tool builds its own query database | `scripts/debt-ratchet.py` (`own_databases`) |
+| One engine runs programs | A statement runs on the tree-walker instead of the VM | `scripts/debt-ratchet.py` (`vm_fallbacks`, `tree_walker`), `crates/cpl-cli/tests/vm_fallbacks.rs` |
+| The stdlib's behavior lives in the stdlib | The IR lowers a std method by its name | `scripts/debt-ratchet.py` (`ir_builtin_names`, `backend_std_names`, `lint_std_names`, `prelude_privilege`) |
+| Docs cite code that exists | An architecture doc names a deleted file | `scripts/debt-ratchet.py` (`stale_arch_paths`) |
+
 ## Changes
 
 - 2026-11-23: first draft, from `plan/rearchitecture.md`.
+- 2026-11-23: overview first, tables under Reference.
