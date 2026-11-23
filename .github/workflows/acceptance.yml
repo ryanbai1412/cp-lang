@@ -24,7 +24,7 @@ jobs:
         with:
           sparse-checkout: |
             research/acceptance
-            editors/lsp-smoke.py
+            editors/lsp-*
           sparse-checkout-cone-mode: false
       - name: Install from the site
         if: runner.os != 'Windows'
