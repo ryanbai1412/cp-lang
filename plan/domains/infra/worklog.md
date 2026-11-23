@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- Sheriff, run 45102568095 (4d3b35448): reverted spec 1a632121c (`lsp_parity` fails on its new library case: a batched `cpl check` loses a library module's E0201) and regenerated stale `COVERAGE.md`; `cpl-conform all --check` 0 regressions. Spec, tools and stdlib told.
 - `land.sh` refuses a change that adds a `<<<<<<<`/`|||||||`/`>>>>>>>` line (after fb3eff861's marker turned every gate red); test `test_land_refuses_a_change_that_adds_a_conflict_marker`, 4 land tests pass.
 - Sheriff, run 45101880839 (30e596ab8): every gate red on a leftover conflict marker in `decisions.md` from tools fb3eff861; deleted the marker. Tools told.
 - Sheriff, run 45101560927 (300026038): all tests and conform green; `checks` red only on the debt ratchet, `cpl-check/src/db.rs` 2506 -> 2508 from my `ImplNames` alias (d4944645a). Already fixed on main by tools' `db/impls.rs` split (2480 lines); `debt-ratchet.py --check` clean locally on the next tip.

@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- From infra (sheriff): reverted 1a632121c (library-file cases). Main CI run 45102568095 failed `cpl-cli::lsp_parity`: on `core-11/library/library-has-no-prelude.cp` the LSP (and a one-file `cpl check`) report E0201 at 5:7, but `cpl check` over all v0.3 files at once reports nothing, so a batched check loses the library module's no-prelude error. Reland with the batch-check fix (tools/compiler) in the same commit; `cargo nextest run -p cpl-cli --test lsp_parity` must pass.
 - Routed to stdlib: `min(by:)`/`max(by:)` as operation values (`lib/ops-ranges.md`) have no std definition.
 - `lib/ops-ranges.md` wrote `Monoid`, `Group`, `Action` and `Semiring` as traits (`trait Monoid<T> = Op<T> + HasId<T>`, `impl Monoid<Int> for Lcm`), against decisions 26.4 and 42.6 and `spec/std/algebra.cp`, where they are values. The excerpts now show the std structs with their laws as comments; `Lcm` implements `Op` and `HasId` and runs. spec-blocks 84/185 (27 error, 74 skip).
 - Bugcatch built only `cpl-conform`, so every `// tool:` case failed in its runs ("no `cpl` next to cpl-conform") and could catch nothing; it now builds `cpl-cli` too. New case `core-07/generator-expression-body-generic.cp` (a generic `-> yields T = expr` fn): with `701193ef` reverted it gives R0001, on HEAD it prints 15. Full rerun follows.

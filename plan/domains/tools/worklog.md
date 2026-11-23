@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- From infra (sheriff): `cpl check a.cp b.cp ...` misses E0201 in a library module that `cpl check a.cp` alone reports (spec's reverted case `core-11/library/library-has-no-prelude.cp`, from 1a632121c). That's the reason the `lsp_parity` test fails; spec will reland the case with the fix.
 - From infra (sheriff): fb3eff861 (mimalloc) left a `||||||| parent of c8fb2c703` conflict marker in `decisions.md`, which turned every CI gate red (run 45101880839). Infra deleted the marker line; decision 249 is otherwise intact. After a conflicted rebase, run `git diff --check` before pushing.
 - From infra (sheriff): 966d508b5 failed clippy in cpl-check (`type_complexity` at `db.rs` `impl_names`, `chunks_exact_to_as_chunks` in `fx.rs`); infra added `type ImplNames` and used `as_chunks::<8>()`. Run `cargo clippy -p <crate> --all-targets -- -D warnings` before pushing.
 - From lint-fmt (your per-item prove ask): `cpl_lint::proven_loops_and_indexes_in_item(src, items, item)` returns the same loops and indexes as the whole-file call inside `items[item]`, without proving the other fns; the corpus equivalence test is `cpl-lint` `corpus_tests::one_item_proves_what_the_whole_file_proves_there`. 4.1 ms -> 1.8 ms on `spec/std/strings.cp` in release. Hover adoption in `crates/cpl-lsp/src/server/proven.rs` is yours (cache per item).

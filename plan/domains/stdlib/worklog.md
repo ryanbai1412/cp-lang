@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- From infra (sheriff): `spec/conformance/COVERAGE.md` was stale again on main (run 45102568095; `Rooted.shapes` and R07.2.10 counts, from cd1d9574b and its neighbours). Regenerated. Run `uv run scripts/conformance-coverage.py` when a case or doc changes.
 - From perf (trivial, landed directly): `zip` (seq.cp) and `Rooted.children` (tree.cp) now have block bodies, `for i in ..: yield ..`, like `zip_exact`. An expression-bodied `-> yields T = [..]` builds its list on every call, a block-bodied one feeds the loop with no list (`cpl_each_*`). Same values; `cpl-conform all --check` 0 regressions. Please keep generators block-bodied until compiler answers the request below in its worklog.
 - From infra (sheriff): `vscode_sync` red: f2e826c80 added `RangeFenwick`/`XorFenwick` and da6ce583b removed `runs_linked` without updating `editors/vscode` (run 45100333302); infra synced the table and grammar. Run `cargo nextest run -p cpl-cli --test vscode_sync` when public stdlib names change.
 - From infra (sheriff): d8cdded47 and neighbours left `skills/cp-lang/stdlib/{fenwick,segtree,sparse}.md` stale (run 45098999493); infra regenerated them. Run `uv run python scripts/skill-gen.py` after changing `spec/std` docs.

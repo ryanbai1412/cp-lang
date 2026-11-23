@@ -7,7 +7,7 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 2302 (995 passing). Rules: 537.
+Cases: 2304 (995 passing). Rules: 537.
 
 ## Summary per chapter
 
@@ -19,11 +19,11 @@ Cases: 2302 (995 passing). Rules: 537.
 - R04b (04b-keys.md): 27 rules, 62 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R05 (05-ownership.md): 43 rules, 148 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R06 (06-control-functions.md): 24 rules, 75 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R07 (07-sequences.md): 88 rules, 111 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R07 (07-sequences.md): 88 rules, 112 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R08 (08-traits-generics.md): 29 rules, 77 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R09 (09-contexts-checks.md): 26 rules, 54 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R10 (10-io.md): 17 rules, 71 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R11 (11-modules-prelude.md): 15 rules, 35 cases; 0 uncovered, 0 happy-path only, 1 negative only
+- R11 (11-modules-prelude.md): 15 rules, 33 cases; 0 uncovered, 1 happy-path only, 1 negative only
 - R12 (12-powers.md): 17 rules, 36 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R13 (13-lowering.md): 22 rules, 27 cases; 0 uncovered, 0 happy-path only, 0 negative only
 
@@ -50,10 +50,10 @@ negative case. Complete: rules with no gap in `rule-gaps.txt`.
 | R08 | 29 | 29 (100%) | 13 | 13 (100%) | 29 (100%) |
 | R09 | 26 | 26 (100%) | 14 | 14 (100%) | 26 (100%) |
 | R10 | 17 | 17 (100%) | 8 | 8 (100%) | 17 (100%) |
-| R11 | 15 | 14 (93%) | 9 | 9 (100%) | 14 (93%) |
+| R11 | 15 | 14 (93%) | 9 | 8 (88%) | 13 (86%) |
 | R12 | 17 | 17 (100%) | 6 | 6 (100%) | 17 (100%) |
 | R13 | 22 | 22 (100%) | 5 | 5 (100%) | 22 (100%) |
-| all | 537 | 536 (99%) | 205 | 204 (99%) | 535 (99%) |
+| all | 537 | 536 (99%) | 205 | 203 (99%) | 534 (99%) |
 
 ## Rules
 
@@ -424,7 +424,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R07.2.7 [1+ 1-]: | **slice** | the view `a[r]`: one contiguous range `r` of an indexed source | no | `a[l.....
 - R07.2.8 [1+ 0-]: | **adapter** | a method that turns a sequence into a view | | `.map`, `.filter`, `.rev`, ...
 - R07.2.9 [1+ 1-]: | **chain** | adapters applied one after another; still a view, still lazy | no | `a.filte...
-- R07.2.10 [3+ 1-]: | **generator** | a fn declared `-> yields T`; calling it gives a sequence that reruns the...
+- R07.2.10 [4+ 1-]: | **generator** | a fn declared `-> yields T`; calling it gives a sequence that reruns the...
 - R07.2.11 [1+ 2-]: | **materialize** | copy a sequence into a new collection: the only allocation step | | `....
 - R07.2.12 [1+ 0-]: | **place** | something assignable: an element or a `mut` view | | `a[i]`, `mut a[l..r]`
 - R07.2.13 [1+ 1-]: **Two capabilities.** A view is indexed when its adapter can answer `w[k]` in O(1): slices...
@@ -587,7 +587,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R11.2.2 [1+ 1-]: Modules form an acyclic graph; two modules that need each other are one module.
 - R11.2.3 [1+ 1-]: A local name shadows a prelude name; a `use` that collides with a local name is an error n...
 - R11.2.4 [1+ 1-]: Everything is inlined into the one output file and tree-shaken: only called functions and ...
-- R11.3.1 [4+ 1-]: Only programs get the prelude; library modules `use` what they need, so a library never de...
+- R11.3.1 [3+ 0-] *happy-path only*: Only programs get the prelude; library modules `use` what they need, so a library never de...
 - R11.3.2 [3+ 1-]: The prelude is the vocabulary of the `lib/` chapters, by rule rather than by request (deci...
 - R11.3.3 [4+ 2-]: Two exclusions keep that safe. A name a contestant commonly gives a local (`n`, `a`, `g`, ...
 - R11.3.4 [2+ 1-]: A method call needs no import: `xs.sorted()`, `g.adjacent(v)` and `p.adj4` find the method...
@@ -665,7 +665,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0110 Unparenthesized `??` with arithmetic: 1 case(s)
 - E0111 Mixed comparison chain: 2 case(s)
 - E0112 else_falls_through *(0.3)*: 1 case(s)
-- E0201 Unresolved name: 5 case(s)
+- E0201 Unresolved name: 4 case(s)
 - E0202 Duplicate definition: 3 case(s)
 - E0203 Unknown field or method: 9 case(s)
 - E0204 Unknown type: 3 case(s)
@@ -848,9 +848,9 @@ case names it. `/// example:` lines are also run by the `docs` suite of
   - uncovered: `Palindromes`, `Hashable`, `Hash2D`, `Hash2D.new`, `Hash2D.rect`, `Hash61`, `DynamicHash`, `DynamicHash.new`, `DynamicHash.rev_get`, `PalindromicTree.series_link`, `DynamicAhoCorasick`, `DynamicAhoCorasick.new`, `DynamicAhoCorasick.count_matches`
 - **subset** (15/15 named by a case)
 - **timetree** (11/11 named by a case)
-- **tree** (151/174 named by a case)
-  - uncovered: `dfs_tree`, `Rooted.up_arc`, `Rooted.child_arcs`, `Rooted.reroot`, `Rooted.shapes`, `Rooted.chains`, `Rooted.virtual`, `VirtualTree`, `PreferredPaths`, `PreferredPaths.new`, `PreferredPaths.access`, `PermKind`, `PermNode`, `PermTree`, `PermTree.new`, `PermTree.node`, `PermTree.vals`, `Layers`, `Events`, `LongPaths`, `LongPaths.slots`, `LongPaths.slot`, `KruskalTree`
+- **tree** (152/174 named by a case)
+  - uncovered: `dfs_tree`, `Rooted.up_arc`, `Rooted.child_arcs`, `Rooted.reroot`, `Rooted.chains`, `Rooted.virtual`, `VirtualTree`, `PreferredPaths`, `PreferredPaths.new`, `PreferredPaths.access`, `PermKind`, `PermNode`, `PermTree`, `PermTree.new`, `PermTree.node`, `PermTree.vals`, `Layers`, `Events`, `LongPaths`, `LongPaths.slots`, `LongPaths.slot`, `KruskalTree`
 - **window** (20/22 named by a case)
   - uncovered: `Tracked`, `Undo`
 
-2134 of 2259 std items are named by a case.
+2135 of 2259 std items are named by a case.
