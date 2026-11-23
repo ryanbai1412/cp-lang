@@ -133,3 +133,26 @@ architecture after. Deadline ~09:30 PST 2026-11-23; hours, not days.
    lint records and engine part; hand `spec/idioms/*` to the idioms lane;
    move `plan/LINTER.md` to `design/linter.md`.
 4. Start the ratchet: classify the 50 corpus `spec.cp` warnings.
+
+## Milestone 2 exit criteria
+
+Moved from the lane README. Milestone 2 is the stable release
+(`handbook/product/milestones.md`).
+
+- At least 95% of marked spots flagged on the newcomer set and on the
+  skill-eval first tries, with 0 fixes that fail `cpl check`.
+- Every catalog family with port or newcomer evidence has a rule; the rest
+  are logged as deferred, each with its reason.
+- Corpus and `std` warnings at 0, or each one a recorded real finding.
+- Fact-table lints only: no rule re-derives a type from syntax.
+- Library `@lint` declarations work for user libraries the same way as for std.
+- The fmt gate passes on the whole corpus, and format on save is tested in
+  VS Code, Neovim, Vim and JetBrains on all three platforms.
+
+Known debt from the old ARCHITECTURE.md that is still open: `rules/bounds.rs`
+and the `Proven*` passes re-derive ranges the checker proves (they move to
+`cpl-check`); `rules/taste/mod.rs` still holds independent matchers that
+belong one family per file; the removed-syntax codemods live in
+`crates/cpl-lint/src/lib.rs`, not a migration module; fmt doesn't write the
+line-1 stamp.
+

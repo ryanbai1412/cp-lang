@@ -184,6 +184,7 @@ reasoning spread through `decisions.md`.
 | `design/sources-of-truth.md` | One owner per fact and one entry point per job in the code: what's generated from what, what must never be written twice, and the detector for each | tech-debt | `plan/rearchitecture.md` B2 |
 | `design/compiler.md` | Syntax, names, types, IR, facts, VM, codegen: each part's job, data, invariants, and what it must never do | compiler | `plan/domains/compiler/ARCHITECTURE.md` |
 | `design/editor.md` | The query database, LSP and playground sharing one analysis | tools | `plan/domains/tools/ARCHITECTURE.md` |
+| `design/lint-fmt.md` | The linter and formatter: one analysis, rules as records, a token-preserving formatter | lint-fmt | `plan/domains/lint-fmt/ARCHITECTURE.md` |
 | `design/std-mechanisms.md` | How std gets its powers without privilege | stdlib | `plan/domains/stdlib/library-domains.md` |
 | `design/debugger.md` | Tracing, replay, stress, the debugger | debugger | `plan/domains/debugger/ARCHITECTURE.md` |
 | `design/repo.md` | File structure, toolchain, scripts | infra | `REPO.md`, `plan/LAYOUT.md` |
