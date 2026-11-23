@@ -294,8 +294,8 @@ fn let_of_an_element_lends_it_unless_the_list_changes() {
     );
     let changed = cpp(&src("        rows[0] = []\n"));
     assert!(
-        changed.contains("std::vector<ll> row = "),
-        "a list changed later in the loop keeps the copy: {changed}"
+        changed.contains("const std::vector<ll>& row = "),
+        "a store after row's last use leaves it lent: {changed}"
     );
 }
 
@@ -406,4 +406,41 @@ fn a_let_of_a_list_set_again_before_any_read_takes_it() {
         "grow(mut s)\n",
     ));
     assert!(!read_first.contains("old_k = std::move("), "{read_first}");
+}
+
+#[test]
+fn a_read_lends_when_its_source_changes_only_after_the_last_read() {
+    let lent = body(concat!(
+        "var rows = [[1, 2], [3]]\n",
+        "var k = 1\n",
+        "while k < 3:\n",
+        "    let r = rows[k - 1]\n",
+        "    var s = 0\n",
+        "    for x in r:\n",
+        "        let y = r[0]\n",
+        "        s += x + y\n",
+        "    rows.push([s])\n",
+        "    k += 1\n",
+        "print(rows.len)\n",
+    ));
+    assert!(
+        lent.contains("const std::vector<ll>& r = "),
+        "the push comes after r's last read: {lent}"
+    );
+}
+
+#[test]
+fn a_local_read_for_the_last_time_moves() {
+    let src = |take: &str, tail: &str| {
+        format!(
+            "fn f(n: Int) -> Int:\n    var lo: List<Int> = []\n    for i in 0..n: lo.push(i)\n    var res = {take}\n    res.push(9)\n    res.len{tail}\nprint(f(3))\n"
+        )
+    };
+    let moved = cpp(&src("lo", ""));
+    assert!(moved.contains("std::move(lo)"), "lo is dead after: {moved}");
+    let copied = cpp(&src("lo.clone()", " + lo.len"));
+    assert!(
+        !copied.contains("std::move(lo)"),
+        "lo is read after: {copied}"
+    );
 }

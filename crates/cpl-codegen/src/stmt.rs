@@ -37,15 +37,19 @@ impl<'p> Emitter<'p> {
                     let tested = matches!(stmt, Stmt::Let(slot, _) if copied_at_test(*slot, rest));
                     let lendable =
                         matches!(stmt, Stmt::Let(slot, _) if self.lendable_reads(*slot, rest));
+                    let Stmt::Let(slot, _) = stmt else {
+                        unreachable!()
+                    };
+                    let live = crate::uses::live(self.program, rest, *slot);
                     Some(Tail {
                         tested,
                         lendable,
-                        ..Tail::of(self.program, rest)
+                        ..Tail::of(self.program, live)
                     })
                 }
                 _ => None,
             };
-            self.moves_last = last_read(block, k);
+            self.moves_last = last_read(self.program, block, k);
             self.stmt_presized(&block.stmts, k, out);
             self.moves_last = false;
         }
@@ -772,19 +776,21 @@ impl<'p> Emitter<'p> {
                 let effects = Effects::of_block(body);
                 // The loop walks the value as it was when the loop began,
                 // so a container the body changes is walked as a copy.
-                let untouched_by_body = |seq: &Expr| match walk::path_root(seq) {
-                    Some((false, local)) => {
-                        !effects.locals.contains(&local) || fields_untouched(seq, body)
-                    }
-                    Some((true, global)) => {
-                        !effects.globals.contains(&global)
-                            && !effects
-                                .calls
-                                .iter()
-                                .any(|f| self.summaries[*f].writes.contains(&global))
-                    }
-                    None => false,
-                };
+                let untouched_by_body =
+                    |seq: &Expr| match walk::path_root(crate::uses::in_place(seq)) {
+                        Some((false, local)) => {
+                            !effects.locals.contains(&local)
+                                || fields_untouched(crate::uses::in_place(seq), body)
+                        }
+                        Some((true, global)) => {
+                            !effects.globals.contains(&global)
+                                && !effects
+                                    .calls
+                                    .iter()
+                                    .any(|f| self.summaries[*f].writes.contains(&global))
+                        }
+                        None => false,
+                    };
                 let untouched = untouched_by_body(seq);
                 let lent = self.lent_coalesce(seq).filter(|(from, _)| match from {
                     crate::lend::Lender::Get(m, _) => untouched_by_body(m),
@@ -1836,12 +1842,15 @@ fn found_entry<'p>(cond: &'p Expr, then: &Block) -> Option<(&'p Expr, &'p Expr)>
     (reads && quiet).then_some((map, key))
 }
 
-/// True when statement `k` of `block` is `x = y` with `y` a local the
-/// block declared and never mentions again. The next pass of a loop
-/// declares `y` afresh, so nothing can read it after the store.
-fn last_read(block: &Block, k: usize) -> bool {
+/// True when statement `k` of `block` reads a heap variable for the last
+/// time and may move it: `x = y` or `let x = y` with `y` dead after it
+/// (`uses::dead_after`), or a `let` whose source is set again before
+/// anything reads it.
+fn last_read(program: &cpl_ir::Program, block: &Block, k: usize) -> bool {
     if let Stmt::Let(_, Some(init)) = &block.stmts[k] {
-        return crate::lend::overwritten_before_read(init, &block.stmts[k + 1..]);
+        return crate::lend::overwritten_before_read(init, &block.stmts[k + 1..])
+            || matches!(init.kind, ExprKind::Local(src)
+                if crate::uses::dead_after(program, block, k, src));
     }
     let Stmt::Assign(place, AssignOp::Set, value) = &block.stmts[k] else {
         return false;
@@ -1851,24 +1860,7 @@ fn last_read(block: &Block, k: usize) -> bool {
     else {
         return false;
     };
-    if walk::root(place) == (false, *slot)
-        || !block.stmts[..k]
-            .iter()
-            .any(|stmt| matches!(stmt, Stmt::Let(s, _) if s == slot))
-    {
-        return false;
-    }
-    let mut seen = false;
-    walk::deep_exprs(block, &mut |e| {
-        seen |= matches!(e.kind, ExprKind::Closure(_))
-    });
-    let rest = Block {
-        stmts: block.stmts[k + 1..].to_vec(),
-    };
-    walk::deep_exprs(&rest, &mut |e| {
-        seen |= matches!(e.kind, ExprKind::Local(s) if s == *slot)
-    });
-    !seen && !Effects::of_block(&rest).locals.contains(slot)
+    walk::root(place) != (false, *slot) && crate::uses::dead_after(program, block, k, *slot)
 }
 
 /// The arguments of `text` when it is exactly `cpp((size_t)(..), ..)`:

@@ -62,16 +62,32 @@ impl Tail {
         };
         let (mut calls, mut opaque, mut closures) = (false, false, Vec::new());
         let mut whole = whole_reads(&block);
-        walk::deep_exprs(&block, &mut |e| match e.kind {
-            ExprKind::Call(..) => calls = true,
-            ExprKind::CallExpr(..) => {
-                calls = true;
-                opaque = true;
+        let mut effects = Effects::of_block(&block);
+        // A local the block binds to a closure and never sets again calls
+        // that closure, whose effects are counted below.
+        let mut bound = std::collections::BTreeSet::new();
+        walk::deep_stmts(&block, &mut |stmt| {
+            if let Stmt::Let(
+                s,
+                Some(Expr {
+                    kind: ExprKind::Closure(_),
+                    ..
+                }),
+            ) = stmt
+            {
+                bound.insert(*s);
             }
-            ExprKind::Closure(id) => closures.push(id),
+        });
+        bound.retain(|s| !effects.locals.contains(s));
+        walk::deep_exprs(&block, &mut |e| match &e.kind {
+            ExprKind::Call(..) => calls = true,
+            ExprKind::CallExpr(callee, _) => {
+                calls = true;
+                opaque |= !matches!(callee.kind, ExprKind::Local(s) if bound.contains(&s));
+            }
+            ExprKind::Closure(id) => closures.push(*id),
             _ => {}
         });
-        let mut effects = Effects::of_block(&block);
         for &id in &closures {
             let caps = program.closures[id].captures.iter();
             whole.extend(caps.filter(|c| !c.is_global).map(|c| c.outer));

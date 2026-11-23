@@ -24,6 +24,7 @@ mod sink;
 mod splice;
 mod stmt;
 mod unordered;
+mod uses;
 mod walk;
 
 pub use checks::Checks;
