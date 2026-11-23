@@ -1,7 +1,11 @@
-// Codeforces 2152 A — Increase or Smash
-//
-// Each distinct value in `a` requires one rise operation and (except the last)
-// one smash/drop operation, giving `2 * distinct - 1` operations total.
+// Source: Codeforces 2152A (Increase or Smash), https://codeforces.com/contest/2152/problem/A
+// Problem: start from n <= 100 zeros. Increase adds one x > 0 to every element; Smash sets any
+//   chosen elements to 0. Print the fewest operations that reach the target a (1 <= a[i] <= 100).
+//   Multitest.
+// Solution: an element ends at the sum of the Increases after its last Smash, so k distinct
+//   values need k Increases, with a Smash between each two (adjacent Increases merge): 2k - 1,
+//   reached by smashing the elements that end lower before each later Increase. k is
+//   `Set(a).len`, O(n).
 
 @!multitest
 let n: 1..=100 = read()
