@@ -390,7 +390,7 @@ pub fn select<S: IndexedMut, T, K>(
     cmp: ?((T, T) -> Bool) = None,
 ):
     let n = self.len
-    assert 0 <= k and k < n, "select needs k in 0..len"
+    assert 0 <= k < n, "select needs k in 0..len"
     let less = (a: T, b: T) => if let c = cmp: c(a, b) else: by(a) < by(b)
     var (lo, hi) = (0, n)
     var budget = 2
@@ -884,12 +884,12 @@ pub fn pieces<D: Ord, S: Seq>(self: Range<D>, cuts: S) -> (domain P, [P]Range<D>
     let a = self.l
     let b = self.r
     if self.is_empty:
-        for c in cuts: assert a <= c and c <= b, "pieces: cut outside range"
+        for c in cuts: assert a <= c <= b, "pieces: cut outside range"
         domain P = 0..0
         return (P, [P] _ => a..a)
     var pts: List<D> = [a, b]
     for c in cuts:
-        assert a <= c and c <= b, "pieces: cut outside range"
+        assert a <= c <= b, "pieces: cut outside range"
         pts.push(c)
     pts.sort()
     var uniq: List<D> = []
@@ -1319,7 +1319,7 @@ pub fn take_all<T>(mut self: List<T>) -> List<T> = self.take()
 /// example: `var a = [1, 3]; a.insert(1, 2); a == [1, 2, 3]`
 /// empty: `i` must be 0
 pub fn insert<T>(mut self: List<T>, i: Int, x: T):
-    assert 0 <= i and i <= self.len
+    assert 0 <= i <= self.len
     self.push(x)
     var j = self.len - 1
     while j > i:
@@ -1333,7 +1333,7 @@ pub fn insert<T>(mut self: List<T>, i: Int, x: T):
 /// example: `var a = [1, 2, 3]; a.remove(1) == 2 and a == [1, 3]`
 /// empty: always traps
 pub fn remove<T>(mut self: List<T>, i: Int) -> T:
-    assert 0 <= i and i < self.len
+    assert 0 <= i < self.len
     for j in i..self.len - 1:
         self.swap(j, j + 1)
     self.pop()!
@@ -1840,7 +1840,7 @@ pub fn min_k<S: Seq, T, K>(self: S, k: Int, by: T -> K = x => x) -> List<T>:
     assert k >= 0, "min_k requires k >= 0"
     var ps: List<(K, Int, T)> = []
     for x in self: ps.push((by(x), ps.len, x))
-    if k < ps.len and k > 0: select(mut ps, k - 1, by: p => (p.0, p.1))
+    if 0 < k < ps.len: select(mut ps, k - 1, by: p => (p.0, p.1))
     [ps[i].2 for i in 0..(if k < ps.len: k else: ps.len)]
 
 /// \(O(n)\) expected, \(O(k)\) memory. `k` largest elements under `by:` (unordered; ties to earlier index).
@@ -1855,7 +1855,7 @@ pub fn max_k<S: Seq, T, K>(self: S, k: Int, by: T -> K = x => x) -> List<T>:
     assert k >= 0, "max_k requires k >= 0"
     var ps: List<(K, Int, T)> = []
     for x in self: ps.push((by(x), ps.len, x))
-    if k < ps.len and k > 0: select(
+    if 0 < k < ps.len: select(
         mut ps,
         k - 1,
         cmp: (p, q) => q.0 < p.0 or (p.0 == q.0 and p.1 < q.1),
@@ -2537,7 +2537,7 @@ pub struct OnlineLis<T>(strict: Bool = true):
     /// traps: when `m` is not a live mark of this tracker
     /// example: `var t = OnlineLis<Int>(); t.push(2); let m = t.mark(); t.push(5); t.undo_to(m); t.len == 1`
     pub fn undo_to(mut self, m: Int):
-        assert 0 <= m and m <= vals.len  // `m` is a live mark
+        assert 0 <= m <= vals.len  // `m` is a live mark
         while vals.len > m:
             let slot = log_slot.pop()!
             let v = log_val.pop()!
@@ -2625,7 +2625,7 @@ pub struct MonoStack<D, T>(keep_smaller: Bool = true, strict: Bool = true):
     /// traps: when `m` is not a live mark of this stack
     /// example: `var s = MonoStack<Int, Int>(); s.push(0, 5); let m = s.mark(); s.push(1, 9); s.undo_to(m); s.len == 1`
     pub fn undo_to(mut self, m: Int):
-        assert 0 <= m and m <= popped.len  // `m` is a live mark
+        assert 0 <= m <= popped.len  // `m` is a live mark
         while popped.len > m:
             idx.pop()
             vals.pop()
@@ -3318,7 +3318,7 @@ pub struct Ring<D, T>(pub src: [D]T):
     /// traps: when `len` is not in `0..=n`
     /// example: `[1, 2, 3].ring.span(2, 2).end == 0`
     pub fn span(self, start: D, len: Int) -> RingRange<D>:
-        assert 0 <= len and len <= D.K
+        assert 0 <= len <= D.K
         RingRange<D>(at: Some(start), n: len)
 
     /// The n windows of `k` elements, one starting at each position, wrapping. \(O(n)\) to walk.
@@ -3329,7 +3329,7 @@ pub struct Ring<D, T>(pub src: [D]T):
     /// traps: when `k` is not in `1..=n`
     /// example: `[1, 2, 3].ring.windows(2).count() == 3`
     pub fn windows(self, k: Int) -> yields RingSlice<D, T>:
-        assert 1 <= k and k <= D.K
+        assert 1 <= k <= D.K
         for i in D: yield RingSlice<D, T>(rr: self.span(i, k))
 
     /// Two pointers round the cycle: for each position as the last element, the longest
