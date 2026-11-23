@@ -7,7 +7,7 @@ var dist: List<Int> = [1000000000000000000 for _ in 0..=n]  // expect: sentinel_
 var pq = MinHeap<(Int, Int)>()
 dist[1] = 0
 pq.push((0, 1))
-while pq.len > 0:
+while pq.len > 0:  // expect: while_not_empty_pop
     let (d, u) = pq.pop()!
     if d > dist[u]:  // expect: stale_entry_skip
         continue

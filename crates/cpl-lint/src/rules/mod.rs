@@ -45,6 +45,7 @@ mod shapes;
 mod spelled;
 mod taste;
 mod types;
+mod while_pop;
 
 use crate::{Config, File, Finding};
 
@@ -67,6 +68,7 @@ pub(crate) fn run(file: &File, config: &Config) -> Vec<Finding> {
     findings.extend(assign::check(file));
     findings.extend(answers::check(file));
     findings.extend(pops::check(file));
+    findings.extend(while_pop::check(file));
     findings.extend(ceil::check(file));
     findings.extend(euclid::check(file));
     findings.extend(reverse::check(file));

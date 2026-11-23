@@ -69,6 +69,7 @@ architecture after. Deadline ~09:30 PST 2026-11-23; hours, not days.
 
 | Instance | General fix | Owner |
 |---|---|---|
+| L0591 `while_not_empty_pop` matches any no-argument method after `not q.is_empty`, trusting that its `None` means empty (naming `pop` would add a std name to the rules) | The library declares the contract (`@lint` on `pop`/`pop_front`/`pop_first`: "returns `None` iff empty"), and the rule reads it | lint-fmt (M3 library `@lint`) |
 | The `some(`/`none` migration (835de99a1) rewrote a local `none` in `cpl-cli/tests/golden.rs` to `None`, breaking main | Spelling migrations run through `cpl fix` on resolved names (a local binding is never a removed spelling), and Rust-side edits go by hand with `cargo check` | diagnostics |
 | The hand-search lints (L0580–L0584) match squashed source text, so a spelling they do not list is missed | Match on the AST once the loop-forms recognizers (`design/loop-forms.md`) cover `while` loops | lint-fmt |
 | `cpl fmt` chain breaks inside a block lambda's body end the statement, so the formatter keeps that file's chains whole | The lexer continues a line ending in an operator inside a layout block too (`layout_block_line`), as it does at top level; then drop the chains-off fallback in `format_lf` | compiler (syntax) |
