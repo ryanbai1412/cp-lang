@@ -20,48 +20,19 @@ Questions from site or any reader: add them to
 
 ## Values and types (`core/02-values-types.md`)
 
-- Decisions 1, 127, 128, 132, 134, 140, 157, 159, 357.
-- Lost: method overloading (127; a name has one meaning, so errors and
-  completion stay exact). Custom destructuring (132; views are methods
-  returning enums, so patterns stay core-only). Members that compute
-  without `()` (140; parentheses mean work, so `g.transpose()` looks like
-  the \(O(n)\) it is). An enum for every token set (357; tokens that
-  carry nothing read as a literal union, `"add" | "del"`; the enum is for a
-  token followed by its payload).
+- Moved to [handbook/language/values-and-numbers.md](../handbook/language/values-and-numbers.md).
 
 ## Numbers, widths and layout (`core/03-numbers-layout.md`, "The model in one paragraph")
 
-- Decisions 49, 100, 148, 149, 246.
-- Lost: manual widths (`u32` fields) everywhere (149; the range or domain
-  you already wrote gives the width, and each section names its rejected
-  alternative). Implicit widening of arrays (246; only scalars widen, an
-  array conversion is \(O(n)\) and spelled `xs.map(...)`). Checks on in
-  release (148; costs judge time; a trapping program gives a wrong answer,
-  never undefined behaviour). Path lengths in the weight's range (315).
+- Moved to [handbook/language/values-and-numbers.md](../handbook/language/values-and-numbers.md).
 
 ## Index spaces, positions and keys (`core/04-indices.md`, "The model in one paragraph"; `04a`, `04b`)
 
-- Decisions 2, 137, 143, 162, 164, 246, 289, 291.
-- Lost: every range as positions with a separate `r.cuts` (137; a cleaner
-  model, but `for j in lo..i: dp[i] min= dp[j] + cost(j..i)` stops
-  type-checking). Slices re-keyed from 0 (143; `04a-identity-vs-offset.md`
-  walks every option against real code: an index found in a slice must
-  mean the same position outside it). Positional `r[k]` on a range (289,
-  Ryan: "r[3] should be equal to 3"; position is `r.nth(k)`). Names
-  `.n`/`.p` (137; read as count and parent).
+- Moved to [handbook/language/indices-and-keys.md](../handbook/language/indices-and-keys.md).
 
 ## Ownership and mutation (`core/05-ownership.md`, "The model in six sentences")
 
-- Decisions 5, 126, 128, 141, 144.
-- Lost: implicit deep copies (128; `.clone()` is the copy, returns move,
-  `let b = a` is a move at last use and otherwise an error). Borrow modes
-  in types and lifetimes (141; a value is owned or lent, the mode is not
-  part of the type, and `lends` appears only on fn signatures: five rules
-  instead of a borrow checker's vocabulary). `mut fn` (144, 5.10).
-  Pull-style library iterators (126; generators are push-only, so
-  `break`, `return` and labelled loops work in a plain `for`).
-- The chapter's exercises (R1 to R12) are the in-depth material; each has
-  a conformance case.
+- Moved to [handbook/language/ownership.md](../handbook/language/ownership.md).
 
 ## Control flow and functions (`core/06-control-functions.md`)
 
