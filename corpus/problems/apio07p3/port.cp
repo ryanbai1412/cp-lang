@@ -7,8 +7,8 @@ domain Pen = 1..=n
 domain Window = 0..5
 type View = Subset<Window>  // which of the five pens in view are emptied
 
-var stand = Pen.first  // generator: a child only names animals it can see
-fn in_view() -> Pen: stand.cyc(rand(0, 4))
+var stand = Pen.first!  // generator: a child only names animals it can see
+fn in_view() -> Pen: Pen.wrap(stand.ord + rand(0, 4))
 
 // happy[p, gone]: children at pen p who are happy when `gone` is emptied in their view
 var happy: [Pen, View]Int = 0
@@ -29,7 +29,11 @@ for _ in 0..c:
         if not (gone & fear).is_empty or not (love - gone).is_empty: happy[pen, gone] += 1
 
 // the view one pen further on: drop the pen left behind, decide the new one
-fn slide(v: View, empty_new: Bool) -> View: View.nth(v.idx / 2 + (if empty_new: 16 else: 0))
+fn slide(v: View, empty_new: Bool) -> View:
+    var kept = View.empty
+    for w in Window:
+        if let down = w.prev and v.with(w) == v: kept = kept.with(down)  // `v.contains(w)` once `cpl run` has it
+    if empty_new: kept.with(Window.last!) else: kept
 
 // Fix the view at the first pen, slide once round the ring, and come back to it.
 var best = 0
