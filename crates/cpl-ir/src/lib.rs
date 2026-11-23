@@ -302,6 +302,17 @@ impl Ty {
         }
     }
 
+    /// Two tuples, or two records with the same field names, of one length and differing somewhere.
+    pub fn same_shape(&self, other: &Ty) -> bool {
+        match (self, other) {
+            (Ty::Tuple(x), Ty::Tuple(y)) => x.len() == y.len() && x != y,
+            (Ty::Record(x), Ty::Record(y)) => {
+                x.len() == y.len() && x.iter().zip(y).all(|(p, q)| p.0 == q.0) && x != y
+            }
+            _ => false,
+        }
+    }
+
     /// The fields of a tuple or record, in order.
     pub fn fields(&self) -> Option<Vec<Ty>> {
         match self {
