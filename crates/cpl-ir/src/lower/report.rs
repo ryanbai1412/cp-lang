@@ -39,6 +39,45 @@ impl<'a> Lowerer<'a> {
         });
     }
 
+    /// `to(x)` for an `x: from` no conversion takes. For `Int(a)` with
+    /// `a: Mod<P>`, a struct whose one field already has the target type,
+    /// the help names the field, `a.v`.
+    pub(super) fn bad_conversion(&mut self, to: &str, from: &Ty, span: Span) {
+        let message = format!("a `{}` can't be turned into a `{to}`", self.show(from));
+        self.error(codes::TYPE_MISMATCH, span, message);
+        let Ty::Struct(s) = from else { return };
+        let [(field, ty)] = &self.structs[*s].def.fields[..] else {
+            return;
+        };
+        let fits = matches!(
+            (to, ty),
+            ("Int", Ty::Int)
+                | ("I128", Ty::I128)
+                | ("U64", Ty::U64)
+                | ("F64", Ty::Float)
+                | ("Char", Ty::Char)
+                | ("Bool", Ty::Bool)
+        );
+        if !fits {
+            return;
+        }
+        let call = self.source(span);
+        let arg = call
+            .strip_prefix(to)
+            .and_then(|c| c.strip_prefix('('))
+            .and_then(|c| c.strip_suffix(')'))
+            .map(str::trim)
+            .filter(|a| a.chars().all(|c| c.is_alphanumeric() || "_.".contains(c)));
+        let take = match arg {
+            Some(a) => format!("`{a}.{field}`"),
+            None => format!("`.{field}` on it"),
+        };
+        self.help(format!(
+            "write {take}: a `{}` keeps its value in the field `{field}`, so naming the field is the conversion",
+            self.show(from)
+        ));
+    }
+
     /// `if let`/`!` on a value that is not optional. For `if let r = i - 1`
     /// with `i: D` the offset is an `Int`, and the fix is `D.at(i - 1)`,
     /// the `?D` that is `None` off the end.

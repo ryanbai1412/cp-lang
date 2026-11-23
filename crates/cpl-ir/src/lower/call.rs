@@ -2666,8 +2666,7 @@ impl<'a> Lowerer<'a> {
                 );
             }
             _ => {
-                let message = format!("a `{}` can't be turned into a `{to}`", self.show(&from));
-                self.error(codes::TYPE_MISMATCH, span, message);
+                self.bad_conversion(to, &from, span);
                 return self.err_expr(span);
             }
         };

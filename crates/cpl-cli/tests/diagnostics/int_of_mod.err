@@ -1,0 +1,15 @@
+error[E0302]: a `Mod<998244353>` can't be turned into a `Int`
+  --> int_of_mod.cp:4:11
+  |
+4 | print(yes(Int(a) < Int(b)))
+  |           ^^^^^^
+  = help: write `a.v`: a `Mod<998244353>` keeps its value in the field `v`, so naming the field is the conversion
+
+error[E0302]: a `Mod<998244353>` can't be turned into a `Int`
+  --> int_of_mod.cp:4:20
+  |
+4 | print(yes(Int(a) < Int(b)))
+  |                    ^^^^^^
+  = help: write `b.v`: a `Mod<998244353>` keeps its value in the field `v`, so naming the field is the conversion
+
+int_of_mod.cp: 2 errors
