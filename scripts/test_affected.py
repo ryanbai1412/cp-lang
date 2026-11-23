@@ -53,6 +53,7 @@ class AffectedTest(unittest.TestCase):
         s = self.sel("corpus/problems/cf1/spec.cp", "corpus/problems/cf2/port.cp")
         self.assertEqual((s["all"], s["packages"]), (False, []))
         self.assertEqual(s["data_filter"], "(package(cpl-lint) & test(/corpus_warnings/))")
+        self.assertEqual(s["check_files"], ["corpus/problems/cf1/spec.cp", "corpus/problems/cf2/port.cp"])
 
     def test_site_paths_select_the_snippet_gate(self):
         self.assertTrue(self.sel("web/src/pages/index.astro")["site"])

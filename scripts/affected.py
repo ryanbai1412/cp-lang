@@ -68,7 +68,8 @@ def script_test(path):
 
 def select(paths, dirs):
     sel = {"all": False, "reason": "", "packages": [], "rust_files": [],
-           "script_tests": [], "site": False, "conform_cases": [], "data_filter": ""}
+           "script_tests": [], "site": False, "conform_cases": [], "data_filter": "",
+           "check_files": []}
     packages, tests, data = set(), set(), []
     for path in paths:
         crate = next((n for d, n in dirs.items() if path.startswith(d)), None)
@@ -84,6 +85,7 @@ def select(paths, dirs):
         elif expr := next((e for p, e in DATA_TESTS if fnmatch.fnmatch(path, p)), None):
             if expr not in data:
                 data.append(expr)
+            sel["check_files"].append(path)
         elif matches(path, PROSE):
             continue
         elif matches(path, EVERY_CRATE):
@@ -136,6 +138,7 @@ def main(argv):
     print(f"site={int(sel['site'])}")
     print("conform_cases=" + " ".join(sel["conform_cases"]))
     print("data_filter=" + sel["data_filter"])
+    print("check_files=" + " ".join(sel["check_files"]))
     return 0
 
 

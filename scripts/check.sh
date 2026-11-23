@@ -374,6 +374,15 @@ if [ "$mode" = commit ]; then
         step "tests that read the touched data files: $sel_data_filter"
         cargo nextest run --workspace --no-fail-fast -E "($sel_data_filter) & not ($slow_filter)"
     fi
+    if [ -n "${sel_check_files:-}" ]; then
+        step "cpl check of the touched corpus programs"
+        cargo build -q -p cpl-cli
+        read -ra files <<<"$sel_check_files"
+        for f in "${files[@]}"; do
+            [ -f "$f" ] || continue
+            "$cpl" check "$f" || fail "$f has check errors; cpl check's message above says how to fix it"
+        done
+    fi
     if [ -n "$sel_script_tests" ]; then
         step "script unit tests: $sel_script_tests"
         read -ra tests <<<"$sel_script_tests"
