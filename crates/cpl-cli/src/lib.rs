@@ -505,7 +505,7 @@ pub type Tool = fn(&[String], &mut dyn Write, &mut dyn Write) -> u8;
 /// The tooling crate behind `command`, if it is one of theirs.
 pub fn tool(command: &str) -> Option<Tool> {
     Some(match command {
-        "fmt" => cpl_fmt::cli::run,
+        "fmt" => json_out::fmt,
         "lint" => json_out::lint,
         "doc" => cpl_doc::cli::run,
         "stress" => cpl_stress::cli::run,

@@ -409,6 +409,59 @@ fn fmt_check_reports_without_writing_and_fmt_rewrites() {
 }
 
 #[test]
+fn fmt_json_says_which_files_changed_and_why_one_was_not_formatted() {
+    let dir = scratch("fmt-json");
+    std::fs::write(dir.join("a.cp"), "fn inc(x: Int) -> Int:\n    return x+1\n").unwrap();
+    std::fs::write(dir.join("b.cp"), "fn one() -> Int:\n    return 1\n").unwrap();
+    std::fs::write(dir.join("c.cp"), "fn bad() -> Int:\n    return \"open\n").unwrap();
+    let file =
+        |report: &cpl_json::Value, i: usize| report.at(&["files"]).as_array().unwrap()[i].clone();
+
+    let check = cpl(&dir, &["fmt", "--check", "--json", "a.cp", "b.cp", "c.cp"]);
+    assert_eq!(check.status.code(), Some(1), "{}", text(&check.stderr));
+    assert_eq!(text(&check.stderr), "", "--json reports in the object");
+    let report = cpl_json::parse(&text(&check.stdout)).unwrap();
+    let (a, b, c) = (file(&report, 0), file(&report, 1), file(&report, 2));
+    assert_eq!(a.at(&["path"]).as_str(), Some("a.cp"));
+    assert_eq!(a.at(&["changed"]).as_bool(), Some(true));
+    assert_eq!(a.at(&["ok"]).as_bool(), Some(true));
+    assert!(a.at(&["error"]).is_null());
+    assert_eq!(b.at(&["changed"]).as_bool(), Some(false));
+    assert_eq!(c.at(&["ok"]).as_bool(), Some(false));
+    assert!(c
+        .at(&["error"])
+        .as_str()
+        .unwrap()
+        .starts_with("not formatted"));
+    let diag = &c.at(&["diagnostics"]).as_array().unwrap()[0];
+    assert!(diag.at(&["start", "line"]).as_i64().is_some(), "{diag:?}");
+    let written = std::fs::read_to_string(dir.join("a.cp")).unwrap();
+    assert!(written.contains("x+1"), "--check writes nothing");
+
+    let again = cpl(&dir, &["fmt", "--check", "--json", "a.cp", "b.cp", "c.cp"]);
+    assert_eq!(text(&again.stdout), text(&check.stdout), "deterministic");
+    let format = cpl(
+        &dir,
+        &["fmt", "--check", "--format", "json", "a.cp", "b.cp", "c.cp"],
+    );
+    assert_eq!(
+        text(&format.stdout),
+        text(&check.stdout),
+        "--format json is --json"
+    );
+
+    let out = cpl(&dir, &["fmt", "--json", "a.cp", "b.cp"]);
+    assert_eq!(out.status.code(), Some(0), "{}", text(&out.stderr));
+    let report = cpl_json::parse(&text(&out.stdout)).unwrap();
+    assert_eq!(file(&report, 0).at(&["changed"]).as_bool(), Some(true));
+    let written = std::fs::read_to_string(dir.join("a.cp")).unwrap();
+    assert!(written.contains("return x + 1"), "{written}");
+
+    let stdin = cpl(&dir, &["fmt", "--stdin", "--json"]);
+    assert_eq!(stdin.status.code(), Some(2), "{}", text(&stdin.stderr));
+}
+
+#[test]
 fn lint_warns_with_its_code_and_exits_0_on_warnings_alone() {
     let dir = scratch("lint");
     std::fs::write(

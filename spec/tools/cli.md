@@ -47,4 +47,8 @@ each piece's `part`, `name` and `bytes`, adding up to `bytes`. `cpl submit
 --json` prints `ready` and the `build` and `test` reports those two print,
 `null` for a step that did not run. `cpl report --json` prints the report's
 `path` and `bytes`, its `sections`, the `comparison` of the interpreter and
-C++ runs and the prefilled `issue_url`, `null` when there is none.
+C++ runs and the prefilled `issue_url`, `null` when there is none. `cpl fmt
+--json` prints `{"files": [{"path", "changed", "ok", "diagnostics",
+"error"}]}` in path order: `changed` when formatting changed the file (or
+would, under `--check`), `ok` when it is formatted, the lexer `diagnostics`
+that stopped formatting and any other `error` (`null` when none).

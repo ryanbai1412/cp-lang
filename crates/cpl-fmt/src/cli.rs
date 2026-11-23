@@ -6,7 +6,7 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 
 pub const USAGE: &str = "\
-usage: cpl fmt [--check] [path]...
+usage: cpl fmt [--check] [--json] [path]...
 
 Rewrites each .cp file in the canonical style. A directory stands for every
 .cp file under it; no path at all means the current directory.
@@ -14,19 +14,52 @@ Rewrites each .cp file in the canonical style. A directory stands for every
 options:
   --check    change nothing; list the files that would change and exit 1
   --stdin    format standard input to standard output
+  --json     print one JSON object instead: `files`, each with its `path`,
+             whether it `changed` (or would, under --check), `ok`, the
+             `diagnostics` that stopped formatting and any other `error`
 ";
+
+/// One file `cpl fmt` looked at, for a caller that prints `--json`.
+pub struct FileReport {
+    pub path: String,
+    pub src: String,
+    /// Formatting changed it, or would under `--check`.
+    pub changed: bool,
+    /// Formatted, or already in the canonical style.
+    pub ok: bool,
+    /// What the lexer could not read, when that stopped formatting.
+    pub diagnostics: Vec<cpl_diag::Diagnostic>,
+    /// Any other reason the file was left alone.
+    pub error: Option<String>,
+}
+
+/// Turns the reports into the text `--json` prints.
+pub type Json = dyn Fn(&[FileReport]) -> String;
 
 /// Runs `cpl fmt`. Returns the exit code: 0 when every file is formatted,
 /// 1 when `--check` found one that is not or a file could not be formatted,
 /// 2 for a usage error.
 pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u8 {
+    run_with(args, stdout, stderr, None)
+}
+
+/// `run`, taking `--json` when `json` can print it: `cpl-fmt` cannot see
+/// the shared diagnostic JSON, which lives with the CLI.
+pub fn run_with(
+    args: &[String],
+    stdout: &mut dyn Write,
+    stderr: &mut dyn Write,
+    json: Option<&Json>,
+) -> u8 {
     let mut check = false;
     let mut stdin = false;
+    let mut as_json = false;
     let mut paths: Vec<PathBuf> = Vec::new();
     for arg in args {
         match arg.as_str() {
             "--check" => check = true,
             "--stdin" => stdin = true,
+            "--json" if json.is_some() => as_json = true,
             "-h" | "--help" => {
                 let _ = write!(stdout, "{USAGE}");
                 return 0;
@@ -37,6 +70,13 @@ pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u
             }
             path => paths.push(PathBuf::from(path)),
         }
+    }
+    if stdin && as_json {
+        let _ = write!(
+            stderr,
+            "error: `--json` reports on files, not `--stdin`\n\n{USAGE}"
+        );
+        return 2;
     }
     if stdin {
         let mut src = String::new();
@@ -69,34 +109,52 @@ pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u
     files.dedup();
 
     let (mut changed, mut failed) = (0usize, 0usize);
+    let mut reports = Vec::new();
     for file in &files {
         let name = file.display().to_string();
-        let src = match std::fs::read_to_string(file) {
-            Ok(src) => src,
-            Err(e) => {
-                let _ = writeln!(stderr, "error: can't read {name}: {e}");
-                failed += 1;
-                continue;
-            }
+        let mut entry = FileReport {
+            path: name.clone(),
+            src: String::new(),
+            changed: false,
+            ok: false,
+            diagnostics: Vec::new(),
+            error: None,
         };
-        match format(&src) {
-            Ok(out) if out == src => {}
-            Ok(out) => {
-                changed += 1;
-                if check {
-                    let _ = writeln!(stdout, "would reformat {name}");
-                } else if let Err(e) = std::fs::write(file, out) {
-                    let _ = writeln!(stderr, "error: can't write {name}: {e}");
-                    failed += 1;
-                } else {
-                    let _ = writeln!(stdout, "formatted {name}");
+        match std::fs::read_to_string(file) {
+            Ok(src) => entry.src = src,
+            Err(e) => entry.error = Some(format!("can't read {name}: {e}")),
+        }
+        if entry.error.is_none() {
+            match format(&entry.src) {
+                Ok(out) if out == entry.src => entry.ok = true,
+                Ok(out) => {
+                    entry.changed = true;
+                    if !check {
+                        if let Err(e) = std::fs::write(file, out) {
+                            entry.error = Some(format!("can't write {name}: {e}"));
+                        }
+                    }
+                    entry.ok = entry.error.is_none();
+                }
+                Err(e) => {
+                    entry.error = Some(format!("not formatted: {e}"));
+                    if let FormatError::Lex(diags) = e {
+                        entry.diagnostics = diags;
+                    }
                 }
             }
-            Err(e) => {
-                report(stderr, &name, &src, &e);
-                failed += 1;
-            }
         }
+        changed += entry.changed as usize;
+        failed += !entry.ok as usize;
+        if !as_json {
+            print_text(&entry, check, stdout, stderr);
+        }
+        reports.push(entry);
+    }
+    let code = (failed > 0 || (check && changed > 0)) as u8;
+    if let (true, Some(json)) = (as_json, json) {
+        let _ = writeln!(stdout, "{}", json(&reports));
+        return code;
     }
     let files_word = |n: usize| if n == 1 { "file" } else { "files" };
     let verb = if check { "would change" } else { "changed" };
@@ -111,7 +169,31 @@ pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u
             String::new()
         }
     );
-    (failed > 0 || (check && changed > 0)) as u8
+    code
+}
+
+/// The lines a person reads for one file.
+fn print_text(entry: &FileReport, check: bool, stdout: &mut dyn Write, stderr: &mut dyn Write) {
+    let name = &entry.path;
+    let lines = LineIndex::new(&entry.src);
+    for diag in &entry.diagnostics {
+        let _ = writeln!(
+            stderr,
+            "{}",
+            cpl_diag::render(diag, name, &entry.src, &lines)
+        );
+    }
+    if let Some(error) = &entry.error {
+        if error.starts_with("can't") {
+            let _ = writeln!(stderr, "error: {error}");
+        } else {
+            let _ = writeln!(stderr, "{name}: {error}");
+        }
+    } else if entry.changed && check {
+        let _ = writeln!(stdout, "would reformat {name}");
+    } else if entry.changed {
+        let _ = writeln!(stdout, "formatted {name}");
+    }
 }
 
 fn report(stderr: &mut dyn Write, name: &str, src: &str, error: &FormatError) {
