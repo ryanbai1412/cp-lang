@@ -7,7 +7,7 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 2679 (995 passing). Rules: 569.
+Cases: 2681 (995 passing). Rules: 570.
 
 ## Summary per chapter
 
@@ -22,7 +22,7 @@ Cases: 2679 (995 passing). Rules: 569.
 - R07 (07-sequences.md): 90 rules, 148 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R08 (08-traits-generics.md): 29 rules, 90 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R09 (09-contexts-checks.md): 26 rules, 56 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R10 (10-io.md): 18 rules, 104 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R10 (10-io.md): 19 rules, 105 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R11 (11-modules-prelude.md): 16 rules, 46 cases; 0 uncovered, 0 happy-path only, 1 negative only
 - R12 (12-powers.md): 17 rules, 36 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R13 (13-lowering.md): 22 rules, 27 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -56,7 +56,7 @@ negative case. Complete: rules with no gap in `rule-gaps.txt`.
 | R07 | 90 | 90 (100%) | 26 | 26 (100%) | 90 (100%) |
 | R08 | 29 | 29 (100%) | 12 | 12 (100%) | 29 (100%) |
 | R09 | 26 | 26 (100%) | 14 | 14 (100%) | 26 (100%) |
-| R10 | 18 | 18 (100%) | 9 | 9 (100%) | 18 (100%) |
+| R10 | 19 | 19 (100%) | 9 | 9 (100%) | 19 (100%) |
 | R11 | 16 | 15 (93%) | 10 | 10 (100%) | 15 (93%) |
 | R12 | 17 | 17 (100%) | 6 | 6 (100%) | 17 (100%) |
 | R13 | 22 | 22 (100%) | 5 | 5 (100%) | 22 (100%) |
@@ -67,7 +67,7 @@ negative case. Complete: rules with no gap in `rule-gaps.txt`.
 | Rlint | 2 | 2 (100%) | 2 | 2 (100%) | 2 (100%) |
 | Rlsp | 5 | 5 (100%) | 1 | 1 (100%) | 5 (100%) |
 | Rstress | 1 | 1 (100%) | 0 | 0 (0%) | 1 (100%) |
-| all | 569 | 568 (99%) | 223 | 223 (100%) | 568 (99%) |
+| all | 570 | 569 (99%) | 223 | 223 (100%) | 569 (99%) |
 
 ## Rules
 
@@ -599,6 +599,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R10.2.6 [1+ 4-]: A bad token traps with the input position and the expected type.
 - R10.2.7 [2+ 1-]: `read_all<T>()` reads every remaining `T` until the input ends, for statements that give n...
 - R10.2.8 [3+ 0-]: Input lines may end in `\n` or `\r\n` on every platform: `\r` is whitespace to a token rea...
+- R10.2.9 [1+ 0-]: Input the program doesn't need is still read and checked: `let _ = read<[n - 1]1..=n>()` c...
 - R10.3.1 [4+ 1-]: `print(x, y, ...)` joins by `io.sep` and ends the line; `print(xs)` prints a sequence on o...
 - R10.3.2 [4+ 0-]: , any other as `Int(v)` (`1..=n` prints 1..n); `"{x:.9}"` sets float precision, `"{x:6}"` ...
 - R10.3.3 [1+ 3-]: `Bool` is not `Show`: `print(b)` is an error naming `print(yes(b))`. `yes(b)` is the word ...
@@ -980,6 +981,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 
 ## Core cases without a `// rule:` line
 
+- core-01/while-let-tuple-pattern.cp
 - core-02/generic-variant-compares-with-typed-side.cp
 - core-02/range-type-argument-is-anonymous-domain.cp
 - core-02/range-type-arguments-index-a-2d-segtree.cp

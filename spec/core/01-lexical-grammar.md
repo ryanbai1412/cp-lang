@@ -260,8 +260,9 @@ So `-x ** 2` is `-(x ** 2)`, `not a == b` is `not (a == b)`, and
 if c: a elif d: b else: e           // inline form is an expression
 if let v = m.get(k), v > 0: ...     // header binders, comma conditions
 while let x = q.pop(): ...
+while let (d, u) = h.pop(): ...   // any pattern binds, tuples included
 for v in V: ...
-for i in V, j in V.after(i) if ok(i, j): ...   // clauses nest; `if` filters
+for i in V, j in V.after(i) if ok(i, j): ...   // clauses nest; `if` filters each element as it comes, after earlier bodies ran
 'outer: for r in R:
     for c in C:
         if g[r, c] == '#': break 'outer
