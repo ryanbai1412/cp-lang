@@ -2,7 +2,7 @@
 
 # std.interval
 
-Interval partition map (ODT / Chtholly tree): `IntervalMap<D, T>`.
+Interval partition map (ODT / Chtholly tree): `IntervalMap<D, T>`; merge overlapping intervals.
 
 In prelude (no `use` needed): `IntervalMap`.
 

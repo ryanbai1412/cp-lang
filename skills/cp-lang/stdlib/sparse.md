@@ -2,7 +2,7 @@
 
 # std.sparse
 
-Sparse table: \(O(1)\) range folds of a fixed array.
+Sparse table: \(O(1)\) range folds of a fixed array (range minimum query, RMQ).
 
 In prelude (no `use` needed): `SparseTable`.
 

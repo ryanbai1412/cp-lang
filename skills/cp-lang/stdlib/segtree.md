@@ -2,7 +2,7 @@
 
 # std.segtree
 
-Segment tree over a domain, for any associative operation.
+Segment tree over a domain, for any associative operation: point or range update, range query.
 
 In prelude (no `use` needed): `SegTree`.
 

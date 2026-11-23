@@ -83,9 +83,9 @@ Fields: `lt: ?((T, T) -> Bool)`.
 - `fn clear(mut self)` — \(O(1)\); Remove all elements.
 - `fn take(mut self) -> MinMaxHeap<T>` — \(O(1)\); Move contents out in \(O(1)\), leaving `self` empty.
 
-## `struct MeldHeap<T: Add>`
+## `struct MeldHeap<T>`
 
-Meldable min-heap (skew / leftist heap) with \(O(\log n)\) `meld` and \(O(1)\) lazy offset `add_all`.
+Meldable min-heap (skew / leftist heap) with \(O(\log n)\) `meld` and, when `T: Add`, \(O(1)\) lazy offset `add_all`.
 
 - `fn new<K>(by: ?(T -> K) = None) -> MeldHeap<T>` — \(O(1)\); Create an empty `MeldHeap<T>`, optionally ordered by key extractor `by:` (W7).
 - `fn of(xs: List<T>) -> MeldHeap<T>` — \(O(n)\); Build a `MeldHeap<T>` from `xs`.
@@ -98,7 +98,7 @@ Meldable min-heap (skew / leftist heap) with \(O(\log n)\) `meld` and \(O(1)\) l
 - `fn pop(mut self) -> ?T` — \(O(\log n)\); Remove and return the smallest element, or `None` if empty.
 - `fn meld(mut self, other: MeldHeap<T>)` — \(O(\log n)\); Meld `other` into `self` (consuming `other`).
 - `fn absorb(mut self, mut other: MeldHeap<T>)` — \(O(\log n)\); Meld `other` into `self`, leaving `other` empty.
-- `fn add_all(mut self, delta: T)` — \(O(1)\); Add `delta` lazily to every element (for additive types).; traps: never (overflow wraps in release, traps in debug)
+- `fn add_all(mut self, delta: T) where T: Add` — \(O(1)\); Add `delta` lazily to every element (for additive types).; traps: never (overflow wraps in release, traps in debug)
 - `fn clear(mut self)` — \(O(1)\); Remove all elements.
 - `fn take(mut self) -> MeldHeap<T>` — \(O(1)\); Move contents out in \(O(1)\), leaving `self` empty.
 - `fn drain(mut self) -> List<T>` — \(O(n \log n)\); Pop and return all elements in ascending order, leaving `self` empty.
