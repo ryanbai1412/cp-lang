@@ -3,13 +3,20 @@
 //! steps the whole recording would have held there.
 
 use super::{Recording, TraceConfig, Tracer};
-use crate::checkpoint::{record_last_on_this_thread, resume_on_this_thread};
+use crate::checkpoint::{
+    count_on_this_thread, record_last_on_this_thread, resume_on_this_thread, Checkpoint,
+};
 use crate::{observe_on_this_thread, run_observed, Io, Observed};
 use cpl_ir::Program;
 use std::io::Write;
-use std::sync::Mutex;
+use std::sync::{mpsc, Mutex};
 
 impl Tracer {
+    /// Steps seen so far, skipped or kept.
+    pub(crate) fn steps_so_far(&self) -> usize {
+        self.rec.skipped + self.rec.log.len()
+    }
+
     /// Whether this step comes before the window and is dropped.
     pub(super) fn skipped(&mut self) -> bool {
         if self.skip == 0 {
@@ -144,4 +151,144 @@ pub fn resumed_tail_every(
         whole.recording = recording;
         whole
     })
+}
+
+/// Checkpoints a [`Timeline`] keeps across the run: each holds a copy of the
+/// run's state, so this bounds its memory.
+const TIMELINE_KEPT: usize = 64;
+
+/// A run's checkpoints, each with the trace steps before it: a window
+/// anywhere in the run is traced again from the last checkpoint before it,
+/// not from the start. Its values are the interpreter's, so it stays on the
+/// thread that recorded it; [`Replay`] serves one to other threads.
+#[derive(Default)]
+pub struct Timeline {
+    taken: Vec<Checkpoint>,
+    /// The run's steps, as its config counts them.
+    pub steps: usize,
+}
+
+impl Timeline {
+    /// One run of `program` on `input`, counting the steps `config` would
+    /// record. Multitest runs take no checkpoints: their windows trace from
+    /// the start.
+    pub fn record_on_this_thread(
+        program: &Program,
+        input: &[u8],
+        config: &TraceConfig,
+        limits: crate::Limits,
+        every: u64,
+    ) -> Timeline {
+        let config = config.clone();
+        let (counted, taken) = if program.multitest {
+            let config = TraceConfig {
+                from_step: Some(usize::MAX),
+                last_steps: None,
+                ..config
+            };
+            let io = Io::fixed(input);
+            let mut ignored = std::io::sink();
+            let counted = observe_on_this_thread(program, io, &mut ignored, limits, Some(config));
+            (counted, Vec::new())
+        } else {
+            count_on_this_thread(program, input, limits, config, every, TIMELINE_KEPT)
+        };
+        Timeline {
+            taken,
+            steps: counted.recording.map_or(0, |rec| rec.skipped),
+        }
+    }
+
+    /// The steps before each checkpoint kept, in order.
+    #[doc(hidden)]
+    pub fn starts(&self) -> Vec<usize> {
+        self.taken.iter().map(|c| c.steps).collect()
+    }
+
+    /// The run's trace from step `config.from_step` on, as the whole run
+    /// with that `from_step` records it.
+    pub fn window_on_this_thread(
+        &self,
+        program: &Program,
+        input: &[u8],
+        config: TraceConfig,
+        limits: crate::Limits,
+    ) -> Observed {
+        let from = config.from_step.unwrap_or(0);
+        let mut ignored = std::io::sink();
+        let Some(start) = self.taken.iter().rev().find(|c| c.steps <= from) else {
+            let io = Io::fixed(input);
+            return observe_on_this_thread(program, io, &mut ignored, limits, Some(config));
+        };
+        let config = TraceConfig {
+            from_step: Some(from - start.steps),
+            ..config
+        };
+        let mut window =
+            resume_on_this_thread(program, input, start, &mut ignored, limits, Some(config));
+        if let Some(rec) = &mut window.recording {
+            rec.skipped += start.steps;
+        }
+        window
+    }
+}
+
+type Ask = (TraceConfig, mpsc::Sender<Observed>);
+
+/// A [`Timeline`] on its own interpreter thread, which traces any window of
+/// the run on request.
+pub struct Replay {
+    asks: Mutex<mpsc::Sender<Ask>>,
+}
+
+impl Replay {
+    /// Records `program`'s run on `input` as `config` counts its steps.
+    pub fn start(program: Program, input: Vec<u8>, config: TraceConfig) -> Replay {
+        Replay::start_every(program, input, config, CHECKPOINT_EVERY)
+    }
+
+    #[doc(hidden)]
+    pub fn start_every(
+        program: Program,
+        input: Vec<u8>,
+        config: TraceConfig,
+        every: u64,
+    ) -> Replay {
+        let (asks, asked) = mpsc::channel::<Ask>();
+        let asked = Mutex::new(Some(asked));
+        crate::spawn_interp_thread(std::sync::Arc::new(move |limits| {
+            let Some(asked) = asked.lock().ok().and_then(|mut a| a.take()) else {
+                return;
+            };
+            let timeline =
+                Timeline::record_on_this_thread(&program, &input, &config, limits, every);
+            for (config, reply) in asked {
+                let _ =
+                    reply.send(timeline.window_on_this_thread(&program, &input, config, limits));
+            }
+        }));
+        Replay {
+            asks: Mutex::new(asks),
+        }
+    }
+
+    /// The run's trace from `config.from_step` on.
+    pub fn window(&self, config: TraceConfig) -> Observed {
+        let (reply, answer) = mpsc::channel();
+        let sent = (self.asks.lock())
+            .map_err(|_| ())
+            .and_then(|asks| asks.send((config, reply)).map_err(|_| ()));
+        match sent.ok().and_then(|()| answer.recv().ok()) {
+            Some(observed) => observed,
+            None => Observed {
+                trap: Some(crate::Trap {
+                    message: "the interpreter itself failed; this is a bug in cpl".into(),
+                    span: cpl_diag::Span::default(),
+                    call_stack: Vec::new(),
+                    case: None,
+                }),
+                ..Observed::default()
+            },
+        }
+    }
 }

@@ -1179,6 +1179,8 @@ fn run_live(args: &RunArgs, stdin: &mut (dyn FnMut() -> Vec<u8> + Send)) -> u8 {
     } else {
         Side::Solution
     };
+    // Windows of the file as last compiled replay from its checkpoints.
+    let replay = std::sync::Mutex::new(None::<(String, cpl_interp::trace::Replay)>);
     let record = |from: Option<usize>| {
         let mut stderr = String::new();
         let compiled = compile_side(args.file, side, &mut stderr).map_err(|_| stderr.clone())?;
@@ -1186,7 +1188,30 @@ fn run_live(args: &RunArgs, stdin: &mut (dyn FnMut() -> Vec<u8> + Send)) -> u8 {
             from_step: from.or(args.from_step),
             ..trace_config(args, &compiled.text)
         };
-        let observed = traced(&compiled.program, &input, &mut Vec::new(), config);
+        let observed = match from {
+            Some(_) => {
+                let mut replay = replay
+                    .lock()
+                    .unwrap_or_else(|poisoned| poisoned.into_inner());
+                if !matches!(&*replay, Some((text, _)) if *text == compiled.text) {
+                    let counted = cpl_interp::trace::TraceConfig {
+                        from_step: None,
+                        ..config.clone()
+                    };
+                    let started = cpl_interp::trace::Replay::start(
+                        compiled.program.clone(),
+                        input.clone(),
+                        counted,
+                    );
+                    *replay = Some((compiled.text.clone(), started));
+                }
+                match &*replay {
+                    Some((_, replay)) => replay.window(config),
+                    None => traced(&compiled.program, &input, &mut Vec::new(), config),
+                }
+            }
+            None => traced(&compiled.program, &input, &mut Vec::new(), config),
+        };
         Ok(trace::single(
             args.file,
             &compiled.text,

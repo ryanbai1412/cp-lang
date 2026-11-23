@@ -60,6 +60,10 @@ pub(crate) trait Observer {
     fn raw_write(&mut self, _id: usize, _view: &View, _at: Span, _path: &[usize]) -> bool {
         false
     }
+    /// Steps seen so far, kept or not.
+    fn steps(&self) -> usize {
+        0
+    }
     /// The run is over, or trapped at `failed`.
     fn finish(self: Box<Self>, _view: &View, _failed: Option<(&str, Span)>) -> Option<Recording> {
         None
@@ -74,6 +78,9 @@ impl Observer for Unobserved {
 }
 
 impl Observer for Tracer {
+    fn steps(&self) -> usize {
+        self.steps_so_far()
+    }
     fn begin_cases(&mut self) {
         self.case = Some(0);
     }

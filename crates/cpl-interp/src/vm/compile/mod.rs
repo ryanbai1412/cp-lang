@@ -202,11 +202,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
     /// Notes the jump back at `pc` of a loop that `own` reads, when it and
     /// every loop around it are main's and a checkpoint can read them.
     pub(super) fn note_back_edge(&mut self, pc: usize, own: Option<LoopReg>) {
-        if self.traced
-            || self.cur_fn.is_some()
-            || self.inline_slots.is_some()
-            || self.feed_acc.is_some()
-        {
+        if self.cur_fn.is_some() || self.inline_slots.is_some() || self.feed_acc.is_some() {
             return;
         }
         let loops: Option<Vec<LoopReg>> = self

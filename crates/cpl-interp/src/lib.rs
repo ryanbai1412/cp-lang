@@ -291,6 +291,24 @@ pub(crate) fn on_interp_thread(run: &(dyn Fn(Limits) -> Observed + Sync)) -> Obs
     })
 }
 
+/// Starts `job` on a long-lived thread with the interpreter's deep stack,
+/// trying smaller stacks as [`on_interp_thread`] does; whether one started.
+pub(crate) fn spawn_interp_thread(job: std::sync::Arc<dyn Fn(Limits) + Send + Sync>) -> bool {
+    let memory = memory_for_stack();
+    [STACK_BYTES, 3 << 30, 1 << 28, 1 << 23]
+        .into_iter()
+        .any(|bytes| {
+            let limits = Limits {
+                stack_bytes: (bytes - (bytes / 64).max(1 << 20)).min(memory),
+            };
+            let job = job.clone();
+            std::thread::Builder::new()
+                .stack_size(bytes)
+                .spawn(move || job(limits))
+                .is_ok()
+        })
+}
+
 /// [`run_on_this_thread`], keeping what [`run_observed`] keeps.
 pub fn observe_on_this_thread(
     program: &Program,

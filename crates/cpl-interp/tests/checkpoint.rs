@@ -199,3 +199,76 @@ fn a_run_keeping_the_last_checkpoints_keeps_the_whole_runs_last_ones() {
     let ticks = |cs: &[Checkpoint]| cs.iter().map(|c| c.ticks).collect::<Vec<_>>();
     assert_eq!(ticks(&kept), ticks(&all[all.len() - 3..]));
 }
+
+const LONG: &str = "var s = 0\nvar t = 1\nfor i in 0..300000:\n    s = (s + i * i) % 1009\n    if i % 7 == 0:\n        t = (t * 3 + s) % 1000003\nprint(s)\nprint(t)\n";
+
+#[test]
+fn a_window_from_a_checkpoint_is_the_whole_runs_window() {
+    let input = reads_input();
+    for (source, input) in [
+        (NESTED, &b""[..]),
+        (CALLS, &b""[..]),
+        (READS, &input[..]),
+        (MULTITEST, &b"2\n3000\n4000\n"[..]),
+        (ONE_CALL, &b""[..]),
+        (LONG, &b""[..]),
+    ] {
+        let program = program(source);
+        let replay = cpl_interp::trace::Replay::start_every(
+            program.clone(),
+            input.to_vec(),
+            config(source),
+            64,
+        );
+        for from in [0, 1, 37, 4999, 20_000, 333_333, 1_000_000, usize::MAX / 2] {
+            let window = TraceConfig {
+                from_step: Some(from),
+                max_steps: Some(300),
+                ..config(source)
+            };
+            let io = Io::fixed(input);
+            let whole =
+                observe_on_this_thread(&program, io, &mut Vec::new(), LIMITS, Some(window.clone()));
+            let whole = whole.recording.unwrap();
+            let replayed = replay.window(window);
+            assert!(replayed.trap.is_none(), "{:?}", replayed.trap);
+            let replayed = replayed.recording.unwrap();
+            let at = format!("from {from} of {source}");
+            assert_eq!(replayed.skipped, whole.skipped, "{at}");
+            assert_eq!(replayed.truncated, whole.truncated, "{at}");
+            assert_eq!(replayed.len(), whole.len(), "{at}");
+            for step in 0..whole.len() {
+                assert_eq!(
+                    step_text(&replayed, step),
+                    step_text(&whole, step),
+                    "step {step} {at}"
+                );
+            }
+        }
+    }
+}
+
+#[test]
+fn a_timeline_keeps_checkpoints_across_the_whole_run() {
+    let program = program(LONG);
+    let timeline = cpl_interp::trace::Timeline::record_on_this_thread(
+        &program,
+        b"",
+        &config(LONG),
+        LIMITS,
+        64,
+    );
+    let starts = timeline.starts();
+    assert!(starts.len() > 8 && starts.len() <= 64, "{starts:?}");
+    assert!(starts.windows(2).all(|w| w[0] < w[1]), "{starts:?}");
+    assert!(
+        starts[0] < timeline.steps / 8,
+        "{starts:?} of {}",
+        timeline.steps
+    );
+    assert!(
+        *starts.last().unwrap() > timeline.steps / 2,
+        "{starts:?} of {}",
+        timeline.steps
+    );
+}

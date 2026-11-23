@@ -43,6 +43,8 @@ pub struct Checkpoint {
     pub ticks: u64,
     /// Bytes the run had printed.
     pub printed: u64,
+    /// Trace steps before it, on a counted run ([`count_on_this_thread`]).
+    pub steps: usize,
     loops: Vec<LoopAt>,
     stack: Vec<Value>,
     globals: Vec<Value>,
@@ -59,6 +61,7 @@ pub(crate) struct Clock {
     every: u64,
     next_at: u64,
     keep: usize,
+    spread: usize,
     taken: Vec<Checkpoint>,
     pub(crate) printed: u64,
     pub(crate) resume: Option<Checkpoint>,
@@ -73,6 +76,7 @@ impl Default for Clock {
             every: 0,
             next_at: 0,
             keep: usize::MAX,
+            spread: usize::MAX,
             taken: Vec::new(),
             printed: 0,
             resume: None,
@@ -138,6 +142,45 @@ pub fn record_last_on_this_thread(
     (observed, clock.taken)
 }
 
+/// The traced run counting its steps and recording none, with a checkpoint
+/// about every `every` loop rounds and calls, each stamped with the steps
+/// before it. Past `spread` checkpoints, every other one goes and the rest
+/// stay twice as far apart, so they cover the whole run in bounded memory.
+pub fn count_on_this_thread(
+    program: &Program,
+    input: &[u8],
+    limits: Limits,
+    config: trace::TraceConfig,
+    every: u64,
+    spread: usize,
+) -> (Observed, Vec<Checkpoint>) {
+    let every = every.max(1);
+    let ckpt = Clock {
+        every,
+        next_at: every,
+        spread: spread.max(1),
+        ..Clock::default()
+    };
+    let config = trace::TraceConfig {
+        from_step: Some(usize::MAX),
+        last_steps: None,
+        ..config
+    };
+    let tracer = Some(Box::new(trace::Tracer::new(config, program)));
+    let io = Io::fixed(input);
+    let (observed, mut clock) = crate::run_from(
+        program,
+        io,
+        &mut std::io::sink(),
+        limits,
+        tracer,
+        false,
+        ckpt,
+    );
+    clock.taken.retain(|c| locates(&program.main, &c.loops));
+    (observed, clock.taken)
+}
+
 /// The run from `from` to its end, on the same program and input: it prints
 /// what the whole run printed after `from.printed` bytes, and with `trace`,
 /// records what the whole run's trace holds from there on.
@@ -198,6 +241,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
         self.ckpt.taken.push(Checkpoint {
             ticks,
             printed: self.ckpt.printed + self.out.len() as u64,
+            steps: self.tracer.as_ref().map_or(0, |t| t.steps()),
             loops,
             stack,
             globals: self.globals.clone(),
@@ -208,6 +252,14 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
         });
         if self.ckpt.taken.len() > self.ckpt.keep {
             self.ckpt.taken.remove(0);
+        }
+        if self.ckpt.taken.len() > self.ckpt.spread {
+            let mut left = self.ckpt.taken.len();
+            self.ckpt.taken.retain(|_| {
+                left -= 1;
+                left.is_multiple_of(2)
+            });
+            self.ckpt.every *= 2;
         }
         self.ckpt.next_at = ticks + self.ckpt.every;
     }
