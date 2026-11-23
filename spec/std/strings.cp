@@ -848,8 +848,7 @@ pub struct Palindromes(odd: List<Int>, even: List<Int>):
     /// traps: never
     /// example: `manacher("aaa").count() == 6`
     pub fn count(self) -> Int:
-        var total = 0
-        for x in odd: total += x
+        var total = sum(x for x in odd)
         for x in even: total += x
         total
 
@@ -1368,7 +1367,7 @@ pub fn suffix_tree_edges<S: Indexed>(s: S) -> List<SuffixTreeEdge>:
             out.push(SuffixTreeEdge(csum, bottom, parent_d, elen, start..(i + 1)))
             if not st_depth.is_empty and st_depth[st_depth.len - 1] == parent_d:
                 st_sum[st_sum.len - 1] += bottom
-            else if parent_d > 0:
+            elif parent_d > 0:
                 st_depth.push(parent_d)
                 st_start.push(start)
                 st_sum.push(bottom)
@@ -2127,8 +2126,7 @@ pub struct SuffixAutomaton<A>:
     /// example: `SuffixAutomaton<Char>().len == 1`
     pub fn new() -> SuffixAutomaton<A>:
         let k = A.K
-        var lts: List<?A> = []
-        for _ in 0..k: lts.push(None)
+        let lts: List<?A> = [None for _ in 0..k]
         SuffixAutomaton(k, List.filled(k, -1), [-1], [0], [-1], [false], 0, lts)
 
     /// The suffix automaton of `s`: `SuffixAutomaton<A>()` followed by `push` of each element.
@@ -2311,7 +2309,7 @@ pub struct SuffixAutomaton<A>:
     /// example: `SuffixAutomaton<Char>.of("abb").topo_order() == [0, 1, 4, 2, 3]`
     pub fn topo_order(self) -> List<Int>:
         let m = links.len
-        let top = max(max_len[v] for v in 0..m) ?? 0
+        let top = [max_len[v] for v in 0..m].max() ?? 0
         var cnt = List.filled(top + 1, 0)
         for v in 0..m: cnt[max_len[v]] += 1
         for i in 1..=top: cnt[i] += cnt[i - 1]
@@ -3337,8 +3335,8 @@ fn z_and_prefix_function_match_their_definitions():
         let p = prefix_function(s)
         for i in 0..n:
             assert z[i] == common_prefix(s, 0, i)
-            assert p[i] == max(k for k in 0..=i if s[0..k] == s[i + 1 - k..i + 1])
-        assert period(s) == min(d for d in 1..=n if s[0..n - d] == s[d..n])
+            assert p[i] == [k for k in 0..=i if s[0..k] == s[i + 1 - k..i + 1]].max()!
+        assert period(s) == [d for d in 1..=n if s[0..n - d] == s[d..n]].min()!
 
 @test
 fn find_all_matches_a_scan():
@@ -3528,9 +3526,9 @@ fn manacher_and_is_palindrome_match_brute():
     assert not is_palindrome("ab") and not is_palindrome("abca")
     let mp = manacher("abacaba")
     assert mp.odd == [1, 2, 1, 4, 1, 2, 1]
-    assert mp.longest == (l: 0, r: 7)
+    assert mp.longest() == (l: 0, r: 7)
     assert manacher("abba").even == [0, 0, 2, 0]
-    assert manacher("").count == 0 and manacher("").longest == (l: 0, r: 0)
+    assert manacher("").count() == 0 and manacher("").longest() == (l: 0, r: 0)
     for _ in 0..40:
         let s = random_word(rand(0, 14), 2)
         let n = s.len
@@ -3544,8 +3542,8 @@ fn manacher_and_is_palindrome_match_brute():
                 if r > l and ok:
                     total += 1
                     if r - l > best.r - best.l: best = (l:, r:)
-        assert p.count == total
-        assert p.longest == best
+        assert p.count() == total
+        assert p.longest() == best
 
 @test
 fn suffix_array_struct_queries_match_brute():
@@ -3863,13 +3861,13 @@ fn sequence_generality_parity_across_list_array_and_views():
 
     // RollingHash over List<Int>, [D]Int, ListView<Int>, Str, StrView
     let bases = (131, 137)
-    let hl = RollingHash(xs, bases: bases)
-    let ha = RollingHash(arr, bases: bases)
-    let hv = RollingHash(copy(view), bases: bases)
+    let hl = RollingHash(xs, bases:)
+    let ha = RollingHash(arr, bases:)
+    let hv = RollingHash(copy(view), bases:)
     assert ha.all == hl.all and hv.all == hl.all
     assert ha.get(P(2)..P(6)) == hl.get(1..5) and hv.get(1..5) == hl.get(1..5)
-    let hs = RollingHash(copy("xabacabay"[1..8]), bases: bases)
-    assert hs.all == RollingHash("abacaba", bases: bases).all
+    let hs = RollingHash(copy("xabacabay"[1..8]), bases:)
+    assert hs.all == RollingHash("abacaba", bases:).all
 
     // Suffix array / LCP / SuffixArray.matches over List<Int>, [D]Int, ListView<Int>, Str, StrView
     let sa_l = SuffixArray(xs).sa
