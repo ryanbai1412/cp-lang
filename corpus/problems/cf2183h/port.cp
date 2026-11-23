@@ -1,8 +1,11 @@
-// Sorted, every group is a contiguous run, and the first group takes the
-// prefix 0..st, each of whose elements lowers its cost. Past it the cost
-// (P_i - P_j)(i - j) is Monge, so f(k) is convex in k: Aliens over a Monge
-// shortest path. Scaling each edge by w = n + 1 and adding 1 keeps it Monge
-// and breaks ties toward fewer groups, which `aliens` needs.
+// Source: Codeforces 2183H, Minimise Cost, https://codeforces.com/contest/2183/problem/H
+// Problem: multitest, k <= n <= 2e5 (sum bounded), |a_i| <= 1e9. Split a into exactly k
+//   non-empty subsequences; a subsequence of length m and sum s costs m * s. Print the
+//   minimum total cost.
+// Solution: sorted, every group is a contiguous run, and the first takes the prefix 0..st whose
+//   elements each lower its cost. Past it the cost (P_i - P_j)(i - j) is Monge, so f(k) is
+//   convex: Aliens over a Monge shortest path (edges scaled by n + 1 plus 1, which breaks
+//   ties toward fewer groups). O(n log C) Monge path computations.
 use std.dp.{monge_paths}
 @!multitest
 let n: 1..=2e5 = read()

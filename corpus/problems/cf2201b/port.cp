@@ -1,16 +1,9 @@
-// Codeforces 2201 B — Recoloring / Length-2N Construction
-//
-// A length-`2 * n` array containing each value `1..=n` twice achieves score `k`
-// iff `n <= k <= 2 * n - 1`. Set `braid = k - n + 1` (`1 <= braid <= n`):
-// - Emit each `v in braid + 1..=n` as an adjacent pair `[v, v]`: these `n - braid`
-//   values contribute `1` each.
-// - Emit `1..=braid` in a single braided block contributing `2 * braid - 1`:
-//   - If `braid == 1`, `[1, 1]` contributes `1`.
-//   - If `braid >= 2`, start with `[1, 2]`, append `[i + 2, i]` for
-//     `i in 1..braid - 1` (each step introduces `i + 2` before closing `i`),
-//     and finish with `[braid - 1, braid]`. Every value `v in 1..=braid`
-//     appears twice with strictly overlapping spans and no equal neighbours,
-//     giving `(n - braid) + (2 * braid - 1) = k` in total.
+// Source: Codeforces 2201B, Recollect Numbers, https://codeforces.com/contest/2201/problem/B
+// Problem: multitest, n <= 300000, k <= 1e6. Arrange cards 1, 1, ..., n, n in a row so that the
+//   statement's greedy flipping strategy takes exactly k turns; print YES and the row, or NO.
+// Solution: possible iff n <= k <= 2n - 1. With braid = k - n + 1, values above braid go first
+//   as adjacent pairs [v, v], one turn each; 1..=braid form a braided block [1, 2], [i + 2, i],
+//   ..., [braid - 1, braid] of overlapping spans that takes 2 braid - 1 turns. O(n).
 
 @!multitest
 let (n, k): (1..=300_000, 1..=600_000) = read()

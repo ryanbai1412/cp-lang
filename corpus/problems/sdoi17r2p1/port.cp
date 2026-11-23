@@ -1,12 +1,10 @@
-// SDOI 2017 Round 2 Dragons and Dungeons: roll n dice whose faces are
-// 0..m - 1, each face equally likely. For ten ranges lo..=hi, print the
-// probability that the total lands in the range.
-//
-// One die at a time: the total after another die is the average of m
-// neighbouring totals before it, a window over the prefix sums of the
-// previous row. The original multiplies polynomials by repeated squaring
-// and skips products of two tiny terms (below 1e-5) to stay fast; the
-// window needs no threshold and drops nothing.
+// Source: SDOI 2017 Round 2, Dragons and Dungeons (not on DMOJ; Luogu P3779)
+// Problem: T <= 10 tests: Y <= 2e5 dice with faces 0..X-1 (2 <= X <= 20) uniform; for 10
+//   queries A <= B print P(A <= total <= B), absolute error 0.013579. At most 2 tests have
+//   Y > 800.
+// Solution: one die at a time: the next distribution is the average of X neighbouring totals,
+//   a window over prefix sums of the previous row. Exact and drops nothing (the original
+//   squares polynomials and skips products below 1e-5), but O(X Y^2) per test.
 // original: corpus/submissions/5481972.cpp
 
 let tests: Int = read()

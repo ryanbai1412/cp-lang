@@ -1,9 +1,11 @@
-// DMOPC '20 Contest 7 P4 - Mimi and Carrots II (17pt): a tree of n burrows,
-// each safe or not (all unsafe at first). "1 u" flips burrow u; "2 u v" asks
-// how many safe burrows lie on the path from u to v or next to it.
-// Keep near[x] = the number of safe children of x. Every safe vertex on or
-// beside the path is a child of a path vertex, except the top of the path
-// and the parent of the top, so the answer is one path sum plus two lookups.
+// Source: DMOPC '20 Contest 7 P4, Mimi and Carrots II, https://dmoj.ca/problem/dmopc20c7p4
+// Problem: a tree on N <= 2e5 cities, none safe at first, Q <= 2e5 events: "1 u" toggles
+//   whether u is safe; "2 u v" prints the number of safe cities on the u-v path or adjacent
+//   to a city on it.
+// Solution: root the tree and keep near[x], the number of safe children of x, in a SegTree in
+//   HLD order. Every counted city is a child of a path vertex except the path's top and its
+//   parent, so a query is one path sum plus two lookups; a toggle updates near[parent].
+//   O(log^2 N) per query.
 // original: corpus/submissions/3686586.cpp
 
 let (n, q): (1..=2e5, 1..=2e5) = read()

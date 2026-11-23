@@ -1,16 +1,10 @@
-// Codeforces 2152 C — Triple Removal on Binary Subarrays
-//
-// Each operation removes three equal elements from the subarray `[l..r]`, so
-// the subarray is clearable iff both its length `len = r - l` and its count of
-// `1`s (`cnt_a.sum(l..r)`) are divisible by 3 (equivalently both `0`s and `1`s
-// occur in multiples of 3).
-//
-// `cnt_chk` is the prefix sum of `a[i] ^ (i & 1)`, which is constant (`0` or
-// `len`) on `[l..r]` iff the subarray strictly alternates (`0101...` or
-// `1010...`). Every triple costs 1 if an adjacent equal pair exists, while a
-// strictly alternating subarray must pay cost 2 on its first removal (adjacent
-// identical elements are 2 apart) and 1 on every remaining triple, giving
-// `len / 3 + Int(min(raw, len - raw) == 0)`.
+// Source: Codeforces 2152C, Triple Removal, https://codeforces.com/contest/2152/problem/C
+// Problem: multitest, binary array, n, q <= 250000 (sums bounded). An operation removes three
+//   equal elements at i < j < k at cost min(j - i, k - j). For each query [l, r] print the
+//   least cost to empty that subarray, or -1.
+// Solution: possible iff the length and the number of ones are multiples of 3. Every triple
+//   costs 1 if some adjacent pair is equal, and an alternating subarray pays 1 extra once.
+//   Prefix sums of a_i and of a_i xor (i & 1) answer both checks in O(1) per query.
 
 @!multitest
 let (n, q): (1..=200_000, 1..=200_000) = read()

@@ -1,16 +1,11 @@
-// Codeforces 2211 C1 — Window Multiset Matching
-//
-// Decide whether the unknowns (`none`, read from -1) in `b` can be filled so
-// every length-k subarray of `b` is a permutation of the corresponding
-// length-k subarray of `a`.
-//
-// Shifting a length-k window by 1 forces `b[i] == a[i]` for every outer index
-// `i` outside `[n - k, k)` (each such index enters or leaves a window while
-// its symmetric partner is fixed). Inside `[n - k, k)` (when `n - k <= k`),
-// every position belongs to every length-k window, so any permutation of
-// `a[n - k..k]` is valid iff each known `b[i]` can be matched to an available
-// copy of `a` in that window — equivalently, `cnt[v] >= 0` for every value `v`
-// after adding `a[i]` and subtracting known `b[i]`.
+// Source: Codeforces 2211C1, Equal Multisets (Easy Version),
+//   https://codeforces.com/contest/2211/problem/C1
+// Problem: multitest, sum n <= 2e5; a is a permutation of 1..=n, each b_i is in 1..=n or -1.
+//   Can the -1s be filled so every length-k window of b is a rearrangement of the same
+//   window of a? Print YES or NO.
+// Solution: sliding a window by one forces b_i = a_i outside the middle [n - k, k). Middle
+//   positions lie in every window, so the known b there must fit in a's middle multiset:
+//   add a_i, subtract b_i, and check no count goes negative. O(n).
 
 @!multitest
 let (n, k): (1..=200_000, 1..=200_000) = read()

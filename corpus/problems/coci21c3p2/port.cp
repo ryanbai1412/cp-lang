@@ -1,4 +1,9 @@
-// Cijanobakterije, in the forms proto/cpc builds today. See ../coci21c3p2.cp.
+// Source: COCI '21 Contest 3 #2, Cijanobakterije, https://dmoj.ca/problem/coci21c3p2
+// Problem: a forest on n <= 1e5 vertices with m < n edges. Joining trees by new edges, print
+//   the most vertices a single path (chain) can have.
+// Solution: link the trees' diameters end to end, so the answer is the sum of every tree's
+//   diameter counted in vertices. One DFS per tree keeps the deepest branch below each vertex
+//   and the best path through it. O(n).
 // original: corpus/submissions/4196157.cpp
 let n: Int = read()
 let m: Int = read()

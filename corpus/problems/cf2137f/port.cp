@@ -1,15 +1,11 @@
-// Codeforces 2137 F — Prefix Maximum Invariance
-//
-// Position `i` can match `b[i]` inside subarray `[L..=R]` (`0 <= L <= i <= R < n`)
-// iff either `a[i] == b[i]` (already matches for all `L <= i`, so `lo = i`), or
-// some element `a[j]` with `L <= j < i` satisfies `a[j] >= max(a[i], b[i])` (so
-// `i` is not a strict prefix maximum and can be rewritten to `b[i]` without
-// altering prefix maxima).
-//
-// Maintaining a strictly decreasing monotone stack `stk` of `(val: a[j], idx: j)`
-// over `j < i`, the rightmost qualifying `j` is found by `bsearch_last` for
-// `stk[m].val >= max(a[i], b[i])`. Every `L in 0..=lo` and `R in i..n` forms a
-// valid subarray, contributing `(lo + 1) * (n - i)` to `ans`.
+// Source: Codeforces 2137F, Prefix Maximum Invariance,
+//   https://codeforces.com/contest/2137/problem/F
+// Problem: multitest, sum n <= 2e5, a_i, b_i in 1..=2n. f(x, y) is the most positions where z
+//   can equal y, over z with the same prefix maxima as x. Print the sum of
+//   f(a[l..=r], b[l..=r]) over all subarrays.
+// Solution: in a subarray starting at L, position i matches iff a_i == b_i, or some a_j with
+//   L <= j < i is >= max(a_i, b_i). A strictly decreasing monotone stack and a binary search
+//   give the last such j; i adds (lo + 1) * (n - i) for its valid L and R. O(n log n).
 
 @!multitest
 let n: 1..=200_000 = read()
