@@ -262,6 +262,7 @@ impl<'p> Emitter<'p> {
                     }
                     codes.push(Code::primary("(void)0"));
                 } else {
+                    this.note_operand_copy(e);
                     let name = this.temp();
                     out.push_str(&format!(
                         "{}{} {name} = {};\n",
@@ -652,7 +653,13 @@ impl<'p> Emitter<'p> {
             }
             ExprKind::Local(_) if e.ty == Ty::Unit => Code::primary("void()"),
             ExprKind::Local(slot) => Code::primary(self.names[*slot].clone()),
-            ExprKind::Global(id) => Code::primary(ident(&program.globals[*id].name)),
+            ExprKind::Global(id) => match self.devirt.global_target(*id) {
+                Some(cid) => {
+                    self.direct.insert(cid);
+                    Code::primary(crate::devirt::name(cid))
+                }
+                None => Code::primary(ident(&program.globals[*id].name)),
+            },
             ExprKind::Unary(op, inner) => {
                 let code = self.expr(inner);
                 let sym = match op {

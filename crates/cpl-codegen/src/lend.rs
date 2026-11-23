@@ -930,6 +930,26 @@ pub(crate) enum Copied {
 const KEPT: &str = "the closure may be kept (stored, returned or passed where it is kept), so it owns what it reads";
 
 impl Emitter<'_> {
+    /// Records the copy naming operand `e` before a later one runs makes,
+    /// when `e` is a place holding a heap value: `up[find(u)]` with a
+    /// `find` that writes `up` reads `up` as it was before the call.
+    pub(crate) fn note_operand_copy(&mut self, e: &Expr) {
+        let place = matches!(
+            e.kind,
+            ExprKind::Local(_)
+                | ExprKind::Global(_)
+                | ExprKind::Field(..)
+                | ExprKind::Index(..)
+                | ExprKind::Unwrap(..)
+        );
+        if place && !e.ty.is_scalar() && !matches!(e.ty, Ty::Fn(..)) {
+            self.copies.push(Copied::Let(
+                e.span,
+                "a later operand may change it, and operands are read left to right",
+            ));
+        }
+    }
+
     /// Records the copy a `let slot = init` emitted as `T name = text;`
     /// makes, when `init` names a place holding a heap value.
     pub(crate) fn note_let_copy(
@@ -939,11 +959,28 @@ impl Emitter<'_> {
         text: &str,
         tail: Option<&Tail>,
     ) {
+        // A conversion the C++ spells as its argument (`sorted`'s list
+        // to sort in place) copies that argument.
+        let mut init = init;
+        while let ExprKind::Builtin(_, args) = &init.kind {
+            match args.as_slice() {
+                [arg]
+                    if text
+                        .chars()
+                        .all(|c| c.is_alphanumeric() || c == '_' || c == '.') =>
+                {
+                    init = arg
+                }
+                _ => break,
+            }
+        }
         let place = matches!(
             init.kind,
             ExprKind::Field(..) | ExprKind::Index(..) | ExprKind::Unwrap(..)
         );
-        let whole = matches!(init.kind, ExprKind::Local(s) if !self.locals()[s].name.is_empty())
+        // A temporary bound by reference names the place it was bound to.
+        let whole = matches!(init.kind, ExprKind::Local(s)
+                if !self.locals()[s].name.is_empty() || self.ref_bound.contains(&s))
             || matches!(init.kind, ExprKind::Global(_));
         if init.ty.is_scalar()
             || matches!(init.ty, Ty::Fn(..))

@@ -663,6 +663,12 @@ impl<'p> Emitter<'p> {
         crate::lend::copy_sites(self.program, &self.copies)
     }
 
+    /// The closures the written file calls by name.
+    pub fn called_closures(mut self) -> BTreeSet<usize> {
+        self.write("", None);
+        std::mem::take(&mut self.direct)
+    }
+
     /// [`Emitter::file`], with the profiled statements' spans.
     pub fn file_with_sites(
         mut self,

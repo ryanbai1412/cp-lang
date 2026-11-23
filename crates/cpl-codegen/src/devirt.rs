@@ -87,8 +87,8 @@ pub(crate) struct Devirt<'p> {
     made_by: BTreeMap<(FnId, usize), Made>,
     /// Each closure's stand-in: the first closure that only calls the same fn.
     same: Vec<ClosureId>,
-    /// Fn-typed globals set once to a closure and only ever called: each
-    /// call goes to the closure, and the global is never stored.
+    /// Fn-typed globals set once to a closure: each call goes to the
+    /// closure, each read names it, and the global is never stored.
     globals: BTreeMap<usize, ClosureId>,
     changed: bool,
 }
@@ -148,8 +148,6 @@ impl<'p> Devirt<'p> {
     fn called_globals(&self) -> BTreeMap<usize, ClosureId> {
         let program = self.program;
         let mut set: BTreeMap<usize, Vec<Option<ClosureId>>> = BTreeMap::new();
-        let mut reads: BTreeMap<usize, usize> = BTreeMap::new();
-        let mut calls: BTreeMap<usize, usize> = BTreeMap::new();
         let mut blocks = vec![&program.setup, &program.main];
         blocks.extend(program.fns.iter().map(|f| &f.body));
         blocks.extend(program.closures.iter().map(|c| &c.body));
@@ -165,14 +163,8 @@ impl<'p> Devirt<'p> {
                     }
                 }
             });
-            walk::deep_exprs(block, &mut |e| match &e.kind {
-                ExprKind::Global(g) => *reads.entry(*g).or_default() += 1,
-                ExprKind::CallExpr(callee, _) => {
-                    if let ExprKind::Global(g) = callee.kind {
-                        *calls.entry(g).or_default() += 1;
-                    }
-                }
-                ExprKind::Call(_, args) => {
+            walk::deep_exprs(block, &mut |e| {
+                if let ExprKind::Call(_, args) = &e.kind {
                     for arg in args {
                         if let Arg::Mut(place) = arg {
                             if let (true, g) = walk::root(place) {
@@ -181,7 +173,6 @@ impl<'p> Devirt<'p> {
                         }
                     }
                 }
-                _ => {}
             });
         }
         let captured: BTreeSet<usize> = program
@@ -191,7 +182,6 @@ impl<'p> Devirt<'p> {
             .collect();
         set.into_iter()
             .filter(|(g, _)| matches!(program.globals[*g].ty, Ty::Fn(..)) && !captured.contains(g))
-            .filter(|(g, _)| reads.get(g) == calls.get(g))
             .filter_map(|(g, cids)| match cids.as_slice() {
                 [Some(cid)] if self.closure_effectively_captureless(*cid) => {
                     Some((g, self.same[*cid]))
@@ -201,10 +191,15 @@ impl<'p> Devirt<'p> {
             .collect()
     }
 
-    /// Global `g` is a fn set once to a closure and only called: it is not
-    /// stored, and its calls go to the closure.
+    /// Global `g` is a fn set once to a closure: it is not stored, and
+    /// its calls and reads go to the closure.
     pub fn global_direct(&self, g: usize) -> bool {
         self.globals.contains_key(&g)
+    }
+
+    /// The closure global `g` always holds (see [`Devirt::global_direct`]).
+    pub fn global_target(&self, g: usize) -> Option<ClosureId> {
+        self.globals.get(&g).copied()
     }
 
     /// The one closure `callee` can be, in fn `home` (`None` for the
@@ -1628,7 +1623,7 @@ pub fn explain_closures(program: &Program) -> Vec<ClosureLowering> {
                     Some(Held::Many) => {
                         "multiple or capturing closures stored in field".to_string()
                     }
-                    None => continue,
+                    None => "no closure stored in it is known here".to_string(),
                 };
                 ClosureMode::DynamicStdFunction { reason }
             };
@@ -1637,12 +1632,16 @@ pub fn explain_closures(program: &Program) -> Vec<ClosureLowering> {
     }
 
     for (fid, f) in program.fns.iter().enumerate() {
+        let named = crate::scope::named_params(&f.body, f.params.len());
         for slot in 0..f.params.len() {
             if !matches!(f.locals[slot].ty, Ty::Fn(..)) {
                 continue;
             }
             let site = format!("fn {} param {}", f.name, f.locals[slot].name);
-            let mode = if devirt.param_elidable(fid, slot) {
+            let read = named.contains(&slot) && !devirt.dead_local(Some(fid), slot);
+            let mode = if devirt.param_elidable(fid, slot) && !read {
+                ClosureMode::Unread
+            } else if devirt.param_elidable(fid, slot) {
                 let Some(Held::One(cid)) = devirt.held.get(&Home::Param(fid, slot)).copied() else {
                     continue;
                 };
@@ -1686,13 +1685,17 @@ pub fn explain_closures(program: &Program) -> Vec<ClosureLowering> {
         &mut out,
     );
 
-    for g in &program.globals {
+    for (id, g) in program.globals.iter().enumerate() {
         if matches!(g.ty, Ty::Fn(..)) {
-            out.push(ClosureLowering {
-                site: format!("top-level {}", g.name),
-                mode: ClosureMode::DynamicStdFunction {
+            let mode = match devirt.global_target(id) {
+                Some(closure) => ClosureMode::StaticDirect { closure },
+                None => ClosureMode::DynamicStdFunction {
                     reason: "top-level fn var".to_string(),
                 },
+            };
+            out.push(ClosureLowering {
+                site: format!("top-level {}", g.name),
+                mode,
             });
         }
     }

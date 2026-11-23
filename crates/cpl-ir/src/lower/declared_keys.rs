@@ -81,6 +81,14 @@ impl<'a> Lowerer<'a> {
             return value;
         }
         let want = value.ty.clone();
+        if names_storage(&value) {
+            // Reading a name twice reads the same array: check it where it
+            // is rather than copy it into a temporary first.
+            return self.do_expr(Some(&want), span, |lw, out| {
+                lw.push_count_checks(&value, counts, span, out);
+                out.push(Stmt::Give(value));
+            });
+        }
         self.do_expr(Some(&want), span, |lw, out| {
             let slot = lw.temp(want.clone());
             out.push(Stmt::Let(slot, Some(value)));
@@ -268,4 +276,14 @@ impl<'a> Lowerer<'a> {
 fn counted_type(ty: &ast::Type) -> bool {
     matches!(&ty.kind, ast::TypeKind::Array { index, .. }
         if index.iter().any(|d| !matches!(d.kind, ast::TypeKind::Named { .. })))
+}
+
+/// A local, a global or a field of one: reading it runs nothing and
+/// can't trap.
+fn names_storage(e: &Expr) -> bool {
+    match &e.kind {
+        ExprKind::Local(_) | ExprKind::Global(_) => true,
+        ExprKind::Field(base, _) => names_storage(base),
+        _ => false,
+    }
 }

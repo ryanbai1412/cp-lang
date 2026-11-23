@@ -30,7 +30,7 @@ mod walk;
 
 pub use checks::Checks;
 pub mod explain;
-pub use devirt::{explain_closures, explain_dropped_fields, ClosureLowering, ClosureMode};
+pub use devirt::{explain_dropped_fields, ClosureLowering, ClosureMode};
 
 /// Name of this crate.
 pub const NAME: &str = env!("CARGO_PKG_NAME");
@@ -177,6 +177,24 @@ fn prepared(program: &cpl_ir::Program, target: &Target) -> cpl_ir::Program {
     splice::splice(&mut program);
     unpack::unpack(&mut program);
     program
+}
+
+/// How each fn-typed site of the judge build's C++ for `program` is
+/// called, read off the program the emitter writes (after pruning).
+/// A closure the file never calls is dropped, whatever holds it.
+pub fn explain_closures(program: &cpl_ir::Program) -> Vec<ClosureLowering> {
+    let target = Target::default();
+    let program = prepared(program, &target);
+    let called = emit::Emitter::new(&program, &target).called_closures();
+    let mut lowerings = devirt::explain_closures(&program);
+    for lowering in &mut lowerings {
+        if let ClosureMode::StaticDirect { closure } = lowering.mode {
+            if !called.contains(&closure) {
+                lowering.mode = ClosureMode::Unread;
+            }
+        }
+    }
+    lowerings
 }
 
 /// Each heap value the judge build's C++ for `program` copies: the span

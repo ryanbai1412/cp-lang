@@ -7,6 +7,10 @@
 
 use std::path::{Path, PathBuf};
 
+#[path = "support/cpp_counts.rs"]
+mod cpp_counts;
+use cpp_counts::{deep_copies, std_functions};
+
 /// `std::optional<std::vector<..>> t = cpl::map_get(m, k)`: the entry
 /// copied out of the map to be read.
 fn map_get_copies(cpp: &str) -> usize {
@@ -51,113 +55,17 @@ fn entry_copies(cpp: &str) -> usize {
     cpp.lines().filter(|l| l.contains(">(cpl::map_or(")).count()
 }
 
-/// The C++ container types a copy of which is deep.
-const CONTAINERS: [&str; 6] = [
-    "std::vector<",
-    "std::map<",
-    "std::set<",
-    "std::unordered_map<",
-    "std::deque<",
-    "std::string",
-];
-
-/// A name or a place on one: `xs`, `self.rows`, `cpl::at(rows, i)`.
-fn is_place(text: &str) -> bool {
-    let text = text.trim();
-    let name = |t: &str| {
-        !t.is_empty()
-            && t.split('.').all(|p| {
-                p.starts_with(|c: char| c.is_alphabetic() || c == '_')
-                    && p.chars().all(|c| c.is_alphanumeric() || c == '_')
-            })
-    };
-    name(text) || (text.starts_with("cpl::at(") && text.ends_with(')') && !text[8..].contains("::"))
-}
-
-/// Every deep copy of a container the C++ spells out: a container local
-/// initialised from a place (`std::vector<ll> row = cpl::at(rows, i);`), a
-/// tuple of containers built from a pair's fields, and a by-value lambda
-/// capture of a name declared as a container.
-fn deep_copies(cpp: &str) -> usize {
-    let container = |ty: &str| CONTAINERS.iter().any(|c| ty.starts_with(c));
-    let mut held = std::collections::BTreeSet::new();
-    let mut count = 0;
-    for line in cpp.lines() {
-        let line = line.trim();
-        let decl = line.strip_prefix("const ").unwrap_or(line);
-        if container(decl) {
-            // `T name = place;`, `const T& name`, `T name(...)`: the name is
-            // the last word before `=`, `(`, `;`, `,` or `)` at depth 0.
-            let (mut depth, mut end) = (0i32, decl.len());
-            for (i, c) in decl.char_indices() {
-                match c {
-                    '<' => depth += 1,
-                    '>' => depth -= 1,
-                    '=' | '(' | ';' | ',' | ')' | '{' if depth == 0 => {
-                        end = i;
-                        break;
-                    }
-                    _ => {}
-                }
-            }
-            let head = decl[..end].trim_end();
-            let name = head.rsplit([' ', '&']).next().unwrap_or("");
-            if !name.is_empty() && name.len() < head.len() {
-                held.insert(name.to_string());
-                let by_value = !head[..head.len() - name.len()].trim_end().ends_with('&');
-                let rhs = decl[end..]
-                    .strip_prefix('=')
-                    .and_then(|r| r.strip_suffix(';'));
-                if by_value && rhs.is_some_and(is_place) {
-                    count += 1;
-                }
-            }
-        }
-        if line.starts_with("std::tuple<")
-            && CONTAINERS.iter().any(|c| line.contains(c))
-            && line.contains(".first, ")
-            && line.contains(".second)")
-        {
-            count += 1;
-        }
-    }
-    for line in cpp.lines() {
-        let Some(open) = line.find("= [") else {
-            continue;
-        };
-        let Some(close) = line[open..].find("](") else {
-            continue;
-        };
-        count += line[open + 3..open + close]
-            .split(", ")
-            .filter(|cap| !cap.starts_with('&'))
-            .filter_map(|cap| cap.split_once(" = "))
-            .filter(|(_, outer)| held.contains(outer.trim()))
-            .count();
-    }
-    count
-}
-
 /// The most copies of each kind the corpus may build to, with why the
 /// ones left are left.
-/// Each `std::function` the C++ declares: a fn value whose callee codegen
-/// could not pin down, called indirectly.
-fn std_functions(cpp: &str) -> usize {
-    cpp.lines()
-        .filter(|l| !l.trim_start().starts_with("//"))
-        .map(|l| l.matches("std::function<").count())
-        .sum()
-}
-
 const BOUNDS: [Bound; 5] = [
     // `var cols = m.get(r) ?? []` then pushed to: a copy it needs.
-    ("map_get_copies", map_get_copies, 1),
+    ("map_get_copies", map_get_copies, 0),
     ("block_copies", block_copies, 0),
     ("entry_copies", entry_copies, 0),
     // Measured when the ratchet began: snapshots taken before a change
     // (`old_s = self.state`) and temporaries copied out of places.
-    ("deep_copies", deep_copies, 49),
-    ("std_functions", std_functions, 592),
+    ("deep_copies", deep_copies, 48),
+    ("std_functions", std_functions, 590),
 ];
 
 /// The `.cp` files one directory down from each root: the corpus
