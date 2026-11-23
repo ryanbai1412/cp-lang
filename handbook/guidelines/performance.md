@@ -1,185 +1,79 @@
-# Measuring and improving performance
+# Performance
 
 | | |
 |---|---|
 | Kind | Guidelines |
 | Owner | perf |
-| Describes | `crates/cpl-codegen/`, `bench/`, `cpl bench`, tuned variants (`perf.cp`), `plan/domains/perf/metrics.toml` |
+| Describes | `crates/cpl-codegen/`, `bench/`, `cpl bench`, tuned variants (`perf.cp`); every rule is in `performance-checklist.md` |
 
-Read this before you claim a program is fast, compare CP Lang with C++, add
-an optimization to codegen or write a tuned variant.
+Read this before you claim a program is fast, compare CP Lang with C++,
+add an optimization to codegen, or write a tuned variant. The exhaustive
+rules, each with an id that tests cite, are in
+[performance-checklist.md](performance-checklist.md).
 
-## A good comparison, by example
+## What we are after
 
-`corpus/problems/cf2084h/` has the contestant's C++ (`orig.cpp`), the
-idiomatic port (`port.cp`) and a tuned port (`perf.cp`). All three use the
-same algorithm: a stack of run lengths, O(n). The harness builds each one
-with the judge profile's compiler and flags, runs it on the same generated
-max-size input (`gen.py`), takes the median of 5 runs of at least 10 ms,
-and checks that all three print the same output. The result line reads
-`cf2084h 1.23x idiomatic, 0.95x tuned`.
+A contestant should never switch to C++ for speed. The program they would
+naturally write in CP Lang should run about as fast as the C++ a strong
+contestant writes for the same algorithm, and when it doesn't, they should
+be able to see why and fix it without leaving the language. None of this
+may change what the program does.
 
-A bad comparison: timing a port that uses a segment tree against C++ that
-uses a Fenwick tree, or against C++ built with `-O0`, or on a 10-line input
-where process start-up dominates. Each of these measures something other
-than the language.
+## Compare like with like
 
-## The rules
+A performance number means something only if the two programs do the same
+work. `corpus/problems/cf2084h/` holds the contestant's C++ (`orig.cpp`),
+the natural port (`port.cp`) and a tuned port (`perf.cp`), all using the
+same stack-of-runs algorithm. The harness builds each with the judge's
+compiler and flags, runs them on the same maximum-size input, checks that
+they print the same answer, and only then compares times: 1.23x for the
+natural port, 0.95x tuned.
 
-Each rule has an anchor; tests, gates and the perf register cite it.
+Timing a segment tree against a Fenwick tree, a `-O0` build, or a ten-line
+input measures something else. A pair that can't be matched is listed with
+its reason, never silently dropped, because dropped rows hide the worst
+cases.
 
-### Compare matched algorithms and layouts
+## How fast is fast enough
 
-The C++ reference and the
-port use the same algorithm, the same complexity and the same data
-layout (array of structs against array of structs). If they differ, fix
-the reference or the port first. A pair that can't be matched goes in
-`bench/unmatched.txt` with its reason; it is never silently dropped.
+The natural program should be within 1.1x of matched C++ for a typical
+problem and never worse than 1.5x. For every program that misses 1.1x, a
+tuned version written in the language (narrower types, `unchecked:`, a
+different layout) must reach it; if none can, that is a gap in the
+language, written down with whoever can close it. Abstractions such as
+domains, optionals, iterators and operation values should cost nothing at
+all, and the emitted C++ should fit comfortably under the judges' 64 KB.
 
-### Measure the submission
+## Faster, never different
 
-Time the C++ that `cpl build` emits, built
-with the judge profile's compiler and flags, never the interpreter and
-never a debug build. Use inputs at the problem's stated maximum, plus a
-degenerate case (all equal, sorted, a path graph) when the algorithm has
-one.
+An optimization is only correct if no program can tell it happened. It
+may not change what is printed, in what order, how many times a call with
+effects runs, where a program traps, or how often a lazy view is
+evaluated. So each rewrite rests on a fact the compiler has proven (this
+call has no effects, this value is never changed while it is borrowed),
+never on a guess. Both engines, the interpreter and the C++, must still
+agree on every program, and the program that prompted the change becomes a
+test.
 
-### Check the answer before the time
+## Read in place, call directly
 
-A run counts only if the port and
-the reference print the same output on the timed input.
+Most hidden slowness in generated code comes from two things: copying a
+list that is only read, and calling a function through an indirect
+`std::function`. Codegen reads values in place unless the program needs
+its own copy, and calls a known function directly. Two counts over the
+whole corpus track what is left and only go down.
 
-### Account for every pair
+## No secrets, no special cases
 
-Each run reports how many pairs built, ran,
-were skipped and why. A pair that fails to build is a bug to fix or a
-row in `bench/unmatched.txt`, not a gap in the table.
+Codegen may choose a representation on its own only when the choice is
+never worse, and it never swaps the algorithm the program names. Each
+choice it makes is shown by `cpl explain`. Each optimization is one
+general rule, not a case for one library function, so it keeps working
+when the library changes and helps user code too. Builds are deterministic,
+and every published number says how to reproduce it.
 
-### Meet the bars
+## When the rules don't say
 
-Over the perf set, as `bench/v03_perf_bench.py`
-reports them:
-
-| Measure | Bar |
-|---|---|
-| Idiomatic runtime, p50 | at most 1.1x matched C++ |
-| Idiomatic runtime, p95 | at most 1.2x |
-| Idiomatic runtime, max | at most 1.5x |
-| Tuned runtime, max (`runtime_tuned_max`) | at most 1.1x |
-| Zero-cost pairs (`bench/zero-cost/`) | at most 1.05x against hand-written C++ and against the direct `.cp` |
-| Emitted C++ size | under 32 KB; 64 KB is the judges' hard limit |
-
-Current numbers live in `plan/domains/perf/metrics.toml`, not here.
-
-### Every outlier gets a tuned variant or a logged gap
-
-For each program
-over 1.1x, keep the idiomatic port and add `perf.cp` beside it. Tune only
-with the language: narrower widths and range types, `unchecked:`,
-layout, reserving, a different std facility. Never inline C++ to pass
-the bar. If the tuned variant still can't reach 1.1x, log the reason as
-a language or codegen gap in `plan/domains/perf/PLAN.md`, with the owner
-who can close it.
-
-### Behaviour never changes
-
-An optimization may not change what a
-program prints, its output order, how many times a call with effects
-runs, whether or where it traps, or whether a lazy view is evaluated
-again on each read. Gate each rewrite on a fact the compiler has proven:
-`cpl_ir::effects` says the call is pure, or the Uses table says the
-difference can't be observed (the value isn't mutated, moved or
-escaped). "Probably pure" is not a gate.
-
-### Prove it in both engines
-
-Before landing an optimization, run the
-differential and parity tests (`cargo nextest run -p cpl-cli --test
-differential`) and `cpl-conform diff`. Add the program that motivated it
-as a parity case under `crates/cpl-cli/tests/parity/`, with an effect
-counter when evaluation count matters.
-
-### Ratchets only go down
-
-The counts of deep copies and of
-`std::function` in emitted C++ (`crates/cpl-cli/tests/read_only_copies.rs`)
-and the size limits are shrink-only. If your change raises one, fix the
-change; never raise the bound. When your change lowers one, lower the
-bound in the same commit.
-
-### Fix the class, not the case
-
-A copy, an indirect call or a lost
-check elimination in one program is a symptom. Find the rule codegen is
-missing and fix it for every program, then add the program as a
-regression.
-
-### Lend what is only read
-
-A heap value (a list, map, set, string or struct holding one) that a
-program only reads is read in place: a place, an element, a parameter, a
-capture or a loop binding lowers to a `const&`. Codegen copies only when the
-program needs an owned value (it mutates the copy, moves it, keeps it past
-the source, or the source changes while the copy is live), and moves instead
-of copying when the source is overwritten before it is read again. A hidden
-copy turns an O(n) loop into O(n²) with no sign in the source.
-
-Example: `let row = rows[i]` and `ends[r].partition_point(..)` read the row
-through a `const&`; `var cols = m.get(r) ?? []` followed by `cols.push(x)`
-copies, and `cpl explain` says why.
-
-### Call what is known directly
-
-An operation value or lambda whose callee is known statically is called
-directly (inlined or as a template functor), never through
-`std::function`. An indirect call per element costs more than the work in
-most inner loops, and stops inlining.
-
-### Only choices that majorize, and shown
-
-Codegen may pick a representation or a lowering on its own only when the
-choice is never worse on any axis (time, memory, size, behaviour), and
-`cpl explain` names it. It never picks a different algorithm than the one
-the program names.
-
-### One general rule in one place
-
-Each optimization is a general rule in one codegen module with a shape test
-in `crates/cpl-codegen/src/`, never keyed to a library or function name. A
-rule that only fires for `std.seq.bsearch` breaks the day the library body
-changes, and does nothing for user libraries.
-
-### Make every implicit choice visible
-
-If codegen copies a value,
-calls through `std::function`, fuses, sinks or drops a check, `cpl
-explain` (text and `--json`) says so, with the source position and the
-reason.
-
-### Make it reproducible
-
-Record the command, the commit, the judge
-profile, the input generator and its seed, and the machine in
-`plan/domains/perf/worklog.md` with each number you publish. Time on a
-quiet machine, one job at a time (`--jobs 1`).
-
-### Never submit to a real judge
-
-to measure. Use the local profile that
-mimics it.
-
-## Checklist
-
-- [ ] The reference uses the same algorithm and layout as the port.
-- [ ] The port and the reference agree on the timed input.
-- [ ] The input is at the stated maximum; degenerate cases are included.
-- [ ] Every pair is built, timed or listed with its reason.
-- [ ] Each outlier over 1.1x has `perf.cp` or a logged gap with an owner.
-- [ ] The rewrite is gated on proven purity or unobservability.
-- [ ] No new copy of a value only read, and no new `std::function` for a known callee.
-- [ ] The rule is general, in one module, with a shape test.
-- [ ] Differential, parity and conformance pass; the motivating program is a
-      parity case.
-- [ ] No ratchet went up; any that went down are lowered in the commit.
-- [ ] `cpl explain` names any new implicit choice.
-- [ ] The numbers, command and seed are recorded in the worklog.
+Ask whether a contestant reading the source could predict the cost and the
+behaviour of the C++. If a change makes that harder, it needs a stronger
+reason than a faster benchmark.
