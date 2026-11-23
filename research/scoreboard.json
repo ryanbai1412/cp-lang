@@ -1324,7 +1324,8 @@
         "ownership/top-temp-let.cp": "pass",
         "ownership/fn-param-var.cp": "pass",
         "ownership/top-temp-var.cp": "pass",
-        "ownership/fn-named-assign-before.cp": "pass"
+        "ownership/fn-named-assign-before.cp": "pass",
+        "core-11/migrate-rewrites-a-removed-spelling.cp": "fail"
       },
       "causes": [
         {
@@ -1944,11 +1945,11 @@
         }
       ],
       "counts": {
-        "fail": 233,
+        "fail": 234,
         "pass": 1089
       },
       "passed": 1089,
-      "total": 1322
+      "total": 1323
     },
     "corpus": {
       "cases": {
