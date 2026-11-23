@@ -1,0 +1,5 @@
+code = "L0539"
+level = "warn"
+group = "idiom"
+title = "Grid directions as dx/dy lists"
+summary = "`dx = [1, -1, 0, 0]`: `for d in Dir4.all()` with `(r, c).step(d)`"

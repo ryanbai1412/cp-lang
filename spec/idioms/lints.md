@@ -249,7 +249,7 @@ One sub-family per module. Each says: you rebuilt something the library has.
 | Lint | Catches | Write instead | Tier | P | Engine | Status |
 |---|---|---|---|---|---|---|
 | adjacency_build_loop | `adj[u].push(v); adj[v].push(u)` over read edges | `Graph.undirected(...)` / `directed` / `weighted` | fix | #1 | loop | ✓manual_adjacency_list |
-| bfs_by_hand | queue + dist array with `-1` | `bfs(next, from:)` | fix? | #1 | loop | |
+| bfs_by_hand | queue + dist array with `-1` | `bfs(next, from:)` | fix? | #1 | loop | ✓queue_head_index |
 | multi_source_bfs_by_hand | queue seeded with many sources | `bfs(next, from: sources)` | fix? | #1 | loop | |
 | zero_one_bfs_by_hand | deque with front/back pushes | `dial` / 0-1 `bfs` | fix? | #1 | loop | |
 | dijkstra_by_hand | heap relaxation loop | `dijkstra(g, from:)` | fix? | #1 | loop | |
@@ -419,7 +419,7 @@ One sub-family per module. Each says: you rebuilt something the library has.
 | linked_list_arrays | `nxt[]`/`prv[]` arrays with splicing | `LinkedList` | warn | #1 | loop | |
 | list_front_ops | `insert(0, x)` / `remove(0)` in a loop | `Deque` | fix? | #10 | ty | |
 | rotate_by_copy | slice + concat to rotate | `rotate_left` / `rotated_left` | fix | #1 | ty | |
-| dx_dy_arrays | `dx = [0, 1, 0, -1]` | `p.adj4` / `p.step(d)` with `Dir` | fix? | #3 | syn | |
+| dx_dy_arrays | `dx = [0, 1, 0, -1]` | `p.adj4` / `p.step(d)` with `Dir` | fix? | #3 | syn | ✓dx_dy_arrays |
 | grid_bounds_check | `0 <= r < h and 0 <= c < w` | domain membership / `adj4` already filters | fix? | #3 | syn | ✓grid_bounds_check |
 | grid_flatten | `r * w + c` | `[h, w]` domain | fix? | #3 | syn | |
 | grid_neighbour_step | a `[Row, Col]` loop that reads neighbours as `r - 1` / `c - 1` (or `if r > 0`) | `type Cell = (Row, Col)` and `p.step(Dir4.U)` / `p.adj4`; absent neighbours are `None` (Ryan, 2026-11-22: atcoder_dp_h) | fix? | #3 | ty | ✓grid_neighbour_step |

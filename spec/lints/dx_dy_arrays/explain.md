@@ -1,0 +1,3 @@
+`int dx[] = {1, -1, 0, 0}, dy[] = {0, 0, 1, -1};` is how C++ walks a grid's neighbours: two lists that must be kept in the same order, read as `x + dx[d]` and `y + dy[d]`, and then a bounds test for each step. In CP Lang a direction is a value: `Dir4.all()` from `std.grid` gives up, right, down, left (`Dir8.all()` adds the diagonals), and `(r, c).step(d)` on a grid over two domains is the neighbour cell or `none` when the step leaves the grid. `for (nr, nc) in (r, c).adj4` is the same loop with the `none`s skipped.
+
+The lint fires on two adjacent lists of 4 or 8 offsets in `-1..=1`. It has no fix, since the cell type and the loop change together.

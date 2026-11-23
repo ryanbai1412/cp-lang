@@ -1,6 +1,6 @@
 let (h, w): (1..=1000, 1..=1000) = read()
 let g: [h, w]Char = read()
-let dx = [1, -1, 0, 0]  // expect: missing dx_dy_arrays
+let dx = [1, -1, 0, 0]  // expect: dx_dy_arrays
 let dy = [0, 0, 1, -1]
 var dist: [h, w]Int = -1  // expect: sentinel_table
 var qx: List<Int> = []
