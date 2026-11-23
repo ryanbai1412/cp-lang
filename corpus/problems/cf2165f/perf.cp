@@ -19,7 +19,7 @@ var stk: List<I> = []
 for i in I:
     let x = a[i].ord
     while stk.len > 0 and a[stk.last!].ord < x:
-        let t = stk.pop()
+        let t = stk.pop()!
         var (lo, l, r) = (-1, a[t].ord + 1 + n, x + n)
         while l < r:
             if l & 1 == 1:
@@ -55,7 +55,7 @@ for i in I:
             l >>= 1
             h >>= 1
     while stk.len > 0 and a[i] < a[stk.last!]:
-        let j = stk.pop()
+        let j = stk.pop()!
         var p = a[j].ord + n
         while p > 0:
             two[p] max= j.ord
