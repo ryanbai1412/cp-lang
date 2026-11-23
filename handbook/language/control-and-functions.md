@@ -281,6 +281,8 @@ fn c(n: 0..=30, k: 0..=n) -> Int = if k == 0 or k == n: 1 else: c(n - 1, k - 1) 
 print(c(30, 15))
 ```
 
+# Reference
+
 ## Where the precise rules are
 
 | Topic | Spec |

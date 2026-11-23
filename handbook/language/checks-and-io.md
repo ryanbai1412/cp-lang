@@ -326,6 +326,8 @@ for c in read<[q]Cmd>():
         Sum => print(total)
 ```
 
+# Reference
+
 ## Where the precise rules are
 
 | Topic | Rules |

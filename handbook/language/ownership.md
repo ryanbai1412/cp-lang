@@ -654,6 +654,8 @@ conformance case under `spec/conformance/core-05/exercise-*.cp`. Working
 through them, using the seven-step procedure in §12, is the fastest way
 to learn the model.
 
+# Reference
+
 ## Where the precise rules are
 
 | Topic | Spec | Rule ids |

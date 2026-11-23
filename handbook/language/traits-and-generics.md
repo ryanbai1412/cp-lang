@@ -305,6 +305,8 @@ let a = [(w: 2, u: 9), (w: 3, u: 1)]
 print(total(a), a[0].u)
 ```
 
+# Reference
+
 ## Where the precise rules are
 
 | Topic | Spec |

@@ -69,13 +69,20 @@ idea that was wrong.
 Five goals shape the language. Each one rules out designs that look good
 in a finished program and cost minutes in a contest.
 
-| Goal | What it means for the language | Where it shows |
-|---|---|---|
-| Quick to write | Say each fact once; the library names the textbook algorithm; no ceremony (`main`, includes, fast-I/O lines) | `read<T>()`, the prelude, `@!multitest` |
-| Quick to revise | Adding a dimension, a test loop or a second answer is a local edit | product domains `[R, C]T`, slices that keep keys, named options |
-| Common mistakes hard to write | The bug classes C++ contestants hit most are type errors or traps | domains, range types, `?T`, owned/lent values |
-| Failures easy to explain | A check names the value, the bound and the source line, in the interpreter and the checked C++ alike | traps, `cpl explain`, traces |
-| Speed and control of hand-written C++ | Every abstraction lowers to the loop you would have written; costs are visible | generators, monomorphized operation values, release builds with no checks |
+- **Quick to write.** Say each fact once. The library names the textbook
+  algorithm, and there is no ceremony: no `main`, includes or fast-I/O
+  lines. You see it in `read<T>()`, the prelude and `@!multitest`.
+- **Quick to revise.** Adding a dimension, a test loop or a second answer
+  is a local edit, thanks to product domains `[R, C]T`, slices that keep
+  their keys, and named options.
+- **Common mistakes hard to write.** The bug classes C++ contestants hit
+  most become type errors or traps, through domains, range types, `?T`
+  and owned or lent values.
+- **Failures easy to explain.** A check names the value, the bound and the
+  source line, in the interpreter and the checked C++ alike.
+- **The speed and control of hand-written C++.** Every abstraction lowers
+  to the loop you would have written, and costs are visible: generators,
+  monomorphized operation values, release builds with no checks.
 
 ## The model
 
@@ -291,6 +298,8 @@ doc that gives its reasons.
   same file, not special file sections. `@!multitest` on its own line
   divides the shared setup from the per-test body. See
   [checks-and-io.md](checks-and-io.md).
+
+# Reference
 
 ## Where the precise rules are
 

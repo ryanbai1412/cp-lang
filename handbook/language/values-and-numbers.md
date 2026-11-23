@@ -244,6 +244,8 @@ let a: [V]1..=1000000000 = [V] v => 1000000000
 print(a.sum())
 ```
 
+# Reference
+
 ## Where the precise rules are
 
 | Topic | Spec | Rule ids |

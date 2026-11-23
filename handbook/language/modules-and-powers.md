@@ -346,6 +346,8 @@ fn countdown(from: Int) -> yields Int:
 print(countdown(4).max()!, countdown(4).count(x => x > 2), countdown(4).sum())
 ```
 
+# Reference
+
 ## Where the precise rules are
 
 | Topic | Rules |
