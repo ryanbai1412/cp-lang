@@ -573,6 +573,66 @@ pub const VALUE_NAMES: &[&str] = &[
 
 /// The standard library module that declares the public name `name`, for
 /// the hint on a name that was used without its `use`.
+/// The module whose top-level `pub fn name(self: ..)` takes a receiver
+/// that is (`on_str`) or isn't a `Str`, for `.name` written without its
+/// `use`: `split` on a list is `std.seq`'s, on a string `std.strings`'.
+pub fn method_module(name: &str, on_str: bool) -> Option<String> {
+    let mut generic = None;
+    for (module, text) in crate::modules::std_modules() {
+        for line in text.lines() {
+            let Some(rest) = line
+                .strip_prefix("pub fn ")
+                .and_then(|r| r.strip_prefix(name))
+            else {
+                continue;
+            };
+            let Some((_, of)) = rest
+                .split_once("(self: ")
+                .or_else(|| rest.split_once("(mut self: "))
+            else {
+                continue;
+            };
+            if !rest.starts_with(['<', '(']) {
+                continue;
+            }
+            let module = module.replace('/', ".");
+            match (
+                of.starts_with("Str") && !of[3..].starts_with(char::is_alphanumeric),
+                on_str,
+            ) {
+                (true, true) => return Some(module),
+                (true, false) => {}
+                (false, _) => {
+                    generic.get_or_insert(module);
+                }
+            }
+        }
+    }
+    generic
+}
+
+/// How many type arguments a built-in or std type takes, as in `Map<K, V>`.
+pub fn type_arity(name: &str) -> Option<usize> {
+    match name {
+        "Map" | "HashMap" => return Some(2),
+        "List" | "Set" | "HashSet" => return Some(1),
+        _ if TYPE_NAMES.contains(&name) => return Some(0),
+        _ => {}
+    }
+    crate::modules::std_modules().iter().find_map(|(_, text)| {
+        text.lines().find_map(|line| {
+            let rest = ["pub struct ", "pub enum ", "pub trait "]
+                .iter()
+                .find_map(|k| line.strip_prefix(k))?
+                .strip_prefix(name)?;
+            match rest.strip_prefix('<') {
+                Some(params) => Some(params.split('>').next()?.split(',').count()),
+                None => (!rest.starts_with(|c: char| c.is_alphanumeric() || c == '_')).then_some(0),
+            }
+        })
+    })
+}
+
 pub fn std_module(name: &str) -> Option<&'static str> {
     std_names()
         .binary_search_by(|(known, _)| (*known).cmp(name))

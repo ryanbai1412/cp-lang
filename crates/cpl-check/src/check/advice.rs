@@ -970,3 +970,24 @@ impl Checker<'_> {
         }
     }
 }
+
+/// "did you mean `s`?" for a member, naming the module and adding the
+/// `use` when `.s` on this receiver needs one (errors/R7).
+pub(crate) fn suggest_member(
+    diag: &mut Diagnostic,
+    src: &str,
+    span: Span,
+    s: String,
+    on_str: bool,
+) {
+    let auto = crate::prelude::methods().iter().any(|(_, m)| m.text == s);
+    let Some(m) = crate::prelude::method_module(&s, on_str).filter(|_| !auto) else {
+        return diag.suggest(span, s);
+    };
+    let (at, import) = crate::prelude::import_edit(src, &m, &s);
+    diag.help = Some(format!("did you mean `{s}`, from `std.{m}`?"));
+    diag.fixes.push(Fix {
+        title: format!("change to `{s}` and add it to `use std.{m}`"),
+        edits: vec![(at, import), (span, s)],
+    });
+}

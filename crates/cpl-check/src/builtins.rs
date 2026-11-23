@@ -387,7 +387,6 @@ pub(crate) const DOMAIN_MEMBERS: &[&str] = &[
     "mask",
     "wrap",
     "nth",
-    "bounds",
     "cuts",
     "pairs",
     "after",

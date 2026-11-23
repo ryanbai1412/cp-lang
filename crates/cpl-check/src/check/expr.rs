@@ -1866,7 +1866,7 @@ impl<'a> Checker<'a> {
             let widened = base_ty.widen().with_article();
             let (a, ty) = widened.split_once(' ').unwrap_or(("a", &widened));
             let message = format!("{a} `{ty}` has no method `{}`", name.text);
-            let suggestion = super::spec_member_typo(&base_ty, &name.text);
+            let suggestion = super::spec_member_typo(&base_ty, &name.text).map(|s| (s, self.src));
             let twin = self.method_twin(base, name);
             let in_place = super::advice::in_place_twin(&name.text, &self.quote(base.span));
             if let Some(diag) = self.error(codes::UNKNOWN_FIELD, name.span, message) {
@@ -1875,8 +1875,8 @@ impl<'a> Checker<'a> {
                     diag.fixes.push(fix);
                 } else if let Some(help) = in_place.clone() {
                     diag.help = Some(help);
-                } else if let Some(s) = suggestion {
-                    diag.suggest(name.span, s);
+                } else if let Some((s, src)) = suggestion {
+                    super::advice::suggest_member(diag, src, name.span, s, base_ty == Ty::Str);
                 } else if let Some(help) = super::advice::foreign_call(&name.text) {
                     diag.help = Some(help.to_string());
                 } else if generator {

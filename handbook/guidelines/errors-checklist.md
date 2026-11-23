@@ -72,7 +72,7 @@ A did-you-mean, rename, import or help names a public item that runs, in the for
 
 - **Why:** a suggestion the user can't use costs a second round trip.
 - **Example:** `a.zip(b)` gets `zip(a, b)`; a method is suggested as a method.
-- **Enforced by:** `crates/cpl-cli/tests/catalogue.rs` `every_emitted_code_has_an_exact_trigger_and_a_clean_fix`; `missing` for every advice path (diagnostics register).
+- **Enforced by:** `crates/cpl-cli/tests/suggestions.rs` writes each did-you-mean in place, with its `use`, and checks the error is gone; `crates/cpl-cli/tests/catalogue.rs` `every_emitted_code_has_an_exact_trigger_and_a_clean_fix` applies each machine fix.
 
 ## The fix
 

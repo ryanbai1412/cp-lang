@@ -887,8 +887,21 @@ impl<'a> Checker<'a> {
         // A capitalized name is a type or a variant, never a typo for a
         // lowercase local (`Rope` for `rope`).
         let capital = |s: &str| s.starts_with(|c: char| c.is_ascii_uppercase());
+        let written_args = self
+            .src
+            .get(span.end as usize..)
+            .and_then(|r| r.strip_prefix('<'))
+            .map_or(0, |r| {
+                let mut depth = 1;
+                let inside = r.chars().take_while(|c| {
+                    depth += i32::from(*c == '<') - i32::from(*c == '>');
+                    depth > 0
+                });
+                inside.filter(|c| *c == ',').count() + 1
+            });
         let suggestion = closest(name, candidates.iter().map(String::as_str))
-            .filter(|s| !capital(name) || capital(s));
+            .filter(|s| !capital(name) || capital(s))
+            .filter(|s| value || prelude::type_arity(s).is_none_or(|n| n == written_args));
         // Neither here nor in `std/`: say so, and offer the closest
         // library name, since a program reaching for a helper that does not
         // exist yet usually means one that does under another name.

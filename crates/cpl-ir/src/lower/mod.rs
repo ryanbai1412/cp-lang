@@ -2537,10 +2537,7 @@ impl<'a> Lowerer<'a> {
                 lw.error(
                     codes::UNKNOWN_TYPE,
                     name.span,
-                    format!(
-                        "`{}` needs its element type: `{}<Int>`",
-                        name.text, name.text
-                    ),
+                    typo::missing_type_args(&name.text, i),
                 );
                 Ty::Error
             }

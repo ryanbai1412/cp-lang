@@ -1870,6 +1870,10 @@ impl<'a> Lowerer<'a> {
                 if let Some(res) = self.try_ufcs_call(method, base, args, span, Some(recv_mark)) {
                     return res;
                 }
+                if let Some(message) = typo::builtin_misuse(&ty, method) {
+                    self.error(codes::WRONG_ARG_COUNT, name.span, message);
+                    return self.err_expr(span);
+                }
                 let message = format!(
                     "{} has no method `{method}` that `cpl run` knows",
                     self.a_ty(&ty)

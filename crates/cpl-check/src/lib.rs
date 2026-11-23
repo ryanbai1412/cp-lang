@@ -39,7 +39,9 @@ pub use db::{
 pub use def::{DeclKind, Def, DomainInfo};
 pub use hover::{Definition, Hover, Representation, Symbol};
 pub use modules::{bundled_std, dev_std_problem, file_path, home_dir, FsLoader, Loader};
-pub use prelude::{import_edit, methods as std_methods, std_method, std_module, std_names};
+pub use prelude::{
+    import_edit, method_module, methods as std_methods, std_method, std_module, std_names,
+};
 pub use ty::{human_bytes, Param, Ty};
 
 /// A `<fn>_of_pairs`/`<fn>_of_triples` fn: what `T.fn(list)` resolves to, never a name

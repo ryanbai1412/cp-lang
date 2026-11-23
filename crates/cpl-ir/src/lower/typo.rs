@@ -23,10 +23,10 @@ impl<'a> Lowerer<'a> {
         const RANGE_MEMBERS: [&str; 10] = [
             "end", "first", "halves", "is_empty", "last", "mid", "rev", "sorted", "start", "step",
         ];
-        const DOMAIN_MEMBERS: [&str; 23] = [
-            "after", "all", "any", "at", "before", "bounds", "count", "cuts", "first", "is_empty",
-            "last", "len", "mask", "max", "min", "nth", "rev", "size", "sort", "sorted", "subsets",
-            "sum", "windows",
+        const DOMAIN_MEMBERS: [&str; 22] = [
+            "after", "all", "any", "at", "before", "count", "cuts", "first", "is_empty", "last",
+            "len", "mask", "max", "min", "nth", "rev", "size", "sort", "sorted", "subsets", "sum",
+            "windows",
         ];
         const SEQ_EXTRA: [&str; 6] = [
             "adjacent", "inverse", "items", "resized", "reverse", "reversed",
@@ -36,16 +36,18 @@ impl<'a> Lowerer<'a> {
         ];
         const INT_MEMBERS: [&str; 5] = ["abs", "idx", "isqrt", "ord", "sqrt"];
         const FLOAT_MEMBERS: [&str; 6] = ["abs", "ceil", "floor", "round", "sqrt", "trunc"];
-        let receiver = match ty {
-            Ty::Str | Ty::StrView => Some(Receiver::Str),
-            Ty::List(_) | Ty::MutView(_) | Ty::ListView(..) | Ty::Keyed(..) => Some(Receiver::List),
-            Ty::Map(..) | Ty::HashMap(..) => Some(Receiver::Map),
-            Ty::Set(_) | Ty::HashSet(_) => Some(Receiver::Set),
-            Ty::Array { .. } => Some(Receiver::Array),
-            _ => None,
-        };
+        let receiver = receiver_of(ty);
         if let Some(own) = receiver.and_then(|r| cpl_check::foreign_member(r, name)) {
             return self.suggest_last(span, own.into());
+        }
+        let on_str = matches!(ty, Ty::Str | Ty::StrView);
+        let use_module = |s: &str| {
+            receiver
+                .and_then(|_| cpl_check::method_module(s, on_str))
+                .filter(|_| self.cur_mod == 0)
+        };
+        if let Some(module) = use_module(name) {
+            return self.use_fix(&module, name, None);
         }
         let mut names: Vec<&str> = receiver
             .into_iter()
@@ -117,7 +119,34 @@ impl<'a> Lowerer<'a> {
         let Some(s) = cpl_check::closest(name, names.into_iter()) else {
             return;
         };
-        self.suggest_last(span, s);
+        let auto = cpl_check::std_methods().iter().any(|(_, m)| m.text == s);
+        match use_module(&s).filter(|_| !auto) {
+            Some(module) => self.use_fix(&module, &s, Some(span)),
+            None => self.suggest_last(span, s),
+        }
+    }
+
+    /// Help and fix for a std method that needs its `use`, renaming the
+    /// misspelled name at `rename` too.
+    fn use_fix(&mut self, module: &str, s: &str, rename: Option<Span>) {
+        let (at, import) = cpl_check::import_edit(&self.mods[0].text, module, s);
+        let mut edits = vec![(at, import)];
+        let use_line = format!("use std.{module}.{{{s}}}");
+        let (help, title) = match rename {
+            Some(span) => {
+                edits.push((self.span(span), s.to_string()));
+                let help = format!("did you mean `{s}`, from `std.{module}`?");
+                (help, format!("change to `{s}` and add `{use_line}`"))
+            }
+            None => {
+                let help = format!("`{s}` is in the standard library: add `{use_line}`");
+                (help, format!("add `{use_line}`"))
+            }
+        };
+        if let Some(last) = self.diags.last_mut() {
+            last.help = Some(help);
+            last.fixes.push(cpl_diag::Fix { title, edits });
+        }
     }
 
     /// `List.name(..)` with no such static fn: one error, and `filled` if
@@ -525,4 +554,36 @@ impl<'a> Lowerer<'a> {
         self.diags.push(d);
         true
     }
+}
+
+/// The error for `Name<..>` written with `given` type arguments too few.
+pub(super) fn missing_type_args(name: &str, given: usize) -> String {
+    if given == 0 {
+        return format!("`{name}` needs its element type: `{name}<Int>`");
+    }
+    let args = vec!["Int"; given + 1].join(", ");
+    format!("`{name}` takes more type arguments: `{name}<{args}>`")
+}
+
+/// The built-in type whose members `ty` has.
+fn receiver_of(ty: &Ty) -> Option<cpl_check::Receiver> {
+    use cpl_check::Receiver;
+    match ty {
+        Ty::Str | Ty::StrView => Some(Receiver::Str),
+        Ty::List(_) | Ty::MutView(_) | Ty::ListView(..) | Ty::Keyed(..) => Some(Receiver::List),
+        Ty::Map(..) | Ty::HashMap(..) => Some(Receiver::Map),
+        Ty::Set(_) | Ty::HashSet(_) => Some(Receiver::Set),
+        Ty::Array { .. } => Some(Receiver::Array),
+        _ => None,
+    }
+}
+
+/// The error for a built-in member called with arguments it doesn't take:
+/// `xs.fold()` names what `fold` takes rather than saying it is missing.
+pub(super) fn builtin_misuse(ty: &Ty, method: &str) -> Option<String> {
+    let row = cpl_check::builtin_members(receiver_of(ty)?).find(|m| m.name == method)?;
+    Some(format!(
+        "`{method}` takes `{}`, as in `{}`",
+        row.params, row.example
+    ))
 }

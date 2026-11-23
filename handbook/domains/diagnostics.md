@@ -64,7 +64,7 @@ error names the place, the rule and a working fix. Gates keep every code
 catalogued and no error pointing into `std/`.
 
 The weakest areas are labels for a second place that is not a declaration
-(the first of two borrows), checks that every suggestion names a real item, and cascades from the lowerer, which
+(the first of two borrows) and cascades from the lowerer, which
 does not yet report through `Sink`. The quality register below lists every quality with the
 check behind it, and marks the ones with none as `missing`.
 
@@ -151,7 +151,7 @@ with no real check yet. Targets and current values are in
 | C++, Python and Rust habits get the CP Lang way | habits on the practice solutions whose first error is on the line and whose fix makes the tests pass | `errors/R8`: generated suite, gated | `crates/cpl-cli/tests/newcomer.rs` |
 | Common mistakes (`&&`, `!x`, `let` for `var`, typos) get a fix | errors with a fix; fixes that restore the program | `errors/R8`: generated suite, gated | `crates/cpl-cli/tests/recovery.rs` `fix_it_scoreboard` |
 | Messages use the spec's vocabulary, one spelling per idea | spellings `spec/GLOSSARY.md` rules out, in goldens, `cpl explain` pages and lint records | `errors/R5`: gate driven by the glossary's Never column | `crates/cpl-cli/tests/diagnostics.rs` `messages_use_the_glossary` |
-| Every suggestion names something that exists and runs | did-you-means, helps and habit renames naming a missing or private item | `errors/R7`: generated suite for the editor's member catalogue; `missing` for every other advice path | `crates/cpl-cli/tests/builtin_catalog.rs` |
+| Every suggestion names something that exists and runs | did-you-means, helps and habit renames naming a missing or private item | `errors/R7`: every did-you-mean in the goldens, the catalogue triggers and a generated typo of each std fn and method is applied and must clear its error; generated suite for the editor's member catalogue | `crates/cpl-cli/tests/suggestions.rs`, `crates/cpl-cli/tests/builtin_catalog.rs` |
 | Types read as the user wrote them (aliases, domains, views like `Rev<List<Int>>`) | goldens showing internal names | `errors/R6`: hand-written | `crates/cpl-cli/tests/diagnostics.rs` |
 | Unfinished code still gets useful errors | first error right on copies with a value cut off | `errors/R2`: generated suite | `crates/cpl-cli/tests/recovery.rs` (cut-value class) |
 | A message is understood in one read | rewrites needed by a cold reader on sampled errors | `errors/R5`: process: rubric in `handbook/guidelines/errors.md` | — |
