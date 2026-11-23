@@ -651,7 +651,13 @@ pub fn max_closure<V, G: Next<V>>(before: G, profit: V -> Int) -> (value: Int, t
 /// empty: `(size: 0, ...)` with every entry `None` when `L` or every list is empty
 /// ties: the maximum matching Hopcroft-Karp finds in the scan order above
 /// traps: never
-/// example: `let adj: [0..2]List<0..2> = [[0, 1], [0]]; max_matching(adj) == (size: 2, mate: [Some(1), Some(0)], back: [Some(1), Some(0)])`
+/// ```cp
+/// domain L = 0..2
+/// domain R = 0..2
+/// let adj: [L]List<R> = [[0, 1], [0]]
+/// let m = max_matching(adj)
+/// m.size == 2 and m.mate == [Some(1), Some(0)] and m.back == [Some(1), Some(0)]
+/// ```
 pub fn max_matching<L, R>(adj: [L]List<R>) -> (size: Int, mate: [L]?R, back: [R]?L):
     var mate: [L]?R = None
     var back: [R]?L = None
@@ -721,7 +727,12 @@ fn flip_path<L, R>(path: List<L>, end: R, mut mate: [L]?R, mut back: [R]?L):
 /// ties: the König cover above
 /// order: `left` keyed by `L`, `right` keyed by `R`
 /// traps: never
-/// example: `let adj: [0..2]List<0..1> = [[0], [0]]; min_vertex_cover(adj) == (left: [false, false], right: [true])`
+/// ```cp
+/// domain L = 0..2
+/// domain R = 0..1
+/// let adj: [L]List<R> = [[0], [0]]
+/// min_vertex_cover(adj) == (left: [false, false], right: [true])
+/// ```
 pub fn min_vertex_cover<L, R>(adj: [L]List<R>) -> (left: [L]Bool, right: [R]Bool):
     let m = max_matching(adj)
     let level = alternating_layers(adj, m.mate, m.back)
@@ -757,8 +768,19 @@ fn alternating_layers<L, R>(adj: [L]List<R>, mate: [L]?R, back: [R]?L) -> [L]?(0
 /// ties: the assignment the Hungarian algorithm finds adding rows in increasing order and scanning columns in increasing order
 /// order: `mate` keyed by `L`
 /// traps: when `L.count > R.count`
-/// example: `let w = [[1, 5], [4, 3]]; max_weight_matching<0..2, 0..2>(weight: (l, r) => w[l][r]) == (total: 9, mate: [1, 0])`
-/// example: `max_weight_matching<0..1, 0..2>(weight: (_, r) => r) == (total: 1, mate: [1])`
+/// ```cp
+/// domain L = 0..2
+/// domain R = 0..2
+/// let w: [L][R]Int = [[1, 5], [4, 3]]
+/// let m = max_weight_matching<L, R>(weight: (l, r) => w[l][r])
+/// m.total == 9 and m.mate == [1, 0]
+/// ```
+/// ```cp
+/// domain L = 0..1
+/// domain R = 0..2
+/// let m = max_weight_matching<L, R>(weight: (_, r) => Int(r))
+/// m.total == 1 and m.mate == [1]
+/// ```
 pub fn max_weight_matching<L, R>(weight: (L, R) -> Int) -> (total: Int, mate: [L]R):
     let mate = hungarian<L, R>((l, r) => -weight(l, r))
     (total: sum(weight(l, mate[l]) for l in L), mate:)
@@ -770,7 +792,13 @@ pub fn max_weight_matching<L, R>(weight: (L, R) -> Int) -> (total: Int, mate: [L
 /// ties: the assignment the Hungarian algorithm finds adding rows in increasing order and scanning columns in increasing order
 /// order: `mate` keyed by `L`
 /// traps: when `L.count > R.count`
-/// example: `let w = [[1, 5], [4, 3]]; min_weight_matching<0..2, 0..2>(weight: (l, r) => w[l][r]) == (total: 4, mate: [0, 1])`
+/// ```cp
+/// domain L = 0..2
+/// domain R = 0..2
+/// let w: [L][R]Int = [[1, 5], [4, 3]]
+/// let m = min_weight_matching<L, R>(weight: (l, r) => w[l][r])
+/// m.total == 4 and m.mate == [0, 1]
+/// ```
 pub fn min_weight_matching<L, R>(weight: (L, R) -> Int) -> (total: Int, mate: [L]R):
     let mate = hungarian<L, R>(weight)
     (total: sum(weight(l, mate[l]) for l in L), mate:)
@@ -834,8 +862,17 @@ fn hungarian<L, R>(cost: (L, R) -> Int) -> [L]R:
 /// cost: \(O(V³)\)
 /// empty: `size == 0` and every `mate` `None` when there are no edges
 /// traps: never
-/// example: `let adj: [0..4]List<0..4> = [[1], [0, 2], [1, 3], [2]]; general_matching(adj) == (size: 2, mate: [Some(1), Some(0), Some(3), Some(2)])`
-/// example: `let adj: [0..3]List<0..3> = [[1, 2], [0, 2], [0, 1]]; general_matching(adj).size == 1`
+/// ```cp
+/// domain V = 0..4
+/// let adj: [V]List<V> = [[1], [0, 2], [1, 3], [2]]
+/// let m = general_matching(adj)
+/// m.size == 2 and m.mate == [Some(1), Some(0), Some(3), Some(2)]
+/// ```
+/// ```cp
+/// domain V = 0..3
+/// let adj: [V]List<V> = [[1, 2], [0, 2], [0, 1]]
+/// general_matching(adj).size == 1
+/// ```
 pub fn general_matching<V>(adj: [V]List<V>) -> (size: Int, mate: [V]?V):
     let n = V.K
     let nb = [[w.to_idx for w in adj[V.nth(i)]] for i in 0..n]
@@ -1145,7 +1182,13 @@ struct Blossom:
 /// cost: \(O(V³)\) time, \(O(V^2)\) memory, by Edmonds' weighted blossom algorithm with dual labels
 /// ties: the matching the algorithm finds; `total` is exact
 /// traps: never
-/// example: `let es: [0..3](u: 0..4, v: 0..4, w: Int) = [(u: 0, v: 1, w: 2), (u: 1, v: 2, w: 3), (u: 2, v: 3, w: 2)]; max_weight_general_matching(es) == (total: 4, mate: [Some(1), Some(0), Some(3), Some(2)])`
+/// ```cp
+/// domain E = 0..3
+/// domain V = 0..4
+/// let es: [E](u: V, v: V, w: Int) = [(u: 0, v: 1, w: 2), (u: 1, v: 2, w: 3), (u: 2, v: 3, w: 2)]
+/// let m = max_weight_general_matching(es)
+/// m.total == 4 and m.mate == [Some(1), Some(0), Some(3), Some(2)]
+/// ```
 pub fn max_weight_general_matching<V, E>(
     edges: [E](u: V, v: V, w: Int)
 ) -> (total: Int, mate: [V]?V):
@@ -1204,8 +1247,18 @@ pub fn max_weight_general_matching<V, E>(
 /// cost: one `max_flow` on V + 2 vertices and E + V arcs
 /// order: keyed by `E`
 /// traps: when some `lo > hi`
-/// example: `let es: [0..2](u: 0..2, v: 0..2, lo: Int, hi: Int) = [(u: 0, v: 1, lo: 2, hi: 2), (u: 1, v: 0, lo: 0, hi: 5)]; circulation(es) == Some([2, 2])`
-/// example: `let es: [0..1](u: 0..2, v: 0..2, lo: Int, hi: Int) = [(u: 0, v: 1, lo: 1, hi: 1)]; circulation(es) == None`
+/// ```cp
+/// domain E = 0..2
+/// domain V = 0..2
+/// let es: [E](u: V, v: V, lo: Int, hi: Int) = [(u: 0, v: 1, lo: 2, hi: 2), (u: 1, v: 0, lo: 0, hi: 5)]
+/// circulation(es) == Some([2, 2])
+/// ```
+/// ```cp
+/// domain E = 0..1
+/// domain V = 0..2
+/// let es: [E](u: V, v: V, lo: Int, hi: Int) = [(u: 0, v: 1, lo: 1, hi: 1)]
+/// circulation(es) == None
+/// ```
 pub fn circulation<V, E>(arcs: [E](u: V, v: V, lo: Int, hi: Int)) -> ?[E]Int:
     let r = bounded_flow(arcs, None, 0) ?? return None
     r.flow
@@ -1217,8 +1270,18 @@ pub fn circulation<V, E>(arcs: [E](u: V, v: V, lo: Int, hi: Int)) -> ?[E]Int:
 /// ties: among maximum flows, the one the two `max_flow`s find
 /// order: `flow` keyed by `E`
 /// traps: when some `lo > hi`, or `s == t`
-/// example: `let es: [0..2](u: 0..3, v: 0..3, lo: Int, hi: Int) = [(u: 0, v: 1, lo: 1, hi: 3), (u: 1, v: 2, lo: 0, hi: 2)]; max_bounded_flow(es, 0, 2) == Some((value: 2, flow: [2, 2]))`
-/// example: `let es: [0..2](u: 0..3, v: 0..3, lo: Int, hi: Int) = [(u: 0, v: 1, lo: 3, hi: 3), (u: 1, v: 2, lo: 0, hi: 2)]; max_bounded_flow(es, 0, 2) == None`
+/// ```cp
+/// domain E = 0..2
+/// domain V = 0..3
+/// let es: [E](u: V, v: V, lo: Int, hi: Int) = [(u: 0, v: 1, lo: 1, hi: 3), (u: 1, v: 2, lo: 0, hi: 2)]
+/// max_bounded_flow(es, 0, 2) == Some((value: 2, flow: [2, 2]))
+/// ```
+/// ```cp
+/// domain E = 0..2
+/// domain V = 0..3
+/// let es: [E](u: V, v: V, lo: Int, hi: Int) = [(u: 0, v: 1, lo: 3, hi: 3), (u: 1, v: 2, lo: 0, hi: 2)]
+/// max_bounded_flow(es, 0, 2) == None
+/// ```
 pub fn max_bounded_flow<V, E>(
     arcs: [E](u: V, v: V, lo: Int, hi: Int),
     s: V,
@@ -1234,7 +1297,12 @@ pub fn max_bounded_flow<V, E>(
 /// ties: among minimum flows, the one the two `max_flow`s find
 /// order: `flow` keyed by `E`
 /// traps: when some `lo > hi`, or `s == t`
-/// example: `let es: [0..2](u: 0..3, v: 0..3, lo: Int, hi: Int) = [(u: 0, v: 1, lo: 1, hi: 3), (u: 1, v: 2, lo: 0, hi: 2)]; min_bounded_flow(es, 0, 2) == Some((value: 1, flow: [1, 1]))`
+/// ```cp
+/// domain E = 0..2
+/// domain V = 0..3
+/// let es: [E](u: V, v: V, lo: Int, hi: Int) = [(u: 0, v: 1, lo: 1, hi: 3), (u: 1, v: 2, lo: 0, hi: 2)]
+/// min_bounded_flow(es, 0, 2) == Some((value: 1, flow: [1, 1]))
+/// ```
 pub fn min_bounded_flow<V, E>(
     arcs: [E](u: V, v: V, lo: Int, hi: Int),
     s: V,
@@ -1290,7 +1358,12 @@ fn bounded_flow<V, E>(
 /// empty: `[]` when `V` has at most one position
 /// order: one edge per vertex but `V.first`, by increasing `u`; `v` is its parent
 /// traps: when some `w` is negative
-/// example: `let es: [0..2](u: 0..3, v: 0..3, w: Int) = [(u: 0, v: 1, w: 2), (u: 1, v: 2, w: 3)]; gomory_hu(es) == [(u: 1, v: 0, w: 2), (u: 2, v: 1, w: 3)]`
+/// ```cp
+/// domain E = 0..2
+/// domain V = 0..3
+/// let es: [E](u: V, v: V, w: Int) = [(u: 0, v: 1, w: 2), (u: 1, v: 2, w: 3)]
+/// gomory_hu(es) == [(u: 1, v: 0, w: 2), (u: 2, v: 1, w: 3)]
+/// ```
 pub fn gomory_hu<V, E>(edges: [E](u: V, v: V, w: Int)) -> List<(u: V, v: V, w: Int)>:
     var g = FlowGraph<V>()
     for e in E: g.add_both(edges[e].u, edges[e].v, edges[e].w)
@@ -1315,7 +1388,12 @@ pub fn gomory_hu<V, E>(edges: [E](u: V, v: V, w: Int)) -> List<(u: V, v: V, w: I
 /// cost: \(O(V³)\) time, \(O(V^2)\) memory
 /// order: `side` keyed by `V`
 /// traps: when `V` has fewer than two positions, or some `w` is negative
-/// example: `let es: [0..2](u: 0..3, v: 0..3, w: Int) = [(u: 0, v: 1, w: 2), (u: 1, v: 2, w: 3)]; global_min_cut(es) == (w: 2, side: [false, true, true])`
+/// ```cp
+/// domain E = 0..2
+/// domain V = 0..3
+/// let es: [E](u: V, v: V, w: Int) = [(u: 0, v: 1, w: 2), (u: 1, v: 2, w: 3)]
+/// global_min_cut(es) == (w: 2, side: [false, true, true])
+/// ```
 pub fn global_min_cut<V, E>(edges: [E](u: V, v: V, w: Int)) -> (w: Int, side: [V]Bool):
     let n = V.K
     assert n >= 2
@@ -1946,9 +2024,27 @@ pub struct Matching<L, R>:
 /// ties: the matching successive shortest paths finds, fewer pairs first
 /// order: `mate` keyed by `L`, `used` keyed by `E`
 /// traps: when `size` is negative, or a weight times `L.count + 1` overflows
-/// example: `let es: [0..3](l: 0..2, r: 0..2, w: Int) = [(l: 0, r: 0, w: 5), (l: 0, r: 1, w: 3), (l: 1, r: 0, w: 4)]; best_matching(es) == Some((total: 7, mate: [Some(1), Some(0)], used: [false, true, true]))`
-/// example: `let es: [0..3](l: 0..2, r: 0..2, w: Int) = [(l: 0, r: 0, w: 5), (l: 0, r: 1, w: 3), (l: 1, r: 0, w: 4)]; best_matching(es, size: Some(1)) == Some((total: 5, mate: [Some(0), None], used: [true, false, false]))`
-/// example: `let es: [0..3](l: 0..2, r: 0..2, w: Int) = [(l: 0, r: 0, w: 5), (l: 0, r: 1, w: 3), (l: 1, r: 0, w: 4)]; best_matching(es, size: Some(3)) == None and best_matching(es, min: true)!.total == 0`
+/// ```cp
+/// domain E = 0..3
+/// domain L = 0..2
+/// domain R = 0..2
+/// let es: [E](l: L, r: R, w: Int) = [(l: 0, r: 0, w: 5), (l: 0, r: 1, w: 3), (l: 1, r: 0, w: 4)]
+/// best_matching(es) == Some((total: 7, mate: [Some(1), Some(0)], used: [false, true, true]))
+/// ```
+/// ```cp
+/// domain E = 0..3
+/// domain L = 0..2
+/// domain R = 0..2
+/// let es: [E](l: L, r: R, w: Int) = [(l: 0, r: 0, w: 5), (l: 0, r: 1, w: 3), (l: 1, r: 0, w: 4)]
+/// best_matching(es, size: Some(1)) == Some((total: 5, mate: [Some(0), None], used: [true, false, false]))
+/// ```
+/// ```cp
+/// domain E = 0..3
+/// domain L = 0..2
+/// domain R = 0..2
+/// let es: [E](l: L, r: R, w: Int) = [(l: 0, r: 0, w: 5), (l: 0, r: 1, w: 3), (l: 1, r: 0, w: 4)]
+/// best_matching(es, size: Some(3)) == None and best_matching(es, min: true)!.total == 0
+/// ```
 pub fn best_matching<L, R, E>(
     edges: [E](l: L, r: R, w: Int),
     size: ?Int = None,
@@ -1988,8 +2084,20 @@ pub fn best_matching<L, R, E>(
 /// cost: \(O(L R)\)
 /// empty: `[]` when `L` is empty; `None` for every `l` whose list is empty
 /// traps: when a preference list names the same vertex twice
-/// example: `let pl: [0..2]List<0..2> = [[0, 1], [0, 1]]; let pr: [0..2]List<0..2> = [[1, 0], [1, 0]]; stable_matching(pl, pr) == [Some(1), Some(0)]`
-/// example: `let pl: [0..1]List<0..1> = [[0]]; let pr: [0..1]List<0..1> = [[]]; stable_matching(pl, pr) == [None]`
+/// ```cp
+/// domain L = 0..2
+/// domain R = 0..2
+/// let pl: [L]List<R> = [[0, 1], [0, 1]]
+/// let pr: [R]List<L> = [[1, 0], [1, 0]]
+/// stable_matching(pl, pr) == [Some(1), Some(0)]
+/// ```
+/// ```cp
+/// domain L = 0..1
+/// domain R = 0..1
+/// let pl: [L]List<R> = [[0]]
+/// let pr: [R]List<L> = [[]]
+/// stable_matching(pl, pr) == [None]
+/// ```
 pub fn stable_matching<L, R>(pref_l: [L]List<R>, pref_r: [R]List<L>) -> [L]?R:
     var rank: [R, L]Int = L.count
     for r in R:
@@ -2035,7 +2143,13 @@ pub fn stable_matching<L, R>(pref_l: [L]List<R>, pref_r: [R]List<L>) -> [L]?R:
 /// cost: \(O(E V)\)
 /// order: `color` keyed by `E`
 /// traps: never
-/// example: `let es: [0..3](l: 0..2, r: 0..2) = [(l: 0, r: 0), (l: 0, r: 1), (l: 1, r: 0)]; edge_coloring(es) == (colors: 2, color: [1, 0, 0])`
+/// ```cp
+/// domain E = 0..3
+/// domain L = 0..2
+/// domain R = 0..2
+/// let es: [E](l: L, r: R) = [(l: 0, r: 0), (l: 0, r: 1), (l: 1, r: 0)]
+/// edge_coloring(es) == (colors: 2, color: [1, 0, 0])
+/// ```
 pub fn edge_coloring<L, R, E>(edges: [E](l: L, r: R)) -> (colors: Int, color: [E]Int):
     var deg_l: [L]Int = 0
     var deg_r: [R]Int = 0
@@ -2156,7 +2270,15 @@ fn edge_colorings_use_max_degree_proper_colours():
 /// cost: \(O(r E (r + \mathit{oracle}))\) for answer size r, oracle the cost of one `can_add` or `can_swap`
 /// order: keyed by `E`
 /// traps: never
-/// example: `let es: [0..3](u: 0..3, v: 0..3) = [(u: 0, v: 1), (u: 1, v: 2), (u: 0, v: 2)]; let col: [0..3]0..2 = [0, 0, 1]; let lim: [0..2]Int = [1, 1]; matroid_intersection(GraphicMatroid(es), ColorMatroid(col, lim)) == [true, false, true]`
+/// ```cp
+/// domain E = 0..3
+/// domain V = 0..3
+/// domain C = 0..2
+/// let es: [E](u: V, v: V) = [(u: 0, v: 1), (u: 1, v: 2), (u: 0, v: 2)]
+/// let col: [E]C = [0, 0, 1]
+/// let lim: [C]Int = [1, 1]
+/// matroid_intersection<E>(GraphicMatroid(es), ColorMatroid(col, lim)) == [true, false, true]
+/// ```
 pub fn matroid_intersection<E, A: Matroid<E>, B: Matroid<E> > (
     a: A,
     b: B,
@@ -2219,7 +2341,14 @@ pub struct GraphicMatroid<V, E>:
     ///
     /// cost: \(O(1)\); each `rebuild` is \(O(V + E)\), a DFS of the chosen forest
     /// traps: never
-    /// example: `let es: [0..3](u: 0..3, v: 0..3) = [(u: 0, v: 1), (u: 1, v: 2), (u: 0, v: 2)]; var m = GraphicMatroid(es); m.rebuild([true, true, false]); not m.can_add(2) and m.can_swap(0, 2)`
+    /// ```cp
+    /// domain E = 0..3
+    /// domain V = 0..3
+    /// let es: [E](u: V, v: V) = [(u: 0, v: 1), (u: 1, v: 2), (u: 0, v: 2)]
+    /// var m = GraphicMatroid(es)
+    /// m.rebuild([true, true, false])
+    /// not m.can_add(2) and m.can_swap(0, 2)
+    /// ```
     pub fn new(edges: [E](u: V, v: V)) -> GraphicMatroid<V, E> =
         GraphicMatroid(
             edges,
@@ -2284,7 +2413,14 @@ pub struct ColorMatroid<E, C>:
     /// cost: \(O(1)\); each `rebuild` is \(O(E)\)
     /// empty: with no elements only the empty set exists and every query is `false`
     /// traps: when some `limit[c]` is negative
-    /// example: `let col: [0..3]0..2 = [0, 0, 1]; let lim: [0..2]Int = [1, 1]; var m = ColorMatroid(col, lim); m.rebuild([true, false, false]); not m.can_add(1) and m.can_add(2)`
+    /// ```cp
+    /// domain C = 0..2
+    /// let col: [0..3]C = [0, 0, 1]
+    /// let lim: [C]Int = [1, 1]
+    /// var m = ColorMatroid(col, lim)
+    /// m.rebuild([true, false, false])
+    /// not m.can_add(1) and m.can_add(2)
+    /// ```
     pub fn new(color: [E]C, limit: [C]Int) -> ColorMatroid<E, C>:
         for c in C: assert limit[c] >= 0, "`ColorMatroid` needs every `limit[c] >= 0`"
         ColorMatroid(color, limit, [E] _ => false, [C] _ => 0)
@@ -2311,8 +2447,18 @@ impl Matroid<E> for ColorMatroid<E, C>:
 /// ties: among cheapest circulations, the one `cancel_cycles` finds
 /// order: `flow` keyed by `E`
 /// traps: when some `lo > hi`
-/// example: `let es: [0..2](u: 0..2, v: 0..2, lo: Int, hi: Int, cost: Int) = [(u: 0, v: 1, lo: 0, hi: 2, cost: -3), (u: 1, v: 0, lo: 0, hi: 5, cost: 1)]; min_cost_circulation(es) == Some((cost: -4, flow: [2, 2]))`
-/// example: `let es: [0..1](u: 0..2, v: 0..2, lo: Int, hi: Int, cost: Int) = [(u: 0, v: 1, lo: 1, hi: 1, cost: 0)]; min_cost_circulation(es) == None`
+/// ```cp
+/// domain E = 0..2
+/// domain V = 0..2
+/// let es: [E](u: V, v: V, lo: Int, hi: Int, cost: Int) = [(u: 0, v: 1, lo: 0, hi: 2, cost: -3), (u: 1, v: 0, lo: 0, hi: 5, cost: 1)]
+/// min_cost_circulation(es) == Some((cost: -4, flow: [2, 2]))
+/// ```
+/// ```cp
+/// domain E = 0..1
+/// domain V = 0..2
+/// let es: [E](u: V, v: V, lo: Int, hi: Int, cost: Int) = [(u: 0, v: 1, lo: 1, hi: 1, cost: 0)]
+/// min_cost_circulation(es) == None
+/// ```
 pub fn min_cost_circulation<V, E>(
     arcs: [E](u: V, v: V, lo: Int, hi: Int, cost: Int)
 ) -> ?(cost: Int, flow: [E]Int):
