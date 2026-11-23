@@ -1232,13 +1232,27 @@ impl<'a> Taste<'a> {
                 return;
             }
             let seq = sequence(&it, p, x, None);
+            // `fold(f, ..)` hands `f` each element as is; when `f` takes
+            // another type (`?Pos` for a `Pos`), the call widened it, so it
+            // stays in a lambda.
+            // An untyped lambda can't tell the start value's type, so it
+            // writes both; it stays quiet on an optional parameter when the
+            // element type is not written.
+            let elem = it.trim();
+            let folded = match (param_type(self.src, f, 0), param_type(self.src, f, 1)) {
+                (Some(acc), Some(t)) if t != elem && is_type_name(elem) => {
+                    format!("({name}: {acc}, {p}: {elem}) => {v}")
+                }
+                (_, Some(t)) if t.starts_with('?') && !is_type_name(elem) => return,
+                _ => f.to_string(),
+            };
             let diag = Diagnostic::warning(
                 LOOP_REDUCTION.code,
                 self.pair_span(decl.span, next.span),
                 format!("a loop that only folds `{name}` through `{f}` is one `fold`"),
             )
             .with_help(format!(
-                "write `{seq}.fold({f}, {i})`; one call says what the loop computes, with the start value next to it"
+                "write `{seq}.fold({folded}, {i})`; one call says what the loop computes, with the start value next to it"
             ));
             self.push(&LOOP_REDUCTION, diag);
             return;
@@ -1527,4 +1541,32 @@ fn trim_end(src: &str, base: u32, span: Span) -> u32 {
         end -= 1;
     }
     end
+}
+
+/// The written type of parameter `n` of the file's `fn f`, if it declares one.
+fn param_type<'s>(src: &'s str, f: &str, n: usize) -> Option<&'s str> {
+    let at = src.find(&format!("fn {f}("))? + f.len() + 4;
+    let (mut depth, mut start, mut params) = (0usize, at, Vec::new());
+    for (i, c) in src[at..].char_indices() {
+        match c {
+            '(' | '[' | '<' => depth += 1,
+            ')' if depth == 0 => {
+                params.push(&src[start..at + i]);
+                break;
+            }
+            ')' | ']' | '>' => depth = depth.saturating_sub(1),
+            ',' if depth == 0 => {
+                params.push(&src[start..at + i]);
+                start = at + i + 1;
+            }
+            _ => {}
+        }
+    }
+    let ty = params.get(n)?.split_once(':')?.1;
+    Some(ty.split('=').next().unwrap_or(ty).trim())
+}
+
+fn is_type_name(s: &str) -> bool {
+    s.starts_with(|c: char| c.is_ascii_uppercase())
+        && s.chars().all(|c| c.is_ascii_alphanumeric() || c == '_')
 }

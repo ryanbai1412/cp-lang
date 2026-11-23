@@ -1880,3 +1880,16 @@ fn chmin_chmax_needs_a_scalar() {
         .collect();
     assert_eq!(found, ["if s < low: low = s"]);
 }
+
+/// A fold through a fn that widens the element (`Pos` into `?Pos`) is
+/// suggested as a typed lambda, which checks; `fold(merge, None)` would not.
+/// Rule: `lints/R9`.
+#[test]
+fn loop_reduction_keeps_a_widening_call_in_a_typed_lambda() {
+    let src = "domain Pos = 0..4\nfn merge(a: ?Pos, b: ?Pos) -> ?Pos = if let x = a: x else: b\nvar root: ?Pos = None\nfor p in Pos:\n    root = merge(root, p)\nprint(root)\n";
+    let found = format!("{:?}", crate::lint(src, &crate::Config::default()));
+    assert!(
+        found.contains("Pos.fold((root: ?Pos, p: Pos) => merge(root, p), None)"),
+        "{found}"
+    );
+}
