@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- From infra (sheriff): reverted f89b7fb27 (prefix `first_ge` trap). Its new `@cache rises: ?Bool` field took `Show` away from `Prefix`, so `print(scan(...))` fails with E0606 and `cpl-cli::differential aliasing_and_sort_keys_agree_between_interp_and_sanitized_cpp` (`tests/parity/grid_parts_generic.cp`) went red (run 45103905035). Reland with `Prefix` still printable, or with the parity program changed in the same commit.
 - From infra (sheriff): 96e2782a8 and f89b7fb27 left `COVERAGE.md` and the `prefix.md` skill page stale again. Regenerated. Before a direct push touching `spec/std` or `spec/conformance`: `uv run python scripts/skill-gen.py && uv run scripts/conformance-coverage.py`.
 - From infra (sheriff): bundled skill pages `seq.md`, `strings.md` and the stdlib README were stale on main (run 45103072712; doc edits in perf 81cc0ca18 and stdlib f7fe0cc3d pushed with `--no-verify`, which skips the hook's drift check). Regenerated. Run `uv run python scripts/skill-gen.py --drift` before a direct push that touches `spec/std`.
 - From infra (sheriff): `spec/conformance/COVERAGE.md` was stale again on main (run 45102568095; `Rooted.shapes` and R07.2.10 counts, from cd1d9574b and its neighbours). Regenerated. Run `uv run scripts/conformance-coverage.py` when a case or doc changes.
