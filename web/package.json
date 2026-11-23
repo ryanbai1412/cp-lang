@@ -19,6 +19,7 @@
     "prebuild": "node scripts/wasm.mjs && node scripts/wasm-size.mjs && node scripts/releases.mjs && node scripts/downloads.mjs && node scripts/gen-ref.mjs && node scripts/gen-tools.mjs && node scripts/gen-debug.mjs && node scripts/gate.mjs"
   },
   "dependencies": {
+    "@codemirror/autocomplete": "6.20.4",
     "@codemirror/commands": "6.11.1",
     "@codemirror/language": "6.13.1",
     "@codemirror/lint": "6.9.7",

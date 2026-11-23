@@ -18,6 +18,7 @@ import { useEffect, useRef } from 'react';
 import { cpl, type Diagnostic, started } from '@/lib/cpl';
 import { cn } from '@/lib/utils';
 import { cpLanguage } from './cp-language';
+import { intelligence } from './intelligence';
 
 const highlight = HighlightStyle.define([
   { tag: t.keyword, color: 'var(--cp-keyword)' },
@@ -146,6 +147,7 @@ export function CodeEditor({ value, onChange, onRun, readOnly, live = true, clas
           ...historyKeymap,
         ]),
         ...(live && !readOnly ? [edited, checkLinter(checkOnLoad, prefix), lintGutter()] : []),
+        ...(live ? [intelligence(prefix, !readOnly)] : []),
         EditorView.updateListener.of((u) => {
           if (u.docChanged) callbacks.current.onChange?.(u.state.doc.toString());
         }),

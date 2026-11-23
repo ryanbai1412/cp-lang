@@ -50,6 +50,9 @@ Deferred (milestone "what can wait"): interval DP and chapters past Div 2 C; tra
 
 ## General fixes owed
 
+- **Browser hover has no std doc text.** Instance: hover on a std item in a site editor shows its signature only, because the wasm build blanks std comments (decision 337). General fix: serve the doc text `cpl doc --format json` already produces as a lazily fetched file the wasm hover (or `intelligence.ts`) joins by item, so the size cut costs nothing. Owner: site, with tools for the hover hook.
+- **Docs and Learn code blocks are not editors.** Instance: `LiveCode` fences show highlighted HTML with Run, so they get no hover or completion. General fix: mount a read-only `CodeEditor` on a fence when the reader first focuses or hovers it, keeping static HTML for page weight. Owner: site.
+
 Each row: the instance, the general fix, and who owns it.
 
 - **Practice refs that our own lints flag** (5 of 21 refs; hints taught the flagged form). Made general in the site gate: every practice `ref.cp` must lint clean and every problem needs a hint that links to the docs, a chapter or a lint. Still owed (site): lint every runnable docs and Learn snippet the same way, with an allow marker for snippets that show the flagged form on purpose.

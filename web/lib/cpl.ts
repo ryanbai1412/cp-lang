@@ -12,6 +12,7 @@ type Worker = {
   stress(source: string, options?: StressOptions): Promise<StressOutcome>;
   build(source: string): Promise<BuildOutcome>;
   explain(source: string): Promise<ExplainOutcome>;
+  lsp(message: object): Promise<unknown[]>;
   terminate(): void;
 };
 
@@ -54,4 +55,5 @@ export const cpl = {
   stress: (src: string, options?: StressOptions) => call((w) => w.stress(src, options)),
   build: (src: string) => call((w) => w.build(src)),
   explain: (src: string) => call((w) => w.explain(src)),
+  lsp: (message: object) => call((w) => w.lsp(message)),
 };

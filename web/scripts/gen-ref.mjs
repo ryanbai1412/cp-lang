@@ -144,6 +144,7 @@ function linked(text, links) {
 
 function renderItem(item, level, prefix, parentDoc, index, module, ctx, shared = []) {
   const name = prefix ? `${prefix}.${item.name}` : item.name;
+  ctx.anchors.push([module, item.line, slug(name)]);
   const own = item.doc && item.doc !== parentDoc ? item.doc : '';
   const { facts, examples, prose } = splitDoc(own);
   const lines = [`${'#'.repeat(level)} \`${name}\``, '', '```cp', layoutSignature(item.signature), '```', ''];
@@ -218,6 +219,7 @@ for (const m of modules) for (const i of m.items) collect(i, m.name, '', []);
 const ctx = {
   ran: await runAll(sources),
   failing: [],
+  anchors: [],
   math(text, where, cost = false) {
     return checkMath(where, texSpans(text, { legacyCost: cost }));
   },
@@ -261,6 +263,12 @@ write(
   'meta.json',
   JSON.stringify({ title: 'Reference', pages: ['core', 'std', ...specDirs.slice(1).map(([d]) => d).filter((d) => existsSync(join(out, d)))] }, null, 2),
 );
+// Where each std item's page anchor starts, by module and source line, so
+// go to definition in a site editor can open the item's docs.
+const anchors = {};
+for (const [module, line, anchor] of ctx.anchors) (anchors[module] ??= []).push([line, anchor]);
+for (const list of Object.values(anchors)) list.sort((a, b) => a[0] - b[0]);
+writeFileSync(join(web, 'public/std-anchors.json'), JSON.stringify(anchors));
 const failingFile = join(web, 'node_modules/.cache/doc-examples-failing.txt');
 writeFileSync(failingFile, ctx.failing.join('\n') + '\n');
 console.log(`ref: ${specPages} spec pages, ${modules.length} library modules, ${index.length} items; examples: ${sources.size} programs, ${ctx.failing.length} shown static (listed in ${failingFile.slice(repo.length + 1)})`);

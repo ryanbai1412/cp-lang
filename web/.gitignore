@@ -10,5 +10,6 @@ generated/
 worker/.wrangler/
 content/docs/ref/
 public/trace.html
+public/std-anchors.json
 public/trace-demo.html
 AGENTS.md
