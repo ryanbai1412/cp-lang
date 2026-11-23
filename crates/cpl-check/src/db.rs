@@ -1678,8 +1678,11 @@ struct FileCtx<'d> {
     /// The top-level `var`s.
     vars: Option<std::collections::HashSet<String>>,
     /// Every impl in reach, by the type it is for, once a lookup needs it.
-    impl_names: Option<HashMap<String, Vec<(String, Option<String>)>>>,
+    impl_names: Option<ImplNames>,
 }
+
+/// Each impl's name and trait, by the type it is for.
+type ImplNames = HashMap<String, Vec<(String, Option<String>)>>;
 
 impl FileCtx<'_> {
     fn record(&mut self, key: &str, fingerprint: u64) {
