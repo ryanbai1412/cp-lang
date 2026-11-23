@@ -1,5 +1,5 @@
 -- CP Lang for Neovim 0.10+: the filetype, tree-sitter highlighting when the parser is
--- built, and `cpl lsp` on every .cp buffer.
+-- built, and `cpl lsp` on every .cp buffer, which formats it on write.
 -- Set vim.g.cpl_path when cpl is not on the PATH.
 vim.filetype.add({ extension = { cp = 'cp' } })
 
@@ -45,6 +45,17 @@ vim.api.nvim_create_autocmd('FileType', {
             init_options = { codeLens = true },
             root_dir = vim.fs.root(args.buf, { '.git' }) or vim.fs.dirname(file),
         }, { bufnr = args.buf })
+        -- `cpl fmt` on write, in the style of the nearest cp.toml.
+        -- Set vim.g.cpl_format_on_save = false to turn it off.
+        vim.api.nvim_create_autocmd('BufWritePre', {
+            buffer = args.buf,
+            group = vim.api.nvim_create_augroup('cplang_fmt_' .. args.buf, {}),
+            callback = function()
+                if vim.g.cpl_format_on_save == false then return end
+                if #vim.lsp.get_clients({ bufnr = args.buf, name = 'cpl' }) == 0 then return end
+                vim.lsp.buf.format({ bufnr = args.buf, name = 'cpl', timeout_ms = 2000 })
+            end,
+        })
         vim.api.nvim_create_autocmd({ 'BufEnter', 'BufWritePost', 'InsertLeave' }, {
             buffer = args.buf,
             group = vim.api.nvim_create_augroup('cplang_lens_' .. args.buf, {}),

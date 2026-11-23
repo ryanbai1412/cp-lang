@@ -70,6 +70,15 @@ check(vim.wait(10000, function() return vim.fn.jobwait({ vim.b[term].terminal_jo
 shown = table.concat(vim.api.nvim_buf_get_lines(term, 0, -1, false), '\n')
 check(shown:find('a.cp:3', 1, true) ~= nil, ':Cpl check showed ' .. vim.inspect(shown))
 
+-- Writing a .cp buffer formats it through the server.
+local fmt_file = dir .. '/b.cp'
+vim.fn.writefile({ 'let  x=1', 'print( x )' }, fmt_file)
+vim.cmd.edit(fmt_file)
+check(vim.wait(10000, function() return #vim.lsp.get_clients({ bufnr = 0, name = 'cpl' }) > 0 end), 'cpl lsp did not attach to b.cp')
+vim.cmd('write')
+local written = vim.fn.readfile(fmt_file)
+check(vim.deep_equal(written, { 'let x = 1', 'print(x)' }), 'b.cp was written as ' .. vim.inspect(written))
+
 -- With the parser built, a .cp buffer highlights through tree-sitter and the shared queries.
 local parser_dir = dir .. '/ts'
 vim.fn.mkdir(parser_dir .. '/parser', 'p')

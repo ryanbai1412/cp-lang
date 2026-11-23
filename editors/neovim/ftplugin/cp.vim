@@ -5,4 +5,6 @@ let b:did_ftplugin = 1
 
 setlocal commentstring=//\ %s comments=:///,://
 setlocal expandtab shiftwidth=4 softtabstop=4
-let b:undo_ftplugin = 'setlocal commentstring< comments< expandtab< shiftwidth< softtabstop<'
+" `gq` formats through `cpl fmt`, in the style of the nearest cp.toml.
+let &l:formatprg = get(g:, 'cpl_path', 'cpl') . ' fmt --stdin'
+let b:undo_ftplugin = 'setlocal commentstring< comments< expandtab< shiftwidth< softtabstop< formatprg<'
