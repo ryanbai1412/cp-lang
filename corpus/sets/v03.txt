@@ -101,6 +101,8 @@ cf2150a
 cf2150b
 cf2150c
 cf2150d
+cf2150e1
+cf2150e2
 cf2150f
 cf2150g
 cf2152a
@@ -192,6 +194,7 @@ cf2229c2
 cf2229d
 cf2229e
 cf2229f
+cf2229g
 cf2229i
 cf2237a
 cf2237b

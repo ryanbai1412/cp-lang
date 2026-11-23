@@ -11,7 +11,7 @@
 // collected once.
 use std.seq.{merge_sorted}
 
-enum Side: Left, Right
+enum Side:  Left | Right
 fn flip(s: Side) -> Side = match s:
     Left => Side.Right
     Right => Side.Left
@@ -35,8 +35,8 @@ fn records(path: List<Pos>) -> List<House>:
     out
 
 let side: [Side]List<House> = [Side] s => match s:
-    Left => records([p for p in (Pos.first..=x).rev])
-    Right => records([p for p in x..=Pos.last])
+    Left => records([p for p in (Pos.first!..=x).rev])
+    Right => records([p for p in x..=Pos.last!])
 let order = merge_sorted(
     [(h.v, Side.Left, i) for (i, h) in side[Side.Left].items if i > 0],
     [(h.v, Side.Right, i) for (i, h) in side[Side.Right].items if i > 0],
@@ -50,7 +50,7 @@ for (_, z, i) in order:
     var best = val[z][i - 1] + o.v * (h.d - (h.x - o.x)) + (h.pref - o.pref)
     let opp = flip(z)
     let met = val[opp].len
-    let upto = bsearch_first(crossed[opp]..met, j => side[opp][j].v > h.v) ?? met
+    let upto = (crossed[opp]..met).first_true(j => side[opp][j].v > h.v) ?? met
     for j in crossed[opp]..upto:
         let op = side[opp][j]
         if op.d + h.x + op.x <= h.d:

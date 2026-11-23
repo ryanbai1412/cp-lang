@@ -46,11 +46,11 @@ fn has(v: Val, lo: Pos.bounds, hi: Pos.bounds) -> Bool:
     read<Int>() == 1
 
 var copies: [Val]Copies = Copies.Both
-var (lo, hi) = (Pos.bounds.first, Pos.bounds.last)
+var (lo, hi) = (Pos.bounds.first!, Pos.bounds.last!)
 var alive = [v for v in Val]
 
 while alive.len > 1:
-    let mid = Pos.bounds.nth((lo.ord + hi.ord) / 2)
+    let mid = Pos.cuts.nth((lo.ord + hi.ord) / 2)
     var left: [Val]Copies = Copies.None
     for v in alive:
         left[v] = if not has(v, lo, mid):
