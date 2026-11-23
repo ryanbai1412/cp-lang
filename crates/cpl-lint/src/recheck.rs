@@ -1,9 +1,13 @@
 //! Findings that stand only if their fix leaves the checker's verdict
 //! alone. `redundant_prelude_import` (L0208) says a `use` changes nothing;
 //! the file is checked with the `use` dropped, and the finding goes when
-//! any error appears, disappears or changes.
+//! any error appears, disappears or changes. `index_only_loop` (L0505)
+//! goes the same way when the loop item it walks is lent and the body
+//! stores it (E0603).
 
-use crate::REDUNDANT_PRELUDE_IMPORT;
+use crate::{INDEX_ONLY_LOOP, REDUNDANT_PRELUDE_IMPORT};
+
+const RECHECKED: [cpl_diag::Code; 2] = [REDUNDANT_PRELUDE_IMPORT.code, INDEX_ONLY_LOOP.code];
 use cpl_diag::{Diagnostic, Severity};
 
 /// The errors of `src` as `(code, message)`, in a stable order: spans move
@@ -23,7 +27,7 @@ fn errors(diags: Vec<Diagnostic>) -> Vec<(String, String)> {
     out
 }
 
-/// `diags` less the L0208 findings whose fix changes how `src` checks.
+/// `diags` less the [`RECHECKED`] findings whose fix changes how `src` checks.
 pub(crate) fn recheck(diags: &mut Vec<Diagnostic>, src: &str) {
     let mut db = None;
     keep_if_unchanged(diags, src, |text| {
@@ -36,7 +40,7 @@ pub(crate) fn keep_if_unchanged(
     src: &str,
     mut check: impl FnMut(&str) -> Vec<(String, String)>,
 ) {
-    let rechecked = |d: &Diagnostic| d.code == REDUNDANT_PRELUDE_IMPORT.code && !d.fixes.is_empty();
+    let rechecked = |d: &Diagnostic| RECHECKED.contains(&d.code) && !d.fixes.is_empty();
     let found: Vec<Diagnostic> = diags.iter().filter(|d| rechecked(d)).cloned().collect();
     if found.is_empty() {
         return;

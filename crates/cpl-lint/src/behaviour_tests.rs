@@ -75,3 +75,13 @@ fn a_keep_where_a_value_is_wanted_changes_its_place() {
     let diags = crate::lint(src, &crate::Config::default());
     assert!(diags.iter().all(|d| d.code.0 != "L0201"), "{diags:?}");
 }
+
+#[test]
+fn an_index_loop_that_stores_its_item_keeps_the_index() {
+    let src = "let names = [\"b\", \"a\"]\nvar first = names[0]\nfor i in 0..names.len:\n    if names[i] < first: first = names[i]\nprint(first)\n";
+    let diags = crate::lint(src, &crate::Config::default());
+    assert!(
+        diags.iter().all(|d| d.code != crate::INDEX_ONLY_LOOP.code),
+        "{diags:?}"
+    );
+}
