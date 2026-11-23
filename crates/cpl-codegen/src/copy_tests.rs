@@ -116,8 +116,11 @@ fn a_comprehension_reserves_its_source_size() {
         "fn flip(xs: List<Int>) -> List<Int> = [9 - x for x in xs.rev]\n",
         "let n: 1..=9 = read()\n",
         "let sq = [i * i for i in 0..n]\n",
-        "print(flip(sq).len, [x for x in sq if x > 1].len)\n",
+        "domain D = 0..n\n",
+        "let ds = [n for _ in D]\n",
+        "print(flip(sq).len, [x for x in sq if x > 1].len, ds.len)\n",
     ));
+    assert!(cpp.contains("(size_t)std::max<ll>(0, D_len - 0)"), "{cpp}");
     assert!(cpp.contains(".reserve(xs.size());"), "{cpp}");
     assert!(
         cpp.contains(".reserve((size_t)std::max<ll>(0, n - 0));"),
@@ -127,7 +130,7 @@ fn a_comprehension_reserves_its_source_size() {
         cpp.contains(".reserve(std::min<size_t>(sq.size(), 16));"),
         "{cpp}"
     );
-    assert_eq!(cpp.matches(".reserve(").count(), 3, "{cpp}");
+    assert_eq!(cpp.matches(".reserve(").count(), 4, "{cpp}");
 }
 
 #[test]

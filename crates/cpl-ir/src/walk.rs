@@ -326,10 +326,11 @@ pub fn path_root(e: &Expr) -> Option<(bool, usize)> {
     }
 }
 
-/// A literal or a variable: nothing that runs code.
+/// A literal or a variable (a domain's size is one): nothing that runs code.
 pub fn is_simple(e: &Expr) -> bool {
     match &e.kind {
         ExprKind::Int(_)
+        | ExprKind::DomainLen(_)
         | ExprKind::Char(_)
         | ExprKind::Bool(_)
         | ExprKind::Local(_)

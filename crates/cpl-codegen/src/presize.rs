@@ -35,6 +35,7 @@ impl<'p> Emitter<'p> {
         let loc = ElemLoc::Local(self.current_scope(), *slot);
         if !empty
             || !matches!(init.ty, Ty::List(_))
+            || (self.closure_id.is_none() && self.devirt.dead_local(self.fn_id, *slot))
             || self.reused.contains(slot)
             || (self.pushing == Some(*slot) && self.closure_id.is_none())
             || self.elem_layout(loc).is_some()
