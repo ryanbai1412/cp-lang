@@ -60,7 +60,7 @@ for _ in 0..q:
         ans = hit
     else:
         for a in members[r1]:
-            let s = t.sub(a)
-            ans += before(r2, s.end.to_idx) - before(r2, s.start.to_idx)
+            let (lo, hi) = t.sub(a).ends
+            ans += before(r2, hi) - before(r2, lo)
         seen[(r1, r2)] = ans
     print(ans)

@@ -28,7 +28,6 @@ ioi05p2
 ioi05p6
 ioi07p2
 ioi08p1
-ioi09p7
 ioi11p2
 ioi13p3io
 ioi13p4
@@ -38,7 +37,6 @@ ioi15p4
 ioi18p1
 ioi18p3
 mccc4j5
-nccc9s4
 noi03p2
 noi07p4
 noi10p4
@@ -57,6 +55,5 @@ noip22p4
 sac22cc3p5
 sdoi17r1p2
 sdoi17r1p6
-sdoi17r2p4
 ucup4s24f
 utso15p5

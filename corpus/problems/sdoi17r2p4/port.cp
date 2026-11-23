@@ -28,15 +28,15 @@ for _ in 0..tests:
 
     let roads: [Road](u: Town, v: Town, cost: 1..=5e4, word: Word) = read(gen: reaching)
     let letters: [Letter](u: Word, v: Word, ch: 1..=2e4) = read(gen: random_tree)
-    let words = Rooted(letters, Word.first)
+    let words = Rooted(Graph.undirected(letters), Word.first!)
 
     // The roads touching each town, in dictionary order of their words.
     // Then the common prefix of any two is the shortest one shared by
     // neighbours anywhere between them.
     var ends: [Town]List<(at: Int, road: Road, leaving: Bool)> = []
     for r in Road:
-        ends[roads[r].u].push((words.pos(roads[r].word), r, true))
-        ends[roads[r].v].push((words.pos(roads[r].word), r, false))
+        ends[roads[r].u].push((words.pos(roads[r].word).ord, r, true))
+        ends[roads[r].v].push((words.pos(roads[r].word).ord, r, false))
 
     // A shortest-path graph over the roads. To avoid an arc for every pair
     // of roads at a town, four chains run along the town's sorted roads:
@@ -48,7 +48,7 @@ for _ in 0..tests:
     fn taken(r: Road) -> Node: Node(r.idx)
     fn link(slot: Int, chain: 0..=3) -> Node: Node(m + 4 * slot + chain)
     let start = Node(9 * m)
-    var arcs: List<(u: Node, v: Node, cost: Int)> = []
+    var arcs: List<(u: Node, v: Node, w: Int)> = []
     var slot = 0
     for v in Town:
         let here = ends[v].sorted()
@@ -72,7 +72,9 @@ for _ in 0..tests:
                 arcs.push((link(s + 1, 1), link(s, 3), shared))
         slot += here.len
 
-    let dist = dijkstra(Graph.directed(arcs), start)
+    let es: [0..arcs.len](u: Node, v: Node, w: Int) = [0..arcs.len] i => arcs[i]
+    let g = Graph.directed(es)
+    let dist = dijkstra(g, from: [(start, 0)])
     var best: [Town]?Int = None
     for r in Road:
         if let d = dist[taken(r)]: best[roads[r].v] min= d

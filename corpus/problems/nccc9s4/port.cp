@@ -10,13 +10,13 @@ let a: [0..n](1..=n) = read()
 domain Q = 0..q
 let qs: [Q](l: 1..=n, r: 1..=n) = read()
 
-let vals = compress(a)
-let id: [0..n]vals.D = [0..n] i => vals.at(a[i])
+let (domain C, vals) = compress(a)
+let id: [0..n]C = [0..n] i => vals.at(a[i])
 var ans: [Q]Int = 0
 
-if vals.D.K <= HEAVY:
-    var best: [Q](Int, vals.D) = (0, vals.D.first)
-    for v in vals.D:
+if C.count <= HEAVY:
+    var best: [Q](Int, C) = (0, C.first!)
+    for v in C:
         let pre = prefix([0..n] i => Int(id[i] == v))
         for qi in Q:
             let (l, r) = qs[qi]
@@ -25,11 +25,11 @@ if vals.D.K <= HEAVY:
 else:
     let nb = n / B + 1
     var buckets: [0..=nb]List<(l: Int, r: Int, qi: Q)> = []
-    var cnt: [vals.D]Int = 0
+    var cnt: [C]Int = 0
     for qi in Q:
         let (l, r) = (qs[qi].l - 1, qs[qi].r - 1)
         if r - l + 1 <= B:
-            var cur = (0, vals.D.first)
+            var cur = (0, C.first!)
             for j in l..=r:
                 let v = id[j]
                 cnt[v] += 1
@@ -42,7 +42,7 @@ else:
     for bi in 0..=nb if not buckets[bi].is_empty:
         buckets[bi].sort(by: e => e.r)
         cnt.fill(0)
-        var base = (0, vals.D.first)
+        var base = (0, C.first!)
         let mid = bi * B
         var cr = mid - 1
         for (l, r, qi) in buckets[bi]:
