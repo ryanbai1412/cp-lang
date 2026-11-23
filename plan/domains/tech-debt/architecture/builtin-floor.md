@@ -57,3 +57,7 @@ here with the measured ratio.
   The body divides (`cpl::ediv`) and goes through `cpl::fsqrt`/`cpl::to_int`; the runtime helper
   multiplies. Next try: a body that multiplies, then re-measure. Also, `x.isqrt` needs a
   `self` parameter, and that change may account for the conformance drop (not yet checked).
+  Retry with a multiplying body (no division): 0.25-0.33 s against 0.16-0.19 s for the builtin,
+  interleaved runs on a noisy machine (about 1.7-2x), so it stays a builtin. What is left is the checked
+  `F64 -> Int` conversion (`cpl::to_int(double)` range check) and `std::floor`; the runtime helper
+  casts. Blocked on perf: a conversion whose range is proven costs nothing (request in perf worklog).
