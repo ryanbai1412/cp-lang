@@ -45,12 +45,12 @@ print(a.sum())
 
 A domain implements the `Index` and `Seq` traits:
 
-- `V.count` (and `V.K`) is the number of elements; `V.first` and `V.last` are the endpoints as `?V` (`none` for an empty domain; unwrap with `!`).
+- `V.count` (and `V.K`) is the number of elements; `V.first` and `V.last` are the endpoints as `?V` (`None` for an empty domain; unwrap with `!`).
 - `v.to_idx` converts to `0..V.count` and `V.from_idx(i) -> ?V` converts back safely.
-- `v + k -> ?V` and `v - k -> ?V` step by an integer offset and return `none` past the ends; `b - a -> Int` is the signed distance; `v.cyc(k) -> V` wraps cyclically.
+- `v + k -> ?V` and `v - k -> ?V` step by an integer offset and return `None` past the ends; `b - a -> Int` is the signed distance; `v.cyc(k) -> V` wraps cyclically.
 - Step along a named domain in either direction with `for v in V by k:` and `for v in V.rev by k:`.
 
-Array endpoints are **values**, not domain indices: `a.first` and `a.last` return `?T`, while `V.first` and `V.last` are optional indices. Like lists, empty arrays return `none`; unwrap with `a.first!` or `a.last!` only when nonempty. An unwrapped endpoint is also a mutable place, so `a.last! += 1` works on a mutable array or list:
+Array endpoints are **values**, not domain indices: `a.first` and `a.last` return `?T`, while `V.first` and `V.last` are optional indices. Like lists, empty arrays return `None`; unwrap with `a.first!` or `a.last!` only when nonempty. An unwrapped endpoint is also a mutable place, so `a.last! += 1` works on a mutable array or list:
 
 ```cp
 domain V = 5..8
@@ -248,11 +248,11 @@ print(dp[s], dp[V(2), K(2)], s.0.ord, State.len)
 
 ```cp
 domain P = 1..=4
-var a: [P]?(1..=4) = none
+var a: [P]?(1..=4) = None
 a[P(2)] = 4
 a[P(4)] = 1
 let at = a.inverse()
-print(at[1]!.label, yes(at[2] == none), at[4]!.label)
+print(at[1]!.label, yes(at[2] == None), at[4]!.label)
 ```
 
 ## Algebraic `Index` and escape hatches

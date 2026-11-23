@@ -1,6 +1,6 @@
 ---
 title: Run length
-description: "Level A. Teaches building a Str with push and interpolation."
+description: "Level A. Teaches runs() and building a Str with interpolation."
 ---
 
 You are given a word of lowercase letters, at most 10⁵ long. Replace each maximal run of equal letters by the letter and the run's length. For `aaabcc` print `a3b1c2`.
@@ -13,9 +13,9 @@ You are given a word of lowercase letters, at most 10⁵ long. Replace each maxi
 
 <Judge id="run-length">
 
-- `var out = ""` is a growable buffer: `out.push(c)` appends a `Char`, `out += t` appends a `Str`.
-- `"{j - i}"` turns a number into text; integers have no `.to_str()`.
-- The inner `while` finds the end of the run, and `i = j` jumps past it, so the whole scan is O(n).
+- [`s.runs()`](/docs/ref/std/seq#runs) walks each maximal stretch of equal letters as a slice of `s`: `r.first!` is its letter and `r.len` its length.
+- `"{r.first!}{r.len}"` turns the letter and the count into text; integers have no `.to_str()`.
+- [`"".join(...)`](/docs/ref/std/strings#join) on `[... for r in s.runs()]` glues the pieces together, and the whole scan is O(n).
 - [Strings and output](/learn/read/strings-and-output) covers `Str`, `Char` and interpolation.
 
 </Judge>

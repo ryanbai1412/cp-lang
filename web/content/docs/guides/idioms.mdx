@@ -63,7 +63,7 @@ Never invent `-1` or `1e18` sentinels, and never initialize `var best = 0` befor
 
 ```cp
 fn best_even(xs: List<Int>) -> ?Int:
-    var best: ?Int = none
+    var best: ?Int = None
     for x in xs if x % 2 == 0:
         best max= x
     best

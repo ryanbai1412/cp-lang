@@ -19,7 +19,7 @@ for v in V:
 print(total)
 ```
 
-Range-typed storage uses the smallest fitting integer width while arithmetic runs in 64-bit `Int`. `?Int` represents every 64-bit `Int` plus `none`, and the compiler can pack optional layouts when proven safe rather than reserving `Int.MIN`. Use `U64`, `I128`, and `F64` when you specifically need unsigned 64-bit, 128-bit, or floating-point arithmetic.
+Range-typed storage uses the smallest fitting integer width while arithmetic runs in 64-bit `Int`. `?Int` represents every 64-bit `Int` plus `None`, and the compiler can pack optional layouts when proven safe rather than reserving `Int.MIN`. Use `U64`, `I128`, and `F64` when you specifically need unsigned 64-bit, 128-bit, or floating-point arithmetic.
 
 When you want a plain integer-indexed array without introducing a nominal domain, write the bounds directly and reset with `.fill`:
 
@@ -38,21 +38,21 @@ In CP Lang, `cnt.fill(0)` resets the entire array in place (and `seen.fill(none)
 
 ## Missing is a value
 
-`?T` means “a `T`, or `none`”. `??` supplies a fallback, `if let` binds a present value, and `opt!` unwraps when you know it exists. A missing answer is not `-1`, and an unreachable distance is not `1e18`.
+`?T` means “a `T`, or `None`”. `??` supplies a fallback, `if let` binds a present value, and `opt!` unwraps when you know it exists. A missing answer is not `-1`, and an unreachable distance is not `1e18`.
 
 ```cp input="4\n3 8 5 2\n"
 let n: 1..=100 = read()
 domain V = 1..=n
 let a: [V]Int = read()
 
-var best: ?Int = none
+var best: ?Int = None
 for v in V:
     if a[v] % 2 == 0:
         best = max(best ?? a[v], a[v])
 print(best ?? -1)
 ```
 
-`?Int` and `?F64` lift arithmetic (`+`, `-`, `*`, `/`, `%`, `**`, unary `-`/`+`) and bitwise (`&`, `|`, `^`, `<<`, `>>`, `~`) operators by absorbing `none`, while `min`, `max`, `min=`, and `max=` skip it, so `dist[v] min= dist[u] + w` is a complete relaxation step with no `INF`. `min(a, b)` returns a definite `T` as soon as one side is a plain `T`. Compound `+=`, `-=`, `?V + k`, and `sum` never lift over `?T`; write `dp[u] = dp[u] + w` when you want absorbing addition. When `none` means failure rather than infinity, test it explicitly instead of relying on `min=` to skip it. Stepping a domain position by an integer (`v + 1`, `v - 1`, `v + k`) also returns `?V`, so stepping off either end can never silently read out of bounds. Neither `?T` nor `Mod<P>` implements `Ord`; when sorting records with optional fields, place `none` explicitly (`by: x => (x.d == none, x.d ?? 0)`).
+`?Int` and `?F64` lift arithmetic (`+`, `-`, `*`, `/`, `%`, `**`, unary `-`/`+`) and bitwise (`&`, `|`, `^`, `<<`, `>>`, `~`) operators by absorbing `None`, while `min`, `max`, `min=`, and `max=` skip it, so `dist[v] min= dist[u] + w` is a complete relaxation step with no `INF`. `min(a, b)` returns a definite `T` as soon as one side is a plain `T`. Compound `+=`, `-=`, `?V + k`, and `sum` never lift over `?T`; write `dp[u] = dp[u] + w` when you want absorbing addition. When `None` means failure rather than infinity, test it explicitly instead of relying on `min=` to skip it. Stepping a domain position by an integer (`v + 1`, `v - 1`, `v + k`) also returns `?V`, so stepping off either end can never silently read out of bounds. Neither `?T` nor `Mod<P>` implements `Ord`; when sorting records with optional fields, place `None` explicitly (`by: x => (x.d == None, x.d ?? 0)`).
 
 ## Functions, nested helpers, and explicit `mut`
 

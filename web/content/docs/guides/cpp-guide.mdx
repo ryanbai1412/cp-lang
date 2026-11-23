@@ -72,7 +72,7 @@ In C++, `INF = 1e18` is a constant source of `INF + w` overflow and forgotten `i
 
 ```cp
 domain V = 1..=4
-var dist: [V]?Int = none
+var dist: [V]?Int = None
 dist[V(1)] = 0
 for (u, v, w) in [(V(1), V(2), 5), (V(2), V(4), 3), (V(1), V(4), 10)]:
     if let d = dist[u]:

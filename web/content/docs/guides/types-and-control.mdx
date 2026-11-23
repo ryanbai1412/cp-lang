@@ -58,7 +58,7 @@ Optional types replace sentinel constants like `1e18` or `-1` across the entire 
 ```cp
 domain V = 1..=3
 let (src, v) = (V(1), V(3))
-var dist: [V]?Int = none
+var dist: [V]?Int = None
 dist[src] = 0  // bare T lifts implicitly into ?T
 let via = dist[src] + 7
 if dist[v] min= via: print("improved")  // update and test whether the value changed
@@ -66,35 +66,35 @@ let d = dist[v] ?? -1                   // fallback; use parens when mixing ?? w
 fn maybe() -> ?Int: 7
 fn next_value() -> ?Int:
     let opt = maybe()
-    let u = opt ?? return none  // diverging RHS (return / break / continue) allowed
-    let x = opt!                // unwrap (traps on none; elided when flow-proven)
-    let y = maybe()?            // early-returns none from a fn returning ?U
+    let u = opt ?? return None  // diverging RHS (return / break / continue) allowed
+    let x = opt!                // unwrap (traps on None; elided when flow-proven)
+    let y = maybe()?            // early-returns None from a fn returning ?U
     u + x + y
 print(next_value() ?? -1)
 ```
 
 ### Lifting rules and guardrails
 
-- Arithmetic (`+`, `-`, `*`, `/`, `%`, `**`, unary `-`/`+`) and bitwise (`&`, `|`, `^`, `<<`, `>>`, `~`) operators lift over `?Int` and `?F64`, absorbing `none` (`none + w` and `none * 2` are `none`; division by zero still traps when both sides are present).
-- `min(a, b)` and `max(a, b)` skip `none`: `(T, ?T) -> T` and `(?T, ?T) -> ?T`. For three or more values, pass a list (`min([a, b, c])`).
-- `x min= cand` and `x max= cand` skip when `cand` is `none` — even when `x` is a plain `Int`!
-- Both updates return `Bool`: `true` exactly when the destination changes. Use `if best[v] min= via:` to enqueue a graph relaxation or update a DP witness only on improvement. Ties and `none` candidates return `false`; a present candidate improves an empty destination.
+- Arithmetic (`+`, `-`, `*`, `/`, `%`, `**`, unary `-`/`+`) and bitwise (`&`, `|`, `^`, `<<`, `>>`, `~`) operators lift over `?Int` and `?F64`, absorbing `None` (`none + w` and `none * 2` are `None`; division by zero still traps when both sides are present).
+- `min(a, b)` and `max(a, b)` skip `None`: `(T, ?T) -> T` and `(?T, ?T) -> ?T`. For three or more values, pass a list (`min([a, b, c])`).
+- `x min= cand` and `x max= cand` skip when `cand` is `None` — even when `x` is a plain `Int`!
+- Both updates return `Bool`: `true` exactly when the destination changes. Use `if best[v] min= via:` to enqueue a graph relaxation or update a DP witness only on improvement. Ties and `None` candidates return `false`; a present candidate improves an empty destination.
 - `==` and `!=` lift `T` to `?T` automatically (`if dq.last != x:`), while `<`, `<=`, `>`, `>=` never lift over `?T`.
-- `p ??= init` initializes `p` lazily when `none` and lends it mutably: `(adj[k] ??= []).push(x)`.
+- `p ??= init` initializes `p` lazily when `None` and lends it mutably: `(adj[k] ??= []).push(x)`.
 - `?V + k`, `sum(gen)`, and compound `+=`/`-=` **never** lift over `?T`.
-- Neither `?T` nor `Mod<P>` implements `Ord`. To sort optionals, pass an explicit key such as `by: x => (x.d == none, x.d ?? 0)`.
-- When `none` means *invalid/impossible* rather than *+inf/-inf*, check explicitly instead of relying on `min=` skipping it:
+- Neither `?T` nor `Mod<P>` implements `Ord`. To sort optionals, pass an explicit key such as `by: x => (x.d == None, x.d ?? 0)`.
+- When `None` means *invalid/impossible* rather than *+inf/-inf*, check explicitly instead of relying on `min=` skipping it:
 
 ```cp
 fn solve(child: Int) -> ?Int:
-    if child >= 0: child else: none
+    if child >= 0: child else: None
 
-var best: ?Int = none
+var best: ?Int = None
 for child in [3, -1, 4]:
     if let hit = solve(child):
         best min= hit
     else:
-        best = none
+        best = None
         break
 print(best, none: "-1")
 ```
@@ -194,8 +194,8 @@ fn or_else<T>(a: ?T, lazy d: () -> T) -> T:
 
 fn solve(k: Int) -> Int = k * k
 
-let cached: ?Int = none
-print(or_else(cached, solve(4)))  // `solve(4)` runs only because `cached` is none
+let cached: ?Int = None
+print(or_else(cached, solve(4)))  // `solve(4)` runs only because `cached` is None
 ```
 
 A lambda `() => e` is accepted too.
@@ -246,7 +246,7 @@ print(total, evens)
 
 CP Lang keeps its surface small enough to remember during a contest — **34 keywords total**:
 
-- **Everyday keywords (30, including 3 literals):** `let`, `var`, `const`, `fn`, `struct`, `enum`, `domain`, `type`, `use`, `pub`, `if`, `elif`, `else`, `for`, `while`, `in`, `match`, `return`, `break`, `continue`, `and`, `or`, `not`, `assert`, `mut`, `self`, `unchecked`, `true`, `false`, `none`.
+- **Everyday keywords (30, including 3 literals):** `let`, `var`, `const`, `fn`, `struct`, `enum`, `domain`, `type`, `use`, `pub`, `if`, `elif`, `else`, `for`, `while`, `in`, `match`, `return`, `break`, `continue`, `and`, `or`, `not`, `assert`, `mut`, `self`, `unchecked`, `true`, `false`, `None`.
 - **Library-author keywords (4):** `trait`, `impl`, `lends`, `yield`.
 - **Contest decorators (7) + file directive (1):** `@memo`, `@alt`, `@tags`, `@gen`, `@check`, `@interactor`, `@grader`, plus `@!multitest`.
 - **Library-author decorators (4):** `@get`, `@test`, `@law`, `@on_unimplemented`. A trait's `@on_unimplemented("`\{T\}` can't be hashed; ...")` is the help a call shows when a type argument `T` has no `impl` of it.
