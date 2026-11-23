@@ -43,7 +43,8 @@ fn route(i: V, j: V) -> List<V>:
     let meets = [t.lca(i, j), t.lca(i, far), t.lca(j, far)]
     let mid = meets[meets.argmax(by: x => t.depth(x))!]
     let stem_len = half - dist + 1
-    let stem = t.path(mid, far)[..stem_len]
+    let route = t.path(mid, far)
+    let stem = route[..stem_len]
     let out = if mid == j: 1 else: 0
     let there = [x for (z, x) in stem.items if z % 2 == out]
     let back = [x for (z, x) in stem.items.rev if z % 2 != out]
