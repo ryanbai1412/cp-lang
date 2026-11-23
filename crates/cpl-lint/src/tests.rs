@@ -877,6 +877,13 @@ fn repeated_literal_from_noip19p4() {
     // different inputs are separate facts; `-1e9..=1e9` is one; small numbers repeat.
     let bounds = "let m: 0..=500_000 = read()\nlet q: 0..=500_000 = read()\nlet x: -1e9..=1e9 = read()\nprint(m + 1000, q - 1000, x + 1000)\n";
     assert_eq!(taste_codes(bounds), Vec::<&str>::new());
+    // corpus/newcomer/n71_ternary.cp: a repeated bound is not a modulus.
+    let bound = "let lo = -1000000000\nlet hi = 1000000000\nprint(lo, hi)\n";
+    assert!(only(bound)
+        .help
+        .as_deref()
+        .unwrap()
+        .starts_with("name it once (`const LIM = 1000000000`"));
 }
 
 #[test]

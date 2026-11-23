@@ -20,6 +20,8 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
         /// `@test` functions: their literals are test data, not facts the
         /// program keeps.
         tests: Vec<Span>,
+        /// Values written as the right of a `%`: a modulus, named `P`.
+        moduli: Vec<i128>,
     }
     impl Visitor for Ints {
         fn stmt(&mut self, stmt: &Stmt) {
@@ -59,6 +61,16 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
                     self.input_types.extend(types);
                 }
             }
+            if let ExprKind::Binary {
+                op: BinOp::Rem,
+                rhs,
+                ..
+            } = &expr.kind
+            {
+                if let ExprKind::Int(v) = crate::walk::unparen(rhs).kind {
+                    self.moduli.push(v);
+                }
+            }
             if let ExprKind::Int(v) = expr.kind {
                 if v >= 1000 {
                     self.seen
@@ -74,6 +86,7 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
         seen: HashMap::new(),
         input_types: Vec::new(),
         tests: Vec::new(),
+        moduli: Vec::new(),
     };
     file.walk(&mut ints, |i, base| i.base = base);
     let skipped: Vec<Span> = ints.input_types.into_iter().chain(ints.tests).collect();
@@ -93,6 +106,11 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
         let line = lines.line_col(spans[0].start).line + 1;
         let span = spans[1];
         let text = span.text(file.src);
+        let named = if ints.moduli.contains(&value) {
+            "P"
+        } else {
+            "LIM"
+        };
         let diag = Diagnostic::warning(
             REPEATED_LITERAL.code,
             span,
@@ -102,7 +120,7 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
             ),
         )
         .with_help(format!(
-            "name it once (`const P = {text}`, a domain, or a type alias) and use the name"
+            "name it once (`const {named} = {text}`, a domain, or a type alias) and use the name: copies of one fact can drift apart"
         ));
         out.push(Finding {
             lint: &REPEATED_LITERAL,
