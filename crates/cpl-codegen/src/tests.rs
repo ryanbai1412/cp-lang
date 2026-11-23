@@ -1405,6 +1405,12 @@ print(a.len)
 }
 
 #[test]
+fn items_of_a_slice_keep_its_list_narrow() {
+    let out = cpp("var a: List<0..500_000> = [1, 2]\nfor (i, x) in a[..1].items: print(i + x)\n");
+    assert!(out.contains("std::vector<uint32_t> a"), "{out}");
+}
+
+#[test]
 fn range_typed_stores_emit_check_only_when_unproven() {
     let unchecked_store = cpp("struct S:
     var a: 0..=1_000_000
