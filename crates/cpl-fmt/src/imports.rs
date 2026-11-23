@@ -47,7 +47,7 @@ pub(crate) fn sort_use_runs(src: &str) -> String {
     let mut i = 0;
     while i < uses.len() {
         let (line, col, _) = uses[i];
-        let mut j = i + 1;
+        let mut j = i;
         while j < uses.len() && uses[j].0 == line + (j - i) && uses[j].1 == col {
             j += 1;
         }

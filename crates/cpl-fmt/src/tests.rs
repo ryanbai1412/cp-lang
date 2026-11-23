@@ -690,6 +690,30 @@ fn sorts_a_run_of_use_lines_std_first() {
     assert_eq!(fmt(src), want);
 }
 
+/// Each run of `use` lines is sorted on its own, wherever it starts.
+/// Rule: `lints/R22`, handbook/guidelines/lints-checklist.md#r22-formatting-is-idempotent-and-keeps-meaning.
+#[test]
+fn sorts_each_run_of_use_lines_where_it_is() {
+    let src = "let n = 1\nuse std.seq\nuse lib.a\nuse std.dsu\nprint(n)\nuse std.tree\nuse lib.b\nuse std.bag\nprint(2)\n";
+    let want = "let n = 1\nuse std.dsu\nuse std.seq\nuse lib.a\nprint(n)\nuse std.bag\nuse std.tree\nuse lib.b\nprint(2)\n";
+    assert_eq!(fmt(src), want);
+}
+
+/// A `use` with nothing after it is left for the parser to report.
+#[test]
+fn a_bare_use_line_is_not_sorted() {
+    let _ = format("use\nuse std.seq\n");
+}
+
+/// The check after sorting refuses a result that changed a line, and its
+/// error says what went wrong.
+#[test]
+fn sorting_that_changes_a_line_is_refused() {
+    let err =
+        crate::imports::verify("use std.b\nuse std.a\n", "use std.a\nuse std.c\n").unwrap_err();
+    assert!(err.to_string().contains("use"), "{err}");
+}
+
 #[test]
 fn keeps_use_groups_and_trailing_comments() {
     let src = "use std.seq  // sort\nuse std.dsu\n\nuse lib.b\n// local\nuse lib.a\n";
