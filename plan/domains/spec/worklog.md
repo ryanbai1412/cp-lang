@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- Chapters 6 and 7 wrote `n.isqrt()`, but `std.math.isqrt(x: Int)` is a free function (no `self`); now `isqrt(n)`. spec-blocks 68/185 (34 error, 83 skip). Asked stdlib to export the free `dot`/`cross` that `lib/geometry.md` promises.
 - Reject case for R07.2.5 (E0408, `core-07/assign-into-range.cp`); fails today (no diagnostic), compiler request.
 - Reject cases for R03.1.3 (E0316) and R02.6.6 (E0317, replacing the call-site E0303 case landed just before: the catalog rejects the declaration). Both fail today (no diagnostic); compiler request.
 - Rebuild-4 H-NEXT-VERTEX-INFERENCE: `lib/graphs-trees.md` says a closure graph takes its vertex type from `from:`; case `std-graph/closure-graph-vertex-from-seeds.cp` (passes). H-COUNTED-DIM-IDENTITY: case `core-02/counted-arrays-share-keys.cp` (passes) pins R02.8.1's `[n]T` = `[0..n]T`. All 20 rebuild-4 holes now have a rule, case or owner request.

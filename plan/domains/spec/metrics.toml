@@ -55,7 +55,7 @@ target = "2245 of 2245"
 [[metric]]
 name = "spec code blocks passing"
 command = "target/release/cpl-conform spec-blocks | head -1"
-today = "67/185 (35 error, 79 skip; given/rejects/spec-only markers)"
+today = "68/185 (34 error, 83 skip; given/rejects/spec-only markers)"
 target = "every block a case or marked spec-only"
 
 [[metric]]

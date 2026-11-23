@@ -804,13 +804,14 @@ prepends it.
 - 04b-keys.md: 13 blocks, 5 with a case, 8 spec-only, 0 neither
 - 05-ownership.md: 56 blocks, 53 with a case, 3 spec-only, 0 neither
 - 06-control-functions.md: 3 blocks, 0 with a case, 3 spec-only, 0 neither
-- 07-sequences.md: 7 blocks, 1 with a case, 6 spec-only, 0 neither
+- 07-sequences.md: 7 blocks, 0 with a case, 6 spec-only, 1 neither
+  - line 196: `fn divisors(n: Int) -> yields Int:`
 - 08-traits-generics.md: 4 blocks, 0 with a case, 4 spec-only, 0 neither
 - 09-contexts-checks.md: 3 blocks, 0 with a case, 3 spec-only, 0 neither
 - 10-io.md: 3 blocks, 1 with a case, 2 spec-only, 0 neither
 - 11-modules-prelude.md: 1 blocks, 0 with a case, 1 spec-only, 0 neither
 
-0 of 108 blocks have neither a case nor a spec-only reason.
+1 of 108 blocks have neither a case nor a spec-only reason.
 
 ## Standard library
 

@@ -83,7 +83,7 @@ A generator is a function that pushes elements to its caller's loop body:
 <!-- spec-only: tour with a `...` loop body -->
 ```
 fn divisors(n: Int) -> yields Int:
-    for d in 1..=n.isqrt() if n % d == 0:
+    for d in 1..=isqrt(n) if n % d == 0:
         yield d
         if d * d != n: yield n / d
 

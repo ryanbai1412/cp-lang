@@ -195,7 +195,7 @@ a[l..=r].rev.map(f)       // Mapped<Rev<Slice<[V]T>>, F>, F the lambda's own typ
   let lim = 5 -->
 ```python
 fn divisors(n: Int) -> yields Int:
-    for d in 1..=n.isqrt():
+    for d in 1..=isqrt(n):
         if n % d == 0:
             yield d
             if d * d != n: yield n / d
