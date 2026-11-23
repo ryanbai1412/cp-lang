@@ -69,6 +69,8 @@ architecture after. Deadline ~09:30 PST 2026-11-23; hours, not days.
 
 | Instance | General fix | Owner |
 |---|---|---|
+| The `some(`/`none` migration (835de99a1) rewrote a local `none` in `cpl-cli/tests/golden.rs` to `None`, breaking main | Spelling migrations run through `cpl fix` on resolved names (a local binding is never a removed spelling), and Rust-side edits go by hand with `cargo check` | diagnostics |
+| The hand-search lints (L0580–L0584) match squashed source text, so a spelling they do not list is missed | Match on the AST once the loop-forms recognizers (`design/loop-forms.md`) cover `while` loops | lint-fmt |
 | `cpl fmt` chain breaks inside a block lambda's body end the statement, so the formatter keeps that file's chains whole | The lexer continues a line ending in an operator inside a layout block too (`layout_block_line`), as it does at top level; then drop the chains-off fallback in `format_lf` | compiler (syntax) |
 | `trial_division` fires on `std/math.cp`'s own `factor`/`divisors` (baselined) | A rule that teaches a std fn skips that fn's own body, read from the resolved definition in the fact table | lint-fmt |
 | L0566 teaches `Window(min)` because `a.windows(k)` on `[0..n]Int` fails `cpl check` (E0302 in `piece`) | `windows` checks on every `Indexed`; then L0566 names `a.windows(k).fold(min)` as std/dp.cp does | stdlib |

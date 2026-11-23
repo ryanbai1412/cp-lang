@@ -3,8 +3,8 @@ let a: [0..n]Int = read()
 var st: List<Int> = []
 var ans: [0..n]Int = -1  // expect: missing big_inf_literal
 for i in 0..n:
-    while st.len > 0 and a[st.last!] < a[i]:  // expect: missing manual-monotone-stack
-        let j = st.last!  // expect: peek_then_pop
+    while st.len > 0 and a[st.last!] < a[i]:  // expect: monotone_stack_by_hand
+        let j = st.last!
         st.pop()
         ans[j] = i
     st.push(i)

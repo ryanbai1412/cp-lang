@@ -501,6 +501,7 @@ fn lint_file(file: &File, config: &Config) -> Vec<Diagnostic> {
 /// inside a hand-written algorithm the std call replaces whole).
 const SUPERSEDED_BY: &[(&Lint, &Lint)] = &[
     (&SEARCH_LOOP, &PALINDROME_BY_HAND),
+    (&PEEK_THEN_POP, &MONOTONE_STACK_BY_HAND),
     (&COMPOUND_SELF_REF, &LOOP_REDUCTION),
     (&CHMIN_CHMAX_IF, &LOOP_REDUCTION),
     (&SENTINEL_SCALAR, &LOOP_REDUCTION),

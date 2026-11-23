@@ -1,12 +1,14 @@
 //! Walks newcomers spell by hand where std names them: the submasks of a
 //! mask (`submask_loop`), a ternary search over integers
-//! (`ternary_search_by_hand`), a palindrome test (`palindrome_by_hand`)
-//! and the sort order of positions by value
+//! (`ternary_search_by_hand`), a palindrome test (`palindrome_by_hand`),
+//! nearest smaller or greater positions (`monotone_stack_by_hand`) and the
+//! sort order of positions by value
 //! (`argsort_loop`).
 
 use crate::walk::Visitor;
 use crate::{
-    File, Finding, ARGSORT_LOOP, PALINDROME_BY_HAND, SUBMASK_LOOP, TERNARY_SEARCH_BY_HAND,
+    File, Finding, ARGSORT_LOOP, MONOTONE_STACK_BY_HAND, PALINDROME_BY_HAND, SUBMASK_LOOP,
+    TERNARY_SEARCH_BY_HAND,
 };
 use cpl_diag::Diagnostic;
 use cpl_syntax::ast::*;
@@ -33,6 +35,35 @@ fn squash(text: &str) -> String {
 
 fn ident(s: &str) -> bool {
     !s.is_empty() && s.chars().all(|c| c.is_alphanumeric() || c == '_')
+}
+
+/// The std call for `st.len > 0 and a[st.last!] < a[i]` (squashed), the pop
+/// condition of a monotone stack of positions into `a`, with what it finds,
+/// the stack and the current position.
+fn monotone_pop(c: &str) -> Option<(String, &'static str, &str, &str)> {
+    let (nonempty, cmp) = c.split_once("and")?;
+    let st = nonempty
+        .strip_suffix(".len>0")
+        .or_else(|| nonempty.strip_suffix(".len!=0"))
+        .or_else(|| nonempty.strip_prefix("not")?.strip_suffix(".is_empty"))?;
+    let (a, rest) = cmp.split_once(&format!("[{st}.last!]"))?;
+    let (op, rhs) = ["<=", ">=", "<", ">"]
+        .iter()
+        .find_map(|op| Some((*op, rest.strip_prefix(op)?)))?;
+    let i = rhs.strip_prefix(&format!("{a}["))?.strip_suffix(']')?;
+    if !(ident(st) && ident(a) && ident(i)) {
+        return None;
+    }
+    let (call, what) = match op {
+        "<" => ("next_smaller(by: x => -x)", "greater"),
+        "<=" => (
+            "next_smaller(by: x => -x, strict: false)",
+            "greater or equal",
+        ),
+        ">" => ("next_smaller()", "smaller"),
+        _ => ("next_smaller(strict: false)", "smaller or equal"),
+    };
+    Some((format!("{a}.{call}"), what, st, i))
 }
 
 /// `(x[i],i)` at the start of `s`, squashed: `(x, i)`.
@@ -179,6 +210,41 @@ impl Visitor for HandSearch<'_> {
         let Some(last) = body.stmts.last() else {
             return;
         };
+        let records = |st: &str, i: &str| {
+            let mut wrote = false;
+            let all = body.stmts.iter().all(|b| {
+                let t = text(b.span);
+                let popped = t.strip_prefix("let").and_then(|t| {
+                    let (j, rhs) = t.split_once('=')?;
+                    (ident(j) && (rhs == format!("{st}.last!") || rhs == format!("{st}.pop()!")))
+                        .then_some(())
+                });
+                let answer = t.strip_suffix(&format!("={i}")).is_some_and(|lhs| {
+                    lhs.ends_with(']') && lhs.split_once('[').is_some_and(|(ans, _)| ident(ans))
+                });
+                wrote |= answer;
+                popped.is_some() || answer || t == format!("{st}.pop()")
+            });
+            all && wrote
+        };
+        if let Some((call, what)) = monotone_pop(&c)
+            .filter(|(_, _, st, i)| records(st, i))
+            .map(|(c, w, _, _)| (c, w))
+        {
+            let diag = Diagnostic::warning(
+                MONOTONE_STACK_BY_HAND.code,
+                span,
+                "a monotone stack written by hand".to_string(),
+            )
+            .with_help(format!(
+                "write `{call}` (`std.seq`): each position's nearest later position with a {what} value, as a `[D]?D` with `None` where there is none; `prev_smaller` gives the nearest earlier one"
+            ));
+            self.out.push(Finding {
+                lint: &MONOTONE_STACK_BY_HAND,
+                diag,
+            });
+            return;
+        }
         if let Some(s) = c.strip_suffix(">0").or_else(|| c.strip_suffix("!=0")) {
             let step = text(last.span);
             let mask = step.strip_prefix(&format!("{s}=({s}-1)&"));
