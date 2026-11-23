@@ -948,8 +948,11 @@ pub(crate) fn narrow_elems(
                     check_val(program, scope, idx, narrow, changed);
                 }
             }
-            // These read only the sequence's shape, never an element.
-            ExprKind::Builtin(Builtin::Len | Builtin::PosKey | Builtin::KeyPos, args) => {
+            // These read the sequence's shape or one element, as an index does.
+            ExprKind::Builtin(
+                Builtin::Len | Builtin::PosKey | Builtin::KeyPos | Builtin::First | Builtin::Last,
+                args,
+            ) => {
                 for a in args {
                     if is_narrowable_seq(&a.ty) {
                         check_nested_base(program, scope, a, narrow, changed);

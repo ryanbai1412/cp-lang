@@ -166,9 +166,9 @@ fn a_view_of_a_temporary_holds_the_temporary() {
 const SMALL_BITSETS: &str = concat!(
     "let n: 1..=300 = read()\n",
     "domain V = 0..n\n",
-    "let a = Bitset<V>.full\n",
+    "let a = Bitset<V>.full()\n",
     "let b = Bitset<V>.single(V(0))\n",
-    "let c = Bitset<V>.full\n",
+    "let c = Bitset<V>.full()\n",
     "print((a & b & c).len)\n",
 );
 
