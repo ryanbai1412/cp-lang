@@ -1,0 +1,142 @@
+# Domain: infra
+
+| | |
+|---|---|
+| Kind | Domain charter |
+| Owner | infra |
+| Status | Active |
+| Describes | `.github/`, `scripts/check.sh`, `scripts/land.sh`, `.githooks/`, `scripts/release/`, `web/public/install.{sh,ps1}` |
+
+## Mission
+
+Keep every other domain shipping. A lane lands a commit in seconds and never
+waits on a person. CI tells within minutes whether main works and, when it
+doesn't, which commit broke it. Edge publishes at least hourly from a working
+commit. One command installs a working `cpl` on Linux, macOS and Windows:
+
+```sh
+curl -fsSL https://cp-lang.org/install.sh | sh      # Linux, macOS
+irm https://cp-lang.org/install.ps1 | iex           # Windows
+```
+
+Throughput beats a green badge. Main stays green through infra's own work
+(regenerate, fix forward, revert), never through a cost on the lanes: no
+blocking pre-merge gate, no pre-push cost, and under 5% of any lane's time
+spent on landing, CI and tooling.
+
+## Scope
+
+| Infra owns | Not infra's (owner) |
+|---|---|
+| CI workflows: `.github/workflows/{ci,ci-slow,culprit,release,site,os,acceptance,jetbrains,debugger-loop}.yml` | What each gate step checks: the domain whose test it is |
+| The gate `scripts/check.sh` (`--commit`, `--fast`, `--full`, `--timing`), its caches `scripts/check_cache.py`, `scripts/cxx-cache.py`, and test selection `scripts/affected.py` | Emitted-C++ bugs CI finds (perf, compiler) |
+| Landing `scripts/land.sh`, `scripts/land_stats.py`; hooks `.githooks/`, `scripts/install-hooks.sh` | The site's content and Worker code (site) |
+| Keeping main green: triage, fix forward or revert any red, culprit finding `scripts/culprit.py` | `cpl self` and the launcher (tools) |
+| Releases: `release.yml`, `scripts/release/` (plan, build, package, editors, manifest, publish, `shippable.sh`) | Another domain's tool kept in `scripts/`, e.g. `debt-ratchet.py` (tech-debt), `spec-stub.py` (spec), `review-check.py` (idioms): infra keeps only the gate wiring |
+| Installers `web/public/install.sh`, `install.ps1` and the install smoke | Repository secrets (coordinator) |
+| The site deploy workflow `site.yml` and `scripts/build-wasm.sh` | Editor plugin code (tools, editors) |
+| Devex measurement `scripts/devex_stats.py`; toolchain pins `rust-toolchain.toml`, `mise.toml`, `justfile`, lockfiles | |
+| Public-history hygiene: `scripts/public-hosts.txt` and the staged scan in `check.sh` | |
+
+## Interfaces
+
+**Infra provides**
+
+| Interface | Contract | Used by |
+|---|---|---|
+| `scripts/land.sh` | rebases and pushes HEAD to main in seconds, or says why not; refuses a commit without a `Domain:` trailer; prints `land: pushed <sha> to origin main in <n>s (try <k>)` | every lane |
+| `scripts/check.sh --commit` (pre-commit) | runs only what the staged paths can affect, within 25 s; past that it warns and lets the commit through | every lane |
+| `scripts/check.sh --fast` exit code | 0 means the tree is landable; prints step times | CI, anyone |
+| CI on every main tip | one run going, the newest tip waiting; a red run names its culprit | every lane, release |
+| Edge release: GitHub release `edge` with `latest.json` and `SHA256SUMS` | `latest.json` maps each target to `{file, sha256}` plus `toolchain`, `channel`, `commit`, `date` | installers, `cpl self` |
+| `install.sh`, `install.ps1` | install the newest release of a channel into `~/.cpl`, verifying checksums | users, the site |
+| Commit-subject areas (`.githooks/commit-msg`) | the area list in `AGENTS.md` | every lane |
+
+**Infra needs**
+
+| Interface | From |
+|---|---|
+| Tests that are deterministic on a 4-core hosted runner | every domain |
+| `cpl --version` reporting channel and commit; `cpl self update` | tools |
+| `web/out/` static export, `web/worker/wrangler.toml` | site |
+| The VS Code `.vsix`, JetBrains plugin and Neovim/Vim setup builds | tools, editors |
+| Repository secrets for deploys and signing | coordinator |
+
+## Quality register
+
+Each row is a quality a user (contestant, learner, editor user, library
+author, contributor) can feel from infra's work, the metric, the strongest
+mechanism that enforces it, and the check. `missing` means no real check yet.
+Targets and today's numbers live in `plan/domains/infra/metrics.toml`.
+
+### Landing and the commit tier
+
+| Quality | Metric | Mechanism | Check |
+|---|---|---|---|
+| Landing is fast | `land.sh` p50, p95, max seconds | Re-architecture: `land.sh` only rebases and pushes; gates run in CI | `scripts/land_stats.py` over `.git/cpl-land.log`; `scripts/test_check_cache.py` `test_land_*` |
+| Landing never waits on a person | landings needing a human step | Re-architecture: no review gate, retry on a rejected push | `land.sh` itself |
+| Every commit names its domain | commits on main without `Domain:` | Gate: `land.sh` refuses | `scripts/test_check_cache.py` |
+| Commit subjects follow the format | subjects outside `area: summary` | Gate: `commit-msg` hook | `.githooks/commit-msg`; **missing**: CI check for hook-skipped commits |
+| The commit tier catches what the change can break | main reds in a test the commit tier would have selected | Generated selection from the cargo graph and data deps (`affected.py`) | `scripts/test_affected.py`; **missing**: every red traced to "selected or not" |
+| The commit tier is cheap | pre-commit seconds p95 | Budget: 25 s, then warn and allow | `.git/cpl-commit-slow.log`; **missing**: aggregated per lane |
+| Lanes spend little time on devex | devex commits per lane | Process: `devex_stats.py` proxy, check-in after each rollout | `scripts/devex_stats.py`, `scripts/test_devex_stats.py`; the proxy is a subject regex and over-counts |
+| Commit velocity doesn't fall after an infra change | commits per 15 min before and after a rollout | Process: compare and revert on a drop | `scripts/devex_stats.py`; **missing**: an automatic alert |
+| Nothing sensitive reaches public history | added lines with unlisted hosts, home paths, secrets | Gate: staged scan plus `origin/main...HEAD` scan | `check.sh` staged scan; **missing**: CI scan of commits that skipped the hook |
+
+### CI
+
+| Quality | Metric | Mechanism | Check |
+|---|---|---|---|
+| CI answers fast | main run minutes, push to result p50 | Sharded gate, restored `target/`, `ci-mtime.sh`, C++ cache; non-blocking reports in `ci-slow.yml` | GitHub run times; **missing**: a budget that fails when a run exceeds 3 min |
+| A hung job can't block the queue | step minutes over its cap | Every long step has `timeout-minutes` | **missing**: a lint that every step over 2 min has a cap |
+| Every main commit has a result | commits on main with no pass/fail status | Run-level queue (one running, newest waiting) | **missing**: a "covered by run N" status on each commit |
+| CI results match a local run | reds that don't reproduce on a fresh `origin/main` build | Pinned toolchains, hermetic std path, deterministic tests | **missing**: a check that tests don't read wall-clock budgets in the gate |
+| No flaky tests | tests that both pass and fail on the same commit | **missing**: rerun-on-fail detection and a quarantine list that only shrinks | none |
+| A red names its culprit fast | minutes from red to named commit | Bisect of the failing tests over the run's range, then a verified revert (`culprit.yml`); direct log reading first | `scripts/test_culprit.py`; **missing**: a recorded red-to-culprit time per red |
+| Main is usually green | % of time the newest finished run is green | Process: the sheriff fixes or reverts within 15 min | **missing**: a recorded metric |
+| CI tests all three OSes | jobs per OS that block main | `cli`, `vscode` matrices on Linux, macOS, Windows; `os.yml` | `ci.yml` |
+| Tests are never weakened to go green | removed or ignored tests per commit | Ratchet: `rust_ignore`, pending tests | `scripts/debt-ratchet.py` |
+| Generated files stay current | stale generated files on main | CI `regen` job rewrites them; commit tier warns | `scripts/gen.py --check` |
+
+### Releases and installers
+
+| Quality | Metric | Mechanism | Check |
+|---|---|---|---|
+| Edge ships often | hours since the last edge publish | Hourly timer plus CI-completion fallback, from the newest commit passing the shipping checks | `release.yml`, `scripts/release/shippable.sh`; **missing**: an alert past 90 min |
+| Edge is never broken | edge releases that fail install smoke | Shipping checks before publish; install smoke after | `release.yml` `install-smoke`; **missing**: smoke before marking latest |
+| Stable is full green | stable releases from a commit with any red job | Gate in `release.yml` stable path | `release.yml`; never published without Ryan |
+| One line installs on every OS | install failures per OS | Install smoke on Ubuntu, macOS, Windows after each publish | `release.yml` `install-smoke` |
+| Downloads are verified | archives installed without a matching sha256 | Installers check `SHA256SUMS` | `crates/cpl-cli/tests/toolchain.rs` |
+| Releases are reproducible | archives that differ when rebuilt from the same commit | `SOURCE_DATE_EPOCH`, fixed archive order | `scripts/test_release.py`; **missing**: a rebuild-and-compare job |
+| Releases are signed | archives without a signature | **missing** | none |
+| `cpl self update` moves to the newest release | update failures | Tested against local release fixtures | `crates/cpl-cli/tests/toolchain.rs`; **missing** against the live release |
+| Editor assets ship and install | releases missing the `.vsix`, JetBrains zip, Neovim/Vim setup | `release.yml` `editors` job | **missing**: install smoke for each editor asset |
+| The binary says what it is | `cpl --version` without channel and commit | Stamped at build (`CPL_CHANNEL`, `CPL_COMMIT`) | `release.yml` build smoke |
+| The live site is current | minutes from a green main commit to cp-lang.org | `site.yml` deploys after CI | **missing**: an alert when it falls behind |
+
+### Contributors
+
+| Quality | Metric | Mechanism | Check |
+|---|---|---|---|
+| A fresh clone reaches a green gate | minutes, undocumented steps | Process: cold-clone probe from `README.md` | **missing**: not scheduled |
+| A gate failure says how to fix it | failures without the failing check and rerun command | `check.sh` `fail` messages name the command | **missing**: a check over every `fail` call |
+| One command per task | tasks without a `just` name | `justfile` | none |
+
+## Suites and tools
+
+| Command | What it catches |
+|---|---|
+| `scripts/land.sh` | Lands HEAD on main; refuses a missing `Domain:` trailer |
+| `scripts/check.sh --commit` | Tests the staged paths can affect (pre-commit) |
+| `scripts/check.sh --fast` | The CI gate: fmt, clippy, nextest, conformance, generated files, ratchets |
+| `scripts/check.sh --full` | Adds fuzzing, judge flags, wasm and editor smoke |
+| `python3 scripts/affected.py <paths>` | Which tests a change selects |
+| `python3 scripts/culprit.py` | Bisects failing tests over a commit range and verifies a revert |
+| `python3 scripts/land_stats.py` | Landing p50/p95, commits per hour per domain |
+| `python3 scripts/devex_stats.py` | Devex share per lane, velocity per 15 min |
+| `scripts/release/shippable.sh` | The newest main commit whose shipping checks pass |
+| `python3 -m unittest scripts/test_*.py` | The scripts' own tests |
+
+## Changes
+
+- 2026-11-23: first charter, folded from the infra plan's README and ARCHITECTURE.
