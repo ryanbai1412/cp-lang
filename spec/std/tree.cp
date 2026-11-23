@@ -2798,14 +2798,81 @@ pub struct PermTree<I, V, Node>:
     /// empty: `I` must be nonempty
     /// traps: when `I` is empty, `I.count != V.count`, or `p` is not a bijection
     /// example: `domain I = 0..3; let p: [I]I = [1, 0, 2]; let pt = PermTree(p); pt.kind[pt.root] == PermKind.Incr and pt.kind[pt.left(pt.root)] == PermKind.Decr`
-    pub fn new(p: [I]V) -> PermTree<I, V, _> = todo
+    pub fn new(p: [I]V) -> PermTree<I, V, _>:
+        let n = I.count
+        assert n > 0 and n == V.count, "`PermTree` needs a nonempty bijection"
+        var seen: [V]Bool = false
+        for i in I:
+            assert not seen[p[i]], "`PermTree` needs a bijection"
+            seen[p[i]] = true
+        let val = [p[i].ord for i in I]
+        var b = PermBuild(
+            [PermKind.Leaf for _ in 0..2 * n - 1],
+            [0 for _ in 0..2 * n - 1],
+            [0 for _ in 0..2 * n - 1],
+            [k / 2 for k in 0..2 * n - 1],
+            [k / 2 for k in 0..2 * n - 1],
+            [val[k / 2] for k in 0..2 * n - 1],
+            [val[k / 2] for k in 0..2 * n - 1],
+            1,
+        )
+        // `gap[L]` is `max - min - (i - L)` of `val[L..=i]`: 0 exactly when that run is an interval
+        var gap = SegTree(min, [0 for _ in 0..n], act: add)
+        var (mx, mn, st) = (List<Int>(), List<Int>(), List<Int>())
+        for i in 0..n:
+            if i > 0: gap.apply(0..i, -1)
+            while mx.len > 0 and val[mx.last!] < val[i]:
+                let j = mx.pop()!
+                gap.apply((if mx.len > 0: mx.last! + 1 else: 0)..j + 1, val[i] - val[j])
+            mx.push(i)
+            while mn.len > 0 and val[mn.last!] > val[i]:
+                let j = mn.pop()!
+                gap.apply((if mn.len > 0: mn.last! + 1 else: 0)..j + 1, val[j] - val[i])
+            mn.push(i)
+            var x = 2 * i
+            var more = true
+            while more:
+                more = false
+                if let t = st.last:
+                    if b.hi[t] + 1 == b.lo[x] or b.hi[x] + 1 == b.lo[t]:
+                        st.pop()
+                        x = b.join(t, x, if b.hi[t] < b.lo[x]: Incr else: Decr)
+                        more = true
+                if not more and b.first[x] > 0 and gap.fold(0..b.first[x]) == 0:
+                    var (lo, hi, cnt) = (b.lo[x], b.hi[x], b.last[x] - b.first[x] + 1)
+                    var k = st.len
+                    var open = true
+                    while open:
+                        k -= 1
+                        let t = st[k]
+                        (lo, hi, cnt) = (min(lo, b.lo[t]), max(hi, b.hi[t]), cnt + b.last[t] - b.first[t] + 1)
+                        open = hi - lo + 1 != cnt
+                    var acc = st[k]
+                    for j in k + 1..st.len: acc = b.join(acc, st[j], Partial)
+                    while st.len > k: st.pop()
+                    x = b.join(acc, x, Full)
+                    more = true
+            st.push(x)
+        assert st.len == 1
+        domain N = 0..2 * I.count - 1
+        PermTree::<I, V, N>(
+            N(st[0]),
+            [N] x => b.kind[x.ord],
+            [N] x => N(b.l[x.ord]),
+            [N] x => N(b.r[x.ord]),
+            [N] x => I.nth(b.first[x.ord]),
+            [N] x => I.nth(b.last[x.ord]),
+            [N] x => V.nth(b.lo[x.ord]),
+            [N] x => V.nth(b.hi[x.ord]),
+        )
 
     /// The view of `v` to match on (decision 132): `Leaf(i)` or `Inner(l, r, kind)`.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `domain I = 0..3; let p: [I]I = [1, 0, 2]; let pt = PermTree(p); pt.node(pt.leaf(1)) == PermNode.Leaf(1) and pt.node(pt.root) == PermNode.Inner(pt.left(pt.root), pt.leaf(2), PermKind.Incr)`
-    pub fn node(self, v: Node) -> PermNode<I, Node> = todo
+    pub fn node(self, v: Node) -> PermNode<I, Node>:
+        if kind[v] == Leaf: PermNode.Leaf(first[v]) else: PermNode.Inner(l[v], r[v], kind[v])
 
     /// The leaf of position `i`.
     ///
@@ -2850,11 +2917,92 @@ pub struct PermTree<I, V, Node>:
     /// example: `domain I = 0..3; let p: [I]I = [1, 0, 2]; let pt = PermTree(p); pt.vals(pt.left(pt.root)) == 0..2 and pt.vals(pt.leaf(0)) == 1..2`
     pub fn vals(self, v: Node) -> Range<V> = lo[v].l..hi[v].r
 
-@test
-fn perm_tree_nodes_cover_intervals_of_values() = todo
+/// `PermTree.new`'s nodes by ordinal while it builds: leaves at even ordinals, inner nodes at odd.
+struct PermBuild:
+    var kind: List<PermKind>
+    var l: List<Int>
+    var r: List<Int>
+    var first: List<Int>
+    var last: List<Int>
+    var lo: List<Int>
+    var hi: List<Int>
+    var next: Int
+
+    fn join(mut self, a: Int, b: Int, k: PermKind) -> Int:
+        let x = next
+        next += 2
+        kind[x] = k
+        l[x] = a
+        r[x] = b
+        first[x] = first[a]
+        last[x] = last[b]
+        lo[x] = min(lo[a], lo[b])
+        hi[x] = max(hi[a], hi[b])
+        x
 
 @test
-fn perm_tree_of_a_small_permutation() = todo
+fn perm_tree_nodes_cover_intervals_of_values():
+    for n in 1..=9:
+        for _ in 0..20:
+            domain I = 0..n
+            var vals = [i for i in I]
+            shuffle(mut vals)
+            let p: [I]I = [I] i => vals[i.ord]
+            let pt = PermTree(p)
+            assert pt.span(pt.root) == I.first!.l..I.last!.r
+            var seen = 0
+            var st = [pt.root]
+            while let v = st.pop():
+                seen += 1
+                let sp = pt.span(v)
+                let got = [p[i].ord for i in sp]
+                let (lo, hi) = (got.min()!, got.max()!)
+                assert pt.vals(v) == I.nth(lo).l..I.nth(hi).r
+                let interval = hi - lo + 1 == got.len
+                assert interval == (pt.kind[v] != PermKind.Partial)
+                if got.len == 1:
+                    let i = [j for j in sp][0]
+                    assert pt.kind[v] == PermKind.Leaf and pt.leaf(i) == v
+                    match pt.node(v):
+                        Leaf(j) => assert j == i
+                        Inner(_, _, _) => assert false
+                else:
+                    let (a, b) = (pt.left(v), pt.right(v))
+                    match pt.node(v):
+                        Leaf(_) => assert false
+                        Inner(x, y, k) => assert x == a and y == b and k == pt.kind[v]
+                    assert [i for i in pt.span(a)] + [i for i in pt.span(b)] == [i for i in sp]
+                    let (va, vb) = ([p[i].ord for i in pt.span(a)], [p[i].ord for i in pt.span(b)])
+                    let up = va.max()! + 1 == vb.min()!
+                    let down = vb.max()! + 1 == va.min()!
+                    match pt.kind[v]:
+                        Incr => assert up and pt.kind[b] != PermKind.Incr
+                        Decr => assert down and pt.kind[b] != PermKind.Decr
+                        Full => assert not up and not down and pt.kind[a] == PermKind.Partial
+                        Partial => assert pt.kind[b] != PermKind.Partial
+                        Leaf => assert false
+                    st.push(a)
+                    st.push(b)
+            assert seen == 2 * n - 1
+
+@test
+fn perm_tree_of_a_small_permutation():
+    domain I = 0..4
+    let p: [I]I = [1, 3, 0, 2]
+    let pt = PermTree(p)
+    let (a, d) = (pt.left(pt.root), pt.right(pt.root))
+    assert pt.kind[pt.root] == PermKind.Full and d == pt.leaf(3)
+    assert pt.kind[a] == PermKind.Partial and pt.right(a) == pt.leaf(2) and [i.ord for i in pt.span(a)] == [0, 1, 2]
+    let b = pt.left(a)
+    assert pt.kind[b] == PermKind.Partial and pt.left(b) == pt.leaf(0) and pt.right(b) == pt.leaf(1)
+    domain J = 0..3
+    let q: [J]J = [0, 1, 2]
+    let qt = PermTree(q)
+    assert qt.kind[qt.root] == PermKind.Incr and qt.right(qt.root) == qt.leaf(2)
+    assert qt.kind[qt.left(qt.root)] == PermKind.Incr and [i.ord for i in qt.span(qt.left(qt.root))] == [0, 1]
+    let s: [J]J = [2, 1, 0]
+    let st = PermTree(s)
+    assert st.kind[st.root] == PermKind.Decr and st.kind[st.left(st.root)] == PermKind.Decr
 
 /// The vertices of a `Rooted` tree by depth, each depth in preorder, over their own domain
 /// `B`: the descendants of a vertex at one depth are a contiguous range of `B`.
