@@ -725,6 +725,12 @@ impl<'a> Lowerer<'a> {
                 if args.is_empty() {
                     return self.read(spec, span);
                 }
+                if let ([arg], Spec::List(each)) = (args, &spec) {
+                    if arg.name.is_none() && self.source(ty.span).starts_with("List") {
+                        self.read_count_arg(&arg.value, &each.ty(), span);
+                        return self.err_expr(span);
+                    }
+                }
                 return self.read_with_args(spec, args, span);
             }
         }

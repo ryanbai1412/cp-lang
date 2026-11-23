@@ -366,6 +366,52 @@ impl<'a> Lowerer<'a> {
         }
     }
 
+    /// `l == r` with types that don't meet; `s[0] == "a"` gets `'a'`.
+    pub(super) fn compare_mismatch(&mut self, span: Span, l: &Expr, r: &Expr) {
+        let message = format!(
+            "can't compare a `{}` with a `{}`",
+            self.show(&l.ty),
+            self.show(&r.ty)
+        );
+        let code = match (&l.ty, &r.ty) {
+            (Ty::Pos(_), Ty::Pos(_)) => codes::WRONG_DOMAIN,
+            _ => codes::TYPE_MISMATCH,
+        };
+        self.error(code, span, message);
+        // Lowered spans are already absolute in the module's text.
+        let lit = match (&l.ty, &r.ty) {
+            (Ty::Char, Ty::Str) => r,
+            (Ty::Str, Ty::Char) => l,
+            _ => return,
+        };
+        let text = self.mods[self.cur_mod]
+            .text
+            .get(lit.span.start as usize..lit.span.end as usize)
+            .unwrap_or("");
+        let Some(c) = cpl_check::char_literal(text) else {
+            return;
+        };
+        if let Some(last) = self.diags.last_mut() {
+            last.help = Some(format!("a character is written in single quotes: `{c}`"));
+            last.fix(format!("write `{c}`"), lit.span, c);
+        }
+    }
+
+    /// `read<List<Int>>(n)`: the type says how many, `read<[n]Int>()`.
+    pub(super) fn read_count_arg(&mut self, count: &ast::Expr, elem: &Ty, span: Span) {
+        let new = format!("read<[{}]{}>()", self.source(count.span), self.show(elem));
+        self.error(
+            codes::WRONG_ARG_COUNT,
+            span,
+            "`read` takes no count: its type says how many values to read",
+        );
+        let at = self.span(span);
+        if let Some(last) = self.diags.last_mut() {
+            last.help = Some(format!("`n` values read as `[n]T`: `{new}`"));
+            last.fix(format!("write `{new}`"), at, new);
+        }
+    }
+
     /// JavaScript's `x.toFixed(2)` and `x.to_string()` on a float: its
     /// text is an interpolation, `"{x:.2}"` or `"{x}"` (R10).
     pub(super) fn float_text_fix(

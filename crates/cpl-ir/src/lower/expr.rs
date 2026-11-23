@@ -2697,32 +2697,14 @@ impl<'a> Lowerer<'a> {
             let l = match self.try_coerce(l, &want) {
                 Ok(l) => l,
                 Err(l) => {
-                    let message = format!(
-                        "can't compare a `{}` with a `{}`",
-                        self.show(&l.ty),
-                        self.show(&r.ty)
-                    );
-                    let code = match (&l.ty, &r.ty) {
-                        (Ty::Pos(_), Ty::Pos(_)) => codes::WRONG_DOMAIN,
-                        _ => codes::TYPE_MISMATCH,
-                    };
-                    self.error(code, span, message);
+                    self.compare_mismatch(span, &l, &r);
                     return self.err_expr(span);
                 }
             };
             let r = match self.try_coerce(r, &want) {
                 Ok(r) => r,
                 Err(r) => {
-                    let message = format!(
-                        "can't compare a `{}` with a `{}`",
-                        self.show(&l.ty),
-                        self.show(&r.ty)
-                    );
-                    let code = match (&l.ty, &r.ty) {
-                        (Ty::Pos(_), Ty::Pos(_)) => codes::WRONG_DOMAIN,
-                        _ => codes::TYPE_MISMATCH,
-                    };
-                    self.error(code, span, message);
+                    self.compare_mismatch(span, &l, &r);
                     return self.err_expr(span);
                 }
             };

@@ -339,6 +339,12 @@ impl<'a> Lowerer<'a> {
                         return self.read(spec, span);
                     }
                 }
+                if let ([arg], Some(Ty::List(elem))) = (args, hint.as_ref()) {
+                    if arg.name.is_none() {
+                        self.read_count_arg(&arg.value, elem, span);
+                        return self.err_expr(span);
+                    }
+                }
                 if !args.iter().all(|a| {
                     a.name
                         .as_ref()
