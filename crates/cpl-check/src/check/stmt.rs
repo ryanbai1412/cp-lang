@@ -2156,11 +2156,13 @@ impl<'a> Checker<'a> {
                 });
                 return Some(methods.clone());
             }
+            // A value such as the enum variant `Sign.Neg` doesn't hide the trait `Neg`.
+            Some(Def::Value { .. } | Def::Fn { .. } | Def::Variant { .. }) | None
+                if prelude::is_trait(&name.text) || name.text.is_empty() => {}
             Some(_) => {
                 let message = format!("`{}` is not a trait", name.text);
                 self.error(codes::UNKNOWN_TYPE, name.span, message);
             }
-            None if prelude::is_trait(&name.text) || name.text.is_empty() => {}
             None if self.env.has_imports() => {}
             None => {
                 let message = format!("no trait named `{}`", name.text);

@@ -445,6 +445,10 @@ pub const TRAIT_NAMES: &[&str] = &[
     "Num",
     "Copy",
     "Bits",
+    "BitAnd",
+    "BitOr",
+    "BitXor",
+    "Domain",
 ];
 
 pub const VALUE_NAMES: &[&str] = &[

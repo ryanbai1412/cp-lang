@@ -2214,6 +2214,8 @@ impl<'a> Checker<'a> {
                         }
                         Some(Ty::I128) => Ty::I128,
                         Some(Ty::Int | Ty::Range { .. }) => Ty::Int,
+                        // `Range<D>` over a generic `D`: an endpoint is a `D`.
+                        Some(param @ Ty::Param(_)) => param.clone(),
                         _ => Ty::Unknown,
                     };
                 }
