@@ -663,6 +663,7 @@ struct Lowerer<'a> {
     io_precision: Option<u32>,
     io_base: Option<i64>,
     counted_domains: HashSet<DomainId>,
+    range_keyed: HashSet<DomainId>,
     io_global: Option<GlobalId>,
     context_defs: HashMap<String, (GlobalId, Vec<(String, Ty)>)>,
     /// Inside `g[r, ..]`: the loop variable that stands where the `..` is.
@@ -879,6 +880,7 @@ impl<'a> Lowerer<'a> {
             io_precision: None,
             io_base: None,
             counted_domains: HashSet::new(),
+            range_keyed: HashSet::new(),
             io_global: None,
             context_defs: HashMap::new(),
             whole_axes: Vec::new(),
@@ -3354,8 +3356,8 @@ impl<'a> Lowerer<'a> {
                     self.diags.truncate(saved_diags);
                     self.cx = saved_cx;
                     self.outer_cxs = saved_outer;
-                    if let ExprKind::DomainVal(dom_id) = probed.kind {
-                        return Some(DimSpec::Pos(dom_id));
+                    if let Some(dim) = self.probed_dim(&probed, hi, values) {
+                        return Some(dim);
                     }
                 }
                 if !values {

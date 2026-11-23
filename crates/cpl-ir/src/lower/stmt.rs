@@ -2143,6 +2143,10 @@ impl<'a> Lowerer<'a> {
                 Ty::DomainVal => {
                     out.push(Stmt::DefDomainFromVal { id, val });
                 }
+                Ty::Range(inner) if **inner == Ty::Int => {
+                    let (lo, len) = self.range_lo_len(val, def.span);
+                    out.push(Stmt::DefDomain { id, lo, len });
+                }
                 Ty::List(_)
                 | Ty::ListView(_, _)
                 | Ty::Keyed(_, _)

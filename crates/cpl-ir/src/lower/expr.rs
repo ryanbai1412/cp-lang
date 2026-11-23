@@ -5439,34 +5439,7 @@ impl<'a> Lowerer<'a> {
         let mut loops = Vec::new();
         let mut indices = Vec::new();
         for (i, dim) in dims.iter().enumerate() {
-            let (ty, hi) = match dim {
-                DimSpec::Pos(d) => (Ty::Pos(*d), self.mk(ExprKind::DomainLen(*d), Ty::Int, span)),
-                DimSpec::Bound(d) => {
-                    let len = self.mk(ExprKind::DomainLen(*d), Ty::Int, span);
-                    (Ty::Bound(*d), self.int_add(len, 1))
-                }
-                DimSpec::Sym(d) => {
-                    let n = self.mk(ExprKind::DomainLen(*d), Ty::Int, span);
-                    let n1 = self.int_add(n.clone(), 1);
-                    let prod = self.mk(
-                        ExprKind::Binary(BinOp::Mul, Box::new(n), Box::new(n1)),
-                        Ty::Int,
-                        span,
-                    );
-                    let two = self.int_lit(2, span);
-                    let len = self.mk(
-                        ExprKind::Binary(BinOp::Div, Box::new(prod), Box::new(two)),
-                        Ty::Int,
-                        span,
-                    );
-                    (Ty::Int, len)
-                }
-                DimSpec::Enum(e) => (
-                    Ty::Enum(*e),
-                    self.int_lit(self.enums[*e].variants.len() as i64, span),
-                ),
-                DimSpec::Int(len) | DimSpec::IntFrom(_, len) => (Ty::Int, (**len).clone()),
-            };
+            let (ty, lo, hi) = self.table_axis(dim, span);
             let mut pre = Vec::new();
             let slot = match whole {
                 Some(_) => self.temp(ty.clone()),
@@ -5474,19 +5447,8 @@ impl<'a> Lowerer<'a> {
             };
             let id = self.next_loop;
             self.next_loop += 1;
-            // Over `lo..=hi` the builder's `i` runs from `lo`, and cell
-            // `i` is the `i - lo`th.
-            let from = match dim {
-                DimSpec::IntFrom(lo, _) => *lo,
-                _ => 0,
-            };
-            let hi = if from == 0 {
-                hi
-            } else {
-                self.int_add(hi, from)
-            };
             let iter = Iter::Range {
-                lo: self.int_lit(from, span),
+                lo: lo.clone(),
                 hi,
                 step: None,
                 rev: false,
@@ -5497,18 +5459,7 @@ impl<'a> Lowerer<'a> {
                 ty,
                 span: at,
             };
-            let index = match dim {
-                DimSpec::Enum(e) => {
-                    let ord = self.cast(Cast::EnumOrd(*e), index, Ty::Int);
-                    self.cast(Cast::Raw, ord, Ty::Int)
-                }
-                _ => index,
-            };
-            indices.push(if from == 0 {
-                index
-            } else {
-                self.int_add(index, -from)
-            });
+            indices.push(self.table_cell(dim, index, lo));
             loops.push((id, slot, iter, pre));
         }
         if let Some(p) = whole {
