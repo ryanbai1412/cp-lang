@@ -693,6 +693,9 @@ fn a_condition_with_a_bare_equals_gets_the_comparison_fix() {
     // The line already ends in `:`, so inserting another is no fix.
     let d = one_diag("let n = 1\nwhile n n:\n    print(n)\n");
     assert!(d.fixes.is_empty(), "{:?}", d.fixes);
+    // `==` would leave `n == *= 1`, still broken.
+    let d = one_diag("let n = 1\nif n = *= 1:\n    print(n)\n");
+    assert!(d.fixes.is_empty(), "{:?}", d.fixes);
 }
 
 // --- Parser: one root cause, one diagnostic --------------------------------

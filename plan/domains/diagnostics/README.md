@@ -55,7 +55,7 @@ common-mistake cascades <= 3; benchmark base = every clean `spec.cp`
 | Broken ports: first error on broken line | 100.0% (414) | >= 99.5% | M1 |
 | Broken ports: cascaded | 0.2% (1/414) | <= 2% | M1/M3 |
 | Broken ports: silent | 0 | 0 | M1 |
-| Broken ports: fix-it | 78.6% | >= 80% | M2 |
+| Broken ports: fix-it | 76.6% | >= 80% | M2 |
 | Common mistakes: fix-it | 100.0% (106/106) | >= 95% | M1/M2 |
 | Common mistakes: fix restores | 97.2% | >= 95% | M1/M2 |
 | Common mistakes: cascaded | 1/107 | <= 3 | M3 |

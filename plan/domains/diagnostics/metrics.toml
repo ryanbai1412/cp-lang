@@ -28,7 +28,7 @@ milestone = "M1"
 [[metric]]
 name = "broken ports: errors carrying a fix-it"
 command = "cargo test -p cpl-cli --test recovery recovery_scoreboard -- --ignored --nocapture | grep '^  all'"
-today = "78.6% (80a47142)"
+today = "76.6%; 78.6% counted 8 `==` fixes that left `== *=`"
 target = ">= 80% (cut-the-value rows have no right fix and stay 0%)"
 milestone = "M2"
 

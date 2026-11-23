@@ -1944,7 +1944,7 @@ pub(super) const BINARY_OPS: &[TokenKind] = &[
     T::NotEq,
 ];
 
-fn begins_expr(kind: TokenKind) -> bool {
+pub(super) fn begins_expr(kind: TokenKind) -> bool {
     matches!(
         kind,
         T::Ident

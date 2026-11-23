@@ -1526,7 +1526,10 @@ impl<'a> Parser<'a> {
                     .take_while(|t| !matches!(t.kind, T::Newline | T::Eof))
                     .last()
                     .is_some_and(|t| t.kind == T::Colon);
-                if self.at(T::Eq) && after.contains("condition") {
+                if self.at(T::Eq)
+                    && after.contains("condition")
+                    && expr::begins_expr(self.peek_n(1))
+                {
                     diag = diag
                         .with_help("`=` assigns; to compare, write `==`")
                         .with_fix("change to `==`", at, "==");
