@@ -381,10 +381,9 @@ pub fn stress_source(
             StressError(text)
         })?)
     } else if let Some(swapped) = swap_in_part_brutes(source) {
-        let mut bdb = cpl_check::Database::new();
         let bname = format!(".{name}.brute.cp");
-        bdb.set_file(&bname, swapped.as_str());
-        let b_analysis = bdb
+        db.set_file(&bname, swapped.as_str());
+        let b_analysis = db
             .analyze(&bname)
             .ok_or_else(|| StressError(format!("could not analyze part brute of {name}")))?;
         Some(cpl_ir::lower(&b_analysis).map_err(|diags| {

@@ -536,27 +536,29 @@ pub fn run_with(
         Ok(judge) => judge,
         Err(message) => return fail(message),
     };
-    // The file's own `@alt(program)`, unless `--brute` names another.
-    let own_brute = match (&args.brute, args.file.extension().and_then(|e| e.to_str())) {
-        (None, Some("cp")) => {
+    // The file, analyzed once for its own brute, judge, `@cache` and `@gen`.
+    let analysis = match args.file.extension().and_then(|e| e.to_str()) {
+        Some("cp") => {
             let mut db = cpl_check::Database::new();
             db.set_file(&name, src.as_str());
             db.analyze(&name)
-                .and_then(|analysis| cpl_ir::brute(&analysis))
         }
         _ => None,
+    };
+    // The file's own `@alt(program)`, unless `--brute` names another.
+    let own_brute = match &args.brute {
+        None => analysis.as_deref().and_then(cpl_ir::brute),
+        Some(_) => None,
     };
     // The file's own judge has to build before it can rule on a case.
     if args.checker.is_none()
         && args.interactor.is_none()
         && args.file.extension().is_some_and(|e| e == "cp")
     {
-        let mut db = cpl_check::Database::new();
-        db.set_file(&name, src.as_str());
-        let broken = db.analyze(&name).and_then(|analysis| {
-            let lowered = match (cpl_ir::checker(&analysis), cpl_ir::interactor(&analysis)) {
-                (Some((checker, _)), _) => cpl_ir::lower_checker(&analysis, &checker),
-                (None, Some(judge)) => cpl_ir::lower_judge(&analysis, &judge),
+        let broken = analysis.as_deref().and_then(|analysis| {
+            let lowered = match (cpl_ir::checker(analysis), cpl_ir::interactor(analysis)) {
+                (Some((checker, _)), _) => cpl_ir::lower_checker(analysis, &checker),
+                (None, Some(judge)) => cpl_ir::lower_judge(analysis, &judge),
                 (None, None) => return None,
             };
             let lines = cpl_diag::LineIndex::new(&src);
@@ -584,12 +586,7 @@ pub fn run_with(
     let has_cached = args.fast.is_none()
         && args.file.extension().is_some_and(|e| e == "cp")
         && src.contains("@cache")
-        && {
-            let mut db = cpl_check::Database::new();
-            db.set_file(&name, src.as_str());
-            db.analyze(&name)
-                .is_some_and(|analysis| cpl_ir::has_cached_fields(&analysis))
-        };
+        && analysis.as_deref().is_some_and(cpl_ir::has_cached_fields);
     if args.brute.is_none()
         && own_brute.is_none()
         && part_brute.is_none()
@@ -601,14 +598,9 @@ pub fn run_with(
         ));
     }
     // The file's own `@gen` fn, unless `--gen` names another.
-    let own_gen = match (&args.gen, args.file.extension().and_then(|e| e.to_str())) {
-        (None, Some("cp")) => {
-            let mut db = cpl_check::Database::new();
-            db.set_file(&name, src.as_str());
-            db.analyze(&name)
-                .and_then(|analysis| cpl_ir::generator(&analysis))
-        }
-        _ => None,
+    let own_gen = match &args.gen {
+        None => analysis.as_deref().and_then(cpl_ir::generator),
+        Some(_) => None,
     };
     let source = match (&args.gen, &own_gen) {
         (Some(path), _) => match resolve(path) {
