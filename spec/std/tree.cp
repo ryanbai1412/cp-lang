@@ -15,7 +15,7 @@ use std.dp.{Step}
 use std.algebra.{Monoid, MaxSub, Action}
 use std.segtree.{SegTree}
 use std.algebra.{add}
-use std.seq.{dedup, first_true, span}
+use std.seq.{dedup, first_true, get_or_insert, span}
 use std.rand.{Rng}
 use std.dsu.{Dsu}
 
