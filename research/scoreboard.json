@@ -1926,7 +1926,7 @@
         "noi05p4": "untested",
         "noi06p3": "error",
         "noi07p1": "error",
-        "noi08p5": "untested",
+        "noi08p5": "pass",
         "noi09p4": "error",
         "noi10p2": "untested",
         "noi14p5": "error",
@@ -2157,12 +2157,12 @@
       ],
       "counts": {
         "error": 38,
-        "pass": 20,
+        "pass": 21,
         "trap": 2,
-        "untested": 39,
+        "untested": 38,
         "wrong": 1
       },
-      "passed": 20,
+      "passed": 21,
       "total": 100
     },
     "diff": {
