@@ -7,7 +7,7 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 2507 (995 passing). Rules: 565.
+Cases: 2512 (995 passing). Rules: 566.
 
 ## Summary per chapter
 
@@ -23,7 +23,7 @@ Cases: 2507 (995 passing). Rules: 565.
 - R08 (08-traits-generics.md): 29 rules, 80 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R09 (09-contexts-checks.md): 26 rules, 56 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R10 (10-io.md): 18 rules, 88 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R11 (11-modules-prelude.md): 15 rules, 39 cases; 0 uncovered, 0 happy-path only, 1 negative only
+- R11 (11-modules-prelude.md): 16 rules, 44 cases; 0 uncovered, 0 happy-path only, 1 negative only
 - R12 (12-powers.md): 17 rules, 36 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R13 (13-lowering.md): 22 rules, 27 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - Rbundle (bundle.md): 3 rules, 3 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -57,7 +57,7 @@ negative case. Complete: rules with no gap in `rule-gaps.txt`.
 | R08 | 29 | 29 (100%) | 12 | 12 (100%) | 29 (100%) |
 | R09 | 26 | 26 (100%) | 14 | 14 (100%) | 26 (100%) |
 | R10 | 18 | 18 (100%) | 7 | 7 (100%) | 18 (100%) |
-| R11 | 15 | 14 (93%) | 9 | 9 (100%) | 14 (93%) |
+| R11 | 16 | 15 (93%) | 10 | 10 (100%) | 15 (93%) |
 | R12 | 17 | 17 (100%) | 6 | 6 (100%) | 17 (100%) |
 | R13 | 22 | 22 (100%) | 5 | 5 (100%) | 22 (100%) |
 | Rbundle | 3 | 3 (100%) | 0 | 0 (0%) | 3 (100%) |
@@ -67,7 +67,7 @@ negative case. Complete: rules with no gap in `rule-gaps.txt`.
 | Rlint | 2 | 2 (100%) | 2 | 2 (100%) | 2 (100%) |
 | Rlsp | 5 | 5 (100%) | 1 | 1 (100%) | 5 (100%) |
 | Rstress | 1 | 1 (100%) | 0 | 0 (0%) | 1 (100%) |
-| all | 565 | 564 (99%) | 216 | 216 (100%) | 564 (99%) |
+| all | 566 | 565 (99%) | 217 | 217 (100%) | 565 (99%) |
 
 ## Rules
 
@@ -609,6 +609,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R11.1.1 [5+ 1-]: A **program** file is a sequence of statements (chapter 10). It may declare items anywhere...
 - R11.1.2 [1+ 1-]: A **library** file contains only items (`fn`, `struct`, `enum`, `trait`, `impl`, `type`, `...
 - R11.1.3 [3+ 1-]: An inline module `mod name:` groups items inside any file, for parts a contestant wants to...
+- R11.1.4 [3+ 2-]: A struct's or enum's fields and methods are private to the module that declares them unles...
 - R11.2.1 [1+ 1-]: Paths are module names, not files on a search path: `std` is the pinned stdlib, `lib` is t...
 - R11.2.2 [1+ 1-]: Modules form an acyclic graph; two modules that need each other are one module.
 - R11.2.3 [3+ 1-]: A local name shadows a prelude name; a `use` that collides with a local name is an error n...
@@ -734,7 +735,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0204 Unknown type: 3 case(s)
 - E0205 Used before initialization: 2 case(s)
 - E0206 Unresolved module: 2 case(s)
-- E0207 Private item: 1 case(s)
+- E0207 Private item: 3 case(s)
 - E0208 Uppercase value name: 1 case(s)
 - E0301 Wrong index domain: 16 case(s)
 - E0302 Type mismatch: 39 case(s)

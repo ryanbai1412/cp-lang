@@ -7597,3 +7597,14 @@ stdlib marks its API `pub`; decision 351's editor filter stays until the check
 lands, then completion follows the checker. Reverse: drop the check; existing
 code keeps working, since only cross-module access changes.
 
+
+## 358. Fields and methods are private to their module unless `pub` (2026-11-23)
+
+Decided by the coordinator on tools' question: members follow the rule
+top-level names already follow (R11.1.2), so a library can keep its
+representation private and hover/completion show only the API. A
+single-file program is one module and is unaffected. Trait methods take
+the trait's visibility, since a trait is an interface. Spec R11.1.4 and
+the grammar's `field` take `pub`; compiler adds the E0207 check and
+stdlib marks its API members. Reverse: drop R11.1.4 and treat every member
+as public.

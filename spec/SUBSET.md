@@ -269,6 +269,10 @@ documented. The stdlib's own gaps are in `std/GAPS.md`.
 - core-11/prelude-has-components.cp: compiler
 - core-11/runtime-domain-use-before-definition.cp: compiler
 - core-11/strings-table-in-prelude.cp: compiler
+- core-11/member-private-field-outside-module.cp: compiler
+- core-11/member-private-method-outside-module.cp: compiler
+- core-11/member-pub-visible-outside-module.cp: compiler
+- core-11/member-private-visible-inside-module.cp: compiler
 - core-13/build-warns-near-size-limit.cp: compiler
 - diagnostics/graph-edge-field-names.cp: diagnostics
 - diagnostics/sum-of-str.cp: diagnostics

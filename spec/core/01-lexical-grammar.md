@@ -368,7 +368,7 @@ where       := 'where' TYPE_NAME ':' bound (',' TYPE_NAME ':' bound)*
 struct_decl := 'pub'? 'struct' TYPE_NAME generics? (':' fields NL
              | ':' NL INDENT (field NL | fn_decl)+ DEDENT | NL)  // bodyless: opaque
 fields      := field (',' field)*
-field       := 'var'? NAME (':' type)? ('=' expr)?
+field       := 'pub'? 'var'? NAME (':' type)? ('=' expr)?   // `pub`: R11.1.4
 enum_decl   := 'pub'? 'enum' TYPE_NAME generics? ('=' NAME ('|' NAME)* NL
              | ':' NL INDENT (variant NL | fn_decl)+ DEDENT)
 variant     := decorator* NAME ('(' fields ')')?

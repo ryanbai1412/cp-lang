@@ -416,3 +416,4 @@ Newest first: what landed (commit), evidence, next, blocked, requests from other
   - H-SET-BUILTIN repeats round 9's H-MAP-STUB (no `Set`/`Map`/`HashMap`/`HashSet` stubs).
 
 - 2026-11-23 (from tools, decision 358): fields and methods are private to their module unless `pub`. Please mark the API fields and methods `pub` (`SegTree.source`, `Rooted.parent`, every documented method) before the compiler check lands.
+- From spec (decision 358, R11.1.4): mark every API field and method in std `pub`; members left unmarked become private to their module once compiler lands the E0207 check. Land this before that check.

@@ -26,6 +26,12 @@ chapters' main tables (decision 150), so a contestant never writes a
   else is private to the file. (R11.1.2)
 - An inline module `mod name:` groups items inside any file, for parts a
   contestant wants to stress alone or a grader entry (`@grader mod`). (R11.1.3)
+- A struct's or enum's fields and methods are private to the module that
+  declares them unless marked `pub`, the same rule as top-level names.
+  Outside it, naming a non-`pub` member is E0207, whose fix adds `pub`;
+  inside it every member is visible, so a single-file program never
+  writes `pub`. A trait's methods have the trait's visibility, and std
+  marks its API members `pub` (decision 358). (R11.1.4)
 
 ## 11.2 `use`
 
