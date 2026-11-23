@@ -26,6 +26,9 @@ pub fn gcd(a: Int, b: Int) -> Int:
 /// example: `lcm(0, 5) == 0`
 pub fn lcm(a: Int, b: Int) -> Int = if a == 0 or b == 0: 0 else: abs(a / gcd(a, b) * b)
 
+/// `isqrt(inf)`: the largest `r` with `r * r` in `Int`.
+const SQRT_MAX = 3_037_000_499
+
 /// The exact floor square root `floor(sqrt(x))` of `x >= 0`, with no float rounding loss.
 ///
 /// cost: O(1)
@@ -37,7 +40,7 @@ pub fn lcm(a: Int, b: Int) -> Int = if a == 0 or b == 0: 0 else: abs(a / gcd(a, 
 @get pub fn isqrt(self: Int) -> Int:
     assert self >= 0, "isqrt({self}) of a negative number"
     var r = trunc(sqrt(F64(self)))
-    while r < 3_037_000_499 and (r + 1) * (r + 1) <= self: r += 1
+    while r < SQRT_MAX and (r + 1) * (r + 1) <= self: r += 1
     while r * r > self: r -= 1
     r
 
@@ -650,7 +653,7 @@ pub fn crt_all(eqs: List<(Int, Int)>) -> ?(Int, Int):
 /// example: `mul_mod(1_000_000_000_000_000_000, 1_000_000_000_000_000_000, 1_000_000_007) == 2401`
 /// example: `mul_mod(-3, 5, 7) == 6`
 pub fn mul_mod(a: Int, b: Int, m: Int) -> Int:
-    if -3_037_000_499 <= a <= 3_037_000_499 and -3_037_000_499 <= b <= 3_037_000_499: a * b % m
+    if -SQRT_MAX <= a <= SQRT_MAX and -SQRT_MAX <= b <= SQRT_MAX: a * b % m
     else: Int(I128(a) * I128(b) % I128(m))
 
 /// `a ** e mod m`, in `0..m`, for `e >= 0` and `m >= 1`; `a ** 0` is `1 % m`.

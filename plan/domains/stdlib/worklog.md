@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- Sheriff (infra): 51b4890fe's isqrt body wrote `3_037_000_499` again (mul_mod has it), so the cpl-lint corpus ratchet saw std L0506 go 20 -> 21 (CI run 45115109916). Both now read a private `const SQRT_MAX` in math.cp.
 - Sheriff (infra): 51b4890fe (isqrt as a std body) left a second one-line `use std.math.{Ratio, ...}` in `spec/std/prelude.cp`, so `cpl-cli::builtin_catalog` failed on `Ratio` listed twice (CI run 45115109916). I deleted the duplicate line.
 - Request from spec (decision 290): drop `desc: Bool = false` from `sort` and `sorted` in `spec/std/seq.cp`; descending is the key `desc(x)`. `std-seq/sort-sorted-last.cp` already uses the key, so removing the flag breaks no case.
 - Request from spec (decision 291): `Pair<V>` (`spec/std/pair.cp`) needs `Int(p)` = lower-triangle rank (`{0, 1}` is 0, `{0, 2}` is 1) and a print form writing that rank. `Subset<B>` already has both. Cases: `matrix/index/pair--int.cp`, `matrix/index/pair--print.cp`.
