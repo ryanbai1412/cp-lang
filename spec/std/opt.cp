@@ -6,7 +6,7 @@
 /// cost: O(1) plus one call of `p`
 /// traps: only where `p` traps
 /// example: `Some(4).is_some_and(v => v > 3) == true`
-/// example: `(None: ?Int).is_some_and(v => v > 3) == false`
+/// example: `let n: ?Int = None; n.is_some_and(v => v > 3) == false`
 pub fn is_some_and<T>(self: ?T, p: T -> Bool) -> Bool:
     if self is Some(v): return p(v)
     false
@@ -16,7 +16,7 @@ pub fn is_some_and<T>(self: ?T, p: T -> Bool) -> Bool:
 /// cost: O(1) plus one call of `p`
 /// traps: only where `p` traps
 /// example: `Some(2).is_none_or(v => v > 3) == false`
-/// example: `(None: ?Int).is_none_or(v => v > 3) == true`
+/// example: `let n: ?Int = None; n.is_none_or(v => v > 3) == true`
 pub fn is_none_or<T>(self: ?T, p: T -> Bool) -> Bool:
     if self is Some(v): return p(v)
     true

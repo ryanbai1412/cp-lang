@@ -1151,7 +1151,7 @@ pub fn inverse<I, V>(self: [I]V) -> [V]I:
 /// empty: an empty array
 /// order: keyed by `A`
 /// traps: never
-/// example: `compose([1, 0], [5, 6]) == [6, 5]`
+/// example: `domain D = 0..2; let f: [D]D = [1, 0]; let g: [D]Int = [5, 6]; compose(f, g) == [6, 5]`
 pub fn compose<A, B, C>(f: [A]B, g: [B]C) -> [A]C = [A] a => g[f[a]]
 
 /// Disjoint cycle decomposition of permutation `p`, each cycle starting at its smallest element.
@@ -1870,7 +1870,7 @@ pub fn adjacent_diff<S: Seq, T>(self: S) -> List<T>:
 ///
 /// cost: O(1)
 /// traps: when `lo > hi`
-/// example: `span(D.cuts.first!, D.cuts.last!) == D.all`
+/// example: `domain D = 0..4; span(D.cuts.first!, D.cuts.last!) == D.all`
 /// order: increasing, from `lo` to `hi`
 pub fn span<D>(lo: Cut<D>, hi: Cut<D>) -> Range<D>:
     assert Int(lo) <= Int(hi)
