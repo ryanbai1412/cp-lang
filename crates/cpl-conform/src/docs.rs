@@ -12,6 +12,8 @@ pub struct DocExample {
     pub module: String,
     pub snippet: Option<String>,
     pub stdin: String,
+    /// A fenced multi-line block rather than an `example:` line.
+    pub block: bool,
 }
 
 /// The `/// example:` lines of one std file, as `(id, body)`. The id is
@@ -19,18 +21,48 @@ pub struct DocExample {
 /// inside a type's block), so editing an example keeps its id. A repeated item
 /// name gets `~2`, `~3`, ... in file order.
 pub fn example_ids(rel: &str, text: &str) -> Vec<(String, String)> {
+    doc_examples(rel, text)
+        .into_iter()
+        .map(|(id, body, _)| (id, body))
+        .collect()
+}
+
+/// Like [`example_ids`], also counting fenced ```` ``` ```` / ```` ```cp ```` blocks in
+/// `///` comments, as `(id, body, block)`. A block's body is its code, dedented.
+pub fn doc_examples(rel: &str, text: &str) -> Vec<(String, String, bool)> {
     let mut out = Vec::new();
-    let mut pending: Vec<String> = Vec::new();
+    let mut pending: Vec<(String, bool)> = Vec::new();
     let mut container = String::new();
     let mut seen: HashMap<String, usize> = HashMap::new();
+    let mut fence: Option<(usize, Vec<String>)> = None;
     for line in text.lines() {
         let trimmed = line.trim_start();
         if let Some(after_doc) = trimmed.strip_prefix("///") {
-            if let Some(rest) = after_doc.trim_start().strip_prefix("example:") {
-                pending.push(rest.trim().to_string());
+            let doc_line = after_doc.strip_prefix(' ').unwrap_or(after_doc);
+            let marker = doc_line.trim();
+            match &mut fence {
+                Some((indent, lines)) if marker == "```" => {
+                    let indent = *indent;
+                    let code: Vec<String> = lines
+                        .drain(..)
+                        .map(|l| l.get(indent..).unwrap_or(l.trim_start()).to_string())
+                        .collect();
+                    fence = None;
+                    pending.push((code.join("\n"), true));
+                }
+                Some((_, lines)) => lines.push(doc_line.to_string()),
+                None if marker == "```" || marker == "```cp" => {
+                    fence = Some((doc_line.len() - doc_line.trim_start().len(), Vec::new()));
+                }
+                None => {
+                    if let Some(rest) = doc_line.trim_start().strip_prefix("example:") {
+                        pending.push((rest.trim().to_string(), false));
+                    }
+                }
             }
             continue;
         }
+        fence = None;
         if trimmed.is_empty() || trimmed.starts_with('@') || trimmed.starts_with("//") {
             continue;
         }
@@ -54,12 +86,12 @@ pub fn example_ids(rel: &str, text: &str) -> Vec<(String, String)> {
         } else {
             format!("{qualified}~{occ}")
         };
-        for (k, body) in pending.drain(..).enumerate() {
-            out.push((format!("{rel}#{item}:{}", k + 1), body));
+        for (k, (body, block)) in pending.drain(..).enumerate() {
+            out.push((format!("{rel}#{item}:{}", k + 1), body, block));
         }
     }
-    for (k, body) in pending.into_iter().enumerate() {
-        out.push((format!("{rel}#eof:{}", k + 1), body));
+    for (k, (body, block)) in pending.into_iter().enumerate() {
+        out.push((format!("{rel}#eof:{}", k + 1), body, block));
     }
     out
 }
@@ -99,18 +131,23 @@ pub fn discover(root: &Path, filter: Option<&str>) -> Vec<DocExample> {
             .and_then(|s| s.to_str())
             .unwrap_or("")
             .to_string();
-        for (id, body) in example_ids(&rel, &text) {
+        for (id, body, block) in doc_examples(&rel, &text) {
             if let Some(f) = filter {
                 if !id.contains(f) && !body.contains(f) {
                     continue;
                 }
             }
-            let (snippet, stdin) = parse_example_body(&body);
+            let (snippet, stdin) = if block {
+                (Some(body), String::new())
+            } else {
+                parse_example_body(&body)
+            };
             out.push(DocExample {
                 id,
                 module: module.clone(),
                 snippet,
                 stdin,
+                block,
             });
         }
     }
@@ -205,17 +242,49 @@ fn split_top_level_semis(code: &str) -> Vec<String> {
     parts
 }
 
+/// Splits a fenced block into its top-level statements: a line that is indented or starts by
+/// closing a bracket continues the statement above, so a multi-line call stays one statement.
+fn split_top_level_lines(code: &str) -> Vec<String> {
+    let mut parts: Vec<String> = Vec::new();
+    for line in code.lines() {
+        if line.trim().is_empty() || line.trim_start().starts_with("//") {
+            continue;
+        }
+        let continues = line.starts_with([' ', '\t', ')', ']', '}']);
+        match parts.last_mut() {
+            Some(last) if continues => {
+                last.push('\n');
+                last.push_str(line);
+            }
+            _ => parts.push(line.to_string()),
+        }
+    }
+    parts
+}
+
 fn build_example_program(ex: &DocExample, code: &str, import_module: bool) -> String {
     let mut lines = Vec::new();
     if import_module && !ex.module.is_empty() && ex.module != "prelude" && ex.module != "core" {
         lines.push(format!("use std.{}.*", ex.module));
     }
-    let stmts = split_top_level_semis(code);
+    let stmts = if ex.block {
+        split_top_level_lines(code)
+    } else {
+        split_top_level_semis(code)
+    };
     if let Some((last, init)) = stmts.split_last() {
         for s in init {
             lines.push(s.clone());
         }
-        lines.push(format!("assert({last})"));
+        const STATEMENTS: [&str; 11] = [
+            "let ", "var ", "for ", "if ", "while ", "print", "assert", "domain ", "fn ", "use ",
+            "const ",
+        ];
+        if ex.block && STATEMENTS.iter().any(|k| last.starts_with(k)) {
+            lines.push(last.clone());
+        } else {
+            lines.push(format!("assert({last})"));
+        }
     }
     let mut prog = lines.join("\n");
     prog.push('\n');

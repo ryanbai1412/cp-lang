@@ -313,3 +313,37 @@ fn std_docs_case_ids_are_unique() {
         );
     }
 }
+
+#[test]
+fn docs_fenced_blocks_are_examples_of_their_item() {
+    use cpl_conform::docs::doc_examples;
+    let text = "\
+struct Rooted<V>(root: V):
+    /// The DP for every root.
+    ///
+    /// ```cp
+    /// let sums = t.reroot(
+    ///     +,
+    /// )
+    /// sums == [1]
+    /// ```
+    ///
+    /// example: `1 == 1`
+    pub fn reroot(self) -> Int = 0
+";
+    assert_eq!(
+        doc_examples("tree.cp", text),
+        [
+            (
+                "tree.cp#Rooted.reroot:1".to_string(),
+                "let sums = t.reroot(\n    +,\n)\nsums == [1]".to_string(),
+                true
+            ),
+            (
+                "tree.cp#Rooted.reroot:2".to_string(),
+                "`1 == 1`".to_string(),
+                false
+            ),
+        ]
+    );
+}

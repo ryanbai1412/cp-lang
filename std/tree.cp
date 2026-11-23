@@ -406,8 +406,26 @@ pub struct Rooted<V, Pre>:
             dn[v] = Some(finish(acc, v))
         [V] v => dn[v]!
 
-    /// The same DP as `up`, for every root at once: `out[v]` is what `up` would give at `v` if the
-    /// tree were rooted at `v`.
+    /// [`up`] for every root at once: `out[v] = finish(fold with op of lift(out[c], c, v) over
+    /// neighbours c, v)`, where `out[c]` is `c`'s answer with the tree rooted at `v`.
+    ///
+    /// For a tree DP asked at every vertex, like the sum of distances from each vertex. A
+    /// vertex's answer is built from its neighbours' answers, each seen from the far side of the
+    /// edge: `lift(x, c, p)` turns neighbour `c`'s answer `x` into what it contributes to `p`
+    /// (default: `x` itself), `op` (a [`Monoid`], or an operator such as `+`) combines the
+    /// contributions, and `finish(s, v)` turns the combined value into `v`'s answer.
+    ///
+    /// ```cp
+    /// domain V = 1..=5
+    /// let adj: [V]List<V> = [[2, 3], [1, 4, 5], [1], [2], [2]]
+    /// let t = Rooted(adj, root: 1)
+    /// let sums = t.reroot(
+    ///     Monoid((size: 0, dist: 0), (a, b) => (size: a.size + b.size, dist: a.dist + b.dist)),
+    ///     lift: (x, _, _) => (size: x.size, dist: x.dist + x.size),
+    ///     finish: (s, _) => (size: s.size + 1, dist: s.dist),
+    /// )
+    /// sums.map(s => s.dist) == [6, 5, 9, 8, 8]
+    /// ```
     ///
     /// Each vertex folds its parent's side first, then its children in child order; the sibling
     /// folds use prefixes and suffixes, so `op` needs no inverse.
@@ -416,7 +434,6 @@ pub struct Rooted<V, Pre>:
     /// empty: never empty
     /// order: keyed by `V`
     /// traps: never
-    /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); t.reroot(+, lift: (x, c, p) => 1, finish: (s, v) => s) == [2, 3, 1, 1, 1]`
     /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); t.reroot(+, finish: (s, v) => s + 1) == [5, 5, 5, 5, 5]`
     pub fn reroot<T, U, M>(
         self,
