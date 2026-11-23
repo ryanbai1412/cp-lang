@@ -72,6 +72,31 @@ A Language chapter explains a design against the alternatives it beat and links 
 - **Example:** the Ownership chapter explains why `mut` borrows are explicit and links `R05` for the exact rule.
 - **Enforced by:** `web/scripts/facts.mjs`.
 
+## site/R9: User code runs only in the browser
+
+Every check, run, trace, stress and build of a reader's program happens in the compiler's wasm worker in their browser; the site has no server-side compile.
+
+- **Why:** a static site with no compile server cannot be overloaded or abused by the programs readers paste, and it works the same offline.
+- **Example:** Run in the playground posts the program to the Web Worker that loaded `cpl.wasm`, which stops it after 10 s; nothing is sent to cp-lang.org.
+- **Enforced by:** `web/lib/cpl.ts` is the only path to the compiler; review.
+
+## site/R10: Share links never change
+
+A share link is an immutable, versioned snapshot of at most 64 KB, so a link in an editorial still opens the same program years later.
+
+- **Why:** people cite share links in discussions and editorials; a link that changes or breaks loses that record.
+- **Example:** `/p/<id>` stores the source, input and version it was shared with; publishing again makes a new id.
+- **Enforced by:** `web/worker/share.ts`, `web/worker/share.test.ts`.
+
+## site/R11: Every layout shares one navigation
+
+The header links and their order come from one list that every layout reads.
+
+- **Why:** a reader who moves from Learn to the playground should find the same links in the same place.
+- **Example:** adding Tools to the header is one entry in `web/lib/layout.shared.tsx`, and it appears on Home, Docs and Learn.
+- **Enforced by:** `web/lib/layout.shared.tsx`; review.
+
 ## Changes
 
 - 2026-11-23: first version, from the site guideline.
+- 2026-11-23: site/R9 to R11 from the invariants in the former `plan/domains/site/ARCHITECTURE.md`.

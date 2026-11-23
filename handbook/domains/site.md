@@ -71,6 +71,73 @@ The build fails on a page whose program misbehaves, a contradicting fact, a brok
 | `spec/` markdown and `decisions.md` | spec, everyone |
 | `corpus/`, bench data, `CHANGELOG.md` | idioms, perf, infra |
 
+## Architecture
+
+### Shape
+
+A static site plus one Worker. `next build` (Next.js App Router, `output: 'export'`, see `web/next.config.mjs`) writes `web/out/`; the Cloudflare Worker in `web/worker/` serves it and owns the only dynamic paths, `/p/*` and `/api/*` (`web/worker/wrangler.toml`). Every compile, run, trace and stress in the browser goes through the compiler built to WebAssembly, in a Web Worker; there is no server-side compile.
+
+`prebuild` (`web/package.json`) runs, in order: `scripts/wasm.mjs`, `wasm-size.mjs`, `releases.mjs`, `gen-ref.mjs`, `gen-tools.mjs`, `gen-debug.mjs`, `gate.mjs`. A failing gate fails the build, so nothing ships with a program the compiler rejects.
+
+### Modules
+
+| Path | What it is for |
+|---|---|
+| `web/app/(home)/page.tsx` | Landing: hero runner, syntax and library showcases, debug demo |
+| `web/app/learn/`, `web/content/learn/` | Learn: read chapters (`read/`) and practice track (`practice/`) |
+| `web/content/practice/<id>/` | One practice problem: starter, reference, tests; loaded by `web/lib/practice.ts` |
+| `web/app/docs/`, `web/content/docs/` | Guides (`guides/`), generated reference (`ref/`), release notes |
+| `web/app/play/` | Playground: `playground.tsx` wraps `Runner`, URL and share state |
+| `web/app/s/` | "You found a CP Lang submission": paste generated C++, recover the source (`web/lib/extract.ts`) |
+| `web/app/corpus/`, `web/lib/corpus.ts` | Problems gallery, rendered from `corpus/` |
+| `web/app/performance/`, `web/lib/bench.ts` | Performance page, rendered from bench data |
+| `web/app/tools/`, `web/app/setup/`, `web/lib/tools.ts` | CLI and editor pages, install |
+| `web/app/llms.txt/`, `web/app/llms-full.txt/`, `web/lib/llms.ts` | Docs for models: index and one-file bundle |
+| `web/app/api/search/` | Static search index (Fumadocs) |
+| `web/components/runner.tsx` | The one interactive program surface: Run, Trace, Stress, C++, stdin/stdout, share |
+| `web/components/live-code.tsx`, `remarkLive` in `web/source.config.ts` | Guide fences the gate measured `runs` keep their highlighted block and gain "Open in playground", plus Run when the gate's `ran` says they print something (`.gate/status.json`); WASM loads on the first Run |
+| `web/components/editor/` | CodeMirror editor, CP Lang language mode, live diagnostics |
+| `web/components/exercise.tsx`, `judge.tsx` | Practice problem UI and in-browser judging against tests |
+| `web/components/ui/` | shadcn/ui primitives |
+| `web/lib/cpl.ts`, `web/lib/cpl-types.ts` | Client API to the wasm worker (`check`, `run`, `trace`, `stress`, `build`); types generated |
+| `web/lib/landing.ts` | Loads landing programs and their gate status; Run only when status is `runs` |
+| `web/lib/source.ts`, `web/source.config.ts` | Fumadocs loaders for docs and Learn |
+| `web/lib/layout.shared.tsx` | Site name and the one nav link list shared by every layout |
+| `web/scripts/gate.mjs` | Snippet gate: every program on the site, and the browser differential |
+| `web/scripts/gen-ref.mjs` | Reference pages from `spec/` and `cpl doc --format json` |
+| `web/scripts/gen-tools.mjs`, `gen-debug.mjs`, `releases.mjs` | CLI metadata from `cpl --help`; trace demo; release notes from `CHANGELOG.md` |
+| `web/scripts/wasm.mjs` | Copies `dist/wasm` into `web/public/wasm/`, regenerates `cpl-types.ts` |
+| `web/scripts/links.mjs` | Internal link check over `web/out` |
+| `web/worker/` | Share links: `share.ts` (snapshot format, ids, limits), `index.ts` (routes, OG tags), `share.test.ts` |
+| `web/tests/run.mjs`, `smoke.mjs`, `learn-smoke.mjs`, `browser.mjs` | Browser smoke: `run.mjs` serves `web/out` on a free port and runs both suites |
+| `web/scripts/wasm-size.mjs` | Fails the build when `cpl.wasm` is over 1,980,000 gzipped bytes (a shrink-only cap) |
+| `scripts/site-check.sh` | The site's gate: wasm build, site build (cap, snippet gate), links, browser smoke; cached |
+
+### Adding a practice problem
+
+1. `web/content/practice/<id>/`: `starter.cp` (what the visitor edits; it must not pass), `ref.cp` (a solution), `tests.json` (`[{ "input", "expected", "sample"? }]`, at least one `"sample": true`, shown on the page).
+2. `web/content/learn/practice/<id>.mdx`: frontmatter `title` and `description: "Level A. Teaches ..."`, the statement with its sample table, then `<Judge id="<id>">` wrapping the notes shown after an accepted submission.
+3. Add `<id>` to `pages` in `web/content/learn/practice/meta.json`, in level order.
+4. `node web/scripts/gate.mjs` runs `ref.cp` on every test and fails when any of the three pieces is missing; `pnpm --dir web build` renders the page.
+
+## Judgment rubric
+
+A cold agent scores fixed samples 1-5 with a reason; Ryan's review overrides it.
+
+1. **Does the page teach the idea**, not just list syntax? (Learn chapters, guides)
+2. **Mid-contest, is the answer under 30 s away?** (search, cheat sheet, reference)
+3. **Is every example honest?** It runs, its output is shown, its status is obvious.
+4. **One product?** Same nav, type and spacing on every page, at phone and desktop width.
+5. **Would a C++ contestant keep reading after 2 minutes?** (landing, quickstart)
+
+Probes (cold agent, pass/fail + time):
+
+- **P1 docs-only solve:** with only cp-lang.org, solve 3 unseen Div 2 A/B problems in the playground. Tests 1, 3.
+- **P2 lookup:** find "what does `r.last_true(ok)` return on an empty range" via the site. Tests 2. Baseline: failed (search missed bare method names and core table rows); now passes, `last_true` finds the R04.4.19 row (smoke-tested).
+- **P3 add a practice problem** by following ARCHITECTURE.md; the gate judges it. Files touched, minutes. Baseline (site agent dry run, not cold): ARCHITECTURE.md had no recipe and the gate checked only `ref.cp` against `tests.json`, so a problem missing its page or meta.json entry shipped silently. Now a 4-step recipe; the gate fails on a missing piece. 4 files touched. Cold run pending.
+- **P4 phone pass:** list layout bugs at 390 px on every route. Tests 4.
+- **P5 value in 3 minutes:** a cold reader who knows C++ opens `/` for 3 minutes, then names what CPL is, who it is for and 3 advantages over C++. Tests Milestone 1 step 1.
+
 ## Quality register
 
 Each row is a quality a user can feel on the site, the metric, and the strongest mechanism that enforces it. Rows are grouped by the journey in `handbook/product/journeys.md` where the user feels them. `missing` means no real check exists yet. Targets and today's numbers are in `plan/domains/site/metrics.toml`. The rows were found by walking each journey and each feature the site owns, and by comparing with how mature projects measure the same thing: rustdoc doctests and docs.rs, rust-analyzer's hover and completion fixtures, TypeScript's twoslash (doc examples whose types are checked), the Rust and Go playgrounds, MDN's interactive examples, Lighthouse and Core Web Vitals budgets, and axe-core accessibility audits.
@@ -116,7 +183,7 @@ Each row is a quality a user can feel on the site, the metric, and the strongest
 | Practice problems are judged correctly | reference solutions failing a test; starters that pass; problems missing a page, meta entry or sample | Generated suite over every problem | `web/scripts/gate.mjs` |
 | Practice tests are strong | wrong solutions the tests accept | **missing**: mutate each reference solution and require a test to fail | none |
 | Hints teach before acceptance | problems without a hint linking std docs or a guide | Gate | **missing**: hints are written, not checked |
-| Chapters teach the design | chapters without runnable examples and a "why, compared with X" section | Process: judgment rubric in `plan/domains/site/README.md` | partial: the gate checks the examples |
+| Chapters teach the design | chapters without runnable examples and a "why, compared with X" section | Process: [Judgment rubric](#judgment-rubric) | partial: the gate checks the examples |
 | Design chapters cover the whole language | `spec/core` parts no Language chapter cites | [site/R8](../guidelines/site-checklist.md); Gate | `web/scripts/facts.mjs` |
 | Every std item and lint is documented | std items with no reference entry; entries without cost, empty, order and traps | Generated from `cpl doc --format json` | `web/scripts/gen-ref.mjs`; **missing**: fail on an entry without its sections |
 | Std reference is readable | entries without a highlighted signature, parameter table and labelled cost, empty, order and traps rows | [site/R4](../guidelines/site-checklist.md); Rendered from structured `cpl doc` fields: highlighted signature, parameter table, labelled rows; **missing**: fail the build on an unstructured entry | none |
@@ -178,7 +245,7 @@ Each row is a quality a user can feel on the site, the metric, and the strongest
 | Client types match the wasm API | stale `web/lib/cpl-types.ts` | Generated from the wasm build each build | `web/scripts/wasm.mjs` |
 | The site check is fast | `site build` CI job seconds; per-stage seconds | Stage timings and a named kill for a stage that hangs | `web/scripts/prebuild.mjs`; **missing**: a budget on the job time |
 | Site code is tested | unit coverage of `web/lib`, `web/components`, `web/scripts` | Hand-written unit suites | `pnpm --dir web test`; **missing**: coverage measurement |
-| Adding a page or problem is mechanical | steps to add a practice problem; pieces the gate does not check | Recipe plus gate | `plan/domains/site/ARCHITECTURE.md`, `web/scripts/gate.mjs` |
+| Adding a page or problem is mechanical | steps to add a practice problem; pieces the gate does not check | Recipe plus gate | [Adding a practice problem](#adding-a-practice-problem), `web/scripts/gate.mjs` |
 
 ## Suites and tools
 
@@ -201,4 +268,5 @@ Set `CPL=<path to cpl>` to use a specific compiler build. `PREBUILD_STAGE_SECOND
 
 - 2026-11-23: first charter, folded from the site plan's README and ARCHITECTURE.
 - 2026-11-23: register made exhaustive, grouped by journey, with prior art.
+- 2026-11-23: architecture, the practice-problem recipe and the judgment rubric folded in from `plan/domains/site/`.
 - 2026-11-23: prose overview first; rules moved to `handbook/guidelines/site-checklist.md`.

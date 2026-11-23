@@ -64,3 +64,78 @@ Each row: the instance, the general fix, and who owns it.
 - **`/` went over its page-weight cap from a prefetch** (the 2,625-row std index, linked from the hero, plus KaTeX markup in its cost column). Fixed locally: plain-Unicode costs in that table and `prefetch={false}` on the link. General fix owed (site): `page-weight` reports prefetched payloads per link and fails when one linked page's prefetch is over 100 KB, so a heavy page can't silently grow `/`.
 - **`cpl.wasm` size: cut and ratcheted.** Instance: 2,098,812 of 2,100,000 B gz. Done: stale-dist detection (`97cf73c08`), std comments blanked in the wasm (`ac6aa9701`, 1,913,207 B gz), cap lowered to 2,000,000 as a shrink-only ratchet that `wasm-size.mjs` prompts to lower after each cut. Owed (tools): split codegen/stress/explain/lint (~720 KB raw code of 4.8 MB) into a lazily loaded second module, and fetch non-prelude std text (~1.0 MB raw in `.rodata`) on first `use`. The profile is already z + fat LTO + 1 codegen unit + panic=abort; wasm-opt -Oz shrinks raw 13% but grows gz 0.8%, so it is no lever. Then split into `cpl.wasm` (editors) and `cpl-build.wasm` (codegen, explain, stress; loaded on first use; decision 376): 1,660,518 B gz, cap 1,720,000. Owed: a committed per-crate baseline from `wasm-size --why` so a failure names the crate that grew since the last ratchet; std source (1.11 MB raw data) fetched per module on first `use` is the next big cut (tools).
 - **`cpl.wasm` per-feature growth.** Instance: +44 KB gz in an hour from new lints and LSP methods. General fix: a per-crate gz budget in `wasm-size.mjs` from a named build, so the lane that grows a crate sees it in its own check; next cuts: `cpl-diag` registry texts (95 explanations, triggers and fixes, only `cpl explain` reads them; ~8.5 KB gz, small) left out on wasm32 like lint texts, and the second lazy module for codegen/stress/explain (tools).
+
+## Milestone 1
+
+Ryan's [Milestone 1](../../../handbook/product/milestones.md) sets the priorities now; the v0.3 milestones and metrics below are means to it. Deadline: about 09:30 PST on 2026-11-23, so this plan is in hours. It ships on edge, Codeforces is the target judge (checked against the local `codeforces` profile, no real submissions), and Linux, macOS and Windows are all supported. Site owns scenario steps 1 (Understand) and 2 (Try), and the way into step 3 (Install).
+
+What it needs from site, each checkable:
+- **Homepage:** at 390 px and at 1280 px, the first screen says what CPL is, who it is for, and one runnable program. A cold reader names 3 advantages over C++ after 3 minutes (probe P5). Install is linked from the header at every width.
+- **30-minute intro (landed, `e441044cd`):** `/learn/intro`, 12 sections, 17 examples that run in place, ending at Practice and Install.
+- **Browser practice:** at least 12 hand-picked Div 2 A/B problems judged in the browser, each with hints shown before acceptance that link to the std docs or a guide, and lints shown live in the editor.
+- **Docs:** search finds every std item by name, and every docs example runs; the gate reports `spec: 0`, or each spec-only block is badged and listed with its owner.
+- **Install (`/setup`, landed `30b229105`):** one click from the homepage, the intro and the docs. It gives the edge one-liners for Linux, macOS (`install.sh`) and Windows (`install.ps1`), and one-step setups for Neovim, Vim, VS Code and JetBrains on all three platforms. Tested on Linux here; infra's acceptance run covers macOS and Windows. Once an edge build has `cpl setup neovim|vim`, the Neovim and Vim tabs lead with it.
+- **Language section:** in-depth chapters for readers who want the whole model, next to the Learn path, not after it. One chapter per part: values, ownership and mutation; domains, ranges and index spaces (with range keys); types, widths and proofs; optionals; multitest state; checked operations and build profiles; stdlib design; how the C++ and the judge model work. Each one states the rules precisely, has examples that run in place, and ends with "Why it's designed this way", citing `decisions.md` entries and the alternatives they rejected. Rules link to their `spec/` section instead of copying it, and the gate fails if a cited spec heading or decision number does not exist.
+
+Deferring (milestone "what can wait", or not on a scenario step; continues only after the blockers): interval DP and practice problems past Div 2 C; trace viewer and `cpl doc` polish; the 0.3-only landing tabs; the Problems and Performance pages; page-weight and search tuning beyond the existing caps.
+
+Top 3 next steps:
+1. Docs examples: the gate still reports `spec: 7` (blocks waiting on the compiler); badge and list each with its owner, or run them as the compiler lands them.
+2. The P5 cold read of the homepage (3 advantages over C++ after 3 minutes), now that the program and Install are on the first phone screen.
+3. Milestone 2: stress and trace in the playground (the error-code index landed: `/errors`, from `cpl explain --json`).
+
+(Landed since the last list: practice hints before acceptance on all 21 problems, linked to docs and lints (`7fec61823`); all 9 Language chapters; the std reference with runnable examples, KaTeX costs and intra-doc links.)
+
+Checkpoints go in [worklog.md](worklog.md) every 2 hours: what landed, what is next.
+
+## Milestone 2
+
+**The most ambitious version:** cp-lang.org stands on its own for a stranger. It teaches CP Lang from first program to the whole design, every page is generated from or checked against `spec/`, every example runs in the page, and every tool (check, lint, fmt, test, stress, trace, explain, build) works in the browser.
+
+Exit criteria:
+- The Learn path covers Div 2 A to Div 1 C, with at least 60 judged problems with hints, and the docs-only eval passes at least 50/55 from the site alone.
+- The Language section has a chapter for every part of `spec/core/`; every rule it states links its spec section, and the build fails on a broken citation.
+- The library reference, `/lints` and the diagnostics index are all generated: every item, lint and error code has a page with an example that runs.
+- The playground has stress, trace viewing and `cpl explain`, and can share a link to a program.
+- `/setup` shows stable and edge installs for Linux, macOS and Windows, labelled beta while 0.x; there's a changelog and release notes page per stable release.
+- Health: `/` at most 800,000 bytes gzipped with no wasm, search index at most 600,000 bytes gzipped, 0 broken links, every route fits 390 px, and the site check runs in CI in under 3 minutes.
+
+Next steps, once Milestone 1 passes: the error-code index generated from `spec/` diagnostics, Learn chapters for Div 2 C to Div 1 C, and stress and trace in the playground.
+
+## Improve (highest impact first)
+
+1. Restore the docs-only eval (needs the statement fetcher and a model key) and point it at the served docs; it is the domain's bar and cannot run today.
+2. Run `scripts/site-check.sh` in CI (infra request filed); it is on main and green locally.
+3. Search index: done, 2.7 MB -> 487 KB gzipped (reference pages index headings, intro and core table rows); 13 KB of headroom left.
+4. UI consistency: the top nav sits left on Home/Play and right on Docs/Learn (two Fumadocs layouts); none of the 8 examples in the landing's syntax and library tabs has Run (they are `checks` or `spec`).
+5. Guide code blocks live: done; every block that prints something has Run.
+6. Learn: 11 chapters, 21 problems (greedy, graphs and DP added); next is a cold read of chapters 4-9 against the rubric, and interval DP once `V.ranges` runs (compiler request filed).
+7. `cpl doc` HTML in the site's design: done ([screenshot](screenshots/cpldoc.jpg)); the trace viewer on the site links back: its brand goes to `/`, and at 1100 px and wider it shows the site nav (Home, Learn, Docs, Playground).
+
+## Ryan's role
+
+Review rounds on cp-lang.org (Worker preview per change once infra adds previews) with screenshots in the worklog; redirect any of the decisions below. Current screens: [screenshots/](screenshots/).
+
+| Desktop | Phone |
+|---|---|
+| ![home](screenshots/home.jpg) | ![phone home](screenshots/phone-home.jpg) |
+| ![docs](screenshots/docs-tour.jpg) | ![phone play](screenshots/phone-play.jpg) |
+
+More: [learn](screenshots/learn.jpg), [practice](screenshots/practice.jpg), [playground](screenshots/play-ran.jpg), [problems](screenshots/corpus.jpg).
+
+## Decisions made
+
+Site has no open questions for Ryan. Each call below was decided by its recommendation under Ryan's rule (reversible, in line with the goal), and is logged in [decisions.md](../../../decisions.md) as 261-263.
+
+1. **Landing examples that don't run yet.** Decided: lead each landing tab group with runnable programs; spec-only ones stay as later tabs with the "0.3 spec" badge. Applied (reversible, `runsFirst` in `web/lib/landing.ts`): every landing tab group now opens on a program that runs.
+2. **Guide code blocks become live runners.** Decided: yes, for blocks whose status is `runs`. Applied (reversible: drop `remarkLive` from `web/source.config.ts`): every guide block that runs has "Open in playground"; the 79 that print something also have Run ([screenshot](screenshots/guide-runner.jpg)).
+3. **Learn for v0.3: breadth or depth.** Decided: a short course to Div 2 C, not a full course: 11 chapters (greedy, graphs and DP added on Ryan's scope) and 21 judged problems. Reversible: trim `web/content/learn/read/meta.json` and `practice/meta.json`, or revert the Learn commits.
+
+## Known debt
+
+- Search index 3.0 MB raw, 487 KB gzipped at level 9 (`web/out/api/search`, from `web/app/api/search/route.ts`): reference pages index their headings and intro only (core chapters also their table rows, without the repeated header), so prose inside a reference entry is not searchable; the tokenizer also indexes each part of a dotted name, so `last_true` finds `SortedBag.last_true`. Adds `zbsearch` (the version fumadocs-core uses) as a direct dependency for that tokenizer. The `search` step of `web/tests/smoke.mjs` guards a reference item, a guide heading and a core row. 13 KB under the 500 KB target: the next cut is per-entry term frequencies (140 KB gzipped of the index).
+- Two layouts, one header order: `HomeLayout` on Home, Play, Performance, Tools and the Learn index; notebook `DocsLayout` on Docs and Learn chapters, whose header `notebookOptions()` (`web/lib/layout.shared.tsx`) and a `#nd-subnav` rule in `web/app/global.css` rearrange to match (title and links, then search and icons). The rule depends on Fumadocs' header markup; on a Fumadocs upgrade, check the docs header against the landing's. Phones still show two menu icons (chevron on Home layouts, sidebar on Docs).
+- Browser smoke and `scripts/site-check.sh` are not in CI (`.github/workflows/site.yml` curls 4 routes only).
+- `web/scripts/import-guides.py` is a one-off migration that reads a `site/` directory which no longer exists.
+- The docs-only eval cannot run: `.github/workflows/writable-from-docs.yml` calls `scripts/fetch-statement.py`, deleted in `e4fc2a14`, and `corpus/statements/` is absent.
+- Only 4 unit tests (`web/lib/extract.test.ts`, `web/worker/share.test.ts`); `runner.tsx` and the gate have none.

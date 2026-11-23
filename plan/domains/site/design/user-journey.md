@@ -1,4 +1,4 @@
-<!-- Moved from plan/site/user-journey.md (branch devin/wip-site-plans, 2026-11-21). Where it differs from the code, the code and ARCHITECTURE.md win. -->
+<!-- Moved from plan/site/user-journey.md (branch devin/wip-site-plans, 2026-11-21). Where it differs from the code, the code and handbook/domains/site.md win. -->
 
 # CP Lang website: the new user's journey
 
