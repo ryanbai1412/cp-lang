@@ -78,6 +78,7 @@ Each local fix whose general mechanism is still owed: the instance, the general 
 
 - Field-trait satisfaction (R08.1.7, decision 361) now agrees in checker and IR and checks a field's type when the trait is not generic, but it is still written twice (`Checker::meets_by_shape`, IR `has_bound_by_shape`), and a generic trait's field type (`Heavy<W>: w: W`) is not matched against its arguments. General fix: one relation in cpl-check, `satisfies(ty, trait, args)`, that IR asks through the checked program instead of re-deriving it. Owner: compiler.
 - A slice of a `[lo..=hi]T` (`Dim::IntFrom`) still copies into a `List`; `[0..n]T` and `[D]T` are key views. General fix: slices of every one-axis array are key views (needs `ListView` keyed from `lo`). Owner: compiler.
+- IR spans are relative to `Lowerer::offset`, the item being lowered, so an error raised outside that item's walk lands in another item: the `@check` E0303 pointed at the file's last item until `lower_aside` set the fn's own offset. General fix: AST spans absolute per file (or a span carrying its item), so no caller has to set `offset` before `error`. Owner: compiler.
 ## Next actions
 
 1. `dmopc21c5p2`: bisect the first differing value between `cpl run` and the C++, fix, regression.

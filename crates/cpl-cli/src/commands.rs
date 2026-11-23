@@ -68,7 +68,7 @@ pub(crate) const COMMANDS: &[Command] = &[
         summary: &[
             "run the file's `@interactor` as a judge program on",
             "standard input and output, or with an output its",
-            "`@checker`; exit status 0 accepts",
+            "`@check`; exit status 0 accepts",
         ],
         json: Json::Flag,
         options: Some(&["--json"]),
@@ -457,7 +457,7 @@ usage: cpl judge <file.cp> <input> [--json]
 
 With an input alone, runs the file's `@interactor` on it as a judge
 program: it talks to a solution on standard input and output. With an
-output, runs the file's `@checker` on that output. The exit status is 0
+output, runs the file's `@check` on that output. The exit status is 0
 when the judge accepts, 3 when it rejects.
 
   --json    print one JSON object: `accepted`, and when it rejects, the
@@ -516,7 +516,7 @@ options:
                     again each time the file is saved, on the same input;
                     with no input named, the case `cpl stress` saved last.
                     The page keeps its place and shows the first change
-  --brute           run the file's `@brute(main)` fn in place of the solution
+  --brute           run the file's `@alt(program)` fn in place of the solution
   --release         run what a judge runs: the C++ of `cpl build`, built with
                     the judge's flags (those g++ here accepts) on the judge's
                     stack, and kept until the file changes.

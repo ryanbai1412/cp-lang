@@ -91,7 +91,7 @@ export class Cpl {
    * `cpl run --trace`: runs `source` and records it. The result of `run`
    * with `trace`, a document for the trace viewer (`tools/trace`), or null
    * when the source has errors, and `debug`, what its `debug(...)`s showed.
-   * A file with a `@brute(main)` fn is traced through it too: `runs.slow`.
+   * A file with a `@alt(program)` fn is traced through it too: `runs.slow`.
    */
   trace(source, stdin = "", options = {}) {
     return this.#running("cpl_trace", source, stdin, options);
@@ -110,7 +110,7 @@ export class Cpl {
 
   /**
    * `cpl stress --explain --format json`: generates typed inputs, runs the
-   * solution against its `@brute(main)` / `@alt(program)` / `@checker` /
+   * solution against its `@alt(program)` / `@alt(program)` / `@check` /
    * `@check` in-process, and shrinks the first failing case.
    */
   stress(source, options = {}) {

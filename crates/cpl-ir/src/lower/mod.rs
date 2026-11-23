@@ -133,7 +133,7 @@ fn decorated(analysis: &Analysis, wanted: fn(&ast::Decorator) -> bool) -> Option
     })
 }
 
-/// `@brute(main)`, `@alt(program)`, or a bare `@brute` / `@alt`: a slow
+/// `@alt(program)`, `@alt(program)`, or a bare `@brute` / `@alt`: a slow
 /// program to compare the whole file with. `@brute(part)` / `@alt(part)`
 /// pairs one fn with another and is not one of these.
 fn is_whole_brute(decorator: &ast::Decorator) -> bool {
@@ -147,12 +147,12 @@ fn is_whole_brute(decorator: &ast::Decorator) -> bool {
         }
 }
 
-/// The `@brute(main)` / `@alt(program)` fn a file declares, and the line it is on.
+/// The `@alt(program)` / `@alt(program)` fn a file declares, and the line it is on.
 pub fn brute(analysis: &Analysis) -> Option<(String, u32)> {
     decorated(analysis, is_whole_brute)
 }
 
-/// The `@checker` / `@check` fn a file declares, and the line it is on.
+/// The `@check` / `@check` fn a file declares, and the line it is on.
 pub fn checker(analysis: &Analysis) -> Option<(String, u32)> {
     decorated(analysis, |d| {
         matches!(d.name.text.as_str(), "checker" | "check")
@@ -174,14 +174,14 @@ enum Aside {
     Read(u32),
 }
 
-/// Lowers the `@brute(main)` fn `name` as a program: the file's input
+/// Lowers the `@alt(program)` fn `name` as a program: the file's input
 /// header, then the fn. A brute that calls `read()` itself reads the
 /// whole input, and none of the header runs.
 pub fn lower_brute(analysis: &Analysis, name: &str) -> Result<Program, Vec<Diagnostic>> {
     lower_aside(analysis, name, Aside::Brute)
 }
 
-/// Lowers the `@checker` fn `name` as a program: the file's input
+/// Lowers the `@check` fn `name` as a program: the file's input
 /// header, then the fn, whose `read_output()` reads what the solution
 /// printed.
 pub fn lower_checker(analysis: &Analysis, name: &str) -> Result<Program, Vec<Diagnostic>> {
@@ -794,7 +794,7 @@ struct Lowerer<'a> {
     judge: bool,
     /// Undoes `@cache` writes made through read-only `self` at method exit.
     cold_cache: bool,
-    /// Lowering a `@brute(main)` or a `@checker` as the program.
+    /// Lowering a `@alt(program)` or a `@check` as the program.
     aside: Option<Aside>,
     /// Top-level names set below the input header: the solution's own
     /// work, which a brute or a checker does not run.
@@ -3355,7 +3355,7 @@ impl<'a> Lowerer<'a> {
         })
     }
 
-    /// A `@brute(main)` or `@checker` fn as the program: the input header
+    /// A `@alt(program)` or `@check` fn as the program: the input header
     /// of the file, then a call of the fn. The header is every top-level
     /// line down to the last one that calls `read()`, so the fn sees the
     /// input by the names the solution gave it, in single-test and
@@ -3434,6 +3434,7 @@ impl<'a> Lowerer<'a> {
         if let Some(Sym::Fn(fn_id)) = self.mod_syms[0].get(name).copied() {
             self.queue_fn(fn_id);
             let at = self.sigs[fn_id].decl.name.span;
+            let item_offset = std::mem::replace(&mut self.offset, self.sigs[fn_id].offset);
             let params: Vec<Ty> = self.sigs[fn_id]
                 .params
                 .iter()
@@ -3454,9 +3455,9 @@ impl<'a> Lowerer<'a> {
                 }
                 (None, _) => {
                     let kind = if self.aside == Some(Aside::Brute) {
-                        "@brute(main)"
+                        "@alt(program)"
                     } else {
-                        "@checker"
+                        "@check"
                     };
                     self.error(
                         codes::WRONG_ARG_COUNT,
@@ -3468,6 +3469,7 @@ impl<'a> Lowerer<'a> {
                     Vec::new()
                 }
             };
+            self.offset = item_offset;
             let ret = self.ret_of(fn_id, Span::default());
             let call = Expr {
                 kind: ExprKind::Call(fn_id, args),

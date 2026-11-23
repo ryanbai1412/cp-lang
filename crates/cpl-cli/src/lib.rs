@@ -634,9 +634,9 @@ struct Compiled {
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum Side {
     Solution,
-    /// The `@brute(main)` fn in place of the solution.
+    /// The `@alt(program)` fn in place of the solution.
     Brute,
-    /// The `@checker` fn.
+    /// The `@check` fn.
     Checker,
 }
 
@@ -749,7 +749,7 @@ fn judge_file(
     verdict(path, &compiled.text, result, json, stdout, stderr)
 }
 
-/// `cpl judge <file> <input> <output>`: the file's `@checker` on what a
+/// `cpl judge <file> <input> <output>`: the file's `@check` on what a
 /// solution printed. The first line it says on failure is the reason.
 fn check_output(
     path: &str,

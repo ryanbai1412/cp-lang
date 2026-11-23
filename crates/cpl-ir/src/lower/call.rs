@@ -1892,14 +1892,14 @@ impl<'a> Lowerer<'a> {
                 let line = self.line(span);
                 self.mk(ExprKind::Debug(line, values), Ty::Unit, span)
             }
-            // `let k: Int = read_output()` in a `@checker`: the next
+            // `let k: Int = read_output()` in a `@check`: the next
             // thing the solution printed.
             "read_output" => {
                 if self.aside != Some(Aside::Checker) {
                     self.error(
                         codes::UNRESOLVED_NAME,
                         span,
-                        "`read_output()` reads what the solution printed, which only a `@checker` fn sees",
+                        "`read_output()` reads what the solution printed, which only a `@check` fn sees",
                     );
                     return self.err_expr(span);
                 }

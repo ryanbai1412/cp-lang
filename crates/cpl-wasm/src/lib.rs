@@ -151,7 +151,7 @@ impl Playground {
     /// has two more members: `trace`, a document of
     /// `tools/trace/trace-schema.json` (`null` when the source has
     /// errors), and `debug`, what the program's `debug(...)`s showed.
-    /// A file with a `@brute(main)` fn is traced through it too, as the
+    /// A file with a `@alt(program)` fn is traced through it too, as the
     /// document's `slow` run, lined up with the solution's.
     pub fn trace_with_stack(
         &mut self,

@@ -157,7 +157,7 @@ export class Cpl {
   /**
    * `cpl run --trace`: the run, recorded. `trace` is a document of
    * `tools/trace/trace-schema.json` for the trace viewer, null when the
-   * source has errors; with a `@brute(main)` fn in the file it has the
+   * source has errors; with a `@alt(program)` fn in the file it has the
    * brute's run too, as `runs.slow`. `debug` is what `debug(...)` showed.
    */
   trace(source: string, stdin?: string | Uint8Array, options?: Options): TraceOutcome;
@@ -175,7 +175,7 @@ export class Cpl {
   ): ReplayOutcome | { error: string };
   /**
    * `cpl stress --explain --format json`: generates inputs, compares against
-   * `@brute(main)` / `@alt(program)` / `@checker` / `@check`, and shrinks the
+   * `@alt(program)` / `@alt(program)` / `@check` / `@check`, and shrinks the
    * first counterexample with the same Rust shrinker as the CLI.
    */
   stress(source: string, options?: StressOptions): StressOutcome;
