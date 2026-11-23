@@ -298,6 +298,7 @@ ucup5s03a
 ucup5s03f
 ucup5s05b
 ucup5s05e
+ucup5s05f
 ucup5s06a
 ucup5s06g
 wtf26a

@@ -6,7 +6,7 @@
 //   answer[k] = [x^k] (power_sums(x) * prod(1 - u x for u in 0..k)) / k!
 use std.ntt.{convolve}
 use std.poly.{inv, prod_linear}
-use std.strings.{suffix_array, lcp_array}
+use std.strings.{suffix_array}
 
 type Z = Mod<998_244_353>
 let comb = Comb<Z>()
@@ -44,8 +44,8 @@ fn descend(seg: List<List<Z>>, node: Int, lo: Int, hi: Int, c: List<Z>, mut res:
 // Walk the suffix tree in LCP order, recording (top_size, bottom_size) per edge.
 fn suffix_tree_edges(s: Str) -> (below: List<Z>, above: List<Z>):
     let n = s.len
-    let sa = suffix_array(s)
-    let lcp = lcp_array(s, sa)
+    let built = suffix_array(s)
+    let (sa, lcp) = (built.sa, built.lcp)
     var below = List<Z>()
     var above = List<Z>()
     var open: List<OpenNode> = []
