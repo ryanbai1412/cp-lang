@@ -7,7 +7,7 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 2421 (995 passing). Rules: 560.
+Cases: 2422 (995 passing). Rules: 560.
 
 ## Summary per chapter
 
@@ -16,7 +16,7 @@ Cases: 2421 (995 passing). Rules: 560.
 - R03 (03-numbers-layout.md): 24 rules, 61 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04 (04-indices.md): 66 rules, 110 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04a (04a-identity-vs-offset.md): 39 rules, 53 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R04b (04b-keys.md): 27 rules, 63 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R04b (04b-keys.md): 27 rules, 64 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R05 (05-ownership.md): 43 rules, 149 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R06 (06-control-functions.md): 24 rules, 77 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R07 (07-sequences.md): 89 rules, 115 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -342,7 +342,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R04b.4.3 [1+ 0-]: | A private 0-based index space for `s` | `let t = s.rebase` | view over fresh `t.Idx`
 - R04b.4.4 [1+ 0-]: | An owned list as a domain array | `let (domain I, b) = xs.with_domain()` | `[I]T` that o...
 - R04b.4.5 [1+ 0-]: | Results back in the caller's keys | `table.rekey(s.keys)` | O(1) re-key
-- R04b.5.1 [2+ 0-]: | `search`, `rsearch` | `-> ?Int` on `Str` | `-> ?K` on any `Indexed<K, Char>`
+- R04b.5.1 [3+ 0-]: | `search`, `rsearch` | `-> ?Int` on `Str` | `-> ?K` on any `Indexed<K, Char>`
 - R04b.5.2 [3+ 0-]: | `find_all`, `shift_and`, `KmpAutomaton.find_all` | `yields Int` | `yields K`
 - R04b.5.3 [7+ 0-]: | `z_function`, `prefix_function`, `prefix_matches` | `-> List<Int>` | `-> [K]Int`, keyed ...
 - R04b.5.4 [1+ 0-]: | `min_rotation`, `max_rotation` | `-> Int` | `-> ?K`, the start, `None` when empty
@@ -799,6 +799,14 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - L0550 queue_head_index: **no case**
 - L0551 split_range_check: **no case**
 - L0552 contains_then_add: **no case**
+- L0554 memo_by_hand: **no case**
+- L0555 lca_by_hand: **no case**
+- L0556 cross_by_hand: **no case**
+- L0557 binom_by_hand: **no case**
+- L0558 runs_by_hand: **no case**
+- L0559 diff_by_hand: **no case**
+- L0560 components_by_dfs: **no case**
+- L0561 trial_division: **no case**
 - L0601 Right side changes the place it assigns: 2 case(s)
 - L0602 Lazy chain walked twice: 1 case(s)
 - L0603 `.map` view read many times by index: 1 case(s)
@@ -823,7 +831,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - W0101 Unused expression value: 1 case(s)
 - W0201 size_near_limit *(0.3)*: 1 case(s)
 
-14 of 114 testable codes have no negative case.
+22 of 122 testable codes have no negative case.
 
 ## Spec code blocks
 
@@ -879,7 +887,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
   - uncovered: `ByAngle`, `PI`, `Vec.from_angle`, `planar_faces`, `point_location_planar`, `delaunay`, `voronoi_cells`
 - **graph** (109/122 named by a case)
   - uncovered: `Edged`, `EdgedNext`, `EdgeArc`, `Reweighted`, `SimpleGraph`, `ConnectedGraph`, `Dag`, `Digraph`, `Graph.weighted`, `Walk`, `TwoSat.add_or`, `Complement`, `Only`
-- **grid** (23/23 named by a case)
+- **grid** (27/27 named by a case)
 - **hashmap** (37/37 named by a case)
 - **heap** (88/88 named by a case)
 - **interval** (44/44 named by a case)
@@ -920,7 +928,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **window** (20/22 named by a case)
   - uncovered: `Tracked`, `Undo`
 
-2156 of 2284 std items are named by a case.
+2160 of 2288 std items are named by a case.
 
 ## Core cases without a `// rule:` line
 

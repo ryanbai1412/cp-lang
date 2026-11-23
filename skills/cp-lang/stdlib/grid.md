@@ -2,7 +2,7 @@
 
 # std.grid
 
-Grids: a cell is the pair `(Row, Col)` and there is no grid type. `[Row, Col]T` is the grid, and this module adds what a cell can do: `p.adj4`, `p.adj8`, `p.step(d)` and `p.ray(d)`. A grid is a graph by writing its moves: `bfs(p => p.adj4.filter(q => g[q] != '#'), from: [s])`.
+Grids: a cell is the pair `(Row, Col)` and there is no grid type. `[Row, Col]T` is the grid, and this module adds what a cell can do: `p.up` (and `down`, `left`, `right`), `p.adj4`, `p.adj8`, `p.step(d)` and `p.ray(d)`. A grid is a graph by writing its moves: `bfs(p => p.adj4.filter(q => g[q] != '#'), from: [s])`.
 
 In prelude (no `use` needed): `Dir4`, `Dir8`, `adj4`, `adj8`, `ray`, `step`.
 
@@ -10,10 +10,6 @@ In prelude (no `use` needed): `Dir4`, `Dir8`, `adj4`, `adj8`, `ray`, `step`.
 
 One of the four directions up, right, down, left (clockwise, rows growing downwards).
 
-- `fn up() -> Dir4` — O(1); Up: one row towards row 0, delta `(-1, 0)`.
-- `fn right() -> Dir4` — O(1); Right: one column higher, delta `(0, 1)`.
-- `fn down() -> Dir4` — O(1); Down: one row higher (rows grow downwards), delta `(1, 0)`.
-- `fn left() -> Dir4` — O(1); Left: one column lower, delta `(0, -1)`.
 - `fn all() -> List<Dir4>` — O(1); All four directions, clockwise from up.
 - `fn from(letters: Str, ch: Char) -> ?Dir4` — O(1); The direction a letter stands for, given the letters for up, right, down and left in that; traps: `letters.len != 4`
 - `@get fn cw(self) -> Dir4` — O(1); A quarter turn clockwise: up to right, right to down, down to left, left to up.
@@ -34,6 +30,10 @@ One of the eight directions, clockwise from up: the four of `Dir4` and the diago
 
 ## Functions
 
+- `@get fn up<R, C>(self: (R, C)) -> ?(R, C)` — O(1); The cell one row up from `self` (towards row 0), or `None` on the top row.
+- `@get fn down<R, C>(self: (R, C)) -> ?(R, C)` — O(1); The cell one row down from `self`, or `None` on the bottom row.
+- `@get fn left<R, C>(self: (R, C)) -> ?(R, C)` — O(1); The cell one column left of `self`, or `None` in the first column.
+- `@get fn right<R, C>(self: (R, C)) -> ?(R, C)` — O(1); The cell one column right of `self`, or `None` in the last column.
 - `fn step<R, C, D>(self: (R, C), d: D) -> ?(R, C)` — O(1); The cell one step from `self` in direction `d` (a `Dir4` or a `Dir8`), or `None` when that step leaves the grid `(R, C)`.
 - `fn ray<R, C, D>(self: (R, C), d: D) -> yields (R, C)` — O(1) to create, O(1) per cell; The cells from `self` (not included) to the edge of the grid in direction `d`, nearest first: `p.step(d)`, then a step from that, until a step leaves the grid.
 - `@get fn adj4<R, C>(self: (R, C)) -> yields (R, C)` — O(1) to create, O(1) per cell; The up to four cells sharing a side with `self`: `self.step(d)` for each `d` in `Dir4.all()`, skipping steps that leave the grid.
