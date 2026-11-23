@@ -64,6 +64,10 @@ here with the measured ratio.
 - `minmax`: moved to `spec/std/algebra.cp` as a generic over `Ord`. 50M calls: 0.11-0.13 s before and after
   (interleaved, `g++ -O2`); generated C++ 2,326 -> 2,600 bytes. The 9 corpus files using it have the same
   `cpl check` error counts before and after.
+- `first_ge` `first_gt` `last_le`: on `Set`/`Map` they are ordered-storage lookups (`Builtin::FirstGe`
+  and friends), so they stay. On `List` the builtin returns `?Int`, while `spec/std/seq.cp` declares
+  `first_gt` on `[D]T` returning `?D` and has no `first_ge`/`last_le`; the list form moves once stdlib
+  settles that signature.
 - `span`: not moved. The builtin is a hull of two positions or bounds in either order; the std body
   takes two cuts and traps when `lo > hi`. Asked stdlib which meaning is the spec.
 - `isqrt`: tried and backed out; it stays a builtin for now. With `spec/std/math.cp`'s body,
