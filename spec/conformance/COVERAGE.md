@@ -7,7 +7,7 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 2713 (995 passing). Rules: 570.
+Cases: 2714 (995 passing). Rules: 570.
 
 ## Summary per chapter
 
@@ -17,7 +17,7 @@ Cases: 2713 (995 passing). Rules: 570.
 - R04 (04-indices.md): 70 rules, 150 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04a (04a-identity-vs-offset.md): 39 rules, 54 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04b (04b-keys.md): 27 rules, 66 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R05 (05-ownership.md): 43 rules, 161 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R05 (05-ownership.md): 43 rules, 162 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R06 (06-control-functions.md): 24 rules, 99 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R07 (07-sequences.md): 90 rules, 150 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R08 (08-traits-generics.md): 29 rules, 91 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -391,7 +391,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R05.9.3 [1+ 1-]: `break`, `continue` and `return` in `B` act on the loop and the enclosing fn, through recu...
 - R05.9.4 [1+ 4-]: Walking a `mut`-lent generator value twice is legal and linted: the second walk sees what ...
 - R05.10.1 [4+ 1-]: **What is captured.** Plain `let`s are copied in. Local `var`s, local heap values and para...
-- R05.10.2 [2+ 3-]: **Mode.** A fn value that captures by reference is lent (R6), with the captured variables ...
+- R05.10.2 [2+ 4-]: **Mode.** A fn value that captures by reference is lent (R6), with the captured variables ...
 - R05.10.3 [2+ 4-]: **Calls.** Captures are borrowed per call (R10), and `mut` captures are exclusive for that...
 - R05.10.4 [2+ 1-]: **Arguments.** A closure passed to a fn is a parameter there (R4): the callee can call it ...
 - R05.10.5 [1+ 0-]: **Recursion.** Nested fns and `let`-bound lambdas may call themselves.
@@ -772,7 +772,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0504 Planned syntax, not implemented yet: 1 case(s)
 - E0601 Aliased mutable lend: 14 case(s)
 - E0602 Variable mutated while lent: 35 case(s)
-- E0603 Lent value escapes its scope: 18 case(s)
+- E0603 Lent value escapes its scope: 19 case(s)
 - E0604 Invalid `lends` projection: 1 case(s)
 - E0605 Invalid `Index` implementation: 1 case(s)
 - E0606 Missing trait implementation for operator: 23 case(s)
