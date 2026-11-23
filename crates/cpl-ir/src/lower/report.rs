@@ -11,7 +11,7 @@ impl<'a> Lowerer<'a> {
         if self.cur_mod == 0 {
             span.shift(self.offset)
         } else {
-            self.asked_at
+            self.asked_at.at
         }
     }
 
@@ -19,24 +19,28 @@ impl<'a> Lowerer<'a> {
         let at = span.shift(self.offset);
         let span = self.span(span);
         let mut message = message.into();
-        let mut note = None;
+        let mut notes = Vec::new();
         if self.cur_mod != 0 {
-            if let Some((module, line, inside)) = self.library_place(at) {
+            if let Some((module, line, inside)) = self.library_place(self.cur_mod, at) {
                 message = format!(
                     "`{inside}` (`{module}`) does not work on the types it was given here: {message}"
                 );
-                note = Some(format!(
+                notes.push(format!(
                     "{}.cp:{line}: inside `{inside}`; the gap is in `{module}`, not in your code",
                     module.replace('.', "/")
                 ));
             }
+            for &(module, call) in self.asked_at.via.iter().rev() {
+                if let Some((module, line, inside)) = self.library_place(module, call) {
+                    let file = module.replace('.', "/");
+                    notes.push(format!("{file}.cp:{line}: called from `{inside}`"));
+                }
+            }
             self.in_library.insert(message.clone());
         }
         let diag = Diagnostic::error(code, span, message);
-        self.diags.push(match note {
-            Some(note) => diag.with_note(note),
-            None => diag,
-        });
+        self.diags
+            .push(notes.into_iter().fold(diag, Diagnostic::with_note));
     }
 
     /// `to(x)` for an `x: from` no conversion takes. For `Int(a)` with
@@ -200,8 +204,8 @@ impl<'a> Lowerer<'a> {
 
     /// The module, one-based line and innermost declaration holding `at`,
     /// a position in the current library module.
-    fn library_place(&self, at: Span) -> Option<(String, u32, String)> {
-        let analysis = *self.mods.get(self.cur_mod)?;
+    fn library_place(&self, module: usize, at: Span) -> Option<(String, u32, String)> {
+        let analysis = *self.mods.get(module)?;
         let module = &self
             .mods
             .iter()
@@ -221,5 +225,47 @@ impl<'a> Lowerer<'a> {
             .or(item.syntax.decls.first())?;
         let line = analysis.lines.line_of(at.start) + 1;
         Some((module.clone(), line, inside.name.clone()))
+    }
+}
+
+/// Where library code was asked for: the user's expression, the library
+/// expression being lowered, and the library calls in between, outermost
+/// first, which an error inside the library lists as notes.
+#[derive(Clone, Default)]
+pub(super) struct Asked {
+    at: Span,
+    lib: Span,
+    via: Vec<(usize, Span)>,
+}
+
+impl Asked {
+    /// Enters expression `span` of module `module`; `leave` takes the result.
+    pub(super) fn enter(&mut self, span: Span, module: usize) -> (Span, Span) {
+        let outer = (self.at, self.lib);
+        if module == 0 {
+            self.at = span;
+        } else {
+            self.lib = span;
+        }
+        outer
+    }
+
+    pub(super) fn leave(&mut self, (at, lib): (Span, Span)) {
+        self.at = at;
+        self.lib = lib;
+    }
+
+    /// What asks for a fn called from module `module` here.
+    pub(super) fn callee(&self, module: usize) -> Asked {
+        let mut via = Vec::new();
+        if module != 0 {
+            via = self.via.clone();
+            via.push((module, self.lib));
+        }
+        Asked {
+            at: self.at,
+            lib: Span::default(),
+            via,
+        }
     }
 }

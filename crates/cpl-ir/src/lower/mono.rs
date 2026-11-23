@@ -1606,7 +1606,7 @@ impl<'a> Lowerer<'a> {
                 returns_fresh_domain: false,
                 used_fresh_call: false,
                 state: State::Done,
-                asked_at: self.asked_at,
+                asked_at: self.asked_at.callee(self.cur_mod),
             });
             self.bodies.push(Some(Function {
                 name: init_fn_name,

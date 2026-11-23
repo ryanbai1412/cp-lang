@@ -31,12 +31,9 @@ impl<'a> Lowerer<'a> {
     /// `read()`, and number literals.
     pub(super) fn expr(&mut self, e: &ast::Expr, hint: Option<&Ty>) -> Expr {
         // Library code that this expression asks for reports here.
-        let outer = self.asked_at;
-        if self.cur_mod == 0 {
-            self.asked_at = e.span.shift(self.offset);
-        }
+        let outer = self.asked_at.enter(e.span.shift(self.offset), self.cur_mod);
         let lowered = self.expr_of(e, hint);
-        self.asked_at = outer;
+        self.asked_at.leave(outer);
         lowered
     }
 

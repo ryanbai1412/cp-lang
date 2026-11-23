@@ -513,8 +513,8 @@ struct FnSig<'a> {
     /// True once a call site has claimed this `returns_fresh_domain` fn.
     used_fresh_call: bool,
     state: State,
-    /// The user's expression that first asked for this fn.
-    asked_at: Span,
+    /// Where this fn was first asked for.
+    asked_at: report::Asked,
 }
 
 /// What a block is for, which decides what happens to its last expression.
@@ -806,7 +806,7 @@ struct Lowerer<'a> {
     offset: u32,
     /// The user's expression being lowered: where an error inside the
     /// library code it asks for is shown.
-    asked_at: Span,
+    asked_at: report::Asked,
     /// The messages of the errors found inside library code.
     in_library: HashSet<String>,
     next_loop: LoopId,
@@ -919,7 +919,7 @@ impl<'a> Lowerer<'a> {
             call_hint: None,
             self_struct: None,
             offset: 0,
-            asked_at: Span::default(),
+            asked_at: report::Asked::default(),
             in_library: HashSet::new(),
             next_loop: 0,
             filled: HashSet::new(),
@@ -2316,7 +2316,7 @@ impl<'a> Lowerer<'a> {
             returns_fresh_domain: false,
             used_fresh_call: false,
             state: State::Pending,
-            asked_at: self.asked_at,
+            asked_at: self.asked_at.callee(self.cur_mod),
         });
         self.bodies.push(None);
         self.sigs.len() - 1
@@ -3853,7 +3853,7 @@ impl<'a> Lowerer<'a> {
 
     pub(super) fn queue_fn(&mut self, id: FnId) {
         if self.queued_set.insert(id) {
-            self.sigs[id].asked_at = self.asked_at;
+            self.sigs[id].asked_at = self.asked_at.callee(self.cur_mod);
             self.queued_fns.push(id);
         }
     }
@@ -3873,7 +3873,7 @@ impl<'a> Lowerer<'a> {
         let saved_offset = std::mem::replace(&mut self.offset, self.sigs[id].offset);
         let saved_env = std::mem::replace(&mut self.gen_env, self.sigs[id].env.clone());
         let saved_self = std::mem::replace(&mut self.self_struct, self.sigs[id].owner);
-        let saved_asked = std::mem::replace(&mut self.asked_at, self.sigs[id].asked_at);
+        let saved_asked = std::mem::replace(&mut self.asked_at, self.sigs[id].asked_at.clone());
 
         let mut cx = FnCx {
             ret: self.sigs[id].ret.clone(),
@@ -4085,7 +4085,7 @@ impl<'a> Lowerer<'a> {
                 returns_fresh_domain: false,
                 used_fresh_call: false,
                 state: State::Done,
-                asked_at: self.asked_at,
+                asked_at: self.asked_at.callee(self.cur_mod),
             });
             self.bodies.push(Some(Function {
                 name: format!("{}_body", self.sigs[id].name),
@@ -4149,7 +4149,7 @@ impl<'a> Lowerer<'a> {
                     returns_fresh_domain: false,
                     used_fresh_call: false,
                     state: State::Done,
-                    asked_at: self.asked_at,
+                    asked_at: self.asked_at.callee(self.cur_mod),
                 });
                 self.bodies.push(Some(Function {
                     name: format!("{}_fill", self.sigs[id].name),
