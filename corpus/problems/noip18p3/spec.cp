@@ -9,7 +9,7 @@ let t = Rooted(Graph.undirected(read<[n - 1](u: V, v: V, w: 1..=1e4)>()), root: 
 fn tracks(k: Int) -> Int:
     var made = 0
     fn up(v: V) -> Int:
-        var chains = SortedBag.of(List(t.child_arcs(v).map(a => up(a.to) + a.w)))
+        var chains = SortedBag.of(List(t.children(v).map(c => up(c) + t.w(c))))
         made += chains.drain_range(k..).count()
         var spare = 0
         while let x = chains.pop_first():
