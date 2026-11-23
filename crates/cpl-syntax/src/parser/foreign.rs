@@ -29,6 +29,76 @@ impl<'a> Parser<'a> {
         true
     }
 
+    /// `println!(...)`, Rust's print macros.
+    pub(super) fn rust_print_ahead(&self) -> bool {
+        matches!(self.text(), "println" | "print" | "eprintln")
+            && self.peek_n(1) == T::Bang
+            && self.peek_n(2) == T::LParen
+    }
+
+    /// `println!("{} {}", a, b)`: one error, with `print(a, b)` when the
+    /// format string only places each value. The arguments are skipped,
+    /// not parsed: Rust's `{}` is not an interpolation.
+    pub(super) fn rust_print(&mut self) -> ExprKind {
+        let start = self.start();
+        let name = self.text();
+        self.bump();
+        self.bump();
+        self.bump();
+        let mut args: Vec<(usize, usize)> = Vec::new();
+        let mut first = None;
+        let mut depth = 0usize;
+        loop {
+            match self.peek() {
+                T::Newline | T::Eof => break,
+                T::RParen if depth == 0 => break,
+                T::Comma if depth == 0 => {
+                    args.extend(first.take().map(|f| (f, self.pos - 1)));
+                    self.bump();
+                    continue;
+                }
+                T::LParen | T::LBracket | T::LBrace => depth += 1,
+                T::RParen | T::RBracket | T::RBrace => depth = depth.saturating_sub(1),
+                _ => {}
+            }
+            first.get_or_insert(self.pos);
+            self.bump();
+        }
+        args.extend(first.map(|f| (f, self.pos - 1)));
+        self.expect(T::RParen, "`)` after the arguments");
+        let span = self.span_from(start);
+        let texts: Vec<&str> = args
+            .iter()
+            .map(|&(a, b)| {
+                Span::new(self.tokens[a].span.start, self.tokens[b].span.end).text(self.src)
+            })
+            .collect();
+        let mut diag = Diagnostic::error(
+            codes::EXPECTED_TOKEN,
+            span,
+            format!("CP Lang prints with `print(...)`, not `{name}!`"),
+        )
+        .with_help("`print(a, b)` writes its values with spaces between, then a newline; `\"{x}\"` interpolates");
+        if let ("println", Some(new)) = (name, Self::print_for(&texts)) {
+            diag = diag.with_fix(format!("write `{new}`"), span, new);
+        }
+        self.recovered(diag);
+        ExprKind::Error
+    }
+
+    /// The `print` call for `println!`'s arguments, if its format string
+    /// only places them: `"{}"`, `"{} {}"`, or a string with no `{}`.
+    fn print_for(args: &[&str]) -> Option<String> {
+        let (format, values) = args.split_first()?;
+        let inner = format.strip_prefix('"')?.strip_suffix('"')?;
+        if values.is_empty() && !inner.contains("{}") && !inner.contains("{:") {
+            return Some(format!("print({format})"));
+        }
+        let placed = inner.split(' ').all(|piece| piece == "{}");
+        let count = inner.split(' ').count();
+        (placed && count == values.len()).then(|| format!("print({})", values.join(", ")))
+    }
+
     /// `P { x: 1 }` after a type's name: Rust's struct literal.
     pub(super) fn struct_literal_ahead(&self, callee: &Expr) -> bool {
         let fields = self.peek_n(1) == T::RBrace

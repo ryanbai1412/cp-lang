@@ -1052,6 +1052,7 @@ impl<'a> Parser<'a> {
             }
             // `Some` and `None` are the spec spelling (decision 157); `some` and
             // `none` stay until the 0.2 ports migrate.
+            T::Ident if self.rust_print_ahead() => self.rust_print(),
             T::Ident if self.text() == "None" => {
                 self.bump();
                 ExprKind::None

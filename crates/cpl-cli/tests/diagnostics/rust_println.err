@@ -1,0 +1,8 @@
+error[E0103]: CP Lang prints with `print(...)`, not `println!`
+  --> rust_println.cp:2:1
+  |
+2 | println!("{} {}", x, x * 2)
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  = help: `print(a, b)` writes its values with spaces between, then a newline; `"{x}"` interpolates
+
+rust_println.cp: 1 error

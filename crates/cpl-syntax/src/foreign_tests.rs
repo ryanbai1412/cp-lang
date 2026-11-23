@@ -37,3 +37,22 @@ fn a_colon_return_type_is_one_error_writing_the_arrow() {
     }
     assert!(parse_file("fn f():\n    print(1)\n").diagnostics.is_empty());
 }
+
+#[test]
+fn a_rust_print_macro_is_one_error_with_the_print_call() {
+    let fix = |src: &str| {
+        let d = parse_file(src).diagnostics;
+        assert_eq!(d.len(), 1, "{src}: {d:?}");
+        d[0].fixes.first().map(|f| f.edits[0].1.clone())
+    };
+    assert_eq!(
+        fix("let x = 3\nprintln!(\"{} {}\", x, x + 1)\n").as_deref(),
+        Some("print(x, x + 1)")
+    );
+    assert_eq!(
+        fix("println!(\"hi {x}\")\n").as_deref(),
+        Some("print(\"hi {x}\")")
+    );
+    assert_eq!(fix("let x = 3\nprintln!(\"x={}\", x)\n"), None);
+    assert_eq!(fix("let x = 3\neprintln!(\"{}\", x)\n"), None);
+}
