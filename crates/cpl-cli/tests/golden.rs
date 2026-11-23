@@ -196,3 +196,26 @@ fn every_command_has_help_and_rejects_an_unknown_option() {
         assert!(!stderr.contains("can't read"), "{command}: {stderr}");
     }
 }
+
+#[test]
+fn help_json_lists_every_command_with_its_usage_summary_and_help() {
+    let out = cpl(Path::new("."), &["--help", "--json"]);
+    assert_eq!(out.status.code(), Some(0));
+    let json = cpl_json::parse(&text(&out.stdout)).expect("cpl --help --json is JSON");
+    let commands = json.at(&["commands"]).as_array().unwrap();
+    assert_eq!(commands.len(), 23);
+    let listed = text(&cpl(Path::new("."), &["--help"]).stdout);
+    for command in commands {
+        let name = command.at(&["name"]).as_str().unwrap();
+        let usage = command.at(&["usage"]).as_str().unwrap();
+        assert!(listed.contains(&format!("\n  {usage}")), "{name}: {usage}");
+        assert!(
+            !command.at(&["summary"]).as_str().unwrap().is_empty(),
+            "{name}"
+        );
+        assert!(
+            shows_usage(command.at(&["help"]).as_str().unwrap_or(""), name),
+            "{name}"
+        );
+    }
+}

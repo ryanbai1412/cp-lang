@@ -1,50 +1,168 @@
 //! What `cpl --help` and each command's `--help` print, and which usage a
 //! command's usage error shows.
 
-pub(crate) const USAGE: &str = "\
+use std::sync::OnceLock;
+
+use cpl_json::{obj, Value};
+
+/// One `cpl` command: what `cpl --help` lists and `cpl --help --json` emits.
+pub(crate) struct Command {
+    pub name: &'static str,
+    pub args: &'static str,
+    /// The summary as `cpl --help` wraps it.
+    pub summary: &'static [&'static str],
+}
+
+pub(crate) const COMMANDS: &[Command] = &[
+    Command {
+        name: "check",
+        args: "<file>...",
+        summary: &["report every error in the files"],
+    },
+    Command {
+        name: "fix",
+        args: "<file>...",
+        summary: &["apply the fix each error suggests, then report what is left"],
+    },
+    Command {
+        name: "run",
+        args: "<file> [input]",
+        summary: &[
+            "check, then run in the debug interpreter, reading",
+            "the input file or standard input; a file with an",
+            "`@interactor` runs against it, on the hidden test",
+            "(`cpl run --help` has the options for traces);",
+            "`--release` runs the C++ that `cpl build` writes",
+        ],
+    },
+    Command {
+        name: "judge",
+        args: "<file> <input> [<output> <answer>]",
+        summary: &[
+            "run the file's `@interactor` as a judge program on",
+            "standard input and output, or with an output its",
+            "`@checker`; exit status 0 accepts",
+        ],
+    },
+    Command {
+        name: "build",
+        args: "<file> [-o out]",
+        summary: &[
+            "check, then write one C++17 file to submit: next to",
+            "the source by default, to standard output with `-o -`;",
+            "`--checked` also builds it with sanitizers to run here;",
+            "`--judge <name>` writes it for that judge",
+        ],
+    },
+    Command {
+        name: "judges",
+        args: "[file]",
+        summary: &["list the judge profiles, marking the one a build uses"],
+    },
+    Command {
+        name: "submit",
+        args: "<file>",
+        summary: &[
+            "build for the file's judge, run its cases on that",
+            "build, and say whether it is ready to send",
+        ],
+    },
+    Command {
+        name: "fmt",
+        args: "[path]...",
+        summary: &["format files in the one canonical style"],
+    },
+    Command {
+        name: "lint",
+        args: "[path]...",
+        summary: &["warn about code that is legal but probably wrong or slow"],
+    },
+    Command {
+        name: "explain",
+        args: "<CODE|file|--json>",
+        summary: &[
+            "show a diagnostic or lint explanation, or a file's",
+            "representations and view costs",
+        ],
+    },
+    Command {
+        name: "doc",
+        args: "[path]...",
+        summary: &["build HTML documentation from `///` comments"],
+    },
+    Command {
+        name: "new",
+        args: "<name>",
+        summary: &["create a problem from its constraints or samples"],
+    },
+    Command {
+        name: "test",
+        args: "<problem>",
+        summary: &["run every case in <problem>.tests/"],
+    },
+    Command {
+        name: "stress",
+        args: "<file>",
+        summary: &["run against a brute on random inputs; shrink the failure"],
+    },
+    Command {
+        name: "bench",
+        args: "<problem>",
+        summary: &["run on maximum-size worst-case inputs against the limits"],
+    },
+    Command {
+        name: "profile",
+        args: "<file> [input]",
+        summary: &["run, then show each line's hits and share of the time"],
+    },
+    Command {
+        name: "cover",
+        args: "<file> [input]...",
+        summary: &["list the lines and branches no input reached"],
+    },
+    Command {
+        name: "watch",
+        args: "<problem>",
+        summary: &["check, lint and test on every save"],
+    },
+    Command {
+        name: "report",
+        args: "<file>",
+        summary: &["write a paste-ready bug report (`--last` after an ICE)"],
+    },
+    Command {
+        name: "lsp",
+        args: "",
+        summary: &["serve the language server protocol on stdio"],
+    },
+    Command {
+        name: "dap",
+        args: "",
+        summary: &["serve the time-travel debug adapter (DAP) on stdio"],
+    },
+    Command {
+        name: "replay",
+        args: "<file> --trace <t.json> --step <n>",
+        summary: &["run one recorded call again with the file's edited fn"],
+    },
+    Command {
+        name: "self",
+        args: "<command>",
+        summary: &[
+            "update, switch or roll back the installed toolchain",
+            "(`cpl self --help`); `cpl +<toolchain> <command>` runs",
+            "one command with another, e.g. `cpl +edge run a.cp`",
+        ],
+    },
+];
+
+const HEADER: &str = "\
 usage: cpl <command> [args]
 
 commands:
-  check <file>...       report every error in the files
-  fix <file>...         apply the fix each error suggests, then report what is left
-  run <file> [input]    check, then run in the debug interpreter, reading
-                        the input file or standard input; a file with an
-                        `@interactor` runs against it, on the hidden test
-                        (`cpl run --help` has the options for traces);
-                        `--release` runs the C++ that `cpl build` writes
-  judge <file> <input> [<output> <answer>]
-                        run the file's `@interactor` as a judge program on
-                        standard input and output, or with an output its
-                        `@checker`; exit status 0 accepts
-  build <file> [-o out] check, then write one C++17 file to submit: next to
-                        the source by default, to standard output with `-o -`;
-                        `--checked` also builds it with sanitizers to run here;
-                        `--judge <name>` writes it for that judge
-  judges [file]         list the judge profiles, marking the one a build uses
-  submit <file>         build for the file's judge, run its cases on that
-                        build, and say whether it is ready to send
-  fmt [path]...         format files in the one canonical style
-  lint [path]...        warn about code that is legal but probably wrong or slow
-  explain <CODE|file|--json> show a diagnostic/lint explanation or a file's representations & view costs
-  doc [path]...         build HTML documentation from `///` comments
-  new <name>            create a problem from its constraints or samples
-  test <problem>        run every case in <problem>.tests/
-  stress <file>         run against a brute on random inputs; shrink the failure
-  bench <problem>       run on maximum-size worst-case inputs against the limits
-  profile <file> [input]
-                        run, then show each line's hits and share of the time
-  cover <file> [input]...
-                        list the lines and branches no input reached
-  watch <problem>       check, lint and test on every save
-  report <file>         write a paste-ready bug report (`--last` after an ICE)
-  lsp                   serve the language server protocol on stdio
-  dap                   serve the time-travel debug adapter (DAP) on stdio
-  replay <file> --trace <t.json> --step <n>
-                        run one recorded call again with the file's edited fn
-  self <command>        update, switch or roll back the installed toolchain
-                        (`cpl self --help`); `cpl +<toolchain> <command>` runs
-                        one command with another, e.g. `cpl +edge run a.cp`
+";
 
+const FOOTER: &str = "
 `cpl <command> --help` describes a command's options.
 
 options:
@@ -52,6 +170,61 @@ options:
   -h, --help       print this help
 ";
 
+/// `cpl --help --json`: every command with its usage, summary and own
+/// `--help`, the contract the site's CLI reference is generated from.
+pub(crate) fn help_json() -> String {
+    let text = |s: String| Value::String(s);
+    let commands = COMMANDS
+        .iter()
+        .map(|c| {
+            let help = crate::run(&[c.name, "--help"]);
+            let help = String::from_utf8_lossy(&help.stdout).trim_end().to_string();
+            obj([
+                ("name", text(c.name.into())),
+                (
+                    "usage",
+                    text(format!("{} {}", c.name, c.args).trim_end().into()),
+                ),
+                ("summary", text(c.summary.join(" "))),
+                (
+                    "help",
+                    if help.is_empty() {
+                        Value::Null
+                    } else {
+                        text(help)
+                    },
+                ),
+            ])
+        })
+        .collect();
+    let version = text(crate::VERSION.into());
+    cpl_json::to_string(&obj([
+        ("version", version),
+        ("commands", Value::Array(commands)),
+    ]))
+}
+
+/// What `cpl --help` prints: [`COMMANDS`] between [`HEADER`] and [`FOOTER`].
+pub(crate) fn usage() -> &'static str {
+    static USAGE: OnceLock<String> = OnceLock::new();
+    USAGE.get_or_init(|| {
+        let mut out = HEADER.to_string();
+        for command in COMMANDS {
+            let left = format!("{} {}", command.name, command.args);
+            let left = left.trim_end();
+            let mut summary = command.summary.iter();
+            match summary.next() {
+                Some(first) if left.len() < 22 => out += &format!("  {left:<22}{first}\n"),
+                Some(first) => out += &format!("  {left}\n{:24}{first}\n", ""),
+                None => out += &format!("  {left}\n"),
+            }
+            for line in summary {
+                out += &format!("{:24}{line}\n", "");
+            }
+        }
+        out + FOOTER
+    })
+}
 /// Runs `cpl` with `args`, writing to `stdout` as it goes. `stdin` is
 /// called only by a command that reads standard input: each call gives the
 /// bytes that have arrived, and nothing once the input has ended.

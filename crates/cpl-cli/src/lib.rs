@@ -2,7 +2,7 @@
 //! (`cp` clashes with Unix `cp`); source files end in `.cp`.
 
 mod commands;
-use commands::{command_usage, unknown_option, USAGE};
+use commands::{command_usage, unknown_option, usage as main_usage};
 
 mod dap;
 mod explain;
@@ -109,13 +109,17 @@ pub fn exec<S: AsRef<str>>(
 ) -> u8 {
     let usage = args.first().and_then(|c| command_usage(c.as_ref()));
     let mut usage_error = |message: String| {
-        *stderr += &format!("cpl: {message}\n\n{}", usage.unwrap_or(USAGE));
+        *stderr += &format!("cpl: {message}\n\n{}", usage.unwrap_or(main_usage()));
         EXIT_USAGE
     };
     let rest: Vec<&str> = args.iter().skip(1).map(AsRef::as_ref).collect();
     match args.first().map(AsRef::as_ref) {
+        Some("-h" | "--help") if rest == ["--json"] => {
+            let _ = writeln!(stdout, "{}", commands::help_json());
+            0
+        }
         None | Some("-h" | "--help" | "help") => {
-            let _ = stdout.write_all(USAGE.as_bytes());
+            let _ = stdout.write_all(main_usage().as_bytes());
             0
         }
         Some("-V" | "--version") => {
@@ -123,7 +127,7 @@ pub fn exec<S: AsRef<str>>(
             0
         }
         Some(_) if usage.is_some() && rest.iter().any(|arg| matches!(*arg, "-h" | "--help")) => {
-            let _ = stdout.write_all(usage.unwrap_or(USAGE).as_bytes());
+            let _ = stdout.write_all(usage.unwrap_or(main_usage()).as_bytes());
             0
         }
         Some(c) if unknown_option(c, &rest).is_some() => usage_error(format!(
@@ -1654,7 +1658,7 @@ mod tests {
                 "{command}: {help}"
             );
             assert!(
-                USAGE.contains(&format!("\n  {command} ")),
+                main_usage().contains(&format!("\n  {command} ")),
                 "{command} is not in the usage"
             );
         }
