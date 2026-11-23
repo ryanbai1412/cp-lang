@@ -218,6 +218,7 @@ documented. The stdlib's own gaps are in `std/GAPS.md`.
 - core-05/spec-block-segtree-of-ws.cp: compiler
 - core-05/file-body-var-holds-lent.cp: compiler
 - core-05/lent-var-reassigned-from-itself.cp: compiler
+- core-07/map-view-drop-len-calls-none.cp: compiler
 - core-07/fold-with-init.cp: compiler
 - core-07/assign-into-range.cp: compiler
 - core-07/sorted-has-no-desc-flag.cp: stdlib
