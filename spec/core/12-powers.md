@@ -220,7 +220,7 @@ One spelling: `fn (a: T) op (b: T) -> R` defines `op`, unary `fn -(a: T)`,
 comparison `fn (a: T) < (b: T) -> Bool` (or the derived order). It is the
 `Add`/`Mul`/... protocol impl written the way the operator reads, so generic
 code bounded by `T: Add` accepts it. `impl Add for T` is no longer written
-by hand (decision 133). Status: partial (`impl Add for` checks; the
+by hand. Status: partial (`impl Add for` checks; the
 `fn (a) + (b)` spelling does not parse yet).
 
 ## W10. Protocols, laws and operation values (P10)
@@ -236,7 +236,8 @@ Algebra stays operation values (decision 3.1): a structure takes a binary fn
 (`SegTree(+)`, `SparseTable(min)`, `scan(xs, gcd)`). Its identity comes from
 the element type: `+` uses `T.zero`, `*` uses `T.one`, `min`/`max` over `?T`
 use `None`; a user type supplies them as constants (`const zero = Low(...)`).
-Anything else passes `id:`: `SegTree(op: f, id: e)`. A missing identity is
+Anything else passes a `Monoid(id: e, op: f)`, as in
+`SegTree(Monoid(id: e, op: f), init)`. A missing identity is
 an error naming the constant to define. Lazy propagation takes an action
 value `act: (f, x) => ...` with `compose:`. Const generics: `Mod<P>`,
 `[n]T`, `Bitset<N>`.
@@ -284,8 +285,8 @@ an inline bound is E0204).
 `read<T>()` and `print(x)` go through `Read` and `Show`, derived for
 records (W3) and defined by hand for anything else. Format options are
 named arguments: `read<[n]Int>(base: 1)`, `print(xs, sep: "\n")`.
-`read<Graph<V, E>>(directed: false, weighted: true)` is ordinary library
-code. Status: partial (`read` is still compiler-special for some types).
+A graph is read as its edge records and built from them; there is no
+`Graph.read` (R10.2.5). Status: partial (`read` is still compiler-special for some types).
 
 ## W12. Costs and library lints (P12)
 

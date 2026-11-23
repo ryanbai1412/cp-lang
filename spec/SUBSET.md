@@ -219,6 +219,7 @@ documented. The stdlib's own gaps are in `std/GAPS.md`.
 - std-seq/present-unwraps-pieces.cp: compiler
 - core-11/prelude-exports-signature-types.cp: stdlib
 - core-07/zip-takes-a-rev.cp: stdlib
+- std-search/real-bsearch-is-a-range-method.cp: stdlib `Range<F64>.bsearch/peak/valley(steps:)` replace `bsearch_real`/`ternary_*_real` (decision 419)
 - core-07/rev-pieces-cut-in-walk-order.cp: compiler
 - std-subset/items-walks-members.cp: compiler
 - core-05/view-take-keeps-a-read-lend.cp: compiler

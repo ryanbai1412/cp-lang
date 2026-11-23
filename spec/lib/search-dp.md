@@ -49,11 +49,13 @@ let t = (0..=1e18).first_true(t => can_finish(by: t))!   // smallest feasible ti
 let k = (1..=n).last_true(k => fits(k)) ?? 0             // largest k that fits, 0 if None
 ```
 
-Over reals the searches take a step count instead of an integer range:
-`bsearch_real(lo, hi, ok, steps:)` is the least `x` with `ok(x)` to within
-`(hi - lo) / 2^steps`, and `ternary_min_real(lo, hi, f, steps:)` and
-`ternary_max_real` find the optimum of a unimodal `f` by golden section. Each
-costs `steps` calls.
+Over reals the same three searches take a step count instead of walking
+integer positions: on a `Range<F64>`, `r.bsearch(ok, steps:)` is the least
+`x` with `ok(x)` to within `(hi - lo) / 2^steps`, and `r.peak(by: f, steps:)`
+and `r.valley(by: f, steps:)` find the optimum of a unimodal `f` by golden
+section. Each costs `steps` calls. There are no separate `_real` names: the
+range's element type picks the search, as it does for every other range
+method (decision 419).
 
 ## Tables
 

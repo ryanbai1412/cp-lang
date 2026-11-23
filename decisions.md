@@ -8322,3 +8322,9 @@ tag move fatal again.
 - **Decision.** `var res = [a.keys].filled(None)` is E0302: an optional needs its element type at the declaration (`var res: [K]?K = ...`), never from a later assignment or from the fn's result type. The `next_greater` example in `spec/core/04b-keys.md` gets the annotation. Rebuild round 35 found 30 holes (23 silent, 22 guesses held; 3 contradictions; 1 missing stdlib; 3 found late), 26 of them inside Milestone 1. Its three new items were already on the gap ratchets: `bfs01` missing from the prelude (`prelude-gaps.txt`), `dijkstra(step:)` (`sig-gaps.txt`), and a positional `Monoid(id, op)` in a std doc. They go to stdlib to burn those lists down. Two `cpl explain` items go to tools: phantom copies, and an inferred `Int` shown as unbounded.
 - **Why.** Each declaration then reads alone, as a `fn` signature does (R06.1.2), and inference stays local and linear. The round shows that the gap lists record debt but nothing drains them, so their size became a register row.
 - **Reverse.** Infer a `var`'s element type from its first assignment in the same block, and drop the annotation from the example.
+
+## 419. Real searches are the range searches on a `Range<F64>`
+
+- **Decision.** `(lo..hi).bsearch(ok, steps:)`, `.peak(by: f, steps:)` and `.valley(by: f, steps:)` on a `Range<F64>` are the real-valued searches. `bsearch_real`, `ternary_min_real` and `ternary_max_real` go. `spec/lib/search-dp.md` had both spellings, its table one way and its prose the other.
+- **Why.** These are the same three searches the integer ranges already have, and the range's element type picks the search, as for every other range method. A `_real` suffix is a type-named variant, which the stdlib rule forbids, and it adds three names to remember.
+- **Reverse.** Restore the three free fns and make the table use them.

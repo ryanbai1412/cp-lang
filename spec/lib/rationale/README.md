@@ -32,8 +32,8 @@ fails a point below is sent back with the point named.
    missing power is proposed in section 3 for the core lane, not
    special-cased.
 6. **Prelude budget.** A new prelude name shows it is used by more than
-   one port in ten and says what it displaces; the cap is 80
-   (`prelude_stays_under_budget`).
+   one port in ten and says what it displaces. There is no fixed cap: the
+   prelude is the lib chapters' vocabulary (R11.3.2, decision 150).
 7. **Every tool.** Interpreter and C++ agree (a differential fixture or
    a port gate), docs in `site/content/stdlib.md`, editor tables when a
    prelude name changes, a `decisions.md` entry with its reverse.

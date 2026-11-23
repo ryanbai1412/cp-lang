@@ -10,7 +10,7 @@ ends, `.first`/`.last` are optional.
    `break`/`return` work through them; lockstep is `List(g)`. (R07.1.1)
 2. **Six capabilities.** `Seq` walks; `Keyed` walks `(key, x)`; `Sized` has
    \(O(1)\) `.len`; `Bidir` walks backwards; `Indexed` adds \(O(1)\) `s[i]` and
-   `.keys`; `IndexedMut` makes `s[i]` a place (POWERS W4). Adapters keep `Indexed` when they can stay \(O(1)\) (slices, `.rev`,
+   `.keys`; `IndexedMut` makes `s[i]` a place (POWERS W4). Adapters keep `Indexed` when they can stay \(O(1)\) (slices,
    `map`, `take`/`drop`, `zip`); `filter`, `take_while` and generators are
    `Seq`, so every fold (`sum`, `max`, `count`, ...) takes them, `yields`
    members such as `c.values` included. (R07.1.2)
@@ -42,7 +42,7 @@ Every word below means one thing in this doc, in the stubs and in errors.
 | Term | Means | Owns its elements? | Examples |
 |---|---|---|---|
 | **sequence** (`Seq<T>`) | anything a `for` can walk, in order | either | everything in this table (R07.2.1) |
-| **indexed sequence** (`Indexed<K, T>`) | a sequence that also has \(O(1)\) `s[k]`, `.keys` and `.len` | either | `[V]T`, `List<T>`, `Str`, ranges, slices, `.rev` (R07.2.2) |
+| **indexed sequence** (`Indexed<K, T>`) | a sequence that also has \(O(1)\) `s[k]`, `.keys` and `.len` | either | `[V]T`, `List<T>`, `Str`, ranges, slices (R07.2.2) |
 | **key** | what an indexed sequence is indexed by: a domain position (`V`) or an `Int` offset (`List`, `Str`) | | `i: V`, `3` (R07.2.3) |
 | **collection** | a sequence that owns its elements; making one allocates | yes | `[V]T` arrays, `List`, `Str`, `Set`, `Map` (R07.2.4) |
 | **range** | a run of a domain, `l..r`; a sequence of positions or cuts with no data behind it (round 1) | nothing to own | `l..=r`, `..i`, `V.range` (R07.2.5) |
