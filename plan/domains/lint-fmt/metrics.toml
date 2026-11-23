@@ -1,18 +1,18 @@
-# lint-fmt metrics. Refreshed on main (3e818407c) on 2026-11-22 from the repo
+# lint-fmt metrics. Lint rows refreshed on main (62d61e45e) on 2026-11-23, fmt rows on 2026-11-22, from the repo
 # root with a debug build (`cargo build -p cpl-cli`, `target/debug/cpl`); counts
 # match a release build, timings below are from the release build.
 
 [[metric]]
 name = "lints_implemented"
 command = "target/release/cpl lint --list | wc -l"
-today = 40
+today = 111
 target = "38 plus the catalog lints v0.3 adds (Q1)"
 note = "L0601-L0609 are emitted by cpl-check (they need types), not cpl-lint; `cpl lint --list` lists them once lints read checker facts (M3)"
 
 [[metric]]
 name = "lints_with_records"
 command = "ls -d spec/lints/*/ 2>/dev/null | wc -l"
-today = 40
+today = 111
 target = "equal to lints_implemented"
 note = "record_tests.rs checks each record: before fires, after and near_miss do not, the fix parses and clears it"
 
@@ -26,33 +26,33 @@ note = "all 9 (L0601-L0609) are emitted by cpl-check: `grep -rn codes::<CONST> c
 [[metric]]
 name = "implemented_lint_codes_not_in_spec"
 command = "comm -23 <(target/release/cpl lint --list | awk '{print $1}' | sort -u) <(grep -oE 'L0[0-9]{3}' spec/diagnostics.md | sort -u)"
-today = 0
+today = 0  # the command prints L0517-L0520: spec/diagnostics.md names them as the range "L0516-L0521"
 target = 0
 note = "checked by test every_lint_matches_the_spec_lint_list (cargo test -p cpl-lint); the command lists the 6 codes the spec spells as the range L0516-L0521"
 
 [[metric]]
 name = "lint_warnings_corpus_spec"
 command = "target/release/cpl lint corpus/problems/*/spec.cp | tail -1"
-today = "100 files checked, 34 warnings, 0 errors, 14 not checking, 1 not linted"
+today = "100 files checked, 35 warnings, 149 errors, 51 not checking, 1 not linted"  # errors are `cpl check`'s, shared since c9ab60014
 target = "0 warnings, 0 not linted"
 
 [[metric]]
 name = "lint_warnings_spec_std"
 command = "target/release/cpl lint std/*.cp | tail -1"
-today = "40 files checked, 450 warnings, 0 errors, 19 not checking, 3 not linted"
+today = "42 files checked, 613 warnings, 280 errors, 23 not checking, 2 not linted"  # the 280 errors are `cpl check`'s on std itself (missing bounds), routed to stdlib/compiler
 target = "0 warnings, 0 not linted"
 note = "rose from 236 as stdlib made more modules lintable (L0414 101 -> 181) and L0210 landed (72, stdlib asked to run --fix); the 3 not linted have syntax errors stdlib owns; a rise in either set fails corpus_warnings_only_go_down"
 
 [[metric]]
 name = "lint_warnings_corpus_dream"
 command = "target/release/cpl lint corpus/problems/*/dream.cp | tail -1"
-today = "421 files checked, 102 warnings, 0 errors, 144 not checking, 84 not linted"
+today = "421 files checked, 146 warnings, 455 errors, 177 not checking, 85 not linted"
 target = "0 false positives among the warnings; not-linted files are syntax the parser does not have yet (compiler, corpus)"
 
 [[metric]]
 name = "hardcoded_stdlib_names"
 command = "grep -ohE '\"[A-Z][A-Za-z]+\"' crates/cpl-lint/src/rules/*.rs crates/cpl-lint/src/rules/*/*.rs | sort -u | wc -l"
-today = 16
+today = 23
 target = 0
 note = "a proxy: capitalised string literals; includes unit names GB/MB/TB"
 
@@ -66,7 +66,7 @@ note = "per-file counts summed: Cargo.toml 1, rules/bounds.rs 3, all the prover,
 [[metric]]
 name = "lint_seconds_largest_file"
 command = "/usr/bin/time -f '%e' target/release/cpl lint std/tree.cp"
-today = 0.27
+today = 0.56
 target = "< 0.5"
 note = "2,682 lines, the largest file that lints; process wall time, 3 runs (0.20-0.22); includes the checker run, decisions.md 239"
 
@@ -112,7 +112,7 @@ target = 0
 [[metric]]
 name = "crate_tests_pass"
 command = "cargo test -q -p cpl-lint; cargo test -q -p cpl-fmt"
-today = "cpl-lint 116 passed, cpl-fmt 45 passed, 0 failed"
+today = "cpl-lint 148 passed, cpl-fmt 60 passed, 0 failed"
 target = "all pass"
 
 [[metric]]
@@ -125,6 +125,6 @@ note = "files in std, corpus spec.cp and dream.cp whose checker error count rise
 [[metric]]
 name = "newcomer_port_warnings_top10"
 command = "target/debug/cpl lint corpus/problems/*/port.cp 2>&1 | grep -o 'warning\\[L[0-9]*\\]' | sort | uniq -c | sort -rn | head -10"
-today = "L0504 57, L0503 42, L0523 37, L0507 36, L0524 33, L0201 30, L0203 28, L0505 25, L0514 22, L0208 22 (459 in all)"
+today = "L0504 66, L0549 45, L0503 44, L0537 39, L0524 38, L0507 38, L0523 36, L0201 31, L0203 29, L0208 28 (750 in all)"
 target = "each of the top 10 names real CPL vocabulary, has a fix where meaning allows and an explain page"
 note = "C++-translated ports are the newcomer proxy (Milestone 1, J2/J5); L0414 left the default set (decision 319)"
