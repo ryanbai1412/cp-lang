@@ -194,7 +194,7 @@ pub fn run_one(db: &mut Database, root: &Path, ex: &DocExample) -> CaseOutcome {
             c
         }
         Err(CompileError::Diagnostics(d))
-            if (d.contains("E0201") || d.contains("E0204"))
+            if (d.contains("E0201") || d.contains("E0203") || d.contains("E0204"))
                 && !ex.module.is_empty()
                 && ex.module != "prelude"
                 && ex.module != "core" =>
