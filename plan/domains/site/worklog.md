@@ -248,3 +248,4 @@ print(k, n)' -> print ends up inside the loop
 - 2026-11-23: drafts (site/R12): every editor keeps its edit per page and starting text in localStorage, practice problems gain Reset; web/tests/drafts.mjs runs in CI's site browser tests.
 - 2026-11-23: live diagnostics browser test: 11 error-registry triggers show their `cpl check` code in the playground, 402 ms median from the last keystroke. Browser differential after compiler's VM-in-wasm: 865 programs in 5.3 s, 0 too slow.
 - 2026-11-23: std reference rubric (site/R4) in gen-ref: fails on an entry with no signature, unparsed parameters or a fact left in prose; 0 of 2663 items today. Site register rows without a check: 14.
+- 2026-11-23: lint-fixes browser test: all 38 registry lints with a fix apply in the playground exactly as `cpl lint`'s edits (plus 6 more lints shown); 78 s. Site register rows without a check: 13. Two lint triggers (L0511, L0512) no longer type-check.

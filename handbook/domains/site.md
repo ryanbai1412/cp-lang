@@ -214,7 +214,7 @@ Each row is a quality a user can feel on the site, the metric, and the strongest
 | Inlay type hints | untyped bindings without a hint; hints that cannot be switched off | [site/R6](../guidelines/site-checklist.md); the browser test sees a hint on an untyped binding, switches hints off, reloads and sees none | `web/tests/intelligence.mjs` |
 | Typing feels like a Python editor | indentation cases | Hand-written unit suite | `web/components/editor/indent.test.ts` |
 | Highlighting matches the language | tokens the editor colours differently from the TextMate grammar | **missing**: a differential over the gate's snippets | none |
-| Lints and fixes in the editor | lints `cpl lint` raises that the editor does not show; quick fixes that do not apply | **missing** | none |
+| Lints and fixes in the editor | lints `cpl lint` raises that the editor does not show; quick fixes that do not apply | [site/R6](../guidelines/site-checklist.md): for a sample of the lint registry's triggers, the editor shows the code `cpl lint` raises, and clicking its fix gives the text `cpl lint`'s edits give | `web/tests/lint-fixes.mjs`, CI job `site browser tests` |
 | Work is not lost | edits lost on reload or navigation | [site/R12](../guidelines/site-checklist.md): every editor keeps its draft per page and starting text | `web/lib/draft.ts`, `web/tests/drafts.mjs`, CI job `site browser tests` |
 
 ### J6 and J7. Run, test, stress and trace in the browser
