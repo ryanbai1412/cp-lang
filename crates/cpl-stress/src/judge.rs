@@ -94,12 +94,34 @@ pub fn declared(src: &str) -> Vec<Declared> {
 }
 
 /// Whether two output tokens match. `YES`, `Yes` and `yes` are one answer, as
-/// Codeforces (the target judge) accepts yes/no in any case.
+/// Codeforces (the target judge) accepts yes/no in any case; two numbers,
+/// either written with a `.` or an exponent, match within 1e-6 absolute or
+/// relative error (spec/tools/cli.md, `cpl test d`).
 fn same_token(expected: &str, got: &str) -> bool {
     expected == got
         || ["yes", "no"]
             .iter()
             .any(|word| expected.eq_ignore_ascii_case(word) && got.eq_ignore_ascii_case(word))
+        || close_reals(expected, got)
+}
+
+fn close_reals(expected: &str, got: &str) -> bool {
+    let real = |t: &str| t.contains(['.', 'e', 'E']);
+    let number = |t: &str| {
+        t.bytes()
+            .all(|b| b.is_ascii_digit() || b"+-.eE".contains(&b))
+            && t.bytes().any(|b| b.is_ascii_digit())
+    };
+    if !(number(expected) && number(got) && (real(expected) || real(got))) {
+        return false;
+    }
+    match (expected.parse::<f64>(), got.parse::<f64>()) {
+        (Ok(a), Ok(b)) if a.is_finite() && b.is_finite() => {
+            let diff = (a - b).abs();
+            diff <= 1e-6 || diff <= 1e-6 * a.abs()
+        }
+        _ => false,
+    }
 }
 
 fn same_tokens(expected: &[&str], got: &[&str]) -> bool {

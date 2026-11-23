@@ -249,6 +249,16 @@ fn outputs_are_compared_by_token() {
 #[test]
 fn yes_and_no_match_in_any_case() {
     assert_eq!(first_difference("Yes\nNO\n", "YES\nno\n"), None);
+    // 1059D's sample: a real matches within 1e-6, absolute or relative.
+    assert_eq!(first_difference("0.625000000\n", "0.625\n"), None);
+    assert_eq!(first_difference("1e9\n", "1000000000.5\n"), None);
+    assert_eq!(first_difference("0.5\n", "0.5000009\n"), None);
+    assert_eq!(first_difference("3\n", "3.0000001\n"), None);
+    assert!(first_difference("0.5\n", "0.50001\n").is_some());
+    // Two integers, and words, still match exactly.
+    assert!(first_difference("10\n", "11\n").is_some());
+    assert!(first_difference("1e5\n", "inf\n").is_some());
+    assert!(first_difference("e\n", "E\n").is_some());
     assert_eq!(
         first_difference("Yes\n", "No\n").as_deref(),
         Some("first difference at line 1, token 1: expected `Yes`, got `No`")
