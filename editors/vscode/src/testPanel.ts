@@ -6,7 +6,7 @@ import * as path from 'node:path';
 import * as vscode from 'vscode';
 import { serverBinary } from './client';
 import { missingCpl, runCpl } from './cpl';
-import { parseTestReport, TestCase } from './results';
+import { caseOrder, parseTestReport, TestCase } from './results';
 
 export type Outcome = 'passed' | 'failed' | 'errored' | 'skipped';
 
@@ -67,7 +67,7 @@ export class TestPanel implements vscode.Disposable {
         const cases = names
             .filter(name => name.endsWith('.in'))
             .map(name => name.slice(0, -'.in'.length))
-            .sort((a, b) => parseInt(a, 10) - parseInt(b, 10) || a.localeCompare(b));
+            .sort(caseOrder);
         if (cases.length === 0) {
             this.controller.items.delete(item.id);
             return;

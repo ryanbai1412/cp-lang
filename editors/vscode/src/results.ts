@@ -533,3 +533,18 @@ export function parseTestReport(json: string): TestCase[] | undefined {
     }
     return cases;
 }
+
+/** `cpl test`'s case order: numbered cases by number, then the rest by name. */
+export function caseOrder(a: string, b: string): number {
+    // As Rust's `u64` parse: an optional `+`, digits, at most 2^64 - 1.
+    const number = (name: string) => {
+        const n = /^\+?\d+$/.test(name) ? BigInt(name) : undefined;
+        return n !== undefined && n < 1n << 64n ? n : undefined;
+    };
+    const [x, y] = [number(a), number(b)];
+    const byName = a < b ? -1 : a > b ? 1 : 0;
+    if (x !== undefined && y !== undefined) {
+        return x < y ? -1 : x > y ? 1 : byName;
+    }
+    return x !== undefined ? -1 : y !== undefined ? 1 : byName;
+}

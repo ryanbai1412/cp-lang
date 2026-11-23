@@ -4,6 +4,7 @@ import * as vm from 'node:vm';
 import * as assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
+    caseOrder,
     clip,
     counterexampleSummary,
     divergenceLabel,
@@ -285,4 +286,13 @@ test('parseTestReport reads each case, with null fields left out', () => {
     ]);
     assert.equal(parseTestReport('{"values": []}'), undefined);
     assert.equal(parseTestReport('error[E0201]'), undefined);
+});
+
+test('the test panel lists cases in cpl test\'s order', () => {
+    // As crates/cpl-contest's cases_are_samples_in_order_then_the_rest_by_name.
+    const names = ['stress-7', 'hand', '10', '2', '02', 'Hand', '+3', '18446744073709551616'];
+    assert.deepEqual(
+        [...names].sort(caseOrder),
+        ['02', '2', '+3', '10', '18446744073709551616', 'Hand', 'hand', 'stress-7'],
+    );
 });
