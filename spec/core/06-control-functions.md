@@ -141,7 +141,9 @@ library or by this spec:
 - `@test`, `@alt(f, caps)`, `@gen`, `@check`, `@interactor`: tool
   roles (`tools/stress.md`); the item is otherwise unchanged. The old
   spellings `@alt(main)`, `@brute(main)` and `@checker` are E0503, naming
-  `@alt(program)` and `@check`. (R06.4.3)
+  `@alt(program)` and `@check`. Under `@!multitest` a `@check` runs
+  once per case, its `read()` over that case's input and its output
+  over that case's printed lines. (R06.4.3)
 - `@cache` on a struct field: compiler-safe interior mutability with an
   author promise of logical correctness (chapter 5 §10a). (R06.4.4)
 - `@trusted:` blocks and `@cpp` items: the unsafe tier (chapter 9).

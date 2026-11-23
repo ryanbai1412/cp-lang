@@ -187,6 +187,8 @@ prime-power divisor `low[i]` of each `i`.
 `Mod<P>` is one type for both compile-time constants (`type Z = Mod<998_244_353>`)
 and runtime moduli (`let p: Int = read(); type Z = Mod(p)`). `Comb<M>` is keyed
 on the `Mod` type (`let comb = Comb<Z>(limit)`) so the modulus is written once.
+An `Int` operand of `+`, `-` or `*` beside a `Mod<P>` converts to it
+(`z * k`, `k + z`, `ans * comb.fact(n)`); two different moduli never mix.
 
 <!-- spec-only: signatures and costs, not a program -->
 ```cp

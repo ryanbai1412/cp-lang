@@ -8133,3 +8133,27 @@ tag move fatal again.
   catalog generated `.copy()`, so editors and docs taught both (BLOCKERS #42).
 - **Reverse.** Rename the five catalog rows back and drop `old_copy_spelling`
   in `check/steps.rs`.
+
+## 394. Rebuild round 29: holes and bugs (spec, 2026-11-23)
+
+- **Decision.** No new rule. Of 23 holes, 10 were already answered by a general rule the reader didn't find first:
+  - H01: `pre[k]` on `Int` keys is a cut (R07 rule 6).
+  - H04: `+` isn't closed on a range, so a fold over ranged cells is `Int` (R03.1.7).
+  - H05: a `let` of a map element lends (R05.3.5).
+  - H06: `D: Domain` is the bound (R04).
+  - H08: pattern let-else may `continue` (R01.6.2).
+  - H09: `V.at(x)` takes the value (R04.2.8).
+  - H11 and H18: `^` and `or` are operation values (R01.5.5).
+  - L3: concatenation is `chain(a, b)` (R07.7.4).
+  - H15: a `[4]T` is a value.
+  Three silent holes got a sentence where the reader looked first:
+  - H03: under `@!multitest`, `@check` runs once per case (R06.4.3).
+  - H16: an `Int` operand converts beside `Mod<P>` (`spec/lib/math.md` §2.2).
+  - L1: the `Window` examples in `spec/lib/sequence-patterns.md` wrote `w.all <= K` on a `?T`; they now write `(w.all ?? 0) <= K`.
+- **H02 (contradiction).** R07.3.5 says `.rev` is not `Indexed`, which keeps decision 388 sound: if it were, generic `s[k]` would index a reversed view by key. So the checker must reject `.rev` at an `Indexed` bound (compiler). `common_prefix_len` asks only for what it uses, `Seq` (decision 142; stdlib).
+- **Routed.**
+  - Compiler, L5 (P0 perf): `let xs = at[p[r]]` copies when the key is an index expression.
+  - Stdlib, L4: `maximal(Window(op))` calls `pop(x)`, but `Window.pop()` takes no argument.
+  - Stdlib, L2: `Rooted.up` with `U != T`.
+  - Stdlib, H12: stale "compiler built-in" comments in `std/tree.cp`.
+- **Reverse.** Make `.rev` `Indexed` by position. That would undo decision 388's rule that a view keeps its parent's keys.

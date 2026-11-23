@@ -96,3 +96,7 @@ Walked the last 2 h of check/codegen/interp/stdlib commits (9ed9de9b7 lending, e
 ## Adversarial round A2 (2026-11-23)
 
 New compiler commits since A1: edc93adad (`Int(x)`/`F64(x)` through `impl Into`), 0fbf88e3c (sum of ranged cells typed `Int`). 8 probes under ASan, UBSan and `_GLIBCXX_DEBUG`: Into in comprehensions, generic `T: Into<Int>` bounds, generic structs with both `Into<Int>` and `Into<F64>`, a heap-field struct after mutation, and the missing-impl help; sums of `0..=200`/`0..=255` cells in lists, struct fields and arithmetic. All agree; 0 bugs. 3 regression cases added.
+
+## Adversarial round A3 (2026-11-23)
+
+Keyed views through generic params and struct fields, nested generators with early `return`, multitest reset with a shared `Map`, i64 products of `0..=1e9` reads, `0..=65535` shifts, and 850 KB of mixed `print` forms: 13 probes under ASan, UBSan and `_GLIBCXX_DEBUG`, all agree. 1 case added. Separately, a sanitizer sweep over all 2,024 runnable `ok` cases is in progress.

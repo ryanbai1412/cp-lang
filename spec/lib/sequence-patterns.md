@@ -128,7 +128,7 @@ pub fn maximal<D, T, S: Track<T>>(self: [D]T, mut state: S, ok: S -> Bool,
 
 | Type | `push` / `pop` | Typical `ok` |
 |---|---|---|
-| `Window(op)` | fold queue | `w.all <= k` |
+| `Window(op)` | fold queue | `(w.all ?? 0) <= k` |
 | `Counter<K>` | count up / down; `.len` is the distinct count | `c.len <= k` |
 | `SortedBag<T>` (sorted multiset) | insert / erase one | `b.last! - b.first! <= d` |
 | `track(s, add:, remove:)` (a `Tracked`) over any structure `s` | your two closures on `mut s` | a predicate on `t.state` |
@@ -136,10 +136,10 @@ pub fn maximal<D, T, S: Track<T>>(self: [D]T, mut state: S, ok: S -> Bool,
 
 <!-- spec-only: fragment over a sequence `a` and its bounds `K`, `k`, `S` -->
 ```python
-let longest = a.maximal(Window(+), ok: w => w.all <= K).max(by: .len)!
+let longest = a.maximal(Window(+), ok: w => (w.all ?? 0) <= K).max(by: .len)!
 let atmost_k = a.maximal(Counter<C>(0), ok: c => c.len <= k)
 let count = atmost_k.map(.len).sum()           // subarrays with <= k distinct
-let shortest = a.minimal(Window(+), ok: w => w.all >= S).present().min(by: .len)
+let shortest = a.minimal(Window(+), ok: w => (w.all ?? 0) >= S).present().min(by: .len)
 ```
 
 - **The promise is checked where it is cheap.** Hereditary and upward
