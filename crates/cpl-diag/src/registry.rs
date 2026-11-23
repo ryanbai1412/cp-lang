@@ -534,9 +534,9 @@ pub const REGISTRY: &[CodeInfo] = &[
     CodeInfo {
         code: Code("E0605"),
         title: "Invalid `Index` implementation",
-        summary: "An `impl Index` declaration used a non-constant `const K` or a mutable `var` for `let K`.",
-        explanation: "Use `let K = ...` frozen from immutable values so array sizes cannot change after allocation.",
-        trigger: "var n = 5\nstruct Id(i: Int)\nimpl Index for Id:\n    let K = n\n",
+        summary: "An `impl Index` declaration used a non-constant `const count`, a mutable `var` for `let count`, or a pre-0.3 member name (`K`, `to_idx`, `from_idx`).",
+        explanation: "Use `let count = ...` frozen from immutable values so array sizes cannot change after allocation, and name the members `count`, `ord` and `nth`.",
+        trigger: "var n = 5\nstruct Id(i: Int)\nimpl Index for Id:\n    let count = n\n",
         fix: "let n = 5\ndomain Id = 0..n\nprint(Id.count)\n",
         mode: "check",
         input: "",
