@@ -10,9 +10,9 @@ Read from the code at `4e2de3cd` (2026-11-22). Line counts from `wc -l`.
 | File | Lines | What it is for |
 |---|---|---|
 | `src/main.rs` | 35 | Entry: hands off to a pinned toolchain if one applies, else `cpl_cli::exec`. |
-| `src/lib.rs` | 1,572 | `version_line`, `run`, `run_with_input`, `exec`; the top-level help text; the command `match` (`check`, `fix`, `run`, `judge`, `build`, `judges`, `submit`, `explain`, `lsp`, ...); `explain_file`; `run` and `build` pipelines; `fix` (applies `cpl_lint::apply_fixes`). Other crates' commands are dispatched through a `match` to their `cli::run` / `run` fns (`lib.rs:661-668`). |
-| `src/check.rs` | 152 | `cpl check` (text and `--json`) and `cpl fix` (`apply_error_fixes`, then the lint fixes once no error is left); `errors_in`, which `checked_fix.rs` re-checks with |
-| `src/unit_tests.rs` | 235 | `cpl test` on `.cp` files and directories: the inline `test "..."` blocks in the interpreter and, with `--cpp`, as sanitized C++ (a problem name goes to `cpl-contest` instead). |
+| `src/lib.rs` | 1,662 | `version_line`, `run`, `run_with_input`, `exec`; the top-level help text; the command `match` (`check`, `fix`, `run`, `judge`, `build`, `judges`, `submit`, `explain`, `lsp`, ...); `explain_file`; `run` and `build` pipelines; `fix` (applies `cpl_lint::apply_fixes`). Other crates' commands are dispatched through a `match` to their `cli::run` / `run` fns (`lib.rs:661-668`). |
+| `src/check.rs` | 176 | `cpl check` (text and `--json`) and `cpl fix` (`apply_error_fixes`, then the lint fixes once no error is left); `errors_in`, which `checked_fix.rs` re-checks with |
+| `src/unit_tests.rs` | 240 | `cpl test` on `.cp` files and directories: the inline `test "..."` blocks in the interpreter and, with `--cpp`, as sanitized C++ (a problem name goes to `cpl-contest` instead). |
 | `src/toolchain.rs` | 866 | `cpl self`: installed toolchains, `cpl +<selector>`, pins, `settings.toml`, fetch, rollback, launcher handoff. |
 | `src/report.rs` | 923 | `cpl report`: redacted bug reports and crash bundles; the panic hook. |
 | `src/profile.rs` | 521 | `cpl profile`, `cpl cover`. |
@@ -64,7 +64,7 @@ LSP's view of the compiler (`grep -o 'cpl_[a-z]*::…' crates/cpl-lsp/src/*.rs`)
 
 ## Known debt
 1. **Spec and binary disagree on the command set**: 14 mismatches (`measure.py spec-sync`). Spec-only: `debug`, `fetch`, `interact`, `locate`, `migrate`, `selftest`, `trace`; binary-only: `check`, `dap`, `fix`, `judge`, `replay`, `report`, `self`. Nothing checks it. [Q tools-1]
-2. **No single command table**: the help text in `lib.rs`, the dispatch `match`, and each crate's own flag parsing are separate; flags, `--json` and exit codes vary by command (9 of 23 commands mention JSON in `--help`). `cli.json` is scraped from help text by `web/scripts/gen-tools.mjs` instead of emitted.
+2. **No single command table**: the help text in `lib.rs`, the dispatch `match`, and each crate's own flag parsing are separate; flags, `--json` and exit codes vary by command (18 of 23 commands offer JSON in `--help`, `measure.py json`). `cli.json` is scraped from help text by `web/scripts/gen-tools.mjs` instead of emitted.
 3. **`crates/cpl-cli/src/lib.rs` is 2,552 lines** (cap 2,000, allowlisted in `scripts/debt-ratchet.json`), as are `crates/cpl-lsp/src/server.rs` (2,111) and `crates/cpl-lsp/src/tests.rs` (2,868).
 4. **`cpl explain` is a stub of its spec**: `explain_file` (`lib.rs:2052`) prints only `cpl_codegen::explain_closures` and `explain_dropped_fields`; `spec/tools/explain.md`'s sizes, niches, peak memory, specializations and checks are missing, and hover computes its own (`cpl_check::Hover`). No representation query exists in the shared core yet.
 5. **LSP over budget at 5,000 lines**: `tests/latency.rs` fails in release (check 67 ms vs 50; open-to-diagnostics 161 ms vs 100). The fast gate runs it in a debug build, which enforces the budget only at 500 lines (`latency.rs:96`), so nothing stopped the 5,000-line regression.
