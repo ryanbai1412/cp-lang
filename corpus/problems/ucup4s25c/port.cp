@@ -1,7 +1,7 @@
 // Source: The 4th Universal Cup, Stage 25 (Grand Prix of Zagreb), problem C (Crooked Cycles),
 //   qoj.ac/contest/3773/problem/18403
 // Problem: m unordered triples of distinct numbers (m, values <= 2e5, sum of m <= 2e5,
-//   multitest). A cycle v_1..v_k has every three cyclically consecutive numbers form a liked
+//   t <= 2e4 tests). A cycle v_1..v_k has every three cyclically consecutive numbers form a liked
 //   triple; it is crooked if 3 does not divide k. Print whether a crooked cycle exists.
 // Solution: a cycle is a closed walk on ordered pairs, each triple's 6 orders giving edges
 //   (x, y) -> (y, z). Intern the pairs, take SCCs, and BFS each SCC from one root inside it;
@@ -11,12 +11,12 @@
 use std.marks.{Interner}
 
 @!multitest
-let m: 1..=100_000 = read()
+let m: 1..=200_000 = read()
 var verts = Interner<(Int, Int)>()
 var raw_edges: List<(Int, Int)> = []
 
 for _ in 0..m:
-    let (a, b, c): (1..=10 ** 9, 1..=10 ** 9, 1..=10 ** 9) = read()
+    let (a, b, c): (1..=200_000, 1..=200_000, 1..=200_000) = read()
     for (x, y, z) in [(a, b, c), (a, c, b), (b, a, c), (b, c, a), (c, a, b), (c, b, a)]:
         raw_edges.push((verts.id((x, y)), verts.id((y, z))))
 

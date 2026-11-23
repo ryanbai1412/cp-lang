@@ -1,5 +1,5 @@
 // Source: Codeforces 2178G (deCH OR Dations), https://codeforces.com/contest/2178/problem/G
-// Problem: n <= 5e5 chords with distinct endpoints on 2n circle points arrive in order. A chain
+// Problem: 2 <= n <= 5e5 chords with distinct endpoints on 2n circle points arrive in order. A chain
 //   is a set of chords whose consecutive members (by index) cross. For each prefix print 1 if
 //   every chord lies in an even number of chains, else 0. Multitest, sum of n <= 5e5.
 // Solution: chord i lies in end(i) * start(i) chains (chains ending / starting at it), and
@@ -14,7 +14,7 @@ use std.rand.Rng
 var rng = Rng.new(48)
 
 @!multitest
-let n: 1..=200_000 = read()
+let n: 2..=500_000 = read()
 domain P = 1..=2 * n
 let chords: [0..n](a: P, b: P) = read()
 
