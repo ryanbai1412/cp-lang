@@ -274,6 +274,9 @@ impl<'p, 'f> Compiler<'p, 'f> {
         let ok = match &e.kind {
             ExprKind::Call(..) => self.traced_call(e).is_some(),
             ExprKind::Do(block) => self.gives_natively(&block.stmts),
+            // Made on the VM as `MakeClosure`, which writes nothing.
+            ExprKind::Closure(cid) => (self.program.closures[*cid].captures.iter())
+                .all(|cap| cap.is_global || !cap.by_ref),
             _ => quiet_node(e),
         };
         let mut children = ok;
