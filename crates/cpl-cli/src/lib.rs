@@ -1493,8 +1493,6 @@ fn run_unit_tests(args: &[&str], stdout: &mut (dyn Write + Send), stderr: &mut S
     }
 }
 
-/// Checks each file through the shared front end and renders what it
-/// finds.
 /// Serves the Debug Adapter Protocol on stdin and stdout until the editor
 /// ends the session. Returns the exit status.
 pub fn dap() -> u8 {

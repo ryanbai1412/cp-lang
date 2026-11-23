@@ -5,6 +5,8 @@ use std::io::Write;
 
 use crate::{checked_fix, json_out, EXIT_ERRORS, EXIT_USAGE};
 
+/// Checks each file through the shared front end and renders what it
+/// finds.
 pub(crate) fn check(args: &[&str], stdout: &mut (dyn Write + Send), stderr: &mut String) -> u8 {
     let json = args.contains(&"--json");
     let files = args.iter().filter(|arg| **arg != "--json");
