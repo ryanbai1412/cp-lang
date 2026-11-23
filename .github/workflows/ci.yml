@@ -419,6 +419,14 @@ jobs:
         run: pnpm --filter cp-lang-web test
       - name: Installers are served
         run: test -s web/out/install.sh && test -s web/out/install.ps1
+      # handbook/guidelines/site-checklist.md site/R6, site/R7: the browser
+      # editor, Learn, phone widths and page weight, against the built site.
+      - name: Browser tests
+        timeout-minutes: 6
+        working-directory: web
+        run: |
+          pnpm exec playwright install --with-deps chromium
+          node tests/run.mjs smoke.mjs learn-smoke.mjs intelligence.mjs phone.mjs page-weight.mjs
       - name: Save target/ (release)
         id: stamp
         if: ${{ !cancelled() && github.ref == 'refs/heads/main' }}
