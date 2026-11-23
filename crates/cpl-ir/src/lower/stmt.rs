@@ -1,6 +1,7 @@
 //! Statements, blocks and patterns.
 
 mod lends;
+mod slice_place;
 
 use super::*;
 
@@ -5218,52 +5219,15 @@ impl<'a> Lowerer<'a> {
                 }
             }
             ast::ExprKind::Index { base, indices } => {
-                let base_place = self.place(base);
-                if indices.len() == 1 && Self::sliceable_mut_elem(&base_place.ty).is_some() {
-                    if matches!(indices[0].kind, ast::ExprKind::Range { .. }) {
-                        if let Some((lo, hi, elem_ty)) =
-                            self.mut_slice_bounds(&base_place, &indices[0], e.span)
-                        {
-                            let view_ty = Ty::MutView(Box::new(elem_ty));
-                            let view_expr = self.mk(
-                                ExprKind::MutSlice(
-                                    Box::new(base_place),
-                                    Box::new(lo),
-                                    Box::new(hi),
-                                ),
-                                view_ty.clone(),
-                                e.span,
-                            );
-                            let tmp = self.temp(view_ty.clone());
-                            self.cx.pending.push(Stmt::Let(tmp, Some(view_expr)));
-                            return Place {
-                                kind: PlaceKind::Local(tmp),
-                                ty: view_ty,
-                                span,
-                            };
-                        }
-                    } else if matches!(self.probe_ty_silent(&indices[0]), Some(Ty::Range(_))) {
-                        let range_val = self.expr(&indices[0], None);
-                        if let Some((lo, hi, elem_ty)) =
-                            self.mut_slice_range_val_bounds(&base_place, range_val, e.span)
-                        {
-                            let view_ty = Ty::MutView(Box::new(elem_ty));
-                            let view_expr = self.mk(
-                                ExprKind::MutSlice(
-                                    Box::new(base_place),
-                                    Box::new(lo),
-                                    Box::new(hi),
-                                ),
-                                view_ty.clone(),
-                                e.span,
-                            );
-                            let tmp = self.temp(view_ty.clone());
-                            self.cx.pending.push(Stmt::Let(tmp, Some(view_expr)));
-                            return Place {
-                                kind: PlaceKind::Local(tmp),
-                                ty: view_ty,
-                                span,
-                            };
+                let mut base_place = self.place(base);
+                if let [index] = indices.as_slice() {
+                    if let Some(place) = self.slice_key_place(&base_place, index, e.span) {
+                        return place;
+                    }
+                    if Self::sliceable_mut_elem(&base_place.ty).is_some() {
+                        match self.mut_slice_place(base_place, index, e.span) {
+                            Ok(view) => return view,
+                            Err(place) => base_place = place,
                         }
                     }
                 }
