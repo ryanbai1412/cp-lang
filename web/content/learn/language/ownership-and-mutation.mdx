@@ -177,9 +177,11 @@ say. R12 covers generators and views; both are in the reference.
 data at the same moment. CP Lang forbids exactly that pair, which rules out four classes of
 bug: invalidation, stale reads, self-aliasing, and code where "nothing here touched `x`" needs
 the whole program to check (<Spec file="core/05-ownership" section="13a. Why, compared with Rust, and limits" />).
-<Decision n={128} /> made heap values move and copies explicit. It rejected implicit copies
-for `let b = a`: they make an O(n) cost look like O(1), and they keep two names for what the
-reader thinks is one value.
+<Decision n={128} /> made heap values move and copies explicit. It rejected the two
+familiar meanings of `let b = a`. C++'s implicit deep copy makes an O(n) cost look like O(1).
+Python's and Java's shared reference keeps two names for what the reader thinks is one value,
+which is exactly the writer-plus-view pair above. With moves, `b = a` is O(1) and `a.clone()` is
+the visible O(n) copy.
 
 **Lends without lifetimes.** <Decision n={141} /> made every value owned or lent, and kept
 the mode out of the type: there is no `&T` or `&mut T` to write, and a function says

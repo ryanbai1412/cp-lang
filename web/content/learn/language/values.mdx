@@ -143,12 +143,26 @@ alternative, every field mutable, hides which state a struct's methods maintain.
 free field read, defeats exhaustiveness checking, and needs a matcher protocol through the checker,
 LSP and trace, all to save one method call. A view is a method returning an enum.
 
-**Local inference.** <Decision n={131} />: inference that looks ahead to later statements gives
-errors far from their cause. Unifying within one expression covers list literals, branches and
-`match` arms, and every error points at the line to change.
+**Local inference.** The alternatives were C++'s rule (every declaration spells its type) and
+whole-function inference in the style of Hindley-Milner, where `var x = None` takes its type from a
+later `x = 3`. The first costs tokens on every line; the second puts an error at the line where two
+guesses finally collide, often far from the declaration to change, and its cost grows with the
+function. <Decision n={131} /> takes the middle: siblings within one expression (list literals,
+`if` branches, `match` arms) are unified, so `[Pair(1, None), Pair(2, 3)]` infers `?Int`, but
+nothing looks at later statements. Every error points at the line to change, and checking stays
+linear.
 
-**No overloading.** <Decision n={127} />: one name, one function. Overloads by argument type make
-calls ambiguous to read and errors hard to explain; options are named arguments (`by:`) instead.
+**No overloading.** C++ and Java resolve a call among overloads by argument type, which means a
+reader has to know every argument's exact type to know which function runs, and a failed call
+lists every candidate. <Decision n={127} /> gives one name one generic signature. The cases
+overloading would cover become named arguments (`sort(by:)`, `at:`) or a trait the arguments
+implement, both of which a reader sees at the call.
+
+**Copies are explicit.** <Decision n={128} /> makes `let b = a` on a list, map, string or struct
+holding one a move when it is `a`'s last use, and an error asking for `a.clone()` otherwise. The
+rejected alternatives were C++'s silent deep copy, which makes an innocent-looking line O(n), and
+Python's shared reference, where a change through `b` shows up in `a`. An explicit `.clone()`
+keeps the cost visible and makes aliasing impossible to write by accident.
 
 **Exact conversions.** Each implicit conversion C++ makes is a known bug source: `int` to
 `double` and back truncating, `size_t` mixing with signed values, a `long long` narrowed into an

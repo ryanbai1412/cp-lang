@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { decisions } from '@/lib/decisions';
 import { source } from '@/lib/source';
 
 type Node = ReturnType<typeof source.getPageTree>['children'][number];
@@ -26,6 +27,12 @@ export function llmsIndex(): string {
     '',
     ...pages().map((p) => `- [${p.data.title}](${p.url}): ${p.data.description ?? ''}`),
     '',
+    '## Design decisions',
+    '',
+    'Why the language is the way it is: each entry gives the choice, the alternatives and how to reverse it.',
+    '',
+    ...decisionList(),
+    '',
   ].join('\n');
 }
 
@@ -39,5 +46,8 @@ export function llmsFull(): string {
         .replace(/^[ \t]*<Card title="([^"]*)" href="([^"]*)" description="([^"]*)" \/>$/gm, '- [$1]($2): $3');
       return `# ${p.data.title}\n\nURL: ${p.url}\n\n${raw.trim()}\n`;
     })
+    .concat(['# Design decisions\n\nURL: /decisions\n', ...decisionList(), ''].join('\n'))
     .join('\n---\n\n');
 }
+
+const decisionList = () => decisions().map((d) => `- [${d.number}. ${d.title}](/decisions/${d.slug})`);

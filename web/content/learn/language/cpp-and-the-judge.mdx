@@ -77,6 +77,11 @@ the stack it may assume), never a judge by name. The flag beats the source line,
 project, which beats `generic`, so the most local statement wins. A profile records the judge's
 real command and marks any fact that couldn't be read from a public source as unconfirmed.
 
-**No checks on the judge by default.** <Decision n={148} />: release optimizes for valid programs,
-and the checked build catches the bug before you submit. A profile can keep checks with
+**No checks on the judge by default.** On the judge only the verdict matters: a program that would
+trap is wrong either way, and a trap would only turn wrong answer into runtime error. Keeping every
+bounds, overflow and range check in release, as a Rust debug build would, costs hot-loop time on
+every accepted program to change the label on a rejected one. Plain C++ goes the other way and
+leaves the bug as undefined behaviour. <Decision n={148} /> sits between them: the checked build
+(`cpl run`, stress, the browser) traps with values, and release drops the checks but never
+produces undefined behaviour, so a bug is a wrong answer. A profile can keep checks with
 `release_checks:` when a judge's limits leave room for them.

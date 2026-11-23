@@ -1,9 +1,39 @@
 import { Markdown } from 'fumadocs-core/content/md';
+import { remarkGfm } from 'fumadocs-core/mdx-plugins/remark-gfm';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { InlineMd } from '@/components/inline-md';
-import { decisions } from '@/lib/decisions';
+import { decisions, row } from '@/lib/decisions';
+
+type El = {
+  type: string;
+  tagName?: string;
+  value?: string;
+  properties?: Record<string, unknown>;
+  children?: El[];
+};
+const text = (n: El): string => n.value ?? (n.children ?? []).map(text).join('');
+
+// Gives a table row or paragraph that starts a sub-decision (`| 1.7 |`, `26.4.`) the anchor it is cited by.
+function rehypeRows(rows: Set<string>) {
+  const walk = (n: El) => {
+    if (n.tagName === 'tr' || n.tagName === 'p') {
+      const cells = n.tagName === 'tr' ? (n.children ?? []).filter((c) => c.type === 'element') : [n];
+      const lead = n.tagName === 'tr' ? `| ${text(cells[0] ?? { type: 'text' }).trim()} |` : text(n);
+      const m = row.exec(lead);
+      const num = m && (m[1] ?? m[2]);
+      if (num && rows.delete(num))
+        n.properties = {
+          ...n.properties,
+          id: `d-${num}`,
+          className: ['scroll-mt-20'],
+        };
+    }
+    n.children?.forEach(walk);
+  };
+  return () => (tree: El) => walk(tree);
+}
 
 export function generateStaticParams() {
   return decisions().map((d) => ({ slug: d.slug }));
@@ -21,6 +51,7 @@ export default async function Page({ params }: { params: Promise<{ slug: string 
   const at = all.findIndex((x) => x.slug === slug);
   if (at < 0) notFound();
   const d = all[at];
+  const rows = new Set(d.rows);
   const nav = (x: (typeof all)[number] | undefined, label: string) =>
     x && (
       <Link prefetch={false} className="underline" href={`/decisions/${x.slug}`}>
@@ -40,7 +71,9 @@ export default async function Page({ params }: { params: Promise<{ slug: string 
       <div className="prose mt-6 max-w-none [&_pre]:overflow-x-auto [&_table]:block [&_table]:overflow-x-auto">
         {d.parts.map((p, i) => (
           <div key={p.id ?? i} id={p.id} className="scroll-mt-20">
-            <Markdown>{p.text}</Markdown>
+            <Markdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRows(rows)]}>
+              {p.text}
+            </Markdown>
           </div>
         ))}
       </div>

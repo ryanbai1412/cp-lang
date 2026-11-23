@@ -46,7 +46,9 @@ function remarkDecisions() {
           out.push(
             decided.has(piece)
               ? { type: 'link', url: decided.get(piece), children: [{ type: 'text', value: piece }] }
-              : { type: 'text', value: piece },
+              : /^\d/.test(piece)
+                ? fail(piece)
+                : { type: 'text', value: piece },
           );
         }
         last = m.index + m[0].length;
@@ -56,7 +58,15 @@ function remarkDecisions() {
       return out;
     });
   };
-  return (tree: MdNode) => walk(tree);
+  let fail = (n: string): MdNode => {
+    throw new Error(`decision ${n} is cited but decisions.md has no entry ${n}`);
+  };
+  return (tree: MdNode, file: { path?: string }) => {
+    fail = (n) => {
+      throw new Error(`${file.path}: decision ${n} is cited but decisions.md has no entry ${n}`);
+    };
+    walk(tree);
+  };
 }
 
 function remarkRun() {

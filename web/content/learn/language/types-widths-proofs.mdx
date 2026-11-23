@@ -108,8 +108,7 @@ validation and overflow proofs at the same time. Choosing a width is automatic o
 choice never loses: same operations, never more bytes, never slower. The rejected alternative,
 narrowing locals, saves nothing in a register and costs conversions.
 
-**No second integer family.** Decision 1.7 in the <Decision n={1}>data-modeling table</Decision>
-keeps four number types. A range already says how many bytes a slot needs, so `I32` and `U8`
+**No second integer family.** Decision 1.7, in the data-modeling table, keeps four number types. A range already says how many bytes a slot needs, so `I32` and `U8`
 would only add casts and a second, narrower place to overflow.
 
 **Range stores are checked.** <Decision n={100} /> made every store into a range-typed place
