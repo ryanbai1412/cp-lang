@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- R09.1.3: `core-09/user-context-lexical-without-uses.cp` fails: a top-level fn without `uses` follows a user context's caller value (`io` does not). Compiler request filed.
 - R02.4.7: `core-02/question-extent-let-stays-optional.cp` and `core-02/question-not-early-return.cp` fail: `let v = o?` is typed `Int` and a `None` reads as `0` (silent wrong answer). Compiler request filed.
 - Reject cases `core-01/bitand-binds-looser-than-eq.cp` (R01.5.1, E0302) and `core-01/lowercase-generic-needs-expected-type.cp` (R01.3.4, E0806), both pass; 41 rule gaps.
 - R08.4.4 accept case `core-08/row-fn-keeps-extra-fields.cp` (passes).
