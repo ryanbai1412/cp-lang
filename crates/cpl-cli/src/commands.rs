@@ -586,11 +586,9 @@ pub(crate) fn file_names<'a>(command: &str, args: Vec<&'a str>) -> Vec<std::borr
         .map_or("", |c| c.args);
     let many = shape == "<file>...";
     let resolve = |arg: &'a str| -> Cow<'a, str> {
-        let path = std::path::Path::new(arg);
-        let cp = path.with_extension("cp");
-        match path.extension().is_none() && !path.exists() && cp.is_file() {
-            true => Cow::Owned(cp.display().to_string()),
-            false => Cow::Borrowed(arg),
+        match bare_source(std::path::Path::new(arg)) {
+            Some(cp) => Cow::Owned(cp.display().to_string()),
+            None => Cow::Borrowed(arg),
         }
     };
     let takes_file = shape.starts_with("<file") || shape == "<problem>";
@@ -610,12 +608,17 @@ pub(crate) fn file_names<'a>(command: &str, args: Vec<&'a str>) -> Vec<std::borr
     let named: Vec<Cow<'a, str>> = args
         .into_iter()
         .enumerate()
-        .map(|(i, arg)| {
-            match shape.starts_with("<file") && !arg.starts_with('-') && (i == 0 || many) {
+        .map(
+            // A `<problem>` stays as written unless a binary shadows its name.
+            |(i, arg)| match takes_file
+                && (shape != "<problem>" || std::path::Path::new(arg).is_file())
+                && !arg.starts_with('-')
+                && (i == 0 || many)
+            {
                 true => resolve(arg),
                 false => Cow::Borrowed(arg),
-            }
-        })
+            },
+        )
         .collect();
     newest.map(Cow::Owned).into_iter().chain(named).collect()
 }
@@ -642,9 +645,35 @@ pub(crate) fn unknown_option<'a>(command: &str, args: &[&'a str]) -> Option<&'a 
         .find(|arg| arg.len() > 1 && arg.starts_with('-') && !options.contains(arg))
 }
 
+/// The `a.cp` a bare `a` names: when there is no `a`, or `a` is not text
+/// (the binary `g++ -o a` left beside it).
+fn bare_source(path: &std::path::Path) -> Option<std::path::PathBuf> {
+    let cp = path.with_extension("cp");
+    let shadowed = || {
+        path.is_file()
+            && std::fs::read(path).is_ok_and(|bytes| std::str::from_utf8(&bytes).is_err())
+    };
+    (path.extension().is_none() && cp.is_file() && (!path.exists() || shadowed())).then_some(cp)
+}
+
 #[cfg(test)]
 mod tests {
-    use super::{long_forms, Json, COMMANDS};
+    use super::{bare_source, long_forms, Json, COMMANDS};
+
+    #[test]
+    fn a_bare_name_is_its_source_even_beside_its_binary() {
+        let dir = std::env::temp_dir().join(format!("cpl-bare-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let name = dir.join("cf2272A");
+        assert_eq!(bare_source(&name), None, "no source, no binary");
+        std::fs::write(dir.join("cf2272A.cp"), "print(1)\n").unwrap();
+        assert_eq!(bare_source(&name), Some(dir.join("cf2272A.cp")));
+        std::fs::write(&name, [0x7f, b'E', b'L', b'F', 0xff, 0xfe]).unwrap();
+        assert_eq!(bare_source(&name), Some(dir.join("cf2272A.cp")), "a binary");
+        std::fs::write(&name, "print(2)\n").unwrap();
+        assert_eq!(bare_source(&name), None, "a text file is taken as written");
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
 
     #[test]
     fn short_forms_name_their_long_forms() {
