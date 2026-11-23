@@ -1387,7 +1387,7 @@ impl<'a> Lowerer<'a> {
             return self.err_expr(span);
         }
         post_stmts.extend(put_back);
-        let call_expr = self.mk(ExprKind::Call(id, lowered), ret.clone(), span);
+        let call_expr = self.call_holding_cells(id, lowered, ret.clone(), span);
         let call = if pre_stmts.is_empty() && post_stmts.is_empty() {
             call_expr
         } else {

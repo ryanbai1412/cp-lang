@@ -139,4 +139,32 @@ impl<'a> Lowerer<'a> {
             self.mk(ExprKind::Builtin(Builtin::ToList, vec![list]), ty, span),
         )
     }
+
+    /// `id(args)`. When it returns a view, an owned temporary argument (a
+    /// `List`, `Str` or array built in the call) gets a slot first, so the
+    /// cells the view points into outlive it (`mk(n).take(k)`).
+    pub(super) fn call_holding_cells(
+        &mut self,
+        id: FnId,
+        args: Vec<Arg>,
+        ret: Ty,
+        span: Span,
+    ) -> Expr {
+        let view = matches!(
+            ret,
+            Ty::StrView | Ty::ListView(_, _) | Ty::Keyed(_, _) | Ty::MutView(_)
+        );
+        let args = if view {
+            let owned = |t: &Ty| matches!(t, Ty::Str | Ty::List(_) | Ty::Array { .. });
+            args.into_iter()
+                .map(|a| match a {
+                    Arg::Value(e) if owned(&e.ty) => Arg::Value(self.hoist_view_base(e, span)),
+                    a => a,
+                })
+                .collect()
+        } else {
+            args
+        };
+        self.mk(ExprKind::Call(id, args), ret, span)
+    }
 }
