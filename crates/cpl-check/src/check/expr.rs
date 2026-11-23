@@ -1791,7 +1791,7 @@ impl<'a> Checker<'a> {
         // `treap.merge` after `use lib.treap`: a public name of a module.
         if let ExprKind::Name(alias) = &base.kind {
             if self.local(alias).is_none() && self.env.is_module(alias) {
-                return match self.global(&format!("{alias}.{}", name.text)) {
+                return match self.module_member(alias, name) {
                     Some(def) => def.value_ty(&name.text),
                     None if name.text.is_empty() => Ty::Error,
                     None if self.env.is_private_member(alias, &name.text) => {

@@ -8,12 +8,11 @@ impl Env for FileCtx<'_> {
         if self.scope.names.contains_key(name) {
             return None;
         }
-        let scope = self.scope.clone();
-        let module = match scope.imports.get(name) {
+        let module = match self.scope.imports.get(name) {
             Some(import) => import.module,
-            None => *scope.aliases.get(name.split_once('.')?.0)?,
+            None => *self.scope.aliases.get(name.split_once('.')?.0)?,
         };
-        Some(scope.modules[module].name.clone())
+        Some(self.scope.modules[module].name.clone())
     }
 
     fn global(&mut self, name: &str) -> Option<Arc<Def>> {

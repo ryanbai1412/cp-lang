@@ -1718,4 +1718,8 @@ fn a_name_resolves_to_the_file_or_module_that_declares_it() {
     // A user's own `fn sum` is this file's, not the library's.
     assert_eq!(sums("fn sum(a: Int) -> Int = a\nprint(sum(2))\n"), [""]);
     assert_eq!(sums("let xs = [1, 2]\nprint(sum(xs))\n"), ["std.seq"]);
+    assert_eq!(
+        sums("use std.seq as s\nlet xs = [1, 2]\nprint(s.sum(xs))\n"),
+        ["std.seq"]
+    );
 }

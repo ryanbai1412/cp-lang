@@ -335,6 +335,24 @@ impl<'a> Checker<'a> {
         }
     }
 
+    /// `alias.member` of a module imported whole, recorded where it resolves.
+    pub(crate) fn module_member(
+        &mut self,
+        alias: &str,
+        member: &cpl_syntax::ast::Name,
+    ) -> Option<Arc<Def>> {
+        let path = format!("{alias}.{}", member.text);
+        let def = self.global(&path)?;
+        let module = self.env.origin(&path).unwrap_or_default();
+        let resolved = Resolved {
+            module,
+            name: member.text.clone(),
+            owner: None,
+        };
+        self.resolved.push((member.span, resolved));
+        Some(def)
+    }
+
     pub(crate) fn global(&mut self, name: &str) -> Option<Arc<Def>> {
         match self.local_defs.get(name) {
             Some(def) => Some(def.clone()),
