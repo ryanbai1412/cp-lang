@@ -37,9 +37,18 @@ def src_only(paths):
     return [p for p in paths if any(p.startswith(s + "/") for s in SRC) and "/tests/" not in p]
 
 
+def fixy(text):
+    return FIXY.search(re.sub(r"\b\w+-free\b", "", text.replace("fix-it", "")))
+
+
 def is_fix(subj):
     m = SUBJECT.match(subj)
-    return bool(m and FIXY.search(m.group(3).replace("fix-it", "")))
+    return bool(m and fixy(m.group(3)))
+
+
+def is_perf(sha):
+    """A `Domain: perf` commit changes speed, not output."""
+    return re.search(r"^Domain: perf\b", git("log", "-1", "--format=%b", sha).stdout, re.M) is not None
 
 
 def candidates(limit):
@@ -48,7 +57,7 @@ def candidates(limit):
     for line in log:
         sha, subj = line.split("\t", 1)
         m = SUBJECT.match(subj)
-        if not m or not FIXY.search(m.group(3).replace("fix-it", "")):
+        if not m or not fixy(m.group(3)):
             continue
         files = git("show", "--format=", "--name-only", sha).stdout.split()
         if src_only(files):
@@ -112,7 +121,9 @@ def at_fix(wt, env, work, sha, files, head):
     if got is None:
         return "revert does not build", []
     broke = broken(fixed, got)
-    return ("caught at fix" if broke else "missed at fix"), broke
+    if broke:
+        return "caught at fix", broke
+    return ("optimisation, no behaviour to catch" if is_perf(sha) else "missed at fix"), broke
 
 
 def main():
@@ -170,7 +181,7 @@ def main():
                 print(f"{sha[:8]} skip (does not build)", flush=True)
                 continue
             broke = broken(base, got)
-            res = "caught" if broke else ("missed" if is_fix(subj) else "optimisation, no behaviour to catch")
+            res = "caught" if broke else ("missed" if is_fix(subj) and not is_perf(sha) else "optimisation, no behaviour to catch")
             rows.append((sha, subj, res, broke))
             print(f"{sha[:8]} {'caught' if broke else res.upper() if res == 'missed' else res} ({len(broke)} cases)", flush=True)
     finally:

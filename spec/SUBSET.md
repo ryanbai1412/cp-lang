@@ -296,7 +296,6 @@ documented. The stdlib's own gaps are in `std/GAPS.md`.
 - std-grid/step-on-product-domain-position.cp: stdlib
 - std-prefix/first-ge-negative-element-traps.cp: stdlib
 - std-prefix/scan-at-position-folds-through.cp: stdlib
-- std-prefix/scan-max-of-bounded.cp: stdlib
 - std-segtree/closure-op-picks-index.cp: compiler
 - std-strings/split-trailing-and-leading.cp: stdlib
 - std-heap/drain-break-keeps-the-rest.cp: compiler
