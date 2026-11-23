@@ -6,7 +6,6 @@ use super::*;
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum Reduce {
     Sum,
-    Prod,
     Count,
     All,
     Any,
@@ -2032,10 +2031,9 @@ impl<'a> Lowerer<'a> {
                 };
                 self.lower_first(exprs[0], span)
             }
-            "sum" | "prod" | "count" | "all" | "any" => {
+            "sum" | "count" | "all" | "any" => {
                 let kind = match name {
                     "sum" => Reduce::Sum,
-                    "prod" => Reduce::Prod,
                     "count" => Reduce::Count,
                     "all" => Reduce::All,
                     _ => Reduce::Any,
@@ -4720,55 +4718,6 @@ impl<'a> Lowerer<'a> {
                 let add = Stmt::Assign(place(acc, &ty), AssignOp::Binary(BinOp::Add), value);
                 (acc, ty, vec![add], Vec::new())
             }
-            Reduce::Prod => 'prod: {
-                let ty = value.ty.clone();
-                // A struct with a `zero` and a `+` adds with its own `+`,
-                // from its own zero: a `Mod<P>`, a matrix, a polynomial.
-                if let Ty::Struct(sid) = ty {
-                    let one = self.structs[sid].consts.get("one").cloned();
-                    if let (Some(one), Some(add)) = (one, self.struct_op_fn(sid, "mul")) {
-                        let one = self.eval_struct_const(sid, one, span);
-                        let one = self.coerce(one, &ty, span);
-                        let acc = self.temp(ty.clone());
-                        stmts.push(Stmt::Let(acc, Some(one)));
-                        let total = lit(ExprKind::Local(acc), ty.clone());
-                        let next = lit(
-                            ExprKind::Call(add, vec![Arg::Value(total), Arg::Value(value)]),
-                            ty.clone(),
-                        );
-                        let add = Stmt::Assign(place(acc, &ty), AssignOp::Set, next);
-                        break 'prod (acc, ty, vec![add], Vec::new());
-                    }
-                }
-                let one = match ty {
-                    Ty::Int => ExprKind::Int(1),
-                    Ty::I128 => {
-                        ExprKind::Cast(Cast::IntToI128, Box::new(lit(ExprKind::Int(1), Ty::Int)))
-                    }
-                    Ty::U64 => {
-                        ExprKind::Cast(Cast::IntToU64, Box::new(lit(ExprKind::Int(1), Ty::Int)))
-                    }
-                    Ty::Float => ExprKind::Float(1.0),
-                    Ty::Error => {
-                        self.close_loops(frames, Vec::new());
-                        return self.err_expr(span);
-                    }
-                    _ => {
-                        let message =
-                            format!("`prod` multiplies numbers, not `{}`", self.show(&ty));
-                        self.error(codes::BAD_OPERANDS, arg.span, message);
-                        if matches!(ty, Ty::Opt(_)) {
-                            self.help("`prod` does not skip or absorb `none`: add `x ?? 1`, or filter with `if let`");
-                        }
-                        self.close_loops(frames, Vec::new());
-                        return self.err_expr(span);
-                    }
-                };
-                let acc = self.temp(ty.clone());
-                stmts.push(Stmt::Let(acc, Some(lit(one, ty.clone()))));
-                let add = Stmt::Assign(place(acc, &ty), AssignOp::Binary(BinOp::Mul), value);
-                (acc, ty, vec![add], Vec::new())
-            }
             Reduce::Count => {
                 let acc = self.temp(Ty::Int);
                 stmts.push(Stmt::Let(acc, Some(lit(ExprKind::Int(0), Ty::Int))));
@@ -7360,7 +7309,6 @@ impl<'a> Lowerer<'a> {
             };
             match (args, name.text.as_str()) {
                 ([], "sum") => return self.reduce(Reduce::Sum, base, span),
-                ([], "prod") => return self.reduce(Reduce::Prod, base, span),
                 ([op], "fold") if op.name.is_none() && !op.mutable => {
                     return self.fold_seq(base, op, false, name.span, span);
                 }

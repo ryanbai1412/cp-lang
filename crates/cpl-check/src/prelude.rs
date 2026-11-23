@@ -461,7 +461,6 @@ pub const VALUE_NAMES: &[&str] = &[
     "adjacency",
     "abs",
     "sum",
-    "prod",
     "count",
     "all",
     "any",
