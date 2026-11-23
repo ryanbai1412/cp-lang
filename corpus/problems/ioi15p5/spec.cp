@@ -1,33 +1,46 @@
-// IOI 2015 "Sorting": Ermek swaps two positions each round, then we swap two;
-// sort the array within as few rounds as possible. After r rounds Ermek's
-// swaps alone leave some arrangement; it needs (n - cycles) value swaps, and r
-// rounds suffice iff that is at most r. Our swaps exchange values, so they are
-// planned on the final arrangement and replayed at the values' current spots.
+// IOI 2015 "Sorting": each round Ermek swaps two positions, then we swap two;
+// sort in as few rounds as possible. After r rounds Ermek's swaps alone leave
+// an arrangement that n - cycles value swaps sort, so r rounds suffice iff that
+// is at most r; one round moves each side by at most one, so binary search r.
+// Our swaps exchange values: plan them on that final arrangement (put value i
+// at position i, in turn) and replay each at the values' current positions.
+//
+// The task is a grader function; this reads the sample grader's input (N; S;
+// M; M lines X Y) and prints R and our R pairs, `0 0` once already sorted.
 use std.seq.{perm_cycles}
 
-@grader
-fn find_swap_pairs(start: List<Int>, ermek: List<(Int, Int)>) -> List<(Int, Int)>:
-    domain Pos = [start.len]
-    let first: [Pos]Pos = [Pos] p => Pos(start[Int(p)])
-    let moves = ermek.map(e => (Pos(e.0), Pos(e.1))).collect()
+let n = read<1..=2e5>()
+domain Pos = [n]
+let start = read<[Pos]Pos>()
+let m = read<1..=6e5>()
+let ermek = read<[m](x: Pos, y: Pos)>()
 
-    fn plan(r: Int) -> List<(Pos, Pos)>:
-        var p = first.clone()
-        for (x, y) in moves.take(r):
-            p.swap_at(x, y)
-        [(c[0], v) for c in perm_cycles(p) for v in c.drop(1)]
+fn after(r: Int) -> [Pos]Pos:
+    var a = start.clone()
+    for e in ermek.take(r):
+        a.swap_at(e.x, e.y)
+    a
 
-    let rounds = (0..=moves.len).first_true(r => plan(r).len <= r)!
-    let swaps = plan(rounds)
-    var now = first.clone()
-    var spot = now.inverse()
-    var picks = List<(Int, Int)>()
-    for (t, (x, y)) in moves.take(rounds).items:
-        now.swap_at(x, y)
-        (spot[now[x]], spot[now[y]]) = (x, y)
-        let (u, v) = swaps.get(t) ?? (now[Pos.first!], now[Pos.first!])
-        let (pu, pv) = (spot[u], spot[v])
-        picks.push((Int(pu), Int(pv)))
-        now.swap_at(pu, pv)
-        (spot[u], spot[v]) = (pv, pu)
-    picks
+// Swap positions x and y of arrangement `a`, keeping `at` its inverse.
+fn swap(mut a: [Pos]Pos, mut at: [Pos]Pos, x: Pos, y: Pos):
+    a.swap_at(x, y)
+    (at[a[x]], at[a[y]]) = (x, y)
+
+let rounds = (0..=m).first_true(r => n - perm_cycles(after(r)).len <= r)!
+var end = after(rounds)
+var end_at = end.inverse()
+var plan: List<(Pos, Pos)> = []
+for i in Pos:
+    if end[i] != i:
+        plan.push((i, end[i]))
+        swap(mut end, mut end_at, i, end_at[i])
+
+var now = start.clone()
+var at = now.inverse()
+print(rounds)
+for (t, e) in ermek.take(rounds).items:
+    swap(mut now, mut at, e.x, e.y)
+    let (u, v) = plan.get(t) ?? (now[Pos.first!], now[Pos.first!])
+    let (pu, pv) = (at[u], at[v])
+    print(pu, pv)
+    swap(mut now, mut at, pu, pv)
