@@ -793,6 +793,7 @@ impl<'a> Lexer<'a> {
             (b'>', b'>', _) => (Shr, 2),
             (b'<', _, _) => (Lt, 1),
             (b'>', _, _) => (Gt, 1),
+            (b'+', b'+', _) if self.increment(start) => return,
             (b'+', b'+', _) => {
                 self.pos += 2;
                 let span = Span::new(start as u32, self.pos as u32);
@@ -983,6 +984,34 @@ impl<'a> Lexer<'a> {
             ),
         );
         self.push_empty(TokenKind::RBracket, self.pos);
+    }
+
+    /// `i++` ending a statement: C's increment, written `i += 1` here. The
+    /// `++` is dropped so the line still reads as `i`, with no cascade.
+    fn increment(&mut self, start: usize) -> bool {
+        let after = self.src[start + 2..].lines().next().unwrap_or("");
+        let target = self
+            .out
+            .tokens
+            .last()
+            .filter(|t| t.span.end as usize == start);
+        let place =
+            target.is_some_and(|t| matches!(t.kind, TokenKind::Ident | TokenKind::RBracket));
+        if !place || !(after.trim().is_empty() || after.trim_start().starts_with("//")) {
+            return false;
+        }
+        self.pos += 2;
+        let span = Span::new(start as u32, self.pos as u32);
+        self.out.diagnostics.push(
+            Diagnostic::error(
+                codes::UNKNOWN_CHAR,
+                span,
+                "`++` doesn't increment in CP Lang",
+            )
+            .with_help("write `+= 1`")
+            .with_fix("replace `++` with ` += 1`", span, " += 1"),
+        );
+        true
     }
 
     fn digits(&mut self) {

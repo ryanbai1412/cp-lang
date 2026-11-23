@@ -1706,3 +1706,14 @@ fn an_unexpected_indent_moves_its_whole_run_back() {
     let diags = parse_file(src).diagnostics;
     assert_eq!(diags[0].fixes[0].edits.len(), 1, "{diags:?}");
 }
+
+#[test]
+fn a_c_increment_is_one_error_with_a_plus_equals_fix() {
+    let d = parse_file("var i = 0\ni++\nxs[0]++ // bump\n").diagnostics;
+    let found: Vec<_> = d
+        .iter()
+        .map(|d| (d.code.0, d.fixes[0].edits[0].1.as_str()))
+        .collect();
+    assert_eq!(found, [("E0004", " += 1"), ("E0004", " += 1")], "{d:?}");
+    assert_eq!(codes("let zs = xs ++ ys\n"), ["E0004"]);
+}
