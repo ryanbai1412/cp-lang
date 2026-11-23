@@ -437,6 +437,9 @@ pub enum Spec {
     Parse(Box<Expr>, Box<Spec>),
     /// `read_line()`: the rest of the current line (skipping a trailing `\r?\n` after a token).
     Line,
+    /// `List<T>`: a count, then that many `T`s (R10.2.3). Lowering spells it
+    /// out as a `Call` before a read reaches a backend.
+    List(Box<Spec>),
 }
 
 #[derive(Clone, PartialEq, Debug)]
@@ -477,6 +480,7 @@ impl Spec {
             Spec::Call(call) => call.ty.clone(),
             Spec::Parse(_, inner) => Ty::opt(inner.ty()),
             Spec::Line => Ty::Str,
+            Spec::List(each) => Ty::list(each.ty()),
         }
     }
 }

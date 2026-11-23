@@ -24,6 +24,7 @@ mod names;
 mod op_value;
 mod prefix;
 mod range;
+mod read_spec;
 mod report;
 mod stmt;
 mod typo;
@@ -2352,6 +2353,9 @@ impl<'a> Lowerer<'a> {
     }
 
     fn named(&mut self, name: &ast::Name, args: &[ast::Type], values: bool) -> Spec {
+        if let ([elem], true, "List") = (args, values, name.text.as_str()) {
+            return Spec::List(Box::new(self.resolve(elem, true)));
+        }
         let arg = |lw: &mut Self, i: usize| match args.get(i) {
             Some(ty) => lw.resolve_ty(ty),
             None => {
@@ -5345,6 +5349,7 @@ fn collect_spec_calls(spec: &Spec, out: &mut Vec<FnId>) {
     match spec {
         Spec::Plain(_) | Spec::Line => {}
         Spec::Call(call) => collect_expr_calls(call, out),
+        Spec::List(each) => collect_spec_calls(each, out),
         Spec::Parse(text, inner) => {
             collect_expr_calls(text, out);
             collect_spec_calls(inner, out);

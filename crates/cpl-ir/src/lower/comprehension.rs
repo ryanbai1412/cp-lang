@@ -328,7 +328,7 @@ impl Lowerer<'_> {
             Some(elem),
             elem_range,
             init.span,
-            None,
+            Whole::No,
         ))
     }
 
@@ -340,10 +340,29 @@ impl Lowerer<'_> {
         hint: Option<&Ty>,
         span: Span,
     ) -> Expr {
-        let dims: Option<Vec<DimSpec>> = domains.iter().map(|d| self.dim(d, true)).collect();
-        let Some(dims) = dims else {
-            return self.err_expr(span);
-        };
+        // `[P, P] (u, v) => …` with `type P = (A, B)`: each name is a tuple
+        // of its factor positions, over one loop per factor.
+        let mut dims = Vec::new();
+        let mut groups = Vec::new();
+        for d in domains {
+            match self.product_dims(d) {
+                Some(parts) => {
+                    groups.push(parts.len());
+                    dims.extend(parts);
+                }
+                None => match self.dim(d, true) {
+                    Some(dim) => {
+                        groups.push(1);
+                        dims.push(dim);
+                    }
+                    None => return self.err_expr(span),
+                },
+            }
+        }
+        if groups.len() < dims.len() {
+            let whole = Whole::Tuples(groups);
+            return self.build_table(dims, params, body, None, None, span, whole);
+        }
         let elem = match hint {
             Some(Ty::Array { elem, .. }) => Some((**elem).clone()),
             _ => None,
@@ -361,10 +380,11 @@ impl Lowerer<'_> {
                         _ => unreachable!("a product grid has position dimensions"),
                     })
                     .collect();
-                return self.build_table(grid, params, body, elem.as_ref(), None, span, Some(p));
+                let whole = Whole::Product(p);
+                return self.build_table(grid, params, body, elem.as_ref(), None, span, whole);
             }
         }
-        self.build_table(dims, params, body, elem.as_ref(), None, span, None)
+        self.build_table(dims, params, body, elem.as_ref(), None, span, Whole::No)
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -376,9 +396,13 @@ impl Lowerer<'_> {
         elem: Option<&Ty>,
         elem_range: Option<&RangeBounds>,
         span: Span,
-        whole: Option<DomainId>,
+        whole: Whole,
     ) -> Expr {
-        let named = if whole.is_some() { 1 } else { dims.len() };
+        let named = match &whole {
+            Whole::No => dims.len(),
+            Whole::Product(_) => 1,
+            Whole::Tuples(groups) => groups.len(),
+        };
         if params.len() != named {
             let message = format!(
                 "this table runs over {} domains but names {} positions",
@@ -428,8 +452,8 @@ impl Lowerer<'_> {
             let (ty, lo, hi) = self.table_axis(dim, span);
             let mut pre = Vec::new();
             let slot = match whole {
-                Some(_) => self.temp(ty.clone()),
-                None => self.loop_var(&params[i], ty.clone(), &mut pre),
+                Whole::No => self.loop_var(&params[i], ty.clone(), &mut pre),
+                _ => self.temp(ty.clone()),
             };
             let id = self.next_loop;
             self.next_loop += 1;
@@ -448,7 +472,36 @@ impl Lowerer<'_> {
             indices.push(self.table_cell(dim, index, lo));
             loops.push((id, slot, iter, pre));
         }
-        if let Some(p) = whole {
+        if let Whole::Tuples(groups) = &whole {
+            let mut at_dim = 0;
+            let mut binds = Vec::new();
+            for (param, &n) in params.iter().zip(groups) {
+                let parts: Vec<Expr> = loops[at_dim..at_dim + n]
+                    .iter()
+                    .zip(&dims[at_dim..])
+                    .map(|((_, slot, _, _), dim)| {
+                        let ty = self.table_axis(dim, span).0;
+                        self.mk(ExprKind::Local(*slot), ty, span)
+                    })
+                    .collect();
+                at_dim += n;
+                let value = match <[Expr; 1]>::try_from(parts) {
+                    Ok([one]) => one,
+                    Err(parts) => {
+                        let ty = Ty::Tuple(parts.iter().map(|p| p.ty.clone()).collect());
+                        self.mk(ExprKind::Tuple(parts), ty, span)
+                    }
+                };
+                let mut pre = Vec::new();
+                let slot = self.loop_var(param, value.ty.clone(), &mut pre);
+                binds.push(Stmt::Let(slot, Some(value)));
+                binds.extend(pre);
+            }
+            if let Some((_, _, _, inner)) = loops.last_mut() {
+                inner.extend(binds);
+            }
+        }
+        if let Whole::Product(p) = whole {
             let parts = loops
                 .iter()
                 .zip(&dims)
@@ -544,4 +597,14 @@ fn fresh_constant(e: &ast::Expr) -> bool {
         }
         _ => false,
     }
+}
+
+/// How a table's names cover its loops (`build_table`).
+pub(super) enum Whole {
+    /// One name per loop.
+    No,
+    /// One name for the whole product position, `[P] p => …`.
+    Product(DomainId),
+    /// Each name covers that many loops, as a tuple when more than one.
+    Tuples(Vec<usize>),
 }

@@ -338,6 +338,7 @@ impl<'p> Emitter<'p> {
         };
         match spec {
             Spec::Line => plain(self, "read_line"),
+            Spec::List(_) => unreachable!("lowering spells out a counted list read"),
             Spec::Int {
                 lo: None, hi: None, ..
             }

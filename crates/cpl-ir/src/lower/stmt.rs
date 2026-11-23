@@ -2997,7 +2997,7 @@ impl<'a> Lowerer<'a> {
                             Some(&elem_ty),
                             Some(bounds),
                             init.span,
-                            None,
+                            super::comprehension::Whole::No,
                         ));
                     }
                 }

@@ -12,9 +12,14 @@ impl<'a> Checker<'a> {
     pub(crate) fn flat_index(&mut self, index: Vec<Ty>) -> Vec<Ty> {
         let mut flat = Vec::with_capacity(index.len());
         for ty in index {
-            match self.position_factors(&ty) {
-                Some(parts) => flat.extend(parts),
-                None => flat.push(ty),
+            match (self.position_factors(&ty), &ty) {
+                (Some(parts), _) => flat.extend(parts),
+                (None, Ty::Tuple(items))
+                    if items.len() > 1 && items.iter().all(|t| matches!(t, Ty::Pos(_))) =>
+                {
+                    flat.extend(items.iter().cloned())
+                }
+                (None, _) => flat.push(ty),
             }
         }
         flat

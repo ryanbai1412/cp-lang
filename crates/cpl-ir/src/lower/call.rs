@@ -3084,6 +3084,7 @@ impl<'a> Lowerer<'a> {
                 }
             }
             Ty::Opt(inner) => Spec::Opt(Box::new(self.spec_of(inner)?), None),
+            Ty::List(elem) => Spec::List(Box::new(self.spec_of(elem)?)),
             // `l r`, the inclusive `l..=r`, checked `l <= r`. (R10.2.3)
             Ty::Range(inner) if **inner == Ty::Int => {
                 let span = Span::default();
@@ -3229,7 +3230,14 @@ impl<'a> Lowerer<'a> {
     /// A spec with each `Range<Int>` inside spelled out as its read of `l r`.
     fn readable(&mut self, spec: Spec) -> Spec {
         match spec {
-            Spec::Plain(ty @ Ty::Range(_)) => self.spec_of(&ty).unwrap_or(Spec::Plain(ty)),
+            Spec::Plain(ty @ (Ty::Range(_) | Ty::List(_))) => match self.spec_of(&ty) {
+                Some(Spec::List(each)) => self.readable(Spec::List(each)),
+                spec => spec.unwrap_or(Spec::Plain(ty)),
+            },
+            Spec::List(each) => {
+                let each = self.readable(*each);
+                self.counted_list(each)
+            }
             // `with io(base: 1)`: a counted domain's `1` is its first position.
             Spec::Plain(Ty::Pos(d)) if self.base_one() && self.counted.contains(&d) => {
                 let span = Span::default();
@@ -3377,32 +3385,7 @@ impl<'a> Lowerer<'a> {
 
     pub(super) fn read(&mut self, spec: Spec, span: Span) -> Expr {
         let spec = self.readable(spec);
-        fn unreadable(spec: &Spec) -> Option<Ty> {
-            match spec {
-                Spec::Plain(ty) => match ty {
-                    Ty::Int
-                    | Ty::I128
-                    | Ty::U64
-                    | Ty::Float
-                    | Ty::Char
-                    | Ty::Str
-                    | Ty::Bool
-                    | Ty::Pos(_)
-                    | Ty::Error => None,
-                    Ty::Range(inner) if matches!(**inner, Ty::Int | Ty::Pos(_)) => None,
-                    other => Some(other.clone()),
-                },
-                Spec::Int { .. } | Spec::Call(_) | Spec::Line => None,
-                Spec::Parse(_, inner) => unreadable(inner),
-                Spec::Fields(_, fields) => fields.iter().find_map(unreadable),
-                Spec::Array { elem, .. } => unreadable(elem),
-                Spec::Opt(inner, absent) => match (&**inner, absent) {
-                    (Spec::Plain(Ty::Int | Ty::Pos(_)) | Spec::Int { .. }, Some(_)) => None,
-                    _ => Some(spec.ty()),
-                },
-            }
-        }
-        if let Some(ty) = unreadable(&spec) {
+        if let Some(ty) = super::read_spec::unreadable(&spec) {
             let message = format!("`read()` has no input format for a `{}`", self.show(&ty));
             self.error(codes::UNSUPPORTED, span, message);
             if let Ty::Opt(inner) = &ty {
@@ -12204,7 +12187,7 @@ pub(super) fn reads_none_as(spec: &mut Spec, absent: &Expr) -> bool {
             }
             any
         }
-        Spec::Array { elem, .. } => reads_none_as(elem, absent),
+        Spec::Array { elem, .. } | Spec::List(elem) => reads_none_as(elem, absent),
         Spec::Opt(_, slot) => {
             *slot = Some(Box::new(absent.clone()));
             true
