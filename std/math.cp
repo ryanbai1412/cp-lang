@@ -1356,7 +1356,7 @@ fn min_mod_in_range_reduced(a: Int, m: Int, lo: Int, hi: Int) -> ?Int:
     if a == 0: return None
     let x = (lo + a - 1) / a
     if a * x <= hi: return Some(x)
-    let y = min_mod_in_range_reduced(m % a, a, (a - hi % a) % a, (a - lo % a) % a)?
+    let y = min_mod_in_range_reduced(m % a, a, (a - hi % a) % a, (a - lo % a) % a) else: return None
     Some((lo + m * y + a - 1) / a)
 
 /// The continued fraction `[a0, a1, ...]` of `p / q`, `q > 0`, by the Euclidean algorithm with

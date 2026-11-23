@@ -1793,7 +1793,7 @@ pub struct Circle(pub c: Vec, pub r: F64):
     /// example: `Circle.through(Vec(0.0, 0.0), Vec(6.0, 0.0), Vec(0.0, 8.0)) == Some(Circle(Vec(3.0, 4.0), 5.0))`
     /// example: `Circle.through(Vec(0.0, 0.0), Vec(1.0, 1.0), Vec(2.0, 2.0)) == None`
     pub fn through(a: Vec, b: Vec, c: Vec, eps: F64 = 1e-9) -> ?Circle:
-        let o = circumcenter(a, b, c, eps)?
+        let o = circumcenter(a, b, c, eps) else: return None
         Some(Circle(o, o.dist(a)))
 
     /// The disk area, computed as `PI * r * r`.

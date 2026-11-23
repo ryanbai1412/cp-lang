@@ -82,7 +82,7 @@ pub struct Mod<P>(pub v: 0..P):
     /// example: `Mod<7>(3).sqrt() == None`
     /// example: `Mod<7>(0).sqrt() == Some(Mod<7>(0))`
     pub fn sqrt(self) -> ?Mod<P>:
-        let r = mod_sqrt(v, P)?
+        let r = mod_sqrt(v, P) else: return None
         Some(Mod(min(r, (P - r) % P)))
 
     /// The least `k >= 0` with `self ** k == target` (baby-step giant-step), or `None`.
