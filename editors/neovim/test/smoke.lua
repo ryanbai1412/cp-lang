@@ -238,7 +238,9 @@ do
     local home = dir .. '/home'
     local installed = home .. '/.cpl/bin/' .. (vim.fn.has('win32') == 1 and 'cpl.exe' or 'cpl')
     vim.fn.mkdir(home .. '/.cpl/bin', 'p')
-    check(vim.uv.fs_copyfile(cpl, installed), 'could not copy cpl to ' .. installed)
+    -- CI names target/debug/cpl, which is cpl.exe on Windows.
+    local built = vim.uv.fs_stat(cpl) and cpl or cpl .. '.exe'
+    check(vim.uv.fs_copyfile(built, installed), 'could not copy ' .. built .. ' to ' .. installed)
     vim.uv.fs_chmod(installed, 493)
     vim.g.cpl_path, vim.env.PATH, vim.env.HOME, vim.env.CPL_HOME = nil, '', home, nil
     local found = vim.fn['cplang#path']()
