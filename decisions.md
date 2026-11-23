@@ -8228,7 +8228,7 @@ tag move fatal again.
 - **Rebuild workflow.** The `plan_delta_lines` ratchet blocks new `plan/domains/spec/delta/rebuild-NN/` folders. Starting with round 32, a round writes to `research/rebuild-rounds/rebuild-NN/`, where finished runs belong anyway (tech-debt's direction).
 - **Reverse.** Raise the `plan_delta_lines` ratchet for each round.
 
-## 402. Retire L0513 `prefix_twin` for the checker's E0201/E0204 fixes (lint-fmt, 2026-11-23)
+## 404. Retire L0513 `prefix_twin` for the checker's E0201/E0204 fixes (lint-fmt, 2026-11-23)
 
 - **Call.** `prefix1`/`prefix2`/`prefix_n`, `Prefix1`/`Prefix2`/`PrefixN` and `Diff1`/`Diff2` are E0201 (values, imports) or E0204 (types), "replaced by `prefix`/`Prefix`/`Diff`", and each carries the rename `cpl fix` applies. L0513 repeated those errors from syntax, so it is retired with its record, as L0206 was (decision 401).
 - **Reverse.** Restore `spec/lints/prefix_twin/` and the three `prefix_*twin` arms in `rules/taste/mod.rs`.
@@ -8240,7 +8240,7 @@ tag move fatal again.
 - **Follow-up.** The ratchet should count fallbacks run, not kinds, so a split like this one reads as the shrink it is.
 - **Reverse.** Return `false` for `ExprKind::Do` in `traced_quiet` (`crates/cpl-interp/src/vm/compile/stmt.rs`) and restore the 148-kind `vm_fallbacks.txt`.
 
-## 403. Retire L0205 `pow_method` for the checker's E0203 fix (lint-fmt, 2026-11-23)
+## 405. Retire L0205 `pow_method` for the checker's E0203 fix (lint-fmt, 2026-11-23)
 
-- **Call.** `a.pow(e)` on a number or `Mod` is E0203 "power uses `**`, not `.pow(...)`", and E0203 carries the `a ** e` fix `cpl fix` applies (parenthesised where needed). A struct's own `pow` is neither an error nor a lint. L0205 found the same calls from syntax, so it only repeated the error; retired with its record, as L0206 and L0513 were (decisions 401, 402).
+- **Call.** `a.pow(e)` on a number or `Mod` is E0203 "power uses `**`, not `.pow(...)`", and E0203 carries the `a ** e` fix `cpl fix` applies (parenthesised where needed). A struct's own `pow` is neither an error nor a lint. L0205 found the same calls from syntax, so it only repeated the error; retired with its record, as L0206 and L0513 were (decisions 401, 404).
 - **Reverse.** Restore `spec/lints/pow_method/` and the `.pow` arm in `rules/types.rs`.
