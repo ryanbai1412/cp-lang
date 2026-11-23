@@ -23,6 +23,7 @@ enum Label: Zero | One | Any
 enum Edge: Zero | One
 
 struct State(depth: Int, active: Bool, resolved: Bool)
+type Table = [Bool, Bool]Z
 
 fn parse_label(ch: Char) -> Label = match ch:
     '0' => Label.Zero
@@ -35,7 +36,7 @@ fn lift(child: State, edge: Edge) -> State:
     else:
         State(child.depth + if edge == Edge.One: 1 else: 0, child.active, child.resolved)
 
-fn merge_edge(parent: State, child: State, edge: Edge, mut out: List<(State, Int)>):
+fn merge_edge(parent: State, child: State, edge: Edge, w: Z, mut out: List<Table>):
     let lifted = lift(child, edge)
     let one_active = not (parent.active and lifted.active)
     let one_resolved = not (parent.resolved and lifted.resolved)
@@ -49,22 +50,20 @@ fn merge_edge(parent: State, child: State, edge: Edge, mut out: List<(State, Int
     let nd = max(parent.depth, lifted.depth)
     let na = parent.active or lifted.active
     let nr = parent.resolved or lifted.resolved
-    out.push((State(nd, na, nr), 1))
+    out[nd][na, nr] += w
     if not parent.active and edge == Edge.One and parent.depth == 0:
-        out.push((State(nd, true, nr), -1))
+        out[nd][true, nr] -= w
 
-fn merge(parent: State, child: State, lbl: Label) -> List<(State, Int)>:
-    var out: List<(State, Int)> = []
+fn merge(parent: State, child: State, lbl: Label, w: Z, mut out: List<Table>):
     match lbl:
-        Label.Zero => merge_edge(parent, child, Edge.Zero, mut out)
-        Label.One => merge_edge(parent, child, Edge.One, mut out)
+        Label.Zero => merge_edge(parent, child, Edge.Zero, w, mut out)
+        Label.One => merge_edge(parent, child, Edge.One, w, mut out)
         Label.Any =>
-            merge_edge(parent, child, Edge.Zero, mut out)
-            merge_edge(parent, child, Edge.One, mut out)
-    out
+            merge_edge(parent, child, Edge.Zero, w, mut out)
+            merge_edge(parent, child, Edge.One, w, mut out)
 
 @!multitest
-let n: 1..=500 = read()
+let n: 2..=3000 = read()
 domain V = 1..=n
 let label_str: Str = read()
 let label: [V]Label = [V] v => if v == V.first: Label.Zero else: parse_label(label_str[v.ord - 1])
@@ -79,18 +78,25 @@ for u in V:
         children[u].push(c)
 let t = Rooted.from_parents(par)
 
-var dp: [V]Map<State, Z> = [V] _ => Map<State, Z>()
+// `dp[v][depth]` holds the counts of each (active, resolved) state at that depth.
+var dp: [V]List<Table> = [V] _ => []
+let zero: Table = Z(0)
 for p in t.Pre.rev:
     let u = t.at[p]
-    var cur: Map<State, Z> = Map()
-    cur[State(0, false, false)] = Z(1)
+    var base: Table = Z(0)
+    base[false, false] = Z(1)
+    var cur: List<Table> = [base]
     for c in children[u]:
-        var next: Map<State, Z> = Map()
-        for (parent, w0) in cur.items:
-            for (child, w1) in dp[c].items:
-                for (s, sign) in merge(parent, child, label[c]):
-                    next[s] = (next.get(s) ?? Z(0)) + sign * w0 * w1
+        var next: List<Table> = [zero.clone() for _ in 0..max(cur.len, dp[c].len + 1)]
+        for d0 in 0..cur.len:
+            for pa in Bool:
+                for pr in Bool if cur[d0][pa, pr] != Z(0):
+                    for d1 in 0..dp[c].len:
+                        for ca in Bool:
+                            for cr in Bool if dp[c][d1][ca, cr] != Z(0):
+                                merge(State(d0, pa, pr), State(d1, ca, cr), label[c], cur[d0][pa, pr] * dp[c][d1][ca, cr], mut next)
         cur = next
+        dp[c] = []
     dp[u] = cur
 
-print([w for (_, w) in dp[V.first!].items].sum())
+print([row[a, r] for row in dp[V.first!] for a in Bool for r in Bool].sum())
