@@ -4,6 +4,7 @@
 
 use super::Compiler;
 use crate::apply::{applies, operands};
+use crate::vm::helpers::quiet;
 use crate::vm::ir::*;
 use cpl_ir::{Dim, Expr, ExprKind, Ty};
 
@@ -38,6 +39,11 @@ impl<'p, 'f> Compiler<'p, 'f> {
     /// to its operands.
     pub(super) fn try_compile_apply_v(&mut self, expr: &'p Expr) -> Option<u16> {
         if !applies(expr) {
+            return None;
+        }
+        // A read evaluates its bounds once, before reading, so they must
+        // not depend on when they run.
+        if matches!(expr.kind, ExprKind::Read(_)) && !operands(expr).into_iter().all(quiet) {
             return None;
         }
         let regs: Vec<u16> = operands(expr)

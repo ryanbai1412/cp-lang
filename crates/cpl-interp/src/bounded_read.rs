@@ -8,10 +8,14 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
         &mut self,
         spec: &'p Spec,
         fail: impl Fn(input::InputError) -> Box<Trap>,
+        given: &[(&'p Expr, Value)],
     ) -> Res<Value> {
         Ok(match spec {
             Spec::Int { lo, hi, text } => {
-                let (lo, hi) = (self.bound(lo, cpl_ir::INT_MIN)?, self.bound(hi, i64::MAX)?);
+                let (lo, hi) = (
+                    self.bound(lo, cpl_ir::INT_MIN, given)?,
+                    self.bound(hi, i64::MAX, given)?,
+                );
                 Value::Int(self.input.int_in(lo, hi, text).map_err(fail)?)
             }
             Spec::Str {
@@ -20,7 +24,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 alphabet,
                 text,
             } => {
-                let len = (self.bound(lo, 0)?, self.bound(hi, i64::MAX)?);
+                let len = (self.bound(lo, 0, given)?, self.bound(hi, i64::MAX, given)?);
                 let word = self.input.word_in(len, alphabet.as_deref(), text);
                 Value::Str(Rc::new(word.map_err(fail)?))
             }
@@ -28,9 +32,14 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
         })
     }
 
-    fn bound(&mut self, bound: &'p Option<Box<Expr>>, or: i64) -> Res<i64> {
+    fn bound(
+        &mut self,
+        bound: &'p Option<Box<Expr>>,
+        or: i64,
+        given: &[(&'p Expr, Value)],
+    ) -> Res<i64> {
         Ok(match bound {
-            Some(bound) => self.eval(bound)?.int(),
+            Some(bound) => self.given(bound, given)?.int(),
             None => or,
         })
     }

@@ -115,7 +115,6 @@ untraced fn:m1_get_or_insert_with_Str_D1_P(part)
 untraced fn:m3_cyclic_pairs_Lst_Int_Int(feeding)
 untraced fn:m7_find_all_Str_Str_Int(feeding)
 untraced fn:swap(part)
-untraced fn:words(feeding)
 untraced stmt:Assert
 untraced stmt:Assign(Global,Binary(Add))
 untraced stmt:Assign(Global,Binary(Div))

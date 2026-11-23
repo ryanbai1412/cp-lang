@@ -1289,3 +1289,15 @@ fn vm_applies_builtins_arithmetic_and_negation_to_registers() {
         include_str!("../../cpl-cli/tests/programs/vm_apply_builtins.out")
     );
 }
+
+#[test]
+fn vm_reads_specs_with_bounds_in_registers() {
+    let out = vm_runs_alone(
+        include_str!("../../cpl-cli/tests/programs/vm_read_specs.cp"),
+        include_str!("../../cpl-cli/tests/programs/vm_read_specs.in"),
+    );
+    assert_eq!(
+        out,
+        include_str!("../../cpl-cli/tests/programs/vm_read_specs.out")
+    );
+}
