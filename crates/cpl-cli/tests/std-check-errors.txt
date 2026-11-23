@@ -4,4 +4,3 @@
 std/grid.cp 6
 std/matrix.cp 1
 std/search.cp 1
-std/seq.cp 7
