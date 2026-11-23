@@ -1477,17 +1477,19 @@ const CORPUS_CASES: &[StressCase] = &[
     },
 ];
 
-#[test]
-fn cpl_stress_works_end_to_end_on_10_corpus_problems_of_different_shapes() {
+/// The 10 cases are split into `SHARDS` tests by index, so each stays short.
+const SHARDS: usize = 4;
+
+fn stress_shard(shard: usize) {
     assert_eq!(CORPUS_CASES.len(), 10);
-    let root = Path::new(env!("CARGO_TARGET_TMPDIR")).join("stress_corpus_10");
+    let root = Path::new(env!("CARGO_TARGET_TMPDIR")).join(format!("stress_corpus_10_{shard}"));
     let _ = std::fs::remove_dir_all(&root);
     std::fs::create_dir_all(&root).unwrap();
 
     let mut summary: Vec<(&str, &str, Duration, String)> = Vec::new();
     let mut failures: Vec<String> = Vec::new();
 
-    for case in CORPUS_CASES {
+    for case in CORPUS_CASES.iter().skip(shard).step_by(SHARDS) {
         let dir = root.join(case.id);
         std::fs::create_dir_all(&dir).unwrap();
 
@@ -1609,4 +1611,24 @@ fn cpl_stress_works_end_to_end_on_10_corpus_problems_of_different_shapes() {
         );
     }
     assert!(failures.is_empty(), "{}", failures.join("\n\n"));
+}
+
+#[test]
+fn cpl_stress_works_end_to_end_on_10_corpus_problems_of_different_shapes_0() {
+    stress_shard(0);
+}
+
+#[test]
+fn cpl_stress_works_end_to_end_on_10_corpus_problems_of_different_shapes_1() {
+    stress_shard(1);
+}
+
+#[test]
+fn cpl_stress_works_end_to_end_on_10_corpus_problems_of_different_shapes_2() {
+    stress_shard(2);
+}
+
+#[test]
+fn cpl_stress_works_end_to_end_on_10_corpus_problems_of_different_shapes_3() {
+    stress_shard(3);
 }

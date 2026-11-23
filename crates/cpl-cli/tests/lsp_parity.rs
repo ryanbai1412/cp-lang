@@ -176,10 +176,18 @@ fn published(files: &[PathBuf]) -> BTreeMap<String, Vec<Diag>> {
     found
 }
 
-#[test]
-fn the_editor_reports_what_check_and_lint_report_on_every_v03_file() {
+/// The v0.3 files whose index in sorted order is `shard` modulo `SHARDS`,
+/// so each test stays short and together they cover every file.
+const SHARDS: usize = 8;
+
+fn shard_of(shard: usize) -> Vec<PathBuf> {
     let files = v03_files();
     assert!(files.len() > 1000, "only {} v0.3 files found", files.len());
+    files.into_iter().skip(shard).step_by(SHARDS).collect()
+}
+
+fn editor_parity(shard: usize) {
+    let files = shard_of(shard);
     // `cpl lint` also shows what `cpl check` reported (the checker's L06xx
     // lints and the errors lints can't see past); the editor shows each
     // once. Lint shows exactly the errors `cpl check` shows.
@@ -226,7 +234,10 @@ fn the_editor_reports_what_check_and_lint_report_on_every_v03_file() {
         got.extend(worker.join().unwrap());
     }
     let reported: usize = want.values().map(Vec::len).sum();
-    assert!(reported > 500, "only {reported} diagnostics to compare");
+    assert!(
+        reported > 500 / SHARDS,
+        "only {reported} diagnostics to compare"
+    );
     let mut differ = Vec::new();
     for file in &files {
         let key = file.display().to_string();
@@ -252,9 +263,8 @@ fn the_editor_reports_what_check_and_lint_report_on_every_v03_file() {
     );
 }
 
-#[test]
-fn check_json_reports_what_check_prints_on_every_v03_file() {
-    let files = v03_files();
+fn json_parity(shard: usize) {
+    let files = shard_of(shard);
     let mut want = BTreeMap::new();
     rendered("check", &files, &mut want);
     let out = Command::new(env!("CARGO_BIN_EXE_cpl"))
@@ -296,5 +306,85 @@ fn check_json_reports_what_check_prints_on_every_v03_file() {
         })
         .collect();
     assert!(differ.is_empty(), "{}", differ.join("\n"));
-    assert!(want.values().map(Vec::len).sum::<usize>() > 100);
+    assert!(want.values().map(Vec::len).sum::<usize>() > 100 / SHARDS);
+}
+
+#[test]
+fn the_editor_reports_what_check_and_lint_report_on_every_v03_file_0() {
+    editor_parity(0);
+}
+
+#[test]
+fn the_editor_reports_what_check_and_lint_report_on_every_v03_file_1() {
+    editor_parity(1);
+}
+
+#[test]
+fn the_editor_reports_what_check_and_lint_report_on_every_v03_file_2() {
+    editor_parity(2);
+}
+
+#[test]
+fn the_editor_reports_what_check_and_lint_report_on_every_v03_file_3() {
+    editor_parity(3);
+}
+
+#[test]
+fn the_editor_reports_what_check_and_lint_report_on_every_v03_file_4() {
+    editor_parity(4);
+}
+
+#[test]
+fn the_editor_reports_what_check_and_lint_report_on_every_v03_file_5() {
+    editor_parity(5);
+}
+
+#[test]
+fn the_editor_reports_what_check_and_lint_report_on_every_v03_file_6() {
+    editor_parity(6);
+}
+
+#[test]
+fn the_editor_reports_what_check_and_lint_report_on_every_v03_file_7() {
+    editor_parity(7);
+}
+
+#[test]
+fn check_json_reports_what_check_prints_on_every_v03_file_0() {
+    json_parity(0);
+}
+
+#[test]
+fn check_json_reports_what_check_prints_on_every_v03_file_1() {
+    json_parity(1);
+}
+
+#[test]
+fn check_json_reports_what_check_prints_on_every_v03_file_2() {
+    json_parity(2);
+}
+
+#[test]
+fn check_json_reports_what_check_prints_on_every_v03_file_3() {
+    json_parity(3);
+}
+
+#[test]
+fn check_json_reports_what_check_prints_on_every_v03_file_4() {
+    json_parity(4);
+}
+
+#[test]
+fn check_json_reports_what_check_prints_on_every_v03_file_5() {
+    json_parity(5);
+}
+
+#[test]
+fn check_json_reports_what_check_prints_on_every_v03_file_6() {
+    json_parity(6);
+}
+
+#[test]
+fn check_json_reports_what_check_prints_on_every_v03_file_7() {
+    json_parity(7);
 }

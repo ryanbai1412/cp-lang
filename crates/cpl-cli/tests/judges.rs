@@ -316,14 +316,22 @@ fn build_spec(file: &Path, judge: &str) -> Result<String, String> {
     }
 }
 
-#[test]
-fn every_passing_corpus_port_compiles_with_every_judges_flags() {
+/// The corpus test is split into `CORPUS_SHARDS` tests by each port's index,
+/// so each stays short and together they cover every passing port.
+const CORPUS_SHARDS: usize = 8;
+
+fn corpus_shard(shard: usize) {
     let ports = passing_corpus_ports();
     assert!(
         !ports.is_empty(),
         "no corpus port passes in research/scoreboard.json"
     );
-    let scratch = Path::new(env!("CARGO_TARGET_TMPDIR")).join("judges-corpus");
+    let ports: Vec<PathBuf> = ports
+        .into_iter()
+        .skip(shard)
+        .step_by(CORPUS_SHARDS)
+        .collect();
+    let scratch = Path::new(env!("CARGO_TARGET_TMPDIR")).join(format!("judges-corpus-{shard}"));
     std::fs::create_dir_all(&scratch).unwrap();
     let mut failures = Vec::new();
     for profile in cpl_judge::builtins() {
@@ -367,6 +375,46 @@ fn every_passing_corpus_port_compiles_with_every_judges_flags() {
         failures.extend(failed);
     }
     assert!(failures.is_empty(), "{}", failures.join("\n"));
+}
+
+#[test]
+fn every_passing_corpus_port_compiles_with_every_judges_flags_0() {
+    corpus_shard(0);
+}
+
+#[test]
+fn every_passing_corpus_port_compiles_with_every_judges_flags_1() {
+    corpus_shard(1);
+}
+
+#[test]
+fn every_passing_corpus_port_compiles_with_every_judges_flags_2() {
+    corpus_shard(2);
+}
+
+#[test]
+fn every_passing_corpus_port_compiles_with_every_judges_flags_3() {
+    corpus_shard(3);
+}
+
+#[test]
+fn every_passing_corpus_port_compiles_with_every_judges_flags_4() {
+    corpus_shard(4);
+}
+
+#[test]
+fn every_passing_corpus_port_compiles_with_every_judges_flags_5() {
+    corpus_shard(5);
+}
+
+#[test]
+fn every_passing_corpus_port_compiles_with_every_judges_flags_6() {
+    corpus_shard(6);
+}
+
+#[test]
+fn every_passing_corpus_port_compiles_with_every_judges_flags_7() {
+    corpus_shard(7);
 }
 
 #[test]
