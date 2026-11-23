@@ -11,7 +11,7 @@ impl<'a> Lowerer<'a> {
         args: &[ast::Arg],
         span: Span,
     ) -> Expr {
-        let place = self.place(base);
+        let place = self.mut_receiver(base, "sort");
         self.sort_place(place, elem, args, span)
     }
 

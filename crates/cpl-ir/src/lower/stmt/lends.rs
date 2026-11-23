@@ -5,7 +5,7 @@ use super::*;
 impl<'a> Lowerer<'a> {
     /// `a.at(i)` on a list, array or view is the place `a[i]`: `at` is
     /// the built-in `lends mut` element (R05.6.3).
-    pub(super) fn builtin_at(&mut self, e: &ast::Expr) -> Option<ast::Expr> {
+    pub(in crate::lower) fn builtin_at(&mut self, e: &ast::Expr) -> Option<ast::Expr> {
         let ast::ExprKind::Call { callee, args } = &e.kind else {
             return None;
         };

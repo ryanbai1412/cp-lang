@@ -705,7 +705,7 @@ impl<'a> Lowerer<'a> {
                         .first()
                         .is_some_and(|p| p.name.text == "self" && p.mutable);
                     let recv_arg = if mut_self {
-                        Arg::Mut(self.place(recv))
+                        Arg::Mut(self.mut_receiver(recv, &name.text))
                     } else {
                         Arg::Value(val)
                     };
@@ -1330,13 +1330,13 @@ impl<'a> Lowerer<'a> {
                                     &mut post_stmts,
                                 )
                             } else {
-                                self.place(&arg.value)
+                                self.mut_arg(&arg.value, &param.name, &name)
                             }
                         } else {
-                            self.place(&arg.value)
+                            self.mut_arg(&arg.value, &param.name, &name)
                         }
                     } else {
-                        self.place(&arg.value)
+                        self.mut_arg(&arg.value, &param.name, &name)
                     };
                     if let PlaceKind::Local(s) = match &place.kind {
                         PlaceKind::Local(s) => PlaceKind::Local(*s),

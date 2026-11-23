@@ -12,6 +12,7 @@ pub(super) use gen::fixed_domain;
 pub use laws::lower_sampling_laws;
 pub(in crate::lower) use laws::Stress;
 mod items;
+mod mut_receiver;
 mod prelude;
 mod range_room;
 mod rev;
@@ -766,7 +767,7 @@ impl<'a> Lowerer<'a> {
                         .decl
                         .is_some_and(|sd| super::cache::grows_cache(sd, self.gen_fns[gfid].decl));
                 let recv = if is_mut {
-                    Arg::Mut(self.place(base))
+                    Arg::Mut(self.mut_receiver(base, method))
                 } else {
                     Arg::Value(value)
                 };

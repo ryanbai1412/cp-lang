@@ -1586,6 +1586,23 @@ fn an_error_inside_std_names_the_library_calls_that_led_there() {
     assert!(inside < via && err.contains("main.cp:6:7"), "{err}");
 }
 
+/// A `mut self` method on a temporary names the method and points at the
+/// receiver, instead of calling it an assignment.
+#[test]
+fn a_mut_self_method_on_a_temporary_says_it_needs_a_place() {
+    for (src, method) in [
+        (&b"let xs = [3, 1]\nlet c = [x for x in xs].sorted().dedup()\n"[..], "dedup"),
+        (b"let xs = [3, 1]\nlet n = [x for x in xs].pop()\n", "pop"),
+        (b"struct S(pub v: Int):\n    fn bump(mut self):\n        v += 1\nfn mk() -> S = S(1)\nmk().bump()\n", "bump"),
+    ] {
+        let main = scratch(&format!("mut-self-temporary-{method}"), "main.cp", src);
+        let check = cpl(&["check".as_ref(), main.as_os_str()], b"");
+        let err = String::from_utf8_lossy(&check.stderr);
+        let want = format!("`{method}` changes its receiver in place, so it needs a mutable place");
+        assert!(err.contains(&want), "{err}");
+    }
+}
+
 /// A trap inside a std method names that method, not the declaration above it.
 #[test]
 fn a_trap_inside_a_std_method_names_the_method() {

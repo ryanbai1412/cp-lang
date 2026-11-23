@@ -21,7 +21,7 @@ impl<'a> Lowerer<'a> {
         let span = whole.span;
         let method = name.text.as_str();
         let mutate = |lw: &mut Self, op: Mutation, args: Vec<Expr>, result: Ty| {
-            let place = lw.place(base);
+            let place = lw.mut_receiver(base, method);
             lw.mk(ExprKind::Mutate(op, Box::new(place), args), result, span)
         };
         // `(lo..hi).rev.find(p)` walks down from `hi` and stops at the first
@@ -206,7 +206,7 @@ impl<'a> Lowerer<'a> {
             }
             (Ty::List(_) | Ty::Str, "push") => match self.one_arg(method, args, &elem, span) {
                 Some(arg) => {
-                    let place = self.place(base);
+                    let place = self.mut_receiver(base, method);
                     let arg = match self
                         .place_range(&place)
                         .and_then(|r| r.elem().and_then(|e| e.scalar()).cloned())
@@ -317,7 +317,7 @@ impl<'a> Lowerer<'a> {
                 Some(exprs) => {
                     let n = self.expect(exprs[0], &Ty::Int);
                     let v = self.expect(exprs[1], &elem);
-                    let place = self.place(base);
+                    let place = self.mut_receiver(base, method);
                     let v = match self
                         .place_range(&place)
                         .and_then(|r| r.elem().and_then(|e| e.scalar()).cloned())
@@ -352,7 +352,7 @@ impl<'a> Lowerer<'a> {
             (Ty::List(_) | Ty::MutView(..) | Ty::Array { .. } | Ty::Str, "fill") => {
                 match self.one_arg(method, args, &elem, span) {
                     Some(v) => {
-                        let place = self.place(base);
+                        let place = self.mut_receiver(base, method);
                         let v = match self
                             .place_range(&place)
                             .and_then(|r| r.elem().and_then(|e| e.scalar()).cloned())

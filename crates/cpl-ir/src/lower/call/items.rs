@@ -602,7 +602,7 @@ impl<'a> Lowerer<'a> {
                 call.ty = ty;
                 return call;
             }
-            (Some(true), Some((base, _))) => Some(Arg::Mut(self.place(base))),
+            (Some(true), Some((base, _))) => Some(Arg::Mut(self.mut_receiver(base, &name))),
             (Some(false), Some((_, value))) => Some(Arg::Value(value)),
             (None, None) => None,
             (Some(_), None) => {
