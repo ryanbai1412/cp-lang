@@ -198,6 +198,48 @@ const tests: [string, () => Promise<void>][] = [
         },
     ],
     [
+        'the debugger steps back to where the last step came from',
+        async () => {
+            fs.writeFileSync(file('tt.cp').fsPath, 'var s = 0\nfor i in 0..3:\n    s += i\nprint(s)\n');
+            await open('tt.cp');
+            let stops = 0;
+            const tracker = vscode.debug.registerDebugAdapterTrackerFactory('cp', {
+                createDebugAdapterTracker: () => ({
+                    onDidSendMessage: (m: { type?: string; event?: string }) => {
+                        if (m.type === 'event' && m.event === 'stopped') stops++;
+                    },
+                }),
+            });
+            try {
+                const started = await vscode.debug.startDebugging(vscode.workspace.workspaceFolders![0], {
+                    type: 'cp',
+                    request: 'launch',
+                    name: 'time travel',
+                    program: file('tt.cp').fsPath,
+                    stopOnEntry: true,
+                });
+                assert.ok(started, 'the cp debug session did not start');
+                const session = await until('the debug session', () => vscode.debug.activeDebugSession);
+                const after = async (command: string) => {
+                    // The entry stop can come before startDebugging resolves.
+                    const before = command === 'launch' ? 0 : stops;
+                    if (command !== 'launch') await session.customRequest(command, { threadId: 1 });
+                    await until(`a stop after ${command}`, () => (stops > before ? true : undefined), 20000);
+                    const trace = await session.customRequest('stackTrace', { threadId: 1 });
+                    return trace.stackFrames[0].line as number;
+                };
+                await after('launch');
+                const first = await after('next');
+                const second = await after('next');
+                assert.notEqual(first, second, `two steps stayed on line ${first}`);
+                assert.equal(await after('stepBack'), first);
+            } finally {
+                tracker.dispose();
+                await vscode.debug.stopDebugging();
+            }
+        },
+    ],
+    [
         'completion offers keywords, the prelude and decorators',
         async () => {
             const document = await open('d.cp');
