@@ -35,7 +35,7 @@ fn cheapest(k: Int) -> Int:
         let span = (lo: Y(max(b.y0 - k + 1, 1)), hi: Y(min(b.y1, n - k + 1)), cost: b.cost)
         starts[X(max(b.x0 - k + 1, 1))].push(span)
         if b.x1 < m - k + 1: stops[X(b.x1 + 1)].push(span)
-    var cost = LazySegTree<Y, Int, Int>(AddMin, [Y] _ => 0)
+    var cost = SegTree<Y, Int, Int>(min, act: add, a: [Y] _ => 0)
     var best = Int.MAX
     for x in X:
         for s in stops[x]: cost.apply(s.lo..=s.hi, -s.cost)

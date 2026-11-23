@@ -31,7 +31,7 @@ fn force_between(after: ?Rank, before: ?Rank):
         if let b = before:
             for j in s..b: must_rank[j] = true
         else:
-            for j in s..=Rank.last: must_rank[j] = true
+            for j in s..=Rank.last!: must_rank[j] = true
 
 fn close_run(lo: Rank, hi: Rank, before: ?Rank):
     force_between(hi, before)
@@ -54,7 +54,7 @@ for c in Color:
     let (lo, hi) = run[c]!
     close_run(lo, hi, None)
 
-var seg = LazySegTree<Rank.cuts, Int>(AddMax, fill: 0)
+var seg = SegTree<Rank.cuts, Int>(max, fill: 0, act: add)
 for r in Rank:
     let v = seg.all + Int(not must_rank[r])
     seg.set(r.r, v)

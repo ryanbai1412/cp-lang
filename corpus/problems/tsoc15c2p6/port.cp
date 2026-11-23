@@ -9,7 +9,7 @@ let (n, q): (Int, Int) = read()
 domain Soldier = 1..=n
 let health: [Soldier]Int = read()
 
-var row = LazySegTree<Soldier, Int, Int>(AddMin, health)
+var row = SegTree<Soldier, Int, Int>(min, act: add, a: health)
 for _ in 0..q:
     let (l, r, x): (Soldier, Soldier, Int) = read()
     row.apply(l..=r, -x)

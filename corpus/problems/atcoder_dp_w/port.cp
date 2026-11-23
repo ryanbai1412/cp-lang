@@ -10,7 +10,7 @@ var by_r: [Pos]List<(l: Pos, a: Int)> = [Pos] _ => []
 for k in Rule:
     by_r[Pos(rules[k].r)].push((l: Pos(rules[k].l), a: rules[k].a))
 
-var st = LazySegTree<Pos, Int, Int>(AddMax)
+var st = SegTree<Pos, Int, Int>(max, fill: 0, act: add)
 st.set(Pos(0), 0)
 for i in Pos(1)..=Pos(n):
     let best_prev = st.fold(Pos(0)..i)

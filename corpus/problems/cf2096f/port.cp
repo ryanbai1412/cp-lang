@@ -18,7 +18,7 @@ domain V = 1..=n
 domain S = 1..=m
 let st: [S](some: Bool, a: V, b: V) = read()
 
-var cover = LazySegTree<V, Int>(AddMin, fill: 0)
+var cover = SegTree<V, Int>(min, fill: 0, act: add)
 var ends: [V]MonoDeque<Int> = MonoDeque()
 var shortest = SegTree<V, ?Int>(min, fill: None)
 

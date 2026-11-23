@@ -15,10 +15,10 @@ pairs = pairs.sorted()
 domain H = 1..=max_h
 
 let init = [H] _ => 0
-var st = LazySegTree<H, Int, Int>(AddMin, init)
+var st = SegTree<H, Int, Int>(min, act: add, a: init)
 
 // First height in 1..=limit with count <= target (non-increasing array).
-fn first_le(mut st: LazySegTree<H, Int, Int>, limit: Int, target: Int) -> Int:
+fn first_le(mut st: SegTree<H, Int, Int>, limit: Int, target: Int) -> Int:
     let lo = (1..limit + 1).first_true(mid => st.get(H(mid)) <= target) ?? (limit + 1)
     lo
 

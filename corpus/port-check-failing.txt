@@ -17,7 +17,6 @@ atcoder_dp_o
 atcoder_dp_s
 atcoder_dp_u
 atcoder_dp_v
-atcoder_dp_w
 atcoder_dp_x
 atcoder_dp_z
 btoi15p3
@@ -126,9 +125,7 @@ ioi05p6
 ioi06p2
 ioi06p4
 ioi07p2
-ioi07p3
 ioi08p1
-ioi08p6
 ioi09p2
 ioi09p3
 ioi09p4
@@ -218,7 +215,6 @@ sdoi17r2p4
 shoi15p2
 shoi16p4
 shoi16p5
-tsoc15c2p6
 ucrpc21d
 ucrpc21f
 ucrpc21g
