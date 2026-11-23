@@ -1,6 +1,10 @@
-// DMOPC '21 contest 6 P3, An Art Problem: every painted cell spreads its
-// colour to cells at most k steps away. A blank cell takes the colour that
-// reaches it first, and the smaller colour on a tie. Print the grid.
+// Source: DMOPC '21 Contest 6 P3, An Art Problem, https://dmoj.ca/problem/dmopc21c6p3
+// Problem: an N x M grid (N, M, K <= 1500) of colours c <= 1e9, 0 meaning blank. Every blank
+//   pixel within K four-neighbour steps of a coloured one takes the colour of the closest
+//   coloured pixel, the lowest colour on a tie. Print the grid after this expansion.
+// Solution: a multi-source BFS whose first wave is every coloured cell sorted by colour. Each
+//   wave keeps that order, so a blank cell is claimed first by the closest, then lowest,
+//   colour. K waves, O(NM log NM) for the sort plus O(NM) for the BFS.
 // original: corpus/submissions/4342005.cpp
 let n: 1..=1500 = read()
 let m: 1..=1500 = read()

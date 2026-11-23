@@ -1,12 +1,11 @@
-// Educational DP Contest J, Sushi: n dishes hold 1, 2 or 3 pieces of sushi.
-// Each step a dish is picked at random and, if it is not empty, one piece
-// is eaten from it. Print the expected number of steps until all is eaten.
-//
-// Only the number of dishes with 1, 2 and 3 pieces matters. From (a, b, c)
-// a step hits a non-empty dish with chance (a + b + c) / n, so it takes
-// n / (a + b + c) steps on average to leave the state, and it leaves to
-// (a-1, b, c), (a+1, b-1, c) or (a, b+1, c-1) with chances a : b : c.
-// Filling by c, then b, then a visits those three first.
+// Source: AtCoder Educational DP Contest J, Sushi, https://atcoder.jp/contests/dp/tasks/dp_j
+// Problem: N <= 300 dishes hold 1 to 3 pieces each. Each step rolls a uniform dish and eats a
+//   piece from it if there is one. Print the expected number of steps until all are eaten
+//   (relative error 1e-9).
+// Solution: only the counts (a, b, c) of dishes with 1, 2 and 3 pieces matter. A state is left
+//   after n / (a + b + c) steps on average, to (a-1, b, c), (a+1, b-1, c) or (a, b+1, c-1)
+//   with chances a : b : c. Filling c, then b, then a ascending computes those first;
+//   O(N^3) states.
 // original: corpus/submissions/4131649.cpp
 use real.float.{fixed}
 

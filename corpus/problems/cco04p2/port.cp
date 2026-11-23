@@ -1,7 +1,11 @@
-// CCO 2004 P2, as its accepted solution reads it: each test has n tiles,
-// written `a-b`, and a tile may be turned around. Put them in as few rows as
-// possible so that along a row neither number of a tile is smaller than the
-// same number of the tile before it. Print the number of rows, then the rows.
+// Source: CCO 2004 P2, Hockey Scores, https://dmoj.ca/problem/cco04p2
+// Problem: multitest; each test has s <= 1000 scores `x-y`, each possibly written in either
+//   order, taken from games in progress or finished. Print the fewest games such that every
+//   score occurs in one, then each game's scores on a line (a valid scenario, any one).
+// Solution: write each score as (min, max); scores fit one game iff they form a chain with both
+//   numbers non-decreasing. Take scores largest first and put each on the row whose front has
+//   the smallest second number that is still at least its own, by binary search over the
+//   fronts, or open a new row; rows are printed reversed. O(s log s).
 // original: corpus/submissions/5430096.cpp
 type Tile = (a: Int, b: Int)
 

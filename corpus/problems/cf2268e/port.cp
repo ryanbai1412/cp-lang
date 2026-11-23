@@ -1,14 +1,12 @@
-// Codeforces 2268 E — Bitwise Catalan Autocorrelation
-//
-// Values satisfy `0 <= xs[i] < 2^BITS` (`BITS = 18`), so each bit `b in 0..BITS`
-// contributes independently (`cur * (1 << b)`). Let `a[i] in {-1, +1}` be the
-// prefix XOR parity of bit `b` (`a[0] = 1`, flipping sign when `xs[i].bit(b)`).
-//
-// Across all `C_n = comb.catalan(n)` binary trees on `n` leaves (each having
-// `n - 1` internal merges), the base sum is `C_n * (n - 1)`. When the total
-// bit-`b` parity is even (`a[n] == 1`), each gap `d in 1..n` appears in
-// `weight[d] = C_d * C_{n - d}` trees and loses `sum_i a[i] * a[i + d] = corr[n - d]`,
-// computed as the autocorrelation `convolve(a, a.rev)` via NTT in O(n log n).
+// Source: Codeforces 2268E, Kia Kio and Tree of Life,
+//   https://codeforces.com/contest/2268/problem/E
+// Problem: multitest, sum n <= 2e5, a_i < 2^18. Over all Catalan(n) binary trees with in-order
+//   a, sum f(tree): over the n - 1 edges, the XOR of one side plus the XOR of the other
+//   side when the edge is cut. Print it modulo 998244353.
+// Solution: bit by bit, with s_i = +-1 the prefix parity: an odd total gives every edge 1; an
+//   even one gives 1 - s_i s_j for a subtree covering (i, j], and a gap d is a subtree in
+//   C_d C_(n-d) trees. So subtract sum_d C_d C_(n-d) corr(d), the autocorrelation of s by
+//   NTT. O(18 n log n).
 
 const MOD = 998_244_353
 const BITS = 18

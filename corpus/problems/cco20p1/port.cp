@@ -1,7 +1,10 @@
-// CCO 2020 P1 A Game with Grundy: Grundy stands at an integer x in l..=r
-// at height y. Friend i sits at (x_i, 0) and sees the points with
-// |x - x_i| * v_i < h_i * y. For every k from 0 to n, print how many
-// positions are seen by at most k friends.
+// Source: CCO 2020 P1, A Game with Grundy, https://dmoj.ca/problem/cco20p1
+// Problem: N <= 1e5 friends at (x_i, 0) with v_i, h_i <= 100; friend i sees (x, Y) iff
+//   |x - x_i| v_i < h_i Y. For each i = 0..N print how many integers x in L..=R
+//   (|L|, |R| <= 1e9, Y <= 1e6) are seen by at most i friends.
+// Solution: friend i sees the interval x_i +- (h_i Y - 1) / v_i clipped to L..=R. Sort the
+//   interval start/end events, sweep to count the positions seen by exactly c friends for
+//   every c, then print prefix sums. O(N log N).
 
 use std.prefix.{prefix_fold}
 

@@ -1,14 +1,11 @@
-// Codeforces 2178 D: Xmas or Hysteria.
-// Each survivor must have killed a distinct elf, so 2m > n is impossible.
-// With elves sorted weakest first in `ord`:
-//   - m >= 1: the k = n - 2m weakest die in a chain, each attacking the next,
-//     ending at ord[k]; then, from the top down, each of the m strongest
-//     kills the elf m below it.
-//     Every attacker outlives its weaker target, so exactly the top m survive.
-//   - m == 0: the strongest must die too. Chain ord[..=s] as before, then the
-//     elves ord[s..n - 1] attack the strongest from the top down; this works
-//     iff their attacks sum to at least its value, so take the largest such s.
-// The answer is the list of attacks, or -1 when no plan exists.
+// Source: Codeforces 2178D, Xmas or Hysteria, https://codeforces.com/contest/2178/problem/D
+// Problem: multitest, sum n <= 2e5; elves with distinct attacks a_i <= 1e9, health a_i. When
+//   alive x attacks alive y, y loses a_x and x loses a_y. Print a list of attacks after which
+//   exactly m elves survive, each of them having attacked, or -1.
+// Solution: every survivor kills someone, so 2m > n fails. Sort by attack. For m >= 1 the
+//   n - 2m weakest die in a chain, each attacking the next, then each of the m strongest kills
+//   the elf m below it. For m == 0 the weak tail attacks the strongest from the top down:
+//   take the largest start s whose attacks sum to at least its health. O(n log n).
 @!multitest
 let (n, m): (2..=200_000, 0..=200_000) = read()
 domain Elf = 1..=n

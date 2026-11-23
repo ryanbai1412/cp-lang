@@ -1,14 +1,10 @@
-// Codeforces 2101 C — 23 Kingdom
-//
-// Assign each index `i` a value `b[i] in 1..=a[i]` to maximize the sum of
-// `(last(v) - first(v))` over all distinct values `v`.
-//
-// By symmetry and Hall's condition, if `k` values each appear twice, the `k`
-// earliest indices greedily matched to the largest still-free value in `1..=a[i]`
-// give the minimum left endpoints `left[0..k]`, and scanning the reflected
-// array gives the maximum right endpoints `reflect(right_rev[0..k])`. Pairing
-// `left[t]` with `reflect(right_rev[t])` while the span is positive maximizes
-// `sum(reflect(r) - l)`.
+// Source: Codeforces 2101C, 23 Kingdom, https://codeforces.com/contest/2101/problem/C
+// Problem: multitest, sum n <= 2e5, a_i in 1..=n. Choose b_i in 1..=a_i to maximize the
+//   beauty: the sum over distinct values v in b of (last index of v - first index of v).
+// Solution: give the earliest indices the largest still-free value <= a[i] (a SortedSet of
+//   free values); the t-th index that gets one is the best t-th left end. The same scan from
+//   the right gives the right ends. Pair the t-th left with the t-th right and add the
+//   spans while positive. O(n log n).
 
 @!multitest
 let n: 1..=200_000 = read()

@@ -1,17 +1,10 @@
-// Codeforces 2137 E — Mexification
-//
-// Each step simultaneously replaces every `a[i]` by `MEX(a \ {a[i]})`.
-// Let `base` be the smallest non-negative integer with `cnt[base] != 1`; every
-// value in `0..base` appears once and is a fixed point forever.
-// - If `base >= n - 1`: after one step the array is a permutation of `0..n`
-//   and stays fixed with sum `n * (n - 1) / 2`.
-// - If `cnt[base] >= 2` and `k == 1`: letting `mex` be the full-array MEX,
-//   unique values `< mex` stay unchanged while every duplicate or value `> mex`
-//   maps to `mex`.
-// - Otherwise (`k >= 2`, or `cnt[base] == 0`): all `n - base` elements `>= base`
-//   collapse to one shared value `v` that alternates between `base` and
-//   `base + 1` each step (`v = base + 1` iff `(cnt[base] == 0) == (k % 2 == 0)`,
-//   else `v = base`).
+// Source: Codeforces 2137E, Mexification, https://codeforces.com/contest/2137/problem/E
+// Problem: multitest, sum n <= 2e5, a_i in 0..=n, k <= 1e9. Apply k times: replace every a_i
+//   at once by the MEX of the other elements. Print the sum of the final array.
+// Solution: let base be the least value whose count is not 1; values below it stay fixed. If
+//   base >= n - 1 the array becomes the permutation 0..n. If base is duplicated and k == 1,
+//   unique values below the full MEX stay and the rest become the MEX. Otherwise the n - base
+//   others all equal one value alternating base, base + 1 with k's parity. O(n).
 
 @!multitest
 let (n, k): (1..=200_000, 1..=10 ** 9) = read()

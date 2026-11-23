@@ -1,5 +1,10 @@
-// NOIP 2014 P6, Solve the Equation: find every x in 1..=m with
-// a[0] + a[1] x + ... + a[n] x^n = 0, where each a[i] has up to 10^4 digits.
+// Source: NOIP 2014 Senior D2T3, Solve the Equation (not on DMOJ; Luogu P2312)
+// Problem: given n <= 100, m < 1e6 and integers a_0..a_n with |a_i| <= 10^10000, a_n != 0,
+//   print the number of integer roots of a_0 + a_1 x + ... + a_n x^n = 0 in 1..=m, then
+//   the roots in increasing order, one per line.
+// Solution: read each coefficient modulo two primes, 1e9+7 and 998244353, and test every x
+//   in 1..=m by Horner's rule; x is reported when the value is 0 modulo both, which a
+//   nonzero value passes only by bad luck. O(n m) per prime.
 // original: corpus/submissions/5445671.cpp
 let n: 1..=100 = read()
 let m: 1..=1e6 = read()
