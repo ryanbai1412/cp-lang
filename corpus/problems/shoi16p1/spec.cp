@@ -5,7 +5,8 @@
 let (n, k) = read<(1..=5e5, 1..=20)>()
 domain V = 1..=n
 let cost = read<[V]1..=1000>()
-let must = V.mask(read<List<V>>())
+let m = read<1..=n>()
+let must = V.mask(read<[m]V>())
 let t = Rooted(Graph<V>.undirected(read<[n - 1](u: V, v: V)>()), root: V(1))
 domain Reach = -k..=k
 

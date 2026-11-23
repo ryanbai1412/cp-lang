@@ -3,7 +3,7 @@
 // on colours: split the tubes into "low" and "high" halves, then recurse.
 let (n, m) = read<(2..=50, 2..=400)>()
 domain Tube = 1..=n + 1
-var tube = [Tube] t => if t <= n: read<List<1..=n>>(len: m) else: List()
+var tube = [Tube] t => if t <= n: List(read<[m]1..=n>()) else: List()
 var moves = List<(Tube, Tube)>()
 
 fn mv(from: Tube, to: Tube, count: Int = 1):
@@ -15,7 +15,7 @@ fn split(cols: List<Tube>, colours: Range<1..=n>):
     if colours.len <= 1:
         return
     let mid = colours.mid.l
-    let spare = Tube.find(t => t not in cols and tube[t].is_empty())!
+    let spare = Tube.find(t => not cols.any(c => c == t) and tube[t].is_empty)!
     fn low(t: Tube) -> Int = tube[t].count(c => c <= mid)
 
     for a in cols:

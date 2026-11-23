@@ -4,7 +4,8 @@
 domain Ship = 1..=30000
 enum Cmd = M(i: Ship, j: Ship) | C(i: Ship, j: Ship)
 var line = PotentialDsu<Ship>()
-for cmd in read<List<Cmd>>():
+let t = read<1..=500_000>()
+for cmd in read<[t]Cmd>():
     match cmd:
         M(i, j) => line.unite(line.find(j).root, line.find(i).root, line.size(j))
         C(i, j) => print(line.diff(i, j).map(d => abs(d) - 1) ?? -1)
