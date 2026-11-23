@@ -55,8 +55,7 @@ only let those counts fall. The rules for changing the compiler, each with
 the check behind it, are in `handbook/guidelines/compiler-changes.md`.
 
 The weakest areas today: the program generator covers only `Int` and list
-code; nothing checks that checked and unchecked
-builds agree; std-bound violations and interpreter memory are not measured;
+code, so checked and unchecked builds are compared on those only; std-bound violations and interpreter memory are not measured;
 and incremental re-checking is not counted. The quality register below
 lists every quality with its check.
 
@@ -155,7 +154,7 @@ targets are in `plan/domains/compiler/metrics.toml`.
 | Declared input ranges are validated alike in both engines (J6) | inputs one engine accepts and the other rejects | conformance `read` cases; `crates/cpl-cli/tests/fuzz_three_way.rs` | partial |
 | Interactive input and output are line-timely (J6) | answers delayed until stdin closes | `crates/cpl-cli/tests/live_stdin.rs` | enforced |
 | Overflow and checked operations trap alike in both engines (J6, J7) | checked operations that trap in one engine only | conformance trap cases; `crates/cpl-cli/tests/differential.rs` | partial: no generated overflow suite |
-| A checked and an unchecked build agree on valid programs (J9) | outputs that differ between `--checks` levels | none | missing |
+| A checked and an unchecked build agree on valid programs (J9) | outputs that differ between `--checks` levels | `generated_programs_check_run_and_agree` in `crates/cpl-conform/tests/fuzz.rs`; `cpl-conform fuzz START COUNT`; [compiler-changes/R13](../guidelines/compiler-changes-checklist.md#compiler-changesr13) | partial: generated Int and list programs only |
 | Deep recursion behaves as on the judge (J6, J9) | programs that overflow locally but not on the judge, or the reverse | `crates/cpl-cli/tests/stack/`; conformance `deep-recursion-trap` | partial |
 | Traces and replay show what ran (J7) | trace steps that don't match execution | `crates/cpl-cli/tests/trace_goldens.rs`, `crates/cpl-cli/tests/replay.rs` | enforced |
 | The interpreter is fast enough to test with (J6, J8) | slowest corpus run in `cpl run`; VM time against C++ | `crates/cpl-cli/tests/interp_ratio.rs` | partial: no corpus-wide gate |

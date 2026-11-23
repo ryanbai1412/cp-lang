@@ -138,6 +138,23 @@ trace and lint.
   `crates/cpl-cli/tests/tool_matrix.rs`; today's gaps are listed in
   `crates/cpl-cli/tests/tool-gaps.txt`, which `skip_lists` only lets shrink.
 
+### compiler-changes/R13: a valid program prints the same at every checks level
+
+`--checks none`, `traps` and `all` change only what a wrong program does:
+on a valid program the C++ at each level prints what the interpreter
+prints.
+
+- Reason: a contestant tests with checks on and submits with them off, so
+  a difference between levels is an answer accepted locally and wrong on
+  the judge (J9).
+- Example: an `Int` sum the ranges don't prove in range wraps through
+  unsigned at `none` and traps at `all`, never undefined behaviour, so a
+  sum that stays in range prints the same at both.
+- Enforced by: `generated_programs_check_run_and_agree` in
+  `crates/cpl-conform/tests/fuzz.rs` and `cpl-conform fuzz START COUNT`,
+  which run every generated program's C++ at all three levels against
+  the interpreter.
+
 ## Before you land
 
 - [ ] R1: no std name, one-shape path or edition branch added.

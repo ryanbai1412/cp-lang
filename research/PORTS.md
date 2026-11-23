@@ -8,7 +8,7 @@ Dream is the same solution as we would like to write it, unconstrained
 by today's compiler, with its token count; the gap is what the language
 still owes.
 
-Lints counts the `cpl lint --taste` findings (the `plan/PORTING.md`
+Lints counts the `cpl lint --taste` findings (the `handbook/process/porting.md`
 checklist as lints L05xx; 14 over all ports).
 
 | Added | Problem | Port | Tokens | Runtime | Taste | Lints | Areas | Frictions | First friction |
