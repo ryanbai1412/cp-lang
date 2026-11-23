@@ -7,7 +7,7 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 3083 (1092 passing). Rules: 583.
+Cases: 3085 (1092 passing). Rules: 583.
 
 ## Summary per chapter
 
@@ -780,6 +780,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0406 Recursive `var` lambda: 1 case(s)
 - E0407 Duplicate enum variant tag: 1 case(s)
 - E0408 Assign into a range: 2 case(s)
+- E0409 Fn can end without a value: 2 case(s)
 - E0501 Unsupported construct in backend: 9 case(s)
 - E0502 Non-ASCII character in source or string: 1 case(s)
 - E0503 Removed syntax from an older version: 11 case(s)
@@ -953,7 +954,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - W0101 Unused expression value: 1 case(s)
 - W0201 Submission near the size limit: 1 case(s)
 
-86 of 221 testable codes have no negative case.
+86 of 222 testable codes have no negative case.
 
 ## Spec code blocks
 
