@@ -343,7 +343,7 @@ fn run_io(
             let tracer = Box::new(trace::Tracer::new(config, program));
             run_as(program, io, output, limits, Some(tracer), profile)
         }
-        None => run_as::<observe::Unobserved>(program, io, output, limits, None, profile),
+        None => run_as::<observe::Untraced>(program, io, output, limits, None, profile),
     }
 }
 

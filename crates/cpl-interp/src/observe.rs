@@ -98,6 +98,14 @@ pub(crate) trait Observer {
 /// No one watches: the interpreter built for it has no hooks.
 pub(crate) struct Unobserved;
 
+/// The observer of an untraced run. Native builds compile a copy of the
+/// interpreter with no hooks; the browser reuses the traced copy with no
+/// tracer, a branch per hook, so `cpl.wasm` carries one interpreter, not two.
+#[cfg(not(target_family = "wasm"))]
+pub(crate) type Untraced = Unobserved;
+#[cfg(target_family = "wasm")]
+pub(crate) type Untraced = crate::trace::Tracer;
+
 impl Observer for Unobserved {
     const ON: bool = false;
 }
