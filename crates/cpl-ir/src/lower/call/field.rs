@@ -1316,6 +1316,16 @@ impl<'a> Lowerer<'a> {
         if name.text != "items" || Self::filter_call(base).is_some() {
             return None;
         }
+        // A domain's items are its range's: `I.items` walks `(i, i)`.
+        if let Some(Sym::Domain(d)) = self.sym(base) {
+            let len = self.mk(ExprKind::DomainLen(d), Ty::Int, e.span);
+            let all = ExprKind::Range {
+                lo: Box::new(self.int_lit(0, e.span)),
+                hi: Box::new(len),
+            };
+            let all = self.mk(all, Ty::Range(Box::new(Ty::Pos(d))), e.span);
+            return self.items_of(&all, e.span);
+        }
         if !matches!(
             self.probe_ty_silent(base),
             Some(
@@ -1355,9 +1365,12 @@ impl<'a> Lowerer<'a> {
     pub(in crate::lower) fn items_of(&mut self, seq: &Expr, span: Span) -> Option<Items> {
         // A range's keys are its elements (R04.4.31): `(2..5).items` walks
         // `(2, 2) (3, 3) (4, 4)`.
-        if matches!(&seq.ty, Ty::Range(of) if **of == Ty::Int) {
+        if let Some(of) = match &seq.ty {
+            Ty::Range(of) if matches!(**of, Ty::Int | Ty::Pos(_)) => Some((**of).clone()),
+            _ => None,
+        } {
             let (lo, len) = self.range_lo_len(seq.clone(), span);
-            let (index, elem, first, keyed) = (Ty::Int, Ty::Int, 0, false);
+            let (index, elem, first, keyed) = (of.clone(), of, 0, false);
             let (seq, lo) = (seq.clone(), Some(lo));
             return Some(Items {
                 seq,

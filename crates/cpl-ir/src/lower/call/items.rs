@@ -163,6 +163,14 @@ impl<'a> Lowerer<'a> {
         if let Some(lo) = &items.lo {
             let at = ExprKind::Binary(BinOp::Add, Box::new(lo.clone()), Box::new(k));
             let at = self.mk(at, Ty::Int, span);
+            let at = match items.index {
+                Ty::Pos(d) => self.mk(
+                    ExprKind::Cast(Cast::FromOrd(d), Box::new(at)),
+                    Ty::Pos(d),
+                    span,
+                ),
+                _ => at,
+            };
             return (at.clone(), at);
         }
         let (at, stored) = match items.index {

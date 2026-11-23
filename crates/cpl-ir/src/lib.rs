@@ -424,6 +424,12 @@ impl Ty {
             Ty::List(_) | Ty::Str | Ty::StrView => Some(Dim::Int),
             Ty::ListView(_, key) | Ty::Keyed(_, key) | Ty::MutView(_, key) => Some(*key),
             Ty::Array { dims, .. } if dims.len() == 1 => Some(dims[0]),
+            // A range's keys are its elements (R04.4.31).
+            Ty::Range(of) => match **of {
+                Ty::Pos(d) => Some(Dim::Pos(d)),
+                Ty::Int => Some(Dim::Int),
+                _ => None,
+            },
             _ => None,
         }
     }
