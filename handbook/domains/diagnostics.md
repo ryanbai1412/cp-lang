@@ -61,11 +61,13 @@ that the fix restores the program. Differential suites check that a fix never
 changes what a program prints and that the editor and playground match the
 CLI. A suite of real mistakes, each one a user actually hit, checks that the
 error names the place, the rule and a working fix. Gates keep every code
-catalogued and no error pointing into `std/`.
+catalogued and no error pointing into `std/`. Mutation testing checks that
+these suites fail when the shared rendering, JSON and fix code breaks.
 
 The weakest areas are labels for a second place that is not a declaration
 (the first of two borrows) and cascades from the lowerer, which
-does not yet report through `Sink`. The quality register below lists every quality with the
+does not yet report through `Sink`, and the checker's diagnostic builders, which
+have no mutation score yet. The quality register below lists every quality with the
 check behind it, and marks the ones with none as `missing`.
 
 ## Where to start
@@ -208,7 +210,7 @@ with no real check yet. Targets and current values are in
 | No input crashes the front end | panics on generated and mutated sources | fuzzer: seeded mutations of every corpus `spec.cp` through checker, lowering and linter | `crates/cpl-cli/tests/front_end_fuzz.rs` |
 | Diagnostics are deterministic | copies whose diagnostics differ between a warm and a fresh database | differential: every fuzzed copy is checked twice, once in a fresh database | `crates/cpl-cli/tests/front_end_fuzz.rs` |
 | The front end answers in under 500 ms per corpus file; diagnostics add under 10% | worst file, overhead | gate for the front end; `errors/R17`: a size-keeping broken copy of every corpus spec checks within 1.10x its original's time (`front_end_fuzz.rs` `a_broken_copy_checks_within_10_percent_of_its_original`) | `crates/cpl-cli/tests/cold_start.rs`, `budget.rs`, CI job `lsp-latency` |
-| Suites catch regressions | mutation score of the error-quality suites | `missing` | — |
+| Suites catch regressions (`errors/R18`) | mutation score of `cpl-diag` | mutation testing, at least 98% caught; `crates/cpl-diag/tests/contract.rs` pins the edges | `scripts/mutation-score.py -p cpl-diag --min 0.98`, `diag_mutation_score` in metrics |
 | Every escaped error-quality bug becomes a suite case | escaped bugs without a case | `errors/R15`: process: each bug report lands with its golden | `crates/cpl-cli/tests/diagnostics/` |
 
 ## Suites and tools

@@ -10,6 +10,7 @@ Usage:
     python3 scripts/mutation-score.py -p cpl-lint [--since REV] [--shard K/N] [-o DIR]
         [--test-package cpl-lsp ...]   # also run tests of crates that call it
     python3 scripts/mutation-score.py --report DIR   # score a finished run
+    add --min 0.98 to fail (exit 1) when the score is below 0.98
 """
 
 from __future__ import annotations
@@ -41,7 +42,7 @@ def missed_names(outcomes: dict) -> list[str]:
             if o.get("summary") == "MissedMutant" and isinstance(o.get("scenario"), dict)]
 
 
-def report(out_dir: Path) -> int:
+def report(out_dir: Path, least: float | None = None) -> int:
     outcomes = json.loads((out_dir / "mutants.out" / "outcomes.json").read_text(encoding="utf-8"))
     s = score(outcomes)
     for name in missed_names(outcomes):
@@ -49,7 +50,14 @@ def report(out_dir: Path) -> int:
     pct = "n/a" if s["score"] is None else f"{s['score']:.1%}"
     print(f"mutation-score: {pct} ({s['caught']} caught, {s['missed']} missed, "
           f"{s['timeout']} timeout, {s['unviable']} unviable)")
-    return 0
+    return below(s, least)
+
+
+def below(s: dict, least: float | None) -> int:
+    if least is None or (s["score"] is not None and s["score"] >= least):
+        return 0
+    print(f"mutation-score: below the required {least:.1%}; add tests for the missed mutants")
+    return 1
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -62,9 +70,10 @@ def main(argv: list[str] | None = None) -> int:
                         help="also run this crate's tests, e.g. a caller whose tests cover the mutated code")
     parser.add_argument("-j", "--jobs", default="4")
     parser.add_argument("--report", type=Path, help="only score a finished run in DIR")
+    parser.add_argument("--min", type=float, help="exit 1 when the score is below this, e.g. 0.98")
     args = parser.parse_args(argv)
     if args.report:
-        return report(args.report)
+        return report(args.report, args.min)
     if not args.package:
         parser.error("-p/--package is required unless --report is given")
     out = args.output or Path(tempfile.mkdtemp(prefix=f"mutants-{args.package}-"))
@@ -81,7 +90,7 @@ def main(argv: list[str] | None = None) -> int:
                                        cwd=ROOT, capture_output=True, text=True, check=True).stdout)
         cmd += ["--in-diff", str(diff)]
     subprocess.run(cmd, cwd=ROOT)
-    return report(out)
+    return report(out, args.min)
 
 
 if __name__ == "__main__":

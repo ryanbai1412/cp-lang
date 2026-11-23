@@ -136,6 +136,14 @@ A file with a mistake goes through the front end within 10% of the time its corr
 - **Example:** a token pasted into a 300-line port still checks in about the time of the clean port, because a did-you-mean searches only names in scope.
 - **Enforced by:** `crates/cpl-cli/tests/front_end_fuzz.rs` `a_broken_copy_checks_within_10_percent_of_its_original`.
 
+### R18. A suite fails when the code it guards breaks
+
+Every change to the shared diagnostic code (rendering, JSON, fixes, the sink, page links, did-you-mean distance) makes some test fail.
+
+- **Why:** a suite that passes whatever the code does only looks like protection; the next regression lands silently in every tool at once.
+- **Example:** turning `apply_fixes`'s overlap check from `<` into `<=` drops one of two side-by-side fixes, and `contract.rs` fails.
+- **Enforced by:** `python3 scripts/mutation-score.py -p cpl-diag --min 0.98` (`diag_mutation_score` in `plan/domains/diagnostics/metrics.toml`); `crates/cpl-diag/tests/contract.rs` pins the edges the end-to-end suites miss. A checker change is scored with `-p cpl-check --since REV --test-package cpl-cli`.
+
 ## Codes
 
 ### R13. Every code is catalogued with a trigger, a fix and a page
@@ -174,6 +182,7 @@ An error a user, a blind reader or a bug report found unhelpful lands with its f
 
 ## Changes
 
+- 2026-11-23: add R18, the mutation score of the shared diagnostic code.
 - 2026-11-23: add R17, the time a mistake may add to the front end.
 - 2026-11-23: add R16, the rule the bound lints `L0302` to `L0308` enforce.
 - 2026-11-23: first version, from the rules in `handbook/guidelines/errors.md` and the diagnostics register.

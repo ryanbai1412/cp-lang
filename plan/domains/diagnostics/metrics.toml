@@ -137,3 +137,11 @@ command = "cargo test -p cpl-cli --test budget -- --nocapture"
 today = "2 of 2 pass"
 target = "2 of 2"
 milestone = "guard"
+
+[[metric]]
+name = "diag_mutation_score"
+command = "python3 scripts/mutation-score.py -p cpl-diag --min 0.98"
+today = "0.997 (288 caught, 1 missed, 1 timeout, 15 unviable of 305)"
+note = "2026-11-23: the one miss, `>` to `>=` in floor_char_boundary, is equivalent: offset 0 is always a char boundary"
+target = ">= 0.98"
+milestone = "guard"

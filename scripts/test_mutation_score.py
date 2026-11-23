@@ -21,6 +21,12 @@ class ScoreTest(unittest.TestCase):
         ]}
         self.assertEqual(ms.missed_names(outcomes), ["a.rs:1: replace f -> bool with true"])
 
+    def test_min_fails_only_a_score_below_it(self) -> None:
+        self.assertEqual(ms.below({"score": 0.98}, 0.98), 0)
+        self.assertEqual(ms.below({"score": 0.97}, 0.98), 1)
+        self.assertEqual(ms.below({"score": None}, 0.98), 1)
+        self.assertEqual(ms.below({"score": 0.1}, None), 0)
+
 
 if __name__ == "__main__":
     unittest.main()
