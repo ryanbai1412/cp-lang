@@ -4,3 +4,4 @@ group = "correctness"
 title = "First or last of a domain that can be empty"
 summary = "`D.first!` / `D.last!` where `D`'s declared bounds let it be empty: the unwrap traps on that input; guard with `if let` or tighten the bound"
 no_fix = "whether the empty case needs handling or the bound is too loose is the contestant's call; the help shows both"
+# Rule: errors/R16 (handbook/guidelines/errors-checklist.md#r16-a-warning-about-declared-ranges-shows-its-witness), errors/R10.

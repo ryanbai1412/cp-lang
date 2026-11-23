@@ -4,3 +4,4 @@ group = "correctness"
 title = "Unwrap of a min, max, first or last that can be empty"
 summary = "`a.max()!`, `a.min()!`, `a.first!` or `a.last!` where `a`'s declared length can be 0: the unwrap traps on that input; handle `None` or tighten the bound"
 no_fix = "whether the empty input needs an answer or the bound is too loose is the contestant's call; the help shows both"
+# Rule: errors/R16 (handbook/guidelines/errors-checklist.md#r16-a-warning-about-declared-ranges-shows-its-witness), errors/R10.

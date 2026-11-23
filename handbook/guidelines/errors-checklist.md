@@ -110,6 +110,14 @@ A runtime trap shows the line, the values that broke the rule, the call stack, t
 - **Example:** R0202 on `a * b` shows both operands and suggests `I128(a) * b`.
 - **Enforced by:** `crates/cpl-cli/tests/runtime_errors.rs` `every_runtime_code_traps_with_the_message_the_spec_shows` and `common_traps_say_the_cpl_fix`; `crates/cpl-cli/tests/trap_parity.rs`.
 
+### R16. A warning about declared ranges shows its witness
+
+A warning drawn from the declared ranges names an input those ranges allow that goes wrong, or the fact they already prove, and stays silent once the code tests it.
+
+- **Why:** the user wrote the ranges from the statement, so a concrete input inside them is the one argument that convinces; a vague "may overflow" gets ignored.
+- **Example:** L0306 on `a * b` with `a, b: 1..=10**10` says `a = 9223372037, b = 1000000000` overflows; L0307 on `if n >= 1:` with `n: 1..=10` says the range already proves it; L0305 on `a.max()!` stays quiet after `if a.len > 0:`.
+- **Enforced by:** each bound lint's `before.cp` and `near_miss.cp` under `spec/lints/` (codes `L0302` to `L0308`), run by `cargo test -p cpl-lint`.
+
 ## Everywhere
 
 ### R12. Every tool shows the same diagnostic
@@ -158,4 +166,5 @@ An error a user, a blind reader or a bug report found unhelpful lands with its f
 
 ## Changes
 
+- 2026-11-23: add R16, the rule the bound lints `L0302` to `L0308` enforce.
 - 2026-11-23: first version, from the rules in `handbook/guidelines/errors.md` and the diagnostics register.
