@@ -18,6 +18,7 @@ DEFAULT_DOCS = [
     "spec/conformance/README.md",
 ]
 LINK_RE = re.compile(r"(?<!!)\[[^\]]+\]\(([^)]+)\)")
+CODE_SPAN_RE = re.compile(r"(`+).+?\1")
 
 
 def check_markdown(rel_path: str, text: str, root: str = ROOT) -> list[str]:
@@ -31,7 +32,7 @@ def check_markdown(rel_path: str, text: str, root: str = ROOT) -> list[str]:
             continue
         if in_fence:
             continue
-        for m in LINK_RE.finditer(line):
+        for m in LINK_RE.finditer(CODE_SPAN_RE.sub("", line)):
             target = m.group(1).strip()
             if (
                 not target

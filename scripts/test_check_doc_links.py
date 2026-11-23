@@ -25,6 +25,11 @@ class CheckDocLinksTest(unittest.TestCase):
             self.assertEqual(len(errs), 1)
             self.assertIn("missing.md", errs[0])
 
+    def test_ignores_code_spans(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            md = "A `[0..3](u: 0..4, ..)` type and ``[x](y)`` are code.\n"
+            self.assertEqual(MOD.check_markdown("README.md", md, tmp), [])
+
 
 if __name__ == "__main__":
     unittest.main()
