@@ -1280,6 +1280,17 @@ pub fn closest<'c>(name: &str, candidates: impl Iterator<Item = &'c str>) -> Opt
         .filter(|c| *c != name)
         .filter(|c| upper(c) == upper(name) || head(c) == head(name))
         .map(|c| (edit_distance(name, c), c))
+        // `pri` is `print` stopped short, a closer match than `prim` is a typo.
+        .map(|(d, c)| {
+            (
+                if c.starts_with(name) && name.len() >= 3 && c.len() <= name.len() + 2 {
+                    d.min(limit)
+                } else {
+                    d
+                },
+                c,
+            )
+        })
         .filter(|(d, _)| *d <= limit)
         // A word stopped short (`sorte`) means the longer name.
         .min_by_key(|(d, c)| (*d, !c.starts_with(name), c.to_string()))

@@ -614,7 +614,7 @@ impl<'a> Checker<'a> {
                 ty: Ty::Domain(domain),
                 ..
             } => Ty::Pos(domain.clone()),
-            Def::Alias { ty } => ty.clone(),
+            Def::Alias { ty, generics } => ty.subst(&generics.iter().cloned().zip(args).collect()),
             Def::Struct {
                 generics, defaults, ..
             } => {
@@ -1172,7 +1172,8 @@ impl<'a> Checker<'a> {
                     .extend(generics.iter().map(|g| g.text.clone()));
                 let ty = self.resolve_type(ty);
                 self.generics.truncate(outer);
-                vec![(name.text.clone(), Def::Alias { ty })]
+                let generics = generics.iter().map(|g| g.text.clone()).collect();
+                vec![(name.text.clone(), Def::Alias { ty, generics })]
             }
             S::Trait {
                 name,

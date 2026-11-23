@@ -1,0 +1,7 @@
+error[E0302]: expected `List<Int>` made of views into another sequence (it was built from a slice such as `xs[a..b]`), found an owned `List<Int>`; build it from copies, `xs[a..b].to_list()`
+  --> a_list_built_from_slices_names_its_views.cp:4:8
+  |
+4 | w[0] = xs
+  |        ^^
+
+a_list_built_from_slices_names_its_views.cp: 1 error

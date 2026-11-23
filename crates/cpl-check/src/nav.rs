@@ -26,7 +26,7 @@ impl Database {
             .map(|decl| decl.name.clone())
             .collect();
         let alias = aliases.into_iter().find(|name| {
-            matches!(self.lookup(path, &analysis, name).as_deref(), Some(Def::Alias { ty }) if *ty == entry.ty)
+            matches!(self.lookup(path, &analysis, name).as_deref(), Some(Def::Alias { ty, .. }) if *ty == entry.ty)
         })?;
         declared(&analysis, path, &alias)
     }

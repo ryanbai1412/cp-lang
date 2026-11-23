@@ -390,3 +390,20 @@ Landed since 23:10: four type/flow lints from `spec/idioms/lints.md`, L0571 `neg
 - Catalog: the `rev`, `filter`, `windows` and lambda-`fold` rows write `_` for
   view and adapter types, so the catalog test runs every row again.
 - Golden harness masks `std/<file>.cp:<line>` (508fc29ae, for tech-debt).
+
+## 2026-11-23 09:20 PST: BLOCKERS run 6, #79 #97 #142 #167 #176
+
+- #79: a generic alias now binds its parameters (`Def::Alias` keeps its
+  generics), so `p[V(1)]` on a `Perm<V>` is a `V`, not the raw parameter.
+  `Perm<1..=n>` already names the range on line 3 with `domain V = 1..=n`.
+- #97: two types that print the same name which one holds views:
+  "expected `List<Int>` made of views ..., found an owned `List<Int>`" (golden).
+- #142: a free function called as a method (`mask.popcount()`) gets
+  "`popcount` is a function, not a method" and the fix `popcount(mask)`.
+- #176: a name stopped short (`pri`) means the in-scope `print` before a std
+  typo (`prim`).
+- #167: `cpl test a.cp --judge generic` says `cpl test` has no `--judge`,
+  not that `generic` is a missing file; any unknown option does the same.
+- #163 (`x is None`) and #189 (sibling lend) check clean on main now; #23 does
+  not reproduce on main with in-loop query reads (`/tmp` repro, a brute that
+  re-reads the queries); left open until the original draft is found.

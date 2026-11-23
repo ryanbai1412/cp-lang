@@ -69,6 +69,8 @@ pub enum Def {
     Domain(DomainInfo),
     Alias {
         ty: Ty,
+        /// `type Perm<V> = [V]V` names `V`; a use binds it.
+        generics: Vec<String>,
     },
     Trait {
         /// `trait Seq: Index + Ord` lists `Index` and `Ord`.

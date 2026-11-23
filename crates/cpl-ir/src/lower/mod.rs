@@ -1083,7 +1083,7 @@ impl<'a> Lowerer<'a> {
         if want.mentions_error() || found.mentions_error() {
             return;
         }
-        let message = crate::show::mismatch(&self.show(want), &self.show(found), found);
+        let message = crate::show::mismatch(&self.show(want), &self.show(found), want, found);
         self.type_mismatch(span, want, found, message);
     }
 

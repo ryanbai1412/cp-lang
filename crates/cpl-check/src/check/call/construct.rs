@@ -217,7 +217,7 @@ impl Checker<'_> {
                         args: type_args,
                     }
                 }
-                Def::Alias { ty } => {
+                Def::Alias { ty, .. } => {
                     self.plain_args(args);
                     ty.clone()
                 }

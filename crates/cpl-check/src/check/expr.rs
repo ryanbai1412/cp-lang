@@ -1556,7 +1556,7 @@ impl<'a> Checker<'a> {
             Ty::TypeName(name) if name == "Bool" => Ty::Bool,
             // `type Group = Subset<R>`: walking `Group` walks the aliased type.
             Ty::TypeName(name) => match self.type_def(name).as_deref() {
-                Some(Def::Alias { ty }) => ty.clone(),
+                Some(Def::Alias { ty, .. }) => ty.clone(),
                 _ => Ty::Named {
                     name: name.clone(),
                     args: Vec::new(),
@@ -1885,7 +1885,7 @@ impl<'a> Checker<'a> {
             let (a, ty) = widened.split_once(' ').unwrap_or(("a", &widened));
             let message = format!("{a} `{ty}` has no method `{}`", name.text);
             let suggestion = super::spec_member_typo(&base_ty, &name.text);
-            let twin = super::advice::by_twin(self.src, &name.text, name.span);
+            let twin = self.method_twin(base, name);
             let in_place = super::advice::in_place_twin(&name.text, &self.quote(base.span));
             if let Some(diag) = self.error(codes::UNKNOWN_FIELD, name.span, message) {
                 if let Some((help, fix)) = twin {

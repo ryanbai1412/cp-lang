@@ -508,3 +508,35 @@ fn the_old_copy_spelling_is_one_error_with_the_clone_fix() {
     }
     assert!(check("let xs = [1, 2]\nlet ys = xs.clone()\nprint(ys)\n").is_empty());
 }
+
+#[test]
+fn a_free_function_called_as_a_method_gets_the_call_spelling() {
+    let src = "let mask = 5\nprint(mask.popcount())\n";
+    let d = check(src);
+    assert_eq!(d.len(), 1, "{d:?}");
+    assert!(
+        d[0].help
+            .as_deref()
+            .unwrap_or("")
+            .contains("`popcount(mask)`"),
+        "{d:?}"
+    );
+    let fix = &d[0].fixes[0].edits[0];
+    let mut fixed = src.to_string();
+    fixed.replace_range(fix.0.start as usize..fix.0.end as usize, &fix.1);
+    assert_eq!(fixed, "let mask = 5\nprint(popcount(mask))\n");
+    assert!(check(&fixed).is_empty(), "{fixed}");
+}
+
+#[test]
+fn a_name_stopped_short_means_the_prelude_name_before_a_std_typo() {
+    let d = check("pri\n");
+    assert_eq!(d.len(), 1, "{d:?}");
+    assert_eq!(d[0].help.as_deref(), Some("did you mean `print`?"), "{d:?}");
+}
+
+#[test]
+fn a_generic_alias_binds_its_parameters() {
+    let src = "use std.seq.{Perm}\ndomain V = 1..=3\nlet p: Perm<V> = read()\nprint(p[V(1)])\n";
+    assert!(check(src).is_empty(), "{:?}", check(src));
+}

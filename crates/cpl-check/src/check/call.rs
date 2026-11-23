@@ -234,6 +234,7 @@ impl<'a> Checker<'a> {
             Ty::TypeName(name) | Ty::Named { name, .. } => match self.type_def(name).as_deref() {
                 Some(Def::Alias {
                     ty: Ty::Named { name: inner, .. },
+                    ..
                 }) => {
                     let inner = inner.clone();
                     self.is_number(&inner)

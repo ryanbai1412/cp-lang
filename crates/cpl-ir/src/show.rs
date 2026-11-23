@@ -110,10 +110,16 @@ pub(crate) fn ty_name(
 }
 
 /// "expected `want`, found `found`", naming views when both read the same.
-pub(crate) fn mismatch(want: &str, found: &str, found_ty: &Ty) -> String {
-    if want == found && Ty::holds_view(found_ty) {
+pub(crate) fn mismatch(want: &str, found: &str, want_ty: &Ty, found_ty: &Ty) -> String {
+    if want != found {
+        format!("expected `{want}`, found `{found}`")
+    } else if Ty::holds_view(found_ty) {
         format!(
             "expected `{want}`, found `{found}` made of views into another sequence, not copies"
+        )
+    } else if Ty::holds_view(want_ty) {
+        format!(
+            "expected `{want}` made of views into another sequence (it was built from a slice such as `xs[a..b]`), found an owned `{found}`; build it from copies, `xs[a..b].to_list()`"
         )
     } else {
         format!("expected `{want}`, found `{found}`")

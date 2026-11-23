@@ -628,7 +628,7 @@ fn render_def(name: &str, def: &Def, lookup: &mut Lookup) -> String {
             }
             out
         }
-        Def::Alias { ty } => {
+        Def::Alias { ty, .. } => {
             let mut out = format!("type {name} = {ty}");
             out += &cost_lines(ty, lookup);
             out

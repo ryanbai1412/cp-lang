@@ -4,6 +4,46 @@ use super::*;
 use cpl_syntax::ast::{Expr, ExprKind, Name};
 
 impl Checker<'_> {
+    /// The fix for an unknown method: its `_by` twin (`max_by`), or the free
+    /// function it names (`mask.popcount()` is `popcount(mask)`).
+    pub(super) fn method_twin(&self, base: &Expr, name: &Name) -> Option<(String, cpl_diag::Fix)> {
+        let twin = super::advice::by_twin(self.src, &name.text, name.span);
+        let free = crate::builtins::prelude_names().iter().any(|(f, kind)| {
+            *f == name.text
+                && matches!(kind, crate::PreludeKind::Value | crate::PreludeKind::Std(_))
+        });
+        let takes_value = !["read", "flush", "rand", "some"]
+            .iter()
+            .any(|r| name.text.starts_with(r));
+        if twin.is_some() || !free || !takes_value {
+            return twin;
+        }
+        let recv = self.quote(base.span);
+        let after = &self.src[name.span.end as usize..];
+        let (to, call) = match after.strip_prefix('(') {
+            Some(rest) if rest.trim_start().starts_with(')') => {
+                let close = name.span.end + 1 + rest.find(')')? as u32 + 1;
+                (close, format!("{}({recv})", name.text))
+            }
+            Some(_) => (name.span.end + 1, format!("{}({recv}, ", name.text)),
+            None => (name.span.end, format!("{}({recv})", name.text)),
+        };
+        let shown = if call.ends_with(", ") {
+            format!("{call}..)")
+        } else {
+            call.clone()
+        };
+        let help = format!(
+            "`{}` is a function, not a method: write `{shown}`",
+            name.text
+        );
+        let fix = cpl_diag::Fix {
+            title: format!("write `{shown}`"),
+            edits: vec![(cpl_diag::Span::new(base.span.start, to), call)],
+        };
+        Some((help, fix))
+    }
+
     /// R07.1.7: parentheses mark work, so `xs.sorted` reads as O(1) but isn't.
     pub(super) fn missing_parens(
         &mut self,

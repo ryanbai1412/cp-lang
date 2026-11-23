@@ -879,6 +879,17 @@ fn a_program_with_an_error_or_a_failing_case_exits_1() {
 }
 
 #[test]
+fn test_names_an_option_it_does_not_have_instead_of_a_missing_file() {
+    let dir = scratch("test-unknown-option");
+    std::fs::write(dir.join("a.cp"), "test \"one\":\n    assert 1 + 1 == 2\n").unwrap();
+    let out = cpl(&dir, &["test", "a.cp", "--judge", "generic"]);
+    let err = text(&out.stderr);
+    assert!(err.contains("`cpl test` has no `--judge` option"), "{err}");
+    assert!(err.contains("cpl build a.cp --judge generic"), "{err}");
+    assert!(!err.contains("does not exist"), "{err}");
+}
+
+#[test]
 fn a_judge_it_does_not_know_is_the_files_error_or_misuse_on_the_command_line() {
     let dir = scratch("judges_unknown");
     std::fs::write(dir.join("a.cp"), "// judge: nope\nprint(1)\n").unwrap();

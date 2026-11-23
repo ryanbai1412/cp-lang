@@ -86,8 +86,18 @@ pub(crate) fn run_unit_tests(
     let run_cpp = args.contains(&"--cpp");
     let mut files = Vec::new();
     for arg in args {
-        if arg.starts_with('-') {
+        if matches!(*arg, "--cpp" | "--json") {
             continue;
+        }
+        // An unknown option's value would be read as a file (`--judge generic`).
+        if arg.starts_with('-') {
+            let hint = match *arg {
+                "--judge" => "; a judge profile is for `cpl build a.cp --judge generic`",
+                _ => "",
+            };
+            *stderr +=
+                &format!("cpl: `cpl test` has no `{arg}` option (see `cpl test --help`){hint}\n");
+            return EXIT_USAGE;
         }
         let p = std::path::Path::new(arg);
         if !p.exists() {
