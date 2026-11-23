@@ -409,7 +409,7 @@ pub fn convex_hull(pts: List<Pt>, collinear: Bool = false) -> List<Pt>:
 /// traps: never
 /// example: `convex_hull_idx([Pt(1, 1), Pt(0, 0), Pt(2, 0), Pt(0, 0)]) == [1, 2, 0]`
 pub fn convex_hull_idx<D>(pts: [D]Pt, collinear: Bool = false) -> List<D>:
-    var order = [i for i in D]
+    var order = D.collect()
     if order.len <= 1: return order
     order.sort(by: i => pts[i])
     var uniq: List<D> = []
@@ -1280,7 +1280,7 @@ fn last_where(from: Int, span: Int, ok: Int -> Bool) -> Int:
 /// traps: when `pts` has fewer than 2 points, or a distance overflows `Int`
 /// example: `farthest_pair([Pt(0, 0), Pt(1, 1), Pt(3, 0)]) == (0, 2, 9)`
 pub fn farthest_pair<D>(pts: [D]Pt) -> (a: D, b: D, dist2: Int):
-    let keys = [i for i in D]
+    let keys = D.collect()
     assert keys.len >= 2, "farthest_pair requires at least 2 points"
     let h = convex_hull_idx(pts)
     if h.len == 1: return (keys[0], keys[1], 0)
@@ -1324,7 +1324,7 @@ pub fn farthest_pair<D>(pts: [D]Pt) -> (a: D, b: D, dist2: Int):
 /// example: `manhattan_mst([Pt(0, 0), Pt(1, 1), Pt(5, 5)]).any(e => e.u == 0 and e.v == 1 and e.w == 2)`
 /// example: `manhattan_mst([Pt(0, 0), Pt(2, 0)]) == [(0, 1, 2)]`
 pub fn manhattan_mst<D>(pts: [D]Pt) -> List<(u: D, v: D, w: Int)>:
-    let keys = [i for i in D]
+    let keys = D.collect()
     let n = keys.len
     var xs = [pts[k].x for k in keys]
     var ys = [pts[k].y for k in keys]
@@ -2568,7 +2568,7 @@ pub fn any_segments_meet(segs: List<(a: Pt, b: Pt)>, strict: Bool = false) -> ?(
 /// traps: never
 /// example: `any_segments_meet_idx([(Pt(0, 0), Pt(1, 1)), (Pt(1, 1), Pt(2, 0))]) == Some((0, 1))`
 pub fn any_segments_meet_idx<D>(segs: [D](a: Pt, b: Pt), strict: Bool = false) -> ?(D, D):
-    let keys = [k for k in D]
+    let keys = D.collect()
     if let (i, j) = any_segments_meet([segs[k] for k in keys], strict:):
         return Some((keys[i], keys[j]))
     None
@@ -2696,7 +2696,7 @@ fn cover(
 /// example: `planar_faces([Pt(0, 0), Pt(1, 0)], [(0, 1)]) == [[0, 1]]`
 pub fn planar_faces<V>(pts: [V]Pt, edges: List<(V, V)>) -> List<List<V>>:
     with lint(unproven_list_index: allow)
-    let keys = [k for k in pts.keys]
+    let keys = pts.keys.collect()
     let walk = planar_walk([pts[k] for k in keys], [(a.ord, b.ord) for (a, b) in edges])
     [[keys[i] for i in f] for f in walk.faces]
 
@@ -2781,7 +2781,7 @@ fn least_rotation(cyc: List<Int>) -> List<Int>:
 /// traps: as `planar_faces`
 /// example: `point_location_planar([Pt(0, 0), Pt(4, 0), Pt(0, 4)], [(0, 1), (1, 2), (2, 0)], [Pt(1, 1), Pt(0, 0), Pt(5, 5)]) == [Some(0), None, None]`
 pub fn point_location_planar<V>(pts: [V]Pt, edges: List<(V, V)>, queries: List<Pt>) -> List<?Int>:
-    let keys = [k for k in pts.keys]
+    let keys = pts.keys.collect()
     locate_planar([pts[k] for k in keys], [(a.ord, b.ord) for (a, b) in edges], queries)
 
 struct SweepSeg(a: Pt, b: Pt, id: Int)
@@ -2902,7 +2902,7 @@ fn sweep_below(
 /// example: `delaunay([Pt(0, 0), Pt(1, 1), Pt(2, 2)]) == []`
 pub fn delaunay<D>(pts: [D]Pt) -> List<(D, D, D)>:
     with lint(unproven_list_index: allow)
-    let keys = [k for k in pts.keys]
+    let keys = pts.keys.collect()
     [(keys[a], keys[b], keys[c]) for (a, b, c) in delaunay_idx([pts[k] for k in keys])]
 
 fn delaunay_idx(ps: List<Pt>) -> List<(Int, Int, Int)>:
@@ -3082,7 +3082,7 @@ struct DelQuads:
 pub fn voronoi_cells<D>(pts: [D]Pt, bound: F64) -> [D]List<Vec>:
     with lint(unproven_list_index: allow)
     assert bound > 0.0, "`voronoi_cells` needs `bound > 0.0`"
-    let keys = [k for k in D]
+    let keys = D.collect()
     let cells = voronoi_idx([pts[k] for k in keys], bound)
     var out: [D]List<Vec> = []
     for i in 0..keys.len: out[keys[i]] = cells[i]
@@ -3402,7 +3402,7 @@ fn hull2_strict(vs: List<Int>, proj: (Int) -> Pt) -> List<Int>:
 /// traps: never
 /// example: `convex_hull_3d_idx([Pt3(0, 0, 0), Pt3(1, 0, 0), Pt3(0, 1, 0), Pt3(0, 0, 1)]) == [(0, 1, 3), (0, 2, 1), (0, 3, 2), (1, 2, 3)]`
 pub fn convex_hull_3d_idx<D>(pts: [D]Pt3) -> List<(D, D, D)>:
-    let keys = [k for k in D]
+    let keys = D.collect()
     [(keys[a], keys[b], keys[c]) for (a, b, c) in convex_hull_3d([pts[k] for k in keys])]
 
 /// Six times the signed volume of the closed triangulated surface `faces` over `pts`: the sum of

@@ -2113,7 +2113,7 @@ pub fn stable_matching<L, R>(pref_l: [L]List<R>, pref_r: [R]List<L>) -> [L]?R:
     var mate_l: [L]?R = None
     var mate_r: [R]?L = None
     var next: [L]Int = 0
-    var free = [l for l in L]
+    var free = L.collect()
     while let l = free.pop():
         if next[l] == pref_l[l].len: continue
         let r = pref_l[l][next[l]]

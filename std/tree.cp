@@ -1283,7 +1283,7 @@ pub struct Centroids<V>:
 /// A random tree on `V` as adjacency lists, with arcs in both directions.
 fn random_tree<V>(any: V) -> [V]List<V>:
     var adj: [V]List<V> = []
-    var label = [v for v in V]
+    var label = V.collect()
     shuffle(mut label)
     for i in 1..V.count:
         let (c, p) = (label[i], label[rand(0, i - 1)])
@@ -1545,7 +1545,7 @@ fn a_tree_from_a_stored_graph():
 @test
 fn from_parents_tour_pos_and_value_owned_pre():
     domain V = 0..13
-    var label = [v for v in V]
+    var label = V.collect()
     shuffle(mut label)
     var par: [V]?V = None
     for i in 1..V.count: par[label[i]] = Some(label[rand(0, i - 1)])
@@ -3064,7 +3064,7 @@ fn perm_tree_nodes_cover_intervals_of_values():
     for n in 1..=9:
         for _ in 0..20:
             domain I = 0..n
-            var vals = [i for i in I]
+            var vals = I.collect()
             shuffle(mut vals)
             let p: [I]I = [I] i => vals[i.ord]
             let pt = PermTree(p)
@@ -3080,7 +3080,7 @@ fn perm_tree_nodes_cover_intervals_of_values():
                 let interval = hi - lo + 1 == got.len
                 assert interval == (pt.kind[v] != PermKind.Partial)
                 if got.len == 1:
-                    let i = [j for j in sp][0]
+                    let i = sp.collect()[0]
                     assert pt.kind[v] == PermKind.Leaf and pt.leaf(i) == v
                     match pt.node(v):
                         Leaf(j) => assert j == i
@@ -3090,7 +3090,7 @@ fn perm_tree_nodes_cover_intervals_of_values():
                     match pt.node(v):
                         Leaf(_) => assert false
                         Inner(x, y, k) => assert x == a and y == b and k == pt.kind[v]
-                    assert [i for i in pt.span(a)] + [i for i in pt.span(b)] == [i for i in sp]
+                    assert pt.span(a).collect() + pt.span(b).collect() == sp.collect()
                     let (va, vb) = ([p[i].ord for i in pt.span(a)], [p[i].ord for i in pt.span(b)])
                     let up = va.max()! + 1 == vb.min()!
                     let down = vb.max()! + 1 == va.min()!
@@ -3987,7 +3987,7 @@ pub fn kruskal_tree<V, E, W, R: (u: V, v: V, ..)>(edges: [E]R, w: E -> W) -> (
     N,
     W>,
 ):
-    var order = [e for e in E]
+    var order = E.collect()
     order.sort(by: e => w(e))
     var dsu = Dsu<V>()
     var top: [V]Int = [V] v => v.ord

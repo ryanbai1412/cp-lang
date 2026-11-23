@@ -25,12 +25,12 @@ std L0536 13
 std L0540 2
 std L0541 1
 std L0542 13
-std L0543 9
+std L0543 7
 std L0545 3
 std L0547 1
-std L0549 99
+std L0549 33
 std L0550 14
-std L0567 4
+std L0567 2
 std L0579 1
 std L0591 3
 std L0598 4

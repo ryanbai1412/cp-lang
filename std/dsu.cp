@@ -891,11 +891,11 @@ fn groups_partitions_all_vertices_by_component():
             assert d.same(v, g[0])
             flat.push(v)
         assert g.len == d.size(g[0])
-    assert flat.sorted() == [v for v in V]
+    assert flat.sorted() == V.collect()
     d.undo_to(snap)
     assert d.groups().len == 5 and d.components == 5
     for v in V: d.unite(V(1), v)
-    assert d.groups() == [[v for v in V]]
+    assert d.groups() == [V.collect()]
 
 @test
 fn merge_says_which_root_stayed():
@@ -1014,14 +1014,14 @@ fn roots_and_values_yield_one_entry_per_component():
     let _ = d.unite(V(0), V(2))
     let _ = d.unite(V(2), V(4))
     let _ = d.unite(V(1), V(3))
-    let rs = [r for r in d.roots()]
+    let rs = d.roots().collect()
     assert rs.len == 3
     for r in rs: assert d.find(r) == r
     var w = DsuOf<V, Int>(v => v.ord + 1, +)
     let _ = w.unite(V(0), V(2))
     let _ = w.unite(V(2), V(4))
     let _ = w.unite(V(1), V(3))
-    assert [r for r in w.roots()].len == 3
-    var vs = [x for x in w.values()]
+    assert w.roots().collect().len == 3
+    var vs = w.values().collect()
     vs.sort()
     assert vs == [6, 6, 9]

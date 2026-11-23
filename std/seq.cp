@@ -272,7 +272,7 @@ fn merge_runs<K: Ord, T>(src: List<(K, T)>, mut dst: List<(K, T)>, w: Int, desc:
 /// example: `[3, 1, 2].sorted() == [1, 2, 3]`
 /// example: `[3, 1, 2].sorted(desc: true) == [3, 2, 1]`
 pub fn sorted<S: Seq, T, K: Ord>(self: S, by: T -> K = x => x, desc: Bool = false) -> List<T>:
-    var out: List<T> = [x for x in self]
+    var out: List<T> = self.collect()
     sort(mut out, by:, desc:)
     out
 
@@ -518,7 +518,7 @@ pub fn chunks<S: Indexed>(self: S, k: Int) -> yields Slice<S>:
 /// example: `[1, 2, 3].pairs().count() == 3`
 /// see: `adjacent` for neighbours, `Pair<V>` for a table keyed by unordered pairs
 pub fn pairs<S: Seq, T>(self: S) -> yields (T, T):
-    let xs: List<T> = [x for x in self]
+    let xs: List<T> = self.collect()
     for i in 0..xs.len:
         for j in i + 1..xs.len: yield (xs[i], xs[j])
 
@@ -639,9 +639,9 @@ pub fn rotate_right<S: IndexedMut>(mut self: S, k: Int, range: ?Range<Int> = Non
 /// example: `[1, 2, 3].rotated_left(-1) == [3, 1, 2]`
 pub fn rotated_left<S: Seq, T>(self: S, k: Int) -> List<T>:
     let n = self.len
-    if n <= 1: return [x for x in self]
+    if n <= 1: return self.collect()
     let s = k % n
-    if s == 0: return [x for x in self]
+    if s == 0: return self.collect()
     var out: List<T> = []
     out.reserve(n)
     var head: List<T> = []
@@ -857,7 +857,7 @@ pub struct Compressed<D, T>(vals: [D]T):
 /// example: `let (domain C, xs) = compress([30, 10, 30]); xs.len == 2 and xs.at(30) == C.last!`
 pub fn compress<S: Seq, T: Ord>(all: S) -> (domain C, Compressed<C, T>):
     with lint(unproven_list_index: allow)
-    var raw: List<T> = [x for x in all]
+    var raw: List<T> = all.collect()
     raw.sort()
     var uniq: List<T> = []
     for x in raw:
@@ -1204,7 +1204,7 @@ pub fn perm_pow<V>(p: [V]V, k: Int) -> [V]V:
 /// example: `[3, 1, 2].inversions() == 2`
 /// example: `inversions([3, 1, 2]) == 2`
 pub fn inversions<S: Seq, T>(self: S) -> Int:
-    var cur: List<T> = [x for x in self]
+    var cur: List<T> = self.collect()
     let n = cur.len
     var tmp = cur.clone()
     var total = 0
@@ -1995,7 +1995,7 @@ pub fn sorted_diff<A: Indexed, B: Indexed, T>(a: A, b: B) -> List<T>:
 /// example: `kway_merge([[1, 4], [2], [3]]) == [1, 2, 3, 4]`
 pub fn kway_merge<S: Indexed, T>(lists: List<S>) -> List<T>:
     if lists.len == 0: return []
-    var parts: List<List<T>> = [[x for x in l] for l in lists]
+    var parts: List<List<T>> = [l.collect() for l in lists]
     while parts.len > 1:
         var next: List<List<T>> = []
         var i = 0
@@ -2838,26 +2838,26 @@ fn excl_fold_folds_all_but_one():
 
 @test
 fn windows_and_zip_walk_in_step():
-    assert [w for w in [1, 2, 3, 4].windows(2)] == [[1, 2], [2, 3], [3, 4]]
-    assert [w for w in [1, 2].windows(2)] == [[1, 2]] and [w for w in [1, 2].windows(3)].len == 0
+    assert ([1, 2, 3, 4].windows(2)).collect() == [[1, 2], [2, 3], [3, 4]]
+    assert ([1, 2].windows(2)).collect() == [[1, 2]] and ([1, 2].windows(3)).collect().len == 0
     assert zip([1, 2, 3], ["a", "b"]) == [(1, "a"), (2, "b")] and zip([1], List<Int>()).len == 0
 
 @test
 fn pairs_and_with_prev_yield_neighbours():
-    assert [p for p in [10, 20, 30].pairs()] == [(10, 20), (20, 30)]
-    assert [p for p in [7].pairs()].len == 0
+    assert ([10, 20, 30].pairs()).collect() == [(10, 20), (20, 30)]
+    assert ([7].pairs()).collect().len == 0
     let empty: List<Int> = []
-    assert [p for p in empty.pairs()].len == 0
+    assert empty.pairs().collect().len == 0
     assert [(p ?? -1, x) for (p, x) in [10, 20, 30].with_prev()] == [(-1, 10), (10, 20), (20, 30)]
     assert [(p ?? -1, x) for (p, x) in [7].with_prev()] == [(-1, 7)]
-    assert [p for p in empty.with_prev()].len == 0
+    assert empty.with_prev().collect().len == 0
 
 @test
 fn cyclic_pairs_close_the_ring():
-    assert [p for p in [1, 2, 3].cyclic_pairs()] == [(1, 2), (2, 3), (3, 1)]
-    assert [p for p in [7].cyclic_pairs()] == [(7, 7)]
+    assert ([1, 2, 3].cyclic_pairs()).collect() == [(1, 2), (2, 3), (3, 1)]
+    assert ([7].cyclic_pairs()).collect() == [(7, 7)]
     let empty: List<Int> = []
-    assert [p for p in empty.cyclic_pairs()].len == 0
+    assert empty.cyclic_pairs().collect().len == 0
 
 /// The index of the first largest value (optionally under key `by:`), or `None` when empty:
 /// `[3, 9, 2, 9].argmax()` is `Some(1)` and `words.argmax(by: w => w.len)` is the index of the
@@ -2948,8 +2948,8 @@ fn select_merge_sorted_and_rotate_right():
 
 @test
 fn chunk_by_run_ranges_buckets_and_chunks():
-    assert [p for p in [1, 2, 3].pairs()] == [(1, 2), (1, 3), (2, 3)]
-    assert [p for p in [1, 2].cyclic_pairs()] == [(1, 2), (2, 1)]
+    assert ([1, 2, 3].pairs()).collect() == [(1, 2), (1, 3), (2, 3)]
+    assert ([1, 2].cyclic_pairs()).collect() == [(1, 2), (2, 1)]
     domain V = 1..=5
     domain K = 0..3
     let keys = [V] i => K([2, 0, 2, 1, 0][i.ord])
@@ -3058,7 +3058,7 @@ fn seq_and_indexed_traits_unify_sequences_and_views():
     assert sum(r) == 15 and r.prod() == 120
     let vs = [1, 3, 5, 2, 4, 6]
     assert merge_sorted([1, 3, 5], [2, 4, 6]) == [1, 2, 3, 4, 5, 6]
-    assert [p for p in zip(vs, [10, 10, 20, 30, 30])] == [
+    assert zip(vs, [10, 10, 20, 30, 30]).collect() == [
         (1, 10),
         (3, 10),
         (5, 20),

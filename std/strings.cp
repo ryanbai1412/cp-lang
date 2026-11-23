@@ -2766,7 +2766,7 @@ pub struct PalindromicTree<A>:
     /// traps: never
     /// example: `let t = PalindromicTree<Char>.of("aba"); t.contains("aba") and not t.contains("ab")`
     pub fn contains<S: Seq>(self, word: S) -> Bool:
-        let w = [a for a in word]
+        let w = word.collect()
         let m = w.len
         if m == 0: return true
         unchecked:
@@ -3257,7 +3257,7 @@ pub struct DynamicAhoCorasick<A>:
     /// traps: when an element of `pattern` is not in `A`
     /// example: `var d = DynamicAhoCorasick<Char>(); d.add("ab"); d.len == 1`
     pub fn add<S: Seq>(mut self, pattern: S):
-        let word: List<A> = [a for a in pattern]
+        let word: List<A> = pattern.collect()
         let _ = stored.add(word)
         added.add(word)
         n += 1
@@ -3269,7 +3269,7 @@ pub struct DynamicAhoCorasick<A>:
     /// traps: when no copy of `pattern` is stored
     /// example: `var d = DynamicAhoCorasick<Char>(); d.add("ab"); d.remove("ab"); d.count_matches("ab") == 0`
     pub fn remove<S: Seq>(mut self, pattern: S):
-        let word: List<A> = [a for a in pattern]
+        let word: List<A> = pattern.collect()
         assert stored.remove(word), "`remove(pattern)` needs a stored copy of `pattern`"
         removed.add(word)
         n -= 1
@@ -3348,17 +3348,17 @@ fn z_and_prefix_function_match_their_definitions():
 
 @test
 fn find_all_matches_a_scan():
-    assert [i for i in find_all("abababa", "aba")] == [0, 2, 4]
-    assert [i for i in "abababa".find_all("aba")] == [0, 2, 4]
-    assert [i for i in find_all("abc", "")] == [0, 1, 2, 3]
-    assert [i for i in find_all("ab", "abc")] == []
+    assert find_all("abababa", "aba").collect() == [0, 2, 4]
+    assert ("abababa".find_all("aba")).collect() == [0, 2, 4]
+    assert find_all("abc", "").collect() == [0, 1, 2, 3]
+    assert find_all("ab", "abc").collect() == []
     for _ in 0..40:
         let text = random_word(rand(0, 20), 2)
         let pat = random_word(rand(1, 4), 2)
         let want = [i for i in 0..=text.len - pat.len if text.starts_with(pat, at: i)]
-        assert [i for i in find_all(text, pat)] == want
+        assert find_all(text, pat).collect() == want
     // any list of comparable values, not only characters
-    assert [i for i in find_all([1, 2, 1, 2, 1], [1, 2, 1])] == [0, 2]
+    assert find_all([1, 2, 1, 2, 1], [1, 2, 1]).collect() == [0, 2]
 
 @test
 fn suffix_array_and_lcp_match_sorting_the_suffixes():
@@ -3470,9 +3470,9 @@ fn rsearch_gives_the_last_place():
 
 @test
 fn borders_prefix_matches_and_overlap_match_brute():
-    assert [k for k in borders("abacaba")] == [3, 1]
-    assert [k for k in borders("aaaa")] == [3, 2, 1]
-    assert [k for k in borders("")] == []
+    assert borders("abacaba").collect() == [3, 1]
+    assert borders("aaaa").collect() == [3, 2, 1]
+    assert borders("").collect() == []
     assert "ababab".prefix_matches("aba") == [1, 2, 3, 2, 3, 2]
     assert overlap("abcab", "cabx") == 3
     assert overlap("", "abc") == 0 and overlap("abc", "") == 0
@@ -3480,7 +3480,7 @@ fn borders_prefix_matches_and_overlap_match_brute():
         let s = random_word(rand(0, 12), 2)
         let n = s.len
         let want_b = [k for k in (1..n).rev if s[0..k] == s[n - k..n]]
-        assert [k for k in borders(s)] == want_b
+        assert borders(s).collect() == want_b
         let pat = random_word(rand(1, 5), 2)
         let pm = s.prefix_matches(pat)
         for i in 0..n:
@@ -3583,7 +3583,7 @@ fn suffix_array_struct_queries_match_brute():
             let r = sa.lcp_range(i, len)
             var want: List<Int> = [sa.rank[j] for j in 0..n if common_prefix(s, i, j) >= len]
             want.sort()
-            assert [idx for idx in r] == want
+            assert r.collect() == want
         // compare
         for _ in 0..20:
             let l1 = rand(0, n)
@@ -3776,7 +3776,7 @@ fn aho_corasick_matches_counts_and_avoidance_dp():
     var brute = 0
     for code in 0..(1 << 6):
         let text = [A((code >> i) % 2) for i in 0..6]
-        if [m for m in ac.find_all(text)].is_empty: brute += 1
+        if ac.find_all(text).collect().is_empty: brute += 1
     assert ways.sum() == brute
 
 @test
@@ -3790,7 +3790,7 @@ fn indexed_views_and_common_prefix_suffix():
     assert common_prefix_len([1, 2, 3], [1, 2, 4, 5]) == 2
     assert common_suffix_len([1, 2, 3], [9, 2, 3]) == 2
     assert period("xxabababyy"[2..8]) == 2
-    assert [i for i in "ababa".find_all("aba")] == [0, 2]
+    assert ("ababa".find_all("aba")).collect() == [0, 2]
     assert [i for i in "xxababaxx"[2..7].find_all("aba")] == [0, 2]
     assert "ababa".prefix_matches("aba") == [1, 2, 3, 2, 3]
     assert overlap("abcab", "abxyz") == 2
@@ -3851,8 +3851,8 @@ fn sequence_generality_parity_across_list_array_and_views():
     assert prefix_function(view) == prefix_function(xs)
     assert z_function(arr) == z_function(xs)
     assert z_function(view) == z_function(xs)
-    assert [i for i in find_all(arr, parr)] == [0, 4]
-    assert [i for i in find_all(view, pview)] == [0, 4]
+    assert find_all(arr, parr).collect() == [0, 4]
+    assert find_all(view, pview).collect() == [0, 4]
     assert prefix_matches(arr, parr) == prefix_matches(xs, pat)
     assert prefix_matches(view, pview) == prefix_matches(xs, pat)
     assert period(arr) == period(xs)

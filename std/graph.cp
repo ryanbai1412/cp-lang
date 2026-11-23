@@ -1640,7 +1640,7 @@ pub fn euler_walk<V, E>(edges: [E](u: V, v: V), directed: Bool) -> ?Walk<V, E>:
     if start == None:
         if V.count > 0: return Walk(V.first!, List<(to: V, e: E)>())
         else: return None
-    let out = [V] v => [a for a in g.out(v)]
+    let out = [V] v => g.out(v).collect()
     var at: [V]Int = 0
     var used: [E]Bool = false
     var stack: List<(v: V, came: ?(to: V, e: E))> = [(v: start!, came: None)]
@@ -1854,7 +1854,7 @@ fn until_stops_at_the_target_with_its_exact_distance():
             )
             let fc = fixed_cost_paths(
                 [s],
-                [e for e in E],
+                E.collect(),
                 cost: e => ws[e].w,
                 step: (e, x) => if ws[e].u == x: Some(ws[e].v) else: None,
                 until: t,
@@ -2008,7 +2008,7 @@ pub fn dfs<V, G: Next<V>>(g: G, from: Seq<V>, seen: ?mut [V]Bool = None) -> yiel
         yield Visit.Enter(s, no_via)
         var stk_v = [s]
         var stk_via: List<?G.Arc> = [no_via]
-        var stk_arcs: List<List<G.Arc>> = [[a for a in g.out(s)]]
+        var stk_arcs: List<List<G.Arc>> = [g.out(s).collect()]
         var stk_i = [0]
         while stk_v.len > 0:
             let top = stk_v.len - 1
@@ -2025,7 +2025,7 @@ pub fn dfs<V, G: Next<V>>(g: G, from: Seq<V>, seen: ?mut [V]Bool = None) -> yiel
                     yield Visit.Enter(v, Some(a))
                     stk_v.push(v)
                     stk_via.push(Some(a))
-                    stk_arcs.push([a for a in g.out(v)])
+                    stk_arcs.push(g.out(v).collect())
                     stk_i.push(0)
             else:
                 let via = stk_via[top]
@@ -3134,7 +3134,7 @@ pub fn kruskal<V, E, W, R: (u: V, v: V, w: W, ..), K: Ord>(
     edges: [E]R,
     by: R -> K = e => e.w,
 ) -> (total: W, take: [E]Bool):
-    var order = [e for e in E]
+    var order = E.collect()
     order.sort(by: e => by(edges[e]))
     var dsu = Dsu<V>()
     var total = W.zero
