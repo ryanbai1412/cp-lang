@@ -43,6 +43,11 @@ W2 runs before W3 because writing bodies whose examples fail for a compiler reas
 
 ## General fixes owed
 
+- **A generic domain bound by a literal-sized table dimension is just `Int`** (5 `sparse.cp`
+  `SparseTable2D` doc examples, `[2, 2] (r, c) => ..`): `R.K`, `R.first!` and `for r in R` need the
+  size, which `Int` loses ("doesn't know the name `R`"). Works with declared domains. General fix:
+  bind `R` to the table's anonymous `0..2` domain (R04.4.30), not `Int`. Owner: compiler.
+
 - **`Subset` is an IR builtin in `cpl run`** (6 `subset.cp` doc examples): std's `complement`,
   `shifted` and `single(B)` are never reached (`Subset<B>` has no method `complement`). General
   fix: Q3, lower `Subset` from `std/subset.cp`'s struct instead of `Ty::Subset`. Owner: stdlib + compiler.
