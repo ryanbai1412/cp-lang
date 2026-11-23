@@ -1537,6 +1537,40 @@ impl<'a> Lowerer<'a> {
         self.cast(Cast::Trust, acc, Ty::Pos(id))
     }
 
+    /// `P((r, c))`: a tuple of factor positions or integers, each integer
+    /// checked into its factor (R04.2.10).
+    pub(super) fn product_from_tuple(&mut self, id: DomainId, v: Expr, span: Span) -> Expr {
+        let factors = self.product_domains[&id].clone();
+        let elems = match &v.ty {
+            Ty::Tuple(es) if es.len() == factors.len() && es.contains(&Ty::Int) => es.clone(),
+            _ => return self.coerce(v, &Ty::Pos(id), span),
+        };
+        let mut out = Vec::new();
+        let held = self.hold(v, &mut out);
+        let mut parts = Vec::with_capacity(elems.len());
+        for (i, ((_, f), ety)) in factors.iter().zip(elems).enumerate() {
+            let part = self.mk(
+                ExprKind::Field(Box::new(held.clone()), i),
+                ety.clone(),
+                span,
+            );
+            parts.push(match f {
+                ProductFactor::Domain(d) if ety == Ty::Int => self.mk(
+                    ExprKind::Cast(Cast::FromLabel(*d), Box::new(part)),
+                    Ty::Pos(*d),
+                    span,
+                ),
+                _ => {
+                    let want = self.product_factor_ty(f);
+                    self.coerce(part, &want, span)
+                }
+            });
+        }
+        let pos = self.encode_product(id, parts, span);
+        out.push(Stmt::Give(pos));
+        self.mk(ExprKind::Do(Block { stmts: out }), Ty::Pos(id), span)
+    }
+
     pub(super) fn decode_product(
         &mut self,
         id: DomainId,

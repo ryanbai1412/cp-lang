@@ -384,7 +384,7 @@ impl<'a> Lowerer<'a> {
                             if args.len() == 1 && args[0].name.is_none() {
                                 let v = self.expr(&args[0].value, None);
                                 if matches!(v.ty, Ty::Tuple(_) | Ty::Record(_)) {
-                                    return self.coerce(v, &Ty::Pos(id), span);
+                                    return self.product_from_tuple(id, v, span);
                                 }
                                 let value = if v.ty == Ty::Char {
                                     self.mk(
