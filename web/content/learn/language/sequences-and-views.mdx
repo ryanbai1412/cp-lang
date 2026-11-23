@@ -1,0 +1,118 @@
+---
+title: "Sequences and views"
+description: "Generators are the only iterator, views are O(1) and lazy, slices keep their source's keys, and anything that allocates says so."
+---
+
+Everything a `for` can walk is a sequence. Most of them are views: made in \(O(1)\) from a source
+without copying it, doing their work as you walk. The few operations that build a container are named
+for it. The normative rules are <Spec file="core/07-sequences">chapter 7 of the spec</Spec>.
+
+## Generators are the only iterator
+
+A function declared `-> yields T` is a generator. It has no `next()`: the generator runs, and the
+loop body runs at each `yield`, so a generator compiles to the loop you would write by hand.
+`break`, `continue` and `return` work through it, recursive generators included.
+
+```cp run
+fn divisors(n: Int) -> yields Int:
+    for d in 1..=isqrt(n):
+        if n % d == 0:
+            yield d
+            if d * d != n: yield n / d
+
+for d in divisors(12):
+    if d == 4: break
+    print(d)
+print(List(divisors(12)).sorted())
+```
+
+`let g = divisors(n)` stores the call and runs nothing; each walk runs the body again from the top.
+To keep the results, materialize them with `List(g)`.
+
+## Six capabilities
+
+| Capability | Guarantees | Examples |
+|---|---|---|
+| `Seq<T>` | `for x in s` walks it in order | generators, `s.filter(p)` |
+| `Keyed<D, T>` | `s.items` walks `(key, x)` | everything indexed, `s.filter(p)` |
+| `Sized` | \(O(1)\) `s.len` | collections, ranges, indexed views |
+| `Bidir<T>` | `s.rev` walks backwards | everything indexed, sorted sets |
+| `Indexed<D, T>` | \(O(1)\) `s[i]` and `s.keys` | `[D]T`, `List`, `Str`, ranges, slices, `.map(f)` |
+| `IndexedMut<D, T>` | `s[i]` is a place: `sort()`, `swap` | `[D]T`, `List`, `mut` slices |
+
+An adapter keeps `Indexed` when it can answer `w[k]` in \(O(1)\) (slices, `.rev`, `.map`, `zip`,
+`take`/`drop`); `filter`, `take_while` and generators are walk-only
+(<Spec file="core/07-sequences" section="The capabilities">the capabilities</Spec>).
+
+## Slices keep their keys
+
+An index names the same element everywhere it is valid. A slice narrows the valid keys and never
+renames them, so a position found in a slice is a position of the source:
+
+```cp run input="5\n3 8 2 9 4\n"
+let n: 1..=10 = read()
+domain V = 1..=n
+let a: [V]Int = read()
+let w = a[V(2)..=V(4)]
+let best = w.keys.max(by: i => a[i])!
+print(best, a[best])
+for (i, x) in w.items:
+    print(i, x)
+```
+
+`best` is `4`, a vertex of `V`, not an offset into `w`. Materializing (`.collect()`, `.sorted()`,
+`List(w)`) builds a new sequence keyed from 0, because it is a new collection
+(<Spec file="core/07-sequences" section="Slices: which keys survive">slices</Spec>).
+
+## Views are lazy; allocation is named
+
+Adapters (`map`, `filter`, `adjacent`, `windows`) make views: \(O(1)\) to build, work done per walk.
+Only a comprehension, `.collect()` or a constructor such as `List(s)` allocates:
+
+```cp run
+let a = [4, 1, 7, 3, 9, 2]
+print(a.sum(), a.max()!, a.count(x => x > 3))
+print(a.filter(x => x % 2 == 1).map(x => x * 10).collect())
+print([x * x for x in a if x > 3])
+print(a.sorted(by: x => desc(x)))
+let b = [1, 3, 6, 10]
+print([y - x for (x, y) in b.adjacent])
+```
+
+Parentheses mean work: \(O(1)\) members read without `()` (`.len`, `.rev`, `.items`, `.adjacent`),
+and anything that computes or allocates up front is a call (`a.sorted()`, `.collect()`). A lazy
+chain reruns on every walk, so lint flags one walked twice and suggests `.collect()`. Descending
+order is a key (`by: x => desc(x)`), not a flag, and sorts are stable.
+
+## Scans are indexed by cuts
+
+`a.scan(op)` gives a `Prefix`: one fold per cut between elements, so a range query is two reads
+with no off-by-one to choose. A position folds through itself:
+
+```cp run input="5\n3 8 2 9 4\n"
+let n: 1..=10 = read()
+domain V = 1..=n
+let a: [V]Int = read()
+let pre = a.scan(+)
+print(pre[V(3)])
+print(Prefix(a).fold(V(2)..=V(4)))
+```
+
+(<Spec file="core/07-sequences" section="Scans are prefix sums over cuts">scans</Spec>)
+
+## Why it's designed this way
+
+**Push generators, not pull iterators.** A pull iterator needs a state machine per adapter and a
+`next()` the optimizer has to see through. Pushing values into the loop body compiles to the
+hand-written loop, and recursive enumeration (DFS, subsets) is just recursion. The cost is
+lockstep: two generators can't be walked in step, so you materialize one. <Decision n={126} />
+settled `break` and `return` through recursive generators.
+
+**Identity everywhere.** Re-keying slices from 0 is the source of a classic off-by-one: an argmax
+in a window that indexes the wrong element of the array. <Decision n={143} /> keeps every key
+valid on the source, and lints a literal `w[0]` into a slice.
+
+**Costs show.** <Decision n={140} /> made parentheses mean work, so `.rev` is free and `.sorted()`
+is not, and <Decision n={326} /> lets a type override a fold with its own documented cost, as a
+range does for `sum()`. Changing a source's length while a view of it is alive is a compile error
+(<Decision n={128} />), so a view can't be invalidated.
