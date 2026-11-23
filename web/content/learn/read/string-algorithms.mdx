@@ -1,0 +1,78 @@
+---
+title: "String algorithms"
+description: "prefix_function, z_function, period, find_all, manacher and KmpAutomaton, on any indexed sequence."
+---
+
+The linear-time string algorithms every Div 1 contestant knows (prefix
+function, Z-function, Knuth-Morris-Pratt, Manacher) are in the standard
+library. Each works on any indexed sequence (a `Str`, a `List`, an array
+over a domain, a slice), and its result is keyed the same way as its
+input, so `z[i]` means position `i` of the string you passed.
+
+## Prefix and Z functions
+
+`prefix_function(s)[i]` is the length of the longest proper prefix of
+`s[..=i]` that is also its suffix. `z_function(s)[i]` is the length of
+the longest common prefix of `s` and the suffix starting at `i`. Both
+are O(n):
+
+```cp run
+let s: Str = "abcabcab"
+print(prefix_function(s))
+print(z_function(s))
+```
+
+The shortest period of a string follows from the last prefix-function
+value. This is the reference solution of
+[Shortest period](/learn/practice/shortest-period):
+
+```cp run input="abcabcab\n"
+let s: Str = read()
+let pi = prefix_function(s)
+print(s.len - pi[s.len - 1])
+```
+
+`period(s)` computes the same thing directly when you don't need the
+array.
+
+## Finding a pattern
+
+`s.search(p)` returns the first position of `p` as `?K` (`None` when it
+doesn't occur), and `s.find_all(p)` yields every occurrence, overlapping
+ones included, in O(|s| + |p|):
+
+```cp run
+let s: Str = "abcabcab"
+print(s.search("ca") ?? -1)
+for i in s.find_all("ab"): print(i)
+```
+
+When the text arrives piece by piece, or you need the matcher's state
+inside a DP over the text, `KmpAutomaton<Char>.new(p)` exposes the
+automaton itself: `step(state, c)` advances one character and `link`
+follows a failure link.
+
+## Palindromes
+
+`manacher(s)` computes every palindrome radius in O(n), and
+`longest_at(i)` is then O(1):
+
+```cp run
+use std.strings.{is_palindrome, manacher}
+assert is_palindrome("abba")
+print(manacher("abacaba").longest_at(3))
+```
+
+## Why it's designed this way
+
+- **One algorithm, every sequence.** A C++ template library usually
+  works on `std::string` and needs a copy for `vector<int>`. These take
+  any `Indexed` sequence, so the Z-function of a slice or of an array of
+  hashes needs no conversion.
+- **Results keep the input's keys.** `z_function(s[l..])[i]` takes `i`
+  from the slice, so there's no `i - l` to remember and get wrong.
+- **The algorithm is in the name.** `find_all` is documented as
+  Knuth-Morris-Pratt with its cost. The library never quietly switches
+  to a different algorithm, so the cost you read is the cost you get.
+
+Practice: [Shortest period](/learn/practice/shortest-period).

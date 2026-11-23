@@ -1,0 +1,91 @@
+---
+title: "More graphs: all pairs, SCC, bridges and flow"
+description: "floyd_warshall, scc with its component domain, bridges and FlowGraph.max_flow."
+---
+
+The [Graphs](/learn/read/graphs) chapter covers BFS, components,
+Dijkstra and topological order. Harder problems need four more tools,
+and each follows the same pattern: the graph's vertices are a domain,
+and the result is a table over a domain.
+
+## All pairs: `floyd_warshall`
+
+For n up to a few hundred, `floyd_warshall(mut d)` turns a `[V, V]?Int`
+table of direct edges into all shortest distances in O(n³). `None` means
+no path, so there's no `INF` to overflow when two are added. It returns
+`false` when there's a negative cycle, so the `assert` states that there
+isn't one:
+
+```cp run input="3 3 3\n1 2 4\n2 3 1\n1 3 7\n1 3\n3 1\n2 2\n"
+let (n, m, q): (1..=400, 0..=1e5, 1..=1e5) = read()
+domain V = 1..=n
+let es: [0..m](u: V, v: V, w: 1..=1e9) = read()
+var d: [V, V]?Int = None
+for e in es: d[e.u, e.v] min= e.w
+assert floyd_warshall(mut d)
+for _ in 0..q:
+    let (u, v): (V, V) = read()
+    print(d[u, v] ?? -1)
+```
+
+## Strongly connected components: `scc`
+
+`scc(g)` returns a new domain `C` of components and a table `comp` from
+each vertex to its component, in O(n + m). The components are a domain
+of their own, so an array over components can't be indexed by a vertex
+by mistake:
+
+```cp run input="4 4\n1 2\n2 1\n2 3\n3 4\n"
+let (n, m): (1..=2e5, 0..=2e5) = read()
+domain V = 1..=n
+let es: [0..m](u: V, v: V) = read()
+let (domain C, comp) = scc(Graph.directed(es))
+print(C.len)
+```
+
+## Bridges
+
+`bridges(g)` returns, for each edge, whether removing it disconnects the
+graph: a `[E]Bool` over the edge domain, in O(n + m):
+
+```cp run input="4 4\n1 2\n2 3\n3 1\n3 4\n"
+use std.graph.{bridges}
+let (n, m): (1..=2e5, 0..=2e5) = read()
+domain V = 1..=n
+domain E = 0..m
+let es: [E](u: V, v: V) = read()
+print(bridges(Graph.undirected(es)).count(b => b))
+```
+
+## Maximum flow: `FlowGraph`
+
+`FlowGraph<V>.new()` starts empty; `add(u, v, cap)` adds a directed edge
+(a `None` capacity is one no cut can afford) and `max_flow(s, t)` runs Dinic's
+algorithm:
+
+```cp run input="4 5\n1 2 3\n1 3 2\n2 3 5\n2 4 2\n3 4 3\n"
+let (n, m): (2..=500, 0..=1000) = read()
+domain V = 1..=n
+let es: [0..m](u: V, v: V, c: 1..=1e9) = read()
+var g = FlowGraph<V>.new()
+for e in es: g.add(e.u, e.v, Some(e.c))
+print(g.max_flow(V(1), V(n)))
+```
+
+## Why it's designed this way
+
+- **Results introduce domains.** A hand-written SCC returns `comp` as
+  `vector<int>` and a count, and nothing stops `dp[v]` where `dp[comp[v]]`
+  was meant. `let (domain C, comp) = scc(g)` gives the components their
+  own index space, so that bug is a type error.
+- **Absence instead of infinity.** `INF = 1e18` and `INF + w` is a
+  classic overflow. `?Int` distances make "no path" a value the type
+  system tracks; `d[u, v] min= w` on a `None` entry simply stores `w`.
+- **Edges stay a domain too.** Bridges come back as a table over `E`,
+  the same domain the edges were read into, so the answer lines up with
+  the input without an edge-id map.
+
+Practice: [All pairs](/learn/practice/all-pairs),
+[Strong groups](/learn/practice/strong-groups),
+[Bridge count](/learn/practice/bridge-count) and
+[Max flow](/learn/practice/max-flow).
