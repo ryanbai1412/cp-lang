@@ -761,6 +761,17 @@ impl<'a> Lowerer<'a> {
                     span,
                 )
             }
+            Ty::Range(e) => {
+                let elem = (**e).clone();
+                self.collected(elem.clone(), span, |lw, out, push| {
+                    let item = lw.temp(elem);
+                    let lid = lw.fresh_loop();
+                    let body = Block {
+                        stmts: vec![push(lw, lw.local(item, span))],
+                    };
+                    out.push(Stmt::For(lid, item, Iter::RangeVal(items, false), body));
+                })
+            }
             _ => items,
         };
         let flat = match &items.ty {
@@ -791,7 +802,7 @@ impl<'a> Lowerer<'a> {
         span: Span,
     ) -> Expr {
         let flat = match &value.ty {
-            Ty::List(_) => true,
+            Ty::List(_) | Ty::ListView(..) | Ty::Keyed(..) | Ty::MutView(_) | Ty::Range(_) => true,
             Ty::Array { dims, .. } => dims.len() == 1,
             _ => false,
         };
