@@ -1,0 +1,8 @@
+error[E0103]: expected `:` after the condition, found `{`
+  --> brace_if_else.cp:2:10
+  |
+2 | if x > 2 {
+  |          ^
+  = help: the body is indented under `:`, with no braces
+
+brace_if_else.cp: 1 error

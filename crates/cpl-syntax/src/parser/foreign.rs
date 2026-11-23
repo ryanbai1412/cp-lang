@@ -196,15 +196,20 @@ impl<'a> Parser<'a> {
             return None;
         }
         let mut depth = 0;
-        for t in &self.tokens[self.pos..] {
+        for (i, t) in self.tokens.iter().enumerate().skip(self.pos) {
             match t.kind {
                 T::LBrace => depth += 1,
                 T::RBrace if depth == 1 => {
                     let line = self.src.get(..t.span.start as usize)?.rfind('\n')?;
                     let indent = &self.src[line + 1..t.span.start as usize];
-                    let alone = indent.trim().is_empty() && blank_after(t.span.end);
-                    let close = Span::new(line as u32, t.span.end);
-                    return alone.then(|| {
+                    let next = self.tokens.get(i + 1).filter(|n| n.kind == T::Else);
+                    let close = match next {
+                        // `} else {`: the `else` keeps the `}`'s indentation.
+                        Some(e) => Span::new(t.span.start, e.span.start),
+                        None if blank_after(t.span.end) => Span::new(line as u32, t.span.end),
+                        None => return None,
+                    };
+                    return indent.trim().is_empty().then(|| {
                         vec![
                             (Span::new(self.prev_end(), self.span().end), ":".into()),
                             (self.rel(close), String::new()),

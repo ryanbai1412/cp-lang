@@ -134,6 +134,9 @@ fn a_c_brace_block_header_becomes_a_colon_block() {
         (edits[1].0.start, edits[1].0.end, edits[1].1.as_str()),
         (33, 35, "")
     );
+    let src = "let x = 3\nif x > 2 {\n    print(x)\n} else {\n    print(0)\n}\n";
+    let edits = &parse_file(src).diagnostics[0].fixes[0].edits;
+    assert_eq!((edits[1].0.start, edits[1].0.end), (34, 36), "{edits:?}");
     let one_line = parse_file("let x = 3\nif x > 2 {\n    print(x) }\n").diagnostics;
     assert_eq!(one_line[0].fixes[0].edits.len(), 1);
 }
