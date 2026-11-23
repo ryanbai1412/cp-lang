@@ -13,6 +13,8 @@ update=0
 cpl=${1:-$(ls -t target/release/cpl target/debug/cpl 2>/dev/null | head -1)}
 cpl=${cpl:-target/debug/cpl}
 list=corpus/port-check-failing.txt
+# Read std/ as it is now, so a std edit needs no rebuild of cpl.
+export CPL_STD_DIR=${CPL_STD_DIR:-$PWD/std}
 jobs=$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 4)
 start=$(date +%s)
 # xargs exits 123 when any port fails; the diagnostics say which.

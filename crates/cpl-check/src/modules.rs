@@ -62,6 +62,33 @@ fn module_key(path: &Path) -> String {
 /// their path below it (`"seq"`).
 const BUNDLED: &[(&str, &str)] = include!(concat!(env!("OUT_DIR"), "/std_modules.rs"));
 
+/// The modules of `std`: those built in, or with `CPL_STD_DIR` set, those
+/// in that folder as they are now, so a std edit needs no rebuild of `cpl`.
+fn modules() -> &'static [(&'static str, &'static str)] {
+    static FROM_DISK: std::sync::OnceLock<Option<Vec<(&'static str, &'static str)>>> =
+        std::sync::OnceLock::new();
+    FROM_DISK
+        .get_or_init(|| std::env::var_os("CPL_STD_DIR").map(|dir| from_disk(Path::new(&dir))))
+        .as_deref()
+        .unwrap_or(BUNDLED)
+}
+
+fn from_disk(dir: &Path) -> Vec<(&'static str, &'static str)> {
+    let mut found = Vec::new();
+    crate::std_files::collect(dir, dir, &mut found);
+    found.sort();
+    found
+        .into_iter()
+        .filter_map(|(name, path)| {
+            let text = crate::std_files::without_tests(&std::fs::read_to_string(path).ok()?);
+            Some((
+                &*Box::leak(name.into_boxed_str()),
+                &*Box::leak(text.into_boxed_str()),
+            ))
+        })
+        .collect()
+}
+
 /// The text of the standard library module `module` (`["segtree"]`) that
 /// is built into the compiler.
 /// The OS path a checker file name stands for: a `file://` URI decoded
@@ -107,15 +134,15 @@ fn os_path(path: String, windows: bool) -> String {
 
 pub fn bundled_std(module: &[String]) -> Option<&'static str> {
     let name = module.join("/");
-    BUNDLED
+    modules()
         .binary_search_by(|(known, _)| (*known).cmp(name.as_str()))
         .ok()
-        .map(|at| BUNDLED[at].1)
+        .map(|at| modules()[at].1)
 }
 
 /// Every module of the standard library, by name (`"segtree"`), with its text.
 pub fn std_modules() -> &'static [(&'static str, &'static str)] {
-    BUNDLED
+    modules()
 }
 
 /// The error for `use` of a module that isn't there, at `whole`.
@@ -143,7 +170,7 @@ pub(crate) fn missing(parts: &[String], whole: Span) -> Diagnostic {
 /// `std.segtre` as `std.segtree`: the closest stdlib module to a missing one.
 fn nearest_std(module: &[String]) -> Option<String> {
     let [std, name] = module else { return None };
-    let names = BUNDLED.iter().map(|(known, _)| *known);
+    let names = modules().iter().map(|(known, _)| *known);
     (std == "std")
         .then(|| crate::check::closest(name, names))
         .flatten()
@@ -227,6 +254,27 @@ fn library_name(manifest: &str) -> Option<&str> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn std_dir_modules_are_read_from_disk_without_tests() {
+        let dir = std::env::temp_dir().join(format!("cpl-std-dir-{}", std::process::id()));
+        std::fs::create_dir_all(dir.join("graph")).unwrap();
+        std::fs::write(
+            dir.join("x.cp"),
+            "@test\nfn t():\n    pass\npub fn f() -> Int: 1\n",
+        )
+        .unwrap();
+        std::fs::write(dir.join("graph/y.cp"), "pub fn g() -> Int: 2\n").unwrap();
+        let found = from_disk(&dir);
+        std::fs::remove_dir_all(&dir).unwrap();
+        assert_eq!(
+            found,
+            [
+                ("graph/y", "pub fn g() -> Int: 2\n"),
+                ("x", "\n\n\npub fn f() -> Int: 1\n")
+            ]
+        );
+    }
 
     #[test]
     fn a_library_file_key_uses_forward_slashes() {

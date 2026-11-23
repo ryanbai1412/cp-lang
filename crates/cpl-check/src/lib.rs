@@ -22,6 +22,7 @@ mod fx;
 mod hover;
 mod modules;
 mod prelude;
+mod std_files;
 mod ty;
 
 pub use builtins::{

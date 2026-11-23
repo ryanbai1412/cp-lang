@@ -5,6 +5,10 @@
 use std::fmt::Write as _;
 use std::path::{Path, PathBuf};
 
+#[path = "src/std_files.rs"]
+mod std_files;
+use std_files::{collect, without_tests};
+
 fn main() {
     let manifest = PathBuf::from(std::env::var_os("CARGO_MANIFEST_DIR").expect("set by cargo"));
     println!("cargo:rerun-if-changed=build.rs");
@@ -66,25 +70,6 @@ fn without_comments(text: &str) -> String {
         .collect()
 }
 
-fn without_tests(text: &str) -> String {
-    let mut out = String::with_capacity(text.len());
-    let mut in_test = false;
-    for line in text.split_inclusive('\n') {
-        let at_top = !line.starts_with([' ', '\t', '\n', '\r']);
-        if line.trim_end() == "@test" {
-            in_test = true;
-        } else if in_test && at_top && !line.starts_with("fn ") {
-            in_test = false;
-        }
-        if in_test {
-            out.push_str(if line.ends_with('\n') { "\n" } else { "" });
-        } else {
-            out.push_str(line);
-        }
-    }
-    out
-}
-
 /// Every public name that exactly one `std` module declares, with
 /// that module, sorted by name: what the hint for a missing `use` reads.
 /// It is read off the files, so a new `pub fn` needs no second edit.
@@ -122,30 +107,4 @@ fn std_names(modules: &[(String, PathBuf)]) -> String {
     }
     table.push_str("]\n");
     table
-}
-
-/// Every `.cp` file under `dir`, as its path below `root` without the
-/// extension (`"seq"`, `"geo/hull"`) and where it is.
-fn collect(root: &Path, dir: &Path, modules: &mut Vec<(String, PathBuf)>) {
-    let Ok(entries) = std::fs::read_dir(dir) else {
-        return;
-    };
-    for entry in entries.flatten() {
-        let path = entry.path();
-        if path.is_dir() {
-            collect(root, &path, modules);
-        } else if path.extension().is_some_and(|ext| ext == "cp") {
-            let below = path
-                .strip_prefix(root)
-                .expect("found under root")
-                .with_extension("");
-            let name = below
-                .components()
-                .map(|part| part.as_os_str().to_string_lossy().into_owned())
-                .collect::<Vec<_>>()
-                .join("/");
-            let path = path.canonicalize().unwrap_or(path);
-            modules.push((name, path));
-        }
-    }
 }
