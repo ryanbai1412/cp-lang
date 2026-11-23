@@ -550,7 +550,7 @@ pub struct PersistentArray<D, T>:
     /// cost: \(O(n)\) time and memory for n = `|D|`
     /// empty: an empty `D` gives an array with no positions
     /// traps: when both or neither of `a:` and `fill:` are given
-    /// example: `var p = PersistentArray(fill: 7); p.get(p.base, 0) == 7`
+    /// example: `var p = PersistentArray<0..3, Int>(fill: 7); p.get(p.base, 0) == 7`
     pub fn new(a: ?[D]T = None, fill: ?T = None) -> PersistentArray<D, T>:
         var p = PersistentArray<D, T>([0], [0], [], 0)
         if let init = a:
