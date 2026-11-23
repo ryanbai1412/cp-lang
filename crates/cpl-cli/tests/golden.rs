@@ -145,6 +145,34 @@ fn judge_runs_the_checker_on_an_output() {
     let rejected = cpl(&dir, &["judge", "echo.cp", "in.txt", "wrong.txt"]);
     assert_eq!(rejected.status.code(), Some(EXIT_FAILED.into()));
     assert!(text(&rejected.stderr).contains("assertion failed: x == n"));
+    let verdict = |args: &[&str]| {
+        let out = cpl(&dir, args);
+        let json = cpl_json::parse(&text(&out.stdout)).expect("cpl judge --json is JSON");
+        (out.status.code(), json)
+    };
+    let (code, json) = verdict(&["judge", "echo.cp", "in.txt", "right.txt", "--json"]);
+    assert_eq!(code, Some(0));
+    assert_eq!(json.at(&["accepted"]).as_bool(), Some(true));
+    assert_eq!(*json.at(&["reason"]), cpl_json::Value::Null);
+    let (code, json) = verdict(&["judge", "echo.cp", "in.txt", "wrong.txt", "--json"]);
+    assert_eq!(code, Some(EXIT_FAILED.into()));
+    assert_eq!(json.at(&["accepted"]).as_bool(), Some(false));
+    let reason = json.at(&["reason"]).as_str().unwrap();
+    assert!(reason.contains("assertion failed: x == n"), "{reason}");
+    assert_eq!(
+        json.at(&["diagnostic", "start", "line"]).as_i64(),
+        Some(6),
+        "{json:?}"
+    );
+    let spelled = verdict(&[
+        "judge",
+        "echo.cp",
+        "in.txt",
+        "wrong.txt",
+        "--format",
+        "json",
+    ]);
+    assert_eq!(spelled, (code, json));
 }
 
 #[test]

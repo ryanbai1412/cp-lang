@@ -186,15 +186,19 @@ pub fn exec<S: AsRef<str>>(
             }
             Err(message) => usage_error(message),
         },
-        Some("judge") => match rest.as_slice() {
-            [file, input] => judge_file(file, input, stderr),
-            [file, input, output] | [file, input, output, _] => {
-                check_output(file, input, output, stderr)
+        Some("judge") => {
+            let json = rest.contains(&"--json");
+            let args: Vec<&str> = rest.iter().copied().filter(|a| *a != "--json").collect();
+            match args.as_slice() {
+                [file, input] => judge_file(file, input, json, stdout, stderr),
+                [file, input, output] | [file, input, output, _] => {
+                    check_output(file, input, output, json, stdout, stderr)
+                }
+                _ => usage_error(
+                    "`judge` takes a file and the hidden test: `cpl judge a.cp in.txt`".into(),
+                ),
             }
-            _ => usage_error(
-                "`judge` takes a file and the hidden test: `cpl judge a.cp in.txt`".into(),
-            ),
-        },
+        }
         // `cpl stress` traces a failure in the debug interpreter, which
         // this crate links and `cpl-stress` does not.
         Some("stress") => {
@@ -602,7 +606,13 @@ fn compile_text(path: &str, text: String, side: Side, stderr: &mut String) -> Re
 /// `cpl judge`: the file's `@interactor`, talking to a solution on
 /// standard input and output. The first line of what it says on failure
 /// is the reason, which is what `cpl stress` reports.
-fn judge_file(path: &str, input: &str, stderr: &mut String) -> u8 {
+fn judge_file(
+    path: &str,
+    input: &str,
+    json: bool,
+    stdout: &mut (dyn Write + Send),
+    stderr: &mut String,
+) -> u8 {
     let input = match std::fs::read(input) {
         Ok(input) => input,
         Err(error) => {
@@ -618,19 +628,20 @@ fn judge_file(path: &str, input: &str, stderr: &mut String) -> u8 {
         *stderr += &format!("cpl: `{path}` declares no `@interactor`\n");
         return EXIT_USAGE;
     };
-    match interact::judge_alone(judge, &input) {
-        Ok(()) => 0,
-        Err(trap) => {
-            *stderr += &format!("{}\n", trap.message);
-            *stderr += &render_trap(path, &compiled.text, &trap);
-            EXIT_FAILED
-        }
-    }
+    let result = interact::judge_alone(judge, &input);
+    verdict(path, &compiled.text, result, json, stdout, stderr)
 }
 
 /// `cpl judge <file> <input> <output>`: the file's `@checker` on what a
 /// solution printed. The first line it says on failure is the reason.
-fn check_output(path: &str, input: &str, output: &str, stderr: &mut String) -> u8 {
+fn check_output(
+    path: &str,
+    input: &str,
+    output: &str,
+    json: bool,
+    stdout: &mut (dyn Write + Send),
+    stderr: &mut String,
+) -> u8 {
     let read = |file: &str, stderr: &mut String| match std::fs::read(file) {
         Ok(bytes) => Ok(bytes),
         Err(error) => {
@@ -649,14 +660,42 @@ fn check_output(path: &str, input: &str, output: &str, stderr: &mut String) -> u
     let mut printed = Some(output);
     let io = cpl_interp::Io::judge(&input, Box::new(move || printed.take()));
     let mut sink = Vec::new();
-    match cpl_interp::run_with(&compiled.program, io, &mut sink) {
-        Ok(()) => 0,
-        Err(trap) => {
-            *stderr += &format!("{}\n", trap.message);
-            *stderr += &render_trap(path, &compiled.text, &trap);
-            EXIT_FAILED
-        }
+    let result = cpl_interp::run_with(&compiled.program, io, &mut sink);
+    verdict(path, &compiled.text, result, json, stdout, stderr)
+}
+
+/// What `cpl judge` says of the judge's verdict: nothing when it accepts,
+/// else the reason and where it failed; with `--json`, one object with
+/// `accepted`, `reason` and `diagnostic`.
+fn verdict(
+    path: &str,
+    text: &str,
+    result: Result<(), cpl_interp::Trap>,
+    json: bool,
+    stdout: &mut (dyn Write + Send),
+    stderr: &mut String,
+) -> u8 {
+    let code = if result.is_ok() { 0 } else { EXIT_FAILED };
+    if json {
+        let lines = cpl_diag::LineIndex::new(text);
+        let (reason, diagnostic) = match &result {
+            Ok(()) => (cpl_json::Value::Null, cpl_json::Value::Null),
+            Err(trap) => (
+                trap.message.as_str().into(),
+                json_out::diagnostic(&trap.to_diagnostic(path, &lines), &lines),
+            ),
+        };
+        let report = cpl_json::obj([
+            ("accepted", (code == 0).into()),
+            ("reason", reason),
+            ("diagnostic", diagnostic),
+        ]);
+        let _ = writeln!(stdout, "{}", cpl_json::to_string(&report));
+    } else if let Err(trap) = &result {
+        *stderr += &format!("{}\n", trap.message);
+        *stderr += &render_trap(path, text, trap);
     }
+    code
 }
 
 fn render_trap(path: &str, text: &str, trap: &cpl_interp::Trap) -> String {

@@ -40,4 +40,5 @@ diagnostic has `code`, `severity`, `message`, `start`, `end`, `labels`,
 `notes`, `help` and `fixes`, positions as 1-based `line` and byte `col` plus
 the byte `offset`. `cpl fix --json` prints the same `files`, each also with
 the number of fixes `applied`, its diagnostics those left in the rewritten
-file.
+file. `cpl judge --json` prints `{"accepted", "reason", "diagnostic"}`, the
+last two `null` when the judge accepts.

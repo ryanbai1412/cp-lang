@@ -332,13 +332,17 @@ top of the file once, save the samples as <file>.tests/1.in and 1.out, then
 ";
 
 const JUDGE_USAGE: &str = "\
-usage: cpl judge <file.cp> <input>
-       cpl judge <file.cp> <input> <output> [answer]
+usage: cpl judge <file.cp> <input> [--json]
+       cpl judge <file.cp> <input> <output> [answer] [--json]
 
 With an input alone, runs the file's `@interactor` on it as a judge
 program: it talks to a solution on standard input and output. With an
 output, runs the file's `@checker` on that output. The exit status is 0
-when the judge accepts.
+when the judge accepts, 3 when it rejects.
+
+  --json    print one JSON object: `accepted`, and when it rejects, the
+            `reason` and the `diagnostic` where the judge failed, as
+            `cpl check --json` prints one
 ";
 
 const LSP_USAGE: &str = "\
@@ -394,7 +398,7 @@ options:
 
 /// Commands whose JSON output is `--format json`; `JSON_FLAG` ones say `--json`.
 const JSON_FORMAT: &[&str] = &["run", "doc", "test", "stress", "bench", "profile", "cover"];
-const JSON_FLAG: &[&str] = &["check", "fix", "judges", "explain"];
+const JSON_FLAG: &[&str] = &["check", "fix", "judge", "judges", "explain"];
 
 /// Both spellings of JSON output, `--json` and `--format json`, work on every
 /// command that has one (decisions.md 230).
@@ -426,9 +430,8 @@ pub(crate) fn json_spelling<'a>(command: &str, args: Vec<&'a str>) -> Vec<&'a st
 /// a path) but is none of the command's, for the commands parsed here.
 pub(crate) fn unknown_option<'a>(command: &str, args: &[&'a str]) -> Option<&'a str> {
     let options: &[&str] = match command {
-        "check" | "fix" => &["--json"],
+        "check" | "fix" | "judge" => &["--json"],
         "judges" => &["--json"],
-        "judge" => &[],
         "build" => &["-o", "--judge", "--checked", "--size", "--copy"],
         "submit" => &["--copy"],
         "explain" => &["--json"],
