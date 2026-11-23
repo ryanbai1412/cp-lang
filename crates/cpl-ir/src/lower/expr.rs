@@ -425,6 +425,9 @@ impl<'a> Lowerer<'a> {
             }
             ast::ExprKind::Field { base, name } => self.field(e, base, name, inner_hint),
             ast::ExprKind::Generic { base, args } => self.generic_expr(base, args, span),
+            ast::ExprKind::Tuple(items) if items.is_empty() => {
+                self.mk(ExprKind::Unit, Ty::Unit, span)
+            }
             ast::ExprKind::Tuple(items) => {
                 let hints = inner_hint
                     .and_then(Ty::fields)

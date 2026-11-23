@@ -7498,3 +7498,11 @@ asked for, the component is the fn as before. `lower/mod.rs` takes +4
 lines for the module and its table (`--update rs_over_cap`). Reverse:
 drop `op_value.rs` and its two call sites; `each` then needs named
 `Monoid` values again.
+
+## 354. `lower/expr.rs` takes +3 lines so the value `()` has the type `()` (stdlib, 2026-11-23)
+
+The type `()` lowered to `Unit` but the literal `()` to an empty tuple,
+so `tag: P = ()` with `P = ()` failed with "expected `()`, found `()`"
+(6 `MonotoneHull` doc examples). An empty tuple literal now lowers to
+`Unit`; the line in `lower/expr.rs` moves its cap 5554 -> 5557
+(`--update rs_over_cap`). Reverse: drop the `items.is_empty()` arm.
