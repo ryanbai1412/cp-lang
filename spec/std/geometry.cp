@@ -252,12 +252,18 @@ pub struct ByAngle(p: Pt)
 impl Ord for ByAngle:
     fn lt(a, b) = angle_less(a.p, b.p)
 
+impl Eq for ByAngle:
+    fn eq(a, b) = not angle_less(a.p, b.p) and not angle_less(b.p, a.p)
+
 /// O(1) comparison key. Counter-clockwise by direction starting from ray `base`.
 /// Exact in `I128`; vectors in the same direction compare equal, zero comes first.
 pub struct ByAngleFrom(base: Pt, p: Pt)
 
 impl Ord for ByAngleFrom:
     fn lt(a, b) = angle_less(a.p, b.p, from: a.base)
+
+impl Eq for ByAngleFrom:
+    fn eq(a, b) = not angle_less(a.p, b.p, from: a.base) and not angle_less(b.p, a.p, from: a.base)
 
 /// An exact, float-free angular sort key for `p`: `ByAngle(p)`, ordered as `angle_less` from `+x`.
 ///
@@ -967,6 +973,21 @@ fn better_dir(a: Pt, b: Pt, dir: Pt) -> Bool:
 /// example: `hull_extreme([Pt(0, 0), Pt(2, 0), Pt(2, 2), Pt(0, 2)], Pt(1, 1)) == 2`
 /// example: `hull_extreme([Pt(0, 0), Pt(2, 0), Pt(2, 2), Pt(0, 2)], Pt(1, 0)) == 1`
 pub fn hull_extreme(hull: List<Pt>, dir: Pt) -> Int:
+    let i = extreme_by_dir(hull, dir)
+    let n = hull.len
+    let d = dot128(hull[i], dir)
+    var best = i
+    var k = if i == 0: n - 1 else: i - 1
+    while k != i and dot128(hull[k], dir) == d:
+        best min= k
+        k = if k == 0: n - 1 else: k - 1
+    k = if i + 1 == n: 0 else: i + 1
+    while k != i and dot128(hull[k], dir) == d:
+        best min= k
+        k = if k + 1 == n: 0 else: k + 1
+    best
+
+fn extreme_by_dir(hull: List<Pt>, dir: Pt) -> Int:
     let n = hull.len
     assert n > 0, "hull_extreme requires a non-empty hull"
     if n == 1 or (dir.x == 0 and dir.y == 0): return 0
