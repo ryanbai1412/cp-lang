@@ -8,14 +8,14 @@
 use crate::facts::Facts;
 use crate::{
     CEIL_DIV_FORMULA, CHMIN_CHMAX_IF, COMPOUND_SELF_REF, CONTAINS_THEN_ADD, COPY_COMPREHENSION,
-    COUNTER_BY_MAP, FLOAT_SQRT_FOR_INT, LAST_VIA_LEN, MANUAL_BIT_TEST, MANUAL_STARTS_WITH,
-    MAP_AS_MULTISET, NEGATED_HEAP, NEG_MOD_FIXUP, PEEK_THEN_POP, POP_MIN_LOOP, PUSH_POP_PAIR,
-    REVERSE_INDEX, SORT_FOR_EXTREME, STALE_ENTRY_SKIP, UNPROVEN_LIST_INDEX,
+    COUNTER_BY_MAP, FLOAT_EQUALITY, FLOAT_SQRT_FOR_INT, LAST_VIA_LEN, MANUAL_BIT_TEST,
+    MANUAL_STARTS_WITH, MAP_AS_MULTISET, NEGATED_HEAP, NEG_MOD_FIXUP, PEEK_THEN_POP, POP_MIN_LOOP,
+    PUSH_POP_PAIR, REVERSE_INDEX, SORT_FOR_EXTREME, STALE_ENTRY_SKIP, UNPROVEN_LIST_INDEX,
 };
 use cpl_check::{Analysis, Ty};
 use cpl_diag::{Diagnostic, Span};
 
-const TYPED: [cpl_diag::Code; 20] = [
+const TYPED: [cpl_diag::Code; 21] = [
     MANUAL_BIT_TEST.code,
     MANUAL_STARTS_WITH.code,
     LAST_VIA_LEN.code,
@@ -36,6 +36,7 @@ const TYPED: [cpl_diag::Code; 20] = [
     COUNTER_BY_MAP.code,
     CONTAINS_THEN_ADD.code,
     COPY_COMPREHENSION.code,
+    FLOAT_EQUALITY.code,
 ];
 
 /// `diags` less the findings `analysis`'s facts rule out.
@@ -70,7 +71,11 @@ pub(crate) fn refine(diags: &mut Vec<Diagnostic>, src: &str) {
     }
     match Facts::check("<lint>.cp", src) {
         Some(facts) => refine_with_facts(diags, &facts),
-        None => diags.retain(|d| d.code == UNPROVEN_LIST_INDEX.code || !TYPED.contains(&d.code)),
+        None => diags.retain(|d| {
+            d.code == UNPROVEN_LIST_INDEX.code
+                || d.code == FLOAT_EQUALITY.code
+                || !TYPED.contains(&d.code)
+        }),
     }
 }
 
@@ -140,6 +145,9 @@ fn keep(d: &Diagnostic, facts: &Facts) -> bool {
         }
         c if c == COUNTER_BY_MAP.code => matches!(label(), Some(Some(Ty::Named { name, args }))
             if (name == "Map" || name == "HashMap") && matches!(args.as_slice(), [_, Ty::Int | Ty::Range { .. }])),
+        // Kept unless the checker types the operand read as a float as an
+        // integer (std/geometry.cp: `Pt.x` is an `Int`, `Vec.x` an `F64`).
+        c if c == FLOAT_EQUALITY.code => !matches!(label(), Some(Some(ty)) if ty.is_int()),
         // `collect` is a `Seq` method: a `SortedSet` walks in `for` but has
         // none. Domains, generic `S: Seq` and generators are `Seq` too.
         c if c == COPY_COMPREHENSION.code => {

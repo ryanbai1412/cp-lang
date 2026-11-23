@@ -7,7 +7,7 @@ std L0201 1
 std L0204 17
 std L0209 10
 std L0210 1
-std L0301 38
+std L0301 13
 std L0501 7
 std L0503 10
 std L0504 13

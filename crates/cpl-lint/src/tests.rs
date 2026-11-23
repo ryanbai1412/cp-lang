@@ -1913,3 +1913,21 @@ print(j, s)\n";
     );
     assert_eq!(fixed(range), range);
 }
+
+#[test]
+fn float_equality_asks_the_checker_about_fields() {
+    // std/geometry.cp: `Vec.x` is an `F64`, so every `.x` read as a float,
+    // but `Pt.x` is an `Int`.
+    let src = "struct Pt(x: Int, y: Int)\n\
+struct Vec(x: F64, y: F64)\n\
+let p = Pt(1, 2)\n\
+let v = Vec(1.0, 2.0)\n\
+print(p.x == 0, v.x == 0)\n";
+    let found = lint(src, &all_on());
+    let floats: Vec<_> = found
+        .iter()
+        .filter(|d| d.code == FLOAT_EQUALITY.code)
+        .collect();
+    assert_eq!(floats.len(), 1, "{found:#?}");
+    assert!(floats[0].span.text(src).starts_with("v.x"), "{found:#?}");
+}

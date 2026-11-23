@@ -217,10 +217,14 @@ impl Visitor for Report<'_> {
         };
         let mut lhs: &Expr = first;
         for (op, rhs) in rest {
-            if matches!(op, CmpOp::Eq | CmpOp::Ne)
-                && (self.floats.is_float(lhs, &self.scopes)
-                    || self.floats.is_float(rhs, &self.scopes))
-            {
+            let float = if self.floats.is_float(lhs, &self.scopes) {
+                Some(lhs)
+            } else if self.floats.is_float(rhs, &self.scopes) {
+                Some(rhs)
+            } else {
+                None
+            };
+            if let (true, Some(float)) = (matches!(op, CmpOp::Eq | CmpOp::Ne), float) {
                 let text = |e: &Expr| e.span.shift(self.base).text(self.src);
                 let (a, b) = (text(lhs), text(rhs));
                 let (symbol, instead) = match op {
@@ -232,6 +236,9 @@ impl Visitor for Report<'_> {
                     lhs.span.to(rhs.span).shift(self.base),
                     format!("`{symbol}` compares floats bit for bit"),
                 )
+                // The operand read as a float, for the checker to confirm: a
+                // field name a float struct also uses can be an `Int` here.
+                .with_label(float.span.shift(self.base), "a float")
                 .with_help(format!(
                     "compare within a tolerance: `{instead}`, with `EPS` chosen for the answer's precision"
                 ));
