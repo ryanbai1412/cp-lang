@@ -160,7 +160,18 @@ fn the_editor_reports_what_check_and_lint_report_on_every_v03_file() {
     assert!(files.len() > 1000, "only {} v0.3 files found", files.len());
     let mut want = BTreeMap::new();
     rendered("check", &files, &mut want);
-    rendered("lint", &files, &mut want);
+    // `cpl lint` also shows the checker's lints (L06xx) that `cpl check`
+    // reported; the editor shows each once.
+    let mut lints = BTreeMap::new();
+    rendered("lint", &files, &mut lints);
+    for (file, diags) in lints {
+        let checked: &mut Vec<Diag> = want.entry(file).or_default();
+        let fresh: Vec<Diag> = diags
+            .into_iter()
+            .filter(|d| !(d.1.starts_with("L06") && checked.contains(d)))
+            .collect();
+        checked.extend(fresh);
+    }
     let chunks: Vec<Vec<PathBuf>> = files
         .chunks(files.len().div_ceil(8))
         .map(<[_]>::to_vec)
