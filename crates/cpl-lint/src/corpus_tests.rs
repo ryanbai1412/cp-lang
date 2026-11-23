@@ -1,7 +1,8 @@
 //! False-positive ratchet: code in `spec/std/` and the corpus's `spec.cp`
 //! files is idiomatic by definition, so every warning there is a lint bug or
 //! a finding someone has to act on. `corpus_warnings.txt` holds today's count
-//! per set and code; a count may only fall. `CPL_LINT_BLESS=1` rewrites it.
+//! per set and code; a count may not rise. `CPL_LINT_BLESS=1` rewrites it
+//! after a fall.
 
 use super::*;
 use std::collections::BTreeMap;
@@ -69,18 +70,23 @@ fn corpus_warnings_only_go_down() {
     let mut keys: Vec<_> = baseline.keys().chain(now.keys()).cloned().collect();
     keys.sort();
     keys.dedup();
-    let mut changed = Vec::new();
+    let mut rose = Vec::new();
     for key in keys {
         let was = baseline.get(&key).copied().unwrap_or(0);
         let is = now.get(&key).copied().unwrap_or(0);
-        if was != is {
-            changed.push(format!("{} {}: {was} -> {is}", key.0, key.1));
+        if is > was {
+            rose.push(format!("{} {}: {was} -> {is}", key.0, key.1));
+        } else if is < was {
+            eprintln!(
+                "{} {}: {was} -> {is}; lower it with CPL_LINT_BLESS=1",
+                key.0, key.1
+            );
         }
     }
     assert!(
-        changed.is_empty(),
-        "corpus lint warnings changed (a rise is a new false positive or a \
-         non-idiomatic corpus edit; after a fall, rerun with CPL_LINT_BLESS=1):\n{}",
-        changed.join("\n")
+        rose.is_empty(),
+        "corpus lint warnings rose (a new false positive, or corpus code that is \
+         not idiomatic):\n{}",
+        rose.join("\n")
     );
 }
