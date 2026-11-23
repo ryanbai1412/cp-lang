@@ -14,6 +14,24 @@
 //! out. Levels come from `[lints]` in `cp.toml` and from `@allow(name)` on
 //! an item.
 
+/// Where std lives, relative to the repository root: the one place
+/// `cpl-lint` names it.
+#[cfg(test)]
+pub(crate) const STD_DIR: &str = "spec/std";
+
+/// The source of one std module, `std_source!("prelude.cp")`; the path
+/// repeats `STD_DIR` because `include_str!` needs a literal.
+macro_rules! std_source {
+    ($file:literal) => {
+        include_str!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../spec/std/",
+            $file
+        ))
+    };
+}
+pub(crate) use std_source;
+
 mod checker;
 mod config;
 mod rules;

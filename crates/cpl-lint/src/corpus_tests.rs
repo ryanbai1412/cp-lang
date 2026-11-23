@@ -9,7 +9,7 @@ use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
 const SETS: &[(&str, &str, &str)] = &[
-    ("std", "spec/std", ""),
+    ("std", crate::STD_DIR, ""),
     ("spec", "corpus/problems", "spec.cp"),
 ];
 

@@ -17,7 +17,7 @@ use std::sync::OnceLock;
 fn prelude() -> &'static HashSet<(String, String)> {
     static NAMES: OnceLock<HashSet<(String, String)>> = OnceLock::new();
     NAMES.get_or_init(|| {
-        let text = include_str!("../../../../spec/std/prelude.cp");
+        let text = crate::std_source!("prelude.cp");
         let mut found = HashSet::new();
         for (_, item) in cpl_syntax::parse_file(text).items {
             for stmt in item.stmts {
