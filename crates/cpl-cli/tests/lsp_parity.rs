@@ -162,7 +162,7 @@ fn the_editor_reports_what_check_and_lint_report_on_every_v03_file() {
     rendered("check", &files, &mut want);
     // `cpl lint` also shows what `cpl check` reported (the checker's L06xx
     // lints and the errors lints can't see past); the editor shows each
-    // once. Lint never shows an error `cpl check` doesn't.
+    // once. Lint shows exactly the errors `cpl check` shows.
     let mut lints = BTreeMap::new();
     rendered("lint", &files, &mut lints);
     let mut strays = Vec::new();
@@ -174,7 +174,7 @@ fn the_editor_reports_what_check_and_lint_report_on_every_v03_file() {
                 .cloned()
                 .collect()
         };
-        if errors(&diags).iter().any(|d| !checked.contains(d)) {
+        if errors(&diags) != errors(checked) {
             strays.push(format!(
                 "{}:\n  cpl check: {:?}\n  cpl lint:  {:?}",
                 file,
@@ -187,7 +187,7 @@ fn the_editor_reports_what_check_and_lint_report_on_every_v03_file() {
     }
     assert!(
         strays.is_empty(),
-        "{} files where `cpl lint` shows errors `cpl check` doesn't:\n{}",
+        "{} files where `cpl lint` and `cpl check` show different errors:\n{}",
         strays.len(),
         strays.join("\n")
     );

@@ -95,7 +95,7 @@ fn a_file_that_does_not_check_is_not_reported_clean() {
         "{err}"
     );
     assert!(
-        err.ends_with("1 file checked, 0 warnings, 0 errors, 1 not checking\n"),
+        err.ends_with("1 file checked, 0 warnings, 1 error, 1 not checking\n"),
         "{err}"
     );
 }

@@ -15,7 +15,13 @@ pub(crate) fn lint(
     stdout: &mut dyn std::io::Write,
     stderr: &mut dyn std::io::Write,
 ) -> u8 {
-    cpl_lint::cli::run_with(args, stdout, stderr, Some(&lint_files))
+    cpl_lint::cli::run_with(
+        args,
+        stdout,
+        stderr,
+        Some(&lint_files),
+        Some(&crate::check::reported_errors),
+    )
 }
 
 /// `cpl fmt`, with `--json` printing the shared diagnostic shape.

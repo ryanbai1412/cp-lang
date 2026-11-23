@@ -2,7 +2,7 @@
 
 use crate::{
     apply_fixes, check_errors, checked, fix_checked_removed_syntax, fix_removed_syntax, is_taste,
-    lint, Config, LINTS,
+    lint, Config, CHECKER_LINTS, LINTS,
 };
 use cpl_diag::{Diagnostic, Severity};
 use std::collections::BTreeMap;
@@ -55,8 +55,12 @@ pub struct FileReport {
 /// Turns the reports into the text `--json` prints.
 pub type Json = dyn Fn(&[FileReport]) -> String;
 
+/// The errors `cpl check` reports for a file's text, so `cpl lint` shows
+/// the same list: `cpl-lint` cannot lower to IR, so `cpl-cli` hands it in.
+pub type Errors = dyn Fn(&Path, &str) -> Vec<Diagnostic>;
+
 pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u8 {
-    run_with(args, stdout, stderr, None)
+    run_with(args, stdout, stderr, None, None)
 }
 
 /// `run`, taking `--json` when `json` can print it: `cpl-lint` cannot see
@@ -66,7 +70,12 @@ pub fn run_with(
     stdout: &mut dyn Write,
     stderr: &mut dyn Write,
     json: Option<&Json>,
+    check: Option<&Errors>,
 ) -> u8 {
+    let errors_of = |file: &Path, src: &str| match check {
+        Some(check) => check(file, src),
+        None => check_errors(Some(file), src),
+    };
     let mut as_json = false;
     let mut fix = false;
     let mut taste = false;
@@ -167,7 +176,7 @@ pub fn run_with(
             if !as_json && !taste {
                 // What `cpl check` shows, so each root cause is reported
                 // once, as in the editor.
-                show(stdout, &check_errors(Some(file), &src), &name, &src);
+                show(stdout, &errors_of(file, &src), &name, &src);
             }
             let _ = writeln!(
                 stderr,
@@ -203,13 +212,22 @@ pub fn run_with(
             }
         }
         let found = checked(Some(file), &src, &config);
-        if found.errors > 0 {
+        let problems: Vec<Diagnostic> = match check {
+            Some(_) => (errors_of(file, &src).into_iter())
+                .filter(|d| !CHECKER_LINTS.iter().any(|l| l.code == d.code))
+                .collect(),
+            None => found.problems,
+        };
+        if !problems.is_empty() {
             let _ = writeln!(
                 stderr,
                 "error: {name} has {} lints cannot see past; they are shown with the lints",
-                plural(found.errors, "type error")
+                plural(problems.len(), "type error")
             );
             unchecked += 1;
+            if !taste {
+                errors += problems.len();
+            }
         }
         diagnostics.extend(found.lints);
         diagnostics.retain(keep);
@@ -227,7 +245,7 @@ pub fn run_with(
             reports.push(FileReport {
                 path: name,
                 src,
-                ok: found.errors == 0 && !denied,
+                ok: problems.is_empty() && !denied,
                 diagnostics,
             });
         } else if taste {
@@ -249,7 +267,7 @@ pub fn run_with(
         } else {
             // Type errors go with the lints, so one `cpl lint` (and Vim's
             // `:make`) shows everything wrong with the file.
-            let mut shown = found.problems;
+            let mut shown = problems;
             shown.extend(diagnostics);
             shown.sort_by_key(|d| (d.span.start, d.span.end, d.code));
             show(stdout, &shown, &name, &src);
