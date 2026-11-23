@@ -52,7 +52,6 @@ noi21p1
 noi21p2
 noi21p3
 noi21p4
-noi23p2
 noimps22p1
 noip01p4
 noip19p5
@@ -64,6 +63,5 @@ sdoi17r1p6
 sdoi17r2p4
 shoi15p2
 shoi16p4
-shoi16p5
 ucup4s24f
 utso15p5

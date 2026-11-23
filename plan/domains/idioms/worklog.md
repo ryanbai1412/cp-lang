@@ -228,3 +228,4 @@ Newest first: what landed (commit), evidence, next, blocked, requests from other
 - 08:49 port: nccc10s3 `SuffixArray(s)` and `sa.find_all(t).collect().sorted()[k - 1]` (the old `matches` and `.sa` slice don't exist); 60/60 vs the AC C++.
 - 08:50 port: nccc8s1 rewritten from three hand-built char loops and a `prev` dedup (lent loop item, E0603) to `s[0..i] + c + s[i..n]` edits and `near.sorted().distinct()`; 60/60 vs the AC Java.
 - 08:51 port: btoi19p5 `longest<T: Indexed>(s: Str, t: T)` (the generic `S` hits a compiler bug, routed); 60/60 vs the AC C++ with a checker (same length, and the printed blocks are rotations or reversed rotations of each other).
+- 08:52 port: shoi16p5 affine maps over `Mod<P>` (`struct Affine(mul: Z, add: Z)`, `SegTree(Monoid<Affine>(...), [I] i => leaf(i))`), dropping the hand-reduced Int fields and `pow3` table; noi23p2 `[0..lim]Z = Z(0)` in place of a local alias (routed). Both 60/60 vs the AC C++.

@@ -21,11 +21,10 @@ for _ in 0..tcs:
         var pcnt: [0..lim]Int = 0
         for mask in 1..lim: pcnt[mask] = pcnt[mask / 2] + (mask & 1)
 
-        type Layer = [0..lim]Z
-        var dp: Layer = 0
+        var dp: [0..lim]Z = Z(0)
         dp[0] = 1
         for i in (0..m).rev:
-            var next: Layer = 0
+            var next: [0..lim]Z = Z(0)
             for mask in half..lim:
                 next[mask] = dp[(mask << 1) ^ lim]
             for mask in 0..half:
