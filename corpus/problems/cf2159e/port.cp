@@ -35,8 +35,8 @@ repeat read():
     let (i, j) = (n / B, n % B)
     if small[j].len == 0: small[j] = coeffs_of_power(j)
     if big[i].len == 0:
-        let c = coeffs_of_power(i * B)
-        let p = c.scan(+)
-        big[i] = [p.prefix(t + 1) for t in 0..c.len]
+        let coef = coeffs_of_power(i * B)
+        let p = coef.scan(+)
+        big[i] = [p.prefix(t + 1) for t in 0..coef.len]
     ans = sum(small[j][z] * big[i][min(2 * i * B, k - z)] for z in 0..=min(2 * j, k))
     print(ans)

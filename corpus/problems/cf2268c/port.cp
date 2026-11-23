@@ -15,7 +15,7 @@ domain I = read(1..=2e5)
 struct Span(lo: I.bounds, hi: I.bounds)  // leftmost and rightmost cut of one parity
 
 fn hull(x: ?Span, y: ?Span) -> ?Span:
-    if let a = x and let b = y: Span(min(a.lo, b.lo), max(a.hi, b.hi)) else: x ?? y
+    if let s = x and let t = y: Span(min(s.lo, t.lo), max(s.hi, t.hi)) else: x ?? y
 
 fn wide(left: ?Span, right: ?Span) -> Bool:
     if let l = left and let r = right: r.hi.ord - l.lo.ord > 1 else: false

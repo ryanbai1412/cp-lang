@@ -30,8 +30,7 @@ for i in R:
             for (v, c) in cnt[R(j)]:
                 stay[v] = max(stay[v], fresh) + c * blank[i]
                 best max= stay[v]
-    if i.ord + 1 in R:
-        let next = R(i.ord + 1)
+    if let next = i.next:
         credit += blank[i] * blank[next] + sum(c * (cnt[next].get(v) ?? 0) for (v, c) in cnt[i])
         fresh max= best - blank[i] * blank[next]
 print(credit + max(fresh, best))
