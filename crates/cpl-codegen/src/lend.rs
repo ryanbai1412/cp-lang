@@ -5,9 +5,8 @@
 
 use crate::emit::{Emitter, COND};
 use crate::names::ident;
-use crate::stmt::Tail;
-use crate::walk;
-use cpl_ir::{Arg, Expr, ExprKind, Ty};
+use crate::walk::{self, Effects};
+use cpl_ir::{Arg, Block, Expr, ExprKind, Stmt, Ty};
 
 /// A container argument that is no place: a temporary C++ destroys at the
 /// end of the statement.
@@ -21,6 +20,70 @@ pub(crate) fn lending_if(init: &Expr) -> Option<[&Expr; 2]> {
         ExprKind::If(_, then, otherwise) => Some([then, otherwise]),
         _ => None,
     }
+}
+
+/// What the statements after a `let` in its block can do, for
+/// [`Emitter::reads_in_place`].
+pub(crate) struct Tail {
+    pub(crate) effects: Effects,
+    /// A call of a fn of the program.
+    pub(crate) calls: bool,
+    /// A call through a fn value, or a closure: code whose stores are not
+    /// in `effects`.
+    pub(crate) opaque: bool,
+    /// The `let` is the optional an `if let` tests, read only by that test
+    /// and by the copies at the top of its branch (see [`copied_at_test`]).
+    pub(crate) tested: bool,
+}
+
+impl Tail {
+    pub(crate) fn of(stmts: &[Stmt]) -> Tail {
+        let block = Block {
+            stmts: stmts.to_vec(),
+        };
+        let (mut calls, mut opaque) = (false, false);
+        walk::deep_exprs(&block, &mut |e| match e.kind {
+            ExprKind::Call(..) => calls = true,
+            ExprKind::CallExpr(..) | ExprKind::Closure(_) => {
+                calls = true;
+                opaque = true;
+            }
+            _ => {}
+        });
+        Tail {
+            effects: Effects::of_block(&block),
+            calls,
+            opaque,
+            tested: false,
+        }
+    }
+}
+
+/// Whether the temporary `slot` an `if let` tests is read only by that test
+/// and by copies of a scalar or a fn at the top of its branch: `t0.has_value()`,
+/// then `f = *t0`. A reference into a place is dead before anything else runs,
+/// so nothing can change the place under it.
+pub(crate) fn copied_at_test(slot: usize, rest: &[Stmt]) -> bool {
+    let Some((Stmt::If(cond, then, otherwise), after)) = rest.split_first() else {
+        return false;
+    };
+    let local = |e: &Expr| matches!(e.kind, ExprKind::Local(s) if s == slot);
+    if !matches!(&cond.kind, ExprKind::IsSome(x) if local(x)) {
+        return false;
+    }
+    let copied = |stmt: &Stmt| {
+        matches!(stmt, Stmt::Let(_, Some(Expr { kind: ExprKind::Unwrap(x, _), ty, .. }))
+            if local(x) && (ty.is_scalar() || matches!(ty, Ty::Fn(..))))
+    };
+    let copies = then.stmts.iter().take_while(|stmt| copied(stmt)).count();
+    let later = Block {
+        stmts: [&then.stmts[copies..], &otherwise.stmts, after].concat(),
+    };
+    let mut seen = false;
+    walk::deep_exprs(&later, &mut |e| {
+        seen |= local(e) || matches!(e.kind, ExprKind::Closure(_))
+    });
+    !seen
 }
 
 impl<'p> Emitter<'p> {

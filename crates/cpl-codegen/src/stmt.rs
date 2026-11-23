@@ -2,6 +2,7 @@
 
 use crate::emit::{pad, Emitter, Pushed, ADD, PRIMARY, REL, UNARY};
 use crate::expr::string_literal;
+use crate::lend::{copied_at_test, Tail};
 use crate::names::{fn_name, ident};
 use crate::walk::{self, Effects};
 use cpl_ir::{
@@ -59,7 +60,12 @@ impl<'p> Emitter<'p> {
                         || matches!(&init.kind, ExprKind::Builtin(cpl_ir::Builtin::MapGet, a)
                             if a.first().is_some_and(|m| place_root(m).is_some())) =>
                 {
-                    Some(Tail::of(&block.stmts[k + 1..]))
+                    let rest = &block.stmts[k + 1..];
+                    let tested = matches!(stmt, Stmt::Let(slot, _) if copied_at_test(*slot, rest));
+                    Some(Tail {
+                        tested,
+                        ..Tail::of(rest)
+                    })
                 }
                 _ => None,
             };
@@ -1242,6 +1248,9 @@ impl<'p> Emitter<'p> {
         if !global && self.fn_id.is_some_and(|id| self.sunk[id].contains(&root)) {
             return false;
         }
+        if tail.is_some_and(|tail| tail.tested) && temp(slot) {
+            return true;
+        }
         let Some(tail) = tail else {
             let Some(id) = self.fn_id else {
                 return false;
@@ -1836,39 +1845,6 @@ fn last_read(block: &Block, k: usize) -> bool {
         seen |= matches!(e.kind, ExprKind::Local(s) if s == *slot)
     });
     !seen && !Effects::of_block(&rest).locals.contains(slot)
-}
-
-/// What the statements after a `let` in its block can do, for
-/// [`Emitter::reads_in_place`].
-pub(crate) struct Tail {
-    effects: Effects,
-    /// A call of a fn of the program.
-    calls: bool,
-    /// A call through a fn value, or a closure: code whose stores are not
-    /// in `effects`.
-    opaque: bool,
-}
-
-impl Tail {
-    fn of(stmts: &[Stmt]) -> Tail {
-        let block = Block {
-            stmts: stmts.to_vec(),
-        };
-        let (mut calls, mut opaque) = (false, false);
-        walk::deep_exprs(&block, &mut |e| match e.kind {
-            ExprKind::Call(..) => calls = true,
-            ExprKind::CallExpr(..) | ExprKind::Closure(_) => {
-                calls = true;
-                opaque = true;
-            }
-            _ => {}
-        });
-        Tail {
-            effects: Effects::of_block(&block),
-            calls,
-            opaque,
-        }
-    }
 }
 
 /// The arguments of `text` when it is exactly `cpp((size_t)(..), ..)`:

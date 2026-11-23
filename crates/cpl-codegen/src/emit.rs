@@ -137,7 +137,7 @@ pub(crate) struct Emitter<'p> {
     /// Globals stored once, with a literal: emitted as `static constexpr`.
     pub const_globals: BTreeSet<usize>,
     /// What follows the `let` being written, in its block.
-    pub tail: Option<crate::stmt::Tail>,
+    pub tail: Option<crate::lend::Tail>,
     /// Local lists kept in one buffer for the whole run: see [`crate::scope::reused`].
     pub reused: BTreeSet<usize>,
     /// The `yields` fns that also exist as `cpl_each_f(args, body)`, with
