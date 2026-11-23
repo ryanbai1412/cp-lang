@@ -69,7 +69,8 @@ Needs:
 
 ## Quality register
 
-Each row: the quality, its metric, the strongest mechanism that enforces it,
+Each row: the quality, its metric, the strongest mechanism that enforces it
+(with the guideline rule it enforces, in `handbook/guidelines/performance.md`),
 and its status. `missing` means no real check exists yet; building those rows
 is perf's Milestone 2 work, highest user impact first. Targets and current
 numbers live in `plan/domains/perf/metrics.toml`. Journeys are from
@@ -77,34 +78,34 @@ numbers live in `plan/domains/perf/metrics.toml`. Journeys are from
 
 | Quality | Metric | Mechanism | Status |
 |---|---|---|---|
-| Optimizations never change behaviour (J6, J9) | programs whose C++ output, effect count or trap differs from the interpreter | `cpl-conform diff`; `crates/cpl-cli/tests/differential.rs` (ASan/UBSan) with `tests/parity/`; `crates/cpl-cli/tests/fuzz_three_way.rs` | enforced for written programs |
-| Same, on programs nobody wrote | mismatches per generated program (as Csmith does for GCC) | a generator of effectful programs run through both engines | missing |
-| Each optimization is gated on proven purity | rewrites that reorder, drop or repeat a call not proven pure by `cpl_ir::effects` | the Uses/Effects tables (one decision point); `crates/cpl-codegen/src/sink_tests.rs`, `copy_tests.rs` | partial: per-pass gates remain |
-| Each expression runs once (J5, J6) | calls evaluated more often than written | `tests/parity/view_receiver_runs_once.cp`; conformance `core-07` view cases | partial: no generated suite |
-| Idiomatic code is as fast as matched C++ (J8, J9) | p50, p95, max runtime ratio on the perf set | `bench/v03_perf_bench.py` | measured, not gated |
-| Tuned code matches the best C++ | `runtime_tuned_max`; outliers over 1.1x left | `bench/v03_perf_bench.py` (`tuned max` line); `perf.cp` per outlier | measured, not gated |
-| Comparisons are fair | perf-set pairs with an unmatched algorithm; pairs skipped | matched references; `bench/unmatched.txt` lists each skip with its reason | process: reviewed per reference |
-| Abstractions are free | zero-cost pairs within 1.05x of hand-written C++ and of the direct `.cp` | `cpl bench --zero-cost bench/zero-cost` (7 pairs) | measured, not gated |
-| No hidden copies (J8) | deep copies of containers in generated C++ over corpus and conformance | `crates/cpl-cli/tests/read_only_copies.rs` (`deep_copies`, shrink-only); `crates/cpl-codegen/src/copy_tests.rs` | enforced |
-| No hidden indirect calls | `std::function` in generated C++ | `read_only_copies.rs` (`std_functions`, shrink-only); `crates/cpl-codegen/src/devirt_tests.rs` | enforced |
-| No hidden complexity blowup | programs whose time grows faster than the matched C++ across input sizes | scaled inputs in `bench/v03_perf_bench.py` (`gen.py` sizes) | partial: not compared per size |
+| Optimizations never change behaviour (J6, J9) | programs whose C++ output, effect count or trap differs from the interpreter | `cpl-conform diff`; `crates/cpl-cli/tests/differential.rs` (ASan/UBSan) with `tests/parity/`; `crates/cpl-cli/tests/fuzz_three_way.rs` ([rule](../guidelines/performance.md#behaviour-never-changes)) | enforced for written programs |
+| Same, on programs nobody wrote | mismatches per generated program (as Csmith does for GCC) | a generator of effectful programs run through both engines ([rule](../guidelines/performance.md#prove-it-in-both-engines)) | missing |
+| Each optimization is gated on proven purity | rewrites that reorder, drop or repeat a call not proven pure by `cpl_ir::effects` | the Uses/Effects tables (one decision point); `crates/cpl-codegen/src/sink_tests.rs`, `copy_tests.rs` ([rule](../guidelines/performance.md#behaviour-never-changes)) | partial: per-pass gates remain |
+| Each expression runs once (J5, J6) | calls evaluated more often than written | `tests/parity/view_receiver_runs_once.cp`; conformance `core-07` view cases ([rule](../guidelines/performance.md#behaviour-never-changes)) | partial: no generated suite |
+| Idiomatic code is as fast as matched C++ (J8, J9) | p50, p95, max runtime ratio on the perf set | `bench/v03_perf_bench.py` ([rule](../guidelines/performance.md#meet-the-bars)) | measured, not gated |
+| Tuned code matches the best C++ | `runtime_tuned_max`; outliers over 1.1x left | `bench/v03_perf_bench.py` (`tuned max` line); `perf.cp` per outlier ([rule](../guidelines/performance.md#every-outlier-gets-a-tuned-variant-or-a-logged-gap)) | measured, not gated |
+| Comparisons are fair | perf-set pairs with an unmatched algorithm; pairs skipped | matched references; `bench/unmatched.txt` lists each skip with its reason ([rule](../guidelines/performance.md#compare-matched-algorithms-and-layouts)) | process: reviewed per reference |
+| Abstractions are free | zero-cost pairs within 1.05x of hand-written C++ and of the direct `.cp` | `cpl bench --zero-cost bench/zero-cost` (7 pairs) ([rule](../guidelines/performance.md#meet-the-bars)) | measured, not gated |
+| No hidden copies (J8) | deep copies of containers in generated C++ over corpus and conformance | `crates/cpl-cli/tests/read_only_copies.rs` (`deep_copies`, shrink-only); `crates/cpl-codegen/src/copy_tests.rs` ([rule](../guidelines/performance.md#lend-what-is-only-read)) | enforced |
+| No hidden indirect calls | `std::function` in generated C++ | `read_only_copies.rs` (`std_functions`, shrink-only); `crates/cpl-codegen/src/devirt_tests.rs` ([rule](../guidelines/performance.md#call-what-is-known-directly)) | enforced |
+| No hidden complexity blowup | programs whose time grows faster than the matched C++ across input sizes | scaled inputs in `bench/v03_perf_bench.py` (`gen.py` sizes) ([rule](../guidelines/performance.md#measure-the-submission)) | partial: not compared per size |
 | Redundant checks are dropped | `cpl::at` on indices a domain or range proves | `crates/cpl-codegen/src/tests.rs`, `range_tests.rs` shape tests | partial: no corpus count |
 | Values take the fewest bytes their types allow | fields and elements wider than their declared range | `crates/cpl-codegen/src/tests.rs` narrowing tests | partial: no corpus count |
 | Memory matches C++ (J8) | peak RSS ratio p50 and max | `bench/v03_perf_bench.py` RSS columns | measured, not gated |
-| Submissions fit (J9) | programs over 32 KB, over 64 KB, per judge profile | `bench/sizes.py --check`; `crates/cpl-cli/tests/budget.rs`, `judges.rs` | enforced for 64 KB; 32 KB measured |
+| Submissions fit (J9) | programs over 32 KB, over 64 KB, per judge profile | `bench/sizes.py --check`; `crates/cpl-cli/tests/budget.rs`, `judges.rs` ([rule](../guidelines/performance.md#meet-the-bars)) | enforced for 64 KB; 32 KB measured |
 | Submissions compile everywhere (J9) | programs that build but fail g++ -std=c++17, per profile | `bench/compiles.py`; `crates/cpl-cli/tests/judges.rs` | partial: not every profile in CI |
 | Fast to compile (J6, J9) | g++ -O2 time p50 and max | `bench/v03_perf_bench.py` compile column; `budget.rs` | partial |
 | No undefined behaviour in the C++ | sanitizer reports | `differential.rs` under ASan/UBSan | enforced for its programs; corpus missing |
-| Deterministic output | byte differences across two builds of the same program | none | missing |
-| Costs are visible (J8) | implicit codegen choices `cpl explain` doesn't name (copies, closures, fusion, sinking, check elision, widths) | `cpl explain` text and `--json`; `crates/cpl-cli` explain tests | partial: copies and closures only |
-| Explain never claims a guess as proven (J8) | explain lines whose claim the C++ contradicts | none | missing |
+| Deterministic output | byte differences across two builds of the same program | none ([rule](../guidelines/performance.md#make-it-reproducible)) | missing |
+| Costs are visible (J8) | implicit codegen choices `cpl explain` doesn't name (copies, closures, fusion, sinking, check elision, widths) | `cpl explain` text and `--json`; `crates/cpl-cli` explain tests ([rule](../guidelines/performance.md#make-every-implicit-choice-visible)) | partial: copies and closures only |
+| Explain never claims a guess as proven (J8) | explain lines whose claim the C++ contradicts | none ([rule](../guidelines/performance.md#make-every-implicit-choice-visible)) | missing |
 | Profiling points at source (J8) | `cpl profile` lines that map to no source line | `crates/cpl-cli/tests/profile.rs` | enforced |
 | Trap build stays cheap | `--checks traps` time against the no-trap build | `bench/` trap-cost run (`metrics.toml`) | measured, not gated |
 | A tuning knob does what it says | `unchecked:`, widths and layouts with no effect on the C++ | `crates/cpl-codegen/src/tests.rs` shape tests | partial |
-| Perf regressions are caught at landing | landings that make a perf number worse unnoticed | ratchets above; a timed perf gate | missing for runtime |
+| Perf regressions are caught at landing | landings that make a perf number worse unnoticed | ratchets above; a timed perf gate ([rule](../guidelines/performance.md#ratchets-only-go-down)) | missing for runtime |
 | The perf suites catch what they claim | mutation score of the codegen shape tests and ratchets | none (as LLVM measures with mutation and fuzz campaigns) | missing |
-| Code stays maintainable | codegen files over the line cap; duplicated reasoning | `scripts/debt-ratchet.py` (`rs_over_cap`, `backend_std_names`) | enforced |
-| Every fix keeps its regression | perf fixes landed without a test or ratchet step | review at landing | process |
+| Code stays maintainable | codegen files over the line cap; duplicated reasoning | `scripts/debt-ratchet.py` (`rs_over_cap`, `backend_std_names`) ([rule](../guidelines/performance.md#one-general-rule-in-one-place)) | enforced |
+| Every fix keeps its regression | perf fixes landed without a test or ratchet step | review at landing ([rule](../guidelines/performance.md#fix-the-class-not-the-case)) | process |
 
 ## Suites and tools
 
