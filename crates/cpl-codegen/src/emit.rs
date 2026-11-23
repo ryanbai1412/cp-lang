@@ -1226,7 +1226,7 @@ impl<'p> Emitter<'p> {
         let mut vars = String::new();
         let mut solve_locals = String::new();
         for (id, global) in program.globals.iter().enumerate() {
-            if global.ty == Ty::Unit {
+            if global.ty == Ty::Unit || self.devirt.global_direct(id) {
                 continue;
             }
             let loc = cpl_ir::ElemLoc::Global(id);

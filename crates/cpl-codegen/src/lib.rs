@@ -24,6 +24,7 @@ mod sink;
 mod splice;
 mod stmt;
 mod unordered;
+mod unpack;
 mod uses;
 mod walk;
 
@@ -174,6 +175,7 @@ fn prepared(program: &cpl_ir::Program, target: &Target) -> cpl_ir::Program {
     (program.unordered_maps, program.unordered_sets) = unordered::find(&program);
     prune::prune(&mut program, target.checks != Checks::None);
     splice::splice(&mut program);
+    unpack::unpack(&mut program);
     program
 }
 

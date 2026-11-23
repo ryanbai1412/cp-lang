@@ -30,3 +30,29 @@ print(h.pop()!)
         "`Heap.new` without `by:` never reads it, so it is a `bool` placeholder:\n{out}"
     );
 }
+
+#[test]
+fn a_top_level_closure_only_called_is_not_a_std_function() {
+    let out = cpp("let n = read<Int>()
+let twice = (x: Int) => 2 * x
+for i in 0..n:
+    print(twice(i))
+");
+    assert!(
+        !out.contains("std::function"),
+        "`twice` is set once and only called, so its calls go to the closure:\n{out}"
+    );
+}
+
+#[test]
+fn a_tuple_of_closures_taken_apart_is_not_a_std_function() {
+    let out = cpp("let n = read<Int>()
+for t in 0..n:
+    let (pre, suf) = ((i: Int) => i, (i: Int) => t + i)
+    print(pre(t) + suf(t))
+");
+    assert!(
+        !out.contains("std::function") && !out.contains("std::get<"),
+        "each part is bound from its own closure, never through a tuple:\n{out}"
+    );
+}

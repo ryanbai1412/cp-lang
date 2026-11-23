@@ -87,6 +87,9 @@ pub(crate) struct Devirt<'p> {
     made_by: BTreeMap<(FnId, usize), Made>,
     /// Each closure's stand-in: the first closure that only calls the same fn.
     same: Vec<ClosureId>,
+    /// Fn-typed globals set once to a closure and only ever called: each
+    /// call goes to the closure, and the global is never stored.
+    globals: BTreeMap<usize, ClosureId>,
     changed: bool,
 }
 
@@ -114,6 +117,7 @@ impl<'p> Devirt<'p> {
             returned: BTreeMap::new(),
             made_by: made_by(program),
             same,
+            globals: BTreeMap::new(),
             changed: true,
         };
         // The judge's grader calls these with values of its own.
@@ -136,7 +140,71 @@ impl<'p> Devirt<'p> {
         }
         pass.compute_elidable();
         pass.compute_template_params();
+        pass.globals = pass.called_globals();
         pass
+    }
+
+    /// See [`Devirt::globals`].
+    fn called_globals(&self) -> BTreeMap<usize, ClosureId> {
+        let program = self.program;
+        let mut set: BTreeMap<usize, Vec<Option<ClosureId>>> = BTreeMap::new();
+        let mut reads: BTreeMap<usize, usize> = BTreeMap::new();
+        let mut calls: BTreeMap<usize, usize> = BTreeMap::new();
+        let mut blocks = vec![&program.setup, &program.main];
+        blocks.extend(program.fns.iter().map(|f| &f.body));
+        blocks.extend(program.closures.iter().map(|c| &c.body));
+        for block in blocks {
+            walk::deep_stmts(block, &mut |stmt| {
+                if let Stmt::Assign(place, op, value) = stmt {
+                    if let PlaceKind::Global(g) = place.kind {
+                        let cid = match value.kind {
+                            ExprKind::Closure(cid) if *op == AssignOp::Set => Some(cid),
+                            _ => None,
+                        };
+                        set.entry(g).or_default().push(cid);
+                    }
+                }
+            });
+            walk::deep_exprs(block, &mut |e| match &e.kind {
+                ExprKind::Global(g) => *reads.entry(*g).or_default() += 1,
+                ExprKind::CallExpr(callee, _) => {
+                    if let ExprKind::Global(g) = callee.kind {
+                        *calls.entry(g).or_default() += 1;
+                    }
+                }
+                ExprKind::Call(_, args) => {
+                    for arg in args {
+                        if let Arg::Mut(place) = arg {
+                            if let (true, g) = walk::root(place) {
+                                set.entry(g).or_default().push(None);
+                            }
+                        }
+                    }
+                }
+                _ => {}
+            });
+        }
+        let captured: BTreeSet<usize> = program
+            .closures
+            .iter()
+            .flat_map(|c| c.captures.iter().filter(|c| c.is_global).map(|c| c.outer))
+            .collect();
+        set.into_iter()
+            .filter(|(g, _)| matches!(program.globals[*g].ty, Ty::Fn(..)) && !captured.contains(g))
+            .filter(|(g, _)| reads.get(g) == calls.get(g))
+            .filter_map(|(g, cids)| match cids.as_slice() {
+                [Some(cid)] if self.closure_effectively_captureless(*cid) => {
+                    Some((g, self.same[*cid]))
+                }
+                _ => None,
+            })
+            .collect()
+    }
+
+    /// Global `g` is a fn set once to a closure and only called: it is not
+    /// stored, and its calls go to the closure.
+    pub fn global_direct(&self, g: usize) -> bool {
+        self.globals.contains_key(&g)
     }
 
     /// The one closure `callee` can be, in fn `home` (`None` for the
@@ -878,6 +946,7 @@ impl<'p> Devirt<'p> {
                 },
                 _ => Some(Held::Many),
             },
+            ExprKind::Global(g) => Some(self.globals.get(g).map_or(Held::Many, |c| Held::One(*c))),
             ExprKind::Field(base, index) if self.made(home, base, *index).is_some() => {
                 self.made(home, base, *index)
             }
@@ -1730,8 +1799,10 @@ fn explain_locals_in_block(
 impl Emitter<'_> {
     /// A store into a dropped field or local (decision 178).
     pub(crate) fn dropped_store(&self, place: &Place, op: AssignOp) -> bool {
-        let dead_root = matches!(crate::walk::root(place), (false, slot)
-            if self.closure_id.is_none() && self.devirt.dead_local(self.fn_id, slot));
+        let dead_root = match crate::walk::root(place) {
+            (false, slot) => self.closure_id.is_none() && self.devirt.dead_local(self.fn_id, slot),
+            (true, g) => matches!(place.kind, PlaceKind::Global(_)) && self.devirt.global_direct(g),
+        };
         (dead_root || self.devirt.in_unread_field(place)) && self.devirt.skippable_store(place, op)
     }
 
