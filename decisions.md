@@ -6995,3 +6995,14 @@ stays tested, and `unproven_list_index = "warn"` under `[lints]` turns it
 back on. Port warnings at default levels: 739 -> 459. Reverse: set
 `level = "warn"`, `group = "perf"` in `spec/lints/unproven_list_index/lint.toml`
 and re-bless `crates/cpl-lint/corpus_warnings.txt`.
+
+## 317. Every crate has a README: job, invariants, tests (2026-11-22)
+
+Call: the 11 crates without one (`cpl-syntax`, `cpl-check`, `cpl-ir`,
+`cpl-interp`, `cpl-codegen`, `cpl-diag`, `cpl-json`, `cpl-judge`, `cpl-lsp`,
+`cpl-conform`, `cpl-cli`) get a short `README.md` written from their crate
+docs and test layout; all 18 crates now have one. Each owner keeps theirs
+true.
+Reason: the layout doc (decision 303); a cold agent finds a crate's job,
+its invariants and where its tests are without reading `lib.rs`.
+Reverse: delete the 11 files.

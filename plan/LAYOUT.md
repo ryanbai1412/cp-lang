@@ -172,4 +172,3 @@ Results are not stored here: they go to `research/perf/`.
 | Today | Target | Step |
 |---|---|---|
 | `decisions.md` | `plan/DECISIONS.md` (current) + `research/archive/decisions-log.md` | 3 |
-| 11 crates without `README.md` | one each | 5 |
