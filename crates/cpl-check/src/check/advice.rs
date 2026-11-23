@@ -385,6 +385,35 @@ impl Checker<'_> {
             self.sink
                 .drop_where(|d| d.code == codes::UNRESOLVED_NAME && d.span == at);
         }
+        if let ExprKind::Field { base, name: f } = &callee.kind {
+            if matches!(&base.kind, ExprKind::Name(m) if m == "math" || m == "Math") {
+                let ours = match (f.text.as_str(), args) {
+                    ("sqrt" | "abs" | "floor" | "ceil" | "round" | "trunc" | "isqrt", [x]) => {
+                        format!("{}.{}", operand(self, x), f.text)
+                    }
+                    ("gcd" | "lcm", [a, b]) => {
+                        let (a, b) = (self.text(a.value.span), self.text(b.value.span));
+                        format!("{}({a}, {b})", f.text)
+                    }
+                    ("pow", [a, b]) => format!("{} ** {}", operand(self, a), operand(self, b)),
+                    _ => return,
+                };
+                let member = f.span;
+                self.sink
+                    .drop_where(|d| d.code == codes::UNKNOWN_FIELD && d.span == member);
+                let unresolved = |d: &&mut cpl_diag::Diagnostic| {
+                    d.code == codes::UNRESOLVED_NAME && d.span == base.span
+                };
+                if let Some(diag) = self.sink.last_mut().filter(unresolved) {
+                    diag.help = Some(format!(
+                        "math functions are members or operators here: `{ours}`"
+                    ));
+                    diag.fixes.clear();
+                    diag.fix(format!("write `{ours}`"), call.span, ours);
+                }
+                return;
+            }
+        }
         let (ours, what) = match (name.as_str(), args) {
             ("int" | "float", [_]) if input.is_some() => (
                 format!("read<{}>()", read.unwrap_or("Int")),
