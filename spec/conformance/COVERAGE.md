@@ -7,7 +7,7 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 2313 (995 passing). Rules: 537.
+Cases: 2315 (995 passing). Rules: 537.
 
 ## Summary per chapter
 
@@ -796,7 +796,7 @@ Every `pub` item in `spec/std`, counted as covered when a conformance
 case names it. `/// example:` lines are also run by the `docs` suite of
 `cpl-conform`; this list is about whole-program cases (edges, traps).
 
-- **algebra** (40/51 named by a case)
+- **algebra** (41/52 named by a case)
   - uncovered: `Desc`, `Reversible`, `Semigroup`, `Semiring`, `HasId`, `HasInv`, `Idempotent`, `AddAction`, `AssignAction`, `AffineAction`, `FlipAction`
 - **bag** (154/161 named by a case)
   - uncovered: `BagCursor`, `SortedBag.count_of`, `SortedBag.next_cursor`, `SortedBag.prev_cursor`, `SortedBag.entries`, `SortedBag.entries_rev`, `SortedRange`
@@ -857,9 +857,10 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **window** (20/22 named by a case)
   - uncovered: `Tracked`, `Undo`
 
-2146 of 2279 std items are named by a case.
+2147 of 2280 std items are named by a case.
 
 ## Core cases without a `// rule:` line
 
 - core-02/range-type-argument-is-anonymous-domain.cp
 - core-02/range-type-arguments-index-a-2d-segtree.cp
+- core-04/list-literal-sizes-a-generic-domain.cp

@@ -51,12 +51,16 @@ here with the measured ratio.
 ## Measured
 
 - `choose2`: moved (`ab626a6ef`). Conformance 2141/2310 -> 2142/2311 (the new case).
+- `minmax`: moved to `spec/std/algebra.cp` as a generic over `Ord`. 50M calls: 0.11-0.13 s before and after
+  (interleaved, `g++ -O2`); generated C++ 2,326 -> 2,600 bytes. The 9 corpus files using it have the same
+  `cpl check` error counts before and after.
 - `isqrt`: tried and backed out; it stays a builtin for now. With `spec/std/math.cp`'s body,
   30M calls took 0.26 s against 0.07 s for the builtin (3.7x, three runs each, `g++ -O2`).
   Generated C++ grew from 2,334 to 3,631 bytes. Conformance went from 2143/2313 to 2122/2311.
   The body divides (`cpl::ediv`) and goes through `cpl::fsqrt`/`cpl::to_int`; the runtime helper
   multiplies. Next try: a body that multiplies, then re-measure. Also, `x.isqrt` needs a
-  `self` parameter, and that change may account for the conformance drop (not yet checked).
+  `self` parameter. The conformance drop was not the change: the checkout had no release `cpl`, which
+  the CLI cases need.
   Retry with a multiplying body (no division): 0.25-0.33 s against 0.16-0.19 s for the builtin,
   interleaved runs on a noisy machine (about 1.7-2x), so it stays a builtin. What is left is the checked
   `F64 -> Int` conversion (`cpl::to_int(double)` range check) and `std::floor`; the runtime helper

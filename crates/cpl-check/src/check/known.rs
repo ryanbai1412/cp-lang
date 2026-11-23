@@ -179,14 +179,6 @@ impl<'a> Checker<'a> {
                     None
                 }
             }
-            ("minmax", [a, b]) => {
-                let elem = if *a == Ty::Unknown {
-                    b.clone()
-                } else {
-                    a.clone()
-                };
-                Some(Ty::Tuple(vec![elem.clone(), elem]))
-            }
             ("prefix", [arg]) => match arg {
                 Ty::Array { index, elem } if index.len() == 1 && matches!(index[0], Ty::Pos(_)) => {
                     Some(Ty::Named {

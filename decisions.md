@@ -3631,6 +3631,9 @@ library. Reverse: an `Int`-only `aliens` plus a separate wide variant.
   Update (builtin floor, Q1 default): `choose2` is no longer a compiler builtin. The prelude brings in
   `std.math.choose2`, whose body is the one definition; the lowering arm gave `choose2(-3) == 6`, against the
   documented `0`. Reverse: restore the three arms and drop `choose2` from `spec/std/prelude.cp`.
+  `minmax` followed: `pub fn minmax<T: Ord>(a: T, b: T) -> (T, T)` in `spec/std/algebra.cp`, in the prelude; the
+  generic keeps `(Cut, Cut)` for `Cut` operands. Reverse: restore its arms in `known.rs`, `prelude.rs` and
+  `lower/call.rs` and drop it from `spec/std/prelude.cp`.
 - **61.5 Destructured fresh domains (`let (domain C, comp) = f(...)`) are type names for the rest of their scope, nested `fn`s included (clarifies 33.1/33.2 and 58).**
   A domain bound by destructuring `let (domain C, comp) = f(...)` has the same scoping as `domain C = ...`: top-level
   bindings pre-register their `DomainId` in `collect_all` and reuse that slot at the `let` site so sibling/nested `fn`s

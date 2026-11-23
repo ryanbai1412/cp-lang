@@ -2273,36 +2273,6 @@ impl<'a> Lowerer<'a> {
                 let value = self.expr(exprs[0], None);
                 self.len_of(value, span)
             }
-            "minmax" => {
-                let Some(exprs) = self.positional_any("minmax", args, 2, span) else {
-                    return self.err_expr(span);
-                };
-                let a = self.expr(exprs[0], None);
-                let ty = a.ty.clone();
-                let b = self.expect(exprs[1], &ty);
-                let pair_ty = Ty::Tuple(vec![ty.clone(), ty.clone()]);
-                self.do_expr(Some(&pair_ty), span, |lw, out| {
-                    let av = lw.hold(a, out);
-                    let bv = lw.hold(b, out);
-                    let cmp = lw.mk(
-                        ExprKind::Cmp(CmpOp::Le, Box::new(av.clone()), Box::new(bv.clone())),
-                        Ty::Bool,
-                        span,
-                    );
-                    let ab = lw.mk(
-                        ExprKind::Tuple(vec![av.clone(), bv.clone()]),
-                        pair_ty.clone(),
-                        span,
-                    );
-                    let ba = lw.mk(ExprKind::Tuple(vec![bv, av]), pair_ty.clone(), span);
-                    let res = lw.mk(
-                        ExprKind::If(Box::new(cmp), Box::new(ab), Box::new(ba)),
-                        pair_ty.clone(),
-                        span,
-                    );
-                    out.push(Stmt::Give(res));
-                })
-            }
             "adjacency" => self.lower_adjacency(args, span),
             "sorted" => {
                 if args.is_empty() {

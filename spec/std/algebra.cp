@@ -466,6 +466,15 @@ pub enum Ordering:
 pub fn cmp<T: Ord>(a: T, b: T) -> Ordering =
     if a < b: Ordering.Less elif b < a: Ordering.Greater else: Ordering.Equal
 
+/// The pair `(min(a, b), max(a, b))` in the operands' own type: two `Cut`s give two `Cut`s.
+///
+/// cost: O(1) plus one comparison of `T`
+/// traps: never
+/// example: `minmax(3, 1) == (1, 3)`
+/// example: `minmax(1, 3) == (1, 3)`
+/// example: `minmax("b", "a") == ("a", "b")`
+pub fn minmax<T: Ord>(a: T, b: T) -> (T, T) = if b < a: (b, a) else: (a, b)
+
 /// O(1). A semiring from two operation values: `Semiring(min, +)`, `Semiring(or, and)`.
 /// `add` is a commutative monoid, `mul` a monoid that distributes over it; zero and one are
 /// their identities. Matrix products (`Mat(over:)`), path algebras and `convolve(over:)` take

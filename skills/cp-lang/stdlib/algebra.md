@@ -4,7 +4,7 @@
 
 Operations as values: what a range structure folds with.  A structure never asks "what is the sum of two `T`s"; it is handed the operation. Most of the time that is a bare operator: `SegTree<V, Int>(max, a)` and `SegTree<V, Int>(+, a)` are the same tree with two operations. An operation of your own is the pair `Monoid(id, op)`; a lazy update is an `Action`. `desc(x)` reverses an order inside a sort key or a heap entry, and a non-commutative value says how it reads backwards with `Reversible`.
 
-In prelude (no `use` needed): `Action`, `Commutative`, `Desc`, `Group`, `Idempotent`, `Monoid`, `Op`, `Ordering`, `Selective`, `Semiring`, `add`, `affine`, `assign`, `cmp`, `desc`, `each`, `flip`, `fold`.
+In prelude (no `use` needed): `Action`, `Commutative`, `Desc`, `Group`, `Idempotent`, `Monoid`, `Op`, `Ordering`, `Selective`, `Semiring`, `add`, `affine`, `assign`, `cmp`, `desc`, `each`, `flip`, `fold`, `minmax`.
 
 ## Types & Constants
 
@@ -134,6 +134,7 @@ Marker type for the stock `flip` action.
 - `fn fold<T, M, S: Seq>(m: M, xs: S) -> T` — O(n) calls of `op`; `xs` folded left to right with `m`: `op(op(op(id, x0), x1), x2)`, so a non-commutative `m` sees elements in sequence order.; traps: never (an `m` without a known identity is a compile-time error)
 - `fn point_action<T, F, M>(id: F, compose: (F, F) -> F, apply: (F, T) -> T, over: M) -> Action<T, F>` — O(1); An `Action` whose `apply` ignores the span: `apply(f, val, span) == apply(f, val)`.
 - `fn cmp<T: Ord>(a: T, b: T) -> Ordering` — O(1) plus one or two comparisons of `T`; The three-way comparison of `a` and `b` under `Ord`.
+- `fn minmax<T: Ord>(a: T, b: T) -> (T, T)` — O(1) plus one comparison of `T`; The pair `(min(a, b), max(a, b))` in the operands' own type: two `Cut`s give two `Cut`s.
 - `fn each<Ms>(..ms: Ms) -> Ms` — O(1) to build; each call costs the sum of its components; One operation per component of a tuple (positional) or record (named): `op((a0, a1), (b0, b1)) == (m0(a0, b0), m1(a1, b1))`.
 
 ## Example

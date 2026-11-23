@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- Note from tech-debt (builtin floor): removed the `minmax` arms from `cpl-check` (`known.rs`, `prelude.rs`) and `cpl-ir/src/lower/call.rs`; `spec/std/algebra.cp` has `pub fn minmax<T: Ord>`, brought in by the prelude. `cargo nextest run -p cpl-check -p cpl-ir`: 194 passed. `ir_builtin_names` 88 -> 87.
 - Request from site (asked once): `V.ranges` and `r.splits` from spec/lib/search-dp.md (interval DP) don't run: `cpl run` on `var dp: [V.ranges]Int = 0; for r in V.ranges if r.len >= 2: ...` says `error[E0203]: domain V has no ranges in the spec: no std module declares it`. Learn's DP chapter leaves interval DP out until it runs; site will add it then.
 - From infra (sheriff): 92b58227f (Mod modulus) made L0210 fire in the `loop_invariant_mod_div` lint examples, and pushed `cpl-check/src/tests.rs` over its ratchet cap (your 2ebfc5816 fixed that). Infra updated the lint examples; noted in lint-fmt's worklog.
 - Note from tech-debt (builtin floor, Q1 default): removed the `choose2` arms from `cpl-check` (`known.rs`, `prelude.rs`) and `cpl-ir/src/lower/call.rs`; the prelude now imports `std.math.choose2`. `cargo nextest run -p cpl-check -p cpl-ir`: 191 passed. `ir_builtin_names` 89 -> 88, `prelude_privilege` 27 -> 26.
