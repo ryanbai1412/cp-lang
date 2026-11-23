@@ -9,6 +9,7 @@
 //! An access in the `Proven*` fact table ([`crate::ProvenIndex`], which the
 //! editor shows too) is proven as well: `ys[mid]` in a binary search.
 
+use super::shapes::flip;
 use crate::walk::{unparen, Bind, Scope, Visitor};
 use crate::{File, Finding, UNPROVEN_LIST_INDEX};
 use cpl_diag::{Diagnostic, Span};
@@ -189,17 +190,6 @@ fn guard_facts(test: &Expr, out: &mut Vec<(String, String)>) {
             }
         }
         _ => {}
-    }
-}
-
-/// `a op b` as `b op' a`.
-fn flip(op: CmpOp) -> CmpOp {
-    match op {
-        CmpOp::Lt => CmpOp::Gt,
-        CmpOp::Gt => CmpOp::Lt,
-        CmpOp::Le => CmpOp::Ge,
-        CmpOp::Ge => CmpOp::Le,
-        other => other,
     }
 }
 

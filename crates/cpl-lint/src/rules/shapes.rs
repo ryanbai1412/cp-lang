@@ -64,3 +64,27 @@ pub(crate) fn binary(e: &Expr) -> Option<(BinOp, &Expr, &Expr)> {
         _ => None,
     }
 }
+
+/// `op` with its sides swapped: `a < b` is `b > a`.
+pub(crate) fn flip(op: CmpOp) -> CmpOp {
+    match op {
+        CmpOp::Lt => CmpOp::Gt,
+        CmpOp::Le => CmpOp::Ge,
+        CmpOp::Gt => CmpOp::Lt,
+        CmpOp::Ge => CmpOp::Le,
+        other => other,
+    }
+}
+
+/// The comparison that holds exactly when `op` does not, as written.
+pub(crate) fn negated_op(op: CmpOp) -> Option<&'static str> {
+    Some(match op {
+        CmpOp::Lt => ">=",
+        CmpOp::Le => ">",
+        CmpOp::Gt => "<=",
+        CmpOp::Ge => "<",
+        CmpOp::Eq => "!=",
+        CmpOp::Ne => "==",
+        _ => return None,
+    })
+}

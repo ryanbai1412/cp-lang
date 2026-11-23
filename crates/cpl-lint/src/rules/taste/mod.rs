@@ -1715,7 +1715,7 @@ impl<'a> Taste<'a> {
         let PatternKind::Name(index) = &pat.kind else {
             return;
         };
-        let Some(list) = indexed_list(iter) else {
+        let Some(list) = zero_indexed_list(iter) else {
             return;
         };
         let mut uses = Uses {
@@ -1763,7 +1763,7 @@ impl<'a> Taste<'a> {
 }
 
 /// The name `xs` of `0..xs.len` or `xs.indices`.
-fn indexed_list(iter: &Expr) -> Option<&str> {
+fn zero_indexed_list(iter: &Expr) -> Option<&str> {
     fn len_of<'e>(e: &'e Expr, field: &str) -> Option<&'e str> {
         match &e.kind {
             ExprKind::Field { base, name } if name.text == field => match &base.kind {
@@ -1839,15 +1839,7 @@ fn negated<'e>(pred: &'e Expr, text: impl Fn(&'e Expr) -> &'e str) -> Option<Str
     let [(op, rhs)] = rest.as_slice() else {
         return None;
     };
-    let flipped = match op {
-        CmpOp::Lt => ">=",
-        CmpOp::Le => ">",
-        CmpOp::Gt => "<=",
-        CmpOp::Ge => "<",
-        CmpOp::Eq => "!=",
-        CmpOp::Ne => "==",
-        _ => return None,
-    };
+    let flipped = super::shapes::negated_op(*op)?;
     Some(format!("{} {flipped} {}", text(first), text(rhs)))
 }
 

@@ -60,7 +60,7 @@ fn lone_if(stmt: &Stmt) -> Option<(&Expr, &Block)> {
 }
 
 /// `t[x]` with plain names.
-fn index1(e: &Expr) -> Option<(&str, &str)> {
+fn index_names(e: &Expr) -> Option<(&str, &str)> {
     let ExprKind::Index { base, indices } = &unparen(e).kind else {
         return None;
     };
@@ -162,7 +162,7 @@ impl HandLoops<'_> {
         let Some((lhs, op @ (CmpOp::Gt | CmpOp::Lt), rhs)) = compare(cond) else {
             return;
         };
-        let (Some((t, x)), Some((t2, y))) = (index1(lhs), index1(rhs)) else {
+        let (Some((t, x)), Some((t2, y))) = (index_names(lhs), index_names(rhs)) else {
             return;
         };
         if v != i || t != t2 || x != i || y != j {
@@ -248,7 +248,7 @@ impl HandLoops<'_> {
         else {
             return;
         };
-        let Some((t, m)) = index1(c) else {
+        let Some((t, m)) = index_names(c) else {
             return;
         };
         if !single(body).is_some_and(|s| is_step(s, m)) {

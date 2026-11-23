@@ -7,7 +7,7 @@ use crate::{File, Finding, COUNT_UNTIL};
 use cpl_diag::{Diagnostic, Span};
 use cpl_syntax::ast::*;
 
-use super::shapes::{compare, int, is_step, name};
+use super::shapes::{compare, int, is_step, name, negated_op};
 
 pub(crate) fn check(file: &File) -> Vec<Finding> {
     let mut v = CountUntil {
@@ -68,18 +68,6 @@ fn replace_word(text: &str, word: &str, with: &str) -> String {
     }
     out.push_str(&text[last..]);
     out
-}
-
-fn negated(op: CmpOp) -> Option<&'static str> {
-    Some(match op {
-        CmpOp::Lt => ">=",
-        CmpOp::Le => ">",
-        CmpOp::Gt => "<=",
-        CmpOp::Ge => "<",
-        CmpOp::Eq => "!=",
-        CmpOp::Ne => "==",
-        _ => return None,
-    })
 }
 
 impl CountUntil<'_> {
@@ -148,7 +136,7 @@ impl CountUntil<'_> {
                 (_, _) if c == "1" => format!("{p0} + {k}"),
                 (_, _) => format!("{p0} + {c_atom} * {k}"),
             };
-            let until = match compare(cond).and_then(|(l, op, r)| Some((l, negated(op)?, r))) {
+            let until = match compare(cond).and_then(|(l, op, r)| Some((l, negated_op(op)?, r))) {
                 Some((l, op, r)) => {
                     let side = |e: &Expr| {
                         let t = self.text(w_base, e.span);

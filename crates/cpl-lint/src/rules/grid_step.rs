@@ -4,6 +4,7 @@
 //! `grid_neighbour_step` (L0534), `grid_bounds_check` (L0535), and
 //! `dx_dy_arrays` (L0539) for the `dx`/`dy` step tables C++ loops over.
 
+use super::shapes::flip;
 use crate::walk::{unparen, walk_stmt, Visitor};
 use crate::{File, Finding, DX_DY_ARRAYS, GRID_BOUNDS_CHECK, GRID_NEIGHBOUR_STEP};
 use cpl_diag::Diagnostic;
@@ -219,17 +220,6 @@ fn bounds_check(expr: &Expr) -> Option<(String, String)> {
     match both.as_slice() {
         [a, b, ..] => Some(((*a).clone(), (*b).clone())),
         _ => None,
-    }
-}
-
-/// `a < b` read from `b`'s side is `b > a`.
-fn flip(op: CmpOp) -> CmpOp {
-    match op {
-        CmpOp::Lt => CmpOp::Gt,
-        CmpOp::Le => CmpOp::Ge,
-        CmpOp::Gt => CmpOp::Lt,
-        CmpOp::Ge => CmpOp::Le,
-        other => other,
     }
 }
 

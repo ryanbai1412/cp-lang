@@ -33,7 +33,7 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
             else {
                 return;
             };
-            if int(rhs) != Some(2) || text(lhs) != text(&m.value) || !constant(&m.value) {
+            if int(rhs) != Some(2) || text(lhs) != text(&m.value) || !constant_like(&m.value) {
                 return;
             }
             let (a, p) = (text(&a.value), text(&m.value));
@@ -62,7 +62,7 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
 
 /// A modulus `Mod<P>` can take: a literal or an uppercase `const` name, not
 /// a modulus known only at run time.
-fn constant(m: &Expr) -> bool {
+fn constant_like(m: &Expr) -> bool {
     int(m).is_some()
         || name(m).is_some_and(|n| {
             n.chars()
