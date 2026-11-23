@@ -84,6 +84,130 @@ nobody does it in a contest). Why: "types carry the proofs": an index
 into `[V]Int` is a `V`, and the swap of `u` and `w` above is a type
 error.
 
+### Grid cells are tuples of positions (decision 16)
+
+**Chose:** a product domain `Cell = (R, C)` is a domain whose positions
+are tuples of factor positions. A tuple pattern or `.0` and `.1` take a
+cell apart, `g[p]` and `g[r, c]` are the same access, and a neighbour from
+`p.adj4` or `p.adj8` indexes the grid directly (decision 16.5; R04.2.10,
+R04.2.11).
+
+```cp
+domain R = 0..3
+domain C = 0..4
+domain Cell = (R, C)
+let g = [Cell] p => Int(p.0) * 10 + Int(p.1)
+let p = Cell((1, 2))
+let (r, c) = p
+var s = 0
+for q in p.adj4: s += g[q]  // the four in-bounds neighbours
+print(g[p], g[r, c], s)
+```
+
+**Lost:** a flat `r * m + c` cell number (encode and decode on every
+move, and a mixed-up `m` and `n` compiles); a `dr`/`dc` direction array
+with a bounds test per neighbour. Why: grid BFS is a top contest shape,
+and with cells as typed tuples the bounds test lives in `adj4` once.
+
+### Domains made at run time travel as values (decision 10)
+
+**Chose:** a function may return a fresh domain whose size is known only
+at run time, and the caller binds it: `let (domain K, comp) = scc(g)`
+gives the component domain `K` and `comp: [V]K`. A value may own a domain
+of its own: a `Rooted` tree `t` has its preorder positions `t.Pre`, so
+`t.tin[v]` is a `t.Pre`, never a `V` (decision 10).
+
+```cp
+domain V = 0..4
+let g = Graph.directed([(V(0), V(1)), (V(1), V(0)), (V(2), V(3))])
+let (domain K, comp) = scc(g)
+let t = Rooted(Graph.undirected([(V(0), V(1)), (V(1), V(2)), (V(1), V(3))]), root: V(0))
+let i = t.tin[V(2)]  // a t.Pre: indexes preorder structures, not [V] arrays
+print(K.count, yes(comp[V(0)] == comp[V(1)]), Int(t.at[i]))
+```
+
+**Lost:** returning plain `Int` component ids and preorder indices, the
+C++ habit; then `tin[v]` used as a vertex compiles, and the most common
+Euler-tour bug is back. Why: the count is a run-time fact, but the
+*kind* of index is a compile-time one, and the type should carry it.
+
+### Library types become domains through `impl Index` (decision 382)
+
+**Chose:** any struct, in std or user code, is a domain once it
+implements `Index` with `let count`, `@get fn ord(self) -> Int` and
+`fn nth(k: Int)` (R04.2.26 to R04.2.28). It then gets `[T]E` arrays,
+`for x in T`, `T.rev`, `T.first`, `T.nth(k)` and every `Seq` method. The
+value conversions (`T(x)`, `Int(x)`), neighbours and cuts stay with the
+ordered core domains, because an ordinal is a walk order, not a value
+(decision 382).
+
+```cp
+struct Two(a: Int, b: Int)  // the pairs a < b of 0..4, 6 of them
+
+impl Index for Two:
+    let count = 6
+    @get fn ord(self) -> Int = a * (7 - a) / 2 + b - a - 1
+    fn nth(k: Int) -> Two:
+        var a = 0
+        var r = k
+        while r >= 3 - a:
+            r -= 3 - a
+            a += 1
+        Two(a, a + 1 + r)
+
+var seen: [Two]Int = 0
+for t in Two: seen[t] = t.a * 10 + t.b
+print(Two.count, [seen[Two.nth(k)] for k in 0..Two.count])
+```
+
+**Lost:** compiler-known library domains (`Subset<B>` needs to be a
+domain, and "no stdlib privilege" means a user type must be able to do
+the same); the older member names `K`, `to_idx` and `from_idx`, now
+errors that name `count`, `ord` and `nth`, so one idea has one spelling
+in the core and in libraries.
+
+### Data shaped by its index: pieces and unordered pairs (decisions 162, 164)
+
+Two input shapes used to need index arithmetic by hand: intervals over
+huge coordinates, and data given once per unordered pair.
+
+**Chose:** `r.pieces(cuts: cs)` is coordinate compression for intervals.
+It splits a range at the given cuts and binds a fresh domain of the
+pieces between them, with `piece[p]` the range each covers and
+`piece.covering(a..=b)` the pieces that tile `a..=b` (decision 162;
+chapter 4, "Pieces"). `Pair<V>` is the domain of unordered pairs of
+distinct positions, walked as a lower triangle, so
+`read<[Pair<V>]T>()` reads the triangle a statement prints, and the
+array is packed with \(n(n-1)/2\) slots; `d[u, v]`, the same read as
+`d[Pair(u, v)]`, is the same element as `d[v, u]` (decision 164;
+R04.2.12).
+
+```cp
+// input: "4\n5\n1 2\n3 4 6\n"
+let paint = [(l: 3, r: 10), (l: 5, r: 40), (l: 70, r: 80)]
+var cs: List<Int> = []
+for (l:, r:) in paint: cs += [l, r + 1]
+let (domain P, piece) = (1..101).pieces(cuts: cs)
+var layers: [P]Int = 0
+for (l:, r:) in paint:
+    for p in piece.covering(l..=r): layers[p] += 1
+var twice = 0
+for p in P: if layers[p] >= 2: twice += piece[p].len
+print(P.count, twice)  // 7 pieces; 6 cells painted twice
+
+domain V = 0..read<2..=100>()
+let d = read<[Pair<V>]1..=1e9>()  // rows of length 1, 2, 3
+print(d[Pair(V(0), V(1))], d[Pair(V(3), V(2))])
+```
+
+**Lost:** compressing the points `a` and `b + 1` and rebuilding each
+piece's length with `+ 1` and `- 1`, the off-by-one class domains exist
+to remove; a `read lower_triangle` mode (a helper for one input shape);
+ragged reads such as `[i in V][..i]T`, which describe how the input is
+written rather than what the data is and still need a mirroring step.
+Pieces take cuts and give ranges, and pairs reuse the rule that reads
+follow a domain's walk order, so neither needs new grammar.
+
 ### Cuts are their own kind
 
 **Chose:** a domain has positions and cuts; a binary search returns a
@@ -253,7 +377,7 @@ print(m[i])
 | Keys in, keys out | `spec/core/04b-keys.md`, "The rules" | R04b.1.1 to R04b.1.12 |
 | Contest code, helpers, library code | 04b | R04b.3.1 to R04b.5.9 |
 
-Decisions: 2, 137, 143, 162, 164, 246, 289, 291 in `decisions.md`.
+Decisions: 2, 10, 16, 137, 143, 162, 164, 246, 289, 291, 382 in `decisions.md`.
 
 ## Changes
 

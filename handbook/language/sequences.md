@@ -117,7 +117,7 @@ a type error (`spec/core/04-indices.md`). Writing `w[3]` with a literal on
 a slice gets lint L0605, which says the key is the source's and names
 `w.nth(3)`.
 
-### One indexing rule for every keyed view; `.rev` is walk-only (decisions 354, 388)
+### One indexing rule for every keyed view; `.rev` is walk-only (decision 354, decision 388)
 
 **Chosen.** Only a view that walks in key order is indexable, and
 indexing always means "by source key" (R07.5.3). `.rev` walks out of key
@@ -132,6 +132,20 @@ was always silently wrong, so neither is the meaning (spec/RATIONALE.md,
 "Sequences"). `zip(a, a.rev)` still pairs each element with its mirror,
 by walk position (R07.6.4).
 
+The same rule settles a literal (decision 388): `w[x]` with `x` proven
+to be one of `w.keys` reads with no check, a literal that is not proven a
+key is a compile error naming `.nth`, and any other `x` is checked and
+traps naming `w.keys`. In review, `a.rev[0]` and `r[0]` on a run were
+read as "the first element" every time, so the literal case is rejected
+before it can trap (R07.4.5):
+
+```cp-fragment
+let a = [10, 20, 30, 40]
+let w = a[1..]
+print(w.nth(0), w.first!)  // 20 20: positional on any view
+print(w[1])                // error E0305: write `w.nth(1)`, or `a[1]` for key 1
+```
+
 ### Laziness is explicit; allocation has a name (R07.1.3, R07.1.7, decision 140)
 
 **Chosen.** Views are \(O(1)\) to make and allocate nothing; anything that
@@ -145,6 +159,22 @@ take a `var` (`a.sort()`), and each has a past-participle copying twin
 Python's eager `sorted(...)` versus lazy `map(...)` that differ by
 function. A lint flags a chain walked twice, which is where laziness
 costs time.
+
+`List(s)` is a conversion, so it takes exactly one sequence and copies
+it; a list of given values is the literal `[a, b]`, and a list holding
+one list is `[xs]` (decision 348; R07.3.2):
+
+```cp
+let xs = [1, 2, 3]
+let a = List(xs)     // a copy of xs: 3 elements
+let b = [xs]         // one element, the list xs
+let c = List(0..4)   // any sequence: 4 elements
+print(a.len, b.len, c.len)
+```
+
+The variadic `List(a, b)` lost because `List(xs)` would then mean "copy
+`xs`" or "a list holding `xs`" depending on the argument's type, and the
+literal already says the second.
 
 ### Folds are methods; their cost comes from the receiver (decisions 53, 326, 378)
 

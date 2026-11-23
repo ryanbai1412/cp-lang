@@ -318,6 +318,26 @@ doc that gives its reasons.
 | Lowering to C++ | `spec/core/13-lowering.md` | |
 | The standard library | `spec/lib/` | [std.md](std.md) |
 
+## How math is written (decision 335)
+
+Costs and bounds are math, and the spec, doc comments and lint records
+write them as LaTeX inside `\( ... \)`: `\(O(n \log n)\)`, with sizes as
+`\lvert D \rvert` rather than `|D|` and multi-letter names as
+`\mathit{len}`. The site typesets it, and hover and CLI output show a
+plain fallback such as `O(n log n)`. Code comments stay as written.
+
+```cp
+/// The sum of `a`.
+/// cost: \(O(\mathit{len})\)
+fn total(a: List<Int>) -> Int = a.sum()
+print(total([1, 2, 3]))  // a comment stays plain: O(n)
+```
+
+Plain text such as `O(n log n)` or `|D|` lost because it cannot be
+typeset, collides with table pipes and is spelled differently by each
+writer; Unicode math such as `O(n·α(n))` is hard to type and to check.
+LaTeX is the one form that renders, checks and still reads in source.
+
 ## Changes
 
 - 2026-11-23: first version.

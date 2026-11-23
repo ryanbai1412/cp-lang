@@ -132,7 +132,7 @@ removed every `_by` twin (`min_by`, `max_by`, `runs_by`, ...) in favour of
 `s.search(p)` because `find` already takes a predicate and the language
 cannot overload it on a `Str`.
 
-### Lambdas adapt their spelling, never their signature (decisions 159, 324)
+### Lambdas adapt their spelling, never their signature (decision 159, decision 324)
 
 **Chosen.** A lambda with k parameters, passed where a function of one
 k-tuple is expected, unpacks it: `a.items.filter((i, x) => ...)`
@@ -144,6 +144,22 @@ function, not a keyword (R06.1.5).
 **Why this is not overloading.** The callee's function type is fixed; only
 how the lambda is written at the call adapts. The alternative,
 `((i, x)) =>`, doubled parentheses at most call sites in the ports.
+
+The variadic rule is the general mechanism behind `each`, so a user
+library gets it too (decision 324): positional arguments make a tuple,
+named ones a named tuple with its fields in written order, and one call
+does not mix the two.
+
+```cp
+fn pack<Ts>(..xs: Ts) -> Ts = xs
+let p = pack(lo: 1, hi: 9)  // (lo: 1, hi: 9)
+let q = pack(1, 9)          // (1, 9)
+print(p.hi - p.lo, q.1 - q.0)
+```
+
+Lost for it: a separate `each_named` (a `_by`-style twin, which
+decision 60 rules out) and a record literal argument,
+`each((sum: +, hi: max))`, which costs a pair of parentheses at every use.
 
 ### Compound assignment is a statement, except `min=` and `max=` (decision 129)
 
