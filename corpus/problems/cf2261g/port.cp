@@ -12,61 +12,43 @@
 //   its left ends, merged when two ANDs coincide. Walking a group's trie along pref ^ mask
 //   counts, at each set bit b of mask, the left ends whose XOR agrees with the AND on bits
 //   >= b; add 2^b times that. O(n * 25^2) plus trie merges.
+use std.bitset.{BitTrie}
+
 const L = 25
 const FULL = (1 << L) - 1
-
-struct Node:
-    var cnt: Int
-    kid: [0..2]?Int
-struct Group(mask: Int, root: Int)
+type Word = 0..=FULL
+struct Group:
+    var mask: Word
+    ends: BitTrie<L>
 
 @!multitest
 let n: 1..=4e5 = read()
-let a: [0..n]0..=FULL = read()
-var nodes = List<Node>()
-nodes.reserve((L + 1) * (n + 1))  // each left end adds one path of L + 1 nodes
-
-fn merge(x: Int, y: Int) -> Int:
-    nodes[x].cnt += nodes[y].cnt
-    for b in 0..2 if let c = nodes[y].kid[b]:
-        nodes[x].kid[b] = if let k = nodes[x].kid[b]: merge(k, c) else: c
-    x
-
-// A path of L + 1 nodes spelling `x` from the top bit down; returns its root.
-fn chain(x: Int) -> Int:
-    nodes.push(Node(1, [0..2] _ => None))
-    for z in 0..L:
-        let below = nodes.len - 1
-        var node = Node(1, [0..2] _ => None)
-        node.kid[(x >> z) & 1] = below
-        nodes.push(node)
-    nodes.len - 1
-
-fn count_along(root: Int, mask: Int, want: Int) -> Int:
-    var (t, total) = (root, 0)
-    for b in (0..L).rev:
-        guard let next = nodes[t].kid[(want >> b) & 1] else: break
-        t = next
-        if mask.bit(b): total += nodes[t].cnt << b
-    total
-
-// Two neighbouring groups with equal ANDs: one group, `q`'s trie merged into `p`'s.
-fn absorb(p: Group, q: Group) -> Group = Group(p.mask, merge(p.root, q.root))
+let a: [0..n]Word = read()
 
 // Narrow each suffix AND by `x`; neighbours whose ANDs become equal merge into one group.
-fn shrink(groups: List<Group>, x: Int) -> List<Group>:
-    var kept = List<Group>()
-    for g in groups:
-        let h = Group(g.mask & x, g.root)
-        if let k = kept.last and k.mask == h.mask: kept[kept.len - 1] = absorb(k, h)
-        else: kept.push(h)
-    kept
+fn shrink(mut groups: List<Group>, x: Word):
+    for i in 0..groups.len: groups[i].mask &= x
+    var i = 1
+    while i < groups.len:
+        if groups[i].mask != groups[i - 1].mask: i += 1
+        else:
+            groups[i - 1].ends.absorb(mut groups[i].ends)
+            groups.remove(i)
+
+// 2^b for each set bit b of `mask` and each left end whose xor first differs from it at b.
+// The loop, not `sum(...)`: a generator under `sum` is collected into a list first (1.5x).
+fn count_along(g: Group, pref: Word) -> Int:
+    var total = 0
+    with lint(loop_reduction: allow):
+        for (bit, count) in g.ends.walk(pref ^ g.mask) if g.mask.bit(bit): total += count << bit
+    total
 
 var groups = List<Group>()
-var (pref, ans) = (0, 0)
+var pref: Word = 0
+var ans = 0
 for x in a:
-    groups.push(Group(FULL, chain(pref)))
-    groups = shrink(groups, x)
+    groups.push(Group(FULL, BitTrie<L>.of(pref)))
+    shrink(mut groups, x)
     pref ^= x
-    ans += sum(count_along(g.root, g.mask, pref ^ g.mask) for g in groups)
+    ans += sum(count_along(g, pref) for g in groups)
 print(ans)

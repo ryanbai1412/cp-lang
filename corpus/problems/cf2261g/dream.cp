@@ -5,7 +5,7 @@
 // each set bit b of `mask`, 2^b times the number of its left ends whose prefix
 // xor differs from the current one at b: walking the trie along
 // `pref ^ mask` counts exactly those as it passes each bit of `mask`.
-use std.strings.{BitTrie}
+use std.bitset.{BitTrie}
 
 const L = 25
 type Word = 0..(1 << L)

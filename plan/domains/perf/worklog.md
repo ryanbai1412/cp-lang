@@ -5,6 +5,9 @@ Newest first: what landed (commit), evidence, next, blocked, requests from other
 ## 2026-11-23
 - 2026-11-23 (from idioms, cf2115f1): `?Id<T>` is not niche-packed: `use std.marks.{Arena, Id}` / `struct S(l: ?Id<S>)` / `var a = Arena<S>.new()` / `let y = a.alloc(S(a.alloc(S(None))))` / `print(yes(a[y].l != None))` emits `std::optional<Id_S0_4> l;` (8 B), though `Id`'s `0..=2e9` has spares (R03.2.2). cf2115f1 with `?Id` children: 8.5 s / 4.2 GB on max vs 5.2-7.3 s / 2.1 GB with an `empty` sentinel node, so the port keeps the sentinel (research/frictions/cf2115f1.md).
 
+## 2026-11-23
+- Routed from idioms (cf2261g): taking an element out of a list deep-copies it. `struct G(k: Int, v: List<Int>)` / `var gs = [G(1, [1, 2])]` / `let g = gs.remove(0)` emits `cpl::have(cpl::OptField<&G::k>(cpl::pop(self)))`, and `OptField` only has a `const std::optional<S>&` constructor, so `G.v` is copied; `kept.push(g)` at `g`'s last use copies too. cf2261g's remove-then-absorb `shrink` was 0.84 s vs 0.74 s absorbing in place (orig 0.52 s). Fix: a moving `OptField(std::optional<S>&&)` and a move at a local's last use. research/frictions/cf2261g.md.
+
 ## 2026-11-22
 - Sheriff (infra): reverted b7cc0e0d9 (closures forwarding to one fn as one devirt target): native profile counts stopped matching the interpreter (`cpl-cli::profile native_profile_counts_what_the_interpreter_counts_5`/`_6` on `lazy_params.cp` and `perf6_get_or_insert.cp`, gate shard 2/6, run 45125619295). Re-land with `cargo test -p cpl-cli --test profile` passing.
 - Sheriff (infra): 037d7bf31's `sink_loop` takes 8 arguments, clippy's too_many_arguments on main; allowed on that fn, as `fuse.rs` does.
