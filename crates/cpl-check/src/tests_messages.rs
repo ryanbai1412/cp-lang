@@ -322,7 +322,7 @@ fn walking_a_type_alias_walks_the_aliased_type() {
 
 #[test]
 fn is_empty_on_a_type_with_len_is_fixed_to_len_zero() {
-    let d = check("domain B = 0..4\nlet s = Subset<B>.empty\nif not s.is_empty: print(1)\n");
+    let d = check("var w = Window(+)\nw.push(3)\nif not w.is_empty: print(1)\n");
     assert_eq!(d.len(), 1, "{d:?}");
     assert_eq!(d[0].fixes[0].edits[0].1, "len == 0", "{d:?}");
 }
