@@ -520,11 +520,10 @@ fn renaming_a_definition_reports_its_users_and_undoing_it_clears_them() {
         "a.cp",
         roads_with("var total = 0", "var sum_cost = 0").as_str(),
     );
+    // Both users of `total` lose it: one root cause, one error at the first.
     let diags = db.diagnostics("a.cp");
-    assert_eq!(
-        diags.iter().map(|d| d.code.0).collect::<Vec<_>>(),
-        vec!["E0201", "E0201"]
-    );
+    let codes: Vec<_> = diags.iter().map(|d| d.code.0).collect();
+    assert!(codes == ["E0201"] && diags[0].message.starts_with("no `total` in scope"));
     let before = db.stats();
     db.set_file("a.cp", ROADS);
     assert!(db.diagnostics("a.cp").is_empty());

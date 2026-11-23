@@ -418,8 +418,9 @@ impl Sink {
     }
 
     /// The diagnostics in source order. A feature that is not implemented
-    /// yet is one root cause however often the file uses it, so only its
-    /// first use is kept.
+    /// yet, or a name nothing declares, is one root cause however often the
+    /// file uses it, so only its first use is kept; a later use's fix, the
+    /// same rename, joins the first one's edits.
     pub fn finish(mut self) -> Vec<Diagnostic> {
         self.diags.sort_by_key(|d| (d.span.start, d.span.end));
         let mut planned: Vec<String> = Vec::new();
@@ -433,13 +434,92 @@ impl Sink {
             planned.push(d.message.clone());
             true
         });
-        self.diags
+        let mut kept: Vec<Diagnostic> = Vec::with_capacity(self.diags.len());
+        let mut first_use: Vec<(String, usize)> = Vec::new();
+        for diag in self.diags {
+            let Some(name) = unresolved_name(&diag).map(str::to_string) else {
+                kept.push(diag);
+                continue;
+            };
+            let Some(&(_, at)) = first_use.iter().find(|(n, _)| *n == name) else {
+                first_use.push((name, kept.len()));
+                kept.push(diag);
+                continue;
+            };
+            let first = &mut kept[at];
+            for fix in diag.fixes {
+                if let Some(same) = first.fixes.iter_mut().find(|f| f.title == fix.title) {
+                    for edit in fix.edits {
+                        if !same.edits.contains(&edit) {
+                            same.edits.push(edit);
+                        }
+                    }
+                }
+            }
+        }
+        kept
     }
+}
+
+/// The name an unresolved-name or unknown-type error is about: `X` in
+/// "no `X` in scope", "no type or domain named `X`", "`std.m` has no `X`".
+fn unresolved_name(diag: &Diagnostic) -> Option<&str> {
+    if diag.code != codes::UNRESOLVED_NAME && diag.code != codes::UNKNOWN_TYPE {
+        return None;
+    }
+    let m = &diag.message;
+    let rest = m
+        .strip_prefix("no type or domain named `")
+        .or_else(|| m.strip_prefix("no `"))
+        .or_else(|| {
+            m.starts_with('`')
+                .then(|| m.split_once("` has no `"))
+                .flatten()
+                .map(|(_, r)| r)
+        })?;
+    rest.split_once('`').map(|(name, _)| name)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_name_nothing_declares_is_one_error_at_its_first_use() {
+        let mut sink = Sink::new();
+        let err = |at: u32, msg: &str| {
+            Diagnostic::error(codes::UNRESOLVED_NAME, Span::new(at, at + 1), msg)
+        };
+        sink.push(err(9, "no `t` in scope"));
+        sink.push(err(2, "no `t` in scope"));
+        sink.push(Diagnostic::error(
+            codes::UNKNOWN_TYPE,
+            Span::new(5, 6),
+            "no type or domain named `t`",
+        ));
+        sink.push(err(7, "no `u` in scope"));
+        let rename = |at: u32| {
+            err(at, "no `prnt` in scope").with_fix(
+                "change to `print`",
+                Span::new(at, at + 1),
+                "print",
+            )
+        };
+        sink.push(rename(20));
+        sink.push(rename(30));
+        let kept = sink.finish();
+        let messages: Vec<&str> = kept.iter().map(|d| d.message.as_str()).collect();
+        assert_eq!(
+            messages,
+            ["no `t` in scope", "no `u` in scope", "no `prnt` in scope"]
+        );
+        assert_eq!(kept[0].span, Span::new(2, 3));
+        assert_eq!(kept[2].fixes[0].edits.len(), 2);
+        assert_eq!(
+            unresolved_name(&err(0, "`std.seq` has no `prefix_fold`")),
+            Some("prefix_fold")
+        );
+    }
 
     #[test]
     fn crate_is_named() {

@@ -602,12 +602,14 @@ fn scoreboard_plan() -> PlanTally {
         }
         t.failing += 1;
         t.errors += errs.len() as u32;
-        t.cascaded += cascades_in(src, &errs);
+        let cascaded = cascades_in(src, &errs);
+        t.cascaded += cascaded;
         let first = &errs[0];
         if std::env::var("RECOVERY_SHOW").is_ok_and(|e| e == "plan") {
             let line = src[..first.span.start as usize].lines().count().max(1);
             let text = src.lines().nth(line - 1).unwrap_or("");
-            println!("--- {where_}: {} {}  | {text}", first.code.0, first.message);
+            let (n, code, msg) = (errs.len(), first.code.0, &first.message);
+            println!("--- {where_}: {n} errors, {cascaded} cascaded; {code} {msg}  | {text}");
         }
         if first.message.starts_with("expected ") {
             t.generic_first += 1;
