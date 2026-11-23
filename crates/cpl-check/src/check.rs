@@ -967,6 +967,7 @@ impl<'a> Checker<'a> {
         } else {
             (code, message)
         };
+        let stream = advice::stream_fix(self.src, name, span);
         if let Some(diag) = self.error(code, span, message) {
             match suggestion {
                 _ if narrow => {
@@ -1009,6 +1010,15 @@ impl<'a> Checker<'a> {
                     if !own.is_empty() {
                         diag.fixes.clear();
                         diag.fix(format!("write `{own}`"), span, own);
+                    }
+                    if let Some((at, new)) = stream.clone() {
+                        diag.fixes.clear();
+                        let title = if new.is_empty() {
+                            "remove it".into()
+                        } else {
+                            format!("write `{new}`")
+                        };
+                        diag.fix(title, at, new);
                     }
                 }
                 _ if name == "range" => {

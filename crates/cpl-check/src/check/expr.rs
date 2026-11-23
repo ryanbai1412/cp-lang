@@ -1834,6 +1834,7 @@ impl<'a> Checker<'a> {
             let suggestion = self.member_typo(&base_ty, &name.text).zip(Some(self.src));
             let twin = self.method_twin(base, name);
             let in_place = super::advice::in_place_twin(&name.text, &self.quote(base.span));
+            let pair = super::advice::iterator_pair_fix(self.src, base.span, name.span);
             if let Some(diag) = self.error(codes::UNKNOWN_FIELD, name.span, message) {
                 if let Some((help, fix)) = twin {
                     diag.help = Some(help);
@@ -1842,8 +1843,11 @@ impl<'a> Checker<'a> {
                     diag.help = Some(help);
                 } else if let Some((s, src)) = suggestion {
                     super::advice::suggest_member(diag, src, name.span, s, base_ty == Ty::Str);
-                } else if let Some(help) = super::advice::foreign_call(&name.text) {
+                } else if let Some(help) = super::advice::foreign_call(&name.text)
+                    .or_else(|| super::advice::foreign_method(&name.text))
+                {
                     diag.help = Some(help.to_string());
+                    diag.fixes.extend(pair);
                 } else if generator {
                     diag.help = Some("a generator pushes its values into a loop: `for x in g:`, or `List(g)` to keep them (R07.1.1)".to_string());
                 }

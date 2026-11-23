@@ -848,13 +848,62 @@ pub(super) fn foreign_call(name: &str) -> Option<&'static str> {
         "float" | "stod" | "parseFloat" => {
             Some("read a number from a string with `s.parse<F64>()!`")
         }
-        "input" => Some("read the input with `read`: `let n: Int = read()`"),
+        "input" | "cin" | "scanf" => Some("read the input with `read`: `let n: Int = read()`"),
+        "cout" | "printf" | "puts" => Some("write the output with `print`: `print(a, b)`"),
+        "endl" => Some("`print` ends the line itself: `print(a, b)` writes `a b` and a newline"),
         "ord" => Some("a character's code is `Int(c)`"),
         "chr" => Some("the character with code `i` is `Char(i)`"),
         "dict" => Some("an empty map is `Map<K, V>()`, or `[:]` where its type is known"),
         "math" | "Math" => Some("math functions are methods here: `x.sqrt`, `x.abs`, `x.isqrt`"),
         _ => None,
     }
+}
+
+/// C++'s streams: `cin >> n` is `n = read()`, and `, endl` goes, since
+/// `print` ends the line.
+pub(super) fn stream_fix(src: &str, name: &str, span: Span) -> Option<(Span, String)> {
+    let rest = src.get(span.end as usize..)?.split('\n').next()?.trim_end();
+    match name {
+        "cin" => {
+            let v = rest.strip_prefix(" >> ")?;
+            let ident = v.chars().all(|c| c.is_alphanumeric() || c == '_');
+            (ident && !v.is_empty()).then(|| {
+                let end = span.end + rest.len() as u32;
+                (Span::new(span.start, end), format!("{v} = read()"))
+            })
+        }
+        "endl" => src
+            .get(..span.start as usize)?
+            .ends_with(", ")
+            .then(|| (Span::new(span.start - 2, span.end), String::new())),
+        _ => None,
+    }
+}
+
+/// `a.begin()`, C++'s iterators: a call takes the whole sequence.
+pub(super) fn foreign_method(name: &str) -> Option<&'static str> {
+    matches!(name, "begin" | "end" | "rbegin" | "rend" | "cbegin" | "cend").then_some(
+        "CP Lang has no iterators: a call takes the whole sequence, so `sort(a.begin(), a.end())` is `a.sort()`",
+    )
+}
+
+/// `sort(a.begin(), a.end())` as `a.sort()`.
+pub(super) fn iterator_pair_fix(src: &str, base: Span, name: Span) -> Option<Fix> {
+    let x = src.get(base.start as usize..base.end as usize)?;
+    let tail = format!("(), {x}.end())");
+    if !src.get(name.end as usize..)?.starts_with(&tail) {
+        return None;
+    }
+    let head = src.get(..base.start as usize)?;
+    let f = ["sort", "reverse"]
+        .into_iter()
+        .find(|f| head.ends_with(&format!("{f}(")))?;
+    let start = base.start - f.len() as u32 - 1;
+    let new = format!("{x}.{f}()");
+    Some(Fix {
+        title: format!("write `{new}`"),
+        edits: vec![(Span::new(start, name.end + tail.len() as u32), new)],
+    })
 }
 
 /// `xs.max_by(f)`, the C++/Rust spelling: options are named arguments,

@@ -324,6 +324,21 @@ impl<'a> Lowerer<'a> {
             }
             return;
         }
+        if matches!(found, Ty::Opt(inner) if **inner == *want) && !text.contains('\n') {
+            let end = self.span(span).end;
+            if let Some(last) = self
+                .diags
+                .last_mut()
+                .filter(|d| d.code == codes::TYPE_MISMATCH)
+            {
+                last.help = Some(format!(
+                    "`{text}` may be `None`: write `{text}!` to unwrap it, or `{text} ?? d` with a default `d`"
+                ));
+                last.fixes.clear();
+                last.fix("unwrap it with `!`", Span::point(end), "!");
+            }
+            return;
+        }
         let Some(c) = cpl_check::char_literal(&text) else {
             return;
         };
