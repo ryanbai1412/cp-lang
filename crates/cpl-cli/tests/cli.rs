@@ -1588,16 +1588,43 @@ fn an_error_inside_std_names_the_library_calls_that_led_there() {
 
 #[test]
 fn a_reader_that_stops_early_is_not_a_cpl_bug() {
-    for args in [&["--version"][..], &["--help"][..]] {
+    let dir = std::env::temp_dir().join(format!("cpl-closed-reader-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let lines = dir.join("lines.cp");
+    std::fs::write(&lines, "for i in 0..1000000:\n    print(i)\n").unwrap();
+    let bad = dir.join("bad.cp");
+    std::fs::write(&bad, "let x: Int = \"no\"\nprint(x)\n").unwrap();
+    let lines = lines.to_str().unwrap();
+    let bad = bad.to_str().unwrap();
+    let closed = || {
         let (reader, writer) = std::io::pipe().unwrap();
         drop(reader);
+        writer
+    };
+    // `cpl run` of a program printing a million lines, as in `cpl run p | head`.
+    for args in [
+        &["--version"][..],
+        &["--help"],
+        &["run", lines],
+        &["explain", lines],
+        &["build", lines],
+    ] {
         let out = Command::new(env!("CARGO_BIN_EXE_cpl"))
             .args(args)
-            .stdout(writer)
+            .stdout(closed())
             .output()
             .unwrap();
         let stderr = String::from_utf8_lossy(&out.stderr);
         assert!(!stderr.contains("cpl bug"), "{args:?}: {stderr}");
         assert!(out.status.success(), "{args:?}: {:?} {stderr}", out.status);
     }
+    // Errors to a closed stderr, as in `cpl check bad.cp 2>&1 | head`.
+    let out = Command::new(env!("CARGO_BIN_EXE_cpl"))
+        .args(["check", bad])
+        .stderr(closed())
+        .output()
+        .unwrap();
+    assert_ne!(out.status.code(), Some(101), "{:?}", out.status);
+    assert!(out.status.code().is_some(), "{:?}", out.status);
+    let _ = std::fs::remove_dir_all(&dir);
 }
