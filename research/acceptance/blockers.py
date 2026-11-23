@@ -94,6 +94,8 @@ def render(runs):
         out += [f"Latest run: `{latest['_name']}` ({latest['date']}, site `{latest['site_commit']}`): "
                 f"{len(passed)}/{len(STEPS)} steps pass.", "",
                 quality(latest), "",
+                *([f"CLI on every OS (CI {latest['ci']['run']}): Linux {latest['ci']['linux']}, macOS {latest['ci']['macos']}, "
+                   f"Windows {latest['ci']['windows']}.", ""] if "ci" in latest else []),
                 "| Step | " + " | ".join(STEPS) + " |", "|---|" + "---|" * len(STEPS),
                 "| Pass | " + " | ".join("yes" if latest["steps"][s]["pass"] else "**no**" for s in STEPS) + " |",
                 "| Minutes | " + " | ".join(f"{latest['steps'][s]['minutes']:g}" for s in STEPS) + " |", ""]

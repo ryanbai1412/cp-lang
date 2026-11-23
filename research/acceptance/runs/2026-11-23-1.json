@@ -465,5 +465,12 @@
       "source": "judge",
       "p0": true
     }
-  ]
+  ],
+  "ci": {
+    "run": "acceptance.yml 45122336353 (0c8d31943)",
+    "linux": "11/11",
+    "macos": "11/11",
+    "windows": "11/11",
+    "note": "install.sh/install.ps1 --edge, then getting-started: version, check, run, build, g++, native, 64 KB, CRLF source and input, fmt, LSP initialize"
+  }
 }

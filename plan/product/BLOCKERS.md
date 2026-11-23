@@ -11,6 +11,8 @@ Latest run: `research/acceptance/runs/2026-11-23-1.json` (2026-11-23, site `CP L
 
 Language quality: 12 workarounds, 7 non-idiomatic, 12 hesitations; 2.2 per accepted problem.
 
+CLI on every OS (CI acceptance.yml 45122336353 (0c8d31943)): Linux 11/11, macOS 11/11, Windows 11/11.
+
 | Step | understand | try | install | solve | test | submit | compete | design |
 |---|---|---|---|---|---|---|---|---|
 | Pass | yes | yes | **no** | yes | yes | yes | yes | yes |
