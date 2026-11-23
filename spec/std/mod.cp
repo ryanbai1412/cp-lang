@@ -3,7 +3,7 @@
 //! `Mod<P>` is a number modulo a constant `P`: the modulus is part of the
 //! type, takes no memory, and two moduli cannot be mixed by accident.
 //! The modulus may be a constant (`type Z = Mod<998244353>`) or a value read from
-//! the input (`let P: Int = read()`, then `type Z = Mod<P>`): one type serves both.
+//! the input (`let p: Int = read()`, then `type Z = Mod(p)`): one type serves both.
 //! `P` may be anything below 2^62 (so `a + b` fits): above 3.03e9, where `P * P` no longer fits
 //! an `Int`, `*` multiplies in 128 bits.
 use std.algebra.{Monoid}

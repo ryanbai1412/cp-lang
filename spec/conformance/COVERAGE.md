@@ -7,13 +7,13 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 2202 (995 passing). Rules: 531.
+Cases: 2203 (995 passing). Rules: 531.
 
 ## Summary per chapter
 
 - R01 (01-lexical-grammar.md): 50 rules, 99 cases; 0 uncovered, 4 happy-path only, 1 negative only
 - R02 (02-values-types.md): 51 rules, 94 cases; 1 uncovered, 7 happy-path only, 0 negative only
-- R03 (03-numbers-layout.md): 24 rules, 54 cases; 0 uncovered, 7 happy-path only, 1 negative only
+- R03 (03-numbers-layout.md): 24 rules, 55 cases; 0 uncovered, 7 happy-path only, 1 negative only
 - R04 (04-indices.md): 61 rules, 88 cases; 0 uncovered, 2 happy-path only, 0 negative only
 - R04a (04a-identity-vs-offset.md): 39 rules, 50 cases; 0 uncovered, 1 happy-path only, 3 negative only
 - R04b (04b-keys.md): 27 rules, 62 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -188,7 +188,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R03.3.4 [1+ 1-]: **Reading input** rejects a value equal to a spare (`read<Int>` of `-9223372036854775808` ...
 - R03.4.1 [1+ 6-]: **The rule for every check.** On the judge only valid programs matter, so release optimize...
 - R03.4.2 [0+ 1-] *negative only*: Proofs are intraprocedural interval arithmetic on `let`s and declared ranges (already deci...
-- R03.5.1 [2+ 0-] *happy-path only*: `Mod<P>` is stored in `0..P`, so it is 4 bytes for every common prime, `?Mod<P>` is free (...
+- R03.5.1 [3+ 0-] *happy-path only*: `Mod<P>` is stored in `0..P`, so it is 4 bytes for every common prime, `?Mod<P>` is free (...
 
 ### R04: 04-indices.md
 
@@ -716,44 +716,44 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0904 memory_over_profile *(0.3)*: 1 case(s)
 - E9998 internal_unsupported *(retired)*: exempt (internal: a construct the compiler cannot lower)
 - E9999 Internal compiler error: exempt (internal compiler error)
-- L0001 Unknown lint name: 2 case(s)
-- L0101 Position arithmetic via `.ord`: 1 case(s)
-- L0201 Mutable binding never reassigned: 1 case(s)
-- L0202 Struct field never read: 1 case(s)
-- L0203 Local shadows top-level binding: 1 case(s)
-- L0204 Turbofish `::<...>` on generic call: 1 case(s)
-- L0205 Power written with `.pow(e)`: 1 case(s)
-- L0206 Built-in getter called with `()`: 1 case(s)
-- L0207 Pattern test `x is p` in `if`/`elif`/`while` header: 1 case(s)
-- L0208 `use` of a name the prelude already provides: 1 case(s)
-- L0209 Named argument or record field repeating its own name: 1 case(s)
-- L0301 Exact float equality comparison: 1 case(s)
-- L0412 Map or Set keyed by a domain: 1 case(s)
-- L0413 `@memo` table exceeds memory budget: 1 case(s)
-- L0414 Unproven `List` index in nested loop: 1 case(s)
-- L0415 Loop-invariant `Mod` divisor inside loop: 1 case(s)
-- L0501 Flag-and-break search loop: 1 case(s)
-- L0502 Discarded function return value: 1 case(s)
-- L0503 Duplicate symmetric write: 1 case(s)
-- L0504 Manual accumulation loop: 1 case(s)
-- L0505 Index loop that only reads `xs[i]`: 1 case(s)
-- L0506 Repeated large literal: 1 case(s)
-- L0507 Loop that only pushes: 1 case(s)
-- L0508 Check for `none`, then unwrap: 1 case(s)
-- L0509 Fold or sort of a sequence written as a free function: 1 case(s)
-- L0510 `_by` twin instead of a `by:` option: 1 case(s)
-- L0511 `preorder` or `postorder` of a rooted tree: 1 case(s)
-- L0512 Non-canonical domain/sequence method spelling: 1 case(s)
-- L0513 Dimension-suffixed prefix or diff helper instead of `prefix`/`Prefix`/`Diff`: 1 case(s)
-- L0514 Hand-rolled Fenwick or segment tree: 1 case(s)
-- L0515 Removed bound-query method on `SortedBag` or `SortedSet`: 1 case(s)
-- L0516 Hand-rolled string algorithm: 1 case(s)
-- L0517 Hand-rolled union-find (DSU): 1 case(s)
-- L0518 Hand-rolled prime or SPF sieve: 1 case(s)
-- L0519 Hand-rolled binary lifting table: 1 case(s)
-- L0520 Hand-rolled binary search: 1 case(s)
-- L0521 Hand-rolled prefix sum: 1 case(s)
-- L0522 Copy-mutate-writeback on a slice: 1 case(s)
+- L0001 : 2 case(s)
+- L0101 : 1 case(s)
+- L0201 : 1 case(s)
+- L0202 : 1 case(s)
+- L0203 : 1 case(s)
+- L0204 : 1 case(s)
+- L0205 : 1 case(s)
+- L0206 : 1 case(s)
+- L0207 : 1 case(s)
+- L0208 : 1 case(s)
+- L0209 : 1 case(s)
+- L0301 : 1 case(s)
+- L0412 : 1 case(s)
+- L0413 : 1 case(s)
+- L0414 : 1 case(s)
+- L0415 : 1 case(s)
+- L0501 : 1 case(s)
+- L0502 : 1 case(s)
+- L0503 : 1 case(s)
+- L0504 : 1 case(s)
+- L0505 : 1 case(s)
+- L0506 : 1 case(s)
+- L0507 : 1 case(s)
+- L0508 : 1 case(s)
+- L0509 : 1 case(s)
+- L0510 : 1 case(s)
+- L0511 : 1 case(s)
+- L0512 : 1 case(s)
+- L0513 : 1 case(s)
+- L0514 : 1 case(s)
+- L0515 : 1 case(s)
+- L0516 : 1 case(s)
+- L0517 : 1 case(s)
+- L0518 : 1 case(s)
+- L0519 : 1 case(s)
+- L0520 : 1 case(s)
+- L0521 : 1 case(s)
+- L0522 : 1 case(s)
 - L0601 Right side changes the place it assigns: 2 case(s)
 - L0602 Lazy chain walked twice: 1 case(s)
 - L0603 `.map` view read many times by index: 1 case(s)

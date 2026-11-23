@@ -5893,3 +5893,15 @@ obvious spelling is also the fast one. `HashMap` stays for a program that
 wants hashing regardless. Reason: rebuild round 3's H-MAP-DEFAULT-KIND,
 where §2.8 called `HashMap` "the default" and contradicted §1. Reverse:
 restore §2.8's sentence and drop the new paragraph in §1.7.
+
+## 232. A runtime modulus is spelled `type Z = Mod(p)` (2026-11-22)
+
+core/02, 09, 11 and 13 and `spec/diagnostics.md` (E0801) already wrote
+`Mod(p)`; lib/math.md and the `std/mod.cp` header wrote
+`let P: Int = read(); type Z = Mod<P>`, which breaks R01.3.2 (E0208,
+values are lowercase), and core/03 wrote `Mod<p>`. All now say `Mod(p)`,
+the form a fresh type takes from a value (as `domain V = 1..=read()`
+does); `core-03/runtime-modulus-read.cp` covers R03.5.1. The parser also
+takes `Mod<p>` as the same type, an undocumented second spelling logged
+here as debt. Reason: rebuild round 3's H-RUNTIME-MODULUS-SPELLING.
+Reverse: write `Mod<p>` at the same sites and in R03.5.1.

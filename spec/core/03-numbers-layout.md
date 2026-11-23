@@ -275,7 +275,7 @@ linear. (R03.4.2)
 `?Mod<P>` is free (`P` is spare) and `SegTree(+, a.map(Z))` stores 4-byte
 nodes. Multiplication widens to u64 (or `I128` for moduli above `2^32`,
 which the profile must allow). A runtime modulus is a scoped type
-(`Mod<p>` with `p` read once) using Barrett reduction, one local edit
+(`type Z = Mod(p)` with `p` read once) using Barrett reduction, one local edit
 from the constant form. (R03.5.1)
 
 ## 6. Examples

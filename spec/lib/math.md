@@ -172,7 +172,7 @@ prime-power divisor `low[i]` of each `i`.
 ### 2.2 `std.mod`: modular arithmetic and combinatorics
 
 `Mod<P>` is one type for both compile-time constants (`type Z = Mod<998_244_353>`)
-and runtime moduli (`let P: Int = read(); type Z = Mod<P>`). `Comb<M>` is keyed
+and runtime moduli (`let p: Int = read(); type Z = Mod(p)`). `Comb<M>` is keyed
 on the `Mod` type (`let comb = Comb<Z>(limit)`) so the modulus is written once.
 
 <!-- spec-only: signatures and costs, not a program -->
