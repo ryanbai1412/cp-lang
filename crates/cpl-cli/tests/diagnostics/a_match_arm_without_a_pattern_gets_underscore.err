@@ -1,0 +1,8 @@
+error[E0106]: a match arm needs a pattern before `=>`
+  --> a_match_arm_without_a_pattern_gets_underscore.cp:4:5
+  |
+4 |     => print("other")
+  |     ^
+  = help: write `_ =>` for the arm that takes everything else
+
+a_match_arm_without_a_pattern_gets_underscore.cp: 1 error

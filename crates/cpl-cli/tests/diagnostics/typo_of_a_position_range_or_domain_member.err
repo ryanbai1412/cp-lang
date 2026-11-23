@@ -1,25 +1,25 @@
-error[E0203]: R has no `pre` in the spec: no std module declares it
+error[E0203]: a `R` has no method `pre`
   --> typo_of_a_position_range_or_domain_member.cp:3:13
   |
 3 |     print(r.pre)
   |             ^^^
   = help: did you mean `prev`?
 
-error[E0203]: Range<0..3> has no `star` in the spec: no std module declares it
+error[E0203]: a `Range<0..3>` has no method `star`
   --> typo_of_a_position_range_or_domain_member.cp:5:12
   |
 5 | print(span.star)
   |            ^^^^
   = help: did you mean `start`?
 
-error[E0203]: Range<0..3> has no `sorte` in the spec: no std module declares it
+error[E0203]: a `Range<0..3>` has no method `sorte`
   --> typo_of_a_position_range_or_domain_member.cp:6:12
   |
 6 | print(span.sorte())
   |            ^^^^^
   = help: did you mean `sorted`?
 
-error[E0203]: domain R has no `bound` in the spec: no std module declares it
+error[E0203]: a `domain R` has no method `bound`
   --> typo_of_a_position_range_or_domain_member.cp:7:9
   |
 7 | print(R.bound)

@@ -1,4 +1,4 @@
-error[E0203]: Int has no `toDouble` in the spec: no std module declares it
+error[E0203]: an `Int` has no method `toDouble`
   --> to_double_conversion.cp:2:9
   |
 2 | print(x.toDouble() / 2.0)

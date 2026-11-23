@@ -129,11 +129,29 @@ impl<'a> Parser<'a> {
                 return self.pattern_atom();
             }
             T::LBracket => self.list_pattern(),
+            T::FatArrow => {
+                let at = Span::point(self.span().start);
+                self.error(
+                    Diagnostic::error(
+                        codes::EXPECTED_PATTERN,
+                        at,
+                        "a match arm needs a pattern before `=>`",
+                    )
+                    .with_help("write `_ =>` for the arm that takes everything else")
+                    .with_fix("insert `_`", at, "_ "),
+                );
+                PatternKind::Error
+            }
             _ => {
-                let after = self.prev_kind().map_or("here", |k| k.describe());
+                let after = match self.prev_kind() {
+                    None | Some(T::Indent | T::Newline | T::Dedent) => {
+                        "at the start of the line".to_string()
+                    }
+                    Some(k) => format!("after {}", k.describe()),
+                };
                 self.error_expected(
                     codes::EXPECTED_PATTERN,
-                    &format!("a name or pattern after {after}"),
+                    &format!("a name or pattern {after}"),
                     None,
                 );
                 PatternKind::Error

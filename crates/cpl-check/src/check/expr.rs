@@ -1899,11 +1899,9 @@ impl<'a> Checker<'a> {
             })
             && self.global(&name.text).is_none()
         {
-            let message = format!(
-                "{} has no `{}` in the spec: no std module declares it",
-                base_ty.widen(),
-                name.text
-            );
+            let widened = base_ty.widen().with_article();
+            let (a, ty) = widened.split_once(' ').unwrap_or(("a", &widened));
+            let message = format!("{a} `{ty}` has no method `{}`", name.text);
             let suggestion = super::spec_member_typo(&base_ty, &name.text);
             let twin = super::advice::by_twin(self.src, &name.text, name.span);
             let in_place = super::advice::in_place_twin(&name.text, &self.quote(base.span));

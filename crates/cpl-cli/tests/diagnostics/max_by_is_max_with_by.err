@@ -1,4 +1,4 @@
-error[E0203]: Range<0..p> has no `max_by` in the spec: no std module declares it
+error[E0203]: a `Range<0..p>` has no method `max_by`
   --> max_by_is_max_with_by.cp:3:16
   |
 3 | let j = (0..p).max_by(i => a[i])

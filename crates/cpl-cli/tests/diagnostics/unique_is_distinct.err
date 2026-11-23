@@ -1,4 +1,4 @@
-error[E0203]: List<Int> has no `unique` in the spec: no std module declares it
+error[E0203]: a `List<Int>` has no method `unique`
   --> unique_is_distinct.cp:2:10
   |
 2 | print(xs.unique())

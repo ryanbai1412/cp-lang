@@ -1,4 +1,4 @@
-error[E0203]: Str has no `chars` in the spec: no std module declares it
+error[E0203]: a `Str` has no method `chars`
   --> iter_call.cp:2:12
   |
 2 | for c in s.chars():

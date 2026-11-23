@@ -1,4 +1,4 @@
-error[E0203]: [V]V has no `invers` in the spec: no std module declares it
+error[E0203]: a `[V]V` has no method `invers`
   --> unknown_member_types_nothing_after.cp:3:17
   |
 3 | let pos = order.invers()

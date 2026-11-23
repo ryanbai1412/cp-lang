@@ -1,4 +1,4 @@
-error[E0203]: List<Int> has no `front` in the spec: no std module declares it
+error[E0203]: a `List<Int>` has no method `front`
   --> front_back.cp:2:10
   |
 2 | print(xs.front(), xs.back())

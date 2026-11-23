@@ -1,11 +1,11 @@
-error[E0203]: List<Int> has no `fin` in the spec: no std module declares it
+error[E0203]: a `List<Int>` has no method `fin`
   --> error_receiver_no_cascade.cp:2:16
   |
 2 |     let a = xs.fin(0) ?? return print(0)
   |                ^^^
   = help: did you mean `find`?
 
-error[E0203]: List<Int> has no `sorte` in the spec: no std module declares it
+error[E0203]: a `List<Int>` has no method `sorte`
   --> error_receiver_no_cascade.cp:3:16
   |
 3 |     let b = xs.sorte().map(x => x + 1)

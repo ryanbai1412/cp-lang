@@ -3001,7 +3001,12 @@ impl Checker<'_> {
         for arg in args {
             if !context_constant(&arg.value) {
                 let message = "a context value is a compile-time constant; pass a runtime value as an argument instead".to_string();
-                self.error(codes::CONTEXT_NOT_CONSTANT, arg.value.span, message);
+                if let Some(diag) = self.error(codes::CONTEXT_NOT_CONSTANT, arg.value.span, message)
+                {
+                    diag.help = Some(
+                        "write the value itself here: a number, character, string or `None`".into(),
+                    );
+                }
             }
             let Some(name) = &arg.name else {
                 self.error(

@@ -1,0 +1,8 @@
+error[E0801]: a context value is a compile-time constant; pass a runtime value as an argument instead
+  --> a_context_value_from_a_let_asks_for_the_value.cp:2:14
+  |
+2 | with io(sep: s):
+  |              ^
+  = help: write the value itself here: a number, character, string or `None`
+
+a_context_value_from_a_let_asks_for_the_value.cp: 1 error
