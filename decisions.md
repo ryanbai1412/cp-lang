@@ -6845,7 +6845,6 @@ restore the hand-written REPO.md, and give `gen.py` back its list.
   `spec/std` (`math.cp` segmented sieve) and none in corpus `spec.cp`.
 - **Reverse.** Delete `crates/cpl-lint/src/rules/ceil.rs` and
   `spec/lints/ceil_div_formula/`.
-||||||| parent of 9d92e72e3 (factory: move spec/std to std and crates/prover to crates/cpl-prover)
 
 
 ## 307. The stdlib is `std/` and the prover is `crates/cpl-prover` (2026-11-22)
@@ -6879,7 +6878,6 @@ the same reference rewrite in the other direction.
   16 `std` findings and 1 corpus port (noi02p6), 0 in corpus `spec.cp`.
 - **Reverse.** Delete `crates/cpl-lint/src/rules/euclid.rs` and
   `spec/lints/neg_mod_fixup/`.
-||||||| parent of 64e34b5ea (plan: generate plan/STATUS.md; move spec status, delta and release docs)
 
 
 ## 309. `plan/STATUS.md` is generated; spec's status, delta and the release plan move (2026-11-22)

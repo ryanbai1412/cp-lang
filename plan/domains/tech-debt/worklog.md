@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- Sheriff (infra): aac7e0da8 and b5b4a1183 each left a `||||||| parent of ...` conflict line in decisions.md; the pre-push scan rejects every push while they're there. I deleted both. decisions.md now merges with `merge=union` like the worklogs.
 - Sheriff (infra): ab626a6ef made `choose2` a prelude name but left it listed in `spec/conformance/prelude-gaps.txt`, so the checks job failed (runs 45110307018, 45110681498: "fixed gaps still listed"). Ran `conformance-prelude.py --update`. Run it whenever a spec/lib table fn joins the prelude.
 - Builtin floor: `minmax` is now a std generic (a220d22c6); `ir_builtin_names` 88 -> 87 (`python3 scripts/debt-ratchet.py --check`). Conformance 2160/2315, no new failures against main's 2157/2313 (`cargo run --release -p cpl-conform -- conformance --verbose`, failing-case lists diffed). `rev` and `pairs` reclassified as storage views; `counts` waits on a std `Counter<T>`, `shuffle` on an RNG-stream decision (20dba0e78).
 - Builtin floor: classified the 89 names (`plan/domains/tech-debt/architecture/builtin-floor.md`): 64 intrinsic, 25 derived. `choose2` moved to its std body (`ab626a6ef`, `ir_builtin_names` 89 -> 88, `prelude_privilege` 27 -> 26). `isqrt` failed the perf check (3.7x) and stays a builtin; numbers are in the same file.
