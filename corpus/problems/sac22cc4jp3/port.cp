@@ -1,11 +1,10 @@
-// SAC 2022 Code Challenge 4 Junior P3: n points and a direction, given as a
-// whole number of degrees counter-clockwise from the x axis. Print the
-// number of the point whose direction from the origin is closest to it
-// (the first such point).
-//
-// The gap between two directions is the short way round the circle. The
-// first point wins ties because only a strictly smaller gap replaces it;
-// the gaps are compared as computed, with no tolerance, as in the original.
+// Source: SAC '22 Code Challenge 4 Junior P3, https://dmoj.ca/problem/sac22cc4jp3
+// Problem: n <= 1e5 points (x, y) off the origin, |x|, |y| <= 1e9, and a whole angle A in
+//   0..=359 degrees. Print the 1-based index of the point whose direction from the origin
+//   is closest to A; the closest is at least 1e-4 closer than any other.
+// Solution: take each direction with atan2 in degrees; the gap to A is the short way round
+//   the circle, min(t, 360 - t) with t normalized to 0..360. Keep the first strictly smaller
+//   gap, compared as computed with no tolerance, as in the original. O(n).
 // original: corpus/submissions/4416076.cpp
 use real.float.{PI}
 

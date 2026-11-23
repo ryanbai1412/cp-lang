@@ -1,10 +1,11 @@
-// CCO 2020 Exercise Deadlines: n exercises in a row, each with a deadline.
-// They are done left to right, one a day, and swapping two neighbours costs
-// one move. Print the fewest moves that meet every deadline, or -1.
-//
-// Fill the days from the last one: any exercise due that day or later can
-// take it, and the one furthest right is the cheapest to bring there. The
-// moves are then the inversions of the order chosen, counted as it is built.
+// Source: CCO 2020 Day 1 P2 (Exercise Deadlines), https://dmoj.ca/problem/cco20p2
+// Problem: n <= 2e5 exercises in the order 1..=n, exercise i due by day d_i <= n; they are
+//   done one a day in order, and swapping two neighbours costs one move. Print the fewest
+//   moves after which every exercise meets its deadline, or -1.
+// Solution: fill the days from the last one: any unplaced exercise due that day or later
+//   may take it, and the one furthest right (MaxHeap) is the cheapest to bring there; none
+//   means -1. The moves are the inversions of the order built, counted with a Fenwick of
+//   exercises already given a later day that started further left. O(n log n).
 
 let n: Int = read()
 domain Ex = 1..=n  // an exercise, by where it starts

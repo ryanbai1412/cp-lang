@@ -1,6 +1,10 @@
-// BOI 2017 Cat in a Tree: mark as many nodes as possible so that every two
-// marked nodes are at least d edges apart. Node 0 is the root and every
-// parent has a smaller label than its child.
+// Source: BOI 2017 Day 2 (Cat in a Tree), https://dmoj.ca/problem/btoi17p6
+// Problem: a tree on n <= 2e5 nodes rooted at 0, given as the parents x_i < i, and d <= 2e5.
+//   Print the most nodes that can be marked so every two marked nodes are >= d edges apart.
+// Solution: greedy bottom-up: a subtree keeps (count, depth of its shallowest mark), a leaf
+//   marks itself. Labels only grow downward, so a reverse label scan joins each child into
+//   its parent: if the two shallowest marks are >= d apart keep both, else drop the
+//   shallower one (one fewer mark, the other is nearest). O(n).
 let n: 1..=2e5 = read()
 let d: 1..=2e5 = read()
 domain V = 0..n

@@ -1,6 +1,11 @@
-// CEOI 2018 Cloud Computing: buy machines (cores, clock rate, price), then sell
-// orders (cores, minimum rate, price). Sweep rates from fast to slow so every
-// machine an order may use is already in the pool; knapsack on spare cores.
+// Source: CEOI 2018 Day 1 (Cloud Computing), https://dmoj.ca/problem/ceoi18p1
+// Problem: n <= 2000 machines (cores <= 50, clock rate, price) and m <= 2000 orders (cores
+//   <= 50, minimum rate, payment), rates and prices <= 1e9. An order's cores must all come
+//   from machines bought with rate >= its minimum. Print the most payments minus costs.
+// Solution: sweep all deals from the fastest rate down, machines before orders at equal
+//   rate, so every machine an order may use is already in the pool. 0/1 knapsack on spare
+//   cores (best[c], up to 50 n): a machine adds cores for its price, an order spends cores
+//   for its payment; print the best entry. O((n + m) * 50 n).
 type Offer = (cores: 1..=50, rate: 1..=1e9, price: 1..=1e9)
 let n: 1..=2000 = read()
 let machines: [0..n]Offer = read()

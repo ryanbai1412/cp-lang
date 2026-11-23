@@ -1,13 +1,13 @@
-// Universal Cup 5 Stage 6 (Hyakumanben) G — Minimum Reversals from Cycles
-//
-// Iterative in-degree-0 peeling (`peel`) removes every vertex whose ancestors
-// form a DAG (every directed path into a peeled vertex starts at a source, so
-// it cannot be reached from any cycle without reversing at least one edge).
-// Every unpeeled vertex keeps an incoming edge from another unpeeled vertex,
-// so it lies on or below a directed cycle and costs 0 (`dist = 0`).
-// A 0-1 BFS from all unpeeled vertices (forward edge cost 0, reversed edge
-// cost 1) finds the minimum reversals for every vertex; print the sum or `-1`
-// if any vertex is unreachable.
+// Source: The 5th Universal Cup, Stage 6 (Grand Prix of Hyakumanben), problem G (Source to
+//   Sink), qoj.ac/contest/4617/problem/23675
+// Problem: a simple directed graph, n <= 1e5 and m <= 2e5 (2-cycles allowed). One operation
+//   picks a vertex of indegree 0 and reverses every edge at it. Print the most operations
+//   possible, or -1 if they can go on forever. Multitest, sums of n <= 1e5 and m <= 2e5.
+// Solution: with x_u the times u is flipped, a vertex on a cycle is never flipped, an edge
+//   u -> v forces x_v <= x_u <= x_v + 1, and every such x is reachable; a weak component
+//   with no cycle goes on forever. peel removes the vertices not reachable from a cycle; a
+//   bfs01 from the rest (edge forward cost 0, backward cost 1) gives the largest x, and
+//   any vertex it misses means -1. O(n + m).
 
 use std.graph.{bfs01}
 

@@ -1,7 +1,10 @@
-// CCC 2023 S5 The Filter: list the x in 0..=n for which x / n is in the
-// Cantor set. Walk the Cantor construction: a segment [k / b, (k + 1) / b]
-// keeps its left and right thirds; once a segment holds only a few
-// numerators, test each by its ternary digits.
+// Source: CCC 2023 S5 (The Filter), https://dmoj.ca/problem/ccc23s5
+// Problem: 2 <= n <= 1e9. Print, in increasing order, every x in 0..=n with x / n in the
+//   Cantor set; there are at most 1e6 of them.
+// Solution: walk the Cantor construction: a segment [k / b, (k + 1) / b] holding numerators
+//   l..=r keeps its left and right thirds, so about n^log3(2) segments are visited. Once a
+//   segment holds at most 11 numerators, test each by long division of x / n in base 3
+//   until a remainder repeats; a digit 1 is fine only when nothing follows it.
 let n: 3..=1e9 = read()
 
 fn in_cantor(x: Int) -> Bool:

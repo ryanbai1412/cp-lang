@@ -1,6 +1,12 @@
-// CCO 2009 Bottle Caps (interactive), as it has to be written today: the
-// three-way split is three lists filled by hand. Builds; 60 conversations
-// with cco09p4_judge.py accepted for this file and for 5034519.cpp.
+// Source: CCO 2009 Day 2 P1 (Bottle Caps), https://dmoj.ca/problem/cco09p4
+// Problem: interactive: n <= 1e4 caps and n bottles of distinct sizes, each cap matching one
+//   bottle. Query "0 c b" answers 1 if cap c is too large for bottle b, 0 if it fits, -1 if
+//   too small; report each match as "1 c b". At most 5e5 queries.
+// Solution: quicksort the two sets against each other: compare every cap with a random
+//   pivot bottle to split the caps and find its cap, report the pair, split the bottles by
+//   that cap, and recurse on the smaller and the larger halves. Expected O(n log n) queries.
+// As it has to be written today: the three-way split is three lists filled by hand.
+//   Builds; 60 conversations with cco09p4_judge.py accepted for this file and 5034519.cpp.
 let n: 1..=1000 = read()
 domain Cap = 1..=n
 domain Bottle = 1..=n
