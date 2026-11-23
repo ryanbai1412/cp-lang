@@ -5,10 +5,10 @@ domain Cell = (Line, Line)
 domain Digit = 1..=9
 let given = read<[Line, Line]0..=9>()
 var board: [Cell]?Digit = [Cell] p => Digit.at(given[p])
-var in_row: [Line]Subset<Digit> = Subset.empty
-var in_col: [Line]Subset<Digit> = Subset.empty
+var in_row: [Line]Subset<Digit> = Subset<Digit>.empty
+var in_col: [Line]Subset<Digit> = Subset<Digit>.empty
 domain Band = 0..3
-var in_box: [Band, Band]Subset<Digit> = Subset.empty
+var in_box: [Band, Band]Subset<Digit> = Subset<Digit>.empty
 fn box(p: Cell) -> (Band, Band) = (Band(Int(p.0) / 3), Band(Int(p.1) / 3))
 fn worth(p: Cell) -> Int = 10 - max(abs(Int(p.0) - 4), abs(Int(p.1) - 4))
 fn toggle(p: Cell, d: Digit):
