@@ -913,7 +913,7 @@ pub struct MeldHeap<T>:
         x
 
 
-fn plus<T>(a: ?T, d: T) -> T:
+fn plus<T: Add>(a: ?T, d: T) -> T:
     if let x = a: return x + d
     d
 
