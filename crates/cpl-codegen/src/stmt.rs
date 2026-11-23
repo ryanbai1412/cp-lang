@@ -607,13 +607,23 @@ impl<'p> Emitter<'p> {
                         out,
                         &format!("for ({cpp} {var} = {held}.hi; {var}-- > {held}.lo; ) {{"),
                     );
+                    self.loop_body(id, &first, body, out);
                 } else {
-                    self.line(
-                        out,
-                        &format!("for ({cpp} {var} = {held}.lo; {var} < {held}.hi; {var}++) {{"),
-                    );
+                    let plain = var == name && first.is_empty();
+                    let guard = plain.then(|| crate::scope::start_guard(slot, body));
+                    let (lo, body) = match guard.flatten() {
+                        Some((e, then)) => {
+                            let e = self.expr(e).text;
+                            let lo =
+                                format!("std::max<ll>({held}.lo, std::min<ll>({e}, {held}.hi))");
+                            (format!("({cpp})({lo})"), then)
+                        }
+                        None => (format!("{held}.lo"), body),
+                    };
+                    let head = format!("for ({cpp} {var} = {lo}; {var} < {held}.hi; {var}++) {{");
+                    self.line(out, &head);
+                    self.loop_body(id, &first, body, out);
                 }
-                self.loop_body(id, &first, body, out);
                 self.indent -= 1;
                 self.line(out, "}");
             }

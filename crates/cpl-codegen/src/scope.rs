@@ -6,7 +6,9 @@
 //! declaration stays there; otherwise it moves to the top of the fn.
 
 use crate::walk;
-use cpl_ir::{Arg, Block, Builtin, Expr, ExprKind, Iter, Place, PlaceKind, Program, Stmt, Ty};
+use cpl_ir::{
+    Arg, Block, Builtin, CmpOp, Expr, ExprKind, Iter, Place, PlaceKind, Program, Stmt, Ty,
+};
 use std::collections::{BTreeMap, BTreeSet};
 
 #[derive(Default)]
@@ -228,6 +230,28 @@ pub(crate) fn spent(program: &cpl_ir::Program, body: &Block) -> BTreeSet<usize> 
     });
     close(&mut run);
     found
+}
+
+/// `for v in r: if v >= e: ..` where the body never changes the local
+/// `e`: the loop can start at `e` instead of testing it every turn. Gives
+/// `e` and the `if`'s body.
+pub(crate) fn start_guard(slot: usize, body: &Block) -> Option<(&Expr, &Block)> {
+    let [Stmt::If(cond, then, otherwise)] = body.stmts.as_slice() else {
+        return None;
+    };
+    let (ExprKind::Cmp(CmpOp::Ge, v, e) | ExprKind::Cmp(CmpOp::Le, e, v)) = &cond.kind else {
+        return None;
+    };
+    let (ExprKind::Local(v), ExprKind::Local(bound)) = (&v.kind, &e.kind) else {
+        return None;
+    };
+    let mut opaque = false;
+    walk::deep_exprs(body, &mut |e| {
+        opaque |= matches!(e.kind, ExprKind::CallExpr(..) | ExprKind::Closure(_));
+    });
+    let set = walk::Effects::of_block(body).locals;
+    (*v == slot && *bound != slot && otherwise.stmts.is_empty() && !opaque && !set.contains(bound))
+        .then_some((e, then))
 }
 
 /// The local lists of fn `id` that can live in one buffer for the whole

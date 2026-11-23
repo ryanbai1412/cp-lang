@@ -66,3 +66,22 @@ fn a_let_bound_comprehension_in_a_recursive_fn_moves_its_list() {
     assert!(cpp.contains("signs = std::move("), "{cpp}");
     assert!(!cpp.contains("static std::vector"), "{cpp}");
 }
+
+#[test]
+fn a_loop_guarded_by_its_start_starts_there() {
+    let cpp = cpp(concat!(
+        "let n: 1..=9 = read()\n",
+        "domain P = 0..n\n",
+        "var hits = 0\n",
+        "fn tally(ls: Range<P>, rs: Range<P>):\n",
+        "    for l in ls:\n",
+        "        for r in rs if r >= l:\n",
+        "            hits += 1\n",
+        "tally(P.first!..=P.last!, P.first!..=P.last!)\n",
+        "print(hits)\n",
+    ));
+    assert!(
+        cpp.contains("std::max<ll>(") && !cpp.contains("if (r >= l)"),
+        "{cpp}"
+    );
+}
