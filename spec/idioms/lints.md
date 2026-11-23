@@ -226,7 +226,7 @@ One sub-family per module. Each says: you rebuilt something the library has.
 
 | Lint | Catches | Write instead | Tier | P | Engine | Status |
 |---|---|---|---|---|---|---|
-| negated_heap | push `-x` to get a max-heap | `Heap(by: desc)` / `MaxHeap` | fix | #13 | ty | |
+| negated_heap | push `-x` to get a max-heap | `Heap(by: desc)` / `MaxHeap` | fix | #13 | ty | ✓negated_heap |
 | lazy_delete_heap | heap plus "deleted" counter map | `ErasableHeap` | fix? | #1 | loop | |
 | stale_entry_skip | `if d > dist[v]: continue` after pop | `IndexedHeap.decrease` (or `dijkstra`) | warn | #1 | loop | ✓stale_entry_skip |
 | two_heap_median | max-heap + min-heap balancing | `SortedBag` / `MinMaxHeap` | doc | #1 | | |

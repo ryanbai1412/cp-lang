@@ -25,6 +25,7 @@ mod literals;
 mod memo;
 mod mod_div;
 mod mod_reduce;
+mod neg_heap;
 mod pops;
 mod proven;
 mod read_loop;
@@ -46,6 +47,7 @@ pub(crate) fn run(file: &File, config: &Config) -> Vec<Finding> {
     findings.extend(adjacency::check(file));
     findings.extend(heap_skip::check(file));
     findings.extend(bag::check(file));
+    findings.extend(neg_heap::check(file));
     findings.extend(scopes::check(file));
     findings.extend(types::check(file));
     findings.extend(assign::check(file));

@@ -1,0 +1,5 @@
+code = "L0571"
+level = "warn"
+group = "idiom"
+title = "Negated values in a min-heap"
+summary = "`h.push(-x)` into a `MinHeap` to pop the largest: `MaxHeap<T>` (`std.heap`)"

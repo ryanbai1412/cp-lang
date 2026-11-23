@@ -8,13 +8,13 @@
 use crate::facts::Facts;
 use crate::{
     CEIL_DIV_FORMULA, CHMIN_CHMAX_IF, COMPOUND_SELF_REF, FLOAT_SQRT_FOR_INT, LAST_VIA_LEN,
-    MANUAL_BIT_TEST, MAP_AS_MULTISET, NEG_MOD_FIXUP, PEEK_THEN_POP, REVERSE_INDEX,
+    MANUAL_BIT_TEST, MAP_AS_MULTISET, NEGATED_HEAP, NEG_MOD_FIXUP, PEEK_THEN_POP, REVERSE_INDEX,
     STALE_ENTRY_SKIP, UNPROVEN_LIST_INDEX,
 };
 use cpl_check::{Analysis, Ty};
 use cpl_diag::{Diagnostic, Span};
 
-const TYPED: [cpl_diag::Code; 12] = [
+const TYPED: [cpl_diag::Code; 13] = [
     MANUAL_BIT_TEST.code,
     LAST_VIA_LEN.code,
     FLOAT_SQRT_FOR_INT.code,
@@ -27,6 +27,7 @@ const TYPED: [cpl_diag::Code; 12] = [
     UNPROVEN_LIST_INDEX.code,
     STALE_ENTRY_SKIP.code,
     MAP_AS_MULTISET.code,
+    NEGATED_HEAP.code,
 ];
 
 /// `diags` less the findings `analysis`'s facts rule out.
@@ -100,6 +101,9 @@ fn keep(d: &Diagnostic, facts: &Facts) -> bool {
         c if c == UNPROVEN_LIST_INDEX.code => facts.typed_index(d.span).is_none(),
         c if c == MAP_AS_MULTISET.code => matches!(label(), Some(Some(Ty::Named { name, args }))
             if name == "Map" && matches!(args.as_slice(), [_, Ty::Int | Ty::Range { .. }])),
+        c if c == NEGATED_HEAP.code => {
+            matches!(label(), Some(Some(Ty::Named { name, .. })) if name == "Heap")
+        }
         _ => true,
     }
 }

@@ -7323,3 +7323,16 @@ for interpreter and C++ alike. That makes every `S: Keyed` std fn
 ratchet's `--update rs_over_cap` moves `lower/call.rs` 13019 -> 13044.
 Reverse: drop the `lo` field of `Items` and the `Ty::Range` arm of
 `items_of`; ranges then fail the `for` again.
+
+## 339. `h.push(-x)` into a min-heap teaches `MaxHeap`: L0571 `negated_heap`; `lint_std_names` 164 -> 165 (2026-11-23)
+
+A port that wants the largest from `MinHeap` pushes `-x` and negates
+every pop, the C++ `priority_queue` habit turned around (newcomer
+`n64_negated_heap.cp`). L0571 flags the first `h.push(-x)` per heap and
+the fact table keeps it only when the checker types `h` as `Heap`, so a
+`List` push or a `MaxHeap` of negatives stays quiet. There is no fix:
+every pop changes too. Matching the method name `push` is one more std
+name in a lint rule, so the ratchet's `--update lint_std_names` moves
+164 -> 165; the general fix (lint rules match std items by resolved
+symbol, not by name) stays owed with lint-fmt. Reverse: delete
+`spec/lints/negated_heap/` and `rules/neg_heap.rs`.
