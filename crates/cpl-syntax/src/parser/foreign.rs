@@ -3,6 +3,65 @@
 use super::*;
 
 impl<'a> Parser<'a> {
+    /// `for (x in xs):`: parentheses around the header, as in C and
+    /// JavaScript. One error with the fix that drops them, read without them.
+    pub(super) fn paren_for(&mut self) -> bool {
+        let open = self.pos;
+        let end = after_group(self.tokens, open);
+        let Some(inner) = end
+            .checked_sub(1)
+            .and_then(|e| self.tokens.get(open + 1..e))
+        else {
+            return false;
+        };
+        let mut depth = 0i32;
+        let has_in = inner.iter().any(|t| {
+            match t.kind {
+                T::LParen | T::LBracket | T::LBrace => depth += 1,
+                T::RParen | T::RBracket | T::RBrace => depth -= 1,
+                _ => {}
+            }
+            depth == 0 && t.kind == T::In
+        });
+        if !self.at(T::LParen) || !has_in || self.tokens.get(end).map(|t| t.kind) != Some(T::Colon)
+        {
+            return false;
+        }
+        let (o, c) = (self.span(), self.rel(self.tokens[end - 1].span));
+        let mut diag = Diagnostic::error(
+            codes::REMOVED_SYNTAX,
+            o,
+            "a `for` header takes no parentheses in CP Lang",
+        )
+        .with_help("write `for x in xs:`");
+        diag.fixes.push(cpl_diag::Fix {
+            title: "remove the parentheses".into(),
+            edits: vec![(o, String::new()), (c, String::new())],
+        });
+        self.recovered(diag);
+        self.bump();
+        true
+    }
+
+    /// `for x of xs`: JavaScript's `of`. One error with the `in` fix.
+    pub(super) fn for_of(&mut self) -> bool {
+        if !self.at_ident("of") {
+            return false;
+        }
+        let span = self.span();
+        self.recovered(
+            Diagnostic::error(
+                codes::EXPECTED_TOKEN,
+                span,
+                "CP Lang loops with `in`, not `of`",
+            )
+            .with_help("write `for x in xs:`")
+            .with_fix("replace `of` with `in`", span, "in"),
+        );
+        self.bump();
+        true
+    }
+
     /// `for (i = 0; i < n; i++)`: C's loop header. One error, with a fix
     /// when it counts up by one, read as `for i in <error>` so the body
     /// still checks.

@@ -1110,13 +1110,19 @@ impl<'a> Parser<'a> {
         let c_style = !clauses.is_empty();
         if !c_style {
             loop {
+                let paren = self.paren_for();
                 let pat = self.pattern();
-                self.expect(T::In, "`in` after the loop variable");
+                if !self.for_of() {
+                    self.expect(T::In, "`in` after the loop variable");
+                }
                 let iter = if self.at(T::Question) {
                     self.optional_type_iter()
                 } else {
                     self.expr()
                 };
+                if paren {
+                    self.eat(T::RParen);
+                }
                 // `for x in xs if cond:` runs the body for the `x` that pass:
                 // the body is an `if`.
                 let has_filter = self.eat(T::If)

@@ -1815,3 +1815,22 @@ fn a_python_slice_is_one_error_with_the_range_fix() {
         .collect();
     assert_eq!(fixed, [("E0103", ".."); 3], "{d:?}");
 }
+
+#[test]
+fn a_for_header_in_parentheses_or_with_of_is_one_error_with_a_fix() {
+    let d = parse_file(
+        "for (x in xs):\n    print(x)\nfor y of xs:\n    print(y)\nfor (a, b) in ps:\n    print(a)\n",
+    )
+    .diagnostics;
+    let fixed: Vec<_> = d
+        .iter()
+        .map(|d| {
+            d.fixes[0]
+                .edits
+                .iter()
+                .map(|e| e.1.as_str())
+                .collect::<Vec<_>>()
+        })
+        .collect();
+    assert_eq!(fixed, [vec!["", ""], vec!["in"]], "{d:?}");
+}
