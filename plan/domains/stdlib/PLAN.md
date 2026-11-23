@@ -43,6 +43,7 @@ W2 runs before W3 because writing bodies whose examples fail for a compiler reas
 
 ## General fixes owed
 
+- **A closure yielded by a generator can't write the generator's locals** (`Step.prune()` in dp.cp's `backtrack` stays `todo`): `cpl run` crashes (index out of bounds in `part_mut`) and the C++ silently drops the write. Case `core-07/yielded-closure-writes-generator-local` fails until fixed. General fix: a closure captures a generator local by reference into the generator's frame in both backends (compiler: interp and codegen).
 - **`convolve`'s fast product covers only NTT-prime `Mod<P>`.** Other moduli, `Int` and `F64` still take the \(O(n m)\) loop. General fix: three-prime CRT and FFT as further `FastProduct` impls (stdlib).
 - **`same(over.add, +)` is a run-time test,** so `convolve`'s semiring branch is lowered for every `T` and a user ring type must define `one` even for the plain product (`std-ntt/convolve-fast-product`). General fix: settle `same` of two operation values at compile time, as `if T: Trait` now is, so an untaken branch imposes nothing (compiler).
 - **A missing `T.zero` inside std reports "`cpl run` doesn't know the name `T`"** instead of "`Tal` has no `zero`, which `convolve` needs" at the call. General fix: the type-qualified lookup error names the bound type and the missing member (compiler, diagnostics).
