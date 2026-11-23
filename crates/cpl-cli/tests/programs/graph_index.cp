@@ -1,3 +1,4 @@
+use std.graph.{Graph}
 domain V = 1..=4
 domain E = 0..3
 let es: [E](u: V, v: V) = [(u: 1, v: 2), (u: 2, v: 3), (u: 2, v: 4)]

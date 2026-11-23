@@ -1,3 +1,5 @@
+use std.algebra.{desc}
+
 @!multitest
 let n: 2..=6 = read()
 domain I = 1..=n

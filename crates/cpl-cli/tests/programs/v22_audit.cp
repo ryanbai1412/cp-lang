@@ -1,4 +1,6 @@
 // The v2.2 forms the Blind Critic #5 drafts were written in.
+use std.seq.{reverse}
+use std.algebra.{desc}
 
 fn key(x: Int) -> Int:
     print("key", x)

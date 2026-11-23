@@ -1,4 +1,5 @@
-use std.graph.{arc_len}
+use std.graph.{Graph, arc_len}
+use std.tree.{Rooted}
 domain V = 1..=3
 domain E = 1..=2
 let es: [E](u: V, v: V, w: Int) = [(u: 1, v: 2, w: 5), (u: 2, v: 3, w: 12)]
