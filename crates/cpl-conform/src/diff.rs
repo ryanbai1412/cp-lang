@@ -136,7 +136,14 @@ fn is_transient_gxx_failure(code: Option<i32>, stderr: &str) -> bool {
 fn compile_cpp(cpp: &str, cache_dir: &Path) -> Result<PathBuf, CppCompileError> {
     std::fs::create_dir_all(cache_dir)
         .map_err(|e| CppCompileError::Infra(format!("cannot create cache dir: {e}")))?;
-    let key = fnv1a_hex(cpp.as_bytes());
+    // `CPL_CONFORM_CXXFLAGS` replaces `-O2`, e.g. `-O1 -g -fsanitize=address,undefined`
+    // to turn undefined behaviour in emitted C++ into a failing case.
+    let flags = std::env::var("CPL_CONFORM_CXXFLAGS").unwrap_or_else(|_| "-O2".into());
+    let key = if flags == "-O2" {
+        fnv1a_hex(cpp.as_bytes())
+    } else {
+        fnv1a_hex(format!("{flags}\0{cpp}").as_bytes())
+    };
     let bin = cache_dir.join(&key);
     if bin.is_file() {
         return Ok(bin);
@@ -168,7 +175,8 @@ fn compile_cpp(cpp: &str, cache_dir: &Path) -> Result<PathBuf, CppCompileError> 
         }
         let _permit = GXX_GATE.acquire();
         let out = match Command::new("g++")
-            .args(["-O2", "-std=c++17", "-o"])
+            .args(flags.split_whitespace())
+            .args(["-std=c++17", "-o"])
             .arg(&tmp_bin)
             .arg(&src)
             .output()
