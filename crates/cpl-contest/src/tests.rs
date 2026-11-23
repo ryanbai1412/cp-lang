@@ -920,3 +920,22 @@ fn test_runs_multitest_program_against_in_and_ans() {
 
     std::fs::remove_dir_all(dir).unwrap();
 }
+
+#[test]
+fn a_multi_number_problem_gets_the_multitest_divider() {
+    let json = COMPANION.replace(
+        "\"interactive\"",
+        "\"testType\": \"multiNumber\", \"interactive\"",
+    );
+    let scaffold = Scaffold::from_companion(&json).unwrap();
+    assert!(scaffold.multitest);
+    let source = scaffold.source(None);
+    assert!(
+        source.ends_with("\n\n@!multitest\nlet n: 1..=2e5 = read()\n"),
+        "{source}"
+    );
+    // A template that already divides the file keeps its own divider.
+    let source = scaffold.source(Some("let sv = 1\n@!multitest\nprint(sv)\n"));
+    assert_eq!(source.matches("@!multitest").count(), 1, "{source}");
+    assert!(!Scaffold::from_companion(COMPANION).unwrap().multitest);
+}

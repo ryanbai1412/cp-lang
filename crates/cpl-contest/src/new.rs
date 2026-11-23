@@ -138,6 +138,9 @@ pub struct Scaffold {
     pub url: Option<String>,
     pub limits: Option<Limits>,
     pub interactive: bool,
+    /// The input starts with the number of test cases: Competitive
+    /// Companion's `"testType": "multiNumber"`. The file gets `@!multitest`.
+    pub multitest: bool,
     /// The `let ... = read()` lines.
     pub reads: Vec<String>,
     /// Sample inputs with their outputs.
@@ -267,6 +270,7 @@ impl Scaffold {
             url: text_of("url"),
             limits: Some(limits),
             interactive: problem.get("interactive") == Some(&Json::Bool(true)),
+            multitest: problem.get("testType").and_then(Json::as_str) == Some("multiNumber"),
             reads: Vec::new(),
             samples,
         })
@@ -303,11 +307,15 @@ impl Scaffold {
         if !out.is_empty() {
             out.push('\n');
         }
+        let template = template.map(str::trim_end);
+        if self.multitest && !template.is_some_and(|t| t.contains("@!multitest")) {
+            out.push_str("@!multitest\n");
+        }
         for line in &self.reads {
             out.push_str(line);
             out.push('\n');
         }
-        match template.map(str::trim_end) {
+        match template {
             Some(template) if !template.is_empty() => {
                 if !self.reads.is_empty() {
                     out.push('\n');
