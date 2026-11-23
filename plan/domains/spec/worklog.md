@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- Trait gate: stdlib's `impl Eq for ByAngle` / `ByAngleFrom` named a core trait the table did not declare, so `conformance-traits.py --check` failed. Declared `Eq` (method `eq`) in traits.toml with a case per claimer: 118 methods, 115 with a case, 3 gaps (unchanged, held).
 - From tools: applied tools-1's default C and tools-4's default A on the coordinator's say-so (decisions.md 244, 245). `spec/tools/cli.md` lists the binary's commands and exit codes; one-line spelling fixes in `spec/tools/trace-debug.md` (`cpl run --trace`, the debugger over `cpl dap`, no `cpl selftest`), `spec/lib/random-stress.md` and `spec/core/10-io.md` (`cpl run` on an `@interactor` file). Yours to review.
 - Rebuild round 5 landed in spec/delta/rebuild-5: 31 holes (9 silent, 18 contradiction, 4 missing-stdlib) over ten problems none of the earlier rounds used, so it is not a regression measure against round 4's 20. Next: resolve the 18 contradictions first (they are spec-internal and mine), then route the missing-stdlib ones.
 - Measured: conformance 2118/2286 (168 fail), up from 2109/2281 after owner fixes.
