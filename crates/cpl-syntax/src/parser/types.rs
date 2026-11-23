@@ -406,6 +406,31 @@ impl<'a> Parser<'a> {
                     inclusive,
                 }
             }
+            // `int`, `string`, `vector<Int>`: another language's type name,
+            // read as ours so the declaration and its uses check.
+            T::Ident
+                if foreign_type(self.text()).is_some()
+                    && !matches!(self.peek_n(1), T::DotDot | T::DotDotEq | T::Dot) =>
+            {
+                let ours = foreign_type(self.text()).unwrap_or_default();
+                let mut name = self.name();
+                self.error(
+                    Diagnostic::error(
+                        codes::EXPECTED_TYPE,
+                        name.span,
+                        format!("CP Lang spells the type `{ours}`, not `{}`", name.text),
+                    )
+                    .with_help("built-in types are capitalized: `Int`, `Str`, `List<T>`")
+                    .with_fix(format!("change to `{ours}`"), name.span, ours),
+                );
+                name.text = ours.to_string();
+                let args = if self.at(T::Lt) {
+                    self.type_args()
+                } else {
+                    Vec::new()
+                };
+                TypeKind::Named { name, args }
+            }
             T::Ident | T::Int | T::Minus | T::Float => {
                 // A range type: `0..=1e9`, `1..=n`, or one-sided `0..`, `2..`.
                 let lo = self.range_bound();
@@ -667,4 +692,19 @@ impl<'a> Parser<'a> {
             }
         }
     }
+}
+
+/// The built-in type another language's lowercase name stands for.
+fn foreign_type(name: &str) -> Option<&'static str> {
+    Some(match name {
+        "int" | "long" | "ll" | "i64" | "i32" | "int64" | "integer" | "usize" => "Int",
+        "string" | "str" => "Str",
+        "bool" | "boolean" => "Bool",
+        "float" | "double" | "f64" => "Float",
+        "char" => "Char",
+        "vector" | "vec" | "list" => "List",
+        "map" | "dict" | "unordered_map" => "Map",
+        "set" | "unordered_set" => "Set",
+        _ => return None,
+    })
 }

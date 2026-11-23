@@ -1753,3 +1753,10 @@ fn a_c_ternary_is_one_error_naming_the_inline_if() {
     let fixed: Vec<_> = d.iter().map(|d| d.fixes[0].edits[0].1.as_str()).collect();
     assert_eq!(fixed, ["if a == 1: 3 else: 4", "if c: x else: y"]);
 }
+
+#[test]
+fn another_languages_type_name_is_one_error_with_ours() {
+    let d = parse_file("let a: int = 5\nlet xs: vector<Int> = [a]\nlet r: 0..=n = 1\n").diagnostics;
+    let found: Vec<_> = d.iter().map(|d| d.fixes[0].edits[0].1.as_str()).collect();
+    assert_eq!(found, ["Int", "List"], "{d:?}");
+}
