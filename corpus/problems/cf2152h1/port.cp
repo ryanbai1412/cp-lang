@@ -1,18 +1,13 @@
-// Codeforces 2152 H1 — Victorious Coloring (Easy Version)
-//
-// For a query threshold t, we assign non-negative vertex weights x[v] so that
-// every non-empty cut S satisfies sum_{v in S} x[v] + cut(S) >= t, minimizing
-// sum x[v].
-//
-// Solve bottom-up on a rooted tree in O(n) per query (O(n * q) total, with
-// n, q <= 2500). Let up[v] be the budget v's subtree consumes from its parent
-// edge par_w[v] (0 <= up[v] <= par_w[v]). Each child c can contribute at most
-// min(t - up[c], par_w[c]) toward v's threshold t; capping `covered` at t per
-// child keeps it in 0..=t without changing the shortfall t - covered.
-//
-// Then v draws e_top = min(t - covered, par_w[v]) from its parent edge, sets
-// up[v] = e_top, and pays the unavoidable remainder t - covered - e_top in
-// vertex weight.
+// Source: Codeforces 2152H1 (Victorious Coloring, Easy Version),
+//   https://codeforces.com/contest/2152/problem/H1
+// Problem: a tree on n <= 2.5e5 vertices with edge weights <= 1e9. For vertex weights x >= 0,
+//   f(x) = min over nonempty vertex sets S of sum_{v in S} x[v] + weight of edges leaving S.
+//   For each of q <= 10 queries l <= 1e9, print the min sum of x with f(x) >= l. Multitest.
+// Solution: per query t, greedy bottom-up over the rooted tree (children first). up[c] is how
+//   much of its parent edge par_w[c] the subtree of c already leans on; child c then covers
+//   min(t - up[c], par_w[c]) of v's threshold t (covered capped at t). v draws
+//   e_top = min(t - covered, par_w[v]) from its own parent edge, sets up[v] = e_top and pays
+//   the rest, t - covered - e_top, as x[v]. O(n) per query, O(n q) total.
 
 @!multitest
 let n: 2..=2500 = read()

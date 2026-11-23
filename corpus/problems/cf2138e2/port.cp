@@ -1,10 +1,13 @@
-// Codeforces 2138 E2: Determinant Construction (Hard Version).
-// The tridiagonal matrix with diagonal d, 1 above and -1 below has determinant
-// K(d), the continuant: K(d + [c]) = c * K(d) + K(d without its last entry).
-// With entries in {0, 1} that recurrence is the subtractive Euclid walk run
-// backwards, so x is reached from (z, x - z) iff gcd(x, z) = 1. Trying z
-// outward from x / phi finds a walk of length <= MAX_N = 50 for every x <= 1e7
-// (exhaustively verified).
+// Source: Codeforces 2138E2 (Determinant Construction, Hard Version),
+//   https://codeforces.com/contest/2138/problem/E2
+// Problem: given 0 <= x <= 1e7, print an n x n matrix, n <= 50, with entries in {-1, 0, 1},
+//   at most three nonzero entries in each row and column, and determinant exactly x.
+//   Multitest, t <= 500.
+// Solution: the tridiagonal matrix with diagonal d, 1 above and -1 below has determinant the
+//   continuant K(d): K(d + [c]) = c * K(d) + K(d without its last entry). With d in {0, 1}
+//   that is the subtractive Euclid walk run backwards, so `walk` reaches x from (z, x - z)
+//   iff gcd(x, z) = 1. Trying z outward from x / phi finds a walk of length <= MAX_N = 50
+//   for every x <= 1e7 (exhaustively verified); x <= 1 is [x]. O(MAX_N) per candidate z.
 const MAX_N = 50
 
 // The diagonal built by the walk from (z, x - z) down to (1, 1), if it fits in `room`.

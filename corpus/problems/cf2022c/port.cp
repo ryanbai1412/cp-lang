@@ -1,12 +1,12 @@
-// Codeforces 2022 C: Gerrymandering.
-// Tile the 2 x n strip (3 | n) left to right. Every filled prefix ends either
-// Flush at cut c (2(n - c) cells left, so 3 | (n - c) and c + 3 <= n whenever
-// c < n) or Behind(z) with row z at c and other(z) at c + 1 (2(n - c) - 1 cells
-// left, so (n - c) % 3 == 2 and c + 2 <= n always).
-//   - Flush: two stacked bars advance to (c + 3, Flush); an opening L over c
-//     leaves one row behind at (c + 1, Behind(z)).
-//   - Behind(z): a closing L reaches (c + 2, Flush); two staggered bars reach
-//     (c + 3, Behind(z)) whenever the bar on other(z) fits (`c + 4 <= n`).
+// Source: Codeforces 2022C (Gerrymandering), https://codeforces.com/contest/2022/problem/C
+// Problem: a 2 x n grid (3 | n, sum n <= 1e5) of A/J votes. Split it into connected districts
+//   of 3 cells; a district goes to A if at least 2 of its cells vote A. Print the max number of
+//   districts A wins. Multitest.
+// Solution: tile left to right; every filled prefix ends Flush at cut c or Behind(z), row z at
+//   c and the other row at c + 1. Flush: two stacked bars -> (c + 3, Flush), or an opening L
+//   over column c -> (c + 1, Behind(z)). Behind(z): a closing L -> (c + 2, Flush), or two
+//   staggered bars -> (c + 3, Behind(z)) when the bar on other(z) fits (c + 4 <= n).
+//   Memoized best over (c, front): O(n).
 
 @!multitest
 let n: 3..=100_000 = read()

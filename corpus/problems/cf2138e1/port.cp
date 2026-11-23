@@ -1,9 +1,13 @@
-// Codeforces 2138 E1: Determinant Construction (Easy Version).
-// The tridiagonal matrix with diagonal d, 1 above and -1 below has determinant
-// K(d), the continuant: K(d + [c]) = c * K(d) + K(d without its last entry).
-// With entries in {0, 1} that recurrence is the subtractive Euclid walk run
-// backwards, so x is reached from the pair (z, x - z) exactly when gcd(x, z) = 1,
-// and z near x / phi keeps the walk short. The side length is at most MAX_N = 80.
+// Source: Codeforces 2138E1 (Determinant Construction, Easy Version),
+//   https://codeforces.com/contest/2138/problem/E1
+// Problem: given 0 <= x <= 1e7, print an n x n matrix, n <= 80, with entries in {-1, 0, 1},
+//   at most three nonzero entries in each row and column, and determinant exactly x.
+//   Multitest, t <= 100.
+// Solution: the tridiagonal matrix with diagonal d, 1 above and -1 below has determinant the
+//   continuant K(d): K(d + [c]) = c * K(d) + K(d without its last entry). With d in {0, 1}
+//   that is the subtractive Euclid walk run backwards, so `walk` reaches x from (z, x - z)
+//   iff gcd(x, z) = 1. Try z outward from x / phi (keeps the walk near log_phi x long) until
+//   a walk fits in MAX_N = 80; x <= 1 is the 1 x 1 matrix [x]. O(MAX_N) per candidate z.
 
 const MAX_N = 80
 

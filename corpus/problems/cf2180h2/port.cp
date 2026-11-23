@@ -1,17 +1,16 @@
-// Codeforces 2180 H2 — Bug Is Feature (Hard Version)
-//
-// Same interval-XOR Sprague-Grundy game as H1 (`cf2180h1`): each tuple
-// (a, b, c, l, r) with common difference d = c - b = b - a contributes the
-// XOR of Grundy values over x in [l, r], evaluated as prefix_xor(r - c + 1, d)
-// ^ prefix_xor(l - c, d).
-//
-// In H2 the closed form splits on the parity of d:
-// - Odd d: block reduction collapses the prefix to g_hi = len / d + ((len % d) & 1) + 1.
-//   The alternating bit-weight `popcount(g_hi) - 2 * popcount(g_hi & EVEN_BITS_FROM_2)`
-//   tracks the net odd-minus-even 1-bits (above bit 0), indexing the 4-cycle
-//   ODD_D_GRUNDY = [0, 2, 3, 1].
-// - Even d: even prefix lengths cancel to 0; odd lengths collapse to
-//   g = len / d + 2, giving 0 when ctz(g) is odd, else 2 (odd popcount) or 1.
+// Source: Codeforces 2180H2 (Bug Is Feature, Conditional Version),
+//   https://codeforces.com/contest/2180/problem/H2
+// Problem: n series (sum n <= 2e5) of a < b < c <= l <= r <= 1e18, a, b, c an arithmetic
+//   progression; series i is one game per x in [l, r]: raise one of a, b, c so they stay an
+//   AP (any order) with common difference not decreasing and none above x. All games are
+//   played together, Bug first, normal play: print Bug or Feature. Multitest, t <= 1e5.
+// Solution: Sprague-Grundy, as in H1 (`cf2180h1`): a series with difference d = c - b
+//   contributes prefix_xor(r - c + 1, d) ^ prefix_xor(l - c, d), the XOR of Grundy values
+//   over x in [c, r] and [c, l). Closed forms by parity of d: odd d reduces to
+//   g_hi = len / d + (len % d & 1) + 1, and popcount(g_hi) minus twice its bits at even
+//   positions >= 2, mod 4, indexes ODD_D_GRUNDY = [0, 2, 3, 1]; even d gives 0 for even len,
+//   else with g = len / d + 2 it is 0 when ctz(g) is odd, else 2 or 1 by popcount parity.
+//   XOR everything: O(1) per series.
 
 const EVEN_BITS_FROM_2 = 0x5555555555555554
 const ODD_D_GRUNDY = [0, 2, 3, 1]

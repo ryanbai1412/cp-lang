@@ -1,13 +1,13 @@
-// Codeforces 2178 I: Numbers or Fireworks.
-// Expand each (f + 1): every city outside T picks nothing or one firework
-// neighbour. Sqrt(k)-apart cities form a bipartite graph; enumerate which
-// cities of the smaller side O are outside T, then sweep the other side,
-// tracking which of O have picked a firework (each picks at most one).
-// A city b of the other side outside T picks nothing or one neighbour in T:
-// `stay` = |adj(b) - out| + 1 ways. With b in T, any outsider next to b may
-// pick it, each outsider at most once: dp[s] counts the ways in which exactly
-// the outsiders in s have picked, and the zeta over adj(b) & out adds b's picks.
-// Subtract 1 at the end to exclude the empty firework set T = empty (all-nothing).
+// Source: Codeforces 2178I (Numbers or Fireworks), https://codeforces.com/contest/2178/problem/I
+// Problem: n <= 31 distinct lattice points (cities) and k <= 2e4. For every proper subset T
+//   (fireworks), take the product over cities outside T of 1 + (number of cities of T at
+//   distance exactly sqrt(k)); print the sum over all T modulo 998244353. Multitest.
+// Solution: expand each (f + 1): every outsider picks nothing or one firework neighbour. The
+//   sqrt(k)-apart graph is bipartite (`two_color`); enumerate which cities `out` of the smaller
+//   side A are outside T, then sweep the other side B with dp over subsets s of out (zeta
+//   form) of the outsiders that have picked: b outside T has stay = |adj(b) - out| + 1 choices
+//   in A and T; b in T may be picked by each outsider next to b, at most once each. Add dp[out],
+//   subtract 1 for T = all cities. O(3^|A| * |B| * deg), |A| <= 15.
 use std.graph.{two_color}
 type Z = Mod<998_244_353>
 

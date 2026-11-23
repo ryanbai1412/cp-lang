@@ -1,17 +1,13 @@
-// Codeforces 2229 F — Maximum Minimum Block Sum
-//
-// Exchange argument for the final element: any valid arrangement contributes
-// `last + thresh`, where `last` is the final standalone element and `thresh`
-// is the minimum block sum across `k` disjoint blocks formed from the other
-// `m = n - 1` elements. Swapping the global maximum `fin = a_in[best_i]` into
-// the final slot increases `last` by `fin - last` while decreasing at most one
-// block's sum by `fin - last`, so `last + thresh` can never decrease.
-//
-// The optimal threshold `thresh` must be one of the `2^m` subset sums of the
-// remaining `a`, computed in sorted order via `std.dp.subset_sums(a)` in
-// O(2^m). Binary searching over `sorted_sums` runs at most `m` calls to
-// `can_reach` (each O(m * 2^m) bitmask DP `dp[mask] = (cnt, rem)`, pruned
-// immediately when `thresh > total_sum / k`), for O(m^2 * 2^m) worst-case time.
+// Source: Codeforces 2229F (Load Unbalancing), https://codeforces.com/contest/2229/problem/F
+// Problem: n <= 18 numbers a_i <= 1e9 and k <= n. Reorder them, then add each in turn to a
+//   minimum of k bins (initially 0); print the largest possible final maximum bin.
+//   Multitest, sum of 2^n <= 2^18.
+// Solution: put the maximum fin last (an exchange never loses), so the answer is fin plus the
+//   largest thresh such that the other m = n - 1 numbers can be ordered to fill every bin to
+//   at least thresh; thresh is a subset sum, so binary search (`last_true`) over the sorted
+//   `subset_sums`. can_reach(thresh) is a mask DP keeping the lexicographically largest
+//   (closed blocks, running remainder), a block closing once it reaches thresh: O(m 2^m) per
+//   check, O(m^2 2^m) total.
 
 use std.dp.{subset_sums}
 use std.seq.{argmax}
