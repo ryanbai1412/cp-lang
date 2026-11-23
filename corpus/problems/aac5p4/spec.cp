@@ -65,12 +65,12 @@ fn valid():
     let m: Int = read_output()
     assert m == least
     var used: [1..=n]Bool = false
-    var at = x
+    var pos = x
     for _ in 0..m:
         let d: Int = read_output()
         assert 1 <= d.abs < n and not used[d.abs]
         used[d.abs] = true
-        at += d
-        assert 1 <= at <= n
+        pos += d
+        assert 1 <= pos <= n
     for s in 1..n:
-        assert used[s] or (at + s > n and at - s < 1)
+        assert used[s] or (pos + s > n and pos - s < 1)
