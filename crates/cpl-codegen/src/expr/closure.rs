@@ -92,7 +92,7 @@ impl<'p> Emitter<'p> {
             let cpp = self.ty(ty);
             let cpp = if def.muts.contains(&slot) {
                 format!("{cpp}&")
-            } else if ty.is_scalar() {
+            } else if ty.is_scalar() || self.caches_on_read(ty) {
                 cpp
             } else {
                 format!("const {cpp}&")

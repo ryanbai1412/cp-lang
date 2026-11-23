@@ -527,6 +527,12 @@ impl<'p> Emitter<'p> {
             )
     }
 
+    /// A struct with cached fields: reading it may fill a cache, so its
+    /// methods take it by reference and a parameter holds its own copy.
+    pub(crate) fn caches_on_read(&self, ty: &Ty) -> bool {
+        matches!(ty, Ty::Struct(sid) if !self.program.structs[*sid].cached_fields.is_empty())
+    }
+
     /// `ll gcd(ll a, ll b)`. Call after [`Emitter::enter`].
     fn signature(&self, f: &Function) -> String {
         let id = self.fn_id.expect("a fn");
@@ -570,7 +576,7 @@ impl<'p> Emitter<'p> {
                 } else if ty.is_scalar()
                     || self.facts.stores((Some(id), false, slot)) > 2
                     || self.sunk[id].contains(&slot)
-                    || matches!(ty, Ty::Struct(sid) if !self.program.structs[*sid].cached_fields.is_empty())
+                    || self.caches_on_read(ty)
                 {
                     format!("{cpp} {name}")
                 } else {
