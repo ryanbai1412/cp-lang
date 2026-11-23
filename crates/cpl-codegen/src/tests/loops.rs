@@ -45,3 +45,19 @@ fn a_map_scanned_only_into_a_list_sorted_by_value_is_a_hash_table() {
     let ordered = cpp(&source.replace("sorted(by: c => -c)", "rev"));
     assert!(ordered.contains("std::map<ll, ll> freq"), "{ordered}");
 }
+
+#[test]
+fn explain_names_each_table_stored_as_a_hash_table() {
+    let source = concat!(
+        "let n: 1..=1000 = read()\n",
+        "let a: [0..n]Int = read()\n",
+        "var freq: Map<Int, Int> = Map()\n",
+        "for x in a: freq[x] += 1\n",
+        "print(freq.get(3) ?? 0)\n",
+    );
+    let mut db = cpl_check::Database::new();
+    db.set_file("t.cp", source);
+    let program = cpl_ir::lower(&db.analyze("t.cp").expect("set")).expect("lowers");
+    let report = crate::explain::report("t.cp", source, &program);
+    assert!(report.contains("[hashed] Map<Int, _>"), "{report}");
+}

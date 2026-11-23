@@ -23,7 +23,9 @@ against the profile, specializations and the laws or bounds that chose
 them, remaining checks per build, contexts and generic instances with
 output bytes, unsafe-tier sites. `--json` for tools.
 
-Today `cpl explain <file>` prints closure lowering, dropped fields and
-views, then lists the sections it cannot fill yet under `Not shown yet:`
+Today `cpl explain <file>` prints closure lowering, dropped fields,
+views, the reductions the judge build sinks (the list is never built) and
+the `Map` and `Set` types stored as hash tables (nothing reads their
+order), then lists the sections it cannot fill yet under `Not shown yet:`
 (types, arrays and peak memory, specializations, checks); they wait on
 the compiler's representation query (plan/QUESTIONS.md tools-3).

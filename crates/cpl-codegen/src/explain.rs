@@ -6,6 +6,7 @@ use std::fmt::Write;
 
 const DROPPED: &str = "never read; it and its stores are left out";
 const SUNK: &str = "the list passed here is never built; its loop runs at each push";
+const HASHED: &str = "a hash table: nothing reads its order";
 
 /// The report for `program`, lowered from `text`, naming the file `path`.
 pub fn report(path: &str, text: &str, program: &cpl_ir::Program) -> String {
@@ -15,6 +16,13 @@ pub fn report(path: &str, text: &str, program: &cpl_ir::Program) -> String {
     let dropped = explain_dropped_fields(program);
     let view_ops = explain_views(text, program);
     let sunk = explain_sunk(text, program);
+    let hashed = explain_hashed(program);
+    if !hashed.is_empty() {
+        let _ = writeln!(stdout, "Tables stored as hash tables for {path}:");
+        for ty in &hashed {
+            let _ = writeln!(stdout, "  [hashed] {ty} -> {HASHED}");
+        }
+    }
     if !sunk.is_empty() {
         let _ = writeln!(stdout, "Reductions sunk for {path} (judge build):");
         for (line, col, call) in &sunk {
@@ -28,7 +36,7 @@ pub fn report(path: &str, text: &str, program: &cpl_ir::Program) -> String {
         }
     }
     if entries.is_empty() && view_ops.is_empty() {
-        if dropped.is_empty() && sunk.is_empty() {
+        if dropped.is_empty() && sunk.is_empty() && hashed.is_empty() {
             let _ = writeln!(stdout, "{path}: no closure or fn-typed sites");
         }
         not_shown_yet(stdout);
@@ -112,6 +120,27 @@ fn not_shown_yet(stdout: &mut String) {
     for section in NOT_SHOWN_YET {
         let _ = writeln!(stdout, "  {section}");
     }
+}
+
+/// Each `Map` and `Set` type emitted as a hash table, as the source writes it.
+fn explain_hashed(program: &cpl_ir::Program) -> Vec<String> {
+    let (maps, sets) = crate::unordered::find(program);
+    let any = cpl_ir::Ty::Int;
+    let mut shown: Vec<String> = maps
+        .iter()
+        .map(|k| program.show_ty(&cpl_ir::Ty::Map(Box::new(k.clone()), Box::new(any.clone()))))
+        .map(|t| {
+            t.rsplit_once(',')
+                .map_or(t.clone(), |(head, _)| format!("{head}, _>"))
+        })
+        .chain(
+            sets.iter()
+                .map(|e| program.show_ty(&cpl_ir::Ty::Set(Box::new(e.clone())))),
+        )
+        .collect();
+    shown.sort();
+    shown.dedup();
+    shown
 }
 
 /// Each sunk call as its line, column and callee as the source writes it.
