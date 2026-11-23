@@ -748,7 +748,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0301 Wrong index domain: 16 case(s)
 - E0302 Type mismatch: 45 case(s)
 - E0303 Wrong number of arguments: 10 case(s)
-- E0304 Value is not callable: 2 case(s)
+- E0304 Value is not callable: 3 case(s)
 - E0305 Value is not indexable: 10 case(s)
 - E0306 Invalid arithmetic on domain position (reserved): exempt (reserved in the registry)
 - E0307 Condition is not `Bool`: 1 case(s)
