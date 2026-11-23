@@ -144,7 +144,7 @@ export function CodeEditor({ value, onChange, onRun, readOnly, live = true, clas
         syntaxHighlighting(highlight),
         theme,
         EditorState.readOnly.of(!!readOnly),
-        EditorView.contentAttributes.of({ 'aria-label': label ?? (readOnly ? 'CP Lang example' : 'CP Lang source') }),
+        EditorView.contentAttributes.of({ tabindex: '0', 'aria-label': label ?? (readOnly ? 'CP Lang example' : 'CP Lang source') }),
         keymap.of([
           { key: 'Mod-Enter', run: () => (callbacks.current.onRun?.(), true) },
           indentWithTab,
