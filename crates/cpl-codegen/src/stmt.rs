@@ -654,7 +654,9 @@ impl<'p> Emitter<'p> {
             } => {
                 let effects = Effects::of_block(body);
                 let untouched = match walk::path_root(container) {
-                    Some((false, local)) => !effects.locals.contains(&local),
+                    Some((false, local)) => {
+                        !effects.locals.contains(&local) || fields_untouched(container, body)
+                    }
                     Some((true, global)) => {
                         !effects.globals.contains(&global)
                             && !effects
@@ -745,7 +747,9 @@ impl<'p> Emitter<'p> {
                 // The loop walks the value as it was when the loop began,
                 // so a container the body changes is walked as a copy.
                 let untouched = match walk::path_root(seq) {
-                    Some((false, local)) => !effects.locals.contains(&local),
+                    Some((false, local)) => {
+                        !effects.locals.contains(&local) || fields_untouched(seq, body)
+                    }
                     Some((true, global)) => {
                         !effects.globals.contains(&global)
                             && !effects
@@ -1879,4 +1883,71 @@ fn is_cheap_pure_key(e: &Expr) -> bool {
         ExprKind::Tuple(items) | ExprKind::Variant(_, items) => items.iter().all(is_cheap_pure_key),
         _ => false,
     }
+}
+
+/// The fields `e` names below a local: `self.w` is `(self, [w])`.
+fn local_fields(e: &Expr) -> Option<(usize, Vec<usize>)> {
+    match &e.kind {
+        ExprKind::Local(slot) => Some((*slot, Vec::new())),
+        ExprKind::Field(base, field) => {
+            let (slot, mut path) = local_fields(base)?;
+            path.push(*field);
+            Some((slot, path))
+        }
+        _ => None,
+    }
+}
+
+/// The root of a stored place and the fields above its first index:
+/// a store to `self.w[k]` changes all of `self.w`.
+fn stored_fields(place: &Place) -> (bool, usize, Vec<usize>, bool) {
+    match &place.kind {
+        PlaceKind::Local(slot) => (false, *slot, Vec::new(), false),
+        PlaceKind::Global(id) => (true, *id, Vec::new(), false),
+        PlaceKind::Field(base, field) => {
+            let (global, root, mut path, cut) = stored_fields(base);
+            if !cut {
+                path.push(*field);
+            }
+            (global, root, path, cut)
+        }
+        PlaceKind::Index(base, _) | PlaceKind::Some(base) => {
+            let (global, root, path, _) = stored_fields(base);
+            (global, root, path, true)
+        }
+    }
+}
+
+/// True when `seq` is a field path into a local and every store the body
+/// makes to that local is to a field beside it, never to it, inside it or
+/// above it: `for x in w: n += popcount(x)` walks `w` in place.
+fn fields_untouched(seq: &Expr, body: &Block) -> bool {
+    let Some((slot, walked)) = local_fields(seq) else {
+        return false;
+    };
+    if walked.is_empty() {
+        return false;
+    }
+    let mut stores: Vec<&Place> = Vec::new();
+    walk::deep_stmts(body, &mut |stmt| {
+        if let Stmt::Assign(place, ..) = stmt {
+            stores.push(place);
+        }
+    });
+    walk::deep_exprs(body, &mut |e| match &e.kind {
+        ExprKind::Call(_, args) | ExprKind::CallExpr(_, args) => {
+            stores.extend(args.iter().filter_map(|a| match a {
+                cpl_ir::Arg::Mut(place) => Some(place),
+                cpl_ir::Arg::Value(_) => None,
+            }));
+        }
+        ExprKind::MutSlice(place, _, _)
+        | ExprKind::Mutate(_, place, _)
+        | ExprKind::Sort(place, _, _) => stores.push(place),
+        _ => {}
+    });
+    stores.iter().all(|place| {
+        let (global, root, path, _) = stored_fields(place);
+        global || root != slot || (!path.starts_with(&walked) && !walked.starts_with(&path))
+    })
 }
