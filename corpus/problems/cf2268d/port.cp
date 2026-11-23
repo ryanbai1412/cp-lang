@@ -23,7 +23,7 @@ let n: 1..=5e5 = read()
 domain I = 0..n
 let p: [I](1..=n) = read()
 
-let up = p.next_greater()
+let up = p.next_smaller(by: x => desc(x))
 var first: [I]?I = none
 var kids: [I]Int = 0
 for i in I if let u = up[i]:
@@ -36,7 +36,7 @@ fn charge_edge(l: I, r: I, i: I, u: I) -> Int:
     let exit_right = (r - u) * (2 * inside - (kids[u] - 1))
     let total_in = (u - i) * inside / 2
     var two = 0
-    if let st = i + 1:
+    if let st = i.next:
         two = sum((up[a]! - a) - 1 for a in st..u)
         for b in st..=u if let fb = first[b]:
             two += (b - fb) - kids[b] + (if b < u: kids[fb] else: 0)
