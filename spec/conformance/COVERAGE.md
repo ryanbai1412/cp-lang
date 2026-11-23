@@ -7,7 +7,7 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 2765 (995 passing). Rules: 573.
+Cases: 2766 (995 passing). Rules: 573.
 
 ## Summary per chapter
 
@@ -21,7 +21,7 @@ Cases: 2765 (995 passing). Rules: 573.
 - R06 (06-control-functions.md): 24 rules, 101 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R07 (07-sequences.md): 90 rules, 166 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R08 (08-traits-generics.md): 29 rules, 91 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R09 (09-contexts-checks.md): 26 rules, 57 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R09 (09-contexts-checks.md): 26 rules, 58 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R10 (10-io.md): 19 rules, 110 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R11 (11-modules-prelude.md): 16 rules, 46 cases; 0 uncovered, 0 happy-path only, 1 negative only
 - R12 (12-powers.md): 17 rules, 36 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -562,7 +562,7 @@ Each rule: positive / negative case counts, then the gap if any.
 
 ### R09: 09-contexts-checks.md
 
-- R09.4.1 [2+ 1-]: Ordinal order is a walk order, not a successor: `V(x)`, `V.at(x)`, `Int(v)`, `V.wrap`, `.n...
+- R09.4.1 [3+ 1-]: Ordinal order is a walk order, not a successor: `V(x)`, `V.at(x)`, `Int(v)`, `V.wrap`, `.n...
 - R09.1.1 [4+ 2-]: Precedence: call argument, then the innermost `with`, then outer ones, then the default. A...
 - R09.1.2 [1+ 1-]: Values are compile-time constants. A runtime value is a parameter or a fresh type (`type Z...
 - R09.1.3 [6+ 0-]: Contexts are **lexical**: a body sees the contexts where it is written. A function that sh...

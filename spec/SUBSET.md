@@ -276,8 +276,6 @@ documented. The stdlib's own gaps are in `std/GAPS.md`.
 - core-10/print-view-honours-sep.cp: compiler
 - std-graph/bfs-over-named-product-domain.cp: compiler
 - core-05/let-heap-element-lends-no-copy.cp: compiler
-- core-05/closure-lends-captured-list.cp: compiler
-- core-05/map-walk-lends-entry-list.cp: compiler
 - core-06/generator-in-nested-for-streams.cp: compiler
 - core-04/product-result-indexed-by-parts.cp: compiler
 - core-06/lambda-unpacks-tuple-vertex.cp: compiler
