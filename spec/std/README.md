@@ -1172,7 +1172,7 @@ fn fixed_cost_paths<S, M, W>(from: List<S>, moves: List<M>, cost: M -> W,
 // O(n m); none on a reachable negative cycle
 fn bellman_ford<V, N, A, W>(next: N, from: List<(V, W)>, w: A -> W)
     -> ?Paths<V, W, A>
-fn floyd_warshall<V, W>(w: [V, V]?W) -> ?[V, V]?W // O(n^3)
+fn floyd_warshall<V, W, R>(mut d: [V, V]?W, over: R = Semiring(min, +)) -> Bool // O(n^3); false on a negative cycle
 fn topo<V, N>(next: N) -> ?List<V> // O(n + m)
 fn peel<V, N>(next: N) -> List<V> // O(n + m)
 fn find_cycle<V, N>(next: N) -> ?List<V> // O(n + m)
