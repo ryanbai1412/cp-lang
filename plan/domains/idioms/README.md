@@ -1,7 +1,24 @@
 # idioms
 
-Segment: D. Taste and co-design. Owns: bundled skill, principles, idiom catalog, `research/dryrun`, `corpus/` (ports + new problems), `crates/cpl-judge`, scoreboard (corpus suite), `plan/domains/spec/delta/`. Status (2026-11-22): skill only on branches; 175/305 tracked ports check on v0.3, none judge-proven.
+Segment: D. Taste and co-design. Owns: bundled skill, principles, idiom catalog, `research/dryrun`, `corpus/` (ports + new problems), `crates/cpl-judge`, scoreboard (corpus suite), `plan/domains/spec/delta/`. Status (2026-11-22, late): skill on main (`skill-gen.py --check`: 50 files, 76 blocks); 289/305 tracked ports check on v0.3; `corpus/sets/v03.txt` has 309 judge-proven entries, all 8 profiles.
 Packet: [PLAN.md](PLAN.md) (detail), [metrics.toml](metrics.toml) (commands + today's values), [ARCHITECTURE.md](ARCHITECTURE.md) (code as it is), [worklog.md](worklog.md).
+
+## Milestone 1 (priority over everything below)
+[plan/product/MILESTONE-1.md](../../product/MILESTONE-1.md): a Codeforces 1500+ friend who has never used CPL understands it, tries it in the browser, installs it, solves unfamiliar problems, tests them, submits for AC on Codeforces/AtCoder, and competes, all without help. Idioms owns the **acceptance run** that says whether this works, grown out of the blind skill evals.
+
+**What the milestone needs from idioms (exit criteria)**
+- **Protocol and harness.** `research/acceptance/PROTOCOL.md` defines the run: a cold agent on a fresh machine plays the friend using only https://cp-lang.org and the docs it links (no repo, no skill), steps 1-7 of the scenario (J1-J7 in EXPERIENCE.md terms). Each run writes `research/acceptance/runs/<date>.json`: pass or fail per step, minutes per step, and every hesitation and workaround, each tagged with the owning lane.
+- **Unseen problems.** A held-out set of Div2 A-E problems plus one timed virtual contest (5 problems, 2 h), each with an accepted C++ reference, gen.py, tests and a checker where needed. They are kept out of `corpus/`, the skill and the docs.
+- **Blocker list.** `plan/product/BLOCKERS.md` is generated from the runs (ranked by scenario step blocked, then frequency, then minutes lost), registered in `gen.toml`, and refreshed daily. Each lane gets its rows in its worklog.
+- **Done when:** the latest run passes 7/7 steps; Solve gets accepted verdicts against the references on at least 8 of 10 unseen problems; Compete solves at least 4 of 5 in 2 h with 0 blocks from missing ordinary functionality or tool failures; BLOCKERS.md has no open row that blocks a step.
+- **Submit evidence.** Every v03 entry builds under the `codeforces` and `atcoder` profiles (`every_v03_port_checks`, true today). Real-judge AC on a sample waits on the coordinator; Ryan decides the accounts.
+
+**Deferred** (cheap or gate-only until the milestone passes): idiomatic re-ports from `dream.cp` and the token and taste targets (M3); corpus growth past 100 and `cpl-conform corpus` 100/100; port lint-warning triage, except where the friend meets the lint; the unseen-20 skill gate, which the acceptance run's unseen set replaces for now. Mechanical port migration continues only when a stdlib or compiler fix unblocks a port.
+
+**Top 3 next steps**
+1. Write `research/acceptance/PROTOCOL.md`, the run JSON schema, and the BLOCKERS.md generator, with its `gen.toml` entry.
+2. Build the held-out unseen set (10 Div2 A-E plus a 5-problem virtual contest) with references, generators, tests and checkers.
+3. Run the first acceptance run with a cold agent, publish BLOCKERS.md, and send each lane its rows.
 
 ## Mission
 What idiomatic v0.3 looks like, written down (skill, principles, idiom catalog) and proven (re-ports on every judge, dry runs, blind evals, new problems). A cold model given the skill writes code that says the editorial's idea, and the corpus proves it is accepted on every judge.

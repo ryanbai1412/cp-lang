@@ -9,12 +9,13 @@ Detail behind [README.md](README.md). Numbers are from [metrics.toml](metrics.to
 - The corpus suite moved 7 -> 12/100 since the committed scoreboard; 46 of 100 have no tests yet.
 - The token-ratio script broke when `scripts/scoreboard.py` was deleted (`ea2b88ff`), so goal 1's token test has no measurement today.
 
-## Workstreams, in order
-1. **Land in-flight work** (phase 2 day 1). Rebase `devin/skill-v2`, `devin/skill-eval-1`, `devin/cp-lang-skill` (drop if `git cherry` shows it superseded by skill-v2), the docs part of `devin/idioms-docs`. Add `skill-gen.py --check` to the fast gate (ask infra). Findings from `research/skill-eval/repro/` go to compiler/stdlib/site worklogs as requests.
-2. **Measurement repair.** Restore token counting (port it into `cpl-conform` or a small `scripts/` helper with infra's agreement); `cpl-conform corpus --write` so the board matches a fresh run; make `judges.rs` read the scoreboard as JSON instead of slicing strings; add the tracked ports that pass check to the judge proof.
-3. **Blind eval loop.** One cold run per skill change on the 20; then write a fresh unseen 20 (CSES/AtCoder ABC-E/F style, same shape as `research/dryrun/`: ref, gen, tests). Each run records pass, workaround, lint per problem in `research/skill-eval/`.
-4. **Re-ports.** Batches of ~20: migrate `port.cp` to v0.3 (judge proof), then rethink from `dream.cp` in review-score order (18 under 4 first). Each port lands with its friction report and review. Lint warnings on re-ports are triaged; false positives go to lint-fmt as FP cases.
-5. **Corpus growth.** Hill-climb beyond 100 in thin areas (interactive, geometry, strings, flows); every dream/spec gap in `plan/domains/spec/delta/hillclimb.md` becomes a spec proposal or a conformance case.
+## Workstreams, in order (Milestone 1 first)
+0. **Milestone 1 acceptance run** (first, from 2026-11-22). Protocol, run schema and BLOCKERS.md generator (`research/acceptance/`, `gen.toml`); a held-out unseen Div2 set and a 5-problem virtual contest with references, gens, tests and checkers; a cold agent playing the friend on a fresh machine with only the website and docs; blockers ranked and sent to each lane's worklog daily. Real Codeforces/AtCoder submissions only after the coordinator confirms the accounts Ryan picks. This replaces workstream 3's unseen-20 gate for now.
+1. **Land in-flight work** (done 2026-11-22: skill, eval, principles and catalog on main).
+2. **Measurement repair** (done: token ratio, judge coverage of `corpus/sets/v03.txt`). Kept only as the Submit-step evidence.
+3. **Blind eval loop.** Rerun the known-20 cold eval when the skill changes, as a regression check. It feeds the acceptance run's agent setup, which uses the docs, not the skill.
+4. **Re-ports.** Mechanical migration continues only when a stdlib or compiler fix unblocks a port (16 left, each filed with its owner). The idiomatic rethink from `dream.cp` is deferred until the milestone passes.
+5. **Corpus growth.** Deferred, except for problems that become acceptance-run material.
 
 ## Why these milestones
 - **M1 (skill on main, blind-measured)** first because Ryan called the skill critical, and every other eval (writable-from-docs, re-ports by agents) runs through it. Landing is mostly done work.
@@ -34,8 +35,7 @@ Detail behind [README.md](README.md). Numbers are from [metrics.toml](metrics.to
 - **Taste mis-calibration.** Agent reviews score 4 by default; without Ryan's samples the rubric drifts. Mitigation: Ryan reviews 5 re-ports per batch.
 - **Gate cost.** Adding 305 ports to `judges.rs` slows the fast gate; keep the full sweep in `--full` and a sampled set in `--fast`.
 
-## Phase 2, first moves
-1. Rebase and land `devin/skill-v2` (check + fast gate), then `devin/skill-eval-1`, then the `devin/idioms-docs` docs.
-2. Ask infra to gate `skill-gen.py --check` and to own a token-count helper; file the 5 repro findings with their owners.
-3. Refresh the corpus scoreboard and extend `judges.rs` to tracked ports that check.
-4. Run one blind eval on the landed skill and record it.
+## Next moves (Milestone 1)
+1. `research/acceptance/PROTOCOL.md`, the run schema, and the BLOCKERS.md generator with its `gen.toml` entry.
+2. The held-out unseen set: 10 Div2 A-E plus a 5-problem virtual contest, with references, gens, tests and checkers.
+3. First acceptance run with a cold agent; publish BLOCKERS.md; send each lane its rows.
