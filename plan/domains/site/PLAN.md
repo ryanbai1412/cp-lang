@@ -8,13 +8,17 @@ The site works: build, gate, typecheck, unit tests and both browser smokes pass,
 
 ## Workstreams, in order
 
-1. **Land and gate (M1).** Rebase `devin/v02-delete-site-followup` (wasm cap, `scripts/site-check.sh`, smoke in a cached stage) onto main; drop what `git cherry` shows superseded; add `web/scripts/links.mjs` to the gate path; ask infra to run `scripts/site-check.sh` in `.github/workflows/site.yml` and to add per-push Worker previews. Then `devin/wip-site-plans`: move the still-true parts of `plan/site/` into this folder, drop the rest.
-2. **Restore the bar (M2).** The eval needs statements and a fetcher. Ask idioms/infra (owners of the harness) to restore `scripts/fetch-statement.py` or commit the 55 statements, and to point the bundle at `/llms-full.txt` so the eval reads exactly what the site serves. Site's part: make `/llms-full.txt` complete and ordered for a model, then triage every failure: docs gap (fix here, add a guide example) or language gap (file with the owner).
-3. **UI pass (M1).** One nav placement across `HomeLayout` and `DocsLayout`; landing tabs lead with programs that run; phone pass at 390 px on every route; light and dark. Screenshot every change into the worklog.
-4. **Size (M1).** Search index from 2.7 MB to ≤ 500 KB gzipped: index the reference by symbol and summary instead of full text, or split it per section. Keep the wasm cap.
-5. **Live guides (M2).** Fenced `cp` blocks with status `runs` render as a compact `Runner` (Run, Open in playground). Static otherwise, with the status badge.
-6. **Learn depth (M3).** Done at the proposed size: chapters 4-8 (functions, records and match; strings and output; sorting and searching; the standard library; stress and trace) and 8 more original problems, each with reference, tests and a judged starter in the gate. Then, on Ryan's scope ("learn: through guides, through practice problems"), a graphs chapter and a DP chapter with two judged problems each: 10 chapters, 19 problems. Then a greedy and two-pointers chapter (`@!multitest`, sliding windows, prefix sums with a `Map`) with Boat pairs and Budget window: 11 chapters, 21 problems. Interval DP waits on `V.ranges` in the compiler.
-7. **Spec-only snippets to zero (M3).** The 7 `spec` and 4 `checks` snippets wait on the compiler; list them in the compiler worklog with the gate report, flip each the day it runs.
+Ordered by [Milestone 1](../../product/MILESTONE-1.md): work that blocks steps 1-2 of its scenario (Understand, Try) or the way into step 3 (Install) comes first.
+
+1. **30-minute intro (step 1).** One page, `/learn/intro`, built from `web/content/docs/guides/tour.mdx` and the cheat sheet: syntax, typed input, domains, optionals, the std, and testing, ≤ 4,500 words, every example a live runner. It ends at Practice and Install. The homepage's first call to action points to it.
+2. **Practice that teaches (step 2).** Pick at least 12 Div 2 A/B problems from the 21 that teach CPL's distinctive patterns. Give each a `hints` list (shown before acceptance, linking to the std docs or a guide). Lint live in the practice editor; that needs a wasm `lint` entry point, requested from its owner.
+3. **Homepage and install (steps 1, 3).** The value proposition and 3 differentiators above the fold at 390 and 1280 px; Install in the header at every width; `/setup` linked from the intro and the docs; a P5 cold-read baseline.
+4. **Docs examples all run (step 2).** The 7 `spec` snippets go to zero as the compiler lands them; each one left is badged and listed with its owner. Search finds every std item by name. The docs-only eval measures this once a model key or CI run exists.
+5. **Keep green (standing).** Gate, links, phone pass, `/` page weight ≤ 800 KB with no wasm, search ≤ 500 KB, wasm cap.
+
+Done before Milestone 1: land and gate (wasm cap, `scripts/site-check.sh`, link check); the UI pass (one nav, phone fit, landing tabs that run first); search 2.7 MB to 491 KB; live guide runners; Learn at 11 chapters and 21 problems; `cpl doc` HTML in the site's design; the trace viewer links back.
+
+Deferred (milestone "what can wait"): interval DP and chapters past Div 2 C; trace viewer and `cpl doc` polish; 0.3-only landing tabs; Problems and Performance pages; size tuning beyond the caps.
 
 ## Why these milestones
 

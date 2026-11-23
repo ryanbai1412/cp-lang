@@ -19,6 +19,24 @@ A competitive programmer goes from "what is this" to an accepted submission they
 | Docs bundle the docs-only eval reads | The eval harness `scripts/writable-from-docs.py` and statements: idioms / infra |
 | Problems gallery, Performance page (render only) | `corpus/` (idioms), `bench/` data (perf) |
 
+## Milestone 1
+
+Ryan's [Milestone 1](../../product/MILESTONE-1.md) sets the priorities now; the v0.3 milestones and metrics below are means to it. Site owns scenario steps 1 (Understand) and 2 (Try), and the way into step 3 (Install).
+
+What it needs from site, each checkable:
+- **Homepage:** at 390 px and at 1280 px, the first screen says what CPL is, who it is for, and one runnable program. A cold reader names 3 advantages over C++ after 3 minutes (probe P5). Install is linked from the header at every width.
+- **30-minute intro:** one page, `/learn/intro`, takes about 30 minutes to read (≤ 4,500 words). Every example on it runs in place, and it ends with links to Practice and Install.
+- **Browser practice:** at least 12 hand-picked Div 2 A/B problems, each judged in the browser. Each has hints shown before acceptance that link to the std docs or a guide, and the editor lints live.
+- **Docs:** search finds every std item by name, and every docs example runs; the gate reports `spec: 0`, or each spec-only block is badged and listed with its owner.
+- **Install:** `/setup` is one click from the homepage, the intro and the docs. Its commands are the ones infra's install tests run.
+
+Deferring (milestone "what can wait", or not on a scenario step): interval DP and further Learn chapters past Div 2 C; trace viewer and `cpl doc` polish; the 0.3-only landing tabs; the Problems and Performance pages; page-weight and search tuning beyond the existing caps.
+
+Top 3 next steps:
+1. Write `/learn/intro`, the 30-minute guide, from the tour and the cheat sheet, and make it the homepage's first call to action.
+2. Add hints to practice problems (a `hints` list per problem, linking to docs), and live lint in the practice editor. Lint in the browser needs a `lint` entry point in `crates/cpl-wasm`; I'll ask its owner.
+3. A homepage pass: the value proposition and 3 differentiators above the fold, Install visible at every width, and a baseline for the P5 cold read.
+
 ## Success criteria for v0.3
 
 1. Every program on the site is v0.3, compiler-checked at build time, and has Run only if it runs: gate `spec: 0, checks: 0`.
@@ -67,6 +85,7 @@ Probes (cold agent, pass/fail + time):
 - **P2 lookup:** find "what does `r.last_true(ok)` return on an empty range" via the site. Tests 2. Baseline: failed (search missed bare method names and core table rows); now passes, `last_true` finds the R04.4.19 row (smoke-tested).
 - **P3 add a practice problem** by following ARCHITECTURE.md; the gate judges it. Files touched, minutes. Baseline (site agent dry run, not cold): ARCHITECTURE.md had no recipe and the gate checked only `ref.cp` against `tests.json`, so a problem missing its page or meta.json entry shipped silently. Now a 4-step recipe; the gate fails on a missing piece. 4 files touched. Cold run pending.
 - **P4 phone pass:** list layout bugs at 390 px on every route. Tests 4. Baseline, mechanical half: `pnpm --dir web phone` -> 17/17 routes fit (Learn routes added with chapters 4-9), nothing past the edge. Judged half (site agent, 8 routes on cp-lang.org at 390x844): the playground editor pushed Input below the fold (fixed); two menu icons, chevron on Home layouts and sidebar on Docs layouts (the nav-placement debt); reference signatures looked cut off under the copy button (really truncated by `cpl doc`; fixed); the landing tab row clipped its last tab (fixed: rows wrap).
+- **P5 value in 3 minutes:** a cold reader who knows C++ opens `/` for 3 minutes, then names what CPL is, who it is for and 3 advantages over C++. Tests Milestone 1 step 1. Baseline: not run yet.
 
 ## Improve (highest impact first)
 
