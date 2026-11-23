@@ -1908,8 +1908,15 @@ impl<'a> Checker<'a> {
                 name.text
             );
             let suggestion = super::spec_member_typo(&base_ty, &name.text);
+            let call = Span::new(base.span.end, name.span.end + 2);
+            let iter_call = crate::builtins::foreign_iter_call(&name.text)
+                && matches!(&base_ty, Ty::Str | Ty::Named { .. })
+                && self.text(Span::new(name.span.end, call.end)) == "()";
             if let Some(diag) = self.error(codes::UNKNOWN_FIELD, name.span, message) {
-                if let Some(s) = suggestion {
+                if iter_call {
+                    diag.help = Some("a list or string is iterated as it is: `for x in xs`".into());
+                    diag.fix(format!("remove `.{}()`", name.text), call, "");
+                } else if let Some(s) = suggestion {
                     diag.suggest(name.span, s);
                 } else if let Some(help) = super::advice::foreign_call(&name.text) {
                     diag.help = Some(help.to_string());

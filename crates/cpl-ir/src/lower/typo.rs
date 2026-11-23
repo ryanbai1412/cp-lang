@@ -175,6 +175,34 @@ impl<'a> Lowerer<'a> {
         }
     }
 
+    /// `x.unwrap()` on an optional is `x!`, and on a value is just `x`;
+    /// `xs.iter()` and `s.chars()`
+    /// are left out, since a list or string is iterated as it is.
+    pub(super) fn foreign_call_fix(&mut self, ty: &Ty, base: &ast::Expr, method: &str, span: Span) {
+        let (help, new) = match (ty, method) {
+            (Ty::Opt(_), "unwrap" | "expect") => (
+                "`x!` unwraps an optional, trapping on `None` at this place (R02.4.2)",
+                "!",
+            ),
+            (_, "unwrap") => ("this is not an optional, so there is nothing to unwrap", ""),
+            (Ty::Str | Ty::List(_), _) if cpl_check::foreign_iter_call(method) => {
+                ("a list or string is iterated as it is: `for x in xs`", "")
+            }
+            _ => return,
+        };
+        let edit = self.span(Span::new(base.span.end, span.end));
+        if let Some(last) = self.diags.last_mut() {
+            last.help = Some(help.to_string());
+            let title = if new.is_empty() {
+                format!("remove `.{method}()`")
+            } else {
+                "write `!`".to_string()
+            };
+            last.fixes.clear();
+            last.fix(title, edit, new);
+        }
+    }
+
     pub(super) fn suggest_last(&mut self, span: Span, s: String) {
         let span = self.span(span);
         if let Some(last) = self.diags.last_mut() {

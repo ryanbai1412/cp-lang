@@ -1,0 +1,8 @@
+error[E0203]: an `Int` has no method `unwrap` that `cpl run` knows
+  --> optional_unwrap.cp:1:42
+  |
+1 | fn best(xs: List<Int>) -> Int = xs.max().unwrap()
+  |                                          ^^^^^^
+  = help: this is not an optional, so there is nothing to unwrap
+
+optional_unwrap.cp: 1 error

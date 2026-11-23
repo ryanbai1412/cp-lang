@@ -109,6 +109,12 @@ pub fn foreign_member(receiver: Receiver, name: &str) -> Option<&'static str> {
         .then_some(own)
 }
 
+/// Rust's `xs.iter()` or `s.chars()`: a call CP Lang leaves out, since
+/// a list or string is iterated as it is.
+pub fn foreign_iter_call(name: &str) -> bool {
+    matches!(name, "iter" | "into_iter" | "chars")
+}
+
 /// Another language's name for a std `Str` function: Python's `upper`
 /// or `strip`, Java's `toUpperCase`.
 pub fn foreign_str_fn(name: &str) -> Option<&'static str> {
