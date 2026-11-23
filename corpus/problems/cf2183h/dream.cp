@@ -8,9 +8,9 @@ use std.dp.{monge_path}
 let n: 1..=2e5 = read()
 let k: 1..=n = read()
 let a = read<[n]-1e9..=1e9>().sorted()
-let pref = a.prefix_sums()                                       // [a.Cut]Int
-let st = a.cuts.find(c => c == n or pref[c] + a[c] * c > 0)!
-fn cost(j: a.Cut, i: a.Cut) -> I128 = (pref[i] - pref[j]) * (i - j)
+let pref = a.scan(+)
+let st = (0..=n).find(c => c == n or pref.prefix(c) + a[c] * c > 0)!
+fn cost(j: Int, i: Int) -> I128 = I128(pref.fold(j..i)) * (i - j)
 let rest = n - k + 1
-if rest <= st: return print(cost(0, rest) + pref[n] - pref[rest])
-print(aliens(k, solve: pen => monge_path([0] + (st..=n), cost: (j, i) => cost(j, i) + pen)))
+if rest <= st: return print(cost(0, rest) + pref.fold(rest..n))
+print(aliens(k, solve: (pen: I128) => monge_path([0] + (st..=n).collect(), cost: (j, i) => cost(j, i) + pen)))
