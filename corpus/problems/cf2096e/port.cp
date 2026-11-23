@@ -21,7 +21,7 @@ var inv = 0
 for (i, c) in s.rev.items:
     if c == 'P':
         inv += cnt_b
-        cnt_p_odd += i % 2
+        cnt_p_odd += (n - 1 - i) % 2
     else:
         cnt_b += 1
 let parity_fix = abs(cnt_p_odd - (n - cnt_b) / 2)
