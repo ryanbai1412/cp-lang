@@ -394,7 +394,7 @@ fn help_json_lists_every_command_with_its_usage_summary_json_and_help() {
         .filter(|c| c.at(&["json"]).as_str().is_none())
         .map(|c| c.at(&["name"]).as_str().unwrap())
         .collect();
-    assert_eq!(no_json, ["watch", "lsp", "dap", "replay", "self"]);
+    assert_eq!(no_json, ["watch", "lsp", "dap", "self"]);
     for command in commands {
         let name = command.at(&["name"]).as_str().unwrap();
         let usage = command.at(&["usage"]).as_str().unwrap();

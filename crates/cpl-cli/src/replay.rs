@@ -11,6 +11,7 @@ use crate::{compile_side, compile_text, trace, Side, EXIT_ERRORS, EXIT_USAGE};
 
 const USAGE: &str = "\
 usage: cpl replay <file.cp> --trace <trace.json> --step <n> [--input <file>]
+                  [--json]
 
 Runs one call of a recorded run again with the file's edited fn: the call
 open at step <n> of the trace (the innermost one; --frame <k> picks the
@@ -23,7 +24,9 @@ The trace is the page `cpl run --trace` writes, or its JSON (`--format
 json`); it holds the source that was recorded. The input is --input, or the
 case `cpl stress` saved last for the file. When the edit changes what the
 fn takes or returns, or the call reads past the input, the whole file runs
-again and the report says so.
+again and the report says so. --json prints the report as one JSON object:
+the `call`, what it returns `before` and `after` the edit, the first
+`change` and any `earlier` one, the `fallback` and the `trap`.
 ";
 
 pub(crate) use cpl_interp::replay::call_at;
@@ -170,6 +173,60 @@ pub(crate) fn report(replay: &Replay) -> String {
     out
 }
 
+/// [`report`] as one JSON object, for an editor: steps count from 1, and
+/// every value is the trace's JSON.
+pub(crate) fn report_json(replay: &Replay) -> String {
+    use cpl_json::Value;
+    let raw = |json: &Option<String>| {
+        json.as_deref()
+            .and_then(|json| cpl_json::parse(json).ok())
+            .unwrap_or(Value::Null)
+    };
+    let change = |change: &Option<cpl_interp::trace::Change>| match change {
+        None => Value::Null,
+        Some(c) => cpl_json::obj([
+            ("step", (c.step + 1).into()),
+            ("line", c.line.into()),
+            (
+                "variable",
+                c.variable.clone().map_or(Value::Null, Value::from),
+            ),
+            ("before", raw(&c.before)),
+            ("after", raw(&c.after)),
+        ]),
+    };
+    let call = &replay.recorded;
+    let report = cpl_json::obj([
+        (
+            "call",
+            cpl_json::obj([
+                ("name", call.name.as_str().into()),
+                ("ordinal", call.ordinal.into()),
+                ("entry", (call.entry + 1).into()),
+                ("exit", call.exit.into()),
+                ("args", raw(&Some(call.args.clone()))),
+            ]),
+        ),
+        ("replayed", replay.replayed.is_some().into()),
+        ("before", raw(&replay.before.returned)),
+        ("after", raw(&replay.after.returned)),
+        ("change", change(&replay.change)),
+        ("earlier", change(&replay.earlier)),
+        (
+            "fallback",
+            replay.fallback.clone().map_or(Value::Null, Value::from),
+        ),
+        (
+            "trap",
+            replay
+                .trap
+                .as_ref()
+                .map_or(Value::Null, |t| t.message.as_str().into()),
+        ),
+    ]);
+    cpl_json::to_string(&report) + "\n"
+}
+
 pub(crate) fn cli(rest: &[&str], stdout: &mut dyn Write, stderr: &mut String) -> u8 {
     if rest.iter().any(|arg| matches!(*arg, "-h" | "--help")) {
         let _ = stdout.write_all(USAGE.as_bytes());
@@ -180,6 +237,7 @@ pub(crate) fn cli(rest: &[&str], stdout: &mut dyn Write, stderr: &mut String) ->
         EXIT_USAGE
     };
     let (mut file, mut trace_path, mut step, mut frame, mut input) = (None, None, None, 0, None);
+    let mut json = false;
     let mut args = rest.iter();
     while let Some(arg) = args.next() {
         match *arg {
@@ -197,6 +255,7 @@ pub(crate) fn cli(rest: &[&str], stdout: &mut dyn Write, stderr: &mut String) ->
                 None => return usage("--frame takes a number, 0 for the innermost call"),
             },
             "--input" => input = args.next(),
+            "--json" => json = true,
             other if file.is_none() && !other.starts_with('-') => file = Some(other),
             other => return usage(&format!("unexpected `{other}`")),
         }
@@ -240,7 +299,11 @@ pub(crate) fn cli(rest: &[&str], stdout: &mut dyn Write, stderr: &mut String) ->
         call_at(recorded, step, frame)
     }) {
         Ok(replay) => {
-            let _ = stdout.write_all(report(&replay).as_bytes());
+            let text = match json {
+                true => report_json(&replay),
+                false => report(&replay),
+            };
+            let _ = stdout.write_all(text.as_bytes());
             0
         }
         Err(message) => {

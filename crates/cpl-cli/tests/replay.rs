@@ -73,6 +73,16 @@ fn a_fixed_fn_replays_the_failing_call_alone() {
         out.contains("call 1 of `most_watched()`") && out.contains("the call runs as recorded"),
         "{out}"
     );
+    let (code, out, err) = cpl(&dir, &[&replay[..], &["13", "--json"]].concat());
+    assert_eq!(code, 0, "{err}");
+    let json = cpl_json::parse(&out).expect("cpl replay --json is JSON");
+    assert_eq!(json.at(&["call", "name"]).as_str(), Some("most_watched"));
+    assert_eq!(json.at(&["call", "entry"]).as_i64(), Some(13));
+    assert_eq!(json.at(&["before"]).as_i64(), Some(1));
+    assert_eq!(json.at(&["after"]).as_i64(), Some(2));
+    assert_eq!(json.at(&["change", "step"]).as_i64(), Some(17));
+    assert_eq!(json.at(&["change", "variable"]).as_str(), Some("order"));
+    assert_eq!(*json.at(&["fallback"]), cpl_json::Value::Null);
     let (code, _, err) = cpl(&dir, &[&replay[..], &["2"]].concat());
     assert_eq!(code, 1);
     assert!(err.contains("no fn call is running at step 2"), "{err}");

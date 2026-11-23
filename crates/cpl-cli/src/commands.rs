@@ -229,7 +229,7 @@ pub(crate) const COMMANDS: &[Command] = &[
         name: "replay",
         args: "<file> --trace <t.json> --step <n>",
         summary: &["run one recorded call again with the file's edited fn"],
-        json: Json::None,
+        json: Json::Flag,
         options: None,
     },
     Command {
