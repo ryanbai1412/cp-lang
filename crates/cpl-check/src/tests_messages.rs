@@ -186,3 +186,10 @@ fn a_modulus_is_part_of_the_mod_type() {
         ("E0302", "`+` mixes a Mod<7> and a Mod<11>")
     );
 }
+
+#[test]
+fn max_of_one_sequence_becomes_the_member() {
+    let d = check("let xs = [1, 2]\nprint(max(xs), min(xs.rev))\n");
+    let fixes: Vec<_> = d.iter().map(|d| d.fixes[0].edits[0].1.as_str()).collect();
+    assert_eq!(fixes, ["xs.max()!", "xs.rev.min()!"], "{d:?}");
+}

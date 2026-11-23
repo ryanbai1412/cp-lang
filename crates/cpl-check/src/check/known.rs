@@ -158,7 +158,16 @@ impl<'a> Checker<'a> {
                 let message = format!(
                     "`{name}` takes 2 arguments, but 1 was given; use `.{name}()` on a sequence"
                 );
-                self.error(codes::WRONG_ARG_COUNT, call.span, message);
+                let xs = self.text(args[0].value.span);
+                let xs = if xs.contains(' ') && !xs.starts_with('[') {
+                    format!("({xs})")
+                } else {
+                    xs.to_string()
+                };
+                let ours = format!("{xs}.{name}()!");
+                if let Some(diag) = self.error(codes::WRONG_ARG_COUNT, call.span, message) {
+                    diag.fix(format!("write `{ours}`"), call.span, ours);
+                }
                 Some(Ty::Error)
             }
             ("max" | "min", [first, rest @ ..]) if !rest.is_empty() => {
