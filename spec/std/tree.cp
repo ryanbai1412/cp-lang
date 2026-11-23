@@ -3347,15 +3347,25 @@ pub struct KruskalTree<V, N, W>:
     /// example: `domain V = 0..3; let es: [0..2](u: V, v: V, w: Int) = [(u: 0, v: 1, w: 5), (u: 1, v: 2, w: 3)]; let (domain N, kt) = kruskal_tree(es, w: e => es[e].w); kt.w[kt.top(1, e => es[e].w < 5)] == Some(3) and kt.top(0, e => false) == kt.leaf[0]`
     pub fn top<E>(self, v: V, ok: E -> Bool) -> N = todo
 
-    /// For every node, `op` folded over the `leaf` values of the leaves under it, in vertex order:
-    /// the least walk home from any vertex a subtree reaches is `kt.up(min, leaf: v => home[v]!)`.
+    /// For every node, `op` folded over the `leaf` values of the leaves under it: the least walk
+    /// home from any vertex a subtree reaches is `kt.up(min, leaf: v => home[v]!)`. Each node
+    /// folds its two children, the lower node first, so `op` should commute unless that order
+    /// is the one wanted.
     ///
     /// cost: O(n) calls of `op` and `leaf`
     /// empty: never empty; every leaf has a value
     /// order: keyed by `N`
     /// traps: never
     /// example: `domain V = 0..3; let es: [0..2](u: V, v: V, w: Int) = [(u: 0, v: 1, w: 5), (u: 1, v: 2, w: 3)]; let (domain N, kt) = kruskal_tree(es, w: e => es[e].w); let c = kt.up(+, leaf: v => 1); c[kt.reach(2, 3)] == 2 and c[kt.leaf[0]] == 1`
-    pub fn up<T, M>(self, op: M, leaf: V -> T) -> [N]T = todo
+    pub fn up<T, M>(self, op: M, leaf: V -> T) -> [N]T:
+        let g = Monoid<T>.of(op).op
+        var acc: [N]?T = None
+        for v in V: acc[self.leaf[v]] = Some(leaf(v))
+        for x in N:
+            if let p = lift.parent(x):
+                let c = acc[x]!
+                acc[p] = if let a = acc[p]: Some(g(a, c)) else: Some(c)
+        [N] x => acc[x]!
 
     /// The least possible largest edge weight on a path from `a` to `b`: the weight of their
     /// lowest common ancestor. `None` when they are not connected, and at `a == b`.

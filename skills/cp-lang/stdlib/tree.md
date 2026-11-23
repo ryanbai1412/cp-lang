@@ -267,7 +267,7 @@ Fields: `leaf: [V]N`, `w: [N]?W`, `lift: Lift<N, Int>`.
 - `@get fn tree(self) -> Rooted<N, _>` — O(1); built with the tree; The nodes as a `Rooted` forest over `N`: subtree ranges, LCA and folds.
 - `fn reach(self, v: V, limit: W) -> N` — O(log n); The highest node above `leaf[v]` whose weight is at most `limit` (`leaf[v]` itself when None is); its leaves are what `v` reaches by edges of weight at most `limit`.
 - `fn top<E>(self, v: V, ok: E -> Bool) -> N` — O(log n) calls of `ok`; The highest node above `leaf[v]` whose merging edge, and every one below it, satisfies `ok`, which gets the edge's key in the list given to `kruskal_tree` (`kt.top(v, ok: e => roads[e].alt > p)`).
-- `fn up<T, M>(self, op: M, leaf: V -> T) -> [N]T` — O(n) calls of `op` and `leaf`; For every node, `op` folded over the `leaf` values of the leaves under it, in vertex order: the least walk home from any vertex a subtree reaches is `kt.up(min, leaf: v => home[v]!)`.
+- `fn up<T, M>(self, op: M, leaf: V -> T) -> [N]T` — O(n) calls of `op` and `leaf`; For every node, `op` folded over the `leaf` values of the leaves under it: the least walk home from any vertex a subtree reaches is `kt.up(min, leaf: v => home[v]!)`.
 - `fn bottleneck(self, a: V, b: V) -> ?W` — O(log n); The least possible largest edge weight on a path from `a` to `b`: the weight of their lowest common ancestor.
 
 ## Functions
