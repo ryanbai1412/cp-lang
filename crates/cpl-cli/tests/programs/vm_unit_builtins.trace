@@ -1,0 +1,15 @@
+"variables":{"stdout":{"name":"stdout","type":"what the program printed, a line at a time","kind":"json"},"n":{"name":"n","type":"Int","kind":"scalar"},"total":{"name":"total","type":"Int","kind":"scalar"}},"runs":{"fast":{"label":"cpl run","steps":[{"id":0,"line":1,"label":"let n: Int = read()","stage":"main","values":{"stdout":[],"n":5},"locals":{},"frames":[{"fn":"main","line":1}]},
+{"id":1,"line":2,"label":"var total = 0","stage":"main","values":{"stdout":[],"n":5,"total":0},"locals":{},"frames":[{"fn":"main","line":2}]},
+{"id":2,"line":4,"label":"total += i * i","stage":"main","values":{"stdout":[],"n":5,"total":0},"locals":{"i":0},"frames":[{"fn":"main","line":4}]},
+{"id":3,"line":5,"label":"print → 0 0","stage":"main","values":{"stdout":["0 0"],"n":5,"total":0},"locals":{"i":0},"checkpoint":"print 1","frames":[{"fn":"main","line":5}]},
+{"id":4,"line":4,"label":"total += i * i","stage":"main","values":{"stdout":["0 0"],"n":5,"total":1},"locals":{"i":1},"frames":[{"fn":"main","line":4}]},
+{"id":5,"line":5,"label":"print → 1 1","stage":"main","values":{"stdout":["0 0","1 1"],"n":5,"total":1},"locals":{"i":1},"checkpoint":"print 2","frames":[{"fn":"main","line":5}]},
+{"id":6,"line":4,"label":"total += i * i","stage":"main","values":{"stdout":["0 0","1 1"],"n":5,"total":5},"locals":{"i":2},"frames":[{"fn":"main","line":4}]},
+{"id":7,"line":5,"label":"print → 2 5","stage":"main","values":{"stdout":["0 0","1 1","2 5"],"n":5,"total":5},"locals":{"i":2},"checkpoint":"print 3","frames":[{"fn":"main","line":5}]},
+{"id":8,"line":4,"label":"total += i * i","stage":"main","values":{"stdout":["0 0","1 1","2 5"],"n":5,"total":14},"locals":{"i":3},"frames":[{"fn":"main","line":4}]},
+{"id":9,"line":5,"label":"print → 3 14","stage":"main","values":{"stdout":["0 0","1 1","2 5","3 14"],"n":5,"total":14},"locals":{"i":3},"checkpoint":"print 4","frames":[{"fn":"main","line":5}]},
+{"id":10,"line":4,"label":"total += i * i","stage":"main","values":{"stdout":["0 0","1 1","2 5","3 14"],"n":5,"total":30},"locals":{"i":4},"frames":[{"fn":"main","line":4}]},
+{"id":11,"line":5,"label":"print → 4 30","stage":"main","values":{"stdout":["0 0","1 1","2 5","3 14","4 30"],"n":5,"total":30},"locals":{"i":4},"checkpoint":"print 5","frames":[{"fn":"main","line":5}]},
+{"id":12,"line":7,"label":"print → done","stage":"main","values":{"stdout":["0 0","1 1","2 5","3 14","4 30","done"],"n":5,"total":30},"locals":{"i":4},"checkpoint":"print 6","frames":[{"fn":"main","line":7}]},
+{"id":13,"line":8,"label":"the program ended","stage":"main","values":{"stdout":["0 0","1 1","2 5","3 14","4 30","done"],"n":5,"total":30},"locals":{"i":4},"checkpoint":"end","frames":[{"fn":"main","line":8}]}]}}}
+stderr:

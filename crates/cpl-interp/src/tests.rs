@@ -1455,3 +1455,15 @@ fn vm_walks_range_values_itself() {
         include_str!("../../cpl-cli/tests/programs/vm_range_val.out")
     );
 }
+
+#[test]
+fn vm_runs_unit_builtin_statements_itself() {
+    let out = vm_runs_alone(
+        include_str!("../../cpl-cli/tests/programs/vm_unit_builtins.cp"),
+        include_str!("../../cpl-cli/tests/programs/vm_unit_builtins.in"),
+    );
+    assert_eq!(
+        out,
+        include_str!("../../cpl-cli/tests/programs/vm_unit_builtins.out")
+    );
+}

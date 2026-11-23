@@ -800,3 +800,5 @@ on input `2 / 1 / 2` prints `7` once in `cpl run` and in the C++ (`cpl_main` cal
 - 2026-11-23 An annotation widens the fresh value it is initialized with (R03.1.8, decision 366): `var a: [n]Int = read<[n]0..=5>()` checks like any widening init; the no-widening-on-a-move check (R04.4.24) stays for a place (a name, field or index) (core-03/annotation-widens-fresh-read; parity program `fresh_read_widens`).
 
 2026-11-23: fix forward from R02.4.7 (`?` is never control flow). `tests/cases/ok/do1.cp` used `let h = half(a)?` to leave a `do:` block early (`do:` blocks were deleted in decision 4.5). It now writes the early exits as `let h = half(a) else: return None` in a fn, so it gives the same output for every input.
+
+2026-11-23: a statement that is a Unit-valued expression the VM can apply (`flush()`, and the `CountQuery`/`SwapInput` builtins `ask(.., limit:)` and `sol.recv()` lower to) was a tree-walker fallback (`stmt:Expr(Builtin)`); it now goes through `ApplyV` like the same expression in a value position. Test: `vm_runs_unit_builtin_statements_itself`, program `vm_unit_builtins`; `v22_interactive` and `v22_query_limit` run with no such fallback.
