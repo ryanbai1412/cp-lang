@@ -100,6 +100,7 @@ pub struct FillPrefix<D, T>:
 /// `fold(rows, cols)`; it is never a 1-D table over the cells.
 pub struct Prefix<D, T>:
     p: [D.cuts]T
+    @cache rises: ?Bool
 
     /// Build 1-D prefix sums over `a: [D]T`; `Prefix(a)` calls it.
     ///
@@ -111,7 +112,7 @@ pub struct Prefix<D, T>:
         var p: [D.cuts]T = T.zero
         for i in D:
             p[i.r] = p[i.l] + a[i]
-        Prefix(p)
+        Prefix(p, None)
 
     /// Create an append-only 1-D prefix/suffix sum table filled via `.set(i, x)` in `order`.
     ///
@@ -134,7 +135,15 @@ pub struct Prefix<D, T>:
     /// example: `domain D = 0..3; let p = Prefix<D, Int>([D] v => 1 + Int(v)); p.prefix(0) == 0`
     pub fn prefix(self, b: Cut<D>) -> T = self.p[b]
 
-    fn of_cuts(p: [D.cuts]T) -> Prefix<D, T> = Prefix(p)
+    fn of_cuts(p: [D.cuts]T) -> Prefix<D, T> = Prefix(p, None)
+
+    fn never_falls(self) -> Bool:
+        if let r = self.rises: return r
+        var ok = true
+        for i in D:
+            if self.p[i.r] < self.p[i.l]: ok = false
+        self.rises = Some(ok)
+        ok
 
     /// The sum of `a[i]` for `i` in `r`, or `0` when `r` is empty: `prefix(r.r) - prefix(r.l)`.
     ///
@@ -187,16 +196,17 @@ pub struct Prefix<D, T>:
     /// The first boundary `b` with `prefix(b) >= target`, or `None` when even `all` is smaller.
     ///
     /// A binary search over the cuts, which needs `prefix` non-decreasing, so every element must be
-    /// non-negative; the table records at build time whether that holds. A `target` at or below
-    /// zero gives the first cut.
+    /// non-negative; a checked build tests that once per table, on its first search. A `target`
+    /// at or below zero gives the first cut.
     ///
-    /// cost: O(log |D|)
+    /// cost: O(log |D|); a checked build's first search on a table also reads every prefix, O(|D|)
     /// empty: the first cut when `target <= 0`, else `None`
     /// ties: the first in cut order (zero elements make equal prefixes)
     /// traps: when some element is negative
     /// example: `Int([2, 0, 3].scan(+).first_ge(2)!) == 1`
     /// example: `[2, 0, 3].scan(+).first_ge(6) == None`
     pub fn first_ge(self, target: T) -> ?Cut<D>:
+        assert self.never_falls()
         if self.all < target: return None
         var lo = 0
         var hi = D.K
@@ -210,13 +220,14 @@ pub struct Prefix<D, T>:
     ///
     /// The same search as `first_ge`, with the same non-negative requirement.
     ///
-    /// cost: O(log |D|)
+    /// cost: O(log |D|); a checked build's first search on a table also reads every prefix, O(|D|)
     /// empty: the first cut when `target < 0`, else `None`
     /// ties: the first in cut order
     /// traps: when some element is negative
     /// example: `Int([2, 0, 3].scan(+).first_gt(2)!) == 3`
     /// example: `[2, 0, 3].scan(+).first_gt(5) == None`
     pub fn first_gt(self, target: T) -> ?Cut<D>:
+        assert self.never_falls()
         if self.all <= target: return None
         var lo = 0
         var hi = D.K
