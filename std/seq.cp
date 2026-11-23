@@ -60,7 +60,7 @@ pub fn mean<S: Seq, T>(self: S, of: T -> F64 = x => F64(x)) -> ?F64:
 /// ties: the first in sequence order
 /// traps: never
 /// example: `[3, 1, 1].min() == Some(1)`
-/// example: `[(1, 'a'), (1, 'b')].min(by: .0) == Some((1, 'a'))`
+/// example: `[(1, 'a'), (1, 'b')].min(by: p => p.0) == Some((1, 'a'))`
 pub fn min<S: Seq, T, K>(self: S, by: T -> K = x => x) -> ?T:
     var best: ?T = None
     for x in self:
@@ -75,7 +75,7 @@ pub fn min<S: Seq, T, K>(self: S, by: T -> K = x => x) -> ?T:
 /// empty: `None`
 /// ties: the first in sequence order
 /// traps: never
-/// example: `[(2, 'a'), (2, 'b')].max(by: .0) == Some((2, 'a'))`
+/// example: `[(2, 'a'), (2, 'b')].max(by: p => p.0) == Some((2, 'a'))`
 pub fn max<S: Seq, T, K>(self: S, by: T -> K = x => x) -> ?T:
     var best: ?T = None
     for x in self:
@@ -221,7 +221,7 @@ pub fn rfind<S: Bidir, T>(self: S, p: T -> Bool) -> ?T:
 /// ties: stable; equal keys keep their relative order
 /// traps: never (beyond what `by` traps on)
 /// example: `var a = [3, 1, 2]; a.sort(); a == [1, 2, 3]`
-/// example: `var a = [(1, 'b'), (0, 'z'), (1, 'a')]; a.sort(by: .0); a == [(0, 'z'), (1, 'b'), (1, 'a')]`
+/// example: `var a = [(1, 'b'), (0, 'z'), (1, 'a')]; a.sort(by: p => p.0); a == [(0, 'z'), (1, 'b'), (1, 'a')]`
 pub fn sort<S: IndexedMut, T, K: Ord>(mut self: S, by: T -> K = x => x, desc: Bool = false):
     let n = self.len
     let ks = self.keys
@@ -1804,7 +1804,7 @@ pub fn tally<S: Seq, T, K>(self: S, by: T -> K = x => x) -> HashMap<K, Int>:
 /// empty: an empty map
 /// order: each group keeps input order
 /// traps: never
-/// example: `[(1, 'a'), (2, 'b'), (1, 'c')].group(by: .0, of: .1)[1] == ['a', 'c']`
+/// example: `[(1, 'a'), (2, 'b'), (1, 'c')].group(by: p => p.0, of: p => p.1)[1] == ['a', 'c']`
 pub fn group<S: Seq, T, K, U>(self: S, by: T -> K, of: T -> U = x => x) -> HashMap<K, List<U>>:
     var out = HashMap<K, List<U>>()
     for x in self:
