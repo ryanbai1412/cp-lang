@@ -1,11 +1,13 @@
-// UCup 4 Stage 25 (Zagreb) B: balls roll left or right and merge on contact;
-// a merged block moves the way the heavier side (ties: the left side) moved.
-// Simulate with a stack of right-moving blocks: a left-moving block eats the
-// stack top until it turns right or falls into the left wall. Every boundary
-// b (between balls b - 1 and b) disappears exactly once: when the block
-// starting at b merges leftward, or in the final flush, where everything
-// still on the stack merges from the right. A query [l, r] ends as two
-// blocks split at the boundary inside it that merged last.
+// Source: The 4th Universal Cup, Stage 25 (Grand Prix of Zagreb), problem B (Big Balls),
+//   qoj.ac/contest/3773/problem/18402
+// Problem: n <= 1e6 balls on a line, each with weight w <= 1e9 rolling left or right at equal
+//   speed; colliding balls merge, the sum moving as the heavier one (ties: right). For each of
+//   q <= 1e6 subarrays [l, r] alone, print the total weight finally moving left and right.
+// Solution: simulate the whole array with a stack of right-moving blocks: a left-moving block
+//   eats the stack top until it turns right or reaches the left wall, and the final right
+//   flush merges what is left. Each boundary between balls vanishes once; record when. A query
+//   ends as two blocks split at its boundary that vanished last: a sparse table of
+//   (time, boundary) and prefix sums give it, O((n + q) log n) with O(1) queries.
 enum Dir: Left | Right
 
 let n: Int = read()

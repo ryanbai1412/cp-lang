@@ -1,12 +1,13 @@
-// Universal Cup 5 Stage 3 (Gorkovskaya) A.
-//
-// `ways(a, b)` counts the value sequences over 0..=k with `a` strict and
-// `b` weak comparisons. For an extra strict step `ds` and an extra weak
-// step `dw`, `T[ds, dw](i) = sum_j C(i, j) ways(j + ds, j + dw)` is the
-// binomial transform, one convolution with e^x in EGF form. The answer is
-//   [x^n] S(x) / A(x) + (n mod 2),  where
-//   S(x) = 1 - x T[0,0](x^2) + x^2 T[0,1](x^2),
-//   A(x) = 1 - (k + 1) x + x^2 T[1,0](x^2) - x^3 T[1,1](x^2).
+// Source: The 5th Universal Cup, Stage 3 (Grand Prix of Gorkovskaya), problem A (Adjacent
+//   Decrements), qoj.ac/contest/4565/problem/20729
+// Problem: an operation picks adjacent a_i, a_{i+1}: if equal, both drop by 1, else the smaller
+//   drops by 1, never below 0. Count arrays of length n with 0 <= a_i <= k that can reach all
+//   zeros, modulo 998244353 (n, k <= 2.5e5).
+// Solution: generating functions: the answer is [x^n] S(x) / A(x) + (n mod 2), with S and A
+//   built from binomial transforms T[ds, dw](i) = sum_j C(i, j) ways(j + ds, j + dw), where
+//   ways(a, b) counts value sequences over 0..k with a strict and b weak comparisons, a closed
+//   binomial. Each transform is one convolution with e^x in EGF form, then one power series
+//   inverse: O(n log n).
 use std.poly.{inv}
 
 type Z = Mod<998_244_353>
