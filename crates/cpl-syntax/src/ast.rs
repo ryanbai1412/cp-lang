@@ -330,6 +330,28 @@ pub struct Expr {
     pub span: Span,
 }
 
+impl Expr {
+    /// `[D.A, D.B, …]` for a fieldless enum `D` written as `base`: the
+    /// `Seq` of positions a domain is (R04.2.20).
+    pub fn variant_list(base: &Expr, variants: &[String]) -> Expr {
+        let span = base.span;
+        let item = |v: &String| Expr {
+            kind: ExprKind::Field {
+                base: Box::new(base.clone()),
+                name: Name {
+                    text: v.clone(),
+                    span,
+                },
+            },
+            span,
+        };
+        Expr {
+            kind: ExprKind::List(variants.iter().map(item).collect()),
+            span,
+        }
+    }
+}
+
 #[derive(Clone, PartialEq, Debug)]
 pub enum ExprKind {
     Int(i128),

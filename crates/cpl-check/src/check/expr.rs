@@ -2730,7 +2730,7 @@ impl<'a> Checker<'a> {
                         args: Vec::new(),
                     };
                     match name.text.as_str() {
-                        "count" | "len" | "K" => return Ty::Int,
+                        "count" | "len" | "K" if !self.in_call_callee => return Ty::Int,
                         "at" => {
                             return Ty::Fn {
                                 params: vec![crate::ty::Param {
@@ -2757,6 +2757,16 @@ impl<'a> Checker<'a> {
                                 name: "Range".into(),
                                 args: vec![Ty::Pos(format!("{type_name}.cuts"))],
                             };
+                        }
+                        // R04.2.20: a domain is the `Seq` of its positions.
+                        _ if matches!(
+                            self.type_def(type_name).as_deref(),
+                            Some(Def::Enum { .. })
+                        ) && !self
+                            .members_of(type_name)
+                            .is_some_and(|m| m.members.iter().any(|(m, _)| *m == name.text)) =>
+                        {
+                            return self.member_ty(expr, name, Ty::list(elem));
                         }
                         _ => {}
                     }

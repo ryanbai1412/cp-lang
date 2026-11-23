@@ -206,4 +206,46 @@ impl<'a> Lowerer<'a> {
             }
         }
     }
+
+    /// A fieldless enum with variants, which is a domain (R04.2.5).
+    pub(super) fn unit_enum(&self, id: EnumId) -> bool {
+        let variants = &self.enums[id].variants;
+        !variants.is_empty() && variants.iter().all(|(_, fields)| fields.is_empty())
+    }
+
+    /// `D.count`, `D.first`, `D.filter(p)`, …: a domain is the `Seq` of its
+    /// positions (R04.2.20), so a fieldless enum's members that aren't
+    /// variants read off `[D.A, D.B, …]`.
+    pub(super) fn enum_seq(
+        &mut self,
+        base: &ast::Expr,
+        id: EnumId,
+        name: &ast::Name,
+        args: Option<&[ast::Arg]>,
+        span: Span,
+    ) -> Expr {
+        let variants: Vec<String> = self.enums[id]
+            .variants
+            .iter()
+            .map(|(v, _)| v.clone())
+            .collect();
+        if name.text == "count" && args.is_none() {
+            return self.int_lit(variants.len() as i64, span);
+        }
+        let field = ast::Expr {
+            kind: ast::ExprKind::Field {
+                base: Box::new(ast::Expr::variant_list(base, &variants)),
+                name: name.clone(),
+            },
+            span,
+        };
+        let Some(args) = args else {
+            return self.expr(&field, None);
+        };
+        let call = ast::ExprKind::Call {
+            callee: Box::new(field),
+            args: args.to_vec(),
+        };
+        self.expr(&ast::Expr { kind: call, span }, None)
+    }
 }

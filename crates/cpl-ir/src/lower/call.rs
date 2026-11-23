@@ -5129,6 +5129,7 @@ impl<'a> Lowerer<'a> {
                         self.error(codes::WRONG_ARG_COUNT, span, message);
                         self.err_expr(span)
                     }
+                    None if self.unit_enum(id) => self.enum_seq(base, id, name, None, span),
                     None => {
                         let message =
                             format!("`{}` has no variant `{}`", self.enums[id].name, name.text);
@@ -7711,6 +7712,7 @@ impl<'a> Lowerer<'a> {
                     .position(|(v, _)| *v == name.text)
                 {
                     Some(tag) => self.variant(id, tag, args, span),
+                    None if self.unit_enum(id) => self.enum_seq(base, id, name, Some(args), span),
                     None => {
                         let message =
                             format!("`{}` has no variant `{}`", self.enums[id].name, name.text);
