@@ -265,12 +265,11 @@ enum Part {
     Gen(i64),
 }
 
-/// Emits the C++ for a `.cp` file into the cache, through the same front
-/// end and back end as `cpl build`. Returns the path of the C++ file.
-
 /// A counterexample that crashes, or overflows, is one stress must see.
 const LOCAL: cpl_codegen::Checks = cpl_codegen::Checks::LOCAL;
 
+/// Emits the C++ for a `.cp` file into the cache, through the same front
+/// end and back end as `cpl build`. Returns the path of the C++ file.
 fn emit_cpp(
     source: &Path,
     text: Option<&str>,
