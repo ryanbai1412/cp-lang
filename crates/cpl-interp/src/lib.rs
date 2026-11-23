@@ -744,6 +744,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
         self.stack.clear();
         self.stack.resize(program.main_locals.len(), Value::Unit);
         self.base = 0;
+        #[cfg(not(target_arch = "wasm32"))]
         if let Some(from) = self.ckpt.resume.take() {
             return self.resume(from);
         }

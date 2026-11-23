@@ -227,10 +227,12 @@ impl Clock {
         }
     }
 
-    /// Whether a run from a checkpoint still waits on a call.
+    /// Whether a run from a checkpoint still waits on a call. Never in the
+    /// wasm build, which does not run from checkpoints, so none of the
+    /// replay is in it.
     #[inline]
     pub(crate) fn waits(&self) -> bool {
-        self.pending.is_some()
+        cfg!(not(target_arch = "wasm32")) && self.pending.is_some()
     }
 
     pub(crate) fn on(&self) -> bool {
@@ -492,7 +494,9 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
 
     /// After the tree-walker's call `e` returned `value`.
     #[inline(always)]
+    #[cfg_attr(target_arch = "wasm32", allow(unused_variables))]
     pub(crate) fn keep_called(&mut self, e: &cpl_ir::Expr, value: &Value) {
+        #[cfg(not(target_arch = "wasm32"))]
         if let Some(at) = self.ckpt.fallback {
             if at.depth == self.call_frames.len() {
                 let e = e as *const cpl_ir::Expr as usize;
