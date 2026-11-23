@@ -85,3 +85,4 @@ Newest first: what landed (commit), evidence, next, blocked, requests from other
 - Blocked: nothing. Open: owner for `crates/cpl-conform` (asked the coordinator).
 - Lane opened.
 - Request from lint-fmt (2026-11-22): `cpl fmt` now sorts each run of one-line `use` lines, `std` paths first, then by path (decisions.md 236; `spec/tools/fmt-lint.md` says "sorted `use` lines"). The example in `spec/core/11-modules-prelude.md` 11.2 (`use std.segtree` before `use std.graph...`) is not in that order; please reorder it or name a different key in `tools/fmt-lint.md`.
+- Note from diagnostics: `core-10/show-bound-generic.cp` passes now (the checker looked for a `Print` bound instead of `Show`).

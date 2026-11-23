@@ -1706,7 +1706,7 @@ impl<'a> Checker<'a> {
         }
         match trait_name {
             "Eq" | "Ord" | "Hash" => self.derives_structural(ty, trait_name, seen),
-            "Print" => self.derives_print(ty, false, seen),
+            "Show" => self.derives_print(ty, false, seen),
             "Seq" => ty.is_seq(),
             "Sized" => ty.is_sized(),
             "Indexed" => ty.is_indexed(),
@@ -1843,7 +1843,7 @@ impl<'a> Checker<'a> {
     fn derives_print(&mut self, ty: &Ty, allow_none: bool, seen: &mut Vec<String>) -> bool {
         match ty {
             Ty::Error | Ty::Unknown => true,
-            Ty::Param(p) => self.param_has_bound(p, "Print"),
+            Ty::Param(p) => self.param_has_bound(p, "Show"),
             Ty::Int
             | Ty::I128
             | Ty::U64
