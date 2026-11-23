@@ -1523,7 +1523,7 @@ print(xs.sorted(), xs.rev, fold(Monoid.sum, xs), m)
     );
     let rev = shown(&mut server, 4, 23);
     assert!(
-        rev.starts_with("```cp\nrev: List<Int>\n  storage: grows on the heap; Int: 8 bytes each\ncost: O(1)\n```"),
+        rev.starts_with("```cp\nrev: Rev<List<Int>>\n  storage: none of its own; a view of its source\ncost: O(1)\n```"),
         "{rev}"
     );
     let fold = shown(&mut server, 4, 28);

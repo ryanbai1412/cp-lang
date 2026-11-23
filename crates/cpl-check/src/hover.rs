@@ -814,6 +814,9 @@ fn cost_lines(ty: &Ty, lookup: &mut Lookup) -> String {
         }
     }
     match ty {
+        _ if ty.rev_source().is_some() => {
+            out += "\n  storage: none of its own; a view of its source"
+        }
         Ty::Array { index, elem } => {
             if let Some(per) = size(elem, lookup) {
                 out += &format!("\n  storage: {} per element", human_bytes(per.into()));
