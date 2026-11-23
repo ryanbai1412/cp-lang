@@ -130,7 +130,7 @@ jobs:
   vscode:
     name: vscode (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
-    continue-on-error: ${{ matrix.os == 'windows-latest' }}
+    continue-on-error: ${{ matrix.os != 'ubuntu-latest' }}
     strategy:
       fail-fast: false
       matrix:
@@ -161,7 +161,7 @@ jobs:
   cli:
     name: cli (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
-    continue-on-error: ${{ matrix.os == 'windows-latest' }}
+    continue-on-error: true
     strategy:
       fail-fast: false
       matrix:

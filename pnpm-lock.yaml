@@ -188,8 +188,8 @@ importers:
         specifier: ~1.82.0
         version: 1.82.0
       '@vscode/test-electron':
-        specifier: ^2.4.1
-        version: 2.5.2(supports-color@7.2.0)
+        specifier: ^3.1.0
+        version: 3.1.0(supports-color@7.2.0)
       '@vscode/vsce':
         specifier: ^3.2.1
         version: 3.9.2(supports-color@7.2.0)
@@ -2257,9 +2257,9 @@ packages:
   '@vitest/spy@5.1.0':
     resolution: {integrity: sha512-2DPO5OMHWKrBngC+fCmTQqemNF0gidRhp3lxbBmRhW+M1XJrfgPpqNqWVevXtn2f2ufD5ZaR1B6B641aAlcX5A==}
 
-  '@vscode/test-electron@2.5.2':
-    resolution: {integrity: sha512-8ukpxv4wYe0iWMRQU18jhzJOHkeGKbnw7xWRX3Zw1WJA4cEKbHcmmLPdPrPtL6rhDcrlCZN+xKRpv09n4gRHYg==}
-    engines: {node: '>=16'}
+  '@vscode/test-electron@3.1.0':
+    resolution: {integrity: sha512-CRqv5u+YYoseuNVJ6Tyo4k0sF0mx4qnKMihRB0PjsUF8Dc0WKtCXo6CNL6nWWm5esfFQsQA/pejMj4ZbpJVLTw==}
+    engines: {node: '>=22'}
 
   '@vscode/vsce-sign-alpine-arm64@2.0.8':
     resolution: {integrity: sha512-3HSEDf4R2zhI3/eckZPWBoeFUiLpnG9O0/NBW8xCM3j+Ri0uhmOPvCDuCYsUmIsFVUJETaMu+JMY2DF8v8hNPg==}
@@ -6879,7 +6879,7 @@ snapshots:
 
   '@vitest/spy@5.1.0': {}
 
-  '@vscode/test-electron@2.5.2(supports-color@7.2.0)':
+  '@vscode/test-electron@3.1.0(supports-color@7.2.0)':
     dependencies:
       http-proxy-agent: 7.0.2(supports-color@7.2.0)
       https-proxy-agent: 7.0.6(supports-color@7.2.0)
