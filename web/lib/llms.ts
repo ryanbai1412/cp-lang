@@ -2,18 +2,19 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { installMarkdown } from '@/components/install';
 import { decisions } from '@/lib/decisions';
-import { source } from '@/lib/source';
+import { learnSource, source } from '@/lib/source';
 
-type Node = ReturnType<typeof source.getPageTree>['children'][number];
+type Source = typeof source | typeof learnSource;
+type Node = ReturnType<Source['getPageTree']>['children'][number];
 
 const urls = (nodes: Node[]): string[] =>
   nodes.flatMap((n) => (n.type === 'page' ? [n.url] : n.type === 'folder' ? [...(n.index ? [n.index.url] : []), ...urls(n.children)] : []));
 
 // Pages in sidebar order, so a model reads the guides from the tour on, as a visitor would.
-function pages() {
-  const order = urls(source.getPageTree().children);
+function pages(from: Source = source) {
+  const order = urls(from.getPageTree().children);
   const rank = (url: string) => (order.includes(url) ? order.indexOf(url) : order.length);
-  return source.getPages().sort((a, b) => rank(a.url) - rank(b.url));
+  return from.getPages().sort((a, b) => rank(a.url) - rank(b.url));
 }
 
 const builtFrom = (() => {
@@ -46,10 +47,11 @@ export function llmsIndex(): string {
   ].join('\n');
 }
 
+// The docs, then the Learn course (chapters and practice problems).
 export function llmsFull(): string {
-  return pages()
-    .map((p) => {
-      const raw = readFileSync(join(process.cwd(), 'content/docs', p.path), 'utf8')
+  return [...pages().map((p) => ['content/docs', p] as const), ...pages(learnSource).map((p) => ['content/learn', p] as const)]
+    .map(([dir, p]) => {
+      const raw = readFileSync(join(process.cwd(), dir, p.path), 'utf8')
         .replace(/^---[\s\S]*?---\n/, '')
         .replace(/^<Install \/>$/m, installMarkdown())
         // MDX cards read as a plain link list.
