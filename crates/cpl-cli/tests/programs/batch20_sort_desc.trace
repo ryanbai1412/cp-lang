@@ -1,0 +1,8 @@
+"variables":{},"runs":{"fast":{"label":"cpl run","steps":[]}}}
+stderr:
+this is a cpl bug: run `cpl report --last`
+error[R0001]: the interpreter itself failed; this is a bug in cpl
+  --> batch20_sort_desc.cp:1:1
+  |
+1 | // `desc: true` on `sort` and `sorted`, alone and after a key.
+  | ^

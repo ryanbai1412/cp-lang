@@ -1,0 +1,30 @@
+"variables":{"stdout":{"name":"stdout","type":"what the program printed, a line at a time","kind":"json"},"n":{"name":"n","type":"Int","kind":"scalar"},"lo":{"name":"lo","type":"Int","kind":"scalar"},"hi":{"name":"hi","type":"Int","kind":"scalar"}},"runs":{"fast":{"label":"cpl run","steps":[{"id":0,"line":5,"label":"let n: Int = read()","stage":"main","values":{"stdout":[],"n":1000},"locals":{},"frames":[{"fn":"main","line":5}]},
+{"id":1,"line":6,"label":"var lo = 1","stage":"main","values":{"stdout":[],"n":1000,"lo":1},"locals":{},"frames":[{"fn":"main","line":6}]},
+{"id":2,"line":7,"label":"var hi = n","stage":"main","values":{"stdout":[],"n":1000,"lo":1,"hi":1000},"locals":{},"frames":[{"fn":"main","line":7}]},
+{"id":3,"line":11,"label":"print → ? 1","stage":"main","values":{"stdout":["? 1"],"n":1000,"lo":1,"hi":1000},"locals":{"mid":1},"checkpoint":"print 1","frames":[{"fn":"main","line":11}]},
+{"id":4,"line":13,"label":"else: lo = mid + 1","stage":"main","values":{"stdout":["? 1"],"n":1000,"lo":2,"hi":1000},"locals":{"mid":1,"answer":">="},"frames":[{"fn":"main","line":13}]},
+{"id":5,"line":11,"label":"print → ? 2","stage":"main","values":{"stdout":["? 1","? 2"],"n":1000,"lo":2,"hi":1000},"locals":{"mid":2,"answer":">="},"checkpoint":"print 2","frames":[{"fn":"main","line":11}]},
+{"id":6,"line":13,"label":"else: lo = mid + 1","stage":"main","values":{"stdout":["? 1","? 2"],"n":1000,"lo":3,"hi":1000},"locals":{"mid":2,"answer":">="},"frames":[{"fn":"main","line":13}]},
+{"id":7,"line":11,"label":"print → ? 3","stage":"main","values":{"stdout":["? 1","? 2","? 3"],"n":1000,"lo":3,"hi":1000},"locals":{"mid":3,"answer":">="},"checkpoint":"print 3","frames":[{"fn":"main","line":11}]},
+{"id":8,"line":13,"label":"else: lo = mid + 1","stage":"main","values":{"stdout":["? 1","? 2","? 3"],"n":1000,"lo":4,"hi":1000},"locals":{"mid":3,"answer":">="},"frames":[{"fn":"main","line":13}]},
+{"id":9,"line":11,"label":"print → ? 4","stage":"main","values":{"stdout":["? 1","? 2","? 3","? 4"],"n":1000,"lo":4,"hi":1000},"locals":{"mid":4,"answer":">="},"checkpoint":"print 4","frames":[{"fn":"main","line":11}]},
+{"id":10,"line":13,"label":"else: lo = mid + 1","stage":"main","values":{"stdout":["? 1","? 2","? 3","? 4"],"n":1000,"lo":5,"hi":1000},"locals":{"mid":4,"answer":">="},"frames":[{"fn":"main","line":13}]},
+{"id":11,"line":11,"label":"print → ? 5","stage":"main","values":{"stdout":["? 1","? 2","? 3","? 4","? 5"],"n":1000,"lo":5,"hi":1000},"locals":{"mid":5,"answer":">="},"checkpoint":"print 5","frames":[{"fn":"main","line":11}]},
+{"id":12,"line":13,"label":"else: lo = mid + 1","stage":"main","values":{"stdout":["? 1","? 2","? 3","? 4","? 5"],"n":1000,"lo":6,"hi":1000},"locals":{"mid":5,"answer":">="},"frames":[{"fn":"main","line":13}]},
+{"id":13,"line":11,"label":"print → ? 6","stage":"main","values":{"stdout":["? 1","? 2","? 3","? 4","? 5","? 6"],"n":1000,"lo":6,"hi":1000},"locals":{"mid":6,"answer":">="},"checkpoint":"print 6","frames":[{"fn":"main","line":11}]},
+{"id":14,"line":13,"label":"else: lo = mid + 1","stage":"main","values":{"stdout":["? 1","? 2","? 3","? 4","? 5","? 6"],"n":1000,"lo":7,"hi":1000},"locals":{"mid":6,"answer":">="},"frames":[{"fn":"main","line":13}]},
+{"id":15,"line":11,"label":"print → ? 7","stage":"main","values":{"stdout":["? 1","? 2","? 3","? 4","? 5","? 6","? 7"],"n":1000,"lo":7,"hi":1000},"locals":{"mid":7,"answer":">="},"checkpoint":"print 7","frames":[{"fn":"main","line":11}]},
+{"id":16,"line":13,"label":"else: lo = mid + 1","stage":"main","values":{"stdout":["? 1","? 2","? 3","? 4","? 5","? 6","? 7"],"n":1000,"lo":8,"hi":1000},"locals":{"mid":7,"answer":">="},"frames":[{"fn":"main","line":13}]},
+{"id":17,"line":11,"label":"print → ? 8","stage":"main","values":{"stdout":["? 1","? 2","? 3","? 4","? 5","? 6","? 7","? 8"],"n":1000,"lo":8,"hi":1000},"locals":{"mid":8,"answer":">="},"checkpoint":"print 8","frames":[{"fn":"main","line":11}]},
+{"id":18,"line":13,"label":"else: lo = mid + 1","stage":"main","values":{"stdout":["? 1","? 2","? 3","? 4","? 5","? 6","? 7","? 8"],"n":1000,"lo":9,"hi":1000},"locals":{"mid":8,"answer":">="},"frames":[{"fn":"main","line":13}]},
+{"id":19,"line":11,"label":"print → ? 9","stage":"main","values":{"stdout":["? 1","? 2","? 3","? 4","? 5","? 6","? 7","? 8","? 9"],"n":1000,"lo":9,"hi":1000},"locals":{"mid":9,"answer":">="},"checkpoint":"print 9","frames":[{"fn":"main","line":11}]},
+{"id":20,"line":13,"label":"else: lo = mid + 1","stage":"main","values":{"stdout":["? 1","? 2","? 3","? 4","? 5","? 6","? 7","? 8","? 9"],"n":1000,"lo":10,"hi":1000},"locals":{"mid":9,"answer":">="},"frames":[{"fn":"main","line":13}]},
+{"id":21,"line":11,"label":"print → ? 10","stage":"main","values":{"stdout":["? 1","? 2","? 3","? 4","? 5","? 6","? 7","? 8","? 9","? 10"],"n":1000,"lo":10,"hi":1000},"locals":{"mid":10,"answer":">="},"checkpoint":"print 10","frames":[{"fn":"main","line":11}]},
+{"id":22,"line":13,"label":"else: lo = mid + 1","stage":"main","values":{"stdout":["? 1","? 2","? 3","? 4","? 5","? 6","? 7","? 8","? 9","? 10"],"n":1000,"lo":11,"hi":1000},"locals":{"mid":10,"answer":">="},"frames":[{"fn":"main","line":13}]},
+{"id":23,"line":11,"label":"failed: query limit exceeded: this is query 11, and the limit is 10","stage":"main","values":{"stdout":["? 1","? 2","? 3","? 4","? 5","? 6","? 7","? 8","? 9","? 10"],"n":1000,"lo":11,"hi":1000},"locals":{"mid":11,"answer":">="},"frames":[{"fn":"main","line":11}]}]}}}
+stderr:
+error[R0001]: query limit exceeded: this is query 11, and the limit is 10
+  --> v22_query_limit.cp:11:23
+   |
+11 |     let answer: Str = ask("?", mid, limit: 10)
+   |                       ^^^^^^^^^^^^^^^^^^^^^^^^

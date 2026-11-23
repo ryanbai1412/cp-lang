@@ -1,0 +1,37 @@
+"variables":{},"runs":{"fast":{"label":"cpl run","steps":[]}}}
+stderr:
+this is a cpl bug: run `cpl report --last`
+warning[L0605]: `a[1..3][1]` reads source key 1: a slice keeps its source's keys, so this is not its element 1
+  --> mut_slice_index_is_source_key.cp:4:9
+  |
+4 | a[1..3][1] = 9
+  |         ^
+  = help: write `a[1..3].nth(1)` (or `a[1..3].first!`) for the element by position, or `a[1..3].rebase` to count from 0
+
+warning[L0605]: `b[1..3][2]` reads source key 2: a slice keeps its source's keys, so this is not its element 2
+  --> mut_slice_index_is_source_key.cp:7:9
+  |
+7 | b[1..3][2] += 1
+  |         ^
+  = help: write `b[1..3].nth(2)` (or `b[1..3].first!`) for the element by position, or `b[1..3].rebase` to count from 0
+
+warning[L0605]: `c[2..][3]` reads source key 3: a slice keeps its source's keys, so this is not its element 3
+  --> mut_slice_index_is_source_key.cp:10:8
+   |
+10 | c[2..][3] = 7
+   |        ^
+   = help: write `c[2..].nth(3)` (or `c[2..].first!`) for the element by position, or `c[2..].rebase` to count from 0
+
+warning[L0605]: `b[1..4][1]` reads source key 1: a slice keeps its source's keys, so this is not its element 1
+  --> mut_slice_index_is_source_key.cp:14:18
+   |
+14 | print(b, b[1..4][1])
+   |                  ^
+   = help: write `b[1..4].nth(1)` (or `b[1..4].first!`) for the element by position, or `b[1..4].rebase` to count from 0
+
+mut_slice_index_is_source_key.cp: 4 warnings
+error[R0001]: the interpreter itself failed; this is a bug in cpl
+  --> mut_slice_index_is_source_key.cp:1:1
+  |
+1 | // A slice keeps its source's keys, also as a place: `a[1..3][1]` is `a[1]`
+  | ^

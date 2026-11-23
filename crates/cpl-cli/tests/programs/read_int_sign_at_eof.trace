@@ -1,0 +1,9 @@
+"variables":{"stdout":{"name":"stdout","type":"what the program printed, a line at a time","kind":"json"},"a":{"name":"a","type":"Int","kind":"scalar"}},"runs":{"fast":{"label":"cpl run","steps":[{"id":0,"line":1,"label":"let a: Int = read()","stage":"main","values":{"stdout":[],"a":5},"locals":{},"frames":[{"fn":"main","line":1}]},
+{"id":1,"line":2,"label":"failed: expected a number, found `-` (input line 1, column 3)","stage":"main","values":{"stdout":[],"a":5},"locals":{},"frames":[{"fn":"main","line":2}]}]}}}
+stderr:
+error[R0501]: expected a number, found `-` (input line 1, column 3)
+  --> read_int_sign_at_eof.cp:2:14
+  |
+2 | let b: Int = read()
+  |              ^^^^^^
+  = help: the reads don't line up with the input: check their order and count against the input format

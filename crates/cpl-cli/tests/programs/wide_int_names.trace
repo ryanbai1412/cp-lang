@@ -1,0 +1,5 @@
+"variables":{"stdout":{"name":"stdout","type":"what the program printed, a line at a time","kind":"json"},"mask":{"name":"mask","type":"U64","kind":"json"},"wide":{"name":"wide","type":"I128","kind":"json"}},"runs":{"fast":{"label":"cpl run","steps":[{"id":0,"line":1,"label":"let mask: U64 = 1 \u003c\u003c 40","stage":"main","values":{"stdout":[],"mask":"1099511627776"},"locals":{},"frames":[{"fn":"main","line":1}]},
+{"id":1,"line":2,"label":"let wide: I128 = I128(mask) * 3","stage":"main","values":{"stdout":[],"mask":"1099511627776","wide":"3298534883328"},"locals":{},"frames":[{"fn":"main","line":2}]},
+{"id":2,"line":3,"label":"print → 1099511627781 3298534883328","stage":"main","values":{"stdout":["1099511627781 3298534883328"],"mask":"1099511627776","wide":"3298534883328"},"locals":{},"checkpoint":"print 1","frames":[{"fn":"main","line":3}]},
+{"id":3,"line":3,"label":"the program ended","stage":"main","values":{"stdout":["1099511627781 3298534883328"],"mask":"1099511627776","wide":"3298534883328"},"locals":{},"checkpoint":"end","frames":[{"fn":"main","line":3}]}]}}}
+stderr:

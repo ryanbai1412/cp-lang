@@ -1,0 +1,8 @@
+"variables":{},"runs":{"fast":{"label":"cpl run","steps":[]}}}
+stderr:
+this is a cpl bug: run `cpl report --last`
+error[R0001]: the interpreter itself failed; this is a bug in cpl
+  --> batch26_cyclic_pairs_desc.cp:1:1
+  |
+1 | struct Pt:
+  | ^

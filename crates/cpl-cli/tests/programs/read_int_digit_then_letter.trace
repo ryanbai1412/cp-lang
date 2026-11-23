@@ -1,0 +1,8 @@
+"variables":{"stdout":{"name":"stdout","type":"what the program printed, a line at a time","kind":"json"}},"runs":{"fast":{"label":"cpl run","steps":[{"id":0,"line":1,"label":"failed: expected a number, found `12x` (input line 1, column 1)","stage":"main","values":{"stdout":[]},"locals":{},"frames":[{"fn":"main","line":1}]}]}}}
+stderr:
+error[R0501]: expected a number, found `12x` (input line 1, column 1)
+  --> read_int_digit_then_letter.cp:1:14
+  |
+1 | let a: Int = read()
+  |              ^^^^^^
+  = help: the reads don't line up with the input: check their order and count against the input format

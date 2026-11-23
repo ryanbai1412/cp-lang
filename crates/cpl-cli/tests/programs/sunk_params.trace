@@ -1,0 +1,18 @@
+"variables":{"stdout":{"name":"stdout","type":"what the program printed, a line at a time","kind":"json"},"n":{"name":"n","type":"Int","kind":"scalar"},"p":{"name":"p","type":"Pack","kind":"json"},"q":{"name":"q","type":"Pack","kind":"json"}},"runs":{"fast":{"label":"cpl run","steps":[{"id":0,"line":13,"label":"let n: 1..=100 = read()","stage":"main","values":{"stdout":[],"n":5},"locals":{},"frames":[{"fn":"main","line":13}]},
+{"id":1,"line":9,"label":"let a = [i for i in 0..n]","stage":"main","values":{"stdout":[],"n":5},"locals":{"n":5,"i":0},"frames":[{"fn":"make","line":9},{"fn":"main","line":14}]},
+{"id":2,"line":9,"label":"let a = [i for i in 0..n]","stage":"main","values":{"stdout":[],"n":5},"locals":{"n":5,"i":1},"frames":[{"fn":"make","line":9},{"fn":"main","line":14}]},
+{"id":3,"line":9,"label":"let a = [i for i in 0..n]","stage":"main","values":{"stdout":[],"n":5},"locals":{"n":5,"i":2},"frames":[{"fn":"make","line":9},{"fn":"main","line":14}]},
+{"id":4,"line":9,"label":"let a = [i for i in 0..n]","stage":"main","values":{"stdout":[],"n":5},"locals":{"n":5,"i":3},"frames":[{"fn":"make","line":9},{"fn":"main","line":14}]},
+{"id":5,"line":9,"label":"let a = [i for i in 0..n]","stage":"main","values":{"stdout":[],"n":5},"locals":{"n":5,"i":4},"frames":[{"fn":"make","line":9},{"fn":"main","line":14}]},
+{"id":6,"line":9,"label":"let a = [i for i in 0..n]","stage":"main","values":{"stdout":[],"n":5},"locals":{"n":5,"i":4,"a":[0,1,2,3,4]},"frames":[{"fn":"make","line":9},{"fn":"main","line":14}]},
+{"id":7,"line":10,"label":"let b = [i * i for i in 0..n]","stage":"main","values":{"stdout":[],"n":5},"locals":{"n":5,"i":4,"a":[0,1,2,3,4],"i":0},"frames":[{"fn":"make","line":10},{"fn":"main","line":14}]},
+{"id":8,"line":10,"label":"let b = [i * i for i in 0..n]","stage":"main","values":{"stdout":[],"n":5},"locals":{"n":5,"i":4,"a":[0,1,2,3,4],"i":1},"frames":[{"fn":"make","line":10},{"fn":"main","line":14}]},
+{"id":9,"line":10,"label":"let b = [i * i for i in 0..n]","stage":"main","values":{"stdout":[],"n":5},"locals":{"n":5,"i":4,"a":[0,1,2,3,4],"i":2},"frames":[{"fn":"make","line":10},{"fn":"main","line":14}]},
+{"id":10,"line":10,"label":"let b = [i * i for i in 0..n]","stage":"main","values":{"stdout":[],"n":5},"locals":{"n":5,"i":4,"a":[0,1,2,3,4],"i":3},"frames":[{"fn":"make","line":10},{"fn":"main","line":14}]},
+{"id":11,"line":10,"label":"let b = [i * i for i in 0..n]","stage":"main","values":{"stdout":[],"n":5},"locals":{"n":5,"i":4,"a":[0,1,2,3,4],"i":4},"frames":[{"fn":"make","line":10},{"fn":"main","line":14}]},
+{"id":12,"line":10,"label":"let b = [i * i for i in 0..n]","stage":"main","values":{"stdout":[],"n":5},"locals":{"n":5,"i":4,"a":[0,1,2,3,4],"i":4,"b":[0,1,4,9,16]},"frames":[{"fn":"make","line":10},{"fn":"main","line":14}]},
+{"id":13,"line":14,"label":"let p = make(n)","stage":"main","values":{"stdout":[],"n":5,"p":{"xs":[0,1,2,3,4],"ys":[0,1,4,9,16]}},"locals":{},"frames":[{"fn":"main","line":14}]},
+{"id":14,"line":15,"label":"let q = twice(p.xs)","stage":"main","values":{"stdout":[],"n":5,"p":{"xs":[0,1,2,3,4],"ys":[0,1,4,9,16]},"q":{"xs":[0,1,2,3,4],"ys":[0,1,2,3,4]}},"locals":{},"frames":[{"fn":"main","line":15}]},
+{"id":15,"line":16,"label":"print → 10 5 16","stage":"main","values":{"stdout":["10 5 16"],"n":5,"p":{"xs":[0,1,2,3,4],"ys":[0,1,4,9,16]},"q":{"xs":[0,1,2,3,4],"ys":[0,1,2,3,4]}},"locals":{},"checkpoint":"print 1","frames":[{"fn":"main","line":16}]},
+{"id":16,"line":16,"label":"the program ended","stage":"main","values":{"stdout":["10 5 16"],"n":5,"p":{"xs":[0,1,2,3,4],"ys":[0,1,4,9,16]},"q":{"xs":[0,1,2,3,4],"ys":[0,1,2,3,4]}},"locals":{},"checkpoint":"end","frames":[{"fn":"main","line":16}]}]}}}
+stderr:

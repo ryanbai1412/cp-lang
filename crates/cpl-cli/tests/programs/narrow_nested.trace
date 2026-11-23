@@ -1,0 +1,8 @@
+"variables":{},"runs":{"fast":{"label":"cpl run","steps":[]}}}
+stderr:
+this is a cpl bug: run `cpl report --last`
+error[R0001]: the interpreter itself failed; this is a bug in cpl
+  --> narrow_nested.cp:1:1
+  |
+1 | fn sum_grid_narrow<R, C>(g: [R, C]0..=1_000_000) -> Int:
+  | ^

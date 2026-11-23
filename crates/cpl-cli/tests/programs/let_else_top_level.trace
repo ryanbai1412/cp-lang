@@ -1,0 +1,10 @@
+"variables":{"stdout":{"name":"stdout","type":"what the program printed, a line at a time","kind":"json"},"x":{"name":"x","type":"?Int","kind":"scalar"},"y":{"name":"y","type":"Int","kind":"scalar"},"xs":{"name":"xs","type":"?List\u003cInt>","kind":"json"},"ys":{"name":"ys","type":"List\u003cInt>","kind":"array"}},"runs":{"fast":{"label":"cpl run","steps":[{"id":0,"line":2,"label":"let x: ?Int = if 2 > 1: Some(4) else: None","stage":"main","values":{"stdout":[],"x":4},"locals":{},"frames":[{"fn":"main","line":2}]},
+{"id":1,"line":3,"label":"let y = x else:","stage":"main","values":{"stdout":[],"x":4,"y":4},"locals":{},"frames":[{"fn":"main","line":3}]},
+{"id":2,"line":6,"label":"print → 5","stage":"main","values":{"stdout":["5"],"x":4,"y":4},"locals":{},"checkpoint":"print 1","frames":[{"fn":"main","line":6}]},
+{"id":3,"line":7,"label":"let xs: ?List\u003cInt> = Some([1, 2])","stage":"main","values":{"stdout":["5"],"x":4,"y":4,"xs":[1,2]},"locals":{},"frames":[{"fn":"main","line":7}]},
+{"id":4,"line":8,"label":"let ys = xs else: return","stage":"main","values":{"stdout":["5"],"x":4,"y":4,"xs":[1,2],"ys":[1,2]},"locals":{},"frames":[{"fn":"main","line":8}]},
+{"id":5,"line":9,"label":"print → 2","stage":"main","values":{"stdout":["5","2"],"x":4,"y":4,"xs":[1,2],"ys":[1,2]},"locals":{},"checkpoint":"print 2","frames":[{"fn":"main","line":9}]},
+{"id":6,"line":12,"label":"print → 1","stage":"main","values":{"stdout":["5","2","1"],"x":4,"y":4,"xs":[1,2],"ys":[1,2]},"locals":{"i":0,"j":0},"checkpoint":"print 3","frames":[{"fn":"main","line":12}]},
+{"id":7,"line":12,"label":"print → 21","stage":"main","values":{"stdout":["5","2","1","21"],"x":4,"y":4,"xs":[1,2],"ys":[1,2]},"locals":{"i":2,"j":20},"checkpoint":"print 4","frames":[{"fn":"main","line":12}]},
+{"id":8,"line":10,"label":"the program ended","stage":"main","values":{"stdout":["5","2","1","21"],"x":4,"y":4,"xs":[1,2],"ys":[1,2]},"locals":{"i":2,"j":20},"checkpoint":"end","frames":[{"fn":"main","line":10}]}]}}}
+stderr:

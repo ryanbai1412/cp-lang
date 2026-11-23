@@ -1,0 +1,5 @@
+"variables":{"stdout":{"name":"stdout","type":"what the program printed, a line at a time","kind":"json"},"a":{"name":"a","type":"Int","kind":"scalar"},"b":{"name":"b","type":"Int","kind":"scalar"}},"runs":{"fast":{"label":"cpl run","steps":[{"id":0,"line":1,"label":"let a: Int = read()","stage":"main","values":{"stdout":[],"a":"-9223372036854775807"},"locals":{},"frames":[{"fn":"main","line":1}]},
+{"id":1,"line":2,"label":"let b: Int = read()","stage":"main","values":{"stdout":[],"a":"-9223372036854775807","b":0},"locals":{},"frames":[{"fn":"main","line":2}]},
+{"id":2,"line":3,"label":"print → -9223372036854775807","stage":"main","values":{"stdout":["-9223372036854775807"],"a":"-9223372036854775807","b":0},"locals":{},"checkpoint":"print 1","frames":[{"fn":"main","line":3}]},
+{"id":3,"line":3,"label":"the program ended","stage":"main","values":{"stdout":["-9223372036854775807"],"a":"-9223372036854775807","b":0},"locals":{},"checkpoint":"end","frames":[{"fn":"main","line":3}]}]}}}
+stderr:

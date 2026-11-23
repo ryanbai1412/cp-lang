@@ -1,0 +1,12 @@
+"variables":{"stdout":{"name":"stdout","type":"what the program printed, a line at a time","kind":"json"},"xs":{"name":"xs","type":"List\u003cInt>","kind":"array"}},"runs":{"fast":{"label":"cpl run","steps":[{"id":0,"line":1,"label":"var xs = [1, 2, 3, 4]","stage":"main","values":{"stdout":[],"xs":[1,2,3,4]},"locals":{},"frames":[{"fn":"main","line":1}]},
+{"id":1,"line":2,"label":"xs[1..3] += 5","stage":"main","values":{"stdout":[],"xs":[1,7,3,4]},"locals":{},"frames":[{"fn":"main","line":2}],"focus":{"variable":"xs","path":[1]}},
+{"id":2,"line":2,"label":"xs[1..3] += 5","stage":"main","values":{"stdout":[],"xs":[1,7,8,4]},"locals":{},"frames":[{"fn":"main","line":2}],"focus":{"variable":"xs","path":[2]}},
+{"id":3,"line":3,"label":"print → 1 7 8 4","stage":"main","values":{"stdout":["1 7 8 4"],"xs":[1,7,8,4]},"locals":{},"checkpoint":"print 1","frames":[{"fn":"main","line":3}]},
+{"id":4,"line":4,"label":"print → before","stage":"main","values":{"stdout":["1 7 8 4","before"],"xs":[1,7,8,4]},"locals":{},"checkpoint":"print 2","frames":[{"fn":"main","line":4}]},
+{"id":5,"line":5,"label":"failed: a part `lo..hi` of a row or column needs 0 \u003c= lo \u003c= hi \u003c= its length","stage":"main","values":{"stdout":["1 7 8 4","before"],"xs":[1,7,8,4]},"locals":{},"frames":[{"fn":"main","line":5}]}]}}}
+stderr:
+error[R0001]: a part `lo..hi` of a row or column needs 0 <= lo <= hi <= its length
+  --> batch29_part_op_traps.cp:5:4
+  |
+5 | xs[2..9] += 1
+  |    ^^^^

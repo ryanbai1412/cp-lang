@@ -1,0 +1,5 @@
+"variables":{"stdout":{"name":"stdout","type":"what the program printed, a line at a time","kind":"json"},"BIG":{"name":"BIG","type":"Int","kind":"scalar"},"n":{"name":"n","type":"Int","kind":"scalar"}},"runs":{"fast":{"label":"cpl run","steps":[{"id":0,"line":1,"label":"const BIG = 3","stage":"main","values":{"stdout":[],"BIG":3},"locals":{},"frames":[{"fn":"main","line":1}]},
+{"id":1,"line":2,"label":"let n: Int = read()","stage":"main","values":{"stdout":[],"BIG":3,"n":5},"locals":{},"frames":[{"fn":"main","line":2}]},
+{"id":2,"line":4,"label":"print → big 5","stage":"main","values":{"stdout":["big 5"],"BIG":3,"n":5},"locals":{},"checkpoint":"print 1","frames":[{"fn":"main","line":4}]},
+{"id":3,"line":4,"label":"the program ended","stage":"main","values":{"stdout":["big 5"],"BIG":3,"n":5},"locals":{},"checkpoint":"end","frames":[{"fn":"main","line":4}]}]}}}
+stderr:

@@ -800,11 +800,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                     cpl_ir::walk::deep_exprs(&c.body, &mut check);
                 }
             }
-            // `CPL_TRACE_ENGINE=tree` traces on the tree-walker, which a
-            // test holds the register VM's recording to.
-            let tree = self.observed()
-                && std::env::var_os("CPL_TRACE_ENGINE").is_some_and(|e| e == "tree");
-            if self.profiler.is_none() && !has_mut_view && !tree {
+            if self.profiler.is_none() && !has_mut_view {
                 let traced = self.observed();
                 self.vm = Some(Rc::new(vm::CompiledProgram::compile(
                     program,

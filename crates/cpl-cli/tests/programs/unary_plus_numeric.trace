@@ -1,0 +1,7 @@
+"variables":{"stdout":{"name":"stdout","type":"what the program printed, a line at a time","kind":"json"},"a":{"name":"a","type":"Int","kind":"scalar"},"b":{"name":"b","type":"F64","kind":"scalar"},"c":{"name":"c","type":"Int","kind":"scalar"},"xs":{"name":"xs","type":"List\u003cInt>","kind":"array"}},"runs":{"fast":{"label":"cpl run","steps":[{"id":0,"line":1,"label":"let a = +42","stage":"main","values":{"stdout":[],"a":42},"locals":{},"frames":[{"fn":"main","line":1}]},
+{"id":1,"line":2,"label":"let b = +2.5","stage":"main","values":{"stdout":[],"a":42,"b":2.5},"locals":{},"frames":[{"fn":"main","line":2}]},
+{"id":2,"line":3,"label":"let c = +-3","stage":"main","values":{"stdout":[],"a":42,"b":2.5,"c":-3},"locals":{},"frames":[{"fn":"main","line":3}]},
+{"id":3,"line":4,"label":"let xs = [1, 2] + [3]","stage":"main","values":{"stdout":[],"a":42,"b":2.5,"c":-3,"xs":[1,2,3]},"locals":{},"frames":[{"fn":"main","line":4}]},
+{"id":4,"line":5,"label":"print → 42 2.5000000000 -3 1 2 3","stage":"main","values":{"stdout":["42 2.5000000000 -3 1 2 3"],"a":42,"b":2.5,"c":-3,"xs":[1,2,3]},"locals":{},"checkpoint":"print 1","frames":[{"fn":"main","line":5}]},
+{"id":5,"line":5,"label":"the program ended","stage":"main","values":{"stdout":["42 2.5000000000 -3 1 2 3"],"a":42,"b":2.5,"c":-3,"xs":[1,2,3]},"locals":{},"checkpoint":"end","frames":[{"fn":"main","line":5}]}]}}}
+stderr:

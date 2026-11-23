@@ -1,0 +1,11 @@
+"variables":{"stdout":{"name":"stdout","type":"what the program printed, a line at a time","kind":"json"},"k":{"name":"k","type":"Int","kind":"scalar"},"o":{"name":"o","type":"?Int","kind":"scalar"}},"runs":{"fast":{"label":"cpl run","steps":[{"id":0,"line":2,"label":"let k: Int = read()","stage":"main","values":{"stdout":[],"k":9},"locals":{},"frames":[{"fn":"main","line":2}]},
+{"id":1,"line":3,"label":"let o: ?Int = if k > 5: None else: k","stage":"main","values":{"stdout":[],"k":9,"o":null},"locals":{},"frames":[{"fn":"main","line":3}]},
+{"id":2,"line":4,"label":"print → before","stage":"main","values":{"stdout":["before"],"k":9,"o":null},"locals":{},"checkpoint":"print 1","frames":[{"fn":"main","line":4}]},
+{"id":3,"line":5,"label":"failed: `!` on `None`: there is no value here","stage":"main","values":{"stdout":["before"],"k":9,"o":null},"locals":{},"frames":[{"fn":"main","line":5}]}]}}}
+stderr:
+error[R0301]: `!` on `None`: there is no value here
+  --> bang_on_none_traps.cp:5:7
+  |
+5 | print(o!)
+  |       ^^
+  = help: `x!` needs a value: to handle `None`, write `if let Some(v) = x:`, in a loop `while let Some(v) = x and v > k:`, or `x ?? fallback`

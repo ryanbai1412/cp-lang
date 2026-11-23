@@ -69,10 +69,10 @@ today = "18.6 us scalar, 68.0 us array"
 target = "< 50 ms"
 
 [[metric]]
-name = "trace_engine_parity"
-command = "cargo test --release -p cpl-cli --test trace_engines"
-today = "pass, 169 programs (VM trace == CPL_TRACE_ENGINE=tree trace)"
-target = "pass until the tree engine is deleted, then a recorded-golden test"
+name = "trace_goldens"
+command = "cargo test --release -p cpl-cli --test trace_goldens"
+today = "pass, 197 programs (each trace == its saved tests/programs/<name>.trace)"
+target = "pass"
 
 [[metric]]
 name = "debugger_suites"

@@ -1,0 +1,10 @@
+"variables":{"stdout":{"name":"stdout","type":"what the program printed, a line at a time","kind":"json"},"a":{"name":"a","type":"List\u003cInt>","kind":"array"},"lo":{"name":"lo","type":"Int","kind":"scalar"},"hi":{"name":"hi","type":"Int","kind":"scalar"}},"runs":{"fast":{"label":"cpl run","steps":[{"id":0,"line":2,"label":"let a = [1, 2, 3, 4]","stage":"main","values":{"stdout":[],"a":[1,2,3,4]},"locals":{},"frames":[{"fn":"main","line":2}]},
+{"id":1,"line":3,"label":"let (lo, hi): (Int, Int) = read()","stage":"main","values":{"stdout":[],"a":[1,2,3,4],"lo":0,"hi":-1},"locals":{},"frames":[{"fn":"main","line":3}]},
+{"id":2,"line":4,"label":"print → slicing 2 3","stage":"main","values":{"stdout":["slicing 2 3"],"a":[1,2,3,4],"lo":0,"hi":-1},"locals":{},"checkpoint":"print 1","frames":[{"fn":"main","line":4}]},
+{"id":3,"line":5,"label":"failed: slice 0..-1 is outside a list of length 4","stage":"main","values":{"stdout":["slicing 2 3"],"a":[1,2,3,4],"lo":0,"hi":-1},"locals":{},"frames":[{"fn":"main","line":5}]}]}}}
+stderr:
+error[R0001]: slice 0..-1 is outside a list of length 4
+  --> slice_negative_traps.cp:5:7
+  |
+5 | print(a[lo..hi])
+  |       ^^^^^^^^^

@@ -318,7 +318,7 @@ on write, so a checkpoint copies main's locals and the globals, not the heap.
 - **Cost:** a counted run of a 1.6×10^7-round loop in `bump(mut s, n)`
   takes 569 ms against 199 ms untraced (2.9x), from 2027 ms on the
   tree-walker.
-- **Tests:** `trace_engines` (traced VM = tree-walker trace) covers the
+- **Tests:** `trace_engines` (traced VM = tree-walker trace; now `trace_goldens`, saved traces) covered the
   `mut` programs in `tests/programs` (`dsu`, `functions` and 21 more, which
   differed or trapped before the lending fix); fixture `MUT` is in the
   counted and `Timeline` tests.

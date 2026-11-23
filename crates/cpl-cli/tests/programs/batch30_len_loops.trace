@@ -1,0 +1,46 @@
+"variables":{"stdout":{"name":"stdout","type":"what the program printed, a line at a time","kind":"json"},"bb":{"name":"bb","type":"List\u003cInt>","kind":"array"}},"runs":{"fast":{"label":"cpl run","steps":[{"id":0,"line":35,"label":"var bb = [3, 4]","stage":"main","values":{"stdout":[],"bb":[3,4]},"locals":{},"frames":[{"fn":"main","line":35}]},
+{"id":1,"line":3,"label":"var s = 0","stage":"main","values":{"stdout":[],"bb":[3,4]},"locals":{"a":[1,2],"b":[3,4],"s":0},"frames":[{"fn":"dot","line":3},{"fn":"main","line":36}]},
+{"id":2,"line":4,"label":"for i in 0..a.len:","stage":"main","values":{"stdout":[],"bb":[3,4]},"locals":{"a":[1,2],"b":[3,4],"s":0,"i":0},"frames":[{"fn":"dot","line":4},{"fn":"main","line":36}]},
+{"id":3,"line":5,"label":"for j in 0..b.len:","stage":"main","values":{"stdout":[],"bb":[3,4]},"locals":{"a":[1,2],"b":[3,4],"s":0,"i":0,"j":0},"frames":[{"fn":"dot","line":5},{"fn":"main","line":36}]},
+{"id":4,"line":6,"label":"s += a[i] * b[j]","stage":"main","values":{"stdout":[],"bb":[3,4]},"locals":{"a":[1,2],"b":[3,4],"s":3,"i":0,"j":0},"frames":[{"fn":"dot","line":6},{"fn":"main","line":36}]},
+{"id":5,"line":7,"label":"b[j] += 1","stage":"main","values":{"stdout":[],"bb":[4,4]},"locals":{"a":[1,2],"b":[4,4],"s":3,"i":0,"j":0},"frames":[{"fn":"dot","line":7},{"fn":"main","line":36}]},
+{"id":6,"line":5,"label":"for j in 0..b.len:","stage":"main","values":{"stdout":[],"bb":[4,4]},"locals":{"a":[1,2],"b":[4,4],"s":3,"i":0,"j":1},"frames":[{"fn":"dot","line":5},{"fn":"main","line":36}]},
+{"id":7,"line":6,"label":"s += a[i] * b[j]","stage":"main","values":{"stdout":[],"bb":[4,4]},"locals":{"a":[1,2],"b":[4,4],"s":7,"i":0,"j":1},"frames":[{"fn":"dot","line":6},{"fn":"main","line":36}]},
+{"id":8,"line":7,"label":"b[j] += 1","stage":"main","values":{"stdout":[],"bb":[4,5]},"locals":{"a":[1,2],"b":[4,5],"s":7,"i":0,"j":1},"frames":[{"fn":"dot","line":7},{"fn":"main","line":36}]},
+{"id":9,"line":4,"label":"for i in 0..a.len:","stage":"main","values":{"stdout":[],"bb":[4,5]},"locals":{"a":[1,2],"b":[4,5],"s":7,"i":1,"j":1},"frames":[{"fn":"dot","line":4},{"fn":"main","line":36}]},
+{"id":10,"line":5,"label":"for j in 0..b.len:","stage":"main","values":{"stdout":[],"bb":[4,5]},"locals":{"a":[1,2],"b":[4,5],"s":7,"i":1,"j":0},"frames":[{"fn":"dot","line":5},{"fn":"main","line":36}]},
+{"id":11,"line":6,"label":"s += a[i] * b[j]","stage":"main","values":{"stdout":[],"bb":[4,5]},"locals":{"a":[1,2],"b":[4,5],"s":15,"i":1,"j":0},"frames":[{"fn":"dot","line":6},{"fn":"main","line":36}]},
+{"id":12,"line":7,"label":"b[j] += 1","stage":"main","values":{"stdout":[],"bb":[5,5]},"locals":{"a":[1,2],"b":[5,5],"s":15,"i":1,"j":0},"frames":[{"fn":"dot","line":7},{"fn":"main","line":36}]},
+{"id":13,"line":5,"label":"for j in 0..b.len:","stage":"main","values":{"stdout":[],"bb":[5,5]},"locals":{"a":[1,2],"b":[5,5],"s":15,"i":1,"j":1},"frames":[{"fn":"dot","line":5},{"fn":"main","line":36}]},
+{"id":14,"line":6,"label":"s += a[i] * b[j]","stage":"main","values":{"stdout":[],"bb":[5,5]},"locals":{"a":[1,2],"b":[5,5],"s":25,"i":1,"j":1},"frames":[{"fn":"dot","line":6},{"fn":"main","line":36}]},
+{"id":15,"line":7,"label":"b[j] += 1","stage":"main","values":{"stdout":[],"bb":[5,6]},"locals":{"a":[1,2],"b":[5,6],"s":25,"i":1,"j":1},"frames":[{"fn":"dot","line":7},{"fn":"main","line":36}]},
+{"id":16,"line":36,"label":"print → 25 5 6","stage":"main","values":{"stdout":["25 5 6"],"bb":[5,6]},"locals":{},"checkpoint":"print 1","frames":[{"fn":"main","line":36}]},
+{"id":17,"line":10,"label":"var c = [1, 2]","stage":"main","values":{"stdout":["25 5 6"],"bb":[5,6]},"locals":{"n":3,"c":[1,2]},"frames":[{"fn":"grows","line":10},{"fn":"main","line":37}]},
+{"id":18,"line":11,"label":"for k in 0..c.len:","stage":"main","values":{"stdout":["25 5 6"],"bb":[5,6]},"locals":{"n":3,"c":[1,2],"k":0},"frames":[{"fn":"grows","line":11},{"fn":"main","line":37}]},
+{"id":19,"line":12,"label":"if c[k] == 1: c.push(5)","stage":"main","values":{"stdout":["25 5 6"],"bb":[5,6]},"locals":{"n":3,"c":[1,2,5],"k":0},"frames":[{"fn":"grows","line":12},{"fn":"main","line":37}]},
+{"id":20,"line":11,"label":"for k in 0..c.len:","stage":"main","values":{"stdout":["25 5 6"],"bb":[5,6]},"locals":{"n":3,"c":[1,2,5],"k":1},"frames":[{"fn":"grows","line":11},{"fn":"main","line":37}]},
+{"id":21,"line":13,"label":"var d = [1, 2, 3]","stage":"main","values":{"stdout":["25 5 6"],"bb":[5,6]},"locals":{"n":3,"c":[1,2,5],"k":1,"d":[1,2,3]},"frames":[{"fn":"grows","line":13},{"fn":"main","line":37}]},
+{"id":22,"line":14,"label":"for k in 0..d.len:","stage":"main","values":{"stdout":["25 5 6"],"bb":[5,6]},"locals":{"n":3,"c":[1,2,5],"k":1,"d":[1,2,3],"k":0},"frames":[{"fn":"grows","line":14},{"fn":"main","line":37}]},
+{"id":23,"line":15,"label":"d[k] += n","stage":"main","values":{"stdout":["25 5 6"],"bb":[5,6]},"locals":{"n":3,"c":[1,2,5],"k":1,"d":[4,2,3],"k":0},"frames":[{"fn":"grows","line":15},{"fn":"main","line":37}]},
+{"id":24,"line":14,"label":"for k in 0..d.len:","stage":"main","values":{"stdout":["25 5 6"],"bb":[5,6]},"locals":{"n":3,"c":[1,2,5],"k":1,"d":[4,2,3],"k":1},"frames":[{"fn":"grows","line":14},{"fn":"main","line":37}]},
+{"id":25,"line":15,"label":"d[k] += n","stage":"main","values":{"stdout":["25 5 6"],"bb":[5,6]},"locals":{"n":3,"c":[1,2,5],"k":1,"d":[4,5,3],"k":1},"frames":[{"fn":"grows","line":15},{"fn":"main","line":37}]},
+{"id":26,"line":1,"label":"fn bump(mut xs: List\u003cInt>): xs.push(0)","stage":"main","values":{"stdout":["25 5 6"],"bb":[5,6]},"locals":{"xs":[4,5,3,0]},"frames":[{"fn":"bump","line":1},{"fn":"grows","line":16},{"fn":"main","line":37}]},
+{"id":27,"line":14,"label":"for k in 0..d.len:","stage":"main","values":{"stdout":["25 5 6"],"bb":[5,6]},"locals":{"n":3,"c":[1,2,5],"k":1,"d":[4,5,3,0],"k":2},"frames":[{"fn":"grows","line":14},{"fn":"main","line":37}]},
+{"id":28,"line":15,"label":"d[k] += n","stage":"main","values":{"stdout":["25 5 6"],"bb":[5,6]},"locals":{"n":3,"c":[1,2,5],"k":1,"d":[4,5,6,0],"k":2},"frames":[{"fn":"grows","line":15},{"fn":"main","line":37}]},
+{"id":29,"line":17,"label":"var e = [4, 5, 6, 7]","stage":"main","values":{"stdout":["25 5 6"],"bb":[5,6]},"locals":{"n":3,"c":[1,2,5],"k":1,"d":[4,5,6,0],"k":2,"e":[4,5,6,7]},"frames":[{"fn":"grows","line":17},{"fn":"main","line":37}]},
+{"id":30,"line":18,"label":"var t = 0","stage":"main","values":{"stdout":["25 5 6"],"bb":[5,6]},"locals":{"n":3,"c":[1,2,5],"k":1,"d":[4,5,6,0],"k":2,"e":[4,5,6,7],"t":0},"frames":[{"fn":"grows","line":18},{"fn":"main","line":37}]},
+{"id":31,"line":19,"label":"for k in (0..e.len).rev: t = t * 10 + e[k]","stage":"main","values":{"stdout":["25 5 6"],"bb":[5,6]},"locals":{"n":3,"c":[1,2,5],"k":1,"d":[4,5,6,0],"k":2,"e":[4,5,6,7],"t":0,"k":3},"frames":[{"fn":"grows","line":19},{"fn":"main","line":37}]},
+{"id":32,"line":19,"label":"for k in (0..e.len).rev: t = t * 10 + e[k]","stage":"main","values":{"stdout":["25 5 6"],"bb":[5,6]},"locals":{"n":3,"c":[1,2,5],"k":1,"d":[4,5,6,0],"k":2,"e":[4,5,6,7],"t":7,"k":3},"frames":[{"fn":"grows","line":19},{"fn":"main","line":37}]},
+{"id":33,"line":19,"label":"for k in (0..e.len).rev: t = t * 10 + e[k]","stage":"main","values":{"stdout":["25 5 6"],"bb":[5,6]},"locals":{"n":3,"c":[1,2,5],"k":1,"d":[4,5,6,0],"k":2,"e":[4,5,6,7],"t":7,"k":2},"frames":[{"fn":"grows","line":19},{"fn":"main","line":37}]},
+{"id":34,"line":19,"label":"for k in (0..e.len).rev: t = t * 10 + e[k]","stage":"main","values":{"stdout":["25 5 6"],"bb":[5,6]},"locals":{"n":3,"c":[1,2,5],"k":1,"d":[4,5,6,0],"k":2,"e":[4,5,6,7],"t":76,"k":2},"frames":[{"fn":"grows","line":19},{"fn":"main","line":37}]},
+{"id":35,"line":19,"label":"for k in (0..e.len).rev: t = t * 10 + e[k]","stage":"main","values":{"stdout":["25 5 6"],"bb":[5,6]},"locals":{"n":3,"c":[1,2,5],"k":1,"d":[4,5,6,0],"k":2,"e":[4,5,6,7],"t":76,"k":1},"frames":[{"fn":"grows","line":19},{"fn":"main","line":37}]},
+{"id":36,"line":19,"label":"for k in (0..e.len).rev: t = t * 10 + e[k]","stage":"main","values":{"stdout":["25 5 6"],"bb":[5,6]},"locals":{"n":3,"c":[1,2,5],"k":1,"d":[4,5,6,0],"k":2,"e":[4,5,6,7],"t":765,"k":1},"frames":[{"fn":"grows","line":19},{"fn":"main","line":37}]},
+... 37 more lines, 9522 bytes, fnv64 1af6066caf49744e
+stderr:
+error[R0101]: index 3 is outside a list of length 3
+  --> batch30_len_loops.cp:33:14
+   |
+33 |         s += xs[i]
+   |              ^^^^^
+   = note: call stack: shrink (batch30_len_loops.cp:33) <- top level (batch30_len_loops.cp:38)
+   = help: the indexes are 0 to 2: a loop over `0..=n` reaches `n`, `0..n` stops before it

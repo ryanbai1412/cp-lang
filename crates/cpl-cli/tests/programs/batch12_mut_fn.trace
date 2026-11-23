@@ -1,0 +1,8 @@
+"variables":{},"runs":{"fast":{"label":"cpl run","steps":[]}}}
+stderr:
+this is a cpl bug: run `cpl report --last`
+error[R0001]: the interpreter itself failed; this is a bug in cpl
+  --> batch12_mut_fn.cp:1:1
+  |
+1 | // Batch #12: a fn inside a fn takes `mut` parameters; the call works on the caller's variable.
+  | ^

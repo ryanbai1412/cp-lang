@@ -1,0 +1,10 @@
+"variables":{"stdout":{"name":"stdout","type":"what the program printed, a line at a time","kind":"json"},"n":{"name":"n","type":"Int","kind":"scalar"}},"runs":{"fast":{"label":"cpl run","steps":[{"id":0,"line":3,"label":"let n: Int = read()","stage":"main","values":{"stdout":[],"n":7},"locals":{},"frames":[{"fn":"main","line":3}]},
+{"id":1,"line":4,"label":"print → checking 7","stage":"main","values":{"stdout":["checking 7"],"n":7},"locals":{},"checkpoint":"print 1","frames":[{"fn":"main","line":4}]},
+{"id":2,"line":6,"label":"print → positive","stage":"main","values":{"stdout":["checking 7","positive"],"n":7},"locals":{},"checkpoint":"print 2","frames":[{"fn":"main","line":6}]},
+{"id":3,"line":7,"label":"failed: assertion failed: n % 2 == 0: 7 is odd","stage":"main","values":{"stdout":["checking 7","positive"],"n":7},"locals":{},"frames":[{"fn":"main","line":7}]}]}}}
+stderr:
+error[R0401]: assertion failed: n % 2 == 0: 7 is odd
+  --> assert_fails.cp:7:1
+  |
+7 | assert n % 2 == 0, "{n} is odd"
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

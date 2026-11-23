@@ -1,0 +1,6 @@
+"variables":{"stdout":{"name":"stdout","type":"what the program printed, a line at a time","kind":"json"},"n":{"name":"n","type":"Int","kind":"scalar"},"a":{"name":"a","type":"Int","kind":"scalar"},"b":{"name":"b","type":"Int","kind":"scalar"},"k":{"name":"k","type":"Int","kind":"scalar"}},"runs":{"fast":{"label":"cpl run","steps":[{"id":0,"line":2,"label":"let n = read\u003cInt>()","stage":"main","values":{"stdout":[],"n":1},"locals":{},"frames":[{"fn":"main","line":2}]},
+{"id":1,"line":3,"label":"let (a, b) = read\u003c(Int, Int)>()","stage":"main","values":{"stdout":[],"n":1,"a":2,"b":3},"locals":{},"frames":[{"fn":"main","line":3}]},
+{"id":2,"line":4,"label":"let k = 2","stage":"main","values":{"stdout":[],"n":1,"a":2,"b":3,"k":2},"locals":{},"frames":[{"fn":"main","line":4}]},
+{"id":3,"line":5,"label":"print → 1 5 YES YES","stage":"main","values":{"stdout":["1 5 YES YES"],"n":1,"a":2,"b":3,"k":2},"locals":{},"checkpoint":"print 1","frames":[{"fn":"main","line":5}]},
+{"id":4,"line":5,"label":"the program ended","stage":"main","values":{"stdout":["1 5 YES YES"],"n":1,"a":2,"b":3,"k":2},"locals":{},"checkpoint":"end","frames":[{"fn":"main","line":5}]}]}}}
+stderr:

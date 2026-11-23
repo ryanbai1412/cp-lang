@@ -1,0 +1,16 @@
+"variables":{"stdout":{"name":"stdout","type":"what the program printed, a line at a time","kind":"json"},"calls":{"name":"calls","type":"Int","kind":"scalar"},"x":{"name":"x","type":"?Int","kind":"scalar"}},"runs":{"fast":{"label":"cpl run","steps":[{"id":0,"line":2,"label":"var calls = 0","stage":"main","values":{"stdout":[],"calls":0},"locals":{},"frames":[{"fn":"main","line":2}]},
+{"id":1,"line":21,"label":"let x: ?Int = 3","stage":"main","values":{"stdout":[],"calls":0,"x":3},"locals":{},"frames":[{"fn":"main","line":21}]},
+{"id":2,"line":8,"label":"if let v = a:","stage":"main","values":{"stdout":[],"calls":0,"x":3},"locals":{"a":3,"v":3},"frames":[{"fn":"or_else","line":8},{"fn":"main","line":22}]},
+{"id":3,"line":22,"label":"print → 3 0","stage":"main","values":{"stdout":["3 0"],"calls":0,"x":3},"locals":{},"checkpoint":"print 1","frames":[{"fn":"main","line":22}]},
+{"id":4,"line":4,"label":"calls += 1","stage":"main","values":{"stdout":["3 0"],"calls":1,"x":3},"locals":{},"frames":[{"fn":"costly","line":4},{"fn":"\u003cclosure>","line":23},{"fn":"or_else","line":10},{"fn":"main","line":23}]},
+{"id":5,"line":23,"label":"print → 7 1","stage":"main","values":{"stdout":["3 0","7 1"],"calls":1,"x":3},"locals":{},"checkpoint":"print 2","frames":[{"fn":"main","line":23}]},
+{"id":6,"line":13,"label":"if let v = a:","stage":"main","values":{"stdout":["3 0","7 1"],"calls":1,"x":3},"locals":{"a":3,"v":3},"frames":[{"fn":"either","line":13},{"fn":"main","line":24}]},
+{"id":7,"line":4,"label":"calls += 1","stage":"main","values":{"stdout":["3 0","7 1"],"calls":2,"x":3},"locals":{},"frames":[{"fn":"costly","line":4},{"fn":"\u003cclosure>","line":24},{"fn":"either","line":15},{"fn":"main","line":24}]},
+{"id":8,"line":24,"label":"print → 3 7 2","stage":"main","values":{"stdout":["3 0","7 1","3 7 2"],"calls":2,"x":3},"locals":{},"checkpoint":"print 3","frames":[{"fn":"main","line":24}]},
+{"id":9,"line":19,"label":"print → failed: n = 2","stage":"main","values":{"stdout":["3 0","7 1","3 7 2","failed: n = 2"],"calls":2,"x":3},"locals":{"ok":false},"checkpoint":"print 4","frames":[{"fn":"check","line":19},{"fn":"main","line":26}]},
+{"id":10,"line":27,"label":"print → 2 9","stage":"main","values":{"stdout":["3 0","7 1","3 7 2","failed: n = 2","2 9"],"calls":2,"x":3},"locals":{},"checkpoint":"print 5","frames":[{"fn":"main","line":27}]},
+{"id":11,"line":32,"label":"if let x = self.v:","stage":"main","values":{"stdout":["3 0","7 1","3 7 2","failed: n = 2","2 9"],"calls":2,"x":3},"locals":{"self":{"v":4},"x":4},"frames":[{"fn":"Cache.get_or","line":32},{"fn":"main","line":35}]},
+{"id":12,"line":4,"label":"calls += 1","stage":"main","values":{"stdout":["3 0","7 1","3 7 2","failed: n = 2","2 9"],"calls":3,"x":3},"locals":{},"frames":[{"fn":"costly","line":4},{"fn":"\u003cclosure>","line":35},{"fn":"Cache.get_or","line":34},{"fn":"main","line":35}]},
+{"id":13,"line":35,"label":"print → 4 2 7 3","stage":"main","values":{"stdout":["3 0","7 1","3 7 2","failed: n = 2","2 9","4 2 7 3"],"calls":3,"x":3},"locals":{},"checkpoint":"print 6","frames":[{"fn":"main","line":35}]},
+{"id":14,"line":35,"label":"the program ended","stage":"main","values":{"stdout":["3 0","7 1","3 7 2","failed: n = 2","2 9","4 2 7 3"],"calls":3,"x":3},"locals":{},"checkpoint":"end","frames":[{"fn":"main","line":35}]}]}}}
+stderr:

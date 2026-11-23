@@ -1,0 +1,18 @@
+"variables":{"stdout":{"name":"stdout","type":"what the program printed, a line at a time","kind":"json"},"n":{"name":"n","type":"Int","kind":"scalar"},"s":{"name":"s","type":"Int","kind":"scalar"},"i":{"name":"i","type":"Int","kind":"scalar"},"t":{"name":"t","type":"Str","kind":"scalar"}},"runs":{"fast":{"label":"cpl run","steps":[{"id":0,"line":1,"label":"let n: 1..=5 = read()","stage":"main","values":{"stdout":[],"n":3},"locals":{},"frames":[{"fn":"main","line":1}]},
+{"id":1,"line":2,"label":"var s = 0","stage":"main","values":{"stdout":[],"n":3,"s":0},"locals":{},"frames":[{"fn":"main","line":2}]},
+{"id":2,"line":4,"label":"s += 1","stage":"main","values":{"stdout":[],"n":3,"s":1},"locals":{},"frames":[{"fn":"main","line":4}]},
+{"id":3,"line":4,"label":"s += 1","stage":"main","values":{"stdout":[],"n":3,"s":2},"locals":{},"frames":[{"fn":"main","line":4}]},
+{"id":4,"line":4,"label":"s += 1","stage":"main","values":{"stdout":[],"n":3,"s":3},"locals":{},"frames":[{"fn":"main","line":4}]},
+{"id":5,"line":4,"label":"s += 1","stage":"main","values":{"stdout":[],"n":3,"s":4},"locals":{},"frames":[{"fn":"main","line":4}]},
+{"id":6,"line":5,"label":"var i = 0","stage":"main","values":{"stdout":[],"n":3,"s":4,"i":0},"locals":{},"frames":[{"fn":"main","line":5}]},
+{"id":7,"line":7,"label":"i += 1","stage":"main","values":{"stdout":[],"n":3,"s":4,"i":1},"locals":{},"frames":[{"fn":"main","line":7}]},
+{"id":8,"line":7,"label":"i += 1","stage":"main","values":{"stdout":[],"n":3,"s":4,"i":2},"locals":{},"frames":[{"fn":"main","line":7}]},
+{"id":9,"line":7,"label":"i += 1","stage":"main","values":{"stdout":[],"n":3,"s":4,"i":3},"locals":{},"frames":[{"fn":"main","line":7}]},
+{"id":10,"line":9,"label":"let t: Str = \"ab\"","stage":"main","values":{"stdout":[],"n":3,"s":4,"i":3,"t":"ab"},"locals":{},"frames":[{"fn":"main","line":9}]},
+{"id":11,"line":10,"label":"print(s, i, t.repeat(2))","stage":"main","values":{"stdout":[],"n":3,"s":4,"i":3,"t":"ab"},"locals":{"self":"ab","n":2,"i":0},"frames":[{"fn":"repeat","line":10},{"fn":"main","line":10}]},
+{"id":12,"line":10,"label":"print(s, i, t.repeat(2))","stage":"main","values":{"stdout":[],"n":3,"s":4,"i":3,"t":"ab"},"locals":{"self":"ab","n":2,"i":1},"frames":[{"fn":"repeat","line":10},{"fn":"main","line":10}]},
+{"id":13,"line":10,"label":"print(s, i, t.repeat(2))","stage":"main","values":{"stdout":[],"n":3,"s":4,"i":3,"t":"ab"},"locals":{"self":"ab","n":2,"i":2},"frames":[{"fn":"repeat","line":10},{"fn":"main","line":10}]},
+{"id":14,"line":10,"label":"print(s, i, t.repeat(2))","stage":"main","values":{"stdout":[],"n":3,"s":4,"i":3,"t":"ab"},"locals":{"self":"ab","n":2,"i":3},"frames":[{"fn":"repeat","line":10},{"fn":"main","line":10}]},
+{"id":15,"line":10,"label":"print → 4 3 abab","stage":"main","values":{"stdout":["4 3 abab"],"n":3,"s":4,"i":3,"t":"ab"},"locals":{},"checkpoint":"print 1","frames":[{"fn":"main","line":10}]},
+{"id":16,"line":10,"label":"the program ended","stage":"main","values":{"stdout":["4 3 abab"],"n":3,"s":4,"i":3,"t":"ab"},"locals":{},"checkpoint":"end","frames":[{"fn":"main","line":10}]}]}}}
+stderr:

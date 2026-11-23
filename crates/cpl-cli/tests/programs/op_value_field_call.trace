@@ -1,0 +1,5 @@
+"variables":{"stdout":{"name":"stdout","type":"what the program printed, a line at a time","kind":"json"},"s":{"name":"s","type":"Semiring\u003cMin, Add>","kind":"json"},"g":{"name":"g","type":"G\u003cMax>","kind":"json"}},"runs":{"fast":{"label":"cpl run","steps":[{"id":0,"line":4,"label":"let s = Semiring(min, +)","stage":"main","values":{"stdout":[],"s":{"add":"…","mul":"…"}},"locals":{},"frames":[{"fn":"main","line":4}]},
+{"id":1,"line":6,"label":"let g = G(max)","stage":"main","values":{"stdout":[],"s":{"add":"…","mul":"…"},"g":{"op":"…"}},"locals":{},"frames":[{"fn":"main","line":6}]},
+{"id":2,"line":7,"label":"print → 3 7 4","stage":"main","values":{"stdout":["3 7 4"],"s":{"add":"…","mul":"…"},"g":{"op":"…"}},"locals":{},"checkpoint":"print 1","frames":[{"fn":"main","line":7}]},
+{"id":3,"line":7,"label":"the program ended","stage":"main","values":{"stdout":["3 7 4"],"s":{"add":"…","mul":"…"},"g":{"op":"…"}},"locals":{},"checkpoint":"end","frames":[{"fn":"main","line":7}]}]}}}
+stderr:

@@ -1,0 +1,12 @@
+"variables":{"stdout":{"name":"stdout","type":"what the program printed, a line at a time","kind":"json"},"calls":{"name":"calls","type":"Int","kind":"scalar"},"a":{"name":"a","type":"W","kind":"json"},"b":{"name":"b","type":"W","kind":"json"}},"runs":{"fast":{"label":"cpl run","steps":[{"id":0,"line":3,"label":"var calls = 0","stage":"main","values":{"stdout":[],"calls":0},"locals":{},"frames":[{"fn":"main","line":3}]},
+{"id":1,"line":9,"label":"let (a, b) = (W(1), W(2))","stage":"main","values":{"stdout":[],"calls":0,"a":{"v":1},"b":{"v":2}},"locals":{},"frames":[{"fn":"main","line":9}]},
+{"id":2,"line":6,"label":"calls += 1","stage":"main","values":{"stdout":[],"calls":1,"a":{"v":1},"b":{"v":2}},"locals":{"a":{"v":1},"b":{"v":2}},"frames":[{"fn":"W.lt","line":6},{"fn":"main","line":10}]},
+{"id":3,"line":6,"label":"calls += 1","stage":"main","values":{"stdout":[],"calls":2,"a":{"v":1},"b":{"v":2}},"locals":{"a":{"v":2},"b":{"v":1}},"frames":[{"fn":"W.lt","line":6},{"fn":"main","line":10}]},
+{"id":4,"line":6,"label":"calls += 1","stage":"main","values":{"stdout":[],"calls":3,"a":{"v":1},"b":{"v":2}},"locals":{"a":{"v":2},"b":{"v":1}},"frames":[{"fn":"W.lt","line":6},{"fn":"main","line":10}]},
+{"id":5,"line":6,"label":"calls += 1","stage":"main","values":{"stdout":[],"calls":4,"a":{"v":1},"b":{"v":2}},"locals":{"a":{"v":1},"b":{"v":2}},"frames":[{"fn":"W.lt","line":6},{"fn":"main","line":10}]},
+{"id":6,"line":6,"label":"calls += 1","stage":"main","values":{"stdout":[],"calls":5,"a":{"v":1},"b":{"v":2}},"locals":{"a":{"v":2},"b":{"v":1}},"frames":[{"fn":"W.lt","line":6},{"fn":"main","line":10}]},
+{"id":7,"line":6,"label":"calls += 1","stage":"main","values":{"stdout":[],"calls":6,"a":{"v":1},"b":{"v":2}},"locals":{"a":{"v":1},"b":{"v":1}},"frames":[{"fn":"W.lt","line":6},{"fn":"main","line":10}]},
+{"id":8,"line":10,"label":"print → YES NO YES NO NO NO","stage":"main","values":{"stdout":["YES NO YES NO NO NO"],"calls":6,"a":{"v":1},"b":{"v":2}},"locals":{},"checkpoint":"print 1","frames":[{"fn":"main","line":10}]},
+{"id":9,"line":11,"label":"print → 6","stage":"main","values":{"stdout":["YES NO YES NO NO NO","6"],"calls":6,"a":{"v":1},"b":{"v":2}},"locals":{},"checkpoint":"print 2","frames":[{"fn":"main","line":11}]},
+{"id":10,"line":11,"label":"the program ended","stage":"main","values":{"stdout":["YES NO YES NO NO NO","6"],"calls":6,"a":{"v":1},"b":{"v":2}},"locals":{},"checkpoint":"end","frames":[{"fn":"main","line":11}]}]}}}
+stderr:

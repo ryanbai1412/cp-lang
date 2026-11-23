@@ -1,0 +1,6 @@
+"variables":{"stdout":{"name":"stdout","type":"what the program printed, a line at a time","kind":"json"},"a":{"name":"a","type":"Int","kind":"scalar"},"b":{"name":"b","type":"Str","kind":"scalar"}},"runs":{"fast":{"label":"cpl run","steps":[{"id":0,"line":2,"label":"let (a: 1..=100, b: Str) = read()","stage":"test case 1","values":{"stdout":[],"a":7,"b":"hi"},"locals":{},"frames":[{"fn":"main","line":2}]},
+{"id":1,"line":3,"label":"print → 14 hi","stage":"test case 1","values":{"stdout":["14 hi"],"a":7,"b":"hi"},"locals":{},"checkpoint":"case 1 · print 1","frames":[{"fn":"main","line":3}]},
+{"id":2,"line":2,"label":"let (a: 1..=100, b: Str) = read()","stage":"test case 2","values":{"stdout":[],"a":15,"b":"ok"},"locals":{},"frames":[{"fn":"main","line":2}]},
+{"id":3,"line":3,"label":"print → 30 ok","stage":"test case 2","values":{"stdout":["30 ok"],"a":15,"b":"ok"},"locals":{},"checkpoint":"case 2 · print 1","frames":[{"fn":"main","line":3}]},
+{"id":4,"line":3,"label":"the program ended","stage":"test case 2","values":{"stdout":["30 ok"],"a":15,"b":"ok"},"locals":{},"checkpoint":"case 2 · end","frames":[{"fn":"main","line":3}]}]}}}
+stderr:

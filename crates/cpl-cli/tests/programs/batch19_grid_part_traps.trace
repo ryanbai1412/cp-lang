@@ -1,0 +1,10 @@
+"variables":{"stdout":{"name":"stdout","type":"what the program printed, a line at a time","kind":"json"},"hi":{"name":"hi","type":"Int","kind":"scalar"},"g":{"name":"g","type":"[Int, Int]Int","kind":"dp"}},"runs":{"fast":{"label":"cpl run","steps":[{"id":0,"line":2,"label":"let hi: Int = read()","stage":"main","values":{"stdout":[],"hi":7},"locals":{},"frames":[{"fn":"main","line":2}]},
+{"id":1,"line":3,"label":"var g: [0..2, 0..3]Int = 0","stage":"main","values":{"stdout":[],"hi":7,"g":[[0,0,0],[0,0,0]]},"locals":{},"frames":[{"fn":"main","line":3}]},
+{"id":2,"line":4,"label":"print → 0 0","stage":"main","values":{"stdout":["0 0"],"hi":7,"g":[[0,0,0],[0,0,0]]},"locals":{},"checkpoint":"print 1","frames":[{"fn":"main","line":4}]},
+{"id":3,"line":5,"label":"failed: a part `lo..hi` of a row or column needs 0 \u003c= lo \u003c= hi \u003c= its length","stage":"main","values":{"stdout":["0 0"],"hi":7,"g":[[0,0,0],[0,0,0]]},"locals":{},"frames":[{"fn":"main","line":5}]}]}}}
+stderr:
+error[R0001]: a part `lo..hi` of a row or column needs 0 <= lo <= hi <= its length
+  --> batch19_grid_part_traps.cp:5:12
+  |
+5 | print(g[1, 2..hi])
+  |            ^^^^^

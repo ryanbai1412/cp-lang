@@ -1,0 +1,5 @@
+"variables":{"stdout":{"name":"stdout","type":"what the program printed, a line at a time","kind":"json"},"p":{"name":"p","type":"Pair\u003cCity, Char>","kind":"json"},"q":{"name":"q","type":"Pair\u003cChar, City>","kind":"json"}},"runs":{"fast":{"label":"cpl run","steps":[{"id":0,"line":7,"label":"let p = Pair(City.first!, 'x')","stage":"main","values":{"stdout":[],"p":{"first":1,"second":"x"}},"locals":{},"frames":[{"fn":"main","line":7}]},
+{"id":1,"line":8,"label":"let q = p.swap()","stage":"main","values":{"stdout":[],"p":{"first":1,"second":"x"},"q":{"first":"x","second":1}},"locals":{},"frames":[{"fn":"main","line":8}]},
+{"id":2,"line":9,"label":"print → 1 x 1","stage":"main","values":{"stdout":["1 x 1"],"p":{"first":1,"second":"x"},"q":{"first":"x","second":1}},"locals":{},"checkpoint":"print 1","frames":[{"fn":"main","line":9}]},
+{"id":3,"line":9,"label":"the program ended","stage":"main","values":{"stdout":["1 x 1"],"p":{"first":1,"second":"x"},"q":{"first":"x","second":1}},"locals":{},"checkpoint":"end","frames":[{"fn":"main","line":9}]}]}}}
+stderr:

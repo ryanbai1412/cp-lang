@@ -1,0 +1,9 @@
+"variables":{"stdout":{"name":"stdout","type":"what the program printed, a line at a time","kind":"json"},"cnt":{"name":"cnt","type":"[Sign]Int","kind":"array","labels":[0,1,2]},"s":{"name":"s","type":"Sign","kind":"scalar"}},"runs":{"fast":{"label":"cpl run","steps":[{"id":0,"line":3,"label":"var cnt: [Sign]Int = 0","stage":"main","values":{"stdout":[],"cnt":[0,0,0]},"locals":{},"frames":[{"fn":"main","line":3}]},
+{"id":1,"line":4,"label":"cnt[Sign.neg] += 3","stage":"main","values":{"stdout":[],"cnt":[3,0,0]},"locals":{},"frames":[{"fn":"main","line":4}],"focus":{"variable":"cnt","path":[0]}},
+{"id":2,"line":5,"label":"cnt[Sign.zero] += 1","stage":"main","values":{"stdout":[],"cnt":[3,1,0]},"locals":{},"frames":[{"fn":"main","line":5}],"focus":{"variable":"cnt","path":[1]}},
+{"id":3,"line":6,"label":"cnt[Sign.pos] += 5","stage":"main","values":{"stdout":[],"cnt":[3,1,5]},"locals":{},"frames":[{"fn":"main","line":6}],"focus":{"variable":"cnt","path":[2]}},
+{"id":4,"line":7,"label":"let s = Sign.pos","stage":"main","values":{"stdout":[],"cnt":[3,1,5],"s":"pos"},"locals":{},"frames":[{"fn":"main","line":7}]},
+{"id":5,"line":8,"label":"cnt[s] += 2","stage":"main","values":{"stdout":[],"cnt":[3,1,7],"s":"pos"},"locals":{},"frames":[{"fn":"main","line":8}],"focus":{"variable":"cnt","path":[2]}},
+{"id":6,"line":9,"label":"print → 3 1 7","stage":"main","values":{"stdout":["3 1 7"],"cnt":[3,1,7],"s":"pos"},"locals":{},"checkpoint":"print 1","frames":[{"fn":"main","line":9}]},
+{"id":7,"line":9,"label":"the program ended","stage":"main","values":{"stdout":["3 1 7"],"cnt":[3,1,7],"s":"pos"},"locals":{},"checkpoint":"end","frames":[{"fn":"main","line":9}]}]}}}
+stderr:

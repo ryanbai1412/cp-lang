@@ -1,0 +1,7 @@
+"variables":{"stdout":{"name":"stdout","type":"what the program printed, a line at a time","kind":"json"}},"runs":{"fast":{"label":"cpl run","steps":[{"id":0,"line":1,"label":"failed: `-9223372036854775808` does not fit in an `Int` (input line 1, column 1)","stage":"main","values":{"stdout":[]},"locals":{},"frames":[{"fn":"main","line":1}]}]}}}
+stderr:
+error[R0502]: `-9223372036854775808` does not fit in an `Int` (input line 1, column 1)
+  --> read_int_below_int_min.cp:1:14
+  |
+1 | let a: Int = read()
+  |              ^^^^^^

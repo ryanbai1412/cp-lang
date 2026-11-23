@@ -1,0 +1,6 @@
+"variables":{"stdout":{"name":"stdout","type":"what the program printed, a line at a time","kind":"json"},"N":{"name":"N","type":"Int","kind":"scalar"},"FAST":{"name":"FAST","type":"Bool","kind":"scalar"}},"runs":{"fast":{"label":"cpl run","steps":[{"id":0,"line":2,"label":"const N = 3","stage":"main","values":{"stdout":[],"N":3},"locals":{},"frames":[{"fn":"main","line":2}]},
+{"id":1,"line":1,"label":"const FAST = false","stage":"main","values":{"stdout":[],"N":3,"FAST":false},"locals":{},"frames":[{"fn":"main","line":1}]},
+{"id":2,"line":10,"label":"print → 2","stage":"main","values":{"stdout":["2"],"N":3,"FAST":false},"locals":{},"checkpoint":"print 1","frames":[{"fn":"main","line":10}]},
+{"id":3,"line":12,"label":"print → picked","stage":"main","values":{"stdout":["2","picked"],"N":3,"FAST":false},"locals":{},"checkpoint":"print 2","frames":[{"fn":"main","line":12}]},
+{"id":4,"line":12,"label":"the program ended","stage":"main","values":{"stdout":["2","picked"],"N":3,"FAST":false},"locals":{},"checkpoint":"end","frames":[{"fn":"main","line":12}]}]}}}
+stderr:
