@@ -302,7 +302,10 @@ impl Scaffold {
             out.push('\n');
         }
         if self.interactive {
-            out.push_str("// interactive: test with `cpl test <name> --interactor <program>`\n");
+            out.push_str(
+                "// interactive: an `@interactor fn judge(mut sol: Interactor)` here plays the judge \
+                 on each sample; `cpl run` and `cpl test` use it\n",
+            );
         }
         if !out.is_empty() {
             out.push('\n');

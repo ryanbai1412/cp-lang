@@ -939,3 +939,13 @@ fn a_multi_number_problem_gets_the_multitest_divider() {
     assert_eq!(source.matches("@!multitest").count(), 1, "{source}");
     assert!(!Scaffold::from_companion(COMPANION).unwrap().multitest);
 }
+
+#[test]
+fn an_interactive_problem_names_the_interactor_in_the_file() {
+    let json = COMPANION.replace("\"interactive\": false", "\"interactive\": true");
+    let source = Scaffold::from_companion(&json).unwrap().source(None);
+    assert!(
+        source.contains("// interactive: an `@interactor fn judge(mut sol: Interactor)` here"),
+        "{source}"
+    );
+}
