@@ -6281,3 +6281,15 @@ constants and the `exit(3)` in the C++ runtime, and the sentence in
   position and a cut only with a trait both implement, which std lacks.
 - **Reverse.** Reapply 258's commit once a std trait for "a position or a
   cut of `D`" exists and the std body orders its ends with `min`/`max`.
+
+## 260. `Counter` reaches programs through the prelude's `use`, not a compiler type name (2026-11-22)
+
+- **Decision.** `Counter` leaves the checker's `TYPE_NAMES` and its
+  `Ty::Named` row; `spec/std/prelude.cp` imports `std.hashmap.{Counter}`
+  like any std type, so a program's own `struct Counter` shadows it.
+- **Why.** Q3 (a): a std struct is not storage, I/O, bits or a numeric
+  primitive. The by-name trait rows in `check.rs` and `check/types.rs`
+  stay until std traits replace them (tech-debt worklog). No code path
+  changes, so no perf gate: `counts` still lowers to its own counter.
+- **Reverse.** Put `"Counter"` back in `TYPE_NAMES` and the `Ty::Named`
+  row in `crates/cpl-check/src/prelude.rs`, and drop the prelude `use`.

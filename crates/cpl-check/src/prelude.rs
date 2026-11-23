@@ -375,7 +375,7 @@ pub fn ty(name: &str) -> Option<Ty> {
         "I128" => Ty::I128,
         "U64" => Ty::U64,
         "List" | "Map" | "HashMap" | "Set" | "HashSet" | "Iter" | "Seq" | "Indexed" | "Opt"
-        | "Range" | "Cut" | "SortedRange" | "Sym" | "Counter" => Ty::Named {
+        | "Range" | "Cut" | "SortedRange" | "Sym" => Ty::Named {
             name: name.into(),
             args: Vec::new(),
         },
@@ -408,7 +408,6 @@ pub const TYPE_NAMES: &[&str] = &[
     "Opt",
     "Range",
     "Cut",
-    "Counter",
     "HashMap",
     "HashSet",
     "Interactor",

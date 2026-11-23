@@ -91,6 +91,7 @@ use std.poly.{eval}
 use std.sparse.{SparseTable}
 use std.pair.{Pair}
 use std.subset.{Subset}
+use std.hashmap.{Counter}
 use std.strings.{
     RollingHash,
     SuffixArray,
