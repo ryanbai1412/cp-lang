@@ -120,7 +120,7 @@ yet. Targets and current values are in `plan/domains/spec/metrics.toml`.
 | Every trait method on every claimer is tested ([conformance/R5](../guidelines/conformance-checklist.md)) | trait methods with no case | generated table, ratchet | `scripts/conformance-traits.py --check` |
 | Chapters and `std` agree on named arguments | named args no std fn takes | ratchet | `scripts/conformance-sigs.py --check`, `sig-gaps.txt` |
 | What the chapters call is in the prelude | chapter functions missing from the prelude | ratchet | `scripts/conformance-prelude.py --check`, `prelude-gaps.txt` |
-| Chapters and `std` agree on return types and existence (e.g. a chapter naming a type `std` doesn't have) | contradictions found per rebuild round | `missing`: found only by rebuild rounds | — |
+| Chapters and `std` agree on return types and existence (e.g. a chapter naming a type `std` doesn't have) | chapter fns whose return type differs from std's; chapter fns std lacks | gate on top-level fns ([spec-rules/R5](../guidelines/spec-rules-checklist.md)); prelude and stub checks for existence; methods compared only by rebuild rounds | `scripts/spec-std-signatures.py --check`, `scripts/conformance-prelude.py`, `scripts/spec-stub.py` |
 | The suite catches compiler bugs | share of reverted compiler fixes the suite turns red | mutation suite over history | `scripts/conformance-bugcatch.py`, `plan/domains/spec/bugcatch.md` |
 | The suite catches bugs no past fix shows | mutation score on compiler source mutants | `missing` | — |
 | Interpreter and C++ agree ([conformance/R6](../guidelines/conformance-checklist.md)) | cases whose output differs between `cpl run` and the built C++ | differential suite | `cpl-conform diff` |

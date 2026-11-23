@@ -153,8 +153,8 @@ are named arguments (`bases:`). Container-like structures follow `plan/STDLIB.md
 fn repeat(self: Str, n: Int) -> Str                                     // O(n * self.len)
 fn starts_with(self: Str, p: Str, at: Int = 0) -> Bool                  // O(p.len)
 fn ends_with(self: Str, p: Str) -> Bool                                 // O(p.len)
-fn search<P>(self: Str, p: P) -> ?Int                                   // O(self.len + p.len)
-fn rsearch<P>(self: Str, p: P) -> ?Int                                  // O(self.len + p.len)
+fn search<S: Indexed, K, P>(self: S, p: P) -> ?K                       // O(self.len + p.len)
+fn rsearch<S: Indexed, K, P>(self: S, p: P) -> ?K                      // O(self.len + p.len)
 @get fn lower(self: Char) -> Char                                       // O(1)
 @get fn upper(self: Char) -> Char                                       // O(1)
 @get fn digit(self: Char) -> Int                                        // O(1); traps outside '0'..'9'
@@ -174,15 +174,15 @@ Laws:
 ```cp
 fn z_function<S: Indexed<K, T>, K, T: Eq>(s: S) -> [K]Int           // O(n)
 fn prefix_function<S: Indexed<K, T>, K, T: Eq>(s: S) -> [K]Int      // O(n)
-fn find_all<S: Indexed, P: Indexed>(self: S, pat: P) -> yields Int  // O(|self| + |pat|)
+fn find_all<S: Indexed, P: Indexed, K>(self: S, pat: P) -> yields K  // O(|self| + |pat|)
 fn period<S: Indexed>(s: S) -> Int                                  // O(n)
 fn borders<S: Indexed>(s: S) -> yields Int                          // O(n); longest first
 fn prefix_matches<S: Indexed<K, T>, P: Indexed<J, T>, K, J, T: Eq>(self: S, pat: P) -> [K]Int
 // O(|self| + |pat|); entry i is the longest prefix of pat ending at self[i]
 fn overlap<A: Indexed, B: Indexed>(a: A, b: B) -> Int
 // O(|a| + |b|); longest suffix of a that is a prefix of b
-fn lyndon_factorization<S: Indexed>(s: S) -> List<Int>
-// O(n) Duval; start indices of the unique non-increasing Lyndon factors
+fn lyndon_factorization<S: Indexed<K, T>, K, T>(s: S) -> List<K>
+// O(n) Duval; start keys of the unique non-increasing Lyndon factors
 fn min_rotation<S: Indexed, K>(s: S) -> ?K  // start key; None on empty
 // O(n) Duval/Booth; start index of the lexicographically least cyclic shift
 fn lyndon_runs<S: Indexed>(s: S) -> List<(l: Int, r: Int, period: Int)>
