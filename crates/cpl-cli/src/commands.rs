@@ -152,7 +152,7 @@ pub(crate) const COMMANDS: &[Command] = &[
     Command {
         name: "fetch",
         args: "<url> [name]",
-        summary: &["download a Codeforces or AtCoder problem's samples"],
+        summary: &["download a Codeforces, AtCoder or CSES problem's samples"],
         json: Json::Flag,
         options: None,
     },

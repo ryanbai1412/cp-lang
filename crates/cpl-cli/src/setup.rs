@@ -202,7 +202,7 @@ fn write_files(
         .ok_or("no home folder to install into; pass --dir")?;
     write_all(&dir, files).map_err(|e| format!("can't write {}: {e}", dir.shown()))?;
     Ok(format!(
-        "installed CP Lang for {editor} in {}\nopen a .cp file to start; `cpl` must be on the PATH (or set g:cpl_path)",
+        "installed CP Lang for {editor} in {}\nopen a .cp file to start; it runs the `cpl` on the PATH, else the installer's ~/.cpl/bin/cpl (set g:cpl_path for another)",
         dir.shown()
     ))
 }
@@ -349,7 +349,7 @@ fn install_vscode(vsix: Option<PathBuf>) -> Result<String, String> {
         ));
     };
     Ok(format!(
-        "installed CP Lang for VS Code ({}) from {}\nopen a .cp file to start; `cpl` must be on the PATH (or set `cp.server.path`)",
+        "installed CP Lang for VS Code ({}) from {}\nopen a .cp file to start; it runs the `cpl` on the PATH, else the installer's ~/.cpl/bin/cpl (set `cp.server.path` for another)",
         installed.trim(),
         file.shown()
     ))
