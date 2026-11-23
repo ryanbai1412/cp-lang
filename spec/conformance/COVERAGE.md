@@ -7,14 +7,14 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 2422 (995 passing). Rules: 560.
+Cases: 2420 (995 passing). Rules: 560.
 
 ## Summary per chapter
 
 - R01 (01-lexical-grammar.md): 53 rules, 114 cases; 0 uncovered, 1 happy-path only, 0 negative only
 - R02 (02-values-types.md): 52 rules, 121 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R03 (03-numbers-layout.md): 24 rules, 61 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R04 (04-indices.md): 66 rules, 112 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R04 (04-indices.md): 66 rules, 110 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04a (04a-identity-vs-offset.md): 39 rules, 53 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04b (04b-keys.md): 27 rules, 62 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R05 (05-ownership.md): 43 rules, 149 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -226,7 +226,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R04.2.9 [1+ 0-]: | `P.nth(k)` | a product domain walks row-major (the last factor fastest), so `P.nth(k)` d...
 - R04.2.10 [3+ 1-]: | `P.at((x, y))`, `P((x, y))` | for a product domain `P = (A, B)`, a tuple of integers to ...
 - R04.2.19 [2+ 0-]: | `v.after`, `v.before` | the pieces `v.r..` and `..v.l` of `v`'s domain, so `for j in v.a...
-- R04.2.11 [6+ 1-]: | `a[p]`, `a[x, y]` | for `P = (A, B)`, `[P]T` and `[A, B]T` are the same type: a `p: P` i...
+- R04.2.11 [5+ 0-]: | `a[p]`, `a[x, y]` | for `P = (A, B)`, `[P]T` and `[A, B]T` are the same type: a `p: P` i...
 - R04.2.12 [1+ 0-]: | `Pair<V>` | the unordered pairs `{u, v}` of distinct positions, `V.count * (V.count - 1)...
 - R04.2.13 [1+ 0-]: | `V.wrap(x)` | integer to position, mod `V.count`: rings and cyclic shifts | O(1)
 - R04.2.14 [2+ 1-]: | `if let V(j) = i - 10:` | the pattern form of `V.at`: matches only inside `V` | O(1)
@@ -731,7 +731,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0206 Unresolved module: 2 case(s)
 - E0207 Private item: 1 case(s)
 - E0208 Uppercase value name: 1 case(s)
-- E0301 Wrong index domain: 17 case(s)
+- E0301 Wrong index domain: 16 case(s)
 - E0302 Type mismatch: 39 case(s)
 - E0303 Wrong number of arguments: 6 case(s)
 - E0304 Value is not callable: 1 case(s)
