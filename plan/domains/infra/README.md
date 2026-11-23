@@ -7,6 +7,12 @@ Detail: [PLAN.md](PLAN.md) · code: [ARCHITECTURE.md](ARCHITECTURE.md) · number
 ## Mission
 Keep every other domain moving: main green at every commit, a gate fast enough that nobody batches around it, landing that never waits on a person, and `curl | sh` installs that just work. Interrupts (red main, broken landing, broken release) beat roadmap work.
 
+## Rollout rules (from Ryan)
+- Throughput beats a green badge. Main stays green through infra's own work (regen, quarantine, fix or revert), never by taxing lanes: no blocking pre-merge gate or pre-push hook; lanes push directly.
+- Every lane spends under 5% of its time on devex; infra measures it (`land.sh` and hook timings, devex-only commits, red windows).
+- After any devex-affecting rollout, check in with the lanes 5-15 min later and compare commit velocity with the hour before. If it hurts them, revert first and diagnose after. A velocity drop is the first alarm.
+- Policy messages to all lanes are allowed only within these rules.
+
 ## Milestone 1
 [plan/product/MILESTONE-1.md](../../product/MILESTONE-1.md) step 3 (Install) and "Release quality" are infra's, on Linux, macOS and Windows, on edge. Deadline 2026-11-23 09:30 PST. Exit criteria:
 1. Edge publishes after every green main CI (at most hourly) and nightly, building all three OSes.
