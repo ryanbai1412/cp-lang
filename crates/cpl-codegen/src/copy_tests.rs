@@ -109,3 +109,37 @@ fn a_let_of_an_if_copies_a_place_the_body_changes() {
     ));
     assert!(!cpp.contains("& pos = "), "{cpp}");
 }
+
+#[test]
+fn a_comprehension_reserves_its_source_size() {
+    let cpp = cpp(concat!(
+        "fn flip(xs: List<Int>) -> List<Int> = [9 - x for x in xs.rev]\n",
+        "let n: 1..=9 = read()\n",
+        "let sq = [i * i for i in 0..n]\n",
+        "print(flip(sq).len, [x for x in sq if x > 1].len)\n",
+    ));
+    assert!(cpp.contains(".reserve(xs.size());"), "{cpp}");
+    assert!(
+        cpp.contains(".reserve((size_t)std::max<ll>(0, n - 0));"),
+        "{cpp}"
+    );
+    assert_eq!(cpp.matches(".reserve(").count(), 2, "{cpp}");
+}
+
+#[test]
+fn a_yields_fn_run_as_pushes_reserves_no_list() {
+    let cpp = cpp(concat!(
+        "fn walk(xs: List<Int>) -> yields Int:\n",
+        "    for x in xs:\n",
+        "        yield x\n",
+        "fn total(xs: List<Int>, w: Int -> Int) -> Int:\n",
+        "    var t = 0\n",
+        "    for x in walk(xs): t += w(x)\n",
+        "    t\n",
+        "print(total([3, 1, 2], x => x * 2))\n",
+    ));
+    let each = cpp.rsplit("int cpl_each_walk(").next().unwrap();
+    let body = each.split("\n}\n").next().unwrap();
+    assert!(body.contains("cpl_f(x)"), "{cpp}");
+    assert!(!body.contains(".reserve("), "{cpp}");
+}

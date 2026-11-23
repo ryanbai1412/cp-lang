@@ -62,7 +62,7 @@ impl<'p> Emitter<'p> {
                 _ => None,
             };
             self.moves_last = last_read(block, k);
-            self.stmt(stmt, out);
+            self.stmt_presized(&block.stmts, k, out);
             self.moves_last = false;
         }
         self.tail = None;
@@ -73,8 +73,8 @@ impl<'p> Emitter<'p> {
     fn flatten<'a>(&mut self, mut e: &'a Expr, out: &mut String) -> &'a Expr {
         while crate::expr::map_remove_do(e).is_none() {
             let Some((stmts, value)) = flat(e) else { break };
-            for stmt in stmts {
-                self.stmt(stmt, out);
+            for k in 0..stmts.len() {
+                self.stmt_presized(stmts, k, out);
             }
             e = value;
         }
