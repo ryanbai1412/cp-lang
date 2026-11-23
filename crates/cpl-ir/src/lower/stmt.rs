@@ -5849,7 +5849,7 @@ impl<'a> Lowerer<'a> {
                             return None;
                         };
                         let factors = &info.variants[tag].1;
-                        if factors.len() != args.len() {
+                        if !args.is_empty() && factors.len() != args.len() {
                             let message = format!(
                                 "`{}` holds {} values, but this pattern names {}",
                                 name.text,
@@ -5887,7 +5887,7 @@ impl<'a> Lowerer<'a> {
                     return None;
                 };
                 let fields = variants[tag].1.clone();
-                if fields.len() != args.len() {
+                if !args.is_empty() && fields.len() != args.len() {
                     let message = format!(
                         "`{}` holds {} values, but this pattern names {}",
                         name.text,

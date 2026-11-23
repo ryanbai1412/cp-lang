@@ -696,6 +696,7 @@ impl<'a> Parser<'a> {
     }
 
     pub(super) fn enum_decl(&mut self) -> StmtKind {
+        let start = self.start();
         self.bump();
         let name = self.expect_name("an enum name after `enum`");
         let (generics, _) = self.generic_params();
@@ -714,6 +715,39 @@ impl<'a> Parser<'a> {
         } else {
             methods = self.members(&format!("`enum {}`", name.text), |p| {
                 variants.push(p.variant())
+            });
+        }
+        // A method in the body is one of an `impl` on the enum (R02.7.1).
+        if !methods.is_empty() {
+            let target = Type {
+                kind: TypeKind::Named {
+                    name: name.clone(),
+                    args: generics
+                        .iter()
+                        .map(|g| Type {
+                            kind: TypeKind::Named {
+                                name: g.clone(),
+                                args: Vec::new(),
+                            },
+                            span: g.span,
+                        })
+                        .collect(),
+                },
+                span: name.span,
+            };
+            self.extra_stmts.push(Stmt {
+                kind: StmtKind::Impl {
+                    trait_name: None,
+                    target,
+                    bounds: Vec::new(),
+                    body: Block {
+                        stmts: methods.clone(),
+                        span: self.span_from(start),
+                    },
+                },
+                span: self.span_from(start),
+                decorators: Vec::new(),
+                public: false,
             });
         }
         StmtKind::Enum(EnumDecl {
