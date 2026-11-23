@@ -890,7 +890,24 @@ pub fn pieces<D, S: Seq>(self: Range<D>, cuts: S) -> (domain P, [P]Range<D>):
 /// traps: when an end of `r` is not one of the cuts
 /// example: with the pieces of `(0..10).pieces(cuts: [3, 7])`, `piece.covering(3..10).len == 2`
 /// order: pieces left to right, keyed by `P`
-pub fn covering<P, D>(self: [P]Range<D>, r: Range<D>) -> Range<P> = todo
+pub fn covering<P, D>(self: [P]Range<D>, r: Range<D>) -> Range<P>:
+    if P.count == 0:
+        assert r.is_empty, "covering: an end of the range is not a cut"
+        return P.range
+    var (lo, hi) = (0, P.count)
+    while lo < hi:
+        let m = (lo + hi) / 2
+        if self[P(m)].start < r.start: lo = m + 1 else: hi = m
+    let i = lo
+    (lo, hi) = (0, P.count)
+    while lo < hi:
+        let m = (lo + hi) / 2
+        if self[P(m)].end <= r.end: lo = m + 1 else: hi = m
+    let j = lo
+    let at_i = if i < P.count: self[P(i)].start else: self[P.last!].end
+    let at_j = if j > 0: self[P(j - 1)].end else: self[P.first!].start
+    assert at_i == r.start and at_j == r.end, "covering: an end of the range is not a cut"
+    span(P.cuts(i), P.cuts(j))
 
 /// The first `f(x)` that is not `None`, stopping there; `None` if every one is.
 /// O(1) per element walked.
