@@ -745,7 +745,7 @@
         "lints/symmetric-write.cp": "pass",
         "lints/tree-order.cp": "pass",
         "lints/unknown-lint.cp": "fail",
-        "lints/unproven-list-index.cp": "pass",
+        "lints/pedantic/unproven-list-index.cp": "pass",
         "lints/unread-field.cp": "pass",
         "lints/var-never-reassigned.cp": "pass",
         "std-algebra/affine.cp": "pass",
