@@ -1666,7 +1666,8 @@ impl<'a> Parser<'a> {
                     // `else if` reads as `elif`, and says so.
                     if self.at(T::If) {
                         let span = self.span();
-                        let both = Span::new(self.tokens[self.pos - 1].span.start, span.end);
+                        let both =
+                            Span::new(self.rel(self.tokens[self.pos - 1].span).start, span.end);
                         self.error(
                             Diagnostic::error(
                                 codes::REMOVED_SYNTAX,
