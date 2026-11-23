@@ -9,7 +9,9 @@ use crate::scoreboard::{CaseOutcome, SuiteReport};
 /// What checks and runs a case: the linked compiler, or, when
 /// `CPL_CONFORM_CLI` names a `cpl` binary, that binary. The second lets
 /// HEAD's runner and cases measure an older compiler
-/// (`scripts/conformance-bugcatch.py`).
+/// (`scripts/conformance-bugcatch.py`). `CPL_CONFORM_RELEASE=1` runs
+/// cases as `cpl run --release`, the C++ a judge runs, so a backend bug
+/// shows up too.
 enum Backend<'a> {
     Linked(&'a mut Database),
     Cli(PathBuf),
@@ -55,7 +57,11 @@ impl Backend<'_> {
                 })
             }
             Backend::Cli(cpl) => {
-                let (code, out, err) = cli(cpl, &["run", path], input)?;
+                let mut args = vec!["run", path];
+                if release() {
+                    args.push("--release");
+                }
+                let (code, out, err) = cli(cpl, &args, input)?;
                 Ok(Ran {
                     stdout: out.into_bytes(),
                     trapped: code != 0,
@@ -66,8 +72,24 @@ impl Backend<'_> {
     }
 }
 
+fn release() -> bool {
+    std::env::var_os("CPL_CONFORM_RELEASE").is_some_and(|v| v == "1")
+}
+
+/// The release build needs a `cpl` binary; without `CPL_CONFORM_CLI` it is
+/// the one built next to this runner.
 fn cli_override() -> Option<PathBuf> {
-    std::env::var_os("CPL_CONFORM_CLI").map(PathBuf::from)
+    std::env::var_os("CPL_CONFORM_CLI")
+        .map(PathBuf::from)
+        .or_else(|| {
+            release()
+                .then(|| {
+                    std::env::current_exe()
+                        .ok()
+                        .map(|e| e.with_file_name("cpl"))
+                })
+                .flatten()
+        })
 }
 
 /// Runs `cpl`, killed after `CPL_CONFORM_CASE_TIMEOUT` seconds (default

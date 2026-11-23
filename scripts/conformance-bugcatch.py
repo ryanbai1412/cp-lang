@@ -116,6 +116,8 @@ def main():
     ap.add_argument("--limit", type=int, default=40)
     ap.add_argument("--timeout", type=int, default=SUITE_TIMEOUT, help="seconds per suite run; a hang counts as caught")
     ap.add_argument("--commits", nargs="*")
+    ap.add_argument("--release", action="store_true",
+                    help="run cases as `cpl run --release`, the judge's C++, to catch backend fixes")
     ap.add_argument("--work", default=str(ROOT.parent / "cpl-bugcatch"))
     ap.add_argument("--out", default=str(ROOT / "plan/domains/spec/bugcatch.md"))
     a = ap.parse_args()
@@ -130,6 +132,8 @@ def main():
     git("worktree", "prune")
     git("worktree", "add", "--detach", str(wt), "HEAD")
     env = dict(os.environ, CARGO_TARGET_DIR=str(work / "target"))
+    if a.release:
+        env["CPL_CONFORM_RELEASE"] = "1"
     todo = [(c, git("log", "-1", "--format=%s", c).stdout.strip()) for c in a.commits] if a.commits else candidates(a.limit)
     rows = []
     try:
