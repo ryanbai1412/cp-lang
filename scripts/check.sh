@@ -238,7 +238,7 @@ fi
 # CI splits --fast across parallel jobs (.github/workflows/ci.yml):
 # CPL_GATE_PART=checks runs everything but the workspace tests and the
 # conformance ratchet, CPL_GATE_PART=conform runs the ratchet and the script
-# unit tests (CPL_GATE_PART=conform:<suite,...> runs only those suites, the
+# unit tests (CPL_GATE_PART=conform:<suite+...> runs only those suites, the
 # script tests with the conformance suite), and CPL_GATE_PART=tests:<nextest partition> (e.g. tests:hash:1/6)
 # runs only that share of the tests, plus the doctests in share 1. Unset runs
 # all of --fast.
@@ -250,7 +250,7 @@ case "$gate_part" in
         [ "$mode" = fast ] || fail "CPL_GATE_PART=$gate_part needs --fast"
         conform_suites=all
         [ "$gate_part" = conform ] || conform_suites="${gate_part#conform:}"
-        conform_suites="${conform_suites//,/ }"
+        conform_suites="${conform_suites//[+,]/ }"
         case " $conform_suites " in
             *" all "* | *" conformance "*)
                 step "script unit tests"

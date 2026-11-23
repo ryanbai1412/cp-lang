@@ -35,7 +35,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        part: [checks, "conform:conformance,spec-blocks", "conform:diff", "conform:corpus,docs", "tests:hash:1/6", "tests:hash:2/6", "tests:hash:3/6", "tests:hash:4/6", "tests:hash:5/6", "tests:hash:6/6"]
+        part: [checks, "conform:conformance+spec-blocks", "conform:diff", "conform:corpus+docs", "tests:hash:1/6", "tests:hash:2/6", "tests:hash:3/6", "tests:hash:4/6", "tests:hash:5/6", "tests:hash:6/6"]
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
