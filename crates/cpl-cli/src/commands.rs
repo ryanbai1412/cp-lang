@@ -261,11 +261,15 @@ has an error.
 ";
 
 const FIX_USAGE: &str = "\
-usage: cpl fix <file.cp>...
+usage: cpl fix <file.cp>... [--json]
 
 Applies the fix each error carries (the quick fixes an editor offers),
 then, once no error is left, the fixes `cpl lint --fix` makes. Rewrites the
 file and reports the errors left. The exit status is 1 when an error is left.
+
+  --json    print one JSON object instead: `files`, each with its `path`,
+            the number of fixes `applied`, `ok`, and the `diagnostics` left,
+            as `cpl check --json` prints them, in the rewritten file
 ";
 
 const BUILD_USAGE: &str = "\
@@ -390,7 +394,7 @@ options:
 
 /// Commands whose JSON output is `--format json`; `JSON_FLAG` ones say `--json`.
 const JSON_FORMAT: &[&str] = &["run", "doc", "test", "stress", "bench", "profile", "cover"];
-const JSON_FLAG: &[&str] = &["check", "judges", "explain"];
+const JSON_FLAG: &[&str] = &["check", "fix", "judges", "explain"];
 
 /// Both spellings of JSON output, `--json` and `--format json`, work on every
 /// command that has one (decisions.md 230).
@@ -422,9 +426,9 @@ pub(crate) fn json_spelling<'a>(command: &str, args: Vec<&'a str>) -> Vec<&'a st
 /// a path) but is none of the command's, for the commands parsed here.
 pub(crate) fn unknown_option<'a>(command: &str, args: &[&'a str]) -> Option<&'a str> {
     let options: &[&str] = match command {
-        "check" => &["--json"],
+        "check" | "fix" => &["--json"],
         "judges" => &["--json"],
-        "fix" | "judge" => &[],
+        "judge" => &[],
         "build" => &["-o", "--judge", "--checked", "--size", "--copy"],
         "submit" => &["--copy"],
         "explain" => &["--json"],

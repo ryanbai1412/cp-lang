@@ -38,4 +38,6 @@ error. Everything is deterministic given the seed.
 `cpl check --json` prints `{"files": [{"path", "ok", "diagnostics"}]}`; each
 diagnostic has `code`, `severity`, `message`, `start`, `end`, `labels`,
 `notes`, `help` and `fixes`, positions as 1-based `line` and byte `col` plus
-the byte `offset`.
+the byte `offset`. `cpl fix --json` prints the same `files`, each also with
+the number of fixes `applied`, its diagnostics those left in the rewritten
+file.

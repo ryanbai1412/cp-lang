@@ -174,6 +174,36 @@ fn fix_applies_every_fix_and_reports_what_is_left() {
     assert_eq!(clean.status.code(), out.status.code());
 }
 
+#[test]
+fn fix_json_reports_what_it_applied_and_what_is_left() {
+    misused("fix", &["fix", "--json"], "`fix` needs a file");
+    let dir = scratch("fix-json");
+    let cases = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixes");
+    std::fs::copy(cases.join("c_operators.cp"), dir.join("a.cp")).unwrap();
+    std::fs::write(dir.join("bad.cp"), "let x: Int = \"a\"\n").unwrap();
+    let out = cpl(&dir, &["fix", "a.cp", "bad.cp", "--json"]);
+    assert_eq!(out.status.code(), Some(EXIT_ERRORS.into()));
+    let json = cpl_json::parse(&text(&out.stdout)).expect("cpl fix --json is JSON");
+    let files = json.at(&["files"]).as_array().unwrap();
+    assert_eq!(files.len(), 2);
+    let fixed = std::fs::read_to_string(cases.join("c_operators.fixed")).unwrap();
+    assert_eq!(std::fs::read_to_string(dir.join("a.cp")).unwrap(), fixed);
+    let (a, bad) = (&files[0], &files[1]);
+    assert_eq!(a.at(&["path"]).as_str(), Some("a.cp"));
+    assert!(a.at(&["applied"]).as_i64().unwrap() > 0, "{a:?}");
+    assert_eq!(bad.at(&["applied"]).as_i64(), Some(0));
+    assert_eq!(bad.at(&["ok"]).as_bool(), Some(false));
+    let left = bad.at(&["diagnostics"]).as_array().unwrap();
+    assert_eq!(left[0].at(&["code"]).as_str(), Some("E0302"), "{bad:?}");
+    let check = cpl(&dir, &["check", "bad.cp", "--json"]);
+    let check = cpl_json::parse(&text(&check.stdout)).unwrap();
+    assert_eq!(
+        bad.at(&["diagnostics"]),
+        check.at(&["files"]).as_array().unwrap()[0].at(&["diagnostics"]),
+        "fix --json reports what is left as check --json does"
+    );
+}
+
 /// Every command `cpl --help` lists: its own `--help`, and an option it does
 /// not have is a usage error that shows its usage, not a missing file.
 #[test]
@@ -312,6 +342,10 @@ fn json_and_format_json_are_one_flag_on_every_command_with_json() {
             &["check", "inc.cp", "--format", "json"][..],
         ),
         (&["judges", "--json"], &["judges", "--format", "json"]),
+        (
+            &["fix", "inc.cp", "--json"][..],
+            &["fix", "inc.cp", "--format", "json"][..],
+        ),
         (
             &["doc", "--json", "inc.cp"],
             &["doc", "--format", "json", "inc.cp"],

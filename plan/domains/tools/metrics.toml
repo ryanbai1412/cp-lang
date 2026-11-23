@@ -12,7 +12,7 @@ today = "14 (spec-only: debug fetch interact locate migrate selftest trace; cli-
 name = "end-to-end tests per command"
 command = "python3 plan/domains/tools/measure.py golden"
 target = "every command >= 4 (help, one success, one usage error, one exit code); 23/23 with a test"
-today = "23/23 with a test; help and unknown-option usage error tested for all 23 (every_command_has_help_and_rejects_an_unknown_option); check 30 fix 1 run 74 judge 1 build 54 judges 4 submit 3 fmt 2 lint 2 explain 3 doc 3 new 1 test 5 stress 15 bench 3 profile 5 cover 3 watch 2 report 2 lsp 5 dap 6 replay 2 self 3; help, usage error, success and failing exit all asserted: 23/23 (judges has no failing outcome, only misuse)"
+today = "23/23 with a test; help and unknown-option usage error tested for all 23 (every_command_has_help_and_rejects_an_unknown_option); check 31 fix 3 run 74 judge 1 build 54 judges 4 submit 3 fmt 2 lint 2 explain 3 doc 3 new 1 test 5 stress 15 bench 3 profile 5 cover 3 watch 2 report 2 lsp 5 dap 6 replay 2 self 3; help, usage error, success and failing exit all asserted: 23/23 (judges has no failing outcome, only misuse)"
 
 [[metric]]
 name = "commands with --help"
@@ -24,7 +24,7 @@ today = "23/23"
 name = "commands offering --json"
 command = "python3 plan/domains/tools/measure.py json"
 target = "every command that prints results (all but dap, lsp, self, watch)"
-today = "9/23"
+today = "13/23 (without: build dap fmt judge lint lsp report self submit watch)"
 
 [[metric]]
 name = "cpl check wall time over corpus ports, p95"

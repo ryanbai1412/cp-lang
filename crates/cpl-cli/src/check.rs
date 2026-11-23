@@ -110,7 +110,10 @@ fn apply_lint_fixes(path: &str, mut text: String) -> (String, usize) {
     (text, applied)
 }
 
-pub(crate) fn fix(files: &[&str], stdout: &mut (dyn Write + Send), stderr: &mut String) -> u8 {
+pub(crate) fn fix(args: &[&str], stdout: &mut (dyn Write + Send), stderr: &mut String) -> u8 {
+    let json = args.contains(&"--json");
+    let files = args.iter().filter(|arg| **arg != "--json");
+    let mut reports = Vec::new();
     let mut db = cpl_check::Database::new();
     let mut code = 0;
     for path in files {
@@ -138,17 +141,36 @@ pub(crate) fn fix(files: &[&str], stdout: &mut (dyn Write + Send), stderr: &mut 
                 continue;
             }
         }
+        if !left.is_empty() && code == 0 {
+            code = EXIT_ERRORS;
+        }
+        if json {
+            let lines = cpl_diag::LineIndex::new(&fixed);
+            let diagnostics = left.iter().map(|d| json_out::diagnostic(d, &lines));
+            reports.push(cpl_json::obj([
+                ("path", cpl_json::Value::String(path.to_string())),
+                ("applied", applied.into()),
+                ("ok", cpl_json::Value::Bool(left.is_empty())),
+                ("diagnostics", cpl_json::Value::Array(diagnostics.collect())),
+            ]));
+            continue;
+        }
         if !left.is_empty() {
             *stderr += &cpl_diag::render_all(&left, path, &fixed);
-            if code == 0 {
-                code = EXIT_ERRORS;
-            }
         }
         let fixes = if applied == 1 { "fix" } else { "fixes" };
         let _ = match left.len() {
             0 => writeln!(stdout, "{path}: {applied} {fixes} applied, no errors"),
             n => writeln!(stdout, "{path}: {applied} {fixes} applied, {n} left"),
         };
+    }
+    if json {
+        let files = cpl_json::Value::Array(reports);
+        let _ = writeln!(
+            stdout,
+            "{}",
+            cpl_json::to_string(&cpl_json::obj([("files", files)]))
+        );
     }
     code
 }

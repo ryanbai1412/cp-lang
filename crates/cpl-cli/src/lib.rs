@@ -154,7 +154,9 @@ pub fn exec<S: AsRef<str>>(
             usage_error("`check` needs a file: `cpl check a.cp`".into())
         }
         Some("check") => check(&rest, stdout, stderr),
-        Some("fix") if rest.is_empty() => usage_error("`fix` needs a file: `cpl fix a.cp`".into()),
+        Some("fix") if rest.iter().all(|arg| *arg == "--json") => {
+            usage_error("`fix` needs a file: `cpl fix a.cp`".into())
+        }
         Some("fix") => fix(&rest, stdout, stderr),
         Some("run") => match RunArgs::parse(&rest) {
             Ok(args) if args.live => run_live(&args, stdin),
