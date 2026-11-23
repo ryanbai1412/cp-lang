@@ -197,8 +197,10 @@ fn next_greater<K>(a: [K]Int) -> [K]?K:  // keyed like a
     res
 ```
 
-Both work unchanged on `a`, on `a[l..=r]` and on `a.rev`. Their results
-index the source.
+Both work unchanged on `a` and on `a[l..=r]`, and their results index the
+source. A reversed view isn't indexable (R07.3.5), so it doesn't pass as
+`[K]Int`; `next_greater(List(a.rev))` copies it, in \(O(n)\), and its
+results are positions in the copy.
 
 **A helper that takes a container.** `List<T>` and `Str` parameters accept
 only that container, because the callee may grow it (`push`, `pop`,

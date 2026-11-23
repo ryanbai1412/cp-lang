@@ -239,9 +239,11 @@ operand fixes the type. Nothing else converts. (R04.4.22)
 4. **Cut range to piece:** a literal `j..i` whose ends are cuts, where a
    `Range<V>` is expected, is the piece between them (see R04.4.21).
    (R04.4.26)
-5. **Scalar to array fill:** a value `x: T` where `[D]T` is expected is
-   the array over `D` with every element `x`, evaluated once:
-   `var dist: [V]?Int = None`, `var dp: [0..=n]Int = 0`. Same as
+5. **Value to array fill:** a value `x: T` where `[D]T` is expected is
+   the array over `D` with every element `x`, evaluated once; each element
+   is its own copy, as with `[x] * n`:
+   `var dist: [V]?Int = None`, `var dp: [0..=n]Int = 0`,
+   `var adj: [V]List<V> = List()`. Same as
    `[D].filled(x)`; `[D]` followed by a value without `=>` is a type,
    never a table. (R04.4.27)
 6. **`Int` to `Mod<P>`:** an integer (a literal or any `Int` value) where

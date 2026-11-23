@@ -259,6 +259,8 @@ documented. The stdlib's own gaps are in `std/GAPS.md`.
 - core-09/deep-recursion-trap.cp: compiler
 - core-04/table-over-named-product-unpacks.cp: compiler
 - core-04/grid-rows-cols-views.cp: stdlib
+- core-04/list-fill-copies-per-key.cp: compiler
+- core-07/chain-takes-any-number.cp: stdlib
 - core-04/grid-row-view-keys-are-columns.cp: compiler
 - core-04/grid-col-view-keys-are-rows.cp: compiler
 - core-07/map-view-drop-skips-dropped.cp: compiler

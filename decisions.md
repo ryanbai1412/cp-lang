@@ -8254,3 +8254,11 @@ tag move fatal again.
 
 - **Call.** At 200+ commits an hour a fully green main tip can be hours apart, and edge waited for one. An hourly scheduled release now publishes edge from the newest main commit whose shipping jobs passed (`scripts/release/shippable.sh`: the conformance gate parts, the cli jobs on macOS and Windows, the acceptance solutions), even if ratchet, editor, latency or unit-test jobs are red. The release run still builds every target and smoke-tests the archives, `install.sh` and `cpl run` before publishing. A green CI run still publishes edge at once, and stable still needs a fully green run.
 - **Reverse.** Drop the hourly cron and the `schedule` branch in `release.yml`'s green step.
+
+## 409. Rebuild round 32: fills, chain, reversed helpers (spec, 2026-11-23)
+
+- **Count.** 32 holes: 12 silent (7 held), 3 contradictions, 1 missing-stdlib, 16 found-late. 4 of the found-late items were fixed on main during the run.
+- **A fill takes any value.** R04.4.27 no longer says "scalar": `var adj: [V]List<V> = List()` gives each key its own copy, as `[x] * n` does. This removes the one exception, under which a list fill needed a table. Reverse: restore "scalar" and require `[V] _ => List()`.
+- **`chain` takes any number of sequences,** as free `min`/`max` take any number of values, so there's no nesting. Reverse: back to two.
+- **A helper over `[K]Int` doesn't take `a.rev`.** R04b's helper paragraph said it did, contradicting R07.3.5 (decision 388). The fix is to copy, `f(List(a.rev))`. Reverse with decision 388.
+- **Routed.** Compiler: grid row and column view keys come out 0-based (a silent wrong answer), `from:` dijkstra unpacking, map views reading ahead past a trap, explain rows, interpreter precompute speed. Stdlib: `maximal` over `Window` (fourth round), `Window(gcd)`, a deque for selective ops, `pow` vs `**`, float `sqrt`. Diagnostics: E0208 and E0503 fix-its. Tools: `cpl test` float tokens.

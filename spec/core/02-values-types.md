@@ -226,8 +226,8 @@ enum Ev:
   read (same `0..n` positions); it still never grows. (R02.8.2)
 - `[D]T` arrays are built by tables (`[V] v => 0`), typed reads
   (`read<[V]Int>()`), comprehensions with an expected array type, or
-  `[D].filled(x)`, or a scalar `x: T` where a `[D]T` is expected (a fill,
-  R04.4.27); every element is initialized. (R02.8.3)
+  `[D].filled(x)`, or any `x: T` where a `[D]T` is expected (a fill,
+  R04.4.27, so `var adj: [V]List<V> = List()` too); every element is initialized. (R02.8.3)
 - `xs[i]` on a heap element lends it (`let row = rows[i]`); on a plain
   element it copies. (R02.8.4)
 - Large arrays never live on the C++ stack (chapter 13). (R02.8.5)
