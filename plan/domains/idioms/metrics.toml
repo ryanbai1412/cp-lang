@@ -26,7 +26,7 @@ target = "on main, in the fast gate, 0 drift, every cp block checks"
 [[metric]]
 name = "ports_check_v03"
 command = "for p in $(cat corpus/sets/ecnerwala.txt); do cpl check corpus/problems/$p/port.cp; done"
-today = "275/305 (corpus/sets/v03.txt has 277: the 275 plus noi08p5 and noi15p1)"
+today = "289/305 (corpus/sets/v03.txt has 308 entries; cf2066f checks but stays out for the stored-range P0)"
 target = "305/305 v0.3 re-ports (as spec.cp or migrated port.cp)"
 
 [[metric]]
