@@ -24,7 +24,7 @@ fn igcd(a0: Int, b0: Int) -> Int:
 // ---- exact integer points
 
 /// O(1) value type. A 2D point or vector with exact integer coordinates.
-pub struct Pt(x: Int, y: Int):
+pub struct Pt(pub x: Int, pub y: Int):
     /// The squared length `x*x + y*y`, in `Int`.
     ///
     /// Fits for `|x|, |y| <= 2e9`; use `norm2_128` beyond.
@@ -494,7 +494,7 @@ pub fn upper_hull_idx<D>(pts: [D]Pt, collinear: Bool = false) -> List<D>:
 /// O(n) memory. Incremental 2D convex hull of integer points backed by upper and lower chains.
 pub struct OnlineHull:
     hull: List<Pt>
-    area: Int
+    pub area: Int
 
     /// An empty online convex hull.
     ///
@@ -1511,7 +1511,7 @@ pub fn sign_eps(x: F64, eps: F64 = 1e-9) -> Int = if x > eps: 1 else: if x < -ep
 
 /// O(1) value type. A 2D floating-point point or vector. Kept distinct from `Pt` so exact
 /// integer predicates never silently mix with approximate arithmetic.
-pub struct Vec(x: F64, y: F64):
+pub struct Vec(pub x: F64, pub y: F64):
     /// The squared length `x*x + y*y`.
     ///
     /// cost: O(1)
@@ -1789,7 +1789,7 @@ pub fn circumcenter(a: Vec, b: Vec, c: Vec, eps: F64 = 1e-9) -> ?Vec:
     Some(a + Vec(v.y * u2 - u.y * v2, u.x * v2 - v.x * u2) / den)
 
 /// O(1) value type. A 2D circle with center `c` and non-negative radius `r`.
-pub struct Circle(c: Vec, r: F64):
+pub struct Circle(pub c: Vec, r: F64):
     /// The circle through `a`, `b` and `c`: centre `circumcenter(a, b, c, eps)`, radius its distance
     /// to `a`; `None` when collinear.
     ///
@@ -2581,7 +2581,7 @@ pub fn any_segments_meet_idx<D>(segs: [D](a: Pt, b: Pt), strict: Bool = false) -
 // ---- axis-aligned rectangles, planar subdivisions, and Delaunay / Voronoi
 
 /// O(1) value type. Half-open integer rectangle `x * y` (accepts cut ranges per decision 124).
-pub struct Rect(x: Range<Int>, y: Range<Int>):
+pub struct Rect(pub x: Range<Int>, pub y: Range<Int>):
     /// The number of unit cells, `x.len * y.len`; 0 when either range is empty.
     ///
     /// cost: O(1)
@@ -3133,7 +3133,7 @@ fn voronoi_idx(ps: List<Pt>, bound: F64) -> List<List<Vec>>:
 // ---- 3D exact & floating-point geometry
 
 /// O(1) value type. A 3D point or vector with exact integer coordinates.
-pub struct Pt3(x: Int, y: Int, z: Int):
+pub struct Pt3(pub x: Int, pub y: Int, pub z: Int):
     /// The squared length `x*x + y*y + z*z`, in `Int`.
     ///
     /// cost: O(1)
@@ -3452,7 +3452,7 @@ pub fn polyhedron_volume6(pts: List<Pt3>, faces: List<(Int, Int, Int)>) -> I128:
     v
 
 /// O(1) value type. A 3D floating-point point or vector.
-pub struct Vec3(x: F64, y: F64, z: F64):
+pub struct Vec3(pub x: F64, pub y: F64, pub z: F64):
     /// The squared length `x*x + y*y + z*z`.
     ///
     /// cost: O(1)
@@ -3538,7 +3538,7 @@ impl Div<F64> for Vec3:
     fn div(a, k) = Vec3(a.x / k, a.y / k, a.z / k)
 
 /// O(1) value type. A 3D plane `{ p | n.dot(p) == d }` with unit normal `n`.
-pub struct Plane3(n: Vec3, d: F64):
+pub struct Plane3(pub n: Vec3, pub d: F64):
     /// The plane through `a`, `b` and `c`: `n = (b - a).cross(c - a).unit`, `d = n.dot(a)`; `None`
     /// when `(b - a).cross(c - a).len <= eps` (collinear).
     ///

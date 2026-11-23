@@ -120,7 +120,7 @@ pub fn track<S, T>(
 ) -> Tracked<S, T> = Tracked(state, add, remove)
 
 /// A `Track` built from a structure and two closures.
-pub struct Tracked<S, T>(state: S, add: (mut S, T) -> (), remove: (mut S, T) -> ()):
+pub struct Tracked<S, T>(pub state: S, add: (mut S, T) -> (), remove: (mut S, T) -> ()):
     /// Apply `x` at the back: one call of `add(state, x)`.
     ///
     /// cost: one call of `add`
@@ -171,7 +171,7 @@ impl Undo for PotentialDsu<V>:
 /// rollback DSU in a two-pointer pass). `add(mut state, x)` applies one element; `state`
 /// always holds exactly the window's elements. Each element is applied O(log n) times
 /// amortized, so a pass of n pushes and pops costs O(n log n) applications.
-pub struct Undoing<S: Undo, T>(state: S, add: (mut S, T) -> ()):
+pub struct Undoing<S: Undo, T>(pub state: S, add: (mut S, T) -> ()):
     items: List<T> = []
     is_b: List<Bool> = []
     marks: List<Mark> = []
@@ -256,7 +256,7 @@ pub fn undoing<S: Undo, T>(state: S, add: (mut S, T) -> ()) -> Undoing<S, T> = U
 
 /// A movable interval over `D` feeding a `Track`, for Mo and divide-and-conquer DP. Moving
 /// expands before shrinking. O(|change|) pushes and pops per move.
-pub struct Sweep<D, S>(state: S):
+pub struct Sweep<D, S>(pub state: S):
     lo: Int
     hi: Int
 

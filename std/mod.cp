@@ -346,7 +346,7 @@ pub struct Comb<M>:
         acc
 
 /// O(1) reduction. Fast Barrett modular multiplier for a runtime modulus `1 <= m < 2^31`.
-pub struct Barrett(m: Int, im: U64):
+pub struct Barrett(pub m: Int, im: U64):
     /// A Barrett multiplier for the runtime modulus `m`, `1 <= m < 2^31`: precomputes
     /// `im = floor((2^64 - 1) / m) + 1` (wrapping, so 0 for `m == 1`).
     ///
@@ -436,7 +436,7 @@ pub struct PrimePowerComb(p: Int, e: Int, pe: Int):
         r
 
 /// O(sum p_i^e_i) build, O(omega(m) log n) query. Binomial coefficients modulo any `m >= 1` via CRT.
-pub struct ModComb(m: Int):
+pub struct ModComb(pub m: Int):
     parts: List<PrimePowerComb>
 
     /// Binomial coefficients modulo any `m >= 1`: factor `m` and build one `PrimePowerComb` per

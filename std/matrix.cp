@@ -12,8 +12,8 @@ use std.rand.{Rng}
 
 /// A dense `rows x cols` matrix stored flat in row-major order.
 pub struct Mat<T>:
-    rows: Int
-    cols: Int
+    pub rows: Int
+    pub cols: Int
     data: List<T>
 
     /// A matrix from a 2-D table, multiplied under `over` (default `Semiring(+, *)`):
@@ -880,7 +880,7 @@ fn merge_xor(a: XorBasis, b: XorBasis) -> XorBasis:
 /// O(n^3 log max_exp) build, O(n^2 log e) query. Precomputed binary powers of a square matrix
 /// for fast multi-query `A^e * v`.
 pub struct MatPow<T>:
-    n: Int
+    pub n: Int
     _pw: List<Mat<T>>
 
     /// Precompute `a^(2^k)` for every `k` with `2^k <= max_exp`, multiplied under `a`'s semiring.
@@ -915,7 +915,7 @@ pub struct MatPow<T>:
         out
 
 /// O(n * m / 64) storage. Bit-packed dense matrix over GF(2) with word-parallel elimination.
-pub struct BitMat(rows: Int, cols: Int):
+pub struct BitMat(pub rows: Int, pub cols: Int):
     bits: List<Int>
 
     /// A zero GF(2) matrix of `rows x cols`, one bit per entry.
@@ -1085,7 +1085,7 @@ fn bit_rref(rows: Int, cols: Int, mut a: List<Int>) -> List<Int>:
 
 /// O(62) per push and query. Online prefix linear basis answering subarray XOR queries over any range `r`.
 pub struct PrefixXorBasis:
-    len: Int
+    pub len: Int
     vecs: List<Int>
     from: List<Int>
 

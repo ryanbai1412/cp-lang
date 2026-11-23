@@ -14,7 +14,7 @@ One step in a `TimeTree` DFS traversal: - `Apply(id)`: apply event `tt.event(id)
 
 Offline segment tree over time `[0, q)` holding events of type `E` active on half-open intervals `[lo, hi)`.
 
-Fields: `q: Int`, `size: Int`, `ev_val: List<E>`.
+Fields: `size: Int`, `ev_val: List<E>`.
 
 - `fn new(q: Int) -> TimeTree<E>` — O(q) time and memory; An empty timeline of `q` time slots `0..q`, with no events scheduled yet.; traps: when `q < 0`
 - `fn add_interval(mut self, lo: Int, hi: Int, ev: E)` — O(log q); Schedule `ev` to be active at every time slot in `lo..hi` (half-open).; traps: when `lo < 0` or `hi > q` on a non-empty interval

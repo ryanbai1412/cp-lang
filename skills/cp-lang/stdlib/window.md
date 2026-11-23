@@ -22,7 +22,7 @@ Fields: `q: List<T>`, `front: List<T>`, `back: ?T`.
 
 State a window can add to at the back and remove from at the front.
 
-## `struct Tracked<S, T>(state: S, add: (mut S, T) -> (), remove: (mut S, T) -> ())`
+## `struct Tracked<S, T>(pub state: S, add: (mut S, T) -> (), remove: (mut S, T) -> ())`
 
 A `Track` built from a structure and two closures.
 
@@ -34,7 +34,7 @@ A `Track` built from a structure and two closures.
 
 A structure that can return to an earlier state, newest change first: `Dsu`, `ParityDsu`, `WeightedDsu`, `DsuWith`, `RollbackArray`, and any user struct with these two methods.
 
-## `struct Undoing<S: Undo, T>(state: S, add: (mut S, T) -> ())`
+## `struct Undoing<S: Undo, T>(pub state: S, add: (mut S, T) -> ())`
 
 The queue-undo trick: a `Track` over an `Undo` structure, so a window that adds at the back and drops from the front runs on a structure that can only undo its newest change (a rollback DSU in a two-pointer pass).
 
@@ -42,7 +42,7 @@ The queue-undo trick: a `Track` over an `Undo` structure, so a window that adds 
 - `fn pop(mut self, x: T)` — O(log n) applications of `add` amortized; Drop the front element, which must be `x`.; traps: on an empty `Undoing`
 - `@get fn state(self) -> S` — O(1); The structure with exactly the window's elements applied.
 
-## `struct Sweep<D, S>(state: S)`
+## `struct Sweep<D, S>(pub state: S)`
 
 A movable interval over `D` feeding a `Track`, for Mo and divide-and-conquer DP.
 

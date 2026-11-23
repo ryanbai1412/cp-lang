@@ -342,7 +342,7 @@ pub struct FlowGraph<V>:
         level
 
     /// One augmenting path in the level graph, found without recursion.
-    fn augment(mut self, s: V, t: V, level: [V]?Int, mut next: [V]Int, most: Int) -> Int:
+    pub fn augment(mut self, s: V, t: V, level: [V]?Int, mut next: [V]Int, most: Int) -> Int:
         var path = List<Arc>()
         var u = s
         unchecked:
@@ -595,7 +595,7 @@ pub struct CostFlow<V>:
 
     /// Potentials under which every residual arc has a nonnegative reduced cost: all zero
     /// when no residual arc is negative, else Bellman-Ford from every vertex at once.
-    fn potentials(self) -> [V]Int:
+    pub fn potentials(self) -> [V]Int:
         var pot: [V]Int = 0
         var changed = true
         var rounds = 0
@@ -1794,9 +1794,9 @@ fn global_min_cut_matches_brute_force():
 /// vertices or edges between queries keeps a maximum matching without re-solving.
 pub struct Matching<L, R>:
     adj: [L]List<R>
-    mate: [L]?R
-    back: [R]?L
-    size: Int
+    pub mate: [L]?R
+    pub back: [R]?L
+    pub size: Int
 
     /// An online bipartite matching between `L` and `R` with no edges and nothing matched.
     ///

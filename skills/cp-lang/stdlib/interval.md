@@ -62,7 +62,7 @@ Fields: `segs: Map<Int, Int>`, `total: Int`.
 
 Interval partition map over unbounded `Int` coordinates `[lo, hi)` (ODT without coordinate compression).
 
-Fields: `lo: Int`, `hi: Int`, `segs: Map<Int, (hi: Int, val: T)>`.
+Fields: `lo: Int`, `segs: Map<Int, (hi: Int, val: T)>`.
 
 - `fn new(lo: Int, hi: Int, init: T) -> SparseIntervalMap<T>` — O(1); A map giving every coordinate of `lo..hi` the value `init`: one run, or None when `lo == hi`.; traps: when `lo > hi`
 - `@get fn runs(self) -> Int` — O(1); The number of maximal runs of equal values.

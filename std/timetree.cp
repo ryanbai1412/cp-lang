@@ -17,7 +17,7 @@ pub enum TimeStep:
 /// Offline segment tree over time `[0, q)` holding events of type `E` active on half-open
 /// intervals `[lo, hi)`.
 pub struct TimeTree<E>:
-    q: Int
+    pub q: Int
     size: Int
     head: List<-1..=2_000_000_000>
     next: List<-1..=2_000_000_000>

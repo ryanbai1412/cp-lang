@@ -6,7 +6,7 @@ use std.seq.{ends}
 
 /// Paired aggregate `(now, flipped)` for range-toggle / complement updates (`SegTree(op, a, act: flip)`).
 /// Build the toggle action with `flip_action(m)` (tag `Bool`: `true` swaps `now` and `flipped`).
-pub struct Flip<T>(now: T, flipped: T):
+pub struct Flip<T>(pub now: T, pub flipped: T):
     /// The leaf for one element that is currently `on` or off: `Flip(x, id)` when `on`, else
     /// `Flip(id, x)`. `now` is the value the element contributes as it stands and `flipped` what it
     /// would contribute after one toggle.

@@ -1052,7 +1052,7 @@ pub fn dirichlet_inv<T: Sub + Mul + Div>(a: List<T>, n: Int) -> List<T>:
 /// O(n^(2/3)) time and memory. Stateful Du's sieve cache for prefix sums of a multiplicative function `f`
 /// given prefix sums of `g` and `f * g`.
 pub struct DirichletSum<T: Add + Sub + Mul + Div>:
-    n: Int
+    pub n: Int
     pre: List<T>
     g_sum: Int -> T
     fg_sum: Int -> T
@@ -1412,7 +1412,7 @@ pub fn best_rational(num: Int, den: Int, max_den: Int) -> Ratio:
     if lo < hi: lo else: hi
 
 /// O(1) storage. Exact reduced rational `p / q` (`q > 0`, `gcd(|p|, q) == 1`).
-pub struct Ratio(p: Int, q: Int):
+pub struct Ratio(pub p: Int, q: Int):
     /// The fraction `p / q` in lowest terms, with a positive denominator.
     ///
     /// cost: O(log min(|p|, |q|))

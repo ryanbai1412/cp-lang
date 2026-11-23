@@ -10,7 +10,7 @@ In prelude (no `use` needed): `ByAngle`, `Location`, `Pt`, `locate`, `turn`.
 
 - `const PI: F64 = 3.14159265358979323846` — O(1).
 
-## `struct Pt(x: Int, y: Int)`
+## `struct Pt(pub x: Int, pub y: Int)`
 
 O(1) value type.
 
@@ -44,7 +44,7 @@ O(1) comparison key.
 
 O(n) memory.
 
-Fields: `hull: List<Pt>`, `area: Int`.
+Fields: `hull: List<Pt>`.
 
 - `fn new() -> OnlineHull` — O(1); An empty online convex hull.
 - `fn add(mut self, p: Pt) -> Bool` — O(log n) amortized; Insert `p` and report whether the hull changed (whether `p` is now a corner).
@@ -61,7 +61,7 @@ Fields: `hull: List<Pt>`, `area: Int`.
 
 O(1) enum.
 
-## `struct Vec(x: F64, y: F64)`
+## `struct Vec(pub x: F64, pub y: F64)`
 
 O(1) value type.
 
@@ -78,7 +78,7 @@ O(1) value type.
 - `fn dist2(self, o: Vec) -> F64` — O(1); The squared Euclidean distance from `self` to `o`.
 - `fn dist(self, o: Vec) -> F64` — O(1); The Euclidean distance from `self` to `o`.
 
-## `struct Circle(c: Vec, r: F64)`
+## `struct Circle(pub c: Vec, r: F64)`
 
 O(1) value type.
 
@@ -95,7 +95,7 @@ O(1) value type.
 - `fn from_line(a: F64, b: F64, c: F64) -> HalfPlane` — O(1); The half-plane `{ (x, y) \| a*x + b*y + c >= 0 }`, as `HalfPlane(p, Vec(b, -a))` with `p` the line's point nearest the origin, `Vec(-a * c, -b * c) / (a*a + b*b)`.; traps: when `a == 0.0` and `b == 0.0`
 - `fn side(self, q: Vec) -> F64` — O(1); The signed value `dir.cross(q - p)`: positive left of the line (inside), 0 on it, negative outside.
 
-## `struct Rect(x: Range<Int>, y: Range<Int>)`
+## `struct Rect(pub x: Range<Int>, pub y: Range<Int>)`
 
 O(1) value type.
 
@@ -104,7 +104,7 @@ O(1) value type.
 - `fn contains(self, p: Pt) -> Bool` — O(1); Whether `p.x` is in `x` and `p.y` is in `y` (half-open, so the top and right edges are out).
 - `fn intersect(self, o: Rect) -> ?Rect` — O(1); The common part of two rectangles, or `None` when it is empty (including rectangles that only touch along an edge).
 
-## `struct Pt3(x: Int, y: Int, z: Int)`
+## `struct Pt3(pub x: Int, pub y: Int, pub z: Int)`
 
 O(1) value type.
 
@@ -120,7 +120,7 @@ O(1) value type.
 - `fn manhattan(self, o: Pt3) -> Int` — O(1); The Manhattan (L1) distance `\|x - o.x\| + \|y - o.y\| + \|z - o.z\|`.; traps: when the result overflows `Int`
 - `fn chebyshev(self, o: Pt3) -> Int` — O(1); The Chebyshev (L-infinity) distance `max(\|x - o.x\|, \|y - o.y\|, \|z - o.z\|)`.; traps: when the result overflows `Int`
 
-## `struct Vec3(x: F64, y: F64, z: F64)`
+## `struct Vec3(pub x: F64, pub y: F64, pub z: F64)`
 
 O(1) value type.
 
@@ -133,7 +133,7 @@ O(1) value type.
 - `fn dist(self, o: Vec3) -> F64` — O(1); The Euclidean distance from `self` to `o`.
 - `fn rot(self, axis: Vec3, rad: F64) -> Vec3` — O(1); `self` rotated by `rad` radians counter-clockwise about the unit vector `axis` (seen with `axis` pointing at the viewer), by Rodrigues' formula `v cos t + axis.cross(v) sin t + axis * axis.dot(v) * (1 - cos t)`.
 
-## `struct Plane3(n: Vec3, d: F64)`
+## `struct Plane3(pub n: Vec3, pub d: F64)`
 
 O(1) value type.
 

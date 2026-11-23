@@ -510,6 +510,7 @@ impl<'a> Parser<'a> {
                             default,
                             mutable: false,
                             cached: false,
+                            public: true,
                         });
                     });
                 }

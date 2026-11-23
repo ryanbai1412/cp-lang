@@ -792,7 +792,7 @@ pub fn find_all_wildcard<S: Indexed, P: Indexed>(
 
 /// O(n) space, O(1) queries. Manacher palindrome radii. `odd[i]` is the number of palindromes centred on `s[i]`;
 /// `even[i]` is the number centred between `s[i - 1]` and `s[i]`.
-pub struct Palindromes(odd: List<Int>, even: List<Int>):
+pub struct Palindromes(pub odd: List<Int>, even: List<Int>):
     /// The length of the sequence the radii were computed for.
     ///
     /// cost: O(1)
@@ -1061,9 +1061,9 @@ fn sa_order<S: Indexed>(s: S) -> List<Int>:
 
 /// O(n) SA-IS + Kasai LCP (O(n log n) with RMQ). Suffix array, inverse rank, adjacent LCP, and O(1) LCP/comparison queries.
 pub struct SuffixArray:
-    sa: List<Int>
+    pub sa: List<Int>
     rank: List<Int>
-    lcp: List<Int>
+    pub lcp: List<Int>
     rmq: List<Int>
     log: List<Int>
     dcum: List<Int>
@@ -1324,7 +1324,7 @@ pub struct SuffixTreeEdge(
     bottom_size: Int,
     parent_len: Int,
     edge_len: Int,
-    rank_range: Range<Int>,
+    pub rank_range: Range<Int>,
 )
 
 /// Every edge of the compressed suffix tree of `s` (built from the suffix array and LCP
@@ -2594,7 +2594,7 @@ pub struct PalindromicTree<A>:
 
     fn size(self) -> Int = front.len + chars.len
 
-    fn at(self, i: Int) -> A:
+    pub fn at(self, i: Int) -> A:
         with lint(unproven_list_index: allow)
         return if i < front.len: front[front.len - 1 - i] else: chars[i - front.len]
 
@@ -3221,7 +3221,7 @@ pub struct AhoCorasick<A>:
 /// Online multi-pattern Aho-Corasick via log-decomposed static buckets.
 pub struct DynamicAhoCorasick<A>:
     alpha: 0..=2_000_000_000
-    n: Int
+    pub n: Int
     stored: Trie<A>
     added: AcBuckets<A>
     removed: AcBuckets<A>

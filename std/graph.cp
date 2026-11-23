@@ -124,8 +124,8 @@ pub type Digraph<V, E> = [E](u: V, v: V)
 /// list, the arcs of each vertex contiguous and in input order. Immutable; a
 /// graph that grows is a `[V]List` of arcs, which is already a `Next`.
 pub struct Graph<V: Domain, A: Target<V>>:
-    start: [V.cuts]Int
-    arcs: List<A>
+    pub start: [V.cuts]Int
+    pub arcs: List<A>
 
     /// A graph with one arc `u -> v` per edge of `edges`, in compressed sparse rows.
     ///
@@ -1055,7 +1055,7 @@ fn a_plain_edge_list_needs_no_edge_domain():
 /// reached, for state spaces like `Int` values or unbounded tuples. An unbounded `V`
 /// without it is a compile error that names `hashed: true`.
 pub struct Paths<V, W, A>:
-    dist: [V]?W
+    pub dist: [V]?W
     back: [V]?(from: V, via: A)
     order: List<V>
 
@@ -1543,8 +1543,8 @@ pub fn bridges<V, E>(g: EdgedNext<V, E>) -> [E]Bool:
 /// A walk: where it starts, then each arc taken (`to` is where the arc leads, `e` the
 /// edge it uses), the same arcs a `Graph` yields.
 pub struct Walk<V, E>:
-    start: V
-    arcs: List<(to: V, e: E)>
+    pub start: V
+    pub arcs: List<(to: V, e: E)>
 
     /// The vertices visited, `start` first, then each arc's `to`: `arcs.len + 1` of them.
     ///
@@ -1623,7 +1623,7 @@ pub struct Lit<X>(x: X, value: Bool):
 pub struct TwoSat<X>:
     /// Implications between literal nodes: node `2 * i` is "variable i is false",
     /// `2 * i + 1` "is true"; variables past `X.K` are helpers of `at_most_one`.
-    imp: List<List<Int>>
+    pub imp: List<List<Int>>
 
     /// An instance with no clauses over the variables of `X`; every assignment satisfies it.
     ///
@@ -3295,7 +3295,7 @@ pub fn spanning_forest<V, E>(g: EdgedNext<V, E>) -> [E]Bool:
 
 /// O(n) build: the functional graph `v -> next[v]` (every vertex one out-arc).
 pub struct Functional<V>:
-    next: [V]V
+    pub next: [V]V
     _nx: List<Int>
     _root: List<Int>
     _depth: List<Int>
@@ -3599,7 +3599,7 @@ pub struct IncrementalBridges<V>:
 
 /// O(1): one edge of a `Graph`: its id and its ends (as built for a directed graph, first in
 /// `V` order for an undirected one).
-pub struct Edge<V, E>(e: E, u: V, v: V)
+pub struct Edge<V, E>(pub e: E, u: V, v: V)
 
 /// `directed_of_pairs` on named `(u, v)` arcs: neighbour lists indexed by vertex.
 ///

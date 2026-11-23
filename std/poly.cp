@@ -910,7 +910,7 @@ impl Div for Poly<T>:
 /// O(m log^2 m) build. Prebuilt product tree over points `xs` for multipoint evaluation,
 /// transposed evaluation, and interpolation.
 pub struct SubproductTree<P>:
-    n: Int
+    pub n: Int
     keep: Int
     nodes: List<List<Mod<P>>>
 

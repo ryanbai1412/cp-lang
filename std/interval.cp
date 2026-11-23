@@ -546,7 +546,7 @@ fn interval_map_matches_dense_array():
 pub struct SparseIntervalMap<T>:
     _init: T
     lo: Int
-    hi: Int
+    pub hi: Int
     segs: Map<Int, (hi: Int, val: T)>
 
     fn split(mut self, x: Int):

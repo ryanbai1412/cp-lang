@@ -49,8 +49,6 @@ Fields: `g: G`, `f: F`.
 
 O(n + m) memory and build.
 
-Fields: `start: [V.cuts]Int`, `arcs: List<A>`.
-
 - `fn directed<E: Domain, R: (u: V, v: V, ..), B: Target<V>>(edges: [E]R, keep: EdgeArc<V, E, R> -> B = a => a) -> Graph<V, B>` — O(n + m) time and memory, plus `m` calls of `keep`; A graph with one arc `u -> v` per edge of `edges`, in compressed sparse rows.
 - `fn undirected<E: Domain, R: (u: V, v: V, ..), B: Target<V>>(edges: [E]R, keep: EdgeArc<V, E, R> -> B = a => a) -> Graph<V, B>` — O(n + m) time and memory, plus `2m` calls of `keep`; A graph with two arcs per edge of `edges`, `u -> v` and `v -> u`, both carrying the same `e`.
 - `fn of(arcs: Seq<(from: V, arc: A)>) -> Graph<V, A>` — O(n + m); A graph from `(from, arc)` pairs: `arc` is stored as one of `from`'s arcs.
@@ -72,7 +70,7 @@ Fields: `start: [V.cuts]Int`, `arcs: List<A>`.
 
 O(n) memory.
 
-Fields: `dist: [V]?W`, `back: [V]?(from: V, via: A)`, `order: List<V>`.
+Fields: `back: [V]?(from: V, via: A)`, `order: List<V>`.
 
 - `fn get(self, v: V) -> ?W` — O(1) dense, O(1) expected `hashed`; `p[v]`: the distance to `v`, or `None` if no source reaches it (or the search stopped at `until` first).
 - `fn iter(self) -> yields (v: V, d: W)` — O(1) to make, O(1) per item; The reached vertices with their distances, in settling order: `for (v, d) in bfs(g, from: [s])`.
@@ -85,8 +83,6 @@ Fields: `dist: [V]?W`, `back: [V]?(from: V, via: A)`, `order: List<V>`.
 
 O(m) memory.
 
-Fields: `start: V`, `arcs: List<(to: V, e: E)>`.
-
 - `@get fn vertices(self) -> yields V` — O(1) to make, O(1) per vertex; The vertices visited, `start` first, then each arc's `to`: `arcs.len + 1` of them.
 
 ## `struct Lit<X>(x: X, value: Bool)`
@@ -98,8 +94,6 @@ O(1).
 ## `struct TwoSat<X>`
 
 A conjunction of two-literal clauses over the variables `X`.
-
-Fields: `imp: List<List<Int>>`.
 
 - `fn new() -> TwoSat<X>` — O(|X|); An instance with no clauses over the variables of `X`; every assignment satisfies it.
 - `fn add_or(mut self, a: Lit<X>, b: Lit<X>)` — O(1) amortized; Adds the clause "at least one of `a`, `b` holds".
@@ -124,8 +118,6 @@ The complement of `missing` over a domain `V`: an arc `u -> v` for every `v != u
 
 O(n) build: the functional graph `v -> next[v]` (every vertex one out-arc).
 
-Fields: `next: [V]V`.
-
 - `fn new(next: [V]V) -> Functional<V>` — O(n log n); The functional graph `v -> next[v]` (every vertex has one out-arc), with its cycles, tails and binary-lifting tables built.
 - `fn on_cycle(self, v: V) -> Bool` — O(1); Does `v` lie on a cycle?
 - `fn root_of(self, v: V) -> V` — O(1); The first cycle vertex reached from `v` (`v` itself on a cycle): the root of the in-tree hanging off the cycle that holds `v`.
@@ -147,7 +139,7 @@ Fields: `bridges: Int`.
 - `fn two_edge_same(mut self, u: V, v: V) -> Bool` — O(alpha); Are `u` and `v` joined by two edge-disjoint paths?
 - `fn same(mut self, u: V, v: V) -> Bool` — O(alpha); Are `u` and `v` connected?
 
-## `struct Edge<V, E>(e: E, u: V, v: V)`
+## `struct Edge<V, E>(pub e: E, u: V, v: V)`
 
 O(1): one edge of a `Graph`: its id and its ends (as built for a directed graph, first in `V` order for an undirected one).
 

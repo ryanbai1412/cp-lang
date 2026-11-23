@@ -6,7 +6,7 @@ Range-update helpers that are not segment trees: `Flip`, `LazyTreap`, `Rope`. Ra
 
 In prelude (no `use` needed): `Flip`.
 
-## `struct Flip<T>(now: T, flipped: T)`
+## `struct Flip<T>(pub now: T, pub flipped: T)`
 
 Paired aggregate `(now, flipped)` for range-toggle / complement updates (`SegTree(op, a, act: flip)`).
 

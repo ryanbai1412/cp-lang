@@ -1483,7 +1483,7 @@ pub fn nth<S: Indexed, T>(self: S, k: Int) -> T = self.at(self.keys[k])
 @get pub fn rebase<S: Indexed>(self: S) -> Rebased<S> = todo
 
 /// The view `rebase` returns.
-pub struct Rebased<S>(src: S)
+pub struct Rebased<S>(pub src: S)
 
 /// O(1). The same cells keyed by `keys`, which must have the same length (traps otherwise):
 /// a table computed on offsets handed back in the caller's keys, `z.rekey(s.keys)`.
@@ -1526,7 +1526,7 @@ pub fn keyed<S: Seq, I: Indexed, T, K>(
 ) -> Keys<S, I, K> = todo
 
 /// The view `keyed` returns.
-pub struct Keys<S, I, K>(src: S, keys: I, by: ?K)
+pub struct Keys<S, I, K>(pub src: S, pub keys: I, by: ?K)
 
 /// O(1) per step. Yield leading elements while `keep(x)` holds, stopping at the first failure.
 ///
@@ -2308,7 +2308,7 @@ pub fn permutations<S: Indexed, T>(self: S, k: ?Int = None) -> yields List<T>:
             used[next - 1] = false
 
 /// O(1). Steerable item yielded by `subsequences` (decision 126, W6).
-pub struct SubseqStep<T>(items: List<T>, pruned: Bool = false):
+pub struct SubseqStep<T>(pub items: List<T>, pruned: Bool = false):
     /// O(1). Skip extending this prefix in the `subsequences` search tree.
     ///
     /// cost: O(1)
@@ -2440,8 +2440,8 @@ pub struct OnlineLis<T>(strict: Bool = true):
     tails: List<T> = []
     tail_at: List<Int> = []
     vals: List<T> = []
-    prev: List<Int> = []
-    ends: List<Int> = []
+    pub prev: List<Int> = []
+    pub ends: List<Int> = []
     // Per push: the tail slot it wrote, and what it replaced (`-1` when it appended).
     log_slot: List<Int> = []
     log_val: List<T> = []
@@ -3264,7 +3264,7 @@ pub fn minimal<D, T, St>(
 @get pub fn ring<D, T>(self: [D]T) -> Ring<D, T> = Ring(self)
 
 /// `a.ring`; see `ring`.
-pub struct Ring<D, T>(src: [D]T):
+pub struct Ring<D, T>(pub src: [D]T):
     /// The position `d` steps after `i` (before it when `d < 0`), wrapping: a forced-online
     /// decode `(v + last - 1) % n + 1` is `V.ring.step(v, last)`. O(1).
     ///
@@ -3375,7 +3375,7 @@ pub struct Ring<D, T>(src: [D]T):
 /// A run of positions of `D` read cyclically, possibly wrapping past the last position, at most
 /// `D.count` of them. The keys-only half of a `RingSlice`, so it needs no array.
 pub struct RingRange<D>():
-    at: ?D = None
+    pub at: ?D = None
     n: Int = 0
 
     ///

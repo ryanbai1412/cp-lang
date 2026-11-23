@@ -16,7 +16,7 @@ O(\|pat\| * \|A\|).
 - `fn link(self, state: Int) -> Int` — O(1); The failure link of `state`: the length of the longest proper border of `pat[..state]`, and `0` at state `0`.; traps: when `state` is outside `0..self.len`
 - `fn find_all<S: Seq>(self, text: S) -> yields Int` — O(|text|); The start position (0-based, counted in `text`'s iteration order) of every occurrence of `pat` in `text`, overlapping ones included.; traps: when an element of `text` is not in `A`
 
-## `struct Palindromes(odd: List<Int>, even: List<Int>)`
+## `struct Palindromes(pub odd: List<Int>, even: List<Int>)`
 
 O(n) space, O(1) queries.
 
@@ -32,7 +32,7 @@ O(n) space, O(1) queries.
 
 O(n) SA-IS + Kasai LCP (O(n log n) with RMQ).
 
-Fields: `sa: List<Int>`, `rank: List<Int>`, `lcp: List<Int>`, `rmq: List<Int>`, `log: List<Int>`, `dcum: List<Int>`, `toks: List<Int>`.
+Fields: `rank: List<Int>`, `rmq: List<Int>`, `log: List<Int>`, `dcum: List<Int>`, `toks: List<Int>`.
 
 - `fn new<S: Indexed>(s: S) -> SuffixArray` — O(n) for `Str` and small integer alphabets, O(n log n) otherwise; The suffix array of `s` with its inverse and LCP array: `sa[r]` is the start of the suffix of rank `r`, `rank[sa[r]] == r`, and `lcp[r]` is the LCP of the suffixes of ranks `r` and `r + 1`.
 - `@get fn len(self) -> Int` — O(1); The length `n` of the sequence the suffix array was built over.
@@ -48,11 +48,11 @@ Fields: `sa: List<Int>`, `rank: List<Int>`, `lcp: List<Int>`, `rmq: List<Int>`, 
 - `fn split(self, r: Range<Int>) -> Int` — O(1); Where the rank range `r` splits in the suffix tree: the `k` in `r.start + 1..r.end` whose adjacent LCP `lcp[k - 1]` equals `lcp_of_ranks(r)`, so `r.start..k` and `k..r.end` are the first child and the rest.; traps: when `r.len < 2` or `r` reaches outside `0..n`
 - `fn kth_distinct(self, k: Int) -> ?Range<Int>` — O(log n); The `k`-th (0-based) lexicographically smallest distinct non-empty substring, as the positions `l..r` of one occurrence, or `None` when `k >= distinct()`.; traps: when `k < 0`
 
-## `struct SuffixTreeEdge(top_size: Int, bottom_size: Int, parent_len: Int, edge_len: Int, rank_range: Range<Int>)`
+## `struct SuffixTreeEdge(top_size: Int, bottom_size: Int, parent_len: Int, edge_len: Int, pub rank_range: Range<Int>)`
 
 O(1) value.
 
-Fields: `top_size: Int,`, `bottom_size: Int,`, `parent_len: Int,`, `edge_len: Int,`, `rank_range: Range<Int>,`.
+Fields: `top_size: Int,`, `bottom_size: Int,`, `parent_len: Int,`, `edge_len: Int,`.
 
 ## `struct HashVal(h1: Int, h2: Int)`
 
@@ -168,6 +168,7 @@ Fields: `chars: List<A>`, `front: List<A>`, `barrier: Int`.
 - `fn new() -> PalindromicTree<A>` — O(|A|); An empty palindromic tree over the alphabet domain `A`: just the odd root `0` and the even root `1`.
 - `fn of<S: Seq>(s: S) -> PalindromicTree<A>` — O(|s| * |A|) memory, O(|s|) amortized time; The palindromic tree of `s`: `PalindromicTree<A>()` followed by `push` of each element.; traps: when an element of `s` is not in `A`
 - `fn push(mut self, a: A) -> Int` — O(1) amortized; Appends the letter `a` and returns the state of the longest palindromic suffix of the new string, creating it if it is new.; traps: never (`a` is an `A`)
+- `fn at(self, i: Int) -> A`
 - `@get fn len(self) -> Int` — O(1); The number of states, both roots included: `distinct + 2`.
 - `@get fn distinct(self) -> Int` — O(1); The number of distinct non-empty palindromic substrings, `len - 2`; at most `n`.
 - `fn pal_len(self, state: Int) -> Int` — O(1); The length of the palindrome of `state`: `-1` at the odd root, `0` at the even root.; traps: when `state` is outside `0..self.len`
@@ -224,7 +225,7 @@ O(total * \|A\|) build, O(1) step.
 
 O(\|pat\| * \|A\| * log n) amortized insert/delete, O(\|text\| * log n) query.
 
-Fields: `n: Int`, `stored: Trie<A>`, `added: AcBuckets<A>`, `removed: AcBuckets<A>`.
+Fields: `stored: Trie<A>`, `added: AcBuckets<A>`, `removed: AcBuckets<A>`.
 
 - `fn new() -> DynamicAhoCorasick<A>` — O(1); An empty online pattern set over the alphabet domain `A`; call it as `DynamicAhoCorasick<A>()`.
 - `@get fn len(self) -> Int` — O(1); The number of patterns stored, copies counted.

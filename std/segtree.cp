@@ -22,7 +22,7 @@ pub struct SegTree<D, T, F = Int>(m: Monoid<T>):
     log: Int
     act: ?Action<T, F>
     /// What each position holds, for a tree built with `of`.
-    var source: ?(D -> T)
+    pub var source: ?(D -> T)
 
     /// A tree over `D` folding with `op`: built from `a`, filled with `fill`, or holding the identity
     /// everywhere when neither is given. `op` is a bare operator (`+`, `*`, `^`, `&`, `|`, `min`,

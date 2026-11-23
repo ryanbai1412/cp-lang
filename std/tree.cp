@@ -50,25 +50,25 @@ pub fn dfs_tree<V, A, E>(self: Graph<V, A>, root: V) -> (
 /// Built in O(n) without recursion; memory is seven `[V]` arrays, one `[Pre]` array and child
 /// lists.
 pub struct Rooted<V, Pre>:
-    root: V
+    pub root: V
     /// The parent; `None` at the root.
-    par: [V]?V
+    pub par: [V]?V
     dep: [V]0..=V.count
     /// The total edge length from the root; equal to the depth when the edges have no lengths.
-    far: [V]Int
+    pub far: [V]Int
     /// The number of vertices in the subtree.
-    sz: [V]1..=V.count
+    pub sz: [V]1..=V.count
     /// Breadth-first order: the children of `v` are `bfs[k0[v]..k1[v]]`, so no vertex owns a list.
-    bfs: List<V>
+    pub bfs: List<V>
     k0: [V]0..=V.count
-    k1: [V]0..=V.count
+    pub k1: [V]0..=V.count
     /// The child with the largest subtree; `None` at a leaf.
-    heavy: [V]?V
+    pub heavy: [V]?V
     /// The highest vertex of the heavy chain through `v`.
-    top: [V]V
+    pub top: [V]V
     tin: [V]Pre
     /// The inverse of `tin` / `pos`.
-    at: [Pre]V
+    pub at: [Pre]V
 
     // blocked: `Rooted` resolves to a compiler built-in (GAPS.md tree `Rooted`)
     /// Roots the tree given by `next` at `root`: `Rooted(g, root: r)` for a `Graph`,
@@ -1138,10 +1138,10 @@ pub struct Rooted<V, Pre>:
 /// A virtual tree from `Rooted.virtual`: a few vertices of a tree and their pairwise lowest
 /// common ancestors, over its own domain `K` in preorder.
 pub struct VirtualTree<V, K>:
-    at: [K]V
-    parent: [K]?K
-    w: [K]Int
-    key: [K]Bool
+    pub at: [K]V
+    pub parent: [K]?K
+    pub w: [K]Int
+    pub key: [K]Bool
 
 /// A centroid decomposition: the centroid of the tree, then recursively of each piece left when
 /// it is removed. Every path passes through the centroid ancestor that first separates its
@@ -1149,14 +1149,14 @@ pub struct VirtualTree<V, K>:
 /// paths through `v` is a loop over `ancestors(v)`.
 /// Built in O(n log n) time and memory without recursion.
 pub struct Centroids<V>:
-    root: V
+    pub root: V
     cpar: [V]?V
     cdep: [V]0..=V.count
     /// For each vertex, every centroid whose piece holds it, nearest first, with the
     /// distance and the neighbour of the centroid it hangs off.
-    anc: [V]List<(c: V, dist: Int, branch: V)>
+    pub anc: [V]List<(c: V, dist: Int, branch: V)>
     /// For each centroid, the vertices of its piece in breadth-first order from it.
-    held: [V]List<V>
+    pub held: [V]List<V>
 
     /// Decomposes the tree given by `next` (as for `Rooted`: a `Graph`, neighbour lists or a fn).
     ///
@@ -1781,7 +1781,7 @@ fn a_jump_tree_answers_what_the_rooted_tree_does():
 /// queries are O(log n), and it keeps three arrays. Every vertex starts as its own root.
 pub struct JumpTree<V>:
     par: [V]?V
-    jump: [V]V
+    pub jump: [V]V
     dep: [V]0..=V.count
 
     /// A forest of lone vertices, each its own root.
@@ -1902,7 +1902,7 @@ pub struct JumpTree<V>:
 /// up: O(n log n) build and memory, O(log n) queries. A forest that grows leaf by leaf is a
 /// `JumpTree`; one that changes is a `LinkCut`.
 pub struct Lift<V, T>(op: (T, T) -> T, identity: T):
-    up: [V]?V
+    pub up: [V]?V
     dep: [V]0..=V.count
     jmp: List<[V]?V>
     val: List<[V]T>
@@ -2078,7 +2078,7 @@ pub struct LinkCut<V, T>(m: Monoid<T>):
     val: [V]T
     agg: [V]T
     /// The number of vertices in the splay subtree.
-    cnt: [V]0..=V.count
+    pub cnt: [V]0..=V.count
     stk: List<V>
 
     /// `V.count` single-vertex trees holding `a`, or the identity of `op` everywhere when `a` is
@@ -2103,7 +2103,7 @@ pub struct LinkCut<V, T>(m: Monoid<T>):
             [],
         )
 
-    fn top(self, x: V) -> Bool:
+    pub fn top(self, x: V) -> Bool:
         if let p = pa[x]: lc[p] != Some(x) and rc[p] != Some(x) else: true
 
     fn turn(mut self, x: V):
@@ -2168,7 +2168,7 @@ pub struct LinkCut<V, T>(m: Monoid<T>):
 
     // Makes root -> x the preferred path with x at the root of its splay tree; returns the
     // last vertex where the walk joined the old preferred path (the lca with the previous access).
-    fn access(mut self, x: V) -> V:
+    pub fn access(mut self, x: V) -> V:
         var last: ?V = None
         var joined = x
         var y: ?V = Some(x)
@@ -2321,7 +2321,7 @@ pub struct PreferredPaths<V>:
     rc: [V]?V
     pa: [V]?V
     /// The top vertex of each splay subtree's path segment: its leftmost node.
-    hd: [V]V
+    pub hd: [V]V
     stk: List<V>
 
     /// The preferred paths of `t` with every vertex its own path.
@@ -2357,7 +2357,7 @@ pub struct PreferredPaths<V>:
             y = pa[u]
         self.splay(v)
 
-    fn top(self, x: V) -> Bool:
+    pub fn top(self, x: V) -> Bool:
         if let p = pa[x]: lc[p] != Some(x) and rc[p] != Some(x) else: true
 
     fn pull(mut self, x: V):
@@ -2402,7 +2402,7 @@ pub struct LazyLinkCut<V, T, F>(act: Action<T, F>):
     val: [V]T
     agg: [V]T
     /// The number of vertices in the splay subtree, the `span` that `apply` sees.
-    cnt: [V]0..=V.count
+    pub cnt: [V]0..=V.count
     lz: [V]F
     stk: List<V>
 
@@ -2428,7 +2428,7 @@ pub struct LazyLinkCut<V, T, F>(act: Action<T, F>):
             [],
         )
 
-    fn top(self, x: V) -> Bool:
+    pub fn top(self, x: V) -> Bool:
         if let p = pa[x]: lc[p] != Some(x) and rc[p] != Some(x) else: true
 
     fn turn(mut self, x: V):
@@ -2500,7 +2500,7 @@ pub struct LazyLinkCut<V, T, F>(act: Action<T, F>):
                 if (lc[g] == Some(p)) == (lc[p] == Some(x)): self.rotate(p) else: self.rotate(x)
             self.rotate(x)
 
-    fn access(mut self, x: V) -> V:
+    pub fn access(mut self, x: V) -> V:
         var last: ?V = None
         var joined = x
         var y: ?V = Some(x)
@@ -2894,11 +2894,11 @@ pub enum PermNode<I, N>: Leaf(i: I), Inner(l: N, r: N, kind: PermKind)
 /// domain `t.Node` of 2n - 1 members; `kind`, `first`, `last`, `lo` and `hi` are arrays over it.
 /// Built in O(n) by one stack pass.
 pub struct PermTree<I, V, Node>:
-    root: Node
-    kind: [Node]PermKind
+    pub root: Node
+    pub kind: [Node]PermKind
     l: [Node]Node
-    r: [Node]Node
-    first: [Node]I
+    pub r: [Node]Node
+    pub first: [Node]I
     last: [Node]I
     lo: [Node]V
     hi: [Node]V
@@ -3149,10 +3149,10 @@ fn perm_tree_of_a_small_permutation():
 /// The vertices of a `Rooted` tree by depth, each depth in preorder, over their own domain
 /// `B`: the descendants of a vertex at one depth are a contiguous range of `B`.
 pub struct Layers<V, B>:
-    at: [B]V
-    slot: [V]B
+    pub at: [B]V
+    pub slot: [V]B
     /// The layer of depth `d` is `start[d]..start[d + 1]` as ordinals of `B`.
-    start: List<Int>
+    pub start: List<Int>
     pre: [V]Int
     sz: [V]Int
     dep: [V]Int
@@ -3193,7 +3193,7 @@ pub struct Layers<V, B>:
 /// The enter and exit events of a `Rooted` tree's `tour` over their own domain `P` of 2n
 /// members, for Mo's algorithm on trees.
 pub struct Events<V, P>:
-    at: [P]Visit<V, V>
+    pub at: [P]Visit<V, V>
     ent: [V]P
     ext: [V]P
     jt: JumpTree<V>
@@ -3244,10 +3244,10 @@ pub struct Events<V, P>:
 /// inheriting `deep[v]`'s values is free, and merging the other children costs their heights.
 pub struct LongPaths<V, L>:
     /// The child with the tallest subtree; `None` at a leaf.
-    deep: [V]?V
+    pub deep: [V]?V
     /// The number of edges on the longest path down from `v`.
-    height: [V]Int
-    pos: [V]L
+    pub height: [V]Int
+    pub pos: [V]L
 
     /// The slots of `v`, one per depth offset `0..=height[v]`, offset 0 first; `slots(deep[v])`
     /// starts one later in the same buffer.
@@ -3271,13 +3271,13 @@ pub struct LongPaths<V, L>:
 /// Lowest common ancestors in O(1) after O(n log n) preprocessing, by a sparse table over the
 /// Euler tour: for many queries on a fixed tree when `Rooted.lca` is the bottleneck.
 pub struct LcaTable<V>:
-    n: Int
-    pos: [V]Int
+    pub n: Int
+    pub pos: [V]Int
     par: [V]?V
     dep: [V]Int
     far: [V]Int
     /// Level `k` at `k * n`: the shallowest vertex of preorder positions `i..i + 2^k`.
-    tab: List<V>
+    pub tab: List<V>
 
     /// A sparse table over the Euler walk of `t`, for O(1) lowest common ancestors on a fixed tree.
     ///
@@ -3382,7 +3382,7 @@ pub struct EulerTourTree<V, T>(m: Monoid<T>):
             self.rotate(x)
 
     // The first node of `x`'s sequence, splayed to the root: one name per tree.
-    fn first(mut self, x: Int) -> Int:
+    pub fn first(mut self, x: Int) -> Int:
         self.splay(x)
         var y = x
         while let c = lc[y]:
@@ -3421,7 +3421,7 @@ pub struct EulerTourTree<V, T>(m: Monoid<T>):
         r
 
     // Rotates `x`'s tour so that it starts at `x`.
-    fn reroot(mut self, x: Int):
+    pub fn reroot(mut self, x: Int):
         self.splay(x)
         let l = self.cut_left(x)
         let _ = self.join(Some(x), l)
@@ -3652,7 +3652,7 @@ pub struct LazyEulerTourTree<V, T, F>(act: Action<T, F>):
             self.rotate(x)
 
     // The first node of `x`'s sequence, splayed to the root: one name per tree.
-    fn first(mut self, x: Int) -> Int:
+    pub fn first(mut self, x: Int) -> Int:
         self.splay(x)
         var y = x
         self.push(y)
@@ -3695,7 +3695,7 @@ pub struct LazyEulerTourTree<V, T, F>(act: Action<T, F>):
         r
 
     // Rotates `x`'s tour so that it starts at `x`.
-    fn reroot(mut self, x: Int):
+    pub fn reroot(mut self, x: Int):
         self.splay(x)
         let l = self.cut_left(x)
         let _ = self.join(Some(x), l)
@@ -3901,9 +3901,9 @@ pub fn cartesian_tree<D, T>(a: [D]T, by: (T, T) -> Bool = (x, y) => x < y) -> [D
 /// edges of weight at most its own, so "what `v` reaches under a limit" is one subtree.
 pub struct KruskalTree<V, N, W>:
     /// The leaf node of each vertex.
-    leaf: [V]N
+    pub leaf: [V]N
     /// The merging weight of each node; `None` at a leaf.
-    w: [N]?W
+    pub w: [N]?W
     lift: Lift<N, Int>
 
     /// The nodes as a `Rooted` forest over `N`: subtree ranges, LCA and folds. The roots, one per

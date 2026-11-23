@@ -15,7 +15,7 @@ pub struct Dsu<V>:
     @cache p: List<-2_147_483_648..=2_147_483_647>
     parts: Int
     /// Pairs `[child_ord, old_neg_size]` pushed flat since the first `mark`.
-    joined: List<Int>
+    pub joined: List<Int>
     marked: Bool
 
     /// A union-find over `V` with every position in its own set. Pass `rollback: true` to switch
@@ -186,7 +186,7 @@ pub struct DsuOf<V, T>:
     parts: 0..=2_000_000_000
     /// Since the first `mark`, one entry per change: the root that went under another (the
     /// root itself for a `set`), the root whose value changed, and that value before.
-    log: List<(V, V, T)>
+    pub log: List<(V, V, T)>
     marked: Bool
 
     /// A union-find over `V` with every position alone, the set of `v` holding `init(v)`, and
@@ -367,10 +367,10 @@ pub struct ParityDsu<V>:
     up: [V]V
     sz: [V]1..=V.count
     /// Is the position on the other side from `up` of it?
-    flip: [V]Bool
+    pub flip: [V]Bool
     /// One entry per `unite` that changed something: the root it hung under another root,
     /// or (with `false`) the root of a set where it found a contradiction.
-    log: List<(V, Bool)>
+    pub log: List<(V, Bool)>
     conflicts: 0..=2_000_000_000
 
     /// A parity union-find over `V` with every position alone and nothing known.
@@ -690,7 +690,7 @@ pub struct PersistentDsu<V>:
         _cell.push((0, 0))
         _kid.len - 1
 
-    fn get(self, root: Int, i: Int) -> (Int, Int):
+    pub fn get(self, root: Int, i: Int) -> (Int, Int):
         var t = root
         var (lo, hi) = (0, V.count)
         while hi - lo > 1:

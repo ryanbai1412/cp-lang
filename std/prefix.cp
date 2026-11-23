@@ -43,8 +43,8 @@ pub enum FillOrder = Forward | Reverse
 /// Append-only 1-D prefix/suffix sum table returned by `Prefix<D, T>.filling(...)`.
 pub struct FillPrefix<D, T>:
     p: [D.cuts]T
-    rev: Bool
-    next: Int
+    pub rev: Bool
+    pub next: Int
 
     /// Write the next cell in fill order (`D.first..=D.last` for `Forward`, reverse for `Reverse`).
     ///
@@ -231,8 +231,8 @@ pub struct Prefix<D, T>:
 /// Internal append-only 2-D prefix/suffix sum table returned by `Prefix<R, C, T>.filling(...)`.
 pub struct _FillPrefix2 < R, C, T >:
     p: [R.cuts, C.cuts]T
-    rev: Bool
-    next: Int
+    pub rev: Bool
+    pub next: Int
 
     /// Write the next cell in row-major fill order (top-left to bottom-right for `Forward`,
     /// bottom-right to top-left for `Reverse`).
@@ -353,8 +353,8 @@ pub struct _Prefix2 < R, C, T >:
 /// Internal append-only list prefix/suffix sum table returned by `Prefix<T>.filling(n, ...)`.
 pub struct _FillPrefixList < T >:
     p: List<T>
-    rev: Bool
-    next: Int
+    pub rev: Bool
+    pub next: Int
 
     /// Write index `i` in fill order (`0..n` for `Forward`, `(0..n).rev` for `Reverse`).
     ///
@@ -574,7 +574,7 @@ pub struct _Diff2 < R, C, T >:
 pub struct SweepAdd<D, T>:
     d: [D.cuts]T
     cur: T
-    rev: Bool
+    pub rev: Bool
 
     /// Create an all-zero online sweep accumulator in `order` (`Forward` or `Reverse`), with no
     /// position advanced yet.

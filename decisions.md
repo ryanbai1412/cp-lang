@@ -7690,3 +7690,18 @@ contradicts R01.3.3 (a lowercase name in a pattern binds). Alternatives: let a
 lowercase const bind in patterns (a silent wrong answer when the reader means
 the constant), or look names up in patterns (loses "patterns read without
 lookup"). Reverse by allowing lowercase consts and making R01.3.3 do a lookup.
+
+## 363. Std marks a member `pub` when it is documented or named outside its module (stdlib, 2026-11-23)
+
+Decision 358 makes members private unless `pub`, so std had to mark its API
+before compiler's E0207 check lands. Rule, applied by script: a field or
+method of a `pub` struct/enum (or an inherent `impl`) is `pub` when it has a
+doc comment, or when `.name` appears outside its file (other std modules,
+the file's own doc examples, spec, corpus, tool tests, site docs). That
+marked 126 methods and 519 fields; 318 undocumented helpers and
+representation fields stay private. It over-marks common names (`.len`)
+rather than hide something a user writes. The parser now takes `pub` on a
+field (`pub x: Int`, `pub var`, header `S(pub x: Int)`, one-line bodies;
+`FieldDecl.public`), as the grammar already said. Reverse: drop the `pub`s
+(sed) and `FieldDecl.public`. `lower/mod.rs` grows 3 lines (6008): `with_implicit_generics` takes an
+inline `mod` body, whose names have no `self.mods` entry, instead of panicking.

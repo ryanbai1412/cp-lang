@@ -33,7 +33,7 @@ Factorials and inverse factorials for a modular type `M = Mod<P>` (prime `P`).
 - `fn derange(self, n: Int) -> M` — O(1) amortized, O(n) table; The number of derangements `!n`: permutations of `n` things with no fixed point.; traps: when `n < 0`
 - `fn multinomial(self, ks: List<Int>) -> M` — O(ks.len) amortized; The multinomial coefficient `(sum ks)!
 
-## `struct Barrett(m: Int, im: U64)`
+## `struct Barrett(pub m: Int, im: U64)`
 
 O(1) reduction.
 
@@ -50,7 +50,7 @@ Fields: `free: List<Int>`.
 - `fn new(p: Int, e: Int) -> PrimePowerComb` — O(p^e) time and memory; Tables for binomial coefficients modulo `p^e`: the factorials with every factor of `p` removed, modulo `p^e`.; traps: when `p` is not prime, or `e < 1`, or `p^e` overflows `Int`
 - `fn choose(self, n: Int, k: Int) -> Int` — O(log_p n); `C(n, k) mod p^e`, by Granville's generalization of Lucas's theorem; 0 when `k` is outside `0..=n`.
 
-## `struct ModComb(m: Int)`
+## `struct ModComb(pub m: Int)`
 
 O(sum p_i^e_i) build, O(omega(m) log n) query.
 

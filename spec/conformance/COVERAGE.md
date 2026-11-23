@@ -7,7 +7,7 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 2558 (995 passing). Rules: 567.
+Cases: 2559 (995 passing). Rules: 567.
 
 ## Summary per chapter
 
@@ -925,10 +925,10 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **derive** (5/6 named by a case)
   - uncovered: `read_fields`
 - **dp** (39/39 named by a case)
-- **dsu** (63/63 named by a case)
+- **dsu** (64/64 named by a case)
 - **fenwick** (42/42 named by a case)
-- **flow** (57/65 named by a case)
-  - uncovered: `max_weight_matching`, `min_weight_matching`, `general_matching`, `max_weight_general_matching`, `max_bounded_flow`, `min_bounded_flow`, `global_min_cut`, `Matroid`
+- **flow** (58/67 named by a case)
+  - uncovered: `CostFlow.potentials`, `max_weight_matching`, `min_weight_matching`, `general_matching`, `max_weight_general_matching`, `max_bounded_flow`, `min_bounded_flow`, `global_min_cut`, `Matroid`
 - **geometry** (153/160 named by a case)
   - uncovered: `ByAngle`, `PI`, `Vec.from_angle`, `planar_faces`, `point_location_planar`, `delaunay`, `voronoi_cells`
 - **graph** (111/123 named by a case)
@@ -950,8 +950,8 @@ case names it. `/// example:` lines are also run by the `docs` suite of
   - uncovered: `SosOver`
 - **opt** (2/2 named by a case)
 - **pair** (5/5 named by a case)
-- **persistent** (34/38 named by a case)
-  - uncovered: `RangeKth`, `RangeKth.new`, `PMultiset`, `PMultiset.cmp`
+- **persistent** (34/39 named by a case)
+  - uncovered: `RangeKth`, `RangeKth.new`, `PersistentLazySegTree.fold_rec`, `PMultiset`, `PMultiset.cmp`
 - **poly** (53/57 named by a case)
   - uncovered: `exp`, `prod_linear`, `Poly.transposed_mul`, `Poly.exp`
 - **prefix** (46/56 named by a case)
@@ -965,16 +965,16 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **sparse** (23/23 named by a case)
 - **spec** (8/16 named by a case)
   - uncovered: `concavity_break`, `argmins`, `knuth_break`, `differences`, `newton`, `poly_degree`, `poly_at`, `recurrence_at`
-- **strings** (182/195 named by a case)
+- **strings** (183/196 named by a case)
   - uncovered: `Palindromes`, `Hashable`, `Hash2D`, `Hash2D.new`, `Hash2D.rect`, `Hash61`, `DynamicHash`, `DynamicHash.new`, `DynamicHash.rev_get`, `PalindromicTree.series_link`, `DynamicAhoCorasick`, `DynamicAhoCorasick.new`, `DynamicAhoCorasick.count_matches`
 - **subset** (15/15 named by a case)
 - **timetree** (11/11 named by a case)
-- **tree** (152/174 named by a case)
-  - uncovered: `dfs_tree`, `Rooted.up_arc`, `Rooted.child_arcs`, `Rooted.reroot`, `Rooted.chains`, `Rooted.virtual`, `VirtualTree`, `PreferredPaths`, `PreferredPaths.new`, `PreferredPaths.access`, `PermKind`, `PermNode`, `PermTree`, `PermTree.new`, `PermTree.node`, `PermTree.vals`, `Layers`, `Events`, `LongPaths`, `LongPaths.slots`, `LongPaths.slot`, `KruskalTree`
+- **tree** (157/183 named by a case)
+  - uncovered: `dfs_tree`, `Rooted.up_arc`, `Rooted.child_arcs`, `Rooted.reroot`, `Rooted.chains`, `Rooted.virtual`, `VirtualTree`, `LinkCut.access`, `PreferredPaths`, `PreferredPaths.new`, `PreferredPaths.access`, `LazyLinkCut.access`, `PermKind`, `PermNode`, `PermTree`, `PermTree.new`, `PermTree.node`, `PermTree.vals`, `Layers`, `Events`, `LongPaths`, `LongPaths.slots`, `LongPaths.slot`, `EulerTourTree.reroot`, `LazyEulerTourTree.reroot`, `KruskalTree`
 - **window** (20/22 named by a case)
   - uncovered: `Tracked`, `Undo`
 
-2167 of 2292 std items are named by a case.
+2175 of 2306 std items are named by a case.
 
 ## Core cases without a `// rule:` line
 

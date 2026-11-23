@@ -10,7 +10,7 @@ In prelude (no `use` needed): `Mat`.
 
 A dense `rows x cols` matrix stored flat in row-major order.
 
-Fields: `rows: Int`, `cols: Int`, `data: List<T>`.
+Fields: `data: List<T>`.
 
 - `fn new<R, C, S>(a: [R, C]T, over: ?S = None) -> Mat<T>` — O(rows * cols) time and space; A matrix from a 2-D table, multiplied under `over` (default `Semiring(+, *)`): `Mat(over: Semiring(min, +), d)`.
 - `fn of(rows: List<List<T>>) -> Mat<T>` — O(rows * cols) time and space; A matrix from a list of equal-length rows: `Mat<Z>.of(adj)` for an adjacency table read as nested lists.; traps: when the rows differ in length
@@ -59,12 +59,10 @@ Fields: `basis: List<Int>`, `size: Int`.
 
 O(n^3 log max_exp) build, O(n^2 log e) query.
 
-Fields: `n: Int`.
-
 - `fn new(a: Mat<T>, max_exp: Int) -> MatPow<T>` — O(n^3 log max_exp) time, O(n^2 log max_exp) space; Precompute `a^(2^k)` for every `k` with `2^k <= max_exp`, multiplied under `a`'s semiring.; traps: when `a` is not square or `max_exp < 0`
 - `fn apply_pow(self, e: Int, v: List<T>) -> List<T>` — O(n^2 log e) time, O(n) space; Compute `a^e * v` for `0 <= e <= max_exp`, as matrix-vector products with the stored powers for the set bits of `e`.; traps: when `e` is not in `0..=max_exp` or `v.len != n`
 
-## `struct BitMat(rows: Int, cols: Int)`
+## `struct BitMat(pub rows: Int, pub cols: Int)`
 
 O(n * m / 64) storage.
 
@@ -85,7 +83,7 @@ Fields: `bits: List<Int>`.
 
 O(62) per push and query.
 
-Fields: `len: Int`, `vecs: List<Int>`, `from: List<Int>`.
+Fields: `vecs: List<Int>`, `from: List<Int>`.
 
 - `fn new() -> PrefixXorBasis` — O(1); An empty prefix XOR basis, with no positions pushed.
 - `fn push(mut self, x: Int)` — O(62) time and space; Append `x` at the next position (`0`, `1`, ...), keeping for each bit the basis vector with the rightmost source index, so any subarray's span reads off the vectors whose index lies in it.; traps: when `x < 0` or `x >= 2^62`

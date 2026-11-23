@@ -270,6 +270,8 @@ pub struct FieldDecl {
     pub mutable: bool,
     /// `@cache parent: ...`: interior-mutable cache field, skipped by `==`.
     pub cached: bool,
+    /// `pub x: Int`: visible outside the declaring module (R11.1.4).
+    pub public: bool,
 }
 
 #[derive(Clone, PartialEq, Debug)]

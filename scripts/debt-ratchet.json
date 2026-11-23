@@ -3,7 +3,7 @@
   "rs_file_size_allowlist": {
     "crates/cpl-ir/src/lower/call.rs": 13036,
     "crates/cpl-ir/src/lower/stmt.rs": 6430,
-    "crates/cpl-ir/src/lower/mod.rs": 6005,
+    "crates/cpl-ir/src/lower/mod.rs": 6008,
     "crates/cpl-ir/src/lower/expr.rs": 5556,
     "crates/cpl-interp/src/lib.rs": 5534,
     "crates/cpl-ir/src/lower/mono.rs": 4508,

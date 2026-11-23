@@ -29,8 +29,8 @@ es [6] let es: List<Edge> = []
 e [6] let e = Edge(to: 1, w: 2)
 a [6] let a = e.
 b [6] let b = es.
-Action [22] pub struct Action<T, F>(id: F, compose: (F, F) -> F, apply: (F, T, Int) -> T, over: Monoid<T>)
+Action [22] pub struct Action<T, F>(pub id: F, pub compose: (F, F) -> F, apply: (F, T, Int) -> T, over: Monoid<T>)
 Commutative [8] pub trait Commutative<T>: Op<T>
 Desc [22] pub struct Desc<T>(x: T)
-Group [22] pub struct Group<T>(id: T, op: (T, T) -> T, inv: T -> T)
+Group [22] pub struct Group<T>(pub id: T, pub op: (T, T) -> T, inv: T -> T)
 Idempotent [8] pub trait Idempotent<T>: Op<T>

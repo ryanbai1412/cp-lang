@@ -1663,7 +1663,7 @@ pub struct AugSortedBag<K, T>:
     op: (T, T) -> T
     id: T
     leaf: K -> T
-    keys: List<K> = []
+    pub keys: List<K> = []
     pri: List<Int> = []
     ls: List<Int> = []
     rs: List<Int> = []

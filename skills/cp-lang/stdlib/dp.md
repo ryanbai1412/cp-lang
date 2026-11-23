@@ -52,7 +52,7 @@ O(log n) amortized per `add`, O(log n) per `at`.
 - `fn line_at(self, x: Int) -> ?Line` — O(log n); The line attaining `at(x)`, or `None` when empty.
 - `@get fn len(self) -> Int` — O(1); The number of lines kept (dominated lines are not counted).
 
-## `struct Step<S>(state: S, depth: Int)`
+## `struct Step<S>(pub state: S, pub depth: Int)`
 
 One state reached by `backtrack`.
 

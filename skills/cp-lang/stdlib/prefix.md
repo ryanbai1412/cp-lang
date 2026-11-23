@@ -14,7 +14,7 @@ Fill direction for an append-only `Prefix.filling(...)` table.
 
 Append-only 1-D prefix/suffix sum table returned by `Prefix<D, T>.filling(...)`.
 
-Fields: `p: [D.cuts]T`, `rev: Bool`, `next: Int`.
+Fields: `p: [D.cuts]T`.
 
 - `fn set(mut self, i: D, x: T)` — O(1); Write the next cell in fill order (`D.first..=D.last` for `Forward`, reverse for `Reverse`).; traps: when `i` is not the next position in fill order (out of order, repeated, or after
 - `fn prefix(self, b: Cut<D>) -> T` — O(1); The sum of everything left of boundary `b`; zero at the first cut.; traps: when a position left of `b` is not yet written (with `Reverse`, every position left
@@ -41,7 +41,7 @@ Fields: `p: [D.cuts]T`.
 
 Internal append-only 2-D prefix/suffix sum table returned by `Prefix<R, C, T>.filling(...)`.
 
-Fields: `p: [R.cuts, C.cuts]T`, `rev: Bool`, `next: Int`.
+Fields: `p: [R.cuts, C.cuts]T`.
 
 - `fn set(mut self, r: R, c: C, x: T)` — O(1); Write the next cell in row-major fill order (top-left to bottom-right for `Forward`, bottom-right to top-left for `Reverse`).; traps: when `(r, c)` is not the next cell in fill order
 - `fn prefix(self, r: Cut<R>, c: Cut<C>) -> T` — O(1); The sum of everything above row boundary `r` and left of column boundary `c`; zero when either cut is the first.; traps: when that rectangle is non-empty and holds a cell not yet written
@@ -62,7 +62,7 @@ Fields: `p: [R.cuts, C.cuts]T`.
 
 Internal append-only list prefix/suffix sum table returned by `Prefix<T>.filling(n, ...)`.
 
-Fields: `p: List<T>`, `rev: Bool`, `next: Int`.
+Fields: `p: List<T>`.
 
 - `fn set(mut self, i: Int, x: T)` — O(1); Write index `i` in fill order (`0..n` for `Forward`, `(0..n).rev` for `Reverse`).; traps: when `i` is not the next index in fill order (including any `i` outside `0..n`)
 - `fn prefix(self, k: Int) -> T` — O(1); The sum of the first `k` values; zero for `k == 0`.; traps: when `k` is not in `0..=n`, or one of the first `k` values is not yet written
@@ -103,7 +103,7 @@ Fields: `d: [R.cuts, C.cuts]T`.
 
 O(\|D\|) space.
 
-Fields: `d: [D.cuts]T`, `cur: T`, `rev: Bool`.
+Fields: `d: [D.cuts]T`, `cur: T`.
 
 - `fn new(order: FillOrder = FillOrder.Forward) -> SweepAdd<D, T>` — O(|D|) time and space; Create an all-zero online sweep accumulator in `order` (`Forward` or `Reverse`), with no position advanced yet.
 - `fn add(mut self, r: Range<D>, x: T)` — O(1); Schedule `+x` across `r`, which must start at or ahead of the current sweep cursor: no position of `r` may have been advanced past already.; traps: when `r` is non-empty and holds a position already advanced to

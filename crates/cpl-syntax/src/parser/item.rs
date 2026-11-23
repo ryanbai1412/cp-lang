@@ -528,7 +528,10 @@ impl<'a> Parser<'a> {
                 self.pos = at;
                 ok
             };
+            // `pub x: Int` / `pub var x: Int` is a field; `pub fn` a declaration.
+            let pub_field = self.at(T::Pub) && matches!(self.peek_n(1), T::Ident | T::Var);
             let declaration = !field_attr
+                && !pub_field
                 && (matches!(
                     self.peek(),
                     T::Fn | T::At | T::Pub | T::Const | T::Domain | T::Type | T::Let
@@ -576,6 +579,7 @@ impl<'a> Parser<'a> {
         let header = self.eat(T::LParen);
         if header {
             fields = self.comma_list(T::RParen, "the struct's fields", |p| {
+                let public = p.eat(T::Pub);
                 let name = p.expect_name("a field name");
                 p.expect(T::Colon, "`:` and the field's type");
                 let ty = p.ty();
@@ -586,6 +590,7 @@ impl<'a> Parser<'a> {
                     default,
                     mutable: false,
                     cached: false,
+                    public,
                 }
             });
         }
@@ -601,6 +606,7 @@ impl<'a> Parser<'a> {
                         cached = true;
                     }
                 }
+                let public = self.eat(T::Pub);
                 let mutable = self.eat(T::Var);
                 let mut names = vec![self.expect_name("a field name")];
                 while self.eat(T::Comma) {
@@ -616,6 +622,7 @@ impl<'a> Parser<'a> {
                         default: default.clone(),
                         mutable,
                         cached,
+                        public,
                     });
                 }
                 if !self.eat(T::Comma) || self.at_line_end() {
@@ -650,6 +657,7 @@ impl<'a> Parser<'a> {
                     cached = true;
                 }
             }
+            let public = p.eat(T::Pub);
             let mutable = p.eat(T::Var);
             // `u, v: V` declares two fields of one type.
             let mut names = vec![p.expect_name("a field name")];
@@ -673,6 +681,7 @@ impl<'a> Parser<'a> {
                     default: default.clone(),
                     mutable,
                     cached,
+                    public,
                 });
             }
         });

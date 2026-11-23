@@ -561,7 +561,7 @@ pub struct MonotoneHull<P>(pick: (Int, Int) -> Int = min):
     ms: List<Int> = []
     tags: List<P> = []
     ptr: Int = 0
-    last: ?Int = None
+    pub last: ?Int = None
 
     fn sign(self) -> Int = if pick(0, 1) == 0: 1 else: -1
 
@@ -669,7 +669,7 @@ pub struct LineContainer(pick: (Int, Int) -> Int = min):
     rs: List<Int> = []
     root: Int = -1
     seed: Int = 1
-    count: Int = 0
+    pub count: Int = 0
 
     fn sign(self) -> Int = if pick(0, 1) == 0: -1 else: 1
 
@@ -917,7 +917,7 @@ pub fn backtrack<S>(start: S, next: S -> yields S) -> yields Step<S>:
             i -= 1
 
 /// One state reached by `backtrack`.
-pub struct Step<S>(state: S, depth: Int):
+pub struct Step<S>(pub state: S, pub depth: Int):
     /// Skip every state below this one: `backtrack` does not call `next` on it. Has effect only on
     /// the step just yielded, before the `for` body continues.
     ///

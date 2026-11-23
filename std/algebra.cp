@@ -12,7 +12,7 @@ use std.math.{gcd}
 /// `Monoid<T>(id, op)` or, naming both, `Monoid<T>(id: e, op: (a, b) => ...)`.
 /// `op(a, b)` folds `a` on the left of `b`, which matters when it does not commute.
 /// The laws are checked by `laws_hold(m, samples)`.
-pub struct Monoid<T>(id: T, op: (T, T) -> T):
+pub struct Monoid<T>(pub id: T, pub op: (T, T) -> T):
     law assoc(a: T, b: T, c: T) = op(op(a, b), c) == op(a, op(b, c))
     law ident(a: T) = op(id, a) == a and op(a, id) == a
 
@@ -64,7 +64,7 @@ fn same<A, B>(a: A, b: B) -> Bool = a == b
 /// The positional form `Action(id, compose, apply, over: op)` is the same call. A flipped
 /// `compose` still type-checks, so check a hand-written action once with
 /// `laws_hold(act, T: [...], F: [...])`.
-pub struct Action<T, F>(id: F, compose: (F, F) -> F, apply: (F, T, Int) -> T, over: Monoid<T>):
+pub struct Action<T, F>(pub id: F, pub compose: (F, F) -> F, apply: (F, T, Int) -> T, over: Monoid<T>):
     law ident(a: T) = apply(id, a, 1) == a
     // `compose(f, g)` applies `g` first, then `f`.
     law composes(f: F, g: F, a: T) = apply(compose(f, g), a, 1) == apply(f, apply(g, a, 1), 1)
@@ -159,7 +159,7 @@ pub fn fold<T, M, S: Seq>(m: M, xs: S) -> T:
 /// Concatenation (`+` or `MaxSub.join`) is associative with identity `MaxSub.empty` in O(1);
 /// `s.scale(k)` scales every element by non-negative `k` in O(1).
 /// Implements `Reversible` (swapping `pre` and `suf`) for tree-path folds.
-pub struct MaxSub(has: Bool, best: Int, total: Int, pre: Int, suf: Int):
+pub struct MaxSub(has: Bool, best: Int, total: Int, pub pre: Int, pub suf: Int):
     /// The summary of no elements: the identity of `join`. It has no best subarray.
     ///
     /// cost: O(1)
@@ -232,12 +232,12 @@ impl Reversible for MaxSub:
 
 /// O(1) construction. Associative operation without an identity, for non-empty folds
 /// (`SparseTable`, `DisjointSparseTable`, `SegTree.try_fold`).
-pub struct Semigroup<T>(op: (T, T) -> T):
+pub struct Semigroup<T>(pub op: (T, T) -> T):
     law assoc(a: T, b: T, c: T) = op(op(a, b), c) == op(a, op(b, c))
 
 /// O(1) construction. Associative operation with identity and inverse (`inv`),
 /// for generalized Fenwick trees and difference structures.
-pub struct Group<T>(id: T, op: (T, T) -> T, inv: T -> T):
+pub struct Group<T>(pub id: T, pub op: (T, T) -> T, inv: T -> T):
     law assoc(a: T, b: T, c: T) = op(op(a, b), c) == op(a, op(b, c))
     law ident(a: T) = op(id, a) == a and op(a, id) == a
     law inverse(a: T) = op(a, inv(a)) == id and op(inv(a), a) == id
@@ -271,7 +271,7 @@ pub fn point_action<T, F, M>(
 
 /// O(1) per merge. Minimum value together with its multiplicity, for counting zeros or
 /// minimum-covered cells under range add (`AddMinCount`).
-pub struct MinCount<T>(val: T, count: Int):
+pub struct MinCount<T>(pub val: T, pub count: Int):
     /// The summary of the single element `v`: value `v`, count 1.
     ///
     /// cost: O(1)
@@ -301,7 +301,7 @@ pub struct MinCount<T>(val: T, count: Int):
     )
 
 /// O(1) per merge. Maximum value together with its multiplicity (range add: `SegTree(MaxCount.monoid, a, act: add)`).
-pub struct MaxCount<T>(val: T, count: Int):
+pub struct MaxCount<T>(pub val: T, pub count: Int):
     /// The summary of the single element `v`: value `v`, count 1.
     ///
     /// cost: O(1)
@@ -330,7 +330,7 @@ pub struct MaxCount<T>(val: T, count: Int):
     )
 
 /// O(1) per composition/eval. Affine map `x -> a * x + b` over any ring `T` (`Int`, `Mod<P>`).
-pub struct Affine<T>(a: T, b: T):
+pub struct Affine<T>(pub a: T, pub b: T):
     /// The identity map `x -> 1 * x + 0`.
     ///
     /// cost: O(1)

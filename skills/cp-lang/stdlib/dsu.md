@@ -14,7 +14,7 @@ A point in the history of a structure that can step back in time, returned by `m
 
 Union-find with path halving and union by size.
 
-Fields: `parts: Int`, `joined: List<Int>`, `marked: Bool`.
+Fields: `parts: Int`, `marked: Bool`.
 
 - `fn new(rollback: Bool = false) -> Dsu<V>` — O(n) for n = `V.count`; one `[V]` array; A union-find over `V` with every position in its own set.
 - `fn find(self, v: V) -> V` — O(alpha(n)) amortized; O(log n) after the first `mark`; The representative of `v`'s set: the root that union by size kept.
@@ -32,7 +32,7 @@ Fields: `parts: Int`, `joined: List<Int>`, `marked: Bool`.
 
 Union-find where every set carries a value of type `T`.
 
-Fields: `val: [V]T`, `join: (T, T) -> T`, `log: List<(V, V, T)>`, `marked: Bool`.
+Fields: `val: [V]T`, `join: (T, T) -> T`, `marked: Bool`.
 
 - `fn new(init: (V) -> T, join: (T, T) -> T) -> DsuOf<V, T>` — O(n) calls of `init`; three `[V]` arrays; A union-find over `V` with every position alone, the set of `v` holding `init(v)`, and `join` combining the values of two sets when they merge.
 - `fn find(self, v: V) -> V` — O(alpha(n)) amortized; O(log n) after the first `mark`; The representative of `v`'s set, as for [`Dsu.find`](Dsu.find).
@@ -53,7 +53,7 @@ Fields: `val: [V]T`, `join: (T, T) -> T`, `log: List<(V, V, T)>`, `marked: Bool`
 
 Union-find that knows, for two positions of one set, whether they are on the same side or on opposite sides: two-colouring, parity constraints, `x[a] xor x[b] == d`.
 
-Fields: `up: [V]V`, `flip: [V]Bool`, `log: List<(V, Bool)>`.
+Fields: `up: [V]V`.
 
 - `fn new() -> ParityDsu<V>` — O(n); three `[V]` arrays; A parity union-find over `V` with every position alone and nothing known.
 - `fn find(self, v: V) -> (root: V, flip: Bool)` — O(log n); The representative of `v`'s set and whether `v` is on the other side from it.
@@ -99,6 +99,7 @@ Fields: `data: [D]T`, `log: List<(D, T)>`.
 Path-copying persistent disjoint-set union over domain `V`.
 
 - `fn new() -> PersistentDsu<V>` — O(n); A persistent union-find over `V` holding version 0, every position in its own set.
+- `fn get(self, root: Int, i: Int) -> (Int, Int)`
 - `@get fn base(self) -> Int` — O(1); The handle of version 0, where every position is alone.
 - `fn find(self, ver: Int, v: V) -> V` — O(log² n); The representative of `v`'s set in version `ver`, chosen by union by size as in [`Dsu.find`](Dsu.find).; traps: when `ver` is not a version handle of `self`
 - `fn same(self, ver: Int, a: V, b: V) -> Bool` — O(log² n); Whether `a` and `b` are in the same set in version `ver`.; traps: when `ver` is not a version handle of `self`

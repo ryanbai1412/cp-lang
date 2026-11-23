@@ -1332,7 +1332,7 @@ impl<'a> Lowerer<'a> {
                         if stmt.decorators.iter().any(|d| d.name.text == "test") && m != 0 {
                             continue;
                         }
-                        let decl = self.with_implicit_generics(decl, m);
+                        let decl = self.with_implicit_generics(decl, m, None);
                         if !decl.generics.is_empty() {
                             let gfid = self.gen_fns.len();
                             self.gen_fns.push(GenFnTemplate {
@@ -1469,7 +1469,8 @@ impl<'a> Lowerer<'a> {
                         self.mod_syms[m].insert(name.text.clone(), Sym::Mod(sub_mod));
                         for s in &body.stmts {
                             if let ast::StmtKind::Fn(decl) = &s.kind {
-                                let decl = self.with_implicit_generics(decl, sub_mod);
+                                let decl =
+                                    self.with_implicit_generics(decl, sub_mod, Some(&body.stmts));
                                 if !decl.generics.is_empty() {
                                     let gfid = self.gen_fns.len();
                                     self.gen_fns.push(GenFnTemplate {
@@ -2029,7 +2030,14 @@ impl<'a> Lowerer<'a> {
 
     /// `fn size(s: List<T>)`: an undeclared one-letter type in the signature
     /// is a type parameter of the fn (R02.10.3).
-    fn with_implicit_generics(&self, decl: &'a ast::FnDecl, m: usize) -> &'a ast::FnDecl {
+    /// `inline` is the body of an inline `mod m:`, whose names live in no
+    /// `self.mods` entry of their own.
+    fn with_implicit_generics(
+        &self,
+        decl: &'a ast::FnDecl,
+        m: usize,
+        inline: Option<&'a [ast::Stmt]>,
+    ) -> &'a ast::FnDecl {
         if !decl.generics.is_empty() {
             return decl;
         }
@@ -2045,9 +2053,12 @@ impl<'a> Lowerer<'a> {
         if names.is_empty() {
             return decl;
         }
-        let declared: HashSet<&str> = self
-            .mod_items(m)
-            .flat_map(|(_, stmt)| -> Vec<&str> {
+        let items: Box<dyn Iterator<Item = &'a ast::Stmt> + '_> = match inline {
+            Some(stmts) => Box::new(stmts.iter()),
+            None => Box::new(self.mod_items(m).map(|(_, stmt)| stmt)),
+        };
+        let declared: HashSet<&str> = items
+            .flat_map(|stmt| -> Vec<&str> {
                 match &stmt.kind {
                     ast::StmtKind::Struct(d) => vec![d.name.text.as_str()],
                     ast::StmtKind::Enum(d) => vec![d.name.text.as_str()],
@@ -5205,9 +5216,9 @@ impl<'a> Lowerer<'a> {
             // R04.2.10: a position of a product domain is a tuple of factor positions.
             (Ty::Tuple(ts), Ty::Pos(d))
                 if self
-                        .product_domains
-                        .get(d)
-                        .is_some_and(|fs| fs.len() == ts.len()) =>
+                    .product_domains
+                    .get(d)
+                    .is_some_and(|fs| fs.len() == ts.len()) =>
             {
                 let d = *d;
                 let mut stmts = Vec::new();

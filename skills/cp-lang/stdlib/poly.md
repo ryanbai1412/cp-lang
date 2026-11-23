@@ -36,7 +36,7 @@ O(n) storage.
 
 O(m log^2 m) build.
 
-Fields: `n: Int`, `keep: Int`, `nodes: List<List<Mod<P>>>`.
+Fields: `keep: Int`, `nodes: List<List<Mod<P>>>`.
 
 - `fn new(xs: List<Mod<P>>, keep: Int = -1) -> SubproductTree<P>` — O(m log^2 m) time, O(m log m) space; Build the subproduct tree for the points `xs`: leaf `i` is `x - xs[i]` and each node the product of its children.; traps: when a transform length exceeds what `P` supports
 - `fn eval(self, f: List<Mod<P>>) -> List<Mod<P>>` — O((deg f + m) log^2 m); Evaluate `f` at every point in the tree: `[f(x) for x in xs]`.; traps: when the tree was built with `keep >= 0`

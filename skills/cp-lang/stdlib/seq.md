@@ -58,15 +58,15 @@ O(1) to make.
 - `@get fn is_empty(self) -> Bool` — O(1)
 - `fn iter(self) -> yields Int` — O(1) per step
 
-## `struct Rebased<S>(src: S)`
+## `struct Rebased<S>(pub src: S)`
 
 The view `rebase` returns.
 
-## `struct Keys<S, I, K>(src: S, keys: I, by: ?K)`
+## `struct Keys<S, I, K>(pub src: S, pub keys: I, by: ?K)`
 
 The view `keyed` returns.
 
-## `struct SubseqStep<T>(items: List<T>, pruned: Bool = false)`
+## `struct SubseqStep<T>(pub items: List<T>, pruned: Bool = false)`
 
 O(1).
 
@@ -100,7 +100,7 @@ O(1) construction; O(1) amortized push and rollback.
 
 Which end of a piece a two-pointer result is keyed by.
 
-## `struct Ring<D, T>(src: [D]T)`
+## `struct Ring<D, T>(pub src: [D]T)`
 
 `a.ring`; see `ring`.
 

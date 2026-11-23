@@ -35,6 +35,7 @@ Fields: `head: [V]List<Arc>`, `to: List<V>`, `left: List<Int>`, `cap0: List<Int>
 - `fn cut_arcs(self, s: V) -> List<Arc>` — O(V + E); The added arcs crossing the minimum cut `min_cut(s)` from the source side to the other, after `max_flow(s, t)` ran to completion.; traps: like `min_cut`, when the flow from `s` is missing or stale
 - `fn paths(self, s: V, t: V) -> yields (arcs: List<Arc>, amount: Int)` — O(P (V + E)) for P paths; The current `s`-`t` flow split into paths, each with the amount it carries; the amounts sum to the net flow out of `s`.; traps: when `s == t`
 - `fn push_relabel(mut self, s: V, t: V) -> Int` — O(V² sqrt E); The same maximum flow amount as `max_flow(s, t)` by push-relabel (highest label, gap heuristic), often several times faster than Dinic on dense or unit-capacity grids.; traps: when `s == t`
+- `fn augment(mut self, s: V, t: V, level: [V]?Int, mut next: [V]Int, most: Int) -> Int` — One augmenting path in the level graph, found without recursion.
 
 ## `struct CostFlow<V>`
 
@@ -54,12 +55,13 @@ Fields: `head: [V]List<Arc>`, `to: List<V>`, `left: List<Int>`, `cap0: List<Int>
 - `fn cancel_cycles(mut self) -> Int` — O(V E) per cancelled cycle (Bellman-Ford), at most `|c|` cycles for the returned cost `c`; Saturates every negative-cost cycle of the residual network, so the stored flow becomes a min-cost circulation plus the `s`-`t` flows already sent, and returns the cost added (zero or negative).
 - `fn min_cost_flow(mut self, s: V, t: V, limit: ?Int = None) -> (flow: Int, cost: Int)` — O(F E log V) for F augmenting paths, plus O(V E) once when a residual arc has a negative cost; Sends the most flow from `s` to `t`, up to `limit` in this call, at the least cost among flows of that amount, on top of the flow already there.; traps: when `s == t`, `limit` is negative, or the residual network has a negative-cost cycle
 - `fn slope(mut self, s: V, t: V, limit: ?Int = None) -> List<(flow: Int, cost: Int)>` — as `min_cost_flow`; The breakpoints of the cheapest cost of sending each amount from `s` to `t`, up to `limit`: `(0, 0)` first, then one `(flow, cost)` per change of slope, ending at the largest amount.; traps: as `min_cost_flow`
+- `fn potentials(self) -> [V]Int` — Potentials under which every residual arc has a nonnegative reduced cost: all zero when no residual arc is negative, else Bellman-Ford from every vertex at once.
 
 ## `struct Matching<L, R>`
 
 O(E sqrt V) for the first `augment_all`, O(V + E) per later `add` + `augment`.
 
-Fields: `adj: [L]List<R>`, `mate: [L]?R`, `back: [R]?L`, `size: Int`.
+Fields: `adj: [L]List<R>`.
 
 - `fn new() -> Matching<L, R>` — O(L + R); An online bipartite matching between `L` and `R` with no edges and nothing matched.
 - `fn add(mut self, l: L, r: R)` — O(1) amortized; Allows `l` to match `r`.

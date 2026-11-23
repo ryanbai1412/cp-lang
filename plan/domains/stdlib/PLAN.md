@@ -45,6 +45,8 @@ W2 runs before W3 because writing bodies whose examples fail for a compiler reas
 
 Each: the instance, the general fix, the owner when it is not stdlib.
 
+- Spec's `core-11/member-*` cases declare a struct inside an inline `mod m:`; lowering registers only an inline module's fns, so `P` is unknown (E0204). General fix: an inline module declares structs, enums, traits and impls exactly as a file module does. Owner: compiler.
+
 - **`nth` on `[D]T` inside std (cf1943b).** Instance: `manacher`, `z_function` and the other `std/strings` functions failed on a `[Pos]Char`. Fixed generally here: `S: Indexed<K, T>` binds `K` to the receiver's key (`mono.rs`), `.at` takes the receiver's key type (`call.rs`), and `cells.rekey(s.keys)` over a whole domain is a `[D]T` (`mod.rs`). Still owed: a std module only sees a method it `use`s (`std/strings.cp` lacked `use std.seq.{nth}` and nothing said so until a `[D]T` reached it); the general fix is a check that every std module resolves its method calls for every `Indexed` shape, e.g. one conformance case per module over `[D]T` (stdlib).
 - **`find_all` on `[D]T`.** Its empty pattern yields the end key, which a `[D]T` has no value of, so `find_all` on a domain array doesn't compile. General fix: yield cuts (`D.cuts`) rather than keys, or spec rules the empty pattern yields keys only (spec).
 - **Corpus gate misses ports without `spec.cp`.** `cpl-conform corpus` and `crates/cpl-cli/tests/corpus.rs` only run `corpus/problems/*/spec.cp`; cf1943b has only `port.cp`, so its break went unseen. General fix: the corpus job runs every `port.cp` on its `tests/` in the interpreter (idioms, requested in their worklog).
