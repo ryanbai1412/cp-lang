@@ -315,3 +315,16 @@ sheriff routes it to its owner.
 shows `flaky test (failed, then passed on retry): cpl-cli::corpus <name>`.
 *Enforced by:* `scripts/flaky.py`, tested by `scripts/test_flaky.py`, run by
 `scripts/check.sh`.
+
+### ci/R36
+
+Every contributor task has one `just` recipe: each command in infra's
+"Suites and tools" table runs from a recipe, every recipe has a comment that
+`just --list` shows, and every `just <name>` a live doc names exists.
+*Why:* a contributor who has to find a script's path and its interpreter
+(`python3`, `uv run`, a shell script) loses minutes per task, and a doc that
+names a recipe nobody defined sends them nowhere.
+*Example:* adding `scripts/foo_stats.py` to the table without a `foo-stats`
+recipe fails the gate with `handbook/domains/infra.md: add a justfile recipe
+that runs it`.
+*Enforced by:* `scripts/test_justfile.py`, run by `scripts/check.sh`.

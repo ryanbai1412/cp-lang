@@ -100,3 +100,31 @@ debt-ratchet *args:
 worktree name:
     git worktree add "../cp-lang-{{name}}" -b "{{name}}"
     @echo "Worktree created at ../cp-lang-{{name}} (set CARGO_TARGET_DIR=../cp-lang-{{name}}/target)"
+
+# Land HEAD on main: rebase, the commit tier on the exact tip, push (ci/R27).
+land:
+    scripts/land.sh
+
+# Which tests a change to these paths selects in the commit tier.
+affected *paths:
+    uv run python scripts/affected.py {{paths}}
+
+# Bisect failing tests over a commit range and verify a revert.
+culprit *args:
+    uv run python scripts/culprit.py {{args}}
+
+# Landing p50/p95 and commits per hour per domain.
+land-stats *args:
+    uv run python scripts/land_stats.py {{args}}
+
+# Each lane's share of commits spent on devex, and velocity per 15 min.
+devex-stats *args:
+    uv run python scripts/devex_stats.py {{args}}
+
+# The newest main commit no worse than the last edge on the shipping checks.
+shippable:
+    scripts/release/shippable.sh
+
+# Run the scripts' own tests.
+script-tests:
+    uv run python -m unittest scripts/test_*.py
