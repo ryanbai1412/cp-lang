@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- Landed (this): hover proves loops and indexes at once on two threads (`crates/cpl-lsp/src/server/proven.rs`); instrumented release run at 5,002 lines: the prover on the hover thread went from about 20 + 22 ms to 26-29 ms; `lsp: hover in the fn being edited` median 41 ms, p90 81 ms (was 50 / 106). Also re-blessed `tests/fixtures/hover.expected` for the L0520 `first_true` wording (failed on origin/main). `front_end_check_is_under_50_ms` still fails (checker, compiler-owned).
 - Hover at 5,000 lines: about 45 ms of each hover is the bounds prover run twice over the whole file (loops, then indexes). Proving only the hovered fn is not equivalent today (coci25c3p4 counterexample), so nothing landed in the LSP; asked lint-fmt for a single call and a per-item prove in their worklog.
 - Landed (this): re-measured the corpus (`python3 plan/domains/tools/measure.py corpus`): check p95 84.5 ms, 5 of 497 C++ files over 32 KB (was 1 of 449); `measure.py` now names each file over 32 KB; README metrics refreshed. Asked perf about the 5 files.
 - Landed (this): contract test `check_json_reports_what_check_prints_on_every_v03_file` (`crates/cpl-cli/tests/lsp_parity.rs`): on every v0.3 file, `cpl check --json` and the text output agree on severity, code, line, column and message.
