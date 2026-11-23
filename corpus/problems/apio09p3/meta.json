@@ -27,5 +27,5 @@
  "difficulty": "medium",
  "dream": "draft",
  "spec": "draft",
- "notes": "Added seq filter_map. No conditional expression in the spec; wrote statements."
+ "notes": "Added seq filter_map. spec.cp fills best[c] over C.rev; a let-bound `.max()` is typed `T`, not `?T` (compiler worklog, cf2229e), so it uses `.max() ?? stop` directly."
 }
