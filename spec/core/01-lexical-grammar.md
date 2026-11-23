@@ -183,6 +183,9 @@ So `-x ** 2` is `-(x ** 2)`, `not a == b` is `not (a == b)`, and
 - `??` written next to `+ - * / %` without parentheses is an error:
   `a ?? 0 + 1` must be written `(a ?? 0) + 1` or `a ?? (0 + 1)`, since
   either reading is a common slip. (R01.5.6)
+- `and` and `or` evaluate their right side only when the left side does
+  not decide the result, like `??`: `j < m and a[j] > 0` never reads
+  `a[j]` when `j == m`. (R01.5.7)
 
 ## 1.6 Statements
 
