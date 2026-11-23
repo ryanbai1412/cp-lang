@@ -1,0 +1,8 @@
+error[E0305]: a `(Int, Str)` can't be indexed
+  --> tuple_index.cp:2:7
+  |
+2 | print(t[0])
+  |       ^^^^
+  = help: a tuple's fields are read `.0`, `.1`: write `.0`
+
+tuple_index.cp: 1 error

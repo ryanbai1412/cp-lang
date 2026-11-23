@@ -140,6 +140,20 @@ impl<'a> Lowerer<'a> {
     }
 
     /// Offers `s` for the source at `span` on the error just reported.
+    /// `t[0]` on a tuple: its positional fields are read `t.0`, `t.1`.
+    pub(super) fn tuple_index_fix(&mut self, ty: &Ty, index: &ast::Expr, span: Span) {
+        let (Ty::Tuple(_), ast::ExprKind::Int(n)) = (ty, &index.kind) else {
+            return;
+        };
+        let edit = self.span(Span::new(index.span.start - 1, span.end));
+        if let Some(last) = self.diags.last_mut() {
+            last.help = Some(format!(
+                "a tuple's fields are read `.0`, `.1`: write `.{n}`"
+            ));
+            last.fix(format!("write `.{n}`"), edit, format!(".{n}"));
+        }
+    }
+
     pub(super) fn suggest_last(&mut self, span: Span, s: String) {
         let span = self.span(span);
         if let Some(last) = self.diags.last_mut() {

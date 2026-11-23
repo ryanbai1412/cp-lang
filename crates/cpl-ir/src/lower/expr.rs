@@ -3322,6 +3322,7 @@ impl<'a> Lowerer<'a> {
             other => {
                 let message = format!("a `{}` can't be indexed", self.show(other));
                 self.error(codes::NOT_INDEXABLE, span, message);
+                self.tuple_index_fix(other, &indices[0], span);
                 (vec![self.err_expr(span)], Ty::Error)
             }
         }
