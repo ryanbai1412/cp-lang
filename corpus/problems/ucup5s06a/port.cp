@@ -14,7 +14,8 @@ type Z = Mod<998_244_353>
 let comb = Comb<Z>()
 
 @!multitest
-let (n, k): (Int, Int) = read()
+let n: 2..=2e5 = read()
+let k: 1..n = read()
 
 fn cyc(b: List<Z>) -> Z:
     let g = inv([Z(Int(i == 0)) - b[i] for i in 0..=n], n + 1)
