@@ -193,4 +193,66 @@ impl<'a> Lowerer<'a> {
         out.push(Stmt::Give(found));
         self.mk(ExprKind::Do(Block { stmts: out }), want, span)
     }
+
+    pub(super) fn product_factor_ty(&self, f: &ProductFactor) -> Ty {
+        f.ty()
+    }
+
+    pub(super) fn product_factor_len(&self, f: &ProductFactor, span: Span) -> Expr {
+        match f {
+            ProductFactor::Domain(d) => self.mk(ExprKind::DomainLen(*d), Ty::Int, span),
+            ProductFactor::Enum { len, .. } => self.int_lit(*len, span),
+            ProductFactor::Bool => self.int_lit(2, span),
+            ProductFactor::Library { dom, .. } => self.mk(ExprKind::DomainLen(*dom), Ty::Int, span),
+        }
+    }
+
+    pub(super) fn product_factor_ord(&mut self, f: &ProductFactor, val: Expr, span: Span) -> Expr {
+        match f {
+            ProductFactor::Domain(d) => {
+                let v = self.coerce(val, &Ty::Pos(*d), span);
+                self.cast(Cast::Ord, v, Ty::Int)
+            }
+            ProductFactor::Enum { enum_id, .. } => {
+                let v = self.coerce(val, &Ty::Enum(*enum_id), span);
+                self.cast(Cast::EnumOrd(*enum_id), v, Ty::Int)
+            }
+            ProductFactor::Bool => {
+                let v = self.coerce(val, &Ty::Bool, span);
+                let one = self.int_lit(1, span);
+                let zero = self.int_lit(0, span);
+                self.mk(
+                    ExprKind::If(Box::new(v), Box::new(one), Box::new(zero)),
+                    Ty::Int,
+                    span,
+                )
+            }
+            ProductFactor::Library { sid, ord, .. } => {
+                let v = self.coerce(val, &Ty::Struct(*sid), span);
+                self.mk(ExprKind::Call(*ord, vec![Arg::Value(v)]), Ty::Int, span)
+            }
+        }
+    }
+
+    pub(super) fn product_factor_from_ord(&self, f: &ProductFactor, ord: Expr, span: Span) -> Expr {
+        match f {
+            ProductFactor::Domain(d) => self.cast(Cast::Trust, ord, Ty::Pos(*d)),
+            ProductFactor::Enum { enum_id, .. } => {
+                self.cast(Cast::OrdToEnum(*enum_id), ord, Ty::Enum(*enum_id))
+            }
+            ProductFactor::Bool => {
+                let zero = self.int_lit(0, span);
+                self.mk(
+                    ExprKind::Cmp(CmpOp::Ne, Box::new(ord), Box::new(zero)),
+                    Ty::Bool,
+                    span,
+                )
+            }
+            ProductFactor::Library { sid, nth, .. } => self.mk(
+                ExprKind::Call(*nth, vec![Arg::Value(ord)]),
+                Ty::Struct(*sid),
+                span,
+            ),
+        }
+    }
 }

@@ -1741,10 +1741,7 @@ impl<'a> Checker<'a> {
                 );
                 let iter_ty = self.infer(iter);
                 self.iterating_range = prev_iterating;
-                let elem = match self.library_domain_walk(iter) {
-                    Some(ty) => ty,
-                    None => self.element_ty(&iter_ty),
-                };
+                let elem = self.walk_elem_ty(iter, &iter_ty);
                 let steerable = matches!(&iter_ty, Ty::Named { name, .. } if name == "Gen")
                     && matches!(&elem, Ty::Named { .. });
                 self.push_scope();

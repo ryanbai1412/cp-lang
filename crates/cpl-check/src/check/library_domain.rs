@@ -11,6 +11,14 @@ pub(super) const CORE_DOMAIN_ONLY: [&str; 10] = [
 ];
 
 impl Checker<'_> {
+    /// What `for x in iter` binds `x` to: a type's values, or the elements of a value.
+    pub(crate) fn walk_elem_ty(&mut self, iter: &Expr, iter_ty: &Ty) -> Ty {
+        match self.library_domain_walk(iter) {
+            Some(ty) => ty,
+            None => self.element_ty(iter_ty),
+        }
+    }
+
     /// `for x in T` or `for x in Sub<V>`, with `T` a type with `impl Index`, walks the type's
     /// values (R04.2.26). A value of the type walks its own `each` instead.
     pub(crate) fn library_domain_walk(&mut self, iter: &Expr) -> Option<Ty> {
