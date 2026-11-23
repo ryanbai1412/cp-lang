@@ -4,21 +4,30 @@
 //   ignored; "Delete n" removes and "Get n" prints the n characters after the cursor. At most
 //   4000 inserts and deletes, 2 MB inserted, 3 MB printed.
 // Solution: with so few edits a piece table is enough: the text is a list of strings, cut
-//   wherever an edit lands, and an edit replaces a few whole pieces; moving is free. Each edit
-//   and each Get costs O(pieces), a Get also O(n) to print; the original uses a rope.
+//   wherever an edit lands; an edit inserts or removes whole pieces in place (moving strings,
+//   never copying them) and rebuilds the piece start offsets, O(pieces). Moving is free; a
+//   Get binary-searches the offsets for the cursor's piece, then costs O(n) to print. Insert
+//   text is read by lines, so spaces survive. The original uses a rope.
 let t: Int = read()
 var pieces: List<Str> = []
+var starts = [0]  // starts[i]: where piece i begins; the last entry is the text's length
 var cursor = 0
+
+fn reindex():
+    starts = [0]
+    for s in pieces: starts.push(starts.last! + s.len)
+
+// The piece holding position p; pieces.len when p is the end of the text.
+fn piece_at(p: Int) -> Int = starts.partition_point(s => s > p) - 1
 
 // Make position p a piece boundary; the number of pieces before it.
 fn cut(p: Int) -> Int:
-    var (i, before) = (0, 0)
-    while i < pieces.len and before + pieces[i].len <= p:
-        before += pieces[i].len
-        i += 1
-    if before == p: return i
-    let s = pieces[i].to_str()
-    pieces = pieces[0..i].to_list() + [s[0..p - before].to_str(), s[p - before..s.len].to_str()] + pieces[i + 1..pieces.len].to_list()
+    let i = piece_at(p)
+    if starts[i] == p: return i
+    let (s, k) = (pieces[i].to_str(), p - starts[i])
+    pieces[i] = s[0..k].to_str()
+    pieces.insert(i + 1, s[k..s.len].to_str())
+    reindex()
     i + 1
 
 for _ in 0..t:
@@ -28,23 +37,23 @@ for _ in 0..t:
     elif cmd == "Next":
         cursor += 1
     else:
-        let n: Int = read()
+        let n: 0..=2_097_152 = read()  // a position or a length in the 2 MB text
         if cmd == "Move":
             cursor = n
         elif cmd == "Insert":
-            var text = ""
-            while text.len < n:
-                let word: Str = read()
-                text += word
+            var text = read_line()
+            while text.len < n: text += read_line()
             let i = cut(cursor)
-            pieces = pieces[0..i] + [text] + pieces[i..pieces.len]
+            pieces.insert(i, text)
+            reindex()
         elif cmd == "Delete":
             let (i, j) = (cut(cursor), cut(cursor + n))
-            pieces = pieces[0..i] + pieces[j..pieces.len]
+            for _ in i..j: pieces.remove(i)
+            reindex()
         else:
-            var (shown, at) = ("", 0)
-            for s in pieces:
-                let (a, b) = (max(cursor, at), min(cursor + n, at + s.len))
-                if a < b: shown += s[a - at..b - at].to_str()
-                at += s.len
+            var (shown, i) = ("", piece_at(cursor))
+            while shown.len < n:
+                let (s, at) = (pieces[i], starts[i])
+                shown += s[max(cursor, at) - at..min(cursor + n, at + s.len) - at].to_str()
+                i += 1
             print(shown)
