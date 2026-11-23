@@ -11,18 +11,19 @@ let g: [Row, Col]Char = read()
 var row_pow: [Row]Int = 1
 var col_pow: [Col]Int = 1
 for r in Row:
-    if let up = r - 1: row_pow[r] = row_pow[up] * 131 % P
+    if let up = Row.at(r - 1): row_pow[r] = row_pow[up] * 131 % P
 for c in Col:
-    if let left = c - 1: col_pow[c] = col_pow[left] * 137 % P
+    if let left = Col.at(c - 1): col_pow[c] = col_pow[left] * 137 % P
+fn flip<D>(i: D) -> D = D.nth(D.K - 1 - i.ord)
 fn weight(r: Row, c: Col, ch: Char) -> Int: (ch - '0' + 1) * row_pow[r] % P * col_pow[c] % P
 let seen = prefix([Row, Col] (r, c) => weight(r, c, g[r, c]))
-let turned = prefix([Row, Col] (r, c) => weight(r, c, g[r.mirror, c.mirror]))
+let turned = prefix([Row, Col] (r, c) => weight(r, c, g[flip(r), flip(c)]))
 
 fn killer(r: Row, c: Col, size: Int) -> Bool:
-    if let r2 = r + (size - 1) and let c2 = c + (size - 1):
+    if let r2 = Row.at(r + size - 1) and let c2 = Col.at(c + size - 1):
         let here = seen.fold(span(r, r2), span(c, c2)) % P
-        let there = turned.fold(span(r2.mirror, r.mirror), span(c2.mirror, c.mirror)) % P
-        return here * row_pow[r2.mirror] % P * col_pow[c2.mirror] % P == there * row_pow[r] % P * col_pow[c] % P
+        let there = turned.fold(span(flip(r2), flip(r)), span(flip(c2), flip(c))) % P
+        return here * row_pow[flip(r2)] % P * col_pow[flip(c2)] % P == there * row_pow[r] % P * col_pow[c] % P
     false
-let best = [size for size in 2..=min(rows, cols) if any(killer(r, c, size) for r in Row for c in Col)].max()!
+let best = [size for size in 2..=min(rows, cols) if any(killer(r, c, size) for r in Row for c in Col)].last
 print(best ?? -1)
