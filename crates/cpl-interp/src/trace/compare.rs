@@ -182,3 +182,121 @@ pub(super) fn run_json(
     out.push_str("]}");
     out
 }
+
+/// With no variable both runs name going wrong, where the solution's output
+/// first leaves the brute's: the `print` that wrote the first wrong line,
+/// the lines that last changed what it prints, and the loop each sits in.
+pub fn printed_divergence(source: &str, fast: &Recording, slow: &Recording) -> Option<Divergence> {
+    let lines: Vec<&str> = source.lines().collect();
+    let text_of = |line: u32| {
+        lines
+            .get((line as usize).wrapping_sub(1))
+            .copied()
+            .unwrap_or("")
+    };
+    let theirs = slow
+        .step(slow.len().checked_sub(1)?)
+        .map(|s| printed(slow, &s))?;
+    let steps: Vec<_> = fast.steps(0..fast.len()).collect();
+    let wrong = |out: &[String]| {
+        out.iter()
+            .enumerate()
+            .position(|(k, ours)| match theirs.get(k) {
+                Some(their) if k + 1 == out.len() => !their.starts_with(ours.as_str()),
+                Some(their) => their != ours,
+                None => true,
+            })
+    };
+    let (at, k, ours) = steps.iter().enumerate().find_map(|(at, step)| {
+        let out = printed(fast, step);
+        let k = wrong(&out)?;
+        Some((at, k, out[k].clone()))
+    })?;
+    let print = steps[at].line;
+    let values: Vec<HashMap<String, String>> = steps[..=at]
+        .iter()
+        .map(|step| named_values(fast, step))
+        .collect();
+    let mut names: Vec<&String> = (values[at].keys())
+        .filter(|name| *name != "stdout" && mentions(text_of(print), name))
+        .collect();
+    names.sort();
+    let mut blame: Vec<(u32, String)> = Vec::new();
+    for name in names {
+        let changed = (0..=at).rev().find(|&s| {
+            let now = values[s].get(name);
+            now.is_some() && (s == 0 || values[s - 1].get(name) != now)
+        });
+        if let Some(s) = changed.filter(|&s| steps[s].line != print) {
+            let value = &values[s][name];
+            blame.push((
+                steps[s].line,
+                format!("`{name}` last changed here, to {value}"),
+            ));
+        }
+    }
+    blame.sort();
+    blame.truncate(3);
+    let loops: Vec<(u32, String)> = (blame.iter())
+        .filter_map(|(line, _)| {
+            let indent = |text: &str| text.len() - text.trim_start().len();
+            let own = indent(text_of(*line));
+            let head = (1..*line).rev().find(|&l| {
+                let text = text_of(l);
+                !text.trim().is_empty() && indent(text) < own
+            })?;
+            let text = text_of(head).trim_start();
+            (text.starts_with("for ") || text.starts_with("while "))
+                .then(|| (head, format!("line {line} runs in this loop")))
+        })
+        .collect();
+    blame.extend(loops);
+    blame.dedup_by_key(|(line, _)| *line);
+    let their_line = (slow.steps(0..slow.len()))
+        .find(|step| printed(slow, step).len() > k)
+        .map_or(0, |step| step.line);
+    Some(Divergence {
+        name: "output".to_string(),
+        nth: k + 1,
+        fast: Some((print, ours)),
+        brute: Some((their_line, theirs[k].clone())),
+        inside: Vec::new(),
+        blame,
+        call: false,
+    })
+}
+
+/// What a run had printed by `step`, a line at a time.
+fn printed(rec: &Recording, step: &super::Step) -> Vec<String> {
+    let at = rec.vars.iter().position(|var| var.name == "stdout");
+    let json = (step.values.iter()).find(|(var, _)| Some(*var) == at);
+    match json.map(|(_, json)| cpl_json::parse(json)) {
+        Some(Ok(cpl_json::Value::Array(lines))) => (lines.into_iter())
+            .map(|line| match line {
+                cpl_json::Value::String(text) => text,
+                other => cpl_json::to_string(&other),
+            })
+            .collect(),
+        _ => Vec::new(),
+    }
+}
+
+/// Each variable a step shows, top-level and local, by name, as JSON.
+pub fn named_values(rec: &Recording, step: &super::Step) -> HashMap<String, String> {
+    let mut out: HashMap<String, String> = (step.values.iter())
+        .map(|(var, value)| (rec.vars[*var].name.clone(), value.to_string()))
+        .collect();
+    if let Ok(cpl_json::Value::Object(locals)) = cpl_json::parse(&step.locals) {
+        for (name, value) in locals {
+            out.insert(name, cpl_json::to_string(&value));
+        }
+    }
+    out
+}
+
+/// Whether `name` is a word of `text`.
+pub fn mentions(text: &str, name: &str) -> bool {
+    let word = |c: char| c.is_alphanumeric() || c == '_';
+    text.match_indices(name)
+        .any(|(at, _)| !text[..at].ends_with(word) && !text[at + name.len()..].starts_with(word))
+}

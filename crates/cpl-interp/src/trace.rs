@@ -26,7 +26,9 @@ mod trap;
 pub(crate) use last::last_values_of;
 mod unseen;
 mod window;
-pub use compare::{first_divergence, stages, Divergence, Stage};
+pub use compare::{
+    first_divergence, mentions, named_values, printed_divergence, stages, Divergence, Stage,
+};
 use glob::glob_match;
 pub use log::Steps;
 pub use trap::{shown, trap_config, trap_locals};

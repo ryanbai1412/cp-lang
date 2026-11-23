@@ -2,8 +2,10 @@
 //! `cpl stress`: a run in the debug interpreter, recorded.
 
 use cpl_diag::Shown;
-use cpl_interp::trace::{document, first_divergence, stages, Divergence, Recording, TraceConfig};
-use std::collections::HashMap;
+use cpl_interp::trace::{
+    document, first_divergence, mentions, named_values, printed_divergence, stages, Divergence,
+    Recording, TraceConfig,
+};
 use std::path::Path;
 
 /// The trace viewer: one page with nothing to fetch. A trace is put in
@@ -199,7 +201,12 @@ pub fn against_brute(
         stages,
         // The wrong call of a part needs no `explain`: calls are always kept.
         divergence: first_call_divergence(&source, &fast, &slow)
-            .or_else(|| explain.then(|| first_divergence(&fast, &slow)).flatten()),
+            .or_else(|| explain.then(|| first_divergence(&fast, &slow)).flatten())
+            .or_else(|| {
+                explain
+                    .then(|| printed_divergence(&source, &fast, &slow))
+                    .flatten()
+            }),
         html: html(&versus(&name, &source, &brute_fn, &fast, &slow)),
     })
 }
@@ -313,13 +320,6 @@ fn first_call_divergence(source: &str, fast: &Recording, slow: &Recording) -> Op
     })
 }
 
-/// Whether `name` is a word of `text`.
-fn mentions(text: &str, name: &str) -> bool {
-    let word = |c: char| c.is_alphanumeric() || c == '_';
-    text.match_indices(name)
-        .any(|(at, _)| !text[..at].ends_with(word) && !text[at + name.len()..].starts_with(word))
-}
-
 /// A top-level `var` declared outside every fn that a later call of a fn
 /// starts with another value than its 1st call did: one test left it for
 /// the next. Each such variable's declaration, with both values.
@@ -373,19 +373,6 @@ fn body_of(lines: &[&str], name: &str) -> Option<std::ops::Range<usize>> {
         .find(|&k| !lines[k].trim().is_empty())
         .map_or(at + 1, |k| k + 1);
     Some(at..end)
-}
-
-/// Every variable a step shows, top-level and local, by name, as JSON.
-fn named_values(rec: &Recording, step: &cpl_interp::trace::Step) -> HashMap<String, String> {
-    let mut out: HashMap<String, String> = (step.values.iter())
-        .map(|(var, value)| (rec.vars[*var].name.clone(), value.to_string()))
-        .collect();
-    if let Ok(cpl_json::Value::Object(locals)) = cpl_json::parse(&step.locals) {
-        for (name, value) in locals.iter() {
-            out.insert(name.to_string(), cpl_json::to_string(value));
-        }
-    }
-    out
 }
 
 /// Where a wrong call made its value: the `return` it ran, else the last
