@@ -114,3 +114,10 @@ name = "crate_tests_pass"
 command = "cargo test -q -p cpl-lint; cargo test -q -p cpl-fmt"
 today = "cpl-lint 95 passed, cpl-fmt 41 passed, 0 failed"
 target = "all pass"
+
+[[metric]]
+name = "fixes_that_add_errors"
+command = "cargo test -q -p cpl-lint fixes_never_add_checker_errors"
+today = 0
+target = 0
+note = "files in spec/std and corpus spec.cp whose checker error count rises after cpl fix; dream.cp (not gated): 1 of 151 swept, cf2262d, waits on the checker typing find(p)"
