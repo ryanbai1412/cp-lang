@@ -38,7 +38,7 @@ fn a_number_added_to_a_string_literal_goes_inside_it() {
 
 #[test]
 fn one_place_lent_twice_says_so() {
-    let src = "fn f(mut a: Int, mut b: Int):\n    a += b\nvar x = 0\nf(mut x, mut x)\n";
+    let src = "fn f(mut a: Int, mut b: Int):\n    a += b\n    b += 1\nvar x = 0\nf(mut x, mut x)\n";
     let diags = check(src);
     assert_eq!(
         messages(&diags),

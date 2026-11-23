@@ -171,6 +171,8 @@ pub(crate) struct Checker<'a> {
     fns: Vec<(String, Ty, bool, usize)>,
     /// Where `-> T` goes in each fn declared without one.
     ret_slots: HashMap<String, Option<Span>>,
+    /// The `mut` parameters something changes, by their names' spans.
+    changed_params: std::collections::HashSet<Span>,
     /// For each of `fns`: whether its body has given a value so far.
     gives: Vec<bool>,
     /// Inside a fn signature or body, where a single capital letter is a
@@ -261,6 +263,7 @@ impl<'a> Checker<'a> {
             shapes: Vec::new(),
             fns: Vec::new(),
             ret_slots: HashMap::default(),
+            changed_params: Default::default(),
             gives: Vec::new(),
             in_fn: 0,
             branch: 0,
@@ -1042,9 +1045,46 @@ impl<'a> Checker<'a> {
         )
     }
 
+    /// L0610: a `mut` parameter the body never changes. Its callers must
+    /// pass a place as `mut` for nothing.
+    pub(crate) fn unchanged_mut_params(&mut self, f: &cpl_syntax::ast::FnDecl) {
+        for p in &f.params {
+            if !p.mutable
+                || p.variadic
+                || p.name.text == "self"
+                || self.changed_params.contains(&p.name.span)
+            {
+                continue;
+            }
+            let name = &p.name.text;
+            let mut diag = cpl_diag::Diagnostic::warning(
+                codes::MUT_PARAM_UNUSED,
+                p.name.span,
+                format!("`{name}` is taken `mut`, but the fn never changes it"),
+            )
+            .with_help(format!(
+                "take `{name}` without `mut`, and pass it without `mut` where the fn is called"
+            ));
+            let at = Span::new(p.span.start, p.name.span.start);
+            if self.src.get(at.start as usize..at.end as usize) == Some("mut ") {
+                diag.fix(format!("take `{name}` without `mut`"), at, String::new());
+            }
+            self.sink.push(diag);
+        }
+    }
+
     /// Checks that `expr` can be changed. `action` finishes the sentence
     /// "`x` is a `let`, so it can't be ...".
     fn require_mutable(&mut self, expr: &cpl_syntax::ast::Expr, action: &str) {
+        if let Some((name, _)) = Self::root_name(expr) {
+            if let Some(local) = self
+                .local(name)
+                .filter(|l| l.mutable && l.keyword == "param")
+            {
+                let span = local.span;
+                self.changed_params.insert(span);
+            }
+        }
         if let cpl_syntax::ast::ExprKind::Tuple(parts) = &expr.kind {
             for part in parts {
                 self.require_mutable(part, action);

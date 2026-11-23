@@ -573,3 +573,10 @@ Landed since 23:10: four type/flow lints from `spec/idioms/lints.md`, L0571 `neg
   34 F7), `x.gcd(4)` and the rest. Golden: a_free_fn_called_as_a_method.
   `zip(a, a.rev)` then fails E0606, since `Rev` isn't `Indexed`; sent to
   stdlib.
+- Checker lint L0610 `mut_param_unused`: a `mut` parameter of a free fn
+  that no assignment, `mut` call or `mut` argument changes (recorded where
+  the checker already asks `require_mutable`). Fix drops `mut`; E0402 on
+  a now-wrong `f(mut x)` gained the fix that drops it there. Skips methods
+  (trait signatures) and `@memo` (E0311 covers it). 1 hit: ioi07p3's
+  `first_le(mut st, ..)` only reads `st`, and checks clean without it.
+  Four lend fixtures whose second `mut` was unused now change it too.

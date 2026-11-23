@@ -802,6 +802,16 @@ pub const REGISTRY: &[CodeInfo] = &[
         input: "",
     },
     CodeInfo {
+        code: Code("L0610"),
+        title: "A `mut` parameter the fn never changes",
+        summary: "A parameter is taken `mut`, but nothing in the fn changes it.",
+        explanation: "`mut` on a parameter says the fn changes the caller's value, so every caller has to pass a place as `mut x`. When nothing changes it, take it without `mut`, and drop `mut` at the call sites.",
+        trigger: "fn total(mut xs: List<Int>) -> Int:\n    return xs.len\n\nvar a = [1, 2]\nprint(total(mut a))\n",
+        fix: "fn total(xs: List<Int>) -> Int:\n    return xs.len\n\nvar a = [1, 2]\nprint(total(a))\n",
+        mode: "check",
+        input: "",
+    },
+    CodeInfo {
         code: Code("E0901"),
         title: "No fixed-width integer types",
         summary: "`U8`, `I32` and similar are not types; storage width comes from a range.",

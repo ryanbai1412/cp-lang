@@ -431,12 +431,18 @@ impl Checker<'_> {
                     "`{callee}` doesn't change `{}`, so `mut` doesn't belong here",
                     param.name
                 );
+                let at = Span::new(arg.value.span.start.saturating_sub(4), arg.value.span.start);
+                let written = (self.src.get(at.start as usize..at.end as usize) == Some("mut "))
+                    .then_some(at);
                 if let Some(diag) = self.error(codes::MISSING_MUT_AT_CALL, arg.value.span, message)
                 {
                     diag.help = Some(format!(
                         "remove `mut`, or declare the parameter `mut {}`",
                         param.name
                     ));
+                    if let Some(at) = written {
+                        diag.fix("remove `mut`", at, String::new());
+                    }
                 }
             }
             if arg.mutable {

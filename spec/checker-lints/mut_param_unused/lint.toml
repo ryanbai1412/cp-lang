@@ -1,0 +1,5 @@
+code = "L0610"
+level = "warn"
+group = "style"
+title = "`mut` parameter the fn never changes"
+summary = "a `mut` parameter the fn never changes; take it without `mut`"

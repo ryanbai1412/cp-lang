@@ -205,6 +205,7 @@ pub mod codes {
     pub const PADDING: Code = Code("L0607");
     pub const PARENS_MEAN_WORK: Code = Code("L0608");
     pub const CACHE_FIELD_WRITTEN_OUTSIDE: Code = Code("L0609");
+    pub const MUT_PARAM_UNUSED: Code = Code("L0610");
 
     /// A fixed-width integer type name; widths come from ranges.
     pub const NO_NARROW_INT: Code = Code("E0901");

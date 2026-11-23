@@ -190,6 +190,7 @@ prefix_sum}, L0522 copy_sort_writeback, L0523 chmin_chmax_if, L0524 bool_ternary
 | L0607 | padding | padding over 20 % of a large array's element |
 | L0608 | parens_on_o1 / missing_parens | `xs.len()` or `g.transpose` (decision 140) |
 | L0609 | cache_field_written_outside | an `@cache` field written outside its type's methods |
+| L0610 | mut_param_unused | a `mut` parameter the fn never changes; take it without `mut` |
 
 ## Runtime traps (checked builds)
 

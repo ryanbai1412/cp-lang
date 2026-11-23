@@ -2577,6 +2577,7 @@ impl<'a> Checker<'a> {
         self.fns.pop();
         self.fn_lends.pop();
         let gives = self.gives.pop().unwrap_or(false);
+        let memo_fn = memo.is_some();
         if let Some((memo, is_array)) = memo {
             // Written `-> T`, or read off what the body gives.
             let unit = match &f.ret {
@@ -2584,6 +2585,10 @@ impl<'a> Checker<'a> {
                 None => !gives && !matches!(f.body, FnBody::None),
             };
             self.memo_fits(f, params, self_ty, generator, unit, memo, is_array);
+        }
+        // `@memo` refuses a `mut` parameter itself (E0311).
+        if self_ty.is_none() && !memo_fn && !matches!(f.body, FnBody::None) {
+            self.unchanged_mut_params(f);
         }
         self.pop_scope();
         if receiver.is_some() && matches!(self_ty, Some(Ty::Named { .. })) {

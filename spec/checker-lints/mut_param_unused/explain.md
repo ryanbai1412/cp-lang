@@ -1,0 +1,1 @@
+`mut` on a parameter says the fn changes the caller's value (spec/core/05-ownership.md), so every caller has to pass a place, written `mut x`, and can't pass a value it only reads. When nothing in the fn changes the parameter, the `mut` costs every call site for nothing. Take it without `mut`. After that, each `f(mut x)` gets E0402, and its fix drops the `mut`.

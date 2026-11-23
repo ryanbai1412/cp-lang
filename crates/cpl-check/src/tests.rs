@@ -1072,7 +1072,7 @@ fn two_mut_lends_of_one_array_need_to_be_apart() {
         "assert l != r\nswap(mut a[l], mut a[r])\n",
         "fn go(i: V, j: V):\n    if i == j: return\n    swap(mut a[i], mut a[j])\n",
         "fn go(i: V, j: V):\n    assert i < j\n    swap(mut a[i], mut a[j])\n",
-        "fn two(mut xs: [V]Int, mut ys: [V]Int):\n    xs[V.first!] += 1\ntwo(mut a[l.l..r.l], mut a[r.l..r.r])\n",
+        "fn two(mut xs: [V]Int, mut ys: [V]Int):\n    xs[V.first!] += 1\n    ys[V.first!] += 1\ntwo(mut a[l.l..r.l], mut a[r.l..r.r])\n",
     ] {
         assert_eq!(lent(body), vec![], "{body}");
     }
@@ -1091,7 +1091,7 @@ fn two_mut_lends_of_one_array_need_to_be_apart() {
     );
     assert_eq!(diags.len(), 1, "{diags:#?}");
     let diags = lent(
-        "fn two(mut xs: [V]Int, mut ys: [V]Int):\n    xs[V.first!] += 1\ntwo(mut a, mut a[l..=r])\n",
+        "fn two(mut xs: [V]Int, mut ys: [V]Int):\n    xs[V.first!] += 1\n    ys[V.first!] += 1\ntwo(mut a, mut a[l..=r])\n",
     );
     assert!(
         diags[0].message.ends_with("one contains the other"),

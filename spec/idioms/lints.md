@@ -840,7 +840,7 @@ One sub-family per module. Each says: you rebuilt something the library has.
 | var_never_reassigned | `var` never changed | `let` | fix | #8 | flow | ✓var_never_reassigned |
 | needless_clone | `.clone()` where a lend or a move works | drop `.clone()` | fix | #8 | flow | |
 | clone_in_loop | `.clone()` of a loop-invariant value per iteration | hoist / lend | fix? | #10 | flow | |
-| mut_param_unused | `mut` parameter never mutated | drop `mut` (and at call sites) | fix | #8 | flow | |
+| mut_param_unused | `mut` parameter never mutated | drop `mut` (and at call sites) | fix | #8 | flow | ✓mut_param_unused |
 | copy_to_read_field | copying a struct to read one field | read through the lend | fix | #10 | flow | |
 | lent_gen_walked_twice | generator holding a `mut` lend walked twice | collect once, or restructure | warn | #8 | flow | |
 | move_then_clone | value cloned at its last use | move it | fix | #10 | flow | |

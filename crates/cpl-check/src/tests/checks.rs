@@ -532,7 +532,7 @@ fn a_sort_key_that_reaches_its_own_list_is_refused() {
 /// here, while a fn value reading it during the call is not.
 #[test]
 fn one_variable_lent_twice_to_a_call_is_refused() {
-    const FNS: &str = "fn two(mut x: List<Int>, mut y: List<Int>): x.push(y.len)\nfn one(mut x: List<Int>, y: List<Int>): x.push(y.len)\nvar xs = [1]\n";
+    const FNS: &str = "fn two(mut x: List<Int>, mut y: List<Int>): x.push(y.pop()!)\nfn one(mut x: List<Int>, y: List<Int>): x.push(y.len)\nvar xs = [1]\n";
     for call in ["two(mut xs, mut xs)\n", "one(mut xs, xs)\n"] {
         let diags = check(&format!("{FNS}{call}"));
         assert_eq!(

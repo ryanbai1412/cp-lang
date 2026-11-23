@@ -33,6 +33,7 @@ pub const CHECKER_LINTS: &[CheckerLint] = &[
     named("L0608", "parens_on_o1", Group::Style),
     named("L0608", "missing_parens", Group::Style),
     named("L0609", "cache_field_written_outside", Group::Correctness),
+    named("L0610", "mut_param_unused", Group::Style),
 ];
 
 pub(crate) fn checker_lint_named(name: &str) -> Option<&'static CheckerLint> {
