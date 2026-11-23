@@ -1342,6 +1342,8 @@ pub fn simplex(
         d[r * w + s] = inv
         (bb[r], nn[s]) = (nn[s], bb[r])
     fn run(phase: Int) -> Bool:
+        // Bland's rule breaks exact ties by index, as kactl's LPSolver does.
+        with lint(float_equality: allow)
         let x = m + phase - 1
         loop:
             var s = -1
@@ -1371,6 +1373,7 @@ pub fn simplex(
             if not run(2) or d[(m + 1) * w + n + 1] < -eps: return None
             for i in 0..m:
                 if bb[i] == -1:
+                    with lint(float_equality: allow)
                     var s = 0
                     for j in 1..=n:
                         if d[i * w + j] < d[i * w + s] or (
