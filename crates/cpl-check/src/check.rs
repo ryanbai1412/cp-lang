@@ -1055,6 +1055,22 @@ pub(crate) fn spec_member_typo(base: &Ty, name: &str) -> Option<String> {
     closest(name, own.chain(spec.iter().map(String::as_str)).chain(all))
 }
 
+/// Where a statement `back` bytes before the item being checked moves
+/// `src` (`a`, `a with ..`, `S(a)`), relative to that item; empty if unknown.
+pub(crate) fn move_site(e: Option<&cpl_syntax::ast::Expr>, src: &str, back: u32) -> Span {
+    use cpl_syntax::ast::ExprKind;
+    let named = |e: &cpl_syntax::ast::Expr| {
+        let e = lends::unparen(e);
+        matches!(&e.kind, ExprKind::Name(n) if n == src).then_some(e.span)
+    };
+    let site = e.map(lends::unparen).and_then(|e| match &e.kind {
+        ExprKind::With { base, .. } => named(base),
+        ExprKind::Call { args, .. } => args.iter().find_map(|a| named(&a.value)),
+        _ => named(e),
+    });
+    site.map_or(Span::new(0, 0), |s| s.shift(back.wrapping_neg()))
+}
+
 pub(crate) fn let_before(src: &str, name: Span) -> Option<Span> {
     let head = src.get(..name.start as usize)?;
     let line = head.rfind('\n').map_or(0, |i| i + 1);

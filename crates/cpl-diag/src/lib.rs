@@ -47,9 +47,10 @@ impl Span {
 
     /// The same span moved right by `by` bytes. Items are parsed with spans
     /// relative to their own start, so that an edit elsewhere in the file
-    /// leaves them untouched; this turns them back into file positions.
+    /// leaves them untouched; this turns them back into file positions. It
+    /// wraps: `shift(d.wrapping_neg())` moves a span `d` bytes left.
     pub const fn shift(self, by: u32) -> Span {
-        Span::new(self.start + by, self.end + by)
+        Span::new(self.start.wrapping_add(by), self.end.wrapping_add(by))
     }
 
     /// True when `offset` is inside the span or at its end (a cursor right

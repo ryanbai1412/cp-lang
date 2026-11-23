@@ -333,6 +333,8 @@ pub(crate) struct Replay {
     pub live_after: bool,
     /// The view is changed in or after the item being checked.
     pub written: bool,
+    /// How far before the item being checked this one starts.
+    pub back: u32,
 }
 
 /// A span no statement has: a lend that began in an earlier top-level
@@ -1440,7 +1442,8 @@ impl<'a> Checker<'a> {
                         };
                         if let Some(ty) = ty {
                             if self.is_heap_type(&ty) {
-                                self.moved.insert(src.clone(), Span::new(0, 0));
+                                let at = super::move_site(init_expr, src, replay.back);
+                                self.moved.insert(src.clone(), at);
                             }
                         }
                     }
@@ -1670,14 +1673,11 @@ impl<'a> Checker<'a> {
         self.lends.proj_calls.insert(e.span, call);
     }
 
-    /// `let name = <view>`: the root stays lent until the last statement
-    /// of `rest` that names `name`.
+    /// `let name = <view>`: the root stays lent until the last statement of `rest` naming `name`.
     /// Additional lends introduced by `value` beyond slice/projection views:
-    /// - `mut a[i]` (mutable place bind, R05.3.4 / R05.8.4)
-    /// - `rows[0]` when element is a heap type (R05.3.5)
+    /// - `mut a[i]` (R05.3.4 / R05.8.4); `rows[0]` of a heap type (R05.3.5)
     /// - `xs.filter(...)` / `.map(...)` / `.take(...)` / `.drop(...)` view adapters (R12.4.9)
-    /// - generator calls `evens(a)` / `mark(mut seen)` (R05.7.3 / R05.9.1)
-    /// - struct constructed with a lent parameter `Holder(xs)` (R05.7.2)
+    /// - generator calls `evens(a)` / `mark(mut seen)` (R05.7.3 / R05.9.1); `Holder(xs)` (R05.7.2)
     fn extra_holds(&mut self, value: &Expr) -> Vec<(&'static str, Place, bool, bool)> {
         let e = unparen(value);
         match &e.kind {

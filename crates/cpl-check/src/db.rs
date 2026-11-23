@@ -809,6 +809,7 @@ impl Database {
                 frames: Vec::new(),
                 in_progress: Vec::new(),
                 current: None,
+                offsets: ranges.iter().map(|r| r.span.start).collect(),
                 names: None,
                 effects: HashMap::new(),
                 own_effects: HashMap::new(),
@@ -1378,6 +1379,7 @@ impl Database {
             frames: Vec::new(),
             in_progress: Vec::new(),
             current: None,
+            offsets: Vec::new(),
             names: None,
             effects: HashMap::new(),
             own_effects: HashMap::new(),
@@ -1654,6 +1656,8 @@ struct FileCtx<'d> {
     in_progress: Vec<String>,
     /// The item being checked.
     current: Option<usize>,
+    /// Where each item starts in the file (empty outside `analyze`).
+    offsets: Vec<u32>,
     /// What each item mentions and assigns, once a statement needs it.
     names: Option<Vec<(Vec<String>, Vec<String>)>>,
     /// What calling each fn touches, once a call needs it.
@@ -1868,7 +1872,16 @@ impl FileCtx<'_> {
                 .collect()
         });
         let mut out = Vec::new();
+        let offsets = &self.offsets;
         for (index, item) in items[..current].iter().enumerate() {
+            let back = offsets.get(current).zip(offsets.get(index));
+            let back = back.map_or(0, |(c, i)| c - i);
+            let replay = |live_after, written| Replay {
+                item: item.clone(),
+                live_after,
+                written,
+                back,
+            };
             match &item.flow {
                 Flow::None => {}
                 Flow::View(name) | Flow::Capture(name) => {
@@ -1882,32 +1895,21 @@ impl FileCtx<'_> {
                     {
                         continue;
                     }
-                    out.push(Replay {
-                        item: item.clone(),
-                        live_after,
-                        written: (current..items.len()).any(|k| names[k].1.contains(name)),
-                    });
+                    let written = (current..items.len()).any(|k| names[k].1.contains(name));
+                    out.push(replay(live_after, written));
                 }
                 Flow::Known(name) => {
                     let redeclared = (index + 1..current)
                         .any(|k| items[k].decls.iter().any(|d| d.name == *name));
                     if names[current].0.contains(name) && !redeclared {
-                        out.push(Replay {
-                            item: item.clone(),
-                            live_after: false,
-                            written: false,
-                        });
+                        out.push(replay(false, false));
                     }
                 }
                 Flow::Assert(about) => {
                     let assigned = (index + 1..current)
                         .any(|k| names[k].1.iter().any(|written| about.contains(written)));
                     if !assigned {
-                        out.push(Replay {
-                            item: item.clone(),
-                            live_after: false,
-                            written: false,
-                        });
+                        out.push(replay(false, false));
                     }
                 }
                 Flow::Move(srcs) => {
@@ -1919,11 +1921,7 @@ impl FileCtx<'_> {
                             })
                     });
                     if any_live {
-                        out.push(Replay {
-                            item: item.clone(),
-                            live_after: false,
-                            written: false,
-                        });
+                        out.push(replay(false, false));
                     }
                 }
             }
@@ -2056,7 +2054,9 @@ impl FileCtx<'_> {
         }
         let text: Vec<String> = replays
             .iter()
-            .map(|r| format!("{}:{}:{}", r.item.hash, r.live_after, r.written))
+            // Only a move's span reaches back into its item.
+            .map(|r| (r, matches!(r.item.flow, Flow::Move(_)) as u32 * r.back))
+            .map(|(r, back)| format!("{}:{}:{}:{back}", r.item.hash, r.live_after, r.written))
             .collect();
         hash_str(&text.join("\n")) | 2
     }

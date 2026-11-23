@@ -59,3 +59,17 @@ fn an_import_cycle_is_an_error_naming_the_whole_cycle() {
         assert!(direct.has_errors(), "{file}: {:?}", direct.diagnostics);
     }
 }
+
+#[test]
+fn a_top_level_move_points_at_the_move_after_an_edit_above_it() {
+    let mut db = Database::new();
+    for gap in ["", "let pad = 1\nprint(pad)\n"] {
+        let src = format!("let a = [1, 2]\nlet b = a\n{gap}print(a.len, b.len)\n");
+        db.set_file("a.cp", src.as_str());
+        let diags = db.diagnostics("a.cp");
+        assert_eq!(diags.len(), 1, "{diags:?}");
+        let moved = src.find("= a").unwrap() as u32 + 2;
+        assert_eq!(diags[0].labels[0].span, Span::new(moved, moved + 1));
+        assert_eq!(diags[0].fixes[0].edits[0].0, Span::point(moved + 1));
+    }
+}
