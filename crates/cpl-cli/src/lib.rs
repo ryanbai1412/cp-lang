@@ -245,13 +245,14 @@ pub fn exec<S: AsRef<str>>(
         }
         Some("submit") => {
             let copy = rest.contains(&"--copy");
+            let json = rest.contains(&"--json");
             let rest: Vec<&str> = rest
                 .iter()
                 .copied()
-                .filter(|arg| *arg != "--copy")
+                .filter(|arg| !matches!(*arg, "--copy" | "--json"))
                 .collect();
             match rest.as_slice() {
-                [file] => submit(file, copy, stdout, stderr),
+                [file] => submit(file, copy, json, stdout, stderr),
                 _ => usage_error(
                     "`submit` takes one file, for the judge it names: `cpl submit a.cp` \
                      (a `// judge:` line or cp.toml says which)"

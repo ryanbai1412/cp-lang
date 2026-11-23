@@ -7,18 +7,43 @@ use cpl_json::{obj, Value};
 
 use crate::{build_file, BuildOptions, EXIT_ERRORS, EXIT_USAGE};
 
-/// `cpl submit`: `cpl build`, then `cpl test` on what it built.
+/// `cpl submit`: `cpl build`, then `cpl test` on what it built; with
+/// `json`, one object with `ready` and the `build` and `test` reports.
 pub(crate) fn submit(
     path: &str,
     copy: bool,
+    json: bool,
     stdout: &mut (dyn Write + Send),
     stderr: &mut String,
 ) -> u8 {
-    let code = build_file(path, &BuildOptions::default(), stdout, stderr);
+    let report = |ready: bool, build: &[u8], test: &[u8], stdout: &mut (dyn Write + Send)| {
+        if json {
+            let parse =
+                |out: &[u8]| cpl_json::parse(&String::from_utf8_lossy(out)).unwrap_or_default();
+            let report = obj([
+                ("ready", ready.into()),
+                ("build", parse(build)),
+                ("test", parse(test)),
+            ]);
+            let _ = writeln!(stdout, "{}", cpl_json::to_string(&report));
+        }
+    };
+    let mut built = Vec::new();
+    let options = BuildOptions {
+        json,
+        ..BuildOptions::default()
+    };
+    let code = build_file(path, &options, &mut built, stderr);
+    if !json {
+        let _ = stdout.write_all(&built);
+    }
     if code != 0 {
         *stderr += &format!("cpl: `{path}` is not ready to send: it does not build\n");
+        report(false, &built, &[], stdout);
         return code;
     }
+    let mut sink = Vec::new();
+    let said: &mut (dyn Write + Send) = if json { &mut sink } else { stdout };
     let source = cpl_contest::problem::source_path(path);
     let cases = cpl_contest::problem::cases(&source);
     let tests = cpl_contest::problem::find_tests_dir(&source);
@@ -28,21 +53,32 @@ pub(crate) fn submit(
              `1.out`\n",
             tests.display()
         );
-        return ready_to_send(&source, copy, stdout, stderr);
+        let code = ready_to_send(&source, copy, said, stderr);
+        report(true, &built, &[], stdout);
+        return code;
     }
     let mut out = Vec::new();
     let mut errors = Vec::new();
-    let code = cpl_contest::test::run(&[path.to_string()], &mut out, &mut errors);
-    let _ = stdout.write_all(&out);
+    let mut args = vec![path.to_string()];
+    if json {
+        args.extend(["--format".to_string(), "json".to_string()]);
+    }
+    let code = cpl_contest::test::run(&args, &mut out, &mut errors);
+    if !json {
+        let _ = said.write_all(&out);
+    }
     *stderr += &String::from_utf8_lossy(&errors);
     if code != 0 {
         *stderr += &format!(
             "cpl: `{path}` is not ready to send: a case in {} fails\n",
             tests.display()
         );
+        report(false, &built, &out, stdout);
         return EXIT_ERRORS;
     }
-    ready_to_send(&source, copy, stdout, stderr)
+    let code = ready_to_send(&source, copy, said, stderr);
+    report(true, &built, &out, stdout);
+    code
 }
 
 pub(crate) fn ready_to_send(

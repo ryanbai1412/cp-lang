@@ -697,3 +697,37 @@ fn test_json_runs_the_cases_of_a_file_given_by_path_or_name() {
         assert_eq!(json.at(&["total"]).as_i64(), Some(1), "{args:?}");
     }
 }
+
+#[test]
+fn submit_json_says_whether_it_is_ready_and_why() {
+    let dir = scratch("submit-json");
+    std::fs::write(dir.join("a.cp"), "let n: 1..=10 = read()\nprint(n)\n").unwrap();
+    std::fs::create_dir_all(dir.join("a.tests")).unwrap();
+    std::fs::write(dir.join("a.tests/1.in"), "3\n").unwrap();
+    std::fs::write(dir.join("a.tests/1.out"), "3\n").unwrap();
+    let submit = |args: &[&str]| {
+        let out = cpl(&dir, args);
+        let json = cpl_json::parse(&text(&out.stdout)).expect("cpl submit --json is JSON");
+        (out.status.code(), json)
+    };
+    for args in [
+        &["submit", "a.cp", "--json"][..],
+        &["submit", "a.cp", "--format", "json"],
+    ] {
+        let (code, json) = submit(args);
+        assert_eq!(code, Some(0), "{args:?}: {json:?}");
+        assert_eq!(json.at(&["ready"]).as_bool(), Some(true));
+        assert_eq!(json.at(&["build", "path"]).as_str(), Some("a.cpp"));
+        assert_eq!(json.at(&["test", "passed"]).as_i64(), Some(1));
+    }
+    std::fs::write(dir.join("a.tests/1.out"), "4\n").unwrap();
+    let (code, json) = submit(&["submit", "a.cp", "--json"]);
+    assert_eq!(code, Some(EXIT_ERRORS.into()));
+    assert_eq!(json.at(&["ready"]).as_bool(), Some(false));
+    assert_eq!(json.at(&["test", "passed"]).as_i64(), Some(0));
+    std::fs::write(dir.join("bad.cp"), "let x: Int = \"a\"\n").unwrap();
+    let (code, json) = submit(&["submit", "bad.cp", "--json"]);
+    assert_eq!(code, Some(EXIT_ERRORS.into()));
+    assert_eq!(json.at(&["ready"]).as_bool(), Some(false));
+    assert_eq!(*json.at(&["build"]), cpl_json::Value::Null);
+}

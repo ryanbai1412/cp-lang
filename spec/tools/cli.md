@@ -43,4 +43,6 @@ the number of fixes `applied`, its diagnostics those left in the rewritten
 file. `cpl judge --json` prints `{"accepted", "reason", "diagnostic"}`, the
 last two `null` when the judge accepts. `cpl build --json` prints the C++
 file's `path`, `bytes`, the `limit` and `judge` it was built for, and `sizes`:
-each piece's `part`, `name` and `bytes`, adding up to `bytes`.
+each piece's `part`, `name` and `bytes`, adding up to `bytes`. `cpl submit
+--json` prints `ready` and the `build` and `test` reports those two print,
+`null` for a step that did not run.

@@ -317,7 +317,7 @@ what its views cost. `--json` prints every explanation as JSON.
 ";
 
 const SUBMIT_USAGE: &str = "\
-usage: cpl submit <file.cp>
+usage: cpl submit <file.cp> [options]
 
 Gets the file ready to send to its judge (the `// judge:` line, else the
 nearest cp.toml, else `generic`): writes the C++ as `cpl build` does, within
@@ -328,6 +328,9 @@ the file is ready: it built and no case failed.
 options:
   --copy            when ready, also put the C++ on the clipboard, as
                     `cpl build --copy` does
+  --json            print one JSON object: `ready`, and the `build` and
+                    `test` reports `cpl build --json` and `cpl test --json`
+                    print (`null` when that step did not run)
 
 Mid-contest: put `// judge: codeforces` (or another of `cpl judges`) at the
 top of the file once, save the samples as <file>.tests/1.in and 1.out, then
@@ -401,7 +404,9 @@ options:
 
 /// Commands whose JSON output is `--format json`; `JSON_FLAG` ones say `--json`.
 const JSON_FORMAT: &[&str] = &["run", "doc", "test", "stress", "bench", "profile", "cover"];
-const JSON_FLAG: &[&str] = &["check", "fix", "build", "judge", "judges", "explain"];
+const JSON_FLAG: &[&str] = &[
+    "check", "fix", "build", "submit", "judge", "judges", "explain",
+];
 
 /// Both spellings of JSON output, `--json` and `--format json`, work on every
 /// command that has one (decisions.md 230).
@@ -436,7 +441,7 @@ pub(crate) fn unknown_option<'a>(command: &str, args: &[&'a str]) -> Option<&'a 
         "check" | "fix" | "judge" => &["--json"],
         "judges" => &["--json"],
         "build" => &["-o", "--judge", "--checked", "--size", "--copy", "--json"],
-        "submit" => &["--copy"],
+        "submit" => &["--copy", "--json"],
         "explain" => &["--json"],
         "profile" | "cover" => &["--native", "--format"],
         "lsp" | "dap" => &["--stdio"],
