@@ -347,3 +347,28 @@ struct Rooted<V>(root: V):
         ]
     );
 }
+
+#[test]
+fn spec_block_ids_survive_an_edited_block() {
+    use cpl_conform::spec_blocks::block_ids;
+    let md = "# 4 Keys\n```cp\nprint(1)\n```\n## 4.2 Slices\n```cp\nprint(2)\n```\n\n```cp\nprint(3)\n```\n## Open items\n```cp\n# not a heading\n```\n";
+    let ids: Vec<String> = block_ids("core/a.md", md)
+        .into_iter()
+        .map(|b| b.0)
+        .collect();
+    assert_eq!(
+        ids,
+        [
+            "core/a.md#4:1",
+            "core/a.md#4.2:1",
+            "core/a.md#4.2:2",
+            "core/a.md#open-items:1"
+        ]
+    );
+    let edited = md.replace("print(2)", "print(20)\nprint(21)");
+    let again: Vec<String> = block_ids("core/a.md", &edited)
+        .into_iter()
+        .map(|b| b.0)
+        .collect();
+    assert_eq!(ids, again);
+}

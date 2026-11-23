@@ -6,14 +6,74 @@ use cpl_check::Database;
 use crate::runner;
 use crate::scoreboard::{CaseOutcome, SuiteReport};
 
-/// A short stable id for a block or example body: the first 10 hex digits of its FNV-1a hash.
-pub(crate) fn block_hash(text: &str) -> String {
-    let mut h: u64 = 0xcbf29ce484222325;
-    for b in text.as_bytes() {
-        h ^= u64::from(*b);
-        h = h.wrapping_mul(0x100000001b3);
+/// The section a heading names: its number (`### 1.3 Disjoint-set union` is `1.3`), else a
+/// slug of its text.
+fn section_label(heading: &str) -> String {
+    let text = heading.trim_start_matches('#').trim();
+    let first = text
+        .split_whitespace()
+        .next()
+        .unwrap_or("")
+        .trim_end_matches('.');
+    if !first.is_empty()
+        && first
+            .split('.')
+            .all(|p| !p.is_empty() && p.bytes().all(|b| b.is_ascii_digit()))
+    {
+        return first.to_string();
     }
-    format!("{h:012x}")[..10].to_string()
+    let slug: String = text
+        .chars()
+        .map(|c| {
+            if c.is_ascii_alphanumeric() {
+                c.to_ascii_lowercase()
+            } else {
+                '-'
+            }
+        })
+        .collect();
+    let slug = slug
+        .split('-')
+        .filter(|w| !w.is_empty())
+        .collect::<Vec<_>>()
+        .join("-");
+    if slug.is_empty() {
+        "top".into()
+    } else {
+        slug
+    }
+}
+
+/// Stable case ids for a file's blocks: `rel#section:k`, the `k`th block under the heading
+/// `section`. Editing a block keeps its id, so the ratchet sees it change, not disappear.
+pub fn block_ids(rel: &str, text: &str) -> Vec<(String, String, Marker)> {
+    let mut headings = Vec::new();
+    let mut offset = 0;
+    let mut fenced = false;
+    for line in text.split_inclusive('\n') {
+        let t = line.trim_start();
+        if t.starts_with("```") {
+            fenced = !fenced;
+        } else if !fenced && line.starts_with('#') {
+            headings.push((offset, section_label(line.trim_end())));
+        }
+        offset += line.len();
+    }
+    let mut count: HashMap<String, usize> = HashMap::new();
+    scan_blocks(text)
+        .into_iter()
+        .map(|(open, code, marker)| {
+            let at = headings.partition_point(|(o, _)| *o < open);
+            let section = if at == 0 {
+                "top".to_string()
+            } else {
+                headings[at - 1].1.clone()
+            };
+            let k = count.entry(section.clone()).or_insert(0);
+            *k += 1;
+            (format!("{rel}#{section}:{k}"), code, marker)
+        })
+        .collect()
 }
 
 #[derive(Clone, Debug)]
@@ -92,6 +152,14 @@ pub fn extract_blocks(text: &str) -> Vec<String> {
 
 /// Like `extract_blocks`, with each block's marker.
 pub fn extract_marked_blocks(text: &str) -> Vec<(String, Marker)> {
+    scan_blocks(text)
+        .into_iter()
+        .map(|(_, code, m)| (code, m))
+        .collect()
+}
+
+/// Each fenced block's opening offset, dedented body and marker.
+fn scan_blocks(text: &str) -> Vec<(usize, String, Marker)> {
     let mut blocks = Vec::new();
     let mut pos = 0;
     while let Some(rel) = text[pos..].find("```") {
@@ -109,7 +177,7 @@ pub fn extract_marked_blocks(text: &str) -> Vec<(String, Marker)> {
             let line_start = text[..open].rfind('\n').map_or(0, |i| i + 1);
             let indent = open - line_start;
             let code = dedent(&body_start[..close], indent);
-            blocks.push((code, marker_above(&text[..open])));
+            blocks.push((open, code, marker_above(&text[..open])));
         }
         pos = open + 3 + nl + 1 + close + 3;
     }
@@ -158,16 +226,7 @@ pub fn discover(root: &Path, filter: Option<&str>) -> Vec<SpecBlock> {
             .unwrap_or(&path)
             .to_string_lossy()
             .replace('\\', "/");
-        let mut seen: HashMap<String, usize> = HashMap::new();
-        for (code, marker) in extract_marked_blocks(&text) {
-            let base = format!("{rel}#{}", block_hash(&code));
-            let occ = seen.entry(base.clone()).or_insert(0);
-            *occ += 1;
-            let id = if *occ == 1 {
-                base
-            } else {
-                format!("{base}~{occ}")
-            };
+        for (id, code, marker) in block_ids(&rel, &text) {
             if let Some(f) = filter {
                 if !id.contains(f) && !code.contains(f) {
                     continue;
