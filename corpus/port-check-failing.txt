@@ -84,7 +84,6 @@ ceoi09p3
 ceoi17p2
 ceoi22p1
 ceoi22p3
-cf1943b
 cf2062e1
 cf2062e2
 cf2066d2
@@ -116,7 +115,6 @@ coci25c3p4
 coi06p2
 cpc21c1p5
 csps21p2
-ctsc06p1
 dmopc19c4p2
 dmopc20c4p3
 dmopc20c6p6
