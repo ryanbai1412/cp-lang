@@ -144,7 +144,7 @@ Four friction points surfaced in ports:
   step and is O(n * W / 64) — 10x slower than the C++ original on 100k equal
   weights. Two fixes belong together: an in-place non-allocating
   `shift_or(k)` / `shift_up(k)` for custom shift DPs, and a stdlib
-  `subset_sums<D>(weights)` that applies the folklore binary carry (turning
+  `Bitset<D>.subset_sums(weights)` that applies the folklore binary carry (turning
   duplicate weights into O(sqrt(sum)) items in O(K sqrt(S) / 64)).
 - **Word-level negative shifts.** `shifted(-k)` currently loops bit-by-bit in
   O(K) instead of word-by-word in O(K / 64).
@@ -248,8 +248,8 @@ struct Bitset<D>                              // O(K / 64) words, 1 bit/pos
     fn each(self) -> yields D                 // O(K / 64 + |self|)
     fn find(self, pred: D -> Bool) -> ?D      // O(K / 64 + visited)
 
-fn subset_sums<D>(weights: List<Int>) -> Bitset<D>
-    // O(K * sqrt(sum) / 64); binary-carry knapsack over 0..D.K
+    fn subset_sums(weights: List<Int>) -> Bitset<D>  // static: Bitset<D>.subset_sums(ws)
+        // O(K * sqrt(sum) / 64); binary-carry knapsack over 0..D.K
 ```
 
 Laws: every set operation agrees pointwise with `[D]Bool`; `b.first` equals
@@ -716,17 +716,16 @@ distinct final values reachable by filling `?`. After the first `?`, each later
 `?` contributes an optional half-gap whose total sum is `<= m`, so `subset_sums`
 computes all reachable sums in O(m sqrt(m) / 64) without manual binary carries.
 
+<!-- spec-only: excerpt of the port; m, half_gaps, end_f, Pos, p0, p1 and Z come from its earlier lines -->
 ```cp
 // Half-gaps sum to at most m, so binary-carry bitset subset_sums finds every
 // reachable offset in O(m sqrt(m) / 64) with zero manual carry bookkeeping.
-use std.bitset.{subset_sums}
-
 domain Half = 0..=m
-let reach = subset_sums<Half>(half_gaps)
+let reach = Bitset<Half>.subset_sums(half_gaps)
 var cool: Set<Int> = Set()
 for i in reach.each():
-    cool.add(end_f[Pos(2 * i.to_idx + p0)])
-    cool.add(end_f[Pos(2 * i.to_idx + p1)])
+    cool.add(end_f[Pos(2 * Int(i) + p0)])
+    cool.add(end_f[Pos(2 * Int(i) + p1)])
 print(sum(Z(v) for v in cool))
 ```
 

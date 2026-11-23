@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- `lib/containers.md` named a free `subset_sums<D>(ws)`; `spec/std/bitset.cp` has the static `Bitset<D>.subset_sums(ws)`, so the table and the cf2187d excerpt now use that (the excerpt is marked spec-only: its m, half_gaps, end_f come from the port's earlier lines).
 - Chapters 6 and 7 wrote `n.isqrt()`, but `std.math.isqrt(x: Int)` is a free function (no `self`); now `isqrt(n)`. spec-blocks 68/185 (34 error, 83 skip). Asked stdlib to export the free `dot`/`cross` that `lib/geometry.md` promises.
 - Reject case for R07.2.5 (E0408, `core-07/assign-into-range.cp`); fails today (no diagnostic), compiler request.
 - Reject cases for R03.1.3 (E0316) and R02.6.6 (E0317, replacing the call-site E0303 case landed just before: the catalog rejects the declaration). Both fail today (no diagnostic); compiler request.
