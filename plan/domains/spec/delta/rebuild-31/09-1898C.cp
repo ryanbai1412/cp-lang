@@ -27,5 +27,5 @@ if (k - base) % 4 == 2:
     v[VR(n - 1), C(m - 1)] = colour(base - 2)
     h[R(n), HC(m - 1)] = colour(base - 1)
 print("YES")
-for i in R: print([h[i, j] for j in HC])
-for i in VR: print([v[i, j] for j in C])
+for i in R: print([h[i, j] for j in HC], sep: " ")
+for i in VR: print([v[i, j] for j in C], sep: " ")

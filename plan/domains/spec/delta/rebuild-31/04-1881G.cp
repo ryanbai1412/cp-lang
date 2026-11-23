@@ -3,6 +3,8 @@
 // s[i] == s[i+2]. Shifts are a range-add DualFenwick; a range add only
 // changes those equalities at the six pairs that straddle its ends, which
 // are kept as counts in two Fenwicks.
+use std.fenwick.{DualFenwick}
+
 @!multitest
 let (n, m): (1..=2e5, 1..=2e5) = read()
 domain P = 1..=n

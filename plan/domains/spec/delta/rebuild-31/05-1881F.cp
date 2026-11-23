@@ -11,7 +11,7 @@ for v in marks: marked[v] = true
 let t = Rooted(g, root: V.first!)
 let far = t.reroot(
     max,
-    lift: (x, _, _) => x.map(d => d + 1),
-    finish: (s, v) => if marked[v]: Some(s ?? 0) else: s,
+    lift: (x: ?Int, _, _) => x.map(d => d + 1),
+    finish: (s: ?Int, v) => if marked[v]: Some(s ?? 0) else: s,
 )
 print([far[v]! for v in V].min()!)

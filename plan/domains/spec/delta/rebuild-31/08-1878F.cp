@@ -4,14 +4,17 @@
 // "d(n) divides n". n is kept as its factorization.
 let sv = Sieve(1e6)
 
+fn factored(x: Int) -> Counter<Int, Int>:
+    var c = Counter<Int>(0)
+    for (p, e) in sv.factor(x): c[p] += e
+    c
+
 @!multitest
 let (n, q): (1..=1e6, 1..=1000) = read()
-var start = Counter<Int>(0)
-for (p, e) in sv.factor(n): start[p] += e
-var cur = start.clone()
+var cur = factored(n)
 for _ in 0..q:
     if read<1..=2>() == 2:
-        cur = start.clone()
+        cur = factored(n)
         continue
     for (p, e) in sv.factor(read<1..=1e6>()): cur[p] += e
     var d = 1

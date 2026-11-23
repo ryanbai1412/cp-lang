@@ -2,6 +2,8 @@
 // Build the final tree offline. A subtree add is a range add over preorder
 // positions; a vertex created later must not see earlier adds, so its value
 // is the final read minus the read at its creation.
+use std.fenwick.{DualFenwick}
+
 @!multitest
 let q = read<1..=5e5>()
 var ops = List<(t: Int, v: Int, x: Int)>()
