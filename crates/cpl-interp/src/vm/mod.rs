@@ -24,6 +24,7 @@ mod compile;
 mod exec;
 mod helpers;
 mod ir;
+mod scalar;
 
 pub(crate) use helpers::stmt_tag;
 pub(crate) use helpers::VmStats;
