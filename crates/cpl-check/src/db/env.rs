@@ -31,6 +31,11 @@ impl Env for FileCtx<'_> {
         self.field_decl_at(ty, field)
     }
 
+    fn decl_order(&mut self, name: &str) -> Option<usize> {
+        self.record(DEP_NAMES, self.scope.names_fp);
+        self.scope.names.get(name).copied()
+    }
+
     fn lent_before(&mut self) -> Vec<Replay> {
         let fingerprint = self.replays_fingerprint();
         self.record(DEP_LENT, fingerprint);

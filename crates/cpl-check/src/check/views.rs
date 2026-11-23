@@ -357,9 +357,16 @@ impl Checker<'_> {
     /// Reports the lent `e` kept in `keep` unless that storage dies no later
     /// than `e`'s source: it is declared in the source's block or one nested
     /// in it, after the source (R05.7.8). A global source outlives all
-    /// storage; a global storage outlives every local source.
+    /// storage but a global declared before it; a global storage outlives
+    /// every local source.
     pub(crate) fn escape_unless_kept(&mut self, e: &Expr, what: &str, keep: Keep<'_>) {
         let is_let = matches!(keep, Keep::Let);
+        let global_storage = match keep {
+            Keep::In(place) => super::lends::root_name(unparen(place))
+                .filter(|r| self.local(r).is_none())
+                .map(str::to_string),
+            _ => None,
+        };
         let storage = match keep {
             Keep::Let => None,
             Keep::New(at) => Some((self.scopes.len() - 1, at)),
@@ -382,7 +389,14 @@ impl Checker<'_> {
             return;
         }
         let kept = super::lends::root_name(unparen(e)).is_some_and(|root| match self.local(root) {
-            None => true,
+            // Top-level storage outlives a top-level source declared after
+            // it: the file body is a block like any other (R05.7.10).
+            None => global_storage.as_deref().is_none_or(|kept_in| {
+                match (self.env.decl_order(root), self.env.decl_order(kept_in)) {
+                    (Some(source), Some(kept_in)) => source <= kept_in,
+                    _ => true,
+                }
+            }),
             Some(source) => storage.is_some_and(|(depth, at)| {
                 self.var_depth(root) <= depth && source.span.start <= at.start
             }),

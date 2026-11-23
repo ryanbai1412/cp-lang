@@ -87,6 +87,10 @@ pub(crate) trait Env {
     fn field_decl(&mut self, _ty: &str, _field: &str) -> Option<Span> {
         None
     }
+    /// Where top-level `name` comes in this file's order of items.
+    fn decl_order(&mut self, _name: &str) -> Option<usize> {
+        None
+    }
 }
 
 #[derive(Clone, Debug)]
