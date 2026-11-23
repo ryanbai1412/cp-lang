@@ -5660,6 +5660,8 @@ fn type_has_hole(ty: &ast::Type) -> bool {
         ast::TypeKind::Value(e) => matches!(&e.kind, ast::ExprKind::Name(n) if n == "_"),
         ast::TypeKind::Named { args, .. } => args.iter().any(type_has_hole),
         ast::TypeKind::Optional(t) | ast::TypeKind::Mut(t) => type_has_hole(t),
+        ast::TypeKind::Tuple(ts) => ts.iter().any(type_has_hole),
+        ast::TypeKind::Record(fs) => fs.iter().any(|(_, t)| type_has_hole(t)),
         _ => false,
     }
 }

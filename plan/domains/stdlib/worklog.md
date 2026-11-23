@@ -503,3 +503,4 @@ Round 12's cold reader hit again: `tally` returning `HashMap` (R07.11.4 says `Co
 - 2026-11-23: `KruskalTree.top(v, ok)` written (was `todo`): each node keeps its merging edge's
   key, `top` climbs the lift while `ok` holds. Interp and C++ agree; case `std-tree/kruskal-tree-top`.
   Docs 2715/2780, 33 error, 26 todo, 4 trap; 0 conform regressions.
+- 2026-11-23: `dfs_tree` body landed (iterative `dfs`, parent from the walk's path, `tree_edge[a.e]`); unblocked by letting `_` sit inside a tuple/record return type (lowering + checker escape rule). Cases `std-tree/dfs-tree`, `core-02/fresh-domain-*`; interpreter and `--release` agree.
