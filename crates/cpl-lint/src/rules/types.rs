@@ -78,12 +78,9 @@ impl Types<'_> {
         if !self.domains.contains(key) {
             return;
         }
-        if name == "Set" && self.inner.contains(&span.shift(self.base).start) {
+        let start = span.shift(self.base).start;
+        if self.walked.contains(&start) || name == "Set" && self.inner.contains(&start) {
             // The `Set<V>()` such a declaration starts from goes with it.
-            self.last_keyed_line = Some(self.lines.line_of(span.shift(self.base).start));
-            return;
-        }
-        if name == "Map" && self.walked.contains(&span.shift(self.base).start) {
             self.last_keyed_line = Some(self.lines.line_of(span.shift(self.base).start));
             return;
         }
