@@ -81,19 +81,13 @@ impl Proven {
     }
 
     /// A hover asks for the loops and then the indexes, and each proves the
-    /// whole file, so the first ask proves both at once on two threads.
+    /// whole file, so the first ask proves both in one pass.
     fn loops_and_indexes(&self) {
         if self.loops.get().is_some() || self.indexes.get().is_some() {
             return;
         }
-        let (loops, indexes) = std::thread::scope(|s| {
-            let loops = s.spawn(|| self.with_items(cpl_lint::proven_loops_parsed));
-            let indexes = self.with_items(cpl_lint::proven_indexes_parsed);
-            (loops.join(), indexes)
-        });
-        if let Ok(loops) = loops {
-            let _ = self.loops.set(loops);
-        }
+        let (loops, indexes) = self.with_items(cpl_lint::proven_loops_and_indexes_parsed);
+        let _ = self.loops.set(loops);
         let _ = self.indexes.set(indexes);
     }
 
