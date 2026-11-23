@@ -23,6 +23,9 @@ pub(super) enum RangeInfo {
     Elem(Box<RangeInfo>),
     /// A tuple or record whose fields may carry `RangeInfo`.
     Tuple(Vec<Option<RangeInfo>>),
+    /// A key of `V.ranges`: a range that is non-empty by its type, so its
+    /// `first` and `last` are positions, not optionals (lib/search-dp.md).
+    Piece,
 }
 
 impl RangeBounds {
@@ -286,6 +289,9 @@ impl<'a> Lowerer<'a> {
                 .range_info_from_ast(elem)
                 .map(|e| RangeInfo::Elem(Box::new(e))),
             ast::TypeKind::Named { name, args } => {
+                if name.text.ends_with(".ranges") && args.is_empty() {
+                    return Some(RangeInfo::Piece);
+                }
                 if name.text == "List" && args.len() == 1 && self.get_sym(&name.text).is_none() {
                     return self
                         .range_info_from_ast(&args[0])

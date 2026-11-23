@@ -478,6 +478,7 @@ impl Lowerer<'_> {
                 let piece = self.mk(piece, piece_ty.clone(), span);
                 let mut pre = Vec::new();
                 let slot = self.loop_var(&params[i], piece_ty, &mut pre);
+                self.cx.local_ranges.insert(slot, RangeInfo::Piece);
                 pre.insert(0, Stmt::Let(slot, Some(piece)));
                 let heads = [
                     (len, self.int_lit(1, span), n1, Vec::new()),

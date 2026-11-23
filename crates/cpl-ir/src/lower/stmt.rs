@@ -1306,7 +1306,7 @@ impl<'a> Lowerer<'a> {
                         label.as_ref(),
                         heads,
                         pat,
-                        pair,
+                        (pair, None),
                         body,
                         else_body.as_ref(),
                         out,
@@ -1343,6 +1343,7 @@ impl<'a> Lowerer<'a> {
                     };
                     let piece = self.mk(piece, Ty::Range(Box::new(Ty::Pos(dom_id))), span);
                     let (label, else_body) = (label.as_ref(), else_body.as_ref());
+                    let piece = (piece, Some(RangeInfo::Piece));
                     self.nested_for(label, heads, pat, piece, body, else_body, out);
                     return;
                 }
@@ -1351,7 +1352,7 @@ impl<'a> Lowerer<'a> {
                         label.as_ref(),
                         heads,
                         pat,
-                        cell,
+                        (cell, None),
                         body,
                         else_body.as_ref(),
                         out,
@@ -1912,7 +1913,7 @@ impl<'a> Lowerer<'a> {
         label: Option<&ast::Name>,
         heads: Vec<LoopHead>,
         pat: &ast::Pattern,
-        value: Expr,
+        (value, rinfo): (Expr, Option<RangeInfo>),
         body: &ast::Block,
         else_body: Option<&ast::Block>,
         out: &mut Vec<Stmt>,
@@ -1949,7 +1950,10 @@ impl<'a> Lowerer<'a> {
             }
             (_, kind) => {
                 let value = Expr { kind, ..value };
-                self.bind(pat, value, &mut stmts)
+                self.bind(pat, value, &mut stmts);
+                if let Some(rinfo) = &rinfo {
+                    self.bind_range_info(pat, rinfo);
+                }
             }
         }
         stmts.extend(self.block(body, Tail::Discard).stmts);

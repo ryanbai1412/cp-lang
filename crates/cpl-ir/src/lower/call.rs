@@ -5338,13 +5338,19 @@ impl<'a> Lowerer<'a> {
                 };
                 self.mk(ExprKind::DomainVal(d), Ty::DomainVal, span)
             }
-            (Ty::Range(inner), "first") => {
+            (Ty::Range(inner), "first" | "last") => {
                 let inner = (**inner).clone();
-                builtin(self, Builtin::First, vec![value], Ty::opt(inner))
-            }
-            (Ty::Range(inner), "last") => {
-                let inner = (**inner).clone();
-                builtin(self, Builtin::Last, vec![value], Ty::opt(inner))
+                let piece = matches!(self.expr_range(&value), Some(RangeInfo::Piece));
+                let op = if name.text == "first" {
+                    Builtin::First
+                } else {
+                    Builtin::Last
+                };
+                let end = builtin(self, op, vec![value], Ty::opt(inner.clone()));
+                match piece {
+                    true => self.mk(ExprKind::Unwrap(Box::new(end), false), inner, span),
+                    false => end,
+                }
             }
             (Ty::DomainVal, "len" | "size" | "K" | "count") => {
                 // If this is `xs.D.K` where `xs` is a struct holding a `[D]`-indexed array field,

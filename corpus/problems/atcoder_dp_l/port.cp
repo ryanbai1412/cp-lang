@@ -11,6 +11,6 @@ let a: [I]1..=1e9 = read()
 
 var lead: [I.ranges]Int = 0
 for r in I.ranges:
-    let (l, r_end) = (r.first!, r.last!)
+    let (l, r_end) = (r.first, r.last)
     lead[r] = if r.len == 1: a[l] else: max(a[l] - lead[r.drop(1)], a[r_end] - lead[r.drop_last(1)])
 print(lead[I.range])
