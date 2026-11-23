@@ -51,6 +51,21 @@ fn exit_code(value: &Value) -> u8 {
     code as u8
 }
 
+/// The playground's `explain` is `cpl explain`'s, storage section included.
+#[test]
+fn explain_matches_cpl_explain() {
+    let mut playground = Playground::new();
+    for path in programs() {
+        let name = path.to_str().expect("a UTF-8 path");
+        let source = std::fs::read_to_string(&path).expect("readable program");
+        let cli = cpl_cli::run_with_input(&["explain", name], b"");
+        let explained = playground.explain(name, &source);
+        if cli.code == 0 {
+            assert_eq!(text(&explained, "text").as_bytes(), cli.stdout, "{name}");
+        }
+    }
+}
+
 #[test]
 fn run_matches_cpl_run() {
     // One session for every program, as a page keeps one.

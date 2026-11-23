@@ -10,6 +10,7 @@
 
 pub mod checked_fix;
 mod complete;
+pub mod explain;
 mod imports;
 mod outline;
 mod rename;

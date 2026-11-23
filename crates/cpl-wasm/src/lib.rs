@@ -401,7 +401,13 @@ impl Playground {
     pub fn explain(&mut self, name: &str, source: &str) -> Value {
         match self.compile(name, source) {
             Ok(compiled) => {
-                let text = cpl_codegen::explain::report(name, source, &compiled.program);
+                let storage = cpl_lsp::explain::storage_section(&mut self.db, name);
+                let text = cpl_codegen::explain::report_with(
+                    name,
+                    source,
+                    &compiled.program,
+                    Some(&storage),
+                );
                 outcome(
                     0,
                     &compiled.diagnostics,
