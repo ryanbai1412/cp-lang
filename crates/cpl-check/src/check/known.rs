@@ -319,6 +319,50 @@ impl<'a> Checker<'a> {
         }
     }
 
+    /// `vis.map(yes)`: a fn value given where a fn of `given` parameters
+    /// is expected takes only those; every one after them needs a default
+    /// (R06.1.8).
+    /// Gives what the fn returns.
+    pub(crate) fn fn_value_takes(&mut self, method: &str, arg: &Expr, given: usize) -> Ty {
+        let Ty::Fn { params, ret } = self.quietly(|c| c.infer(arg)) else {
+            return Ty::Unknown;
+        };
+        let Some(missing) = params
+            .iter()
+            .skip(given)
+            .find(|p| !p.has_default && !p.variadic)
+        else {
+            return *ret;
+        };
+        let noun = if given == 1 { "argument" } else { "arguments" };
+        let message = format!(
+            "`{method}` calls `{}` with {given} {noun}, but its parameter `{}` has no default",
+            self.quote(arg.span),
+            missing.name,
+        );
+        if let Some(diag) = self.error(codes::TYPE_MISMATCH, arg.span, message) {
+            diag.help = Some(format!(
+                "give `{}` a default, or pass a lambda that supplies it",
+                missing.name
+            ));
+        }
+        *ret
+    }
+
+    /// `pairs.map((a, b) => ..)`: a lambda of several parameters takes the
+    /// fields of a tuple element, so it has one per field.
+    pub(crate) fn lambda_takes_elem(&mut self, params: usize, elem: &Ty, span: Span) -> Ty {
+        let fields = match elem {
+            Ty::Tuple(items) => items.len(),
+            _ => 1,
+        };
+        if params != fields {
+            let message = format!("lambda takes {params} parameters, but `{elem}` has {fields}");
+            self.error(codes::WRONG_ARG_COUNT, span, message);
+        }
+        Ty::Unknown
+    }
+
     /// `c.bump()` where `bump` takes `mut self` changes `c`, so `c` is a
     /// `var`, a `mut` parameter, or the `mut self` of the calling method.
     /// Without this the call works on a copy and the change is lost.

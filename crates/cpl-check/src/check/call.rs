@@ -897,23 +897,9 @@ impl<'a> Checker<'a> {
                                 })
                             }
                             ExprKind::Lambda { params, .. } if params.len() > 1 => {
-                                let expected_arity = match &elem {
-                                    Ty::Tuple(items) => items.len(),
-                                    _ => 1,
-                                };
-                                if params.len() != expected_arity {
-                                    let message = format!(
-                                        "lambda takes {} parameters, but `{elem}` has {expected_arity}",
-                                        params.len()
-                                    );
-                                    self.error(codes::WRONG_ARG_COUNT, arg.value.span, message);
-                                }
-                                Ty::Unknown
+                                self.lambda_takes_elem(params.len(), &elem, arg.value.span)
                             }
-                            _ => match self.quietly(|c| c.infer(&arg.value)) {
-                                Ty::Fn { ret, .. } => (*ret).clone(),
-                                _ => Ty::Unknown,
-                            },
+                            _ => self.fn_value_takes("map", &arg.value, 1),
                         }
                     } else {
                         Ty::Unknown
@@ -937,6 +923,9 @@ impl<'a> Checker<'a> {
                     return Some(Ty::Optional(Box::new(elem)));
                 }
                 "filter" => {
+                    if let [arg] = args {
+                        self.fn_value_takes("filter", &arg.value, 1);
+                    }
                     return Some(Ty::Named {
                         name: "Filter".into(),
                         args: vec![elem],

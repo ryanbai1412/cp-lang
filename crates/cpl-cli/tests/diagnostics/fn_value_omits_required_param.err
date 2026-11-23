@@ -1,0 +1,22 @@
+error[E0302]: `map` calls `add` with 1 argument, but its parameter `y` has no default
+  --> fn_value_omits_required_param.cp:5:21
+  |
+5 | for v in [1, 2].map(add):
+  |                     ^^^
+  = help: give `y` a default, or pass a lambda that supplies it
+
+error[E0302]: `filter` calls `pos` with 1 argument, but its parameter `strict` has no default
+  --> fn_value_omits_required_param.cp:7:21
+  |
+7 | print([1, 2].filter(pos).count())
+  |                     ^^^
+  = help: give `strict` a default, or pass a lambda that supplies it
+
+error[E0302]: `map` calls `sum2` with 1 argument, but its parameter `b` has no default
+  --> fn_value_omits_required_param.cp:9:31
+  |
+9 | for v in [(1, 2), (3, 4)].map(sum2):
+  |                               ^^^^
+  = help: give `b` a default, or pass a lambda that supplies it
+
+fn_value_omits_required_param.cp: 3 errors
