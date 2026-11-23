@@ -109,6 +109,7 @@ is a `@get`); a named struct opts in with a bodiless `impl Weighted<Int>
 for Road`. Signatures use inline bounds and take the weakest capability
 they use:
 
+<!-- spec-only: signatures and costs, not a program -->
 ```python
 pub fn dijkstra<V, W>(g: WeightedNext<V, W>, from: Seq<(V, W)>, until: ?V = None)
 ```

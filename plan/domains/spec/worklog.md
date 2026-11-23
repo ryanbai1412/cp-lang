@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- spec/lib signature listings (35 fences in geometry, containers, strings, math, graphs-trees, flows) marked `spec-only`: spec-blocks errors 119 -> 91, skips 23 -> 51, passes stay 43/185. The 91 left are programs that should run.
 - core/05 quiz blocks run with `<!-- given: -->` setup: spec-blocks 36 -> 43/185 pass. 6 marked blocks still fail on real disagreements (3 compiler, 2 stdlib, in their worklogs); the rest of core/05's failures are error examples that need a given and a rejects at once (not supported yet).
 - Spec blocks: `<!-- rejects: CODE -->` marker (7d8af3965) on the 15 error examples in core/05; `cpl-conform spec-blocks` 21/185 -> 36/185 pass. Every marked block reports the code its text names.
 - R02.11.1 said `x.floor()`, `x.round()` or truncating `Int(x)`; the checker has free `floor`/`ceil`/`round`/`trunc` and rejects `Int(x)` of an `F64` (E0302, fix `floor(x)`), so the rule now says that (debugger's note in the compiler worklog). Two cases, both pass.

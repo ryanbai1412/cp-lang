@@ -99,6 +99,7 @@ for the same mathematical operation, the cost is visible in the name or type:
 `Sieve(n).factor(x)` is `O(log x)` after `O(n)` setup, and standalone
 `factor(x)` is `O(sqrt x)` for `x <= 1e6` and `O(x^(1/4) log x)` expected above.
 
+<!-- spec-only: signatures and costs, not a program -->
 ```cp
 // Divisibility, division, and exact combinatorics
 fn gcd(a: Int, b: Int) -> Int                       // O(log min(|a|, |b|)); >= 0, gcd(0,0) = 0
@@ -174,6 +175,7 @@ prime-power divisor `low[i]` of each `i`.
 and runtime moduli (`let P: Int = read(); type Z = Mod<P>`). `Comb<M>` is keyed
 on the `Mod` type (`let comb = Comb<Z>(limit)`) so the modulus is written once.
 
+<!-- spec-only: signatures and costs, not a program -->
 ```cp
 struct Mod<P>(v: 0..P):
     let MOD = P
@@ -222,6 +224,7 @@ Performance notes from the corpus (`cf2135e2`, `cf2150g`, `cf2066d2`,
 `examples/local-lib/math/poly.cp` into a clean, generic stdlib module and
 adds cyclic convolution and bitwise transforms.
 
+<!-- spec-only: signatures and costs, not a program -->
 ```cp
 // Number-theoretic transform and polynomial convolution
 fn ntt<P>(mut a: List<Mod<P>>, inverse: Bool = false, bit_reversed: Bool = false)
@@ -261,6 +264,7 @@ argument that can go out of sync with `a.len`.
 `Mat<T>` stores entries in a single flat row-major `List<T>` of length
 `n * m` so multiplication and elimination stay cache-friendly.
 
+<!-- spec-only: signatures and costs, not a program -->
 ```cp
 struct Mat<T>(n: Int, m: Int, a: List<T>):
     fn zero(n: Int, m: Int = n) -> Mat<T>           // O(n m)
@@ -322,6 +326,7 @@ returning a `List<Mod<P>>` of length `n`, with `n == 0` returning `[]`) and
 requires an NTT-friendly prime `P` (`P - 1` divisible by a power of two at
 least `2 * bit_ceil(n)`).
 
+<!-- spec-only: signatures and costs, not a program -->
 ```cp
 fn deriv<P>(a: List<Mod<P>>) -> List<Mod<P>>
     // O(a.len) time and memory; formal derivative a'(x), length max(0, a.len - 1)

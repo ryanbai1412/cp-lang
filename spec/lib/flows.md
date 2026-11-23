@@ -59,6 +59,7 @@ capacity changes.
 One module, `std.flow`. Two network types that share `Arc`, and free
 functions for everything whose input is a table or an edge list.
 
+<!-- spec-only: signatures and costs, not a program -->
 ```cp
 struct Arc(id: 0..2_147_483_648)
     @get fn rev(self) -> Arc                          // O(1)

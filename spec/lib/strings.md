@@ -135,6 +135,7 @@ are named arguments (`bases:`). Container-like structures follow `plan/STDLIB.md
 
 ### 3.1 `Str` and `Char` helpers
 
+<!-- spec-only: signatures and costs, not a program -->
 ```cp
 fn repeat(self: Str, n: Int) -> Str                 // O(n * self.len)
 fn starts_with(self: Str, p: Str, at: Int = 0) -> Bool  // O(p.len)
@@ -157,6 +158,7 @@ Laws:
 
 ### 3.2 Pattern matching, borders, periods, and Lyndon words
 
+<!-- spec-only: signatures and costs, not a program -->
 ```cp
 fn z_function<S: Indexed>(s: S) -> List<Int>                    // O(n)
 fn prefix_function<S: Indexed>(s: S) -> List<Int>               // O(n)
@@ -194,6 +196,7 @@ Laws:
 
 ### 3.3 Palindromes
 
+<!-- spec-only: signatures and costs, not a program -->
 ```cp
 struct Palindromes(odd: List<Int>, even: List<Int>):
     fn is_palindrome<R>(self, r: R) -> Bool          // O(1); Range<Int> or Range<D>
@@ -229,6 +232,7 @@ Laws:
 
 ### 3.4 Rolling hashing
 
+<!-- spec-only: signatures and costs, not a program -->
 ```cp
 struct HashVal(h1: Int, h2: Int):
     @get fn hash_token(self) -> Int                  // O(1)
@@ -265,6 +269,7 @@ Laws:
 
 ### 3.5 Suffix structures
 
+<!-- spec-only: signatures and costs, not a program -->
 ```cp
 fn suffix_array<S: Indexed>(s: S) -> SuffixArray       // the `SuffixArray` below; `.sa`, `.lcp` (Kasai)
 
@@ -315,6 +320,7 @@ Laws:
 
 ### 3.6 Tries and Aho-Corasick
 
+<!-- spec-only: signatures and costs, not a program -->
 ```cp
 struct Trie<A>:
     fn new() -> Trie<A>                              // O(|A|)

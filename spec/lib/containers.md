@@ -209,6 +209,7 @@ Every container follows `plan/STDLIB.md` §2:
 
 ### 2.1 `std.bitset`
 
+<!-- spec-only: signatures and costs, not a program -->
 ```cp
 struct Bitset<D>                              // O(K / 64) words, 1 bit/pos
     fn new() -> Bitset<D>                     // O(K / 64)
@@ -264,6 +265,7 @@ free list (eliminating memory leaks on erase, fixing `cf2066e.md` #2) and parent
 pointers so a `BagCursor` steps to `prev` / `next` in O(1) amortized (fixing
 `cf2066e.md` #1). Each node stores `(key, pri, cnt, sub, left, right, parent)`.
 
+<!-- spec-only: signatures and costs, not a program -->
 ```cp
 struct BagCursor(id: Int)                     // opaque handle into a SortedBag
 
@@ -337,6 +339,7 @@ stores a `Map<Int, (hi: Int, val: T)>` keyed by `lo.ord` — every position in
 `0..D.K` belongs to exactly one entry, and adjacent entries have distinct
 values.
 
+<!-- spec-only: signatures and costs, not a program -->
 ```cp
 struct IntervalMap<D, T>                      // O(runs) memory; amortized O(log runs)
     fn new(init: T) -> IntervalMap<D, T>      // O(1); whole domain has value init
@@ -369,6 +372,7 @@ never have equal `val`; the runs partition `D` with no gaps or overlaps.
 
 Already ships `Mark`, `Dsu<V>`, `DsuOf<V, T>`, and `ParityDsu<V>`. Additions:
 
+<!-- spec-only: signatures and costs, not a program -->
 ```cp
 // Existing: Mark, Dsu<V>, DsuOf<V, T>, ParityDsu<V>
 // New in std.dsu:
@@ -404,6 +408,7 @@ snapshots across random `set`/`mark`/`undo_to` sequences.
 
 > Superseded: see the note in 1.4 and `std/heap.cp`.
 
+<!-- spec-only: signatures and costs, not a program -->
 ```cp
 // Existing: MinHeap<T>, MaxHeap<T>
 // Added to MinHeap<T> and MaxHeap<T>:
@@ -449,6 +454,7 @@ Laws: `MinHeap.of(xs)` pops elements in the exact order of `sorted(xs)`;
 
 ### 2.6 `std.deque`
 
+<!-- spec-only: signatures and costs, not a program -->
 ```cp
 // Existing: Deque<T> (add set(mut self, i: Int, x: T) and to_list(self) -> List<T>)
 // Promoted from examples/local-lib/ds/:
@@ -474,6 +480,7 @@ struct TwoStackFold<T>                        // O(1) amortized queue monoid fol
 
 ### 2.7 `std.marks` and `std.seq.Compressed`
 
+<!-- spec-only: signatures and costs, not a program -->
 ```cp
 // Existing in std.marks: Marks<D>
 // New in std.marks:
@@ -510,6 +517,7 @@ Builtin `HashMap<K, V>` and `HashSet<T>` remain the default for arbitrary
 hashable keys. `std.hashmap` adds an explicit open-addressing table for `Int`
 keys when constant factor and memory matter:
 
+<!-- spec-only: signatures and costs, not a program -->
 ```cp
 struct FlatMap<V>                             // O(1) expected; open addressing
     fn new(default_val: V, cap: Int = 16) -> FlatMap<V> // O(cap)

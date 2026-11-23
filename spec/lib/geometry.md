@@ -104,6 +104,7 @@ callers never lose point IDs or build `(p: Pt, id: Int)` wrapper structs:
 
 ### 3.1 Exact integer points and vectors
 
+<!-- spec-only: signatures and costs, not a program -->
 ```cp
 struct Pt(x: Int, y: Int)              // Add, Sub, Neg, Eq, Ord (x, y), Hash, Read, Show ("x y")
     @get fn norm2(self) -> Int         // O(1); x*x + y*y
@@ -132,6 +133,7 @@ fn same_dir(a: Pt, b: Pt) -> Bool      // O(1), I128; parallel and same ray
 
 ### 3.2 Angular sorting
 
+<!-- spec-only: signatures and costs, not a program -->
 ```cp
 struct ByAngle(p: Pt)                  // Ord: CCW in [0, 2*pi) from +x; zero first; I128
 struct ByAngleFrom(base: Pt, p: Pt)    // Ord: CCW in [base, base + 2*pi); zero first; I128
@@ -145,6 +147,7 @@ wrapping the array twice.
 
 ### 3.3 Segments
 
+<!-- spec-only: signatures and costs, not a program -->
 ```cp
 fn on_segment(p: Pt, a: Pt, b: Pt) -> Bool
     // O(1), I128; true iff p lies on the closed segment [a, b]
@@ -154,6 +157,7 @@ fn segments_meet(a: Pt, b: Pt, c: Pt, d: Pt, strict: Bool = false) -> Bool
 
 ### 3.4 Convex hulls, chains, and Minkowski sums
 
+<!-- spec-only: signatures and costs, not a program -->
 ```cp
 fn lower_hull(pts: List<Pt>, collinear: Bool = false) -> List<Pt>
     // O(n) time, O(n) space; precondition: pts sorted by (x, y); lower chain left-to-right
@@ -175,6 +179,7 @@ essential for O(n log n) divide-and-conquer hulls (such as `ucup4s25e`).
 
 ### 3.5 Polygons and rotating calipers
 
+<!-- spec-only: signatures and costs, not a program -->
 ```cp
 fn area2(poly: List<Pt>) -> Int
     // O(n); twice signed area (+ CCW, - CW)
@@ -195,6 +200,7 @@ fn min_bounding_box(hull: List<Pt>) -> (area: F64, perimeter: F64)
 
 ### 3.6 Closest pair
 
+<!-- spec-only: signatures and costs, not a program -->
 ```cp
 fn closest_pair2(pts: List<Pt>) -> Int
     // O(n log n) time, O(n) space; min squared distance among pts (requires pts.len >= 2)
@@ -204,6 +210,7 @@ fn closest_pair<D>(pts: [D]Pt) -> (a: D, b: D, dist2: Int)
 
 ### 3.7 Careful floating-point geometry and half-plane intersection
 
+<!-- spec-only: signatures and costs, not a program -->
 ```cp
 const PI: F64 = 3.14159265358979323846
 
@@ -576,42 +583,49 @@ Language powers needed to write the full `std.geometry` spec without special cas
 1. **Trigonometric intrinsics (`sin`, `cos`, `acos`, `asin`)** (`decisions.md` §1.5; today only `atan2` exists).
    - **Signatures:** `Vec.from_angle(rad: F64) -> Vec`, `Vec3.rot(self, axis: Vec3, rad: F64) -> Vec3`, `sphere_dist(a: Vec3, b: Vec3, r: F64 = 1.0) -> F64`.
    - **Smallest example:**
+     <!-- spec-only: signatures and costs, not a program -->
      ```cp
      let q = v.rot(by: Vec.from_angle(PI / 3.0))
      ```
 2. **Protocols with associated types (`Indexed<Item = T>` / `Seq<Item = T>`).**
    - **Signatures:** Generalizing read-only sequence inputs from `List<Pt>` / `List<Vec>` to `S: Indexed<Item = Pt>` / `S: Indexed<Item = Vec>` across `area2`, `area2_128`, `locate`, `locate_convex`, `lower_hull`, `upper_hull`, `convex_hull`, `minkowski_sum`, `minkowski_upper`, `minkowski_lower`, `hull_extreme`, `hull_tangents`, `hull_width`, `hull_line_intersect`, `diameter2`, `min_bounding_box`, `closest_pair2`, `polygon_area`, `polygon_cut`, `polygon_centroid`, `polygon_kernel`, `polygon_triangulate`, `circle_polygon_area`, `pick_interior`, `pick_boundary`.
    - **Smallest example:**
+     <!-- spec-only: signatures and costs, not a program -->
      ```cp
      let left = upper_hull(pref[lo..md])   // zero-copy slice of [D]Pt or List<Pt>
      ```
 3. **Range-parameterized structs with defaults (`struct Pt<R = Int>(x: R, y: R)`).**
    - **Signatures:** `Pt<R = Int>`, `Pt3<R = Int>` (packing `Pt<-1e9..=1e9>` into 8 bytes and carrying coordinate bounds for compile-time overflow proofs on `dot`/`cross`/`dist2`).
    - **Smallest example:**
+     <!-- spec-only: signatures and costs, not a program -->
      ```cp
      let p: [V]Pt<1..=100> = read()
      ```
 4. **Wide multiplication intrinsic (`mulhi` / exact 256-bit sign)** (`plan/STDLIB.md` §3 `[new, core lane]`).
    - **Signatures:** `delaunay<D>(pts: [D]Pt) -> List<(D, D, D)>`, `voronoi_cells<D>(pts: [D]Pt, bound: F64) -> [D]List<Vec>` (exact degree-4 `incircle` determinant reaches `1.92e38` for `|coords| <= 1e9`, exceeding `I128.MAX = 1.70e38`).
    - **Smallest example:**
+     <!-- spec-only: signatures and costs, not a program -->
      ```cp
      let tris = delaunay(pts)   // exact incircle for |x|, |y| <= 1e9
      ```
 5. **Public `Read` protocol (`impl Read for T`).**
    - **Signatures:** `impl Read for Vec`, `impl Read for Pt3`, `impl Read for Vec3`, `impl Read for Circle`, `impl Read for HalfPlane`, `impl Read for Rect` (today only `Pt` has compiler-assisted `Read`).
    - **Smallest example:**
+     <!-- spec-only: signatures and costs, not a program -->
      ```cp
      let cs: [C]Circle = read()
      ```
 6. **Half-open cut-range conversion (`Range<D.bounds>` -> `Range<D>`, decision 124).**
    - **Signatures:** `Rect(x: Range<Int>, y: Range<Int>)` and passing `poly[j..i]` (with `j, i: D.bounds`) into `area2`, `upper_hull`, `lower_hull`, `locate`.
    - **Smallest example:**
+     <!-- spec-only: signatures and costs, not a program -->
      ```cp
      let a = area2(poly[j..i])
      ```
 7. **User-defined optional niches (`?Vec`, `?Pt`, `?Circle`, `?Rect`, `?Plane3`).**
    - **Signatures:** `line_intersect(...) -> ?Vec`, `circumcenter(...) -> ?Vec`, `ray_hits_segment(...) -> ?Vec`, `Circle.through(...) -> ?Circle`, `incenter(...) -> ?Circle`, `Rect.intersect(...) -> ?Rect`, `OnlineHull.extreme(...) -> ?Pt`, `Plane3.through(...) -> ?Plane3`, `line_plane_intersect(...) -> ?Vec3` (avoids an extra 8-byte discriminant word; e.g. NaN-niche keeps `?Vec` at 16 B instead of 24 B).
    - **Smallest example:**
+     <!-- spec-only: signatures and costs, not a program -->
      ```cp
      let hit: ?Vec = line_intersect(a, b, c, d)
      ```
