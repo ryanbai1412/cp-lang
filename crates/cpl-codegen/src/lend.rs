@@ -106,7 +106,8 @@ impl Tail {
     }
 }
 
-/// Locals `block` reads whole, not only through an index, field or length.
+/// Locals `block` reads whole, not only through an index, field, length
+/// or the elements a `for` walks.
 fn whole_reads(block: &Block) -> std::collections::BTreeSet<usize> {
     let (mut uses, mut parts) = (Vec::new(), Vec::new());
     walk::deep_exprs(block, &mut |e| match &e.kind {
@@ -122,6 +123,13 @@ fn whole_reads(block: &Block) -> std::collections::BTreeSet<usize> {
             }
         }
         _ => {}
+    });
+    walk::deep_stmts(block, &mut |stmt| {
+        if let Stmt::For(_, _, cpl_ir::Iter::Seq(seq, _), _) = stmt {
+            if let ExprKind::Local(s) = seq.kind {
+                parts.push(s);
+            }
+        }
     });
     for s in parts {
         if let Some(at) = uses.iter().position(|&u| u == s) {
@@ -341,32 +349,41 @@ impl<'p> Emitter<'p> {
     /// captures: it is only ever called, and nothing in its fn changes a
     /// captured variable or reads it whole (which could move it away).
     pub(crate) fn named_closure_borrows(&self, slot: usize, cid: usize) -> bool {
-        let Some(id) = self.fn_id.filter(|_| self.closure_id.is_none()) else {
+        if self.closure_id.is_some() {
             return false;
+        }
+        let program = self.program;
+        let (blocks, params): (Vec<&Block>, &[cpl_ir::ParamDef]) = match self.fn_id {
+            Some(id) => (vec![&program.fns[id].body], &program.fns[id].params),
+            None => (vec![&program.setup, &program.main], &[]),
         };
-        let f = &self.program.fns[id];
-        if self.facts.stores((Some(id), false, slot)) > 1
-            || !only_called(self.program, &f.body, slot, 3)
+        if self.facts.stores((self.fn_id, false, slot)) > 1
+            || !blocks.iter().all(|b| only_called(program, b, slot, 3))
         {
             return false;
         }
-        let effects = Effects::of_block(&f.body);
-        let whole = whole_reads(&f.body);
+        let mut effects = Effects::default();
+        let mut whole = std::collections::BTreeSet::new();
         let mut by_ref = std::collections::BTreeSet::new();
-        walk::deep_exprs(&f.body, &mut |e| {
-            if let ExprKind::Closure(c) = e.kind {
-                let caps = self.program.closures[c].captures.iter();
-                by_ref.extend(caps.filter(|c| c.by_ref && !c.is_global).map(|c| c.outer));
-            }
-        });
-        let def = &self.program.closures[cid];
+        for block in &blocks {
+            effects.locals.extend(Effects::of_block(block).locals);
+            whole.extend(whole_reads(block));
+            walk::deep_exprs(block, &mut |e| {
+                if let ExprKind::Closure(c) = e.kind {
+                    let caps = program.closures[c].captures.iter();
+                    by_ref.extend(caps.filter(|c| c.by_ref && !c.is_global).map(|c| c.outer));
+                }
+            });
+        }
+        let sunk = self.fn_id.map(|id| &self.sunk[id]);
+        let def = &program.closures[cid];
         def.captures.iter().filter(|c| !c.is_global).all(|c| {
             let o = c.outer;
             !effects.locals.contains(&o)
                 && !whole.contains(&o)
                 && !by_ref.contains(&o)
-                && !self.sunk[id].contains(&o)
-                && f.params.get(o).is_none_or(|p| !p.mutable)
+                && sunk.is_none_or(|s| !s.contains(&o))
+                && params.get(o).is_none_or(|p| !p.mutable)
         })
     }
 

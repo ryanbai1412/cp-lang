@@ -460,3 +460,19 @@ fn a_let_in_a_value_block_lends_when_the_value_does_not_read_it() {
         "inverse reads b in place: {out}"
     );
 }
+
+#[test]
+fn a_top_level_closure_only_called_borrows_a_list_a_loop_walks() {
+    let out = cpp("let n = read<Int>()
+for v in 0..n:
+    let kids = [v, v + 1]
+    let need = (r: Int) => kids.sum(of: c => c + r)
+    var best = 0
+    for c in kids: best += c
+    print(need(best))
+");
+    assert!(
+        out.contains("&kids_2 = kids"),
+        "`need` is only called and `kids` never changes, so it is borrowed:\n{out}"
+    );
+}
