@@ -8239,3 +8239,8 @@ tag move fatal again.
 - **Why the bump is right.** The list counts tags, not work, so moving the outer statement onto the VM reads as growth while the tree-walker runs less. A `give` left to a tree-walker statement would return from the enclosing fn, so blocks with one stay whole fallbacks.
 - **Follow-up.** The ratchet should count fallbacks run, not kinds, so a split like this one reads as the shrink it is.
 - **Reverse.** Return `false` for `ExprKind::Do` in `traced_quiet` (`crates/cpl-interp/src/vm/compile/stmt.rs`) and restore the 148-kind `vm_fallbacks.txt`.
+
+## 403. Retire L0205 `pow_method` for the checker's E0203 fix (lint-fmt, 2026-11-23)
+
+- **Call.** `a.pow(e)` on a number or `Mod` is E0203 "power uses `**`, not `.pow(...)`", and E0203 carries the `a ** e` fix `cpl fix` applies (parenthesised where needed). A struct's own `pow` is neither an error nor a lint. L0205 found the same calls from syntax, so it only repeated the error; retired with its record, as L0206 and L0513 were (decisions 401, 402).
+- **Reverse.** Restore `spec/lints/pow_method/` and the `.pow` arm in `rules/types.rs`.

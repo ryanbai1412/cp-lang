@@ -204,7 +204,7 @@ fn replaced_spellings_get_their_cpl_fix_codemod_as_a_quick_fix() {
             "cf2062h",
             "Z(2) ** inside - ways",
             "Z(2).pow(inside) - ways",
-            "L0205",
+            "E0203",
         ),
         ("cf2066b", "(0..b.len).rev:", "(0..b.len()).rev:", "E0304"),
         ("cf2053i1", "reach.start", "reach.lo", "E0503"),

@@ -1240,16 +1240,6 @@ print(once, xs, ints, comb.fact(2))
 }
 
 #[test]
-fn pow_method_lint_warns_and_fixes_with_parentheses() {
-    let src = "let a = 2\nlet n = 5\nprint(a.pow(3), a.pow(n - 1), (a + 1).pow(2), a.pow(n).abs)\n";
-    assert_eq!(codes(src), vec!["L0205", "L0205", "L0205", "L0205"]);
-    assert_eq!(
-        fixed(src),
-        "let a = 2\nlet n = 5\nprint(a ** 3, a ** (n - 1), (a + 1) ** 2, (a ** n).abs)\n"
-    );
-}
-
-#[test]
 fn fix_rewrites_range_lo_hi_to_start_end_only_on_ranges() {
     let src = "\
 struct Seg(lo: Int, hi: Int)

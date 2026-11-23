@@ -3,8 +3,8 @@
 
 use crate::walk::{unparen, Visitor};
 use crate::{
-    File, Finding, DOMAIN_KEYED_MAP, IS_IN_COND_HEADER, POSITION_ARITHMETIC, POW_METHOD,
-    REDUNDANT_ARG_NAME, TURBOFISH_TYPE_ARGS,
+    File, Finding, DOMAIN_KEYED_MAP, IS_IN_COND_HEADER, POSITION_ARITHMETIC, REDUNDANT_ARG_NAME,
+    TURBOFISH_TYPE_ARGS,
 };
 use cpl_diag::{Diagnostic, Span};
 use cpl_syntax::ast::{BinOp, Cond, Expr, ExprKind, PatternKind, Stmt, StmtKind, Type, TypeKind};
@@ -340,47 +340,6 @@ impl Visitor for Types<'_> {
                         }
                     }
                 }
-                if let ExprKind::Field { base, name } = &callee.kind {
-                    if name.text == "pow" && args.len() == 1 && args[0].name.is_none() {
-                        let lhs_raw = base.span.shift(self.base).text(self.src);
-                        let rhs_raw = args[0].value.span.shift(self.base).text(self.src);
-                        let lhs = if needs_pow_parens(base) {
-                            format!("({lhs_raw})")
-                        } else {
-                            lhs_raw.to_string()
-                        };
-                        let rhs = if needs_pow_parens(&args[0].value) {
-                            format!("({rhs_raw})")
-                        } else {
-                            rhs_raw.to_string()
-                        };
-                        let span = expr.span.shift(self.base);
-                        let after = self.src.get(span.end as usize..).unwrap_or("");
-                        let wrap_whole =
-                            matches!(after.chars().next(), Some('.' | '[' | '!' | '*'));
-                        let replacement = if wrap_whole {
-                            format!("({lhs} ** {rhs})")
-                        } else {
-                            format!("{lhs} ** {rhs}")
-                        };
-                        let mut diag = Diagnostic::warning(
-                            POW_METHOD.code,
-                            span,
-                            "power uses `**`, not `.pow(...)`",
-                        )
-                        .with_help(format!("write `{replacement}`; `**` is the power operator, so there is no `.pow` to remember"))
-                        .with_label(base.span.shift(self.base), "the base");
-                        diag.fixes.push(cpl_diag::Fix {
-                            title: format!("replace with `{replacement}`"),
-                            edits: vec![(span, replacement)],
-                        });
-                        self.findings.push(Finding {
-                            lint: &POW_METHOD,
-                            diag,
-                        });
-                        return;
-                    }
-                }
                 let ExprKind::Name(domain) = &callee.kind else {
                     return;
                 };
@@ -439,26 +398,6 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
     };
     file.walk(&mut types, |types, base| types.base = base);
     types.findings
-}
-
-fn needs_pow_parens(expr: &Expr) -> bool {
-    !matches!(
-        expr.kind,
-        ExprKind::Int(_)
-            | ExprKind::Float(_)
-            | ExprKind::Bool(_)
-            | ExprKind::Char(_)
-            | ExprKind::Str(_)
-            | ExprKind::Name(_)
-            | ExprKind::Field { .. }
-            | ExprKind::Index { .. }
-            | ExprKind::Call { .. }
-            | ExprKind::Generic { .. }
-            | ExprKind::Paren(_)
-            | ExprKind::Tuple(_)
-            | ExprKind::List(_)
-            | ExprKind::Unwrap(_)
-    )
 }
 
 #[cfg(test)]

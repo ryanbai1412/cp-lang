@@ -5,23 +5,6 @@ use super::*;
 use crate::tests::{all_on, fixed};
 
 #[test]
-fn pow_method_fix_needs_a_pow_operator() {
-    // tests/programs/user_pow_method.cp: a struct's own `pow` has no `impl Pow`
-    // behind it, so `p ** 3` would not check.
-    let src = concat!(
-        "struct P(c: Int):\n",
-        "    fn pow(self, k: Int) -> Int = self.c * k\n",
-        "print(P(c: 5).pow(3), (2).pow(10))\n",
-    );
-    let found: Vec<_> = lint(src, &all_on())
-        .into_iter()
-        .filter(|d| d.code == POW_METHOD.code)
-        .map(|d| d.span.text(src).to_string())
-        .collect();
-    assert_eq!(found, ["(2).pow(10)"]);
-}
-
-#[test]
 fn a_var_a_closure_changes_is_changed() {
     // spec/conformance/core-05/closure-captures-at-call.cp: `() => c += 1`
     // has no parameters, and its body was skipped as if it were `.cost`.

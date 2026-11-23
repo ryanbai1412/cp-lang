@@ -320,7 +320,7 @@ One sub-family per module. Each says: you rebuilt something the library has.
 | hand_rolled_sieve | Eratosthenes or linear sieve loop | `Sieve` | warn | #1 | loop | ✓hand_rolled_sieve |
 | euclid_by_hand | `while b: a, b = b, a % b` | `gcd` / `lcm` / `ext_gcd` | fix | #1 | loop | |
 | fast_pow_by_hand | square-and-multiply loop | `a ** e` / `pow_mod` | fix | #1 | loop | |
-| pow_method | `a.pow(e)` | `a ** e` | fix | #13 | syn | ✓pow_method |
+| pow_method | `a.pow(e)` | `a ** e` | fix | #13 | syn | ✓E0203 (checker, with fix) |
 | float_sqrt_for_int | `floor(sqrt(x))` (`Int(sqrt(x))` is E0302) | `x.isqrt` (also P0: float error) | fix | #1 | ty | ✓float_sqrt_for_int |
 | ceil_div_formula | `(a + b - 1) / b` | `ceil_div(a, b)` (correct for negatives) | fix? | #1 | syn | ✓ceil_div_formula |
 | divisors_by_hand | `for i in 1..=sqrt(n)` pushing `i` and `n / i` | `divisors(n)` / `each_divisor` | fix | #1 | loop | |
