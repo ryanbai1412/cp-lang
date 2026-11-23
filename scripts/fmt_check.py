@@ -146,7 +146,7 @@ def main():
             shutil.copytree(base, once)
         else:
             files = tracked((".cp",))
-            for path in files + tracked(("cp.toml",)):
+            for path in files + tracked(("cp.toml", "lib.toml")):
                 dst = os.path.join(once, path)
                 os.makedirs(os.path.dirname(dst), exist_ok=True)
                 shutil.copyfile(os.path.join(ROOT, path), dst)
