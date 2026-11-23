@@ -7,11 +7,11 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 2461 (995 passing). Rules: 561.
+Cases: 2463 (995 passing). Rules: 561.
 
 ## Summary per chapter
 
-- R01 (01-lexical-grammar.md): 53 rules, 119 cases; 0 uncovered, 1 happy-path only, 0 negative only
+- R01 (01-lexical-grammar.md): 53 rules, 121 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R02 (02-values-types.md): 52 rules, 127 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R03 (03-numbers-layout.md): 24 rules, 62 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04 (04-indices.md): 66 rules, 114 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -45,7 +45,7 @@ negative case. Complete: rules with no gap in `rule-gaps.txt`.
 
 | Chapter | Rules | Accept | Forbidding | Reject | Complete |
 |---|---|---|---|---|---|
-| R01 | 53 | 53 (100%) | 28 | 27 (96%) | 52 (98%) |
+| R01 | 53 | 53 (100%) | 28 | 28 (100%) | 53 (100%) |
 | R02 | 52 | 52 (100%) | 28 | 28 (100%) | 52 (100%) |
 | R03 | 24 | 24 (100%) | 13 | 13 (100%) | 24 (100%) |
 | R04 | 66 | 66 (100%) | 15 | 15 (100%) | 66 (100%) |
@@ -67,7 +67,7 @@ negative case. Complete: rules with no gap in `rule-gaps.txt`.
 | Rlint | 2 | 2 (100%) | 2 | 2 (100%) | 2 (100%) |
 | Rlsp | 5 | 0 (0%) | 2 | 0 (0%) | 0 (0%) |
 | Rstress | 1 | 1 (100%) | 0 | 0 (0%) | 1 (100%) |
-| all | 561 | 555 (98%) | 215 | 211 (98%) | 553 (98%) |
+| all | 561 | 555 (98%) | 215 | 212 (98%) | 554 (98%) |
 
 ## Rules
 
@@ -78,7 +78,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R01.1.1 [1+ 1-]: A source file is UTF-8. Bytes outside ASCII may appear only inside string literals and com...
 - R01.1.2 [1+ 1-]: `//` starts a comment that runs to the end of the line. There are no block comments. `#` i...
 - R01.1.3 [2+ 0-]: `///` starts a doc comment attached to the next item. Doc comments are Markdown; the first...
-- R01.1.4 [1+ 0-] *happy-path only*: A source line may end in `\n` or `\r\n` on every platform. The `\r` is part of the line en...
+- R01.1.4 [1+ 2-]: A source line may end in `\n` or `\r\n` on every platform. The `\r` is part of the line en...
 - R01.2.1 [1+ 2-]: Indentation is spaces only; a tab in leading whitespace is an error. The width is free but...
 - R01.2.2 [1+ 2-]: A logical line ends at a newline outside brackets. Inside `( )`, `[ ]` and `{ }` newlines ...
 - R01.2.3 [1+ 2-]: A one-line body follows `:` or `=` on the same line. A deeper line after a one-line body i...
@@ -718,7 +718,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0104 Expected indented block: 1 case(s)
 - E0105 Expected type: 2 case(s)
 - E0106 Expected pattern: 1 case(s)
-- E0107 Unexpected token: 6 case(s)
+- E0107 Unexpected token: 8 case(s)
 - E0108 Expected identifier: 1 case(s)
 - E0109 Unmatched closing delimiter: 1 case(s)
 - E0110 Unparenthesized `??` with arithmetic: 1 case(s)
@@ -860,7 +860,7 @@ prepends it.
 
 - 00-overview.md: 1 blocks, 1 with a case, 0 spec-only, 0 neither
 - 01-lexical-grammar.md: 5 blocks, 1 with a case, 3 spec-only, 1 neither
-  - line 102: `let var const fn struct enum domain type use pub if elif els`
+  - line 103: `let var const fn struct enum domain type use pub if elif els`
 - 02-values-types.md: 3 blocks, 2 with a case, 1 spec-only, 0 neither
 - 03-numbers-layout.md: 2 blocks, 2 with a case, 0 spec-only, 0 neither
 - 04-indices.md: 7 blocks, 3 with a case, 3 spec-only, 1 neither

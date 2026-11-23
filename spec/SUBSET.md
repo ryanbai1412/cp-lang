@@ -173,6 +173,7 @@ documented. The stdlib's own gaps are in `std/GAPS.md`.
 - core-01/let-else-falls-through.cp: compiler
 - core-01/let-else-some-pattern-top-level.cp: compiler
 - core-01/list-repeat-times-n.cp: compiler
+- core-01/lone-cr-in-string-is-error.cp: compiler
 - core-01/scientific-fraction-is-int.cp: compiler
 - core-02/enum-method-is-variant.cp: compiler
 - core-02/getter-needs-defaults.cp: compiler

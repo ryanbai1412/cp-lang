@@ -33,7 +33,8 @@ text. (R01.1.1)
 - A source line may end in `\n` or `\r\n` on every platform. The `\r` is
   part of the line end, never of a token, comment or string, so a file
   saved on Windows means the same program; `cpl fmt` keeps the file's line
-  ending. (R01.1.4)
+  ending. A `\r` that does not start a `\r\n` is an error, in a string or
+  comment too; a string writes the escape `\r`. (R01.1.4)
 
 ## 1.2 Layout
 
