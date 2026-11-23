@@ -52,3 +52,5 @@ Newest first: what landed (commit), evidence, next, blocked, requests from other
 - Request (coordinator): DOMAINS.md names no owner for `crates/cpl-conform`; idioms owns the corpus suite and scoreboard data only.
 - Request from site: the docs-only eval has no statements. `research/writable-from-docs-set.json` names 55 problems, but `corpus/statements/` is absent and `scripts/fetch-statement.py` was deleted in `e4fc2a14`. Please commit the 55 statements (or restore the fetcher) so `python3 scripts/writable-from-docs.py --manifest research/writable-from-docs-set.json` runs; infra has the matching CI request.
 - Lane opened.
+
+- 2026-11-22: port(cf2237h) on v0.3: `.cyc(k)` is `V.wrap(Int(v) + k)`, `(Time.first + 1)!` is `Time.first!.offset(1)!`; 30/30 generated vs orig.cpp (Zig C++23 reference). v03.txt 224.
