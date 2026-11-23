@@ -6431,445 +6431,284 @@
     },
     "spec-blocks": {
       "cases": {
-        "core/04-indices.md#51c226cfe7": "error",
-        "core/04-indices.md#8a212a8759": "error",
-        "core/04-indices.md#916b98dc7d": "error",
-        "core/04-indices.md#9319f00719": "error",
-        "core/04-indices.md#cf8b630ac9": "error",
-        "core/04-indices.md#d1bbe0810b": "error",
-        "core/04-indices.md#f1d26176ec": "error",
-        "core/04b-keys.md#2d04192a3b": "error",
-        "core/04b-keys.md#41f6edbaab": "error",
-        "core/04b-keys.md#48136940cd": "error",
+        "core/04-indices.md#1884791a47": "error",
+        "core/04-indices.md#5194fd5d7b": "pass",
+        "core/04-indices.md#51c226cfe7": "skip",
+        "core/04-indices.md#8a212a8759": "pass",
+        "core/04-indices.md#d1bbe0810b": "skip",
+        "core/04-indices.md#d9a61d56c8": "pass",
+        "core/04-indices.md#f1d26176ec": "skip",
+        "core/04b-keys.md#2d04192a3b": "pass",
+        "core/04b-keys.md#41f6edbaab": "skip",
+        "core/04b-keys.md#48136940cd": "skip",
         "core/04b-keys.md#51adb4f197": "pass",
-        "core/04b-keys.md#6758c9905d": "error",
+        "core/04b-keys.md#6758c9905d": "skip",
         "core/04b-keys.md#77f8448afa": "error",
-        "core/04b-keys.md#8b32d8518e": "error",
-        "core/04b-keys.md#a56ccfbdb4": "error",
+        "core/04b-keys.md#8b32d8518e": "pass",
+        "core/04b-keys.md#8bf20d974f": "pass",
+        "core/04b-keys.md#a56ccfbdb4": "skip",
         "core/04b-keys.md#b009969cb3": "pass",
-        "core/04b-keys.md#e7c11c4e5d": "error",
-        "core/04b-keys.md#ea7bcd2272": "error",
+        "core/04b-keys.md#ea7bcd2272": "pass",
         "core/04b-keys.md#f5e7a689b6": "error",
         "core/04b-keys.md#f70529e49d": "error",
-        "core/05-ownership.md#12b4a386c2": "error",
+        "core/05-ownership.md#12b4a386c2": "skip",
         "core/05-ownership.md#18fd4025ee": "pass",
-        "core/05-ownership.md#1c299f387d": "error",
-        "core/05-ownership.md#217fae4b08": "error",
+        "core/05-ownership.md#1c299f387d": "pass",
+        "core/05-ownership.md#217fae4b08": "pass",
         "core/05-ownership.md#277c36d732": "pass",
-        "core/05-ownership.md#2b1595a178": "error",
+        "core/05-ownership.md#2b1595a178": "pass",
         "core/05-ownership.md#2e076e1dd9": "error",
-        "core/05-ownership.md#3199b9c3f3": "error",
-        "core/05-ownership.md#327e1eb3c3": "error",
-        "core/05-ownership.md#38ea1a6096": "error",
-        "core/05-ownership.md#3bdaecd6ef": "error",
+        "core/05-ownership.md#2f847a7cab": "error",
+        "core/05-ownership.md#3199b9c3f3": "pass",
+        "core/05-ownership.md#327e1eb3c3": "pass",
+        "core/05-ownership.md#38ea1a6096": "pass",
+        "core/05-ownership.md#3bdaecd6ef": "pass",
         "core/05-ownership.md#47520eaef7": "error",
-        "core/05-ownership.md#4a6a7f9c0d": "error",
-        "core/05-ownership.md#4df98561c8": "error",
-        "core/05-ownership.md#509c7974b3": "error",
+        "core/05-ownership.md#4a6a7f9c0d": "pass",
+        "core/05-ownership.md#4df98561c8": "pass",
+        "core/05-ownership.md#509c7974b3": "pass",
         "core/05-ownership.md#5681f0df0c": "pass",
-        "core/05-ownership.md#5765e1aa70": "error",
-        "core/05-ownership.md#5855e8d4d2": "error",
-        "core/05-ownership.md#5a18088c3e": "error",
-        "core/05-ownership.md#632c05eccf": "error",
-        "core/05-ownership.md#64b6b697f2": "error",
-        "core/05-ownership.md#654263732b": "error",
-        "core/05-ownership.md#677883b04a": "error",
-        "core/05-ownership.md#72eeaec110": "error",
-        "core/05-ownership.md#74ad1fb412": "error",
-        "core/05-ownership.md#759c1f59dd": "error",
-        "core/05-ownership.md#766da7b2b6": "error",
-        "core/05-ownership.md#775f4f68b7": "error",
-        "core/05-ownership.md#8a959569b9": "error",
-        "core/05-ownership.md#9298a27aa2": "error",
-        "core/05-ownership.md#96d034c4b2": "error",
-        "core/05-ownership.md#97ba97b5cb": "error",
-        "core/05-ownership.md#9e5b01a12d": "error",
-        "core/05-ownership.md#9fc52a06ac": "error",
-        "core/05-ownership.md#a1c9f2db67": "error",
-        "core/05-ownership.md#a2acdb3e0f": "error",
+        "core/05-ownership.md#5765e1aa70": "pass",
+        "core/05-ownership.md#5855e8d4d2": "pass",
+        "core/05-ownership.md#5a18088c3e": "pass",
+        "core/05-ownership.md#5f13acf2ef": "skip",
+        "core/05-ownership.md#6154081a09": "pass",
+        "core/05-ownership.md#632c05eccf": "pass",
+        "core/05-ownership.md#64b6b697f2": "pass",
+        "core/05-ownership.md#654263732b": "pass",
+        "core/05-ownership.md#72eeaec110": "pass",
+        "core/05-ownership.md#74ad1fb412": "pass",
+        "core/05-ownership.md#759c1f59dd": "pass",
+        "core/05-ownership.md#766da7b2b6": "pass",
+        "core/05-ownership.md#775f4f68b7": "pass",
+        "core/05-ownership.md#778f75fefe": "pass",
+        "core/05-ownership.md#8a959569b9": "pass",
+        "core/05-ownership.md#9298a27aa2": "pass",
+        "core/05-ownership.md#96d034c4b2": "pass",
+        "core/05-ownership.md#97ba97b5cb": "pass",
+        "core/05-ownership.md#9e5b01a12d": "pass",
+        "core/05-ownership.md#9fc52a06ac": "pass",
+        "core/05-ownership.md#a1c9f2db67": "pass",
+        "core/05-ownership.md#a2acdb3e0f": "pass",
         "core/05-ownership.md#a5388ec1e3": "error",
         "core/05-ownership.md#bad5060224": "pass",
-        "core/05-ownership.md#c6fcd59b5e": "error",
-        "core/05-ownership.md#c8904f9bbd": "error",
+        "core/05-ownership.md#c6fcd59b5e": "pass",
+        "core/05-ownership.md#c8904f9bbd": "pass",
         "core/05-ownership.md#caeb571a22": "pass",
-        "core/05-ownership.md#cbbd93eda9": "error",
-        "core/05-ownership.md#da4cc0c1e1": "error",
-        "core/05-ownership.md#ddc1db8c97": "error",
+        "core/05-ownership.md#da4cc0c1e1": "pass",
+        "core/05-ownership.md#ddc1db8c97": "pass",
         "core/05-ownership.md#de334e9a21": "pass",
         "core/05-ownership.md#e411054db8": "pass",
-        "core/05-ownership.md#e54c34540d": "error",
-        "core/05-ownership.md#e7aa50b7c1": "error",
-        "core/05-ownership.md#eebd546584": "error",
+        "core/05-ownership.md#e54c34540d": "pass",
+        "core/05-ownership.md#e73a48fe0f": "error",
+        "core/05-ownership.md#eebd546584": "pass",
         "core/05-ownership.md#f03e333bb7": "error",
-        "core/05-ownership.md#f283f0bff3": "error",
-        "core/05-ownership.md#f6167ee305": "error",
-        "core/05-ownership.md#fa96c1127a": "error",
-        "core/05-ownership.md#fa99ba414f": "error",
-        "core/05-ownership.md#fae698f103": "error",
+        "core/05-ownership.md#f6167ee305": "pass",
+        "core/05-ownership.md#fa96c1127a": "pass",
+        "core/05-ownership.md#fa99ba414f": "pass",
         "core/05-ownership.md#fb40cc347b": "pass",
-        "core/07-sequences.md#298a3e57b3": "error",
-        "core/07-sequences.md#7bbd452c6b": "error",
-        "core/07-sequences.md#907f0e243d": "error",
-        "core/07-sequences.md#9c8ac97b14": "error",
-        "core/07-sequences.md#a46a204497": "error",
-        "core/07-sequences.md#e1d16c8121": "error",
-        "core/07-sequences.md#f96f1fbcc5": "error",
-        "lib/containers.md#276775f850": "error",
-        "lib/containers.md#479f16c1ba": "error",
-        "lib/containers.md#607b041d17": "error",
-        "lib/containers.md#640df8cc94": "error",
-        "lib/containers.md#6756e63c2a": "error",
-        "lib/containers.md#72e9453b19": "error",
-        "lib/containers.md#79a22a342c": "error",
-        "lib/containers.md#8c2dd57b18": "error",
-        "lib/containers.md#96137fd339": "error",
-        "lib/containers.md#a5a7de34aa": "error",
-        "lib/containers.md#c597185a50": "error",
-        "lib/containers.md#e294bf3388": "error",
-        "lib/containers.md#eccb9ab53d": "error",
-        "lib/flows.md#4c6e1c838b": "error",
+        "core/07-sequences.md#298a3e57b3": "skip",
+        "core/07-sequences.md#65c356ced5": "pass",
+        "core/07-sequences.md#907f0e243d": "skip",
+        "core/07-sequences.md#9c8ac97b14": "skip",
+        "core/07-sequences.md#a46a204497": "skip",
+        "core/07-sequences.md#ca332ee484": "skip",
+        "core/07-sequences.md#f96f1fbcc5": "skip",
+        "lib/containers.md#1822abd759": "skip",
+        "lib/containers.md#1a37b943fd": "skip",
+        "lib/containers.md#29ecb93107": "skip",
+        "lib/containers.md#334d381d6d": "skip",
+        "lib/containers.md#45fb16557e": "skip",
+        "lib/containers.md#59494f7f12": "skip",
+        "lib/containers.md#7c5dc7e8f6": "pass",
+        "lib/containers.md#8c2dd57b18": "skip",
+        "lib/containers.md#8ccc9dc94e": "skip",
+        "lib/containers.md#a5a7de34aa": "skip",
+        "lib/containers.md#a7776f0bb8": "pass",
+        "lib/containers.md#adf65ff297": "skip",
+        "lib/containers.md#c8cb4acf49": "skip",
+        "lib/flows.md#3eba61678b": "skip",
         "lib/flows.md#70b488ecb9": "error",
-        "lib/flows.md#7e912122f1": "error",
+        "lib/flows.md#7b33ad0cef": "error",
         "lib/flows.md#8555bef27e": "error",
-        "lib/flows.md#a63d933413": "error",
-        "lib/flows.md#e5d5ee17e9": "error",
+        "lib/flows.md#e6b03c1c65": "error",
+        "lib/flows.md#fc73c505b0": "error",
         "lib/geometry.md#117c950ca4": "pass",
-        "lib/geometry.md#16e21b3c3f": "error",
-        "lib/geometry.md#3082fbcbaa": "error",
-        "lib/geometry.md#463599c1d0": "error",
-        "lib/geometry.md#4cf7713264": "error",
-        "lib/geometry.md#53ef902b4a": "error",
-        "lib/geometry.md#5909504c0b": "error",
-        "lib/geometry.md#68089f2eb6": "error",
-        "lib/geometry.md#68463fdaf5": "error",
-        "lib/geometry.md#7d59a498a2": "error",
-        "lib/geometry.md#7ff7f066d9": "pass",
-        "lib/geometry.md#8a3a3c13c8": "error",
-        "lib/geometry.md#8f222a7586": "error",
-        "lib/geometry.md#a3c6247dad": "error",
-        "lib/geometry.md#b199564549": "error",
-        "lib/geometry.md#bf7d307289": "error",
-        "lib/geometry.md#d8bdfd2eb5": "error",
-        "lib/geometry.md#f150fd2d08": "error",
-        "lib/geometry.md#f67a88e34f": "error",
-        "lib/graphs-trees.md#1525d6ed0b": "error",
-        "lib/graphs-trees.md#44024f2dcf": "error",
+        "lib/geometry.md#16c50a1d29": "skip",
+        "lib/geometry.md#17f13ed9ab": "skip",
+        "lib/geometry.md#207fb14c96": "skip",
+        "lib/geometry.md#29a9df8cdd": "pass",
+        "lib/geometry.md#2c38a3ad79": "skip",
+        "lib/geometry.md#5ca37d725a": "skip",
+        "lib/geometry.md#74250ffacc": "pass",
+        "lib/geometry.md#891fad01c0": "skip",
+        "lib/geometry.md#983ab830b5": "skip",
+        "lib/geometry.md#993fbfaedd": "pass",
+        "lib/geometry.md#b1d0b66344": "skip",
+        "lib/geometry.md#bce63d5fa9": "skip",
+        "lib/geometry.md#c6229fc8c9": "pass",
+        "lib/geometry.md#cb39a00343": "skip",
+        "lib/geometry.md#cbed43fb00": "skip",
+        "lib/geometry.md#cdc1efa0ff": "skip",
+        "lib/geometry.md#d8135a9600": "skip",
+        "lib/geometry.md#dab75aaaf2": "skip",
+        "lib/graphs-trees.md#1525d6ed0b": "skip",
+        "lib/graphs-trees.md#24067dad30": "skip",
+        "lib/graphs-trees.md#44024f2dcf": "skip",
         "lib/graphs-trees.md#5a57887207": "error",
-        "lib/graphs-trees.md#6e07e4d9b7": "error",
-        "lib/graphs-trees.md#730d5c8943": "error",
-        "lib/graphs-trees.md#8445259b49": "error",
-        "lib/graphs-trees.md#bd17dd5002": "error",
-        "lib/graphs-trees.md#c1242493b3": "error",
-        "lib/graphs-trees.md#cf57974923": "error",
-        "lib/graphs-trees.md#f02339fe6e": "error",
-        "lib/graphs-trees.md#fc629e94da": "error",
-        "lib/math.md#180d8a8270": "error",
-        "lib/math.md#1e52a17b57": "error",
-        "lib/math.md#26e4424f7e": "error",
-        "lib/math.md#5c4e85526a": "error",
-        "lib/math.md#a1696ee554": "error",
-        "lib/math.md#a6f103be9c": "error",
-        "lib/math.md#ae2b5e9cce": "error",
-        "lib/math.md#c7c235de52": "error",
-        "lib/math.md#da98446b99": "error",
+        "lib/graphs-trees.md#6e07e4d9b7": "skip",
+        "lib/graphs-trees.md#730d5c8943": "pass",
+        "lib/graphs-trees.md#8445259b49": "skip",
+        "lib/graphs-trees.md#bd17dd5002": "pass",
+        "lib/graphs-trees.md#c07296db64": "skip",
+        "lib/graphs-trees.md#cf57974923": "pass",
+        "lib/graphs-trees.md#f02339fe6e": "pass",
+        "lib/math.md#180d8a8270": "pass",
+        "lib/math.md#530bbfde40": "skip",
+        "lib/math.md#a0abf8d550": "skip",
+        "lib/math.md#a6f103be9c": "pass",
+        "lib/math.md#bb6f44a452": "skip",
+        "lib/math.md#c1d63afa90": "skip",
+        "lib/math.md#d4edeca5b4": "pass",
+        "lib/math.md#db74f6430a": "pass",
         "lib/math.md#e58cbe631b": "pass",
+        "lib/math.md#e7f0b46da4": "skip",
+        "lib/ops-ranges.md#139313675a": "pass",
         "lib/ops-ranges.md#14aa3594be": "error",
-        "lib/ops-ranges.md#23bf47f192": "error",
-        "lib/ops-ranges.md#3b1d4f866c": "error",
-        "lib/ops-ranges.md#40a6229565": "error",
-        "lib/ops-ranges.md#41dbb583f9": "error",
-        "lib/ops-ranges.md#42f8983968": "error",
-        "lib/ops-ranges.md#473c4d8aa9": "error",
+        "lib/ops-ranges.md#3b1d4f866c": "skip",
+        "lib/ops-ranges.md#41dbb583f9": "skip",
         "lib/ops-ranges.md#50e2a02901": "error",
-        "lib/ops-ranges.md#52c086fa65": "error",
-        "lib/ops-ranges.md#55cbf86bcb": "error",
-        "lib/ops-ranges.md#5c04724058": "error",
+        "lib/ops-ranges.md#52c086fa65": "skip",
+        "lib/ops-ranges.md#55cbf86bcb": "skip",
         "lib/ops-ranges.md#6269eb47e3": "error",
-        "lib/ops-ranges.md#85778d198f": "error",
-        "lib/ops-ranges.md#89b8d06b0d": "error",
+        "lib/ops-ranges.md#85778d198f": "skip",
+        "lib/ops-ranges.md#884a17cb85": "pass",
+        "lib/ops-ranges.md#89b8d06b0d": "skip",
         "lib/ops-ranges.md#8b03892712": "error",
-        "lib/ops-ranges.md#c327e6ed3d": "error",
+        "lib/ops-ranges.md#c327e6ed3d": "skip",
+        "lib/ops-ranges.md#c389236a76": "skip",
         "lib/ops-ranges.md#cfc301f792": "error",
         "lib/ops-ranges.md#defaf3283d": "error",
-        "lib/ops-ranges.md#e0148950eb": "error",
-        "lib/search-dp.md#1a84ba0755": "error",
-        "lib/search-dp.md#27522d21e1": "error",
+        "lib/ops-ranges.md#e0148950eb": "skip",
+        "lib/ops-ranges.md#e0c22e79a1": "skip",
+        "lib/ops-ranges.md#ea2ee0e0df": "skip",
+        "lib/search-dp.md#27522d21e1": "skip",
         "lib/search-dp.md#3fef8782a6": "error",
+        "lib/search-dp.md#91c0fecc68": "error",
         "lib/search-dp.md#a78bd759a6": "error",
-        "lib/search-dp.md#a7a4cacf78": "error",
-        "lib/search-dp.md#c09592e0f3": "error",
-        "lib/search-dp.md#e862c37a7c": "error",
-        "lib/sequence-patterns.md#4879931638": "error",
-        "lib/sequence-patterns.md#501eed9755": "error",
+        "lib/search-dp.md#a7a4cacf78": "pass",
+        "lib/search-dp.md#c09592e0f3": "pass",
+        "lib/search-dp.md#e862c37a7c": "skip",
+        "lib/sequence-patterns.md#4879931638": "pass",
+        "lib/sequence-patterns.md#501eed9755": "skip",
         "lib/sequence-patterns.md#63c99cc8e8": "error",
-        "lib/sequence-patterns.md#939de06231": "error",
+        "lib/sequence-patterns.md#939de06231": "skip",
         "lib/sequence-patterns.md#c7f8beb077": "error",
-        "lib/sequence-patterns.md#ef73bb4008": "error",
-        "lib/strings.md#3636ef9c5c": "error",
-        "lib/strings.md#3a55c11dd1": "error",
-        "lib/strings.md#4682702bc9": "error",
-        "lib/strings.md#625eeec744": "error",
+        "lib/sequence-patterns.md#ef73bb4008": "skip",
+        "lib/strings.md#17b9d5ae92": "skip",
+        "lib/strings.md#1c4e6a8b14": "pass",
+        "lib/strings.md#24c0cbaf16": "pass",
+        "lib/strings.md#2c25a9fb56": "skip",
+        "lib/strings.md#2fcd9144c4": "skip",
+        "lib/strings.md#43f550114e": "skip",
         "lib/strings.md#70f08cac5c": "pass",
-        "lib/strings.md#890a79a8a2": "pass",
+        "lib/strings.md#988249d408": "skip",
         "lib/strings.md#b1e0da25ff": "pass",
-        "lib/strings.md#bb32bea42c": "error",
-        "lib/strings.md#d49367c0ca": "error",
-        "lib/strings.md#fdf9d54d6e": "error",
-        "lib/strings.md#fe2fd40e36": "error"
+        "lib/strings.md#d3e54ba31d": "skip",
+        "lib/strings.md#e596ca8d3b": "pass"
       },
       "causes": [
         {
           "cause": "E0201: no `<id>` in scope",
-          "count": 51,
+          "count": 6,
           "examples": [
-            "core/04-indices.md#51c226cfe7",
-            "core/04-indices.md#8a212a8759",
-            "core/04-indices.md#916b98dc7d",
-            "core/04-indices.md#f1d26176ec",
-            "core/04b-keys.md#2d04192a3b"
-          ]
-        },
-        {
-          "cause": "E0103: expected `<id>` or `<id>` to start the body of `<id>`, found the end of the line",
-          "count": 20,
-          "examples": [
-            "core/05-ownership.md#12b4a386c2",
-            "lib/geometry.md#463599c1d0",
-            "lib/geometry.md#53ef902b4a",
-            "lib/geometry.md#5909504c0b",
-            "lib/geometry.md#68463fdaf5"
-          ]
-        },
-        {
-          "cause": "E0204: no type or domain named `<id>`",
-          "count": 17,
-          "examples": [
-            "core/04-indices.md#d1bbe0810b",
-            "core/05-ownership.md#2e076e1dd9",
-            "core/05-ownership.md#47520eaef7",
-            "core/05-ownership.md#64b6b697f2",
-            "core/05-ownership.md#74ad1fb412"
-          ]
-        },
-        {
-          "cause": "E0201: no `<id>` in scope, and not in the stdlib (yet)",
-          "count": 13,
-          "examples": [
-            "core/05-ownership.md#1c299f387d",
-            "core/05-ownership.md#2b1595a178",
-            "core/05-ownership.md#38ea1a6096",
-            "core/05-ownership.md#5765e1aa70",
-            "core/05-ownership.md#72eeaec110"
-          ]
-        },
-        {
-          "cause": "E0103: expected `<id>` after `<id>`, found the end of the line",
-          "count": 9,
-          "examples": [
-            "lib/containers.md#276775f850",
-            "lib/containers.md#640df8cc94",
-            "lib/containers.md#72e9453b19",
-            "lib/containers.md#79a22a342c",
-            "lib/containers.md#c597185a50"
-          ]
-        },
-        {
-          "cause": "E0006: this line is indented, but no block starts above it",
-          "count": 8,
-          "examples": [
-            "lib/containers.md#96137fd339",
-            "lib/geometry.md#16e21b3c3f",
-            "lib/geometry.md#3082fbcbaa",
-            "lib/geometry.md#68089f2eb6",
-            "lib/geometry.md#8a3a3c13c8"
-          ]
-        },
-        {
-          "cause": "E0103: expected `<id>` and the type this names, found `<id>`",
-          "count": 3,
-          "examples": [
-            "lib/graphs-trees.md#44024f2dcf",
-            "lib/ops-ranges.md#40a6229565",
-            "lib/ops-ranges.md#5c04724058"
-          ]
-        },
-        {
-          "cause": "E0107: expected the end of the statement, found `<id>`",
-          "count": 3,
-          "examples": [
-            "core/04b-keys.md#6758c9905d",
-            "lib/ops-ranges.md#89b8d06b0d",
-            "lib/ops-ranges.md#e0148950eb"
-          ]
-        },
-        {
-          "cause": "E0204: no type or domain named `<id>`, and not in the stdlib (yet)",
-          "count": 3,
-          "examples": [
-            "core/04-indices.md#9319f00719",
-            "core/05-ownership.md#677883b04a",
-            "lib/search-dp.md#e862c37a7c"
-          ]
-        },
-        {
-          "cause": "E0608: `<id>` was already moved",
-          "count": 3,
-          "examples": [
-            "core/05-ownership.md#217fae4b08",
-            "core/05-ownership.md#3199b9c3f3",
-            "core/05-ownership.md#9298a27aa2"
-          ]
-        },
-        {
-          "cause": "E0102: expected a value after an indented block, found `<id>`",
-          "count": 2,
-          "examples": [
-            "core/04b-keys.md#48136940cd",
-            "core/04b-keys.md#e7c11c4e5d"
-          ]
-        },
-        {
-          "cause": "E0201: `<id>` has no `<id>`",
-          "count": 2,
-          "examples": [
-            "lib/containers.md#607b041d17",
-            "lib/strings.md#3a55c11dd1"
+            "lib/flows.md#70b488ecb9",
+            "lib/flows.md#8555bef27e",
+            "lib/flows.md#e6b03c1c65",
+            "lib/ops-ranges.md#14aa3594be",
+            "lib/ops-ranges.md#50e2a02901"
           ]
         },
         {
           "cause": "E0302: expected `<id>`, found `<id>`",
+          "count": 4,
+          "examples": [
+            "core/05-ownership.md#2e076e1dd9",
+            "core/05-ownership.md#47520eaef7",
+            "core/05-ownership.md#f03e333bb7",
+            "lib/sequence-patterns.md#63c99cc8e8"
+          ]
+        },
+        {
+          "cause": "E0201: no `<id>` in scope, and not in the stdlib (yet)",
           "count": 2,
           "examples": [
-            "lib/math.md#180d8a8270",
-            "lib/math.md#da98446b99"
+            "lib/flows.md#7b33ad0cef",
+            "lib/ops-ranges.md#6269eb47e3"
           ]
         },
         {
-          "cause": "E0603: `<id>` cannot store lent parameter `<id>` into a `<id>` parameter",
+          "cause": "E0603: `<id>` would keep the lent slice `<id>` after this block; a lent value lives only in the block that made it",
           "count": 2,
           "examples": [
-            "core/05-ownership.md#9e5b01a12d",
-            "core/05-ownership.md#a2acdb3e0f"
+            "core/04b-keys.md#77f8448afa",
+            "core/04b-keys.md#f70529e49d"
           ]
         },
         {
-          "cause": "E0603: returning it returns a closure that captures local `<id>`, which does not outlive this fn",
-          "count": 2,
-          "examples": [
-            "core/05-ownership.md#4df98561c8",
-            "core/05-ownership.md#5855e8d4d2"
-          ]
-        },
-        {
-          "cause": "E0103: expected `<id>` after the condition, found the end of the line",
+          "cause": "E0201: `<id>` doesn't know the name `<id>` here",
           "count": 1,
           "examples": [
-            "lib/geometry.md#7d59a498a2"
+            "lib/ops-ranges.md#defaf3283d"
           ]
         },
         {
-          "cause": "E0103: expected `<id>` or `<id>` in the argument list, found a string",
+          "cause": "E0203: Visit<_, _> has no field or method `<id>`",
           "count": 1,
           "examples": [
-            "lib/strings.md#bb32bea42c"
+            "lib/graphs-trees.md#5a57887207"
           ]
         },
         {
-          "cause": "E0107: `<id>` doesn't negate in cp",
+          "cause": "E0203: a `<id>` has no member `<id>` that `<id>` knows",
           "count": 1,
           "examples": [
-            "lib/graphs-trees.md#fc629e94da"
+            "core/04-indices.md#1884791a47"
           ]
         },
         {
-          "cause": "E0108: expected a field or method name after `<id>`",
+          "cause": "E0203: a `<id>` has no method `<id>` that `<id>` knows",
           "count": 1,
           "examples": [
-            "core/04b-keys.md#41f6edbaab"
+            "lib/sequence-patterns.md#c7f8beb077"
           ]
         },
         {
-          "cause": "E0202: `<id>` is already defined in this file",
+          "cause": "E0203: domain V has no `<id>` in the spec: no std module declares it",
           "count": 1,
           "examples": [
-            "core/04-indices.md#cf8b630ac9"
-          ]
-        },
-        {
-          "cause": "E0203: Mat<Mod<_>> has no field or method `<id>`",
-          "count": 1,
-          "examples": [
-            "lib/math.md#a6f103be9c"
-          ]
-        },
-        {
-          "cause": "E0203: V has no `<id>` in the spec: no std module declares it",
-          "count": 1,
-          "examples": [
-            "lib/containers.md#479f16c1ba"
+            "lib/search-dp.md#3fef8782a6"
           ]
         },
         {
           "cause": "E0204: `<id>` declares no domain `<id>`",
           "count": 1,
           "examples": [
-            "lib/search-dp.md#1a84ba0755"
+            "lib/search-dp.md#91c0fecc68"
           ]
         },
         {
-          "cause": "E0204: `<id>` is not a trait",
+          "cause": "E0204: no type or domain named `<id>`",
           "count": 1,
           "examples": [
-            "lib/ops-ranges.md#23bf47f192"
-          ]
-        },
-        {
-          "cause": "E0207: `<id>` is private to `<id>`",
-          "count": 1,
-          "examples": [
-            "lib/geometry.md#4cf7713264"
-          ]
-        },
-        {
-          "cause": "E0208: `<id>`: values are lowercase; `<id>` would read as a type",
-          "count": 1,
-          "examples": [
-            "lib/containers.md#6756e63c2a"
-          ]
-        },
-        {
-          "cause": "E0302: `<id>` has an F64 for `<id>`, but `<id>` is an Int",
-          "count": 1,
-          "examples": [
-            "lib/geometry.md#f67a88e34f"
-          ]
-        },
-        {
-          "cause": "E0302: `<id>` is a type, and a value is needed here",
-          "count": 1,
-          "examples": [
-            "lib/math.md#1e52a17b57"
-          ]
-        },
-        {
-          "cause": "E0302: `<id>` is declared a [Pos]Val, but `<id>` is a ?Val",
-          "count": 1,
-          "examples": [
-            "lib/flows.md#4c6e1c838b"
+            "core/05-ownership.md#e73a48fe0f"
           ]
         },
         {
           "cause": "E0302: `<id>` takes a List<(Node, Node)> for `<id>`, but `<id>` is a List<(u: Node, v: Node)>",
           "count": 1,
           "examples": [
-            "lib/flows.md#e5d5ee17e9"
-          ]
-        },
-        {
-          "cause": "E0303: `<id>` takes 2 arguments (a, b), but `<id>` is missing",
-          "count": 1,
-          "examples": [
-            "lib/flows.md#a63d933413"
+            "lib/flows.md#fc73c505b0"
           ]
         },
         {
@@ -6880,96 +6719,41 @@
           ]
         },
         {
+          "cause": "E0305: a `<id>` can't be indexed",
+          "count": 1,
+          "examples": [
+            "core/04b-keys.md#f5e7a689b6"
+          ]
+        },
+        {
           "cause": "E0310: `<id>` has no parameter named `<id>`",
           "count": 1,
           "examples": [
-            "lib/ops-ranges.md#473c4d8aa9"
+            "lib/ops-ranges.md#cfc301f792"
           ]
         },
         {
-          "cause": "E0402: `<id>` changes `<id>`, so the argument must be passed as `<id>`",
+          "cause": "E0402: `<id>` doesn't change `<id>`, so `<id>` doesn't belong here",
           "count": 1,
           "examples": [
-            "core/05-ownership.md#fa96c1127a"
+            "core/05-ownership.md#2f847a7cab"
           ]
         },
         {
-          "cause": "E0403: `<id>` is a `<id>`, so it can't be passed as `<id>`",
+          "cause": "E0603: this assignment would keep the lent slice `<id>` after this block; a lent value lives only in the block that made it",
           "count": 1,
           "examples": [
-            "core/05-ownership.md#775f4f68b7"
-          ]
-        },
-        {
-          "cause": "E0504: not implemented yet: an operator used as a value, `<id>` (see spec/lib/ops-ranges.md §1.)",
-          "count": 1,
-          "examples": [
-            "lib/ops-ranges.md#55cbf86bcb"
-          ]
-        },
-        {
-          "cause": "E0601: `<id>` and `<id>` may be the same storage, and both are lent `<id>` to this call: one contains the other",
-          "count": 1,
-          "examples": [
-            "core/05-ownership.md#632c05eccf"
-          ]
-        },
-        {
-          "cause": "E0602: the key of `<id>` uses `<id>` while `<id>` is being sorted",
-          "count": 1,
-          "examples": [
-            "core/05-ownership.md#327e1eb3c3"
-          ]
-        },
-        {
-          "cause": "E0603: lent value must come from `<id>`",
-          "count": 1,
-          "examples": [
-            "core/05-ownership.md#a1c9f2db67"
-          ]
-        },
-        {
-          "cause": "E0603: returning it would keep the lent slice `<id>` after this block; a lent value lives only in the block that made it",
-          "count": 1,
-          "examples": [
-            "core/05-ownership.md#766da7b2b6"
-          ]
-        },
-        {
-          "cause": "E0603: returning it would return lent parameter `<id>` without a `<id>` clause",
-          "count": 1,
-          "examples": [
-            "core/05-ownership.md#c8904f9bbd"
-          ]
-        },
-        {
-          "cause": "E0607: `<id>` can't be moved here: it is captured by `<id>`, which is still used below",
-          "count": 1,
-          "examples": [
-            "core/05-ownership.md#509c7974b3"
-          ]
-        },
-        {
-          "cause": "W0101: `<id>` returns a List<T>, and it is dropped",
-          "count": 1,
-          "examples": [
-            "lib/ops-ranges.md#85778d198f"
-          ]
-        },
-        {
-          "cause": "W0101: `<id>` returns a Paths<V, W, _>, and it is dropped",
-          "count": 1,
-          "examples": [
-            "lib/ops-ranges.md#c327e6ed3d"
+            "core/05-ownership.md#a5388ec1e3"
           ]
         }
       ],
       "counts": {
-        "error": 169,
-        "pass": 16
+        "error": 27,
+        "pass": 84,
+        "skip": 74
       },
-      "passed": 16,
-      "strict_passed": 16,
+      "passed": 84,
+      "strict_passed": 84,
       "total": 185
     }
   }
