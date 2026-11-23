@@ -12,7 +12,7 @@ pub struct Rng(s: U64):
     /// traps: never
     /// example: `var r = Rng(0); r.next() == 0xE220A8397B1DCDAF`
     /// example: `var a = Rng(7); var b = Rng(7); a.next() == b.next()`
-    pub fn new(seed: Int) -> Rng = Rng(U64(seed) ^ U64(-7046029254386353131))
+    pub fn new(seed: Int) -> Rng = Rng(U64(seed))
     /// The next 64 random bits: one splitmix64 step.
     ///
     /// The state advances by `0x9E3779B97F4A7C15` (wrapping) and the result is the splitmix64 mix of
@@ -24,10 +24,11 @@ pub struct Rng(s: U64):
     /// example: `var r = Rng(0); r.next(); r.next() == 0x6E789E6AA1B965F4`
     /// example: `var r = Rng(1); r.next() == 10451216379200822465`
     pub fn next(mut self) -> U64:
-        s ^= s >> 12
-        s ^= s << 25
-        s ^= s >> 27
-        s * U64(2685821657736338717)
+        s = s + U64(-7046029254386353131)
+        var z = s
+        z = (z ^ (z >> 30)) * U64(-4658895280553007687)
+        z = (z ^ (z >> 27)) * U64(-7723592293110705685)
+        z ^ (z >> 31)
     /// A uniformly random integer in `lo..=hi`, both ends inclusive, from one `next()`.
     ///
     /// With `n = hi - lo + 1`, the result is `lo + ((U128(next()) * n) >> 64)`: Lemire's
