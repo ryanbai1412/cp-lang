@@ -471,3 +471,4 @@ Round 12's cold reader hit again: `tally` returning `HashMap` (R07.11.4 says `Co
 - 2026-11-23: `use std.seq.{collect}` in dp.cp and `copy(r)` in math.cp `big_divmod_mag`: 7773d2bc8's `.collect()` rewrites broke `backtrack` and `BigInt.divmod`/`gcd` docs (no import; math can't import seq). Docs 2694/2780, 27 `todo`, 4 trap.
 - 2026-11-23: tree PermTree docs pass (variant compare hint, range literal hint); docs 2695/2780, 27 `todo`, 4 trap.
 - 2026-11-23: counting_sort docs lead with meaning, fenced example over a domain key; boruvka example names its type args. seq 199/209, graph 139/140.
+- 2026-11-23: segtree docs 70/71 (`of`/`refresh` over a declared domain, dual `get` names `a:`); left: `SegTree.new` with `over:` is `todo`.

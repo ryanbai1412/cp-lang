@@ -265,7 +265,12 @@ pub struct SegTree<D, T, F = Int>(m: Monoid<T>):
     /// empty: an empty `D` gives a tree whose every fold is the identity
     /// order: position `i` holds `f(i)`
     /// traps: never
-    /// example: `let w = [1, 2, 3]; SegTree<0..3, Int>.of(+, i => w[i] * 2).all == 12`
+    ///
+    /// ```cp
+    /// domain D = 0..3
+    /// let w: [D]Int = [1, 2, 3]
+    /// SegTree<D, Int>.of(+, i => w[i] * 2).all == 12
+    /// ```
     pub fn of<M>(op: M, f: D -> T) -> SegTree<D, T, F>:
         var s = SegTree<D, T, F>.build(Monoid<T>.of(op), [D] i => f(i), None)
         s.source = f
@@ -275,7 +280,15 @@ pub struct SegTree<D, T, F = Int>(m: Monoid<T>):
     ///
     /// cost: \(O(\log \lvert D \rvert)\) plus one call of `f`
     /// traps: when `i` is outside `D`, or the tree was not built with `of`
-    /// example: `var w = [1, 2, 3]; var s = SegTree<0..3, Int>.of(+, i => w[i]); w[1] = 10; s.refresh(1); s.all == 14`
+    ///
+    /// ```cp
+    /// domain D = 0..3
+    /// var w: [D]Int = [1, 2, 3]
+    /// var s = SegTree<D, Int>.of(+, i => w[i])
+    /// w[D(1)] = 10
+    /// s.refresh(D(1))
+    /// s.all == 14
+    /// ```
     pub fn refresh(mut self, i: D):
         assert source != None  // only a tree built with `of` has a formula
         let f = source!
@@ -286,7 +299,7 @@ pub struct SegTree<D, T, F = Int>(m: Monoid<T>):
     /// cost: \(O(1)\); \(O(\log \lvert D \rvert)\) on a tree with `act:`
     /// traps: when `i` is outside `D`
     /// example: `SegTree(+, [4, 5, 6]).get(1) == 5`
-    /// example: `var s = SegTree(act: assign, [1, 2, 3]); s.apply(0..2, Some(9)); s.get(1) == 9`
+    /// example: `var s = SegTree(act: assign, a: [1, 2, 3]); s.apply(0..2, Some(9)); s.get(1) == 9`
     pub fn get(self, i: D) -> T:
         let p = size + i.to_idx
         if act != None:
