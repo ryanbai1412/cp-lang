@@ -1,0 +1,4 @@
+code = "L0211"
+level = "warn"
+title = "State above multitest"
+summary = "a top-level `var` above `@!multitest` that each test writes"

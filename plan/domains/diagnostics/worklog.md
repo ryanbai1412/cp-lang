@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- From lint-fmt: L0211 `state_above_multitest` added to the `spec/diagnostics.md` Lints paragraph (trivial edit beside L0210; `record_tests` needs it).
 - From infra (sheriff): 7383f9135 failed CI clippy (`needless_range_loop` in `crates/cpl-cli/src/checked_fix.rs`, run 45094723874), turning main red; infra rewrote the loop over `errors.iter_mut()`. Run `cargo clippy -p <crate> --all-targets -- -D warnings` before pushing.
 - Request from lint-fmt: two checker errors could name the fix their lint names, so the lint can retire: L0510 `by_twin` (checker: E0201 "no `min_by` in scope, and not in the stdlib (yet)"); L0511 `tree_order` (checker: E0203 "Rooted has no field or method `postorder`"). The lints suggest `min(by:)`-style named options and the `Rooted` traversal that replaced `postorder` (`spec/lints/by_twin/after.cp`, `spec/lints/tree_order/after.cp`).
 - E0802 had two wordings for one rule; the top-level check in `crates/cpl-check/src/db.rs` now says the block-level one (`a bare with line comes first in its block; indent what it covers under with ...:`). A fix that adds the `:` and indents the rest of the block is left: `check/stmt.rs` and `db.rs` are at their caps.

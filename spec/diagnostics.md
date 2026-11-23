@@ -107,7 +107,7 @@ Emitted by 0.2.x: L0001 unknown_lint, L0101 position_arithmetic, L0201
 var_never_reassigned, L0202 unread_field, L0203 shadows_top_level, L0204
 turbofish_type_args, L0205 pow_method, L0206 getter_parens, L0207
 is_in_cond_header, L0208 redundant_prelude_import, L0209
-redundant_arg_name, L0210 compound_self_ref, L0301 float_equality, L0412 domain_keyed_map, L0413
+redundant_arg_name, L0210 compound_self_ref, L0211 state_above_multitest, L0301 float_equality, L0412 domain_keyed_map, L0413
 memo_key_space, L0414 unproven_list_index, L0415 loop_invariant_mod_div,
 L0501 search_loop, L0502 discarded_result, L0503 symmetric_write, L0504
 loop_reduction, L0505 index_only_loop, L0506 repeated_literal, L0507

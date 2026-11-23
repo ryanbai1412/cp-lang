@@ -1005,7 +1005,7 @@ One sub-family per module. Each says: you rebuilt something the library has.
 
 | Lint | Catches | Write instead | Tier | P | Engine | Status |
 |---|---|---|---|---|---|---|
-| state_above_multitest | `var` above `@!multitest` mutated per case | declare it below | fix? | #8 | flow | |
+| state_above_multitest | `var` above `@!multitest` mutated per case | declare it below | warn | #8 | flow | ✓state_above_multitest |
 | reset_loop_per_case | manual reset loops at the end of a case | declare per case / `Marks.clear` | fix? | #8 | flow | |
 | bound_from_shared_sum | per-case arrays sized by the global max | size by the case's own `n` | warn | #10 | ty | |
 

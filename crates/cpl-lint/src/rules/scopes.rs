@@ -1,10 +1,10 @@
-//! `var_never_reassigned` and `shadows_top_level`: both need to know which
-//! binding a name refers to.
+//! `var_never_reassigned`, `shadows_top_level` and `state_above_multitest`:
+//! each needs to know which binding a name refers to.
 
 use crate::walk::{root_name, Bind, Scope, Visitor};
-use crate::{File, Finding, SHADOWS_TOP_LEVEL, VAR_NEVER_REASSIGNED};
+use crate::{File, Finding, SHADOWS_TOP_LEVEL, STATE_ABOVE_MULTITEST, VAR_NEVER_REASSIGNED};
 use cpl_diag::{Diagnostic, Span};
-use cpl_syntax::ast::{Expr, ExprKind, Stmt, StmtKind};
+use cpl_syntax::ast::{AssignOp, BinOp, Expr, ExprKind, Stmt, StmtKind};
 use std::collections::HashMap;
 
 struct Binding {
@@ -67,6 +67,40 @@ impl Scopes<'_> {
     }
 }
 
+impl Scopes<'_> {
+    /// `acc += x` below `@!multitest` on a `var acc` above it: the value
+    /// carries from one test into the next. A counter (`k += 1`) is meant to.
+    fn leaks_across_tests(&mut self, stmt: &Stmt, target: &Expr, op: AssignOp, value: &Expr) {
+        let Some(divider) = self.divider else { return };
+        let ExprKind::Name(name) = &target.kind else {
+            return;
+        };
+        if stmt.span.shift(self.base).start < divider {
+            return;
+        }
+        let counter = matches!(op, AssignOp::Binary(BinOp::Add | BinOp::Sub))
+            && matches!(value.kind, ExprKind::Int(_));
+        let above = self
+            .resolve(name)
+            .is_some_and(|b| b.top_level && b.var.is_some() && b.span.start < divider);
+        if counter || !above {
+            return;
+        }
+        let diag = Diagnostic::warning(
+            STATE_ABOVE_MULTITEST.code,
+            target.span.shift(self.base),
+            format!("`{name}` is declared above `@!multitest`, so each test starts from the value the last one left"),
+        )
+        .with_help(format!(
+            "declare `{name}` below `@!multitest` so each test starts fresh, or allow the lint if it is meant to carry over"
+        ));
+        self.findings.push(Finding {
+            lint: &STATE_ABOVE_MULTITEST,
+            diag,
+        });
+    }
+}
+
 impl Visitor for Scopes<'_> {
     fn stmt(&mut self, stmt: &Stmt) {
         if self.scopes.len() == 1 {
@@ -84,7 +118,10 @@ impl Visitor for Scopes<'_> {
                 });
                 self.current_var = Some(self.vars.len() - 1);
             }
-            StmtKind::Assign { target, .. } => self.changes(target),
+            StmtKind::Assign { target, op, value } => {
+                self.leaks_across_tests(stmt, target, *op, value);
+                self.changes(target);
+            }
             _ => {}
         }
     }
