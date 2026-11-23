@@ -894,7 +894,7 @@ pub struct Rope<D, T>:
     /// order: positions keep the domain `D` (of `a`, when given)
     /// traps: when neither or both of `a` and `fill` are given
     /// example: `var t = Rope([1, 2, 3]); t.to_array() == [1, 2, 3]`
-    /// example: `Rope<0..2, Int>(fill: 7).get(1) == 7`
+    /// example: `var t = Rope<0..2, Int>(fill: 7); t.get(1) == 7`
     pub fn new(a: ?[D]T = None, fill: ?T = None, merge: ?((T, T) -> T) = None) -> Rope<D, T>:
         var r = Rope<D, T>(n: 0, mg: merge)
         if let x = a:
