@@ -843,7 +843,7 @@ impl<'a> Parser<'a> {
                 }
                 T::LBracket => {
                     self.bump();
-                    let indices = self.comma_list(T::RBracket, "the index", Self::expr);
+                    let indices = self.comma_list(T::RBracket, "the index", Self::index_item);
                     ExprKind::Index {
                         base: Box::new(expr),
                         indices,

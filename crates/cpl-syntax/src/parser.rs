@@ -313,6 +313,16 @@ impl<'a> Parser<'a> {
         }
     }
 
+    /// Reports an error the parser has fully recovered from (the tree reads
+    /// as the fix would), so later errors in the statement still show.
+    fn recovered(&mut self, diag: Diagnostic) {
+        if self.speculating > 0 {
+            self.speculation_failed = true;
+        } else {
+            self.sink.push(diag);
+        }
+    }
+
     /// Where an "expected X" error points: at the offending token if it is
     /// on this line, otherwise just past the last token of the line.
     fn error_span(&self) -> Span {

@@ -29,7 +29,7 @@ impl<'a> Parser<'a> {
         if let (Some(name), Some(range)) = (name, range) {
             diag = diag.with_fix("loop over the range", whole, format!("{name} in {range}"));
         }
-        self.error(diag);
+        self.recovered(diag);
         self.pos = end;
         let kind = name.map_or(PatternKind::Wildcard, |n| PatternKind::Name(n.to_string()));
         let pat = Pattern { kind, span: whole };
@@ -61,7 +61,7 @@ impl<'a> Parser<'a> {
                 return;
             };
         let theirs = if fix.is_empty() { "case" } else { "default" };
-        self.error(
+        self.recovered(
             Diagnostic::error(
                 codes::REMOVED_SYNTAX,
                 span,
@@ -70,6 +70,40 @@ impl<'a> Parser<'a> {
             .with_help(format!("write the pattern itself: `{ours}`"))
             .with_fix(format!("remove `{theirs}`"), span, fix),
         );
+    }
+
+    /// One index in `xs[...]`; Python's slice `xs[a:b]` is one error with
+    /// the `xs[a..b]` fix, read as that range.
+    pub(super) fn index_item(&mut self) -> Expr {
+        let start = self.start();
+        let lo = (!self.at(T::Colon)).then(|| self.expr());
+        let Some(colon) = self.at(T::Colon).then(|| self.span()) else {
+            return lo.unwrap_or(Expr {
+                kind: ExprKind::Error,
+                span: self.span(),
+            });
+        };
+        self.recovered(
+            Diagnostic::error(
+                codes::EXPECTED_TOKEN,
+                colon,
+                "CP Lang slices with `..`, not `:`",
+            )
+            .with_help("write `xs[a..b]`; `xs[a..]` and `xs[..b]` leave out an end")
+            .with_fix("replace `:` with `..`", colon, ".."),
+        );
+        self.bump();
+        let hi = (!matches!(self.peek(), T::RBracket | T::Comma)).then(|| Box::new(self.expr()));
+        let kind = ExprKind::Range {
+            lo: lo.map(Box::new),
+            hi,
+            inclusive: false,
+            step: None,
+        };
+        Expr {
+            kind,
+            span: self.span_from(start),
+        }
     }
 }
 

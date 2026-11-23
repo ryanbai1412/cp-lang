@@ -1805,3 +1805,13 @@ fn a_switch_reads_as_a_match_with_one_error_per_foreign_word() {
     let fixed: Vec<_> = d.iter().map(|d| d.fixes[0].edits[0].1.as_str()).collect();
     assert_eq!(fixed, ["match", "", "_"], "{d:?}");
 }
+
+#[test]
+fn a_python_slice_is_one_error_with_the_range_fix() {
+    let d = parse_file("print(xs[1:], xs[:2], xs[a:b])\nprint(xs[i])\n").diagnostics;
+    let fixed: Vec<_> = d
+        .iter()
+        .map(|d| (d.code.0, d.fixes[0].edits[0].1.as_str()))
+        .collect();
+    assert_eq!(fixed, [("E0103", ".."); 3], "{d:?}");
+}
