@@ -82,7 +82,7 @@ All measured 2026-11-22 on main `4b8f504f` (commands in [metrics.toml](metrics.t
 | Browser smoke | `pnpm --dir web smoke` | pass, 0 page errors | pass, in CI | M1 |
 | Broken internal links | `pnpm --dir web links` | 0 (was 1) | 0 | M1 |
 | cpl.wasm gzipped (what editors load) | `node web/scripts/wasm-size.mjs` | 1,660,518 B; cpl-build.wasm 1,989,851 B on first build/explain/stress | ≤ 1,720,000 B, enforced, shrink-only | M1 |
-| Search index gzipped | `gzip -9c web/out/api/search \| wc -c` | 538,189 B (was 2,690,140) | ≤ 600,000 B | M1 |
+| Search index gzipped | `node web/scripts/budgets.mjs` (runs after every build) | 544,546 B (was 2,690,140) | ≤ 600,000 B | M1 |
 | Page weight, gzipped | `pnpm --dir web page-weight` | `/` 784,740 B, no cpl.wasm (was 2,560,698 B); `/docs/guides/tour` 873,028 B | `/` ≤ 800,000 B and no cpl.wasm; tour ≤ 900,000 B | M1 |
 | Docs-only eval pass | `scripts/writable-from-docs.py --manifest research/writable-from-docs-set.json` | **not runnable** (statement fetcher deleted); last recorded 49/55 | ≥ 52/55 | M2 |
 | Live routes up | `curl` 8 routes on cp-lang.org | 8/8 200 | 8/8 | - |

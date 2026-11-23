@@ -76,6 +76,13 @@ for (const [query, url] of [['Monoid', '/docs/ref/std/algebra'], ['borrow it', '
   await page.locator(`[role=option][id^="fd-search-option-${url}"]`).first().waitFor({ timeout: 30000 });
 }
 console.log('search finds a reference item, a guide heading and a core table row');
+// A share link carries the program and its input in the URL; opening it restores both.
+const shared = Buffer.from(JSON.stringify({ v: 1, src: 'let n: Int = read()\nprint(n * 7)\n', in: '6\n' })).toString('base64url');
+await page.goto(base + '/play#c=' + shared);
+await page.getByText('print(n * 7)').waitFor({ timeout: 30000 });
+await page.getByRole('button', { name: 'Run' }).click();
+await page.getByRole('status').filter({ hasText: '42' }).waitFor({ timeout: 30000 });
+console.log('a share link restores its program and input');
 // Lint pages run their examples: Lint on Flagged reports the lint, on Write instead it reports none.
 await page.goto(base + '/lints/search_loop');
 const [flagged, instead] = [page.locator('section').filter({ hasText: 'Flagged' }), page.locator('section').filter({ hasText: 'Write instead' })];

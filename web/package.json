@@ -16,7 +16,8 @@
     "page-weight": "node tests/run.mjs page-weight.mjs",
     "phone": "node tests/run.mjs phone.mjs",
     "wasm-size": "node scripts/wasm-size.mjs",
-    "prebuild": "node scripts/prebuild.mjs"
+    "prebuild": "node scripts/prebuild.mjs",
+    "postbuild": "node scripts/links.mjs && node scripts/budgets.mjs"
   },
   "dependencies": {
     "@codemirror/autocomplete": "6.20.4",
