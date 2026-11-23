@@ -447,4 +447,32 @@ impl<'a> Lowerer<'a> {
             last.fix(format!("write `{new}`"), edit, new);
         }
     }
+
+    /// `s.parse()` with no type: `parse<T>` reads a `T`, so it has to be
+    /// named (R10.2.4). The fix names the type the result is used as, else
+    /// `Int`.
+    pub(super) fn parse_without_type(
+        &mut self,
+        base: &ast::Expr,
+        name: &ast::Name,
+        hint: Option<&Ty>,
+    ) -> bool {
+        if !matches!(self.probe_ty_silent(base), Some(Ty::Str | Ty::StrView)) {
+            return false;
+        }
+        let ty = match hint {
+            Some(Ty::Opt(t)) if !matches!(**t, Ty::Unit) => self.show(t),
+            _ => "Int".to_string(),
+        };
+        let recv = self.source(base.span).to_string();
+        let message = format!("`parse` needs the type it reads: `{recv}.parse<{ty}>()`");
+        let mut d = Diagnostic::error(codes::WRONG_ARG_COUNT, self.span(name.span), message);
+        d.help = Some(format!(
+            "`parse<T>()` reads a `T` by the rules `read` uses (R10.2.4), so name it: `{recv}.parse<{ty}>()`, or `{recv}.parse<(Int, Int)>()` for two numbers"
+        ));
+        let at = self.span(Span::point(name.span.end));
+        d.fix(format!("write `parse<{ty}>()`"), at, format!("<{ty}>"));
+        self.diags.push(d);
+        true
+    }
 }

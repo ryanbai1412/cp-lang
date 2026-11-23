@@ -1,0 +1,15 @@
+error[E0303]: `parse` needs the type it reads: `s.parse<Int>()`
+  --> parse_without_a_type_names_it.cp:2:16
+  |
+2 | let x: Int = s.parse()!
+  |                ^^^^^
+  = help: `parse<T>()` reads a `T` by the rules `read` uses (R10.2.4), so name it: `s.parse<Int>()`, or `s.parse<(Int, Int)>()` for two numbers
+
+error[E0303]: `parse` needs the type it reads: `s.parse<Int>()`
+  --> parse_without_a_type_names_it.cp:4:9
+  |
+4 | print(s.parse())
+  |         ^^^^^
+  = help: `parse<T>()` reads a `T` by the rules `read` uses (R10.2.4), so name it: `s.parse<Int>()`, or `s.parse<(Int, Int)>()` for two numbers
+
+parse_without_a_type_names_it.cp: 2 errors

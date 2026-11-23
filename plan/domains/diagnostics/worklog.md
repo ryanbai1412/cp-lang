@@ -533,3 +533,7 @@ Landed since 23:10: four type/flow lints from `spec/idioms/lints.md`, L0571 `neg
   error fixes through `cpl_ir::fix` and then the lint round, as `cpl fix`
   does. `fix_all_matches_cpl_fix` matches on all 27 fix cases, so
   FIX_ALL_DIFFERS is deleted.
+- `s.parse()` with no type checked clean and hit `todo` at run (R0402).
+  Lowering now reports E0303 "`parse` needs the type it reads" on the
+  name, with the fix `parse<T>()` (T from the expected `?T`, else `Int`),
+  and no cascade. Golden: parse_without_a_type_names_it.

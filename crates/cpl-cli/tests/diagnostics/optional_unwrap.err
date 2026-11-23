@@ -1,8 +1,8 @@
-error[E0203]: an `Int` has no method `unwrap` that `cpl run` knows
+error[E0203]: a `?Int` has no method `unwrap` that `cpl run` knows
   --> optional_unwrap.cp:1:42
   |
 1 | fn best(xs: List<Int>) -> Int = xs.max().unwrap()
   |                                          ^^^^^^
-  = help: this is not an optional, so there is nothing to unwrap
+  = help: `x!` unwraps an optional, trapping on `None` at this place (R02.4.2)
 
 optional_unwrap.cp: 1 error

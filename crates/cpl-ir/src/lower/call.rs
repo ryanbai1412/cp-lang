@@ -38,6 +38,9 @@ impl<'a> Lowerer<'a> {
         hint: Option<&Ty>,
     ) -> Expr {
         let span = whole.span;
+        if args.is_empty() && name.text == "parse" && self.parse_without_type(base, name, hint) {
+            return self.err_expr(span);
+        }
         self.intern_inline_product(base, span);
         // `x.inv()`: a `@get` method reads the same with empty parentheses.
         if args.is_empty() {
