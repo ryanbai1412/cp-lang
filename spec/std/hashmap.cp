@@ -463,19 +463,6 @@ pub fn push<K>(mut self: Counter<K, Int>, x: K):
 pub fn pop<K>(mut self: Counter<K, Int>, x: K):
     self.add(x, -1)
 
-/// How many times each element of `self` occurs, as a `Counter` whose missing keys read `0`:
-/// `counts(xs)[k]`. The same walk as `Counter.of`, on any `Seq`.
-///
-/// cost: O(n) expected
-/// empty: an empty counter
-/// traps: never
-/// example: `let c = counts("abca"); c['a'] == 2 and c['z'] == 0 and c.len == 3`
-/// example: `counts([(1, 2), (1, 2), (3, 4)])[(1, 2)] == 2`
-pub fn counts<S: Seq, T>(self: S) -> Counter<T>:
-    var c: Counter<T, Int> = Counter(0)
-    for x in self: c.add(x, 1)
-    c
-
 @test
 fn flat_map_matches_builtin_hash_map():
     var fm = FlatMap<Int>(0)

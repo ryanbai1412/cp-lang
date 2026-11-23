@@ -238,6 +238,31 @@ impl<'a> Lowerer<'a> {
                     _ => raw_base,
                 };
                 if let Ty::Struct(sid) = base_expr.ty {
+                    if let Some(key_ty) = self.counter_key.get(&sid).cloned() {
+                        if indices.len() != 1 {
+                            self.error(
+                                codes::WRONG_ARG_COUNT,
+                                span,
+                                format!("a counter takes 1 index, found {}", indices.len()),
+                            );
+                            return self.err_expr(span);
+                        }
+                        let map_ty = self.structs[sid].def.fields[0].1.clone();
+                        let map_expr =
+                            self.mk(ExprKind::Field(Box::new(base_expr), 0), map_ty, span);
+                        let key = self.expect(&indices[0], &key_ty);
+                        let found = self.mk(
+                            ExprKind::Builtin(Builtin::MapGet, vec![map_expr, key]),
+                            Ty::opt(Ty::Int),
+                            span,
+                        );
+                        let zero = self.int_lit(0, span);
+                        return self.mk(
+                            ExprKind::Binary(BinOp::Coalesce, Box::new(found), Box::new(zero)),
+                            Ty::Int,
+                            span,
+                        );
+                    }
                     let ast_args: Vec<ast::Arg> = indices
                         .iter()
                         .map(|idx| ast::Arg {

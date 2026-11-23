@@ -489,6 +489,7 @@ pub const VALUE_NAMES: &[&str] = &[
     "ceil",
     "round",
     "len",
+    "counts",
     "prefix",
     "span",
     "take",

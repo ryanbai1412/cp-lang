@@ -42,7 +42,7 @@ impl<'a> Lowerer<'a> {
         }
         let info = &self.structs[sid];
         let has_at = info.methods.contains_key("at") || info.projections.contains_key("at");
-        if !has_at {
+        if self.counter_key.contains_key(&sid) || !has_at {
             return None;
         }
         let span = Span::new(base.span.start, index.span.end + 1);

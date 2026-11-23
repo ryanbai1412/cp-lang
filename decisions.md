@@ -6234,3 +6234,19 @@ constants and the `exit(3)` in the C++ runtime, and the sentence in
 - **Reverse.** Put `"Hash"` back in `TRAIT_NAMES`, delete the trait, its
   impls, `mix64` and `hash_fields` from `derive.cp` and the prelude line;
   `Env::declared` can stay (it is the correct orphan test either way).
+
+## 257. `counts` stays a compiler builtin until a generator passed to a `Seq` parameter streams (2026-11-22)
+
+- **Decision.** Revert `068f144ec` (`counts` as `std.hashmap.counts` over
+  `Counter`): `lower_counts` and the synthetic counter structs come back, the
+  std body and its prelude line go. The Q3 perf gate (decision 256's
+  direction, Q3 default (a)) now also compares peak memory on a generator
+  argument, not only time on a list.
+- **Why.** `counts(i % 1000 for i in 0..n)` at n = 2e7: builtin 0.08 s and
+  3328 KB; the std body 0.21 s and 264908 KB, because a generator passed to
+  `S: Seq` is materialized into a list before the body runs, while the
+  builtin folds it in place. `prod` passes the same gate: builtin and std
+  both 133836 KB and 0.10-0.13 s, since the builtin materialized too.
+- **Reverse.** Once a generator argument to a generic `Seq` parameter
+  streams (compiler worklog request), re-apply `068f144ec` and rerun the
+  same two benchmarks.

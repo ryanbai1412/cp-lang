@@ -806,6 +806,9 @@ struct Lowerer<'a> {
     next_loop: LoopId,
     /// The places a `(place ??= init)` filled: module and span.
     filled: HashSet<(ModId, u32, u32)>,
+    /// The structs `counts(xs)` makes, by the type counted, and back.
+    counter_structs: HashMap<Ty, StructId>,
+    counter_key: HashMap<StructId, Ty>,
 }
 
 impl<'a> Lowerer<'a> {
@@ -913,6 +916,8 @@ impl<'a> Lowerer<'a> {
             in_library: HashSet::new(),
             next_loop: 0,
             filled: HashSet::new(),
+            counter_structs: HashMap::new(),
+            counter_key: HashMap::new(),
         }
     }
 
@@ -4517,6 +4522,43 @@ impl<'a> Lowerer<'a> {
     pub(super) fn fresh_loop(&mut self) -> LoopId {
         let id = self.next_loop;
         self.next_loop += 1;
+        id
+    }
+
+    pub(super) fn push_synth_struct(
+        &mut self,
+        name: String,
+        fields: Vec<(String, Ty)>,
+    ) -> StructId {
+        let id = self.structs.len();
+        self.structs.push(StructInfo {
+            def: StructDef {
+                name,
+                fields,
+                fixed: Default::default(),
+                narrow_ints: Default::default(),
+                show_fn: None,
+                eq_fn: None,
+                lt_fn: None,
+                cached_fields: Default::default(),
+            },
+            decl: None,
+            mod_id: 0,
+            offset: 0,
+            origin_gen: None,
+            env: HashMap::new(),
+            methods: HashMap::new(),
+            trait_methods: HashMap::new(),
+            op_methods: Vec::new(),
+            gen_methods: HashMap::new(),
+            getters: HashSet::new(),
+            projections: HashMap::new(),
+            consts: HashMap::new(),
+            owned_domains: HashMap::new(),
+            owned_domain_inits: Vec::new(),
+            laws: Vec::new(),
+            index_domain: None,
+        });
         id
     }
 
