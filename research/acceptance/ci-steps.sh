@@ -5,6 +5,7 @@
 # .github/workflows/acceptance.yml after the site's installer.
 set -u
 os="${1:-$(uname -s)}"
+repo="$(cd "$(dirname "$0")/../.." && pwd)"
 work="$(mktemp -d)"
 cd "$work" || exit 1
 checks=()
@@ -40,22 +41,7 @@ check size "" sh -c 'test "$(wc -c < sum.cpp)" -lt 65536 && wc -c < sum.cpp'
 check crlf-source 14 sh -c 'cpl run crlf.cp < in.txt'
 check crlf-input 14 sh -c 'cpl run sum.cp < in-crlf.txt'
 check fmt "" cpl fmt sum.cp
-check lsp-starts capabilities python3 -c '
-import subprocess
-body = b"{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"initialize\",\"params\":{}}"
-p = subprocess.Popen(["cpl", "lsp"], stdin=subprocess.PIPE, stdout=subprocess.PIPE)
-p.stdin.write(b"Content-Length: %d\r\n\r\n" % len(body) + body)
-p.stdin.flush()
-try:
-    head = b""
-    while not head.endswith(b"\r\n\r\n"):
-        head += p.stdout.read(1)
-    size = int(head.split(b"Content-Length:")[1].split(b"\r\n")[0])
-    out = p.stdout.read(size)
-finally:
-    p.kill()
-print(out.decode(errors="replace"))
-'
+check lsp "" python3 "$repo/editors/lsp-smoke.py" acceptance cpl lsp
 
 printf '{"os": "%s", "checks": [' "$os"
 ( IFS=,; printf '%s' "${checks[*]}" )

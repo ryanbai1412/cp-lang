@@ -82,5 +82,5 @@ target = "8/8 steps on Linux, macOS and Windows; solve >= 8/10, compete >= 4/5 i
 [[metric]]
 name = "newcomer_lint_flagged"
 command = "uv run python corpus/newcomer/score.py --fixes"
-today = "65/105 marked spots (62%), 58 files, 7 unmarked diagnostics, 58/58 still pass cpl check after --fix (2026-11-22 22:15, main after 64c7bc5f3)"
+today = "82/110 marked spots (75%), 59 files, 7 unmarked diagnostics, 59/59 still pass cpl check after --fix (2026-11-22 22:20, main 395e1a17a)"
 target = ">= 90% flagged, 0 files broken by fixes (Milestone 1, 09:30 PST 2026-11-23)"

@@ -39,3 +39,20 @@ Detail behind [README.md](README.md). Numbers are from [metrics.toml](metrics.to
 1. Local judges for the 15 held-out problems (`research/acceptance/problems/<id>/`).
 2. Score run 1, publish BLOCKERS.md, send each lane its rows; a run and a worklog checkpoint every 2 hours.
 3. A Linux, macOS and Windows CI job for the install and CLI steps, feeding each run.
+
+## General fixes owed
+Each local fix tonight, with the general fix that would remove its whole class (Ryan, 2026-11-22).
+
+| Instance (local fix) | General fix | Owner |
+|---|---|---|
+| cf2147f, ucup5s05f, the chunk_by/scan_in_place/next_less migrations: renamed or removed stdlib names fixed by hand in each port | Every removed name keeps a tombstone that turns E0201 into "renamed to X" with a machine-applicable fix, so `cpl lint --fix` (or a `cpl migrate` codemod) moves old code, ports and docs examples together | stdlib (tombstones), diagnostics (fix), lint-fmt (codemod) |
+| noip21p3: `scan(gaps, +)[i]` returned the element, not the fold, so the port was rewritten to `prefix_fold` | One indexing rule for every fold/view type, checked by a conformance case per type, so a view can't silently index its source | spec + compiler |
+| `.rev` view indexing (P0, run 1) | Same conformance family: every view's `[i]` agrees with its `print` order | compiler |
+| `count(<bool gen>)` counts every element (P0, run 1) | The free fold forms (`sum`/`count`/`any`/`all`/`max` over a generator) share one implementation with the method forms, and a test checks each pair | stdlib |
+| `Map.get` copies its value, a hidden O(n) (P0, run 1) | Getters return a borrowed view by default and a copy only when asked; a perf lint flags a value-type copy in a loop | compiler (codegen), lint-fmt |
+| web/content/docs/guides/stdlib.mdx lists removed APIs | Generate the stdlib tables from `std/*.cp` exports and doc comments, checked in `gen.toml` | site + stdlib |
+| ci-steps.sh's hand-rolled LSP check broke twice (no `timeout` on macOS, a split read on Windows) | Done: the acceptance job runs the repo's cross-platform `editors/lsp-smoke.py` (diagnostics, completion, definition, format) | idioms |
+| Each held-out problem has its own brute/gen/check scripts | One problem-package format shared by corpus/, research/acceptance/ and `cpl stress`/`cpl test` (gen, brute, checker, limits), so a judge is written once and every tool runs it | idioms + debugger + tools |
+| newcomer `score.py` has to match a lint to a mark within ±3 lines | Every lint anchors on the construct it names (the loop header, the fn), documented in the catalog schema, so marks match exactly | lint-fmt |
+| `cpl test` case-sensitive `Yes`/`YES`; any-answer problems need a hand-written `@check` | The output comparison mode (tokens, case-insensitive yes/no, floats with tolerance, checker) is part of the problem package and judge profile, not per-solution code | tools |
+| Run 1's 2 h virtual round took the agent 2 minutes | Score agent runs by findings and tool round-trips, not wall-clock, and pace the round by problem count | idioms |

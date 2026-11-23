@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
-    paths: [".github/workflows/acceptance.yml", "research/acceptance/ci-steps.sh"]
+    paths: [".github/workflows/acceptance.yml", "research/acceptance/ci-steps.sh", "editors/lsp-smoke.py"]
 permissions:
   contents: read
 jobs:
@@ -22,7 +22,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          sparse-checkout: research/acceptance
+          sparse-checkout: |
+            research/acceptance
+            editors/lsp-smoke.py
+          sparse-checkout-cone-mode: false
       - name: Install from the site
         if: runner.os != 'Windows'
         run: curl -fsSL https://cp-lang.org/install.sh | sh -s -- --edge
