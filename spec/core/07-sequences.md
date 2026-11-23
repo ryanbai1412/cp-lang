@@ -304,7 +304,7 @@ since the second walk reruns against what the first wrote.
 | `s.sum()`, `s.prod()` | `T`; empty is the identity | \(O(n)\) (R07.9.1) |
 | `s.fold(op)` | `T` when `op` has an identity (`+`, `max` on a bounded type, `gcd`), else `?T` | \(O(n)\) (R07.9.2) |
 | `s.fold(f, init: a)` | `Acc`: a left fold into any accumulator, `init` when empty | \(O(n)\) (R07.9.2) |
-| `s.min()`, `s.max()`, `s.min(by: k)` | `?T`, `None` when empty; first on ties | \(O(n)\) (R07.9.3) |
+| `s.min()`, `s.max()`, `s.min(by: k)`, `s.max(ties: Ties.Last)` | `?T`, `None` when empty; first on ties, the last with `ties: Ties.Last` | \(O(n)\) (R07.9.3) |
 | `s.min_k(k, by: f)`, `s.max_k(k, by: f)` | `List<T>`, the `k` smallest or largest (every element when `k >= n`) in no set order; earlier wins ties | \(O(n)\) expected (R07.9.3) |
 | `s.count(p)`, `s.any(p)`, `s.all(p)`; `s.count()` counts every element, so on a `Seq<Bool>` it is an error naming `count(x => x)` (the trues) and `len` (decision 378) | `Int`, `Bool` | \(O(n)\) (R07.9.4) |
 | `s.find(p)`, `s.rfind(p)` | `?T`, linear scan (binary search is `r.first_true`) | \(O(n)\) (R07.9.5) |
@@ -325,7 +325,8 @@ method documents; hover and `cpl explain` name that method and its cost
 
 Position queries are folds over `a.keys`, because the keys are a range of
 positions. `argmin`/`argmax` are kept as the named form of the first
-line below (first on ties); there are no `first_at` or `order` twins:
+line below, with the same `ties:` option (first by default); there are no
+`first_at` or `order` twins:
 
 <!-- spec-only: expression tour, one form per line -->
 ```python

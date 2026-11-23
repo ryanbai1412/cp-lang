@@ -292,8 +292,9 @@ from the front.
 ## Open
 
 1. **`spans` tie-breaking.** Strict-left, non-strict-right counts each
-   subarray once; a `ties:` option could expose the other three choices,
-   but no dream needs them yet.
+   subarray once. The extremes' `ties:` option (`Ties.First`,
+   `Ties.Last`) picks one of two; `spans` would need four, and no dream
+   needs the other three yet.
 2. **`a.ring` keys.** A wrapping window's keys are a position sequence, not
    a range. The alternative is to forbid `ring.windows` and require
    `a.ring.from(i).take(k)`.
