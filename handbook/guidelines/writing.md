@@ -36,6 +36,27 @@ A short process or guideline document may need only a summary, the rules
 with their reasons, and a checklist. Keep the order: why first, details
 last.
 
+## Guidelines and checklists
+
+Rules come in pairs of documents, so that people can understand them and
+machines can enforce them:
+
+- **The guideline** (`handbook/guidelines/<topic>.md`) explains the rules
+  at a high level, in prose: what we are trying to achieve, the few ideas
+  behind the rules, and examples of good and bad. Read it once to learn how
+  to think about the topic.
+- **The checklist** (`handbook/guidelines/<topic>-checklist.md`) spells
+  out every rule, exhaustively and systematically. Each rule has a stable
+  identifier such as `std-api/R12`, one sentence stating it, its reason in a
+  line, a short example, and what enforces it: a lint, a test, a gate, or
+  `review` where nothing mechanical can decide.
+
+A lint or test that enforces a rule cites its identifier, and a domain's
+quality register points to checklist rules instead of restating them. A
+rule that exists only in code, or only in a register, belongs in a
+checklist. When two rules say nearly the same thing, merge them into one
+more general rule.
+
 ## Style
 
 - **Define every project term** the first time it appears, or link to
