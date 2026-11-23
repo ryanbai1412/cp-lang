@@ -180,7 +180,10 @@ impl<'a> Lexer<'a> {
         let operand_after =
             rest.starts_with(|c: char| c.is_ascii_alphanumeric() || c == '_' || c == '(');
         let hides_closer = !self.openers.is_empty() && rest.contains([')', ']']);
-        let hides_else = rest.contains(" else:") || rest.contains(" else :");
+        let line = &self.src[self.src[..start].rfind('\n').map_or(0, |i| i + 1)..start];
+        let words = |s: &'a str| s.split(|c: char| !c.is_alphanumeric() && c != '_');
+        let open_if = words(line).any(|w| w == "if") && !words(line).any(|w| w == "else");
+        let hides_else = open_if && (rest.contains(" else:") || rest.contains(" else :"));
         if !operand_before || !operand_after || !(hides_closer || hides_else) {
             return false;
         }
