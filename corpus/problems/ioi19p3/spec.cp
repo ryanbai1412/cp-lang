@@ -1,43 +1,48 @@
 // IOI 2019 "Rectangles": count rectangles whose every interior cell is
 // strictly lower than the border cells in its row and column. An interior is
 // a valley of each of its rows and of each of its columns. From the interior's
-// top-left cell (r, c), a row valley starting at c reaches `deep` rows down and a
-// column valley starting at r reaches `broad` columns right; a pair forms a
+// top-left cell, a row valley starting there reaches `deep` rows down and a
+// column valley starting there reaches `broad` columns right; a pair forms a
 // rectangle when each reaches across the other, a 2D dominance count per cell.
-@grader
-fn count_rectangles(a: List<List<Int>>) -> Int:
-    domain R = [a.len]
-    domain C = [a[0].len]
-    let h = [R, C] (r, c) => a[Int(r)][Int(c)]
+// Reads the sample grader's input (`n m`, then the grid); see frictions.
+let n = read<1..=2500>()
+let m = read<1..=2500>()
+domain R = [n]
+domain C = [m]
+let h = read<[R, C]0..=7_000_000>()
 
-    var deep = Map<(R, Range<C>), Int>()
-    var across = Map<(R, C), List<(wide: Int, deep: Int)>>()
-    for r in R.rev:
-        for s in h[r].valleys():
-            let d = 1 + (r.next.and_then(below => deep.get((below, s))) ?? 0)
-            deep[(r, s)] = d
-            across.get_or_insert((r, s.l.r!)).push((wide: s.len, deep: d))
-    var broad = Map<(C, Range<R>), Int>()
-    var down = Map<(R, C), List<(tall: Int, broad: Int)>>()
-    for c in C.rev:
-        for s in h[.., c].valleys():
-            let b = 1 + (c.next.and_then(right => broad.get((right, s))) ?? 0)
-            broad[(c, s)] = b
-            down.get_or_insert((s.l.r!, c)).push((tall: s.len, broad: b))
+var across: [R, C]List<(wide: Int, deep: Int)> = [R, C] (r, c) => List()
+var below = Map<(C, C), Int>()  // valleys keyed by their ends
+for r in R.rev:
+    var here = Map<(C, C), Int>()
+    for s in ([C] c => h[r, c]).valleys():
+        let ends = (s.first!, s.last!)
+        here[ends] = 1 + (below.get(ends) ?? 0)
+        across[r, s.first!].push((wide: s.len, deep: here[ends]))
+    below = here
+var down: [R, C]List<(tall: Int, broad: Int)> = [R, C] (r, c) => List()
+var right = Map<(R, R), Int>()
+for c in C.rev:
+    var here = Map<(R, R), Int>()
+    for s in ([R] r => h[r, c]).valleys():
+        let ends = (s.first!, s.last!)
+        here[ends] = 1 + (right.get(ends) ?? 0)
+        down[s.first!, c].push((tall: s.len, broad: here[ends]))
+    right = here
 
-    domain Width = 1..=C.len
-    var widths = Fenwick<Width, Int>()
-    fn fitting(xs: List<(wide: Int, deep: Int)>, ys: List<(tall: Int, broad: Int)>) -> Int:
-        let xs = xs.sorted(by: x => desc(x.deep))
-        var taken = 0
-        var count = 0
-        for y in ys.sorted(by: y => desc(y.tall)):
-            while taken < xs.len and xs[taken].deep >= y.tall:
-                widths.add(Width(xs[taken].wide), 1)
-                taken += 1
-            count += widths.fold(..=Width(min(y.broad, C.len)))
-        for x in xs.take(taken):
-            widths.add(Width(x.wide), -1)
-        count
+domain Width = 1..=C.count
+var widths = Fenwick<Width, Int>()
+fn fitting(xs: List<(wide: Int, deep: Int)>, ys: List<(tall: Int, broad: Int)>) -> Int:
+    let xs = xs.sorted(by: x => desc(x.deep))
+    var taken = 0
+    var count = 0
+    for y in ys.sorted(by: y => desc(y.tall)):
+        while taken < xs.len and xs[taken].deep >= y.tall:
+            widths.add(Width(xs[taken].wide), 1)
+            taken += 1
+        count += widths.fold(..=Width(y.broad))
+    for x in xs.take(taken):
+        widths.add(Width(x.wide), -1)
+    count
 
-    across.items.sum(of: ((corner, xs)) => fitting(xs, down.get(corner) ?? List()))
+print(R.sum(of: r => C.sum(of: c => fitting(across[r, c], down[r, c]))))
