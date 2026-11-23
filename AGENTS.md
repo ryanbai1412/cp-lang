@@ -3,6 +3,12 @@
 Read this first if you are working on CP Lang, agent or person: what we are
 building, what it owes the contestant, and the rules every change follows.
 
+The handbook (`handbook/README.md`) is becoming the one home for how we
+work: read `handbook/process/handbook-and-rfcs.md` for how it is kept true,
+when to write an RFC, and the escape hatch (process over 10% of your time
+may be skipped). Its sections land one at a time; until a section lands, the
+files below remain authoritative.
+
 Start with `plan/product/`: `VISION.md` (who CP Lang is for and why),
 `EXPERIENCE.md` (the journeys we owe them) and `MILESTONE-1.md` (the
 milestone every lane works toward). Product docs say what users get, `spec/`
@@ -13,8 +19,10 @@ Then read, in order:
 0. `plan/STATUS.md` (generated: every domain's metrics and open questions) and `spec/README.md`: where the 0.3.0 work stands today,
    how the spec and corpus fit together, the checks to run, and what is open.
    `spec/` (`spec/core/`, `spec/lib/`, `spec/tools/`) and the stdlib in
-   `std/` are the only normative language sources; where anything else
-   disagrees with them, they win.
+   `std/` state the language precisely; where anything else disagrees with
+   them, they win. Once `handbook/language/` lands, it leads: it says what
+   the design means, the spec states it precisely, and the two change
+   together.
 1. `plan/OPERATING.md`: settled decisions and the loop we work in.
 2. `plan/DOMAINS.md`: the domains (one domain = one lane = one owner);
    find yours, then read `plan/domains/<domain>/` and `plan/QUESTIONS.md`.

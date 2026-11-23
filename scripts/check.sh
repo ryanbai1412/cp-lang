@@ -276,7 +276,7 @@ fi
 # script tests with the conformance suite; a trailing @N/M passes --shard N/M), and CPL_GATE_PART=tests:<nextest partition> (e.g. tests:hash:1/6)
 # runs only that share of the tests, plus the doctests in share 1. Unset runs
 # all of --fast.
-script_tests=(scripts/test_dream_gaps.py scripts/test_review_check.py scripts/test_check_cache.py scripts/test_cxx_cache.py scripts/test_release.py scripts/test_debt_ratchet.py scripts/test_fmt_check.py scripts/test_skill_gen.py scripts/test_affected.py scripts/test_land_stats.py scripts/test_devex_stats.py scripts/test_new_lint.py scripts/test_conform_staged.py scripts/test_domain_of.py scripts/test_culprit.py)
+script_tests=(scripts/test_dream_gaps.py scripts/test_review_check.py scripts/test_check_cache.py scripts/test_cxx_cache.py scripts/test_release.py scripts/test_debt_ratchet.py scripts/test_fmt_check.py scripts/test_skill_gen.py scripts/test_affected.py scripts/test_land_stats.py scripts/test_devex_stats.py scripts/test_new_lint.py scripts/test_conform_staged.py scripts/test_domain_of.py scripts/test_culprit.py scripts/test_check_handbook.py)
 gate_part="${CPL_GATE_PART:-}"
 case "$gate_part" in
     "" | checks) ;;
@@ -540,6 +540,9 @@ fi
 step "tech-debt ratchet (scripts/debt-ratchet.py --check)"
 python3 scripts/debt-ratchet.py --check \
     || fail "tech-debt ratchet failed; see scripts/debt-ratchet.json"
+
+step "handbook reads for an outsider (scripts/check-handbook.py)"
+uv run --quiet python scripts/check-handbook.py || fail "handbook doc leans on shared context; see above"
 
 # On a main push CI sets CPL_DERIVED_HEALED=1: the regen job in the same run
 # commits these files (and goes red if it can't), so staleness only warns.

@@ -1,0 +1,199 @@
+# The CP Lang handbook
+
+> **Status: proposed.** This index describes the target structure. Files
+> listed here don't exist until they land. Old files are deleted only after
+> their content is reconciled into the new ones and every link to them works.
+
+This is how the CP Lang project works **today**: what we're building and for
+whom, what we value, how work flows, how to do each kind of work well, how
+the language and toolchain are designed, and who owns what. It's written for
+someone who has never seen the project, a new contributor or a newly started
+agent. Before your first change, read `principles.md`, then the charter of
+the domain you're working in.
+
+## Where each kind of fact lives
+
+Every fact has one authoritative home. Other documents explain it, link to
+it or are generated from it; they don't restate it.
+
+| Kind of fact | Home |
+|---|---|
+| Who it's for, what it should feel like, milestone bars | `handbook/product/` |
+| Values and design rules | `handbook/principles.md` |
+| Why the language is shaped this way: the model, the decisions, the rejected alternatives | `handbook/language/` |
+| Exactly what the language does, edge cases included | `spec/`, with a conformance case per rule |
+| How the toolchain is built, its contracts and invariants | `handbook/design/` |
+| How work happens, who owns what, who decides | `handbook/process/`, `handbook/domains/` |
+| What we're working on now, current numbers, blockers | `plan/` and generated metrics |
+| Why a major change was made | `handbook/rfcs/`, `decisions.md` |
+| What the code actually does | the code, checked by tests against the above |
+
+**Language design and spec move together.** The handbook's language docs
+lead: they say what we mean. The spec states the same design precisely. A
+language change, by an RFC or a direct edit, updates both in the same
+change, and an edit made to the spec first also updates the matching
+handbook section. If the two disagree, that's a consistency bug for the spec
+owner to resolve: usually the spec is fixed to match the intent, but
+sometimes writing the spec exposed a case where the intent was wrong, and
+then the handbook is fixed.
+
+**Durable knowledge here, numbers elsewhere.** A charter says *the compiler
+must pass every conformance case*. How many pass today is a generated
+number. *Fix the remaining failures* is in the domain's plan.
+
+## Common tasks
+
+| I want to… | Read |
+|---|---|
+| make any change | `process/change.md`, then my domain's charter |
+| change the language | `language/<area>.md`, the spec chapter it leads, `process/change.md` |
+| add or change a std API | `guidelines/std-api.md`, `guidelines/std-docs.md` |
+| write or improve an error message | `guidelines/errors.md` |
+| add a test suite, or know which test to write | `process/quality.md` |
+| land a commit, or understand a red CI | `process/landing-and-ci.md` |
+| make a decision outside my domain | `process/ownership.md` |
+| propose a major change | `process/handbook-and-rfcs.md` |
+| find where code lives | `design/repo.md`, `design/overview.md` |
+
+## How to use it
+
+- **One owner per document,** named at the top. Anyone may fix a document
+  that is wrong or out of date. The owner keeps it coherent. Changing a
+  contract another domain relies on needs that domain's owner.
+- **One topic per document,** using whichever of these sections apply:
+  *Goals*, *Process*, *Guidelines*, *Checklist*, *Measures*.
+- **Process never costs more than 10% of your time.** If it does, skip it,
+  whatever it is, and note `Skipped: <process>, <reason>` in the commit.
+  Skipped tests or gates are picked up in the hourly post-land review and
+  fixed forward. A process that keeps getting skipped is fixed or deleted.
+  See `process/handbook-and-rfcs.md`.
+
+## Contents
+
+### Start here
+
+| File | What it answers | Owner | Absorbs |
+|---|---|---|---|
+| `principles.md` | Mission, goals and their tests, design rules, how every agent works | coordinator | The body of `AGENTS.md`, which shrinks to a short version plus pointers here |
+| `glossary.md` | Project terms: domain, lane, port, corpus, ratchet, edge, conformance case… | coordinator | Terms scattered across plan files (language terms stay in `spec/GLOSSARY.md`) |
+
+### Product: what we're building, and for whom
+
+| File | What it answers | Owner | Absorbs |
+|---|---|---|---|
+| `product/vision.md` | Who CP Lang is for, what it should feel like, what success looks like | coordinator | `plan/product/VISION.md` |
+| `product/journeys.md` | The user journeys end to end: install, first program, learning through docs and lints, a contest, debugging, the editor, submitting | coordinator | `plan/product/EXPERIENCE.md` |
+| `product/milestones.md` | What a milestone is, and each one's bar per journey and per domain: Milestone 1 (edge), Milestone 2 (stable) | coordinator | `plan/product/MILESTONE-1.md`, `MILESTONE-2.md`, `README.md` |
+
+How far along each milestone is, and what blocks it, stays in `plan/`.
+
+### Process: who does what, and when
+
+| File | What it answers | Owner | Absorbs |
+|---|---|---|---|
+| `process/handbook-and-rfcs.md` | Keeping the handbook true, when to write an RFC, how one is decided and later superseded, the escape hatch | coordinator | New (Handbook 0001) |
+| `process/change.md` | How any change flows: observe, find the right layer, decide, update the design and spec, implement with tests, verify, update docs, land. Small fixes collapse most steps | coordinator | Scattered rules in `AGENTS.md` and `plan/OPERATING.md` |
+| `process/ownership.md` | Roles (domain owner, milestone owner, task owner), what each may decide, who may edit vs who may change a contract, what comes to Ryan | coordinator | `plan/DOMAINS.md` intro, decision rules in `AGENTS.md` |
+| `process/factory.md` | How the factory runs: lanes, the coordinator, hourly status, unblocking yourself | coordinator | `plan/OPERATING.md`, parts of `plan/agent-context.md` |
+| `process/quality.md` | How we ensure quality: the toolkit, quality registers, which test to write for which change, how suites are measured, accountability | tech-debt | New, plus test rules in `AGENTS.md` and `plan/ARCHITECTURE.md` A6 |
+| `process/landing-and-ci.md` | How commits land, what runs where, time budgets, who keeps main green | infra | `plan/domains/infra/design/gate-tiers.md` |
+| `process/release.md` | Channels (edge, stable), versioning, what makes a commit shippable, installers, promoting a release | infra | `plan/domains/infra/RELEASE.md` |
+| `process/porting.md` | Porting accepted solutions into the corpus: the bar and the review | idioms | `plan/PORTING.md` |
+
+### Guidelines: how to do one kind of work well
+
+| File | What it answers | Owner |
+|---|---|---|
+| `guidelines/std-api.md` | Naming lexicon, return conventions (`?T`), named options, keys and indices, method vs free form, user journeys per type, review checklist | stdlib |
+| `guidelines/std-docs.md` | Required sections, trait bounds, cost, examples that run, readability; checklist | stdlib |
+| `guidelines/errors.md` | One error per root cause, at the mistake, naming the rule and a fix that compiles; checklist | diagnostics |
+| `guidelines/lints.md` | When a lint is warranted, how it teaches, configuration, fix quality | lint-fmt |
+| `guidelines/performance.md` | Matched-algorithm comparison, runtime and size bars (including the tuned max), behavior never changes | perf |
+| `guidelines/writing.md` | Writing for an outsider: docs, commit messages, reports | coordinator |
+
+### Language: why the language is shaped this way
+
+One design doc per area: the problem it solves, the model a contestant
+holds in their head, the key decisions and the alternatives that lost, with
+worked examples. These are also the source of the site's in-depth chapters.
+
+| File | Spec chapters it leads | Owner |
+|---|---|---|
+| `language/overview.md` | `core/00` | spec |
+| `language/values-and-numbers.md` | `core/02`, `03` | spec |
+| `language/indices-and-keys.md` | `core/04`, `04a`, `04b` | spec |
+| `language/ownership.md` | `core/05` | spec |
+| `language/control-and-functions.md` | `core/06` | spec |
+| `language/sequences.md` | `core/07`, `lib/sequence-patterns.md` | spec |
+| `language/traits-and-generics.md` | `core/08` | spec |
+| `language/checks-and-io.md` | `core/09`, `10` | spec |
+| `language/modules-and-powers.md` | `core/11`, `12` | spec |
+| `language/std.md` | `lib/*` | stdlib |
+
+They absorb `spec/RATIONALE.md`, `spec/lib/rationale/` and the design
+reasoning spread through `decisions.md`.
+
+### Design: why the toolchain is shaped this way
+
+| File | What it answers | Owner | Absorbs |
+|---|---|---|---|
+| `design/overview.md` | Text to C++: the pipeline, the crates, which layer may depend on which | tech-debt | `plan/ARCHITECTURE.md` Part A |
+| `design/sources-of-truth.md` | One owner per fact and one entry point per job in the code: what's generated from what, what must never be written twice, and the detector for each | tech-debt | `plan/ARCHITECTURE.md` B2 |
+| `design/compiler.md` | Syntax, names, types, IR, facts, VM, codegen: each part's job, data, invariants, and what it must never do | compiler | `plan/domains/compiler/ARCHITECTURE.md` |
+| `design/editor.md` | The query database, LSP and playground sharing one analysis | tools | `plan/domains/tools/ARCHITECTURE.md` |
+| `design/std-mechanisms.md` | How std gets its powers without privilege | stdlib | `plan/domains/stdlib/library-domains.md` |
+| `design/debugger.md` | Tracing, replay, stress, the debugger | debugger | `plan/domains/debugger/ARCHITECTURE.md` |
+| `design/repo.md` | File structure, toolchain, scripts | infra | `REPO.md`, `plan/LAYOUT.md` |
+
+### Domains: one charter each
+
+`domains/README.md` says what a domain is and lists them. `domains/<name>.md`
+for compiler, perf, diagnostics, stdlib, spec, idioms, lint-fmt, tools,
+debugger, site, infra and tech-debt, each with the same sections:
+
+- **Mission:** one paragraph.
+- **Scope:** what it owns (paths, crates, commands) and what it doesn't.
+- **Interfaces:** what it provides to other domains and needs from them.
+- **Quality register:** every quality attribute the domain must be high on.
+  Each has a metric and the mechanism that enforces it (a suite, a lint, a
+  ratchet, a re-architecture), or the process used where no mechanism can
+  decide. Targets and current numbers are generated into `plan/`.
+- **Suites and tools:** what exists, what each catches, how to run it.
+
+The domain's `PLAN.md`, `metrics.toml` and `worklog.md` stay in
+`plan/domains/<name>/`.
+
+### Records
+
+| Place | Holds |
+|---|---|
+| `rfcs/NNNN-name.md` | Major changes as decided. A decision can be superseded by a later RFC; the record itself never changes |
+| `../decisions.md` | The log of smaller decisions. Searchable, not required reading |
+
+## What happens to existing files
+
+- `AGENTS.md` keeps a short version of the mission and rules, since every
+  agent loads it automatically, and points here. Its rule that `spec/` is
+  the only normative source becomes the rule above.
+- `plan/OPERATING.md`, `plan/DOMAINS.md`, `plan/LAYOUT.md`, `REPO.md`,
+  `plan/PORTING.md` and `plan/ARCHITECTURE.md` Part A are folded in.
+- `plan/product/` moves here, except `BLOCKERS.md` and `notes.md`.
+- `plan/agent-context.md` (Ryan's own words) moves to
+  `research/design-history/` as background; its durable points go into
+  `principles.md` and `product/`.
+- `plan/STATUS.md` and `plan/QUESTIONS.md` stay.
+
+## Keeping it true
+
+- Each document's *Describes* line lists the files and commands it covers.
+  A check flags a document whose paths no longer exist.
+- Code examples in the handbook compile and run in CI, and references to std
+  items, files and other documents are checked.
+- Facts that can be generated from code or the spec (lists of lints,
+  metrics, crates) are generated, not written.
+- When a change makes a document wrong, the same commit fixes it.
+- A new agent misreading a document is a failure of the document.
+
+## Changes
+
+- 2026-11-23: first draft.
