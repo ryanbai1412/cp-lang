@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- Rebuild round 5 started: cold reader at 66f8d9c93, ten new CSES problems (Labyrinth, Coin Combinations I, Restaurant Customers, Shortest Routes II, Range Update Queries, Tree Matching, Finding Periods, Course Schedule, Exponentiation II, Planets and Kingdoms). Result lands as spec/delta/rebuild-5.
 - Routed to stdlib: keyed `monotone_minima` (lib/search-dp table and D&C example vs `dp.cp` Int counts). All 31 spec-block errors now have an owner request or a held question.
 - Prelude gate also reads Markdown table rows: 106 gaps (was 86 from fenced `fn` lines only); stdlib told.
 - From perf: decision 240 (release drops bounds, division and assert checks) conflicts with the Trap Parity Gate (`crates/cpl-cli/tests/trap_parity.rs`, sites 1, 13, 25 need the no-`-DLOCAL` build to stop) and AGENTS.md goal 5. Filed "perf: does the judge build trap on a bad index, `/ 0` and `assert`?" in plan/QUESTIONS.md; codegen keeps the traps meanwhile, so `release-list-index-unchecked.cp` and `release-division-by-zero-fallback.cp` stay failing.
