@@ -64,4 +64,79 @@ impl<'a> Lowerer<'a> {
         self.view_fns.insert(key, copy);
         copy
     }
+
+    /// `arg` where a `[K]T` of a generic fn is made from a list: a view
+    /// keyed by `Int` stays a view, so `K` starts at its first key, and a
+    /// `[K]T` already over `K` is passed as it is, keeping its keys (R04b.3.1).
+    pub(super) fn expect_keeping_view(&mut self, arg: &ast::Expr, list: Ty, param: &Ty) -> Expr {
+        let want = match self.probe_ty_silent(arg) {
+            Some(view @ (Ty::ListView(_, Dim::Int) | Ty::Keyed(_, Dim::Int)))
+                if view.seq_elem() == list.seq_elem() =>
+            {
+                view
+            }
+            Some(same) if same == *param => same,
+            _ => list,
+        };
+        self.expect(arg, &want)
+    }
+
+    /// The first key of a view: where it starts in its source (R04b.1.1).
+    pub(super) fn view_first_key(&mut self, value: &Expr, span: Span) -> Expr {
+        let known = match &value.kind {
+            ExprKind::Local(slot) => self.cx.view_lo.contains_key(slot),
+            ExprKind::Global(gid) => self.global_view_lo.contains_key(gid),
+            _ => false,
+        };
+        match &value.kind {
+            // A view's keys are where it starts in its source, which a
+            // parameter or temporary only knows at run time (R04b.1.1).
+            ExprKind::Local(_) | ExprKind::Global(_) if !known && Self::keyed_view(&value.ty) => {
+                self.key_lo(value, span)
+            }
+            ExprKind::Builtin(Builtin::ListSlice | Builtin::StrSlice, args) => args
+                .get(1)
+                .cloned()
+                .unwrap_or_else(|| self.int_lit(0, span)),
+            ExprKind::Local(slot) => self
+                .cx
+                .view_lo
+                .get(slot)
+                .copied()
+                .map(|v| self.int_lit(v, span))
+                .unwrap_or_else(|| self.int_lit(0, span)),
+            ExprKind::Global(gid) => self
+                .global_view_lo
+                .get(gid)
+                .copied()
+                .map(|v| self.int_lit(v, span))
+                .unwrap_or_else(|| self.int_lit(0, span)),
+            _ => self.int_lit(0, span),
+        }
+    }
+
+    /// What a list given for `[D]T` does to `D` (see `size_domain`), and
+    /// the list: a view's `D` starts at its first key, and the array is a
+    /// copy of it.
+    pub(super) fn size_for_list(
+        &mut self,
+        d: DomainId,
+        len: Expr,
+        list: Expr,
+        span: Span,
+    ) -> (Stmt, Expr) {
+        let first = self.range_domains.get(&d).copied().unwrap_or(0);
+        let mut size = self.size_domain(d, first, len, span);
+        let (Ty::ListView(elem, _) | Ty::Keyed(elem, _)) = &list.ty else {
+            return (size, list);
+        };
+        let ty = Ty::List(elem.clone());
+        if let Stmt::DefDomain { lo, .. } = &mut size {
+            *lo = self.view_first_key(&list, span);
+        }
+        (
+            size,
+            self.mk(ExprKind::Builtin(Builtin::ToList, vec![list]), ty, span),
+        )
+    }
 }

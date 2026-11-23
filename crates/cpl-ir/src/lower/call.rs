@@ -1331,7 +1331,7 @@ impl<'a> Lowerer<'a> {
                     } else if let Some(list) = self.list_given(&param.ty) {
                         // A list where a `[D]T` is asked for is made as
                         // the list it is; passing it sizes `D`.
-                        let value = self.expect(&arg.value, &list);
+                        let value = self.expect_keeping_view(&arg.value, list, &param.ty);
                         lowered.push(Arg::Value(self.coerce(value, &param.ty, arg.value.span)));
                     } else if let Some((d, first, other)) = self.other_first(&param.ty, &arg.value)
                     {
@@ -5602,38 +5602,7 @@ impl<'a> Lowerer<'a> {
                 } else {
                     value
                 };
-                let known = match &value.kind {
-                    ExprKind::Local(slot) => self.cx.view_lo.contains_key(slot),
-                    ExprKind::Global(gid) => self.global_view_lo.contains_key(gid),
-                    _ => false,
-                };
-                let lo = match &value.kind {
-                    // A view's keys are where it starts in its source, which a
-                    // parameter or temporary only knows at run time (R04b.1.1).
-                    ExprKind::Local(_) | ExprKind::Global(_)
-                        if !known && Self::keyed_view(&value.ty) =>
-                    {
-                        self.key_lo(&value, span)
-                    }
-                    ExprKind::Builtin(Builtin::ListSlice | Builtin::StrSlice, args) => args
-                        .get(1)
-                        .cloned()
-                        .unwrap_or_else(|| self.int_lit(0, span)),
-                    ExprKind::Local(slot) => self
-                        .cx
-                        .view_lo
-                        .get(slot)
-                        .copied()
-                        .map(|v| self.int_lit(v, span))
-                        .unwrap_or_else(|| self.int_lit(0, span)),
-                    ExprKind::Global(gid) => self
-                        .global_view_lo
-                        .get(gid)
-                        .copied()
-                        .map(|v| self.int_lit(v, span))
-                        .unwrap_or_else(|| self.int_lit(0, span)),
-                    _ => self.int_lit(0, span),
-                };
+                let lo = self.view_first_key(&value, span);
                 let key = value.ty.key_ty();
                 let len = self.len_of(value, span);
                 let hi = self.mk(

@@ -4726,8 +4726,7 @@ impl<'a> Lowerer<'a> {
                             Ty::Int,
                             span,
                         );
-                        let first = lw.range_domains.get(&d).copied().unwrap_or(0);
-                        let size = lw.size_domain(d, first, len, span);
+                        let (size, held) = lw.size_for_list(d, len, held, span);
                         out.push(size);
                         let list_expr = if needs_elem_coerce {
                             lw.coerce_list_elems(held, elem_ty, want_elem_ty, span, out)
