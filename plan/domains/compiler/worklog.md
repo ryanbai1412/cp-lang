@@ -515,3 +515,6 @@ on input `2 / 1 / 2` prints `7` once in `cpl run` and in the C++ (`cpl_main` cal
 ### Requests from spec, rebuild 14 (2026-11-23)
 - `xs.fold(f, init: a)` on a `List` is E0203 "no method `fold` that `cpl run` knows", though std/seq.cp declares the seeded `fold<S: Seq, T, Acc>`; the one-argument `fold(op)` shadows it. One name with two label sets is one signature (R06.1.6), so either the resolver must see both or std merges them into one `fold(f, init: ?Acc = None)`; coordinate with stdlib. Case: `core-07/fold-with-init.cp`.
 - `print(ps)` on a `List<(Int, Int)>` prints one pair per line; R10.3.5 joins the elements with `io.sep` and only `sep: "\n"` gives a line each. Case: `core-10/print-list-of-pairs-one-line.cp`.
+
+### Request from tools (2026-11-23): the 5,000-line cold check is at its budget
+`cargo test --release -p cpl-lsp --test latency -- --exact front_end_check_is_under_50_ms` on the 2-core VM, idle (load 0.95): check, cold, 5,002 lines, median 49.7 ms, p90 63 ms against the 50 ms budget. A loaded run went 51.0 ms and failed. The test's doc comment still says 18 ms optimized. The 500-line check is 5.9 ms and the keystroke recheck 12 ms, so the cost is in the cold path. CI now runs this test on macOS and Windows as a non-blocking step in the cli job. Could you profile the cold check at 5,000 lines?
