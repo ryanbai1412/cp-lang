@@ -47,7 +47,9 @@ so what each name means is in its own module; the compiler has no
 built-in list. Rules:
 
 - Only programs get the prelude; library modules `use` what they need,
-  so a library never depends on what a program happened to import. (R11.3.1)
+  so a library never depends on what a program happened to import. An
+  inline `mod` inside a program is part of the program and sees its
+  prelude (decision 241). (R11.3.1)
 - The prelude is the vocabulary of the `lib/` chapters, by rule rather
   than by request (decision 150): every pub type and free function in a
   chapter's main tables is in it, and nothing else is.

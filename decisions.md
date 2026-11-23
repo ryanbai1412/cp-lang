@@ -6009,3 +6009,14 @@ reads are unchecked unless `reads` is kept. Cases:
 `spec/conformance/core-09/release-division-by-zero-fallback.cp`. Reverse:
 change R09.3.2-R09.3.6's release column to "trap" and restore "same" in
 chapter 13.
+
+## 241. An inline `mod` in a program sees the prelude (2026-11-22)
+
+R11.3.1 said only programs get the prelude, and was silent on an inline
+`mod` inside a program (rebuild-3 silent hole). It does: the reason for the
+rule is that a library file never depends on what some program imported,
+and an inline module lives in, and only in, its program. Requiring a `use`
+for `gcd` inside `mod` would be friction with no safety gain. Case:
+`spec/conformance/core-11/inline-mod-sees-prelude.cp`. Reverse: say inline
+modules are library modules and turn the case into an E0201 reject.
+
