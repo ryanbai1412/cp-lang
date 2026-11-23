@@ -1055,7 +1055,6 @@ pub(crate) fn row_root(e: &Expr) -> Option<&str> {
 
 /// Whether every built-in list or string method called `method` leaves its
 /// receiver as it was, so a call to it changes no length.
-#[cfg(not(target_arch = "wasm32"))]
 pub(crate) fn keeps_len(method: &str) -> bool {
     use cpl_check::{builtin_members, Receiver};
     // The catalog only says whether a method mutates; these only move or
@@ -1067,11 +1066,6 @@ pub(crate) fn keeps_len(method: &str) -> bool {
         .filter(|m| m.name == method)
         .peekable();
     members.peek().is_some() && members.all(|m| !m.mutates || IN_PLACE.contains(&m.name))
-}
-
-#[cfg(target_arch = "wasm32")]
-pub(crate) fn keeps_len(_: &str) -> bool {
-    false
 }
 
 /// `T` in `read<T>()`.

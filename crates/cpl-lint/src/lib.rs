@@ -914,7 +914,6 @@ pub fn fix_removed_syntax(src: &str) -> (String, usize) {
 /// Type-directed removed-syntax rewrites reported by the checker (such as
 /// `Range.lo`/`.hi` -> `.start`/`.end`, leaving user struct fields named
 /// `lo`/`hi` untouched), applied to a fixed point.
-#[cfg(not(target_arch = "wasm32"))]
 pub fn fix_checked_removed_syntax(path: Option<&std::path::Path>, src: &str) -> (String, usize) {
     let mut src = src.to_string();
     let mut total = 0;
@@ -940,11 +939,6 @@ pub fn fix_checked_removed_syntax(path: Option<&std::path::Path>, src: &str) -> 
         total += applied;
         src = text;
     }
-}
-
-#[cfg(target_arch = "wasm32")]
-pub fn fix_checked_removed_syntax(_path: Option<&std::path::Path>, src: &str) -> (String, usize) {
-    (src.to_string(), 0)
 }
 
 /// What `cpl fix` makes of a source: removed-syntax rewrites (parser, then

@@ -7,9 +7,10 @@ publish.workspace = true
 license.workspace = true
 
 [dependencies]
+cpl-check.workspace = true
 cpl-diag.workspace = true
 cpl-syntax.workspace = true
 
+# The prover stays out of the playground build (about 105 KB gzipped).
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-cpl-check.workspace = true
 cpl-prover.workspace = true
