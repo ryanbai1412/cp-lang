@@ -163,9 +163,13 @@ It unpacks the edge release's plugin into every installed IDE's plugins folder
 (`--zip FILE` installs a file you have, `--dir DIR` one plugins folder); restart
 the IDE. Or build it: `cd editors/jetbrains && ./gradlew buildPlugin` writes
 `build/distributions/cp-lang-jetbrains-<version>.zip`; install it with
-Settings, Plugins, Install Plugin from Disk. The IntelliJ Platform's LSP API
-ships only in the commercial IDEs (IntelliJ IDEA Ultimate, CLion, PyCharm
-Professional and the rest), so the plugin needs one of them. Set the path to
+Settings, Plugins, Install Plugin from Disk. The commercial IDEs (IntelliJ IDEA
+Ultimate, CLion, PyCharm Professional and the rest) run `cpl lsp` through the
+platform's own LSP client; IntelliJ IDEA Community and PyCharm Community lack
+it, so there the plugin runs it through the LSP4IJ plugin, which `cpl setup
+jetbrains` installs beside it. `cpl setup jetbrains --check`, after a restart,
+reads the IDE's log and fails unless CP Lang loaded. `./gradlew verifyPlugin`
+checks the plugin against IDEA Community and Ultimate. Set the path to
 `cpl` under Settings, Tools, CP Lang when it is not on the `PATH`. A `.cp`
 file gets a run configuration on its first sample (`cpl run`, `cpl test` or
 `cpl stress`), a run marker on `fn main`, and CP Lang: Show Trace

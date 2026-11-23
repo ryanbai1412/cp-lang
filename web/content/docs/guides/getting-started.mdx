@@ -85,7 +85,7 @@ One command sets up your editor: diagnostics, completion, hover, formatting, go 
 cpl setup neovim      # or vim, vscode, jetbrains
 ```
 
-Neovim needs 0.10 or later. JetBrains needs a commercial IDE (IDEA Ultimate, CLion, PyCharm Professional, ...); restart it after setup. Any other editor with an LSP client can run `cpl lsp` on `.cp` files.
+Neovim needs 0.10 or later. JetBrains works in IDEA Community and the commercial IDEs (2024.3 or later); `cpl setup jetbrains` also installs LSP4IJ in Community. Restart the IDE after setup, then `cpl setup jetbrains --check` says whether CP Lang loaded. Any other editor with an LSP client can run `cpl lsp` on `.cp` files.
 
 ## What works today
 

@@ -1323,7 +1323,7 @@ fn setup_installs_the_vscode_extension() {
     let code = dir.join("code");
     std::fs::write(
         &code,
-        "#!/bin/sh\necho \"$@\" > \"$(dirname \"$0\")/args\"\n",
+        "#!/bin/sh\nif [ \"$1\" = --list-extensions ]; then echo cp-lang.cp-lang@0.3.0; exit; fi\necho \"$@\" > \"$(dirname \"$0\")/args\"\n",
     )
     .unwrap();
     std::fs::set_permissions(&code, std::fs::Permissions::from_mode(0o755)).unwrap();
@@ -1339,6 +1339,27 @@ fn setup_installs_the_vscode_extension() {
         std::fs::read_to_string(dir.join("args")).unwrap(),
         "--install-extension x.vsix --force\n"
     );
+    assert!(
+        text(&out.stdout).contains("cp-lang.cp-lang@0.3.0"),
+        "{}",
+        text(&out.stdout)
+    );
+    // An editor command that installs nothing is a failure, not a success.
+    let silent = dir.join("silent");
+    std::fs::write(&silent, "#!/bin/sh\nexit 0\n").unwrap();
+    std::fs::set_permissions(&silent, std::fs::Permissions::from_mode(0o755)).unwrap();
+    let out = Command::new(env!("CARGO_BIN_EXE_cpl"))
+        .args(["setup", "vscode", "--vsix", "x.vsix"])
+        .current_dir(&dir)
+        .env("CPL_CODE", &silent)
+        .output()
+        .unwrap();
+    assert_eq!(out.status.code(), Some(1));
+    assert!(
+        text(&out.stderr).contains("does not list cp-lang.cp-lang"),
+        "{}",
+        text(&out.stderr)
+    );
     let out = Command::new(env!("CARGO_BIN_EXE_cpl"))
         .args(["setup", "vscode", "--vsix", "x.vsix"])
         .current_dir(&dir)
@@ -1353,36 +1374,103 @@ fn setup_installs_the_vscode_extension() {
     );
 }
 
-/// `cpl setup jetbrains --zip FILE` unpacks the plugin into each IDE found
-/// under the config folder, here one IntelliJ IDEA.
+/// `cpl setup jetbrains --zip FILE` unpacks the plugin into each 2024.3 or
+/// newer IDE found under the config folder, checks a Community IDE has
+/// LSP4IJ, and `--check` reads each IDE's log for whether it loaded.
 #[cfg(target_os = "linux")]
 #[test]
 fn setup_unpacks_the_jetbrains_plugin_into_each_ide() {
     let dir = scratch("setup-jetbrains");
-    std::fs::create_dir_all(dir.join("config/JetBrains/IntelliJIdea2025.1")).unwrap();
-    std::fs::create_dir_all(dir.join("config/JetBrains/consentOptions")).unwrap();
+    for ide in [
+        "IntelliJIdea2025.1",
+        "IdeaIC2024.3",
+        "IntelliJIdea2024.2",
+        "consentOptions",
+    ] {
+        std::fs::create_dir_all(dir.join("config/JetBrains").join(ide)).unwrap();
+    }
+    // Present already, so the test downloads nothing.
+    std::fs::create_dir_all(dir.join("data/JetBrains/IdeaIC2024.3/lsp4ij/lib")).unwrap();
+    std::fs::write(
+        dir.join("data/JetBrains/IdeaIC2024.3/lsp4ij/lib/lsp4ij.jar"),
+        "x",
+    )
+    .unwrap();
     let made = Command::new("python3")
         .args([
             "-c",
-            "import zipfile; zipfile.ZipFile('p.zip', 'w').writestr('cp-lang/lib/x.jar', 'x')",
+            "import zipfile; zipfile.ZipFile('p.zip', 'w').writestr('cp-lang-jetbrains/lib/x.jar', 'x')",
         ])
         .current_dir(&dir)
         .status();
     if !made.map(|s| s.success()).unwrap_or(false) {
         return;
     }
-    let out = Command::new(env!("CARGO_BIN_EXE_cpl"))
-        .args(["setup", "jetbrains", "--zip", "p.zip"])
-        .current_dir(&dir)
-        .env("XDG_CONFIG_HOME", dir.join("config"))
-        .env("XDG_DATA_HOME", dir.join("data"))
-        .output()
-        .unwrap();
+    let setup = |args: &[&str]| {
+        Command::new(env!("CARGO_BIN_EXE_cpl"))
+            .arg("setup")
+            .args(args)
+            .current_dir(&dir)
+            .env("XDG_CONFIG_HOME", dir.join("config"))
+            .env("XDG_DATA_HOME", dir.join("data"))
+            .env("XDG_CACHE_HOME", dir.join("cache"))
+            .output()
+            .unwrap()
+    };
+    let out = setup(&["jetbrains", "--zip", "p.zip"]);
     assert_eq!(out.status.code(), Some(0), "{}", text(&out.stderr));
-    assert!(dir
-        .join("data/JetBrains/IntelliJIdea2025.1/cp-lang/lib/x.jar")
-        .is_file());
+    for ide in ["IntelliJIdea2025.1", "IdeaIC2024.3"] {
+        assert!(dir
+            .join("data/JetBrains")
+            .join(ide)
+            .join("cp-lang-jetbrains/lib/x.jar")
+            .is_file());
+    }
+    assert!(!dir.join("data/JetBrains/IntelliJIdea2024.2").exists());
     assert!(!dir.join("data/JetBrains/consentOptions").exists());
+    let said = text(&out.stdout);
+    assert!(
+        said.contains("IdeaIC2024.3") && said.contains("with LSP4IJ"),
+        "{said}"
+    );
+    assert!(said.contains("skipped IntelliJIdea2024.2"), "{said}");
+
+    // No IDE has started since: --check fails, naming each.
+    let out = setup(&["jetbrains", "--check"]);
+    assert_eq!(out.status.code(), Some(1));
+    assert!(
+        text(&out.stderr).contains("IdeaIC2024.3: no log yet"),
+        "{}",
+        text(&out.stderr)
+    );
+    let log = |ide: &str, body: &str| {
+        let path = dir.join("cache/JetBrains").join(ide).join("log");
+        std::fs::create_dir_all(&path).unwrap();
+        std::fs::write(path.join("idea.log"), body).unwrap();
+    };
+    let started = "2026-11-23 INFO - #c.i.i.i.AppStarter - ------ IDE STARTED ------\n";
+    log(
+        "IntelliJIdea2025.1",
+        &format!("{started}INFO - Loaded custom plugins: CP Lang (0.3.0)\n"),
+    );
+    log("IdeaIC2024.3", &format!("{started}WARN - Plugin 'CP Lang' requires plugin 'com.intellij.modules.ultimate' to be installed\n"));
+    let out = setup(&["jetbrains", "--check"]);
+    assert_eq!(out.status.code(), Some(1));
+    let said = text(&out.stderr);
+    assert!(
+        said.contains("IntelliJIdea2025.1: CP Lang loaded (CP Lang (0.3.0))"),
+        "{said}"
+    );
+    assert!(
+        said.contains("IdeaIC2024.3: CP Lang did not load") && said.contains("modules.ultimate"),
+        "{said}"
+    );
+    log(
+        "IdeaIC2024.3",
+        &format!("{started}INFO - Loaded custom plugins: CP Lang (0.3.0), LSP4IJ (0.19.4)\n"),
+    );
+    let out = setup(&["jetbrains", "--check"]);
+    assert_eq!(out.status.code(), Some(0), "{}", text(&out.stderr));
 }
 
 /// The contest flow from a Competitive Companion problem to the clipboard:

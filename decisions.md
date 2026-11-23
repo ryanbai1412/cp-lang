@@ -7646,3 +7646,17 @@ private (R11.1.4) and opt in. Not a change of the language's character.
 Cases `core-08/if-bound-*`, `core-08/getter-trait-struct-opt-in`. Reverse:
 let structs satisfy by shape too, or drop shape satisfaction from
 `if T: Trait` (then `arc_len` needs `Graph` arcs to `impl Weighted`).
+
+## 360. JetBrains: built-in LSP client where it exists, LSP4IJ in Community (tools, 2026-11-23)
+
+The plugin required `com.intellij.modules.ultimate` because the platform's LSP
+API ships only in the commercial IDEs, so IntelliJ IDEA Community refused it.
+Now only `com.intellij.modules.platform` is required; `cp-lang-lsp.xml`
+(built-in client) and `cp-lang-lsp4ij.xml` (Red Hat's LSP4IJ, open source,
+Community-compatible) are optional dependencies, and the LSP4IJ server is
+disabled when the built-in client exists, so no IDE starts `cpl lsp` twice.
+`cpl setup jetbrains` installs LSP4IJ into Community IDEs, and `--check`
+reads the IDE log for whether CP Lang loaded. `verifyPlugin` runs against
+Community and Ultimate in CI; a required dependency Community lacks fails it.
+Reverse: drop the LSP4IJ config and require Ultimate again, or move every IDE
+to LSP4IJ.

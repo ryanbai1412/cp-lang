@@ -212,6 +212,11 @@ jobs:
         working-directory: editors/jetbrains
         shell: bash
         run: ./gradlew --no-daemon buildPlugin test
+      - name: Plugin verifies against IntelliJ IDEA Community and Ultimate
+        if: runner.os == 'Linux'
+        working-directory: editors/jetbrains
+        shell: bash
+        run: ./gradlew --no-daemon verifyPlugin
       - name: The server handshake the plugin starts
         run: python3 editors/lsp-smoke.py jetbrains target/debug/cpl lsp
 

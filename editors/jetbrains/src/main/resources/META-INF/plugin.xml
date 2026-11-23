@@ -10,7 +10,9 @@
     ]]></description>
 
     <depends>com.intellij.modules.platform</depends>
-    <depends>com.intellij.modules.ultimate</depends>
+    <!-- `cpl lsp` through the commercial IDEs' built-in client, else through LSP4IJ. -->
+    <depends optional="true" config-file="cp-lang-lsp.xml">com.intellij.modules.ultimate</depends>
+    <depends optional="true" config-file="cp-lang-lsp4ij.xml">com.redhat.devtools.lsp4ij</depends>
 
     <extensions defaultExtensionNs="com.intellij">
         <fileType name="CP Lang" implementationClass="dev.cplang.ide.CpFileType" fieldName="INSTANCE"
@@ -20,7 +22,6 @@
         <lang.commenter language="CP" implementationClass="dev.cplang.ide.CpCommenter"/>
         <lang.braceMatcher language="CP" implementationClass="dev.cplang.ide.CpBraceMatcher"/>
         <colorSettingsPage implementation="dev.cplang.ide.CpColorSettingsPage"/>
-        <platform.lsp.serverSupportProvider implementation="dev.cplang.ide.CpLspServerSupportProvider"/>
         <configurationType implementation="dev.cplang.ide.CplRunConfigurationType"/>
         <runConfigurationProducer implementation="dev.cplang.ide.CplRunConfigurationProducer"/>
         <runLineMarkerContributor language="CP" implementationClass="dev.cplang.ide.CplRunLineMarkerContributor"/>
