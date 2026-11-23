@@ -37,11 +37,15 @@ pub fn render(diag: &Diagnostic, path: &str, text: &str, lines: &LineIndex) -> S
         .max()
         .unwrap_or(1);
     let _ = writeln!(out, "{:width$} |", "");
+    let mut shown = None;
     for (span, mark, message) in marks {
         let line = lines.line_of(span.start);
         let (start, end) = lines.line_range(line, text);
         let src = &text[start as usize..end as usize];
-        let _ = writeln!(out, "{:>width$} | {}", line + 1, src);
+        // Marks on one line share it: the source is printed once.
+        if shown.replace(line) != Some(line) {
+            let _ = writeln!(out, "{:>width$} | {}", line + 1, src);
+        }
         // Columns are counted in characters so the caret lines up under
         // non-ASCII source.
         let from = span.start.clamp(start, end);
@@ -143,6 +147,18 @@ mod tests {
         let out = render(&diag, "a.cp", text, &LineIndex::new(text));
         assert!(
             out.contains("1 | let n = 1\n  |     - declared here\n2 | n = 2\n  | ^\n"),
+            "{out}"
+        );
+    }
+
+    #[test]
+    fn marks_on_one_line_show_the_line_once() {
+        let text = "f(mut x, mut x)\n";
+        let diag = Diagnostic::error(codes::LENT_TWICE, Span::new(13, 14), "lent twice")
+            .with_label(Span::new(6, 7), "also lent here");
+        let out = render(&diag, "a.cp", text, &LineIndex::new(text));
+        assert!(
+            out.contains("1 | f(mut x, mut x)\n  |       - also lent here\n  |              ^\n"),
             "{out}"
         );
     }

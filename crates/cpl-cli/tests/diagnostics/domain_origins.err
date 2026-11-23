@@ -14,7 +14,6 @@ error[E0301]: `b` is indexed by V, but `m` is a 1..=9
   |
 5 | fn f(m: 1..=9, b: [V]Int) -> Int:
   |      - `m` is declared as a 1..=9 here
-5 | fn f(m: 1..=9, b: [V]Int) -> Int:
   |                - `b` is declared over V here
 6 |     return b[m]
   |              ^
