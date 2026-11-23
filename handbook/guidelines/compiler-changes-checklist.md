@@ -155,6 +155,22 @@ prints.
   which run every generated program's C++ at all three levels against
   the interpreter.
 
+### compiler-changes/R14: `cpl run` fits in the judge's memory
+
+A program whose C++ fits the problem's memory limit runs in `cpl run`
+within that limit too, on the largest inputs the corpus has.
+
+- Reason: a contestant tests with `cpl run`. A run killed for memory there
+  sends them hunting for a bug the judge never sees, or makes them give up
+  on the interpreter for big tests (J6).
+- Example: a DFS 200,000 calls deep fits in about 20 MB of C++ stack, so
+  its interpreted frames must not take 6 KB each (1.2 GB).
+- Enforced by: `the_interpreter_runs_the_largest_corpus_inputs_in_the_judges_memory`
+  in `crates/cpl-cli/tests/interp_memory.rs`, which runs the largest
+  input of each of the 6 corpus problems with the largest inputs against
+  the problem's limit. `KNOWN_OVER_MEMORY` lists the runs over it today,
+  with causes, and only shrinks.
+
 ## Before you land
 
 - [ ] R1: no std name, one-shape path or edition branch added.

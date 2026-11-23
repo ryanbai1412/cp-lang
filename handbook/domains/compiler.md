@@ -55,7 +55,9 @@ only let those counts fall. The rules for changing the compiler, each with
 the check behind it, are in `handbook/guidelines/compiler-changes.md`.
 
 The weakest areas today: the program generator covers only `Int` and list
-code, so checked and unchecked builds are compared on those only; std-bound violations and interpreter memory are not measured;
+code, so checked and unchecked builds are compared on those only;
+std-bound violations are not measured; interpreted recursion takes about
+6 KB a call, so a deep DFS runs out of the judge's memory in `cpl run`;
 and incremental re-checking is not counted. The quality register below
 lists every quality with its check.
 
@@ -158,7 +160,7 @@ targets are in `plan/domains/compiler/metrics.toml`.
 | Deep recursion behaves as on the judge (J6, J9) | programs that overflow locally but not on the judge, or the reverse | `crates/cpl-cli/tests/stack/`; conformance `deep-recursion-trap` | partial |
 | Traces and replay show what ran (J7) | trace steps that don't match execution | `crates/cpl-cli/tests/trace_goldens.rs`, `crates/cpl-cli/tests/replay.rs` | enforced |
 | The interpreter is fast enough to test with (J6, J8) | slowest corpus run in `cpl run`; VM time against C++ | `crates/cpl-cli/tests/interp_ratio.rs` | partial: no corpus-wide gate |
-| Interpreter memory fits contest inputs (J6) | peak memory on the largest corpus inputs | none | missing |
+| Interpreter memory fits contest inputs (J6) | peak memory on the largest corpus inputs | `crates/cpl-cli/tests/interp_memory.rs`; [compiler-changes/R14](../guidelines/compiler-changes-checklist.md#compiler-changesr14) | partial: 3 of 6 runs over the limit (`KNOWN_OVER_MEMORY`) |
 | The C++ builds on every judge profile (J9) | ports that fail to compile or exceed the source limit | `crates/cpl-cli/tests/judges.rs` | enforced |
 | Old solutions keep building (J10) | corpus programs that stop checking after a change | `cpl-conform corpus`; `crates/cpl-cli/tests/judges.rs` ports | enforced |
 | A user library has the powers std has (J10) | std-only mechanisms | `prelude_privilege`, `backend_std_names`, `ir_builtin_names`, `lint_std_names` in `scripts/debt-ratchet.py`; [compiler-changes/R1](../guidelines/compiler-changes-checklist.md#compiler-changesr1) | partial |
