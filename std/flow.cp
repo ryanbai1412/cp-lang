@@ -671,9 +671,12 @@ fn grow_matching<L, R>(adj: [L]List<R>, mut mate: [L]?R, mut back: [R]?L) -> Int
         var level = alternating_layers(adj, mate, back)
         var open = false
         for u in L:
+            if open: break
             if level[u] != None:
                 for v in adj[u]:
-                    if back[v] == None: open = true
+                    if back[v] == None:
+                        open = true
+                        break
         if not open: break
         var next: [L]Int = 0
         for root in L:
