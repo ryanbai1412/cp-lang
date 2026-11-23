@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- Sheriff (infra): reverted b7cc0e0d9 (closures forwarding to one fn as one devirt target): native profile counts stopped matching the interpreter (`cpl-cli::profile native_profile_counts_what_the_interpreter_counts_5`/`_6` on `lazy_params.cp` and `perf6_get_or_insert.cp`, gate shard 2/6, run 45125619295). Re-land with `cargo test -p cpl-cli --test profile` passing.
 - Sheriff (infra): 037d7bf31's `sink_loop` takes 8 arguments, clippy's too_many_arguments on main; allowed on that fn, as `fuse.rs` does.
 - Sheriff (infra): c8c829d60 left `owner.trim().split_whitespace()` in `cpl-codegen/src/copy_tests.rs`, a clippy error that stopped `cargo test -p cpl-codegen --lib` and `just gen` on main; the `trim()` is gone.
 - `cf2084e` (1.35x in the full run): the gap is the `sum(... for f in need..=m)` per value, which builds a `std::vector` for the stdlib `sum` instance. Hand-fusing that one call in the emitted C++: 36.8 -> 29.7 ms, orig 29.1 ms (1.02x; gen.py 1 5000, same output, fastest of 15). Codegen's `fuse.rs` only fuses a `for` over an inlined producer; a call to a generic `sum` is the compiler's consumer-fusion request (measurement added there).
