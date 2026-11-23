@@ -1,0 +1,15 @@
+error[E0302]: `Int` of an F64 does not say how to round
+  --> int_sqrt.cp:2:9
+  |
+2 | let r = Int(sqrt(n))
+  |         ^^^^^^^^^^^^
+  = help: write `n.isqrt`, the exact integer square root; through `F64` it is off by one for some values past 2**52
+
+error[E0302]: `Int` of an F64 does not say how to round
+  --> int_sqrt.cp:3:9
+  |
+3 | let s = Int(sqrt(F64(n + 1)))
+  |         ^^^^^^^^^^^^^^^^^^^^^
+  = help: write `(n + 1).isqrt`, the exact integer square root; through `F64` it is off by one for some values past 2**52
+
+int_sqrt.cp: 2 errors

@@ -7041,3 +7041,7 @@ drop the `ExprKind::Call` arm of `spelled_out` and re-run `--update`.
 ## 318. `cpl-check` check/stmt.rs grows 3 lines for the L0609 help (2026-11-22)
 
 L0609 `cache_field_written_outside` had no help; a lint help that says why and what to write is the Milestone 1 lint bar, and the help sits at its only emission site. Raised the ratchet baseline for check/stmt.rs by 3 lines. Reverse: move the message into a helper outside the capped file and lower the baseline.
+
+## 319. `cpl-ir` lower/call.rs grows 58 lines for the `Int(sqrt(n))` fix (2026-11-22)
+
+`Int(sqrt(n))` is C++'s `(int)sqrt(n)`, a newcomer habit; E0302 now offers `n.isqrt` (exact) at its only site, `convert`, with a text check (`sqrt_operand`) so the fix is given only when the source is exactly that shape. Raised the ratchet baseline for lower/call.rs. Reverse: move `sqrt_operand` and the branch into a conversion-diagnostics module and lower the baseline.

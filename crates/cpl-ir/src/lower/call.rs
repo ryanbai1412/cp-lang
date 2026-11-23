@@ -2528,7 +2528,38 @@ impl<'a> Lowerer<'a> {
                     span,
                     "`Int` of an F64 does not say how to round",
                 );
-                self.help("write `floor(x)`, `ceil(x)`, `round(x)` or `trunc(x)`");
+                // `Int(sqrt(n))`, C++'s `(int)sqrt(n)`: the exact root is `n.isqrt`.
+                let root = match &value.kind {
+                    ExprKind::Builtin(Builtin::Sqrt, args)
+                        if matches!(
+                            args.first().map(|a| &a.kind),
+                            Some(ExprKind::Cast(Cast::IntToFloat, _))
+                        ) =>
+                    {
+                        sqrt_operand(&self.source(span))
+                    }
+                    _ => None,
+                };
+                let Some(n) = root else {
+                    self.help("write `floor(x)`, `ceil(x)`, `round(x)` or `trunc(x)`");
+                    return self.err_expr(span);
+                };
+                let simple = n.chars().all(|c| c.is_alphanumeric() || "_.".contains(c));
+                let isqrt = if simple {
+                    format!("{n}.isqrt")
+                } else {
+                    format!("({n}).isqrt")
+                };
+                self.help(format!(
+                    "write `{isqrt}`, the exact integer square root; through `F64` it is off by one for some values past 2**52"
+                ));
+                let at = self.span(span);
+                if let Some(last) = self.diags.last_mut() {
+                    last.fixes.push(cpl_diag::Fix {
+                        title: format!("write `{isqrt}`"),
+                        edits: vec![(at, isqrt)],
+                    });
+                }
                 return self.err_expr(span);
             }
             ("Int", Ty::Char) => (Cast::CharToInt, Ty::Int),
@@ -12947,4 +12978,31 @@ impl<'a> Lowerer<'a> {
         seq.ty = seq_ty;
         Some((Iter::Seq(seq, false), elem_ty))
     }
+}
+
+/// `n` from the text `Int(sqrt(n))`, `Int(sqrt(F64(n)))` or `Int(n.sqrt)`,
+/// when the text is exactly one of those.
+fn sqrt_operand(text: &str) -> Option<String> {
+    let inner = text.strip_prefix("Int(")?.strip_suffix(')')?.trim();
+    let arg = match inner.strip_prefix("sqrt(") {
+        Some(rest) => rest.strip_suffix(')')?,
+        None => inner.strip_suffix(".sqrt")?,
+    };
+    let arg = arg
+        .strip_prefix("F64(")
+        .and_then(|a| a.strip_suffix(')'))
+        .unwrap_or(arg)
+        .trim();
+    let mut depth = 0i32;
+    for c in arg.chars() {
+        depth += match c {
+            '(' | '[' => 1,
+            ')' | ']' => -1,
+            _ => 0,
+        };
+        if depth < 0 {
+            return None;
+        }
+    }
+    (depth == 0 && !arg.is_empty()).then(|| arg.to_string())
 }
