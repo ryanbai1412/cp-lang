@@ -12,7 +12,7 @@
 [[gen]]
 name = "layout"
 files = ["REPO.md"]
-inputs = ["plan/LAYOUT.md", "gen.toml"]
+inputs = ["handbook/design/repo.md", "gen.toml"]
 write = ["scripts/repo-layout.py", "--write"]
 check = ["scripts/repo-layout.py", "--check"]
 tier = "pre-commit"

@@ -1,5 +1,7 @@
 # Two gate tiers (2026-11-22, built)
 
+> Folded into [handbook/process/landing-and-ci.md](../../../../handbook/process/landing-and-ci.md), which is current.
+
 `spec/` does not describe the gate; this note does, until it is built.
 
 ## Problem

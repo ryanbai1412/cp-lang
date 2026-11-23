@@ -1,5 +1,7 @@
 # CI, packaging, distribution and versioning
 
+> Folded into [handbook/process/release.md](../../../handbook/process/release.md), which is current; this file is the original proposal.
+
 Status: proposed, for the morning the repo goes public. Supersedes the
 release parts of `plan/b0-distribution.md`.
 
