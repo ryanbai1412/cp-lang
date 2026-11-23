@@ -100,8 +100,14 @@ test('cpl lsp serves diagnostics, hover, quick fixes, completion, references, re
             context: { diagnostics },
         });
         // The likeliest place for the `)` comes first; the others are alternatives.
-        assert.ok(actions.length >= 1);
-        assert.ok(actions.every(action => action.kind === 'quickfix' && action.title.startsWith('insert `)`')));
+        // Then fix-all, which `cpl fix` makes of the file.
+        const quickfixes = actions.filter(action => action.kind === 'quickfix');
+        assert.ok(quickfixes.length >= 1);
+        assert.ok(quickfixes.every(action => action.title.startsWith('insert `)`')));
+        assert.deepEqual(
+            actions.slice(quickfixes.length).map(action => action.kind),
+            ['source.fixAll.cpl'],
+        );
         assert.equal(actions[0].title, 'insert `)`');
         assert.deepEqual(actions[0].edit.changes[URI].map(edit => edit.newText), [')']);
 
