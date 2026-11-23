@@ -443,14 +443,11 @@ jobs:
         run: pnpm --filter cp-lang-web test
       - name: Installers are served
         run: test -s web/out/install.sh && test -s web/out/install.ps1
-      # handbook/guidelines/site-checklist.md site/R6, site/R7: the browser
-      # editor, Learn, phone widths and page weight, against the built site.
-      - name: Browser tests
-        timeout-minutes: 6
-        working-directory: web
-        run: |
-          pnpm exec playwright install --with-deps chromium
-          node tests/run.mjs smoke.mjs learn-smoke.mjs intelligence.mjs phone.mjs page-weight.mjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: web-out
+          path: web/out
+          retention-days: 1
       - name: Save target/ (release)
         id: stamp
         if: ${{ !cancelled() && github.ref == 'refs/heads/main' }}
@@ -465,3 +462,32 @@ jobs:
         with:
           path: target
           key: ${{ env.TARGET_KEY }}-release-${{ hashFiles('Cargo.lock', 'rust-toolchain.toml') }}-${{ github.run_id }}
+
+  site-browser:
+    # handbook/guidelines/site-checklist.md site/R6, site/R7: the browser
+    # editor, Learn, phone widths and page weight, against the built site.
+    # Its own job so chromium's install doesn't lengthen the site build.
+    name: site browser tests
+    needs: site
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - name: Install
+        run: pnpm install --frozen-lockfile
+      - uses: actions/download-artifact@v4
+        with:
+          name: web-out
+          path: web/out
+      - name: Browser tests
+        timeout-minutes: 6
+        working-directory: web
+        run: |
+          pnpm exec playwright install --with-deps chromium
+          node tests/run.mjs smoke.mjs learn-smoke.mjs intelligence.mjs phone.mjs page-weight.mjs
