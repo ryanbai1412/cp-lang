@@ -381,6 +381,28 @@ impl Checker<'_> {
             ExprKind::Field { name, .. } => (&name.text, name.span, codes::UNKNOWN_FIELD),
             _ => return,
         };
+        // `max_element(a.begin(), a.end())`: the iterator pair's fix rewrites
+        // the whole call, so the unknown callee's error carries it alone.
+        let rewrites_call = |d: &cpl_diag::Diagnostic| {
+            d.code == codes::UNKNOWN_FIELD
+                && call.span.contains(d.span)
+                && d.fixes
+                    .iter()
+                    .any(|f| f.edits.iter().any(|(s, _)| s.start == call.span.start))
+        };
+        let callee_error = |d: &cpl_diag::Diagnostic| d.code == code && d.span == at;
+        let diags = self.sink.diagnostics();
+        let pair = diags
+            .iter()
+            .find(|d| rewrites_call(d))
+            .map(|d| d.fixes.clone());
+        let unknown = diags.iter().find(|d| callee_error(d)).cloned();
+        if let (Some(fixes), Some(mut diag), codes::UNRESOLVED_NAME) = (pair, unknown, code) {
+            self.sink
+                .drop_where(|d| rewrites_call(d) || callee_error(d));
+            diag.fixes = fixes;
+            self.sink.push(diag);
+        }
         let operand = |c: &Self, a: &Arg| {
             let t = c.text(a.value.span);
             let atom = !t.contains(' ') || (t.starts_with('[') && t.ends_with(']'));
