@@ -30,6 +30,20 @@ Every dream must be at that level, and every port is scored against it.
    report and `research/reviews/NAME.md` holding `Score: pending` together:
    `port(NAME): <what the program does>`.
 
+## Header (Ryan, 2026-11-22)
+
+Every `port.cp` opens with the same three comment blocks, then `// original:` if there is one:
+
+```cp
+// Source: Codeforces 2147F, https://codeforces.com/contest/2147/problem/F
+// Problem: <the statement in 1-4 lines: input, what to compute, the bounds that matter;
+//   enough to solve it without opening the statement>
+// Solution: <a 2-6 line sketch: the key observation, then the algorithm and its cost,
+//   enough to picture the solution and follow the code>
+```
+
+`corpus/header.py` counts the ports that have all three and lists the rest, longest first.
+
 ## Taste checklist
 
 A port fails review if any of these hold and the gap is not reported:
