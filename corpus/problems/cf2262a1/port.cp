@@ -15,6 +15,6 @@ for i in 1..=n:
     diff[cap(a[i] * i)] += 1
     diff[cap((a[i] + 1) * i)] -= 1
 let cover = scan(diff, +)
-let free = [i for i in 0..n if cover[i] == 0]
+let free = [i for i in 0..n if cover.prefix(i + 1) == 0]
 print(free.len)
 print(free)
