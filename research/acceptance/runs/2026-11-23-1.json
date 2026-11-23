@@ -1,0 +1,469 @@
+{
+  "date": "2026-11-23",
+  "os": "Ubuntu 22.04.5 LTS (x86_64), Linux VM",
+  "site_commit": "CP Lang 0.3 (beta) docs; Tools page generated from cpl 0.2.2 (dev, 528cddc4); installed cli cpl 0.2.2 (dev, 4f34d40d)",
+  "agent": "Devin (Cognition AI) agent harness, shell + Chrome + Neovim 0.11.5",
+  "steps": {
+    "understand": {
+      "pass": true,
+      "minutes": 2
+    },
+    "try": {
+      "pass": true,
+      "minutes": 2
+    },
+    "install": {
+      "pass": false,
+      "minutes": 11
+    },
+    "solve": {
+      "pass": true,
+      "minutes": 7,
+      "self_pass": true,
+      "judged": "9/10 AC"
+    },
+    "test": {
+      "pass": true,
+      "minutes": 1
+    },
+    "submit": {
+      "pass": true,
+      "minutes": 2
+    },
+    "compete": {
+      "pass": true,
+      "minutes": 2,
+      "self_pass": true,
+      "judged": "5/5 AC"
+    },
+    "design": {
+      "pass": true,
+      "minutes": 3
+    }
+  },
+  "problems": [
+    {
+      "id": "cf2285A",
+      "set": "div2",
+      "verdict": "samples-pass",
+      "minutes": 1,
+      "attempts": 2,
+      "judge": "AC (1 samples, 200 generated, max input 0.00 s)"
+    },
+    {
+      "id": "cf2285B",
+      "set": "div2",
+      "verdict": "samples-pass",
+      "minutes": 1,
+      "attempts": 1,
+      "judge": "AC (1 samples, 200 generated, max input 0.00 s)"
+    },
+    {
+      "id": "cf2285C",
+      "set": "div2",
+      "verdict": "samples-pass",
+      "minutes": 1,
+      "attempts": 2,
+      "judge": "AC (1 samples, 200 generated, max input 0.04 s)"
+    },
+    {
+      "id": "cf2285D",
+      "set": "div2",
+      "verdict": "samples-pass",
+      "minutes": 1,
+      "attempts": 1,
+      "judge": "TLE on max input (> 4 s)"
+    },
+    {
+      "id": "cf2285E",
+      "set": "div2",
+      "verdict": "samples-pass",
+      "minutes": 1,
+      "attempts": 1,
+      "judge": "AC (1 samples, 200 generated, max input 0.18 s)"
+    },
+    {
+      "id": "cf2289A",
+      "set": "div2",
+      "verdict": "samples-pass",
+      "minutes": 1,
+      "attempts": 2,
+      "judge": "AC (1 samples, 200 generated, max input 0.00 s)"
+    },
+    {
+      "id": "cf2289B",
+      "set": "div2",
+      "verdict": "samples-pass",
+      "minutes": 1,
+      "attempts": 2,
+      "judge": "AC (1 samples, 200 generated, max input 0.01 s)"
+    },
+    {
+      "id": "cf2289C",
+      "set": "div2",
+      "verdict": "samples-pass",
+      "minutes": 1,
+      "attempts": 1,
+      "judge": "AC (1 samples, 200 generated, max input 0.01 s)"
+    },
+    {
+      "id": "cf2289D",
+      "set": "div2",
+      "verdict": "samples-pass",
+      "minutes": 1,
+      "attempts": 3,
+      "judge": "AC (1 samples, 200 generated, max input 0.02 s)"
+    },
+    {
+      "id": "cf2289E",
+      "set": "div2",
+      "verdict": "samples-pass",
+      "minutes": 1,
+      "attempts": 2,
+      "judge": "AC (1 samples, 200 generated, max input 0.20 s)"
+    },
+    {
+      "id": "cf2272A",
+      "set": "virtual",
+      "verdict": "samples-pass",
+      "minutes": 1,
+      "attempts": 3,
+      "judge": "AC (1 samples, 200 generated, max input 0.00 s)"
+    },
+    {
+      "id": "cf2272B",
+      "set": "virtual",
+      "verdict": "samples-pass",
+      "minutes": 1,
+      "attempts": 1,
+      "judge": "AC (1 samples, 200 generated, max input 0.00 s)"
+    },
+    {
+      "id": "cf2272C",
+      "set": "virtual",
+      "verdict": "samples-pass",
+      "minutes": 1,
+      "attempts": 1,
+      "judge": "AC (1 samples, 200 generated, max input 0.03 s)"
+    },
+    {
+      "id": "cf2272D",
+      "set": "virtual",
+      "verdict": "samples-pass",
+      "minutes": 1,
+      "attempts": 2,
+      "judge": "AC (1 samples, 200 generated, max input 0.01 s)"
+    },
+    {
+      "id": "cf2272E",
+      "set": "virtual",
+      "verdict": "samples-pass",
+      "minutes": 1,
+      "attempts": 1,
+      "judge": "AC (1 samples, 200 generated, max input 0.02 s)"
+    }
+  ],
+  "findings": [
+    {
+      "id": "install-sh-404",
+      "step": "install",
+      "kind": "workaround",
+      "lane": "tools",
+      "summary": "The one-line installer on /setup fails because no release exists yet; fell back to the documented cargo install from git (built in ~2 min).",
+      "minutes_lost": 2,
+      "evidence": "curl -fsSL https://cp-lang.org/install.sh | sh -> 'curl: (22) The requested URL returned error: 404' / 'cpl-install: error: could not download https://github.com/ryanbai1412/cp-lang/releases/latest/download/latest.json'"
+    },
+    {
+      "id": "version-skew-0-3-docs-0-2-2-cli",
+      "step": "install",
+      "kind": "hesitation",
+      "lane": "site",
+      "summary": "Docs describe CP Lang 0.3 (beta) and say '@memo is spelled @cache in 0.3', but the CLI from the documented install and the Tools page report 0.2.2, so it is unclear which spellings the installed compiler accepts.",
+      "minutes_lost": 1,
+      "evidence": "cpl --version -> 'cpl 0.2.2 (dev, 4f34d40d)'; https://cp-lang.org/tools/ 'Generated from cpl 0.2.2 (dev, 528cddc4)'; https://cp-lang.org/docs/ 'Guides and reference for CP Lang 0.3 (beta)'; https://cp-lang.org/learn/from/cpp/ item 4"
+    },
+    {
+      "id": "editor-setup-needs-repo-checkout",
+      "step": "install",
+      "kind": "workaround",
+      "lane": "tools",
+      "summary": "Neovim/VS Code/JetBrains setup all need a local checkout of the cp-lang repository (`/path/to/cp-lang/editors/...`) with no packaged plugin; used the copy cargo install left in ~/.cargo/git/checkouts.",
+      "minutes_lost": 3,
+      "evidence": "https://cp-lang.org/setup/ step 2 Neovim tab: vim.opt.rtp:append('/path/to/cp-lang/editors/neovim')"
+    },
+    {
+      "id": "neovim-not-preinstalled-0-10",
+      "step": "install",
+      "kind": "hesitation",
+      "lane": "tools",
+      "summary": "Neovim 0.10+ is required; Ubuntu 22.04 apt ships 0.6, so the site's setup silently assumes a manual Neovim download.",
+      "minutes_lost": 1,
+      "evidence": "https://cp-lang.org/setup/ Neovim tab 'Neovim 0.10 or later'; apt-cache policy neovim on Ubuntu 22.04 -> 0.6.1"
+    },
+    {
+      "id": "plain-vim-no-lsp-docs",
+      "step": "install",
+      "kind": "hesitation",
+      "lane": "tools",
+      "summary": "Plain Vim gets filetype and syntax highlighting from editors/neovim, but the site has no Vim tab or LSP instructions, so diagnostics/completion/format/definition are unavailable in Vim without a third-party LSP plugin.",
+      "minutes_lost": 2,
+      "evidence": "vim -u NONE -N -c 'set rtp+=<checkout>/editors/neovim' -c 'syntax on' t.cp -> ft=cp hl=cpKeyword; https://cp-lang.org/setup/ tabs: VS Code, Neovim, Helix, Zed, Emacs, JetBrains (no Vim)"
+    },
+    {
+      "id": "playground-indent-on-paste-typing",
+      "step": "try",
+      "kind": "hesitation",
+      "lane": "site",
+      "summary": "Practice/playground editor does not indent after a line ending in ':' but keeps the previous indent, so typing an indented block line by line gave E0006 ('this line is indented, but no block starts above it') until I pasted instead.",
+      "minutes_lost": 1,
+      "evidence": "https://cp-lang.org/learn/practice/halving-game/ type 'while n % 2 == 0:' Enter 'n /= 2' -> not indented; next lines keep extra indent -> 'error[E0006]: this line is indented, but no block starts above it --> line 5'"
+    },
+    {
+      "id": "count-of-bools-counts-all",
+      "step": "solve",
+      "kind": "workaround",
+      "lane": "stdlib",
+      "summary": "`count(pred for x in xs)` (the spelling the docs give, decision 53) returns the number of elements, not the number of true predicates, so cf2289B silently printed k; cpl check and cpl lint say nothing.",
+      "minutes_lost": 4,
+      "evidence": "echo 'print(count(x > 5 for x in [1, 2, 3]))' > c.cp && cpl run c.cp -> prints 3 (expected 0); cpl lint c.cp -> '0 warnings, 0 errors'; docs /llms-full.txt: 'decision 53: `sum(f(x) for x in xs)`, `count(c == x for c in cs)`'",
+      "p0": true
+    },
+    {
+      "id": "any-free-function-generator",
+      "step": "solve",
+      "kind": "hesitation",
+      "lane": "stdlib",
+      "summary": "`sum(f(x) for x in xs)` works as a free function but `any(p for d in 2..v)` is rejected, so the generator-argument style is not uniform across sum/any.",
+      "minutes_lost": 1,
+      "evidence": "assert any(v % d == 0 for d in 2..v) -> 'error[E0303]: `any` takes 2 arguments (self, p), but `p` is missing'"
+    },
+    {
+      "id": "test-exact-case-yes-no",
+      "step": "test",
+      "kind": "workaround",
+      "lane": "tools",
+      "summary": "`cpl test` compares tokens case-sensitively, so `yes(b)` (prints YES) fails a Codeforces sample that prints Yes even though the statement accepts any case; had to hand-write `if b: \"Yes\" else: \"No\"`.",
+      "minutes_lost": 2,
+      "evidence": "cf2289A.cp `print(yes(x % 4 != 2))`; cpl test cf2289A.cp -> 'first difference at line 1, token 1: expected `Yes`, got `YES`'"
+    },
+    {
+      "id": "fetch-template-misses-multitest",
+      "step": "solve",
+      "kind": "hesitation",
+      "lane": "tools",
+      "summary": "`cpl fetch` writes a template starting `let n: 1..=2e5 = read()` without `@!multitest` even though the Codeforces problem has t test cases.",
+      "minutes_lost": 1,
+      "evidence": "cpl fetch https://codeforces.com/contest/2285/problem/C cf2285C --html page.html; head cf2285C.cp -> no @!multitest line"
+    },
+    {
+      "id": "fetch-needs-saved-html",
+      "step": "solve",
+      "kind": "workaround",
+      "lane": "tools",
+      "summary": "`cpl fetch` cannot download Codeforces pages (403 behind Cloudflare); had to save each page from the browser and pass `--html`.",
+      "minutes_lost": 3,
+      "evidence": "cpl fetch https://codeforces.com/contest/2285/problem/A cf2285A -> 'curl: (22) The requested URL returned error: 403; save the page from the browser and pass it with `--html page.html`'"
+    },
+    {
+      "id": "test-no-checker-any-answer",
+      "step": "test",
+      "kind": "hesitation",
+      "lane": "tools",
+      "summary": "cf2285A accepts any valid permutation but `cpl test` reports WA on a correct answer; I had to find in the long docs that a `@check fn` with `read_output()` is the way.",
+      "minutes_lost": 3,
+      "evidence": "cpl test cf2285A.cp (without @check) -> 'WA ... first difference at line 2, token 2: expected `3`, got `2`'"
+    },
+    {
+      "id": "jetbrains-gradle-429",
+      "step": "install",
+      "kind": "workaround",
+      "lane": "infra",
+      "summary": "JetBrains plugin `./gradlew buildPlugin` failed resolving the Kotlin Gradle plugin because Maven Central returned 429; retried later.",
+      "minutes_lost": 2,
+      "evidence": "cd editors/jetbrains && ./gradlew buildPlugin -> 'Could not GET .../kotlin-gradle-plugin-2.0.21.pom'. Received status code 429 from server: Too Many Requests'"
+    },
+    {
+      "id": "rev-view-index-not-reversed",
+      "step": "solve",
+      "kind": "workaround",
+      "lane": "compiler",
+      "summary": "Indexing a `.rev` view returns the un-reversed element (`b = xs.sorted().rev; b[0]` is the minimum) while `print(b)` shows the reversed order, in both `cpl run` and the built C++; cf2285C silently printed 65 instead of 1000000000.",
+      "minutes_lost": 5,
+      "evidence": "printf 'let b = [3, 1, 2].sorted().rev\\nprint(b[0], b)\\n' > r.cp; cpl run r.cp -> '1 3 2 1' (expected '3 3 2 1'); cpl build r.cp -o r.cpp && g++ -std=c++17 -O2 r.cpp && ./a.out -> same; cpl lint -> 0 warnings",
+      "p0": true
+    },
+    {
+      "id": "no-sort-desc-spelling",
+      "step": "solve",
+      "kind": "non-idiomatic",
+      "lane": "stdlib",
+      "summary": "After `.sorted().rev` misbehaved I wrote `a.sorted(by: x => -x)`, a C++-style negation trick; I wanted `a.sorted(desc)` or a working `a.sorted().rev[k]`.",
+      "minutes_lost": 1,
+      "evidence": "cf2285C.cp: `let b = a.sorted(by: x => -x)` (wanted `let b = a.sorted().rev` with b[k] indexing)"
+    },
+    {
+      "id": "prefix-sum-manual-push",
+      "step": "solve",
+      "kind": "non-idiomatic",
+      "lane": "idioms",
+      "summary": "For cf2285D I built prefix sums with a manual push loop indexing `ps[ps.len - 1]` because I could not quickly see how `Prefix(a)`/`V.cuts` gives a plain integer-indexed prefix array for the symmetric `pre(x)` vs `suf(x)` comparison.",
+      "minutes_lost": 2,
+      "evidence": "cf2285D.cp: `var ps: List<Int> = [0]` / `for x in a: ps.push(ps[ps.len - 1] + x)` (wanted `let ps = a.prefix_sums()` with ps[x])"
+    },
+    {
+      "id": "inversions-documented-not-implemented",
+      "step": "solve",
+      "kind": "workaround",
+      "lane": "stdlib",
+      "summary": "The docs list `a.inversions()` (std.seq) but `cpl` rejects it on both `List<Int>` and `[I]Int`, so cf2289D needed a hand-written compress + Fenwick count.",
+      "minutes_lost": 4,
+      "evidence": "https://cp-lang.org/llms-full.txt '| inversions, LIS | `a.inversions()`, `a.lis(strict:)` |'; cpl check cf2289D.cp with `print(s.inversions())` -> 'error[E0203]: a `[I]Int` has no method `inversions` that `cpl run` knows'"
+    },
+    {
+      "id": "compress-two-spellings",
+      "step": "solve",
+      "kind": "hesitation",
+      "lane": "site",
+      "summary": "The docs show `let xs = compress(all)` with `xs.D`/`xs.at(v)`, but the compiler only accepts the other documented form `let (domain C, comp) = compress(xs)`.",
+      "minutes_lost": 2,
+      "evidence": "`let xs = compress(s)` + `Fenwick<xs.D, Int>()` -> 'error[E0204]: `xs.D` is not a type `cpl run` knows' and 'a `(domain, Compressed<...>)` has no method `at`'; docs /llms-full.txt sections 'Coordinate compression with `compress(all)`' vs '`let (domain C, comp) = compress(xs)`'"
+    },
+    {
+      "id": "inversions-manual-fenwick",
+      "step": "solve",
+      "kind": "non-idiomatic",
+      "lane": "stdlib",
+      "summary": "cf2289D counts inversions with an 8-line compress+Fenwick loop translated from C++; I wanted the documented one-liner.",
+      "minutes_lost": 0,
+      "evidence": "cf2289D.cp: `let (domain C, comp) = compress(s)` / `var bit = Fenwick<C, Int>()` / `inv += i.to_idx - bit.prefix(id.r)` (wanted `print(s.inversions())`)"
+    },
+    {
+      "id": "jetbrains-gradle-429-blocker",
+      "step": "install",
+      "kind": "blocker",
+      "lane": "infra",
+      "summary": "JetBrains (IntelliJ IDEA Community 2024.3.5) plugin could not be built: `./gradlew buildPlugin` failed twice on HTTP 429 from Maven Central, so no JetBrains feature could be checked.",
+      "minutes_lost": 10,
+      "evidence": "cd editors/jetbrains && ./gradlew buildPlugin -> 'Could not resolve org.jetbrains.kotlin:kotlin-gradle-plugin:2.0.21 ... Received status code 429 from server: Too Many Requests' (two attempts a minute apart)"
+    },
+    {
+      "id": "jetbrains-no-prebuilt-plugin",
+      "step": "install",
+      "kind": "workaround",
+      "lane": "tools",
+      "summary": "JetBrains setup requires building the plugin from a repo checkout with Gradle and a JDK; there is no Marketplace or downloadable ZIP.",
+      "minutes_lost": 2,
+      "evidence": "https://cp-lang.org/setup/ JetBrains tab: './gradlew buildPlugin' then 'Install Plugin from Disk'"
+    },
+    {
+      "id": "vscode-needs-node-build",
+      "step": "install",
+      "kind": "workaround",
+      "lane": "tools",
+      "summary": "VS Code extension is not on Marketplace/Open VSX; had to npm install + npm run package from the repo checkout (worked, then highlighting, diagnostics, completion, format and go-to-definition all worked).",
+      "minutes_lost": 2,
+      "evidence": "https://cp-lang.org/setup/ VS Code tab: 'Marketplace and Open VSX ... not published yet. Until then, package it from the repository: cd editors/vscode; npm install; npm run package; code --install-extension cp-lang.vsix'"
+    },
+    {
+      "id": "competitive-companion-not-published",
+      "step": "submit",
+      "kind": "hesitation",
+      "lane": "tools",
+      "summary": "/setup says 'One-click problem import from Competitive Companion not published yet' while `cpl fetch --help` points at `cpl new --listen` with Competitive Companion, so it is unclear whether browser sample import works.",
+      "minutes_lost": 1,
+      "evidence": "https://cp-lang.org/setup/ step 5; cpl fetch --help -> 'for other judges, use `cpl new --listen` with the Competitive Companion browser extension'"
+    },
+    {
+      "id": "argmax-on-range-confusing-error",
+      "step": "compete",
+      "kind": "workaround",
+      "lane": "diagnostics",
+      "summary": "`(0..p).argmax(by: i => a[i])` (the documented `xs.argmax(by:)` on a range) fails with `a for can't walk over a Items<Range<Int>>`, which names an internal type and no fix, so cf2272A fell back to a manual loop.",
+      "minutes_lost": 2,
+      "evidence": "cf2272A.cp line 14 `let j = (0..p).argmax(by: i => a[i])!` -> 'error[E0302]: a `for` can't walk over a `Items<Range<Int>>`'"
+    },
+    {
+      "id": "max-by-suggests-heap-max-at",
+      "step": "compete",
+      "kind": "hesitation",
+      "lane": "diagnostics",
+      "summary": "Writing `max_by` (the C++/Rust spelling) gets `help: did you mean max_at?`, which is a MinMaxHeap method, instead of `argmax(by:)`.",
+      "minutes_lost": 1,
+      "evidence": "`let j = (0..p).max_by(i => a[i])!` -> '= help: did you mean `max_at`?'"
+    },
+    {
+      "id": "argmax-manual-loop",
+      "step": "compete",
+      "kind": "non-idiomatic",
+      "lane": "stdlib",
+      "summary": "cf2272A picks the index of the prefix maximum with a C++-style manual loop because argmax over an index range does not work.",
+      "minutes_lost": 0,
+      "evidence": "cf2272A.cp: `var j = 0` / `for i in 0..p if a[i] > a[j]:` / `    j = i` (wanted `let j = (0..p).argmax(by: i => a[i])!` or `a[..p].argmax()!`)"
+    },
+    {
+      "id": "array-to-list-copy-for-helper",
+      "step": "compete",
+      "kind": "non-idiomatic",
+      "lane": "idioms",
+      "summary": "In the cf2272A checker I converted the `[0..n]` input array to a List with a comprehension to pass and swap it, unsure how to type a parameter as 'this array' or clone it.",
+      "minutes_lost": 1,
+      "evidence": "cf2272A.cp @check: `fn mex_at(b: List<Int>) -> Int` and `var b = [x for x in a]` / `b.swap(i, j)` (wanted `var b = a.clone()` and `fn mex_at(b: [0..n]0..n)`)"
+    },
+    {
+      "id": "run-length-manual-loop",
+      "step": "compete",
+      "kind": "non-idiomatic",
+      "lane": "stdlib",
+      "summary": "cf2272B counts maximal runs of 'f' with a manual counter loop; I wanted a runs/group helper on strings.",
+      "minutes_lost": 1,
+      "evidence": "cf2272B.cp fn pairs: `for c in row: if c == 'f': run += 1 else: total += run / 2; run = 0` (wanted `row.runs().filter(r => r.value == 'f').map(r => r.len / 2).sum()`)"
+    },
+    {
+      "id": "per-tree-graph-manual-bfs",
+      "step": "compete",
+      "kind": "non-idiomatic",
+      "lane": "idioms",
+      "summary": "cf2272D reads k trees of different sizes in one loop; unsure whether a `domain V` and `Graph<V>`/`bfs` can be declared per iteration, I wrote a structural `[1..=n]List<Int>` adjacency and a hand-rolled queue BFS with a parent array.",
+      "minutes_lost": 2,
+      "evidence": "cf2272D.cp: `var adj: [1..=n]List<Int> = []`, `var order: List<Int> = [1]` / `while j < order.len: ... for v in adj[u] if v != parent[u]: parent[v] = u; order.push(v)` (wanted `domain V = read(1..=n)` / `let g = Graph.undirected(read())` / `for u in bfs(g, [V.first!]).order.rev:`)"
+    },
+    {
+      "id": "any-answer-needs-checker-or-luck",
+      "step": "compete",
+      "kind": "workaround",
+      "lane": "tools",
+      "summary": "For cf2272D (any valid set of edges) `cpl test` compared exactly and failed on an equivalent edge orientation; writing an MIS checker was too slow in a contest, so I flipped the print order to match the sample.",
+      "minutes_lost": 1,
+      "evidence": "cf2272D.cp first version `print(hub_tree, hub, t, 1)` -> 'expected: 2 1 1 1 got: 1 1 2 1'; fixed by `print(t, 1, hub_tree, hub)`"
+    },
+    {
+      "id": "param-not-var-help-says-var",
+      "step": "design",
+      "kind": "hesitation",
+      "lane": "diagnostics",
+      "summary": "Pushing to a plain parameter gives `help: declare it with var a`, but parameters can't be `var`; the spec (R4) says the fix is `mut a` at both ends.",
+      "minutes_lost": 1,
+      "evidence": "design/d3_write_lent_param.cp `fn bad(a: List<Int>): a.push(1)` -> 'error[E0403]: `a` is not a var, so `a.push(1)` can't change it ... help: declare it with `var a`'"
+    },
+    {
+      "id": "spec-chapters-link-github-source",
+      "step": "design",
+      "kind": "hesitation",
+      "lane": "site",
+      "summary": "The ownership and numbers chapters cite `decision 128`, `decision 1.7` etc. and link to GitHub sources/`design/spec/11-types.md` that are not on the site, so some reasons are only references for a site-only reader.",
+      "minutes_lost": 1,
+      "evidence": "https://cp-lang.org/docs/ref/core/03-numbers-layout 'Decision 1.7 keeps the number types to Int, U64, I128 and F64' and 'their detailed rules stay in design/spec/11-types.md'"
+    },
+    {
+      "id": "map-get-copies-list",
+      "step": "solve",
+      "kind": "blocker",
+      "lane": "compiler",
+      "summary": "cf2285D times out (judge: TLE on max input, >4 s): `Map<Int, List<Int>>.get(k)` compiles to `cpl::map_get` returning `std::optional<std::vector<ll>>` by value, so each lookup copies the list; nothing in the source shows the O(n) cost",
+      "minutes_lost": 0,
+      "evidence": "offline judge (`score_solutions.py`). Repro: fill `pos[0]` with n items, then n times `if let l = pos.get(0): s += l.len`; native build takes 0.04 s at n=10k, 0.07 s at 20k, 0.29 s at 40k",
+      "source": "judge",
+      "p0": true
+    }
+  ]
+}
