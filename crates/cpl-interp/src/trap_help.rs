@@ -18,6 +18,13 @@ pub(crate) fn help(message: &str) -> Option<String> {
                 .into(),
         );
     }
+    if m.starts_with("a shift by ") {
+        return Some(
+            "`a << k` and `a >> k` need `k` from 0 to below the width (64, or 128 for `I128`): \
+                 for a large power of two, use `**` on a `Mod<P>` value"
+                .into(),
+        );
+    }
     let (idx, rest) = m.strip_prefix("index ")?.split_once(" is outside ")?;
     let len: i64 = rest.rsplit(' ').next()?.parse().ok()?;
     if idx.starts_with('-') {

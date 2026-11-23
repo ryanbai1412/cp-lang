@@ -1056,3 +1056,17 @@ fn golden_an_index_past_the_end_and_a_read_past_the_input_say_the_bound() {
     assert!(err.contains("error[R0501]: the input ended"), "got:\n{err}");
     assert!(err.contains("`0..=n` reads n + 1"), "got:\n{err}");
 }
+
+#[test]
+fn a_shift_past_the_width_says_the_range_and_the_way_out() {
+    let (code, err) = run_stderr("let s = 70\nprint(1 << s)\n", "");
+    assert_eq!(code, 3);
+    assert!(
+        err.contains("a shift by 70 is outside 0..64"),
+        "got:\n{err}"
+    );
+    assert!(
+        err.contains("help: `a << k` and `a >> k` need `k` from 0"),
+        "got:\n{err}"
+    );
+}

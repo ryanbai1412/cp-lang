@@ -295,7 +295,15 @@ impl<'a> Parser<'a> {
         if self.at(T::Ident) {
             return self.name();
         }
-        self.error_expected(codes::EXPECTED_NAME, what, None);
+        if self.at(T::Int) {
+            let span = self.error_span();
+            let message = format!("expected {what}, found a number");
+            let diag = Diagnostic::error(codes::EXPECTED_NAME, span, message)
+                .with_help("a name starts with a letter or `_`, as in `f2`");
+            self.error(diag);
+        } else {
+            self.error_expected(codes::EXPECTED_NAME, what, None);
+        }
         Name {
             text: String::new(),
             span: Span::point(self.prev_end()),

@@ -1,0 +1,8 @@
+error[E0108]: expected a fn name after `fn`, found a number
+  --> a_number_for_a_fn_name_says_how_names_start.cp:1:4
+  |
+1 | fn 123():
+  |    ^^^
+  = help: a name starts with a letter or `_`, as in `f2`
+
+a_number_for_a_fn_name_says_how_names_start.cp: 1 error
