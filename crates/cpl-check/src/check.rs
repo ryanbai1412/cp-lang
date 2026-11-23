@@ -62,6 +62,11 @@ pub(crate) trait Env {
     }
     /// True if `alias` names a module imported whole: `use lib.treap`.
     fn is_module(&mut self, alias: &str) -> bool;
+    /// The names the methods called `name` other than the file's own are
+    /// imported under, one per module: `find of std.strings` (R11.3.4).
+    fn method_keys(&mut self, _name: &str) -> Vec<String> {
+        Vec::new()
+    }
     fn is_private_member(&mut self, _alias: &str, _member: &str) -> bool {
         false
     }
@@ -177,6 +182,8 @@ pub(crate) struct Checker<'a> {
     steps: cpl_syntax::order::Steps,
     refs: Vec<GlobalRef>,
     resolved: Vec<(Span, Resolved)>,
+    /// The method each `x.f` calls (R11.3.4), kept through quiet probes.
+    chosen_methods: Vec<(Span, Resolved)>,
     pub(crate) typed_indexes: Vec<TypedIndex>,
     pub(crate) fixed_io: Vec<Span>,
     pub(crate) io_costs: Vec<(Span, String, String)>,
@@ -271,6 +278,7 @@ impl<'a> Checker<'a> {
             steps: Default::default(),
             refs: Vec::new(),
             resolved: Vec::new(),
+            chosen_methods: Vec::new(),
             typed_indexes: Vec::new(),
             fixed_io: Vec::new(),
             io_costs: Vec::new(),
@@ -424,12 +432,13 @@ impl<'a> Checker<'a> {
         }
     }
 
-    pub(crate) fn finish(self) -> Checked {
+    pub(crate) fn finish(mut self) -> Checked {
+        let resolved = self.with_chosen_methods();
         Checked {
             diagnostics: self.sink.finish(),
             hovers: self.hovers,
             refs: self.refs,
-            resolved: self.resolved,
+            resolved,
             typed_indexes: self.typed_indexes,
             fixed_io: self.fixed_io,
             io_costs: self.io_costs,
@@ -1067,11 +1076,8 @@ impl<'a> Checker<'a> {
 
     /// Whether the top-level fn `name`, called as a method, takes `mut self`:
     /// `fn swap_at(mut self: [D]T, ..)` changes the list it is called on.
-    fn takes_mut_self(&mut self, name: &str) -> bool {
-        let def = self
-            .global(name)
-            .filter(|d| matches!(&**d, Def::Fn { .. }))
-            .or_else(|| self.global(&crate::prelude::std_method(name)));
+    fn takes_mut_self(&mut self, base: &Ty, name: &str) -> bool {
+        let def = self.method_def(base, name);
         matches!(
             def.as_deref(),
             Some(Def::Fn { ty: Ty::Fn { params, .. }, .. })

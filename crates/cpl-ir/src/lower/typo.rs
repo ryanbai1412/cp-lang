@@ -104,7 +104,7 @@ impl<'a> Lowerer<'a> {
                 _ => continue,
             };
             if decl.params.first().is_some_and(|p| p.name.text == "self") {
-                names.push(sym_name.strip_suffix(" of std").unwrap_or(sym_name));
+                names.push(sym_name.split(" of ").next().unwrap_or(sym_name));
             }
         }
         // Auto-imported stdlib UFCS methods are only pulled into `mod_syms`
@@ -446,9 +446,8 @@ impl<'a> Lowerer<'a> {
         args: &[ast::Arg],
         span: Span,
     ) {
-        let sym = self
-            .get_sym(method)
-            .or_else(|| self.get_sym(&cpl_check::std_method(method)));
+        let sym = (self.resolved_method(method, base, span).flatten())
+            .or_else(|| self.method_syms(method).into_iter().next());
         let decl = match sym {
             Some(Sym::Fn(fid)) => self.sigs[fid].decl,
             Some(Sym::GenFn(gfid)) => self.gen_fns[gfid].decl,

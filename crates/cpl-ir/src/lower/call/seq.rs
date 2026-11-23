@@ -1432,10 +1432,8 @@ impl<'a> Lowerer<'a> {
     }
 
     fn is_piece(&self, method: &str) -> bool {
-        let sym = self
-            .get_sym(&cpl_check::std_method(method))
-            .or_else(|| self.get_sym(method));
-        matches!(sym, Some(Sym::GenFn(gfid)) if piece_of_self(self.gen_fns[gfid].decl))
+        (self.method_syms(method).iter())
+            .any(|sym| matches!(sym, Sym::GenFn(gfid) if piece_of_self(self.gen_fns[*gfid].decl)))
     }
 
     pub(in crate::lower) fn map_view_from_expr(

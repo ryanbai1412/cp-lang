@@ -640,12 +640,6 @@ impl Database {
                                 .iter()
                                 .any(|(word, on)| *on == name.text && uses(word)))
                 };
-                if scope.imports.contains_key(&name.text)
-                    || !used
-                    || failed_names.contains(&name.text)
-                {
-                    continue;
-                }
                 // `count(..)` the language has itself is not the library's
                 // `s.count(c)` either.
                 let own = declared.contains(name.text.as_str())
@@ -653,6 +647,16 @@ impl Database {
                 if own && !method {
                     continue;
                 }
+                // Beside a name the file declares itself, or another module's
+                // method of that name, the library's method is one of the
+                // candidates a call picks from, under a name no program writes.
+                let key = crate::prelude::import_key(module, &name.text, method && own);
+                if scope.imports.contains_key(&key) || !used || failed_names.contains(&name.text) {
+                    continue;
+                }
+                let bare = (key != name.text)
+                    .then(|| scope.imports.remove(&name.text))
+                    .flatten();
                 let had_imports = scope.has_imports;
                 let mods_before = scope.modules.len();
                 let hits_before = self.cycle_hits;
@@ -673,21 +677,15 @@ impl Database {
                         .iter()
                         .any(|d| d.code == codes::UNRESOLVED_MODULE)
                 });
+                let import = scope.imports.remove(&name.text);
                 if cycled || !diags.is_empty() {
                     self.cycle_hits = hits_before;
                     scope.modules.truncate(mods_before);
-                    scope.imports.remove(&name.text);
-                    continue;
+                } else if let Some(import) = import {
+                    scope.imports.insert(key.clone(), import);
                 }
-                // Beside a name the file declares itself, the library's
-                // method stays reachable for the types the file's own fn
-                // does not take, under a name no program can write.
-                if own {
-                    if let Some(import) = scope.imports.remove(&name.text) {
-                        scope
-                            .imports
-                            .insert(crate::prelude::std_method(&name.text), import);
-                    }
+                if let Some(bare) = bare {
+                    scope.imports.insert(name.text.clone(), bare);
                 }
             }
             if !is_std_path(path) {
@@ -1261,6 +1259,7 @@ impl Database {
             return;
         };
         let index = scope.add_module(loaded);
+        scoping::add_methods(scope, index);
         let module_name = scope.modules[index].name.clone();
         let analysis = scope.modules[index].analysis.clone();
         let decl_of = |name: &str| {

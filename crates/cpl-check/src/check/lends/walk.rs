@@ -125,10 +125,7 @@ impl Checker<'_> {
                 ExprKind::Name(n) => self.global(n),
                 _ => None,
             },
-            ExprKind::Field { name, .. } => self
-                .global(&name.text)
-                .filter(|d| matches!(&**d, Def::Fn { ty: Ty::Fn { params, .. }, .. } if params.first().is_some_and(|p| p.name == "self")))
-                .or_else(|| self.global(&crate::prelude::std_method(&name.text))),
+            ExprKind::Field { name, .. } => self.chosen_method(name),
             _ => None,
         };
         let Some(def) = def else {

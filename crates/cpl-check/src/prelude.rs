@@ -47,11 +47,29 @@ pub fn names() -> &'static [(Vec<ast::Name>, ast::Name)] {
 /// `argmax(a)` is `a.argmax`. Writing the word brings the method in.
 pub const SEQUENCE_FORMS: [&str; 2] = ["argmax", "argmin"];
 
-/// The name a method of the standard library is imported under when the
-/// file declares that name itself: `find of std`. The space keeps it out
-/// of reach of what a program can write.
-pub fn std_method(name: &str) -> String {
-    format!("{name} of std")
+/// The name a method of `module` is imported under beside another of
+/// its name, one per module: `find of std.strings`. The space keeps it
+/// out of reach of what a program can write.
+pub fn method_key(name: &str, module: &str) -> String {
+    format!("{name} of {module}")
+}
+
+/// What the method `name` of the std `module` is imported under: its
+/// `method_key` beside the file's own `name` or another module's.
+pub fn import_key(module: &[ast::Name], name: &str, own: bool) -> String {
+    if own || shared_method(name) {
+        let path: Vec<&str> = module.iter().map(|n| n.text.as_str()).collect();
+        method_key(name, &path.join("."))
+    } else {
+        name.to_string()
+    }
+}
+
+/// Whether two modules of the standard library give a method `name`:
+/// each is then imported under its `method_key`, and a call picks the
+/// one its receiver fits (R11.3.4).
+pub fn shared_method(name: &str) -> bool {
+    methods().iter().filter(|(_, n)| n.text == name).count() > 1
 }
 
 /// Every fn, method and getter name the active standard library declares.
@@ -216,7 +234,7 @@ pub fn work_methods() -> &'static std::collections::HashSet<String> {
 /// module. A program that writes `.name` gets the fn without a `use`,
 /// as it gets the methods a type is declared with. A method name does
 /// not stand in the way of a program's own names, so these are not on
-/// the prelude's list. A name two modules give is left to a `use`.
+/// the prelude's list. A name two modules give is there once for each.
 pub fn methods() -> &'static [(Vec<ast::Name>, ast::Name)] {
     static METHODS: OnceLock<Vec<(Vec<ast::Name>, ast::Name)>> = OnceLock::new();
     METHODS.get_or_init(|| {
@@ -237,19 +255,13 @@ pub fn methods() -> &'static [(Vec<ast::Name>, ast::Name)] {
                 found.push((path.clone(), bare(name), is_todo));
             }
         }
-        let mut unique: Vec<(Vec<ast::Name>, ast::Name)> = Vec::new();
-        for (path, name, is_todo) in &found {
-            let matching: Vec<_> = found
-                .iter()
-                .filter(|(_, other, _)| other.text == name.text)
-                .collect();
-            if matching.len() == 1
-                || (!is_todo && matching.iter().filter(|(_, _, t)| !t).count() == 1)
-            {
-                unique.push((path.clone(), name.clone()));
-            }
-        }
-        unique
+        // A `todo` body gives way to a module that has the method.
+        let done = |name: &str| found.iter().any(|(_, n, t)| n.text == name && !t);
+        found
+            .iter()
+            .filter(|(_, name, is_todo)| !is_todo || !done(&name.text))
+            .map(|(path, name, _)| (path.clone(), name.clone()))
+            .collect()
     })
 }
 

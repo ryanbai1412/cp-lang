@@ -261,10 +261,7 @@ impl Checker<'_> {
     /// A method whose `self` must be `Indexed`, called on a `.rev`: a
     /// reversed view keeps its source's keys, so it isn't (R07.3.5).
     pub(super) fn rev_not_indexed(&mut self, base_ty: &Ty, name: &ast::Name) -> bool {
-        let def = self
-            .global(&name.text)
-            .filter(|d| matches!(&**d, Def::Fn { .. }))
-            .or_else(|| self.global(&crate::prelude::std_method(&name.text)));
+        let def = self.method_def(base_ty, &name.text);
         let Some(Def::Fn {
             ty: Ty::Fn { params, .. },
             bounds,

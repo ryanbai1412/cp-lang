@@ -1743,40 +1743,6 @@ impl<'a> Checker<'a> {
         Some(out)
     }
 
-    /// The top-level fn `name` whose first parameter is a `self` of the
-    /// struct or enum `base`, as the method it is: the fn without that
-    /// parameter.
-    pub(super) fn own_method(&mut self, base: &Ty, name: &str) -> Option<Ty> {
-        if !matches!(base, Ty::Named { .. } | Ty::Record(_) | Ty::Tuple(_)) {
-            return None;
-        }
-        let def = self
-            .global(name)
-            .filter(|d| matches!(&**d, Def::Fn { .. }))
-            .or_else(|| self.global(&crate::prelude::std_method(name)))?;
-        let Def::Fn {
-            ty: Ty::Fn { params, ret },
-            ..
-        } = &*def
-        else {
-            return None;
-        };
-        let first = params.first().filter(|p| p.name == "self")?;
-        let same_shape = match (&first.ty, base) {
-            (Ty::Named { name: takes, .. }, Ty::Named { name: on, .. }) => takes == on,
-            (Ty::Record(takes), Ty::Record(on)) => {
-                takes.len() == on.len() && takes.iter().zip(on).all(|(a, b)| a.0 == b.0)
-            }
-            (Ty::Tuple(takes), Ty::Tuple(on)) => takes.len() == on.len(),
-            (Ty::Tuple(takes), Ty::Record(on)) => takes.len() == on.len(),
-            _ => false,
-        };
-        same_shape.then(|| Ty::Fn {
-            params: params[1..].to_vec(),
-            ret: ret.clone(),
-        })
-    }
-
     fn field(&mut self, expr: &Expr, base: &Expr, name: &ast::Name) -> Ty {
         // R04b.1.7: `let t = w.rebase` names its fresh domain `t.Idx`.
         if let ExprKind::Name(view) = &base.kind {
@@ -1834,6 +1800,7 @@ impl<'a> Checker<'a> {
             return ty;
         }
         let base_ty = self.infer(base);
+        self.note_method(&base_ty, name);
         if self.member_advice(&base_ty, name) {
             return Ty::Error;
         }
@@ -2392,7 +2359,7 @@ impl<'a> Checker<'a> {
             Ty::Tuple(items) => {
                 return match name.text.parse::<usize>() {
                     Ok(i) if i < items.len() => items[i].clone(),
-                    _ => self.own_method(&base_ty, &name.text).unwrap_or(Ty::Unknown),
+                    _ => self.own_method_at(&base_ty, name).unwrap_or(Ty::Unknown),
                 };
             }
             Ty::Named {
@@ -2776,7 +2743,7 @@ impl<'a> Checker<'a> {
                 // `fn area(self: Sq) -> Int` at the top of the file is
                 // a method of `Sq`, and of no other struct.
                 None if self.own_method(&base_ty, &name.text).is_some() => {
-                    match self.own_method(&base_ty, &name.text).unwrap_or(Ty::Unknown) {
+                    match self.own_method_at(&base_ty, name).unwrap_or(Ty::Unknown) {
                         Ty::Fn { params, ret } if !self.in_call_callee && params.is_empty() => *ret,
                         other => other,
                     }

@@ -50,3 +50,35 @@ fn const_value(items: &[Arc<ItemSyntax>], scope: &Scope, name: &str, depth: usiz
             _ => None,
         })
 }
+
+/// R11.3.4: each `pub fn f(self: ..)` of a library module is a method its
+/// receivers find, under its `method_key`, whatever else the file calls `f`.
+pub(super) fn add_methods(scope: &mut Scope, index: usize) {
+    let module = &scope.modules[index];
+    if module.name.starts_with("std.") {
+        return;
+    }
+    let mut found = Vec::new();
+    for item in &module.analysis.items {
+        for stmt in &item.syntax.parsed.stmts {
+            let StmtKind::Fn(f) = &stmt.kind else {
+                continue;
+            };
+            let public = item
+                .syntax
+                .decls
+                .iter()
+                .any(|d| d.public && d.name == f.name.text);
+            if public && f.params.first().is_some_and(|p| p.name.text == "self") {
+                let key = crate::prelude::method_key(&f.name.text, &module.name);
+                found.push((key, f.name.text.clone()));
+            }
+        }
+    }
+    for (key, name) in found {
+        scope.imports.entry(key).or_insert(Import {
+            module: index,
+            name,
+        });
+    }
+}

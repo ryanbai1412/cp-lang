@@ -71,6 +71,17 @@ impl Env for FileCtx<'_> {
         enums
     }
 
+    fn method_keys(&mut self, name: &str) -> Vec<String> {
+        self.record(DEP_IMPORTS, self.scope.imports_fp);
+        let prefix = crate::prelude::method_key(name, "");
+        let mut keys: Vec<String> = (self.scope.imports.keys())
+            .filter(|k| k.starts_with(&prefix))
+            .cloned()
+            .collect();
+        keys.sort();
+        keys
+    }
+
     fn is_module(&mut self, alias: &str) -> bool {
         self.record(DEP_IMPORTS, self.scope.imports_fp);
         self.scope.aliases.contains_key(alias)

@@ -554,7 +554,7 @@ impl<'a> Checker<'a> {
             Some(m) if m.members.iter().any(|(n, _)| n == &name.text) => {
                 m.mutators.contains(&name.text)
             }
-            _ => self.takes_mut_self(&name.text),
+            _ => self.takes_mut_self(&base_ty, &name.text),
         };
         if mutates {
             self.require_mutable(base, &format!("changed by `{}`", name.text));
@@ -1024,7 +1024,9 @@ impl<'a> Checker<'a> {
             }
         }
         match base_ty {
-            Ty::Optional(ref inner) if matches!(name.text.as_str(), "map" | "filter") => {
+            Ty::Optional(ref inner)
+                if super::method_form::OPTIONAL_MEMBERS.contains(&name.text.as_str()) =>
+            {
                 if let ExprKind::Call { args, .. } = &call.kind {
                     if args.len() == 1 && args[0].name.is_none() {
                         let f = &args[0].value;

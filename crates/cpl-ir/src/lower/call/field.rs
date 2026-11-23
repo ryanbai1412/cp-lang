@@ -1173,6 +1173,65 @@ impl<'a> Lowerer<'a> {
         Some(plain.to_string())
     }
 
+    /// Every top-level `fn name(self: ..)` in reach: the module's own
+    /// `name`, then each module's under its `method_key` (R11.3.4).
+    pub(in crate::lower) fn method_syms(&self, name: &str) -> Vec<Sym> {
+        let prefix = cpl_check::method_key(name, "");
+        let mut keys: Vec<&String> = (self.mod_syms[self.cur_mod].keys())
+            .filter(|k| k.starts_with(&prefix))
+            .collect();
+        keys.sort();
+        let keyed = keys.into_iter().filter_map(|k| self.get_sym(k));
+        self.get_sym(name).into_iter().chain(keyed).collect()
+    }
+
+    /// The fn the checker resolved `base.name(..)` to: the `Resolved` at
+    /// the method's name, the first one after `base` inside `span`. `Some(None)`
+    /// when it resolved to a member of the receiver's own type.
+    pub(in crate::lower) fn resolved_method(
+        &self,
+        name: &str,
+        base: &ast::Expr,
+        span: Span,
+    ) -> Option<Option<Sym>> {
+        let items = &self.mods[self.cur_mod].items;
+        let item = &items[items
+            .binary_search_by_key(&self.offset, |i| i.offset)
+            .ok()?];
+        let (_, found) = (item.check.resolved.iter())
+            .filter(|(at, r)| at.start >= base.span.end && at.end <= span.end && r.name == name)
+            .min_by_key(|(at, _)| at.start)?;
+        Some(match (&found.owner, found.module.as_str()) {
+            (Some(_), _) => None,
+            (None, "") => self.get_sym(name),
+            (None, module) => {
+                (self.get_sym(&cpl_check::method_key(name, module))).or_else(|| self.get_sym(name))
+            }
+        })
+    }
+
+    /// Where the checker left no choice (a receiver of a type parameter):
+    /// the first candidate whose written `self` shape the receiver may have.
+    fn fitting_method(&mut self, candidates: &[Sym], base: &ast::Expr) -> Option<Sym> {
+        let given = self.probe_ty_silent(base).and_then(|ty| self.shape(&ty));
+        let fits = candidates.iter().copied().find(|&sym| {
+            let decl = match sym {
+                Sym::Fn(fid) => self.sigs[fid].decl,
+                Sym::GenFn(gfid) => self.gen_fns[gfid].decl,
+                _ => return false,
+            };
+            let Some(first) = decl.params.first().filter(|p| p.name.text == "self") else {
+                return false;
+            };
+            let takes = first
+                .ty
+                .as_ref()
+                .and_then(|t| self.written_shape(t, &decl.generics));
+            !matches!((takes, &given), (Some(takes), Some(given)) if takes != *given)
+        });
+        fits
+    }
+
     /// Tries calling a free function or generic free function whose first parameter is `self`
     /// using UFCS (`base.name(args...)` -> `name(base, args...)`).
     /// `recv_mark` is where `pending` stood before the caller lowered `base`
@@ -1186,8 +1245,13 @@ impl<'a> Lowerer<'a> {
         span: Span,
         recv_mark: Option<usize>,
     ) -> Option<Expr> {
-        let theirs = self.get_sym(&cpl_check::std_method(name));
-        let mut sym = match self.get_sym(name).or(theirs) {
+        let candidates = self.method_syms(name);
+        let chosen = match self.resolved_method(name, base, span) {
+            Some(None) => return None,
+            Some(Some(sym)) => Some(sym),
+            None => self.fitting_method(&candidates, base),
+        };
+        let sym = match chosen {
             Some(s) => s,
             None => {
                 // Fall back to a UFCS free function declared in the receiver struct's defining module.
@@ -1198,25 +1262,6 @@ impl<'a> Lowerer<'a> {
                 *self.mod_syms[mod_id].get(name)?
             }
         };
-        // The program's own `find(self: List<Int>, ..)` is not what
-        // `s.find(..)` on a `Str` means: that is the library's.
-        if let Some(theirs) = theirs {
-            let own = match sym {
-                Sym::Fn(fid) => Some(self.sigs[fid].decl),
-                Sym::GenFn(gfid) => Some(self.gen_fns[gfid].decl),
-                _ => None,
-            };
-            let takes = own.and_then(|decl| {
-                let first = decl.params.first().filter(|p| p.name.text == "self")?;
-                self.written_shape(first.ty.as_ref()?, &decl.generics)
-            });
-            let given = self.probe_ty_silent(base).and_then(|ty| self.shape(&ty));
-            if own.is_none()
-                || matches!((takes, given), (Some(takes), Some(given)) if takes != given)
-            {
-                sym = theirs;
-            }
-        }
         let (has_self, self_mut) = match sym {
             Sym::Fn(fid) => match self.sigs[fid].decl.params.first() {
                 Some(p) if p.name.text == "self" => (true, p.mutable),

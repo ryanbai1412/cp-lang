@@ -1776,3 +1776,60 @@ fn a_library_fn_in_method_form_hovers_and_types_like_its_free_form() {
         Some("Gen<Slice<Str>>")
     );
 }
+
+#[test]
+fn a_method_call_takes_the_fn_its_receiver_fits_from_any_module() {
+    let modules = [
+        (
+            "lib.sq",
+            "pub struct Sq(s: Int)\npub fn area(self: Sq) -> Int = self.s * self.s\n",
+        ),
+        (
+            "lib.ci",
+            "pub struct Ci(r: Int)\npub fn area(self: Ci) -> Int = 3 * self.r * self.r\n",
+        ),
+    ];
+    let src = "use lib.sq.*\nuse lib.ci.*\nlet a: Int = Sq(2).area()\nlet b: Int = Ci(1).area()\nprint(a, b)\n";
+    let mut db = Database::with_loader(Box::new(Modules(modules.to_vec())));
+    db.set_file("a.cp", src);
+    assert!(
+        db.diagnostics("a.cp").is_empty(),
+        "{:?}",
+        db.diagnostics("a.cp")
+    );
+    let analysis = db.analyze("a.cp").unwrap();
+    let chosen: Vec<&str> = (analysis.items.iter())
+        .flat_map(|item| item.check.resolved.iter())
+        .filter(|(_, r)| r.name == "area")
+        .map(|(_, r)| r.module.as_str())
+        .collect();
+    assert_eq!(chosen, ["lib.sq", "lib.ci"]);
+}
+
+#[test]
+fn a_method_two_modules_give_one_receiver_is_ambiguous() {
+    let modules = [
+        ("lib.a", "pub fn twice<T>(self: T) -> Int = 2\n"),
+        ("lib.b", "pub fn twice<T>(self: T) -> Int = 3\n"),
+    ];
+    let diags = check_with(&modules, "use lib.a.*\nuse lib.b.*\nprint(5.twice())\n");
+    assert_eq!(diags.len(), 1, "{diags:?}");
+    assert_eq!(diags[0].code, cpl_diag::codes::AMBIGUOUS_METHOD);
+    assert!(
+        diags[0].message.contains("`lib.a` and `lib.b`"),
+        "{}",
+        diags[0].message
+    );
+}
+
+#[test]
+fn a_method_no_candidate_takes_says_what_the_free_form_says() {
+    let diags = check("let a: ?List<Int> = [1, 2]\nprint(a.sum())\n");
+    assert_eq!(
+        messages(&diags),
+        ["`?List<Int>` does not implement `Seq` required by `sum`"]
+    );
+    let own =
+        check("let a: ?Int = 3\nprint(a.map(x => x + 1) ?? 0)\nprint([1, 2].map(x => x * 2))\n");
+    assert!(own.is_empty(), "{own:?}");
+}

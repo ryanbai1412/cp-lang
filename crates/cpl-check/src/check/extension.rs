@@ -40,13 +40,9 @@ impl<'a> Checker<'a> {
         if crate::builtins::builtin_member(owner, name).is_some() {
             return None;
         }
-        let defs: Vec<_> = [
-            self.global(name),
-            self.global(&crate::prelude::std_method(name)),
-        ]
-        .into_iter()
-        .flatten()
-        .collect();
+        let defs: Vec<_> = (self.method_candidates(name).into_iter())
+            .map(|(_, def)| def)
+            .collect();
         let mut takes = Vec::new();
         for def in &defs {
             let Def::Fn {
