@@ -1,11 +1,9 @@
-// Codeforces 2096 B — Wonderful Gloves
-//
-// Each colour `i` has `l[i]` left and `r[i]` right gloves. To avoid forming `k`
-// matched pairs in the worst case, an adversary first gives us all
-// `max(l[i], r[i])` gloves from the larger side of every colour (0 pairs), then
-// all `min(l[i], r[i])` gloves from the `k - 1` colours with the largest `min`
-// (`k - 1` pairs). Drawing `+ 1` additional glove is guaranteed to complete a
-// `k`-th matched pair.
+// Source: Codeforces 2096B (Wonderful Gloves), https://codeforces.com/contest/2096/problem/B
+// Problem: colour i has l_i left and r_i right gloves (n <= 2e5, counts <= 1e9, multitest).
+//   Print the fewest gloves drawn blind that guarantee matching pairs in at least k <= n colours.
+// Solution: the worst draw takes max(l_i, r_i) of every colour (no pair) and min(l_i, r_i) of
+//   the k - 1 colours with the largest min (k - 1 pairs); one more glove makes a k-th. Sort the
+//   mins descending: sum of maxes + top k - 1 mins + 1, O(n log n).
 
 @!multitest
 let (n, k): (1..=200_000, 1..=200_000) = read()

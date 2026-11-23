@@ -1,10 +1,9 @@
-// Codeforces 2124 C — Subset Multiplication
-//
-// `b` was produced from a divisive array `a` (`a[i] | a[i + 1]`) by multiplying
-// a subset of elements by some `k`. Whenever an adjacent pair `(x, y)` fails
-// `y % x == 0`, `x` must have been multiplied by `k` while `y` was not, so
-// `(x / k) | y`, which forces `(x / gcd(x, y)) | k`. Taking the LCM of
-// `x / gcd(x, y)` across all non-dividing adjacent pairs yields a valid `k`.
+// Source: Codeforces 2124C (Subset Multiplication), https://codeforces.com/contest/2124/problem/C
+// Problem: a has a_i | a_{i+1}; b is a with some subset multiplied by an unknown x. Given b
+//   (n <= 6e5, b_i <= 1e9, sum n <= 6e5, multitest), print any valid x (1 <= x <= 1e9).
+// Solution: where b_i does not divide b_{i+1}, b_i was multiplied and b_{i+1} was not, so b_i / x
+//   divides b_{i+1}: b_i / gcd(b_i, b_{i+1}) divides x. The lcm of those over all such adjacent
+//   pairs (1 if none) is valid: O(n log 1e9).
 
 @!multitest
 let n: 2..=600_000 = read()

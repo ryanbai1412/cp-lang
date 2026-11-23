@@ -1,11 +1,9 @@
-// Codeforces 2127 A — Mix Mex Max
-//
-// In the input, `-1` is a wildcard that can be replaced by any non-negative
-// integer. Every triple `{x, y, z}` satisfies `MEX(x, y, z) == max(x, y, z) -
-// min(x, y, z)` iff all three elements are equal and positive (`0` makes
-// `MEX >= 1` while `max - min == 0` when equal, and distinct values cannot keep
-// every adjacent triple valid across the array). Thus a valid completion exists
-// iff all fixed (`!= none`) entries are positive and share one common value.
+// Source: Codeforces 2127A (Mix Mex Max), https://codeforces.com/contest/2127/problem/A
+// Problem: n <= 100 values in 0..=100, -1 marking a blank (multitest). Can the blanks be filled
+//   with non-negative integers so every window of 3 has mex = max - min? Print YES or NO.
+// Solution: a window without 0 has mex 0, so it is constant; one with 0 has min 0 and needs
+//   mex = max, impossible since max is in it and mex is not. So the array is one positive
+//   constant: YES iff the fixed entries are all equal and positive. O(n).
 
 @!multitest
 let n: 3..=100 = read()
