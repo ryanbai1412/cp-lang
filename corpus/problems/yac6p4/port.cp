@@ -115,16 +115,10 @@ let grundy: List<Int> = [
     103,
 ]
 
-let n: 1..=200_000 = read()
+let n: 1..=1e6 = read()
 let m: 1..=100 = read()
-let a: [0..n]Int = read()
+let s: [0..n]1..=100 = read()
 
 var need = 0
-for i in 0..n:
-    need = need ^ grundy[a[i]]
-
-var ans = -1
-for i in 1..=m:
-    if ans == -1 and grundy[i] == need:
-        ans = i
-print(ans)
+for side in s: need ^= grundy[side]
+print((1..=m).find(side => grundy[side] == need) ?? -1)

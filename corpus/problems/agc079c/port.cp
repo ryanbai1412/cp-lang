@@ -48,7 +48,7 @@ fn flip(s: Side) -> Side = match s:
     Side.Front => Side.Back
 
 @!multitest
-let n: 1..=2e5 = read()
+let n: 1..=250_000 = read()
 domain Val = 1..=n
 domain Pos = 0..n
 let a: [Pos]Val = read()

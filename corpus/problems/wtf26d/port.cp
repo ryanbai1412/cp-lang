@@ -48,7 +48,7 @@ struct CondStack:
             items.push(Cond(pos, cap))
 
 @!multitest
-let n: 1..=200_000 = read()
+let n: 2..=1e6 = read()
 domain Pos = 1..=n
 domain Val = 1..=n
 let p: [Pos]Val = read()

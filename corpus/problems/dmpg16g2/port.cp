@@ -11,7 +11,7 @@
 const M = 5
 const MASKS = 32
 
-let n: 1..=500 = read()
+let n: 1..=1000 = read()
 domain Row = 0..n
 domain Col = 0..n
 let g: [Row, Col]Char = read()
@@ -19,101 +19,57 @@ let g: [Row, Col]Char = read()
 fn c2(x: Int) -> Int:
     x * (x + 1) / 2
 
-var pop: [0..MASKS]Int = 0
-var has_bit: [0..MASKS, 0..M]Bool = false
-for mask in 0..MASKS:
-    var tmp = mask
-    for b in 0..M:
-        if tmp % 2 == 1:
-            pop[mask] += 1
-            has_bit[mask, b] = true
-        tmp = tmp / 2
+domain Mask = 0..MASKS
+let left_out = [Mask, 0..M] (mask, b) => (mask.ord >> b) % 2 == 1
+let sign = [Mask] mask => if popcount(mask.ord) % 2 == 1: -1 else: 1
+let holding = [0..M] b => Mask.filter(mask => left_out[mask, b]).collect()
 
-var last: [0..n, 0..M]Int = -1
-var dsu_p: [0..MASKS, 0..n]Int = -1
-var blocked: [0..MASKS, 0..n]Int = 0
-var total: [0..MASKS]Int = 0
-
-fn dsu_find(mask: Int, u: Int) -> Int:
-    var r = u
-    while dsu_p[mask, r] >= 0:
-        r = dsu_p[mask, r]
-    var cur = u
-    while dsu_p[mask, cur] >= 0:
-        let nxt = dsu_p[mask, cur]
-        dsu_p[mask, cur] = r
-        cur = nxt
-    r
-
-fn dsu_size(mask: Int, u: Int) -> Int:
-    -dsu_p[mask, dsu_find(mask, u)]
-
-fn dsu_merge(mask: Int, u: Int, v: Int):
-    var ru = dsu_find(mask, u)
-    var rv = dsu_find(mask, v)
-    if ru == rv:
-        return
-    if dsu_p[mask, ru] < dsu_p[mask, rv]:
-        swap(mut ru, mut rv)
-    dsu_p[mask, rv] += dsu_p[mask, ru]
-    dsu_p[mask, ru] = rv
-
+// last[c, b]: the lowest row so far (at or above bot) where letter b last occurs in column c.
+var last: [Col, 0..M]-1..n = -1
+// seen[c]: the letters occurring in column c at or above bot, as a bit mask.
+var seen: [Col]0..MASKS = 0
 var ans = 0
 
-for bot in 0..n:
-    for c in 0..n:
-        let ch = g[Row(bot), Col(c)]
+for bot in Row:
+    for c in Col:
+        let ch = g[bot, c]
         if ch != '.':
-            last[c, Int(ch) - 65] = bot
+            last[c, Int(ch) - 65] = bot.ord
+            seen[c] |= 1 << (Int(ch) - 65)
 
-    for mask in 0..MASKS:
-        total[mask] = 0
+    // blocked[mask, c]: letters of mask still present in column c between top and bot.
+    var blocked: [Mask, Col]0..=M = [Mask, Col] (mask, c) => popcount(mask.ord & seen[c])
+    var runs = [Mask] _ => Dsu<Col>()
+    var total = [Mask] _ => 0
+    for mask in Mask:
         var run = 0
-        for c in 0..n:
-            dsu_p[mask, c] = -1
-            var cnt = 0
-            for b in 0..M:
-                if has_bit[mask, b] and last[c, b] >= 0:
-                    cnt += 1
-            blocked[mask, c] = cnt
-            if cnt == 0:
+        for c in Col:
+            if blocked[mask, c] == 0:
                 run += 1
-                if c > 0 and blocked[mask, c - 1] == 0:
-                    dsu_merge(mask, c - 1, c)
+                if c.ord > 0 and blocked[mask, Col(c.ord - 1)] == 0:
+                    runs[mask].unite(Col(c.ord - 1), c)
             else:
                 total[mask] += c2(run)
                 run = 0
         total[mask] += c2(run)
 
-    var ev_col: [0..n]List<Int> = []
-    var ev_ch: [0..n]List<Int> = []
-    for c in 0..n:
+    var drops: [Row]List<(c: Col, b: Int)> = []
+    for c in Col:
         for b in 0..M:
-            let r = last[c, b]
-            if r >= 0:
-                ev_col[r].push(c)
-                ev_ch[r].push(b)
+            if last[c, b] >= 0:
+                drops[Row(last[c, b])].push((c, b))
 
-    for top in 0..=bot:
-        for mask in 0..MASKS:
-            if pop[mask] % 2 == 1:
-                ans -= total[mask]
-            else:
-                ans += total[mask]
-        let ec = ev_col[top].len
-        for ei in 0..ec:
-            let c = ev_col[top][ei]
-            let b = ev_ch[top][ei]
-            for mask in 0..MASKS:
-                if has_bit[mask, b]:
-                    blocked[mask, c] -= 1
-                    if blocked[mask, c] == 0:
-                        if c > 0 and blocked[mask, c - 1] == 0:
-                            total[mask] -= c2(dsu_size(mask, c - 1))
-                            dsu_merge(mask, c - 1, c)
-                        if c + 1 < n and blocked[mask, c + 1] == 0:
-                            total[mask] -= c2(dsu_size(mask, c + 1))
-                            dsu_merge(mask, c, c + 1)
-                        total[mask] += c2(dsu_size(mask, c))
+    for top in Row(0)..=bot:
+        for mask in Mask:
+            ans += sign[mask] * total[mask]
+        for (c, b) in drops[top]:
+            for mask in holding[b]:
+                blocked[mask, c] -= 1
+                if blocked[mask, c] == 0:
+                    for d in c.ord - 1 ..= c.ord + 1:
+                        if d != c.ord and d in Col and blocked[mask, Col(d)] == 0:
+                            total[mask] -= c2(runs[mask].size(Col(d)))
+                            runs[mask].unite(c, Col(d))
+                    total[mask] += c2(runs[mask].size(c))
 
 print(ans)
