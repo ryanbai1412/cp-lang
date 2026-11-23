@@ -4,6 +4,45 @@ use super::*;
 use cpl_syntax::ast::{Expr, ExprKind};
 
 impl Checker<'_> {
+    pub(super) fn optional_compare(
+        &mut self,
+        op_str: &str,
+        (left_expr, left): (&Expr, &Ty),
+        (right_expr, right): (&Expr, &Ty),
+    ) {
+        let unwrap = |c: &Self, e: &Expr, ty: &Ty| match (&e.kind, ty) {
+            (_, ty) if !matches!(ty, Ty::Optional(_)) => c.quote(e.span),
+            (ExprKind::Name(_) | ExprKind::Field { .. }, _) => format!("{}!", c.quote(e.span)),
+            _ => format!("({})!", c.quote(e.span)),
+        };
+        let (at, ty) = match left {
+            Ty::Optional(_) => (left_expr, left),
+            _ => (right_expr, right),
+        };
+        let message = format!(
+            "`{}` is {}: optional values can't be ordered with `{op_str}`",
+            self.quote(at.span),
+            ty.with_article()
+        );
+        let (l, r) = (
+            unwrap(self, left_expr, left),
+            unwrap(self, right_expr, right),
+        );
+        if let Some(diag) = self.error(codes::OPTIONAL_COMPARE, at.span, message) {
+            diag.help = Some(format!(
+                "`None` has no order: unwrap first, `{l} {op_str} {r}`, or give a default with `??`"
+            ));
+        }
+    }
+
+    pub(super) fn with_not_first(&mut self, span: Span) {
+        let message =
+            "a bare `with` line comes first in its block; indent what it covers under `with ...:`";
+        if let Some(diag) = self.error(codes::WITH_NOT_FIRST, span, message.to_string()) {
+            diag.help = Some(super::advice::WITH_FIRST_HELP.into());
+        }
+    }
+
     /// Whether the step `e`, a `?I`, is known to stay inside `I`: a test
     /// or a loop around it orders the name it steps from against another
     /// position of `I` ([`cpl_syntax::order`]).

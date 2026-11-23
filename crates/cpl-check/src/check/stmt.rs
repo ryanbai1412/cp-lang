@@ -381,12 +381,7 @@ impl<'a> Checker<'a> {
         let mut leading = true;
         for stmt in stmts {
             match &stmt.kind {
-                StmtKind::With { body: None, .. } if !leading => {
-                    let message = "a bare `with` line comes first in its block; indent what it covers under `with ...:`".to_string();
-                    if let Some(diag) = self.error(codes::WITH_NOT_FIRST, stmt.span, message) {
-                        diag.help = Some(super::advice::WITH_FIRST_HELP.into());
-                    }
-                }
+                StmtKind::With { body: None, .. } if !leading => self.with_not_first(stmt.span),
                 StmtKind::With { body: None, .. } => {}
                 _ if runs(stmt) => leading = false,
                 _ => {}

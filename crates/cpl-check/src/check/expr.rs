@@ -1490,29 +1490,7 @@ impl<'a> Checker<'a> {
                 ast::CmpOp::Ge => ">=",
                 _ => "?",
             };
-            let unwrap = |c: &Self, e: &Expr, ty: &Ty| match (&e.kind, ty) {
-                (_, ty) if !matches!(ty, Ty::Optional(_)) => c.quote(e.span),
-                (ExprKind::Name(_) | ExprKind::Field { .. }, _) => format!("{}!", c.quote(e.span)),
-                _ => format!("({})!", c.quote(e.span)),
-            };
-            let (at, ty) = match left {
-                Ty::Optional(_) => (left_expr, left),
-                _ => (right_expr, right),
-            };
-            let message = format!(
-                "`{}` is {}: optional values can't be ordered with `{op_str}`",
-                self.quote(at.span),
-                ty.with_article()
-            );
-            let (l, r) = (
-                unwrap(self, left_expr, left),
-                unwrap(self, right_expr, right),
-            );
-            if let Some(diag) = self.error(codes::OPTIONAL_COMPARE, at.span, message) {
-                diag.help = Some(format!(
-                    "`None` has no order: unwrap first, `{l} {op_str} {r}`, or give a default with `??`"
-                ));
-            }
+            self.optional_compare(op_str, (left_expr, left), (right_expr, right));
             return;
         }
         if !tests_none
