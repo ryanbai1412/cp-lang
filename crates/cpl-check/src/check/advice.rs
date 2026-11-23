@@ -5,6 +5,28 @@ use cpl_diag::Fix;
 use cpl_syntax::ast::{Arg, Expr, ExprKind};
 
 impl Checker<'_> {
+    /// `var m: Map<K, V> = {}`: braces make a block, so the empty container
+    /// is reported as one, with its spelling as the fix.
+    pub(super) fn empty_braces(&mut self, declared: &Ty, init: &Expr) {
+        let empty = match declared {
+            Ty::Named { name, .. } if name == "Map" => "[:]",
+            Ty::Named { name, .. } if name == "Set" => "Set()",
+            Ty::Named { name, .. } if name == "List" => "[]",
+            _ => return,
+        };
+        let braces = self.text(init.span).split_whitespace().collect::<String>() == "{}";
+        let Some(diag) = self
+            .sink
+            .last_mut()
+            .filter(|d| braces && d.span == init.span)
+        else {
+            return;
+        };
+        diag.message = format!("`{{}}` is an empty block in CP Lang, not an empty {declared}");
+        diag.help = Some(format!("an empty {declared} is `{empty}`"));
+        diag.fix(format!("write `{empty}`"), init.span, empty);
+    }
+
     /// A member that another version or language has and CP Lang spells
     /// differently: reported, with the fix where there is one.
     pub(super) fn member_advice(&mut self, base_ty: &Ty, name: &cpl_syntax::ast::Name) -> bool {

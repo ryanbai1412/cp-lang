@@ -137,3 +137,18 @@ fn a_pairs_first_and_second_name_the_tuple_parts() {
     assert!(d[0].message.starts_with("a tuple has no `.first`"), "{d:?}");
     assert_eq!(d[1].fixes[0].edits[0].1, "1", "{d:?}");
 }
+
+#[test]
+fn empty_braces_for_a_container_offer_its_empty_spelling() {
+    let fix = |src: &str| fixed(src).lines().next().unwrap_or("").to_string();
+    assert_eq!(
+        fix("var m: Map<Int, Int> = {}\nm[1] = 2\n"),
+        "var m: Map<Int, Int> = [:]"
+    );
+    assert_eq!(
+        fix("var s: Set<Int> = {}\ns.insert(1)\n"),
+        "var s: Set<Int> = Set()"
+    );
+    let d = check("var m: Map<Int, Int> = {}\n");
+    assert!(d[0].message.contains("empty block"), "{d:?}");
+}

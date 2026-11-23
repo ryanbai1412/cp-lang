@@ -1098,6 +1098,7 @@ impl<'a> Checker<'a> {
                             got.with_article()
                         )
                     });
+                    self.empty_braces(declared, init);
                 }
                 let guessed = declared.is_none()
                     && self.sink.encloses_poison(stmt.span)
