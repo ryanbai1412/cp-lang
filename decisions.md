@@ -7388,3 +7388,20 @@ a `SortedBag` or `SortedSet`. Matching `first`, `last`, `remove`,
 `pop_first` and `pop_last` by name moves `--update lint_std_names`
 174 -> 179. Reverse: delete `spec/lints/pop_min_loop/` and
 `rules/pop_end.rs`.
+
+## 343. Lints for 1-based query shifts and parallel coordinate arrays (2026-11-23)
+
+L0577 `query_index_shift` warns when a name read as `1..` is used as
+`[l - 1]` later in its block, unless the name also bounds a range or sizes
+a type (`0..n`, `domain V = 1..=n`, `[n - 1](V, V)`), where `a[n - 1]` is
+the last element. Its help names the array over the positions as read
+(`domain I = 1..=n`, `let a: [I]Int = read()`) and `a.scan(+).fold(l..=r)`.
+L0578 `tuple_points` warns on adjacent `let xs: [D]Int = read()` and
+`let ys: [D]Int = read()` that are later combined across two points
+(`xs[i] * ys[j]`, `xs[i] - xs[j]`) and not built into `Pt`s; its help is
+`[D] i => Pt(xs[i], ys[i])`. Neither has an automatic fix. Both are
+syntax-level (`rules/hand_input.rs`) and also read a file's top-level
+statements as one run, since they come in several items. Evidence:
+newcomer 140/140; 4 port hits (cf2261d2 x2, noi19p4, yac1p2), all real
+1-based shifts; 0 on std. Reverse: delete the two records and
+`hand_input.rs`.

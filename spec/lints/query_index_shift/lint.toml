@@ -1,0 +1,5 @@
+code = "L0577"
+level = "warn"
+group = "idiom"
+title = "Positions read 1-based and shifted back by hand"
+summary = "`let l: 1..=n = read()` then `a[l - 1]`: declare the array over `1..=n`"

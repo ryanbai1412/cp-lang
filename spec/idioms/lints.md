@@ -380,7 +380,7 @@ One sub-family per module. Each says: you rebuilt something the library has.
 | Lint | Catches | Write instead | Tier | P | Engine | Status |
 |---|---|---|---|---|---|---|
 | cross_by_hand | `x1 * y2 - x2 * y1` | `a.cross(b)` on `Vec` | fix | #1 | syn | |
-| tuple_points | `(Int, Int)` used as points with arithmetic | `Pt` / `Vec` | fix? | #3 | ty | |
+| tuple_points | `(Int, Int)` used as points with arithmetic | `Pt` / `Vec` | fix? | #3 | ty | ✓tuple_points |
 | hull_by_hand | monotone chain loop | `hull` / `OnlineHull` | warn | #1 | loop | |
 | shoelace_by_hand | area loop | `poly.area` | fix | #1 | loop | |
 | atan2_angle_sort | sort by `atan2` | `ByAngle` (exact; also P0 floats) | fix? | #1 | ty | |

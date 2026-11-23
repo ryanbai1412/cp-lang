@@ -17,6 +17,7 @@ mod grid;
 mod grid_step;
 mod hand_ds;
 mod hand_graph;
+mod hand_input;
 mod hand_loops;
 mod hand_math;
 mod heap_skip;
@@ -85,6 +86,7 @@ pub(crate) fn run(file: &File, config: &Config) -> Vec<Finding> {
     findings.extend(hand_math::check(file));
     findings.extend(hand_graph::check(file));
     findings.extend(hand_ds::check(file));
+    findings.extend(hand_input::check(file));
     findings.extend(count_until::check(file));
     findings.extend(read_loop::check(file));
     findings

@@ -1,0 +1,5 @@
+code = "L0578"
+level = "warn"
+group = "idiom"
+title = "Points kept as parallel coordinate arrays"
+summary = "`let xs: [D]Int = read()` and `let ys: [D]Int = read()` indexed together: `[D] i => Pt(xs[i], ys[i])`"

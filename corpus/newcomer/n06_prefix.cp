@@ -5,4 +5,4 @@ for i in 0..n:
     p[i + 1] = p[i] + a[i]  // expect: hand_rolled_prefix_sum
 for _ in 0..q:
     let (l, r): (1..=n, 1..=n) = read()
-    print(p[r] - p[l - 1])  // expect: missing one-based-query-index-shift
+    print(p[r] - p[l - 1])  // expect: query_index_shift
