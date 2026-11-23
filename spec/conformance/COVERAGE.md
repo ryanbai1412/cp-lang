@@ -7,7 +7,7 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 2311 (995 passing). Rules: 537.
+Cases: 2313 (995 passing). Rules: 537.
 
 ## Summary per chapter
 
@@ -858,3 +858,8 @@ case names it. `/// example:` lines are also run by the `docs` suite of
   - uncovered: `Tracked`, `Undo`
 
 2146 of 2279 std items are named by a case.
+
+## Core cases without a `// rule:` line
+
+- core-02/range-type-argument-is-anonymous-domain.cp
+- core-02/range-type-arguments-index-a-2d-segtree.cp
