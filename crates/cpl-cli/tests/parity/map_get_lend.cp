@@ -77,8 +77,8 @@ for k in 0..2:
 print(seen)
 var sh = [Map<Int, List<Int>>(), Map<Int, List<Int>>()]
 sh[1][3] = [4, 5]
-var t = 0
+var walked = 0
 for b in 0..2:
     for i in sh[b].get(3) ?? [9]:
-        t += i
-print(t)
+        walked += i
+print(walked)
