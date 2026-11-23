@@ -1162,6 +1162,17 @@ impl<'a> Checker<'a> {
                 BinOp::Pow => Some("Pow"),
                 _ => None,
             };
+            // `P - 1` reads the value of a value parameter (`Mod<P>`), and a step from a
+            // `D: Domain` position is an `Int` (R04.8.2): neither needs an operator bound.
+            let value = matches!(&lhs.kind, ExprKind::Name(n) if n == param);
+            if trait_name.is_some()
+                && (value
+                    || matches!(op, BinOp::Add | BinOp::Sub)
+                        && self.param_has_bound(param, "Domain"))
+            {
+                self.infer(rhs);
+                return Ty::Int;
+            }
             if let Some(trait_name) = trait_name {
                 if !self.param_has_bound(param, trait_name) {
                     let message = format!(

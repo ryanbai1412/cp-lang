@@ -1,20 +1,8 @@
 # `cpl check std/<file>.cp` errors per std file, ratcheted down to 0.
 # A count may only drop: lower it here when std gets cleaner. A file not
 # listed must check clean.
-std/algebra.cp 3
-std/dp.cp 12
-std/fenwick.cp 14
-std/flow.cp 1
-std/graph.cp 12
+std/graph.cp 3
 std/grid.cp 6
-std/hashmap.cp 1
-std/heap.cp 4
-std/math.cp 3
-std/matrix.cp 19
-std/mod.cp 15
-std/ntt.cp 11
-std/persistent.cp 2
-std/poly.cp 5
-std/prefix.cp 45
-std/search.cp 3
-std/seq.cp 12
+std/matrix.cp 2
+std/search.cp 1
+std/seq.cp 7
