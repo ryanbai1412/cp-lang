@@ -31,7 +31,7 @@ fn random_mobile() -> [Bar]Kids:
             free.push((v, false))
     kids
 
-let kids: [Bar]Kids = read(gen: random_mobile)
+let kids: [Bar]Kids = read(gen: random_mobile, none: -1)
 assert is_forest(kids)
 
 var swaps = 0
