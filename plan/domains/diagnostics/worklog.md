@@ -487,3 +487,8 @@ Landed since 23:10: four type/flow lints from `spec/idioms/lints.md`, L0571 `neg
   `mod_subtract_without_mod` marked ✗: they assume C++ truncation, but `/`
   and `%` floor for a positive divisor (R01.5.2, decisions 24 and 347);
   `cpl run` on `a = -7` prints `a / 2, a % 2` as `-4 1`. No lint to write.
+- `max_of_a_generator` golden aligned with decision 399: a generator
+  argument is the free fold (`max(e for x in s)!`), so its lines now check
+  clean and the E0303 fix no longer rewrites a generator into
+  `s.map(..).max()!`; only `max(a)` on a list keeps E0303 with `a.max()!`.
+  This fixed the LSP parity failure on that file.
