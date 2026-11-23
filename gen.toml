@@ -92,6 +92,15 @@ check = "diff"
 tier = "pre-commit"
 
 [[gen]]
+name = "practice"
+files = ["web/content/learn/practice/index.mdx", "web/content/learn/practice/meta.json"]
+inputs = ["web/content/learn/practice/*.mdx"]
+write = ["node", "web/scripts/practice.mjs"]
+cwd = "web"
+check = "diff"
+tier = "pre-commit"
+
+[[gen]]
 name = "ports"
 files = ["research/PORTS.md"]
 inputs = ["corpus/problems/*/spec.cp", "research/reviews/"]
