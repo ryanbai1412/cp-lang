@@ -1,12 +1,12 @@
-// New Year's 2018 P7: a rooted tree with a word at every vertex. Find the
-// longest block of letters that occurs in the words of two vertices neither
-// of which is above the other; print its length, or -1 if there is no such
-// pair of vertices.
-//
-// If a block of some length is shared, so is every shorter one: binary
-// search the length. For one length, collect the hashes of the blocks in
-// every subtree, pouring the smaller set into the larger; a hash that is
-// already there when two branches meet is a shared block.
+// Source: New Year's '18 P7 (Tree of Life), https://dmoj.ca/problem/year2018p7
+// Problem: a tree rooted at 1 with N <= 20000 vertices, each with a DNA word (total length S
+//   <= 1e5). Two vertices are distant when neither is an ancestor of the other. Print the
+//   longest common substring of the words of two distant vertices, or -1 if no pair exists.
+// Solution: if a block of some length is shared, so is every shorter one: binary search the
+//   length. For one length, collect the rolling hashes of the blocks in every subtree, pouring
+//   the smaller child set into the larger; a hash already there when two branches meet is a
+//   shared block (a vertex's own blocks join after its children, unchecked). Length 0 tests
+//   whether a distant pair exists. O(S log S log S) expected.
 // original: corpus/submissions/4899354.cpp
 use std.strings.{HashVal}
 

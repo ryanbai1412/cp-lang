@@ -1,18 +1,14 @@
-// Codeforces 2124 H — Longest Good Subsequence
-//
-// Prepend a dummy 0 at index 0 so the whole answer is a good subsequence
-// starting at value a[0] = 0. Let `max_len[tidx(i, j)]` (stored in a lower
-// triangle for i <= j, element type `0..=2 * n` so storage narrows to 16 bits)
-// be the maximum value reachable by a good subsequence starting at i with
-// value a[i] and ending at j with value a[j] == a[i].
-//
-// Scanning i from n - 1 down to 0 and j from i to n - 1 with running maximum
-// `cur_best` (starting at a[i] - 1):
-// - a[j] < a[i] cannot belong to a good subsequence starting at a[i].
-// - a[j] == a[i] extends the current best by 1 and records `max_len[i, j]`.
-// - a[i] < a[j] <= cur_best + 1 can branch into a sub-block starting at the
-//   first occurrence `first_vis[a[j]]` and ending at j, updating `cur_best`
-//   with `max_len[first_vis[a[j]], j]`.
+// Source: Codeforces 2124H (Longest Good Subsequence),
+//   https://codeforces.com/contest/2124/problem/H
+// Problem: b of length m is good if 1 <= b[i] <= i and some permutation p has, for every i, b[i]
+//   the smallest index with min(p[b[i]..=i]) = p[i]. Given a (n <= 15000, 1 <= a[i] <= n),
+//   print the length of its longest good subsequence. Multitest, sum of n^2 <= 15000^2.
+// Solution: a good sequence is a block: after its start value v, each element is v again (one
+//   longer) or a w with v < w <= length + 1 that opens a nested block ending at w again. With
+//   a sentinel 0 in front, max_len[i, j] (a[j] = a[i]) is the longest such block from i to j.
+//   Fill i right to left, scanning j with the running length cur_best: a[j] = a[i] adds one,
+//   a[i] < a[j] <= cur_best + 1 jumps to max_len[first such a[j] after i, j]. The answer is
+//   cur_best at the sentinel. O(n^2) time, a triangle of 16-bit entries.
 
 fn tidx(i: Int, j: Int) -> Int = j * (j + 1) / 2 + i
 

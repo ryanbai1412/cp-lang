@@ -1,13 +1,11 @@
-// Codeforces 2089 B1 — Canteen (Easy Version)
-//
-// Each round subtracts min(a[i], b[i]) at every index and rotates `a` forward
-// by 1 until all `a[i]` reach 0 (with sum a <= sum b).
-//
-// Because sum(a[i] - b[i]) <= 0, rotating the circle to start right after the
-// minimum prefix sum of `a[i] - b[i]` ensures every surplus from `a` is
-// absorbed before wrapping past the cut. In that linearized order, each demand
-// `b[i]` drains the nearest earlier supply `a[pos]` (LIFO stack), taking
-// `i + 1 - pos` rounds; the answer is the maximum over all matched pairs.
+// Source: Codeforces 2089B1 (Canteen, Easy), https://codeforces.com/contest/2089/problem/B1
+// Problem: circular arrays a, b of n <= 2e5 values (1..=1e9), sum a <= sum b, k = 0. Each round
+//   every i drops t = min(a[i], b[i]) from both, then a rotates one step forward. Print the
+//   rounds until all of a is 0. Multitest, sum of n <= 2e5.
+// Solution: cut the circle right after the minimum prefix sum of a[i] - b[i]: then no supply
+//   needs to wrap past the cut. In that order each demand b[i] drains the nearest earlier
+//   unspent supply a[pos] (a stack of (qty, pos)), which arrives after i + 1 - pos rounds; the
+//   answer is the largest such value. O(n) amortized.
 
 struct Supply(qty: Int, pos: Int)
 

@@ -1,13 +1,11 @@
-// IOI 2021 Mutating DNA: two strings a and b of n letters from A, C, T
-// (n <= 100000) and q questions (q <= 100000). A question gives x <= y, both
-// 0-based: print the fewest swaps of two letters of a[x..=y] that turn it
-// into b[x..=y], or -1 if no swaps do.
-//
-// Only the places where the two differ matter, and of those only how many
-// have each (letter of a, letter of b) pair: prefix counts of the nine
-// pairs. Impossible when some letter is needed more often than it is there.
-// Otherwise a place wanting X where the other wants its letter back is fixed
-// with one swap, and what is left over goes round in threes, two swaps each.
+// Source: IOI 2021 Day 2 P1 (Mutating DNA), https://dmoj.ca/problem/ioi21p4
+// Problem: strings a, b of n <= 1e5 letters from A, C, T and q <= 1e5 queries x <= y (0-based):
+//   print the fewest swaps of two letters of a[x..=y] that turn it into b[x..=y], or -1.
+// Solution: only the places where they differ matter, and of those only how many have each
+//   (letter of a, letter of b) pair: prefix counts of the nine pairs. Impossible when some
+//   letter is needed more often than it is there. Otherwise a place wanting X where another
+//   wants its letter back is fixed with one swap, and what is left over goes round in threes,
+//   two swaps each. O(n + q).
 // original: corpus/submissions/4698075.cpp
 domain Base = 0..3
 fn base(c: Char) -> Base = Base(if c == 'A': 0 elif c == 'C': 1 else: 2)

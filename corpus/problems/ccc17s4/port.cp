@@ -1,12 +1,13 @@
-// CCC 2017 S4 Minimum Cost Flow: the first n - 1 pipes are the current plan,
-// and one pipe a day may be swapped for another. An enhancer then takes up
-// to d off the cost of one pipe. Print the fewest days to reach a cheapest
-// plan.
-//
-// Kruskal, with old pipes ahead of new ones of the same cost, keeps as much
-// of the current plan as a cheapest plan can. The enhancer saves one more
-// day when the dearest pipe of the plan can be traded for an old pipe that
-// the enhancer makes free.
+// Source: CCC 2017 S4 (Minimum Cost Flow), https://dmoj.ca/problem/ccc17s4
+// Problem: N <= 1e5 buildings, M <= 2e5 weighted pipes; the first N - 1 form the current
+//   spanning tree. Each day swap one active pipe for an inactive one. One pipe may be enhanced
+//   from cost C to max(0, C - D). Print the fewest days to reach a spanning tree of minimum
+//   cost over all trees and all choices of the enhanced pipe.
+// Solution: Kruskal with old pipes ahead of new ones of equal cost keeps as many old pipes as a
+//   cheapest tree can; the days are its new pipes. The enhancer goes on the dearest tree pipe.
+//   If that cost is <= D, an unused old pipe of cost <= D that reconnects the tree without its
+//   dearest new pipes can replace one of them at no cost: one day less. Two DSU passes,
+//   O(M log M).
 
 let (n, m, d): (Int, Int, Int) = read()
 domain House = 1..=n

@@ -1,7 +1,12 @@
-// UCRPC 2021 G: walk an n x n board for 105 ticks, each tick staying or
-// stepping to a side neighbour. Standing on a cell at the tick a coin appears
-// there collects it; standing on a bomb's cell at its tick halves the coins
-// held (a bomb beats coins on the same cell and tick). Most coins at the end.
+// Source: UCRPC F21 G (Snack Attack), https://dmoj.ca/problem/ucrpc21g
+// Problem: an n x n grid (n <= 100), a start cell, p <= 1000 popcorn and b <= 1000 boulder drops
+//   (cell, time 1..=100). Each second stay or move to a side neighbour; being on a cell when
+//   popcorn drops there gains one each, a boulder leaves floor(h/2) of the h held. Print the
+//   most popcorn held at the end.
+// Solution: simulate tick by tick the set of reachable (cell, held) states: apply the cell's
+//   event at that tick, then step to the cell or a neighbour. A per-state stamp of the last
+//   tick it was queued dedups the next set without clearing a table: O(ticks * n^2 * p) in
+//   the worst case, far less in practice.
 // Runnable on proto/cpc today.
 // original: corpus/submissions/3944717.cpp
 let n: 1..=100 = read()

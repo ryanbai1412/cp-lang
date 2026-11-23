@@ -1,5 +1,12 @@
-// COCI 2021 #6 P5 (CP Lang 0.2.2): keep one bracket per pair so kept brackets
-// are balanced, greedily flipping the earliest-closing open mixed pair via `MinHeap`.
+// Source: COCI 2021/2022 Contest 6 P5 (Superpozicija), https://dmoj.ca/problem/coci21c6p5
+// Problem: a string of 2n brackets split into n pairs of positions (a, b). Keep exactly one
+//   bracket of each pair so the kept ones form a balanced sequence; print the choice (0 for a,
+//   1 for b) or -1. Multitest, t, n <= 1e5, sum of n <= 1e5.
+// Solution: start with as few '(' as possible: a pair of '(' keeps the first, a pair of ')' the
+//   last, a mixed pair its ')'. Scan the prefix depth; a mixed pair becomes flippable once its
+//   first position is passed (MinHeap keyed by its second position). When the depth goes
+//   negative, flip the flippable pair that closes earliest to keep its '('; if none, or the
+//   final depth is not 0, print -1. O(n log n).
 // original: corpus/submissions/4531869.cpp
 
 @multitest
