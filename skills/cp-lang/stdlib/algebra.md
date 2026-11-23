@@ -18,6 +18,7 @@ In prelude (no `use` needed): `Action`, `Commutative`, `Desc`, `Group`, `Idempot
 An associative operation with an identity: the pair `(id, op)`, written `Monoid<T>(id, op)` or, naming both, `Monoid<T>(id: e, op: (a, b) => ...)`.
 
 - `fn of<M>(m: M) -> Monoid<T>` — O(1); The monoid a structure was handed: a `Monoid` is itself, and a bare operator brings its identity: zero for `+`, `^`, `\|` and `gcd`, one for `*`, all bits for `&`, and for `min` / `max` the far end of `T` (`None` on a `?T`).; traps: never (an operator without a known identity is a compile-time error)
+- `fn monoid(self) -> Monoid<T>` — O(1); A monoid is its own monoid: what [`Monoid.of`] gives back for anything that is not a bare operator.
 
 ## `struct Action<T, F>(id: F, compose: (F, F) -> F, apply: (F, T, Int) -> T, over: Monoid<T>)`
 
@@ -112,6 +113,12 @@ Law: `op(a, a) == a`.
 
 Law: `op(a, b)` is `a` or `b`.
 
+## `struct Each<Ms>(ms: Ms)`
+
+The ops of [`each`], one per component; a structure takes it through [`Monoid.of`].
+
+- `fn monoid<T>(self) -> Monoid<T>` — O(components); The monoid on `T` that applies the i-th op to the i-th components, with the tuple of their identities as its identity.; traps: never (an op with no known identity is a compile-time error)
+
 ## `struct AddAction`
 
 Marker type for the stock `add` action.
@@ -135,7 +142,7 @@ Marker type for the stock `flip` action.
 - `fn point_action<T, F, M>(id: F, compose: (F, F) -> F, apply: (F, T) -> T, over: M) -> Action<T, F>` — O(1); An `Action` whose `apply` ignores the span: `apply(f, val, span) == apply(f, val)`.
 - `fn cmp<T: Ord>(a: T, b: T) -> Ordering` — O(1) plus one or two comparisons of `T`; The three-way comparison of `a` and `b` under `Ord`.
 - `fn minmax<T: Ord>(a: T, b: T) -> (T, T)` — O(1) plus one comparison of `T`; The pair `(min(a, b), max(a, b))` in the operands' own type: two `Cut`s give two `Cut`s.
-- `fn each<Ms>(..ms: Ms) -> Ms` — O(1) to build; each call costs the sum of its components; One operation per component of a tuple (positional) or record (named): `op((a0, a1), (b0, b1)) == (m0(a0, b0), m1(a1, b1))`.
+- `fn each<Ms>(..ms: Ms) -> Each<Ms>` — O(1) to build; each call costs the sum of its components; One operation per component of a tuple (positional) or record (named): `op((a0, a1), (b0, b1)) == (m0(a0, b0), m1(a1, b1))`.
 
 ## Example
 
