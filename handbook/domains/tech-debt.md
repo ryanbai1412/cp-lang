@@ -174,8 +174,43 @@ A count goes down by fixing the cause and re-recording the baseline in the
 same commit. A count never goes up: a change that needs more first removes
 the same amount elsewhere, or records why in `decisions.md`.
 
+## Invariants
+
+- Back ends read the IR, never the checker or the syntax tree.
+- No Rust file grows past 2,000 lines unless the ratchet's allowlist names it,
+  and the allowlist only shrinks.
+- A migration deletes what it replaces; a bridge left behind is listed as debt.
+- Raising a ratchet's baseline needs a `decisions.md` entry saying why.
+
+## Cold reviews and probes
+
+A reader who hasn't seen the work scores each lane's recent commits
+(`git log --grep 'Domain: <lane>'`) from 1 to 5 on five questions:
+
+1. **Right home.** Each change lives in the crate that owns the concept, with
+   no special case for a std name.
+2. **One way.** It reuses the existing mechanism instead of adding a second
+   walker, analysis, catalog or copy.
+3. **Local next change.** The next everyday change here takes one place.
+4. **Legible cold.** A newcomer explains the module in five minutes from its
+   names, the design docs and its doc comments.
+5. **Finished migration.** It deletes what it replaces.
+
+Change-cost probes give the same questions a number. A cold agent makes a
+fixed change and we record the files, crates and minutes it took and where it
+got stuck. Findings go to the owning lane.
+
+| Probe | Questions | Fixes go to |
+|---|---|---|
+| P1 Add a std method with a doc example | 1, 3 | stdlib, compiler |
+| P2 Add a diagnostic code with a fix-it | 2, 3 | diagnostics |
+| P3 Add a lint with its test | 2, 3, 4 | lint-fmt |
+| P4 Add an LSP hover field | 2, 3 | tools |
+| P5 Explain a random module from the design docs alone | 4 | owning lane |
+
 ## Changes
 
 - 2026-11-23: first draft, folding in the stable parts of
   `plan/domains/tech-debt/README.md` and `ARCHITECTURE.md`.
 - 2026-11-23: prose overview first; scope, interfaces and register under Reference.
+- 2026-11-23: invariants, the review rubric and the probes moved here from the plan folder.

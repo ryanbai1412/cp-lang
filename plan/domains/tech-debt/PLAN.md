@@ -116,3 +116,84 @@ The detail behind [README.md](README.md). Dated 2026-11-22.
 
 The builtin divergence audit, workstream 0(a), starting with `span` and the
 list search functions.
+
+## Milestone exit criteria and known debt
+
+### Milestone 1
+
+[Milestone 1](../../../handbook/product/milestones.md) is the priority: a Codeforces
+1500+ friend understands, tries, installs, solves, tests, submits and competes
+with CPL without help. Debt that causes a milestone bug comes first; cosmetic
+debt waits. Constraints (Ryan, 2026-11-22): due about 09:30 PST 2026-11-23,
+so steps are planned in hours with a worklog checkpoint every 2 hours; no
+real judge submissions (a local Codeforces profile: compiler, flags, limits,
+64 KB); Linux, macOS and Windows all supported and tested; ships on `edge`;
+Neovim/Vim LSP must just work, VS Code too. This lane never blocks a milestone lane: moves land as one
+announced commit, and the only gate it owns is the shrink-only ratchet.
+
+What the milestone needs from this lane (exit criteria):
+1. **No interpreter/C++ divergence from duplicated builtin semantics.** Every
+   compiler builtin with its own interpreter and C++ paths has a
+   `cpl-conform diff` case at its edges (negative, empty, overflow, both
+   argument orders); the known disagreements (`span`, list
+   `first_ge`/`first_gt`/`last_le`, `counts`) are settled in one body.
+   Check: no `cpl-conform diff` failure traces to a builtin.
+2. **A user library can do what std does on the milestone path.** A user
+   library in the fast gate exercises each by-name power std relies on today
+   (`prelude_privilege`, `backend_std_names`), or the power is listed as a gap
+   with its user-reachable alternative. There is no such test today: the old
+   `examples/local-lib` is in `research/archive/local-lib-v02`.
+3. **Main never goes red on a stale generated file.** `scripts/gen.py --check`
+   runs in the commit tier (done: decisions 294, 303).
+4. **No path or line-ending assumption in shipped code breaks Windows or
+   macOS.** Every path match on `"/"` strings in `crates/*/src` goes through
+   `Path` components or a normalised module path, and input reading accepts
+   CRLF; each one found is fixed or routed to its owner with a failing case.
+
+Deferring: `plan/DECISIONS.md` curation, the 877 v0.2 `port.cp` files,
+file-size shrinking and duplicate helpers, probe reruns, cold-review rounds
+beyond findings that cause milestone bugs.
+
+Next three steps (hours from 21:30 PST):
+1. By 23:30: triage `cpl-conform diff` (1739/1879 pass, 1 mismatch, 139
+   skipped) and add edge cases for the builtins with two implementations.
+2. By 01:30: the Windows/macOS audit of shipped crates (path strings, CRLF,
+   `/`-joined module paths); fix behaviour-free ones, route the rest.
+3. By 03:30: the user-library privilege test in the fast gate. Then the
+   third-party crate verdict and crate READMEs.
+
+### Milestone 2
+
+Most ambitious complete version: a stranger reads `handbook/design/architecture.md` and changes any
+layer in its own crate; the core has no name std can't override; every generated file is
+built, not hand-kept; the interpreter and C++ agree on the whole corpus with zero skips.
+
+Exit criteria (each a command in [metrics.toml](metrics.toml)):
+- `cpl-conform diff`: 0 mismatches, 0 sanitizer traps, and skips only for cases
+  that expect an error (today 141 skips, mostly E0302/E0203 compile errors).
+- `ir_builtin_names` at the storage, I/O, bits and numeric floor (66), every other
+  name a std body within the perf bar: idiomatic p50 <= 1.1x, p95 <= 1.2x,
+  max <= 1.5x, and tuned max <= 1.1x.
+- `prelude_privilege` = 0: a user library can declare every power std uses.
+- No file over 2,000 lines; `rs_over_cap`, `stdlib_todo` and `spec_edition` at 0.
+- Cold probes P1-P4 at most 3 files each; P5 at 5/5.
+- `plan/DECISIONS.md` current-only, full log archived; corpus answers derived and
+  cached, committed only where underivable.
+
+Next steps: settle `span`/`counts`/`first_ge` in one body with stdlib; split the
+capped `tests.rs` files; derive corpus answers once tools' shared cache lands.
+
+### Top 10 architectural debt (ranked, 2026-11-22)
+
+| # | Debt | Where | Owner |
+|---|---|---|---|
+| 1 | Stdlib privilege: 89 names matched in lowering, 74-variant `Builtin` enum | `crates/cpl-ir/src/lower/call.rs` (13,357 lines), `crates/cpl-ir/src/lib.rs` | compiler + stdlib |
+| 2 | Two interpreter engines; VM falls back to the tree-walker | `crates/cpl-interp/src/lib.rs` (`fn eval`), `vm.rs` | compiler |
+| 3 | Dead 0.2 edition switch, 92 refs | `crates/cpl-check/src/edition.rs`, `check/expr.rs` (32 refs) | compiler (branch ready) |
+| 4 | Two range/bound analyses; lint calls the prover directly | `crates/cpl-lint/src/rules/bounds.rs`, `crates/cpl-prover/` | lint-fmt + compiler |
+| 5 | 24 files over 2,000 lines | `vm.rs` 15,367; `lower/{call,stmt,mod,expr}.rs` 6-13k | many; this lane moves |
+| 6 | Library type names known to IR and emitter | `lower/call.rs`, `lower/mod.rs:24`, `cpl-codegen/src/expr.rs:2780` | compiler + perf |
+| 7 | Std member catalog kept twice (checker list vs lowering match), stale rows | `crates/cpl-check/src/builtins.rs`, ignored test `crates/cpl-cli/tests/builtin_catalog.rs:32` | compiler + tools |
+| 8 | Browser lints compiled out, web and CLI disagree | `crates/cpl-lint/src/lib.rs:954`, `rules/bounds.rs:680` | lint-fmt |
+| 9 | Library source under `spec/`, 877 v0.2 ports, 57 stale branches | `std/`, `corpus/problems/*/port.cp` | this lane + stdlib/idioms |
+| 10 | Copied helpers across crates | `cpl-{fmt,lint}/src/cli.rs` `collect` = `cpl-doc/src/cli.rs:163`; `refutable`, `prefix_shape_struct` in check and ir | tools, lint-fmt, compiler |
