@@ -153,6 +153,29 @@ jobs:
           npm test
           if command -v xvfb-run >/dev/null; then xvfb-run -a npm run test:integration; else npm run test:integration; fi
 
+  # The contest CLI on macOS and Windows (Linux runs it in the gate): paths,
+  # the clipboard command, CRLF input, `cpl setup`, the contest flow.
+  cli:
+    name: cli (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    continue-on-error: ${{ matrix.os == 'windows-latest' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, windows-latest]
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install the pinned Rust toolchain
+        run: rustup show active-toolchain || rustup toolchain install
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: neovim
+      - name: CLI tests
+        run: |
+          cargo test -p cpl-cli --lib --test golden --test cli
+          cargo test -p cpl-contest
+
   # JetBrains: the plugin builds, and its tests run in a headless IDE against
   # the real `cpl` (file type, highlighting, the LSP server, run configurations).
   jetbrains:
