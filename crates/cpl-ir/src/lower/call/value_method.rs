@@ -955,6 +955,9 @@ impl<'a> Lowerer<'a> {
                     None => self.err_expr(span),
                 }
             }
+            (Ty::Map(..) | Ty::HashMap(..) | Ty::Set(_), "count") if args.len() == 1 => {
+                self.keyed_count(whole, base, &args[0], &ty)
+            }
             (Ty::Map(_, val) | Ty::HashMap(_, val), "get") => {
                 match self.one_arg(method, args, &elem, span) {
                     Some(arg) => self.mk(

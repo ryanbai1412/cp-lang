@@ -418,17 +418,7 @@ impl<'a> Lowerer<'a> {
                 "removing at an index is `remove`",
             ),
             ("get", [k, d]) => {
-                let text = &self.mods[self.cur_mod].text;
-                let abs = self.span(whole.span);
-                let before = text[..abs.start as usize].trim_end().chars().last();
-                let after = text[abs.end as usize..]
-                    .trim_start_matches(' ')
-                    .chars()
-                    .next();
-                let alone = matches!(before, Some('(' | ',' | '=' | '[' | ':'))
-                    && matches!(after, Some(')' | ',' | ']' | '\n') | None);
-                let new = format!("{b}.get({k}) ?? {d}");
-                let new = if alone { new } else { format!("({new})") };
+                let new = self.parenthesized(whole.span, format!("{b}.get({k}) ?? {d}"));
                 (new, "a default for a missing key is given with `??`")
             }
             _ => return self.err_expr(span),
@@ -444,6 +434,64 @@ impl<'a> Lowerer<'a> {
             last.fix(format!("write `{new}`"), at, new);
         }
         self.err_expr(span)
+    }
+
+    /// Whether the code at `span` starts an operand (after `(`, `,`, `=`,
+    /// `[`, `:`, `if` or `while`) and ends one (before `)`, `,`, `]`, `:` or the line's end).
+    fn stands_alone(&self, span: Span) -> (bool, bool) {
+        let text = &self.mods[self.cur_mod].text;
+        let abs = self.span(span);
+        let before = text[..abs.start as usize].trim_end();
+        let after = text[abs.end as usize..]
+            .trim_start_matches(' ')
+            .chars()
+            .next();
+        let word = before.rsplit(|c: char| !c.is_alphanumeric()).next();
+        let opens = matches!(before.chars().last(), Some('(' | ',' | '=' | '[' | ':'))
+            || matches!(word, Some("if" | "while" | "elif"));
+        (
+            opens,
+            matches!(after, Some(')' | ',' | ']' | ':' | '\n') | None),
+        )
+    }
+
+    /// `new`, which replaces the code at `span`, in parentheses unless it
+    /// stands alone.
+    fn parenthesized(&self, span: Span, new: String) -> String {
+        match self.stands_alone(span) {
+            (true, true) => new,
+            _ => format!("({new})"),
+        }
+    }
+
+    /// C++'s `m.count(k)`: a key is in a map or a set or not, `k in m`.
+    pub(super) fn keyed_count(
+        &mut self,
+        whole: &ast::Expr,
+        base: &ast::Expr,
+        key: &ast::Arg,
+        ty: &Ty,
+    ) -> Expr {
+        let new = format!(
+            "{} in {}",
+            self.source(key.value.span),
+            self.source(base.span)
+        );
+        let new = self.parenthesized(whole.span, new);
+        let message = format!(
+            "a `{}` has no method `count`: a key is in it or not",
+            self.show(ty)
+        );
+        self.error(codes::UNKNOWN_FIELD, whole.span, message);
+        let at = self.span(whole.span);
+        let ends = self.stands_alone(whole.span).1;
+        if let Some(last) = self.diags.last_mut() {
+            last.help = Some(format!("test a key with `in`: `{new}`"));
+            if ends {
+                last.fix(format!("write `{new}`"), at, new);
+            }
+        }
+        self.err_expr(whole.span)
     }
 
     /// `read<List<Int>>(n)`: the type says how many, `read<[n]Int>()`.
