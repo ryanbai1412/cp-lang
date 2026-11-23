@@ -246,3 +246,4 @@ print(k, n)' -> print ends up inside the loop
 - 2026-11-23: register rows for lint and error pages now cite their real mechanism: the pages render the records that crates/cpl-lint record/checker tests and crates/cpl-cli/tests/catalogue.rs already run, so no site-side rerun is needed.
 - 2026-11-23: practice mutation check (decision 424): 403 one-token mutants of the practice reference solutions, 393 fail a test, 10 listed (8 equivalent, 2 masked by bugs sent to compiler and stdlib: unchecked Mat.get, unchecked array domain).
 - 2026-11-23: drafts (site/R12): every editor keeps its edit per page and starting text in localStorage, practice problems gain Reset; web/tests/drafts.mjs runs in CI's site browser tests.
+- 2026-11-23: live diagnostics browser test: 11 error-registry triggers show their `cpl check` code in the playground, 402 ms median from the last keystroke. Browser differential after compiler's VM-in-wasm: 865 programs in 5.3 s, 0 too slow.

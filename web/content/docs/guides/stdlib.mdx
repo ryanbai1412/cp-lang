@@ -56,7 +56,7 @@ fn feasible(x: Int) -> Bool: x >= 42
 fn cost(k: Int) -> Int: k * k
 let ans = (1..=1e9).first_true(x => feasible(x))
 let hi = (0..=n).last_true(k => cost(k) <= budget)
-print(ans, hi)
+print(ans!, hi!)
 ```
 
 Sorted lookup uses `.first_ge(x)`, `.first_gt(x)`, `.last_le(x)`, `.last_lt(x)` everywhere, with the return type matching the container:

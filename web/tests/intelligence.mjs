@@ -148,6 +148,13 @@ const sig = page.locator(".cm-signature-help");
 await sig.waitFor({ timeout: 30000 }).catch(() => fail("no parameter hints after typing `twice(`"));
 if ((await sig.locator("b").innerText()) !== "x: Int") fail(`parameter hints for \`twice(\` don't bold \`x: Int\`: ${await sig.innerHTML()}`);
 console.log("parameter hints:", await sig.innerText());
+// A std function's hints list its named options, as the language server's do.
+await page.keyboard.press("ControlOrMeta+A");
+await page.keyboard.insertText("let a = [3, 1, 2]\nprint(a.sorted(");
+await page.waitForFunction(() => /by/.test(document.querySelector(".cm-signature-help")?.textContent ?? ""), null, { timeout: 30000 })
+  .catch(async () => fail(`parameter hints for \`sorted(\` don't list \`by:\`: ${await sig.innerText().catch(() => "none")}`));
+console.log("std parameter hints:", await sig.innerText());
+await page.keyboard.press("Escape");
 
 // Ctrl/Cmd-click on a search result opens it in a new tab.
 await page.keyboard.press("ControlOrMeta+k");

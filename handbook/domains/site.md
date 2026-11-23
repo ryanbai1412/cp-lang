@@ -206,7 +206,7 @@ Each row is a quality a user can feel on the site, the metric, and the strongest
 
 | Quality | Metric | Mechanism | Check |
 |---|---|---|---|
-| Live diagnostics while typing | edits whose errors appear after more than 500 ms; errors that differ from `cpl check` | Same analysis as the CLI, in wasm | **missing**: a latency measurement and a differential against `cpl check` |
+| Live diagnostics while typing | edits whose errors appear after more than 500 ms; errors that differ from `cpl check` | [site/R6](../guidelines/site-checklist.md): for a sample of the error registry's triggers, the editor shows the code `cpl check` raises within 1.5 s of the last keystroke | `web/tests/diagnostics.mjs`, CI job `site browser tests` |
 | Browser editor matches the language server | LSP features (hover, completion, definition, inlay hints, signature help, rename, formatting) the browser editor lacks | [site/R6](../guidelines/site-checklist.md); the server's advertised capabilities, read from the browser build, are each sent by the editor or named as a gap in `web/lib/lsp-features.ts`; **missing**: per-request answer parity on fixtures | `web/lib/lsp-parity.test.ts`, `web/tests/intelligence.mjs` |
 | Hover and completion work on every std item | std items with no full-signature hover, or no completion after `.` (including after a call) | [site/R6](../guidelines/site-checklist.md); tools generates it from the `cpl doc` extraction and `crates/cpl-wasm/tests/parity.rs` holds the browser to `cpl lsp`; **missing** until the suite lands | `crates/cpl-lsp/tests/std_items.rs` (tools) |
 | Completion works mid-edit | positions in a corpus of half-written programs where completion returns nothing | **missing**: a fixture suite like rust-analyzer's | none |

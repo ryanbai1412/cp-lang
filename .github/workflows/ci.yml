@@ -490,4 +490,4 @@ jobs:
         working-directory: web
         run: |
           pnpm exec playwright install --with-deps chromium
-          node tests/run.mjs smoke.mjs learn-smoke.mjs intelligence.mjs phone.mjs page-weight.mjs drafts.mjs
+          node tests/run.mjs smoke.mjs learn-smoke.mjs intelligence.mjs phone.mjs page-weight.mjs drafts.mjs diagnostics.mjs
