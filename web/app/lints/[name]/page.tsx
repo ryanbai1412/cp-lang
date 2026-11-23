@@ -60,8 +60,29 @@ export default async function Page({ params }: Props) {
         <InlineMd text={l.explain} />
       </p>
       <h2 className="mt-8 text-xl font-semibold">The practice it serves</h2>
+      {l.principles.length > 0 ? (
+        <ul className="mt-2 list-disc pl-6 leading-7">
+          {l.principles.map((p) => (
+            <li key={p.n}>
+              <Link className="underline" href={`/lints#practice-${p.n}`}>
+                {p.n}. {p.title}
+              </Link>
+            </li>
+          ))}
+        </ul>
+      ) : null}
       <p className="mt-2 max-w-3xl leading-7">
         <InlineMd text={l.practice ?? groups[l.group].practice} />
+        {l.family && (
+          <>
+            {' '}
+            Family:{' '}
+            <Link className="underline" href="/lints#by-family">
+              {l.subfamily ?? l.family}
+            </Link>
+            .
+          </>
+        )}
       </p>
       <h2 className="mt-8 text-xl font-semibold">Not flagged</h2>
       <p className="mt-2 text-sm text-muted-foreground">A near miss: close to the pattern, but not it.</p>

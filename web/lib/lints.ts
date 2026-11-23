@@ -21,6 +21,8 @@ export const groups = {
 
 export type Group = keyof typeof groups;
 
+export type Principle = { n: number; title: string };
+
 export type Lint = {
   name: string;
   code: string;
@@ -29,6 +31,9 @@ export type Lint = {
   title: string;
   summary: string;
   practice?: string;
+  family?: string;
+  subfamily?: string;
+  principles: Principle[];
   explain: string;
   before: string;
   after: string;
@@ -44,9 +49,46 @@ function toml(text: string): Record<string, string> {
   return out;
 }
 
+// Families and practices come from the idioms lane's catalog: a row in
+// spec/idioms/lints.md marks a lint with `✓name` under its family heading and
+// names the practices it serves (`#2`), titled in spec/idioms/principles.md.
+const idioms = join(process.cwd(), '../spec/idioms');
+
+export function principles(): Principle[] {
+  const text = readFileSync(join(idioms, 'principles.md'), 'utf8');
+  return [...text.matchAll(/^\*\*(\d+)\. ([^*]+?)\.?\*\*/gm)].map((m) => ({ n: Number(m[1]), title: m[2] }));
+}
+
+function catalog() {
+  const byNumber = new Map(principles().map((p) => [p.n, p]));
+  const out = new Map<string, { family: string; subfamily?: string; principles: Principle[] }>();
+  let family = '';
+  let subfamily: string | undefined;
+  for (const line of readFileSync(join(idioms, 'lints.md'), 'utf8').split('\n')) {
+    if (line.startsWith('## '))
+      [family, subfamily] = [
+        line
+          .slice(3)
+          .replace(/\s*\(.*\)\s*$/, '')
+          .trim(),
+        undefined,
+      ];
+    else if (line.startsWith('### ')) subfamily = line.slice(4).trim();
+    else if (line.startsWith('|')) {
+      const cells = line.split('|').map((c) => c.trim());
+      const served = cells.find((c) => /^#\d+(,\s*#\d+)*$/.test(c)) ?? '';
+      const ps = [...served.matchAll(/#(\d+)/g)].flatMap((m) => byNumber.get(Number(m[1])) ?? []);
+      for (const m of line.matchAll(/✓(\w+)/g))
+        if (!out.has(m[1])) out.set(m[1], { family, subfamily, principles: ps });
+    }
+  }
+  return out;
+}
+
 let cache: Lint[] | null = null;
 
 export function lints(): Lint[] {
+  const cat = catalog();
   cache ??= readdirSync(root, { withFileTypes: true })
     .filter((e) => e.isDirectory() && existsSync(join(root, e.name, 'lint.toml')))
     .map((e) => {
@@ -61,6 +103,9 @@ export function lints(): Lint[] {
         title: t.title,
         summary: t.summary,
         practice: t.practice,
+        family: cat.get(e.name)?.family,
+        subfamily: cat.get(e.name)?.subfamily,
+        principles: cat.get(e.name)?.principles ?? [],
         explain: file('explain.md'),
         before: file('before.cp'),
         after: file('after.cp'),
