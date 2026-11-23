@@ -18,7 +18,7 @@ That is the judge-build traps question with Ryan, not an intercept bug.
 
 | # | Matches (where) | Why | Interp vs C++ | General fix | Owner |
 |---|---|---|---|---|---|
-| 1 | `(a..b).sum()`, `(a..b).step(k).sum()` -> `Builtin::RangeSum` / `cpl::range_sum` (lower/call.rs `try_range_int_sum`) | perf: O(1) closed form | agree: empty, negative, `MAX-1..MAX`, span overflow and `by <= 0` traps; only the trap text differs (`by 0` vs `by`) | `Range.sum` std body with the closed form (U64 math exists) | compiler (converting now) |
+| 1 | `(a..b).sum()`, `(a..b).step(k).sum()` -> `Builtin::RangeSum` / `cpl::range_sum` (lower/call.rs `try_range_int_sum`) | perf: O(1) closed form | agree on empty, negative, `MAX-1..MAX` and `by <= 0`. **Missed here, found by coordinator:** a sum past `Int` (`(3..m).step(2).sum()`, m = 1e12) printed different wrong values in the two engines; compiler now computes both in 128 bits and traps (compiler worklog, `tests/parity/range_int_sum_overflow`) | `Range.sum` std body with the closed form (U64 math exists) | compiler (converting now) |
 | 2 | free `sum`/`count`/`all`/`any`/`min`/`max` of a seq or generator, the methods, and `fold(min\|max)` -> `Reduce` loops (`reduce_opt`, `fold_seq`) | perf (fused loop), the generator form (decision 53), a struct's own `zero`/`+` | agree on empty, overflow, ties | std bodies over `Seq`; a generator passed to a std fn as a lazy seq, fused by inlining | compiler + stdlib |
 | 3 | `argmax`/`argmin(gen)` (`arg_extreme`) | generator form | agree on ties (first wins) | same as 2: std `max_by` over the walk | compiler + stdlib |
 | 4 | `first(gen)`, `xs.find(f)` (`lower_first`, `find_first`) | generator form, perf | not probed | same as 2 | compiler + stdlib |
