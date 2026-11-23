@@ -565,6 +565,34 @@ pub(super) fn place_keys(pp: &PlacePath, regs_v: &[Value]) -> Vec<Value> {
         .collect()
 }
 
+/// Runs `f` on the cell at `steps`. An element of a packed array (`[V]Int`)
+/// has no `Value` cell, so `f` changes a copy that is stored back.
+pub(super) fn with_place_cell<R>(
+    root: &mut Value,
+    steps: &[PlaceStep],
+    regs_i: &[i64],
+    keys: &[Value],
+    span: Span,
+    f: impl FnOnce(&mut Value) -> Res<R>,
+) -> Res<R> {
+    if let Some((&last @ (PlaceStep::Index1(_) | PlaceStep::Index2(..)), prefix)) =
+        steps.split_last()
+    {
+        let container = walk_place_mut(root, prefix, regs_i, keys, span)?;
+        if let Value::Array(arr) = container {
+            if !matches!(arr.data, ArrayData::Values(_)) {
+                let flat = array_flat_index(arr, last, regs_i, span)?;
+                let a = Rc::make_mut(arr);
+                let mut cell = a.get(flat).expect("index checked");
+                let out = f(&mut cell)?;
+                a.set(flat, cell);
+                return Ok(out);
+            }
+        }
+    }
+    f(walk_place_mut(root, steps, regs_i, keys, span)?)
+}
+
 pub(super) fn walk_place_mut<'a>(
     mut cur: &'a mut Value,
     steps: &[PlaceStep],

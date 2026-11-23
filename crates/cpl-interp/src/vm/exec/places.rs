@@ -901,8 +901,10 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     PlaceRoot::LocalV(v) => &mut regs_v[v as usize],
                     PlaceRoot::Global(gid) => &mut self.globals[gid as usize],
                 };
-                let cell = walk_place_mut(root, &pp.steps, regs_i, &keys, spans[cur_pc])?;
-                regs_v[dst as usize] = take_value(cell, spans[cur_pc])?;
+                regs_v[dst as usize] =
+                    with_place_cell(root, &pp.steps, regs_i, &keys, spans[cur_pc], |cell| {
+                        take_value(cell, spans[cur_pc])
+                    })?;
             }
             Op::CallVmFeed { spec } => {
                 let fc = &chunk.feed_calls[spec as usize];
@@ -1214,16 +1216,11 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 let pp = &chunk.places[path as usize];
                 let keys = place_keys(pp, regs_v);
                 let root = place_root_mut(pp.root, regs_v, &mut self.globals);
-                let cell = walk_place_mut(root, &pp.steps, regs_i, &keys, spans[cur_pc])?;
-                regs_v[dst as usize] = crate::mutation::mutate_cell(
-                    *op,
-                    cell,
-                    &place.ty,
-                    arg,
-                    arg2,
-                    program,
-                    spans[cur_pc],
-                )?;
+                let span = spans[cur_pc];
+                regs_v[dst as usize] =
+                    with_place_cell(root, &pp.steps, regs_i, &keys, span, |cell| {
+                        crate::mutation::mutate_cell(*op, cell, &place.ty, arg, arg2, program, span)
+                    })?;
             }
             Op::FallbackStmt {
                 idx,
