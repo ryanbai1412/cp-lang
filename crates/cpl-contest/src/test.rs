@@ -25,8 +25,8 @@ usage: cpl test <problem> [options]
 
 Runs the solution on every case in <problem>.tests/ (or a sibling tests/
 folder). A contest folder (`cpl fetch <contest page>`) runs each problem in it
-with cases, then says how many pass. A case is N.in with an optional N.out or N.ans; without one, the
-output is shown instead of judged.
+with cases, then says how many pass. A case is N.in with an optional N.out or
+N.ans; without one, the output is shown instead of judged.
 
 options:
   --tests DIR        read cases from DIR instead of <problem>.tests/
