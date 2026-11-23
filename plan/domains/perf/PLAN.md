@@ -1,10 +1,10 @@
 # perf plan
 
-The detail behind [README.md](README.md). Dated 2026-11-22.
+Perf's time-bound plan; the durable charter is [handbook/domains/perf.md](../../../handbook/domains/perf.md). Dated 2026-11-22.
 
 ## Workstreams, in order (Milestone 1 first)
 
-Milestone 1 steps 6 and 7 (Submit, Compete) set the order; see the README's Milestone 1 section. Landed in phase 2: the in-flight branches, the perf and size harnesses, zero-cost builds, compaction (decision 271), the no-trap judge build (decision 299).
+Milestone 1 steps 6 and 7 (Submit, Compete) set the order; see Exit criteria below. Landed in phase 2: the in-flight branches, the perf and size harnesses, zero-cost builds, compaction (decision 271), the no-trap judge build (decision 299).
 
 1. **Tail over 1.5x, then tuned to 1.1x** (M1 criterion 3). Idiomatic max < 1.5x and p95 < 1.2x; tuned max <= 1.1x, with a tuned in-language variant next to each outlier over 1.1x and a logged language gap for any that cannot get there. `p06_labyrinth` 3.90x, `cf1146h` 3.47x and RSS 10.5x, `wtf26b`, `p10_matching` 2.23x, `cf2178h` 1.87x, `ranges/mo` 1.47x, `flow/costflow` 1.26x. Profile each with `perf`, find the cause (codegen, stdlib body, or port algorithm), fix it generally or route it, re-run the set.
 2. **Fit 32 KB** (criterion 1). `ucup5s05f/port.cp` and `noi17p2/spec.cp`; `sizes.py --check` in the gate (request to infra).
@@ -130,6 +130,54 @@ Local fixes that landed, and the mechanism that would remove the whole class.
 | cf2066f tuned by hand (idiomatic 1.38x): `var mss: [PosB.cuts, PosB.cuts]Int` and `var agree: [PosA.cuts, PosB.cuts]Int` stay `ll` grids though they hold a max subarray sum of `-1e6..=1e6` values and a match length; perf.cp writes their ranges (`-500_000_000..=500_000_000`, `0..=500`). The read list `b` stays `ll` too | width inference bounds a table by what is stored in it (a fold over a domain's elements is bounded by count times the element range), as it already does for locals | perf |
 - Instance: `(0..n).rev.find(p)` (cf2180g, 17.4x) built the whole reversed range into a list before searching; now lowered as `rfind`. General fix (ir): a reversed range is a lazy value (`Ty::Range` with a direction), so `.rev` never lists a range in any method, not just `find`. Owner: perf.
 - Instance: 777 `std::function`s left across the corpus and conformance, mostly `Heap.lt`/`by` (an optional fn field) and generic fns taken as values. General fix (codegen): a struct whose fn fields hold known closures is specialized per closure (the field becomes a template functor, like `Window(+)`), so an op value is never type-erased. Owner: perf.
+
+## Exit criteria
+
+### Milestone 1
+
+[Milestone 1](../../../handbook/product/milestones.md), due about 09:30 PST 2026-11-23, needs perf for step 6 (Submit) and step 7 (Compete): what CPL submits is one C++17 file that compiles under a standard g++, stays well under the judges' 64 KB, and is never slower than the C++ the friend would write. Ryan: language quality over judge-specific features, so no new Milestone 1 time goes into judge profiles; the existing profiles and their tests keep working. Checkpoints go in [worklog.md](worklog.md) every 2 hours.
+
+Exit criteria, each one command:
+1. **Fits.** Every program that builds is under 32 KB (`python3 bench/sizes.py --judge generic --check`). Today (debug `cpl` at `058ce6f3f`): 753 programs build; 2 are over, `ucup5s05f/port.cp` at 37,078 B and `noi17p2/spec.cp` at 34,484 B.
+2. **Compiles.** Every program that builds compiles as C++17 with g++ (`python3 bench/compiles.py`). Today: 753 build, 1 does not compile (`etsr23r4p2/spec.cp`: `Action.new`'s default `compose: (+)` lowers to nothing; routed to compiler).
+3. **No performance disadvantage, tail first.** On the matched perf set (`bench/v03_perf_bench.py`): idiomatic max < 1.5x and p95 < 1.2x; tuned bar: max <= 1.1x with a tuned in-language variant kept next to each outlier (widths, `unchecked:`, layout; `perf.cp` beside `port.cp` as `cpl bench --corpus` already reads it, else `<stem>.perf.cp`), and an outlier that cannot get there in-language is a logged language gap. Today (no-trap build, 142 timed): p50 0.778x, p95 1.548x, max 3.90x (`p06_labyrinth`), 9 over 1.5x; tuned max not measured yet (0 tuned variants; the harness prints it once they exist). Since then, 77e70afe0 took `p06_labyrinth` from 69.3 to 40.4 ms (matched C++: 14.3 ms).
+4. **No traps by default.** `cpl build` and `cpl submit` emit the no-trap build (decision 299, done); `--checks traps` is the opt-in. Trap cost on 46 `bench/` pairs: p50 1.011x, max 1.27x (`monodeque`).
+
+Deferred: new judge-profile work (Codeforces/AtCoder flags, Windows g++); SIMD and optimisation beyond parity; zero-cost pairs not in the tail (`iterators`, `optionals`); `cpl explain` cost annotations; codegen file splits; Python harnesses into `cpl bench`.
+
+Next 3 (in hours):
+1. The tail: idiomatic max over 1.5x first (`p10_matching`, `cf2178h`, the rest of `p06_labyrinth`; `cf1146h` 3.47x -> about 1.04x by 037d7bf31 and c8e47d1b4), then a tuned `perf.cp` at <= 1.1x for each outlier over 1.1x, or a logged language gap. General fixes only; stdlib or port causes go to their owners.
+2. Under 32 KB, about 1 h: `ucup5s05f` and `noi17p2`.
+3. Re-run the full perf set and sizes after each fix; ratchet the numbers.
+
+### Milestone 2
+
+[Milestone 2](../../../handbook/product/milestones.md), the stable release. The most ambitious complete version of perf: what CPL emits is never the reason to write C++ instead. Idiomatic code runs at the speed of the C++ a strong contestant writes, a tuned program matches the best hand-written C++, every solution is small and fast to compile, and `cpl explain` shows each choice the compiler made.
+
+Exit criteria:
+- Perf set, every corpus port with a matched reference: idiomatic p50 <= 1.1x, p95 <= 1.2x, max <= 1.5x, and tuned max <= 1.1x (`runtime_tuned_max`); every gap left is a logged language gap with an owner.
+- Zero-cost pairs 7/7 within 1.05x of hand-written C++: domains, optionals, iterators, operation values (`cpl bench --zero-cost`).
+- Every corpus solution under 32 KB on every judge profile; g++ -O2 time p50 under 1 s.
+- Peak RSS p50 <= 1.05x and max <= 1.5x matched C++.
+- `cpl explain` names every implicit codegen choice (inline rows, fusion, reduction sinking, check elision); SIMD-friendly loops where g++ can vectorize the matched C++.
+
+Next steps: tuned `perf.cp` for each M1 outlier; `cpl explain` for sinking and fusion; the iterators and optionals zero-cost gaps.
+
+### Judgment rubric
+
+Scored 1-5 with a reason by a cold agent on fixed samples (`p10_matching`, `ranges/mo`, `bench/zero-cost/iterators`).
+
+1. Would a strong C++ contestant submit this kernel as is: no `std::function`, no check they can see is redundant, no copy they would not make?
+2. When a program is slow, does `cpl explain` / `cpl profile` say why, in source terms?
+3. Is every optimisation one that majorizes and is shown, never a secret choice of algorithm?
+4. Is each optimisation a general rule in one module with a shape test, never keyed to a library name?
+5. Can a contestant read the emitted C++ back to the source?
+
+Probes (cold agent, pass/fail + time + files touched):
+
+- **Diagnose:** given `p10_matching` at 1.53x and the docs, name the cause (indirect call through `let f = mon.op`) in <= 15 min. Tests rubric 2.
+- **Tune:** take the worst perf-set program to <= 1.1x by editing only the `.cp`. Tests criterion 4.
+- **Extend:** add `reserve` on known-length producer loops following `handbook/design/codegen.md`; <= 3 files, a shape test, no special case. Tests rubric 4.
 
 ## Next
 

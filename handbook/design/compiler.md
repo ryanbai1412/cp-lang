@@ -152,6 +152,7 @@ must never do.
 - **Invariants:** output agrees with the VM on every program; a read-only
   heap value is read in place, not copied.
 - **Never:** read syntax or re-derive types; emit undefined behaviour.
+- **Design:** `handbook/design/codegen.md`.
 
 ## Where the contracts are tested
 

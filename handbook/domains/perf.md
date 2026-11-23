@@ -60,8 +60,8 @@ quality register below.
 
 ## Where to start
 
-- **Speeding up generated code:** read `handbook/guidelines/performance.md`,
-  then the module for the choice in `crates/cpl-codegen/src/` (`uses.rs` for
+- **Speeding up generated code:** read `handbook/guidelines/performance.md`
+  and `handbook/design/codegen.md`, then the module for the choice in `crates/cpl-codegen/src/` (`uses.rs` for
   copies and moves, `devirt.rs` for direct calls, `ranges.rs` for checks).
   Add a shape test beside it and a parity case in
   `crates/cpl-cli/tests/parity/`.

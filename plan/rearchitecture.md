@@ -196,7 +196,7 @@ lowering, interpreter and emitter.
 
 ### 4. One copy and effect analysis in codegen (M2; starts now)
 
-Plan in `plan/domains/perf/ARCHITECTURE.md` ("Re-architecture #4"): one
+Design in `handbook/design/codegen.md` ("The copy and effect analysis"): one
 Effects table (compiler) and one Uses table (perf), lend by default, a copy
 only with a reason `cpl explain` prints, rewrites gated on proven purity.
 Ratchets: `cpp_deep_copies` 101 and `cpp_std_functions` 777, from
