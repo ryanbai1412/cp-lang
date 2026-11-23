@@ -4,8 +4,9 @@
 Starts the language server the way EDITOR's setup does (COMMAND is read from
 that setup by its smoke script), then checks the handshake every client makes:
 `initialize` answers with the capabilities the editors rely on, opening a file
-with a type error publishes that error on its line, and completion, definition
-and formatting answer as the editors' own smoke tests expect. For editors that cannot
+with a type error publishes that error on its line, completion, definition
+and formatting answer as the editors' own smoke tests expect, and a lint
+links to its page with a quick fix that applies. For editors that cannot
 run headless (Helix, Zed), this is the part of the setup a script can drive.
 """
 import json
@@ -111,9 +112,29 @@ with tempfile.TemporaryDirectory() as root:
     edits = ask(5, "textDocument/formatting", messy.as_uri(), options={"tabSize": 4, "insertSpaces": True})
     if apply(messy.read_text(), edits or []) != "let x = 1\nprint(x)\n":
         fail(f"formatting gave {edits}")
+    # A lint is a warning linked to its page, and its quick fix rewrites the line.
+    linted = pathlib.Path(root, "lint.cp")
+    linted.write_text("var x = 1\nx = x + 1\nprint(x)\n")
+    send({"method": "textDocument/didOpen", "params": {"textDocument": {
+        "uri": linted.as_uri(), "languageId": "cp", "version": 1, "text": linted.read_text()}}})
+    # The checker's report comes first; the lints follow in a second report.
+    published = until(lambda m: m.get("method") == "textDocument/publishDiagnostics"
+                      and m["params"]["uri"] == linted.as_uri()
+                      and any(str(d.get("code", "")).startswith("L") for d in m["params"]["diagnostics"]))
+    lint = next((d for d in published["params"]["diagnostics"] if d.get("code") == "L0210"), None)
+    if not lint or lint.get("codeDescription", {}).get("href") != "https://cp-lang.org/lints/L0210":
+        fail(f"expected L0210 linked to its page on `x = x + 1`: {published}")
+    send({"id": 6, "method": "textDocument/codeAction", "params": {
+        "textDocument": {"uri": linted.as_uri()}, "range": lint["range"],
+        "context": {"diagnostics": [lint], "only": ["quickfix"]}}})
+    actions = until(lambda m: m.get("id") == 6).get("result") or []
+    edits = lambda a: a.get("edit", {}).get("changes", {}).get(linted.as_uri(), [])
+    fixed = [apply(linted.read_text(), edits(a)) for a in actions]
+    if "var x = 1\nx += 1\nprint(x)\n" not in fixed:
+        fail(f"no quick fix writes `x += 1`: {[a.get('title') for a in actions]} give {fixed}")
     send({"id": 2, "method": "shutdown"})
     until(lambda m: m.get("id") == 2)
     send({"method": "exit"})
     if server.wait(timeout=10) != 0:
         fail(f"exit status {server.returncode}")
-print(f"{editor} lsp smoke: ok ({errors[0]['code']} on line 3; completion, definition, formatting)")
+print(f"{editor} lsp smoke: ok ({errors[0]['code']} on line 3; completion, definition, formatting, lint fix)")

@@ -1,7 +1,7 @@
 -- nvim --headless --clean -l editors/neovim/test/smoke.lua CPL REPO
 -- Installs the plugin with `cpl setup neovim`, opens a .cp file with a type error and checks the
 -- filetype, the highlighting, the server's diagnostic, its hover and the run lens beside
--- the sample `i1`, run through `cpl.exec`; completion, `gd` and format on write; `:Cpl check` and its completion; then, with the
+-- the sample `i1`, run through `cpl.exec`; completion, `gd` and format on write; a lint's page link and quick fix; `:Cpl check` and its completion; then, with the
 -- tree-sitter parser built, the highlighting the shared queries give.
 local cpl, repo = arg[1], arg[2]
 vim.g.cpl_path = cpl
@@ -126,6 +126,37 @@ check(vim.wait(10000, function() return #vim.lsp.get_clients({ bufnr = 0, name =
 vim.cmd('write')
 local written = vim.fn.readfile(fmt_file)
 check(vim.deep_equal(written, { 'let x = 1', 'print(x)' }), 'b.cp was written as ' .. vim.inspect(written))
+
+-- A lint is a warning linked to its page, and its quick fix rewrites the line.
+local lint_file = dir .. '/c.cp'
+vim.fn.writefile({ 'var x = 1', 'x = x + 1', 'print(x)' }, lint_file)
+vim.cmd.edit(lint_file)
+local lint
+check(vim.wait(10000, function()
+    for _, d in ipairs(vim.diagnostic.get(0)) do
+        if d.code == 'L0210' then lint = d end
+    end
+    return lint ~= nil
+end), 'no L0210 on `x = x + 1`: ' .. vim.inspect(vim.diagnostic.get(0)))
+local href = vim.tbl_get(lint, 'user_data', 'lsp', 'codeDescription', 'href')
+check(href == 'https://cp-lang.org/lints/L0210', 'L0210 links to ' .. vim.inspect(href))
+local replies = vim.lsp.buf_request_sync(0, 'textDocument/codeAction', {
+    textDocument = { uri = vim.uri_from_fname(lint_file) },
+    range = lint.user_data.lsp.range,
+    context = { diagnostics = { lint.user_data.lsp }, only = { 'quickfix' } },
+}, 5000) or {}
+local titles = {}
+for _, reply in pairs(replies) do
+    for _, action in ipairs(reply.result or {}) do
+        table.insert(titles, action.title)
+        if action.edit and vim.api.nvim_buf_get_lines(0, 1, 2, false)[1] ~= 'x += 1' then
+            vim.lsp.util.apply_workspace_edit(action.edit, 'utf-16')
+            if vim.api.nvim_buf_get_lines(0, 1, 2, false)[1] ~= 'x += 1' then vim.cmd('silent undo') end
+        end
+    end
+end
+local fixed = vim.api.nvim_buf_get_lines(0, 1, 2, false)[1]
+check(fixed == 'x += 1', 'no quick fix of ' .. vim.inspect(titles) .. ' writes `x += 1`: ' .. vim.inspect(fixed))
 
 -- With the parser built, a .cp buffer highlights through tree-sitter and the shared queries.
 local parser_dir = dir .. '/ts'
