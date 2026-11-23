@@ -3,7 +3,7 @@
 use super::{range_json, Reply, Server, INVALID_PARAMS};
 use crate::rename;
 use crate::uri::uri_of_path;
-use cpl_check::{DeclKind, Definition, Ty};
+use cpl_check::Definition;
 use cpl_diag::{LineIndex, Span};
 use cpl_json::{obj, Value};
 use std::collections::BTreeMap;
@@ -35,9 +35,9 @@ impl Server {
     fn fn_item(&mut self, uri: &str, def: &Definition) -> Option<Value> {
         let symbol = self
             .db
-            .symbols(&def.path)
+            .fns(&def.path)
             .into_iter()
-            .find(|s| s.kind == DeclKind::Fn && s.name_span == def.span)?;
+            .find(|s| s.name_span == def.span)?;
         Some(self.item(
             uri,
             &def.path,
@@ -83,12 +83,7 @@ impl Server {
                 .into_iter()
                 .filter(|&span| !(doc == target.path && span == target.span))
                 .collect();
-            let fns: Vec<_> = self
-                .db
-                .symbols(&doc)
-                .into_iter()
-                .filter(|s| s.kind == DeclKind::Fn)
-                .collect();
+            let fns = self.db.fns(&doc);
             let mut callers: BTreeMap<Option<usize>, Vec<Span>> = BTreeMap::new();
             for span in uses {
                 let caller = fns
@@ -129,7 +124,7 @@ impl Server {
         let path = target.path.clone();
         let Some(body) = self
             .db
-            .symbols(&path)
+            .fns(&path)
             .into_iter()
             .find(|s| s.name_span == target.span)
             .map(|s| s.span)
@@ -139,20 +134,18 @@ impl Server {
         let Some(analysis) = self.db.analyze(&path) else {
             return Value::Array(Vec::new());
         };
-        let mut calls: Vec<u32> = Vec::new();
-        for item in &analysis.items {
-            for entry in &item.check.hovers {
-                let at = entry.span.shift(item.offset);
-                let called = matches!(entry.ty, Ty::Fn { .. })
-                    && matches!(entry.keyword, "global" | "fn")
-                    && body.start <= at.start
-                    && at.end <= body.end
-                    && at != target.span;
-                if called {
-                    calls.push(at.start);
-                }
-            }
-        }
+        // Every name in the body that resolves to a fn: plain calls, method
+        // calls and fns passed as values alike.
+        let word = |b: u8| b.is_ascii_alphanumeric() || b == b'_';
+        let bytes = analysis.text.as_bytes();
+        let calls: Vec<u32> = (body.start..body.end)
+            .filter(|&at| {
+                let i = at as usize;
+                let b = bytes[i];
+                (b.is_ascii_alphabetic() || b == b'_') && (i == 0 || !word(bytes[i - 1]))
+            })
+            .filter(|&at| at != target.span.start)
+            .collect();
         let mut found: BTreeMap<(String, u32), (Value, Vec<Span>)> = BTreeMap::new();
         for at in calls {
             let Some(def) = self.db.definition_location(&path, at) else {

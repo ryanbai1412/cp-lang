@@ -7,7 +7,12 @@ import { Runner } from './runner';
 import { Sample } from './samples';
 import { TraceView } from './traceView';
 
-export async function activate(context: vscode.ExtensionContext): Promise<void> {
+/** What the extension gives other extensions and its tests. */
+export interface CpApi {
+    request(method: string, params: unknown): Promise<unknown>;
+}
+
+export async function activate(context: vscode.ExtensionContext): Promise<CpApi> {
     const output = vscode.window.createOutputChannel('CP Lang');
     const client = new CpClient(output);
     const overlays = new Overlays();
@@ -131,6 +136,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         }),
     );
     await client.start();
+    return { request: (method, params) => client.request(method, params) };
 }
 
 export function deactivate(): void {

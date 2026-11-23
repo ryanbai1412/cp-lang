@@ -1,0 +1,37 @@
+{
+  "about": "Every request cpl lsp answers, run by each editor's smoke test (editors/neovim/test/smoke.lua, editors/vscode/test/integration/suite.ts, editors/jetbrains CpPluginSmokeTest, editors/lsp-smoke.py) and by cpl-lsp's own test. Each request goes to main.cp, written with `files` into a fresh folder, with `textDocument` added; a string \"$result:METHOD:KEY\" in params is the earlier reply to METHOD at KEY (a list index or a field). The reply's result, as compact JSON, must contain every `expect` string. Expected strings avoid `/`, which some encoders escape.",
+  "files": {
+    "main.cp": "use std.math.{lcm, ceil_sqrt}\nstruct Road:\n    to: Int\nimpl Road:\n    fn twice(self) -> Int = self.to * 2\nfn far(r: Road) -> Int = r.twice()\nlet road = Road(to: read())\nprint( far(road), ceil_sqrt(10) )\nvar x = 1\nx = x + 1\nprint(x)\nlet n: 1..=200000 = read()\ndomain V = 1..=n\nvar dist: [V]Int = 0\nprint(dist)\n",
+    "i1": "3\n"
+  },
+  "requests": [
+    {"method": "textDocument/hover", "params": {"position": {"line": 5, "character": 4}}, "expect": ["fn far(r: Road) -> Int"]},
+    {"method": "textDocument/completion", "params": {"position": {"line": 5, "character": 27}}, "expect": ["\"label\":\"twice\""]},
+    {"method": "textDocument/signatureHelp", "params": {"position": {"line": 7, "character": 11}}, "expect": ["far(r: Road) -> Int"]},
+    {"method": "textDocument/definition", "params": {"position": {"line": 7, "character": 7}}, "expect": ["\"line\":5"]},
+    {"method": "textDocument/typeDefinition", "params": {"position": {"line": 5, "character": 25}}, "expect": ["\"line\":1"]},
+    {"method": "textDocument/implementation", "params": {"position": {"line": 1, "character": 8}}, "expect": ["\"line\":3"]},
+    {"method": "textDocument/references", "params": {"position": {"line": 5, "character": 4}, "context": {"includeDeclaration": true}}, "expect": ["\"line\":5", "\"line\":7"]},
+    {"method": "textDocument/documentHighlight", "params": {"position": {"line": 5, "character": 4}}, "expect": ["\"line\":5", "\"line\":7"]},
+    {"method": "textDocument/foldingRange", "params": {}, "expect": ["\"startLine\":1", "\"startLine\":3"]},
+    {"method": "textDocument/prepareRename", "params": {"position": {"line": 5, "character": 4}}, "expect": ["\"placeholder\":\"far\""]},
+    {"method": "textDocument/rename", "params": {"position": {"line": 5, "character": 4}, "newName": "go"}, "expect": ["\"newText\":\"go\""]},
+    {"method": "textDocument/codeLens", "params": {}, "expect": ["cpl.exec", "Memory: bounds allow"]},
+    {"method": "workspace/symbol", "params": {"query": "Road"}, "expect": ["\"name\":\"Road\""]},
+    {"method": "textDocument/documentSymbol", "params": {}, "expect": ["\"name\":\"far\"", "\"name\":\"Road\""]},
+    {"method": "textDocument/codeAction", "params": {"range": {"start": {"line": 9, "character": 0}, "end": {"line": 9, "character": 9}}, "context": {"diagnostics": [], "only": ["quickfix"]}}, "expect": ["x += 1"]},
+    {"method": "textDocument/codeAction", "params": {"range": {"start": {"line": 0, "character": 0}, "end": {"line": 0, "character": 0}}, "context": {"diagnostics": [], "only": ["source.organizeImports"]}}, "expect": ["source.organizeImports", "{ceil_sqrt}"]},
+    {"method": "textDocument/inlayHint", "params": {"range": {"start": {"line": 0, "character": 0}, "end": {"line": 15, "character": 0}}}, "expect": ["\": Road\""]},
+    {"method": "textDocument/formatting", "params": {"options": {"tabSize": 4, "insertSpaces": true}}, "expect": ["print(far(road), ceil_sqrt(10))"]},
+    {"method": "textDocument/rangeFormatting", "params": {"options": {"tabSize": 4, "insertSpaces": true}, "range": {"start": {"line": 7, "character": 0}, "end": {"line": 7, "character": 5}}}, "expect": ["print(far(road), ceil_sqrt(10))"]},
+    {"method": "textDocument/onTypeFormatting", "params": {"options": {"tabSize": 4, "insertSpaces": true}, "position": {"line": 8, "character": 0}, "ch": "\n"}, "expect": ["print(far(road), ceil_sqrt(10))"]},
+    {"method": "textDocument/prepareCallHierarchy", "params": {"position": {"line": 5, "character": 4}}, "expect": ["\"name\":\"far\""]},
+    {"method": "callHierarchy/incomingCalls", "params": {"item": "$result:textDocument/prepareCallHierarchy:0"}, "expect": ["\"name\":\"top level\""]},
+    {"method": "callHierarchy/outgoingCalls", "params": {"item": "$result:textDocument/prepareCallHierarchy:0"}, "expect": ["\"name\":\"twice\""]},
+    {"method": "textDocument/linkedEditingRange", "params": {"position": {"line": 5, "character": 7}}, "expect": ["\"character\":25"]},
+    {"method": "textDocument/documentLink", "params": {}, "expect": ["math.cp", "Open std.math"]},
+    {"method": "textDocument/diagnostic", "params": {}, "expect": ["\"kind\":\"full\"", "L0210"]},
+    {"method": "textDocument/semanticTokens/full", "params": {}, "expect": ["\"resultId\""]},
+    {"method": "textDocument/semanticTokens/full/delta", "params": {"previousResultId": "$result:textDocument/semanticTokens/full:resultId"}, "expect": ["\"edits\""]}
+  ]
+}

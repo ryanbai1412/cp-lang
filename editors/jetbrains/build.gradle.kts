@@ -50,6 +50,6 @@ val repo: File = rootDir.parentFile.parentFile
 tasks {
     test {
         systemProperty("cpl.repo", repo.absolutePath)
-        systemProperty("cpl.bin", System.getenv("CPL") ?: repo.resolve("target/debug/cpl").absolutePath)
+        systemProperty("cpl.bin", System.getenv("CPL") ?: repo.resolve(if (System.getProperty("os.name").startsWith("Windows")) "target/debug/cpl.exe" else "target/debug/cpl").absolutePath)
     }
 }

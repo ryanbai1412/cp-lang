@@ -4,6 +4,7 @@
 import * as assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import * as fs from 'node:fs';
+import * as os from 'node:os';
 import * as path from 'node:path';
 import * as vscode from 'vscode';
 
@@ -433,6 +434,48 @@ const tests: [string, () => Promise<void>][] = [
                 .flatMap(group => group.tabs)
                 .filter(tab => tab.label === `Trace: ${path.basename(document.uri.fsPath)}`);
             assert.equal(panels.length, 1);
+        },
+    ],
+    [
+        'every request of lsp-matrix.json answers through the extension',
+        async () => {
+            const matrix = JSON.parse(fs.readFileSync(path.resolve(__dirname, '../../../../lsp-matrix.json'), 'utf8')) as {
+                files: Record<string, string>;
+                requests: { method: string; params: Record<string, unknown>; expect: string[] }[];
+            };
+            const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'cpl-matrix-'));
+            for (const [name, body] of Object.entries(matrix.files)) {
+                fs.writeFileSync(path.join(dir, name), body);
+            }
+            const main = vscode.Uri.file(path.join(dir, 'main.cp'));
+            await vscode.window.showTextDocument(await vscode.workspace.openTextDocument(main));
+            const api = await vscode.extensions.getExtension<{ request(method: string, params: unknown): Promise<unknown> }>(
+                'cp-lang.cp-lang',
+            )!.activate();
+            const results: Record<string, unknown> = {};
+            const earlier = (value: unknown): unknown => {
+                if (typeof value === 'string' && value.startsWith('$result:')) {
+                    const rest = value.slice('$result:'.length);
+                    const cut = rest.lastIndexOf(':');
+                    const found = results[rest.slice(0, cut)] as Record<string, unknown>;
+                    return found[rest.slice(cut + 1)];
+                }
+                if (value && typeof value === 'object' && !Array.isArray(value)) {
+                    return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, earlier(v)]));
+                }
+                return value;
+            };
+            for (const { method, params, expect } of matrix.requests) {
+                const full = { textDocument: { uri: main.toString() }, ...(earlier(params) as object) };
+                // The first replies may come before the server has read the file.
+                const got = await until(`${method} with ${expect.join(', ')}`, async () => {
+                    const result = await api.request(method, full);
+                    const text = JSON.stringify(result ?? null);
+                    return expect.every(want => text.includes(want)) ? result : undefined;
+                });
+                results[method] = got;
+            }
+            await vscode.commands.executeCommand('workbench.action.closeActiveEditor');
         },
     ],
 ];

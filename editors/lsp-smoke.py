@@ -155,9 +155,40 @@ with tempfile.TemporaryDirectory() as root:
                 range={"start": {"line": 5, "character": 0}, "end": {"line": 5, "character": 5}})
     if not apply(nav.read_text(), edits or []).endswith("print(far(Road(to: 3)))\n"):
         fail(f"range formatting gave {edits}")
+    # Every request the server answers, from the matrix all editors share.
+    matrix = json.loads(pathlib.Path(__file__).with_name("lsp-matrix.json").read_text())
+    folder = pathlib.Path(root, "matrix")
+    folder.mkdir()
+    for name, body in matrix["files"].items():
+        folder.joinpath(name).write_text(body)
+    main = folder.joinpath("main.cp")
+    send({"method": "textDocument/didOpen", "params": {"textDocument": {
+        "uri": main.as_uri(), "languageId": "cp", "version": 1, "text": main.read_text()}}})
+    results = {}
+
+    def earlier(value):
+        if isinstance(value, str) and value.startswith("$result:"):
+            method, _, key = value[len("$result:"):].rpartition(":")
+            found = results[method]
+            return found[int(key)] if key.isdigit() else found[key]
+        if isinstance(value, dict):
+            return {k: earlier(v) for k, v in value.items()}
+        return value
+
+    for id, case in enumerate(matrix["requests"], 100):
+        params = {"textDocument": {"uri": main.as_uri()}, **earlier(case["params"])}
+        send({"id": id, "method": case["method"], "params": params})
+        reply = until(lambda m: m.get("id") == id)
+        result = reply.get("result")
+        results[case["method"]] = result
+        got = json.dumps(result, separators=(",", ":"))
+        missing = [want for want in case["expect"] if want not in got]
+        if "error" in reply or missing:
+            fail(f"{case['method']} lacks {missing}: {reply}")
     send({"id": 2, "method": "shutdown"})
     until(lambda m: m.get("id") == 2)
     send({"method": "exit"})
     if server.wait(timeout=10) != 0:
         fail(f"exit status {server.returncode}")
-print(f"{editor} lsp smoke: ok ({errors[0]['code']} on line 3; completion, definition, formatting, lint fix, navigation)")
+print(f"{editor} lsp smoke: ok ({errors[0]['code']} on line 3; completion, definition, formatting, lint fix,"
+      f" navigation; all {len(matrix['requests'])} requests of lsp-matrix.json)")

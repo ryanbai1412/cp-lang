@@ -147,6 +147,17 @@ fn call_hierarchy_shows_callers_and_callees() {
 }
 
 #[test]
+fn outgoing_calls_include_method_calls() {
+    let (mut server, diagnostics) = open(
+        "struct Road:\n    to: Int\nimpl Road:\n    fn twice(self) -> Int = self.to * 2\nfn far(r: Road) -> Int = r.twice()\nprint(far(Road(to: 3)))\n",
+    );
+    assert!(diagnostics.is_empty(), "{diagnostics:?}");
+    let far = call_item(&mut server, 4, 4);
+    let outgoing = calls(&mut server, "callHierarchy/outgoingCalls", &far);
+    assert_eq!(outgoing, [("twice".to_string(), 1)]);
+}
+
+#[test]
 fn organize_imports_is_a_source_action() {
     let (mut server, _) =
         open("use std.rand.{Rng}\nuse std.deque.{Deque}\nlet d = Deque<Int>()\nprint(d.len())\n");
@@ -248,4 +259,149 @@ fn a_token_edit_is_the_minimal_splice() {
     assert_eq!(edit(&[1, 2], &[1, 2, 2]), (2, 0, &[2][..]));
     assert_eq!(edit(&[2, 2, 2], &[2]), (1, 2, &[][..]));
     assert_eq!(edit(&[], &[4]), (0, 0, &[4][..]));
+}
+
+/// editors/lsp-matrix.json: every request the server answers, with what its
+/// reply must say. Each editor's smoke test runs the same table.
+#[test]
+fn every_request_the_server_answers_is_in_the_editor_matrix() {
+    const ALL: &[&str] = &[
+        "textDocument/hover",
+        "textDocument/completion",
+        "completionItem/resolve",
+        "textDocument/signatureHelp",
+        "textDocument/declaration",
+        "textDocument/definition",
+        "textDocument/typeDefinition",
+        "textDocument/implementation",
+        "textDocument/references",
+        "textDocument/documentHighlight",
+        "textDocument/documentSymbol",
+        "textDocument/codeAction",
+        "codeAction/resolve",
+        "textDocument/codeLens",
+        "codeLens/resolve",
+        "textDocument/documentLink",
+        "documentLink/resolve",
+        "textDocument/documentColor",
+        "textDocument/colorPresentation",
+        "textDocument/formatting",
+        "textDocument/rangeFormatting",
+        "textDocument/onTypeFormatting",
+        "textDocument/rename",
+        "textDocument/prepareRename",
+        "textDocument/foldingRange",
+        "textDocument/selectionRange",
+        "textDocument/prepareCallHierarchy",
+        "callHierarchy/incomingCalls",
+        "callHierarchy/outgoingCalls",
+        "textDocument/prepareTypeHierarchy",
+        "typeHierarchy/supertypes",
+        "typeHierarchy/subtypes",
+        "textDocument/semanticTokens/full",
+        "textDocument/semanticTokens/full/delta",
+        "textDocument/semanticTokens/range",
+        "textDocument/linkedEditingRange",
+        "textDocument/moniker",
+        "textDocument/inlayHint",
+        "inlayHint/resolve",
+        "textDocument/inlineValue",
+        "textDocument/diagnostic",
+        "workspace/diagnostic",
+        "workspace/symbol",
+        "workspaceSymbol/resolve",
+        "workspace/executeCommand",
+        "workspace/willCreateFiles",
+        "workspace/willRenameFiles",
+        "workspace/willDeleteFiles",
+    ];
+    let matrix = cpl_json::parse(include_str!("../../../../editors/lsp-matrix.json")).unwrap();
+    let dir = std::env::temp_dir().join(format!("cpl-matrix-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let Value::Object(files) = matrix.at(&["files"]) else {
+        panic!("no files")
+    };
+    for (name, body) in files {
+        std::fs::write(dir.join(name), body.as_str().unwrap()).unwrap();
+    }
+    let path = dir.join("main.cp").display().to_string();
+    let uri = crate::uri::uri_of_path(&path);
+    let mut server = Server::new();
+    server.handle(&request(1, "initialize", obj([])));
+    server.handle(&notification("initialized", obj([])));
+    let text = std::fs::read_to_string(dir.join("main.cp")).unwrap();
+    server.handle(&notification(
+        "textDocument/didOpen",
+        obj([(
+            "textDocument",
+            obj([
+                ("uri", uri.as_str().into()),
+                ("languageId", "cp".into()),
+                ("version", 1.into()),
+                ("text", text.into()),
+            ]),
+        )]),
+    ));
+    let mut results: Vec<(String, Value)> = Vec::new();
+    fn earlier(value: &Value, results: &[(String, Value)]) -> Value {
+        match value {
+            Value::String(s) if s.starts_with("$result:") => {
+                let (method, key) = s["$result:".len()..].rsplit_once(':').unwrap();
+                let found = &results.iter().rev().find(|(m, _)| m == method).unwrap().1;
+                match key.parse::<usize>() {
+                    Ok(i) => found.as_array().unwrap()[i].clone(),
+                    Err(_) => found.at(&[key]).clone(),
+                }
+            }
+            Value::Object(fields) => Value::Object(
+                fields
+                    .iter()
+                    .map(|(k, v)| (k.clone(), earlier(v, results)))
+                    .collect(),
+            ),
+            other => other.clone(),
+        }
+    }
+    let cases = matrix.at(&["requests"]).as_array().unwrap();
+    for (i, case) in cases.iter().enumerate() {
+        let method = case.at(&["method"]).as_str().unwrap();
+        let Value::Object(mut params) = earlier(case.at(&["params"]), &results) else {
+            panic!("{method}: params are not an object")
+        };
+        params.insert("textDocument".into(), obj([("uri", uri.as_str().into())]));
+        let reply = server.handle(&request(100 + i as u32, method, Value::Object(params)));
+        let result = reply[0].at(&["result"]).clone();
+        let got = result.to_string();
+        let missing: Vec<&str> = case
+            .at(&["expect"])
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter_map(Value::as_str)
+            .filter(|want| !got.contains(want))
+            .collect();
+        assert!(
+            missing.is_empty(),
+            "{method} lacks {missing:?}: {}",
+            reply[0]
+        );
+        results.push((method.to_string(), result));
+    }
+    let tested: Vec<&str> = cases
+        .iter()
+        .filter_map(|c| c.at(&["method"]).as_str())
+        .collect();
+    for method in ALL {
+        let reply = server.handle(&request(
+            9,
+            method,
+            obj([("textDocument", obj([("uri", uri.as_str().into())]))]),
+        ));
+        let unsupported = reply[0].at(&["error", "code"]).as_i64() == Some(-32601);
+        assert!(
+            unsupported || tested.contains(method),
+            "the server answers {method}, but editors/lsp-matrix.json has no case for it"
+        );
+    }
+    std::fs::remove_dir_all(&dir).unwrap();
 }

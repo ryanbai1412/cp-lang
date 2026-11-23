@@ -1,5 +1,9 @@
 package dev.cplang.ide
 
+import com.google.gson.JsonElement
+import com.google.gson.JsonNull
+import com.google.gson.JsonObject
+import com.google.gson.JsonParser
 import com.intellij.execution.actions.ConfigurationContext
 import com.intellij.openapi.actionSystem.IdeActions
 import com.intellij.openapi.extensions.ExtensionPointName
@@ -118,6 +122,63 @@ class CpPluginSmokeTest : BasePlatformTestCase() {
             assertTrue(hover, hover.contains("n: Int"))
             io.send("""{"jsonrpc":"2.0","id":3,"method":"shutdown"}""")
             io.receive(3)
+        } finally {
+            process.destroy()
+        }
+    }
+
+    /** Every request of editors/lsp-matrix.json, sent to the server the plugin starts. */
+    fun `test every request of the lsp matrix answers`() {
+        Assume.assumeTrue("build cpl first: cargo build -p cpl-cli", cpl.canExecute())
+        val matrix = JsonParser.parseString(File(repo, "editors/lsp-matrix.json").readText()).asJsonObject
+        val dir = Files.createTempDirectory("cpl-matrix").toFile()
+        for ((name, body) in matrix.getAsJsonObject("files").entrySet()) File(dir, name).writeText(body.asString)
+        val main = File(dir, "main.cp")
+        val uri = main.toPath().toUri().toString()
+        val process = CpLspServerDescriptor(project).createCommandLine().createProcess()
+        try {
+            val io = LspPipe(process)
+            io.send("""{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"processId":null,"rootUri":null,"capabilities":{}}}""")
+            io.receive(1)
+            io.send("""{"jsonrpc":"2.0","method":"initialized","params":{}}""")
+            val open = JsonObject().apply {
+                add("textDocument", JsonObject().apply {
+                    addProperty("uri", uri)
+                    addProperty("languageId", "cp")
+                    addProperty("version", 1)
+                    addProperty("text", main.readText())
+                })
+            }
+            io.send("""{"jsonrpc":"2.0","method":"textDocument/didOpen","params":$open}""")
+            val results = mutableMapOf<String, JsonElement>()
+            fun earlier(value: JsonElement): JsonElement = when {
+                value.isJsonPrimitive && value.asJsonPrimitive.isString && value.asString.startsWith("\$result:") -> {
+                    val rest = value.asString.removePrefix("\$result:")
+                    val found = results.getValue(rest.substringBeforeLast(':'))
+                    val key = rest.substringAfterLast(':')
+                    key.toIntOrNull()?.let { found.asJsonArray[it] } ?: found.asJsonObject[key]
+                }
+                value.isJsonObject -> JsonObject().also { out ->
+                    for ((k, v) in value.asJsonObject.entrySet()) out.add(k, earlier(v))
+                }
+                else -> value
+            }
+            val requests = matrix.getAsJsonArray("requests")
+            for ((i, case) in requests.withIndex()) {
+                val method = case.asJsonObject["method"].asString
+                val params = earlier(case.asJsonObject["params"]).asJsonObject
+                params.add("textDocument", JsonObject().apply { addProperty("uri", uri) })
+                val id = 100 + i
+                io.send("""{"jsonrpc":"2.0","id":$id,"method":"$method","params":$params}""")
+                val reply = JsonParser.parseString(io.receive(id)).asJsonObject
+                val result = reply["result"] ?: JsonNull.INSTANCE
+                results[method] = result
+                val got = result.toString()
+                val missing = case.asJsonObject["expect"].asJsonArray.map { it.asString }.filter { !got.contains(it) }
+                assertTrue("$method lacks $missing: $reply", reply["error"] == null && missing.isEmpty())
+            }
+            io.send("""{"jsonrpc":"2.0","id":2,"method":"shutdown"}""")
+            io.receive(2)
         } finally {
             process.destroy()
         }

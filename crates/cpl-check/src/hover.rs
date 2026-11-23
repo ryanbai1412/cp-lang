@@ -284,6 +284,35 @@ impl Database {
         };
         symbols(&analysis)
     }
+
+    /// Every fn the file declares, its methods included, in source order.
+    pub fn fns(&mut self, path: &str) -> Vec<Symbol> {
+        use cpl_syntax::ast::{Stmt, StmtKind};
+        let Some(analysis) = self.analyze(path) else {
+            return Vec::new();
+        };
+        fn walk(stmts: &[Stmt], offset: u32, out: &mut Vec<Symbol>) {
+            for stmt in stmts {
+                match &stmt.kind {
+                    StmtKind::Fn(f) => out.push(Symbol {
+                        name: f.name.text.clone(),
+                        kind: DeclKind::Fn,
+                        span: stmt.span.shift(offset),
+                        name_span: f.name.span.shift(offset),
+                        public: stmt.public,
+                    }),
+                    StmtKind::Struct(decl) => walk(&decl.methods, offset, out),
+                    StmtKind::Impl { body, .. } => walk(&body.stmts, offset, out),
+                    _ => {}
+                }
+            }
+        }
+        let mut out = Vec::new();
+        for item in &analysis.items {
+            walk(&item.syntax.parsed.stmts, item.offset, &mut out);
+        }
+        out
+    }
 }
 
 fn symbols(analysis: &Analysis) -> Vec<Symbol> {

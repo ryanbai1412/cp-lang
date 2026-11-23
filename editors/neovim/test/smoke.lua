@@ -115,6 +115,42 @@ local incoming = calls[1] and ask('callHierarchy/incomingCalls', { item = calls[
 check(#incoming == 1, 'incoming calls are ' .. vim.inspect(incoming))
 local edits = ask('textDocument/rangeFormatting', { range = { start = { line = 5, character = 0 }, ['end'] = { line = 5, character = 5 } } }) or {}
 check(#edits == 1 and edits[1].newText == 'print(far(Road(to: 3)))\n', 'range formatting is ' .. vim.inspect(edits))
+-- Every request the server answers, from the matrix all editors share.
+local matrix = vim.json.decode(table.concat(vim.fn.readfile(repo .. '/editors/lsp-matrix.json'), '\n'))
+local matrix_dir = dir .. '/matrix'
+vim.fn.mkdir(matrix_dir, 'p')
+for name, body in pairs(matrix.files) do
+    vim.fn.writefile(vim.split(body, '\n', { plain = true }), matrix_dir .. '/' .. name, 'b')
+end
+vim.cmd('edit ' .. matrix_dir .. '/main.cp')
+local matrix_buf = vim.api.nvim_get_current_buf()
+check(vim.wait(10000, function() return #vim.lsp.get_clients({ bufnr = matrix_buf }) > 0 end), 'no LSP client on main.cp')
+local client = vim.lsp.get_clients({ bufnr = matrix_buf })[1]
+local results = {}
+local function earlier(value)
+    if type(value) == 'string' and vim.startswith(value, '$result:') then
+        local method, key = value:sub(9):match('^(.*):([^:]*)$')
+        local found = results[method]
+        return tonumber(key) and found[tonumber(key) + 1] or found[key]
+    elseif type(value) == 'table' then
+        local out = {}
+        for k, v in pairs(value) do out[k] = earlier(v) end
+        return out
+    end
+    return value
+end
+for _, case in ipairs(matrix.requests) do
+    local params = earlier(case.params)
+    params.textDocument = { uri = vim.uri_from_bufnr(matrix_buf) }
+    local reply = client:request_sync(case.method, params, 10000, matrix_buf) or {}
+    results[case.method] = reply.result
+    local got = vim.json.encode(reply.result == nil and vim.NIL or reply.result)
+    local missing = {}
+    for _, want in ipairs(case.expect) do
+        if not got:find(want, 1, true) then table.insert(missing, want) end
+    end
+    check(reply.err == nil and #missing == 0, case.method .. ' lacks ' .. vim.inspect(missing) .. ': ' .. vim.inspect(reply.err) .. ' ' .. got)
+end
 vim.cmd('buffer ' .. main_buf)
 local lenses = {}
 check(vim.wait(10000, function()
@@ -204,5 +240,5 @@ for _, want in ipairs({ { 0, 0, 'keyword' }, { 0, 3, 'function' }, { 0, 11, 'typ
     local got = captures(want[1], want[2])
     check(vim.tbl_contains(got, want[3]), ('(%d, %d) captures %s, not %s'):format(want[1], want[2], vim.inspect(got), want[3]))
 end
-io.stdout:write('neovim smoke: ok\n')
+io.stdout:write(('neovim smoke: ok (all %d requests of lsp-matrix.json)\n'):format(#matrix.requests))
 os.exit(0)

@@ -122,6 +122,14 @@ export class CpClient implements vscode.Disposable {
         });
     }
 
+    /** Sends `method` to the running server as the editor would, for tests and other extensions. */
+    async request(method: string, params: unknown): Promise<unknown> {
+        if (!this.client?.isRunning()) {
+            throw new Error('cpl lsp is not running');
+        }
+        return this.client.sendRequest(method, params);
+    }
+
     async stop(): Promise<void> {
         this.disposeFallbacks();
         const client = this.client;
