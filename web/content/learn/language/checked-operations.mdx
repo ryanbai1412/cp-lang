@@ -1,0 +1,108 @@
+---
+title: "Checked operations and build profiles"
+description: "What the compiler proves, what cpl run traps on, and what the release build on the judge does instead."
+---
+
+Overflow, a value outside its declared range, an index past the end, `/ 0`: in C++ each is a
+wrong answer or undefined behaviour, and you find out from the verdict. CP Lang answers three
+questions for every such operation: what it means, what the compiler can prove, and what each
+build does. The normative list is <Spec file="core/09-contexts-checks" section="9.3 What is checked">§9.3 of contexts and checks</Spec>,
+with the overflow cases in <Spec file="core/03-numbers-layout" section="4. Overflow, in one table">numbers and layout §4</Spec>.
+
+## Two builds
+
+| Build | Used by | An unproven check |
+|---|---|---|
+| checked | `cpl run`, `cpl stress`, `cpl test`, the playground, `cpl build --checked`, C++ with `-DLOCAL` | traps, naming the values |
+| release | `cpl build` and the file you submit | is not checked |
+
+A valid program, one that never traps, behaves the same in both builds and in the interpreter.
+A program that would trap is a bug, and the checked build is where you find it: every test, stress
+run and playground run uses it. (<Spec file="core/09-contexts-checks" section="9.2 Build modes" />)
+
+## Proved, so never checked
+
+Ranges in the declarations you write anyway are the proofs. Here both factors are at most `1e9`,
+so the product fits in 64 bits, and the compiler emits a plain multiplication with no check in
+either build:
+
+```cp run input="1000000000 1000000000\n"
+let a: 0..=1e9 = read()
+let b: 0..=1e9 = read()
+print(a * b)
+```
+
+Indexing `a[i]` with `i: D` on a `[D]T` is the same: the type is the proof, so it is never
+checked. Proofs are interval arithmetic within one function, so compile time stays linear.
+
+## Unproven, so checked
+
+With `Int` inputs nothing bounds the product. `cpl run` traps with the operands instead of
+printing a wrapped number:
+
+```cp run input="4000000000 4000000000\n" rejects=R0202
+let a: Int = read()
+let b: Int = read()
+print(a * b)
+```
+
+A store into a range type is checked the same way. `k` is declared `0..=10`, so the fourth
+`+= 3` traps with the value it tried to store:
+
+```cp run input="5\n" rejects=R0201
+let n: 1..=5 = read()
+var k: 0..=10 = 0
+for _ in 0..n:
+    k += 3
+print(k)
+```
+
+Reads are checked too: `let n: 1..=5 = read()` on input `9` stops at the read, naming the
+range, so a misread format shows up on the first sample.
+
+## Release on the judge
+
+The release build optimizes for valid programs: it runs no checks unless you opt in. Unproven
+`Int` arithmetic wraps, a range store truncates to its width, an `assert` is skipped. Where
+avoiding C++ undefined behaviour is free, the lowering still does: arithmetic wraps through
+unsigned casts, which compile to the same instructions, so `-O2` can't miscompile the valid code
+around a bug. To keep a check on the judge, opt in for a block or file, or for a whole submission
+in the judge profile:
+
+```
+with checks(ranges: on, overflow: on, bounds: on):   // kept in release too
+    ...
+```
+
+The opposite also exists. `with checks(overflow: off)` removes a check in the checked build too,
+for a hot loop whose stress runs are too slow, and `unchecked:` turns every check off in every
+build. Both are greppable. (<Spec file="core/09-contexts-checks" section="9.4 Turning checks on and off" />)
+
+```cp run input="4000000000 4000000000\n"
+let a: Int = read()
+let b: Int = read()
+with checks(overflow: off):
+    print(a * b)
+```
+
+## Why it's designed this way
+
+**Release runs no checks.** <Decision n={148} />: on the judge only valid programs matter, and a
+wrong program fails whether it gives a wrong answer or a crash. So release pays nothing for checks,
+and the checked build, which every local run uses, catches the bug before submission. The rejected
+alternative, keeping every check in release, costs hot-loop time on every accepted solution to
+turn one kind of failing verdict into another. The reversal is one line: default
+`release_checks` to the checked set.
+
+**Proofs, not annotations.** The ranges that drive the proofs are the constraints from the
+statement, written once as types; they also pick storage widths and drive input validation. A
+proven operation costs nothing in either build, which is why the zero-cost forms exist for every
+check.
+
+**Checks never call user code.** <Decision n={180} />: a checked build makes exactly the calls to
+user functions, closures and input that release makes, in the same order. A check only inspects
+values the program already computed, so an interactive query, a counter in a closure or a cached
+function sees the same history in both builds, and "passes locally" means the same program.
+
+**Still open.** Whether a bad index, `/ 0` and a failed `assert` should trap on the judge too,
+rather than run unchecked, is one of the calls with Ryan. This chapter describes the current rule.

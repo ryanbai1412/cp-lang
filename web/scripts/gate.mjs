@@ -64,7 +64,7 @@ walk(join(web, 'content'), (p) => {
     while ((m = fence.exec(text))) {
       i++;
       const meta = m[1];
-      const rejects = /\brejects=(E\d{4})\b/.exec(meta)?.[1];
+      const rejects = /\brejects=([ER]\d{4})\b/.exec(meta)?.[1];
       const declared = rejects ? 'rejects' : (/\bstatus=(runs|checks|spec)\b/.exec(meta)?.[1] ?? 'runs');
       const stdin = /\binput="([^"]*)"/.exec(meta)?.[1]?.replace(/\\n/g, '\n') ?? '';
       snippets.push({ id: `${relative(web, p)}#${i}`, source: m[2], stdin, expected: null, declared, rejects });
@@ -101,9 +101,12 @@ for (const s of snippets) {
   const first = (r) => (r.stderr || r.stdout).split('\n').find((l) => l.startsWith('error')) ?? '';
   const check = sh(['check', file]);
   // A fence written ```cp rejects=E0602 shows a mistake: it must fail `cpl check` with that code.
+  // rejects=R0202 shows a trap: it checks, and `cpl run` on its input stops with that code.
   if (s.rejects) {
-    const got = /^error\[(E\d{4})\]/m.exec(check.stderr || check.stdout)?.[1];
-    const ok = check.status !== 0 && got === s.rejects;
+    const trap = s.rejects.startsWith('R');
+    const out = trap && check.status === 0 ? sh(['run', file], s.stdin) : check;
+    const got = /^error\[([ER]\d{4})\]/m.exec(out.stderr || out.stdout)?.[1];
+    const ok = out.status !== 0 && got === s.rejects;
     results[s.id] = { status: ok ? 'rejects' : 'fails', declared: 'rejects', ...(ok ? {} : { note: `wanted ${s.rejects}, got ${got ?? 'no error'}` }) };
     if (!ok) {
       failed++;

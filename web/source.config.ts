@@ -21,7 +21,7 @@ function remarkRun() {
         node.children![i] = {
           type: 'mdxJsxFlowElement',
           name: 'Runner',
-          attributes: [attr('source', child.value + '\n'), attr('stdin', stdin), attr('status', /\brejects=E\d{4}\b/.test(child.meta ?? '') ? 'rejects' : 'runs')],
+          attributes: [attr('source', child.value + '\n'), attr('stdin', stdin), attr('status', /\brejects=[ER]\d{4}\b/.test(child.meta ?? '') ? 'rejects' : 'runs')],
           children: [],
         } as Node;
       } else visit(child);

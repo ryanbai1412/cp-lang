@@ -40,6 +40,20 @@ Top 3 next steps (the first two run in parallel):
 
 Checkpoints go in [worklog.md](worklog.md) every 2 hours: what landed, what is next.
 
+## Milestone 2
+
+**The most ambitious version:** cp-lang.org stands on its own for a stranger. It teaches CP Lang from first program to the whole design, every page is generated from or checked against `spec/`, every example runs in the page, and every tool (check, lint, fmt, test, stress, trace, explain, build) works in the browser.
+
+Exit criteria:
+- The Learn path covers Div 2 A to Div 1 C, with at least 60 judged problems with hints, and the docs-only eval passes at least 50/55 from the site alone.
+- The Language section has a chapter for every part of `spec/core/`; every rule it states links its spec section, and the build fails on a broken citation.
+- The library reference, `/lints` and the diagnostics index are all generated: every item, lint and error code has a page with an example that runs.
+- The playground has stress, trace viewing and `cpl explain`, and can share a link to a program.
+- `/setup` shows stable and edge installs for Linux, macOS and Windows, labelled beta while 0.x; there's a changelog and release notes page per stable release.
+- Health: `/` at most 800,000 bytes gzipped with no wasm, search index at most 500,000 bytes gzipped, 0 broken links, every route fits 390 px, and the site check runs in CI in under 3 minutes.
+
+Next steps, once Milestone 1 passes: the error-code index generated from `spec/` diagnostics, Learn chapters for Div 2 C to Div 1 C, and stress and trace in the playground.
+
 ## Success criteria for v0.3
 
 1. Every program on the site is v0.3, compiler-checked at build time, and has Run only if it runs: gate `spec: 0, checks: 0`.

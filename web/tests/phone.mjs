@@ -7,7 +7,8 @@ const routes = ['/', '/docs/guides/tour', '/docs/ref/std/algebra', '/learn', '/l
   '/learn/language/ownership-and-mutation',
   '/learn/language/domains-and-index-spaces',
   '/learn/language/optionals',
-  '/learn/language/multitest-state', '/trace.html'];
+  '/learn/language/multitest-state',
+  '/learn/language/checked-operations', '/trace.html'];
 const { page, errors } = await open();
 await page.setViewportSize({ width: 390, height: 844 });
 let bad = 0;

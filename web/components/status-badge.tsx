@@ -8,7 +8,7 @@ const titles = {
   runs: 'Runs today in the playground and the compiler',
   checks: 'Passes the type checker; the compiler does not run it yet',
   spec: 'Written to the 0.3 spec; the compiler does not accept it yet',
-  rejects: 'A mistake the compiler rejects: run it to see the error, then fix it',
+  rejects: 'A mistake on purpose: run it to see the error or trap, then fix it',
 };
 
 export function StatusBadge({ status }: { status: Status }) {
