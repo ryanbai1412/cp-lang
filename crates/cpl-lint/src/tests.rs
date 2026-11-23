@@ -1106,12 +1106,12 @@ print(val, half)
 
 #[test]
 fn loop_invariant_mod_div_hoists_inverse() {
-    let basic = "type Z = Mod<998_244_353>\nlet d = Z(3)\nvar xs = [Z(1), Z(2)]\nfor i in 0..xs.len:\n    xs[i] = xs[i] / d\nprint(xs)\n";
+    let basic = "type Z = Mod<998_244_353>\nlet d = Z(3)\nlet xs = [Z(1), Z(2)]\nvar ys = [Z(0), Z(0)]\nfor i in 0..xs.len:\n    ys[i] = xs[i] / d\nprint(ys)\n";
     assert_eq!(codes(basic), ["L0415"]);
     let after = fixed(basic);
     assert_eq!(
         after,
-        "type Z = Mod<998_244_353>\nlet d = Z(3)\nvar xs = [Z(1), Z(2)]\nlet inv_d = d.inv\nfor i in 0..xs.len:\n    xs[i] = xs[i] * inv_d\nprint(xs)\n"
+        "type Z = Mod<998_244_353>\nlet d = Z(3)\nlet xs = [Z(1), Z(2)]\nvar ys = [Z(0), Z(0)]\nlet inv_d = d.inv\nfor i in 0..xs.len:\n    ys[i] = xs[i] * inv_d\nprint(ys)\n"
     );
     assert_eq!(codes(&after), Vec::<&str>::new());
 
@@ -1123,15 +1123,15 @@ fn loop_invariant_mod_div_hoists_inverse() {
     );
 
     // Int literal divisor on Mod LHS hoists Z(2).inv once for multiple sites.
-    let int_lit = "type Z = Mod<998_244_353>\nvar a = [Z(1), Z(2)]\nvar b = [Z(3), Z(4)]\nfor i in 0..a.len:\n    a[i] = a[i] / 2\n    b[i] = b[i] / 2\nprint(a, b)\n";
+    let int_lit = "type Z = Mod<998_244_353>\nvar a = [Z(1), Z(2)]\nvar b = [Z(3), Z(4)]\nfor i in 0..a.len:\n    a[i] /= 2\n    b[i] /= 2\nprint(a, b)\n";
     assert_eq!(codes(int_lit), ["L0415", "L0415"]);
     assert_eq!(
         fixed(int_lit),
-        "type Z = Mod<998_244_353>\nvar a = [Z(1), Z(2)]\nvar b = [Z(3), Z(4)]\nlet inv_2 = Z(2).inv\nfor i in 0..a.len:\n    a[i] = a[i] * inv_2\n    b[i] = b[i] * inv_2\nprint(a, b)\n"
+        "type Z = Mod<998_244_353>\nvar a = [Z(1), Z(2)]\nvar b = [Z(3), Z(4)]\nlet inv_2 = Z(2).inv\nfor i in 0..a.len:\n    a[i] *= inv_2\n    b[i] *= inv_2\nprint(a, b)\n"
     );
 
     // Guarded divisor warns but does not auto-fix (d may be zero).
-    let guarded = "type Z = Mod<998_244_353>\nlet d = Z(0)\nvar xs = [Z(1), Z(2)]\nfor i in 0..xs.len:\n    if d != Z(0):\n        xs[i] = xs[i] / d\nprint(xs)\n";
+    let guarded = "type Z = Mod<998_244_353>\nlet d = Z(0)\nvar xs = [Z(1), Z(2)]\nfor i in 0..xs.len:\n    if d != Z(0):\n        xs[i] /= d\nprint(xs)\n";
     assert_eq!(codes(guarded), ["L0415"]);
     assert_eq!(fixed(guarded), guarded);
 
@@ -1145,11 +1145,11 @@ var xs = [Z(1), Z(2)]
 var ints = [4, 6]
 let once = xs[0] / d
 for i in 0..xs.len:
-    xs[i] = xs[i] / (i + 1)
-    xs[i] = xs[i] / 1
-    xs[i] = xs[i] / d
+    xs[i] /= (i + 1)
+    xs[i] /= 1
+    xs[i] /= d
     d += Z(1)
-    ints[i] = ints[i] / 2
+    ints[i] /= 2
 print(once, xs, ints, comb.fact(2))
 ";
     assert!(!codes(negative).contains(&"L0415"), "{:?}", codes(negative));

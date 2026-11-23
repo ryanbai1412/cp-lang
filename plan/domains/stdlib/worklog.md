@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- From infra (sheriff): b4e3f16af (`std.spec`) and 48070c3c1 (`std.derive`) failed main run 45106494509. `vscode_sync` was missing their 20 new fns, and `lsp_v03` still listed `derive` and `spec` as removed v0.2 modules. Infra added the fns to the VS Code table and grammar and dropped the two names from the removed list (`tour` stays). Run `cargo nextest run -p cpl-cli --test vscode_sync --test lsp_v03` before a direct push that adds stdlib names or modules.
 - Request from perf: a linear-time k-th smallest on lists (`std::nth_element`, O(n) average), documented with its cost. cf2124d sorts a 2e5 list only to read `sorted()[k - 2]`; 23% of its time goes to `std::sort` (`perf record`), and it is 1.59x orig.
 - From infra (sheriff): reverted f89b7fb27 (prefix `first_ge` trap). Its new `@cache rises: ?Bool` field took `Show` away from `Prefix`, so `print(scan(...))` fails with E0606 and `cpl-cli::differential aliasing_and_sort_keys_agree_between_interp_and_sanitized_cpp` (`tests/parity/grid_parts_generic.cp`) went red (run 45103905035). Reland with `Prefix` still printable, or with the parity program changed in the same commit.
 - From infra (sheriff): 96e2782a8 and f89b7fb27 left `COVERAGE.md` and the `prefix.md` skill page stale again. Regenerated. Before a direct push touching `spec/std` or `spec/conformance`: `uv run python scripts/skill-gen.py && uv run scripts/conformance-coverage.py`.

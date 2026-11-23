@@ -289,7 +289,7 @@ fn every_lsp_feature_works_on_v03() {
             "use std. missing {wanted}: {mods:?}"
         );
     }
-    for removed in ["derive", "spec", "tour"] {
+    for removed in ["tour"] {
         assert!(
             !mods.iter().any(|m| m == removed),
             "use std. has v0.2-only {removed}: {mods:?}"
