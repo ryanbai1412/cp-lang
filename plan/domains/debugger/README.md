@@ -2,7 +2,7 @@
 
 Segment: E. Experience. One page; detail in [PLAN.md](PLAN.md), code in [ARCHITECTURE.md](ARCHITECTURE.md), numbers in [metrics.toml](metrics.toml), log in [worklog.md](worklog.md).
 Owns: `crates/cpl-stress`, the trace (today inside `crates/cpl-interp/src/trace*`, to become `crates/cpl-trace`), the viewer (today `tools/trace/`, planned `web/packages/trace-viewer`), `examples/debugging/`.
-Status (2026-11-22): stress is fast and green; the trace works end to end but is 6.7-8.3x slower than an untraced run, the trap output in the terminal shows no locals, and one of the three v0.3 demos no longer compiles.
+Status (2026-11-22): stress is fast and green; the trace works end to end but recording is 5-6x slower than an untraced run against Ryan's +20% target; traps name their locals; the three v0.3 demos compile.
 
 ## Mission
 
@@ -25,7 +25,7 @@ The loop Ryan reviews: **WA -> `cpl stress` -> minimal input -> trap or first di
 
 1. Every seeded bug, at least one per P0 class, is found and shrunk to its minimal input; median < 1 s, asserted in the gate.
 2. Every trap prints the rule, the place, the offending locals and the call path in source terms (`spec/tools/trace-debug.md`).
-3. Tracing a 10^7-step run stays inside the budget test: overhead bar (see decision 1), < 500 MB, step back < 50 ms.
+3. Tracing a 10^7-step run stays inside the budget test: at most 1.2x the untraced run (Ryan: "at most like +20% to interpreter speeds"), < 500 MB, step back < 50 ms. Tracing off costs nothing: the interpreter is built once over a no-op observer.
 4. The three `examples/debugging/` demos compile on v0.3 and run the whole loop; their screenshots are current.
 5. The viewer has a browser test in `scripts/check.sh`; the playground's Trace works on every runnable docs example.
 6. One trace engine: `CPL_TRACE_ENGINE=tree` and its parity test are gone, replaced by recorded goldens.
@@ -34,7 +34,7 @@ The loop Ryan reviews: **WA -> `cpl stress` -> minimal input -> trap or first di
 
 - **M1 Green loop on v0.3.** Exit: `ten_million_budget_test` no longer fails on compile; `debug_demos_compile` 3/3 with `@alt(program)`; in-flight branches landed or deleted (`git cherry` notes in the worklog); seeded median asserted; viewer unit tests in `scripts/check.sh --fast`.
 - **M2 Traps show values.** Exit: `trap_terminal_locals` prints `i = 3` and the call path for `probes/prefix_trap.cp`; a `runtime_errors` case per trap code (R01xx) asserts the locals; the viewer header names a trapped run "Trapped at step N"; seeded bugs grown to cover every P0 class.
-- **M3 Fast trace, own crate.** Exit: `crates/cpl-trace` exists with the recorder, log and replay, depending on a narrow observer interface from `cpl-interp` (contract test next to the core); the tree trace engine deleted; overhead at the decision-1 bar; viewer browser test in the gate.
+- **M3 Fast trace, own crate.** Exit: `crates/cpl-trace` exists with the recorder, log and replay, depending on a narrow observer interface from `cpl-interp` (contract test next to the core); the tree trace engine deleted; recording at most 1.2x the untraced run; viewer browser test in the gate.
 
 ## Metrics
 
@@ -46,7 +46,10 @@ All run 2026-11-22 on main `4b8f504f`, release build; commands in [metrics.toml]
 | Seeded median time to minimal | 0.72 s (max 1.29 s), not asserted | < 1 s, asserted | M1 |
 | Stress budget problems | 3/3, max 0.60 s | all < 10 s | M1 |
 | 10^7-step budget test | **FAIL** (demo E0301) | pass | M1 |
-| Trace overhead vs untraced | 6.65x scalar, 8.28x array, 1.18x knapsack | ≤ 3x (decision 1) | M3 |
+| Trace overhead vs untraced | 6.10x scalar, 6.01x array (2026-11-22) | ≤ 1.2x (Ryan) | M3 |
+| Tracing off vs before the observer | 0: plain runs use the no-op observer (113.5 vs 121.6 ms, noise) | 0 | M3 |
+| Trace ops dispatched, hook bodies empty | 1.30x / 1.49x | (why hooks-on can't reach 1.2x: replay) | M3 |
+| Interpreter vs C++ `-O2`, 10^7-iteration loops | 16.4x scalar, 33.2x array | ≤ 5x (Ryan; interpreter speed is compiler's) | M3 |
 | Recording vs observed-only run | 1.67x | ≤ 1.5x | M3 |
 | Trace memory at 10^7 steps | 230 / 361 MB | < 500 MB | M1 |
 | Step back, worst | 20.5 / 74.7 µs | < 50 ms | M1 |
@@ -81,7 +84,7 @@ Numbers can't say whether the evidence is the evidence a contestant needed. Each
 ## Decisions for Ryan
 
 Filed in [plan/QUESTIONS.md](../../QUESTIONS.md):
-1. What the trace overhead bar is measured against (untraced VM, observed run, or an absolute budget).
+1. ~~What the trace overhead bar is measured against.~~ Answered by Ryan: recording at most +20% over the untraced interpreter, and the interpreter within 5x of C++.
 2. The command surface: the spec's `cpl trace` / `cpl debug` / `cpl snap` vs today's `cpl run --trace` / `cpl dap` / `cpl replay`.
 3. Where the viewer lives: one self-contained `tools/trace/index.html`, or a built `web/packages/trace-viewer`.
 

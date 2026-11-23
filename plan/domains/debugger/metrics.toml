@@ -30,7 +30,19 @@ target = "pass"
 name = "trace_overhead_vs_untraced"
 command = "cargo test --release -p cpl-interp --test trace_log ten_million -- --ignored --nocapture"
 today = "scalar 6.10x (114 ms -> 693 ms), array 6.01x (176 ms -> 1.06 s); demos knapsack 1.15x, shortest_path 1.89x, shows 1.10x; a line-only recorder measured 2.56x / 2.53x (design/trace-replay.md)"
-target = "<= 3x (see plan/QUESTIONS.md: debugger, the 3x bar)"
+target = "<= 1.2x (Ryan: at most +20% to interpreter speeds)"
+
+[[metric]]
+name = "trace_off_overhead"
+command = "cargo test --release -p cpl-interp --test trace_log ten_million -- --ignored --nocapture (untraced, before and after 7fa67de25)"
+today = "0: untraced runs are built over the no-op observer; scalar 121.6 ms before, 113.5 ms after (noise)"
+target = "0"
+
+[[metric]]
+name = "interp_vs_cxx"
+command = "cpl run vs the `cpl build` C++ at g++ -O2, n = 10^7 read from input (scalar x += i % 7; array a[i % 1000] += 1), best of 5, front end subtracted"
+today = "scalar 16.4x (194.8 ms vs 11.9 ms), array 33.2x (307.3 ms vs 9.3 ms) (2026-11-22)"
+target = "<= 5x (Ryan: debug mode within 5x of C++; interpreter speed is compiler's)"
 
 [[metric]]
 name = "trace_recording_vs_observed"

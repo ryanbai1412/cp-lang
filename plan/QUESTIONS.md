@@ -144,6 +144,7 @@ Options: (a) recorded <= 3x untraced (today 6.65x scalar, 8.28x array; the hooks
 Recommendation: (c). The contestant feels seconds, not ratios, and traced runs are on small shrunk inputs (the knapsack demo traces at 1.18x); a ratio to an ever-faster VM punishes VM wins.
 How to reverse it: the assertion in `trace_log.rs` is one line; switch it back to the ratio.
 Meanwhile: (c) is gated, (a) stays the M3 stretch target and is reported in `plan/domains/debugger/metrics.toml`.
+Answered (2026-11-22, Ryan): neither; "at most like +20% to interpreter speeds" for tracing, and "debug mode within 5x of c++" for the interpreter. The budget test asserts 1.2x.
 
 ### debugger: which commands make up the debugging surface?
 `spec/tools/trace-debug.md` names `cpl trace d input`, `cpl snap` + `cpl run d --stage snap`, `cpl debug`. The CLI has `cpl run --trace knapsack.cp` (and `--live`), `cpl stress knapsack.cp --trace`, `cpl replay <file> --trace t.json --step n`, `cpl dap`.

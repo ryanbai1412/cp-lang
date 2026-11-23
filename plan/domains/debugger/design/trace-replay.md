@@ -54,3 +54,15 @@ recorder is 5.6-5.9x. With every hook body skipped, trace ops still cost
 1.30x / 1.49x, so the rest of the floor is building each hook's `View`,
 which a line log does not need: the next cut after replay.
 
+## The +20% target (2026-11-22)
+
+Ryan set recording at most 1.2x the untraced interpreter. Measured on the
+10^7-step loops: a full recording is 6.10x / 6.01x, a line-only one 2.56x /
+2.53x, and trace ops with every hook body skipped already 1.30x / 1.49x. So no
+scheme that runs hooks on every step meets it. What can: the recorded run is
+the untraced instance (the no-op observer, which costs nothing) plus a
+snapshot every K back edges or calls, a counter costing a few percent; the
+trace of any window is rebuilt by restoring the nearest snapshot and replaying
+it with the full tracer, which only ever traces K steps at a time. That needs
+compiler's Interp snapshot/restore and nothing else from the core.
+
