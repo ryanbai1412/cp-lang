@@ -18,7 +18,7 @@ var bag = SortedBag<Int>()
 for x in a:
     bag.add(x)
 print(bag.count(1))     // 2
-print(bag.pop_first())  // Some(1)
+print(bag.pop_first()!) // 1: `pop_first` gives `?Int`, `!` unwraps it
 ```
 
 ## The model
@@ -50,6 +50,7 @@ shrink.
 
 Every public fn's doc gives a one-line summary, then labelled lines:
 
+<!-- spec-only: signature -->
 ```cp
 /// The key of the least element: `[3, 1, 2].argmin()` is `Some(1)`.
 ///
