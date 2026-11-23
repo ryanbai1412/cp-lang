@@ -5,6 +5,7 @@
     "index",
     "ownership-and-mutation",
     "domains-and-index-spaces",
-    "optionals"
+    "optionals",
+    "multitest-state"
   ]
 }

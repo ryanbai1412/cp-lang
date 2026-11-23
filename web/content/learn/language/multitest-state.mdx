@@ -1,0 +1,110 @@
+---
+title: "Multitest state"
+description: "The @!multitest divider: what runs once, what runs per case, and why state can't leak between test cases."
+---
+
+The classic multitest bug is a global array that the second test case finds still full of the
+first one's values: a `visited` that wasn't cleared, a memo table keyed by the previous `n`, an
+adjacency list that keeps growing. Samples with one case never show it. In CP Lang, a single-test
+program and a multitest program have the same shape, and per-case state is fresh by construction.
+The normative rules are <Spec file="core/10-io" section="10.1 Program shape">program shape</Spec>
+and <Spec file="core/06-control-functions" section="6.5 Where state lives">where state lives</Spec>.
+
+## The divider
+
+A program is a flat sequence of top-level statements, run top to bottom, with no `main` or `solve`.
+`@!multitest` on a line of its own reads the test count and runs everything below it once per case.
+Everything above it runs once, before the count is read: sieves, factorial tables, anything shared.
+
+```cp run input="3\n7\n9\n2\n"
+let sv = Sieve(100)
+
+@!multitest
+let n: 2..=100 = read()
+print(yes(sv.is_prime(n)))
+```
+
+Delete the divider and this is the single-test program for the same problem. Turning a solution
+into a multitest one is adding one line and lifting the shared setup above it, never re-indenting.
+`@!multitest(until_eof)` reads cases until the input ends instead of reading a count.
+
+## Each case is a fresh scope
+
+Every `let`, `var`, `domain` and `fn` below the divider is created anew for each case and is gone at
+its end. A `@memo` function below the divider belongs to its case, so its cache starts empty, keyed by
+this case's domain:
+
+```cp run input="2\n3\n1 -2 3\n2\n-5 4\n"
+@!multitest
+let n: 1..=10 = read()
+domain V = 1..=n
+let a: [V]Int = read()
+
+@memo
+fn best(i: V) -> Int:
+    if let j = i.next:
+        return max(a[i], a[i] + best(j))
+    a[i]
+
+print(best(V.first!))
+```
+
+State that must outlive a case is declared above the divider, where every case can see it, and
+write it if it's a `var`. Sharing is always the written choice:
+
+```cp run input="2\n3\n5\n"
+var cases = 0
+
+@!multitest
+let n: 1..=10 = read()
+var seen: [1..=10]Bool = false
+seen[n] = true
+cases += 1
+print(cases, seen.count(true))
+```
+
+`cases` counts across cases; `seen` starts all `false` in each one. Since a domain declared below
+the divider is a fresh type per case, a value of the first case's `V` can't even be stored where
+the second case could read it.
+
+## Ending a case early
+
+A `return` outside every `fn` takes no value and ends the current unit of work from any depth of
+loops: the whole program in a single-test file, the current case below the divider. Output printed
+so far is kept. This is the early exit `solve()` wrappers existed for.
+
+```cp run input="2\n0\n3\n1 5 2\n"
+@!multitest
+let n: 0..=10 = read()
+let a: [n]Int = read()
+if n == 0:
+    print("empty")
+    return
+print(a.max()!)
+```
+
+The same body, without the divider, is a single-test program where `return` ends the program.
+
+## What the tools see
+
+`@spec` and `@checker` read the top-level input bindings by name, so below the divider they see the
+current case's inputs and run once per case. Stress testing, brute-force comparison and the trace
+treat each case as a unit. (<Decision n={20} />, 20.4)
+
+## Why it's designed this way
+
+**Single-test and multitest identical.** That is one of the language's stated goals: a problem's
+format changing from one case to `t` cases should be a one-line edit, not a restructure. Making
+the divider a file-level directive (`@!`, like Rust's `#![...]`) rather than a wrapper function
+is what keeps the body unindented and the same in both files. (<Decision n={20} />)
+
+**Leaks can't be written, sharing is explicit.** Per-test state leakage is one of the P0 bug
+classes. The C++ fix is discipline: clear every global at the start of each case, and remember
+the ones you added later. Here the default scope is per case, so the forgotten reset doesn't exist,
+and the only way to share is to put the declaration above the divider, where a reader sees it.
+
+**Rejected: `@multitest fn solve():`.** The wrapper was the earlier design. It existed for two
+reasons, precomputation and early exit, and the divider and top-level `return` cover both
+without the indentation. A second `@!multitest`, or one that isn't at top level, is an error.
+Problems whose cases have another shape (a count per group, a sentinel line) still write an
+ordinary `for _ in 0..tests:` loop.
