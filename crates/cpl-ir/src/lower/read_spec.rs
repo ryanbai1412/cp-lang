@@ -86,7 +86,7 @@ impl<'a> Lowerer<'a> {
         name: &str,
         gen: bool,
     ) -> usize {
-        let mut reads = |this: &mut Self, (offset, stmt): &(u32, &ast::Stmt)| {
+        let reads = |this: &mut Self, (offset, stmt): &(u32, &ast::Stmt)| {
             this.offset = *offset;
             Self::reads_input(&this.source(stmt.span))
         };

@@ -428,3 +428,8 @@ Landed since 23:10: four type/flow lints from `spec/idioms/lints.md`, L0571 `neg
   instead of being refused with "the solution's own work" (x9 on cf2285D).
   A brute that starts with its own `let n = read()` still reads it all.
   Test in golden.rs.
+- Run 6 diagnostics rows: all 20 closed or routed. #161 (`@gen` without the
+  multitest count) is a `cpl stress` message, logged for stress under
+  General fixes owed. #101 is stress deriving inputs for `[V]V`; the `Perm`
+  import fix-it already exists. #184 is praise. README Milestone 2 section
+  written as the maximal version with nine gated exit criteria.

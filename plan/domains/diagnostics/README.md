@@ -38,24 +38,58 @@ commit each (2-4 h); (2) CRLF test and fixes (1 h); (3) traps on the
 practice problems (2 h); worklog checkpoint every 2 hours.
 
 ## Milestone 2 (plan/product/MILESTONE-2.md, stable; after M1 passes)
-The complete version: every error and lint in every tool says one root
-cause, the place, the rule and a fix that is right, in the spec's words,
-for strangers as well as the newcomer. Exit criteria:
-1. **Root causes.** Broken-ports cascades <= 2% on a base of every
-   `spec.cp` that checks clean; `cpl-ir` emits no second error for a
-   reported root.
-2. **Fixes.** >= 95% of common-mistake errors carry a fix, and every
-   offered fix restores a clean program (`--test catalogue`, scoreboards).
-3. **Catalogue.** Every E/R/L code has a spec row, an example, a
-   `cpl explain` page and a `/lints` or `/errors` page; the full lint
-   catalog of `spec/idioms/lints.md`, checker-fact rows included.
-4. **Traps.** Every R-code names the values and the CPL fix, and the
-   interpreter and the built C++ report the same trap on the corpus.
-5. **Tools.** CLI, LSP (Neovim, VS Code, JetBrains), playground and trace
-   show the same diagnostics and fixes on all three platforms.
+The complete version: whatever a contestant writes, from any language
+habit, a stranger's typo or a half-finished idea, the first thing CPL says
+is the one root cause, at the place they wrote it, in the spec's words, with
+a fix that is right, and the same thing in every tool, OS and build. A trap
+reads like a teacher looking over the shoulder: the values, the line, the
+rule, the CPL way. Diagnostics never blame the user for a library's gap,
+never point at std, and never suggest a name that doesn't run.
 
-Next: type-check-guided closer placement in `cpl fix`, the cascade base
-from every `spec.cp`, then the remaining `ty`/`flow`/`bound` lint rows.
+Exit criteria (each a gated test or scoreboard on CI, all three OSes):
+1. **One root cause.** Broken-ports cascades <= 2% on a base of every
+   `spec.cp` that checks clean, `cpl-ir` emits no second error for a
+   reported root, and first-error-on-the-right-line stays 100%
+   (`--test recovery`).
+2. **Every fix right.** >= 95% of recoverable common-mistake errors carry a
+   fix and 100% of offered fixes restore a clean program; the cut-value
+   class stays separate (decision 6551). Gated by `--test catalogue`,
+   `--test newcomer`, broken-ports.
+3. **Every suggestion runs.** Every help, fix and did-you-mean names an
+   item that exists and is public, checked generally by executing it
+   (`builtin_catalog`'s in-place test grows to all method and free-function
+   advice, habit renames and std twins).
+4. **Library gaps are the library's.** An error inside std names the std
+   line and the user call chain and never reads as the user's mistake; a
+   std instantiation fails at the trait bound, at the user's call (owed by
+   compiler, General fixes owed).
+5. **Newcomers and strangers.** The newcomer scoreboard covers >= 300
+   copies over C++, Python and Rust habits plus every acceptance-run
+   mistake; runs-after-fix >= 99.5%, silent 0. Every BLOCKERS row tagged
+   diagnostics is closed with a golden.
+6. **Catalogue.** Every E/R/L code has a spec row, an example that
+   triggers it, a `cpl explain` page and a `/errors` or `/lints` page the
+   diagnostic links to; the full `spec/idioms/lints.md` catalog, including
+   the type, flow and bound rows.
+7. **Traps.** Every R-code names the values and the CPL fix; the
+   interpreter and the built C++ report the same trap, line and values on
+   the corpus (`trap_parity`), and trap locals never hang on a large
+   top-level value.
+8. **Every tool.** CLI, LSP (Neovim, Vim, VS Code, JetBrains), playground,
+   trace and `cpl stress` show the same diagnostics and fixes, CRLF and LF
+   alike (`lsp_parity`, CRLF goldens).
+9. **Speed.** Diagnostics add under 10% to a front-end run, which stays
+   under 500 ms on every corpus file.
+
+Deferred from M1: cascade base from every `spec.cp`, type-check-guided
+closer placement in `cpl fix`, catalogue examples for codes newcomers
+don't hit, the three low-value lint rows (`reverse_copy`,
+`erase_one_by_find`, `dist_with_sqrt_compare`).
+
+Next: (1) grow the run-every-suggestion test to all advice paths; (2) the
+cascade base from every `spec.cp` and `cpl-ir` sink suppression; (3)
+type-check-guided closer placement in `cpl fix`; (4) the remaining
+`ty`/`flow`/`bound` lint rows.
 
 ## Covers
 Error codes and their catalogue (`spec/diagnostics.md`, `cpl explain`),
