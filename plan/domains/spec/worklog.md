@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- Round 6 contradictions: H-RANGEFENWICK-GONE settled by decision 316 (spec wins, stdlib removes the types); H-SCC-BLOCKED is stale std comments, `scc`/`topo` over a domain pass in both modes (new case `std-graph/scc-topo-over-domain.cp`); H-STD-K-COUNT routed (6 std doc lines say `D.K`). Cases `std-segtree/lazy-add-replaces-range-fenwick.cp` passes, `std-segtree/dual-add-point-read.cp` fails E0302 (`SegTree(a:, act:)` without an op), routed to stdlib.
 - LSP rule ids Rlsp.1-5 (diagnostics, completion, definition, formatting equals `cpl fmt`, one-line Neovim setup plus Vim) in `spec/tools/lsp.md`; evidence is the LSP's suites, so the 5 are allowed coverage gaps. Asked tools for a Neovim smoke over completion, formatting and definition.
 - Judge profile rule ids (Rjudge.1 choice, Rjudge.2 the C++ header names profile, flags and stack; `codeforces` is the M1 judge) with 3 tool cases, and R10.2.8 CRLF input with 2 cases; all 5 pass. Size limits stay unnumbered until a case can reach 64 KB without writing into the tree.
 - Checkpoint 21:45: landed SUBSET.md (dc9c48216), Mod fill case, decision 315 (5c174a450). Milestone 1 section updated for the 09:30 deadline, local Codeforces profile, three platforms and Neovim. Next: judge-profile and LSP rule ids, CRLF rules.
