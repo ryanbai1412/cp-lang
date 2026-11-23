@@ -160,7 +160,10 @@ pub fn run_piped(
     let err = drain(child.stderr.take());
     let deadline = Instant::now() + Duration::from_secs(limit);
     let status = loop {
-        if let Some(status) = child.try_wait().map_err(|e| format!("{name} failed: {e}"))? {
+        if let Some(status) = child
+            .try_wait()
+            .map_err(|e| format!("{name} failed: {e}"))?
+        {
             break status;
         }
         if Instant::now() > deadline {
