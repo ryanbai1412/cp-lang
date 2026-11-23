@@ -199,6 +199,7 @@ class DebtRatchetTest(unittest.TestCase):
                 "### Sub", "| A | M | C |", "|---|---|---|", "| g | m | `missing` |",
                 "| h | m | `scripts/ok.py` | enforced |",
                 "| k | m | a generator | missing |",
+                "| l | m | `vm_fallbacks` ratchet | enforced |",
                 "## Suites", "| e | `missing` |", ""]))
             self.assertEqual(dr.register_rows(root), [
                 "handbook/domains/x.md:9 missing: b",

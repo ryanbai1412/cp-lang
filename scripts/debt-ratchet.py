@@ -544,7 +544,7 @@ def _register_check(root: Path, check: str) -> tuple[bool, list[str]]:
         words = span.split()
         if words[0] == "python3" and len(words) > 1:
             words = words[1:]
-        elif words[0] in REGISTER_COMMANDS:
+        elif words[0] in REGISTER_COMMANDS or (len(words) == 1 and words[0] in COUNTERS):
             named = True
             continue
         if "/" not in words[0] or "*" in words[0] or "<" in words[0]:
