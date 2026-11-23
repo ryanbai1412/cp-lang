@@ -1443,3 +1443,15 @@ fn vm_sorts_by_keys_itself() {
         include_str!("../../cpl-cli/tests/programs/vm_sort_key.out")
     );
 }
+
+#[test]
+fn vm_walks_range_values_itself() {
+    let out = vm_runs_alone(
+        include_str!("../../cpl-cli/tests/programs/vm_range_val.cp"),
+        include_str!("../../cpl-cli/tests/programs/vm_range_val.in"),
+    );
+    assert_eq!(
+        out,
+        include_str!("../../cpl-cli/tests/programs/vm_range_val.out")
+    );
+}

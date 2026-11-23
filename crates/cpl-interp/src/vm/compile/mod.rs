@@ -12,6 +12,7 @@ mod call_mix;
 mod expr_i;
 mod expr_opt_i;
 mod expr_v;
+mod range_loop;
 mod seq_load;
 mod sort;
 mod stmt;

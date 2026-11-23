@@ -1918,6 +1918,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
             Op::SeqLenI { .. }
             | Op::RangeLoI { .. }
             | Op::RangeHiI { .. }
+            | Op::RangeBoundsI { .. }
             | Op::BitCeilI { .. }
             | Op::PopcountI { .. }
             | Op::CtzI { .. }

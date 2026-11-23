@@ -799,6 +799,12 @@ pub(crate) enum Op {
         dst: u16,
         src_v: u16,
     },
+    /// Both ends of the `Range` in `src_v`, `hi` exclusive.
+    RangeBoundsI {
+        lo: u16,
+        hi: u16,
+        src_v: u16,
+    },
     BitCeilI {
         dst: u16,
         src: u16,

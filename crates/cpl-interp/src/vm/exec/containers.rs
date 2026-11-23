@@ -56,6 +56,17 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     regs_v[src_v as usize] = Value::Unit;
                 }
             }
+            Op::RangeBoundsI { lo, hi, src_v } => {
+                let (l, h) = match &regs_v[src_v as usize] {
+                    Value::Range(l, h) => (*l, *h),
+                    _ => return trap(spans[cur_pc], "internal: expected a range"),
+                };
+                regs_i[lo as usize] = l;
+                regs_i[hi as usize] = h;
+                if src_v as usize >= chunk.num_local_v {
+                    regs_v[src_v as usize] = Value::Unit;
+                }
+            }
             Op::RangeHiI { dst, src_v } => {
                 regs_i[dst as usize] = match &regs_v[src_v as usize] {
                     Value::Range(_, hi) => *hi,

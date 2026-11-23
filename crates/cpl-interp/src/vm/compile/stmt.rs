@@ -1021,7 +1021,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
     /// The variable of `for k in 0..len(d)` is a position of `d` for the
     /// whole body unless the body might resize `d` or assigns `k`; then each
     /// `FromOrd` of it in the body is a plain move.
-    fn drop_checks_of_positions(
+    pub(super) fn drop_checks_of_positions(
         &mut self,
         r_var: u16,
         dom: u16,
@@ -1064,6 +1064,27 @@ impl<'p, 'f> Compiler<'p, 'f> {
             return false;
         };
         match iter {
+            Iter::RangeVal(e, rev) if matches!(&e.ty, Ty::Range(t) if **t != Ty::I128) => {
+                let src_v = self.compile_expr_v(e);
+                let r_lo = self.alloc_i();
+                let r_hi = self.alloc_i();
+                self.emit(
+                    Op::RangeBoundsI {
+                        lo: r_lo,
+                        hi: r_hi,
+                        src_v,
+                    },
+                    e.span,
+                );
+                if *rev {
+                    self.emit_down_loop(id, r_var, r_lo, r_hi, false, body, e.span, e.span);
+                } else {
+                    self.emit_up_loop(
+                        id, slot, r_var, r_lo, r_hi, false, None, false, body, e.span, e.span,
+                    );
+                }
+                true
+            }
             Iter::Range {
                 lo,
                 hi,
@@ -1073,79 +1094,23 @@ impl<'p, 'f> Compiler<'p, 'f> {
             } => {
                 let r_lo = self.compile_expr_i(lo);
                 let r_hi = self.compile_expr_i(hi);
-                let j_skip = if *closed {
-                    self.emit(
-                        Op::JmpGtI {
-                            a: r_lo,
-                            b: r_hi,
-                            target: 0,
-                        },
-                        lo.span,
-                    )
-                } else {
-                    self.emit(
-                        Op::JmpGeI {
-                            a: r_lo,
-                            b: r_hi,
-                            target: 0,
-                        },
-                        lo.span,
-                    )
+                let positions_of = match (&lo.kind, &hi.kind, *closed) {
+                    (ExprKind::Int(0), ExprKind::DomainLen(d), false) => Some(*d as u16),
+                    _ => None,
                 };
-                if r_var != r_lo {
-                    self.emit(
-                        Op::MoveI {
-                            dst: r_var,
-                            src: r_lo,
-                        },
-                        lo.span,
-                    );
-                }
-                let body_pc = self.ops.len() as u32;
-                let marks = (self.dom_clears, self.assigned_locals.len());
-                self.loops.push(LoopTargets {
+                self.emit_up_loop(
                     id,
-                    breaks: Vec::new(),
-                    continues: Vec::new(),
-                    resumable: Some(LoopReg::Range { id, r_var, r_hi }),
-                });
-                self.compile_stmts(&body.stmts);
-                let lt = self.loops.pop().unwrap();
-                let step_pc = self.ops.len() as u32;
-                if let (ExprKind::Int(0), ExprKind::DomainLen(d), false) =
-                    (&lo.kind, &hi.kind, *closed)
-                {
-                    self.drop_checks_of_positions(r_var, *d as u16, slot, body_pc, marks);
-                }
-                for c in lt.continues {
-                    self.patch(c, step_pc);
-                }
-                let back = self.ops.len();
-                self.note_back_edge(back, Some(LoopReg::Range { id, r_var, r_hi }));
-                if *closed {
-                    self.emit(
-                        Op::ForIncClosed {
-                            r_i: r_var,
-                            r_hi,
-                            target: body_pc,
-                        },
-                        hi.span,
-                    );
-                } else {
-                    self.emit(
-                        Op::ForInc {
-                            r_i: r_var,
-                            r_hi,
-                            target: body_pc,
-                        },
-                        hi.span,
-                    );
-                }
-                let end_pc = self.ops.len() as u32;
-                self.patch(j_skip, end_pc);
-                for b in lt.breaks {
-                    self.patch(b, end_pc);
-                }
+                    slot,
+                    r_var,
+                    r_lo,
+                    r_hi,
+                    *closed,
+                    positions_of,
+                    true,
+                    body,
+                    lo.span,
+                    hi.span,
+                );
                 true
             }
             Iter::Range {
@@ -1157,71 +1122,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
             } => {
                 let r_lo = self.compile_expr_i(lo);
                 let r_hi = self.compile_expr_i(hi);
-                let j_skip = if *closed {
-                    self.emit(
-                        Op::JmpGtI {
-                            a: r_lo,
-                            b: r_hi,
-                            target: 0,
-                        },
-                        lo.span,
-                    )
-                } else {
-                    self.emit(
-                        Op::JmpGeI {
-                            a: r_lo,
-                            b: r_hi,
-                            target: 0,
-                        },
-                        lo.span,
-                    )
-                };
-                if *closed {
-                    if r_var != r_hi {
-                        self.emit(
-                            Op::MoveI {
-                                dst: r_var,
-                                src: r_hi,
-                            },
-                            hi.span,
-                        );
-                    }
-                } else {
-                    self.emit(
-                        Op::AddImmI {
-                            dst: r_var,
-                            a: r_hi,
-                            imm: -1,
-                        },
-                        hi.span,
-                    );
-                }
-                let body_pc = self.ops.len() as u32;
-                self.loops.push(LoopTargets {
-                    id,
-                    breaks: Vec::new(),
-                    continues: Vec::new(),
-                    resumable: None,
-                });
-                self.compile_stmts(&body.stmts);
-                let lt = self.loops.pop().unwrap();
-                let step_pc = self.ops.len() as u32;
-                for c in lt.continues {
-                    self.patch(c, step_pc);
-                }
-                self.emit(
-                    Op::ForDec {
-                        r_i: r_var,
-                        r_lo,
-                        target: body_pc,
-                    },
-                    lo.span,
-                );
-                let end_pc = self.ops.len() as u32;
-                self.patch(j_skip, end_pc);
-                for b in lt.breaks {
-                    self.patch(b, end_pc);
-                }
+                self.emit_down_loop(id, r_var, r_lo, r_hi, *closed, body, lo.span, hi.span);
                 true
             }
             Iter::Range {
