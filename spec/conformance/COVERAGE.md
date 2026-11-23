@@ -7,20 +7,20 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 2695 (995 passing). Rules: 570.
+Cases: 2697 (995 passing). Rules: 570.
 
 ## Summary per chapter
 
 - R01 (01-lexical-grammar.md): 56 rules, 158 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R02 (02-values-types.md): 52 rules, 148 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R03 (03-numbers-layout.md): 24 rules, 67 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R04 (04-indices.md): 70 rules, 146 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R04 (04-indices.md): 70 rules, 147 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04a (04a-identity-vs-offset.md): 39 rules, 54 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04b (04b-keys.md): 27 rules, 66 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R05 (05-ownership.md): 43 rules, 160 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R06 (06-control-functions.md): 24 rules, 97 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R07 (07-sequences.md): 90 rules, 149 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R08 (08-traits-generics.md): 29 rules, 90 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R08 (08-traits-generics.md): 29 rules, 91 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R09 (09-contexts-checks.md): 26 rules, 56 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R10 (10-io.md): 19 rules, 106 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R11 (11-modules-prelude.md): 16 rules, 46 cases; 0 uncovered, 0 happy-path only, 1 negative only
@@ -243,7 +243,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R04.2.18 [5+ 4-]: | `5` where a `V` or `V.cuts` is expected | integer literal is that position or cut (integ...
 - R04.3.1 [2+ 1-]: | position `v` | `v.prev`, `v.next`: `?V` | `v.l`, `v.r`: its cuts
 - R04.3.2 [1+ 0-]: | cut `c` | `c.prev`, `c.next`: `?V.cuts` | `c.l`, `c.r`: the positions beside it, `?V`
-- R04.3.3 [3+ 2-]: Arithmetic on a position gives an `Int`: `v + k`, `v - k` and `v - w` (two positions of on...
+- R04.3.3 [4+ 2-]: Arithmetic on a position gives an `Int`: `v + k`, `v - k` and `v - w` (two positions of on...
 - R04.4.1 [6+ 0-]: | written | `l..r`, `l..=r` with position ends | `j..i`, `j..=i` with cut ends
 - R04.4.2 [1+ 0-]: | elements (`for`, `in`, `len`) | positions | cuts
 - R04.4.29 [1+ 0-]: **The rule: a range's elements are the kind of its ends.** Cuts in, cuts out: `for k in a....
@@ -529,7 +529,7 @@ Each rule: positive / negative case counts, then the gap if any.
 
 - R08.1.4 [3+ 2-]: **A fold costs what the receiver's type says.** The costs above are the generic walks ever...
 - R08.1.1 [14+ 1-]: A trait declares methods (with optional default bodies), associated types, field requireme...
-- R08.1.2 [3+ 1-]: `impl Trait for T` implements it; `impl A + B for T` is shorthand for two impls. One impl ...
+- R08.1.2 [4+ 1-]: `impl Trait for T` implements it; `impl A + B for T` is shorthand for two impls. One impl ...
 - R08.1.3 [1+ 2-]: Inherent methods (`impl T:` or methods in a struct body) live in the type's module only.
 - R08.1.5 [2+ 1-]: Operators are trait methods (`Add`, `Sub`, `Mul`, `Div`, `Rem` with `Rhs` and `Out`, `Neg`...
 - R08.1.6 [1+ 1-]: **Derived impls are structural**: tuples, records, structs and enums get `Eq`, `Ord` (lexi...
