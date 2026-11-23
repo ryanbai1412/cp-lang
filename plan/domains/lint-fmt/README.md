@@ -62,31 +62,32 @@ registry or `spec/diagnostics.md` disagree.
 
 **M3 Facts from the checker, lints from libraries.** Bound facts come from a
 `cpl-check` fact table (compiler); shape recognizers; `@lint` in the stdlib;
-hard-coded names gone; L0601-L0609 implemented.
+hard-coded names gone; L0601-L0609 (emitted by `cpl-check` today) listed and
+levelled by `cpl lint`.
 Exit: 0 `"Int"`-style stdlib names in `crates/cpl-lint/src/rules/`; 0 wasm
 gates in `crates/cpl-lint`; a user-library `@lint` test fires and fixes;
-`spec/diagnostics.md` lint codes without an implementation = 0.
+`cpl lint --list` shows every `L` code in `spec/diagnostics.md`.
 
 ## Metrics
-Measured 2026-11-22 on main with a release `cpl`; commands in full in metrics.toml.
+Measured 2026-11-22 on main (98618e1b5) with a release `cpl`; commands in full in metrics.toml.
 
 | Metric | Command (abridged) | Today | Target |
 |---|---|---|---|
-| Lints implemented | `cpl lint --list \| wc -l` | 38 | 47+ (adds L0601-L0609) |
-| Lints with records + tests | `ls -d spec/lints/*/ \| wc -l` | 0 (38 on branch) | = lints |
-| Spec lint codes unimplemented | `comm` of `--list` vs `spec/diagnostics.md` | 9 | 0 |
-| Implemented codes missing from spec | same, other side | 2 (L0209, L0522) | 0 |
-| Warnings on corpus `spec.cp` (100) | `cpl lint corpus/problems/*/spec.cp` | 50, 1 not linted | 0, 0 |
-| Warnings on `spec/std` (40) | `cpl lint spec/std/*.cp` | 293, 5 not linted | 0, 0 |
-| Warnings on `dream.cp` (421) | `cpl lint corpus/problems/*/dream.cp` | 83, 84 not linted | 0 false positives |
+| Lints implemented | `cpl lint --list \| wc -l` | 38 | 38 + catalog adds (L0601-L0609 are checker-emitted) |
+| Lints with records + tests | `ls -d spec/lints/*/ \| wc -l` | 38 | = lints |
+| Spec lint codes emitted by nothing | `comm` of `--list` vs `spec/diagnostics.md`, then grep `cpl-check` | 0 (9 in `cpl-check`) | 0 |
+| Implemented codes missing from spec | test `every_lint_matches_the_spec_lint_list` | 0 | 0 |
+| Warnings on corpus `spec.cp` (100) | `cpl lint corpus/problems/*/spec.cp` | 43, 1 not linted | 0, 0 |
+| Warnings on `spec/std` (40) | `cpl lint spec/std/*.cp` | 269, 5 not linted | 0, 0 |
+| Warnings on `dream.cp` (421) | `cpl lint corpus/problems/*/dream.cp` | 80, 84 not linted | 0 false positives |
 | Hard-coded stdlib names in rules | `grep -ohE '"[A-Z][A-Za-z]+"' rules/*.rs` | 16 | 0 |
-| Wasm-only gaps in cpl-lint | `grep -c 'target_arch = "wasm32"'` | 3 | 0 |
+| Wasm-only gaps in cpl-lint | `git grep -c 'target_arch = "wasm32"'` | 8 | 0 |
 | Lint time, largest linted file (2,682 lines) | `time cpl lint spec/std/tree.cp` | 0.01 s | < 0.05 s |
 | Fmt time, same file | `time cpl fmt --check spec/std/tree.cp` | 0.00 s | < 0.05 s |
-| `.cp` files fmt would change | `python3 scripts/fmt_check.py` | 552 / 4,443 | 0 outside exempt tests |
+| `.cp` files fmt would change | `python3 scripts/fmt_check.py` | 559 / 5,080 | 0 outside exempt tests |
 | Not idempotent | same | 0 | 0 |
-| Meaning changes | same | 1 | 0 |
-| Corpus `spec.cp` not fmt-clean | `cpl fmt --check corpus/problems/*/spec.cp` | 29 / 100 | 0 |
+| Meaning changes | same | 0 | 0 |
+| Corpus `spec.cp` not fmt-clean | `cpl fmt --check corpus/problems/*/spec.cp` | 28 / 100 | 0 |
 
 ## Judgment rubric
 1. **Would a strong contestant thank the lint?** The message names the fact
