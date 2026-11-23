@@ -449,3 +449,229 @@ fn the_playground_lints_like_cpl_lint() {
         }
     }
 }
+
+/// The playground's trace is `cpl run --trace --format json`'s document.
+#[test]
+fn trace_matches_cpl_run_trace() {
+    let mut playground = Playground::new();
+    for path in programs() {
+        let name = path.to_str().expect("a UTF-8 path");
+        let source = std::fs::read_to_string(&path).expect("readable program");
+        if source.contains("\n@interactor") {
+            continue;
+        }
+        let input = std::fs::read(path.with_extension("in")).unwrap_or_default();
+        let cli = cpl_cli::run_with_input(&["run", name, "--trace", "--format", "json"], &input);
+        // A page names its file without a folder, as the trace's title does.
+        let file = path.file_name().unwrap().to_str().unwrap();
+        let (_, json) = playground.trace_with_stack(file, &source, &input, cpl_wasm::MAX_STACK);
+        let traced = cpl_json::parse(&json).expect("the playground's trace is JSON");
+        if cli.code != 0 || traced.at(&["trace"]).is_null() {
+            continue;
+        }
+        let document = cpl_json::parse(&String::from_utf8_lossy(&cli.stdout))
+            .unwrap_or_else(|e| panic!("{name}: `cpl run --trace` printed no JSON: {e}"));
+        if let Some(at) = first_mismatch(traced.at(&["trace"]), &document, String::new()) {
+            panic!("{name}: the traces part at {at}");
+        }
+    }
+}
+
+/// Fix cases where the editor's fix-all still differs from `cpl fix`: it
+/// makes only the lint fixes, not the fix each error carries, until both
+/// call the one fix path (plan/ARCHITECTURE.md B6). Shrink-only: a case
+/// that starts to match must leave this list.
+const FIX_ALL_DIFFERS: &[&str] = &[
+    "assign_fixed_field.cp",
+    "assign_fixed_inline_field.cp",
+    "c_operators.cp",
+    "checked_closer.cp",
+    "ellipsis_body.cp",
+    "fold_by_lambda_unwrapped.cp",
+    "foreign_members.cp",
+    "generator_method_typo.cp",
+    "if_let_on_position_offset.cp",
+    "index_old_names.cp",
+    "int_condition_compares_with_zero.cp",
+    "member_typos.cp",
+    "move_while_captured.cp",
+    "names_and_mutation.cp",
+    "optional_range_ends.cp",
+    "optional_range_ends_unwrap.cp",
+    "range_type_used_as_domain.cp",
+    "shouting_let_constant_expr.cp",
+    "unclosed_for_pattern.cp",
+    "unclosed_match_arm.cp",
+    "unclosed_tag.cp",
+    "use_after_move.cp",
+    "use_after_move_at_top_level.cp",
+    "view_mutation.cp",
+];
+
+/// The editor's fix-all is `cpl fix`: the same file, rewritten the same way.
+#[test]
+fn fix_all_matches_cpl_fix() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let fixes = root.join("crates/cpl-cli/tests/fixes");
+    let scratch = Path::new(env!("CARGO_TARGET_TMPDIR")).join("fix-all-parity");
+    let _ = std::fs::remove_dir_all(&scratch);
+    std::fs::create_dir_all(&scratch).unwrap();
+    let mut sources: Vec<PathBuf> = std::fs::read_dir(&fixes)
+        .unwrap()
+        .map(|e| e.unwrap().path())
+        .filter(|p| p.extension().is_some_and(|e| e == "cp"))
+        .collect();
+    sources.sort();
+    assert!(sources.len() >= 10, "only {} fix cases", sources.len());
+    let mut differ = Vec::new();
+    for (id, path) in sources.iter().enumerate() {
+        let source = std::fs::read_to_string(path).unwrap();
+        let copy = scratch.join(path.file_name().unwrap());
+        std::fs::write(&copy, &source).unwrap();
+        let name = copy.to_str().unwrap();
+        cpl_cli::run_with_input(&["fix", name], b"");
+        let by_cli = std::fs::read_to_string(&copy).unwrap();
+
+        let mut playground = Playground::new();
+        let uri = format!("file://{name}");
+        playground.lsp(r#"{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}"#);
+        let open = cpl_json::obj([
+            ("jsonrpc", "2.0".into()),
+            ("method", "textDocument/didOpen".into()),
+            (
+                "params",
+                cpl_json::obj([(
+                    "textDocument",
+                    cpl_json::obj([
+                        ("uri", uri.as_str().into()),
+                        ("languageId", "cpl".into()),
+                        ("version", 1.into()),
+                        ("text", source.as_str().into()),
+                    ]),
+                )]),
+            ),
+        ]);
+        playground.lsp(&open.to_string());
+        let zero = cpl_json::obj([("line", 0.into()), ("character", 0.into())]);
+        let ask = cpl_json::obj([
+            ("jsonrpc", "2.0".into()),
+            ("id", (id as i64 + 2).into()),
+            ("method", "textDocument/codeAction".into()),
+            (
+                "params",
+                cpl_json::obj([
+                    (
+                        "textDocument",
+                        cpl_json::obj([("uri", uri.as_str().into())]),
+                    ),
+                    (
+                        "range",
+                        cpl_json::obj([("start", zero.clone()), ("end", zero)]),
+                    ),
+                    (
+                        "context",
+                        cpl_json::obj([
+                            ("diagnostics", Vec::<Value>::new().into()),
+                            ("only", vec![Value::from("source.fixAll")].into()),
+                        ]),
+                    ),
+                ]),
+            ),
+        ]);
+        let replies = playground.lsp(&ask.to_string());
+        let reply = replies
+            .as_array()
+            .unwrap_or(&[])
+            .iter()
+            .find(|r| !r.at(&["result"]).is_null())
+            .cloned()
+            .unwrap_or(Value::Null);
+        let actions = reply.at(&["result"]).as_array().unwrap_or(&[]).to_vec();
+        let by_editor = match actions.first() {
+            None => source.clone(),
+            Some(action) => apply(
+                &source,
+                action
+                    .at(&["edit", "changes", uri.as_str()])
+                    .as_array()
+                    .unwrap_or(&[]),
+            ),
+        };
+        let file = path.file_name().unwrap().to_string_lossy();
+        let known = FIX_ALL_DIFFERS.contains(&file.as_ref());
+        if known && by_editor == by_cli {
+            differ.push(format!("{file} now matches: take it off FIX_ALL_DIFFERS"));
+        }
+        if !known && by_editor != by_cli {
+            differ.push(format!(
+                "{}:\n--- cpl fix\n{by_cli}\n--- editor fix-all\n{by_editor}",
+                path.file_name().unwrap().to_string_lossy()
+            ));
+        }
+    }
+    assert!(
+        differ.is_empty(),
+        "{} of {} differ:\n{}",
+        differ.len(),
+        sources.len(),
+        differ.join("\n")
+    );
+}
+
+/// `source` with LSP `edits` applied (ASCII text: a character is a byte).
+fn apply(source: &str, edits: &[Value]) -> String {
+    let starts: Vec<usize> = std::iter::once(0)
+        .chain(source.match_indices('\n').map(|(i, _)| i + 1))
+        .collect();
+    let at = |p: &Value| {
+        let line = number(p, &["line"]) as usize;
+        let start = starts.get(line).copied().unwrap_or(source.len());
+        (start + number(p, &["character"]) as usize).min(source.len())
+    };
+    let mut spans: Vec<(usize, usize, &str)> = edits
+        .iter()
+        .map(|e| {
+            (
+                at(e.at(&["range", "start"])),
+                at(e.at(&["range", "end"])),
+                e.at(&["newText"]).as_str().unwrap_or(""),
+            )
+        })
+        .collect();
+    spans.sort_by_key(|s| std::cmp::Reverse(s.0));
+    let mut out = source.to_string();
+    for (start, end, text) in spans {
+        out.replace_range(start..end, text);
+    }
+    out
+}
+
+/// Where two JSON values first differ, as a path, with both sides there.
+fn first_mismatch(a: &Value, b: &Value, at: String) -> Option<String> {
+    match (a, b) {
+        (Value::Object(x), Value::Object(y)) => {
+            let keys: std::collections::BTreeSet<&String> = x.keys().chain(y.keys()).collect();
+            keys.into_iter().find_map(|k| {
+                let none = Value::Null;
+                first_mismatch(
+                    x.get(k).unwrap_or(&none),
+                    y.get(k).unwrap_or(&none),
+                    format!("{at}.{k}"),
+                )
+            })
+        }
+        (Value::Array(x), Value::Array(y)) => x
+            .iter()
+            .zip(y)
+            .enumerate()
+            .find_map(|(i, (p, q))| first_mismatch(p, q, format!("{at}[{i}]")))
+            .or_else(|| {
+                (x.len() != y.len()).then(|| format!("{at}: {} items vs {}", x.len(), y.len()))
+            }),
+        _ if a == b => None,
+        _ => {
+            let short = |v: &Value| v.to_string().chars().take(200).collect::<String>();
+            Some(format!("{at}: {} vs {}", short(a), short(b)))
+        }
+    }
+}

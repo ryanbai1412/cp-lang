@@ -217,14 +217,21 @@ impl Playground {
                 });
                 let note = match &slow {
                     Some(_) => "The same input through the solution and through its brute, lined up at each print and each debug(...) both ran.",
-                    None => "Every change to a top-level variable, every print and every debug(...).",
+                    None => fast.note(),
                 };
                 let trace = document(
                     name,
                     note,
                     name,
                     source,
-                    (if slow.is_some() { "solution" } else { "run" }, &fast),
+                    (
+                        if slow.is_some() {
+                            "solution"
+                        } else {
+                            "cpl run"
+                        },
+                        &fast,
+                    ),
                     slow.as_ref()
                         .map(|(brute_fn, recording)| (brute_fn.as_str(), recording)),
                 );

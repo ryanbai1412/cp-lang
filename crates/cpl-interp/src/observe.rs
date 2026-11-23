@@ -484,3 +484,16 @@ print(a[1])
         assert_eq!(String::from_utf8(out).unwrap(), "2\n");
     }
 }
+
+impl Recording {
+    /// What a trace of this run holds, as its document's description says it.
+    pub fn note(&self) -> &'static str {
+        if self.skipped > 0 {
+            "A window of the run from a later step: under `--live`, Earlier steps and Later steps load the rest."
+        } else if self.truncated {
+            "The run was longer than a trace holds: the first steps are kept."
+        } else {
+            "Every change to a top-level variable, every print and every debug(...)."
+        }
+    }
+}
