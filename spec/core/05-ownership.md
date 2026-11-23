@@ -196,6 +196,7 @@ are lent for the call and its result is owned unless it says `lends`. An
 owned result never keeps its source busy: the source is free again when
 the call returns.
 
+<!-- spec-only: fragment over an unnamed `g` and `r` -->
 ```python
 let t = Rooted(g, root: r)        // reads g, owns its arrays: g is free
 let fast = LcaTable(t)            // reads t, owns its table: t is free
@@ -392,6 +393,11 @@ state of its arguments.
 - Walking a `mut`-lent generator value twice is legal and linted: the
   second walk sees what the first changed. (R05.9.4)
 
+<!-- given:
+  domain V = 0..8
+  let g: [V]List<V> = [[1], [2], [], [], [], [], [], []]
+  let s = V(0) -->
+<!-- rejects: E0602 -->
 ```python
 var seen: [V]Bool = false
 for step in dfs(g, from: [s], seen: mut seen):
@@ -856,6 +862,11 @@ print(part.sum())
 <details><summary>Answer</summary>No. <code>clobber</code> writes <code>a</code> while it is lent to <code>part</code> (R7, R10).</details>
 
 **23.**
+<!-- given:
+  domain V = 0..8
+  let g: [V]List<V> = [[1], [2], [], [], [], [], [], []]
+  let s = V(0) -->
+<!-- rejects: E0602 -->
 ```python
 var seen: [V]Bool = false
 for step in dfs(g, from: [s], seen: mut seen):

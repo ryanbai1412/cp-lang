@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- Spec blocks 67/185 (41 error, 77 skip), from 65/185 (56 error): core/05's two `seen`-lent-to-`dfs` examples run with setup and E0602; call-form catalogs and fragments over unnamed inputs in lib/ (ops-ranges, graphs-trees, search-dp, sequence-patterns, containers) and core/05 are `spec-only` with what they leave unnamed. `cpl-conform spec-blocks`.
 - Rebuild-3 silent holes, checked against `cpl run`: H-HOIST-RUNTIME-DOMAIN and H-RANGE-ELEMENT-ACCUMULATOR are already answered by R11.1.1 and R03.1.7 and run that way; H-METHOD-NEEDS-IMPORT and H-PATHS-INDEX run as the reader chose (new `std-graph/paths-index.cp` passes); H-COMPONENTS-NOT-IN-PRELUDE gets `core-11/prelude-has-components.cp` (fails, E0201); the three missing-stdlib holes and the dangling prelude `find` are requests in stdlib/worklog.md.
 - `Show` follow-up: a `T: Show` parameter can't be printed (E0606 naming `Print`); `core-10/show-bound-generic.cp` fails; requests in compiler/ and diagnostics/ worklogs.
 - Rebuild-3 H-PRINT-TRAIT-NAME: decision 233, the core chapters say `Show`. `core-10/show-impl-struct.cp` passes; `core-10/show-impl-enum.cp` fails (an enum's `impl Show` is ignored, in run and build; request in compiler/worklog.md).

@@ -53,6 +53,7 @@ costs `steps` calls.
 
 ## Tables
 
+<!-- spec-only: fragment over the input's `n` and a `cost` -->
 ```python
 domain Pos = 0..n
 var dp: [Pos.cuts]Int = inf          // prefix DP: dp[c] is the best for a[..c]
@@ -94,6 +95,7 @@ O(1) to make, nothing allocated; the cut itself is `left.r`. A `Range<V>` goes w
 contract, proved when it can be and checked in checked builds otherwise, so
 `best(r.first!.next!..=r.last!)` needs no conversion.
 
+<!-- spec-only: fragment over a domain `V` and a weight `w` -->
 ```python
 var dp: [V.ranges]Int = 0                       // merging stones, matrix chain, ...
 for r in V.ranges if r.len >= 2:

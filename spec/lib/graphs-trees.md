@@ -20,6 +20,7 @@ directly. Decision 146 records the design and its reasons.
 
 ## Graphs
 
+<!-- spec-only: fragment over the input's `n`, `m`, a vertex `u` and a `relax` -->
 ```python
 domain V = 1..=n
 domain E = 0..m
@@ -57,6 +58,7 @@ replaced by `to` and `e`, `EdgeArc<V, E, R> = (to: V, e: E, ..R without (u,
 v))`, so `a.w` reads the arc you are already on (the `adj[u].push_back({v,
 w})` layout). `keep:` narrows or computes:
 
+<!-- spec-only: fragment over the `edges` read above; call forms, not a program -->
 ```python
 Graph.undirected(edges)                                 // (to, e, w): 12 bytes at these widths
 Graph.undirected(edges, keep: a => (to: a.to, w: a.w))  // no e: not Edged, 8 bytes
@@ -131,6 +133,7 @@ Whole-graph algorithms (SCC, components, bridges) also need `V: Domain`.
 
 ### Customizing: a lambda over `g.out(u)`
 
+<!-- spec-only: fragment over an unnamed graph and grid; call forms, not a program -->
 ```python
 dijkstra(u => g.out(u).filter(a => not banned[a.e]), from: [(s, 0)])  // arcs keep .w, .e
 bfs(u => g.out(u).filter(a => a.w <= mid), from: [s])              // binary search on the answer
@@ -282,6 +285,7 @@ Recursion stays available and natural (`for c in t.children(v): mine.absorb(go(c
 every heavy chain is contiguous. `t.pos(v): t.Pre`; another tree's `Pre`
 doesn't mix.
 
+<!-- spec-only: fragment over a tree `t` and its values `val` -->
 ```python
 var seg = SegTree(max, t.reorder(val))     // [t.Pre]T
 seg.fold(t.sub(v))                         // subtree query: one range

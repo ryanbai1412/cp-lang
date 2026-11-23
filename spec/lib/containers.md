@@ -737,6 +737,7 @@ many prefix maxima are eaten by champions. `SortedSet<I>` holds the prefix
 maxima in one structure, answering both the monotone value search
 (`bsearch_first`) and range count (`range(r).len`) in O(log n).
 
+<!-- spec-only: fragment over the solution's `I`, `a`, `total`, `c` and `stop` -->
 ```cp
 // Prefix maxima increase in both position and value, so one SortedSet<I>
 // answers both "first maximum > s" (bsearch_first) and "how many in c..stop"
@@ -754,6 +755,7 @@ graphs A and B (`n, q <= 4e5`). Two `Dsu<V>` instances share the `Mark`
 protocol (`mark()` / `undo_to(snap)`), switching cleanly from O(alpha(n)) to
 O(log n) rollback on the first mark.
 
+<!-- spec-only: fragment over the solution's `V`, `T`, `Edge` and `ans` -->
 ```cp
 var (a, ab) = (Dsu<V>(), Dsu<V>())
 fn solve(span: Range<T>, live: List<Edge>):

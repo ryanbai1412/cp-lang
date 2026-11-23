@@ -133,6 +133,7 @@ pub fn maximal<D, T, S: Track<T>>(self: [D]T, mut state: S, ok: S -> Bool,
 | `track(s, add:, remove:)` (a `Tracked`) over any structure `s` | your two closures on `mut s` | a predicate on `t.state` |
 | `undoing(s, add:)` (an `Undoing`) over any `Undo` (`mark`/`undo_to`: rollback `Dsu`, `ParityDsu`, `RollbackArray`) | apply / queue-undo: each element re-applied O(log n) times amortized | `u => not u.state.consistent` |
 
+<!-- spec-only: fragment over a sequence `a` and its bounds `K`, `k`, `S` -->
 ```python
 let longest = a.maximal(Window(+), ok: w => w.all <= K).max(by: .len)!
 let atmost_k = a.maximal(Counter<C>(0), ok: c => c.len <= k)
@@ -239,6 +240,7 @@ piece (at most n elements) ending there that is `ok`. They walk two laps,
 so they cost O(n) pushes and pops. Problems about "everything except
 `l..=r`" become a ring window from `r` round to `l`:
 
+<!-- spec-only: fragment over the problem's `street`, `m` and `q` -->
 ```python
 // BOI 2020 Joker: do the streets outside l..=r still hold an odd cycle?
 let dsu = undoing(ParityDsu<V>(), add: (mut d, e) => d.unite(e.0, e.1))

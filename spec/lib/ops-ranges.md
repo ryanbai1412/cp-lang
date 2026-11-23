@@ -227,6 +227,7 @@ pub fn dijkstra<V, W: Ord, G: WeightedNext<V, W>, M: Monoid<W> = Plus>(
 ) -> Paths<V, W, G.Arc>
 ```
 
+<!-- spec-only: call forms over an unnamed `g`, `s`, `a`, `b`, not a program -->
 ```python
 dijkstra(g, from: [(s, 0)])                          // sum of weights
 dijkstra(g, from: [(s, 0)], step: max)               // bottleneck path
@@ -529,6 +530,7 @@ Every tree and DP facility takes the same values:
 
 One fn, two choices: how indices combine, and which semiring values live in.
 
+<!-- spec-only: call forms over an unnamed `g`, `s`, `a`, `b`, not a program -->
 ```python
 convolve(a, b)                       // c[i + j] += a[i] * b[j]
 convolve(a, b, on: ^)                // c[i ^ j]  (Walsh–Hadamard)
