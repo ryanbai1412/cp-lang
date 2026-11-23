@@ -168,6 +168,19 @@ pub fn exec<S: AsRef<str>>(
             Ok(args) if args.live => run_live(&args, stdin),
             Ok(args) => {
                 let typed = || std::io::IsTerminal::is_terminal(&std::io::stdin());
+                if let Some(test) = samples_instead(&args, typed()) {
+                    if test.len() == 1 {
+                        *stderr += "cpl: no input named or piped: running the samples \
+                                    (name a file, or pipe one, to run once)\n";
+                    }
+                    let mut errors = Vec::new();
+                    let code = cpl_contest::test::run(&test, stdout, &mut errors);
+                    *stderr += &String::from_utf8_lossy(&errors);
+                    if test.len() == 1 {
+                        *stderr += &next_after_test(args.file, code);
+                    }
+                    return code;
+                }
                 let pinned = (args.trace && args.input.is_none() && typed())
                     .then(|| trace::pinned_input(std::path::Path::new(args.file)))
                     .flatten();
@@ -842,6 +855,30 @@ fn run_release_judged(
 
 /// What `cpl test` suggests next: `submit` once the samples pass; on a
 /// failure, `stress` when the file has an `@alt` to compare.
+/// The `cpl test` arguments `cpl run` stands for: every sample when no
+/// input is named and stdin is a terminal, one sample when the input is a
+/// sample's name rather than a file.
+fn samples_instead(args: &RunArgs, typed: bool) -> Option<Vec<String>> {
+    if args.trace || args.live || args.release || args.brute || args.format.is_some() {
+        return None;
+    }
+    let source = cpl_contest::problem::source_path(args.file);
+    let cases = cpl_contest::problem::cases_in(&cpl_contest::problem::find_tests_dir(&source));
+    match args.input {
+        None if typed && !cases.is_empty() => Some(vec![args.file.to_string()]),
+        Some(name)
+            if !std::path::Path::new(name).exists() && cases.iter().any(|c| c.name == name) =>
+        {
+            Some(vec![
+                args.file.to_string(),
+                "--case".into(),
+                name.to_string(),
+            ])
+        }
+        _ => None,
+    }
+}
+
 fn next_after_test(file: &str, code: u8) -> String {
     let src = std::fs::read_to_string(cpl_contest::problem::source_path(file)).unwrap_or_default();
     match code {
@@ -1198,6 +1235,29 @@ pub fn lsp() -> u8 {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn run_with_no_input_runs_the_samples_and_a_sample_name_runs_one() {
+        let dir = std::env::temp_dir().join(format!("cpl-run-samples-{}", std::process::id()));
+        std::fs::create_dir_all(dir.join("a.tests")).unwrap();
+        std::fs::write(dir.join("a.cp"), "print(1)\n").unwrap();
+        std::fs::write(dir.join("a.tests/1.in"), "").unwrap();
+        let file = dir.join("a.cp");
+        let file = file.to_str().unwrap();
+        let samples = |rest: &[&str], typed| samples_instead(&RunArgs::parse(rest).unwrap(), typed);
+        assert_eq!(samples(&[file], true), Some(vec![file.to_string()]));
+        assert_eq!(samples(&[file], false), None, "piped input runs once");
+        let one = Some(vec![file.to_string(), "--case".into(), "1".into()]);
+        assert_eq!(samples(&[file, "1"], false), one);
+        assert_eq!(
+            samples(&[file, "9"], false),
+            None,
+            "not a sample: read as a file"
+        );
+        assert_eq!(samples(&[file, "--trace"], true), None);
+        assert_eq!(samples(&[file, "--release"], true), None);
+        std::fs::remove_dir_all(dir).unwrap();
+    }
 
     #[test]
     fn version_prints_the_binary_name() {

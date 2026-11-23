@@ -472,10 +472,13 @@ supporting breakpoints, stepping, backward time-travel (`stepBack`,
 ";
 
 const RUN_USAGE: &str = "\
-usage: cpl run <file.cp> [input] [options]
+usage: cpl run <file.cp> [input | sample] [options]
 
 Checks the file, then runs it in the debug interpreter on the input file
 or on standard input. What `debug(...)` shows goes to standard error.
+With no input named and none piped in, it runs every sample in
+<file>.tests/ as `cpl test` does; a sample's name (`cpl run a 2`) runs
+that one.
 
 options:
   --trace [SPEC]    record the run: every change to a top-level variable,

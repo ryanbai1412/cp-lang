@@ -28,6 +28,7 @@ output is shown instead of judged.
 
 options:
   --tests DIR        read cases from DIR instead of <problem>.tests/
+  --case NAME        run only the case NAME (`2` for 2.in)
   --fast PROG        run this instead of building the problem
   --checker PROG     judge with `PROG <input> <output> <answer>`; exit 0 accepts
   --interactor PROG  judge by talking to `PROG <input>`; exit 0 accepts
@@ -257,16 +258,17 @@ pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u
         let _ = write!(stdout, "{USAGE}");
         return 0;
     }
-    let parsed = Args::parse(args, &[VALUED, &["--format"]].concat(), &[]).and_then(|args| {
-        let json = match args.value("--format") {
-            None | Some("text") => false,
-            Some("json") => true,
-            Some(other) => return Err(format!("`--format` is text or json, not `{other}`")),
-        };
-        args.file("test")
-            .map(source_path)
-            .map(|source| (args, source, json))
-    });
+    let parsed =
+        Args::parse(args, &[VALUED, &["--format", "--case"]].concat(), &[]).and_then(|args| {
+            let json = match args.value("--format") {
+                None | Some("text") => false,
+                Some("json") => true,
+                Some(other) => return Err(format!("`--format` is text or json, not `{other}`")),
+            };
+            args.file("test")
+                .map(source_path)
+                .map(|source| (args, source, json))
+        });
     let (args, source, json) = match parsed {
         Ok(parsed) => parsed,
         Err(message) => {
@@ -281,7 +283,18 @@ pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u
                 .value("--tests")
                 .map(PathBuf::from)
                 .unwrap_or_else(|| find_tests_dir(&source));
-            let cases = cases_in(&dir);
+            let mut cases = cases_in(&dir);
+            if let Some(name) = args.value("--case") {
+                let names: Vec<&str> = cases.iter().map(|c| c.name.as_str()).collect();
+                if !names.contains(&name) {
+                    return Err(format!(
+                        "{} has no case `{name}`; it has {}",
+                        dir.display(),
+                        names.join(", ")
+                    ));
+                }
+                cases.retain(|c| c.name == name);
+            }
             if cases.is_empty() {
                 return Err(format!(
                     "{} has no cases; put `1.in` and `1.out` (or `1.ans`) there",

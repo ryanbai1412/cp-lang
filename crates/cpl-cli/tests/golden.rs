@@ -1153,3 +1153,40 @@ fn passing_samples_point_at_submit() {
         text(&out.stderr)
     );
 }
+
+/// `cpl run a 2` runs the sample `2` from `a.tests/` and judges it; an
+/// unknown sample name is still read as an input file.
+#[test]
+fn run_names_a_sample_to_run_and_judge() {
+    let dir = scratch("run-sample");
+    std::fs::write(dir.join("a.cp"), "let n: Int = read()\nprint(n * 2)\n").unwrap();
+    std::fs::create_dir_all(dir.join("a.tests")).unwrap();
+    for (name, input, output) in [("1", "1", "2"), ("2", "5", "10")] {
+        std::fs::write(dir.join(format!("a.tests/{name}.in")), format!("{input}\n")).unwrap();
+        std::fs::write(
+            dir.join(format!("a.tests/{name}.out")),
+            format!("{output}\n"),
+        )
+        .unwrap();
+    }
+    let out = cpl(&dir, &["run", "a", "2"]);
+    let stdout = text(&out.stdout);
+    assert_eq!(out.status.code(), Some(0), "{stdout}{}", text(&out.stderr));
+    assert!(
+        stdout.starts_with("  2  ok ") && stdout.ends_with("  1/1 passed\n"),
+        "{stdout}"
+    );
+
+    let out = cpl(&dir, &["run", "a", "3"]);
+    assert_eq!(
+        out.status.code(),
+        Some(EXIT_USAGE as i32),
+        "{}",
+        text(&out.stdout)
+    );
+    assert!(
+        text(&out.stderr).contains("can't read `3`"),
+        "{}",
+        text(&out.stderr)
+    );
+}
