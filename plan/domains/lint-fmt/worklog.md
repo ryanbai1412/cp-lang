@@ -3,7 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
-- lint: L0506 `repeated_literal` skips literals in `@test` functions (test data, not facts the program keeps; same rule as L0302 and L0412). `cpl lint spec/std`: 254 -> 235 warnings, L0506 32 -> 13; the ratchet is re-blessed down. Pinned by a `@test` in `spec/lints/repeated_literal/near_miss.cp` that fails `every_lint_record_fires_on_before_only` without the change.
+- lint: L0506 `repeated_literal` skips literals in `@test` functions (test data, not facts the program keeps; same rule as L0302 and L0412). `cpl lint spec/std`: 254 -> 235 warnings, L0506 32 -> 13; the ratchet is re-blessed down. Pinned by a `@test` in `spec/lints/repeated_literal/near_miss.cp` that fails `every_lint_record_fires_on_before_only` without the change. The 13 left (read at each site) are real: an LCG modulus `2147483648` written twice, the NTT prime table repeated in an `if const` chain, `2_000_000_000` as a bound and a generator limit.
 - lint: corpus ratchet re-blessed down: std L0414 111 -> 103 (`CPL_LINT_BLESS=1 cargo test -p cpl-lint corpus_warnings_only_go_down`); `cpl lint spec/std` now 254 warnings, corpus spec.cp 34, dream.cp 99.
 - lint: `cpl lint --fix` on a copy of all 5172 tracked .cp files (one call each, 20 s timeout): 0 ICEs, 0 timeouts. A second `cpl lint --fix` over the fixed copy (`xargs -n 100`) applies 0 fixes: fixes reach their fixed point.
 - lint: `cpl lint` on each of the 5172 tracked .cp files (`git ls-files '*.cp'`, 20 s timeout each): 0 ICEs, 0 timeouts. README metrics gain the fix-safety row.
