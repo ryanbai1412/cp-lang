@@ -2,13 +2,15 @@
 // Problem: interactive. A particle moves v steps per query round a ring of N positions
 //   (2 <= N <= 1e5). `GetSize` gives N; `Look a b` says whether it is in a..b now, then it
 //   moves; finish with `Guess v p`, its velocity and position. At most 1e5 queries.
-// Solution: `Look` random windows of size 2 until one hits; then the next position and the
-//   velocity are among 2N candidates (x + v + j, v). Halve the candidates with `Look 0 mid`
-//   at their median position, keep the consistent ones and advance each by its own v, until
-//   one remains: O(log N) more queries, O(N log N) work per query.
+// Solution: cut the ring into blocks of b = clamp(2e6 / N, 2, N) and `Look` at a random
+//   block until one hits (each position is seen with chance b / N, so about N / b <= 5000
+//   looks); then the next position and the velocity are among bN <= 2e6 candidates
+//   (x + v, v). Halve the candidates with `Look 0 mid` at their median
+//   position, keep the consistent ones and advance each by its own v, until one remains:
+//   O(log bN) more looks, O(bN log bN) work in all as the candidates halve.
 // original: corpus/submissions/5120565.cpp
-let n: 2..=1000 = ask("GetSize")
-let bsize = 2
+let n: 2..=1e5 = ask("GetSize")
+let bsize = min(n, max(2, 2_000_000 / n))
 
 fn look(l: Int, r: Int) -> Bool:
     let tok: Str = ask("Look", l, r)
@@ -23,15 +25,17 @@ struct State:
     p: Int
     v: Int
 
-var x = 0
+let blocks = (n + bsize - 1) / bsize
+var (lo, hi) = (0, 0)
 while true:
-    x = next_rand(n - bsize + 1)
-    if look(x, x + bsize - 1): break
+    lo = next_rand(blocks) * bsize
+    hi = min(n, lo + bsize)
+    if look(lo, hi - 1): break
 
 var cands: List<State> = []
 for v in 0..n:
-    for j in 0..bsize:
-        cands.push(State((x + v + j) % n, v))
+    for x in lo..hi:
+        cands.push(State((x + v) % n, v))
 
 while cands.len > 1:
     cands.sort()

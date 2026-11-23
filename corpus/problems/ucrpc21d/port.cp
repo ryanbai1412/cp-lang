@@ -1,14 +1,14 @@
 // Source: UCRPC Fall 2021 D, Stake Your Claim, https://dmoj.ca/problem/ucrpc21d
-// Problem: an r x c board (r, c <= 1000) drawn as 2r+1 lines of 2c+1 characters: cells at
+// Problem: an r x c board (0 <= r, c <= 1000) drawn as 2r+1 lines of 2c+1 characters: cells at
 //   even 1-based rows and columns, walls '+', '-', '|', open '.' elsewhere. The walls cut the
-//   board into four regions; print their areas (cell counts) in decreasing order.
+//   board into four regions; print their areas (cell counts) in decreasing order; four regions imply rc >= 4.
 // Solution: Flood fill (explicit stack) from every unvisited cell, stepping two canvas
 //   characters to a neighbouring cell when the character between them is not a wall; sort
 //   the region sizes in decreasing order and print the first four. O(rc).
 // Runnable on proto/cpc today.
 // original: corpus/submissions/3944584.cpp
-let n: 1..=500 = read()
-let m: 1..=500 = read()
+let n: 0..=1000 = read()
+let m: 0..=1000 = read()
 domain Row = 0..=2 * n
 domain Col = 0..=2 * m
 type Cell = (Row, Col)

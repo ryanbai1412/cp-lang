@@ -1,5 +1,5 @@
 // Source: SDOI 2017 Round 1, Number Table (Luogu P3704), https://dmoj.ca/problem/sdoi17r1p1
-// Problem: multitest (T <= 1000): given n, m <= 1e6, print the product of f(gcd(i, j)) over
+// Problem: multitest (1 <= T <= 1000): given 1 <= n, m <= 1e6, print the product of f(gcd(i, j)) over
 //   1 <= i <= n, 1 <= j <= m, where f is Fibonacci (f0 = 0, f1 = 1), modulo 1e9+7.
 // Solution: Group by d = gcd and apply Mobius inversion: with g(T) = product over d | T of
 //   f(d)^mu(T/d), the answer is the product over T of g(T)^((n/T)(m/T)). Sieve mu, build g by
@@ -10,9 +10,9 @@
 const P = 1000000007
 type Z = Mod<P>
 
-let t: Int = read()
+let t: 1..=1000 = read()
 domain Ask = 0..t
-let asks: [Ask](n: Int, m: Int) = read()  // n, m <= 1e6
+let asks: [Ask](n: 1..=1e6, m: 1..=1e6) = read()
 let top = [max(a.n, a.m) for a in asks].max()!
 
 // Mobius function from smallest prime factors
