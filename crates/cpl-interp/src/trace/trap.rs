@@ -19,13 +19,20 @@ const TRAP_LOCALS: usize = 8;
 
 /// The innermost call's locals at the last step of `recording`, as the
 /// source writes them: `i = 3, best = [0, 1]`; `None` when it has none.
-pub fn trap_locals(recording: &Recording) -> Option<String> {
+/// Those the trapping code `at` names come first.
+pub fn trap_locals(recording: &Recording, at: &str) -> Option<String> {
     let step = recording.step(recording.len().checked_sub(1)?)?;
     let cpl_json::Value::Object(map) = cpl_json::parse(&step.locals).ok()? else {
         return None;
     };
-    let mut parts: Vec<String> = map
-        .iter()
+    let named = |name: &str| {
+        at.split(|c: char| !(c.is_alphanumeric() || c == '_'))
+            .any(|word| word == name)
+    };
+    let mut locals: Vec<_> = map.iter().collect();
+    locals.sort_by_key(|(name, _)| !named(name));
+    let mut parts: Vec<String> = locals
+        .into_iter()
         .take(TRAP_LOCALS)
         .map(|(name, value)| {
             let text = shown(value);

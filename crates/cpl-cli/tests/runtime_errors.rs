@@ -922,3 +922,26 @@ fn every_runtime_code_traps_with_the_message_the_spec_shows() {
         assert_eq!(status, 3, "{code}: {err}");
     }
 }
+
+#[test]
+fn the_locals_a_trap_names_come_first() {
+    let source = "\
+fn f(xs: List<Int>) -> Int:
+    let a = 1
+    let b = 2
+    let c = 3
+    let d = 4
+    let e = 5
+    let g = 6
+    let h = 7
+    let z = c + 2
+    let bad = xs[z]
+    return bad + a + b + d + e + g + h
+print(f([1, 2]))
+";
+    let (_, err) = run_stderr(source, "");
+    assert!(
+        err.contains("note: locals: xs = [1, 2], z = 5, a = 1"),
+        "{err}"
+    );
+}

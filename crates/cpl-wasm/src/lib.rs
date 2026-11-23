@@ -532,7 +532,8 @@ fn trap_locals(
     let config = cpl_interp::trace::trap_config(source);
     let observed = observe(program, input, &mut Vec::new(), stack, config);
     (observed.trap?.message == trap.message).then_some(())?;
-    cpl_interp::trace::trap_locals(&observed.recording?)
+    let at = source.get(trap.span.start as usize..trap.span.end as usize);
+    cpl_interp::trace::trap_locals(&observed.recording?, at.unwrap_or(""))
 }
 
 /// The result every command shares: its exit status as `cpl` would exit,
