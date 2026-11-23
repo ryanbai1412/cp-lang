@@ -18,7 +18,7 @@ let pre = prefix(x)
 // the hub goes on the middle field of the block
 fn cost(l: Field, r: Field) -> Int:
     let mid = Field((l.label + r.label) / 2)
-    (pre.sum(mid..=r) - pre.sum(l..=mid)) - x[mid] * ((r - mid) - (mid - l))
+    (pre.fold(mid..=r) - pre.fold(l..=mid)) - x[mid] * ((r - mid) - (mid - l))
 
 var best = 0
 var l = Field.first

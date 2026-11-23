@@ -17,7 +17,7 @@ for r in I.cuts:
         // sums of the rectangles with one corner at grid point (r, c) and the
         // opposite corner cell in the given quadrant
         fn corner(rows: Range<I>, cols: Range<I>) -> List<Int>:
-            [pre.sum(span(r, x), span(c, y)) for x in rows for y in cols]
+            [pre.fold(span(r, x), span(c, y)) for x in rows for y in cols]
         total += matches(corner(..r, ..c), corner(r.., c..)) + matches(
             corner(..r, c..),
             corner(r.., ..c),

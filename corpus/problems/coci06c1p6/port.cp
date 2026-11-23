@@ -20,8 +20,8 @@ let turned = prefix([Row, Col] (r, c) => weight(r, c, g[r.mirror, c.mirror]))
 
 fn killer(r: Row, c: Col, size: Int) -> Bool:
     if let r2 = r + (size - 1) and let c2 = c + (size - 1):
-        let here = seen.sum(span(r, r2), span(c, c2)) % P
-        let there = turned.sum(span(r2.mirror, r.mirror), span(c2.mirror, c.mirror)) % P
+        let here = seen.fold(span(r, r2), span(c, c2)) % P
+        let there = turned.fold(span(r2.mirror, r.mirror), span(c2.mirror, c.mirror)) % P
         return here * row_pow[r2.mirror] % P * col_pow[c2.mirror] % P == there * row_pow[r] % P * col_pow[c] % P
     false
 let best = max(

@@ -17,12 +17,12 @@ var bad = 0
 var ahead = sum(at[Spot.first.cyc(k)] for k in 1..=c / 2)
 for p in Spot:
     bad += choose(at[p], 3) + choose(at[p], 2) * ahead + at[p] * choose(ahead, 2)
-    ahead += at[p.cyc(c / 2 + 1)] - at[p.cyc(1)]
+    ahead += at[Spot.wrap(p.ord + c / 2 + 1)] - at[Spot.wrap(p.ord + 1)]
 // When c is even, a triple with two points on one end of a diameter and one
 // on the other was charged at both ends.
 if c % 2 == 0:
     for p in Spot:
-        let q = p.cyc(c / 2)
+        let q = Spot.wrap(p.ord + c / 2)
         if p > q: break
         bad -= choose(at[p], 2) * at[q] + at[p] * choose(at[q], 2)
 print(choose(n, 3) - bad)

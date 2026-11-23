@@ -33,7 +33,7 @@ var mx = n
 
 for i in 0..n:
     let need = arr[i] - 1
-    let cut = (base - 1..=n + 1).first_where(
+    let cut = (base - 1..=n + 1).find(
         mid => st.fold(Slot(base - 1), Slot(mid)).siz >= need
     ) ?? (n + 1)
     let cur = st.fold(Slot(base - 1), Slot(cut))

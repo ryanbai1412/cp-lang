@@ -14,9 +14,9 @@ fn left(x1: Int, x2: Int, y1: Int, y2: Int) -> Int:
 // Pin down one rectangle a side at a time: the least right edge, then the
 // greatest left edge that goes with it, then the same for bottom and top.
 while found.len < n:
-    let x2 = (1..=1e9).first_where(x => left(1, x, 1, 1e9) > 0)!
+    let x2 = (1..=1e9).find(x => left(1, x, 1, 1e9) > 0)!
     let x1 = ((1..=x2).first_where(x => left(x, x2, 1, 1e9) == 0) ?? x2 + 1) - 1
-    let y2 = (1..=1e9).first_where(y => left(x1, x2, 1, y) > 0)!
+    let y2 = (1..=1e9).find(y => left(x1, x2, 1, y) > 0)!
     let y1 = ((1..=y2).first_where(y => left(x1, x2, y, y2) == 0) ?? y2 + 1) - 1
     for copy in 0..left(x1, x2, y1, y2): found.push((x1, x2, y1, y2))
 print("!")

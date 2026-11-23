@@ -41,7 +41,7 @@ fn range_sum(f: Fenwick<Pos, Int>, l: Int, r: Int) -> Int:
     if l > r or r < 0 or l >= n: return 0
     let cl = if l < 0: 0 else: l
     let cr = if r >= n: n - 1 else: r
-    f.sum(Pos(cl)..=Pos(cr))
+    f.fold(Pos(cl)..=Pos(cr))
 
 fn solve_s1(lo: Int, hi: Int, qs: List<(passes: Int, pos: Int, qid: Q)>):
     if qs.len == 0: return

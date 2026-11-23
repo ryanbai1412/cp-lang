@@ -12,7 +12,7 @@ var own = Rem.first
 for c in k:
     var next: [Rem]Z = 0
     for r in Rem:
-        for x in 0..=9: next[r.cyc(x)] += below[r]
+        for x in 0..=9: next[Rem.wrap(r.ord + x)] += below[r]
     for x in 0..c - '0': next[own.cyc(x)] += 1
     below = next
     own = own.cyc(c - '0')

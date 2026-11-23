@@ -13,7 +13,7 @@ let height: [Row, Col]1..=100 = read()
 let pre = prefix(height)
 
 fn block(r: Int, c: Int, rows: Int, cols: Int) -> Int:
-    pre.sum(Row(r + 1)..=Row(r + rows), Col(c + 1)..=Col(c + cols))
+    pre.fold(Row(r + 1)..=Row(r + rows), Col(c + 1)..=Col(c + cols))
 
 fn window_mins(xs: List<Int>, k: Int) -> List<Int>:
     var out: List<Int> = []

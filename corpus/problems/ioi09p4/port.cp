@@ -17,5 +17,5 @@ fn pay(r1: Row, r2: Row, c1: Col, c2: Col) -> Int:
     var best: ?Int = None
     for r in r1..r2: best min= pay(r1, r, c1, c2) + pay(r.next!, r2, c1, c2)
     for c in c1..c2: best min= pay(r1, r2, c1, c) + pay(r1, r2, c.next!, c2)
-    best! + pre.sum(r1..=r2, c1..=c2)
+    best! + pre.fold(r1..=r2, c1..=c2)
 print(pay(Row.first!, Row.last!, Col.first!, Col.last!))

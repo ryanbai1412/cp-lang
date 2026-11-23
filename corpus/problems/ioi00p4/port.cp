@@ -22,7 +22,7 @@ for r in Region:
     domain Side = 0..len
     let border: [Side]Town = read()
     for s in Side:
-        let (a, b) = (border[s], border[s.cyc(1)])
+        let (a, b) = (border[s], border[Side.wrap(s.ord + 1)])
         touching[a].push(r)
         let wall = (min(a, b), max(a, b))
         if let other = first_side.get(wall):
