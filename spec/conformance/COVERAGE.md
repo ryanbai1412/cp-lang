@@ -852,6 +852,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - L0596 found_flag_pair: **no case**
 - L0597 unreachable_code: **no case**
 - L0598 unused_binding: **no case**
+- L0599 int_div_possible_zero: **no case**
 - L0601 Right side changes the place it assigns: 3 case(s)
 - L0602 Lazy chain walked twice: 1 case(s)
 - L0603 `.map` view read many times by index: 1 case(s)
@@ -876,7 +877,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - W0101 Unused expression value: 1 case(s)
 - W0201 Submission near the size limit: 1 case(s)
 
-52 of 152 testable codes have no negative case.
+53 of 153 testable codes have no negative case.
 
 ## Spec code blocks
 
