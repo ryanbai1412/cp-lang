@@ -46,6 +46,13 @@ impl Checker<'_> {
         let has =
             |m: &str| methods.iter().any(|(n, _)| n == m) || field_names.iter().any(|f| f == m);
         let empty_by_len = name.text == "is_empty" && has("len");
+        let after = self.src.get(name.span.end as usize..).unwrap_or("");
+        let range_arg = after
+            .strip_prefix('(')
+            .and_then(|a| a.split(')').next())
+            .is_some_and(|a| a.contains(".."));
+        let folds = ["sum", "query", "range_sum", "range_query"].contains(&name.text.as_str());
+        let fold_for = folds && range_arg && has("fold");
         let known = field_names
             .iter()
             .chain(methods.iter().map(|(m, _)| m))
@@ -60,6 +67,10 @@ impl Checker<'_> {
             _ if empty_by_len => {
                 diag.help = Some(format!("a {base_ty} is empty when its `len` is 0"));
                 diag.fix("write `len == 0`".to_string(), name.span, "len == 0");
+            }
+            _ if fold_for => {
+                diag.help = Some(format!("a {base_ty} combines a range with `fold`"));
+                diag.fix("write `fold`".to_string(), name.span, "fold");
             }
             Some(s) => diag.suggest(name.span, s),
             None if !field_names.is_empty() => {

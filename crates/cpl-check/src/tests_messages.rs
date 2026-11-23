@@ -348,3 +348,25 @@ fn a_pair_over_runs_gets_each_value_and_its_count() {
         assert!(check(&fixed).is_empty(), "{fixed}: {:?}", check(&fixed));
     }
 }
+
+#[test]
+fn summing_a_range_is_fixed_to_fold() {
+    let src = "use std.fenwick.{Fenwick}\n\
+               domain P = 0..5\n\
+               var f = Fenwick<P, Int>.new()\n\
+               for p in P: f.add(p, 1)\n\
+               let l = P(1)\n\
+               print(f.sum(l..=l))\n";
+    let d = check(src);
+    assert_eq!(d.len(), 1, "{d:?}");
+    assert_eq!(d[0].fixes[0].edits[0].1, "fold", "{d:?}");
+    let fixed = src.replace(".sum(", ".fold(");
+    assert!(check(&fixed).is_empty(), "{:?}", check(&fixed));
+    let point = check(&src.replace("l..=l", "l"));
+    assert!(
+        point
+            .iter()
+            .all(|d| d.fixes.iter().all(|f| f.edits[0].1 != "fold")),
+        "{point:?}"
+    );
+}
