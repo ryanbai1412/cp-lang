@@ -610,7 +610,7 @@ impl<'a> Checker<'a> {
     }
 
     /// The type a definition gives its name when the name is used as a type.
-    fn def_type(&mut self, def: &Def, name: &str, span: Span, args: Vec<Ty>) -> Ty {
+    pub(super) fn def_type(&mut self, def: &Def, name: &str, span: Span, args: Vec<Ty>) -> Ty {
         match def {
             Def::Domain(_) => Ty::Pos(name.to_string()),
             // `let (C, comp) = scc(..)`: a domain a fn made and returned.

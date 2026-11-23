@@ -325,7 +325,13 @@ impl<'a> Checker<'a> {
                         let bindings = generics.into_iter().zip(args).collect();
                         ty.subst(&bindings)
                     }
-                    (Ty::TypeName(name), None) => Ty::Named { name, args },
+                    // `Box<Int>`: defaults fill the arguments not given (R08.2.5).
+                    (Ty::TypeName(name), None) => match self.type_def(&name) {
+                        Some(def) if matches!(*def, Def::Struct { .. }) => {
+                            self.def_type(&def, &name, expr.span, args)
+                        }
+                        _ => Ty::Named { name, args },
+                    },
                     (other, None) => other,
                 }
             }

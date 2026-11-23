@@ -231,7 +231,6 @@ documented. The stdlib's own gaps are in `std/GAPS.md`.
 - core-07/slice-past-source-traps.cp: compiler
 - core-08/const-param-arithmetic.cp: compiler
 - core-08/extension-concrete-and-generic-ambiguous.cp: compiler
-- core-08/static-fn-default-param-mismatch.cp: compiler
 - core-08/trait-message-bound-holds.cp: compiler
 - core-01/comprehension-filter-if-let.cp: compiler
 - core-04/grid-rows-cols-views.cp: stdlib
