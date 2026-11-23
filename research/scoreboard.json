@@ -1930,7 +1930,7 @@
         "noi09p4": "error",
         "noi10p2": "untested",
         "noi14p5": "error",
-        "noi15p1": "error",
+        "noi15p1": "pass",
         "noi15p4": "untested",
         "noi17p2": "error",
         "noip09p4": "error",
@@ -1977,14 +1977,6 @@
           ]
         },
         {
-          "cause": "E0201: `<id>` doesn't know the name `<id>` here",
-          "count": 2,
-          "examples": [
-            "cco21p2",
-            "noi15p1"
-          ]
-        },
-        {
           "cause": "E0302: can't compare a `<id>` with a `<id>`",
           "count": 2,
           "examples": [
@@ -1998,6 +1990,13 @@
           "examples": [
             "coci21c2p4",
             "noi09p4"
+          ]
+        },
+        {
+          "cause": "E0201: `<id>` doesn't know the name `<id>` here",
+          "count": 1,
+          "examples": [
+            "cco21p2"
           ]
         },
         {
@@ -2156,13 +2155,13 @@
         }
       ],
       "counts": {
-        "error": 38,
-        "pass": 23,
+        "error": 37,
+        "pass": 24,
         "trap": 2,
         "untested": 36,
         "wrong": 1
       },
-      "passed": 23,
+      "passed": 24,
       "total": 100
     },
     "diff": {
