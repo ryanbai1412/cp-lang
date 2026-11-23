@@ -255,6 +255,25 @@ impl<'p, 'f> Compiler<'p, 'f> {
                     self.emit_trace(TracePoint::Mutated(place, e.span), e.span);
                 }
             }
+            Stmt::Let(
+                slot,
+                Some(
+                    init @ Expr {
+                        kind: ExprKind::Mutate(_, place, args),
+                        ..
+                    },
+                ),
+            ) if self.feed_acc != Some(*slot)
+                && quiet_place(place, cpl_ir::walk::root(place))
+                && !self.yields_into(place)
+                && args.iter().all(|a| self.traced_quiet(a)) =>
+            {
+                self.compile_untraced_stmt(stmt);
+                if !self.fell_back(stmt) {
+                    self.emit_trace(TracePoint::Mutated(place, init.span), init.span);
+                    self.emit_trace(TracePoint::Let(*slot, init), init.span);
+                }
+            }
             // `print_values` tells the tracer what it printed, as in the tree-walker.
             Stmt::Expr(e) if Self::quiet_print(e) => self.compile_untraced_stmt(stmt),
             Stmt::Expr(e) if self.traced_quiet(e) => self.compile_untraced_stmt(stmt),
