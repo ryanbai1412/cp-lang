@@ -657,6 +657,14 @@ pub fn self_command(args: &[&str], stdout: &mut dyn Write, stderr: &mut String) 
     let mut settings = Settings::load(&home);
     let json = args.contains(&"--json");
     let args: Vec<&str> = args.iter().copied().filter(|a| *a != "--json").collect();
+    if let Some(flag) = args
+        .iter()
+        .find(|a| a.starts_with('-') && !matches!(**a, "-h" | "--help"))
+    {
+        let message = cpl_diag::usage::no_option("self", flag);
+        *stderr += &format!("cpl: {message}\n\n{SELF_USAGE}");
+        return EXIT_USAGE;
+    }
     let mut out = String::new();
     let result = match args.as_slice() {
         [] | [.., "-h" | "--help"] => {

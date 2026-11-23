@@ -258,6 +258,9 @@ pub(crate) fn cli(rest: &[&str], stdout: &mut dyn Write, stderr: &mut String) ->
             "--input" => input = args.next(),
             "--json" => json = true,
             other if file.is_none() && !other.starts_with('-') => file = Some(other),
+            flag if flag.starts_with('-') => {
+                return usage(&cpl_diag::usage::no_option("replay", flag))
+            }
             other => return usage(&format!("unexpected `{other}`")),
         }
     }

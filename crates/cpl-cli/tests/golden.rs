@@ -381,7 +381,10 @@ fn every_command_has_help_and_rejects_an_unknown_option() {
             Some(EXIT_USAGE.into()),
             "{command}: {stderr}"
         );
-        assert!(stderr.contains("--no-such-option"), "{command}: {stderr}");
+        let wording = format!(
+            "`{command}` has no option `--no-such-option`; `cpl {command} --help` lists them"
+        );
+        assert!(stderr.contains(&wording), "{command}: {stderr}");
         assert!(shows_usage(&stderr, command), "{command}: {stderr}");
         assert!(!stderr.contains("can't read"), "{command}: {stderr}");
     }
