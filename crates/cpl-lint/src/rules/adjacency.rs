@@ -8,6 +8,8 @@ use crate::{File, Finding, MANUAL_ADJACENCY_LIST};
 use cpl_diag::{Diagnostic, Span};
 use cpl_syntax::ast::{Expr, ExprKind, PatternKind, Stmt, StmtKind, TypeKind};
 
+use super::lists::is_list_type;
+
 const HELP: &str = "read the edges at once, `let es: [E](u: V, v: V) = read()` over `domain V = 1..=n` and `domain E = 0..m`, then build `Graph.undirected(es)` or `Graph.directed(es)` (`std.graph`): one compact block in input order, and every vertex index is proven";
 
 pub(crate) fn check(file: &File) -> Vec<Finding> {
@@ -32,10 +34,12 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
                     let lists = match (&ty.kind, &init.kind) {
                         (TypeKind::Named { name, args }, ExprKind::Comprehension { body, .. }) => {
                             name.text == "List"
-                                && matches!(&args[..], [a] if is_list(a))
+                                && matches!(&args[..], [a] if is_list_type(a))
                                 && is_empty_list(body)
                         }
-                        (TypeKind::Array { elem, .. }, _) => is_list(elem) && is_empty_list(init),
+                        (TypeKind::Array { elem, .. }, _) => {
+                            is_list_type(elem) && is_empty_list(init)
+                        }
                         _ => false,
                     };
                     if lists {
@@ -98,10 +102,6 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
             }
         })
         .collect()
-}
-
-fn is_list(ty: &cpl_syntax::ast::Type) -> bool {
-    matches!(&ty.kind, TypeKind::Named { name, .. } if name.text == "List")
 }
 
 fn is_empty_list(e: &Expr) -> bool {
