@@ -189,13 +189,10 @@ jobs:
         with:
           distribution: temurin
           java-version: "21"
-          # Gradle's dependencies come from the cache, so a Maven Central
-          # 429 can't fail the plugin build.
-          cache: gradle
-          cache-dependency-path: editors/jetbrains/*.gradle*
       - name: JetBrains plugin
         working-directory: editors/jetbrains
-        # A cold cache still downloads from Maven Central; back off on a 429.
+        # Gradle is uncached (decision 383): it resolves through the Maven
+        # mirror and backs off on a 429.
         run: |
           for wait in 0 30 90 180; do
             sleep "$wait"
@@ -218,6 +215,11 @@ jobs:
           cp dist/cp-lang.vsix "dist/cp-lang-$v.vsix"
           cp dist/cp-lang-jetbrains.zip "dist/cp-lang-jetbrains-$v.zip"
           python3 scripts/release/editors.py dist
+          # A green commit older than the script gets it from this workflow's commit.
+          if [ ! -f scripts/release/jetbrains_repo.py ]; then
+            git fetch -q --depth 1 origin "$GITHUB_SHA"
+            git show "$GITHUB_SHA:scripts/release/jetbrains_repo.py" > scripts/release/jetbrains_repo.py
+          fi
           python3 scripts/release/jetbrains_repo.py dist "$CHANNEL"
       - uses: actions/upload-artifact@v4
         with:

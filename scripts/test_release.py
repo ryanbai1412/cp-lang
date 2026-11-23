@@ -121,6 +121,14 @@ class ReleaseScriptsTest(unittest.TestCase):
         self.assertEqual(json.loads((edge / "latest.json").read_text())["toolchain"], "edge-2026-11-22-aaaaaaaa")
         self.assertEqual((edge / "cpl-x86_64-unknown-linux-musl.tar.gz").read_bytes(), b"one")
 
+    def test_the_jetbrains_repo_points_each_channel_at_its_plugin(self):
+        out = Path(self.tmp.name)
+        for channel, where in (("edge", "download/edge/"), ("stable", "latest/download/")):
+            subprocess.run(["python3", ROOT / "scripts/release/jetbrains_repo.py", out, channel], check=True, capture_output=True)
+            xml = (out / "updatePlugins.xml").read_text()
+            self.assertIn(f'id="dev.cplang.ide" url="https://github.com/ryanbai1412/cp-lang/releases/{where}cp-lang-jetbrains.zip"', xml)
+            self.assertIn("<idea-version since-build=", xml)
+
 
 if __name__ == "__main__":
     unittest.main()
