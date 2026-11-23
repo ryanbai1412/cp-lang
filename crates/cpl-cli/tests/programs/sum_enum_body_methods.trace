@@ -1,0 +1,6 @@
+"variables":{"stdout":{"name":"stdout","type":"what the program printed, a line at a time","kind":"json"},"evs":{"name":"evs","type":"List\u003cEv>","kind":"array"}},"runs":{"fast":{"label":"cpl run","steps":[{"id":0,"line":10,"label":"let evs = [Add(3), Ask(1, 2)]","stage":"main","values":{"stdout":[],"evs":[2,5]},"locals":{},"frames":[{"fn":"main","line":10}]},
+{"id":1,"line":7,"label":"match self:","stage":"main","values":{"stdout":[],"evs":[2,5]},"locals":{"self":2,"v":3},"frames":[{"fn":"weight","line":7},{"fn":"main","line":11}]},
+{"id":2,"line":11,"label":"print → 0 2","stage":"main","values":{"stdout":["0 2"],"evs":[2,5]},"locals":{"e":2},"checkpoint":"print 1","frames":[{"fn":"main","line":11}]},
+{"id":3,"line":11,"label":"print → 1 -1","stage":"main","values":{"stdout":["0 2","1 -1"],"evs":[2,5]},"locals":{"e":5},"checkpoint":"print 2","frames":[{"fn":"main","line":11}]},
+{"id":4,"line":12,"label":"the program ended","stage":"main","values":{"stdout":["0 2","1 -1"],"evs":[2,5]},"locals":{"e":5},"checkpoint":"end","frames":[{"fn":"main","line":12}]}]}}}
+stderr:

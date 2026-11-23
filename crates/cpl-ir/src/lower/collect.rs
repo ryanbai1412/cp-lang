@@ -397,6 +397,25 @@ impl<'a> Lowerer<'a> {
         }
     }
 
+    /// Whether `name` in `m` is a type whose methods hang on a struct; an
+    /// enum's, a sum-domain enum's included, are fns on the type instead.
+    pub(super) fn names_struct_like(&self, m: ModId, name: &str) -> bool {
+        match self.mod_syms[m].get(name) {
+            None | Some(Sym::Enum(_)) => false,
+            Some(Sym::Domain(d)) => !self.sum_enums.contains_key(d),
+            Some(_) => true,
+        }
+    }
+
+    /// An enum's values: `Ty::Enum`, or the positions of a sum-domain enum.
+    pub(super) fn is_enum_ty(&self, ty: &Ty) -> bool {
+        match ty {
+            Ty::Enum(_) => true,
+            Ty::Pos(d) => self.sum_enums.contains_key(d),
+            _ => false,
+        }
+    }
+
     /// `use a.f` inside `mod b:`, `a` an inline module beside `b`: `f` names
     /// `a`'s item in `b` (R11.2.2).
     fn use_sibling(&mut self, m: ModId, path: &[ast::Name], names: &[ast::Name], glob: bool) {

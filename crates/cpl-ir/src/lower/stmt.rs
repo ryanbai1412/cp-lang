@@ -5472,7 +5472,7 @@ impl<'a> Lowerer<'a> {
                 return Some(present);
             }
             let value_expr = self.expr(value, None);
-            if matches!(value_expr.ty, Ty::Enum(_)) {
+            if self.is_enum_ty(&value_expr.ty) {
                 let tmp = self.temp(value_expr.ty.clone());
                 before.push(Stmt::Let(tmp, Some(value_expr)));
                 let local = self.local(tmp, value.span);

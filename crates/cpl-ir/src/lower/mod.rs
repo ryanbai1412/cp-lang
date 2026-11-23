@@ -1927,7 +1927,7 @@ impl<'a> Lowerer<'a> {
             let ast::TypeKind::Named { name, args } = &target.kind else {
                 continue;
             };
-            let user_ty = !matches!(self.mod_syms[m].get(&name.text), None | Some(Sym::Enum(_)));
+            let user_ty = self.names_struct_like(m, &name.text);
             if !args.is_empty() || user_ty {
                 continue;
             }
