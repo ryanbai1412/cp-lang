@@ -34,42 +34,42 @@ milestone = "M2"
 name = "perf set p50 runtime vs matched C++"
 command = "E python3 bench/v03_perf_bench.py --suite dryrun,corpus,bench --runs 5 --min-ms 10 --jobs 1 --json-out /tmp/perf.json"
 target = "< 1.1"
-today = "0.948 (2026-11-22 on main 88a62fca8, n=118 >= 10 ms both sides, 238 ok rows); bench/ 1.040 (n=38), corpus 0.879 (n=70), dryrun 0.910 (n=10)"
+today = "0.832 (2026-11-23 full `python3 bench/v03_perf_bench.py` after 718cce425, n=156 >= 10 ms both sides)"
 milestone = "M3"
 
 [[metric]]
 name = "perf set p95 runtime vs matched C++"
 command = "same as perf set p50"
 target = "< 1.2"
-today = "1.697 (2026-11-22 on 29b9bd9a, n=137 >= 10 ms both sides, 258 ok rows; p50 0.830, max 6.123 p06_labyrinth)"
+today = "1.529 (2026-11-23 full `python3 bench/v03_perf_bench.py` after 718cce425, n=156 >= 10 ms both sides; p50 0.832, max 10.847 cf2147c on a derived input outside the statement, tuned max next to it)"
 milestone = "M3"
 
 [[metric]]
 name = "perf set max runtime vs matched C++"
 command = "same as perf set p50"
 target = "< 1.5 idiomatic; tuned max <= 1.1 (next metric)"
-today = "6.027 (dryrun p06_labyrinth); bench/ max 1.749 (containers/bitset)"
+today = "10.847 (cf2147c on a derived input outside the statement; on gen.py --max it is 1.835x, under 10 ms); 2026-11-23 full `python3 bench/v03_perf_bench.py` after 718cce425, n=156 >= 10 ms both sides. Tuned bar: runtime_tuned_max"
 milestone = "M3"
 
 [[metric]]
 name = "runtime_tuned_max: perf set tuned max vs matched C++ (better of idiomatic and its tuned in-language variant)"
 command = "same as perf set p50 (the `tuned max` line; variants are `perf.cp` beside `port.cp`, as `cpl bench --corpus` reads them, else `<stem>.perf.cp`)"
 target = "<= 1.1; an outlier that cannot reach it in-language is a logged language gap"
-today = "not measured: 0 tuned variants (harness support landed with this metric)"
+today = "10.847 with 12 tuned variants timed (2026-11-23 full `python3 bench/v03_perf_bench.py` after 718cce425, n=156 >= 10 ms both sides); variants landed since: cf2147c 0.927x, cf1146h 0.877x, ucup4s25h 0.919x (`--only` runs, worklog)"
 milestone = "M3"
 
 [[metric]]
 name = "perf set outliers over 1.1x after tuning"
 command = "same as perf set p50 (the `over 1.1x tuned` lines)"
 target = "0, or each a logged language gap"
-today = "40 over 1.1x idiomatic on 29b9bd9a; none tuned yet"
+today = "30 over 1.1x after tuning, 33 over 1.1x idiomatic (2026-11-23 full `python3 bench/v03_perf_bench.py` after 718cce425, n=156 >= 10 ms both sides)"
 milestone = "M3"
 
 [[metric]]
 name = "perf set programs over 1.5x idiomatic (tuned bar: none over 1.1x, runtime_tuned_max)"
 command = "same as perf set p50"
 target = "0"
-today = "16 (dryrun p06_labyrinth 6.03, cf1146h 3.86, wtf26b 3.59, p10_matching 2.45, cf2115c 2.34, cf2229d 2.04, cf2178h 1.91, cf2124d 1.77, bitset 1.75, cf2137d 1.68, ucup5s03f 1.66, cf1284e 1.63, cf2201b 1.61, cf2084e 1.58, ranges/mo 1.55, sorted_set 1.51); 40 over 1.1"
+today = "9 over 1.5x, 33 over 1.1x (2026-11-23 full `python3 bench/v03_perf_bench.py` after 718cce425, n=156 >= 10 ms both sides)"
 milestone = "M3"
 
 [[metric]]
