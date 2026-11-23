@@ -57,6 +57,21 @@ impl<'a> Lowerer<'a> {
                 _ => DimSpec::IntFrom(lo, len),
             });
         }
+        // `S` inferred as `(R, Subset<T>)`: a tuple of factors is their product domain.
+        if let GenArg::Ty(Ty::Tuple(items)) = arg {
+            let factors = items
+                .iter()
+                .map(|t| self.ty_to_product_factor(t).map(|f| (None, f)))
+                .collect::<Option<Vec<_>>>()
+                .filter(|f| f.len() > 1);
+            if let Some(factors) = factors {
+                let d = self.intern_anon_product_domain(factors);
+                let mut defs = Vec::new();
+                self.def_anon_product_domain(d, span, &mut defs);
+                self.cx.pending.extend(defs);
+                return Some(DimSpec::Pos(d));
+            }
+        }
         self.not_a_domain(name, arg, span)
     }
 

@@ -11,6 +11,26 @@ pub(super) const CORE_DOMAIN_ONLY: [&str; 10] = [
 ];
 
 impl Checker<'_> {
+    /// `for x in T` or `for x in Sub<V>`, with `T` a type with `impl Index`, walks the type's
+    /// values (R04.2.26). A value of the type walks its own `each` instead.
+    pub(crate) fn library_domain_walk(&mut self, iter: &Expr) -> Option<Ty> {
+        let (type_name, type_args) = match &iter.kind {
+            ExprKind::Name(type_name) => (type_name, &[][..]),
+            ExprKind::Generic { base, args } => match &base.kind {
+                ExprKind::Name(type_name) => (type_name, &args[..]),
+                _ => return None,
+            },
+            _ => return None,
+        };
+        if self.local(type_name).is_some() || !self.has_impl(type_name, "Index") {
+            return None;
+        }
+        Some(Ty::Named {
+            name: type_name.to_string(),
+            args: type_args.iter().map(|a| self.type_arg(a)).collect(),
+        })
+    }
+
     /// R04.2.27: a type with `impl Index` has the domain members that need no
     /// order: `T.count`, `T.first`, `T.last`, `T.rev`, and every `Seq` method
     /// over its walk. Its own members (`nth`, constructors) come first.

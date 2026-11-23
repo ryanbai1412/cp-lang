@@ -394,7 +394,10 @@ impl<'a> Checker<'a> {
                 self.branch += 1;
                 for clause in clauses {
                     let iter_ty = self.infer(&clause.iter);
-                    let elem = self.element_ty(&iter_ty);
+                    let elem = match self.library_domain_walk(&clause.iter) {
+                        Some(ty) => ty,
+                        None => self.element_ty(&iter_ty),
+                    };
                     self.bind(&clause.pat, &elem, false, "for");
                     for cond in &clause.conds {
                         self.cond(cond);

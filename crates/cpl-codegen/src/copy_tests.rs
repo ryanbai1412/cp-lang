@@ -184,7 +184,11 @@ fn a_view_of_a_temporary_holds_the_temporary() {
         .find(|l| l.contains("std::vector<ll> t") && l.contains("chain"))
         .unwrap_or_else(|| panic!("{cpp}"));
     let name = owner.split_whitespace().nth(1).unwrap();
-    assert!(cpp.contains(&format!("take_Lst_Int_2({name}, n)")), "{cpp}");
+    let call = cpp
+        .lines()
+        .find(|l| l.contains("take_Lst_Int_") && l.contains(" = "))
+        .unwrap_or_else(|| panic!("{cpp}"));
+    assert!(call.contains(&format!("({name}, n)")), "{cpp}");
 }
 
 const SMALL_BITSETS: &str = concat!(

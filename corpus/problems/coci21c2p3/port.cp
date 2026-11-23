@@ -29,5 +29,5 @@ while let u = todo.pop():
 
 print(1 << (n - 1))
 for flip in Subset<E>:
-    if popcount(flip.idx) % 2 == 0:
-        print([label[v]! ^ flip.idx for v in V])
+    if popcount(flip.ord) % 2 == 0:
+        print([label[v]! ^ flip.ord for v in V])

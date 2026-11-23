@@ -702,8 +702,18 @@ pub(super) struct SortedView {
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub(super) enum ProductFactor {
     Domain(DomainId),
-    Enum { enum_id: EnumId, len: i64 },
+    Enum {
+        enum_id: EnumId,
+        len: i64,
+    },
     Bool,
+    /// An `impl Index` type: its values are the factor, through `ord` and `nth`.
+    Library {
+        sid: StructId,
+        dom: DomainId,
+        ord: FnId,
+        nth: FnId,
+    },
 }
 
 impl ProductFactor {
@@ -712,6 +722,7 @@ impl ProductFactor {
             ProductFactor::Domain(d) => Ty::Pos(*d),
             ProductFactor::Enum { enum_id, .. } => Ty::Enum(*enum_id),
             ProductFactor::Bool => Ty::Bool,
+            ProductFactor::Library { sid, .. } => Ty::Struct(*sid),
         }
     }
 }
@@ -1307,6 +1318,15 @@ impl<'a> Lowerer<'a> {
         match ty {
             Ty::Pos(d) => Some(ProductFactor::Domain(*d)),
             Ty::Bool => Some(ProductFactor::Bool),
+            Ty::Struct(sid) => {
+                let s = &self.structs[*sid];
+                Some(ProductFactor::Library {
+                    sid: *sid,
+                    dom: s.index_domain?,
+                    ord: *s.methods.get("ord")?,
+                    nth: *s.methods.get("nth")?,
+                })
+            }
             Ty::Enum(eid)
                 if !self.enums[*eid].variants.is_empty()
                     && self.enums[*eid]
@@ -1566,6 +1586,7 @@ impl<'a> Lowerer<'a> {
             ProductFactor::Domain(d) => self.mk(ExprKind::DomainLen(*d), Ty::Int, span),
             ProductFactor::Enum { len, .. } => self.int_lit(*len, span),
             ProductFactor::Bool => self.int_lit(2, span),
+            ProductFactor::Library { dom, .. } => self.mk(ExprKind::DomainLen(*dom), Ty::Int, span),
         }
     }
 
@@ -1589,6 +1610,10 @@ impl<'a> Lowerer<'a> {
                     span,
                 )
             }
+            ProductFactor::Library { sid, ord, .. } => {
+                let v = self.coerce(val, &Ty::Struct(*sid), span);
+                self.mk(ExprKind::Call(*ord, vec![Arg::Value(v)]), Ty::Int, span)
+            }
         }
     }
 
@@ -1606,6 +1631,11 @@ impl<'a> Lowerer<'a> {
                     span,
                 )
             }
+            ProductFactor::Library { sid, nth, .. } => self.mk(
+                ExprKind::Call(*nth, vec![Arg::Value(ord)]),
+                Ty::Struct(*sid),
+                span,
+            ),
         }
     }
 
@@ -3045,9 +3075,11 @@ impl<'a> Lowerer<'a> {
             }
         }
         if let ast::TypeKind::Named { name, args } = &ty.kind {
+            let arg = self.gen_env.get(&name.text).cloned();
+            let tuple = matches!(arg, Some(GenArg::Ty(Ty::Tuple(_))));
             if let (true, Some(arg @ (GenArg::Ty(_) | GenArg::Range(..)))) = (
-                args.is_empty() && (values || self.range_generic(&name.text)),
-                self.gen_env.get(&name.text).cloned(),
+                args.is_empty() && (values || tuple || self.range_generic(&name.text)),
+                arg,
             ) {
                 return self.generic_dim(&name.text, &arg, name.span);
             }

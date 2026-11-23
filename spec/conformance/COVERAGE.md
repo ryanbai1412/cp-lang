@@ -7,7 +7,7 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 2854 (995 passing). Rules: 576.
+Cases: 2856 (995 passing). Rules: 576.
 
 ## Summary per chapter
 
@@ -990,14 +990,14 @@ case names it. `/// example:` lines are also run by the `docs` suite of
   - uncovered: `concavity_break`, `argmins`, `knuth_break`, `differences`, `newton`, `poly_degree`, `poly_at`, `recurrence_at`
 - **strings** (183/197 named by a case)
   - uncovered: `Palindromes`, `Hashable`, `Hash2D`, `Hash2D.new`, `Hash2D.rect`, `Hash61`, `DynamicHash`, `DynamicHash.new`, `DynamicHash.rev_get`, `PalindromicTree.series_link`, `DynamicAhoCorasick`, `DynamicAhoCorasick.new`, `DynamicAhoCorasick.count_matches`, `_gen_str`
-- **subset** (16/16 named by a case)
+- **subset** (17/17 named by a case)
 - **timetree** (11/11 named by a case)
 - **tree** (158/183 named by a case)
   - uncovered: `Rooted.up_arc`, `Rooted.child_arcs`, `Rooted.reroot`, `Rooted.chains`, `Rooted.virtual`, `VirtualTree`, `LinkCut.access`, `PreferredPaths`, `PreferredPaths.new`, `PreferredPaths.access`, `LazyLinkCut.access`, `PermKind`, `PermNode`, `PermTree`, `PermTree.new`, `PermTree.node`, `PermTree.vals`, `Layers`, `Events`, `LongPaths`, `LongPaths.slots`, `LongPaths.slot`, `EulerTourTree.reroot`, `LazyEulerTourTree.reroot`, `KruskalTree`
 - **window** (20/22 named by a case)
   - uncovered: `Tracked`, `Undo`
 
-2193 of 2319 std items are named by a case.
+2194 of 2320 std items are named by a case.
 
 ## Core cases without a `// rule:` line
 
@@ -1019,6 +1019,8 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - core-04/library-domain-cxx-names-apart.cp
 - core-04/list-literal-sizes-a-generic-domain.cp
 - core-04/literal-range-table-int-keys.cp
+- core-04/subset-type-walk-binds-subsets.cp
+- core-04/tuple-with-subset-is-a-domain.cp
 - core-07/list-literal-of-range-is-one-element.cp
 - core-07/yielded-closure-writes-generator-local.cp
 - core-08/has-bound-generic-impl.cp

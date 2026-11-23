@@ -41,6 +41,13 @@ pub struct Subset<B>(bits: U64):
     /// example: `domain B = 0..4; Subset<B>.single(B(0)).with(B(3)).len == 2`
     @get pub fn len(self) -> Int = popcount(bits)
 
+    /// Whether the subset has no members.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `domain D = 0..4; Subset<D>.empty.is_empty and not Subset<D>.single(D(1)).is_empty`
+    @get pub fn is_empty(self) -> Bool = bits == U64(0)
+
     /// `self` with `b` added. Adding a member already present returns `self` unchanged.
     ///
     /// cost: \(O(1)\)

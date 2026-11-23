@@ -15,5 +15,5 @@ for _ in 0..m:
 var ans = 0
 for mask in Subset<V>:
     if all(not (u in mask and v in mask) for (u, v) in edges):
-        ans max= popcount(mask.idx)
+        ans max= popcount(mask.ord)
 print(ans)

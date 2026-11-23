@@ -15,6 +15,7 @@ A subset of a domain `B` of at most 64 members, stored as one word (bit `k` for 
 - `fn single(b: B) -> Subset<B>` — \(O(1)\); `{b}`: the subset whose only member is `b`.
 - `fn contains(self, b: B) -> Bool` — \(O(1)\); Whether `b` is a member; `b in s` calls it and `b not in s` negates it.
 - `@get fn len(self) -> Int` — \(O(1)\); The number of members (a popcount).
+- `@get fn is_empty(self) -> Bool` — \(O(1)\); Whether the subset has no members.
 - `fn with(self, b: B) -> Subset<B>` — \(O(1)\); `self` with `b` added.
 - `fn without(self, b: B) -> Subset<B>` — \(O(1)\); `self` with `b` removed.
 - `fn set(mut self, b: B, on: Bool)` — \(O(1)\); Add `b` when `on`, remove it otherwise, in place (as `Bitset.set`).
