@@ -108,6 +108,7 @@ names elsewhere:
 | `is` | `x is pat` in value position (decision 111) |
 | `with` | `with ctx(...):` blocks and `@with` (chapter 9); record update `x with f: v` |
 | `yields` | `-> yields T` on a generator fn (chapter 6) |
+| `repeat` | `repeat k:` at the start of a statement, `k` evaluated once; a block run `k` times, the same as `for _ in 0..k:` |
 | `law` | inside a `trait` or `impl` body (chapter 8) |
 | `where` | trait bounds after a signature (chapter 8) |
 | `without` | row types `..R without (u, v)` (chapter 8) |
@@ -363,7 +364,7 @@ let         := ('let' | 'var' | 'const') pattern (',' NAME)* (':' type)?
                '=' expr ('else' block)?
 assign      := place ('=' | ASSIGN_OP | NAME '=') expr     // `x min= y`, `x f= y`
 compound    := if_stmt | for_stmt | while_stmt | match_stmt | with_stmt
-             | unchecked | decorator* fn_decl
+             | unchecked | repeat_stmt | decorator* fn_decl
 if_stmt     := 'if' cond block ('elif' cond block)* ('else' block)?
 cond        := 'let' pattern '=' expr (',' cond)* | expr (',' cond)*
              | place ('min=' | 'max=') expr      // true when improved (R01.6.4)
@@ -374,6 +375,7 @@ match_stmt  := 'match' expr ':' (arm (',' arm)* NL | NL INDENT (arm NL)+ DEDENT)
 arm         := pattern ('if' expr)? '=>' (expr | assign | NL INDENT stmt+ DEDENT)
 with_stmt   := 'with' call (',' call)* block
 unchecked   := 'unchecked' block
+repeat_stmt := 'repeat' expr block                  // `repeat k:` runs the block k times
 
 pattern     := '_' | 'var'? NAME | literal | range_pat
              | '(' pattern (',' pattern)* ','? ')'
@@ -402,13 +404,16 @@ postfix     := primary ('.' NAME | '.' INT | call_args | '[' args ']'
              | '!' | '?' | 'is' pattern | 'with' NAME ':' expr (',' NAME ':' expr)*)*
 call_args   := '(' (arg (',' arg)*)? ','? ')'
 arg         := expr | NAME ':' expr | 'mut' place
+             | expr 'for' clause (',' clause)*      // generator: `sum(f(x) for x in xs)`
 primary     := literal | NAME | path generic_args? | '(' expr ')' | tuple
              | record | list | map | comprehension | table | '{' block_expr '}'
              | 'todo' | BINOP                                 // `+` as an op value
 ```
 
 Call arguments: positional first, named after in any order, each
-parameter at most once; parameters after `;` are named-only. A `mut`
+parameter at most once; parameters after `;` are named-only. A generator
+argument (`expr for clause`) is a lazy sequence, the free fold form of
+decision 53: `sum(f(x) for x in xs)`, `count(c == x for c in cs)`. A `mut`
 parameter is marked `mut` at the call too (`link(mut d, a, b)`), except
 for the receiver of a method call. (R01.10.1)
 

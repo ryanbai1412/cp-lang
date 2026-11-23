@@ -177,6 +177,9 @@ operand fixes the type. Nothing else converts. (R04.4.22)
    `var dist: [V]?Int = None`, `var dp: [0..=n]Int = 0`. Same as
    `[D].filled(x)`; `[D]` followed by a value without `=>` is a type,
    never a table. (R04.4.27)
+6. **`Int` to `Mod<P>`:** an integer (a literal or any `Int` value) where
+   a `Mod<P>` is expected is `Mod<P>.from_int(x)`, reduced mod `P`:
+   `var ways: [0..=n]Z = 0`, `ways[0] = 1`, `cnt[v] = deg[v]`. (R04.4.28)
 
 **Integer ranges as domains.** An integer range `lo..hi` (or `lo..=hi`,
 or a counted `[n]`, which is `0..n`) used as an answer space or array

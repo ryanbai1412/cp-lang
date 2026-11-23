@@ -361,8 +361,8 @@ operations support it:
 | range apply, range fold | `SegTree(op, a, act:)` | O(n) | O(log n) | tags `Commutative`: no push-down |
 | range apply, point read | `SegTree(act:, a)` | O(n) | O(log n) | tags `Commutative`: no push-down |
 | static fold | `SparseTable(op, a)` | O(n log n) | O(1) | `Idempotent`: overlapping halves; else `DisjointSparseTable(op, a)` |
-| static prefix / range sum | `Prefix(a)` | O(n) | O(1) | `+` only: `prefix(c)`, `sum(r)`; other ops scan with `a.scan(op)` |
-| dynamic prefix / range sum | `Fenwick(a)` | O(n) | O(log n) | `+`/`-` only: `sum(r)`; other ops use `SegTree` |
+| static prefix / range sum | `Prefix(a)` | O(n) | O(1) | `+` only: `prefix(c)`, `fold(r)`; other ops scan with `a.scan(op)` |
+| dynamic prefix / range sum | `Fenwick(a)` | O(n) | O(log n) | `+`/`-` only: `fold(r)`; other ops use `SegTree` |
 | sliding window fold | `Window(op)` | | O(1) amortized | `Selective`: monotone deque; else two stacks |
 | offline range add | `Diff` | | O(1) per `add(r, x)`, O(n) finish | `+`/`-` only |
 | old versions | `PersistentSegTree(op, a)`, `PersistentLazySegTree(op, a, act:)` | O(n) | O(log n) | as `SegTree` |
@@ -453,8 +453,8 @@ method exists when the op is a `Group`.
 
 | Structure | With a `Group` |
 |---|---|
-| `Prefix(a)` (`+` only) | `sum(r)` in O(1) |
-| `Fenwick(a)` (`+` only) | `sum(r)` in O(log n); `s[i] = x` (read, then add the difference) |
+| `Prefix(a)` (`+` only) | `fold(r)` in O(1) |
+| `Fenwick(a)` (`+` only) | `fold(r)` in O(log n); `s[i] = x` (read, then add the difference) |
 | `Window(op)` | `pop()` subtracts: O(1) worst case, no second stack |
 | `Diff` (`+` only) | `add(r, x)` offline in O(1), then `finish()` in O(n) |
 | `Potentials(op)` | union-find with relative values (below) |

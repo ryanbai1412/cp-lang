@@ -56,8 +56,8 @@ built-in list. Rules:
   local (`n`, `a`, `g`, `dp`, `ans`, `cnt`, `left`, `best`) is never a
   prelude name; the library spells it otherwise. And a name with two
   plausible meanings across chapters gets one chapter's meaning and the
-  others are qualified (`min` and `max` stay the binary builtins; the
-  folds are methods). (R11.3.3)
+  others are qualified (`min` and `max` stay the builtins over two or more
+  values; the folds of one sequence are methods). (R11.3.3)
 - `scripts/spec-stub.py --check` keeps `std/prelude.cp` and the chapter
   tables in step. The groups are: core types and traits; sequence
   vocabulary (`07-sequences.md`, `lib/sequence-patterns.md`); search and

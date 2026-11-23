@@ -7,23 +7,23 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 2168 (995 passing). Rules: 528.
+Cases: 2177 (995 passing). Rules: 529.
 
 ## Summary per chapter
 
-- R01 (01-lexical-grammar.md): 50 rules, 96 cases; 0 uncovered, 4 happy-path only, 1 negative only
+- R01 (01-lexical-grammar.md): 50 rules, 98 cases; 0 uncovered, 4 happy-path only, 1 negative only
 - R02 (02-values-types.md): 50 rules, 92 cases; 0 uncovered, 7 happy-path only, 0 negative only
 - R03 (03-numbers-layout.md): 24 rules, 53 cases; 0 uncovered, 7 happy-path only, 1 negative only
-- R04 (04-indices.md): 61 rules, 86 cases; 0 uncovered, 2 happy-path only, 0 negative only
+- R04 (04-indices.md): 61 rules, 88 cases; 0 uncovered, 2 happy-path only, 0 negative only
 - R04a (04a-identity-vs-offset.md): 39 rules, 50 cases; 0 uncovered, 1 happy-path only, 3 negative only
 - R04b (04b-keys.md): 27 rules, 62 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R05 (05-ownership.md): 43 rules, 143 cases; 0 uncovered, 3 happy-path only, 3 negative only
 - R06 (06-control-functions.md): 24 rules, 72 cases; 0 uncovered, 1 happy-path only, 1 negative only
-- R07 (07-sequences.md): 87 rules, 103 cases; 0 uncovered, 2 happy-path only, 2 negative only
+- R07 (07-sequences.md): 88 rules, 105 cases; 0 uncovered, 2 happy-path only, 2 negative only
 - R08 (08-traits-generics.md): 29 rules, 71 cases; 0 uncovered, 2 happy-path only, 5 negative only
 - R09 (09-contexts-checks.md): 25 rules, 48 cases; 0 uncovered, 6 happy-path only, 0 negative only
 - R10 (10-io.md): 16 rules, 62 cases; 0 uncovered, 1 happy-path only, 0 negative only
-- R11 (11-modules-prelude.md): 14 rules, 19 cases; 0 uncovered, 1 happy-path only, 2 negative only
+- R11 (11-modules-prelude.md): 14 rules, 20 cases; 0 uncovered, 1 happy-path only, 2 negative only
 - R12 (12-powers.md): 17 rules, 36 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R13 (13-lowering.md): 22 rules, 25 cases; 0 uncovered, 3 happy-path only, 0 negative only
 
@@ -43,14 +43,14 @@ negative case. Complete: rules with no gap in `rule-gaps.txt`.
 | R04b | 27 | 27 (100%) | 6 | 6 (100%) | 27 (100%) |
 | R05 | 43 | 40 (93%) | 23 | 20 (86%) | 37 (86%) |
 | R06 | 24 | 23 (95%) | 17 | 16 (94%) | 22 (91%) |
-| R07 | 87 | 85 (97%) | 23 | 21 (91%) | 83 (95%) |
+| R07 | 88 | 86 (97%) | 24 | 22 (91%) | 84 (95%) |
 | R08 | 29 | 24 (82%) | 15 | 13 (86%) | 22 (75%) |
 | R09 | 25 | 25 (100%) | 18 | 12 (66%) | 19 (76%) |
 | R10 | 16 | 16 (100%) | 8 | 7 (87%) | 15 (93%) |
 | R11 | 14 | 12 (85%) | 7 | 6 (85%) | 11 (78%) |
 | R12 | 17 | 17 (100%) | 6 | 6 (100%) | 17 (100%) |
 | R13 | 22 | 22 (100%) | 7 | 4 (57%) | 19 (86%) |
-| all | 528 | 510 (96%) | 222 | 182 (81%) | 470 (89%) |
+| all | 529 | 511 (96%) | 223 | 183 (82%) | 471 (89%) |
 
 ## Rules
 
@@ -106,7 +106,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R01.8.6 [1+ 1-]: **Optional chaining**: `x?.f`, `f(x?)` propagate `None`; `x ?? y` falls back lazily; `x!` ...
 - R01.8.7 [1+ 1-]: Members without parentheses are O(1) (`xs.len`, `t.parent[v]`); anything that does work ha...
 - R01.9.1 [1+ 0-]: Decorators are `@name` or `@name(args)` on the next item; the set is closed and listed in ...
-- R01.10.1 [1+ 1-]: Call arguments: positional first, named after in any order, each parameter at most once; p...
+- R01.10.1 [3+ 1-]: Call arguments: positional first, named after in any order, each parameter at most once; p...
 - R01.11.1 [0+ 3-] *negative only*: Each of these gets an error with a machine-applicable fix:
 
 ### R02: 02-values-types.md
@@ -228,7 +228,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R04.4.25 [1+ 2-]: . For a domain with a runtime count (`domain V = 1..=n`, `n: 1..=2e5`), a literal outside ...
 - R04.4.26 [2+ 0-]: **Cut range to piece:** a literal `j..i` whose ends are cuts, where a `Range<V>` is expect...
 - R04.4.27 [2+ 1-]: **Scalar to array fill:** a value `x: T` where `[D]T` is expected is the array over `D` wi...
-- R04.4.28 [1+ 0-]: **Integer ranges as domains.** An integer range `lo..hi` (or `lo..=hi`, or a counted `[n]`...
+- R04.4.28 [3+ 0-]: **`Int` to `Mod<P>`:** an integer (a literal or any `Int` value) where a `Mod<P>` is expec...
 - R04.4.12 [1+ 0-]: | `r.len`, `r.is_empty`, `x in r` | count of positions; membership of a position | count o...
 - R04.4.13 [1+ 0-]: | `for x in r`, `r.rev`, `r.step(k)` | positions | cuts | O(1) per step
 - R04.4.14 [1+ 0-]: | `r.first`, `r.last` | end positions, `?V` | end cuts, `?V.cuts` | O(1)
@@ -487,6 +487,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R07.12.6 [1+ 0-]: | `a.next_permutation()`, `a.prev_permutation()` | step to the neighbouring arrangement in...
 - R07.12.7 [1+ 0-]: | `a.rotate_left(k)`, `a.rotate_right(k)`; `s.rotated_left(k)`, `s.rotated_right(k)` | rot...
 - R07.12.8 [1+ 0-]: | `m.get_or_insert(k, v)` | `m[k]`, storing `v` first if absent: `ids.get_or_insert(name, ...
+- R07.12.9 [1+ 1-]: | `m[k]`, `m[k] = v`, `m[k] op= v` on a `Map` | a read traps when `k` is absent (`m.get(k)...
 
 ### R08: 08-traits-generics.md
 
@@ -578,7 +579,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R11.2.4 [1+ 1-]: Everything is inlined into the one output file and tree-shaken: only called functions and ...
 - R11.3.1 [2+ 0-] *happy-path only*: Only programs get the prelude; library modules `use` what they need, so a library never de...
 - R11.3.2 [1+ 1-]: The prelude is the vocabulary of the `lib/` chapters, by rule rather than by request (deci...
-- R11.3.3 [1+ 2-]: Two exclusions keep that safe. A name a contestant commonly gives a local (`n`, `a`, `g`, ...
+- R11.3.3 [2+ 2-]: Two exclusions keep that safe. A name a contestant commonly gives a local (`n`, `a`, `g`, ...
 - R11.3.5 [2+ 0-]: The LSP offers an import quick fix for any non-prelude stdlib name, and `cpl fmt` sorts `u...
 - R11.4.1 [1+ 0-]: The first line of a solution is a compiler stamp, added by the formatter: `// cpl 0.3.0`. ...
 - R11.4.2 [1+ 0-]: `cp.toml` pins the stdlib and each library root by content hash. Old solutions rebuild byt...
@@ -760,7 +761,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - L0607 Large array of padded elements: 1 case(s)
 - L0608 Parentheses do not match the cost: 1 case(s)
 - L0609 cache_field_written_outside: 1 case(s)
-- R0001 Runtime trap: 2 case(s)
+- R0001 Runtime trap: 3 case(s)
 - R0101 Index out of range: 22 case(s)
 - R0102 Value outside a domain: 4 case(s)
 - R0201 Range store out of range: 8 case(s)

@@ -5835,3 +5835,20 @@ only the waiting run, so the newest tip is checked next. A red tip's culprit
 is found in the range since the last green tip (`scripts/revert-on-red.sh`
 already reverts that range). Reverse: set the group back to `ci-<sha>` for
 main to run every commit again once CI is fast enough.
+
+## 227. Rebuild round 3's contradictions settle on what already runs (2026-11-22)
+
+Four holes from `spec/delta/rebuild-3/HOLES.md` had one side that the
+compiler, the stub and decision 53 already agreed on, so `spec/core` and
+`spec/lib` now say it, each with a conformance case: an `Int` (literal or
+value) converts to `Mod<P>` where one is expected, through
+`Mod<P>.from_int` (R04.4.28; the stub's comment already said so); the
+grammar has the generator argument (`sum(f(x) for x in xs)`) and the
+contextual `repeat k:` statement (chapter 1); `min` and `max` take two or
+more values (R11.3.3); a `Map` read traps on an absent key while `=` and
+`op=` insert (R07.12.9, as decision 128 and chapter 13 had it); and a
+`Fenwick` or `Prefix` range query is `fold(r)` (lib/ops-ranges, matching
+both stubs). Reason: each was the reading a cold reader had to guess, and
+picking the implemented one costs no code. Reverse: restore the old wording
+and turn the new cases into reject cases.
+
