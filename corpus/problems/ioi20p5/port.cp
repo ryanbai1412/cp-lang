@@ -7,22 +7,6 @@ fn ri() -> Int:
     let x: Int = read()
     return x
 
-fn next_perm(mut a: List<Int>) -> Bool:
-    let n = a.len
-    var i = n - 2
-    while i >= 0 and a[i] >= a[i + 1]: i -= 1
-    if i < 0: return false
-    var j = n - 1
-    while a[j] <= a[i]: j -= 1
-    a.swap(i, j)
-    var l = i + 1
-    var r = n - 1
-    while l < r:
-        a.swap(l, r)
-        l += 1
-        r -= 1
-    return true
-
 fn eval_mask(mask: Int, perm: List<Int>) -> Int:
     var ans = 0
     var prev = -1
@@ -66,14 +50,14 @@ fn compute_dt(k: Int, x: Int, y: Int) -> (List<Int>, List<List<Int>>, List<List<
                     leaf_res.push(tbl)
                     found_leaf = true
                     break
-                if not next_perm(mut p2): break
+                if not p2.next_permutation(): break
             if not found_leaf:
                 ok_root = false
                 break
         if ok_root:
             var rcopy: List<Int> = [z for z in p]
             return (rcopy, leaf_q, leaf_res)
-        if not next_perm(mut p): break
+        if not p.next_permutation(): break
     return ([], [], [])
 
 fn main_solve():

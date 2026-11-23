@@ -6,22 +6,6 @@ fn ri() -> Int:
     let x: Int = read()
     return x
 
-fn next_perm(mut a: List<Int>) -> Bool:
-    let n = a.len
-    var i = n - 2
-    while i >= 0 and a[i] >= a[i + 1]: i -= 1
-    if i < 0: return false
-    var j = n - 1
-    while a[j] <= a[i]: j -= 1
-    a.swap(i, j)
-    var l = i + 1
-    var r = n - 1
-    while l < r:
-        a.swap(l, r)
-        l += 1
-        r -= 1
-    return true
-
 fn solve_one():
     let n: Int = read()
     let k: Int = read()
@@ -137,7 +121,7 @@ fn solve_one():
             if ok and cap[path.last!] > 0 and gain > best:
                 best = gain
                 best_path = path
-            if not next_perm(mut perm): break
+            if not perm.next_permutation(): break
         var prv = 3
         for nxt in best_path:
             let p = top_pair(prv, nxt)
