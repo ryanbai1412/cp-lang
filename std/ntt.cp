@@ -183,9 +183,9 @@ pub fn ntt<P>(mut a: List<Mod<P>>, inverse: Bool = false, bit_reversed: Bool = f
     let h = ctz(n)
     let rank2 = ctz(P - 1)
     var g = 0
-    if const P == 998_244_353 or P == 469_762_049 or P == 167_772_161:
+    if P == 998_244_353 or P == 469_762_049 or P == 167_772_161:
         g = 3
-    elif const P == 754_974_721:
+    elif P == 754_974_721:
         g = 11
     else:
         g = primitive_root(P)
