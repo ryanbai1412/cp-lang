@@ -100,7 +100,7 @@ if [ -n "$regen" ]; then
     echo "land: regenerated $(echo $regen)"
 fi
 for try in $(seq "$tries"); do
-    [ "$try" = 1 ] || pull
+    [ "$try" = 1 ] || pull || exit 1
     if git push -q --no-verify "$remote" HEAD:main; then
         secs=$(( $(date +%s) - t0 ))
         printf '{"domain":"%s","landed":%s,"seconds":%s,"tries":%s,"commit":"%s"}\n' \
