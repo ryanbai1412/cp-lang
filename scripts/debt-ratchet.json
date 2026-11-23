@@ -7,7 +7,6 @@
     "crates/cpl-ir/src/lower/mod.rs": 5990,
     "crates/cpl-interp/src/lib.rs": 5619,
     "crates/cpl-ir/src/lower/mono.rs": 4570,
-    "crates/cpl-lint/src/rules/taste.rs": 4410,
     "crates/cpl-check/src/check/expr.rs": 4228,
     "crates/cpl-check/src/tests.rs": 3865,
     "crates/cpl-check/src/check/stmt.rs": 3304,
