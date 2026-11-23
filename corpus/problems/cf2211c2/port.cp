@@ -1,14 +1,13 @@
-// Codeforces 2211 C2 — Equal Multisets (Hard Version)
-//
-// Sliding a window of length `k` across `a` and `b` keeps window multisets
-// equal iff every residue class `cls = [m, m + k, ...]` satisfies:
-// - If `a` is not constant on `cls`, then `b[i]` is forced to equal `a[i]`
-//   for every fixed (non-`none`) `i in cls`, leaving no net multiset change.
-// - If `a` is constant on `cls`, then `b` must also be constant on `cls`: all
-//   fixed `b[i]` in `cls` must agree on one value `bv`, and `a[m]` enters the
-//   free multiset pool (`cnt[a[m]] += 1`) while `bv` (if fixed) consumes one
-//   copy (`cnt[bv] -= 1`).
-// The remaining wildcards can complete `b` iff every `cnt[v] >= 0`.
+// Source: Codeforces 2211C2 (Equal Multisets, hard version),
+//   https://codeforces.com/contest/2211/problem/C2
+// Problem: arrays a (values 1..=n) and b (values 1..=n or -1) of length n <= 2e5 and k <= n. Can
+//   the -1s be filled so that every length-k window of b is a rearrangement of the same window
+//   of a? Print YES/NO. Multitest, sum of n <= 2e5.
+// Solution: adjacent windows swap a[i] for a[i + k], so b must change the same way: on each
+//   residue class mod k, if a is not constant then b must equal a at every fixed position;
+//   if a is constant then b must be constant too (fixed values agree). The constant classes
+//   give the first window's multiset: count a's value up, the fixed b value down, and the free
+//   classes fill the rest iff no count goes negative. O(n).
 
 @!multitest
 let (n, k): (1..=200_000, 1..=200_000) = read()

@@ -1,9 +1,12 @@
-// COCI 2021/2022 Contest 2 P4, Magneti: n magnets go into l cells in a
-// row; two magnets attract when their distance is below either radius.
-// The number of placements with no attraction, modulo 1e9+7.
-// Insert the magnets by increasing radius, so the one being placed decides
-// its distance to both neighbours. Blocks of magnets packed as tightly as
-// allowed grow and merge; the cells left over are shared out at the end.
+// Source: COCI 2021/2022 Contest 2 (Magneti), https://dmoj.ca/problem/coci21c2p4
+// Problem: n <= 50 distinct magnets with radii r_i go into a row of l <= 1e4 slots (n <= l), at
+//   most one per slot; a magnet attracts any other strictly closer than its own radius. Count the
+//   placements with no attraction, modulo 1e9+7.
+// Solution: insert magnets by increasing radius, so the newcomer's radius sets its gap to each
+//   neighbour. ways[j][k]: j ordered blocks packed as tightly as allowed, using k cells. A magnet
+//   of radius r opens a block (j + 1 places, 1 cell), joins either end of a block (2j ways, r
+//   cells) or joins two neighbouring blocks (j - 1 ways, 2r - 1 cells). With one block of k
+//   cells, the l - k free cells spread over n + 1 gaps: C(l - k + n, n). O(n^2 l).
 // original: corpus/submissions/4226760.cpp
 
 const P = 1000000007

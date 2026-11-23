@@ -1,13 +1,12 @@
-// Codeforces 2211 D — Binomial Bit-Count Recovery
-//
-// Each `b[i]` equals `sum_{bit=0..29} 2^bit * choose(cnts[bit], i) (mod 10^9 + 7)`,
-// where `cnts[bit]` is the number of elements in the reconstructed array having
-// `bit` set. Scanning `i` from `n` down to `1`:
-// - Subtract `2^bit * choose(cnts[bit], i)` for every bit already known to have
-//   `cnts[bit] > i`.
-// - Any remaining bit set in `val.v` must have `cnts[bit] == i` (since
-//   `choose(i, i) == 1` and all bits `< 29` sum to `< 2^29 < MOD`), so record
-//   `cnts[bit] = i` and include `2^bit` in the current element `a`.
+// Source: Codeforces 2211D (AND-array), https://codeforces.com/contest/2211/problem/D
+// Problem: f(a)_k is the sum of the ANDs over all k-element subsequences of a. Given
+//   b_k = f(a)_k mod 1e9+7 for k = 1..=n (n <= 1e5), print any a with 0 <= a_i < 2^29 that
+//   produces it. Multitest, sum of n <= 1e5.
+// Solution: f(a)_k = sum over bits of 2^bit * C(cnt[bit], k), where cnt[bit] counts elements
+//   with that bit. Go k = n down to 1: subtract the bits already known to have cnt > k; what is
+//   left is the sum of 2^bit over bits with cnt == k (below 2^29 < mod, so read it directly).
+//   The element output at step k holds every bit with cnt >= k, so each bit lands in exactly
+//   cnt elements. O(29 n) with a factorial table.
 
 const MOD = 1_000_000_007
 const L = 29

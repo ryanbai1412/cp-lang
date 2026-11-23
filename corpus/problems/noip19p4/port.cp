@@ -1,11 +1,11 @@
-// NOIP 2019 Day 2 P1, Emiya's meal: a[i][j] dishes use method i and
-// ingredient j. Pick a non-empty set of dishes, at most one per method,
-// such that no ingredient is in more than half of them; count the sets
-// modulo 998244353.
-//
-// Count every non-empty choice, then subtract the bad ones. Only one
-// ingredient can be in more than half, so fix it and track, method by
-// method, its lead: dishes with it minus dishes without it.
+// Source: CSP-S 2019 Day 2 P1 (Emiya's meal), https://dmoj.ca/problem/noip19p4
+// Problem: a[i][j] < 998244353 distinct dishes use method i (n <= 100) and ingredient j
+//   (m <= 2000). Count non-empty sets of dishes with pairwise different methods in which every
+//   ingredient is used by at most half of the dishes, modulo 998244353.
+// Solution: count all sets (prod over methods of (row sum + 1), minus 1) and subtract the bad
+//   ones. Only one ingredient can exceed half, so fix it and DP over methods on its lead: dishes
+//   with it minus dishes without it (each method adds one of either, or nothing). Bad sets end
+//   with lead > 0. O(m n^2).
 // original: corpus/submissions/5147491.cpp
 type Z = Mod<998244353>
 

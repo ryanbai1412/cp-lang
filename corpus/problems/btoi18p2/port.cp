@@ -1,10 +1,10 @@
-// BOI 2018 P2, DNA: a string of n symbols over an alphabet of k, and r
-// requirements "at least q copies of symbol b". Print the length of the
-// shortest substring that meets all of them, or "impossible".
-//
-// Two pointers: grow the window to the right; while every requirement is
-// met, record it and shrink from the left. `unmet` counts the required
-// symbols the window is still short of, so "all met" is one comparison.
+// Source: BOI 2018 Day 1 (DNA), https://dmoj.ca/problem/btoi18p2
+// Problem: a string of N <= 2e5 symbols over an alphabet of K, and R <= K requirements "at least
+//   Q copies of symbol B". Print the length of the shortest substring meeting all of them, or
+//   "impossible".
+// Solution: two pointers: grow the window to the right; while every requirement is met, record
+//   its length and shrink from the left. `unmet` counts required symbols still short in the
+//   window, so "all met" is one comparison. O(N + K).
 // original: corpus/submissions/4456171.cpp
 let (n, k, r): (Int, Int, Int) = read()
 domain Pos = 0..n

@@ -1,10 +1,10 @@
-// AtCoder DP Contest V Subtree: for every vertex v of a tree, count the
-// ways to paint a connected set of vertices black that contains v, modulo m.
-//
-// Rerooting. below[v] counts the sets that stay in v's subtree. beyond[v]
-// is one more than the count for the rest of the tree as seen from v's
-// parent (the "one more" is leaving that side white). The answer at v is
-// their product.
+// Source: AtCoder Educational DP Contest V (Subtree), https://atcoder.jp/contests/dp/tasks/dp_v
+// Problem: a tree of N <= 1e5 vertices. For every vertex v, count the ways to paint vertices
+//   black so the black ones are connected and include v, modulo M (M <= 1e9, not prime).
+// Solution: rerooting. below[v] = product over children c of (1 + below[c]): sets within v's
+//   subtree that contain v. beyond[c] = 1 + (sets on the parent's side containing the parent),
+//   built from beyond[v] and prefix/suffix products of the siblings (no division, M may not be
+//   prime). The answer at v is below[v] * beyond[v]. O(N).
 
 let (n, m): (Int, Int) = read()
 domain V = 1..=n

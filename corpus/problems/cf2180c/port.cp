@@ -1,18 +1,10 @@
-// Codeforces 2180 C — XOR-Factorization
-//
-// Construct `k` integers `a[0..k]` in `0..=n` (`n <= 10^9 < 2^31`) with
-// `XOR(a) == n` and maximum sum:
-// - If `k` is odd, `k` copies of `n` have XOR `n` and achieve the upper bound `k * n`.
-// - If `k` is even, build `a` bit by bit from `MAX_BIT = 30` down to `0`,
-//   tracking `num_smaller`: the prefix `a[0..num_smaller]` is already strictly
-//   `< n` (free on all lower bits), while `a[num_smaller..k]` still matches `n`.
-//   - If `n.bit(b)` is 1: we need an odd number (`k - 1`) of `1`s at bit `b`.
-//     If `num_smaller < k`, increment `num_smaller` (the newly released element
-//     gets `0` at bit `b`); otherwise `a[k - 1]` gets `0`. In both cases
-//     `num_smaller >= 1`, so `a[num_smaller - 1]` is in bounds and excluded.
-//   - If `n.bit(b)` is 0: only the `num_smaller` free elements may take bit `b`,
-//     and we must pick an even count to preserve XOR 0, so `0..(num_smaller / 2 * 2)`
-//     receive `1 << b`.
+// Source: Codeforces 2180C (XOR-factorization), https://codeforces.com/contest/2180/problem/C
+// Problem: given n <= 1e9 and k <= 1e5, print k integers in 0..=n whose XOR is n and whose sum is
+//   as large as possible. Multitest, sum of k <= 1e5.
+// Solution: odd k: k copies of n. Even k: go from the top bit down, keeping a prefix of the
+//   elements already below n (free on lower bits) while the rest still match n. A set bit of n
+//   goes to k - 1 elements: the one left out is newly freed, or the last one when all are free.
+//   A clear bit goes to the largest even number of free elements. O(31 k).
 
 const MAX_BIT = 30
 

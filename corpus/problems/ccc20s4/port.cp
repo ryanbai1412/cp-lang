@@ -1,12 +1,10 @@
-// CCC 2020 S4, Swapping Seats: people from groups A, B and C sit around a
-// round table. Print the fewest swaps of two people after which each group
-// sits together.
-//
-// Fix where the first block starts and which group follows which: the
-// blocks' lengths are the group sizes, so every seat knows the group it
-// wants. Everyone in a wrong seat of the first two blocks has to move, and
-// one swap fixes two of them when they sit in each other's block. The
-// counts come from prefix counts of each letter over the table written twice.
+// Source: CCC 2020 S4 (Swapping Seats), https://dmoj.ca/problem/ccc20s4
+// Problem: N <= 1e6 people of groups A, B, C sit around a round table (a string). Print the
+//   fewest swaps of two people after which each group sits in one contiguous block.
+// Solution: fix where the A block starts and which group follows it: block lengths are the group
+//   sizes, so every seat knows the group it wants. Everyone in a wrong seat of the first two
+//   blocks must move, and one swap fixes two of them when an x sits in y's block and a y in x's.
+//   Prefix counts of each letter over the doubled string give each count in O(1): O(N).
 // original: corpus/submissions/4324014.cpp
 let s: Str = read()
 let n = s.len

@@ -1,8 +1,12 @@
-// Codeforces 2152 G: Query Jungle.
-// After each subtree flip, find the fewest root paths covering every monster.
-// A monster needs its own path iff its next monster in preorder is not in its
-// subtree, so a segment tree with a toggle action over preorder maintains `(ends, first, last)`
-// for both the active monster set and its complement, swapping on subtree flip.
+// Source: Codeforces 2152G (Query Jungle), https://codeforces.com/contest/2152/problem/G
+// Problem: a tree of n <= 2.5e5 vertices rooted at 1, each with or without a monster. Print the
+//   fewest paths from the root that together visit every monster, initially and after each of
+//   q <= 2.5e5 queries that toggle the monster state of every vertex in v's subtree. Multitest.
+// Solution: in preorder, a monster ends a path iff the next monster in preorder is not in its
+//   subtree, so the answer is the number of monsters minus consecutive (preorder) monster pairs
+//   where the first is an ancestor of the second. A SegTree over preorder keeps (ends, first,
+//   last) per segment for both the monster set and its complement (`Flip`); a subtree query flips
+//   one preorder range, swapping the two sides. O((n + q) log n).
 
 @!multitest
 use std.lazy.{Flip, flip_action}
