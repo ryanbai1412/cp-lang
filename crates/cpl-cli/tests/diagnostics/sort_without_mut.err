@@ -1,0 +1,8 @@
+error[E0402]: `sort` changes `a`, so the argument must be passed as `mut a`
+  --> sort_without_mut.cp:2:6
+  |
+2 | sort(a)
+  |      ^
+  = help: add `mut`
+
+sort_without_mut.cp: 1 error

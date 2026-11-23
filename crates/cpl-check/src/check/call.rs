@@ -160,6 +160,7 @@ impl<'a> Checker<'a> {
             }
         };
         let receiver = self.receiver(call, callee, args);
+        self.free_call_mut_args(callee, args);
         let given = self.lambda_params.len();
         for arg in args {
             if matches!(arg.value.kind, ExprKind::Lambda { .. }) {
@@ -1708,9 +1709,13 @@ impl<'a> Checker<'a> {
             });
             if param.mutable && !arg.mutable && is_place(&arg.value) {
                 let quoted = self.quote(arg.value.span);
+                let changed = if param.name == "self" {
+                    &quoted
+                } else {
+                    &param.name
+                };
                 let message = format!(
-                    "`{callee}` changes `{}`, so the argument must be passed as `mut {quoted}`",
-                    param.name
+                    "`{callee}` changes `{changed}`, so the argument must be passed as `mut {quoted}`"
                 );
                 let at = arg.value.span;
                 if let Some(diag) = self.error(codes::MISSING_MUT_AT_CALL, at, message) {
@@ -1842,7 +1847,7 @@ impl Checker<'_> {
 
     /// The catalog row for `base.name` on a built-in type, and the
     /// element type its `T` stands for.
-    fn catalog_row(
+    pub(super) fn catalog_row(
         &mut self,
         base: &Expr,
         name: &str,
@@ -1943,7 +1948,7 @@ fn split_top(text: &str) -> Vec<&str> {
 
 /// Whether `e` names storage the caller keeps; a temporary may be passed to
 /// a `mut` parameter without `mut`, since nothing the caller holds changes.
-fn is_place(e: &Expr) -> bool {
+pub(super) fn is_place(e: &Expr) -> bool {
     match &e.kind {
         ExprKind::Name(_)
         | ExprKind::SelfValue

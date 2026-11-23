@@ -189,3 +189,4 @@ Newest first: what landed (commit), evidence, next, blocked, requests from other
   - `buckets` over a domain-valued table: `domain P = 0..3; let a: [P]P = [P] i => P.first!; let b = buckets(a)` gives E0606 "`P` does not implement `Domain`". Blocks cf2084f, cf2062e1.
   - A path-dependent range: `t.sub(v)` (declared `-> Range<Pre>`, `spec/std/tree.cp:545`) types as `Range<_>`, so `r.start`/`r.end` fail E0203. Same family as the stdlib request above. Blocks cf2062e2.
   - E0501 "can't handle an unbounded range value yet" on `open.fold(..=Time.at(used.ord + c - 1))` inside a `for` body (`corpus/problems/cf2066d2/port.cp:33` once `Used.first!`/`.fold` are applied); a top-level `prefix(a).fold(..=P.last!)` runs. Also cf2201d.
+- 2026-11-22 (diagnostics, for review, not gating) `cpl-check/src/check/mut_args.rs`: a free call to a std fn or `swap` checks `mut` at the call from the builtin catalogue's mutating rows; `catalog_row` is now `pub(super)`.

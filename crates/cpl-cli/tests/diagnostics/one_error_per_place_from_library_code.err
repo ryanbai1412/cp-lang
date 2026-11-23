@@ -1,7 +1,0 @@
-error[E0203]: a `Range<X>` has no member `l` that `cpl run` knows
-  --> one_error_per_place_from_library_code.cp:4:7
-  |
-4 | print(g.fold(l..=r, b..=t))
-  |       ^^^^^^^^^^^^^^^^^^^^
-
-one_error_per_place_from_library_code.cp: 1 error

@@ -28,3 +28,28 @@ fn each_name_a_tuple_assignment_writes_must_be_a_var() {
         ["`xs` is a `let`, so it can't be assigned"]
     );
 }
+
+#[test]
+fn a_library_fn_that_changes_an_argument_takes_it_as_mut() {
+    assert_eq!(
+        check("var a = [3, 1]\nsort(mut a)\nvar x = 1\nvar y = 2\nswap(mut x, mut y)\n"),
+        vec![]
+    );
+    assert_eq!(
+        messages(&check("var a = [3, 1]\nsort(a, by: v => -v)\n")),
+        ["`sort` changes `a`, so the argument must be passed as `mut a`"]
+    );
+    assert_eq!(
+        messages(&check("var a = [3, 1]\nreverse(a)\n")),
+        ["`reverse` changes `a`, so the argument must be passed as `mut a`"]
+    );
+    assert_eq!(
+        messages(&check("var x = 1\nvar y = 2\nswap(x, mut y)\n")),
+        ["`swap` changes `x`, so the argument must be passed as `mut x`"]
+    );
+    // A fn of the program's own named `swap` takes what it declares.
+    assert_eq!(
+        check("fn swap(a: Int, b: Int) -> Int = a + b\nprint(swap(1, 2))\n"),
+        vec![]
+    );
+}
