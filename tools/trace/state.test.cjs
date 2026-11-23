@@ -35,6 +35,17 @@ test("summary covers single-run, agreeing and incomparable traces", () => {
   assert.equal(T.summary(none, T.analyze(none)).state, "incomparable");
 });
 
+test("summary names the trap of a single run that failed", () => {
+  const trapped = structuredClone(samples.dijkstra);
+  const steps = trapped.runs.fast.steps, last = steps[steps.length - 1];
+  last.label = "failed: index 3 is outside an array dimension of length 3";
+  const s = T.summary(trapped, T.analyze(trapped));
+  assert.equal(s.state, "trapped");
+  assert.equal(s.title, `Trapped at step ${steps.length}, line ${last.line}`);
+  assert.equal(s.detail, "index 3 is outside an array dimension of length 3");
+  assert.equal(s.trap, steps.length - 1);
+});
+
 test("spec lane holds the last aligned checkpoint between shared checkpoints", () => {
   const trace = structuredClone(samples.knapsack);
   delete trace.runs.fast.steps[5].checkpoint;

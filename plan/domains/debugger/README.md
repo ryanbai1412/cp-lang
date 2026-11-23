@@ -91,4 +91,5 @@ Align on the loop above and on what generators must describe; answer the three q
 
 | ![knapsack](../../../examples/debugging/screenshots/knapsack-trace.png) | ![shows](../../../examples/debugging/screenshots/shows-trace.png) |
 |---|---|
-| ![trap](../../../examples/debugging/screenshots/trap-trace.png) | `shortest_path.cp`: not capturable (E0301 on v0.3); `vscode-step-back.png` not recaptured |
+| ![trap](../../../examples/debugging/screenshots/trap-trace.png) | ![shortest_path](../../../examples/debugging/screenshots/shortest_path-trace.png) |
+| ![vscode step back](../../../examples/debugging/screenshots/vscode-step-back.png) | |

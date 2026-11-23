@@ -89,8 +89,8 @@ main { min-width: 0; padding: 20px 24px 148px; display: flex; flex-direction: co
 /* Status */
 .status { display: flex; align-items: center; gap: 10px; padding: 8px 10px 8px 12px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--subtle); }
 .status-icon { width: 8px; height: 8px; border-radius: 50%; background: var(--ink-4); flex: none; }
-.status[data-state="diverge"] { border-color: var(--bad-line); background: var(--bad-bg); }
-.status[data-state="diverge"] .status-icon { background: var(--bad); }
+.status[data-state="diverge"], .status[data-state="trapped"] { border-color: var(--bad-line); background: var(--bad-bg); }
+.status[data-state="diverge"] .status-icon, .status[data-state="trapped"] .status-icon { background: var(--bad); }
 .status[data-state="agree"] .status-icon { background: var(--ok); }
 .status-text { flex: 1; min-width: 0; }
 .status-title { font-weight: 600; }
@@ -610,6 +610,9 @@ const TraceCore = (() => {
   }
   function summary(trace, analysis) {
     const first = analysis.divergences[0];
+    const steps = trace.runs.fast.steps, last = steps[steps.length - 1];
+    if (!trace.runs.slow && last && last.label.startsWith("failed: "))
+      return {state:"trapped", title:`Trapped at step ${steps.length}, line ${last.line}`, detail:last.label.slice("failed: ".length), trap:steps.length - 1};
     if (!trace.runs.slow) return {state:"single", title:"Execution captured", detail:`${trace.runs.fast.steps.length} steps · scrub the timeline to replay every snapshot`};
     if (!analysis.pairs.length) return {state:"incomparable", title:"No shared checkpoints", detail:"The runs cannot be compared: add matching checkpoint names to both runs"};
     if (!first) return {state:"agree", title:"Fast and spec agree", detail:`All compared values match at ${analysis.pairs.length} shared checkpoints`};
@@ -888,6 +891,7 @@ if (typeof module !== "undefined") module.exports = TraceCore;
         el("button", {class:"btn icon", type:"button", "aria-label":"Next divergence", title:`Next divergence (]) · ${total} divergent checkpoint${total === 1 ? "" : "s"}`, onclick:() => divergence(1)}, chevron("m6 3 5 5-5 5")),
         el("button", {class:"btn primary", type:"button", onclick:jumpToFirst, text:"Jump to first divergence"}));
     }
+    if (s.trap !== undefined) actions.push(el("button", {class:"btn primary", type:"button", onclick:() => { setTab("state"); player.go(s.trap); }, text:"Jump to the trap"}));
     box.replaceChildren(el("span", {class:"status-icon", "aria-hidden":"true"}),
       el("div", {class:"status-text"}, el("div", {class:"status-title", text:s.title}), el("div", {class:"status-detail", text:s.detail})),
       el("div", {class:"status-actions"}, actions));
