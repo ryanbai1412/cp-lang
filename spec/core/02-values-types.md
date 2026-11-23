@@ -6,6 +6,18 @@ traits, generics and row types chapter 8. Sources: decisions 1.x, 2.x,
 33, 88, 124, 128, 131, 132, 134-136, 141, 149; archived
 `design/spec/11-13, 23`.
 
+## The model in one paragraph
+
+Every value is plain, heap or a function. Plain values (numbers, `Bool`,
+`Char`, positions and cuts, `?T` of a plain `T`, and tuples, records,
+structs and enums built from them) copy and fit in registers. Heap values
+(`List`, `Str`, arrays, maps, every container) move, and copy only with
+`.clone()` (decision 128). Function values capture nothing at zero size
+and are always inlined. `?T` is the one way to say absent, stored in a
+spare value of `T` (chapter 3). Inference unifies within one expression,
+never across statements (decision 131), so a type error points at the
+line that caused it.
+
 ## 2.1 The kinds of value
 
 Every value is one of:

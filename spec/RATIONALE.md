@@ -116,8 +116,8 @@ Questions from site or any reader: add them to
   out when hashing is wanted).
 - Graphs: 146, 315. Search and DP: 81, 291. Flows: 112.
 
-## Overviews still missing
+## Overviews
 
-Chapters 01, 02, 06, 08, 09, 10, 11 and 13 open with their first rule
-section instead of a "model in one paragraph"; spec adds one to each
-supported chapter so the site has a readable start to build on.
+Every core chapter opens with a short overview ("The model in one
+paragraph", or chapter 5's "The model in six sentences"); the site's
+in-depth chapters start there and follow the rule sections for detail.

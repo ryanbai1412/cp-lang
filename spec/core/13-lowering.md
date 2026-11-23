@@ -5,6 +5,15 @@ the generated C++17: what each form becomes, what it costs, and what
 `cpl explain` reports. Sources: decisions 31, 52, 148, 149; archived
 `design/spec/18`; `03-numbers-layout.md` for widths and niches.
 
+## The model in one paragraph
+
+Every program becomes one deterministic C++17 file, aiming under 32 KB
+and failing at 64 KB: a stamp, the runtime pieces used, the library
+instances used, then `main` on a thread with a large stack. Each form
+has a stated C++ shape and cost, so what looks O(1) is O(1), and
+`cpl explain` shows the choices (widths, niches, specializations). The
+lowering adds no undefined behaviour to valid programs.
+
 ## 13.1 The output file
 
 - One deterministic C++17 file: a stamp, the used runtime pieces, the

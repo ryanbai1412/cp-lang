@@ -4,6 +4,19 @@ Status: draft for 0.3.0. Sources: archived `design/spec/17-contexts.md`,
 `18-checks-lowering.md`; decisions 100, 145, 148. Decision 148
 supersedes the older rule that unproven checks stay in submissions.
 
+## The model in one paragraph
+
+A context is a library-declared record of compile-time settings with
+defaults (`io` holds the base, separator, answers and precision), set for
+the rest of a block by a `with` line such as `with io(base: 1)`. One
+mechanism replaces a flag per feature; lints are silenced the same way,
+`with lint(name: allow)` (decision 243). Every checked operation answers
+what it means, what the compiler proves and what each build checks:
+checked builds (`cpl run`, tests, stress) trap on range stores,
+overflow, bounds and asserts; release builds for the judge run no checks
+by default (decision 148), so a program that would trap gives a wrong
+answer, never undefined behaviour.
+
 ## 9.1 Contexts
 
 A context is a library-declared record of compile-time values with

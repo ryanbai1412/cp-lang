@@ -5,6 +5,16 @@ which is authoritative; this chapter gives the forms and their meaning.
 Sources: archived `design/spec/14-16`, `plan/15-program-structure.md`;
 decisions 126, 127, 129, 138, 141, 144.
 
+## The model in one paragraph
+
+A `fn` lends its parameters for the call; `mut` marks a mutated
+parameter at both the declaration and the call. A lambda is an
+expression; bound with `let` it may call itself (decision 127). There is
+no overloading: one name, one function. A loop-shaped library facility
+is a generator (`yields`), consumed by a plain `for`, so `break`,
+`continue`, `return` and labelled breaks work as in any loop
+(decision 126). Ownership of captures and lends is chapter 5.
+
 ## 6.1 Functions
 
 <!-- spec-only: signature tour with a `...` body -->

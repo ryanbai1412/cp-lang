@@ -4,6 +4,16 @@ Status: draft for 0.3.0. Sources: archived `design/spec/14`; decisions
 59, 116, 127, 142, 146 (row types, trial), round 5 (`lib/ops-ranges.md`)
 for laws; `12-powers.md` for what user libraries can define.
 
+## The model in one paragraph
+
+A trait names a capability (`Ord`, `Next<V>`, `Monoid<T>`), an `impl`
+gives a type that capability, and generic code takes type parameters
+bounded by traits. A law (`law left_id(x: T) = ...`) states the algebra
+a trait promises, and the library relies on it: commutative tags need
+no push-down in a segment tree (`lib/ops-ranges.md`). User libraries
+declare traits, laws and impls exactly as the stdlib does
+(`12-powers.md`).
+
 ## 8.1 Traits and impls
 
 <!-- spec-only: the prelude's own trait declarations -->

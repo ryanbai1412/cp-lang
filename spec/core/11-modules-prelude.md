@@ -3,6 +3,15 @@
 Status: draft for 0.3.0. Sources: `plan/15-program-structure.md` §2, §12-14;
 decisions 72, 94; `std/prelude.cp`.
 
+## The model in one paragraph
+
+A program file is statements; a library file is items and `use` lines,
+with `pub` marking exports. Items hoist within their block, except a
+`domain`, `type` or `const` whose value is read at runtime, which runs
+where it is written. The prelude is exactly the vocabulary of the `lib/`
+chapters' main tables (decision 150), so a contestant never writes a
+`use` for an ordinary contest name.
+
 ## 11.1 Program files and library files
 
 - A **program** file is a sequence of statements (chapter 10). It may

@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- Chapter overviews: "The model in one paragraph" added to core chapters 01, 02, 06, 08, 09, 10, 11 and 13; every core chapter now opens with one (Ryan's in-depth chapters ask).
 - `spec/RATIONALE.md`: per area, the overview chapter, decision ids and the alternatives that lost, for site's in-depth chapters (Ryan, via coordinator 21:34). Milestone 1 criteria: judge-profile ids dropped from the milestone (Ryan 21:36), rationale added as criterion 7.
 - Round 6 contradictions: H-RANGEFENWICK-GONE settled by decision 316 (spec wins, stdlib removes the types); H-SCC-BLOCKED is stale std comments, `scc`/`topo` over a domain pass in both modes (new case `std-graph/scc-topo-over-domain.cp`); H-STD-K-COUNT routed (6 std doc lines say `D.K`). Cases `std-segtree/lazy-add-replaces-range-fenwick.cp` passes, `std-segtree/dual-add-point-read.cp` fails E0302 (`SegTree(a:, act:)` without an op), routed to stdlib.
 - LSP rule ids Rlsp.1-5 (diagnostics, completion, definition, formatting equals `cpl fmt`, one-line Neovim setup plus Vim) in `spec/tools/lsp.md`; evidence is the LSP's suites, so the 5 are allowed coverage gaps. Asked tools for a Neovim smoke over completion, formatting and definition.

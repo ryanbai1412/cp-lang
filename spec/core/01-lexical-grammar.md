@@ -5,6 +5,15 @@ Status: draft for 0.3.0. Sources: decisions 10 (archived chapter
 Where those disagree, the later decision wins and this chapter states the
 result.
 
+## The model in one paragraph
+
+Source is ASCII outside strings and comments, with `//` comments and
+`///` Markdown doc comments. Blocks are indentation after a `:`, as in
+Python, and a short body may follow the `:` on the same line. Each idea
+has one spelling: rejected spellings (`++`, `#` comments, `enumerate`)
+are errors that name the accepted form. The later decision wins where
+older sources disagree, and this chapter states the result.
+
 ## 1.1 Source text
 
 A source file is UTF-8. Bytes outside ASCII may appear only inside string

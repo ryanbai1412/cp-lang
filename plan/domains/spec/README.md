@@ -30,8 +30,8 @@ Exit criteria (each checkable):
 3. **Writable from the docs.** A cold rebuild on Codeforces Div. 2 A-D problems, reading only `spec/` and `std/`, records 0 contradictions and < 5 holes inside the subset (round 6, CSES: 3 contradictions, 26 holes).
 4. **Range keys folded.** Decision 289 is in every chapter and its 7 cases pass (today 4/7; the 3 failures are compiler-owned and listed in SUBSET.md).
 5. **Journey contracts pinned.** `check`, `run`, `test`, `stress`, `build` and the four Neovim LSP features (diagnostics, completion, formatting, definition) carry rule ids with cases or named owner tests (cli, fmt, lint, bundle, stress, lsp done; the judge-profile ids landed but are not a milestone criterion, per Ryan).
-7. **Rationale readable.** `spec/RATIONALE.md` gives every subset area its overview chapter, decision ids and the alternatives that lost; every supported chapter opens with a model-in-one-paragraph overview the site's in-depth chapters build on.
 6. **Portable.** CRLF source and input, and paths, are specified the same on all three platforms, with cases.
+7. **Rationale readable.** `spec/RATIONALE.md` gives every subset area its overview chapter, decision ids and the alternatives that lost; every supported chapter opens with a model-in-one-paragraph overview the site's in-depth chapters build on.
 
 Deferred (in parallel, after blockers): trait/matrix cells outside the subset; trace, DAP and explain rule ids; bug-catch rounds; `cpl migrate` (R11.4.3); advanced lib chapters beyond *documented*; prelude gaps for non-subset names. New language features only where a journey step is blocked.
 
