@@ -13,7 +13,7 @@ The site works: build, gate, typecheck, unit tests and both browser smokes pass,
 3. **UI pass (M1).** One nav placement across `HomeLayout` and `DocsLayout`; landing tabs lead with programs that run; phone pass at 390 px on every route; light and dark. Screenshot every change into the worklog.
 4. **Size (M1).** Search index from 2.7 MB to ≤ 500 KB gzipped: index the reference by symbol and summary instead of full text, or split it per section. Keep the wasm cap.
 5. **Live guides (M2).** Fenced `cp` blocks with status `runs` render as a compact `Runner` (Run, Open in playground). Static otherwise, with the status badge.
-6. **Learn depth (M3).** Done at the proposed size: chapters 4-8 (functions, records and match; strings and output; sorting and searching; the standard library; stress and trace) and 8 more original problems, each with reference, tests and a judged starter in the gate. Graphs and DP stay in the guides; a chapter each is the next step if Ryan wants depth over breadth.
+6. **Learn depth (M3).** Done at the proposed size: chapters 4-8 (functions, records and match; strings and output; sorting and searching; the standard library; stress and trace) and 8 more original problems, each with reference, tests and a judged starter in the gate. Then, on Ryan's scope ("learn: through guides, through practice problems"), a graphs chapter and a DP chapter with two judged problems each: 10 chapters, 19 problems. Interval DP waits on `V.ranges` in the compiler.
 7. **Spec-only snippets to zero (M3).** The 7 `spec` and 4 `checks` snippets wait on the compiler; list them in the compiler worklog with the gate report, flip each the day it runs.
 
 ## Why these milestones

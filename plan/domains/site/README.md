@@ -25,13 +25,13 @@ A competitive programmer goes from "what is this" to an accepted submission they
 2. `scripts/site-check.sh` green on main and in CI: wasm build, size caps, build, gate, links, browser smoke.
 3. Docs-only eval: a model given only the served docs passes ≥ 95% of the 55 unseen problems.
 4. Zero open layout bugs at 390 / 768 / 1440 px, light and dark, every route.
-5. Learn covers the language a Div 2 A-C needs: 8 read chapters, 15 judged practice problems.
+5. Learn covers the language a Div 2 A-C needs: 10 read chapters (graphs and DP included), 19 judged practice problems.
 
 ## Milestones
 
 - **M1 Green and honest.** Exit: `scripts/site-check.sh --no-cache` prints `site-check: ok` on main; CI site workflow runs it; `pnpm --dir web links` 0 broken; search index ≤ 500 KB gzipped; one nav layout on every page; a written UI pass (3 widths × 2 themes) with 0 open bugs and screenshots.
 - **M2 Writable from the docs.** Exit: the eval runs on demand again against `/llms-full.txt`; pass ≥ 52/55; every failure in the last run is triaged as a docs gap (fixed here) or a language gap (filed with its owner); guide code blocks with status `runs` have a Run button (smoke runs one).
-- **M3 Learn and launch.** Exit: 8 read chapters, 15 practice problems, each with ref + tests judged in the gate; gate `spec: 0`; `cpl doc` HTML in the site's design (side-by-side screenshots); 0.3 release notes page.
+- **M3 Learn and launch.** Exit: 10 read chapters, 19 practice problems, each with ref + tests judged in the gate; gate `spec: 0`; `cpl doc` HTML in the site's design (side-by-side screenshots); 0.3 release notes page.
 
 ## Metrics
 
@@ -66,7 +66,7 @@ Probes (cold agent, pass/fail + time):
 - **P1 docs-only solve:** with only cp-lang.org, solve 3 unseen Div 2 A/B problems in the playground. Tests 1, 3.
 - **P2 lookup:** find "what does `r.last_true(ok)` return on an empty range" via the site. Tests 2. Baseline: failed (search missed bare method names and core table rows); now passes, `last_true` finds the R04.4.19 row (smoke-tested).
 - **P3 add a practice problem** by following ARCHITECTURE.md; the gate judges it. Files touched, minutes. Baseline (site agent dry run, not cold): ARCHITECTURE.md had no recipe and the gate checked only `ref.cp` against `tests.json`, so a problem missing its page or meta.json entry shipped silently. Now a 4-step recipe; the gate fails on a missing piece. 4 files touched. Cold run pending.
-- **P4 phone pass:** list layout bugs at 390 px on every route. Tests 4. Baseline, mechanical half: `pnpm --dir web phone` -> 12/12 routes fit (2 Learn routes added with chapters 4-8), nothing past the edge. Judged half (site agent, 8 routes on cp-lang.org at 390x844): the playground editor pushed Input below the fold (fixed); two menu icons, chevron on Home layouts and sidebar on Docs layouts (the nav-placement debt); reference signatures looked cut off under the copy button (really truncated by `cpl doc`; fixed); the landing tab row clipped its last tab (fixed: rows wrap).
+- **P4 phone pass:** list layout bugs at 390 px on every route. Tests 4. Baseline, mechanical half: `pnpm --dir web phone` -> 15/15 routes fit (Learn routes added with chapters 4-9), nothing past the edge. Judged half (site agent, 8 routes on cp-lang.org at 390x844): the playground editor pushed Input below the fold (fixed); two menu icons, chevron on Home layouts and sidebar on Docs layouts (the nav-placement debt); reference signatures looked cut off under the copy button (really truncated by `cpl doc`; fixed); the landing tab row clipped its last tab (fixed: rows wrap).
 
 ## Improve (highest impact first)
 
@@ -74,9 +74,9 @@ Probes (cold agent, pass/fail + time):
 2. Run `scripts/site-check.sh` in CI (infra request filed); it is on main and green locally.
 3. Search index: done, 2.7 MB -> 487 KB gzipped (reference pages index headings, intro and core table rows); 13 KB of headroom left.
 4. UI consistency: the top nav sits left on Home/Play and right on Docs/Learn (two Fumadocs layouts); none of the 8 examples in the landing's syntax and library tabs has Run (they are `checks` or `spec`).
-5. Guide code blocks live (Run) when they run; today they are static.
-6. Learn: done at the proposed size (8 chapters, 15 problems); next is a cold read of chapters 4-8 against the rubric.
-7. `cpl doc` HTML in the site's design; trace viewer links back.
+5. Guide code blocks live: done; every block that prints something has Run.
+6. Learn: 10 chapters, 19 problems (graphs and DP added); next is a cold read of chapters 4-9 against the rubric, and interval DP once `V.ranges` runs (compiler request filed).
+7. `cpl doc` HTML in the site's design: done ([screenshot](screenshots/cpldoc.jpg)); trace viewer links back is next.
 
 ## Ryan's role
 
