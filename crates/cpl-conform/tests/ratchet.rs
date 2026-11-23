@@ -250,3 +250,66 @@ fn an_edited_doc_example_is_not_a_regression_but_a_lost_one_is() {
         vec!["docs/docs/a.cp#2: previously passing case disappeared"]
     );
 }
+
+#[test]
+fn docs_case_ids_survive_an_edited_example() {
+    use cpl_conform::docs::example_ids;
+    let before = "\
+domain Dir4 = 0..4:
+    /// example: `Dir4.up().delta == (-1, 0)`
+    pub fn up() -> Dir4 = Dir4(0)
+    /// example: `Dir4.left.delta == (0, -1)`
+    /// example: `Dir4.left.turn == Dir4.down`
+    @inline
+    pub fn left() -> Dir4 = Dir4(3)
+/// example: `(1, 1).up`
+pub fn up<R, C>(self: (R, C)) -> ?(R, C) = None
+";
+    let after = before.replace("Dir4.up().delta", "Dir4.up.delta");
+    let ids = |text: &str| -> Vec<String> {
+        example_ids("grid.cp", text)
+            .into_iter()
+            .map(|(id, _)| id)
+            .collect()
+    };
+    assert_eq!(
+        ids(before),
+        [
+            "grid.cp#Dir4.up:1",
+            "grid.cp#Dir4.left:1",
+            "grid.cp#Dir4.left:2",
+            "grid.cp#up:1",
+        ]
+    );
+    assert_eq!(ids(before), ids(&after), "editing an example keeps its id");
+
+    let base = make_board("docs", &[("grid.cp#Dir4.up:1", "pass")]);
+    let edited_ok = make_board("docs", &[("grid.cp#Dir4.up:1", "pass")]);
+    assert!(check_ratchet(&base, &edited_ok, false)
+        .regressions
+        .is_empty());
+    let edited_broken = make_board("docs", &[("grid.cp#Dir4.up:1", "fail")]);
+    let report = check_ratchet(&base, &edited_broken, false);
+    assert!(
+        report
+            .regressions
+            .iter()
+            .any(|r| r.contains("grid.cp#Dir4.up:1: regressed from pass to fail")),
+        "an edited example that breaks is a regression of the same case, got {:?}",
+        report.regressions
+    );
+}
+
+#[test]
+fn std_docs_case_ids_are_unique() {
+    let root = find_repo_root().expect("repo root");
+    let examples = cpl_conform::docs::discover(&root, None);
+    let mut seen = std::collections::BTreeSet::new();
+    for ex in &examples {
+        assert!(
+            seen.insert(ex.id.clone()),
+            "duplicate docs case id {}",
+            ex.id
+        );
+    }
+}

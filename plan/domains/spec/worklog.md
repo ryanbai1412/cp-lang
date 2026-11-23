@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- Doc example cases are now keyed `file#item:k` (`docs::example_ids`), not by a hash of their text, so an edited example keeps its id. The committed docs baseline is rewritten to the new ids.
 - `cpl-conform` now bounds each interpreted conformance run by `CPL_CONFORM_CASE_TIMEOUT`. Before this, a case past the limit hung the whole suite: `range-folds-are-ranges-own.cp` ran for 19 min.
 - Decision 326 (Ryan): R07.9.6, a fold costs what the receiver's type says. R08.1.4 now says overrides hold through generics and extension fns are final. 5 cases; probes showed trait-default overrides through generics work, a concrete `self: Range<Int>` extension is silently ignored, a user `impl Seq` isn't walkable, and the range `len`/`min`/`max` walk. Routed to compiler, stdlib and tools.
 - Rebuild round 7 (10 Codeforces Div. 2 problems, `delta/rebuild-7/`): 33 holes, 7 contradictions, 24 silent, 2 missing-stdlib. All 7 contradictions are `std/` against an already-settled spec rule, routed to stdlib. 12 silent holes are already answered (R06.1.4, R01.5, R02.4.6, R04.2.1 and others). 4 rules got new text or cases: R01.5 range precedence, R10.2.8 blank lines, R10.3.5 `sep:` against tuple fields, R02.5.1 `let` unwrap. All 4 pass. `Str(len: n..=n)` is E0504, so 2 known gaps were routed to compiler. General fixes are under PLAN.md "General fixes owed".

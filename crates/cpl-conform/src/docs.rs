@@ -5,7 +5,6 @@ use cpl_check::Database;
 
 use crate::runner::{self, CompileError};
 use crate::scoreboard::{CaseOutcome, SuiteReport};
-use crate::spec_blocks::block_hash;
 
 #[derive(Clone, Debug)]
 pub struct DocExample {
@@ -13,6 +12,73 @@ pub struct DocExample {
     pub module: String,
     pub snippet: Option<String>,
     pub stdin: String,
+}
+
+/// The `/// example:` lines of one std file, as `(id, body)`. The id is
+/// `file#item:k`, the k-th example in the doc comment of `item` (`Type.item`
+/// inside a type's block), so editing an example keeps its id. A repeated item
+/// name gets `~2`, `~3`, ... in file order.
+pub fn example_ids(rel: &str, text: &str) -> Vec<(String, String)> {
+    let mut out = Vec::new();
+    let mut pending: Vec<String> = Vec::new();
+    let mut container = String::new();
+    let mut seen: HashMap<String, usize> = HashMap::new();
+    for line in text.lines() {
+        let trimmed = line.trim_start();
+        if let Some(after_doc) = trimmed.strip_prefix("///") {
+            if let Some(rest) = after_doc.trim_start().strip_prefix("example:") {
+                pending.push(rest.trim().to_string());
+            }
+            continue;
+        }
+        if trimmed.is_empty() || trimmed.starts_with('@') || trimmed.starts_with("//") {
+            continue;
+        }
+        let name = item_name(trimmed);
+        let top = trimmed.len() == line.len();
+        let qualified = if top || container.is_empty() {
+            name.clone()
+        } else {
+            format!("{container}.{name}")
+        };
+        if top {
+            container = name;
+        }
+        if pending.is_empty() {
+            continue;
+        }
+        let occ = seen.entry(qualified.clone()).or_insert(0);
+        *occ += 1;
+        let item = if *occ == 1 {
+            qualified
+        } else {
+            format!("{qualified}~{occ}")
+        };
+        for (k, body) in pending.drain(..).enumerate() {
+            out.push((format!("{rel}#{item}:{}", k + 1), body));
+        }
+    }
+    for (k, body) in pending.into_iter().enumerate() {
+        out.push((format!("{rel}#eof:{}", k + 1), body));
+    }
+    out
+}
+
+/// The name an item header declares: `pub fn up() -> Dir4` is `up`,
+/// `impl Monoid for Sum:` is `Monoid for Sum`.
+fn item_name(header: &str) -> String {
+    let mut rest = header.strip_prefix("pub ").unwrap_or(header).trim_start();
+    if let Some(after) = rest.strip_prefix("impl") {
+        let end = after.find([':', '=']).unwrap_or(after.len());
+        return after[..end].trim().to_string();
+    }
+    if let Some((_keyword, after)) = rest.split_once(' ') {
+        rest = after.trim_start();
+    }
+    let end = rest
+        .find(|c: char| !(c.is_alphanumeric() || c == '_'))
+        .unwrap_or(rest.len());
+    rest[..end].to_string()
 }
 
 /// Discovers `/// example:` lines in `std/*.cp`.
@@ -33,30 +99,13 @@ pub fn discover(root: &Path, filter: Option<&str>) -> Vec<DocExample> {
             .and_then(|s| s.to_str())
             .unwrap_or("")
             .to_string();
-        let mut seen: HashMap<String, usize> = HashMap::new();
-        for line in text.lines() {
-            let trimmed = line.trim_start();
-            let Some(after_doc) = trimmed.strip_prefix("///") else {
-                continue;
-            };
-            let Some(rest) = after_doc.trim_start().strip_prefix("example:") else {
-                continue;
-            };
-            let body = rest.trim();
-            let base = format!("{rel}#{}", block_hash(body));
-            let occ = seen.entry(base.clone()).or_insert(0);
-            *occ += 1;
-            let id = if *occ == 1 {
-                base
-            } else {
-                format!("{base}~{occ}")
-            };
+        for (id, body) in example_ids(&rel, &text) {
             if let Some(f) = filter {
                 if !id.contains(f) && !body.contains(f) {
                     continue;
                 }
             }
-            let (snippet, stdin) = parse_example_body(body);
+            let (snippet, stdin) = parse_example_body(&body);
             out.push(DocExample {
                 id,
                 module: module.clone(),
