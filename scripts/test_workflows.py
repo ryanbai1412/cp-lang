@@ -1,5 +1,6 @@
 """Workflow invariants: every job has a time cap (ci/R28), and blocking jobs
-run on Linux, macOS and Windows (ci/R29); handbook/guidelines/ci-checklist.md."""
+run on Linux, macOS and Windows (ci/R29), and only a green job marks a cached
+target/ as built at HEAD (ci/R32); handbook/guidelines/ci-checklist.md."""
 import glob
 import os
 import re
@@ -31,6 +32,14 @@ def job_block(text, job):
 
 
 class WorkflowTest(unittest.TestCase):
+    def test_only_a_green_job_stamps_the_cached_target(self):
+        with open(os.path.join(ROOT, ".github", "workflows", "ci.yml"), encoding="utf-8") as f:
+            stamps = [l for l in f if "> target/.ci-sha" in l]
+        self.assertTrue(stamps)
+        for line in stamps:
+            self.assertIn('"${{ job.status }}" != success ] ||', line,
+                          "a red job's target/ may miss rebuilt crates; keep the restored .ci-sha")
+
     def test_blocking_jobs_cover_every_os(self):
         with open(os.path.join(ROOT, ".github", "workflows", "ci.yml"), encoding="utf-8") as f:
             ci = f.read()

@@ -261,3 +261,16 @@ devex budget. *Example:* `fail "tests failed"` fails
 `test_every_gate_failure_says_how_to_fix_it`; `fail "tests failed; rerun:
 cargo nextest run -p cpl-check"` passes.
 *Enforced by:* `scripts/test_check_cache.py`, run by `scripts/check.sh`.
+
+### ci/R32
+
+A cached `target/` records the commit it was built at (`target/.ci-sha`) only
+when the job that built it passed; a red job saves it with the base it
+restored.
+*Why:* `scripts/ci-mtime.sh` back-dates every file unchanged since that
+commit, so cargo trusts the artifacts. A job that failed before compiling a
+changed crate, saved as built at HEAD, made every later run reuse a stale
+`cpl-lint` build script and fail on a `lint.toml` key main already accepted.
+*Example:* the clippy gate fails at check; its cache is saved with the old
+`.ci-sha`, and the next run rebuilds what changed since then.
+*Enforced by:* `scripts/test_workflows.py`, run by `scripts/check.sh`.

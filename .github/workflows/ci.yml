@@ -15,7 +15,7 @@ permissions:
 # rebuilds only the crates and test binaries whose inputs changed.
 env:
   CARGO_INCREMENTAL: "0"
-  TARGET_KEY: target-${{ github.workflow }}-v1
+  TARGET_KEY: target-${{ github.workflow }}-v2
 
 # On main a started run always finishes, and at most one more waits: a newer
 # push replaces the waiting run, so CI checks the newest tip next instead of
@@ -92,7 +92,10 @@ jobs:
         # Cargo 1.100 keeps no target/<profile>/deps, so look for build/.
         run: |
           [ -n "$(ls target/*/build 2>/dev/null | head -1)" ] || { echo "target/ has no build; not saving"; exit 0; }
-          git rev-parse HEAD > target/.ci-sha && rm -rf target/check-cache target/tmp target/judge-probes
+          # Only a green job built every crate the commit changed; a red one keeps the
+          # restored base, so the next run re-stamps (and rebuilds) those files (ci/R32).
+          [ "${{ job.status }}" != success ] || git rev-parse HEAD > target/.ci-sha
+          rm -rf target/check-cache target/tmp target/judge-probes
           echo built=true >>"$GITHUB_OUTPUT"
       - uses: actions/cache/save@v4
         # Without !cancelled() a red test skips the save, and the cache goes hours stale.
@@ -455,7 +458,10 @@ jobs:
         # Cargo 1.100 keeps no target/<profile>/deps, so look for build/.
         run: |
           [ -n "$(ls target/*/build 2>/dev/null | head -1)" ] || { echo "target/ has no build; not saving"; exit 0; }
-          git rev-parse HEAD > target/.ci-sha && rm -rf target/check-cache target/tmp target/judge-probes
+          # Only a green job built every crate the commit changed; a red one keeps the
+          # restored base, so the next run re-stamps (and rebuilds) those files (ci/R32).
+          [ "${{ job.status }}" != success ] || git rev-parse HEAD > target/.ci-sha
+          rm -rf target/check-cache target/tmp target/judge-probes
           echo built=true >>"$GITHUB_OUTPUT"
       - uses: actions/cache/save@v4
         if: ${{ !cancelled() && steps.stamp.outputs.built == 'true' }}
