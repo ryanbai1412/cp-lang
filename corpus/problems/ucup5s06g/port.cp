@@ -12,7 +12,7 @@
 use std.graph.{bfs01}
 
 @!multitest
-let (n, m): (1..=500_000, 0..=500_000) = read()
+let (n, m): (2..=1e5, 1..=2e5) = read()
 domain V = 1..=n
 domain E = 0..m
 let edges: [E](u: V, v: V) = read()

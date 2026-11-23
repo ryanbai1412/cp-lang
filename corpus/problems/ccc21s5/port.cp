@@ -5,9 +5,9 @@
 //   (at most lcm(1..16) = 720720) is the smallest choice, so if it fails nothing works. Per
 //   z, a difference array over the cuts marks the covered positions (O(16 n)); then a gcd
 //   SegTree checks every requirement, O(m log n).
-let (n, q): (1..=150000, 1..=100000) = read()
+let (n, m): (1..=150_000, 1..=150_000) = read()
 domain I = 1..=n
-let reqs: [0..q](l: I, r: I, x: 1..=16) = read()
+let reqs: [0..m](l: I, r: I, x: 1..=16) = read()
 
 // delta[x, b]: change at boundary b in how many requirements with value x are open
 var delta: [0..=16, I.cuts]Int = 0

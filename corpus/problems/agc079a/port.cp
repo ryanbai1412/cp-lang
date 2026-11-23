@@ -12,8 +12,8 @@ type Z = Mod<P>
 let comb = Comb<Z>()
 
 @!multitest
-let n: 2..=3e5 = read()
-let p: [0..n - 1]1..=n = read()
+let n: 2..=250_000 = read()
+let p: [0..n - 1]1..=n - 1 = read()
 
 var blocks: List<(r: Int, size: Int)> = []
 var den: Z = 1
