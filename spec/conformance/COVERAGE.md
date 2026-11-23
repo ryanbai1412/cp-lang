@@ -7,7 +7,7 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 2659 (995 passing). Rules: 568.
+Cases: 2660 (995 passing). Rules: 568.
 
 ## Summary per chapter
 
@@ -20,7 +20,7 @@ Cases: 2659 (995 passing). Rules: 568.
 - R05 (05-ownership.md): 43 rules, 155 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R06 (06-control-functions.md): 24 rules, 96 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R07 (07-sequences.md): 90 rules, 145 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R08 (08-traits-generics.md): 29 rules, 89 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R08 (08-traits-generics.md): 29 rules, 90 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R09 (09-contexts-checks.md): 26 rules, 56 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R10 (10-io.md): 18 rules, 102 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R11 (11-modules-prelude.md): 16 rules, 46 cases; 0 uncovered, 0 happy-path only, 1 negative only
@@ -529,7 +529,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R08.1.4 [3+ 2-]: **A fold costs what the receiver's type says.** The costs above are the generic walks ever...
 - R08.1.1 [14+ 1-]: A trait declares methods (with optional default bodies), associated types, field requireme...
 - R08.1.2 [3+ 1-]: `impl Trait for T` implements it; `impl A + B for T` is shorthand for two impls. One impl ...
-- R08.1.3 [1+ 1-]: Inherent methods (`impl T:` or methods in a struct body) live in the type's module only.
+- R08.1.3 [1+ 2-]: Inherent methods (`impl T:` or methods in a struct body) live in the type's module only.
 - R08.1.5 [2+ 1-]: Operators are trait methods (`Add`, `Sub`, `Mul`, `Div`, `Rem` with `Rhs` and `Out`, `Neg`...
 - R08.1.6 [1+ 1-]: **Derived impls are structural**: tuples, records, structs and enums get `Eq`, `Ord` (lexi...
 - R08.1.7 [5+ 1-]: **Field traits**: a trait may require fields (`trait Target<V>: to: V`); a bodiless `@get ...
@@ -764,7 +764,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0406 Recursive `var` lambda: 1 case(s)
 - E0407 Duplicate enum variant tag: 1 case(s)
 - E0408 assign_into_range *(0.3)*: 1 case(s)
-- E0501 Unsupported construct in backend: 8 case(s)
+- E0501 Unsupported construct in backend: 9 case(s)
 - E0502 Non-ASCII character in source or string: 1 case(s)
 - E0503 Removed syntax from an older version: 10 case(s)
 - E0504 Planned syntax, not implemented yet: 1 case(s)
