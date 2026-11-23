@@ -23,7 +23,7 @@ fn solve():
     // that is still large enough. The rows stay in order of that b, so the
     // row is found by binary search, as in patience sorting.
     var rows: List<List<Tile>> = []
-    sort(tiles)
+    sort(mut tiles)
     for t in tiles.rev:
         domain R = 0..rows.len
         if let r = R.first_where(

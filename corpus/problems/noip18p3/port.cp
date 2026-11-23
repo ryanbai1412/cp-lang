@@ -54,4 +54,4 @@ fn tracks_of(k: Int) -> Int:
     tracks
 
 // the longest k that still gives m tracks
-print(bsearch_last(1..=sum(r.len for r in roads), k => tracks_of(k) >= m) ?? 0)
+print((1..=sum(r.len for r in roads)).last_true(k => tracks_of(k) >= m) ?? 0)

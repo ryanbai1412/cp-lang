@@ -15,7 +15,7 @@ type Stop = (y: Int, sweeps: Bool, x: Int)
 var stops: List<Stop> = []
 for c in climbers: stops.push((c.y, false, c.x))
 for s in sweepers: stops.push((s.y, true, s.x))
-sort(stops, by: s => (-s.y, s.sweeps))  // at one height the climbers come first
+sort(mut stops, by: s => (-s.y, s.sweeps))  // at one height the climbers come first
 
 let xs = [c.x for c in climbers]
 let (X, col) = compress(xs)
@@ -23,7 +23,7 @@ var standing = SegTree<X, Int>(0, (a, b) => a + b)
 var crossings = 0
 for s in stops:
     if s.sweeps:
-        if let reach = col.last_le(s.x): crossings += standing.fold(X.first, reach)
+        if let reach = col.last_le(s.x): crossings += standing.fold(X.first!, reach)
     else:
         let at = col.first_ge(s.x)!
         standing.set(at, standing.get(at) + 1)

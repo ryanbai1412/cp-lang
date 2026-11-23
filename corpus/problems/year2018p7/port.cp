@@ -38,4 +38,4 @@ fn shared(len: Int) -> Bool:
     found
 
 // The longest length that is shared; -1 if not even the empty block is.
-print(bsearch_last(0..=max(word[v].len for v in V), shared) ?? -1)
+print((0..=max(word[v].len for v in V)).last_true(shared) ?? -1)

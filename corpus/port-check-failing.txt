@@ -37,7 +37,6 @@ ccc14s4
 ccc14s4hard
 ccc18s3
 ccc19s2
-ccc19s3
 ccc20s1
 ccc20s5
 ccc21s4

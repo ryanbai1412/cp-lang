@@ -39,7 +39,7 @@ fn settle(mut sq: Square) -> Bool:
 fn attempt(given: Square) -> ?Square:
     var sq = given.copy()
     while true:
-        if not settle(sq): return None
+        if not settle(mut sq): return None
         let open = [(i, j) for i in 0..3 for j in 0..3 if sq[i][j] == None]
         if open.len == 0: return sq
         let (i, j) = open[rand(0, open.len - 1)]
