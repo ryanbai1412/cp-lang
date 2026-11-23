@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- Rebuild-4 H-VARIANT-NAME-COLLISION: R02.7.1 answers it; `core-02/variant-named-like-prelude-type.cp` (variants `Set`, `Add`) passes.
 - Rebuild-4 H-STAMP-LINE: R11.4.1 now says a file without the stamp is valid and `cpl fmt` adds it above any header comment; `cpl fmt` does not add it yet (tools request).
 - Rebuild-4 H-PRODUCT-POSITION-IS-TUPLE: R04.2.10 answers it; `core-04/product-position-tuple-method.cp` fails (compiler: no `adj4` on a `Cell`). The chapter's `Ev` enum also fails (`core-02/enum-method-is-variant.cp`, no enum-body methods). Both routed to compiler.
 - Rebuild-4 holes answered by the text plus a passing case: H-RANGE-WEIGHT-SUM (`std-graph/dijkstra-range-weights-sum-as-int.cp`, distances add past 1e9), H-DOMAIN-DROP (`core-04/domain-drop-first.cp`, `E.drop(1)`), H-ENUM-RUNTIME-DOMAIN-FIELD (`core-02/enum-field-runtime-domain.cp`).
