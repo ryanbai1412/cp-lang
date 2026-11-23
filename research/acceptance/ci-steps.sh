@@ -12,7 +12,7 @@ checks=()
 
 esc() { python3 -c 'import json,sys; print(json.dumps(sys.stdin.read()[-1500:]))'; }
 
-check() {  # check NAME EXPECTED-SUBSTRING-OR-EMPTY COMMAND...
+check() {  # check NAME EXPECTED-SUBSTRING-OR-EMPTY COMMAND... (stdin passes through)
   local name="$1" want="$2"; shift 2
   local out code pass
   out="$("$@" 2>&1)"; code=$?
@@ -44,6 +44,27 @@ check fmt "" cpl fmt sum.cp
 check lsp "" python3 "$repo/editors/lsp-smoke.py" acceptance cpl lsp
 check setup-neovim "" cpl setup neovim --dir "$work/nvim/pack/cpl/start/cpl"
 check setup-vim "" cpl setup vim --dir "$work/vim/pack/cpl/start/cpl"
+check jetbrains-community "loads in Community" python3 - <<'PY'
+import io, re, urllib.request, zipfile
+url = "https://github.com/ryanbai1412/cp-lang/releases/download/edge/cp-lang-jetbrains.zip"
+outer = zipfile.ZipFile(io.BytesIO(urllib.request.urlopen(url, timeout=60).read()))
+xml = None
+for name in outer.namelist():
+    if name.endswith(".jar"):
+        jar = zipfile.ZipFile(io.BytesIO(outer.read(name)))
+        if "META-INF/plugin.xml" in jar.namelist():
+            xml = jar.read("META-INF/plugin.xml").decode()
+assert xml, "no META-INF/plugin.xml in the edge JetBrains plugin"
+deps = re.findall(r"<depends[^>]*>([^<]+)</depends>", xml)
+hard = [d for d in deps if "ultimate" in d.lower()]
+assert not hard, f"plugin requires {hard}, so IntelliJ IDEA Community refuses it"
+print("loads in Community: depends on", deps)
+PY
+check vscode-vsix "extension/package.json" python3 - <<'PY'
+import io, urllib.request, zipfile
+url = "https://github.com/ryanbai1412/cp-lang/releases/download/edge/cp-lang.vsix"
+print(zipfile.ZipFile(io.BytesIO(urllib.request.urlopen(url, timeout=60).read())).namelist())
+PY
 
 printf '{"os": "%s", "checks": [' "$os"
 ( IFS=,; printf '%s' "${checks[*]}" )
