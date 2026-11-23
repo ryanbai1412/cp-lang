@@ -1,4 +1,10 @@
-// Runnable today/ port of CCC '23 S2 (Symmetric Mountains) for proto/cpc.
+// Source: CCC 2023 Senior S2 (Symmetric Mountains), https://dmoj.ca/problem/ccc23s2
+// Problem: n <= 5000 heights 0 <= h_i <= 1e5. A crop h[l..=r] has asymmetric value the sum of
+//   |h[l + i] - h[r - i]| over the pairs from the outside in. For every length 1..=n print the
+//   least asymmetric value of a crop of that length.
+// Solution: grow every crop from its centre: odd (i) and even (i, i + 1) centres extend one pair
+//   at a time, adding |h[i - j] - h[i + j + off]|, and the length 2j + 1 + off keeps the minimum.
+//   O(n^2).
 // original: corpus/submissions/5350805.cpp
 
 fn main_solve():

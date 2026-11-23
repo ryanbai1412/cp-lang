@@ -1,6 +1,12 @@
-// AtCoder AGC 079 A: value i must come after everything in p[i]..i, which
-// makes a forest; the count of valid orders is n! over the product of subtree
-// sizes. A stack of (rightmost index, size) merges each subtree as it closes.
+// Source: AtCoder AGC 079 A, https://atcoder.jp/contests/agc079/tasks/agc079_a
+// Problem: a rooted tree on n <= 2.5e5 vertices, parent P_v < v; vertex v holds the sequence (v).
+//   n - 1 times pick an unpicked v >= 2, append its sequence to its current parent's and
+//   contract v. Count the pick orders leaving (1, 2, ..., n) at the root, mod 998244353.
+//   Multitest, sum of n <= 2.5e5.
+// Solution: v must be picked after every w with P_v < w < v; these constraints form a forest,
+//   whose linear extensions number (n - 1)! / (product of subtree sizes). Scanning v upward, a
+//   stack of (last vertex, size) blocks pops every block above P_v into v's subtree, whose size
+//   joins the product. O(n).
 const P = 998_244_353
 type Z = Mod<P>
 let comb = Comb<Z>()

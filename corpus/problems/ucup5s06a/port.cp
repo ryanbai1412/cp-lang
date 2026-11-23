@@ -1,10 +1,13 @@
-// Universal Cup 5 Stage 6 (Hyakumanben) A.
-//
-// For a block series B(x) with B(0) = 0, cyc(B) = [x^n] x B'(x) / (1 - B(x))
-// = sum over j of n [x^n] B^j / j counts the ways to cut a cycle of n
-// labelled positions into blocks, a block of size i weighted by [x^i] B. With
-// B = sum of Catalan(i - 1) x^i over 1 <= i < k, the editorial's answer is
-// cyc(B + x) - 2 cyc(B). For k = 1, B is empty and the answer is cyc(x) = 1.
+// Source: The 5th Universal Cup, Stage 6 (Grand Prix of Hyakumanben), problem A (Fugaku
+//   NK-kei), qoj.ac/contest/4617/problem/23669
+// Problem: n regions on a circle (2 <= n <= 2e5) and a painting for every arc of d <= k < n
+//   regions; each arc is collected at the first of its regions visited. Over all visit orders,
+//   count the distinct vectors (C_1..C_n) of paintings collected per region, mod 998244353.
+//   Multitest, sum of n <= 2e5.
+// Solution: per the editorial, with B(x) = sum of Catalan(i - 1) x^i over 1 <= i < k, the answer
+//   is cyc(B + x) - 2 cyc(B), where cyc(B) = [x^n] x B'(x) / (1 - B(x)) counts the ways to cut the
+//   n-cycle into blocks, a block of size i weighted [x^i] B. cyc inverts 1 - B as a power series
+//   and sums i b_i g_(n-i): O(n log n) per test. k = 1 leaves B empty and the answer cyc(x) = 1.
 use std.poly.{inv}
 
 type Z = Mod<998_244_353>

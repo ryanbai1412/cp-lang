@@ -1,12 +1,13 @@
-// Codeforces 1284 E: New Year and Castle Construction.
-//
-// Count pairs (p, Q): Q four other points whose quadrilateral encloses p. Q
-// misses p exactly when all four lie in one open half-plane through p. With
-// no three points collinear, such a Q has a unique first ray in CCW order
-// around p, the other three strictly within the half-turn after it. So per
-// center, sort the other rays by angle: the rays within the half-turn after a
-// ray are the next ones in cyclic order, `reach` counts them with two
-// pointers, and a ray with k of them starts choose(k, 3) missing quadruples.
+// Source: Codeforces 1284E (New Year and Castle Construction),
+//   https://codeforces.com/contest/1284/problem/E
+// Problem: n <= 2500 distinct points, |x|, |y| <= 1e9, no three collinear. f(p) is the number of
+//   4-subsets of the other points that form a quadrilateral strictly enclosing p. Print the sum
+//   of f(p) over all p.
+// Solution: a 4-subset misses p exactly when all four lie in one open half-plane through p; it
+//   then has a unique first ray CCW around p, the other three within the half-turn after it. Per
+//   centre, sort the other rays by angle; a cyclic two-pointer `reach` counts the k rays in the
+//   half-turn after each, which starts choose(k, 3) missing subsets. Answer
+//   n * choose(n - 1, 4) minus all missing ones, O(n^2 log n).
 use std.math.choose
 
 let n: 5..=2500 = read()

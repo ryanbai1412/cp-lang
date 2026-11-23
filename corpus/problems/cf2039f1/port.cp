@@ -1,8 +1,13 @@
-// Codeforces 2039 F1: count the good arrays over 1..=m (distinct f(k) = gcd of the window maxima), mod 998244353.
-// An array is good iff its values are distinct and, sorted, have strictly growing suffix gcds; each such set
-// orders in 2^(n−1) good ways. Add values from m down to 1: an open set (all values above y) with gcd g takes y
-// iff gcd(y, g) < g, doubling its weight. By Möbius, the weight landing on h | y is Σ_{d | y/h} μ(d)·above[h·d]
-// (above[x] = the open sets whose gcd x divides), less the sets whose gcd is h already.
+// Source: Codeforces 2039F1 (Shohag Loves Counting, Easy Version),
+//   https://codeforces.com/contest/2039/problem/F1
+// Problem: f(k) is the gcd of the maxima of all length-k subarrays; an array is good if f(1..n)
+//   are pairwise distinct. Given m, count non-empty good arrays of any length over 1..=m,
+//   mod 998244353. Multitest, sum of m <= 1e5.
+// Solution: a good array has distinct values whose sorted suffix gcds strictly grow, and each such
+//   set orders in 2^(len - 1) good ways. Add values y from m down: a set with gcd g takes y iff
+//   gcd(y, g) < g, doubling its weight. By Mobius, the weight landing on gcd h | y is
+//   sum over d | y/h of mu(d) above[h d] (above[x] = weight of sets whose gcd x divides), minus
+//   at[h], the sets already at gcd h. Divisor lists; about O(m log^2 m) per test.
 @!multitest
 type Z = Mod<998_244_353>
 let m: 1..=100_000 = read()
