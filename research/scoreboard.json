@@ -1293,7 +1293,8 @@
         "widths/sub-traps-3.cp": "pass",
         "widths/sub-traps-4.cp": "pass",
         "widths/sub-traps-5.cp": "pass",
-        "widths/sub-wraps-when-unchecked.cp": "pass"
+        "widths/sub-wraps-when-unchecked.cp": "pass",
+        "core-05/view-assigned-into-typed-var.cp": "pass"
       },
       "causes": [
         {
@@ -1914,10 +1915,10 @@
       ],
       "counts": {
         "fail": 232,
-        "pass": 1059
+        "pass": 1060
       },
-      "passed": 1059,
-      "total": 1291
+      "passed": 1060,
+      "total": 1292
     },
     "corpus": {
       "cases": {
@@ -3408,7 +3409,7 @@
           ]
         },
         {
-          "cause": "cxx_err: In function ‘ll prog::f()’:",
+          "cause": "cxx_err: In function \u2018ll prog::f()\u2019:",
           "count": 1,
           "examples": [
             "conformance/core-01/todo-unreached.cp"

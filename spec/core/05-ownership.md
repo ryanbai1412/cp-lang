@@ -280,9 +280,11 @@ print(w.sum())
 Swap lines 3 and 4 and it compiles: `w` is dead before the write.
 
 **Binding a lent value.** `let ys = xs` with `xs` lent re-lends it (same
-sources, no copy). `var ys = xs` with a lent heap value is an error
-suggesting `xs.clone()`: a `var` owns what it holds, and taking ownership
-would move out of the caller's value. Plain values copy either way.
+sources, no copy). `var ys = xs` with `xs` a lent heap *parameter* is an
+error suggesting `xs.clone()`: its source is the caller's, so no local
+storage dies before it, and taking ownership would move out of the
+caller's value. A lent value made in the fn's own block may be kept in a
+`var` under R8. Plain values copy either way.
 
 **R8. Where a lent value may be kept.** A lent value may be bound by `let`, put in a field, or pushed into a container, **if that storage dies
 no later than every source**: it is declared in the same block as the

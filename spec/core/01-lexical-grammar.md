@@ -460,7 +460,7 @@ dims        := type (',' type)* | '(' type (',' type)* ')' | expr
 range_type  := expr? ('..' | '..=') expr?
 
 expr        := lambda | if_expr | match_expr | binary
-lambda      := lparams '=>' (expr | assign | NL INDENT stmt* expr? DEDENT)
+lambda      := lparams '=>' (expr | assign | NL INDENT stmt+ DEDENT)   // the last stmt may be the value
 lparams     := NAME | '_' | '(' (param (',' param)*)? ')' ('->' type)?
 if_expr     := 'if' cond ':' expr ('elif' cond ':' expr)* 'else' ':' expr
 match_expr  := 'match' expr ':' NL INDENT (pattern ('if' expr)? '=>' expr NL)+ DEDENT
