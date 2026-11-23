@@ -4169,7 +4169,7 @@ impl Checker<'_> {
         let message = format!("`{shown}` does work, but without `()` it reads like an O(1) field");
         self.sink.push(
             Diagnostic::warning(codes::PARENS_MEAN_WORK, expr.span, message)
-                .with_help(format!("write `{shown}()`")),
+                .with_help(format!("write `{shown}()`: `()` marks a call that does work, and only O(1) getters read as fields")),
         );
     }
 }

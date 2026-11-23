@@ -1002,7 +1002,7 @@ impl Database {
                         ),
                     )
                     .with_help(format!(
-                        "declare the element range: `{}`",
+                        "declare the element range, `{}`: the array then takes the narrowest width that holds it, fewer bytes per cell",
                         item.text[span.start as usize..span.end as usize]
                             .rsplit_once("Int")
                             .map_or(String::new(), |(head, tail)| format!("{head}{lo}..={hi}{tail}"))
