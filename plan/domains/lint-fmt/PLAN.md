@@ -69,6 +69,7 @@ architecture after. Deadline ~09:30 PST 2026-11-23; hours, not days.
 
 | Instance | General fix | Owner |
 |---|---|---|
+| `cpl fmt` chain breaks inside a block lambda's body end the statement, so the formatter keeps that file's chains whole | The lexer continues a line ending in an operator inside a layout block too (`layout_block_line`), as it does at top level; then drop the chains-off fallback in `format_lf` | compiler (syntax) |
 | `trial_division` fires on `std/math.cp`'s own `factor`/`divisors` (baselined) | A rule that teaches a std fn skips that fn's own body, read from the resolved definition in the fact table | lint-fmt |
 | L0566 teaches `Window(min)` because `a.windows(k)` on `[0..n]Int` fails `cpl check` (E0302 in `piece`) | `windows` checks on every `Indexed`; then L0566 names `a.windows(k).fold(min)` as std/dp.cp does | stdlib |
 | `cpl fmt` broke only inside brackets, so 41 port and 40 std lines over 100 columns passed `--check` | Done for operator chains: break after the loosest operators, where the lexer continues the line, so no brackets are added. Left: 14 lines that are inline `if c: a else: b` or comprehension clauses; break a comprehension before `for`/`if` inside its bracket, and parenthesize an inline `if` to break before `elif`/`else` | lint-fmt (fmt) |

@@ -32,7 +32,8 @@ struct OutLine {
     blank_before: bool,
 }
 
-pub(crate) fn render(src: &str, lexed: &Lexed, style: &Style) -> String {
+/// With `chains` off, a long line breaks only inside its brackets.
+pub(crate) fn render(src: &str, lexed: &Lexed, style: &Style, chains: bool) -> String {
     let indent = style.indent;
     let lines = logical_lines(src, lexed);
     let mut out: Vec<OutLine> = Vec::new();
@@ -69,6 +70,12 @@ pub(crate) fn render(src: &str, lexed: &Lexed, style: &Style) -> String {
             cont: line.depth * indent,
             indent,
             width: style.line_width,
+            hang: if line.toks.last().is_some_and(|t| t.kind == K::Colon) {
+                2 * indent
+            } else {
+                indent
+            },
+            chains,
             pending: None,
             at_line_start: true,
             prev: None,
@@ -345,6 +352,11 @@ struct Emitter<'a, 'b> {
     indent: usize,
     /// The column limit.
     width: usize,
+    /// How much deeper a line continued after an operator starts: two
+    /// levels in a block header, so it stands apart from the body.
+    hang: usize,
+    /// Whether a long operator chain may break after its operators.
+    chains: bool,
     /// A trailing comment waiting for the comma that may follow its token.
     pending: Option<&'b str>,
     at_line_start: bool,
@@ -552,9 +564,26 @@ impl<'a, 'b> Emitter<'a, 'b> {
                 .max()
                 .map(|(_, n)| n)
         });
+        // Opening a bracket in the middle of a long condition would leave
+        // the operands after it trailing its closer (`] and x`); break the
+        // condition at its `and`/`or` instead.
+        let loose = |(n, node): (usize, &Node)| match node {
+            Node::Tok(i) if n + 1 < nodes.len() && self.roles[*i] == Role::Plain => {
+                looseness(self.toks[*i].kind).is_some_and(|p| p >= 8)
+            }
+            _ => false,
+        };
+        if let Some(pivot) = pivot.filter(|_| self.chains && forced.is_none()) {
+            if nodes.iter().enumerate().skip(pivot + 1).any(loose) && self.chain(nodes, indent) {
+                return;
+            }
+        }
         let Some(pivot) = pivot else {
-            // Nowhere to break: a newline outside brackets ends the statement.
-            return self.flat(nodes);
+            // No bracket worth opening: break after the loosest operators.
+            if !self.chains || !self.chain(nodes, indent) {
+                self.flat(nodes);
+            }
+            return;
         };
         self.seq(&nodes[..pivot], indent);
         let Node::Group { open, items, close } = &nodes[pivot] else {
@@ -562,6 +591,44 @@ impl<'a, 'b> Emitter<'a, 'b> {
         };
         self.broken(*open, items, *close, indent);
         self.seq(&nodes[pivot + 1..], indent);
+    }
+
+    /// Writes `nodes` with a line break after each of its loosest binary
+    /// operators, one operand per line. A line that ends in an operator
+    /// continues (`TokenKind::continues_line`), so this needs no brackets.
+    /// Returns false when `nodes` has no operator to break after, or is a
+    /// comprehension or `if`-`else` expression, whose clauses come first.
+    fn chain(&mut self, nodes: &[Node], indent: usize) -> bool {
+        let clause = |node: &Node| matches!(node, Node::Tok(i) if matches!(self.toks[*i].kind, K::For | K::If | K::Else));
+        if nodes.iter().skip(1).any(clause) {
+            return false;
+        }
+        let ops: Vec<(u8, usize)> = nodes
+            .iter()
+            .enumerate()
+            .filter_map(|(n, node)| match node {
+                Node::Tok(i) if n > 0 && n + 1 < nodes.len() && self.roles[*i] == Role::Plain => {
+                    looseness(self.toks[*i].kind).map(|p| (p, n))
+                }
+                _ => None,
+            })
+            .collect();
+        let Some(loosest) = ops.iter().map(|(p, _)| *p).max() else {
+            return false;
+        };
+        let outer_cont = self.cont;
+        let cont = indent + self.hang;
+        let mut start = 0;
+        for &(_, cut) in ops.iter().filter(|(p, _)| *p == loosest) {
+            self.seq(&nodes[start..=cut], if start == 0 { indent } else { cont });
+            self.flush_pending();
+            self.start_line(cont, false);
+            self.cont = cont;
+            start = cut + 1;
+        }
+        self.seq(&nodes[start..], cont);
+        self.cont = outer_cont;
+        true
     }
 
     /// Writes a bracket pair with one element per line.
@@ -626,4 +693,24 @@ fn drops_trailing_comma(toks: &[Tok], items: &[Node]) -> bool {
 /// Written one element per line, a list of two or more gains a last comma.
 fn takes_trailing_comma(toks: &[Tok], items: &[Node]) -> bool {
     top_level(toks, items).any(|k| k == K::Comma) && is_list(toks, items)
+}
+
+/// How loosely a binary operator binds, for the operators a line may end in;
+/// a long chain breaks after its loosest ones first.
+fn looseness(kind: K) -> Option<u8> {
+    if !kind.continues_line() {
+        return None;
+    }
+    Some(match kind {
+        K::Or => 9,
+        K::And => 8,
+        K::QuestionQuestion => 7,
+        K::EqEq | K::NotEq | K::Lt | K::LtEq | K::GtEq | K::Spaceship => 6,
+        K::Pipe => 5,
+        K::Caret => 4,
+        K::Amp => 3,
+        K::Shl => 2,
+        K::Plus | K::Minus => 1,
+        _ => 0,
+    })
 }

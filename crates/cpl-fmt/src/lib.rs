@@ -106,8 +106,14 @@ fn format_lf(src: &str, style: &Style) -> Result<String, FormatError> {
     if !lexed.diagnostics.is_empty() {
         return Err(FormatError::Lex(lexed.diagnostics));
     }
-    let out = layout::render(src, &lexed, style);
-    verify(src, &lexed.tokens, &out)?;
+    // A line ending in an operator continues only where the lexer joins
+    // lines (not inside a block lambda's body); where a chain break would
+    // end a statement there, the file keeps its operator chains whole.
+    let mut out = layout::render(src, &lexed, style, true);
+    if verify(src, &lexed.tokens, &out).is_err() {
+        out = layout::render(src, &lexed, style, false);
+        verify(src, &lexed.tokens, &out)?;
+    }
     let sorted = imports::sort_use_runs(&out);
     imports::verify(&out, &sorted)?;
     Ok(sorted)

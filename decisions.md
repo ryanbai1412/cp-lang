@@ -7223,6 +7223,16 @@ meaning changes, 0 non-idempotent; ports and std stay fmt-clean). Inline
 `if`-`else` and comprehensions are not split at an operator: their clauses
 are the place to break, owed in PLAN.md. Reverse: drop `Emitter::chain`.
 
+Re-landed after infra reverted it for unlexable output on
+`std-mod/log-inv-all.cp`. When the bracket to open sits before an `and`/`or`
+of the same line, the line breaks at its `and`/`or` instead, so no operand
+trails a closer (`] and x`). Against the reverted layout, 26 corpus/std
+files now reformat (15 for a line over 100 columns, 11 for a `) and`
+layout); they are left to format-on-save, not bulk-reformatted. Inside a block lambda's body the
+lexer ends the statement at a line break even after an operator, so when
+the chained layout does not lex back to the same tokens the file is laid
+out again with chains off. Both cases are tests in `cpl-fmt`.
+
 
 ## 326. A fold costs what the receiver's type says (2026-11-22)
 

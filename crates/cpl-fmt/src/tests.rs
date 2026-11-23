@@ -238,9 +238,43 @@ fn does_not_add_a_comma_to_a_comprehension() {
 }
 
 #[test]
-fn leaves_a_long_line_with_no_bracket_alone() {
-    let src = format!("let x = {}\n", vec!["long_name"; 14].join(" + "));
-    assert_eq!(fmt(&src), src);
+fn breaks_a_long_operator_chain_after_its_loosest_operators() {
+    let src = format!("let x = {}\n", ["long_name"; 14].join(" + "));
+    let want = format!("let x = {} +\n", ["long_name"; 14].join(" +\n    "));
+    let want = want.trim_end_matches(" +\n").to_string() + "\n";
+    assert_eq!(fmt(&src), want);
+    let src = "psum[(i + 1) * w + (j + 1)] = flat[i * c + j] + psum[(i + 1) * w + j] + psum[i * w + (j + 1)] - psum[i * w + j]\n";
+    let want = "psum[(i + 1) * w + (j + 1)] = flat[i * c + j] +\n    psum[(i + 1) * w + j] +\n    psum[i * w + (j + 1)] -\n    psum[i * w + j]\n";
+    assert_eq!(fmt(src), want);
+    assert_eq!(fmt(want), want);
+    let src = format!(
+        "if {} or ready:\n    go()\n",
+        ["long_flag_name"; 5].join(" and ")
+    );
+    let want = format!(
+        "if {} or\n        ready:\n    go()\n",
+        ["long_flag_name"; 5].join(" and ")
+    );
+    assert_eq!(fmt(&src), want);
+}
+
+#[test]
+fn breaks_a_long_condition_before_a_bracket_in_one_operand() {
+    let src = include_str!("../../../spec/conformance/std-mod/log-inv-all.cp");
+    let want = "// expect: ok, output \"YES\"\ntype M = Mod<7>\nlet e: List<M> = []\nprint(\n    yes(\n        M(3).sqrt() == None and\n            M(3).log(M(6)) == Some(3) and\n            M(3).log(M(1)) == Some(0) and\n            M(2).log(M(3)) == None and\n            M.inv_all([M(1), M(2), M(3)]) == [M(1), M(4), M(5)] and\n            M.inv_all(e) == []\n    )\n)\n";
+    assert_eq!(fmt(src), want);
+    assert_eq!(fmt(want), want);
+}
+
+#[test]
+fn keeps_a_chain_whole_where_the_lexer_would_end_the_statement() {
+    let long = ["long_flag_name"; 6].join(" and ");
+    let src = format!(
+        "let r = xs.first_some(b =>\n    if {long}:\n        Some(b)\n    else:\n        None\n)\n"
+    );
+    let out = fmt(&src);
+    assert!(out.contains(&long), "{out}");
+    assert_eq!(fmt(&out), out);
 }
 
 #[test]
