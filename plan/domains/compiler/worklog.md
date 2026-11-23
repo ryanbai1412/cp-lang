@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- Request from site (cold read): the generated C++ for a 4-line sum says `// For judge `generic`: g++ -std=c++17 -O2; 8 MB stack.` in its header and `// Runs on a thread with a 1024 MB stack.` further down; a reader can't tell which applies. One stack statement, stating both the judge limit and the thread the program runs on.
 - Request from site (silent wrong answer): a use of a runtime domain above its declaration is accepted and reads it as empty, against R11.1.1 ("a use above it is a use before definition"). Repro: `print(V.count)` then `domain V = 1..=read<1..=10>()` with input `4` prints `0`; it should be a use-before-definition error.
 - Request from site: R10.3.2 says `"{x:6}"` pads on the left to width 6, but on a `Str` it is E0302 "`:6` is not a number format this value takes: it is a `Str`" (repro: `let s = "ab"; print("{s:6}|")`). Either pad strings or have spec narrow R10.3.2 to numbers.
 - Request from site: indexing a `Prefix` by a cut, as R07.1.6 and the scans section of spec ch 7 write it (`let pre = a.scan(+); pre[r.r] - pre[r.l]` for `r = V(2)..=V(4)`), is E0302 "expected `V`, found `V.cuts`"; only `pre[v]` and `Prefix(a).fold(r)` run. `/learn/language/sequences-and-views` uses those two until it lands.

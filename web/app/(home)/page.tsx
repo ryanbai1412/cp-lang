@@ -355,10 +355,11 @@ export default async function Home() {
             <CardHeader>
               <CardTitle>How fast is it?</CardTitle>
               <CardDescription>
-                Across {ratios.length} timed ports, the generated C++ runs at a
-                median {median.toFixed(2)}x of matched hand-written C++, and{" "}
-                {p95.toFixed(2)}x at p95. The goal is 1.1x; it isn&apos;t met
-                yet. See the full distribution{" "}
+                Across {ratios.length} timed ports, the generated C++ takes a
+                median {median.toFixed(2)}x the time of matched hand-written C++
+                (lower is faster), and {p95.toFixed(2)}x at p95. The bar is a
+                median of at most 1.1x, p95 at most 1.2x and max at most 1.5x;
+                it isn&apos;t met yet. See the full distribution{" "}
                 <ArrowRight className="inline size-3.5" />
               </CardDescription>
             </CardHeader>

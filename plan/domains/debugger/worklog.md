@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- Request from site (cold read of the homepage trace demo): the viewer says "spec" and "REFERENCE slow" where the page says "brute force"; `stdout[0] out of scope 1` and "never gives `best` a 3rd value" took rereading. One word for the slow solution across trace, stress and docs (the docs say brute).
 - Infra: the `os` workflow runs every workspace test, `cpl-cli/tests/debugger.rs` included, on macOS and Windows after each push to main. For a focused run it takes a nextest `filter` on dispatch (`binary(debugger)`); infra dispatches it on request, since lane tokens can't.
 - Questions: all three debugger entries left plan/QUESTIONS.md as decisions.md 272-274 (trace bar per Ryan; command surface and single-file viewer on the recommendations); plan/DOMAINS.md now names `tools/trace/`; spec asked to update trace-debug.md.
 - Targets from Ryan: recording at most 1.2x untraced, interpreter within 5x of C++. README, metrics.toml, QUESTIONS and the budget test (now 1.2x) updated. Measured: tracing off costs 0 (no-op observer since 7fa67de25); recording 6.10x / 6.01x; hook dispatch alone 1.30x / 1.49x, so only snapshot-and-replay (design/trace-replay.md) reaches 1.2x. Interpreter vs g++ -O2 on the same loops: 16.4x / 33.2x; asked compiler.

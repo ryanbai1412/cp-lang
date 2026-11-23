@@ -1,5 +1,5 @@
 ---
-title: "Your first program"
+title: "Input, loops and traps"
 description: "Typed input, ranges, let and var, loops, print, and what a trap is."
 ---
 
@@ -41,7 +41,7 @@ not a float. The range does real work. While you test, input outside it
 stops the run and tells you where:
 
 ```text
-error[R0001]: 5 is outside `1..=3` (input line 1, column 1)
+error[R0502]: 5 is outside `1..=3` (input line 1, column 1)
 ```
 
 The compiler also uses the range to decide how many bytes each element
@@ -108,7 +108,8 @@ the array.
 When you press Run (or use `cpl run` locally) the program runs with every
 check on: array bounds, ranges, overflow, division by zero. A failed
 check is a **trap**: the run stops and names the line and the values.
-The C++ you submit has those checks removed and is as fast as
+The C++ you submit keeps only the input checks (a number outside its
+declared range still stops it) and drops the rest, so it runs as fast as
 hand-written C++. A program that never traps behaves the same in both.
 
 
