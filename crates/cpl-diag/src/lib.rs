@@ -661,13 +661,15 @@ mod tests {
 /// Windows' canonical paths carry, which a shell or a person can't use.
 pub fn shown_path(path: &std::path::Path) -> String {
     let text = path.display().to_string();
-    if cfg!(windows) {
-        text.strip_prefix(r"\\?\")
-            .unwrap_or(&text)
-            .replace('\\', "/")
-    } else {
-        text
+    if !cfg!(windows) {
+        return text;
     }
+    // `\\?\UNC\server\share\x` is the share path `\\server\share\x`.
+    let plain = match text.strip_prefix(r"\\?\UNC\") {
+        Some(share) => format!(r"\\{share}"),
+        None => text.strip_prefix(r"\\?\").unwrap_or(&text).to_string(),
+    };
+    plain.replace('\\', "/")
 }
 
 #[cfg(test)]
@@ -680,6 +682,11 @@ mod shown_path_tests {
         assert_eq!(
             super::shown_path(std::path::Path::new(r"\\?\D:\a\gen.sh")),
             "D:/a/gen.sh"
+        );
+        #[cfg(windows)]
+        assert_eq!(
+            super::shown_path(std::path::Path::new(r"\\?\UNC\srv\share\gen.sh")),
+            "//srv/share/gen.sh"
         );
     }
 }
