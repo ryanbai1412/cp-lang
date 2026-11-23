@@ -5871,3 +5871,14 @@ diagnostic has `code`, `severity`, `message`, `start`, `end`, `labels`,
 with the byte offset, so a tool can use either. Exit codes stay those of the
 text output. `crates/cpl-cli/src/json_out.rs` is the one serializer the next
 `--json` commands reuse. Reverse: drop the flag; nothing else reads it yet.
+
+## 230. A record pattern may omit a field's pattern to bind its name (2026-11-22)
+
+`(total:, take:)` in a pattern binds `total` and `take`, the mirror of the
+record expression shorthand std already uses (`kruskal`, `components`);
+R02.7.6 and the chapter 1 grammar say it, with cases in
+`spec/conformance/core-02/record-pattern-*.cp`. Reason: rebuild round 3's
+H-RECORD-PATTERN-SHORTHAND; a contestant who builds with the shorthand
+writes the same shape to take it apart, and the only alternative is a
+field access per name. Reverse: drop the `?` after `pattern` in the grammar
+and the shorthand sentence of R02.7.6; the long form stays.

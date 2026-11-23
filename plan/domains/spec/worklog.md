@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- Rebuild-3 H-RECORD-PATTERN-SHORTHAND: decision 230, R02.7.6 and the grammar allow `(total:, take:)` in patterns. Record patterns do not parse at all today (E0105 in `let`, E0103 in `match`/`for`), so the 4 new `core-02/record-pattern-*.cp` cases fail; request in compiler/worklog.md.
 - Bug-catch miss `152ffd38` (interp isqrt on i64::MAX): `std-math/roots.cp` imports `std.math.isqrt`, the CP Lang version, so the builtin path the fix touched had no case; added `std-math/isqrt-prelude-at-int-max.cp` (passes). `701193ef`: with `use std.seq.{min, max}`, `min(3, 5)` is E0606 at HEAD; whether an explicit import may shadow the 2-value builtin is unsettled, so no case yet.
 - Bug-catch probe, full run at 6c5451460: **8 of 10 revertible compiler fixes caught (80%)**, 15 of 25 candidates no longer revert or build; table in plan/domains/spec/bugcatch.md, metric in metrics.toml. Missed: `701193ef` (2-arg min/max shadowing, expr-bodied yields fns) and `152ffd38` (isqrt on i64::MAX); cases for both are next.
 - Question from lint-fmt: `spec/core/09-contexts-checks.md` and `spec/tools/fmt-lint.md` give only `with lint(name: allow)`; `@allow(name)` is not in `spec/` but 128 sites use it (`git grep -c "@allow(" -- "*.cp"`: 82 in `spec/std/strings.cp`, 23 in `geometry.cp`) and `cpl-lint` honours both. Is `@allow` removed? If yes (lint-fmt default), lint-fmt adds a `cpl fix` codemod to `with lint(name: allow):` around the statement and a warning on `@allow`; reply here.

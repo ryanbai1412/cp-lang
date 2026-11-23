@@ -7,12 +7,12 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 2199 (995 passing). Rules: 530.
+Cases: 2202 (995 passing). Rules: 531.
 
 ## Summary per chapter
 
 - R01 (01-lexical-grammar.md): 50 rules, 99 cases; 0 uncovered, 4 happy-path only, 1 negative only
-- R02 (02-values-types.md): 50 rules, 94 cases; 0 uncovered, 7 happy-path only, 0 negative only
+- R02 (02-values-types.md): 51 rules, 94 cases; 1 uncovered, 7 happy-path only, 0 negative only
 - R03 (03-numbers-layout.md): 24 rules, 54 cases; 0 uncovered, 7 happy-path only, 1 negative only
 - R04 (04-indices.md): 61 rules, 88 cases; 0 uncovered, 2 happy-path only, 0 negative only
 - R04a (04a-identity-vs-offset.md): 39 rules, 50 cases; 0 uncovered, 1 happy-path only, 3 negative only
@@ -36,7 +36,7 @@ negative case. Complete: rules with no gap in `rule-gaps.txt`.
 | Chapter | Rules | Accept | Forbidding | Reject | Complete |
 |---|---|---|---|---|---|
 | R01 | 50 | 49 (98%) | 28 | 24 (85%) | 45 (90%) |
-| R02 | 50 | 50 (100%) | 29 | 22 (75%) | 43 (86%) |
+| R02 | 51 | 50 (98%) | 29 | 22 (75%) | 43 (84%) |
 | R03 | 24 | 23 (95%) | 17 | 10 (58%) | 16 (66%) |
 | R04 | 61 | 61 (100%) | 14 | 12 (85%) | 59 (96%) |
 | R04a | 39 | 36 (92%) | 4 | 3 (75%) | 35 (89%) |
@@ -50,7 +50,7 @@ negative case. Complete: rules with no gap in `rule-gaps.txt`.
 | R11 | 15 | 13 (86%) | 9 | 8 (88%) | 12 (80%) |
 | R12 | 17 | 17 (100%) | 6 | 6 (100%) | 17 (100%) |
 | R13 | 22 | 22 (100%) | 7 | 4 (57%) | 19 (86%) |
-| all | 530 | 512 (96%) | 225 | 185 (82%) | 472 (89%) |
+| all | 531 | 512 (96%) | 225 | 185 (82%) | 472 (88%) |
 
 ## Rules
 
@@ -143,6 +143,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R02.7.2 [1+ 1-]: `@tag(lit)` on a variant names the token it reads and prints as (`@tag("Q") Ask(h: Int)`, ...
 - R02.7.3 [2+ 0-]: A payload-free enum is a domain: `[Dir]Int` is a table, `for d in Dir` walks it.
 - R02.7.4 [1+ 2-]: `match` is exhaustive. Patterns match only the stored shape; there are no user-defined pat...
+- R02.7.6 [0+ 0-] **uncovered**: A record pattern names the fields it binds, `(to: u, w: c)`, and `..` skips the rest; `(to...
 - R02.7.5 [1+ 0-] *happy-path only*: Layout uses niche filling, so `Ev` is 8 bytes with no tag when `V` positions are 4 bytes (...
 - R02.8.1 [1+ 1-]: `[D]T` is a fixed-size array indexed by domain `D` (positions of `D`, never raw `Int`). `[...
 - R02.8.2 [1+ 0-]: `List<T>` grows, is indexed by `0..len` positions, and its slices keep source positions.

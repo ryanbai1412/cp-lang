@@ -379,7 +379,7 @@ repeat_stmt := 'repeat' expr block                  // `repeat k:` runs the bloc
 
 pattern     := '_' | 'var'? NAME | literal | range_pat
              | '(' pattern (',' pattern)* ','? ')'
-             | '(' NAME ':' pattern (',' NAME ':' pattern)* (',' '..')? ')'
+             | '(' NAME ':' pattern? (',' NAME ':' pattern?)* (',' '..')? ')'   // `(w:)` binds w
              | path ('(' pattern (',' pattern)* ')')?       // variants, V(j)
              | pattern '|' pattern
 range_pat   := literal ('..' | '..=') literal

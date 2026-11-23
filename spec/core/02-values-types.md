@@ -176,6 +176,10 @@ enum Ev:
   walks it. (R02.7.3)
 - `match` is exhaustive. Patterns match only the stored shape; there are
   no user-defined patterns (decision 132). (R02.7.4)
+- A record pattern names the fields it binds, `(to: u, w: c)`, and `..`
+  skips the rest; `(total:, take:)` binds each field to its own name, as the
+  record expression `(total:, take:)` builds one. It works wherever a pattern
+  does: `let`, `for`, `match` (decision 230). (R02.7.6)
 - Layout uses niche filling, so `Ev` is 8 bytes with no tag when `V`
   positions are 4 bytes (chapter 3). (R02.7.5)
 
