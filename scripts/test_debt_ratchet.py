@@ -151,6 +151,24 @@ class DebtRatchetTest(unittest.TestCase):
                         "`web/out` and `web/gone.ts`\n## Known debt\n- `scripts/deleted.py` is gone\n")
             self.assertEqual(dr.stale_arch_paths(root), ["plan/domains/x/ARCHITECTURE.md:1 web/gone.ts"])
 
+    def test_a4_documented_edge_is_accepted(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self._write(root, "plan/ARCHITECTURE.md",
+                        "## A4. Crates\n| Crate | Job |\n|---|---|\n"
+                        "| `cpl-diag` | renderers; JSON through `cpl-json` |\n"
+                        "| `cpl-fmt`, `cpl-lint` | tools over `cpl-check` queries |\n"
+                        "## A5. Other\n| `cpl-x` | uses cpl-y |\n")
+            self.assertEqual(dr.a4_edges(root), [
+                "cpl-diag -> cpl-json", "cpl-fmt -> cpl-check", "cpl-lint -> cpl-check"])
+        baseline = {"crate_edges": ["cpl-a -> cpl-b"]}
+        actual = {"crate_edges": ["cpl-a -> cpl-b", "cpl-diag -> cpl-json", "cpl-a -> cpl-c"],
+                  "a4_edges": ["cpl-diag -> cpl-json"]}
+        errs, _, notes = dr.evaluate(actual, baseline)
+        self.assertEqual(len(errs), 1)
+        self.assertIn("cpl-a -> cpl-c", errs[0])
+        self.assertTrue(any("cpl-diag -> cpl-json" in n for n in notes))
+
     def test_evaluate_counters_and_edges(self) -> None:
         baseline = {"edition_refs": 3, "crate_edges": ["a -> b", "a -> c"]}
         actual = {"edition_refs": 4, "dup_fn_bodies": 9, "crate_edges": ["a -> b", "a -> d"]}

@@ -212,6 +212,24 @@ def _crate_edges(root: Path, kind: str = "dependencies") -> set[tuple[str, str]]
     return edges
 
 
+def a4_edges(root: Path) -> list[str]:
+    """Edges plan/ARCHITECTURE.md A4 documents: a crate's row naming another crate."""
+    try:
+        text = (root / "plan" / "ARCHITECTURE.md").read_text(encoding="utf-8")
+    except OSError:
+        return []
+    section = text.partition("## A4.")[2].partition("\n## ")[0]
+    edges = set()
+    for line in section.splitlines():
+        cells = line.split("|")
+        if len(cells) < 4:
+            continue
+        crates = re.findall(r"`(cpl-[\w-]+)`", cells[1])
+        uses = re.findall(r"\b(cpl-[a-z]+(?:-[a-z]+)*)\b", "|".join(cells[2:]))
+        edges |= {f"{a} -> {b}" for a in crates for b in uses if a != b}
+    return sorted(edges)
+
+
 def crate_edges(root: Path) -> list[str]:
     return [f"{a} -> {b}" for a, b in sorted(_crate_edges(root))]
 
@@ -350,6 +368,7 @@ def measure(root: Path = ROOT, max_rs_lines: int = DEFAULT_MAX_RS_LINES) -> dict
         if gated:
             data[name] = len(fn(root))
     data["crate_edges"] = crate_edges(root)
+    data["a4_edges"] = a4_edges(root)
     return data
 
 
@@ -401,7 +420,11 @@ def evaluate(actual: dict, baseline: dict) -> tuple[list[str], list[str], list[s
 
     if "crate_edges" in baseline and "crate_edges" in actual:
         known, now = set(baseline["crate_edges"]), set(actual["crate_edges"])
+        documented = set(actual.get("a4_edges", []))
         for edge in sorted(now - known):
+            if edge in documented:
+                notes.append(f"crate edge {edge} added; plan/ARCHITECTURE.md A4 documents it")
+                continue
             errors.append(
                 f"new crate edge {edge}: add it to plan/ARCHITECTURE.md (A4. Crates) and run --update"
             )
@@ -483,6 +506,7 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.update is not None:
         data = measure(args.root, max_lines)
+        data.pop("a4_edges", None)
         if args.update:
             keys = {"rs_over_cap": "rs_file_size_allowlist"}
             unknown = [n for n in args.update if keys.get(n, n) not in data]
@@ -518,6 +542,15 @@ def main(argv: list[str] | None = None) -> int:
             warnings += [f"already on main, not from this change (infra fixes it): {e}"
                          for e in errors if e not in mine]
             errors = mine
+
+    # Name the last commits to touch a grown file, so its owner is pinged
+    # rather than whoever pushes next.
+    for i, e in enumerate(errors):
+        rel = e.partition(": grew from ")[0] if ": grew from " in e else None
+        if rel:
+            by = _git(args.root, "log", "-3", "--format=%h %s", "--", rel)
+            if by:
+                errors[i] = f"{e}; last touched by: {'; '.join(by)}"
 
     for w in warnings:
         print(f"debt-ratchet: WARNING: {w}", file=sys.stderr)
