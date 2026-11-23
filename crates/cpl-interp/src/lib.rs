@@ -103,6 +103,11 @@ impl Trap {
     pub fn to_diagnostic(&self, path: &str, lines: &cpl_diag::LineIndex) -> cpl_diag::Diagnostic {
         let mut diagnostic =
             cpl_diag::Diagnostic::error(self.code(), self.span, self.message.clone());
+        if self.message.starts_with("index -") && self.message.contains("outside a list") {
+            diagnostic = diagnostic.with_help(
+                "CP Lang has no negative indexes: the last item is `xs.last!`, or `xs[xs.len - 1]`",
+            );
+        }
         if let Some(case) = self.case {
             diagnostic = diagnostic.with_note(format!("in test case {case}"));
         }

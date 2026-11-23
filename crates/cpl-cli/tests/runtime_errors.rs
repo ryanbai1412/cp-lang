@@ -969,3 +969,20 @@ print(f([1, 2]))
         "{err}"
     );
 }
+
+#[test]
+fn a_negative_index_says_how_to_reach_the_end() {
+    let source = "let xs = [1, 2, 3]\nlet i: Int = read()\nprint(xs[i])\n";
+    let (code, err) = run_stderr(source, "-1\n");
+    assert_eq!(code, 3);
+    assert!(
+        err.contains("index -1 is outside a list of length 3"),
+        "got:\n{err}"
+    );
+    assert!(
+        err.contains("help: CP Lang has no negative indexes: the last item is `xs.last!`"),
+        "got:\n{err}"
+    );
+    let (_, err) = run_stderr(source, "3\n");
+    assert!(!err.contains("negative"), "got:\n{err}");
+}
