@@ -18,8 +18,8 @@ for _ in 0..(r_cnt - 1):
         row.push(x)
     v_cost.push(row)
 
-let INF = 1000000000
-let BLOCK = 8
+let inf = 1000000000
+let block = 8
 
 fn relax_row(r: Int, mut dist: List<Int>):
     for c in 1..c_cnt:
@@ -32,10 +32,10 @@ fn relax_row(r: Int, mut dist: List<Int>):
         c -= 1
 
 fn build_block(r_lo: Int, r_hi: Int) -> List<Int>:
-    var d = List.filled(c_cnt * c_cnt, INF)
+    var d = List.filled(c_cnt * c_cnt, inf)
     let last_trans = r_cnt - 2
     for s in 0..c_cnt:
-        var cur = List.filled(c_cnt, INF)
+        var cur = List.filled(c_cnt, inf)
         cur[s] = 0
         for r in r_lo..=r_hi:
             relax_row(r, mut cur)
@@ -50,14 +50,14 @@ fn build_block(r_lo: Int, r_hi: Int) -> List<Int>:
 
 // Knuth-accelerated Monge min-plus product: O(C^2).
 fn combine_monge(a: List<Int>, b: List<Int>) -> List<Int>:
-    var out = List.filled(c_cnt * c_cnt, INF)
+    var out = List.filled(c_cnt * c_cnt, inf)
     var opt = List.filled(c_cnt * c_cnt, 0)
     var i = c_cnt - 1
     while i >= 0:
         for j in 0..c_cnt:
             let lo = if j > 0: opt[i * c_cnt + (j - 1)] else: 0
             let hi = if i + 1 < c_cnt: opt[(i + 1) * c_cnt + j] else: c_cnt - 1
-            var best = INF
+            var best = inf
             var best_k = lo
             for k in lo..=hi:
                 let cand = a[i * c_cnt + k] + b[k * c_cnt + j]
@@ -87,13 +87,13 @@ if r_cnt == 1:
             print(mat[v1 * c_cnt + v2])
 else:
     let n_trans = r_cnt - 1
-    let n_blk = ceil_div(n_trans, BLOCK)
+    let n_blk = ceil_div(n_trans, block)
     domain Blk = 0..n_blk
 
-    fn blk_lo(b: Int) -> Int = b * BLOCK
-    fn blk_hi(b: Int) -> Int = min(n_trans - 1, b * BLOCK + BLOCK - 1)
+    fn blk_lo(b: Int) -> Int = b * block
+    fn blk_hi(b: Int) -> Int = min(n_trans - 1, b * block + block - 1)
 
-    var id_mat = List.filled(c_cnt * c_cnt, INF)
+    var id_mat = List.filled(c_cnt * c_cnt, inf)
     for i in 0..c_cnt: id_mat[i * c_cnt + i] = 0
     let mat_monoid = Monoid<List<Int>>(id: id_mat, op: (a, b) => combine_monge(a, b))
     let init = [Blk] b => build_block(blk_lo(b.to_idx), blk_hi(b.to_idx))
@@ -106,13 +106,13 @@ else:
         if ev == 1:
             let (p, q, w): (Int, Int, Int) = read()
             h_cost[p][q] = w
-            let b = min(p, n_trans - 1) / BLOCK
+            let b = min(p, n_trans - 1) / block
             st.set(Blk(b), build_block(blk_lo(b), blk_hi(b)))
             top = st.fold(Blk.all)
         elif ev == 2:
             let (p, q, w): (Int, Int, Int) = read()
             v_cost[p][q] = w
-            let b = p / BLOCK
+            let b = p / block
             st.set(Blk(b), build_block(blk_lo(b), blk_hi(b)))
             top = st.fold(Blk.all)
         else:

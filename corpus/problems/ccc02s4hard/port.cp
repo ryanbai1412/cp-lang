@@ -14,7 +14,7 @@ for _ in 0..n:
 var sz = 1
 while sz < n + 1: sz *= 2
 
-let INF = 1_000_000_000_000_000_000
+let inf = 1_000_000_000_000_000_000
 var arr_v: List<Int> = []
 var dp_val: List<Int> = []
 var dp_idx: List<Int> = []
@@ -23,9 +23,9 @@ var tot_idx: List<Int> = []
 var lazy: List<Int> = []
 for _ in 0..sz: arr_v.push(0)
 for _ in 0..2 * sz:
-    dp_val.push(INF)
+    dp_val.push(inf)
     dp_idx.push(0)
-    tot_val.push(INF)
+    tot_val.push(inf)
     tot_idx.push(0)
     lazy.push(-1)
 
@@ -96,7 +96,7 @@ fn st_upd(o: Int, l: Int, r: Int, ql: Int, qr: Int, x: Int):
     if mid < qr: st_upd(o * 2 + 1, mid + 1, r, ql, qr, x)
     pull(o)
 
-var q_cost = INF
+var q_cost = inf
 var q_at = 0
 
 fn st_query(o: Int, l: Int, r: Int, ql: Int, qr: Int):
@@ -118,7 +118,7 @@ for _ in 0..n + 1:
     dp_c.push(0)
     dp_nxt.push(n)
 
-var stk_v: List<Int> = [INF]
+var stk_v: List<Int> = [inf]
 var stk_i: List<Int> = [n]
 
 var i = n - 1
@@ -132,7 +132,7 @@ while i >= 0:
     stk_v.push(t)
     stk_i.push(i)
     let qr = min(n, i + m)
-    q_cost = INF
+    q_cost = inf
     q_at = n
     st_query(1, 0, sz - 1, i + 1, qr)
     dp_c[i] = q_cost

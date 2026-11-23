@@ -6,7 +6,7 @@ let (n, m): (Int, Int) = read()
 domain Init = 0..n
 let init_a: [Init]Int = read()
 
-let NEG_INF = -1000000000000
+let neg_inf = -1000000000000
 
 // Simulated Pool<Node>: index 0 is null sentinel.
 var val: List<Int> = [0]
@@ -14,7 +14,7 @@ var sz: List<Int> = [0]
 var sm: List<Int> = [0]
 var pre: List<Int> = [0]
 var suf: List<Int> = [0]
-var bst: List<Int> = [NEG_INF]
+var bst: List<Int> = [neg_inf]
 var has_same: List<Bool> = [false]
 var same_v: List<Int> = [0]
 var rev_f: List<Bool> = [false]

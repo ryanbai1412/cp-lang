@@ -3,7 +3,7 @@
 // Note: proto/cpc lacks `Pool<Node>` + `Node.Id` today, so parallel List<Int>
 // arrays model the node pool (exact same O(N log N) implicit segtree merge).
 
-let MOD = 998244353
+let mod = 998244353
 
 let n: Int = read()
 domain V = 1..=n
@@ -38,8 +38,8 @@ fn alloc_node() -> Int:
 
 fn apply_mul(u: Int, k: Int):
     if u == 0: return
-    nd_sum[u] = nd_sum[u] * k % MOD
-    nd_mul[u] = nd_mul[u] * k % MOD
+    nd_sum[u] = nd_sum[u] * k % mod
+    nd_mul[u] = nd_mul[u] * k % mod
 
 fn push(u: Int):
     if nd_mul[u] != 1:
@@ -51,13 +51,13 @@ fn set_point(u_in: Int, lo: Int, hi: Int, pos: Int, val: Int) -> Int:
     var u = u_in
     if u == 0: u = alloc_node()
     if lo == hi:
-        nd_sum[u] = val % MOD
+        nd_sum[u] = val % mod
         return u
     push(u)
     let mid = (lo + hi) / 2
     if pos <= mid: lc[u] = set_point(lc[u], lo, mid, pos, val)
     else: rc[u] = set_point(rc[u], mid + 1, hi, pos, val)
-    nd_sum[u] = (nd_sum[lc[u]] + nd_sum[rc[u]]) % MOD
+    nd_sum[u] = (nd_sum[lc[u]] + nd_sum[rc[u]]) % mod
     u
 
 fn query_sum(u: Int, lo: Int, hi: Int, ql: Int, qr: Int) -> Int:
@@ -65,7 +65,7 @@ fn query_sum(u: Int, lo: Int, hi: Int, ql: Int, qr: Int) -> Int:
     if ql <= lo and hi <= qr: return nd_sum[u]
     push(u)
     let mid = (lo + hi) / 2
-    (query_sum(lc[u], lo, mid, ql, qr) + query_sum(rc[u], mid + 1, hi, ql, qr)) % MOD
+    (query_sum(lc[u], lo, mid, ql, qr) + query_sum(rc[u], mid + 1, hi, ql, qr)) % mod
 
 fn merge_trees(a: Int, b: Int, lo: Int, hi: Int, pre_a: Int, pre_b: Int) -> Int:
     if a == 0 and b == 0: return 0
@@ -78,7 +78,7 @@ fn merge_trees(a: Int, b: Int, lo: Int, hi: Int, pre_a: Int, pre_b: Int) -> Int:
     if lo == hi:
         let sa = nd_sum[a]
         let sb = nd_sum[b]
-        nd_sum[a] = (sa * (pre_b + sb) + sb * pre_a) % MOD
+        nd_sum[a] = (sa * (pre_b + sb) + sb * pre_a) % mod
         return a
     push(a)
     push(b)
@@ -86,8 +86,8 @@ fn merge_trees(a: Int, b: Int, lo: Int, hi: Int, pre_a: Int, pre_b: Int) -> Int:
     let al_sum = nd_sum[lc[a]]
     let bl_sum = nd_sum[lc[b]]
     lc[a] = merge_trees(lc[a], lc[b], lo, mid, pre_a, pre_b)
-    rc[a] = merge_trees(rc[a], rc[b], mid + 1, hi, (pre_a + al_sum) % MOD, (pre_b + bl_sum) % MOD)
-    nd_sum[a] = (nd_sum[lc[a]] + nd_sum[rc[a]]) % MOD
+    rc[a] = merge_trees(rc[a], rc[b], mid + 1, hi, (pre_a + al_sum) % mod, (pre_b + bl_sum) % mod)
+    nd_sum[a] = (nd_sum[lc[a]] + nd_sum[rc[a]]) % mod
     a
 
 var roots: [V]Int = [V] _ => 0

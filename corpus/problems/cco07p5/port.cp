@@ -1,7 +1,7 @@
 // CCO '07 P5 — UFO / Moving Target on a Ring (Interactive) (today form for proto/cpc)
 // original: corpus/submissions/5120565.cpp
 let n: 2..=1000 = ask("GetSize")
-let BSIZE = 2
+let bsize = 2
 
 fn look(l: Int, r: Int) -> Bool:
     let tok: Str = ask("Look", l, r)
@@ -18,12 +18,12 @@ struct State:
 
 var x = 0
 while true:
-    x = next_rand(n - BSIZE + 1)
-    if look(x, x + BSIZE - 1): break
+    x = next_rand(n - bsize + 1)
+    if look(x, x + bsize - 1): break
 
 var cands: List<State> = []
 for v in 0..n:
-    for j in 0..BSIZE:
+    for j in 0..bsize:
         cands.push(State((x + v + j) % n, v))
 
 while cands.len > 1:

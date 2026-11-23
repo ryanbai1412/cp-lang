@@ -3,7 +3,7 @@
 let (n, m, gap1): (Int, Int, Int) = read()
 let total = n + m
 let gap = 2 * gap1  // work in half units
-let NEG = -1000000000000000000
+let neg = -1000000000000000000
 var xs: List<Int> = []
 for _ in 0..total:
     let x: Int = read()
@@ -17,8 +17,8 @@ for r in 0..total: rank[order[r]] = r
 // Segment tree over ranks; a node summarises the people present in its span:
 // siz, max(r * gap - x), max(x - r' * gap) and the best answer inside.
 var siz = List.filled(4 * total, 0)
-var pref = List.filled(4 * total, NEG)
-var suff = List.filled(4 * total, NEG)
+var pref = List.filled(4 * total, neg)
+var suff = List.filled(4 * total, neg)
 var best = List.filled(4 * total, 0)
 
 fn insert(o: Int, l: Int, r: Int, at: Int, x: Int):

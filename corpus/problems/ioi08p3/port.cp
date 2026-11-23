@@ -2,8 +2,8 @@
 
 let f_cnt: Int = read()
 let k: Int = read()
-let M: Int = read()
-type Z = Mod<M>
+let m: Int = read()
+type Z = Mod<m>
 
 var raw: List<(Int, Int)> = []
 for _ in 0..f_cnt:

@@ -60,9 +60,9 @@ for e in eb:
         pairs_b += c2(mem_b[v].len)
     hist_off.push(ch_v.len)
 
-let S = n + 1
+let s = n + 1
 var overlap = 0
-var pkey: [V]Int = [V] i => i.idx * S + rep_b[i].idx
+var pkey: [V]Int = [V] i => i.idx * s + rep_b[i].idx
 var freq = HashMap<Int, Int>()
 for i in V:
     let ky = pkey[i]
@@ -75,7 +75,7 @@ fn relabel(x: V):
     let co = freq[old] - 1
     freq[old] = co
     overlap -= co
-    let nxt = rep_a[x].idx * S + rep_b[x].idx
+    let nxt = rep_a[x].idx * s + rep_b[x].idx
     pkey[x] = nxt
     let cn = freq.get(nxt) ?? 0
     overlap += cn

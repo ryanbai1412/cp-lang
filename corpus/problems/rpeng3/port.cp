@@ -1,7 +1,7 @@
 // Runnable port (proto/cp.py lib-run) of statement-first rpeng3.cp
 // original: corpus/submissions/4811952.cpp
 let (n, up, down, home): (Int, Int, Int, Int) = read()
-let NEG = -1000000000000000000
+let neg = -1000000000000000000
 
 var fairs: List<(t: Int, at: Int, gain: Int)> = []
 var top = home
@@ -15,13 +15,13 @@ fairs.sort()
 // from_low[p] = best profit ending at p, plus p * down: a later stop x >= p
 // subtracts x * down. from_high mirrors it for stops x <= p. The interpreter
 // version scans these arrays; the ideal port keeps them in two max SegTrees.
-var from_low = List.filled(top + 1, NEG)
-var from_high = List.filled(top + 1, NEG)
+var from_low = List.filled(top + 1, neg)
+var from_high = List.filled(top + 1, neg)
 from_low[home] = home * down
 from_high[home] = -home * up
 
 fn arrive(x: Int) -> Int:
-    var best = NEG
+    var best = neg
     for p in 0..x + 1: best max= from_low[p] - x * down
     for p in x..top + 1: best max= from_high[p] + x * up
     return best
@@ -40,23 +40,23 @@ while i < fairs.len:
         at.push(fairs[q].at)
         pre.push(pre.last! + fairs[q].gain)
         entry.push(arrive(fairs[q].at))
-    var opt = List.filled(m, NEG)
-    var val = List.filled(m, NEG)
+    var opt = List.filled(m, neg)
+    var val = List.filled(m, neg)
     // Enter at q, go up to the far end, come back down to the exit.
-    var run = NEG
+    var run = neg
     for q in (0..m).rev:
         run max= -(up + down) * at[q] + pre[q + 1]
         val[q] = run + (up + down) * at[q] - pre[q] + entry[q]
-    run = NEG
+    run = neg
     for q in (0..m).rev:
         run max= -up * at[q] + pre[q] + val[q]
         opt[q] max= run + up * at[q] - pre[q]
     // Enter at q, go down to the near end, come back up to the exit.
-    run = NEG
+    run = neg
     for q in 0..m:
         run max= (up + down) * at[q] - pre[q]
         val[q] = run - (up + down) * at[q] + pre[q + 1] + entry[q]
-    run = NEG
+    run = neg
     for q in 0..m:
         run max= down * at[q] - pre[q + 1] + val[q]
         opt[q] max= run - down * at[q] + pre[q + 1]

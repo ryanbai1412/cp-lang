@@ -3,30 +3,30 @@
 let n: 1..=4000 = read()
 let m: 0..=4000 = read()
 
-let MOD = 1_000_000_007
+let mod = 1_000_000_007
 
 fn bpow(base0: Int, exp0: Int) -> Int:
     var ans = 1
-    var base = base0 % MOD
+    var base = base0 % mod
     var exp = exp0
     while exp > 0:
-        if exp % 2 == 1: ans = (ans * base) % MOD
-        base = (base * base) % MOD
+        if exp % 2 == 1: ans = (ans * base) % mod
+        base = (base * base) % mod
         exp = exp / 2
     ans
 
 var fact: List<Int> = [1]
 var ifact: List<Int> = [1]
 for i in 1..=n:
-    let f = (fact[i - 1] * i) % MOD
+    let f = (fact[i - 1] * i) % mod
     fact.push(f)
-    ifact.push(bpow(f, MOD - 2))
+    ifact.push(bpow(f, mod - 2))
 
 fn choose(nn: Int, kk: Int) -> Int:
-    fact[nn] * ifact[kk] % MOD * ifact[nn - kk] % MOD
+    fact[nn] * ifact[kk] % mod * ifact[nn - kk] % mod
 
 fn arrange(nn: Int, kk: Int) -> Int:
-    fact[nn] * ifact[nn - kk] % MOD
+    fact[nn] * ifact[nn - kk] % mod
 
 domain V = 0..n
 domain K = 0..=n
@@ -88,7 +88,7 @@ fn dp(u: Int, k: Int) -> Int:
     if ccnt == 1:
         let ch = if l0 != -1: l0 else: r0
         let nk = if k == spare[vu]: k + here[vu] - 1 else: k + here[vu]
-        ans = arrange(k + here[vu], here[vu]) * dp(ch, nk) % MOD
+        ans = arrange(k + here[vu], here[vu]) * dp(ch, nk) % mod
     else:
         let first = if is_right[vu]: r0 else: l0
         let second = if is_right[vu]: l0 else: r0
@@ -103,12 +103,12 @@ fn dp(u: Int, k: Int) -> Int:
             if al >= 0:
                 let xr = if al + bl == sf and ar + br > ss: ar + br - 1 else: ar + br
                 let term = (
-                    choose(hu, i) * arrange(al + bl, bl) % MOD * arrange(ar + br, br) % MOD * dp(
+                    choose(hu, i) * arrange(al + bl, bl) % mod * arrange(ar + br, br) % mod * dp(
                         first,
                         al + bl,
-                    ) % MOD * dp(second, xr) % MOD
+                    ) % mod * dp(second, xr) % mod
                 )
-                ans = (ans + term) % MOD
+                ans = (ans + term) % mod
     memo[vu, K(k)] = ans
     ans
 

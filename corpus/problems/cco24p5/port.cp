@@ -1,6 +1,6 @@
 // CCO '24 P5 — Parity-Alternating Subarray Partition DP (today form for proto/cpc)
 // original: corpus/submissions/6435483.cpp
-let MOD = 1_000_003
+let mod = 1_000_003
 let n: 1..=500_000 = read()
 
 domain I = 0..n
@@ -15,11 +15,11 @@ while sz < n + 1: sz *= 2
 
 // Two mirrored tag-permanent lazy segtrees (parity 0 and parity 1), packed into
 // one flat array with base offset `cb * 2 * sz` since proto/cpc lacks struct methods.
-let STRIDE = 2 * sz
+let stride = 2 * sz
 var seg_mn: List<Int> = []
 var seg_ways: List<Int> = []
 var seg_lazy: List<Int> = []
-for _ in 0..2 * STRIDE:
+for _ in 0..2 * stride:
     seg_mn.push(0)
     seg_ways.push(0)
     seg_lazy.push(0)
@@ -39,7 +39,7 @@ fn pull_node(base: Int, o: Int):
     else:
         seg_mn[idx] = ml + seg_lazy[idx]
         var s = seg_ways[lc] + seg_ways[rc]
-        if s >= MOD: s -= MOD
+        if s >= mod: s -= mod
         seg_ways[idx] = s
 
 fn upd_ways(base: Int, o: Int, l: Int, r: Int, pos: Int, val: Int):
@@ -81,7 +81,7 @@ var i = n - 1
 while i >= 0:
     let x = arr[I(i)]
     for cb in 0..2:
-        let base = cb * STRIDE
+        let base = cb * stride
         upd_ways(base, 1, 0, n, i + 1, dp[P(i + 1)])
 
         let unq = if cb == 0: nxt1[I(x)] else: nxt0[I(x)]
@@ -101,7 +101,7 @@ while i >= 0:
             range_bad(base, i + 1, nset, 1)
 
         var cur = dp[P(i)] + query_zero(base)
-        if cur >= MOD: cur -= MOD
+        if cur >= mod: cur -= mod
         dp[P(i)] = cur
 
     if i % 2 == 0: nxt0[I(x)] = i

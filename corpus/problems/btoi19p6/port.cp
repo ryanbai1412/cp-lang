@@ -2,11 +2,11 @@
 // original: corpus/submissions/4475247.cpp
 // Subproblems live in parallel flat lists (team, banned) because the
 // prototype heap only orders tuples of Int.
-let N: 1..=500 = read()
-let K: 1..=6 = read()
-let C: 1..=2000 = read()
-domain P = 0..N
-domain Ev = 0..K
+let n: 1..=500 = read()
+let k: 1..=6 = read()
+let c: 1..=2000 = read()
+domain P = 0..n
+domain Ev = 0..k
 let score: [P, Ev]Int = read()
 
 var teams: List<Int> = []  // K members per subproblem
@@ -18,19 +18,19 @@ var heap = MinHeap<(Int, Int)>()
 // Builds the best team keeping `keep` members of subproblem `src` (or none
 // when src < 0), with src's bans plus `extra`. Pushes it if a team exists.
 fn spawn(src: Int, keep: Int, extra: Int):
-    let base = count * N
-    for p in 0..N:
+    let base = count * n
+    for p in 0..n:
         var b = p == extra
-        if src >= 0 and bans[src * N + p]:
+        if src >= 0 and bans[src * n + p]:
             b = true
         bans.push(b)
     var team: List<Int> = []
     for i in 0..keep:
-        team.push(teams[src * K + i])
+        team.push(teams[src * k + i])
     var ok = true
-    for j in keep..K:
+    for j in keep..k:
         var pick = -1
-        for p in 0..N:
+        for p in 0..n:
             var free = not bans[base + p]
             for q in team:
                 if q == p:
@@ -43,11 +43,11 @@ fn spawn(src: Int, keep: Int, extra: Int):
             team.push(pick)
     if not ok:
         // keep the lists aligned: drop the bans just written
-        for p in 0..N:
+        for p in 0..n:
             bans.pop()
         return
     var value = 0
-    for j in 0..K:
+    for j in 0..k:
         var m = 0
         for q in team:
             m max= score[P(q), Ev(j)]
@@ -60,13 +60,13 @@ fn spawn(src: Int, keep: Int, extra: Int):
 
 spawn(-1, 0, -1)
 var answer = 0
-for round in 0..C:
+for round in 0..c:
     let top = heap.pop()!
     answer = -top.0
     let id = top.1
-    if round + 1 < C:
+    if round + 1 < c:
         // child i keeps slots < i and bans the member in slot i
-        for i in forced[id]..K:
-            let out = teams[id * K + i]
+        for i in forced[id]..k:
+            let out = teams[id * k + i]
             spawn(id, i, out)
 print(answer)

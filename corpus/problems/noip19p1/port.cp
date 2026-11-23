@@ -5,13 +5,13 @@
 let n: 1..=64 = read()
 let digits: [domain Dg]Char = read()
 
-let M32 = 4294967295  // not `(1 << 32) - 1`: emitted as a 32-bit shift today
+let m32 = 4294967295  // not `(1 << 32) - 1`: emitted as a 32-bit shift today
 var kh = 0
 var kl = 0
 for i in Dg:
     let lo = kl * 10 + (digits[i] - '0')
-    kh = (kh * 10 + (lo >> 32)) & M32
-    kl = lo & M32
+    kh = (kh * 10 + (lo >> 32)) & m32
+    kl = lo & m32
 
 fn bit(i: Int) -> Int:
     if i >= 64:

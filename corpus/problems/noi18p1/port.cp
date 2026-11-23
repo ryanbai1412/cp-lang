@@ -16,11 +16,11 @@ for _ in 0..t_cases:
 
     let max_nodes = if 2 * n - 1 > 1: 2 * n - 1 else: 1
     domain KNode = 0..max_nodes
-    let INF = 1000000000000000000
-    var alt: [KNode]Int = [KNode] _ => INF
-    var best_d: [KNode]Int = [KNode] _ => INF
+    let inf = 1000000000000000000
+    var alt: [KNode]Int = [KNode] _ => inf
+    var best_d: [KNode]Int = [KNode] _ => inf
     for v in V:
-        best_d[KNode(v.to_idx)] = dist[v] ?? INF
+        best_d[KNode(v.to_idx)] = dist[v] ?? inf
 
     var dsu = Dsu<V>.new()
     var comp_root: [V]KNode = [V] v => KNode(v.to_idx)

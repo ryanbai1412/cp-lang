@@ -2,34 +2,34 @@
 
 type Z = Mod<998244353>
 
-let MAX_V = 2000
-let SMALL_CNT = 13
-let FULL = (1 << SMALL_CNT) - 1
+let max_v = 2000
+let small_cnt = 13
+let full = (1 << small_cnt) - 1
 
 let n: Int = read()
-var cnt = List.filled(MAX_V + 1, 0)
+var cnt = List.filled(max_v + 1, 0)
 for _ in 0..n:
     let v: Int = read()
     cnt[v] += 1
 
-let sieve = Sieve(MAX_V)
+let sieve = Sieve(max_v)
 var small_p: List<Int> = []
-var big_id = List.filled(MAX_V + 1, 0)
+var big_id = List.filled(max_v + 1, 0)
 var big_cnt = 0
-for p in 2..=MAX_V:
+for p in 2..=max_v:
     if sieve.is_prime(p):
-        if small_p.len < SMALL_CNT:
+        if small_p.len < small_cnt:
             small_p.push(p)
         else:
             big_cnt += 1
             big_id[p] = big_cnt
 
-var small_mask = List.filled(MAX_V + 1, 0)
-var val_big = List.filled(MAX_V + 1, 0)
-for v in 1..=MAX_V:
+var small_mask = List.filled(max_v + 1, 0)
+var val_big = List.filled(max_v + 1, 0)
+for v in 1..=max_v:
     var x = v
     var sm = 0
-    for j in 0..SMALL_CNT:
+    for j in 0..small_cnt:
         let p = small_p[j]
         if x % p == 0:
             sm = sm | (1 << j)
@@ -38,13 +38,13 @@ for v in 1..=MAX_V:
     if x > 1:
         val_big[v] = big_id[x]
 
-var total_sub = List.filled(1 << SMALL_CNT, 0)
+var total_sub = List.filled(1 << small_cnt, 0)
 // Store only non-zero (big_id, mask, count) buckets per big prime, then SOS on demand
 // or precompute SOS over small_mask for total and per big prime that appears in input!
 var active_big = List.filled(big_cnt + 1, false)
 var big_vals: List<List<(Int, Int)>> = [[] for _ in 0..=big_cnt]
 
-for v in 1..=MAX_V:
+for v in 1..=max_v:
     if cnt[v] > 0:
         let sm = small_mask[v]
         total_sub[sm] += cnt[v]
@@ -53,23 +53,23 @@ for v in 1..=MAX_V:
             active_big[b] = true
             big_vals[b].push((sm, cnt[v]))
 
-for bit in 0..SMALL_CNT:
+for bit in 0..small_cnt:
     let step = 1 << bit
-    for mask in 0..(1 << SMALL_CNT):
+    for mask in 0..(1 << small_cnt):
         if (mask & step) != 0:
             total_sub[mask] += total_sub[mask ^ step]
 
 var big_sub: Map<Int, List<Int>> = Map()
 for b in 1..=big_cnt:
     if active_big[b]:
-        var arr = List.filled(1 << SMALL_CNT, 0)
+        var arr = List.filled(1 << small_cnt, 0)
         let vs = big_vals[b]
         for idx in 0..vs.len:
             let (sm, c) = vs[idx]
             arr[sm] += c
-        for bit in 0..SMALL_CNT:
+        for bit in 0..small_cnt:
             let step = 1 << bit
-            for mask in 0..(1 << SMALL_CNT):
+            for mask in 0..(1 << small_cnt):
                 if (mask & step) != 0:
                     arr[mask] += arr[mask ^ step]
         big_sub[b] = arr
@@ -100,14 +100,14 @@ for _ in 0..q:
                 lg_seen[b] = true
                 lg_req.push(b)
         else:
-            for j in 0..SMALL_CNT:
+            for j in 0..small_cnt:
                 if small_p[j] == p:
                     sm_req = sm_req | (1 << j)
 
     var ans: Z = 0
     var sub = sm_req
     while true:
-        let comp = FULL ^ sub
+        let comp = full ^ sub
         var free_cnt = total_sub[comp]
         var prod: Z = 1
         for idx in 0..lg_req.len:
