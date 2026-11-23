@@ -263,3 +263,17 @@ fn foreign_strip_names_become_trim() {
     let fixes: Vec<_> = d.iter().map(|d| d.fixes[0].edits[0].1.as_str()).collect();
     assert_eq!(fixes, ["trim", "trim_start", "trim_end"], "{d:?}");
 }
+
+#[test]
+fn an_optional_print_says_how_to_give_none_a_text() {
+    let d = check("let x: ?Int = none\nprint(x + 1)\n");
+    assert_eq!(d.len(), 1, "{d:?}");
+    let help = d[0].help.as_deref().unwrap_or_default();
+    assert!(
+        help.contains("`(x + 1)!`") && help.contains("`(x + 1) ?? d`"),
+        "{help}"
+    );
+    let d = check("let xs: List<?Int> = [1, none]\nprint(xs)\n");
+    let help = d[0].help.as_deref().unwrap_or_default();
+    assert!(help.contains("`print(xs, none: d)`"), "{d:?}");
+}

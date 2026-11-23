@@ -1,0 +1,8 @@
+error[E0606]: `x + 1` has type `?Int`, which does not implement `Show`
+  --> optional_print.cp:2:7
+  |
+2 | print(x + 1)
+  |       ^^^^^
+  = help: `None` has no text: write `(x + 1)!` to unwrap it, or `(x + 1) ?? d` with a default `d`
+
+optional_print.cp: 1 error

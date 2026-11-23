@@ -86,7 +86,11 @@ impl<'a> Checker<'a> {
                         } else {
                             format!("`{snippet}` has type `{ty}`, which does not implement `Show`")
                         };
-                        self.error(codes::MISSING_IMPL, arg.value.span, message);
+                        let help = optional_print_help(ty, &snippet);
+                        if let Some(diag) = self.error(codes::MISSING_IMPL, arg.value.span, message)
+                        {
+                            diag.help = help;
+                        }
                     }
                 }
                 None
@@ -393,5 +397,26 @@ impl<'a> Checker<'a> {
                 || m.members.iter().any(|(n, _)| *n == name.text)
                     && !m.mutators.contains(&name.text)
         })
+    }
+}
+
+/// An optional has no text for `None`, so it prints once that is said
+/// (R10.3.7): unwrapped, given a default, or, in a sequence, `none:`.
+fn optional_print_help(ty: &Ty, snippet: &str) -> Option<String> {
+    let operand = if snippet.contains(' ') {
+        format!("({snippet})")
+    } else {
+        snippet.to_string()
+    };
+    match ty {
+        Ty::Optional(_) => Some(format!(
+            "`None` has no text: write `{operand}!` to unwrap it, or `{operand} ?? d` with a default `d`"
+        )),
+        Ty::Named { name, args } if name == "List" && matches!(args.as_slice(), [Ty::Optional(_)]) => {
+            Some(format!(
+                "`None` has no text: write `print({snippet}, none: d)` to print each `None` as `d`"
+            ))
+        }
+        _ => None,
     }
 }
