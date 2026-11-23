@@ -377,14 +377,14 @@ fn leaked(source: &str, rec: &Recording, call: &cpl_interp::trace::Call) -> Vec<
     if call.ordinal == 1 {
         return Vec::new();
     }
-    let (Some(then), Some(now)) = (rec.step(first.entry), rec.step(call.entry)) else {
-        return Vec::new();
-    };
     let lines: Vec<&str> = source.lines().collect();
     let Some(body) = body_of(&lines, &call.name) else {
         return Vec::new();
     };
     let body = lines[body].join("\n");
+    let (Some(then), Some(now)) = (rec.step(first.entry), rec.step(call.entry)) else {
+        return same_args(&lines, &body, first, call);
+    };
     let mut out = Vec::new();
     for (var, value) in &now.values {
         let name = &rec.vars[*var].name;
@@ -405,7 +405,44 @@ fn leaked(source: &str, rec: &Recording, call: &cpl_interp::trace::Call) -> Vec<
             }
         }
     }
+    if out.is_empty() {
+        return same_args(&lines, &body, first, call);
+    }
     out
+}
+
+/// A later call of a fn with the same arguments as its 1st call that
+/// gives another value reads state the arguments don't carry: the
+/// top-level `var`s its body mentions, each declared once for the run.
+fn same_args(
+    lines: &[&str],
+    body: &str,
+    first: &cpl_interp::trace::Call,
+    call: &cpl_interp::trace::Call,
+) -> Vec<(u32, String)> {
+    if first.args != call.args || first.returned == call.returned || first.returned.is_none() {
+        return Vec::new();
+    }
+    let word = |c: char| c.is_alphanumeric() || c == '_';
+    (lines.iter().enumerate())
+        .filter_map(|(at, line)| {
+            let rest = line.strip_prefix("var ")?;
+            let name = &rest[..rest.find(|c: char| !word(c)).unwrap_or(rest.len())];
+            mentions(body, name).then(|| {
+                (
+                    at as u32 + 1,
+                    format!(
+                        "`{name}` is declared once for the whole run: call {} of `{}` gets the arguments its 1st call got, {}, and gives {} where that gave {}",
+                        call.ordinal,
+                        call.name,
+                        shown_args(&call.args),
+                        call.returned.as_deref().unwrap_or("nothing"),
+                        first.returned.as_deref().unwrap_or("nothing"),
+                    ),
+                )
+            })
+        })
+        .collect()
 }
 
 /// The lines of the body of `fn name`, 0-based, after its head.
