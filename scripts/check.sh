@@ -654,7 +654,7 @@ if [ "$mode" = full ]; then
     cargo test -p cpl-prover --test fuzz -- --exact products_and_variable_divisors_are_never_decided_wrongly
 
     step "random programs: interpreter, C++ and sanitized C++ match an independent model (conformance/R6)"
-    python3 scripts/gen-programs.py -n 100 --seed 1 --jobs "$(nproc)" --out "$tmp/gen" --avoid rev-pieces \
+    uv run scripts/gen-programs.py -n 100 --seed 1 --jobs "$(nproc)" --out "$tmp/gen" --avoid rev-pieces \
         --cxxflags '-O1 -g -fsanitize=address,undefined -D_GLIBCXX_DEBUG'
 
     step "cargo test: every port compiled with every judge profile's flags"
