@@ -161,3 +161,39 @@ Need: write the brute without wondering which decorator it is.
 Design: `@alt(f)` and `@alt(program)` only.
 Milestone: M1-differentiating. Status: gap (`@brute(f)` is still accepted and the report says `@alt`)
 Evidence: gap
+
+### stress/U28: stress passes but the judge says WA at maximum size
+Need: find the overflow or limit bug that only maximum-size input reaches, when small cases all agree.
+Design: the clean report points at `cpl lint`, whose bound lints (L0306, L0302, L0599, L0305) each name a witness input, and stress takes that witness as a case.
+Milestone: M1-critical. Status: gap (diagnostics owns the lint side; no surface hands a witness to stress or test)
+Evidence: gap
+
+### stress/U29: the interpreter and the judge's C++ disagree
+Need: know that a difference is a toolchain bug, not a WA, and under which judge profile stress ran.
+Design: the header names the build and profile (widths, stack); a case that differs only between builds is reported as a toolchain bug.
+Milestone: M1-critical. Status: gap
+Evidence: gap
+
+### stress/U30: the checker, interactor or generator fails
+Need: know which helper broke and why, not see a failing solution.
+Design: each helper is blamed by name with its trap rendered as a brute's is (U18), and the case is not saved as a test of the solution.
+Milestone: M1-critical. Status: gap (only the brute is blamed this way)
+Evidence: gap
+
+### stress/U31: how far a clean run reached
+Need: decide whether to trust `1000 cases agree`.
+Design: the clean report adds the largest size and the extreme values tried.
+Milestone: M1-differentiating. Status: gap
+Evidence: gap
+
+### stress/U32: stress for as long as I can spare
+Need: stop on a wall-clock budget that fits a contest, not only after N cases.
+Design: `--time 10s` runs cases until the budget ends, then reports as usual.
+Milestone: M1-differentiating. Status: gap
+Evidence: gap
+
+### stress/U33: helper warnings stay out of the way
+Need: a lint warning in the brute or interactor never reaches the report or the judged stderr.
+Design: helpers are checked for errors only; their warnings go to `cpl lint`.
+Milestone: M1-critical. Status: gap
+Evidence: gap

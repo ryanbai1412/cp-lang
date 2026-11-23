@@ -221,6 +221,25 @@ fn shrinking_deletes_elements_from_the_middle() {
 }
 
 #[test]
+fn shrinking_moves_a_negative_value_toward_0_or_its_ranges_end_nearest_0() {
+    let spec = InputSpec::from_source(
+        "let n: 1..=9 = read()\nlet a: [n]-1000000000..=1000000000 = read()\nlet b: -9..=-3 = read()\n",
+    )
+    .unwrap();
+    let start = Case::of(vec![
+        Value::Int(3),
+        Value::Seq([5, -999999992, 7].map(Value::Int).to_vec()),
+        Value::Int(-8),
+    ]);
+    // Fails while some element is at most -10.
+    let mut fails = |case: &Case| matches!(&case.values[1], Value::Seq(a) if a.iter().any(|v| matches!(v, Value::Int(v) if *v <= -10)));
+    assert_eq!(
+        shrink(&spec, &start, 2000, &mut fails).render(),
+        "1\n-10\n-3\n"
+    );
+}
+
+#[test]
 fn shrinking_respects_its_budget_and_never_returns_a_passing_case() {
     let spec = spec();
     let start = generate(&spec, &mut Rng::new(3), Size::Small(8)).unwrap();

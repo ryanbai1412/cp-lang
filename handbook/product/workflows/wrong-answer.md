@@ -12,7 +12,7 @@ copies an input or retypes a command line. Owner: debugger.
 1. **Run.** `cpl test c` runs the samples: all pass. Nothing to fix yet.
 2. **Stress with what you have.** `cpl stress c.cp` with no brute: a case
    fails only if it crashes or runs too long. One does,
-   `n = 1  a = [0]`, with `index 1 is outside an array of length 1` at
+   `n = 1  a = [0]`, with `index 1 is outside an array dimension of length 1` at
    line 5 and the locals. If nothing fails, go on.
 3. **Write the brute.** A few lines that try every option, in the same
    file as `@alt(program) fn brute()`. `cpl stress c.cp` again.
@@ -38,6 +38,12 @@ a use case in [stress-usecases.md](../cli/stress-usecases.md).
 brute at step 3. Interactive: the file's `@interactor` judges each case. The
 solution hangs: the case fails as a time-out and the explanation names the
 loop that stopped changing. The brute is wrong: stress blames the brute.
+Stress finds nothing but the judge still says WA: the bug lives at sizes
+the default `--size 8` never reaches, such as an overflow at the bounds.
+`cpl lint` names a witness input for each bound it can't prove, and
+`cpl bench` runs the maximum size (use case `stress/U28`). A helper fails
+(the checker, interactor or `@gen fn`): stress should blame it by name, as
+it blames a brute (`stress/U30`).
 
 ## Acceptance
 

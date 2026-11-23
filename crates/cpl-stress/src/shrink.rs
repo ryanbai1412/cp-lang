@@ -3,7 +3,8 @@
 //!
 //! The order is big cuts first: lower each size (`n`, `q`) as far as it
 //! goes, dropping the array elements that no longer exist; then delete
-//! single elements; then lower every value toward its lower bound. After
+//! single elements; then lower every value toward its lower bound (a
+//! negative one up toward 0). After
 //! each change the case is fitted back to the spec, so `1..=n` values
 //! stay inside the new `n` and every candidate is a valid input.
 
@@ -1184,6 +1185,24 @@ pub fn shrink(
                 let slot = at(&mut candidate, &path);
                 *slot = slot.with(tag);
                 improved |= attempt(&mut best, candidate);
+            }
+        }
+        // 3a. A negative value, up toward 0; `fit` stops it at its range's
+        //    end nearest 0. Halfway back to it when a step doesn't fail.
+        for (path, _) in numbers(spec, &best) {
+            let Some(from) = number_at(&best, &path).filter(|&v| v < 0) else {
+                continue;
+            };
+            let mut toward = 0;
+            while toward > from {
+                let mut candidate = best.clone();
+                let slot = at(&mut candidate, &path);
+                *slot = slot.with(toward);
+                if attempt(&mut best, candidate) {
+                    improved = true;
+                    break;
+                }
+                toward = from + (toward - from) / 2;
             }
         }
         for (path, lo) in numbers(spec, &best) {

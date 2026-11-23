@@ -15,7 +15,7 @@ no brute yet it still finds crashes and time-outs. Doc:
 [stress.md](../cli/stress.md), use cases:
 [stress-usecases.md](../cli/stress-usecases.md).
 
-**Explain** (`cpl stress --explain`) answers "which line is wrong?". On the
+**Stress `--explain`** answers "which line is wrong?". On the
 shrunk case it runs the solution and the brute side by side and names the
 first value they disagree on, then the lines that made it. A contestant
 should read the planted line off the report without opening a trace.
