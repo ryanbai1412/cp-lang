@@ -80,10 +80,15 @@ jobs:
           CPL_GATE_PART: ${{ matrix.part }}
         run: scripts/check.sh --fast
       - name: Save target/ (${{ matrix.part == 'checks' && 'clippy' || 'dev' }})
+        id: stamp
         if: ${{ !cancelled() && github.ref == 'refs/heads/main' && (matrix.part == 'checks' || matrix.part == 'tests:hash:6/6') }}
-        run: git rev-parse HEAD > target/.ci-sha && rm -rf target/check-cache target/tmp target/judge-probes
+        # A job that failed before building leaves target/ near empty; saving it would replace the warm cache.
+        run: |
+          [ -n "$(ls target/*/deps 2>/dev/null | head -1)" ] || { echo "target/ has no build; not saving"; exit 0; }
+          git rev-parse HEAD > target/.ci-sha && rm -rf target/check-cache target/tmp target/judge-probes
+          echo built=true >>"$GITHUB_OUTPUT"
       - uses: actions/cache/save@v4
-        if: ${{ !cancelled() && github.ref == 'refs/heads/main' && (matrix.part == 'checks' || matrix.part == 'tests:hash:6/6') }}
+        if: ${{ steps.stamp.outputs.built == 'true' && (matrix.part == 'checks' || matrix.part == 'tests:hash:6/6') }}
         with:
           path: target
           key: ${{ env.TARGET_KEY }}-${{ matrix.part == 'checks' && 'clippy' || 'dev' }}-${{ hashFiles('Cargo.lock', 'rust-toolchain.toml') }}-${{ github.run_id }}
@@ -198,10 +203,15 @@ jobs:
       - name: Installers are served
         run: test -s web/out/install.sh && test -s web/out/install.ps1
       - name: Save target/ (release)
+        id: stamp
         if: ${{ !cancelled() && github.ref == 'refs/heads/main' }}
-        run: git rev-parse HEAD > target/.ci-sha && rm -rf target/check-cache target/tmp target/judge-probes
+        # A job that failed before building leaves target/ near empty; saving it would replace the warm cache.
+        run: |
+          [ -n "$(ls target/*/deps 2>/dev/null | head -1)" ] || { echo "target/ has no build; not saving"; exit 0; }
+          git rev-parse HEAD > target/.ci-sha && rm -rf target/check-cache target/tmp target/judge-probes
+          echo built=true >>"$GITHUB_OUTPUT"
       - uses: actions/cache/save@v4
-        if: ${{ !cancelled() && github.ref == 'refs/heads/main' }}
+        if: ${{ steps.stamp.outputs.built == 'true' }}
         with:
           path: target
           key: ${{ env.TARGET_KEY }}-release-${{ hashFiles('Cargo.lock', 'rust-toolchain.toml') }}-${{ github.run_id }}
