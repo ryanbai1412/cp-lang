@@ -5,10 +5,10 @@
 // l-1 <= k <= r. Each point keeps its sorted list of indices.
 let n: 1..=2e5 = read()
 let q: 1..=2e5 = read()
-let s = read<Str of "UDLR">()
+let s: Str of "UDLR" = read()
 var pos: List<(Int, Int)> = [(0, 0)]
 for ch in s:
-    let (x, y) = pos.last
+    let (x, y) = pos.last!
     pos.push(match ch:
         'U' => (x, y + 1)
         'D' => (x, y - 1)

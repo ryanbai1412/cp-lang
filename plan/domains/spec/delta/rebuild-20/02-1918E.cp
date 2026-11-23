@@ -2,6 +2,8 @@
 // to a random pivot's value by asking it until "=", compare every other
 // index against x, and after each comparison ask the pivot once to move x
 // back. A part whose values are lo.. holds exactly the values lo..lo+len-1.
+use std.rand.{Rng}
+
 let wire = Wire()
 var rng = Rng(1918)
 
@@ -23,38 +25,37 @@ fn solve(items: List<I>, lo: Int):
     a[p] = lo + less.len
     solve(less, lo)
     solve(more, lo + less.len + 1)
-solve(List(I), 1)
+solve([i for i in I], 1)
 print("!", a)
 
+// Hidden data per test: n and a seed for the permutation and the start x.
+// No interactor-side read of the program exists, so `w.ask("")` stands in
+// for one: the blank line it prints is skipped by the program's token read.
 @interactor
 fn judge(w: Wire):
-    let t = gen(1..=3)
-    print(t)
-    for _ in 0..t:
-        let n = gen(1..=12)
-        var a = List(1..=n)
-        for i in (1..n).rev:
-            let j = gen(0..=i)
-            a.swap(i, j)
-        var x = gen(1..=n)
-        print(n)
-        var asked = 0
-        while true:
-            let op: Str = read()
-            if op == "!":
-                let got = read<[n]Int>()
-                assert zip(got, a).all((g, h) => g == h)
-                break
-            assert op == "?"
-            let i: Int = read()
-            asked += 1
-            assert asked <= 40 * n and 1 <= i and i <= n
-            let v = a[i - 1]
-            if v > x:
-                print(">")
-                x += 1
-            elif v < x:
-                print("<")
-                x -= 1
-            else:
-                print("=")
+    let n: 1..=12 = read()
+    let seed: 0..=1e9 = read()
+    var rng = Rng(seed)
+    var a = List(1..=n)
+    for i in (1..n).rev:
+        let j = rng.int(0, i)
+        a.swap(i, j)
+    var x = rng.int(1, n)
+    var asked = 0
+    var op: Str = w.ask("{n}")
+    while op == "?":
+        let i: Int = w.ask("")
+        asked += 1
+        assert asked <= 40 * n and 1 <= i and i <= n
+        let v = a[i - 1]
+        var ans = "="
+        if v > x:
+            ans = ">"
+            x += 1
+        elif v < x:
+            ans = "<"
+            x -= 1
+        op = w.ask(ans)
+    assert op == "!"
+    let got = [w.ask<Int>("") for _ in 0..n]
+    assert zip(got, a).all((g, h) => g == h)

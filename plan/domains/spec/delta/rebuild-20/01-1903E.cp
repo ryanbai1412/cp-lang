@@ -3,6 +3,8 @@
 // par(start) + par(last point): the first player wins iff the last point has
 // the start's parity. The player with the majority parity removes the other
 // parity first and is left choosing (or forcing) the last point.
+use std.rand.{Rng}
+
 let wire = Wire()
 
 @!multitest
@@ -32,33 +34,40 @@ for turn in 0..n:
         let j: P = read()
         taken[j] = true
 
+// Hidden data comes from typed reads (stress generates them); the opponent
+// plays randomly from `seed`. Each statement line goes out with `print`; a
+// reply comes back through `w.ask`.
 @interactor
 fn judge(w: Wire):
-    let t = gen(1..=4)
-    print(t)
-    for _ in 0..t:
-        let n = gen(1..=7)
-        let pts = [(gen(0..=6), gen(0..=6)) for _ in 0..=n]
-        print(n)
-        for p in pts: print(p.0, p.1)
-        let who: Str = read()
-        assert who == "First" or who == "Second"
-        let prog_first = who == "First"
-        var used = List.filled(n + 1, false)
-        var prev = 0
-        var total = 0
-        for turn in 0..n:
-            var j = 0
-            if (turn % 2 == 0) == prog_first:
-                j = read()
-            else:
-                let free = [k for k in 1..=n if not used[k]]
-                j = free[gen(0..=free.len - 1)]
-                print(j)
-            assert 1 <= j and j <= n and not used[j]
-            used[j] = true
-            let dx = pts[j].0 - pts[prev].0
-            let dy = pts[j].1 - pts[prev].1
-            total += dx * dx + dy * dy
-            prev = j
-        assert (total % 2 == 0) == prog_first
+    let n: 1..=7 = read()
+    let s = read<(0..=6, 0..=6)>()
+    let pts = read<[n](0..=6, 0..=6)>()
+    let seed: 0..=1e9 = read()
+    var rng = Rng(seed)
+    print(n)
+    print(s.0, s.1)
+    for k in 0..n - 1: print(pts[k].0, pts[k].1)
+    let who: Str = w.ask("{pts[n - 1].0} {pts[n - 1].1}")
+    assert who == "First" or who == "Second"
+    let prog_first = who == "First"
+    var used = List.filled(n, false)
+    var prev = s
+    var total = 0
+    var reply = ""
+    for turn in 0..n:
+        var j = 0
+        if (turn % 2 == 0) == prog_first:
+            j = if turn == 0 and prog_first: w.ask("") else: w.ask(reply)
+            reply = ""
+        else:
+            let free = [k for k in 1..=n if not used[k - 1]]
+            j = free[rng.int(0, free.len - 1)]
+            reply = "{j}"
+            if turn == n - 1: print(j)
+        assert 1 <= j and j <= n and not used[j - 1]
+        used[j - 1] = true
+        let dx = pts[j - 1].0 - prev.0
+        let dy = pts[j - 1].1 - prev.1
+        total += dx * dx + dy * dy
+        prev = pts[j - 1]
+    assert (total % 2 == 0) == prog_first

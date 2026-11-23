@@ -23,6 +23,7 @@ for e in t.tour:
             if let u = top[c]: near[u].push(v)
             top[c] = Some(v)
         Exit(v, _) => top[col[v]] = saved[v]
+        _ => ()
 let zero: [V]Int = 0
 var seg = SegTree(max, t.reorder(zero), act: add)
 var ans = 1

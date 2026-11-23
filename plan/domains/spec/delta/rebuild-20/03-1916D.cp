@@ -1,6 +1,9 @@
 // CF 1916D Mathematical Problem (any answer). 14^2 = 196, (10^(i+1) + 3)^2 =
 // 1 0^i 6 0^i 9 and (3 * 10^(i+1) + 1)^2 = 9 0^i 6 0^i 1 all use the digits
 // {1, 6, 9} plus zeros; padding with an even number of zeros keeps a square.
+use std.math.{BigInt}
+use std.rand.{Rng}
+
 @!multitest
 let n: 1..=99 = read()
 fn z(k: Int) -> Str = "0".repeat(k)
@@ -15,15 +18,16 @@ else:
 
 @gen
 fn input():
-    let t = gen(1..=5)
+    var rng = Rng(1916)
+    let t = rng.int(1, 5)
     print(t)
-    for _ in 0..t: print(2 * gen(0..=20) + 1)
+    for _ in 0..t: print(2 * rng.int(0, 20) + 1)
 
 fn is_square(x: BigInt) -> Bool:
     let one = BigInt.from_int(1)
     let two = BigInt.from_int(2)
     var lo = BigInt.from_int(0)
-    var hi = one
+    var hi = BigInt.from_int(1)
     while hi * hi <= x: hi = hi * two
     while hi - lo > one:
         let mid = (lo + hi) / two
@@ -31,18 +35,18 @@ fn is_square(x: BigInt) -> Bool:
     lo * lo == x
 
 @check
-fn ok(input: Reader, out: Reader) -> Bool:
-    let t: Int = input.read()
-    for _ in 0..t:
-        let n: Int = input.read()
+fn ok() -> Bool:
+    let t: Int = read()
+    let ns = [read<Int>() for _ in 0..t]
+    for n in ns:
         var seen: Set<Str> = Set()
         var digits = ""
         for _ in 0..n:
-            let s: Str = out.read()
+            let s: Str = read()
             if s.len != n or s[0] == '0' or s in seen: return false
-            seen.add(s)
             let key = Str(s.sorted())
             if digits == "": digits = key
             elif digits != key: return false
             if not is_square(BigInt.from_str(s)): return false
+            seen.add(s)
     true
