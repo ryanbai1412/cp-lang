@@ -7,7 +7,7 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 2315 (995 passing). Rules: 537.
+Cases: 2319 (995 passing). Rules: 537.
 
 ## Summary per chapter
 
@@ -20,7 +20,7 @@ Cases: 2315 (995 passing). Rules: 537.
 - R05 (05-ownership.md): 43 rules, 148 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R06 (06-control-functions.md): 24 rules, 75 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R07 (07-sequences.md): 88 rules, 112 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R08 (08-traits-generics.md): 29 rules, 77 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R08 (08-traits-generics.md): 29 rules, 78 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R09 (09-contexts-checks.md): 26 rules, 54 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R10 (10-io.md): 17 rules, 71 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R11 (11-modules-prelude.md): 15 rules, 33 cases; 0 uncovered, 1 happy-path only, 1 negative only
@@ -525,7 +525,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R08.4.3 [1+ 0-]: Row-polymorphic functions are monomorphized per record type.
 - R08.4.4 [1+ 4-]: Nine safety rules (decision 146): no hidden heap copies, no field reordering visible to th...
 - R08.5.1 [1+ 1-]: No inheritance, subclassing or default-method overriding chains.
-- R08.5.2 [1+ 2-]: No overloading by type, no implicit conversions, no orphan impls.
+- R08.5.2 [1+ 3-]: No overloading by type, no implicit conversions, no orphan impls.
 - R08.5.3 [1+ 1-]: No higher-kinded types; capability traits on sequences (`07-sequences.md`) and associated ...
 - R08.5.4 [1+ 1-]: No user-defined patterns (decision 132) and no macros.
 
@@ -698,7 +698,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0406 Recursive `var` lambda: 1 case(s)
 - E0407 Duplicate enum variant tag: 1 case(s)
 - E0408 assign_into_range *(0.3)*: 1 case(s)
-- E0501 Unsupported construct in backend: 7 case(s)
+- E0501 Unsupported construct in backend: 8 case(s)
 - E0502 Non-ASCII character in source or string: 1 case(s)
 - E0503 Removed syntax from an older version: 7 case(s)
 - E0504 Planned syntax, not implemented yet: 1 case(s)
@@ -805,7 +805,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **bitset** (89/92 named by a case)
   - uncovered: `Bitset.bitor`, `Bitset.bitand`, `Bitset.bitxor`
 - **deque** (42/42 named by a case)
-- **derive** (3/4 named by a case)
+- **derive** (5/6 named by a case)
   - uncovered: `read_fields`
 - **dp** (39/39 named by a case)
 - **dsu** (63/63 named by a case)
@@ -817,7 +817,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **graph** (107/122 named by a case)
   - uncovered: `Weighted`, `Edged`, `WeightedNext`, `EdgedNext`, `EdgeArc`, `Reweighted`, `SimpleGraph`, `ConnectedGraph`, `Dag`, `Digraph`, `Graph.weighted`, `Walk`, `TwoSat.add_or`, `Complement`, `Only`
 - **grid** (23/23 named by a case)
-- **hashmap** (37/37 named by a case)
+- **hashmap** (38/38 named by a case)
 - **heap** (88/88 named by a case)
 - **interval** (44/44 named by a case)
 - **io** (5/5 named by a case)
@@ -857,7 +857,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **window** (20/22 named by a case)
   - uncovered: `Tracked`, `Undo`
 
-2147 of 2280 std items are named by a case.
+2150 of 2283 std items are named by a case.
 
 ## Core cases without a `// rule:` line
 

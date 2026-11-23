@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- Sheriff: run 45108912223 (bb4b92621) passed conform and all 4 test shards. Checks failed only on stale COVERAGE.md from stdlib direct pushes; regenerated.
 - Sheriff: narrowed diagnostics' Python `is` fix to `is not None` only; `is None` is valid CP and 4 conformance cases had regressed. cpl-syntax + cpl-lint 225/225, `cpl-conform all --check` 0 regressions.
 - Sheriff: my 3cc5ea0d7 left a one-element `for` in `lsp_v03.rs` (clippy `single_element_loop`, run 45107372240). Replaced it with one assert; clippy on cpl-cli is clean.
 - `land.sh` now refuses a change that grows a file the debt ratchet caps (only files in the change, so a red ratchet on main from someone else does not block you). The ratchet has turned main red 5 times today through direct pushes, once from my own `&&` chain that piped `--check` into `grep`. Test: `test_land_refuses_only_a_change_that_grows_a_capped_file`; `test_check_cache.py -k land` passes 6/6.
