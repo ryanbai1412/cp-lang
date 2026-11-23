@@ -22,7 +22,15 @@ import com.intellij.execution.process.ProcessAdapter
 import com.intellij.execution.process.ProcessEvent
 import com.intellij.execution.process.ProcessHandler
 import com.intellij.execution.process.ProcessHandlerFactory
+import com.intellij.execution.process.ProcessOutputTypes
 import com.intellij.execution.process.ProcessTerminatedListener
+import com.intellij.execution.testframework.TestConsoleProperties
+import com.intellij.execution.testframework.sm.FileUrlProvider
+import com.intellij.execution.testframework.sm.SMCustomMessagesParsing
+import com.intellij.execution.testframework.sm.SMTestRunnerConnectionUtil
+import com.intellij.execution.testframework.sm.runner.OutputToGeneralTestEventsConverter
+import com.intellij.execution.testframework.sm.runner.SMTRunnerConsoleProperties
+import com.intellij.execution.ui.ConsoleView
 import com.intellij.execution.runners.ExecutionEnvironment
 import com.intellij.icons.AllIcons
 import com.intellij.openapi.application.ApplicationManager
@@ -101,7 +109,9 @@ class CplRunConfiguration(project: Project, factory: ConfigurationFactory, name:
     fun commandLine(): GeneralCommandLine {
         val file = File(options.file ?: "")
         val args = Cpl.runArgs(options.command ?: "run", file.path, options.input, options.arguments ?: "")
-        return Cpl.commandLine(args, file.absoluteFile.parentFile)
+        // `cpl test` fills the test tree from its JSON report.
+        val report = if (options.command == "test") listOf("--format", "json") else emptyList()
+        return Cpl.commandLine(args + report, file.absoluteFile.parentFile)
     }
 
     override fun getConfigurationEditor(): SettingsEditor<out RunConfiguration> = CplSettingsEditor()
@@ -112,6 +122,13 @@ class CplRunConfiguration(project: Project, factory: ConfigurationFactory, name:
                 addConsoleFilters(CplLineFilter(project, File(options.file ?: "").absoluteFile))
             }
 
+            override fun createConsole(executor: Executor): ConsoleView? =
+                if (options.command == "test") {
+                    SMTestRunnerConnectionUtil.createConsole("CP Lang", CplTestConsoleProperties(this@CplRunConfiguration, executor))
+                } else {
+                    super.createConsole(executor)
+                }
+
             override fun startProcess(): ProcessHandler {
                 val handler = ProcessHandlerFactory.getInstance().createColoredProcessHandler(commandLine())
                 ProcessTerminatedListener.attach(handler)
@@ -119,6 +136,37 @@ class CplRunConfiguration(project: Project, factory: ConfigurationFactory, name:
                 return handler
             }
         }
+}
+
+/** The test tree of a `cpl test` run: each case of `STEM.tests/`, a wrong answer as a diff. */
+class CplTestConsoleProperties(private val config: CplRunConfiguration, executor: Executor) :
+    SMTRunnerConsoleProperties(config, "CP Lang", executor), SMCustomMessagesParsing {
+    override fun getTestLocator() = FileUrlProvider.INSTANCE
+
+    override fun createTestEventsConverter(name: String, properties: TestConsoleProperties): OutputToGeneralTestEventsConverter {
+        val source = File(config.options.file ?: "").absoluteFile
+        return CplTestEventsConverter(name, properties, File(source.parentFile, source.nameWithoutExtension + ".tests"))
+    }
+}
+
+/** Holds back `cpl test`'s JSON until it exits, then replays it as test events. */
+class CplTestEventsConverter(name: String, properties: TestConsoleProperties, private val tests: File) :
+    OutputToGeneralTestEventsConverter(name, properties) {
+    private val report = StringBuilder()
+
+    override fun process(text: String, outputType: Key<*>) {
+        if (outputType == ProcessOutputTypes.STDOUT) report.append(text) else super.process(text, outputType)
+    }
+
+    override fun flushBufferOnProcessTermination(code: Int) {
+        val messages = Cpl.testMessages(report.toString(), tests)
+        if (messages == null) {
+            super.process(report.toString(), ProcessOutputTypes.STDOUT)
+        } else {
+            messages.forEach { super.process(it + "\n", ProcessOutputTypes.STDOUT) }
+        }
+        super.flushBufferOnProcessTermination(code)
+    }
 }
 
 class CplSettingsEditor : SettingsEditor<CplRunConfiguration>() {
@@ -171,6 +219,29 @@ class CplRunConfigurationProducer : LazyRunConfigurationProducer<CplRunConfigura
     override fun isConfigurationFromContext(configuration: CplRunConfiguration, context: ConfigurationContext): Boolean {
         val file = context.location?.virtualFile ?: return false
         return configuration.options.file == file.path && configuration.options.command == "run"
+    }
+}
+
+/** Right-click a `.cp` file that has a `STEM.tests/` folder: `cpl test FILE`, in the test tree. */
+class CplTestConfigurationProducer : LazyRunConfigurationProducer<CplRunConfiguration>() {
+    override fun getConfigurationFactory() = CplRunConfigurationType.get().configurationFactories.single()
+
+    override fun setupConfigurationFromContext(
+        configuration: CplRunConfiguration,
+        context: ConfigurationContext,
+        sourceElement: Ref<PsiElement>,
+    ): Boolean {
+        val file = context.location?.virtualFile?.takeIf { it.extension == "cp" } ?: return false
+        if (file.parent?.findChild(file.nameWithoutExtension + ".tests")?.isDirectory != true) return false
+        configuration.options.file = file.path
+        configuration.options.command = "test"
+        configuration.name = configuration.suggestedName() ?: file.name
+        return true
+    }
+
+    override fun isConfigurationFromContext(configuration: CplRunConfiguration, context: ConfigurationContext): Boolean {
+        val file = context.location?.virtualFile ?: return false
+        return configuration.options.file == file.path && configuration.options.command == "test"
     }
 }
 

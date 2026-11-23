@@ -3,6 +3,7 @@ package dev.cplang.ide
 import com.intellij.execution.ExecutionException
 import com.intellij.execution.configurations.GeneralCommandLine
 import com.intellij.execution.configurations.PathEnvironmentVariableUtil
+import com.intellij.execution.testframework.sm.ServiceMessageBuilder
 import com.intellij.openapi.components.BaseState
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.SimplePersistentStateComponent
@@ -14,6 +15,7 @@ import com.intellij.ui.dsl.builder.bindText
 import com.intellij.ui.dsl.builder.columns
 import com.intellij.ui.dsl.builder.COLUMNS_LARGE
 import com.intellij.ui.dsl.builder.panel
+import com.google.gson.JsonParser
 import java.io.File
 
 @Service(Service.Level.APP)
@@ -80,6 +82,38 @@ object Cpl {
         if (command == "run" && !input.isNullOrBlank()) args += input
         args += splitArgs(extra)
         return args
+    }
+
+    /**
+     * `cpl test FILE --format json`'s report as the service messages IntelliJ's test tree reads:
+     * one test per case, located at `TESTS/NAME.in`, and a wrong answer as an expected/actual
+     * comparison. Null when the text is not a report (the source has errors).
+     */
+    fun testMessages(json: String, tests: File): List<String>? {
+        val root = runCatching { JsonParser.parseString(json).asJsonObject }.getOrNull() ?: return null
+        val cases = root.get("cases")?.takeIf { it.isJsonArray }?.asJsonArray ?: return null
+        val out = mutableListOf<String>()
+        for (case in cases) {
+            val o = case.takeIf { it.isJsonObject }?.asJsonObject ?: continue
+            fun text(key: String) = o.get(key)?.takeIf { it.isJsonPrimitive }?.asString
+            val name = text("name") ?: continue
+            val hint = "file://" + File(tests, "$name.in").path.replace('\\', '/')
+            out += ServiceMessageBuilder.testStarted(name).addAttribute("locationHint", hint).toString()
+            val output = text("output").orEmpty()
+            if (output.isNotEmpty()) out += ServiceMessageBuilder.testStdOut(name).addAttribute("out", output).toString()
+            val verdict = text("verdict")
+            if (verdict != null && verdict != "ok") {
+                val failed = ServiceMessageBuilder.testFailed(name)
+                    .addAttribute("message", listOfNotNull(verdict, text("why"), text("explained")).joinToString(": "))
+                val expected = text("expected")
+                if (verdict == "WA" && expected != null) {
+                    failed.addAttribute("type", "comparisonFailure").addAttribute("expected", expected).addAttribute("actual", output)
+                }
+                out += failed.toString()
+            }
+            out += ServiceMessageBuilder.testFinished(name).addAttribute("duration", text("ms") ?: "0").toString()
+        }
+        return out
     }
 
     fun traceArgs(file: String, fn: String?) =

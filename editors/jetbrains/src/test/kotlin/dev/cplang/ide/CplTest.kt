@@ -39,6 +39,24 @@ class CplTest {
     }
 
     @Test
+    fun `cpl test's report becomes one test per case, a wrong answer a diff`() {
+        val report = """{"cases":[{"expected":"4\n","explained":null,"ms":25,"name":"1","output":"4\n","peak_kb":3616,"verdict":"ok","why":null},""" +
+            """{"expected":"7\n","explained":null,"ms":19,"name":"2","output":"6\n","peak_kb":3276,"verdict":"WA","why":"expected `7`, got `6`"},""" +
+            """{"expected":null,"explained":null,"ms":3,"name":"3","output":"","peak_kb":null,"verdict":"TLE","why":null}],"passed":1,"total":3}"""
+        val got = Cpl.testMessages(report, File("/p/a.tests"))!!
+        assertEquals(10, got.size)
+        assertEquals("##teamcity[testStarted name='1' locationHint='file:///p/a.tests/1.in']", got[0])
+        assertEquals("##teamcity[testFinished name='1' duration='25']", got[2])
+        assertEquals(
+            "##teamcity[testFailed name='2' message='WA: expected `7`, got `6`' type='comparisonFailure' expected='7|n' actual='6|n']",
+            got[5],
+        )
+        // No answer to compare: the reason, without a diff.
+        assertEquals("##teamcity[testFailed name='3' message='TLE']", got[8])
+        assertNull(Cpl.testMessages("error[E0201]: no `m`", File("/p/a.tests")))
+    }
+
+    @Test
     fun `the lines cpl names in its output link to the file`() {
         val wrong = "    solution tri(k: 1) = 0 at line 4"
         assertEquals(listOf(wrong.indexOf("line 4")..wrong.length - 1 to 4), Cpl.lineRefs(wrong))
