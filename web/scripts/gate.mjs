@@ -64,9 +64,10 @@ walk(join(web, 'content'), (p) => {
     while ((m = fence.exec(text))) {
       i++;
       const meta = m[1];
-      const declared = /\bstatus=(runs|checks|spec)\b/.exec(meta)?.[1] ?? 'runs';
+      const rejects = /\brejects=(E\d{4})\b/.exec(meta)?.[1];
+      const declared = rejects ? 'rejects' : (/\bstatus=(runs|checks|spec)\b/.exec(meta)?.[1] ?? 'runs');
       const stdin = /\binput="([^"]*)"/.exec(meta)?.[1]?.replace(/\\n/g, '\n') ?? '';
-      snippets.push({ id: `${relative(web, p)}#${i}`, source: m[2], stdin, expected: null, declared });
+      snippets.push({ id: `${relative(web, p)}#${i}`, source: m[2], stdin, expected: null, declared, rejects });
     }
   }
 });
@@ -99,6 +100,17 @@ for (const s of snippets) {
   writeFileSync(file, s.source);
   const first = (r) => (r.stderr || r.stdout).split('\n').find((l) => l.startsWith('error')) ?? '';
   const check = sh(['check', file]);
+  // A fence written ```cp rejects=E0602 shows a mistake: it must fail `cpl check` with that code.
+  if (s.rejects) {
+    const got = /^error\[(E\d{4})\]/m.exec(check.stderr || check.stdout)?.[1];
+    const ok = check.status !== 0 && got === s.rejects;
+    results[s.id] = { status: ok ? 'rejects' : 'fails', declared: 'rejects', ...(ok ? {} : { note: `wanted ${s.rejects}, got ${got ?? 'no error'}` }) };
+    if (!ok) {
+      failed++;
+      console.error(`gate: ${s.id} should be rejected with ${s.rejects}: ${results[s.id].note}`);
+    }
+    continue;
+  }
   const build = sh(['build', file, '-o', join(tmp, 'main.cpp')]);
   const run = build.status === 0 && (s.stdin || s.expected != null) ? sh(['run', file], s.stdin) : build;
   const matches = s.expected == null || run.stdout.trimEnd() === s.expected.trimEnd();
@@ -129,14 +141,14 @@ const pages = {};
 for (const [id, r] of Object.entries(results)) {
   if (id.includes('@test')) continue;
   const page = id.replace(/#\d+$/, '').replace(/\/[^/]+\.cp$/, '/');
-  const p = (pages[page] ??= { runs: 0, checks: 0, spec: 0, fails: 0, notes: [] });
+  const p = (pages[page] ??= { runs: 0, checks: 0, spec: 0, fails: 0, rejects: 0, notes: [] });
   p[r.status]++;
-  if (r.status !== 'runs') p.notes.push(`  - \`${id}\` ${r.status}: ${r.note}`);
+  if (r.status !== 'runs' && r.status !== 'rejects') p.notes.push(`  - \`${id}\` ${r.status}: ${r.note}`);
 }
 writeFileSync(
   join(web, '.gate/report.md'),
   ['# Snippet status by page', '', '| page | snippets | runs | check-only | spec only |', '|---|---|---|---|---|']
-    .concat(Object.entries(pages).map(([k, p]) => `| ${k} | ${p.runs + p.checks + p.spec + p.fails} | ${p.runs} | ${p.checks} | ${p.spec + p.fails} |`))
+    .concat(Object.entries(pages).map(([k, p]) => `| ${k} | ${p.runs + p.checks + p.spec + p.fails + p.rejects} | ${p.runs + p.rejects} | ${p.checks} | ${p.spec + p.fails} |`))
     .concat(['', '## Does not run', ''], Object.values(pages).flatMap((p) => p.notes))
     .join('\n') + '\n',
 );

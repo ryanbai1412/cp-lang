@@ -1,3 +1,4 @@
+import { Decision, Spec } from '@/components/cite';
 import { Card, Cards } from 'fumadocs-ui/components/card';
 import defaultMdxComponents from 'fumadocs-ui/mdx';
 import { DocsBody, DocsDescription, DocsPage, DocsTitle } from 'fumadocs-ui/layouts/notebook/page';
@@ -20,7 +21,7 @@ export default async function Page({ params }: Props) {
       <DocsTitle>{page.data.title}</DocsTitle>
       <DocsDescription>{page.data.description}</DocsDescription>
       <DocsBody>
-        <MDX components={{ ...defaultMdxComponents, Card, Cards, LiveCode, Runner, Judge }} />
+        <MDX components={{ ...defaultMdxComponents, Card, Cards, LiveCode, Runner, Judge, Decision, Spec }} />
       </DocsBody>
     </DocsPage>
   );

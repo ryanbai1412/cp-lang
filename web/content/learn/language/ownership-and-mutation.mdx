@@ -1,0 +1,203 @@
+---
+title: "Ownership and mutation"
+description: "Copies and moves, let and var, mut parameters, lends, and the rule that makes aliasing and invalidation bugs impossible to write."
+---
+
+C++ lets you hold a reference into a `vector` and then `push_back` into it, sort with a
+comparator that reads the vector being sorted, or pass the same array twice to a function
+that assumed two. Each compiles, and each is wrong only on some inputs. CP Lang has no
+reference types and no lifetimes to write, and the compiler still rejects every one of
+those programs. This chapter shows how, one rule at a time.
+
+The rules are R1 to R12 of <Spec file="core/05-ownership" section="1. The model in six sentences">the ownership reference</Spec>.
+That page is normative; this chapter explains it and shows each rule running.
+
+## Values copy or move (R1, R2)
+
+A value is **plain** when no part of it lives on the heap: `Int`, `Bool`, `Char`, `F64`,
+`Mod<P>`, positions, ranges, optionals, and tuples and records made of those. Plain values
+copy. Everything else (`List`, `Map`, `Set`, `Str`, `[D]T`, and anything holding one) is a
+**heap** value, and heap values move: binding one to a new name, passing it to a
+constructor, pushing it into a container or returning it hands it over, and the old name
+is gone. A move costs a few words, never a deep copy. A copy is `.clone()`, so you can see
+every O(n) copy in your code. (<Spec file="core/05-ownership" section="2. Plain and heap values (R1, R2)" />)
+
+```cp run rejects=E0608
+var xs = [1, 2]
+let ys = xs
+print(xs.len)
+```
+
+Run it: `xs` moved into `ys` on line 2, so line 3 is an error. Write `xs.clone()` on line 2
+and it runs. There is no third option where `let ys = xs` quietly copies a list: no two
+variables ever refer to the same value, so a write is always to a name you can see.
+
+## let, var and places (R3)
+
+`let` binds a name that can't change, all the way down: no assignment, no `push`, no
+`x[i] = ..`. `var` binds one that can. A **place** is something you can write through: a
+variable, a field `s.f`, an element `a[i]`, a slice `a[l..r]`. Writing a place, calling a
+`mut self` method on it, or passing it as `mut` needs it to be a `var`, a `mut` parameter or
+a `mut` lend. (<Spec file="core/05-ownership" section="3. Bindings and places" />)
+
+## Parameters are lent, and `mut` is written twice (R4)
+
+A function never takes ownership of its arguments. A parameter is a **lend**: the callee
+reads the caller's value in place, with no copy and no move, and can't keep it. A `mut`
+parameter may also write it, and the call says so with `mut` too, so you can see at the call
+which arguments might change. (<Spec file="core/05-ownership" section="4. Parameters and calls (R4)" />)
+
+```cp run
+fn add_all(mut out: List<Int>, xs: List<Int>):
+    for x in xs: out.push(x)
+
+var a = [1, 2]
+let b = [3, 4]
+add_all(mut a, b)
+print(a)
+print(b.len)
+```
+
+`b` is only read, so the caller keeps it, unchanged. Drop the `mut` at the call and it is
+an error:
+
+```cp run rejects=E0402
+fn grow(mut xs: List<Int>): xs.push(1)
+var a: List<Int> = []
+grow(a)
+print(a.len)
+```
+
+## A lend freezes what it borrows, until its last use (R6, R7)
+
+Some values are **lent**: they look at another value instead of owning one. Parameters are
+lent; so are slices, loop items, generator values, and closures that capture a local `var`.
+The variables a lent value looks at are its **sources**. While the lent value is alive, from
+where it is made to its **last use**, not to the end of the block, its sources hold still:
+
+- a read lend lets the sources be read, but not written, resized or moved;
+- a `mut` lend lets nothing else touch them at all.
+
+(<Spec file="core/05-ownership" section="7. Lent values (R6 to R8)" />)
+
+```cp run input="4" rejects=E0602
+let n: 1..=8 = read()
+domain V = 0..n
+var a: [V]Int = 0
+let w = a[V.first!..V.last!]
+a[V.first!] = 5
+print(w.sum())
+```
+
+`w` is a view of `a`, and it is used again on line 6, so the write on line 5 would change what
+`w` sees underneath it. Swap lines 5 and 6 and it compiles: `w` is dead before the write.
+
+This is the whole of iterator invalidation. In C++, `for (int x : v) v.push_back(x);`
+reallocates the vector the loop is walking. Here the loop item is lent from `v`, so the
+`push` is the same error.
+
+## Lent values can't outlive their sources (R8)
+
+A lent value may be stored in a `let`, a field or a container only when that storage dies no
+later than its sources. It can't be returned (unless the function says `lends`), stored
+through a parameter, or kept in a top-level `var`. The common case is keeping a loop item:
+
+```cp run rejects=E0603
+let rows: List<List<Int>> = [[1, 2], [3], [4, 5, 6]]
+var best: List<Int> = []
+for r in rows:
+    if r.len > best.len: best = r
+print(best)
+```
+
+`r` is lent from `rows` for one iteration; `best` lives past it. The fix the error suggests,
+`best = r.clone()`, makes the copy you were going to need anyway, and makes it visible.
+
+## Overlapping `mut` places must be proven apart (R9)
+
+Two live lends of overlapping places, one of them `mut`, are an error unless the compiler can
+prove the places are apart. Different fields never overlap. Two elements of one array are
+apart when the facts at that point say so: `if i != j`, an `assert`, `i < j`, or the value
+ranges of the indices. (<Spec file="core/05-ownership" section="8. Overlap and order (R9 to R11)" />)
+
+```cp run input="4 1 3" rejects=E0601
+let n: 1..=8 = read()
+domain V = 0..n
+var a: [V]Int = [V] v => Int(v)
+let i: V = read()
+let j: V = read()
+swap(mut a[i], mut a[j])
+print(a)
+```
+
+`i` and `j` might be equal, and a function handed two `mut` names for one element is the
+self-aliasing bug (`merge(mut a, mut b)` that clears `b` when `a` is `b`). Say what you know
+and it runs:
+
+```cp run input="4 1 3"
+let n: 1..=8 = read()
+domain V = 0..n
+var a: [V]Int = [V] v => Int(v)
+let i: V = read()
+let j: V = read()
+if i != j: swap(mut a[i], mut a[j])
+print(a)
+```
+
+## A call touches everything it uses (R10)
+
+A call is one access to its arguments and to everything the functions and closures it is given
+capture, for the length of the call. So a comparator can't read the array being sorted:
+
+```cp run rejects=E0602
+var xs = [3, 1, 2]
+xs.sort(by: x => xs.len - x)
+print(xs)
+```
+
+A closure borrows what it captures only while it runs, not for its whole life. So a counter
+closure can be called, its variable read, and the closure called again:
+
+```cp run
+var cnt = 0
+let inc = () => cnt += 1
+inc()
+print(cnt)
+inc()
+print(cnt)
+```
+
+R11 fixes the evaluation order: operands left to right, and an assignment runs its right side,
+then the target's indices, then the write. So `a.push(a.len)` and `cnt[a[i]] += 1` do what they
+say. R12 covers generators and views; both are in the reference.
+
+## Why it's designed this way
+
+**Values, not objects.** Every aliasing bug needs a writer and another live view of the same
+data at the same moment. CP Lang forbids exactly that pair, which rules out four classes of
+bug: invalidation, stale reads, self-aliasing, and code where "nothing here touched `x`" needs
+the whole program to check (<Spec file="core/05-ownership" section="13a. Why, compared with Rust, and limits" />).
+<Decision n={128} /> made heap values move and copies explicit. It rejected implicit copies
+for `let b = a`: they make an O(n) cost look like O(1), and they keep two names for what the
+reader thinks is one value.
+
+**Lends without lifetimes.** <Decision n={141} /> made every value owned or lent, and kept
+the mode out of the type: there is no `&T` or `&mut T` to write, and a function says
+`lends` on its signature only when its result borrows. It rejected a separate kind of view
+struct (`lends S`), and a rule that a `mut`-lent generator may be walked only once, which
+became a lint instead. <Decision n={144} /> wrote the whole model down as R1 to R12 so any
+snippet can be judged by reading one page. It also let lent values live in a `var`, a field or
+a container that dies before their sources, so a `SegTree` over a closure that reads your array
+just works, and it chose to borrow closure captures per call rather than for the closure's life.
+
+**Proven apart, not checked at run time.** <Decision n={128} /> made two `mut` places in one
+container an error unless the compiler proves them distinct. A run-time distinctness check was
+rejected for now: it would cost time in hot loops, and the proof is usually a fact you already
+wrote (`if i != j`). Decision 128 leaves it as the way to relax the rule later.
+
+**Compared with Rust.** The rules end up close to Rust's borrow checker in what they reject,
+with less to write: lends are second-class (never in a type, never past the caller's block),
+parameters can't take ownership, plain values copy without `derive(Copy)`, `if i != j` replaces
+`split_at_mut`, and there is one kind of closure. What that gives up, on purpose: closures that
+outlive their captures, two owners of one mutable value, and pointers between nodes (use domain
+indices). The reference lists each limit and the spelling to use instead.

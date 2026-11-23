@@ -1,0 +1,27 @@
+---
+title: "The language in depth"
+description: "One chapter per part of CP Lang: the rules, examples that run, and why each part is designed the way it is."
+---
+
+The [course](/learn/read/first-program) teaches CP Lang by solving problems.
+These chapters are for readers who want the whole model behind it: what each
+rule says, the smallest program that shows it, and why the language chose it
+over the alternatives.
+
+Each chapter:
+
+- states the rules and links each one to the normative text in the
+  [language reference](/docs/ref/core/00-overview), which wins wherever the two differ;
+- shows every rule in code you can run and edit in place, including the
+  mistakes it stops, with the compiler's error;
+- ends with **Why it's designed this way**, citing the entries of
+  [`decisions.md`](https://github.com/ryanbai1412/cp-lang/blob/main/decisions.md)
+  that made each call and the alternatives they rejected.
+
+| Chapter | What it covers |
+|---|---|
+| [Ownership and mutation](/learn/language/ownership-and-mutation) | Copies and moves, `let` and `var`, `mut` parameters, lends, aliasing and invalidation |
+
+More chapters are coming: values; domains, ranges and index spaces; types, widths and proofs;
+optionals; multitest state; checked operations and build profiles; the standard library's
+design; and how the C++ and the judge model work.
