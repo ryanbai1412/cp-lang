@@ -6168,3 +6168,14 @@ constants and the `exit(3)` in the C++ runtime, and the sentence in
   error, like a compile error, and fixing it means editing them.
 - **Reverse.** Return `EXIT_USAGE` again where `cpl_judge::resolve` fails in
   `crates/cpl-cli/src/build.rs` and `submit.rs`.
+
+## 253. `cpl bench --zero-cost` compares the fastest run, not the median (2026-11-22)
+
+- **Decision.** Each binary's time is the fastest of its alternating runs.
+- **Why.** The pairs are deterministic and take 10-170 ms, so noise from
+  a loaded machine only adds time. With the median, two runs a few minutes
+  apart read `iterators` at 1.036x and 1.882x of hand C++, and `direct`
+  at 61 ms against `abstract`'s 43 ms for the same inner loop; with the
+  fastest, two runs agree within 0.03x on every pair.
+- **Reverse.** Use `median` again in `run_pair` in
+  `crates/cpl-contest/src/zero_cost.rs`.

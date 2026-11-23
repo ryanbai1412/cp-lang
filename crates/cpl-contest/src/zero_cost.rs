@@ -3,7 +3,9 @@
 //! For each subdirectory of `bench/zero-cost/` containing `abstract.cp` and
 //! `direct.cp` (plus `input.txt` or `gen.py`), emits C++17, builds both with
 //! `g++ -O2 -std=c++17`, verifies identical stdout, runs `reps` alternating
-//! iterations, compares median wall time (`abstract / direct <= max_ratio`),
+//! iterations, compares the fastest wall time of each (`abstract / direct <=
+//! max_ratio`; noise from a loaded machine only adds time, so the minimum is
+//! the stable estimate for a deterministic program),
 //! and compares normalized `-O2 -S` assembly of the `kernel` function.
 
 use std::io::Write;
@@ -199,16 +201,8 @@ fn run_binary(bin: &Path, input_path: &Path) -> Result<(f64, Vec<u8>), String> {
     Ok((elapsed_ms, out.stdout))
 }
 
-fn median(values: &mut [f64]) -> f64 {
-    values.sort_by(|a, b| a.total_cmp(b));
-    let n = values.len();
-    if n == 0 {
-        0.0
-    } else if n % 2 == 1 {
-        values[n / 2]
-    } else {
-        0.5 * (values[n / 2 - 1] + values[n / 2])
-    }
+fn fastest(values: &[f64]) -> f64 {
+    values.iter().copied().reduce(f64::min).unwrap_or(0.0)
 }
 
 pub fn run_pair(dir: &Path, reps: usize, max_ratio: f64) -> PairResult {
@@ -305,10 +299,10 @@ pub fn run_pair(dir: &Path, reps: usize, max_ratio: f64) -> PairResult {
             }
         }
 
-        let abstract_ms = median(&mut abs_times);
-        let direct_ms = median(&mut dir_times);
+        let abstract_ms = fastest(&abs_times);
+        let direct_ms = fastest(&dir_times);
         let cpp_ms = if has_hand_cpp {
-            Some(median(&mut hand_times))
+            Some(fastest(&hand_times))
         } else {
             None
         };
@@ -477,7 +471,7 @@ pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u
     } else {
         let _ = writeln!(
             stdout,
-            "Zero-cost abstraction benchmark ({reps} runs median, bar <= {max_ratio:.2}x):"
+            "Zero-cost abstraction benchmark (fastest of {reps} runs, bar <= {max_ratio:.2}x):"
         );
         let _ = writeln!(
             stdout,
