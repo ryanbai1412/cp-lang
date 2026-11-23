@@ -6,25 +6,25 @@
 name = "spec/CLI command mismatches"
 command = "python3 plan/domains/tools/measure.py spec-sync"
 target = "0"
-today = "2 (spec-only: locate migrate, to build; cli-only: none)"
+today = "1 (spec-only: locate, to build; cli-only: none)"
 
 [[metric]]
 name = "end-to-end tests per command"
 command = "python3 plan/domains/tools/measure.py golden"
-target = "every command >= 4 (help, one success, one usage error, one exit code); 24/24 with a test"
-today = "24/24 with a test; help and unknown-option usage error tested for all 24 (every_command_has_help_and_rejects_an_unknown_option); check 31 fix 3 run 74 judge 1 build 54 judges 4 submit 3 fmt 2 lint 2 explain 3 doc 3 new 1 fetch 1 test 5 stress 15 bench 3 profile 5 cover 3 watch 2 report 2 lsp 5 dap 6 replay 2 self 3; help, usage error, success and failing exit all asserted: 24/24 (judges has no failing outcome, only misuse)"
+target = "every command >= 4 (help, one success, one usage error, one exit code); 25/25 with a test"
+today = "25/25 with a test; help and unknown-option usage error tested for all 25 (every_command_has_help_and_rejects_an_unknown_option); check 31 fix 3 migrate 1 run 74 judge 1 build 54 judges 4 submit 3 fmt 2 lint 2 explain 3 doc 3 new 1 fetch 1 test 5 stress 15 bench 3 profile 5 cover 3 watch 2 report 2 lsp 5 dap 6 replay 2 self 3; help, usage error, success and failing exit all asserted: 25/25 (judges has no failing outcome, only misuse)"
 
 [[metric]]
 name = "commands with --help"
 command = "python3 plan/domains/tools/measure.py help"
-target = "24/24"
-today = "24/24"
+target = "25/25"
+today = "25/25"
 
 [[metric]]
 name = "commands offering --json"
 command = "python3 plan/domains/tools/measure.py json"
 target = "every command that prints results (all but dap, lsp, self, watch)"
-today = "20/24 (without: dap lsp self watch); target met"
+today = "21/25 (without: dap lsp self watch); target met"
 
 [[metric]]
 name = "cpl check wall time over corpus ports, p95"
