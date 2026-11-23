@@ -136,7 +136,7 @@ A new code lands with its row in `spec/diagnostics.md`, a `REGISTRY` entry whose
 
 - **Why:** `cpl explain` and the docs are only as complete as the catalogue.
 - **Example:** E0303 has a trigger, a fix and `cpl explain E0303`.
-- **Enforced by:** `catalogue.rs` `every_defined_code_is_catalogued`, `every_emitted_code_has_an_exact_trigger_and_a_clean_fix`; `crates/cpl-lint/src/record_tests.rs`.
+- **Enforced by:** `catalogue.rs` `every_defined_code_is_catalogued`, `every_emitted_code_has_an_exact_trigger_and_a_clean_fix`, `every_code_links_to_a_page_the_site_builds`; `crates/cpl-lint/src/record_tests.rs`.
 
 ### R14. A code never changes meaning
 

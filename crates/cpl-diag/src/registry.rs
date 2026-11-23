@@ -1053,6 +1053,19 @@ pub const REGISTRY: &[CodeInfo] = &[
     },
 ];
 
+/// The web page that explains `code`: lints under `/lints`, every other code
+/// under `/errors`. The site builds one page per registry entry and per lint
+/// record (`web/app/errors/[code]`, `web/app/lints/[name]`).
+pub fn page(code: &str) -> Option<String> {
+    let well_formed = code.len() == 5 && code[1..].bytes().all(|b| b.is_ascii_digit());
+    let section = match code.as_bytes().first()? {
+        b'L' => "lints",
+        b'E' | b'W' | b'R' => "errors",
+        _ => return None,
+    };
+    well_formed.then(|| format!("https://cp-lang.org/{section}/{code}"))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

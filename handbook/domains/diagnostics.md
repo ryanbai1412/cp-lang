@@ -174,7 +174,7 @@ with no real check yet. Targets and current values are in
 | Every code has a `cpl explain` page | codes without an explanation | `errors/R13`: gate | `crates/cpl-cli/tests/catalogue.rs` |
 | Every lint has a record whose `before.cp` fires and `after.cp`, `near_miss.cp` don't | records failing | `errors/R13`: generated suite | `crates/cpl-lint/src/record_tests.rs`, `checker_tests.rs` |
 | Codes never change meaning; retired codes are never reused | a code whose name changed or a retired code emitted | `errors/R14`: gate comparing the catalogue with the last commit | `crates/cpl-cli/tests/catalogue.rs` `codes_never_change_meaning` |
-| A diagnostic links to a web page for its code | codes with no page | `errors/R13`: `missing` (with site) | — |
+| A diagnostic links to a web page for its code | codes with no page | `errors/R13`: every code `cpl_diag::registry::page` links (LSP `codeDescription`, JSON `page`) is a registry entry or lint record the site builds a page from | `crates/cpl-cli/tests/catalogue.rs` `every_code_links_to_a_page_the_site_builds` |
 
 ### Lints
 

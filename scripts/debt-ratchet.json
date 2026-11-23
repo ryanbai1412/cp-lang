@@ -136,7 +136,7 @@
   "register_rows_by_domain": {
     "compiler": 1,
     "debugger": 14,
-    "diagnostics": 3,
+    "diagnostics": 2,
     "idioms": 1,
     "infra": 0,
     "lint-fmt": 0,

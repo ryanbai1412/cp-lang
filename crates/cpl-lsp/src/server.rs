@@ -1352,14 +1352,7 @@ fn diagnostic_json(diag: &Diagnostic, uri: &str, text: &str, lines: &LineIndex) 
         ("source".to_string(), "cpl".into()),
         ("message".to_string(), message.into()),
     ]);
-    // Every code has a page: lints under /lints, the rest under /errors.
-    let page = if diag.code.0.starts_with('L') {
-        "lints"
-    } else {
-        "errors"
-    };
-    if diag.code.0.len() == 5 {
-        let href = format!("https://cp-lang.org/{page}/{}", diag.code.0);
+    if let Some(href) = cpl_diag::registry::page(diag.code.0) {
         members.insert("codeDescription".to_string(), obj([("href", href.into())]));
     }
     if !diag.labels.is_empty() {

@@ -305,3 +305,44 @@ fn codes_never_change_meaning() {
         broken.join("\n")
     );
 }
+
+/// Every code links to a page the site builds (`errors/R13`,
+/// handbook/guidelines/errors-checklist.md#r13-every-code-is-catalogued-with-a-trigger-a-fix-and-a-page):
+/// `/errors/<code>` comes from a registry entry, `/lints/<code>` from a lint
+/// record under `spec/lints/` or `spec/checker-lints/`.
+#[test]
+fn every_code_links_to_a_page_the_site_builds() {
+    let mut records = BTreeSet::new();
+    for dir in ["spec/lints", "spec/checker-lints"] {
+        for entry in std::fs::read_dir(root().join(dir)).unwrap() {
+            let toml = std::fs::read_to_string(entry.unwrap().path().join("lint.toml"))
+                .unwrap_or_default();
+            if let Some(code) = toml
+                .lines()
+                .find_map(|l| l.strip_prefix("code = \"")?.strip_suffix('"'))
+            {
+                records.insert(code.to_string());
+            }
+        }
+    }
+    let mut codes = defined();
+    codes.extend(cpl_diag::REGISTRY.iter().map(|i| i.code.0.to_string()));
+    codes.extend(records.iter().cloned());
+    let broken: Vec<String> = codes
+        .iter()
+        .filter(|c| {
+            let built = if c.starts_with('L') {
+                records.contains(*c)
+            } else {
+                cpl_diag::registry::lookup(c).is_some()
+            };
+            cpl_diag::registry::page(c).is_none() || !built
+        })
+        .cloned()
+        .collect();
+    assert!(codes.len() > 200, "only {} codes found", codes.len());
+    assert!(
+        broken.is_empty(),
+        "codes whose page link the site does not build: {broken:?}"
+    );
+}
