@@ -413,3 +413,37 @@ fn every_help_fits_80_columns() {
         .collect();
     assert!(wide.is_empty(), "{wide:#?}");
 }
+
+#[test]
+fn watch_once_runs_one_round_with_its_exit_code() {
+    helps("watch");
+    misused("watch", &["watch"], "`watch` needs a problem");
+    let dir = scratch("watch");
+    let source = "let (a, b): (1..=10, 1..=10) = read()\nprint(a + b)\n";
+    std::fs::write(dir.join("sum.cp"), source).unwrap();
+    std::fs::create_dir_all(dir.join("sum.tests")).unwrap();
+    std::fs::write(dir.join("sum.tests/1.in"), "1 2\n").unwrap();
+    std::fs::write(dir.join("sum.tests/1.out"), "3\n").unwrap();
+    let out = cpl(&dir, &["watch", "sum", "--once"]);
+    assert_eq!(out.status.code(), Some(0), "{}", text(&out.stderr));
+    let report = text(&out.stdout) + &text(&out.stderr);
+    assert!(report.contains("1/1 passed"), "{report}");
+    std::fs::write(dir.join("sum.tests/1.out"), "4\n").unwrap();
+    let out = cpl(&dir, &["watch", "sum", "--once"]);
+    assert_eq!(out.status.code(), Some(1));
+    let report = text(&out.stdout) + &text(&out.stderr);
+    assert!(
+        report.contains("WA") && report.contains("0/1 passed"),
+        "{report}"
+    );
+}
+
+#[test]
+fn replay_names_what_it_needs() {
+    helps("replay");
+    misused(
+        "replay",
+        &["replay", "a.cp"],
+        "`replay` needs a file, --trace and --step",
+    );
+}
