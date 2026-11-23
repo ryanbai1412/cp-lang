@@ -1,11 +1,13 @@
-// Codeforces 2152 F. The greedy that starts at point i next takes the first
-// point more than z to the right: a tree on 0..=n, rooted at the sentinel n,
-// whose parents lie to the right, so it grows leaf by leaf from right to left.
-// The answer for [l, r) runs the greedy from l and from l + 1 side by side.
-// The two walks meet at their lca c and continue as the pair (c, c + 1), so
-// pairs form a second tree; `taken[i]` counts the points the walks from i and
-// i + 1 take up to n. A query climbs the pair tree while it stays left of r,
-// then finishes each walk of the last pair in the greedy tree.
+// Source: Codeforces 2152F (Triple Attack), https://codeforces.com/contest/2152/problem/F
+// Problem: sorted timestamps x_1..x_n (n <= 2.5e5) and z; a set is safe if every three of its
+//   elements span more than z. For q <= 2.5e5 ranges [l, r], print the size of the largest
+//   safe subset of x_l..x_r. Multitest, sums of n and q <= 2.5e5.
+// Solution: the greedy takes l and l + 1, then each next point is the first one more than z
+//   past the pick two before. Its odd and even picks are walks in the tree with parent(i) = the
+//   first j with x_j > x_i + z (sentinel n) until they meet at their lca c, then go on as the
+//   pair (c, c + 1); pairs form a second tree and taken[i] counts the picks from (i, i + 1) to
+//   n. A query climbs the pair tree while below r, then finishes both walks; both trees are
+//   JumpTrees: O((n + q) log n).
 
 @!multitest
 let (n, z) = read<(Int, Int)>()

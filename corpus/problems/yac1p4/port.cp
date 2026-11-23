@@ -1,6 +1,11 @@
-// Yet Another Contest 1 P4: letter i of a word is worth the square of its
-// place in the alphabet. Pick disjoint pairs of positions i < k; a pair
-// scores w - worth[k]. Print every total that can be reached.
+// Source: Yet Another Contest 1 P4 (No More Searching), https://dmoj.ca/problem/yac1p4
+// Problem: a string of n <= 250 letters A..Z (worth 1..26) is split into subsequences; one with
+//   first value u and last value v scores u^2 - v^2. Print how many total scores are possible,
+//   then each of them in ascending order.
+// Solution: only first and last letters count, so a total is the sum of w^2 over left ends minus
+//   over right ends, paired so each left end comes before its right end. Scan right to left
+//   keeping, per count of unmatched right ends, the Bitset of reachable totals, offset by the
+//   worth of the letters seen so it only shifts up. O(n^2 W / 64), W = 2 * total worth.
 // original: corpus/submissions/4376742.cpp
 
 let n: 1..=250 = read()

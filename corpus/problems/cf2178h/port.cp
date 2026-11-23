@@ -1,8 +1,13 @@
-// Codeforces 2178 H: Create or Duplicate.
-// Build every type's count by Horner's rule: its first create is the free
-// initial present, and a duplicate doubles every type already started, so
-// the state is the value sum mod m and the set of started types. Every move
-// has a fixed cost, so the shortest path needs no heap.
+// Source: Codeforces 2178H (Create or Duplicate), https://codeforces.com/contest/2178/problem/H
+// Problem: three present types of values a < b < c < m <= 5e5, one present of each. Create adds
+//   a present of a type for its value in mana; Duplicate doubles one type's presents for k
+//   mana. Print the least mana making the total value a multiple of m. Multitest, sums of m and
+//   of k <= 5e5.
+// Solution: build each type's count by Horner's rule: its first create is the free initial
+//   present, and a duplicate doubles every type already started (k per started type), so the
+//   state is the value sum mod m and the set of started types. All moves have fixed costs, so
+//   fixed_cost_paths (no heap) finds the cheapest way to (0, all started) over 8m states and 7
+//   moves, O(56 m); subtract a + b + c for the free initial presents.
 use std.graph.{fixed_cost_paths}
 
 domain T = 0..3

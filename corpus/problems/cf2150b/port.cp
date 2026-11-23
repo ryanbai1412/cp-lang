@@ -1,11 +1,11 @@
-// Codeforces 2150 B — Grid Counting
-//
-// In an `n x n` grid, column `c in 0..n` can only be placed in rows
-// `0..=min(c, n - 1 - c)`. Bucketing each column by its deepest allowed row
-// `r = min(c, n - 1 - c)` gives `freq[r]` newly unlocked columns as we sweep
-// `r` from `n - 1` down to `0`. Maintaining `cur` = unused unlocked columns,
-// row `i` picks `a[i]` of them in `C(cur, a[i])` ways and consumes `a[i]`
-// columns; valid iff `cur >= a[i]` at every row and `cur == 0` at the end.
+// Source: Codeforces 2150B (Grid Counting), https://codeforces.com/contest/2150/problem/B
+// Problem: colour cells of an n x n grid (n <= 2e5) black so that row k has a_k black cells and,
+//   for each k, exactly one black cell has max(x, y) = k and exactly one has max(x, n+1-y) = k.
+//   Count the grids mod 998244353. Multitest, sum n <= 2e5.
+// Solution: the conditions mean one black cell per column y, in a row x <= min(y, n+1-y).
+//   Going up from the bottom row, row i (0-based) unlocks the freq[i] columns whose deepest
+//   allowed row is i and picks its a_i cells among the cur unused unlocked ones: C(cur, a_i)
+//   ways. The answer is the product, or 0 if some cur < a_i or columns are left. O(n).
 
 const MOD = 998_244_353
 type Z = Mod<MOD>

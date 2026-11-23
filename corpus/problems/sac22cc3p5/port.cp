@@ -1,9 +1,9 @@
-// SAC 2022 Code Challenge 3 P5: n words and m texts, letters in either
-// case, which does not count. For each text print how many different words
-// occur in it. A word has at most 25 letters and a text at most 500.
-//
-// Deduplicate the lowercased dictionary and build an Aho-Corasick automaton;
-// for each text, count distinct matched word IDs.
+// Source: SAC '22 Code Challenge 3 P5 (Chat Corrections), https://dmoj.ca/problem/sac22cc3p5
+// Problem: n <= 5e4 distinct banned words (<= 25 letters) and m <= 1000 messages (<= 500
+//   letters), case-insensitive. For each message print how many distinct banned words occur in it.
+// Solution: lowercase and deduplicate the words, build an AhoCorasick automaton over them, and
+//   collect the word IDs of each message's matches in a Set. O(total length + matches), at most
+//   25 matches per message position.
 // original: corpus/submissions/4340958.cpp
 use std.strings.{AhoCorasick}
 

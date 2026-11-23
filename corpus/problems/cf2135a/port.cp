@@ -1,16 +1,10 @@
-// Codeforces 2135 A — Against the Difference
-//
-// A neat subsequence is a concatenation of blocks where each block consists of
-// `x` equal copies of `x`. Let `dp[j]` be the maximum length of a neat
-// subsequence inside the suffix `a[j..n]`.
-//
-// Pre-collect `inds[x]` as the ascending list of indices where `a[k] == x`.
-// Sweeping `i` from `n - 1` down to `0` maintains the invariant that `inds[x]`
-// holds all occurrences of `x` in `0..=i`, with `i` at the back (`inds[x].last`).
-// Thus if `inds[x].len >= x`, the `x`-th occurrence ending at `i` starts at
-// `start = inds[x][inds[x].len - x]`, giving the block `start..=i` of length
-// `x` followed by any neat subsequence in `a[i + 1..n]`:
-// `dp[start] max= dp[i + 1] + x`, before popping `i` from `inds[x]`.
+// Source: Codeforces 2135A (Against the Difference), https://codeforces.com/contest/2135/problem/A
+// Problem: a block is x copies of x, and an array is neat if it is blocks concatenated. Given
+//   n <= 2e5 values a_i in 1..=n, print the length of the longest neat subsequence. Multitest,
+//   sum n <= 2e5.
+// Solution: dp[j] = the longest neat subsequence of a[j..]. Going right to left, inds[x] holds
+//   the positions of x up to i; a block of x ending at i best starts at the x-th last of them,
+//   so dp[start] max= dp[i + 1] + x, and dp[i] max= dp[i + 1]. O(n).
 
 @!multitest
 let n: 1..=200_000 = read()

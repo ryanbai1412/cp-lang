@@ -1,13 +1,13 @@
-// Codeforces 2089 C1 — Key of Like (Easy Version, `_k = 0` fake keys)
-//
-// `dp[j]` is the expected number of keys found by player `j` (0-based) when
-// `i` keys remain and player `0` moves next. When a key is found by player `0`:
-// - Player `0` earns `+1`, and the turn advances by `1` mod `n`, so after the
-//   find player `j` inherits `shifted[j] = dp[(j - 1) mod n] + (1 if j == 0)`.
-// - Because any of the `i` remaining keys is equally likely to be the first
-//   matched (at step `s in 0..i` around the circle), `dp[k]` is the average of
-//   `shifted[(k - s) mod n]` over the cyclic window of length `i` ending at `k`.
-//   `cyclic_window_sum` computes this sum in O(1) using `pref` and `wraps`.
+// Source: Codeforces 2089C1 (Key of Like, easy version),
+//   https://codeforces.com/contest/2089/problem/C1
+// Problem: n <= 100 players in turn try one key on one lock, among l <= 5000 locks and their l
+//   keys (k = 0 fakes), always a pair most likely to match given all past tries, ties at
+//   random. Print each player's expected number of opened locks mod 1e9+7. Multitest,
+//   sum l <= 5000.
+// Solution: with i locks left the next match comes at try s, uniform over 0..i, and the player
+//   after it starts the next search. dp[j], player j's expectation when player 0 moves first,
+//   averages shifted[(j - s) mod n] over s, where shifted[j] = dp_(i-1)[j - 1] + [j == 0].
+//   Prefix sums with wrap counts give each cyclic window in O(1): O(n l).
 
 const MOD = 1_000_000_007
 type Z = Mod<MOD>

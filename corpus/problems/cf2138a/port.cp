@@ -1,15 +1,10 @@
-// Codeforces 2138 A — Cake Assignment
-//
-// Starting from `(2^k, 2^k)`, forward operation 1 moves half of `x` to `y`
-// (`(x, y) -> (x / 2, y + x / 2)`) and operation 2 moves half of `y` to `x`.
-// Running backwards from target `(x, 2^(k + 1) - x)` (`1 <= x < 2^(k + 1)`),
-// the strictly smaller pile must be the one that was just halved:
-// - If `x > y`, undo op 2: `(x, y) -> (x - y, 2 * y)`.
-// - If `x < y`, undo op 1: `(x, y) -> (2 * x, y - x)`.
-// The sum `x + y = 2^(k + 1)` is invariant and `ctz(x) == ctz(y)` strictly
-// increases by 1 on every step (since `x, y > 0` and `x != y`), so the walk
-// terminates at `x == y == 2^k` in `<= k` steps; printing `ops.rev` restores
-// the forward sequence.
+// Source: Codeforces 2138A (Cake Assignment), https://codeforces.com/contest/2138/problem/A
+// Problem: two piles of 2^k cakes (k <= 60); a move gives half of an even pile to the other.
+//   Print the fewest moves to reach (x, 2^(k+1) - x) and the moves (1 or 2, by who gives).
+//   Multitest.
+// Solution: backwards each move is forced: the giver ends with the smaller pile, so undo it
+//   ((x, y) -> (x - y, 2y) if x > y, else (2x, y - x)). Each undo raises the lowest set bit of
+//   both piles, so it ends at (2^k, 2^k) within k steps; print the moves reversed. O(k).
 
 @!multitest
 let k: 1..=60 = read()

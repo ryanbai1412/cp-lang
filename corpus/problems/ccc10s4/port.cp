@@ -1,8 +1,11 @@
-// CCC 2010 S4 Animal Farm: pens are polygons whose corners are numbered
-// posts; a fence between two posts has a cost to remove. Remove the cheapest
-// fences so that all animals can meet, either inside or by all getting
-// outside: a minimum spanning tree over the pens, with or without the
-// outside as an extra vertex.
+// Source: CCC 2010 S4 (Animal Farm), https://dmoj.ca/problem/ccc10s4
+// Problem: M <= 100 pens, each a polygon of 3..=8 numbered corner posts (<= 1000) with a cost
+//   (<= 5000) per edge; an edge listed by two pens joins them, one listed once faces outside.
+//   One animal per pen; print the least total cost of edges to break so that all of them can
+//   meet in one pen or outside.
+// Solution: pens and the outside are vertices, edges are weighted edges; the answer is the
+//   cheaper of a minimum spanning tree of the pens alone and of the pens plus the outside.
+//   A Map matches edges by their sorted post pair, then Kruskal with a Dsu. O(E log E).
 let pens: 1..=100 = read()
 domain Pen = 0..=pens  // pen 0 is the outside
 
