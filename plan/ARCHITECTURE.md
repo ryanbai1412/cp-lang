@@ -219,7 +219,8 @@ Crate names follow jobs; a crate whose job already matches keeps its name.
 | `cpl-codegen` | C++ emitter, runtime tree-shaking, judge profiles |
 | `cpl-diag` | diagnostic model and renderers |
 | `cpl-cli` | `cpl check/run/build/test/stress/doc/fmt/lint/explain/judge/dap` |
-| `cpl-lsp`, `cpl-fmt`, `cpl-lint`, `cpl-doc`, `cpl-stress`, `cpl-judge` | tools over `cpl-check` queries |
+| `cpl-fmt`, `cpl-lint`, `cpl-doc`, `cpl-stress`, `cpl-judge` | tools over `cpl-check` queries |
+| `cpl-lsp` | the language server. `lib.rs` only re-exports `Server` and `serve`; dispatch is in `server.rs`. Hover facts come from `cpl-check/src/hover.rs`; the LSP renders them as markdown. Uses `cpl-check`, `cpl-lint`, `cpl-fmt`, `cpl-judge`, `cpl-ir`. `transport` framing is shared with the DAP in `cpl-cli/src/dap.rs`. `build.rs` lists the std modules for `use std.` completion |
 | `cpl-conform` | one harness: conformance, corpus, doc examples, differential, fuzzing, scoreboard |
 | `cpl-contest` | the contest workflow behind `cpl new/test/bench/watch`; the corpus benchmark (perf owns `corpus_bench.rs`) |
 | `cpl-json` | one dependency-free JSON value and printer, shared by every tool that speaks JSON |
