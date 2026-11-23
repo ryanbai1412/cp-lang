@@ -4,6 +4,23 @@ use super::*;
 use cpl_diag::Fix;
 use cpl_syntax::ast::{Arg, BinOp, CmpOp, Expr, ExprKind, FnBody, FnDecl, Name, StmtKind};
 
+/// The fix for a clear operand mistake: a string built with `+`, a value
+/// put in a string, or `^` on Bools, which is `!=` (R01.5.9).
+pub(super) fn bad_operands(
+    diag: &mut Diagnostic,
+    (op, op_span): (BinOp, Span),
+    (left, right): (&Ty, &Ty),
+    into_string: Option<(Span, String)>,
+) {
+    if let Some((span, text)) = into_string {
+        diag.fix(format!("write `{text}`"), span, text);
+    } else if *left == Ty::Str || *right == Ty::Str {
+        diag.help = Some("put the value in the string: `\"{x}\"`".into());
+    } else if op == BinOp::BitXor && *left == Ty::Bool && *right == Ty::Bool {
+        diag.fix("two Bools differ by `!=`", op_span, "!=");
+    }
+}
+
 impl Checker<'_> {
     /// `x.inv` names a method that does work, so it is called with `()`,
     /// as R07.1.7 asks of built-in members.

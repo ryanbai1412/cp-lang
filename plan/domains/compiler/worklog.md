@@ -681,3 +681,5 @@ on input `2 / 1 / 2` prints `7` once in `cpl run` and in the C++ (`cpl_main` cal
 2026-11-23: `1.5e5` lexed as a float because of its `.`, so `read<(1..=1.5e5)>()` was E0302. The lexer now makes a literal with an exponent an `Int` whenever its value is an exact integer, whatever its mantissa (R01.4.2; `core-01/scientific-fraction-is-int`).
 
 2026-11-23: in `read<l + 1..=9>()` the type arguments took `l + 1` as a value argument and failed at `..=`, so the call parsed as comparisons (E0309). A value argument followed by `..` or `..=` is now the low end of a range type, through `Parser::range_type_from`, shared with `ty` (R10.2.3; `core-10/read-range-arithmetic-lower-bound`).
+
+2026-11-23: `p ^ false` on Bools was E0309 with no way forward. The operand advice moved to `advice::bad_operands`, which now offers `!=` for `^` on two Bools (R01.5.9; `core-01/bool-caret-names-ne`).

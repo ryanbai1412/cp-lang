@@ -1401,11 +1401,7 @@ impl<'a> Checker<'a> {
                         right.widen().with_article()
                     );
                     if let Some(diag) = self.error(codes::BAD_OPERANDS, op_span, message) {
-                        if let Some((span, text)) = into_string {
-                            diag.fix(format!("write `{text}`"), span, text);
-                        } else if left == Ty::Str || right == Ty::Str {
-                            diag.help = Some("put the value in the string: `\"{x}\"`".into());
-                        }
+                        advice::bad_operands(diag, (op, op_span), (&left, &right), into_string);
                     }
                     return Ty::Error;
                 }
