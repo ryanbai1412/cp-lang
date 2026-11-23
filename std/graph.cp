@@ -3789,7 +3789,7 @@ fn gen_graph<V, A>(
     directed: Bool,
 ) -> Graph<V, A>:
     let n = V.count
-    var label = [v for v in V]
+    var label = V.collect()
     shuffle(mut label)
     var used: [V, V]Bool = false
     var edges = List<(V, V)>()
@@ -3798,7 +3798,7 @@ fn gen_graph<V, A>(
             let (u, v) = (label[rand(0, i - 1)], label[i])
             edges.push((u, v))
             used[u, v] = true
-            used[v, u] = true
+            if not directed: used[v, u] = true
     let most = if simple: (if directed: n * (n - 1) else: n * (n - 1) / 2) else: 2 * n
     let m = rand(edges.len, max(edges.len, min(most, 2 * n)))
     while edges.len < m:

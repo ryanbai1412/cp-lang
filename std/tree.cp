@@ -4085,7 +4085,7 @@ pub fn from_prufer<V>(code: List<V>) -> Tree<V>:
 /// binary, caterpillar, random: each vertex hangs from one drawn before it.
 fn gen_rooted<V>(shape: Int) -> Rooted<V, _>:
     let n = V.count
-    var label = [v for v in V]
+    var label = V.collect()
     shuffle(mut label)
     var par: [V]?V = None
     let spine = max(1, (n + 1) / 2)
