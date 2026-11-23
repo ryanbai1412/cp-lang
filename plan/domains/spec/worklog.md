@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- Rebuild-4 holes answered by the text plus a passing case: H-RANGE-WEIGHT-SUM (`std-graph/dijkstra-range-weights-sum-as-int.cp`, distances add past 1e9), H-DOMAIN-DROP (`core-04/domain-drop-first.cp`, `E.drop(1)`), H-ENUM-RUNTIME-DOMAIN-FIELD (`core-02/enum-field-runtime-domain.cp`).
 - Rebuild-4 H-BORDERS-NOT-IN-PRELUDE: R11.3.2 decides it (table names are prelude names); `core-11/strings-table-in-prelude.cp` fails until `prelude.cp` adds `borders`, `prefix_matches`, `overlap` (stdlib request).
 - Rebuild-4 H-PREFIX-FUNCTION-RETURN: `lib/strings.md` §3.2 now gives `z_function`, `prefix_function` and `prefix_matches` the `[K]Int` return of `spec/std/strings.cp` (keyed by the string's own keys) instead of `List<Int>`.
 - Rebuild-4 H-EMPTY-SEQ-PRINT: R10.3.1 says an empty sequence prints an empty line; case `core-10/print-empty-seq.cp` (passes).
