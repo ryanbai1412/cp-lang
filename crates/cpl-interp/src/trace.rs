@@ -664,7 +664,7 @@ impl Tracer {
     /// is read once every 4096 asks.
     pub fn out_of_time(&mut self) -> bool {
         self.ticks = self.ticks.wrapping_add(1);
-        self.ticks % 4096 == 0
+        self.ticks.is_multiple_of(4096)
             && self
                 .deadline
                 .is_some_and(|d| std::time::Instant::now() >= d)
