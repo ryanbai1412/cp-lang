@@ -193,6 +193,28 @@ impl<'a> Lowerer<'a> {
         self.diags.truncate(saved);
         (ty != Ty::Error).then_some(ty)
     }
+
+    /// The type a lambda body gives with its parameters typed `p_tys`, probed without side effects.
+    pub(super) fn probe_lambda_ret(
+        &mut self,
+        lparams: &[ast::Pattern],
+        p_tys: &[Ty],
+        body: &ast::Expr,
+    ) -> Option<Ty> {
+        let diag_len = self.diags.len();
+        let saved_cx = self.cx.clone();
+        let saved_outer = self.outer_cxs.clone();
+        self.cx.scopes.push(HashMap::new());
+        let mut pre = Vec::new();
+        for (pat, ty) in lparams.iter().zip(p_tys) {
+            self.loop_var(pat, ty.clone(), &mut pre);
+        }
+        let probed = self.expr(body, None);
+        self.cx = saved_cx;
+        self.outer_cxs = saved_outer;
+        self.diags.truncate(diag_len);
+        (probed.ty != Ty::Error).then_some(probed.ty)
+    }
 }
 
 /// `by: ?(T -> K) = None` infers from a lambda as `by: T -> K` does.

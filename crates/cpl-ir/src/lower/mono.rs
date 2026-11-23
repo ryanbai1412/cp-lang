@@ -1865,6 +1865,8 @@ impl<'a> Lowerer<'a> {
         // `G: Next<V>`).
         self.unify_bounds(&decl.bounds, tpl_mod, &gen_names, &mut inferred);
         self.fn_graph_vertex_domains(&decl.bounds, tpl_mod, &mut inferred);
+        let tpl = (tpl_mod, tpl_offset, explicit.is_empty());
+        self.infer_yielded(decl, tpl, &gen_names, &mut inferred);
 
         // Propagate domain param `V` from a bound `Graph<V, E>` (or any struct with a domain param),
         // and arc element type `A` from a bound `next: N` when `N` is a `Graph<V, E>` or fn.
@@ -2844,27 +2846,6 @@ impl<'a> Lowerer<'a> {
         let saved_outer = self.outer_cxs.clone();
         let probed = self.expr(e, hint.as_ref());
         self.call_hint.1 = None;
-        self.cx = saved_cx;
-        self.outer_cxs = saved_outer;
-        self.diags.truncate(diag_len);
-        (probed.ty != Ty::Error).then_some(probed.ty)
-    }
-
-    pub(super) fn probe_lambda_ret(
-        &mut self,
-        lparams: &[ast::Pattern],
-        p_tys: &[Ty],
-        body: &ast::Expr,
-    ) -> Option<Ty> {
-        let diag_len = self.diags.len();
-        let saved_cx = self.cx.clone();
-        let saved_outer = self.outer_cxs.clone();
-        self.cx.scopes.push(HashMap::new());
-        let mut pre = Vec::new();
-        for (pat, ty) in lparams.iter().zip(p_tys) {
-            self.loop_var(pat, ty.clone(), &mut pre);
-        }
-        let probed = self.expr(body, None);
         self.cx = saved_cx;
         self.outer_cxs = saved_outer;
         self.diags.truncate(diag_len);

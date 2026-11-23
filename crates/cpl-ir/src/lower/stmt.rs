@@ -1550,34 +1550,7 @@ impl<'a> Lowerer<'a> {
                     Stmt::Continue(target)
                 });
             }
-            ast::StmtKind::Yield { value, from } => {
-                let Some((acc, elem_ty)) = self.cx.yield_slot.clone() else {
-                    self.error(codes::UNSUPPORTED, stmt.span, "`yield` outside a generator");
-                    return;
-                };
-                let acc_place = Place {
-                    kind: PlaceKind::Local(acc),
-                    ty: Ty::list(elem_ty.clone()),
-                    span: self.span(stmt.span),
-                };
-                if *from {
-                    let seq = self.expr(value, None);
-                    let push_call = self.mk(
-                        ExprKind::Mutate(Mutation::Extend, Box::new(acc_place), vec![seq]),
-                        Ty::Unit,
-                        stmt.span,
-                    );
-                    out.push(Stmt::Expr(push_call));
-                } else {
-                    let v = self.expect(value, &elem_ty);
-                    let push_call = self.mk(
-                        ExprKind::Mutate(Mutation::Push, Box::new(acc_place), vec![v]),
-                        Ty::Unit,
-                        stmt.span,
-                    );
-                    out.push(Stmt::Expr(push_call));
-                }
-            }
+            ast::StmtKind::Yield { value, from } => self.yield_stmt(value, *from, stmt.span, out),
             ast::StmtKind::Assert { cond, message } => {
                 let (text, line, note) = self.assert_place(cond.span);
                 let span = self.span(stmt.span);

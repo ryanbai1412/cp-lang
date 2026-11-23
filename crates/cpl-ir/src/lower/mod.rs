@@ -36,6 +36,7 @@ mod stmt;
 mod type_call;
 mod typo;
 mod views;
+mod yields;
 pub use call::lower_sampling_laws;
 
 use crate::*;
@@ -645,6 +646,8 @@ struct FnCx {
     inline_self: Option<(Place, StructId)>,
     /// Hidden list accumulator when lowering a `-> yields T` generator.
     yield_slot: Option<(Slot, Ty)>,
+    /// While probing what a generic generator yields: each `yield`'s type.
+    yield_seen: Option<Vec<Ty>>,
     loops: Vec<(Option<String>, LoopId)>,
     /// The outermost loop a `break` out of a nested loop's innermost
     /// one leaves, for one source loop lowered as several.

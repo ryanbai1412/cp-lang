@@ -245,7 +245,7 @@ fn stmt_uses_domain(s: &ast::Stmt, name: &str) -> bool {
     }
 }
 /// Whether fn `f` uses `name` as a domain in its signature or body.
-fn fn_uses_domain(f: &ast::FnDecl, name: &str) -> bool {
+pub(super) fn fn_uses_domain(f: &ast::FnDecl, name: &str) -> bool {
     f.params
         .iter()
         .any(|p| p.ty.as_ref().is_some_and(|t| ty_uses_domain(t, name)))
