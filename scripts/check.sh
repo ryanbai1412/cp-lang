@@ -381,7 +381,7 @@ else
 fi
 cleanup() {
     kill ${script_test_pid:+"$script_test_pid"} ${recovery_pid:+"$recovery_pid"} ${scoreboard_pid:+"$scoreboard_pid"} ${fmt_pid:+"$fmt_pid"} 2>/dev/null || true
-    rm -rf "$lib_logs" "$manifest" ${tmp:+"$tmp"}
+    rm -rf "$lib_logs" "$manifest" "$manifest.reads" ${tmp:+"$tmp"}
 }
 trap cleanup EXIT
 

@@ -28,7 +28,7 @@ done
 . scripts/gate-env.sh
 cache_dir="$target/check-cache"
 manifest="$cache_dir/manifest.site.$$"
-trap 'rm -f "$manifest"' EXIT
+trap 'rm -f "$manifest" "$manifest.reads"' EXIT
 if [ "$use_cache" -eq 1 ]; then
     mkdir -p "$cache_dir"
     python3 scripts/check_cache.py manifest "$manifest" || use_cache=0

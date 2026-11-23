@@ -99,21 +99,37 @@ class CheckCacheTest(unittest.TestCase):
 
     def test_no_stage_excludes_a_file_the_rust_build_reads(self):
         root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        reads = ["std/prelude.cp", "Cargo.toml", "Cargo.lock", "crates/cpl-cli/src/main.rs"]
-        for d, _, names in os.walk(os.path.join(root, "crates")):
-            for n in names:
-                if not n.endswith(".rs"):
-                    continue
-                with open(os.path.join(d, n), encoding="utf-8") as f:
-                    src = f.read()
-                for target in re.findall(r'include_(?:str|bytes)!\(\s*"([^"]+)"', src):
-                    path = os.path.relpath(os.path.normpath(os.path.join(d, target)), root)
-                    self.assertTrue(os.path.exists(os.path.join(root, path)), path)
-                    reads.append(path)
+        reads = cc.build_reads(root)
         self.assertIn("std/README.md", reads)
+        self.assertIn("editors/lsp-matrix.json", reads)
+        always = ["std/prelude.cp", "Cargo.toml", "Cargo.lock", "crates/cpl-cli/src/main.rs"]
         for stage, pats in cc.STAGES.items():
-            for path in reads:
-                self.assertFalse(cc.excluded(path, pats), f"{stage} excludes {path}, which the build reads")
+            for path in always + sorted(reads):
+                self.assertFalse(cc.excluded(path, pats, reads), f"{stage} excludes {path}, which the build reads")
+
+    def test_build_reads_come_from_includes_dep_info_and_rerun_if_changed(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            self.git_tree(tmp, {
+                "crates/a/src/lib.rs": 'const M: &str = include_str!("../../../docs/m.json");\n',
+                "docs/m.json": "{}\n", "docs/dep.md": "x\n", "docs/other.md": "x\n",
+                "lints/x/lint.toml": "x\n",
+                "target/debug/deps/a-1.d": f"{tmp}/target/debug/deps/a-1: {tmp}/crates/a/src/lib.rs {tmp}/docs/dep.md /elsewhere/x.rs\n",
+                "target/debug/build/a/9f/run/stdout": f"cargo:rerun-if-changed={tmp}/lints\ncargo:rustc-cfg=x\n",
+            })
+            reads = cc.build_reads(tmp)
+            for path in ["docs/m.json", "docs/dep.md", "lints"]:
+                self.assertIn(path, reads)
+            self.assertNotIn("docs/other.md", reads)
+            pats = ["docs/*", "lints/*"]
+            self.assertFalse(cc.excluded("docs/m.json", pats, reads))
+            self.assertFalse(cc.excluded("lints/x/lint.toml", pats, reads))
+            self.assertTrue(cc.excluded("docs/other.md", pats, reads))
+            env = "env\n" + cc.manifest(tmp).split("\n", 1)[1]
+            before = cc.stage_key(env, "clippy", pats, reads)
+            with open(os.path.join(tmp, "docs/dep.md"), "a", encoding="utf-8") as f:
+                f.write("edit\n")
+            after = "env\n" + cc.manifest(tmp).split("\n", 1)[1]
+            self.assertNotEqual(cc.stage_key(after, "clippy", pats, reads), before)
 
     def test_pre_push_hook_rejects_conflict_markers(self):
         root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
