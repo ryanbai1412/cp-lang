@@ -25,7 +25,7 @@ Spec writes cases, never compiler code: a failing case goes to the owning domain
 `plan/product/MILESTONE-1.md`: a Codeforces 1500+ friend learns CPL, solves unfamiliar problems, tests, submits and competes, unaided. What it needs from spec: "a coherent, documented, sufficiently complete subset ... gaps clearly identified rather than disguised", and "documentation examples must actually work".
 
 Exit criteria (each checkable):
-1. **Subset frozen.** `spec/SUBSET.md` tags every core chapter section and lib family *supported*, *documented* (spec only) or *known gap* (with the owner worklog line). No conformance case citing a *supported* rule fails in `cpl-conform conformance`.
+1. **Subset frozen.** `spec/SUBSET.md` tags every core chapter section and lib family *supported*, *documented* (spec only) or *known gap* (with the owner worklog line). Every failing case citing a *supported* rule is listed as a known gap with its owner, checked by `conformance-subset.py --check` (first freeze: 92 supported, 3 documented, 86 known-gap cases).
 2. **Examples run.** Every code block in a *supported* chapter passes `cpl-conform spec-blocks` or is `spec-only` with a reason (today 85/185 pass over all chapters).
 3. **Writable from the docs.** A cold rebuild on ten Codeforces/AtCoder Div. 2 A-D problems, reading only `spec/` and `std/`, records 0 contradictions and < 5 holes inside the subset.
 4. **Range keys folded.** Decision 289 is in every chapter and its 7 cases pass (today 4/7; `r[x]`, the outside-key trap and a lent-slice case are compiler-owned).

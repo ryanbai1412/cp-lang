@@ -6942,3 +6942,9 @@ only at the start of a line.
 Reason: the layout doc (decision 303): `bench/` holds code only, and a
 reader finds current evidence without wading through 124 dated files.
 Reverse: `git mv` the files back (the list is this commit's renames).
+
+## 312. The Milestone 1 subset is `spec/SUBSET.md`, held by `conformance-subset.py` (2026-11-22)
+
+- **Call.** Each rule section of `spec/core/` and `spec/tools/` is *supported*, *documented* or *gap* for Milestone 1. A supported section may still have failing cases only when each is listed under Known gaps with its owner; the check fails on an unlisted failure and on a listed case that now passes. First freeze: 92 supported, 3 documented (R11.4 migration, the R12 user-library powers), 86 known-gap cases, owners guessed from the case's folder (core to compiler, `std-*` to stdlib).
+- **Why.** The milestone asks for a subset with gaps "clearly identified rather than disguised"; per-case gaps keep a section with 41 passing and 6 failing cases promised without hiding the 6, and the list can only drift by failing the check.
+- **Reverse.** Delete `spec/SUBSET.md` and `scripts/conformance-subset.py`; or move rows between statuses.

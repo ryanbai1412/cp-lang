@@ -56,6 +56,9 @@ signatures and costs; these chapters are the model and the examples):
 - `lib/rationale/`: the pre-round surveys for search, DP, graphs, trees,
   ranges and sequences, superseded by the chapters above.
 
+What Milestone 1 promises, section by section, and its known gaps:
+`SUBSET.md`.
+
 Tools, one contract per tool (`tools/`): CLI, judge profiles, stress and
 shrinking, explain, trace and debugger, fmt and lint, LSP, bundler.
 Errors and lints: `diagnostics.md`. Examples that must and must not

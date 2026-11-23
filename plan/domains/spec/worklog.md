@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- `spec/SUBSET.md` (decision 312): Milestone 1 subset frozen, 92 supported / 3 documented sections, 86 known-gap cases (conformance 2216/2365 at this commit), `scripts/conformance-subset.py --check` 0 problems. Owners are by folder for now; next: refine owners and shrink the list.
 - Rebuild round 6 (cold agent, `spec/` + `std/` at 136ca9833, round 5's ten problems): 26 holes = 22 silent, 3 contradiction, 1 missing-stdlib (round 5: 31, 18 contradiction). Files in `plan/domains/spec/delta/rebuild-6/`. Routed: H-RANGEFENWICK-GONE (stdlib), H-SCC-BLOCKED (compiler), H-DIR-FROM-STEP (stdlib); H-STD-K-COUNT was already with stdlib. Silent holes next, inside the M1 subset first.
 - Milestone 1 section in README.md and the M1 order in PLAN.md (`plan/product/MILESTONE-1.md`). Range-key cases today: 4/7 pass (`range-key-is-element`, `range-key-outside-traps`, `a7-consume-front` fail on the compiler).
 - Tool rule ids, continued: `(Rstress.1)` a failing alt is shrunk, reported with the first difference and saved as `stress-<seed>.in`; two cases in `spec/conformance/tools-stress/` (2/2 pass).
