@@ -16,6 +16,7 @@
 //        or step into a child of b (`b - first[b] - kids[b]` per b in (i, u],
 //        plus `kids[first[b]]` when b < u for paths through first[b]).
 //      * dist 3: all remaining pairs in (i, u].
+use std.algebra.{desc}
 use std.seq.*
 
 @!multitest
@@ -23,7 +24,7 @@ let n: 1..=5e5 = read()
 domain I = 0..n
 let p: [I](1..=n) = read()
 
-let up = p.next_greater()
+let up = p.next_smaller(by: desc)
 var first: [I]?I = None
 var kids: [I]Int = 0
 for i in I if let u = up[i]:
@@ -36,7 +37,7 @@ fn charge_edge(l: I, r: I, i: I, u: I) -> Int:
     let exit_right = (r - u) * (2 * inside - (kids[u] - 1))
     let total_in = (u - i) * inside / 2
     var two = 0
-    if let st = i + 1:
+    if let st = i.next:
         two = sum((up[a]! - a) - 1 for a in st..u)
         for b in st..=u if let fb = first[b]:
             two += (b - fb) - kids[b] + (if b < u: kids[fb] else: 0)
@@ -52,5 +53,5 @@ while let l = cur:
     while let u = up[i]:
         ans += charge_edge(l, r, i, u)
         i = u
-    cur = r + 1
+    cur = r.next
 print(ans)

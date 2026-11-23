@@ -27,10 +27,10 @@ struct Staircase:
 
 var stairs: [0..2]Staircase = Staircase()
 var dp: M = 1
-for (k, len) in blocks.drop_last().enumerate():
+for (k, len) in blocks.drop_last(1).items:
     let st = mut stairs[k % 2]
     st.lift += 1
     if k >= 1: st.push(len, dp)
-    let floor = if k % 2 == 0: blocks.first else: 1
+    let floor = if k % 2 == 0: blocks.first! else: 1
     dp = st.visible() + M(floor + st.lift - 1)
-print(dp * M(blocks.last))
+print(dp * M(blocks.last!))
