@@ -95,18 +95,26 @@ pub fn run<S: AsRef<str>>(args: &[S]) -> Outcome {
     run_with_input(args, b"")
 }
 
+thread_local! {
+    /// [`run_with_input`] is handing `exec` its stdin, so the process's own
+    /// stdin says nothing about whether input was piped.
+    static INPUT_GIVEN: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+}
+
 /// [`run`], with `input` as the program's standard input.
 pub fn run_with_input<S: AsRef<str>>(args: &[S], input: &[u8]) -> Outcome {
     let mut stdout = Vec::new();
     let mut stderr = String::new();
     // The whole input arrives at once, and then it has ended.
     let mut rest = Some(input.to_vec());
+    INPUT_GIVEN.set(true);
     let code = exec(
         args,
         &mut || rest.take().unwrap_or_default(),
         &mut stdout,
         &mut stderr,
     );
+    INPUT_GIVEN.set(false);
     Outcome {
         stdout,
         stderr,
@@ -865,6 +873,9 @@ fn run_release_judged(
 /// Stdin is a terminal, or a device such as `/dev/null` (a script, an
 /// editor task or CI), so nothing was piped in to run on.
 fn nothing_piped() -> bool {
+    if INPUT_GIVEN.get() {
+        return false;
+    }
     let stdin = std::io::stdin();
     if std::io::IsTerminal::is_terminal(&stdin) {
         return true;
