@@ -2,6 +2,7 @@ use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Mutex;
+use std::time::Instant;
 
 use cpl_check::Database;
 use cpl_diag::{Diagnostic, LineIndex, Severity};
@@ -170,6 +171,17 @@ fn walk_rec(dir: &Path, ext: &str, out: &mut Vec<PathBuf>) {
 
 /// Runs `work` over `items` in parallel across worker threads, giving each worker
 /// its own `cpl_check::Database` so stdlib is analyzed once per thread.
+/// Wall time of every case `parallel_with_db` has run, for the slow-case report.
+pub static CASE_SECONDS: Mutex<Vec<(String, f64)>> = Mutex::new(Vec::new());
+
+/// The `n` slowest cases run so far, slowest first.
+pub fn slowest_cases(n: usize) -> Vec<(String, f64)> {
+    let mut all = CASE_SECONDS.lock().unwrap().clone();
+    all.sort_by(|a, b| b.1.total_cmp(&a.1));
+    all.truncate(n);
+    all
+}
+
 pub fn parallel_with_db<T, R, F>(items: &[T], work: F) -> BTreeMap<String, R>
 where
     T: Sync,
@@ -191,7 +203,10 @@ where
                     if idx >= items.len() {
                         break;
                     }
+                    let t0 = Instant::now();
                     let (key, val) = work(&mut db, &items[idx]);
+                    let secs = t0.elapsed().as_secs_f64();
+                    CASE_SECONDS.lock().unwrap().push((key.clone(), secs));
                     results.lock().unwrap().insert(key, val);
                 }
             });
