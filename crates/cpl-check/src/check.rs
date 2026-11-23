@@ -26,6 +26,7 @@ mod steps;
 mod stmt;
 mod storage;
 mod tuple_bound;
+mod variant;
 mod views;
 pub(crate) use stmt::runs;
 use views::{binding_kw, Keep};
@@ -55,6 +56,10 @@ pub(crate) trait Env {
     /// The struct or enum behind the type of a value, which may come from
     /// a module this file reaches without importing the type by name.
     fn type_def(&mut self, name: &str) -> Option<Arc<Def>>;
+    /// Every enum this file declares with a variant `name`, in file order.
+    fn variant_enums(&mut self, _name: &str) -> Vec<String> {
+        Vec::new()
+    }
     /// True if `alias` names a module imported whole: `use lib.treap`.
     fn is_module(&mut self, alias: &str) -> bool;
     fn is_private_member(&mut self, _alias: &str, _member: &str) -> bool {

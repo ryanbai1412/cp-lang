@@ -51,6 +51,26 @@ impl Env for FileCtx<'_> {
         def
     }
 
+    fn variant_enums(&mut self, name: &str) -> Vec<String> {
+        let mut enums = Vec::new();
+        for item in self.items.clone().iter() {
+            let mut owner = None;
+            for decl in &item.decls {
+                match decl.kind {
+                    DeclKind::Enum => {
+                        // Any enum gaining or losing the variant changes the answer.
+                        let (_, fingerprint) = self.type_def(&decl.name);
+                        self.record(&format!("{DEP_TYPE}{}", decl.name), fingerprint);
+                        owner = Some(decl.name.clone());
+                    }
+                    DeclKind::Variant if decl.name == name => enums.extend(owner.clone()),
+                    _ => {}
+                }
+            }
+        }
+        enums
+    }
+
     fn is_module(&mut self, alias: &str) -> bool {
         self.record(DEP_IMPORTS, self.scope.imports_fp);
         self.scope.aliases.contains_key(alias)

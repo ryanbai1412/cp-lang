@@ -569,3 +569,22 @@ fn a_method_no_fn_in_reach_takes_the_receiver_is_missing_not_a_mismatch() {
     );
     assert!(check("var xs = [1, 2]\nxs.push(3)\nprint(xs.len)\n").is_empty());
 }
+
+#[test]
+fn a_bare_variant_two_enums_declare_needs_an_expected_type() {
+    let d = one("enum Side = Left | Right\nenum Turn = Left | Back\nlet s = Left\n");
+    assert_eq!(d.code, cpl_diag::codes::UNRESOLVED_NAME, "{}", d.message);
+    assert!(
+        d.message.contains("`Side`") && d.message.contains("`Turn`"),
+        "{}",
+        d.message
+    );
+    let d = one("enum Side = Left | Right\nenum Turn = Left | Back\nlet s = if true: (1, Left) else: (2, Right)\n");
+    assert_eq!(d.code, cpl_diag::codes::UNRESOLVED_NAME, "{}", d.message);
+    for ok in [
+        "enum Side = Left | Right\nenum Turn = Left | Back\nlet s = Side.Left\nlet t = Back\nprint(yes(s == Side.Right), yes(t == Turn.Back))\n",
+        "enum Side = Left | Right\nlet s = Left\nprint(yes(s == Right))\n",
+    ] {
+        assert!(check(ok).is_empty(), "{ok}: {:?}", check(ok));
+    }
+}
