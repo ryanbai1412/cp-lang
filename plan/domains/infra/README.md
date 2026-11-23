@@ -15,7 +15,7 @@ Keep every other domain moving: main green at every commit, a gate fast enough t
 
 ## Milestone 1
 [plan/product/MILESTONE-1.md](../../product/MILESTONE-1.md) step 3 (Install) and "Release quality" are infra's, on Linux, macOS and Windows, on edge. Deadline 2026-11-23 09:30 PST. Exit criteria:
-1. Edge publishes after every green main CI (at most hourly) and nightly, building all three OSes.
+1. Edge publishes after every green main CI that edge is behind (one release in flight, newest green SHA wins) and nightly, building all three OSes.
 2. One line installs a working `cpl` on each OS: `curl -fsSL https://cp-lang.org/install.sh | sh` (Linux, macOS) and `irm https://cp-lang.org/install.ps1 | iex` (Windows), checked end to end by an install-smoke job on all three after every publish.
 3. CI runs the tests on Linux, macOS and Windows (the extra OSes on fewer jobs), still <= 3 min end to end; main red-to-green median < 30 min.
 4. The release ships the editor assets editors needs (Neovim/Vim config, VS Code `.vsix`, JetBrains plugin), and the smoke job checks they install.
@@ -30,7 +30,7 @@ Next 3: (1) install-smoke on all three OSes after each publish; (2) macOS and Wi
 1. Main is green at least 95% of the time (7-day window); any red is fixed or reverted within 15 min, and a commit that turns the core gate red and stays red 15 min is auto-reverted.
 2. Landing p95 at most 30 s, never over 1 min; every lane's devex time under 5%.
 3. Main CI p50 at most 3 min end to end on GitHub-hosted runners, on all three OSes, with every deterministic step cached or skipped by input hash.
-4. Two channels: edge from every green tip (hourly cap), stable promoted by hand (`v*` tag or dispatch) with CHANGELOG notes, beta while 0.x; Ryan promotes `v0.3.0`.
+4. Two channels: edge from every green tip (one release in flight, newest wins), stable promoted by hand (`v*` tag or dispatch) with CHANGELOG notes, beta while 0.x; Ryan promotes `v0.3.0`.
 5. Every release passes install-smoke on Linux, macOS and Windows (sh, PowerShell, `cpl self update`, VS Code `.vsix`, Neovim/Vim setup) before it is marked latest; signed checksums; reproducible builds rebuild byte for byte.
 6. The macOS, Windows and editor CI jobs block main again (each after 3 greens in a row).
 
