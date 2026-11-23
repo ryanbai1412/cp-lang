@@ -7191,7 +7191,7 @@ Other steps (`x = (x + 1) / 2`, `/=`) have no closed form and are skipped.
 Ryan on `corpus/problems/cf2096g/port.cp`, its one corpus finding. Reverse:
 delete `spec/lints/count_until/` and `rules/count_until.rs`.
 
-## 330. `read_loop` (L0563): a list read one item per step is one typed read; `lint_std_names` 151 -> 152 (2026-11-22)
+## 330. `read_loop` (L0564): a list read one item per step is one typed read; `lint_std_names` 151 -> 152 (2026-11-22)
 
 `var xs: List<T> = []` followed by `for _ in R:` whose body is `xs.push(read())`,
 or `let P[: T] = read()` then `xs.push(P)`, is the input format written by

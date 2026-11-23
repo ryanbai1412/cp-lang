@@ -1,4 +1,4 @@
-code = "L0563"
+code = "L0564"
 level = "warn"
 group = "idiom"
 title = "List read one item per loop step"

@@ -7,7 +7,7 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 2422 (995 passing). Rules: 560.
+Cases: 2423 (995 passing). Rules: 560.
 
 ## Summary per chapter
 
@@ -18,7 +18,7 @@ Cases: 2422 (995 passing). Rules: 560.
 - R04a (04a-identity-vs-offset.md): 39 rules, 53 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04b (04b-keys.md): 27 rules, 64 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R05 (05-ownership.md): 43 rules, 149 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R06 (06-control-functions.md): 24 rules, 77 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R06 (06-control-functions.md): 24 rules, 78 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R07 (07-sequences.md): 89 rules, 115 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R08 (08-traits-generics.md): 29 rules, 78 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R09 (09-contexts-checks.md): 26 rules, 55 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -404,7 +404,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R06.1.2 [3+ 2-]: Parameters are lent for the call; `mut` parameters may be mutated (or drained) and are mar...
 - R06.1.3 [1+ 0-]: A parameter of a `fn` or a lambda may be a pattern, as in `for`: `(mut d, (u, v)) => d.uni...
 - R06.1.4 [1+ 1-]: A lambda with k parameters, passed where the callee expects a function of one k-tuple, unp...
-- R06.1.5 [2+ 3-]: Named and positional arguments, defaults, named-only parameters after `;`, and a variadic ...
+- R06.1.5 [3+ 3-]: Named and positional arguments, defaults, named-only parameters after `;`, and a variadic ...
 - R06.1.6 [1+ 1-]: No overloading by type: one name and label set has one generic signature (decision 127). O...
 - R06.1.7 [3+ 1-]: Functions hoist within their block; every capture must be initialized before the first cal...
 - R06.1.8 [6+ 1-]: A `fn` passed where a function of fewer parameters is expected takes only those, when ever...
@@ -808,7 +808,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - L0560 components_by_dfs: **no case**
 - L0561 trial_division: **no case**
 - L0562 count_until: **no case**
-- L0563 read_loop: **no case**
+- L0564 read_loop: **no case**
 - L0601 Right side changes the place it assigns: 2 case(s)
 - L0602 Lazy chain walked twice: 1 case(s)
 - L0603 `.map` view read many times by index: 1 case(s)
@@ -869,7 +869,7 @@ Every `pub` item in `std`, counted as covered when a conformance
 case names it. `/// example:` lines are also run by the `docs` suite of
 `cpl-conform`; this list is about whole-program cases (edges, traps).
 
-- **algebra** (42/52 named by a case)
+- **algebra** (45/55 named by a case)
   - uncovered: `Desc`, `Reversible`, `Semigroup`, `HasId`, `HasInv`, `Idempotent`, `AddAction`, `AssignAction`, `AffineAction`, `FlipAction`
 - **bag** (154/161 named by a case)
   - uncovered: `BagCursor`, `SortedBag.count_of`, `SortedBag.next_cursor`, `SortedBag.prev_cursor`, `SortedBag.entries`, `SortedBag.entries_rev`, `SortedRange`
@@ -930,7 +930,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **window** (20/22 named by a case)
   - uncovered: `Tracked`, `Undo`
 
-2160 of 2288 std items are named by a case.
+2163 of 2291 std items are named by a case.
 
 ## Core cases without a `// rule:` line
 
