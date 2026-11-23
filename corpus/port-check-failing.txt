@@ -42,7 +42,6 @@ ioi15p4
 ioi18p1
 ioi18p3
 mccc4j5
-nccc8s1
 nccc9s4
 noi03p2
 noi07p4
