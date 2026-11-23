@@ -1650,7 +1650,7 @@ impl<'a> Parser<'a> {
 
     /// Parses `: block`. `after` names what the colon follows.
     pub(super) fn colon_block(&mut self, after: &str) -> Block {
-        if !self.eat(T::Colon) {
+        if !(self.eat(T::Colon) || self.foreign_then()) {
             let at = self.error_span();
             let found = self.peek().describe();
             let next_after_nl = if self.at(T::Newline) {

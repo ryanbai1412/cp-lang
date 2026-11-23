@@ -3,6 +3,31 @@
 use super::*;
 
 impl<'a> Parser<'a> {
+    /// `if x == 3 then`: Lua's and Pascal's `then` at the end of a header.
+    /// One error with the `:` fix, read as the `:`.
+    pub(super) fn foreign_then(&mut self) -> bool {
+        if !self.at_ident("then") || !matches!(self.peek_n(1), T::Newline | T::Eof) {
+            return false;
+        }
+        let end = self.tokens[self.pos].span.end;
+        let start = self
+            .pos
+            .checked_sub(1)
+            .map_or(end - 4, |p| self.tokens[p].span.end);
+        let gap = self.rel(Span::new(start, end));
+        self.recovered(
+            Diagnostic::error(
+                codes::EXPECTED_TOKEN,
+                self.span(),
+                "a header ends with `:` in CP Lang, not `then`",
+            )
+            .with_help("write `if x == 3:`")
+            .with_fix("write `:`", gap, ":"),
+        );
+        self.bump();
+        true
+    }
+
     /// `sorted(xs, reverse=True)`: Python's keyword argument. One error
     /// with the `:` fix, read as the named argument.
     pub(super) fn keyword_arg(&mut self) -> Name {

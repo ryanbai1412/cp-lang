@@ -1852,3 +1852,10 @@ fn a_keyword_argument_with_eq_is_one_error_with_the_colon_fix() {
     let fixed: Vec<_> = d.iter().map(|d| d.fixes[0].edits[0].1.as_str()).collect();
     assert_eq!(fixed, [": ", ": "], "{d:?}");
 }
+
+#[test]
+fn a_then_ending_a_header_is_one_error_with_the_colon_fix() {
+    let d = parse_file("if x == 3 then\n    print(x)\nelif x > 3 then\n    print(1)\n").diagnostics;
+    let fixed: Vec<_> = d.iter().map(|d| d.fixes[0].edits[0].1.as_str()).collect();
+    assert_eq!(fixed, [":", ":"], "{d:?}");
+}

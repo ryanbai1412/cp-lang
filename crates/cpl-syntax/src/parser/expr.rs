@@ -107,7 +107,10 @@ impl<'a> Parser<'a> {
             ("then", &crate::planned::THEN_CHAIN),
         ] {
             if self.at_ident(word)
-                && !matches!(self.peek_n(1), T::Colon | T::Eq | T::Comma | T::RParen)
+                && !matches!(
+                    self.peek_n(1),
+                    T::Colon | T::Eq | T::Comma | T::RParen | T::Newline | T::Eof
+                )
             {
                 let start = self.start();
                 while self.at_ident(word) {
