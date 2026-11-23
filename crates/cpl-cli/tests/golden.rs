@@ -1087,3 +1087,30 @@ fn no_file_named_reads_the_newest_cp_file() {
     let out = cpl(&dir, &["run", "--help"]);
     assert!(text(&out.stdout).starts_with("usage: cpl run"));
 }
+
+/// `cpl locate`: exit 0 when every part agrees with its alt on the input,
+/// 1 naming the part that does not, 2 on misuse.
+#[test]
+fn locate_names_the_part_whose_alt_disagrees() {
+    let dir = scratch("locate");
+    std::fs::write(
+        dir.join("p.cp"),
+        "fn sq(n: Int) -> Int = if n == 3: 10 else: n * n\n@alt(sq)\nfn sq_slow(n: Int) -> Int = n * n\nlet n: Int = read()\nprint(sq(n))\n",
+    )
+    .unwrap();
+    std::fs::write(dir.join("fine.in"), "4\n").unwrap();
+    std::fs::write(dir.join("bad.in"), "3\n").unwrap();
+    let out = cpl(&dir, &["locate", "p", "fine.in"]);
+    assert_eq!(out.status.code(), Some(0), "{}", text(&out.stderr));
+    assert!(text(&out.stdout).starts_with("every part agrees"));
+    let out = cpl(&dir, &["locate", "p", "bad.in"]);
+    assert_eq!(out.status.code(), Some(1), "{}", text(&out.stderr));
+    assert!(
+        text(&out.stdout)
+            .starts_with("`sq` disagrees with its alt `sq_slow` on bad.in: line 1 is \"10\""),
+        "{}",
+        text(&out.stdout)
+    );
+    let out = cpl(&dir, &["locate", "p", "a", "b"]);
+    assert_eq!(out.status.code(), Some(EXIT_USAGE.into()));
+}

@@ -33,10 +33,10 @@ All measured 2026-11-22 on this VM (2 cores), release build at `4e2de3cd`.
 
 | Metric | Command | Today | Target | M |
 |---|---|---|---|---|
-| spec/CLI command mismatches | `measure.py spec-sync` | 1 (spec-only: locate, to build) | 0 | M1 |
+| spec/CLI command mismatches | `measure.py spec-sync` | 0 | 0 | M1 |
 | commands with `--help` | `measure.py help` | 25/25 | 25/25 | M1 |
 | end-to-end tests per command | `measure.py golden` | 25/25 with help, usage error, success and exit tested (`judges` has no failing exit) | each >= 4 | M1 |
-| commands offering `--json` | `measure.py json` | 20/25 (not: dap, lsp, replay, self, watch) | all that print results (all but dap, lsp, self, watch) | M2 |
+| commands offering `--json` | `measure.py json` | 22/26 (not: dap, lsp, self, watch) | all that print results (all but dap, lsp, self, watch) | M2 |
 | `cpl check` wall time, corpus p95 | `measure.py corpus` | 84.5 ms (p50 29.8, max 141.5; 877 ports, 498 check clean) | < 500 ms (spec); hold < 100 ms | - |
 | largest corpus C++ | `measure.py corpus` | 48,686 B (cf2255f); 5 of 497 over 32 KB | 0 over 32 KB | M2 |
 | LSP latency, 500 lines (median) | `cargo test --release -p cpl-lsp --test latency -- --nocapture` | check 6 ms; diagnostics 8 ms; hover 3 ms; completion 1 ms | < 50 / 100 ms | M3 |
@@ -69,7 +69,7 @@ A cold agent scores each 1-5 with a reason, on fixed samples; the trend is the s
 
 ## Decisions taken
 Each was a question in plan/QUESTIONS.md, settled by its recommendation; Ryan can reverse any.
-1. **tools-1 command set** (decisions.md 244): one verb per job; `trace` is `run --trace`, `interact` is `run` on a file with an `@interactor`, `debug` is `dap` + editor, no `selftest`; `fetch` and `migrate` built, `locate` waits on debugger.
+1. **tools-1 command set** (decisions.md 244): one verb per job; `trace` is `run --trace`, `interact` is `run` on a file with an `@interactor`, `debug` is `dap` + editor, no `selftest`; `fetch`, `migrate` and `locate` built.
 2. **tools-2 tier-1 editors** (decisions.md 264): VS Code and Neovim gated; the rest tier 2.
 3. **tools-3 explain scope** (decisions.md 265): four sections in explain and hover from one compiler query; listed as `Not shown yet:` until it exists.
 4. **tools-4 exit codes** (decisions.md 245): 0 success, 1 errors, 2 usage, 3 the program failed.
