@@ -10,9 +10,10 @@ var moduli = [p]
 while moduli.last! > 1:
     moduli.push(phi(moduli.last!))
 domain Slot = 0..=moduli.len
-// base^e modulo m, and whether the true power reaches m (generalized Euler needs the flag).
+// base^e modulo m, and whether the true power reaches m (generalized Euler: past phi(m), the
+// exponent counts modulo phi(m), plus phi(m)).
 fn power(e: Int, big: Bool, m: Int) -> (big: Bool, val: Int):
-    let exp = if big: e + m else: e
+    let exp = if big: e + phi(m) else: e
     var (val, reached, acc) = (1 % m, false, 1)
     for _ in 0..min(exp, 64):
         acc = min(acc * base, m)
