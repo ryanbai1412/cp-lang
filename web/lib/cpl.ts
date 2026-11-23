@@ -43,7 +43,10 @@ async function call<T>(f: (w: Worker) => Promise<T>): Promise<T> {
     return await f(await compiler());
   } catch (error) {
     const kind = (error as { kind?: string }).kind;
-    if (kind === 'timeout' || kind === 'terminated') worker = null;
+    // A worker that couldn't fetch its wasm is dropped too, so the next call
+    // retries the download (site/R17).
+    const unloaded = kind === 'load' && !/is in cpl-build\.wasm/.test((error as Error).message);
+    if (kind === 'timeout' || kind === 'terminated' || unloaded) worker = null;
     throw error;
   }
 }

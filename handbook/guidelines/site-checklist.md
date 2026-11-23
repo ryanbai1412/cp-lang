@@ -140,3 +140,11 @@ The browser editors' highlighter gives every word the class (keyword, literal, n
 - **Why:** a word coloured as a keyword in the playground and as a name on a docs page, or the reverse, makes a reader doubt which it is.
 - **Example:** `todo` is an ordinary name, so neither colours it as a keyword; `while:` as a named argument is a label in both.
 - **Enforced by:** `web/components/editor/highlight-parity.test.ts` over `std/` and every port; `crates/cpl-cli/tests/vscode_sync.rs` keeps the grammar on the compiler's words.
+
+## site/R17: A failed service degrades the page, never breaks it
+
+When a service the site calls (the share API, a short link's lookup, the `cpl.wasm` download) fails, the page says what failed, keeps what still works and recovers when the service does.
+
+- **Why:** a contestant mid-contest who can't share or whose compiler download dropped must still have their code, and a retry must work without a reload.
+- **Example:** with the share API down, Share copies the full link, which needs no service; with `cpl.wasm` unreachable, Run says the compiler failed to load, and the next Run after it is reachable works.
+- **Enforced by:** `web/tests/resilience.mjs` (site browser tests).

@@ -228,7 +228,7 @@ Each row is a quality a user can feel on the site, the metric, and the strongest
 | Trace opens | Trace runs that fail to open the viewer | Browser smoke | `web/tests/smoke.mjs` |
 | Build and Explain load on demand | first Build, C++ or Explain that fails to load `cpl-build.wasm` | Browser test | `web/tests/smoke.mjs` |
 | Share links stay valid | snapshot format, id and size limit regressions; old links that stop opening | Hand-written unit suite; smoke round trip | `web/worker/share.test.ts`, `web/tests/smoke.mjs` |
-| The site keeps working when a service fails | pages that break when the share API or wasm fetch fails | **missing** | none |
+| The site keeps working when a service fails | pages that break when the share API or wasm fetch fails | [site/R17](../guidelines/site-checklist.md): browser test with each service made to fail | `web/tests/resilience.mjs` |
 
 ### J9. Submit
 

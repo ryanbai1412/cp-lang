@@ -60,7 +60,9 @@ async function compile(wasm) {
     const { readFile } = await import("node:fs/promises");
     return WebAssembly.compile(await readFile(url));
   }
-  const response = await fetch(url);
+  const response = await fetch(url).catch((error) => {
+    throw new CplError("load", `cpl: can't load ${url}: ${error.message}; check the connection and try again`);
+  });
   if (!response.ok) throw new CplError("load", `cpl: can't load ${url}: HTTP ${response.status}`);
   const type = response.headers.get("content-type") ?? "";
   // Streaming compilation needs the server to say `application/wasm`.

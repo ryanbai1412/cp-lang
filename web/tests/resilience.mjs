@@ -1,0 +1,47 @@
+// handbook/guidelines/site-checklist.md site/R17: when a service the site
+// calls fails, the page degrades and says so instead of breaking.
+import { base, open } from './browser.mjs';
+
+const { page, errors } = await open();
+const fail = (m) => {
+  console.error(`resilience: ${m}`);
+  process.exit(1);
+};
+await page.context().grantPermissions(['clipboard-read', 'clipboard-write'], { origin: new URL(base).origin });
+
+// The share API is down: the full link, which needs no service, is copied instead.
+await page.route('**/api/share', (r) => r.fulfill({ status: 503, contentType: 'application/json', body: '{"error":"down"}' }));
+await page.goto(base + '/play');
+await page.getByRole('button', { name: 'Share' }).click();
+await page.getByRole('menuitem', { name: /short link/ }).click();
+await page.getByText(/full link copied/).waitFor({ timeout: 10000 }).catch(() => fail('a failed short link copies nothing'));
+const copied = await page.evaluate(() => navigator.clipboard.readText());
+if (!copied.includes('/play#c=')) fail(`a failed short link copied ${JSON.stringify(copied)}`);
+console.log('share API down: the full link is copied');
+
+// A short link's API is down: the playground says so and still runs. The
+// worker serves /p/<id> as the playground page; the static server here doesn't.
+await page.route('**/api/p/*', (r) => r.abort());
+await page.route('**/p/abcdefghij', async (r) => r.fulfill({ response: await r.fetch({ url: base + '/play' }) }));
+await page.goto(base + '/p/abcdefghij');
+await page.getByText('This share link could not be loaded.').waitFor({ timeout: 10000 }).catch(() => fail('an unreadable short link shows no notice'));
+await page.getByRole('button', { name: 'Run' }).click();
+await page.getByRole('status').filter({ hasText: '115' }).waitFor({ timeout: 30000 }).catch(() => fail('the playground does not run after an unreadable short link'));
+console.log('short link unreadable: the playground says so and runs');
+
+// cpl.wasm can't be fetched: Run says why, and runs once it can.
+await page.route('**/*.wasm', (r) => r.abort());
+await page.goto(base + '/play');
+await page.getByRole('button', { name: 'Run' }).click();
+const status = page.getByRole('status').first();
+await page.waitForTimeout(8000);
+const said = (await status.innerText().catch(() => '')).trim();
+console.log(`wasm down: Run shows ${JSON.stringify(said.slice(0, 200))}`);
+if (!/load|network|fetch/i.test(said)) fail('Run with no cpl.wasm does not say the compiler failed to load');
+await page.unroute('**/*.wasm');
+await page.getByRole('button', { name: 'Run' }).click();
+await status.filter({ hasText: '115' }).waitFor({ timeout: 30000 }).catch(() => fail('Run does not recover once cpl.wasm loads'));
+console.log('wasm down: Run says so, and the next Run after it loads works');
+
+if (errors.length) fail(`page errors: ${errors.join('; ')}`);
+process.exit(0);

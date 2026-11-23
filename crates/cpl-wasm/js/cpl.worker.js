@@ -8,7 +8,11 @@ const METHODS = new Set(["check", "lint", "run", "trace", "replay", "stress", "s
 const BUILD = new Set(BUILD_CALLS);
 let cpl = null;
 let full = null;
-const compiler = (method) => (BUILD.has(method) ? (full ??= load(BUILD_WASM)) : (cpl ??= load()));
+// A failed load is forgotten, so the next call downloads again.
+const compiler = (method) =>
+  BUILD.has(method)
+    ? (full ??= load(BUILD_WASM).catch((e) => ((full = null), Promise.reject(e))))
+    : (cpl ??= load().catch((e) => ((cpl = null), Promise.reject(e))));
 
 self.onmessage = async ({ data: { id, method, args } }) => {
   try {

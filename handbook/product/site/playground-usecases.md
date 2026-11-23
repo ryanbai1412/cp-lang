@@ -56,9 +56,9 @@ Evidence: integration `web/tests/drafts.mjs`
 
 ### play/U10: share a program with someone
 Need: show a teammate or a forum the exact code and input.
-Design: Share makes a short link that opens the same code and input.
-Milestone: M1-differentiating. Status: partial (fails when the share service is down)
-Evidence: integration `web/tests/smoke.mjs` (a shared link reopens the same code and input)
+Design: Share makes a short link that opens the same code and input; with the share service down it copies the full link, which needs none.
+Milestone: M1-differentiating. Status: supported
+Evidence: integration `web/tests/smoke.mjs` (a shared link reopens the same code and input); `web/tests/resilience.mjs` (the share API down)
 
 ### play/U11: use it on a phone or from the keyboard alone
 Need: read and run code on a phone, or without a mouse or sight.

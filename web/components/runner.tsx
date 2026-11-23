@@ -251,7 +251,7 @@ function Output({ result, source, onUseInput }: { result: Result; source: string
   const box = 'min-h-16 max-h-64 overflow-auto rounded-md bg-muted p-3 font-mono text-xs whitespace-pre-wrap';
   if (result.kind === 'idle') return <pre className={cn(box, 'text-muted-foreground')}>Press Run (Ctrl+Enter).</pre>;
   if (result.kind === 'running') return <pre className={cn(box, 'text-muted-foreground')}>Loading the compiler and running…</pre>;
-  if (result.kind === 'error') return <pre className={cn(box, 'text-destructive')}>{result.message}</pre>;
+  if (result.kind === 'error') return <pre className={cn(box, 'text-destructive')} role="status">{result.message}</pre>;
   if (result.kind === 'stress') {
     const o = result.outcome;
     if (o.status === 'error') return <pre className={cn(box, 'text-destructive')} role="status">{o.error}</pre>;
@@ -330,8 +330,9 @@ function ShareMenu({ source, stdin }: { source: string; stdin: string }) {
       if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error ?? r.statusText);
       const { url } = (await r.json()) as { url: string };
       await copy(new URL(url, location.origin).toString(), 'Short link');
-    } catch (e) {
-      setNote(`Short links aren't available here (${(e as Error).message})`);
+    } catch {
+      // The full link needs no service (site/R17).
+      await copy(`${location.origin}/play#${encodeShare(source, stdin)}`, "Short links are down; full link");
     }
   };
   return (
