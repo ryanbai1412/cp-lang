@@ -4,6 +4,7 @@
   "pages": [
     "index",
     "ownership-and-mutation",
-    "domains-and-index-spaces"
+    "domains-and-index-spaces",
+    "optionals"
   ]
 }

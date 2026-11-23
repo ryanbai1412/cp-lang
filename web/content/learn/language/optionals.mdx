@@ -1,0 +1,123 @@
+---
+title: "Optionals"
+description: "?T instead of sentinels: lifted arithmetic, min= that skips unreachable states, ?, !, and why ?T can't be compared with <."
+---
+
+Contest C++ marks "no value" with a sentinel: `INF` for an unreachable distance, `-1` for no
+parent, `0` for "not computed yet". Each sentinel is a real number, so it adds, compares and prints
+like one. `INF + w` overflows, `-1` indexes an array, and a forgotten `0` reads as a valid answer.
+CP Lang writes absence as `?T`: a `T` or `None`. The normative rules are
+<Spec file="core/02-values-types" section="2.4 Optionals">§2.4 of values and types</Spec>.
+
+## `?T`, and getting a `T` back
+
+`T` converts to `?T` implicitly. The way back is always written:
+
+| Form | Meaning |
+|---|---|
+| `x ?? d` | `x`, or `d` when `x` is `None`; `d` is only evaluated then |
+| `x!` | `x`, or a trap that names the place |
+| `if let v = x:` | runs the block with `v` only when `x` has a value |
+| `let v = x else: return ...` | binds `v` or leaves the function |
+| `match x:` | both cases, checked for exhaustiveness |
+
+Library functions that may find nothing return an optional: `V.first`, `V.last`,
+`V.find(p)`. The empty case is in the type, so it can't be forgotten.
+
+```cp run input="3\n1 3 5\n"
+let n: 1..=10 = read()
+domain V = 1..=n
+let a: [V]Int = read()
+if let v = V.find(v => a[v] % 2 == 0):
+    print("first even at", v)
+else:
+    print("no even value")
+let last = V.last!
+print(a[last])
+```
+
+## Arithmetic lifts, `min=` skips
+
+Arithmetic on an optional gives an optional: `dist[u] + w` is `None` when `dist[u]` is. And `min`,
+`max`, `min=` and `max=` treat `None` as "nothing yet": a `None` target takes the right side, and
+a `None` right side changes nothing. Together they make "skip unreachable states" the default,
+with no `if dist[u] != INF` guard and no overflow:
+
+```cp run input="3\n0 4 1\n4 0 2\n1 2 0\n"
+let n: 1..=10 = read()
+domain V = 1..=n
+let w: [V, V]Int = read()
+var dist: [V]?Int = None
+dist[V(1)] = 0
+for _ in V:
+    for u in V:
+        for v in V:
+            dist[v] min= dist[u] + w[u, v]
+print(dist!)
+```
+
+`dist!` on the whole array checks every element in one pass, so after the fill phase the rest of the
+program works with a plain `[V]Int`. As an expression, `dist[v] min= d` is a `Bool`, true when the
+value improved (also from `None`), so `if dist[v] min= d: parent[v] = u` records the parent with
+one comparison. (<Decision n={129} />)
+
+## Ordering does not lift
+
+`?T` has `==` but not `<`. Comparing an optional is an error, never a silent `false`:
+
+```cp run rejects=E0308
+let a: ?Int = None
+let best = 5
+if a + 1 < best:
+    print("smaller")
+```
+
+Unwrap first: `((a + 1) ?? best) < best`, or `if let`. With a sentinel, `INF + 1 < best` is
+`false` until `INF + 1` overflows and turns negative.
+
+## `?` reaches where operators don't
+
+Postfix `x?` carries `None` through an index, a call argument or a field read: `a[i?]` is `None`
+when `i` is. Its reach ends at the nearest enclosing parentheses, call argument, left operand of
+`??`, lambda body or statement right-hand side. `?` never returns from the function. An early exit
+is `let ... else`, so control flow is always on the page.
+
+```cp run input="4\n1 3 4 5\n"
+let n: 1..=10 = read()
+domain V = 1..=n
+let a: [V]Int = read()
+let i = V.find(v => a[v] % 2 == 0)
+print((a[i?] * 10) ?? -1)
+print(i.map(v => Int(v)) ?? 0)
+let j = V.find(v => a[v] > 100)
+print((a[j?] * 10) ?? -1)
+```
+
+## What it costs
+
+When `T` has a spare value (a niche), `?T` takes no more bytes than `T`: `?Int` uses the one 64-bit
+value `Int` never holds, so `[V]?Int` is 8 bytes per vertex, and a `?V` parent takes the width of `V`.
+Otherwise a flag byte is added. (<Spec file="core/03-numbers-layout" section="Arrays of optionals" />)
+The program pays what the C++ sentinel version pays, and gets the checks for free.
+
+## Why it's designed this way
+
+**Absence is a P0 bug class.** Sentinels and uninitialized values are on the list of mistakes the
+language promises to make hard to write. An optional keeps "no value" apart from every value, and
+the niche keeps it free, so there's no reason left to use a sentinel. (<Decision n={1} />, row 1.3)
+
+**Lifted arithmetic and `min=` that skips `None`.** These are why optionals are as short as
+sentinels. Without them, every relaxation needs an unwrap or a guard, and contestants go back to
+`INF`. Lifting is three ordinary trait impls on `?T` in the standard library, not a language rule,
+so a user type can do the same.
+
+**No `<` on `?T`.** The rejected alternative, ordering `None` below or above every value, picks
+one meaning ("unreachable is smallest" or "is largest"), and half of all programs need the other.
+Either choice is a silent wrong answer. An error costs one `??` and says which you meant.
+
+**`?` isn't control flow.** In Rust, `x?` returns from the function. Here a hidden `return` in the
+middle of a DP expression would make the obvious code quietly do something else, so `?` only
+propagates inside the expression, and leaving the function is a written `let ... else`.
+
+**`x!` names the place.** Unwrapping is explicit and greppable, and its trap points at the value
+that was missing, so a wrong assumption fails loudly on the first test that breaks it.
