@@ -277,6 +277,15 @@ impl HandLoops<'_> {
         if !conds.is_empty() || name(body) != Some(x) || !self.text(expr.span).starts_with('[') {
             return;
         }
+        // `cpl run` cannot keep a stepped range as a value yet (E0501), so
+        // `(m..n by k).collect()` would not run.
+        let stepped = matches!(
+            &unparen(iter).kind,
+            ExprKind::Range { step: Some(_), .. } | ExprKind::By { .. }
+        );
+        if stepped {
+            return;
+        }
         let it = self.text(iter.span);
         let it = match iter.kind {
             ExprKind::Name(_) | ExprKind::Field { .. } | ExprKind::Index { .. } => it.to_string(),
