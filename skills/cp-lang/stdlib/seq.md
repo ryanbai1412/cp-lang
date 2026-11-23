@@ -167,7 +167,7 @@ A contiguous piece of a ring, possibly wrapping past the end, at most n elements
 - `fn pairs<S: Seq, T>(self: S) -> yields (T, T)` — O(n²) to walk, O(1) per pair; Every pair `(x, y)` with `x` before `y`: `[10, 20, 30].pairs()` gives `(10, 20)`, `(10, 30)`, `(20, 30)`.
 - `@get fn with_prev<S: Seq, T>(self: S) -> yields (?T, T)` — O(1) per step; Every element paired with the one before it, starting with `(None, first)`: `[10, 20, 30].with_prev` gives `(None, 10)`, `(10, 20)`, `(20, 30)`.
 - `fn cyclic_pairs<S: Seq, T>(self: S) -> yields (T, T)` — O(1) per step; Every element with the one after it, the last with the first: the sides of a polygon, the links of a ring.
-- `fn zip<A: Indexed, B: Indexed, T, U>(a: A, b: B) -> yields (T, U)` — O(min(|a|, |b|)); The pairs `(a.nth(i), b.nth(i))`, as many as the shorter sequence has.
+- `fn zip<A: Indexed<K, T>, B: Indexed<L, U>, K, L, T, U>(a: A, b: B) -> yields (T, U)` — O(min(|a|, |b|)); The pairs `(a.nth(i), b.nth(i))`, as many as the shorter sequence has.
 - `fn get_or_insert<K, V>(mut self: Map<K, V>, k: K, v: V) -> V` — O(log n); The value `m` holds for `k`, after storing `v` there if it held none: `ids.get_or_insert(name, ids.len)` gives each new name the next id.
 - `fn get_or_insert_with<K, V>(mut self: Map<K, V>, k: K, f: fn() -> V) -> V` — O(log n), plus `f` once when `k` is absent; As `get_or_insert`, but the value is made by `f`, which runs only when `m` holds None for `k`: `ids.get_or_insert_with(name, () => next_id())`.
 - `fn update<K, V>(mut self: Map<K, V>, k: K, init: V, f: fn(V) -> V)` — O(log n), plus one call of `f`; Replace the value under `k` by `f` of it, starting from `init` when `m` holds none: `cnt.update(x, 0, c => c + 1)`.
@@ -229,10 +229,10 @@ A contiguous piece of a ring, possibly wrapping past the end, at most n elements
 - `fn present<S: Seq, T>(self: S) -> yields T` — O(1) per step
 - `fn all_some<S: Seq, T>(self: S) -> ?List<T>` — O(n), O(n) memory
 - `fn chain<A: Seq, B: Seq, T>(a: A, b: B) -> yields T` — O(1) per step
-- `fn product<A: Seq, B: Indexed, T, U>(a: A, b: B) -> yields (T, U)` — O(1) per step, O(|a| · |b|) to walk; O(1) per step.
+- `fn product<A: Seq<T>, B: Indexed<L, U>, L, T, U>(a: A, b: B) -> yields (T, U)` — O(1) per step, O(|a| · |b|) to walk; O(1) per step.
 - `fn iterate<T>(from: ?T, step: T -> ?T) -> yields T` — O(1) per step plus one call of `step`; O(1) per step.
 - `fn with_next<S: Seq, T>(self: S) -> yields (T, ?T)` — O(1) per step
-- `fn zip_exact<A: Indexed, B: Indexed, T, U>(a: A, b: B) -> yields (T, U)` — O(1) per step; traps: when `a.len != b.len`
+- `fn zip_exact<A: Indexed<K, T>, B: Indexed<L, U>, K, L, T, U>(a: A, b: B) -> yields (T, U)` — O(1) per step; traps: when `a.len != b.len`
 - `fn chunks_padded<S: Indexed, T>(self: S, k: Int, pad: T) -> yields List<T>` — O(k) per chunk; O(n).; traps: when `k < 1`
 - `fn reduce<S: Seq, T>(self: S, f: (T, T) -> T) -> ?T` — O(n) calls of `f`; O(n).
 - `fn fold<S: Seq, T, Acc>(self: S, f: (Acc, T) -> Acc, init: Acc) -> Acc` — O(n) calls of `f`; O(n).
