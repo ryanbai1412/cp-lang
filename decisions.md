@@ -6572,3 +6572,33 @@ Reverse: delete the `regen` job and call `scripts/regen.sh` from `land.sh`.
 - **Decision.** The trace viewer on cp-lang.org (`/trace.html`) is the debugger's `tools/trace/index.html` with `data-context="site"`, a brand that links to `/`, and the viewer's own site nav pointed at Home, Learn, Docs and Playground. The site applies this at build time in `web/scripts/gen-debug.mjs`; the tools file is unchanged, and exported traces still reset to standalone.
 - **Why.** The playground's Trace button opens the viewer in a new tab, and that tab had no way back to the site. The viewer already had a site-nav slot for the old `site/` bundle, so the site only fills it in.
 - **Reverse.** Drop the rewrite in `web/scripts/gen-debug.mjs` and write the viewer unchanged.
+
+## 286. The gate has a commit tier and CI; `land.sh` runs no gate (2026-11-22)
+
+Call: QUESTIONS "split the gate into a commit tier and a land tier?" is decided
+by its recommendation, (b), as reshaped by decision 234: the pre-commit hook
+runs `check.sh --commit` (affected crates, debt ratchet, scoped fmt) under a
+25 s timeout that warns and allows the commit, and CI runs the full fast gate
+on every main tip.
+Reason: same tests guard main; commits stay under the 1 minute landing rule.
+Reverse: point `.githooks/pre-commit` back at `check.sh --fast`.
+
+## 287. Red CI on main does not block landing (2026-11-22)
+
+Call: QUESTIONS "does red CI on main block landing?" is closed as (a), no
+block: decision 234 made `land.sh` rebase and push, and the infra sheriff
+reverts or fixes a red tip.
+Reason: a block would freeze all 12 lanes on any red; the sheriff keeps main
+green faster.
+Reverse: have `land.sh` read `gh run list --branch main -L 1` and refuse on
+failure unless `CPL_LAND_URGENT=1`.
+
+## 288. Unlanded devin/* branches: delete when landed, archive after 48 h (2026-11-22)
+
+Call: QUESTIONS "what happens to unlanded devin/* branches?" is decided by its
+recommendation, (b). A branch `git cherry` shows fully landed is deleted after
+pushing `refs/archive/<name>`; a branch with no owning lane whose tip is over
+48 h old is archived and deleted. Today that deleted `devin/wip-std-todos`;
+no branch tip is over 48 h old yet.
+Reason: the branch list stays readable and every archived branch restores.
+Reverse: `git push origin refs/archive/<name>:refs/heads/<name>`.

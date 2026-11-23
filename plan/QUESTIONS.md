@@ -137,25 +137,6 @@ Recommendation: A. Arity tells them apart, both are the name a contestant guesse
 How to reverse: B with a `cpl fix` codemod.
 Meanwhile: as ruled in R04.2.20 (on `devin/wip-conformance-matrix`).
 
-### infra: split the gate into a commit tier and a land tier?
-Options: (a) keep one gate: pre-commit and `land.sh` both run `scripts/check.sh --fast`, 77 s after a one-line crate edit; (b) two tiers ([design](domains/infra/design/gate-tiers.md)): pre-commit runs the affected crates' tests (<= 10 s), `land.sh` and CI run today's full fast gate unchanged.
-Recommendation: (b). Same tests guard main; a lane learns of a cross-crate break at land time instead of commit time.
-How to reverse: point `.githooks/pre-commit` back at `check.sh --fast`.
-Meanwhile: build (b) behind `CPL_GATE_TIER=commit`; the hook keeps running the full fast gate until it measures <= 10 s.
-
-### infra: does red CI on main block landing?
-Options: (a) warn only; (b) `land.sh` refuses while the latest main CI run is red, except commits marked `CPL_LAND_URGENT=1` (fixes and reverts).
-Recommendation: (b) once CI has been green 24 h; today CI is red, so (b) would freeze every lane.
-How to reverse: one env default in `scripts/land.sh`.
-Meanwhile: (a), with the warning printed in every land.
-Superseded (decisions.md 234): `land.sh` is rebase and push and checks no CI; CI gates every main tip and the infra sheriff reverts or fixes a red one.
-
-### infra: what happens to unlanded devin/* branches?
-Options: (a) delete only branches `git cherry` shows fully landed; (b) also archive to `refs/archive/<name>` and delete any branch with no owning lane after 48 h.
-Recommendation: (b); 68 branches today make the queue hard to read, and archive refs keep the work restorable.
-How to reverse: `git push origin refs/archive/<name>:refs/heads/<name>`.
-Meanwhile: (a) only.
-
 ### spec: what are a range's keys, its own elements or positions from 0?
 Chapter 7 lists ranges as `Indexed<D, T>` (R07.3.5: `s[i]` in O(1), `s.keys: Range<D>`), but chapter 4's range methods (R04.4.12-21) never say what `r[i]`, `r.keys` or `r.items` mean. Today `let r = 2..5` gives `r[3]` = R0101 "index 3 is outside a range of length 3" (so `r[0]` is 2), and `r.keys`, `r.items` do not compile.
 Option A, identity: `r[x]` is `x` for `x in r` (traps outside), `r.keys` is `r`, `for (k, x) in r.items` walks `(2, 2) (3, 3) (4, 4)`. A range is `V.range[l..r]` without the source: the same keys a slice keeps (R07.2.14), so `Range<V>` stays `Indexed<V, V>` and never mixes positions of `V` with counts.
