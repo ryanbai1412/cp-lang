@@ -19,6 +19,6 @@ for i in I:
     pre[i] = all
 
 for _ in 0..q:
-    let x: 1..=1e9 = read()
+    let x: 0..=1e9 = read()
     // multiples of a longer prefix are multiples of every shorter one
     if let i = I.first_true(i => x % pre[i] != 0): print(i) else: print(-1)

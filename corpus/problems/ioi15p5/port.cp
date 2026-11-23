@@ -47,8 +47,7 @@ fn swaps_after(t: Int) -> Int:
                 j = val[j]
     n - cycles
 
-let lo = (0..0).first_true(mid => swaps_after(mid) <= mid) ?? 0
-let rounds = lo
+let rounds = (0..=m).first_true(t => swaps_after(t) <= t)!
 
 // Sort the row Ermek alone would leave, recording each swap as a pair of
 // values. Swapping the same two values earlier has the same final effect.

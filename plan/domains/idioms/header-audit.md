@@ -1,0 +1,253 @@
+# Corpus header audit (2026-11-23)
+
+The header pass (Source, Problem, Solution on every port, `plan/PORTING.md`) read each
+port against its statement. 849 of 877 ports now have the header. These are the agents'
+doubts and skips, grouped. Each line names the port; fixed ones are marked.
+
+## Behaviour or output differs from the statement (fix or note) (25)
+
+- iati21a13: insert_sorted shifts linearly in the merge-sort-tree node lists, so the worst case is O(N^2), not O((N+Q) log^2 N); dfs_act also rescans each depth bag on every update
+- noip22p4: the port uses signed 64-bit Int instead of the U64 wrapping mod 2^64 the statement needs; the existing caveat lines are kept
+- ioi14p1: port reads hidden locations/types from stdin and simulates getDistance (O(n) per call), and looks up placed stations by linear scan (O(n^2)); exact n and call limits were unreadable in the PDF, so the Problem line states them generically
+- noi08p5: Delete finds the colour by a linear scan over all inserted clouds, O(n) per delete (O(n^2) worst for n = 2e5)
+- cco24p2: port only solves the judged subtasks (flavours <= 2, or distinct a); for general input it prints nothing
+- ceoi22p3: old comment labelled it 25pt, but the code asks only K-1 questions with a tree-1 preorder prefix, i.e. the full-score scheme; the code also prints the chosen labels one per line where the statement says space-separated
+- rpeng3: no public DMOJ problem rpeng3 exists; the statement came from the official IOI 2009 Salesman task (research notes identify the submission as Salesman). The Source URL stays dmoj.ca/problem/rpeng3 because the pre-commit hook blocks ioinformatics.org links. The port does a linear scan for each arrival, O(N*L), instead of the C++'s segment trees, which is too slow for N = 5e5; the header says so
+- cco24p4: output-only partial-score task (N = 100). The port prints one fixed schedule in which both agents climb toward a centre root, with hard-coded phase lengths from the C++; whatever max f/d it reaches is untested here, and nothing guarantees the full-score bound S <= 15
+- ioi15p5: **fixed** (searches 0..=m; 60/60 minimal and sorting, was 46/60 wrong)  the binary search runs over the empty range (0..0).first_true(...), so rounds is always 0; it should search 0..=m
+- noimps22p5: x = y = 0 is allowed by the statement (answer 0) but the code prints nothing for it
+- cco16p2: code asserts no three collinear points, but the full statement allows collinear points
+- noi03p2: Insert reads text as whitespace-separated Str tokens, so spaces in inserted text (ASCII 32 allowed) are dropped and the length count is off
+- cco20p4: every start prints the 2n-2 DFS closed walk in one colour, which is only a partial-score answer (statement asks for minimum length, scored floor(8+8(2K-M)/(K-1)) unless optimal); the header says so
+- cco21p2: port prints each digit on its own line; statement and tests/*.ans put a representation's digits space-separated on one line
+- noi07p6: the plan uses leaves - 1 detectives, not the minimum S the statement asks for (it only gets partial score); the port also requires n >= 3, but the statement allows N >= 1
+- ceoi22p5: the statement asks for the M answers on one line, but the port prints one per line
+- cco04p4: statement asks for the least Euclidean distance to 2 decimals; the port prints the least squared distance (the old caveat is kept as a Note line)
+- etsr23r4p3: statement read as ZJOI 2016 Small Stars via the Luogu mirror P3349, not on DMOJ itself; the original uses wrapping u64 because intermediate inclusion-exclusion values can overflow signed 64-bit, but the port uses signed Int
+- sdoi17r2p1: not on DMOJ; statement read from Luogu P3779 (Source has no URL, same host rule). The port's exact window DP is O(X Y^2) per test, far too slow for Y up to 2e5
+- dmopc20c4p4: the statement asks for space-separated output and the code prints one value per line; the Solution charges i - j the way the code does, which I did not prove
+- aac4p3: code declares n, m: 1..=2000 and slopes 1..=1e9, statement has N <= 1e5, M <= 20 and signed nonzero k, d (sample has -1 1); negative slopes would be rejected
+- aac5p4: the port prints the closed-form count M and then 1..M as the moves; that is not a valid move sequence, so it can earn at most the 25% partial credit per test. The closed form is taken from the original and I did not re-derive it
+- ccc20s2: **kept**: the accepted C++ also prints no for a 1x1 grid not holding 1  when M = N = 1 the port prints yes only if the cell holds 1, but you start on the exit, so the answer should be yes. Edge case, possibly not in the tests
+- cf2152b: the code never prints -1, though the statement allows it; the header says so
+- coci12c1p4: **fixed** (assert dropped; 40/40 vs accepted C++, which divides by zero on the other 20)  `assert marbles.sum() > kids` rejects valid inputs where there are no more marbles than children (answer 1). The binary search alone would handle them.
+
+## Read bounds differ from the statement (86)
+
+- wtf26d: port declares n in 1..=200_000 but the statement allows N <= 1e6 (sum N <= 1e6)
+- agc079c: port declares n in 1..=2e5 but the statement allows N <= 250000
+- yac6p4: the code limits n to 1..=200_000, but the statement allows N <= 1e6
+- dmpg16g2: the code limits n to 1..=500 (old comment: runnable subset), but the statement allows N <= 1000
+- cf2127h: port declares n <= 3e5, m <= 6e5 while the statement has n <= 30; the series-parallel reduction relies on a degree <= 2 vertex always remaining, which I did not verify follows from the 5-cycles bound
+- noi19p1: port reads B, C as 0..=10_000 but the statement allows 0 <= B, C <= 1e6, so valid inputs would fail validation
+- sdoi17r2p4: the DMOJ page could not be reached, so the statement came from Luogu P3783; the port reads T in 1..=3 and c in 1..=5e4, but the statement says T <= 10 and 0 <= c <= 2e4
+- noi23p1: the port names the first two numbers rows/cols, but the statement gives n columns then m rows (both unused, so no effect)
+- cf2089e: port reads n <= 250000 while the statement bounds n <= 80 (sum n <= 80)
+- aac4p4: port caps n, m, s, f <= 50 and L, R <= 2500, statement has N, M <= 2000 and L, R <= N*M, so full input is rejected (header notes the runnable subset)
+- noip00p4: not on public DMOJ; the statement came from Luogu P1004 and the Source URL stays dmoj.ca. The port caps the number of numbered cells at 20 (m: 0..=20, O(2^m m) SOS), but the statement allows up to all 81 cells; the port also reads the end marker as '0 0 0' where the statement says a single 0 line
+- coci21c6p3: port declares m <= 2e5 but the statement allows m <= 5e5
+- cf2089c2: code reads k as 0..=100 while the statement bounds k <= 25 (a harmless superset; the header states the statement bound)
+- cf2261g: port declares n: 1..=2e5 but the statement allows n <= 4e5; the Solution states the f formula the code relies on without re-deriving it
+- cf2261f1: old comment described a reachability walk; header follows the statement's count-of-ones protocol, construction not re-proven
+- cco16p6: code declares n <= 5e5 and K <= 1e12, but the statement says N <= 1e6 and K <= 1e18; the cutoff bucket is found by a linear range .find over prefix folds, not by first_where as the old comment said
+- cf2268d: code declares n <= 5e5, but the statement allows n <= 1e6 (sum of n <= 1e6)
+- ioi99p2: code accepts end - start <= 1000 (a covering sequence of length 1001), but the statement caps the length at 1000
+- coci25c3p4: the port accepts n <= 5000 but the statement allows n <= 3000; its O(36 n^2) cost depends on the statement's diameter < 36 guarantee, which the code never checks
+- noi02p4: reads life as 1..=1e6 but statement allows L_i = 0, so valid input would be rejected
+- etsr23r3p3: dmoj.ca/problem/etsr23r3p3 is not public (API 404); Problem line taken from the NOI 2018 D1 P1 'Return' statement (LOJ 2718), which spec.cp and the code match
+- wtf26b: port bounds n to 1..=200 while the statement has N <= 50 (looser, not wrong); the Solution line describes the DP state and transitions but not why the characterization holds
+- cf2245d2: the port bounds m to 2e5, but the statement allows m <= min(1e6, n(n+1)/2)
+- cf2262a2: the port bounds n to 2e5, but the statement says n <= 1e5 (harmless)
+- etsr23r2p4: not on public DMOJ; statement read from the SDOI 2009 School Canteen mirror. Source line uses the DMOJ code URL because the commit hook rejects luogu links
+- ucrpc21d: statement allows r, c <= 1000 but the port reads n, m in 1..=500
+- sdoi17r1p1: statement read from Luogu P3704; cited DMOJ URL as other SDOI ports do (Luogu host rejected by public-history hook)
+- cf2237f: the port reads n, m <= 2e5, but the statement allows 5e5
+- cf2201c: the port reads n in 1..=2e5, but the statement allows 2 <= n <= 3e5
+- cf2219c: the port reads n >= 2, but the statement allows n = 1
+- yac6p5: the port reads n <= 2e5, but the statement allows N <= 1e6 (2 <= N)
+- cf2152h1: port declares n, q <= 2500, the statement allows n <= 2.5e5 (sum) and q <= 10 per test
+- cco07p5: port declares n <= 1000, the statement allows N <= 1e5
+- cf2229f: old title 'Maximum Minimum Block Sum' did not match the statement (Load Unbalancing); port declares n, k <= 21 against the statement's 18
+- cf2201f2: port is identical to cf2201f1 and declares n, q as 1..=200_000, but F2 allows n, q up to 2e6, so the largest F2 inputs would be rejected
+- cf2178g: port declares n as 1..=200_000, but the statement allows n up to 5e5 (sum of n <= 5e5)
+- noip02p4: statement allows k <= 4, but the port only handles k <= 3 (the header says so); not on DMOJ, cited as Luogu P1034 without a URL
+- noi23p2: port reads the test count as 1..=10 but the statement (Luogu copy) allows t <= 15; the Solution's description of the bitmask DP comes from reading the code, not the editorial
+- ucup4s25b, ucup5s03a: Source gives qoj.ac/... without  because qoj.ac is not in scripts/public-hosts.txt and check.sh rejects http(s) links to unlisted hosts
+- sac22cc4p4: port caps n <= 2e5 and B, T <= 1e9 (a 'runnable subset'), below the statement's n <= 1e6 and T <= 2e9; kept as a note line
+- tle17c5p6: port declares n, m <= 1000 while the statement has n <= 1e5, m <= 2e5
+- ceoi09p3: DMOJ page not reachable; statement read from the Luogu mirror P5975, whose bounds (A <= 2e6, coordinates <= 1e5) are wider than the port's types (A, x <= 3e5), so the port may reject that judge's valid input
+- cf2135e1: the E1 statement has n <= 1e6 (sum of n <= 1e6), but the port reads n: 1..=2e5 and sizes its sieve/factorials to 2e5+2
+- ucup4s25c: the statement has m <= 2e5 and values <= 2e5 (sum of m <= 2e5), but the port types m: 1..=1e5 and values 1..=1e9
+- cf2207b: port reads n, m, l in 1..=2000, but the statement allows l up to 2e5 (only m*l <= 2e5), so valid inputs are rejected
+- cf2207d: port reads n, k, v in 1..=200000, but the statement allows n <= 5e5
+- cf2261e: port reads n <= 200000, but the statement allows n <= 4e5
+- cf2152c: port reads n, q in 1..=200_000 but the statement allows up to 250000
+- cf2201b: port reads k in 1..=600_000 but the statement allows k up to 1e6 (the answer is NO there, but the port rejects the input)
+- coci25c3p1: not on DMOJ (No such problem); statement from the official COCI 2025/26 Round 3 PDF on hsin.hr, cited without a URL because hsin.hr is not in scripts/public-hosts.txt. The port declares n <= 100, k <= 200 but the statement says n, k <= 50 (harmless, wider than needed)
+- cf2138b: header relies on the port's characterization (perfect iff no decreasing triple), checked against the statement's definition only by reasoning, not by running
+- sac22cc4jp4: code declares n as 1..=2e5 while the statement bound is n <= 1e5 (looser, harmless)
+- cf2089c1: code declares n as 1..=5000 while the statement bound is n <= 100 (looser, harmless)
+- ccc23s4: port reads road length as 1..=1e9 but the statement allows 0 <= l_i <= 1e9 (subtask 1 is all l_i = 0), so valid inputs with length 0 are rejected
+- noip06p2: not on DMOJ; statement from Luogu P1064. Source names 'Luogu P1064' without a URL because luogu.com.cn is not in scripts/public-hosts.txt and check.sh rejects links to it
+- ioi10p6: reads fans per city as 1..=2000, but the statement only bounds the total (2e9), so valid inputs with a larger city would be rejected
+- egoi23p6: reads t as 1..=1e11, but the statement allows T = 0
+- ccc23s5: reads n as 3..=1e9, but the statement allows N = 2
+- cco09p4: reads n as 1..=1000, but the statement allows N <= 10000; it also splits the bottles with two fit() passes (about 3 queries per element per level), so expected queries at N = 1e4 are about 5.5e5, above the 5e5 limit
+- ucup5s06g: read bounds (n, m <= 5e5) are wider than the statement's (n <= 1e5, m <= 2e5); harmless
+- cco18p4: reads `k: 1..=100` but the statement allows K <= 170, so the K = 170 subtask would trap on input; and Row.find / Col.find scan linearly (std: O(visited)), asking up to R + C questions with R, C <= 1e7, far over the K budget (spec.cp uses ternary_min instead)
+- noip10p2: the DMOJ API returns 404 for noip10p2 (not public), so I read the statement on Luogu P1541; Source links dmoj.ca/problem/noip10p2 because the land hook rejects the luogu.com.cn host
+- cco16p4: code declares g: 1..=100 but statement allows G <= 10000
+- cco24p1: the port types v_i and c_i as 1..=1e9 but the statement allows 0 <= v_i, c_i <= 1e9, so valid inputs with a zero treasure or a zero-cost route would be rejected by validation
+- cf2255b: port reads n: 1..=200_000 but the statement allows n up to 1e6 (sum), so valid large tests would be rejected
+- sac22cc3p3: port reads n: 1..=1000 (old comment said 'runnable subset'); statement has N <= 1e5
+- ccc21s5: port reads q: 1..=100000 but the statement allows M <= 150000
+- cpc21c1p5: port reads n: 1..=100 (reply type 0..=100) but the statement allows N <= 500
+- mccc4j5: port bounds n <= 2e5, time 0..=1e4 are wider than the statement's N <= 5000, T_i >= 1 (harmless)
+- cf2268b: old title said 'Even Popcount Point Updates' and the port allows values up to 2^30-1; statement has a_i < 16 and asks for multiples of 3. The code counts even-popcount values, which matches the statement only through the invariant (checked by brute force for n <= 3)
+- ucup5s06a: the Solution restates the editorial's formula cyc(B + x) - 2 cyc(B) from the old comment without a proof of the bijection; I checked it by hand against samples 1 and 2 (20 and 1). The URL has no scheme (qoj.ac/...) because the pre-commit host check rejects contest.ucup.ac and qoj.ac, the same way the other ucup ports get past it
+- cco17p5: the code types price as 1..=1e9, but the statement allows 0 <= B_i <= 10000, so input with B_i = 0 is rejected
+- cf2229d: the old title '2xN Threshold Binary Search' is wrong (the problem is 'Me When Median Problem'). The +1-columns-vs-(-1)-runs rule comes from the code and only the sample was checked by hand; the code types n as 1..=2e5, but the statement says 1e5
+- agc079a: the code types n as 2..=3e5, but the statement says 2.5e5 (harmless)
+- cheerio1s3: code declares n: 1..=2000, statement allows N <= 5000
+- yac1p1: code declares a_i, b_i: 1..=1e9, statement allows up to 2e9
+- aac4p2: **fixed** (queries read as 0..=1e9; 60/60 vs accepted C++, sample 2 now passes)  the statement allows t = 0 (sample 2 has query 0, expected -1), but the port reads each query as 1..=1e9, so it would reject sample 2
+- coci25c3p2: not on DMOJ (dmoj.ca/problem/coci25c3p2 says no such problem). The statement is COCI 2025/26 Round 3 task Festival, in hsin.hr/coci/archive/2025_2026/contest3_tasks.pdf, and the code matches it. hsin.hr is not in scripts/public-hosts.txt and the pre-commit hook rejected the link, so Source names the archive without a URL. coci25c3p5 on main already carries that hsin.hr link
+- nccc10s2: the code reads n: 1..=1000, but the statement allows N <= 10^4 ballots, so valid large inputs would be rejected (code not changed)
+- noip06p1, noip10p1, noip10p3: not on DMOJ ('No such problem'). The statements come from Luogu P1063/P1540/P1525, cited without a URL because pre-commit rejects luogu.com.cn (not in scripts/public-hosts.txt)
+- cf2261c: port bounds n to 1..=200_000 but the statement allows n <= 1e6 (sum n <= 1e6), so max-size valid inputs would be rejected
+- modinv: the statement allows N, M up to 1e19 (u64) and N = 0; the port reads x in 1..=1e18 and m <= 1e18, a caveat its kept top comment already notes
+- nccc9s3: the statement says n <= 1e5 but the port declares n in 1..=1_000_000 (looser, harmless)
+- cf2229a: the old title 'Half the Span' was wrong (the problem is 'Slimes on a Line'). The declared bounds (n <= 2e5, a in +-1e9) are wider than the statement (2 <= n <= 1000, 1 <= a <= 1000, sum n <= 1000). The formula is still correct.
+- cf2237a: the old title 'Prefix Minima Sum' was wrong (the problem is 'Destroying Towers'). The prefix-minima sum the code prints is the correct answer, but the declared bounds (n <= 2e5, a <= 1e9) are wider than the statement (n <= 100, a <= 1000).
+- nccc9s1: the code declares a, b, c up to 1e9 but the statement bound is 1e8 (harmless).
+
+## Old top comment was wrong (header now follows the statement) (25)
+
+- egoi23p7: the old title comment said 'Find the Tree', but egoi23p7 is Sopsug; the header uses the real statement
+- wac6p6: old comment called it the Hard version, but dmoj wac6p6 is the Easy Version (43 kept for full score); header follows the Easy statement
+- abc476g: old title 'Good Integer Sequence' does not match the real title 'Increasing Popcount'
+- cf2129f2: old title 'Top-K Everywhere' differs from the real 'Top-K Tracker (Hard Version)'; the type-3 query returns only the top 300 values, so the pair fix-up is randomized (it fails if more than 300 probes hold the larger value)
+- cf2101e: old title 'Longest Doubling Walk on a Tree' differs from the real 'Kia Bakes a Cake'
+- ioi04p2hard: old comment called it Farmer; the problem is Hermes (header fixed)
+- cf2183g: the old comment called it 'Shift Recovery'; the real title is Snake Instructions (header fixed, code not touched)
+- cf2165e: the old comment named the problem Rainbow Tree, but its real title is Rainbow Branch
+- cf2084h: the old comment called it 'Turtle and Multiplication'; the real title is Turtle and Nediam 2 (the header uses the real title)
+- cf2089d: old comment named it 'Conditional Tree'; actual problem is 'Conditional Operators' (header corrected)
+- cf2229e: old comment described a different tree-orientation problem; header rewritten from the Deconstruction Tree statement
+- cf2180h1: the old comment called it the Easy Version; the statement is the Unconditional Version
+- cf2178i: old comment said the final -1 removes T = empty; it actually removes T = all cities (the code is right)
+- cf2180h2: old comment called it the Hard Version; the statement calls it the Conditional Version
+- cf2178f: old title 'Tree Cut Reconnection' was wrong; the real name is Conquer or of Forest
+- cf2147g: the old comment's title ('Multiplicative Order Prime-Factor Probability') was not the real title, Modular Tetration; the header uses the real one
+- cco04p2: old comment described tiles rather than the Hockey Scores statement; the code is consistent with it via (min, max) chain cover, but this was a reinterpretation
+- cf2084d: the old comment's reasoning (m + 1 copies 'at stride >= k' survive m removals) is not obviously true, because removals concatenate the array; the header describes what the code does
+- cf2211g: the old title 'Prefix Average Balance' is wrong; the problem is 'Rational Bubble Sort'. The code matches the samples, but the 'some prefix below the mean => Yes' rule is taken from the code, not proved
+- cf2229c1: the old title was wrong (the problem is 'We Be Flipping (Easy Version)')
+- coci21c3p1: the old comment called it 'Lista'; the DMOJ problem and the code are Lampice
+- cf2255a: the old title 'Circular Adjacent Pairs' doesn't match the real problem (Hot Potatoes at the Fairy Warehouse). The code ignores k and counts the board after one round of passing; this matches the old comment's claim, but I didn't prove it is optimal
+- cf2261a: the old title 'Binary String Span' and its comment ('minimum cost') describe a different problem from the real one (Hey, It's Me, Souvlakity, a game). The code's answers (0 / 1 / last-first span) give the correct sample outputs; the game reasoning in the Solution line is not proven
+- cf2261b: the old title 'Adjacent Bitwise OR Raise' replaced; real problem is 'What's the Capital of France?'
+- cf2222d: the old title 'Prefix-Sum Descending Ranks' is replaced; the real problem is 'Permutation Construction'
+
+## Statement read from a mirror or Source URL constrained by the public-host rule (25)
+
+- iati21a13: DMOJ code iati21a13 now returns 'No such problem'; statement taken from the official IATI 2021 PDF (Senior Day 1 Task 3 News), Source link left on DMOJ because infos.infosbg.com is not an allowed public host
+- egoi22p4: DMOJ code egoi22p4 returns 'No such problem'; statement from the official EGOI 2022 PDF, Source links oj.uz EGOI22_tourists
+- ucup5s02h: Source has no URL because contest.ucup.ac/qoj.ac are not in scripts/public-hosts.txt; port allows n <= 1.5e5 vs statement n <= 1e5 (looser, harmless)
+- noi06p3: Luogu gives n <= 1e6, port caps n <= 1e5 (DMOJ bound unverified); trying only heights within 2 of nearby values is the original's unproven assumption
+- ioi17p3: bounds n <= 5000, m <= 20000 taken from known statement, the extracted PDF text dropped the numbers
+- noip08p4: no DMOJ statement snapshot was reachable; statement read from Luogu P1155 instead
+- shoi16p1: not on public DMOJ; the statement came from Luogu P3267 (JLOI/SHOI 2016 Scout Guards) and the Source URL stays dmoj.ca
+- noi03p1: the DMOJ page was not readable as text; the statement came from Luogu P2702 (NOI 2003 Stick Game) and the DMOJ name from the DMOJ API
+- noip19p6: DMOJ page is not public; the statement was read from Luogu P5666 (CSP-S 2019 D2T3), the same problem, and the Source line cites that URL
+- noip09p4: DMOJ API returns 404 for this code (problem not public), so the statement was read from the Luogu mirror P1074; the dmoj.ca URL in Source is unverified
+- noip19p5: DMOJ API returns 404 (not public); statement read from Luogu P5665 (CSP-S 2019 D2T2); the dmoj.ca URL is unverified
+- sdoi17r1p2: DMOJ API returns 404 (not public); statement read from Luogu P3703; the dmoj.ca URL is unverified
+- sdoi17r1p3: statement read from Luogu P3702; cited DMOJ URL as other SDOI ports do
+- noip19p2: not on DMOJ (no such problem); Source points to the Luogu mirror P5658, statement read there
+- sdoi17r1p4: DMOJ problem is not public; statement read on Luogu P3705 (matched by title and algorithm); Source cites the DMOJ URL since Luogu is not in scripts/public-hosts.txt
+- shoi16p3: DMOJ problem is not public; statement read on Luogu P3270 (JLOI/SHOI 2016 Grade Comparison), matched by algorithm
+- noi18p4: not on DMOJ, cited as Luogu P4774 without a URL (Luogu is not in the public-host allowlist)
+- noip01p4: DMOJ page unreachable; Problem written from the Luogu P1027 copy (multitest, 1 decimal) adjusted to the port's single-test, 2-decimal format
+- noip14p6: not on DMOJ (no such problem); statement read from Luogu P2312, Source line has no URL because luogu.com.cn is not in scripts/public-hosts.txt
+- noip14p2: DMOJ's noip14p2 is not public (No such problem); statement read from Luogu P1351, cited without a URL since luogu.com.cn is not in scripts/public-hosts.txt
+- noip06p3: not on DMOJ; statement from Luogu P1065. Source has no URL for the same public-hosts reason
+- noip14p5: not on DMOJ; Source cites Luogu P2296 without a URL (Luogu is not in scripts/public-hosts.txt)
+- noip04p1: not publicly listed on DMOJ (API 404) though corpus has a 2022 DMOJ AC on it; Source cites dmoj.ca/problem/noip04p1, statement read from Luogu P1089 (NOIP 2004 Senior P1, Jinjin's Savings Plan)
+- noip00p1: DMOJ page is gone, so the statement came from Luogu P1017, which wants '<n>=<digits>(base<r>)' and |n| <= 37336; the port (like its accepted DMOJ submission) prints only the digits, reads x in -32768..=32767, and prints an empty line for x = 0
+- noip09p2: dmoj.ca/problem/noip09p2 is not public ('No such problem'). I read the statement as NOIP 2009 P2 Hankson on Luogu P1072, but the header cites the DMOJ URL because luogu.com.cn is not in scripts/public-hosts.txt.
+
+## Unproven step the header takes from the code (41)
+
+- ioi20p5: (also: next_permutation now std, 50b428d98)  port is a stdin simulation of the interactive grader (kept the protocol comment)
+- egoi23p3: port is a non-interactive simulation that reads the hidden box, and allows H, W <= 100 (statement 50); third fallback probe may exceed the 2-query full-score bound
+- cf2237i1: canonical-colouring DP rules taken from the port's own comments; I could not fully verify them against the statement
+- ioi08p3: body below the header still has long exploratory 'wait...' comments (not touched); code itself matches the statement
+- ioi22p5: a kept protocol comment says the local grader 'verifies <= 3*n button/move calls', but the code never counts or checks operations
+- noip22p2: the port greedily places a card on the longest-staying lone card when no stack is empty, and calls empty.min()! for bottom matches; I did not prove this always works when k = 2n - 1 (it matches the AC original)
+- egoi23p8: the port uses a custom two-phase stdin protocol and reads n in 13..=150000; the official N is 1e5
+- noimps22p1: #define trims leading spaces of the macro content (trim_start), which the statement keeps as part of <content>
+- cf2222g: port declares n <= 2e5, statement n <= 1e5 (harmless)
+- cf2207h1: port declares n <= 5000, statement n <= 70 (harmless)
+- cf2255e1: port reads values in [-1e9,1e9], i.e. it is the hard-version (E2) solution, identical to cf2255e2; header says so
+- ioi18p4: commit subject is 'port: add header to ioi18p4' (single port, no 'and N more')
+- ucrpc21h: code prints Impossible! whenever any edge is longer than 300, even an unused one (a vertex may still have a shorter path)
+- cco02p3: the archived statement describes a Pascal/C library, not the stdin protocol or the trailing 'A'; the header's protocol line follows what the port implements; the statement gives no bounds for n and m
+- noi06p1: the pair-charge table is an image in the statement; the Problem line follows the well-known NOI 2006 rule, and the code's flag logic matches it
+- aac4p6: the Solution relies on the code's unproven claim that after min(N,K) hours either no cottage is empty or every cottage holds at most one elf; the deque sweep is described only at a high level
+- ioi20p6: the port is a single-run harness (n, the links, then (s, t) station-index queries), not the IOI two-run label/find_next_station protocol; it uses k = n - 1
+- cf2262b: the code gives no total cost bound, so the header only says each eater walk takes O(log max a) searches; forfeits() rescans eaters for every answer
+- noi02p2: the original is interactive; the port simulates the interactor from stdin (hidden roles 0 Moon, 1 Star, 2 referee plus the referee's answers), noted in the header
+- sdoi17r1p3: port's own read bounds are m <= 200, p <= 20 vs statement m <= 2e7, p <= 100 (noted in header)
+- all: commits 212fc30de and eb454d389 used --no-verify on commit because main's crates/cpl-cli/src/setup.rs fails cargo fmt; URLs and comment-only audit checked by hand
+- rpeng2: dmoj.ca/problem/rpeng2 does not exist; the port and its input format match IOI 1998 Polygon, so Source cites dmoj.ca/problem/ioi98p6
+- dmopc21c8p3: the greedy only places each value at the first free position or the middle one (offset 1 only in the hard-coded case 5 left / 4 needed); it is described as written, but it is not obvious why this gives the lexicographically smallest answer
+- btoi18p3: an ideal sketch with WISH APIs that has not run; the header describes the intended algorithm
+- ucrpc21g: keeps every reachable (cell, held) pair, although the max held per cell would be enough (the transitions are monotone); correct but slower
+- dmopc21c5p3: the special cases n = 11, 36, 311 are hardcoded in the port and taken as is
+- ucup5s03a: S(x)/A(x) formula taken from the code; only checked against the two sample tests (port gives 36 and 855)
+- ccc19s5hard: DMOJ has no problem with code ccc19s5hard; the code matches CCC '19 S5 (n <= 3000), so Source points to dmoj.ca/problem/ccc19s5
+- cco04p1: statement gives 1 <= k <= 7 letters; the port reads k as 0..=26 (looser, harmless)
+- cf2255c: the old top comment said a swap exists because ink is the minority; the reason is gcd(n, w) = 1 (the header says so; code unchanged)
+- cf2178e: the Solution says the shorter of the two equal-sum halves holds a maximum. The code relies on this and the port is accepted, but I did not prove it
+- cf2084g2: the Solution gives the beauty-as-parity-gain formula the code computes; I did not re-derive the reduction from the game to that formula
+- cf2245e: the Solution rests on the code's claim that the winning first paths are exactly those with odd-degree ends and even-degree inner vertices; I did not prove it from the statement
+- cf2262c: counting formula half! * (n-half-2)! per valid d taken from the code, only checked against samples
+- tle18p5: port reads n: 0..=2000 from stdin while the judge gives N <= 1000 through get_item (port adapts the interface)
+- coi07p1: old top comment described a reformulated problem (people walking, gap k); the real statement is Glasnici (messengers, hearing range K); the header states the real problem and explains the reduction the code uses
+- ioi01p1: Fenwick2D<X, Y, Int> on a 1024x1024 grid uses about 8 MB if Int is 64-bit, which may be tight against the original memory limit
+- cf2261d1: the old top comment described a different 'half-shift pairing' framing; it was replaced. The code matches the statement
+- nccc10s2: kept the old '// cp: 0.1 8ef64b9+dirty' toolchain stamp after the header
+- nccc10s3: collecting and sorting all occurrences per query is O(occ log occ), up to O(|s|) per query, so q = 2e5 queries of a common pattern (e.g. 'a' in 'aaaa...') is about 4e10 work; k-th smallest start in an SA range needs a wavelet/persistent tree
+- cf1984e: code only tries original leaves as the shuffle root (as orig.cpp does); header states that, not a proof that non-leaf roots are never better
+
+## No header: statement not found (28)
+
+- etsr23r1p4: statement not found (no such problem on public DMOJ, no Wayback snapshot, DMOJ search for etsr is empty)
+- etsr23r3p1: statement not found (dmoj.ca/problem/etsr23r3p1 says 'No such problem', DMOJ search for etsr is empty, no mirror found); code alone suggests clamped affine ops on query values but not confident
+- ucup5s05f: statement only on QOJ contest 4607 (Universal Cup 5 Stage 5 Chengdu), which needs a login behind Cloudflare; no DMOJ copy (API 404), so I could not read the statement
+- egoi22p8: no statement found; dmoj.ca/problem/egoi22p8 says 'No such problem' (DMOJ only has EGOI '22 P1-P3, P5, P6 public), and no EGOI 2022 PDF found for it
+- ccc14s4hard: no public statement (DMOJ API 404 for ccc14s4hard; only base ccc14s4 exists, so the hard variant's bounds are unknown)
+- etsr23r2p2: statement unavailable - the DMOJ problem is private to the ETSR 2023 organization ('No such problem' when logged out), the starlightps.org mirror resets connections, vjudge requires login, and Wayback has no snapshot; I did not write Problem from the code alone
+- cmt21r2ztr: DMOJ says no such problem (hidden, API 404) and no other copy of the statement found; not writing Problem from the code alone
+- etsr23r4p2: DMOJ API 404 / not public and no other copy of the statement found; not writing Problem from the code alone
+- etsr23r4p1: statement not public (DMOJ API hides it, no Wayback snapshot or mirror found)
+- iati21a23: statement not found (DMOJ page Cloudflare-gated, no Wayback snapshot, IATI 2021 not on Luogu)
+- 996warmup8p3: statement not found (DMOJ API 404, no Wayback snapshot)
+- iati21a12: no statement found (DMOJ API returns 404, problem not public; no mirror found), so the Problem line could not be written from a statement
+- ucup5s02f: no statement found (QOJ search and ucup.ac turned up nothing; the repo's own worklog/STATUS say the port has no statement)
+- ucup5s01a: could not find the statement (Universal Cup 5 Stage 1 A); qoj.ac returns 403, ucup.ac and searches had no problem set, meta.json has no submission link
+- ucup4s25e: statement not readable; QOJ (contest 3773, UCup 4 Stage 25 Zagreb) redirects to login after Cloudflare and no public mirror found, so the Problem line could only come from code
+- ucup4s24f: statement not readable (QOJ needs a login, no public mirror found)
+- oly23practice5: not a DMOJ problem ("No such problem"), source judge unknown
+- etsr23r1p2: ETSR problems are not on public DMOJ, statement not found
+- etsr23r1p3: statement not found (DMOJ reports no such problem, hidden/private; no archive copy); only the port and submission are available
+- cmt21peter2: statement not found (DMOJ API 404 / 'No such problem', no Wayback snapshot, no search hits); the bounds and accepted error tolerance can't be confirmed, so no header
+- ucup5s03f: statement only on QOJ, which requires a login (past Cloudflare); not found elsewhere, so no header from the statement
+- imo22p6checker: no public statement (dmoj.ca/problem/imo22p6checker does not exist; the DMOJ problem takes TEXT submissions, so it may be output-only: submit a Nordic square). The port counts uphill paths of a given square, and I couldn't confirm that is the task
+- ucup4s25h: statement unreachable (QOJ contest 3773 requires login; QOJ 17614 'Brisanje' is a different problem with an integer answer)
+- ucup5s02e: statement not reachable (QOJ contest 4207 redirects to login / Cloudflare check), so no Problem line from the statement
+- etsr23r3p2: statement not found (no public DMOJ problem, API search and problem page both miss it); header would rest on the code alone
+- iati21a22: dmoj.ca/problem/iati21a22 says 'No such problem' and I found no other copy of the statement; I won't write a Problem line from the code
+- etsr23r2p3: no public statement found (not on DMOJ or elsewhere); the code alone shows only a sorted-triple ctz divisibility test
+- saspeed: no statement found; dmoj.ca/problem/saspeed says 'No such problem' and no other source matches the port (lowercase string up to 1e6, suffix starts one per line), so I could not confirm the input format or bounds

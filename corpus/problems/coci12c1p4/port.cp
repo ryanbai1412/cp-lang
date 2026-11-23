@@ -10,7 +10,6 @@ let kids: 1..=1e9 = read()
 let m: 1..=3e5 = read()
 assert m <= kids
 let marbles: [m]1..=1e9 = read()
-assert marbles.sum() > kids  // the original divides by zero when the answer is 1
 
 // with handfuls of at most x, colour c needs ceil(c / x) children
 print((1..=1e9).first_true(x => sum(ceil_div(c, x) for c in marbles) <= kids)!)
