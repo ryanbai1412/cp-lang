@@ -23,7 +23,7 @@ pub struct Concave(start: Int, base: Int):
     ///
     /// cost: O(1)
     /// traps: never
-    /// example: `Concave.point(3).at(3) == 0`
+    /// example: `var t = Concave.point(3); t.at(3) == 0`
     pub fn point(d: Int) -> Concave = Concave(d, 0, falling())
 
     /// The function that is 0 on every point of `r`; its domain is `r`, so `lo` is the first point of
@@ -204,7 +204,7 @@ pub struct Concave(start: Int, base: Int):
     /// ties: every maximizing point is included
     /// traps: never
     /// example: `var f = Concave.flat(0..=4); f.add_abs(2); f.argmax() == 2..3`
-    /// example: `Concave.flat(0..=4).argmax() == 0..5`
+    /// example: `var t = Concave.flat(0..=4); t.argmax() == 0..5`
     pub fn argmax(mut self) -> Range<Int> =
         start + self.count_at_least(1)..start + self.count_at_least(0) + 1
 
@@ -223,7 +223,7 @@ pub struct Convex(neg: Concave):
     ///
     /// cost: O(1)
     /// traps: never
-    /// example: `Convex.point(3).at(3) == 0`
+    /// example: `var t = Convex.point(3); t.at(3) == 0`
     pub fn point(d: Int) -> Convex = Convex(Concave.point(d))
 
     /// The function that is 0 on every point of `r`; its domain is `r`.

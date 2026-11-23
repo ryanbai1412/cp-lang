@@ -1123,7 +1123,7 @@ pub struct MergeSeg<D>:
     ///
     /// cost: O(log |D|)
     /// traps: when `x` is outside `D`
-    /// example: `MergeSeg<0..10>.singleton(3).first_alive(x => true) == Some(3)`
+    /// example: `var t = MergeSeg<0..10>.singleton(3); t.first_alive(x => true) == Some(3)`
     pub fn singleton(x: D) -> MergeSeg<D> = MergeSeg([x])
 
     /// The union of `self` and `other`. The result reuses the nodes of both, so neither input may be
