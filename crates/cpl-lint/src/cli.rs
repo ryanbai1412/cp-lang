@@ -22,6 +22,7 @@ options:
   --taste   only the taste lints (L05xx, the plan/PORTING.md checklist):
             a line per file with findings, then the total by lint
   --list    print every lint with its code and default level
+  --json    print the files and their findings as `cpl check --json` does
 ";
 
 /// Runs `cpl fix` as an alias for `cpl lint --fix`.
@@ -42,7 +43,31 @@ pub fn run_fix(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) 
 /// Runs `cpl lint`. Returns the exit code: 0 when nothing is at `deny`
 /// (warnings do not fail), 1 when a `deny` lint fired or a file could not
 /// be linted, 2 for a usage error.
+/// One linted file, for a caller that prints `--json`.
+pub struct FileReport {
+    pub path: String,
+    pub src: String,
+    /// Linted, checks, and no lint at `deny`.
+    pub ok: bool,
+    pub diagnostics: Vec<cpl_diag::Diagnostic>,
+}
+
+/// Turns the reports into the text `--json` prints.
+pub type Json = dyn Fn(&[FileReport]) -> String;
+
 pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u8 {
+    run_with(args, stdout, stderr, None)
+}
+
+/// `run`, taking `--json` when `json` can print it: `cpl-lint` cannot see
+/// the CLI's serializer, so `cpl-cli` hands it in.
+pub fn run_with(
+    args: &[String],
+    stdout: &mut dyn Write,
+    stderr: &mut dyn Write,
+    json: Option<&Json>,
+) -> u8 {
+    let mut as_json = false;
     let mut fix = false;
     let mut taste = false;
     let mut paths: Vec<PathBuf> = Vec::new();
@@ -50,6 +75,7 @@ pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u
         match arg.as_str() {
             "--fix" => fix = true,
             "--taste" => taste = true,
+            "--json" if json.is_some() => as_json = true,
             "--list" => {
                 for lint in LINTS {
                     let _ = writeln!(
@@ -89,6 +115,7 @@ pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u
 
     let (mut warnings, mut errors, mut fixed, mut failed) = (0usize, 0usize, 0usize, 0usize);
     let mut unchecked = 0usize;
+    let mut reports = Vec::new();
     let plural = |n: usize, word: &str| format!("{n} {word}{}", if n == 1 { "" } else { "s" });
     let keep =
         |d: &cpl_diag::Diagnostic| !taste || LINTS.iter().any(|l| l.code == d.code && is_taste(l));
@@ -140,6 +167,12 @@ pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u
                 "error: {name} has syntax errors and was not linted; `cpl check {name}` shows them"
             );
             failed += 1;
+            reports.push(FileReport {
+                path: name,
+                src,
+                ok: false,
+                diagnostics: Vec::new(),
+            });
             continue;
         }
         let mut diagnostics = lint(&src, &config);
@@ -182,7 +215,15 @@ pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u
             .iter()
             .filter(|d| d.severity == Severity::Warning)
             .count();
-        if taste {
+        if as_json {
+            let denied = diagnostics.iter().any(|d| d.severity == Severity::Error);
+            reports.push(FileReport {
+                path: name,
+                src,
+                ok: found.errors == 0 && !denied,
+                diagnostics,
+            });
+        } else if taste {
             if !diagnostics.is_empty() {
                 let mut here = BTreeMap::<&str, usize>::new();
                 for d in &diagnostics {
@@ -238,7 +279,14 @@ pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u
             parts.join(" ")
         );
     }
-    let _ = writeln!(stderr, "{summary}");
+    match json {
+        Some(json) if as_json => {
+            let _ = writeln!(stdout, "{}", json(&reports));
+        }
+        _ => {
+            let _ = writeln!(stderr, "{summary}");
+        }
+    }
     (errors > 0 || failed > 0 || unchecked > 0) as u8
 }
 

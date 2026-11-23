@@ -438,6 +438,34 @@ fn lint_warns_with_its_code_and_exits_0_on_warnings_alone() {
 }
 
 #[test]
+fn lint_json_prints_the_files_cpl_check_json_prints() {
+    let dir = scratch("lint-json");
+    std::fs::write(
+        dir.join("w.cp"),
+        "fn f() -> Int:\n    var x = 1\n    return x\n",
+    )
+    .unwrap();
+    std::fs::write(dir.join("t.cp"), "let x: Int = \"a\"\nprint(x)\n").unwrap();
+    let out = cpl(&dir, &["lint", "--json", "w.cp", "t.cp"]);
+    assert_eq!(
+        out.status.code(),
+        Some(EXIT_ERRORS.into()),
+        "{}",
+        text(&out.stderr)
+    );
+    let report = text(&out.stdout);
+    assert!(
+        report.starts_with("{\"files\":[{\"diagnostics\":[],\"ok\":false,\"path\":\"t.cp\"},"),
+        "{report}"
+    );
+    assert!(
+        report.contains("\"code\":\"L0201\"")
+            && report.ends_with("\"ok\":true,\"path\":\"w.cp\"}]}\n"),
+        "{report}"
+    );
+}
+
+#[test]
 fn explain_shows_a_code_and_rejects_an_unknown_one() {
     misused("explain", &["explain"], "`explain` takes a code or a file");
     misused(

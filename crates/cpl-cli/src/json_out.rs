@@ -54,3 +54,25 @@ pub(crate) fn diagnostic(d: &Diagnostic, lines: &LineIndex) -> Value {
         ("fixes", Value::Array(fixes.collect())),
     ])
 }
+
+/// `cpl lint`, with `--json` printing the `files` shape `cpl check --json` prints.
+pub(crate) fn lint(
+    args: &[String],
+    stdout: &mut dyn std::io::Write,
+    stderr: &mut dyn std::io::Write,
+) -> u8 {
+    cpl_lint::cli::run_with(args, stdout, stderr, Some(&lint_files))
+}
+
+fn lint_files(files: &[cpl_lint::cli::FileReport]) -> String {
+    let files = files.iter().map(|f| {
+        let lines = LineIndex::new(&f.src);
+        let diagnostics = f.diagnostics.iter().map(|d| diagnostic(d, &lines));
+        obj([
+            ("path", text(&f.path)),
+            ("ok", Value::Bool(f.ok)),
+            ("diagnostics", Value::Array(diagnostics.collect())),
+        ])
+    });
+    cpl_json::to_string(&obj([("files", Value::Array(files.collect()))]))
+}

@@ -494,7 +494,7 @@ pub type Tool = fn(&[String], &mut dyn Write, &mut dyn Write) -> u8;
 pub fn tool(command: &str) -> Option<Tool> {
     Some(match command {
         "fmt" => cpl_fmt::cli::run,
-        "lint" => cpl_lint::cli::run,
+        "lint" => json_out::lint,
         "doc" => cpl_doc::cli::run,
         "stress" => cpl_stress::cli::run,
         "new" => cpl_contest::new::run,
