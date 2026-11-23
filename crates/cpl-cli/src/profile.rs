@@ -4,6 +4,7 @@
 //! counter at each statement.
 
 use crate::{compile, Compiled, EXIT_ERRORS, EXIT_FAILED, EXIT_USAGE};
+use cpl_diag::Shown;
 use cpl_diag::{LineIndex, Span};
 use cpl_interp::profile::Site;
 use std::collections::{BTreeMap, HashMap};
@@ -114,13 +115,13 @@ fn run_native(file: &str, compiled: &Compiled, input: &[u8]) -> Result<Run, Stri
     };
     let (cpp, spans) = cpl_codegen::emit_profiled(&compiled.program, "profile", &target);
     let dir = std::env::temp_dir().join(format!("cpl-profile-{}", std::process::id()));
-    std::fs::create_dir_all(&dir).map_err(|e| format!("can't make `{}`: {e}", dir.display()))?;
+    std::fs::create_dir_all(&dir).map_err(|e| format!("can't make `{}`: {e}", dir.shown()))?;
     let (source, binary, tally) = (
         dir.join("profile.cpp"),
         dir.join("profile"),
         dir.join("profile.txt"),
     );
-    std::fs::write(&source, cpp).map_err(|e| format!("can't write `{}`: {e}", source.display()))?;
+    std::fs::write(&source, cpp).map_err(|e| format!("can't write `{}`: {e}", source.shown()))?;
     let host = judge.host();
     let compiler = std::env::var("CXX").unwrap_or(host.compiler);
     let built = std::process::Command::new(&compiler)
@@ -415,7 +416,7 @@ pub fn cover(rest: &[&str], stdout: &mut dyn Write, stderr: &mut String) -> u8 {
     if inputs.is_empty() {
         *stderr += &format!(
             "cpl: no inputs: name them, or put cases in `{}`\n",
-            cpl_contest::problem::tests_dir(Path::new(options.file)).display()
+            cpl_contest::problem::tests_dir(Path::new(options.file)).shown()
         );
         return EXIT_USAGE;
     }
@@ -425,7 +426,7 @@ pub fn cover(rest: &[&str], stdout: &mut dyn Write, stderr: &mut String) -> u8 {
         let bytes = match std::fs::read(input) {
             Ok(bytes) => bytes,
             Err(e) => {
-                *stderr += &format!("cpl: can't read `{}`: {e}\n", input.display());
+                *stderr += &format!("cpl: can't read `{}`: {e}\n", input.shown());
                 return EXIT_USAGE;
             }
         };
@@ -437,7 +438,7 @@ pub fn cover(rest: &[&str], stdout: &mut dyn Write, stderr: &mut String) -> u8 {
             }
         };
         if let Some(message) = run.failure {
-            failed.push(format!("{}: {message}", input.display()));
+            failed.push(format!("{}: {message}", input.shown()));
         }
         for (span, site) in run.sites {
             let total = sites.entry(span).or_default();

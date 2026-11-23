@@ -96,7 +96,7 @@ impl Watch {
     }
 
     fn try_round(&mut self, args: &[String]) -> Result<Round, String> {
-        let name = self.source.display().to_string();
+        let name = self.source.shown();
         let text =
             std::fs::read_to_string(&self.source).map_err(|e| format!("can't read {name}: {e}"))?;
         self.db.set_file(&name, text.as_str());
@@ -120,7 +120,7 @@ impl Watch {
             .unwrap_or_else(|| find_tests_dir(&self.source));
         let cases = cases_in(&dir);
         if cases.is_empty() {
-            let message = format!("no cases in {}", dir.display());
+            let message = format!("no cases in {}", dir.shown());
             return Ok(round(lints, false, Tested::Skipped(message)));
         }
         let ready = match ready(&self.source, &text, &args) {
@@ -144,7 +144,7 @@ impl Watch {
     }
 
     fn render_text(&self, round: &Round, out: &mut dyn Write) {
-        let name = self.source.display().to_string();
+        let name = self.source.shown();
         let shown = cpl_diag::render_all(&round.diagnostics, &name, &round.text);
         let count = round.diagnostics.len();
         if round.errors {
@@ -188,7 +188,7 @@ impl Watch {
             Err(message) => (Vec::new(), Value::Null, Value::Null, text(message)),
         };
         obj([
-            ("path", text(&self.source.display().to_string())),
+            ("path", text(&self.source.shown())),
             ("passed", Value::Bool(passed)),
             ("diagnostics", Value::Array(diagnostics)),
             ("test", test),
@@ -232,6 +232,7 @@ fn plural(count: usize, noun: &str) -> String {
 }
 
 use crate::test::VALUED;
+use cpl_diag::Shown;
 
 /// Runs `cpl watch`. Prints as it goes, so it takes the real stdout.
 pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u8 {
@@ -252,7 +253,7 @@ pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u
         }
     };
     if !source.is_file() {
-        let _ = writeln!(stderr, "cpl: there is no file {}", source.display());
+        let _ = writeln!(stderr, "cpl: there is no file {}", source.shown());
         return 1;
     }
     let extra: Vec<PathBuf> = VALUED[..3]
@@ -276,7 +277,7 @@ pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u
         }
         seen = now;
         if !watch.json {
-            let _ = writeln!(stdout, "\n--- {} changed", source.display());
+            let _ = writeln!(stdout, "\n--- {} changed", source.shown());
         }
         passed = watch.round(args, stdout);
         // A closed terminal ends the watch.

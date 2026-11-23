@@ -5,6 +5,7 @@ use std::io::Write;
 
 use crate::submit::{copy_to_clipboard, size_report};
 use crate::{compile, EXIT_ERRORS, EXIT_USAGE};
+use cpl_diag::Shown;
 
 /// What `cpl build` is asked for beyond the file: `out` says where the
 /// C++ goes, next to the source when `None` (`-` is standard output).
@@ -152,7 +153,7 @@ pub(crate) fn build_file(
                 ])
             });
             let report = cpl_json::obj([
-                ("path", target.display().to_string().into()),
+                ("path", target.shown().into()),
                 ("bytes", cpp.len().into()),
                 ("limit", limit.into()),
                 ("judge", profile.name.to_string().into()),
@@ -166,7 +167,7 @@ pub(crate) fn build_file(
             let _ = writeln!(
                 stdout,
                 "wrote {} ({} bytes, {}% of the limit of judge `{}`)",
-                target.display(),
+                target.shown(),
                 cpp.len(),
                 (cpp.len() * 100).div_ceil(limit),
                 profile.name
@@ -177,7 +178,7 @@ pub(crate) fn build_file(
             0
         }
         Err(error) => {
-            *stderr += &format!("cpl: can't write `{}`: {error}\n", target.display());
+            *stderr += &format!("cpl: can't write `{}`: {error}\n", target.shown());
             EXIT_USAGE
         }
     }
@@ -289,7 +290,7 @@ fn build_checked(
             let _ = writeln!(
                 stdout,
                 "built {} ({compiler} {})",
-                binary.display(),
+                binary.shown(),
                 flags.join(" ")
             );
             if flags == &TRAPPING {
@@ -304,7 +305,7 @@ fn build_checked(
             let shown: Vec<&str> = errors.lines().take(20).collect();
             *stderr += &format!(
                 "cpl: {compiler} could not build `{}`:\n{}\n",
-                cpp.display(),
+                cpp.shown(),
                 shown.join("\n")
             );
             EXIT_ERRORS

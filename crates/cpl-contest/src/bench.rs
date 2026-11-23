@@ -8,6 +8,7 @@
 
 use crate::problem::{source_path, Limits};
 use crate::test::ready;
+use cpl_diag::Shown;
 use cpl_json::escape_string as json_string;
 use cpl_stress::args::Args;
 use cpl_stress::{fit, make, Case, Exit, InputSpec, Pick, Program, Rng, Shape, TreeShape, Value};
@@ -405,7 +406,7 @@ pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u
             return 2;
         }
     };
-    let name = source.display().to_string();
+    let name = source.shown();
     let result = std::fs::read_to_string(&source)
         .map_err(|e| format!("can't read {name}: {e}"))
         .and_then(|src| {

@@ -7,6 +7,7 @@
 //! goes through the compiler's C++ back end first, the same one behind
 //! `cpl build`.
 
+use cpl_diag::Shown;
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
@@ -194,7 +195,7 @@ fn compile_with(
     flags: &[String],
 ) -> Result<String, BuildError> {
     let mut text = std::fs::read(source)
-        .map_err(|e| BuildError(format!("can't read {}: {e}", source.display())))?;
+        .map_err(|e| BuildError(format!("can't read {}: {e}", source.shown())))?;
     let usual = compiler == "g++" && flags.iter().eq(CXX_FLAGS.iter());
     let source_len = text.len();
     if !usual {
@@ -202,7 +203,7 @@ fn compile_with(
     }
     let dir = cache_dir();
     std::fs::create_dir_all(&dir)
-        .map_err(|e| BuildError(format!("can't create {}: {e}", dir.display())))?;
+        .map_err(|e| BuildError(format!("can't create {}: {e}", dir.shown())))?;
     let stem = source.file_stem().unwrap_or_default().to_string_lossy();
     let binary = dir.join(format!("{stem}-{:016x}", hash(&text)));
     if !binary.is_file() {
@@ -230,7 +231,7 @@ fn compile_with(
             .map_err(|e| {
                 BuildError(format!(
                     "can't run {compiler} to build {}: {e}",
-                    source.display()
+                    source.shown()
                 ))
             })?;
         if !output.status.success() {
@@ -238,12 +239,12 @@ fn compile_with(
             let shown: Vec<&str> = errors.lines().take(20).collect();
             return Err(BuildError(format!(
                 "{} does not compile:\n{}",
-                source.display(),
+                source.shown(),
                 shown.join("\n")
             )));
         }
         std::fs::rename(&partial, &binary)
-            .map_err(|e| BuildError(format!("can't write {}: {e}", binary.display())))?;
+            .map_err(|e| BuildError(format!("can't write {}: {e}", binary.shown())))?;
     }
     Ok(binary.display().to_string())
 }
@@ -269,7 +270,7 @@ fn emit_cpp(
     part: Part,
     checks: cpl_codegen::Checks,
 ) -> Result<(PathBuf, cpl_judge::Profile), BuildError> {
-    let name = source.display().to_string();
+    let name = source.shown();
     let text = match text {
         Some(text) => text.to_string(),
         None => std::fs::read_to_string(source)
@@ -317,11 +318,11 @@ fn emit_cpp(
     }
     let dir = cache_dir();
     std::fs::create_dir_all(&dir)
-        .map_err(|e| BuildError(format!("can't create {}: {e}", dir.display())))?;
+        .map_err(|e| BuildError(format!("can't create {}: {e}", dir.shown())))?;
     let stem = source.file_stem().unwrap_or_default().to_string_lossy();
     let out = dir.join(format!("{stem}-{:016x}.cpp", hash(cpp.as_bytes())));
     std::fs::write(&out, cpp)
-        .map_err(|e| BuildError(format!("can't write {}: {e}", out.display())))?;
+        .map_err(|e| BuildError(format!("can't write {}: {e}", out.shown())))?;
     Ok((out, profile))
 }
 
@@ -373,12 +374,12 @@ fn interpreted(
     let cpl = std::env::current_exe().map_err(|e| {
         BuildError(format!(
             "can't find `cpl` to interpret {}: {e}",
-            source.display()
+            source.shown()
         ))
     })?;
     if let Some(text) = text {
         std::fs::write(source, text)
-            .map_err(|e| BuildError(format!("can't write {}: {e}", source.display())))?;
+            .map_err(|e| BuildError(format!("can't write {}: {e}", source.shown())))?;
     }
     let mut argv = vec![cpl.display().to_string(), "run".to_string()];
     match part {
@@ -387,7 +388,7 @@ fn interpreted(
         Part::Gen(_) => {
             return Err(BuildError(format!(
                 "there is no {compiler} here to build the `@gen` fn of {}; install it or pass `--gen <program>`",
-                source.display()
+                source.shown()
             )))
         }
     }
@@ -463,7 +464,7 @@ impl Program {
     /// not a file but has spaces in it is a command line, split like a
     /// shell splits one: `--gen "python3 gen.py --tree"`.
     pub fn resolve(path: &Path) -> Result<Program, BuildError> {
-        let name = path.display().to_string();
+        let name = path.shown();
         if !path.is_file() && name.contains(char::is_whitespace) {
             let words = split_command(&name)?;
             let argv: Vec<&str> = words.iter().map(String::as_str).collect();
@@ -522,7 +523,7 @@ impl Program {
     /// of the traps stress keeps (`cpl run --release --checks`).
     pub fn resolve_checks(path: &Path, checks: cpl_codegen::Checks) -> Result<Program, BuildError> {
         Ok(Program {
-            name: path.display().to_string(),
+            name: path.shown(),
             argv: build_judged(path, None, Part::Solution, checks)?,
             env: Vec::new(),
         })
@@ -532,7 +533,7 @@ impl Program {
     /// need not exist: its imports and judge resolve from beside `path`.
     pub fn resolve_source(path: &Path, text: &str) -> Result<Program, BuildError> {
         Ok(Program {
-            name: path.display().to_string(),
+            name: path.shown(),
             argv: build_judged(path, Some(text), Part::Solution, TRAPS)?,
             env: Vec::new(),
         })
@@ -542,7 +543,7 @@ impl Program {
     /// are undone at method exit), to check P1 against the normal run.
     pub fn resolve_cold_cache(path: &Path) -> Result<Program, BuildError> {
         Ok(Program {
-            name: format!("{} (@cache cold)", path.display()),
+            name: format!("{} (@cache cold)", path.shown()),
             argv: build_judged(path, None, Part::ColdCache, TRAPS)?,
             env: Vec::new(),
         })
@@ -552,7 +553,7 @@ impl Program {
     /// solution: the file's input header, then the fn.
     pub fn resolve_brute(path: &Path, fn_name: &str) -> Result<Program, BuildError> {
         Ok(Program {
-            name: format!("{} (`{fn_name}`)", path.display()),
+            name: format!("{} (`{fn_name}`)", path.shown()),
             argv: build_judged(path, None, Part::Brute, TRAPS)?,
             env: Vec::new(),
         })
@@ -562,7 +563,7 @@ impl Program {
     /// prints one input of at most `size`.
     pub fn resolve_gen(path: &Path, fn_name: &str, size: i64) -> Result<Program, BuildError> {
         Ok(Program {
-            name: format!("{} (`{fn_name}`)", path.display()),
+            name: format!("{} (`{fn_name}`)", path.shown()),
             argv: build_judged(path, None, Part::Gen(size), TRAPS)?,
             env: Vec::new(),
         })

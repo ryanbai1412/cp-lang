@@ -1,6 +1,7 @@
 //! `cpl run --trace`, `cpl run --format json` and the tracing half of
 //! `cpl stress`: a run in the debug interpreter, recorded.
 
+use cpl_diag::Shown;
 use cpl_interp::trace::{document, first_divergence, stages, Divergence, Recording, TraceConfig};
 use std::path::Path;
 
@@ -137,7 +138,7 @@ pub fn against_brute(
     input: &str,
     explain: bool,
 ) -> Result<cpl_stress::cli::Traced, String> {
-    let name = path.display().to_string();
+    let name = path.shown();
     let source = std::fs::read_to_string(path).map_err(|e| format!("can't read {name}: {e}"))?;
     let mut db = cpl_check::Database::new();
     db.set_file(&name, source.as_str());

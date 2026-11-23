@@ -8,6 +8,7 @@
 //! evaluation, and exception stops on runtime traps.
 
 use crate::{compile_side, render_trap, Side};
+use cpl_diag::Shown;
 use cpl_interp::trace::{first_change, string as json_str, Change, Recording, TraceConfig};
 pub(crate) use cpl_json::Value as Json;
 use std::collections::{BTreeMap, HashSet};
@@ -1104,7 +1105,7 @@ fn read_input(program: &str, args: Option<&Json>) -> Result<(Vec<u8>, Option<Str
             Some(path) => {
                 let note = format!(
                     "input: {} (the last case saved for this file)\n",
-                    path.display()
+                    path.shown()
                 );
                 (path, Some(note))
             }
@@ -1113,7 +1114,7 @@ fn read_input(program: &str, args: Option<&Json>) -> Result<(Vec<u8>, Option<Str
     };
     std::fs::read(&path)
         .map(|bytes| (bytes, note))
-        .map_err(|err| format!("cannot read input `{}`: {err}", path.display()))
+        .map_err(|err| format!("cannot read input `{}`: {err}", path.shown()))
 }
 
 /// What a debug session records: a run of 10^7 steps fits in a few hundred MB.

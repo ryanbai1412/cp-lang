@@ -13,6 +13,7 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::time::{Instant, SystemTime, UNIX_EPOCH};
 
+use cpl_diag::Shown;
 use cpl_json::escape_string as json_string;
 
 pub const DEFAULT_DIR: &str = "bench/zero-cost";
@@ -35,13 +36,13 @@ pub struct PairResult {
 /// Emits C++17 source for a `.cp` file using `cpl-check` + `cpl-ir` + `cpl-codegen`.
 pub fn emit_cpp(path: &Path) -> Result<String, String> {
     let source =
-        std::fs::read_to_string(path).map_err(|e| format!("can't read {}: {e}", path.display()))?;
+        std::fs::read_to_string(path).map_err(|e| format!("can't read {}: {e}", path.shown()))?;
     let mut db = cpl_check::Database::new();
     let name = path.to_string_lossy().into_owned();
     db.set_file(&name, source.as_str());
     let analysis = db
         .analyze(&name)
-        .ok_or_else(|| format!("{}: analysis returned none", path.display()))?;
+        .ok_or_else(|| format!("{}: analysis returned none", path.shown()))?;
     if analysis.has_errors() {
         let msgs: Vec<String> = analysis
             .diagnostics
@@ -49,11 +50,11 @@ pub fn emit_cpp(path: &Path) -> Result<String, String> {
             .filter(|d| d.severity == cpl_diag::Severity::Error)
             .map(|d| d.message.clone())
             .collect();
-        return Err(format!("{}: {}", path.display(), msgs.join("; ")));
+        return Err(format!("{}: {}", path.shown(), msgs.join("; ")));
     }
     let ir = cpl_ir::lower(&analysis).map_err(|diags| {
         let msgs: Vec<String> = diags.into_iter().map(|d| d.message).collect();
-        format!("{}: {}", path.display(), msgs.join("; "))
+        format!("{}: {}", path.shown(), msgs.join("; "))
     })?;
     Ok(cpl_codegen::emit(&ir, &name, Some(&source)))
 }
@@ -69,7 +70,7 @@ fn compile_cpp(cpp_path: &Path, bin_path: &Path) -> Result<(), String> {
     if !out.status.success() {
         return Err(format!(
             "g++ failed on {}:\n{}",
-            cpp_path.display(),
+            cpp_path.shown(),
             String::from_utf8_lossy(&out.stderr)
         ));
     }
@@ -158,7 +159,7 @@ fn generate_input(dir: &Path, input_path: &Path) -> Result<(), String> {
     let static_in = dir.join("input.txt");
     if static_in.is_file() {
         std::fs::copy(&static_in, input_path)
-            .map_err(|e| format!("copy {}: {e}", static_in.display()))?;
+            .map_err(|e| format!("copy {}: {e}", static_in.shown()))?;
         return Ok(());
     }
     let gen_py = dir.join("gen.py");
@@ -166,7 +167,7 @@ fn generate_input(dir: &Path, input_path: &Path) -> Result<(), String> {
         let out = Command::new("python3")
             .arg(&gen_py)
             .output()
-            .map_err(|e| format!("can't run python3 {}: {e}", gen_py.display()))?;
+            .map_err(|e| format!("can't run python3 {}: {e}", gen_py.shown()))?;
         if !out.status.success() {
             return Err(format!(
                 "gen.py failed: {}",
@@ -180,20 +181,20 @@ fn generate_input(dir: &Path, input_path: &Path) -> Result<(), String> {
 }
 
 fn run_binary(bin: &Path, input_path: &Path) -> Result<(f64, Vec<u8>), String> {
-    let file = std::fs::File::open(input_path)
-        .map_err(|e| format!("open {}: {e}", input_path.display()))?;
+    let file =
+        std::fs::File::open(input_path).map_err(|e| format!("open {}: {e}", input_path.shown()))?;
     let start = Instant::now();
     let out = Command::new(bin)
         .stdin(Stdio::from(file))
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .output()
-        .map_err(|e| format!("run {}: {e}", bin.display()))?;
+        .map_err(|e| format!("run {}: {e}", bin.shown()))?;
     let elapsed_ms = start.elapsed().as_secs_f64() * 1000.0;
     if !out.status.success() {
         return Err(format!(
             "{} exited with {}: {}",
-            bin.display(),
+            bin.shown(),
             out.status,
             String::from_utf8_lossy(&out.stderr)
         ));
@@ -408,7 +409,7 @@ pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u
             let _ = writeln!(
                 stderr,
                 "cpl bench --zero-cost: can't read {}: {e}",
-                dir.display()
+                dir.shown()
             );
             return 2;
         }
@@ -423,7 +424,7 @@ pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u
         let _ = writeln!(
             stderr,
             "cpl bench --zero-cost: no abstract.cp/direct.cp pairs found under {}",
-            dir.display()
+            dir.shown()
         );
         return 2;
     }

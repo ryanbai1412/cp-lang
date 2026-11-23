@@ -2,6 +2,7 @@
 
 use crate::cli::{build_part_brute, part_alts, swap_in_part_brutes_of};
 use crate::program::{Outcome, Program};
+use cpl_diag::Shown;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
@@ -69,14 +70,14 @@ pub fn run_with(
         let _ = writeln!(
             stderr,
             "cpl: no input: pass one, or run `cpl stress {}` to save a failing case",
-            file.display()
+            file.shown()
         );
         return 1;
     };
     let text = match std::fs::read_to_string(&input) {
         Ok(text) => text,
         Err(error) => {
-            let _ = writeln!(stderr, "cpl: can't read {}: {error}", input.display());
+            let _ = writeln!(stderr, "cpl: can't read {}: {error}", input.shown());
             return 1;
         }
     };
@@ -87,7 +88,7 @@ pub fn run_with(
             return 1;
         }
     };
-    let shown = input.display().to_string();
+    let shown = input.shown();
     let divergence = || {
         let traced = tracer.and_then(|trace| trace(file, &text, false).ok());
         traced.and_then(|traced| traced.divergence)
@@ -131,15 +132,15 @@ pub fn run_with(
 /// `None` when every part agrees.
 pub fn locate(file: &Path, input: &str) -> Result<Option<Located>, String> {
     let src =
-        std::fs::read_to_string(file).map_err(|e| format!("can't read {}: {e}", file.display()))?;
+        std::fs::read_to_string(file).map_err(|e| format!("can't read {}: {e}", file.shown()))?;
     let alts = part_alts(&src);
     if alts.is_empty() {
         return Err(format!(
             "{} has no `@alt(f)` fn to swap in: write one beside the part you doubt",
-            file.display()
+            file.shown()
         ));
     }
-    let name = file.display().to_string();
+    let name = file.shown();
     let solution = Program::resolve(file).map_err(|e| e.to_string())?;
     let ran = outcome(&solution, input)?;
     for (part, alt) in alts {

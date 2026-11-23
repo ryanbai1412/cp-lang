@@ -672,6 +672,17 @@ pub fn shown_path(path: &std::path::Path) -> String {
     plain.replace('\\', "/")
 }
 
+/// `path.shown()` is [`shown_path`] as a method, for messages.
+pub trait Shown {
+    fn shown(&self) -> String;
+}
+
+impl Shown for std::path::Path {
+    fn shown(&self) -> String {
+        shown_path(self)
+    }
+}
+
 #[cfg(test)]
 mod shown_path_tests {
     #[test]
