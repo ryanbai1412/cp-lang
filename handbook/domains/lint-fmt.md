@@ -139,7 +139,7 @@ in `plan/domains/lint-fmt/metrics.toml`.
 | A user's own name is never mistaken for a std item (`lints/R5`) | rules matching std items by spelling | ratchet `lint_std_names`, to 0 by matching resolved paths | `scripts/debt-ratchet.py` |
 | Lints read the checker's types, never guess them from syntax (`lints/R4`) | rule lines that read a written type or compare type names | ratchets `lint_type_syntax` (each line named, per rule) and `consumer_rederived` | `scripts/debt-ratchet.py` |
 | One cause, one finding (`lints/R16`) | nested or duplicated findings for one root cause | hand-written suite | `crates/cpl-lint/src/corpus_tests.rs` `nested_findings_are_one_cause_or_listed_distinct` |
-| Precision on code we did not write | false positives on mutated or newcomer-written programs, sampled and graded | `missing` | — |
+| Precision on code we did not write (`lints/R2`) | findings on `corpus/newcomer` that no `// expect:` comment in the file names, and named lints that stay silent | hand-graded suite | `crates/cpl-lint/src/corpus_tests.rs` `newcomer_findings_are_the_ones_their_comments_expect` |
 
 ### Lint recall and teaching value
 

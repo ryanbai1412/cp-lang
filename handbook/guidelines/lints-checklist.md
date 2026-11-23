@@ -30,7 +30,10 @@ When a rule can't be sure the shape is a defect, it stays silent or warns
 without a fix.
 Reason: a wrong warning costs more than a missed one.
 Example: `sort_for_extreme` stays quiet when the sorted copy is read twice.
-Enforced by: each record's `near_miss.cp` (`crates/cpl-lint/src/record_tests.rs`).
+Enforced by: each record's `near_miss.cp` (`crates/cpl-lint/src/record_tests.rs`),
+and `newcomer_findings_are_the_ones_their_comments_expect` in
+`crates/cpl-lint/src/corpus_tests.rs`, which grades every finding on the
+newcomer programs against their `// expect:` comments.
 
 ### R3: Every look-alike is a near miss
 

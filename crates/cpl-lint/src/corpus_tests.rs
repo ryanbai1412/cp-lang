@@ -294,3 +294,64 @@ fn nested_findings_are_one_cause_or_listed_distinct() {
         "lints nested in another's span; supersede the inner one or list the pair in DISTINCT: {new:?}"
     );
 }
+
+/// The lints named by a `// expect:` comment in a newcomer file; `missing x`
+/// marks a lint we owe and does not count.
+fn expected_codes(src: &str) -> Vec<Vec<&'static str>> {
+    let code_of = |name: &str| {
+        lint_named(name)
+            .map(|lint| lint.code.0)
+            .or_else(|| checker::checker_lint_named(name).map(|lint| lint.code.0))
+    };
+    let mut out = Vec::new();
+    for line in src.lines() {
+        let Some((_, names)) = line.split_once("// expect:") else {
+            continue;
+        };
+        for alt in names.split(',').map(str::trim) {
+            if alt.starts_with("missing") || alt.is_empty() {
+                continue;
+            }
+            let codes: Vec<_> = alt
+                .split('|')
+                .map(|name| code_of(name.trim()).unwrap_or_else(|| panic!("no lint `{name}`")))
+                .collect();
+            out.push(codes);
+        }
+    }
+    out
+}
+
+/// Precision and recall on programs a newcomer wrote: every finding on
+/// `corpus/newcomer` is a lint some `// expect:` comment in that file names,
+/// and every named lint fires there. The file, not the line, is the unit: a
+/// finding may start on the binding a line above the comment.
+/// Rule: `lints/R2`, handbook/guidelines/lints-checklist.md#r2-unsure-means-silent.
+#[test]
+fn newcomer_findings_are_the_ones_their_comments_expect() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let (mut unexpected, mut unfired, mut total) = (Vec::new(), Vec::new(), 0);
+    for file in files(&root, "corpus/newcomer", "") {
+        let src = std::fs::read_to_string(&file).unwrap();
+        let (config, _) = Config::discover(&file);
+        let fired: Vec<&str> = lint(&src, &config).iter().map(|d| d.code.0).collect();
+        let expected = expected_codes(&src);
+        let name = file.file_name().unwrap().to_string_lossy().into_owned();
+        total += fired.len();
+        for code in &fired {
+            if !expected.iter().flatten().any(|e| e == code) {
+                unexpected.push(format!("{name}: {code}"));
+            }
+        }
+        for alts in &expected {
+            if !alts.iter().any(|e| fired.contains(e)) {
+                unfired.push(format!("{name}: {}", alts.join("|")));
+            }
+        }
+    }
+    assert!(total > 100, "only {total} findings on corpus/newcomer");
+    assert!(
+        unexpected.is_empty() && unfired.is_empty(),
+        "false positives (or a missing `// expect:`): {unexpected:?}\nexpected but silent: {unfired:?}"
+    );
+}
