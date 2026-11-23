@@ -1386,6 +1386,8 @@ impl<'a> Parser<'a> {
         let had_comma = self.eat(T::Comma);
         if had_comma {
             items.extend(self.comma_list(T::RBracket, "the list", Self::expr));
+        } else if self.at(T::Semi) {
+            return self.rust_repeat(items);
         } else {
             self.expect(T::RBracket, "`,` or `]` in the list");
             if self.recovering {
@@ -1414,6 +1416,24 @@ impl<'a> Parser<'a> {
                 value: Box::new(value),
             };
         }
+        ExprKind::List(items)
+    }
+
+    /// At the `;` of Rust's `[x; n]`, which is `[x] * n` here (R01.11.1).
+    /// No fix yet: the checker rejects `List * Int` (compiler worklog).
+    fn rust_repeat(&mut self, items: Vec<Expr>) -> ExprKind {
+        let semi = self.span();
+        self.bump();
+        self.expr();
+        self.error(
+            Diagnostic::error(
+                codes::REMOVED_SYNTAX,
+                semi,
+                "repeat a list item with `[x] * n`, not `[x; n]`",
+            )
+            .with_help("write `[x] * n`, or a typed `[n]T`"),
+        );
+        self.eat(T::RBracket);
         ExprKind::List(items)
     }
 
