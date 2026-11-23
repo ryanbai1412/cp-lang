@@ -677,6 +677,21 @@ fn an_unclosed_paren_fix_lands_where_the_closer_belongs() {
             "{src}"
         );
     }
+    // Before `in` after `for (`, before `=>` on a line's opener, and
+    // between a literal and a name.
+    for (src, close_after) in [
+        ("for (i, x in [1].items:\n    print(i)\n", "x"),
+        ("enum E:\n    @tag(\"3\" Stop\n", "\"3\""),
+        (
+            "let v = match (3, 1):\n    (3, 1 => 1\n    _ => 0\nprint(v)\n",
+            "(3, 1",
+        ),
+    ] {
+        let d = one_diag(src);
+        let at = src.rfind(close_after).unwrap() + close_after.len();
+        let insert = (cpl_diag::Span::point(at as u32), ")".to_string());
+        assert_eq!(d.fixes[0].edits[0], insert, "{src}");
+    }
 }
 
 #[test]

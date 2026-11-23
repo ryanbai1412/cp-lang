@@ -513,8 +513,9 @@ impl<'a> Lexer<'a> {
 
     /// Where the unclosed `opener` most likely ended, outside a type:
     /// before an `=`, before `->` on a fn header, before `=>` on an empty
-    /// `()`, before a `:` that ends the line or sits in brackets, or before
-    /// a `for` in an index or comprehension call, right after a `(` that no
+    /// `()` or at the start of a line, before a `:` that ends the line or
+    /// sits in brackets, before `in` after `for (`, before a name right after
+    /// a literal, or before a `for` in an index or comprehension call, right after a `(` that no
     /// argument can follow, or at the end of its line when the next line is
     /// no deeper than the opener's. Returns `(token_index,
     /// byte_offset, insert_synthetic_closer_there)`.
@@ -532,6 +533,10 @@ impl<'a> Lexer<'a> {
         }
         let indexing = matches!(before, Some(Ident | RParen | RBracket));
         let in_bracket = keep > 0 && self.openers[keep - 1].kind == LBracket;
+        let line_start = self.src[..opener.span.start as usize]
+            .rsplit('\n')
+            .next()
+            .is_some_and(|l| l.trim().is_empty());
         let mut depth = 0usize;
         for (i, t) in tokens.iter().enumerate().skip(at + 1) {
             // A line no deeper than the opener's starts a new statement: the
@@ -557,6 +562,17 @@ impl<'a> Lexer<'a> {
                     return Some((i, opener.span.end as usize, true));
                 }
                 Eq | OpEq => return Some((i, tokens[i - 1].span.end as usize, false)),
+                // `for (i, x in xs:` and the match arm `(3, 1 => 1`.
+                In if opener.kind == LParen && before == Some(For) => {
+                    return Some((i, tokens[i - 1].span.end as usize, true));
+                }
+                FatArrow if opener.kind == LParen && line_start => {
+                    return Some((i, tokens[i - 1].span.end as usize, true));
+                }
+                // `@tag("3" Stop`: no name follows a literal inside brackets.
+                Ident if matches!(tokens[i - 1].kind, Str | Int | Float | Char) => {
+                    return Some((i, tokens[i - 1].span.end as usize, false));
+                }
                 Colon if opener.kind == LBracket || i + 1 == tokens.len() => {
                     return Some((i, tokens[i - 1].span.end as usize, false));
                 }
