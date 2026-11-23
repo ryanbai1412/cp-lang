@@ -46,6 +46,13 @@ jobs:
           node-version: "24"
       - name: Compiler versions
         run: g++ --version | head -1 && rustc --version
+      # scripts/cxx-cache.py keys binaries on source, flags, compiler and
+      # system headers; a cold cache costs the conform part about 6 min of g++.
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/cpl/cxx
+          key: cxx-${{ runner.os }}-${{ matrix.part }}-${{ github.run_id }}
+          restore-keys: cxx-${{ runner.os }}-${{ matrix.part }}-
       - name: Fast gate
         env:
           CPL_GATE_PART: ${{ matrix.part }}
