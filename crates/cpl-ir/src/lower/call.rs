@@ -7913,6 +7913,12 @@ impl<'a> Lowerer<'a> {
                 let fv = self.mk(ExprKind::Field(Box::new(value), index), fty, span);
                 return self.call_fn_val(fv, args, span);
             }
+            // A field holding a bare operator (`(count: +).count(a, b)`).
+            if let Some(op) = self.op_of_type(&fty) {
+                if let Some(e) = self.bare_op_call(op, name.span, args, span, hint) {
+                    return e;
+                }
+            }
         }
         if let Ty::Struct(id) = &ty {
             if method == "get" {
