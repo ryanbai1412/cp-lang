@@ -295,14 +295,25 @@ impl Log {
 
     /// `var` holds the `Int` `value` now.
     pub fn set_int(&mut self, var: usize, value: i64) {
-        if !matches!(self.now.values.get(var), Some(Some(Slot::Int(now))) if *now == value) {
-            let delta = match i32::try_from(value) {
-                Ok(small) => Delta::SmallInt(narrow(var), small),
-                Err(_) => {
-                    self.ints.push(value);
-                    Delta::Int(narrow(var), self.ints.len() as u32 - 1)
-                }
-            };
+        // An `Int` held already is set here, as `apply` would.
+        let applied = match self.now.values.get_mut(var) {
+            Some(Some(Slot::Int(now))) if *now == value => return,
+            Some(Some(Slot::Int(now))) => {
+                *now = value;
+                true
+            }
+            _ => false,
+        };
+        let delta = match i32::try_from(value) {
+            Ok(small) => Delta::SmallInt(narrow(var), small),
+            Err(_) => {
+                self.ints.push(value);
+                Delta::Int(narrow(var), self.ints.len() as u32 - 1)
+            }
+        };
+        if applied {
+            self.changes.push(delta);
+        } else {
             self.push(delta);
         }
     }
@@ -435,7 +446,9 @@ impl Log {
             {
                 for (k, &v) in values.iter().enumerate() {
                     if self.now.local_ints[k] != v {
-                        self.push(Delta::IntLocal(k as u16, v as i32));
+                        // What `apply` does with an `IntLocal`.
+                        self.now.local_ints[k] = v;
+                        self.changes.push(Delta::IntLocal(k as u16, v as i32));
                     }
                 }
                 return;
