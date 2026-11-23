@@ -462,7 +462,7 @@ pub enum Sign: Neg = -1, Zero = 0, Pos = 1
 /// example: `5.bit(1) == false`
 /// example: `(-1).bit(100) == true`
 /// example: `5.bit(70) == false`
-pub fn bit(self: Int, i: Int) -> Bool = i < 64 and (self >> i) & 1 == 1
+pub fn bit(self: Int, i: Int) -> Bool = if i >= 64: self < 0 else: (self >> i) & 1 == 1
 
 /// Is `self` a power of two? `self > 0 and self & (self - 1) == 0`.
 ///
@@ -822,7 +822,9 @@ pub fn mod_sqrt(a: Int, p: Int) -> ?Int:
     let x = a % p
     if x == 0 or p == 2: return x
     if pow_mod(x, (p - 1) / 2, p) != 1: return None
-    if p % 4 == 3: return pow_mod(x, (p + 1) / 4, p)
+    if p % 4 == 3:
+        let r = pow_mod(x, (p + 1) / 4, p)
+        return min(r, p - r)
     var (q, s) = (p - 1, 0)
     while q % 2 == 0:
         q /= 2
@@ -843,7 +845,7 @@ pub fn mod_sqrt(a: Int, p: Int) -> ?Int:
         c = mul_mod(b, b, p)
         t = mul_mod(t, c, p)
         r = mul_mod(r, b, p)
-    r
+    min(r, p - r)
 
 /// The sum of `(a * i + b) / m` over `i` in `0..n`, with floor (Euclidean) division, by the
 /// Euclid-like reduction. Any sign of `a` and `b` works.
