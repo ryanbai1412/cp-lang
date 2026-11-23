@@ -58,7 +58,7 @@ pub(super) fn hand_rolled_stdlib_algos(file: &File) -> Vec<Finding> {
                                 &HAND_ROLLED_BINARY_LIFTING,
                                 stmt.span,
                                 "hand-rolled binary lifting table",
-                                "use `Rooted.lca` / `Rooted.kth_ancestor` or `JumpTree` from `std.tree`",
+                                "use `Rooted.lca` / `Rooted.ancestor` or `JumpTree` from `std.tree`",
                             );
                         }
                     }

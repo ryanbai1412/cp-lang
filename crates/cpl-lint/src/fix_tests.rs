@@ -31,7 +31,7 @@ fn a_reversed_else_if_fix_from_the_parser_is_left_alone() {
     assert!(out == src || out.contains("        elif y > 0:\n"), "{out}");
 }
 
-fn checker_errors(src: &str) -> Vec<String> {
+pub(crate) fn checker_errors(src: &str) -> Vec<String> {
     let mut db = cpl_check::Database::new();
     db.set_file("probe.cp", src);
     let analysis = db.analyze("probe.cp").expect("analysis");

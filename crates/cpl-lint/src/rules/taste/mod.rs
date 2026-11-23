@@ -382,7 +382,7 @@ impl<'a> Taste<'a> {
             format!("a hand-rolled prefix sum into `{}`: use `prefix(...)`", found.arr),
         )
         .with_help(format!(
-            "`let {} = prefix(..)` builds the prefix table in O(n) with O(1) `.sum(range)` and `.prefix(cut)`",
+            "`let {} = prefix(..)` builds the prefix table in O(n) with O(1) `.fold(range)` and `.prefix(cut)`",
             found.arr
         ));
         if let Some((decl_idx, decl_base, decl_stmt)) =
@@ -718,7 +718,7 @@ impl<'a> Taste<'a> {
             "one fact written twice, once for each order",
         )
         .with_help(
-            "keep it in one place: build the graph with `undirected(..)`, or loop over both orders",
+            "keep it in one place: build the graph with `Graph.undirected(..)`, or loop over both orders",
         );
         self.push(&SYMMETRIC_WRITE, diag);
     }

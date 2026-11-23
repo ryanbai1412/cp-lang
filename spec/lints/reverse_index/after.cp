@@ -1,2 +1,2 @@
-let xs: List<Int> = read()
+let xs = [3, 1, 4]
 print(xs.reversed())
