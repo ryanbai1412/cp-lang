@@ -690,3 +690,71 @@ impl Emitter<'_> {
         Code::primary(format!("cpl::map_move_or({m}, {k}, {d})"))
     }
 }
+
+/// Whether a fn's parameter holding a fn is only ever called, so a closure
+/// passed to it may borrow what it captures.
+pub(crate) fn fn_param_only_called(program: &cpl_ir::Program, fn_id: usize, slot: usize) -> bool {
+    fn_param_only_called_at(program, fn_id, slot, 3)
+}
+
+/// Whether `slot` in `body` is only called: never stored, passed `mut`,
+/// or captured by a closure that may keep it. A closure that captures it
+/// and is itself passed where it is only called (`first_true(m =>
+/// ok(m))`) counts as a call.
+fn only_called(program: &cpl_ir::Program, body: &Block, slot: usize, depth: u8) -> bool {
+    let (mut uses, mut calls, mut escapes) = (0usize, 0usize, false);
+    let mut passed_on = std::collections::BTreeSet::new();
+    walk::deep_stmts(body, &mut |stmt| {
+        if let Stmt::Assign(place, _, _) = stmt {
+            escapes |= walk::root(place) == (false, slot);
+        }
+    });
+    let lent = |args: &[Arg]| {
+        args.iter()
+            .any(|a| matches!(a, Arg::Mut(place) if walk::root(place) == (false, slot)))
+    };
+    walk::deep_exprs(body, &mut |e| match &e.kind {
+        ExprKind::Local(s) if *s == slot => uses += 1,
+        ExprKind::CallExpr(callee, args) => {
+            calls += usize::from(matches!(callee.kind, ExprKind::Local(s) if s == slot));
+            escapes |= lent(args);
+        }
+        ExprKind::Call(f, args) => {
+            escapes |= lent(args);
+            for (j, arg) in args.iter().enumerate() {
+                if let Arg::Value(Expr {
+                    kind: ExprKind::Closure(cid),
+                    ..
+                }) = arg
+                {
+                    if depth > 0 && fn_param_only_called_at(program, *f, j, depth - 1) {
+                        passed_on.insert(*cid);
+                    }
+                }
+            }
+        }
+        ExprKind::Closure(cid) => {
+            let def = &program.closures[*cid];
+            for cap in def
+                .captures
+                .iter()
+                .filter(|c| !c.is_global && c.outer == slot)
+            {
+                escapes |= !passed_on.contains(cid)
+                    || !only_called(program, &def.body, cap.inner, depth.saturating_sub(1));
+            }
+        }
+        _ => {}
+    });
+    !escapes && uses == calls
+}
+
+fn fn_param_only_called_at(
+    program: &cpl_ir::Program,
+    fn_id: usize,
+    slot: usize,
+    depth: u8,
+) -> bool {
+    let f = &program.fns[fn_id];
+    slot < f.params.len() && !f.params[slot].mutable && only_called(program, &f.body, slot, depth)
+}
