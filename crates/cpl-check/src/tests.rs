@@ -1677,3 +1677,15 @@ fn what_a_fn_changes_is_a_dependency_of_its_callers() {
     db.set_file("a.cp", quiet.as_str());
     assert!(db.diagnostics("a.cp").is_empty());
 }
+
+#[test]
+fn a_declared_domain_satisfies_a_domain_bound() {
+    let src = "\
+use std.seq.{buckets}
+domain V = 0..3
+domain W = 1..=3
+let w: [V]W = [1, 1, 2]
+let b = buckets(w)
+";
+    assert_eq!(check(src), vec![]);
+}

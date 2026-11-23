@@ -1654,6 +1654,7 @@ impl<'a> Checker<'a> {
             "Add" => ty.is_numeric() || matches!(ty, Ty::Str),
             "Sub" | "Mul" | "Div" | "Rem" | "Pow" | "Neg" | "Num" => ty.is_numeric(),
             "Index" => ty.is_int() || matches!(ty, Ty::Pos(_) | Ty::Char),
+            "Domain" => matches!(ty, Ty::Pos(_) | Ty::Domain(_)),
             "Target" => match ty {
                 Ty::Pos(_) | Ty::Int => true,
                 Ty::Record(fields) => fields.iter().any(|(n, _)| n == "to"),

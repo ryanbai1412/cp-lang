@@ -10,7 +10,7 @@ let n: 1..=400_000 = read()
 domain V = 1..=n
 domain W = 1..=n
 let w: [V]W = read()
-let t = Rooted(Graph.undirected(read::<[0..n - 1](V, V)>()), V.first)
+let t = Rooted(Graph.undirected(read::<[0..n - 1](V, V)>()), V.first!)
 let by_w = buckets(w)
 
 fn win() -> ?V:

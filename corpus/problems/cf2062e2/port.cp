@@ -22,7 +22,7 @@ let n: 1..=400_000 = read()
 domain V = 1..=n
 domain W = 1..=n
 let w: [V]W = read()
-let t = Rooted.new(Graph.undirected(read<[0..n - 1](V, V)>()), V.first)
+let t = Rooted.new(Graph.undirected(read<[0..n - 1](V, V)>()), V.first!)
 
 var heavier = SortedSet<t.Pre>()
 fn above_lca(x: V) -> ?V:

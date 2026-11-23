@@ -1,9 +1,5 @@
 btoi17p1
 btoi18p3
-cf2062e1
-cf2062e2
-cf2084f
-cf2096h
 coi06p2
 ioi13p4
 ioi18p1
