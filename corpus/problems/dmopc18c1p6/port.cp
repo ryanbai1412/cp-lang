@@ -1,5 +1,11 @@
-// DMOPC 2018 C1 P6 Sorting: flip the fewest bits in n binary strings of length
-// m so that the strings are in non-decreasing order. Knuth-optimized interval DP.
+// Source: DMOPC 2018 Contest 1 P6 (Sorting), https://dmoj.ca/problem/dmopc18c1p6
+// Problem: N <= 1000 binary numbers of exactly B <= 50 bits each, in a list. Flip the fewest
+//   bits so that the list is sorted in non-decreasing order; print that count.
+// Solution: sorted rows that agree before column c form a block whose bit c is 0s then 1s.
+//   Going from the last column to the first, dp[l, r] is the fewest flips making rows
+//   l..=r sorted on columns c.. : choose a split k (rows l..=k get 0, the rest 1, cost from
+//   column prefix counts) plus the next column's dp on both halves. The best split is
+//   monotone (Knuth), giving O(B N^2).
 // original: corpus/submissions/4155900.cpp
 let n: 1..=1000 = read()
 let m: 1..=50 = read()

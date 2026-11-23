@@ -1,7 +1,13 @@
+// Source: UTS Open 2015 P5 (Distribution Channel), https://dmoj.ca/problem/utso15p5
+// Problem: N <= 5e4 stores, M <= 1e5 possible connections (a, b, cost <= 1e4). Print the
+//   cost of the second cheapest way to connect all stores with N - 1 connections (a set that
+//   costs strictly more than the cheapest), or -1 if there is none.
+// Solution: the runner-up is one swap away from a minimum spanning tree: add a road u-v,
+//   drop the dearest tree road on the u-v path that is strictly cheaper. Build the MST by
+//   Kruskal with a Dsu, root it, store each tree road at its lower town in a SegTree of the
+//   two largest distinct costs, and fold every road's path over heavy-light chains.
+//   O(M log^2 N).
 // original: corpus/submissions/4207493.cpp
-// UTS Open 2015 problem 5: the cheapest set of roads that connects every
-// town is known to everyone. Print the cost of the cheapest connecting set
-// that costs strictly more, or -1 if there is none.
 let n: 1..=5e4 = read()
 let m: 1..=1e5 = read()
 domain Town = 1..=n

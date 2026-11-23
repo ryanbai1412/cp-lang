@@ -1,4 +1,12 @@
-// Runnable port (proto/cp.py lib-run) of dmopc21c2p4.cp
+// Source: DMOPC 2021 Contest 2 P4 (Water Mechanics), https://dmoj.ca/problem/dmopc21c2p4
+// Problem: N cells in a row with heights h_i <= 1e9 and an integer 1 <= K <= N <= 1e6. Water
+//   poured into a cell spreads at most K cells each way over equal heights, the limit resets
+//   whenever it flows down, and it never flows up. Print the fewest pours that wet every cell.
+// Solution: group equal heights into runs; a run of length L alone needs ceil(L / (2K + 1))
+//   pours. DP left to right over runs with a state for the boundary to the next run:
+//   neutral, this run's water spills right into the lower next run (it then gets K + 1
+//   cells free), or the higher next run's water spills left into this one (covering its
+//   last K + 1 cells). O(N).
 // original: corpus/submissions/3949962.cpp
 
 let (n, k): (Int, Int) = read()

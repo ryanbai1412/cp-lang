@@ -1,11 +1,14 @@
-// CCO 2016 P6 Pirates: n pirates in sequence each propose a split of kv gold
-// coins among the existing pirates, needing at least arr[i] votes (including
-// themselves) to survive. Output the coins pirate i keeps, or -1 if thrown
-// overboard.
-// Maintain the multiset of bribe costs in a shifted-origin SegTree<Slot, Node>
-// (count + weighted sum): shifting `base` down by 1 increments every active
-// bribe by +1 in O(1), and `first_where` over prefix counts finds the cutoff
-// bucket for the cheapest arr[i] - 1 bribes.
+// Source: CCO 2016 P6 (Pirates), https://dmoj.ca/problem/cco16p6
+// Problem: N <= 1e6 pirates share K <= 1e18 coins: with X left, the oldest proposes a split
+//   and needs V[X] yes votes, else he is thrown overboard. Pirates first stay alive, then
+//   maximize coins, then the number thrown, then the oldest pirates' coins. For every i,
+//   print what the oldest gets when only pirates 1..=i exist, or -1 if he is thrown.
+// Solution: pirate i buys V[i] - 1 votes at each voter's price, one more than his coins in
+//   the previous outcome (0 for a pirate who would be thrown himself); he survives iff the
+//   cheapest such votes cost at most K. Keep the prices in a SegTree over buckets with
+//   count and weighted sum: lowering the origin `base` by 1 raises every price by 1 in O(1),
+//   a scan of prefix folds finds the cutoff bucket, and the unbought pirates' buckets are
+//   cleared down to price 1 (amortized, each bucket cleared once per insertion).
 // original: corpus/submissions/4849378.cpp
 let n: 1..=500000 = read()
 let kv: 0..=1000000000000 = read()
