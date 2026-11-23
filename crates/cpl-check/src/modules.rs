@@ -62,18 +62,34 @@ fn module_key(path: &Path) -> String {
 /// their path below it (`"seq"`).
 const BUNDLED: &[(&str, &str)] = include!(concat!(env!("OUT_DIR"), "/std_modules.rs"));
 
-/// The modules of `std`: those built in, or with `CPL_STD_DIR` set, those
-/// in that folder as they are now, so a std edit needs no rebuild of `cpl`.
+/// The modules of `std` as they are now on disk, so a std edit needs no
+/// rebuild of `cpl`: in the `CPL_STD_DIR` folder when it is set, else, in a
+/// dev build, in the std/ it was built from while that is still there.
+/// Otherwise, and with `CPL_STD_DIR=` empty, those built in.
 pub(crate) fn modules() -> &'static [(&'static str, &'static str)] {
     static FROM_DISK: std::sync::OnceLock<Option<Vec<(&'static str, &'static str)>>> =
         std::sync::OnceLock::new();
     FROM_DISK
-        .get_or_init(|| std::env::var_os("CPL_STD_DIR").map(|dir| from_disk(Path::new(&dir))))
+        .get_or_init(|| {
+            let dir = match std::env::var_os("CPL_STD_DIR") {
+                Some(dir) if dir.is_empty() => return None,
+                Some(dir) => std::path::PathBuf::from(dir),
+                None => source_std()?.to_path_buf(),
+            };
+            Some(from_disk(&dir)).filter(|found| !found.is_empty())
+        })
         .as_deref()
         .unwrap_or(BUNDLED)
 }
 
-/// Whether `modules()` reads `CPL_STD_DIR` rather than the built-in std.
+/// The std/ a dev build was compiled from (`build.rs`), if it is still a
+/// folder; release and browser builds have none.
+fn source_std() -> Option<&'static Path> {
+    let dir = Path::new(env!("CPL_STD_SOURCE"));
+    (!dir.as_os_str().is_empty() && dir.is_dir()).then_some(dir)
+}
+
+/// Whether `modules()` reads std from disk rather than the built-in copy.
 pub(crate) fn std_from_disk() -> bool {
     !std::ptr::eq(modules(), BUNDLED)
 }
@@ -286,12 +302,13 @@ mod tests {
         );
     }
 
-    /// The names a `CPL_STD_DIR` run reads off the files are the ones the
-    /// build put in, for the same std.
+    /// The names a run from disk reads off the files are the ones the build
+    /// put in, for the same std.
     #[test]
     fn std_names_read_at_run_time_match_the_built_in_table() {
         let read: Vec<(String, String)> = crate::std_files::public_names(BUNDLED.iter().copied());
-        let built: Vec<(String, String)> = crate::prelude::std_names()
+        let table: &[(&str, &str)] = include!(concat!(env!("OUT_DIR"), "/std_names.rs"));
+        let built: Vec<(String, String)> = table
             .iter()
             .map(|(n, m)| (n.to_string(), m.to_string()))
             .collect();

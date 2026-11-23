@@ -13,19 +13,34 @@ fn main() {
     let manifest = PathBuf::from(std::env::var_os("CARGO_MANIFEST_DIR").expect("set by cargo"));
     println!("cargo:rerun-if-changed=build.rs");
     let out = PathBuf::from(std::env::var_os("OUT_DIR").expect("set by cargo"));
-    bundle(&manifest.join("../../std"), &out, "std", "std");
+    let std = manifest.join("../../std");
+    // A dev build reads std/ from here at run time (`modules.rs`), so a std
+    // edit rebuilds nothing; release and the browser use the copy put in.
+    let wasm = std::env::var("CARGO_CFG_TARGET_ARCH").as_deref() == Ok("wasm32");
+    let dev = std::env::var("PROFILE").as_deref() == Ok("debug") && !wasm;
+    let source = if dev {
+        std.canonicalize().unwrap_or_else(|_| std.clone())
+    } else {
+        PathBuf::new()
+    };
+    println!("cargo:rustc-env=CPL_STD_SOURCE={}", source.display());
+    bundle(&std, &out, "std", "std", !dev);
 }
 
 /// Writes `<prefix>_modules.rs`, the table of every module under `root`,
 /// and `<prefix>_names.rs`, every public name with its module.
-fn bundle(root: &Path, out: &Path, folder: &str, prefix: &str) {
-    println!("cargo:rerun-if-changed={}", root.display());
+fn bundle(root: &Path, out: &Path, folder: &str, prefix: &str, track: bool) {
+    if track {
+        println!("cargo:rerun-if-changed={}", root.display());
+    }
     let mut modules = Vec::new();
     collect(root, root, &mut modules);
     modules.sort();
     let mut table = String::from("&[\n");
     for (name, path) in &modules {
-        println!("cargo:rerun-if-changed={}", path.display());
+        if track {
+            println!("cargo:rerun-if-changed={}", path.display());
+        }
         let text = std::fs::read_to_string(path).expect("a readable module");
         let bundled = out.join(folder).join(format!("{name}.cp"));
         std::fs::create_dir_all(bundled.parent().expect("under OUT_DIR"))
