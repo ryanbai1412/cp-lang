@@ -28,6 +28,7 @@ mod range;
 mod read_spec;
 mod report;
 mod stmt;
+mod type_call;
 mod typo;
 mod views;
 

@@ -2510,7 +2510,7 @@ impl<'a> Lowerer<'a> {
         })
     }
 
-    fn convert(&mut self, to: &str, value: Expr, span: Span) -> Expr {
+    pub(super) fn convert(&mut self, to: &str, value: Expr, span: Span) -> Expr {
         let from = value.ty.clone();
         let (cast, ty) = match (to, &from) {
             (_, Ty::Error) => return value,
@@ -7547,20 +7547,8 @@ impl<'a> Lowerer<'a> {
                 }
             }
         }
-        // `T.gen(r)` for a type parameter filled by a built-in type: the
-        // fn its `impl` declares.
-        if let ast::ExprKind::Name(tname) = &base.kind {
-            if let (None, Some(GenArg::Ty(ty))) = (self.lookup(tname), self.gen_env.get(tname)) {
-                let ty = ty.clone();
-                let found = self
-                    .prim_methods
-                    .iter()
-                    .find(|(t, m, _)| *t == ty && *m == name.text)
-                    .map(|p| p.2);
-                if let Some(fn_id) = found {
-                    return self.user_call(fn_id, None, args, span);
-                }
-            }
+        if let Some(e) = self.builtin_type_call(base, name, args, span) {
+            return e;
         }
         // `Tr.m(x)`: the `m` of `x`'s `impl Tr`.
         if let (Some(Sym::Trait(tid)), Some((first, rest))) = (self.sym(base), args.split_first()) {
