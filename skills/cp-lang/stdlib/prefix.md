@@ -24,7 +24,7 @@ Fields: `p: [D.cuts]T`.
 
 Prefix sums over a domain `D`, a 2-D grid `(R, C)`, or a `List<T>`, of `Int`s, `F64`s, `Mod`s, or anything else with `+`, `-` and a zero.
 
-Fields: `p: [D.cuts]T`, `sums: Bool`.
+Fields: `p: [D.cuts]T`, `sums: Bool`, `rises: Bool`.
 
 - `fn new(a: [D]T) -> Prefix<D, T>` — \(O(\lvert D \rvert)\) time and space; Build 1-D prefix sums over `a: [D]T`; `Prefix(a)` calls it.
 - `fn filling(order: FillOrder = FillOrder.Forward) -> FillPrefix<D, T>` — \(O(\lvert D \rvert)\) time and space; Create an append-only 1-D prefix/suffix sum table filled via `.set(i, x)` in `order`.
