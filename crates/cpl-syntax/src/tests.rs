@@ -1966,3 +1966,10 @@ fn a_rust_closure_is_one_error_with_the_arrow_fix() {
     let fixed: Vec<_> = d.iter().map(|d| d.fixes[0].edits[0].1.as_str()).collect();
     assert_eq!(fixed, ["x =>", "(a, b) =>"], "{d:?}");
 }
+
+#[test]
+fn a_reference_type_is_one_error_with_the_fix() {
+    let d = parse_file("fn f(a: &List<Int>) -> Int = a.len\n").diagnostics;
+    let fixed: Vec<_> = d.iter().map(|d| d.fixes[0].edits[0].1.as_str()).collect();
+    assert_eq!(fixed, [""], "{d:?}");
+}

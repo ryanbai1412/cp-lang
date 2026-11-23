@@ -1,0 +1,8 @@
+error[E0105]: CP Lang has no `&` types
+  --> reference_type.cp:1:14
+  |
+1 | fn total(xs: &List<Int>) -> Int = xs.sum()
+  |              ^
+  = help: a parameter is lent without a copy: write `xs: List<Int>`
+
+reference_type.cp: 1 error

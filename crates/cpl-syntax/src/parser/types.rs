@@ -461,6 +461,17 @@ impl<'a> Parser<'a> {
                     }
                 }
             }
+            // `xs: &List<Int>`: a parameter is already lent (R4), so drop `&`.
+            T::Amp => {
+                let amp = self.span();
+                self.recovered(
+                    Diagnostic::error(codes::EXPECTED_TYPE, amp, "CP Lang has no `&` types")
+                        .with_help("a parameter is lent without a copy: write `xs: List<Int>`")
+                        .with_fix("remove the `&`", amp, ""),
+                );
+                self.bump();
+                return self.ty();
+            }
             // `let x: = 1`: the annotation is empty, so drop its `:`.
             T::Eq if self.prev_kind() == Some(T::Colon) => {
                 let colon = self.tokens[self.pos - 1].span;
