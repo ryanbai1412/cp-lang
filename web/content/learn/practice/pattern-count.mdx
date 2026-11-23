@@ -1,0 +1,23 @@
+---
+title: Pattern count
+description: "Level B. Teaches find_all: every occurrence of a pattern, overlaps included, in linear time."
+level: B
+chapter: 5
+teaches: "`s.find_all(p)`, `.count()`"
+---
+
+You are given a text s and a pattern p, both of lowercase letters (1 ≤ |s|, |p| ≤ 10⁶). Count the positions where p occurs in s; occurrences may overlap.
+
+**Input:** s on the first line, p on the second. **Output:** one integer.
+
+| Input | Output |
+|---|---|
+| `abababa`<br/>`aba` | `3` |
+
+<Judge id="pattern-count">
+
+- Comparing p at every position is O(|s|·|p|), up to 10¹² steps. `s.find_all(p)` finds every occurrence in O(|s| + |p|), overlaps included; see [strings](/docs/ref/std/strings).
+- `find_all` yields positions one at a time and allocates nothing, so `.count()` counts them without building a list.
+- `prefix_function` and `z_function` are there when the problem needs more than the positions.
+
+</Judge>

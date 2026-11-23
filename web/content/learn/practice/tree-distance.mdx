@@ -1,0 +1,23 @@
+---
+title: Tree distance
+description: "Level C. Teaches lowest common ancestors on a Rooted tree: dist(a, b) from depths and lca in O(log n)."
+level: C
+chapter: 9
+teaches: "`Rooted.new`, `lca`, `depth`"
+---
+
+A tree has n vertices (1 ≤ n ≤ 2·10⁵). Answer q queries (1 ≤ q ≤ 2·10⁵): each gives two vertices a and b; print the number of edges on the path between them.
+
+**Input:** n and q, then n − 1 lines `u v`, then q lines `a b`. **Output:** q lines.
+
+| Input | Output |
+|---|---|
+| `5 3`<br/>`1 2`<br/>`1 3`<br/>`3 4`<br/>`3 5`<br/>`4 5`<br/>`2 4`<br/>`1 1` | `2`<br/>`3`<br/>`0` |
+
+<Judge id="tree-distance">
+
+- A BFS per query is O(nq). Root the tree once with `Rooted.new(Graph.undirected(es), V(1))`; see [trees](/docs/ref/std/tree).
+- The path from a to b goes up to their lowest common ancestor and down again, so its length is `t.depth(a) + t.depth(b) - 2 * t.depth(t.lca(a, b))`.
+- `t.lca(a, b)` answers in O(log n).
+
+</Judge>

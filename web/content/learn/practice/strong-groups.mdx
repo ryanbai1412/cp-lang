@@ -1,0 +1,23 @@
+---
+title: Strong groups
+description: "Level C. Teaches scc: strongly connected components returned as a fresh domain C and a [V]C map."
+level: C
+chapter: 9
+teaches: "`scc(g)`, `let (domain C, comp) = ...`, `C.len`"
+---
+
+A city has n squares (1 ≤ n ≤ 2·10⁵) and m one-way streets (0 ≤ m ≤ 2·10⁵). Two squares are in the same group when each can be reached from the other. Print the number of groups.
+
+**Input:** n and m, then m lines `u v` for a street from u to v. **Output:** one integer.
+
+| Input | Output |
+|---|---|
+| `4 4`<br/>`1 2`<br/>`2 1`<br/>`2 3`<br/>`3 4` | `3` |
+
+<Judge id="strong-groups">
+
+- The groups are the strongly connected components. `scc(Graph.directed(es))` finds them in O(n + m); see [`Graph`](/docs/ref/std/graph).
+- It returns a new domain and a map: `let (domain C, comp) = scc(g)` binds `C`, one key per component, and `comp: [V]C`. Components can't be mixed up with squares, because they're a different index type.
+- The answer is `C.len`. To go further, `condense(g, comp)` builds the DAG of components.
+
+</Judge>
