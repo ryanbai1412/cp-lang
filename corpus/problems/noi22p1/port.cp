@@ -1,4 +1,12 @@
-// NOI 2022 P1, strict majority of a concatenation of sequences under push, pop and join (buildable today-form)
+// Source: NOI 2022 P1 (Major), https://dmoj.ca/problem/noi22p1
+// Problem: n sequences, then q ops: 1 x y appends y to sequence x; 2 x pops its last number;
+//   3 m x_1..x_m asks the strict majority (> half) of their concatenation, or -1; 4 x1 x2 x3 makes
+//   x3 = x1 + x2 and deletes x1, x2. n, q, total length, sum of m <= 5e5; values <= n + q.
+// Solution: a strict majority must win every bit, so per store keep how many values have each of
+//   20 bits set: the per-bit majority over the picked stores is the only candidate, checked
+//   against per-(store, value) counts in one HashMap. Sequences are back-linked nodes, so push
+//   and pop are O(20); a join moves the smaller store's counts into the larger (small to large),
+//   O((n + q) log) in all, and a query costs O(20 m).
 // original: corpus/submissions/4800882.cpp (20 random probes; this port is exact)
 // Sequences are back-linked nodes in flat lists and all counts share one
 // HashMap keyed by store * 2^20 + value: the prototype has no Deque, no

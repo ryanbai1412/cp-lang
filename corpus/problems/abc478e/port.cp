@@ -1,5 +1,11 @@
-// ABC478 E — Inequality Sequence Construction
-// Directed graph + std.graph.scc (fresh domain C in topological order) + DAG DP + @checker
+// Source: AtCoder ABC478 E (Inequality Sequence Construction),
+//   https://atcoder.jp/contests/abc478/tasks/abc478_e
+// Problem: find A of length n with values in 1..=n meeting q conditions A[u] <= A[v] (t = 0) or
+//   A[u] < A[v] (t = 1); print Yes and A, or No. n, q <= 2e5.
+// Solution: conditions are arcs u -> v of weight t. A strict arc inside a strongly connected
+//   component is a contradiction; otherwise A is the longest path (from 1) in the condensation.
+//   `scc` gives components in topological order, so one DP pass relaxes dp[to] max= dp[c] + t,
+//   O(n + q); values stay <= the component count <= n.
 
 let (n, q): (1..=2e5, 1..=2e5) = read()
 domain V = 1..=n

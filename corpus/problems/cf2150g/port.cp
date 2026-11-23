@@ -1,27 +1,14 @@
-// Codeforces 2150 G: Counting Is Fun: The Finale.
-//
-// b > a means b = a[..i] + '1' + r for some i with a[i] = '0'. b is good iff
-// its shortest prefix with LNDS >= k leaves a suffix with LNDS >= k. Two
-// facts carry the count:
-// - z zeros and o ones make a string with LNDS >= m in exactly
-//       long_lnds(z, o, m) = C(z + o, max(z, o, m))
-//   ways;
-// - LNDS(s + r) = max(s.lnds + ones(r), s.zeros + LNDS(r)), so r completes s
-//   to LNDS >= k iff ones(r) >= k - s.lnds or LNDS(r) >= k - s.zeros.
-//
-// Walk a in two phases. While a's prefix has LNDS < k (Seeking), each flip
-// gives s, and the good b are summed over the state h where s + r first
-// reaches LNDS k, weighted long_lnds of what remains after h. With e0 = k -
-// s.zeros and e1 = k - s.lnds, the first hits d letters after s lie on one
-// anti-diagonal with two ballot counts:
-//     top(d)  = C(d - 1, e1 - 1) - C(d - 1, e0)  at the state with e1 more ones,
-//     main(d) = C(d - 1, e0 - 1) - C(d - 1, e0)  at every later
-// state on that diagonal, up to k zeros. Each is the walks whose d-th letter
-// completes the threshold (e1 ones, resp. e0 zeros), less by reflection the
-// walks that reached the zero threshold earlier.
-// Record each as a ray and sweep once, O(k^2).
-// Once a's prefix reaches k (Split), restart the walk there; each flip then
-// needs only a long suffix, which is the completion count.
+// Source: Codeforces 2150G (Counting Is Fun), https://codeforces.com/contest/2150/problem/G
+// Problem: given x, y, k (k < x + y) and a binary string a of length x + y, count mod 998244353
+//   the binary strings b > a (lexicographically) with exactly x zeros and y ones that split into a
+//   prefix and a suffix both with longest non-decreasing subsequence (LNDS) >= k. Multitest; sum
+//   of x and sum of y <= 5000.
+// Solution: b is good iff the suffix after its shortest prefix with LNDS >= k has LNDS >= k. z
+//   zeros and o ones give C(z + o, max(z, o, m)) strings with LNDS >= m, and LNDS(s + r) =
+//   max(s.lnds + ones(r), s.zeros + LNDS(r)). Each b > a is a[..i] + '1' + rest at a zero a[i].
+//   While a's prefix is below k, the states where s + rest first reaches LNDS k lie on one
+//   anti-diagonal with ballot (reflection) counts, recorded as rays in a [Cnt, Cnt] grid and swept
+//   once, O(k^2); once a's prefix reaches k, restart there and each flip adds a completion count.
 @!multitest
 use std.mod.{Comb, Mod}
 

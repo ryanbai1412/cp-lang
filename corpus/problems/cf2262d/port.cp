@@ -1,23 +1,13 @@
-// Codeforces 2262 D: a token sits on some cell; Inc (1) increments a[cur],
-// Jump (2) moves to cell a[cur]. Turn `a` into `b` or report -1.
-//
-// Reachability & phase invariant:
-// - `Inc` only increases `a[cur]`, so `a[i] <= b[i]` is necessary. Once a cell
-//   finishes (`a[i] == b[i]`), the token exits to `b[i]`, so every differing
-//   cell `i < last` must have a strictly increasing target chain
-//   `i -> b[i] -> ... -> last` staying `<= bound` (`okay[i]`).
-// - Scanning right-to-left from `last` maintains `low` (the current leftmost
-//   anchor) and `bound` (the leftmost cell no earlier `b[i]` may jump past):
-//   - If `i < a[low]`, `low` cannot reach `i` by incrementing `a[low]`, so `i`
-//     must run before `low`: `low` enters `Sweep`, `bound` tightens to `i`,
-//     and `low` becomes `i`.
-//   - Else if `a[i] < a[low]`, `low` can reach `i` while incrementing `a[low]`,
-//     so `low` records `Detour(i)` (jump to `i` when `a[low] == i`) and `low`
-//     becomes `i`.
-// - Starting at `low` in `Sweep` mode, each cell moves through
-//   `Detour(t) -> Sweep -> Finish`: first jumping to `t` until `t` is `Finish`,
-//   then jumping to any unfinished cell `a[cur] < cur`, and finally raising
-//   `a[cur]` to `b[cur]` and exiting along `b[cur]`.
+// Source: Codeforces 2262D (PLUSworld), https://codeforces.com/contest/2262/problem/D
+// Problem: barn i has a road to a[i]; target roads b[i] >= i. Pick a start barn p, then do ops
+//   1 (a[p] += 1, only if a[p] < n) and 2 (p = a[p]) until a == b, at most 2n^2 ops; print the
+//   op count, p and the ops, or -1. Multitest, n <= 1000, sum of n^2 <= 1e6.
+// Solution: a[i] <= b[i] is needed, and a finished cell is left along b[i], so every differing
+//   cell before the last one must reach it by a strictly increasing chain of b inside `bound`.
+//   Scanning right to left from the last differing cell keeps the leftmost anchor `low`: a cell
+//   below a[low] must be done first (low gets Sweep, bound shrinks), a cell with a[i] < a[low] is
+//   a Detour of low. Then simulate from low: each cell goes Detour(t) -> Sweep -> Finish, choosing
+//   Inc or Jump from its phase; O(n^2) ops and time.
 enum Op: Inc = 1, Jump = 2
 
 @!multitest

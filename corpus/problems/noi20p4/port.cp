@@ -1,4 +1,12 @@
-// NOI '20 P4, Dish Making (multi-answer constructive, buildable today-form)
+// Source: NOI 2020 P4 (Dish), https://dmoj.ca/problem/noi20p4
+// Problem: n ingredients of d_i grams (sum = m * k); make m dishes of exactly k grams, each from
+//   at most 2 ingredients in positive whole grams, using everything up; print the dishes, or -1.
+//   Multitest (T <= 10), n <= 500, n - 2 <= m <= 5000, k <= 5000; any valid plan.
+// Solution: with m >= n - 1, greedy: while there are more dishes than ingredients - 1, the
+//   largest ingredient (>= k) makes a dish alone; otherwise the smallest (< k) is finished off
+//   with the largest. With m = n - 2, split the ingredients into two groups of s and n - s that
+//   each hold (size - 1) * k grams: a subset of offsets d_i - k summing to -k, found by a
+//   subset-sum DP over (prefix, offset) in O(n * n * k) and traced back; then greedy on each.
 // original: corpus/submissions/3890337.cpp
 // The m = n - 2 subset sum keeps one Bool per (prefix, offset) in a flat
 // List<Bool>: 8x the memory of the bitset the full limits need, so this form

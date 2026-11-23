@@ -1,14 +1,12 @@
-// NOI 2009 Transformation Sequence: given distances d[0..n], each index i
-// must map to either (i - d[i]) mod n or (i + d[i]) mod n so the outputs form
-// a permutation of 0..n. Print the lexicographically smallest such permutation,
-// or "No Answer".
-//
-// Each position i in `Pos` has two candidate values in `Val`, so positions are
-// edges on vertex set `Val`. Any value of degree 1 has a forced partner (leaf
-// peeling); remaining unpeeled components must be simple cycles, where the
-// smallest-index edge picks `min(u, v)` and forces the rest of its cycle.
-// Separate `Pos` and `Val` domains prevent mixing left and right sides; CP
-// Lang's Euclidean `%` avoids `(i - d + n) % n`.
+// Source: NOI 2009 (Transformed Sequence), https://dmoj.ca/problem/noi09p1
+// Problem: given D[i] for i in 0..n (n <= 1e4), find a permutation T of 0..n with circular
+//   distance min(|i - T[i]|, n - |i - T[i]|) = D[i] for every i; print the lexicographically
+//   smallest one, or "No Answer".
+// Solution: T[i] is (i - D[i]) mod n or (i + D[i]) mod n, so each position is an edge between
+//   its two candidate values and T picks one endpoint per edge, each value once. A value of
+//   degree 1 is forced: peel those with a queue. What is left must be disjoint cycles; going
+//   through positions in order, the first unassigned edge of a cycle takes its smaller value,
+//   which orients the whole cycle. O(n).
 // original: corpus/submissions/5102817.cpp
 
 let n: Int = read()

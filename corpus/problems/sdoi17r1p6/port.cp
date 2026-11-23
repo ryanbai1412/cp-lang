@@ -1,15 +1,14 @@
-// SDOI 2017 Round 1 P6, Correlation analysis: arrays x and y of length n
-// and three kinds of operation on positions l..=r:
-//   1 l r      print the least-squares slope of y on x,
-//              sum (x - mx)(y - my) / sum (x - mx)^2 with mx, my the means
-//   2 l r S T  add S to every x and T to every y
-//   3 l r S T  set x[i] = S + i and y[i] = T + i
+// Source: SDOI 2017 Round 1 P6 (Correlation Analysis), https://dmoj.ca/problem/sdoi17r1p6
+// Problem: arrays x, y of length n and m ops on l..=r: 1 l r prints the least-squares slope
+//   sum (x - mx)(y - my) / sum (x - mx)^2 (mx, my the means; error <= 1e-5); 2 l r S T adds S to
+//   every x and T to every y; 3 l r S T sets x[i] = S + i, y[i] = T + i. n, m <= 1e5;
+//   |x|, |y|, |S|, |T| <= 1e5.
+// Solution: times the length m, the slope is (m sum xy - sum x sum y) / (m sum x^2 - (sum x)^2),
+//   so a lazy segment tree keeps the four sums per node, plus its start and length because
+//   "set" writes a different value at each i. Add and set compose as lazy tags with closed-form
+//   updates of the sums; O(log n) per op.
 // The slope is printed to 5 decimals (the original first cuts it to 6).
 // The sums fit an Int; the products in the slope do not, so it is formed in F64.
-//
-// Times the length m, the slope is (m sum xy - sum x sum y) /
-// (m sum x^2 - (sum x)^2), so a node keeps the four sums; it also keeps
-// where it starts, because "set" writes a different value at each i.
 // original: corpus/submissions/5461671.cpp
 
 type Sums = (xy: Int, x: Int, y: Int, xx: Int, lo: Int, len: Int)

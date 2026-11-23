@@ -1,5 +1,13 @@
-// NOI 2019 Route (CP Lang 0.2.2): event-sweep DP with dynamic per-station Li Chao
-// trees using Tropical Optionals `?Int` and optional node pointers (zero `INF`/`-1`).
+// Source: NOI 2019 P1 (Route), https://dmoj.ca/problem/noi19p1
+// Problem: m trains (x, y, p, q) leave station x at time p and reach y at q. Starting at station
+//   1 at time 0, reach station n; each wait of t >= 0 (incl. before the first train) costs
+//   A t^2 + B t + C, arriving at time z adds z; print the least total. n <= 1e5, m <= 2e5,
+//   A <= 10, B, C <= 1e6, times <= 1000.
+// Solution: dp[i] = cost to finish after riding train i. Sweep times downwards (departures
+//   before arrivals at the same time, so q <= p is allowed): an arrival at e queries
+//   min over later departures j of (-2A s_j) e + (A s_j^2 + B s_j + C + dp[j]), plus A e^2 - B e,
+//   from a dynamic Li Chao tree per station over 0..=max time; a departure inserts its line. A
+//   dummy train 1 -> 1 at time 0 holds the answer. O(m log T).
 // original: corpus/submissions/3790564.cpp
 let (n, m, ax, bx, cx): (1..=100_000, 1..=200_000, 0..=10, 0..=10_000, 0..=10_000) = read()
 domain Station = 1..=n

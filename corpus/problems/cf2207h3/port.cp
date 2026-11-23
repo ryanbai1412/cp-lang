@@ -1,19 +1,13 @@
-// Codeforces 2207 H3: Bowser's Castle (Hard Version).
-//
-// The hidden circuit is a binary tree of min/max gates over the leaves
-// 0..n, in order. A probe feeds a permutation `x` and learns which leaf's
-// value reaches the root.
-//
-// `solve(l..r)` assumes `x` on l..r is sorted in favour of the gate kind
-// `is_max` (ascending for max, descending for min). The winner `m` is the
-// leaf whose path to the segment root only ever loses on the side `x`
-// favours, so the leaves left of `m` attach by `is_max` gates and those
-// right of it by the opposite kind:
-//   - rotating `m` to the bottom of l..=m keeps l..m sorted for `is_max`,
-//   - reversing m..r sorts m+1..r for the opposite kind.
-// Both sides come back as chains of subtrees hanging off `m`. Reversing `x`
-// over the nearer left and right subtrees together makes the one that joins
-// `m` first win the next probe, so one probe per join zips the chains.
+// Source: Codeforces 2207H3 (Bowser's Castle, Hard Version),
+//   https://codeforces.com/contest/2207/problem/H3
+// Problem: interactive, multitest. A hidden min-max function f of x_1..x_n (min/max calls, each
+//   variable once, in order) is a binary tree of min/max gates over the leaves. Ask f(x) with at
+//   most 1500 queries in total, then answer up to 5000 of the judge's f(x). Sum of n <= 400.
+// Solution: probe with permutations, so the returned value names the winning leaf. solve(l..r)
+//   keeps x on l..r sorted in favour of one gate kind; its winner m splits it: leaves left of m
+//   hang off m by that kind, leaves right of it by the other (rotate l..=m, reverse m..r and
+//   recurse). One probe with the nearer left and right subtrees reversed tells which joins m
+//   first, so the two chains zip with one probe per join. Then evaluate the built tree per input.
 @!interactive
 
 struct Gate:
