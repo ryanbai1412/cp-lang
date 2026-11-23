@@ -12,7 +12,7 @@ var d = [3, 1, 2]
 d.select(0, by: x => -x)
 print(d[0])
 print(yes((2..5).l == 2), yes((2..5).r == 5))
-print(yes((0..5).clip(3..9) == 3..5), (0..5).clip(6..9).is_empty)
+print(yes((0..5).clip(3..9) == 3..5), yes((0..5).clip(6..9).is_empty))
 print(yes([5, 6, 7][1..].nth(0) == 6))
 var e = [1, 2, 3, 4]
 e.reverse()
