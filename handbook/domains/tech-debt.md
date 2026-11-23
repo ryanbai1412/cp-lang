@@ -142,7 +142,7 @@ means no real check exists yet. Targets and current numbers are in
 | Expected output changes for a reason | Commits that edit expectations and code together | Post-land detector, read in the hourly review | `scripts/expectation-edits.py` |
 | Suites catch the bugs they claim to | Mutation score of `cpl-check` and `cpl-lint` suites | Mutation testing on the code each change touched | `scripts/mutation-score.py` |
 | Escaped bugs fix the suite | Escapes whose suite isn't fixed, or that name no register row | Escape log, checked by a count | `plan/escapes.toml`, `scripts/debt-ratchet.py` (`escapes_open`) |
-| Every feature works in every tool | Features (syntax forms, std items) with no case in the checker, VM, C++ backend, trace, fmt, lint, LSP or docs | Generated coverage matrix | `missing` |
+| Every feature works in every tool | Syntax forms that some tool's suite never runs | Generated form-by-tool matrix (compiler-changes/R12); std items not yet in it | `crates/cpl-cli/tests/tool_matrix.rs` |
 | Every builtin with two engine paths agrees at its edges | Built-in members that disagree between the interpreter and sanitized C++ on empty, extreme or repeated values | Generated differential cases from the member catalog; known bugs in `KNOWN_EDGE_DIFFERS` | `crates/cpl-cli/tests/differential.rs` (`builtin_members_agree_between_interp_and_sanitized_cpp_at_the_edges`) |
 | Stdlib privilege gone, not hidden | Std items that compile only because the compiler knows their name | Re-architecture: build std as a user library in a test | `missing` |
 | Facts are generated, not written twice | Hand-written lists (lints, crates, metrics, std items) that a generator could produce | Ratchet with a detector | `missing` |

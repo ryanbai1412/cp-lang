@@ -1,8 +1,8 @@
 {
   "max_rs_lines": 2000,
   "rs_file_size_allowlist": {
-    "crates/cpl-ir/src/lower/stmt.rs": 6410,
-    "crates/cpl-ir/src/lower/mod.rs": 5740,
+    "crates/cpl-ir/src/lower/stmt.rs": 6407,
+    "crates/cpl-ir/src/lower/mod.rs": 5710,
     "crates/cpl-ir/src/lower/expr.rs": 5334,
     "crates/cpl-ir/src/lower/mono.rs": 4470,
     "crates/cpl-check/src/check/expr.rs": 4145,
@@ -111,7 +111,7 @@
   "plan_delta_lines": 1627,
   "vm_fallbacks": 74,
   "own_databases": 29,
-  "cpp_deep_copies": 51,
+  "cpp_deep_copies": 49,
   "cpp_std_functions": 610,
   "near_dup_fns": 10,
   "consumer_rederived": 60,
@@ -128,7 +128,7 @@
     "crates/cpl-syntax/src/parser/expr.rs",
     "crates/cpl-syntax/src/tests.rs"
   ],
-  "skip_lists": 147,
+  "skip_lists": 164,
   "dead_code_allows": 6,
   "external_crates": 5,
   "corpus_test_files": 2763

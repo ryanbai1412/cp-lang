@@ -124,6 +124,20 @@ the same commit, keeping its meaning.
 - Enforced by: `cpl-conform all --check` (corpus and spec blocks) and the
   site gate in CI.
 
+### compiler-changes/R12: a new syntax form reaches every tool's suite
+
+A statement or expression form that any suite's programs use also appears
+in the programs of every other tool's suite: C++ differential, LSP, fmt,
+trace and lint.
+
+- Reason: a feature isn't done until it works in every tool, and a suite
+  can only show that for forms its programs contain.
+- Example: `unchecked:` blocks appear in conformance cases, so a saved-trace
+  program in `crates/cpl-cli/tests/programs/` uses one too.
+- Enforced by: `every_syntax_form_reaches_every_tools_suite` in
+  `crates/cpl-cli/tests/tool_matrix.rs`; today's gaps are listed in
+  `crates/cpl-cli/tests/tool-gaps.txt`, which `skip_lists` only lets shrink.
+
 ## Before you land
 
 - [ ] R1: no std name, one-shape path or edition branch added.

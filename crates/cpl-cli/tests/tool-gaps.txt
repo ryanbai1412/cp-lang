@@ -1,0 +1,19 @@
+# <tool> <stmt|expr> <form>: a form no program in that tool's suite uses.
+# Checked by tests/tool_matrix.rs; add a program to the suite and delete the line.
+cpp expr By
+cpp stmt Lend
+lint expr By
+lint expr Keep
+lint expr Map
+lint expr Mut
+lint expr TableFill
+lint stmt Mod
+lsp expr By
+lsp stmt Lend
+trace expr HasBound
+trace expr Mut
+trace expr TableFill
+trace expr Without
+trace stmt Law
+trace stmt Lend
+trace stmt Unchecked
