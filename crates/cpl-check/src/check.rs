@@ -1062,6 +1062,35 @@ pub(crate) fn is_implicit_generic(name: &str) -> bool {
     name.len() == 1 && name.as_bytes()[0].is_ascii_uppercase()
 }
 
+/// Offers to rename a record literal's one field that a row bound doesn't
+/// name, when the bound misses exactly one field: `(v: 1)` for `(w: Int, ..)`.
+pub(crate) fn suggest_rename(
+    diag: Option<&mut Diagnostic>,
+    args: &[cpl_syntax::ast::Arg],
+    have: &[(String, Ty)],
+    want: &[(String, Ty)],
+) {
+    let mut missing = want
+        .iter()
+        .filter(|(w, _)| !have.iter().any(|(h, _)| h == w));
+    let (Some(diag), Some((name, _)), None) = (diag, missing.next(), missing.next()) else {
+        return;
+    };
+    let mut records = args.iter().filter_map(|a| match &a.value.kind {
+        cpl_syntax::ast::ExprKind::Record(fields) => Some(fields),
+        _ => None,
+    });
+    let (Some(fields), None) = (records.next(), records.next()) else {
+        return;
+    };
+    let mut extra = fields
+        .iter()
+        .filter(|(n, _)| !want.iter().any(|(w, _)| *w == n.text));
+    if let (Some((field, _)), None) = (extra.next(), extra.next()) {
+        diag.suggest(field.span, name.clone());
+    }
+}
+
 /// The candidate closest to `name`, if it is close enough to be a typo.
 pub fn closest<'c>(name: &str, candidates: impl Iterator<Item = &'c str>) -> Option<String> {
     let limit = match name.chars().count() {

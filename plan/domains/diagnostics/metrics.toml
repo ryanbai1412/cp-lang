@@ -85,7 +85,7 @@ milestone = "M1"
 [[metric]]
 name = "catalogue: compile-time codes whose trigger carries a fix-it"
 command = "cargo test -p cpl-cli --test catalogue -- --nocapture | grep '^catalogue:'"
-today = "22 of 84 emitted (80a47142)"
+today = "25 of 84 emitted (E0704 row-field rename)"
 target = ">= 45"
 milestone = "M2"
 

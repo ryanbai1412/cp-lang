@@ -828,8 +828,7 @@ impl<'a> Checker<'a> {
                 return Some(Ty::Pos(format!("{d}.cuts")));
             }
         }
-        // Fixed array `.map(f)`: shape-preserving element-wise map `[D...]T -> [D...]U`
-        // (including 1D `[D]T` and multi-dimensional `[D, E]T`).
+        // Fixed array `.map(f)` keeps the shape: `[D, E]T -> [D, E]U`.
         if name.text == "map" {
             if let Ty::Array {
                 ref index,
@@ -1220,13 +1219,14 @@ impl<'a> Checker<'a> {
                                         match found {
                                             Some((_, got_ty)) if self.fits(got_ty, req_ty) => {}
                                             _ => {
-                                                self.error(
+                                                let diag = self.error(
                                                     codes::ROW_MISSING_FIELD,
                                                     call.span,
                                                     format!(
                                                         "record `{actual}` does not satisfy row bound for `{param}`: missing or incompatible field `{req_name}: {req_ty}`"
                                                     ),
                                                 );
+                                                suggest_rename(diag, args, actual_fs, &req_fields);
                                             }
                                         }
                                     }

@@ -63,7 +63,7 @@ common-mistake cascades <= 3; benchmark base = every clean `spec.cp`
 | Scoreboards gated | 2 of 2 | 2 of 2 | M1 |
 | Benchmark base (clean `spec.cp`) | 37 of 100 | all clean, auto | M3 |
 | Emitted codes with trigger + clean fix | 83 of 84 | all | M1 |
-| Emitted codes whose trigger has a fix-it | 22 of 84 | >= 45 | M2 |
+| Emitted codes whose trigger has a fix-it | 25 of 84 | >= 45 | M2 |
 | Catalogue rows without example | 0 of 93 | 0 | M2 |
 | Raw `Code("…")` sites outside `codes::` | 2 (lint, LSP) | 0 | M1 |
 | Codes with no conformance case | 2 | 0 | M2 |
