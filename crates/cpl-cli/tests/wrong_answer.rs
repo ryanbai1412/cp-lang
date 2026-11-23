@@ -90,6 +90,7 @@ fn a_wrong_answer_goes_from_a_crash_and_a_counterexample_to_a_clean_stress() {
     assert_eq!(code, Some(0), "{rerun}");
     let (code, clean) = cpl(&stress);
     assert_eq!(code, Some(0), "{clean}");
+    assert!(clean.contains("the saved case passes; "), "{clean}");
     assert!(
         clean.contains("200 cases ran with no runtime error"),
         "{clean}"
@@ -287,5 +288,39 @@ fn stress_traps_a_shift_overflow_as_cpl_run_does() {
     assert!(
         text.contains("`1 << 63` does not fit in an `Int`"),
         "{text}"
+    );
+}
+
+/// The cases stress saved run first, whatever the seed, until they pass
+/// (`stress/U15`).
+#[test]
+fn a_saved_case_runs_first_and_fails_until_it_is_fixed() {
+    let path = scratch("saved-first");
+    std::fs::write(&path, "let n: 0..=20 = read()\nprint(10 / (n - 3))\n").unwrap();
+    let (code, found) = cpl(&["stress".as_ref(), path.as_os_str()]);
+    assert_eq!(code, Some(1), "{found}");
+    assert_eq!(saved(&path).len(), 1, "{found}");
+    let once = |seed: &str| {
+        cpl(&[
+            "stress".as_ref(),
+            path.as_os_str(),
+            "--cases".as_ref(),
+            "1".as_ref(),
+            "--seed".as_ref(),
+            seed.as_ref(),
+        ])
+    };
+    let (code, again) = once("777");
+    assert_eq!(code, Some(1), "{again}");
+    assert!(again.contains("FAIL on the saved case "), "{again}");
+    assert!(again.contains("error[R0"), "{again}");
+    assert!(!again.contains("shrunk from"), "{again}");
+    assert!(!again.contains("\n  saved "), "{again}");
+    std::fs::write(&path, "let n: 0..=20 = read()\nprint(10 / (n - 30))\n").unwrap();
+    let (code, clean) = once("777");
+    assert_eq!(code, Some(0), "{clean}");
+    assert!(
+        clean.contains("the saved case passes; 1 cases ran"),
+        "{clean}"
     );
 }

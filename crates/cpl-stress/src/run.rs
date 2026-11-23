@@ -51,6 +51,9 @@ pub struct Options {
     pub jobs: usize,
     /// How many runs shrinking may spend.
     pub shrink_budget: usize,
+    /// Cases saved before, by seed (`<file>.tests/stress-<seed>.in`). They
+    /// run first, and one that still fails is reported as it is.
+    pub saved: Vec<(u64, String)>,
 }
 
 impl Default for Options {
@@ -62,6 +65,7 @@ impl Default for Options {
             limit: Duration::from_secs(5),
             jobs: std::thread::available_parallelism().map_or(1, |n| n.get()),
             shrink_budget: 2000,
+            saved: Vec::new(),
         }
     }
 }
@@ -83,6 +87,8 @@ pub struct Failure {
     pub verdict: Verdict,
     /// How many numbers the case had before and after shrinking.
     pub shrunk: Option<(usize, usize)>,
+    /// One of [`Options::saved`], still failing.
+    pub saved: bool,
 }
 
 #[derive(Clone, PartialEq, Eq, Debug)]
@@ -97,6 +103,8 @@ pub struct Report {
     pub discarded: usize,
     /// What was learned from them, one line each: `n is 2 or more`.
     pub narrowed: Vec<String>,
+    /// How many of [`Options::saved`] passed before the new cases.
+    pub saved: usize,
 }
 
 /// Something that stopped the run before a verdict.
@@ -196,6 +204,30 @@ pub fn stress_with(
     engine: &dyn Engine,
     options: &Options,
 ) -> Result<Report, StressError> {
+    for (index, (seed, input)) in options.saved.iter().enumerate() {
+        if let Some((verdict, expected, got)) = engine.run(input)? {
+            let failure = Failure {
+                case: index + 1,
+                seed: *seed,
+                input: input.clone(),
+                described: None,
+                expected,
+                got,
+                verdict,
+                shrunk: None,
+                saved: true,
+            };
+            return Ok(Report {
+                cases: index + 1,
+                skipped: 0,
+                failure: Some(failure),
+                discarded: 0,
+                narrowed: Vec::new(),
+                saved: index,
+            });
+        }
+    }
+    let saved = options.saved.len();
     let size_arg = options.size.to_string();
     // The ranges cases are drawn from: the program's own, narrowed where
     // a guessed one let through numbers the program stops on.
@@ -343,6 +375,7 @@ pub fn stress_with(
                     got,
                     verdict,
                     shrunk: None,
+                    saved: false,
                 };
                 // Same bug only: a candidate must fail the same way.
                 let kind = std::mem::discriminant(&failure.verdict);
@@ -404,6 +437,7 @@ pub fn stress_with(
                     failure: Some(failure),
                     discarded,
                     narrowed,
+                    saved,
                 });
             }
             done += batch.len();
@@ -414,6 +448,7 @@ pub fn stress_with(
             failure: None,
             discarded,
             narrowed,
+            saved,
         });
     }
 }

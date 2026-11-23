@@ -86,9 +86,9 @@ Evidence: integration `crates/cpl-cli/tests/wrong_answer.rs`
 
 ### stress/U15: after the fix, back to a clean run in one command
 Need: confirm the saved failures pass, then keep hunting.
-Design: `cpl stress d` reruns the saved stress cases before new ones.
-Milestone: M1-differentiating. Status: gap (today it is `cpl test d`, then `cpl stress d`)
-Evidence: gap
+Design: `cpl stress d` runs every saved `d.tests/stress-<seed>.in` before new cases. One that still fails is reported as it is, unshrunk and not saved again; the clean report says `the saved case passes`.
+Milestone: M1-differentiating. Status: supported
+Evidence: integration `crates/cpl-cli/tests/wrong_answer.rs` (`a_saved_case_runs_first_and_fails_until_it_is_fixed`, `a_wrong_answer_goes_from_a_crash_and_a_counterexample_to_a_clean_stress`)
 
 ### stress/U16: multitest input
 Need: a failing multitest case cut to the one test that fails, or the two that leak state into each other.

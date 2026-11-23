@@ -1642,6 +1642,8 @@ fn cpl_stress_interprets_a_gen_fn_where_no_cpp_compiler_is() {
     std::fs::create_dir_all(&empty).unwrap();
     let path = dir.join("buggy.cp");
     std::fs::write(&path, SHOI16P1_BUGGY).unwrap();
+    // A case an earlier run saved would run first, unshrunk.
+    let _ = std::fs::remove_dir_all(path.with_extension("tests"));
     let out = Command::new(cpl_bin())
         .args([
             "stress",

@@ -8461,3 +8461,8 @@ Revised (2026-11-23): a twentieth left the browser's 5 s limit at 250 ms a candi
 - **Why.** No single commit grew it. A bisect of the 66 compiler and std commits in 0d43fd76e..654c50c92 grew it in four nearly even steps (about 4 KB per 16 commits), with the largest function deltas spread over `cpl-check`, `cpl-syntax`, `cpl-interp`, `cpl-ir` and `cpl-lint`, plus 7.8 KB of raw data. Cheap cuts don't cover it: `wasm-opt -Oz` (binaryen 132) makes the gzipped file 30 KB larger, and the std bundled into the browser build already drops its comments and `@test` fns. 0.7% more first-load bytes cost a visitor less than a blocked deploy.
 - **Reverse.** Lower the cap to the measured size plus about 1% once a cut lands, for example when the tree-walker is deleted.
 
+## 441. Stress runs the cases it saved before new ones (debugger, 2026-11-23)
+
+- **Call.** `cpl stress <file>` runs every `<file>.tests/stress-<seed>.in` first, by seed, through the same brute, checker or interactor. One that still fails is reported as `FAIL on the saved case <path>`, without shrinking (it was shrunk when saved) and without saving it again. A clean report starts `the saved case passes;`, and JSON gains `saved_passed` and a counterexample's `rerun`.
+- **Why.** After a fix the contestant had to run `cpl test` and then `cpl stress` (use case stress/U15), and a stress run on a new seed could miss the case it had already found.
+- **Reverse.** Drop the `options.saved` loop at the top of `stress_with` in `crates/cpl-stress/src/run.rs` and `saved_cases` in `cli.rs`.

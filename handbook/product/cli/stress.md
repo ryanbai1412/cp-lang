@@ -11,8 +11,8 @@ down to `n = 2  a = [3, 3]`, what the brute printed, what you printed, and
 the first wrong token. With `--explain` it adds the line that made the
 first wrong value: `look at line 14: lo = mid leaves lo unchanged`. The case
 is saved as `d.tests/stress-4.in` with the brute's answer beside it. You
-fix the line; `cpl test d` reruns the saved case green, and `cpl stress d`
-again says `1000 cases agree`.
+fix the line, and `cpl stress d` reruns the saved case first, then hunts on:
+`the saved case passes; 1000 cases agree`.
 
 **Off the happy path.** You have no brute yet, only a WA: stress still
 runs, and a case fails on a runtime error or the time limit, shrunk and
@@ -28,8 +28,7 @@ a time-out, and `--explain` names the loop whose state stopped changing.
 line, and one from the fix back to a clean run. Today stress, shrinking,
 saving, checkers, interactors, the reader-checked generator and `--explain`
 work as above. The gaps, each a use case: `--explain` is a flag rather than
-part of every failure; after a fix, `cpl stress` doesn't rerun the saved
-failures before new ones; `@brute(f)` and `@alt(f)` are two spellings of one
+part of every failure; `@brute(f)` and `@alt(f)` are two spellings of one
 idea; 30 input shapes in the corpus can't be generated yet
 (`crates/cpl-stress/tests/generate-gaps.txt`); and nothing measures that
 generated cases reach the edges (`n = 1`, all equal, the maximum value).

@@ -375,7 +375,10 @@ pub fn report_json(
     error: Option<&str>,
 ) -> String {
     let Some(failure) = &report.failure else {
-        return format!("{{\"status\":\"ok\",\"cases\":{}}}\n", report.cases);
+        return format!(
+            "{{\"status\":\"ok\",\"cases\":{},\"saved_passed\":{}}}\n",
+            report.cases, report.saved
+        );
     };
     let stages: Vec<String> = stages
         .iter()
@@ -399,7 +402,7 @@ pub fn report_json(
     };
     let error = error.map_or(String::new(), |error| format!(",\"error\":{error}"));
     format!(
-        "{{\"status\":\"fail\",\"cases\":{},\"counterexample\":{{\"case\":{},\"seed\":{},\"input\":{},\"raw_input\":{},\"expected\":{},\"got\":{},\"verdict\":{}{error},\"stages\":[{}],\"saved\":{},\"trace\":{}{explain}}}}}\n",
+        "{{\"status\":\"fail\",\"cases\":{},\"counterexample\":{{\"case\":{},\"seed\":{},\"input\":{},\"raw_input\":{},\"expected\":{},\"got\":{},\"verdict\":{}{error},\"stages\":[{}],\"saved\":{},\"rerun\":{},\"trace\":{}{explain}}}}}\n",
         report.cases,
         failure.case,
         failure.seed,
@@ -411,6 +414,7 @@ pub fn report_json(
         json_string(failure.verdict.code()),
         stages.join(","),
         path(saved),
+        failure.saved,
         path(trace),
     )
 }
@@ -685,13 +689,18 @@ pub fn run_with(
         Err(message) => return fail(message),
     };
 
+    // The cases saved before run first (use case stress/U15).
+    let options = Options {
+        saved: saved_cases(&args.file),
+        ..args.options.clone()
+    };
     let report = match stress_with_cold(
         &source,
         &fast,
         brute.as_ref(),
         cold.as_ref(),
         &judge,
-        &args.options,
+        &options,
     ) {
         Ok(report) => report,
         Err(error) => return fail(error.to_string()),
@@ -701,7 +710,10 @@ pub fn run_with(
         |failure: &crate::run::Failure| matches!(failure.verdict, crate::Verdict::BruteError(_));
     let saved = (report.failure.as_ref())
         .filter(|failure| !brute_failed(failure))
-        .and_then(|failure| save(&args.file, failure).ok());
+        .and_then(|failure| match failure.saved {
+            true => Some(saved_path(&args.file, failure.seed)),
+            false => save(&args.file, failure).ok(),
+        });
     // The failing case again, both sides in the debug interpreter: the
     // `debug(...)`s they share, and with `--trace` the two traces.
     let in_file = own_brute.is_some()
@@ -828,12 +840,17 @@ pub fn run_with(
             n => format!(" ({n} seeds made no valid case)"),
         };
         let ran = report.cases - report.skipped;
+        let again = match report.saved {
+            0 => String::new(),
+            1 => "the saved case passes; ".to_string(),
+            n => format!("the {n} saved cases pass; "),
+        };
         let _ = match unjudged {
             true => writeln!(
                 stdout,
-                "  {ran} cases ran with no runtime error or time limit{skipped}"
+                "  {again}{ran} cases ran with no runtime error or time limit{skipped}"
             ),
-            false => writeln!(stdout, "  {ran} cases agree{skipped}"),
+            false => writeln!(stdout, "  {again}{ran} cases agree{skipped}"),
         };
         // Small cases never reach the bounds; a lint that names an input
         // there that fails is pointed at (use case stress/U28).
@@ -878,13 +895,21 @@ pub fn run_with(
         }
         return 0;
     };
-    let _ = writeln!(
-        stdout,
-        "  FAIL on case {} (seed {}): {}",
-        failure.case,
-        failure.seed,
-        failure.verdict.code()
-    );
+    let _ = match (&saved, failure.saved) {
+        (Some(path), true) => writeln!(
+            stdout,
+            "  FAIL on the saved case {}: {}",
+            path.shown(),
+            failure.verdict.code()
+        ),
+        _ => writeln!(
+            stdout,
+            "  FAIL on case {} (seed {}): {}",
+            failure.case,
+            failure.seed,
+            failure.verdict.code()
+        ),
+    };
     if let Some((from, to)) = failure.shrunk {
         let _ = writeln!(stdout, "  shrunk from {from} numbers to {to}:");
     }
@@ -1000,7 +1025,9 @@ pub fn run_with(
     }
     match saved {
         Some(path) => {
-            let _ = writeln!(stdout, "  saved {}", path.shown());
+            if !failure.saved {
+                let _ = writeln!(stdout, "  saved {}", path.shown());
+            }
             let file = args.file.shown();
             if !part_alts(&src).is_empty() && explained.is_none() {
                 let _ = writeln!(
@@ -1027,6 +1054,30 @@ pub fn run_with(
         None => {}
     }
     1
+}
+
+/// The cases `cpl stress` saved for `file` before, by seed.
+fn saved_cases(file: &Path) -> Vec<(u64, String)> {
+    let Ok(dir) = std::fs::read_dir(file.with_extension("tests")) else {
+        return Vec::new();
+    };
+    let mut saved: Vec<(u64, String)> = (dir.flatten())
+        .filter_map(|entry| {
+            let name = entry.file_name().into_string().ok()?;
+            let seed = name.strip_prefix("stress-")?.strip_suffix(".in")?;
+            Some((
+                seed.parse().ok()?,
+                std::fs::read_to_string(entry.path()).ok()?,
+            ))
+        })
+        .collect();
+    saved.sort();
+    saved
+}
+
+fn saved_path(file: &Path, seed: u64) -> std::path::PathBuf {
+    file.with_extension("tests")
+        .join(format!("stress-{seed}.in"))
 }
 
 #[cfg(test)]

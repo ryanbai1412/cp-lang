@@ -650,7 +650,12 @@ mod cli {
         ]);
         assert_eq!(code, 1);
         assert!(out.starts_with("{\"status\":\"fail\",\"cases\":"), "{out}");
-        assert!(out.contains("\"input\":\"n = 1  q = 1  a = [1001]  queries = [(1, 1)]\",\"raw_input\":\"1 1\\n1001\\n1 1\\n\""), "{out}");
+        // The case the text run saved runs first and still fails.
+        assert!(
+            out.contains("\"raw_input\":\"1 1\\n1001\\n1 1\\n\""),
+            "{out}"
+        );
+        assert!(out.contains("\"rerun\":true"), "{out}");
         assert!(
             // No `debug(...)` ran on both sides: these are scripts.
             out.contains("\"verdict\":\"WA\",\"stages\":[],\"saved\":\"")
@@ -660,7 +665,7 @@ mod cli {
         let (_, out, _) = stress(&[
             file, "--fast", &good, "--brute", &good, "--cases", "5", "--format", "json",
         ]);
-        assert_eq!(out, "{\"status\":\"ok\",\"cases\":5}\n");
+        assert_eq!(out, "{\"status\":\"ok\",\"cases\":5,\"saved_passed\":1}\n");
         std::fs::remove_dir_all(dir).unwrap();
     }
 

@@ -24,7 +24,8 @@ copies an input or retypes a command line. Owner: debugger.
    `cpl run c.cp --trace`, records that saved case and opens it in the
    viewer, in the program's own names.
 6. **Edit and rerun.** Fix the line. `cpl test c` reruns the samples and
-   the saved case: green. `cpl stress c.cp` again: `1000 cases agree`.
+   the saved case: green. `cpl stress c.cp` runs the saved case first, then
+   new ones: `the saved case passes; 1000 cases agree`.
 7. **Submit.** `cpl submit c.cp` builds the C++ and runs every saved case
    on it.
 
