@@ -112,3 +112,8 @@ Newest first: what landed (commit), evidence, next, blocked, requests from other
   85.1; `next: [L]Int` as 32-bit 83.9; unchecked `adj[u][next[u]]` and `path.last!`
   82.7; reference 72.7. Rest is `alternating_layers` (30% of samples), where the
   `?(0..2_147_483_648)` level type keeps a `check_range` on every store. Asked stdlib.
+
+## 2026-11-22: `let x = if c: f(a) else: a[i]` reads the place branch in place
+
+- Codegen: a `let` of an `if` whose branch names a place nothing changes while the binding lives now emits `T own; const T& x = c ? (own = f(a)) : (a[i]);` instead of copying the place (`crates/cpl-codegen/src/lend.rs`). Tests: `copy_tests.rs` (in place, and copied when the body mutates the place); `cargo nextest run -p cpl-codegen` 127 passed.
+- `cf2165d` synthetic n=1e6 (`/usr/bin/time`, best of 5 user+sys): generated 490 ms -> 400 ms, reference 280 ms, outputs equal. Corpus run (`v03_perf_bench.py --suite corpus --only cf2165d,... --runs 5`): cf2165d 1.256x (was 1.29x). The rest is `carried = reflect(unmatched_prev)` building a fresh list per value; the reference reverses in place.

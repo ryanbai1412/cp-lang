@@ -85,3 +85,27 @@ fn a_loop_guarded_by_its_start_starts_there() {
         "{cpp}"
     );
 }
+
+#[test]
+fn a_let_of_an_if_reads_its_place_branch_in_place() {
+    let cpp = cpp(concat!(
+        "let by: [0..3]List<Int> = [[1, 2], [3], []]\n",
+        "fn flip(xs: List<Int>) -> List<Int> = [9 - x for x in xs.rev]\n",
+        "for v in 0..3:\n",
+        "    let pos = if v % 2 == 0: flip(by[v]) else: by[v]\n",
+        "    print(pos.len)\n",
+    ));
+    assert!(cpp.contains("const std::vector<ll>& pos = "), "{cpp}");
+}
+
+#[test]
+fn a_let_of_an_if_copies_a_place_the_body_changes() {
+    let cpp = cpp(concat!(
+        "var by: [0..3]List<Int> = [[1, 2], [3], []]\n",
+        "for v in 0..3:\n",
+        "    let pos = if v % 2 == 0: [0] else: by[v]\n",
+        "    by[v].push(5)\n",
+        "    print(pos.len)\n",
+    ));
+    assert!(!cpp.contains("& pos = "), "{cpp}");
+}

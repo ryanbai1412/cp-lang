@@ -52,7 +52,11 @@ impl<'p> Emitter<'p> {
     pub fn block(&mut self, block: &Block, out: &mut String) {
         for (k, stmt) in block.stmts.iter().enumerate() {
             self.tail = match stmt {
-                Stmt::Let(_, Some(init)) if place_root(init).is_some() => {
+                Stmt::Let(_, Some(init))
+                    if place_root(init).is_some()
+                        || crate::lend::lending_if(init)
+                            .is_some_and(|arms| arms.iter().any(|a| place_root(a).is_some())) =>
+                {
                     Some(Tail::of(&block.stmts[k + 1..]))
                 }
                 _ => None,
@@ -1215,7 +1219,7 @@ impl<'p> Emitter<'p> {
     /// statements after the `let` in its block (`tail`) neither store to
     /// that variable nor call anything that could. Without a `tail` the
     /// whole fn is held to that.
-    fn reads_in_place(&self, slot: usize, init: &Expr, tail: Option<&Tail>) -> bool {
+    pub(crate) fn reads_in_place(&self, slot: usize, init: &Expr, tail: Option<&Tail>) -> bool {
         if self.closure_id.is_some() {
             return false;
         }
@@ -1405,6 +1409,12 @@ impl<'p> Emitter<'p> {
                     self.line(out, &format!("static {cpp} {name};"));
                     self.line(out, &format!("{name}.clear();"));
                     return;
+                }
+                if !hoisted && fixed_len.is_none() && elem_l.is_none() && !name.starts_with('_') {
+                    let at = (cpp.as_str(), name.as_str());
+                    if self.let_lending_branch(*slot, init, at, tail.as_ref(), out) {
+                        return;
+                    }
                 }
                 let whole = init;
                 let init = self.flatten(init, out);

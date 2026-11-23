@@ -7,6 +7,7 @@ mod emit;
 mod expr;
 mod fuse;
 mod inline;
+mod lend;
 mod names;
 mod niche;
 mod ranges;
