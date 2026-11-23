@@ -71,7 +71,7 @@ target = "pass"
 [[metric]]
 name = "viewer_unit"
 command = "node tools/trace/trace.test.cjs && node tools/trace/state.test.cjs"
-today = "62/62 pass; not yet in scripts/check.sh (asked in infra worklog); no browser test"
+today = "62/62 pass, in scripts/check.sh since 10a551247; browser test crates/cpl-cli/tests/trace_browser.rs passes the 3 demos in 1.18 s, skipped where no Chrome is found (CI today)"
 target = "pass, plus a browser test, both in the gate"
 
 [[metric]]

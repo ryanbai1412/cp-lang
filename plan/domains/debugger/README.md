@@ -53,7 +53,7 @@ All run 2026-11-22 on main `4b8f504f`, release build; commands in [metrics.toml]
 | VM vs tree trace parity | pass, 169 programs | replaced by goldens | M3 |
 | Debugger suites (8 binaries) | pass, 47 tests | pass | all |
 | `cpl-stress` unit | pass, 83 tests | pass | all |
-| Viewer unit tests | 62/62, not in gate, no browser test | in gate + browser test | M1/M3 |
+| Viewer unit tests | 62/62 in gate; browser test of 3 demos, skipped without Chrome | in gate + browser test | M1/M3 |
 | Debug demos compile | 2/3, all spell `@brute` | 3/3, `@alt(program)` | M1 |
 | Locals printed with a trap | 0 | offending locals + call path | M2 |
 | wasm gzip (trace+stress inside) | 1,761,196 B | ≤ 2,100,000 B | all |
