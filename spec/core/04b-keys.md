@@ -49,9 +49,10 @@ in user helpers and in library code.
      it to hand results back in the caller's keys. (R04b.1.7)
 
 Diagnostics:
-- **Lint: literal index into a slice or a reversed view** (`w[0]`, `w[1]`,
-  `a.sorted().rev[0]`, which is the smallest element, not the largest).
-  Suggests `w.first` or `w.nth(1)`. (R04b.1.8)
+- **Lint: literal index into a slice** (`w[0]`, `w[1]` on a slice whose
+  keys start elsewhere). Suggests `w.first` or `w.nth(1)`. A reversed view
+  is not indexable at all (R07.5.3), so `a.sorted().rev[0]` is an error
+  whose fix is `.nth(0)`. (R04b.1.8)
 - **Lint: 0-based counter used as a slice key** (`for k in 0..w.len: w[k]`).
   Suggests `w.items`, `w.nth(k)` or `w.rebase`. (R04b.1.9)
 - **Trap: an out-of-keys read.** The message names the key range, e.g.

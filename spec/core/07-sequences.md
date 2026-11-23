@@ -71,7 +71,7 @@ How they relate:
 a[l..=r]          // view of a over l..=r; a[l..=r][i] is a[i], i must be in l..=r
 s[2..5]           // keeps keys: s[2..5][3] is s[3]; s[2..5].nth(0) is s[2]
 a[l..=r].keys     // l..=r
-a.rev             // walks a backwards; a.rev[i] is still a[i]
+a.rev             // walks a backwards; a.rev.nth(0) is a's last, a.rev[i] is an error
 a.map(f)          // Indexed<D, U>: (a.map(f))[i] is f(a[i]), O(1) per read
 a.items           // (i, a[i]) pairs with a's own indices
 ```
@@ -127,7 +127,7 @@ let t = w.rebase                         // O(1) view keyed by a fresh 0..w.len 
 | View | Indexed by | Walks | Cost |
 |---|---|---|---|
 | `a[r]` (`r: Range<D>`; `a[j..i]` with cut ends is the piece) | `D`, only inside `r` | `r` in order | \(O(1)\) (R07.4.6) |
-| `a.rev` | `D` | backwards | \(O(1)\) (R07.4.7) |
+| `a.rev` | not indexable: it walks out of key order; `.nth(k)` reads by walk position, and `.items`/`.keys` keep `a`'s keys | backwards | \(O(1)\) (R07.4.7) |
 | `a.items` | `D`, gives `(i, a[i])` | in order | \(O(1)\) (R07.4.8) |
 | `a.map(f)` | `D`, gives `f(a[i])`, calling `f` on every read | in order | \(O(1)\); `f` per read (R07.4.9) |
 | `zip(a, b)` | `a`'s keys, pairing by walk order: the k-th of `a` with the k-th of `b` | in order | \(O(1)\) (R07.4.10) |
@@ -162,7 +162,7 @@ a[l..=r].rev.map(f)       // Mapped<Rev<Slice<[V]T>>, F>, F the lambda's own typ
 |---|---|
 | `a[l..=r]`, `.rev`, `.map(f)` | build the struct, \(O(1)\) (R07.5.1) |
 | `w[i]` | debug: check `lo <= i < hi`; then `a[i]` (no offset: indices are kept) (R07.5.2) |
-| `w.rev[i]` | `a[i]`; only the walk order differs (R07.5.3) |
+| `w.rev[i]` | error E0305: only a view that walks in key order is indexable; the fix writes `w.rev.nth(k)` (the `k`th in walk order) or `w[i]` (the key) (R07.5.3) |
 | `a.map(f)[i]` | `f(a[i])`, inlined, per read (R07.5.4) |
 | `for x in w` | `for (i = lo; i < hi; ++i) body(a[i])` (R07.5.5) |
 | `for x in w.rev` | the same loop, `hi - 1` down to `lo` (R07.5.6) |

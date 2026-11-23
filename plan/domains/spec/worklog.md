@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- Decision 354: a reversed view is not indexable (`xs.rev[k]` is E0305, fix `.nth(k)`); question removed; R07.4.7, R07.5.3 and R04b.1.8 updated; `rev-slice-index-outside-traps.cp` becomes `rev-view-is-not-indexable.cp`. Routed to compiler, stdlib and lint-fmt. Fixed two wrong expectations tech-debt found (`.ord` counts from 0; the divisors `break` skips the 12). Spec-block ids are now `file#section:k`, so editing a spec block no longer looks like a lost case.
 - Trait coverage 118/120 to 120/120: cases for `IndexOp` on `Disjoint` (`at`, `len`); trait-gaps.txt is empty.
 - sig-gaps 5 to 3: `conformance-sigs.py` lets a variadic `..xs` take any name (decision 324), so `each(sum: +, hi: max)` is no longer a false gap. The other three (`dijkstra(step:)`, `pow(op:)`, `convolve(concave:)` vs std `shape:`) are routed to stdlib.
 - Rjudge.2 reject case (the judge line names only the chosen profile). rule-gaps.txt holds only R11.4.3 (`cpl migrate`, deferred to Milestone 2).

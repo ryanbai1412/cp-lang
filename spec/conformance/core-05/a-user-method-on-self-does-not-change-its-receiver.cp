@@ -1,4 +1,4 @@
-// expect: ok, output "1 x"
+// expect: ok, output "0 x"
 // rule: 06.1.2
 domain City = 1..=3
 struct Pair<A, B>(first: A, second: B):

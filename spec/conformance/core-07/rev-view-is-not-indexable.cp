@@ -1,5 +1,5 @@
-// expect: R0101 at 3 (checked)
-// rule: 07.5.3
-let a = [1, 2, 3, 4]
-let w = a[1..3]
-print(w.rev[0])
+// expect: E0305 at 3
+// rule: 07.4.7 07.5.3
+// A reversed view walks out of key order, so it is not indexable; the fix writes `.nth(0)`.
+let b = [5, 9, 1].sorted().rev
+print(b[0])

@@ -7506,3 +7506,20 @@ so `tag: P = ()` with `P = ()` failed with "expected `()`, found `()`"
 (6 `MonotoneHull` doc examples). An empty tuple literal now lowers to
 `Unit`; the line in `lower/expr.rs` moves its cap 5554 -> 5557
 (`--update rs_over_cap`). Reverse: drop the `items.is_empty()` arm.
+
+## 354. A reversed view is not indexable (spec, 2026-11-23)
+
+`a.rev` keeps its source's keys (`.items` and `.keys` give `a`'s keys,
+walked backwards), but `a.rev[i]` is now E0305, with a fix that writes
+`a.rev.nth(k)` (the `k`th in walk order) or `a[i]` (the key). The general
+rule: only a view that walks in key order is indexable (R07.4.7,
+R07.5.3). Under the old rule `a.rev[i]` was `a[i]`, which is coherent
+with slices and range keys, but the acceptance run hit it twice as a
+silent wrong answer (`xs.sorted().rev[0]` printed the minimum; BLOCKERS
+`rev-view-index-not-reversed`): printing `xs.rev` shows one order and
+indexing it read another. Re-keying `.rev` from 0 was rejected because it
+breaks "views keep keys" for `.items` and a `[V]T` source. A lint was
+rejected because a warning still lets the wrong program run. Reverse:
+let `Rev` implement indexing again (R07.5.3 back to `a[i]`) and flip
+`core-07/rev-view-is-not-indexable.cp`. Replaces the open question
+"should `.rev` keep its source's keys?".

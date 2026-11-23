@@ -1,4 +1,4 @@
-// expect: ok, output "1\n12"
+// expect: ok, output "1"
 // rule: 07.5.12
 let n = 12
 let lim = 5

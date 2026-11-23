@@ -215,7 +215,6 @@ documented. The stdlib's own gaps are in `std/GAPS.md`.
 - core-04/spec-block-first-drop-next-greater.cp: compiler
 - core-04/spec-block-split-by-search.cp: compiler
 - core-04/zip-keyed-by-first.cp: compiler
-- core-05/a-user-method-on-self-does-not-change-its-receiver.cp: compiler
 - core-05/at-assign-needs-var.cp: compiler
 - core-05/closure-capture-blocks-push.cp: compiler
 - core-05/exercise-04-var-from-lent-param.cp: compiler
@@ -241,9 +240,10 @@ documented. The stdlib's own gaps are in `std/GAPS.md`.
 - core-07/grid-row-index-and-block-order.cp: compiler
 - core-07/keys-survive-filter.cp: compiler
 - core-07/prefix-scan-cuts.cp: compiler
+- core-07/rev-keeps-keys.cp: stdlib
+- core-07/rev-view-is-not-indexable.cp: compiler
 - core-07/range-folds-are-ranges-own.cp: stdlib
 - core-07/slice-past-source-traps.cp: compiler
-- core-07/spec-block-divisors-break.cp: compiler
 - core-07/tally-is-counter.cp: stdlib
 - core-08/const-param-arithmetic.cp: compiler
 - core-08/extension-concrete-and-generic-ambiguous.cp: compiler

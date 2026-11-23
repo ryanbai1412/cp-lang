@@ -7,7 +7,7 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 2480 (995 passing). Rules: 561.
+Cases: 2482 (995 passing). Rules: 561.
 
 ## Summary per chapter
 
@@ -19,7 +19,7 @@ Cases: 2480 (995 passing). Rules: 561.
 - R04b (04b-keys.md): 27 rules, 64 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R05 (05-ownership.md): 43 rules, 149 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R06 (06-control-functions.md): 24 rules, 86 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R07 (07-sequences.md): 90 rules, 129 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R07 (07-sequences.md): 90 rules, 131 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R08 (08-traits-generics.md): 29 rules, 80 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R09 (09-contexts-checks.md): 26 rules, 56 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R10 (10-io.md): 18 rules, 82 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -53,7 +53,7 @@ negative case. Complete: rules with no gap in `rule-gaps.txt`.
 | R04b | 27 | 27 (100%) | 7 | 7 (100%) | 27 (100%) |
 | R05 | 43 | 43 (100%) | 21 | 21 (100%) | 43 (100%) |
 | R06 | 24 | 24 (100%) | 16 | 16 (100%) | 24 (100%) |
-| R07 | 90 | 90 (100%) | 24 | 24 (100%) | 90 (100%) |
+| R07 | 90 | 90 (100%) | 25 | 25 (100%) | 90 (100%) |
 | R08 | 29 | 29 (100%) | 12 | 12 (100%) | 29 (100%) |
 | R09 | 26 | 26 (100%) | 14 | 14 (100%) | 26 (100%) |
 | R10 | 18 | 18 (100%) | 7 | 7 (100%) | 18 (100%) |
@@ -67,7 +67,7 @@ negative case. Complete: rules with no gap in `rule-gaps.txt`.
 | Rlint | 2 | 2 (100%) | 2 | 2 (100%) | 2 (100%) |
 | Rlsp | 5 | 5 (100%) | 1 | 1 (100%) | 5 (100%) |
 | Rstress | 1 | 1 (100%) | 0 | 0 (0%) | 1 (100%) |
-| all | 561 | 560 (99%) | 214 | 214 (100%) | 560 (99%) |
+| all | 561 | 560 (99%) | 215 | 215 (100%) | 560 (99%) |
 
 ## Rules
 
@@ -331,7 +331,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R04b.1.5 [3+ 1-]: **An array can cover any run of keys.** `[r]T` for a range `r` of `K` is indexed by `K` an...
 - R04b.1.6 [4+ 0-]: To keep `w`'s keys, build a table over them: `[w.keys] k => w[k]`.
 - R04b.1.7 [6+ 3-]: `a.rekey(r)` is the inverse: the same cells re-keyed onto a range `r` of equal length, \(O...
-- R04b.1.8 [1+ 1-]: **Lint: literal index into a slice or a reversed view** (`w[0]`, `w[1]`, `a.sorted().rev[0...
+- R04b.1.8 [1+ 1-]: , so `a.sorted().rev[0]` is an error whose fix is `.nth(0)`.
 - R04b.1.9 [1+ 1-]: **Lint: 0-based counter used as a slice key** (`for k in 0..w.len: w[k]`). Suggests `w.ite...
 - R04b.1.10 [1+ 3-]: **Trap: an out-of-keys read.** The message names the key range, e.g. "`w` has keys 3..7 (i...
 - R04b.1.11 [4+ 1-]: **Compile error: a raw `Int` used to index a domain slice**, as before.
@@ -427,6 +427,7 @@ Each rule: positive / negative case counts, then the gap if any.
 
 ### R07: 07-sequences.md
 
+- R07.5.3 [1+ 1-]: **Lint: literal index into a slice** (`w[0]`, `w[1]` on a slice whose keys start elsewhere...
 - R07.1.1 [1+ 1-]: **Generators are the only iterator.** `-> yields T`, no `next()`; values are pushed into t...
 - R07.1.2 [1+ 1-]: **Six capabilities.** `Seq` walks; `Keyed` walks `(key, x)`; `Sized` has \(O(1)\) `.len`; ...
 - R07.1.3 [2+ 1-]: **Laziness is explicit.** A chain reruns on every walk. Allocation happens only at `.colle...
@@ -462,7 +463,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R07.4.4 [2+ 1-]: **Materializing counts from 0:** `.collect()`, `.sorted()`, `List(w)` and `Str(w)` build a...
 - R07.4.5 [1+ 3-]: **Lints:** a literal index into a slice (`w[0]`), and a 0-based counter used as a slice ke...
 - R07.4.6 [1+ 1-]: | `a[r]` (`r: Range<D>`; `a[j..i]` with cut ends is the piece) | `D`, only inside `r` | `r...
-- R07.4.7 [2+ 0-]: | `a.rev` | `D` | backwards | \(O(1)\)
+- R07.4.7 [2+ 1-]: | `a.rev` | not indexable: it walks out of key order; `.nth(k)` reads by walk position, an...
 - R07.4.8 [1+ 0-]: | `a.items` | `D`, gives `(i, a[i])` | in order | \(O(1)\)
 - R07.4.9 [3+ 0-]: | `a.map(f)` | `D`, gives `f(a[i])`, calling `f` on every read | in order | \(O(1)\); `f` ...
 - R07.4.10 [1+ 1-]: | `zip(a, b)` | `a`'s keys, pairing by walk order: the k-th of `a` with the k-th of `b` | ...
@@ -471,7 +472,6 @@ Each rule: positive / negative case counts, then the gap if any.
 - R07.4.13 [2+ 0-]: | `grid[rs, cs]` | `(R, C)` pairs inside `rs` × `cs`; `.items` gives `((x, y), v)` | row-m...
 - R07.5.1 [1+ 0-]: | `a[l..=r]`, `.rev`, `.map(f)` | build the struct, \(O(1)\)
 - R07.5.2 [1+ 1-]: | `w[i]` | debug: check `lo <= i < hi`; then `a[i]` (no offset: indices are kept)
-- R07.5.3 [1+ 1-]: | `w.rev[i]` | `a[i]`; only the walk order differs
 - R07.5.4 [2+ 0-]: | `a.map(f)[i]` | `f(a[i])`, inlined, per read
 - R07.5.5 [1+ 0-]: | `for x in w` | `for (i = lo; i < hi; ++i) body(a[i])`
 - R07.5.6 [1+ 0-]: | `for x in w.rev` | the same loop, `hi - 1` down to `lo`
@@ -502,7 +502,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R07.9.3 [1+ 1-]: | `s.min()`, `s.max()`, `s.min(by: k)` | `?T`, `None` when empty; first on ties | \(O(n)\)
 - R07.9.4 [1+ 0-]: | `s.count(p)`, `s.any(p)`, `s.all(p)` | `Int`, `Bool` | \(O(n)\)
 - R07.9.5 [3+ 0-]: | `s.find(p)`, `s.rfind(p)` | `?T`, linear scan (binary search is `r.first_true`) | \(O(n)...
-- R07.9.6 [2+ 1-]: , generic code included, and the compiler never pattern matches a pipeline. User types get...
+- R07.9.6 [3+ 2-]: , generic code included, and the compiler never pattern matches a pipeline. User types get...
 - R07.11.1 [3+ 1-]: | `s.sort(by: k)`, `s.reverse()`, `s.dedup()`, `s.fill(x)` | in place: needs a `var` sourc...
 - R07.11.2 [1+ 0-]: | `s.sorted(by: k)`, `s.deduped()` | new `List` | same, allocates
 - R07.11.3 [2+ 0-]: | `s.group(by: k)` | `Map<K, List<T>>` | \(O(n)\) expected
@@ -736,7 +736,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0302 Type mismatch: 39 case(s)
 - E0303 Wrong number of arguments: 6 case(s)
 - E0304 Value is not callable: 1 case(s)
-- E0305 Value is not indexable: 3 case(s)
+- E0305 Value is not indexable: 4 case(s)
 - E0306 Invalid arithmetic on domain position (reserved): exempt (reserved in the registry)
 - E0307 Condition is not `Bool`: 1 case(s)
 - E0308 Ordering comparison on optional: 2 case(s)
@@ -840,10 +840,10 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - L0608 Parentheses do not match the cost: 2 case(s)
 - L0609 A `@cache` field written outside its type: 1 case(s)
 - R0001 Runtime trap: 5 case(s)
-- R0101 Index out of range: 23 case(s)
+- R0101 Index out of range: 22 case(s)
 - R0102 Value outside a domain: 4 case(s)
 - R0201 Range store out of range: 8 case(s)
-- R0202 Integer overflow: 8 case(s)
+- R0202 Integer overflow: 9 case(s)
 - R0203 Division by zero: 3 case(s)
 - R0301 Unwrap of None: 7 case(s)
 - R0401 Assertion failed: 72 case(s)
@@ -870,25 +870,32 @@ prepends it.
   - line 103: `let var const fn struct enum domain type use pub if elif els`
 - 02-values-types.md: 3 blocks, 2 with a case, 1 spec-only, 0 neither
 - 03-numbers-layout.md: 2 blocks, 2 with a case, 0 spec-only, 0 neither
-- 04-indices.md: 7 blocks, 3 with a case, 3 spec-only, 1 neither
+- 04-indices.md: 7 blocks, 1 with a case, 3 spec-only, 3 neither
+  - line 157: `for j in ..i:`
   - line 251: `let k = (0..=n).last_true(k => cost(k) <= budget) ?? -1`
-- 04b-keys.md: 13 blocks, 8 with a case, 4 spec-only, 1 neither
-  - line 166: `let t = s[l..r].rebase`
-- 05-ownership.md: 56 blocks, 48 with a case, 2 spec-only, 6 neither
+  - line 272: `fn inversions(r: Range<Pos>) -> Int:`
+- 04b-keys.md: 13 blocks, 3 with a case, 6 spec-only, 4 neither
+  - line 72: `fn solve(r: Range<V>) -> Int:`
+  - line 100: `let z = z_function(s[l..])`
+  - line 114: `for (i, x) in a[l..=r].items:`
+  - line 167: `let t = s[l..r].rebase`
+- 05-ownership.md: 56 blocks, 47 with a case, 2 spec-only, 7 neither
   - line 105: `var xs = [1, 2]`
   - line 170: `struct Holder: xs: List<Int>`
+  - line 518: `let d = build_dsu(edges)`
   - line 637: `var xs = [1, 2]`
   - line 646: `var xs = [1, 2]`
   - line 852: `var xs = [3, 1, 2]`
   - line 958: `var xs = [1, 2]`
 - 06-control-functions.md: 3 blocks, 0 with a case, 3 spec-only, 0 neither
-- 07-sequences.md: 7 blocks, 1 with a case, 6 spec-only, 0 neither
+- 07-sequences.md: 7 blocks, 0 with a case, 6 spec-only, 1 neither
+  - line 199: `fn divisors(n: Int) -> yields Int:`
 - 08-traits-generics.md: 4 blocks, 0 with a case, 4 spec-only, 0 neither
 - 09-contexts-checks.md: 3 blocks, 0 with a case, 3 spec-only, 0 neither
 - 10-io.md: 3 blocks, 1 with a case, 2 spec-only, 0 neither
 - 11-modules-prelude.md: 1 blocks, 0 with a case, 1 spec-only, 0 neither
 
-9 of 108 blocks have neither a case nor a spec-only reason.
+16 of 108 blocks have neither a case nor a spec-only reason.
 
 ## Standard library
 
