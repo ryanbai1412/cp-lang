@@ -648,12 +648,13 @@ pub struct Rooted<V, Pre>:
         up
 
     /// A longest simple path in the tree holding `t.root`: `(len, u, v)` with
-    /// `t.dist(u, v) == len`, by two sweeps: `u` is farthest from the root, `v` farthest from `u`.
+    /// `t.dist(u, v) == len` as large as it gets, found in one bottom-up sweep that joins, at each
+    /// vertex, its two deepest child branches.
     ///
     /// cost: O(n)
-    /// ties: in each sweep the farthest vertex first in `t.Pre` order
+    /// ties: the first longest path the sweep (children before parents, `t.Pre` reversed) meets
     /// traps: never
-    /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); t.diameter() == (len: 3, u: 3, v: 2)`
+    /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); t.diameter() == (len: 3, u: 2, v: 4)`
     pub fn diameter(self) -> (len: Int, u: V, v: V):
         var best_len = 0
         var (du, dv) = (root, root)
