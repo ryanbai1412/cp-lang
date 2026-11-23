@@ -1,0 +1,6 @@
+code = "L0589"
+level = "warn"
+group = "idiom"
+title = "Map of lists filled by key in a loop"
+summary = "`for x in xs: (m[k] ??= []).push(v)`: `let m = xs.group(by: x => k, of: x => v)`"
+no_fix = "`group` returns a `HashMap`, and a `Map` the rest of the file walks in key order has to stay a `Map`"

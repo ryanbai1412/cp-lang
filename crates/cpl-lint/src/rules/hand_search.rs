@@ -4,14 +4,15 @@
 //! nearest smaller or greater positions (`monotone_stack_by_hand`), every
 //! subset by its mask (`subset_masks_by_hand`), neighbouring pairs by index
 //! (`adjacent_by_index`), the sort order of positions by value
-//! (`argsort_loop`), a factorial table (`fact_tables_by_hand`) and the top
-//! `k` of a heap (`manual_heap_drain`).
+//! (`argsort_loop`), a factorial table (`fact_tables_by_hand`), the top
+//! `k` of a heap (`manual_heap_drain`), lists grouped by key
+//! (`group_into_map`) and a sliding window sum (`sliding_sum_by_hand`).
 
 use crate::walk::Visitor;
 use crate::{
-    File, Finding, ADJACENT_BY_INDEX, ARGSORT_LOOP, FACT_TABLES_BY_HAND, MANUAL_HEAP_DRAIN,
-    MONOTONE_STACK_BY_HAND, PALINDROME_BY_HAND, SUBMASK_LOOP, SUBSET_MASKS_BY_HAND,
-    TERNARY_SEARCH_BY_HAND,
+    File, Finding, ADJACENT_BY_INDEX, ARGSORT_LOOP, FACT_TABLES_BY_HAND, GROUP_INTO_MAP,
+    MANUAL_HEAP_DRAIN, MONOTONE_STACK_BY_HAND, PALINDROME_BY_HAND, SLIDING_SUM_BY_HAND,
+    SUBMASK_LOOP, SUBSET_MASKS_BY_HAND, TERNARY_SEARCH_BY_HAND,
 };
 use cpl_diag::Diagnostic;
 use cpl_syntax::ast::*;
@@ -318,6 +319,108 @@ impl HandSearch<'_> {
         });
     }
 
+    /// `for x in xs: (m[k] ??= []).push(v)` as the whole body.
+    fn group_into_map(&mut self, pat: &Pattern, iter: &Expr, body: &Block) {
+        // `(m[k] ??= []).push(v)` desugars to several statements; read the source.
+        let span = body.span.shift(self.base);
+        let raw = span.text(self.src);
+        let lines: Vec<_> = raw
+            .lines()
+            .map(|l| l.split("//").next().unwrap_or("").trim())
+            .filter(|l| !l.is_empty())
+            .collect();
+        let [raw] = lines.as_slice() else {
+            return;
+        };
+        let Some((m, rest)) = raw.strip_prefix('(').and_then(|r| r.split_once('[')) else {
+            return;
+        };
+        let Some((key, rest)) = rest.rsplit_once("??=") else {
+            return;
+        };
+        let Some(key) = key.trim_end().strip_suffix(']') else {
+            return;
+        };
+        let Some(v) = squash(rest)
+            .strip_prefix("[]).push(")
+            .and_then(|v| v.strip_suffix(')'))
+            .map(|_| {
+                let at = rest.find(".push(").map_or(0, |i| i + 6);
+                rest[at..rest.len() - 1].trim().to_string()
+            })
+        else {
+            return;
+        };
+        let x = pat.span.shift(self.base).text(self.src).trim();
+        let xs = iter.span.shift(self.base).text(self.src).trim();
+        if !ident(m) || !ident(x) {
+            return;
+        }
+        let xs = if xs.contains("..") {
+            format!("({xs})")
+        } else {
+            xs.to_string()
+        };
+        let of = if v == x {
+            String::new()
+        } else {
+            format!(", of: {x} => {v}")
+        };
+        let diag = Diagnostic::warning(
+            GROUP_INTO_MAP.code,
+            span,
+            format!("`{m}` filled with lists by key, one push per element"),
+        )
+        .with_help(format!(
+            "write `let {m} = {xs}.group(by: {x} => {}{of})` (`std.seq`): the same lists, in input order, with no empty-list default; it is a `HashMap`",
+            key.trim()
+        ));
+        self.out.push(Finding {
+            lint: &GROUP_INTO_MAP,
+            diag,
+        });
+    }
+
+    /// `cur += a[i] - a[i - k]` in a loop over `k..n`.
+    fn sliding_sum(&mut self, pat: &Pattern, iter: &Expr, body: &Block) {
+        let text = |s: cpl_diag::Span| squash(s.shift(self.base).text(self.src));
+        let i = text(pat.span);
+        let it = text(iter.span);
+        let Some((k, _)) = it.split_once("..") else {
+            return;
+        };
+        if !ident(&i) || k.is_empty() {
+            return;
+        }
+        for st in &body.stmts {
+            let t = text(st.span);
+            let Some((cur, rhs)) = t.split_once("+=") else {
+                continue;
+            };
+            let Some((add, sub)) = rhs.split_once('-') else {
+                continue;
+            };
+            let Some(a) = add.strip_suffix(&format!("[{i}]")) else {
+                continue;
+            };
+            if !ident(cur) || !ident(a) || sub != format!("{a}[{i}-{k}]") {
+                continue;
+            }
+            let diag = Diagnostic::warning(
+                SLIDING_SUM_BY_HAND.code,
+                st.span.shift(self.base),
+                format!("`{cur}` kept as the sum of the last `{k}` elements of `{a}` by hand"),
+            )
+            .with_help(format!(
+                "write `let p = Prefix({a})` (`std.prefix`): `p.fold(j - {k}..j)` is the window ending before `j`, for `j` in `{k}..=n`, with no first window to build and no state between iterations"
+            ));
+            self.out.push(Finding {
+                lint: &SLIDING_SUM_BY_HAND,
+                diag,
+            });
+        }
+    }
+
     /// `for _ in 0..k:` popping a heap with `h.pop()!` and never pushing it.
     fn heap_drain(&mut self, stmt: &Stmt, iter: &Expr, body: &Block) {
         let raw = iter.span.shift(self.base).text(self.src).trim();
@@ -508,6 +611,8 @@ impl Visitor for HandSearch<'_> {
             self.adjacent(stmt, pat, iter, body);
             self.fact_table(pat, iter, body);
             self.heap_drain(stmt, iter, body);
+            self.group_into_map(pat, iter, body);
+            self.sliding_sum(pat, iter, body);
         }
         let StmtKind::While {
             cond: Cond::Expr(cond),

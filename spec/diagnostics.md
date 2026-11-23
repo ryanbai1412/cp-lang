@@ -162,6 +162,8 @@ prefix_sum}, L0522 copy_sort_writeback, L0523 chmin_chmax_if, L0524 bool_ternary
 | L0586 | adjacent_by_index | `if i + 1 < n and a[i] .. a[i + 1]` (or `v != V.last!`) in a loop over positions: `for (x, y) in a.adjacent` (`std.seq`) |
 | L0587 | fact_tables_by_hand | `fact[i] = fact[i - 1] * i % P` in a loop: `Comb<Mod<P>>(n)` with `comb.fact(i)`, `comb.inv_fact(i)`, `comb.choose(a, b)` (`std.mod`) |
 | L0588 | manual_heap_drain | `for _ in 0..k:` using `h.pop()!`: `for x in h.drain().take(k)` (`std.heap`) |
+| L0589 | group_into_map | `for x in xs: (m[k] ??= []).push(v)`: `let m = xs.group(by: x => k, of: x => v)` (`std.seq`) |
+| L0590 | sliding_sum_by_hand | `cur += a[i] - a[i - k]` over `k..n`: `Prefix(a)` and `p.fold(j - k..j)` (`std.prefix`) |
 | L0601 | same_place_read_write | `a[l] += inc(mut a[l])`, `xs[0] = xs.pop()!` |
 | L0602 | chain_walked_twice | a lazy chain value consumed twice |
 | L0603 | map_recomputed | `.map(f)` view read many times by index |

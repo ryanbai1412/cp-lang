@@ -5,6 +5,6 @@ for i in 0..k:  // expect: loop_reduction
     cur += a[i]
 var best = cur
 for i in k..n:
-    cur += a[i] - a[i - k]  // expect: missing manual-sliding-window-sum
+    cur += a[i] - a[i - k]  // expect: sliding_sum_by_hand
     best = max(best, cur)  // expect: chmin_chmax_if
 print(best)

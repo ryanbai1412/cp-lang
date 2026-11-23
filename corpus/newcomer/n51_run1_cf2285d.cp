@@ -11,7 +11,7 @@ for x in a:
 fn diff(x: Int) -> Int = ps[x] - (ps[n] - ps[n - x])
 var pos: Map<Int, List<Int>> = Map()
 for x in 1..n:
-    (pos[diff(x)] ??= []).push(x)  // expect: missing group-by-key-loop
+    (pos[diff(x)] ??= []).push(x)  // expect: group_into_map
 fn cnt(val: Int, lo: Int, hi: Int) -> Int:
     if let l = pos.get(val):
         return (l.first_ge(hi) ?? l.len) - (l.first_ge(lo) ?? l.len)
