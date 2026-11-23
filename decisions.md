@@ -8377,3 +8377,9 @@ tag move fatal again.
 - **Call.** `crates/cpl-stress/tests/readable_shapes.rs` builds the input spec of every corpus problem's `spec.cp`, every saved-trace program and every conformance program that builds, and lists each one stress can't generate, with the reason, in `crates/cpl-stress/tests/generate-gaps.txt`. A new gap fails the test; a fixed one must delete its line. The list starts with the 47 gaps that exist today, so `skip_lists` rises by 47.
 - **Why.** A contestant whose program reads one of these shapes gets no cases from `cpl stress`, and nothing measured how many programs that was (debugging/R11).
 - **Reverse.** Delete the test and its list and lower `skip_lists` by the list's length.
+
+## 428. Two traced fed-loop kinds stay in vm_fallbacks for now (compiler, 2026-11-23)
+
+- **Call.** `traced fn:take_all(feeding)` (yields_mut_arg_feeds) and `traced stmt:Return` (yields_generic_from_body) stay in `crates/cpl-cli/tests/vm_fallbacks.txt` as interim lines owned by compiler lane (d). `vm_fallbacks` goes from 74 to 75, still below the 79 main had before 5f43ce3df. Their untraced kinds already run on the VM (ad6b6eb34, 930b17e19).
+- **Why.** A traced run hands a fed loop to the tree-walker, so the traced kinds can't go until the traced feed runs on the VM. Reverting 5f43ce3df would also break stdlib's ordered_drain case.
+- **Reverse.** Run traced fed loops on the VM, delete both lines and their comments, and lower `vm_fallbacks`.
