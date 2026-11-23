@@ -16,7 +16,6 @@
     "crates/cpl-check/src/db.rs": 2506,
     "crates/cpl-stress/src/tests.rs": 2465,
     "crates/cpl-interp/src/trace.rs": 2393,
-    "crates/cpl-lint/src/tests.rs": 2350,
     "crates/cpl-codegen/src/emit.rs": 2214,
     "crates/cpl-check/src/check/call.rs": 2012
   },

@@ -1033,3 +1033,6 @@ mod fix_tests;
 
 #[cfg(test)]
 mod checker_tests;
+
+#[cfg(test)]
+mod fact_tests;
