@@ -10,23 +10,20 @@
 // question need comparing. The dictionary is random, so a block value has
 // about n / 65536 words.
 // original: corpus/submissions/3861375.cpp
-use scout.bits.{U64}
-
 domain Block = 0..16
 let block_bits = 16
 type Word = [Block]Int
 
 let (n, m): (Int, Int) = read()
-let (seed1, seed2): (Str, Str) = read()  // up to 2^64 - 1: too big for an Int
-var (k1, k2) = (U64.parse(seed1), U64.parse(seed2))
+var (k1, k2): (U64, U64) = read()  // up to 2^64 - 1: too big for an Int
 
 /// The statement's generator: an xorshift on two 64-bit words, of which one bit is used.
 fn next_bit() -> Int:
     var (k3, k4) = (k1, k2)
     k1 = k4
-    k3 = k3.xor(k3.shl(23))
-    k2 = k3.xor(k4).xor(k3.shr(17)).xor(k4.shr(26))
-    k2.plus(k4).bit(32)
+    k3 ^= k3 << 23
+    k2 = k3 ^ k4 ^ (k3 >> 17) ^ (k4 >> 26)
+    Int((k2 + k4) >> 32 & U64(1))
 
 var dict: List<Word> = []
 var sharing: [Block]Map<Int, List<Int>> = [Block] b => Map<Int, List<Int>>()  // block value -> words
