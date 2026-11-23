@@ -68,9 +68,36 @@ impl<'a> Lowerer<'a> {
                         _ => false,
                     }
             }),
+            Some(GenArg::Ty(ty)) => {
+                let ty = ty.clone();
+                self.has_plain_impl(&ty, trait_name)
+            }
             _ => false,
         };
         by_impl || self.has_bound_by_shape(param, trait_name)
+    }
+
+    /// `ty` (`Int`, `F64`, ...) has an `impl Tr` written for exactly it, not for a generic type.
+    fn has_plain_impl(&mut self, ty: &Ty, trait_name: &str) -> bool {
+        for idx in 0..self.impls.len() {
+            let imp = &self.impls[idx];
+            if imp.trait_name.as_deref() != Some(trait_name)
+                || !matches!(&imp.target.kind, ast::TypeKind::Named { args, .. } if args.is_empty())
+            {
+                continue;
+            }
+            let (m, offset, target) = (imp.mod_id, imp.offset, imp.target);
+            let saved = (
+                std::mem::replace(&mut self.cur_mod, m),
+                std::mem::replace(&mut self.offset, offset),
+            );
+            let got = self.resolve_ty(target);
+            (self.cur_mod, self.offset) = saved;
+            if got == *ty {
+                return true;
+            }
+        }
+        false
     }
 
     /// An `if const` test, or an `if T: Tr` one, settled at compile time; `None` (reported) when
