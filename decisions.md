@@ -6293,3 +6293,21 @@ constants and the `exit(3)` in the C++ runtime, and the sentence in
   changes, so no perf gate: `counts` still lowers to its own counter.
 - **Reverse.** Put `"Counter"` back in `TYPE_NAMES` and the `Ty::Named`
   row in `crates/cpl-check/src/prelude.rs`, and drop the prelude `use`.
+
+## 261. The landing leads each tab group with programs that run (2026-11-22)
+
+- **Decision.** Each landing tab group opens on a program that runs; programs the compiler can't run yet stay as later tabs with the "0.3 spec" badge. Was site's open question; decided by its recommendation under Ryan's rule to pick reversible calls in line with the goal.
+- **Why.** The first thing a visitor clicks should run, and the 0.3 shape still shows, labelled.
+- **Reverse.** Tab order lives in `runsFirst` in `web/lib/landing.ts`; drop it to restore authoring order.
+
+## 262. Guide code blocks that run are live runners (2026-11-22)
+
+- **Decision.** Every guide or Learn fence the snippet gate measures `runs` gets "Open in playground"; the ones that print something also get Run. The WASM loads only on Run.
+- **Why.** The gate already proves which blocks run, and Run turns reading into checking, which is the docs-only bar.
+- **Reverse.** Drop `remarkLive` from `web/source.config.ts`; blocks go back to static highlighting.
+
+## 263. Learn for v0.3 is short chapters and judged problems up to Div 2 C (2026-11-22)
+
+- **Decision.** Learn stays a short course aimed at Div 2 A-C, not a full course to Div 1: 10 chapters (graphs and DP included, per Ryan's scope "learn: through guides, through practice problems") and 19 judged problems, each compiler-checked in the gate.
+- **Why.** It covers what a first contest needs and stays small enough to keep compiler-checked as the language moves.
+- **Reverse.** Content only: drop pages from `web/content/learn/read/meta.json` and `web/content/learn/practice/meta.json`, or revert the Learn commits.

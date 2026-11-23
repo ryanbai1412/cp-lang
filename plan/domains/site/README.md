@@ -80,7 +80,7 @@ Probes (cold agent, pass/fail + time):
 
 ## Ryan's role
 
-Review rounds on cp-lang.org (Worker preview per change once infra adds previews) with screenshots in the worklog; answer the three questions below. Current screens: [screenshots/](screenshots/).
+Review rounds on cp-lang.org (Worker preview per change once infra adds previews) with screenshots in the worklog; redirect any of the decisions below. Current screens: [screenshots/](screenshots/).
 
 | Desktop | Phone |
 |---|---|
@@ -89,10 +89,10 @@ Review rounds on cp-lang.org (Worker preview per change once infra adds previews
 
 More: [learn](screenshots/learn.jpg), [practice](screenshots/practice.jpg), [playground](screenshots/play-ran.jpg), [problems](screenshots/corpus.jpg).
 
-## Decisions needed from Ryan
+## Decisions made
 
-Filed in [plan/QUESTIONS.md](../../QUESTIONS.md); the default is what I build meanwhile.
+Site has no open questions for Ryan. Each call below was decided by its recommendation under Ryan's rule (reversible, in line with the goal), and is logged in [decisions.md](../../decisions.md) as 261-263.
 
-1. **Landing examples that don't run yet.** Default: lead each landing tab group with runnable programs; spec-only ones stay as later tabs with the "0.3 spec" badge. Applied (reversible, `runsFirst` in `web/lib/landing.ts`): every landing tab group now opens on a program that runs.
-2. **Guide code blocks become live runners.** Default: yes, for blocks whose status is `runs`. Applied (reversible: drop `remarkLive` from `web/source.config.ts`): every guide block that runs has "Open in playground"; the 79 that print something also have Run ([screenshot](screenshots/guide-runner.jpg)).
-3. **Learn for v0.3: breadth or depth.** Default: 8 short chapters + 15 original problems, not a full course. Applied (reversible: revert the two Learn commits, or trim `web/content/learn/read/meta.json` and `practice/meta.json`).
+1. **Landing examples that don't run yet.** Decided: lead each landing tab group with runnable programs; spec-only ones stay as later tabs with the "0.3 spec" badge. Applied (reversible, `runsFirst` in `web/lib/landing.ts`): every landing tab group now opens on a program that runs.
+2. **Guide code blocks become live runners.** Decided: yes, for blocks whose status is `runs`. Applied (reversible: drop `remarkLive` from `web/source.config.ts`): every guide block that runs has "Open in playground"; the 79 that print something also have Run ([screenshot](screenshots/guide-runner.jpg)).
+3. **Learn for v0.3: breadth or depth.** Decided: a short course to Div 2 C, not a full course: 10 chapters (graphs and DP added on Ryan's scope) and 19 judged problems. Reversible: trim `web/content/learn/read/meta.json` and `practice/meta.json`, or revert the Learn commits.
