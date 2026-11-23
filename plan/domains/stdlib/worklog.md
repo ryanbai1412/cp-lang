@@ -195,3 +195,4 @@ Newest first: what landed (commit), evidence, next, blocked, requests from other
 - `KruskalTree.tree`: the nodes as a `Rooted` forest, `Rooted.from_parents` over the lift's parents; doc example passes, interpreter and C++ agree. Test: `std-tree/kruskal-tree-as-rooted-forest.cp`.
 - Doc examples that called a `mut self` method on a temporary (E0401, core 05 R05: a `mut self` call needs a `var`) now bind `var t` first: beats (8), slope (3), segtree `MergeSeg` (1), lazy `Rope` (1). slope and segtree pass; beats and `Rope` now stop at the list-literal-as-`[D]T` gap (GAPS.md fenwick/sparse).
 - `Rooted.shapes`: `tree.cp` called `get_or_insert` without importing it (a library module gets no prelude), so every `shapes` call was E0203; now imported. Test: `std-tree/shapes-groups-isomorphic-subtrees.cp`, interpreter and C++ agree.
+- Filed: the `.pow(...)` rejection also hides methods named `pow` (`Poly.pow(k, n)`).
