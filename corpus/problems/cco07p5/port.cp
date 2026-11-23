@@ -1,4 +1,11 @@
-// CCO '07 P5 — UFO / Moving Target on a Ring (Interactive) (today form for proto/cpc)
+// Source: CCO '07 P5 (Particle Catcher), https://dmoj.ca/problem/cco07p5
+// Problem: interactive. A particle moves v steps per query round a ring of N positions
+//   (2 <= N <= 1e5). `GetSize` gives N; `Look a b` says whether it is in a..b now, then it
+//   moves; finish with `Guess v p`, its velocity and position. At most 1e5 queries.
+// Solution: `Look` random windows of size 2 until one hits; then the next position and the
+//   velocity are among 2N candidates (x + v + j, v). Halve the candidates with `Look 0 mid`
+//   at their median position, keep the consistent ones and advance each by its own v, until
+//   one remains: O(log N) more queries, O(N log N) work per query.
 // original: corpus/submissions/5120565.cpp
 let n: 2..=1000 = ask("GetSize")
 let bsize = 2

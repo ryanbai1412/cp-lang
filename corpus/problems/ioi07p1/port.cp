@@ -1,4 +1,12 @@
-// IOI 2007 P1, Aliens (interactive, buildable today-form)
+// Source: IOI '07 P1 (Aliens), https://dmoj.ca/problem/ioi07p1
+// Problem: interactive. An N x N meadow (15 <= N <= 2e9) holds a crop formation: 13 flattened
+//   M x M squares (M odd, unknown) in a 5 x 5 checkerboard. Given N and one flattened cell
+//   (X0, Y0), ask `examine X Y` (true if flattened) at most 300 times and print
+//   `solution XC YC`, the formation's centre cell.
+// Solution: `reach` finds how far the flattened run goes in one direction by doubling then
+//   binary search (O(log N) asks); left and right give the square side m and the left edge,
+//   down gives the bottom edge. Hop diagonally by m, then by 2m left and down, while still
+//   flattened, to reach the bottom-left square; the centre is that corner + 2m + m / 2.
 // original: corpus/submissions/5111683.cpp
 let n: 15..=2e9 = read()
 let x0: 1..=n = read()

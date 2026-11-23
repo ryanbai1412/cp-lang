@@ -1,9 +1,10 @@
-// NOI 2007 P1 Social Network: n people, m weighted friendships. For each
-// person v, print the sum over ordered pairs (s, t) of the share of shortest
-// s-t paths that pass through v.
-// Solution: Floyd-Warshall that also counts the shortest paths between every
-// pair; v lies on a shortest s-t path iff dist(s, v) + dist(v, t) == dist(s, t),
-// and then carries ways(s, v) * ways(v, t) of the ways(s, t) paths.
+// Source: NOI '07 P1 (Social Network), https://dmoj.ca/problem/noi07p1
+// Problem: a connected graph, n <= 100 vertices, m <= 4500 edges of weight 1..1000; C(s, t)
+//   is the number of shortest s-t paths (<= 1e10) and C(s, t, v) those through v. For each v
+//   print I(v) = sum over s != t, both != v, of C(s, t, v) / C(s, t), to 3 decimals.
+// Solution: Floyd-Warshall that also counts shortest paths (`ways`); v lies on a shortest
+//   s-t path iff dist(s, v) + dist(v, t) == dist(s, t), and then carries
+//   ways(s, v) * ways(v, t) of the ways(s, t) paths. O(n^3).
 // original: corpus/submissions/3756474.cpp
 let (n, m): (1..=100, 1..=4500) = read()
 domain V = 1..=n

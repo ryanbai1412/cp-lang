@@ -1,5 +1,11 @@
-// NOI 2009 Poet (CP Lang 0.2.2): convex 1D DP with monotone decision queue and
-// binary search for transition crossover points.
+// Source: NOI '09 P2 (Little G the Poet), https://dmoj.ca/problem/noi09p2
+// Problem: N <= 1e5 sentences (length <= 30), in order, set into lines joined by single
+//   spaces; a line of length x costs |x - L|^P (L <= 3e6, P <= 10). Minimise the total: print
+//   it and the lines, or "Too hard to arrange" if it exceeds 1e18; then 20 dashes. Multitest.
+// Solution: best[i] = min over j of best[j] + |len(j+1..i) - L|^P; the cost is convex, so
+//   decisions are monotone. `wins` is a queue of (first i, decision j): a new decision pops
+//   entries it beats at their start, then binary-searches (`first_true`) where it overtakes
+//   the last one. Compared in F64, total printed exactly from the `cut` chain: O(N log N).
 // original: corpus/submissions/5108899.cpp
 
 let dashes = "--------------------"

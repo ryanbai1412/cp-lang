@@ -1,4 +1,12 @@
-// IOI 2000 Day 1 P2, Car Parking (buildable today-form)
+// Source: IOI '00 P2 (Car Parking), https://dmoj.ca/problem/ioi00p2
+// Problem: a row of n <= 20000 parked cars of types 1..m (m <= 50) and w workers,
+//   2 <= w <= m. In a round each worker drives one car out and parks it in a slot freed in
+//   the same round. Sort the row by type in at most ceil(n / (w - 1)) rounds; print the rounds.
+// Solution: `want` is the sorted row and cursor[t] the next slot of type t's block that may
+//   still be wrong. A round walks left to right: at the first misplaced slot i, follow the
+//   chain (car goes to its block's next misplaced slot, the car there moves on, ...) until a
+//   car belonging at i turns up or only two drivers are left, then the carried car fills i.
+//   Every driver but one per chain fixes a slot, so each round fixes about w - 1 cars: O(n).
 // original: corpus/submissions/4682555.cpp
 // stdin: n m w, then the n car types. stdout: the number of rounds, then
 // per round the number of drivers and their (from, to) slots.
