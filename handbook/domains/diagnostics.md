@@ -163,7 +163,7 @@ with no real check yet. Targets and current values are in
 |---|---|---|---|
 | An offered fix leaves a program that checks | fixes that leave errors | `errors/R9`: design: `cpl_ir::fix` applies a candidate only if the result re-checks; suites over every trigger and scoreboard | `crates/cpl-ir/src/fix.rs`, `catalogue.rs`, `recovery.rs` |
 | A fix keeps what the program does | programs whose output changes after a fix | `errors/R9`: differential suite over every runnable program in the repository | `crates/cpl-cli/tests/fix_behavior.rs` |
-| Fixes converge: applying them twice changes nothing | non-idempotent fixes | `errors/R9`: `missing` | — |
+| Fixes converge: applying them twice changes nothing | broken ports and golden fix cases where a second `cpl fix` still applies a fix | `errors/R9`: generated suite over every fixable broken port, gated at 0 | `crates/cpl-cli/tests/recovery.rs` `recovery_scoreboard`, `diagnostics.rs` `golden_fixes` |
 | CLI, editor and playground apply the same fixes | fix-all results differing from `cpl fix` | `errors/R12`: differential suite | `crates/cpl-wasm/tests/parity.rs` `fix_all_matches_cpl_fix` |
 | Recoverable errors carry a fix | share with a fix | `errors/R8`: ratchet | `recovery.rs`, `plan/domains/diagnostics/metrics.toml` |
 

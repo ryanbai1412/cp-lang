@@ -243,17 +243,16 @@ impl<'a> Parser<'a> {
         } else {
             let at = self.error_span();
             let found = self.peek().describe();
-            self.error(
-                Diagnostic::error(
-                    codes::EXPECTED_TOKEN,
-                    at,
-                    format!(
-                        "expected `:` or `=` to start the body of `{}`, found {found}",
-                        name.text
-                    ),
-                )
-                .with_fix("insert `:`", Span::point(at.start), ":"),
+            let diag = Diagnostic::error(
+                codes::EXPECTED_TOKEN,
+                at,
+                format!(
+                    "expected `:` or `=` to start the body of `{}`, found {found}",
+                    name.text
+                ),
             );
+            let diag = self.with_insert_fix(diag, at, ":");
+            self.error(diag);
             if self.at(T::Newline) && self.peek_n(1) == T::Indent {
                 FnBody::Block(self.block("the signature"))
             } else {

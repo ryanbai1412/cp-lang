@@ -221,6 +221,8 @@ struct Tally {
     fixable: u32,
     /// Files that applying the fixes turns back into the port.
     restored: u32,
+    /// Files where `cpl fix` run on its own output still applies a fix.
+    unconverged: u32,
 }
 
 impl Tally {
@@ -232,6 +234,7 @@ impl Tally {
         self.first_right += other.first_right;
         self.fixable += other.fixable;
         self.restored += other.restored;
+        self.unconverged += other.unconverged;
     }
 
     fn row(&self, name: &str, restore: bool) -> String {
@@ -368,13 +371,23 @@ fn score(b: &Broken, restore: bool) -> (Tally, Option<(String, FirstFix)>) {
         }
     }
     t.fixable = errs.iter().filter(|d| !d.fixes.is_empty()).count() as u32;
-    if !restore {
-        return (t, Some((errs[0].code.0.to_string(), first)));
-    }
     let fixed = (t.fixable > 0).then(|| {
         let (once, _) = cpl_lint::apply_fixes(&b.src, &errs);
         cpl_cli::apply_error_fixes(&b.path, &once).0
     });
+    if let Some(f) = &fixed {
+        let (again, n) = cpl_cli::apply_error_fixes(&b.path, f);
+        t.unconverged = (n > 0) as u32;
+        if std::env::var("RECOVERY_SHOW").is_ok_and(|e| e == "unconverged") && n > 0 {
+            println!("--- {} {}", b.path, b.edit);
+            for (x, y) in f.lines().zip(again.lines()).filter(|(x, y)| x != y) {
+                println!("    {x}\n => {y}");
+            }
+        }
+    }
+    if !restore {
+        return (t, Some((errs[0].code.0.to_string(), first)));
+    }
     t.restored = fixed.as_deref().is_some_and(|f| f == b.original) as u32;
     if std::env::var("RECOVERY_SHOW").is_ok_and(|e| e == "unrestored") && t.restored == 0 {
         let at = |s: &str| s.lines().nth(b.line as usize).unwrap_or("").to_string();
@@ -642,6 +655,11 @@ fn recovery_scoreboard() {
         "cascaded-error rate rose above 0.01 per broken port ({} / {})",
         ports.cascaded,
         ports.files
+    );
+    // `errors/R9`: a second `cpl fix` changes nothing.
+    assert_eq!(
+        ports.unconverged, 0,
+        "`cpl fix` did not converge; see RECOVERY_SHOW=unconverged"
     );
     assert!(
         recoverable.fixable as f64 >= 0.95 * recoverable.errors as f64,

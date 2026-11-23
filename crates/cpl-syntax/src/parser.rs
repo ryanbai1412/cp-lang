@@ -385,9 +385,25 @@ impl<'a> Parser<'a> {
         let found = self.peek().describe();
         let mut diag = Diagnostic::error(code, span, format!("expected {what}, found {found}"));
         if let Some(text) = fix {
-            diag = diag.with_fix(format!("insert `{text}`"), Span::point(span.start), text);
+            diag = self.with_insert_fix(diag, span, text);
         }
         self.error(diag);
+    }
+
+    /// `diag` with a fix inserting `text` at `at`, or, when the token there
+    /// starts with `text` (`None:: 1` where `:` belongs), one replacing that
+    /// token: an inserted `:` would glue onto the `::` again.
+    fn with_insert_fix(&self, diag: Diagnostic, at: Span, text: &str) -> Diagnostic {
+        let glued = self.text();
+        if self.at_line_end() || glued.len() <= text.len() || !glued.starts_with(text) {
+            return diag.with_fix(format!("insert `{text}`"), Span::point(at.start), text);
+        }
+        let rest = &glued[text.len()..];
+        let with = match rest.chars().all(|c| text.contains(c)) {
+            true => text.to_string(),
+            false => format!("{text} {rest}"),
+        };
+        diag.with_fix(format!("replace `{glued}` with `{with}`"), at, with)
     }
 
     /// Expects `kind`, described as `what` ("`)` to close the call").

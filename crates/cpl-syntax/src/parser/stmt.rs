@@ -1746,7 +1746,7 @@ impl<'a> Parser<'a> {
                     let title = "write `:` and drop the braces".into();
                     diag.fixes.push(cpl_diag::Fix { title, edits });
                 } else if !ends_in_colon {
-                    diag = diag.with_fix("insert `:`", Span::point(at.start), ":");
+                    diag = self.with_insert_fix(diag, at, ":");
                 }
                 self.error(diag);
             }
