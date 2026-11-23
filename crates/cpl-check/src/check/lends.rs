@@ -58,6 +58,10 @@ const MUTATORS: &[&str] = &[
 const LENGTH_CHANGING_MUTATORS: &[&str] = &[
     "push", "pop", "clear", "insert", "remove", "take", "resize", "truncate", "reserve", "extend",
 ];
+/// `xs.take()` empties `xs`; `xs.take(k)` is a view of its first `k`.
+fn mutating_call(name: &str, args: &[Arg]) -> bool {
+    MUTATORS.contains(&name) && !(name == "take" && !args.is_empty())
+}
 /// Methods that store their arguments in the receiver.
 const STORES: &[&str] = &["push", "insert", "set", "set_at", "add"];
 
@@ -604,7 +608,7 @@ impl Visitor for Written {
                 self.add(root_name(&arg.value));
             }
             if let ExprKind::Field { base, name } = &callee.kind {
-                if MUTATORS.contains(&name.text.as_str()) {
+                if mutating_call(&name.text, args) {
                     self.add(root_name(base));
                 }
             }
@@ -701,7 +705,7 @@ impl Visitor for Touched {
                     self.written.add(root_name(&arg.value));
                 }
                 match &callee.kind {
-                    ExprKind::Field { base, name } if MUTATORS.contains(&name.text.as_str()) => {
+                    ExprKind::Field { base, name } if mutating_call(&name.text, args) => {
                         self.written.add(root_name(base));
                     }
                     ExprKind::Name(name) if !self.calls.contains(name) => {
@@ -1997,7 +2001,7 @@ impl<'a> Checker<'a> {
                             .is_some_and(|m| m.mutators.contains(&name.text)),
                         _ => false,
                     };
-                    if own || MUTATORS.contains(&name.text.as_str()) {
+                    if own || mutating_call(&name.text, args) {
                         let root = root_name(base).unwrap_or("what it is called on");
                         return Some((call.span, format!("changes `{root}`")));
                     }
@@ -2246,7 +2250,7 @@ impl<'a> Checker<'a> {
                 self.0
                     .extend(args.iter().filter(|a| a.mutable).map(|a| a.value.clone()));
                 if let ExprKind::Field { base, name } = &callee.kind {
-                    if MUTATORS.contains(&name.text.as_str()) {
+                    if mutating_call(&name.text, args) {
                         self.0.push((**base).clone());
                     }
                 }
@@ -2633,13 +2637,10 @@ impl<'a> Checker<'a> {
         let ExprKind::Field { base, name } = &callee.kind else {
             return;
         };
-        if !MUTATORS.contains(&name.text.as_str()) {
+        let ExprKind::Call { args, .. } = &call.kind else {
             return;
-        }
-        // `xs.take()` empties `xs`; `xs.take(k)` is a view of its first `k`.
-        if name.text == "take"
-            && matches!(&call.kind, ExprKind::Call { args, .. } if !args.is_empty())
-        {
+        };
+        if !mutating_call(&name.text, args) {
             return;
         }
         if name.text == "sort" {

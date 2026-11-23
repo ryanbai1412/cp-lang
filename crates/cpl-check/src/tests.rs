@@ -1143,6 +1143,15 @@ fn a_let_bound_slice_keeps_its_array_lent_until_its_last_use() {
 }
 
 #[test]
+fn a_piece_of_a_read_view_keeps_the_lend_a_read() {
+    let src = "let a = [10, 20, 30]\nlet s = a[0..3]\nprint(a[0])\nprint(List(s.take(2)))\n";
+    assert_eq!(check(src), vec![]);
+    let diags = check("var a = [10, 20, 30]\nlet s = a[0..3]\na[0] = 1\nprint(List(s.take(2)))\n");
+    assert_eq!(diags.len(), 1, "{diags:#?}");
+    assert_eq!(diags[0].code.0, "E0602");
+}
+
+#[test]
 fn a_lent_slice_is_not_stored_assigned_or_returned() {
     for (body, what) in [
         ("var keep = a[l..=r]\n", "`var keep`"),
