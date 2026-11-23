@@ -298,6 +298,12 @@ pub fn exec<S: AsRef<str>>(
             let mut errors = Vec::new();
             let code = tool(command).unwrap()(&args, stdout, &mut errors);
             *stderr += &String::from_utf8_lossy(&errors);
+            if command == "test" && code == 0 && !args.iter().any(|a| a.starts_with("--")) {
+                *stderr += &format!(
+                    "next: `cpl submit {}` builds what the judge gets and checks it on these cases\n",
+                    args[0]
+                );
+            }
             code
         }
         Some("lsp") => usage_error("`lsp` talks to an editor over stdio and takes no files".into()),

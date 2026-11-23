@@ -551,6 +551,11 @@ fn report(
                     n => format!("{n} samples"),
                 }
             );
+            let _ = writeln!(
+                stdout,
+                "  next: write it; `cpl test {}` runs the samples",
+                created[0].display()
+            );
             0
         }
         Err(message) => {

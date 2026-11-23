@@ -319,6 +319,11 @@ pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u
     if created {
         let _ = writeln!(stdout, "  created {}", source.display());
         let _ = writeln!(stdout, "  created {}/ ({count})", tests.display());
+        let _ = writeln!(
+            stdout,
+            "  next: write it; `cpl test {}` runs the samples",
+            source.display()
+        );
     } else {
         let _ = writeln!(stdout, "  wrote {count} to {}/", tests.display());
     }

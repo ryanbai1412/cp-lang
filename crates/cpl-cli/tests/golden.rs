@@ -137,7 +137,7 @@ fn fetch_writes_a_pages_samples_and_keeps_other_tests() {
     assert_eq!(out.status.code(), Some(0), "{}", text(&out.stderr));
     assert_eq!(
         text(&out.stdout),
-        "  created a.cp\n  created a.tests/ (2 samples)\n"
+        "  created a.cp\n  created a.tests/ (2 samples)\n  next: write it; `cpl test a.cp` runs the samples\n"
     );
     let source = std::fs::read_to_string(dir.join("a.cp")).unwrap();
     assert!(
@@ -1113,4 +1113,31 @@ fn locate_names_the_part_whose_alt_disagrees() {
     );
     let out = cpl(&dir, &["locate", "p", "a", "b"]);
     assert_eq!(out.status.code(), Some(EXIT_USAGE.into()));
+}
+
+/// Each step of the contest flow names the next: `new` names `test`, a
+/// passing `test` names `submit`; JSON output stays one object.
+#[test]
+fn passing_samples_point_at_submit() {
+    let dir = scratch("next-step");
+    std::fs::write(dir.join("a.cp"), "let n: Int = read()\nprint(n + 1)\n").unwrap();
+    std::fs::create_dir_all(dir.join("a.tests")).unwrap();
+    std::fs::write(dir.join("a.tests/1.in"), "1\n").unwrap();
+    std::fs::write(dir.join("a.tests/1.out"), "2\n").unwrap();
+    let out = cpl(&dir, &["test", "a"]);
+    assert_eq!(out.status.code(), Some(0), "{}", text(&out.stderr));
+    assert!(
+        text(&out.stderr).contains("next: `cpl submit a` builds"),
+        "{}",
+        text(&out.stderr)
+    );
+    let out = cpl(&dir, &["test", "a", "--json"]);
+    assert_eq!(text(&out.stderr), "");
+    std::fs::write(dir.join("a.tests/1.out"), "3\n").unwrap();
+    let out = cpl(&dir, &["test", "a"]);
+    assert!(
+        !text(&out.stderr).contains("next:"),
+        "{}",
+        text(&out.stderr)
+    );
 }
