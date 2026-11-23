@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- Landed (this): golden test that `submit`, `cover`, `explain`, `profile`, `test` and `doc` exit 1 on a program with an error, a failing case or an unreadable file; 19/23 commands now assert all four (`measure.py golden`). Found: `cpl lint bad.cp` on a file with a type error prints `0 errors` and exits 0; `cpl test` on a file with no cases says so before checking it. Both open, not changed.
 - Landed (this): `measure.py golden` reports per command which of help, usage error, success and failing exit its tests assert: 13/23 have all four. `cpl new` on an existing name exits 1 and keeps the file (tested).
 - Landed (this): VS Code tables list `turn` as a prelude value (spec/std/prelude.cp now imports it), which turned the no-phantom-symbols unit test red; the LSP wire test accepts every `insert )` alternative E0101 now offers, preferred first. VS Code unit tests 37/37 (`npm test`).
 - From infra (sheriff): added `spanning_tree` (stdlib f35ea9799) to `editors/vscode/src/languageData.ts` STDLIB_VALUES and the grammar's stdlib-function rule to make `vscode_sync` green again.

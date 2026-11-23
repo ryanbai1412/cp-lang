@@ -453,3 +453,48 @@ fn replay_names_what_it_needs() {
         "`replay` needs a file, --trace and --step",
     );
 }
+
+#[test]
+fn a_program_with_an_error_or_a_failing_case_exits_1() {
+    let dir = scratch("exits");
+    let source = "let n: 1..=10 = read()\nif n > 5:\n    print(1)\nelse:\n    print(0)\n";
+    std::fs::write(dir.join("a.cp"), source).unwrap();
+    std::fs::write(dir.join("bad.cp"), "let x: Int = \"a\"\n").unwrap();
+    std::fs::create_dir_all(dir.join("a.tests")).unwrap();
+    std::fs::write(dir.join("a.tests/1.in"), "7\n").unwrap();
+    std::fs::write(dir.join("a.tests/1.out"), "1\n").unwrap();
+    std::fs::create_dir_all(dir.join("bad.tests")).unwrap();
+    std::fs::write(dir.join("bad.tests/1.in"), "\n").unwrap();
+    std::fs::write(dir.join("bad.tests/1.out"), "\n").unwrap();
+    let passes = |args: &[&str], says: &str| {
+        let out = cpl(&dir, args);
+        assert_eq!(
+            out.status.code(),
+            Some(0),
+            "{args:?}: {}",
+            text(&out.stderr)
+        );
+        assert!(
+            text(&out.stdout).contains(says),
+            "{args:?}: {}",
+            text(&out.stdout)
+        );
+    };
+    let fails = |args: &[&str], says: &str| {
+        let out = cpl(&dir, args);
+        assert_eq!(out.status.code(), Some(EXIT_ERRORS.into()), "{args:?}");
+        let report = text(&out.stdout) + &text(&out.stderr);
+        assert!(report.contains(says), "{args:?}: {report}");
+    };
+    passes(&["submit", "a.cp"], "ready to send: a.cpp");
+    passes(&["cover", "a.cp"], "3 of 4 lines covered");
+    fails(&["explain", "bad.cp"], "error[E0302]");
+    fails(&["profile", "bad.cp"], "error[E0302]");
+    fails(&["cover", "bad.cp"], "error[E0302]");
+    fails(&["submit", "bad.cp"], "error[E0302]");
+    fails(&["test", "bad.cp"], "error[E0302]");
+    fails(&["doc", "missing.cp"], "can't read missing.cp");
+    std::fs::write(dir.join("a.tests/1.out"), "0\n").unwrap();
+    fails(&["test", "a.cp"], "0/1 passed");
+    fails(&["submit", "a.cp"], "not ready to send");
+}
