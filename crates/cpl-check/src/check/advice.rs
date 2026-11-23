@@ -991,3 +991,32 @@ pub(crate) fn suggest_member(
         edits: vec![(at, import), (span, s)],
     });
 }
+
+impl<'a> Checker<'a> {
+    /// `Set` or `Map` when `expr` is a `.range(..)` view of one, through
+    /// parens and `.rev`: a view whose length isn't counted.
+    pub(super) fn uncounted_sorted_range_owner(&mut self, expr: &Expr) -> Option<&'static str> {
+        let mut cur = expr;
+        loop {
+            match &cur.kind {
+                ExprKind::Paren(inner) => cur = inner,
+                ExprKind::Field { base, name } if name.text == "rev" => cur = base,
+                ExprKind::Call { callee, .. } => {
+                    let ExprKind::Field { base, name } = &callee.kind else {
+                        return None;
+                    };
+                    if name.text != "range" {
+                        return None;
+                    }
+                    let base_ty = self.quietly(|c| c.infer(base));
+                    return match base_ty {
+                        Ty::Named { name, .. } if name == "Set" => Some("Set"),
+                        Ty::Named { name, .. } if name == "Map" => Some("Map"),
+                        _ => None,
+                    };
+                }
+                _ => return None,
+            }
+        }
+    }
+}

@@ -3903,31 +3903,6 @@ impl Checker<'_> {
         }
     }
 
-    fn uncounted_sorted_range_owner(&mut self, expr: &Expr) -> Option<&'static str> {
-        let mut cur = expr;
-        loop {
-            match &cur.kind {
-                ExprKind::Paren(inner) => cur = inner,
-                ExprKind::Field { base, name } if name.text == "rev" => cur = base,
-                ExprKind::Call { callee, .. } => {
-                    let ExprKind::Field { base, name } = &callee.kind else {
-                        return None;
-                    };
-                    if name.text != "range" {
-                        return None;
-                    }
-                    let base_ty = self.quietly(|c| c.infer(base));
-                    return match base_ty {
-                        Ty::Named { name, .. } if name == "Set" => Some("Set"),
-                        Ty::Named { name, .. } if name == "Map" => Some("Map"),
-                        _ => None,
-                    };
-                }
-                _ => return None,
-            }
-        }
-    }
-
     fn coalesce_ty(&mut self, left: Ty, right: Ty, rhs: &Expr) -> Ty {
         // `o ?? return`: the right side never gives a value.
         let diverges = matches!(&rhs.kind, ExprKind::Block(block) if matches!(
