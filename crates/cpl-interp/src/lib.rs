@@ -800,7 +800,11 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                     cpl_ir::walk::deep_exprs(&c.body, &mut check);
                 }
             }
-            if self.profiler.is_none() && !has_mut_view {
+            // `CPL_TRACE_ENGINE=tree` traces on the tree-walker, as wasm builds
+            // do; trace_goldens holds both engines to the saved traces.
+            let tree = self.observed()
+                && std::env::var_os("CPL_TRACE_ENGINE").is_some_and(|e| e == "tree");
+            if self.profiler.is_none() && !has_mut_view && !tree {
                 let traced = self.observed();
                 self.vm = Some(Rc::new(vm::CompiledProgram::compile(
                     program,

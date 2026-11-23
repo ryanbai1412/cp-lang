@@ -60,7 +60,7 @@ Next steps: replay (M1.5) on compiler's snapshot/restore; `Gen` with compiler; t
 3. Tracing a 10^7-step run stays inside the budget test: at most 1.2x the untraced run (Ryan: "at most like +20% to interpreter speeds"), < 500 MB, step back < 50 ms. Tracing off costs nothing: the interpreter is built once over a no-op observer.
 4. The three `examples/debugging/` demos compile on v0.3 and run the whole loop; their screenshots are current.
 5. The viewer has a browser test in `scripts/check.sh`; the playground's Trace works on every runnable docs example.
-6. One trace engine: `CPL_TRACE_ENGINE=tree` and its parity test are gone, replaced by recorded goldens (`crates/cpl-cli/tests/trace_goldens.rs`, done).
+6. One trace engine: `CPL_TRACE_ENGINE=tree` and its parity test are gone, replaced by recorded goldens. The goldens are in (`crates/cpl-cli/tests/trace_goldens.rs`); both engines are held to them, and `CPL_TRACE_ENGINE=tree` goes once the browser traces on the VM.
 
 ## Milestones
 

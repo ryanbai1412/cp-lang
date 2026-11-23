@@ -1,6 +1,8 @@
 //! A traced run of every program in `tests/programs` records the trace
-//! saved next to it in `<name>.trace`. After a change that is meant to
-//! change traces, run with `CPL_BLESS=1` and review the diff.
+//! saved next to it in `<name>.trace`, on the VM and on the tree-walker
+//! the browser traces on while wasm builds leave out the VM. After a
+//! change that is meant to change traces, run with `CPL_BLESS=1` and
+//! review the diff.
 //!
 //! A saved trace is the run's variables and steps, one step a line, and
 //! what it printed to standard error. Past 8 KB it keeps the first lines
@@ -11,24 +13,28 @@ use std::process::{Command, Stdio};
 
 const KEPT: usize = 8 << 10;
 
-/// The trace `program` records, as saved.
-fn traced(program: &Path) -> String {
+/// The trace `program` records, as saved, on the tree-walker if `tree`.
+fn traced(program: &Path, tree: bool) -> String {
     let input = program.with_extension("in");
     let stdin = match std::fs::File::open(&input) {
         Ok(file) => Stdio::from(file),
         Err(_) => Stdio::null(),
     };
-    let out = Command::new(env!("CARGO_BIN_EXE_cpl"))
-        .args([
-            "run",
-            program.to_str().unwrap(),
-            "--trace",
-            "--format",
-            "json",
-        ])
-        .stdin(stdin)
-        .output()
-        .unwrap();
+    let mut cpl = Command::new(env!("CARGO_BIN_EXE_cpl"));
+    cpl.args([
+        "run",
+        program.to_str().unwrap(),
+        "--trace",
+        "--format",
+        "json",
+    ])
+    .stdin(stdin);
+    if tree {
+        cpl.env("CPL_TRACE_ENGINE", "tree");
+    } else {
+        cpl.env_remove("CPL_TRACE_ENGINE");
+    }
+    let out = cpl.output().unwrap();
     let document = String::from_utf8_lossy(&out.stdout).replace("\r\n", "\n");
     // The title and source come first and depend on the checkout.
     let from = document.find("\"variables\":").unwrap_or(0);
@@ -88,36 +94,39 @@ fn every_program_records_its_saved_trace() {
                 scope.spawn(move || {
                     let mut differ = Vec::new();
                     for program in *chunk {
-                        let got = traced(program);
                         let golden = program.with_extension("trace");
                         if bless {
-                            std::fs::write(&golden, &got).unwrap();
-                            continue;
+                            std::fs::write(&golden, traced(program, false)).unwrap();
                         }
-                        let want = std::fs::read_to_string(&golden)
-                            .unwrap_or_default()
-                            .replace("\r\n", "\n");
-                        if got != want {
-                            let at = got
-                                .lines()
-                                .zip(want.lines())
-                                .position(|(g, w)| g != w)
-                                .unwrap_or(got.lines().count().min(want.lines().count()));
-                            let line = |text: &str| {
-                                text.lines()
-                                    .nth(at)
-                                    .unwrap_or("")
-                                    .chars()
-                                    .take(300)
-                                    .collect::<String>()
-                            };
-                            differ.push(format!(
-                                "{} line {}:\n  got  {}\n  want {}",
-                                golden.file_name().unwrap().to_string_lossy(),
-                                at + 1,
-                                line(&got),
-                                line(&want)
-                            ));
+                        let Ok(want) = std::fs::read_to_string(&golden) else {
+                            differ.push(format!("{} is not saved", golden.display()));
+                            continue;
+                        };
+                        let want = want.replace("\r\n", "\n");
+                        for (engine, tree) in [("vm", false), ("tree-walker", true)] {
+                            let got = traced(program, tree);
+                            if got != want {
+                                let at = got
+                                    .lines()
+                                    .zip(want.lines())
+                                    .position(|(g, w)| g != w)
+                                    .unwrap_or(got.lines().count().min(want.lines().count()));
+                                let line = |text: &str| {
+                                    text.lines()
+                                        .nth(at)
+                                        .unwrap_or("")
+                                        .chars()
+                                        .take(300)
+                                        .collect::<String>()
+                                };
+                                differ.push(format!(
+                                    "{} on the {engine}, line {}:\n  got  {}\n  want {}",
+                                    golden.file_name().unwrap().to_string_lossy(),
+                                    at + 1,
+                                    line(&got),
+                                    line(&want)
+                                ));
+                            }
                         }
                     }
                     differ
