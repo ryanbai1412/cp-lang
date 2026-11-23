@@ -2625,6 +2625,7 @@ impl<'a> Lowerer<'a> {
                     | ast::ExprKind::Paren(_)
                     | ast::ExprKind::Block(_)
                     | ast::ExprKind::Tuple(_)
+                    | ast::ExprKind::Range { .. }
             ) {
                 match operands.last() {
                     Some((prev, _)) => self.expr(e, Some(&prev.ty)),
