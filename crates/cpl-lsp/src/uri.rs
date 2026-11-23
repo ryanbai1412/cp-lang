@@ -35,24 +35,6 @@ fn has_drive(path: &str) -> bool {
     b.len() >= 2 && b[0].is_ascii_alphabetic() && b[1] == b':'
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn file_uris_escape_spaces_and_mark_drives() {
-        assert_eq!(
-            file_uri("/home/a/my code/x.cp"),
-            "file:///home/a/my%20code/x.cp"
-        );
-        assert_eq!(
-            file_uri("C:\\Users\\a b\\x.cp"),
-            "file:///C:/Users/a%20b/x.cp"
-        );
-        assert_eq!(file_uri("/bench/solution.cp"), "file:///bench/solution.cp");
-    }
-}
-
 /// A standard library module built into the compiler (`std/heap.cp`),
 /// written out under the user's cache directory so an editor can open it.
 /// The copy sits below `std/`, so opening it is treated as the stdlib.
@@ -75,4 +57,22 @@ fn bundled_std_file(path: &str) -> Option<std::path::PathBuf> {
         std::fs::write(&file, text).ok()?;
     }
     Some(file)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn file_uris_escape_spaces_and_mark_drives() {
+        assert_eq!(
+            file_uri("/home/a/my code/x.cp"),
+            "file:///home/a/my%20code/x.cp"
+        );
+        assert_eq!(
+            file_uri("C:\\Users\\a b\\x.cp"),
+            "file:///C:/Users/a%20b/x.cp"
+        );
+        assert_eq!(file_uri("/bench/solution.cp"), "file:///bench/solution.cp");
+    }
 }
