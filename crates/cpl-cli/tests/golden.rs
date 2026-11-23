@@ -1409,13 +1409,23 @@ fn setup_unpacks_the_jetbrains_plugin_into_each_ide() {
     ] {
         std::fs::create_dir_all(dir.join("config/JetBrains").join(ide)).unwrap();
     }
-    // Present already, so the test downloads nothing.
-    std::fs::create_dir_all(dir.join("data/JetBrains/IdeaIC2024.3/lsp4ij/lib")).unwrap();
-    std::fs::write(
-        dir.join("data/JetBrains/IdeaIC2024.3/lsp4ij/lib/lsp4ij.jar"),
-        "x",
+    // Every IDE gets LSP4IJ. The version setup pins is present already, so
+    // the test downloads nothing.
+    let pinned = std::fs::read_to_string(
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("../../editors/jetbrains/gradle.properties"),
     )
+    .unwrap()
+    .lines()
+    .find_map(|line| {
+        line.strip_prefix("lsp4ijVersion = ")
+            .map(|v| v.trim().to_string())
+    })
     .unwrap();
+    for ide in ["IntelliJIdea2025.1", "IdeaIC2024.3"] {
+        let lib = dir.join("data/JetBrains").join(ide).join("lsp4ij/lib");
+        std::fs::create_dir_all(&lib).unwrap();
+        std::fs::write(lib.join(format!("lsp4ij-{pinned}.jar")), "x").unwrap();
+    }
     let made = Command::new("python3")
         .args([
             "-c",
@@ -1478,19 +1488,26 @@ fn setup_unpacks_the_jetbrains_plugin_into_each_ide() {
     assert_eq!(out.status.code(), Some(1));
     let said = text(&out.stderr);
     assert!(
-        said.contains("IntelliJIdea2025.1: CP Lang loaded (CP Lang (0.3.0))"),
+        said.contains("IntelliJIdea2025.1: CP Lang (0.3.0) loaded without LSP4IJ"),
         "{said}"
     );
     assert!(
         said.contains("IdeaIC2024.3: CP Lang did not load") && said.contains("modules.ultimate"),
         "{said}"
     );
-    log(
-        "IdeaIC2024.3",
-        &format!("{started}INFO - Loaded custom plugins: CP Lang (0.3.0), LSP4IJ (0.19.4)\n"),
-    );
+    for ide in ["IntelliJIdea2025.1", "IdeaIC2024.3"] {
+        log(
+            ide,
+            &format!("{started}INFO - Loaded custom plugins: CP Lang (0.3.0), LSP4IJ (0.19.4)\n"),
+        );
+    }
     let out = setup(&["jetbrains", "--check"]);
     assert_eq!(out.status.code(), Some(0), "{}", text(&out.stderr));
+    assert!(
+        text(&out.stdout).contains("IntelliJIdea2025.1: CP Lang loaded"),
+        "{}",
+        text(&out.stdout)
+    );
 }
 
 /// The contest flow from a Competitive Companion problem to the clipboard:
