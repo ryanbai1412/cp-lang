@@ -109,6 +109,46 @@ fn every_builtin_runs_the_program_on_a_1_gb_thread_stack() {
     }
 }
 
+/// macOS caps `ulimit -s` at 64 MB: a program on its own thread runs anyway,
+/// one on `main` stops with 125 and says which stack it lacks.
+#[cfg(unix)]
+#[test]
+fn a_capped_stack_stops_only_the_program_that_runs_on_main() {
+    let capped = |profile: &Profile| {
+        let mut argv = vec![
+            "sh".into(),
+            "-c".into(),
+            "ulimit -Hs 65536 && exec \"$@\"".into(),
+            "sh".into(),
+        ];
+        argv.extend(profile.on_stack("true".into()));
+        let ran = std::process::Command::new(&argv[0])
+            .args(&argv[1..])
+            .output()
+            .unwrap();
+        (
+            ran.status.code(),
+            String::from_utf8_lossy(&ran.stderr).into_owned(),
+        )
+    };
+    let codeforces = builtins()
+        .into_iter()
+        .find(|p| p.name == "codeforces")
+        .unwrap();
+    assert_eq!(codeforces.stack, Stack::Bytes(256 << 20));
+    assert_eq!(capped(&codeforces), (Some(0), String::new()));
+    let main_only = Profile {
+        thread_stack: None,
+        ..codeforces
+    };
+    let (code, said) = capped(&main_only);
+    assert_eq!(code, Some(125));
+    assert!(
+        said.contains("can't give the program the 256 MB stack of judge `codeforces`"),
+        "{said}"
+    );
+}
+
 #[test]
 fn a_project_sets_the_thread_stack_or_says_the_judge_allows_no_threads() {
     let toml = "[judge]\njudge = \"olympiad\"\n[judge.olympiad]\nextends = \"generic\"\nthread_stack_mb = 0\n";

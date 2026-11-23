@@ -188,14 +188,22 @@ impl Profile {
         self.local_with(compiler)
     }
 
-    /// The command that runs `binary` on the judge's stack, or exits 125
-    /// saying so when this machine can't give it that stack.
+    /// The command that runs `binary` on the judge's stack. A program that
+    /// runs on a thread of its own gets its stack from that thread, so only
+    /// one that runs on `main` exits 125 when this machine can't give it the
+    /// judge's stack (macOS caps `ulimit -s` at 64 MB).
     pub fn on_stack(&self, binary: String) -> Vec<String> {
+        let refused = match self.thread_stack {
+            Some(_) => ":".to_string(),
+            None => format!(
+                "{{ echo \"cpl: can't give the program the {} of judge \\`{}\\` here\" >&2; exit 125; }}",
+                self.stack.describe(),
+                self.name
+            ),
+        };
         let script = format!(
-            "ulimit -s {} 2>/dev/null || {{ echo \"cpl: can't give the program the {} of judge \\`{}\\` here\" >&2; exit 125; }}; exec \"$0\" \"$@\"",
-            self.ulimit(),
-            self.stack.describe(),
-            self.name
+            "ulimit -s {} 2>/dev/null || {refused}; exec \"$0\" \"$@\"",
+            self.ulimit()
         );
         vec!["sh".into(), "-c".into(), script, binary]
     }
