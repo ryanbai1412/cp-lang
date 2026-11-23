@@ -140,6 +140,19 @@ markers=$(git grep -nE '^(<{7}|>{7}|\|{7})( |$)' -- ':!*.png' ':!*.gz' || true)
 [ -z "$markers" ] || fail "merge conflict markers left in:
 $markers"
 need() { command -v "$1" >/dev/null || fail "\`$1\` is not installed; $2"; }
+# The playground build. A lane box without the wasm32 target warns and
+# skips (CI's site build still checks it); CI itself must have it.
+wasm_check() {
+    step "cargo check -p cpl-wasm --target wasm32-unknown-unknown (the playground build)"
+    local dir
+    dir=$(rustc --print target-libdir --target wasm32-unknown-unknown 2>/dev/null)
+    if [ -z "$dir" ] || [ ! -d "$dir" ]; then
+        [ -z "${CI:-}" ] || fail "the wasm32 target is not installed; run: rustup target add wasm32-unknown-unknown"
+        echo "WARNING: skipped; the wasm32 target is not installed (run: rustup target add wasm32-unknown-unknown)" >&2
+        return 0
+    fi
+    cargo check -q -p cpl-wasm --target wasm32-unknown-unknown
+}
 
 # Staged changes, plus commits that are not on origin/main yet, so a bot
 # that has already committed is checked before it pushes.
@@ -313,8 +326,10 @@ if [ "$mode" = commit ]; then
     uv run --quiet python scripts/debt-ratchet.py --check \
         || fail "tech-debt ratchet failed; see scripts/debt-ratchet.json"
     step "generated files current: skill pages, COVERAGE.md, gap lists (scripts/gen.py --check)"
+    # CI's regen job regenerates stale files on main, so a commit isn't
+    # blocked by staleness it may not have caused.
     uv run --quiet python scripts/gen.py --check \
-        || fail "generated files are stale; run: just gen"
+        || echo "WARNING: generated files are stale; run: just gen (CI's regen job also fixes them)" >&2
     if [ -n "$sel_packages" ]; then
         read -ra pkgs <<<"$sel_packages"
         step "cargo fmt --check of the touched crates"
@@ -326,8 +341,7 @@ if [ "$mode" = commit ]; then
             | cut -d' ' -f1 | sort -u | tr '\n' ' ')"
         for p in "${pkgs[@]}"; do
             if [[ "$wasm_deps" == *" $p "* ]]; then
-                step "cargo check -p cpl-wasm --target wasm32-unknown-unknown (the playground build)"
-                cargo check -q -p cpl-wasm --target wasm32-unknown-unknown
+                wasm_check
                 break
             fi
         done
@@ -362,8 +376,7 @@ else
     cache_save clippy
 fi
 
-step "cargo check -p cpl-wasm --target wasm32-unknown-unknown (the playground build)"
-cargo check -q -p cpl-wasm --target wasm32-unknown-unknown
+wasm_check
 
 # Logs of the steps that run beside the workspace tests.
 cargo build -q -p cpl-cli -p cpl-conform
