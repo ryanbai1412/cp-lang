@@ -90,3 +90,43 @@ fn corpus_warnings_only_go_down() {
         rose.join("\n")
     );
 }
+
+fn checker_errors(path: &Path, src: &str) -> usize {
+    let key = path.to_string_lossy().into_owned();
+    let mut db = cpl_check::Database::new();
+    db.set_file(&key, src);
+    db.analyze(&key).map_or(0, |analysis| {
+        analysis
+            .diagnostics
+            .iter()
+            .filter(|d| d.severity == cpl_diag::Severity::Error)
+            .count()
+    })
+}
+
+/// A verified autofix never makes a file worse: `cpl fix` on idiomatic code
+/// leaves the checker with no more errors than before.
+#[test]
+fn fixes_never_add_checker_errors() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let mut worse = Vec::new();
+    for (_, dir, leaf) in SETS {
+        for file in files(&root, dir, leaf) {
+            let src = std::fs::read_to_string(&file).unwrap();
+            let (config, _) = Config::discover(&file);
+            let (fixed, applied) = fix_at(Some(&file), &src, &config);
+            if applied == 0 {
+                continue;
+            }
+            let (before, after) = (checker_errors(&file, &src), checker_errors(&file, &fixed));
+            if after > before {
+                worse.push(format!("{}: {before} -> {after}", file.display()));
+            }
+        }
+    }
+    assert!(
+        worse.is_empty(),
+        "fixes add checker errors:\n{}",
+        worse.join("\n")
+    );
+}
