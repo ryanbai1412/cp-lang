@@ -93,3 +93,42 @@ Reader corrections made before running (not holes): `.copy()` -> `.clone()`
 | 10 | 1957D | H06 |
 
 H03 and H04 were found while reading and touch no solution.
+
+## After running
+
+`cargo build -p cpl-cli` at `7715976ac`. Per solution: `cpl check`, `cpl run`
+on every sample, `cpl build` then `g++ -std=c++17 -O2` and the binary on every
+sample. No sample crashed or differed, so no sanitizer rerun was needed.
+
+| # | CF | check | run (samples) | C++ build + g++ | C++ (samples) |
+|---|---|---|---|---|---|
+| 01 | 1950F | no errors | 1/1 | ok | 1/1 |
+| 02 | 1950G | no errors | 1/1 | ok | 1/1 |
+| 03 | 1951B | no errors | 1/1 | ok | 1/1 |
+| 04 | 1951C | no errors | 1/1 | ok | 1/1 |
+| 05 | 1954C | no errors | 1/1 | ok | 1/1 |
+| 06 | 1954D | no errors | 3/3 | ok | 3/3 |
+| 07 | 1955C | no errors | 1/1 | ok | 1/1 |
+| 08 | 1955G | no errors | 1/1 | ok | 1/1 |
+| 09 | 1957C | no errors | 1/1 | ok | 1/1 |
+| 10 | 1957D | no errors | 1/1 | ok | 1/1 |
+
+Failures: none (0 reader errors, 0 spec holes, 0 implementation bugs).
+
+### What the implementation does with each guess
+
+Single-line probes run with `cpl run`, to settle the guesses the solutions
+avoided or made:
+
+| Hole | Probe | Result | Classification |
+|---|---|---|---|
+| H01 | `print(bsearch_first(0..10, i => i * i >= 20))` | E0201 "not in the stdlib (yet)", help suggests `let bsearch_first = ...` | spec hole (stale `std/README.md`); the help should point at `first_true` |
+| H02 | `print([3, 1, 2].sorted(desc: true))` | prints `3 2 1` | spec hole: implementation follows `std/seq.cp`, not R07.11 (SUBSET already lists it) |
+| H03 | `print(zip([1, 2], [3, 4]).len)` | prints `2` | consistent with both readings; contradiction stays a doc hole |
+| H05 | `print(popcount(13))` | prints `3` | spec hole: `popcount` is a working builtin with no spec or `std/` entry |
+| H06 | `print(divisors(12))` without `use` | E0201 with help `add use std.math.{divisors}` | spec hole confirmed; the diagnostic recovers it |
+| H11 | `fn f(xs: List<Int>)` called with `read<[3]Int>()` | prints `3` | spec hole: a counted `[n]T` passes as `List<T>`; my `List(...)` wrap was unneeded |
+
+H07-H10 and H12 were exercised directly by the solutions and behaved as
+guessed (H08 `Char` `max`/`min` in 05, H09 `Int` grid read in 08, H10 `Str`
+record fields in 02, H12 nested fn as a predicate in 08).
