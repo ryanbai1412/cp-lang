@@ -279,6 +279,13 @@ test("recursion a browser's stack can hold runs", () => {
   assert.equal(cpl.run(search(100)).stdout, "searching\n100\n");
 });
 
+test("twenty million loop rounds finish inside the run limit", () => {
+  // The browser's run limit is a budget of rounds, not a clock: it holds
+  // the VM's speed, so what runs in about a second natively runs here too.
+  const run = cpl.run("var s = 0\nfor i in 0..20_000_000:\n    s += i % 7\nprint(s)\n");
+  assert.deepEqual([run.exitCode, run.stdout], [0, "59999997\n"]);
+});
+
 test("recursion that never ends is a diagnostic, not a crash", () => {
   const run = cpl.run("fn forever(n: Int) -> Int:\n    forever(n + 1)\nprint(forever(0))\n");
   assert.equal(run.exitCode, 3);

@@ -16,8 +16,10 @@ import { fileURLToPath } from 'node:url';
 import { gzipSync } from 'node:zlib';
 
 // A shrink-only ratchet: after each cut, lower the cap to the new size plus
-// about 2% in the same commit.
-const cap = 1_720_000;
+// about 2% in the same commit. It went up once, from 1,720,000, when the VM
+// came into cpl.wasm (+153 KB gzipped, the browser runs ~5x faster); the
+// commit that deletes the tree-walker lowers it to the new size plus slack.
+const cap = 1_870_000;
 const repo = dirname(dirname(dirname(fileURLToPath(import.meta.url))));
 const args = process.argv.slice(2);
 const why = args.includes('--why');

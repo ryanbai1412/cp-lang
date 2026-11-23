@@ -734,7 +734,6 @@ impl Array {
         }
     }
 
-    #[cfg(not(target_arch = "wasm32"))]
     #[inline]
     pub fn get_small_tuple(&self, idx: usize, len: usize, out: &mut [i64]) {
         match &self.data {
@@ -752,7 +751,6 @@ impl Array {
         }
     }
 
-    #[cfg(not(target_arch = "wasm32"))]
     #[inline]
     pub fn set_small_tuple(
         &mut self,

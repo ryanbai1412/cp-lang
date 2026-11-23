@@ -38,10 +38,11 @@ pub struct Stop {
     looks_left: Option<u64>,
 }
 
-/// Loop rounds and calls a second at the slow end in the browser, which
-/// runs the tree-walker (about 1.07e6 a second on a tight loop under Node):
-/// what [`Stop::after`] budgets there for each second of its limit.
-const ROUNDS_PER_SECOND: f64 = 1e6;
+/// Loop rounds and calls a second in the browser, which runs the VM: what
+/// [`Stop::after`] budgets there for each second of its limit. Under Node a
+/// tight loop does about 2.7e7 a second and a hash map write in each round
+/// about 7e6, so a run the budget ends would take about as long natively.
+const ROUNDS_PER_SECOND: f64 = 1e7;
 
 impl Stop {
     /// A stop that only [`Stop::cancel`] sets off.

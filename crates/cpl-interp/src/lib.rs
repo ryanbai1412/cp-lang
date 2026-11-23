@@ -32,7 +32,6 @@ pub mod trace;
 mod trap_help;
 mod unwind;
 mod value;
-#[cfg(not(target_arch = "wasm32"))]
 mod vm;
 
 use cpl_diag::Span;
@@ -403,34 +402,25 @@ fn run_from<O: Observer>(
         fed_loops: Vec::new(),
         in_closure: false,
         fed_left: None,
-        #[cfg(not(target_arch = "wasm32"))]
         vm: None,
-        #[cfg(not(target_arch = "wasm32"))]
         vm_regs_i: Vec::new(),
         fed_bodies: 0,
-        #[cfg(not(target_arch = "wasm32"))]
         fed_hosts: Vec::new(),
-        #[cfg(not(target_arch = "wasm32"))]
         lent: Vec::new(),
-        #[cfg(not(target_arch = "wasm32"))]
         vm_pool_v: Vec::new(),
         view_locals: Vec::new(),
         trace_shown: trace::ShowTexts::new(),
         trace_show_tys: HashMap::new(),
         trap_frame: None,
-        #[cfg(not(target_arch = "wasm32"))]
         trace_indices: Vec::new(),
         trace_path: Vec::new(),
-        #[cfg(not(target_arch = "wasm32"))]
         trace_raw: Vec::new(),
-        #[cfg(not(target_arch = "wasm32"))]
         vm_stats: vm::VmStats::from_env(),
     };
     let result = match interp.main() {
         Err(trap) if trap.message == trace::STOPPED => Ok(()),
         result => result,
     };
-    #[cfg(not(target_arch = "wasm32"))]
     if let Some(stats) = &interp.vm_stats {
         stats.emit_stderr();
     }
@@ -647,23 +637,18 @@ struct Interp<'p, 'o, O: Observer> {
     /// was not a plain `break`: a `return`, or a jump to an outer loop.
     fed_left: Option<Flow>,
     /// Compiled register bytecode program for plain (untraced, unprofiled) runs.
-    #[cfg(not(target_arch = "wasm32"))]
     vm: Option<Rc<vm::CompiledProgram<'p>>>,
     /// Shared unboxed `i64` register stack for the VM.
-    #[cfg(not(target_arch = "wasm32"))]
     vm_regs_i: Vec<i64>,
     /// Fed loop bodies running, which take no checkpoint.
     fed_bodies: u32,
     /// Traced VM frames, by stack base, running a fallback that may feed
     /// a loop whose body their chunk holds.
-    #[cfg(not(target_arch = "wasm32"))]
     fed_hosts: Vec<(usize, *const vm::Chunk<'p>)>,
     /// The `mut` params of running traced VM calls: the stack slot holding
     /// each one's value, and the caller's place it was lent from.
-    #[cfg(not(target_arch = "wasm32"))]
     lent: Vec<(usize, Rc<Part>)>,
     /// Reusable pool of `Value` register frames for VM calls.
-    #[cfg(not(target_arch = "wasm32"))]
     vm_pool_v: Vec<Vec<Value>>,
     /// The allocation [`Interp::view`] lists locals in, kept between steps.
     view_locals: Vec<(&'static str, &'static Ty, &'static Value)>,
@@ -673,15 +658,12 @@ struct Interp<'p, 'o, O: Observer> {
     trace_show_tys: HashMap<Ty, bool>,
     /// The innermost call's locals when a traced run trapped, and its depth.
     trap_frame: Option<unwind::TrapFrame<'p>>,
-    #[cfg(not(target_arch = "wasm32"))]
     /// The indices of the place a trace point writes, kept between steps.
     trace_indices: Vec<Value>,
     trace_path: Vec<usize>,
-    #[cfg(not(target_arch = "wasm32"))]
     /// The named `Int` locals a raw trace step shows, kept between steps.
     trace_raw: Vec<(&'p str, i64)>,
     /// Optional fallback counter enabled via `CPL_VM_STATS`.
-    #[cfg(not(target_arch = "wasm32"))]
     vm_stats: Option<vm::VmStats>,
 }
 
@@ -760,11 +742,9 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
         self.stack.clear();
         self.stack.resize(program.main_locals.len(), Value::Unit);
         self.base = 0;
-        #[cfg(not(target_arch = "wasm32"))]
         if let Some(from) = self.ckpt.resume.take() {
             return self.resume(from);
         }
-        #[cfg(not(target_arch = "wasm32"))]
         {
             let mut has_mut_view = program
                 .main_locals
@@ -792,8 +772,8 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                     cpl_ir::walk::deep_exprs(&c.body, &mut check);
                 }
             }
-            // `CPL_TRACE_ENGINE=tree` traces on the tree-walker, as wasm builds
-            // do; trace_goldens holds both engines to the saved traces.
+            // `CPL_TRACE_ENGINE=tree` traces on the tree-walker;
+            // trace_goldens holds both engines to the saved traces.
             let tree = self.observed()
                 && std::env::var_os("CPL_TRACE_ENGINE").is_some_and(|e| e == "tree");
             if self.profiler.is_none() && !has_mut_view && !tree {
@@ -806,7 +786,6 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
             }
         }
         if !program.multitest {
-            #[cfg(not(target_arch = "wasm32"))]
             if let Some(compiled) = self.vm.clone() {
                 self.run_main_vm(&compiled)?;
                 return Ok(());
@@ -868,7 +847,6 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
             }
             self.stack.clear();
             self.stack.resize(program.main_locals.len(), Value::Unit);
-            #[cfg(not(target_arch = "wasm32"))]
             if let Some(compiled) = self.vm.clone() {
                 self.run_main_vm(&compiled)?;
                 continue;
@@ -951,7 +929,6 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
     }
 
     fn stmt(&mut self, stmt: &'p Stmt) -> Res<Flow> {
-        #[cfg(not(target_arch = "wasm32"))]
         if let Some(stats) = &mut self.vm_stats {
             stats.walked += 1;
             *stats.walked_counts.entry(vm::stmt_tag(stmt)).or_default() += 1;
@@ -1488,7 +1465,6 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
 
     /// The storage of `part`.
     /// The caller's place a param is lent from.
-    #[cfg(not(target_arch = "wasm32"))]
     pub(crate) fn lender(&mut self, part: &Part) -> Res<&mut Value> {
         self.part_mut(part, Span::default())
     }
@@ -2673,15 +2649,11 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
         self.base = caller;
         self.stack[caller + slot] = value;
         self.fed_bodies += 1;
-        #[cfg(not(target_arch = "wasm32"))]
         self.feeding();
-        #[cfg(not(target_arch = "wasm32"))]
         let flow = match self.fed_body_vm(id, caller) {
             Some(flow) => flow,
             None => self.block(body),
         };
-        #[cfg(target_arch = "wasm32")]
-        let flow = self.block(body);
         self.fed_bodies -= 1;
         let updated = self.stack[caller + slot].clone();
         self.base = callee;
@@ -2822,9 +2794,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
             .take(f.params.len())
             .any(|l| matches!(l.ty, Ty::Fn(..)));
         // A traced chunk leaves a `yield` to the tree-walker, which feeds the loop.
-        #[cfg(not(target_arch = "wasm32"))]
         let fed_ok = !feeding || self.vm.as_ref().is_some_and(|c| c.main.traced);
-        #[cfg(not(target_arch = "wasm32"))]
         let mut flow = if fed_ok && !(has_alias && has_fn_param) {
             if let Some(compiled) = self.vm.clone() {
                 if compiled.fns.get(id).is_some_and(Option::is_some) {
@@ -2843,11 +2813,6 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 let why = if feeding { "feeding" } else { "part" };
                 stats.record(format!("fn:{}({why})", f.name));
             }
-            self.block(&f.body)
-        };
-        #[cfg(target_arch = "wasm32")]
-        let mut flow = {
-            let _ = (has_alias, has_fn_param);
             self.block(&f.body)
         };
         while self.saved_domains.len() > dom_mark {

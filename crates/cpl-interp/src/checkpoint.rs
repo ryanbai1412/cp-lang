@@ -16,12 +16,8 @@
 //! is the whole value of a `let`, an assignment to a local, a `return` or an
 //! expression statement, to a fn without `mut` parameters.
 
-// Recording runs on the VM, which wasm builds leave out.
-#![cfg_attr(target_arch = "wasm32", allow(dead_code))]
-
 use crate::observe::{Observer, Unobserved};
 use crate::value::Value;
-#[cfg(not(target_arch = "wasm32"))]
 use crate::vm::{Chunk, CompiledProgram, LoopReg, SeqHeld, SlotLoc};
 use crate::{trace, trap, Flow, Interp, Io, Limits, Observed, Res};
 use cpl_diag::Span;
@@ -260,12 +256,10 @@ impl Clock {
         }
     }
 
-    /// Whether a run from a checkpoint still waits on a call. Never in the
-    /// wasm build, which does not run from checkpoints, so none of the
-    /// replay is in it.
+    /// Whether a run from a checkpoint still waits on a call.
     #[inline]
     pub(crate) fn waits(&self) -> bool {
-        cfg!(not(target_arch = "wasm32")) && self.pending.is_some()
+        self.pending.is_some()
     }
 
     pub(crate) fn on(&self) -> bool {
@@ -406,7 +400,6 @@ impl Clock {
 }
 
 impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
-    #[cfg(not(target_arch = "wasm32"))]
     /// Before a VM call at `pc` of `chunk` to `fn_id`.
     #[inline(always)]
     pub(crate) fn suspend(
@@ -423,7 +416,6 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
         }
     }
 
-    #[cfg(not(target_arch = "wasm32"))]
     #[cold]
     #[inline(never)]
     fn suspend_recording(
@@ -454,7 +446,6 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
 
     /// Before the fallback op at `pc` of `chunk` runs its statement on the
     /// tree-walker; what it returns goes back to `leave_fallback`.
-    #[cfg(not(target_arch = "wasm32"))]
     #[inline(always)]
     pub(crate) fn enter_fallback(
         &mut self,
@@ -480,7 +471,6 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
         self.ckpt.fallback.replace(here)
     }
 
-    #[cfg(not(target_arch = "wasm32"))]
     #[inline(always)]
     pub(crate) fn leave_fallback(&mut self, outer: Option<Fallback>) {
         if self.ckpt.on() {
@@ -492,7 +482,6 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
     /// `span`, its caller's frame at `base`, with `doms` saved domains: when
     /// that call is in a statement a VM caller falls back to, that caller
     /// waits on it. Says whether it does, for `unsuspend`.
-    #[cfg(not(target_arch = "wasm32"))]
     #[inline(always)]
     pub(crate) fn suspend_fallback(
         &mut self,
@@ -527,7 +516,6 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
 
     /// The tree-walker's call to fn `fn_id` on the VM, which a VM caller
     /// falling back to the statement making it waits on.
-    #[cfg(not(target_arch = "wasm32"))]
     pub(crate) fn run_fn_vm_waited(
         &mut self,
         compiled: &CompiledProgram<'p>,
@@ -546,9 +534,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
 
     /// After the tree-walker's call `e` returned `value`.
     #[inline(always)]
-    #[cfg_attr(target_arch = "wasm32", allow(unused_variables))]
     pub(crate) fn keep_called(&mut self, e: &cpl_ir::Expr, value: &Value) {
-        #[cfg(not(target_arch = "wasm32"))]
         if let Some(at) = self.ckpt.fallback {
             if at.depth == self.call_frames.len() {
                 let e = e as *const cpl_ir::Expr as usize;
@@ -557,7 +543,6 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
         }
     }
 
-    #[cfg(not(target_arch = "wasm32"))]
     /// After that call.
     #[inline(always)]
     pub(crate) fn unsuspend(&mut self) {
@@ -568,14 +553,12 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
 
     /// A `yields` fn runs its loop's body, which changes the frame waiting
     /// on it: that frame is read again at the next checkpoint.
-    #[cfg(not(target_arch = "wasm32"))]
     #[inline]
     pub(crate) fn feeding(&mut self) {
         let waiting = self.ckpt.frames.len().saturating_sub(1);
         self.ckpt.known = self.ckpt.known.min(waiting);
     }
 
-    #[cfg(not(target_arch = "wasm32"))]
     #[cold]
     #[inline(never)]
     fn unsuspend_recording(&mut self) {
@@ -585,7 +568,6 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
 
     /// After the call op at `pc` of `chunk` put what it returned in `regs_i`
     /// or `regs_v`.
-    #[cfg(not(target_arch = "wasm32"))]
     #[inline(always)]
     pub(crate) fn keep_result(
         &mut self,
@@ -599,7 +581,6 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
         }
     }
 
-    #[cfg(not(target_arch = "wasm32"))]
     #[cold]
     #[inline(never)]
     fn keep_result_recording(
@@ -620,7 +601,6 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
     }
 
     /// At the jump back at `pc` of `chunk`, once a checkpoint is due.
-    #[cfg(not(target_arch = "wasm32"))]
     pub(crate) fn take_checkpoint(
         &mut self,
         compiled: &CompiledProgram<'p>,
@@ -649,7 +629,6 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
         }
     }
 
-    #[cfg(not(target_arch = "wasm32"))]
     fn checkpoint_here(
         &mut self,
         compiled: &CompiledProgram<'p>,
@@ -725,7 +704,6 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
     /// The frame of the `k`th VM caller waiting on its call, with the frames
     /// around it: what every checkpoint until that call returns shares, since
     /// a caller's locals stay as they are while it waits.
-    #[cfg(not(target_arch = "wasm32"))]
     fn snap_caller(&self, compiled: &CompiledProgram<'p>, vm_regs_i: &[i64], k: usize) -> Snap {
         let s = &self.ckpt.frames[k];
         let (caller, caller_fn, span, doms, up) = match k.checked_sub(1) {
@@ -794,7 +772,6 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
         Snap::Yes(Rc::new(Chain { frame, up }))
     }
 
-    #[cfg(not(target_arch = "wasm32"))]
     /// One frame: `chunk`'s, run for `callee` on the stack
     /// at `base`, in `loops`, waiting on `site` unless it is the innermost.
     #[allow(clippy::too_many_arguments)]
@@ -1189,7 +1166,6 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
     /// run from a checkpoint goes on in it: the sequence as it was when the
     /// loop began.
     pub(crate) fn seq_held(&mut self, seq: &'p cpl_ir::Expr) -> Res<(Value, Option<i64>)> {
-        #[cfg(not(target_arch = "wasm32"))]
         if let Some((held, from)) = self.ckpt.seq_from.take() {
             return Ok((held, Some(from)));
         }
@@ -1247,7 +1223,6 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
 }
 
 /// The chunk the VM runs `body` on, if it does.
-#[cfg(not(target_arch = "wasm32"))]
 fn chunk_of<'c, 'p>(compiled: &'c CompiledProgram<'p>, body: Body) -> Option<&'c Chunk<'p>> {
     match body {
         Body::Main => Some(&compiled.main),
@@ -1345,7 +1320,6 @@ fn locates(block: &Block, at: &[LoopAt], site: Option<usize>) -> bool {
     }
 }
 
-#[cfg(not(target_arch = "wasm32"))]
 /// Marks in `out` the locals surely declared by the place `at` (loop ids
 /// only), then `site`, in `block`: those the statements before it in each
 /// block on the way declare, and the variables of the loops it is in.
@@ -1389,7 +1363,6 @@ fn declared(block: &Block, at: &[LoopId], site: Option<usize>, out: &mut [bool])
 }
 
 /// Whether the registers at `loc` hold nothing yet.
-#[cfg(not(target_arch = "wasm32"))]
 fn unset(loc: &SlotLoc, regs_i: &[i64], regs_v: &[Value]) -> bool {
     match *loc {
         SlotLoc::V(r) => matches!(regs_v[r as usize], Value::Unit),
