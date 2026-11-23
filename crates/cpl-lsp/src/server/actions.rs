@@ -26,9 +26,10 @@ impl Server {
                     .edits
                     .iter()
                     .map(|(span, text)| {
+                        let (span, text) = cpl_diag::edit_like(&analysis.text, *span, text);
                         obj([
-                            ("range", range_json(*span, &analysis.text, &analysis.lines)),
-                            ("newText", text.as_str().into()),
+                            ("range", range_json(span, &analysis.text, &analysis.lines)),
+                            ("newText", text.into()),
                         ])
                     })
                     .collect();

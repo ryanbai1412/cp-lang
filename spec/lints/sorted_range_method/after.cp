@@ -1,2 +1,2 @@
 var s = SortedBag<Int>()
-print(s.range(3..).first, s.range(..5).last, s.range(1..5).len, none: -1)
+print(s.range(3..).first ?? -1, s.range(..5).last ?? -1, s.range(1..5).len)

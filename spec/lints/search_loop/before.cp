@@ -4,4 +4,4 @@ for x in xs:
     if x > 3:
         found = true
         break
-print(found)
+print(yes(found))

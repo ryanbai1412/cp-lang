@@ -477,6 +477,7 @@ fn lint_file(file: &File, config: &Config) -> Vec<Diagnostic> {
         } else {
             Severity::Warning
         };
+        diag.match_line_endings(file.src);
         out.push(diag);
     }
     out.sort_by_key(|d| (d.span.start, d.span.end, d.code));
@@ -752,7 +753,7 @@ pub fn fix_at(path: Option<&std::path::Path>, src: &str, config: &Config) -> (St
 /// outside `src` (a span that ends before it starts, past the end, or inside
 /// a character) is a producer bug and is skipped, never applied.
 pub fn apply_fixes(src: &str, diagnostics: &[Diagnostic]) -> (String, usize) {
-    let mut edits: Vec<(Span, &str)> = Vec::new();
+    let mut edits: Vec<(Span, String)> = Vec::new();
     let mut applied = 0;
     let mut fixes: Vec<_> = diagnostics.iter().filter_map(|d| d.fixes.first()).collect();
     fixes.sort_by_key(|fix| fix.edits.iter().map(|(span, _)| span.start).min());
@@ -770,7 +771,11 @@ pub fn apply_fixes(src: &str, diagnostics: &[Diagnostic]) -> (String, usize) {
         if clashes || out_of_source || fix.edits.is_empty() {
             continue;
         }
-        edits.extend(fix.edits.iter().map(|(span, text)| (*span, text.as_str())));
+        edits.extend(
+            fix.edits
+                .iter()
+                .map(|(span, text)| cpl_diag::edit_like(src, *span, text)),
+        );
         applied += 1;
     }
     edits.sort_by_key(|(span, _)| span.start);
@@ -778,7 +783,7 @@ pub fn apply_fixes(src: &str, diagnostics: &[Diagnostic]) -> (String, usize) {
     let mut at = 0usize;
     for (span, text) in edits {
         out.push_str(&src[at..span.start as usize]);
-        out.push_str(text);
+        out.push_str(&text);
         at = span.end as usize;
     }
     out.push_str(&src[at..]);

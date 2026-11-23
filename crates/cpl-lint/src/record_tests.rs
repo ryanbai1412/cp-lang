@@ -136,6 +136,48 @@ fn every_record_fix_clears_its_lint_and_still_parses() {
     }
 }
 
+/// A quick fix never adds a checker error: what `before.cp` fixes to has
+/// no error `before.cp` lacked (a migration lint's `before.cp` may already
+/// fail, naming the replaced API).
+#[test]
+fn every_record_fix_adds_no_checker_error() {
+    let config = all_on();
+    let mut wrong = Vec::new();
+    for lint in LINTS {
+        let (fixed, applied) = fix(lint.trigger, &config);
+        if applied == 0 {
+            continue;
+        }
+        let before = crate::fix_tests::checker_errors(lint.trigger);
+        let added: Vec<_> = crate::fix_tests::checker_errors(&fixed)
+            .into_iter()
+            .filter(|e| !before.contains(e))
+            .collect();
+        if !added.is_empty() {
+            wrong.push(format!(
+                "{}: fixed before.cp: {added:?}\n{fixed}",
+                lint.name
+            ));
+        }
+    }
+    assert!(wrong.is_empty(), "{}", wrong.join("\n"));
+}
+
+/// A quick fix in a CRLF file (Windows) writes CRLF: the fixed file is the
+/// LF fix with every line break CRLF.
+#[test]
+fn every_record_fix_keeps_crlf() {
+    let config = all_on();
+    for lint in LINTS {
+        let (lf, applied) = fix(lint.trigger, &config);
+        if applied == 0 {
+            continue;
+        }
+        let (crlf, _) = fix(&lint.trigger.replace('\n', "\r\n"), &config);
+        assert_eq!(crlf, lf.replace('\n', "\r\n"), "{}", lint.name);
+    }
+}
+
 /// Every lint's quick fix is a code action in the editor, so a lint either
 /// has one (fixing its `before.cp` clears it) or says why not (`no_fix` in
 /// its `lint.toml`), and never both.

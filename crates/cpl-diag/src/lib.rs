@@ -325,6 +325,16 @@ impl Diagnostic {
         });
     }
 
+    /// Fix text written with `\n` line breaks, made to use `src`'s own:
+    /// a fix applied to a CRLF file keeps it CRLF.
+    pub fn match_line_endings(&mut self, src: &str) {
+        for fix in &mut self.fixes {
+            for edit in &mut fix.edits {
+                *edit = edit_like(src, edit.0, &edit.1);
+            }
+        }
+    }
+
     /// The same diagnostic with every span moved right by `by` bytes.
     pub fn shift(mut self, by: u32) -> Diagnostic {
         self.span = self.span.shift(by);
@@ -338,6 +348,25 @@ impl Diagnostic {
         }
         self
     }
+}
+
+/// An edit of `src` with `src`'s line endings. Fixes are written as if
+/// lines end in `\n`; in a CRLF file a span boundary between the `\r` and
+/// `\n` of a line break moves before the `\r`, and `text` uses `\r\n`.
+pub fn edit_like(src: &str, span: Span, text: &str) -> (Span, String) {
+    if !src.contains("\r\n") {
+        return (span, text.to_string());
+    }
+    let before_break = |at: u32| {
+        let at = at as usize;
+        if at > 0 && src.get(at - 1..at + 1) == Some("\r\n") {
+            at as u32 - 1
+        } else {
+            at as u32
+        }
+    };
+    let span = Span::new(before_break(span.start), before_break(span.end));
+    (span, text.replace('\r', "").replace('\n', "\r\n"))
 }
 
 /// Collects diagnostics and keeps one per root cause.
@@ -488,6 +517,31 @@ fn unresolved_name(diag: &Diagnostic) -> Option<&str> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn an_edit_of_a_crlf_file_writes_crlf_and_keeps_whole_line_breaks() {
+        let lf = "a\nb\n";
+        assert_eq!(
+            edit_like(lf, Span::new(1, 1), "\nx"),
+            (Span::new(1, 1), "\nx".into())
+        );
+        let crlf = "a\r\nb\r\n";
+        // Inserting a line after `a`, written as if the span were LF-based.
+        assert_eq!(
+            edit_like(crlf, Span::new(2, 2), "\nx"),
+            (Span::new(1, 1), "\r\nx".into())
+        );
+        // A statement span that took the `\r` of its line break.
+        assert_eq!(
+            edit_like(crlf, Span::new(0, 2), "c"),
+            (Span::new(0, 1), "c".into())
+        );
+        // Text copied from the CRLF source is not doubled.
+        assert_eq!(
+            edit_like(crlf, Span::new(3, 4), "b\r\nd"),
+            (Span::new(3, 4), "b\r\nd".into())
+        );
+    }
 
     #[test]
     fn a_name_nothing_declares_is_one_error_at_its_first_use() {
