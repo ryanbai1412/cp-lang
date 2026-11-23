@@ -120,6 +120,22 @@ through `cpl fmt --stdin`. To format on write:
 autocmd BufWritePre *.cp let b:cpl_view = winsaveview() | silent execute 'keepjumps normal! gggqG' | call winrestview(b:cpl_view)
 ```
 
+## Vim (8.2 or later)
+
+Add the Neovim folder to the runtime path for highlighting, filetype, indent,
+`gq` through `cpl fmt`, and `cpl lsp` through vim-lsp or yegappan/lsp when
+either is installed:
+
+```vim
+set rtp+=/path/to/cp-lang/editors/neovim
+filetype plugin indent on
+syntax on
+```
+
+The wrong-answer loop is two shell commands: `:!cpl stress %` finds and saves
+a small failing case in `<file>.tests/`, and `:!cpl test %` reruns every saved
+case after the fix.
+
 ## Emacs
 
 ```elisp

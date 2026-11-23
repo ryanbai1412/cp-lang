@@ -65,3 +65,6 @@ jobs:
           root=$PWD cpl=$PWD/target/debug/cpl
           if [ "$RUNNER_OS" = Windows ]; then root=$(cygpath -m "$PWD"); cpl="$root/target/debug/cpl.exe"; fi
           nvim --headless --clean -l editors/neovim/test/stress_loop.lua "$cpl" "$root"
+      - name: Vim stress loop
+        if: runner.os != 'Windows'
+        run: editors/neovim/test/stress_loop_vim.sh "$PWD/target/debug/cpl"
