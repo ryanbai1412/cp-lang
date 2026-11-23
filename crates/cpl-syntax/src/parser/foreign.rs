@@ -214,6 +214,70 @@ impl<'a> Parser<'a> {
 
     /// `lambda x: x * 2`: Python's lambda. One error with the `x => x * 2`
     /// fix, read as that lambda.
+    /// Python's `lambda x: e` or Rust's `|x| e`, read as `x => e`.
+    pub(super) fn foreign_lambda(&mut self) -> Option<Expr> {
+        if self.at_ident("lambda") && matches!(self.peek_n(1), T::Ident | T::Colon) {
+            return Some(self.python_lambda());
+        }
+        self.rust_closure()
+    }
+
+    /// `|x| x + 1` or `|a, b| a + b`: Rust's closure. One error with the
+    /// `=>` fix, read as the lambda.
+    fn rust_closure(&mut self) -> Option<Expr> {
+        if !self.at(T::Pipe) {
+            return None;
+        }
+        let (mut n, mut names) = (1, Vec::new());
+        loop {
+            let t = self.tokens.get(self.pos + n)?;
+            if t.kind != T::Ident {
+                return None;
+            }
+            names.push(t.span.text(self.src).to_string());
+            match self.tokens.get(self.pos + n + 1)?.kind {
+                T::Comma => n += 2,
+                T::Pipe => break,
+                _ => return None,
+            }
+        }
+        let start = self.start();
+        let bars = Span::new(self.span().start, self.span_n(n + 1).end);
+        self.bump();
+        let mut params = Vec::new();
+        while self.at(T::Ident) {
+            params.push(self.pattern_atom());
+            if !self.eat(T::Comma) {
+                break;
+            }
+        }
+        self.bump();
+        let ours = match &names[..] {
+            [one] => format!("{one} =>"),
+            _ => format!("({}) =>", names.join(", ")),
+        };
+        self.recovered(
+            Diagnostic::error(
+                codes::EXPECTED_TOKEN,
+                bars,
+                "CP Lang writes a lambda with `=>`, not `|x|`",
+            )
+            .with_help("write `x => x * 2`, or `(a, b) => a + b`")
+            .with_fix(format!("write `{ours}`"), bars, ours),
+        );
+        let body = self.lambda_body();
+        Some(Expr {
+            kind: ExprKind::Lambda {
+                params,
+                param_tys: Vec::new(),
+                param_mut: Vec::new(),
+                ret_ty: None,
+                body: Box::new(body),
+            },
+            span: self.span_from(start),
+        })
+    }
+
     pub(super) fn python_lambda(&mut self) -> Expr {
         let start = self.start();
         let kw = self.span();

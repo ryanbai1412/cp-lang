@@ -19,7 +19,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn pattern_atom(&mut self) -> Pattern {
+    pub(super) fn pattern_atom(&mut self) -> Pattern {
         let start = self.start();
         if self.at_ident("some") && self.peek_n(1) == T::Ident {
             let span = self.span();

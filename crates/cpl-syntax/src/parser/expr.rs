@@ -39,8 +39,8 @@ impl<'a> Parser<'a> {
 
     pub(super) fn expr(&mut self) -> Expr {
         let start = self.start();
-        if self.at_ident("lambda") && matches!(self.peek_n(1), T::Ident | T::Colon) {
-            return self.python_lambda();
+        if let Some(lambda) = self.foreign_lambda() {
+            return lambda;
         }
         // Lambdas: `x => x + 1`, `(a, b) => a + b`, `(n: Int) -> Int => ...`.
         let lambda = match self.peek() {

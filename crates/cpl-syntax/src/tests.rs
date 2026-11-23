@@ -1958,3 +1958,11 @@ fn a_list_pattern_is_one_error_and_still_binds() {
         "{d:?}"
     );
 }
+
+#[test]
+fn a_rust_closure_is_one_error_with_the_arrow_fix() {
+    let d = parse_file("let ys = xs.map(|x| x + 1)\nlet s = f(|a, b| a + b)\nlet m = a | b\n")
+        .diagnostics;
+    let fixed: Vec<_> = d.iter().map(|d| d.fixes[0].edits[0].1.as_str()).collect();
+    assert_eq!(fixed, ["x =>", "(a, b) =>"], "{d:?}");
+}
