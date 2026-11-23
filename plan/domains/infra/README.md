@@ -1,11 +1,22 @@
 # infra
 
-Segment: A. Service. Owns: CI and workflows (`.github/`), the gate (`scripts/check.sh`, `check_cache.py`, `cxx-cache.py`), landing (`scripts/land.sh`, rebase and push) and the sheriff duty of keeping main green, hooks (`.githooks/`), `scripts/` machinery, `justfile`, `mise.toml`, setup docs, the release pipeline (`release.yml`, `scripts/release/`), installers (`web/public/install.{sh,ps1}`), the site deploy workflow (`site.yml`), public-repo hygiene. Status 2026-11-22: commit tier under 25 s; CI green on main (run 45111468382); site deploys from every green main CI run (first deploy 04:28Z, 72ef82a1); edge releases from green main CI at most hourly, stable from `v*` tags.
+Segment: A. Service. Owns: CI and workflows (`.github/`), the gate (`scripts/check.sh`, `check_cache.py`, `cxx-cache.py`), landing (`scripts/land.sh`, rebase and push) and the sheriff duty of keeping main green, hooks (`.githooks/`), `scripts/` machinery, `justfile`, `mise.toml`, setup docs, the release pipeline (`release.yml`, `scripts/release/`), installers (`web/public/install.{sh,ps1}`), the site deploy workflow (`site.yml`), public-repo hygiene. Status 2026-11-23: first edge release published (edge-2026-11-23, from 528cddc42); `install.sh` installs it on a clean Ubuntu 24.04; main CI red on lane reds the sheriff is fixing; `land.sh` is rebase, fast checks, push (about 5 s).
 
 Detail: [PLAN.md](PLAN.md) · code: [ARCHITECTURE.md](ARCHITECTURE.md) · numbers: [metrics.toml](metrics.toml) · log: [worklog.md](worklog.md) · gate design: [design/gate-tiers.md](design/gate-tiers.md)
 
 ## Mission
 Keep every other domain moving: main green at every commit, a gate fast enough that nobody batches around it, landing that never waits on a person, and `curl | sh` installs that just work. Interrupts (red main, broken landing, broken release) beat roadmap work.
+
+## Milestone 1
+[plan/product/MILESTONE-1.md](../../product/MILESTONE-1.md) step 3 (Install) and "Release quality" are infra's. Exit criteria:
+1. A published release: edge after every green main CI (at most hourly) and nightly, a dated edge 7 days in a row, `v0.3.0` on Ryan's OK.
+2. `curl -fsSL https://cp-lang.org/install.sh | sh` installs a working `cpl` on clean Linux and macOS (and `install.ps1` on Windows), checked by an install-smoke job after every publish.
+3. The VS Code extension installs in one step from the release and starts the language server, checked in the same smoke job.
+4. Main green: red-to-green median < 30 min, CI <= 3 min end to end; lanes spend < 5% of their time on landing and devex.
+
+Deferring: per-crate commit-tier test selection (old M2), the gate step registry, status-board polish, the 16-core runner, JetBrains packaging.
+
+Next 3: (1) install-smoke job on Linux, macOS and Windows after each publish, including the VS Code extension; (2) main green and CI <= 3 min; (3) a one-step VS Code install (Open VSX or `cpl` installing the release's `.vsix`).
 
 ## Covers
 - **Main green**: CI results, triage of any red within 30 min (fix or revert, never weaken a test), flaky tests, stale `devin/*` branches and lock refs.

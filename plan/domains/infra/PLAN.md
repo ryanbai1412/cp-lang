@@ -6,15 +6,12 @@ The detail behind [README.md](README.md). Dated 2026-11-22.
 
 | # | Workstream | Why first / why here | Done when |
 |---|---|---|---|
-| 1 | **Land the queue backlog** | Phase-2 brief; stale branches confuse every lane. | `devin/repo-layout-doc`, `devin/consolidate-docs` landed or split; 11 superseded `devin/*` branches deleted (`git cherry` shows 0 ahead) and noted in the worklog. |
-| 2 | **CI green** | All SLOs measure against CI; today CI is red (run 45067797421: 3 `std::exchange` without `<utility>` in emitted C++, 3 timing tests). | Codegen include requested from perf (or trivially fixed with a note); timing tests made CPU-time based or moved to `--full`; 10 green main runs. |
-| 3 | **Domain trailer + land log** | Ryan's ask: know who landed what, keep domains in their paths. | `land.sh` refuses a commit without `Domain: <d>` (d in `plan/DOMAINS.md`), warns on paths outside the domain's owned list, appends a JSONL record per landing; tests in `scripts/test_check_cache.py`. |
-| 4 | **Status board** | The coordinator's hourly read. | `scripts/status.py` runs each `plan/domains/*/metrics.toml` command with a timeout, keeps history in `target/status/history.jsonl`, writes a board (per domain: now / 1 h / 1 d / target, landings and reverts from trailers, open questions); scheduled hourly (GitHub schedule writes it to an artifact; locally `just status`). |
-| 5 | **Two-tier gate** | 77 s -> 10 s per commit, times 12 lanes. [design/gate-tiers.md](design/gate-tiers.md). | `commit_gate_edit_s` <= 10; land tier = today's gate; test count unchanged. |
-| 6 | **Releases** | v0.3 is "production ready" only if people can install it. | Nightly edge publishes; `install-smoke` on Linux/macOS/Windows after publish; dated edges 7 days in a row; `v0.3.0` on Ryan's OK. |
-| 7 | **Site deploy from CI** | cp-lang.org is live only from a manual deploy. | `site.yml` green; blocked on Actions secrets (coordinator). |
-| 8 | **Gate step registry** | `check.sh` had 56 commits in 3 days from many lanes. | Steps declared in one table (name, tier, cache stage, owner domain); lanes add a row, not shell. |
-| 9 | **Public-repo surface** | Going public. | CONTRIBUTING.md, SECURITY.md, stale `check.sh` header fixed. |
+| 1 | **Install-smoke after every publish** | Milestone 1 step 3: a friend installs without help. | A job after `publish` runs `install.sh` on clean Linux and macOS and `install.ps1` on Windows, then `cpl run` on a sample and installs the `.vsix` into VS Code. |
+| 2 | **Main green, CI <= 3 min** | Releases only come from green commits; slow CI makes each red cover many commits. | Red-to-green median < 30 min; CI wall time <= 3 min from caching and input-hash skipping; per-job times in the worklog. |
+| 3 | **One-step VS Code install** | Milestone 1 "Editor support". | The extension installs with one command or click (Open VSX, or `cpl` installing the release's `.vsix`). |
+| 4 | **Landing friction < 5%** | Lanes skip slow checks, and skipped checks turn main red. | `land.sh` runs the checks behind most reds in seconds; `land_p95_s` <= 30. |
+| 5 | **Stable `v0.3.0`** | Milestone 1 "Release quality". | Cut on Ryan's OK from a green commit; installers default to it. |
+| 6 | **Deferred** | On the milestone's "can wait" list. | Per-crate commit-tier selection, the gate step registry, status-board polish, CONTRIBUTING/SECURITY. |
 
 ## Why these milestones
 - **M1 (green + accountable)** first because every lane's work is judged against main, and Ryan asked how domains stay inside their lines: the trailer and the board are the mechanism.
