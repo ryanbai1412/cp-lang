@@ -4,21 +4,17 @@
 // shallowest one kept so far.
 let (n, d) = read<(1..=200_000, 1..=200_000)>()
 domain V = 0..n
-let t = Rooted.from_parents(read<[V.drop(1)]V>())
+let up = read<[n - 1]V>()  // the parents of 1..n-1
+let t = Rooted.from_parents([V] v => if v == V.first!: None else: Some(up[v.ord - 1]))
 
 fn place(v: V) -> (count: Int, near: Int):
+    let kids = t.children(v).map(u => place(u)).map(r => (count: r.count, dist: r.near + 1))
     var count = 0
     var near = inf
-    for (
-        c,
-        dist,
-    ) in t.children(v).map(u => place(u)).map(r => (r.count, r.near + 1)).sorted(by: r => desc(r.1)):
-        count += c - 1
-        if dist + near >= d:
+    for k in kids.sorted(by: k => desc(k.dist)):
+        count += k.count - 1
+        if near >= d - k.dist:
             count += 1
-            near = dist
-    if near >= d:
-        (count + 1, 0)
-    else:
-        (count, near)
+            near = k.dist
+    if near >= d: (count + 1, 0) else: (count, near)
 print(place(t.root).count)
