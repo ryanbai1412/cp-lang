@@ -1,4 +1,13 @@
-// Runnable today/ port of IOI '14 P6 (Holiday) for real Rust `cpl build`.
+// Source: IOI 2014 P6 (Holiday, standard I/O), https://dmoj.ca/problem/ioi14p6io
+// Problem: n <= 1e5 cities on a line with attraction counts <= 1e9, a start city and
+//   d <= 2n + n/2 days; each day moves to a neighbour or visits the current city (each city
+//   counts once). Print the most attractions visitable.
+// Solution: an optimal plan goes out one side, back, then out the other. Per side,
+//   f(t) = best with t days there: pick the far end i, then the top t - c(i + 1) cities among
+//   the first i + 1 (c = 2 for the side done first, 1 for the other). The best i is monotone
+//   in t, so divide and conquer on t; top-k of a prefix comes from blocks of 300 with sorted
+//   prefixes and prefix sums. Combine the sides over the day split, with or without the start
+//   city, both orientations: O((n + d) log d) top-k queries of O(300) each.
 // Stdin: n, start, d, then n attraction values. Prints maximum sum.
 // Uses top-level recursive fn (working around cpl-emit recursive nested-fn self-capture bug).
 // original: corpus/submissions/4691224.cpp

@@ -1,4 +1,14 @@
-// Runnable today/ port of NOI '08 P5 (Clouds) for real Rust `cpl build`.
+// Source: NOI 2008 P5 (Candy Rain), https://dmoj.ca/problem/noi08p5
+// Problem: n <= 2e5 events in time order (T <= 2e9) on a sky [0, len], len <= 1000: insert a
+//   cloud of colour c on [l, r] moving left or right at speed 1, bouncing off 0 and len (one
+//   cloud per colour at a time); delete a colour; or print how many colours a bag [L, R]
+//   catches at time T, i.e. how many clouds overlap it.
+// Solution: a cloud's left end is periodic with p = 2 len: as a phase x in [0, p), x < len
+//   moves right and x >= len is the mirrored leftward leg. Store each cloud, by its phase at
+//   time 0 and width w, as a point in two sheared planes, (x, x + w) and (x + p, x - w + p);
+//   a query shifts by -T and counts one rectangle per plane, plus its copy shifted by p for
+//   wraparound, in 2D Fenwick trees of side 2p: O(log^2 len) per event, but a delete finds
+//   its colour by a linear scan over all inserted clouds.
 // Stdin: q, m, then q operations (1 t c l r d | 2 t l r | 3 t c). Prints each type-2 answer.
 // original: corpus/submissions/6067573.cpp
 

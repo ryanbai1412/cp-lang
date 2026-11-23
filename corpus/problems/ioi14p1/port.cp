@@ -1,4 +1,14 @@
-// Runnable today/ port of IOI '14 P1 (Rail) for real Rust `cpl build`.
+// Source: IOI 2014 P1 (Rail), https://dmoj.ca/problem/ioi14p1
+// Problem: interactive (function task). n stations sit in distinct blocks (at most 1e6) of a
+//   rail line, each type C or D; station 0 is type C at block `first`. getDistance(i, j) gives
+//   the shortest route length; recover every station's block and type within each subtask's
+//   limit on getDistance calls.
+// Solution: query 0 against every station and sort by distance; the nearest is the D just
+//   right of station 0. In that order, keep the leftmost C (l) and rightmost D (r): two
+//   queries give the block if the station is a D right of l (loc[l] + dl) or a C left of r
+//   (loc[r] - dr), and the turning block between them decides: a placed station there by its
+//   type, else D iff it lies right of the rightmost C so far. 3n - 5 queries; placed stations
+//   are looked up by linear scan, O(n^2) time.
 // Stdin: n, then hidden loc[0..n] and kind[0..n] (1 or 2). Simulates getDistance(i, j)
 // internally, runs findLocation, and prints recovered loc[i] and kind[i].
 // original: corpus/submissions/4691718.cpp

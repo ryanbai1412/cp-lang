@@ -1,9 +1,14 @@
-// BTOI '06 P5 (RLE Compression): re-encode a run-length stream with the
-// fewest codes by choosing when to switch the escape symbol.
-// cost[e] = shortest encoding of the remaining runs when the escape is e.
-// Every update is "add to all", "assign to all" or "set one", so the table
-// is an offset, a default and the symbols touched since the last assign.
-// Runnable on proto/cpc today.
+// Source: BOI 2006 P5 (RLE Compression), https://dmoj.ca/problem/btoi06p5
+// Problem: alphabet 0..n-1 (n <= 1e5) and a code of m <= 2e6 symbols with escape e (initially
+//   0): "e e k" is k + 1 copies of e, "e b 0" makes b the escape, "e b k" (k > 0) is k + 3
+//   copies of b, any other symbol is itself. Print a shortest code for the same sequence: its
+//   length, then the symbols.
+// Solution: decode into maximal runs, then DP backwards: cost[e] = shortest code of the rest
+//   with escape e. A run of s costs the same under every escape but s; escape s pays
+//   3 ceil(k / n); then s may switch (+3) to the best other escape, or all others adopt s (+3).
+//   So updates are add-all, assign-all and set-one: an offset, an epoch-stamped default and
+//   an ordered set of touched (cost, symbol) for the minimum. O(m + runs log n), then a
+//   forward pass replays the recorded switches to emit the code.
 // original: corpus/submissions/4156310.cpp
 let n: 2..=100_000 = read()
 let m: 1..=2_000_000 = read()
