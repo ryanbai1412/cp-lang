@@ -6,11 +6,9 @@
 // Solution: simulate: a move happens only when the next cell is in its domain (`Row.at`,
 //   `Col.at` give None off the grid), and a paint rewrites every cell within distance k - 1.
 //   O(|word| n^2), about 1e5 steps.
-// Runnable today on the interpreter (`cp.py lib-run`): proto/cpc cannot yet
-// iterate or index a Str.
 // original: corpus/submissions/7730233.cpp
-let n: 1..=100 = read()
-let k: 1..=200 = read()
+let n: 1..=50 = read()
+let k: 1..=50 = read()
 let moves: Str = read()
 domain Row = 0..n
 domain Col = 0..n

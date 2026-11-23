@@ -13,7 +13,8 @@ use std.dp.{subset_sums}
 use std.seq.{argmax}
 
 @!multitest
-let (n, k): (1..=21, 1..=21) = read()
+let n: 1..=18 = read()
+let k: 1..=n = read()
 let a_in: [0..n]1..=10 ** 9 = read()
 let best_i = a_in.argmax()!
 let fin = a_in[best_i]

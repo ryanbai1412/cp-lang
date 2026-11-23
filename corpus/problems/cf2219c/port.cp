@@ -9,7 +9,7 @@
 //   deg / k without. O(n log n).
 
 @!multitest
-let n: 2..=200_000 = read()
+let n: 1..=2e5 = read()
 let s: Str = read()
 domain V = 1..=n
 let edges: [0..n - 1](u: V, v: V) = read()

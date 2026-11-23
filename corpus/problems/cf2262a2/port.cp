@@ -16,7 +16,7 @@ const MOD = 1e9 + 7
 type Z = Mod<MOD>
 
 @!multitest
-let n: 1..=2e5 = read()
+let n: 1..=1e5 = read()
 let a: [1..=n]0..=n = read()
 var diff: [0..=n]Int = 0
 var need: [0..=n]Int = n + 1
