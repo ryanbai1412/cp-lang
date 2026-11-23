@@ -582,6 +582,16 @@ pub const REGISTRY: &[CodeInfo] = &[
         input: "",
     },
     CodeInfo {
+        code: Code("E0408"),
+        title: "Assign into a range",
+        summary: "An element of a `Range` is assigned to.",
+        explanation: "A range is positions with no data behind it, so there is nothing to write into. Copy it into a list with `List(r)` first.",
+        trigger: "var r = 0..5\nr[1] = 3\nprint(r.len)\n",
+        fix: "var r = List(0..5)\nr[1] = 3\nprint(r.len)\n",
+        mode: "check",
+        input: "",
+    },
+    CodeInfo {
         code: Code("E0701"),
         title: "Ambiguous trait method",
         summary: "Two traits implemented for this type define a method with the same name.",

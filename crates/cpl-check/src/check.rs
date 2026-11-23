@@ -22,6 +22,7 @@ mod question;
 mod spelling;
 mod steps;
 mod stmt;
+mod storage;
 mod tuple_bound;
 mod views;
 pub(crate) use stmt::runs;

@@ -825,3 +825,5 @@ on input `2 / 1 / 2` prints `7` once in `cpl run` and in the C++ (`cpl_main` cal
 2026-11-23: `V.first`/`V.last` are `?V` (R04.2.3) and `List.pop` is `?T`, so cf600e's gold dream now roots its tree at `V.first!` (`n >= 1`), and scout/connectivity pops its Tarjan stack with `pop()!` (the loop stops at `u`, which is on the stack).
 
 2026-11-23: `min`/`max` over `?T` elements are a `?T` in the checker, as in the lowerer. Since `min`/`max` skip `None` (R02.4.6, decision 410), `b.max()` on a `[D]?Int` is a `?Int`, not a `??Int`. The catalog row and the free generator form both read `Ty::min_max_of`, so `print(b.max()!)` and `let t = b.max()!` agree that the answer is an `Int`. Parity: `seq_min_max_over_optionals`.
+
+2026-11-23: E0408 for an assignment into a `Range` (R07.2.5, core-07/assign-into-range). `r[1] = 3` on `var r = 0..5` used to pass the checker silently. A range is positions with nothing stored behind them, so it is now an error, with help to copy it first with `List(r)`. The check is in `check/storage.rs`: the assignment target goes through `assign_target`.
