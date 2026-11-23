@@ -1669,7 +1669,7 @@ fn big_divmod_mag(a: List<Int>, b: List<Int>) -> (List<Int>, List<Int>):
     var q = List.filled(a.len, 0)
     var r: List<Int> = []
     for i in (0..a.len).rev:
-        let shifted = [a[i]] + [x for x in r]
+        let shifted = [a[i]] + r.collect()
         r = shifted
         while not r.is_empty and r.last! == 0: r.pop()
         var (lo, hi) = (0, BIG_BASE - 1)

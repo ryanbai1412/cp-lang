@@ -902,7 +902,7 @@ pub fn backtrack<S>(start: S, next: S -> yields S) -> yields Step<S>:
     var stack: List<(S, Int)> = [(start, 0)]
     while let (s, d) = stack.pop():
         yield Step(s, d)
-        let kids: List<S> = [c for c in next(s)]
+        let kids: List<S> = next(s).collect()
         var i = kids.len - 1
         while i >= 0:
             stack.push((kids[i], d + 1))
