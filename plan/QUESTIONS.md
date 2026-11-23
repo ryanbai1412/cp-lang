@@ -206,41 +206,6 @@ Recommendation: (b); 68 branches today make the queue hard to read, and archive 
 How to reverse: `git push origin refs/archive/<name>:refs/heads/<name>`.
 Meanwhile: (a) only.
 
-### tools: which commands does v0.3 ship (tools-1)
-`spec/tools/cli.md` and `cpl --help` both list 23 commands, but 14 differ (`python3 plan/domains/tools/measure.py spec-sync`). Spec-only: `debug`, `fetch`, `interact`, `locate`, `migrate`, `selftest`, `trace`. Binary-only: `check`, `dap`, `fix`, `judge`, `replay`, `report`, `self`.
-- A. Spec follows the binary: drop `fetch`, `locate`, `migrate` from v0.3.
-- B. Binary follows the spec: add all 7, `cpl trace a in.txt` beside `cpl run a --trace`, `cpl debug a in.txt` beside `cpl dap`.
-- C. Mixed: the spec adopts `check`, `fix`, `judge`, `self`, `report`, `replay`, `dap`; `trace` stays `cpl run a --trace` (one verb for running, as today), `debug` stays the editor's debugger over `cpl dap`, `interact` stays `cpl run a` on a file with an `@interactor` (`crates/cpl-cli/src/interact.rs`), `selftest` is dropped (it is `scripts/check.sh`); `fetch`, `locate`, `migrate` are built for v0.3.
-Recommendation: C. One verb per job keeps the set guessable, and the three additions are real contest needs (samples, smallest failing input, library upgrades).
-How to reverse it: the command table is data; adding an alias (`cpl trace` → `cpl run --trace`) or dropping a command is a one-line change plus its golden test.
-Meanwhile: C is applied (decisions.md 244): `spec/tools/cli.md` lists the binary's commands; `fetch`, `locate`, `migrate` are the 3 left to build (`measure.py spec-sync`).
-
-### tools: which editors are tier 1 (tools-2)
-`editors/` has VS Code, Neovim, Vim, Emacs, JetBrains, Helix, Zed. On a lane VM only keyword parity runs; the rest skip for lack of binaries, and JetBrains fails to fetch Gradle artifacts (`CPL=target/release/cpl editors/smoke.sh`).
-- A. All seven tier 1: every one in the gate (needs nvim, emacs, hx, Zed's wasm target and a JVM with network in the gate image).
-- B. VS Code and Neovim tier 1 (installed in one step, smoke-tested in the gate, broken = main is red); the rest tier 2 (smoke when installed, JetBrains in CI, fixed on report).
-- C. VS Code only.
-Recommendation: B. Covers most contestants, keeps the gate fast and offline; tier 2 still shares the one `cpl lsp`.
-How to reverse it: promote an editor by adding its smoke test to `scripts/check.sh`.
-Meanwhile: B.
-
-### tools: what `cpl explain` and hover show in v0.3 (tools-3)
-`spec/tools/explain.md` lists representation sizes, niches, storage, padding, memory, specializations, checks, contexts, generic instances and output bytes. Today `cpl explain corpus/problems/cf2268b/port.cp` prints only closure lowering (`[static: direct] fn m1_sum_Lst_Int_Int_Int_93 param of -> cpl_fn0`).
-- A. The whole spec for v0.3.
-- B. The four sections contestants ask about: types with bytes and niches, arrays and peak memory, specializations chosen, checks left per build; in both `cpl explain` and hover, from one shared-core query. Contexts, generic instances, unsafe-tier sites after v0.3.
-- C. Ship as is and fix the spec to match.
-Recommendation: B. It answers "why is this slow/big" and keeps one source of truth; A depends on queries the compiler does not have yet.
-How to reverse it: sections are independent records in `explain --json`; adding one later changes no other.
-Meanwhile: B is applied as far as the data exists: `cpl explain <file>` lists the four sections under `Not shown yet:` until the compiler query lands.
-
-### tools: which exit codes does `cpl` use (tools-4)
-`spec/tools/cli.md` says 0 success, 1 program or test failure, 2 compile error, 3 usage error. The binary (`crates/cpl-cli/src/lib.rs`, `EXIT_ERRORS`/`EXIT_USAGE`/`EXIT_FAILED`) uses 1 compile error, 2 usage error, 3 the program failed: `cpl run` on `print(xs[5])` exits 3 (`run_exits_3_where_the_program_fails_and_keeps_what_it_printed`), `cpl judges a b` exits 2, the emitted C++ exits 3 on a failed `assert`.
-Option A: change the spec to the binary. 2 for usage matches POSIX tools, getopt and clap; editors, `cpl test`, `cpl stress` and the emitted C++ already use these codes.
-Option B: renumber the binary and the emitted C++ to the spec.
-Recommendation: A. It costs one spec sentence. B changes three constants plus every script and editor that reads them, and gains nothing.
-How to reverse it: swap the three constants in `crates/cpl-cli/src/lib.rs` and the `exit(3)` in the C++ runtime; the tests name the constants, not numbers (`crates/cpl-cli/tests/golden.rs`).
-Meanwhile: A is applied (decisions.md 245): `spec/tools/cli.md` states the binary's codes.
-
 ### spec: what are a range's keys, its own elements or positions from 0?
 Chapter 7 lists ranges as `Indexed<D, T>` (R07.3.5: `s[i]` in O(1), `s.keys: Range<D>`), but chapter 4's range methods (R04.4.12-21) never say what `r[i]`, `r.keys` or `r.items` mean. Today `let r = 2..5` gives `r[3]` = R0101 "index 3 is outside a range of length 3" (so `r[0]` is 2), and `r.keys`, `r.items` do not compile.
 Option A, identity: `r[x]` is `x` for `x in r` (traps outside), `r.keys` is `r`, `for (k, x) in r.items` walks `(2, 2) (3, 3) (4, 4)`. A range is `V.range[l..r]` without the source: the same keys a slice keeps (R07.2.14), so `Range<V>` stays `Indexed<V, V>` and never mixes positions of `V` with counts.

@@ -67,11 +67,12 @@ A cold agent scores each 1-5 with a reason, on fixed samples; the trend is the s
 7. Tier-1 editors in the gate; JetBrains in CI (network blocks it on VMs).
 8. Move debugger code (`dap.rs`, `trace.rs`, `live.rs`, `replay.rs`) into the debugger's `cpl-trace` when it splits out.
 
-## Decisions for Ryan
-Each is in [plan/QUESTIONS.md](../../QUESTIONS.md) with options and a reversible default.
-1. **tools-1 command set**: the spec's 23 commands vs the binary's 23. Recommend: spec adopts `check`, `fix`, `judge`, `self`, `report`, `replay`, `dap`; `trace` stays `run --trace`, `debug` stays `dap` + editor, `interact` stays `run` on a file with an `@interactor`, `selftest` goes (it's the gate); build `fetch`, `locate`, `migrate` for v0.3.
-2. **tools-2 tier-1 editors**: recommend VS Code and Neovim tier 1 (gated); JetBrains, Zed, Helix, Emacs tier 2 (smoke when installed, fixed on report).
-3. **tools-3 explain scope for v0.3**: recommend the four sections contestants ask about (types and niches, arrays and peak memory, specializations, remaining checks) in both explain and hover; contexts, generic instances and unsafe-tier sites after v0.3.
+## Decisions taken
+Each was a question in plan/QUESTIONS.md, settled by its recommendation; Ryan can reverse any.
+1. **tools-1 command set** (decisions.md 244): one verb per job; `trace` is `run --trace`, `interact` is `run` on a file with an `@interactor`, `debug` is `dap` + editor, no `selftest`; `fetch` and `migrate` built, `locate` waits on debugger.
+2. **tools-2 tier-1 editors** (decisions.md 264): VS Code and Neovim gated; the rest tier 2.
+3. **tools-3 explain scope** (decisions.md 265): four sections in explain and hover from one compiler query; listed as `Not shown yet:` until it exists.
+4. **tools-4 exit codes** (decisions.md 245): 0 success, 1 errors, 2 usage, 3 the program failed.
 
 ## Ryan's role
-One design review: the command set and names, the toolchain model (`cpl self`, `cpl +edge`, pins), tier-1 editors, explain scope (the three decisions above, plus [design/overview.md](design/overview.md)). After that the acceptance tests are the contract and the lane runs as a metric lane; Ryan sees milestone demos (a recording of the editor flow, a sample `explain`).
+One design review: the command set and names, the toolchain model (`cpl self`, `cpl +edge`, pins), tier-1 editors, explain scope (the decisions above, plus [design/overview.md](design/overview.md)). After that the acceptance tests are the contract and the lane runs as a metric lane; Ryan sees milestone demos (a recording of the editor flow, a sample `explain`).

@@ -6311,3 +6311,29 @@ constants and the `exit(3)` in the C++ runtime, and the sentence in
 - **Decision.** Learn stays a short course aimed at Div 2 A-C, not a full course to Div 1: 10 chapters (graphs and DP included, per Ryan's scope "learn: through guides, through practice problems") and 19 judged problems, each compiler-checked in the gate.
 - **Why.** It covers what a first contest needs and stays small enough to keep compiler-checked as the language moves.
 - **Reverse.** Content only: drop pages from `web/content/learn/read/meta.json` and `web/content/learn/practice/meta.json`, or revert the Learn commits.
+
+## 264. Tier-1 editors are VS Code and Neovim (tools-2) (2026-11-22)
+
+- **Decision.** VS Code and Neovim are tier 1: smoke-tested in the gate,
+  and broken there means main is red. JetBrains, Zed, Helix, Emacs and Vim
+  are tier 2: smoke-tested where installed, JetBrains built in CI, fixed on
+  report. Option B of tools-2, taken by its recommendation.
+- **Why.** The two cover most contestants and install in one step, so the
+  gate stays fast and offline; every editor shares one `cpl lsp`, so tier 2
+  loses only the gate, not features.
+- **Reverse.** Promote an editor by adding its smoke test to
+  `scripts/check.sh`; demote one by removing it.
+
+## 265. `cpl explain` and hover show four sections in v0.3 (tools-3) (2026-11-22)
+
+- **Decision.** v0.3's `cpl explain` and LSP hover show types with bytes and
+  niches, arrays and peak memory, specializations chosen, and checks left
+  per build, from one shared-core query. Contexts, generic instances and
+  unsafe-tier sites come after v0.3. Until the compiler's representation
+  query exists, `cpl explain` lists the four under `Not shown yet:` rather
+  than computing them in the tools crates. Option B of tools-3.
+- **Why.** These answer "why is this slow or big"; one query keeps explain
+  and hover from disagreeing, and the rest of `spec/tools/explain.md`
+  needs compiler queries that do not exist yet.
+- **Reverse.** Sections are independent records in `explain --json`;
+  adding or dropping one changes no other.
