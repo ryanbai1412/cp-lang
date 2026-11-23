@@ -66,3 +66,12 @@ fn fixes_that_changed_what_programs_do() {
         .iter()
         .all(|d| d.code != TREE_ORDER.code));
 }
+
+#[test]
+fn a_keep_where_a_value_is_wanted_changes_its_place() {
+    // crates/cpl-cli/tests/programs/s2_keep_bool.cp: `let a = best min= x`
+    // writes `best`, so `var best` stays a `var`.
+    let src = "var best = 9\nlet a = best min= 4\nvar hi = 0\nfor x in [3, 1]:\n    if hi max= x: print(x)\nprint(best, a, hi)\n";
+    let diags = crate::lint(src, &crate::Config::default());
+    assert!(diags.iter().all(|d| d.code.0 != "L0201"), "{diags:?}");
+}

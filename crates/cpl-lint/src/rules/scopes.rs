@@ -136,7 +136,7 @@ impl Visitor for Scopes<'_> {
     }
 
     fn expr(&mut self, expr: &Expr) {
-        if let ExprKind::Mut(inner) = &expr.kind {
+        if let ExprKind::Mut(inner) | ExprKind::Keep { target: inner, .. } = &expr.kind {
             self.changes(inner);
             return;
         }
