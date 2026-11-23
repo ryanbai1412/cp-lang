@@ -4,7 +4,7 @@
 let n: 1..=100_000 = read()
 domain V = 1..=n
 let colour: [V]1..=n = read()
-let t = Rooted(Graph.undirected(read<[n - 1](V, V)>()), V.first)
+let t = Rooted(Graph.undirected(read<[n - 1](V, V)>()), V.first!)
 
 struct Tally:
     var count: Map<Int, Int> = [:]

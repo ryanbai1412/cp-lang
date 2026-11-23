@@ -46,7 +46,7 @@ pub fn two_edge_components<V, A>(adj: V -> Iter<A>) -> (domain C, comp: [V]C):
                     low[p] min= low[u]
                 if low[u] == tin[u]!:
                     while true:
-                        let v = stack.pop()
+                        let v = stack.pop()!
                         cid[v] = k
                         if v == u: break
                     k += 1
@@ -131,7 +131,7 @@ pub fn biconnected_components<V, A>(adj: V -> Iter<A>) -> List<List<V>>:
                     if low[u] >= tin[par]!:
                         var comp = List<V>()
                         while true:
-                            let w = stack.pop()
+                            let w = stack.pop()!
                             comp.push(w)
                             if w == u: break
                         comp.push(par)
