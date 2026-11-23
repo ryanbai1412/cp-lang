@@ -20,7 +20,39 @@ fn rendered(file: &Path) -> String {
         .env("NO_COLOR", "1")
         .output()
         .expect("cpl starts");
-    String::from_utf8_lossy(&out.stderr).into_owned()
+    mask_std_lines(&String::from_utf8_lossy(&out.stderr))
+}
+
+/// `std/strings.cp:1121` becomes `std/strings.cp:_`: a golden must not break on every std edit.
+fn mask_std_lines(text: &str) -> String {
+    let mut out = String::with_capacity(text.len());
+    let mut rest = text;
+    while let Some(at) = rest.find("std/") {
+        let after = &rest[at..];
+        let Some(end) = after.find(".cp:") else { break };
+        let path = &after[..end];
+        let digits = after[end + 4..]
+            .bytes()
+            .take_while(u8::is_ascii_digit)
+            .count();
+        if digits == 0 || path.contains(char::is_whitespace) {
+            out.push_str(&rest[..at + 4]);
+            rest = &rest[at + 4..];
+            continue;
+        }
+        out.push_str(&rest[..at + end + 4]);
+        out.push('_');
+        rest = &after[end + 4 + digits..];
+        if let Some(col) = rest.strip_prefix(':') {
+            let n = col.bytes().take_while(u8::is_ascii_digit).count();
+            if n > 0 {
+                out.push_str(":_");
+                rest = &col[n..];
+            }
+        }
+    }
+    out.push_str(rest);
+    out
 }
 
 fn planned_name(feature: &str) -> String {
