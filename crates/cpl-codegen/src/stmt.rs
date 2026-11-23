@@ -1391,7 +1391,7 @@ impl<'p> Emitter<'p> {
                     && !hoisted
                     && self.closure_id.is_none()
                     && cpp.starts_with("std::vector<");
-                if reused && !matches!(init.kind, ExprKind::Fill(..)) {
+                if reused && matches!(&init.kind, ExprKind::Tuple(items) if items.is_empty()) {
                     self.line(out, &format!("static {cpp} {name};"));
                     self.line(out, &format!("{name}.clear();"));
                     return;
@@ -1461,6 +1461,13 @@ impl<'p> Emitter<'p> {
                         }
                     }
                 };
+                // A kept comprehension's list stays in its buffer: name it.
+                if let ExprKind::Local(built) = init.kind {
+                    if reused && self.reused.contains(&built) && built_in(whole, built) {
+                        self.line(out, &format!("auto& {name} = {};", self.names[built]));
+                        return;
+                    }
+                }
                 // A value its own block built (a comprehension) is not read again: it moves.
                 let text = match init.kind {
                     ExprKind::Local(built)

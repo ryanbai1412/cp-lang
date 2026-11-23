@@ -266,11 +266,23 @@ pub(crate) fn reused(program: &Program, id: Option<usize>, body: &Block) -> BTre
     }
     let mut starts: Vec<usize> = Vec::new();
     let mut twice: BTreeSet<usize> = BTreeSet::new();
+    // `let xs = [.. for ..]`: `xs` names the list its block built and gave.
+    let mut built: Vec<(usize, usize)> = Vec::new();
     walk::deep_stmts(body, &mut |stmt| {
         if let Stmt::Let(slot, Some(init)) = stmt {
+            if let ExprKind::Do(block) = &init.kind {
+                if let (Some(Stmt::Let(list, _)), Some(Stmt::Give(gave))) =
+                    (block.stmts.first(), block.stmts.last())
+                {
+                    if matches!(gave.kind, ExprKind::Local(l) if l == *list) {
+                        built.push((*slot, *list));
+                    }
+                }
+            }
             let empty = matches!(&init.kind, ExprKind::Tuple(items) if items.is_empty())
                 && matches!(init.ty, Ty::List(_))
-                || matches!(&init.kind, ExprKind::Fill(dims, _) if dims.len() == 1);
+                || matches!(&init.kind, ExprKind::Fill(dims, _) if dims.len() == 1)
+                || built.last().is_some_and(|(s, _)| s == slot);
             if !empty || starts.contains(slot) {
                 twice.insert(*slot);
             }
@@ -298,11 +310,22 @@ pub(crate) fn reused(program: &Program, id: Option<usize>, body: &Block) -> BTre
             plain(seq, -1);
         }
     });
-    starts
+    for (_, list) in &built {
+        *seen.entry(*list).or_default() -= 1;
+    }
+    let mut kept: BTreeSet<usize> = starts
         .into_iter()
         .filter(|slot| !twice.contains(slot) && seen.get(slot).copied().unwrap_or(0) == 0)
         .filter(|slot| *slot >= id.map_or(0, |id| program.fns[id].params.len()))
-        .collect()
+        .collect();
+    // The name and its list share one buffer, so both are kept or neither.
+    for (name, list) in built {
+        if !(kept.contains(&name) && kept.contains(&list)) {
+            kept.remove(&name);
+            kept.remove(&list);
+        }
+    }
+    kept
 }
 
 /// The struct fields that hold a row of a fixed small count of cells and

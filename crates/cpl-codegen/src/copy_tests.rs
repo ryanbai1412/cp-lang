@@ -47,6 +47,22 @@ fn a_let_bound_comprehension_moves_its_list() {
         "    nz.len\n",
         "print(f(2))\n",
     ));
+    // `f` can't re-enter, so each list keeps one buffer across calls.
+    assert!(cpp.contains("auto& signs = t"), "{cpp}");
+    assert!(cpp.contains("auto& nz = t"), "{cpp}");
+    assert!(cpp.contains("static std::vector<ll> t"), "{cpp}");
+}
+
+#[test]
+fn a_let_bound_comprehension_in_a_recursive_fn_moves_its_list() {
+    let cpp = cpp(concat!(
+        "let a: [0..3]Int = read()\n",
+        "fn f(v: Int) -> Int:\n",
+        "    let signs = [Int(x >= v) - 1 for x in a]\n",
+        "    if v > 0: return f(v - 1) + signs.len\n",
+        "    signs.len\n",
+        "print(f(2))\n",
+    ));
     assert!(cpp.contains("signs = std::move("), "{cpp}");
-    assert!(cpp.contains("nz = std::move("), "{cpp}");
+    assert!(!cpp.contains("static std::vector"), "{cpp}");
 }
