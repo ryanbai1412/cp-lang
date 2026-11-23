@@ -60,6 +60,32 @@ class CpPluginSmokeTest : BasePlatformTestCase() {
         assertEquals(listOf(cpl.path, "run", source.path, File(dir, "i1").path), config.commandLine().getCommandLineList(null))
     }
 
+    fun `test the stress configuration saves a failing case that the test configuration reruns`() {
+        val dir = Files.createTempDirectory("cpl").toFile()
+        val planted = File(repo, "examples/debugging/knapsack.cp").readText()
+        assertTrue(planted.contains("for c in 0..=cap:"))
+        val source = File(dir, "k.cp").apply { writeText(planted) }
+        fun run(command: String): Pair<Int, String> {
+            val config = CplRunConfigurationType.get().configurationFactories.single()
+                .createTemplateConfiguration(project) as CplRunConfiguration
+            config.options.file = source.path
+            config.options.command = command
+            config.checkConfiguration()
+            val process = config.commandLine().toProcessBuilder().redirectErrorStream(true).start()
+            val shown = process.inputStream.bufferedReader().readText()
+            return process.waitFor() to shown
+        }
+        val (stressed, report) = run("stress")
+        assertEquals(report, 1, stressed)
+        assertTrue(report, report.contains("saved"))
+        assertEquals(report, 1, File(dir, "k.tests").listFiles { f -> f.name.endsWith(".in") }.orEmpty().size)
+        val (failed, rerun) = run("test")
+        assertTrue(rerun, failed != 0)
+        source.writeText(planted.replace("for c in 0..=cap:", "for c in (0..=cap).rev:"))
+        val (passed, fixed) = run("test")
+        assertEquals(fixed, 0, passed)
+    }
+
     fun `test fn main has a run marker`() {
         myFixture.configureByText("a.cp", "fn helper():\n    pass\n\nfn ma<caret>in():\n    print(1)\n")
         val element = myFixture.file.findElementAt(myFixture.file.text.indexOf("fn main"))!!
