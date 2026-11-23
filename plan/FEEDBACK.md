@@ -14,4 +14,5 @@ Each piece of Ryan's feedback becomes a rule, and a mechanical check where one i
 | Couldn't understand `reroot` | Docs standard: purpose, parameter roles, a recognisable example, cost | per-item writable-from-docs test | stdlib, idioms |
 | A port in a shared sample didn't compile | The corpus compiles on every land | `cpl check` over all ports | infra |
 | `U` in `reroot<T, U, M>` reads as a vertex domain | Type parameters get role names (`Answer`, `Contribution`, `Op`); single letters only for the element `T`; never domain-like letters | check over `cpl doc --format json std` | stdlib |
+| `reroot` needed one line: `out[v] = finish(fold op of lift(out[c], c, v), v)` | Every non-trivial item starts with a meaning line: the defining equation or a brute-force version, ideally an executable `reference:` used as the test oracle | reference-vs-fast differential tests | stdlib |
 | Opaque helper names (`net`, `twice`) | Names say what they mean (low priority) | — | idioms |
