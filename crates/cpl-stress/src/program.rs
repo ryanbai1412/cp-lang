@@ -298,7 +298,7 @@ fn emit_cpp(
     }
     let missing = |kind: &str| BuildError(format!("{name} declares no `{kind}` fn"));
     let lowered = match part {
-        Part::Solution => cpl_ir::lower(&analysis),
+        Part::Solution => cpl_ir::lower_sampling_laws(&analysis),
         Part::ColdCache => cpl_ir::lower_cold_cache(&analysis),
         Part::Brute => {
             let (brute_fn, _) = cpl_ir::brute(&analysis).ok_or_else(|| missing("@alt(program)"))?;

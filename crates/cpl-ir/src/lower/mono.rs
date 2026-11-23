@@ -4042,7 +4042,7 @@ impl<'a> Lowerer<'a> {
             );
             return self.err_expr(span);
         };
-        let laws = self.structs[sid].laws.clone();
+        let laws = self.struct_laws(sid);
         let struct_env = self.structs[sid].env.clone();
         let struct_fields = self.structs[sid].def.fields.clone();
 

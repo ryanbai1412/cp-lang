@@ -361,7 +361,7 @@ pub fn stress_source(
         ));
     }
 
-    let fast = cpl_ir::lower(&analysis).map_err(|diags| {
+    let fast = cpl_ir::lower_sampling_laws(&analysis).map_err(|diags| {
         let lines = cpl_diag::LineIndex::new(source);
         let text: String = diags
             .iter()

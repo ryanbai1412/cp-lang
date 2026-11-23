@@ -525,13 +525,16 @@ pub trait HasInv<T>:
     fn inv(self, a: T) -> T
 
 /// Law: `op(a, b) == op(b, a)`. Lets folds reorder and tags skip push-down.
-pub trait Commutative<T>: Op<T>
+pub trait Commutative<T>: Op<T>:
+    law comm(a: T, b: T) = self.op(a, b) == self.op(b, a)
 
 /// Law: `op(a, a) == a`. Lets `SparseTable` overlap halves.
-pub trait Idempotent<T>: Op<T>
+pub trait Idempotent<T>: Op<T>:
+    law idem(a: T) = self.op(a, a) == a
 
 /// Law: `op(a, b)` is `a` or `b`. Lets sliding folds use a monotone deque.
-pub trait Selective<T>: Idempotent<T>
+pub trait Selective<T>: Idempotent<T>:
+    law select(a: T, b: T) = self.op(a, b) == a or self.op(a, b) == b
 
 /// One operation per component of a tuple (positional) or record (named): `op((a0, a1),
 /// (b0, b1)) == (m0(a0, b0), m1(a1, b1))`. The identity is the tuple of identities, and the

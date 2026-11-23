@@ -706,6 +706,10 @@ impl<'a> Lowerer<'a> {
         name_span: Span,
         span: Span,
     ) -> Expr {
+        let fold = |lw: &mut Self| lw.fold_seq(base, op, optional, name_span, span);
+        if let Some(checked) = self.fold_checking_laws(base, op, span, fold) {
+            return checked;
+        }
         if let ast::ExprKind::Name(op_name) = &op.value.kind {
             if matches!(op_name.as_str(), "min" | "max") {
                 let elem = self.probe_ty_silent(base).and_then(|t| t.seq_elem());
