@@ -66,9 +66,9 @@ note = "per-file counts summed: Cargo.toml 1, rules/bounds.rs 3, all the prover,
 [[metric]]
 name = "lint_seconds_largest_file"
 command = "/usr/bin/time -f '%e' target/release/cpl lint spec/std/tree.cp"
-today = 0.01
-target = "< 0.05"
-note = "2,682 lines, the largest file that lints; process wall time, 3 runs"
+today = 0.21
+target = "< 0.5"
+note = "2,682 lines, the largest file that lints; process wall time, 3 runs (0.20-0.22); includes the checker run, decisions.md 239"
 
 [[metric]]
 name = "fmt_seconds_largest_file"

@@ -30,7 +30,8 @@ Depends on `cpl-syntax`, `cpl-diag`, and, outside wasm only, `cpl-check` and
 
 | File | Lines | What it is for |
 |---|---|---|
-| `src/lib.rs` | 1,046 | `Level`, `Lint`, the `LINTS` registry (38 consts with code, name, default, title, summary, explanation, trigger, fix text); `lint`, `lint_parsed`, `fix`, `fix_at`, `apply_fixes`; `@allow` and `with lint(name: allow)` regions; removed-syntax codemods behind `cpl fix`; the `Proven*` analysis API |
+| `src/lib.rs` | 1,035 | `Level`, `Lint`, the `LINTS` registry (38 consts with code, name, default, title, summary, explanation, trigger, fix text); `lint`, `lint_parsed`, `fix`, `fix_at`, `apply_fixes`; `@allow` and `with lint(name: allow)` regions; removed-syntax codemods behind `cpl fix`; the `Proven*` analysis API |
+| `src/checker.rs` | 74 | `CHECKER_LINTS`: the names of L0601-L0609, which `cpl-check` emits; `checker_lints` runs the checker for `cpl lint` and applies levels and `with lint` regions |
 | `src/config.rs` | 153 | `Config` from `cp.toml [lints]` (levels by name) plus `memory_mb` |
 | `src/walk.rs` | 513 | Tree walkers over `cpl_syntax` items shared by the rules |
 | `src/rules/mod.rs` | 34 | `run`: calls each rule module in turn |

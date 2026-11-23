@@ -25,8 +25,8 @@ The detail behind [README.md](README.md). Target design:
    `Proven*` passes. Until then the current analysis stays, unchanged.
 5. **Recognizers and `@lint` (M3).** fold, search, build, scan first (they
    cover `rules/taste/`'s largest lints); port `hand_rolled_*`; stdlib `@lint`
-   declarations replace the hard-coded names; then list L0601-L0609, which
-   `cpl-check` already emits, in the registry.
+   declarations replace the hard-coded names; L0601-L0609, which `cpl-check` emits, are named in
+   `cpl-lint` and reported by `cpl lint` (decisions.md 239).
 6. **Spelling cleanup.** `@allow` removed in favour of `with lint(...)`
    (`cpl fix` rewrites it), after the spec domain confirms.
 7. **Grow the catalogue.** From the idioms catalog, P0 and bound-aware

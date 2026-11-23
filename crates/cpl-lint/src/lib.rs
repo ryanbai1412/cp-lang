@@ -14,12 +14,14 @@
 //! out. Levels come from `[lints]` in `cp.toml` and from `@allow(name)` on
 //! an item.
 
+mod checker;
 mod config;
 mod rules;
 mod walk;
 
 pub mod cli;
 
+pub use checker::{checker_lints, CheckerLint, CHECKER_LINTS};
 pub use config::{Config, ConfigError};
 
 use cpl_diag::{Code, Diagnostic, Severity, Span};
@@ -431,6 +433,13 @@ pub fn lint_named(name: &str) -> Option<&'static Lint> {
     LINTS.iter().find(|lint| lint.name == name)
 }
 
+/// The name `name` as a lint of this crate or of the checker.
+pub(crate) fn any_lint_named(name: &str) -> Option<&'static str> {
+    lint_named(name)
+        .map(|lint| lint.name)
+        .or_else(|| checker::checker_lint_named(name).map(|lint| lint.name))
+}
+
 /// What a rule found, before levels are applied.
 pub(crate) struct Finding {
     pub lint: &'static Lint,
@@ -758,8 +767,8 @@ impl Allows {
                         let ExprKind::Name(name) = &arg.value.kind else {
                             continue;
                         };
-                        match lint_named(name) {
-                            Some(lint) => self.out.regions.push((covered, lint.name)),
+                        match any_lint_named(name) {
+                            Some(name) => self.out.regions.push((covered, name)),
                             None => self
                                 .out
                                 .unknown
@@ -815,9 +824,9 @@ impl Contexts<'_> {
         }
         for arg in args {
             let Some(field) = &arg.name else { continue };
-            match lint_named(&field.text) {
-                Some(lint) if matches!(&arg.value.kind, ExprKind::Name(v) if v == "allow") => {
-                    self.out.regions.push((covered, lint.name))
+            match any_lint_named(&field.text) {
+                Some(name) if matches!(&arg.value.kind, ExprKind::Name(v) if v == "allow") => {
+                    self.out.regions.push((covered, name))
                 }
                 Some(_) => {}
                 None => self
@@ -862,9 +871,10 @@ fn unknown_lint(name: &str, span: Span) -> Finding {
 
 /// The lint name within two edits of `name`, if there is one.
 pub(crate) fn closest_lint(name: &str) -> Option<&'static str> {
-    LINTS
-        .iter()
-        .map(|lint| (edit_distance(name, lint.name), lint.name))
+    let names = LINTS.iter().map(|lint| lint.name);
+    names
+        .chain(CHECKER_LINTS.iter().map(|lint| lint.name))
+        .map(|known| (edit_distance(name, known), known))
         .filter(|(distance, _)| *distance <= 2)
         .min()
         .map(|(_, name)| name)
@@ -1020,3 +1030,6 @@ mod corpus_tests;
 
 #[cfg(test)]
 mod fix_tests;
+
+#[cfg(test)]
+mod checker_tests;

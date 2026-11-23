@@ -7,7 +7,9 @@
 //! memory_mb = 64          # the budget `memo_key_space` checks against
 //! ```
 
-use crate::{closest_lint, lint_named, Level, Lint};
+use crate::checker::CHECKER_LINTS;
+use crate::{any_lint_named, closest_lint, Level, Lint};
+use cpl_diag::Code;
 use std::collections::HashMap;
 use std::path::Path;
 
@@ -55,6 +57,15 @@ impl Config {
         self.levels.insert(lint.name, level);
     }
 
+    /// The level a lint the checker emits runs at; they warn by default.
+    pub fn checker_level(&self, code: Code) -> Level {
+        CHECKER_LINTS
+            .iter()
+            .filter(|lint| lint.code == code)
+            .find_map(|lint| self.levels.get(lint.name).copied())
+            .unwrap_or(Level::Warn)
+    }
+
     /// Reads the `[lints]` table of a `cp.toml`. Other tables belong to
     /// other tools and are skipped. Every bad line is reported; the good
     /// ones still apply.
@@ -94,7 +105,7 @@ impl Config {
                 }
                 continue;
             }
-            let Some(lint) = lint_named(key) else {
+            let Some(name) = any_lint_named(key) else {
                 error(match closest_lint(key) {
                     Some(close) => {
                         format!("there is no lint called `{key}`; did you mean `{close}`?")
@@ -108,7 +119,9 @@ impl Config {
                 .and_then(|v| v.strip_suffix('"'))
                 .and_then(Level::parse);
             match level {
-                Some(level) => config.set(lint, level),
+                Some(level) => {
+                    config.levels.insert(name, level);
+                }
                 None => error(format!(
                     "the level of `{key}` is \"allow\", \"warn\" or \"deny\", not `{value}`"
                 )),

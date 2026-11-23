@@ -5980,3 +5980,15 @@ vertex as a root of its own, in `V` order, so `tree.parent(v) == None` and
 `tree.depth(v) == 0` for them. It lives in `std.tree` as a free fn on
 `Graph`, like `spanning_tree`, because `std.graph` cannot import `Rooted`.
 Reverse: give `Rooted` an optional vertex set and return only the component.
+
+## 239. `cpl lint` reports the checker's lints (2026-11-22)
+`spec/tools/fmt-lint.md` lists L0601-L0609 among the lints and sets every
+lint's level in `cp.toml [lints]` or `with lint(name: allow)`, but `cpl lint`
+did not show them and called `padding` "no lint". `cpl-lint` now names them
+(`CHECKER_LINTS`, `crates/cpl-lint/src/checker.rs`, tested against the spec
+table) and `cpl lint` runs the checker and reports them at their configured
+level; the checker stays their only finder and `cpl-diag` their explainer.
+Running the checker makes `cpl lint spec/std/tree.cp` 0.21 s, not 0.02 s,
+so the lint-time target becomes the 500 ms front-end budget: every semantic
+lint will read checker facts anyway (design/overview.md). Reverse: drop the
+`checker_lints` call in `crates/cpl-lint/src/cli.rs`.

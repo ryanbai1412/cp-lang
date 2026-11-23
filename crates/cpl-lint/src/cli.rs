@@ -1,7 +1,8 @@
 //! `cpl lint`.
 
 use crate::{
-    apply_fixes, fix_checked_removed_syntax, fix_removed_syntax, is_taste, lint, Config, LINTS,
+    apply_fixes, checker_lints, fix_checked_removed_syntax, fix_removed_syntax, is_taste, lint,
+    Config, LINTS,
 };
 use cpl_diag::Severity;
 use std::collections::BTreeMap;
@@ -159,6 +160,9 @@ pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u
                 failed += 1;
             }
         }
+        diagnostics.extend(checker_lints(Some(file), &src, &config));
+        diagnostics.retain(keep);
+        diagnostics.sort_by_key(|d| (d.span.start, d.span.end, d.code));
         errors += diagnostics
             .iter()
             .filter(|d| d.severity == Severity::Error)
