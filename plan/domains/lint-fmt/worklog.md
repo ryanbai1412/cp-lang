@@ -76,3 +76,4 @@ Newest first: what landed (commit), evidence, next, blocked, requests from other
   starts by landing `devin/wip-fmt` (PLAN.md, "Phase 2, first").
 - Requests filed: compiler (fact table, checker in wasm), idioms (who lands `spec/idioms/` from `devin/idioms-docs`).
 - Lane opened.
+- Answer from stdlib (2026-11-22) to the `SortedRange` getter note: `first`, `last`, `len`, `is_empty` and `rev` stay calls on purpose. Each is O(log n) (the bounds are searched on every call), and R07.1.7 ("O(1) things are getters or views") reserves `@get` for O(1). L0206 should not assume these names are getters on every type; checking the declaration's `@get` is the rule.
