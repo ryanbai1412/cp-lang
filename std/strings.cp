@@ -1066,7 +1066,7 @@ pub struct SuffixArray:
     rank: List<Int>
     pub lcp: List<Int>
     rmq: List<Int>
-    log: List<Int>
+    bits: Int
     dcum: List<Int>
     toks: List<Int>
 
@@ -1099,20 +1099,18 @@ pub struct SuffixArray:
                 while i + k < n and j + k < n and s.nth(i + k) == s.nth(j + k): k += 1
                 lcp[rank[i]] = k
                 if k > 0: k -= 1
+        // Each sparse-table cell packs `lcp[i] << bits | i`, so one `min` picks the
+        // smallest lcp and, among equal ones, the leftmost position.
         let m = lcp.len
-        var log = List.filled(m + 1, 0)
-        unchecked:
-            for i in 2..m + 1: log[i] = log[i / 2] + 1
-        let levels = if m == 0: 0 else: log[m] + 1
+        let bits = bit_width(m)
+        let levels = bits
         var rmq = List.filled(levels * m, 0)
         unchecked:
-            for i in 0..m: rmq[i] = i
+            for i in 0..m: rmq[i] = (lcp[i] << bits) | i
             for b in 1..levels:
                 let step = 1 << (b - 1)
                 for i in 0..m - (1 << b) + 1:
-                    let x = rmq[(b - 1) * m + i]
-                    let y = rmq[(b - 1) * m + i + step]
-                    rmq[b * m + i] = if lcp[y] < lcp[x]: y else: x
+                    rmq[b * m + i] = min(rmq[(b - 1) * m + i], rmq[(b - 1) * m + i + step])
         var dcum = List.filled(n + 1, 0)
         unchecked:
             for r in 0..n:
@@ -1121,7 +1119,7 @@ pub struct SuffixArray:
         var toks = List.filled(n, 0)
         unchecked:
             for i in 0..n: toks[i] = s.at(i).hash_token
-        SuffixArray(sa, rank, lcp, rmq, log, dcum, toks)
+        SuffixArray(sa, rank, lcp, rmq, bits, dcum, toks)
 
     /// The length `n` of the sequence the suffix array was built over.
     ///
@@ -1148,7 +1146,7 @@ pub struct SuffixArray:
         assert 0 <= i and i <= n and 0 <= j and j <= n, "`lcp_between(i, j)` needs `0 <= i, j <= len`"
         if i == j: return n - i
         if i == n or j == n: return 0
-        lcp[self.arg_min(min(rank[i], rank[j]), max(rank[i], rank[j]))]
+        self.packed_min(min(rank[i], rank[j]), max(rank[i], rank[j])) >> bits
 
     /// The ranks `lo..hi` of the suffixes that start with `pat`. When there are None it is the
     /// empty range at the rank where `pat` would sort.
@@ -1250,13 +1248,13 @@ pub struct SuffixArray:
         if m == 0 or self.lcp_between(l1, l2) >= m: return if n1 < n2: -1 elif n1 > n2: 1 else: 0
         if rank[l1] < rank[l2]: -1 else: 1
 
-    fn arg_min(self, lo: Int, hi: Int) -> Int:
+    fn arg_min(self, lo: Int, hi: Int) -> Int = self.packed_min(lo, hi) & ((1 << bits) - 1)
+
+    fn packed_min(self, lo: Int, hi: Int) -> Int:
         with lint(unproven_list_index: allow)
-        let b = log[hi - lo]
+        let b = bit_width(hi - lo) - 1
         let m = lcp.len
-        let x = rmq[b * m + lo]
-        let y = rmq[b * m + hi - (1 << b)]
-        if lcp[y] < lcp[x]: y else: x
+        min(rmq[b * m + lo], rmq[b * m + hi - (1 << b)])
 
     /// The number of distinct non-empty substrings: `n * (n + 1) / 2 - sum(lcp)`.
     ///
