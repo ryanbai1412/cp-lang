@@ -24,7 +24,7 @@ for m in 0..k:
             return
     else:
         cnt[a[m]] += 1
-        if let first_i = cls.first(i => b[i] != none):
+        if let first_i = cls.find(i => b[i] != none):
             let bv = b[first_i]!
             if cls.any(i => b[i] != none and b[i] != bv):
                 print("NO")

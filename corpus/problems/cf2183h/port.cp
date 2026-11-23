@@ -3,13 +3,13 @@
 // (P_i - P_j)(i - j) is Monge, so f(k) is convex in k: Aliens over a Monge
 // shortest path. Scaling each edge by w = n + 1 and adding 1 keeps it Monge
 // and breaks ties toward fewer groups, which `aliens` needs.
-use std.dp.{aliens, monge_paths}
+use std.dp.{monge_paths}
 @!multitest
 let n: 1..=2e5 = read()
 let k: 1..=n = read()
 let a = read<[n]-1e9..=1e9>().sorted()
 let pref = prefix(a)
-let st = (0..n).first(c => pref.prefix(c) + a[c] * c > 0) ?? n
+let st = (0..n).find(c => pref.prefix(c) + a[c] * c > 0) ?? n
 fn cost(j: Int, i: Int) -> I128 = I128(pref.fold(j..i)) * (i - j)
 let rest = n - k + 1
 if rest <= st: return print(cost(0, rest) + pref.fold(rest..n))

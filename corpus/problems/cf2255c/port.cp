@@ -21,7 +21,7 @@ let sr = sum(i for i in 0..n for j in 0..n if g[i][j] == ink) % n
 let sc = sum(j for i in 0..n for j in 0..n if g[i][j] == ink) % n
 
 if op == "second":
-    print((0..n).first(r => r * w % n == sr)! + 1, (0..n).first(c => c * w % n == sc)! + 1)
+    print((0..n).find(r => r * w % n == sr)! + 1, (0..n).find(c => c * w % n == sc)! + 1)
     return
 
 let (r, c): (1..=n, 1..=n) = read()

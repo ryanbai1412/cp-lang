@@ -25,7 +25,7 @@ domain V = 1..=n
 let edges: [0..n - 1](u: V, v: V) = read()
 let g = Graph.undirected(edges)
 let root = V.last!
-let t = Rooted(g, root: root)
+let t = Rooted(g, root:)
 
 let max_leaf = V.filter(u => g[u].len == 1).map(u => u).max()!
 var sub_max = [V] u => u

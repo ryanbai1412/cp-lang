@@ -12,6 +12,6 @@ let cnt = s.count('1')
 if cnt <= 2:
     print(cnt - 1)
 else:
-    let lo = (0..n).first(i => s[i] == '1')!
-    let hi = (0..n).rev.first(i => s[i] == '1')!
+    let lo = (0..n).find(i => s[i] == '1')!
+    let hi = (0..n).rev.find(i => s[i] == '1')!
     print(hi - lo)

@@ -2,7 +2,6 @@
 // positions: the common trees are the cuts of that sequence's permutation tree.
 // A decreasing node whose right child is one vertex hangs its left part one
 // level deeper; any other node is as deep as its deeper child.
-use std.seq.{inverse}
 use std.tree.{PermTree, PermKind}
 
 @!multitest

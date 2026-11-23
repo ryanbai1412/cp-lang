@@ -10,8 +10,6 @@
 // `weight[d] = C_d * C_{n - d}` trees and loses `sum_i a[i] * a[i + d] = corr[n - d]`,
 // computed as the autocorrelation `convolve(a, a.rev)` via NTT in O(n log n).
 
-use std.ntt.{convolve}
-
 const MOD = 998_244_353
 const BITS = 18
 const MAX_X = (1 << BITS) - 1

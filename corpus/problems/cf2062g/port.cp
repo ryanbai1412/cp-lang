@@ -13,11 +13,11 @@
 // cost — matching the Manhattan lower bound without re-sorting cycles.
 
 use std.flow.min_weight_matching
-use std.seq.{inverse, swap_at}
+use std.seq.{swap_at}
 
 fn sort_perm<D>(mut perm: [D]D) -> List<(D, D)>:
     var ops: List<(D, D)> = []
-    while let r = D.first(x => perm[x] < x):
+    while let r = D.find(x => perm[x] < x):
         var l = perm[r]
         var cur = perm[l]
         while cur != r:

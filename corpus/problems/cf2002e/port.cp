@@ -10,7 +10,7 @@ let n: 1..=300_000 = read()
 var stack: List<(dies: Int, val: Int)> = []
 var strength: List<Int> = []
 for _ in 0..n:
-    var dies: Int = read::<1..=1_000_000_000>()
+    var dies: Int = read<1..=1_000_000_000>()
     let val: 0..=n = read()
     var gone = 0  // when the runs popped so far died
     while let top = stack.last:

@@ -33,7 +33,7 @@ for i in 0..=top_level:
 fn fewer() -> Bool:
     var top = top_level
     for i in (0..ans - 1).rev:
-        top = (0..=top).rev.first(b => freq[b] > 0) ?? return true
+        top = (0..=top).rev.find(b => freq[b] > 0) ?? return true
         if top > i + 1: return false
         freq[top] -= 1
         if top == i + 1:

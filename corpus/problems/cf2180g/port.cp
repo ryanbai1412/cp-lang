@@ -43,7 +43,7 @@ repeat q:
     let op: 1..=3 = read()
     match op:
         1 =>
-            let l = (0..stk.len).rev.first(i => stk[i].mid != none)!
+            let l = (0..stk.len).rev.find(i => stk[i].mid != none)!
             stk[l] = double_even(stk[l - 1], stk[l].own)
             for j in l + 1..stk.len:
                 stk[j] = double_odd(stk[j - 1], stk[j].own)

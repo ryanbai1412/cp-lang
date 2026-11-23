@@ -13,7 +13,6 @@
 // siblings it climbs past back out of the carried sum. Because states carry
 // k!, taking the steps of b out of a is the transposed product
 // (a.transposed_mul(b))[i] = sum_j a[i + j] * b[j].
-use std.ntt.{convolve}
 use std.poly.{integral}
 
 type Z = Mod<998_244_353>

@@ -10,8 +10,6 @@
 // its match, so spending budget `k` on the longest distances leaves the largest
 // `d` whose suffix `d..=n` exceeds `k` (or 0 if all units are deleted).
 
-use std.seq.rotated_left
-
 struct Deposit:
     amount: Int
     at: Int
@@ -40,5 +38,5 @@ for (step, idx) in order.items:
         rem -= take
 
 let suff = prefix(cnt_dist)
-let ans = (1..=n).rev.first(d => suff.fold(d..=n) > k) ?? 0
+let ans = (1..=n).rev.find(d => suff.fold(d..=n) > k) ?? 0
 print(ans)

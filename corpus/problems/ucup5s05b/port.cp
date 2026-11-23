@@ -57,7 +57,7 @@ fn front(qa: Int, qb: Int, qc: Int, t: Int) -> Int:
                 to_mirror(cur.y, cur.y + dir.y * left, m),
             )
             let u = fold_pt(cur, m)
-            cur = cur + dir * len
+            cur += dir * len
             left -= len
             let v = fold_pt(cur, m)
             let at = u.dot(normal) + c

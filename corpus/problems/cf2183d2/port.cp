@@ -12,8 +12,6 @@
 //     `rotated_left(1)` gives every vertex a slot distinct from its own.
 // Remaining vertices at depth `d` take the remaining slots unused at depth `d`.
 
-use std.seq.rotated_left
-
 @!multitest
 let n: 2..=200_000 = read()
 domain V = 1..=n
@@ -45,7 +43,7 @@ for (d, layer) in by_depth.items.rev if not layer.is_empty:
 
     let forbiddens = [(u:, loc: fl) for u in layer if let fl = forbidden_loc[u]]
     if forbiddens.len == 1:
-        let s = Slot.first(x => last_depth[x] != some(d + 1))!
+        let s = Slot.find(x => last_depth[x] != some(d + 1))!
         place(forbiddens[0].u, s)
     elif forbiddens.len >= 2:
         let rotated = forbiddens.map(f => f.loc).rotated_left(1)

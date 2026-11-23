@@ -11,8 +11,6 @@
 // by cancelling any negative `deltas[pos]` against the smallest later positive
 // entries `deltas.first_gt(pos)`. The answer is `dp[n] = tot + sum(deltas)`.
 
-use std.seq.{inverse}
-
 @!multitest
 let n: 1..=200_000 = read()
 domain I = 0..n

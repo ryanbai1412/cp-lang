@@ -7,7 +7,6 @@
 //   [x^n] S(x) / A(x) + (n mod 2),  where
 //   S(x) = 1 - x T[0,0](x^2) + x^2 T[0,1](x^2),
 //   A(x) = 1 - (k + 1) x + x^2 T[1,0](x^2) - x^3 T[1,1](x^2).
-use std.ntt.{convolve}
 use std.poly.{inv}
 
 type Z = Mod<998_244_353>

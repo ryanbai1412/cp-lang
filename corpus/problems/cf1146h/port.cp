@@ -3,7 +3,6 @@
 // - each (triangle, interior point) pair extends to n - 4 five-subsets, counting 2*c4 + 4*c3;
 // - each (triangle, pair of interior points) uniquely counts a hull-3 five-subset (c3).
 // So c5 = C(n, 5) - sum(inside) * (n - 4) / 2 + sum(C(inside, 2)).
-use std.geometry.{turn}
 use std.math.{choose}
 
 let n: 5..=300 = read()

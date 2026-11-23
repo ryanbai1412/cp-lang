@@ -21,8 +21,6 @@
 // value `>= p[min_p]` can then move freely into this block in decreasing order,
 // and shrinking `right_end = p_thresh.prev` keeps all blocks pairwise disjoint.
 
-use std.seq.inverse
-
 struct Cond(max_p: Pos, max_v: Val)
 
 // Monotone stack of active (max_p, max_v) constraints: both fields decrease.
@@ -50,7 +48,7 @@ let inv_p: [Val]Pos = p.inverse()
 
 fn solve():
     // Prefix where P and Q already agree needs no changes.
-    let first_diff = if let d = Pos.first(i => p[i] != q[i]): d else:
+    let first_diff = if let d = Pos.find(i => p[i] != q[i]): d else:
         print(q)
         return
     var used: [Val]Bool = false
@@ -121,7 +119,7 @@ fn solve():
             if can_place(i, q[i], next_cap, had_inv):
                 had_inv = commit_place(i, q[i], next_cap, had_inv)
             else:
-                let v = Val.rev.first(
+                let v = Val.rev.find(
                     u => u < q[i] and not used[u] and can_place(i, u, none, had_inv)
                 )!
                 had_inv = commit_place(i, v, none, had_inv)

@@ -7,7 +7,6 @@
 // at `max_w` (the heaviest edge times n - 1; compared by division so the
 // product never overflows). A second Kruskal over those costs, again by
 // decreasing weight, adds `cost * leaves(a) * leaves(b)` at each join.
-use std.dsu.{DsuOf}
 
 type Z = Mod<998_244_353>
 
@@ -38,7 +37,7 @@ for v in Node.rev if let c = cut[v]: total[v] = c.w + total[c.parent]
 let joins = [
     (
         cost: if total[v] > max_w / c.size: max_w else: total[v] * c.size,
-        v: v,
+        v:,
         parent: c.parent,
     ) for v in Node if let c = cut[v]
 ].sorted(by: j => j.cost, desc: true)

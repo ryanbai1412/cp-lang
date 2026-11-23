@@ -17,7 +17,7 @@ var slots: [0..n]?Int = [0..n] i => (0..n).first_true(j => b[j] >= a_in[i])
 
 var ans = 0
 for i in 0..n:
-    let j = (i..n).first(j => if let s = slots[j]: s <= i else: false) else:
+    let j = (i..n).find(j => if let s = slots[j]: s <= i else: false) else:
         print(-1)
         return
     // Hand shift instead of `slots.insert(i, slots.remove(j))` (dream:23):

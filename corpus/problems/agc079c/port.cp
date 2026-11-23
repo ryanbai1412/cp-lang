@@ -35,8 +35,6 @@
 // forced pop fixes the required end, so flipping only when needed (ignoring
 // free 1-element flips) achieves the exact minimum reversal count.
 
-use std.dsu.{ParityDsu}
-
 enum Side: Back | Front
 
 fn flip(s: Side) -> Side = match s:
