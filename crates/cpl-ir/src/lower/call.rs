@@ -2296,7 +2296,6 @@ impl<'a> Lowerer<'a> {
                 self.arg_extreme(name == "argmax", &args[0].value, span)
             }
             "runs" => self.lower_runs(args, span),
-            "span" => self.lower_span(args, span),
             "counts" => self.lower_counts(args, span),
             "prefix" => self.lower_prefix(args, span),
             "List" => {
@@ -11888,71 +11887,6 @@ impl<'a> Lowerer<'a> {
                 },
                 body,
             ));
-        })
-    }
-
-    /// `span(a, b)`: smallest `Range<D>` covering positions or bounds `a` and `b` of domain `D`.
-    fn lower_span(&mut self, args: &[ast::Arg], span: Span) -> Expr {
-        let Some(exprs) = self.positional_any("span", args, 2, span) else {
-            return self.err_expr(span);
-        };
-        let a = self.expr(exprs[0], None);
-        let b = self.expr(exprs[1], None);
-        if a.ty == Ty::Error || b.ty == Ty::Error {
-            return self.err_expr(span);
-        }
-        let dom_of = |ty: &Ty| match ty {
-            Ty::Pos(d) => Some((*d, true)),
-            Ty::Bound(d) => Some((*d, false)),
-            _ => None,
-        };
-        let (Some((da, a_pos)), Some((db, b_pos))) = (dom_of(&a.ty), dom_of(&b.ty)) else {
-            let message = format!(
-                "`span` takes two positions or bounds of a domain, found `{}` and `{}`",
-                self.show(&a.ty),
-                self.show(&b.ty)
-            );
-            self.error(codes::TYPE_MISMATCH, span, message);
-            return self.err_expr(span);
-        };
-        if da != db {
-            let message = format!(
-                "`span` takes two positions or bounds of one domain, found `{}` and `{}`",
-                self.show(&a.ty),
-                self.show(&b.ty)
-            );
-            self.error(codes::WRONG_DOMAIN, span, message);
-            return self.err_expr(span);
-        }
-        let out_ty = Ty::Range(Box::new(Ty::Pos(da)));
-        let ao = self.cast(Cast::Ord, a, Ty::Int);
-        let bo = self.cast(Cast::Ord, b, Ty::Int);
-        self.do_expr(Some(&out_ty), span, |lw, out| {
-            let (aslot, bslot) = (lw.temp(Ty::Int), lw.temp(Ty::Int));
-            out.push(Stmt::Let(aslot, Some(ao)));
-            out.push(Stmt::Let(bslot, Some(bo)));
-            let (av, bv) = (lw.local(aslot, span), lw.local(bslot, span));
-            let lo = lw.mk(
-                ExprKind::Builtin(Builtin::Min, vec![av.clone(), bv.clone()]),
-                Ty::Int,
-                span,
-            );
-            let a_end = if a_pos { lw.int_add(av, 1) } else { av };
-            let b_end = if b_pos { lw.int_add(bv, 1) } else { bv };
-            let hi = lw.mk(
-                ExprKind::Builtin(Builtin::Max, vec![a_end, b_end]),
-                Ty::Int,
-                span,
-            );
-            let range = lw.mk(
-                ExprKind::Range {
-                    lo: Box::new(lo),
-                    hi: Box::new(hi),
-                },
-                out_ty.clone(),
-                span,
-            );
-            out.push(Stmt::Give(range));
         })
     }
 

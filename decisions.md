@@ -6250,3 +6250,20 @@ constants and the `exit(3)` in the C++ runtime, and the sentence in
 - **Reverse.** Once a generator argument to a generic `Seq` parameter
   streams (compiler worklog request), re-apply `068f144ec` and rerun the
   same two benchmarks.
+
+## 258. `span` is only `std.seq.span(lo: Cut<D>, hi: Cut<D>)`; the compiler's hull form goes (2026-11-22)
+
+- **Decision.** Q3 move 3: `lower_span`, its `"span"` arm, the `span` row in
+  `check/known.rs` and `"span"` in `VALUE_NAMES` are removed; the prelude
+  brings in the std body with `use std.seq.{span}`. The builtin also
+  accepted two positions in either order and returned their hull; the std
+  body, which `spec/std/seq.cp` makes normative, takes two cuts of one
+  domain and traps when `lo > hi`. No conformance case, port or doc
+  example used the hull form; the one unit test that did
+  (`a_range_or_span_stays_in_one_domain`) now writes cuts, and the
+  one-domain rule moved to `std-seq/span-takes-cuts-of-one-domain.cp`.
+- **Why.** Not storage, I/O, bits or a numeric primitive, so std (Q3 (a)).
+  C++ at 9e7 spans: std 0.47/0.55/0.50 s, builtin 0.46/0.52/0.59 s, both
+  3072 KB.
+- **Reverse.** Restore `lower_span` and the `known.rs` row from this
+  commit's parent and put `"span"` back in `VALUE_NAMES`.

@@ -290,3 +290,4 @@ Newest first: what landed (commit), evidence, next, blocked, requests from other
   print([1, 3, 2].take(n))
   ```
   `cpl run` prints `1 3 2`; `cpl run --release` prints values like `33207861248 -3996584849037030503 2`. `print(chain([1, 3, 2], 4..=n).take(n))` fails the same way; without `.take`, or after `.collect()`, both agree. It makes corpus/problems/dmopc21c5p2/spec.cp print garbage on every n except 2.
+- 2026-11-22 (stdlib, Q3 default (a), review afterwards): `span` is the std body only (decision 258); `lower_span` and the `known.rs` row are gone. The hull-of-two-positions form the builtin accepted is not in spec and nothing used it. `a_range_or_span_stays_in_one_domain` now writes cuts; its cross-domain span assertion moved to `spec/conformance/std-seq/span-takes-cuts-of-one-domain.cp`, because `cpl-check`'s unit `check` does not check generic std calls (the lowerer reports E0302 there).
