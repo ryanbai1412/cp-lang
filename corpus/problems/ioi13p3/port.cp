@@ -1,4 +1,11 @@
-// Runnable today/ port of IOI '13 P3 (Wombats) for real Rust `cpl build`.
+// Source: IOI 2013 P3 (Wombats), https://dmoj.ca/problem/ioi13p3
+// Problem: an R x C grid of roads (R <= 5000, C <= 200) with wombat counts on each segment;
+//   people walk east/west and only south. Handle <= 500 changes of one segment and <= 2e5
+//   escape(V1, V2) queries: fewest wombats from (0, V1) to (R - 1, V2).
+// Solution: a segment tree over blocks of 8 rows; each node stores the C x C cost matrix
+//   across its rows. A leaf runs C left/right relaxations per row, O(8 C^2); parents combine
+//   by min-plus product with monotone optima (opt[i][j-1] <= k <= opt[i+1][j]), O(C^2). A
+//   change rebuilds one leaf and its O(log R) ancestors; an escape reads the root.
 // Stdin: r, c, h[r][c-1], v[r-1][c], q, then queries (1/2/3).
 // Uses top-level recursive fns (working around cpl-emit recursive nested-fn self-capture bug).
 // original: corpus/submissions/4722414.cpp

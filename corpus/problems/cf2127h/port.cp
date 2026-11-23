@@ -1,12 +1,13 @@
-// Codeforces 2127 H: maximum-size subgraph of a series-parallel graph where
-// every vertex has degree at most 2.
-//
-// Repeatedly eliminate degree-1 and degree-2 vertices until one vertex remains:
-// - Edge[du, dv] is the max edges chosen inside a collapsed generalized edge
-//   (u, v) using at most du incident edges at u and at most dv at v.
-// - Vert[d] is the max edges chosen inside leaves already absorbed into a
-//   vertex using at most d incident edges at that vertex.
-// When the final vertex reaches degree 0, vert[cur][Deg(2)] is the answer.
+// Source: Codeforces 2127H (23 Rises Again), https://codeforces.com/contest/2127/problem/H
+// Problem: a simple connected graph, n <= 30 vertices, each vertex on at most 5 simple cycles
+//   (multitest, sum of n^2 <= 900). Print the most edges of a subgraph in which every vertex
+//   has degree at most 2.
+// Solution: reduce the graph series-parallel style: fold a degree-1 vertex into its
+//   neighbour, splice out a degree-2 vertex, merge parallel edges. A generalised edge keeps
+//   best[du, dv] (most edges inside it using at most du, dv edges at its ends), a vertex
+//   best[d] over the leaves folded into it; series, parallel and fold are max-plus products
+//   over Deg = 0..=2. A queue holds vertices of degree <= 2 and the last one left gives
+//   best[2]: O((n + m) log m) per test.
 
 domain Deg = 0..=2
 type Edge = [Deg, Deg]Int

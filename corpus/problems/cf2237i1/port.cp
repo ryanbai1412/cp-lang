@@ -1,22 +1,13 @@
-// Codeforces 2237 I1: bottom-up tree DP counting canonical valid 0/1 edge
-// assignments matching a template string ('0', '1', or '?').
-//
-// At each vertex `u`, `dp[u]` counts valid labellings keyed by
-// `State(depth, active, resolved)`:
-//   - `depth`: max 1-edge depth among processed children,
-//   - `active`: an open 0-chain reaches `u` (at most one, cannot cross a
-//     0-edge from `parent`, and cannot coexist with `parent.depth > 0`),
-//   - `resolved`: a closed chain already sits strictly deepest among processed
-//     children (at most one, strictly deeper than all sibling 1-depths).
-//
-// Lifting `child` across `Edge.One` closes an active child chain into a depth-1
-// resolved chain `State(1, false, true)`; otherwise the edge adds `1` (on `One`)
-// or `0` (on `Zero`) to `child.depth`.
-//
-// Inclusion-exclusion `-1`: when `parent = (depth: 0, active: false)` merges
-// across `Edge.One`, the same subtree labelling with `active: true` at `u` is
-// reached both by extending the inactive prefix and by starting an active chain
-// at `u`; subtracting `1` cancels that duplicate non-canonical representation.
+// Source: Codeforces 2237I1 (DBFS Order, easy), https://codeforces.com/contest/2237/problem/I1
+// Problem: a rooted tree, n <= 3000, children in a fixed order (multitest, sum of n^2 <= 9e6).
+//   A colour-0 child is pushed to the deque front (DFS step), colour 1 to the back (BFS
+//   step); s fixes each colour to 0 or leaves it free (easy version: no '1'). Count the
+//   distinct traversal lists over all colourings, mod 1e9+7.
+// Solution: count one canonical colouring per list with a bottom-up tree DP: dp[v][depth]
+//   splits by (active, resolved), depth the most 1-edges below v, active an open 0-chain
+//   reaching v, resolved a closed chain strictly deepest. Children merge in input order
+//   (ties are order-sensitive) under the canonical rules, and a -1 cancels the labelling
+//   reached both from an inactive prefix and from a chain started at v. O(n^2) per test.
 
 type Z = Mod<1_000_000_007>
 enum Label: Zero | One | Any

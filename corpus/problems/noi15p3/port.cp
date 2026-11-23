@@ -1,6 +1,12 @@
-// NOI 2015 Sushi Dinner: partition a subset of 2..=n between two people so no
-// prime divides numbers on both sides, modulo a runtime p. Uses base-3 masks
-// over the 8 primes <= sqrt(500) plus binary inclusion-exclusion.
+// Source: NOI 2015 P3 (Sushi Dinner), https://dmoj.ca/problem/noi15p3
+// Problem: count pairs of subsets X, Y of {2..n} with every x in X coprime to every y in Y,
+//   n <= 500, modulo a runtime p <= 1e9.
+// Solution: every number has at most one prime > 19. Give each of the 8 small primes a side
+//   (none, X, Y; 3^8 masks); per mask, numbers without a big prime pick a side among the
+//   allowed ones, and each big prime's multiples go wholly to X, wholly to Y, or nowhere:
+//   2^a + 2^b - 1 ways. A prime used by nobody is counted under all three digits, so
+//   inclusion-exclusion with weight (-2)^|S| over small primes forced to "none" fixes it.
+//   O(3^8 n) plus O(2^8 3^8).
 // original: corpus/submissions/3782724.cpp
 let n: 2..=500 = read()
 let p: 1..=1000000000 = read()

@@ -1,6 +1,13 @@
-// Runnable port (proto/cp.py lib-run) of statement-first dmpg15g6.cp
+// Source: DMPG '15 G6 (Yōkan), https://dmoj.ca/problem/dmpg15g6
+// Problem: n <= 2e5 pieces with flavours in 1..=m, q <= 2e5 queries l r: can two people each
+//   get >= L/3 pieces (L = r - l + 1) of one flavour, the same or two different? Print YES or
+//   NO per query.
+// Solution: YES iff the top count c1 >= 2L/3, or the top two counts are both >= L/3, and
+//   with insert-only updates the top two flavours are easy to keep. Rollback Mo: queries
+//   shorter than a block run directly; the rest group by l's block, sorted by r, extend r
+//   from the block's end, add l..block end, answer, and undo from a log.
+//   O((n + q) sqrt n).
 // original: corpus/submissions/4253124.cpp
-// Deterministic Rollback Mo's algorithm (manual undo log simulating `Journaled` + `undo`).
 let (n, m): (Int, Int) = read()
 domain I = 1..=n
 domain Flav = 1..=m

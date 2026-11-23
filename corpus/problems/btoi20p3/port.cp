@@ -1,4 +1,11 @@
-// Runnable port (proto/cp.py lib-run) of statement-first btoi20p3.cp
+// Source: BOI 2020 P3 (Joker), https://dmoj.ca/problem/btoi20p3
+// Problem: a graph with n, m, q <= 2e5; each query l r removes edges l..=r. Print YES if the
+//   remaining edges contain an odd cycle, else NO.
+// Solution: limit[l] = the least R such that edges [1, l) and (R, m] are bipartite; it is
+//   non-decreasing in l, and a query says YES iff r < limit[l]. Divide and conquer on l with
+//   limit's range narrowing, over a parity DSU with union by size and rollback (no path
+//   compression): each level adds the edges its halves share, then undoes them.
+//   O(m log m log n).
 // original: corpus/submissions/4656866.cpp
 
 let (n, m, q): (Int, Int, Int) = read()

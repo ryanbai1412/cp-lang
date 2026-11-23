@@ -1,9 +1,13 @@
-// NOI '21 P3 — Celebration (corpus/submissions/5669954.cpp)
-// Condense the directed graph into SCCs (`std.graph.scc`), peel the unique
-// transitive-reduction spanning tree via Kahn's algorithm, weight it with
-// `Rooted` over arcs carrying `w`, and answer each query by building the virtual tree
-// (`tree.virtual`) plus k <= 2 extra directed edges and running forward /
-// backward reachability.
+// Source: NOI 2021 P3 (Celebration), https://dmoj.ca/problem/noi21p3
+// Problem: a weakly connected digraph, n, q <= 3e5, m <= 6e5, where x => z and y => z imply
+//   x => y or y => x. Each query gives s, t and k <= 2 extra edges usable only by it; print
+//   how many cities lie on some s-to-t walk (0 if t is unreachable).
+// Solution: condense SCCs, weighted by size. The property makes each component's
+//   predecessors a chain, so the condensed DAG's transitive reduction is an out-tree: Kahn's
+//   peel hangs each component under the predecessor that frees it last. Per query, take the
+//   virtual tree of the <= 6 key components plus the extra edges, BFS forward from s and
+//   backward from t, and count each component (or inner path of a tree edge) both reach.
+//   O(n + m) setup, O(k log n) per query.
 
 use std.graph.{Graph, scc}
 use std.tree.{Rooted}

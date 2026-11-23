@@ -1,4 +1,11 @@
-// Runnable port (proto/cp.py lib-run) of statement-first noi20p2.cp
+// Source: NOI 2020 P2 (Destiny), https://dmoj.ca/problem/noi20p2
+// Problem: a tree on n <= 5e5 vertices rooted at 1 and m <= 5e5 pairs (u, v), u an ancestor
+//   of v. Count the 0/1 labellings of the edges where every pair's path has an edge labelled 1,
+//   mod 998244353.
+// Solution: dp[v][d] counts labellings of v's subtree whose deepest unsatisfied pair has its
+//   top at depth d (0: none). Merging child c: edge (v, c) = 1 moves all of c's states with
+//   d <= depth(v) to 0; then new[d] = a[d] * B(<= d) + b[d] * A(< d), a max-convolution done
+//   by segment-tree merge with prefix sums and a multiply tag. O((n + m) log n).
 // original: corpus/submissions/5655455.cpp
 // Note: proto/cpc lacks `Pool<Node>` + `Node.Id` today, so parallel List<Int>
 // arrays model the node pool (exact same O(N log N) implicit segtree merge).
