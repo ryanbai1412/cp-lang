@@ -1,9 +1,12 @@
-// Codeforces 2165 F: 21435.
-// Count subarrays containing a 21435 subsequence. For each right end `r`,
-// `best[r]` is the latest left end of a 21435 ending by `r`; the answer is the
-// sum of `best + 1` after a prefix max. Exchange arguments let "5" be
-// `next_greater` of "3", "4" be the latest earlier element valued between "3"
-// and "5", and "1" be `next_less` of "2".
+// Source: Codeforces 2165F (Arctic Acquisition), https://codeforces.com/contest/2165/problem/F
+// Problem: a permutation a of n <= 1e6 (sum of n <= 1e6, multitest). Count the intervals [l, r]
+//   that contain a 21435 subsequence: i1 < ... < i5 with a[i2] < a[i1] < a[i4] < a[i3] < a[i5].
+// Solution: for each right end r let best[r] be the latest l starting a pattern that ends by r;
+//   the answer sums prefix-max(best) + 1. Exchange arguments fix three picks: "5" is next_greater
+//   of "3", "4" is the latest earlier position valued between "3" and "5" (SegTree of positions
+//   by value), and "1" is next_less of "2". Sweeping the "4" positions, the "2"s whose "1" is
+//   already passed sit in a max SegTree by value; the best "2" below "3" updates best at "5".
+//   O(n log n).
 
 @!multitest
 let n: 1..=1_000_000 = read()

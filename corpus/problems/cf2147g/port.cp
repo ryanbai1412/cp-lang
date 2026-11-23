@@ -1,10 +1,12 @@
-// Codeforces 2147 G — Multiplicative Order Prime-Factor Probability
-//
-// For `M = xs[0] * xs[1] * xs[2]`, let `pset` be the distinct prime divisors
-// of `M`. Starting from `phi(M) / M = prod_{p in pset} (p - 1) / M`, each
-// prime `q` dividing `prod_{p in pset} (p - 1)` with total multiplicity `e`
-// independently fails to divide the random order with probability `q^(-e)`,
-// and otherwise contributes an extra factor `0` (if `q | M`) or `q^(-1)`.
+// Source: Codeforces 2147G (Modular Tetration), https://codeforces.com/contest/2147/problem/G
+// Problem: m = x y z with x, y, z <= 1e6 (multitest). a is m-tetrative when the tower b_0 = 1,
+//   b_n = a^(b_(n-1)) is eventually 1 mod m. Print the density of m-tetrative integers a, mod
+//   998244353.
+// Solution: the tower's exponent grows without bound, so a qualifies iff gcd(a, m) = 1 and every
+//   prime q of ord_m(a) divides a. Over the units mod m, q misses the order with probability
+//   q^-v_q(phi(m)); the p^(k-1) parts of phi fold into the start prod (p - 1) / m over the primes
+//   p | m, leaving e = v_q(prod (p - 1)). Otherwise q | a has probability 0 if q | m, else 1/q by
+//   CRT. Factor x, y, z and each p - 1: a product over the primes q.
 
 use std.math.{factor}
 

@@ -1,13 +1,14 @@
-// Codeforces 2135 E1: Beyond the Palindrome (Easy Version).
-//
-// Read 1 as a step up and 0 as a step down. s is an almost-palindrome iff
-// its walk (prefix heights from 0) has max + min = end; see the E2 dream for
-// the derivation. Count the complement by the reflection principle summed
-// over every band: walks ending at ±d carry weight
-// 2 * (2g(d) - g(d-1) - g(d+1)), with g(i) the sum of the periods p that can
-// hold a bad walk among p | i with i / p odd. Period 1 is never possible and
-// period 2 only for even n. The same closed form solves both versions; E1's
-// smaller n only lets the odd-divisor sums come from a plain divisor sieve.
+// Source: Codeforces 2135E1 (Beyond the Palindrome, easy version),
+//   https://codeforces.com/contest/2135/problem/E1
+// Problem: f(r) deletes all "10" substrings at once, repeatedly, until none is left. Count binary
+//   strings s of length n with f(s) = f(rev(s)), mod 998244353. n <= 1e6, sum of n <= 1e6,
+//   multitest.
+// Solution: read 1 as a step up and 0 as a step down; s qualifies iff its walk from 0 has
+//   max + min = end (see the E2 dream for the derivation). Count the complement by the reflection
+//   principle summed over every band: walks ending at +-d weigh 2 (2g(d) - g(d-1) - g(d+1)), with
+//   g(i) the sum of the periods p | i, i / p odd, that can hold a bad walk (period 1 never,
+//   period 2 only for even n). Odd-divisor sums come from a multiplicative sieve, binomials from
+//   factorials: O(lim) once, then O(n) per test.
 use std.math.{sieve_multiplicative}
 
 type M = Mod<998_244_353>

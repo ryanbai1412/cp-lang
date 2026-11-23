@@ -1,14 +1,11 @@
-// Codeforces 2101 B — Quartet Swapping
-//
-// Each operation swaps (a[i], a[i + 1]) with (a[i + 2], a[i + 3]), which
-// performs one transposition on even indices and one on odd indices at once.
-// Hence even and odd positions stay partitioned, and the XOR of their
-// inversion parities is invariant (and every permutation matching both
-// invariants is reachable).
-//
-// The lexicographically smallest reachable permutation therefore sorts even
-// positions `x` and odd positions `y` independently, and if their inversion
-// parities differ, swaps the last two same-parity elements (n - 3, n - 1).
+// Source: Codeforces 2101B (Quartet Swapping), https://codeforces.com/contest/2101/problem/B
+// Problem: a permutation of n <= 2e5 (sum of n <= 2e5, multitest). An operation swaps a[i], a[i+1]
+//   with a[i+2], a[i+3]. Print the lexicographically smallest reachable permutation.
+// Solution: an operation is one transposition among even positions and one among odd ones, so the
+//   two classes keep their values and the xor of their inversion parities is invariant, and every
+//   arrangement keeping both is reachable. Sort each class; if the parities (Fenwick tree
+//   inversion counts) differ, swap positions n - 3 and n - 1, the last two of one class.
+//   O(n log n).
 
 @!multitest
 let n: 4..=200_000 = read()

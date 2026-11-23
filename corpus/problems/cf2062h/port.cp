@@ -1,7 +1,14 @@
-// Merging stops exactly when the galaxies' bounding boxes have pairwise
-// disjoint row and column projections, so a subset's value is its number of
-// boxes. ways[hi][lo][cols] counts star subsets of rows lo..hi whose boxes all
-// lie in the columns cols; galaxies[hi][lo][cols] sums their box counts.
+// Source: Codeforces 2062H (Galaxy Generator), https://codeforces.com/contest/2062/problem/H
+// Problem: an n x n 0/1 star matrix, n <= 14 (sum of 2^n <= 2^14, multitest). A set's value is the
+//   fewest galaxies (connected components, joined along shared rows or columns) left after
+//   repeatedly adding a star at a point that would connect to >= 3 stars. Sum the values of all
+//   non-empty subsets of the stars, mod 1e9+7.
+// Solution: merging stops exactly when the galaxies' bounding boxes have pairwise disjoint row and
+//   column projections, so a set's value is its number of boxes. ways[hi][lo][cols] counts star
+//   sets of rows lo..<hi whose boxes all lie in the columns cols; galaxies[..] sums their boxes.
+//   A box exactly rows mid..<hi x band takes 2^(stars inside) minus the sets already counted as
+//   smaller or several boxes, and is stacked on the sets below mid in the other columns.
+//   O(2^n n^4).
 type Z = Mod<1_000_000_007>
 @!multitest
 let n: 1..=14 = read()

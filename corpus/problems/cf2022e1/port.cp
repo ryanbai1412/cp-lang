@@ -1,7 +1,11 @@
-// Codeforces 2022 E1: a grid is beautiful iff every cell is row[r] xor col[c] for some row and column labels.
-// A fixed cell is one constraint row[r] xor col[c] = v, so rows and columns form a graph in which each
-// component has one free 30-bit label, less one for the global xor shift that leaves the grid unchanged.
-// A contradictory cycle gives 0; otherwise the count is 2^(30 * (components - 1)).
+// Source: Codeforces 2022E1 (Billetes MX, easy), https://codeforces.com/contest/2022/problem/E1
+// Problem: an n x m grid (n, m <= 1e5) with k <= 1e5 cells fixed to values < 2^30, q = 0
+//   (multitest). Count the fillings with values < 2^30 where every subgrid's four corners xor to
+//   0, mod 1e9+7.
+// Solution: such a grid is row[r] xor col[c] for some labels, so a fixed cell is an edge
+//   row[r] xor col[c] = v between n + m lines. A union-find (by size) keeps each line's xor to its
+//   root; a contradictory cycle gives 0. Otherwise each component has a free 30-bit label, less
+//   one for the global xor shift: 2^(30 (components - 1)). O((n + m + k) log).
 @!multitest
 type Z = Mod<1_000_000_007>
 let (n, m, k, _): (2..=100_000, 2..=100_000, 0..=100_000, 0..=0) = read()

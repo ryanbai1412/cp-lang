@@ -1,5 +1,8 @@
-// AtCoder DP F (LCS): reconstruct a longest common subsequence of two strings.
-// Runs on proto/cpi (`proto/cp.py lib-run`) because proto/cpc cannot index Str.
+// Source: AtCoder Educational DP Contest F (LCS), https://atcoder.jp/contests/dp/tasks/dp_f
+// Problem: two lowercase strings s, t of length <= 3000. Print one longest common subsequence.
+// Solution: dp[i, j] is the LCS length of the suffixes from i and j: max of skipping either
+//   head, or 1 + dp[i+1, j+1] on equal heads. Walk from (0, 0), skipping a head while the value
+//   stays the same and taking the character otherwise. O(nm).
 // original: corpus/submissions/4131645.cpp
 let a: Str = read()
 let b: Str = read()

@@ -1,14 +1,11 @@
-// Codeforces 2229 C2 — Prefix Sign-Flip Pivot Construction
-//
-// Each operation flips the signs of a prefix `0..=p` while requiring the
-// rightmost flipped element `a[p]` to be non-negative before the final flip.
-// Choosing a single pivot `idx` with `a[idx] >= 0` lets us turn every negative
-// entry `a[j] < 0` (`j < idx`) positive while sacrificing only `a[idx]`, for a
-// net gain of `cur_delta - 2 * a[idx]` where `cur_delta = sum_{j < idx, a[j] < 0} (-2 * a[j])`.
-//
-// If the best pivot gives a positive gain, sweep `i` from `idx - 1` down to `0`
-// toggling `flip` whenever `(a[i] > 0) != flip` (recording `i + 1`), then
-// append `idx + 1` to finish all prefix flips.
+// Source: Codeforces 2229C2 (We Be Flipping, hard), https://codeforces.com/contest/2229/problem/C2
+// Problem: n <= 2e5 nonzero integers |a_i| <= 1e9 (sum of n <= 2e5, multitest). An operation picks
+//   i with a_i > 0 and negates a_1..a_i. Print at most n operations that maximise the final sum.
+// Solution: the largest operated index p starts positive and ends negative, nothing right of it
+//   changes, and every element left of it can be made positive. So pick the positive pivot p
+//   maximising (sum of 2|a_j| over negative a_j, j < p) - 2 a_p, if that gain is positive. Sweep
+//   i from p - 1 down, operating on i whenever a_i's current sign is positive, so every earlier
+//   element is negative before the final operation on p flips them all. O(n).
 
 @!multitest
 let n: 1..=200_000 = read()

@@ -1,13 +1,15 @@
-// Codeforces 2255 C — Two-Run Torus Grid Encoding
-//
-// In an n x n grid of '#' and '.', let `ink` be the minority colour (count
-// `w <= n^2 / 2`) and `(sr, sc)` be the sum of its row and column indices mod n.
-// First run: hide `(r, c)` by shifting one `ink` cell by `(dr, dc)` mod n so
-// the new sums satisfy `sr' == (r - 1) * w (mod n)` and `sc' == (c - 1) * w
-// (mod n)` — whenever `(dr, dc) != (0, 0)`, a valid `ink` cell whose shifted
-// target is non-`ink` exists because `ink` is a strict minority.
-// Second run: recover `(r, c)` from `(sr, sc)` via `r * w == sr (mod n)` and
-// `c * w == sc (mod n)`.
+// Source: Codeforces 2255C (Even If the World Turns),
+//   https://codeforces.com/contest/2255/problem/C
+// Problem: run twice, multitest, n <= 800 (sum of n^2 <= 800^2). First run: an n x n '#'/'.'
+//   picture with w black cells, gcd(n, w) = 1, and a target cell; swap the colours of two cells.
+//   The jury then shifts cyclically, rotates, reflects and inverts the picture (the target moves
+//   with it). Second run: given only the final picture, print where the target is.
+// Solution: let ink be the minority colour (count w; inversion keeps it, as n^2 = 2w is ruled
+//   out by the gcd) and (sr, sc) its coordinate sums mod n. Since gcd(n, w) = 1 the "centroid"
+//   (sr/w, sc/w) mod n is a cell, and every allowed move maps it like a cell. First run: move one
+//   ink cell by (dr, dc) onto a non-ink cell so the centroid lands on the target; such a cell
+//   exists because ink shifted by (dr, dc) != 0 can't equal itself when gcd(n, w) = 1. Second
+//   run: solve r * w = sr, c * w = sc (mod n). O(n^2) per run.
 
 let op: Str = read()
 

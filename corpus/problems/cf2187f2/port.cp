@@ -1,9 +1,12 @@
-// Codeforces 2187 F2: Common Trees.
-// Every subtree is an interval of both DFS orders, so read b backwards in a's
-// positions: the common trees are the cuts of that sequence's permutation tree.
-// Increasing and prime nodes multiply their children. Down a decreasing chain,
-// ends(v)[k] counts v's ways with k single-vertex right children still free to
-// climb; each such child adds a slot and lets every open one move up.
+// Source: Codeforces 2187F2 (Al Fine, counting), https://codeforces.com/contest/2187/problem/F2
+// Problem: two DFS orders a, b of vertices 1..n (n <= 5000, sum of n^2 <= 2.5e7, multitest) of
+//   trees rooted at 0. Count the rooted trees (children unordered) that have both as DFS orders,
+//   mod 998244353.
+// Solution: every subtree is an interval of both orders, so read b backwards in a's positions:
+//   the common trees are the cuts of that permutation's PermTree. Increasing and prime nodes
+//   multiply their children's ways. Down a decreasing chain, ends(v)[k] counts v's ways with k
+//   single-vertex right children still free to climb; each such leaf adds a slot and lets every
+//   open one move up (a prefix sum). O(n^2).
 use std.seq.{inverse}
 use std.tree.{PermTree, PermKind}
 
