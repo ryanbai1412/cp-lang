@@ -7,12 +7,12 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 2605 (995 passing). Rules: 568.
+Cases: 2607 (995 passing). Rules: 568.
 
 ## Summary per chapter
 
 - R01 (01-lexical-grammar.md): 56 rules, 155 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R02 (02-values-types.md): 52 rules, 137 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R02 (02-values-types.md): 52 rules, 139 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R03 (03-numbers-layout.md): 24 rules, 66 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04 (04-indices.md): 69 rules, 136 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04a (04a-identity-vs-offset.md): 39 rules, 53 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -136,7 +136,7 @@ Each rule: positive / negative case counts, then the gap if any.
 
 - R02.7.1 [5+ 1-]: Values, functions, fields and modules are `snake_case` or lower camel; a `let` or `var` bi...
 - R02.1.1 [2+ 0-]: a **plain value**: numbers, `Bool`, `Char`, positions and cuts of a domain, `?T` of a plai...
-- R02.1.2 [1+ 2-]: a **heap value**: `List<T>`, `Str`, `[D]T` arrays, `Map`, `Set`, every library container, ...
+- R02.1.2 [2+ 3-]: a **heap value**: `List<T>`, `Str`, `[D]T` arrays, `Map`, `Set`, every library container, ...
 - R02.1.3 [2+ 1-]: a **function value**: `fn` items, lambdas and operation values. They are zero-size when th...
 - R02.1.4 [1+ 1-]: Whether a value is owned or lent is not part of its type (chapter 5).
 - R02.2.1 [2+ 2-]: There are exactly four number types (decision 1.7). Narrow storage is a range type, never ...
@@ -775,7 +775,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0605 Invalid `Index` implementation: 1 case(s)
 - E0606 Missing trait implementation for operator: 21 case(s)
 - E0607 Moved while captured by a closure: 3 case(s)
-- E0608 Use of moved value: 13 case(s)
+- E0608 Use of moved value: 14 case(s)
 - E0701 Ambiguous trait method: 2 case(s)
 - E0702 Overload by type: 2 case(s)
 - E0703 Operator tuple: 1 case(s)
