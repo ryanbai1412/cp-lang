@@ -79,7 +79,7 @@ An independence oracle for `matroid_intersection`.
 
 O(E α) per rebuild.
 
-Fields: `edges: [E](u: V, v: V)`.
+Fields: `edges: [E](u: V, v: V)`, `comp: [V]Int`, `tin: [V]Int`, `tout: [V]Int`, `below: [E]?V`.
 
 - `fn new(edges: [E](u: V, v: V)) -> GraphicMatroid<V, E>` — O(1); each `rebuild` is O(E alpha(V)); The graphic matroid of `edges`: a set of edges is independent when it is a forest on `V`.
 
@@ -87,7 +87,7 @@ Fields: `edges: [E](u: V, v: V)`.
 
 O(E) per rebuild.
 
-Fields: `color: [E]C`, `limit: [C]Int`.
+Fields: `color: [E]C`, `limit: [C]Int`, `used: [C]Int`.
 
 - `fn new(color: [E]C, limit: [C]Int) -> ColorMatroid<E, C>` — O(1); each `rebuild` is O(E); The partition matroid of `color`: a set is independent when it holds at most `limit[c]` elements of each colour `c`.; traps: when some `limit[c]` is negative
 
@@ -109,7 +109,7 @@ Fields: `color: [E]C`, `limit: [C]Int`.
 - `fn stable_matching<L, R>(pref_l: [L]List<R>, pref_r: [R]List<L>) -> [L]?R` — O(L R); Gale-Shapley stable matching with proposals from `L`: `pref_l[l]` lists the `R`s `l` accepts, best first, and likewise `pref_r`.; traps: when a preference list names the same vertex twice
 - `fn edge_coloring<L, R, E>(edges: [E](l: L, r: R)) -> (colors: Int, color: [E]Int)` — O(E V); Colours the edges of a bipartite multigraph so no two edges at a vertex share a colour, with exactly max-degree colours `0..colors` (König's edge colouring theorem).
 - `fn matroid_intersection<E, A: Matroid<E>, B: Matroid<E>>(a: A, b: B, weight: ?(E -> Int) = None) -> [E]Bool` — O(r E (r + oracle)) for answer size r, oracle the cost of one `can_add` or `can_swap`; A largest set of elements independent in both matroids; with `weight`, the one of largest total weight among the largest.
-- `fn min_cost_circulation<V, E>(arcs: [E](u: V, v: V, lo: Int, hi: Int, cost: Int)) -> ?(cost: Int, flow: [E]Int)` — O(V² E) worst case, like `max_flow`; The minimum-cost circulation of arcs with lower and upper bounds and costs, negative cycles included (cost scaling); `None` when no circulation meets the bounds.; traps: when some `lo > hi`
+- `fn min_cost_circulation<V, E>(arcs: [E](u: V, v: V, lo: Int, hi: Int, cost: Int)) -> ?(cost: Int, flow: [E]Int)` — one `circulation`, then one `cancel_cycles` on V vertices and 2E arcs; The minimum-cost circulation of arcs with lower and upper bounds and costs, negative cycles included; `None` when no circulation meets the bounds.; traps: when some `lo > hi`
 
 ## Example
 

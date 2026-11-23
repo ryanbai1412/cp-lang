@@ -786,10 +786,25 @@ pub struct SortedBag<K>:
     /// The inverse of `split_at`. The precondition is checked in O(1) against `self.last` and
     /// `other.first`; either side may be empty.
     ///
-    /// cost: O(log n) expected
+    /// The smaller side's keys move into the larger side's node array, as in `split_at`.
+    ///
+    /// cost: O(log n + s log n) expected, `s` the smaller side's distinct keys
     /// traps: when both are non-empty and `self.last >= other.first`
     /// example: `var a = SortedBag.of([1, 2]); a.join(SortedBag.of([4, 4])); a.to_list() == [1, 2, 4, 4]`
-    pub fn join(mut self, other: SortedBag<K>) = todo
+    pub fn join(mut self, other: SortedBag<K>):
+        if let a = hi:
+            if let b = other.lo: assert a < b, "`join` needs every key of `self` below every key of `other`"
+        var o = other
+        if self.sub_of(root) >= o.sub_of(o.root):
+            o.move_out(o.root, mut self)
+        else:
+            self.move_out(root, mut o)
+            nodes = o.nodes
+            free = o.free
+            live = o.live
+            root = o.root
+            rng = o.rng
+        self.refresh()
 
     /// Merge all elements of `other` into `self` (small-to-large, emptying `other`).
     ///
@@ -1255,10 +1270,10 @@ pub struct SortedSet<K>:
     ///
     /// The precondition is checked in O(1) against `self.last` and `other.first`.
     ///
-    /// cost: O(log n) expected
+    /// cost: as `SortedBag.join`
     /// traps: when both are non-empty and `self.last >= other.first`
     /// example: `var a = SortedSet.of([1, 2]); a.join(SortedSet.of([4])); a.to_list() == [1, 2, 4]`
-    pub fn join(mut self, other: SortedSet<K>) = todo
+    pub fn join(mut self, other: SortedSet<K>) = bag.join(other.bag)
 
     /// Merge all keys of `other` into `self` (small-to-large, emptying `other`).
     ///
@@ -1523,21 +1538,27 @@ pub struct SortedMap<K, V>:
     ///
     /// `self` keeps the entries with key `< k`.
     ///
-    /// cost: O(log n) expected
+    /// cost: O(log n + s log n) expected for the keys, plus O(m) expected to move the `m` values split off
     /// empty: both sides empty
     /// traps: never
     /// example: `var m: SortedMap<Int, Str> = SortedMap(); m.set(1, "a"); m.set(3, "c"); let hi = m.split_at(2); m.len == 1 and hi.first == Some((3, "c"))`
-    pub fn split_at(mut self, k: K) -> SortedMap<K, V> = todo
+    pub fn split_at(mut self, k: K) -> SortedMap<K, V>:
+        let hks = ks.split_at(k)
+        var hv = HashMap<K, V>()
+        for (x, _) in hks.entries(): hv[x] = vals.remove(x)!
+        SortedMap(hks, hv)
 
     /// Concatenate `other` onto `self` when every key in `self` is `<` every key in `other`.
     ///
     /// The precondition is checked in O(1) against the last key of `self` and the first of
     /// `other`.
     ///
-    /// cost: O(log n) expected
+    /// cost: as `SortedBag.join` for the keys, plus O(m) expected to move the `m` values of `other`
     /// traps: when both are non-empty and the last key of `self` is `>=` the first key of `other`
     /// example: `var a: SortedMap<Int, Str> = SortedMap(); a.set(1, "a"); var b: SortedMap<Int, Str> = SortedMap(); b.set(3, "c"); a.join(b); a.len == 2`
-    pub fn join(mut self, other: SortedMap<K, V>) = todo
+    pub fn join(mut self, other: SortedMap<K, V>):
+        ks.join(other.ks)
+        for (x, _) in other.ks.entries(): vals[x] = other.vals.get(x)!
 
     /// Merge all entries of `other` into `self` (emptying `other`), combining collisions with `join` or overwriting.
     ///
@@ -2174,6 +2195,33 @@ pub struct BucketCount:
         for i in 0..cnt.len: cnt[i] = 0
         for b in 0..blk.len: blk[b] = 0
         total = 0
+
+@test
+fn split_and_join_round_trip_against_sorted_lists():
+    for _ in 0..200:
+        let xs = [rand(0, 20) for _ in 0..rand(0, 30)].sorted()
+        let k = rand(-1, 21)
+        var b = SortedBag.of(xs)
+        let hi = b.split_at(k)
+        assert b.to_list() == [x for x in xs if x < k] and hi.to_list() == [x for x in xs if x >= k]
+        b.join(hi)
+        assert b.to_list() == xs and b.len == xs.len
+        var lo = SortedBag.of([x for x in xs if x < k])
+        lo.join(SortedBag.of([x for x in xs if x >= k]))
+        assert lo.to_list() == xs and lo.first == xs.first and lo.last == xs.last
+        var s = SortedSet.of(xs)
+        let sh = s.split_at(k)
+        s.join(sh)
+        assert s.len == SortedSet.of(xs).len
+        var m: SortedMap<Int, Int> = SortedMap()
+        for x in xs: m.set(x, 3 * x)
+        let mh = m.split_at(k)
+        assert m.len + mh.len == SortedSet.of(xs).len
+        for x in xs:
+            assert (if x < k: m.get(x) else: mh.get(x)) == Some(3 * x)
+            assert (if x < k: mh.get(x) else: m.get(x)) == None
+        m.join(mh)
+        for x in xs: assert m.get(x) == Some(3 * x)
 
 @test
 fn sorted_bag_basics_duplicates_and_take():
