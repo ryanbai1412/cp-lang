@@ -42,6 +42,8 @@ fn a_map_scanned_only_into_a_list_sorted_by_value_is_a_hash_table() {
     );
     let hashed = cpp(source);
     assert!(!hashed.contains("std::map<ll, ll> freq"), "{hashed}");
+    let desc = cpp(&source.replace("sorted(by: c => -c)", "sorted(desc: true)"));
+    assert!(!desc.contains("std::map<ll, ll> freq"), "{desc}");
     let ordered = cpp(&source.replace("sorted(by: c => -c)", "rev"));
     assert!(ordered.contains("std::map<ll, ll> freq"), "{ordered}");
 }

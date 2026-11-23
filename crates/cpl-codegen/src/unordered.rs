@@ -151,10 +151,13 @@ impl Found {
 fn sorted_scans(block: &Block, out: &mut Vec<*const Expr>) {
     walk::deep_exprs(block, &mut |e| {
         let ExprKind::Do(b) = &e.kind else { return };
-        let [Stmt::Let(list, Some(init)), Stmt::Expr(sort), Stmt::Give(give)] = &b.stmts[..] else {
+        // `sorted(desc: true)` binds its arguments first: plain scalar
+        // lets, which run nothing and can't see the list's order.
+        let stmts: Vec<&Stmt> = b.stmts.iter().filter(|s| !simple_scalar_let(s)).collect();
+        let [Stmt::Let(list, Some(init)), Stmt::Expr(sort), Stmt::Give(give)] = stmts[..] else {
             return;
         };
-        let ExprKind::Sort(place, by, _) = &sort.kind else {
+        let ExprKind::Sort(place, by, _) = &held_sort(sort).kind else {
             return;
         };
         let by_value = match by {
@@ -196,6 +199,24 @@ fn sorted_scans(block: &Block, out: &mut Vec<*const Expr>) {
             out.push(seq as *const Expr);
         }
     });
+}
+
+/// The sort in `sort`, or in `do: let d = desc; sort; ()` that
+/// `sorted(desc: d)` lowers to.
+fn held_sort(sort: &Expr) -> &Expr {
+    let ExprKind::Do(b) = &sort.kind else {
+        return sort;
+    };
+    let rest: Vec<&Stmt> = b.stmts.iter().filter(|s| !simple_scalar_let(s)).collect();
+    match rest[..] {
+        [Stmt::Expr(inner), Stmt::Give(unit)] if unit.kind == ExprKind::Unit => inner,
+        _ => sort,
+    }
+}
+
+/// `let x = v` of a scalar literal or name: runs nothing.
+fn simple_scalar_let(s: &Stmt) -> bool {
+    matches!(s, Stmt::Let(_, Some(v)) if v.ty.is_scalar() && cpl_ir::walk::is_simple(v))
 }
 
 /// `body` changes nothing but pushes onto the local `acc`, calls nothing
