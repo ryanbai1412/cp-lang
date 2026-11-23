@@ -139,11 +139,15 @@ function programs(text, module, shared) {
   return { e, setup, own, bodies: bodies.map((b) => b.join('\n')) };
 }
 
+// What runAll runs: the program, then its stated stdin after a NUL.
+const runKey = (setup, body, stdin) => `${setup}\n${body}\n${stdin ? `\0${stdin}` : ''}`;
+
 function renderExample(text, module, shared, ran, failing, at) {
   const { e, setup, own, bodies } = programs(text, module, shared);
-  const body = bodies.find((b) => ran.get(`${setup}\n${b}\n`));
+  const body = bodies.find((b) => ran.get(runKey(setup, b, e.stdin)));
   const result = e.value ? ['', `Result: \`${e.value}\``] : [];
-  if (body) return ['```cp run compact', setup, '//---', body, '```', ...result, ''];
+  const input = e.stdin ? ` input="${e.stdin.replace(/\n/g, '\\n')}"` : '';
+  if (body) return [`\`\`\`cp run compact${input}`, setup, '//---', body, '```', ...result, ''];
   failing.push(`${at}: ${text}`);
   return ['```cp', ...own, e.expr, '```', ...result, ''];
 }
@@ -267,8 +271,11 @@ async function runAll(sources) {
   const one = (src, i) =>
     new Promise((done) => {
       const file = join(dir, `${i % 16}.cp`);
-      writeFileSync(file, src);
-      const p = spawn(cpl, ['run', file], { stdio: 'ignore' });
+      const [program, stdin = ''] = src.split('\0');
+      writeFileSync(file, program);
+      const p = spawn(cpl, ['run', file], { stdio: ['pipe', 'ignore', 'ignore'] });
+      p.stdin.on('error', () => {});
+      p.stdin.end(stdin);
       const timer = setTimeout(() => p.kill(), 10_000);
       p.on('close', (code) => {
         clearTimeout(timer);
@@ -305,8 +312,8 @@ const tries = [];
 const collect = (item, module, parentDoc, shared) => {
   const own = item.doc && item.doc !== parentDoc ? item.doc : '';
   for (const e of splitDoc(own).examples) {
-    const { setup, bodies } = programs(e, module, shared);
-    tries.push(bodies.map((b) => `${setup}\n${b}\n`));
+    const { e: ex, setup, bodies } = programs(e, module, shared);
+    tries.push(bodies.map((b) => runKey(setup, b, ex.stdin)));
   }
   const memberShared = item.members?.length ? commonSetup(memberExamples(item).map(parseExample)) : [];
   for (const m of item.members ?? []) collect(m, module, item.doc, memberShared);
