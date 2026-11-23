@@ -1,0 +1,5 @@
+code = "L0574"
+level = "warn"
+group = "idiom"
+title = "Letter offset as an index"
+summary = "`cnt[c - 'a']`: index by a `domain Letter = 'a'..='z'` instead"

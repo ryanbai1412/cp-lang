@@ -22,6 +22,7 @@ mod hand_math;
 mod heap_skip;
 mod imports;
 mod isqrt;
+mod letters;
 mod lists;
 mod literals;
 mod memo;
@@ -52,6 +53,7 @@ pub(crate) fn run(file: &File, config: &Config) -> Vec<Finding> {
     findings.extend(neg_heap::check(file));
     findings.extend(extreme::check(file));
     findings.extend(fermat::check(file));
+    findings.extend(letters::check(file));
     findings.extend(scopes::check(file));
     findings.extend(types::check(file));
     findings.extend(assign::check(file));

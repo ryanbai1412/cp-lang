@@ -304,7 +304,7 @@ One sub-family per module. Each says: you rebuilt something the library has.
 | aho_by_hand | trie with BFS fail links | `AhoCorasick` | warn | #1 | loop | |
 | palindrome_check_loop | two-index comparison loop | `s.is_palindrome()` | fix | #1 | loop | |
 | letter_count_array | `[26]Int` with `c - 'a'` | `s.counts()` / `Counter<Char>` / `[Letter]` domain | fix? | #3 | ty | |
-| char_offset_index | `c - 'a'` as an index | a `Letter` domain | fix? | #3 | ty | |
+| char_offset_index | `c - 'a'` as an index | a `Letter` domain | fix? | #3 | ty | ✓char_offset_index |
 | split_by_hand | scan for spaces/commas | `s.split(sep)` / `split_whitespace` | fix | #1 | loop | |
 | parse_int_by_hand | `x = x * 10 + (c - '0')` | `parse_int` / `read<Int>()` | fix | #1 | loop | |
 | digits_by_hand | `while x > 0: d.push(x % 10)` | `digits(x)` | fix | #1 | loop | |
