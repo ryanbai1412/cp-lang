@@ -7,7 +7,7 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 2691 (995 passing). Rules: 570.
+Cases: 2694 (995 passing). Rules: 570.
 
 ## Summary per chapter
 
@@ -17,7 +17,7 @@ Cases: 2691 (995 passing). Rules: 570.
 - R04 (04-indices.md): 70 rules, 146 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04a (04a-identity-vs-offset.md): 39 rules, 54 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04b (04b-keys.md): 27 rules, 66 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R05 (05-ownership.md): 43 rules, 157 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R05 (05-ownership.md): 43 rules, 160 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R06 (06-control-functions.md): 24 rules, 97 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R07 (07-sequences.md): 90 rules, 149 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R08 (08-traits-generics.md): 29 rules, 90 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -369,7 +369,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R05.3.4 [1+ 1-]: `let p = mut a[i]` names a place: `p += 1` writes `a[i]`. `p` is a `mut` lend of `a` (R7).
 - R05.3.5 [2+ 7-]: Reading an element or field binds a lend of it, not a copy, when the value is heap (`let r...
 - R05.6.1 [1+ 2-]: **Meaning.** The result is a lent value whose sources are every non-plain parameter, or th...
-- R05.6.2 [1+ 1-]: **Desugaring.** A call passes the rest of the caller's block as a callback: `let w = windo...
+- R05.6.2 [2+ 1-]: **Desugaring.** A call passes the rest of the caller's block as a callback: `let w = windo...
 - R05.6.3 [2+ 1-]: **`lends mut T`** is a place: the caller can assign through it, `a[i] = 5` is `a.at(i) = 5...
 - R05.6.4 [1+ 1-]: **Indexing, slicing, `.rev`, `.map`, `.filter` are all `lends` fns.** So `let row = rows[i...
 - R05.7.1 [1+ 2-]: a parameter (R4), and anything a `lends` fn returns (§6);
@@ -383,7 +383,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R05.7.9 [1+ 1-]: stored into anything reached through a parameter (a `mut` parameter's storage belongs to t...
 - R05.7.10 [3+ 3-]: stored in a top-level `var` by a fn. The file body is itself a fn (§11), so its own statem...
 - R05.8.1 [1+ 3-]: Different fields never overlap: `f(mut s.left, mut s.right)` is fine.
-- R05.8.2 [5+ 6-]: Two elements need the projection's `disjoint` law proven from facts at that point (`if i !...
+- R05.8.2 [6+ 7-]: Two elements need the projection's `disjoint` law proven from facts at that point (`if i !...
 - R05.8.3 [1+ 2-]: Different projections of one receiver always conflict (`g.row(r)` and `g.col(c)`).
 - R05.8.4 [1+ 8-]: A container's length can't change while any place in it is lent: `let x = mut xs[i]` then ...
 - R05.9.1 [3+ 6-]: The generator's lends are live for the walk, so `B` may read a read-lent source but not wr...
@@ -770,7 +770,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0502 Non-ASCII character in source or string: 1 case(s)
 - E0503 Removed syntax from an older version: 10 case(s)
 - E0504 Planned syntax, not implemented yet: 1 case(s)
-- E0601 Aliased mutable lend: 13 case(s)
+- E0601 Aliased mutable lend: 14 case(s)
 - E0602 Variable mutated while lent: 34 case(s)
 - E0603 Lent value escapes its scope: 18 case(s)
 - E0604 Invalid `lends` projection: 1 case(s)
