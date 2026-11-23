@@ -1934,3 +1934,9 @@ fn a_reversed_python_slice_is_one_error_with_the_rev_fix() {
         "{d:?}"
     );
 }
+
+#[test]
+fn an_is_pattern_is_not_read_as_a_python_comparison() {
+    let d = parse_file("if x is some(v):\n    print(v)\n").diagnostics;
+    assert!(d.is_empty(), "{d:?}");
+}
