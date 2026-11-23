@@ -214,7 +214,7 @@ fn explain_views(text: &str, program: &cpl_ir::Program) -> Vec<(usize, usize, St
     let mut visit_expr = |e: &cpl_ir::Expr| {
         if let cpl_ir::ExprKind::MutSlice(..) = &e.kind {
             let elem = match &e.ty {
-                cpl_ir::Ty::MutView(t) => program.show_ty(t),
+                cpl_ir::Ty::MutView(t, _) => program.show_ty(t),
                 _ => "T".to_string(),
             };
             let (line, col) = line_col(e.span);

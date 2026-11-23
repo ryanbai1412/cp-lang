@@ -1143,7 +1143,7 @@ pub(crate) fn zero(ty: &Ty, program: &Program) -> Value {
         Ty::ListView(_, _) | Ty::Keyed(_, _) => {
             Value::ListView(Rc::new(ListViewVal::whole(Rc::new(Vec::new()), false)))
         }
-        Ty::MutView(_) => Value::Unit,
+        Ty::MutView(..) => Value::Unit,
         Ty::Map(..) | Ty::HashMap(..) => Value::Map(Rc::new(BTreeMap::new())),
         Ty::Set(_) | Ty::HashSet(_) => Value::Set(Rc::new(BTreeSet::new())),
     }
@@ -1338,7 +1338,7 @@ pub(crate) fn show(
                 rec(out, &cell, elem);
             }
         }
-        (Value::List(items), Ty::List(elem) | Ty::MutView(elem)) => {
+        (Value::List(items), Ty::List(elem) | Ty::MutView(elem, _)) => {
             let sep = sep_of(elem, &program.structs);
             for (i, item) in items.iter().enumerate() {
                 if i > 0 {

@@ -172,7 +172,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                     Ty::List(elem)
                     | Ty::ListView(elem, _)
                     | Ty::Keyed(elem, _)
-                    | Ty::MutView(elem)
+                    | Ty::MutView(elem, _)
                     | Ty::Array { elem, .. } => (**elem).clone(),
                     _ => Ty::Unit,
                 };
@@ -642,6 +642,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
             Builtin::KeyLo => Value::Int(match &first {
                 Value::ListView(v) => v.first_key(),
                 Value::StrView(v) => v.lo as i64,
+                Value::MutView(v) => v.lo as i64,
                 _ => 0,
             }),
             Builtin::KeyPos | Builtin::PosKey => {
@@ -649,6 +650,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 let (lo, len, rev) = match &first {
                     Value::ListView(v) => (v.first_key(), v.len as i64, v.rev),
                     Value::StrView(v) => (v.lo as i64, v.len as i64, v.rev),
+                    Value::MutView(v) => (v.lo as i64, v.len as i64, false),
                     Value::Range(lo, hi) => (*lo, (hi - lo).max(0), false),
                     _ => return trap(span, "keys need a slice"),
                 };
@@ -703,6 +705,12 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                     }
                     Value::Array(a) if a.dims.len() == 1 => {
                         Value::ListView(Rc::new(ListViewVal::whole(Rc::new(a.to_values()), false)))
+                    }
+                    Value::MutView(mv) => {
+                        let items = self.mut_view_to_vec(&mv, span)?;
+                        let mut view = ListViewVal::whole(Rc::new(items), false);
+                        view.shift = mv.lo as i64;
+                        Value::ListView(Rc::new(view))
                     }
                     other => other,
                 };

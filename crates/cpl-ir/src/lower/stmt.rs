@@ -5235,7 +5235,7 @@ impl<'a> Lowerer<'a> {
                         }
                     }
                 }
-                let (indices, ty) = self.index_args(&base_place.ty, indices, e.span);
+                let (indices, ty) = self.place_index_args(&base_place, indices, e.span);
                 let indices = self.vouched(&base_place.ty, indices);
                 Place {
                     kind: PlaceKind::Index(Box::new(base_place), indices),

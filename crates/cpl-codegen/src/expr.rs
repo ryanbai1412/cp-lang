@@ -366,15 +366,15 @@ impl<'p> Emitter<'p> {
                     {
                         format!("{b}[{}]", at[0])
                     }
-                    Ty::List(_) | Ty::MutView(_)
+                    Ty::List(_) | Ty::MutView(..)
                         if matches!(indices[0].kind, ExprKind::Cast(Cast::Raw, _)) =>
                     {
                         format!("{b}[{}]", at[0])
                     }
-                    Ty::List(_) | Ty::MutView(_) if self.inside_place(&base.kind, indices) => {
+                    Ty::List(_) | Ty::MutView(..) if self.inside_place(&base.kind, indices) => {
                         format!("{b}[{}]", at[0])
                     }
-                    Ty::List(_) | Ty::MutView(_) => {
+                    Ty::List(_) | Ty::MutView(..) => {
                         self.need("at");
                         format!("cpl::at({b}, {})", at.join(", "))
                     }
@@ -862,7 +862,7 @@ impl<'p> Emitter<'p> {
                 };
                 self.need("list_concat_at");
                 let operands = [&args[0], &args[1], &indices[0]];
-                let is_bool = matches!(&base.ty, Ty::List(elem) | Ty::ListView(elem, _) | Ty::Keyed(elem, _) | Ty::MutView(elem) if **elem == Ty::Bool);
+                let is_bool = matches!(&base.ty, Ty::List(elem) | Ty::ListView(elem, _) | Ty::Keyed(elem, _) | Ty::MutView(elem, _) if **elem == Ty::Bool);
                 self.sequence(&operands, &e.ty, |_, codes| {
                     let call = format!(
                         "cpl::list_concat_at({}, {}, {})",
@@ -885,7 +885,7 @@ impl<'p> Emitter<'p> {
                 let checked = !proven(indices) && !raw_list;
                 if (matches!(
                     base_ty,
-                    Ty::List(_) | Ty::ListView(_, _) | Ty::Keyed(_, _) | Ty::MutView(_)
+                    Ty::List(_) | Ty::ListView(_, _) | Ty::Keyed(_, _) | Ty::MutView(..)
                 ) && !raw_list)
                     || (checked && matches!(base_ty, Ty::Array { .. } | Ty::Str | Ty::StrView))
                 {
@@ -932,12 +932,12 @@ impl<'p> Emitter<'p> {
                         Ty::List(elem)
                         | Ty::ListView(elem, _)
                         | Ty::Keyed(elem, _)
-                        | Ty::MutView(elem)
+                        | Ty::MutView(elem, _)
                             if raw_list && **elem == Ty::Bool =>
                         {
                             Code::new(format!("(bool){b}[{}]", at[0]), UNARY)
                         }
-                        Ty::List(_) | Ty::ListView(_, _) | Ty::Keyed(_, _) | Ty::MutView(_)
+                        Ty::List(_) | Ty::ListView(_, _) | Ty::Keyed(_, _) | Ty::MutView(..)
                             if raw_list =>
                         {
                             Code::primary(format!("{b}[{}]", at[0]))
@@ -945,7 +945,7 @@ impl<'p> Emitter<'p> {
                         Ty::List(elem)
                         | Ty::ListView(elem, _)
                         | Ty::Keyed(elem, _)
-                        | Ty::MutView(elem)
+                        | Ty::MutView(elem, _)
                             if **elem == Ty::Bool =>
                         {
                             Code::new(
@@ -953,7 +953,7 @@ impl<'p> Emitter<'p> {
                                 UNARY,
                             )
                         }
-                        Ty::List(_) | Ty::ListView(_, _) | Ty::Keyed(_, _) | Ty::MutView(_) => {
+                        Ty::List(_) | Ty::ListView(_, _) | Ty::Keyed(_, _) | Ty::MutView(..) => {
                             Code::primary(format!("cpl::at({}, {})", codes[0].text, at[0]))
                         }
                         Ty::Array { elem, .. } if checked && **elem == Ty::Bool => Code::new(

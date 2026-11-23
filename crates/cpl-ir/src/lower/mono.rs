@@ -385,7 +385,7 @@ impl<'a> Lowerer<'a> {
             Ty::Opt(t) => format!("Opt_{}", self.mangle_ty(t)),
             Ty::List(t) => format!("Lst_{}", self.mangle_ty(t)),
             Ty::ListView(t, _) | Ty::Keyed(t, _) => format!("LstView_{}", self.mangle_ty(t)),
-            Ty::MutView(t) => format!("MutView_{}", self.mangle_ty(t)),
+            Ty::MutView(t, _) => format!("MutView_{}", self.mangle_ty(t)),
             Ty::Map(k, v) => format!("Map_{}_{}", self.mangle_ty(k), self.mangle_ty(v)),
             Ty::HashMap(k, v) => format!("HMap_{}_{}", self.mangle_ty(k), self.mangle_ty(v)),
             Ty::Set(t) => format!("Set_{}", self.mangle_ty(t)),
@@ -2461,7 +2461,7 @@ impl<'a> Lowerer<'a> {
                 | Ty::List(_)
                 | Ty::ListView(_, _)
                 | Ty::Keyed(_, _)
-                | Ty::MutView(_),
+                | Ty::MutView(..),
             ) if part_from.is_some() => (part_from.unwrap_or(0), true),
             Some(Ty::Array { .. }) if written => (0, true),
             Some(Ty::Array { dims, .. }) => match dims.as_slice() {
@@ -2474,7 +2474,7 @@ impl<'a> Lowerer<'a> {
                 Ty::List(_)
                 | Ty::ListView(_, _)
                 | Ty::Keyed(_, _)
-                | Ty::MutView(_)
+                | Ty::MutView(..)
                 | Ty::Str
                 | Ty::StrView,
             ) => (0, true),
@@ -2988,7 +2988,7 @@ impl<'a> Lowerer<'a> {
                     Ty::List(elem)
                     | Ty::ListView(elem, _)
                     | Ty::Keyed(elem, _)
-                    | Ty::MutView(elem)
+                    | Ty::MutView(elem, _)
                     | Ty::Range(elem),
                 ) if args.len() == 1 => {
                     self.unify_ast_ty(&args[0], elem, tpl_mod, gen_names, env);
@@ -3200,7 +3200,7 @@ impl<'a> Lowerer<'a> {
                     self.unify_array_dims(index, dims, tpl_mod, gen_names, env);
                     self.unify_ast_ty(elem, ce, tpl_mod, gen_names, env);
                 } else if let (
-                    Ty::List(ce) | Ty::ListView(ce, _) | Ty::Keyed(ce, _) | Ty::MutView(ce),
+                    Ty::List(ce) | Ty::ListView(ce, _) | Ty::Keyed(ce, _) | Ty::MutView(ce, _),
                     [_],
                 ) = (concrete, index.as_slice())
                 {

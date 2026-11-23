@@ -49,7 +49,7 @@ impl<'a> Lowerer<'a> {
             _ => return None,
         };
         let elem = match self.probe_ty_silent(base)? {
-            Ty::List(elem) | Ty::ListView(elem, _) | Ty::Keyed(elem, _) | Ty::MutView(elem) => {
+            Ty::List(elem) | Ty::ListView(elem, _) | Ty::Keyed(elem, _) | Ty::MutView(elem, _) => {
                 *elem
             }
             _ => return None,
@@ -268,7 +268,7 @@ impl<'a> Lowerer<'a> {
     /// `a.rev` over a list or view, whose `.keys` are `a`'s walked backwards (R07.4.7).
     pub(super) fn reversed_list(value: &Expr) -> bool {
         matches!(&value.kind, ExprKind::Builtin(Builtin::Reversed, args)
-            if matches!(args[0].ty, Ty::List(_) | Ty::ListView(..) | Ty::MutView(_)))
+            if matches!(args[0].ty, Ty::List(_) | Ty::ListView(..) | Ty::MutView(..)))
     }
 
     /// `value` walks backwards: `a.rev` over a list or view that walks
@@ -335,7 +335,7 @@ impl<'a> Lowerer<'a> {
         if !matches!(
             self.probe_ty_silent(src),
             Some(
-                Ty::List(_) | Ty::ListView(..) | Ty::Keyed(..) | Ty::MutView(_) | Ty::Array { .. }
+                Ty::List(_) | Ty::ListView(..) | Ty::Keyed(..) | Ty::MutView(..) | Ty::Array { .. }
             ) | Some(Ty::Str | Ty::StrView)
         ) {
             return None;

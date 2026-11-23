@@ -460,7 +460,7 @@ impl<'p> Emitter<'p> {
                 self.need("rekey");
                 self.need_ty(t);
             }
-            Ty::MutView(t) => {
+            Ty::MutView(t, _) => {
                 self.need("mut_view");
                 self.need_ty(t);
             }
@@ -908,7 +908,7 @@ impl<'p> Emitter<'p> {
                 | Ty::List(t)
                 | Ty::ListView(t, _)
                 | Ty::Keyed(t, _)
-                | Ty::MutView(t)
+                | Ty::MutView(t, _)
                 | Ty::Set(t)
                 | Ty::HashSet(t)
                 | Ty::Mut(t) => has_adt(t),

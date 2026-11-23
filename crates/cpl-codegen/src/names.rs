@@ -305,7 +305,7 @@ pub(crate) fn cty(program: &Program, niches: Niches, ty: &Ty) -> String {
         Ty::List(elem) => format!("std::vector<{}>", elem_ty(program, niches, elem)),
         Ty::ListView(elem, _) => format!("cpl::ListView<{}>", elem_ty(program, niches, elem)),
         Ty::Keyed(elem, _) => format!("cpl::Keyed<{}>", elem_ty(program, niches, elem)),
-        Ty::MutView(elem) => format!("cpl::MutView<{}>", elem_ty(program, niches, elem)),
+        Ty::MutView(elem, _) => format!("cpl::MutView<{}>", elem_ty(program, niches, elem)),
         Ty::Map(key, value) if program.unordered_maps.contains(key) => {
             cty(program, niches, &Ty::HashMap(key.clone(), value.clone()))
         }
@@ -372,7 +372,7 @@ pub(crate) fn judge_ty(ty: &Ty) -> String {
         Ty::List(elem) => format!("std::vector<{}>", judge_ty(elem)),
         Ty::ListView(elem, _) => format!("cpl::ListView<{}>", judge_ty(elem)),
         Ty::Keyed(elem, _) => format!("cpl::Keyed<{}>", judge_ty(elem)),
-        Ty::MutView(elem) => format!("cpl::MutView<{}>", judge_ty(elem)),
+        Ty::MutView(elem, _) => format!("cpl::MutView<{}>", judge_ty(elem)),
         Ty::Tuple(items) => {
             let items: Vec<String> = items.iter().map(judge_ty).collect();
             format!("std::tuple<{}>", items.join(", "))

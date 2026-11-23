@@ -144,7 +144,7 @@ impl<'p> Emitter<'p> {
                         return format!("cpl::Keyed<{cell}>");
                     }
                 }
-                Ty::MutView(elem) => {
+                Ty::MutView(elem, _) => {
                     if let Some(cell) = l.cpp_elem(elem) {
                         return format!("cpl::MutView<{cell}>");
                     }

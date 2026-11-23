@@ -357,7 +357,7 @@ impl<'a> Lowerer<'a> {
     /// `xs.adjacent`: the pairs `(xs[i], xs[i + 1])`, as a list.
     pub(in crate::lower) fn lower_adjacent(&mut self, value: Expr, span: Span) -> Expr {
         let (elem_ty, dim) = match &value.ty {
-            Ty::List(e) | Ty::ListView(e, _) | Ty::Keyed(e, _) | Ty::MutView(e) => {
+            Ty::List(e) | Ty::ListView(e, _) | Ty::Keyed(e, _) | Ty::MutView(e, _) => {
                 ((**e).clone(), Dim::Int)
             }
             Ty::Str | Ty::StrView => (Ty::Char, Dim::Int),

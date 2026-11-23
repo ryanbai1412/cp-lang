@@ -1832,8 +1832,9 @@ template <class T> struct MutView {
     using value_type = T;
     T* ptr = nullptr;
     size_t n = 0;
+    ll k0 = 0;
     MutView() = default;
-    MutView(T* p, size_t sz) noexcept : ptr(p), n(sz) {}
+    MutView(T* p, size_t sz, ll k = 0) noexcept : ptr(p), n(sz), k0(k) {}
     void cpl_list_view_tag() const {}
     size_t size() const noexcept { return n; }
     bool empty() const noexcept { return n == 0; }
@@ -1850,9 +1851,13 @@ template <class T> struct MutView {
     T& back() noexcept { return ptr[n - 1]; }
     const T& back() const noexcept { return ptr[n - 1]; }
 };
-template <class T> MutView<T> mut_slice(std::vector<T>& v, ll lo, ll hi) { if (lo < 0 || hi < lo || (size_t)hi > v.size()) fail(\"slice outside the list\"); return MutView<T>(v.data() + (size_t)lo, (size_t)(hi - lo)); }
-template <class T, size_t N> MutView<T> mut_slice(std::array<T, N>& v, ll lo, ll hi) { if (lo < 0 || hi < lo || (size_t)hi > N) fail(\"slice outside the list\"); return MutView<T>(v.data() + (size_t)lo, (size_t)(hi - lo)); }
-template <class T> MutView<T> mut_slice(MutView<T>& v, ll lo, ll hi) { if (lo < 0 || hi < lo || (size_t)hi > v.n) fail(\"slice outside the list\"); return MutView<T>(v.ptr + (size_t)lo, (size_t)(hi - lo)); }
+template <class T> MutView<T> mut_slice(std::vector<T>& v, ll lo, ll hi) { if (lo < 0 || hi < lo || (size_t)hi > v.size()) fail(\"slice outside the list\"); return MutView<T>(v.data() + (size_t)lo, (size_t)(hi - lo), lo); }
+template <class T, size_t N> MutView<T> mut_slice(std::array<T, N>& v, ll lo, ll hi) { if (lo < 0 || hi < lo || (size_t)hi > N) fail(\"slice outside the list\"); return MutView<T>(v.data() + (size_t)lo, (size_t)(hi - lo), lo); }
+template <class T> MutView<T> mut_slice(MutView<T>& v, ll lo, ll hi) { if (lo < 0 || hi < lo || (size_t)hi > v.n) fail(\"slice outside the list\"); return MutView<T>(v.ptr + (size_t)lo, (size_t)(hi - lo), v.k0 + lo); }
+template <class T> ll key_lo(const MutView<T>& v) noexcept { return v.k0; }
+template <class T> ll key_pos(const MutView<T>& v, ll k) { ll i = k - v.k0, n = (ll)v.n; if (i < 0 || i >= n) key_fail(k, v.k0, n); return i; }
+template <class T> ll pos_key(const MutView<T>& v, ll p) noexcept { return v.k0 + p; }
+template <class T> ListView<T> key_slice(const MutView<T>& v, ll lo, ll hi) { if (lo < v.k0 || hi < lo || hi > v.k0 + (ll)v.n) fail(\"slice outside the list's keys\"); return ListView<T>(v.ptr + (lo - v.k0), (size_t)(hi - lo), false, lo); }
 template <class T> T& at(MutView<T>& v, ll i) { if ((unsigned long long)i >= v.size()) fail(\"index outside the list\"); return v[(size_t)i]; }
 template <class T> const T& at(const MutView<T>& v, ll i) { if ((unsigned long long)i >= v.size()) fail(\"index outside the list\"); return v[(size_t)i]; }
 template <class T> std::vector<T> to_list(MutView<T> v) { return std::vector<T>(v.ptr, v.ptr + v.n); }

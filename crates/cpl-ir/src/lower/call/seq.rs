@@ -1149,7 +1149,7 @@ impl<'a> Lowerer<'a> {
                 return self.err_expr(span);
             }
             match &v.ty {
-                Ty::List(e) | Ty::ListView(e, _) | Ty::Keyed(e, _) | Ty::MutView(e) => {
+                Ty::List(e) | Ty::ListView(e, _) | Ty::Keyed(e, _) | Ty::MutView(e, _) => {
                     let e = (**e).clone();
                     (v, e)
                 }
@@ -1403,7 +1403,7 @@ impl<'a> Lowerer<'a> {
             return Some(piece);
         }
         let elem_ty = match &piece.ty {
-            Ty::List(e) | Ty::ListView(e, _) | Ty::MutView(e) | Ty::Keyed(e, _) => (**e).clone(),
+            Ty::List(e) | Ty::ListView(e, _) | Ty::MutView(e, _) | Ty::Keyed(e, _) => (**e).clone(),
             Ty::Str | Ty::StrView => Ty::Char,
             _ => return None,
         };
@@ -1454,7 +1454,7 @@ impl<'a> Lowerer<'a> {
         let base_ty = self.probe_ty_silent(base)?;
         if !matches!(
             base_ty,
-            Ty::List(_) | Ty::Array { .. } | Ty::ListView(..) | Ty::MutView(_) | Ty::Str
+            Ty::List(_) | Ty::Array { .. } | Ty::ListView(..) | Ty::MutView(..) | Ty::Str
         ) {
             return None;
         }
@@ -1502,7 +1502,7 @@ impl<'a> Lowerer<'a> {
                             Ty::List(_)
                                 | Ty::Array { .. }
                                 | Ty::ListView(..)
-                                | Ty::MutView(_)
+                                | Ty::MutView(..)
                                 | Ty::Str
                         )
                     ) {
@@ -1574,7 +1574,7 @@ impl<'a> Lowerer<'a> {
             return self.lower_array_map_expr(base_expr, &view.func, span);
         }
         let elem_ty = match &base_expr.ty {
-            Ty::List(e) | Ty::ListView(e, _) | Ty::MutView(e) => (**e).clone(),
+            Ty::List(e) | Ty::ListView(e, _) | Ty::MutView(e, _) => (**e).clone(),
             Ty::Str => Ty::Char,
             _ => return self.err_expr(span),
         };

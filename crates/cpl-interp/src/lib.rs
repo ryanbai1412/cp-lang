@@ -749,18 +749,18 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
             let mut has_mut_view = program
                 .main_locals
                 .iter()
-                .any(|l| matches!(l.ty, Ty::MutView(_)))
+                .any(|l| matches!(l.ty, Ty::MutView(..)))
                 || program
                     .fns
                     .iter()
-                    .any(|f| f.locals.iter().any(|l| matches!(l.ty, Ty::MutView(_))))
+                    .any(|f| f.locals.iter().any(|l| matches!(l.ty, Ty::MutView(..))))
                 || program
                     .closures
                     .iter()
-                    .any(|c| c.locals.iter().any(|l| matches!(l.ty, Ty::MutView(_))));
+                    .any(|c| c.locals.iter().any(|l| matches!(l.ty, Ty::MutView(..))));
             if !has_mut_view {
                 let mut check = |e: &cpl_ir::Expr| {
-                    if matches!(e.kind, ExprKind::MutSlice(..)) || matches!(e.ty, Ty::MutView(_)) {
+                    if matches!(e.kind, ExprKind::MutSlice(..)) || matches!(e.ty, Ty::MutView(..)) {
                         has_mut_view = true;
                     }
                 };
@@ -1396,7 +1396,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
             PlaceKind::Field(base, index) => field_mut(self.resolve(base, indices)?, *index, span),
             PlaceKind::Some(base) => inside_mut(self.resolve(base, indices)?, span),
             PlaceKind::Index(base, exprs) => {
-                if matches!(base.ty, Ty::MutView(_)) {
+                if matches!(base.ty, Ty::MutView(..)) {
                     let mv = match self.resolve(base, indices)? {
                         Value::MutView(mv) => Rc::clone(mv),
                         Value::Moved => return trap(span, LENT),
@@ -2147,7 +2147,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                     _ => return trap(span, LENT),
                 };
                 let elem_ty = match &place.ty {
-                    Ty::List(e) | Ty::MutView(e) | Ty::Array { elem: e, .. } => (**e).clone(),
+                    Ty::List(e) | Ty::MutView(e, _) | Ty::Array { elem: e, .. } => (**e).clone(),
                     Ty::Str => Ty::Char,
                     _ => Ty::Int,
                 };

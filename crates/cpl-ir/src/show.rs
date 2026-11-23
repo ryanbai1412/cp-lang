@@ -94,7 +94,7 @@ pub(crate) fn ty_name(
                 .collect();
             format!("({})", fields.join(", "))
         }
-        Ty::List(elem) | Ty::ListView(elem, _) | Ty::Keyed(elem, _) | Ty::MutView(elem) => {
+        Ty::List(elem) | Ty::ListView(elem, _) | Ty::Keyed(elem, _) | Ty::MutView(elem, _) => {
             format!("List<{}>", name(elem))
         }
         Ty::Map(k, v) => format!("Map<{}, {}>", name(k), name(v)),

@@ -664,7 +664,7 @@ impl<'a> Lowerer<'a> {
                             Ty::List(_)
                                 | Ty::ListView(_, _)
                                 | Ty::Keyed(_, _)
-                                | Ty::MutView(_)
+                                | Ty::MutView(..)
                                 | Ty::Array { .. }
                                 | Ty::Range(_)
                                 | Ty::Str
@@ -684,7 +684,7 @@ impl<'a> Lowerer<'a> {
                             Ty::List(_)
                                 | Ty::ListView(_, _)
                                 | Ty::Keyed(_, _)
-                                | Ty::MutView(_)
+                                | Ty::MutView(..)
                                 | Ty::Array { .. }
                                 | Ty::Range(_)
                                 | Ty::Set(_)

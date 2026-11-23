@@ -139,7 +139,7 @@ impl<'p> Emitter<'p> {
                     Ty::List(elem)
                     | Ty::ListView(elem, _)
                     | Ty::Keyed(elem, _)
-                    | Ty::MutView(elem)
+                    | Ty::MutView(elem, _)
                     | Ty::Array { elem, .. } => (**elem).clone(),
                     other => other.clone(),
                 };
@@ -333,7 +333,7 @@ impl<'p> Emitter<'p> {
                     self.need("str_view");
                     Code::primary(format!("cpl::str_rev({})", text(0)))
                 }
-                Some(Ty::List(_) | Ty::ListView(_, _) | Ty::Keyed(_, _) | Ty::MutView(_)) => {
+                Some(Ty::List(_) | Ty::ListView(_, _) | Ty::Keyed(_, _) | Ty::MutView(..)) => {
                     self.need("list_view");
                     Code::primary(format!("cpl::list_rev({})", text(0)))
                 }
@@ -369,6 +369,7 @@ impl<'p> Emitter<'p> {
                 self.need(match args[0].ty {
                     Ty::StrView => "str_view",
                     Ty::Range(_) => "range_at",
+                    Ty::MutView(..) => "mut_view",
                     _ => "list_view",
                 });
                 let name = match op {

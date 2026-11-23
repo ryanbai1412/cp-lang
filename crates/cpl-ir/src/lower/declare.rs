@@ -83,7 +83,7 @@ impl<'a> Lowerer<'a> {
         match &e.kind {
             ast::ExprKind::Field { base, name } if name.text == "rev" => matches!(
                 self.probe_ty_silent(base),
-                Some(Ty::List(_) | Ty::ListView(..) | Ty::MutView(_))
+                Some(Ty::List(_) | Ty::ListView(..) | Ty::MutView(..))
             ),
             ast::ExprKind::Name(n) => match self.lookup(n) {
                 Some(slot) => self.cx.view_rev.contains(&slot),

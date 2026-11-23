@@ -170,7 +170,7 @@ impl<'a> Lowerer<'a> {
                     Ty::List(_)
                         | Ty::ListView(_, _)
                         | Ty::Keyed(_, _)
-                        | Ty::MutView(_)
+                        | Ty::MutView(..)
                         | Ty::Array { .. }
                         | Ty::Range(_)
                         | Ty::Set(_)
@@ -197,7 +197,7 @@ impl<'a> Lowerer<'a> {
                             Ty::List(_)
                                 | Ty::ListView(_, _)
                                 | Ty::Keyed(_, _)
-                                | Ty::MutView(_)
+                                | Ty::MutView(..)
                                 | Ty::Array { .. }
                         )
                     ) =>
@@ -787,7 +787,7 @@ impl<'a> Lowerer<'a> {
             Ty::List(elem)
             | Ty::ListView(elem, _)
             | Ty::Keyed(elem, _)
-            | Ty::MutView(elem)
+            | Ty::MutView(elem, _)
             | Ty::Set(elem)
             | Ty::HashSet(elem)
             | Ty::Range(elem) => (**elem).clone(),

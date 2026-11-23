@@ -33,7 +33,7 @@ impl<'a> Lowerer<'a> {
             | Ty::List(t)
             | Ty::ListView(t, _)
             | Ty::Keyed(t, _)
-            | Ty::MutView(t)
+            | Ty::MutView(t, _)
             | Ty::Set(t)
             | Ty::HashSet(t)
             | Ty::Mut(t) => self.fresh_domains_in(t, dom_start, seen_structs, seen_enums, out),

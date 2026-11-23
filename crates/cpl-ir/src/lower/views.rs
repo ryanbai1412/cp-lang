@@ -30,7 +30,7 @@ impl<'a> Lowerer<'a> {
         }
         let mut takes = Vec::new();
         for (at, (param, arg)) in params.iter().zip(given).enumerate() {
-            let Some(arg) = arg.filter(|a| !a.mutable && !param.mutable) else {
+            let Some(arg) = arg.filter(|a| a.mutable == param.mutable) else {
                 continue;
             };
             let Ty::Array { dims, elem } = &param.ty else {
@@ -43,6 +43,17 @@ impl<'a> Lowerer<'a> {
                 continue;
             }
             let view = self.probe_ty_silent(&arg.value);
+            if param.mutable {
+                // A `mut` slice of a `[V]T` is a mutable view keyed by `V`.
+                let sliced = matches!(&arg.value.kind, ast::ExprKind::Index { indices, .. }
+                    if indices.len() == 1 && matches!(indices[0].kind, ast::ExprKind::Range { .. }));
+                if let Some(Ty::ListView(e, Dim::Pos(k)) | Ty::MutView(e, Dim::Pos(k))) = &view {
+                    if k == d && e == elem && (sliced || matches!(view, Some(Ty::MutView(..)))) {
+                        takes.push((at, Ty::MutView(e.clone(), Dim::Pos(*k))));
+                    }
+                }
+                continue;
+            }
             if let Some(Ty::ListView(e, Dim::Pos(k)) | Ty::Keyed(e, Dim::Pos(k))) = &view {
                 if k == d && e == elem {
                     takes.push((at, view.clone().unwrap_or(Ty::Error)));
@@ -155,7 +166,7 @@ impl<'a> Lowerer<'a> {
     ) -> Expr {
         let view = matches!(
             ret,
-            Ty::StrView | Ty::ListView(_, _) | Ty::Keyed(_, _) | Ty::MutView(_)
+            Ty::StrView | Ty::ListView(_, _) | Ty::Keyed(_, _) | Ty::MutView(..)
         );
         let args = if view {
             let owned = |t: &Ty| matches!(t, Ty::Str | Ty::List(_) | Ty::Array { .. });

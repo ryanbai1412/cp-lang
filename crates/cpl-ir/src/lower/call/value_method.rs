@@ -284,7 +284,7 @@ impl<'a> Lowerer<'a> {
                 }
                 None => self.err_expr(span),
             },
-            (Ty::List(_) | Ty::MutView(_) | Ty::Array { .. } | Ty::Str, "swap") => {
+            (Ty::List(_) | Ty::MutView(..) | Ty::Array { .. } | Ty::Str, "swap") => {
                 match self.positional_any(method, args, 2, span) {
                     Some(exprs) => {
                         let idx_ty = match &ty {
@@ -349,7 +349,7 @@ impl<'a> Lowerer<'a> {
                 }
                 None => self.err_expr(span),
             },
-            (Ty::List(_) | Ty::MutView(_) | Ty::Array { .. } | Ty::Str, "fill") => {
+            (Ty::List(_) | Ty::MutView(..) | Ty::Array { .. } | Ty::Str, "fill") => {
                 match self.one_arg(method, args, &elem, span) {
                     Some(v) => {
                         let place = self.place(base);
@@ -377,7 +377,7 @@ impl<'a> Lowerer<'a> {
                 ),
                 None => self.err_expr(span),
             },
-            (Ty::List(e) | Ty::ListView(e, _) | Ty::Keyed(e, _) | Ty::MutView(e), "to_list") => {
+            (Ty::List(e) | Ty::ListView(e, _) | Ty::Keyed(e, _) | Ty::MutView(e, _), "to_list") => {
                 let out_ty = Ty::list((**e).clone());
                 match self.positional_any(method, args, 0, span) {
                     Some(_) => self.mk(
@@ -396,7 +396,7 @@ impl<'a> Lowerer<'a> {
                 ),
                 None => self.err_expr(span),
             },
-            (Ty::ListView(e, _) | Ty::Keyed(e, _) | Ty::MutView(e), "copy" | "clone") => {
+            (Ty::ListView(e, _) | Ty::Keyed(e, _) | Ty::MutView(e, _), "copy" | "clone") => {
                 let out_ty = Ty::list((**e).clone());
                 match self.positional_any(method, args, 0, span) {
                     Some(_) => self.mk(
@@ -770,13 +770,13 @@ impl<'a> Lowerer<'a> {
                 Some(_) => mutate(self, Mutation::Clear, Vec::new(), Ty::Unit),
                 None => self.err_expr(span),
             },
-            (Ty::List(_) | Ty::MutView(_) | Ty::Array { .. } | Ty::Str, "reverse") => {
+            (Ty::List(_) | Ty::MutView(..) | Ty::Array { .. } | Ty::Str, "reverse") => {
                 match self.positional_any(method, args, 0, span) {
                     Some(_) => mutate(self, Mutation::Reverse, Vec::new(), Ty::Unit),
                     None => self.err_expr(span),
                 }
             }
-            (Ty::List(_) | Ty::MutView(_) | Ty::Array { .. } | Ty::Str, "sort") => {
+            (Ty::List(_) | Ty::MutView(..) | Ty::Array { .. } | Ty::Str, "sort") => {
                 self.sort(base, &elem, args, span)
             }
             (ty, "sorted") if ty.is_seq() || matches!(ty, Ty::Set(_) | Ty::HashSet(_)) => {
@@ -798,7 +798,10 @@ impl<'a> Lowerer<'a> {
                 }
                 None => self.err_expr(span),
             },
-            (Ty::List(e) | Ty::ListView(e, _) | Ty::Keyed(e, _) | Ty::MutView(e), "reversed") => {
+            (
+                Ty::List(e) | Ty::ListView(e, _) | Ty::Keyed(e, _) | Ty::MutView(e, _),
+                "reversed",
+            ) => {
                 let out_ty = Ty::list((**e).clone());
                 let view_ty = Ty::ListView(e.clone(), Dim::Int);
                 match self.positional_any(method, args, 0, span) {
@@ -832,7 +835,7 @@ impl<'a> Lowerer<'a> {
                 Ty::List(_)
                 | Ty::ListView(_, _)
                 | Ty::Keyed(_, _)
-                | Ty::MutView(_)
+                | Ty::MutView(..)
                 | Ty::Set(_)
                 | Ty::HashSet(_)
                 | Ty::Map(..)
@@ -852,7 +855,7 @@ impl<'a> Lowerer<'a> {
             },
             // R04b.1.6: `z.rekey(s.keys)` hands a table computed on offsets back
             // in the caller's keys, O(1).
-            (Ty::List(_) | Ty::ListView(_, _) | Ty::Keyed(_, _) | Ty::MutView(_), "rekey")
+            (Ty::List(_) | Ty::ListView(_, _) | Ty::Keyed(_, _) | Ty::MutView(..), "rekey")
             | (Ty::Array { .. }, "rekey")
                 if args.len() == 1 && ty.seq_key().is_some() =>
             {
@@ -906,7 +909,7 @@ impl<'a> Lowerer<'a> {
                 Ty::List(_)
                 | Ty::ListView(_, _)
                 | Ty::Keyed(_, _)
-                | Ty::MutView(_)
+                | Ty::MutView(..)
                 | Ty::Array { .. },
                 "count",
             )
@@ -917,7 +920,7 @@ impl<'a> Lowerer<'a> {
                         Ty::List(_)
                             | Ty::ListView(_, _)
                             | Ty::Keyed(_, _)
-                            | Ty::MutView(_)
+                            | Ty::MutView(..)
                             | Ty::Array { .. }
                     ) || self.probe_ty_silent(&args[0].value) == Some(Ty::Char)) =>
             {
@@ -1629,7 +1632,7 @@ impl<'a> Lowerer<'a> {
                     span,
                 )
             }
-            (Ty::List(e) | Ty::ListView(e, _) | Ty::Keyed(e, _) | Ty::MutView(e), "rev")
+            (Ty::List(e) | Ty::ListView(e, _) | Ty::Keyed(e, _) | Ty::MutView(e, _), "rev")
                 if args.is_empty() =>
             {
                 let elem = (**e).clone();

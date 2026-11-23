@@ -634,7 +634,7 @@ impl<'a> Lowerer<'a> {
                 let val = self.expr(src, None);
                 match val.ty.clone() {
                     Ty::List(_) => val,
-                    Ty::ListView(elem, _) | Ty::Keyed(elem, _) | Ty::MutView(elem) => self.mk(
+                    Ty::ListView(elem, _) | Ty::Keyed(elem, _) | Ty::MutView(elem, _) => self.mk(
                         ExprKind::Builtin(Builtin::ToList, vec![val]),
                         Ty::List(elem),
                         span,
@@ -751,7 +751,7 @@ impl<'a> Lowerer<'a> {
         span: Span,
     ) -> Expr {
         let items = match &items.ty {
-            Ty::ListView(e, _) | Ty::Keyed(e, _) | Ty::MutView(e) => {
+            Ty::ListView(e, _) | Ty::Keyed(e, _) | Ty::MutView(e, _) => {
                 let list_ty = Ty::list((**e).clone());
                 self.mk(
                     ExprKind::Builtin(Builtin::ToList, vec![items]),
@@ -800,7 +800,7 @@ impl<'a> Lowerer<'a> {
         span: Span,
     ) -> Expr {
         let flat = match &value.ty {
-            Ty::List(_) | Ty::ListView(..) | Ty::Keyed(..) | Ty::MutView(_) | Ty::Range(_) => true,
+            Ty::List(_) | Ty::ListView(..) | Ty::Keyed(..) | Ty::MutView(..) | Ty::Range(_) => true,
             Ty::Array { dims, .. } => dims.len() == 1,
             _ => false,
         };
@@ -1002,7 +1002,7 @@ impl<'a> Lowerer<'a> {
             | Ty::List(_)
             | Ty::ListView(_, _)
             | Ty::Keyed(_, _)
-            | Ty::MutView(_)
+            | Ty::MutView(..)
             | Ty::Str
             | Ty::StrView
             | Ty::Map(..)
@@ -1021,7 +1021,7 @@ impl<'a> Lowerer<'a> {
 
     pub(in crate::lower) fn sorted(&mut self, value: Expr, span: Span) -> Expr {
         match &value.ty {
-            Ty::List(elem) | Ty::ListView(elem, _) | Ty::Keyed(elem, _) | Ty::MutView(elem) => {
+            Ty::List(elem) | Ty::ListView(elem, _) | Ty::Keyed(elem, _) | Ty::MutView(elem, _) => {
                 if !self.ordered(elem) {
                     let message = format!("a `{}` has no order to sort by", self.show(elem));
                     self.error(codes::BAD_OPERANDS, span, message);
@@ -1186,7 +1186,7 @@ impl<'a> Lowerer<'a> {
             (kind, _) => Expr { kind, ..value },
         };
         let list_ty = match value.ty.clone() {
-            Ty::List(e) | Ty::ListView(e, _) | Ty::Keyed(e, _) | Ty::MutView(e) => Ty::List(e),
+            Ty::List(e) | Ty::ListView(e, _) | Ty::Keyed(e, _) | Ty::MutView(e, _) => Ty::List(e),
             Ty::Array { elem, .. } => Ty::List(elem),
             Ty::Set(e) | Ty::HashSet(e) => Ty::List(e),
             ty if ty.is_seq() => Ty::list(ty.seq_elem().unwrap()),
@@ -1211,7 +1211,7 @@ impl<'a> Lowerer<'a> {
                     list_ty.clone(),
                     span,
                 ),
-                Ty::ListView(_, _) | Ty::Keyed(_, _) | Ty::MutView(_) => lw.mk(
+                Ty::ListView(_, _) | Ty::Keyed(_, _) | Ty::MutView(..) => lw.mk(
                     ExprKind::Builtin(Builtin::ToList, vec![value]),
                     list_ty.clone(),
                     span,

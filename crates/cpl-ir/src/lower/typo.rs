@@ -83,7 +83,7 @@ impl<'a> Lowerer<'a> {
             Ty::DomainVal => {
                 names.extend(DOMAIN_MEMBERS);
             }
-            Ty::List(_) | Ty::Array { .. } | Ty::MutView(_) | Ty::ListView(..) | Ty::Keyed(..) => {
+            Ty::List(_) | Ty::Array { .. } | Ty::MutView(..) | Ty::ListView(..) | Ty::Keyed(..) => {
                 names.extend(SEQ_EXTRA);
             }
             Ty::Str | Ty::StrView => {
@@ -628,7 +628,7 @@ fn receiver_of(ty: &Ty) -> Option<cpl_check::Receiver> {
     use cpl_check::Receiver;
     match ty {
         Ty::Str | Ty::StrView => Some(Receiver::Str),
-        Ty::List(_) | Ty::MutView(_) | Ty::ListView(..) | Ty::Keyed(..) => Some(Receiver::List),
+        Ty::List(_) | Ty::MutView(..) | Ty::ListView(..) | Ty::Keyed(..) => Some(Receiver::List),
         Ty::Map(..) | Ty::HashMap(..) => Some(Receiver::Map),
         Ty::Set(_) | Ty::HashSet(_) => Some(Receiver::Set),
         Ty::Array { .. } => Some(Receiver::Array),

@@ -1829,7 +1829,7 @@ impl<'a> Lowerer<'a> {
         let self_item = format!("Self.{item}");
         let unwrap_seq = |seq_ty: &Ty| -> Option<Ty> {
             match seq_ty {
-                Ty::List(e) | Ty::ListView(e, _) | Ty::MutView(e) | Ty::Range(e) => {
+                Ty::List(e) | Ty::ListView(e, _) | Ty::MutView(e, _) | Ty::Range(e) => {
                     Some((**e).clone())
                 }
                 Ty::Str | Ty::StrView => Some(Ty::Char),
@@ -2629,8 +2629,8 @@ impl<'a> Lowerer<'a> {
         // `Slice<S>` is the view a slice of `S` is.
         if name.text == "Slice" && args.len() == 1 {
             match self.resolve_ty(&args[0]) {
-                Ty::List(e) | Ty::MutView(e) => return Spec::Plain(Ty::ListView(e, Dim::Int)),
-                Ty::ListView(e, key) | Ty::Keyed(e, key) => {
+                Ty::List(e) => return Spec::Plain(Ty::ListView(e, Dim::Int)),
+                Ty::ListView(e, key) | Ty::Keyed(e, key) | Ty::MutView(e, key) => {
                     return Spec::Plain(Ty::ListView(e, key))
                 }
                 Ty::Str | Ty::StrView => return Spec::Plain(Ty::StrView),
@@ -2647,8 +2647,8 @@ impl<'a> Lowerer<'a> {
             "Str" => Ty::Str,
             "List" | "Iter" | "Seq" => Ty::list(arg(self, 0)),
             "Slice" => match arg(self, 0) {
-                Ty::List(e) | Ty::MutView(e) => Ty::ListView(e, Dim::Int),
-                Ty::ListView(e, d) => Ty::ListView(e, d),
+                Ty::List(e) => Ty::ListView(e, Dim::Int),
+                Ty::ListView(e, d) | Ty::MutView(e, d) => Ty::ListView(e, d),
                 Ty::Str | Ty::StrView => Ty::StrView,
                 Ty::Array { elem, dims } if dims.len() == 1 => Ty::ListView(elem, dims[0]),
                 Ty::Array { elem, .. } => Ty::List(elem),
@@ -4392,7 +4392,7 @@ impl<'a> Lowerer<'a> {
                     dims,
                     elem: want_elem,
                 },
-                Ty::List(elem) | Ty::ListView(elem, _) | Ty::Keyed(elem, _) | Ty::MutView(elem),
+                Ty::List(elem) | Ty::ListView(elem, _) | Ty::Keyed(elem, _) | Ty::MutView(elem, _),
             ) if want_elem == elem || self.plain_ty(want_elem) == **elem => match dims.as_slice() {
                 [Dim::Pos(d)] if self.list_domains.contains(d) => {
                     let d = *d;
@@ -4856,7 +4856,7 @@ impl<'a> Lowerer<'a> {
             }),
             (
                 Ty::List(want_elem),
-                Ty::ListView(got_elem, _) | Ty::Keyed(got_elem, _) | Ty::MutView(got_elem),
+                Ty::ListView(got_elem, _) | Ty::Keyed(got_elem, _) | Ty::MutView(got_elem, _),
             ) if want_elem == got_elem => Ok(Expr {
                 kind: ExprKind::Builtin(Builtin::ToList, vec![e]),
                 ty: want.clone(),

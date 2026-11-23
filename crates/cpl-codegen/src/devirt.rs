@@ -1414,7 +1414,7 @@ fn ty_structs(ty: &Ty, out: &mut BTreeSet<usize>) {
         | Ty::List(elem)
         | Ty::ListView(elem, _)
         | Ty::Keyed(elem, _)
-        | Ty::MutView(elem)
+        | Ty::MutView(elem, _)
         | Ty::Set(elem)
         | Ty::HashSet(elem)
         | Ty::Mut(elem)
@@ -1447,7 +1447,7 @@ fn key_structs(ty: &Ty, out: &mut BTreeSet<usize>) {
         | Ty::List(elem)
         | Ty::ListView(elem, _)
         | Ty::Keyed(elem, _)
-        | Ty::MutView(elem)
+        | Ty::MutView(elem, _)
         | Ty::Mut(elem)
         | Ty::Range(elem) => key_structs(elem, out),
         Ty::Tuple(items) => items.iter().for_each(|t| key_structs(t, out)),

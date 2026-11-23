@@ -227,7 +227,7 @@ impl<'p> Emitter<'p> {
             | Ty::List(elem)
             | Ty::ListView(elem, _)
             | Ty::Keyed(elem, _)
-            | Ty::MutView(elem) => {
+            | Ty::MutView(elem, _) => {
                 let cell = self.cell("v[i]", elem);
                 let shown = self.show_stmt(&cell, elem, "digits");
                 b.push_str("    for (size_t i = 0; i < v.size(); i++) {\n");

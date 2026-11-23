@@ -168,7 +168,7 @@ pub enum Ty {
     /// (R04b.1.7). Every use reads it as a `ListView`.
     Keyed(Box<Ty>, Dim),
     /// O(1) fixed-length mutable slice view into a `List<T>` or 1D `[D]T`.
-    MutView(Box<Ty>),
+    MutView(Box<Ty>, Dim),
     Map(Box<Ty>, Box<Ty>),
     HashMap(Box<Ty>, Box<Ty>),
     Set(Box<Ty>),
@@ -205,7 +205,7 @@ impl Ty {
     /// True if some part is a view into another value, which must outlive it.
     pub fn holds_view(&self) -> bool {
         match self {
-            Ty::ListView(..) | Ty::Keyed(..) | Ty::MutView(_) | Ty::StrView => true,
+            Ty::ListView(..) | Ty::Keyed(..) | Ty::MutView(..) | Ty::StrView => true,
             Ty::Range(t) | Ty::Opt(t) | Ty::List(t) | Ty::Set(t) | Ty::HashSet(t) | Ty::Mut(t) => {
                 t.holds_view()
             }
@@ -227,7 +227,7 @@ impl Ty {
             | Ty::List(t)
             | Ty::ListView(t, _)
             | Ty::Keyed(t, _)
-            | Ty::MutView(t)
+            | Ty::MutView(t, _)
             | Ty::Set(t)
             | Ty::HashSet(t)
             | Ty::Mut(t) => t.mentions_error(),
@@ -249,7 +249,7 @@ impl Ty {
             | Ty::List(t)
             | Ty::ListView(t, _)
             | Ty::Keyed(t, _)
-            | Ty::MutView(t)
+            | Ty::MutView(t, _)
             | Ty::Set(t)
             | Ty::HashSet(t)
             | Ty::Mut(t) => t.has_fn(),
@@ -269,7 +269,7 @@ impl Ty {
             Ty::List(_)
                 | Ty::ListView(_, _)
                 | Ty::Keyed(_, _)
-                | Ty::MutView(_)
+                | Ty::MutView(..)
                 | Ty::Array { .. }
                 | Ty::Map(..)
                 | Ty::HashMap(..)
@@ -323,7 +323,7 @@ impl Ty {
             | Ty::List(t)
             | Ty::ListView(t, _)
             | Ty::Keyed(t, _)
-            | Ty::MutView(t)
+            | Ty::MutView(t, _)
             | Ty::Set(t)
             | Ty::Range(t) => t.is_comparable(program),
             Ty::Array { elem, .. } => elem.is_comparable(program),
@@ -400,7 +400,7 @@ impl Ty {
     /// 1D `[D]T`, `Range<I>`, and O(1) slice/reverse views).
     pub fn seq_elem(&self) -> Option<Ty> {
         match self {
-            Ty::List(elem) | Ty::ListView(elem, _) | Ty::Keyed(elem, _) | Ty::MutView(elem) => {
+            Ty::List(elem) | Ty::ListView(elem, _) | Ty::Keyed(elem, _) | Ty::MutView(elem, _) => {
                 Some((**elem).clone())
             }
             Ty::Str | Ty::StrView => Some(Ty::Char),
@@ -421,8 +421,8 @@ impl Ty {
     /// What a sequence is indexed by: its keys (R04b.1).
     pub fn seq_key(&self) -> Option<Dim> {
         match self {
-            Ty::List(_) | Ty::MutView(_) | Ty::Str | Ty::StrView => Some(Dim::Int),
-            Ty::ListView(_, key) | Ty::Keyed(_, key) => Some(*key),
+            Ty::List(_) | Ty::Str | Ty::StrView => Some(Dim::Int),
+            Ty::ListView(_, key) | Ty::Keyed(_, key) | Ty::MutView(_, key) => Some(*key),
             Ty::Array { dims, .. } if dims.len() == 1 => Some(dims[0]),
             _ => None,
         }
@@ -441,7 +441,7 @@ impl Ty {
     /// True when this type implements the built-in `IndexedMut` trait (O(1) random read/write).
     pub fn is_indexed_mut(&self) -> bool {
         match self {
-            Ty::List(_) | Ty::MutView(_) | Ty::Str => true,
+            Ty::List(_) | Ty::MutView(..) | Ty::Str => true,
             Ty::Array { dims, .. } if dims.len() == 1 => true,
             _ => false,
         }
@@ -1415,7 +1415,7 @@ impl Program {
             | Ty::List(inner)
             | Ty::ListView(inner, _)
             | Ty::Keyed(inner, _)
-            | Ty::MutView(inner)
+            | Ty::MutView(inner, _)
             | Ty::Set(inner)
             | Ty::HashSet(inner)
             | Ty::Mut(inner) => {

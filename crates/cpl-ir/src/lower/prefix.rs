@@ -30,7 +30,7 @@ impl<'a> Lowerer<'a> {
             | Ty::List(elem)
             | Ty::ListView(elem, _)
             | Ty::Keyed(elem, _)
-            | Ty::MutView(elem) => (**elem).clone(),
+            | Ty::MutView(elem, _) => (**elem).clone(),
             _ => Ty::Error,
         };
         let adds = match &elem_ty {
@@ -53,7 +53,7 @@ impl<'a> Lowerer<'a> {
         // A list, or an array indexed by plain `Int`s from 0: `p.sum(l..r)`
         // takes `Int`s.
         let counted = match &src.ty {
-            Ty::List(_) | Ty::ListView(_, _) | Ty::Keyed(_, _) | Ty::MutView(_) => true,
+            Ty::List(_) | Ty::ListView(_, _) | Ty::Keyed(_, _) | Ty::MutView(..) => true,
             Ty::Array { dims, .. } => matches!(dims[..], [Dim::Int]),
             _ => false,
         };
