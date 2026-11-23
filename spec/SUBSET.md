@@ -173,6 +173,7 @@ they carry rule ids; the stdlib's own gaps are in `std/GAPS.md`.
 - core-05/exercise-24-mut-generator-rewalked-lint.cp: compiler
 - core-05/exercise-33-lends-result-loop-writes-source.cp: compiler
 - core-05/exercise-35-lent-optional-kept.cp: compiler
+- core-05/lent-generator-blocks-overlapping-write.cp: compiler
 - core-05/slices-proved-apart.cp: compiler
 - core-05/spec-block-segtree-of-ws.cp: compiler
 - core-06/alt-main-is-removed.cp: compiler
