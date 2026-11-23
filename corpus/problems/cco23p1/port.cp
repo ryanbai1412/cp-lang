@@ -1,9 +1,11 @@
-// CCO 2023 P1 Binaria: count binary strings of length n whose every window of
-// k consecutive bits has the given sum, modulo 1e6 + 3.
-// Neighbouring windows differ by bit[i + k] - bit[i], so each residue class
-// mod k is a chain of "same", "0 then 1" and "1 then 0" links. A chain with
-// any unequal link is forced; the rest are free, and the first window says
-// how many free chains must be 1.
+// Source: CCO 2023 Day 1 P1 (Binaria), https://dmoj.ca/problem/cco23p1
+// Problem: given the sums of all n - k + 1 windows of k consecutive bits of a binary string of
+//   length n <= 1e6 (1 <= k <= n, at least one string fits), count the strings that fit,
+//   modulo 1e6 + 3.
+// Solution: window i + 1 minus window i is bit[i + k] - bit[i], so each residue class mod k
+//   is a chain whose bits follow known offsets from its first bit. Offsets spanning more than
+//   one value: no string; spanning two: forced (first bit 1 iff some offset is -1); else free.
+//   The first window then says how many free chains are 1: C(free, total[0] - forced). O(n).
 // original: corpus/submissions/5579927.cpp
 use std.math.{choose}
 const P = 1000003

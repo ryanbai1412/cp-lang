@@ -1,11 +1,10 @@
-// MMCC '14 P3 - Esdeath (20pt): put k outposts on the vertices of a tree so
-// that the farthest vertex from its nearest outpost is as close as possible;
-// print that distance.
-// Fix a radius and place greedily from the leaves up: each vertex reports
-// the farthest descendant still uncovered and the nearest outpost below it,
-// and an outpost goes on a child only when its uncovered descendant could
-// not survive one more edge. The outposts needed fall as the radius grows,
-// so the least radius that needs at most k is found by bisection.
+// Source: MMCC '14 P3 (Esdeath), https://dmoj.ca/problem/mmcc14p3
+// Problem: a tree of n <= 5000 cities; put s <= n soldiers on cities so that every city is
+//   within D roads of a soldier. Print the minimum D.
+// Solution: the soldiers needed fall as D grows, so bisect D. For a fixed D, go from the
+//   leaves up: each vertex keeps its farthest uncovered descendant and its nearest soldier
+//   below; a soldier goes on a child whose uncovered vertex would be D + 1 away, and one on
+//   the root if anything is left uncovered. O(n log n).
 // original: corpus/submissions/5120083.cpp
 
 let (n, k): (1..=2e5, 1..=2e5) = read()

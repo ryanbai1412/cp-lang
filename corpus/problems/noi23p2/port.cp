@@ -1,5 +1,12 @@
-// NOI 2023 D1T2 Guiyang Tree: count valid tree extensions of m new vertices
-// with window parameter k, modulo 10^9 + 7. Broken-profile bitmask DP.
+// Source: NOI 2023 Day 1 P2 (Osmanthus Tree), https://dmoj.ca/problem/noi23p2
+// Problem: a rooted tree T on 1..n (n <= 3e4, parent of i < i) and k <= 10. Count rooted trees
+//   T' on n + m nodes (m <= 3000, root 1) where every two original nodes keep their LCA and
+//   every pair i, j has an LCA numbered <= max(i, j) + k. Modulo 1e9 + 7; t <= 15 tests.
+// Solution: only n matters. Add nodes n + 1, n + 2, ... in order: with c nodes placed, a node
+//   hangs under any node or splits any edge, 2c - 1 ways, so k = 0 is a product. For k > 0 a
+//   node may also split an edge as the future LCA of a later node within k labels: a DP from
+//   the last node back over a k-bit mask of such open split points (fill one, open one at
+//   c - 1 ways, or neither; the oldest must be filled in time). O(m 2^k k) per test.
 // original: corpus/submissions/5723059.cpp
 const P = 1000000007
 type Z = Mod<P>

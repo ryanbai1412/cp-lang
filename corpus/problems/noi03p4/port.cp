@@ -1,4 +1,9 @@
-// NOI 2003 P4, the detour: longest dist(c, nearer of a/b) + dist(a, b) on a weighted tree (buildable today-form)
+// Source: NOI 2003 P4 (The Truant Children), https://dmoj.ca/problem/noi03p4
+// Problem: a tree of n <= 2e5 houses with edge times <= 1e9. Choose houses X, Y, Z with
+//   |XY| <= |XZ| that maximise |XY| + |YZ|; print that maximum.
+// Solution: Y and Z are the two ends a, b of a diameter and X the house farthest from the
+//   nearer of them, so the answer is |ab| + max over c of min(|ca|, |cb|). Three weighted
+//   tree walks (from house 1 to find a, from a to find b, from b), O(n).
 // original: corpus/submissions/5032732.cpp
 // The walk is hand-rolled: the prototype's bfs has no edge weights.
 let n: 1..=2e5 = read()

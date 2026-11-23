@@ -1,10 +1,11 @@
-// NOIP 2001 Car's travel route: every city is a rectangle with an airport on
-// each corner, three of them given. Rail joins the airports of one city at
-// the city's price per unit; a flight joins any two airports of different
-// cities at price `air` per unit. Print the cheapest trip from city `from`
-// to city `to`, to two decimals.
-// Solution: complete the fourth corner from the right angle, then run
-// Floyd-Warshall over every (city, corner) airport.
+// Source: NOIP 2001 Senior P4 (Car's Travel Route), https://dmoj.ca/problem/noip01p4
+// Problem: n <= 100 cities, each a rectangle with an airport on every corner, three of them
+//   given. Rail between airports of one city costs the city's price per unit length; a flight
+//   between airports of different cities costs `air` per unit. Print the cheapest trip from
+//   city `from` to city `to`, any airports at either end, to two decimals.
+// Solution: the fourth corner is q + r - p, where p is the given corner with the right angle.
+//   Then Floyd-Warshall over all 4n airports with Euclidean prices, O(n^3), and take the
+//   cheapest of the 16 corner pairs.
 // original: corpus/submissions/5086731.cpp
 use std.geometry.{dot}  // WISH F1
 use std.graph.{floyd_warshall}

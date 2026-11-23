@@ -1,14 +1,11 @@
-// NOI 2001 Food Chain: n animals, each of kind A, B or C, where A eats B,
-// B eats C and C eats A. Statements arrive in order: "1 x y" says x and y
-// are the same kind, "2 x y" says x eats y. A statement is false if it
-// names an animal that does not exist or contradicts the true statements
-// before it. Count the false ones.
-//
-// Give every animal a kind 0, 1 or 2 with "x eats y" meaning
-// kind[x] - kind[y] == 1 (mod 3). A union-find that stores, for every
-// animal, its kind relative to its parent answers "what is kind[x] -
-// kind[y]?" for any two animals already related, and learns a new relation
-// when they are not.
+// Source: NOI 2001 (Food Chain), https://dmoj.ca/problem/noi01p1
+// Problem: n <= 5e4 animals, each of kind A, B or C (A eats B, B eats C, C eats A). Of k <= 1e5
+//   statements "1 x y" (same kind) and "2 x y" (x eats y), one is false if x or y > n or it
+//   contradicts the true ones before it (so x eats x is false). Count the false ones.
+// Solution: kinds are 0, 1, 2 with "x eats y" meaning kind[x] - kind[y] == 1 (mod 3). A
+//   weighted union-find keeps each animal's kind relative to its parent; path compression
+//   gives kind[x] - kind[y] for two related animals, and a union records a new relation.
+//   Near O(1) amortised per statement.
 let (n, k): (Int, Int) = read()
 domain Animal = 1..=n
 
