@@ -17,7 +17,11 @@ ratchet and counts: `scripts/debt-ratchet.py` (`--show`, `--list NAME`; 0.4 s, i
 [Milestone 1](../../product/MILESTONE-1.md) is the priority: a Codeforces
 1500+ friend understands, tries, installs, solves, tests, submits and competes
 with CPL without help. Debt that causes a milestone bug comes first; cosmetic
-debt waits. This lane never blocks a milestone lane: moves land as one
+debt waits. Constraints (Ryan, 2026-11-22): due about 09:30 PST 2026-11-23,
+so steps are planned in hours with a worklog checkpoint every 2 hours; no
+real judge submissions (a local Codeforces profile: compiler, flags, limits,
+64 KB); Linux, macOS and Windows all supported and tested; ships on `edge`;
+Neovim/Vim LSP must just work, VS Code too. This lane never blocks a milestone lane: moves land as one
 announced commit, and the only gate it owns is the shrink-only ratchet.
 
 What the milestone needs from this lane (exit criteria):
@@ -34,18 +38,22 @@ What the milestone needs from this lane (exit criteria):
    `examples/local-lib` is in `research/archive/local-lib-v02`.
 3. **Main never goes red on a stale generated file.** `scripts/gen.py --check`
    runs in the commit tier (done: decisions 294, 303).
+4. **No path or line-ending assumption in shipped code breaks Windows or
+   macOS.** Every path match on `"/"` strings in `crates/*/src` goes through
+   `Path` components or a normalised module path, and input reading accepts
+   CRLF; each one found is fixed or routed to its owner with a failing case.
 
 Deferring: `plan/DECISIONS.md` curation, the 877 v0.2 `port.cp` files,
 file-size shrinking and duplicate helpers, probe reruns, cold-review rounds
 beyond findings that cause milestone bugs.
 
-Next three steps:
-1. Builtin divergence audit: list each builtin's interpreter and C++
-   implementations, add diff cases at the edges, fix or route each mismatch.
-2. User-library privilege test: a small library using each std power, in the
-   fast gate; each failure goes to compiler or stdlib.
-3. Third-party crate verdict (build and install time is release quality),
-   then crate READMEs and the rest of the layout when cheap.
+Next three steps (hours from 21:30 PST):
+1. By 23:30: triage `cpl-conform diff` (1739/1879 pass, 1 mismatch, 139
+   skipped) and add edge cases for the builtins with two implementations.
+2. By 01:30: the Windows/macOS audit of shipped crates (path strings, CRLF,
+   `/`-joined module paths); fix behaviour-free ones, route the rest.
+3. By 03:30: the user-library privilege test in the fast gate. Then the
+   third-party crate verdict and crate READMEs.
 
 ## Covers / not covered
 
