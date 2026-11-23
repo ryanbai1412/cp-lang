@@ -44,7 +44,7 @@ pub(crate) trait Observer {
     }
     /// Global `id`, or a part of it, was written where no step is kept:
     /// true when the observer has taken note and wants no view.
-    fn quiet_write(&mut self, _id: usize, _depth: usize) -> bool {
+    fn quiet_write(&mut self, _place: &Place, _depth: usize) -> bool {
         false
     }
     /// Global `id` was given its first value.
@@ -111,8 +111,8 @@ impl Observer for Tracer {
     fn out_of_time(&mut self) -> bool {
         Tracer::out_of_time(self)
     }
-    fn quiet_write(&mut self, id: usize, depth: usize) -> bool {
-        Tracer::quiet_write(self, id, depth)
+    fn quiet_write(&mut self, place: &Place, depth: usize) -> bool {
+        Tracer::quiet_write(self, place, depth)
     }
     fn declared(&mut self, id: usize, view: &View, at: Span) {
         Tracer::declared(self, id, view, at)
@@ -219,8 +219,8 @@ impl<O: Observer> Interp<'_, '_, O> {
     /// a view, as when the running fn is not traced.
     pub(crate) fn quiet_write(&mut self, place: &Place) -> bool {
         let depth = self.call_frames.len();
-        match (root_global(place), self.tracer.as_mut()) {
-            (Some(id), Some(tracer)) if O::ON => tracer.quiet_write(id, depth),
+        match self.tracer.as_mut() {
+            Some(tracer) if O::ON => tracer.quiet_write(place, depth),
             _ => false,
         }
     }

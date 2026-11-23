@@ -10,10 +10,13 @@ use cpl_ir::Ty;
 impl Tracer {
     /// [`crate::observe::Observer::quiet_write`]: outside the traced fns a
     /// write only marks its global for the next kept step.
-    pub(crate) fn quiet_write(&mut self, id: usize, depth: usize) -> bool {
-        if self.assignments || !self.visible[id] || self.recording(depth) {
+    pub(crate) fn quiet_write(&mut self, place: &cpl_ir::Place, depth: usize) -> bool {
+        if self.assignments || self.recording(depth) {
             return false;
         }
+        let Some(id) = crate::root_global(place).filter(|&id| self.visible[id]) else {
+            return false;
+        };
         self.touch(id, None);
         true
     }
