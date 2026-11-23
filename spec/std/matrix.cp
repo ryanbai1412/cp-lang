@@ -1196,6 +1196,16 @@ pub fn sparse_det<P>(n: Int, entries: List<(Int, Int, Mod<P>)>) -> Mod<P>:
             for d in w.diag: det /= d
             return det
 
+/// Solve `A x = b` for a sparse `n x n` matrix via Wiedemann's algorithm, with `entries` as in
+/// `sparse_det`. Returns the unique solution, or `None` when `A` is singular (even if `b` happens
+/// to be in its range). Deterministic, like `sparse_det`.
+///
+/// cost: O(n * (entries.len + n)) expected time, O(n + entries.len) space
+/// empty: `Some([])` for `n == 0`
+/// order: indexed by column (variable)
+/// traps: when `n < 0`, `b.len != n`, or a row or column is not in `0..n`
+/// example: `let e: List<(Int, Int, Mod<998244353>)> = [(0, 0, Mod(2)), (1, 1, Mod(3))]; sparse_solve(2, e, [Mod(4), Mod(9)]) == Some([Mod<998244353>(2), Mod<998244353>(3)])`
+/// example: `let e: List<(Int, Int, Mod<998244353>)> = [(0, 0, Mod(1))]; sparse_solve(2, e, [Mod(1), Mod(0)]) == None`
 pub fn sparse_solve<P>(n: Int, entries: List<(Int, Int, Mod<P>)>, b: List<Mod<P>>) -> ?List<Mod<P>>:
     assert n >= 0, "sparse_solve requires n >= 0"
     assert b.len == n, "sparse_solve requires b.len == n"
@@ -1268,17 +1278,6 @@ fn berlekamp_massey<P>(s: List<Mod<P>>) -> List<Mod<P>>:
         cur = next
     while cur.len < len + 1: cur.push(Mod<P>(0))
     [cur[i] for i in 0..=len]
-
-/// Solve `A x = b` for a sparse `n x n` matrix via Wiedemann's algorithm, with `entries` as in
-/// `sparse_det`. Returns the unique solution, or `None` when `A` is singular (even if `b` happens
-/// to be in its range). Deterministic, like `sparse_det`.
-///
-/// cost: O(n * (entries.len + n)) expected time, O(n + entries.len) space
-/// empty: `Some([])` for `n == 0`
-/// order: indexed by column (variable)
-/// traps: when `n < 0`, `b.len != n`, or a row or column is not in `0..n`
-/// example: `let e: List<(Int, Int, Mod<998244353>)> = [(0, 0, Mod(2)), (1, 1, Mod(3))]; sparse_solve(2, e, [Mod(4), Mod(9)]) == Some([Mod<998244353>(2), Mod<998244353>(3)])`
-/// example: `let e: List<(Int, Int, Mod<998244353>)> = [(0, 0, Mod(1))]; sparse_solve(2, e, [Mod(1), Mod(0)]) == None`
 
 /// Maximize `c . x` subject to `a * x <= b`, `x >= 0`; `None` if infeasible or unbounded.
 ///

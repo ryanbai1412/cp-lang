@@ -416,13 +416,6 @@ pub fn taylor_shift<P>(a: List<Mod<P>>, c: Mod<P>) -> List<Mod<P>>:
         for k in 0..n: out[k] = prod[n - 1 - k] * ifact[k]
     out
 
-/// Multipoint evaluation `[a(x) for x in xs]` via transposed subproduct tree.
-///
-/// cost: O((a.len + xs.len) log^2 xs.len)
-/// empty: `[]` when `xs` is empty; zeros when `a` is empty
-/// order: one value per point, in `xs` order
-/// traps: when a transform length exceeds what `P` supports
-/// example: `type Z = Mod<998244353>; let a: List<Z> = [1, 2, 3]; let xs: List<Z> = [0, 1, 2]; eval_all(a, xs) == [Z(1), Z(6), Z(17)]`
 fn eval_on_tree<P>(a: List<Mod<P>>, nodes: List<List<Mod<P>>>, n: Int) -> List<Mod<P>>:
     let root = nodes[1]
     let reduced = if a.len > n: div_mod(a, root).r else: a
@@ -491,6 +484,13 @@ fn half_gcd<P>(a0: List<Mod<P>>, b0: List<Mod<P>>) -> (List<Mod<P>>, List<Mod<P>
     if k <= 0 or b.len - k >= a0.len: return r2
     hgcd_mul(half_gcd(drop_low(b, k), drop_low(rem, k)), r2)
 
+/// Multipoint evaluation `[a(x) for x in xs]` via transposed subproduct tree.
+///
+/// cost: O((a.len + xs.len) log^2 xs.len)
+/// empty: `[]` when `xs` is empty; zeros when `a` is empty
+/// order: one value per point, in `xs` order
+/// traps: when a transform length exceeds what `P` supports
+/// example: `type Z = Mod<998244353>; let a: List<Z> = [1, 2, 3]; let xs: List<Z> = [0, 1, 2]; eval_all(a, xs) == [Z(1), Z(6), Z(17)]`
 pub fn eval_all<P>(a: List<Mod<P>>, xs: List<Mod<P>>) -> List<Mod<P>>:
     let n = xs.len
     if n == 0: return []

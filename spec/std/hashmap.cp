@@ -193,7 +193,7 @@ pub struct FlatMap<V>:
         for i in 0..state.len:
             if state[i] == 1: yield (ks[i], vs[i])
 
-    ///
+    /// The keys, one per entry.
     ///
     /// cost: O(1) to make, O(capacity) to walk
     /// empty: yields nothing
@@ -204,7 +204,7 @@ pub struct FlatMap<V>:
         for i in 0..state.len:
             if state[i] == 1: yield ks[i]
 
-    ///
+    /// The values, one per entry.
     ///
     /// cost: O(1) to make, O(capacity) to walk
     /// empty: yields nothing
@@ -427,7 +427,7 @@ pub struct Counter<K, V = Int>:
     @get pub fn items(self) -> yields (K, V):
         for (k, v) in m.items: yield (k, v)
 
-    ///
+    /// The keys, one per distinct element.
     ///
     /// cost: O(1) to make, O(1) per step
     /// empty: yields nothing
@@ -437,7 +437,7 @@ pub struct Counter<K, V = Int>:
     @get pub fn keys(self) -> yields K:
         for (k, _) in m.items: yield k
 
-    ///
+    /// The counts, one per key.
     ///
     /// cost: O(1) to make, O(1) per step
     /// empty: yields nothing
@@ -447,9 +447,19 @@ pub struct Counter<K, V = Int>:
     @get pub fn values(self) -> yields V:
         for (_, v) in m.items: yield v
 
+/// Count one more `x`: `c.add(x, 1)`, so a `Counter` fills like a bag.
+///
+/// cost: O(1) expected
+/// traps: never
+/// example: `var c = Counter.of([2, 1, 2]); c.push(1); c[1] == 2`
 pub fn push<K>(mut self: Counter<K, Int>, x: K):
     self.add(x, 1)
 
+/// Count one fewer `x`: `c.add(x, -1)`, the undo of `push`.
+///
+/// cost: O(1) expected
+/// traps: never
+/// example: `var c = Counter.of([2, 1, 2]); c.pop(2); c[2] == 1`
 pub fn pop<K>(mut self: Counter<K, Int>, x: K):
     self.add(x, -1)
 

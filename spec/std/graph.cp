@@ -3065,6 +3065,7 @@ pub fn boruvka<V, C, W>(cheapest: ([V]Int) -> List<?(u: V, v: V, w: W)>) -> (tot
 /// unreachable from `root`. Loops are ignored.
 ///
 /// cost: O(m log n)
+/// empty: with no edges, `Some` with `total` zero when `root` is the only vertex, else `None`
 /// ties: `total` is unique; when several arborescences reach it, which one `parent` describes is left open
 /// traps: never
 /// example: `domain V = 0..3; domain E = 0..4; let es: [E](u: V, v: V, w: Int) = [(u: 0, v: 1, w: 5), (u: 0, v: 2, w: 1), (u: 2, v: 1, w: 1), (u: 1, v: 2, w: 1)]; arborescence(es, root: V(0)) == Some((total: 2, parent: [None, Some(2), Some(1)]))`

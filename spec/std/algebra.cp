@@ -77,6 +77,7 @@ pub struct Action<T, F>(id: F, compose: (F, F) -> F, apply: (F, T, Int) -> T, ov
     ///
     /// cost: O(1)
     /// traps: never
+    /// example: `Action<Int, Int>.of(add, +).apply(2, 10, 3) == 16`
     pub fn of<A, M>(a: A, op: M) -> Action<T, F>:
         let m = Monoid<T>.of(op)
         if same(a, add):

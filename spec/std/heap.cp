@@ -1135,6 +1135,7 @@ pub struct MaxHeap<T>:
     ///
     /// cost: O(n log n)
     /// empty: yields nothing
+    /// order: largest first; equal elements in no promised order
     /// traps: never
     /// example: `var h = MaxHeap.of([1, 3, 2]); h.drain().collect() == [3, 2, 1]`
     pub fn drain(mut self) -> yields T:
