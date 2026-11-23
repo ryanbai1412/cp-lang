@@ -1162,7 +1162,8 @@ inline uint64_t rng_below(unsigned __int128 span, int site) {
         pick = c.at < c.list.size() ? c.list[c.at++] : 0;
         if (pick >= span) pick = (uint64_t)(span - 1);
     } else {
-        pick = (uint64_t)((rng_next() ^ c.salt) % span);
+        uint64_t r = rng_next() ^ c.salt;
+        pick = span >> 64 ? r : r % (uint64_t)span;
     }
     if (c.log) std::fprintf(c.log, \"%d %llu\\n\", site, (unsigned long long)pick);
     return pick;
@@ -1178,7 +1179,8 @@ template <class T> void shuffle(std::vector<T>& v, int site = __builtin_LINE()) 
 #else
 inline ll rand_range(ll lo, ll hi) {
     unsigned __int128 span = (unsigned __int128)((__int128)hi - (__int128)lo + 1);
-    return (ll)((__int128)lo + (__int128)(rng_next() % span));
+    uint64_t r = rng_next();
+    return (ll)((uint64_t)lo + (span >> 64 ? r : r % (uint64_t)span));
 }
 template <class T> void shuffle(std::vector<T>& v) {
     for (size_t i = v.size(); i-- > 1;) std::swap(v[i], v[(size_t)(rng_next() % (i + 1))]);
