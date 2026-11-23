@@ -1,8 +1,12 @@
-// NOIP 2021 P1, Count Off: a number is skipped when it has a digit 7 or
-// is a multiple of such a number. For each x: -1 if x is skipped, else the
-// next number that is not.
-// A sieve over "bad" numbers instead of primes: the original's second
-// attempt; its first (factor every x, test every divisor) is still in the file.
+// Source: NOIP 2021 P1 (Saying Numbers), https://dmoj.ca/problem/noip21p1
+// Problem: x is skipped when it is a multiple of a number with a decimal digit 7. For each of
+//   T <= 2e5 queries x <= 1e7, print -1 if x is skipped, else the next number not skipped.
+// Solution: a sieve up to 10000100 (past the survivor after 1e7): each number with a 7 that is
+//   not yet skipped marks all its multiples (a skipped one's multiples are marked already).
+//   A right-to-left scan then stores the next survivor after each x. O(L log L) once, O(1) per
+//   query.
+// The original is its author's second attempt; the first (factor every x, test every divisor)
+// is still in the file.
 // original: corpus/submissions/5445676.cpp
 const LIMIT = 10000100  // past the next survivor above 1e7
 

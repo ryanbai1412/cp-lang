@@ -1,4 +1,10 @@
-// Mock CCC '22 Contest 2 S1 (nccc10s1), buildable under proto/cpc today. See ../nccc10s1.cp.
+// Source: Mock CCC '22 Contest 2 S1 (Kaguya Wants to Let Ishigami Pass),
+//   https://dmoj.ca/problem/nccc10s1
+// Problem: n <= 1000 students' answers to k <= 10 true/false questions. Choose the answer key
+//   that maximises the lowest score; print that score.
+// Solution: try all 2^k keys as bitmasks. For each key take the fewest answers any student
+//   gets wrong (popcount of key ^ answers) and maximise that; complementing the key swaps
+//   wrong and right, so it is the same maximum. O(2^k n k).
 // original: corpus/submissions/4214147.cpp
 let n: 1..=1_000 = read()
 let k: 1..=10 = read()

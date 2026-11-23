@@ -1,11 +1,11 @@
-// NOIP 2007 String Expansion: in a word of digits, lowercase letters and
-// dashes, a dash between two digits or two letters, with the left one
-// smaller, is replaced by the characters strictly between them. p1 picks
-// their case (1 lower, 2 upper, 3 stars), p2 how often each is repeated, and
-// p3 = 2 reverses the filled run. Every other dash stays.
-//
-// The original builds the run, rewrites it three times and appends it. Here
-// the three parameters are three small steps on one generator.
+// Source: NOIP 2007 P2 (Expanding Strings), https://dmoj.ca/problem/noip07p2
+// Problem: a string of <= 100 digits, lowercase letters and '-'. A '-' between two digits or two
+//   letters, left < right, becomes the characters strictly between them: lowercase (p1 = 1),
+//   uppercase (p1 = 2) or '*' (p1 = 3), each repeated p2 <= 8 times, reversed when p3 = 2.
+//   Every other '-' stays. Print the expanded string.
+// Solution: one pass: at an inner '-' whose neighbours qualify, build the run between them with
+//   `shown` applying p1, reverse it for p3 = 2 and push each character p2 times; otherwise copy
+//   the character. O(output length).
 // original: corpus/submissions/5184882.cpp
 let (p1, p2, p3): (1..=3, 1..=8, 1..=2) = read()
 let s: Str = read()

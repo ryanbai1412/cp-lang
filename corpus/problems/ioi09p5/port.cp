@@ -1,4 +1,9 @@
-// IOI 2009 Day 2 P1, Garage (buildable today-form)
+// Source: IOI 2009 P5 (Garage), https://dmoj.ca/problem/ioi09p5
+// Problem: a garage has n <= 100 spaces with rates R_s; m <= 2000 cars with weights W_k arrive
+//   and leave in a given order of 2m events. An arriving car takes the lowest free space, or
+//   waits in a FIFO queue until one frees up, and pays R_s * W_k. Print the total revenue.
+// Solution: simulate with a MinHeap of free spaces and a list of waiting cars with a head
+//   index; after each event, park cars from the queue front while spaces are free. O(m log n).
 // original: corpus/submissions/5106592.cpp
 let n: 1..=100 = read()
 let m: 1..=2000 = read()

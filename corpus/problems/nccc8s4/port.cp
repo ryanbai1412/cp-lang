@@ -1,4 +1,11 @@
-// Mock CCC '21 S4 (nccc8s4), buildable under proto/cpc today. See ../nccc8s4.cp.
+// Source: Mock CCC '21 S4 (Infinite Molecule), https://dmoj.ca/problem/nccc8s4
+// Problem: N <= 4e4 square atom types, each with four side labels in -26..=26 (clockwise).
+//   Atoms join along a side whose two labels are nonzero and sum to 0; they may be rotated and
+//   reflected, with unlimited copies. Print 1 if an infinite molecule can be built, else 0.
+// Solution: an infinite molecule holds an infinite chain, entering each atom by one side and
+//   leaving by another. Make a graph on the 53 labels: an atom with nonzero sides i != j adds
+//   the edge tile[i] -> -tile[j] (the next atom needs a side labelled -tile[j]). The molecule
+//   exists iff this graph has a cycle: a coloured DFS, O(16 N + 53^2).
 // original: corpus/submissions/3381215.java
 domain Side = 0..=52
 let m: 1..=100_000 = read()

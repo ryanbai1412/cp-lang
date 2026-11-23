@@ -1,9 +1,11 @@
-// NOIP 2005 Crossing the River: a frog at 0 hops along a bridge of length
-// len, each hop between s and t long, until it is at or past len. Some
-// points hold stones. Print the fewest stones it must land on.
-// len is up to 10^9 but there are at most 100 stones. 2520 is a multiple of
-// every hop length, so a gap between stones can lose any multiple of 2520
-// beyond its first: what can be reached past it does not change.
+// Source: NOIP 2005 P2 (Crossing the River), https://dmoj.ca/problem/noip05p2
+// Problem: a frog starts at 0 on a bridge of length L <= 1e9 and jumps s..=t (1 <= s <= t <= 10)
+//   until it reaches or passes L. m <= 100 distinct points hold stones; print the fewest stones
+//   it must land on.
+// Solution: 2520 = lcm(1..=10), so a gap between stones longer than 2520 can shrink to
+//   gap % 2520 + 2520 without changing what is reachable past it. That leaves under 5040 m
+//   points; fewest[p], the stones landed on from p onwards, is stone[p] plus the min of
+//   fewest[p + hop] over the hops, filled right to left. O(2520 m t).
 // original: corpus/submissions/5156196.cpp
 const CYCLE = 2520
 let len: 1..=1_000_000_000 = read()
