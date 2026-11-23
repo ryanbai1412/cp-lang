@@ -681,6 +681,14 @@ pub fn undirected_of_pairs<V>(edges: List<(V, V)>) -> [V]List<V>:
 /// example: `domain V = 0..3; let g: [V]List<V> = [[1, 2], [2], []]; g.deg(0) == 2 and g.deg(2) == 0`
 pub fn deg<V, A>(self: [V]List<A>, u: V) -> Int = self[u].len
 
+/// True when the adjacency list has an arc `u -> v`, as `Graph.has` is for a `Graph`. A scan
+/// of `u`'s list, not a lookup.
+///
+/// cost: \(O(\deg u)\)
+/// traps: never
+/// example: `domain V = 0..3; let g: [V]List<V> = [[1, 2], [2], []]; g.has(0, 2) and not g.has(2, 0)`
+pub fn has<V>(self: [V]List<V>, u: V, v: V) -> Bool = self[u].contains(v)
+
 /// The reverse of an adjacency list: `v` lists `u` once for each arc `u -> v`, `u` ascending.
 ///
 /// cost: \(O(n + m)\), a new adjacency list
