@@ -66,6 +66,11 @@ pub(crate) struct Devirt<'p> {
     recursive_fns: BTreeSet<FnId>,
     unread_fields: BTreeSet<(usize, usize)>,
     dead_locals: BTreeSet<(Option<FnId>, usize)>,
+    /// What fn field `(fn, index)` of every struct `fn` returns holds.
+    returned: BTreeMap<(FnId, usize), Held>,
+    /// Locals `let x = f(...)` of a struct, never written again: `x` is
+    /// what `f` returned.
+    made_by: BTreeMap<(FnId, usize), FnId>,
     changed: bool,
 }
 
@@ -80,6 +85,8 @@ impl<'p> Devirt<'p> {
             recursive_fns: recursive_fns(program),
             unread_fields: BTreeSet::new(),
             dead_locals: BTreeSet::new(),
+            returned: BTreeMap::new(),
+            made_by: made_by(program),
             changed: true,
         };
         // The judge's grader calls these with values of its own.
@@ -94,6 +101,7 @@ impl<'p> Devirt<'p> {
             pass.block(None, &program.main);
             for (id, f) in program.fns.iter().enumerate() {
                 pass.block(Some(id), &f.body);
+                pass.returns(id, &f.body);
             }
             for closure in &program.closures {
                 pass.block(None, &closure.body);
@@ -764,6 +772,9 @@ impl<'p> Devirt<'p> {
                 }
                 _ => Some(Held::Many),
             },
+            ExprKind::Field(base, index) if self.made(home, base, *index).is_some() => {
+                self.made(home, base, *index)
+            }
             ExprKind::Field(base, index) => match (&base.ty, pure_path(base)) {
                 (Ty::Struct(s), true) => self.held.get(&Home::Field(*s, *index)).copied(),
                 _ => Some(Held::Many),
@@ -977,6 +988,49 @@ impl<'p> Devirt<'p> {
         }
     }
 
+    /// The one closure field `index` of local `base` holds, when `base`
+    /// is a struct a fn made and nothing wrote since.
+    fn made(&self, home: Option<FnId>, base: &Expr, index: usize) -> Option<Held> {
+        let (ExprKind::Local(slot), Some(id)) = (&base.kind, home) else {
+            return None;
+        };
+        let maker = self.made_by.get(&(id, *slot))?;
+        self.returned
+            .get(&(*maker, index))
+            .copied()
+            .filter(|held| matches!(held, Held::One(_)))
+    }
+
+    /// Joins the fn fields of each struct fn `id` returns.
+    fn returns(&mut self, id: FnId, body: &Block) {
+        let mut seen = Vec::new();
+        walk::deep_stmts(body, &mut |stmt| {
+            if let Stmt::Return(Some(e)) = stmt {
+                seen.push(e);
+            }
+        });
+        for e in seen {
+            let Ty::Struct(s) = e.ty else { continue };
+            for (index, field) in self.program.structs[s].fields.iter().enumerate() {
+                if !matches!(field.1, Ty::Fn(..)) {
+                    continue;
+                }
+                let held = match &e.kind {
+                    ExprKind::Tuple(items) => self.value(Some(id), &items[index]),
+                    _ => Some(Held::Many),
+                };
+                let Some(held) = held else { continue };
+                let joined = match self.returned.get(&(id, index)) {
+                    None => held,
+                    Some(old) if *old == held || *old == Held::Many => continue,
+                    Some(_) => Held::Many,
+                };
+                self.returned.insert((id, index), joined);
+                self.changed = true;
+            }
+        }
+    }
+
     fn store(&mut self, to: Home, value: Option<Held>) {
         let Some(value) = value else { return };
         let joined = match self.held.get(&to) {
@@ -1041,6 +1095,70 @@ impl<'p> Devirt<'p> {
             }
             _ => {}
         });
+    }
+}
+
+/// Each fn's struct locals bound once to a call and never written again,
+/// in place, through `mut` or by a closure.
+fn made_by(program: &Program) -> BTreeMap<(FnId, usize), FnId> {
+    let mut out = BTreeMap::new();
+    for (id, f) in program.fns.iter().enumerate() {
+        let mut lets: BTreeMap<usize, Option<FnId>> = BTreeMap::new();
+        let mut written = BTreeSet::new();
+        walk::deep_stmts(&f.body, &mut |stmt| match stmt {
+            Stmt::Let(slot, init) => {
+                let maker = match init.as_ref().map(|e| (&e.kind, &e.ty)) {
+                    Some((ExprKind::Call(callee, _), Ty::Struct(_))) => Some(*callee),
+                    _ => None,
+                };
+                let again = lets.contains_key(slot);
+                lets.insert(*slot, maker.filter(|_| !again));
+            }
+            Stmt::Assign(place, _, _) => {
+                written.insert(place_root(place));
+            }
+            Stmt::For(_, slot, _, _) => {
+                written.insert(Some(*slot));
+            }
+            _ => {}
+        });
+        walk::deep_exprs(&f.body, &mut |e| match &e.kind {
+            ExprKind::Call(_, args) | ExprKind::CallExpr(_, args) => {
+                for arg in args {
+                    if let Arg::Mut(place) = arg {
+                        written.insert(place_root(place));
+                    }
+                }
+            }
+            ExprKind::Closure(cid) => {
+                for cap in &program.closures[*cid].captures {
+                    if cap.by_ref && !cap.is_global {
+                        written.insert(Some(cap.outer));
+                    }
+                }
+            }
+            ExprKind::Mutate(_, place, _) => {
+                written.insert(place_root(place));
+            }
+            _ => {}
+        });
+        for (slot, maker) in lets {
+            if let (Some(maker), false) = (maker, written.contains(&Some(slot))) {
+                out.insert((id, slot), maker);
+            }
+        }
+    }
+    out
+}
+
+/// The local a place writes into, if it is one.
+fn place_root(place: &cpl_ir::Place) -> Option<usize> {
+    match &place.kind {
+        PlaceKind::Local(slot) => Some(*slot),
+        PlaceKind::Global(_) => None,
+        PlaceKind::Field(base, _) | PlaceKind::Index(base, _) | PlaceKind::Some(base) => {
+            place_root(base)
+        }
     }
 }
 

@@ -355,4 +355,6 @@ pub fn emit_within_for(
 #[cfg(test)]
 mod copy_tests;
 #[cfg(test)]
+mod devirt_tests;
+#[cfg(test)]
 mod tests;
