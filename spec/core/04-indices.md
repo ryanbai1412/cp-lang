@@ -372,6 +372,43 @@ Rejected: `.start`/`.end`/`.before`/`.after` (four words for one idea);
 `r.split(at: c)` (`r.l..c` and `c..r.r` say it directly, and also say
 "all but `v`": `r.l..v.l`, `v.r..r.r`).
 
+## Why, and the alternatives
+
+This section is rationale, not rules; the rules above decide.
+
+**Why domains.** Off-by-one and wrong-index-space bugs are P0 classes: a
+vertex used as an edge index, a 1-based label used as a 0-based position.
+Each array over `V` checks its index is a `V`, so one `domain V = 1..=n`
+protects every array, loop and read over vertices. The alternatives:
+
+- *Plain `Int` indices* (C++, Python): nothing tells a vertex from an edge
+  or a 1-based label from a 0-based one.
+- *A newtype per index* (C++ strong typedefs, Rust `struct V(usize)`): it
+  keeps spaces apart but loses ranges, cuts, `.next` and reading in base,
+  so each program rebuilds them.
+- *Dependent or refinement types*: they could prove every index, but need
+  analysis well beyond linear time, and "compile speed beats exotic
+  analysis".
+
+**Why positions and cuts differ.** "Element `i`" and "the boundary before
+`i`" are both `i` in C++, so `pre[i]` against `pre[i + 1]` is a coin flip.
+A domain of n positions has n + 1 cuts, and `pre[v]` (through `v`) and
+`pre[c]` (left of `c`) are different types (decision 349). On plain `Int`
+keys the two are both `Int`, so `pre[k]` is fixed to mean the cut, the
+fold of the first `k`. Keeping only half-open `Int` ranges (the Python
+and C++ convention) gets the empty range right but leaves every prefix
+index to be shifted by hand.
+
+**Why views keep their keys.** `a[l..=r][i]` is `a[i]` (decision 354):
+a key names the same element through every slice, filter and sort, so a
+position from one view indexes the source. Rebasing each slice to start
+at 0 (Python) makes every index shift per view, the off-by-one the domain
+removed. The price is that a view whose walk is out of key order, such as
+`a.rev`, can't be indexed: `a.rev[0]` is an error and `a.rev.nth(0)` reads
+by walk position.
+
+**Rejected names** are listed under "Decided (decision 137)".
+
 ## Open
 
 None. (The positions after `v` are `v.after`, decision 186.)

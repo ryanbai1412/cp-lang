@@ -296,3 +296,47 @@ bounds (`var i: 1..=n = read()`). (R02.10.2)
   position (`V(x)` traps out of range; `V.at(x)` is `?V`). (R02.11.2)
 - No inheritance, no subtyping, no overloading by argument type
   (decision 127), no user-defined implicit conversions. (R02.11.3)
+
+## 2.12 Why, compared with C++, Python and Rust
+
+This section is rationale, not rules; the rules above decide.
+
+**Plain values copy, heap values move (decision 128).** `let b = a` on an
+`Int` or a record of `Int`s copies; on a `List`, `Map`, `Str` or a struct
+holding one it moves, and using `a` afterwards is an error whose fix is
+`a.clone()`. The alternatives each cost a P0 class:
+
+- *Implicit deep copy* (C++ `vector b = a`): correct, but an O(n) copy
+  hides in an `=`, and "costs are visible" fails.
+- *Shared references* (Python `b = a`): O(1), but `b.append(x)` also
+  changes `a`, the aliasing bug the language exists to rule out.
+- *Explicit ownership types* (Rust `&T`, `&mut T`, lifetimes): precise,
+  but a contestant pays in annotations for programs that are a page long.
+  Chapter 5 §13a says what CP Lang keeps from Rust and what it drops.
+
+Moving is what a contestant already means when a value has no later use,
+and the error at the one place it isn't names `.clone()`.
+
+**Optionals, not sentinels.** `?T` replaces `-1`, `INF` and "0 means
+absent": a sentinel is a valid value that the next `max` or `+` quietly
+uses. `?T` costs no space where `T` has spare bit patterns, `??` and `!`
+make the absent case one token, and `min=` from `None` starts a running
+minimum without an `INF`.
+
+**Inference stays inside one expression (decision 131).** Siblings of one
+expression unify (`[Pair(1, None), Pair(2, 3)]` is `List<Pair<Int,
+?Int>>`), but no type is inferred from a later statement. Whole-function
+inference (Hindley-Milner) would accept `var x = None` and fix its type
+three lines down, and then report a mismatch far from the line that
+caused it; first-element inference rejects the `Pair` list above. Local
+inference keeps every error at its cause and compile time linear.
+
+**Nothing converts implicitly (§2.11).** C++ converts `int` to `long long`
+after the overflow, and `size_t` arithmetic wraps below zero. Here widths
+come from ranges and every conversion is written, so the place an overflow
+can happen is the place it is checked.
+
+**Limits.** There is no shared mutable value: a graph of objects that point
+at each other is written as arrays over a domain with positions as links.
+There is no inheritance; traits and records cover what contest code needs.
+
