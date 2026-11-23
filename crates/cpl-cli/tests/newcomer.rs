@@ -153,6 +153,31 @@ const HABITS: &[(&str, Habit)] = &[
         ls[i].trim_start().starts_with("let ").then_some(())?;
         swap(ls, i, "let ", "auto ")
     }),
+    // The playground and many editors don't indent after a `:`.
+    ("a one-line body left unindented", |ls, i| {
+        let head = ls[..i].iter().rposition(|l| !l.trim().is_empty())?;
+        let w = indent(ls[head]);
+        (header(ls[head]) && indent(ls[i]) > w && !header(ls[i])).then_some(())?;
+        let next = ls[i + 1..].iter().find(|l| !l.trim().is_empty());
+        next.is_none_or(|l| indent(l) <= w).then_some(())?;
+        let new = format!("{}{}", &ls[head][..w], ls[i].trim_start());
+        Some(replace_line(ls, i, new))
+    }),
+    ("`let` for a changed `var`", |ls, i| {
+        let rest = ls[i].trim_start().strip_prefix("var ")?;
+        let end = rest.find(|c: char| !(c.is_alphanumeric() || c == '_'))?;
+        let name = &rest[..end];
+        let changed = ls[i + 1..].iter().any(|l| {
+            let t = code(l).trim_start();
+            t.strip_prefix(name).is_some_and(|r| {
+                [" = ", " += ", " -= ", " *= ", ".push("]
+                    .iter()
+                    .any(|op| r.starts_with(op))
+            })
+        });
+        changed.then_some(())?;
+        swap(ls, i, "var ", "let ")
+    }),
 ];
 
 struct Case {
@@ -345,7 +370,7 @@ fn newcomer_scoreboard() {
     );
     // Bars at the measured values; raise them as fixes land.
     assert!(
-        all.copies >= 164,
+        all.copies >= 191,
         "the newcomer copies went missing ({})",
         all.copies
     );
