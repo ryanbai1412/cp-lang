@@ -62,7 +62,7 @@ pub struct Entry {
     pub name: String,
     pub kind: Kind,
     pub public: bool,
-    /// The declaration's first line, or a fn's whole signature, on one line.
+    /// The declaration's header, or a fn's whole signature, on one line.
     pub detail: String,
     pub doc: String,
     /// A fn's parameters, without `self`.
@@ -181,17 +181,27 @@ impl Reader<'_> {
         self.text.get(start..end).unwrap_or("")
     }
 
-    /// The line a name is declared on, without a trailing `:` that opens a body.
+    /// The line a name is declared on, and the lines its open brackets
+    /// continue onto, as one line without a trailing `:` that opens a body.
     fn header(&self, at: cpl_diag::Span) -> String {
         let at = (self.base + at.start) as usize;
         let start = self.text[..at].rfind('\n').map_or(0, |i| i + 1);
-        let end = self.text[at..]
-            .find('\n')
-            .map_or(self.text.len(), |i| at + i);
-        let line = self.text[start..end].trim();
-        let line = line.split(" //").next().unwrap_or(line).trim_end();
-        line.strip_suffix(':')
-            .unwrap_or(line)
+        let mut header = String::new();
+        let mut depth = 0i32;
+        for line in self.text[start..].lines() {
+            let line = line.split(" //").next().unwrap_or(line).trim();
+            depth += line.matches(['(', '[', '{']).count() as i32;
+            depth -= line.matches([')', ']', '}']).count() as i32;
+            header.push_str(line);
+            header.push(' ');
+            if depth <= 0 {
+                break;
+            }
+        }
+        let header = squash(&header);
+        header
+            .strip_suffix(':')
+            .unwrap_or(&header)
             .trim_end()
             .to_string()
     }
