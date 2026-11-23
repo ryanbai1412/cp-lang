@@ -41,7 +41,13 @@ pub struct SegTree<D, T, F = Int>(m: Monoid<T>):
     /// example: `SegTree<0..4, Int>(max, fill: 5).fold(1..3) == 5`
     /// example: `SegTree<0..4, Int>(+).all == 0`
     /// example: `var s = SegTree<Int, Int>(+, over: 0..1_000_000_000); s.set(999_999_999, 4); s.all == 4`
-    pub fn new<M, A>(op: ?M = None, a: ?[D]T = None, fill: ?T = None, act: A = NoAction(), over: ?Range<Int> = None) -> SegTree<D, T, F>:
+    pub fn new<M, A>(
+        op: ?M = None,
+        a: ?[D]T = None,
+        fill: ?T = None,
+        act: A = NoAction(),
+        over: ?Range<Int> = None,
+    ) -> SegTree<D, T, F>:
         if over != None: todo
         let m = Monoid<T>.of(op!)
         if same(act, NoAction()):
@@ -328,8 +334,6 @@ pub struct SegTree<D, T, F = Int>(m: Monoid<T>):
     /// traps: never
     /// example: `SegTree(+, [1]).monoid.id == 0`
     @get pub fn monoid(self) -> Monoid<T> = m
-
-
 
     /// The fold of `r`, or `None` when `r` is empty; for operations whose identity is only a
     /// sentinel.
@@ -732,9 +736,15 @@ pub struct SegTree2D<R, C, T>(m: Monoid<T>):
             for i in h..2 * h:
                 for j in w..2 * w: g.t[i * 2 * w + j] = v
         for i in h..2 * h:
-            for j in (1..w).rev: g.t[i * 2 * w + j] = m.op(g.t[i * 2 * w + 2 * j], g.t[i * 2 * w + 2 * j + 1])
+            for j in (1..w).rev: g.t[i * 2 * w + j] = m.op(
+                g.t[i * 2 * w + 2 * j],
+                g.t[i * 2 * w + 2 * j + 1],
+            )
         for i in (1..h).rev:
-            for j in 1..2 * w: g.t[i * 2 * w + j] = m.op(g.t[2 * i * 2 * w + j], g.t[(2 * i + 1) * 2 * w + j])
+            for j in 1..2 * w: g.t[i * 2 * w + j] = m.op(
+                g.t[2 * i * 2 * w + j],
+                g.t[(2 * i + 1) * 2 * w + j],
+            )
         g
 
     /// The value of cell `(r, c)`.
@@ -848,7 +858,13 @@ pub struct WaveletMatrix<D>:
             top = max(top, v)
         var bits = 0
         while (top >> bits) > 0: bits += 1
-        var w = WaveletMatrix<D>(bits, n, [], List.filled(bits * (n + 1), 0), List.filled(bits * (n + 1), 0))
+        var w = WaveletMatrix<D>(
+            bits,
+            n,
+            [],
+            List.filled(bits * (n + 1), 0),
+            List.filled(bits * (n + 1), 0),
+        )
         for l in 0..bits:
             let b = bits - 1 - l
             let base = l * (n + 1)
@@ -1015,7 +1031,11 @@ pub struct DynamicOrderTree<D, T>:
     /// traps: never
     /// example: `DynamicOrderTree([3, 1, 4]).count_lt(0..3, 4) == 2`
     pub fn new(a: [D]T) -> DynamicOrderTree<D, T>:
-        var t = DynamicOrderTree<D, T>(D.K, [a[i] for i in D], [SortedBag<T>.new() for _ in 0..D.K + 1])
+        var t = DynamicOrderTree<D, T>(
+            D.K,
+            [a[i] for i in D],
+            [SortedBag<T>.new() for _ in 0..D.K + 1],
+        )
         for i in 0..D.K: t.bump(i, t.val[i], true)
         t
 
@@ -1058,13 +1078,57 @@ pub struct DynamicOrderTree<D, T>:
     /// The `k`-th smallest value in `r`, counting from 0 and with repeats, or `None` when
     /// `k >= r.len`.
     ///
-    /// cost: O(log^2 |D|)
+    /// Values are not known ahead, so this selects among the Fenwick nodes' order trees: each round
+    /// tests the weighted median of their remaining windows, which drops a quarter of the
+    /// candidates.
+    ///
+    /// cost: O(log^3 |D|)
     /// empty: `None`
     /// ties: equal values are counted once each
     /// traps: when `k < 0`, or a non-empty `r` reaches outside `D`
     /// example: `DynamicOrderTree([3, 1, 4]).kth(0..3, 1) == Some(3)`
     /// example: `DynamicOrderTree([3, 1, 4]).kth(0..3, 3) == None`
-    pub fn kth(self, r: Range<D>, k: Int) -> ?T = todo
+    pub fn kth(self, r: Range<D>, k: Int) -> ?T:
+        assert k >= 0, "`kth` needs `k >= 0`"
+        if r.is_empty: return None
+        var nodes: List<Int> = []
+        var j = r.last!.ord + 1
+        while j > 0:
+            nodes.push(j)
+            j -= j & -j
+        var lo: List<Int> = [0 for _ in nodes]
+        var hi: List<Int> = [bit[x].len for x in nodes]
+        var best: ?T = None
+        while true:
+            var meds: List<(x: T, w: Int)> = []
+            var total = 0
+            for i in 0..nodes.len:
+                let w = hi[i] - lo[i]
+                if w > 0:
+                    let x = bit[nodes[i]].nth(lo[i] + w / 2)!
+                    var at = meds.len
+                    meds.push((x:, w:))
+                    while at > 0 and x < meds[at - 1].x:
+                        meds[at] = meds[at - 1]
+                        at -= 1
+                    meds[at] = (x:, w:)
+                    total += w
+            if total == 0: return best
+            var acc = 0
+            var m = meds[0].x
+            for p in meds:
+                acc += p.w
+                if 2 * acc >= total:
+                    m = p.x
+                    break
+            if self.span_count(r, m, true) > k:
+                best = Some(m)
+                for i in 0..nodes.len: hi[i] = max(lo[i], bit[nodes[i]].rank(m))
+            else:
+                for i in 0..nodes.len:
+                    let b = bit[nodes[i]]
+                    lo[i] = min(hi[i], b.rank(m) + b.count(m))
+        best
 
 /// O(q log |D|) space. Mergeable min-ordered set over domain `D` for lazily pruned
 /// minimum-alive queries (`MergeSeg.singleton`, `merge`, `first_alive`).
@@ -1076,7 +1140,7 @@ pub struct MergeSeg<D>:
         heap.push(x)
         var i = heap.len - 1
         while i > 0:
-            let p = (i - 1) // 2
+            let p = (i - 1)  // 2
             if heap[i] < heap[p]:
                 let tmp = heap[p]
                 heap[p] = heap[i]
