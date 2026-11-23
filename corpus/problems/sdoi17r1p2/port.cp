@@ -19,7 +19,7 @@ domain V = 1..=n
 domain E = 0..(n - 1)
 let edges: [E](u: V, v: V) = read()
 let g = Graph<V, E>.undirected(edges)
-let t = Rooted(u => g.out(u), V.first)
+let t = Rooted(u => g.out(u), V.first!)
 
 var f = SegTree<t.Pre, Int, Int>(max, act: add, a: [t.Pre] p => t.depth(t.at[p]) + 1)
 var same: [V]?V = [V] _ => None
@@ -35,16 +35,17 @@ fn point(v: V, to: ?V):
 
 fn paint(x: V):
     var below: ?V = None
-    for (range, rising) in t.chains(x, V.first, false):
-        let bottom = t.at[range.end.left]
+    for (range, rising) in t.chains(x, V.first!, false):
+        let (lo, hi) = range.ends
+        let bottom = t.at[t.Pre.nth(hi - 1)]
         point(bottom, below)
         // every other vertex of this stretch continues to its heavy child
-        var b = off.max_right(range.start, s => s == 0)
-        while b.ord < range.end.ord - 1:
-            let v = t.at[b.right]
+        var b = off.right_while(t.Pre.nth(lo).l, s => s == 0)
+        while b.ord < hi - 1:
+            let v = t.at[b.right!]
             point(v, t.heavy[v])
-            b = off.max_right(b, s => s == 0)
-        below = t.at[range.start.right]
+            b = off.right_while(b, s => s == 0)
+        below = t.at[t.Pre.nth(lo)]
 
 for _ in 0..q:
     let kind: 1..=3 = read()

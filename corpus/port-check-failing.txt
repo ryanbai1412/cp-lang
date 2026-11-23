@@ -45,7 +45,6 @@ noip19p5
 noip20p1
 noip22p4
 sac22cc3p5
-sdoi17r1p2
 sdoi17r1p6
 ucup4s24f
 utso15p5
