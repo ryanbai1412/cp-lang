@@ -8,7 +8,7 @@ Measured 2026-11-22 with `python3 bench/v03_perf_bench.py --suite dryrun,corpus,
 | bench (`bench/*/`) | 54 | 38 timed >= 10 ms (40 ok) | 14 (below; 6 fixed in `bench/` by perf) |
 | corpus (`corpus/problems/*`) | 307 | 190 ok, 70 timed >= 10 ms (rerun on main 88a62fca8) | 117 (the 187 below, minus those that build since) |
 
-Pairs that build but compare different algorithms are listed in `bench/unmatched.txt`; the bench times them and leaves them out of p50/max (`cf2101c`, `cf2115a`).
+Pairs that build but compare different algorithms are listed in `bench/unmatched.txt`; the bench times them and leaves them out of p50/max (`cf2101c`, `cf2115a`, `cf2137d`).
 
 ## bench: 14 pairs that cannot build yet
 

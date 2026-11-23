@@ -8,3 +8,4 @@ cf2268c  port: sorts (class, cut, parity) tuples per bit, O(n log n); orig: hash
 wtf26b   port: suffix sums over every (y, k, cut) and a fresh n^3 table each step, O(n^4) whatever a is; orig: loops y >= x - 1 for x < a[i] into a table shrinking to (n, i+1, i+1), so its cost follows a (port 2.5 s vs orig 0.69 s on all-ones a, 2.5 s vs 37 s on random a)
 cf2124d  port: a.sorted()[k - 2], O(n log n) (perf record: 23% in std::sort); orig: std::nth_element, O(n)
 cf1284e  port: per centre, sort the other n-1 points by angle and sweep, n sorts of n; orig: one sort of all n^2/2 pair directions and a rotating-line sweep swapping neighbours
+cf2137d  port: a List per value of positions, chunks of each, then a sort of the chunks by first position, O(n log n) and n lists per test; orig: one pass counting each value down with a label per open group, O(n), no lists (perf record on a derived input: malloc, free and vector growth over 25%)
