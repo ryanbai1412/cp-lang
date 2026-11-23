@@ -442,8 +442,14 @@ jobs:
           restore-keys: next-${{ hashFiles('pnpm-lock.yaml') }}-
       - name: Install
         run: pnpm install --frozen-lockfile
-      - name: Build cpl
-        run: cargo build --profile ci --bin cpl
+      # The browser build uses its own profile dir, so it overlaps cpl's
+      # instead of waiting for the site's prebuild.
+      - name: Build cpl and the browser build
+        run: |
+          scripts/build-wasm.sh >"$RUNNER_TEMP/wasm.log" 2>&1 & wasm=$!
+          cargo build --profile ci --bin cpl
+          wait "$wasm" || { cat "$RUNNER_TEMP/wasm.log"; exit 1; }
+          cat "$RUNNER_TEMP/wasm.log"
       # The build generates content/generated/ (from cpl), which typecheck reads.
       - name: Build
         env:
