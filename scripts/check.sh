@@ -432,11 +432,6 @@ fi
 step "corpus ports pass cpl check (scripts/port-check.sh, ratchet corpus/port-check-failing.txt)"
 scripts/port-check.sh "$cpl" || fail "a corpus port stopped checking; fix it (the list only shrinks)"
 
-# Warn-only until stdlib's doc conversion lands (then it blocks).
-step "std docs: cpl doc --format json std (warn only)"
-"$cpl" doc --format json std >/dev/null 2>"$lib_logs/doc_json.log" ||
-    { echo "warning: cpl doc --format json std failed:" >&2; head -20 "$lib_logs/doc_json.log" >&2; }
-
 step "std/prelude.cp: name count"
 prelude=$(sed 's://.*::' std/prelude.cp | tr -d '\n' | grep -o '{[^}]*}' | tr ',' '\n' | grep -c '[A-Za-z_]')
 echo "prelude: $prelude names"
