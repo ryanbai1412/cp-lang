@@ -7,7 +7,7 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 2682 (995 passing). Rules: 570.
+Cases: 2683 (995 passing). Rules: 570.
 
 ## Summary per chapter
 
@@ -19,7 +19,7 @@ Cases: 2682 (995 passing). Rules: 570.
 - R04b (04b-keys.md): 27 rules, 66 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R05 (05-ownership.md): 43 rules, 157 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R06 (06-control-functions.md): 24 rules, 97 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R07 (07-sequences.md): 90 rules, 148 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R07 (07-sequences.md): 90 rules, 149 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R08 (08-traits-generics.md): 29 rules, 90 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R09 (09-contexts-checks.md): 26 rules, 56 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R10 (10-io.md): 19 rules, 105 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -507,7 +507,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R07.9.1 [3+ 0-]: | `s.sum()`, `s.prod()` | `T`; empty is the identity | \(O(n)\)
 - R07.9.2 [3+ 1-]: | `s.fold(op)` | `T` when `op` has an identity (`+`, `max` on a bounded type, `gcd`), else...
 - R07.9.3 [3+ 1-]: | `s.min()`, `s.max()`, `s.min(by: k)` | `?T`, `None` when empty; first on ties | \(O(n)\)
-- R07.9.4 [2+ 1-]: | `s.count(p)`, `s.any(p)`, `s.all(p)`; `s.count()` counts every element, so on a `Seq<Boo...
+- R07.9.4 [2+ 2-]: | `s.count(p)`, `s.any(p)`, `s.all(p)`; `s.count()` counts every element, so on a `Seq<Boo...
 - R07.9.5 [3+ 0-]: | `s.find(p)`, `s.rfind(p)` | `?T`, linear scan (binary search is `r.first_true`) | \(O(n)...
 - R07.9.6 [3+ 3-]: , generic code included, and the compiler never pattern matches a pipeline. User types get...
 - R07.11.1 [4+ 2-]: | `s.sort(by: k)`, `s.reverse()`, `s.dedup()`, `s.fill(x)` | in place: needs a `var` sourc...
@@ -743,9 +743,9 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0208 Uppercase value name: 1 case(s)
 - E0301 Wrong index domain: 16 case(s)
 - E0302 Type mismatch: 42 case(s)
-- E0303 Wrong number of arguments: 8 case(s)
+- E0303 Wrong number of arguments: 10 case(s)
 - E0304 Value is not callable: 1 case(s)
-- E0305 Value is not indexable: 5 case(s)
+- E0305 Value is not indexable: 4 case(s)
 - E0306 Invalid arithmetic on domain position (reserved): exempt (reserved in the registry)
 - E0307 Condition is not `Bool`: 1 case(s)
 - E0308 Ordering comparison on optional: 2 case(s)
