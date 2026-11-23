@@ -72,3 +72,14 @@ fn a_runtime_fn_named_only_by_a_comment_or_a_member_is_unused() {
         ["template <class T> T first(T v) { return v; }"]
     );
 }
+
+#[test]
+fn a_comparison_of_two_literals_keeps_only_the_branch_taken() {
+    let cpp = cpp(concat!(
+        "type Z = Mod<998_244_353>\n",
+        "let a: 0..=10 = read()\n",
+        "print(Z(a) * Z(a))\n",
+    ));
+    assert!(!cpp.contains("998244353 < 3037000500"), "{cpp}");
+    assert!(!cpp.contains("mul_mod("), "{cpp}");
+}

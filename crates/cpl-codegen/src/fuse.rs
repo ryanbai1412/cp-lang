@@ -375,7 +375,10 @@ pub(crate) fn trap_free_stmts(stmts: &[Stmt], vec: usize, call_ok: &dyn Fn(&Expr
             }
             _ => free(e),
         },
-        Stmt::If(cond, then, otherwise) => free(cond) && block_free(then) && block_free(otherwise),
+        Stmt::If(cond, then, otherwise) => match crate::prune::known(cond) {
+            Some(taken) => block_free(if taken { then } else { otherwise }),
+            None => free(cond) && block_free(then) && block_free(otherwise),
+        },
         Stmt::For(_, _, Iter::Range { lo, hi, step: None, .. }, body) => {
             free(lo) && free(hi) && block_free(body)
         }
@@ -417,7 +420,11 @@ pub(crate) fn trap_free_with(e: &Expr, call_ok: &dyn Fn(&Expr) -> bool) -> bool 
         }
         ExprKind::Cmp(_, l, r) => free(l) && free(r),
         ExprKind::Tuple(items) | ExprKind::Variant(_, items) => items.iter().all(free),
-        ExprKind::If(c, t, f) => free(c) && free(t) && free(f),
+        ExprKind::If(c, t, f) => match crate::prune::known(c) {
+            Some(taken) => free(if taken { t } else { f }),
+            None => free(c) && free(t) && free(f),
+        },
+        ExprKind::Closure(_) => true,
         _ => call_ok(e),
     }
 }

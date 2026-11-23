@@ -3,7 +3,7 @@
 //! takes, so the C++ carries neither the other branch nor the fns only it
 //! calls. A build without checks drops `assert`s here for the same reason.
 
-use cpl_ir::{BinOp, Block, Expr, ExprKind, Program, Stmt, UnOp};
+use cpl_ir::{BinOp, Block, CmpOp, Expr, ExprKind, Program, Stmt, UnOp};
 
 /// `asserts` is whether the build checks them; when it does not, they go
 /// too, so a fn only an `assert` calls is not emitted.
@@ -18,12 +18,27 @@ pub(crate) fn prune(program: &mut Program, asserts: bool) {
     block(&mut program.setup, asserts);
 }
 
-/// The value of a condition made only of `true`, `false`, `not`, `and` and
-/// `or`; a side that is not known is evaluated only when the known one lets
+/// The value of a condition made only of `true`, `false`, comparisons of
+/// two integer literals (`P < 3_037_000_500` once `P` is known), `not`, `and`
+/// and `or`; a side that is not known is evaluated only when the known one lets
 /// it be skipped.
 pub(crate) fn known(e: &Expr) -> Option<bool> {
     match &e.kind {
         ExprKind::Bool(b) => Some(*b),
+        ExprKind::Cmp(op, a, b) => {
+            let (ExprKind::Int(a), ExprKind::Int(b)) = (&a.kind, &b.kind) else {
+                return None;
+            };
+            match op {
+                CmpOp::Eq => Some(a == b),
+                CmpOp::Ne => Some(a != b),
+                CmpOp::Lt => Some(a < b),
+                CmpOp::Le => Some(a <= b),
+                CmpOp::Gt => Some(a > b),
+                CmpOp::Ge => Some(a >= b),
+                _ => None,
+            }
+        }
         ExprKind::Unary(UnOp::Not, x) => known(x).map(|b| !b),
         ExprKind::Binary(BinOp::And, a, b) => match known(a)? {
             false => Some(false),

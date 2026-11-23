@@ -21,3 +21,27 @@ fn a_consumer_that_may_trap_keeps_the_list() {
     ));
     assert!(!cpp.contains("cpl_sink_"), "{cpp}");
 }
+
+#[test]
+fn a_fold_whose_op_calls_trap_free_fns_builds_no_list() {
+    let cpp = cpp(concat!(
+        "type Z = Mod<998_244_353>\n",
+        "let n: 1..=1000 = read()\n",
+        "print(fold(*, Z(i) for i in 1..=n if i % 3 != 0))\n",
+    ));
+    assert!(cpp.contains("cpl_sink_"), "{cpp}");
+}
+
+#[test]
+fn a_consumer_calling_a_fn_that_may_trap_keeps_the_list() {
+    let consumer = |body: &str| {
+        cpp(&format!(
+            "fn each(x: Int) -> Int = {body}\n\
+             fn total(xs: List<Int>) -> Int:\n    var acc = 0\n    for x in xs: acc += each(x)\n    acc\n\
+             let n: 1..=1000 = read()\nprint(total([i for i in 0..n]))\n"
+        ))
+    };
+    assert!(consumer("x * 2 + 1").contains("cpl_sink_"));
+    let cpp = consumer("100 / x");
+    assert!(!cpp.contains("cpl_sink_"), "{cpp}");
+}
