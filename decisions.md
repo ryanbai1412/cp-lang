@@ -8424,3 +8424,9 @@ Revised (2026-11-23): a twentieth left the browser's 5 s limit at 250 ms a candi
 - **Call.** When stress finds nothing and a bound lint (L0302/4/5/6, L0599) names a witness input, the clean report lists the lint and its line and names `cpl lint --save <file>`. `cpl-stress` depends on `cpl-lint` for it.
 - **Why.** Stress's small cases never reach the bounds where `a * b` overflows, so a clean run read as proof (use case stress/U28). Linting the analysis stress already holds costs one pass.
 - **Reverse.** Delete the `at_bounds` block in `crates/cpl-stress/src/cli.rs` and the `cpl-lint` dependency.
+
+## 435. Mergeable sets live in a shared pool (stdlib, 2026-11-23)
+
+- **Call.** `std.segtree.MergeSegs<D>` is a pool of sparse binary segment trees over `D`, and `MergeSeg<D>` is a handle into it (`MergeSeg<D>()` is the empty set). `singleton`, `merge` and `first_alive` are pool methods, like `PersistentSegTree` and its `Version`. `merge` leaves both inputs valid.
+- **Why.** As a value that owned its heap, every `merge` and every tag pushed into two children copied a whole set, so cf2115f1's dream ran over 200 s on a 3e5 input. With shared nodes it takes 5.3 s against the hand-written arena port's 4.3 s, and a copy that looks O(1) is O(1). The cost is one named pool in user code.
+- **Reverse.** Make `MergeSeg` own its nodes again and copy on merge; the dream drops `segs`.

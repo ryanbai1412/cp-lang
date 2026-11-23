@@ -1164,87 +1164,82 @@ pub struct DynamicOrderTree<D, T>:
         let lo = (0..bit[0].len - 1).first_true(mid => self.span_count(r, bit[0].nth(mid)!, true) > k) ?? (bit[0].len - 1)
         bit[0].nth(lo)
 
-/// \(O(q \log \lvert D \rvert)\) space. Mergeable min-ordered set over domain `D` for lazily pruned
-/// minimum-alive queries (`MergeSeg.singleton`, `merge`, `first_alive`).
+/// One set of positions of `D` in a `MergeSegs<D>` pool: a handle, so copying it is O(1).
+/// `MergeSeg<D>()` is the empty set.
 pub struct MergeSeg<D>:
-    heap: List<D>
+    var root: Int = 0
 
-    fn push_raw(mut self, x: D):
+/// A pool of mergeable sets of positions of `D`, each stored as a sparse binary segment tree whose
+/// nodes the sets share. `merge` builds new nodes only where both trees overlap and leaves both inputs
+/// valid, and `first_alive` drops dead positions for good, so a lazily pruned minimum-alive query is
+/// \(O(\log \lvert D \rvert)\) amortized.
+pub struct MergeSegs<D>:
+    ls: List<0..=2_000_000_000> = [0]
+    rs: List<0..=2_000_000_000> = [0]
+
+    fn node(mut self, l: Int, r: Int) -> Int:
+        ls.push(l)
+        rs.push(r)
+        ls.len - 1
+
+    fn build(mut self, k: Int, lo: Int, hi: Int) -> Int:
+        if lo + 1 == hi: return self.node(0, 0)
+        let mid = (lo + hi) / 2
+        if k < mid: return self.node(self.build(k, lo, mid), 0)
+        self.node(0, self.build(k, mid, hi))
+
+    fn cat(mut self, a: Int, b: Int, lo: Int, hi: Int) -> Int:
         with lint(unproven_list_index: allow)
-        heap.push(x)
-        var i = heap.len - 1
-        while i > 0:
-            let p = (i - 1)  // 2
-            if heap[i] < heap[p]:
-                let tmp = heap[p]
-                heap[p] = heap[i]
-                heap[i] = tmp
-                i = p
-            else:
-                break
+        if a == 0: return b
+        if b == 0 or lo + 1 == hi: return a
+        let mid = (lo + hi) / 2
+        let l = self.cat(ls[a], ls[b], lo, mid)
+        let r = self.cat(rs[a], rs[b], mid, hi)
+        self.node(l, r)
 
-    fn pop_min(mut self):
+    fn prune(mut self, u: Int, lo: Int, hi: Int, alive: D -> Bool) -> (Int, ?D):
         with lint(unproven_list_index: allow)
-        let n = heap.len
-        if n <= 1:
-            heap.clear()
-            return
-        heap[0] = heap[n - 1]
-        heap.pop()
-        let m = heap.len
-        var i = 0
-        while true:
-            let l = 2 * i + 1
-            let r = l + 1
-            var best = i
-            if l < m and heap[l] < heap[best]: best = l
-            if r < m and heap[r] < heap[best]: best = r
-            if best == i: break
-            let tmp = heap[i]
-            heap[i] = heap[best]
-            heap[best] = tmp
-            i = best
+        if u == 0: return (0, None)
+        if lo + 1 == hi:
+            let x = D.nth(lo)
+            return if alive(x): (u, Some(x)) else: (0, None)
+        let mid = (lo + hi) / 2
+        let (l, a) = self.prune(ls[u], lo, mid, alive)
+        ls[u] = l
+        if let x = a: return (u, Some(x))
+        let (r, b) = self.prune(rs[u], mid, hi, alive)
+        rs[u] = r
+        if let x = b: (u, Some(x)) else: (0, None)
 
-    /// A set of positions of `D` holding only `x`, stored as a sparse binary tree over `D`.
+    /// The set holding only `x`.
     ///
-    /// cost: \(O(\log \lvert D \rvert)\)
-    /// traps: when `x` is outside `D`
-    /// example: `var t = MergeSeg<0..10>.singleton(3); t.first_alive(x => true) == Some(3)`
-    pub fn singleton(x: D) -> MergeSeg<D> = MergeSeg([x])
-
-    /// The union of `self` and `other`. The result reuses the nodes of both, so neither input may be
-    /// used afterwards.
-    ///
-    /// cost: \(O(\log \lvert D \rvert)\) amortized per node absorbed
+    /// cost: \(O(\log \lvert D \rvert)\) time and new nodes
     /// traps: never
-    /// example: `var m = MergeSeg<0..10>.singleton(7).merge(MergeSeg<0..10>.singleton(3)); m.first_alive(x => true) == Some(3)`
-    pub fn merge(self, other: MergeSeg<D>) -> MergeSeg<D>:
-        if heap.len >= other.heap.len:
-            var out = MergeSeg(heap)
-            for x in other.heap: out.push_raw(x)
-            out
-        else:
-            var out = MergeSeg(other.heap)
-            for x in heap: out.push_raw(x)
-            out
+    /// example: `var p = MergeSegs<0..10>(); var s = p.singleton(3); p.first_alive(mut s, x => true) == Some(3)`
+    pub fn singleton(mut self, x: D) -> MergeSeg<D> = MergeSeg(self.build(x.ord, 0, D.count))
 
-    /// The smallest position `x` in the set with `alive(x)`, or `None`. Every position found dead on
-    /// the way is removed for good, so `alive` must be monotone over time: a position never comes
-    /// back to life.
+    /// The union of `a` and `b`. Both stay valid: the result shares their nodes and builds new ones only
+    /// where both trees have a node.
+    ///
+    /// cost: \(O(\log \lvert D \rvert)\) amortized per position, over a sequence of merges whose
+    /// results replace their inputs; \(O(\text{overlap})\) for one merge
+    /// traps: never
+    /// example: `var p = MergeSegs<0..10>(); var m = p.merge(p.singleton(7), p.singleton(3)); p.first_alive(mut m, x => true) == Some(3)`
+    pub fn merge(mut self, a: MergeSeg<D>, b: MergeSeg<D>) -> MergeSeg<D> = MergeSeg(self.cat(a.root, b.root, 0, D.count))
+
+    /// The smallest position `x` in `s` with `alive(x)`, or `None`. Every position found dead on the
+    /// way is removed for good, from `s` and from every set sharing its nodes, so `alive` must be
+    /// monotone over time: a position never comes back to life.
     ///
     /// cost: \(O(\log \lvert D \rvert)\) amortized
     /// ties: the smallest position in key order
     /// traps: never
-    /// example: `var m = MergeSeg<0..10>.singleton(3).merge(MergeSeg<0..10>.singleton(7)); m.first_alive(x => x > 5) == Some(7)`
-    /// example: `var m = MergeSeg<0..10>.singleton(3).merge(MergeSeg<0..10>.singleton(7)); m.first_alive(x => x > 5); m.first_alive(x => true) == Some(7)`
-    pub fn first_alive(mut self, alive: D -> Bool) -> ?D:
-        with lint(unproven_list_index: allow)
-        while heap.len > 0:
-            let x = heap[0]
-            if alive(x): return Some(x)
-            while heap.len > 0 and heap[0] == x:
-                self.pop_min()
-        None
+    /// example: `var p = MergeSegs<0..10>(); var m = p.merge(p.singleton(3), p.singleton(7)); p.first_alive(mut m, x => x > 5) == Some(7)`
+    /// example: `var p = MergeSegs<0..10>(); var m = p.merge(p.singleton(3), p.singleton(7)); p.first_alive(mut m, x => x > 5); p.first_alive(mut m, x => true) == Some(7)`
+    pub fn first_alive(mut self, mut s: MergeSeg<D>, alive: D -> Bool) -> ?D:
+        let (root, x) = self.prune(s.root, 0, D.count, alive)
+        s.root = root
+        x
 
 @test
 fn merge_sort_and_sparse_segtree_match_brute():
