@@ -4,6 +4,7 @@ import { DocsBody, DocsDescription, DocsPage, DocsTitle } from 'fumadocs-ui/layo
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { LiveCode } from '@/components/live-code';
+import { Runner } from '@/components/runner';
 import { source } from '@/lib/source';
 
 type Props = { params: Promise<{ slug?: string[] }> };
@@ -18,7 +19,7 @@ export default async function Page({ params }: Props) {
       <DocsTitle>{page.data.title}</DocsTitle>
       <DocsDescription>{page.data.description}</DocsDescription>
       <DocsBody>
-        <MDX components={{ ...defaultMdxComponents, Card, Cards, LiveCode }} />
+        <MDX components={{ ...defaultMdxComponents, Card, Cards, LiveCode, Runner }} />
       </DocsBody>
     </DocsPage>
   );

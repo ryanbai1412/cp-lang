@@ -21,6 +21,8 @@ const compilerVersion = tools.version.replace(/^cpl /, '');
 
 export interface RunnerProps {
   source: string;
+  /** Lines run before `source`, shown collapsed: the shared setup of a doc example. */
+  setup?: string;
   stdin?: string;
   status?: Status;
   caption?: string;
@@ -29,6 +31,8 @@ export interface RunnerProps {
   playgroundLink?: boolean;
   shareMenu?: boolean;
   checkOnLoad?: boolean;
+  /** A doc example: no input box or C++ tab, and output only once it has run. */
+  compact?: boolean;
 }
 
 type Result =
@@ -47,10 +51,11 @@ export function formatDiagnostics(diagnostics: Diagnostic[], source: string): st
     .join('\n\n');
 }
 
-export function Runner({ source: initial, stdin: initialStdin = '', status, caption, className, editorHeight, playgroundLink = true,
-  shareMenu = false, checkOnLoad = false }: RunnerProps) {
+export function Runner({ source: initial, setup = '', stdin: initialStdin = '', status, caption, className, editorHeight, playgroundLink = true,
+  shareMenu = false, checkOnLoad = false, compact = false }: RunnerProps) {
   const [source, setSource] = useState(initial);
   const [stdin, setStdin] = useState(initialStdin);
+  const program = setup ? `${setup}\n${source}` : source;
   const [result, setResult] = useState<Result>({ kind: 'idle' });
   const [cpp, setCpp] = useState<string | null>(null);
   const [tab, setTab] = useState('output');
@@ -59,12 +64,12 @@ export function Runner({ source: initial, stdin: initialStdin = '', status, capt
     setTab('output');
     setResult({ kind: 'running' });
     try {
-      const r = await cpl.run(source, stdin);
+      const r = await cpl.run(program, stdin);
       setResult({ kind: 'output', stdout: r.stdout, stderr: r.stderr, ok: r.ok, diagnostics: r.diagnostics });
     } catch (e) {
       setResult({ kind: 'error', message: (e as Error).message });
     }
-  }, [source, stdin]);
+  }, [program, stdin]);
 
   const trace = useCallback(async () => {
     // Opened before the await: a popup opened after it has no user activation and is blocked.
@@ -72,7 +77,7 @@ export function Runner({ source: initial, stdin: initialStdin = '', status, capt
     setTab('output');
     setResult({ kind: 'running' });
     try {
-      const r = await cpl.trace(source, stdin);
+      const r = await cpl.trace(program, stdin);
       setResult({ kind: 'output', stdout: r.stdout, stderr: r.stderr, ok: r.ok, diagnostics: r.diagnostics });
       if (r.trace && viewer) {
         viewer.sessionStorage.setItem('cp-live-trace', JSON.stringify(r.trace));
@@ -83,31 +88,31 @@ export function Runner({ source: initial, stdin: initialStdin = '', status, capt
       viewer?.close();
       setResult({ kind: 'error', message: (e as Error).message });
     }
-  }, [source, stdin]);
+  }, [program, stdin]);
 
   const stress = useCallback(async () => {
     setTab('output');
     setResult({ kind: 'running' });
     try {
-      setResult({ kind: 'stress', outcome: await cpl.stress(source) });
+      setResult({ kind: 'stress', outcome: await cpl.stress(program) });
     } catch (e) {
       setResult({ kind: 'error', message: (e as Error).message });
     }
-  }, [source]);
+  }, [program]);
   const stressable = /^@(brute|alt|check|checker)\b/m.test(source);
 
   const showCpp = useCallback(async () => {
     setTab('cpp');
     setCpp('// Building…');
     try {
-      const b = await cpl.build(source);
-      setCpp(b.cpp ?? formatDiagnostics(b.diagnostics, source));
+      const b = await cpl.build(program);
+      setCpp(b.cpp ?? formatDiagnostics(b.diagnostics, program));
     } catch (e) {
       setCpp(`// ${(e as Error).message}`);
     }
-  }, [source]);
+  }, [program]);
 
-  const share = typeof window === 'undefined' ? '' : encodeShare(source, stdin);
+  const share = typeof window === 'undefined' ? '' : encodeShare(program, stdin);
 
   return (
     <div className={cn('not-prose overflow-hidden rounded-xl border bg-card text-card-foreground shadow-sm', className)}>
@@ -116,9 +121,11 @@ export function Runner({ source: initial, stdin: initialStdin = '', status, capt
           {result.kind === 'running' ? <Loader2 className="animate-spin" /> : <Play />}
           Run
         </Button>
-        <Button size="sm" variant="outline" onClick={trace} disabled={result.kind === 'running'} title="Record every step and open the time-travel debugger">
-          <History /> Trace
-        </Button>
+        {!compact && (
+          <Button size="sm" variant="outline" onClick={trace} disabled={result.kind === 'running'} title="Record every step and open the time-travel debugger">
+            <History /> Trace
+          </Button>
+        )}
         {stressable && (
           <Button size="sm" variant="outline" onClick={stress} disabled={result.kind === 'running'} title="Run random cases against the brute force and shrink the first one that differs">
             <Bug /> Stress
@@ -134,7 +141,7 @@ export function Runner({ source: initial, stdin: initialStdin = '', status, capt
         </Button>
         <div className="ml-auto flex items-center gap-2">
           {status && <StatusBadge status={status} />}
-          {shareMenu && <ShareMenu source={source} stdin={stdin} />}
+          {shareMenu && <ShareMenu source={program} stdin={stdin} />}
           {playgroundLink && (
             <Button size="sm" variant="outline" asChild>
               <a href={`/play#${share}`} suppressHydrationWarning>Open in playground</a>
@@ -142,7 +149,20 @@ export function Runner({ source: initial, stdin: initialStdin = '', status, capt
           )}
         </div>
       </div>
-      <CodeEditor value={source} onChange={setSource} onRun={run} minHeight={editorHeight} className="border-b" checkOnLoad={checkOnLoad} />
+      {setup && (
+        <details className="border-b px-3 py-2 text-xs">
+          <summary className="cursor-pointer text-muted-foreground">Setup ({setup.split('\n').length} lines)</summary>
+          <pre className="mt-2 overflow-x-auto font-mono">{setup}</pre>
+        </details>
+      )}
+      <CodeEditor value={source} onChange={setSource} onRun={run} minHeight={editorHeight} className="border-b" checkOnLoad={checkOnLoad} prefix={setup} />
+      {compact ? (
+        result.kind !== 'idle' && (
+          <div className="px-3 py-2 text-xs">
+            <Output result={result} source={program} onUseInput={setStdin} />
+          </div>
+        )
+      ) : (
       <Tabs value={tab} onValueChange={(v) => (v === 'cpp' ? showCpp() : setTab(v))} className="gap-0">
         <TabsList className="m-2">
           <TabsTrigger value="output">Run</TabsTrigger>
@@ -155,13 +175,14 @@ export function Runner({ source: initial, stdin: initialStdin = '', status, capt
           </label>
           <div className="flex min-w-0 flex-col gap-1 text-xs text-muted-foreground">
             Output
-            <Output result={result} source={source} onUseInput={setStdin} />
+            <Output result={result} source={program} onUseInput={setStdin} />
           </div>
         </TabsContent>
         <TabsContent value="cpp" className="px-3 pb-3">
           <pre className="max-h-80 overflow-auto rounded-md bg-muted p-3 font-mono text-xs">{cpp}</pre>
         </TabsContent>
       </Tabs>
+      )}
       {caption && <p className="border-t px-3 py-2 text-sm text-muted-foreground">{caption}</p>}
     </div>
   );

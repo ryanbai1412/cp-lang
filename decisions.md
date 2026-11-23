@@ -7118,3 +7118,9 @@ domain still runs where written. The two lines it adds to `lower/mod.rs` are
 offset by `lower/call.rs` shrinking 2 (net 0 across the capped files). Pinned by
 `core-11/constant-domain-hoists.cp` and `constant-domain-hoists-counted.cp`.
 Reverse: drop the `hoist_constant_domains` call.
+
+## 326. Std doc examples run in the page; costs render as math (site, 2026-11-22)
+
+- **326.1 Each `example:` line becomes a program.** `gen-ref` splits it at top-level `;`, puts the module's `use std.<module>.*` and the setup most of a type's examples share in a collapsed Setup, and ends with `print(expr)`, or `assert(expr == value)` when the value can't be printed; the stated value is shown as the Result. Each program is run at build time (16 at a time, cached by hash) and only one that runs is shown runnable; the rest stay static and are listed in `web/node_modules/.cache/doc-examples-failing.txt` for stdlib (286 of 2,767 today). Why: Ryan found one-line wrapped examples unreadable, and a runnable example has to be one that runs. Reverse: render `example:` lines as list items again in `renderItem`.
+- **326.2 Math is LaTeX in `\( ... \)`, rendered with KaTeX at build time** (remark-math with single dollars off, rehype-katex; KaTeX CSS only on docs and lint pages, so `/` is unchanged). Until stdlib converts its doc comments, `cost:` lines in the old `O(n log n)` form are converted (`log`, `·`, `α`, `²`, `sqrt`). The build fails on a math span KaTeX can't render. Reverse: drop the two plugins and `texSpans`.
+- **326.3 Signatures over 72 columns are laid out one parameter per line**, defaults kept, as `cpl fmt` lays out a long call. Reverse: `layoutSignature` returns its input.

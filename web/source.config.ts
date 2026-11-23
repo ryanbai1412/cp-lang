@@ -1,6 +1,8 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { relative, resolve } from 'node:path';
 import { defineConfig, defineDocs } from 'fumadocs-mdx/config';
+import rehypeKatex from 'rehype-katex';
+import remarkMath from 'remark-math';
 
 const cpGrammar = JSON.parse(
   readFileSync(resolve(process.cwd(), '../editors/vscode/syntaxes/cp.tmLanguage.json'), 'utf8'),
@@ -10,6 +12,13 @@ export const docs = defineDocs({ dir: 'content/docs' });
 export const learn = defineDocs({ dir: 'content/learn' });
 
 type Node = { type: string; lang?: string; meta?: string | null; value?: string; children?: Node[] };
+
+// A `//---` line splits a fence into a setup, shown collapsed, and the code shown.
+function sourceAttrs(value = '') {
+  const attr = (name: string, value: string) => ({ type: 'mdxJsxAttribute', name, value });
+  const i = value.indexOf('\n//---\n');
+  return i < 0 ? [attr('source', value + '\n')] : [attr('setup', value.slice(0, i)), attr('source', value.slice(i + 7) + '\n')];
+}
 
 // A fence written ```cp run input="..." becomes a live <Runner>; the snippet gate reads the same fence.
 function remarkRun() {
@@ -21,7 +30,7 @@ function remarkRun() {
         node.children![i] = {
           type: 'mdxJsxFlowElement',
           name: 'Runner',
-          attributes: [attr('source', child.value + '\n'), attr('stdin', stdin), attr('status', /\brejects=[ER]\d{4}\b/.test(child.meta ?? '') ? 'rejects' : 'runs')],
+          attributes: [...sourceAttrs(child.value), attr('stdin', stdin), attr('status', /\brejects=[ER]\d{4}\b/.test(child.meta ?? '') ? 'rejects' : 'runs'), ...(/(^|\s)compact(\s|$)/.test(child.meta ?? '') ? [{ type: 'mdxJsxAttribute', name: 'compact', value: null }] : [])],
           children: [],
         } as Node;
       } else visit(child);
@@ -55,7 +64,7 @@ function remarkLive() {
           node.children![i] = {
             type: 'mdxJsxFlowElement',
             name: 'LiveCode',
-            attributes: [attr('source', child.value + '\n'), attr('stdin', stdin), ...(g.ran ? [attr('ran', 'true')] : [])],
+            attributes: [...sourceAttrs(child.value), attr('stdin', stdin), ...(g.ran ? [attr('ran', 'true')] : [])],
             children: [child],
           } as Node;
         } else visit(child);
@@ -67,7 +76,8 @@ function remarkLive() {
 
 export default defineConfig({
   mdxOptions: {
-    remarkPlugins: [remarkLive, remarkRun],
+    remarkPlugins: [[remarkMath, { singleDollarTextMath: false }], remarkLive, remarkRun],
+    rehypePlugins: (v) => [rehypeKatex, ...v],
     rehypeCodeOptions: {
       themes: { light: 'github-light', dark: 'github-dark' },
       langs: [{ ...cpGrammar, name: 'cp', aliases: ['cplang'] }, 'cpp', 'python', 'java', 'rust', 'sh', 'json'],

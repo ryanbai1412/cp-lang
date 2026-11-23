@@ -3,7 +3,7 @@
 // sideways on purpose. Run with `pnpm --dir web phone`.
 import { base, open } from './browser.mjs';
 
-const routes = ['/', '/docs/guides/tour', '/docs/ref/std/algebra', '/learn', '/learn/start', '/learn/intro', '/learn/read/standard-library', '/learn/practice/prime-ranges', '/learn/read/graphs', '/learn/read/dynamic-programming', '/learn/read/greedy-and-two-pointers', '/learn/practice/maze-walk', '/play', '/corpus', '/tools', '/performance', '/setup', '/lints', '/lints/search_loop',
+const routes = ['/', '/docs/guides/tour', '/docs/ref/std/algebra', '/learn', '/learn/start', '/learn/intro', '/learn/read/standard-library', '/learn/practice/prime-ranges', '/learn/read/graphs', '/learn/read/dynamic-programming', '/learn/read/greedy-and-two-pointers', '/learn/practice/maze-walk', '/play', '/corpus', '/tools', '/performance', '/setup', '/lints', '/lints/search_loop', '/docs/ref/std/tree',
   '/learn/language/ownership-and-mutation',
   '/learn/language/domains-and-index-spaces',
   '/learn/language/optionals',

@@ -42,6 +42,16 @@ const theme = EditorView.theme({
   },
 });
 
+const shift = (d: Diagnostic, by: number): Diagnostic =>
+  by === 0
+    ? d
+    : {
+        ...d,
+        start: d.start + by,
+        end: d.end + by,
+        fixes: d.fixes.map((f) => ({ ...f, edits: f.edits.map((e) => ({ ...e, start: e.start + by, end: e.end + by })) })),
+      };
+
 export function toCmDiagnostics(diagnostics: Diagnostic[], length: number): CmDiagnostic[] {
   return diagnostics.map((d) => ({
     from: Math.min(d.start, length),
@@ -69,15 +79,22 @@ const edited = StateField.define<boolean>({
   update: (was, tr) => was || (tr.docChanged && tr.annotation(Transaction.userEvent) !== undefined),
 });
 
-const checkLinter = (onLoad: boolean) => linter(
+// `prefix` is code run before the editor's text (a collapsed setup): it is
+// checked with it, and only diagnostics in the editor's text are shown.
+const checkLinter = (onLoad: boolean, prefix = '') => linter(
   async (view) => {
     if (!onLoad && !started() && !view.state.field(edited)) return [];
-    const source = view.state.doc.toString();
+    const shown = view.state.doc.toString();
+    const head = prefix ? `${prefix}\n` : '';
+    const source = head + shown;
     try {
       const outcome = await cpl.check(source);
       // Lints wait for a program that checks, as `cpl lint` does.
       const lints = outcome.ok ? (await cpl.lint(source)).diagnostics : [];
-      return toCmDiagnostics([...outcome.diagnostics, ...lints], source.length);
+      return toCmDiagnostics(
+        [...outcome.diagnostics, ...lints].map((d) => shift(d, -head.length)).filter((d) => d.start >= 0),
+        shown.length,
+      );
     } catch {
       return [];
     }
@@ -95,9 +112,11 @@ export interface CodeEditorProps {
   minHeight?: string;
   /** Check the initial text at once, loading the compiler; otherwise wait for an edit or a run. */
   checkOnLoad?: boolean;
+  /** Code run before `value`, checked with it but not shown. */
+  prefix?: string;
 }
 
-export function CodeEditor({ value, onChange, onRun, readOnly, live = true, className, minHeight, checkOnLoad = false }: CodeEditorProps) {
+export function CodeEditor({ value, onChange, onRun, readOnly, live = true, className, minHeight, checkOnLoad = false, prefix = '' }: CodeEditorProps) {
   const host = useRef<HTMLDivElement>(null);
   const view = useRef<EditorView | null>(null);
   const callbacks = useRef({ onChange, onRun });
@@ -124,7 +143,7 @@ export function CodeEditor({ value, onChange, onRun, readOnly, live = true, clas
           ...defaultKeymap,
           ...historyKeymap,
         ]),
-        ...(live && !readOnly ? [edited, checkLinter(checkOnLoad), lintGutter()] : []),
+        ...(live && !readOnly ? [edited, checkLinter(checkOnLoad, prefix), lintGutter()] : []),
         EditorView.updateListener.of((u) => {
           if (u.docChanged) callbacks.current.onChange?.(u.state.doc.toString());
         }),
@@ -134,7 +153,7 @@ export function CodeEditor({ value, onChange, onRun, readOnly, live = true, clas
     view.current = new EditorView({ state, parent: host.current! });
     return () => view.current?.destroy();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [readOnly, live, checkOnLoad]);
+  }, [readOnly, live, checkOnLoad, prefix]);
 
   useEffect(() => {
     const v = view.current;
