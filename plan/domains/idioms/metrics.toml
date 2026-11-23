@@ -44,7 +44,7 @@ target = "305/305 tracked ports compile with every judge's flags and pass their 
 [[metric]]
 name = "corpus_suite"
 command = "target/release/cpl-conform corpus"
-today = "29/100 pass (36 error, 2 trap, 32 untested, 1 wrong); research/scoreboard.json rewritten from this run"
+today = "98/100 pass (1 error: noi09p4, a product-domain graph gap in std.graph; 1 trap: dmopc21c9p1, an open range with a negative start overflows) (2026-11-23)"
 target = "100/100 hill-climb spec.cp pass; untested 0 (every problem has tests)"
 
 [[metric]]
