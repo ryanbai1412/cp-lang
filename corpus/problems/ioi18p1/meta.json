@@ -23,5 +23,5 @@
  "difficulty": "medium",
  "dream": "draft",
  "spec": "draft",
- "notes": "extern fn press with @grader entry; one press per letter."
+ "notes": "grader task (extern fn press); spec.cp plays the sample grader (reads S, prints Accepted: q) until local runs can bind an extern fn to a judge (research/frictions/ioi18p1.md)."
 }
