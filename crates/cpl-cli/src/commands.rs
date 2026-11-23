@@ -301,7 +301,7 @@ cp.toml, else `generic`).
             time_ms, memory_mb and evidence
 ";
 
-const EXPLAIN_USAGE: &str = "\
+pub(crate) const EXPLAIN_USAGE: &str = "\
 usage: cpl explain <CODE | file.cp | --json>
 
 With a code such as E0302, explains that diagnostic or lint: what triggers

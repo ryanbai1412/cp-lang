@@ -2,7 +2,7 @@
 
 use std::io::Write;
 
-use crate::{compile, EXIT_USAGE};
+use crate::{commands::EXPLAIN_USAGE, compile, EXIT_USAGE};
 
 pub(crate) fn explain_code(rest: &[&str], stdout: &mut dyn Write, stderr: &mut String) -> u8 {
     match rest {
@@ -77,11 +77,17 @@ pub(crate) fn explain_code(rest: &[&str], stdout: &mut dyn Write, stderr: &mut S
                 let _ = writeln!(stdout, "\nFix:\n{}", lint.fix.trim_end());
                 return 0;
             }
-            *stderr += &format!("cpl: unknown diagnostic or lint code `{code}`\n");
+            *stderr += &format!(
+                "cpl: `{code}` is not a diagnostic or lint code, a lint name, or a file\n\n{}",
+                EXPLAIN_USAGE
+            );
             EXIT_USAGE
         }
         _ => {
-            *stderr += "usage: cpl explain <CODE | FILE.cp> [--json]\n";
+            *stderr += &format!(
+                "cpl: `explain` takes a code or a file: `cpl explain E0302`\n\n{}",
+                EXPLAIN_USAGE
+            );
             EXIT_USAGE
         }
     }

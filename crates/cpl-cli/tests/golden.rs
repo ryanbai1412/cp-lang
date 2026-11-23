@@ -362,6 +362,12 @@ fn lint_warns_with_its_code_and_exits_0_on_warnings_alone() {
 
 #[test]
 fn explain_shows_a_code_and_rejects_an_unknown_one() {
+    misused("explain", &["explain"], "`explain` takes a code or a file");
+    misused(
+        "explain",
+        &["explain", "E7777"],
+        "`E7777` is not a diagnostic or lint code",
+    );
     let out = cpl(Path::new("."), &["explain", "E0302"]);
     assert_eq!(out.status.code(), Some(0), "{}", text(&out.stderr));
     assert!(
@@ -371,7 +377,7 @@ fn explain_shows_a_code_and_rejects_an_unknown_one() {
     );
     let unknown = cpl(Path::new("."), &["explain", "E7777"]);
     assert_eq!(unknown.status.code(), Some(EXIT_USAGE.into()));
-    assert!(text(&unknown.stderr).contains("unknown diagnostic or lint code `E7777`"));
+    assert!(text(&unknown.stderr).contains("`E7777` is not a diagnostic or lint code"));
     let json = cpl(Path::new("."), &["explain", "--json"]);
     let json = cpl_json::parse(&text(&json.stdout)).expect("cpl explain --json is JSON");
     assert!(json
