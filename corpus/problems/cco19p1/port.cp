@@ -5,29 +5,52 @@
 // Justin, who moves first, wins.
 // original: corpus/submissions/3613457.cpp
 //
-// SKETCH: does not build. `proto/cpc` has no F64, no enum-valued grid
-// and no @memo keyed by a whole board.
+// At most 13 cells, so search every reachable board. A board's chance for
+// the player to move is the mean of `1 - chance` after his `slack` best
+// moves (0 with no move); memoize on the board and whose turn it is.
 let n: 1..=13 = read()
 let m: 1..=13 = read()                                    // at most 13 cells in all
-domain Row = 1..=n
-domain Col = 1..=m
-domain Cell = (Row, Col)
+domain Row = 0..n
+domain Col = 0..m
+type Cell = (Row, Col)
 
-@tags("J", "D")
-enum Player: J | D
-fn other(p: Player) -> Player: if p == J: D else: J
-type Board = [Row, Col]?Player                            // none once a piece has left
+enum Player = J | D
+fn other(p: Player) -> Player = if p == J: D else: J
+type Board = [Row, Col]?Player                            // None once a piece has left
 
-let board: Board = read()                                 // WISH L20: a ?Player grid read from letters
-let slack: [Player]Int = read()                           // how many of his best moves each may pick from
+let letters: [Row, Col]Char = read()
+let start: Board = [Row, Col] (r, c) => Some(if letters[r, c] == 'J': J else: D)
+let (j_slack, d_slack): (Int, Int) = read()              // how many of his best moves each picks from
+fn slack(p: Player) -> Int = if p == J: j_slack else: d_slack
+
+fn key(board: Board, who: Player) -> Int:
+    var k = if who == J: 0 else: 1
+    for r in Row:
+        for c in Col:
+            k = k * 3 + (if let p = board[r, c]: (if p == J: 1 else: 2) else: 0)
+    k
+
+var memo: Map<Int, F64> = Map()
 
 // The chance that `who`, about to move, wins from here.
-@memo                                                     // WISH L23: @memo keyed by an array value
 fn wins(board: Board, who: Player) -> F64:
-    let chances = sorted_desc(1.0 - wins(board.with(p: None, q: who), other(who))   // WISH L24: board.with(p: v, q: w), a copy with two cells changed
-                              for p in Cell if board[p] == who
-                              for q in p.around() if board[q] != None)              // WISH L1: p.around() over Dir4
-    if chances.len == 0: return 0.0
-    mean(chances.take(slack[who]))                        // WISH G21: take; WISH L25: mean
+    let k = key(board, who)
+    if let known = memo.get(k): return known
+    var chances: List<F64> = []
+    for r in Row:
+        for c in Col:
+            if board[r, c] != Some(who): continue
+            let p: Cell = (r, c)
+            for q in p.adj4:
+                if board[q] == None: continue
+                var next = board
+                next[q] = Some(who)
+                next[p] = None
+                chances.push(1.0 - wins(next, other(who)))
+    let best = chances.sorted(desc: true)
+    let take = min(best.len, slack(who))
+    let chance = if take == 0: 0.0 else: best[0..take].sum() / F64(take)
+    memo[k] = chance
+    chance
 
-print("{wins(board, J):.3}")                              // WISH G4: decimals
+print("{wins(start, J):.3}")
