@@ -117,7 +117,21 @@ impl Outline {
                             .uses
                             .push((path, names.iter().map(|n| n.text.clone()).collect()));
                     }
-                    _ => outline.entries.extend(reader.entry(stmt, false)),
+                    _ => {
+                        // `fn f(self: T)` outside an `impl` is a method of `T` too.
+                        if let StmtKind::Fn(f) = &stmt.kind {
+                            let receiver = f.params.first().filter(|_| takes_self(f));
+                            if let Some(TypeKind::Named { name, .. }) =
+                                receiver.and_then(|p| p.ty.as_ref()).map(|t| &t.kind)
+                            {
+                                outline.impls.push((
+                                    name.text.clone(),
+                                    reader.entry(stmt, true).into_iter().collect(),
+                                ));
+                            }
+                        }
+                        outline.entries.extend(reader.entry(stmt, false))
+                    }
                 }
             }
         }

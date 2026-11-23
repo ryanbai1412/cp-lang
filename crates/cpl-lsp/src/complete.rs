@@ -588,8 +588,37 @@ fn members_of_ty(cursor: &Cursor, std: &mut StdLib, ty: &Ty) -> Vec<(Entry, u8)>
         }
         Ty::Domain(domain) => builtin(DOMAIN_MEMBERS, format!("domain {domain}")),
         Ty::Pos(domain) => builtin(POS_MEMBERS, format!("position in {domain}")),
+        Ty::Int | Ty::Range { .. } => scalar_members(cursor, std, "Int"),
+        Ty::I128 => scalar_members(cursor, std, "I128"),
+        Ty::U64 => scalar_members(cursor, std, "U64"),
+        Ty::Float => scalar_members(cursor, std, "Float"),
+        Ty::Bool => scalar_members(cursor, std, "Bool"),
+        Ty::Char => scalar_members(cursor, std, "Char"),
         _ => Vec::new(),
     }
+}
+
+/// The methods of a built-in scalar: the `fn f(self: Int)` of this file and
+/// its modules, and those the prelude brings in.
+fn scalar_members(cursor: &Cursor, std: &mut StdLib, name: &str) -> Vec<(Entry, u8)> {
+    let mut out = type_members(cursor, std, name, &[], true);
+    let mut seen: HashSet<String> = out.iter().map(|(e, _)| e.name.clone()).collect();
+    let prelude = std.prelude(cursor.uri);
+    for (module, imported) in prelude.iter() {
+        let Some(outline) = std.module(cursor.uri, module) else {
+            continue;
+        };
+        for member in outline.members_of(name) {
+            if member.instance
+                && member.public
+                && &member.name == imported
+                && seen.insert(member.name.clone())
+            {
+                out.push((member.clone(), 1));
+            }
+        }
+    }
+    out
 }
 
 /// A domain named where a type goes, as in `read<[V.drop(1)]Int>()`.

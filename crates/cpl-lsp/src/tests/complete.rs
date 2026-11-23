@@ -480,3 +480,17 @@ fn a_library_type_offers_its_api_not_its_internals() {
     let items = completions(&format!("{ROAD}fn f(r: Road) -> Int = r.|\n"));
     assert!(labels(&items).contains(&"to"), "{items:?}");
 }
+
+#[test]
+fn dot_completion_on_an_int_lists_the_fns_that_take_it_as_self() {
+    let src = "fn twice(x: Int) -> Int = 2 * x\nfn half(self: Int) -> Int = self / 2\nlet n: Int = read()\nlet y = twice(n)\nlet z = y.|\n";
+    let items = completions(src);
+    for method in ["half", "isqrt", "divmod", "digits", "bit"] {
+        assert!(labels(&items).contains(&method), "{method}: {items:?}");
+    }
+    assert!(!labels(&items).contains(&"twice"), "{items:?}");
+    assert_eq!(detail_of(&items, "half"), "fn half(self: Int) -> Int");
+    // A value whose type is a range of Int has Int's methods.
+    let items = completions("let k: 1..=9 = read()\nprint(k.|)\n");
+    assert!(labels(&items).contains(&"digits"), "{items:?}");
+}
