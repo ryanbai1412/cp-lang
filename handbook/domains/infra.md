@@ -115,7 +115,7 @@ Targets and today's numbers live in `plan/domains/infra/metrics.toml`.
 | Quality | Metric | Mechanism | Check |
 |---|---|---|---|
 | Landing is fast | `land.sh` p50, p95, max seconds | Re-architecture: `land.sh` only rebases and pushes; gates run in CI | `scripts/land_stats.py` over the local landing log; `scripts/test_check_cache.py` `test_land_*` |
-| Landing never waits on a person | landings needing a human step | Re-architecture: no review gate, retry on a rejected push | `land.sh` itself |
+| Landing never waits on a person | landings needing a human step | Re-architecture: no review gate, retry on a rejected push | `scripts/test_check_cache.py` `test_land_retries_when_the_push_is_rejected` |
 | Every commit names its domain | commits on main without `Domain:` | Gate: `land.sh` refuses | `scripts/test_check_cache.py` |
 | Commit subjects follow the format | subjects outside `area: summary` | Gate: `commit-msg` hook | `.githooks/commit-msg`; **missing**: CI check for hook-skipped commits |
 | The commit tier catches what the change can break | main reds in a test the commit tier would have selected | Generated selection from the cargo graph and data deps (`affected.py`) | `scripts/test_affected.py`; **missing**: every red traced to "selected or not" |
@@ -135,7 +135,7 @@ Targets and today's numbers live in `plan/domains/infra/metrics.toml`.
 | No flaky tests | tests that both pass and fail on the same commit | **missing**: rerun-on-fail detection and a quarantine list that only shrinks | none |
 | A red names its culprit fast | minutes from red to named commit | Bisect of the failing tests over the run's range, then a verified revert (`culprit.yml`); direct log reading first | `scripts/test_culprit.py`; **missing**: a recorded red-to-culprit time per red |
 | Main is usually green | % of time the newest finished run is green | Process: the sheriff fixes or reverts within 15 min | **missing**: a recorded metric |
-| CI tests all three OSes | jobs per OS that block main | `cli`, `vscode` matrices on Linux, macOS, Windows; `os.yml` | `ci.yml` |
+| CI tests all three OSes | jobs per OS that block main | [ci/R29](../guidelines/ci-checklist.md#cir29): `cli`, `vscode` matrices on Linux, macOS, Windows; `os.yml` | `scripts/test_workflows.py` |
 | Tests are never weakened to go green | removed or ignored tests per commit | Ratchet: `rust_ignore`, pending tests | `scripts/debt-ratchet.py` |
 | Generated files stay current | stale generated files on main | CI `regen` job rewrites them; commit tier warns | `scripts/gen.py --check` |
 

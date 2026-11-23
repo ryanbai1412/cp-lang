@@ -227,3 +227,13 @@ the run slot so no later commit gets a result; a hung Windows CLI job held
 main for 18 min before it had a cap. *Example:* a new `lint` job without
 `timeout-minutes: 10` fails `test_every_job_has_a_timeout`.
 *Enforced by:* `scripts/test_workflows.py`, run by `scripts/check.sh`.
+
+### ci/R29
+
+The blocking `vscode` job runs on Linux, macOS and Windows, and `cli` on
+macOS and Windows next to the Linux gate, none marked `continue-on-error`.
+*Why:* contestants install on all three, and a path, CRLF or clipboard bug
+on one OS ships silently when only Linux blocks. *Example:* dropping
+`windows-latest` from `cli`, or making it informational, fails
+`test_blocking_jobs_cover_every_os`.
+*Enforced by:* `scripts/test_workflows.py`, run by `scripts/check.sh`.
