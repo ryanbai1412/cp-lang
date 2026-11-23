@@ -60,12 +60,21 @@ fn same<A, B>(a: A, b: B) -> Bool = a == b
 /// - `id` is the no-op tag (`apply(id, x, len) == x`).
 /// - `compose(new_f, old_f)` applies `old_f` first and then `new_f`.
 /// - `apply(f, val, span)` returns the folded value `val` of `span` covered leaves after applying `f`.
+/// - `commutes: true` promises tags commute (`compose(f, g)` acts as `compose(g, f)`), so a
+///   `SegTree` applies a range tag without pushing tags down first.
 ///
 /// The positional form `Action(id, compose, apply, over: op)` is the same call. A flipped
 /// `compose` still type-checks, so check a hand-written action once with
 /// `laws_hold(act, T: [...], F: [...])`.
-pub struct Action<T, F>(pub id: F, pub compose: (F, F) -> F, pub apply: (F, T, Int) -> T, pub over: Monoid<T>):
+pub struct Action<T, F>(
+    pub id: F,
+    pub compose: (F, F) -> F,
+    pub apply: (F, T, Int) -> T,
+    pub over: Monoid<T>,
+    pub commutes: Bool = false,
+):
     law ident(a: T) = apply(id, a, 1) == a
+    law commute(f: F, g: F, a: T) = not commutes or apply(compose(f, g), a, 1) == apply(compose(g, f), a, 1)
     // `compose(f, g)` applies `g` first, then `f`.
     law composes(f: F, g: F, a: T) = apply(compose(f, g), a, 1) == apply(f, apply(g, a, 1), 1)
 
@@ -83,8 +92,9 @@ pub struct Action<T, F>(pub id: F, pub compose: (F, F) -> F, pub apply: (F, T, I
         compose: (F, F) -> F = (+),
         apply: (F, T, Int) -> T,
         over: M = (+),
+        commutes: Bool = false,
     ) -> Action<T, F>:
-        Action(id, compose, apply, Monoid<T>.of(over))
+        Action(id, compose, apply, Monoid<T>.of(over), commutes)
 
     /// Resolve a stock action (`add`, `assign`, `affine`) or an `Action` against fold `op`.
     ///
@@ -95,8 +105,8 @@ pub struct Action<T, F>(pub id: F, pub compose: (F, F) -> F, pub apply: (F, T, I
         let m = Monoid<T>.of(op)
         if same(a, add):
             if same(op, +):
-                return Action(T.zero, (nf, of) => nf + of, (f, v, span) => v + f * span, m)
-            return Action(T.zero, (nf, of) => nf + of, (f, v, span) => v + f, m)
+                return Action(T.zero, (nf, of) => nf + of, (f, v, span) => v + f * span, m, true)
+            return Action(T.zero, (nf, of) => nf + of, (f, v, span) => v + f, m, true)
         if same(a, assign):
             if same(op, +):
                 return Action(
@@ -575,7 +585,7 @@ pub struct AffineAction
 pub struct FlipAction
 
 /// Stock action: add a tag to every element; the tag is a `T`. On `+` a span of `n` changes by `f * n`; on
-/// `min`/`max` by `f`. Tags commute, so a `SegTree` with it never pushes down. \(O(1)\).
+/// `min`/`max` by `f`. Tags commute, so `SegTree.apply` with it never pushes down. \(O(1)\).
 pub const add: AddAction = AddAction()
 
 /// Stock action: assign a tag to every element; the tag is a `?T` (`None` is a no-op). \(O(1)\) on `+`,

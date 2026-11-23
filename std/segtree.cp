@@ -31,8 +31,8 @@ pub struct SegTree<D, T, F = Int>(m: Monoid<T>):
     /// `max`, `gcd`) or a `Monoid(id, op)`.
     ///
     /// `act:` adds range tags (`apply`, `apply_all`); with `act:` and no `op` the tree applies tags
-    /// and reads points only. When the tag monoid is `Commutative` the tree skips push-down, which
-    /// changes speed, never answers. `over: lo..hi` covers a huge `Int` range instead, making nodes
+    /// and reads points only. When the action commutes (the stock `add`, or `commutes: true`) `apply`
+    /// skips push-down, which changes speed, never answers. `over: lo..hi` covers a huge `Int` range instead, making nodes
     /// on first touch; positions outside the touched ones hold `fill` or the identity.
     ///
     /// cost: \(O(\lvert D \rvert)\); \(O(1)\) with `over:`
@@ -129,6 +129,7 @@ pub struct SegTree<D, T, F = Int>(m: Monoid<T>):
     fn pull_node(self, p: Int):
         unchecked:
             t[p] = m.op(t[2 * p], t[2 * p + 1])
+            if has_lz[p]: t[p] = act!.apply(lz[p], t[p], span[p])
 
     /// Apply tag `f` to every position of `r`: each fold over `r` then sees the values with `f`
     /// applied, through the action given to `act:`.
@@ -144,7 +145,7 @@ pub struct SegTree<D, T, F = Int>(m: Monoid<T>):
         let (lo, hi) = r.ends
         if lo >= hi: return
         let (l0, h0) = (lo + size, hi + size)
-        self.open(l0, h0)
+        if dual or not act!.commutes: self.open(l0, h0)
         var (l, h) = (l0, h0)
         unchecked:
             while l < h:
