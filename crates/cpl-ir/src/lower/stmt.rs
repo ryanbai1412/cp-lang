@@ -1,5 +1,7 @@
 //! Statements, blocks and patterns.
 
+mod lends;
+
 use super::*;
 
 /// What writing through `x!` says when `x` is `none`; reading it says so too.
@@ -4996,81 +4998,6 @@ impl<'a> Lowerer<'a> {
         }
     }
 
-    fn free_lends_mut_fn(&self, name: &str) -> Option<(u32, &'a ast::FnDecl)> {
-        self.mod_items(self.cur_mod)
-            .find_map(|(offset, stmt)| match &stmt.kind {
-                ast::StmtKind::Fn(d) if d.name.text == name && d.lends.is_some() => {
-                    Some((offset, d))
-                }
-                _ => None,
-            })
-    }
-
-    /// `head(mut a) = 7` for `fn head(mut xs: List<Int>) lends mut Int = xs[0]`:
-    /// each `mut` parameter names the caller's place, the others are bound
-    /// once, and the lent place is assigned.
-    #[allow(clippy::too_many_arguments)]
-    fn lower_free_lend_assign(
-        &mut self,
-        decl: &'a ast::FnDecl,
-        offset: u32,
-        args: &[ast::Arg],
-        op: ast::AssignOp,
-        rhs: &ast::Expr,
-        span: Span,
-        out: &mut Vec<Stmt>,
-    ) {
-        let (pre, lent, post) = super::mono::split_projection_body(decl);
-        let Some(lent) = lent else {
-            self.error(
-                codes::UNSUPPORTED,
-                span,
-                "projection has no `lend` statement",
-            );
-            return;
-        };
-        let rhs_val = self.expr(rhs, None);
-        let rhs_slot = self.temp(rhs_val.ty.clone());
-        out.push(Stmt::Let(rhs_slot, Some(rhs_val)));
-        let saved_aliases = self.cx.mut_aliases.clone();
-        let mut bound = Vec::new();
-        for (p, arg) in decl.params.iter().zip(args) {
-            self.cx.mut_aliases.remove(&p.name.text);
-            if p.mutable {
-                let inner = match &arg.value.kind {
-                    ast::ExprKind::Mut(inner) => inner,
-                    _ => &arg.value,
-                };
-                let place = self.place(inner);
-                let place = self.freeze_place(place, out);
-                self.cx.mut_aliases.insert(p.name.text.clone(), place);
-            } else {
-                let saved = std::mem::replace(&mut self.offset, offset);
-                let ty = p.ty.as_ref().map(|t| self.resolve_ty(t)).unwrap_or(Ty::Int);
-                self.offset = saved;
-                let v = self.expect(&arg.value, &ty);
-                let slot = self.new_slot(&p.name.text, ty);
-                out.push(Stmt::Let(slot, Some(v)));
-                bound.push((p.name.text.clone(), slot));
-            }
-        }
-        let saved_offset = std::mem::replace(&mut self.offset, offset);
-        self.cx.scopes.push(bound.into_iter().collect());
-        for s in pre {
-            self.stmt(s, out);
-        }
-        let target = self.place(lent);
-        let val = self.local(rhs_slot, rhs.span);
-        let val = self.coerce(val, &target.ty, rhs.span);
-        self.emit_assign_place(target, op, val, span, out);
-        for s in post {
-            self.stmt(s, out);
-        }
-        self.cx.scopes.pop();
-        self.offset = saved_offset;
-        self.cx.mut_aliases = saved_aliases;
-    }
-
     pub(super) fn find_projection_on(
         &mut self,
         base: &ast::Expr,
@@ -5370,6 +5297,9 @@ impl<'a> Lowerer<'a> {
                 }
             }
             _ => {
+                if let Some(index) = self.builtin_at(e) {
+                    return self.place(&index);
+                }
                 self.error(
                     codes::ASSIGN_TO_LET,
                     e.span,
