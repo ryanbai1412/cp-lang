@@ -9,7 +9,6 @@ cco19p1
 cco21p5
 cf2062e1
 cf2062e2
-cf2066d2
 cf2084f
 cf2096f
 cf2096h
@@ -38,11 +37,9 @@ ioi18p3
 mccc4j5
 noi03p2
 noi07p4
-noi10p4
 noi15p2
 noi15p5
 noi21p1
-noi21p2
 noi21p3
 noi21p4
 noimps22p1

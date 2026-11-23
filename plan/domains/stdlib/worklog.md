@@ -431,3 +431,4 @@ Newest first: what landed (commit), evidence, next, blocked, requests from other
   - H-DESC-FLAG: `sort`/`sorted` still take `desc: Bool` (std/seq.cp:225, :273); decision 290 removed it for the `desc(x)` key.
   - H-RING-RECEIVER: the `Ring.step` doc says `V.ring.step(v, last)`; the receiver is an array, so `a.ring.step(i, d)`.
   - H-ABS (again, rebuild 7 too): declare `abs(x: Int)` in std/math.cp.
+- Routed from idioms (2026-11-23): noi21p4's xorshift generator needs 64-bit unsigned words, and `scout.bits.U64` has no `^`/`<<`/`>>`/`+` operators and its `xor`/`shl`/`plus` methods are unknown to `cpl run` (E0203). General fix: a std unsigned 64-bit type with wrapping arithmetic and bit operators (the statement's generator is the use), in place of the scout stub.

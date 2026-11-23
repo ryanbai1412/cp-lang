@@ -30,7 +30,7 @@ for f in Floor if f != Floor.last:
         None => Used.first!
     var next: [Used]M = 0
     for used in min_used..=Used.last! if dp[used] != 0:
-        let avail = open.fold(..=Time.at(used.ord + c - 1)) + fixed_below - used.ord
+        let avail = open.fold(Time.first!..=Time.at(used.ord + c)!) + fixed_below - used.ord
         for k in fixed..=min(c, m - c - used.ord):
             next[used.offset(k)!] += dp[used] * comb.choose(avail, k - fixed)
     dp = next
