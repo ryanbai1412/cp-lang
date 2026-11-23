@@ -74,9 +74,16 @@ fn programs() -> Vec<String> {
     out
 }
 
-/// The three smallest `tests/*.in` of a port's directory.
+/// The three smallest `tests/*.in` of a port's directory, or of what
+/// `scripts/corpus-tests.py make` wrote for a seeded problem (problem-packages/R9).
 fn port_inputs(dir: &Path) -> Vec<PathBuf> {
-    let Ok(entries) = std::fs::read_dir(dir.join("tests")) else {
+    let cases = match dir.file_name() {
+        Some(id) if dir.join("tests.toml").is_file() => {
+            dir.join("../../../target/corpus-tests").join(id)
+        }
+        _ => dir.join("tests"),
+    };
+    let Ok(entries) = std::fs::read_dir(cases) else {
         return Vec::new();
     };
     let mut ins: Vec<PathBuf> = entries

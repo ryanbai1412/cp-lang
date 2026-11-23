@@ -1,0 +1,40 @@
+# Cases for scripts/corpus-tests.py make (problem-packages/R9).
+
+[[case]]
+input = "1\n4 4 6\n1 2 2 5\n2 3 2 5\n2 4 1 6\n4 2 1 6\n1 2 1\n2 3 1\n3 4 1\n4 5 2\n1 6 2\n"
+
+[[case]]
+seed = 2
+size = 128
+
+[[case]]
+seed = 3
+size = 8
+
+[[case]]
+seed = 4
+size = 128
+
+[[case]]
+seed = 5
+size = 16
+
+[[case]]
+seed = 6
+size = 1024
+
+[[case]]
+seed = 7
+size = 8192
+
+[[case]]
+seed = 8
+size = 8192
+
+[[case]]
+seed = 9
+size = 32768
+
+[[case]]
+seed = 10
+size = 8192

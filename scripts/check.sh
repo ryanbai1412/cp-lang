@@ -310,6 +310,9 @@ case "$gate_part" in
         esac
         step "cpl-conform ratchet ($conform_suites --check against research/scoreboard.json)"
         cargo build -q -p cpl-cli -p cpl-conform
+        # Seeded problems (problem-packages/R9) read their cases from target/corpus-tests/.
+        uv run --quiet python scripts/corpus-tests.py make --seeded >/dev/null \
+            || fail "corpus-tests.py make --seeded failed; rerun it to see which problem"
         # shellcheck disable=SC2086
         "$target/debug/cpl-conform" $conform_suites $conform_shard --check \
             || fail "cpl-conform ratchet failure; rerun: cargo run -p cpl-conform -- $conform_suites $conform_shard --check"

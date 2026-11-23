@@ -1,0 +1,33 @@
+# Cases for scripts/corpus-tests.py make (problem-packages/R9).
+
+[[case]]
+input = "3\n6 4 6\n30 13GD764 9\n15 20 3\n"
+
+[[case]]
+input = "1\n7 2332 3\n"
+
+[[case]]
+input = "4\n36 Q2 4\n32 QUV8J 3\n32 EVT3KQ 6\n14 1307CB911 9\n"
+
+[[case]]
+input = "5\n24 F 10\n17 4 2\n25 D 9\n36 8US78T 3\n2 100011111 5\n"
+
+[[case]]
+input = "4\n25 7 8\n4 2 3\n34 JC 5\n3 122020 9\n"
+
+[[case]]
+input = "5\n20 7EEA222 4\n11 739867322 5\n13 9 4\n15 7 6\n10 855 2\n"
+
+[[case]]
+input = "3\n28 172I9FO 8\n32 PS 5\n34 OVQ2F6 4\n"
+
+[[case]]
+input = "6\n3 2 5\n25 1E4 3\n21 J 7\n34 I 4\n24 H 2\n7 523 2\n"
+
+[[case]]
+seed = 9
+size = 512
+
+[[case]]
+seed = 10
+size = 1024

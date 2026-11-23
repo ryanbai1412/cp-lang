@@ -2,8 +2,9 @@
 """Generate the corpus acceptance tests (`tests/NN.in` and `NN.ans`).
 
 `make` writes `target/corpus-tests/<id>/NN.in` and `NN.ans` for every
-problem with a `spec.cp`: inputs from `corpus/problems/<id>/gen.py` or
-`bench/*` SPECS, answers from the problem's accepted C++ submission. It
+problem with a `spec.cp`: inputs from the seed list in
+`corpus/problems/<id>/tests.toml` (see `seed_list`), else from its `gen.py`
+or `bench/*` SPECS, answers from the problem's accepted C++ submission. It
 never writes into `corpus/`: committed test data is being retired
 (handbook/guidelines/problem-packages-checklist.md#r9).
 
@@ -12,7 +13,8 @@ Running corpus acceptance tests now lives in `crates/cpl-conform`:
 
 Usage:
     python3 scripts/corpus-tests.py make [ids...] [--cases 8] [--out DIR]
-    python3 scripts/corpus-tests.py verify [ids...]
+    python3 scripts/corpus-tests.py verify [ids...] [--list]
+    python3 scripts/corpus-tests.py seed ids...
 
 `--out DIR` writes `DIR/<id>/NN.in` and `NN.ans` instead of
 `target/corpus-tests/<id>/`.
@@ -21,12 +23,13 @@ Usage:
 the answers it reproduces byte for byte: the evidence a committed answer is
 derivable (decisions.md 278).
 """
-import argparse, hashlib, inspect, json, os, random, subprocess, sys, tempfile
+import argparse, hashlib, inspect, json, os, random, shutil, subprocess, sys, tempfile, tomllib
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PROBLEMS = os.path.join(ROOT, "corpus", "problems")
 CACHE = os.path.join(ROOT, "target", "corpus-cxx")
 OUT = os.path.join(ROOT, "target", "corpus-tests")
+INLINE = 200
 
 
 def problems(ids):
@@ -87,6 +90,35 @@ def generate(kind, f, seed, idx, tmp):
     return out if out.endswith("\n") else out + "\n"
 
 
+def seed_list(p):
+    """The cases in `corpus/problems/<id>/tests.toml`, or None without one.
+
+    Each `[[case]]` is `seed` and `size` (gen.py's two arguments), `args` (a
+    list, e.g. `["--max"]`), or a tiny hand-picked `input` written inline.
+    """
+    path = os.path.join(PROBLEMS, p, "tests.toml")
+    if not os.path.exists(path):
+        return None
+    return tomllib.load(open(path, "rb")).get("case", [])
+
+
+def case_input(p, case, timeout=60):
+    if "input" in case:
+        return case["input"] if case["input"].endswith("\n") else case["input"] + "\n"
+    argv = [str(a) for a in case["args"]] if "args" in case else [str(case["seed"]), str(case["size"])]
+    gen = os.path.join(PROBLEMS, p, "gen.py")
+    out = subprocess.run([sys.executable, gen, *argv], capture_output=True, text=True, timeout=timeout, check=True).stdout
+    return out if out.endswith("\n") else out + "\n"
+
+
+def inputs(p, gens, n, tmp):
+    """The problem's inputs: its seed list when it has one, else n cases from its generator."""
+    listed = seed_list(p)
+    if listed is not None:
+        return [case_input(p, c) for c in listed]
+    return [generate(*gens[p], seed=1000 + i, idx=i, tmp=tmp) for i in range(1, n + 1)]
+
+
 def accepted_cpp(p):
     meta = json.load(open(os.path.join(PROBLEMS, p, "meta.json")))
     for s in meta.get("submissions", []):
@@ -106,8 +138,19 @@ def binary(src):
     return exe
 
 
+def stamp(p, cpp):
+    """What a problem's generated cases depend on; `make` skips a problem whose stamp is unchanged."""
+    h = hashlib.sha256()
+    for f in [os.path.join(PROBLEMS, p, "tests.toml"), os.path.join(PROBLEMS, p, "gen.py"), cpp]:
+        if f and os.path.exists(f):
+            h.update(open(f, "rb").read())
+    return h.hexdigest()
+
+
 def make(args):
     ids = problems(args.ids)
+    if args.seeded:
+        ids = [p for p in ids if seed_list(p) is not None]
     gens = problem_gens(ids)
     for p, g in bench_gens(ids).items():
         gens.setdefault(p, g)
@@ -115,26 +158,62 @@ def make(args):
     with tempfile.TemporaryDirectory() as tmp:
         for p in ids:
             cpp = accepted_cpp(p)
-            if p not in gens or not cpp:
+            if (p not in gens and seed_list(p) is None) or not cpp:
                 missing.append((p, "no generator" if p not in gens else "no accepted C++"))
                 continue
             try:
-                exe = binary(cpp)
                 tests = os.path.join(args.out or OUT, p)
+                key = os.path.join(tests, ".stamp")
+                if seed_list(p) is not None and os.path.exists(key) and open(key).read() == stamp(p, cpp):
+                    made += 1
+                    continue
+                exe = binary(cpp)
+                shutil.rmtree(tests, ignore_errors=True)
                 os.makedirs(tests, exist_ok=True)
-                for i in range(1, args.cases + 1):
-                    inp = generate(*gens[p], seed=1000 + i, idx=i, tmp=tmp)
+                for i, inp in enumerate(inputs(p, gens, args.cases, tmp), 1):
                     r = subprocess.run([exe], input=inp, capture_output=True, text=True, timeout=20)
                     if r.returncode:
                         raise RuntimeError(f"accepted C++ exits {r.returncode} on case {i}")
                     open(os.path.join(tests, f"{i:02}.in"), "w").write(inp)
                     open(os.path.join(tests, f"{i:02}.ans"), "w").write(r.stdout)
+                if seed_list(p) is not None:
+                    open(key, "w").write(stamp(p, cpp))
                 made += 1
             except Exception as e:
                 missing.append((p, f"{e!r:.120}"))
     for p, why in missing:
         print(f"{p}: {why}")
     print(f"corpus-tests: tests for {made} of {len(ids)} problems")
+
+
+def seed(args):
+    """Write `tests.toml` for problems whose committed `tests/` it replaces.
+
+    A committed input under INLINE bytes is kept inline; a larger one becomes a
+    generated case of the largest power-of-two size whose input is no longer,
+    so the seed list stays within the sizes the old files proved. `--max` is added when the
+    generator has it.
+    """
+    for p in args.ids:
+        d = os.path.join(PROBLEMS, p)
+        gen = os.path.join(d, "gen.py")
+        ins = sorted(f for f in os.listdir(os.path.join(d, "tests")) if f.endswith(".in"))
+        lines = ["# Cases for scripts/corpus-tests.py make (problem-packages/R9).", ""]
+        for n, f in enumerate(ins, 1):
+            text = open(os.path.join(d, "tests", f)).read()
+            if len(text) <= INLINE or not os.path.exists(gen):
+                if len(text) > INLINE:
+                    sys.exit(f"{p}: {f} is {len(text)} bytes and there is no gen.py")
+                lines += ["[[case]]", "input = " + json.dumps(text), ""]
+                continue
+            size = 4
+            while size < 1 << 24 and len(case_input(p, {"seed": n, "size": size * 2})) <= len(text):
+                size *= 2
+            lines += ["[[case]]", f"seed = {n}", f"size = {size}", ""]
+        if os.path.exists(gen) and "--max" in open(gen).read():
+            lines += ["[[case]]", 'args = ["--max"]', ""]
+        open(os.path.join(d, "tests.toml"), "w").write("\n".join(lines).rstrip() + "\n")
+        print(f"{p}: {len(ins)} committed cases -> tests.toml")
 
 
 def verify(args):
@@ -162,16 +241,20 @@ def verify(args):
             derivable.append(p)
     print(f"corpus-tests: answers reproduced byte for byte: {total}")
     print(f"corpus-tests: {len(derivable)} problems with every answer derivable")
+    if args.list:
+        print("\n".join(derivable))
 
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("cmd", choices=["make", "verify"])
+    ap.add_argument("cmd", choices=["make", "verify", "seed"])
     ap.add_argument("ids", nargs="*")
     ap.add_argument("--cases", type=int, default=8)
     ap.add_argument("--out")
+    ap.add_argument("--seeded", action="store_true", help="make: only problems with a tests.toml (fast once made)")
+    ap.add_argument("--list", action="store_true", help="verify: print the problems whose answers all reproduce")
     args = ap.parse_args()
-    (verify if args.cmd == "verify" else make)(args)
+    {"make": make, "verify": verify, "seed": seed}[args.cmd](args)
 
 
 if __name__ == "__main__":

@@ -1,0 +1,25 @@
+# Cases for scripts/corpus-tests.py make (problem-packages/R9).
+
+[[case]]
+input = "3\n1 2\n2 3\n"
+
+[[case]]
+input = "11\n1 2\n3 1\n2 4\n3 5\n6 2\n7 5\n7 8\n9 8\n10 6\n9 11\n"
+
+[[case]]
+input = "10\n2 1\n3 2\n4 2\n1 5\n6 3\n7 6\n8 3\n7 9\n9 10\n"
+
+[[case]]
+input = "9\n1 2\n3 2\n4 3\n4 5\n6 5\n6 7\n8 7\n8 9\n"
+
+[[case]]
+input = "10\n2 1\n1 3\n4 1\n3 5\n6 4\n6 7\n7 8\n9 5\n7 10\n"
+
+[[case]]
+input = "8\n1 2\n3 2\n3 4\n5 4\n6 5\n6 7\n7 8\n"
+
+[[case]]
+input = "3\n2 1\n3 1\n"
+
+[[case]]
+input = "11\n1 2\n3 2\n4 2\n5 4\n6 5\n4 7\n8 5\n9 8\n10 8\n10 11\n"

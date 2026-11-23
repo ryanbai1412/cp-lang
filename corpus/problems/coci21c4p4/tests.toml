@@ -1,0 +1,35 @@
+# Cases for scripts/corpus-tests.py make (problem-packages/R9).
+
+[[case]]
+input = "9 3\n1 2 5\n1 3 1\n3 4 10\n3 5 9\n5 6 8\n2 7 1\n2 8 2\n8 9 7\n"
+
+[[case]]
+input = "5 2\n1 2 3\n2 3 7\n3 4 3\n4 5 3\n"
+
+[[case]]
+input = "7 4\n1 3 1\n1 4 1\n2 3 1\n5 3 1\n4 7 1\n4 6 1\n"
+
+[[case]]
+input = "1 1\n\n"
+
+[[case]]
+input = "4 1\n1 2 10\n2 3 10\n3 4 2\n"
+
+[[case]]
+input = "12 1\n1 2 359597098\n2 3 70922656\n3 4 510611511\n4 5 539020473\n5 6 484604987\n6 7 539644433\n7 8 94370892\n8 9 962706873\n9 10 316857683\n10 11 937670317\n11 12 363603707\n"
+
+[[case]]
+seed = 7
+size = 1024
+
+[[case]]
+seed = 8
+size = 4096
+
+[[case]]
+seed = 9
+size = 16384
+
+[[case]]
+seed = 10
+size = 65536

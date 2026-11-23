@@ -1,0 +1,60 @@
+# Cases for scripts/corpus-tests.py make (problem-packages/R9).
+
+[[case]]
+input = "2\nQ 6\nQ 9\nQ 6\nQ 3\nQ 0\nI 2 2 6\nQ 9\nQ 0\nQ 1\nQ 6\nQ 1\nQ 4\nI 1 2 -8\nI 1 2 -9\nI 1 1 -10\nE\n"
+
+[[case]]
+input = "9809\nI 4546 8510 -6\nQ 318\nI 7134 9223 -9\nI 662 7561 -10\nQ 346\nI 9553 9636 -1\nI 4603 5258 6\nQ 335\nQ 225\nQ 358\nE\n"
+
+[[case]]
+input = "9205\nQ 228\nQ 206\nI 5488 5758 5\nQ 257\nI 4835 7609 8\nQ 367\nQ 355\nI 3744 8152 7\nI 3758 8344 7\nI 6424 7828 -9\nE\n"
+
+[[case]]
+input = "14\nI 1 12 -6\nQ 47\nI 4 4 -6\nQ 16\nI 14 14 3\nI 2 8 -7\nI 12 12 -1\nQ 31\nQ 49\nE\n"
+
+[[case]]
+input = "6589\nI 5421 5787 5\nI 2654 4159 -4\nQ 338\nQ 406\nI 6329 6357 0\nI 2171 4072 -8\nI 1006 4884 -4\nQ 304\nQ 500\nI 5848 6402 -9\nI 5541 6166 -2\nI 3879 5750 4\nE\n"
+
+[[case]]
+input = "12\nI 10 11 -10\nQ 57\nQ 48\nQ 40\nI 2 8 -10\nI 5 5 -1\nQ 49\nQ 0\nI 5 6 -8\nQ 57\nI 8 11 5\nI 7 7 6\nQ 56\nQ 41\nI 12 12 -2\nQ 33\nI 2 5 8\nE\n"
+
+[[case]]
+input = "2\nQ 2\nI 1 1 7\nI 2 2 -9\nI 1 1 -8\nI 1 2 10\nI 2 2 10\nI 2 2 -3\nQ 0\nQ 7\nI 2 2 3\nI 1 2 -2\nQ 6\nE\n"
+
+[[case]]
+input = "7342\nQ 473\nI 5418 6875 -6\nQ 302\nQ 303\nI 94 4511 0\nE\n"
+
+[[case]]
+input = "4\nQ 1\nI 1 4 2\nQ 3\nQ 1\nI 2 2 -1\nQ 3\nE\n"
+
+[[case]]
+seed = 10
+size = 64
+
+[[case]]
+seed = 11
+size = 64
+
+[[case]]
+seed = 12
+size = 256
+
+[[case]]
+seed = 13
+size = 512
+
+[[case]]
+seed = 14
+size = 1024
+
+[[case]]
+seed = 15
+size = 2048
+
+[[case]]
+seed = 16
+size = 2048
+
+[[case]]
+seed = 17
+size = 4096

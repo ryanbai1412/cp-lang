@@ -1,0 +1,33 @@
+# Cases for scripts/corpus-tests.py make (problem-packages/R9).
+
+[[case]]
+input = "3 3\nask square 2\nask circle 3\nask square 1\n"
+
+[[case]]
+input = "1 3\nset circle 1\nask circle 1\nset triangle 1\n"
+
+[[case]]
+input = "4 5\nask triangle 4\nset triangle 1\nask circle 2\nset triangle 4\nask circle 2\n"
+
+[[case]]
+input = "5 12\nset circle 2\nset square 1\nask circle 2\nask triangle 1\nset square 2\nask circle 2\nask square 1\nset triangle 5\nask square 2\nset square 2\nset square 2\nask circle 2\n"
+
+[[case]]
+input = "4 12\nask square 2\nset square 2\nset triangle 2\nask triangle 1\nask circle 4\nask circle 2\nask square 4\nset square 3\nask circle 4\nset triangle 3\nset square 4\nask square 1\n"
+
+[[case]]
+input = "5 10\nset triangle 2\nset square 2\nset square 5\nset triangle 3\nset circle 2\nset circle 2\nset circle 4\nask square 3\nask square 4\nask triangle 3\n"
+
+[[case]]
+input = "3 14\nask triangle 2\nask square 2\nset triangle 3\nset square 1\nask triangle 2\nset square 1\nset triangle 1\nask triangle 2\nask square 2\nask triangle 1\nask square 1\nset square 1\nask square 3\nask circle 2\n"
+
+[[case]]
+input = "6 1\nset square 4\n"
+
+[[case]]
+seed = 9
+size = 2048
+
+[[case]]
+seed = 10
+size = 4096

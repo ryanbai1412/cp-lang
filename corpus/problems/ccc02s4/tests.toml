@@ -1,0 +1,25 @@
+# Cases for scripts/corpus-tests.py make (problem-packages/R9).
+
+[[case]]
+input = "5\n20\np000\n54\np001\n14\np002\n93\np003\n79\np004\n70\np005\n89\np006\n86\np007\n66\np008\n82\np009\n25\np010\n99\np011\n100\np012\n27\np013\n44\np014\n84\np015\n8\np016\n90\np017\n99\np018\n92\np019\n20\n"
+
+[[case]]
+input = "5\n20\np000\n54\np001\n14\np002\n93\np003\n79\np004\n70\np005\n89\np006\n86\np007\n66\np008\n82\np009\n25\np010\n99\np011\n100\np012\n27\np013\n44\np014\n84\np015\n8\np016\n90\np017\n99\np018\n92\np019\n20\n"
+
+[[case]]
+input = "5\n20\np000\n54\np001\n14\np002\n93\np003\n79\np004\n70\np005\n89\np006\n86\np007\n66\np008\n82\np009\n25\np010\n99\np011\n100\np012\n27\np013\n44\np014\n84\np015\n8\np016\n90\np017\n99\np018\n92\np019\n20\n"
+
+[[case]]
+input = "5\n20\np000\n54\np001\n14\np002\n93\np003\n79\np004\n70\np005\n89\np006\n86\np007\n66\np008\n82\np009\n25\np010\n99\np011\n100\np012\n27\np013\n44\np014\n84\np015\n8\np016\n90\np017\n99\np018\n92\np019\n20\n"
+
+[[case]]
+input = "5\n20\np000\n54\np001\n14\np002\n93\np003\n79\np004\n70\np005\n89\np006\n86\np007\n66\np008\n82\np009\n25\np010\n99\np011\n100\np012\n27\np013\n44\np014\n84\np015\n8\np016\n90\np017\n99\np018\n92\np019\n20\n"
+
+[[case]]
+input = "5\n20\np000\n54\np001\n14\np002\n93\np003\n79\np004\n70\np005\n89\np006\n86\np007\n66\np008\n82\np009\n25\np010\n99\np011\n100\np012\n27\np013\n44\np014\n84\np015\n8\np016\n90\np017\n99\np018\n92\np019\n20\n"
+
+[[case]]
+input = "5\n20\np000\n54\np001\n14\np002\n93\np003\n79\np004\n70\np005\n89\np006\n86\np007\n66\np008\n82\np009\n25\np010\n99\np011\n100\np012\n27\np013\n44\np014\n84\np015\n8\np016\n90\np017\n99\np018\n92\np019\n20\n"
+
+[[case]]
+input = "5\n20\np000\n54\np001\n14\np002\n93\np003\n79\np004\n70\np005\n89\np006\n86\np007\n66\np008\n82\np009\n25\np010\n99\np011\n100\np012\n27\np013\n44\np014\n84\np015\n8\np016\n90\np017\n99\np018\n92\np019\n20\n"

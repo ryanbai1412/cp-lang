@@ -1,0 +1,34 @@
+# Cases for scripts/corpus-tests.py make (problem-packages/R9).
+
+[[case]]
+input = "4135 16716 7727\n"
+
+[[case]]
+input = "0\n"
+
+[[case]]
+input = "35666 8547 24245 39578\n"
+
+[[case]]
+input = "6 46 25 30\n"
+
+[[case]]
+input = "47 22 50 44 47 41 33 1 29 49\n"
+
+[[case]]
+input = "3 2 0 0 1 5 4 3 5 2\n"
+
+[[case]]
+input = "3 5 0 0 4 0\n"
+
+[[case]]
+seed = 8
+size = 2048
+
+[[case]]
+seed = 9
+size = 512
+
+[[case]]
+seed = 10
+size = 32768

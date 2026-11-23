@@ -131,7 +131,7 @@
   "skip_lists": 218,
   "dead_code_allows": 6,
   "external_crates": 5,
-  "corpus_test_files": 2763,
+  "corpus_test_files": 2041,
   "uncited_rules": 0,
   "register_rows_by_domain": {
     "compiler": 1,

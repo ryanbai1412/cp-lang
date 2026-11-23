@@ -47,8 +47,7 @@ pub fn discover_file(root: &Path, filter: Option<&str>, file: &str) -> Vec<Corpu
         .map(|id| {
             let prob_dir = dir.join(&id);
             let spec_path = prob_dir.join(file);
-            let tests_dir = prob_dir.join("tests");
-            let tests = runner::walk_files(&tests_dir, "in")
+            let tests = runner::walk_files(&tests_dir(root, &prob_dir, &id), "in")
                 .into_iter()
                 .map(|in_path| {
                     let ans_path = in_path.with_extension("ans");
@@ -64,6 +63,16 @@ pub fn discover_file(root: &Path, filter: Option<&str>, file: &str) -> Vec<Corpu
             }
         })
         .collect()
+}
+
+/// A problem's cases: its committed `tests/`, or, for a problem whose cases are a seed list
+/// (`tests.toml`), what `scripts/corpus-tests.py make` wrote under `target/corpus-tests/<id>/`.
+fn tests_dir(root: &Path, prob_dir: &Path, id: &str) -> PathBuf {
+    if prob_dir.join("tests.toml").is_file() {
+        root.join("target").join("corpus-tests").join(id)
+    } else {
+        prob_dir.join("tests")
+    }
 }
 
 pub fn run_one(db: &mut Database, prob: &CorpusProblem) -> CaseOutcome {
