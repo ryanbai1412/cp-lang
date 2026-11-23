@@ -810,6 +810,9 @@ fn by_base(name: &str) -> Option<&'static str> {
         "sorted" => "sorted",
         "argmax" | "position_max" => "argmax",
         "argmin" | "position_min" => "argmin",
+        "is_sorted" => "is_sorted",
+        "runs" => "runs",
+        "group" => "group",
         _ => return None,
     })
 }

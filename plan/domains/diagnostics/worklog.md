@@ -507,3 +507,8 @@ Landed since 23:10: four type/flow lints from `spec/idioms/lints.md`, L0571 `neg
   runs; help gives both `(0..n).rev` and `(0..=n).rev` (no fix: which one
   is meant is the contestant's call). Facts from rules/proven/hazards.rs.
   0 hits on corpus, newcomer and std.
+- `_by` twins of `is_sorted`, `runs` and `group` (method and free form,
+  `_by_key` too) now get the `by:` fix, so L0510 has nothing left the
+  checker doesn't cover. `run_ranges_by` stays without a fix: std has no
+  `run_ranges`. Test: diagnostics/a_method_by_twin.cp, whose fixed form
+  checks and runs.

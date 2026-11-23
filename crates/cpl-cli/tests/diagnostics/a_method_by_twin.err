@@ -1,0 +1,29 @@
+error[E0203]: a `List<Int>` has no method `is_sorted_by`
+  --> a_method_by_twin.cp:4:10
+  |
+4 | print(xs.is_sorted_by(x => -x))
+  |          ^^^^^^^^^^^^
+  = help: write `.is_sorted(by: ..)`: options are named arguments, so there is one `is_sorted` and no `_by` twin
+
+error[E0201]: no `is_sorted_by_key` in scope
+  --> a_method_by_twin.cp:5:7
+  |
+5 | print(is_sorted_by_key(xs, x => x))
+  |       ^^^^^^^^^^^^^^^^
+  = help: write `xs.is_sorted(by: ..)`: options are named arguments, so there is one `is_sorted` and no `_by` twin
+
+error[E0203]: a `List<Int>` has no method `runs_by`
+  --> a_method_by_twin.cp:6:13
+  |
+6 | for r in xs.runs_by(x => x % 2):
+  |             ^^^^^^^
+  = help: write `.runs(by: ..)`: options are named arguments, so there is one `runs` and no `_by` twin
+
+error[E0203]: a `domain V` has no method `group_by`
+  --> a_method_by_twin.cp:8:9
+  |
+8 | print(V.group_by(v => ys[v]).len)
+  |         ^^^^^^^^
+  = help: write `.group(by: ..)`: options are named arguments, so there is one `group` and no `_by` twin
+
+a_method_by_twin.cp: 4 errors
