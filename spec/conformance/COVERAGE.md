@@ -7,14 +7,14 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 2636 (995 passing). Rules: 568.
+Cases: 2638 (995 passing). Rules: 568.
 
 ## Summary per chapter
 
 - R01 (01-lexical-grammar.md): 56 rules, 157 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R02 (02-values-types.md): 52 rules, 144 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R03 (03-numbers-layout.md): 24 rules, 67 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R04 (04-indices.md): 69 rules, 140 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R04 (04-indices.md): 69 rules, 142 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04a (04a-identity-vs-offset.md): 39 rules, 54 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04b (04b-keys.md): 27 rules, 66 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R05 (05-ownership.md): 43 rules, 155 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -252,7 +252,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R04.4.9 [2+ 0-]: | `..=i` | `D.first..=i` | everything up to and including `i`
 - R04.4.10 [3+ 0-]: | `i..` | `i..=D.last` | `i` and everything after it
 - R04.4.11 [1+ 1-]: | `..` | all of the indexed dimension | only inside `[...]`: `grid[r, ..]`
-- R04.4.22 [1+ 0-]: The language's implicit conversions are this closed list, none user-extensible. Each appli...
+- R04.4.22 [2+ 1-]: The language's implicit conversions are this closed list, none user-extensible. Each appli...
 - R04.4.23 [1+ 0-]: **`T` to `?T`.** `u != from` with `from: ?V` compares `Some(u)` with `from`. Free.
 - R04.4.24 [2+ 1-]: .
 - R04.4.25 [1+ 2-]: . For a domain with a runtime count (`domain V = 1..=n`, `n: 1..=2e5`), a literal outside ...
@@ -740,7 +740,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0207 Private item: 3 case(s)
 - E0208 Uppercase value name: 1 case(s)
 - E0301 Wrong index domain: 16 case(s)
-- E0302 Type mismatch: 41 case(s)
+- E0302 Type mismatch: 42 case(s)
 - E0303 Wrong number of arguments: 7 case(s)
 - E0304 Value is not callable: 1 case(s)
 - E0305 Value is not indexable: 4 case(s)

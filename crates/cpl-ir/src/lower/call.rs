@@ -6252,8 +6252,8 @@ impl<'a> Lowerer<'a> {
             },
             _ => (false, false),
         };
-        if !has_self {
-            return None;
+        if !has_self || self.char_list_as_str(sym, base) {
+            return has_self.then(|| self.err_expr(span));
         }
         let mut all_args = Vec::with_capacity(args.len() + 1);
         all_args.push(ast::Arg {

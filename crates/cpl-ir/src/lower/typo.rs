@@ -190,6 +190,30 @@ impl<'a> Lowerer<'a> {
         }
     }
 
+    /// `['R', 'W'].join("")`: a `List<Char>` receiver is not made a `Str` for a `self: Str` fn
+    /// (R04.4.22 converts arguments, not receivers), or it would join `""` with `"RW"` between.
+    pub(super) fn char_list_as_str(&mut self, sym: Sym, base: &ast::Expr) -> bool {
+        let first = match sym {
+            Sym::Fn(fid) => self.sigs[fid].decl.params.first(),
+            Sym::GenFn(gfid) => self.gen_fns[gfid].decl.params.first(),
+            _ => None,
+        };
+        let takes_str = first.and_then(|p| p.ty.as_ref()).is_some_and(
+            |t| matches!(&t.kind, ast::TypeKind::Named { name, .. } if name.text == "Str"),
+        );
+        if !takes_str || !matches!(self.probe_ty_silent(base), Some(Ty::List(e)) if *e == Ty::Char)
+        {
+            return false;
+        }
+        let (text, at) = (self.source(base.span).to_string(), self.span(base.span));
+        let message = "expected `Str`, found `List<Char>`: a `Str` method takes a list of characters as `Str(..)`";
+        let mut d = Diagnostic::error(codes::TYPE_MISMATCH, at, message.to_string());
+        d.help = Some(format!("write `Str({text})`"));
+        d.fix(format!("write `Str({text})`"), at, format!("Str({text})"));
+        self.diags.push(d);
+        true
+    }
+
     /// `t[0]` on a tuple: its positional fields are read `t.0`, `t.1`.
     pub(super) fn tuple_index_fix(&mut self, ty: &Ty, index: &ast::Expr, span: Span) {
         let (Ty::Tuple(_), ast::ExprKind::Int(n)) = (ty, &index.kind) else {
