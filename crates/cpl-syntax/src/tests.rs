@@ -1688,3 +1688,21 @@ fn a_size_run_into_its_type_is_one_missing_bracket() {
     );
     assert_eq!(codes("print(0xFF)\nlet a = [1Q]\n"), ["E0005"]);
 }
+
+#[test]
+fn an_unexpected_indent_moves_its_whole_run_back() {
+    let src = "let a = 1\n    let b = 2\n    if b > 1:\n        print(b)\nprint(a)\n";
+    let diags = parse_file(src).diagnostics;
+    let mut out = src.to_string();
+    for (span, text) in diags[0].fixes[0].edits.iter().rev() {
+        out.replace_range(span.start as usize..span.end as usize, text);
+    }
+    assert_eq!(
+        out,
+        "let a = 1\nlet b = 2\nif b > 1:\n    print(b)\nprint(a)\n"
+    );
+    assert!(parse_file(&out).diagnostics.is_empty());
+    let src = "fn f():\n    let a = 1\n        let b = 2\n    print(a)\nf()\n";
+    let diags = parse_file(src).diagnostics;
+    assert_eq!(diags[0].fixes[0].edits.len(), 1, "{diags:?}");
+}

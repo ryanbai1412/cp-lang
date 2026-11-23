@@ -27,6 +27,7 @@ impl<'a> Parser<'a> {
                 )
                 .with_help("remove the extra indentation, or end the line above with `:`"),
             );
+            self.dedent_fix();
             self.recovering = false;
             self.bump();
             while !matches!(self.peek(), T::Dedent | T::Eof) {
@@ -46,6 +47,61 @@ impl<'a> Parser<'a> {
         out.append(&mut self.lead_stmts);
         out.push(stmt);
         out.append(&mut self.extra_stmts);
+    }
+
+    /// Offers to move an unexpectedly indented run of lines back to the
+    /// indentation of the line above it, keeping the run's own nesting.
+    fn dedent_fix(&mut self) {
+        let mut depth = 0;
+        let mut end = None;
+        for t in &self.tokens[self.pos..] {
+            match t.kind {
+                T::Indent => depth += 1,
+                T::Dedent if depth == 1 => break,
+                T::Dedent => depth -= 1,
+                T::Newline => {}
+                _ => end = Some(t.span.end),
+            }
+        }
+        let (Some(first), Some(end)) = (self.tokens.get(self.pos + 1), end) else {
+            return;
+        };
+        let src = self.src;
+        let start = src[..first.span.start as usize]
+            .rfind('\n')
+            .map_or(0, |i| i + 1);
+        let indent = |line: &str| line.len() - line.trim_start_matches(' ').len();
+        let above = src[..start.saturating_sub(1)]
+            .lines()
+            .rev()
+            .find(|l| !l.trim().is_empty() && !l.trim_start().starts_with("//"))
+            .map_or(0, indent);
+        let Some(extra) = indent(&src[start..]).checked_sub(above).filter(|&e| e > 0) else {
+            return;
+        };
+        let mut edits = Vec::new();
+        let mut at = start;
+        while at <= end as usize {
+            let Some(line) = src.get(at..).and_then(|r| r.split('\n').next()) else {
+                return;
+            };
+            let Ok(rel) = u32::try_from(at as i64 + self.delta) else {
+                return;
+            };
+            if indent(line) >= extra {
+                edits.push((Span::new(rel, rel + extra as u32), String::new()));
+            }
+            at += line.len() + 1;
+        }
+        let last = self.sink.last_mut();
+        if let Some(diag) =
+            last.filter(|d| d.code == codes::UNEXPECTED_INDENT && d.fixes.is_empty())
+        {
+            diag.fixes.push(cpl_diag::Fix {
+                title: "remove the extra indentation".into(),
+                edits,
+            });
+        }
     }
 
     fn stmt(&mut self) -> Stmt {
