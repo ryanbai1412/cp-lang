@@ -13,6 +13,7 @@ the earliest scenario step. A finding is fixed when its latest report says so (`
 the ranking and are listed under "Fixed".
 """
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -101,15 +102,30 @@ def render(runs):
            "then minutes lost, then the earliest scenario step. Each lane's rows are also sent to its `plan/domains/<lane>/worklog.md`.", ""]
     if runs:
         latest = max(runs, key=lambda r: (r["date"], r["_name"]))
-        passed = [s for s in STEPS if latest["steps"][s]["pass"]]
-        out += [f"Latest run: `{latest['_name']}` ({latest['date']}, site `{latest['site_commit']}`): "
-                f"{len(passed)}/{len(STEPS)} steps pass.", "",
-                quality(latest), "",
-                *([f"CLI on every OS (CI {latest['ci']['run']}): Linux {latest['ci']['linux']}, macOS {latest['ci']['macos']}, "
-                   f"Windows {latest['ci']['windows']}.", ""] if "ci" in latest else []),
-                "| Step | " + " | ".join(STEPS) + " |", "|---|" + "---|" * len(STEPS),
-                "| Pass | " + " | ".join("yes" if latest["steps"][s]["pass"] else "**no**" for s in STEPS) + " |",
-                "| Minutes | " + " | ".join(f"{latest['steps'][s]['minutes']:g}" for s in STEPS) + " |", ""]
+        base = re.sub(r"-(linux|macos|windows)$", "", latest["_name"])
+        group = sorted((r for r in runs if re.sub(r"-(linux|macos|windows)$", "", r["_name"]) == base),
+                       key=lambda r: r["_name"])
+        if len(group) > 1:
+            out += [f"Latest run: `{base}` ({latest['date']}), one agent per OS:", ""]
+            for r in group:
+                passed = [s for s in STEPS if r["steps"][s]["pass"]]
+                out += [f"- `{r['_name']}` ({r['os']}, site `{r['site_commit']}`): "
+                        f"{len(passed)}/{len(STEPS)} steps pass. " + quality(r)]
+            out += [""]
+        else:
+            passed = [s for s in STEPS if latest["steps"][s]["pass"]]
+            out += [f"Latest run: `{latest['_name']}` ({latest['date']}, site `{latest['site_commit']}`): "
+                    f"{len(passed)}/{len(STEPS)} steps pass.", "", quality(latest), ""]
+        cis = [r for r in group if "ci" in r]
+        if cis:
+            ci = cis[-1]["ci"]
+            out += [f"CLI on every OS (CI {ci['run']}): Linux {ci['linux']}, macOS {ci['macos']}, Windows {ci['windows']}.", ""]
+        out += ["| Step | " + " | ".join(STEPS) + " |", "|---|" + "---|" * len(STEPS)]
+        for r in group:
+            tag = f" ({r['_name'][len(base) + 1:]})" if len(group) > 1 else ""
+            out += [f"| Pass{tag} | " + " | ".join("yes" if r["steps"][s]["pass"] else "**no**" for s in STEPS) + " |",
+                    f"| Minutes{tag} | " + " | ".join(f"{r['steps'][s]['minutes']:g}" for s in STEPS) + " |"]
+        out += [""]
     else:
         out += ["No acceptance run recorded yet.", ""]
     out += [f"{len(runs)} run(s), {len(ranked)} open finding(s), {len(fixed)} fixed.", ""]
