@@ -8,9 +8,18 @@
 // dead leaves in place so every deleted leaf is visited once.
 use std.rand.Rng
 
-struct SegNode(l: ?Int, r: ?Int)
+struct SegNode:
+    var l: ?Int
+    var r: ?Int
 
-struct TreapNode(l: ?Int, r: ?Int, pri: U64, own: ?Int, lazy: ?Int, sz: Int, flip: Bool)
+struct TreapNode:
+    var l: ?Int
+    var r: ?Int
+    var pri: U64
+    var own: ?Int
+    var lazy: ?Int
+    var sz: Int
+    var flip: Bool
 
 let (n, q_cnt): (1..=300_000, 1..=300_000) = read()
 domain Query = 1..=q_cnt

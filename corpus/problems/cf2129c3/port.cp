@@ -42,9 +42,7 @@ fn ask(inds: List<Pos>) -> Int:
     print("?", inds.len, inds)
     read()
 
-let open_i = bsearch_first(
-    Pos(2)..=Pos.last,
-    p => ask([x for x in Pos if x <= p]) > 0,
+let open_i = (Pos(2)..=Pos.last!).first_true(p => ask([x for x in Pos if x <= p]) > 0,
 ).map(r => r.prev!) ?? Pos.last
 
 var ans: [Pos]Char = '?'
@@ -53,9 +51,9 @@ for start in 0..n by blk:
     var query: List<Pos> = []
     for (pos, k) in zip(inds, weights):
         repeat k:
-            query.push(open_i)
+            query.push(open_i!)
             query.push(pos)
-        query.push(open_i)
+        query.push(open_i!)
 
     var rem = ask(query)
     for (pos, k) in zip(inds, weights).rev:
