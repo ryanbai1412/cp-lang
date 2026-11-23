@@ -88,6 +88,7 @@ pub(crate) const COMMANDS: &[Command] = &[
             "--judge",
             "--checks",
             "--checked",
+            "--compiler",
             "--size",
             "--copy",
             "--json",
@@ -397,6 +398,10 @@ options:
                     `all` adds range stores, overflow and the rest of the
                     local build's checks
   --checked         also compile it with sanitizers into a program to run here
+  --compiler <toolchain>
+                    build with that toolchain (`0.3.0`, `edge-2026-11-22`),
+                    as `cpl +<toolchain> build` does, so an old solution
+                    rebuilds byte for byte
   --size            say where the bytes go: header, runtime, library fns,
                     your code, by part and by piece (said anyway when the
                     file is over the judge's limit)

@@ -255,6 +255,21 @@ pub fn exec<S: AsRef<str>>(
             code
         }
         Some("build") => {
+            let mut rest: Vec<&str> = rest.to_vec();
+            if let Some(at) = rest.iter().position(|arg| *arg == "--compiler") {
+                let Some(want) = rest.get(at + 1).copied() else {
+                    return usage_error(
+                        "`--compiler` takes a toolchain: `cpl build a.cp --compiler 0.3.0`".into(),
+                    );
+                };
+                rest.drain(at..at + 2);
+                let forwarded = [&["build"][..], &rest].concat();
+                match toolchain::pinned(want, &forwarded) {
+                    Ok(None) => {}
+                    Ok(Some(code)) => return code,
+                    Err(message) => return usage_error(message),
+                }
+            }
             let checked = rest.contains(&"--checked");
             let size = rest.contains(&"--size");
             let copy = rest.contains(&"--copy");

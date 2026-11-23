@@ -618,6 +618,36 @@ fn hand_over(mut command: Command, bin: &Path) -> Option<u8> {
     }
 }
 
+/// `cpl build --compiler <toolchain>`: `None` when this binary is that
+/// toolchain, else the exit code of `args` run by it through the launcher.
+pub(crate) fn pinned(want: &str, args: &[&str]) -> Result<Option<u8>, String> {
+    let selector = Selector::parse(want)?;
+    let running = std::env::var("CPL_TOOLCHAIN").unwrap_or_default();
+    let here = match &selector {
+        Selector::Version(version) => version == crate::VERSION,
+        Selector::Dated(id) | Selector::Toolchain(id) => running.starts_with(id.as_str()),
+        Selector::Channel(_) => false,
+    };
+    if here {
+        return Ok(None);
+    }
+    let launcher = home()
+        .map(|home| home.join("bin").join(format!("cpl{EXE}")))
+        .filter(|launcher| launcher.is_file())
+        .ok_or_else(|| {
+            format!(
+                "`--compiler {want}` builds with toolchain `{want}` through the installed launcher, and there is none; \
+                 install it from https://cp-lang.org/install.sh"
+            )
+        })?;
+    let status = Command::new(&launcher)
+        .arg(format!("+{want}"))
+        .args(args)
+        .status()
+        .map_err(|e| format!("could not start {}: {e}", launcher.shown()))?;
+    Ok(Some(status.code().map_or(EXIT_ERRORS, |c| c as u8)))
+}
+
 /// `cpl self <command>`.
 pub fn self_command(args: &[&str], stdout: &mut dyn Write, stderr: &mut String) -> u8 {
     let Some(home) = home() else {

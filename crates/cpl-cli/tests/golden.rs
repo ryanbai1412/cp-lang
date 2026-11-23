@@ -1720,3 +1720,28 @@ fn usage_errors_name_a_working_invocation() {
         );
     }
 }
+
+/// `cpl build --compiler <toolchain>`: the running toolchain builds itself;
+/// another one goes through the installed launcher, and with none it says so.
+#[test]
+fn build_compiler_rebuilds_with_the_pinned_toolchain() {
+    let dir = scratch("build-compiler");
+    std::fs::write(dir.join("a.cp"), "print(1)\n").unwrap();
+    let version = env!("CARGO_PKG_VERSION");
+    let out = cpl(&dir, &["build", "a.cp", "-o", "-", "--compiler", version]);
+    assert_eq!(out.status.code(), Some(0), "{}", text(&out.stderr));
+    assert!(text(&out.stdout).contains(&format!("cpl {version}")));
+    misused(
+        "build",
+        &["build", "a.cp", "--compiler"],
+        "`--compiler` takes a toolchain",
+    );
+    let out = Command::new(env!("CARGO_BIN_EXE_cpl"))
+        .args(["build", "a.cp", "--compiler", "0.0.1"])
+        .current_dir(&dir)
+        .env("CPL_HOME", dir.join("no-home"))
+        .output()
+        .unwrap();
+    assert_eq!(out.status.code(), Some(EXIT_USAGE.into()));
+    assert!(text(&out.stderr).contains("through the installed launcher, and there is none"));
+}

@@ -24,7 +24,7 @@ platform and `\` on Windows too; `d.tests/` sits beside `d.cp`.
 | `cpl bench d` | release runtime against the profile's limits and against a matched C++ file if given |
 | `cpl fmt [files]` | canonical formatting (`tools/fmt-lint.md`) |
 | `cpl lint [files]` | lints with autofixes |
-| `cpl build d` | the C++ for the file's judge, written to `d.cpp` beside the source with its path and size on stdout (`-o out`; `-o -` writes the C++ to stdout); `--checks none\|traps\|all` (what the judge build still traps on; `none` by default, decisions.md 299), `--checked`, `--size`, `--judge`, `--copy` (`-c`); `cpl b -c` is `cpl build --copy`, and `cpl r`, `cpl t` are `run`, `test` |
+| `cpl build d` | the C++ for the file's judge, written to `d.cpp` beside the source with its path and size on stdout (`-o out`; `-o -` writes the C++ to stdout); `--checks none\|traps\|all` (what the judge build still traps on; `none` by default, decisions.md 299), `--checked`, `--compiler <toolchain>` (builds with that toolchain through the launcher, as `cpl +<toolchain> build` does; R11.4.2), `--size`, `--judge`, `--copy` (`-c`); `cpl b -c` is `cpl build --copy`, and `cpl r`, `cpl t` are `run`, `test` |
 | `cpl submit d` | `build`, then the cases on that build with the judge's flags; `--copy` (`-c`) puts the file on the clipboard |
 | `cpl migrate [path]...` | rewrites spellings newer versions removed (each `E0503` with a fix) in every `.cp` file under the paths, shows the diff, and lists what needs a hand edit; `--check` changes nothing. Stdlib codemods join as their diagnostics land; recording pins waits on `cp.toml` pins |
 | `cpl judges` | lists judge profiles |
