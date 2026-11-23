@@ -64,8 +64,8 @@ def broken(base, got):
 
 
 def run_suite(wt, env, board, runner=None):
-    """`runner` is HEAD's cpl-conform, for a tree too old to have one: it
-    drives that tree's `cpl` binary through `CPL_CONFORM_CLI`."""
+    """`runner` is HEAD's cpl-conform: it drives that tree's `cpl` binary
+    through `CPL_CONFORM_CLI`."""
     crates = ["-p", "cpl-cli"] if runner else ["-p", "cpl-conform", "-p", "cpl-cli"]
     build = subprocess.run(["cargo", "build", "--release", "-q", *crates], cwd=wt, env=env,
                            capture_output=True, text=True, check=False)
@@ -89,12 +89,10 @@ def at_fix(wt, env, work, sha, files, head):
     git("checkout", "-f", "-q", sha, cwd=wt)
     git("clean", "-fdq", cwd=wt)
     git("checkout", head, "--", "spec/conformance", cwd=wt)
-    head_runner = work / "runner" / "cpl-conform"
-    runner = None if (wt / "crates" / "cpl-conform").is_dir() else head_runner
+    # HEAD's runner even when the tree has its own, so every tree gets the
+    # same harness (case timeouts, case ids); only the compiler differs.
+    runner = work / "runner" / "cpl-conform"
     fixed = run_suite(wt, env, work / "fix.json", runner)
-    if fixed is None and runner is None:
-        runner = head_runner
-        fixed = run_suite(wt, env, work / "fix.json", runner)
     if fixed is None or fixed is HUNG:
         return "fix commit does not build or hangs", []
     gone = [f for f in files if git("cat-file", "-e", f"{sha}^:{f}", cwd=wt, check=False).returncode]

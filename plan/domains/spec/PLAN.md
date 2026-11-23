@@ -67,3 +67,4 @@ Each local fix, and the mechanism that would remove its whole class.
 | `(a..b).step(k).len` and `.min()` allocate GBs as they walk | a check that no view adapter allocates per element (R07.2.8), as a perf probe over every adapter | stdlib |
 | `r.sum` without `()` gives no L0608 warning, because the lint looks only at builtins | L0608 checks the resolved method: any non-`@get` method read without `()`, std and user methods included | compiler |
 | Round 7 could not tell whether Heap, Graph and Prefix are inside Milestone 1 (H-LIB-SUBSET-STATUS) | every `conformance/std-*` folder is a `SUBSET.md` row that `conformance-subset.py --check` enforces like a rule section; a new family can't be missing from the subset | spec (done) |
+| A bug-catch tree old enough to fall back to its own cpl-conform ran without case timeouts and hung for the 15 min suite limit | measure every tree with HEAD's runner driving that tree's `cpl`, so harness fixes reach old trees | spec (done) |
