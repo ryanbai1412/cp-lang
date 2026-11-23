@@ -3,10 +3,10 @@
 //! `Graph.undirected(es)` / `Graph.directed(es)` build it from the edge list
 //! read in one go, over a vertex domain.
 
-use crate::walk::{walk_stmt, Visitor};
+use crate::walk::{unparen, walk_stmt, Visitor};
 use crate::{File, Finding, MANUAL_ADJACENCY_LIST};
 use cpl_diag::{Diagnostic, Span};
-use cpl_syntax::ast::{Expr, ExprKind, PatternKind, Stmt, StmtKind, TypeKind};
+use cpl_syntax::ast::{BinOp, Expr, ExprKind, PatternKind, Stmt, StmtKind, TypeKind};
 
 use super::lists::is_list_type;
 
@@ -65,7 +65,10 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
                             if name.text != "push" {
                                 return;
                             }
-                            if let ExprKind::Index { base, .. } = &base.kind {
+                            if let ExprKind::Index { base, indices } = &base.kind {
+                                if !matches!(&indices[..], [i] if is_vertex(i)) {
+                                    return;
+                                }
                                 if let ExprKind::Name(list) = &base.kind {
                                     self.0.push(list.clone());
                                 }
@@ -110,4 +113,22 @@ fn is_empty_list(e: &Expr) -> bool {
 
 fn is_read_call(e: &Expr) -> bool {
     matches!(&e.kind, ExprKind::Call { callee, .. } if matches!(&callee.kind, ExprKind::Name(n) if n == "read"))
+}
+
+/// `u`, `u - 1` or `u + 1`: a read vertex used directly. A bucket keyed by
+/// a computed value (`bads[diag(i, x)]`) is not an adjacency list.
+fn is_vertex(e: &Expr) -> bool {
+    match &unparen(e).kind {
+        ExprKind::Name(_) => true,
+        ExprKind::Binary {
+            op: BinOp::Add | BinOp::Sub,
+            lhs,
+            rhs,
+            ..
+        } => {
+            matches!(&unparen(lhs).kind, ExprKind::Name(_))
+                && matches!(&unparen(rhs).kind, ExprKind::Int(_))
+        }
+        _ => false,
+    }
 }
