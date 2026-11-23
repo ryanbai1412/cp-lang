@@ -1,4 +1,12 @@
-// EGOI 2023 P3, Find the Box (interactive, buildable today-form)
+// Source: EGOI 2023 P3 (Find the Box), https://dmoj.ca/problem/egoi23p3
+// Problem: interactive. An H x W grid (H, W <= 50) hides a solid box at some cell other than
+//   (0, 0). Each query sends a move string (<= 20000 of <>^v) to a robot starting at (0, 0)
+//   that stops at walls and the box, and reads where it ends. Find the box; full score needs
+//   at most 2 queries.
+// Solution: keep every candidate cell and simulate each query against all of them, keeping
+//   those that predict the reported end. Query 1 is a snake sweep of the grid; then pick the
+//   first row probe (down r rows, then right) whose simulated ends separate the survivors,
+//   else a fixed fallback probe. O(H W |moves|) simulation per query.
 // original: corpus/submissions/5678051.cpp
 let h: 1..=100 = read()
 let w: 1..=100 = read()

@@ -1,4 +1,12 @@
-// Runnable port (proto/cp.py lib-run) of mccc6s3.cp
+// Source: Mock CCC '24 Contest 1 S3 (Optimal Split Point), https://dmoj.ca/problem/mccc6s3
+// Problem: n <= 1e6 values a_i in 1..=1e6. Pick a split index i (a_i belongs to neither side)
+//   and optionally move one element j across, minimising |left sum - right sum|. Print i and
+//   j (-1 for no move), lexicographically smallest with -1 before any index.
+// Solution: sweep i left to right; when the right side is heavier by diff, the best element
+//   to move left is the value nearest diff/2 still on the right: binary search over the
+//   compressed values, skipping values with no occurrence left via DSU next/prev pointers,
+//   earliest occurrence. A sweep over the reversed array covers moves to the right.
+//   O(n log n).
 // original: corpus/submissions/6103125.cpp
 
 let n: Int = read()

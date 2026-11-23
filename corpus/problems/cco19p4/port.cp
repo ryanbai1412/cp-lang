@@ -1,4 +1,11 @@
-// CCO '19 P4 — Card Scoring (today form for proto/cpi lib-run, which has F64 + sqrt)
+// Source: CCO 2019 P4 (Card Scoring), https://dmoj.ca/problem/cco19p4
+// Problem: n <= 1e6 cards with values in 1..=n, drawn in order; keep or discard each, the
+//   hand holds one value only, and scoring a hand of x cards gives x^(k/2), 2 <= k <= 4.
+//   Print the maximum total score (relative error 1e-6).
+// Solution: k = 2 scores n (every card alone). Otherwise dp[i] = best from card i on =
+//   max over later cards j of the same value of score(#value in i..=j) + dp[j + 1]. Going
+//   right to left, each value keeps a Li Chao tree over its occurrence ranks of the curves
+//   score(m - x) + dp[j + 1] (score is convex, so two cross once). O(n log n).
 // original: corpus/submissions/3617807.cpp
 let k: Int = read()
 let n: Int = read()

@@ -1,4 +1,11 @@
-// CCO '23 P4 — Binary String (today form for proto/cpc)
+// Source: CCO 2023 P4 (Flip it and Stick it), https://dmoj.ca/problem/cco23p4
+// Problem: binary strings S (|S| <= 2e5) and T (|T| <= 3). One move reverses a substring of S;
+//   print the fewest moves until S has no occurrence of T, or -1 if impossible.
+// Solution: complement so T starts with 0, then a formula per pattern: "0" is 0 or -1; "00"
+//   is #00, -1 if zeros > ones + 1; "01", "001", "011" need one move per occurrence; "010"
+//   needs ceil(#010 / 2). "000" is -1 if zeros > 2 (ones + 1); otherwise greedy over the
+//   zero runs between ones, moving zeros of runs > 2 into empty gaps two at a time, else
+//   into gaps of size 1. O(n).
 // original: corpus/submissions/5579929.cpp
 let s: [domain S]Char = read()
 let t: [domain T]Char = read()

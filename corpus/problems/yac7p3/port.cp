@@ -1,4 +1,12 @@
-// YAC 7 P3 (today/ runnable subset) — original: corpus/submissions/5705218.cpp
+// Source: Yet Another Contest 7 P3 (No More Math Homework), https://dmoj.ca/problem/yac7p3
+// Problem: a functional graph P on n <= 1e6 subjects; students i and j must share a group if
+//   P^d(i) = P^d(j) for some d. Set one P_A = B to maximise the number of groups; print A B
+//   and a group label for each student.
+// Solution: a component with cycle length L allows exactly L groups, so the answer is the sum
+//   of cycle lengths. Repoint the cycle predecessor of the deepest vertex's cycle root at
+//   that vertex: the cycle gains its whole tail. Recompute the cycles and label each vertex
+//   by (cycle position + depth) mod L plus the component's offset. O(n).
+// original: corpus/submissions/5705218.cpp
 
 let n: 1..=1_000_000 = read()
 domain V = 1..=n

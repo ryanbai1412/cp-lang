@@ -1,4 +1,12 @@
-// AAC 4 P5 (today/ runnable subset) — original: corpus/submissions/4140767.cpp
+// Source: An Animal Contest 4 P5 (Neighbourly Neighbourhoods), https://dmoj.ca/problem/aac4p5
+// Problem: n, m, q <= 5e5, 1 <= x <= n. Print m distinct directed edges, no self loops, whose
+//   graph has exactly x SCCs and puts each of the q given pairs in one SCC; else -1.
+// Solution: DSU the pairs; -1 if fewer than x groups. Merge the two largest groups until x
+//   remain (largest first keeps the forced edges fewest and the room largest). A group of
+//   size s > 1 needs an s-cycle; fill the rest with the other ordered pairs inside a group,
+//   then edges from group i to group j for i < j only, so no SCCs merge. -1 if the cycles
+//   alone exceed m or the room runs out. O(n log n + m).
+// original: corpus/submissions/4140767.cpp
 
 let n: 1..=500_000 = read()
 let m: 0..=500_000 = read()

@@ -1,26 +1,11 @@
-// ABC481 G — Pancake Sorting Expectation: sum over all `2^n` choices of the
-// `k`-th smallest chosen pancake value (for every `k in 0..n`), where pancake `i`
-// takes `a_i` or `b_i` (`a_i <= b_i`).
-//
-// Write each sorted value as `v_min + sum_{gaps} dv * [v > gap_lo]`. For a gap
-// `[v_{t-1}, v_t]` of length `dv = v_t - v_{t-1}` between consecutive sorted
-// endpoints:
-//   - `p` pancakes have `b_i <= v_{t-1}` (both choices are `<= v_{t-1}`),
-//   - `q` pancakes straddle (`a_i <= v_{t-1} < b_i`: `a_i` lands `<=`, `b_i` `>`),
-//   - `n - p - q` have `a_i > v_{t-1}` (both choices are `> v_{t-1}`).
-//
-// Across all `2^n` assignments, `2^(n - q) * C(q, j)` assignments have exactly
-// `p + j` values `<= v_{t-1}`; those are the assignments where the `k`-th smallest
-// value exceeds `v_{t-1}` for every `k >= p + j`. Equivalently, the difference
-// sequence `d[k] = ans[k] - ans[k - 1]` has generating function
-//   `G(x) = sum_t dv_t * 2^(n - q_t) * x^(p_t) * (1 + x)^(q_t)`.
-//
-// Since `p_t` is non-decreasing along the sweep, divide-and-conquer merges a
-// segment into `Segment(poly, p_min, q_min)` representing
-// `x^(p_min) * (1 + x)^(q_min) * poly(x)`: lifting whichever half has larger
-// `q_min` by `(1 + x)^(q_half - q_min)` via NTT convolution and shifting the
-// right half by `rp_min - lp_min` computes `G(x)` in `O(n log^2 n)`. Prefix
-// sums of `G` starting from `2^n * events[0].val` yield `ans[0..n]`.
+// Source: AtCoder ABC481 G, https://atcoder.jp/contests/abc481/tasks/abc481_g
+// Problem: n <= 120000 pancakes, pancake i has size a_i or b_i (a_i < b_i < 998244353) with
+//   probability 1/2 each. For each k print 2^n E[k-th smallest size] mod 998244353.
+// Solution: write the k-th smallest as v_min plus each gap dv between consecutive sorted
+//   endpoints for which it exceeds the gap's low end. If p pancakes lie wholly below a gap
+//   and q straddle it, 2^(n-q) C(q, j) choices put exactly p + j values below, so
+//   ans[k] - ans[k-1] = [x^k] sum_t dv_t 2^(n-q_t) x^(p_t) (1 + x)^(q_t). Divide and conquer
+//   over the gaps, factoring out x^p_min (1 + x)^q_min, with NTT products: O(n log^2 n).
 
 use std.ntt.{convolve}
 
