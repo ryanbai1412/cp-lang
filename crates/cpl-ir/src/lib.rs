@@ -236,6 +236,27 @@ impl Ty {
         }
     }
 
+    /// True when some part is a fn value.
+    pub fn has_fn(&self) -> bool {
+        match self {
+            Ty::Fn(..) => true,
+            Ty::Range(t)
+            | Ty::Opt(t)
+            | Ty::List(t)
+            | Ty::ListView(t, _)
+            | Ty::Keyed(t, _)
+            | Ty::MutView(t)
+            | Ty::Set(t)
+            | Ty::HashSet(t)
+            | Ty::Mut(t) => t.has_fn(),
+            Ty::Array { elem, .. } => elem.has_fn(),
+            Ty::Tuple(ts) => ts.iter().any(Ty::has_fn),
+            Ty::Record(fs) => fs.iter().any(|(_, t)| t.has_fn()),
+            Ty::Map(k, v) | Ty::HashMap(k, v) => k.has_fn() || v.has_fn(),
+            _ => false,
+        }
+    }
+
     /// True for a collection: with nothing in it, `print` shows nothing,
     /// and puts no space around it (`print(1, [], 2)` is `1 2`).
     pub fn may_show_nothing(&self) -> bool {

@@ -19,6 +19,9 @@ pub struct FnSummary {
     pub opaque: bool,
     /// It sizes a domain, which changes what later code sees.
     pub sizes: bool,
+    /// It yields fn values: they may write its locals, so a loop over it
+    /// must run as it yields (R06.3.4), whatever else the body does.
+    pub yields_fns: bool,
     pub reads: BTreeSet<usize>,
     pub writes: BTreeSet<usize>,
 }
@@ -70,6 +73,12 @@ pub fn summarize(program: &Program) -> Vec<FnSummary> {
     }
     direct.push(all);
     let mut summaries: Vec<FnSummary> = direct.iter().map(|(s, ..)| s.clone()).collect();
+    for (summary, f) in summaries.iter_mut().zip(&program.fns) {
+        summary.yields_fns = f
+            .locals
+            .iter()
+            .any(|local| local.name == "__yields" && local.ty.has_fn());
+    }
     loop {
         let before = summaries.clone();
         for (id, (_, calls, through)) in direct.iter().enumerate() {
@@ -108,8 +117,7 @@ fn pusher(f: &Function, summary: &FnSummary) -> Option<usize> {
     if acc < f.params.len()
         || f.params.iter().any(|p| p.mutable)
         || summary.sizes
-        || summary.opaque
-        || summary.calls_values
+        || (!summary.yields_fns && (summary.opaque || summary.calls_values))
     {
         return None;
     }
@@ -190,10 +198,11 @@ impl Feeds {
                 _ => {}
             });
         }
-        if opaque
-            || shared
-            || !summary.reads.is_disjoint(&writes)
-            || !summary.writes.is_disjoint(&writes)
+        if !summary.yields_fns
+            && (opaque
+                || shared
+                || !summary.reads.is_disjoint(&writes)
+                || !summary.writes.is_disjoint(&writes))
         {
             return None;
         }
