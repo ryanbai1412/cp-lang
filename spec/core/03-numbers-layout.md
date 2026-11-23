@@ -96,7 +96,9 @@ there is no bound and nodes stay `Int`.
 
 To force a width, name the type parameter: `SegTree<0..=4e9>(+, a)`. Every
 node write is then a range store under decision 148: checked builds trap
-with the node and the value, release truncates. (R03.1.7)
+with the node and the value, release truncates. A `Fenwick`, a `Prefix` and a `.sum()` over
+range-typed elements accumulate the same way: `Fenwick(a)` with
+`a: [V]1..=1e9` holds `Int` sums, never values of `1..=1e9`. (R03.1.7)
 
 ### Seeing and steering it
 

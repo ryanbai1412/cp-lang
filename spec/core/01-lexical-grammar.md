@@ -402,6 +402,8 @@ unary       := ('-' | '+' | '~') unary | power
 power       := postfix ('**' unary)?
 postfix     := primary ('.' NAME | '.' INT | call_args | '[' args ']'
              | '!' | '?' | 'is' pattern | 'with' NAME ':' expr (',' NAME ':' expr)*)*
+generic_args := '<' targ (',' targ)* '>'
+targ        := type | expr        // a static Int: `Mod<1e9 + 7>`, `Mod<P>` with `const P`
 call_args   := '(' (arg (',' arg)*)? ','? ')'
 arg         := expr | NAME ':' expr | 'mut' place
              | expr 'for' clause (',' clause)*      // generator: `sum(f(x) for x in xs)`

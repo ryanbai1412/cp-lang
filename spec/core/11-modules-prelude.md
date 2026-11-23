@@ -6,7 +6,11 @@ decisions 72, 94; `spec/std/prelude.cp`.
 ## 11.1 Program files and library files
 
 - A **program** file is a sequence of statements (chapter 10). It may
-  declare items anywhere; items hoist within their block. (R11.1.1)
+  declare items anywhere; items hoist within their block. A `domain`,
+  `type` or `const` whose value is runtime (reads input or names a
+  runtime value: `domain V = 1..=read<1..=2e5>()`, `type Z = Mod(p)`) is
+  not hoisted: it runs where it is written, so input is read in source
+  order, and a use above it is a use before definition. (R11.1.1)
 - A **library** file contains only items (`fn`, `struct`, `enum`,
   `trait`, `impl`, `type`, `const`, `domain` with a constant count,
   `context`, `marker`) and `use` lines. `pub` marks exports; everything
@@ -58,6 +62,9 @@ built-in list. Rules:
   plausible meanings across chapters gets one chapter's meaning and the
   others are qualified (`min` and `max` stay the builtins over two or more
   values; the folds of one sequence are methods). (R11.3.3)
+- A method call needs no import: `xs.sorted()`, `g.adjacent(v)` and
+  `p.adj4` find the method on the receiver's type wherever the type
+  came from. Only free names need the prelude or a `use`. (R11.3.4)
 - `scripts/spec-stub.py --check` keeps `std/prelude.cp` and the chapter
   tables in step. The groups are: core types and traits; sequence
   vocabulary (`07-sequences.md`, `lib/sequence-patterns.md`); search and
