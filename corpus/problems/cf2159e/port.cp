@@ -37,6 +37,9 @@ repeat read():
     let (n, k): (0..=N, 0..=2 * N) = (read<Int>() ^ ans.v, read<Int>() ^ ans.v)
     let (i, j) = (n / B, n % B)
     if small[j].len == 0: small[j] = coeffs_of_power(j)
-    if big[i].len == 0: big[i] = coeffs_of_power(i * B).scan(+)
+    if big[i].len == 0:
+        let c = coeffs_of_power(i * B)
+        let p = c.scan(+)
+        big[i] = [p.prefix(t + 1) for t in 0..c.len]
     ans = sum(small[j][z] * big[i][min(2 * i * B, k - z)] for z in 0..=min(2 * j, k))
     print(ans)

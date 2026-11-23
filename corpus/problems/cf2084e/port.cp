@@ -24,7 +24,7 @@ let a: [Pos]?Val = read(none: -1)
 let at = a.inverse()
 
 let blanks = prefix([Pos] i => Int(a[i] == none))
-let m = blanks.prefix(Pos.last.r)
+let m = blanks.prefix(Pos.last!.r)
 let comb = Comb<Z>(n)
 
 var covering: [0..=m]Int = 0
@@ -34,16 +34,16 @@ fn tally(ls: Range<Pos>, rs: Range<Pos>, w: Int):
         for r in rs if r >= l:
             covering[blanks.prefix(r.r) - bl] += w
 
-tally(Pos.first..=Pos.last, Pos.first..=Pos.last, 1)
-var (lo, hi) = (Pos.last, Pos.first)
+tally(Pos.first!..=Pos.last!, Pos.first!..=Pos.last!, 1)
+var (lo, hi) = (Pos.last!, Pos.first!)
 var need = 0
 var answer: Z = 0
 
 for v in Val:
     if let p = at[v]:
         let (lo2, hi2) = (min(lo, p), max(hi, p))
-        if let s = lo2.next: tally(s..=lo, hi..=Pos.last, -1)
-        tally(Pos.first..=lo2, hi..hi2, -1)
+        if let s = lo2.next: tally(s..=lo, hi..=Pos.last!, -1)
+        tally(Pos.first!..=lo2, hi..hi2, -1)
         (lo, hi) = (lo2, hi2)
     else:
         need += 1

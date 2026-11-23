@@ -27,9 +27,9 @@ if V.count(v => a_to_b[v] == v) > 1 or V.any(v => a_to_b[a_to_b[v]] != v):
 
 let couples = [(i, inv_a[b[i]]) for i in I if i < inv_a[b[i]]]
 var target: [I]I = [I] i => i
-for ((u, v), (l, r)) in zip(couples, zip(I, I.rev)):
-    target[u] = l
-    target[v] = r
+for (k, (u, v)) in couples.items:
+    target[u] = I.nth(k)
+    target[v] = I.nth(n - 1 - k)
 if let mid = I.first(i => inv_a[b[i]] == i):
     target[mid] = I(n / 2 + 1)
 
