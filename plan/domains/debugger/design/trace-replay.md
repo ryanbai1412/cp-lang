@@ -224,6 +224,7 @@ on write, so a checkpoint copies main's locals and the globals, not the heap.
 - **Not taken:** a frame holding a closure that captures a stack place by
   reference (`CaptureVal::StackRef`/`PartRef`) takes no checkpoint, as with
   aliases; nor a closure with `var` parameters.
+  (`var` parameters of fns: see below.)
 - **Found on the way:** a checkpoint came due on a tick no checkpoint is
   taken at (a call, a statement on the tree-walker) and the clock looked
   again only 4096 ticks later; when a loop's round has the same ticks every
@@ -243,4 +244,24 @@ on write, so a checkpoint copies main's locals and the globals, not the heap.
   same workload run 1479 ms against 1487 ms on the base commit
   (interleaved, best of 9). cpl.wasm gzipped grows 25 bytes, to
   1,662,878 under the 1,720,000 cap.
+
+## `var` parameters
+
+- **Taken:** a checkpoint stands in a fn with `var` parameters like in any
+  other, at any depth, for a local or a global argument (`bump(mut t, n)`,
+  `fold(mut xs, n)`). An element argument (`f(mut a[i])`) is untested.
+- **Why it differs:** the VM passes a `mut` argument by copy-in, copy-out:
+  while the callee runs, the callee's register holds the value and the
+  caller's place is stale. The tree-walker passes a reference
+  (`Value::Alias`/`Value::Part`) to the caller's place. So when a resumed run
+  reaches the waited call (`resume_pending`), each `mut` argument's value goes
+  back from the saved callee frame into the caller's place, and the callee's
+  slot becomes the tree-walker's borrow of it (`Interp::lend_at`, the same
+  borrow a plain call makes). The callee then writes through, as in the C++.
+- **Still not taken:** a closure with `var` parameters (closures with `mut`
+  captures run on the tree-walker).
+- **Tests:** fixture `MUT` (a global and a local `Int`, and a `List`, passed
+  `mut`, at depth 1 and 2) is in every `tests/checkpoint.rs` test, and
+  `a_checkpoint_can_stand_inside_calls_and_test_cases` checks checkpoints
+  land at both depths.
 

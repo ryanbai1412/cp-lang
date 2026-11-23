@@ -128,6 +128,31 @@ print(apply(x => x * k + 1, 40000))
 print(solve(7))
 ";
 
+const MUT: &str = "fn bump(mut acc: Int, n: Int):
+    for i in 0..n:
+        acc = (acc * 7 + i) % 1000003
+fn fold(mut xs: List<Int>, n: Int) -> Int:
+    var s = 0
+    for i in 0..n:
+        xs[i % 10] = (xs[i % 10] * 3 + i) % 1000003
+        s = (s + xs[i % 10]) % 1000003
+    return s
+fn run(m: Int) -> Int:
+    var t = m
+    var a: List<Int> = []
+    for i in 0..10:
+        a.push(i)
+    for r in 0..8:
+        bump(mut t, 3000)
+        t = (t + fold(mut a, 3000) + a[r]) % 1000003
+    return t
+var g = 5
+for r in 0..4:
+    bump(mut g, 3000)
+print(g)
+print(run(g))
+";
+
 const MULTITEST_RAND: &str = "@!multitest
 let n: Int = read()
 var s = 0
@@ -181,6 +206,7 @@ fn a_run_from_a_checkpoint_prints_the_rest_of_the_output() {
         (SHARED, &b""[..]),
         (SEQ, &b""[..]),
         (CLOSURE, &b""[..]),
+        (MUT, &b""[..]),
         (MULTITEST_RAND, MULTITEST_INPUT),
     ] {
         let (program, whole, taken) = record(source, input);
@@ -209,6 +235,7 @@ fn a_traced_run_from_a_checkpoint_records_the_whole_trace_from_there() {
         (SHARED, &b""[..]),
         (SEQ, &b""[..]),
         (CLOSURE, &b""[..]),
+        (MUT, &b""[..]),
         (MULTITEST_RAND, MULTITEST_INPUT),
     ] {
         let (program, _, taken) = record(source, input);
@@ -273,6 +300,7 @@ fn the_tail_from_a_checkpoint_is_the_whole_runs_last_steps() {
         (SHARED, &b""[..], 3000),
         (SEQ, &b""[..], 3000),
         (CLOSURE, &b""[..], 3000),
+        (MUT, &b""[..], 3000),
         (NESTED, &b""[..], 1),
     ] {
         let program = program(source);
@@ -334,6 +362,7 @@ fn a_window_from_a_checkpoint_is_the_whole_runs_window() {
         (SHARED, &b""[..]),
         (SEQ, &b""[..]),
         (CLOSURE, &b""[..]),
+        (MUT, &b""[..]),
         (MULTITEST_RAND, MULTITEST_INPUT),
     ] {
         let program = program(source);
@@ -373,7 +402,7 @@ fn a_window_from_a_checkpoint_is_the_whole_runs_window() {
 
 #[test]
 fn a_timeline_keeps_checkpoints_across_the_whole_run() {
-    for source in [LONG, DEEP, ONE_CALL, SHARED, SEQ, CLOSURE] {
+    for source in [LONG, DEEP, ONE_CALL, SHARED, SEQ, CLOSURE, MUT] {
         let program = program(source);
         let timeline = cpl_interp::trace::Timeline::record_on_this_thread(
             &program,
@@ -398,7 +427,7 @@ fn a_timeline_keeps_checkpoints_across_the_whole_run() {
 
 #[test]
 fn a_counted_runs_checkpoints_resume_to_the_rest_of_the_output() {
-    for source in [ONE_CALL, DEEP, SHARED, SEQ, CLOSURE] {
+    for source in [ONE_CALL, DEEP, SHARED, SEQ, CLOSURE, MUT] {
         let (program, whole, _) = record(source, b"");
         let (counted, taken) = cpl_interp::checkpoint::count_on_this_thread(
             &program,
@@ -455,6 +484,13 @@ fn a_checkpoint_can_stand_inside_calls_and_test_cases() {
     let (_, _, taken) = record(DEEP, b"");
     let depths: std::collections::BTreeSet<usize> = taken.iter().map(Checkpoint::depth).collect();
     assert_eq!(depths, (1..=4).collect(), "{depths:?}");
+    let (_, _, taken) = record(MUT, b"");
+    let depths: std::collections::BTreeSet<usize> = taken.iter().map(Checkpoint::depth).collect();
+    let inside = [1, 2].into();
+    assert!(
+        depths.is_superset(&inside),
+        "in fns with `mut` parameters: {depths:?}"
+    );
     let (_, _, taken) = record(MULTITEST_RAND, MULTITEST_INPUT);
     let cases: std::collections::BTreeSet<u64> =
         taken.iter().filter_map(Checkpoint::case).collect();

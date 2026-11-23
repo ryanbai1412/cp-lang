@@ -731,7 +731,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
             return Snap::No;
         }
         let lends = match s.callee {
-            Body::Fn(id) => self.program.fns[id].params.iter().any(|p| p.mutable),
+            Body::Fn(_) => false,
             Body::Closure(cid) => !self.program.closures[cid].muts.is_empty(),
             Body::Main => true,
         };
@@ -1154,7 +1154,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
     #[inline]
     pub(crate) fn call_or_resume(
         &mut self,
-        e: &cpl_ir::Expr,
+        e: &'p cpl_ir::Expr,
         id: FnId,
         args: &'p [cpl_ir::Arg],
         span: Span,
@@ -1172,7 +1172,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
     /// At the call `e`: when it is the call a run from a checkpoint waits
     /// on, that call from where it was, and what it returns.
     #[cold]
-    pub(crate) fn resume_pending(&mut self, e: &cpl_ir::Expr) -> Res<Option<Value>> {
+    pub(crate) fn resume_pending(&mut self, e: &'p cpl_ir::Expr) -> Res<Option<Value>> {
         let at = e as *const cpl_ir::Expr as usize;
         if let Some(i) = self.ckpt.returned.iter().position(|d| d.0 == at) {
             return Ok(Some(self.ckpt.returned.swap_remove(i).1));
@@ -1180,8 +1180,21 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
         if !matches!(&self.ckpt.pending, Some((call, _)) if *call == at) {
             return Ok(None);
         }
-        let (_, frames) = self.ckpt.pending.take().unwrap();
+        let (_, mut frames) = self.ckpt.pending.take().unwrap();
         self.ckpt.returned.clear();
+        // The VM's callee holds a `mut` argument's value itself; the
+        // tree-walker's borrows the caller's, so the value goes back there.
+        if let cpl_ir::ExprKind::Call(_, args) = &e.kind {
+            for (i, arg) in args.iter().enumerate() {
+                if let cpl_ir::Arg::Mut(place) = arg {
+                    let mut indices = Vec::new();
+                    self.indices(place, &mut indices)?;
+                    let now = std::mem::replace(&mut frames[0].locals[i], Value::Unit);
+                    *self.resolve(place, &mut indices.iter())? = now;
+                    frames[0].locals[i] = self.lend_at(place, indices)?;
+                }
+            }
+        }
         self.resume_callee(&frames, 0).map(Some)
     }
 }

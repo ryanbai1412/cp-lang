@@ -157,4 +157,25 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
         };
         Ok((value, back))
     }
+
+    /// A `mut` argument: the caller's variable `place`, or the part of it,
+    /// which the callee and a fn value it runs read and write as the one
+    /// value, as in the C++, where it is a reference.
+    pub(crate) fn lend(&mut self, place: &'p Place) -> Res<Value> {
+        let mut indices = Vec::new();
+        self.indices(place, &mut indices)?;
+        self.lend_at(place, indices)
+    }
+
+    /// [`Self::lend`], at `indices` already worked out.
+    pub(crate) fn lend_at(&mut self, place: &'p Place, indices: Vec<Value>) -> Res<Value> {
+        let part = self.part_of(place, &mut indices.into_iter());
+        if matches!(self.part_mut(&part, place.span)?, Value::Moved) {
+            return trap(place.span, LENT);
+        }
+        Ok(match part.steps.is_empty() {
+            true => Value::Alias(part.global, part.at),
+            false => Value::Part(Rc::new(part)),
+        })
+    }
 }
