@@ -3,6 +3,7 @@
 
 use crate::emit;
 
+mod devirt;
 mod lend;
 mod loops;
 mod runtime;

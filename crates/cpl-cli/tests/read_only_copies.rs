@@ -138,14 +138,24 @@ fn deep_copies(cpp: &str) -> usize {
 
 /// The most copies of each kind the corpus may build to, with why the
 /// ones left are left.
-const BOUNDS: [Bound; 4] = [
+/// Each `std::function` the C++ declares: a fn value whose callee codegen
+/// could not pin down, called indirectly.
+fn std_functions(cpp: &str) -> usize {
+    cpp.lines()
+        .filter(|l| !l.trim_start().starts_with("//"))
+        .map(|l| l.matches("std::function<").count())
+        .sum()
+}
+
+const BOUNDS: [Bound; 5] = [
     // `var cols = m.get(r) ?? []` then pushed to: a copy it needs.
     ("map_get_copies", map_get_copies, 1),
     ("block_copies", block_copies, 0),
     ("entry_copies", entry_copies, 0),
     // Measured when the ratchet began: snapshots taken before a change
     // (`old_s = self.state`) and temporaries copied out of places.
-    ("deep_copies", deep_copies, 111),
+    ("deep_copies", deep_copies, 101),
+    ("std_functions", std_functions, 777),
 ];
 
 /// The `.cp` files one directory down from each root: the corpus

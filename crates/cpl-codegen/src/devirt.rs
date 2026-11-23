@@ -809,9 +809,11 @@ impl<'p> Devirt<'p> {
                     self.held.get(&Home::Param(id, *slot)).copied()
                 }
                 Some(id) => match self.made_by.get(&(id, *slot)) {
-                    Some(Made::Field(base, index)) => {
-                        Some(self.made_slot(id, *base, *index).unwrap_or(Held::Many))
-                    }
+                    Some(Made::Field(base, index)) => Some(
+                        self.made_slot(id, *base, *index)
+                            .or_else(|| self.only_closure_of(id, *base, *index))
+                            .unwrap_or(Held::Many),
+                    ),
                     _ => Some(Held::Many),
                 },
                 _ => Some(Held::Many),
@@ -1042,6 +1044,19 @@ impl<'p> Devirt<'p> {
             return None;
         };
         self.made_slot(id, *slot, index)
+    }
+
+    /// Fn field `index` of the struct in local `slot` when every store to
+    /// that field, in any instance, is the same closure: `let f = mon.op`
+    /// calls it directly wherever `mon` came from.
+    fn only_closure_of(&self, id: FnId, slot: usize, index: usize) -> Option<Held> {
+        let Ty::Struct(s) = self.program.fns[id].locals[slot].ty else {
+            return None;
+        };
+        self.held
+            .get(&Home::Field(s, index))
+            .copied()
+            .filter(|held| matches!(held, Held::One(_)))
     }
 
     fn made_slot(&self, id: FnId, slot: usize, index: usize) -> Option<Held> {
@@ -1546,6 +1561,7 @@ pub fn explain_closures(program: &Program) -> Vec<ClosureLowering> {
 
         explain_locals_in_block(
             &devirt,
+            Some(fid),
             &format!("fn {}", f.name),
             &f.locals,
             &f.body,
@@ -1555,6 +1571,7 @@ pub fn explain_closures(program: &Program) -> Vec<ClosureLowering> {
 
     explain_locals_in_block(
         &devirt,
+        None,
         "main",
         &program.main_locals,
         &program.main,
@@ -1608,6 +1625,7 @@ pub fn explain_closures(program: &Program) -> Vec<ClosureLowering> {
 
 fn explain_locals_in_block(
     devirt: &Devirt<'_>,
+    home: Option<FnId>,
     owner: &str,
     locals: &[cpl_ir::Local],
     block: &Block,
@@ -1640,6 +1658,13 @@ fn explain_locals_in_block(
             });
             return;
         };
+        if devirt.dead_local(home, *slot) {
+            out.push(ClosureLowering {
+                site,
+                mode: ClosureMode::Unread,
+            });
+            return;
+        }
         let mode = match init.kind {
             ExprKind::Closure(cid)
                 if stores.get(slot).copied().unwrap_or(0) <= 1
