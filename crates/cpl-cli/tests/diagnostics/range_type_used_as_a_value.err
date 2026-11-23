@@ -1,6 +1,8 @@
 error[E0302]: `Val` is a type, and a value is needed here
   --> range_type_used_as_a_value.cp:2:10
   |
+1 | type Val = 1..=5
+  |      --- `Val` is declared here
 2 | for d in Val.rev:
   |          ^^^
   = help: `type Val = 1..=5` names a range of integers; `domain Val = 1..=5` declares positions, which have `Val.first`, `Val.last` and index `[Val]T`

@@ -1,6 +1,8 @@
 error[E0203]: a `R` has no method `pre`
   --> typo_of_a_position_range_or_domain_member.cp:3:13
   |
+1 | domain R = 0..3
+  |        - `R` is declared here
 3 |     print(r.pre)
   |             ^^^
   = help: did you mean `prev`?

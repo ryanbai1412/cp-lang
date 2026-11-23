@@ -1,6 +1,8 @@
 error[E0606]: `Bool` does not implement `Show2` required by `both`
   --> trait_names_its_own_fix.cp:15:16
    |
+ 3 | trait Show2:
+   |       ----- `Show2` is declared here
 15 | print(both(1), both(true))
    |                ^^^^^^^^^^
 

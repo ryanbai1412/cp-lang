@@ -7,18 +7,18 @@ rows naming no existing check, from `scripts/debt-ratchet.json`; they only go do
 
 | Domain | Metrics | Unchecked rows | Open questions |
 |---|---|---|---|
-| [compiler](domains/compiler/README.md) | 15 | 2 | 2 |
-| [debugger](domains/debugger/README.md) | 19 | 16 | 0 |
-| [diagnostics](domains/diagnostics/README.md) | 19 | 7 | 0 |
-| [idioms](domains/idioms/README.md) | 13 | 6 | 3 |
+| [compiler](domains/compiler/README.md) | 15 | 1 | 2 |
+| [debugger](domains/debugger/README.md) | 19 | 15 | 0 |
+| [diagnostics](domains/diagnostics/README.md) | 19 | 6 | 0 |
+| [idioms](domains/idioms/README.md) | 13 | 4 | 3 |
 | [infra](domains/infra/README.md) | 15 | 8 | 0 |
-| [lint-fmt](domains/lint-fmt/README.md) | 19 | 8 | 0 |
+| [lint-fmt](domains/lint-fmt/README.md) | 19 | 7 | 0 |
 | [perf](domains/perf/README.md) | 18 | 4 | 0 |
 | [site](domains/site/README.md) | 17 | 17 | 3 |
-| [spec](domains/spec/README.md) | 21 | 11 | 0 |
+| [spec](domains/spec/README.md) | 21 | 10 | 0 |
 | [stdlib](domains/stdlib/README.md) | 19 | 38 | 3 |
 | [tech-debt](domains/tech-debt/README.md) | 30 | 0 | 3 |
-| [tools](domains/tools/README.md) | 18 | 24 | 0 |
+| [tools](domains/tools/README.md) | 18 | 23 | 0 |
 
 ## compiler
 

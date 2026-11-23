@@ -46,7 +46,7 @@ When an error involves two places, the second carries a label.
 
 - **Why:** "already declared" is useless without where.
 - **Example:** E0405 on assigning a `let` labels the `let` line: "declared with `let` here".
-- **Enforced by:** review; `missing` as a check (diagnostics register).
+- **Enforced by:** `crates/cpl-check/src/labels.rs` labels the declaration an error names when it is on another line; `crates/cpl-cli/tests/labels.rs` checks every golden and catalogue trigger.
 
 ## What it says
 

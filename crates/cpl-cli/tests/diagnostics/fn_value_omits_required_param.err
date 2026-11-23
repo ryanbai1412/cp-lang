@@ -1,6 +1,8 @@
 error[E0302]: `map` calls `add` with 1 argument, but its parameter `y` has no default
   --> fn_value_omits_required_param.cp:5:21
   |
+3 | fn add(x: Int, y: Int) -> Int = x + y
+  |    --- `add` is declared here
 5 | for v in [1, 2].map(add):
   |                     ^^^
   = help: give `y` a default, or pass a lambda that supplies it
@@ -8,6 +10,8 @@ error[E0302]: `map` calls `add` with 1 argument, but its parameter `y` has no de
 error[E0302]: `filter` calls `pos` with 1 argument, but its parameter `strict` has no default
   --> fn_value_omits_required_param.cp:7:21
   |
+4 | fn pos(x: Int, strict: Bool) -> Bool = x > 0 or not strict
+  |    --- `pos` is declared here
 7 | print([1, 2].filter(pos).count())
   |                     ^^^
   = help: give `strict` a default, or pass a lambda that supplies it
@@ -15,6 +19,8 @@ error[E0302]: `filter` calls `pos` with 1 argument, but its parameter `strict` h
 error[E0302]: `map` calls `sum2` with 1 argument, but its parameter `b` has no default
   --> fn_value_omits_required_param.cp:9:31
   |
+8 | fn sum2(a: Int, b: Int) -> Int = a + b
+  |    ---- `sum2` is declared here
 9 | for v in [(1, 2), (3, 4)].map(sum2):
   |                               ^^^^
   = help: give `b` a default, or pass a lambda that supplies it

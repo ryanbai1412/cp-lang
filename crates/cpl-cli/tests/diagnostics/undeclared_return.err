@@ -1,6 +1,8 @@
 error[E0302]: `double` returns a value, but its signature has no return type
   --> undeclared_return.cp:3:16
   |
+1 | fn double(n: Int):
+  |    ------ `double` is declared here
 3 |         return 0
   |                ^
   = help: a fn without `-> T` gives nothing: add `-> Int`

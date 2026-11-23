@@ -20,6 +20,7 @@ mod db;
 mod def;
 mod fx;
 mod hover;
+mod labels;
 mod modules;
 mod nav;
 mod prelude;

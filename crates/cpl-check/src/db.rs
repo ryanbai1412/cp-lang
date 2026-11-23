@@ -1182,7 +1182,7 @@ impl Database {
 
         let has_syntax_errors =
             !lexed.diagnostics.is_empty() || items.iter().any(|i| !i.parsed.diagnostics.is_empty());
-        let analysis = Arc::new(Analysis {
+        let analysis = Arc::new(crate::labels::labelled(Analysis {
             text: text.clone(),
             lines,
             has_syntax_errors,
@@ -1199,7 +1199,7 @@ impl Database {
                 })
                 .collect(),
             scope,
-        });
+        }));
         self.collect_garbage(items.len());
         // A cycle through a file that imports this one cut names out of it:
         // right for this import, wrong for anyone else's.

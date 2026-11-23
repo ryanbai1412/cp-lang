@@ -63,8 +63,8 @@ CLI. A suite of real mistakes, each one a user actually hit, checks that the
 error names the place, the rule and a working fix. Gates keep every code
 catalogued and no error pointing into `std/`.
 
-The weakest areas are labels for the second place an error involves, checks
-that every suggestion names a real item, and cascades from the lowerer, which
+The weakest areas are labels for a second place that is not a declaration
+(the first of two borrows), checks that every suggestion names a real item, and cascades from the lowerer, which
 does not yet report through `Sink`. The quality register below lists every quality with the
 check behind it, and marks the ones with none as `missing`.
 
@@ -141,7 +141,7 @@ with no real check yet. Targets and current values are in
 | The primary span is never inside `std/` | user-facing errors whose primary span is in `std/` | `errors/R3`: gate over the goldens and over generated wrong-shape calls to every std `pub fn` | `crates/cpl-cli/tests/diagnostics.rs` `no_golden_error_points_into_std`, `crates/cpl-cli/tests/std_spans.rs` |
 | An error inside `std` names the std line and the user's call chain | chain present | `errors/R3`: hand-written | `crates/cpl-cli/tests/cli.rs` `an_error_inside_std_names_the_library_calls_that_led_there` |
 | Spans are right on CRLF and non-ASCII sources | span and fix differences between LF and CRLF copies | `errors/R12`: hand-written | `crates/cpl-cli/tests/lsp_parity.rs` |
-| Labels point at the other half (the declaration of a written `let`, the first of two borrows) | errors needing a second place that have a label | `errors/R4`: `missing` | — |
+| Labels point at the other half (the declaration of a written `let`, the first of two borrows) | errors naming a declaration on another line with no label | `errors/R4`: re-architecture: the front end labels the declaration an error names; gate over goldens and catalogue triggers | `crates/cpl-cli/tests/labels.rs` |
 
 ### What the message says
 

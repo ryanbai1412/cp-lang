@@ -57,6 +57,7 @@ pub fn check(analysis: &cpl_check::Analysis) -> Vec<cpl_diag::Diagnostic> {
                 }
             }
         }
+        analysis.label_declarations(&mut diagnostics);
     }
     diagnostics
 }
