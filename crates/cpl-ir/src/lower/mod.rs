@@ -3546,20 +3546,20 @@ impl<'a> Lowerer<'a> {
 
     /// Whether `text` calls `read()`.
     fn reads_input(text: &str) -> bool {
-        text.match_indices("read(").any(|(at, _)| {
-            !text[..at]
-                .chars()
-                .next_back()
-                .is_some_and(|c| c.is_alphanumeric() || c == '_' || c == '.')
+        text.match_indices("read").any(|(at, _)| {
+            matches!(text.as_bytes().get(at + 4), Some(b'(' | b'<'))
+                && !text[..at]
+                    .chars()
+                    .next_back()
+                    .is_some_and(|c| c.is_alphanumeric() || c == '_' || c == '.')
         })
     }
 
-    /// A `@alt(program)` or `@check` fn as the program: the input header
-    /// of the file, then a call of the fn. The header is every top-level
-    /// line down to the last one that calls `read()`, so the fn sees the
-    /// input by the names the solution gave it, in single-test and
-    /// multitest files alike. Below the header only constants are kept:
-    /// the rest is the solution's own work.
+    /// A `@alt(program)` or `@check` fn as the program: the file's input
+    /// header (every top-level line down to the last `read()`), so the fn
+    /// sees the input by the solution's names in single-test and multitest
+    /// files alike, then a call of the fn. Below the header only constants
+    /// are kept: the rest is the solution's own work.
     fn main_for_aside(&mut self, name: &str) {
         self.cur_mod = 0;
         self.cx = FnCx {

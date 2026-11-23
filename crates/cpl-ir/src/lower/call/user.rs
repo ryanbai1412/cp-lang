@@ -539,6 +539,13 @@ impl<'a> Lowerer<'a> {
         hint: Option<&Ty>,
         span: Span,
     ) -> Expr {
+        // `read_output<T>()` reads a `T`, as `read<T>()` does.
+        if let (ast::ExprKind::Name(name), [ty]) = (&base.kind, types) {
+            if name == "read_output" && self.get_sym(name).is_none() {
+                let want = self.resolve_ty(ty);
+                return self.prelude(name, args, Some(&want), span);
+            }
+        }
         // Check `base.method::<T>(...)`.
         if let ast::ExprKind::Field { base: recv, name } = &base.kind {
             if let ("parse", [ty], []) = (name.text.as_str(), types, args) {

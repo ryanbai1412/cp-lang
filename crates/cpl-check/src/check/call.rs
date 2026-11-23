@@ -288,7 +288,10 @@ impl<'a> Checker<'a> {
         }) {
             return None;
         }
-        if name != "read" || self.local(name).is_some() || self.global(name).is_some() {
+        if !matches!(name.as_str(), "read" | "read_output")
+            || self.local(name).is_some()
+            || self.global(name).is_some()
+        {
             return None;
         }
         let ty = self.quietly(|c| c.type_arg(t));
