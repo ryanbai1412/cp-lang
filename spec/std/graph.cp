@@ -1260,7 +1260,7 @@ pub fn dijkstra<V, W, G: WeightedNext<V, W>>(
 /// ties: equal candidates go to the earlier move in `moves`
 /// traps: on a negative cost
 /// example: `domain S = 0..5; let p = fixed_cost_paths([S(0)], [1, 2], cost: m => if m == 1: 1 else: 3, step: (m, s) => if Int(s) + m < 5: Some(S(Int(s) + m)) else: None); p[4] == Some(4) and p[2] == Some(2)`
-pub fn fixed_cost_paths<S, M, W>(
+pub fn fixed_cost_paths<S: Eq, M, W: Add + Ord>(
     from: List<S>,
     moves: List<M>,
     cost: M -> W,
@@ -1314,7 +1314,7 @@ pub fn fixed_cost_paths<S, M, W>(
 /// traps: never
 /// example: `domain V = 0..3; domain E = 0..3; let es: [E](u: V, v: V, w: Int) = [(u: 0, v: 1, w: 4), (u: 0, v: 2, w: 5), (u: 2, v: 1, w: -3)]; bellman_ford(Graph.directed(es), from: [(V(0), 0)])![1] == Some(2)`
 /// example: `domain V = 0..2; domain E = 0..2; let es: [E](u: V, v: V, w: Int) = [(u: 0, v: 1, w: 1), (u: 1, v: 0, w: -2)]; bellman_ford(Graph.directed(es), from: [(V(0), 0)]) == None`
-pub fn bellman_ford<V, W, G: WeightedNext<V, W>>(g: G, from: Seq<(V, W)>) -> ?Paths<V, W, G.Arc>:
+pub fn bellman_ford<V, W: Add + Ord, G: WeightedNext<V, W>>(g: G, from: Seq<(V, W)>) -> ?Paths<V, W, G.Arc>:
     var dist: [V]?W = None
     var back: [V]?(from: V, via: G.Arc) = None
     for (s, d0) in from:
@@ -2860,7 +2860,7 @@ pub fn dominators<V>(g: Next<V>, root: V) -> [V]?V:
 /// traps: never
 /// example: `domain V = 0..3; let g: [V]List<V> = [[1, 2], [0, 2], [0, 1]]; triangles(g).collect() == [(0, 1, 2)]`
 /// example: `domain V = 0..4; let g: [V]List<V> = [[1, 2, 3], [0, 2, 3], [0, 1, 3], [0, 1, 2]]; triangles(g).count() == 4`
-pub fn triangles<V>(g: Next<V>) -> yields (V, V, V):
+pub fn triangles<V: Ord>(g: Next<V>) -> yields (V, V, V):
     let deg = [V] v => g.out(v).count()
     let up = [V] u => [a.to for a in g.out(u) if (deg[u], u) < (deg[a.to], a.to)]
     var mark: [V]?V = None
@@ -2870,7 +2870,7 @@ pub fn triangles<V>(g: Next<V>) -> yields (V, V, V):
             for w in up[v]:
                 if mark[w] == Some(u): yield (u, v, w)
 
-fn clique_rec<V>(adj: [V]Bitset<V>, mut r: List<V>, p: Bitset<V>, x: Bitset<V>, mut best: List<V>):
+fn clique_rec<V: Ord>(adj: [V]Bitset<V>, mut r: List<V>, p: Bitset<V>, x: Bitset<V>, mut best: List<V>):
     if p.is_empty and x.is_empty:
         var c = [y for y in r]
         sort(mut c)
@@ -2900,7 +2900,7 @@ fn clique_rec<V>(adj: [V]Bitset<V>, mut r: List<V>, p: Bitset<V>, x: Bitset<V>, 
 /// order: ascending
 /// traps: never
 /// example: `domain V = 0..4; let adj: [V]Bitset<V> = [Bitset.of([V(1), V(2)]), Bitset.of([V(0), V(2)]), Bitset.of([V(0), V(1), V(3)]), Bitset.of([V(2)])]; max_clique(adj) == [0, 1, 2]`
-pub fn max_clique<V>(adj: [V]Bitset<V>) -> List<V>:
+pub fn max_clique<V: Ord>(adj: [V]Bitset<V>) -> List<V>:
     var best = List<V>()
     var r = List<V>()
     clique_rec(adj, mut r, Bitset<V>.full(), Bitset<V>.empty(), mut best)
