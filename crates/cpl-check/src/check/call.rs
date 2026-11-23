@@ -489,10 +489,11 @@ impl<'a> Checker<'a> {
             diag.help = Some(format!(
                 "write `{replacement}` (or run `cpl fix` to migrate)"
             ));
-            diag.fixes.push(cpl_diag::Fix {
-                title: format!("replace `{}` with `{replacement}`", name.text),
-                edits: vec![(replace_span, replacement)],
-            });
+            diag.fix(
+                format!("replace `{}` with `{replacement}`", name.text),
+                replace_span,
+                replacement,
+            );
         }
         Some(ret_ty)
     }
@@ -607,10 +608,7 @@ impl<'a> Checker<'a> {
                 "write `{callee_text}` (or run `cpl fix` to drop `()`)"
             ));
             let parens = Span::new(callee.span.end, call.span.end);
-            diag.fixes.push(cpl_diag::Fix {
-                title: format!("drop `()` to read `{callee_text}`"),
-                edits: vec![(parens, String::new())],
-            });
+            diag.fix(format!("drop `()` to read `{callee_text}`"), parens, "");
         }
         Some(Ty::Error)
     }
@@ -1626,15 +1624,10 @@ impl<'a> Checker<'a> {
                             codes::UNKNOWN_ARG_NAME
                         };
                         if let Some(diag) = self.error(code, name.span, message) {
-                            if let (true, Some(prev)) = (
-                                code == codes::LAW_UNSUPPORTED_SPECIALIZATION,
-                                i.checked_sub(1),
-                            ) {
+                            let act = code == codes::LAW_UNSUPPORTED_SPECIALIZATION;
+                            if let (true, Some(prev)) = (act, i.checked_sub(1)) {
                                 let cut = Span::new(args[prev].value.span.end, arg.value.span.end);
-                                diag.fixes.push(cpl_diag::Fix {
-                                    title: "remove `act:`".into(),
-                                    edits: vec![(cut, String::new())],
-                                });
+                                diag.fix("remove `act:`", cut, "");
                             }
                             match suggestion {
                                 Some(s) => diag.suggest(name.span, s),
@@ -1763,10 +1756,7 @@ impl<'a> Checker<'a> {
                 );
                 let at = arg.value.span;
                 if let Some(diag) = self.error(codes::MISSING_MUT_AT_CALL, at, message) {
-                    diag.fixes.push(cpl_diag::Fix {
-                        title: "add `mut`".into(),
-                        edits: vec![(Span::point(at.start), "mut ".into())],
-                    });
+                    diag.fix("add `mut`", Span::point(at.start), "mut ");
                 }
             } else if arg.mutable && !param.mutable && verb == "takes" {
                 let message = format!(

@@ -308,11 +308,17 @@ impl Diagnostic {
         span: Span,
         replacement: impl Into<String>,
     ) -> Diagnostic {
+        self.fix(title, span, replacement);
+        self
+    }
+
+    /// Adds a fix that replaces `span` with `replacement`.
+    pub fn fix(&mut self, title: impl Into<String>, span: Span, replacement: impl Into<String>) {
+        let edits = vec![(span, replacement.into())];
         self.fixes.push(Fix {
             title: title.into(),
-            edits: vec![(span, replacement.into())],
+            edits,
         });
-        self
     }
 
     /// The same diagnostic with every span moved right by `by` bytes.
