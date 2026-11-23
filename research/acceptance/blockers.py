@@ -89,7 +89,7 @@ def render(runs):
            "then kind (blocker, workaround, non-idiomatic, hesitation), then runs seen in,",
            "then minutes lost, then the earliest scenario step. Each lane's rows are also sent to its `plan/domains/<lane>/worklog.md`.", ""]
     if runs:
-        latest = max(runs, key=lambda r: r["date"])
+        latest = max(runs, key=lambda r: (r["date"], r["_name"]))
         passed = [s for s in STEPS if latest["steps"][s]["pass"]]
         out += [f"Latest run: `{latest['_name']}` ({latest['date']}, site `{latest['site_commit']}`): "
                 f"{len(passed)}/{len(STEPS)} steps pass.", "",
