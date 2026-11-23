@@ -148,3 +148,16 @@ fn every_checker_lint_has_a_page_record_that_fires_on_before_only() {
         );
     }
 }
+
+#[test]
+fn a_lint_does_not_repeat_the_error_at_its_place() {
+    let src = "let ys = [1, 2]\nprint(ys.first())\n";
+    let mut db = cpl_check::Database::new();
+    db.set_file("probe.cp", src);
+    let analysis = db.analyze("probe.cp").unwrap();
+    assert!(analysis.diagnostics.iter().any(|d| d.code.0 == "E0304"));
+    let mut diags = crate::lint(src, &crate::Config::default());
+    assert!(diags.iter().any(|d| d.code.0 == "L0206"), "{diags:?}");
+    crate::drop_repeats(&mut diags, &analysis.diagnostics);
+    assert!(diags.iter().all(|d| d.code.0 != "L0206"), "{diags:?}");
+}

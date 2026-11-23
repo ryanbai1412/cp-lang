@@ -231,6 +231,7 @@ pub fn run_with(
         }
         diagnostics.extend(found.lints);
         diagnostics.retain(keep);
+        crate::drop_repeats(&mut diagnostics, &problems);
         diagnostics.sort_by_key(|d| (d.span.start, d.span.end, d.code));
         errors += diagnostics
             .iter()

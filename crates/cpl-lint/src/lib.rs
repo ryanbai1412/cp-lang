@@ -425,6 +425,17 @@ pub fn lint(src: &str, config: &Config) -> Vec<Diagnostic> {
     diags
 }
 
+/// `diags` less the lints at the place of one of `errors`: the error
+/// already names that root cause (E0304 and L0206 on `xs.first()`). The
+/// editor keeps both until the error carries the lint's quick fix.
+pub(crate) fn drop_repeats(diags: &mut Vec<Diagnostic>, errors: &[Diagnostic]) {
+    diags.retain(|d| {
+        !errors
+            .iter()
+            .any(|e| e.severity == Severity::Error && e.span == d.span && e.code != d.code)
+    });
+}
+
 pub fn lint_parsed(src: &str, items: &[(u32, &ParsedItem)], config: &Config) -> Vec<Diagnostic> {
     lint_file(&File { src, items }, config)
 }
