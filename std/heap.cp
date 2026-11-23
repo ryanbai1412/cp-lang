@@ -701,9 +701,9 @@ pub struct MinMaxHeap<T>:
             if flip: self.swap(m, p)
             i = m
 
-/// Meldable min-heap (skew / leftist heap) with \(O(\log n)\) `meld` and \(O(1)\) lazy offset `add_all`.
+/// Meldable min-heap (skew / leftist heap) with \(O(\log n)\) `meld` and, when `T: Add`, \(O(1)\) lazy offset `add_all`.
 /// `peek` / `top` is \(O(1)\); `push`, `pop`, and `meld` are \(O(\log n)\).
-pub struct MeldHeap<T: Add>:
+pub struct MeldHeap<T>:
     var _len: Int = 0
     var _root: Int = -1
     _keys: List<T> = []
@@ -851,7 +851,7 @@ pub struct MeldHeap<T: Add>:
     /// empty: does nothing
     /// traps: never (overflow wraps in release, traps in debug)
     /// example: `var h = MeldHeap.of([1, 5]); h.add_all(10); h.pop() == Some(11)`
-    pub fn add_all(mut self, delta: T):
+    pub fn add_all(mut self, delta: T) where T: Add:
         if _root < 0: return
         _keys[_root] += delta
         _add[_root] = Some(plus(_add[_root], delta))
@@ -913,14 +913,20 @@ pub struct MeldHeap<T: Add>:
     fn rank_of(self, t: Int) -> Int = if t < 0: 0 else: _rank[t]
 
     // A node's pending add is already in its own key; it still owes its children.
+    // Without `Add` there is no `add_all`, so nothing is pending.
     fn push_down(mut self, t: Int):
-        if let d = _add[t]:
-            let (a, b) = _kids[t]
-            for c in [a, b]:
-                if c >= 0:
-                    _keys[c] += d
-                    _add[c] = Some(plus(_add[c], d))
-            _add[t] = None
+        if T: Add:
+            if let d = _add[t]:
+                let (a, b) = _kids[t]
+                for c in [a, b]:
+                    if c >= 0:
+                        _keys[c] += d
+                        var e = d
+                        if let x = _add[c]:
+                            e = x
+                            e += d
+                        _add[c] = Some(e)
+                _add[t] = None
 
     fn merge(mut self, a: Int, b: Int) -> Int:
         if a < 0: return b
