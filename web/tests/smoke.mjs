@@ -76,6 +76,16 @@ for (const [query, url] of [['Monoid', '/docs/ref/std/algebra'], ['borrow it', '
   await page.locator(`[role=option][id^="fd-search-option-${url}"]`).first().waitFor({ timeout: 30000 });
 }
 console.log('search finds a reference item, a guide heading and a core table row');
+// Lint pages run their examples: Lint on Flagged reports the lint, on Write instead it reports none.
+await page.goto(base + '/lints/search_loop');
+const [flagged, instead] = [page.locator('section').filter({ hasText: 'Flagged' }), page.locator('section').filter({ hasText: 'Write instead' })];
+await flagged.getByRole('button', { name: 'Lint' }).click();
+await flagged.getByRole('status').filter({ hasText: 'L0501' }).waitFor({ timeout: 30000 });
+await instead.getByRole('button', { name: 'Lint' }).click();
+await instead.getByRole('status').filter({ hasText: 'no warnings' }).waitFor({ timeout: 30000 });
+await instead.getByRole('button', { name: 'Run' }).click();
+await instead.getByRole('status').filter({ hasText: 'Yes' }).waitFor({ timeout: 30000 });
+console.log('a lint page lints and runs its examples');
 await page.close();
 console.log('page errors:', errors);
 process.exit(errors.length ? 1 : 0);

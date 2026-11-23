@@ -2,8 +2,8 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
 import { InlineMd } from '@/components/inline-md';
+import { Runner } from '@/components/runner';
 import { Badge } from '@/components/ui/badge';
-import { highlight } from '@/lib/highlight';
 import { groups, lints } from '@/lib/lints';
 
 type Props = { params: Promise<{ name: string }> };
@@ -28,11 +28,6 @@ export default async function Page({ params }: Props) {
   if (byCode) redirect(`/lints/${byCode.name}`);
   const l = lints().find((x) => x.name === name);
   if (!l) notFound();
-  const [before, after, near] = await Promise.all([
-    highlight(l.before, 'cp'),
-    highlight(l.after, 'cp'),
-    highlight(l.nearMiss, 'cp'),
-  ]);
   return (
     <main className="container mx-auto max-w-5xl px-4 py-10 [&_p_code]:rounded [&_p_code]:bg-muted [&_p_code]:px-1 [&_p_code]:text-[0.9em]">
       <Link href="/lints" className="text-sm text-muted-foreground hover:text-foreground">
@@ -55,8 +50,8 @@ export default async function Page({ params }: Props) {
         <InlineMd text={l.summary} />
       </p>
       <div className="mt-6 grid gap-4 lg:grid-cols-2">
-        <Pane title="Flagged" html={before} />
-        <Pane title="Write instead" html={after} />
+        <Pane title="Flagged" source={l.before} run={l.runs.before} />
+        <Pane title="Write instead" source={l.after} run={l.runs.after} />
       </div>
       <h2 className="mt-8 text-xl font-semibold">Why</h2>
       <p className="mt-2 max-w-3xl leading-7">
@@ -90,7 +85,7 @@ export default async function Page({ params }: Props) {
       <h2 className="mt-8 text-xl font-semibold">Not flagged</h2>
       <p className="mt-2 text-sm text-muted-foreground">A near miss: close to the pattern, but not it.</p>
       <div className="mt-3">
-        <Pane title="Near miss" html={near} />
+        <Pane title="Near miss" source={l.nearMiss} run={l.runs.nearMiss} />
       </div>
       <h2 className="mt-8 text-xl font-semibold">Turn it off</h2>
       <p className="mt-2 max-w-3xl leading-7">
@@ -108,14 +103,11 @@ export default async function Page({ params }: Props) {
   );
 }
 
-function Pane({ title, html }: { title: string; html: string }) {
+function Pane({ title, source, run }: { title: string; source: string; run: boolean }) {
   return (
-    <section className="min-w-0 overflow-hidden rounded-xl border bg-card shadow-sm">
-      <header className="border-b px-4 py-2 text-sm font-medium">{title}</header>
-      <div
-        className="overflow-auto text-sm [&_pre]:!bg-transparent [&_pre]:p-4 dark:[&_.shiki]:!text-[var(--shiki-dark)] dark:[&_.shiki_span]:!text-[var(--shiki-dark)]"
-        dangerouslySetInnerHTML={{ __html: html }}
-      />
+    <section className="min-w-0 space-y-2">
+      <h3 className="text-sm font-medium">{title}</h3>
+      <Runner source={source} compact lint run={run} />
     </section>
   );
 }

@@ -1,4 +1,6 @@
-import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
+import { existsSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 // Lint pages are generated from lint-fmt's records in spec/lints/<name>/, the
@@ -42,6 +44,8 @@ export type Lint = {
   before: string;
   after: string;
   nearMiss: string;
+  /** Which examples can run as they stand: they pass `cpl check` and read no input. */
+  runs: { before: boolean; after: boolean; nearMiss: boolean };
 };
 
 function toml(text: string): Record<string, string> {
@@ -91,6 +95,18 @@ function catalog() {
 
 let cache: Lint[] | null = null;
 
+const cpl =
+  process.env.CPL ?? ['target/release/cpl', 'target/debug/cpl'].map((p) => join(repoRoot, p)).find(existsSync) ?? 'cpl';
+let scratch: string | null = null;
+
+function runsAsIs(src: string): boolean {
+  if (!src || /\bread\w*\s*(\(|<|::)/.test(src)) return false;
+  scratch ??= mkdtempSync(join(tmpdir(), 'cpl-lints-'));
+  const file = join(scratch, 'main.cp');
+  writeFileSync(file, `${src}\n`);
+  return spawnSync(cpl, ['check', file], { encoding: 'utf8' }).status === 0;
+}
+
 export function lints(): Lint[] {
   const cat = catalog();
   cache ??= roots
@@ -120,6 +136,11 @@ export function lints(): Lint[] {
         before: file('before.cp'),
         after: file('after.cp'),
         nearMiss: file('near_miss.cp'),
+        runs: {
+          before: runsAsIs(file('before.cp')),
+          after: runsAsIs(file('after.cp')),
+          nearMiss: runsAsIs(file('near_miss.cp')),
+        },
       };
     })
     .sort((a, b) => a.code.localeCompare(b.code));

@@ -1,6 +1,6 @@
 'use client';
 
-import { Bug, History, Loader2, Play, RotateCcw, Share2, Square } from 'lucide-react';
+import { Bug, History, ListChecks, Loader2, Play, RotateCcw, Share2, Square } from 'lucide-react';
 import { useCallback, useState } from 'react';
 import { CodeEditor } from '@/components/editor/code-editor';
 import { type Status, StatusBadge } from '@/components/status-badge';
@@ -33,6 +33,10 @@ export interface RunnerProps {
   checkOnLoad?: boolean;
   /** A doc example: no input box or C++ tab, and output only once it has run. */
   compact?: boolean;
+  /** A lint example: a Lint button runs `cpl lint`. */
+  lint?: boolean;
+  /** Offer Run (default true). */
+  run?: boolean;
 }
 
 type Result =
@@ -52,7 +56,7 @@ export function formatDiagnostics(diagnostics: Diagnostic[], source: string): st
 }
 
 export function Runner({ source: initial, setup = '', stdin: initialStdin = '', status, caption, className, editorHeight, playgroundLink = true,
-  shareMenu = false, checkOnLoad = false, compact = false }: RunnerProps) {
+  shareMenu = false, checkOnLoad = false, compact = false, lint = false, run: runnable = true }: RunnerProps) {
   const [source, setSource] = useState(initial);
   const [stdin, setStdin] = useState(initialStdin);
   const program = setup ? `${setup}\n${source}` : source;
@@ -102,6 +106,18 @@ export function Runner({ source: initial, setup = '', stdin: initialStdin = '', 
   }, [program]);
   const stressable = /^@(brute|alt|check|checker)\b/m.test(source);
 
+  const runLint = useCallback(async () => {
+    setTab('output');
+    setResult({ kind: 'running' });
+    try {
+      const r = await cpl.lint(program);
+      const clean = r.ok && !r.diagnostics.length;
+      setResult({ kind: 'output', stdout: clean ? 'cpl lint: no warnings.' : '', stderr: r.stderr, ok: r.ok, diagnostics: r.diagnostics });
+    } catch (e) {
+      setResult({ kind: 'error', message: (e as Error).message });
+    }
+  }, [program]);
+
   const showExplain = useCallback(async () => {
     setTab('explain');
     setExplained('Explaining…');
@@ -129,10 +145,18 @@ export function Runner({ source: initial, setup = '', stdin: initialStdin = '', 
   return (
     <div className={cn('not-prose overflow-hidden rounded-xl border bg-card text-card-foreground shadow-sm', className)}>
       <div className="flex flex-wrap items-center gap-2 border-b px-3 py-2">
-        <Button size="sm" onClick={run} disabled={result.kind === 'running'}>
-          {result.kind === 'running' ? <Loader2 className="animate-spin" /> : <Play />}
-          Run
-        </Button>
+        {lint && (
+          <Button size="sm" onClick={runLint} disabled={result.kind === 'running'} title="Run cpl lint on this code">
+            {result.kind === 'running' ? <Loader2 className="animate-spin" /> : <ListChecks />}
+            Lint
+          </Button>
+        )}
+        {runnable && (
+          <Button size="sm" variant={lint ? 'outline' : 'default'} onClick={run} disabled={result.kind === 'running'}>
+            {result.kind === 'running' && !lint ? <Loader2 className="animate-spin" /> : <Play />}
+            Run
+          </Button>
+        )}
         {!compact && (
           <Button size="sm" variant="outline" onClick={trace} disabled={result.kind === 'running'} title="Record every step and open the time-travel debugger">
             <History /> Trace
