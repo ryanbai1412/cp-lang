@@ -19,6 +19,7 @@ use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::sync::Arc;
 
 mod diagnostics;
+mod nav;
 mod proven;
 use proven::Proven;
 
@@ -562,21 +563,7 @@ impl Server {
                 let Some(def) = self.db.definition_location(&uri, offset) else {
                     return Ok(Reply::default());
                 };
-                // Only the target's text: analyzing a module the file merely
-                // imports would check all of it again, as if it were open.
-                let text = self
-                    .db
-                    .file_text(&def.path)
-                    .expect("definition implies a loaded file");
-                let target_uri = if def.path == uri {
-                    def.path.clone()
-                } else {
-                    uri_of_path(&def.path)
-                };
-                Ok(Reply::result(obj([
-                    ("uri", target_uri.into()),
-                    ("range", range_json(def.span, &text, &LineIndex::new(&text))),
-                ])))
+                Ok(Reply::result(self.location(&uri, &def)))
             }
             "textDocument/codeLens" => {
                 let uri = uri_of(params)?;
@@ -879,7 +866,9 @@ impl Server {
             }
             #[cfg(test)]
             "cpl/testPanic" => panic!("deliberate test panic"),
-            _ => Err((METHOD_NOT_FOUND, format!("`{method}` is not supported"))),
+            _ => self
+                .navigate(method, params)
+                .unwrap_or_else(|| Err((METHOD_NOT_FOUND, format!("`{method}` is not supported")))),
         }
     }
 
@@ -1093,6 +1082,12 @@ fn capabilities() -> Value {
                     ]),
                 ),
                 ("definitionProvider", true.into()),
+                ("typeDefinitionProvider", true.into()),
+                ("implementationProvider", true.into()),
+                (
+                    "documentLinkProvider",
+                    obj([("resolveProvider", false.into())]),
+                ),
                 ("referencesProvider", true.into()),
                 ("renameProvider", obj([("prepareProvider", true.into())])),
                 ("documentSymbolProvider", true.into()),

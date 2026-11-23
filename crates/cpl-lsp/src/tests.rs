@@ -4,6 +4,7 @@ use cpl_json::{self as json, obj, Value};
 mod complete;
 mod fixes;
 mod format;
+mod nav;
 mod rename;
 
 const URI: &str = "file:///work/roads.cp";

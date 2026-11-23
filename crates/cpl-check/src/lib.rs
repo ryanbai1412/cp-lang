@@ -21,6 +21,7 @@ mod def;
 mod fx;
 mod hover;
 mod modules;
+mod nav;
 mod prelude;
 mod std_files;
 mod ty;

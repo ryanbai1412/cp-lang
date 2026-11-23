@@ -440,7 +440,7 @@ fn prelude_value_hover(item: &crate::db::AnalyzedItem, at: u32) -> Option<Hover>
     })
 }
 
-fn innermost(hovers: &[HoverEntry], at: u32) -> Option<&HoverEntry> {
+pub(crate) fn innermost(hovers: &[HoverEntry], at: u32) -> Option<&HoverEntry> {
     hovers
         .iter()
         .filter(|h| h.span.touches(at))
