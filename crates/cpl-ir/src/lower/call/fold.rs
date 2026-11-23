@@ -1146,7 +1146,7 @@ impl<'a> Lowerer<'a> {
                 // `argmax(a)` of a list or an array is `a.argmax` of
                 // `std.seq`: the first index of the largest value.
                 let method = if max { "argmax" } else { "argmin" };
-                if let Some(found) = self.try_ufcs_call(method, arg, &[], span) {
+                if let Some(found) = self.try_ufcs_call(method, arg, &[], span, None) {
                     return found;
                 }
                 self.unsupported(span, "`argmax` / `argmin` of a sequence without a `for`");

@@ -16,6 +16,7 @@ impl<'a> Lowerer<'a> {
         value: Expr,
         ty: Ty,
         elem: Ty,
+        recv_mark: usize,
     ) -> Expr {
         let span = whole.span;
         let method = name.text.as_str();
@@ -1843,6 +1844,7 @@ impl<'a> Lowerer<'a> {
                         value: base.clone(),
                     }];
                     all_args.extend(args.iter().cloned());
+                    self.cx.pending.truncate(recv_mark);
                     return self.user_call(fid, None, &all_args, span);
                 }
                 // A domain is the sequence of its positions: `Cell.find(p)` is
@@ -1858,13 +1860,14 @@ impl<'a> Lowerer<'a> {
                         },
                         span: base.span,
                     };
+                    self.cx.pending.truncate(recv_mark);
                     return self.method(whole, &all, name, args, hint);
                 }
                 if self.number_max_call(&ty, base, method, args, span) {
                     return self.err_expr(span);
                 }
                 // UFCS free function with `self` first parameter (e.g. `p.step(d)`, `p.ray(d)`).
-                if let Some(res) = self.try_ufcs_call(method, base, args, span) {
+                if let Some(res) = self.try_ufcs_call(method, base, args, span, Some(recv_mark)) {
                     return res;
                 }
                 let message = format!(

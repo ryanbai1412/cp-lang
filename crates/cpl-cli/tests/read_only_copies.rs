@@ -2,6 +2,8 @@
 //! heap value that is only read is read in place, never copied. Each
 //! pattern below is a copy the generated code used to make, or (for
 //! `deep_copies`) any deep copy of a container; its count may only go down.
+//! Enforces performance/R12, R13 and R14 in
+//! handbook/guidelines/performance-checklist.md.
 
 use std::path::{Path, PathBuf};
 
@@ -154,7 +156,7 @@ const BOUNDS: [Bound; 5] = [
     ("entry_copies", entry_copies, 0),
     // Measured when the ratchet began: snapshots taken before a change
     // (`old_s = self.state`) and temporaries copied out of places.
-    ("deep_copies", deep_copies, 51),
+    ("deep_copies", deep_copies, 49),
     ("std_functions", std_functions, 610),
 ];
 

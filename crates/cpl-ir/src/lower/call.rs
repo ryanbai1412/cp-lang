@@ -718,6 +718,7 @@ impl<'a> Lowerer<'a> {
                 return e;
             }
         }
+        let recv_mark = self.cx.pending.len();
         let value = self.expr(base, None);
         let ty = value.ty.clone();
         let method = name.text.as_str();
@@ -790,7 +791,7 @@ impl<'a> Lowerer<'a> {
             Ty::Str | Ty::StrView => Ty::Char,
             _ => Ty::Error,
         };
-        self.value_method(whole, base, name, args, hint, value, ty, elem)
+        self.value_method(whole, base, name, args, hint, value, ty, elem, recv_mark)
     }
 }
 

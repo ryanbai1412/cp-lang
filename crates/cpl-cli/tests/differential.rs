@@ -117,6 +117,7 @@ fn aliasing_and_sort_keys_agree_between_interp_and_sanitized_cpp() {
             "unit_generic_local",
             "unread_fn_field",
             "view_of_temporary",
+            "view_receiver_runs_once",
         ]
     );
     let failures: Vec<String> = programs

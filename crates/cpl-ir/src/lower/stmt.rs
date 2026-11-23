@@ -5034,10 +5034,7 @@ impl<'a> Lowerer<'a> {
         base: &ast::Expr,
         method: &str,
     ) -> Option<ProjectionInfo<'a>> {
-        let diag_len = self.diags.len();
-        let b = self.expr(base, None);
-        self.diags.truncate(diag_len);
-        if let Ty::Struct(sid) = b.ty {
+        if let Some(Ty::Struct(sid)) = self.probe_ty_silent(base) {
             self.structs[sid].projections.get(method).cloned()
         } else {
             None

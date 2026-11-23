@@ -305,6 +305,7 @@ impl<'a> Lowerer<'a> {
         if let Some(kept) = self.filtered_items(base, name, span) {
             return kept;
         }
+        let recv_mark = self.cx.pending.len();
         let value = self.expr(base, None);
         if let Some((index, ty)) = self.field_of(&value.ty, &name.text) {
             return self.mk(ExprKind::Field(Box::new(value), index), ty, span);
@@ -393,7 +394,9 @@ impl<'a> Lowerer<'a> {
                     .or_else(|| field.parse::<usize>().ok().filter(|&i| i < factors.len()))
                 {
                     self.decode_product_field(d, value, idx, span)
-                } else if let Some(res) = self.try_ufcs_call(field, base, &[], span) {
+                } else if let Some(res) =
+                    self.try_ufcs_call(field, base, &[], span, Some(recv_mark))
+                {
                     res
                 } else if field == "to" {
                     // A product position is a plain vertex: its own `Target::to`.
@@ -1076,7 +1079,8 @@ impl<'a> Lowerer<'a> {
             ),
             _ => {
                 // UFCS `@get` free function (e.g. `p.adj4`, `g.transposed`, `g.flipped`).
-                if let Some(res) = self.try_ufcs_call(&name.text, base, &[], span) {
+                if let Some(res) = self.try_ufcs_call(&name.text, base, &[], span, Some(recv_mark))
+                {
                     return res;
                 }
                 let message = format!(
@@ -1174,12 +1178,16 @@ impl<'a> Lowerer<'a> {
 
     /// Tries calling a free function or generic free function whose first parameter is `self`
     /// using UFCS (`base.name(args...)` -> `name(base, args...)`).
+    /// `recv_mark` is where `pending` stood before the caller lowered `base`
+    /// itself: the call lowers `base` again, so what that first lowering
+    /// hoisted is dropped and `base` runs once.
     pub(in crate::lower) fn try_ufcs_call(
         &mut self,
         name: &str,
         base: &ast::Expr,
         args: &[ast::Arg],
         span: Span,
+        recv_mark: Option<usize>,
     ) -> Option<Expr> {
         let theirs = self.get_sym(&cpl_check::std_method(name));
         let mut sym = match self.get_sym(name).or(theirs) {
@@ -1225,6 +1233,9 @@ impl<'a> Lowerer<'a> {
         };
         if !has_self || self.char_list_as_str(sym, base) {
             return has_self.then(|| self.err_expr(span));
+        }
+        if let Some(mark) = recv_mark {
+            self.cx.pending.truncate(mark);
         }
         let mut all_args = Vec::with_capacity(args.len() + 1);
         all_args.push(ast::Arg {
