@@ -28,7 +28,7 @@ type Z = Mod<998_244_353>
 
 let (x, y, k): (1..=5000, 1..=5000, 1..=9999) = read()
 let a: Str = read()
-let comb = Z.comb(x + y)
+let comb = Comb<Z>(x + y)
 
 struct Walk(zeros: Int, ones: Int, lnds: Int):
     fn push(self, c: Char) -> Walk =
@@ -68,10 +68,10 @@ for c in a:
         let s = walk.push('1')
         match phase:
             Seeking => first_hits_from(s)
-            Split(base) => ans += completions(s, x - base.zeros - s.zeros, y - base.ones - s.ones)
+            Phase.Split(base) => ans += completions(s, x - base.zeros - s.zeros, y - base.ones - s.ones)
     walk = walk.push(c)
     if let Seeking = phase, walk.lnds >= k:
-        phase = Split(base: walk)
+        phase = Phase.Split(walk)
         walk = Walk(0, 0, 0)
 
 for z in Cnt, o in Cnt:

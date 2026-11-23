@@ -46,18 +46,18 @@ fn balanced_sides(id: Int, len: Int) -> List<Side>:
 @!multitest
 let n: 2..=200_000 = read()
 domain Coin = 1..=n
-let q = ceil_log(3, n) + 1
+let q = (1..).find(q => 3 ** (q - 1) >= n)!
 domain Round = 0..q
 
 var rounds: [Round, Side]List<Coin> = []
 for pair in 1..=n / 2:
     let (a, b) = (Coin(2 * pair - 1), Coin(2 * pair))
     let sides = balanced_sides(pair, q)
-    for (r, s) in Round.zip(sides):
+    for (r, s) in zip(Round.collect(), sides):
         rounds[r, s].push(a)
         rounds[r, opposite(s)].push(b)
 if n % 2 == 1:
-    for r in Round: rounds[r, Side.Off].push(Coin.last)
+    for r in Round: rounds[r, Side.Off].push(Coin.last!)
 
 print(q)
 for r in Round:
@@ -66,7 +66,7 @@ for r in Round:
 let response: Str = read()
 var hits: [Coin]Int = 0
 var known = 0
-for (r, ch) in Round.zip(response):
+for (r, ch) in zip(Round.collect(), response):
     if let side = parse_side(ch):
         known += 1
         for c in rounds[r, side]: hits[c] += 1

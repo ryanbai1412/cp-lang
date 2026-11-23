@@ -11,6 +11,6 @@ domain I = 0..n
 let a: [I]-10 ** 9..=10 ** 9 = read()
 let pref = prefix(a)
 var ord: [I]I = [I] i => i
-ord.sort(by: i => (pref.prefix(i.ord), i))
+ord.sort(by: i => (pref.prefix(i.l), i))
 let rank = ord.inverse()
 print([n - rank[i].ord for i in I])
