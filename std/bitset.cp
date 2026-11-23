@@ -431,8 +431,7 @@ pub struct Bitset<D>:
     pub fn count_below(self, i: D) -> Int:
         let idx = i.to_idx
         let (words, bits) = (idx / 64, idx % 64)
-        var ans = 0
-        for k in 0..words: ans += popcount(w[k])
+        var ans = sum(popcount(w[k]) for k in 0..words)
         if bits > 0 and words < w.len: ans += popcount(w[words] & low(bits))
         ans
 
@@ -765,8 +764,7 @@ pub struct DynBitset:
         let (lo, hi) = (r.start, r.end)
         if lo >= hi: return 0
         assert 0 <= lo and hi <= _cap
-        var c = 0
-        for k in lo / 64..=(hi - 1) / 64: c += popcount(_w[k] & span(k, lo, hi))
+        let c = sum(popcount(_w[k] & span(k, lo, hi)) for k in lo / 64..=(hi - 1) / 64)
         c
 
     /// The `k`-th set bit index (0-based, in increasing order), or `None` if `k >= len`.

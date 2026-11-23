@@ -889,7 +889,7 @@ fn groups_partitions_all_vertices_by_component():
             assert d.same(v, g[0])
             flat.push(v)
         assert g.len == d.size(g[0])
-    assert sorted(flat) == [v for v in V]
+    assert flat.sorted() == [v for v in V]
     d.undo_to(snap)
     assert d.groups().len == 5 and d.components == 5
     for v in V: d.unite(V(1), v)
@@ -983,9 +983,9 @@ fn parity_matches_a_brute_colouring_and_rolls_back():
         if la == lb:
             let ok = (side[a] != side[b]) == differ
             if not ok: conflicts += 1
-            assert d.unite(a, b, differ: differ) == ok
+            assert d.unite(a, b, differ:) == ok
         else:
-            assert d.unite(a, b, differ: differ)
+            assert d.unite(a, b, differ:)
             let flip = (side[a] != side[b]) != differ
             for v in V:
                 if label[v] == lb:

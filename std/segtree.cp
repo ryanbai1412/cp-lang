@@ -1,8 +1,8 @@
 //! Segment tree over a domain, for any associative operation.
 use std.algebra.{Action, Monoid}
 use std.bag.{SortedBag}
-use std.math.{gcd}
-use std.seq.{ends}
+use std.math.{gcd, bit}
+use std.seq.{ends, first_true}
 
 struct NoAction
 struct NoOp
@@ -847,7 +847,7 @@ pub struct WaveletMatrix<D>:
         var (lo, hi, res) = (lo0, hi0, 0)
         for l in 0..bits:
             let (zl, zh) = (lo - self.ones(l, lo), hi - self.ones(l, hi))
-            if (x >> (bits - 1 - l)) & 1 == 1:
+            if x.bit((bits - 1 - l)):
                 res += zh - zl
                 (lo, hi) = (zs[l] + self.ones(l, lo), zs[l] + self.ones(l, hi))
             else:
@@ -868,7 +868,7 @@ pub struct WaveletMatrix<D>:
         var top = 0
         for v in cur:
             assert v >= 0, "`WaveletMatrix` needs non-negative values"
-            top = max(top, v)
+            top max= v
         var bits = 0
         while (top >> bits) > 0: bits += 1
         var w = WaveletMatrix<D>(
@@ -884,7 +884,7 @@ pub struct WaveletMatrix<D>:
             var (zero, one): (List<Int>, List<Int>) = ([], [])
             for i in 0..n:
                 let v = cur[i]
-                if (v >> b) & 1 == 1:
+                if v.bit(b):
                     w.cnt[base + i + 1] = w.cnt[base + i] + 1
                     w.zsum[base + i + 1] = w.zsum[base + i]
                     one.push(v)
@@ -1104,11 +1104,7 @@ pub struct DynamicOrderTree<D, T>:
     pub fn kth(self, r: Range<D>, k: Int) -> ?T:
         assert k >= 0, "`kth` takes `k >= 0`"
         if k >= r.len: return None
-        var (lo, hi) = (0, bit[0].len - 1)
-        while lo < hi:
-            let mid = (lo + hi) / 2
-            if self.span_count(r, bit[0].nth(mid)!, true) > k: hi = mid
-            else: lo = mid + 1
+        let lo = (0..bit[0].len - 1).first_true(mid => self.span_count(r, bit[0].nth(mid)!, true) > k) ?? (bit[0].len - 1)
         bit[0].nth(lo)
 
 /// \(O(q \log \lvert D \rvert)\) space. Mergeable min-ordered set over domain `D` for lazily pruned
@@ -1199,9 +1195,7 @@ fn merge_sort_and_sparse_segtree_match_brute():
     let a = [I] _ => rand(-10, 10)
     let mst = MergeSortTree<I, Int>(a)
     fn cnt(r: Range<I>, ok: Int -> Bool) -> Int:
-        var c = 0
-        for i in r:
-            if ok(a[i]): c += 1
+        let c = count(ok(a[i]) for i in r)
         c
     for l in 1..=14:
         for r in l..=14:

@@ -8,7 +8,7 @@
 /// example: `Some(4).is_some_and(v => v > 3) == true`
 /// example: `let n: ?Int = None; n.is_some_and(v => v > 3) == false`
 pub fn is_some_and<T>(self: ?T, p: T -> Bool) -> Bool:
-    if self is Some(v): return p(v)
+    if let Some(v) = self: return p(v)
     false
 
 /// Whether there is no value or `p` holds for it; `true` on `None`.
@@ -18,5 +18,5 @@ pub fn is_some_and<T>(self: ?T, p: T -> Bool) -> Bool:
 /// example: `Some(2).is_none_or(v => v > 3) == false`
 /// example: `let n: ?Int = None; n.is_none_or(v => v > 3) == true`
 pub fn is_none_or<T>(self: ?T, p: T -> Bool) -> Bool:
-    if self is Some(v): return p(v)
+    if let Some(v) = self: return p(v)
     true

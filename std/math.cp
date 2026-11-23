@@ -439,7 +439,7 @@ pub fn to_str(self: Int, base: Int = 10) -> Str:
         cs.push(if d < 10: Char(48 + d) else: Char(87 + d))
         x = if x < 0 and r != 0: x / base + 1 else: x / base
     if self < 0: cs.push('-')
-    Str([cs[cs.len - 1 - i] for i in 0..cs.len])
+    Str(cs.reversed())
 
 /// Which side of zero a number is on. `Int(s)` is -1, 0 or 1, so `x == Int(x.sign) * abs(x)`;
 /// `-s` flips it and `max(s, Sign.Zero)` clamps it.
@@ -535,7 +535,7 @@ pub fn factor(x: Int) -> List<(Int, Int)>:
             let d = rho(m)
             todo.push(d)
             todo.push(m / d)
-    sort(mut primes)
+    primes.sort()
     var out = List<(Int, Int)>()
     for p in primes:
         if not out.is_empty and out.last!.0 == p: out.last! = (p, out.last!.1 + 1)
@@ -579,7 +579,7 @@ pub fn divisors_from_factors(factors: List<(Int, Int)>) -> List<Int>:
         for _ in 0..e:
             pk *= p
             for i in 0..cur: out.push(out[i] * pk)
-    sort(mut out)
+    out.sort()
     out
 
 fn ext_gcd_x(a: Int, b: Int) -> (Int, Int):
@@ -893,7 +893,7 @@ pub fn primes_in(lo: Int, hi: Int) -> List<Int>:
         while m <= r:
             small[m] = false
             m += p
-        m = max(p * p, (a + p - 1) / p * p)
+        m = max(p * p, ceil_div(a, p) * p)
         while m < hi:
             seg[m - a] = false
             m += p
@@ -1077,10 +1077,10 @@ pub struct DirichletSum<T: Add + Sub + Mul + Div>:
         var pre = List.filled(max(f_small.len, 1), T.zero)
         for k in 1..f_small.len: pre[k] = pre[k - 1] + f_small[k]
         DirichletSum(
-            n: n,
-            pre: pre,
-            g_sum: g_sum,
-            fg_sum: fg_sum,
+            n:,
+            pre:,
+            g_sum:,
+            fg_sum:,
             g1: g_sum(1),
             memo: Map<Int,
             T>(),
@@ -1226,7 +1226,7 @@ pub fn linear_diophantine(a: Int, b: Int, c: Int) -> ?(x0: Int, y0: Int, step_x:
     let (sx, sy) = (b / g, a / g)
     if b == 0: return Some((x0: c / a, y0: 0, step_x: sx, step_y: sy))
     let m = abs(sx)
-    let x0 = mul_mod(((x % m) + m) % m, ((c / g) % m + m) % m, m)
+    let x0 = mul_mod(x % m, (c / g) % m, m)
     Some((x0:, y0: (c - a * x0) / b, step_x: sx, step_y: sy))
 
 /// The solutions of `a * x = b (mod m)` as `x = r (mod step)`: the least `r` in `0..step` and
@@ -1262,7 +1262,7 @@ pub fn linear_congruence(a: Int, b: Int, m: Int) -> ?(r: Int, step: Int):
 pub fn mod_kth_root(a: Int, k: Int, p: Int) -> ?Int:
     assert k >= 1, "`mod_kth_root` needs `k >= 1`"
     assert is_prime(p), "`mod_kth_root` needs a prime `p`"
-    let x = (a % p + p) % p
+    let x = a % p
     if x == 0: return 0
     let g = primitive_root(p)
     let e = mod_log(g, x, p)!
@@ -1275,7 +1275,7 @@ pub fn mod_kth_root(a: Int, k: Int, p: Int) -> ?Int:
     var best = cur
     for _ in 1..d:
         cur = mul_mod(cur, w, p)
-        best = min(best, cur)
+        best min= cur
     best
 
 /// The multiplicative order of `a` modulo `m >= 1`: the least `k >= 1` with `a^k = 1 (mod m)`,
@@ -1290,7 +1290,7 @@ pub fn mod_kth_root(a: Int, k: Int, p: Int) -> ?Int:
 pub fn mult_order(a: Int, m: Int) -> ?Int:
     assert m >= 1
     if m == 1: return Some(1)
-    let a2 = (a % m + m) % m
+    let a2 = a % m
     if gcd(a2, m) != 1: return None
     var t = carmichael(m)
     for (p, _) in factor(t):
@@ -1349,7 +1349,7 @@ pub fn carmichael(n: Int) -> Int:
 /// example: `min_mod_in_range(5, 9, 0, 3) == Some(0)`
 pub fn min_mod_in_range(a: Int, m: Int, lo: Int, hi: Int) -> ?Int:
     assert m >= 1 and 0 <= lo and lo <= hi and hi < m
-    min_mod_in_range_reduced((a % m + m) % m, m, lo, hi)
+    min_mod_in_range_reduced(a % m, m, lo, hi)
 
 fn min_mod_in_range_reduced(a: Int, m: Int, lo: Int, hi: Int) -> ?Int:
     if lo == 0: return Some(0)
@@ -1499,7 +1499,7 @@ pub struct BigInt(neg: Bool, limbs: List<Int>):
             let d = if y < 0 and r != 0: BIG_BASE - r else: r
             limbs.push(d)
             y = if y < 0 and r != 0: y / BIG_BASE + 1 else: y / BIG_BASE
-        BigInt(neg: x < 0, limbs: limbs)
+        BigInt(neg: x < 0, limbs:)
 
     /// Parse a decimal integer: an optional leading `-`, then one or more digits.
     ///
@@ -1544,7 +1544,7 @@ pub struct BigInt(neg: Bool, limbs: List<Int>):
                 v /= 10
                 k += 1
         if self.neg: cs.push('-')
-        Str([cs[cs.len - 1 - i] for i in 0..cs.len])
+        Str(cs.reversed())
 
     /// The Euclidean quotient and remainder `(self / d, self % d)`: `0 <= r < |d|`, as for `Int`.
     ///
@@ -1609,7 +1609,7 @@ const BIG_BASE = 1_000_000_000
 
 fn big_make(neg: Bool, limbs: List<Int>) -> BigInt:
     var l = limbs
-    while not l.is_empty and l[l.len - 1] == 0: l.pop()
+    while not l.is_empty and l.last! == 0: l.pop()
     BigInt(neg: neg and not l.is_empty, limbs: l)
 
 fn big_cmp_mag(a: List<Int>, b: List<Int>) -> Int:
@@ -1662,17 +1662,16 @@ fn big_mul_mag(a: List<Int>, b: List<Int>) -> List<Int>:
             out[k] = v % BIG_BASE
             carry = v / BIG_BASE
             k += 1
-    while not out.is_empty and out[out.len - 1] == 0: out.pop()
+    while not out.is_empty and out.last! == 0: out.pop()
     out
 
 fn big_divmod_mag(a: List<Int>, b: List<Int>) -> (List<Int>, List<Int>):
     var q = List.filled(a.len, 0)
     var r: List<Int> = []
     for i in (0..a.len).rev:
-        var shifted = [a[i]]
-        for x in r: shifted.push(x)
+        let shifted = [a[i]] + [x for x in r]
         r = shifted
-        while not r.is_empty and r[r.len - 1] == 0: r.pop()
+        while not r.is_empty and r.last! == 0: r.pop()
         var (lo, hi) = (0, BIG_BASE - 1)
         while lo < hi:
             let guess = (lo + hi + 1) / 2
@@ -1682,7 +1681,7 @@ fn big_divmod_mag(a: List<Int>, b: List<Int>) -> (List<Int>, List<Int>):
                 hi = guess - 1
         if lo > 0:
             r = big_sub_mag(r, big_mul_mag(b, [lo]))
-            while not r.is_empty and r[r.len - 1] == 0: r.pop()
+            while not r.is_empty and r.last! == 0: r.pop()
         q[i] = lo
     (q, r)
 

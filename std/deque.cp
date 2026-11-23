@@ -49,7 +49,7 @@ pub struct Deque<T>:
         while c < cap: c *= 2
         if c <= mask + 1: return
         if buf.is_empty:
-            if c > want: want = c
+            want max= c
         else:
             self.grow_to(c, buf[head])
 
@@ -262,8 +262,7 @@ pub struct Deque<T>:
     /// traps: never
     /// example: `var q = Deque.of([2]); q.push_front(1); q.to_list() == [1, 2]`
     pub fn to_list(self) -> List<T>:
-        var out: List<T> = []
-        for i in 0..n: out.push(self.get(i))
+        let out: List<T> = [self.get(i) for i in 0..n]
         out
 
     /// Yield elements front to back without allocating.
@@ -303,7 +302,7 @@ pub struct Deque<T>:
     /// example: `var q = Deque.of([1, 2, 3, 4]); q.rotate_left(-1); q.to_list() == [4, 1, 2, 3]`
     pub fn rotate_left(mut self, k: Int):
         if n == 0: return
-        let s = (k % n + n) % n
+        let s = k % n
         if s <= n - s:
             for _ in 0..s: self.push(self.pop_front()!)
         else:

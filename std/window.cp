@@ -51,7 +51,7 @@ pub struct Window<T, M>(op: M):
     /// example: `var w = Window(+); w.push(2); w.pop(); w.all == None`
     @get pub fn all(self) -> ?T:
         if front.len == 0: return back
-        let f = front[front.len - 1]
+        let f = front.last!
         if let b = back: return Some(op(f, b))
         Some(f)
 
@@ -221,9 +221,8 @@ pub struct Undoing<S: Undo, T>(pub state: S, add: (mut S, T) -> ()):
             return
         var b_buf: List<T> = []
         var a_buf: List<T> = []
-        var base = marks[marks.len - 1]
-        while not items.is_empty:
-            let item = items.pop()!
+        var base = marks.last!
+        while let item = items.pop():
             let b = is_b.pop()!
             base = marks.pop()!
             if b:

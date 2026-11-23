@@ -179,8 +179,7 @@ pub struct TimeTree<E>:
         su.push(1)
         sl.push(0)
         sr.push(size)
-        while su.len > 0:
-            let u = su.pop()!
+        while let u = su.pop():
             let nl = sl.pop()!
             let nr = sr.pop()!
             if u < 0:

@@ -8,6 +8,7 @@
 use std.graph.{Next}
 use std.heap.{MinHeap}
 use std.seq.{next_permutation}
+use std.math.{bit}
 
 /// A handle to one arc of a `FlowGraph`. Handles from `add` stay valid as arcs are added.
 pub struct Arc(pub id: 0..2_147_483_648):
@@ -505,7 +506,7 @@ pub struct CostFlow<V>:
             loop:
                 let aid = par_a[cur]
                 cyc.push(aid)
-                if left[aid] < f: f = left[aid]
+                f min= left[aid]
                 c += price[aid]
                 cur = par_v[cur]!
                 if cur == start: break
@@ -759,7 +760,7 @@ fn alternating_layers<L, R>(adj: [L]List<R>, mate: [L]?R, back: [R]?L) -> [L]?(0
 /// example: `let w = [[1, 5], [4, 3]]; max_weight_matching<0..2, 0..2>(weight: (l, r) => w[l][r]) == (total: 9, mate: [1, 0])`
 /// example: `max_weight_matching<0..1, 0..2>(weight: (_, r) => r) == (total: 1, mate: [1])`
 pub fn max_weight_matching<L, R>(weight: (L, R) -> Int) -> (total: Int, mate: [L]R):
-    let mate = hungarian::<L, R>((l, r) => -weight(l, r))
+    let mate = hungarian<L, R>((l, r) => -weight(l, r))
     (total: sum(weight(l, mate[l]) for l in L), mate:)
 
 /// The minimum-weight assignment: every `l` in `L` gets a distinct `mate[l]` in `R`, minimizing
@@ -771,7 +772,7 @@ pub fn max_weight_matching<L, R>(weight: (L, R) -> Int) -> (total: Int, mate: [L
 /// traps: when `L.count > R.count`
 /// example: `let w = [[1, 5], [4, 3]]; min_weight_matching<0..2, 0..2>(weight: (l, r) => w[l][r]) == (total: 4, mate: [0, 1])`
 pub fn min_weight_matching<L, R>(weight: (L, R) -> Int) -> (total: Int, mate: [L]R):
-    let mate = hungarian::<L, R>(weight)
+    let mate = hungarian<L, R>(weight)
     (total: sum(weight(l, mate[l]) for l in L), mate:)
 
 /// Minimum-cost assignment of rows `L` into columns `R` with potentials `u`, `v`; row and
@@ -1188,9 +1189,7 @@ pub fn max_weight_general_matching<V, E>(
     )
     var more = true
     while more: more = g.phase()
-    var total = 0
-    for u in 1..=n:
-        if g.mate[u] > u: total += g.ew[u * m + g.mate[u]]
+    let total = sum(g.ew[u * m + g.mate[u]] for u in 1..=n if g.mate[u] > u)
     (
         total:,
         mate: [V] v => if g.mate[v.to_idx + 1] == 0: None else: V.nth(g.mate[v.to_idx + 1] - 1),
@@ -1403,7 +1402,7 @@ fn min_cut_equals_max_flow_on_random_networks():
         var best = Int.MAX
         for m in 0..64:
             if m & 1 == 0 or m & 32 != 0: continue
-            best min= sum(c for (u, v, c) in es if (m >> u) & 1 == 1 and (m >> v) & 1 == 0)
+            best min= sum(c for (u, v, c) in es if m.bit(u) and not m.bit(v))
         assert f == best
         let side = g.min_cut(V(0))
         assert side[V(0)] and not side[V(5)]
@@ -1431,7 +1430,7 @@ fn hungarian_matches_brute_force_on_random_matrices():
     domain R = 0..4
     for _ in 0..15:
         let w = [L] i => [R] j => rand(-50, 50)
-        let h = max_weight_matching::<L, R>((i, j) => w[i][j])
+        let h = max_weight_matching<L, R>((i, j) => w[i][j])
         var p = [0, 1, 2, 3]
         var best = Int.MIN
         while true:
@@ -1534,7 +1533,7 @@ fn min_cost_flow_agrees_with_hungarian_and_its_slope_is_convex():
     domain Node = 0..10
     for _ in 0..15:
         let w = [L] i => [R] j => rand(-50, 50)
-        let h = min_weight_matching::<L, R>((i, j) => w[i][j])
+        let h = min_weight_matching<L, R>((i, j) => w[i][j])
         let (s, t) = (Node(8), Node(9))
         var net = CostFlow<Node>()
         for i in L: net.add(s, Node(i.to_idx), 1, cost: 0)
@@ -1573,8 +1572,8 @@ fn max_closure_matches_brute_force():
             var closed = true
             for u in V:
                 for v in before[u]:
-                    if (m >> v.to_idx) & 1 == 1 and (m >> u.to_idx) & 1 == 0: closed = false
-            if closed: best max= sum(p[v] for v in V if (m >> v.to_idx) & 1 == 1)
+                    if m.bit(v.to_idx) and not m.bit(u.to_idx): closed = false
+            if closed: best max= sum(p[v] for v in V if m.bit(v.to_idx))
         assert got.value == best
         assert sum(p[v] for v in V if got.take[v]) == best
         for u in V:
@@ -1612,8 +1611,8 @@ fn rectangular_assignment_matches_brute_force_both_ways():
     domain R = 0..5
     for _ in 0..20:
         let w = [L] i => [R] j => rand(-20, 20)
-        let lo = min_weight_matching::<L, R>((i, j) => w[i][j])
-        let hi = max_weight_matching::<L, R>((i, j) => w[i][j])
+        let lo = min_weight_matching<L, R>((i, j) => w[i][j])
+        let hi = max_weight_matching<L, R>((i, j) => w[i][j])
         var (small, big) = (Int.MAX, Int.MIN)
         for a in R:
             for b in R:
@@ -1642,11 +1641,11 @@ fn general_matching_matches_brute_force():
         var best = List.filled(256, 0)
         for mask in 1..256:
             var low = 0
-            while (mask >> low) & 1 == 0: low += 1
+            while not mask.bit(low): low += 1
             let rest = mask ^ (1 << low)
             best[mask] = best[rest]
             for v in V:
-                if (rest >> v.to_idx) & 1 == 1 and edge[V(low)][v]:
+                if rest.bit(v.to_idx) and edge[V(low)][v]:
                     best[mask] max= best[rest ^ (1 << v.to_idx)] + 1
         assert got.size == best[255]
         assert sum(1 for v in V if got.mate[v] != None) == 2 * got.size
@@ -1672,11 +1671,11 @@ fn weighted_general_matching_matches_brute_force():
         var best = List.filled(64, 0)
         for mask in 1..64:
             var low = 0
-            while (mask >> low) & 1 == 0: low += 1
+            while not mask.bit(low): low += 1
             let rest = mask ^ (1 << low)
             best[mask] = best[rest]
             for v in V:
-                if (rest >> v.to_idx) & 1 == 1 and wt[V(low)][v] >= 0:
+                if rest.bit(v.to_idx) and wt[V(low)][v] >= 0:
                     best[mask] max= best[rest ^ (1 << v.to_idx)] + wt[V(low)][v]
         assert got.total == best[63]
         var total = 0
@@ -1755,8 +1754,7 @@ fn gomory_hu_tree_gives_every_pairwise_min_cut():
             var seen = [V] _ => false
             var stack: List<V> = [a]
             seen[a] = true
-            while not stack.is_empty:
-                let x = stack.pop()!
+            while let x = stack.pop():
                 for e in tree:
                     for (p, q) in [(e.u, e.v), (e.v, e.u)]:
                         if p == x and not seen[q]:
@@ -1767,7 +1765,7 @@ fn gomory_hu_tree_gives_every_pairwise_min_cut():
                 if a == b: continue
                 var cut = Int.MAX
                 for m in 0..64:
-                    if (m >> a.to_idx) & 1 == 1 and (m >> b.to_idx) & 1 == 0:
+                    if m.bit(a.to_idx) and not m.bit(b.to_idx):
                         cut min= sum(
                             e.w for e in es if ((m >> e.u.to_idx) & 1) != ((m >> e.v.to_idx) & 1)
                         )
@@ -1804,9 +1802,9 @@ pub struct Matching<L, R>:
     /// traps: never
     /// example: `let m = Matching<0..2, 0..2>(); m.len == 0 and m.mate(0) == None`
     pub fn new() -> Matching<L, R>:
-        var adj: [L]List<R> = []
-        var mate: [L]?R = None
-        var back: [R]?L = None
+        let adj: [L]List<R> = []
+        let mate: [L]?R = None
+        let back: [R]?L = None
         Matching(adj, mate, back, 0)
 
     /// Allows `l` to match `r`. Does not augment; a repeated edge is harmless.
@@ -2073,7 +2071,7 @@ pub fn edge_coloring<L, R, E>(edges: [E](l: L, r: R)) -> (colors: Int, color: [E
         color[e] = a
         at_l[l][a] = Some(e)
         at_r[r][a] = Some(e)
-    (colors: k, color: color)
+    (colors: k, color:)
 
 fn random_prefs<A, B>() -> [A]List<B>:
     [A] _ => do:
@@ -2110,8 +2108,8 @@ fn stable_matchings_are_stable_and_proposer_optimal():
     domain L = 0..4
     domain R = 0..3
     for _ in 0..60:
-        let pl = random_prefs::<L, R>()
-        let pr = random_prefs::<R, L>()
+        let pl = random_prefs<L, R>()
+        let pr = random_prefs<R, L>()
         let (rl, rr) = (pref_ranks(pl), pref_ranks(pr))
         let m = stable_matching(pl, pr)
         assert is_stable(m, rl, rr)
@@ -2139,7 +2137,7 @@ fn edge_colorings_use_max_degree_proper_colours():
         let (colors, color) = edge_coloring(es)
         var deg = 0
         for l in L: deg = max(deg, [e for e in E if es[e].l == l].len)
-        for r in R: deg = max(deg, [e for e in E if es[e].r == r].len)
+        for r in R: deg max= [e for e in E if es[e].r == r].len
         assert colors == deg
         for e in E:
             assert 0 <= color[e] and color[e] < colors
@@ -2346,7 +2344,7 @@ fn matroid_intersections_match_brute_force():
         var best_n = -1
         var best_w = 0
         for mask in 0..1 << E.count:
-            let s: [E]Bool = [E] e => (mask >> e.to_idx) & 1 == 1
+            let s: [E]Bool = [E] e => mask.bit(e.to_idx)
             var d = Dsu<V>()
             var used: [C]Int = 0
             var ok = true
@@ -2408,8 +2406,7 @@ fn min_cost_circulations_match_brute_force():
                 net[es[e].u] -= f[e]
                 net[es[e].v] += f[e]
             if not ok or [v for v in V if net[v] != 0].len > 0: continue
-            var c = 0
-            for e in E: c += f[e] * es[e].cost
+            let c = sum(f[e] * es[e].cost for e in E)
             if best == None or c < best!: best = Some(c)
         let got = min_cost_circulation(es)
         assert (got?.cost) == best

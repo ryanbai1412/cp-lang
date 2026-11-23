@@ -108,14 +108,14 @@ pub struct Mod<P>(pub v: 0..P):
     /// example: `let e: List<Mod<7>> = []; Mod<7>.inv_all(e) == []`
     pub fn inv_all(xs: List<Mod<P>>) -> List<Mod<P>>:
         var pre: List<Mod<P>> = [Mod(1 % P)]
-        for x in xs: pre.push(pre[pre.len - 1] * x)
+        for x in xs: pre.push(pre.last! * x)
         var out = List.filled(xs.len, Mod(0))
         var acc = pre[xs.len].inv
         var i = xs.len
         while i > 0:
             i -= 1
             out[i] = acc * pre[i]
-            acc = acc * xs[i]
+            acc *= xs[i]
         out
 
 impl Add for Mod<P>:
@@ -144,7 +144,7 @@ impl Pow for Mod<P>:
         if e < 0: return a.inv ** (-e)
         var (base, acc, k) = (a, Mod(1 % P), e)
         while k > 0:
-            if k % 2 == 1: acc = acc * base
+            if k % 2 == 1: acc *= base
             base = base * base
             k /= 2
         acc

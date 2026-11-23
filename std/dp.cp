@@ -10,6 +10,8 @@
 //! on small inputs (`monge_break`, `dnc_break`, `knuth_break`,
 //! `convexity_break`). A sliding-window optimum is `a.windows(k).fold(op)` or `std.window.Window(op)`.
 use std.algebra.{Monoid}
+use std.math.{bit}
+use std.seq.{first_true}
 
 /// \(O(1)\) per evaluation.
 /// The line `k * x + m`, the usual entry of a `LiChao`.
@@ -307,8 +309,8 @@ pub fn aliens<L: Add + Sub + Mul>(k: Int, solve: L -> (val: L, count: Int), lamb
         lo = r.first!
         hi = r.last!
     else:
-        while solve(hi).count > k: hi = hi * 2
-        while solve(lo).count <= k: lo = lo * 2
+        while solve(hi).count > k: hi *= 2
+        while solve(lo).count <= k: lo *= 2
     assert solve(hi).count <= k
     while lo < hi:
         let mid = lo + (hi - lo) / 2
@@ -509,7 +511,7 @@ fn smawk_rec(rows: List<Int>, cols: List<Int>, f: (Int, Int) -> Int, mut at: Lis
     for c in cols:
         while kept.len > 0:
             let r = rows[kept.len - 1]
-            if f(r, kept[kept.len - 1]) <= f(r, c): break
+            if f(r, kept.last!) <= f(r, c): break
             let _ = kept.pop()
         if kept.len < rows.len: kept.push(c)
     smawk_rec([rows[i] for i in 0..rows.len if i % 2 == 1], kept, f, mut at)
@@ -517,7 +519,7 @@ fn smawk_rec(rows: List<Int>, cols: List<Int>, f: (Int, Int) -> Int, mut at: Lis
     var i = 0
     while i < rows.len:
         let r = rows[i]
-        let stop = if i + 1 < rows.len: at[rows[i + 1]] else: kept[kept.len - 1]
+        let stop = if i + 1 < rows.len: at[rows[i + 1]] else: kept.last!
         var best = kept[j]
         var bv = f(r, best)
         while kept[j] != stop:
@@ -621,11 +623,7 @@ pub struct MonotoneHull<P>(pick: (Int, Int) -> Int = min):
     /// example: `var h = MonotoneHull<()>(min); h.add(Line(2, 0)); h.add(Line(-1, 3)); h.at(5) == Some(-2)`
     pub fn at(self, x: Int) -> ?Int:
         if ks.is_empty: return None
-        var (lo, hi) = (0, ks.len - 1)
-        while lo < hi:
-            let mid = (lo + hi) / 2
-            if self.val_at(mid + 1, x) < self.val_at(mid, x): lo = mid + 1
-            else: hi = mid
+        let lo = (0..ks.len - 1).first_true(mid => self.val_at(mid + 1, x) >= self.val_at(mid, x)) ?? (ks.len - 1)
         Some(self.sign() * self.val_at(lo, x))
     /// `at(x)` for an `x` that never decreases between calls; `None` when empty.
     ///
@@ -772,7 +770,7 @@ pub struct LineContainer(pick: (Int, Int) -> Int = min):
             if ps[x] >= ps[y]:
                 keep = false
                 ps[x] = self.meet(x, z)
-        var after = if keep: y else: z
+        let after = if keep: y else: z
         while x >= 0:
             left = self.drop_end(left, true)
             let w = self.end(left, true)
@@ -827,11 +825,7 @@ pub fn lis_ends<D, T, K>(self: [D]T, strict: Bool = true, by: T -> K = x => x) -
     var out: [D]Int = 0
     for i in D:
         let k = by(self[i])
-        var (lo, hi) = (0, tails.len)
-        while lo < hi:
-            let mid = (lo + hi) / 2
-            if tails[mid] < k or (not strict and tails[mid] == k): lo = mid + 1
-            else: hi = mid
+        let lo = (0..tails.len).first_true(mid => not (tails[mid] < k or (not strict and tails[mid] == k))) ?? tails.len
         if lo == tails.len: tails.push(k)
         else: tails[lo] = k
         out[i] = lo + 1
@@ -906,11 +900,9 @@ pub fn subset_folds<T, M>(xs: List<T>, op: M) -> List<T>:
 /// example: `backtrack(1, x => if x < 4: [2 * x, 2 * x + 1] else: []).map(s => s.depth).collect() == [0, 1, 2, 2, 1, 2, 2]`
 pub fn backtrack<S>(start: S, next: S -> yields S) -> yields Step<S>:
     var stack: List<(S, Int)> = [(start, 0)]
-    while stack.len > 0:
-        let (s, d) = stack.pop()!
+    while let (s, d) = stack.pop():
         yield Step(s, d)
-        var kids: List<S> = []
-        for c in next(s): kids.push(c)
+        let kids: List<S> = [c for c in next(s)]
         var i = kids.len - 1
         while i >= 0:
             stack.push((kids[i], d + 1))
@@ -1000,8 +992,7 @@ fn aliens_finds_the_exact_count_optimum():
                     v += x + lam
                     c += 1
             (val: v, count: c)
-        var want = 0
-        for i in 0..k: want += vals[i]
+        let want = sum(vals[i] for i in 0..k)
         assert aliens(k, solve, lambdas: lo..=hi) == want
 
 @test
@@ -1025,10 +1016,8 @@ fn aliens_searches_a_wide_i128_slope_range():
 fn subset_sums_are_every_sum_sorted():
     for _ in 0..50:
         let xs = [rand(-5, 9) for _ in 0..rand(0, 6)]
-        var want: List<Int> = []
-        for mask in 0..1 << xs.len:
-            want.push(sum(xs[i] for i in 0..xs.len if (mask >> i) & 1 == 1))
-        assert subset_sums(xs) == sorted(want)
+        var want: List<Int> = [sum(xs[i] for i in 0..xs.len if mask.bit(i)) for mask in 0..1 << xs.len]
+        assert subset_sums(xs) == want.sorted()
 
 @test
 fn monge_paths_match_the_quadratic_dp():

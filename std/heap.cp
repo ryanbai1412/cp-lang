@@ -50,7 +50,7 @@ pub struct Heap<T>:
     /// h.pop() == Some(3)
     /// ```
     pub fn of<K>(xs: List<T>, by: ?(T -> K) = None) -> Heap<T>:
-        var h: Heap<T> = Heap.new(by: by)
+        var h: Heap<T> = Heap.new(by:)
         h.xs = xs
         var i = h.xs.len / 2
         while i > 0:
@@ -233,7 +233,7 @@ pub struct ErasableHeap<T>:
     /// traps: never
     /// example: `var h: ErasableHeap<Int> = ErasableHeap(); h.push(2); h.push(1); h.remove(1); h.pop() == Some(2)`
     pub fn new<K>(by: ?(T -> K) = None) -> ErasableHeap<T>:
-        ErasableHeap(Heap.new(by: by), Heap.new(by: by))
+        ErasableHeap(Heap.new(by:), Heap.new(by:))
 
     /// Number of active elements in the heap.
     ///
@@ -647,7 +647,7 @@ pub struct MinMaxHeap<T>:
     /// traps: never
     /// example: `var h = MinMaxHeap.of([2]); let t = h.take(); h.is_empty and t.first == Some(2)`
     pub fn take(mut self) -> MinMaxHeap<T>:
-        let out = MinMaxHeap(_xs: _xs, lt: lt)
+        let out = MinMaxHeap(_xs:, lt:)
         _xs = []
         out
 
@@ -736,7 +736,7 @@ pub struct MeldHeap<T: Add>:
         while i + 1 < q.len:
             q.push(h.merge(q[i], q[i + 1]))
             i += 2
-        if q.len > 0: h._root = q[q.len - 1]
+        if q.len > 0: h._root = q.last!
         h._len = xs.len
         h
 
@@ -853,7 +853,7 @@ pub struct MeldHeap<T: Add>:
     /// example: `var h = MeldHeap.of([1, 5]); h.add_all(10); h.pop() == Some(11)`
     pub fn add_all(mut self, delta: T):
         if _root < 0: return
-        _keys[_root] = _keys[_root] + delta
+        _keys[_root] += delta
         _add[_root] = Some(plus(_add[_root], delta))
 
     /// Remove all elements.
@@ -876,13 +876,13 @@ pub struct MeldHeap<T: Add>:
     /// example: `var h = MeldHeap.of([1]); let t = h.take(); h.is_empty and t.peek == Some(1)`
     pub fn take(mut self) -> MeldHeap<T>:
         let out = MeldHeap(
-            _len: _len,
-            _root: _root,
-            _keys: _keys,
-            _add: _add,
-            _kids: _kids,
-            _rank: _rank,
-            lt: lt,
+            _len:,
+            _root:,
+            _keys:,
+            _add:,
+            _kids:,
+            _rank:,
+            lt:,
         )
         self.clear()
         out
@@ -918,7 +918,7 @@ pub struct MeldHeap<T: Add>:
             let (a, b) = _kids[t]
             for c in [a, b]:
                 if c >= 0:
-                    _keys[c] = _keys[c] + d
+                    _keys[c] += d
                     _add[c] = Some(plus(_add[c], d))
             _add[t] = None
 
@@ -947,7 +947,7 @@ fn pops_in_sorted_order():
         h.push(x)
         g.push(x)
     assert h.len == 40 and g.len == 40
-    sort(mut xs)
+    xs.sort()
     for i in 0..40:
         assert h.peek == xs[i] and h.pop() == xs[i]
         assert g.peek == xs[39 - i] and g.pop() == xs[39 - i]

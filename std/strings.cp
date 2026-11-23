@@ -1,7 +1,7 @@
 //! String algorithms. They only compare elements, so they work on a `Str`
 //! (ASCII bytes) and on any `List<T>` alike. Positions are 0-based.
 
-use std.seq.{nth}
+use std.seq.{nth, last_true}
 
 /// `self` written `n` times in a row, as a new `Str`: `"0".repeat(4)` is `"0000"`.
 ///
@@ -1303,10 +1303,7 @@ pub struct SuffixArray:
         assert k >= 0, "`kth_distinct(k)` needs `k >= 0`"
         let n = sa.len
         if k >= dcum[n]: return None
-        var (lo, hi) = (0, n - 1)
-        while lo < hi:
-            let mid = (lo + hi + 1) / 2
-            if dcum[mid] <= k: lo = mid else: hi = mid - 1
+        let lo = (1..=n - 1).last_true(mid => dcum[mid] <= k) ?? 0
         let shared = if lo == 0: 0 else: lcp[lo - 1]
         Some(sa[lo]..sa[lo] + shared + (k - dcum[lo]) + 1)
 
@@ -1354,21 +1351,21 @@ pub fn suffix_tree_edges<S: Indexed>(s: S) -> List<SuffixTreeEdge>:
     var st_sum: List<Int> = []
     for i in 0..n:
         let leaf_d = n - sa[i]
-        if st_depth.is_empty or st_depth[st_depth.len - 1] < leaf_d:
+        if st_depth.is_empty or st_depth.last! < leaf_d:
             st_depth.push(leaf_d)
             st_start.push(i)
             st_sum.push(0)
         let h = if i + 1 < n: lcp[i] else: 0
-        while not st_depth.is_empty and st_depth[st_depth.len - 1] > h:
+        while not st_depth.is_empty and st_depth.last! > h:
             let d = st_depth.pop()!
             let start = st_start.pop()!
             let csum = st_sum.pop()!
-            let top_d = if st_depth.is_empty: 0 else: st_depth[st_depth.len - 1]
+            let top_d = if st_depth.is_empty: 0 else: st_depth.last!
             let parent_d = if top_d > h: top_d else: h
             let elen = d - parent_d
             let bottom = csum + elen
             out.push(SuffixTreeEdge(csum, bottom, parent_d, elen, start..(i + 1)))
-            if not st_depth.is_empty and st_depth[st_depth.len - 1] == parent_d:
+            if not st_depth.is_empty and st_depth.last! == parent_d:
                 st_sum[st_sum.len - 1] += bottom
             elif parent_d > 0:
                 st_depth.push(parent_d)
@@ -1400,12 +1397,12 @@ pub fn lyndon_runs<S: Indexed>(s: S) -> List<(l: Int, r: Int, period: Int)>:
             var st = List<Int>()
             for i in (0..n).rev:
                 while not st.is_empty:
-                    let top = st[st.len - 1]
+                    let top = st.last!
                     let common = sa.lcp_between(i, top)
                     if top + common == n: break
                     let less = (fwd[i + common] < fwd[top + common]) != rev_ord
                     if less: st.pop() else: break
-                let j = if st.is_empty: n else: st[st.len - 1]
+                let j = if st.is_empty: n else: st.last!
                 st.push(i)
                 let p = j - i
                 let left = if i == 0: 0 else: rsa.lcp_between(n - i, n - j)
@@ -1416,7 +1413,7 @@ pub fn lyndon_runs<S: Indexed>(s: S) -> List<(l: Int, r: Int, period: Int)>:
     raw.sort()
     var out = List<(l: Int, r: Int, period: Int)>()
     for run in raw:
-        if out.is_empty or out[out.len - 1].l != run.l or out[out.len - 1].r != run.r:
+        if out.is_empty or out.last!.l != run.l or out.last!.r != run.r:
             out.push(run)
     out
 
@@ -2051,8 +2048,8 @@ pub struct DynamicHash<D>:
         with lint(unproven_list_index: allow)
         if r.is_empty: return HashVal(0, 0)
         let (l, e) = (r.l.ord, r.r.ord)
-        let s1 = (dh_sum(fwd1, e, RH_M1) - dh_sum(fwd1, l, RH_M1) + RH_M1) % RH_M1
-        let s2 = (dh_sum(fwd2, e, RH_M2) - dh_sum(fwd2, l, RH_M2) + RH_M2) % RH_M2
+        let s1 = (dh_sum(fwd1, e, RH_M1) - dh_sum(fwd1, l, RH_M1)) % RH_M1
+        let s2 = (dh_sum(fwd2, e, RH_M2) - dh_sum(fwd2, l, RH_M2)) % RH_M2
         HashVal(s1 * inv1[l] % RH_M1, s2 * inv2[l] % RH_M2)
 
     /// True when the elements over `r` read the same both ways: `get(r) == rev_get(r)`.
@@ -2066,8 +2063,8 @@ pub struct DynamicHash<D>:
     fn span(self, l: Int, e: Int) -> HashVal:
         with lint(unproven_list_index: allow)
         let n = tok1.len
-        let s1 = (dh_sum(bwd1, e, RH_M1) - dh_sum(bwd1, l, RH_M1) + RH_M1) % RH_M1
-        let s2 = (dh_sum(bwd2, e, RH_M2) - dh_sum(bwd2, l, RH_M2) + RH_M2) % RH_M2
+        let s1 = (dh_sum(bwd1, e, RH_M1) - dh_sum(bwd1, l, RH_M1)) % RH_M1
+        let s2 = (dh_sum(bwd2, e, RH_M2) - dh_sum(bwd2, l, RH_M2)) % RH_M2
         HashVal(s1 * inv1[n - e] % RH_M1, s2 * inv2[n - e] % RH_M2)
 
     fn put(mut self, i: Int, t: Int):
@@ -2075,8 +2072,8 @@ pub struct DynamicHash<D>:
         let n = tok1.len
         let x1 = if 0 <= t and t < RH_M1 - 1: t + 1 else: t % (RH_M1 - 1) + 1
         let x2 = if 0 <= t and t < RH_M2 - 1: t + 1 else: t % (RH_M2 - 1) + 1
-        let d1 = (x1 - tok1[i] + RH_M1) % RH_M1
-        let d2 = (x2 - tok2[i] + RH_M2) % RH_M2
+        let d1 = (x1 - tok1[i]) % RH_M1
+        let d2 = (x2 - tok2[i]) % RH_M2
         tok1[i] = x1
         tok2[i] = x2
         dh_add(mut fwd1, i, d1 * pow1[i] % RH_M1, RH_M1)
@@ -2801,11 +2798,8 @@ pub struct PalindromicTree<A>:
                 dp[i] = i
                 while t.plen[v] > 0:
                     series[v] = dp[i - (t.plen[t.ser_link[v]] + t.diff_val[v])]
-                    if t.diff_val[v] == t.diff_val[t.slink[v]]: series[v] = min(
-                        series[v],
-                        series[t.slink[v]],
-                    )
-                    dp[i] = min(dp[i], series[v] + 1)
+                    if t.diff_val[v] == t.diff_val[t.slink[v]]: series[v] min= series[t.slink[v]]
+                    dp[i] min= series[v] + 1
                     v = t.ser_link[v]
         dp
 
@@ -3295,8 +3289,8 @@ struct AcBuckets<A>:
     fn add(mut self, word: List<A>):
         with lint(unproven_list_index: allow)
         var group: List<List<A>> = [word]
-        while not pats.is_empty and pats[pats.len - 1].len == group.len:
-            for w in pats[pats.len - 1]: group.push(w)
+        while not pats.is_empty and pats.last!.len == group.len:
+            for w in pats.last!: group.push(w)
             let _ = pats.pop()
             let _ = acs.pop()
             let _ = hits.pop()
@@ -3359,7 +3353,7 @@ fn find_all_matches_a_scan():
     for _ in 0..40:
         let text = random_word(rand(0, 20), 2)
         let pat = random_word(rand(1, 4), 2)
-        let want = [i for i in 0..=text.len - pat.len if text[i..i + pat.len] == pat]
+        let want = [i for i in 0..=text.len - pat.len if text.starts_with(pat, at: i)]
         assert [i for i in find_all(text, pat)] == want
     // any list of comparable values, not only characters
     assert [i for i in find_all([1, 2, 1, 2, 1], [1, 2, 1])] == [0, 2]
@@ -3574,7 +3568,7 @@ fn suffix_array_struct_queries_match_brute():
             let pat = random_word(rand(0, 4), 3)
             let r = sa.rank_range(pat)
             let want = if pat.is_empty: [i for i in 0..n] else: [
-                i for i in 0..=n - pat.len if s[i..i + pat.len] == pat
+                i for i in 0..=n - pat.len if s.starts_with(pat, at: i)
             ]
             assert sa.count(pat) == want.len
             var got = [sa.sa[idx] for idx in r]
@@ -3818,11 +3812,7 @@ fn lyndon_runs_matches_brute():
         var out = List<(l: Int, r: Int, period: Int)>()
         for l in 0..n:
             for r in l + 2..=n:
-                var min_p = 0
-                for p in 1..=(r - l) / 2:
-                    if (l..r - p).all(i => s[i] == s[i + p]):
-                        min_p = p
-                        break
+                let min_p = first(p for p in 1..=(r - l) / 2 if (l..r - p).all(i => s[i] == s[i + p])) ?? 0
                 if min_p == 0: continue
                 if l > 0 and s[l - 1] == s[l - 1 + min_p]: continue
                 if r < n and s[r] == s[r - min_p]: continue

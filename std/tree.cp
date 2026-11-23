@@ -18,6 +18,7 @@ use std.graph.{Next, Target, Graph, Visit, Edged, arc_len}
 use std.rand.{Rng}
 use std.segtree.{SegTree}
 use std.seq.{dedup, first_true, get_or_insert, span}
+use std.math.{bit}
 
 /// A BFS spanning tree rooted at `V.first`, as a `Rooted`. Each vertex's parent is the
 /// vertex whose arc first reached it, scanning vertices in BFS order and arcs in input
@@ -184,9 +185,7 @@ pub struct Rooted<V, Pre>:
         var stack: List<V> = []
         for r in roots:
             stack.push(r)
-            while stack.len > 0:
-                let v = stack[stack.len - 1]
-                stack.pop()
+            while let v = stack.pop():
                 tin[v] = order.len
                 order.push(v)
                 if let p = par[v]:
@@ -195,7 +194,7 @@ pub struct Rooted<V, Pre>:
                     if heavy[v] != Some(bfs[j]): stack.push(bfs[j])
                 if let h = heavy[v]: stack.push(h)
         domain Order = 0..V.count
-        Rooted::<V, Order>(
+        Rooted<V, Order>(
             roots[0],
             par,
             [V] v => dep[v],
@@ -558,15 +557,12 @@ pub struct Rooted<V, Pre>:
         var open: List<V> = []
         for p in Pre:
             let v = at[p]
-            while open.len > 0 and not self.is_anc(open[open.len - 1], v):
-                let u = open[open.len - 1]
-                open.pop()
+            while open.len > 0 and not self.is_anc(open.last!, v):
+                let u = open.pop()!
                 yield Visit.Exit(u, par[u])
             yield Visit.Enter(v, par[v])
             open.push(v)
-        while open.len > 0:
-            let u = open[open.len - 1]
-            open.pop()
+        while let u = open.pop():
             yield Visit.Exit(u, par[u])
 
     /// The positions of `v`'s subtree, `v` first: one contiguous range of `t.Pre`.
@@ -987,7 +983,7 @@ pub struct Rooted<V, Pre>:
         var best = if q.len > p.len: q else: p
         for (u, v) in [(p.u, q.u), (p.u, q.v), (p.v, q.u), (p.v, q.v)]:
             let d = self.dist(u, v)
-            if d > best.len: best = (len: d, u: u, v: v)
+            if d > best.len: best = (len: d, u:, v:)
         Some(best)
 
     // blocked: `Rooted` resolves to a compiler built-in (GAPS.md tree `Rooted`)
@@ -1012,7 +1008,7 @@ pub struct Rooted<V, Pre>:
             order[slot[v]] = v
             fill[dep[v]] += 1
         domain Level = 0..V.count
-        Layers::<V, Level>(
+        Layers<V, Level>(
             [Level] b => order[b.to_idx],
             [V] v => Level.nth(slot[v]),
             start,
@@ -1060,24 +1056,24 @@ pub struct Rooted<V, Pre>:
     /// example: `domain V = 0..3; let adj: [V]List<V> = [[1, 2], [0], [0]]; let t = Rooted(adj, root: 0); t.euler_tour(by: c => c == 1).collect() == [0, 2, 0, 1, 0]`
     pub fn euler_tour<K: Ord>(self, by: V -> K = _ => ()) -> yields V:
         var kids: [V]List<V> = []
-        kids[root] = self.children(root).sorted(by: c => tin[c]).sorted(by: by)
+        kids[root] = self.children(root).sorted(by: c => tin[c]).sorted(by:)
         var stack = [root]
         var next: List<Int> = [0]
         yield root
         while stack.len > 0:
-            let v = stack[stack.len - 1]
-            let i = next[next.len - 1]
+            let v = stack.last!
+            let i = next.last!
             if i < kids[v].len:
                 next[next.len - 1] = i + 1
                 let c = kids[v][i]
-                kids[c] = self.children(c).sorted(by: x => tin[x]).sorted(by: by)
+                kids[c] = self.children(c).sorted(by: x => tin[x]).sorted(by:)
                 stack.push(c)
                 next.push(0)
                 yield c
             else:
                 stack.pop()
                 next.pop()
-                if stack.len > 0: yield stack[stack.len - 1]
+                if stack.len > 0: yield stack.last!
 
     // blocked: `Rooted` resolves to a compiler built-in (GAPS.md tree `Rooted`)
     /// The long-path decomposition, for DP indexed by depth merged in \(O(n)\) in total. The tallest
@@ -1117,7 +1113,7 @@ pub struct Rooted<V, Pre>:
                     if let c = deep[x]: x = c
                     else: more = false
         domain Slot = 0..V.count
-        LongPaths::<V, Slot>(deep, height, [V] v => Slot.nth(slot_idx[v]))
+        LongPaths<V, Slot>(deep, height, [V] v => Slot.nth(slot_idx[v]))
 
     // blocked: `Rooted` resolves to a compiler built-in (GAPS.md tree `Rooted`)
     /// The subtree of `v` in `t.Pre` order as `std.dp` steps: `step.state` is the vertex,
@@ -1233,7 +1229,7 @@ pub struct Centroids<V>:
         var anc: [V]List<(c: V, dist: Int, branch: V)> = []
         for v in V:
             for j in (0..down[v].len).rev: anc[v].push(down[v][j])
-        Centroids::<V>(root, cpar, [V] v => cdep[v], anc, held)
+        Centroids<V>(root, cpar, [V] v => cdep[v], anc, held)
 
     /// The parent of centroid `c` in the centroid tree; `None` at `cd.root`.
     ///
@@ -1449,19 +1445,19 @@ fn rerooting_counts_connected_sets_through_every_vertex():
         var start: ?V = None
         var size = 0
         for v in V:
-            if (mask >> v.to_idx) & 1 == 1:
+            if mask.bit(v.to_idx):
                 size += 1
                 if start == None: start = Some(v)
         var seen = 1 << start!.to_idx
         var st = [start!]
         while let u = st.pop():
             for w in adj[u]:
-                if (mask >> w.to_idx) & 1 == 1 and (seen >> w.to_idx) & 1 == 0:
+                if mask.bit(w.to_idx) and not seen.bit(w.to_idx):
                     seen |= 1 << w.to_idx
                     st.push(w)
         if seen == mask:
             for v in V:
-                if (mask >> v.to_idx) & 1 == 1: count[v] += 1
+                if mask.bit(v.to_idx): count[v] += 1
     for v in V: assert all[v] == count[v]
 
 @test
@@ -1508,7 +1504,7 @@ fn orders_lifting_and_the_virtual_tree():
                 for b in keys:
                     if r.lca(a, b) == v: on = true
             if on: kept.push(v)
-        sort(mut kept, by: v => r.pos(v))
+        kept.sort(by: v => r.pos(v))
         assert [vt.at[x] for x in vt.K] == kept
         for x in vt.K:
             let v = vt.at[x]
@@ -1932,8 +1928,7 @@ pub struct Lift<V, T>(op: (T, T) -> T, identity: T):
                 if let p = up[x]: x = p
                 else: break
             assert state[x] != 1 or up[x] == None, "`Lift.new`: the parent links have a cycle"
-            while stack.len > 0:
-                let y = stack.pop()!
+            while let y = stack.pop():
                 if let p = up[y]: dep[y] = dep[p] + 1
                 state[y] = 2
         var jmp = [up]
@@ -2007,7 +2002,7 @@ pub struct Lift<V, T>(op: (T, T) -> T, identity: T):
         if k > dep[v]: return None
         var at = v
         for b in 0..jmp.len:
-            if ((k >> b) & 1) == 1: at = jmp[b][at]!
+            if k.bit(b): at = jmp[b][at]!
         Some(at)
 
     /// The lowest common ancestor of `a` and `b`, or `None` in different trees.
@@ -2044,7 +2039,7 @@ pub struct Lift<V, T>(op: (T, T) -> T, identity: T):
         var acc = identity
         var at = v
         for b in 0..jmp.len:
-            if ((d >> b) & 1) == 1:
+            if d.bit(b):
                 acc = op(acc, val[b][at])
                 at = jmp[b][at]!
         acc
@@ -4005,7 +4000,7 @@ pub fn kruskal_tree<V, E, W, R: (u: V, v: V, ..)>(edges: [E]R, w: E -> W) -> (
     for x in N:
         if par[x.to_idx] >= 0: up[x] = Some((N.nth(par[x.to_idx]), 0))
     let lift = Lift(up, op: (a, b) => a + b, identity: 0)
-    (N, KruskalTree::<V, N, W>([V] v => N.nth(v.to_idx), [N] x => weight[x.to_idx], lift))
+    (N, KruskalTree<V, N, W>([V] v => N.nth(v.to_idx), [N] x => weight[x.to_idx], lift))
 
 /// The Prüfer code of a tree on `V`: repeatedly remove the least leaf and record its neighbour,
 /// until two vertices remain. `V.count - 2` vertices, in bijection with the labelled trees.

@@ -394,12 +394,12 @@ pub struct SparseIntervalSet:
         if let (pl, ph) = segs.last_le(lo):
             if ph >= lo:
                 lo = pl
-                hi = max(hi, ph)
+                hi max= ph
                 total -= ph - pl
                 let _ = segs.remove(pl)
         while let (nl, nh) = segs.last_le(hi):
             if nl < lo: break
-            hi = max(hi, nh)
+            hi max= nh
             total -= nh - nl
             let _ = segs.remove(nl)
         segs[lo] = hi
@@ -502,8 +502,7 @@ fn interval_map_from_and_empty_domain():
     domain E = 0..0
     var em = IntervalMap<E, Int>.new(7)
     assert em.runs == 0
-    var seen = 0
-    for _ in em.each(): seen += 1
+    let seen = sum(1 for _ in em.each())
     assert seen == 0
     domain P = 0..6
     let a: [P]Int = [P] i => [1, 1, 2, 2, 2, 1][i.to_idx]
@@ -570,7 +569,7 @@ pub struct SparseIntervalMap<T>:
     pub fn new(lo: Int, hi: Int, init: T) -> SparseIntervalMap<T>:
         assert lo <= hi, "`SparseIntervalMap` needs `lo <= hi`"
         var m = Map<Int, (hi: Int, val: T)>()
-        if lo < hi: m[lo] = (hi: hi, val: init)
+        if lo < hi: m[lo] = (hi:, val: init)
         SparseIntervalMap(init, lo, hi, m)
 
     /// The number of maximal runs of equal values.
@@ -622,7 +621,7 @@ pub struct SparseIntervalMap<T>:
             let old = segs.remove(pos)!
             on_old(pos..old.hi, old.val)
             pos = old.hi
-        segs[a] = (hi: b, val: val)
+        segs[a] = (hi: b, val:)
         self.merge_at(b)
         self.merge_at(a)
 

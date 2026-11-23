@@ -34,7 +34,7 @@ fn golden_pick<I, K>(r: Range<I>, f: I -> K, larger: Bool) -> ?I:
     var fib = List<Int>()
     fib.push(1)
     fib.push(2)
-    while fib[fib.len - 1] < n + 1: fib.push(fib[fib.len - 1] + fib[fib.len - 2])
+    while fib.last! < n + 1: fib.push(fib.last! + fib[fib.len - 2])
     var k = fib.len - 1
     var l = -1
     if k > 2:

@@ -37,7 +37,7 @@ pub struct Fenwick<D, T: Add + Sub>:
     pub fn add(mut self, i: D, x: T):
         var p = i.to_idx + 1
         while p < t.len:
-            t[p] = t[p] + x
+            t[p] += x
             p += p & -p
 
     /// The sum of every position left of the boundary `b`. For a position `v`, `prefix(v.r)`
@@ -193,7 +193,7 @@ pub struct Fenwick2D<R, C, T: Add + Sub>:
         while p <= R.K:
             var q = c.to_idx + 1
             while q <= C.K:
-                t[p * (C.K + 1) + q] = t[p * (C.K + 1) + q] + x
+                t[p * (C.K + 1) + q] += x
                 q += q & -q
             p += p & -p
 
@@ -273,15 +273,15 @@ pub struct DualFenwick<D, T: Add + Sub>:
                 let diff = init[i] - prev
                 prev = init[i]
                 let p = i.to_idx + 1
-                f.t[p] = f.t[p] + diff
+                f.t[p] += diff
                 let q = p + (p & -p)
-                if q <= D.K: f.t[q] = f.t[q] + f.t[p]
+                if q <= D.K: f.t[q] += f.t[p]
         f
 
     fn add_at(mut self, p0: Int, x: T):
         var p = p0
         while p < t.len:
-            t[p] = t[p] + x
+            t[p] += x
             p += p & -p
 
     /// Add `x` to every position of `r`.
@@ -461,12 +461,7 @@ pub struct XorFenwick<D, T>:
 /// register all update coordinates with `add_point`, call `build()`, then run `add` and `sum`
 /// in \(O(\log^2 n)\).
 fn lower_bound(a: List<Int>, x: Int) -> Int:
-    var lo = 0
-    var hi = a.len
-    while lo < hi:
-        let mid = (lo + hi) / 2
-        if a[mid] < x: lo = mid + 1
-        else: hi = mid
+    let lo = a.first_ge(x) ?? a.len
     lo
 
 pub struct SparseFenwick2D<T: Add + Sub>:
@@ -504,8 +499,7 @@ pub struct SparseFenwick2D<T: Add + Sub>:
     pub fn build(mut self):
         assert not built, "`build` called twice"
         built = true
-        var all_x: List<Int> = []
-        for (x, _) in pts: all_x.push(x)
+        var all_x: List<Int> = [x for (x, _) in pts]
         xs = all_x.sorted().deduped()
         n = xs.len
         ys = List.filled(n + 1, [])
@@ -534,7 +528,7 @@ pub struct SparseFenwick2D<T: Add + Sub>:
             assert j < ys[i].len and ys[i][j] == y, "`add` at a point that was never registered"
             j += 1
             while j <= ys[i].len:
-                ft[i][j] = ft[i][j] + v
+                ft[i][j] += v
                 j += j & -j
             i += i & -i
 
@@ -581,8 +575,7 @@ fn sums_match_a_plain_array():
         a[i] += x
         let lo = seed / 1000 % 37
         let hi = lo + seed / 100000 % (38 - lo)
-        var want = 0
-        for j in lo..hi: want += a[j]
+        let want = sum(a[j] for j in lo..hi)
         assert f.fold(V.cuts.nth(lo)..V.cuts.nth(hi)) == want
         assert f.prefix(V.cuts.nth(hi)) == f.fold(V.cuts.nth(0)..V.cuts.nth(hi))
         assert f.get(V(i)) == a[i]

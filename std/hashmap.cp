@@ -401,8 +401,7 @@ pub struct Counter<K, V: Add = Int>:
     /// traps: never (overflow wraps in release, traps in debug)
     /// example: `Counter.of([1, 1, 2]).total() == 3`
     pub fn total(self) -> V:
-        var t = V.zero
-        for (_, v) in m.items: t = t + v
+        let t = V.zero + sum(v for (_, v) in m.items)
         t
 
     /// Top `k` entries sorted by descending value.
@@ -417,12 +416,10 @@ pub struct Counter<K, V: Add = Int>:
     /// example: `Counter.of([3, 1, 3, 2, 1, 3]).most_common(2) == [(3, 3), (1, 2)]`
     /// example: `Counter.of(['b', 'a']).most_common(5) == [('a', 1), ('b', 1)]`
     pub fn most_common(self, k: Int) -> List<(K, V)>:
-        var es: List<(K, V)> = []
-        for (k, v) in m.items: es.push((k, v))
+        var es: List<(K, V)> = [(k, v) for (k, v) in m.items]
         es = es.sorted(by: e => e.0)
         es = es.sorted(by: e => -e.1)
-        var out: List<(K, V)> = []
-        for i in 0..min(k, es.len): out.push(es[i])
+        let out: List<(K, V)> = [es[i] for i in 0..min(k, es.len)]
         out
 
     /// \(O(1)\) to make. Yields every stored `(key, val)` pair.

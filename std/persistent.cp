@@ -261,7 +261,7 @@ pub struct RangeKth<D, T>:
             for _ in 0..D.K: rk.roots.push(0)
             return rk
         for i in D:
-            let prev = rk.roots[rk.roots.len - 1]
+            let prev = rk.roots.last!
             let pos = rk.lower_val(a[i])
             let nxt = rk.inc(prev, m, pos)
             rk.roots.push(nxt)
@@ -650,8 +650,7 @@ fn persistent_segtree_and_range_kth_match_brute():
     var versions: List<Version> = [pst.base]
     var snaps: List<[I]Int> = [a]
     fn total(arr: [I]Int, r: Range<I>) -> Int:
-        var s = 0
-        for i in r: s += arr[i]
+        let s = sum(arr[i] for i in r)
         s
     for _ in 0..30:
         let base_id = rand(0, versions.len - 1)

@@ -457,7 +457,7 @@ pub struct HistoricBeatsSegTree<D>:
 
     fn compose(mut self, u: Int, k: Int, a: Int, h: Int, cc: Int):
         let b = 9 * u + 3 * k
-        tg[b + 1] = max(tg[b + 1], tg[b] + h)
+        tg[b + 1] max= tg[b] + h
         tg[b] += a
         tg[b + 2] += cc
 
@@ -476,7 +476,7 @@ pub struct HistoricBeatsSegTree<D>:
         c3: Int,
     ):
         if mx1[u] == mn1[u]:
-            hm[u] = max(hm[u], mx1[u] + h1)
+            hm[u] max= mx1[u] + h1
             s[u] += a1 * len
             c[u] += c1 * len
             mx1[u] += a1
@@ -487,7 +487,7 @@ pub struct HistoricBeatsSegTree<D>:
         let rest = len - mxc[u] - mnc[u]
         let two = mx2[u] == mn1[u]
         hm[u] = max(hm[u], max(mx1[u] + h1, mn1[u] + h2))
-        if not two: hm[u] = max(hm[u], mx2[u] + h3)
+        if not two: hm[u] max= mx2[u] + h3
         s[u] += a1 * mxc[u] + a2 * mnc[u] + a3 * rest
         c[u] += c1 * mxc[u] + c2 * mnc[u] + c3 * rest
         mx1[u] += a1

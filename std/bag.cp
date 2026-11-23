@@ -2319,7 +2319,7 @@ fn sorted_bag_matches_sorted_list_on_random_ops():
             assert b.nth(k) == (if 0 <= k and k < plain.len: Some(plain[k]) else: None)
         assert b.len == plain.len
         assert b.first == (if plain.len > 0: Some(plain[0]) else: None)
-        assert b.last == (if plain.len > 0: Some(plain[plain.len - 1]) else: None)
+        assert b.last == (if plain.len > 0: Some(plain.last!) else: None)
     assert b.to_list() == plain
 
 @test

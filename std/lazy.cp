@@ -255,7 +255,7 @@ fn ccc02s4hard_dual_field_cross_overwrite_and_interleaved_point_set():
     domain V = 0..11
     var a = [V] v => rand(-10, 10)
     var b = [V] v => rand(-10, 10)
-    var st = SegTree(over, [V] v => (a[v], b[v], a[v]), act: act)
+    var st = SegTree(over, [V] v => (a[v], b[v], a[v]), act:)
     for _ in 0..120:
         let kind = rand(0, 3)
         let l = V.nth(rand(0, 10))
@@ -332,7 +332,7 @@ fn custom_clamp_action_with_update():
         for v in l..=r: a[v] = min(max(a[v], lo), hi)
         st.apply(l..=r, (lo, hi))
         let i = V.nth(rand(0, 5))
-        a[i] = a[i] + 1
+        a[i] += 1
         st.update(i, x => x + 1)
         assert st.fold(l..=r) == [a[v] for v in l..=r].max()!
         assert st.all == [a[v] for v in V].max()!
@@ -901,7 +901,7 @@ pub struct Rope<D, T>:
             assert fill == None
             r.base = Some(x)
         else:
-            var arr: [D]T = fill!
+            let arr: [D]T = fill!
             r.base = Some(arr)
         let src = r.base!
         var stack: List<Int> = []
@@ -917,14 +917,13 @@ pub struct Rope<D, T>:
             r.rs.push(-1)
             r.sz.push(1)
             var last = -1
-            while stack.len > 0 and r.pri[stack[stack.len - 1]] < r.seed:
+            while stack.len > 0 and r.pri[stack.last!] < r.seed:
                 last = stack.pop()!
                 r.pull(last)
             r.ls[t] = last
-            if stack.len > 0: r.rs[stack[stack.len - 1]] = t
+            if stack.len > 0: r.rs[stack.last!] = t
             stack.push(t)
-        while stack.len > 0:
-            let t = stack.pop()!
+        while let t = stack.pop():
             r.pull(t)
             r.root = t
         r.n = r.val.len

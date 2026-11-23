@@ -18,7 +18,7 @@ fn times<P>(a: List<Mod<P>>, b: List<Mod<P>>) -> List<Mod<P>>:
             for i in 0..na:
                 let ai = a[i]
                 if ai.v == 0: continue
-                for j in 0..nb: out[i + j] = out[i + j] + ai * b[j]
+                for j in 0..nb: out[i + j] += ai * b[j]
         return out
     let need = bit_ceil(n_out)
     assert (P - 1) % need == 0, "modulus p - 1 must be divisible by n"
@@ -30,7 +30,7 @@ fn times<P>(a: List<Mod<P>>, b: List<Mod<P>>) -> List<Mod<P>>:
     ntt(mut fa, bit_reversed: true)
     ntt(mut fb, bit_reversed: true)
     unchecked:
-        for i in 0..need: fa[i] = fa[i] * fb[i]
+        for i in 0..need: fa[i] *= fb[i]
     ntt(mut fa, inverse: true, bit_reversed: true)
     if fa.len > n_out: fa.truncate(n_out)
     fa
@@ -100,13 +100,13 @@ pub fn inv<P>(a: List<Mod<P>>, n: Int) -> List<Mod<P>>:
         ntt(mut f, bit_reversed: true)
         ntt(mut gn, bit_reversed: true)
         unchecked:
-            for i in 0..lim: f[i] = f[i] * gn[i]
+            for i in 0..lim: f[i] *= gn[i]
         ntt(mut f, inverse: true, bit_reversed: true)
         unchecked:
             for i in 0..m: f[i] = Mod<P>(0)
         ntt(mut f, bit_reversed: true)
         unchecked:
-            for i in 0..lim: f[i] = f[i] * gn[i]
+            for i in 0..lim: f[i] *= gn[i]
         ntt(mut f, inverse: true, bit_reversed: true)
         unchecked:
             for i in m..lim: g.push(-f[i])
@@ -205,7 +205,7 @@ pub fn pow<P>(a: List<Mod<P>>, k: Int, n: Int) -> List<Mod<P>>:
     var lg = log(norm, m)
     let km = Mod<P>(k)
     unchecked:
-        for i in 0..m: lg[i] = lg[i] * km
+        for i in 0..m: lg[i] *= km
     let ex = exp(lg, m)
     let ck = c ** k
     var out = List.filled(n, Mod<P>(0))
@@ -254,7 +254,7 @@ pub fn sqrt<P>(a: List<Mod<P>>, n: Int) -> ?List<Mod<P>>:
             for i in 0..cur: g2[i] = g[i]
         ntt(mut g2, bit_reversed: true)
         unchecked:
-            for i in 0..lim: g2[i] = g2[i] * g2[i]
+            for i in 0..lim: g2[i] *= g2[i]
         ntt(mut g2, inverse: true, bit_reversed: true)
         var diff = List.filled(cur, Mod<P>(0))
         unchecked:
@@ -322,7 +322,7 @@ fn middle_product<P>(a: List<Mod<P>>, b: List<Mod<P>>) -> List<Mod<P>>:
     ntt(mut fa, bit_reversed: true)
     ntt(mut fb, bit_reversed: true)
     unchecked:
-        for i in 0..size: fa[i] = fa[i] * fb[i]
+        for i in 0..size: fa[i] *= fb[i]
     ntt(mut fa, inverse: true, bit_reversed: true)
     var out = List.filled(out_len, Mod<P>(0))
     unchecked:
@@ -409,7 +409,7 @@ pub fn taylor_shift<P>(a: List<Mod<P>>, c: Mod<P>) -> List<Mod<P>>:
         for i in 0..n:
             u[n - 1 - i] = a[i] * fact[i]
             v[i] = cp * ifact[i]
-            cp = cp * c
+            cp *= c
     let prod = times(u, v)
     var out = List.filled(n, Mod<P>(0))
     unchecked:
@@ -681,13 +681,13 @@ pub fn interpolate<P>(xs: List<Mod<P>>, ys: List<Mod<P>>) -> List<Mod<P>>:
                 let xi = xs[i]
                 var denom = Mod<P>(1)
                 for j in 0..n:
-                    if j != i: denom = denom * (xi - xs[j])
+                    if j != i: denom *= (xi - xs[j])
                 assert denom.v != 0, "poly.interpolate requires distinct xs"
                 let scale = ys[i] * denom.inv()
                 var rem = Mod<P>(0)
                 for k in (0..n).rev:
                     rem = prod[k + 1] + rem * xi
-                    out[k] = out[k] + rem * scale
+                    out[k] += rem * scale
             return out
     let nodes = subproduct_tree(xs)
     let w = eval_all(deriv(nodes[1]), xs)
@@ -701,8 +701,8 @@ pub fn interpolate<P>(xs: List<Mod<P>>, ys: List<Mod<P>>) -> List<Mod<P>>:
             let r = times(num[2 * i + 1], nodes[2 * i])
             let m = max(l.len, r.len)
             var res = List.filled(m, Mod<P>(0))
-            for k in 0..l.len: res[k] = res[k] + l[k]
-            for k in 0..r.len: res[k] = res[k] + r[k]
+            for k in 0..l.len: res[k] += l[k]
+            for k in 0..r.len: res[k] += r[k]
             num[i] = res
     var out = List.filled(n, Mod<P>(0))
     let root = num[1]
@@ -809,8 +809,7 @@ pub struct Poly<T: Div>(pub c: List<T>):
     /// traps: when `T` cannot divide by some `k` in `1..=n` (`n >= P` for `Mod<P>`)
     /// example: `type Z = Mod<998244353>; Poly<Z>([1, 2, 3]).integral().at(3) == Z(1)`
     pub fn integral(self) -> Poly<T>:
-        var out = [T.zero]
-        for i in 0..c.len: out.push(c[i] / T.from_int(i + 1))
+        let out = [T.zero] + [c[i] / T.from_int(i + 1) for i in 0..c.len]
         Poly(out)
 
     // blocked: GAPS.md ntt `convolve` (no generic O(n log n) product over `T`)
@@ -1099,7 +1098,7 @@ pub fn gcd_poly<P>(a: List<Mod<P>>, b: List<Mod<P>>) -> List<Mod<P>>:
         if y.is_empty: break
         (x, y) = (y, div_mod(x, y).r)
     if x.is_empty: return x
-    let lead = x[x.len - 1].inv()
+    let lead = x.last!.inv()
     [c * lead for c in x]
 
 /// Bluestein / Chirp-Z evaluation `[a(r^0), a(r^1), ..., a(r^(m - 1))]`.
@@ -1126,8 +1125,8 @@ pub fn chirp_z<P>(a: List<Mod<P>>, r: Mod<P>, m: Int) -> List<Mod<P>>:
     for i in 1..t:
         w[i] = w[i - 1] * step
         wi[i] = wi[i - 1] * step_i
-        step = step * r
-        step_i = step_i * ri
+        step *= r
+        step_i *= ri
     let u = [a[i] * wi[i] for i in 0..n]
     let s = middle_product(w, u)
     [s[k] * wi[k] for k in 0..m]
@@ -1161,15 +1160,15 @@ pub fn sample_points_shift<P>(ys: List<Mod<P>>, c: Mod<P>, m: Int) -> List<Mod<P
     var zeros = 0
     for i in 0..n:
         if d[i].v == 0: zeros += 1
-        else: prod = prod * d[i]
+        else: prod *= d[i]
     for k in 0..m:
         let x = (c + Mod<P>(k)).v
         out[k] = if x < n: ys[x] else: prod * s[k]
         if k + 1 < m:
             if d[k].v == 0: zeros -= 1
-            else: prod = prod * h[k]
+            else: prod *= h[k]
             if d[k + n].v == 0: zeros += 1
-            else: prod = prod * d[k + n]
+            else: prod *= d[k + n]
     out
 
 /// The power sums `sum_i xs[i]^k` for `k in 0..=deg` via `-x p'(x) / p(x)`; entry 0 is `xs.len`.
@@ -1335,9 +1334,9 @@ pub fn partition_table<P>(n: Int) -> List<Mod<P>>:
         let p1 = k * (3 * k - 1) / 2
         if p1 > n: break
         let sgn = if k % 2 == 1: Mod<P>(-1) else: Mod<P>(1)
-        f[p1] = f[p1] + sgn
+        f[p1] += sgn
         let p2 = k * (3 * k + 1) / 2
-        if p2 <= n: f[p2] = f[p2] + sgn
+        if p2 <= n: f[p2] += sgn
         k += 1
     inv(f, n + 1)
 
@@ -1388,7 +1387,7 @@ fn eval_div_shift_mpe_laws():
         var brute = List.filled(12, Z(0))
         var gp: List<Z> = [Z(1)]
         for i in 0..f_c.len:
-            for j in 0..min(gp.len, 12): brute[j] = brute[j] + f_c[i] * gp[j]
+            for j in 0..min(gp.len, 12): brute[j] += f_c[i] * gp[j]
             gp = times(gp, g_c)
             if gp.len > 12: gp.truncate(12)
         assert comp == brute

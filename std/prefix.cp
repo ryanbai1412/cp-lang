@@ -5,7 +5,7 @@
 //! Use `Diff<D, T>()` or `Diff<R, C, T>()` for \(O(1)\) offline range/rectangle adds and \(O(n)\) /
 //! \(O(r \cdot c)\) `finish()`.
 use std.algebra.{Monoid}
-use std.seq.{ends, RingRange}
+use std.seq.{ends, RingRange, first_true}
 
 /// \(O(n)\) calls of `f`. The n + 1 exclusive prefix folds, indexed by `D`'s cuts: `pre[c]` folds
 /// everything left of cut `c` (`from`, or `f`'s identity, at the first cut), and `pre[v]` for a
@@ -125,7 +125,7 @@ pub struct Prefix<D, T: Add + Sub>:
     /// example: `domain D = 0..3; var f = Prefix<D, Int>.filling(); f.set(0, 2); f.fold(0..1) == 2`
     pub fn filling(order: FillOrder = FillOrder.Forward) -> FillPrefix<D, T>:
         let rev = order == FillOrder.Reverse
-        var p: [D.cuts]T = T.zero
+        let p: [D.cuts]T = T.zero
         FillPrefix(p, rev, if rev: D.K - 1 else: 0)
 
     /// The sum of everything left of boundary `b`: zero at the first cut, `all` at the last.
@@ -200,12 +200,7 @@ pub struct Prefix<D, T: Add + Sub>:
     /// example: `[2, 0, 3].scan(+).first_ge(6) == None`
     pub fn first_ge(self, target: T) -> ?Cut<D>:
         if self.all < target: return None
-        var lo = 0
-        var hi = D.K
-        while lo < hi:
-            let mid = (lo + hi) / 2
-            if self.p[D.cuts.nth(mid)] >= target: hi = mid
-            else: lo = mid + 1
+        let lo = (0..D.K).first_true(mid => self.p[D.cuts.nth(mid)] >= target) ?? D.K
         Some(D.cuts.nth(lo))
 
     /// The first boundary `b` with `prefix(b) > target`, or `None` when `all <= target`.
@@ -220,12 +215,7 @@ pub struct Prefix<D, T: Add + Sub>:
     /// example: `[2, 0, 3].scan(+).first_gt(5) == None`
     pub fn first_gt(self, target: T) -> ?Cut<D>:
         if self.all <= target: return None
-        var lo = 0
-        var hi = D.K
-        while lo < hi:
-            let mid = (lo + hi) / 2
-            if self.p[D.cuts.nth(mid)] > target: hi = mid
-            else: lo = mid + 1
+        let lo = (0..D.K).first_true(mid => self.p[D.cuts.nth(mid)] > target) ?? D.K
         Some(D.cuts.nth(lo))
 
 /// Internal append-only 2-D prefix/suffix sum table returned by `Prefix<R, C, T>.filling(...)`.
@@ -322,7 +312,7 @@ pub struct _Prefix2 <R, C, T: Add + Sub>:
     /// example: `domain R = 0..2; domain C = 0..2; var f = Prefix<R, C, Int>.filling(); f.set(0, 0, 7); f.fold(0..=0, 0..=0) == 7`
     pub fn filling(order: FillOrder = FillOrder.Forward) -> FillPrefix<R, C, T>:
         let rev = order == FillOrder.Reverse
-        var p: [R.cuts, C.cuts]T = T.zero
+        let p: [R.cuts, C.cuts]T = T.zero
         _FillPrefix2(p, rev, if rev: R.K * C.K - 1 else: 0)
 
     /// The sum of everything above row boundary `r` and left of column boundary `c`; zero when
@@ -495,7 +485,7 @@ pub struct Diff<D, T: Add + Sub>:
     /// traps: never
     /// example: `domain D = 0..3; Diff<D, Int>().finish()[D(1)] == 0`
     pub fn new() -> Diff<D, T>:
-        var d: [D.cuts]T = T.zero
+        let d: [D.cuts]T = T.zero
         Diff(d)
 
     /// Add `x` to every position in `r`; an empty `r` changes nothing.
@@ -506,8 +496,8 @@ pub struct Diff<D, T: Add + Sub>:
     /// example: `domain D = 0..4; var d = Diff<D, Int>(); d.add(1..3, 5); d.add(2..=3, 1); [d.finish()[v] for v in D] == [0, 5, 6, 1]`
     pub fn add(mut self, r: Range<D>, x: T):
         if r.is_empty: return
-        d[r.l] = d[r.l] + x
-        d[r.r] = d[r.r] - x
+        d[r.l] += x
+        d[r.r] -= x
 
     /// The accumulated values across `D`: each position's total of the `add`s covering it. The
     /// structure is unchanged and can take more `add`s.
@@ -535,7 +525,7 @@ pub struct _Diff2 <R, C, T: Add + Sub>:
     /// traps: never
     /// example: `domain R = 0..2; domain C = 0..2; Diff<R, C, Int>().finish()[R(1), C(1)] == 0`
     pub fn new() -> Diff<R, C, T>:
-        var d: [R.cuts, C.cuts]T = T.zero
+        let d: [R.cuts, C.cuts]T = T.zero
         _Diff2(d)
 
     /// Add `x` to every cell in `rows` by `cols`; an empty side changes nothing.
@@ -546,10 +536,10 @@ pub struct _Diff2 <R, C, T: Add + Sub>:
     /// example: `domain R = 0..2; domain C = 0..3; var d = Diff<R, C, Int>(); d.add(0..=1, 1..=2, 3); d.finish()[R(1), C(2)] == 3 and d.finish()[R(0), C(0)] == 0`
     pub fn add(mut self, rows: Range<R>, cols: Range<C>, x: T):
         if rows.is_empty or cols.is_empty: return
-        d[rows.l, cols.l] = d[rows.l, cols.l] + x
-        d[rows.l, cols.r] = d[rows.l, cols.r] - x
-        d[rows.r, cols.l] = d[rows.r, cols.l] - x
-        d[rows.r, cols.r] = d[rows.r, cols.r] + x
+        d[rows.l, cols.l] += x
+        d[rows.l, cols.r] -= x
+        d[rows.r, cols.l] -= x
+        d[rows.r, cols.r] += x
 
     /// The accumulated grid across `(R, C)`: each cell's total of the `add`s covering it. The
     /// structure is unchanged and can take more `add`s.
@@ -583,7 +573,7 @@ pub struct SweepAdd<D, T: Add + Sub>:
     /// traps: never
     /// example: `domain D = 0..3; var s = SweepAdd<D, Int>(); s.advance(0) == 0`
     pub fn new(order: FillOrder = FillOrder.Forward) -> SweepAdd<D, T>:
-        var d: [D.cuts]T = T.zero
+        let d: [D.cuts]T = T.zero
         SweepAdd(d, T.zero, order == FillOrder.Reverse)
 
     /// Schedule `+x` across `r`, which must start at or ahead of the current sweep cursor: no
@@ -596,11 +586,11 @@ pub struct SweepAdd<D, T: Add + Sub>:
     pub fn add(mut self, r: Range<D>, x: T):
         if r.is_empty: return
         if rev:
-            d[r.r] = d[r.r] + x
-            d[r.l] = d[r.l] - x
+            d[r.r] += x
+            d[r.l] -= x
         else:
-            d[r.l] = d[r.l] + x
-            d[r.r] = d[r.r] - x
+            d[r.l] += x
+            d[r.r] -= x
 
     /// Advance the cursor to `i`, the next position in fill order, and return the accumulated
     /// value there: the total of every scheduled `add` covering `i`.
@@ -609,7 +599,7 @@ pub struct SweepAdd<D, T: Add + Sub>:
     /// traps: when `i` is not the next position in fill order
     /// example: `domain D = 0..3; var s = SweepAdd<D, Int>(order: FillOrder.Reverse); s.add(1..=2, 4); let a = s.advance(2); s.add(0..=1, 1); let b = s.advance(1); a == 4 and b == 5`
     pub fn advance(mut self, i: D) -> T:
-        cur = cur + (if rev: d[i.r] else: d[i.l])
+        cur += (if rev: d[i.r] else: d[i.l])
         cur
 
     /// The accumulated value at the most recently advanced position, as `advance` returned it.
@@ -632,8 +622,8 @@ pub struct ArithDiff<D, T: Add + Sub + Mul>:
     /// traps: never
     /// example: `domain D = 0..3; ArithDiff<D, Int>().finish()[D(2)] == 0`
     pub fn new() -> ArithDiff<D, T>:
-        var d: [D.cuts]T = T.zero
-        var e: [D.cuts]T = T.zero
+        let d: [D.cuts]T = T.zero
+        let e: [D.cuts]T = T.zero
         ArithDiff(d, e)
 
     /// Add `start + step * (i.ord - r.start.ord)` to every position `i` in `r`: `start` at the
@@ -645,10 +635,10 @@ pub struct ArithDiff<D, T: Add + Sub + Mul>:
     /// example: `domain D = 0..5; var d = ArithDiff<D, Int>(); d.add_arith(1..=3, 10, 2); [d.finish()[v] for v in D] == [0, 10, 12, 14, 0]`
     pub fn add_arith(mut self, r: Range<D>, start: T, step: T):
         if r.is_empty: return
-        d[r.l] = d[r.l] + start
-        e[r.l] = e[r.l] + step
-        d[r.r] = d[r.r] - (start + step * r.len)
-        e[r.r] = e[r.r] - step
+        d[r.l] += start
+        e[r.l] += step
+        d[r.r] -= (start + step * r.len)
+        e[r.r] -= step
 
     /// Add a constant `x` to every position in `r`: `add_arith(r, x, 0)`.
     ///
@@ -658,8 +648,8 @@ pub struct ArithDiff<D, T: Add + Sub + Mul>:
     /// example: `domain D = 0..5; var d = ArithDiff<D, Int>(); d.add_arith(1..=3, 10, 2); d.add(0..2, 1); [d.finish()[v] for v in D] == [1, 11, 12, 14, 0]`
     pub fn add(mut self, r: Range<D>, x: T):
         if r.is_empty: return
-        d[r.l] = d[r.l] + x
-        d[r.r] = d[r.r] - x
+        d[r.l] += x
+        d[r.r] -= x
 
     /// The accumulated values across `D`. The structure is unchanged and can take more adds.
     ///
@@ -706,9 +696,7 @@ fn one_d_sums_match_brute():
     for l in V.cuts:
         for r in V.cuts:
             if r < l: continue
-            var want = 0
-            for i in V:
-                if l <= i.l and i.r <= r: want += a[i]
+            let want = sum(a[i] for i in V if l <= i.l and i.r <= r)
             assert p.fold(l..r) == want
             assert p.prefix(r) - p.prefix(l) == want
     for i in V: assert p.get(i) == a[i]
@@ -736,8 +724,7 @@ fn a_plain_range_and_list_take_plain_ints():
     let p = Prefix<Int>(xs)
     for lo in 0..=5:
         for hi in lo..=5:
-            var want = 0
-            for i in lo..hi: want += xs[i]
+            let want = sum(xs[i] for i in lo..hi)
             assert p.fold(lo..hi) == want
             assert p.prefix(hi) - p.prefix(lo) == want
 
@@ -799,8 +786,7 @@ fn filling_1d_forward_and_reverse_match_brute():
     for k in (0..7).rev:
         let i = V.nth(k)
         b.set(i, a[i])
-        var want = 0
-        for j in i..=V.last!: want += a[j]
+        let want = sum(a[j] for j in i..=V.last!)
         assert b.fold(i..=V.last!) == want
         assert b.fold(V.last!.r..V.last!.r) == 0
 

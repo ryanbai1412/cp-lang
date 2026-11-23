@@ -11,6 +11,7 @@
 //!   up to `1e12`), and `convex_hull_3d` orientation tests <= `4.8e28` fit `I128`.
 
 use std.bag.{SortedSet}
+use std.seq.{first_true, last_true}
 
 fn igcd(a0: Int, b0: Int) -> Int:
     var a = a0
@@ -333,10 +334,10 @@ pub fn lower_hull(sorted_pts: List<Pt>, collinear: Bool = false) -> List<Pt>:
     var h: List<Pt> = []
     for p in sorted_pts:
         if h.len > 0:
-            assert h[h.len - 1] <= p, "`lower_hull` needs `sorted_pts` sorted by `(x, y)`"
-            if h[h.len - 1] == p: continue
+            assert h.last! <= p, "`lower_hull` needs `sorted_pts` sorted by `(x, y)`"
+            if h.last! == p: continue
         while h.len >= 2:
-            let t = turn(h[h.len - 2], h[h.len - 1], p)
+            let t = turn(h[h.len - 2], h.last!, p)
             if t < 0 or (not collinear and t == 0): h.pop()
             else: break
         h.push(p)
@@ -355,10 +356,10 @@ pub fn upper_hull(sorted_pts: List<Pt>, collinear: Bool = false) -> List<Pt>:
     var h: List<Pt> = []
     for p in sorted_pts:
         if h.len > 0:
-            assert h[h.len - 1] <= p, "`upper_hull` needs `sorted_pts` sorted by `(x, y)`"
-            if h[h.len - 1] == p: continue
+            assert h.last! <= p, "`upper_hull` needs `sorted_pts` sorted by `(x, y)`"
+            if h.last! == p: continue
         while h.len >= 2:
-            let t = turn(h[h.len - 2], h[h.len - 1], p)
+            let t = turn(h[h.len - 2], h.last!, p)
             if t > 0 or (not collinear and t == 0): h.pop()
             else: break
         h.push(p)
@@ -384,7 +385,7 @@ pub fn convex_hull(pts: List<Pt>, collinear: Bool = false) -> List<Pt>:
     s.sort()
     var uniq: List<Pt> = []
     for p in s:
-        if uniq.len == 0 or uniq[uniq.len - 1] != p: uniq.push(p)
+        if uniq.len == 0 or uniq.last! != p: uniq.push(p)
     if uniq.len <= 1: return uniq
     let lo = lower_hull(uniq, collinear:)
     let hi = upper_hull(uniq, collinear:)
@@ -413,13 +414,13 @@ pub fn convex_hull_idx<D>(pts: [D]Pt, collinear: Bool = false) -> List<D>:
     order.sort(by: i => pts[i])
     var uniq: List<D> = []
     for i in order:
-        if uniq.len == 0 or pts[uniq[uniq.len - 1]] != pts[i]: uniq.push(i)
+        if uniq.len == 0 or pts[uniq.last!] != pts[i]: uniq.push(i)
     if uniq.len <= 1: return uniq
     var lo: List<D> = []
     for i in uniq:
         let p = pts[i]
         while lo.len >= 2:
-            let t = turn(pts[lo[lo.len - 2]], pts[lo[lo.len - 1]], p)
+            let t = turn(pts[lo[lo.len - 2]], pts[lo.last!], p)
             if t < 0 or (not collinear and t == 0): lo.pop()
             else: break
         lo.push(i)
@@ -427,7 +428,7 @@ pub fn convex_hull_idx<D>(pts: [D]Pt, collinear: Bool = false) -> List<D>:
     for i in uniq:
         let p = pts[i]
         while hi.len >= 2:
-            let t = turn(pts[hi[hi.len - 2]], pts[hi[hi.len - 1]], p)
+            let t = turn(pts[hi[hi.len - 2]], pts[hi.last!], p)
             if t > 0 or (not collinear and t == 0): hi.pop()
             else: break
         hi.push(i)
@@ -459,7 +460,7 @@ pub fn lower_hull_idx<D>(pts: [D]Pt, collinear: Bool = false) -> List<D>:
             if q == p: continue
         prev = Some(i)
         while h.len >= 2:
-            let t = turn(pts[h[h.len - 2]], pts[h[h.len - 1]], p)
+            let t = turn(pts[h[h.len - 2]], pts[h.last!], p)
             if t < 0 or (not collinear and t == 0): h.pop()
             else: break
         h.push(i)
@@ -485,7 +486,7 @@ pub fn upper_hull_idx<D>(pts: [D]Pt, collinear: Bool = false) -> List<D>:
             if q == p: continue
         prev = Some(i)
         while h.len >= 2:
-            let t = turn(pts[h[h.len - 2]], pts[h[h.len - 1]], p)
+            let t = turn(pts[h[h.len - 2]], pts[h.last!], p)
             if t > 0 or (not collinear and t == 0): h.pop()
             else: break
         h.push(i)
@@ -674,7 +675,7 @@ pub fn minkowski_sum(a: List<Pt>, b: List<Pt>) -> List<Pt>:
     var j = 0
     while i < na or j < nb:
         let cur = a[ia] + b[ib]
-        if res.len == 0 or res[res.len - 1] != cur: res.push(cur)
+        if res.len == 0 or res.last! != cur: res.push(cur)
         if i == na:
             j += 1
             ib += 1
@@ -700,7 +701,7 @@ pub fn minkowski_sum(a: List<Pt>, b: List<Pt>) -> List<Pt>:
                 j += 1
                 ia = ia_nxt
                 ib = ib_nxt
-    while res.len > 1 and res[res.len - 1] == res[0]:
+    while res.len > 1 and res.last! == res[0]:
         res.pop()
     res
 
@@ -739,9 +740,9 @@ pub fn minkowski_upper(a: List<Pt>, b: List<Pt>) -> List<Pt>:
                         i += 1
                         j += 1
         let nxt = a[i] + b[j]
-        while res.len >= 2 and turn(res[res.len - 2], res[res.len - 1], nxt) >= 0:
+        while res.len >= 2 and turn(res[res.len - 2], res.last!, nxt) >= 0:
             res.pop()
-        if res[res.len - 1] != nxt: res.push(nxt)
+        if res.last! != nxt: res.push(nxt)
     res
 
 /// The lower hull of the Minkowski sum of two non-empty left-to-right lower hulls; the mirror of
@@ -1262,17 +1263,12 @@ pub fn hull_line_intersect(hull: List<Pt>, a: Pt, b: Pt) -> ?(Int, Int):
     let lo = hull_extreme(hull, -nd)
     let side = k => (hull[k % n] - a).dot128(nd)
     if side(hi) <= I128(0) or side(lo) >= I128(0): return None
-    let down = last_where(hi, (lo - hi + n) % n, k => side(k) > I128(0)) % n
-    let up = last_where(lo, (hi - lo + n) % n, k => side(k) < I128(0)) % n
+    let down = last_where(hi, (lo - hi) % n, k => side(k) > I128(0)) % n
+    let up = last_where(lo, (hi - lo) % n, k => side(k) < I128(0)) % n
     Some(if down < up: (down, up) else: (up, down))
 
 fn last_where(from: Int, span: Int, ok: Int -> Bool) -> Int:
-    var lo = 0
-    var hi = span
-    while lo < hi:
-        let mid = (lo + hi + 1) / 2
-        if ok(from + mid): lo = mid
-        else: hi = mid - 1
+    let lo = (1..=span).last_true(mid => ok(from + mid)) ?? 0
     from + lo
 
 /// The farthest pair of distinct positions `a` before `b` in key order, with their squared
@@ -2133,7 +2129,7 @@ pub fn half_plane_intersect(
     var uniq: List<(p: Vec, dir: Vec, ang: F64)> = []
     for h in hs:
         if not uniq.is_empty:
-            let last = uniq[uniq.len - 1]
+            let last = uniq.last!
             if abs(vcross(last.dir, h.dir)) <= eps and last.dir.dot(h.dir) > 0.0:
                 if vcross(last.dir, h.p - last.p) > 0.0: uniq[uniq.len - 1] = h
                 continue
@@ -2143,19 +2139,19 @@ pub fn half_plane_intersect(
     for h in uniq:
         while dq.len - head >= 2 and hp_out(
             h,
-            hp_cross(dq[dq.len - 1], dq[dq.len - 2]),
+            hp_cross(dq.last!, dq[dq.len - 2]),
             eps,
         ): dq.pop()
         while dq.len - head >= 2 and hp_out(h, hp_cross(dq[head], dq[head + 1]), eps): head += 1
-        if dq.len - head >= 1 and vcross(dq[dq.len - 1].dir, h.dir) <= eps: return []
+        if dq.len - head >= 1 and vcross(dq.last!.dir, h.dir) <= eps: return []
         dq.push(h)
     while dq.len - head >= 3 and hp_out(
         dq[head],
-        hp_cross(dq[dq.len - 1], dq[dq.len - 2]),
+        hp_cross(dq.last!, dq[dq.len - 2]),
         eps,
     ): dq.pop()
     while dq.len - head >= 3 and hp_out(
-        dq[dq.len - 1],
+        dq.last!,
         hp_cross(dq[head], dq[head + 1]),
         eps,
     ): head += 1
@@ -2164,8 +2160,8 @@ pub fn half_plane_intersect(
     var pts: List<Vec> = []
     for i in 0..m:
         let v = hp_cross(dq[head + i], dq[head + (i + 1) % m])
-        if pts.is_empty or pts[pts.len - 1].dist(v) > eps: pts.push(v)
-    while pts.len >= 2 and pts[0].dist(pts[pts.len - 1]) <= eps: pts.pop()
+        if pts.is_empty or pts.last!.dist(v) > eps: pts.push(v)
+    while pts.len >= 2 and pts[0].dist(pts.last!) <= eps: pts.pop()
     if pts.len < 3: return []
     let a2 = 0.0 + sum(pts[i].cross(pts[(i + 1) % pts.len]) for i in 0..pts.len)
     if a2 / 2.0 <= eps: return []
@@ -2642,7 +2638,7 @@ pub fn rects_union_area(rects: List<Rect>) -> Int:
     ys.sort()
     var u: List<Int> = []
     for y in ys:
-        if u.is_empty or u[u.len - 1] != y: u.push(y)
+        if u.is_empty or u.last! != y: u.push(y)
     ys = u
     if ys.len < 2: return 0
     for r in rects:
@@ -2713,11 +2709,7 @@ struct PlanarWalk:
 
     fn at(self, u: Int, v: Int) -> Int:
         with lint(unproven_list_index: allow)
-        var lo = 0
-        var hi = half.len
-        while lo < hi:
-            let mid = (lo + hi) / 2
-            if (half[mid].0, half[mid].1) < (u, v): lo = mid + 1 else: hi = mid
+        let lo = (0..half.len).first_true(mid => (half[mid].0, half[mid].1) >= (u, v)) ?? half.len
         half[lo].2
 
     fn side(self, u: Int, v: Int) -> Int:
@@ -2840,16 +2832,8 @@ fn locate_planar(ps: List<Pt>, edges: List<(Int, Int)>, queries: List<Pt>) -> Li
     var out: List<?Int> = []
     for i in 0..queries.len:
         let q = queries[i]
-        var vi = 0
-        var vh = verts.len
-        while vi < vh:
-            let mid = (vi + vh) / 2
-            if verts[mid] < (q.x, q.y): vi = mid + 1 else: vh = mid
-        var ui = 0
-        var uh = upright.len
-        while ui < uh:
-            let mid = (ui + uh) / 2
-            if (upright[mid].0, upright[mid].1) <= (q.x, q.y): ui = mid + 1 else: uh = mid
+        let vi = verts.first_ge((q.x, q.y)) ?? verts.len
+        let ui = (0..upright.len).first_true(mid => (upright[mid].0, upright[mid].1) > (q.x, q.y)) ?? upright.len
         let on_vertex = vi < verts.len and verts[vi] == (q.x, q.y)
         let on_upright = ui > 0 and upright[ui - 1].0 == q.x and q.y <= upright[ui - 1].2
         if on_vertex or on_upright or below[i].1:
@@ -3271,17 +3255,9 @@ pub fn convex_hull_3d(pts: List<Pt3>) -> List<(Int, Int, Int)>:
     if ids.len < 4: return []
     let i0 = ids[0]
     let i1 = ids[1]
-    var i2 = -1
-    for i in ids:
-        if i != i0 and i != i1 and not col3(pts[i0], pts[i1], pts[i]):
-            i2 = i
-            break
+    let i2 = first(i for i in ids if i != i0 and i != i1 and not col3(pts[i0], pts[i1], pts[i])) ?? -1
     if i2 == -1: return []
-    var i3 = -1
-    for i in ids:
-        if face_side128(pts[i0], pts[i1], pts[i2], pts[i]) != I128(0):
-            i3 = i
-            break
+    let i3 = first(i for i in ids if face_side128(pts[i0], pts[i1], pts[i2], pts[i]) != I128(0)) ?? -1
     if i3 == -1: return []
     var faces: List<(Int, Int, Int)> = if face_side128(
         pts[i0],
@@ -3383,7 +3359,7 @@ fn hull3_facets(pts: List<Pt3>, faces: List<(Int, Int, Int)>) -> List<(Int, Int,
         vs.sort()
         var uniq: List<Int> = []
         for v in vs:
-            if uniq.is_empty or uniq[uniq.len - 1] != v: uniq.push(v)
+            if uniq.is_empty or uniq.last! != v: uniq.push(v)
         let proj = (v: Int) => if axis == 0: Pt(pts[v].y, pts[v].z) else: if axis == 1: Pt(
             pts[v].z,
             pts[v].x,
@@ -3392,7 +3368,7 @@ fn hull3_facets(pts: List<Pt3>, faces: List<(Int, Int, Int)>) -> List<(Int, Int,
             pts[v].y,
         )
         var hull = hull2_strict(uniq, proj)
-        if not pos: hull = [hull[hull.len - 1 - i] for i in 0..hull.len]
+        if not pos: hull = hull.reversed()
         var s = 0
         for i in 1..hull.len:
             if hull[i] < hull[s]: s = i
@@ -3410,7 +3386,7 @@ fn hull2_strict(vs: List<Int>, proj: (Int) -> Pt) -> List<Int>:
         for t in 0..order.len:
             let v = if pass == 0: order[t] else: order[order.len - 1 - t]
             while h.len >= start + 2 and cross128(
-                proj(h[h.len - 1]) - proj(h[h.len - 2]),
+                proj(h.last!) - proj(h[h.len - 2]),
                 proj(v) - proj(h[h.len - 2]),
             ) <= I128(0): h.pop()
             h.push(v)
@@ -3984,11 +3960,11 @@ fn min_enclosing_circle_and_circle_polygon_area():
             for j in i + 1..pts.len:
                 let c2 = (pts[i] + pts[j]) * 0.5
                 let r2 = vdist(c2, pts[i])
-                if pts.all(q => vdist(c2, q) <= r2 + 1e-7): best_r = min(best_r, r2)
+                if pts.all(q => vdist(c2, q) <= r2 + 1e-7): best_r min= r2
                 for k in j + 1..pts.len:
                     if let c3 = circumcenter(pts[i], pts[j], pts[k]):
                         let r3 = vdist(c3, pts[i])
-                        if pts.all(q => vdist(c3, q) <= r3 + 1e-7): best_r = min(best_r, r3)
+                        if pts.all(q => vdist(c3, q) <= r3 + 1e-7): best_r min= r3
         if best_r < 1.0e17:
             assert close(got.r, best_r, eps: 1e-5)
     // Circle-polygon intersection area
@@ -4144,10 +4120,10 @@ fn test_min_bounding_box_against_brute():
             var max_c = I128(0)
             for j in 0..n:
                 let d = dot128(e, h[j])
-                if d < min_d: min_d = d
-                if d > max_d: max_d = d
+                min_d min= d
+                max_d max= d
                 let c = cross128(e, h[j] - h[i])
-                if c > max_c: max_c = c
+                max_c max= c
             let w = F64(max_d - min_d) / elen
             let ht = F64(max_c) / elen
             brute_area min= w * ht

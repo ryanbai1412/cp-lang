@@ -208,8 +208,7 @@ pub fn mo_rollback<D, M, R>(
         let inside = r <= min((blk + 1) * b, D.K)
         keyed.push((blk * (D.K + 2) + (if inside: 0 else: r + 1), i))
     keyed.sort()
-    var res: List<?R> = []
-    for _ in 0..q: res.push(None)
+    var res: List<?R> = [None for _ in 0..q]
     var cur = -1
     var dirty = false
     var rr = 0
@@ -285,8 +284,7 @@ pub fn mo_with_updates<D, U, R>(
         let (l, r) = queries[i].range.ends
         keyed.push(((l - lo) / b, (r - lo) / b, queries[i].time, i))
     keyed.sort()
-    var res: List<?R> = []
-    for _ in 0..q: res.push(None)
+    var res: List<?R> = [None for _ in 0..q]
     var l = queries[keyed[0].3].range.ends.0
     var r = l
     var t = 0
@@ -342,9 +340,7 @@ fn mo_order_and_steps_answer_distinct_counts():
     for qi in 0..queries.len:
         var seen = List.filled(6, false)
         for i in queries[qi]: seen[a[i]] = true
-        var want = 0
-        for v in 0..6:
-            if seen[v]: want += 1
+        let want = count(seen[v] for v in 0..6)
         assert ans[qi] == want
     var freq2 = List.filled(6, 0)
     var distinct2 = 0

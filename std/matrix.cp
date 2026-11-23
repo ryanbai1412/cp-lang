@@ -6,7 +6,7 @@
 //! Floating-point elimination uses partial pivoting with an explicit tolerance `eps` via
 //! `det_real`, `rank_real`, `solve_real`, and `inverse_real`.
 use std.algebra.{Monoid, Semiring}
-use std.math.{mul_mod}
+use std.math.{mul_mod, bit}
 use std.mod.{Mod}
 use std.rand.{Rng}
 
@@ -193,7 +193,7 @@ pub struct Mat<T: Add + Sub + Mul + Div>:
                 let f = m[r * n + col]
                 if f == T.zero: continue
                 let scale = f * inv_l
-                for c in col..n: m[r * n + c] = m[r * n + c] - scale * m[col * n + c]
+                for c in col..n: m[r * n + c] -= scale * m[col * n + c]
         ans
 
     /// The rank over an exact field: the number of pivots elimination finds.
@@ -217,7 +217,7 @@ pub struct Mat<T: Add + Sub + Mul + Div>:
                 let f = m[i * cols + col]
                 if f == T.zero: continue
                 let scale = f * inv_l
-                for c in col..cols: m[i * cols + c] = m[i * cols + c] - scale * m[r * cols + c]
+                for c in col..cols: m[i * cols + c] -= scale * m[r * cols + c]
             r += 1
         r
 
@@ -347,12 +347,12 @@ pub struct Mat<T: Add + Sub + Mul + Div>:
             if piv != r:
                 for c in col..cols: m.swap(r * cols + c, piv * cols + c)
             let inv_l = T.one / m[r * cols + col]
-            for c in col..cols: m[r * cols + c] = m[r * cols + c] * inv_l
+            for c in col..cols: m[r * cols + c] *= inv_l
             for i in 0..rows:
                 if i == r: continue
                 let f = m[i * cols + col]
                 if f == T.zero: continue
-                for c in col..cols: m[i * cols + c] = m[i * cols + c] - f * m[r * cols + c]
+                for c in col..cols: m[i * cols + c] -= f * m[r * cols + c]
             pivots.push(col)
             r += 1
         (mat: Mat(rows, cols, m), rank: r, pivots:)
@@ -370,7 +370,7 @@ pub struct Mat<T: Add + Sub + Mul + Div>:
         assert rows == cols, "det_mod requires a square matrix"
         assert m >= 1, "det_mod requires m >= 1"
         let n = rows
-        var a = [((Int(x) % m) + m) % m for x in data]
+        var a = [Int(x) % m for x in data]
         var ans = 1 % m
         for col in 0..n:
             for r in col + 1..n:
@@ -378,7 +378,7 @@ pub struct Mat<T: Add + Sub + Mul + Div>:
                     let q = a[col * n + col] / a[r * n + col]
                     if q != 0:
                         for c in col..n: a[col * n + c] = (
-                            a[col * n + c] - mul_mod(q, a[r * n + c], m) + m
+                            a[col * n + c] - mul_mod(q, a[r * n + c], m)
                         ) % m
                     for c in col..n: a.swap(col * n + c, r * n + c)
                     ans = (m - ans) % m
@@ -409,8 +409,8 @@ pub struct Mat<T: Add + Sub + Mul + Div>:
             for r in col + 2..n:
                 let f = h[r * n + col] * inv_l
                 if f == T.zero: continue
-                for c in 0..n: h[r * n + c] = h[r * n + c] - f * h[(col + 1) * n + c]
-                for i in 0..n: h[i * n + col + 1] = h[i * n + col + 1] + f * h[i * n + r]
+                for c in 0..n: h[r * n + c] -= f * h[(col + 1) * n + c]
+                for i in 0..n: h[i * n + col + 1] += f * h[i * n + r]
         var ps = List<List<T>>()
         ps.push([T.one])
         for k in 0..n:
@@ -542,7 +542,7 @@ impl Pow for Mat<T>:
         var acc = Mat<T>.identity(a.rows)
         var k = e
         while k > 0:
-            if (k & 1) == 1: acc = acc * base
+            if (k & 1) == 1: acc *= base
             k >>= 1
             if k > 0: base = base * base
         acc
@@ -715,7 +715,7 @@ pub struct XorBasis:
         var v = x
         var b = 62
         while b >= 0 and v > 0:
-            if ((v >> b) & 1) != 0:
+            if v.bit(b):
                 if basis[b] == 0:
                     basis[b] = v
                     size += 1
@@ -735,7 +735,7 @@ pub struct XorBasis:
         var v = x
         var b = 62
         while b >= 0 and v > 0:
-            if ((v >> b) & 1) != 0 and basis[b] != 0: v ^= basis[b]
+            if v.bit(b) and basis[b] != 0: v ^= basis[b]
             b -= 1
         v
 
@@ -798,7 +798,7 @@ pub struct XorBasis:
             rref.push(v)
         var ans = 0
         for i in 0..rref.len:
-            if ((k >> i) & 1) != 0: ans ^= rref[i]
+            if k.bit(i): ans ^= rref[i]
         ans
 
     /// Merge another basis into `self`, so `self` spans the union of both spans; `o` is unchanged.
@@ -833,10 +833,10 @@ pub struct XorBasis:
             var v = basis[b]
             if v == 0: continue
             for c in (0..b).rev:
-                if red[c] != 0 and ((v >> c) & 1) != 0: v ^= red[c]
+                if red[c] != 0 and v.bit(c): v ^= red[c]
             red[b] = v
             for d in b + 1..63:
-                if red[d] != 0 and ((red[d] >> b) & 1) != 0: red[d] ^= v
+                if red[d] != 0 and red[d].bit(b): red[d] ^= v
         [red[b] for b in (0..63).rev if red[b] != 0]
 
     /// A new basis spanning the intersection of the two GF(2) vector subspaces.
@@ -858,7 +858,7 @@ pub struct XorBasis:
             var y = 0
             var bit = 62
             while bit >= 0 and x != 0:
-                if ((x >> bit) & 1) != 0:
+                if x.bit(bit):
                     if bx[bit] == 0:
                         bx[bit] = x
                         by[bit] = y
@@ -896,7 +896,7 @@ pub struct MatPow<T>:
         while k <= max_exp:
             pw.push(cur)
             k *= 2
-            if k <= max_exp: cur = pw[pw.len - 1] * pw[pw.len - 1]
+            if k <= max_exp: cur = pw.last! * pw.last!
         MatPow(a.rows, pw)
 
     /// Compute `a^e * v` for `0 <= e <= max_exp`, as matrix-vector products with the stored powers
@@ -911,7 +911,7 @@ pub struct MatPow<T>:
         assert 0 <= e and (e == 0 or e < (1 << _pw.len))
         var out = v
         for k in 0.._pw.len:
-            if ((e >> k) & 1) == 1: out = _pw[k].mul_vec(out)
+            if e.bit(k): out = _pw[k].mul_vec(out)
         out
 
 /// \(O(n \cdot m / 64)\) storage. Bit-packed dense matrix over GF(2) with word-parallel elimination.
@@ -944,7 +944,7 @@ pub struct BitMat(pub rows: Int, pub cols: Int):
     /// example: `var m = BitMat(2, 2); m.set(0, 1, true); m.get(0, 1) and not m.get(1, 0)`
     pub fn get(self, r: Int, c: Int) -> Bool:
         assert 0 <= r and r < rows and 0 <= c and c < cols
-        ((bits[r * bit_words(cols) + c / 62] >> (c % 62)) & 1) == 1
+        bits[r * bit_words(cols) + c / 62].bit((c % 62))
 
     /// Write bit `(r, c)`.
     ///
@@ -955,8 +955,8 @@ pub struct BitMat(pub rows: Int, pub cols: Int):
         assert 0 <= r and r < rows and 0 <= c and c < cols
         let k = r * bit_words(cols) + c / 62
         let bit = 1 << (c % 62)
-        if v: bits[k] = bits[k] | bit
-        else: bits[k] = bits[k] & ~bit
+        if v: bits[k] |= bit
+        else: bits[k] &= ~bit
 
     /// The determinant over GF(2): `true` iff the matrix is invertible. The `0 x 0` determinant is
     /// `true`.
@@ -1009,7 +1009,7 @@ pub struct BitMat(pub rows: Int, pub cols: Int):
                 if self.get(r, c): aug.set(r, c, true)
             if b[r]: aug.set(r, cols, true)
         let piv = bit_rref(rows, cols + 1, mut aug.bits)
-        if piv.len > 0 and piv[piv.len - 1] == cols: return None
+        if piv.len > 0 and piv.last! == cols: return None
         var x0 = List.filled(cols, false)
         var is_piv = List.filled(cols, false)
         for i in 0..piv.len:
@@ -1058,7 +1058,7 @@ pub struct BitMat(pub rows: Int, pub cols: Int):
         for i in 0..rows:
             for t in 0..cols:
                 if self.get(i, t):
-                    for k in 0..w: out.bits[i * w + k] = out.bits[i * w + k] ^ o.bits[t * w + k]
+                    for k in 0..w: out.bits[i * w + k] ^= o.bits[t * w + k]
         out
 
 fn bit_words(cols: Int) -> Int = (cols + 61) / 62
@@ -1078,7 +1078,7 @@ fn bit_rref(rows: Int, cols: Int, mut a: List<Int>) -> List<Int>:
             for j in 0..w: a.swap(p * w + j, r * w + j)
         for i in 0..rows:
             if i != r and (a[i * w + k] & bit) != 0:
-                for j in 0..w: a[i * w + j] = a[i * w + j] ^ a[r * w + j]
+                for j in 0..w: a[i * w + j] ^= a[r * w + j]
         piv.push(c)
         r += 1
     piv
@@ -1113,7 +1113,7 @@ pub struct PrefixXorBasis:
         var v = x
         var at = len - 1
         for b in (0..63).rev:
-            if ((v >> b) & 1) == 0: continue
+            if not v.bit(b): continue
             if vecs[top + b] == 0:
                 vecs[top + b] = v
                 from[top + b] = at
@@ -1155,7 +1155,7 @@ pub struct PrefixXorBasis:
         let top = (l + r.len) * 63
         var v = x
         for b in (0..63).rev:
-            if ((v >> b) & 1) == 1 and from[top + b] >= l: v ^= vecs[top + b]
+            if v.bit(b) and from[top + b] >= l: v ^= vecs[top + b]
         v == 0
 
     /// The rank (dimension) of the span of the values at positions `r`.
@@ -1168,9 +1168,7 @@ pub struct PrefixXorBasis:
         if r.is_empty: return 0
         let l = r.first!
         let top = (l + r.len) * 63
-        var k = 0
-        for b in 0..63:
-            if from[top + b] >= l: k += 1
+        let k = count(from[top + b] >= l for b in 0..63)
         k
 
 /// The determinant of a sparse `n x n` matrix via Wiedemann's algorithm. `entries` lists
@@ -1233,9 +1231,7 @@ pub fn sparse_solve<P>(n: Int, entries: List<(Int, Int, Mod<P>)>, b: List<Mod<P>
             let scale = Mod<P>(-1) / w.f[0]
             let x = [y[k] * scale * w.diag[k] for k in 0..n]
             let ax = sparse_apply(n, entries, [Mod<P>(1) for _ in 0..n], x)
-            var ok = true
-            for k in 0..n:
-                if ax[k] != b[k]: ok = false
+            let ok = (0..n).all(k => ax[k] == b[k])
             if ok: return Some(x)
 
 fn sparse_apply<P>(
@@ -1268,7 +1264,7 @@ fn wiedemann<P>(
     let deg = c.len - 1
     var f = List.filled(deg + 1, Mod<P>(0))
     for i in 0..=deg: f[deg - i] = c[i]
-    (f: f, diag: diag, singular: deg >= 1 and f[0] == Mod<P>(0))
+    (f:, diag:, singular: deg >= 1 and f[0] == Mod<P>(0))
 
 fn berlekamp_massey<P>(s: List<Mod<P>>) -> List<Mod<P>>:
     var cur: List<Mod<P>> = [Mod<P>(1)]
@@ -1386,7 +1382,7 @@ pub fn simplex(
     var x = List.filled(n, 0.0)
     for i in 0..m:
         if bb[i] >= 0 and bb[i] < n: x[bb[i]] = d[i * w + n + 1]
-    Some((val: d[m * w + n + 1], x: x))
+    Some((val: d[m * w + n + 1], x:))
 
 @test
 fn matrix_arithmetic_and_pow():

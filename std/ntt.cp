@@ -7,7 +7,7 @@
 //! - linear (`cyclic: false`): length `a.len + b.len - 1` (or `[]` if either input is empty)
 //! - cyclic (`cyclic: true`): requires `a.len == b.len`, length `n = a.len`, index `(i + j) % n`.
 use std.algebra.{Monoid, Semiring}
-use std.math.{is_pow2, mul_mod, pow_mod, primitive_root}
+use std.math.{is_pow2, mul_mod, pow_mod, primitive_root, bit}
 use std.mod.{Mod}
 
 const P1 = 998_244_353
@@ -202,7 +202,7 @@ pub fn ntt<P>(mut a: List<Mod<P>>, inverse: Bool = false, bit_reversed: Bool = f
         var prod = Mod<P>(1)
         for i in 0..rank2 - 1:
             rate[i] = root[i + 2] * prod
-            prod = prod * iroot[i + 2]
+            prod *= iroot[i + 2]
         if inverse:
             if not bit_reversed: bit_reverse(mut a)
             for step in 0..h:
@@ -218,7 +218,7 @@ pub fn ntt<P>(mut a: List<Mod<P>>, inverse: Bool = false, bit_reversed: Bool = f
                         a[i + offset + p] = (l - r) * rot
                     if s + 1 != blocks: rot = rot * rate[ctz(s ^ -1)]
             let inv_n = Mod<P>(n).inv()
-            for i in 0..n: a[i] = a[i] * inv_n
+            for i in 0..n: a[i] *= inv_n
         else:
             for step in 0..h:
                 let p = 1 << (h - step - 1)
@@ -352,7 +352,7 @@ fn semiring_convolve<T: Add + Sub, R>(a: List<T>, b: List<T>, over: R, shape: ?C
         var j = 0
         while i + 1 < a.len or j + 1 < b.len:
             let take_a = if j + 1 >= b.len: true elif i + 1 >= a.len: false elif low: a[i + 1] - a[i] <= b[j + 1] - b[j] else: a[i + 1] - a[i] >= b[j + 1] - b[j]
-            let last = out[out.len - 1]
+            let last = out.last!
             if take_a:
                 out.push(last + (a[i + 1] - a[i]))
                 i += 1
@@ -478,8 +478,8 @@ pub struct RelaxedConvolve<P>:
         b.push(bi)
         let i = a.len - 1
         while c.len <= i: c.push(Mod<P>(0))
-        c[i] = c[i] + a[0] * b[i]
-        if i > 0: c[i] = c[i] + a[i] * b[0]
+        c[i] += a[0] * b[i]
+        if i > 0: c[i] += a[i] * b[0]
         let q = i + 1
         var w = 1
         while q % w == 0 and q / w >= 2:
@@ -517,7 +517,7 @@ pub struct SemiRelaxedConvolve<P>:
         a.push(ai)
         let i = a.len - 1
         while c.len <= i: c.push(Mod<P>(0))
-        if not b.is_empty: c[i] = c[i] + ai * b[0]
+        if not b.is_empty: c[i] += ai * b[0]
         let q = i + 1
         var w = 1
         while q % w == 0 and w < b.len:
@@ -600,7 +600,7 @@ fn add_block<P>(
     while c.len < base + prod.len: c.push(Mod<P>(0))
     unchecked:
         for t in 0..prod.len:
-            if base + t >= at: c[base + t] = c[base + t] + prod[t]
+            if base + t >= at: c[base + t] += prod[t]
 
 fn times<P>(a: List<Mod<P>>, b: List<Mod<P>>) -> List<Mod<P>>:
     with lint(unproven_list_index: allow)
@@ -610,7 +610,7 @@ fn times<P>(a: List<Mod<P>>, b: List<Mod<P>>) -> List<Mod<P>>:
         var out = List.filled(n, Mod<P>(0))
         unchecked:
             for i in 0..a.len:
-                for j in 0..b.len: out[i + j] = out[i + j] + a[i] * b[j]
+                for j in 0..b.len: out[i + j] += a[i] * b[j]
         return out
     let m = bit_ceil(n)
     var fa = List.filled(m, Mod<P>(0))
@@ -621,7 +621,7 @@ fn times<P>(a: List<Mod<P>>, b: List<Mod<P>>) -> List<Mod<P>>:
     ntt(mut fa)
     ntt(mut fb)
     unchecked:
-        for i in 0..m: fa[i] = fa[i] * fb[i]
+        for i in 0..m: fa[i] *= fb[i]
     ntt(mut fa, inverse: true)
     fa.truncate(n)
     fa
@@ -636,7 +636,7 @@ fn ranked<P>(a: List<Mod<P>>, exp: Bool) -> List<Mod<P>>:
         for r in 0..=k:
             for bit in 0..k:
                 for m in 0..n:
-                    if m >> bit & 1 == 1: f[r * n + m] = f[r * n + m] + f[r * n + (m ^ (1 << bit))]
+                    if m.bit(bit): f[r * n + m] += f[r * n + (m ^ (1 << bit))]
         var p = List.filled(k + 1, Mod<P>(0))
         var q = List.filled(k + 1, Mod<P>(0))
         for m in 0..n:
@@ -657,7 +657,7 @@ fn ranked<P>(a: List<Mod<P>>, exp: Bool) -> List<Mod<P>>:
         for r in 0..=k:
             for bit in 0..k:
                 for m in 0..n:
-                    if m >> bit & 1 == 1: f[r * n + m] = f[r * n + m] - f[r * n + (m ^ (1 << bit))]
+                    if m.bit(bit): f[r * n + m] -= f[r * n + (m ^ (1 << bit))]
     [f[popcount(m) * n + m] for m in 0..n]
 
 @test
