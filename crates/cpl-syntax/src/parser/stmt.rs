@@ -1108,35 +1108,41 @@ impl<'a> Parser<'a> {
             clauses.push((pat, iter, None));
         }
         let c_style = !clauses.is_empty();
-        while !c_style {
-            let pat = self.pattern();
-            self.expect(T::In, "`in` after the loop variable");
-            let iter = if self.at(T::Question) {
-                self.optional_type_iter()
-            } else {
-                self.expr()
-            };
-            // `for x in xs if cond:` runs the body for the `x` that pass:
-            // the body is an `if`.
-            let has_filter = self.eat(T::If)
-                || (self.at_ident("where") && {
-                    let span = self.span();
-                    self.error(
-                        Diagnostic::error(
-                            codes::REMOVED_SYNTAX,
-                            span,
-                            "loop filters use `if`, not `where`",
-                        )
-                        .with_help("use `if` to filter a `for` loop")
-                        .with_fix("replace `where` with `if`", span, "if"),
-                    );
-                    self.bump();
-                    true
-                });
-            let filter = has_filter.then(|| (self.start(), self.cond()));
-            clauses.push((pat, iter, filter));
-            if !self.eat(T::Comma) {
-                break;
+        if !c_style {
+            loop {
+                let pat = self.pattern();
+                self.expect(T::In, "`in` after the loop variable");
+                let iter = if self.at(T::Question) {
+                    self.optional_type_iter()
+                } else {
+                    self.expr()
+                };
+                // `for x in xs if cond:` runs the body for the `x` that pass:
+                // the body is an `if`.
+                let has_filter = self.eat(T::If)
+                    || (self.at_ident("where") && {
+                        let span = self.span();
+                        self.error(
+                            Diagnostic::error(
+                                codes::REMOVED_SYNTAX,
+                                span,
+                                "loop filters use `if`, not `where`",
+                            )
+                            .with_help("use `if` to filter a `for` loop")
+                            .with_fix(
+                                "replace `where` with `if`",
+                                span,
+                                "if",
+                            ),
+                        );
+                        self.bump();
+                        true
+                    });
+                let filter = has_filter.then(|| (self.start(), self.cond()));
+                clauses.push((pat, iter, filter));
+                if !self.eat(T::Comma) {
+                    break;
+                }
             }
         }
         let body = self.colon_block("the `for` header");
