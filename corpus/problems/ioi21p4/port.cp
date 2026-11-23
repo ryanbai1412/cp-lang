@@ -17,7 +17,7 @@ let (a, b): (Str, Str) = read()
 // upto[i][x, y]: the places before i where a has x and b has y.
 var upto: List<[Base, Base]Int> = [[Base, Base] (x, y) => 0]
 for i in 0..n:
-    var next = upto.last.copy()
+    var next = upto.last!.copy()
     next[base(a[i]), base(b[i])] += 1
     upto.push(next)
 

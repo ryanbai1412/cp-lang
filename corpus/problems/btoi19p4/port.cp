@@ -23,7 +23,7 @@ fn least_waste() -> ?Int:
     variety[Paid.first!] = 0
     for b in hours:
         for p in Paid.rev:
-            if let q = Meal.at(p - b):
+            if let q = Paid.at(p - b):
                 if let v = variety[q]: variety[p] max= v + min(b, n)
     let work = need.sum()
     for p in Paid:

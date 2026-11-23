@@ -7,7 +7,6 @@ btoi17p1
 btoi18p3
 btoi18p6
 btoi19p3
-btoi19p4
 btoi19p5
 ccc02s4hard
 cco16p4
@@ -51,7 +50,6 @@ ioi14p6
 ioi15p4
 ioi18p1
 ioi18p3
-ioi21p4
 mccc4j5
 nccc10s3
 nccc8s1
