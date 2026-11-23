@@ -15,7 +15,7 @@
 //    length of the maximal alternating run ending at `i`.
 
 @!multitest
-let n: 1..=200_000 = read()
+let n: 1..=1_000_000 = read()
 let s: [0..n]Char = read()
 var ans = 0
 var cnt: [0..3]Int = [1, 0, 0]
