@@ -1,13 +1,11 @@
-// Codeforces 2211 G — Prefix Average Balance
-//
-// Let `tot = a.sum()` and `diff(i) = p.sum(..i) * n - tot * i`, which is `< 0`
-// iff prefix `0..i` has average strictly below the global average `tot / n`,
-// and `== 0` iff prefix `0..i` hits the global average exactly.
-// The answer is `"Yes"` iff either:
-// - `below`: some non-empty proper prefix `0..i` (`1 <= i < n`) dips strictly
-//   below the global average (`diff(i) < 0`), or
-// - `no_gap`: every element sits adjacent to an exact-average cut
-//   (`diff(i) == 0 or diff(i + 1) == 0` for all `i in 0..n`).
+// Source: Codeforces 2211G (Rational Bubble Sort), https://codeforces.com/contest/2211/problem/G
+// Problem: n <= 1e6 integers 0 <= a_i <= 1e6. An operation replaces a_i and a_(i+1) both by their
+//   average. Print whether a can be made non-decreasing. Multitest, sum of n <= 1e6.
+// Solution: operations keep the sum. With diff(i) = n * (sum of a[..i]) - tot * i: if some proper
+//   prefix averages strictly below the mean (diff(i) < 0), the answer is Yes. Otherwise a sorted
+//   result must be constant, which needs the exact-mean cuts (diff(i) = 0) to split a into
+//   blocks of length <= 2, each levelled by one operation: every element is next to such a cut.
+//   Exact integers on prefix sums, O(n).
 
 @!multitest
 let n: 1..=1_000_000 = read()

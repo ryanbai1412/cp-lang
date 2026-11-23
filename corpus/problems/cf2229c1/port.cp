@@ -1,10 +1,11 @@
-// Codeforces 2229 C1 — Right-to-Left Prefix Sign Flip
-//
-// Sweep `i` from `n` down to `1` (`domain Pos = 1..=n`), tracking `flip` =
-// parity of flips already applied to suffixes starting after `i`. Whenever
-// `a[i]` is positive under `flip` (`(x > 0) != flip`), flip prefix `1..=i`.
-// Treating `x == 0` as non-positive is safe because `-0 == 0` (flipping or not
-// leaves `0` valid as `<= 0`).
+// Source: Codeforces 2229C1 (We Be Flipping, Easy Version),
+//   https://codeforces.com/contest/2229/problem/C1
+// Problem: n <= 2e5 non-zero integers, |a_i| <= 1e9. An operation picks i with a_i > 0 and negates
+//   a_1..a_i. Print at most n operations (count, then indices) leaving the least possible sum.
+//   Multitest, sum of n <= 2e5.
+// Solution: every element can end negative. Sweep i from n down with `flip`, the parity of the
+//   operations so far (all of which cover i): if a_i is positive now, operate at i, which makes it
+//   negative; later operations stop below i. At most n operations, O(n).
 
 @!multitest
 let n: 1..=200_000 = read()

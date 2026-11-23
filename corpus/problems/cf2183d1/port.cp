@@ -1,11 +1,12 @@
-// Codeforces 2183 D1 — Tree Coloring (Easy Version)
-//
-// Each operation picks an independent set containing at most one vertex per
-// depth, so every depth layer needs at least `layer.len` operations. Moreover,
-// no vertex can share an operation with its parent: if every vertex in a
-// non-root layer `d > 0` shares a single parent `p0`, that parent cannot pair
-// with any vertex in the layer, forcing `layer.len + 1` operations. This lower
-// bound is tight by assigning colors layer-by-layer avoiding each vertex's parent.
+// Source: Codeforces 2183D1 (Tree Coloring, Easy Version),
+//   https://codeforces.com/contest/2183/problem/D1
+// Problem: a tree on n <= 2e5 vertices rooted at 1, all white. An operation colours black a set
+//   of white vertices with pairwise distinct depths and no two adjacent. Print the fewest
+//   operations to colour the whole tree. Multitest, sum of n <= 2e5.
+// Solution: a depth layer needs at least its size in operations; if all of a layer's vertices
+//   share one parent p, p (one layer up) can join none of them, so it needs one more. The answer
+//   is the max over layers of size + [one shared parent], which is achievable. Group the vertices
+//   by depth: O(n).
 
 @!multitest
 let n: 2..=200_000 = read()

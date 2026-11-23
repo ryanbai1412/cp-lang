@@ -1,15 +1,12 @@
-// Codeforces 2127 C — Trip Shopping
-//
-// Each index `i` represents the interval `(lo: min(a[i], b[i]), hi: max(a[i], b[i]))`
-// of initial contribution `hi - lo`. When Ali picks two intervals `p, q`
-// (`p.lo <= q.lo`) and Bahamin re-pairs their four endpoints to maximize the
-// sum of lengths, overlapping intervals gain `0`, while disjoint intervals
-// (`p.hi < q.lo`) merge across the gap and gain `2 * (q.lo - p.hi)`.
-//
-// Once any two intervals overlap, Ali can re-pick them for 0 gain on every
-// remaining turn, so `_k` (the number of rounds >= 1) does not affect the
-// answer: Ali simply picks the closest pair once, which must be adjacent after
-// sorting `segs` by `(lo, hi)`.
+// Source: Codeforces 2127C (Trip Shopping), https://codeforces.com/contest/2127/problem/C
+// Problem: arrays a, b of n <= 2e5 values in 1..=1e9 and k <= n rounds; each round Ali picks
+//   i < j, then Bahamin rearranges a_i, a_j, b_i, b_j at will. Ali minimises and Bahamin maximises
+//   v = sum |a_i - b_i|; print the final v. Multitest, sum of n <= 2e5.
+// Solution: index i is the interval [lo, hi] of length hi - lo. Re-pairing two overlapping
+//   intervals gains nothing; disjoint ones gain 2 (q.lo - p.hi). Ali picks the cheapest pair once,
+//   then re-picks an overlapping pair at no cost, so k does not matter: sort the intervals, and
+//   the answer is the total length plus the least max(0, 2 (q.lo - p.hi)) over adjacent pairs.
+//   O(n log n).
 
 @!multitest
 let (n, _k): (2..=200_000, 1..=200_000) = read()
