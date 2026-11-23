@@ -11,7 +11,7 @@ let n: 1..=500_000 = read()
 domain I = 1..=n
 domain Len = 1..=n
 let a: [I]I = read()
-var b: [I]?I = read(None: -1)
+var b: [I]?I = read(none: -1)
 
 fn solve() -> ?[I]I:
     var used_val: [I]Bool = false

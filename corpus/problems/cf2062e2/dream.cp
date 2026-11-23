@@ -17,17 +17,18 @@ with io(base: 1)
 
 @!multitest
 domain V = read(1..=4e5)
-let w: [V]1..=V.count = read()
-let t = Rooted(Graph.undirected(read<[V.count - 1](V, V)>()), root: V.first)
+domain W = 1..=V.count
+let w: [V]W = read()
+let t = Rooted(Graph.undirected(read<[V.count - 1](V, V)>()), root: V.first!)
 type Pre = t.Pre
 
 var heavier = SortedSet<Pre>()
 fn above_lca(x: V) -> ?V:
     let r = t.sub(x)
     let (before, after) = (heavier.range(..r.l), heavier.range(r.r..))
-    let lo = (before.first ?? after.first)?
+    let lo = (before.first ?? after.first) ?? return None
     let hi = (after.last ?? before.last)!
-    t.lca(t.at(lo), t.at(hi))
+    t.lca(t.at[lo], t.at[hi])
 
 enum Mark = Reply | Target | Meet
 var marks = [Mark] _ => Fenwick<Pre, Int>()
@@ -35,7 +36,7 @@ var dangerous = 0
 fn inside(m: Mark, u: V) -> Int = marks[m].fold(t.sub(u))
 
 var winners: List<V> = []
-for bucket in V.group(by: v => w[v]).rev:
+for bucket in buckets(w).rev:
     for u in bucket:
         let replies = heavier.len - heavier.range(t.sub(u)).len
         let fatal = dangerous - inside(Reply, u) - inside(Target, u) + inside(Meet, u)
