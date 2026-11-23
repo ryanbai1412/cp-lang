@@ -1152,7 +1152,7 @@ impl Database {
                                 sink.push(Diagnostic::error(
                                     codes::WITH_NOT_FIRST,
                                     abs,
-                                    "a bare `with` context must come before any executable statements",
+                                    "a bare `with` line comes first in its block; indent what it covers under `with ...:`",
                                 ));
                             }
                         }
