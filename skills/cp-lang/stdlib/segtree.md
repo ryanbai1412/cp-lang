@@ -18,7 +18,7 @@ Fields: `span: List<Int>`, `size: Int`, `log: Int`, `act: ?Action<T, F>`.
 - `fn fold(self, r: Range<D>) -> T` — O(log |D|); The fold of the values in `r`, left to right: `op(op(a[l], a[l + 1]), ...)`.; traps: when a non-empty `r` reaches outside `D`
 - `fn right_while(self, from: Cut<D>, ok: T -> Bool) -> Cut<D>` — O(log |D|); The last cut `d` at or right of `from` such that `ok(fold(from..d))` holds.; traps: when `ok(identity)` is false
 - `fn left_while(self, to: Cut<D>, ok: T -> Bool) -> Cut<D>` — O(log |D|); The first cut `d` at or left of `to` such that `ok(fold(d..to))` holds.; traps: when `ok(identity)` is false
-- `fn of<M>(op: M, f: D -> T) -> SegTree<D, T>` — O(|D|), calling `f` once per position in key order; A tree whose position `i` holds `f(i)`.
+- `fn of<M>(op: M, f: D -> T) -> SegTree<D, T, F>` — O(|D|), calling `f` once per position in key order; A tree whose position `i` holds `f(i)`.
 - `fn refresh(mut self, i: D)` — O(log |D|) plus one call of `f`; Recompute position `i` as `f(i)` with the formula given to `of`, and update its ancestors.; traps: when `i` is outside `D`, or the tree was not built with `of`
 - `fn get(self, i: D) -> T` — O(1); O(log |D|) on a tree with `act:`; The value at position `i`, with every tag applied.; traps: when `i` is outside `D`
 - `fn set(mut self, i: D, x: T)` — O(log |D|); Make position `i` hold `x`, replacing any tags applied to it, and update its ancestors.; traps: when `i` is outside `D`

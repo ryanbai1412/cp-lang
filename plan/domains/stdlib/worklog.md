@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- From infra (sheriff): d8cdded47 and neighbours left `skills/cp-lang/stdlib/{fenwick,segtree,sparse}.md` stale (run 45098999493); infra regenerated them. Run `uv run python scripts/skill-gen.py` after changing `spec/std` docs.
 - Done by lint-fmt (decision 243): all 123 `@allow(unproven_list_index)` in `spec/std` are now `with lint(unproven_list_index: allow)` as the fn body's first line; 18 expression-bodied fns became block bodies with `return`. `@allow` is now E0503, so new code uses the `with lint` line. Same 450 `cpl lint spec/std` warnings before and after.
 - Request from lint-fmt (2026-11-22): new lint L0210 `compound_self_ref` finds 72 `x = x + e` places in `spec/std` that are `x += e`. `cpl lint --fix spec/std` rewrites them; `fixes_never_add_checker_errors` shows the fix adds no checker error. Lowering the count in `crates/cpl-lint/corpus_warnings.txt` (std L0210 72) with `CPL_LINT_BLESS=1 cargo test -p cpl-lint corpus_warnings` locks it in.
 - From infra (sheriff): reverted 06f75a8b6, 7f339f422 and 1d53c2d2f. They use `Range` members `cpl run` doesn't know yet (`.ends`, `.l`, `.r`, `.last_true`), so 35 conformance cases regressed to E0203 (run 45097287889, `cpl-conform all --check`), plus corpus/judges/differential tests. With the reverts the ratchet is ok (0 regressions). Re-land once the interpreter supports those members (ask compiler/interp), checking `cargo run -p cpl-conform -- all --check` first; the half-planes `eps` fix is kept.

@@ -49,6 +49,29 @@ Fields: `t: List<T>`.
 - `fn get(self, i: D) -> T` — O(log |D|); The current value at position `i`: its initial value plus every `x` added over a range containing `i`.; traps: when `i` is outside `D`
 - `fn clear(mut self)` — O(|D|); Reset every value to zero, keeping the domain and the allocation.
 
+## `struct RangeFenwick<D>`
+
+Range add and range sum over `Int` with two difference Fenwick trees (`d[i]` and `i * d[i]`): `RangeFenwick<D>()` starts at zero and `RangeFenwick<D>(a)` from an array.
+
+Fields: `base: List<Int>`, `b1: List<Int>`, `b2: List<Int>`.
+
+- `fn new(a: ?[D]Int = None) -> RangeFenwick<D>` — O(|D|) time; memory 3(|D| + 1) values; A range-add, range-sum tree over `D`: all zeros, or holding the values of `a` when given.
+- `fn add(mut self, r: Range<D>, x: Int)` — O(log |D|); Add `x` to every position of `r`.; traps: when a non-empty `r` reaches outside `D`
+- `fn prefix(self, b: Cut<D>) -> Int` — O(log |D|); The sum of every position left of the boundary `b`, adds included.; traps: never (`b` is a cut of `D` by type)
+- `fn fold(self, r: Range<D>) -> Int` — O(log |D|); The sum over the positions of `r`.; traps: when a non-empty `r` reaches outside `D`
+- `fn clear(mut self)` — O(|D|); Reset every value to zero, keeping the domain and the allocation.
+
+## `struct XorFenwick<D, T>`
+
+Point xor and range xor: `XorFenwick<D, T>()` starts at zero and `XorFenwick<D, T>(a)` from an array, in O(n).
+
+Fields: `t: List<T>`.
+
+- `fn new(a: ?[D]T = None) -> XorFenwick<D, T>` — O(|D|) time; memory |D| + 1 values; A xor Fenwick tree over `D`: all zeros, or holding the values of `a` when given.
+- `fn flip(mut self, i: D, x: T)` — O(log |D|); Xor `x` into the value at position `i`: `a[i] ^= x`.; traps: when `i` is outside `D`
+- `fn prefix(self, b: Cut<D>) -> T` — O(log |D|); The xor of every position left of the boundary `b`.; traps: never (`b` is a cut of `D` by type)
+- `fn xor(self, r: Range<D>) -> T` — O(log |D|); The xor over the positions of `r`.; traps: when a non-empty `r` reaches outside `D`
+
 ## `struct SparseFenwick2D<T>`
 
 Fields: `n: Int`, `pts: List<(Int, Int)>`, `xs: List<Int>`, `ys: List<List<Int>>`, `ft: List<List<T>>`, `built: Bool`.
