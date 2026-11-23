@@ -32,8 +32,8 @@ pub fn scan<D, T, M>(self: [D]T, f: M, from: ?T = None) -> Prefix<D, T>:
     let m = Monoid<T>.of(f)
     var p: [D.cuts]T = from ?? m.id
     var acc = from ?? m.id
-    for i in D:
-        acc = m.op(acc, self[i])
+    for (i, x) in self.items:
+        acc = m.op(acc, x)
         p[i.r] = acc
     Prefix<D, T>.of_cuts(p)
 

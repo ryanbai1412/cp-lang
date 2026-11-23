@@ -168,6 +168,37 @@ pub(super) fn struct_uses_param_as_domain(decl: &ast::StructDecl, name: &str) ->
 impl<'a> Lowerer<'a> {
     /// Binds the generics of an array parameter's index `[I, J]` from the
     /// dimensions it was given.
+    /// A list given where a `[D]T` is asked for; a view keys `D` by its source's dimension.
+    pub(super) fn unify_view_dim(
+        &self,
+        index: &[ast::Type],
+        concrete: &Ty,
+        tpl_mod: ModId,
+        gen_names: &[String],
+        env: &mut GenEnv,
+    ) {
+        if let Ty::ListView(_, dim) | Ty::Keyed(_, dim) = concrete {
+            self.unify_array_dims(index, std::slice::from_ref(dim), tpl_mod, gen_names, env);
+        }
+    }
+
+    /// A view of a domain-keyed array (`a[V(2)..=V(4)]`, `a.rev`) given for `[D]T` keeps
+    /// its source's domain: `D` is that domain, not a fresh one for the view's positions.
+    pub(super) fn bind_view_domain(
+        &mut self,
+        arg: &ast::Expr,
+        name: &str,
+        inferred: &mut GenEnv,
+    ) -> bool {
+        let Some(Ty::ListView(_, Dim::Pos(d)) | Ty::Keyed(_, Dim::Pos(d))) =
+            self.probe_ty_silent(arg)
+        else {
+            return false;
+        };
+        inferred.insert(name.to_string(), GenArg::Domain(d));
+        true
+    }
+
     pub(super) fn unify_array_dims(
         &self,
         index: &[ast::Type],

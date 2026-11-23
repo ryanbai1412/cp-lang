@@ -2410,7 +2410,10 @@ impl<'a> Lowerer<'a> {
         else {
             return;
         };
-        if !targs.is_empty() || !gen_names.contains(&name.text) || inferred.contains_key(&name.text)
+        if !targs.is_empty()
+            || !gen_names.contains(&name.text)
+            || inferred.contains_key(&name.text)
+            || self.bind_view_domain(arg, &name.text, inferred)
         {
             return;
         }
@@ -3210,7 +3213,7 @@ impl<'a> Lowerer<'a> {
                     [_],
                 ) = (concrete, index.as_slice())
                 {
-                    // A list given where a `[D]T` is asked for.
+                    self.unify_view_dim(index, concrete, tpl_mod, gen_names, env);
                     self.unify_ast_ty(elem, ce, tpl_mod, gen_names, env);
                 } else if let (Ty::Str | Ty::StrView, [_]) = (concrete, index.as_slice()) {
                     self.unify_ast_ty(elem, &Ty::Char, tpl_mod, gen_names, env);
