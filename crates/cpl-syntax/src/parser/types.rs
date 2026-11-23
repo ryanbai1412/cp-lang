@@ -6,7 +6,10 @@ impl<'a> Parser<'a> {
     /// A type; `A -> B` is a fn type, as in `adj: V -> Iter<A>`.
     pub(super) fn ty(&mut self) -> Type {
         let start = self.start();
-        let first = self.ty_atom();
+        let mut first = self.ty_atom();
+        if self.at(T::Question) {
+            first = self.postfix_optional(first);
+        }
         if !self.at(T::Arrow) || matches!(first.kind, TypeKind::Fn { .. }) {
             return first;
         }
@@ -18,6 +21,31 @@ impl<'a> Parser<'a> {
                 ret,
             },
             span: self.span_from(start),
+        }
+    }
+
+    /// `Int?`, Kotlin's and C#'s optional: CP Lang writes `?Int` (R02.4).
+    fn postfix_optional(&mut self, inner: Type) -> Type {
+        let q = self.span();
+        self.bump();
+        let span = Span::new(inner.span.start, q.end);
+        let mut diag = Diagnostic::error(
+            codes::EXPECTED_TYPE,
+            span,
+            "an optional type puts its `?` first in CP Lang",
+        )
+        .with_help("write `?T`, as in `?Int`, for a `T` or `None`");
+        diag.fixes.push(cpl_diag::Fix {
+            title: "move the `?` to the front".into(),
+            edits: vec![
+                (Span::point(inner.span.start), "?".into()),
+                (q, String::new()),
+            ],
+        });
+        self.recovered(diag);
+        Type {
+            kind: TypeKind::Optional(Box::new(inner)),
+            span,
         }
     }
 

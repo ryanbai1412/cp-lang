@@ -1973,3 +1973,11 @@ fn a_reference_type_is_one_error_with_the_fix() {
     let fixed: Vec<_> = d.iter().map(|d| d.fixes[0].edits[0].1.as_str()).collect();
     assert_eq!(fixed, [""], "{d:?}");
 }
+
+#[test]
+fn a_postfix_optional_is_one_error_moving_the_question_mark() {
+    let d = parse_file("let x: Int? = 3\nprint(x ?? 0)\n").diagnostics;
+    assert_eq!(d.len(), 1, "{d:?}");
+    let edits: Vec<_> = d[0].fixes[0].edits.iter().map(|e| e.1.as_str()).collect();
+    assert_eq!(edits, ["?", ""]);
+}
