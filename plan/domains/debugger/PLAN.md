@@ -59,6 +59,7 @@ Each local fix made so far, and the mechanism that would remove its whole class.
 
 | Instance (local fix) | General fix | Owner |
 |---|---|---|
+| A traced run of a fn with a `mut` param runs on the tree-walker (perf: `eval`, `for_loop`), so counting its steps is 8.7x untraced (1951 vs 225 ms) | Done (tech-debt 345573204): traced chunks compile fns with `mut` params; the count is 428 vs 170 ms untraced (2.5x) | tech-debt |
 | A trace counted every item of a long list at each step it showed it (`cells` takes one per item of a collection of numbers, a02eccaf5) | The trace document repeats every variable's whole value at every step: a list-filling loop writes 51 MB for 5,872 steps and hits the byte budget. Send each step's changes (the pushed item, the written cell) and let the viewer rebuild values, as the log already does; recording pushes as items alone moved the cost to writing the document (tried and reverted) | debugger |
 | Windows: stress JSON `expected`/`got` carried `\r\n` (`crates/cpl-stress/src/cli.rs` normalizes at serialization) | Normalize line endings once where `crates/cpl-stress/src/program.rs` captures a program's output, so every consumer (compare, report, saved `.out`) sees LF | debugger: done, `Outcome` is LF |
 | Windows: `runtime_errors.rs` strips both `dir/` and `dir\` from diagnostics | Diagnostics render a path relative to the cwd with `/` on every OS, so goldens never see the platform separator | diagnostics |
