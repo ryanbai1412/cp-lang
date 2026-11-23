@@ -247,3 +247,5 @@ Newest first: what landed (commit), evidence, next, blocked, requests from other
   first free one (`L.any(...)`): 91.5 -> 85.1 ms by hand. `next: [L]Int` could be
   `[L]0..=...` (32-bit), and `alternating_layers`'s `?(0..2_147_483_648)` level could be
   `?(0..=L.count)` so its `+ 1` store needs no range check. Evidence in perf worklog.
+- 2026-11-22 (from idioms): `fwht` on `Mod` lists does not check. This fails with "E0309 `%` can't be applied to `Mod<998244353>` and `Mod<998244353>`" at the call, though `spec/std/ntt.cp` `fwht` has no `%` (the inverse divides by `T.one / n_t`):
+  `use std.ntt.{fwht}` / `var a: List<Mod<998244353>> = [Mod<998244353>(1), Mod<998244353>(2), Mod<998244353>(3), Mod<998244353>(4)]` / `fwht(mut a)` / `fwht(mut a, inverse: true)`. Blocks corpus cf2096h.
