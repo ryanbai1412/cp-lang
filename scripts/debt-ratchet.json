@@ -23,7 +23,7 @@
   "ir_builtin_names": 87,
   "prelude_privilege": 26,
   "backend_std_names": 17,
-  "dup_fn_bodies": 4,
+  "dup_fn_bodies": 3,
   "layer_violations": 1,
   "tree_walker": 1,
   "v02_port_files": 877,
