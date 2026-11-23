@@ -78,8 +78,9 @@ built-in list. Rules:
 ## 11.4 Versions, pins and migration
 
 - The first line of a solution is a compiler stamp, added by the
-  formatter: `// cpl 0.3.0`. The generated C++ carries the stamp and a
-  source hash. (R11.4.1)
+  formatter: `// cpl 0.3.0`, above any header comment. A file without one
+  is valid and builds with the running compiler. The generated C++ carries
+  the stamp and a source hash. (R11.4.1)
 - `cp.toml` pins the stdlib and each library root by content hash.
   Old solutions rebuild byte for byte with their pinned compiler and
   libraries (`cpl build --compiler 0.3.0`). (R11.4.2)
