@@ -3780,6 +3780,9 @@ impl<'a> Lowerer<'a> {
                 return;
             }
         }
+        if self.index_set(target, op, value, out) {
+            return;
+        }
         if let (ast::ExprKind::Tuple(targets), ast::AssignOp::Set) = (&target.kind, op) {
             // `(a[d], b[d]) = read()`: the places say what is read.
             let wanted: Option<Vec<Ty>> = targets

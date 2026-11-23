@@ -7523,3 +7523,17 @@ rejected because a warning still lets the wrong program run. Reverse:
 let `Rev` implement indexing again (R07.5.3 back to `a[i]`) and flip
 `core-07/rev-view-is-not-indexable.cp`. Replaces the open question
 "should `.rev` keep its source's keys?".
+
+## 355. `x[k] = v` on a struct with `set` calls `set` (W8 `IndexSet`) (stdlib, 2026-11-23)
+
+spec/core/12-powers.md W8 specs the write-through place protocol, but the
+lowerer only knew built-in containers, so `q[0] = 9` on `Deque`, `Counter`
+and `SortedMap` failed with "can't be indexed" (5 doc examples). Assignment
+to `x[k]` on a struct that has `set` and no `at_mut` now desugars to
+`x.set(k, v)`; `x[k] op= v` to `x.set(k, x[k] op v)` (in
+`lower/index_set.rs`). A user struct gets it the same way. To keep `k`
+evaluated once without a temporary, a compound update with a computed `k`
+(anything but a name, literal or field path) is an error asking for a
+`let`; binding a temporary is the follow-up. `lower/mod.rs` +1 and
+`lower/stmt.rs` +3 lines (`--update rs_over_cap`). Reverse: drop the
+`index_set` call in `assign`.

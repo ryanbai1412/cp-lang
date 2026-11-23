@@ -209,7 +209,8 @@ Moves: returning any value is \(O(1)\); `.take()` moves out of a place that
 stays live; parameters are lends, `mut` lends allow draining
 (`a.absorb(mut b)`). Overlapping `mut` places are a compile error.
 Needs: `SegTree`, `Fenwick`, `Map`, `Counter`, small-to-large.
-Status: partial (`Map` places check; `IndexSet` desugaring does not).
+Status: partial (`Map` places check; `IndexSet` desugars `x[k] = v` and `x[k] op= v` on a
+struct with `set` and no `at_mut`; a computed `k` in `x[k] op= v` must be bound first).
 
 ## W9. Operators on user types (P9)
 

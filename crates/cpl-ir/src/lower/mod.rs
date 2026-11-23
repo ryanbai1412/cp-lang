@@ -14,6 +14,7 @@ mod comprehension;
 mod expr;
 mod fresh;
 mod hoist;
+mod index_set;
 mod keyed;
 mod memo;
 mod mono;
