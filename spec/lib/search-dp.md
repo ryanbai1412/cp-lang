@@ -22,7 +22,7 @@ Binary search lives on ranges (round 1). This round adds the rest.
 
 | Form | Meaning | Cost |
 |---|---|---|
-| `r.first_true(ok)`, `r.last_true(ok)`, `r.bsearch(ok, last:)` | round 1 | \(O(\log n)\) calls |
+| `r.first_true(ok)`, `r.last_true(ok)`, `r.bsearch(ok, last:)` | round 1 | at most \(\lceil \log_2(n+1) \rceil\) calls of `ok` on \(n\) positions, so a query budget can be counted |
 | `r.first_true(ok, near: c)` | galloping search from cut `c` outward: cost grows with the distance to the answer | \(O(\log d)\) calls |
 | `r.peak(by: f)`, `r.valley(by: f)` | an argmax / argmin of `f` unimodal on `r`, `?D`; first on plateaus that don't hide the peak | \(O(\log n)\) calls |
 | `(lo..hi).bsearch(ok, steps: 100)` with `F64` ends | the flip point of a real predicate | `steps` calls |

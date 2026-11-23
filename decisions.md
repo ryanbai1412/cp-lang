@@ -8285,3 +8285,11 @@ tag move fatal again.
 - **Counted.** `near_dup_fns` (10): fn pairs in different crates whose 4-token shingles (numbers folded) have Jaccard similarity >= 0.75, exact copies left to `dup_fn_bodies`. `consumer_rederived` (61): non-test lines in cpl-lint, cpl-lsp, cpl-cli, cpl-stress, cpl-codegen and cpl-wasm that compare text against a core or `std/` type name or hard-code an `E####` code; their own `Database::new()` already counts under `own_databases`. Both start at today's count and only go down.
 - **`rs_near_cap` gates entries.** It stays a list (14 files); a file entering the last 100 lines under the cap fails the check, one shrinking into the band from over the cap does not. `crate_edges` already refuses an edge missing from the baseline and A4, so it needs nothing new.
 - **Reverse.** Drop the two counters from `COUNTERS` and the `rs_near_cap` branch in `evaluate`.
+
+## 413. Rebuild round 33: imports and search call counts (spec, 2026-11-23)
+
+- **Count.** 27 holes (23 in M1): 14 silent (11 held, 2 partly), 4 contradictions, 2 missing-stdlib, 7 found-late. Report: `research/rebuild-rounds/rebuild-33.md`.
+- **`Rng` is imported like any std name outside the prelude.** The random doc used it bare. Rather than add it to the prelude, it now writes `use std.rand.{Rng}`, as every other non-prelude name is written. Reverse: put `Rng` in the prelude and drop the sentence.
+- **A binary search states its call count:** at most \(\lceil \log_2(n+1) \rceil\) calls of `ok`, so an interactor's query budget can be counted (case `std-search/first-true-call-count`). Reverse: back to \(O(\log n)\).
+- **Already answered.** Tuples compare lexicographically (R08 derived impls); `minimal` asks for an upward-closed `ok` ("hereditary and upward closed are promises"); `sorted(desc:)` stays an error and std drops it (the spec wins, known gap `core-07/sorted-has-no-desc-flag`).
+- **Routed.** Compiler: a closure over a `SegTree` parameter fails in C++ (const binding; diff suite), `track` taking its element type from its state, and `for` over `Subset.items`. Stdlib: `maximal(Window(+), ...)` (the 5th round), the `std/README` `z_function` and `LazySegTree` entries that contradict `std/`, `Window.pop` with two arities, `fold_supersets`/`fold_subsets` missing, and `bfs(enter:)` missing from the spec tables (document it or drop it).

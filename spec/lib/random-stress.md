@@ -6,7 +6,8 @@ archived `design/spec/30-stress.md`, `plan/50-debugging.md`; decision
 
 ## Randomness
 
-- `Rng(seed)` is a deterministic splitmix64 stream.
+- `Rng(seed)` is a deterministic splitmix64 stream, imported as any
+  std name outside the prelude is: `use std.rand.{Rng}`.
   `rng.int(lo, hi)` (both ends inclusive), `rng.float()`, `rng.pick(xs)`,
   `rng.shuffle(mut xs)`, `rng.perm(D)`. There is no time-seeded `Rng`:
   programs that need randomness on the judge pass a seed they choose, so
