@@ -5824,3 +5824,13 @@ the struct entirely, like any unread field, instead of a `bool` placeholder.
   every lane and trains people to rerun red.
 - **Reverse.** Empty `wall_clock_tests` and drop the `CPL_NO_WALL_CLOCK`
   export in `scripts/check.sh`.
+
+## 226. CI on main keeps one running and one waiting run (2026-11-22)
+
+Lanes now push straight to main, so one run per commit queued 30+ runs and
+CI fell behind by tens of minutes. Main uses one concurrency group without
+cancel-in-progress: a started run always finishes and a newer push replaces
+only the waiting run, so the newest tip is checked next. A red tip's culprit
+is found in the range since the last green tip (`scripts/revert-on-red.sh`
+already reverts that range). Reverse: set the group back to `ci-<sha>` for
+main to run every commit again once CI is fast enough.

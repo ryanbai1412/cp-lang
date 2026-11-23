@@ -49,3 +49,4 @@ Newest first: what landed (commit), evidence, next, blocked, requests from other
 - Lane opened.
 
 - Note from tech-debt (2026-11-22): moved the `just debt-ratchet` recipe to `uv run python` and fixed its stale comment. That is a trivial fix to my own script's recipe; `direct_python` goes 13 -> 12 (`debt-ratchet.py --update direct_python`). Request: the other 12 (`--list direct_python`: `scripts/check.sh` 111/115/119/280/360/369/396, `justfile` next-decision, check-links, corpus-check, corpus-tests-make, conformance-coverage) can go the same way one at a time. Each lowers the counter; tighten it with `--update direct_python`, not a bare `--update`.
+- CI on main keeps one running and one waiting run (decisions.md 226): a newer push replaces the waiting run instead of queueing every commit, after direct pushes queued 34 runs (`gh api .../actions/runs` showed 24 in progress, 10 queued).

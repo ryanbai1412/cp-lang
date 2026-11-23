@@ -9,10 +9,12 @@ on:
 permissions:
   contents: read
 
-# Every tip landed on main finishes its run (one group per commit); a newer
-# push to a pull request still cancels the older run.
+# On main a started run always finishes, and at most one more waits: a newer
+# push replaces the waiting run, so CI checks the newest tip next instead of
+# queueing every commit (revert-on-red bisects the range since the last green
+# tip). A newer push to a pull request cancels the older run.
 concurrency:
-  group: ci-${{ github.ref == 'refs/heads/main' && github.sha || github.ref }}
+  group: ci-${{ github.ref }}
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
