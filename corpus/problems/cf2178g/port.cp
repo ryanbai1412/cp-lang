@@ -1,20 +1,12 @@
-// Codeforces 2178 G — Circle Chords Zobrist Parity
-//
-// Chords (a, b) with distinct endpoints on 1..=2n are inserted one by one;
-// after each insertion we output '1' iff the current chord set is valid (all
-// active parity-tagged chords cancel out under crossing XOR), else '0'.
-//
-// Maintain `bit: XorFenwick<P, U64>` over circle points `P = 1..=2n`, where
-// each inserted chord stores its 64-bit mask `pred` at both endpoints `a` and
-// `b`. Because endpoints are distinct, `bit.xor(..a) ^ bit.xor(..b)` is the
-// XOR of `pred` over all earlier chords with exactly one endpoint strictly
-// between `a` and `b` — i.e., all earlier chords crossing `(a, b)`.
-//
-// Bit 0 of `pred = 1 ^ bit.xor(..a) ^ bit.xor(..b)` is 1 iff `(a, b)` toggles
-// the parity of its crossing set; whenever bit 0 is set, we mix in a fresh
-// 63-bit Zobrist tag `rng.next() << 1` so non-cancelling chords cannot collide.
-// XORing `pred` at `a` and `b` and into `tot` makes all Zobrist tags cancel
-// (leaving `tot == (tot & 1)`) iff the current prefix is valid.
+// Source: Codeforces 2178G (deCH OR Dations), https://codeforces.com/contest/2178/problem/G
+// Problem: n <= 5e5 chords with distinct endpoints on 2n circle points arrive in order. A chain
+//   is a set of chords whose consecutive members (by index) cross. For each prefix print 1 if
+//   every chord lies in an even number of chains, else 0. Multitest, sum of n <= 5e5.
+// Solution: chord i lies in end(i) * start(i) chains (chains ending / starting at it), and
+//   end(i) = 1 + the sum of end(j) over earlier crossing chords. Give each chord a 64-bit
+//   value: bit 0 is end(i) mod 2, plus a random tag when it is odd, XOR the values of earlier
+//   crossing chords (XorFenwick prefix XORs at both endpoints). The XOR of all values cancels
+//   tag j iff start(j) is even, so the prefix is tight-knit iff no tag is left. O(n log n).
 
 use std.fenwick.{XorFenwick}
 use std.rand.Rng

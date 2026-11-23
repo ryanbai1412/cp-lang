@@ -1,14 +1,12 @@
-// Codeforces 2159 A — Interactive Duplicate-Finding Pair Recovery
-//
-// Each value in `1..=n` appears twice across positions `P = 1..=2n`, and
-// `ask(s)` returns the maximum value appearing twice in `s` (or 0 if all
-// elements in `s` are distinct).
-//
-// Pass 1: grow `cur` from `1..=2n`. Whenever `ask(cur) = res != 0`, the new
-// position `p` is the second occurrence of `res`, so record `ans[p] = res` and
-// move `p` to `oth`. After pass 1, `oth` contains one copy of every value
-// `1..=n` and `cur` holds the `n` remaining first occurrences.
-// Pass 2: for each `p in cur`, querying `oth + [p]` uniquely returns `ans[p]`.
+// Source: Codeforces 2159A (MAD Interactive Problem),
+//   https://codeforces.com/contest/2159/problem/A
+// Problem: interactive, multitest. A hidden sequence of length 2n holds each of 1..n twice
+//   (2 <= n <= 300, sum of n^2 <= 1e5). A query of distinct indices returns the largest
+//   value appearing twice among them, or 0. Find the sequence in at most 3n queries.
+// Solution: grow a set cur of positions one at a time; a nonzero answer res means the new
+//   position p is the second copy of res: record it and move p to oth. Then cur and oth each
+//   hold one copy of every value, so asking oth plus one p of cur names p's value. 2n + n
+//   queries of O(n) indices each.
 
 @!interactive
 

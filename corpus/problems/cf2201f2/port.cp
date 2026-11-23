@@ -1,16 +1,13 @@
-// Codeforces 2201 F2 — Conjugate Row-Count Multiset Hashing
-//
-// Maintain two Ferrers diagrams (`Left` and `Right`), where `row[s, r]` counts
-// how many cells have been added to row `r` on side `s`, and `freq[s, f]`
-// counts how many rows on side `s` currently have at least `f + 1` cells (i.e.
-// the `(f + 1)`-th column length of the sorted Ferrers diagram).
-//
-// Adding a cell to row `r` appends a unique cell `(f, g)` to the sorted Ferrers
-// diagram at column `f = row[s, r]` and row-rank `g = freq[s, f]`. The two
-// sorted partitions are conjugates (transposes) of each other iff the multiset
-// of cells `(f, g)` on `Left` equals the multiset of transposed cells `(g, f)`
-// on `Right`, checked in O(1) per query via additive `splitmix64` multiset
-// hashing over the packed 64-bit coordinates.
+// Source: Codeforces 2201F2 (Monotone Monochrome Matrices, Hard Version),
+//   https://codeforces.com/contest/2201/problem/F2
+// Problem: an n x n white matrix; q queries each blacken a white cell (r, c), then ask whether
+//   it is monotone: no rows i < j and columns k < l with C[i,k] = C[j,l] != C[j,k] = C[i,l].
+//   Print YES/NO each time. n, q <= 2e6 (summed over tests). Multitest.
+// Solution: no such 2x2 pattern means the matrix is the only one with its row and column
+//   counts, which holds iff the sorted column counts are the conjugate of the sorted row
+//   counts. Keep both as Ferrers diagrams: a new cell in row r adds cell (f, g) with f its old
+//   count and g the number of rows already that long, and the column side the same,
+//   transposed. Compare the two cell multisets by summed splitmix64 hashes: O(1) per query.
 
 use std.math.{splitmix64}
 

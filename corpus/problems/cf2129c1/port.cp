@@ -1,17 +1,13 @@
-// Codeforces 2129 C1 — Interactive RBS (Easy Version)
-//
-// First binary search for a known `'('` position `open_i` and `')'` position
-// `close_i`: if `ask(1..=n) > 0`, some adjacent `"()"` exists and binary search
-// locates it; otherwise the string is `"))...((("`, so `(n, 1)` is `"()"`.
-//
-// Knowing `open_i = '('` and `close_i = ')'`, querying the 6-element sequence
-// `[p1, close_i, open_i, p2, open_i, p2]` uniquely identifies `(p1, p2)` by its
-// count `r` of balanced substrings:
-// - `('(', '(')` -> `"()(((("` => `r = 1`
-// - `('(', ')')` -> `"()()()"` => `r = 6`
-// - `(')', '(')` -> `"))(((("` => `r = 0`
-// - `(')', ')')` -> `"))()()"` => `r = 3`
-// When `n` is odd, the final pair re-queries `Pos(n)` with itself.
+// Source: Codeforces 2129C1 (Interactive RBS, Easy Version),
+//   https://codeforces.com/contest/2129/problem/C1
+// Problem: interactive, multitest (t <= 20). A hidden bracket string s of length n (2 <= n <=
+//   1000) has at least one '(' and one ')'. A query lists k <= 1000 indices (repeats allowed)
+//   and returns the number of balanced substrings of the string they spell. Find s in at
+//   most 550 queries.
+// Solution: binary search the shortest prefix with an answer > 0: it ends in "()", giving a
+//   known '(' and ')'; if the whole string answers 0 it is ")...(", so s[n] s[1] is "()".
+//   Then each pair (p1, p2) costs one query, [p1, ')', '(', p2, '(', p2], whose answer
+//   0, 1, 3 or 6 tells both brackets (odd n repeats the last index). log n + n/2 queries.
 
 @!interactive
 
