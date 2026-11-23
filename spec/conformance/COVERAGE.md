@@ -7,7 +7,7 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 3080 (1092 passing). Rules: 583.
+Cases: 3082 (1092 passing). Rules: 583.
 
 ## Summary per chapter
 
@@ -945,7 +945,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - R0202 Integer overflow: 46 case(s)
 - R0203 Division by zero: 3 case(s)
 - R0301 Unwrap of None: 7 case(s)
-- R0401 Assertion failed: 81 case(s)
+- R0401 Assertion failed: 82 case(s)
 - R0402 todo reached: 2 case(s)
 - R0501 Bad input token: 10 case(s)
 - R0502 Input outside its read contract: 4 case(s)
@@ -1048,7 +1048,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **rand** (10/10 named by a case)
 - **search** (9/9 named by a case)
 - **segtree** (55/55 named by a case)
-- **seq** (215/225 named by a case)
+- **seq** (217/227 named by a case)
   - uncovered: `Compressed`, `Filtered`, `Mapped`, `Rev`, `Rebased`, `Stepped`, `Keys`, `SubseqStep`, `Ring`, `RingRange`
 - **slope** (39/39 named by a case)
 - **sparse** (23/23 named by a case)
@@ -1063,7 +1063,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **window** (20/22 named by a case)
   - uncovered: `Tracked`, `Undo`
 
-2208 of 2335 std items are named by a case.
+2210 of 2337 std items are named by a case.
 
 ## Core cases without a `// rule:` line
 

@@ -76,6 +76,7 @@ The view `rebase` returns.
 
 - `@get fn len(self) -> Int` — \(O(1)\)
 - `fn nth<T>(self, j: Int) -> T` — \(O(1)\); traps: unless `0 <= j < self.len`
+- `fn at<K, T>(self, i: K) -> T` — \(O(1)\); traps: unless `i` is a key the stride visits (`first`, `first + k`, ...), naming them
 
 ## `struct Keys<S, I, K>(pub src: S, pub keys: I, by: ?K)`
 
@@ -233,6 +234,7 @@ A contiguous piece of a ring, possibly wrapping past the end, at most n elements
 - `fn nth<S: Indexed, T>(self: S, k: Int) -> T` — \(O(1)\); traps: when `k` is not in `0..self.len`
 - `@get fn rebase<S: Indexed>(self: S) -> Rebased<S>` — \(O(1)\)
 - `fn step<S: Indexed>(self: S, k: Int) -> Stepped<S>` — \(O(1)\) to make, \(O(1)\) per step; \(O(1)\).; traps: when `k < 1`
+- `@get fn even<S: Indexed>(self: S) -> Stepped<S>` — \(O(1)\) to make, \(O(1)\) per step; \(O(1)\).
 - `fn rekey<D, K, T>(self: [D]T, keys: Range<K>) -> [K]T` — \(O(1)\); traps: when `keys.len != self.len`
 - `fn collect<S: Seq, T>(self: S) -> List<T>` — \(O(n)\), allocates
 - `fn keyed<S: Seq, I: Indexed, T, K>(self: S, keys: I = 0.., by: ?(T -> K) = None) -> Keys<S, I, K>` — \(O(1)\) to make, \(O(1)\) per step; `self` with keys attached, so it is `Keyed`: walking it still gives values, `.items` gives `(key, x)`, and `argmax`/`find` answer with keys.; traps: when both `keys` and `by` are given; when `keys` runs out first
