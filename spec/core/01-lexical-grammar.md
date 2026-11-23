@@ -234,7 +234,9 @@ So `-x ** 2` is `-(x ** 2)`, `not a == b` is `not (a == b)`, and
   `for (var left, v) in items:`. (R01.6.3)
 - Assignment `place = e`, destructuring `(a, b) = (b, a)`, compound
   assignment `x op= e` for every binary operator and for `min=` /
-  `max=`. Compound assignment is a statement, except that `min=` and
+  `max=`. `p op= e` evaluates the place `p`, keys included, once, on an
+  array and on a type with a `set` method alike: `have[a[i]] += 1`.
+  Compound assignment is a statement, except that `min=` and
   `max=` used as a condition are `true` when the target strictly
   improved, including from `None` (decision 129). A `None` target takes
   the value, so `var best: ?Int = None` then `best min= c` is a running

@@ -169,6 +169,7 @@ documented. The stdlib's own gaps are in `std/GAPS.md`.
 
 ## Known gaps
 
+- core-01/compound-assign-key-evaluated-once.cp: compiler
 - core-01/bool-caret-names-ne.cp: diagnostics
 - core-01/continuation-leading-or.cp: compiler
 - core-01/let-else-falls-through.cp: compiler

@@ -7,11 +7,11 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 2566 (995 passing). Rules: 567.
+Cases: 2567 (995 passing). Rules: 567.
 
 ## Summary per chapter
 
-- R01 (01-lexical-grammar.md): 56 rules, 145 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R01 (01-lexical-grammar.md): 56 rules, 146 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R02 (02-values-types.md): 52 rules, 132 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R03 (03-numbers-layout.md): 24 rules, 65 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04 (04-indices.md): 68 rules, 125 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -110,7 +110,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R01.6.1 [3+ 0-]: `let p = e` binds immutably; `var p = e` mutably; `const N = e` is a compile-time constant...
 - R01.6.2 [7+ 2-]: `let p = e else: block` binds or runs the block, which must leave (`return`, `break`, `con...
 - R01.6.3 [1+ 0-]: `var` inside a pattern makes that one binding mutable: `for (var left, v) in items:`.
-- R01.6.4 [2+ 1-]: Assignment `place = e`, destructuring `(a, b) = (b, a)`, compound assignment `x op= e` for...
+- R01.6.4 [3+ 1-]: Assignment `place = e`, destructuring `(a, b) = (b, a)`, compound assignment `x op= e` for...
 - R01.6.5 [2+ 0-]: `return e` exists for early exits; a block's value is its last expression. At top level `r...
 - R01.6.6 [1+ 1-]: `assert cond` and `assert cond, "message {x}"`: checked builds only, unless opted in for r...
 - R01.6.7 [3+ 2-]: `todo` is an expression of any type that traps when run; library stubs use it as a body.

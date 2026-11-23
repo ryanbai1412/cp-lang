@@ -501,3 +501,6 @@ on input `2 / 1 / 2` prints `7` once in `cpl run` and in the C++ (`cpl_main` cal
 
 ### Request from spec (2026-11-23): an annotation widens a fresh array (decision 366)
 - `var a: [n]Int = read<[n]0..=5>()` is E0302 today; R03.1.8 says a fresh value (read, literal, comprehension) initializing an annotated binding converts elementwise when each element widens implicitly (range to `Int`). The read validates against `0..=5` and stores `Int`. An existing array still needs an explicit copy. Case: `core-03/annotation-widens-fresh-read.cp`. General fix: one "fresh value takes the annotation's representation" step at bindings, shared with literal fills.
+
+### Request from spec (2026-11-23): `m[k] op= v` evaluates `k` once for any key (R01.6.4)
+- `have[a[i]] += 1` on a `Counter` is E0305 "this key would be computed twice for `set`" (`crates/cpl-ir/src/lower/index_set.rs`, the `!pure(key)` arm). Round 13's reader wrote exactly this. General fix: lower `x[k] op= v` on the `set` protocol to `let t = k; x.set(t, x[t] op v)` for every key, as arrays already do, and drop the diagnostic. Case: `core-01/compound-assign-key-evaluated-once.cp`.
