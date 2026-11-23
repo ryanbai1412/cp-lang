@@ -670,15 +670,21 @@ fn compile_side(path: &str, side: Side, stderr: &mut String) -> Result<Compiled,
     compile_text(path, text, side, stderr)
 }
 
-/// Checks and lowers `text` as the file at `path`.
-fn compile_text(path: &str, text: String, side: Side, stderr: &mut String) -> Result<Compiled, u8> {
-    // One database per thread, as the language server keeps one: a process
-    // that compiles many files (the test suites, `cpl watch`) checks the
-    // standard library once. The loader rereads imports on every analysis.
+/// The thread's database. One per thread, as the language server keeps one:
+/// a process that compiles many files (the test suites, `cpl watch`) checks
+/// the standard library once, and a command that asks more of a file it
+/// compiled (`explain`'s storage) doesn't check it again. The loader rereads
+/// imports on every analysis.
+pub(crate) fn with_db<R>(f: impl FnOnce(&mut cpl_check::Database) -> R) -> R {
     thread_local! {
         static DB: std::cell::RefCell<cpl_check::Database> = Default::default();
     }
-    let analysis = DB.with_borrow_mut(|db| {
+    DB.with_borrow_mut(f)
+}
+
+/// Checks and lowers `text` as the file at `path`.
+fn compile_text(path: &str, text: String, side: Side, stderr: &mut String) -> Result<Compiled, u8> {
+    let analysis = with_db(|db| {
         db.set_file(path, text.as_str());
         db.analyze(path).expect("the file was just set")
     });

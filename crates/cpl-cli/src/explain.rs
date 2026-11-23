@@ -115,12 +115,10 @@ pub(crate) fn explain_file(
         Ok(c) => c,
         Err(code) => return code,
     };
-    let entries = cpl_codegen::explain_closures(&compiled.program);
-    let dropped = cpl_codegen::explain_dropped_fields(&compiled.program);
-    const DROPPED: &str = "never read; it and its stores are left out";
-    let mut db = cpl_check::Database::new();
-    db.set_file(path, compiled.text.as_str());
     if json {
+        let entries = cpl_codegen::explain_closures(&compiled.program);
+        let dropped = cpl_codegen::explain_dropped_fields(&compiled.program);
+        const DROPPED: &str = "never read; it and its stores are left out";
         let row = |site: &str, lowering: &str, detail: &str| {
             format!(
                 "  {{\"site\":{},\"lowering\":{},\"detail\":{}}}",
@@ -159,14 +157,14 @@ pub(crate) fn explain_file(
                 &format!("{what}: {why}"),
             ));
         }
-        for (name, rep) in cpl_lsp::explain::storage(&mut db, path).0 {
+        for (name, rep) in crate::with_db(|db| cpl_lsp::explain::storage(db, path)).0 {
             let detail = format!("{}: {}", rep.ty, cpl_lsp::explain::describe(&rep));
             rows.push(row(&name, "storage", &detail));
         }
         let _ = writeln!(stdout, "[\n{}\n]", rows.join(",\n"));
         return 0;
     }
-    let section = cpl_lsp::explain::storage_section(&mut db, path);
+    let section = crate::with_db(|db| cpl_lsp::explain::storage_section(db, path));
     let _ = write!(
         stdout,
         "{}",
