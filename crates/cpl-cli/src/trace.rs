@@ -271,11 +271,32 @@ fn first_call_divergence(source: &str, fast: &Recording, slow: &Recording) -> Op
         }
         open.push(at);
     }
-    let &(_, ours, alt, a, b) = wrong.iter().enumerate().find_map(|(k, entry)| {
+    let &(at, ours, alt, a, b) = wrong.iter().enumerate().find_map(|(k, entry)| {
         let next_wrong = wrong.get(k + 1).map_or(usize::MAX, |(other, ..)| *other);
         (next_wrong >= ends[entry.0]).then_some(entry)
     })?;
+    let nested: Vec<_> = (fast.calls[at + 1..ends[at]].iter())
+        .map(|call| call.entry..call.exit)
+        .collect();
+    let mut inside: Vec<(u32, String)> = Vec::new();
+    for step in (ours.entry..ours.exit).rev() {
+        if inside.len() == 6 {
+            break;
+        }
+        if nested.iter().any(|range| range.contains(&step)) {
+            continue;
+        }
+        let Some(step) = fast.step(step) else {
+            continue;
+        };
+        let shown = (step.line, shown_args(&step.locals));
+        if inside.last() != Some(&shown) {
+            inside.push(shown);
+        }
+    }
+    inside.reverse();
     Some(Divergence {
+        inside,
         name: format!("{}({})", ours.name, shown_args(&ours.args)),
         nth: ours.ordinal,
         fast: Some((line_of(&ours.name), a.clone())),

@@ -363,11 +363,21 @@ pub fn report_json(
         None => String::new(),
         Some(Ok(None)) => ",\"explain\":{\"divergence\":null}".to_string(),
         Some(Ok(Some(d))) => format!(
-            ",\"explain\":{{\"divergence\":{{\"name\":{},\"nth\":{},\"fast\":{},\"brute\":{}}}}}",
+            ",\"explain\":{{\"divergence\":{{\"name\":{},\"nth\":{},\"fast\":{},\"brute\":{}{}}}}}",
             json_string(&d.name),
             d.nth,
             side(&d.fast),
-            side(&d.brute)
+            side(&d.brute),
+            if d.inside.is_empty() {
+                String::new()
+            } else {
+                let steps: Vec<_> = (d.inside.iter())
+                    .map(|(line, locals)| {
+                        format!("{{\"line\":{line},\"locals\":{}}}", json_string(locals))
+                    })
+                    .collect();
+                format!(",\"inside\":[{}]", steps.join(","))
+            }
         ),
         Some(Err(why)) => format!(",\"explain\":{{\"error\":{}}}", json_string(why)),
     };
@@ -812,6 +822,12 @@ pub fn run_with(
                         d.name
                     ),
                 };
+            }
+            if !d.inside.is_empty() {
+                let _ = writeln!(stdout, "    the solution's last steps in it:");
+                for (line, locals) in &d.inside {
+                    let _ = writeln!(stdout, "      line {line}: {locals}");
+                }
             }
         }
         Some(Ok(None)) => {

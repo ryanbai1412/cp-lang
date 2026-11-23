@@ -258,6 +258,10 @@ fn stress_explain_names_the_first_call_of_a_part_its_alt_answers_differently() {
         report.contains("brute    tri(k: 1) = 1 at line 10"),
         "{report}"
     );
+    assert!(
+        report.contains("the solution's last steps in it:\n      line 5: k: 1, s: 0"),
+        "{report}"
+    );
 }
 
 #[test]
