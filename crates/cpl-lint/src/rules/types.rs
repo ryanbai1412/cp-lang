@@ -1,7 +1,8 @@
 //! `domain_keyed_map` and `position_arithmetic`: both are about using a
 //! domain as if it were a number.
 
-use crate::walk::{unparen, Visitor};
+use crate::rules::lists::{is_list_type, is_list_value};
+use crate::walk::{unparen, Bind, Visitor};
 use crate::{
     File, Finding, DOMAIN_KEYED_MAP, GETTER_PARENS, IS_IN_COND_HEADER, POSITION_ARITHMETIC,
     POW_METHOD, REDUNDANT_ARG_NAME, TURBOFISH_TYPE_ARGS,
@@ -25,6 +26,61 @@ pub(crate) fn domains(file: &File) -> HashSet<String> {
     found.0
 }
 
+/// The names every binding of which, in the file, is visibly a `List`:
+/// `first` and `last` are getters on a sequence, but methods on a `Bitset`.
+fn sequences(file: &File) -> HashSet<String> {
+    #[derive(Default)]
+    struct Sequences {
+        binding_list: bool,
+        list_params: HashSet<String>,
+        lists: HashSet<String>,
+        others: HashSet<String>,
+    }
+    impl Visitor for Sequences {
+        fn stmt(&mut self, stmt: &Stmt) {
+            self.binding_list = false;
+            match &stmt.kind {
+                StmtKind::Let { ty, init, .. } => {
+                    self.binding_list = match ty {
+                        Some(ty) => is_list_type(ty),
+                        None => init.as_ref().is_some_and(|init| {
+                            is_list_value(init)
+                                || matches!(unparen(init).kind, ExprKind::Comprehension { .. })
+                        }),
+                    };
+                }
+                StmtKind::Fn(decl) => {
+                    self.list_params = decl
+                        .params
+                        .iter()
+                        .filter(|param| param.ty.as_ref().is_some_and(is_list_type))
+                        .map(|param| param.name.text.clone())
+                        .collect();
+                }
+                _ => {}
+            }
+        }
+
+        fn bind(&mut self, name: &str, _span: Span, how: Bind) {
+            let list = match how {
+                Bind::Let | Bind::Var => self.binding_list,
+                Bind::Param => self.list_params.contains(name),
+                Bind::Const | Bind::Pattern => false,
+            };
+            if list {
+                &mut self.lists
+            } else {
+                &mut self.others
+            }
+            .insert(name.to_string());
+        }
+    }
+    let mut found = Sequences::default();
+    file.walk(&mut found, |_, _| {});
+    found.lists.retain(|name| !found.others.contains(name));
+    found.lists
+}
+
 struct Types<'a> {
     src: &'a str,
     base: u32,
@@ -33,6 +89,8 @@ struct Types<'a> {
     /// Sets that are walked in order (`s.first`, `s.pop_last()`), by name:
     /// an array of `Bool` has no order to ask.
     ordered: HashSet<String>,
+    /// Names that are a `List` wherever they are bound.
+    sequences: HashSet<String>,
     /// Types written inside another container, by where they start:
     /// `[V]Set<V>` holds few of each `V`, and `[V][V]Bool` would hold all.
     inner: HashSet<u32>,
@@ -42,6 +100,15 @@ struct Types<'a> {
 }
 
 impl Types<'_> {
+    /// `[1, 2]`, `[f(x) for x in xs]`, or a name bound only to a `List`.
+    fn is_sequence(&self, expr: &Expr) -> bool {
+        match &unparen(expr).kind {
+            ExprKind::List(_) | ExprKind::Comprehension { .. } => true,
+            ExprKind::Name(name) => self.sequences.contains(name),
+            _ => is_list_value(expr),
+        }
+    }
+
     /// Reports `Map<K, V>` or `Set<K>` when `K` is a domain.
     fn keyed(&mut self, name: &str, args: &[Type], span: Span) {
         let texts: Vec<&str> = args
@@ -384,6 +451,8 @@ impl Visitor for Types<'_> {
                             name.text.as_str(),
                             "len" | "is_empty" | "first" | "last" | "rev" | "items"
                         )
+                        && (!matches!(name.text.as_str(), "first" | "last")
+                            || self.is_sequence(base))
                     {
                         let callee_span = callee.span.shift(self.base);
                         let call_span = expr.span.shift(self.base);
@@ -460,6 +529,7 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
         base: 0,
         domains: domains(file),
         ordered: ordered(file),
+        sequences: sequences(file),
         inner: HashSet::new(),
         lines: cpl_diag::LineIndex::new(file.src),
         last_keyed_line: None,
@@ -487,4 +557,22 @@ fn needs_pow_parens(expr: &Expr) -> bool {
             | ExprKind::List(_)
             | ExprKind::Unwrap(_)
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::tests::codes;
+
+    #[test]
+    fn first_and_last_are_getters_only_on_a_sequence() {
+        let list =
+            "let xs = [3, 1]\nlet ys: List<Int> = []\nprint(xs.first(), ys.last(), [1].first())\n";
+        assert_eq!(codes(list), vec!["L0206", "L0206", "L0206"]);
+        let bits = "let b = Bitset<0..10>()\nprint(b.first(), b.last(), b.len())\n";
+        assert_eq!(codes(bits), vec!["L0206"]);
+        let rebound = "var xs = [1]\nfn f(xs: Bitset<0..4>) = xs.first()\n";
+        assert!(!codes(rebound).contains(&"L0206"));
+        let walk = "fn top(w: Int) -> ?Int = iterate(from: Some(w), step: v => None).last()\n";
+        assert!(codes(walk).is_empty());
+    }
 }

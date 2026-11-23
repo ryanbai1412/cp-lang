@@ -21,12 +21,12 @@ const HOT_DEPTH: usize = 2;
 /// The index `xs.len - 1`, which a guard proves when it shows `xs` is not empty.
 const LAST: &str = "len - 1";
 
-fn is_list_type(ty: &Type) -> bool {
+pub(crate) fn is_list_type(ty: &Type) -> bool {
     matches!(&ty.kind, TypeKind::Named { name, .. } if name.text == "List")
 }
 
 /// `[]`, `[1, 2]`, `List<Int>()`.
-fn is_list_value(expr: &Expr) -> bool {
+pub(crate) fn is_list_value(expr: &Expr) -> bool {
     match &unparen(expr).kind {
         ExprKind::List(_) => true,
         ExprKind::Call { callee, .. } => match &callee.kind {
