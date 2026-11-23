@@ -5352,6 +5352,18 @@ impl<'a> Lowerer<'a> {
             return;
         };
         match cond {
+            // `if const` and `if T: Tr`: settled here; only the branch picked is lowered.
+            ast::Cond::Const(cond)
+            | ast::Cond::Expr(
+                cond @ ast::Expr {
+                    kind: ast::ExprKind::HasBound { .. },
+                    ..
+                },
+            ) => match self.settle_bool(cond) {
+                Some(true) => out.extend(self.block(body, tail).stmts),
+                Some(false) => self.if_chain(rest, otherwise, tail, out),
+                None => {}
+            },
             ast::Cond::Expr(cond) => {
                 let cond = self.expect(cond, &Ty::Bool);
                 if matches!(cond.kind, ExprKind::Bool(true)) {
@@ -5384,23 +5396,6 @@ impl<'a> Lowerer<'a> {
                 self.if_chain(rest, otherwise, tail, &mut els);
                 self.clause_chain(cond, body, tail, &els, out);
             }
-            // `if const`: the test is settled here, and only the branch
-            // it picks is lowered, so the other costs nothing at run time.
-            ast::Cond::Const(cond) => match self.eval_const_bool(cond) {
-                Some(true) => out.extend(self.block(body, tail).stmts),
-                Some(false) => self.if_chain(rest, otherwise, tail, out),
-                None => {
-                    self.error(
-                        codes::BAD_NUMBER,
-                        cond.span,
-                        "the test of an `if const` must be a compile-time constant",
-                    );
-                    self.help(
-                        "it can compare literals, `const`s and `<const N>` parameters; \
-                             use a plain `if` for a value read at run time",
-                    );
-                }
-            },
         }
     }
 

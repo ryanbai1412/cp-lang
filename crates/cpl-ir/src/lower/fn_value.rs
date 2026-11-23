@@ -52,7 +52,49 @@ impl<'a> Lowerer<'a> {
 impl<'a> Lowerer<'a> {
     /// `if A: Weighted:` on a type with no `impl`: met by shape when every member the trait
     /// leaves without a body is a field of `A` (a record arc `(to: V, w: Int)` is `Weighted`).
-    pub(super) fn has_bound_by_shape(&mut self, param: &str, trait_name: &str) -> bool {
+    /// `if T: Tr`: `T` has an `impl Tr` (for its own struct, or the generic struct it instantiates),
+    /// or is a record or tuple with `Tr`'s shape.
+    pub(super) fn has_bound(&mut self, param: &str, trait_name: &str) -> bool {
+        let by_impl = match self.gen_env.get(param) {
+            Some(GenArg::Ty(Ty::Struct(sid))) => self.impls.iter().any(|imp| {
+                let ast::TypeKind::Named { name, .. } = &imp.target.kind else {
+                    return false;
+                };
+                let origin = self.structs[*sid].origin_gen.as_ref().map(|(g, _)| *g);
+                imp.trait_name.as_deref() == Some(trait_name)
+                    && match self.mod_syms[imp.mod_id].get(&name.text) {
+                        Some(Sym::Struct(id)) => id == sid,
+                        Some(Sym::GenStruct(gid)) => origin == Some(*gid),
+                        _ => false,
+                    }
+            }),
+            _ => false,
+        };
+        by_impl || self.has_bound_by_shape(param, trait_name)
+    }
+
+    /// An `if const` test, or an `if T: Tr` one, settled at compile time; `None` (reported) when
+    /// the `if const` test is not a compile-time constant.
+    pub(super) fn settle_bool(&mut self, e: &ast::Expr) -> Option<bool> {
+        if let ast::ExprKind::HasBound { param, trait_name } = &e.kind {
+            return Some(self.has_bound(&param.text, &trait_name.text));
+        }
+        let got = self.eval_const_bool(e);
+        if got.is_none() {
+            self.error(
+                codes::BAD_NUMBER,
+                e.span,
+                "the test of an `if const` must be a compile-time constant",
+            );
+            self.help(
+                "it can compare literals, `const`s and `<const N>` parameters; \
+                 use a plain `if` for a value read at run time",
+            );
+        }
+        got
+    }
+
+    fn has_bound_by_shape(&mut self, param: &str, trait_name: &str) -> bool {
         let Some(GenArg::Ty(ty @ (Ty::Record(_) | Ty::Tuple(_)))) =
             self.gen_env.get(param).cloned()
         else {

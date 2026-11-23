@@ -598,18 +598,7 @@ impl<'a> Lowerer<'a> {
                 self.do_expr(hint, span, |lw, out| lw.tail(e, Tail::Give, out))
             }
             ast::ExprKind::HasBound { param, trait_name } => {
-                let has = match self.gen_env.get(&param.text) {
-                    Some(GenArg::Ty(Ty::Struct(sid))) => self.impls.iter().any(|imp| {
-                        let ast::TypeKind::Named { name, .. } = &imp.target.kind else {
-                            return false;
-                        };
-                        let target = self.mod_syms[imp.mod_id].get(&name.text);
-                        imp.trait_name.as_deref() == Some(trait_name.text.as_str())
-                            && matches!(target, Some(Sym::Struct(id)) if id == sid)
-                    }),
-                    _ => false,
-                };
-                let has = has || self.has_bound_by_shape(&param.text, &trait_name.text);
+                let has = self.has_bound(&param.text, &trait_name.text);
                 self.mk(ExprKind::Bool(has), Ty::Bool, span)
             }
             ast::ExprKind::Without {
