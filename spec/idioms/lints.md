@@ -420,9 +420,9 @@ One sub-family per module. Each says: you rebuilt something the library has.
 | list_front_ops | `insert(0, x)` / `remove(0)` in a loop | `Deque` | fix? | #10 | ty | |
 | rotate_by_copy | slice + concat to rotate | `rotate_left` / `rotated_left` | fix | #1 | ty | |
 | dx_dy_arrays | `dx = [0, 1, 0, -1]` | `p.adj4` / `p.step(d)` with `Dir` | fix? | #3 | syn | |
-| grid_bounds_check | `0 <= r < h and 0 <= c < w` | domain membership / `adj4` already filters | fix? | #3 | syn | |
+| grid_bounds_check | `0 <= r < h and 0 <= c < w` | domain membership / `adj4` already filters | fix? | #3 | syn | ✓grid_bounds_check |
 | grid_flatten | `r * w + c` | `[h, w]` domain | fix? | #3 | syn | |
-| grid_neighbour_step | a `[Row, Col]` loop that reads neighbours as `r - 1` / `c - 1` (or `if r > 0`) | `type Cell = (Row, Col)` and `p.step(Dir4.U)` / `p.adj4`; absent neighbours are `None` (Ryan, 2026-11-22: atcoder_dp_h) | fix? | #3 | ty | |
+| grid_neighbour_step | a `[Row, Col]` loop that reads neighbours as `r - 1` / `c - 1` (or `if r > 0`) | `type Cell = (Row, Col)` and `p.step(Dir4.U)` / `p.adj4`; absent neighbours are `None` (Ryan, 2026-11-22: atcoder_dp_h) | fix? | #3 | ty | ✓grid_neighbour_step |
 | transpose_loop | `t[j][i] = g[i][j]` | `g.transposed()` | fix | #1 | loop | |
 | ray_walk_loop | step while in bounds | `p.ray(d)` | fix? | #1 | loop | |
 | shuffle_by_hand | Fisher–Yates loop | `rng.shuffle(mut xs)` | fix | #1 | loop | |

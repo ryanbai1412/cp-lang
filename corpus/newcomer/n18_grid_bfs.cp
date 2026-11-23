@@ -16,7 +16,7 @@ while head < qx.len:
     for d in 0..4:
         let nx = x + dx[d]
         let ny = y + dy[d]
-        if nx >= 0 and nx < h and ny >= 0 and ny < w:  // expect: missing grid_bounds_check
+        if nx >= 0 and nx < h and ny >= 0 and ny < w:  // expect: grid_bounds_check
             if g[nx, ny] == '.' and dist[nx, ny] == -1:
                 dist[nx, ny] = dist[x, y] + 1
                 qx.push(nx)

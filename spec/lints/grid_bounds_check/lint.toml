@@ -1,0 +1,5 @@
+code = "L0535"
+level = "warn"
+group = "idiom"
+title = "Grid bounds tested by hand"
+summary = "`0 <= x and x < h and 0 <= y and y < w`: `(r, c).adj4` or `.step(d)`"
