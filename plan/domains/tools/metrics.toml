@@ -42,13 +42,13 @@ today = "1 of 449 (max 48375 B, cf2255f); 0 over 64 KB"
 name = "LSP latency, 500-line file, median"
 command = "cargo test --release -p cpl-lsp --test latency -- --nocapture"
 target = "check < 50 ms; every request < 100 ms"
-today = "check 6 ms; open-to-diagnostics 8 ms; hover 3 ms; completion 1 ms; rename 2 ms"
+today = "check 5 ms; open-to-diagnostics 5 ms; hover 3 ms; completion 2 ms; rename 2 ms"
 
 [[metric]]
 name = "LSP latency, 5,000-line file, median"
 command = "cargo test --release -p cpl-lsp --test latency -- --nocapture"
 target = "check < 50 ms; open-to-diagnostics < 100 ms; test green"
-today = "check 67 ms; open-to-diagnostics 161 ms; test fails (2 of 2 latency tests)"
+today = "check 65 ms (p90 72); open-to-diagnostics 61 ms (p90 82); hover in the edited fn 44 ms (p90 91); fails only front_end_check_is_under_50_ms (checker, requested from compiler)"
 
 [[metric]]
 name = "LSP unit tests"
@@ -60,13 +60,13 @@ today = "77/77"
 name = "VS Code unit and grammar tests"
 command = "cd editors/vscode && npm test"
 target = "all pass"
-today = "36/37 (languageData: PRELUDE_VALUES has skip_while, reach_sets)"
+today = "37/37"
 
 [[metric]]
 name = "editor smoke tests run on this VM"
 command = "CPL=target/release/cpl editors/smoke.sh"
 target = "tier 1 (VS Code, Neovim) pass in the gate; JetBrains in CI"
-today = "keyword parity ok; neovim emacs helix zed tree-sitter skipped (no binary); jetbrains build fails (Gradle artifacts: HTTP 429)"
+today = "keyword parity ok; neovim 0.11.5 (mise) and vim smoke ok; emacs helix zed tree-sitter skipped (no binary); jetbrains build fails (Gradle artifacts: HTTP 429)"
 
 [[metric]]
 name = "tools .rs files over 2,000 lines"
