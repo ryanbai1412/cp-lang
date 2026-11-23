@@ -7,7 +7,7 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 2191 (995 passing). Rules: 530.
+Cases: 2199 (995 passing). Rules: 530.
 
 ## Summary per chapter
 
@@ -822,8 +822,8 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **dp** (39/39 named by a case)
 - **dsu** (63/63 named by a case)
 - **fenwick** (31/31 named by a case)
-- **flow** (56/65 named by a case)
-  - uncovered: `max_weight_matching`, `min_weight_matching`, `general_matching`, `max_weight_general_matching`, `max_bounded_flow`, `min_bounded_flow`, `global_min_cut`, `best_matching`, `Matroid`
+- **flow** (57/65 named by a case)
+  - uncovered: `max_weight_matching`, `min_weight_matching`, `general_matching`, `max_weight_general_matching`, `max_bounded_flow`, `min_bounded_flow`, `global_min_cut`, `Matroid`
 - **geometry** (151/158 named by a case)
   - uncovered: `ByAngle`, `PI`, `Vec.from_angle`, `planar_faces`, `point_location_planar`, `delaunay`, `voronoi_cells`
 - **graph** (106/124 named by a case)
@@ -867,7 +867,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **window** (20/22 named by a case)
   - uncovered: `Tracked`, `Undo`
 
-2111 of 2245 std items are named by a case.
+2112 of 2245 std items are named by a case.
 
 ## Core cases without a `// rule:` line
 
