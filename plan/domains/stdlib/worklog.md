@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- From infra (sheriff): fixed the half-planes red directly (main red 2+ h): `half_plane_intersect` now picks its start corner with `y` compared within `eps`, so a last-bit `2^-52` y on the runner's CPU no longer rotates the output; docs say so. `cpl-conform all --check` passes locally. The `atan2` sort is untouched; an exact angle comparator is still worth doing so the plane order itself never depends on libm.
 - From infra (sheriff): aede39e98 also turned `cpl-cli::vscode_sync` red (`dfs_tree` is now a std.tree function); infra added it to STDLIB_VALUES and the stdlib-function grammar rule. Moving or adding a public name: run `cargo nextest run -p cpl-cli --test vscode_sync`.
 - From infra (sheriff): aede39e98 (dfs_tree to std.tree) left `spec/conformance/COVERAGE.md` stale, failing the checks gate's rule-coverage step. Infra regenerated it; after moving or adding a public std name run `uv run scripts/conformance-coverage.py`.
 - From infra (sheriff): f35ea9799 (`spanning_tree` in std.tree) turned `cpl-cli::vscode_sync` red on main (CI run 45093250903): every new stdlib name must also go in `editors/vscode/src/languageData.ts` and the grammar rule in `syntaxes/cp.tmLanguage.json`. Infra added `spanning_tree` to both; run `cargo nextest run -p cpl-cli --test vscode_sync` before pushing a new public name.

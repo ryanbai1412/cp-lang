@@ -2060,7 +2060,8 @@ fn hp_cross(a: (p: Vec, dir: Vec, ang: F64), b: (p: Vec, dir: Vec, ang: F64)) ->
 ///
 /// cost: O(n log n) time, O(n) memory
 /// empty: `[]` (unbounded) without `bound`; the box with one
-/// order: counter-clockwise, starting at the least `(y, x)`; a new `List`, keyed from 0
+/// order: counter-clockwise, starting at the least `(y, x)`, `y` compared within `eps`; a new
+/// `List`, keyed from 0
 /// traps: when a plane's `dir` is the zero vector
 /// example: `half_plane_intersect([HalfPlane.through(Vec(0.0, 0.0), Vec(1.0, 0.0)), HalfPlane.through(Vec(1.0, 0.0), Vec(1.0, 1.0)), HalfPlane.through(Vec(1.0, 1.0), Vec(0.0, 1.0)), HalfPlane.through(Vec(0.0, 1.0), Vec(0.0, 0.0))]) == [Vec(0.0, 0.0), Vec(1.0, 0.0), Vec(1.0, 1.0), Vec(0.0, 1.0)]`
 /// example: `half_plane_intersect([HalfPlane.through(Vec(0.0, 0.0), Vec(1.0, 0.0))]) == []`
@@ -2117,7 +2118,8 @@ pub fn half_plane_intersect(
     if a2 / 2.0 <= eps: return []
     var s = 0
     for i in 1..pts.len:
-        if pts[i].y < pts[s].y or (pts[i].y == pts[s].y and pts[i].x < pts[s].x): s = i
+        let dy = pts[i].y - pts[s].y
+        if dy < -eps or (dy <= eps and pts[i].x < pts[s].x): s = i
     [pts[(s + i) % pts.len] for i in 0..pts.len]
 
 /// The signed area of the polygon `poly` (half the shoelace sum): positive counter-clockwise,
