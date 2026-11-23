@@ -118,6 +118,8 @@ pub(crate) struct Emitter<'p> {
     pub devirt: crate::devirt::Devirt<'p>,
     /// Closures called by name, each emitted once as a fn of the program.
     pub direct: BTreeSet<usize>,
+    /// The structs the written file defines.
+    written_structs: BTreeSet<usize>,
     /// Non-escaping closures passed to call-only parameters; immutable non-scalar
     /// captures can be borrowed by reference instead of deep-copied.
     pub borrow_closures: BTreeSet<usize>,
@@ -259,6 +261,7 @@ impl<'p> Emitter<'p> {
             niches: crate::niche::small(program),
             devirt: crate::devirt::Devirt::collect(program),
             direct: BTreeSet::new(),
+            written_structs: BTreeSet::new(),
             borrow_closures: BTreeSet::new(),
             copies: Vec::new(),
             niche_types: std::cell::Cell::new(0),
@@ -663,10 +666,13 @@ impl<'p> Emitter<'p> {
         crate::lend::copy_sites(self.program, &self.copies)
     }
 
-    /// The closures the written file calls by name.
-    pub fn called_closures(mut self) -> BTreeSet<usize> {
+    /// The closures the written file calls by name, and the structs it defines.
+    pub fn called_and_written(mut self) -> (BTreeSet<usize>, BTreeSet<usize>) {
         self.write("", None);
-        std::mem::take(&mut self.direct)
+        (
+            std::mem::take(&mut self.direct),
+            std::mem::take(&mut self.written_structs),
+        )
     }
 
     /// [`Emitter::file`], with the profiled statements' spans.
@@ -1156,6 +1162,7 @@ impl<'p> Emitter<'p> {
         for &id in &reachable_structs {
             self.type_def(&Ty::Struct(id), &mut done, &mut types);
         }
+        self.written_structs = reachable_structs.clone();
         for &id in &reachable_enums {
             self.type_def(&Ty::Enum(id), &mut done, &mut types);
         }

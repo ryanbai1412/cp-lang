@@ -84,6 +84,11 @@ fn disagreements(src: &Path, out: &Path) -> Option<Vec<String>> {
             "explain lists no std::function, the C++ declares {functions}"
         ));
     }
+    if dynamic > 0 && functions == 0 {
+        wrong.push(format!(
+            "explain lists {dynamic} std::functions, the C++ declares none"
+        ));
+    }
     for (_, closure) in rows.iter().filter(|(k, _)| k == "static_direct") {
         if !names(&cpp, closure) {
             wrong.push(format!(

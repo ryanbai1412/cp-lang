@@ -185,12 +185,13 @@ fn prepared(program: &cpl_ir::Program, target: &Target) -> cpl_ir::Program {
 
 /// How each fn-typed site of the judge build's C++ for `program` is
 /// called, read off the program the emitter writes (after pruning).
-/// A closure the file never calls is dropped, whatever holds it.
+/// A closure the file never calls is dropped, whatever holds it, and a
+/// struct the file does not define has no sites.
 pub fn explain_closures(program: &cpl_ir::Program) -> Vec<ClosureLowering> {
     let target = Target::default();
     let program = prepared(program, &target);
-    let called = emit::Emitter::new(&program, &target).called_closures();
-    let mut lowerings = devirt::explain_closures(&program);
+    let (called, written) = emit::Emitter::new(&program, &target).called_and_written();
+    let mut lowerings = devirt::explain_closures(&program, &written);
     for lowering in &mut lowerings {
         if let ClosureMode::StaticDirect { closure } = lowering.mode {
             if !called.contains(&closure) {

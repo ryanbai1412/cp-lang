@@ -104,3 +104,24 @@ fn an_optional_fn_field_a_forwarded_none_fills_is_dropped() {
     ));
     assert!(!out.contains("std::function<"), "{out}");
 }
+
+#[test]
+fn explain_lists_no_fn_field_of_a_struct_the_file_omits() {
+    let src = concat!(
+        "struct Unused(op: (Int, Int) -> Int)\n",
+        "fn make(k: Int) -> Unused = Unused((x, y) => x + y + k)\n",
+        "print(read::<Int>())\n",
+    );
+    let mut db = cpl_check::Database::new();
+    db.set_file("t.cp", src);
+    let program = cpl_ir::lower(&db.analyze("t.cp").expect("set")).expect("lowers");
+    let out = crate::emit(&program, "t.cp", None);
+    assert!(!out.contains("struct Unused"), "{out}");
+    let explained = crate::explain_closures(&program);
+    assert!(
+        explained
+            .iter()
+            .all(|e| !e.site.starts_with("struct Unused")),
+        "{explained:?}"
+    );
+}

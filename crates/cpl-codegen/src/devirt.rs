@@ -1634,12 +1634,16 @@ pub fn explain_dropped_fields(program: &Program) -> Vec<String> {
 }
 
 /// Report how every fn-typed struct field, fn parameter, and local closure
-/// binding in `program` lowers to C++17 (static vs dynamic `std::function`).
-pub fn explain_closures(program: &Program) -> Vec<ClosureLowering> {
+/// binding in `program` lowers to C++17 (static vs dynamic `std::function`),
+/// over the `written` structs the file defines.
+pub fn explain_closures(program: &Program, written: &BTreeSet<usize>) -> Vec<ClosureLowering> {
     let devirt = Devirt::collect(program);
     let mut out = Vec::new();
 
     for (sid, s) in program.structs.iter().enumerate() {
+        if !written.contains(&sid) {
+            continue;
+        }
         for (idx, (fname, fty)) in s.fields.iter().enumerate() {
             if !is_fn_or_opt_fn(fty) {
                 continue;
