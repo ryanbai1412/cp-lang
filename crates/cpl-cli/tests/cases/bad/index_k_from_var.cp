@@ -8,6 +8,6 @@ struct Cell:
     c: Col
 var m = h * w
 impl Index for Cell:
-    let K = m
-    fn to_idx(self) -> Int = r.ord * w + c.ord
-    fn from_idx(i: Int) -> Cell = Cell(Row.nth(i / w), Col.nth(i % w))
+    let count = m
+    @get fn ord(self) -> Int = r.ord * w + c.ord
+    fn nth(i: Int) -> Cell = Cell(Row.nth(i / w), Col.nth(i % w))

@@ -7,6 +7,6 @@ struct Cell:
     r: Row
     c: Col
 impl Index for Cell:
-    const K = h * w
-    fn to_idx(self) -> Int = r.ord * w + c.ord
-    fn from_idx(i: Int) -> Cell = Cell(Row.nth(i / w), Col.nth(i % w))
+    const count = h * w
+    @get fn ord(self) -> Int = r.ord * w + c.ord
+    fn nth(i: Int) -> Cell = Cell(Row.nth(i / w), Col.nth(i % w))

@@ -152,7 +152,18 @@ impl Checker<'_> {
         let Some(diag) = self.error(codes::UNKNOWN_FIELD, name.span, message) else {
             return;
         };
+        let renamed = library_domain
+            .then(|| super::library_domain::index_rename(&name.text))
+            .flatten();
         match suggestion {
+            _ if renamed.is_some() => {
+                let new = renamed.unwrap_or_default();
+                diag.help = Some(format!(
+                    "a library domain's `{}` is `{new}` since 0.3",
+                    name.text
+                ));
+                diag.fix(format!("write `{new}`"), name.span, new);
+            }
             _ if core_only => {
                 diag.help = Some(format!(
                     "{base_ty} is a library domain (`impl Index`): it walks in `ord` order, but neighbours, cuts, `at` and `wrap` belong to the ordered core domains; use `x.ord` and `{base_ty}.nth(k)`"

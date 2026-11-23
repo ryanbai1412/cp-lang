@@ -37,6 +37,17 @@ impl Checker<'_> {
         if own && !seq_count {
             return None;
         }
+        if let Some(new) = index_rename(&name.text) {
+            let message = format!("{type_name} has no member `{}`", name.text);
+            if let Some(diag) = self.error(codes::UNKNOWN_FIELD, name.span, message) {
+                diag.help = Some(format!(
+                    "a library domain's `{}` is `{new}` since 0.3",
+                    name.text
+                ));
+                diag.fix(format!("write `{new}`"), name.span, new);
+            }
+            return Some(Ty::Unknown);
+        }
         let elem = Ty::Named {
             name: type_name.to_string(),
             args: Vec::new(),
@@ -115,19 +126,40 @@ impl Checker<'_> {
             },
             _ => return,
         };
-        let new = match old {
-            "K" => "count",
-            "to_idx" => "ord",
-            "from_idx" => "nth",
-            _ => return,
+        let Some(new) = index_rename(old) else {
+            return;
+        };
+        // `ord` is a getter: `x.ord` reads it without parentheses.
+        let undecorated_ord = match &stmt.kind {
+            StmtKind::Fn(f) if new == "ord" => {
+                let before = &self.src[..f.sig_span.start as usize];
+                (!before.trim_end().ends_with("@get"))
+                    .then(|| Span::new(f.sig_span.start, span.end))
+            }
+            _ => None,
         };
         let message = format!("`impl Index` names this member `{new}`, not `{old}`");
         if let Some(diag) = self.error(codes::BAD_INDEX_IMPL, span, message) {
             diag.help = Some(format!(
                 "rename `{old}` to `{new}`; user code reads it as `T.count`, `x.ord` or `T.nth(k)`"
             ));
+            match undecorated_ord {
+                Some(sig) => diag.fix("write `@get fn ord`".to_string(), sig, "@get fn ord"),
+                None => diag.fix(format!("rename to `{new}`"), span, new),
+            }
         }
     }
+}
+
+/// The member an `impl Index` and its users name `count`, `ord` and `nth`
+/// under its pre-0.3 name `K`, `to_idx` or `from_idx`.
+pub(super) fn index_rename(old: &str) -> Option<&'static str> {
+    Some(match old {
+        "K" => "count",
+        "to_idx" => "ord",
+        "from_idx" => "nth",
+        _ => return None,
+    })
 }
 
 /// The name a `let` in an impl body binds: `let count = ..` or `let K = ..`.

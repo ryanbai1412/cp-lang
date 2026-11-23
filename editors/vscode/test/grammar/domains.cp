@@ -139,9 +139,8 @@ impl Index for V:
 //   ^^^^^ entity.name.type.cp
 //         ^^^ keyword.control.for.cp
 
-    let K = n
+    let count = n
 //  ^^^ storage.type.let.cp
-//      ^ entity.name.type.cp
 
     type bounds = Cut<Self>
 //  ^^^^ storage.type.alias.cp
@@ -153,13 +152,13 @@ trait Seq: Index + Ord
 //    ^^^ entity.name.type.trait.cp
 //                 ^^^ entity.name.type.cp
 
-    @get fn l(self) -> Cut<Self> = Bounds.from_idx(self.to_idx)
+    @get fn l(self) -> Cut<Self> = Bounds.nth(self.ord)
 //   ^^^ entity.name.function.decorator.cp
 //          ^ entity.name.function.cp
-//                                        ^^^^^^^^ entity.name.function.method.cp
-//                                                      ^^^^^^ variable.other.property.cp
+//                                        ^^^ entity.name.function.method.cp
+//                                                 ^^^ variable.other.property.cp
 
-pub struct Cut<I: Seq>(ord: 0..=I.K):
+pub struct Cut<I: Seq>(ord: 0..=I.count):
 //         ^^^ entity.name.type.struct.cp
 //                ^^^ support.type.builtin.cp
 //                     ^^^ variable.parameter.label.cp
