@@ -711,6 +711,8 @@ pub struct MeldHeap<T>:
     _kids: List<(Int, Int)> = []
     _rank: List<Int> = []
     lt: ?((T, T) -> Bool) = None
+    // How a pending offset combines; set by the first `add_all`, so a heap of a non-`Add` T has none.
+    _plus: ?((T, T) -> T) = None
 
     /// Create an empty `MeldHeap<T>`, optionally ordered by key extractor `by:` (W7).
     ///
@@ -820,6 +822,7 @@ pub struct MeldHeap<T>:
     /// example: `var a = MeldHeap.of([4, 2]); a.meld(MeldHeap.of([3, 1])); a.drain() == [1, 2, 3, 4]`
     pub fn meld(mut self, other: MeldHeap<T>):
         if other._root < 0: return
+        if let q = other._plus: _plus = Some(q)
         let base = _keys.len
         for i in 0..other._keys.len:
             let (a, b) = other._kids[i]
@@ -853,6 +856,7 @@ pub struct MeldHeap<T>:
     /// example: `var h = MeldHeap.of([1, 5]); h.add_all(10); h.pop() == Some(11)`
     pub fn add_all(mut self, delta: T) where T: Add:
         if _root < 0: return
+        _plus = Some((a, b) => a + b)
         _keys[_root] += delta
         _add[_root] = Some(plus(_add[_root], delta))
 
@@ -883,6 +887,7 @@ pub struct MeldHeap<T>:
             _kids:,
             _rank:,
             lt:,
+            _plus:,
         )
         self.clear()
         out
@@ -913,18 +918,16 @@ pub struct MeldHeap<T>:
     fn rank_of(self, t: Int) -> Int = if t < 0: 0 else: _rank[t]
 
     // A node's pending add is already in its own key; it still owes its children.
-    // Without `Add` there is no `add_all`, so nothing is pending.
+    // Only `add_all` makes an offset pending, and it sets `_plus`.
     fn push_down(mut self, t: Int):
-        if T: Add:
+        if let p = _plus:
             if let d = _add[t]:
                 let (a, b) = _kids[t]
                 for c in [a, b]:
                     if c >= 0:
-                        _keys[c] += d
+                        _keys[c] = p(_keys[c], d)
                         var e = d
-                        if let x = _add[c]:
-                            e = x
-                            e += d
+                        if let x = _add[c]: e = p(x, d)
                         _add[c] = Some(e)
                 _add[t] = None
 
