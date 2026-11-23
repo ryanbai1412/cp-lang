@@ -677,3 +677,5 @@ on input `2 / 1 / 2` prints `7` once in `cpl run` and in the C++ (`cpl_main` cal
 2026-11-23: `use a.f` inside `mod b:` failed when `a` was a sibling inline module (`core-11/mod-uses-sibling`): the checker sent the path to the file loader only, and the lowerer ignored `use` in an inline module. `db/siblings.rs` now finds a sibling inline module before asking the loader, and `collect.rs` binds the names a sibling `use` picks (single, `{..}` and `*`) into the inline module's symbols.
 
 2026-11-23: a runtime `domain`/`const` used above its definition got no error (`core-11/runtime-domain-use-before-definition`). R11.1.1 says one that names a run-time value runs where it is written, so the top-level use-before-set check (E0205) now covers a domain or const whose definition names a top-level `let`/`var` (`db/scoping.rs`, which also holds the sibling-module lookup).
+
+2026-11-23: `1.5e5` lexed as a float because of its `.`, so `read<(1..=1.5e5)>()` was E0302. The lexer now makes a literal with an exponent an `Int` whenever its value is an exact integer, whatever its mantissa (R01.4.2; `core-01/scientific-fraction-is-int`).

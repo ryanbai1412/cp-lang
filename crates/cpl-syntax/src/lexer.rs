@@ -1074,6 +1074,8 @@ impl<'a> Lexer<'a> {
                 if self.peek_at(1 + sign).is_ascii_digit() {
                     self.pos += 1 + sign;
                     self.digits();
+                    // R01.4.2: `1.5e5` is the exact integer 150000.
+                    float = false;
                 }
             }
         }
