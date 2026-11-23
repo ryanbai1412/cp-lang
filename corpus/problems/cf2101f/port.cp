@@ -16,7 +16,6 @@
 // Counting layer d in two or more branches is the whole layer minus each
 // branch alone. Distances in the subdivided tree are doubled, hence the
 // final halving.
-use lib.math.powers.{Powers}
 
 type Z = Mod<998_244_353>
 
@@ -33,29 +32,29 @@ for e in 1..n:
     adj[v] += [mid]
     adj[mid] += [u, v]
 
-let pow2 = Powers<Z.MOD>(2, n)
-let pow3 = Powers<Z.MOD>(3, n)
+let pow2 = [0..=n] k => Z(2) ** k
+let pow3 = [0..=n] k => Z(3) ** k
 fn some_red(c: Int) -> Z = pow2[c] - 1
 fn red_and_blue(c: Int) -> Z = pow3[c] - pow2[c] * 2 + 1
 
-let D = Node.count
+let depths = Node.count
 var ans: Z = 0
 for centre in Node:
-    var total: [0..D]Int = 0
+    var total: [0..depths]Int = 0
     if is_vertex(centre): total[0] = 1
-    var red: [0..D]Z = 0
-    var both: [0..D]Z = 0
+    var red: [0..depths]Z = 0
+    var both: [0..depths]Z = 0
     for c in adj[centre]:
-        var branch: [0..D]Int = 0
+        var branch: [0..depths]Int = 0
         fn count(v: Node, from: Node, depth: Int):
             if is_vertex(v): branch[depth] += 1
             for w in adj[v] if w != from: count(w, v, depth + 1)
         count(c, centre, 1)
-        for d in 0..D:
+        for d in 0..depths:
             total[d] += branch[d]
             red[d] -= some_red(branch[d])
             both[d] -= red_and_blue(branch[d])
-    for d in 0..D:
+    for d in 0..depths:
         red[d] += some_red(total[d])
         both[d] += red_and_blue(total[d])
 
@@ -64,7 +63,7 @@ for centre in Node:
     var inside: Z = 1
     var blue_inside: Z = 0
     var blue_depths: Z = 0
-    for d in 0..D:
+    for d in 0..depths:
         let c = total[d]
         ans += inside * both[d] * (2 * d)
         ans += (blue_depths + blue_inside * d) * red[d] * 2
