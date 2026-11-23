@@ -301,5 +301,4 @@ documented. The stdlib's own gaps are in `std/GAPS.md`.
 - core-07/range-in-brackets-help-names-list.cp: diagnostics
 - std-rand/shuffled-help-names-rng-shuffle.cp: diagnostics
 - core-06/check-multitest-reads-own-shape.cp: tools
-- std-graph/min-mean-cycle-acyclic-is-none.cp: stdlib
 - std-heap/drain-break-keeps-the-rest.cp: compiler
