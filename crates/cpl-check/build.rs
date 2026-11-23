@@ -26,7 +26,11 @@ fn bundle(root: &Path, out: &Path, folder: &str, prefix: &str) {
         let bundled = out.join(folder).join(format!("{name}.cp"));
         std::fs::create_dir_all(bundled.parent().expect("under OUT_DIR"))
             .expect("a writable OUT_DIR");
-        std::fs::write(&bundled, without_tests(&text)).expect("a writable OUT_DIR");
+        let mut text = without_tests(&text);
+        if std::env::var("CARGO_CFG_TARGET_ARCH").as_deref() == Ok("wasm32") {
+            text = without_comments(&text);
+        }
+        std::fs::write(&bundled, text).expect("a writable OUT_DIR");
         writeln!(
             table,
             "    ({name:?}, include_str!({:?})),",
@@ -43,6 +47,25 @@ fn bundle(root: &Path, out: &Path, folder: &str, prefix: &str) {
 /// `text` with each `@test` fn blanked to empty lines. A program that
 /// imports a module never runs its tests, and `cpl test` reads the file
 /// itself; keeping every line keeps spans into the module exact.
+/// The browser build blanks whole-line comments: nothing it runs reads std's
+/// docs, and they are half of std's compressed size. Blank lines keep every
+/// line number, so std diagnostics point at the same line on every target.
+fn without_comments(text: &str) -> String {
+    text.split_inclusive('\n')
+        .map(|line| {
+            if line.trim_start().starts_with("//") {
+                if line.ends_with('\n') {
+                    "\n"
+                } else {
+                    ""
+                }
+            } else {
+                line
+            }
+        })
+        .collect()
+}
+
 fn without_tests(text: &str) -> String {
     let mut out = String::with_capacity(text.len());
     let mut in_test = false;
