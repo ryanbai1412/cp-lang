@@ -156,6 +156,8 @@ we judge whether the design is good.
 ### Keeping it true
 
 - Every acceptance case of kind program or integration runs in CI.
+- A use case marked `supported` or `partial` names an acceptance case
+  that exists and runs; a status without one counts as `gap`.
 - Every public std fn names the use case or capability it serves (`serves: seq/U7`).
 - Every CLI subcommand and flag, and every LSP capability, appears in some use case.
 - Every journey step has at least one use case.
