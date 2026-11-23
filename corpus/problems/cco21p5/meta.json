@@ -26,5 +26,5 @@
  "difficulty": "hard",
  "dream": "draft",
  "spec": "draft",
- "notes": "SegTree(min, act: add) over 0..=n; inf joins math/prelude (promised by search-dp, never stubbed); low.rev.scan(min) suffix mins rely on the range type's top as min's identity."
+ "notes": "SegTree(min, act: add) over 0..=n; the block end is a left-moving cut pointer because low.rev.scan(min) and V.cuts.first_true don't type yet (research/frictions/cco21p5.md)."
 }
