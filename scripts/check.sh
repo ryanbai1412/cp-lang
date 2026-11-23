@@ -97,6 +97,20 @@ step_times=()
 step_end() {
     step_times+=("$(( $(date +%s) - step_t0 ))"$'\t'"$step_name")
 }
+# Script tests run with an empty HOME and no system git config, like a CI
+# runner: no git identity, no user config. The toolchains keep
+# their real homes.
+bare_home() {
+    local home status=0
+    home=$(mktemp -d)
+    env HOME="$home" XDG_CONFIG_HOME="$home/.config" GIT_CONFIG_NOSYSTEM=1 \
+        CARGO_HOME="${CARGO_HOME:-$HOME/.cargo}" RUSTUP_HOME="${RUSTUP_HOME:-$HOME/.rustup}" \
+        MISE_DATA_DIR="${MISE_DATA_DIR:-$HOME/.local/share/mise}" \
+        MISE_CONFIG_DIR="${MISE_CONFIG_DIR:-$HOME/.config/mise}" \
+        UV_CACHE_DIR="${UV_CACHE_DIR:-$HOME/.cache/uv}" "$@" || status=$?
+    rm -rf "$home"
+    return $status
+}
 step() {
     step_end
     step_name="$*"
@@ -257,7 +271,7 @@ if [ "$mode" = commit ]; then
     if [ -n "$sel_script_tests" ]; then
         step "script unit tests: $sel_script_tests"
         read -ra tests <<<"$sel_script_tests"
-        uv run --quiet python -m unittest "${tests[@]}"
+        bare_home uv run --quiet python -m unittest "${tests[@]}"
     fi
     if [ "$sel_site" = 1 ]; then
         step "site snippet gate (node web/scripts/gate.mjs)"
@@ -303,7 +317,7 @@ if cache_hit scoreboard_fast; then
     scoreboard_cached=1
 else
     # cpl-conform is already built above; overlap it and script unit tests with nextest.
-    python3 -m unittest scripts/test_dream_gaps.py scripts/test_review_check.py scripts/test_check_cache.py scripts/test_cxx_cache.py scripts/test_release.py scripts/test_debt_ratchet.py scripts/test_fmt_check.py scripts/test_skill_gen.py scripts/test_affected.py scripts/test_land_stats.py >"$lib_logs/script_tests.log" 2>&1 &
+    bare_home python3 -m unittest scripts/test_dream_gaps.py scripts/test_review_check.py scripts/test_check_cache.py scripts/test_cxx_cache.py scripts/test_release.py scripts/test_debt_ratchet.py scripts/test_fmt_check.py scripts/test_skill_gen.py scripts/test_affected.py scripts/test_land_stats.py >"$lib_logs/script_tests.log" 2>&1 &
     script_test_pid=$!
     "$target/debug/cpl-conform" all --check >"$lib_logs/scoreboard.log" 2>&1 &
     scoreboard_pid=$!
