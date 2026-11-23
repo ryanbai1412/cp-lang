@@ -58,6 +58,8 @@ Each local fix whose general mechanism is still owed: the instance, the general 
 - The other intercepts (rows 2-18 of `std-intercepts.md`): each row's general fix column is the move-to-std plan; delete a row when it lands. Owner: compiler, with stdlib where the row says.
 - `lo..=hi` lowers to `lo..hi + 1` in C++, so `(0..=big).step(big)` at `Int` max is signed overflow in the generated C++ while the interpreter traps. General: inclusive ranges carry `hi` and test `x <= hi`, in one lowering. Owner: compiler.
 
+- An array over an anonymous range (`[0..m]R`) has no domain of its own; each generic call that binds `E` from it gets one by call site or by fn (`bind_range_domain`), and a domain shared by fn can escape through a return type that names it only indirectly (`Graph<V, B>` with `B` holding `e: E`). General fix: an anonymous range in an array type is an anonymous domain at its declaration, as `Dsu<0..3>` already is (decision 255), so `E` binds to it like a named one. Owner: compiler.
+
 ## Next actions
 
 1. `dmopc21c5p2`: bisect the first differing value between `cpl run` and the C++, fix, regression.

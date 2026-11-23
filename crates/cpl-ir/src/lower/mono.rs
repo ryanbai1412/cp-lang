@@ -2485,8 +2485,8 @@ impl<'a> Lowerer<'a> {
         };
         let site = match shared {
             Some(gfid) => (
-                usize::MAX,
-                gfid as u32,
+                usize::MAX - self.gen_fns[gfid].mod_id,
+                self.gen_fns[gfid].offset + self.gen_fns[gfid].decl.name.span.start,
                 format!(
                     "{} from {lo}{}",
                     name.text,
