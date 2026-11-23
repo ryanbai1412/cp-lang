@@ -510,6 +510,7 @@ impl<'a> Lowerer<'a> {
             ast::ExprKind::Field { base, name } => {
                 let call = self.method(whole, base, name, args, hint);
                 self.char_fn_on_str(base, name);
+                self.join_receiver(base, name, args, whole.span);
                 call
             }
             _ => {

@@ -161,6 +161,35 @@ impl<'a> Lowerer<'a> {
         }
     }
 
+    /// `xs.join(" ")`, Python's order: `join` is the separator's, `" ".join(xs)`.
+    pub(super) fn join_receiver(
+        &mut self,
+        base: &ast::Expr,
+        name: &ast::Name,
+        args: &[ast::Arg],
+        span: Span,
+    ) {
+        let ([sep], "join") = (args, name.text.as_str()) else {
+            return;
+        };
+        let at = self.span(base.span);
+        let edit = self.span(span);
+        let new = format!(
+            "{}.join({})",
+            self.source(sep.value.span),
+            self.source(base.span)
+        );
+        let last = self.diags.last_mut().filter(|d| {
+            d.code == codes::TYPE_MISMATCH
+                && d.span == at
+                && d.message.starts_with("expected `Str`")
+        });
+        if let Some(d) = last {
+            d.help = Some(format!("`join` is called on the separator: `{new}`"));
+            d.fix(format!("write `{new}`"), edit, new);
+        }
+    }
+
     /// `t[0]` on a tuple: its positional fields are read `t.0`, `t.1`.
     pub(super) fn tuple_index_fix(&mut self, ty: &Ty, index: &ast::Expr, span: Span) {
         let (Ty::Tuple(_), ast::ExprKind::Int(n)) = (ty, &index.kind) else {
