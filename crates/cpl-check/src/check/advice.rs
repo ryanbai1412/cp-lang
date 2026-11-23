@@ -465,7 +465,26 @@ impl Checker<'_> {
             _ => None,
         }
         .map(|h| h.ty.clone());
+        // `" ".join(map(str, a))`: `join` shows each item, so `a` is enough.
+        let joined = |c: &Self| {
+            let before = Span::new(call.span.start.saturating_sub(6), call.span.start);
+            let after = Span::new(call.span.end, call.span.end + 1);
+            c.text(before) == ".join(" && c.text(after) == ")"
+        };
+        let shown = match (name.as_str(), args) {
+            ("map", [f, xs]) if self.text(f.value.span) == "str" && joined(self) => {
+                let f = f.value.span;
+                self.sink
+                    .drop_where(|d| d.code == codes::UNRESOLVED_NAME && d.span == f);
+                Some(self.text(xs.value.span).to_string())
+            }
+            _ => None,
+        };
         let (ours, what) = match (name.as_str(), args) {
+            ("map", [_, _]) if shown.is_some() => (
+                shown.unwrap_or_default(),
+                "`join` shows each item itself, so it takes the list",
+            ),
             ("int", [x]) if matches!(arg_ty, Some(Ty::Float)) => (
                 format!("{}.trunc", operand(self, x)),
                 "a float rounds toward zero with `trunc` (or `floor`, `round`)",
