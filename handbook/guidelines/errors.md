@@ -33,79 +33,63 @@ error[E0309]: `-` can't be applied to a `(name: Str, score: Int)`
 The real mistake is that `by:` takes a key of one element, not a
 comparator of two. The error blames `-`, which the user wrote correctly for
 what they meant, and gives no fix. It should point at `(a, b)`, say that
-`by:` takes one element and returns its key, and offer
-`rows.sort(by: r => (-r.score, r.name))`.
+`by:` takes one element and returns its key, and show a key to start
+from, such as `r => (-r.score, r.name)`.
 
-## The rules
+## The ideas behind every rule
 
-1. **One error per root cause.** Report the first thing the user got wrong,
-   and nothing that follows from it. Push through `Sink`, which drops a
-   second diagnostic inside a span already reported. If your check runs
-   after another error, give a poisoned (`Ty::Error`) value no further
-   error.
-2. **Point at the place to edit.** The primary span is in the user's file,
-   on the token they must change. Never put it inside `std/`: an error that
-   arises in a library names the user's call as the primary span and the
-   library line in a note. Use a label for the other half: the `let` of a
-   written name, the first of two `mut` borrows.
-3. **Say the rule in the user's words.** Name the construct the user wrote
-   (`` `&&` ``, `` `by:` ``), not the parser's state (`expected an
-   expression`). Use the spec's vocabulary from `spec/GLOSSARY.md`: one
-   spelling per idea, the same in the error, the docs and the trace. Cite
-   the rule id `(R05.2.1)` when the rule is not obvious.
-4. **Give the fix.** If one edit is right, attach it with `Diagnostic::fix`
-   so `cpl fix` and the editor can apply it. If several are plausible,
-   attach each; the fix applier keeps only those after which the program
-   checks clean. If no edit is right, say what to do in `help`, and never
-   offer a placeholder that compiles but is wrong.
-5. **Only suggest things that exist.** A did-you-mean, a rename or an import
-   must name a public item that runs. Free functions are suggested as
-   free calls (`zip(a, b)`), methods as methods (`a.max()!`).
-6. **Show types as the user wrote them.** Print aliases, domains and views
-   (`Rev<List<Int>>`) by their names, not by internal representations.
-7. **A trap names values.** The line, the values that broke the rule, the
-   call stack, the test case number in multitest, and the CP Lang way to
-   avoid it.
-8. **A warning must be true.** A lint warns only when it can show the
-   problem: a bound lint names an input inside the declared ranges that
-   overflows. If the analysis can't see why a value is safe, stay silent.
+An error answers four questions, in this order: where, what rule, what to
+do, and is that the whole story.
 
-## Codes
+**Where.** The caret goes on the token the user must change, in the user's
+own file. The checker often notices a mistake later than where it was made:
+in the `sort` example it first trips over `-b`, but the mistake is `(a, b)`.
+Report where the user will edit, not where the compiler noticed. A library
+is never the place to edit, so an error that surfaces inside `std/` points at
+the user's call and mentions the library line only as a note.
 
-Every diagnostic has a code from `spec/diagnostics.md`, used through a
-`codes::` constant. A code never changes meaning, and a retired code is
-never reused. A new code needs, in the same commit:
+**What rule.** Say what the user wrote and the rule it breaks, in the words
+the docs use. The user wrote `&&`, so the message says `&&`, not "unexpected
+token". If the docs call it a "domain", the error does too.
 
-- a row in `spec/diagnostics.md`, with an example message;
-- a `REGISTRY` entry in `crates/cpl-diag/src/registry.rs`, with a trigger
-  that emits exactly that code and, if the error has one, a fix that makes
-  the trigger check clean;
-- an explanation shown by `cpl explain <code>`;
-- for a lint, a record in `spec/lints/<name>/` or `spec/checker-lints/<name>/`:
-  `lint.toml`, `explain.md`, a `before.cp` that fires it, and `after.cp` and
-  `near_miss.cp` that don't.
+**What to do.** Most mistakes have one right edit, and then the error carries
+it, so `cpl fix` or the editor applies it in one keystroke. A fix is applied
+without being read, so it must leave a program that checks and still does
+what it did. When the right edit depends on what the user meant, as when
+turning a comparator into a sort key, the error explains the shape of the
+answer instead of guessing.
 
-## Checklist
+**The whole story.** One mistake gets one error. Ten echoes of the first
+mistake hide the second. And the same file gets the same error in the
+terminal, the editor and the browser playground, on every OS, because they
+all call one front end.
 
-- [ ] The primary span is on the token to edit, in the user's file.
-- [ ] The message names what the user wrote and the rule, in the spec's words.
-- [ ] A right fix is attached, or `help` says what to do.
-- [ ] Every name in the message and the fix exists and is public.
-- [ ] The error does not repeat for later uses of the same mistake.
-- [ ] A golden in `crates/cpl-cli/tests/diagnostics/` pins the text, and
-      `cargo test -p cpl-cli --test diagnostics --test catalogue` passes.
-- [ ] `cargo test -p cpl-lsp parity` passes, so the editor shows the same.
+Warnings and runtime traps follow the same ideas. A warning must be true: if
+the analysis can't show the problem, it stays silent. A trap happens on input
+the user can't see, so it shows the values that broke the rule, the call
+stack and the test case, and says how to avoid it.
 
-## Measures
+## Deciding a case nobody wrote down
 
-The diagnostics charter (`handbook/domains/diagnostics.md`) lists every
-quality an error must have and the suite that enforces it. The main ones:
-first error on the broken line, cascades, silent broken programs and fix
-coverage (`crates/cpl-cli/tests/recovery.rs`), newcomer habits
-(`crates/cpl-cli/tests/newcomer.rs`), and fixes keeping program output
-(`crates/cpl-cli/tests/fix_behavior.rs`).
+Imagine a strong contestant at 3am, reading the error once. Do they know
+which line to edit, why it is wrong, and what to type? If any answer is no,
+the error is not done. When two messages are possible, choose the one that
+mentions what the user wrote. When unsure whether a fix is always right,
+leave it as help.
+
+Every error a real user found unhelpful becomes a test case, so the suites
+learn from what people actually write, not only from what we imagined.
+
+## Where the rules are
+
+The precise rules, each with an id like `errors/R3`, a reason, an example and
+the test that enforces it, are in `handbook/guidelines/errors-checklist.md`,
+together with what a new code needs and a checklist for landing an error.
+The diagnostics charter, `handbook/domains/diagnostics.md`, lists every
+quality an error must have and the suite that measures it.
 
 ## Changes
 
+- 2026-11-23: rewritten as prose; the rules, codes and landing checklist moved to `handbook/guidelines/errors-checklist.md`.
 - 2026-11-23: first version, from the diagnostics judgment rubric and
   catalogue rules.

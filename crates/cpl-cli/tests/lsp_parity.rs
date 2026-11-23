@@ -1,6 +1,8 @@
 //! The editor reports exactly what the command line reports on every v0.3
 //! file: the spec's conformance cases, the corpus's `spec.cp` ports and the
 //! examples. The editor shows what `cpl check` and `cpl lint` both report.
+//!
+//! Rule: `errors/R12`, handbook/guidelines/errors-checklist.md#r12-every-tool-shows-the-same-diagnostic.
 
 use std::collections::BTreeMap;
 use std::io::Write;

@@ -1,6 +1,8 @@
 //! Golden tests for runtime error messages: every runtime error class carries
 //! concrete offending values, source location, call stack, and multitest case
 //! number when applicable.
+//!
+//! Rule: `errors/R11`, handbook/guidelines/errors-checklist.md#r11-a-trap-names-the-values-and-the-way-out.
 
 use std::fs;
 use std::io::Write;

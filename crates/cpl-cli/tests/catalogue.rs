@@ -6,6 +6,8 @@
 //! runs) clean. Codes marked *(0.3)* or *(retired)* must not be defined.
 //!
 //! `cargo test -p cpl-cli --test catalogue -- --nocapture` prints the counts.
+//!
+//! Rule: `errors/R13`, handbook/guidelines/errors-checklist.md#r13-every-code-is-catalogued-with-a-trigger-a-fix-and-a-page.
 
 use std::collections::BTreeSet;
 use std::io::Write;

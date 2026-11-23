@@ -232,6 +232,7 @@ fn every_golden_fix_names_something_that_exists() {
 
 /// An error points at the user's code, never into `std/`: a library gap is
 /// shown at the user's call, with the std line in a note.
+/// Rule: `errors/R3`, handbook/guidelines/errors-checklist.md#r3-never-a-primary-span-inside-std.
 #[test]
 fn no_golden_error_points_into_std() {
     let mut inside = Vec::new();
@@ -261,6 +262,7 @@ fn no_golden_error_points_into_std() {
 /// checks clean, unless line 2 starts `// no fix` because no one edit is
 /// right. This is the register row "Real mistakes get errors that name the
 /// place, the rule and a working fix" in `handbook/domains/diagnostics.md`.
+/// Rule: `errors/R15`, handbook/guidelines/errors-checklist.md#r15-every-mistake-a-user-hits-becomes-a-case; `errors/R2`, handbook/guidelines/errors-checklist.md#r2-the-primary-span-is-the-token-to-edit; `errors/R8`, handbook/guidelines/errors-checklist.md#r8-give-a-fix-or-say-what-to-do.
 #[test]
 fn real_mistakes_name_the_place_the_rule_and_a_fix() {
     let scratch = Path::new(env!("CARGO_TARGET_TMPDIR")).join("real-mistakes");

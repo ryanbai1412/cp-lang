@@ -11,6 +11,8 @@
 //!
 //! `cargo test -p cpl-cli --test recovery -- --nocapture` prints the
 //! scoreboard; the test fails when a number gets worse than its bar.
+//!
+//! Rule: `errors/R1`, handbook/guidelines/errors-checklist.md#r1-one-error-per-root-cause; `errors/R2`, handbook/guidelines/errors-checklist.md#r2-the-primary-span-is-the-token-to-edit; `errors/R8`, handbook/guidelines/errors-checklist.md#r8-give-a-fix-or-say-what-to-do.
 
 use cpl_diag::{Diagnostic, LineIndex, Severity};
 use std::collections::BTreeMap;

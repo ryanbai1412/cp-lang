@@ -6,6 +6,8 @@
 //! `trap_parity.cp` holds one site per `which`. Site 0 is the control and
 //! must print. A site added to the interpreter gets a line there, and
 //! [`SITES`] goes up by one.
+//!
+//! Rule: `errors/R11`, handbook/guidelines/errors-checklist.md#r11-a-trap-names-the-values-and-the-way-out.
 
 use std::hash::{Hash, Hasher};
 use std::io::Write;

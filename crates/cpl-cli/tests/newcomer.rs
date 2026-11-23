@@ -8,6 +8,8 @@
 //!
 //! `cargo test -p cpl-cli --test newcomer -- --nocapture` prints the
 //! scoreboard; `NEWCOMER_SHOW=<habit>` prints the copies that miss.
+//!
+//! Rule: `errors/R8`, handbook/guidelines/errors-checklist.md#r8-give-a-fix-or-say-what-to-do.
 
 use cpl_diag::{Diagnostic, LineIndex, Severity};
 use std::collections::BTreeMap;

@@ -6,6 +6,8 @@
 //!
 //! Only programs that run cleanly before the fix are held to this: a fix
 //! for a checker error is meant to change what happens.
+//!
+//! Rule: `errors/R9`, handbook/guidelines/errors-checklist.md#r9-a-fix-is-safe-to-apply-unread.
 
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
