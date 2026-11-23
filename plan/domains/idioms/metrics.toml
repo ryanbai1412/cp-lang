@@ -26,7 +26,7 @@ target = "on main, in the fast gate, 0 drift, every cp block checks"
 [[metric]]
 name = "ports_check_v03"
 command = "for p in $(cat corpus/sets/ecnerwala.txt); do cpl check corpus/problems/$p/port.cp; done"
-today = "268/305"
+today = "271/305"
 target = "305/305 v0.3 re-ports (as spec.cp or migrated port.cp)"
 
 [[metric]]
@@ -38,7 +38,7 @@ target = "tracked, not a gate: each failing dream is a logged gap in spec/delta/
 [[metric]]
 name = "ports_judge_proven"
 command = "cargo test --release -p cpl-cli --test judges -- --include-ignored every_ --nocapture  # every_v03_port_checks + the judges matrix"
-today = "268/305 tracked ports (corpus/sets/v03.txt) pass every_v03_port_checks; each was also validated against orig.cpp on samples and 30 generated cases (interactive ones through interactor.py)"
+today = "271/305 tracked ports (corpus/sets/v03.txt) pass every_v03_port_checks; each was also validated against orig.cpp on samples and 30 generated cases (interactive ones through interactor.py)"
 target = "305/305 tracked ports compile with every judge's flags and pass their tests under the profile"
 
 [[metric]]
