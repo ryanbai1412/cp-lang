@@ -1,0 +1,23 @@
+---
+title: Range add, range minimum
+description: "Level D. Teaches a lazy SegTree: an operation plus an action, act: add, with apply over a range."
+level: D
+chapter: 8
+teaches: "`SegTree(min, a, act: add)`, `apply(l..=r, x)`, `fold`"
+---
+
+You are given n numbers (1 ≤ n ≤ 2·10⁵, |aᵢ| ≤ 10⁹) and q queries (1 ≤ q ≤ 2·10⁵). A query `1 l r x` adds x (|x| ≤ 10⁹) to every aᵢ with l ≤ i ≤ r. A query `2 l r` asks for the minimum of aₗ … aᵣ. Answer every query of type 2.
+
+**Input:** n and q, then the n numbers, then q queries, one per line. **Output:** one line per query of type 2.
+
+| Input | Output |
+|---|---|
+| `4 4`<br/>`1 2 3 4`<br/>`2 1 4`<br/>`1 2 3 -5`<br/>`2 3 4`<br/>`2 1 1` | `1`<br/>`-2`<br/>`1` |
+
+<Judge id="range-add-min">
+
+- A plain segment tree updates one point at a time, so a range add would cost O(n). A lazy segment tree applies it to O(log n) nodes and pushes it down only when needed.
+- `SegTree(min, a, act: add)` is one: `min` folds, and `add` is the action applied to ranges. `t.apply(l..=r, x)` adds and `t.fold(l..=r)` reads; see [`SegTree`](/docs/ref/std/segtree).
+- Values can drift to about ±2·10¹⁴ after many adds, which still fits in an `Int`.
+
+</Judge>

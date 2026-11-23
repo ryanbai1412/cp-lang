@@ -1,0 +1,23 @@
+---
+title: Course order
+description: "Level B. Teaches smallest_topo over Graph.directed: the lexicographically smallest order, or None on a cycle."
+level: B
+chapter: 9
+teaches: "`Graph.directed`, `smallest_topo`, `if let ... else`"
+---
+
+There are n courses (1 ≤ n ≤ 2·10⁵) and m rules (0 ≤ m ≤ 2·10⁵). A rule `u v` says course u must be taken before course v. Print an order that takes every course once and follows every rule; if several exist, print the one that is smallest when compared course by course. If none exists, print −1.
+
+**Input:** n and m, then m lines `u v`. **Output:** n integers on one line, or `-1`.
+
+| Input | Output |
+|---|---|
+| `4 3`<br/>`1 2`<br/>`3 2`<br/>`2 4` | `1 3 2 4` |
+
+<Judge id="course-order">
+
+- `Graph.directed(es)` turns the rules, read as `(u: V, v: V)` records, into a directed graph; see [`Graph`](/docs/ref/std/graph).
+- `smallest_topo(g)` returns the smallest topological order as a list, or `None` when the rules form a cycle. It isn't in the prelude: `use std.graph.{smallest_topo}`, as the error suggests.
+- `if let order = smallest_topo(g): print(order)` with `else: print(-1)` handles both cases.
+
+</Judge>

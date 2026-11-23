@@ -1,0 +1,23 @@
+---
+title: Longest increasing subsequence
+description: "Level C. Teaches lis(): the O(n log n) longest strictly increasing subsequence, returned as positions."
+level: C
+chapter: 10
+teaches: "`a.lis()`, `strict:`, `.len`"
+---
+
+You are given n numbers (1 ≤ n ≤ 2·10⁵, 1 ≤ aᵢ ≤ 10⁹). Print the length of the longest subsequence whose values strictly increase.
+
+**Input:** n, then the n numbers. **Output:** one integer.
+
+| Input | Output |
+|---|---|
+| `6`<br/>`3 1 2 2 5 4` | `3` |
+
+<Judge id="increasing-run">
+
+- The O(n²) DP, `best[i] = 1 + max best[j]` over earlier smaller values, is 4·10¹⁰ steps at the limit. The patience-sorting version is O(n log n).
+- `a.lis()` returns the positions of one longest strictly increasing subsequence, so its `.len` is the answer; see [`lis`](/docs/ref/std/seq). `strict: false` allows equal neighbours.
+- [Dynamic programming](/learn/read/dynamic-programming) shows the O(n²) DP, which is the version to write when the problem changes what "increasing" means.
+
+</Judge>
