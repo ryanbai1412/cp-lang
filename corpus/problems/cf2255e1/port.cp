@@ -57,7 +57,7 @@ var st = SegTree<I, Cell, Tag>(
     ),
 )
 var last: U64 = 0
-fn at(y: U64) -> I = I(Int((y ^ last) % U64(n)) + 1)
+fn at(y: U64) -> I = I.nth(Int((y ^ last) % U64(n)))
 repeat q:
     let kind: 1..=4 = read()
     match kind:

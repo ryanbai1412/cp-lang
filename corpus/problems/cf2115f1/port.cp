@@ -141,8 +141,7 @@ fn query_treap(u: ?Pos, l: Int) -> ?Query:
     tr[cur].lazy = nl
     rl
 
-var root: ?Pos = None
-for p in Pos: root = merge_treap(root, p)
+var root: ?Pos = Pos.fold((r: ?Pos, p: Pos) => merge_treap(r, p), None)
 
 var last = 0
 fn decode<D>(x: D) -> D = D.nth((x.ord + last) % D.count)
