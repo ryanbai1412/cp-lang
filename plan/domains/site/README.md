@@ -28,13 +28,14 @@ What it needs from site, each checkable:
 - **30-minute intro (landed, `e441044cd`):** `/learn/intro`, 12 sections, 17 examples that run in place, ending at Practice and Install.
 - **Browser practice:** at least 12 hand-picked Div 2 A/B problems judged in the browser, each with hints shown before acceptance that link to the std docs or a guide, and lints shown live in the editor.
 - **Docs:** search finds every std item by name, and every docs example runs; the gate reports `spec: 0`, or each spec-only block is badged and listed with its owner.
-- **Install (`/setup`):** one click from the homepage, the intro and the docs. It gives the edge one-liners for Linux, macOS (`install.sh`) and Windows (`install.ps1`), and a one-step Neovim setup and a Vim setup next to VS Code. Its commands are the ones infra's install tests run on all three platforms.
+- **Install (`/setup`, landed `30b229105`):** one click from the homepage, the intro and the docs. It gives the edge one-liners for Linux, macOS (`install.sh`) and Windows (`install.ps1`), and one-step setups for Neovim, Vim, VS Code and JetBrains on all three platforms. Tested on Linux here; infra's acceptance run covers macOS and Windows. Once an edge build has `cpl setup neovim|vim`, the Neovim and Vim tabs lead with it.
+- **Language section:** in-depth chapters for readers who want the whole model, next to the Learn path, not after it. One chapter per part: values, ownership and mutation; domains, ranges and index spaces (with range keys); types, widths and proofs; optionals; multitest state; checked operations and build profiles; stdlib design; how the C++ and the judge model work. Each one states the rules precisely, has examples that run in place, and ends with "Why it's designed this way", citing `decisions.md` entries and the alternatives they rejected. Rules link to their `spec/` section instead of copying it, and the gate fails if a cited spec heading or decision number does not exist.
 
-Deferring (milestone "what can wait", or not on a scenario step; continues only after the blockers): interval DP and further Learn chapters past Div 2 C; trace viewer and `cpl doc` polish; the 0.3-only landing tabs; the Problems and Performance pages; page-weight and search tuning beyond the existing caps.
+Deferring (milestone "what can wait", or not on a scenario step; continues only after the blockers): interval DP and practice problems past Div 2 C; trace viewer and `cpl doc` polish; the 0.3-only landing tabs; the Problems and Performance pages; page-weight and search tuning beyond the existing caps.
 
-Top 3 next steps:
-1. `/setup` for the milestone: edge as the default install on all three platforms, Windows PowerShell, Neovim and Vim in one step, with the stale "not published yet" badges removed.
-2. Practice hints linking to docs, and live lint in the browser editor. The playground has no lints today: `crates/cpl-lsp` skips them on wasm because of the site bundle's size cap. `cpl-lint` builds for wasm, so site will measure the size and turn them on if the 2.1 MB cap holds, with a note to tools.
+Top 3 next steps (the first two run in parallel):
+1. The Language section: `/learn/language/`, starting with ownership and mutation, then domains and range keys, then the other six.
+2. Live lint and practice hints. Tools landed a wasm `lint` call (`25b19e064`, decision 313); site wires it into the practice and playground editors, then adds hints that link to the docs to at least 12 Div 2 A/B problems.
 3. A homepage pass: the value proposition and 3 differentiators above the fold, Install visible at every width, and a baseline for the P5 cold read.
 
 Checkpoints go in [worklog.md](worklog.md) every 2 hours: what landed, what is next.
