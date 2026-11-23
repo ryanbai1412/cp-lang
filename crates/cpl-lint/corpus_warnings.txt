@@ -11,10 +11,10 @@ spec L0506 1
 spec L0509 1
 spec L0512 1
 std L0201 12
-std L0204 14
+std L0204 13
 std L0206 3
 std L0207 2
-std L0209 35
+std L0209 34
 std L0414 101
 std L0501 1
 std L0503 4

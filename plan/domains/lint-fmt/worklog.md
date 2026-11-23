@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- ratchet: stdlib fixed one L0204 and one L0209 (`spec/std`), so `crates/cpl-lint/corpus_warnings.txt` locks std L0204 14 -> 13 and L0209 35 -> 34 (`CPL_LINT_BLESS=1 cargo test -p cpl-lint corpus_warnings`).
 - metrics refresh: `python3 scripts/fmt_check.py` gives 5256 files, 592 changed by cpl fmt, 0 not idempotent, 0 change meaning, 0 formatter bugs; `cpl lint spec/std` 236 warnings (was 238), corpus `spec.cp` 34 and dreams 101 unchanged.
 - held: L0210 `compound_self_ref` (`x = x + e` is `x += e`, idioms catalog entry, fix tier; branch `devin/wip-compound-self-ref`). It fires on 108 `spec/std` places, 0 corpus `spec.cp`, 2 dreams; `fixes_never_add_checker_errors` fails on `ioi13p3/dream.cp` because the checker rejects `+=` on `?Int` while accepting `x = x + 1` (R02.4.4 says both lift). Asked compiler; lands once `+=` lifts. When it does, L0415's fix should emit `xs[i] *= inv_d` and its record `after.cp` follow.
 - Request from tools: `cpl fmt --json` (with `--check`, and plain), so the last result-producing command outside tools has the `--json` of `spec/tools/cli.md`. Suggested shape: `{"files": [{"path", "changed"}]}` in path order, `changed` meaning would change under `--check`; exit codes as today. `--format json` is spelled the same through `commands::json_spelling` once `fmt` is in `JSON_FLAG` (tools adds that and the golden test when `cpl_fmt::cli` prints it).
