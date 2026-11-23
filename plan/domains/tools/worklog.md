@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- Landed (this): `cpl build` moves from `crates/cpl-cli/src/lib.rs` to `src/build.rs` (`BuildOptions`, `build_file`, `build_checked`, `take_judge`), no behaviour change; `lib.rs` 1,662 -> 1,422 lines. `cargo nextest run -p cpl-cli` as before (failures only the main-side corpus `Range` `.l`/`.r` ones).
 - Measured: release latency on main (`cargo test --release -p cpl-lsp --test latency -- --nocapture`, 5,002 lines): `check, cold` median 76 ms, p90 79 ms (budget 50 ms, the one failing test); open to first diagnostics median 97 ms, p90 110 ms (budget 100 ms, passes at the median); hover p90 92 ms; rename p90 55 ms. Compiler follow-up filed; `devin/check-fx-hash` is theirs to land or delete. ARCHITECTURE line counts refreshed.
 - Landed (this): `cpl report --json` (and `--format json`): the report's `path` and `bytes`, its `sections`, the `comparison` of the two runs and the prefilled `issue_url` (`null` when none). `measure.py json`: 18/23; of the target set (all but dap, lsp, self, watch) only `fmt` is left, requested from lint-fmt.
 - Landed (this): `cpl submit --json` (and `--format json`): `ready`, plus the `build` and `test` reports that `cpl build --json` and `cpl test --json` print, `null` for a step that did not run; exit codes unchanged. `measure.py json`: 17/23 (`lint --json` landed from lint-fmt).

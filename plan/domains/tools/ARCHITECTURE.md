@@ -10,7 +10,8 @@ Read from the code at `4e2de3cd` (2026-11-22). Line counts from `wc -l`.
 | File | Lines | What it is for |
 |---|---|---|
 | `src/main.rs` | 35 | Entry: hands off to a pinned toolchain if one applies, else `cpl_cli::exec`. |
-| `src/lib.rs` | 1,662 | `version_line`, `run`, `run_with_input`, `exec`; the top-level help text; the command `match` (`check`, `fix`, `run`, `judge`, `build`, `judges`, `submit`, `explain`, `lsp`, ...); `explain_file`; `run` and `build` pipelines; `fix` (applies `cpl_lint::apply_fixes`). Other crates' commands are dispatched through a `match` to their `cli::run` / `run` fns (`lib.rs:661-668`). |
+| `src/lib.rs` | 1,422 | `version_line`, `run`, `run_with_input`, `exec`; the top-level help text; the command `match` (`check`, `fix`, `run`, `judge`, `build`, `judges`, `submit`, `explain`, `lsp`, ...); `explain_file`; the `run` pipeline; `fix` (applies `cpl_lint::apply_fixes`). Other crates' commands are dispatched through a `match` to their `cli::run` / `run` fns (`lib.rs:661-668`). |
+| `src/build.rs` | 252 | `cpl build` (`BuildOptions`, `build_file`, text and `--json`), `--checked` (the C++ built here with the sanitizers on) and `take_judge`; `submit.rs` builds through it |
 | `src/check.rs` | 176 | `cpl check` (text and `--json`) and `cpl fix` (`apply_error_fixes`, then the lint fixes once no error is left); `errors_in`, which `checked_fix.rs` re-checks with |
 | `src/unit_tests.rs` | 240 | `cpl test` on `.cp` files and directories: the inline `test "..."` blocks in the interpreter and, with `--cpp`, as sanitized C++ (a problem name goes to `cpl-contest` instead). |
 | `src/toolchain.rs` | 866 | `cpl self`: installed toolchains, `cpl +<selector>`, pins, `settings.toml`, fetch, rollback, launcher handoff. |

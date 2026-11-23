@@ -5,7 +5,8 @@ use std::io::Write;
 
 use cpl_json::{obj, Value};
 
-use crate::{build_file, BuildOptions, EXIT_ERRORS, EXIT_USAGE};
+use crate::build::{build_file, BuildOptions};
+use crate::{EXIT_ERRORS, EXIT_USAGE};
 
 /// `cpl submit`: `cpl build`, then `cpl test` on what it built; with
 /// `json`, one object with `ready` and the `build` and `test` reports.
