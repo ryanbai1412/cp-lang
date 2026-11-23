@@ -3,6 +3,32 @@
 use super::*;
 
 impl<'a> Parser<'a> {
+    /// `let [a, b] = xs`: a list has no pattern in CP Lang. One error,
+    /// with the names still bound so their uses don't cascade.
+    pub(super) fn list_pattern(&mut self) -> PatternKind {
+        let start = self.start();
+        self.bump();
+        let mut items = Vec::new();
+        while !matches!(self.peek(), T::RBracket | T::Newline | T::Eof) {
+            items.push(self.pattern());
+            if !self.eat(T::Comma) {
+                break;
+            }
+        }
+        self.expect(T::RBracket, "`]` after the list pattern");
+        self.recovered(
+            Diagnostic::error(
+                codes::EXPECTED_PATTERN,
+                self.span_from(start),
+                "a list can't be unpacked in CP Lang: only tuples can",
+            )
+            .with_help(
+                "index it, `let a = xs[0]`, or unpack a tuple: `let (a, b) = (xs[0], xs[1])`",
+            ),
+        );
+        PatternKind::Tuple(items)
+    }
+
     /// `0..10 step 2`: the stride is `by` in CP Lang. One error with the
     /// fix, read as `by`.
     pub(super) fn foreign_step(&mut self) -> bool {

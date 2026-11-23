@@ -1948,3 +1948,13 @@ fn a_range_step_word_is_one_error_with_the_by_fix() {
     let fixed: Vec<_> = d.iter().map(|d| d.fixes[0].edits[0].1.as_str()).collect();
     assert_eq!(fixed, ["by"], "{d:?}");
 }
+
+#[test]
+fn a_list_pattern_is_one_error_and_still_binds() {
+    let d = parse_file("let [a, b, c] = xs\nprint(a + b + c)\n").diagnostics;
+    assert_eq!(d.len(), 1, "{d:?}");
+    assert!(
+        d[0].message.starts_with("a list can't be unpacked"),
+        "{d:?}"
+    );
+}

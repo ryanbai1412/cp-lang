@@ -1,0 +1,8 @@
+error[E0106]: a list can't be unpacked in CP Lang: only tuples can
+  --> list_pattern.cp:2:5
+  |
+2 | let [a, b, c] = xs
+  |     ^^^^^^^^^
+  = help: index it, `let a = xs[0]`, or unpack a tuple: `let (a, b) = (xs[0], xs[1])`
+
+list_pattern.cp: 1 error

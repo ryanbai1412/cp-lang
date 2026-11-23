@@ -128,6 +128,7 @@ impl<'a> Parser<'a> {
                 self.bump();
                 return self.pattern_atom();
             }
+            T::LBracket => self.list_pattern(),
             _ => {
                 let after = self.prev_kind().map_or("here", |k| k.describe());
                 self.error_expected(
