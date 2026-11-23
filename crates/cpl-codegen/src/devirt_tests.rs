@@ -33,6 +33,38 @@ fn local_from_struct_maker_calls_its_one_closure() {
 }
 
 #[test]
+fn local_bound_to_a_made_fn_field_calls_its_one_closure() {
+    let out = code(concat!(
+        "fn fold(xs: List<Int>) -> Int:\n",
+        "    let mon = Monoid<Int>.of(+)\n",
+        "    let f = mon.op\n",
+        "    var a = mon.id\n",
+        "    for x in xs: a = f(a, x)\n",
+        "    a\n",
+        "print(fold([3, 1, 2]))\n",
+    ));
+    assert!(
+        !out.contains("f(a, x)") && out.contains("a = cpl_fn"),
+        "{out}"
+    );
+}
+
+#[test]
+fn local_bound_to_a_rewritten_struct_field_keeps_its_fn_value_call() {
+    let out = code(concat!(
+        "fn fold(xs: List<Int>) -> Int:\n",
+        "    var mon = Monoid<Int>.of(min)\n",
+        "    if xs.len > 2: mon = Monoid<Int>.of(+)\n",
+        "    let f = mon.op\n",
+        "    var a = mon.id\n",
+        "    for x in xs: a = f(a, x)\n",
+        "    a\n",
+        "print(fold([3, 1, 2]))\n",
+    ));
+    assert!(out.contains("f(a, x)"), "{out}");
+}
+
+#[test]
 fn reassigned_struct_local_keeps_its_fn_value_call() {
     let out = code(concat!(
         "fn fold(xs: List<Int>) -> Int:\n",

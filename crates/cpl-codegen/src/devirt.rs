@@ -50,6 +50,15 @@ enum Home {
     Param(FnId, usize),
 }
 
+/// What a local bound once holds: see [`made_by`].
+#[derive(Clone, Copy)]
+enum Made {
+    /// The struct a call to this fn returned.
+    Call(FnId),
+    /// Fn field `index` of the struct in local `slot`.
+    Field(usize, usize),
+}
+
 /// What has been stored in a [`Home`] so far.
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum Held {
@@ -68,9 +77,9 @@ pub(crate) struct Devirt<'p> {
     dead_locals: BTreeSet<(Option<FnId>, usize)>,
     /// What fn field `(fn, index)` of every struct `fn` returns holds.
     returned: BTreeMap<(FnId, usize), Held>,
-    /// Locals `let x = f(...)` of a struct, never written again: `x` is
-    /// what `f` returned.
-    made_by: BTreeMap<(FnId, usize), FnId>,
+    /// Locals bound once and never written again: `let x = f(...)` of a
+    /// struct (`x` is what `f` returned), or `let g = x.op` of a fn field.
+    made_by: BTreeMap<(FnId, usize), Made>,
     /// Each closure's stand-in: the first closure that only calls the same fn.
     same: Vec<ClosureId>,
     changed: bool,
@@ -788,6 +797,12 @@ impl<'p> Devirt<'p> {
                 Some(id) if *slot < self.program.fns[id].params.len() => {
                     self.held.get(&Home::Param(id, *slot)).copied()
                 }
+                Some(id) => match self.made_by.get(&(id, *slot)) {
+                    Some(Made::Field(base, index)) => {
+                        Some(self.made_slot(id, *base, *index).unwrap_or(Held::Many))
+                    }
+                    _ => Some(Held::Many),
+                },
                 _ => Some(Held::Many),
             },
             ExprKind::Field(base, index) if self.made(home, base, *index).is_some() => {
@@ -1012,7 +1027,13 @@ impl<'p> Devirt<'p> {
         let (ExprKind::Local(slot), Some(id)) = (&base.kind, home) else {
             return None;
         };
-        let maker = self.made_by.get(&(id, *slot))?;
+        self.made_slot(id, *slot, index)
+    }
+
+    fn made_slot(&self, id: FnId, slot: usize, index: usize) -> Option<Held> {
+        let Some(Made::Call(maker)) = self.made_by.get(&(id, slot)) else {
+            return None;
+        };
         self.returned
             .get(&(*maker, index))
             .copied()
@@ -1116,17 +1137,21 @@ impl<'p> Devirt<'p> {
     }
 }
 
-/// Each fn's struct locals bound once to a call and never written again,
-/// in place, through `mut` or by a closure.
-fn made_by(program: &Program) -> BTreeMap<(FnId, usize), FnId> {
+/// Each fn's locals bound once, to a call made struct or to a fn field of
+/// a local, and never written again, in place, through `mut` or by a closure.
+fn made_by(program: &Program) -> BTreeMap<(FnId, usize), Made> {
     let mut out = BTreeMap::new();
     for (id, f) in program.fns.iter().enumerate() {
-        let mut lets: BTreeMap<usize, Option<FnId>> = BTreeMap::new();
+        let mut lets: BTreeMap<usize, Option<Made>> = BTreeMap::new();
         let mut written = BTreeSet::new();
         walk::deep_stmts(&f.body, &mut |stmt| match stmt {
             Stmt::Let(slot, init) => {
                 let maker = match init.as_ref().map(|e| (&e.kind, &e.ty)) {
-                    Some((ExprKind::Call(callee, _), Ty::Struct(_))) => Some(*callee),
+                    Some((ExprKind::Call(callee, _), Ty::Struct(_))) => Some(Made::Call(*callee)),
+                    Some((ExprKind::Field(base, index), Ty::Fn(..))) => match base.kind {
+                        ExprKind::Local(b) => Some(Made::Field(b, *index)),
+                        _ => None,
+                    },
                     _ => None,
                 };
                 let again = lets.contains_key(slot);
