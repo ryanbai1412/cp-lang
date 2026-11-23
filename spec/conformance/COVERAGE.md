@@ -7,7 +7,7 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 2760 (995 passing). Rules: 573.
+Cases: 2765 (995 passing). Rules: 573.
 
 ## Summary per chapter
 
@@ -19,7 +19,7 @@ Cases: 2760 (995 passing). Rules: 573.
 - R04b (04b-keys.md): 27 rules, 66 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R05 (05-ownership.md): 43 rules, 166 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R06 (06-control-functions.md): 24 rules, 101 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R07 (07-sequences.md): 90 rules, 161 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R07 (07-sequences.md): 90 rules, 166 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R08 (08-traits-generics.md): 29 rules, 91 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R09 (09-contexts-checks.md): 26 rules, 57 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R10 (10-io.md): 19 rules, 110 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -471,9 +471,9 @@ Each rule: positive / negative case counts, then the gap if any.
 - R07.4.2 [1+ 0-]: **Combining two sequences pairs them by walk order**: `==`, `<`, `starts_with`, `+`, slice...
 - R07.4.3 [1+ 0-]: **`[s.keys]x`** is a table over exactly `s`'s keys; `t.rekey(r)` re-keys equal-length cell...
 - R07.4.4 [2+ 1-]: **Materializing counts from 0:** `.collect()`, `.sorted()`, `List(w)` and `Str(w)` build a...
-- R07.4.5 [3+ 6-]: any other `x` is checked: out of `w.keys` traps R0101 naming the key and `w.keys`, and nev...
+- R07.4.5 [5+ 9-]: any other `x` is checked: out of `w.keys` traps R0101 naming the key and `w.keys`, and nev...
 - R07.4.6 [1+ 1-]: | `a[r]` (`r: Range<D>`; `a[j..i]` with cut ends is the piece) | `D`, only inside `r` | `r...
-- R07.4.7 [3+ 1-]: | `a.rev` | not indexable: it walks out of key order; `.nth(k)` reads by walk position, an...
+- R07.4.7 [3+ 2-]: | `a.rev` | not indexable: it walks out of key order; `.nth(k)` reads by walk position, an...
 - R07.4.8 [1+ 0-]: | `a.items` | `D`, gives `(i, a[i])` | in order | \(O(1)\)
 - R07.4.9 [3+ 0-]: | `a.map(f)` | `D`, gives `f(a[i])`, calling `f` on every read | in order | \(O(1)\); `f` ...
 - R07.4.10 [1+ 1-]: | `zip(a, b)` | `a`'s keys, pairing by walk order: the k-th of `a` with the k-th of `b` | ...
@@ -748,7 +748,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0302 Type mismatch: 42 case(s)
 - E0303 Wrong number of arguments: 10 case(s)
 - E0304 Value is not callable: 1 case(s)
-- E0305 Value is not indexable: 7 case(s)
+- E0305 Value is not indexable: 9 case(s)
 - E0306 Invalid arithmetic on domain position (reserved): exempt (reserved in the registry)
 - E0307 Condition is not `Bool`: 1 case(s)
 - E0308 Ordering comparison on optional: 2 case(s)
@@ -857,7 +857,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - L0608 Parentheses do not match the cost: 2 case(s)
 - L0609 A `@cache` field written outside its type: 1 case(s)
 - R0001 Runtime trap: 11 case(s)
-- R0101 Index out of range: 22 case(s)
+- R0101 Index out of range: 23 case(s)
 - R0102 Value outside a domain: 5 case(s)
 - R0201 Range store out of range: 9 case(s)
 - R0202 Integer overflow: 10 case(s)
