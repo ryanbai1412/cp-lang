@@ -388,6 +388,36 @@ options:
                     Fast, and without the interpreter's checks
 ";
 
+/// Commands whose JSON output is `--format json`; `JSON_FLAG` ones say `--json`.
+const JSON_FORMAT: &[&str] = &["run", "doc", "bench", "profile", "cover"];
+const JSON_FLAG: &[&str] = &["check", "judges", "explain"];
+
+/// Both spellings of JSON output, `--json` and `--format json`, work on every
+/// command that has one (decisions.md 230).
+pub(crate) fn json_spelling<'a>(command: &str, args: Vec<&'a str>) -> Vec<&'a str> {
+    if JSON_FORMAT.contains(&command) {
+        let spell = |arg| match arg {
+            "--json" => vec!["--format", "json"],
+            arg => vec![arg],
+        };
+        return args.into_iter().flat_map(spell).collect();
+    }
+    if !JSON_FLAG.contains(&command) {
+        return args;
+    }
+    let mut spelled = Vec::new();
+    let mut args = args.into_iter().peekable();
+    while let Some(arg) = args.next() {
+        if arg == "--format" && args.peek() == Some(&"json") {
+            args.next();
+            spelled.push("--json");
+        } else {
+            spelled.push(arg);
+        }
+    }
+    spelled
+}
+
 /// The first argument that looks like an option (`-x`, `--x`; a lone `-` is
 /// a path) but is none of the command's, for the commands parsed here.
 pub(crate) fn unknown_option<'a>(command: &str, args: &[&'a str]) -> Option<&'a str> {

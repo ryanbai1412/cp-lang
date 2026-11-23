@@ -114,6 +114,7 @@ pub fn exec<S: AsRef<str>>(
         EXIT_USAGE
     };
     let rest: Vec<&str> = args.iter().skip(1).map(AsRef::as_ref).collect();
+    let rest = commands::json_spelling(args.first().map_or("", AsRef::as_ref), rest);
     match args.first().map(AsRef::as_ref) {
         Some("-h" | "--help") if rest == ["--json"] => {
             let _ = writeln!(stdout, "{}", commands::help_json());

@@ -30,7 +30,8 @@ most recently edited `.cp` file in the folder.
 | `cpl watch d` | rebuild and test on save |
 | `cpl selftest` | interpreter and C++ agreement on the corpus |
 
-Output is plain text for people and `--json` for tools; exit codes are
+Output is plain text for people and `--json` (the same as `--format json`, on every command that has
+JSON output) for tools; exit codes are
 0 success, 1 failure of the program or a test, 2 compile error, 3 usage
 error. Everything is deterministic given the seed.
 

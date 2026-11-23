@@ -291,3 +291,33 @@ fn judges_json_lists_every_profile_and_marks_the_chosen_one() {
         );
     }
 }
+
+#[test]
+fn json_and_format_json_are_one_flag_on_every_command_with_json() {
+    let dir = scratch("json-spelling");
+    std::fs::write(
+        dir.join("inc.cp"),
+        "/// Adds one.\nfn inc(x: Int) -> Int:\n    return x + 1\n",
+    )
+    .unwrap();
+    for (json, format) in [
+        (
+            &["check", "inc.cp", "--json"][..],
+            &["check", "inc.cp", "--format", "json"][..],
+        ),
+        (&["judges", "--json"], &["judges", "--format", "json"]),
+        (
+            &["doc", "--json", "inc.cp"],
+            &["doc", "--format", "json", "inc.cp"],
+        ),
+    ] {
+        let (json, format) = (cpl(&dir, json), cpl(&dir, format));
+        assert_eq!(json.status.code(), Some(0), "{}", text(&json.stderr));
+        assert!(
+            cpl_json::parse(&text(&json.stdout)).is_ok(),
+            "{}",
+            text(&json.stdout)
+        );
+        assert_eq!(text(&json.stdout), text(&format.stdout));
+    }
+}

@@ -5915,3 +5915,13 @@ with `fn show(self) -> Str`, and `core-10/show-impl-*.cp` cover R10.3.5.
 Reason: rebuild round 3's H-PRINT-TRAIT-NAME; `print` the function and
 `Show` the trait no longer share a name. Reverse: rename back in those
 chapters and add `Print` to the checker.
+
+## 230. `--json` and `--format json` are one flag (2026-11-22)
+
+`run`, `doc`, `bench`, `profile` and `cover` spelled JSON output
+`--format json`; `check`, `judges` and `explain` spelled it `--json`, so the
+flag a contestant guessed worked on half the commands. `exec` in
+`crates/cpl-cli/src/lib.rs` now rewrites either spelling to the command's own
+(`commands::json_spelling`) before dispatch, so both work everywhere and no
+command lost a spelling (tools-1 still decides any removal). Reverse: drop
+the rewrite.
