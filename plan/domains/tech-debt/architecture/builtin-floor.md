@@ -64,6 +64,8 @@ here with the measured ratio.
 - `minmax`: moved to `spec/std/algebra.cp` as a generic over `Ord`. 50M calls: 0.11-0.13 s before and after
   (interleaved, `g++ -O2`); generated C++ 2,326 -> 2,600 bytes. The 9 corpus files using it have the same
   `cpl check` error counts before and after.
+- `span`: not moved. The builtin is a hull of two positions or bounds in either order; the std body
+  takes two cuts and traps when `lo > hi`. Asked stdlib which meaning is the spec.
 - `isqrt`: tried and backed out; it stays a builtin for now. With `spec/std/math.cp`'s body,
   30M calls took 0.26 s against 0.07 s for the builtin (3.7x, three runs each, `g++ -O2`).
   Generated C++ grew from 2,334 to 3,631 bytes. Conformance went from 2143/2313 to 2122/2311.
