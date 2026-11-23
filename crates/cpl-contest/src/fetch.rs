@@ -23,9 +23,10 @@ usage: cpl fetch <url> [name] [options]
 
 Downloads a problem's samples into <name>.tests/ (1.in, 1.out, ...) and,
 if <name>.cp doesn't exist, creates it with the title and limits. Knows
-Codeforces and AtCoder problem pages; for other judges, use `cpl new
+Codeforces, AtCoder and CSES problem pages; for other judges, use `cpl new
 --listen` with the Competitive Companion browser extension. <name> is the
-problem's letter unless given: `a` for `A. Watermelon`.
+problem's letter unless given: `a` for `A. Watermelon`, `cses1068` for
+CSES task 1068.
 
 options:
   --html FILE   read the page from FILE, saved from the browser, instead of
@@ -37,6 +38,7 @@ options:
 pub enum Judge {
     Codeforces,
     AtCoder,
+    Cses,
 }
 
 /// The judge whose problem page `url` is.
@@ -48,6 +50,8 @@ pub fn judge_of(url: &str) -> Option<Judge> {
         Some(Judge::Codeforces)
     } else if is("atcoder.jp") {
         Some(Judge::AtCoder)
+    } else if is("cses.fi") {
+        Some(Judge::Cses)
     } else {
         None
     }
@@ -56,14 +60,10 @@ pub fn judge_of(url: &str) -> Option<Judge> {
 /// The built-in judge profile for the judge whose problem page `url` is,
 /// for the `// judge:` line of a new file.
 pub fn judge_profile_of(url: &str) -> Option<&'static str> {
-    let rest = url.split_once("://").map_or(url, |(_, rest)| rest);
-    let host = rest.split(['/', '?', '#']).next()?.to_ascii_lowercase();
-    let is = |domain: &str| host == domain || host.ends_with(&format!(".{domain}"));
-    match judge_of(url) {
-        Some(Judge::Codeforces) => Some("codeforces"),
-        Some(Judge::AtCoder) => Some("atcoder"),
-        None if is("cses.fi") => Some("cses"),
-        None => None,
+    match judge_of(url)? {
+        Judge::Codeforces => Some("codeforces"),
+        Judge::AtCoder => Some("atcoder"),
+        Judge::Cses => Some("cses"),
     }
 }
 
@@ -76,6 +76,7 @@ pub fn contest_of(url: &str) -> Option<String> {
     let key = match judge_of(url)? {
         Judge::Codeforces => ["contest", "gym"].as_slice(),
         Judge::AtCoder => ["contests"].as_slice(),
+        Judge::Cses => return None,
     };
     let at = path.iter().position(|part| key.contains(part))?;
     let id = path.get(at + 1).filter(|id| !id.is_empty())?;
@@ -89,6 +90,7 @@ pub fn parse(judge: Judge, url: &str, html: &str) -> Result<Scaffold, String> {
     let (title, limits, samples) = match judge {
         Judge::Codeforces => codeforces(html),
         Judge::AtCoder => atcoder(html),
+        Judge::Cses => cses(html),
     };
     if samples.is_empty() {
         return Err(format!(
@@ -128,6 +130,7 @@ fn accepts_any_answer(judge: Judge, html: &str) -> bool {
     let (start, end) = match judge {
         Judge::Codeforces => ("class=\"output-specification\"", "class=\"sample-tests\""),
         Judge::AtCoder => ("<h3>Output</h3>", "<h3>Sample Input"),
+        Judge::Cses => ("<h1 id=\"output\">", "<h1"),
     };
     let english = html
         .find("<span class=\"lang-en\">")
@@ -212,6 +215,43 @@ fn atcoder(html: &str) -> Page {
         .map(|mib| mib * 1024.0)
         .or_else(|| number_before(&line, "MB").map(|mb| mb * 1000.0));
     (title, limits(number_before(&line, "sec"), memory), samples)
+}
+
+fn cses(html: &str) -> Page {
+    let inputs = pres_after(html, "<p>Input:</p>");
+    let outputs = pres_after(html, "<p>Output:</p>");
+    let samples = inputs
+        .iter()
+        .zip(outputs.iter().map(Some).chain(std::iter::repeat(None)))
+        .map(|(input, output)| (sample(input), output.map_or(String::new(), |o| sample(o))))
+        .collect();
+    let title = after(html, "<h1>")
+        .map(|rest| {
+            decode(&rest[..rest.find('<').unwrap_or(rest.len())])
+                .trim()
+                .to_string()
+        })
+        .filter(|title| !title.is_empty());
+    // `Time limit: 1.00 s`, `Memory limit: 512 MB`.
+    let header = after(html, "class=\"task-constraints\"")
+        .map(|rest| text(prefix(rest, 300)))
+        .unwrap_or_default();
+    let limits = limits(
+        number_before(&header, " s\n").or_else(|| number_before(&header, " s")),
+        number_before(&header, "MB").map(|mb| mb * 1024.0),
+    );
+    (title, limits, samples)
+}
+
+/// `cses1068` for `cses.fi/problemset/task/1068`: CSES titles have no letter.
+fn cses_name(url: &str) -> Option<String> {
+    let id = url
+        .split(['?', '#'])
+        .next()?
+        .trim_end_matches('/')
+        .rsplit('/')
+        .next()?;
+    (!id.is_empty() && id.chars().all(|c| c.is_ascii_digit())).then(|| format!("cses{id}"))
 }
 
 fn limits(seconds: Option<f64>, memory_kb: Option<f64>) -> Option<Limits> {
@@ -348,7 +388,7 @@ pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u
         };
         let judge = judge_of(&url).ok_or_else(|| {
             format!(
-                "`{url}` is not a Codeforces or AtCoder page; for other judges, \
+                "`{url}` is not a Codeforces, AtCoder or CSES page; for other judges, \
                  `cpl new --listen` takes the problem from Competitive Companion"
             )
         })?;
@@ -367,9 +407,12 @@ pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u
     }
     .and_then(|html| parse(judge, &url, &html))
     .and_then(|scaffold| {
-        let name = name.or_else(|| scaffold.short_name()).ok_or_else(|| {
-            format!("the page for {url} has no title; name the problem: `cpl fetch {url} d`")
-        })?;
+        let name = name
+            .or_else(|| (judge == Judge::Cses).then(|| cses_name(&url)).flatten())
+            .or_else(|| scaffold.short_name())
+            .ok_or_else(|| {
+                format!("the page for {url} has no title; name the problem: `cpl fetch {url} d`")
+            })?;
         let source = source_path(&name);
         let created = write(&scaffold, &source)?;
         Ok((scaffold, source, created))
@@ -567,6 +610,34 @@ YES
                 ("8\n1 2\n".to_string(), "NO\n".to_string()),
             ]
         );
+    }
+
+    /// Cut from the CSES page for task 1640, as served.
+    #[test]
+    fn cses_samples_title_limits_and_any_answer() {
+        let html = "<div class=\"title-block\">\n                <h1>Sum of Two Values</h1>\n</div>\n\
+            <ul class=\"task-constraints\">\n<li><b>Time limit:</b> 1.00 s</li>\n<li><b>Memory limit:</b> 512 MB</li>\n</ul>\n\
+            <div class=\"md\"><p>You are given an array.</p>\n<h1 id=\"input\">Input</h1>\n<p>The first input line has two integers.</p>\n\
+            <h1 id=\"output\">Output</h1>\n<p>Print two integers. If there are several solutions, you may print any of them.</p>\n\
+            <h1 id=\"constraints\">Constraints</h1>\n<h1 id=\"example\">Example</h1>\n\
+            <p>Input:</p>\n<pre>4 8\n2 7 5 1\n</pre>\n<p>Output:</p>\n<pre>2 4\n</pre></div>";
+        let url = "https://cses.fi/problemset/task/1640";
+        let page = parse(Judge::Cses, url, html).unwrap();
+        assert_eq!(page.title.as_deref(), Some("Sum of Two Values"));
+        let limits = page.limits.unwrap();
+        assert_eq!(
+            (limits.time, limits.memory_kb),
+            (Duration::from_secs(1), 512 * 1024)
+        );
+        assert_eq!(
+            page.samples,
+            [("4 8\n2 7 5 1\n".to_string(), "2 4\n".to_string())]
+        );
+        assert!(page.any_answer && !page.multitest);
+        assert_eq!(judge_of(url), Some(Judge::Cses));
+        assert_eq!(contest_of(url), None);
+        assert_eq!(cses_name(url).as_deref(), Some("cses1640"));
+        assert_eq!(cses_name("https://cses.fi/problemset/").as_deref(), None);
     }
 
     /// Cut from the AtCoder page for abc300_a, as served.

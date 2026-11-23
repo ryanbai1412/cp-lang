@@ -123,7 +123,7 @@ fn fetch_writes_a_pages_samples_and_keeps_other_tests() {
     misused(
         "fetch",
         &["fetch", "https://example.com/p/1"],
-        "is not a Codeforces or AtCoder page",
+        "is not a Codeforces, AtCoder or CSES page",
     );
     let dir = scratch("fetch");
     std::fs::write(
