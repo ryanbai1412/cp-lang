@@ -8218,3 +8218,12 @@ tag move fatal again.
 - **Call.** A built-in getter called with `()` (`xs.len()`, `xs.first()`) is E0304, and E0304's fix drops the `()`. L0206 guessed the same case from syntax, so it only repeated the error. Retired: its record, its catalogue row and the syntax-based sequence guess in `rules/types.rs`.
 - **Fix path.** `cpl fix` applies E0304's fix with the other error fixes. The editor's fix-all (`fix_checked_removed_syntax`) applies it beside the removed-syntax codemods.
 - **Reverse.** Restore `spec/lints/getter_parens/` and the arm in `rules/types.rs`.
+
+## 402. Rebuild round 31: holes and bugs (spec, 2026-11-23)
+
+- **Count.** 31 holes, down from round 30's 51: 21 silent (19 guesses held), 4 contradictions, 1 missing-stdlib, 5 found-late. No new mechanism.
+- **Already ruled.** `Counter` lacking `clone` breaks decision 394: `.clone()` is the one copy spelling for every owned type.
+- **Routed to stdlib.** `maximal`/`minimal` over `Window` (the third round in a row); `DualFenwick` missing from the prelude; `clone` on every owned std type; the stale `Rooted` note in std/GAPS.md.
+- **Routed to compiler.** `reroot` lambda inference of `?Int`; `cpl explain` scalar and phantom copy rows; `std::function` in the `reroot` combine (perf).
+- **Rebuild workflow.** The `plan_delta_lines` ratchet blocks new `plan/domains/spec/delta/rebuild-NN/` folders. Starting with round 32, a round writes to `research/rebuild-rounds/rebuild-NN/`, where finished runs belong anyway (tech-debt's direction).
+- **Reverse.** Raise the `plan_delta_lines` ratchet for each round.
