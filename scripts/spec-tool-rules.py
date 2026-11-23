@@ -3,8 +3,8 @@
 """Count the tool features in spec/tools/ that carry no rule id.
 
 A feature is a top-level bullet (`- ...`, with its continuation lines). It
-has a rule id when an `(Rnn.n.n)` ends one of its sentences, as in
-spec/core. Without one, no case can cite it and the coverage gate can't
+has a rule id when an id ends one of its sentences: `(Rnn.n.n)` as in
+spec/core, or a tool id such as `(Rtrace.4)`, which cases cite as `trace.4`. Without one, no case can cite it and the coverage gate can't
 see it. `--max` is shrink-only.
 
     uv run scripts/spec-tool-rules.py [--max N] [--list]
@@ -15,7 +15,7 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-RULE = re.compile(r"\(R\d\d\.\d+\.\d+\)")
+RULE = re.compile(r"\(R(?:\d\d[a-z]?|[a-z]+)(?:\.\d+)+\)")
 
 
 def features(path):
