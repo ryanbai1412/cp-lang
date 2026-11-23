@@ -10,8 +10,8 @@ for i in 0..n:
     if seen.insert(x):
         tally[x] = 0
     tally[x] += 1
-print(xs, xs.len, xs.first, xs.last)
-print(seen, seen.len, seen.min(), seen.max())
+print(xs, xs.len, xs.first ?? -1, xs.last ?? -1)
+print(seen, seen.len, seen.min() ?? -1, seen.max() ?? -1)
 print(tally)
 for (k, v) in tally:
     print("key", k, "seen", v)
@@ -22,14 +22,14 @@ xs.reverse()
 print(xs, xs.sorted(), xs.reversed())
 xs.sort(by: x => abs(x - 4))
 print(xs)
-print(xs.pop(), xs.pop(), xs.len)
+print(xs.pop() ?? -1, xs.pop() ?? -1, xs.len)
 print(yes(seen.remove(3)), yes(seen.remove(3)), seen)
 print(tally.remove(1), tally.len)
 var stack: List<Int> = [1, 2, 3]
 while stack.len > 0:
     let top = stack.pop() ?? -1
     print(top)
-print(stack.pop(), yes(stack.is_empty))
+print(stack.pop() ?? -1, yes(stack.is_empty))
 var pairs: List<(Int, Str)> = []
 pairs.push((3, "c"))
 pairs.push((1, "z"))

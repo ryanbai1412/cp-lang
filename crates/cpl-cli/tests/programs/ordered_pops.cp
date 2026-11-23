@@ -2,7 +2,7 @@
 // `pop_first`/`pop_last`; each is `none` once nothing is left.
 var s = Set<Int>()
 var m = Map<Int, Str>()
-print(s.first, s.pop_first(), s.pop_last(), m.first, m.last, m.pop_first(), m.pop_last())
+print(s.first, s.pop_first() ?? -1, s.pop_last() ?? -1, m.first, m.last, m.pop_first(), m.pop_last())
 for x in [5, 1, 9, 3]:
     s.insert(x)
     m[x] = "v{x}"

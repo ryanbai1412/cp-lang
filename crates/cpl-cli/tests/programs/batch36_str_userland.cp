@@ -1,8 +1,8 @@
 let st = "hello"
 print(
     st.repeat(2),
-    st.find("ll"),
-    st.find('z'),
+    st.find("ll") ?? -1,
+    st.find('z') ?? -1,
     st.starts_with("he"),
     st.ends_with("lo"),
     st.ends_with("he"),

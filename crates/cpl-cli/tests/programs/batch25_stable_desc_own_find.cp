@@ -9,7 +9,7 @@ struct P:
 
 let xs = [4, 7, 9]
 let s = "hello"
-print(xs.find(9), s.find("l"), s.find("z"))
+print(xs.find(9) ?? -1, s.find("l") ?? -1, s.find("z") ?? -1)
 var ps = [P(1, 0), P(2, 1), P(1, 2), P(2, 3), P(1, 4)]
 ps.sort(by: p => p.k, desc: true)
 print([p.id for p in ps])

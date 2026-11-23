@@ -65,5 +65,5 @@ print([x for ((r, c), x) in g.items if r == c])
 var w: [V.cuts]Int = 0
 for v in V: w[v.r] = w[v.l] + v.idx + 1
 print(w)
-print(w.last, w.last(0), w.last(1), w.last(n), w.last(n + 1), w.last(-1))
+print(w.last, w.last(0) ?? -1, w.last(1) ?? -1, w.last(n) ?? -1, w.last(n + 1) ?? -1, w.last(-1) ?? -1)
 print(w.last(1)! + 1, w.last ?? -1)

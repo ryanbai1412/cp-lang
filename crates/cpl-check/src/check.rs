@@ -5,7 +5,7 @@
 //! with every type. It also never reports inside a span the parser
 //! poisoned.
 
-mod advice;
+pub(crate) mod advice;
 pub(crate) use advice::rename_values;
 mod call;
 mod expr;

@@ -1119,3 +1119,10 @@ fn a_top_level_trap_names_the_value_it_reads_not_ended_loop_locals() {
     assert!(err.contains("note: locals: w = None"), "got:\n{err}");
     assert!(!err.contains("i = 1"), "got:\n{err}");
 }
+
+#[test]
+fn a_trap_at_an_assigned_name_notes_the_names_its_line_reads() {
+    let source = "var x: 0..10 = 0\nlet k: Int = read()\nx = k * 2\nprint(x)\n";
+    let (_, err) = run_stderr(source, "7\n");
+    assert!(err.contains("locals: x = 0, k = 7"), "got:\n{err}");
+}

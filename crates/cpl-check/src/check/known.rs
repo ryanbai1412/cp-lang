@@ -98,9 +98,24 @@ impl<'a> Checker<'a> {
                             format!("`{snippet}` has type `{ty}`, which does not implement `Show`")
                         };
                         let help = optional_print_help(ty, &snippet);
-                        if let Some(diag) = self.error(codes::MISSING_IMPL, arg.value.span, message)
-                        {
+                        let span = arg.value.span;
+                        if let Some(diag) = self.error(codes::MISSING_IMPL, span, message) {
                             diag.help = help;
+                            // `print(xs.pop())`: unwrap it, as the help says first.
+                            if matches!(ty, Ty::Optional(_)) {
+                                let (open, close) = if snippet.contains(' ') {
+                                    ("(", ")!")
+                                } else {
+                                    ("", "!")
+                                };
+                                diag.fixes.push(cpl_diag::Fix {
+                                    title: "unwrap with `!`".into(),
+                                    edits: vec![
+                                        (Span::point(span.start), open.into()),
+                                        (Span::point(span.end), close.into()),
+                                    ],
+                                });
+                            }
                         }
                     }
                 }

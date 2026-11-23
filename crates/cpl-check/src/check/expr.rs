@@ -1490,9 +1490,28 @@ impl<'a> Checker<'a> {
                 ast::CmpOp::Ge => ">=",
                 _ => "?",
             };
-            let message = format!("optional values can't be ordered with `{op_str}`");
-            if let Some(diag) = self.error(codes::OPTIONAL_COMPARE, left_expr.span, message) {
-                diag.help = Some("unwrap with `??` or `!` before comparing".into());
+            let unwrap = |c: &Self, e: &Expr, ty: &Ty| match (&e.kind, ty) {
+                (_, ty) if !matches!(ty, Ty::Optional(_)) => c.quote(e.span),
+                (ExprKind::Name(_) | ExprKind::Field { .. }, _) => format!("{}!", c.quote(e.span)),
+                _ => format!("({})!", c.quote(e.span)),
+            };
+            let (at, ty) = match left {
+                Ty::Optional(_) => (left_expr, left),
+                _ => (right_expr, right),
+            };
+            let message = format!(
+                "`{}` is {}: optional values can't be ordered with `{op_str}`",
+                self.quote(at.span),
+                ty.with_article()
+            );
+            let (l, r) = (
+                unwrap(self, left_expr, left),
+                unwrap(self, right_expr, right),
+            );
+            if let Some(diag) = self.error(codes::OPTIONAL_COMPARE, at.span, message) {
+                diag.help = Some(format!(
+                    "`None` has no order: unwrap first, `{l} {op_str} {r}`, or give a default with `??`"
+                ));
             }
             return;
         }

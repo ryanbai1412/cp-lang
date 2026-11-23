@@ -1,8 +1,8 @@
-warning[L0601]: `xs` is changed on the right side of an assignment to `xs[0]`, and the two may be the same storage: one contains the other
+warning[L0601]: `xs` is changed on the right side of an assignment to `xs[0]`, and `xs[0]` is part of `xs`
   --> lint_same_place_pop_alias.cp:3:9
   |
 3 | xs[0] = xs.pop()!
   |         ^^
-  = help: compute the right side into a `let` first, then assign; then the order the two sides run in cannot change the result
+  = help: compute the right side first, `let v = xs.pop()!`, then `xs[0] = v`: otherwise the order the two sides run in decides the result
 
 lint_same_place_pop_alias.cp: 1 warning

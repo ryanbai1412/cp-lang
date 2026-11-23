@@ -1641,7 +1641,7 @@ fn the_right_side_cant_change_the_place_assigned() {
     );
     assert_eq!(
         compound.help.as_deref(),
-        Some("compute the right side into a `let` first, then assign; then the order the two sides run in cannot change the result")
+        Some("compute the right side into a `let` first, then assign: otherwise the order the two sides run in decides the result")
     );
     for rest in [
         format!("{inc}assert l != r\na[l] += inc(mut a[r])\n"),

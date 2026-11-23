@@ -1,7 +1,9 @@
 // The ends of a sequence: `a.first` and `a.last` are optionals on a list
 // and on an array, `none` when it is empty, and `xs.last!` is a cell that
 // can be assigned.
-struct Run(head: Int, len: Int)
+struct Run:
+    var head: Int
+    var len: Int
 let n = 4
 let a: [0..n]Int = [0..n] i => i * 3
 print(a.first, a.last!)

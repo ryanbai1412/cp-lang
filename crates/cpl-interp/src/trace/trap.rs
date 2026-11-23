@@ -25,15 +25,18 @@ const TRAP_LOCALS: usize = 8;
 /// the top level have ended, so they are left out.
 pub fn trap_locals(recording: &Recording, source: &str, at: &str) -> Option<String> {
     let step = recording.step(recording.len().checked_sub(1)?)?;
+    let line = (step.line as usize)
+        .checked_sub(1)
+        .and_then(|line| source.lines().nth(line));
+    // `x = k * 2` traps at `x`; the names its line reads count too.
     let named = |name: &str| {
-        at.split(|c: char| !(c.is_alphanumeric() || c == '_'))
-            .any(|word| word == name)
+        [at, line.unwrap_or("")].iter().any(|text| {
+            text.split(|c: char| !(c.is_alphanumeric() || c == '_'))
+                .any(|word| word == name)
+        })
     };
     let top_level = step.frames.len() == 1;
-    let unindented = (step.line as usize)
-        .checked_sub(1)
-        .and_then(|line| source.lines().nth(line))
-        .is_some_and(|line| !line.starts_with([' ', '\t']));
+    let unindented = line.is_some_and(|line| !line.starts_with([' ', '\t']));
     let mut locals: Vec<(String, cpl_json::Value)> = match cpl_json::parse(&step.locals) {
         Ok(cpl_json::Value::Object(map)) if !(top_level && unindented) => map
             .iter()

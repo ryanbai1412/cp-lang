@@ -719,3 +719,40 @@ pub(crate) fn rename_values(
     }
     diags
 }
+
+/// E0802: a bare `with` covers the rest of its block, so it opens it.
+pub(crate) const WITH_FIRST_HELP: &str = "a bare `with` covers the rest of its block: move it to the block's first line, or end it with `:` and indent the lines it covers under it";
+
+/// L0601: `xs[0] = xs.pop()!` changes `xs` on the right; `parts` compares how deep the
+/// assigned place goes against the changed one.
+pub(crate) fn same_place(
+    place: &Expr,
+    target: &Expr,
+    value: &Expr,
+    op: cpl_syntax::ast::AssignOp,
+    parts: std::cmp::Ordering,
+    why: String,
+) -> (String, String) {
+    use super::lends::show;
+    let (changed, assigned) = (show(place), show(target));
+    let why = match parts {
+        std::cmp::Ordering::Greater => format!("`{assigned}` is part of `{changed}`"),
+        std::cmp::Ordering::Less => format!("`{changed}` is part of `{assigned}`"),
+        std::cmp::Ordering::Equal => why,
+    };
+    let message = format!(
+        "`{changed}` is changed on the right side of an assignment to `{assigned}`, and {why}"
+    );
+    let lends_mut =
+        matches!(&value.kind, ExprKind::Call { args, .. } if args.iter().any(|a| a.mutable));
+    let first = match op {
+        cpl_syntax::ast::AssignOp::Set if !lends_mut => {
+            format!("first, `let v = {}`, then `{assigned} = v`", show(value))
+        }
+        _ => "into a `let` first, then assign".into(),
+    };
+    let help = format!(
+        "compute the right side {first}: otherwise the order the two sides run in decides the result"
+    );
+    (message, help)
+}

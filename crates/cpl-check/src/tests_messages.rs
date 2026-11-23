@@ -421,6 +421,8 @@ fn a_builtin_that_may_give_nothing_is_optional() {
         d[0].help.as_deref().unwrap_or("").contains("xs.pop()!"),
         "{d:?}"
     );
+    let fix = &d[0].fixes[0].edits;
+    assert_eq!(fix[1].1, "!", "{d:?}");
     let d = check("var s = \"ab\"\nlet c: Char = s.pop()\n");
     assert!(d.iter().any(|d| d.message.contains("?Char")), "{d:?}");
     let clean = check(
@@ -456,6 +458,31 @@ fn a_name_holding_an_optional_position_may_be_none_not_step() {
     );
     let help = d[0].help.as_deref().unwrap_or("");
     assert!(help.contains("`u!`") && !help.contains("edge"), "{help}");
+}
+
+#[test]
+fn rubric_batch_names_the_optional_the_with_and_the_part() {
+    let d = check("let a: ?Int = 1\nlet b: ?Int = 2\nif a < b:\n    print(1)\n");
+    assert!(d[0].message.contains("`a` is an ?Int"), "{d:?}");
+    assert!(
+        d[0].help.as_deref().unwrap_or("").contains("`a! < b!`"),
+        "{d:?}"
+    );
+    let d = check("print(1)\nwith io(sep: \",\")\nprint(1, 2)\n");
+    assert!(
+        d[0].help
+            .as_deref()
+            .unwrap_or("")
+            .contains("block's first line"),
+        "{d:?}"
+    );
+    let d = check("var xs = [1, 2]\nxs[0] = xs.pop()!\nprint(xs)\n");
+    assert!(d[0].message.ends_with("`xs[0]` is part of `xs`"), "{d:?}");
+    let help = d[0].help.as_deref().unwrap_or("");
+    assert!(
+        help.contains("`let v = xs.pop()!`, then `xs[0] = v`"),
+        "{help}"
+    );
 }
 
 #[test]

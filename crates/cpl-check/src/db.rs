@@ -915,7 +915,7 @@ impl Database {
                         codes::WITH_NOT_FIRST,
                         stmt.span.shift(ranges[index].span.start),
                         "a bare `with` line comes first in its block; indent what it covers under `with ...:`",
-                    )),
+                    ).with_help(crate::check::advice::WITH_FIRST_HELP)),
                     _ if crate::check::runs(stmt) => leading = false,
                     _ => {}
                 }
@@ -1157,7 +1157,7 @@ impl Database {
                                     codes::WITH_NOT_FIRST,
                                     abs,
                                     "a bare `with` line comes first in its block; indent what it covers under `with ...:`",
-                                ));
+                                ).with_help(crate::check::advice::WITH_FIRST_HELP));
                             }
                         }
                         StmtKind::Context { .. }

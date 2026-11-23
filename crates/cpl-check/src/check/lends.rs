@@ -2303,14 +2303,11 @@ impl<'a> Checker<'a> {
             let Some(why) = self.overlap(&target_place.steps, &changed_place.steps) else {
                 continue;
             };
-            let message = format!(
-                "`{}` is changed on the right side of an assignment to `{}`, and the two may be the same storage: {why}",
-                show(&place),
-                show(target),
-            );
+            let parts = target_place.steps.len().cmp(&changed_place.steps.len());
+            let (message, help) = super::advice::same_place(&place, target, value, op, parts, why);
             self.sink.push(
                 Diagnostic::warning(codes::SAME_PLACE_READ_WRITE, place.span, message)
-                    .with_help("compute the right side into a `let` first, then assign; then the order the two sides run in cannot change the result"),
+                    .with_help(help),
             );
         }
     }
