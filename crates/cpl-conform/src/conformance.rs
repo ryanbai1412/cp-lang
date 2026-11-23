@@ -316,6 +316,9 @@ pub fn discover(root: &Path, filter: Option<&str>) -> Vec<ConformanceCase> {
         .into_iter()
         .filter_map(|path| {
             let rel = path.strip_prefix(&dir).ok()?;
+            if in_library(rel, &dir) {
+                return None;
+            }
             let id = rel.to_string_lossy().replace('\\', "/");
             if let Some(f) = filter {
                 if !id.contains(f) {
@@ -325,6 +328,14 @@ pub fn discover(root: &Path, filter: Option<&str>) -> Vec<ConformanceCase> {
             Some(ConformanceCase { id, path })
         })
         .collect()
+}
+
+/// A `.cp` below a folder with a `lib.toml` is a library module that
+/// cases import, not a case.
+fn in_library(rel: &Path, dir: &Path) -> bool {
+    rel.ancestors()
+        .skip(1)
+        .any(|a| !a.as_os_str().is_empty() && dir.join(a).join("lib.toml").is_file())
 }
 
 pub fn run_one(db: &mut Database, case: &ConformanceCase) -> CaseOutcome {
@@ -529,6 +540,9 @@ pub fn check_rules(root: &Path) -> RuleCoverage {
     let mut cited: BTreeSet<String> = BTreeSet::new();
     let conf_dir = root.join("spec").join("conformance");
     for path in runner::walk_files(&conf_dir, "cp") {
+        if in_library(path.strip_prefix(&conf_dir).unwrap_or(&path), &conf_dir) {
+            continue;
+        }
         let Ok(text) = std::fs::read_to_string(&path) else {
             continue;
         };

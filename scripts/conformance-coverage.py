@@ -57,6 +57,8 @@ def rule_texts():
 def cases():
     out = []
     for path in sorted(CONF.rglob("*.cp")):
+        if any((d / "lib.toml").is_file() for d in path.parents if CONF in d.parents):
+            continue
         text = path.read_text()
         lines = text.split("\n")
         expect = lines[0].removeprefix("//").strip().removeprefix("expect:").strip()

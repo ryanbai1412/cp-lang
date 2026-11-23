@@ -38,6 +38,11 @@ output must contain and each `// lacks: "..."` line text it must not;
 the copy blanks those two kinds of line so a tool that echoes the source
 can't match them.
 
+A case about library files imports modules from a folder beside it: a
+folder with a `lib.toml` holds library modules, not cases, and a
+`cp.toml` next to the cases names it under `[libs]`
+(`core-11/library/`).
+
 They double as the spec's exercises and as the regression suite: the
 runner (`cpl-conform conformance`, in `crates/cpl-conform`) checks each expectation
 against `cpl check`/`cpl run`, and reports which cases 0.2.x does not
