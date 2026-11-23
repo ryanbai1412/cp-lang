@@ -138,7 +138,33 @@ on write, so a checkpoint copies main's locals and the globals, not the heap.
   every 4096, 65536 or 2^20 ticks. Without checkpoints, `cpl run` of
   `fib(32)` is within 2% of the base commit (best of 9, 647 vs 635 ms).
 - **Not covered (no checkpoint is taken there; the run takes the next one it
-  can):** a statement with a call and another effect, calls from a feed loop,
-  closure or function value, `for` over a sequence, `var` parameters,
-  interactive programs. The VM still recurses on the Rust stack; the frames
-  are mirrored as data, not run from it. Step numbers to ticks is still owed.
+  can):** calls from a feed loop, closure or function value, `for` over a
+  sequence, `var` parameters, interactive programs. The VM still recurses on
+  the Rust stack; the frames are mirrored as data, not run from it. Step
+  numbers to ticks is still owed.
+
+## Calls that share a statement (2026-11-23, tech-debt for compiler)
+
+- **Shape:** a statement whose head makes several calls, or a call and other
+  effects, e.g. `t = f(a) * f(b) + g()` or `print(f(x), f(y))`. Each call
+  in evaluation order is a call site until the first other effect (print,
+  read, `rand`, a write, a closure); a call after one is not.
+- **Restore without doing anything twice:** while recording, each call op a
+  later call site needs keeps what it returned (`Chunk::keeps`, and
+  `keep_called` for calls the tree-walker makes in a statement the VM falls
+  back to). A checkpoint inside the n-th call saves what calls 1..n-1
+  returned; the resumed statement takes those values instead of calling
+  again, then enters call n from its saved frame. Statements the traced VM
+  runs on the tree-walker (`FallbackStmt`) are waits too, so counted
+  (traced) runs take checkpoints inside their calls.
+- **Found on the way:** a fallback statement's callee runs on a fresh
+  register vector, so its caller's registers are now saved by address; and
+  the VM's `ForInc` left a finished loop's variable at `hi` where the
+  tree-walker leaves `hi - 1`, which a checkpoint after the loop copied into
+  the trace. `ForInc` now keeps the last value, as `ForIncClosed` did.
+- **Tests (`tests/checkpoint.rs`, fixture `SHARED`: calls sharing a
+  statement, with `print` and `rand` between them, and a 3-deep recursion
+  of two calls per statement):** the run, traced-run, window, tail and
+  timeline tests, and every checkpoint of a counted run resumes to the rest
+  of the output. `Timeline::starts()` is checked spread over the whole run
+  (first before 1/4, last after 7/8, no gap over 1/4) for each fixture.

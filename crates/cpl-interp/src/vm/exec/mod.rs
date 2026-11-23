@@ -956,9 +956,11 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     }
                 }
                 Op::ForInc { r_i, r_hi, target } => {
+                    // The variable keeps its last value after the loop, as
+                    // on the tree-walker, so a checkpoint reads the same.
                     let next = regs_i[r_i as usize] + 1;
-                    regs_i[r_i as usize] = next;
                     if next < regs_i[r_hi as usize] {
+                        regs_i[r_i as usize] = next;
                         if target as usize <= cur_pc && self.tick(spans[cur_pc])? && fed.is_none() {
                             self.take_checkpoint(
                                 compiled, chunk, cur_pc, base_i, vm_regs_i, regs_v,

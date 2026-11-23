@@ -94,6 +94,7 @@ pub(super) struct Compiler<'p, 'f> {
     traced_loop_var: Option<(Slot, Span)>,
     back_edges: Vec<BackEdge>,
     call_sites: Vec<CallSite<'p>>,
+    keeps: Vec<(u32, Option<SlotLoc>, usize)>,
 }
 
 impl<'p, 'f> Compiler<'p, 'f> {
@@ -165,6 +166,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
             traced_loop_var: None,
             back_edges: Vec::new(),
             call_sites: Vec::new(),
+            keeps: Vec::new(),
         }
     }
 
@@ -199,6 +201,12 @@ impl<'p, 'f> Compiler<'p, 'f> {
             has_by_ref_closure: false,
             back_edges: self.back_edges,
             call_sites: self.call_sites,
+            keeps: {
+                let mut keeps = self.keeps;
+                keeps.sort_by_key(|k| k.0);
+                keeps.dedup_by_key(|k| k.0);
+                keeps
+            },
         }
     }
 
@@ -224,44 +232,112 @@ impl<'p, 'f> Compiler<'p, 'f> {
         }
     }
 
-    /// Notes the call op `stmt` just compiled to, from `start`, when that
-    /// call is the only effect of what `stmt` evaluates before its body: a
-    /// run from a checkpoint inside the callee can then evaluate `stmt` again
-    /// up to the call and go on with what the callee returns.
+    /// Notes each call `stmt` just compiled, from `start`, that a run from a
+    /// checkpoint inside the callee can go on from: one `stmt` evaluates
+    /// before any other effect, but maybe after other calls. Such a run
+    /// evaluates `stmt` again up to the call, takes what the calls before it
+    /// returned, and goes on with what the callee returns. When `stmt` runs
+    /// on the tree-walker, every call in it waits at its fallback op.
     pub(super) fn note_call_site(&mut self, start: usize, stmt: &'p Stmt) {
-        let mut heads: Vec<&'p Expr> = Vec::new();
-        match stmt {
-            Stmt::Let(_, Some(e)) | Stmt::Expr(e) | Stmt::Return(Some(e)) => heads.push(e),
-            Stmt::If(e, ..) | Stmt::While(_, e, _) => heads.push(e),
+        let head = match stmt {
+            Stmt::Let(_, Some(e)) | Stmt::Expr(e) | Stmt::Return(Some(e)) => e,
+            Stmt::If(e, ..) | Stmt::While(_, e, _) => e,
             Stmt::Assign(place, _, e) => {
-                heads.push(e);
-                cpl_ir::walk::place_exprs(place, &mut |i| heads.push(i));
+                let mut effects = Effects::default();
+                cpl_ir::walk::place_exprs(place, &mut |i| effects.walk(i));
+                if effects.count > 0 {
+                    return;
+                }
+                e
             }
             _ => return,
-        }
-        let mut effects = Effects::default();
-        heads.iter().for_each(|e| effects.walk(e));
-        let (1, Some(call)) = (effects.count, effects.call) else {
+        };
+        let mut order = Order::default();
+        order.walk(head);
+        let Some(loops) = self.resumable_loops(None) else {
             return;
         };
-        if call.span == Span::default() {
-            return;
+        let fallback = (start..self.ops.len()).find(|&pc| {
+            matches!(self.ops[pc], Op::FallbackStmt { idx, .. }
+                if std::ptr::eq(self.fallback_stmts[idx as usize], stmt))
+        });
+        let mut before: Vec<&'p Expr> = Vec::new();
+        let mut last = None;
+        for call in order.calls {
+            let Some(call) = call.filter(|c| c.span != Span::default()) else {
+                break;
+            };
+            let pc = match fallback {
+                Some(pc) => pc as u32,
+                None => match self.call_op(start, call) {
+                    Some(pc) if last.is_none_or(|last| last < pc) => pc,
+                    _ => break,
+                },
+            };
+            // A statement inside `stmt` that noted this call first is one a
+            // run from a checkpoint cannot find: `stmt` is.
+            self.call_sites
+                .retain(|c| !(c.pc == pc && std::ptr::eq(c.call, call)));
+            self.call_sites.push(CallSite {
+                pc,
+                loops: loops.clone(),
+                stmt,
+                call,
+                before: before.clone(),
+            });
+            if fallback.is_none() {
+                let Some(result) = self.call_result(pc) else {
+                    break;
+                };
+                self.keeps.push((pc, result, call as *const Expr as usize));
+            }
+            last = Some(pc);
+            before.push(call);
         }
+    }
+
+    /// The one call op from `start` on that `call` compiled to.
+    fn call_op(&self, start: usize, call: &Expr) -> Option<u32> {
         let mut calls = (start..self.ops.len()).filter(|&pc| {
             self.spans[pc] == call.span
                 && matches!(self.ops[pc], Op::CallVmI { .. } | Op::CallVmMix { .. })
         });
-        let (Some(pc), None) = (calls.next(), calls.next()) else {
-            return;
-        };
-        if let Some(loops) = self.resumable_loops(None) {
-            self.call_sites.push(CallSite {
-                pc: pc as u32,
-                loops,
-                stmt,
-                call,
-            });
+        match (calls.next(), calls.next()) {
+            (Some(pc), None) => Some(pc as u32),
+            _ => None,
         }
+    }
+
+    /// Where the call op at `pc` puts what it returns (`None` for `Unit`).
+    fn call_result(&self, pc: u32) -> Option<Option<SlotLoc>> {
+        let ret = |fn_id: u16| &self.program.fns[usize::from(fn_id)].ret;
+        Some(match self.ops[pc as usize] {
+            Op::CallVmI { fn_id, dst, .. } => Some(SlotLoc::I(
+                dst,
+                ScalarKind::of_ty(ret(fn_id), self.program)?,
+            )),
+            Op::CallVmMix {
+                fn_id,
+                dst_i,
+                dst_v,
+                dst_some,
+                ret_mode,
+                ..
+            } => match ret_mode {
+                CallRet::Unit => None,
+                CallRet::I => Some(SlotLoc::I(
+                    dst_i,
+                    ScalarKind::of_ty(ret(fn_id), self.program)?,
+                )),
+                CallRet::OptI => Some(SlotLoc::OptI {
+                    val: dst_i,
+                    some: dst_some,
+                    kind: ScalarKind::of_opt_ty(ret(fn_id), self.program)?,
+                }),
+                CallRet::V => Some(SlotLoc::V(dst_v)),
+            },
+            _ => return None,
+        })
     }
 
     pub(super) fn const_bool(e: &Expr) -> Option<bool> {
@@ -1674,6 +1750,46 @@ impl<'p, 'f> Compiler<'p, 'f> {
     }
 }
 
+/// The calls an expression makes, in the order it makes them, with `None`
+/// for any other effect, which a call after it cannot be gone on from.
+#[derive(Default)]
+struct Order<'p> {
+    calls: Vec<Option<&'p Expr>>,
+}
+
+impl<'p> Order<'p> {
+    fn walk(&mut self, e: &'p Expr) {
+        match &e.kind {
+            // What these evaluate more than once, or runs code no call op
+            // shows, is one effect.
+            ExprKind::Fill(..)
+            | ExprKind::Sort(..)
+            | ExprKind::Closure(_)
+            | ExprKind::CallExpr(..) => self.calls.push(None),
+            // What `print` and the like lower to: values bound, then used.
+            ExprKind::Do(block) => {
+                for stmt in &block.stmts {
+                    match stmt {
+                        Stmt::Let(_, None) => {}
+                        Stmt::Let(_, Some(e)) | Stmt::Expr(e) | Stmt::Give(e) => self.walk(e),
+                        _ => return self.calls.push(None),
+                    }
+                }
+            }
+            _ => {
+                cpl_ir::walk::children(e, &mut |c| self.walk(c));
+                let mut effects = Effects::default();
+                effects.walk_one(e);
+                match &e.kind {
+                    ExprKind::Call(..) => self.calls.push(Some(e)),
+                    _ if effects.count > 0 => self.calls.push(None),
+                    _ => {}
+                }
+            }
+        }
+    }
+}
+
 /// The calls and other effects in an expression: what evaluating it again
 /// could do twice.
 #[derive(Default)]
@@ -1683,7 +1799,8 @@ struct Effects<'p> {
 }
 
 impl<'p> Effects<'p> {
-    fn walk(&mut self, e: &'p Expr) {
+    /// `e` itself, not what is inside it.
+    fn walk_one(&mut self, e: &'p Expr) {
         match &e.kind {
             ExprKind::Call(..) => {
                 self.count += 1;
@@ -1707,6 +1824,10 @@ impl<'p> Effects<'p> {
             ) => self.count += 1,
             _ => {}
         }
+    }
+
+    fn walk(&mut self, e: &'p Expr) {
+        self.walk_one(e);
         cpl_ir::walk::children(e, &mut |c| self.walk(c));
     }
 }

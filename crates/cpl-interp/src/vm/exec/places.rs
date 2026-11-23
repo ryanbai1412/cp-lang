@@ -1118,7 +1118,9 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     chunk.traced,
                 );
                 let stmt = chunk.fallback_stmts[idx as usize];
+                let outer = self.enter_fallback(chunk, cur_pc, regs_i, regs_v);
                 let flow = self.stmt(stmt);
+                self.leave_fallback(outer);
                 sync_from_stack(
                     &chunk.slot_map,
                     regs_i,

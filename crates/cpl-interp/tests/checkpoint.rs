@@ -65,6 +65,23 @@ for r in 0..4:
     print(t)
 ";
 
+const SHARED: &str = "fn walk(n: Int, d: Int) -> Int:
+    var s = 0
+    for i in 0..n:
+        s = (s * 7 + i + d) % 1000003
+    return s
+fn tree(n: Int, d: Int) -> Int:
+    if d == 0:
+        return walk(n, d)
+    return (tree(n, d - 1) + tree(n / 2, d - 1) * 3) % 1000003
+var t = 0
+for r in 0..3:
+    t = (t + walk(2000, r) * walk(3000, r + 1) + walk(1000, 2)) % 1000003
+    print(walk(1500, r) % 1000, walk(700, r))
+    t = (t + walk(900, r) + rand(0, 3) + walk(1100, r)) % 1000003
+print(t, tree(900, 3))
+";
+
 const MULTITEST_RAND: &str = "@!multitest
 let n: Int = read()
 var s = 0
@@ -115,6 +132,7 @@ fn a_run_from_a_checkpoint_prints_the_rest_of_the_output() {
         (CALLS, &b""[..]),
         (READS, &input[..]),
         (DEEP, &b""[..]),
+        (SHARED, &b""[..]),
         (MULTITEST_RAND, MULTITEST_INPUT),
     ] {
         let (program, whole, taken) = record(source, input);
@@ -140,6 +158,7 @@ fn a_traced_run_from_a_checkpoint_records_the_whole_trace_from_there() {
         (NESTED, &b""[..]),
         (CALLS, &b""[..]),
         (DEEP, &b""[..]),
+        (SHARED, &b""[..]),
         (MULTITEST_RAND, MULTITEST_INPUT),
     ] {
         let (program, _, taken) = record(source, input);
@@ -201,6 +220,7 @@ fn the_tail_from_a_checkpoint_is_the_whole_runs_last_steps() {
         (ONE_CALL, &b""[..], 400),
         (DEEP, &b""[..], 3000),
         (MULTITEST_RAND, MULTITEST_INPUT, 2000),
+        (SHARED, &b""[..], 3000),
         (NESTED, &b""[..], 1),
     ] {
         let program = program(source);
@@ -259,6 +279,7 @@ fn a_window_from_a_checkpoint_is_the_whole_runs_window() {
         (ONE_CALL, &b""[..]),
         (LONG, &b""[..]),
         (DEEP, &b""[..]),
+        (SHARED, &b""[..]),
         (MULTITEST_RAND, MULTITEST_INPUT),
     ] {
         let program = program(source);
@@ -298,27 +319,55 @@ fn a_window_from_a_checkpoint_is_the_whole_runs_window() {
 
 #[test]
 fn a_timeline_keeps_checkpoints_across_the_whole_run() {
-    let program = program(LONG);
-    let timeline = cpl_interp::trace::Timeline::record_on_this_thread(
-        &program,
-        b"",
-        &config(LONG),
-        LIMITS,
-        64,
-    );
-    let starts = timeline.starts();
-    assert!(starts.len() > 8 && starts.len() <= 64, "{starts:?}");
-    assert!(starts.windows(2).all(|w| w[0] < w[1]), "{starts:?}");
-    assert!(
-        starts[0] < timeline.steps / 8,
-        "{starts:?} of {}",
-        timeline.steps
-    );
-    assert!(
-        *starts.last().unwrap() > timeline.steps / 2,
-        "{starts:?} of {}",
-        timeline.steps
-    );
+    for source in [LONG, DEEP, ONE_CALL, SHARED] {
+        let program = program(source);
+        let timeline = cpl_interp::trace::Timeline::record_on_this_thread(
+            &program,
+            b"",
+            &config(source),
+            LIMITS,
+            64,
+        );
+        let starts = timeline.starts();
+        let of = format!("{starts:?} of {} in {source}", timeline.steps);
+        assert!(starts.len() > 4 && starts.len() <= 64, "{of}");
+        assert!(starts.windows(2).all(|w| w[0] < w[1]), "{of}");
+        assert!(starts[0] < timeline.steps / 4, "{of}");
+        assert!(*starts.last().unwrap() > timeline.steps * 7 / 8, "{of}");
+        let gap = starts.windows(2).map(|w| w[1] - w[0]).max().unwrap();
+        assert!(gap < timeline.steps / 4, "{of}");
+        if source == LONG {
+            assert!(starts.len() > 8 && starts[0] < timeline.steps / 8, "{of}");
+        }
+    }
+}
+
+#[test]
+fn a_counted_runs_checkpoints_resume_to_the_rest_of_the_output() {
+    for source in [ONE_CALL, DEEP, SHARED] {
+        let (program, whole, _) = record(source, b"");
+        let (counted, taken) = cpl_interp::checkpoint::count_on_this_thread(
+            &program,
+            b"",
+            LIMITS,
+            config(source),
+            64,
+            64,
+        );
+        assert!(counted.trap.is_none(), "{:?}", counted.trap);
+        assert!(taken.iter().any(|c| c.depth() > 0), "{source}");
+        for from in &taken {
+            let mut rest = Vec::new();
+            let observed = resume_on_this_thread(&program, b"", from, &mut rest, LIMITS, None);
+            assert!(observed.trap.is_none(), "{:?}", observed.trap);
+            assert_eq!(
+                String::from_utf8_lossy(&rest),
+                String::from_utf8_lossy(&whole[from.printed as usize..]),
+                "from step {}: {source}",
+                from.steps
+            );
+        }
+    }
 }
 
 #[test]

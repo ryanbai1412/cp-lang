@@ -64,6 +64,8 @@ struct FrameAt {
     span: Span,
     /// How many saved domains there were before the call.
     doms: usize,
+    /// What the calls before `site` in its statement returned, by address.
+    before: Vec<(usize, Value)>,
 }
 
 /// A run's state at the start of a round of a loop.
@@ -132,7 +134,30 @@ pub(crate) struct Suspended {
     /// Whether the caller's frame can change during the call, so each
     /// checkpoint reads it again.
     volatile: bool,
+    /// When the call is the tree-walker's, in a statement the caller falls
+    /// back to: the caller's integer registers, which are then not at
+    /// `base_i` of the registers the callee runs on. Its locals are on the
+    /// stack.
+    fallback: Option<(*const i64, usize)>,
 }
+
+/// A VM caller running a statement on the tree-walker, which a call in it
+/// waits in.
+#[derive(Clone, Copy)]
+pub(crate) struct Fallback {
+    caller: *const (),
+    pc: u32,
+    regs_i: *const i64,
+    n_i: usize,
+    regs_v: *const Value,
+    n_v: usize,
+    base: usize,
+    depth: usize,
+    volatile: bool,
+}
+
+/// A call's caller chunk and address, and what it returned last.
+type Kept = (*const (), usize, Value);
 
 /// The step clock, the checkpoints taken, and the one a run starts from.
 pub(crate) struct Clock {
@@ -152,6 +177,14 @@ pub(crate) struct Clock {
     /// In a run from a checkpoint, the call (by address) the caller waits
     /// on, and the frames from its callee in.
     pending: Option<(usize, Vec<FrameAt>)>,
+    /// In a run from a checkpoint, what the calls before the one waited on
+    /// returned, by address.
+    returned: Vec<(usize, Value)>,
+    /// While checkpoints are on, per call depth, what the last call at each
+    /// kept call (by caller chunk and call address) returned.
+    kept: Vec<Vec<Kept>>,
+    /// While checkpoints are on, the VM statement running on the tree-walker.
+    fallback: Option<Fallback>,
     pub(crate) printed: u64,
     pub(crate) resume: Option<Checkpoint>,
     pub(crate) range_from: Option<(i64, i64)>,
@@ -171,6 +204,9 @@ impl Default for Clock {
             known: 0,
             cases_left: None,
             pending: None,
+            returned: Vec::new(),
+            kept: Vec::new(),
+            fallback: None,
             printed: 0,
             resume: None,
             range_from: None,
@@ -179,6 +215,18 @@ impl Default for Clock {
 }
 
 impl Clock {
+    /// Keeps what the call `e` of `caller` at call depth `depth` returned.
+    fn keep(&mut self, depth: usize, caller: *const (), e: usize, value: Value) {
+        if self.kept.len() <= depth {
+            self.kept.resize_with(depth + 1, Vec::new);
+        }
+        let kept = &mut self.kept[depth];
+        match kept.iter_mut().find(|k| k.0 == caller && k.1 == e) {
+            Some(k) => k.2 = value,
+            None => kept.push((caller, e, value)),
+        }
+    }
+
     /// Whether a run from a checkpoint still waits on a call.
     #[inline]
     pub(crate) fn waits(&self) -> bool {
@@ -346,7 +394,111 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
             span: chunk.spans[pc],
             snap: Snap::Unknown,
             volatile: chunk.has_by_ref_closure,
+            fallback: None,
         });
+    }
+
+    /// Before the fallback op at `pc` of `chunk` runs its statement on the
+    /// tree-walker; what it returns goes back to `leave_fallback`.
+    #[cfg(not(target_arch = "wasm32"))]
+    #[inline(always)]
+    pub(crate) fn enter_fallback(
+        &mut self,
+        chunk: &Chunk<'p>,
+        pc: usize,
+        regs_i: &[i64],
+        regs_v: &[Value],
+    ) -> Option<Fallback> {
+        if !self.ckpt.on() {
+            return None;
+        }
+        let here = Fallback {
+            caller: chunk as *const Chunk<'p> as *const (),
+            pc: pc as u32,
+            regs_i: regs_i.as_ptr(),
+            n_i: regs_i.len(),
+            regs_v: regs_v.as_ptr(),
+            n_v: regs_v.len(),
+            base: self.base,
+            depth: self.call_frames.len(),
+            volatile: chunk.has_by_ref_closure,
+        };
+        self.ckpt.fallback.replace(here)
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    #[inline(always)]
+    pub(crate) fn leave_fallback(&mut self, outer: Option<Fallback>) {
+        if self.ckpt.on() {
+            self.ckpt.fallback = outer;
+        }
+    }
+
+    /// Before the tree-walker runs fn `fn_id` on the VM, from the call at
+    /// `span`, its caller's frame at `base`, with `doms` saved domains: when
+    /// that call is in a statement a VM caller falls back to, that caller
+    /// waits on it. Says whether it does, for `unsuspend`.
+    #[cfg(not(target_arch = "wasm32"))]
+    #[inline(always)]
+    pub(crate) fn suspend_fallback(
+        &mut self,
+        fn_id: FnId,
+        span: Span,
+        base: usize,
+        doms: usize,
+    ) -> bool {
+        let Some(at) = self.ckpt.fallback else {
+            return false;
+        };
+        if at.depth + 1 != self.call_frames.len() || at.base != base {
+            return false;
+        }
+        self.ckpt.frames.push(Suspended {
+            caller: at.caller,
+            pc: at.pc,
+            base_i: 0,
+            regs_v: at.regs_v,
+            n_v: at.n_v,
+            base,
+            fn_id: fn_id as u16,
+            depth: at.depth,
+            doms,
+            span,
+            snap: Snap::Unknown,
+            volatile: at.volatile,
+            fallback: Some((at.regs_i, at.n_i)),
+        });
+        true
+    }
+
+    /// The tree-walker's call to fn `fn_id` on the VM, which a VM caller
+    /// falling back to the statement making it waits on.
+    #[cfg(not(target_arch = "wasm32"))]
+    pub(crate) fn run_fn_vm_waited(
+        &mut self,
+        compiled: &CompiledProgram<'p>,
+        fn_id: FnId,
+        span: Span,
+        base: usize,
+        doms: usize,
+    ) -> Res<Flow> {
+        let waits = self.suspend_fallback(fn_id, span, base, doms);
+        let flow = self.run_fn_vm_from_stack(compiled, fn_id).map(Flow::Return);
+        if waits {
+            self.unsuspend();
+        }
+        flow
+    }
+
+    /// After the tree-walker's call `e` returned `value`.
+    #[inline(always)]
+    pub(crate) fn keep_called(&mut self, e: &cpl_ir::Expr, value: &Value) {
+        if let Some(at) = self.ckpt.fallback {
+            if at.depth == self.call_frames.len() {
+                let e = e as *const cpl_ir::Expr as usize;
+                self.ckpt.keep(at.depth, at.caller, e, value.clone());
+            }
+        }
     }
 
     #[cfg(not(target_arch = "wasm32"))]
@@ -364,6 +516,42 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
     fn unsuspend_recording(&mut self) {
         self.ckpt.frames.pop();
         self.ckpt.known = self.ckpt.known.min(self.ckpt.frames.len());
+    }
+
+    /// After the call op at `pc` of `chunk` put what it returned in `regs_i`
+    /// or `regs_v`.
+    #[cfg(not(target_arch = "wasm32"))]
+    #[inline(always)]
+    pub(crate) fn keep_result(
+        &mut self,
+        chunk: &Chunk<'p>,
+        pc: usize,
+        regs_i: &[i64],
+        regs_v: &[Value],
+    ) {
+        if self.ckpt.on() && !chunk.keeps.is_empty() {
+            self.keep_result_recording(chunk, pc, regs_i, regs_v);
+        }
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    #[cold]
+    #[inline(never)]
+    fn keep_result_recording(
+        &mut self,
+        chunk: &Chunk<'p>,
+        pc: usize,
+        regs_i: &[i64],
+        regs_v: &[Value],
+    ) {
+        let Ok(i) = chunk.keeps.binary_search_by_key(&(pc as u32), |k| k.0) else {
+            return;
+        };
+        let (_, loc, e) = &chunk.keeps[i];
+        let value =
+            (loc.as_ref()).map_or(Value::Unit, |loc| crate::vm::read_slot(loc, regs_i, regs_v));
+        let caller = chunk as *const Chunk<'p> as *const ();
+        self.ckpt.keep(self.call_frames.len(), caller, *e, value);
     }
 
     /// At the jump back at `pc` of `chunk`, once a checkpoint is due.
@@ -493,19 +681,23 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
         if callee.params.iter().any(|p| p.mutable) {
             return Snap::No;
         }
-        let Some(site) = caller.call_sites.iter().find(|c| c.pc == s.pc) else {
+        let Some(site) = (caller.call_sites.iter()).find(|c| c.pc == s.pc && c.call.span == s.span)
+        else {
             return Snap::No;
         };
-        let regs_i = &vm_regs_i[s.base_i..s.base_i + caller.num_i];
         // SAFETY: a caller waiting on its call neither moves nor touches
-        // its value registers until the call returns.
+        // its registers until the call returns.
+        let regs_i = match s.fallback {
+            Some((at, n)) => unsafe { std::slice::from_raw_parts(at, n) },
+            None => &vm_regs_i[s.base_i..s.base_i + caller.num_i],
+        };
         let regs_v = unsafe { std::slice::from_raw_parts(s.regs_v, s.n_v) };
         let at = (s.base, span, doms);
         let site_at = Some((site.stmt, site.call));
         // A caller with closures keeps its locals on the stack during calls,
         // where a closure the callee runs may change them.
-        let from_stack = caller.has_by_ref_closure;
-        match self.frame_at(
+        let from_stack = caller.has_by_ref_closure || s.fallback.is_some();
+        let Some(mut frame) = self.frame_at(
             caller,
             caller_fn,
             at,
@@ -514,10 +706,18 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
             &site.loops,
             site_at,
             from_stack,
-        ) {
-            Some(frame) => Snap::Yes(Rc::new(Chain { frame, up })),
-            None => Snap::No,
-        }
+        ) else {
+            return Snap::No;
+        };
+        let kept = self.ckpt.kept.get(k).map_or(&[][..], Vec::as_slice);
+        frame.before = (site.before.iter())
+            .filter_map(|&e| {
+                let e = e as *const cpl_ir::Expr as usize;
+                let (.., value) = kept.iter().find(|x| x.0 == s.caller && x.1 == e)?;
+                Some((e, value.clone()))
+            })
+            .collect();
+        Snap::Yes(Rc::new(Chain { frame, up }))
     }
 
     #[cfg(not(target_arch = "wasm32"))]
@@ -585,6 +785,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
             site,
             span,
             doms,
+            before: Vec::new(),
         })
     }
 
@@ -753,7 +954,9 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
     fn resume_call(&mut self, stmt: &'p Stmt, frames: &[FrameAt], k: usize) -> Res<Flow> {
         let (_, call) = frames[k].site.expect("a caller frame waits on a call");
         self.ckpt.pending = Some((call, frames[k + 1..].to_vec()));
+        self.ckpt.returned = frames[k].before.clone();
         let flow = self.stmt(stmt);
+        self.ckpt.returned.clear();
         if self.ckpt.pending.take().is_some() {
             return trap(Span::default(), "the checkpoint does not match the program");
         }
@@ -775,18 +978,24 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 return Ok(value);
             }
         }
-        self.call(id, args, span)
+        let value = self.call(id, args, span)?;
+        self.keep_called(e, &value);
+        Ok(value)
     }
 
     /// At the call `e`: when it is the call a run from a checkpoint waits
     /// on, that call from where it was, and what it returns.
     #[cold]
     pub(crate) fn resume_pending(&mut self, e: &cpl_ir::Expr) -> Res<Option<Value>> {
-        if !matches!(&self.ckpt.pending, Some((call, _)) if *call == e as *const cpl_ir::Expr as usize)
-        {
+        let at = e as *const cpl_ir::Expr as usize;
+        if let Some(i) = self.ckpt.returned.iter().position(|d| d.0 == at) {
+            return Ok(Some(self.ckpt.returned.swap_remove(i).1));
+        }
+        if !matches!(&self.ckpt.pending, Some((call, _)) if *call == at) {
             return Ok(None);
         }
         let (_, frames) = self.ckpt.pending.take().unwrap();
+        self.ckpt.returned.clear();
         self.resume_callee(&frames, 0).map(Some)
     }
 }

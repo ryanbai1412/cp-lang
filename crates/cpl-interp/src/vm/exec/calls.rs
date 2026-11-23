@@ -622,6 +622,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     );
                 }
                 regs_i[dst as usize] = ScalarKind::unbox_val(&val);
+                self.keep_result(chunk, cur_pc, regs_i, regs_v);
             }
             Op::CallVmMix {
                 fn_id,
@@ -718,6 +719,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     }
                     CallRet::V => regs_v[dst_v as usize] = val,
                 }
+                self.keep_result(chunk, cur_pc, regs_i, regs_v);
             }
             Op::CallClosure {
                 callee_v,

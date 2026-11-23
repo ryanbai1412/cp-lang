@@ -1541,6 +1541,9 @@ pub(crate) struct CallSite<'p> {
     pub loops: Vec<LoopReg>,
     pub stmt: &'p Stmt,
     pub call: &'p Expr,
+    /// The calls `stmt` evaluates before `call`: a run from a checkpoint
+    /// takes what they returned instead of making them again.
+    pub before: Vec<&'p Expr>,
 }
 
 pub(crate) struct Chunk<'p> {
@@ -1570,6 +1573,10 @@ pub(crate) struct Chunk<'p> {
     pub has_by_ref_closure: bool,
     pub back_edges: Vec<BackEdge>,
     pub call_sites: Vec<CallSite<'p>>,
+    /// The call ops, by pc in order, whose result a call site's `before`
+    /// needs: where each one's op puts it (`None` for `Unit`), and the call's
+    /// address.
+    pub keeps: Vec<(u32, Option<SlotLoc>, usize)>,
 }
 
 #[derive(Clone, Copy)]

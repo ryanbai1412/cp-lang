@@ -3034,7 +3034,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
         let mut flow = if !feeding && !has_part && !(has_alias && has_fn_param) {
             if let Some(compiled) = self.vm.clone() {
                 if compiled.fns.get(id).is_some_and(Option::is_some) {
-                    self.run_fn_vm_from_stack(&compiled, id).map(Flow::Return)
+                    self.run_fn_vm_waited(&compiled, id, span, saved, dom_mark)
                 } else {
                     if let Some(stats) = &mut self.vm_stats {
                         stats.record(format!("fn:{}(uncompiled)", f.name));
