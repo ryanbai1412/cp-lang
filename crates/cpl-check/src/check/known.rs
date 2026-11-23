@@ -206,7 +206,6 @@ impl<'a> Checker<'a> {
                 }),
                 _ => None,
             },
-            ("choose2", [_]) => Some(Ty::Int),
             ("adjacency", [edges, ..]) => {
                 let elem = self.element_ty(edges);
                 let v_ty = match &elem {

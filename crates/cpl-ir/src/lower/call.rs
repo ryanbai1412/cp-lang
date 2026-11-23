@@ -2273,28 +2273,6 @@ impl<'a> Lowerer<'a> {
                 let value = self.expr(exprs[0], None);
                 self.len_of(value, span)
             }
-            "choose2" => {
-                let Some(exprs) = self.positional_any("choose2", args, 1, span) else {
-                    return self.err_expr(span);
-                };
-                let n = self.expect(exprs[0], &Ty::Int);
-                self.do_expr(Some(&Ty::Int), span, |lw, out| {
-                    let v = lw.hold(n, out);
-                    let prev = lw.int_add(v.clone(), -1);
-                    let prod = lw.mk(
-                        ExprKind::Binary(BinOp::Mul, Box::new(v), Box::new(prev)),
-                        Ty::Int,
-                        span,
-                    );
-                    let two = lw.int_lit(2, span);
-                    let res = lw.mk(
-                        ExprKind::Binary(BinOp::Div, Box::new(prod), Box::new(two)),
-                        Ty::Int,
-                        span,
-                    );
-                    out.push(Stmt::Give(res));
-                })
-            }
             "minmax" => {
                 let Some(exprs) = self.positional_any("minmax", args, 2, span) else {
                     return self.err_expr(span);

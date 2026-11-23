@@ -3628,6 +3628,9 @@ library. Reverse: an `Int`-only `aliens` plus a separate wide variant.
   `Item` and `Cut`. `choose2(n)` lowers directly to `n * (n - 1) / 2`.
   Reason: eliminates `min`/`max` + `Cut(lo)..Cut(hi)` boilerplate in `cf2147f` while keeping `Item` and `Cut` distinct.
   Reverse: remove `minmax`/`choose2` from `cpl-check/src/prelude.rs`, `cpl-check/src/check/call.rs`, and `cpl-ir/src/lower/call.rs`.
+  Update (builtin floor, Q1 default): `choose2` is no longer a compiler builtin. The prelude brings in
+  `std.math.choose2`, whose body is the one definition; the lowering arm gave `choose2(-3) == 6`, against the
+  documented `0`. Reverse: restore the three arms and drop `choose2` from `spec/std/prelude.cp`.
 - **61.5 Destructured fresh domains (`let (domain C, comp) = f(...)`) are type names for the rest of their scope, nested `fn`s included (clarifies 33.1/33.2 and 58).**
   A domain bound by destructuring `let (domain C, comp) = f(...)` has the same scoping as `domain C = ...`: top-level
   bindings pre-register their `DomainId` in `collect_all` and reuse that slot at the `let` site so sibling/nested `fn`s
