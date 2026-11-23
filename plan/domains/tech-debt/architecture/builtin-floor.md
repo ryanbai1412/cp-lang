@@ -13,15 +13,25 @@ Measured 89 before this note; 88 after `choose2` moved (below).
 | Class | Stays? | Names |
 |---|---|---|
 | Storage: types and constructors | intrinsic | `Bool` `Char` `F64` `I128` `Int` `U64` `Str` `List` `Map` `Set` `HashMap` `HashSet` `Some` `some` `MAX` `MIN` `zero` `one` `K` |
-| Storage: access to lists, ranges, positions | intrinsic | `len` `size` `is_empty` `at` `try_at` `from_idx` `nth` `first` `last` `swap` `copy` `keys` `values` `start` `end` `bounds` `cuts` `before` `after` `wrap` `range` `count` |
+| Storage: access to lists, ranges, positions | intrinsic | `len` `size` `is_empty` `at` `try_at` `from_idx` `nth` `first` `last` `swap` `copy` `keys` `values` `start` `end` `bounds` `cuts` `before` `after` `wrap` `range` `count` `rev` `pairs` |
 | I/O | intrinsic | `print` `read` `read_line` `read_output` `debug` `flush` `ask` `rand` |
 | Bits | intrinsic | `popcount` `ctz` `clz` `bit_width` `bit_ceil` `bit` |
 | Numeric primitives | intrinsic | `abs` `min` `max` `sqrt` `floor` `ceil` `round` `trunc` `atan2` |
-| Derived: std body exists | move | `isqrt` (math) `sum` `prod` `all` `any` `sort` `sorted` `pairs` `runs` `span` `first_ge` `first_gt` `last_le` (seq) `rev` `prefix` `adjacency` `AddAction` (algebra, prefix, graph) |
-| Derived: std body missing | move, body first | `minmax` `counts` `shuffle` `laws_hold` `AffineAction` `AssignAction` `FlipAction` |
-| Moved | done | `choose2` |
+| Derived: std body exists | move | `isqrt` (math) `sum` `prod` `all` `any` `sort` `sorted` `runs` `span` `first_ge` `first_gt` `last_le` (seq) `prefix` `adjacency` `AddAction` (algebra, prefix, graph) |
+| Derived: std body missing | move, body first | `counts` `shuffle` `laws_hold` `AffineAction` `AssignAction` `FlipAction` |
+| Moved | done | `choose2` `minmax` |
 
-Totals: 64 intrinsic, 25 derived (1 moved). Floor target for v0.3: 64.
+Totals: 66 intrinsic, 23 derived (2 moved). Floor target for v0.3: 66.
+
+Reclassified after reading the arms: `rev` is an O(1) reverse view over a list, string, array or
+range, and `pairs` on a domain is the domain's own pair list (`domain_pairs_list`); both are
+storage views, not algorithms.
+
+Two derived names need more than a body:
+- `counts` builds a synthesized `Counter_N` struct over `HashMap`/`Map` whose missing keys read 0.
+  Moving it needs a std `Counter<T>` type with that indexing (stdlib request).
+- `shuffle` is `Mutation::Shuffle`. A Fisher-Yates body over `rand` would change the random stream,
+  so seeded programs would print different output; that needs a decision before it moves.
 
 ## How a name moves
 
