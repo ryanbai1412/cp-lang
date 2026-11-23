@@ -1,8 +1,8 @@
-"variables":{"stdout":{"name":"stdout","type":"what the program printed, a line at a time","kind":"json"},"s":{"name":"s","type":"Subset\u003cB>","kind":"scalar"}},"runs":{"fast":{"label":"cpl run","steps":[{"id":0,"line":2,"label":"var s = Subset\u003cB>.empty","stage":"main","values":{"stdout":[],"s":0},"locals":{},"frames":[{"fn":"main","line":2}]},
-{"id":1,"line":3,"label":"s.set(B(2), true)","stage":"main","values":{"stdout":[],"s":4},"locals":{},"frames":[{"fn":"main","line":3}]},
-{"id":2,"line":4,"label":"s.set(B(0), true)","stage":"main","values":{"stdout":[],"s":5},"locals":{},"frames":[{"fn":"main","line":4}]},
-{"id":3,"line":5,"label":"print → 2","stage":"main","values":{"stdout":["2"],"s":5},"locals":{},"checkpoint":"print 1","frames":[{"fn":"main","line":5}]},
-{"id":4,"line":6,"label":"s.set(B(2), false)","stage":"main","values":{"stdout":["2"],"s":1},"locals":{},"frames":[{"fn":"main","line":6}]},
-{"id":5,"line":7,"label":"print → 1 YES","stage":"main","values":{"stdout":["2","1 YES"],"s":1},"locals":{},"checkpoint":"print 2","frames":[{"fn":"main","line":7}]},
-{"id":6,"line":7,"label":"the program ended","stage":"main","values":{"stdout":["2","1 YES"],"s":1},"locals":{},"checkpoint":"end","frames":[{"fn":"main","line":7}]}]}}}
+"variables":{"stdout":{"name":"stdout","type":"what the program printed, a line at a time","kind":"json"},"s":{"name":"s","type":"Subset\u003cB>","kind":"json"}},"runs":{"fast":{"label":"cpl run","steps":[{"id":0,"line":2,"label":"var s = Subset\u003cB>.empty","stage":"main","values":{"stdout":[],"s":{"bits":"0"}},"locals":{},"frames":[{"fn":"main","line":2}]},
+{"id":1,"line":3,"label":"s.set(B(2), true)","stage":"main","values":{"stdout":[],"s":{"bits":"4"}},"locals":{"self":{"bits":"4"},"b":2,"on":true},"frames":[{"fn":"Subset.set","line":3},{"fn":"main","line":3}]},
+{"id":2,"line":4,"label":"s.set(B(0), true)","stage":"main","values":{"stdout":[],"s":{"bits":"5"}},"locals":{"self":{"bits":"5"},"b":0,"on":true},"frames":[{"fn":"Subset.set","line":4},{"fn":"main","line":4}]},
+{"id":3,"line":5,"label":"print → 2","stage":"main","values":{"stdout":["2"],"s":{"bits":"5"}},"locals":{},"checkpoint":"print 1","frames":[{"fn":"main","line":5}]},
+{"id":4,"line":6,"label":"s.set(B(2), false)","stage":"main","values":{"stdout":["2"],"s":{"bits":"1"}},"locals":{"self":{"bits":"1"},"b":2,"on":false},"frames":[{"fn":"Subset.set","line":6},{"fn":"main","line":6}]},
+{"id":5,"line":7,"label":"print → 1 YES","stage":"main","values":{"stdout":["2","1 YES"],"s":{"bits":"1"}},"locals":{},"checkpoint":"print 2","frames":[{"fn":"main","line":7}]},
+{"id":6,"line":7,"label":"the program ended","stage":"main","values":{"stdout":["2","1 YES"],"s":{"bits":"1"}},"locals":{},"checkpoint":"end","frames":[{"fn":"main","line":7}]}]}}}
 stderr:

@@ -96,11 +96,25 @@ impl<'a> Lowerer<'a> {
 }
 
 impl<'a> Lowerer<'a> {
-    /// The `impl Index` struct the type expression `e` names: `T`, a generic's
+    /// The `impl Index` struct the type expression `e` names: `T`, an alias of it, a generic's
     /// argument, or an instance `Sub<V>`.
     pub(super) fn index_struct_of(&mut self, e: &ast::Expr) -> Option<StructId> {
         match &e.kind {
-            ast::ExprKind::Name(name) if self.lookup(name).is_none() => self.index_struct(name),
+            ast::ExprKind::Name(name) if self.lookup(name).is_none() => {
+                let Some(Sym::Alias(aid)) = self.get_sym(name) else {
+                    return self.index_struct(name);
+                };
+                let (m, ty_ast, offset) = self.aliases[aid];
+                let sm = std::mem::replace(&mut self.cur_mod, m);
+                let so = std::mem::replace(&mut self.offset, offset);
+                let resolved = self.resolve_ty(ty_ast);
+                self.cur_mod = sm;
+                self.offset = so;
+                match resolved {
+                    Ty::Struct(sid) => self.structs[sid].index_domain.is_some().then_some(sid),
+                    _ => None,
+                }
+            }
             ast::ExprKind::Generic { base, args } => {
                 let ast::ExprKind::Name(name) = &base.kind else {
                     return None;
