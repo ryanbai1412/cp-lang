@@ -244,7 +244,6 @@ documented. The stdlib's own gaps are in `std/GAPS.md`.
 - core-06/gen-perm.cp: compiler
 - core-06/gen-rooted-shape.cp: compiler
 - core-06/gen-str-of-alphabet.cp: compiler
-- core-06/check-read-output-type-argument.cp: compiler
 - core-07/fold-with-init.cp: compiler
 - core-07/assign-into-range.cp: compiler
 - core-07/sorted-has-no-desc-flag.cp: stdlib
