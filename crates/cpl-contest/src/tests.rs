@@ -366,7 +366,7 @@ fn test_reports_each_case_and_expands_failures() {
         .collect();
     assert_eq!(
         report,
-        "  1     ok N ms\n  2     WA N ms\n     expected: 9\n     got:      4\n     first difference at line 1, token 1: expected `9`, got `4`\n  hand  ran N ms\n     output: 8\n  2/3 passed\n"
+        "  1     ok N ms\n  2     WA N ms\n     expected: 9\n     got:      4\n     first difference at line 1, token 1: expected `9`, got `4`\n  hand  ran N ms\n     output: 8\n  2/3 passed (1 had no expected output)\n"
     );
     std::fs::remove_dir_all(dir).unwrap();
 }
@@ -380,7 +380,10 @@ fn the_test_command_judges_with_a_checker_or_an_interactor() {
 
     let (code, out, _) = cli(test::run, &[path, "--fast", &solution]);
     assert_eq!(code, 1);
-    assert!(out.ends_with("  2/3 passed\n"), "{out}");
+    assert!(
+        out.ends_with("  2/3 passed (1 had no expected output)\n"),
+        "{out}"
+    );
     let (code, out, _) = cli(test::run, &[path, "--fast", &solution, "--format", "json"]);
     assert_eq!(code, 1);
     let json = cpl_json::parse(&out).expect("cpl test --format json is JSON");
@@ -688,14 +691,18 @@ fn a_watch_round_checks_then_tests_and_recovers_after_a_fix() {
     let (passed, out) = round(&mut watch, &args);
     assert!(!passed);
     assert!(
-        out.starts_with("  check: no errors\n") && out.ends_with("  2/3 passed\n"),
+        out.starts_with("  check: no errors\n")
+            && out.ends_with("  2/3 passed (1 had no expected output)\n"),
         "{out}"
     );
 
     // Fix the wrong expected output: the same watch passes.
     std::fs::write(dir.join("d.tests/2.out"), "4\n").unwrap();
     let (passed, out) = round(&mut watch, &args);
-    assert!(passed && out.ends_with("  3/3 passed\n"), "{out}");
+    assert!(
+        passed && out.ends_with("  3/3 passed (1 had no expected output)\n"),
+        "{out}"
+    );
 
     // An error in the source stops the round before the tests.
     std::fs::write(&source, "let n: 1..=5 = read()\nprint(m)\n").unwrap();

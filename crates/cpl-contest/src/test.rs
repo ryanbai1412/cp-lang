@@ -168,7 +168,14 @@ pub fn render(results: &[CaseResult]) -> String {
         }
     }
     let passed = results.iter().filter(|r| r.passed()).count();
-    out.push_str(&format!("  {passed}/{} passed\n", results.len()));
+    out.push_str(&format!("  {passed}/{} passed", results.len()));
+    // A case with nothing to judge against passes without being checked.
+    match results.iter().filter(|r| r.verdict.is_none()).count() {
+        0 => {}
+        1 if results.len() == 1 => out.push_str(" (it had no expected output)"),
+        unchecked => out.push_str(&format!(" ({unchecked} had no expected output)")),
+    }
+    out.push('\n');
     out
 }
 
