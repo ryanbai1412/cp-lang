@@ -187,10 +187,12 @@ class DebtRatchetTest(unittest.TestCase):
             self._write(root, "crates/a/tests/t.rs", "\n".join([
                 "const NOT_BUILT: &[&str] = &[", '    "x.cp", // why', '    "y,z.cp",', "];",
                 'const KNOWN_WORSE: &[(&str, &str)] = &[("a", "b"), ("c", "d")];',
+                'const KNOWN_DIFFERS: [(&str, &str); 1] = [("e", "*")];',
                 'const CASES: &[&str] = &["kept"];', ""]))
             self._write(root, "spec/rule-gaps.txt", "# header\nR1\n\nR2\n")
             subprocess.run(["git", "add", "-A"], cwd=root, check=True, env=dr._git_env())
             self.assertEqual(sorted(dr.skip_lists(root)), [
+                "crates/a/tests/t.rs KNOWN_DIFFERS",
                 "crates/a/tests/t.rs KNOWN_WORSE", "crates/a/tests/t.rs KNOWN_WORSE",
                 "crates/a/tests/t.rs NOT_BUILT", "crates/a/tests/t.rs NOT_BUILT",
                 "spec/rule-gaps.txt", "spec/rule-gaps.txt",

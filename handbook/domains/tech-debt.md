@@ -135,7 +135,7 @@ means no real check exists yet. Targets and current numbers are in
 | Docs point at code that exists | Paths named in architecture docs that are gone | Ratchet | `scripts/debt-ratchet.py` (`stale_arch_paths`) |
 | Handbook reads for an outsider | Shared-history phrases, commit hashes | Lint | `scripts/check-handbook.py` |
 | Skipped tests don't grow | Ignored Rust tests, pending tests | Ratchet | `scripts/debt-ratchet.py` (`rust_ignore`, `pending_tests`) |
-| Corpus tests are generated, not committed | Files committed under `corpus/problems/*/tests/` | Ratchet, and the commit tier refuses a new one (`problem-packages/R9`) | `scripts/debt-ratchet.py` (`corpus_test_files`), `scripts/check.sh` |
+| Corpus tests are generated, not committed | Files committed under `corpus/problems/*/tests/` | Ratchet, and the commit tier refuses a new one (problem-packages/R9) | `scripts/debt-ratchet.py` (`corpus_test_files`), `scripts/check.sh` |
 | Allowlists, xfails and known-difference lists don't grow | Entries across every such list | Ratchet | `scripts/debt-ratchet.py` (`skip_lists`) |
 | Every register row names a real check | Rows naming no existing test, command or job, across every domain | Ratchet | `scripts/debt-ratchet.py` (`register_rows`) |
 | Every rule has one home | Lints and gates citing no handbook guideline heading | Count, gated once domains fold their rules ([quality.md](../process/quality.md#rules-live-in-guidelines)) | `scripts/debt-ratchet.py` (`uncited_rules`) |
@@ -143,7 +143,7 @@ means no real check exists yet. Targets and current numbers are in
 | Suites catch the bugs they claim to | Mutation score of `cpl-check` and `cpl-lint` suites | Mutation testing on the code each change touched | `scripts/mutation-score.py` |
 | Escaped bugs fix the suite | Escapes whose suite isn't fixed, or that name no register row | Escape log, checked by a count | `plan/escapes.toml`, `scripts/debt-ratchet.py` (`escapes_open`) |
 | Every feature works in every tool | Features (syntax forms, std items) with no case in the checker, VM, C++ backend, trace, fmt, lint, LSP or docs | Generated coverage matrix | `missing` |
-| Every builtin with two engine paths agrees at its edges | Builtins without an interpreter-vs-C++ case at negative, empty, overflow and boundary inputs | Generated differential cases | `missing` |
+| Every builtin with two engine paths agrees at its edges | Built-in members that disagree between the interpreter and sanitized C++ on empty, extreme or repeated values | Generated differential cases from the member catalog; known bugs in `KNOWN_EDGE_DIFFERS` | `crates/cpl-cli/tests/differential.rs` (`builtin_members_agree_between_interp_and_sanitized_cpp_at_the_edges`) |
 | Stdlib privilege gone, not hidden | Std items that compile only because the compiler knows their name | Re-architecture: build std as a user library in a test | `missing` |
 | Facts are generated, not written twice | Hand-written lists (lints, crates, metrics, std items) that a generator could produce | Ratchet with a detector | `missing` |
 | Generated files are fresh | Committed generated files that differ from regenerating them | Regenerate and diff in the gate | `scripts/regen.sh` |

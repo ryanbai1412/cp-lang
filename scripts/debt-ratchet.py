@@ -499,7 +499,7 @@ def stale_arch_paths(root: Path) -> list[str]:
 
 SKIP_NAME_RE = re.compile(r"SKIP|XFAIL|KNOWN|ALLOW|NOT_|DIFFER|PENDING|IGNORE|WORSE|EXEMPT|FAIL|GAP")
 SKIP_CONST_RE = re.compile(
-    r"^\s*(?:pub(?:\([a-z]+\))?\s+)?(?:const|static)\s+([A-Z][A-Z0-9_]*)\s*:\s*&(?:'static\s+)?\[[^=]*=\s*&\[",
+    r"^\s*(?:pub(?:\([a-z]+\))?\s+)?(?:const|static)\s+([A-Z][A-Z0-9_]*)\s*:\s*&?(?:'static\s+)?\[[^=]*=\s*&?\[",
     re.M)
 SKIP_FILE_RE = re.compile(r"(gaps|failing|allow|xfail|skip)[^/]*\.txt$")
 

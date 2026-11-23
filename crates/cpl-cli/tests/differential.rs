@@ -1064,3 +1064,182 @@ print(a[n - 1], b[n / 2])
         elapsed
     );
 }
+
+/// The values every catalog row runs against: the catalog's own, then
+/// empty, extreme and repeated ones of the same types, as the body of a fn.
+const EDGE_FIXTURES: [(&str, &str); 4] = [
+    (
+        "catalog",
+        "var xs = [3, 1, 2]\nvar s = \"hello\"\nvar m = Map<Int, Int>()\nm[1] = 10\nm[5] = 50\n\
+         var st = Set<Int>()\nst.insert(4)\nst.insert(9)\nvar a: [0..3]Int = 0\na[1] = 7\n",
+    ),
+    (
+        "empty",
+        "var xs: List<Int> = []\nvar s = \"\"\nvar m = Map<Int, Int>()\nvar st = Set<Int>()\n\
+         var a: [0..3]Int = 0\n",
+    ),
+    (
+        "extreme",
+        "var xs = [-3, 9223372036854775807, -9223372036854775807]\nvar s = \"Zz 9 ~\"\n\
+         var m = Map<Int, Int>()\nm[-1] = -10\nm[0] = 9223372036854775807\n\
+         var st = Set<Int>()\nst.insert(-4)\nst.insert(0)\nvar a: [0..3]Int = 0\n\
+         a[0] = -9223372036854775807\na[2] = 9223372036854775807\n",
+    ),
+    (
+        "repeated",
+        "var xs = [2, 2, 2, 2]\nvar s = \"aaaa\"\nvar m = Map<Int, Int>()\nm[7] = 7\n\
+         var st = Set<Int>()\nst.insert(7)\nvar a: [0..3]Int = 5\n",
+    ),
+];
+
+/// Rows known to disagree, as (`Receiver.member`, fixture or `*`). Each is
+/// a bug in one engine; delete its entry with the fix.
+const KNOWN_EDGE_DIFFERS: [(&str, &str); 6] = [
+    // The C++ has no `first`/`last` for a fixed-size array and doesn't compile.
+    ("[D]T.first", "*"),
+    ("[D]T.last", "*"),
+    // The interpreter stops on a `while` that isn't monotone; the C++ answers.
+    ("Str.reach", "extreme"),
+    ("[D]T.reach", "extreme"),
+    // `x * 2` and `x + 1` overflow inside the lambda: the interpreter runs
+    // on, and the C++ overflows a signed integer, which is undefined.
+    ("List.map", "extreme"),
+    ("[D]T.map", "extreme"),
+];
+
+/// A catalog row's example as statements that print what it gives and,
+/// when it changes its receiver, the receiver after.
+fn edge_body(member: &cpl_check::BuiltinMember) -> String {
+    use cpl_check::Receiver;
+    let ann = match member.example_ty {
+        "_" | "" => String::new(),
+        ty => format!(": {ty}"),
+    };
+    let mut body = match member.example_ty {
+        "" => member.example.to_string(),
+        "_" => format!("let got = {}\nprint(List(got))", member.example),
+        "Bool" => format!("let got{ann} = {}\nprint(yes(got))", member.example),
+        ty if ty.starts_with('?') => format!(
+            "let got{ann} = {}\nif let v = got: print(v)\nelse: print(\"none\")",
+            member.example
+        ),
+        _ => format!("let got{ann} = {}\nprint(got)", member.example),
+    };
+    if member.mutates {
+        let receiver = match member.receiver {
+            Receiver::List => "xs",
+            Receiver::Str => "s",
+            Receiver::Map => "m",
+            Receiver::Set => "st",
+            Receiver::Array => "a",
+        };
+        body.push_str(&format!("\nprint({receiver})"));
+    }
+    body
+}
+
+fn indented(text: &str) -> String {
+    text.lines().map(|line| format!("    {line}\n")).collect()
+}
+
+/// Every built-in member (`cpl_check::BUILTIN_MEMBERS`) on empty, extreme
+/// and repeated values: the interpreter and the sanitized C++ print the
+/// same and stop the same way, a runtime error included. Rows that run
+/// through are one program per fixture; a row that stops is a program of
+/// its own, so it can't hide the rows after it.
+#[test]
+fn builtin_members_agree_between_interp_and_sanitized_cpp_at_the_edges() {
+    let dir = Path::new(env!("CARGO_TARGET_TMPDIR")).join("builtin_edges");
+    std::fs::create_dir_all(&dir).unwrap();
+    let write = |name: &str, source: &str| {
+        let path = dir.join(format!("{name}.cp"));
+        std::fs::write(&path, source).unwrap();
+        path.to_string_lossy().into_owned()
+    };
+    let agree = |name: &str, path: &str| -> Result<(), String> {
+        let interpreted = cpl_cli::run_with_input(&["run", path], b"");
+        let built = cpl_cli::run(&["build", path, "--checks", "traps", "-o", "-"]);
+        if built.code != 0 {
+            return Err(format!(
+                "`cpl build {path}` exited with {}:\n{}",
+                built.code, built.stderr
+            ));
+        }
+        let (stdout, code) = compile_and_run(name, "builtin_edges", &built.stdout, b"", None)?;
+        if stdout != interpreted.stdout || code != Some(i32::from(interpreted.code)) {
+            return Err(format!(
+                "{path}: the interpreter printed (status {})\n{}{}\nthe C++ printed (status {code:?})\n{}",
+                interpreted.code,
+                String::from_utf8_lossy(&interpreted.stdout),
+                interpreted.stderr,
+                String::from_utf8_lossy(&stdout)
+            ));
+        }
+        Ok(())
+    };
+    let mut wrong = Vec::new();
+    let mut alone = Vec::new();
+    for (fixture, values) in EDGE_FIXTURES {
+        // Rows that run through, a few to a program so each stays under a judge's 64 KB.
+        let mut together: Vec<String> = Vec::new();
+        for (i, member) in cpl_check::BUILTIN_MEMBERS.iter().enumerate() {
+            let who = format!("{}.{}", member.receiver.name(), member.name);
+            if KNOWN_EDGE_DIFFERS
+                .iter()
+                .any(|&(w, f)| w == who && (f == "*" || f == fixture))
+            {
+                continue;
+            }
+            let func = format!(
+                "fn row{i}():\n{}{}",
+                indented(values),
+                indented(&edge_body(member))
+            );
+            let name = format!("{fixture}_row{i}");
+            let path = write(&name, &format!("{func}row{i}()\n"));
+            let ran = cpl_cli::run_with_input(&["run", &path], b"");
+            match ran.code {
+                0 => together.push(format!("{func}print(\"{name}\")\nrow{i}()\n")),
+                cpl_cli::EXIT_FAILED => alone.push((name, path)),
+                code => wrong.push(format!(
+                    "{}.{} on {fixture} values: `cpl run` exited with {code}:\n{}",
+                    member.receiver.name(),
+                    member.name,
+                    ran.stderr
+                )),
+            }
+        }
+        for (k, rows) in together.chunks(25).enumerate() {
+            let name = format!("{fixture}_{k}");
+            let path = write(&name, &rows.concat());
+            if let Err(why) = agree(&name, &path) {
+                wrong.push(why);
+            }
+        }
+    }
+    let threads = std::thread::available_parallelism().map_or(4, |n| n.get());
+    let chunk = alone.len().div_ceil(threads).max(1);
+    let stopped: Vec<String> = std::thread::scope(|scope| {
+        let handles: Vec<_> = alone
+            .chunks(chunk)
+            .map(|part| {
+                scope.spawn(|| {
+                    part.iter()
+                        .filter_map(|(name, path)| agree(name, path).err())
+                        .collect::<Vec<_>>()
+                })
+            })
+            .collect();
+        handles
+            .into_iter()
+            .flat_map(|h| h.join().unwrap())
+            .collect()
+    });
+    wrong.extend(stopped);
+    assert!(
+        wrong.is_empty(),
+        "{} disagreement(s):\n{}",
+        wrong.len(),
+        wrong.join("\n\n")
+    );
+}
