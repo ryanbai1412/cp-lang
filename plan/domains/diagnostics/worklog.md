@@ -470,3 +470,7 @@ Landed since 23:10: four type/flow lints from `spec/idioms/lints.md`, L0571 `neg
   silences it. Derived divisors (`a.len`, `k - 1`) are skipped: the first
   cut flagged 18 corpus/std spots, all nonzero by logic the bounds can't
   see. 0 hits on corpus, newcomer and std now.
+- Dropped the `list_repeat` diagnostics golden: `[x] * n` is n copies since
+  compiler's 353a26177 (decision 135), so its E0309 golden was stale and
+  cpl-lsp parity was red on it; tests/programs/list_repeat.cp covers it.
+  Routed the `Fenwick2D` E0501 regression (b8eadc858) to stdlib.

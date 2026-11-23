@@ -1,3 +1,0 @@
-let n = 3
-let a = [0] * n
-print(a)

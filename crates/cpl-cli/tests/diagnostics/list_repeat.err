@@ -1,8 +1,0 @@
-error[E0309]: `*` can't be applied to `List<Int>` and `Int`
-  --> list_repeat.cp:2:9
-  |
-2 | let a = [0] * n
-  |         ^^^^^^^
-  = help: `n` copies of `x` are `[n].filled(x)`
-
-list_repeat.cp: 1 error
