@@ -133,62 +133,62 @@ tests for wording.
 |---|---|---|---|
 | Stress finds planted bugs of every P0 class | seeded bugs found, per class | hand-written suite (29 bugs, 11 classes) | `crates/cpl-cli/tests/seeded_bugs.rs` `stress_finds_every_seeded_bug_and_shrinks_it_to_the_minimal_input` |
 | Stress finds bugs nobody planted by hand | share of generated mutants of corpus solutions that stress kills | `missing`: a mutation suite over `research/` ports with their brutes | `missing` |
-| A bug is found fast | median and max seconds to a minimal case | budget script on three problems; the seeded median is printed, `missing` as an assertion | `bench/stress/budget.py`, `seeded_bugs.rs`; `missing` |
+| A bug is found fast | median and max seconds to a minimal case | budget script on three problems; the seeded median is printed, `missing` as an assertion | `bench/stress/budget.py`, `crates/cpl-cli/tests/seeded_bugs.rs`; `missing` |
 | Generated inputs satisfy their declared types | invalid cases per spec shape | property tests per shape | `crates/cpl-stress/src/tests.rs` (`cases_are_valid_small_and_the_same_for_the_same_seed`, `simple_connected_and_acyclic_graphs_are_generated_valid`, ...) |
 | Every generated input is one the program's own reader accepts | cases the program rejects on read | `missing` as a generated suite: checked only for 10 corpus problems | `crates/cpl-cli/tests/stress_corpus.rs`; `missing` |
-| Every readable input shape can be generated | `read()` types stress can't make, reported where they are | hand-written suite; `missing`: a sweep over every corpus and conformance program | `tests.rs` `types_the_generator_cannot_make_are_reported_where_they_are`; `missing` |
-| Inputs cover the edges (empty, one, max, equal values, paths and stars) | edge shapes reached per spec | property tests for trees; `missing` for others | `tests.rs` `random_trees_include_paths_and_stars`, `full_size_cases_use_the_whole_range`; `missing` |
-| `@gen` generators work without a C++ compiler and still shrink | seeded bugs shrunk with no `g++` on PATH | hand-written suite | `stress_corpus.rs` `cpl_stress_interprets_a_gen_fn_where_no_cpp_compiler_is` |
-| A wrong brute or a crashing generator is blamed, not the solution | misattributed failures | hand-written suite | `tests.rs` `a_failing_brute_stops_the_run_with_the_input` |
+| Every readable input shape can be generated | `read()` types stress can't make, reported where they are | hand-written suite; `missing`: a sweep over every corpus and conformance program | `crates/cpl-stress/src/tests.rs` `types_the_generator_cannot_make_are_reported_where_they_are`; `missing` |
+| Inputs cover the edges (empty, one, max, equal values, paths and stars) | edge shapes reached per spec | property tests for trees; `missing` for others | `crates/cpl-stress/src/tests.rs` `random_trees_include_paths_and_stars`, `full_size_cases_use_the_whole_range`; `missing` |
+| `@gen` generators work without a C++ compiler and still shrink | seeded bugs shrunk with no `g++` on PATH | hand-written suite | `crates/cpl-cli/tests/stress_corpus.rs` `cpl_stress_interprets_a_gen_fn_where_no_cpp_compiler_is` |
+| A wrong brute or a crashing generator is blamed, not the solution | misattributed failures | hand-written suite | `crates/cpl-stress/src/tests.rs` `a_failing_brute_stops_the_run_with_the_input` |
 | Multitest, checker and interactive problems stress as easily as plain ones | loop tests per problem kind | hand-written suite | `crates/cpl-cli/tests/debugger.rs` (the tests built on its `stress_loop` helper) |
-| Parallel stress gives the same answer for any job count | differing results across `--jobs` | property test | `tests.rs` `stress_stops_at_the_first_failure_shrinks_it_and_is_the_same_for_any_jobs` |
+| Parallel stress gives the same answer for any job count | differing results across `--jobs` | property test | `crates/cpl-stress/src/tests.rs` `stress_stops_at_the_first_failure_shrinks_it_and_is_the_same_for_any_jobs` |
 
 ### Making it small
 
 | Quality | Metric | Mechanism | Where |
 |---|---|---|---|
-| The counterexample is minimal | seeded bugs shrunk to their known minimal input | hand-written suite | `seeded_bugs.rs` |
-| Shrinking never returns a passing or invalid case | invalid or passing results | property tests | `tests.rs` `shrinking_respects_its_budget_and_never_returns_a_passing_case`, `shrinking_keeps_graphs_simple_connected_and_acyclic` |
-| A multitest failure shrinks to the tests it needs | tests left after shrinking | hand-written suite | `tests.rs` `a_bug_that_needs_two_tests_shrinks_both_of_them` |
+| The counterexample is minimal | seeded bugs shrunk to their known minimal input | hand-written suite | `crates/cpl-cli/tests/seeded_bugs.rs` |
+| Shrinking never returns a passing or invalid case | invalid or passing results | property tests | `crates/cpl-stress/src/tests.rs` `shrinking_respects_its_budget_and_never_returns_a_passing_case`, `shrinking_keeps_graphs_simple_connected_and_acyclic` |
+| A multitest failure shrinks to the tests it needs | tests left after shrinking | hand-written suite | `crates/cpl-stress/src/tests.rs` `a_bug_that_needs_two_tests_shrinks_both_of_them` |
 | Shrinking is local-minimal in general, not just on seeded bugs | cases where one more delete or decrement still fails | `missing`: a property check that re-shrinks every result one step | `missing` |
 
 ### Explaining it
 
 | Quality | Metric | Mechanism | Where |
 |---|---|---|---|
-| `--explain` names the line the bug is on | seeded bugs whose planted line is named; only goes up | ratchet over the seeded suite | `seeded_bugs.rs` `explain_names_the_line_each_bug_was_planted_on` |
+| `--explain` names the line the bug is on | seeded bugs whose planted line is named; only goes up | ratchet over the seeded suite | `crates/cpl-cli/tests/seeded_bugs.rs` `explain_names_the_line_each_bug_was_planted_on` |
 | `--explain` names the right line for bugs it wasn't tuned on | named share over mutants not in the seeded set | `missing`: shares the mutation suite above | `missing` |
-| The first divergence is the first one | divergences reported later than the first differing value | hand-written suite | `debugger.rs` `stress_explain_*` |
+| The first divergence is the first one | divergences reported later than the first differing value | hand-written suite | `crates/cpl-cli/tests/debugger.rs` `stress_explain_*` |
 | An interactive failure says what the solution misread | interactive bugs explained by the read that went wrong | `missing`: the report names the rejected answer only | `missing` |
 | A trap names the rule, the place, the locals and the call path | trap codes with a golden that shows locals | golden suite per code | `crates/cpl-cli/tests/runtime_errors.rs` |
 | A trap in the interpreter traps in the judge build too | traps that only one build raises | differential suite | `crates/cpl-cli/tests/trap_parity.rs` |
-| Explanations use the program's words: variable names, domain parts, `Subset` members | values shown as internals (ordinals, struct fields of std types) | saved traces; `missing`: a check that no std-internal field reaches a user trace | `trace_goldens.rs`; `missing` |
+| Explanations use the program's words: variable names, domain parts, `Subset` members | values shown as internals (ordinals, struct fields of std types) | saved traces; `missing`: a check that no std-internal field reaches a user trace | `crates/cpl-cli/tests/trace_goldens.rs`; `missing` |
 
 ### Seeing the run
 
 | Quality | Metric | Mechanism | Where |
 |---|---|---|---|
 | Tracing never changes what the program does | programs whose traced output differs from untraced | differential sweep over every program, traced against untraced (`debugging/R1`) | `crates/cpl-cli/tests/trace_goldens.rs` `a_traced_run_prints_what_an_untraced_run_prints` |
-| A trace shows the program's real state at every step | values that differ from the state the run had | debug assertion in the tracer ("changed unseen"), saved traces | `crates/cpl-interp/src/trace.rs`, `trace_goldens.rs` |
-| A trace's state changes only when it should | unexplained changes between saved traces | saved traces as the oracle; edits to expected output are flagged for review | `trace_goldens.rs` |
-| No saved trace records a crash of `cpl` itself | saved traces holding an internal error | gate in the trace suite | `trace_goldens.rs` |
-| Any step rebuilt alone equals the step the run took | mismatches | property test | `trace_log.rs` `any_step_rebuilt_alone_is_the_step_the_run_took` |
+| A trace shows the program's real state at every step | values that differ from the state the run had | debug assertion in the tracer ("changed unseen"), saved traces | `crates/cpl-interp/src/trace.rs`, `crates/cpl-cli/tests/trace_goldens.rs` |
+| A trace's state changes only when it should | unexplained changes between saved traces | saved traces as the oracle; edits to expected output are flagged for review | `crates/cpl-cli/tests/trace_goldens.rs` |
+| No saved trace records a crash of `cpl` itself | saved traces holding an internal error | gate in the trace suite | `crates/cpl-cli/tests/trace_goldens.rs` |
+| Any step rebuilt alone equals the step the run took | mismatches | property test | `crates/cpl-interp/tests/trace_log.rs` `any_step_rebuilt_alone_is_the_step_the_run_took` |
 | A run resumed from a checkpoint equals the whole run there | differing steps, output or input | differential tests over hand-picked programs; `missing` over every saved-trace program | `crates/cpl-interp/tests/checkpoint.rs`; `missing` |
 | Traces run on the VM, not the tree-walker | tree-walker fallbacks by kind; only goes down | ratchet | `crates/cpl-cli/tests/vm_fallbacks.rs` |
 | Large values stay visible | values over the trace's size cap shown as `[]` | `missing`: arrays over 20000 cells are drawn empty | `missing` |
 | Library code stays out of a user's trace | steps inside an imported module's fns the trace didn't ask for | design: the tracer steps over library calls (`debugging/R2`); saved traces of std calls | `crates/cpl-cli/tests/trace_goldens.rs` `every_program_records_its_saved_trace` |
 | Huge traces can be narrowed to what matters | filters by fn, test, watch, depth, window | hand-written suite | `crates/cpl-cli/tests/trace_filters.rs` |
-| Tracing is cheap enough to leave on | traced vs untraced time on 10^7 steps (target at most 1.2x); memory; worst step back | budget test, run by hand; `missing` as a gate | `trace_log.rs` `ten_million_steps_fit_the_debugging_budgets` (ignored); `missing` |
+| Tracing is cheap enough to leave on | traced vs untraced time on 10^7 steps (target at most 1.2x); memory; worst step back | budget test, run by hand; `missing` as a gate | `crates/cpl-interp/tests/trace_log.rs` `ten_million_steps_fit_the_debugging_budgets` (ignored); `missing` |
 | Tracing off costs nothing | untraced time before and after the observer | design: untraced runs use a no-op observer | `crates/cpl-interp/src/lib.rs` |
 
 ### Time travel and the editor
 
 | Quality | Metric | Mechanism | Where |
 |---|---|---|---|
-| Every step of any run is reachable forwards and backwards | steps unreachable in DAP, viewer or CLI windows | hand-written suite including runs past the recording cap | `crates/cpl-cli/tests/dap.rs` `dap_reaches_every_step_of_a_run_longer_than_a_recording`, `trace_filters.rs` |
-| Step back, breakpoints, watches and stack follow DAP | DAP requests answered wrongly | hand-written protocol suite; `missing`: a generated sequence of random DAP requests checked against a straight run | `dap.rs`; `missing` |
-| Restart after an edit keeps your place | restarts landing on another step | hand-written suite | `dap.rs` `dap_restart_rerecords_the_edit_on_the_pinned_input_and_keeps_place` |
-| Replaying one call with an edited fn equals rerunning it | differing results | hand-written suite | `crates/cpl-cli/tests/replay.rs`, `dap.rs` `dap_replays_one_call_with_the_edited_fn` |
+| Every step of any run is reachable forwards and backwards | steps unreachable in DAP, viewer or CLI windows | hand-written suite including runs past the recording cap | `crates/cpl-cli/tests/dap.rs` `dap_reaches_every_step_of_a_run_longer_than_a_recording`, `crates/cpl-cli/tests/trace_filters.rs` |
+| Step back, breakpoints, watches and stack follow DAP | DAP requests answered wrongly | hand-written protocol suite; `missing`: a generated sequence of random DAP requests checked against a straight run | `crates/cpl-cli/tests/dap.rs`; `missing` |
+| Restart after an edit keeps your place | restarts landing on another step | hand-written suite | `crates/cpl-cli/tests/dap.rs` `dap_restart_rerecords_the_edit_on_the_pinned_input_and_keeps_place` |
+| Replaying one call with an edited fn equals rerunning it | differing results | hand-written suite | `crates/cpl-cli/tests/replay.rs`, `crates/cpl-cli/tests/dap.rs` `dap_replays_one_call_with_the_edited_fn` |
 | The loop works in Neovim, Vim, VS Code and JetBrains on Linux, macOS and Windows | editor x OS cells green | CI matrix | `.github/workflows/debugger-loop.yml` |
 | A live trace follows each save | saves not re-recorded | hand-written suite | `crates/cpl-cli/tests/trace_live.rs` |
 
@@ -206,9 +206,9 @@ tests for wording.
 
 | Quality | Metric | Mechanism | Where |
 |---|---|---|---|
-| Deterministic: one seed, one result, on every machine | differing cases, shrinks or traces across OSes and runs | property test for jobs; CI on three OSes; saved traces | `tests.rs`, `debugger-loop.yml`, `trace_goldens.rs` |
-| Paths, CRLF and missing tools don't break the loop on Windows | loop tests failing on one OS only | CI matrix | `debugger-loop.yml` |
-| The demos and guide examples keep running | demos that fail to check or run | hand-written suite | `replay.rs` `every_debugging_demo_checks_clean`, `trace_browser.rs` |
+| Deterministic: one seed, one result, on every machine | differing cases, shrinks or traces across OSes and runs | property test for jobs; CI on three OSes; saved traces | `crates/cpl-stress/src/tests.rs`, `.github/workflows/debugger-loop.yml`, `crates/cpl-cli/tests/trace_goldens.rs` |
+| Paths, CRLF and missing tools don't break the loop on Windows | loop tests failing on one OS only | CI matrix | `.github/workflows/debugger-loop.yml` |
+| The demos and guide examples keep running | demos that fail to check or run | hand-written suite | `crates/cpl-cli/tests/replay.rs` `every_debugging_demo_checks_clean`, `crates/cpl-cli/tests/trace_browser.rs` |
 | The suites catch real debugger bugs | mutation score of the debugger suites | `missing` | `missing` |
 | Every escaped bug becomes a test | escaped bugs with no regression test | process: each fix lands with its test | `plan/domains/debugger/worklog.md` |
 | A stranger can debug from the docs alone | planted bugs a cold agent fixes from the docs, in each editor | process: cold-stranger probe | `plan/domains/debugger/PLAN.md` |
