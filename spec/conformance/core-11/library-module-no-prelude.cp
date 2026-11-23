@@ -1,4 +1,4 @@
-// expect: exit 1
+// expect: E0201 at 3
 // rule: 11.3.1
 // tool: run
 // file: cp.toml "[libs]\nkit = \"kit\"\n"
