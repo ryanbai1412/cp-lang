@@ -758,7 +758,7 @@ One sub-family per module. Each says: you rebuilt something the library has.
 | mixed_zero_one_based_read | reading `1..=n` into `Int` and manually subtracting `1` on only some uses | declare `domain V = 1..=n` and `read<V>()` | warn | #3 | flow | |
 | domain_cast_roundtrip | converting `V -> Int -> V` (`V.at(v.ord)`) with no arithmetic in between | use `v` directly | fix | #3 | ty | |
 | slice_key_lost_indexing | indexing a sliced `[D]T` with an integer `0..k` instead of `D` position | iterate `for p in s.keys:` or index with the cut/position | warn | #3 | ty | |
-| reversed_range_literal | `for i in n..0:` (empty ascending range, meant `(0..n).rev`) | `for i in (0..n).rev:` | fix? | #4 | bound | |
+| reversed_range_literal | `for i in n..0:` (empty ascending range, meant `(0..n).rev`) | `for i in (0..n).rev:` | fix? | #4 | bound |✓reversed_range_literal |
 | cut_midpoint_overflow | `(l.ord + r.ord) / 2` computed in `Int` instead of range midpoint | `(l..r).mid` | fix | #4 | syn | |
 | subrange_not_checked_nonempty | indexing `a[l..r].first!` when `l <= r` (may be empty) from bounds | check `if let x = a[l..r].first:` or prove `l < r` | warn | #4 | bound | |
 | unbounded_cut_step | `p.next!` / `p.prev!` in a loop without proving `p` is not at domain boundary | iterate `for p in D.init:` / `for (a, b) in a.windows(2):` | warn | #4 | bound | |

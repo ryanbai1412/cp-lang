@@ -9,6 +9,7 @@ mod bounds;
 mod ceil;
 mod count_until;
 mod counter;
+mod empty_range;
 mod euclid;
 mod extreme;
 mod fermat;
@@ -102,6 +103,7 @@ pub(crate) fn run(file: &File, config: &Config) -> Vec<Finding> {
     findings.extend(unreachable::check(file));
     findings.extend(zero_div::check(file));
     findings.extend(wide_shift::check(file));
+    findings.extend(empty_range::check(file));
     findings.extend(hand_graph::check(file));
     findings.extend(hand_ds::check(file));
     findings.extend(hand_input::check(file));

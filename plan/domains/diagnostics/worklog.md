@@ -502,3 +502,8 @@ Landed since 23:10: four type/flow lints from `spec/idioms/lints.md`, L0571 `neg
   `use std.seq.{min_k}`, which still failed to check (lint-fmt's report on
   spec/lints/by_twin/before.cp). Golden `a_free_by_twin`; after `cpl fix`
   it runs (`a`, `bbb`, `a cc bbb`).
+- Lint L0303 `reversed_range_literal` (lints.md bound row): `for i in n..0`
+  where the declared start is always above the end, so the loop never
+  runs; help gives both `(0..n).rev` and `(0..=n).rev` (no fix: which one
+  is meant is the contestant's call). Facts from rules/proven/hazards.rs.
+  0 hits on corpus, newcomer and std.

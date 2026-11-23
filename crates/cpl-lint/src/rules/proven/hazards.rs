@@ -1,5 +1,6 @@
 //! Operators whose declared operands can make them trap: a `/` or `%` by a
-//! divisor that can be 0, a `<<` that can leave `Int`.
+//! divisor that can be 0, a `<<` that can leave `Int`, a `for` range that
+//! starts above its end and so never runs.
 
 use super::{bounds, Proven};
 use cpl_diag::Span;
@@ -56,4 +57,20 @@ pub(super) fn hazards(
             ));
         }
     }
+}
+
+/// `for i in n..0` where every declared `n` is above the end: the range only
+/// counts up, so the loop never runs.
+pub(super) fn empty_range(base: u32, iter: &Expr, bounds: &bounds::Bounds) -> Option<(u32, u32)> {
+    let ExprKind::Range {
+        lo: Some(lo),
+        hi: Some(hi),
+        step: None,
+        ..
+    } = &iter.kind
+    else {
+        return None;
+    };
+    let (a, b) = (bounds.expr(lo)?, bounds.expr(hi)?);
+    (a.lo > b.hi).then_some((base + iter.span.start, base + iter.span.end))
 }

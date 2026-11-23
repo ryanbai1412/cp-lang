@@ -33,6 +33,11 @@ pub(crate) fn proven_shifts(file: &File) -> Vec<Divisor> {
     proven(file).shifts
 }
 
+/// Each `for` range the declared bounds prove empty: it starts above its end.
+pub(crate) fn proven_empty_ranges(file: &File) -> Vec<(u32, u32)> {
+    proven(file).empty_ranges
+}
+
 pub(crate) fn proven_loops(file: &File) -> Vec<crate::ProvenLoop> {
     proven(file).loops
 }
@@ -212,6 +217,7 @@ struct Proven {
     /// Each `x << k` that leaves `Int` for a declared `k`: the operator,
     /// `k`, the most `k` can be, and the most it can be without overflow.
     shifts: Vec<Divisor>,
+    empty_ranges: Vec<(u32, u32)>,
     loops: Vec<crate::ProvenLoop>,
     indexes: Vec<crate::ProvenIndex>,
     fns: Vec<FnCost>,
@@ -239,6 +245,7 @@ impl Default for Proven {
             exprs: Vec::new(),
             divisors: Vec::new(),
             shifts: Vec::new(),
+            empty_ranges: Vec::new(),
             loops: Vec::new(),
             indexes: Vec::new(),
             fns: Vec::new(),
@@ -878,6 +885,9 @@ fn ranges_of_stmt(
             StmtKind::For {
                 pat, iter, body, ..
             } => {
+                proven
+                    .empty_ranges
+                    .extend(hazards::empty_range(base, iter, bounds));
                 let mut inner = bounds.clone();
                 let times = match &iter.kind {
                     ExprKind::Range {
