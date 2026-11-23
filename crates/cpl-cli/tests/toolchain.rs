@@ -201,7 +201,7 @@ fn the_launcher_picks_installs_and_runs_toolchains_in_precedence_order() {
     std::fs::write(world.dir.join("project/cpl.toml"), "version = \"0.3.0\"\n").unwrap();
     let pin = format!(
         "version = \"0.3.0\" in {}",
-        world.dir.join("project").join("cpl.toml").display()
+        cpl_diag::shown_path(&world.dir.join("project").join("cpl.toml"))
     );
     let stdout = ok(&world.cpl(&["--version"], &[]));
     assert!(

@@ -14,6 +14,7 @@
 //! ```
 
 use crate::problem::{tests_dir, Limits};
+use cpl_diag::Shown;
 use cpl_json::{self as json, Value as Json};
 use cpl_stress::args::Args;
 use cpl_stress::InputSpec;
@@ -346,11 +347,11 @@ impl Scaffold {
     /// Writes `<source>` and its tests folder. Returns what was created.
     /// An existing source file is never overwritten.
     pub fn create(&self, source: &Path) -> Result<Vec<PathBuf>, String> {
-        let io = |path: &Path, e: std::io::Error| format!("can't write {}: {e}", path.display());
+        let io = |path: &Path, e: std::io::Error| format!("can't write {}: {e}", path.shown());
         if source.exists() {
             return Err(format!(
                 "{} already exists; `cpl new` won't overwrite it",
-                source.display()
+                source.shown()
             ));
         }
         if let Some(parent) = source.parent().filter(|p| !p.as_os_str().is_empty()) {
@@ -560,16 +561,16 @@ fn report(
                 let _ = writeln!(
                     stdout,
                     "{{\"path\":{},\"created\":true,\"tests\":{},\"samples\":{samples}}}",
-                    cpl_json::escape_string(&created[0].display().to_string()),
-                    cpl_json::escape_string(&created[1].display().to_string()),
+                    cpl_json::escape_string(&created[0].shown()),
+                    cpl_json::escape_string(&created[1].shown()),
                 );
                 return 0;
             }
-            let _ = writeln!(stdout, "  created {}", created[0].display());
+            let _ = writeln!(stdout, "  created {}", created[0].shown());
             let _ = writeln!(
                 stdout,
                 "  created {}/ ({})",
-                created[1].display(),
+                created[1].shown(),
                 match samples {
                     0 => "no samples yet".to_string(),
                     1 => "1 sample".to_string(),
@@ -579,7 +580,7 @@ fn report(
             let _ = writeln!(
                 stdout,
                 "  next: write it; `cpl test {}` runs the samples",
-                created[0].display()
+                created[0].shown()
             );
             0
         }

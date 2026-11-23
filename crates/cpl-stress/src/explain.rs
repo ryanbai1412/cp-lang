@@ -4,6 +4,7 @@
 //! on the same input in the debug interpreter, a `.cp` solution says what
 //! went wrong and where, as an `R0001` with the source line.
 
+use cpl_diag::Shown;
 use std::path::Path;
 
 /// The runtime error the `.cp` file at `path` stops with on `input`, as
@@ -13,7 +14,7 @@ pub fn runtime_error(path: &Path, input: &str) -> Option<String> {
     if path.extension().is_none_or(|ext| ext != "cp") {
         return None;
     }
-    let name = path.display().to_string();
+    let name = path.shown();
     let text = std::fs::read_to_string(path).ok()?;
     let mut db = cpl_check::Database::new();
     db.set_file(&name, text.as_str());

@@ -324,6 +324,7 @@ pub(crate) fn build_part_brute(file: &Path, name: &str, swapped: &str) -> Result
     Ok(program)
 }
 
+use cpl_diag::Shown;
 use cpl_json::escape_string as json_string;
 
 /// One divergence as JSON, as `cpl stress --json` (under `explain`) and
@@ -375,11 +376,8 @@ pub fn report_json(
             )
         })
         .collect();
-    let path = |path: Option<&Path>| {
-        path.map_or("null".to_string(), |path| {
-            json_string(&path.display().to_string())
-        })
-    };
+    let path =
+        |path: Option<&Path>| path.map_or("null".to_string(), |path| json_string(&path.shown()));
     let explain = match explained {
         None => String::new(),
         Some(Ok(None)) => ",\"explain\":{\"divergence\":null}".to_string(),
@@ -492,7 +490,7 @@ pub fn run_with(
         let _ = writeln!(stderr, "error: {message}");
         1
     };
-    let name = args.file.display().to_string();
+    let name = args.file.shown();
     let src = match std::fs::read_to_string(&args.file) {
         Ok(src) => src,
         Err(e) => return fail(format!("can't read {name}: {e}")),
@@ -858,19 +856,19 @@ pub fn run_with(
         None => {}
     }
     if let Some(path) = &trace_path {
-        let _ = writeln!(stdout, "  trace {}", path.display());
+        let _ = writeln!(stdout, "  trace {}", path.shown());
     }
     if let Some(note) = &trace_note {
         let _ = writeln!(stderr, "warning: {note}");
     }
     match saved {
         Some(path) => {
-            let _ = writeln!(stdout, "  saved {}", path.display());
+            let _ = writeln!(stdout, "  saved {}", path.shown());
             if !part_alts(&src).is_empty() && explained.is_none() {
                 let _ = writeln!(
                     stdout,
                     "  next: `cpl locate {}` names the first part whose alt disagrees",
-                    args.file.display()
+                    args.file.shown()
                 );
             }
         }

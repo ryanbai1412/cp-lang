@@ -34,6 +34,7 @@ use unit_tests::{run_unit_tests, should_run_unit_tests};
 
 pub use report::{install_ice_hook, set_crash_context};
 
+use cpl_diag::Shown;
 use std::io::Write;
 
 /// Version of the toolchain.
@@ -200,7 +201,7 @@ pub fn exec<S: AsRef<str>>(
                 if let Some(path) = &pinned {
                     *stderr += &format!(
                         "cpl: input {} (the case saved last for this file)\n",
-                        path.display()
+                        path.shown()
                     );
                 }
                 let named = pinned.as_ref().and_then(|p| p.to_str()).or(args.input);
@@ -1171,9 +1172,9 @@ fn run_live(args: &RunArgs, stdin: &mut (dyn FnMut() -> Vec<u8> + Send)) -> u8 {
         .or_else(|| trace::pinned_input(std::path::Path::new(args.file)));
     let (input, note) = match &pinned {
         Some(path) => match std::fs::read(path) {
-            Ok(input) => (input, path.display().to_string()),
+            Ok(input) => (input, path.shown()),
             Err(error) => {
-                eprintln!("cpl: can't read `{}`: {error}", path.display());
+                eprintln!("cpl: can't read `{}`: {error}", path.shown());
                 return EXIT_USAGE;
             }
         },
@@ -1345,12 +1346,12 @@ fn observe_file(
                 Ok(()) => {
                     *stderr += &format!(
                         "cpl: wrote {} ({} steps); open it in a browser\n",
-                        target.display(),
+                        target.shown(),
                         recording.len()
                     )
                 }
                 Err(error) => {
-                    *stderr += &format!("cpl: can't write `{}`: {error}\n", target.display());
+                    *stderr += &format!("cpl: can't write `{}`: {error}\n", target.shown());
                     return EXIT_USAGE;
                 }
             }

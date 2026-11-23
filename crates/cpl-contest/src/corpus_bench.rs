@@ -18,6 +18,7 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use cpl_json::escape_string as json_string;
 
 use crate::zero_cost::emit_cpp;
+use cpl_diag::Shown;
 
 const DEFAULT_CORPUS_DIR: &str = "corpus/problems";
 const DEFAULT_OUT_JSON: &str = "research/perf/corpus-p95-results.json";
@@ -300,9 +301,9 @@ fn verify_perf_tests(bin: &Path, prob_dir: &Path) -> Result<(), String> {
         };
         let expected = std::fs::read(&expected_path).map_err(|e| e.to_string())?;
         let (_, got) =
-            run_bin(bin, &inp).map_err(|e| format!("perf.cp failed on {}: {e}", inp.display()))?;
+            run_bin(bin, &inp).map_err(|e| format!("perf.cp failed on {}: {e}", inp.shown()))?;
         if !tokens_equal(&got, &expected) {
-            return Err(format!("perf.cp WA on {}", inp.display()));
+            return Err(format!("perf.cp WA on {}", inp.shown()));
         }
     }
     Ok(())
@@ -631,7 +632,7 @@ pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u
             let _ = writeln!(
                 stderr,
                 "cpl bench --corpus: can't read {}: {e}",
-                corpus_dir.display()
+                corpus_dir.shown()
             );
             return 2;
         }
@@ -731,11 +732,11 @@ pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u
             let _ = writeln!(
                 stderr,
                 "cpl bench --corpus: can't write {}: {e}",
-                out_json.display()
+                out_json.shown()
             );
             return 1;
         }
-        let _ = writeln!(stdout, "  wrote {}", out_json.display());
+        let _ = writeln!(stdout, "  wrote {}", out_json.shown());
     }
 
     // Keep Duration imported cleanly if needed later

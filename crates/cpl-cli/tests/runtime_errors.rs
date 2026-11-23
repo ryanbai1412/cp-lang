@@ -36,10 +36,11 @@ fn run_stderr(source: &str, input: &str) -> (i32, String) {
     let code = out.status.code().unwrap_or(-1);
     let err = String::from_utf8_lossy(&out.stderr).into_owned();
     let dir_name = dir.display().to_string();
-    let _ = fs::remove_dir_all(&dir);
     let err = err
         .replace(&format!("{dir_name}/"), "")
-        .replace(&format!("{dir_name}\\"), "");
+        .replace(&format!("{dir_name}\\"), "")
+        .replace(&format!("{}/", cpl_diag::shown_path(&dir)), "");
+    let _ = fs::remove_dir_all(&dir);
     (code, err)
 }
 

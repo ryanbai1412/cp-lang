@@ -11,6 +11,7 @@
 
 use crate::new::Scaffold;
 use crate::problem::{source_path, tests_dir, Limits};
+use cpl_diag::Shown;
 use cpl_stress::args::Args;
 use std::io::Write;
 use std::path::{Path, PathBuf};
@@ -334,8 +335,8 @@ pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u
         let _ = writeln!(
             stdout,
             "{{\"path\":{},\"created\":{created},\"tests\":{},\"samples\":{samples}}}",
-            cpl_json::escape_string(&source.display().to_string()),
-            cpl_json::escape_string(&tests.display().to_string()),
+            cpl_json::escape_string(&source.shown()),
+            cpl_json::escape_string(&tests.shown()),
         );
         return 0;
     }
@@ -344,15 +345,15 @@ pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u
         n => format!("{n} samples"),
     };
     if created {
-        let _ = writeln!(stdout, "  created {}", source.display());
-        let _ = writeln!(stdout, "  created {}/ ({count})", tests.display());
+        let _ = writeln!(stdout, "  created {}", source.shown());
+        let _ = writeln!(stdout, "  created {}/ ({count})", tests.shown());
         let _ = writeln!(
             stdout,
             "  next: write it; `cpl test {}` runs the samples",
-            source.display()
+            source.shown()
         );
     } else {
-        let _ = writeln!(stdout, "  wrote {count} to {}/", tests.display());
+        let _ = writeln!(stdout, "  wrote {count} to {}/", tests.shown());
     }
     0
 }
@@ -407,11 +408,11 @@ fn write(scaffold: &Scaffold, source: &Path) -> Result<bool, String> {
             return Err(format!(
                 "{} is already there and says something else; move it, or fetch into \
                  another name",
-                path.display()
+                path.shown()
             ));
         }
     }
-    let io = |path: &Path, e: std::io::Error| format!("can't write {}: {e}", path.display());
+    let io = |path: &Path, e: std::io::Error| format!("can't write {}: {e}", path.shown());
     std::fs::create_dir_all(&tests).map_err(|e| io(&tests, e))?;
     for (path, text) in files {
         std::fs::write(&path, text).map_err(|e| io(&path, e))?;

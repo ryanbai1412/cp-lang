@@ -7,6 +7,7 @@ use cpl_json::{obj, Value};
 
 use crate::build::{build_file, BuildOptions};
 use crate::{EXIT_ERRORS, EXIT_USAGE};
+use cpl_diag::Shown;
 
 /// `cpl submit`: `cpl build`, then `cpl test` on what it built; with
 /// `json`, one object with `ready` and the `build` and `test` reports.
@@ -53,7 +54,7 @@ pub(crate) fn submit(
         *stderr += &format!(
             "cpl: warning: {} has no cases, so only the build was checked; put the samples there as `1.in` and \
              `1.out`\n",
-            tests.display()
+            tests.shown()
         );
         let code = ready_to_send(&source, copy, said, stderr);
         report(true, &built, &[], stdout);
@@ -73,7 +74,7 @@ pub(crate) fn submit(
     if code != 0 {
         *stderr += &format!(
             "cpl: `{path}` is not ready to send: a case in {} fails\n",
-            tests.display()
+            tests.shown()
         );
         report(false, &built, &out, stdout);
         return EXIT_ERRORS;
@@ -98,13 +99,13 @@ pub(crate) fn ready_to_send(
             Ok(tool) => {
                 *stderr += &format!(
                     "cpl: copied {} to the clipboard with `{tool}`\n",
-                    cpp.display()
+                    cpp.shown()
                 )
             }
             Err(error) => *stderr += &format!("cpl: warning: {error}; send the file instead\n"),
         }
     }
-    let _ = writeln!(stdout, "ready to send: {}", cpp.display());
+    let _ = writeln!(stdout, "ready to send: {}", cpp.shown());
     0
 }
 

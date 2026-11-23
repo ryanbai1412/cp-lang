@@ -8,6 +8,7 @@ use cpl_interp::trace::{Call, Recording};
 
 use crate::dap::shown;
 use crate::{compile_side, compile_text, trace, Side, EXIT_ERRORS, EXIT_USAGE};
+use cpl_diag::Shown;
 
 const USAGE: &str = "\
 usage: cpl replay <file.cp> --trace <trace.json> --step <n> [--input <file>]
@@ -290,7 +291,7 @@ pub(crate) fn cli(rest: &[&str], stdout: &mut dyn Write, stderr: &mut String) ->
         Some(path) => match std::fs::read(path) {
             Ok(input) => input,
             Err(error) => {
-                *stderr += &format!("cpl: can't read `{}`: {error}\n", path.display());
+                *stderr += &format!("cpl: can't read `{}`: {error}\n", path.shown());
                 return EXIT_USAGE;
             }
         },

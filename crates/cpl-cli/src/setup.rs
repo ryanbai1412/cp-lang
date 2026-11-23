@@ -1,6 +1,7 @@
 //! `cpl setup <editor>`: writes the editor files built into this binary
 //! where the editor loads them, so one command sets an editor up.
 
+use cpl_diag::Shown;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 
@@ -189,10 +190,10 @@ fn write_files(
     let dir = dir
         .or_else(|| package_dir(editor))
         .ok_or("no home folder to install into; pass --dir")?;
-    write_all(&dir, files).map_err(|e| format!("can't write {}: {e}", dir.display()))?;
+    write_all(&dir, files).map_err(|e| format!("can't write {}: {e}", dir.shown()))?;
     Ok(format!(
         "installed CP Lang for {editor} in {}\nopen a .cp file to start; `cpl` must be on the PATH (or set g:cpl_path)",
-        dir.display()
+        dir.shown()
     ))
 }
 
@@ -263,7 +264,7 @@ fn install_vscode(vsix: Option<PathBuf>) -> Result<String, String> {
     Ok(format!(
         "installed CP Lang for VS Code ({}) from {}\nopen a .cp file to start; `cpl` must be on the PATH (or set `cp.server.path`)",
         installed.trim(),
-        file.display()
+        file.shown()
     ))
 }
 
@@ -434,7 +435,7 @@ fn install_jetbrains(zip: Option<PathBuf>, dir: Option<PathBuf>) -> Result<Strin
         if !missing.is_empty() {
             return Err(format!(
                 "the plugin did not install in {}: no {}",
-                ide.plugins.display(),
+                ide.plugins.shown(),
                 missing.join(", ")
             ));
         }
@@ -450,7 +451,7 @@ fn install_jetbrains(zip: Option<PathBuf>, dir: Option<PathBuf>) -> Result<Strin
         };
         report += &format!(
             "installed CP Lang for {name} in {}{lsp}\n",
-            ide.plugins.display()
+            ide.plugins.shown()
         );
     }
     if !old.is_empty() {
@@ -550,7 +551,7 @@ fn plugin_load(log: &str) -> Result<String, String> {
 
 /// `unzip`, or `tar` (bsdtar on macOS and Windows reads zips).
 fn unzip(file: &Path, into: &Path) -> Result<(), String> {
-    std::fs::create_dir_all(into).map_err(|e| format!("can't write {}: {e}", into.display()))?;
+    std::fs::create_dir_all(into).map_err(|e| format!("can't write {}: {e}", into.shown()))?;
     let unzip = std::process::Command::new("unzip")
         .arg("-oq")
         .arg(file)
@@ -571,7 +572,7 @@ fn unzip(file: &Path, into: &Path) -> Result<(), String> {
         true => Ok(()),
         false => Err(format!(
             "could not unpack {}: {}",
-            file.display(),
+            file.shown(),
             String::from_utf8_lossy(&out.stderr).trim()
         )),
     }

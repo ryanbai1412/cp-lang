@@ -13,6 +13,7 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use crate::{sha256, EXIT_ERRORS, EXIT_USAGE};
+use cpl_diag::Shown;
 
 pub const RELEASES: &str = "https://github.com/ryanbai1412/cp-lang/releases";
 const EXE: &str = std::env::consts::EXE_SUFFIX;
@@ -201,7 +202,7 @@ fn write_atomically(path: &Path, bytes: &[u8]) -> Result<(), String> {
     let tmp = path.with_extension(format!("tmp{}", std::process::id()));
     std::fs::write(&tmp, bytes)
         .and_then(|()| std::fs::rename(&tmp, path))
-        .map_err(|e| format!("could not write {}: {e}", path.display()))
+        .map_err(|e| format!("could not write {}: {e}", path.shown()))
 }
 
 pub fn home() -> Option<PathBuf> {
@@ -358,8 +359,7 @@ fn install(home: &Path, selector: &Selector, log: &mut String) -> Result<String,
         None => format!("{base}/latest/download"),
     };
     let tmp = home.join("tmp");
-    std::fs::create_dir_all(&tmp)
-        .map_err(|e| format!("could not create {}: {e}", tmp.display()))?;
+    std::fs::create_dir_all(&tmp).map_err(|e| format!("could not create {}: {e}", tmp.shown()))?;
     let stamp = format!(
         "{}-{}",
         std::process::id(),
@@ -369,7 +369,7 @@ fn install(home: &Path, selector: &Selector, log: &mut String) -> Result<String,
     );
     let scratch = tmp.join(stamp);
     std::fs::create_dir_all(scratch.join("unpack"))
-        .map_err(|e| format!("could not create {}: {e}", scratch.display()))?;
+        .map_err(|e| format!("could not create {}: {e}", scratch.shown()))?;
     let result = install_into(home, &dir_url, &scratch, selector, log);
     let _ = std::fs::remove_dir_all(&scratch);
     result
@@ -434,7 +434,7 @@ fn install_into(
     if let Err(e) = std::fs::rename(&unpack, &dest) {
         // Another cpl may have installed the same toolchain meanwhile.
         if !is_installed(home, &release.toolchain) {
-            return Err(format!("could not install into {}: {e}", dest.display()));
+            return Err(format!("could not install into {}: {e}", dest.shown()));
         }
     }
     Ok(release.toolchain)
@@ -506,16 +506,13 @@ fn choose(
             [] => continue,
             [(key, value)] => {
                 let selector =
-                    Selector::parse(value).map_err(|e| format!("{e} (in {})", path.display()))?;
-                return Ok((
-                    selector,
-                    format!("{key} = \"{value}\" in {}", path.display()),
-                ));
+                    Selector::parse(value).map_err(|e| format!("{e} (in {})", path.shown()))?;
+                return Ok((selector, format!("{key} = \"{value}\" in {}", path.shown())));
             }
             _ => {
                 return Err(format!(
                     "{} sets both version and channel; keep one",
-                    path.display()
+                    path.shown()
                 ))
             }
         }
@@ -547,7 +544,7 @@ pub fn launch(args: &[String]) -> Option<u8> {
         if plus.is_some() {
             eprintln!(
                 "cpl: `+<toolchain>` works through the installed launcher, {}; install it from https://cp-lang.org/install.sh",
-                launcher.display()
+                launcher.shown()
             );
             return Some(EXIT_USAGE);
         }
@@ -595,7 +592,7 @@ pub fn launch(args: &[String]) -> Option<u8> {
 fn hand_over(mut command: Command, bin: &Path) -> Option<u8> {
     use std::os::unix::process::CommandExt;
     let err = command.exec();
-    eprintln!("cpl: could not start {}: {err}", bin.display());
+    eprintln!("cpl: could not start {}: {err}", bin.shown());
     Some(EXIT_ERRORS)
 }
 
@@ -604,7 +601,7 @@ fn hand_over(mut command: Command, bin: &Path) -> Option<u8> {
     match command.status() {
         Ok(status) => Some(status.code().map_or(EXIT_ERRORS, |c| c as u8)),
         Err(err) => {
-            eprintln!("cpl: could not start {}: {err}", bin.display());
+            eprintln!("cpl: could not start {}: {err}", bin.shown());
             Some(EXIT_ERRORS)
         }
     }
@@ -742,7 +739,7 @@ fn refresh_launcher(home: &Path, id: &str) -> Result<(), String> {
     }
     let fresh = home.join("bin").join(format!("cpl.new{EXE}"));
     let failed =
-        |e: std::io::Error| format!("could not update the launcher {}: {e}", launcher.display());
+        |e: std::io::Error| format!("could not update the launcher {}: {e}", launcher.shown());
     std::fs::copy(binary(&toolchain_dir(home, id)), &fresh).map_err(failed)?;
     if cfg!(windows) {
         // A running .exe can be renamed but not overwritten.
