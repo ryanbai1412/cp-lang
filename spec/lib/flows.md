@@ -271,7 +271,7 @@ here that the core does not have yet.
 domain V = read(1..=50)
 let m: 0..=choose2(V.count) = read()
 let edges = read<[m](u: V, v: V, w: 1..=1e6)>()
-if gcd(gomory_hu(edges).map(e => e.w)) != 1: return answer([V.all])
+if gomory_hu(edges).map(e => e.w).fold(gcd) != 1: return answer([V.all])
 // ... even_split as in design/EXEMPLARS-PORTS.md
 ```
 
