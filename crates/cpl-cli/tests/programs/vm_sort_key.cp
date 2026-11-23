@@ -35,3 +35,16 @@ groups[1].sort(by: x => -x)
 hgroups[1].sort(desc: true)
 hgroups[0].sort(by: x => x % 4, desc: true)
 print(groups[0], groups[1], hgroups[0], hgroups[1])
+fn mod5(x: Int) -> Int: x % 5
+fn by_name(p: (Int, Str)) -> (Str, Int): (p.1, -p.0)
+var ys = [i * 7 % 13 for i in 0..n]
+ys.sort(by: mod5)
+print(ys)
+let last = (x: Int) => x % 10
+ys.sort(by: last, desc: true)
+print(ys)
+ps.sort(by: by_name)
+print(ps)
+var arr2: [0..5]Int = [4, 8, 15, 16, 23]
+arr2.sort(by: mod5)
+print(arr2)

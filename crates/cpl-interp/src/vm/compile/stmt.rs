@@ -1,4 +1,5 @@
 use super::seq_load::SeqKind;
+use super::sort::sort_key_of;
 use super::{Compiler, GiveTarget, LoopTargets};
 use crate::vm::helpers::*;
 use crate::vm::ir::*;
@@ -614,16 +615,8 @@ impl<'p, 'f> Compiler<'p, 'f> {
                     if !self.try_compile_sort_stmt(place, desc.as_deref(), expr.span) {
                         self.emit_fallback_stmt(stmt);
                     }
-                } else if let ExprKind::Sort(place, cpl_ir::SortBy::Key(slot, key), desc) =
-                    &expr.kind
-                {
-                    if !self.try_compile_sort_key_stmt(
-                        place,
-                        *slot,
-                        key,
-                        desc.as_deref(),
-                        expr.span,
-                    ) {
+                } else if let Some((place, by, desc)) = sort_key_of(&expr.kind) {
+                    if !self.try_compile_sort_key_stmt(place, by, desc, expr.span) {
                         self.emit_fallback_stmt(stmt);
                     }
                 } else if let ExprKind::Call(fn_id, args) = &expr.kind {
