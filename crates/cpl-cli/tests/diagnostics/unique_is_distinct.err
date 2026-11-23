@@ -1,0 +1,8 @@
+error[E0203]: List<Int> has no `unique` in the spec: no std module declares it
+  --> unique_is_distinct.cp:2:10
+  |
+2 | print(xs.unique())
+  |          ^^^^^^
+  = help: did you mean `distinct`?
+
+unique_is_distinct.cp: 1 error
