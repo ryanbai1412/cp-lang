@@ -126,6 +126,25 @@ impl Checker<'_> {
         field_names: &[String],
         methods: &[(String, Ty)],
     ) {
+        let owner = match base_ty {
+            Ty::Named { name, .. } | Ty::TypeName(name) => name.clone(),
+            _ => String::new(),
+        };
+        let public =
+            |c: &mut Self, m: &String| owner.is_empty() || !c.env.is_private_field(&owner, m);
+        let field_names: Vec<String> = field_names
+            .iter()
+            .filter(|f| public(self, f))
+            .cloned()
+            .collect();
+        let methods: Vec<(String, Ty)> = methods
+            .iter()
+            .filter(|(m, _)| public(self, m))
+            .cloned()
+            .collect();
+        let habit = (!owner.is_empty())
+            .then(|| self.public_foreign_twin(&owner, &name.text))
+            .flatten();
         let has =
             |m: &str| methods.iter().any(|(n, _)| n == m) || field_names.iter().any(|f| f == m);
         let empty_by_len = name.text == "is_empty" && has("len");
@@ -169,6 +188,11 @@ impl Checker<'_> {
                     "{base_ty} is a library domain (`impl Index`): it walks in `ord` order, but neighbours, cuts, `at` and `wrap` belong to the ordered core domains; use `x.ord` and `{base_ty}.nth(k)`"
                 ));
             }
+            _ if habit.is_some() => {
+                let own = habit.unwrap_or_default();
+                diag.help = Some(format!("`{}` is spelled `{own}` in CP Lang", name.text));
+                diag.fix(format!("write `{own}`"), name.span, own);
+            }
             _ if empty_by_len => {
                 diag.help = Some(format!("a {base_ty} is empty when its `len` is 0"));
                 diag.fix("write `len == 0`".to_string(), name.span, "len == 0");
@@ -179,7 +203,7 @@ impl Checker<'_> {
             }
             Some(s) => diag.suggest(name.span, s),
             None if !field_names.is_empty() => {
-                let fields = super::expr::list_names(field_names);
+                let fields = super::expr::list_names(&field_names);
                 diag.help = Some(format!("its fields are {fields}"));
             }
             None => {}

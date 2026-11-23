@@ -4,6 +4,41 @@ use super::*;
 use cpl_syntax::ast::{Expr, ExprKind, Name};
 
 impl Checker<'_> {
+    /// R11.1.4: E0207 when `base.name` reads a member another module declares
+    /// without `pub`; a C++ name (`push_back`) points at the public member it means.
+    pub(crate) fn private_member(&mut self, base_ty: &Ty, name: &Name) -> bool {
+        let Ty::Named { name: owner, .. } = base_ty else {
+            return false;
+        };
+        if !self.env.is_private_field(owner, &name.text) {
+            return false;
+        }
+        let public = self.public_foreign_twin(owner, &name.text);
+        let message = format!(
+            "`{}` is private to the module that declares `{owner}`",
+            name.text
+        );
+        if let Some(diag) = self.error(codes::PRIVATE_NAME, name.span, message) {
+            if let Some(own) = public {
+                diag.help = Some(format!("`{owner}`'s public member is `{own}`"));
+                diag.fix(format!("write `{own}`"), name.span, own);
+            } else {
+                diag.help = Some(format!(
+                    "mark it `pub` where `{owner}` declares it (R11.1.4)"
+                ));
+            }
+        }
+        true
+    }
+
+    /// `push` for `push_back` when `owner` has a public `push`.
+    pub(super) fn public_foreign_twin(&mut self, owner: &str, name: &str) -> Option<&'static str> {
+        let own = crate::builtins::foreign_own(name)?;
+        let members = self.members_of(owner)?;
+        let has = members.members.iter().any(|(m, _)| m == own);
+        (has && !self.env.is_private_field(owner, own)).then_some(own)
+    }
+
     /// The fix for an unknown method: its `_by` twin (`max_by`), or the free
     /// function it names (`mask.popcount()` is `popcount(mask)`).
     pub(super) fn method_twin(&self, base: &Expr, name: &Name) -> Option<(String, cpl_diag::Fix)> {

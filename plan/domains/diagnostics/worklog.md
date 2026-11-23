@@ -413,3 +413,13 @@ Landed since 23:10: four type/flow lints from `spec/idioms/lints.md`, L0571 `neg
   so `r[0]` on a run is E0305 at check time with the `r.nth(0)` fix, not a
   trap (golden). Removed the stale `planned_a_line_continued...` golden that
   syntax's 7d7fffdd8 took out of `PLANNED`.
+- #163: `n >= 2 and hub is None` parses: an operand after `and` may be a
+  pattern test, as it already could first (`hub is None and ...`). Program test
+  `and_then_is_pattern`. #79 pinned as a golden at the user's `Perm<1..=n>`.
+  Rechecked clean on main: #91 (R0301 names `while let`), #164 (`max(by:)`
+  fix), #173 (`mut` at both ends), #175 (one E0104), #189 (same-part wording).
+- C++ member names on a std struct (`w.push_back`, `w.size()` on `Window`):
+  the habit table (`foreign_own`) now applies to any type with the public
+  member, E0207 on a private helper points at the public twin with a fix,
+  and E0203 no longer lists private fields. Restores the newcomer scoreboard
+  (window-max) after std's private `Window.push_back`. Golden added.

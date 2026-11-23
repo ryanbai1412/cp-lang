@@ -256,52 +256,59 @@ impl<'a> Parser<'a> {
 
     pub(super) fn and(&mut self) -> Expr {
         let start = self.start();
-        let mut lhs = self.not();
-        if self.at_is_pattern() {
-            self.bump();
-            let pat = self.pattern();
-            let rhs = if self.at(T::And) && self.peek_n(1) != T::Let {
-                self.bump();
-                self.and()
-            } else {
-                Expr {
-                    kind: ExprKind::Bool(true),
-                    span: self.span_from(start),
-                }
-            };
-            let span = self.span_from(start);
-            let wrap_block = |e: Expr| Block {
-                stmts: vec![Stmt {
-                    public: false,
-                    decorators: Vec::new(),
-                    kind: StmtKind::Expr(e),
-                    span,
-                }],
-                span,
-            };
-            return Expr {
-                kind: ExprKind::If {
-                    branches: vec![(
-                        Cond::Let {
-                            pat,
-                            value: lhs,
-                            and: None,
-                        },
-                        wrap_block(rhs),
-                    )],
-                    otherwise: Some(wrap_block(Expr {
-                        kind: ExprKind::Bool(false),
-                        span,
-                    })),
-                },
-                span,
-            };
-        }
+        let mut lhs = self.not_or_is();
         // `and let` goes on to another binding, not another operand.
         while (self.at(T::And) && self.peek_n(1) != T::Let) || self.c_logic(T::Amp, "and") {
-            lhs = self.binary(start, BinOp::And, lhs, Self::not);
+            lhs = self.binary(start, BinOp::And, lhs, Self::not_or_is);
         }
         lhs
+    }
+
+    /// An `and` operand, which may be a pattern test: `n >= 2 and hub is None`.
+    fn not_or_is(&mut self) -> Expr {
+        let start = self.start();
+        let lhs = self.not();
+        if !self.at_is_pattern() {
+            return lhs;
+        }
+        self.bump();
+        let pat = self.pattern();
+        let rhs = if self.at(T::And) && self.peek_n(1) != T::Let {
+            self.bump();
+            self.and()
+        } else {
+            Expr {
+                kind: ExprKind::Bool(true),
+                span: self.span_from(start),
+            }
+        };
+        let span = self.span_from(start);
+        let wrap_block = |e: Expr| Block {
+            stmts: vec![Stmt {
+                public: false,
+                decorators: Vec::new(),
+                kind: StmtKind::Expr(e),
+                span,
+            }],
+            span,
+        };
+        Expr {
+            kind: ExprKind::If {
+                branches: vec![(
+                    Cond::Let {
+                        pat,
+                        value: lhs,
+                        and: None,
+                    },
+                    wrap_block(rhs),
+                )],
+                otherwise: Some(wrap_block(Expr {
+                    kind: ExprKind::Bool(false),
+                    span,
+                })),
+            },
+            span,
+        }
     }
 
     /// `&&` where `and` goes on to another condition: reported, then

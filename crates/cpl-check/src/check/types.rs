@@ -1724,26 +1724,6 @@ impl<'a> Checker<'a> {
         }
     }
 
-    /// R11.1.4: E0207 when `base.name` reads a member another module declares without `pub`.
-    pub(crate) fn private_member(&mut self, base_ty: &Ty, name: &ast::Name) -> bool {
-        let Ty::Named { name: owner, .. } = base_ty else {
-            return false;
-        };
-        if !self.env.is_private_field(owner, &name.text) {
-            return false;
-        }
-        let message = format!(
-            "`{}` is private to the module that declares `{owner}`",
-            name.text
-        );
-        if let Some(diag) = self.error(codes::PRIVATE_NAME, name.span, message) {
-            diag.help = Some(format!(
-                "mark it `pub` where `{owner}` declares it (R11.1.4)"
-            ));
-        }
-        true
-    }
-
     /// R08.1.7: a record meets a trait when a field meets each member the trait leaves without a
     /// body, a field `w: W` or a bodiless `@get fn w(self) -> W` alike, with its type.
     pub(crate) fn meets_by_shape(&mut self, fields: &[(String, Ty)], trait_name: &str) -> bool {

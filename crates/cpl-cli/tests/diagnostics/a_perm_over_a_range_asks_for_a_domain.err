@@ -1,0 +1,8 @@
+error[E0302]: `Perm` (`std.seq`) needs a domain for `V`, and a range is not one
+  --> a_perm_over_a_range_asks_for_a_domain.cp:4:8
+  |
+4 | let p: Perm<1..=n> = read()
+  |        ^^^^
+  = help: declare a domain, as in `domain V = 1..=n`, and pass its name
+
+a_perm_over_a_range_asks_for_a_domain.cp: 1 error

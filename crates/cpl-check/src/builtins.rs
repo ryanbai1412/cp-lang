@@ -96,7 +96,15 @@ pub fn builtin_members(receiver: Receiver) -> impl Iterator<Item = &'static Buil
 /// Another language's name for a member `receiver` has under its own name:
 /// Python's `append`, C++'s `size` or `push_back`, Java's `containsKey`, C++'s `unique`.
 pub fn foreign_member(receiver: Receiver, name: &str) -> Option<&'static str> {
-    let own = match name {
+    let own = foreign_own(name)?;
+    (builtin_members(receiver).any(|m| m.name == own)
+        || crate::prelude::spec_receiver_method_names().contains(own))
+    .then_some(own)
+}
+
+/// The CP Lang name another language's member name stands for, on any type.
+pub fn foreign_own(name: &str) -> Option<&'static str> {
+    Some(match name {
         "append" | "push_back" | "add" => "push",
         "pop_back" => "pop",
         "front" => "first",
@@ -107,10 +115,7 @@ pub fn foreign_member(receiver: Receiver, name: &str) -> Option<&'static str> {
         "erase" | "discard" | "delete" => "remove",
         "unique" => "distinct",
         _ => return None,
-    };
-    (builtin_members(receiver).any(|m| m.name == own)
-        || crate::prelude::spec_receiver_method_names().contains(own))
-    .then_some(own)
+    })
 }
 
 /// Rust's `xs.iter()` or `s.chars()`: a call CP Lang leaves out, since

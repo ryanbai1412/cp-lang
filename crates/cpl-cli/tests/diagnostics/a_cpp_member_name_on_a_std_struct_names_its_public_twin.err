@@ -1,0 +1,15 @@
+error[E0207]: `push_back` is private to the module that declares `Window`
+  --> a_cpp_member_name_on_a_std_struct_names_its_public_twin.cp:3:3
+  |
+3 | w.push_back(3)
+  |   ^^^^^^^^^
+  = help: `Window`'s public member is `push`
+
+error[E0203]: Window<Int> has no field or method `size`
+  --> a_cpp_member_name_on_a_std_struct_names_its_public_twin.cp:4:9
+  |
+4 | print(w.size())
+  |         ^^^^
+  = help: `size` is spelled `len` in CP Lang
+
+a_cpp_member_name_on_a_std_struct_names_its_public_twin.cp: 2 errors
