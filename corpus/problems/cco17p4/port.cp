@@ -40,8 +40,8 @@ fn volumes_by_orders(height: [Pillar]1..=50) -> List<Int>:
         if order.len == n:
             var total = 0
             for i in 0..n:
-                let left = max(order[j] for j in 0..=i)
-                let right = max(order[j] for j in i..n)
+                let left = [order[j] for j in 0..=i].max()!
+                let right = [order[j] for j in i..n].max()!
                 total += min(left, right) - order[i]
             seen[Volume(total)] = true
             return

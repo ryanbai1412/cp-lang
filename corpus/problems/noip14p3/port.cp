@@ -27,4 +27,4 @@ for x in X:
         return
     taps = next
 print(1)
-print(min(t! for t in taps if t != None))
+print([t! for t in taps if t != None].min()!)

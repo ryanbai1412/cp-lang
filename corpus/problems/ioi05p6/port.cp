@@ -46,7 +46,7 @@ fn spread(cs: List<Village>, mill: Site) -> Row:
     var best: Row = 0
     for c in cs:
         let sub = cost(c, mill)
-        best = [Mills] t => min(best[a] + sub[Mills(t - a)] for a in ..=t)!
+        best = [Mills] t => [best[a] + sub[Mills(t - a)] for a in ..=t].min()!
     best
 
 // v's subtree; v's logs reach `mill` unless v builds its own

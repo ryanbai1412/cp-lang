@@ -11,6 +11,6 @@ for o in orders:
 
 @memo
 fn chain(u: L) -> Int:
-    (max(chain(v) for v in L if v != u and ahead[u, v]) ?? 0) + 1
+    ([chain(v) for v in L if v != u and ahead[u, v]].max()! ?? 0) + 1
 
-print(max(chain(u) for u in L)!)
+print([chain(u) for u in L].max()!)

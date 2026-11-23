@@ -94,10 +94,8 @@ etsr23r3p2
 etsr23r3p3
 etsr23r4p2
 ioi00p4
-ioi04p2
 ioi05p2
 ioi05p6
-ioi06p2
 ioi07p2
 ioi08p1
 ioi09p2
@@ -155,7 +153,6 @@ noimps22p1
 noip00p4
 noip01p4
 noip04p3
-noip05p2
 noip06p1
 noip07p1
 noip10p2

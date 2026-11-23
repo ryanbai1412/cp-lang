@@ -30,9 +30,7 @@ let chamber = [[block(r, c, ch, cw) for c in 0..=w - cw] for r in 0..=h - ch]
 let along = [window_mins(row, bw - cw - 1) for row in chamber]
 let down = [window_mins([along[i][j] for i in 0..along.len], bh - ch - 1) for j in 0..along[0].len]
 
-let (_, r, c) = max(
-    (block(r, c, bh, bw) - down[c + 1][r + 1], r, c) for r in 0..=h - bh for c in 0..=w - bw
-)!
-let (_, i, j) = min((chamber[i][j], i, j) for i in r + 1..r + bh - ch for j in c + 1..c + bw - cw)!
+let (_, r, c) = [(block(r, c, bh, bw) - down[c + 1][r + 1], r, c) for r in 0..=h - bh for c in 0..=w - bw].max()!
+let (_, i, j) = [(chamber[i][j], i, j) for i in r + 1..r + bh - ch for j in c + 1..c + bw - cw].min()!
 print(c + 1, r + 1)
 print(j + 1, i + 1)

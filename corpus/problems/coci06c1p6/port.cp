@@ -24,7 +24,5 @@ fn killer(r: Row, c: Col, size: Int) -> Bool:
         let there = turned.fold(span(r2.mirror, r.mirror), span(c2.mirror, c.mirror)) % P
         return here * row_pow[r2.mirror] % P * col_pow[c2.mirror] % P == there * row_pow[r] % P * col_pow[c] % P
     false
-let best = max(
-    size for size in 2..=min(rows, cols) if any(killer(r, c, size) for r in Row for c in Col)
-)
+let best = [size for size in 2..=min(rows, cols) if any(killer(r, c, size) for r in Row for c in Col)].max()!
 print(best ?? -1)

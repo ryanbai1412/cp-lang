@@ -31,5 +31,5 @@ for l in P.rev:
             elif pts[r].y <= height[k]:
                 dp[lo, hi, k] = dp[lo, r.l, k]
             else:
-                dp[lo, hi, k] = min(dp[lo, i.r, tallest(l, i)] + dp[i.r, hi, k] + 1 for i in l..=r)!
+                dp[lo, hi, k] = [dp[lo, i.r, tallest(l, i)] + dp[i.r, hi, k] + 1 for i in l..=r].min()!
 print(dp[P.cuts.first, P.cuts.last, H.first!])

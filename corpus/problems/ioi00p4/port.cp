@@ -38,7 +38,7 @@ for via in Region:
 
 var best = (FAR, Region.first)
 for r in Region:
-    let total = sum(min(dist[r, h] for h in touching[t]) for t in homes)
+    let total = sum([dist[r, h] for h in touching[t]].min()! for t in homes)
     best min= (total, r)
 print(best.0)
 print(best.1)

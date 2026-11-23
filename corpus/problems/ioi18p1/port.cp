@@ -23,7 +23,7 @@ struct Judge(word: Str):
         Judge(first + Str(rand_of(rest) for _ in 1..n))
     fn valid(self) -> Bool = all(c != word[0] for c in word[1..])
 
-    fn press(mut self, p: Str) -> Int = max(k for k in 0..=word.len if p.contains(word[..k]))
+    fn press(mut self, p: Str) -> Int = [k for k in 0..=word.len if p.contains(word[..k])].max()!
     fn answer_ok(self, got: Str) -> Bool = got == word
 
 // One letter in two presses: is it one of the first pair, then which one.

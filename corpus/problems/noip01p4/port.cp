@@ -30,4 +30,4 @@ fn solve():
     fn price(u: Airport, v: Airport) -> F64:  // WISH F15
         (if u.city == v.city: given[u.city].rail else: air) * dist(at[u], at[v])
     let cost = all_pairs([Airport, Airport] (u, v) => price(u, v))                   // WISH G16
-    print(min(cost[(from, i), (to, j)] for i in Corner for j in Corner), digits: 1)  // WISH G4
+    print([cost[(from, i), (to, j)] for i in Corner for j in Corner].min()!, digits: 1)  // WISH G4

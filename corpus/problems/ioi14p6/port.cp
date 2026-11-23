@@ -22,12 +22,10 @@ fn away(side: List<Int>, step: Int) -> [0..=days]Int:
 // walk `first` and come back, then walk `second`; the start city is visited or not
 fn best(first: List<Int>, second: List<Int>) -> Int:
     let (round_trip, one_way) = (away(first, 2), away(second, 1))
-    max(
-        here + round_trip[t] + one_way[days - spent - t] for (spent, here) in [
+    [here + round_trip[t] + one_way[days - spent - t] for (spent, here) in [
             (0, 0),
             (1, fun[start]),
-        ] for t in 0..=days - spent
-    )
+        ] for t in 0..=days - spent].max()!
 
 let (left, right) = (fun[..start].rev, fun[start.next..])  // WISH K10: .rev on a slice
 print(max(best(right, left), best(left, right)))

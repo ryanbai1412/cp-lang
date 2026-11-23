@@ -11,4 +11,4 @@ for i in I:
     up[i] = 1 + ([up[j] for j in I if j < i and h[j] < h[i]].max()! ?? 0)
 for i in I.rev:
     down[i] = 1 + ([down[j] for j in I if j > i and h[j] < h[i]].max()! ?? 0)
-print(n - max(up[i] + down[i] - 1 for i in I))
+print(n - [up[i] + down[i] - 1 for i in I].max()!)

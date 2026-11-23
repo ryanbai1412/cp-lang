@@ -28,4 +28,4 @@ for (x, y) in lights:
     on_x[py] min= turn_to_x
     px = x
     py = y
-print(min(w for street in [on_x, on_y] for v in Coord if let w = street[v])!)
+print([w for street in [on_x, on_y] for v in Coord if let w = street[v]].min()!)

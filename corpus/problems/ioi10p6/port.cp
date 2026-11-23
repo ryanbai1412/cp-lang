@@ -11,7 +11,7 @@ fn random_tree() -> [Road](u: City, v: City):
 
 let fans: [City]1..=2000 = read()
 let roads: [Road](u: City, v: City) = read(gen: random_tree)
-let tree = Rooted(roads, City.first)
+let tree = Rooted(roads, City.first!)
 
 // below[c]: the fans in c's subtree; they all cross the road above c
 var below: [City]Int = [City] c => fans[c]
@@ -25,4 +25,4 @@ fn busiest(c: City) -> Int:
     for k in tree.children(c): worst max= below[k]
     worst
 
-print(min((busiest(c), c) for c in City).1)
+print([(busiest(c), c) for c in City].min()!.1)

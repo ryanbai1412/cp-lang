@@ -13,7 +13,7 @@ fn random_parents() -> [V]?V:
 let have: [V]?V = read(gen: random_parents)
 let want: [V]?V = read(gen: random_parents)
 
-fn root(parent: [V]?V) -> V: min(v for v in V if parent[v] == None)!
+fn root(parent: [V]?V) -> V: [v for v in V if parent[v] == None].min()!
 
 if root(have) != root(want): print(-1)
 else:

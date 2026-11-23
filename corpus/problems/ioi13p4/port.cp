@@ -21,7 +21,7 @@ protocol Cave:
 @derive(Gen)
 struct Judge(open: [Switch]Pos, door: Perm<Switch, Door>):
     fn try_combination(mut self, s: [Switch]Pos) -> ?Door =
-        min(door[w] for w in Switch if s[w] != open[w])
+        [door[w] for w in Switch if s[w] != open[w]].min()!
     fn answer(
         mut self,
         o: [Switch]Pos,

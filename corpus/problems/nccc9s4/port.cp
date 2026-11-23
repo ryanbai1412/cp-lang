@@ -20,7 +20,7 @@ if vals.D.K <= HEAVY:
         let pre = prefix([0..n] i => Int(id[i] == v))
         for qi in Q:
             let (l, r) = qs[qi]
-            best[qi] max= (pre.sum((l - 1)..r), v)
+            best[qi] max= (pre.fold((l - 1)..r), v)
     for qi in Q: ans[qi] = vals[best[qi].1]
 else:
     let nb = n / B + 1
