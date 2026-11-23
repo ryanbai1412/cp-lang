@@ -4752,7 +4752,6 @@ entries were renumbered to 169–178. 133 itself is now §169.
   reason (multi-edge bridges, `[E]` results) was shown.
 - **Reverse.** Back to `Neighbours` with `w: A -> W` on each algorithm.
 
-
 ## 147. Constructor ownership; trees on one `Rooted`; DFS (2026-11-21)
 
 - **Constructors (agreed).** R5 applies: parameters lend for the call,
@@ -5076,7 +5075,6 @@ that change behaviour or a public name. Prose-only fixes are marked in the notes
 - **Added `DsuOf.groups()`, `Subset.set`/`shifted` and `Dir8.from`**, cited by containers.md §2.4
   and decisions 62, 16.8 and 16.5. Reverse: delete them.
 
-
 ## 167. Library contradictions resolved (graphs, strings, math)
 
 Contradictions logged in `spec/delta/doc-notes/` for graph, tree, flow,
@@ -5119,7 +5117,6 @@ the stub. Prose-only fixes are marked in the notes; the API changes:
   `Counter<K, V>`. A default type argument keeps one type. `.distinct` was the same number as `len`
   (no stored entry equals `init`), so it is dropped: one name per idea. Reverse: add `distinct` as
   an alias and remove the default.
-
 
 ## 169. Named-argument and record-field punning `f(x:)` (2026-11-21)
 
@@ -5345,7 +5342,6 @@ the struct entirely, like any unread field, instead of a `bool` placeholder.
 - **Why.** Holes H-PREFIX-API, H-STR-FIND-STUB, H-COLLECT-KEYS, H-REBASE-STUB-FORM, H-DSU-SAME-MUT, H-SEGTREE-DOMAIN-ARG, H-STD-FUNCTION, H-POSITIONS-AFTER and H-DIAG-CODES: each job had two or three spellings across chapters and stubs. `search` follows C++'s `std::search` for subsequences.
 - **Reverse.** Rename back; allowing `find` to take a pattern needs overloading by argument type, which the language bans.
 
-
 ## 187. Binary search spends only the queries it needs (2026-11-21)
 
 - **Decision.** `bsearch_first`/`bsearch_last` search the `r.len + 1` outcomes (each position, or `none`) directly, so they call `ok` at most ceil(log2(r.len + 1)) times: 30 on `1..=1e9`. They no longer probe the ends first or assert that `ok` is monotone at the ends.
@@ -5363,7 +5359,6 @@ the struct entirely, like any unread field, instead of a `bool` placeholder.
 - **Decision.** `cpl check` and `cpl lsp` both take their diagnostics from `cpl_ir::reported`, which under `CPL_SPEC=1` drops lowering's builtin-shaped errors and `NOT_IMPLEMENTED` notes that cite `design/`, as `cpl check` already did. The checker keeps the type of every call, index, unwrap, paren and range expression (`ItemCheck::shapes`) so dot completion after `xs.sorted()` or `g[v]` reads the checked type instead of guessing from signature text. Editing a file re-analyzes only it and the files that import it.
 - **Why.** The editor disagreed with `cpl check` on 76 of 100 hill-climb ports in spec mode, dot completion was empty after 166 calls, and every keystroke re-analyzed every module (352 ms median edit-to-diagnostics in spec mode, now under 4 ms).
 - **Reverse.** Point the LSP back at `cpl_ir::check`; drop `shapes` and the fallback in `complete::type_of`; invalidate every analysis in `Database::set_file`.
-
 
 ## 190. Diagnostic codes: one per rule, held to the catalogue by a test (2026-11-21)
 
@@ -5459,7 +5454,6 @@ the struct entirely, like any unread field, instead of a `bool` placeholder.
 - **Reverse.** Drop `"nth"` from the domain members in `cpl-check`'s
   `member_ty` and the `positional` spans pushed to `fixed_io` after it.
 
-
 ## 198. `abs` of a number has its number type (2026-11-22)
 
 - **Decision.** `abs` of an `Int` or integer range is typed `Int`, and of
@@ -5546,7 +5540,6 @@ the struct entirely, like any unread field, instead of a `bool` placeholder.
   statements bound `n * m` (`cco19p2`, `cf2159b`), which no type states yet.
 - **Reverse.** Drop `memory_lens` in `cpl-lsp`'s `server.rs` and
   `Database::storage` in `cpl-check`'s `hover.rs`.
-
 
 ## 205. The memory lens counts lists of proven size (2026-11-22)
 
@@ -5789,7 +5782,6 @@ the struct entirely, like any unread field, instead of a `bool` placeholder.
 - **Reverse.** Make a bare walk yield values (as `[K]V` does) and change
   `spec/conformance/traits/Seq/Map--iter.cp` with it.
 
-
 ## 223. A traced VM write to an `Int` global is logged from the registers (2026-11-22)
 
 - **Decision.** In a run nothing filters, a quiet write to a global or to a
@@ -5857,7 +5849,6 @@ more values (R11.3.3); a `Map` read traps on an absent key while `=` and
 both stubs). Reason: each was the reading a cold reader had to guess, and
 picking the implemented one costs no code. Reverse: restore the old wording
 and turn the new cases into reject cases.
-
 
 ## 228. CI runs --fast as five parallel jobs (2026-11-22)
 
@@ -6337,9 +6328,6 @@ constants and the `exit(3)` in the C++ runtime, and the sentence in
   needs compiler queries that do not exist yet.
 - **Reverse.** Sections are independent records in `explain --json`;
   adding or dropping one changes no other.
-||||||| parent of 42144bbaf (plan(tech-debt): decide the builtin floor, pure moves and ratchets)
-
-||||||| parent of 8d7aa07f2 (plan(tech-debt): decide the builtin floor, pure moves and ratchets)
 
 ## 266. The builtin floor: storage, I/O, bits and numeric primitives (2026-11-22)
 
@@ -6374,7 +6362,6 @@ constants and the `exit(3)` in the C++ runtime, and the sentence in
   `plan/QUESTIONS.md`.
 - **Why.** Twelve parallel lanes ignore warnings.
 - **Reverse.** Make the ratchet step warn-only in `scripts/check.sh`.
-||||||| parent of 158a7eb97 (plan(perf): decide the three perf questions by their recommendations)
 
 ## 269. The v0.3 runtime bar is the perf set at p50 < 1.1x, p95 < 1.2x, max < 1.5x (perf-1) (2026-11-22)
 
@@ -6485,8 +6472,6 @@ constants and the `exit(3)` in the C++ runtime, and the sentence in
 - **Reverse.** (1) holds until `rules/bounds.rs` is deleted. (2) The records
   can be compiled back into Rust consts. (3) A pretty-printer can replace
   `layout.rs` behind the same `format` API.
-||||||| parent of b398d182e (plan(idioms): decide the re-port bar and the skill gate)
-||||||| parent of a702ac46a (plan(idioms): decide the re-port bar and the skill gate)
 
 ## 278. The 305 tracked ports move to v0.3 mechanically first, then are re-ported idiomatically (2026-11-22)
 
@@ -6514,8 +6499,6 @@ constants and the `exit(3)` in the C++ runtime, and the sentence in
   passing them can be overfitting.
 - **Reverse.** Gate on the known 20 only.
 
-||||||| parent of db3e8bfdc (ci: regenerate generated files in ci; cut land.sh to rebase and push)
-
 ## 280. Generated files are regenerated by CI, not by `land.sh` (2026-11-22)
 
 Call: `land.sh` is trailer check, rebase, push, retry and nothing else. CI's
@@ -6527,9 +6510,6 @@ and CI's checks catch markers.
 Reason: lanes push with a bare `git push`, which skipped every step in
 `land.sh`; stale generated files were main's most common red.
 Reverse: delete the `regen` job and call `scripts/regen.sh` from `land.sh`.
-
-||||||| parent of 64317391c (plan(stdlib): decide Q1-Q3 by their recommendations)
-||||||| parent of eb586424c (plan(stdlib): decide Q1-Q3 by their recommendations)
 
 ## 281. The prelude is the `lib/` chapter tables; the 80-name warning goes (2026-11-22)
 
@@ -6545,9 +6525,6 @@ Reverse: delete the `regen` job and call `scripts/regen.sh` from `land.sh`.
   prelude too small to write the guide's examples. 80 was never derived.
 - **Reverse.** Restore the warning in `scripts/check.sh` and cut names by
   usage or a budget; each cut is one line in `spec/std/prelude.cp`.
-||||||| parent of f80db9ea2 (diag: decide the three recovery questions and raise the bars)
-
-||||||| parent of 7343659b4 (diag: decide the three recovery questions and raise the bars)
 
 ## 282. An error that labels the broken line counts as on the right line (2026-11-22)
 
