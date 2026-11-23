@@ -90,6 +90,28 @@ fn rendered(command: &str, files: &[PathBuf], out: &mut BTreeMap<String, Vec<Dia
     }
 }
 
+/// `rendered` for `files`, split across one `cpl` process per core.
+fn rendered_parallel(command: &str, files: &[PathBuf]) -> BTreeMap<String, Vec<Diag>> {
+    let threads = std::thread::available_parallelism().map_or(4, |n| n.get());
+    std::thread::scope(|s| {
+        let workers: Vec<_> = files
+            .chunks(files.len().div_ceil(threads))
+            .map(|chunk| {
+                s.spawn(move || {
+                    let mut out = BTreeMap::new();
+                    rendered(command, chunk, &mut out);
+                    out
+                })
+            })
+            .collect();
+        let mut all = BTreeMap::new();
+        for worker in workers {
+            all.extend(worker.join().unwrap());
+        }
+        all
+    })
+}
+
 fn frame(body: &str) -> Vec<u8> {
     format!("Content-Length: {}\r\n\r\n{body}", body.len()).into_bytes()
 }
@@ -158,13 +180,13 @@ fn published(files: &[PathBuf]) -> BTreeMap<String, Vec<Diag>> {
 fn the_editor_reports_what_check_and_lint_report_on_every_v03_file() {
     let files = v03_files();
     assert!(files.len() > 1000, "only {} v0.3 files found", files.len());
-    let mut want = BTreeMap::new();
-    rendered("check", &files, &mut want);
     // `cpl lint` also shows what `cpl check` reported (the checker's L06xx
     // lints and the errors lints can't see past); the editor shows each
     // once. Lint shows exactly the errors `cpl check` shows.
-    let mut lints = BTreeMap::new();
-    rendered("lint", &files, &mut lints);
+    let (mut want, lints) = std::thread::scope(|s| {
+        let lints = s.spawn(|| rendered_parallel("lint", &files));
+        (rendered_parallel("check", &files), lints.join().unwrap())
+    });
     let mut strays = Vec::new();
     for (file, diags) in lints {
         let checked: &mut Vec<Diag> = want.entry(file.clone()).or_default();
