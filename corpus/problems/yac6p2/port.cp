@@ -10,8 +10,8 @@ fn random_parents() -> [V]?V:
     if rand(0, 3) == 0: [V] v => (if v == V.last: None else: V(rand(v.label + 1, n)))
     else: [V] v => (if v == V.first: None else: V(rand(1, v.label - 1)))
 
-let have: [V]?V = read(gen: random_parents)
-let want: [V]?V = read(gen: random_parents)
+let have: [V]?V = read(none: -1, gen: random_parents)
+let want: [V]?V = read(none: -1, gen: random_parents)
 
 fn root(parent: [V]?V) -> V: [v for v in V if parent[v] == None].min()!
 
