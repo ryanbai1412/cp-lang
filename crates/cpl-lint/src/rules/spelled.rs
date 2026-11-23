@@ -480,9 +480,23 @@ impl Spelled<'_> {
         else {
             return;
         };
-        let (Some(i), ExprKind::Range { hi: Some(hi), .. }) = (pat_name(pat), &iter.kind) else {
+        let (
+            Some(i),
+            ExprKind::Range {
+                lo, hi: Some(hi), ..
+            },
+        ) = (pat_name(pat), &iter.kind)
+        else {
             return;
         };
+        // `for j in i + 1..n` inside a loop over `i` is a triple, not a
+        // pair: `.pairs()` would restart `j` and drop `i`.
+        if !matches!(
+            lo.as_deref().map(|l| &unparen(l).kind),
+            None | Some(ExprKind::Int(_))
+        ) {
+            return;
+        }
         for inner in &body.stmts {
             let StmtKind::For {
                 pat: jpat,
