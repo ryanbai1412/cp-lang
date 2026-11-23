@@ -596,6 +596,9 @@ impl<'p> Emitter<'p> {
 
     pub fn expr(&mut self, e: &Expr) -> Code {
         let program = self.program;
+        if let Some((_, owner)) = self.pinned.iter().find(|(p, _)| std::ptr::eq(*p, e)) {
+            return Code::primary(owner.clone());
+        }
         if let Some(row) = self.cached_row(crate::rowcache::of_expr(e)) {
             return Code::primary(row);
         }

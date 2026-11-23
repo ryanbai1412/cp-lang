@@ -198,6 +198,21 @@ pub enum Dim {
 }
 
 impl Ty {
+    /// True if some part is a view into another value, which must outlive it.
+    pub fn holds_view(&self) -> bool {
+        match self {
+            Ty::ListView(..) | Ty::Keyed(..) | Ty::MutView(_) | Ty::StrView => true,
+            Ty::Range(t) | Ty::Opt(t) | Ty::List(t) | Ty::Set(t) | Ty::HashSet(t) | Ty::Mut(t) => {
+                t.holds_view()
+            }
+            Ty::Array { elem, .. } => elem.holds_view(),
+            Ty::Tuple(ts) => ts.iter().any(Ty::holds_view),
+            Ty::Record(fs) => fs.iter().any(|(_, t)| t.holds_view()),
+            Ty::Map(k, v) | Ty::HashMap(k, v) => k.holds_view() || v.holds_view(),
+            _ => false,
+        }
+    }
+
     /// True when some part is [`Ty::Error`]: already reported, so a
     /// mismatch against it is that report's cascade.
     pub fn mentions_error(&self) -> bool {

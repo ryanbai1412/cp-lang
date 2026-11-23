@@ -1,7 +1,7 @@
 //! The interpreter against the C++ back end, end to end.
 //!
 //! Every program under `tests/programs` and `crates/cpl-cli/tests/cases/program` is run by `cpl run`, and built by
-//! `cpl build`, compiled with `g++ -std=c++17 -fsanitize=address,undefined`
+//! `cpl build`, compiled with `g++ -std=c++17 -fsanitize=address,undefined -D_GLIBCXX_DEBUG`
 //! and run. Both must print the bytes in the program's `.out` file and
 //! exit with the same status, and the sanitizers must stay silent: C++
 //! that only happens to work is a failure here.
@@ -24,9 +24,10 @@ use std::sync::OnceLock;
 
 const SHARDS: usize = 8;
 
-const GXX_FLAGS: [&str; 6] = [
+const GXX_FLAGS: [&str; 7] = [
     "-std=c++17",
     "-fsanitize=address,undefined",
+    "-D_GLIBCXX_DEBUG",
     "-fno-sanitize-recover=all",
     "-Wall",
     "-Wextra",
@@ -113,6 +114,7 @@ fn aliasing_and_sort_keys_agree_between_interp_and_sanitized_cpp() {
             "unit_arg_and_mod_view_show",
             "unit_generic_local",
             "unread_fn_field",
+            "view_of_temporary",
         ]
     );
     let failures: Vec<String> = programs

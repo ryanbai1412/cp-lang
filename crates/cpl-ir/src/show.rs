@@ -111,27 +111,11 @@ pub(crate) fn ty_name(
 
 /// "expected `want`, found `found`", naming views when both read the same.
 pub(crate) fn mismatch(want: &str, found: &str, found_ty: &Ty) -> String {
-    if want == found && has_view(found_ty) {
+    if want == found && Ty::holds_view(found_ty) {
         format!(
             "expected `{want}`, found `{found}` made of views into another sequence, not copies"
         )
     } else {
         format!("expected `{want}`, found `{found}`")
-    }
-}
-
-/// True if `ty` holds a view, which [`ty_name`] shows as the owned type it
-/// reads like (a `ListView` of `Int` is `List<Int>`).
-fn has_view(ty: &Ty) -> bool {
-    match ty {
-        Ty::ListView(..) | Ty::Keyed(..) | Ty::MutView(_) | Ty::StrView => true,
-        Ty::Range(t) | Ty::Opt(t) | Ty::List(t) | Ty::Set(t) | Ty::HashSet(t) | Ty::Mut(t) => {
-            has_view(t)
-        }
-        Ty::Array { elem, .. } => has_view(elem),
-        Ty::Tuple(ts) => ts.iter().any(has_view),
-        Ty::Record(fs) => fs.iter().any(|(_, t)| has_view(t)),
-        Ty::Map(k, v) | Ty::HashMap(k, v) => has_view(k) || has_view(v),
-        _ => false,
     }
 }

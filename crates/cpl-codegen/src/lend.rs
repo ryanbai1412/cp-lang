@@ -4,9 +4,8 @@
 //! temporary alive as long as the view.
 
 use crate::emit::{Code, Emitter, COND};
-use crate::names::ident;
 use crate::walk::{self, Effects};
-use cpl_ir::{Arg, AssignOp, BinOp, Block, Expr, ExprKind, PlaceKind, Stmt, Ty};
+use cpl_ir::{Arg, AssignOp, BinOp, Block, Expr, ExprKind, Place, PlaceKind, Stmt, Ty};
 
 /// A container argument that is no place: a temporary C++ destroys at the
 /// end of the statement.
@@ -378,60 +377,108 @@ impl<'p> Emitter<'p> {
         true
     }
 
-    /// The C++ for a view-typed call `e` with every temporary container it
-    /// may lend from held in a named local first, so the view does not
-    /// dangle; `None` when there is none. `keep` holds them in statics, for
-    /// a view stored past this block.
-    pub(crate) fn pinned_view(&mut self, e: &Expr, keep: bool, out: &mut String) -> Option<String> {
-        let ExprKind::Call(f, args) = &e.kind else {
-            return None;
-        };
-        if !matches!(e.ty, Ty::ListView(..) | Ty::StrView)
-            || !args.iter().any(|a| self.lends_temporary(a))
-        {
-            return None;
+    /// Pins the containers a stored view lends from (`vs.push(a.sorted().runs())`)
+    /// for as long as the store; returns the mark to truncate `pinned` to.
+    pub(crate) fn pin_stored(&mut self, e: &Expr, out: &mut String) -> usize {
+        let mark = self.pinned.len();
+        if let ExprKind::Mutate(_, _, args) = &e.kind {
+            for arg in args {
+                self.pin_owners(arg, Hold::Pool, out);
+            }
         }
-        let mut rendered = Vec::with_capacity(args.len());
-        for arg in args {
-            rendered.push(match arg {
-                Arg::Value(v) if temporary_owner(v) => {
-                    let owner = self.temp();
-                    let owner_ty = self.ty(&v.ty);
-                    let init = self.expr(v).text;
-                    if keep {
-                        self.line(out, &format!("static {owner_ty} {owner};"));
-                        self.line(out, &format!("{owner} = {init};"));
-                    } else {
-                        self.line(out, &format!("{owner_ty} {owner} = {init};"));
-                    }
-                    owner
-                }
-                Arg::Value(v) => match self.pinned_view(v, keep, out) {
-                    Some(text) => text,
-                    None => self.expr(v).text,
-                },
-                Arg::Mut(p) => self.place(p),
-            });
-        }
-        let callee = ident(&self.program.fns[*f].name);
-        Some(format!("{callee}({})", rendered.join(", ")))
+        mark
     }
 
-    fn lends_temporary(&self, arg: &Arg) -> bool {
-        match arg {
-            Arg::Value(v) if temporary_owner(v) => true,
-            Arg::Value(
-                v @ Expr {
-                    kind: ExprKind::Call(_, args),
-                    ..
-                },
-            ) => {
-                matches!(v.ty, Ty::ListView(..) | Ty::StrView)
-                    && args.iter().any(|a| self.lends_temporary(a))
+    /// `place = value` where `value` holds views of temporaries: the place
+    /// outlives the statement, so the owners its views read do too.
+    pub(crate) fn store_pinned(&mut self, place: &Place, value: &Expr, out: &mut String) -> bool {
+        let hold = match place.kind {
+            PlaceKind::Local(_) | PlaceKind::Global(_) => Hold::Static,
+            _ => Hold::Pool,
+        };
+        let Some(text) = self.pinned_view(value, hold, out) else {
+            return false;
+        };
+        let name = self.place(place);
+        self.line(out, &format!("{name} = {text};"));
+        true
+    }
+
+    /// The C++ for a view-typed call `e` with every temporary container it
+    /// may lend from held in a named local first, so the view does not
+    /// dangle; `None` when there is none. `hold` says how long. The call itself is written as usual,
+    /// with each owner's name in place of its expression.
+    pub(crate) fn pinned_view(&mut self, e: &Expr, hold: Hold, out: &mut String) -> Option<String> {
+        let mark = self.pinned.len();
+        self.pin_owners(e, hold, out);
+        if self.pinned.len() == mark {
+            return None;
+        }
+        let text = self.expr(e).text;
+        self.pinned.truncate(mark);
+        Some(text)
+    }
+
+    /// Bind each temporary container a view-typed call lends from, at any
+    /// depth of view-typed calls, to a named local.
+    pub(crate) fn pin_owners(&mut self, e: &Expr, hold: Hold, out: &mut String) {
+        if !e.ty.holds_view() {
+            return;
+        }
+        let args = match &e.kind {
+            ExprKind::Call(_, args) => args,
+            ExprKind::Tuple(parts) | ExprKind::Variant(_, parts) => {
+                for part in parts {
+                    self.pin_owners(part, hold, out);
+                }
+                return;
             }
-            _ => false,
+            ExprKind::Some(inner) => return self.pin_owners(inner, hold, out),
+            _ => return,
+        };
+        for arg in args {
+            let Arg::Value(v) = arg else {
+                continue;
+            };
+            if !temporary_owner(v) {
+                self.pin_owners(v, hold, out);
+                continue;
+            }
+            let owner = self.temp();
+            let owner_ty = self.ty(&v.ty);
+            let init = self.expr(v).text;
+            let name = match hold {
+                Hold::Block => {
+                    self.line(out, &format!("{owner_ty} {owner} = {init};"));
+                    owner
+                }
+                Hold::Static => {
+                    self.line(out, &format!("static {owner_ty} {owner};"));
+                    self.line(out, &format!("{owner} = {init};"));
+                    owner
+                }
+                Hold::Pool => {
+                    self.used.insert("deque");
+                    self.line(out, &format!("static std::deque<{owner_ty}> {owner};"));
+                    self.line(out, &format!("{owner}.push_back({init});"));
+                    format!("{owner}.back()")
+                }
+            };
+            self.pinned.push((v as *const Expr, name));
         }
     }
+}
+
+/// How long the containers a view lends from are kept.
+#[derive(Clone, Copy)]
+pub(crate) enum Hold {
+    /// To the end of the enclosing block.
+    Block,
+    /// Until the same statement runs again, which also replaces the view.
+    Static,
+    /// To the end of the run: the view goes into a place that may keep
+    /// it past the next run of the statement.
+    Pool,
 }
 
 /// Where a lent optional comes from: `m.get(k)`, or a name already holding a `cpl::Lent`.

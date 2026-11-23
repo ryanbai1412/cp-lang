@@ -13,8 +13,11 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use cpl_ir::{Arg, AssignOp, Block, ClosureId, Expr, ExprKind, FnId, PlaceKind, Program, Stmt, Ty};
+use cpl_ir::{
+    Arg, AssignOp, Block, ClosureId, Expr, ExprKind, FnId, Place, PlaceKind, Program, Stmt, Ty,
+};
 
+use crate::emit::Emitter;
 use crate::walk;
 
 /// How a fn-typed slot (struct field, fn parameter, or local closure binding)
@@ -1655,4 +1658,21 @@ fn explain_locals_in_block(
         };
         out.push(ClosureLowering { site, mode });
     });
+}
+
+impl Emitter<'_> {
+    /// A store into a dropped field or local (decision 178).
+    pub(crate) fn dropped_store(&self, place: &Place, op: AssignOp) -> bool {
+        let dead_root = matches!(crate::walk::root(place), (false, slot)
+            if self.closure_id.is_none() && self.devirt.dead_local(self.fn_id, slot));
+        (dead_root || self.devirt.in_unread_field(place)) && self.devirt.skippable_store(place, op)
+    }
+
+    pub(crate) fn dropped_value(&mut self, value: &Expr, out: &mut String) {
+        if !self.devirt.skippable_value(value) {
+            let value = self.flatten(value, out);
+            let text = self.expr(value).text;
+            self.line(out, &format!("(void)({text});"));
+        }
+    }
 }

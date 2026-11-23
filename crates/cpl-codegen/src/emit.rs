@@ -131,6 +131,8 @@ pub(crate) struct Emitter<'p> {
     /// The closure currently being emitted, if inside a closure body.
     pub closure_id: Option<usize>,
     pub names: Vec<String>,
+    /// Temporaries a view lends from, each written as the local holding it.
+    pub pinned: Vec<(*const Expr, String)>,
     pub hoisted: BTreeSet<usize>,
     /// The slot the next emitted closure is bound to when it names itself.
     pub rec_slot: Option<usize>,
@@ -252,6 +254,7 @@ impl<'p> Emitter<'p> {
             fn_id: None,
             closure_id: None,
             names: Vec::new(),
+            pinned: Vec::new(),
             hoisted: BTreeSet::new(),
             rec_slot: None,
             const_globals: BTreeSet::new(),
@@ -1489,6 +1492,9 @@ impl<'p> Emitter<'p> {
         }
         if self.used.contains("str_view") {
             out.push_str("#include <string_view>\n");
+        }
+        if self.used.contains("deque") {
+            out.push_str("#include <deque>\n");
         }
         if self.used.contains("cphash") {
             out.push_str("#include <chrono>\n");

@@ -2,7 +2,7 @@
 
 use crate::emit::{pad, Emitter, Pushed, ADD, PRIMARY, REL, UNARY};
 use crate::expr::string_literal;
-use crate::lend::{copied_at_test, Tail};
+use crate::lend::{copied_at_test, Hold, Tail};
 use crate::names::{fn_name, ident};
 use crate::walk::{self, Effects};
 use cpl_ir::{
@@ -75,7 +75,7 @@ impl<'p> Emitter<'p> {
 
     /// Writes the statements of a value block in line and gives back the
     /// expression that is its value.
-    fn flatten<'a>(&mut self, mut e: &'a Expr, out: &mut String) -> &'a Expr {
+    pub(crate) fn flatten<'a>(&mut self, mut e: &'a Expr, out: &mut String) -> &'a Expr {
         while crate::expr::map_remove_do(e).is_none() {
             let Some((stmts, value)) = flat(e) else { break };
             for k in 0..stmts.len() {
@@ -97,6 +97,12 @@ impl<'p> Emitter<'p> {
             return;
         }
         let e = self.flatten(e, out);
+        let mark = self.pin_stored(e, out);
+        self.flat_expr_stmt(e, out);
+        self.pinned.truncate(mark);
+    }
+
+    fn flat_expr_stmt(&mut self, e: &Expr, out: &mut String) {
         match &e.kind {
             ExprKind::Unit | ExprKind::Error => {}
             // Nothing of a `debug(...)` runs. A variable it alone reads
@@ -867,7 +873,7 @@ impl<'p> Emitter<'p> {
                     self.line(out, "{");
                     self.indent += 1;
                     let seq_text = self
-                        .pinned_view(seq, false, out)
+                        .pinned_view(seq, Hold::Block, out)
                         .unwrap_or_else(|| self.expr(seq).text);
                     let held = self.temp();
                     let holder_ty = if let Some(k) = self.expr_fixed_len(seq) {
@@ -977,21 +983,6 @@ impl<'p> Emitter<'p> {
         .then_some(sym)
     }
 
-    /// A store into a dropped field or local (decision 178).
-    fn dropped_store(&self, place: &Place, op: AssignOp) -> bool {
-        let dead_root = matches!(crate::walk::root(place), (false, slot)
-            if self.closure_id.is_none() && self.devirt.dead_local(self.fn_id, slot));
-        (dead_root || self.devirt.in_unread_field(place)) && self.devirt.skippable_store(place, op)
-    }
-
-    fn dropped_value(&mut self, value: &Expr, out: &mut String) {
-        if !self.devirt.skippable_value(value) {
-            let value = self.flatten(value, out);
-            let text = self.expr(value).text;
-            self.line(out, &format!("(void)({text});"));
-        }
-    }
-
     fn assign(&mut self, place: &Place, op: AssignOp, value: &Expr, out: &mut String) {
         if self.dropped_store(place, op) {
             self.dropped_value(value, out);
@@ -1005,6 +996,9 @@ impl<'p> Emitter<'p> {
         self.mark_moved_entry(place, op, value);
         let whole = value;
         let value = self.flatten(value, out);
+        if matches!(op, AssignOp::Set) && self.store_pinned(place, value, out) {
+            return;
+        }
         if let (AssignOp::Set, PlaceKind::Local(_) | PlaceKind::Global(_)) = (op, &place.kind) {
             if matches!((&value.kind, &value.ty), (ExprKind::Tuple(items), Ty::List(_)) if items.is_empty())
                 || matches!(&value.kind, ExprKind::Str(bytes) if bytes.is_empty())
@@ -1484,7 +1478,8 @@ impl<'p> Emitter<'p> {
                     }
                     _ => {}
                 }
-                let pinned = self.pinned_view(init, hoisted, out);
+                let hold = if hoisted { Hold::Static } else { Hold::Block };
+                let pinned = self.pinned_view(init, hold, out);
                 let text = match &init.kind {
                     _ if pinned.is_some() => pinned.unwrap_or_default(),
                     ExprKind::Field(base, index) => match &base.kind {
