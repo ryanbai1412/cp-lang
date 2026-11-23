@@ -19,7 +19,7 @@ var tops: SortedSet<I> = SortedSet()
 var eaters: Set<I> = Set()
 
 fn recheck(c: I):
-    eaters.set(c, on: tops.first_true(x => x > c) is q and total.sum(c..q) >= a[q])
+    eaters.set(c, on: tops.first_true(x => x > c) is q and total.fold(c..q) >= a[q])
 
 fn insert(i: I):
     total.add(i, a[i])
@@ -33,18 +33,18 @@ fn insert(i: I):
     recheck(i)
 
 // The cut before the first top whose value exceeds `s`.
-fn first_top_above(s: Int) -> Cut<I> = tops.first_true(q => a[q] > s).map(q => q.l) ?? I.cuts.last
+fn first_top_above(s: Int) -> Cut<I> = tops.first_true(q => a[q] > s).map(q => q.l) ?? I.cuts.last!
 
 // Where eater c's run ends: grow past every top its sum through `stop` beats.
 fn reach(c: I, stop: Cut<I>) -> Cut<I>:
-    let s = first_top_above(total.sum(c.l..stop))
+    let s = first_top_above(total.fold(c.l..stop))
     if s == stop: stop else: reach(c, s)
 
 fn forfeits() -> Int:
     var lost = tops.len - 1
-    var from = I.first
+    var from = I.first!
     while let c = eaters.first_ge(from):
-        let stop = reach(c, tops.first_true(x => x > c).map(q => q.l) ?? I.cuts.last)
+        let stop = reach(c, tops.first_true(x => x > c).map(q => q.l) ?? I.cuts.last!)
         lost -= tops.range(c.l..stop).len - 1
         from = stop.r ?? break
     lost

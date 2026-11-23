@@ -2,7 +2,7 @@
 //
 // Each operation removes three equal elements from the subarray `[l..r]`, so
 // the subarray is clearable iff both its length `len = r - l` and its count of
-// `1`s (`cnt_a.sum(l..r)`) are divisible by 3 (equivalently both `0`s and `1`s
+// `1`s (`cnt_a.fold(l..r)`) are divisible by 3 (equivalently both `0`s and `1`s
 // occur in multiples of 3).
 //
 // `cnt_chk` is the prefix sum of `a[i] ^ (i & 1)`, which is constant (`0` or
@@ -24,8 +24,8 @@ for _ in 0..q:
     let l = l_pos.ord
     let r = r_pos.ord + 1
     let len = r - l
-    if len % 3 != 0 or cnt_a.sum(l..r) % 3 != 0:
+    if len % 3 != 0 or cnt_a.fold(l..r) % 3 != 0:
         print(-1)
     else:
-        let raw = cnt_chk.sum(l..r)
+        let raw = cnt_chk.fold(l..r)
         print(len / 3 + Int(min(raw, len - raw) == 0))
