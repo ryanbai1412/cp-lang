@@ -7158,7 +7158,7 @@ on a taken number renumbers its own entry with `just next-decision`. Old
 duplicates keep their numbers, because commit bodies cite them. Reverse by
 removing the counter.
 
-## 327. Grid neighbours are getters and `Dir4` directions are constants (2026-11-22)
+## 329. Grid neighbours are getters and `Dir4` directions are constants (2026-11-22)
 
 `p.up`, `p.down`, `p.left`, `p.right` on any `(R, C)` cell are `@get` fns in `std/grid.cp` returning `?(R, C)`, written without parens like `r.prev`, and `Dir4.up` (and `right`, `down`, `left`) are `pub const`s, so `p.step(Dir4.up) == p.up` and `p.step(d)` stays for a computed `d`. Each getter is one `R.at(p.0 - 1)`-style bounds test and one add, an inline C++ fn. Matches `spec/lib/graphs-trees.md` (spec's wording). Reverse: turn the consts back into `fn up() -> Dir4` and drop the four getters; `cpl fix` rewrites `p.up` to `p.step(Dir4.up())`.
 
