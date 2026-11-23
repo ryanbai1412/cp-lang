@@ -389,7 +389,7 @@ options:
 ";
 
 /// Commands whose JSON output is `--format json`; `JSON_FLAG` ones say `--json`.
-const JSON_FORMAT: &[&str] = &["run", "doc", "bench", "profile", "cover"];
+const JSON_FORMAT: &[&str] = &["run", "doc", "test", "stress", "bench", "profile", "cover"];
 const JSON_FLAG: &[&str] = &["check", "judges", "explain"];
 
 /// Both spellings of JSON output, `--json` and `--format json`, work on every

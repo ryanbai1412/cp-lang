@@ -34,6 +34,9 @@ options:
   --time-limit MS    per case (default: the problem's limit)
   --memory-limit MB  peak memory per case, past which a case is MLE (default:
                      the problem's limit)
+  --format json      print `{\"cases\": [...], \"passed\", \"total\"}`, each case
+                     with its name, verdict (null when unjudged), ms, peak_kb,
+                     expected, output, why and explained
 ";
 
 /// What happened on one case.
@@ -169,6 +172,38 @@ pub fn render(results: &[CaseResult]) -> String {
     out
 }
 
+/// The results as one JSON object, for editors and scripts.
+pub fn render_json(results: &[CaseResult]) -> String {
+    use cpl_json::{obj, Value};
+    let text = |s: &str| Value::String(s.to_string());
+    let maybe = |s: Option<&str>| s.map_or(Value::Null, text);
+    let cases = results.iter().map(|r| {
+        let why = match &r.verdict {
+            Some(Verdict::Wrong(why) | Verdict::RuntimeError(why)) => Some(why.as_str()),
+            _ => None,
+        };
+        obj([
+            ("name", text(&r.name)),
+            ("verdict", maybe(r.verdict.as_ref().map(Verdict::code))),
+            ("ms", Value::Int(r.elapsed.as_millis() as i64)),
+            (
+                "peak_kb",
+                r.peak_kb.map_or(Value::Null, |kb| Value::Int(kb as i64)),
+            ),
+            ("expected", maybe(r.expected.as_deref())),
+            ("output", text(&r.output)),
+            ("why", maybe(why)),
+            ("explained", maybe(r.explained.as_deref())),
+        ])
+    });
+    let passed = results.iter().filter(|r| r.passed()).count();
+    cpl_json::to_string(&obj([
+        ("cases", Value::Array(cases.collect())),
+        ("passed", Value::Int(passed as i64)),
+        ("total", Value::Int(results.len() as i64)),
+    ]))
+}
+
 /// A problem ready to run: its solution, judge, and limits.
 pub(crate) struct Ready {
     pub solution: Program,
@@ -215,12 +250,17 @@ pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u
         let _ = write!(stdout, "{USAGE}");
         return 0;
     }
-    let parsed = Args::parse(args, VALUED, &[]).and_then(|args| {
+    let parsed = Args::parse(args, &[VALUED, &["--format"]].concat(), &[]).and_then(|args| {
+        let json = match args.value("--format") {
+            None | Some("text") => false,
+            Some("json") => true,
+            Some(other) => return Err(format!("`--format` is text or json, not `{other}`")),
+        };
         args.file("test")
             .map(source_path)
-            .map(|source| (args, source))
+            .map(|source| (args, source, json))
     });
-    let (args, source) = match parsed {
+    let (args, source, json) = match parsed {
         Ok(parsed) => parsed,
         Err(message) => {
             let _ = write!(stderr, "error: {message}\n\n{USAGE}");
@@ -251,7 +291,11 @@ pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u
         });
     match result {
         Ok(results) => {
-            let _ = write!(stdout, "{}", render(&results));
+            if json {
+                let _ = writeln!(stdout, "{}", render_json(&results));
+            } else {
+                let _ = write!(stdout, "{}", render(&results));
+            }
             results.iter().any(|r| !r.passed()) as u8
         }
         Err(message) => {

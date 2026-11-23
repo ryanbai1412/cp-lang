@@ -381,6 +381,27 @@ fn the_test_command_judges_with_a_checker_or_an_interactor() {
     let (code, out, _) = cli(test::run, &[path, "--fast", &solution]);
     assert_eq!(code, 1);
     assert!(out.ends_with("  2/3 passed\n"), "{out}");
+    let (code, out, _) = cli(test::run, &[path, "--fast", &solution, "--format", "json"]);
+    assert_eq!(code, 1);
+    let json = cpl_json::parse(&out).expect("cpl test --format json is JSON");
+    assert_eq!(
+        (json.at(&["passed"]).as_i64(), json.at(&["total"]).as_i64()),
+        (Some(2), Some(3)),
+        "{out}"
+    );
+    let cases = json.at(&["cases"]).as_array().unwrap();
+    let wrong: Vec<_> = cases
+        .iter()
+        .filter(|c| c.at(&["verdict"]).as_str() == Some("WA"))
+        .collect();
+    assert_eq!(wrong.len(), 1, "{out}");
+    assert!(
+        wrong[0].at(&["expected"]).as_str().is_some() && wrong[0].at(&["why"]).as_str().is_some(),
+        "{out}"
+    );
+    let (code, _, err) = cli(test::run, &[path, "--format", "xml"]);
+    assert_eq!(code, 2);
+    assert!(err.contains("not `xml`"), "{err}");
     // `d` names `d.cp`.
     let (code, _, _) = cli(
         test::run,
