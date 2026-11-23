@@ -11,6 +11,9 @@
 //   siblings, then the stored prefix join of earlier ones, then v itself with k - i chosen
 //   outside). With all children split off, up[v][1] + w(v) * k is the answer at root v;
 //   up[v][1] is never none, since k <= n leaves room for the k - 1 others outside v.
+//   kids go smallest subtree first only for memory: the time is O(n^2) in any order, but
+//   the largest child is then in no stored prefix join (a star whose long path came first
+//   would copy the path into every leaf's prefix).
 @!multitest
 let (n, k): (2..=4000, 1..=n) = read()
 domain V = 1..=n
@@ -32,7 +35,7 @@ for v in t.at.rev:
     var f = [0]
     for c in kids[v]:
         joined_before[v].push(f.clone())
-        f = convolve(f, down[c], over: Semiring(max, +))
+        f = convolve(f, down[c], over: Semiring(max, +), shape: Curved.Neither)
     f.push(0)
     for i in (1..f.len).rev: f[i] max= f[i - 1] + w[v] * i
     down[v] = f
@@ -43,11 +46,8 @@ up[t.root] = [if i == k: 0 else: None for i in 0..=n]
 for v in t.at:
     var f = up[v]
     for (z, c) in kids[v].items.rev:
-        var g = split(f, joined_before[v][z])
-        for i in 0..g.len - 1:
-            if let x = g[i + 1]: g[i] max= x + w[v] * (k - i)
-        g.pop()
-        up[c] = g
+        let g = split(f, joined_before[v][z])
+        up[c] = [max(g[i], g[i + 1].map(x => x + w[v] * (k - i))) for i in 0..g.len - 1]
         f = split(f, down[c])
     ans[v] = f[1]! + w[v] * k
 
