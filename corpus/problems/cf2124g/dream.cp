@@ -61,7 +61,7 @@ for i in Pos.rev if pref_min[i] == a[i]:
 
     for pos in suffix_max_pos if pos > i:
         let cur_cap = min(cap, ai + a[pos])
-        let last_capped = bsearch_last(Blk.first..=Blk.last, t => lifted[t] > cur_cap)
+        let last_capped = (Blk.first..=Blk.last).last_true(t => lifted[t] > cur_cap)
         let first_uncapped = if let s = last_capped: s.next else: Some(Blk.first)
         let capped_cnt = if let t = first_uncapped: t.ord else: blk_len
         let uncapped_gain = if let t = first_uncapped: lifted_suff[t] - ai * (blk_len - t.ord) else: 0

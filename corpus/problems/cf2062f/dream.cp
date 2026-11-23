@@ -5,7 +5,7 @@
 // y order tracks how many are chosen and which roles are filled.
 @!multitest
 let n = read<2..=3000>()
-enum Stage: start, low, one_end, two_ends, done
+enum Stage = start | low | one_end | two_ends | done
 let roles = (a: Int, b: Int) => [
     (start, low, 2 * b), (start, one_end, b),
     (low, low, a + b), (low, one_end, a),

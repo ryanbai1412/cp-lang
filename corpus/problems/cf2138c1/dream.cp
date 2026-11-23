@@ -49,4 +49,4 @@ fn is_good(l: Int) -> Bool:
             p *= 2
     S(k) in dp
 
-print(bsearch_last(0..leaf_depth + 2, is_good)!)
+print((0..leaf_depth + 2).last_true(is_good)!)

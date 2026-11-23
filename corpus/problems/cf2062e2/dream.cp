@@ -29,10 +29,10 @@ fn above_lca(x: V) -> ?V:
     let hi = (after.last ?? before.last)!
     t.lca(t.at(lo), t.at(hi))
 
-enum Mark: Reply, Target, Meet
+enum Mark = Reply | Target | Meet
 var marks = [Mark] _ => Fenwick<Pre, Int>()
 var dangerous = 0
-fn inside(m: Mark, u: V) -> Int = marks[m].sum(t.sub(u))
+fn inside(m: Mark, u: V) -> Int = marks[m].fold(t.sub(u))
 
 var winners: List<V> = []
 for bucket in V.group(by: v => w[v]).rev:

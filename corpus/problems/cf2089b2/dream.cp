@@ -37,5 +37,5 @@ for (step, idx) in order.items:
         rem -= take
 
 let suff = prefix(cnt_dist)
-let ans = (1..=n).rev.find(d => suff.sum(d..=n) > k) ?? 0
+let ans = (1..=n).rev.find(d => suff.fold(d..=n) > k) ?? 0
 print(ans)

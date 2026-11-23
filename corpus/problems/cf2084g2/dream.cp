@@ -15,7 +15,7 @@
 // So keep best as a sorted multiset of slopes. O(n log n).
 use std.slope.{Concave}
 
-enum Side: Odd, Even
+enum Side = Odd | Even
 
 @!multitest
 let n: 1..=500_000 = read()

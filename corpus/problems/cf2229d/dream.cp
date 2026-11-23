@@ -18,4 +18,4 @@ fn is_good(v: Int) -> Bool:
     let neg_runs = count(s == -1 and (i == 0 or nz[i - 1] != -1) for (i, s) in nz.items)
     nz.count(1) > neg_runs
 
-print(bsearch_last(1..=2 * n, is_good)!)
+print((1..=2 * n).last_true(is_good)!)

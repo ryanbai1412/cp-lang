@@ -6,7 +6,7 @@
 // starting at b merges leftward, or in the final flush, where everything
 // still on the stack merges from the right. A query [l, r] ends as two
 // blocks split at the boundary inside it that merged last.
-enum Dir: Left, Right
+enum Dir = Left | Right
 
 let n: Int = read()
 domain Ball = 0..n
@@ -37,4 +37,4 @@ repeat q:
     let (l, r): (1..=n, 1..=n) = read()
     let (lo, hi) = (Ball.cuts.nth(l - 1), Ball.cuts.nth(r))
     let (_, split) = last_merge.fold(lo..=hi)
-    print(mass.sum(lo..split), mass.sum(split..hi))
+    print(mass.fold(lo..split), mass.fold(split..hi))

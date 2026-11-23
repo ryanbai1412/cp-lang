@@ -14,7 +14,7 @@ const WORD = 20
 const SYMBOL = 18
 
 @tags("first", "second")
-enum Run: First, Second
+enum Run = First | Second
 
 let sieve = Sieve(V)
 let primes = sieve.primes[..P]

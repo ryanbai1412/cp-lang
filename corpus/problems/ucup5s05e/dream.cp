@@ -44,7 +44,7 @@ let hull_edges = [(hull[i], hull[(i + 1) % hull.len]) for i in 0..hull.len]
 
 // Up to `WINDOW` consecutive chain vertices around where `c` falls in x order.
 fn near(ch: List<P>, c: Pt) -> List<P>:
-    let at = bsearch_first(0..ch.len, i => pts[ch[i]] >= c)!
+    let at = (0..ch.len).first_true(i => pts[ch[i]] >= c)!
     let hi = min(ch.len, at + WINDOW - 1)
     let lo = max(0, min(at - 1, hi - WINDOW))
     ch[lo..hi].to_list()

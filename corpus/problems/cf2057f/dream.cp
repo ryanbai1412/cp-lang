@@ -47,6 +47,6 @@ for l in 1..=31:
             if not xr.is_empty:
                 let floor = raise(l, xr.first!)
                 while let x = waiting.last, ks[x] + best >= floor:
-                    ans[x] max= bsearch_last(xr, h => raise(l, h) <= ks[x] + best)!
+                    ans[x] max= xr.last_true(h => raise(l, h) <= ks[x] + best)!
                     waiting.pop()
 print(ans)

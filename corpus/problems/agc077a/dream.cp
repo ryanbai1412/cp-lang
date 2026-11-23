@@ -50,7 +50,7 @@ struct Block(seen: [Side]Run, real: [Side]Run):
     @get fn len(self) -> Int = seen[X].len
     fn each(self, f: Run -> Run) -> Block = Block(seen.map(f), real.map(f))
     fn head(self, s: Side) -> Char = text[s][seen[s].at]
-    fn bs(self, s: Side, k: Int) -> Int = count_b[s].sum(seen[s].take(k).span)
+    fn bs(self, s: Side, k: Int) -> Int = count_b[s].fold(seen[s].take(k).span)
 
 var ops: [Side]List<Run> = []
 

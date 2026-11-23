@@ -12,7 +12,7 @@
 // n / 2 even positions, d(small) = 2c - k and d(large) = 2(n/2 - c) - (n - k).
 // best[c] is the largest sum of products so far; a value fixed by `a` keeps
 // the side of its position. O(n^2).
-enum Side: Odd, Even
+enum Side = Odd | Even
 
 @!multitest
 let n: 1..=5000 = read()

@@ -25,7 +25,7 @@ for x in a:
     var dist = if let top = stk.last: 1 + top.dist else: 1
     for l in 2..=min(dist, 3):
         let tgt = ceil_div(x, l)
-        let prev = if let lo = bsearch_last(0..stk.len, md => stk[md].val < tgt):
+        let prev = if let lo = (0..stk.len).last_true(md => stk[md].val < tgt):
             stk[lo].dist
         else:
             0

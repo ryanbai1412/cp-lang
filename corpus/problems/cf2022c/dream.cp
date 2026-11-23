@@ -11,7 +11,7 @@
 @!multitest
 let n: 3..=100_000 = read()
 domain Col = 0..n
-enum Row: Top, Bottom
+enum Row = Top | Bottom
 let s: [Row][Col]Char = read()
 
 fn other(r: Row) -> Row = if r == Row.Top: Row.Bottom else: Row.Top
@@ -20,7 +20,7 @@ fn bar(r: Row, c: Col) -> Int = won([(r, c), (r, (c + 1)!), (r, (c + 2)!)])
 fn open_ell(z: Row, c: Col) -> Int = won([(z, c), (other(z), c), (other(z), (c + 1)!)])
 fn close_ell(z: Row, c: Col) -> Int = won([(z, c), (z, (c + 1)!), (other(z), (c + 1)!)])
 
-enum Front: Flush, Behind(Row)
+enum Front = Flush | Behind(Row)
 
 @memo(array)
 fn best(c: Col.cuts, f: Front) -> Int = match f:
