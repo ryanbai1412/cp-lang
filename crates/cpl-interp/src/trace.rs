@@ -14,12 +14,16 @@ use std::collections::{BTreeMap, HashMap, HashSet};
 use std::fmt::Write as _;
 use std::sync::Arc;
 
+mod glob;
 mod lines;
 mod log;
 mod raw;
 mod trap;
+mod window;
+use glob::glob_match;
 pub use log::Steps;
 pub use trap::{shown, trap_config, trap_locals};
+pub use window::tail;
 
 /// How a run is recorded.
 #[derive(Clone, Debug, Default)]
@@ -47,6 +51,8 @@ pub struct TraceConfig {
     pub stop_after_call: Option<(String, usize)>,
     /// Keep up to this many steps instead of what fits in a trace file.
     pub max_steps: Option<usize>,
+    /// Skip this many steps before keeping any: a window of a long run.
+    pub from_step: Option<usize>,
 }
 
 /// The message of the trap that ends a run at [`TraceConfig::stop_after_call`].
@@ -159,6 +165,8 @@ pub struct Recording {
     pub assigned: Vec<Assigned>,
     /// The calls, in the order they started; none with `--last`.
     pub calls: Vec<Call>,
+    /// Steps skipped by [`TraceConfig::from_step`]: the first step kept is step `skipped` of the run.
+    pub skipped: usize,
 }
 
 /// One call of a fn: the steps it took and what it returned.
@@ -489,6 +497,10 @@ pub(crate) struct Tracer {
     stopping_at: Option<usize>,
     /// The call to stop after has returned.
     pub stopped: bool,
+    /// Steps still to skip before the window ([`TraceConfig::from_step`]).
+    skip: usize,
+    /// The line and stage of the declaration just skipped, if the last step skipped was one.
+    skipped_at: Option<(u32, u32)>,
 }
 
 /// What the interpreter shows the tracer of its state.
@@ -505,33 +517,6 @@ pub(crate) struct View<'a> {
     pub depth: usize,
     /// Active call frames `(fn_name, call_site_span)` from outermost to innermost.
     pub call_frames: &'a [(&'a str, Span)],
-}
-
-fn glob_match(pattern: &str, text: &str) -> bool {
-    let p: Vec<char> = pattern.chars().collect();
-    let t: Vec<char> = text.chars().collect();
-    let (mut pi, mut ti) = (0usize, 0usize);
-    let (mut star, mut match_t) = (None, 0usize);
-    while ti < t.len() {
-        if pi < p.len() && (p[pi] == '?' || p[pi] == t[ti]) {
-            pi += 1;
-            ti += 1;
-        } else if pi < p.len() && p[pi] == '*' {
-            star = Some(pi);
-            match_t = ti;
-            pi += 1;
-        } else if let Some(s) = star {
-            pi = s + 1;
-            match_t += 1;
-            ti = match_t;
-        } else {
-            return false;
-        }
-    }
-    while pi < p.len() && p[pi] == '*' {
-        pi += 1;
-    }
-    pi == p.len()
 }
 
 impl Tracer {
@@ -604,6 +589,8 @@ impl Tracer {
             stop_after_call: config.stop_after_call,
             stopping_at: None,
             stopped: false,
+            skip: config.from_step.unwrap_or(0),
+            skipped_at: None,
         };
         tracer.stdout = tracer.add_var(
             Var {
@@ -645,7 +632,7 @@ impl Tracer {
         {
             self.stopping_at = Some(self.open.len());
         }
-        let kept = self.last_steps.is_none() && self.rec.calls.len() < MAX_STEPS;
+        let kept = self.last_steps.is_none() && self.skip == 0 && self.rec.calls.len() < MAX_STEPS;
         self.open.push(kept.then_some(self.rec.calls.len()));
         if kept {
             self.rec.calls.push(Call {
@@ -820,7 +807,7 @@ impl Tracer {
         checkpoint: Option<&str>,
         focus: Option<(usize, &[usize])>,
     ) {
-        if !self.recording(view.depth) {
+        if !self.recording(view.depth) || self.skipped() {
             return;
         }
         // What is above `@!multitest` is the same on every input: it gets
@@ -1069,7 +1056,9 @@ impl Tracer {
         if fresh && same {
             self.rec.log.reopen();
         }
+        self.skip_declaration(fresh, (line, stage));
         self.step(view, span, None, None, None);
+        self.skipped_at = (self.rec.log.len() == 0).then_some((line, stage));
     }
 
     /// A part of global `id` changed (e.g. an array cell or struct field).
@@ -1234,7 +1223,7 @@ impl Tracer {
                 )
             }
         }
-        if self.rec.log.len() == 0 {
+        if self.rec.log.len() == 0 && self.rec.skipped == 0 {
             self.step(
                 view,
                 Span::default(),

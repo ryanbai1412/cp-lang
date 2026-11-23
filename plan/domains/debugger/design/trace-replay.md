@@ -66,3 +66,7 @@ trace of any window is rebuilt by restoring the nearest snapshot and replaying
 it with the full tracer, which only ever traces K steps at a time. That needs
 compiler's Interp snapshot/restore and nothing else from the core.
 
+
+## Measured: windows by running again (2026-11-22)
+
+`TraceConfig::from_step` skips the first N steps and keeps the rest; `trace::tail` counts a run's steps in one run and keeps the last K in a second. The window holds exactly the steps the whole recording holds there (`a_window_of_a_run_holds_the_steps_the_whole_recording_holds_there`), and memory follows the window. Time does not improve: the last 20,000 of 10^7 steps cost 5.96x (scalar) and 4.42x (array) the untraced run, against 5.09x and 4.98x for recording everything, because a skipped step still pays for its `View` and hooks (the 2.5x observed floor). Next: skip before the `View` is built, counting trace points instead of steps in `vm/exec/trace.rs`, so a skipped step costs the 1.30x dispatch floor; then checkpoints remove the replayed prefix.

@@ -430,6 +430,16 @@ fn ten_million_steps_fit_the_debugging_budgets() {
             Some(observed),
         );
         let walked = started.elapsed();
+        // The last 20,000 steps, kept by running again: what time travel to the end costs.
+        let started = Instant::now();
+        let tail = TraceConfig {
+            source: source.into(),
+            record_frames: true,
+            ..TraceConfig::default()
+        };
+        let tail = cpl_interp::trace::tail(&program, b"", tail, 20_000);
+        let windowed = started.elapsed();
+        assert_eq!(tail.recording.unwrap().len(), 20_000);
         let config = TraceConfig {
             source: source.into(),
             record_frames: true,
@@ -461,8 +471,9 @@ fn ten_million_steps_fit_the_debugging_budgets() {
         let slower = traced.as_secs_f64() / plain.as_secs_f64();
         let recording = traced.as_secs_f64() / walked.as_secs_f64();
         eprintln!(
-            "{name}: {} steps; untraced {plain:?}, observed {walked:?}, recorded {traced:?}: {slower:.2}x the untraced run, {recording:.2}x the observed one; {mb:.0} MB; step back at most {back:?}",
-            rec.len()
+            "{name}: {} steps; untraced {plain:?}, observed {walked:?}, recorded {traced:?}: {slower:.2}x the untraced run, {recording:.2}x the observed one; {mb:.0} MB; step back at most {back:?}; the last 20,000 steps by running again {windowed:?}, {:.2}x the untraced run",
+            rec.len(),
+            windowed.as_secs_f64() / plain.as_secs_f64()
         );
         assert_eq!(rec.len(), 10_000_000);
         if back.as_millis() >= 50 {
@@ -574,4 +585,52 @@ print(get([0, 0, 0], k + 1))
     assert_eq!(end.frames.len(), 2, "{:?}", end.frames);
     assert_eq!(end.frames[0].0, "get");
     assert!(end.locals.contains("\"j\""), "{}", end.locals);
+}
+
+#[test]
+fn a_window_of_a_run_holds_the_steps_the_whole_recording_holds_there() {
+    let source = "\
+fn bump(x: Int) -> Int:
+    let y = x * 2
+    return y + 1
+
+var s = 0
+var a: [0..5]Int = 0
+let (n, m) = (3, 4)
+for i in 0..40:
+    let (p, q) = (i + n, i + m)
+    a[p % 5] += q
+    s += bump(i)
+    a[i % 5] += s
+    print(s)
+";
+    let program = program(source);
+    let config = TraceConfig {
+        source: source.into(),
+        record_frames: true,
+        ..TraceConfig::default()
+    };
+    let io = || cpl_interp::Io::fixed(b"");
+    let whole = cpl_interp::run_observed(&program, io(), &mut Vec::new(), Some(config.clone()));
+    let whole = whole.recording.unwrap();
+    let tail = cpl_interp::trace::tail(&program, b"", config.clone(), 25);
+    let tail = tail.recording.unwrap();
+    assert_eq!(tail.len(), 25);
+    assert_eq!(tail.skipped, whole.len() - 25);
+    // Variables are numbered in the order a recording first meets them.
+    let named = |rec: &Recording, k: usize| {
+        let step = rec.step(k).unwrap();
+        let mut values: Vec<_> = (step.values.iter())
+            .map(|(var, value)| (rec.vars[*var].name.clone(), value.to_string()))
+            .collect();
+        values.sort();
+        (step.line, values, step.locals, step.frames)
+    };
+    for k in 0..25 {
+        assert_eq!(
+            named(&whole, tail.skipped + k),
+            named(&tail, k),
+            "step {k} of the window"
+        );
+    }
 }
