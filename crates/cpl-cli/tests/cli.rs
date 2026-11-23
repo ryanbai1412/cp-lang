@@ -1586,6 +1586,20 @@ fn an_error_inside_std_names_the_library_calls_that_led_there() {
     assert!(inside < via && err.contains("main.cp:6:7"), "{err}");
 }
 
+/// A range end that is optional is named itself, not the whole range.
+#[test]
+fn an_optional_range_end_is_named_in_the_help() {
+    let main = scratch(
+        "optional-range-end",
+        "main.cp",
+        b"domain Pos = 0..5\nlet lo = Pos.last\nlet lo2 = Pos.first!\nfn f(r: Range<Pos>) -> Int = r.len\nprint(f(lo2..=lo))\n",
+    );
+    let check = cpl(&["check".as_ref(), main.as_os_str()], b"");
+    let err = String::from_utf8_lossy(&check.stderr);
+    assert!(err.contains("`lo` may be `None`: write `lo!`"), "{err}");
+    assert!(err.contains("main.cp:5:15"), "{err}");
+}
+
 /// A `mut self` method on a temporary names the method and points at the
 /// receiver, instead of calling it an assignment.
 #[test]

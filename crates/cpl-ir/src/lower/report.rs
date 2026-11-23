@@ -247,7 +247,13 @@ impl<'a> Lowerer<'a> {
         span: Span,
     ) {
         if l != r {
-            return self.mismatch(span, l, r);
+            // One end is the other's type made optional: blame that end.
+            let (at, want, found) = match (l, r, lo, hi) {
+                (_, Ty::Opt(inner), _, Some(hi)) if **inner == *l => (hi.span, l, r),
+                (Ty::Opt(inner), _, Some(lo), _) if **inner == *r => (lo.span, r, l),
+                _ => (span, l, r),
+            };
+            return self.mismatch(at, want, found);
         }
         let shown = self.show(l);
         let Ty::Opt(inner) = l else {
