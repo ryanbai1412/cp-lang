@@ -24,7 +24,7 @@ const BINDERS: [K; 9] = [
 /// `src` with each name it binds (`let`, `var`, `for`, `fn`, `type`, ...)
 /// renamed to `<name>2`, in code and in strings. Names also used as a
 /// member (`xs.name`) keep their spelling.
-fn rename(src: &str) -> String {
+pub(crate) fn rename(src: &str) -> String {
     let toks = cpl_syntax::lex(src).tokens;
     let text = |t: &Token| &src[t.span.start as usize..t.span.end as usize];
     let mut bound = HashSet::new();
@@ -91,7 +91,7 @@ fn rename_words(s: &str, bound: &HashSet<String>) -> String {
 }
 
 /// The three shortest corpus specs that lint clean.
-fn hosts() -> Vec<String> {
+pub(crate) fn hosts() -> Vec<String> {
     let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../corpus/problems");
     let mut srcs: Vec<String> = std::fs::read_dir(root)
         .unwrap()

@@ -100,7 +100,7 @@ A warning fires only when it can show the problem; when the analysis can't see w
 
 - **Why:** one false warning teaches users to ignore all of them.
 - **Example:** L0306 names an input inside the declared ranges that overflows; L0610 is silent on a `mut` parameter used through a method call.
-- **Enforced by:** `crates/cpl-lint/src/corpus_tests.rs` `corpus_warnings_only_go_down`; each lint's `near_miss.cp`. The full lint rules are in `handbook/guidelines/lints.md`.
+- **Enforced by:** `crates/cpl-lint/src/corpus_tests.rs` `corpus_warnings_only_go_down`; each lint's `near_miss.cp`; `plant_tests.rs` and `checker_tests.rs` `a_checker_lint_fires_the_same_renamed_and_planted` rename each record and plant it in clean programs, and it must still fire before and stay quiet near the miss. The full lint rules are in `handbook/guidelines/lints.md`.
 
 ### R11. A trap names the values and the way out
 

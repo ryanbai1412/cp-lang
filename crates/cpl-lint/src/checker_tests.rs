@@ -187,3 +187,51 @@ fn a_getter_called_with_parens_is_the_checker_s_with_its_fix() {
     let lints = crate::lint_analysis(&analysis, &crate::Config::default());
     assert!(lints.iter().all(|d| d.span != error.span), "{lints:?}");
 }
+
+/// A checker lint catches the bug it names wherever it is written
+/// (`errors/R10`, handbook/guidelines/errors-checklist.md; `lints/R25`):
+/// each record's `before.cp` with its names renamed, alone and planted
+/// after a clean corpus program, fires as often as the original, and
+/// `near_miss.cp` renamed and planted stays quiet.
+#[test]
+fn a_checker_lint_fires_the_same_renamed_and_planted() {
+    use crate::plant_tests::{hosts, rename};
+    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../spec/checker-lints");
+    let config = Config::default();
+    let hosts = hosts();
+    let mut misses = Vec::new();
+    for l in CHECKER_LINTS.iter().filter(|l| l.name != "parens_on_o1") {
+        let read = |f: &str| std::fs::read_to_string(root.join(l.name).join(f)).unwrap();
+        let fires = |src: &str, from: usize| {
+            let found = crate::checked(None, src, &config);
+            let n = found
+                .lints
+                .iter()
+                .filter(|d| d.code == l.code && d.span.start as usize >= from)
+                .count();
+            (found.errors, n)
+        };
+        let (_, want) = fires(&read("before.cp"), 0);
+        let (before, near) = (rename(&read("before.cp")), rename(&read("near_miss.cp")));
+        let mut cases = vec![(String::new(), 0)];
+        cases.extend(hosts.iter().map(|h| (h.clone(), h.len())));
+        for (host, from) in cases {
+            let planted = format!("{host}{before}");
+            let (errors, got) = fires(&planted, from);
+            if errors > 0 || got != want {
+                misses.push(format!(
+                    "{}: renamed before.cp fires {got} of {want} ({errors} errors)\n{planted}",
+                    l.name
+                ));
+            }
+            let planted = format!("{host}{near}");
+            if fires(&planted, 0) != (0, 0) {
+                misses.push(format!(
+                    "{}: renamed near_miss.cp fires or errors\n{planted}",
+                    l.name
+                ));
+            }
+        }
+    }
+    assert!(misses.is_empty(), "{}", misses.join("\n\n"));
+}
