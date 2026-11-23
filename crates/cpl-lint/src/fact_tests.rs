@@ -1,8 +1,6 @@
 //! The `Proven*` facts the CLI, the editor and L0414 read: the contract a
 //! fact table in `cpl-check` has to meet before it replaces `rules/proven`.
 
-use super::*;
-
 #[test]
 fn division_remainder_and_power_follow_the_interpreter() {
     let src = "let a: -7..=9 = read()\nlet b: 2..=4 = read()\nlet q = a / b\nlet r = a % b\nlet s = a ** 2\nlet c = a ** 3\nlet z = a / (b - 2)\n";
