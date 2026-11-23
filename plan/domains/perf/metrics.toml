@@ -47,8 +47,22 @@ milestone = "M3"
 [[metric]]
 name = "perf set max runtime vs matched C++"
 command = "same as perf set p50"
-target = "< 1.5 (< 1.1 after constant-factor tuning)"
+target = "< 1.5 idiomatic; tuned max <= 1.1 (next metric)"
 today = "6.027 (dryrun p06_labyrinth); bench/ max 1.749 (containers/bitset)"
+milestone = "M3"
+
+[[metric]]
+name = "perf set tuned max vs matched C++ (better of idiomatic and its tuned in-language variant)"
+command = "same as perf set p50 (the `tuned max` line; variants are `tuned.cp` beside `port.cp`, else `<stem>.tuned.cp`)"
+target = "<= 1.1; an outlier that cannot reach it in-language is a logged language gap"
+today = "not measured: 0 tuned variants (harness support landed with this metric)"
+milestone = "M3"
+
+[[metric]]
+name = "perf set outliers over 1.1x after tuning"
+command = "same as perf set p50 (the `over 1.1x tuned` lines)"
+target = "0, or each a logged language gap"
+today = "40 over 1.1x idiomatic on 29b9bd9a; none tuned yet"
 milestone = "M3"
 
 [[metric]]

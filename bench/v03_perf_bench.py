@@ -17,7 +17,13 @@ CMD, so both sides of a ratio use one compiler. Outputs are verified for exact
 token-level output agreement (1e-6 float tolerance). Also reported: peak RSS
 of each run (emitted / original) and g++ time on the emitted C++ (taken while
 `--jobs` builds run at once, so compare runs made with the same `--jobs`).
-Every pair that does not reach a ratio is listed with its reason. Compiled C++ originals and
+Every pair that does not reach a ratio is listed with its reason.
+
+Each program may keep a tuned in-language variant next to it (`tuned.cp`
+beside a corpus `port.cp`, else `<stem>.tuned.cp`): widths, `unchecked:`,
+layout, no inline C++ beyond the documented escape. Its tuned ratio is the
+better of the two; the summary prints the tuned max against the 1.1x bar
+(AGENTS.md goal 3) and the outliers left above it. Compiled C++ originals and
 generated inputs are cached by content hash so reruns after codegen changes
 only recompile CP Lang programs.
 """
@@ -387,6 +393,8 @@ def collect_items(suites, only, cache_dir):
             open(empty_in, "w").close()
         for sub in ("containers", "flow", "math", "ranges", "seq", "strings"):
             for cp in sorted(glob.glob(os.path.join(ROOT, "bench", sub, "*.cp"))):
+                if cp.endswith(".tuned.cp"):
+                    continue
                 stem = os.path.basename(cp)[:-3]
                 name = f"{sub}/{stem}"
                 if only and name not in only and stem not in only:
@@ -396,6 +404,16 @@ def collect_items(suites, only, cache_dir):
                     continue
                 items.append(("bench", name, cp, orig, lambda p=empty_in: [p]))
     return items
+
+
+TUNED_BAR = 1.1
+
+
+def tuned_path(cp):
+    """The tuned in-language variant kept next to `cp`, if there is one."""
+    d, base = os.path.split(cp)
+    t = os.path.join(d, "tuned.cp") if base == "port.cp" else cp[:-3] + ".tuned.cp"
+    return t if os.path.exists(t) else None
 
 
 def percentile(sorted_vals, q):
@@ -412,6 +430,7 @@ def percentile(sorted_vals, q):
 def summarize(rows, min_ms):
     measured = [r for r in rows if r.get("status") == "ok" and max(r["port_ms"], r["orig_ms"]) >= min_ms]
     ratios = sorted(r["ratio"] for r in measured)
+    tuned = sorted(min(r["ratio"], r.get("tuned_ratio") or r["ratio"]) for r in measured)
     return {
         "total_ok": sum(1 for r in rows if r.get("status") == "ok"),
         "measured_ge_min_ms": len(measured),
@@ -421,8 +440,18 @@ def summarize(rows, min_ms):
         "max": round(ratios[-1], 3) if ratios else 0.0,
         "gt_1_1": sum(1 for x in ratios if x > 1.1),
         "gt_1_5": sum(1 for x in ratios if x > 1.5),
+        "tuned_max": round(tuned[-1], 3) if tuned else 0.0,
+        "tuned_gt_1_1": sum(1 for x in tuned if x > TUNED_BAR),
+        "tuned_variants": sum(1 for r in measured if r.get("tuned_ratio")),
         **resource_summary([r for r in rows if r.get("status") == "ok"]),
     }
+
+
+def print_tuned(st):
+    print(
+        f"  tuned max={st['tuned_max']:.3f}x (bar <= {TUNED_BAR}x; over it: {st['tuned_gt_1_1']}; "
+        f"tuned variants timed: {st['tuned_variants']})"
+    )
 
 
 def resource_summary(ok):
@@ -483,6 +512,12 @@ def main():
             cxx, oerr = args.cxx23, None
         if oerr:
             return {"suite": suite, "name": name, "status": "skip", "reason": f"g++ orig: {oerr}"}
+        tbin, terr = None, None
+        tuned = tuned_path(cp)
+        if tuned:
+            tbin, tcpp, terr = build_cpl_cached(tuned, args.cache, cpl_hash)
+            if not terr and cxx:
+                tbin, terr = compile_cpp_cached(tcpp, args.cache, "tuned", "c++17", cxx23)
         inp = input_fn()
         if not inp:
             return {"suite": suite, "name": name, "status": "skip", "reason": "no input: no generator, no tests, and `cpl bench` derives none"}
@@ -494,6 +529,8 @@ def main():
             "cpp_path": cpp_path,
             "inp": inp,
             "cxx": cxx,
+            "tbin": tbin,
+            "tuned_error": terr,
             "status": "built",
         }
 
@@ -543,6 +580,20 @@ def main():
         med_o = min(ts_o) * 1000.0
         med_p = min(ts_p) * 1000.0
         ratio = med_p / med_o if med_o > 0 else 1.0
+        tuned = {}
+        if b.get("tbin"):
+            ts_t = []
+            for _ in range(len(ts_p)):
+                tt, s_t, _ = run_once(b["tbin"], b["inp"], out_p, args.timeout)
+                if s_t != "ok" or not same_tokens(open(out_p, errors="replace").read(), open(out_o, errors="replace").read()):
+                    ts_t = []
+                    tuned = {"tuned_error": f"tuned {s_t if s_t != 'ok' else 'output differs'}"}
+                    break
+                ts_t.append(tt)
+            if ts_t and med_o > 0:
+                tuned = {"tuned_ms": round(min(ts_t) * 1000.0, 2), "tuned_ratio": round(min(ts_t) * 1000.0 / med_o, 3)}
+        elif b.get("tuned_error"):
+            tuned = {"tuned_error": b["tuned_error"]}
         why = unmatched.get(b["name"]) if b["suite"] == "corpus" else None
         rows.append(
             {
@@ -559,6 +610,7 @@ def main():
                 "compile_ms": compile_ms(b["pbin"]),
                 "orig_compile_ms": compile_ms(b["obin"]),
                 "cpp_path": b["cpp_path"],
+                **tuned,
                 **({"cxx": b["cxx"]} if b["cxx"] else {}),
             }
         )
@@ -576,8 +628,10 @@ def main():
             f"  peak RSS emitted/orig p50={st['rss_ratio_p50']:.3f}x max={st['rss_ratio_max']:.3f}x "
             f"(largest {st['rss_max_mb']} MB); g++ on emitted C++ p50={st['compile_ms_p50']} ms max={st['compile_ms_max']} ms"
         )
+        print_tuned(st)
         for r in sorted(measured, key=lambda x: -x["ratio"])[:20]:
-            print(f"  {r['name']:18s}  port={r['port_ms']:7.2f}ms  orig={r['orig_ms']:7.2f}ms  ratio={r['ratio']:6.3f}x")
+            t = f"  tuned={r['tuned_ratio']:6.3f}x" if r.get("tuned_ratio") else ""
+            print(f"  {r['name']:18s}  port={r['port_ms']:7.2f}ms  orig={r['orig_ms']:7.2f}ms  ratio={r['ratio']:6.3f}x{t}")
         failed = [r for r in sub if r.get("status") != "ok"]
         if failed:
             print(f"  not measured: {len(failed)}")
@@ -590,6 +644,15 @@ def main():
         f"  p50={overall['p50']:.3f}x  p90={overall['p90']:.3f}x  p95={overall['p95']:.3f}x  max={overall['max']:.3f}x  "
         f"(>1.1x: {overall['gt_1_1']}, >1.5x: {overall['gt_1_5']})"
     )
+    print_tuned(overall)
+    measured = [r for r in rows if r.get("status") == "ok" and max(r["port_ms"], r["orig_ms"]) >= args.min_ms]
+    left = [r for r in measured if min(r["ratio"], r.get("tuned_ratio") or r["ratio"]) > TUNED_BAR]
+    for r in sorted(left, key=lambda x: -min(x["ratio"], x.get("tuned_ratio") or x["ratio"])):
+        if r.get("tuned_ratio"):
+            why = f"tuned {r['tuned_ratio']:.3f}x"
+        else:
+            why = r.get("tuned_error") or "no tuned variant"
+        print(f"    over {TUNED_BAR}x tuned: {r['name']:18s}  idiomatic {r['ratio']:.3f}x, {why}")
 
     if args.json_out:
         with open(args.json_out, "w") as f:

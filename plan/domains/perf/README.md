@@ -25,10 +25,10 @@ The submitted C++ is as fast and as small as the C++ a strong contestant writes 
 Exit criteria, each one command:
 1. **Fits.** Every program that builds is under 32 KB (`python3 bench/sizes.py --judge generic --check`). Today (debug `cpl` at `058ce6f3f`): 753 programs build; 2 are over, `ucup5s05f/port.cp` at 37,078 B and `noi17p2/spec.cp` at 34,484 B.
 2. **Compiles.** Every program that builds compiles as C++17 with g++ (`python3 bench/compiles.py`). Today: 753 build, 1 does not compile (`etsr23r4p2/spec.cp`: `Action.new`'s default `compose: (+)` lowers to nothing; routed to compiler).
-3. **No performance disadvantage, tail first.** On the matched perf set (`bench/v03_perf_bench.py`): max < 1.5x and p95 < 1.2x. Today (no-trap build, 142 timed): p50 0.778x, p95 1.548x, max 3.90x (`p06_labyrinth`), 9 over 1.5x. Since then, 77e70afe0 took `p06_labyrinth` from 69.3 to 40.4 ms (matched C++: 14.3 ms).
+3. **No performance disadvantage, tail first.** On the matched perf set (`bench/v03_perf_bench.py`): idiomatic max < 1.5x and p95 < 1.2x; tuned bar: max <= 1.1x with a tuned in-language variant kept next to each outlier (widths, `unchecked:`, layout; `tuned.cp` beside `port.cp`, else `<stem>.tuned.cp`), and an outlier that cannot get there in-language is a logged language gap. Today (no-trap build, 142 timed): p50 0.778x, p95 1.548x, max 3.90x (`p06_labyrinth`), 9 over 1.5x; tuned max not measured yet (0 tuned variants; the harness prints it once they exist). Since then, 77e70afe0 took `p06_labyrinth` from 69.3 to 40.4 ms (matched C++: 14.3 ms).
 4. **No traps by default.** `cpl build` and `cpl submit` emit the no-trap build (decision 299, done); `--checks traps` is the opt-in. Trap cost on 46 `bench/` pairs: p50 1.011x, max 1.27x (`monodeque`).
 
-Deferred: new judge-profile work (Codeforces/AtCoder flags, Windows g++); SIMD and optimisation beyond parity; max < 1.1x after tuning; zero-cost pairs not in the tail (`iterators`, `optionals`); `cpl explain` cost annotations; codegen file splits; Python harnesses into `cpl bench`.
+Deferred: new judge-profile work (Codeforces/AtCoder flags, Windows g++); SIMD and optimisation beyond parity; zero-cost pairs not in the tail (`iterators`, `optionals`); `cpl explain` cost annotations; codegen file splits; Python harnesses into `cpl bench`.
 
 Next 3 (in hours):
 1. The tail over 1.5x, until about 03:00: `cf1146h` (3.47x, RSS 10.5x: `sum(...)` of a comprehension builds the list, `&` on `Bitset` allocates), `p10_matching`, `cf2178h`, the rest of `p06_labyrinth`. General fixes only; stdlib or port causes go to their owners.
@@ -47,7 +47,7 @@ Next 3 (in hours):
 
 - **M1 Measured and ratcheted** — zero-cost 7/7 build on v0.3; `devin/wip-codegen-perf` and `devin/wip-cpp-size-main` landed; `scripts/sizes.py --check` in the gate; one perf-set runner whose JSON feeds `metrics.toml`; a perf ratchet file that a regression > 10% fails. Exit: `cpl bench --zero-cost` exits 0 on build errors = 0; `scripts/check.sh --fast` runs sizes.
 - **M2 Abstractions are free** — exit: `cpl bench --zero-cost bench/zero-cost --reps 11` 7/7 pass both bars; shape tests in `src/tests.rs` show zero `std::function` for `let f = mon.op; f(a, b)`, zero `cpl::at` for `for i in 0..n` over `[0; n]`, zero intermediate vectors for `filter.map.sum`.
-- **M3 Parity with matched C++** — exit: perf set p50 < 1.1x, p95 < 1.2x and max < 1.5x (5 runs, median); `ranges/mo`, `cf2178h`, `p10_matching` each <= 1.5x; front end < 500 ms on the largest v0.3 program.
+- **M3 Parity with matched C++** — exit: perf set p50 < 1.1x, p95 < 1.2x and max < 1.5x (5 runs, median), and tuned max <= 1.1x (every outlier over 1.1x has a tuned in-language variant at <= 1.1x, or a logged language gap); `ranges/mo`, `cf2178h`, `p10_matching` each <= 1.5x; front end < 500 ms on the largest v0.3 program.
 
 ## Metrics
 
@@ -61,8 +61,10 @@ Today = measured on main `4b8f504fc`, 8-core VM, g++ 11.4 `-O2`, release `cpl`; 
 | optionals vs hand.cpp | same | 1.26x | <= 1.05x | M2 |
 | Perf set p50 | `bench/v03_perf_bench.py` (branch) | 0.987x (n=48); 1.028x on `bench/` alone | <= 1.1x | M3 |
 | Perf set p95 | same | 1.697x (n=137, 2026-11-22 full run) | < 1.2x | M3 |
-| Perf set max | same | 2.431x (`ranges/mo`) | <= 1.5x | M3 |
+| Perf set max | same | 2.431x (`ranges/mo`) | <= 1.5x idiomatic; <= 1.1x tuned | M3 |
 | Perf set programs > 1.5x | same | 3: `ranges/mo` 2.43x, `cf2178h` 1.76x, `p10_matching` 1.53x | 0 | M3 |
+| Perf set tuned max (better of idiomatic and its tuned variant) | same, `tuned max` line | not measured: 0 tuned variants | <= 1.1x | M3 |
+| Outliers over 1.1x tuned | same, `over 1.1x tuned` lines | 40 over 1.1x idiomatic, none tuned yet | 0, or each a logged language gap | M3 |
 | Largest emitted C++ | `bench/sizes.py --check` | 21.7 KB (v0.3 dry runs, 35/35 build) | < 32 KB | M1 |
 | Programs over 32 KB | same | 0 of 161 v0.3 programs that build; largest `cco21p4` 31.9 KB | 0 | M1 |
 | Front end, largest v0.3 program | `time cpl check` | 3 ms | < 500 ms | M3 |

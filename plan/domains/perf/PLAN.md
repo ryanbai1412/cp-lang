@@ -6,12 +6,12 @@ The detail behind [README.md](README.md). Dated 2026-11-22.
 
 Milestone 1 steps 6 and 7 (Submit, Compete) set the order; see the README's Milestone 1 section. Landed in phase 2: the in-flight branches, the perf and size harnesses, zero-cost builds, compaction (decision 271), the no-trap judge build (decision 299).
 
-1. **Tail over 1.5x** (M1 criterion 3). `p06_labyrinth` 3.90x, `cf1146h` 3.47x and RSS 10.5x, `wtf26b`, `p10_matching` 2.23x, `cf2178h` 1.87x, `ranges/mo` 1.47x, `flow/costflow` 1.26x. Profile each with `perf`, find the cause (codegen, stdlib body, or port algorithm), fix it generally or route it, re-run the set.
+1. **Tail over 1.5x, then tuned to 1.1x** (M1 criterion 3). Idiomatic max < 1.5x and p95 < 1.2x; tuned max <= 1.1x, with a tuned in-language variant next to each outlier over 1.1x and a logged language gap for any that cannot get there. `p06_labyrinth` 3.90x, `cf1146h` 3.47x and RSS 10.5x, `wtf26b`, `p10_matching` 2.23x, `cf2178h` 1.87x, `ranges/mo` 1.47x, `flow/costflow` 1.26x. Profile each with `perf`, find the cause (codegen, stdlib body, or port algorithm), fix it generally or route it, re-run the set.
 2. **Fit 32 KB** (criterion 1). `ucup5s05f/port.cp` and `noi17p2/spec.cp`; `sizes.py --check` in the gate (request to infra).
 3. **Compiles** (criterion 2). Every built program through g++ as C++17 (`bench/compiles.py`); fix codegen failures, route the rest. No new judge-profile or Windows g++ work in Milestone 1 (Ryan: language quality first); the existing profiles keep working.
 4. **Perf set completeness** (M1 of the old list): matched references, the three `bench/` pairs that do not build (`math/ntt`, `seq/scan_in_place`, `seq/slice_nth_element`, all stdlib), corpus blockers routed.
 5. **Ratchet** so wins stick: committed baseline, nightly runtime check (request to infra).
-6. **Deferred**: new judge-profile work (Codeforces/AtCoder flags, Windows g++), zero-cost pairs past the tail (`iterators`, `optionals` waits on parameter ranges in the IR), max < 1.1x after tuning, SIMD, the `expr.rs`/`emit.rs` splits, harnesses into `cpl bench`.
+6. **Deferred**: new judge-profile work (Codeforces/AtCoder flags, Windows g++), zero-cost pairs past the tail (`iterators`, `optionals` waits on parameter ranges in the IR), SIMD, the `expr.rs`/`emit.rs` splits, harnesses into `cpl bench`.
 
 ## Why these milestones
 
@@ -27,7 +27,7 @@ Milestone 1 steps 6 and 7 (Submit, Compete) set the order; see the README's Mile
 | Perf set | v0.3 programs with matched `_ref.cpp`/`orig.cpp`, >= 10 ms | 0.2 corpus sweep: being deleted; tiny inputs measure process start |
 | Harness | land Python `v03_perf_bench.py` now, fold into `cpl bench` later | rewrite in Rust first: delays M1 by a day for no new number |
 | Bounds checks | prove from range facts in codegen now, move to `cpl-ir` facts with compiler (B3 step 6) | wait for B3: blocks the two worst offenders on another domain |
-| Tail bar | max <= 1.5x | p95 <= 1.5x: hides the worst programs, which are what a contestant hits |
+| Tail bar | idiomatic max <= 1.5x, and tuned max <= 1.1x (goal 3: every port reaches 1.1x by tuning in the language) | p95 <= 1.5x: hides the worst programs, which are what a contestant hits; idiomatic bar alone: hides whether tuning can close the gap |
 
 ## Risks
 
