@@ -49,7 +49,12 @@ pub(crate) fn build_file(
         Ok(profile) => profile,
         Err(error) => {
             *stderr += &format!("cpl: {error}\n");
-            return EXIT_USAGE;
+            // `--judge nope` is misuse; a `// judge:` line or cp.toml is the files'.
+            return if judge.is_some() {
+                EXIT_USAGE
+            } else {
+                EXIT_ERRORS
+            };
         }
     };
     let name = std::path::Path::new(path)

@@ -215,7 +215,7 @@ pub(crate) fn list_judges(
         Ok(profile) => profile,
         Err(error) => {
             *stderr += &format!("cpl: {error}\n");
-            return EXIT_USAGE;
+            return EXIT_ERRORS;
         }
     };
     let config = cpl_judge::project_config(path).unwrap_or_default();

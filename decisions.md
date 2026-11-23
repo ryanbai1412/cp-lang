@@ -6157,3 +6157,14 @@ constants and the `exit(3)` in the C++ runtime, and the sentence in
   no command writes `cp.toml` pins today (R11.4.2).
 - **Reverse.** Delete `migrate.rs` and its entries in `crates/cpl-cli`, and
   add `migrate` back to `SPEC_ONLY` in `crates/cpl-cli/tests/spec_sync.rs`.
+
+## 252. An unknown judge named in a file or cp.toml exits 1, on the command line 2 (2026-11-22)
+
+- **Decision.** `cpl judges`, `cpl build` and `cpl submit` exit 1 when a
+  `// judge:` line or `cp.toml` names a judge that does not exist, and 2
+  only for `cpl build --judge nope`.
+- **Why.** The exit-code convention (`spec/tools/cli.md`, tools-4) keeps 2
+  for misuse of the command line; a bad name inside the files is the files'
+  error, like a compile error, and fixing it means editing them.
+- **Reverse.** Return `EXIT_USAGE` again where `cpl_judge::resolve` fails in
+  `crates/cpl-cli/src/build.rs` and `submit.rs`.
