@@ -870,7 +870,7 @@ fn bfs_over_a_stored_graph_and_over_a_lambda():
     ]
     let es = [(v, w) for v in V for w in next[v]]
     let stored = bfs(Graph.directed(es), from: [V(1)])
-    let lambda = bfs::<V>(v => next[v], from: [V(1)])
+    let lambda = bfs<V>(v => next[v], from: [V(1)])
     var dist: [V]?Int = None
     dist[V(1)] = Some(0)
     for _ in V:
@@ -902,23 +902,23 @@ fn dijkstra_matches_brute_relaxation():
 fn topo_orders_a_dag_and_rejects_a_cycle():
     domain V = 0..6
     let out = [V] v => [V(x) for x in [[1, 2], [3], [3], [4], [], [0]][v.to_idx]]
-    let order = topo::<V>(v => out[v])!
+    let order = topo<V>(v => out[v])!
     var pos: [V]Int = 0
     for (i, v) in [(i, order[i]) for i in 0..order.len]: pos[v] = i
     for u in V:
         for v in out[u]: assert pos[u] < pos[v]
-    assert topo::<V>(v => [v.cyc(1)]) == None
+    assert topo<V>(v => [v.cyc(1)]) == None
     let stuck = [V] v => [V(x) for x in [[1, 2], [3], [3], [4], [3], [0]][v.to_idx]]
-    assert topo::<V>(v => stuck[v]) == None
+    assert topo<V>(v => stuck[v]) == None
 
 @test
 fn peel_leaves_what_a_cycle_reaches():
     // 0 -> 1 -> 2 -> 3 -> 2 (a cycle) -> 4, and 5 -> 0
     domain V = 0..6
     let out = [V] v => [V(x) for x in [[1], [2], [3], [2, 4], [], [0]][v.to_idx]]
-    assert peel::<V>(v => out[v]) == [V(5), V(0), V(1)]
+    assert peel<V>(v => out[v]) == [V(5), V(0), V(1)]
     let dag = [V] v => [V(x) for x in [[1, 2], [3], [3], [4], [], [0]][v.to_idx]]
-    assert peel::<V>(v => dag[v]) == topo::<V>(v => dag[v])!
+    assert peel<V>(v => dag[v]) == topo<V>(v => dag[v])!
     domain E = 0..6
     let edges = [E] e => [
         (u: V(0), v: V(1)),
@@ -939,13 +939,13 @@ fn scc_agrees_with_reachability():
         for s in V:
             let d = bfs(v => out[v], from: [s])
             for t in V: reach[s, t] = d[t] != None
-        let (C, comp) = scc::<V>(v => out[v])
+        let (C, comp) = scc<V>(v => out[v])
         for a in V:
             for b in V:
                 assert (comp[a] == comp[b]) == (reach[a, b] and reach[b, a])
                 if reach[a, b]: assert comp[a] <= comp[b]
         let dag = condense(v => out[v], comp)
-        assert topo::<C>(c => dag[c]) != None
+        assert topo<C>(c => dag[c]) != None
 
 @test
 fn components_of_an_undirected_graph():
@@ -978,7 +978,7 @@ fn bridges_and_cut_vertices_match_removing_them():
     domain V = 0..6
     domain E = 0..7
     for _ in 0..40:
-        let edges = random_edges::<V, E>()
+        let edges = random_edges<V, E>()
         let g = Graph.undirected(edges)
         let bridge = bridges(g)
         let cut = cut_vertices(g)
@@ -1003,7 +1003,7 @@ fn blocks_of_a_small_graph():
     domain V = 0..6
     domain E = 0..8
     for _ in 0..40:
-        let edges = random_edges::<V, E>()
+        let edges = random_edges<V, E>()
         let (domain B, block) = blocks(Graph.undirected(edges))
         var same = Dsu<E>()
         for e in E:
@@ -1042,11 +1042,11 @@ fn two_color_finds_a_colouring_or_an_odd_cycle():
 fn vertexless_closure_graphs_with_turbofish():
     domain V = 0..6
     // arcs u -> u + 1 and u -> u + 2, given only as a closure
-    let order = peel::<V>(
+    let order = peel<V>(
         u => [v for v in V if v.to_idx == u.to_idx + 1 or v.to_idx == u.to_idx + 2]
     )
     assert order == [V(0), V(1), V(2), V(3), V(4), V(5)]
-    assert peel::<V>(u => [V.nth((u.to_idx + 1) % 6)]) == []
+    assert peel<V>(u => [V.nth((u.to_idx + 1) % 6)]) == []
 
 @test
 fn a_plain_edge_list_needs_no_edge_domain():
@@ -1726,7 +1726,7 @@ pub struct TwoSat<X>:
     /// example: `domain X = 0..1; var s = TwoSat<X>(); s.implies(Lit(X(0), true), Lit(X(0), false)); s.solve() == Some([false])`
     pub fn solve(self) -> ?[X]Bool:
         domain N = 0..imp.len
-        let (C, comp) = scc::<N>(u => [N(v) for v in imp[u.to_idx]])
+        let (C, comp) = scc<N>(u => [N(v) for v in imp[u.to_idx]])
         // components are in topological order: a literal is true when it comes after
         // its negation
         for i in 0..imp.len / 2:
@@ -1861,8 +1861,8 @@ fn find_cycle_exists_exactly_when_topo_fails():
     domain V = 0..7
     for _ in 0..60:
         let out = [V] v => [V.nth(rand(0, 6)) for _ in 0..rand(0, 2) if rand(0, 2) > 0]
-        let cyc = find_cycle::<V>(v => out[v])
-        assert (cyc == None) == (topo::<V>(v => out[v]) != None)
+        let cyc = find_cycle<V>(v => out[v])
+        assert (cyc == None) == (topo<V>(v => out[v]) != None)
         if let c = cyc:
             for i in 0..c.len: assert out[c[i]].contains(c[(i + 1) % c.len])
             assert sorted(c).len == c.len
@@ -1878,7 +1878,7 @@ fn bridges_are_the_edges_whose_removal_disconnects():
             let rest = [V] v => [x.v for f in E if f != e for x in [edges[f]] if x.u == v] + [
                 x.u for f in E if f != e for x in [edges[f]] if x.v == v
             ]
-            let far = bfs::<V>(v => rest[v], from: [edges[e].u])
+            let far = bfs<V>(v => rest[v], from: [edges[e].u])
             assert bridge[e] == (not far.reached(edges[e].v))
 
 @test

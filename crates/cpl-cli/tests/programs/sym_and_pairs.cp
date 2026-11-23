@@ -1,7 +1,7 @@
-domain V = 1..=read::<Int>()
+domain V = 1..=read<Int>()
 var adj: [Sym<V>]Bool = false
 var wt: [Sym<V>]Int = 0
-let m = read::<Int>()
+let m = read<Int>()
 repeat m:
     let (u, v): (V, V) = read()
     adj[u, v] = true

@@ -10,7 +10,7 @@ fn next_small() -> 0..=100 = read()                // the return type
 fn twice(x: Int, y: 0..=5) -> Int = x * 2 + y
 
 var k = 0
-k = read::<Int>() + 1                              // no context: the one explicit spelling
+k = read<Int>() + 1                              // no context: the one explicit spelling
 let q = next_small()
 let t = twice(read(), read())                      // parameters
 var cur: Int = 0

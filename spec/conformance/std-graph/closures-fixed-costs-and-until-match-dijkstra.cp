@@ -3,11 +3,11 @@ use std.graph.{fixed_cost_paths, bfs01, blocks}
 fn vertexless_closure_graphs_with_turbofish():
     domain V = 0..6
     // arcs u -> u + 1 and u -> u + 2, given only as a closure
-    let order = peel::<V>(
+    let order = peel<V>(
         u => [v for v in V if v.to_idx == u.to_idx + 1 or v.to_idx == u.to_idx + 2]
     )
     assert order == [V(0), V(1), V(2), V(3), V(4), V(5)]
-    assert peel::<V>(u => [V.nth((u.to_idx + 1) % 6)]) == []
+    assert peel<V>(u => [V.nth((u.to_idx + 1) % 6)]) == []
 fn fixed_cost_paths_match_dijkstra_on_the_same_moves():
     domain S = 0..20
     let moves = [1, 3, -2, 5]
@@ -81,7 +81,7 @@ fn blocks_of_a_small_graph():
     domain V = 0..6
     domain E = 0..8
     for _ in 0..40:
-        let edges = random_edges::<V, E>()
+        let edges = random_edges<V, E>()
         let (domain B, block) = blocks(Graph.undirected(edges))
         var same = Dsu<E>()
         for e in E:

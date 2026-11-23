@@ -8,4 +8,4 @@ fn next(n: Int) -> Int:
     seed % n
 
 let w = [I] _ => [I] _ => next(1000000000)
-print(min_weight_matching::<I, I>((i, j) => w[i][j]).total)
+print(min_weight_matching<I, I>((i, j) => w[i][j]).total)

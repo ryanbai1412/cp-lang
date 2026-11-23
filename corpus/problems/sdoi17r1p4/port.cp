@@ -25,7 +25,7 @@ for i in Boy:
 var (lo, hi) = (0, max_a * SCALE)
 while lo < hi:
     let mid = (lo + hi + 1) / 2
-    let best = max_weight_matching::<Boy, Girl>((i, j) => SCALE * a[i][j] - mid * b[i][j]).total
+    let best = max_weight_matching<Boy, Girl>((i, j) => SCALE * a[i][j] - mid * b[i][j]).total
     if best > 0: lo = mid
     else: hi = mid - 1
 

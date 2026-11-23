@@ -19,7 +19,7 @@ fn walk(k: Int, steps: List<Int>) -> Paths:
         order.push(v)
     Paths(dist, back, order)
 
-let k = read::<Int>()
+let k = read<Int>()
 let p = walk(k, [k, k + 1, k + 2, k + 3, k + 4])
 print(p.dist[V(4)])
 print(yes(Pair(k, 1) == Pair(k, 2)), yes(Pair(k, 1) < Pair(k, 2)))

@@ -4,7 +4,7 @@ struct S<V, P>:
     at: [P]V
 fn mk<V>(r: V, k: Int) -> S<V, _>:
     domain P = 0..k
-    S::<V, P>([P] _ => r)
+    S<V, P>([P] _ => r)
 domain V = 0..3
 let s = mk(V(1), 4)
 let t = mk(V(2), 2)

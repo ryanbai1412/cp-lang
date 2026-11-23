@@ -13,7 +13,7 @@ fn run(a: Acc, n: Int) -> Int:
         t += a.step(i)
     t
 
-let k = read::<Int>()
+let k = read<Int>()
 let a = Acc(1, None, x => x * k)
 var b = Acc(2, None, x => x + 1)
 b.hook = x => x + k

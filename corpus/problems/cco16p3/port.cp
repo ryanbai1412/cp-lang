@@ -202,7 +202,7 @@ fn solve_s5():
             if ans: break
 
     if not ans:
-        for block in biconnected_components::<V>(u => g.out(u)):
+        for block in biconnected_components<V>(u => g.out(u)):
             if block.len == 5:
                 // Fix block[0] and test all 24 permutations of block[1..5].
                 let a0 = block[0]

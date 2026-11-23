@@ -7,5 +7,5 @@ fn arcs<V>(g: Next<V>) -> Int:
     t
 domain N = 0..3
 let adj: [N]List<N> = [[N(1)], [N(0), N(2)], []]
-print(arcs::<N>(u => adj[u]))
+print(arcs<N>(u => adj[u]))
 print(arcs(adj))

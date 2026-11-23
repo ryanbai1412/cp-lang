@@ -17,7 +17,7 @@ domain E = 0..m
 
 let edges: [E](u: V, v: V) = read()
 let g = Graph<V, E>.undirected(edges)
-let side = two_color::<V>(u => g.out(u))!
+let side = two_color<V>(u => g.out(u))!
 
 var deg: [V]Int = [V] u => g.deg(u)
 var mate: [V]?V = None

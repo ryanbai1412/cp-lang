@@ -171,7 +171,7 @@ fn bridges_and_parallel_edges():
     let raw = [(0, 1), (1, 2), (2, 0), (2, 3), (3, 4), (3, 4)]
     let edges = [E] e => (u: V(raw[e.to_idx].0), v: V(raw[e.to_idx].1))
     let g = Graph<V, E>.undirected(edges)
-    let (C, comp) = two_edge_components::<V>(u => g.out(u))
+    let (C, comp) = two_edge_components<V>(u => g.out(u))
     assert C.K == 2
     assert comp[V(0)] == comp[V(1)] and comp[V(1)] == comp[V(2)]
     assert comp[V(3)] == comp[V(4)] and comp[V(2)] != comp[V(3)]
@@ -186,7 +186,7 @@ fn cut_vertices_with_root_and_leaf():
     let raw = [(0, 1), (1, 2), (2, 0), (2, 3), (3, 4), (4, 2)]
     let edges = [E] e => (u: V(raw[e.to_idx].0), v: V(raw[e.to_idx].1))
     let g = Graph<V, E>.undirected(edges)
-    let cut = articulation_points::<V>(u => g.out(u))
+    let cut = articulation_points<V>(u => g.out(u))
     assert [cut[v] for v in V] == [false, false, true, false, false]
 
 @test
@@ -198,7 +198,7 @@ fn coloring_and_bipartite_dsu_rollback():
         v: V([(0, 1), (1, 2), (2, 3)][e.to_idx].1),
     )
     let g = Graph<V, E>.undirected(edges)
-    let col = two_color::<V>(u => g.out(u))!
+    let col = two_color<V>(u => g.out(u))!
     assert col[V(0)] != col[V(1)] and col[V(1)] != col[V(2)] and col[V(2)] != col[V(3)]
 
     var d = ParityDsu<V>()
@@ -222,7 +222,7 @@ fn bcc_sizes():
     let raw = [(0, 1), (1, 2), (2, 0), (2, 3), (3, 4), (4, 5), (5, 3)]
     let edges = [E] e => (u: V(raw[e.to_idx].0), v: V(raw[e.to_idx].1))
     let g = Graph<V, E>.undirected(edges)
-    let blocks = biconnected_components::<V>(u => g.out(u))
+    let blocks = biconnected_components<V>(u => g.out(u))
     var sizes = [b.len for b in blocks]
     sizes.sort()
     assert sizes == [2, 3, 3]

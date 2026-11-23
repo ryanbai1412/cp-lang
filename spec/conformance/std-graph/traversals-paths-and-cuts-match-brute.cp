@@ -145,7 +145,7 @@ fn bridges_and_cut_vertices_match_removing_them():
     domain V = 0..6
     domain E = 0..7
     for _ in 0..40:
-        let edges = random_edges::<V, E>()
+        let edges = random_edges<V, E>()
         let g = Graph.undirected(edges)
         let bridge = bridges(g)
         let cut = cut_vertices(g)
@@ -179,7 +179,7 @@ fn bfs_over_a_stored_graph_and_over_a_lambda():
     let next = [V] v => [V.nth(x) for x in [v.to_idx + 1, v.to_idx * 2, v.to_idx - 3] if 0 <= x < 10]
     let es = [(v, w) for v in V for w in next[v]]
     let stored = bfs(Graph.directed(es), from: [V(1)])
-    let lambda = bfs::<V>(v => next[v], from: [V(1)])
+    let lambda = bfs<V>(v => next[v], from: [V(1)])
     var dist: [V]?Int = None
     dist[V(1)] = Some(0)
     for _ in V:

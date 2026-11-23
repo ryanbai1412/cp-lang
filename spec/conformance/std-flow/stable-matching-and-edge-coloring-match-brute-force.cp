@@ -35,8 +35,8 @@ fn stable_matchings_are_stable_and_proposer_optimal():
     domain L = 0..4
     domain R = 0..3
     for _ in 0..60:
-        let pl = random_prefs::<L, R>()
-        let pr = random_prefs::<R, L>()
+        let pl = random_prefs<L, R>()
+        let pr = random_prefs<R, L>()
         let (rl, rr) = (ranks(pl), ranks(pr))
         let m = stable_matching(pl, pr)
         assert is_stable(m, rl, rr)

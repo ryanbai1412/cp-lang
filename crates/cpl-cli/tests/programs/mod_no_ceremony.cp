@@ -24,8 +24,8 @@ print(Z.P, Mod<7>.P)
 const P1 = 998244353
 const P2 = 1000000007
 fn two<const P>(x: Int) -> Mod<P> = Mod<P>(x) * 2
-print(two::<P1>(P1 - 1))
-print(two::<P2>(5))
+print(two<P1>(P1 - 1))
+print(two<P2>(5))
 type Y = Mod<P2>
 let y: Y = 3
 print(y ** 2)

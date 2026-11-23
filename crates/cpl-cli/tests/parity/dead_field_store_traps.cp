@@ -12,5 +12,5 @@ fn walk(k: Int, steps: List<Int>) -> Paths:
         back[v] = (from: v, step: steps[v.to_idx])
     Paths(dist, back)
 
-let k = read::<Int>()
+let k = read<Int>()
 print(walk(k, [k, k + 1, k + 2]).dist[V(4)])

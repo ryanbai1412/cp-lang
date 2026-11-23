@@ -29,7 +29,7 @@ fn line(xs: List<Int>) -> Str:
     out
 
 var due = [Plane] p => k[p]
-let order = topo::<Plane>(p => after[p])!
+let order = topo<Plane>(p => after[p])!
 for p in order.rev:
     for a in after[p]: due[p] = min(due[p], due[a.to] - 1)
 

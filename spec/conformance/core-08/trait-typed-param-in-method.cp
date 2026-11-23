@@ -4,7 +4,7 @@
 use std.graph.{Next}
 struct Deg<V>:
     n: Int
-    pub fn new(g: Next<V>, u: V) -> Deg<V> = Deg::<V>(g.out(u).count())
+    pub fn new(g: Next<V>, u: V) -> Deg<V> = Deg<V>(g.out(u).count())
 domain V = 0..2
 let g: [V]List<V> = [[V(1), V(0)], [V(0)]]
 print(Deg(g, V(0)).n, Deg(g, V(1)).n)

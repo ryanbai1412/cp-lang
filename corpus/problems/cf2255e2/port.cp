@@ -59,7 +59,7 @@ var st = SegTree<I, Cell, Tag>(
 var last: U64 = 0
 fn at(y: U64) -> I = I(Int((y ^ last) % U64(n)) + 1)
 repeat q:
-    match read::<1..=4>():
+    match read<1..=4>():
         4 =>
             let ans = st.get(at(read())).hist.best
             print(ans)
