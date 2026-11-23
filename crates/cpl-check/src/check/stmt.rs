@@ -1025,14 +1025,24 @@ impl<'a> Checker<'a> {
                     (&declared, &init_ty, init, fills)
                 {
                     let name = self.quote(pat.span);
-                    self.expect_moves(init_ty, declared, init, |c, got, want| {
+                    // The annotation widens a fresh value's range cells (decision 366).
+                    let fresh = !matches!(
+                        init.kind,
+                        ExprKind::Name(_) | ExprKind::Field { .. } | ExprKind::Index { .. }
+                    );
+                    let message = |c: &Self, got: &Ty, want: &Ty| {
                         format!(
                             "`{name}` is declared {}, but `{}` is {}",
                             want.with_article(),
                             c.quote(init.span),
                             got.with_article()
                         )
-                    });
+                    };
+                    if fresh {
+                        self.expect_fits(init_ty, declared, init, message);
+                    } else {
+                        self.expect_moves(init_ty, declared, init, message);
+                    }
                     self.empty_braces(declared, init);
                 }
                 let guessed = declared.is_none()
