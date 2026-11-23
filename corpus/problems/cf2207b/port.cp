@@ -1,20 +1,12 @@
-// Codeforces 2207 B — Flashlight Window Simulation
-//
-// At each second `t = 1..=l`, increment one active slot; whenever `t` hits a
-// flashlight time `a[idx]`, the adversary removes the largest active slot
-// (`vals[0]`). Only `min(m, remaining_flashes + 1)` slots can ever survive to
-// the end — at most `n + 1` initially since `n` flashes remove `n` slots before
-// the final maximum is read.
-//
-// Exchange argument for the earliest-minimum greedy: because every future flash
-// deletes the current maximum, moving an increment from a larger slot to a
-// strictly smaller slot never decreases the surviving value after any prefix
-// of top-slot deletions. Thus incrementing the minimum slot is optimal, and
-// breaking ties toward the earliest index (`vals.argmin()!`) preserves
-// non-increasing order `vals[0] >= vals[1] >= ...`.
-//
-// The statement bounds `n, m, l <= 2000` (with `min(m, n) * l` small), so
-// direct simulation over `vals: List<Int>` runs in O(l * min(m, n)) time.
+// Source: Codeforces 2207B (One Night At Freddy's), https://codeforces.com/contest/2207/problem/B
+// Problem: m animatronics start at danger 0; in each second 1..=l one of them (adversary's
+//   choice) gains 1, and right after seconds a_1 < ... < a_n you reset one to 0. Print the
+//   smallest x you can guarantee as the final maximum. n <= l, m * l <= 2e5; multitest, sum of
+//   m * l <= 2e5.
+// Solution: you always reset the largest; the adversary's best is to raise the smallest of the
+//   animatronics that can still matter, at most (flashes left + 1) of them. Simulate with the
+//   values kept in non-increasing order: increment the first minimum, and at a flash drop the
+//   first value and add a 0 while the count allows. O(l * min(m, n + 1)).
 
 @!multitest
 let (n, m, l): (1..=2_000, 1..=2_000, 1..=2_000) = read()

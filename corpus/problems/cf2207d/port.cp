@@ -1,13 +1,12 @@
-// Codeforces 2207 D — Tree Leaf-Pair Distance Collapse
-//
-// Root the tree at `v_in`. In bottom-up order `t.at.rev`, compute `dist[u]`:
-// the minimum edge distance from `u` to an escaping leaf in `u`'s subtree
-// (capped at `k + 2`, meaning no leaf within `k + 1` edges).
-//
-// A leaf (`g[u].len == 1`) has `dist[u] = 0`. For an internal node `u`, if any
-// two child subtrees yield leaves at combined distance `d + nd <= k + 1`
-// through `u`, `u` itself becomes safe (`dist[u] = 0`); otherwise `dist[u]`
-// keeps the minimum child distance `nd`. The root is safe iff `dist[V(v_in)] == 0`.
+// Source: Codeforces 2207D (Boxed Like a Fish), https://codeforces.com/contest/2207/problem/D
+// Problem: a tree of n <= 5e5 vertices; Cyndaquil starts at non-leaf v and wants a leaf. Snorlax
+//   moves first and may block one edge at a time, choosing a new one only k turns after the
+//   last; Cyndaquil moves one edge or stays per turn. Print YES iff Cyndaquil can surely reach a
+//   leaf. Multitest, sum of n <= 5e5.
+// Solution: root at v. dist[u] is the shortest escape distance below u (leaves 0, capped at
+//   k + 2). If two children of u give escapes at total distance <= k + 1, Snorlax cannot block
+//   both in time, so u counts as an escape itself (dist 0); else dist[u] is the closest child's
+//   + 1. Bottom-up, O(n); YES iff dist[v] == 0.
 
 @!multitest
 let (n, k, v_in): (2..=200_000, 1..=200_000, 1..=200_000) = read()

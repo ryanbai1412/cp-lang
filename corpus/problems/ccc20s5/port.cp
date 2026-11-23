@@ -1,6 +1,12 @@
-// CCC 2020 S5 Josh's Double Bacon Deluxe: n customers queue for burgers; the
-// first takes a random burger, and everyone else takes their favorite if left
-// or a random remaining one. Find the probability the last person gets theirs.
+// Source: CCC 2020 S5 (Josh's Double Bacon Deluxe), https://dmoj.ca/problem/ccc20s5
+// Problem: N <= 1e6 people queue, person i's favourite burger type is b_i <= 5e5, and the burgers
+//   are exactly their favourites. The first takes a random burger; each later one takes their
+//   favourite if left, else a random one. Print the probability the last person (Josh) gets his.
+// Solution: a random pick of type x hurts only the last person with favourite x, who then picks
+//   at random from what is left. dp[i] is Josh's chance when person i's burger is taken: 1 for
+//   the first person's type, 0 for Josh's, (1 + sum of dp after i) / (n - i) if i is the last
+//   of its type, else dp of that last one. Scan from the back with a suffix sum; the answer is
+//   sum dp / n. O(N + M).
 // original: corpus/submissions/5032745.cpp
 let n: 1..=1000000 = read()
 domain Pos = 0..n

@@ -1,5 +1,14 @@
-// CCO 2023 Triangle Collection, as it builds today: the monoid is a free function
-// behind a lambda, and the two derived tables are refreshed by hand (K13, F7).
+// Source: CCO 2023 Day 2 P3 (Triangle Collection), https://dmoj.ca/problem/cco23p6
+// Problem: c_l <= 1e9 sticks of each length l <= N <= 2e5. An isosceles triangle takes two sticks
+//   of length l and a third of length 1..=2l-1; each stick is used once. After each of Q <= 2e5
+//   events (count of length l changes by d), print the most triangles.
+// Solution: split each length into c/2 pairs and c%2 singles. First match singles as third sides:
+//   a pair of length i takes a single of length <= 2i-1, so a SegTree over lengths keeps (made,
+//   free singles, open pairs), with pairs entered at 2i-1 and the left part's singles matched to
+//   the right part's pairs. The unmatched pairs make 2 triangles per 3 pairs: made +
+//   (pairs - made) * 2 / 3. An event updates two leaves: O(log N).
+// As it builds today: the monoid is a free function behind a lambda, and the
+//   two derived tables are refreshed by hand (K13, F7).
 // original: corpus/submissions/5618725.cpp
 let n: 1..=2e5 = read()
 let q: 1..=2e5 = read()

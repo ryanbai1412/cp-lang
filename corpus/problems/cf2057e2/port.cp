@@ -1,7 +1,13 @@
-// Codeforces 2057 E2: the smallest k-th largest edge weight over the paths from a to b.
-// The answer is at most x iff some path has fewer than k edges heavier than x: with edges of
-// weight <= x costing 0 and the rest 1, dist(a, b) < k. Lighten the edges by increasing weight;
-// only an edge joining two zero-cost components changes dist, by one O(n^2) relaxation through it.
+// Source: Codeforces 2057E2 (Another Exercise on Graphs, hard version),
+//   https://codeforces.com/contest/2057/problem/E2
+// Problem: a connected weighted graph, n <= 400, no multi-edges, q <= 3e5 queries (a, b, k):
+//   over all a-b paths, the smallest k-th largest edge weight (every path has >= k edges).
+//   Multitest, sums of n <= 400 and q <= 3e5.
+// Solution: the answer is <= x iff with edges of weight <= x costing 0 and the rest 1,
+//   dist(a, b) < k. Start with all edges at 1 (Floyd-Warshall), then zero edges by increasing
+//   weight; only an edge joining two zero-cost components changes dist (at most n - 1 times),
+//   by an O(n^2) relaxation through it. Queries wait per pair sorted by k and are answered by
+//   the weight that brings dist below k. O(n^3 + q log q).
 @!multitest
 use std.graph.{floyd_warshall}
 let (n, m, q): (2..=400, Int, 1..=300_000) = read()

@@ -1,13 +1,12 @@
-// Codeforces 2207 E1 — N-MEX Constructive (Easy Version)
-//
-// `a[i]` is the MEX of `b[0..=i]` (or suffix constraint): a valid `b[0..n]`
-// exists iff `a` is non-increasing and `n - i - 1 <= a[i] <= n` for all `i`.
-//
-// Prepending `n` (`bounds = [n] + a`) gives the upper limit `bounds[i]` at each
-// reverse step `i = n` down to `0`. Maintaining `next_val` = next unused value
-// to push onto `stk`: by the lower bound `bounds[i] >= n - i`, at least
-// `n - i + 1` values have been pushed while only `n - i` values have been
-// popped so far, guaranteeing `stk.pop()!` is non-empty at every step.
+// Source: Codeforces 2207E1 (N-MEX, constructive version),
+//   https://codeforces.com/contest/2207/problem/E1
+// Problem: given a_1..a_n (n <= 2e5, a_i <= 1e9), build b_1..b_n with b_i <= 1e9 such that the
+//   (n-i+1)-th smallest non-negative integer missing from b_1..b_i is a_i, or print NO.
+//   Multitest, sum of n <= 2e5.
+// Solution: b exists iff a is non-increasing and n - i <= a_i <= n. Then build b from the back:
+//   with bound n before a, go from the last bound to the first, push onto a stack every value
+//   not yet pushed up to the current bound, and pop the top as the next b (the first pop is
+//   discarded). The bounds keep the stack non-empty. O(n).
 
 @!multitest
 let n: 1..=200_000 = read()

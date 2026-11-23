@@ -1,10 +1,9 @@
-// DMOPC '20 C7 P5: `n` items with costs `cost[i]`, and `m` pairs `(u, v, w)`
-// paying reward `w` when both items `u` and `v` are bought. Maximize total
-// reward minus total cost.
-//
-// Project selection: each item has profit `-cost[i]`, each pair has profit `w`
-// and depends on both its items `u` and `v`, so the maximum net gain is the
-// maximum-weight closure of the dependency graph (`std.flow.max_closure`).
+// Source: DMOPC '20 Contest 7 P5 (Mayors and Tolls), https://dmoj.ca/problem/dmopc20c7p5
+// Problem: N <= 500 cities with mayor fees b_i and M <= 500 roads (u, v, p): a road earns p if
+//   both its cities' mayors are paid (values <= 1e9). Print the best total profit minus fees.
+// Solution: project selection: each city has profit -b_i, each road profit p and requires both
+//   its cities, so the answer is the maximum-weight closure of that dependency graph
+//   (`std.flow.max_closure`, a min cut) over N + M nodes.
 
 use std.flow.{max_closure}
 

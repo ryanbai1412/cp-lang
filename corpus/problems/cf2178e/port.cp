@@ -1,14 +1,11 @@
-// Codeforces 2178 E — Flatten or Concatenate (interactive)
-//
-// The hidden array is constructed by concatenating equal-sum halves, so any
-// active subsegment `[l..=r]` with `l < r` splits into two contiguous halves
-// of exact sum `tot / 2` (hence `tot` is always even and `tot /= 2` is exact).
-//
-// Binary-searching `md in l..r` for the first position with `2 * ask(l, md) >= tot`
-// locates the end `mid` of the left half (the fallback `?? r.prev!` is never
-// needed when sums are positive, guarding the search range `l..r`). Stepping
-// into the shorter of `[l..=mid]` and `[mid + 1..=r]` at least halves the
-// remaining length each round, isolating the maximum element in `O(log^2 n)` queries.
+// Source: Codeforces 2178E (Flatten or Concatenate), https://codeforces.com/contest/2178/problem/E
+// Problem: interactive. A hidden array of n <= 1e5 elements (1..=2^30) was built from [2^k] by
+//   flattening a maximal x into x/2, x/2 and by concatenations a := a + b. With at most 300
+//   range-sum queries, find its maximum. Multitest.
+// Solution: any block of length >= 2 is the concatenation of two halves of equal sum, and the
+//   shorter half holds a maximum. Binary search for the first prefix with sum >= half the
+//   total to find the split, then move into the shorter half, which at least halves the length:
+//   O(log^2 n) queries; the last block's sum is the answer.
 
 @!interactive
 

@@ -1,7 +1,10 @@
-// An optimal subsegment [l, r] always achieves its min and max at its endpoints l and r;
-// shrinking past them only reduces r - l. So we maximize over i <= j either
-// (-a[i] + i) + (a[j] - j) or (a[i] + i) + (-a[j] - j).
-// A segment tree over non-empty intervals tracks the four endpoint terms and the best pair.
+// Source: Codeforces 2057D (Gifts Order), https://codeforces.com/contest/2057/problem/D
+// Problem: an array a of n <= 2e5 values <= 1e9. Print the maximum over l <= r of
+//   max(a[l..=r]) - min(a[l..=r]) - (r - l), initially and after each of q <= 2e5 point
+//   assignments. Multitest, sums of n and q <= 2e5.
+// Solution: an optimal segment has its max and min at its two ends (else shrink it), so maximize
+//   (a_j - j) - (a_i - i) or (a_i + i) - (a_j + j) over i <= j. A SegTree keeps the best of each
+//   endpoint term per side and the best pair, combined across the midpoint. O((n + q) log n).
 @!multitest
 let n: 1..=200_000 = read()
 let q: 1..=200_000 = read()

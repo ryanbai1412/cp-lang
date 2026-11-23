@@ -1,18 +1,12 @@
-// Codeforces 2261 E — Bracket Nesting Depth with k Swaps
-//
-// Scan the balanced bracket string `s[0..n]` maintaining `open` = indices of
-// unmatched `'('` so far. After pushing index `i`, the prefix `0..=i` contains
-// `i + 1 - open.len` already-matched characters (each matched pair costs 1 move
-// to clear, i.e. 2 characters per move):
-// - If `i + 1 - open.len <= 2 * k`: all matched pairs before `i` fit within `k`
-//   moves, and the remaining moves can nest up to `k` more pairs around `open`,
-//   reaching depth `k + open.len` (capped at `n / 2` globally, the max depth
-//   of any length-`n` balanced string).
-// - Otherwise: for `j in 0..open.len`, the non-stack characters inside
-//   `[open[j]..=i]` number `f(j) = (i + 1 - open[j]) - (open.len - j)`. As `j`
-//   increases, `open[j]` increases by at least 1 per step while `open.len - j`
-//   decreases by 1, so `f(j)` is strictly decreasing in `j`, justifying
-//   `bsearch_first` for the earliest `j` with `f(j) <= 2 * k` (depth `open.len - j`).
+// Source: Codeforces 2261E (What Does the Cow Say?), https://codeforces.com/contest/2261/problem/E
+// Problem: a regular bracket sequence of length n <= 4e5 and k <= n/2. One operation deletes an
+//   adjacent "()" and wraps the rest as "(" + s + ")". Print the most consecutive '(' reachable
+//   with at most k operations. Multitest, sum of n <= 4e5.
+// Solution: try each '(' at i as the end of the run, with the stack of unmatched '(' before it.
+//   If the matched characters before i number <= 2k, deleting them all leaves the stack plus k
+//   wrapped '(': k + stack size. Else keep the longest top part of the stack whose span holds
+//   <= 2k matched characters; that count falls along the stack, so binary search it. Answer
+//   capped at n/2. O(n log n).
 
 @!multitest
 let (n, k): (1..=200_000, 0..=200_000) = read()
