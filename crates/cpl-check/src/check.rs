@@ -12,6 +12,7 @@ mod call;
 mod decls;
 mod domain_use;
 mod expr;
+mod extension;
 mod known;
 pub(crate) mod lends;
 mod library_domain;

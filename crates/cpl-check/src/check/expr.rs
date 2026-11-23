@@ -1884,6 +1884,8 @@ impl<'a> Checker<'a> {
                 }
             }
             self.iter_call_help(base, &base_ty, name);
+        } else if ty == Ty::Unknown && built_in && self.no_extension_takes(&base_ty, name) {
+            return Ty::Error;
         }
         // A built-in member (`xs.len`, `v.next`) gets its hover here.
         let hovered = self.hovers.last().is_some_and(|h| h.span == name.span);

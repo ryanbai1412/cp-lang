@@ -175,7 +175,6 @@ documented. The stdlib's own gaps are in `std/GAPS.md`.
 - core-02/question-not-early-return.cp: compiler
 - core-02/unwrap-shadow-below-multitest.cp: compiler
 - core-02/bare-variant-needs-expected-enum.cp: compiler
-- core-02/counted-array-never-grows.cp: compiler
 - core-03/annotation-widens-fresh-read.cp: compiler
 - core-03/memory-over-profile.cp: compiler
 - core-04/a7-consume-front.cp: compiler

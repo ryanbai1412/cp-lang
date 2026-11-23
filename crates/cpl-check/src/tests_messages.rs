@@ -554,3 +554,18 @@ fn a_getter_called_with_parens_offers_to_drop_them() {
         "let xs = [3, 1]\nprint(xs.first)\n"
     );
 }
+
+#[test]
+fn a_method_no_fn_in_reach_takes_the_receiver_is_missing_not_a_mismatch() {
+    let d = one("var a: [3]Int = [1, 2, 3]\na.push(4)\n");
+    assert_eq!(d.code, cpl_diag::codes::UNKNOWN_FIELD, "{}", d.message);
+    assert_eq!(d.message, "a `[3]Int` has no method `push`");
+    assert!(
+        d.help
+            .as_deref()
+            .is_some_and(|h| h.contains("`Counter<K, Int>`")),
+        "{:?}",
+        d.help
+    );
+    assert!(check("var xs = [1, 2]\nxs.push(3)\nprint(xs.len)\n").is_empty());
+}
