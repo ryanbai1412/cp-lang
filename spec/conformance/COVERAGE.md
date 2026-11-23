@@ -7,7 +7,7 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 2375 (995 passing). Rules: 557.
+Cases: 2378 (995 passing). Rules: 557.
 
 ## Summary per chapter
 
@@ -23,7 +23,7 @@ Cases: 2375 (995 passing). Rules: 557.
 - R08 (08-traits-generics.md): 29 rules, 78 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R09 (09-contexts-checks.md): 26 rules, 55 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R10 (10-io.md): 18 rules, 73 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R11 (11-modules-prelude.md): 15 rules, 35 cases; 0 uncovered, 0 happy-path only, 1 negative only
+- R11 (11-modules-prelude.md): 15 rules, 37 cases; 0 uncovered, 0 happy-path only, 1 negative only
 - R12 (12-powers.md): 17 rules, 36 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R13 (13-lowering.md): 22 rules, 27 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - Rbundle (bundle.md): 3 rules, 3 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -603,9 +603,9 @@ Each rule: positive / negative case counts, then the gap if any.
 - R11.1.3 [3+ 1-]: An inline module `mod name:` groups items inside any file, for parts a contestant wants to...
 - R11.2.1 [1+ 1-]: Paths are module names, not files on a search path: `std` is the pinned stdlib, `lib` is t...
 - R11.2.2 [1+ 1-]: Modules form an acyclic graph; two modules that need each other are one module.
-- R11.2.3 [1+ 1-]: A local name shadows a prelude name; a `use` that collides with a local name is an error n...
+- R11.2.3 [3+ 1-]: A local name shadows a prelude name; a `use` that collides with a local name is an error n...
 - R11.2.4 [1+ 1-]: Everything is inlined into the one output file and tree-shaken: only called functions and ...
-- R11.3.1 [4+ 1-]: Only programs get the prelude; library modules `use` what they need, so a library never de...
+- R11.3.1 [5+ 1-]: Only programs get the prelude; library modules `use` what they need, so a library never de...
 - R11.3.2 [3+ 1-]: The prelude is the vocabulary of the `lib/` chapters, by rule rather than by request (deci...
 - R11.3.3 [4+ 2-]: Two exclusions keep that safe. A name a contestant commonly gives a local (`n`, `a`, `g`, ...
 - R11.3.4 [2+ 1-]: A method call needs no import: `xs.sorted()`, `g.adjacent(v)` and `p.adj4` find the method...
@@ -862,8 +862,8 @@ case names it. `/// example:` lines are also run by the `docs` suite of
   - uncovered: `max_weight_matching`, `min_weight_matching`, `general_matching`, `max_weight_general_matching`, `max_bounded_flow`, `min_bounded_flow`, `global_min_cut`, `Matroid`
 - **geometry** (153/160 named by a case)
   - uncovered: `ByAngle`, `PI`, `Vec.from_angle`, `planar_faces`, `point_location_planar`, `delaunay`, `voronoi_cells`
-- **graph** (107/122 named by a case)
-  - uncovered: `Weighted`, `Edged`, `WeightedNext`, `EdgedNext`, `EdgeArc`, `Reweighted`, `SimpleGraph`, `ConnectedGraph`, `Dag`, `Digraph`, `Graph.weighted`, `Walk`, `TwoSat.add_or`, `Complement`, `Only`
+- **graph** (108/122 named by a case)
+  - uncovered: `Weighted`, `Edged`, `EdgedNext`, `EdgeArc`, `Reweighted`, `SimpleGraph`, `ConnectedGraph`, `Dag`, `Digraph`, `Graph.weighted`, `Walk`, `TwoSat.add_or`, `Complement`, `Only`
 - **grid** (23/23 named by a case)
 - **hashmap** (37/37 named by a case)
 - **heap** (88/88 named by a case)
@@ -905,7 +905,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **window** (20/22 named by a case)
   - uncovered: `Tracked`, `Undo`
 
-2149 of 2282 std items are named by a case.
+2150 of 2282 std items are named by a case.
 
 ## Core cases without a `// rule:` line
 
