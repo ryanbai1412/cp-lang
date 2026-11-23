@@ -9,7 +9,7 @@ fn first_wins(k: Int, moves: List<Int>) -> Bool:
     var wins = List.filled(k + 1, false)
     for p in 0..=k:
         for a in moves:
-            if a < p and not wins[p - a]: wins[p] = true
+            if a < p and not wins[p - a]: wins[p] = true  // planted
     wins[k]
 
 @brute(first_wins)

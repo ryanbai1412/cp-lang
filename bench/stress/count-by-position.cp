@@ -5,7 +5,7 @@
 fn counts(a: List<Int>) -> List<Int>:
     var cnt = List.filled(a.len + 1, 0)
     for x in a: cnt[x] += 1
-    [cnt[i + 1] for i in 0..a.len]
+    [cnt[i + 1] for i in 0..a.len]  // planted
 
 @brute(counts)
 fn counts_slow(a: List<Int>) -> List<Int> =

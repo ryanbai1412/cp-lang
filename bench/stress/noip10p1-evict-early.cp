@@ -18,7 +18,7 @@ fn misses(m: Int, words: List<Int>) -> Int:
         count += 1
         fifo.push(w)
         cached.add(w)
-        if fifo.len - head >= m:
+        if fifo.len - head >= m:  // planted
             cached.remove(fifo[head])
             head += 1
     count

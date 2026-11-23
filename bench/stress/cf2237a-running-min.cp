@@ -2,7 +2,7 @@
 // multitest leak: the running minimum lives above the `@!multitest`
 // divider, so a later test starts from an earlier test's minimum.
 // class: multitest-leak
-var lo = 1e9
+var lo = 1e9  // planted
 fn prefix_min_sum(a: List<Int>) -> Int:
     var total = 0
     for x in a:

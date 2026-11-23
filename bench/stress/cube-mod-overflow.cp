@@ -5,7 +5,7 @@ const MOD = 1e9 + 7
 
 fn cubes(a: List<Int>) -> Int:
     var s = 0
-    for x in a: s = (s + x * x * x % MOD) % MOD
+    for x in a: s = (s + x * x * x % MOD) % MOD  // planted
     s
 
 @brute(cubes)

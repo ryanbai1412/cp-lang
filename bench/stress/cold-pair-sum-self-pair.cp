@@ -6,7 +6,7 @@ let (n, k): (1..=8, 0..=20) = read()
 let a: [0..n]0..=10 = read()
 var count = 0
 for i in 0..n:
-    for j in i..n:
+    for j in i..n:  // planted
         if a[i] + a[j] == k: count += 1
 print(count)
 

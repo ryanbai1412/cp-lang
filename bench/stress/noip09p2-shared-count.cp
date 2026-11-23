@@ -3,7 +3,7 @@
 // reset between tests.
 // class: multitest-leak
 
-var found = 0
+var found = 0  // planted
 fn hankson(a0: Int, a1: Int, b0: Int, b1: Int) -> Int:
     for x in divisors(b1):
         if gcd(x, a0) == a1 and lcm(x, b0) == b1: found += 1

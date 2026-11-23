@@ -6,7 +6,7 @@ let k: 1..=6 = read()
 
 fn ways(total: Int, parts: Int) -> Int:
     if parts == 0: return Int(total == 0)
-    if total <= parts: return 0
+    if total <= parts: return 0  // planted
     ways(total - 1, parts - 1) + ways(total - parts, parts)
 
 @brute(ways)

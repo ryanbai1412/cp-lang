@@ -5,7 +5,7 @@ const MOD = 998244353
 
 fn product(a: List<Int>) -> Int:
     var r = 1
-    for x in a: r = r * x % (1e9 + 7)
+    for x in a: r = r * x % (1e9 + 7)  // planted
     r
 
 @brute(product)

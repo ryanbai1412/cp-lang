@@ -36,6 +36,12 @@ loop) rather than running slow, since the smallest input that runs past a
 time limit depends on the machine; hidden complexity is the linter's to
 warn about.
 
+The line a bug was planted on ends in `// planted`.
+`explain_names_the_line_each_bug_was_planted_on` runs `cpl stress --explain`
+on every bug and counts those whose report blames that very line: where a
+debug run stopped, or where the solution first gave a value the brute did
+not. The count may only go up.
+
 A new bug is a new pair of files. A stress change that finds a smaller
 counterexample updates the `.min`, with the reason in the commit.
 

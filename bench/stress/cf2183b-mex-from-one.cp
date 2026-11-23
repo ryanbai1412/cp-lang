@@ -5,7 +5,7 @@
 fn missing(k: Int, a: List<Int>) -> Int:
     var has = List.filled(a.len + 1, false)
     for x in a if x <= a.len: has[x] = true
-    first(x for x in 1..k - 1 if not has[x]) ?? (k - 1)
+    first(x for x in 1..k - 1 if not has[x]) ?? (k - 1)  // planted
 
 @brute(missing)
 fn missing_slow(k: Int, a: List<Int>) -> Int =

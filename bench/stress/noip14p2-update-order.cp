@@ -24,7 +24,7 @@ fn joint() -> (Int, Z):
         var second = 0
         let around = sum(w[u] for u in adj[mid])
         for u in adj[mid]:
-            top max= w[u]
+            top max= w[u]  // planted
             second max= min(top, w[u])
         best max= top * second
         total += Z(around) * Z(around) - sum(Z(w[u] * w[u]) for u in adj[mid])

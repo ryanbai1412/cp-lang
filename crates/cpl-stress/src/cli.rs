@@ -795,6 +795,15 @@ pub fn run_with(
     if let Some(described) = &failure.described {
         let _ = writeln!(stdout, "  that is: {described}");
     }
+    // A wrong answer or a crash of the built C++ can stop the debug
+    // interpreter at its cause: an overflow, an index out of range.
+    let trapped = (args.fast.is_none()
+        && matches!(
+            failure.verdict,
+            crate::Verdict::Wrong(_) | crate::Verdict::RuntimeError(_)
+        ))
+    .then(|| crate::explain::runtime_error(&args.file, &failure.input))
+    .flatten();
     match &failure.verdict {
         // A checker alone rules on the output: there is no answer to show.
         crate::Verdict::Wrong(why) if failure.expected.is_empty() => {
@@ -807,26 +816,26 @@ pub fn run_with(
                 indent(&failure.expected),
                 indent(&failure.got)
             );
-        }
-        crate::Verdict::RuntimeError(why) => {
-            match args
-                .fast
-                .is_none()
-                .then(|| crate::explain::runtime_error(&args.file, &failure.input))
-                .flatten()
-            {
-                Some(explained) => {
-                    let _ = writeln!(
-                        stdout,
-                        "  the solution failed:\n{}",
-                        indent(explained.trim_end())
-                    );
-                }
-                None => {
-                    let _ = writeln!(stdout, "  the solution failed: {why}");
-                }
+            if let Some(explained) = &trapped {
+                let _ = writeln!(
+                    stdout,
+                    "  a debug run of the solution stops:\n{}",
+                    indent(explained.trim_end())
+                );
             }
         }
+        crate::Verdict::RuntimeError(why) => match &trapped {
+            Some(explained) => {
+                let _ = writeln!(
+                    stdout,
+                    "  the solution failed:\n{}",
+                    indent(explained.trim_end())
+                );
+            }
+            None => {
+                let _ = writeln!(stdout, "  the solution failed: {why}");
+            }
+        },
         _ => {
             let _ = writeln!(stdout, "  the solution ran past the time limit");
         }
@@ -851,6 +860,10 @@ pub fn run_with(
         }
     }
     match &explained {
+        // The trap above is the explanation, and where it stopped the
+        // solution gave no more values.
+        Some(Ok(Some(d))) if trapped.is_some() && d.fast.is_none() => {}
+        Some(Ok(None)) if trapped.is_some() => {}
         Some(Ok(Some(d))) => print_divergence(stdout, d),
         Some(Ok(None)) => {
             let _ = writeln!(

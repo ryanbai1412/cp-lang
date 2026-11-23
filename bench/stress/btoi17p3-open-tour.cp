@@ -20,7 +20,7 @@ fn wanted(k: Int, plans: List<List<City>>) -> List<Int>:
     var marks: [City]Int = 0
     for plan in plans:
         let tour = plan.sorted(by: tree.pos)
-        for i in 0..tour.len - 1:
+        for i in 0..tour.len - 1:  // planted
             marks[tour[i]] += 1
             marks[tree.lca(tour[i], tour[i + 1])] -= 1
     for c in tree.at.rev:

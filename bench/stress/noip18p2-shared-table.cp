@@ -4,7 +4,7 @@
 // class: multitest-leak
 const TOP = 25000
 domain Amount = 0..=TOP
-var payable: [Amount]Bool = false
+var payable: [Amount]Bool = false  // planted
 
 fn needed(coins: List<Int>) -> Int:
     payable[Amount(0)] = true

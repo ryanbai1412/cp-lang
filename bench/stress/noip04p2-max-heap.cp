@@ -5,7 +5,7 @@ let n: 1..=10000 = read()
 let piles: [0..n]1..=20000 = read()
 
 fn effort(piles: List<Int>) -> Int:
-    var heap = MaxHeap<Int>()
+    var heap = MaxHeap<Int>()  // planted
     for p in piles: heap.push(p)
     var total = 0
     while heap.len > 1:

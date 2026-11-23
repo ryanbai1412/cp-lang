@@ -9,7 +9,7 @@ fn best(items: List<(w: Int, v: Int)>) -> Int:
     var lightest: List<?Int> = List.filled(top + 1, None)
     lightest[0] = 0
     for (w, v) in items:
-        for total in v..=top: lightest[total] min= lightest[total - v] + w
+        for total in v..=top: lightest[total] min= lightest[total - v] + w  // planted
     [total for total in 0..=top if lightest[total] != None and lightest[total]! <= cap].max()!
 
 @brute(best)

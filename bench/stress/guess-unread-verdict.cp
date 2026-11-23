@@ -11,7 +11,7 @@ while lo < hi:
     let r: Int = ask("?", mid, limit: 7)
     if r == 1: hi = mid
     else: lo = mid + 1
-print("!", lo)
+print("!", lo)  // planted
 
 @interactor fn judge(sol: Interactor):
     let n: 1..=100 = read()

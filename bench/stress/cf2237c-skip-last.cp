@@ -3,7 +3,7 @@
 // class: off-by-one
 fn total(a: List<Int>) -> Int:
     var cur = a[0]
-    for x in a[1..a.len - 1]: cur = if x >= cur: x else: cur + x
+    for x in a[1..a.len - 1]: cur = if x >= cur: x else: cur + x  // planted
     cur
 
 @brute(total)

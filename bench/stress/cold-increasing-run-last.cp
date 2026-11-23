@@ -9,7 +9,7 @@ var len = 1
 for i in 1..n:
     if a[i] > a[i - 1]: len += 1
     else: len = 1
-best max= len
+best max= len  // planted
 print(best)
 
 @alt(program)

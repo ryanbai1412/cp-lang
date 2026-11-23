@@ -2,7 +2,7 @@
 // multitest leak: the set of values seen lives above the `@!multitest`
 // divider, so a value an earlier test had is not counted again.
 // class: multitest-leak
-var seen: Set<Int> = Set()
+var seen: Set<Int> = Set()  // planted
 fn operations(a: List<Int>) -> Int:
     var distinct = 0
     for x in a:

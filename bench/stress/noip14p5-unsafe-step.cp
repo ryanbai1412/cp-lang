@@ -23,7 +23,7 @@ let reaches = bfs(v => back[v], from: [t])
 let safe = [V] u => out[u].all(v => reaches[v] != None)
 
 fn way() -> Int:
-    let walk: [V]List<V> = [V] u => [v for v in out[u] if safe[u]]
+    let walk: [V]List<V> = [V] u => [v for v in out[u] if safe[u]]  // planted
     if safe[s]: bfs(v => walk[v], from: [s])[t] ?? -1 else: -1
 
 @brute(way)

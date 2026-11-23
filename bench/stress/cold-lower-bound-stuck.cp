@@ -12,7 +12,7 @@ var hi = n
 while lo < hi:
     let mid = (lo + hi) / 2
     if b[mid] < x:
-        lo = mid
+        lo = mid  // planted
     else:
         hi = mid
 print(lo)

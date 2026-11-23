@@ -5,7 +5,7 @@ let (n, a, b): (1..=1e6, 1..=1e6, 1..=1e6) = read()
 let heights: [0..n]0..=1e6 = read()
 
 fn cheapest(heights: List<Int>) -> Int:
-    var best = 0
+    var best = 0  // planted
     var taller = 0
     var taller_sum = 0
     for h in sorted(heights).rev:

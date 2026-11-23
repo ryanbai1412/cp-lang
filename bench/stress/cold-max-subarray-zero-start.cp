@@ -4,7 +4,7 @@
 
 let n: 1..=8 = read()
 let a: [0..n]-9..=9 = read()
-var best = 0
+var best = 0  // planted
 var here = 0
 for i in 0..n:
     here = max(a[i], here + a[i])

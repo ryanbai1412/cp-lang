@@ -2,7 +2,7 @@
 // multitest leak: the answer starts above the `@!multitest` divider, so it
 // keeps every factor an earlier test needed.
 // class: multitest-leak
-var res = 1
+var res = 1  // planted
 fn smallest(b: List<Int>) -> Int:
     for (x, y) in b.adjacent if y % x != 0:
         res = lcm(res, x / gcd(x, y))

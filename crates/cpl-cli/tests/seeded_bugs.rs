@@ -93,48 +93,13 @@ fn every_seeded_bug_names_its_bug_class() {
     println!("{covered} of {p0} P0 classes seeded");
 }
 
-#[test]
-fn stress_finds_every_seeded_bug_and_shrinks_it_to_the_minimal_input() {
-    let bugs = bugs();
-    assert!(bugs.len() >= 21, "only {} seeded bugs", bugs.len());
-    let scratch = Path::new(env!("CARGO_TARGET_TMPDIR")).join("seeded_bugs");
-    let _ = std::fs::remove_dir_all(&scratch);
-    std::fs::create_dir_all(&scratch).unwrap();
-    let run = |bug: &PathBuf| -> (String, Duration, Option<String>) {
-        let name = bug.file_stem().unwrap().to_string_lossy().to_string();
-        // A copy, so the saved regression test lands outside the repo.
-        let copy = scratch.join(bug.file_name().unwrap());
-        std::fs::copy(bug, &copy).unwrap();
-        let minimal = std::fs::read_to_string(bug.with_extension("min")).unwrap();
-        // A bug that never ends names a short limit, so each case it hangs on stops fast.
-        let source = std::fs::read_to_string(bug).unwrap();
-        let limit = (source.lines())
-            .find_map(|line| line.strip_prefix("// time-limit-ms: "))
-            .map(|ms| ["--time-limit", ms.trim()]);
-        let start = Instant::now();
-        let out = Command::new(env!("CARGO_BIN_EXE_cpl"))
-            .arg("stress")
-            .arg(&copy)
-            .args(STRESS)
-            .args(limit.iter().flatten())
-            .output()
-            .expect("cpl runs");
-        let took = start.elapsed();
-        let json = String::from_utf8_lossy(&out.stdout).to_string();
-        let found = string_field(&json, "raw_input");
-        let wrong = (found.as_deref() != Some(minimal.as_str())).then(|| {
-            format!(
-                "{name}: wanted\n{minimal}got {found:?}\n{json}{}",
-                String::from_utf8_lossy(&out.stderr)
-            )
-        });
-        (name, took, wrong)
-    };
+/// `run` on every bug, a few at a time.
+fn each<T: Send>(bugs: &[PathBuf], run: impl Fn(&PathBuf) -> T + Sync) -> Vec<T> {
     let threads = std::thread::available_parallelism()
         .map_or(1, |n| n.get())
         .min(4);
     let next = std::sync::atomic::AtomicUsize::new(0);
-    let mut results: Vec<(String, Duration, Option<String>)> = std::thread::scope(|scope| {
+    std::thread::scope(|scope| {
         let workers: Vec<_> = (0..threads)
             .map(|_| {
                 scope.spawn(|| {
@@ -151,7 +116,58 @@ fn stress_finds_every_seeded_bug_and_shrinks_it_to_the_minimal_input() {
             .into_iter()
             .flat_map(|w| w.join().unwrap())
             .collect()
-    });
+    })
+}
+
+/// `cpl stress <bug>` on a copy of `bug` in `scratch`, so the saved
+/// regression test lands outside the repo, with `args` after the file.
+fn stress(bug: &Path, scratch: &Path, args: &[&str]) -> std::process::Output {
+    let copy = scratch.join(bug.file_name().unwrap());
+    std::fs::copy(bug, &copy).unwrap();
+    // A bug that never ends names a short limit, so each case it hangs on stops fast.
+    let source = std::fs::read_to_string(bug).unwrap();
+    let limit = (source.lines())
+        .find_map(|line| line.strip_prefix("// time-limit-ms: "))
+        .map(|ms| ["--time-limit", ms.trim()]);
+    Command::new(env!("CARGO_BIN_EXE_cpl"))
+        .arg("stress")
+        .arg(&copy)
+        .args(args)
+        .args(limit.iter().flatten())
+        .output()
+        .expect("cpl runs")
+}
+
+/// A fresh scratch folder for the copies of the bugs one test stresses.
+fn scratch(test: &str) -> PathBuf {
+    let scratch = Path::new(env!("CARGO_TARGET_TMPDIR")).join(test);
+    let _ = std::fs::remove_dir_all(&scratch);
+    std::fs::create_dir_all(&scratch).unwrap();
+    scratch
+}
+
+#[test]
+fn stress_finds_every_seeded_bug_and_shrinks_it_to_the_minimal_input() {
+    let bugs = bugs();
+    assert!(bugs.len() >= 21, "only {} seeded bugs", bugs.len());
+    let scratch = scratch("seeded_bugs");
+    let run = |bug: &PathBuf| -> (String, Duration, Option<String>) {
+        let name = bug.file_stem().unwrap().to_string_lossy().to_string();
+        let minimal = std::fs::read_to_string(bug.with_extension("min")).unwrap();
+        let start = Instant::now();
+        let out = stress(bug, &scratch, &STRESS);
+        let took = start.elapsed();
+        let json = String::from_utf8_lossy(&out.stdout).to_string();
+        let found = string_field(&json, "raw_input");
+        let wrong = (found.as_deref() != Some(minimal.as_str())).then(|| {
+            format!(
+                "{name}: wanted\n{minimal}got {found:?}\n{json}{}",
+                String::from_utf8_lossy(&out.stderr)
+            )
+        });
+        (name, took, wrong)
+    };
+    let mut results = each(&bugs, run);
     results.sort_by(|a, b| a.0.cmp(&b.0));
     let mut times = Vec::new();
     let mut wrong = Vec::new();
@@ -182,4 +198,64 @@ fn stress_finds_every_seeded_bug_and_shrinks_it_to_the_minimal_input() {
         times.len()
     );
     assert!(wrong.is_empty(), "{}", wrong.join("\n"));
+}
+
+/// How many seeded bugs `cpl stress --explain` points at the very line
+/// the bug was planted on, the line ending in `// planted`. Raise it when
+/// the explanation gets better; it may never drop.
+const NAMED: usize = 5;
+
+/// The lines a `cpl stress --explain` report blames: where the debug run
+/// stopped, and where the solution first gave a value the brute did not.
+fn blamed(report: &str) -> Vec<u32> {
+    let number = |text: &str| -> Option<u32> {
+        let digits: String = text.chars().take_while(char::is_ascii_digit).collect();
+        digits.parse().ok()
+    };
+    (report.lines())
+        .filter_map(|line| {
+            let line = line.trim_start();
+            if line.starts_with("--> ") {
+                number(line.rsplit_once(".cp:")?.1)
+            } else if line.starts_with("solution ") {
+                number(line.rsplit_once(" at line ")?.1)
+            } else {
+                None
+            }
+        })
+        .collect()
+}
+
+#[test]
+fn explain_names_the_line_each_bug_was_planted_on() {
+    let bugs = bugs();
+    let scratch = scratch("seeded_bugs_explain");
+    let args = &STRESS[..STRESS.len() - 2];
+    let mut results = each(&bugs, |bug| {
+        let name = bug.file_stem().unwrap().to_string_lossy().to_string();
+        let source = std::fs::read_to_string(bug).unwrap();
+        let planted = (source.lines().position(|line| line.ends_with("// planted")))
+            .unwrap_or_else(|| panic!("{name}: no line ends in `// planted`"))
+            as u32
+            + 1;
+        let out = stress(bug, &scratch, &[args, &["--explain"]].concat());
+        let report = String::from_utf8_lossy(&out.stdout).to_string();
+        (name, planted, blamed(&report))
+    });
+    results.sort();
+    let mut named = 0;
+    for (name, planted, blamed) in &results {
+        let verdict = if blamed.contains(planted) {
+            named += 1;
+            "named"
+        } else {
+            "missed"
+        };
+        println!("{name:<32} planted at {planted:<3} blamed {blamed:?} {verdict}");
+    }
+    println!(
+        "{named} of {} seeded bugs named at their line",
+        results.len()
+    );
+    assert!(named >= NAMED, "only {named} named, down from {NAMED}");
 }

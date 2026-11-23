@@ -21,7 +21,7 @@ fn ahead_in() -> [L, L]Bool:
 fn longest() -> Int:
     let ahead = ahead_in()
     var best: [L]Int = 0
-    for u in L:
+    for u in L:  // planted
         best[u] = ([best[v] for v in L if v != u and ahead[v, u]].max() ?? 0) + 1
     [best[u] for u in L].max()!
 
