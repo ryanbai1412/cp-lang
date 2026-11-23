@@ -12,5 +12,5 @@ for _ in 0..200_000:
     let r = x % n
     let (a, b) = (min(l, r), max(l, r))
     rf.add(I(a)..=I(b), (x % 17) - 8)
-    s += rf.sum(I(a)..=I(b))
+    s += rf.fold(I(a)..=I(b))
 print(s)
