@@ -21,21 +21,23 @@ A competitive programmer goes from "what is this" to an accepted submission they
 
 ## Milestone 1
 
-Ryan's [Milestone 1](../../product/MILESTONE-1.md) sets the priorities now; the v0.3 milestones and metrics below are means to it. Site owns scenario steps 1 (Understand) and 2 (Try), and the way into step 3 (Install).
+Ryan's [Milestone 1](../../product/MILESTONE-1.md) sets the priorities now; the v0.3 milestones and metrics below are means to it. Deadline: about 09:30 PST on 2026-11-23, so this plan is in hours. It ships on edge, Codeforces is the target judge (checked against the local `codeforces` profile, no real submissions), and Linux, macOS and Windows are all supported. Site owns scenario steps 1 (Understand) and 2 (Try), and the way into step 3 (Install).
 
 What it needs from site, each checkable:
 - **Homepage:** at 390 px and at 1280 px, the first screen says what CPL is, who it is for, and one runnable program. A cold reader names 3 advantages over C++ after 3 minutes (probe P5). Install is linked from the header at every width.
-- **30-minute intro:** one page, `/learn/intro`, takes about 30 minutes to read (≤ 4,500 words). Every example on it runs in place, and it ends with links to Practice and Install.
-- **Browser practice:** at least 12 hand-picked Div 2 A/B problems, each judged in the browser. Each has hints shown before acceptance that link to the std docs or a guide, and the editor lints live.
+- **30-minute intro (landed, `e441044cd`):** `/learn/intro`, 12 sections, 17 examples that run in place, ending at Practice and Install.
+- **Browser practice:** at least 12 hand-picked Div 2 A/B problems judged in the browser, each with hints shown before acceptance that link to the std docs or a guide, and lints shown live in the editor.
 - **Docs:** search finds every std item by name, and every docs example runs; the gate reports `spec: 0`, or each spec-only block is badged and listed with its owner.
-- **Install:** `/setup` is one click from the homepage, the intro and the docs. Its commands are the ones infra's install tests run.
+- **Install (`/setup`):** one click from the homepage, the intro and the docs. It gives the edge one-liners for Linux, macOS (`install.sh`) and Windows (`install.ps1`), and a one-step Neovim setup and a Vim setup next to VS Code. Its commands are the ones infra's install tests run on all three platforms.
 
-Deferring (milestone "what can wait", or not on a scenario step): interval DP and further Learn chapters past Div 2 C; trace viewer and `cpl doc` polish; the 0.3-only landing tabs; the Problems and Performance pages; page-weight and search tuning beyond the existing caps.
+Deferring (milestone "what can wait", or not on a scenario step; continues only after the blockers): interval DP and further Learn chapters past Div 2 C; trace viewer and `cpl doc` polish; the 0.3-only landing tabs; the Problems and Performance pages; page-weight and search tuning beyond the existing caps.
 
 Top 3 next steps:
-1. Done: `/learn/intro`, the 30-minute guide (17 live examples), is the homepage's first call to action.
-2. Add hints to practice problems (a `hints` list per problem, linking to docs), and live lint in the practice editor. The wasm build's `lsp` entry point already publishes lints, so this is site work.
+1. `/setup` for the milestone: edge as the default install on all three platforms, Windows PowerShell, Neovim and Vim in one step, with the stale "not published yet" badges removed.
+2. Practice hints linking to docs, and live lint in the browser editor. The playground has no lints today: `crates/cpl-lsp` skips them on wasm because of the site bundle's size cap. `cpl-lint` builds for wasm, so site will measure the size and turn them on if the 2.1 MB cap holds, with a note to tools.
 3. A homepage pass: the value proposition and 3 differentiators above the fold, Install visible at every width, and a baseline for the P5 cold read.
+
+Checkpoints go in [worklog.md](worklog.md) every 2 hours: what landed, what is next.
 
 ## Success criteria for v0.3
 
