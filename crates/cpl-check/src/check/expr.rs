@@ -2340,10 +2340,13 @@ impl<'a> Checker<'a> {
                         args: vec![elem],
                     };
                 }
-                if name.text == "keys" && matches!(map.as_str(), "List" | "Slice" | "Str") {
+                // A range's keys are its own elements (R04.4.31).
+                if name.text == "keys" && matches!(map.as_str(), "List" | "Slice" | "Str" | "Range")
+                {
+                    let key = args.first().filter(|_| map == "Range").cloned();
                     return Ty::Named {
                         name: "Range".into(),
-                        args: vec![Ty::Int],
+                        args: vec![key.unwrap_or(Ty::Int)],
                     };
                 }
             }
@@ -2359,12 +2362,6 @@ impl<'a> Checker<'a> {
             }
             if let Ty::Array { index, elem } = &base_ty {
                 if index.len() == 1 {
-                    if name.text == "keys" {
-                        return Ty::Named {
-                            name: "Range".into(),
-                            args: vec![index[0].clone()],
-                        };
-                    }
                     let item = if name.text == "keys" {
                         index[0].clone()
                     } else {
