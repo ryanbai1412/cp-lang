@@ -82,7 +82,7 @@ Fields: `pre: List<T>`, `g_sum: Int -> T`, `fg_sum: Int -> T`, `g1: T`, `memo: M
 - `@get fn is_pow2(self: Int) -> Bool` — \(O(1)\); Is `self` a power of two?
 - `fn splitmix64(x: U64) -> U64` — \(O(1)\); SplitMix64: mixes the 64 bits of `x` so that inputs close together land far apart.
 - `fn factor(x: Int) -> List<(Int, Int)>` — \(O(\sqrt x)\) for `x <= 1_000_000`; \(O(x^{1/4} \log x)\) expected above; The prime factorization of `x >= 1` as `(prime, exponent)` pairs, for any 64-bit `Int`.; traps: when `x < 1`
-- `fn divisors(x: Int) -> List<Int>` — \(O(\sqrt x)\); The positive divisors of `x >= 1`, ascending.; traps: when `x < 1`
+- `fn divisors(self: Int) -> List<Int>` — \(O(\sqrt x)\); The positive divisors of `x >= 1`, ascending.; traps: when `x < 1`
 - `fn divisors_from_factors(factors: List<(Int, Int)>) -> List<Int>` — \(O(d \log d)\) for `d` divisors; Every positive divisor of the number whose factorization is `factors`, ascending.; traps: when an exponent is negative, or a divisor overflows `Int`
 - `fn inv_mod(a: Int, m: Int) -> ?Int` — \(O(\log m)\); The modular inverse of `a` modulo `m >= 1`, in `0..m`, or `None` if `gcd(a, m) != 1`.; traps: when `m < 1`
 - `fn crt(r1: Int, m1: Int, r2: Int, m2: Int) -> ?(Int, Int)` — \(O(\log \min(m1, m2))\); The solution of `x = r1 (mod m1)`, `x = r2 (mod m2)` as `(r, m)` with `m = lcm(m1, m2)` and `0 <= r < m`, or `None` if there is None.; traps: when `m1 < 1` or `m2 < 1`, or `lcm(m1, m2)` overflows

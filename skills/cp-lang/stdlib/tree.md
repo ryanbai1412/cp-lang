@@ -20,7 +20,7 @@ A tree rooted at `root`, owning its own fresh heavy-first preorder domain `t.Pre
 - `fn parent(self, v: V) -> ?V` — \(O(1)\); The parent of `v`; `None` at a root.
 - `fn up_arc<A>(self, v: V) -> ?A` — \(O(1)\); The arc `v` was entered by, with every field `next` gave it (`t.up_arc(v)!.cost` on a tree read with a `cost` field); `None` at a root.
 - `fn reorder<T>(self, a: [V]T) -> [Pre]T` — \(O(n)\); Reorders a vertex-indexed array into preorder: `out[t.pos(v)] == a[v]`, ready to build a `SegTree` or `Fenwick` over `t.Pre`.
-- `fn children(self, v: V) -> yields V` — \(O(1)\) to start, \(O(1)\) per child; The children of `v`, in the order `next` listed them.
+- `fn children(self, v: V) -> Slice<List<V>>` — \(O(1)\) to start, \(O(1)\) per child; The children of `v`, in the order `next` listed them.
 - `fn child_arcs<A>(self, v: V) -> yields A` — \(O(1)\) per child; The arcs from `v` down to its children, with every field `next` gave them (`for a in t.child_arcs(v): up(a.to) + a.w`), so edge data needs no side array.
 - `fn excl_fold<T, M>(self, v: V, op: M, f: V -> T) -> yields (c: V, rest: T)` — \(O(k)\) calls of `f` and of `op`, \(O(k)\) memory; For each child `c` of `v`, in child order, the fold with `op` of `f` over `v`'s other children: the step of a rerooting DP, with no division or inverse.
 - `fn depth(self, v: V) -> Int` — \(O(1)\); The number of edges between `v` and its root.
