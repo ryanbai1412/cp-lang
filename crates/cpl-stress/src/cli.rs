@@ -782,7 +782,7 @@ pub fn run_with(
         _ if args.fast.is_some() => None,
         (Some(_), _) => crate::explain::trap_report(&args.file, input, true, json),
         (None, Some(swapped)) => {
-            crate::explain::trap_report_in(&args.file, swapped, input, false, json)
+            crate::explain::trap_report_in(&args.file, swapped, input, false, json, None)
         }
         (None, None) => None,
     };

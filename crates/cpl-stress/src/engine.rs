@@ -158,6 +158,83 @@ pub struct InterpEngine {
     pub stack_limit: Option<u32>,
     /// How long one run may take before it is stopped, a time limit verdict.
     pub limit: Duration,
+    /// Tells this engine's [`PRELUDES`] from another's.
+    id: u64,
+}
+
+/// Loop rounds and calls between the checkpoints a first run takes before
+/// it reads: a precompute shorter than this is just run again.
+const PRELUDE_EVERY: u64 = 1 << 16;
+
+/// Which of an engine's programs a prelude is of.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Role {
+    Fast,
+    Brute,
+}
+
+thread_local! {
+    /// Per engine and program, once a run has shown it: the last checkpoint
+    /// before the program reads or prints, or `None` when there is none.
+    /// Every later case starts there, so what the program works out before
+    /// it reads (a table over all `k <= 60`, say) runs once, not per case.
+    static PRELUDES: std::cell::RefCell<Vec<PreludeOf>> = const { std::cell::RefCell::new(Vec::new()) };
+}
+
+type PreludeOf = ((u64, Role), Option<cpl_interp::checkpoint::Checkpoint>);
+
+static ENGINES: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+
+impl InterpEngine {
+    /// [`run_ir`] on the calling thread, from the state `program` reaches
+    /// before it first reads, once a first run has found it.
+    fn run_case(
+        &self,
+        role: Role,
+        program: &cpl_ir::Program,
+        input: &str,
+        limit: Duration,
+    ) -> Result<String, (String, cpl_interp::Trap)> {
+        use cpl_interp::checkpoint::Checkpoints;
+        let io = cpl_interp::Io::fixed(input.as_bytes());
+        let Some(bytes) = self.stack_limit else {
+            return run_ir(program, io, None, limit);
+        };
+        let key = (self.id, role);
+        let known = PRELUDES.with(|p| {
+            let p = p.borrow();
+            p.iter().find(|(k, _)| *k == key).map(|(_, c)| c.clone())
+        });
+        let want = match &known {
+            None => Checkpoints::before_input(PRELUDE_EVERY),
+            Some(Some(from)) => Checkpoints::resuming(from),
+            Some(None) => Checkpoints::default(),
+        };
+        let mut out = Vec::new();
+        let run = cpl_interp::checkpoint::observe_on_this_thread(
+            program,
+            io.until(cpl_interp::Stop::after(limit)),
+            &mut out,
+            cpl_interp::Limits {
+                stack_bytes: bytes as usize,
+            },
+            None,
+            want,
+        );
+        if known.is_none() {
+            let prelude = run.taken.into_iter().last();
+            PRELUDES.with(|p| {
+                let mut p = p.borrow_mut();
+                p.retain(|((id, _), _)| *id == self.id);
+                p.push((key, prelude));
+            });
+        }
+        let text = String::from_utf8_lossy(&out).into_owned();
+        match run.observed.trap {
+            None => Ok(text),
+            Some(trap) => Err((text, trap)),
+        }
+    }
 }
 
 fn run_ir(
@@ -220,13 +297,8 @@ impl Engine for InterpEngine {
     }
 
     fn stops(&self, input: &str) -> bool {
-        run_ir(
-            &self.fast,
-            cpl_interp::Io::fixed(input.as_bytes()),
-            self.stack_limit,
-            self.limit,
-        )
-        .is_err()
+        self.run_case(Role::Fast, &self.fast, input, self.limit)
+            .is_err()
     }
 
     fn limit(&self) -> Duration {
@@ -235,12 +307,7 @@ impl Engine for InterpEngine {
 
     fn run_within(&self, input: &str, limit: Duration) -> Result<Wrong, StressError> {
         let expected = match &self.brute {
-            Some(brute) => match run_ir(
-                brute,
-                cpl_interp::Io::fixed(input.as_bytes()),
-                self.stack_limit,
-                limit,
-            ) {
+            Some(brute) => match self.run_case(Role::Brute, brute, input, limit) {
                 Ok(out) => Some(out),
                 Err((_, trap)) => {
                     return Ok(Some((
@@ -252,12 +319,7 @@ impl Engine for InterpEngine {
             },
             None => None,
         };
-        let got = match run_ir(
-            &self.fast,
-            cpl_interp::Io::fixed(input.as_bytes()),
-            self.stack_limit,
-            limit,
-        ) {
+        let got = match self.run_case(Role::Fast, &self.fast, input, limit) {
             Ok(out) => out,
             Err((out, trap)) => {
                 let verdict = match trap.message.as_str() {
@@ -336,6 +398,9 @@ pub struct SourceStressResult {
     pub report: Report,
     pub stages: Vec<Stage>,
     pub explained: Option<Result<Option<Divergence>, String>>,
+    /// The runtime error the failing case stops the solution (or the
+    /// brute, for `brute RE`) with, as `cpl check --format json` gives it.
+    pub error: Option<String>,
 }
 
 impl SourceStressResult {
@@ -347,7 +412,7 @@ impl SourceStressResult {
             &self.stages,
             None,
             self.explained.as_ref(),
-            None,
+            self.error.as_deref(),
         )
     }
 }
@@ -481,6 +546,7 @@ pub fn stress_source(
         checker,
         stack_limit,
         limit: options.limit,
+        id: ENGINES.fetch_add(1, std::sync::atomic::Ordering::Relaxed),
     };
     let mut single = options.clone();
     single.jobs = 1;
@@ -548,9 +614,19 @@ pub fn stress_source(
         }
     }
 
+    let error = report.failure.as_ref().and_then(|failure| {
+        let brute = match failure.verdict {
+            Verdict::RuntimeError(_) => false,
+            Verdict::BruteError(_) if own_brute.is_some() => true,
+            _ => return None,
+        };
+        let path = std::path::Path::new(name);
+        crate::explain::trap_report_in(path, source, &failure.input, brute, true, stack_limit)
+    });
     Ok(SourceStressResult {
         report,
         stages,
         explained,
+        error,
     })
 }

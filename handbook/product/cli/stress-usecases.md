@@ -136,7 +136,7 @@ Evidence: `crates/cpl-stress/src/tests.rs` (`random_trees_include_paths_and_star
 Need: run stress and read the case without leaving the editor.
 Design: a Stress lens and command; `--format json` for the editor to show the case, the explanation, and a runtime error as the same diagnostic `cpl check --format json` gives.
 Milestone: M1-differentiating. Status: partial (the JSON is tested; the lens test is TypeScript the gate can't run)
-Evidence: integration `crates/cpl-cli/tests/wrong_answer.rs` (`a_runtime_error_in_the_json_report_is_a_diagnostic`); `editors/vscode/test/integration/suite.ts` (Stress lens saves a case)
+Evidence: integration `crates/cpl-cli/tests/wrong_answer.rs` (`a_runtime_error_in_the_json_report_is_a_diagnostic`); `crates/cpl-stress/tests/in_process.rs` (`a_runtime_error_in_the_in_process_report_is_a_diagnostic`); `editors/vscode/test/integration/suite.ts` (Stress lens saves a case)
 
 ### stress/U24: stress in the browser
 Need: stress a solution without installing CP Lang.

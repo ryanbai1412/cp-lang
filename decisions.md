@@ -8430,3 +8430,9 @@ Revised (2026-11-23): a twentieth left the browser's 5 s limit at 250 ms a candi
 - **Call.** `std.segtree.MergeSegs<D>` is a pool of sparse binary segment trees over `D`, and `MergeSeg<D>` is a handle into it (`MergeSeg<D>()` is the empty set). `singleton`, `merge` and `first_alive` are pool methods, like `PersistentSegTree` and its `Version`. `merge` leaves both inputs valid.
 - **Why.** As a value that owned its heap, every `merge` and every tag pushed into two children copied a whole set, so cf2115f1's dream ran over 200 s on a 3e5 input. With shared nodes it takes 5.3 s against the hand-written arena port's 4.3 s, and a copy that looks O(1) is O(1). The cost is one named pool in user code.
 - **Reverse.** Make `MergeSeg` own its nodes again and copy on merge; the dream drops `segs`.
+
+## 436. In-process stress runs a program's input-free start once (debugger, 2026-11-23)
+
+- **Call.** The in-process engine (the browser's Stress tab) runs each program's first case with `Checkpoints::before_input`: a checkpoint about every 65,536 loop rounds and calls, taken only while the run has read, looked at and printed nothing. Every later case of that engine starts from the last such checkpoint, on its own input, instead of from the top.
+- **Why.** Precomputes that read nothing (sieves, factorial tables, the O(60^4) table of abc476g) ran again for every case: about 3 s a case in the browser, where the CLI's compiled C++ takes milliseconds. The rest of a run from a checkpoint is what a whole run does, as `crates/cpl-interp/tests/checkpoint.rs` checks. A case's time limit no longer counts the precompute, which case 1 still runs whole.
+- **Reverse.** Make `InterpEngine::run_case` in `crates/cpl-stress/src/engine.rs` call `run_ir`, and drop `Checkpoints::before_input`.

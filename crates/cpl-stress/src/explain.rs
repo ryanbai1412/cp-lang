@@ -25,17 +25,20 @@ pub fn runtime_error(path: &Path, input: &str) -> Option<String> {
 /// as `cpl run` prints it or, with `json`, as `cpl check --format json` does.
 pub fn trap_report(path: &Path, input: &str, brute: bool, json: bool) -> Option<String> {
     let text = std::fs::read_to_string(path).ok()?;
-    trap_report_in(path, &text, input, brute, json)
+    trap_report_in(path, &text, input, brute, json, None)
 }
 
 /// [`trap_report`] of `text` in place of the file's own source, such as the
 /// file with its `@brute(f)` fns swapped in, whose lines stay where they were.
+/// With `stack_limit`, it runs on the calling thread (wasm), without the
+/// locals, which take a second run on a thread of its own.
 pub fn trap_report_in(
     path: &Path,
     text: &str,
     input: &str,
     brute: bool,
     json: bool,
+    stack_limit: Option<u32>,
 ) -> Option<String> {
     if path.extension().is_none_or(|ext| ext != "cp") {
         return None;
@@ -62,13 +65,24 @@ pub fn trap_report_in(
     }
     let mut sink = Vec::new();
     let io = cpl_interp::Io::fixed(input.as_bytes()).until(cpl_interp::Stop::after(LIMIT));
-    let trap = cpl_interp::run_with(&program, io, &mut sink).err()?;
+    let trap = match stack_limit {
+        Some(bytes) => {
+            let limits = cpl_interp::Limits {
+                stack_bytes: bytes as usize,
+            };
+            cpl_interp::run_with_on_this_thread(&program, io, &mut sink, limits).err()?
+        }
+        None => cpl_interp::run_with(&program, io, &mut sink).err()?,
+    };
     if trap.message == cpl_interp::OUT_OF_TIME {
         return None;
     }
     let lines = cpl_diag::LineIndex::new(&text);
     let mut diagnostic = trap.to_diagnostic(&name, &lines);
     // The locals where it stopped, as `cpl run` names them.
+    if stack_limit.is_some() {
+        return Some(render(&diagnostic, &name, &text, &lines, json));
+    }
     let config = cpl_interp::trace::trap_config(&text);
     let tail = cpl_interp::trace::resumed_tail(
         &program,
@@ -89,8 +103,18 @@ pub fn trap_report_in(
     if let Some(locals) = locals {
         diagnostic = diagnostic.with_note(format!("locals: {locals}"));
     }
-    Some(match json {
-        true => cpl_diag::json::diagnostic(&diagnostic, &lines).to_string(),
-        false => cpl_diag::render(&diagnostic, &name, &text, &lines),
-    })
+    Some(render(&diagnostic, &name, &text, &lines, json))
+}
+
+fn render(
+    diagnostic: &cpl_diag::Diagnostic,
+    name: &str,
+    text: &str,
+    lines: &cpl_diag::LineIndex,
+    json: bool,
+) -> String {
+    match json {
+        true => cpl_diag::json::diagnostic(diagnostic, lines).to_string(),
+        false => cpl_diag::render(diagnostic, name, text, lines),
+    }
 }

@@ -198,22 +198,14 @@ fn a_clean_stress_points_at_the_bound_lint_and_its_saved_witness() {
     );
     let (_, saved) = cpl(&[OsStr::new("lint"), OsStr::new("--save"), file.as_os_str()]);
     let witness = file.with_extension("tests").join("lint-L0306-4.in");
-    let input = std::fs::read(&witness).unwrap_or_else(|e| panic!("{saved}: {e}"));
-    let ran = Command::new(env!("CARGO_BIN_EXE_cpl"))
-        .arg("run")
-        .arg(&file)
-        .stdin(std::process::Stdio::piped())
-        .stdout(std::process::Stdio::piped())
-        .stderr(std::process::Stdio::piped())
-        .spawn()
-        .and_then(|mut child| {
-            use std::io::Write;
-            child.stdin.take().unwrap().write_all(&input)?;
-            child.wait_with_output()
-        })
-        .unwrap();
-    let said = String::from_utf8_lossy(&ran.stderr);
-    assert!(said.contains("error[R0202]: integer overflow"), "{said}");
+    assert!(witness.exists(), "{saved}");
+    let (code, tested) = cpl(&[OsStr::new("test"), file.as_os_str()]);
+    assert_ne!(code, Some(0), "{tested}");
+    assert!(
+        tested.contains("error[R0202]: integer overflow"),
+        "{tested}"
+    );
+    assert!(tested.contains("0/1 passed"), "{tested}");
 }
 
 /// A swapped-in `@brute(f)` fn that traps is blamed as an `@alt(program)`

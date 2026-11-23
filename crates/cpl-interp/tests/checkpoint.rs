@@ -749,3 +749,59 @@ for k in 0..q:
         );
     }
 }
+
+const WORKS_OUT_THEN_READS: &str = "var sq: [0..100000]Int = 0
+for i in 0..100000:
+    sq[i] = i * i
+let n: 0..100000 = read()
+print(sq[n])
+";
+
+/// A checkpoint taken before the run reads starts a run on another input,
+/// which prints what a whole run on that input prints.
+#[test]
+fn a_checkpoint_before_input_starts_a_run_on_any_input() {
+    let program = program(WORKS_OUT_THEN_READS);
+    let want = Checkpoints::before_input(10);
+    let mut out = Vec::new();
+    let first = cpl_interp::checkpoint::observe_on_this_thread(
+        &program,
+        Io::fixed(b"5"),
+        &mut out,
+        LIMITS,
+        None,
+        want,
+    );
+    assert!(first.observed.trap.is_none());
+    assert_eq!(out, b"25\n");
+    let [from] = &first.taken[..] else {
+        panic!("one checkpoint, not {}", first.taken.len());
+    };
+    let mut again = Vec::new();
+    let resumed = resume_on_this_thread(&program, b"37", from, &mut again, LIMITS, None);
+    assert!(resumed.trap.is_none());
+    assert_eq!(again, b"1369\n");
+}
+
+/// Once the run has read or printed, no checkpoint is one a run on another
+/// input could start from.
+#[test]
+fn no_checkpoint_before_input_is_taken_after_a_read_or_a_print() {
+    for source in [
+        "let n: 0..1000 = read()\nvar s = 0\nfor i in 0..100000:\n    s += i * n\nprint(s)\n",
+        "print(0)\nvar s = 0\nfor i in 0..100000:\n    s += i\nprint(s)\n",
+    ] {
+        let program = program(source);
+        let mut out = Vec::new();
+        let run = cpl_interp::checkpoint::observe_on_this_thread(
+            &program,
+            Io::fixed(b"5"),
+            &mut out,
+            LIMITS,
+            None,
+            Checkpoints::before_input(10),
+        );
+        assert!(run.observed.trap.is_none(), "{source}");
+        assert!(run.taken.is_empty(), "{source}");
+    }
+}

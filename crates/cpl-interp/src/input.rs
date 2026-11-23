@@ -12,6 +12,8 @@ pub type More<'a> = Box<dyn FnMut() -> Option<Vec<u8>> + Send + 'a>;
 pub(crate) struct Input<'a> {
     data: std::borrow::Cow<'a, [u8]>,
     pos: usize,
+    /// Whether the program has read or looked at any of it.
+    looked: bool,
     /// Where the bytes after `data` come from, until it runs dry.
     more: Option<More<'a>>,
     /// What the bytes are, for messages: `input`, or the `solution's
@@ -24,6 +26,7 @@ impl<'a> Input<'a> {
         Input {
             data: std::borrow::Cow::Borrowed(data),
             pos: 0,
+            looked: false,
             more: None,
             name: "input",
         }
@@ -34,6 +37,7 @@ impl<'a> Input<'a> {
         Input {
             data: std::borrow::Cow::Owned(data),
             pos: 0,
+            looked: false,
             more: None,
             name: "the string",
         }
@@ -43,6 +47,7 @@ impl<'a> Input<'a> {
         Input {
             data: std::borrow::Cow::Owned(Vec::new()),
             pos: 0,
+            looked: false,
             more: Some(more),
             name: "input",
         }
@@ -60,6 +65,7 @@ impl<'a> Input<'a> {
 
     /// The byte at `pos`, waiting for it when the input is live.
     fn byte(&mut self, pos: usize) -> Option<u8> {
+        self.looked = true;
         while pos >= self.data.len() {
             let chunk = self.more.as_mut().and_then(|more| more());
             match chunk {
@@ -130,6 +136,12 @@ impl<'a> Input<'a> {
 
     /// Goes back to `start`, to read what is there another way.
     /// How far the program has read.
+    /// Nothing read or looked at yet: what is left of the run is the same
+    /// on any input.
+    pub fn untouched(&self) -> bool {
+        !self.looked && self.pos == 0
+    }
+
     pub fn cursor(&self) -> usize {
         self.pos
     }

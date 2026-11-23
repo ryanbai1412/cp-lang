@@ -210,6 +210,8 @@ pub(crate) struct Clock {
     /// How many more looks at the clock may come one tick apart while a
     /// checkpoint is due.
     soon: u32,
+    /// Take checkpoints only before the run reads or prints.
+    before_input: bool,
 }
 
 /// How many looks one tick apart a due checkpoint gets, after each one
@@ -239,6 +241,7 @@ impl Default for Clock {
             range_from: None,
             seq_from: None,
             soon: SOON,
+            before_input: false,
         }
     }
 }
@@ -321,6 +324,9 @@ pub struct Checkpoints {
     /// `from.printed` bytes, and a trace holds what the whole run's trace
     /// holds from there on.
     pub from: Option<Checkpoint>,
+    /// Take them only while the run has read, looked at and printed
+    /// nothing: a run from one of those may be given any input.
+    pub before_input: bool,
 }
 
 impl Checkpoints {
@@ -330,6 +336,16 @@ impl Checkpoints {
             every: every.max(1),
             keep,
             ..Checkpoints::default()
+        }
+    }
+
+    /// The last one before the run first reads or prints, about every
+    /// `every` loop rounds and calls: where a run on any input can start,
+    /// past what the program works out before it reads.
+    pub fn before_input(every: u64) -> Checkpoints {
+        Checkpoints {
+            before_input: true,
+            ..Checkpoints::taking(every, 1)
         }
     }
 
@@ -389,6 +405,7 @@ impl Clock {
             keep: all(want.keep),
             spread: all(want.spread),
             resume: want.from,
+            before_input: want.before_input,
             ..Clock::default()
         }
     }
@@ -641,6 +658,11 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
         // In a fed loop's body, the frames the fn's yield waits in are not
         // what a resume makes again.
         if self.fed_bodies > 0 || self.peer.is_some() {
+            return None;
+        }
+        if self.ckpt.before_input
+            && !(self.input.untouched() && self.ckpt.printed == 0 && self.out.is_empty())
+        {
             return None;
         }
         let edge = chunk.back_edges.iter().find(|e| e.pc as usize == pc)?;
