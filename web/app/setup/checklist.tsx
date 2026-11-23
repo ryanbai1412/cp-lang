@@ -239,7 +239,12 @@ const steps: { id: string; title: string; body: ReactNode }[] = [
         </p>
         <Code>{'cpl new a\ncpl watch a\ncpl stress a.cp\ncpl submit a.cp'}</Code>
         <p className="mt-2">
-          One-click problem import from Competitive Companion <Soon />.
+          To import a problem with its samples and limits instead, install the{' '}
+          <a className="underline" href="https://github.com/jmerle/competitive-companion">
+            Competitive Companion
+          </a>{' '}
+          browser extension, run <code>cpl new --listen</code>, and click the extension&apos;s green plus on the problem
+          page (or on the contest page, for every problem). <code>cpl run a.cp</code> then runs every sample.
         </p>
       </>
     ),
