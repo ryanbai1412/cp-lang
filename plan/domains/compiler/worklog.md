@@ -396,3 +396,7 @@ let x: Int = read()
 print(x + N)
 ```
 on input `2 / 1 / 2` prints `7` once in `cpl run` and in the C++ (`cpl_main` calls `solve()` once, no test-count read), so the first test's count is read as `x`. With the `const` above `@!multitest` it prints `6` and `7`. Silent wrongness: either a `const` below the marker stays per-program and the marker still applies, or it is an error naming the move. Found writing `corpus/problems/ucup4s25h/perf.cp`.
+
+### request from perf: a literal `let` narrows like a `const` (2026-11-23)
+
+`let n = 100_000` then `var freq: [n]0..=n = 0` emits `std::vector<ll> freq`; the same program with `const n = 100_000` emits `std::vector<uint32_t>`. Lowering only records `const` initializers in `const_ints` (crates/cpl-ir/src/lower/stmt.rs, `StmtKind::Const`). An immutable top-level `let` whose initializer `eval_const_int` folds could be recorded the same way. Seen on bench/ranges/mo (1.507x idiomatic; 0.946x with the three sizes as `const`, bench/ranges/mo.perf.cp).
