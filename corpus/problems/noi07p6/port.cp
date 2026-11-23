@@ -1,49 +1,62 @@
 // Source: NOI 2007 P6, https://dmoj.ca/problem/noi07p6
-// Problem: a tree on N <= 1000 cities hides a thief who moves arbitrarily fast; a detective in
-//   his city or on his road catches him. Steps: L x lands a detective at x, B x recalls one,
-//   M x y moves one along an edge. Print S, the fewest detectives that surely catch him, the
-//   step count T <= 20000 and the plan; partial score when S is above the optimum.
-// Solution: not optimal, it uses S = leaves - 1. Root the tree at its first leaf, land a
-//   detective on every other leaf, then sweep deepest first with a heap on (depth, vertex):
-//   each vertex, once everything below it is clear, sends one detective to its parent and the
-//   others stay behind as guards. O(n log n).
-// original: corpus/submissions/3756979.cpp
-let n: 3..=1000 = read()
-domain Node = 1..=n
+// Problem: a tree on 1 <= N <= 1000 cities hides a thief who moves arbitrarily fast; a
+//   detective in his city or on his road catches him. Steps: L x lands a detective at x, B x
+//   recalls one, M x y moves one along an edge. Print S, the fewest detectives that surely
+//   catch him, the step count T <= 20000 and the plan.
+// Solution: rooted at r, a subtree whose child subtrees need a >= b >= ... detectives needs
+//   max(a, b + 1) (a leaf needs 1): clear the lighter children one by one while a guard holds
+//   the vertex, then walk into the heaviest one. Try every root, O(n^2 log n), and run the
+//   plan from the best one: land on the root, clear lighter children and recall their
+//   detectives, then step into the heaviest.
+let n: 1..=1000 = read()
+domain City = 1..=n
 
-var adj: [Node]List<Node> = []
+var adj: [City]List<City> = []
 for _ in 0..n - 1:
-    let u: Node = read()
-    let v: Node = read()
+    let (u, v): (City, City) = read()
     adj[u].push(v)
     adj[v].push(u)
 
-var leaves: List<Node> = []
-for u in Node:
-    if adj[u].len == 1:
-        leaves.push(u)
+var need: [City]Int = 0
+fn children(u: City, p: ?City) -> List<City> = [v for v in adj[u] if Some(v) != p]
 
-let root = leaves[0]
-let tree = Rooted(adj, root)
+// detectives that clear the subtree of u entered from its parent p
+fn label(u: City, p: ?City) -> Int:
+    var (a, b) = (0, 0)  // the two largest child labels
+    for v in children(u, p):
+        let x = label(v, Some(u))
+        if x > a: (a, b) = (x, a)
+        elif x > b: b = x
+    need[u] = if a == 0: 1 else: max(a, b + 1)
+    need[u]
 
-var pq = MinHeap<(Int, Int)>()
-for i in 1..leaves.len:
-    let u = leaves[i]
-    pq.push((-tree.depth(u), -u.idx))
+var root = City.first!
+for r in City:
+    if label(r, None) < label(root, None): root = r
+print(label(root, None))
 
-var vis: [Node]Bool = false
-var moves: List<(Node, Node)> = []
-while let top = pq.pop():
-    let u = Node(-top.1 + 1)
-    if vis[u]: continue
-    vis[u] = true
-    if let p = tree.parent(u):
-        moves.push((u, p))
-        pq.push((-tree.depth(p), -p.idx))
+var plan: List<Str> = []
+fn land(u: City): plan.push("L {u}")
 
-print(leaves.len - 1)
-print(leaves.len - 1 + moves.len)
-for i in 1..leaves.len:
-    print("L", leaves[i])
-for mv in moves:
-    print("M", mv.0, mv.1)
+// clear the subtree of u; `guarded`: a detective already stands on u and stays in the
+// subtree, else one detective comes back up to p
+fn sweep(u: City, p: ?City, guarded: Bool):
+    var cs = children(u, p)
+    cs.sort(by: v => -need[v])
+    if cs.len == 0 and not guarded: land(u)
+    for i in 1..cs.len:
+        if i == 1 and not guarded: sweep(cs[0], Some(u), false)
+        sweep(cs[i], Some(u), false)
+        plan.push("B {u}")
+    if guarded:
+        if cs.len > 0:
+            plan.push("M {u} {cs[0]}")
+            sweep(cs[0], Some(u), true)
+    else:
+        if cs.len == 1: sweep(cs[0], Some(u), false)
+        plan.push("M {u} {p!}")
+
+land(root)
+sweep(root, None, true)
+print(plan.len)
+for s in plan: print(s)
