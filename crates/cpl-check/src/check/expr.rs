@@ -590,8 +590,7 @@ impl<'a> Checker<'a> {
                         )
                     )
                 };
-                // `if i == j: return` leaves `i != j` for the rest of the
-                // block.
+                // `if i == j: return` leaves `i != j` for the rest of the block.
                 let after = match (branches.as_slice(), otherwise) {
                     ([(cond, body)], None) if leaves(body) => Some(cond),
                     _ => None,
@@ -1203,8 +1202,7 @@ impl<'a> Checker<'a> {
         let past = self.present.len();
         let held = narrow::in_rhs(op, lhs, rhs, &mut |f, x| self.call_writes(f, x));
         self.present.extend(held.into_iter().map(String::from));
-        // The right side of `and`, `or` and `??` is not always worked
-        // out, so a `?` in it is in a branch.
+        // The right of `and`, `or` and `??` may not run: a `?` there is in a branch.
         let skipped = u32::from(matches!(op, BinOp::And | BinOp::Or | BinOp::Coalesce));
         self.branch += skipped;
         let right = self.infer(rhs);
@@ -1245,8 +1243,7 @@ impl<'a> Checker<'a> {
                 }
                 self.coalesce_ty(left, right, rhs)
             }
-            // `total + ` mid-edit: the half that is there says what the
-            // whole will be.
+            // `total + ` mid-edit: the half that is there gives the whole.
             _ if matches!(rhs.kind, ExprKind::Missing) && left.is_numeric() => left.widen(),
             _ if self.operator_trait(op, &left).is_some() => {
                 let (trait_name, owner) = self.operator_trait(op, &left).unwrap();
@@ -1934,8 +1931,7 @@ impl<'a> Checker<'a> {
                 }
             }
         }
-        // A built-in member (`xs.len`, `v.next`) answers before the hover
-        // the struct path records, so it gets its hover here.
+        // A built-in member (`xs.len`, `v.next`) gets its hover here.
         let hovered = self.hovers.last().is_some_and(|h| h.span == name.span);
         let owner = match &base_ty {
             Ty::Str => Some("Str".to_string()),
@@ -1993,8 +1989,7 @@ impl<'a> Checker<'a> {
                 return Ty::Error;
             }
         }
-        // `tree.Pre`: the domain a value owns, named by the type
-        // parameter it fills.
+        // `tree.Pre`: the domain a value owns, named by its type parameter.
         if let Ty::Named {
             name: type_name,
             args,
@@ -2302,8 +2297,7 @@ impl<'a> Checker<'a> {
                 }
             }
         }
-        // `xs.items`: each element with its index, a position of `I` for
-        // `[I]T` and an `Int` otherwise.
+        // `xs.items`: each element with its index (an `I` for `[I]T`, else `Int`).
         if name.text == "items" {
             let pair = match &base_ty {
                 Ty::Named { name: list, args } if list == "List" && args.len() == 1 => {
@@ -3319,7 +3313,13 @@ impl<'a> Checker<'a> {
                     self.quote(base.span),
                     ty.widen().with_article()
                 );
-                self.error(codes::NOT_INDEXABLE, base.span, message);
+                let help = match ty {
+                    Ty::Fn { .. } => "call it with `(...)`",
+                    _ => "`[...]` reads arrays, maps, ranges and strings",
+                };
+                if let Some(diag) = self.error(codes::NOT_INDEXABLE, base.span, message) {
+                    diag.help = Some(help.into());
+                }
                 Ty::Error
             }
             Ty::Error => Ty::Error,
