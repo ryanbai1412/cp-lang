@@ -1,0 +1,67 @@
+name: debugger-loop
+
+# The Milestone 1 wrong-answer loop on all three OSes: cpl stress finds and
+# saves a small failing case, cpl test reruns it, the fix turns both green
+# (crates/cpl-cli/tests/debugger.rs), and the same loop from headless Neovim
+# (editors/neovim/test/stress_loop.lua). Small, so it finishes in minutes
+# where the full workspace run in os.yml is often cancelled by newer pushes.
+on:
+  push:
+    branches: [main]
+    paths:
+      - crates/cpl-stress/**
+      - crates/cpl-judge/**
+      - crates/cpl-lsp/**
+      - crates/cpl-cli/**
+      - editors/neovim/**
+      - .github/workflows/debugger-loop.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: debugger-loop-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  loop:
+    name: loop (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install the pinned Rust toolchain
+        run: rustup show active-toolchain || rustup toolchain install
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: debugger-loop
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-nextest
+      - name: GCC as g++
+        if: runner.os == 'macOS'
+        run: |
+          gxx=$(ls "$(brew --prefix)"/bin/g++-[0-9]* | sort -V | tail -1)
+          mkdir -p ~/gcc-bin && ln -sf "$gxx" ~/gcc-bin/g++ && echo ~/gcc-bin >>"$GITHUB_PATH"
+      - name: Compiler versions
+        run: (g++ --version || echo "no g++") | head -1 && rustc --version
+      - name: Stress loop tests
+        run: cargo nextest run --no-fail-fast -p cpl-stress -p cpl-cli --test debugger --test runtime_errors --test stress_bench
+      - uses: rhysd/action-setup-vim@v1
+        with:
+          neovim: true
+          version: v0.10.4
+      - name: Neovim stress loop
+        run: |
+          cargo build -p cpl-cli
+          root=$PWD cpl=$PWD/target/debug/cpl
+          if [ "$RUNNER_OS" = Windows ]; then root=$(cygpath -m "$PWD"); cpl="$root/target/debug/cpl.exe"; fi
+          nvim --headless --clean -l editors/neovim/test/stress_loop.lua "$cpl" "$root"
