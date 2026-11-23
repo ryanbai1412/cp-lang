@@ -1450,3 +1450,35 @@ fn contest_flow_from_companion_to_clipboard() {
     assert_eq!(std::fs::read_to_string(dir.join("clip")).unwrap(), cpp);
     assert!(cpp.len() < 64 * 1024);
 }
+
+/// A usage error in a contest command speaks as `cpl` and names an
+/// invocation that works.
+#[test]
+fn usage_errors_name_a_working_invocation() {
+    let dir = scratch("usage-errors");
+    for args in [
+        &["run"][..],
+        &["test"],
+        &["new"],
+        &["stress"],
+        &["build"],
+        &["setup"],
+        &["fetch"],
+        &["submit"],
+        &["listen"],
+        &["tset"],
+    ] {
+        let out = cpl(&dir, args);
+        let err = text(&out.stderr);
+        assert_eq!(
+            out.status.code(),
+            Some(EXIT_USAGE.into()),
+            "{args:?}: {err}"
+        );
+        let first = err.lines().next().unwrap_or("");
+        assert!(
+            first.starts_with("cpl: ") && first.contains("`cpl "),
+            "{args:?}: {first}"
+        );
+    }
+}

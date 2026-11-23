@@ -68,7 +68,7 @@ pub fn run_with(
                 return 0;
             }
             flag if flag.starts_with('-') => {
-                let _ = write!(stderr, "error: unknown option `{flag}`\n\n{USAGE}");
+                let _ = write!(stderr, "cpl: unknown option `{flag}`\n\n{USAGE}");
                 return 2;
             }
             path => paths.push(PathBuf::from(path)),
@@ -77,7 +77,7 @@ pub fn run_with(
     if stdin && as_json {
         let _ = write!(
             stderr,
-            "error: `--json` reports on files, not `--stdin`\n\n{USAGE}"
+            "cpl: `--json` reports on files, not `--stdin`\n\n{USAGE}"
         );
         return 2;
     }
@@ -85,7 +85,7 @@ pub fn run_with(
         if std::io::IsTerminal::is_terminal(&std::io::stdin()) {
             let _ = write!(
                 stderr,
-                "error: name what to format: `cpl fmt .` rewrites every .cp file under the \
+                "cpl: name what to format: `cpl fmt .` rewrites every .cp file under the \
                  current directory, `cpl fmt --stdin` formats standard input\n\n{USAGE}"
             );
             return 2;

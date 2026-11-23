@@ -114,7 +114,7 @@ pub(crate) fn setup(args: &[&str], stdout: &mut (dyn Write + Send), stderr: &mut
     let Some(editor) = editor else {
         return usage(
             stderr,
-            "name the editor: `cpl setup neovim` or `cpl setup vim`",
+            "name the editor: `cpl setup neovim`, `vim`, `vscode` or `jetbrains`",
         );
     };
     let installed = match editor {

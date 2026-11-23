@@ -479,7 +479,7 @@ pub fn run_with(
     let args = match parse(args) {
         Ok(args) => args,
         Err(message) => {
-            let _ = write!(stderr, "error: {message}\n\n{USAGE}");
+            let _ = write!(stderr, "cpl: {message}\n\n{USAGE}");
             return 2;
         }
     };

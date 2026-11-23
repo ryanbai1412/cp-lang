@@ -432,7 +432,10 @@ pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u
         let name = match (args.positional.as_slice(), scaffold.short_name()) {
             ([name], _) => name.clone(),
             ([], Some(name)) => name,
-            ([], None) => return Err("`new` needs a name: `cpl new d`".to_string()),
+            ([], None) => return Err(
+                    "`new` needs a name: `cpl new d`, or `cpl new --listen` to import from Competitive Companion"
+                        .to_string(),
+                ),
             ([_, extra, ..], _) => {
                 return Err(format!("`new` takes one name; `{extra}` is a second"))
             }
