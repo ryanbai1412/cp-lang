@@ -3,7 +3,7 @@ spec L0506 1
 std L0201 1
 std L0209 10
 std L0210 1
-std L0301 14
+std L0301 17
 std L0412 3
 std L0501 7
 std L0503 10

@@ -60,8 +60,11 @@ pub fn lint_analysis(analysis: &Analysis, config: &crate::Config) -> Vec<Diagnos
         .iter()
         .map(|i| (i.offset, &i.syntax.parsed))
         .collect();
-    let mut diags = crate::lint_parsed(&analysis.text, &items, config);
-    refine_with_analysis(&mut diags, analysis);
+    let facts = Facts::from_analysis(analysis);
+    let mut diags = crate::lint_parsed(&analysis.text, &items, Some(&facts), config);
+    if diags.iter().any(|d| TYPED.contains(&d.code)) {
+        refine_with_facts(&mut diags, &facts);
+    }
     crate::recheck::recheck(&mut diags, &analysis.text);
     crate::drop_repeats(&mut diags, &analysis.diagnostics);
     diags

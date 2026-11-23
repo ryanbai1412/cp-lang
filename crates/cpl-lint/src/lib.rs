@@ -183,6 +183,9 @@ pub(crate) struct File<'a> {
     pub src: &'a str,
     /// Each top-level item with the offset its spans are relative to.
     pub items: &'a [(u32, &'a ParsedItem)],
+    /// What the checker found, for rules that read types; `None` where
+    /// only the syntax is at hand.
+    pub facts: Option<&'a Facts>,
 }
 
 fn with_parsed<T: Default>(src: &str, f: impl FnOnce(&File) -> T) -> T {
@@ -191,7 +194,11 @@ fn with_parsed<T: Default>(src: &str, f: impl FnOnce(&File) -> T) -> T {
         return T::default();
     }
     let items: Vec<(u32, &ParsedItem)> = parsed.items.iter().map(|(o, p)| (*o, p)).collect();
-    f(&File { src, items: &items })
+    f(&File {
+        src,
+        items: &items,
+        facts: None,
+    })
 }
 
 impl File<'_> {
@@ -304,7 +311,11 @@ pub fn proven_fns(src: &str) -> Vec<ProvenFn> {
 }
 
 pub fn proven_fns_parsed(src: &str, items: &[(u32, &ParsedItem)]) -> Vec<ProvenFn> {
-    rules::proven_fns(&File { src, items })
+    rules::proven_fns(&File {
+        src,
+        items,
+        facts: None,
+    })
 }
 
 /// An index `i` in `xs[i]` the bounds and relations prove is in
@@ -337,7 +348,11 @@ pub fn proven_sizes(src: &str) -> Vec<ProvenSize> {
 }
 
 pub fn proven_sizes_parsed(src: &str, items: &[(u32, &ParsedItem)]) -> Vec<ProvenSize> {
-    rules::proven_sizes(&File { src, items })
+    rules::proven_sizes(&File {
+        src,
+        items,
+        facts: None,
+    })
 }
 
 /// Each list only pushed to in counted loops, with the most elements it
@@ -353,7 +368,11 @@ pub fn domain_sizes(src: &str) -> Vec<(String, u128)> {
 }
 
 pub fn domain_sizes_parsed(src: &str, items: &[(u32, &ParsedItem)]) -> Vec<(String, u128)> {
-    rules::domain_sizes(&File { src, items })
+    rules::domain_sizes(&File {
+        src,
+        items,
+        facts: None,
+    })
 }
 
 /// Each index proven in bounds; a file with a syntax error has none.
@@ -362,7 +381,11 @@ pub fn proven_indexes(src: &str) -> Vec<ProvenIndex> {
 }
 
 pub fn proven_indexes_parsed(src: &str, items: &[(u32, &ParsedItem)]) -> Vec<ProvenIndex> {
-    rules::proven_indexes(&File { src, items })
+    rules::proven_indexes(&File {
+        src,
+        items,
+        facts: None,
+    })
 }
 
 /// `proven_loops_parsed` and `proven_indexes_parsed` from one proof of the
@@ -371,7 +394,11 @@ pub fn proven_loops_and_indexes_parsed(
     src: &str,
     items: &[(u32, &ParsedItem)],
 ) -> (Vec<ProvenLoop>, Vec<ProvenIndex>) {
-    rules::proven_loops_and_indexes(&File { src, items })
+    rules::proven_loops_and_indexes(&File {
+        src,
+        items,
+        facts: None,
+    })
 }
 
 /// The part of `proven_loops_and_indexes_parsed` inside `items[item]`,
@@ -381,7 +408,14 @@ pub fn proven_loops_and_indexes_in_item(
     items: &[(u32, &ParsedItem)],
     item: usize,
 ) -> (Vec<ProvenLoop>, Vec<ProvenIndex>) {
-    rules::proven_loops_and_indexes_in(&File { src, items }, item)
+    rules::proven_loops_and_indexes_in(
+        &File {
+            src,
+            items,
+            facts: None,
+        },
+        item,
+    )
 }
 
 /// Each `for` over a bounded range or domain, with how often it runs.
@@ -390,7 +424,11 @@ pub fn proven_loops(src: &str) -> Vec<ProvenLoop> {
 }
 
 pub fn proven_loops_parsed(src: &str, items: &[(u32, &ParsedItem)]) -> Vec<ProvenLoop> {
-    rules::proven_loops(&File { src, items })
+    rules::proven_loops(&File {
+        src,
+        items,
+        facts: None,
+    })
 }
 
 /// What the declared bounds prove about each `+`, `-`, `*`, `/`, `%` and `**` outside
@@ -401,7 +439,11 @@ pub fn proven_expr_ranges(src: &str) -> Vec<ProvenExpr> {
 }
 
 pub fn proven_expr_ranges_parsed(src: &str, items: &[(u32, &ParsedItem)]) -> Vec<ProvenExpr> {
-    rules::proven_expr_ranges(&File { src, items })
+    rules::proven_expr_ranges(&File {
+        src,
+        items,
+        facts: None,
+    })
 }
 
 /// What the declared input bounds prove about each top-level `let` written
@@ -413,7 +455,11 @@ pub fn proven_ranges(src: &str) -> Vec<(u32, i128, i128)> {
 }
 
 pub fn proven_ranges_parsed(src: &str, items: &[(u32, &ParsedItem)]) -> Vec<(u32, i128, i128)> {
-    rules::proven_ranges(&File { src, items })
+    rules::proven_ranges(&File {
+        src,
+        items,
+        facts: None,
+    })
 }
 
 /// Lints one file. Returns warnings (errors for `deny`), in source order.
@@ -447,8 +493,13 @@ pub(crate) fn drop_repeats(diags: &mut Vec<Diagnostic>, errors: &[Diagnostic]) {
     });
 }
 
-pub fn lint_parsed(src: &str, items: &[(u32, &ParsedItem)], config: &Config) -> Vec<Diagnostic> {
-    lint_file(&File { src, items }, config)
+pub fn lint_parsed(
+    src: &str,
+    items: &[(u32, &ParsedItem)],
+    facts: Option<&Facts>,
+    config: &Config,
+) -> Vec<Diagnostic> {
+    lint_file(&File { src, items, facts }, config)
 }
 
 fn lint_file(file: &File, config: &Config) -> Vec<Diagnostic> {

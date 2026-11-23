@@ -89,6 +89,7 @@ pub fn checked_analysis(
     let file = crate::File {
         src: &analysis.text,
         items: &items,
+        facts: None,
     };
     let regions = Allows::collect(&file).regions;
     let mut out = Vec::new();

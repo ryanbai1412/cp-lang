@@ -188,8 +188,9 @@ fn the_cli_and_the_editor_read_the_same_facts() {
             .iter()
             .map(|i| (i.offset, &i.syntax.parsed))
             .collect();
-        let mut editor = lint_parsed(&analysis.text, &items, &config);
-        refine_with_analysis(&mut editor, &analysis);
+        let facts = crate::Facts::from_analysis(&analysis);
+        let mut editor = lint_parsed(&analysis.text, &items, Some(&facts), &config);
+        crate::typed::refine_with_facts(&mut editor, &facts);
         let cli: Vec<_> = lint(&src, &config).iter().map(key).collect();
         let editor: Vec<_> = editor.iter().map(key).collect();
         assert_eq!(editor, cli, "{}", path.display());
