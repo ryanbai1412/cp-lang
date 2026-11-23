@@ -7,7 +7,7 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 2295 (995 passing). Rules: 536.
+Cases: 2297 (995 passing). Rules: 536.
 
 ## Summary per chapter
 
@@ -21,13 +21,13 @@ Cases: 2295 (995 passing). Rules: 536.
 - R06 (06-control-functions.md): 24 rules, 75 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R07 (07-sequences.md): 88 rules, 111 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R08 (08-traits-generics.md): 29 rules, 77 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R09 (09-contexts-checks.md): 25 rules, 52 cases; 0 uncovered, 1 happy-path only, 0 negative only
+- R09 (09-contexts-checks.md): 25 rules, 53 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R10 (10-io.md): 17 rules, 71 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R11 (11-modules-prelude.md): 15 rules, 33 cases; 0 uncovered, 1 happy-path only, 1 negative only
 - R12 (12-powers.md): 17 rules, 36 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R13 (13-lowering.md): 22 rules, 27 cases; 0 uncovered, 0 happy-path only, 0 negative only
 
-24 rules match a forbidding word but only permit or define something;
+25 rules match a forbidding word but only permit or define something;
 `permits.txt` lists them with the reason, so they need no reject case.
 
 ## Accept and reject coverage per chapter
@@ -48,12 +48,12 @@ negative case. Complete: rules with no gap in `rule-gaps.txt`.
 | R06 | 24 | 24 (100%) | 16 | 16 (100%) | 24 (100%) |
 | R07 | 88 | 88 (100%) | 23 | 23 (100%) | 88 (100%) |
 | R08 | 29 | 29 (100%) | 13 | 13 (100%) | 29 (100%) |
-| R09 | 25 | 25 (100%) | 14 | 13 (92%) | 24 (96%) |
+| R09 | 25 | 25 (100%) | 13 | 13 (100%) | 25 (100%) |
 | R10 | 17 | 17 (100%) | 8 | 8 (100%) | 17 (100%) |
 | R11 | 15 | 14 (93%) | 9 | 8 (88%) | 13 (86%) |
 | R12 | 17 | 17 (100%) | 6 | 6 (100%) | 17 (100%) |
 | R13 | 22 | 22 (100%) | 5 | 5 (100%) | 22 (100%) |
-| all | 536 | 535 (99%) | 206 | 202 (98%) | 531 (99%) |
+| all | 536 | 535 (99%) | 205 | 202 (98%) | 532 (99%) |
 
 ## Rules
 
@@ -533,7 +533,7 @@ Each rule: positive / negative case counts, then the gap if any.
 
 - R09.1.1 [3+ 2-]: Precedence: call argument, then the innermost `with`, then outer ones, then the default. A...
 - R09.1.2 [1+ 1-]: Values are compile-time constants. A runtime value is a parameter or a fresh type (`type Z...
-- R09.1.3 [5+ 0-] *happy-path only*: Contexts are **lexical**: a body sees the contexts where it is written. A function that sh...
+- R09.1.3 [6+ 0-]: Contexts are **lexical**: a body sees the contexts where it is written. A function that sh...
 - R09.1.4 [1+ 0-]: Cost: one specialized copy of each `uses` function per distinct value; `cpl explain` lists...
 - R09.1.5 [1+ 1-]: Standard contexts: `io` (chapter 10), `checks` (below), `lint` (one field per lint: `with ...
 - R09.2.1 [1+ 1-]: | checked | `cpl run`, `cpl stress`, `cpl test`, the interpreter, `cpl build --checked`, C...
@@ -813,7 +813,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **marks** (46/46 named by a case)
 - **math** (82/83 named by a case)
   - uncovered: `inf`
-- **matrix** (63/63 named by a case)
+- **matrix** (64/64 named by a case)
 - **mo** (5/6 named by a case)
   - uncovered: `mo_steps`
 - **mod** (29/29 named by a case)
@@ -843,4 +843,4 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **window** (20/22 named by a case)
   - uncovered: `Tracked`, `Undo`
 
-2133 of 2258 std items are named by a case.
+2134 of 2259 std items are named by a case.

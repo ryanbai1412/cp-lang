@@ -38,7 +38,9 @@ read(base: 0)                     // a call argument beats every context
   A function that should follow its caller declares `uses ctx`; the
   caller's value is then an implicit compile-time argument, passed on to
   further `uses` callees. `uses` is inferred only for nested fns and
-  lambdas; public fns, trait methods and modules declare it. (R09.1.3)
+  lambdas; top-level fns (public or not), trait methods and modules
+  declare it, and one that calls a `uses` fn without declaring it passes
+  its own lexical value. (R09.1.3)
 - Cost: one specialized copy of each `uses` function per distinct value;
   `cpl explain` lists them and the bundle-size warning counts them. (R09.1.4)
 - Standard contexts: `io` (chapter 10), `checks` (below), `lint` (one

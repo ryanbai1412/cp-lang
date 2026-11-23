@@ -19,6 +19,7 @@ R06.3.3 permits `break`/`return` out of generator bodies
 R07.6.1 push iteration; permits `break` out of recursive generators
 R08.3.2 laws select specializations; the checker never assumes them
 R08.3.4 a false law gives wrong answers, which no build can reject
+R09.1.3 `uses` is not inferred for top-level fns: behaviour, tested by core-09/uses-not-inferred-top-level.cp
 R09.2.3 checks make the same calls as release; tested by accept cases
 R09.5.1 defines "proved"
 R09.5.3 defines "promised"
