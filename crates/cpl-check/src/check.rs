@@ -1029,6 +1029,11 @@ impl<'a> Checker<'a> {
             E::SelfValue => Some(("self", expr.span)),
             E::Field { base, .. } | E::Index { base, .. } => Self::root_name(base),
             E::Paren(inner) | E::Unwrap(inner) => Self::root_name(inner),
+            // `a.at(i) = 0`: a `lends mut` projection is a place in its receiver.
+            E::Call { callee, .. } => match &callee.kind {
+                E::Field { base, .. } => Self::root_name(base),
+                _ => None,
+            },
             _ => None,
         }
     }
