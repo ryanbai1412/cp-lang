@@ -38,7 +38,7 @@ What idiomatic v0.3 looks like, written down (skill, principles, idiom catalog) 
 | Skill check | `scripts/skill-gen.py --check` | absent on main; branch ok, 48 files, 75 blocks | on main, gated |
 | Tracked ports check on v0.3 | `cpl check corpus/problems/<id>/port.cp` x305 | 175/305 | 305/305 |
 | Dreams check on v0.3 | same, `dream.cp` | 145/305 | tracked |
-| Tracked ports judge-proven | `cargo test --release -p cpl-cli --test judges -- --include-ignored every_` | 217/305 (`corpus/sets/v03.txt`), all 8 judges, 0 fail | 305/305 |
+| Tracked ports judge-proven | `cargo test --release -p cpl-cli --test judges -- --include-ignored every_` | 219/305 (`corpus/sets/v03.txt`), all 8 judges, 0 fail | 305/305 |
 | Corpus suite | `cpl-conform corpus` | 12/100 (committed board says 7) | 100/100 |
 | Lint warnings on ports | `cpl lint` over the 175 | 23 (untriaged) | 0 false positives |
 | Taste reviews | `scripts/review-check.py` | median 4, 18 under 4 (pre-0.3 ports) | median >= 4, 0 under 3 on v0.3 |

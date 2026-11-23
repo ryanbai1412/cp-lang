@@ -3,7 +3,7 @@
 //
 // Invariant:
 // - Every leaf `l` must appear before any strict ancestor in the order, so no
-//   valid prefix can end below `max_leaf = max(u for u in V if g.deg(u) == 1)`:
+//   valid prefix can end below `max_leaf = max(u for u in V if g[u].len == 1)`:
 //   `max_leaf` is the unique starting state (`dp[max_leaf] = 1`).
 // - For any non-root vertex `u > max_leaf`, the last chosen vertex `w < u`
 //   must exceed every label in `u`'s proper child subtrees, so `w > prv_val[u]`
@@ -24,10 +24,10 @@ let n: 2..=300_000 = read()
 domain V = 1..=n
 let edges: [0..n - 1](u: V, v: V) = read()
 let g = Graph.undirected(edges)
-let root = V.last
-let t = Rooted(g, root:)
+let root = V.last!
+let t = Rooted(g, root: root)
 
-let max_leaf = max(u for u in V if g.deg(u) == 1)!
+let max_leaf = V.filter(u => g[u].len == 1).map(u => u).max()!
 var sub_max = [V] u => u
 var prv_val: [V]?V = none
 for u in t.at.rev:
@@ -40,7 +40,7 @@ var dp = Prefix<Z>.filling(n)
 for u in V:
     let val = if u == max_leaf: Z(1)
     elif u > max_leaf:
-        if let pv = prv_val[u], pv < u: dp.sum(pv.ord + 1..u.ord) else: Z(0)
+        if let pv = prv_val[u], pv < u: dp.fold(pv.ord + 1..u.ord) else: Z(0)
     else: Z(0)
     dp.set(u.ord, val)
-print(dp.sum(root.ord..root.ord + 1))
+print(dp.fold(root.ord..root.ord + 1))

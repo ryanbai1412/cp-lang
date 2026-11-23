@@ -44,12 +44,12 @@ fn trapezoid_sum(cap: Int) -> Z:
     if cap == 0: return Z(0)
     let lo = Cell(cap)
     let hi = Cell(n - cap)
-    let ramp_up = pref_i.sum(Cell.first..lo)
-    let plateau = pref.sum(lo..hi) * cap
-    let ramp_down = pref.sum(hi..=Cell.last) * Cell.last.ord - pref_i.sum(hi..=Cell.last)
+    let ramp_up = pref_i.fold(Cell.first!..lo)
+    let plateau = pref.fold(lo..hi) * cap
+    let ramp_down = pref.fold(hi..=Cell.last!) * Cell.last!.ord - pref_i.fold(hi..=Cell.last!)
     ramp_up + plateau + ramp_down
 
-var ans = pref.sum(Cell.first..=Cell.last) * n
+var ans = pref.fold(Cell.first!..=Cell.last!) * n
 for l in 2..=n:
     let extras = n - l
     let k = extras / 2
@@ -59,7 +59,7 @@ for l in 2..=n:
         (family_mid(l, k) + family_mid(l, k - 1), place_ways(l, k - 1))
     let edge_w = mid_w + end_bonus
 
-    let ends_sum = pref.sum(Cell.first..=Cell(n - l)) + pref.sum(Cell(l - 1)..=Cell.last)
+    let ends_sum = pref.fold(Cell.first!..=Cell(n - l)) + pref.fold(Cell(l - 1)..=Cell.last!)
     let cap = min(l - 2, n - l + 1)
     ans += edge_w * ends_sum + mid_w * trapezoid_sum(cap)
 
