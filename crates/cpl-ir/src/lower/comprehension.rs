@@ -414,12 +414,12 @@ impl Lowerer<'_> {
         }
         let at = self.span(span);
         let mut stmts = Vec::new();
-        // Ensure any `impl Index` struct dimensions have their backing domain initialized (`let K = ...`).
+        // Ensure any `impl Index` struct dimensions have their backing domain initialized (`let count = ...`).
         for dim in &dims {
             if let DimSpec::Pos(dom_id) = dim {
                 if let Some((sid, sc)) = self.structs.iter().enumerate().find_map(|(sid, s)| {
                     if s.index_domain == Some(*dom_id) {
-                        s.consts.get("K").cloned().map(|sc| (sid, sc))
+                        s.consts.get("count").cloned().map(|sc| (sid, sc))
                     } else {
                         None
                     }

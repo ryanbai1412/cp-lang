@@ -8013,3 +8013,22 @@ the assets and latest.json; install.sh, install.ps1, `cpl self update`, the
 site and release.yml's skip check read latest.json, never the tag or release
 target. Reverse: publish with a token that has workflows write and make the
 tag move fatal again.
+
+## 382. A library type is a domain through `impl Index` with `count`, `ord`, `nth` (stdlib, 2026-11-23)
+
+- **Decision.** Any struct, std or user, becomes a domain by implementing
+  `Index` with `let count`, `@get fn ord(self) -> Int` and `fn nth(k: Int)`
+  (R04.2.26-28). It gets `[T]E`, `for x in T`, `T.rev`, `T.count`,
+  `T.first`/`last`, a trapping `T.nth(k)`, `x.ord`, the `Seq` methods over
+  its walk and `D: Domain`. Value conversions (`T(x)`, `T.at`, `Int`,
+  `wrap`), neighbours, cuts and position arithmetic stay core-only. The
+  impl names were `K`, `to_idx` and `from_idx` (decision 2.1); spec and
+  compiler agreed on one spelling, the core's, and the old names are errors
+  naming the new ones.
+- **Why.** `Subset<B>` needs to be a domain without std privilege, and
+  decision 2.1 already made `impl Index` the way a bounded index is
+  declared; the core names keep one spelling per idea. An ordinal is a walk
+  order, not a value, so the members whose core meaning is the value would
+  mean something else here.
+- **Reverse.** Accept the old member names again in `index_size` and the
+  IR's `count`/`ord`/`nth` lookups, and drop `library_domain_member`.

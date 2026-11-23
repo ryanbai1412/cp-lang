@@ -333,6 +333,31 @@ pub struct Expr {
 impl Expr {
     /// `[D.A, D.B, …]` for a fieldless enum `D` written as `base`: the
     /// `Seq` of positions a domain is (R04.2.20).
+    /// `[x for x in base]`: the walk of the domain `base` names, as a list.
+    pub fn walk_list(base: &Expr) -> Expr {
+        let span = base.span;
+        let item = "walked".to_string();
+        let body = Expr {
+            kind: ExprKind::Name(item.clone()),
+            span,
+        };
+        let clause = Clause {
+            pat: Pattern {
+                kind: PatternKind::Name(item),
+                span,
+            },
+            iter: base.clone(),
+            conds: Vec::new(),
+        };
+        Expr {
+            kind: ExprKind::Comprehension {
+                body: Box::new(body),
+                clauses: vec![clause],
+            },
+            span,
+        }
+    }
+
     pub fn variant_list(base: &Expr, variants: &[String]) -> Expr {
         let span = base.span;
         let item = |v: &String| Expr {

@@ -1848,6 +1848,13 @@ impl<'a> Checker<'a> {
                 }
             }
         }
+        if let ExprKind::Name(type_name) = &base.kind {
+            if self.local(type_name).is_none() {
+                if let Some(ty) = self.library_domain_member(expr, type_name, name) {
+                    return ty;
+                }
+            }
+        }
         let base_ty = self.infer(base);
         if name.text == "bounds" && matches!(&base_ty, Ty::Domain(_)) {
             let message = "`D.bounds` was renamed to `D.cuts`".to_string();
@@ -1945,7 +1952,7 @@ impl<'a> Checker<'a> {
         ty
     }
 
-    fn member_ty(&mut self, expr: &Expr, name: &ast::Name, base_ty: Ty) -> Ty {
+    pub(super) fn member_ty(&mut self, expr: &Expr, name: &ast::Name, base_ty: Ty) -> Ty {
         if name.text.is_empty() {
             return Ty::Error;
         }

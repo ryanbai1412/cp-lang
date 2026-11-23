@@ -4994,7 +4994,7 @@ impl<'a> Lowerer<'a> {
                     if let Some(number) = self.struct_number_param(sid, &name.text, span) {
                         return number;
                     }
-                    if name.text == "K" {
+                    if name.text == "count" {
                         if let Some(d) = self.structs[sid].index_domain {
                             return self.mk(ExprKind::DomainLen(d), Ty::Int, span);
                         }
@@ -5061,7 +5061,7 @@ impl<'a> Lowerer<'a> {
                 }
             }
             Some(Sym::Struct(id)) => {
-                if name.text == "K" {
+                if name.text == "count" {
                     if let Some(d) = self.structs[id].index_domain {
                         return self.mk(ExprKind::DomainLen(d), Ty::Int, span);
                     }
@@ -5074,6 +5074,9 @@ impl<'a> Lowerer<'a> {
                 }
                 if let Some(number) = self.struct_number_param(id, &name.text, span) {
                     return number;
+                }
+                if self.structs[id].index_domain.is_some() {
+                    return self.library_domain_seq(base, id, name, None, span);
                 }
             }
             Some(Sym::Alias(aid)) => {
@@ -7612,10 +7615,17 @@ impl<'a> Lowerer<'a> {
             }
             Some(Sym::Struct(id)) => {
                 if let Some(&fn_id) = self.structs[id].methods.get(&name.text) {
-                    return self.method_call(fn_id, None, args, span);
+                    let call = self.method_call(fn_id, None, args, span);
+                    return match self.structs[id].index_domain {
+                        Some(d) if name.text == "nth" => self.checked_nth(id, d, call, span),
+                        _ => call,
+                    };
                 }
                 if let Some(&gfid) = self.structs[id].gen_methods.get(&name.text) {
                     return self.call_gen_fn(gfid, Vec::new(), None, args, span);
+                }
+                if self.structs[id].index_domain.is_some() {
+                    return self.library_domain_seq(base, id, name, Some(args), span);
                 }
                 self.error(
                     codes::UNKNOWN_FIELD,
@@ -13030,4 +13040,110 @@ fn sqrt_operand(text: &str) -> Option<String> {
         }
     }
     (depth == 0 && !arg.is_empty()).then(|| arg.to_string())
+}
+
+impl<'a> Lowerer<'a> {
+    /// `S.nth(k)` from user code: `k` must lie in `0..S.count`. Walks call the
+    /// impl's `nth` directly, unchecked.
+    fn checked_nth(&mut self, sid: StructId, dom: DomainId, call: Expr, span: Span) -> Expr {
+        let Expr {
+            kind: ExprKind::Call(fid, mut args),
+            ty,
+            ..
+        } = call
+        else {
+            return call;
+        };
+        if let Some(Arg::Value(k)) = args.first_mut() {
+            let len = self.mk(ExprKind::DomainLen(dom), Ty::Int, span);
+            let value = std::mem::replace(k, self.int_lit(0, span));
+            *k = self.mk(
+                ExprKind::RangeCheck {
+                    value: Box::new(value),
+                    lo: Some(Box::new(self.int_lit(0, span))),
+                    hi: Some(Box::new(self.int_add(len, -1))),
+                    text: format!("0..{}.count", self.structs[sid].def.name),
+                },
+                Ty::Int,
+                span,
+            );
+        }
+        self.mk(ExprKind::Call(fid, args), ty, span)
+    }
+}
+
+impl<'a> Lowerer<'a> {
+    /// `T.first`, `T.rev`, `T.find(p)`, …: an `impl Index` type is the `Seq`
+    /// of its walk (R04.2.20), read off `[x for x in T]`. `first` and `last`
+    /// call `nth` once instead.
+    fn library_domain_seq(
+        &mut self,
+        base: &ast::Expr,
+        sid: StructId,
+        name: &ast::Name,
+        args: Option<&[ast::Arg]>,
+        span: Span,
+    ) -> Expr {
+        let ends = matches!(name.text.as_str(), "first" | "last") && args.is_none();
+        if let (true, Some(dom), Some(&nth)) = (
+            ends,
+            self.structs[sid].index_domain,
+            self.structs[sid].methods.get("nth"),
+        ) {
+            let opt_ty = Ty::opt(Ty::Struct(sid));
+            let len = self.mk(ExprKind::DomainLen(dom), Ty::Int, span);
+            let k = match name.text.as_str() {
+                "first" => self.int_lit(0, span),
+                _ => self.int_add(len.clone(), -1),
+            };
+            let zero = self.int_lit(0, span);
+            let empty = self.mk(
+                ExprKind::Cmp(CmpOp::Eq, Box::new(len), Box::new(zero)),
+                Ty::Bool,
+                span,
+            );
+            let item = self.mk(
+                ExprKind::Call(nth, vec![Arg::Value(k)]),
+                Ty::Struct(sid),
+                span,
+            );
+            let some = self.mk(ExprKind::Some(Box::new(item)), opt_ty.clone(), span);
+            let none = self.mk(ExprKind::None, opt_ty.clone(), span);
+            return self.mk(
+                ExprKind::If(Box::new(empty), Box::new(none), Box::new(some)),
+                opt_ty,
+                span,
+            );
+        }
+        let field = ast::Expr {
+            kind: ast::ExprKind::Field {
+                base: Box::new(ast::Expr::walk_list(base)),
+                name: name.clone(),
+            },
+            span,
+        };
+        let Some(args) = args else {
+            return self.expr(&field, None);
+        };
+        let call = ast::ExprKind::Call {
+            callee: Box::new(field),
+            args: args.to_vec(),
+        };
+        self.expr(&ast::Expr { kind: call, span }, None)
+    }
+}
+
+impl<'a> Lowerer<'a> {
+    /// The `impl Index` struct `name` names, directly or as a generic's argument.
+    pub(super) fn index_struct(&self, name: &str) -> Option<StructId> {
+        let sid = match self.gen_env.get(name) {
+            Some(GenArg::Ty(Ty::Struct(sid))) => *sid,
+            Some(_) => return None,
+            None => match self.get_sym(name) {
+                Some(Sym::Struct(sid)) => sid,
+                _ => return None,
+            },
+        };
+        self.structs[sid].index_domain.is_some().then_some(sid)
+    }
 }

@@ -1675,7 +1675,11 @@ impl<'a> Checker<'a> {
             "Add" => ty.is_numeric() || matches!(ty, Ty::Str),
             "Sub" | "Mul" | "Div" | "Rem" | "Pow" | "Neg" | "Num" => ty.is_numeric(),
             "Index" => ty.is_int() || matches!(ty, Ty::Pos(_) | Ty::Char),
-            "Domain" => matches!(ty, Ty::Pos(_) | Ty::Domain(_)),
+            "Domain" => match ty {
+                Ty::Pos(_) | Ty::Domain(_) => true,
+                Ty::Named { name, .. } => self.has_impl(name, "Index"),
+                _ => false,
+            },
             "Target" => match ty {
                 Ty::Pos(_) | Ty::Int => true,
                 Ty::Record(fields) => fields.iter().any(|(n, _)| n == "to"),
@@ -1853,7 +1857,7 @@ impl<'a> Checker<'a> {
     }
 
     /// Is there a written `impl trait_name for name`?
-    fn has_impl(&mut self, name: &str, trait_name: &str) -> bool {
+    pub(super) fn has_impl(&mut self, name: &str, trait_name: &str) -> bool {
         self.global(&crate::def::impl_name(Some(trait_name), name))
             .is_some()
             || self

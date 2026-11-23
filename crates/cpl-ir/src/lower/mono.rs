@@ -1279,7 +1279,7 @@ impl<'a> Lowerer<'a> {
             let saved_env = std::mem::replace(&mut self.gen_env, env.clone());
             let saved_self = self.self_struct.replace(sid);
 
-            // Handle `impl Index for S`: allocate backing domain for `let K = ...`.
+            // Handle `impl Index for S`: allocate backing domain for `let count = ...`.
             if imp_trait.as_deref() == Some("Index") && self.structs[sid].index_domain.is_none() {
                 let dom_id = self.domains.len();
                 self.domains

@@ -53,6 +53,44 @@ domain Letter = 'a'..='z'              // so is a Char range: Letter(c), [Letter
 | `V.cuts(k)`, `V.cuts.at(k)` | integer to cut, the inverse of `Int(c)`: `k` positions before it whatever the base (`1..=n`: `V.cuts(2)` is between positions 2 and 3); trapping, or `?V.cuts` | \(O(1)\) (R04.2.17) |
 | `5` where a `V` or `V.cuts` is expected | integer literal is that position or cut (integer domains; also fills `[d]V.cuts = 0`); outside a static bound it is a compile error | free (R04.2.18) |
 
+**Library domains.** Any struct, in std or user code, becomes a domain by
+implementing `Index` with three members (decision 382):
+
+```python
+struct Two(a: Int, b: Int)              // the pairs a < b of 0..4, 6 of them
+
+impl Index for Two:
+    let count = 6                       // how many positions
+    @get fn ord(self) -> Int = a * (7 - a) / 2 + b - a - 1
+    fn nth(k: Int) -> Two:              // the inverse of `ord`, for k in 0..count
+        var a = 0
+        var r = k
+        while r >= 3 - a:
+            r -= 3 - a
+            a += 1
+        Two(a, a + 1 + r)
+
+var seen: [Two]Int = 0
+for t in Two: seen[t] = t.a * 10 + t.b
+print(Two.count, Two.first!.ord, [seen[Two.nth(k)] for k in 0..Two.count])
+```
+
+The impl writes `count`, `ord` and `nth` under those names; `count` is sized
+like a domain declaration, from constants and `let`s but never a `var`. The
+pre-0.3 names `K`, `to_idx` and `from_idx` are errors that name their
+replacement. (R04.2.26)
+The type is then a domain like any other: `[Two]E` indexes by `t.ord`,
+`for t in Two` and `Two.rev` walk `Two.nth(0)`, `Two.nth(1)`, …, and
+`Two.count`, `Two.first`, `Two.last`, every `Seq` method over the walk and a
+`D: Domain` bound all work as they do for a core domain. `Two.nth(k)` traps
+outside `0..Two.count`, so the impl's `nth` never sees such a `k`. (R04.2.27)
+Ordinal order is a walk order, not a successor: `V(x)`, `V.at(x)`, `Int(v)`,
+`V.wrap`, `.next`, `.prev`, `.l`, `.r`, cuts, `Range<V>` and position
+arithmetic stay with the ordered core domains, and naming one on a library
+domain is an error that says so. A library type that wants `Int(x)` or a
+printed form writes its own conversion and `Show`, as `Subset` does with its
+mask (decision 291). (R04.2.28)
+
 **Pieces.** Coordinate compression for intervals: `let (domain P, piece) =
 D.pieces(cuts: cs)` splits a range at the given cuts into the pieces between them,
 with `piece[p]` the `Range<D>` each covers (so `piece[p].len` is its real length)

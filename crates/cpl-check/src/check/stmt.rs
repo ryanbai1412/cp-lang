@@ -2064,26 +2064,28 @@ impl<'a> Checker<'a> {
         }
     }
 
-    /// The `K` of an `impl Index`: how many values the type has. `const K` is known at compile
-    /// time; `let K` is evaluated once, where the impl is declared, and frozen, so it can't read
-    /// a `var` (plan/19 §3.1).
+    /// The `count` of an `impl Index`: how many values the type has. `const count` is known at
+    /// compile time; `let count` is evaluated once, where the impl is declared, and frozen, so it
+    /// can't read a `var` (plan/19 §3.1). The impl's members take the names user code calls:
+    /// `count`, `ord` and `nth`.
     fn index_size(&mut self, body: &[Stmt]) {
         for stmt in body {
+            self.index_member_name(stmt);
             match &stmt.kind {
                 StmtKind::Const {
                     name,
                     init: Some(init),
                     ..
-                } if name.text == "K" => {
+                } if name.text == "count" => {
                     let known = matches!(self.bounds(init), (Some(lo), Some(hi)) if lo == hi);
                     if !known {
                         let value = self.quote(init.span);
                         let message = format!(
-                            "`const K = {value}`: `const` is compile-time only, and `{value}` is known only at run time"
+                            "`const count = {value}`: `const` is compile-time only, and `{value}` is known only at run time"
                         );
                         if let Some(diag) = self.error(codes::BAD_INDEX_IMPL, stmt.span, message) {
                             diag.help = Some(format!(
-                                "write `let K = {value}`; an associated `let` is evaluated once, where the impl is declared, and is frozen from then on"
+                                "write `let count = {value}`; an associated `let` is evaluated once, where the impl is declared, and is frozen from then on"
                             ));
                         }
                     }
@@ -2092,7 +2094,7 @@ impl<'a> Checker<'a> {
                     pat,
                     init: Some(init),
                     ..
-                } if super::pattern::domain_binding(pat) == Some("K") => {
+                } if index_binding(pat) == Some("count") => {
                     for name in super::lends::names_in(init) {
                         let mutable = match self.local(&name) {
                             Some(local) => local.mutable,
@@ -2103,7 +2105,7 @@ impl<'a> Checker<'a> {
                         };
                         if mutable {
                             let message = format!(
-                                "`K` can't be sized by the var `{name}`: it could change after arrays are made"
+                                "`count` can't be sized by the var `{name}`: it could change after arrays are made"
                             );
                             if let Some(diag) =
                                 self.error(codes::BAD_INDEX_IMPL, init.span, message)
@@ -2115,6 +2117,31 @@ impl<'a> Checker<'a> {
                 }
                 _ => {}
             }
+        }
+    }
+
+    /// An `impl Index` member under a pre-0.3 name (`K`, `to_idx`, `from_idx`).
+    fn index_member_name(&mut self, stmt: &Stmt) {
+        let (old, span) = match &stmt.kind {
+            StmtKind::Fn(f) => (f.name.text.as_str(), f.name.span),
+            StmtKind::Const { name, .. } => (name.text.as_str(), name.span),
+            StmtKind::Let { pat, .. } => match index_binding(pat) {
+                Some(name) => (name, pat.span),
+                None => return,
+            },
+            _ => return,
+        };
+        let new = match old {
+            "K" => "count",
+            "to_idx" => "ord",
+            "from_idx" => "nth",
+            _ => return,
+        };
+        let message = format!("`impl Index` names this member `{new}`, not `{old}`");
+        if let Some(diag) = self.error(codes::BAD_INDEX_IMPL, span, message) {
+            diag.help = Some(format!(
+                "rename `{old}` to `{new}`; user code reads it as `T.count`, `x.ord` or `T.nth(k)`"
+            ));
         }
     }
 
@@ -3260,5 +3287,13 @@ impl<'a> Checker<'a> {
             }
             _ => {}
         }
+    }
+}
+
+/// The name a `let` in an impl body binds: `let count = ..` or `let K = ..`.
+fn index_binding(pat: &ast::Pattern) -> Option<&str> {
+    match &pat.kind {
+        ast::PatternKind::Name(name) => Some(name.as_str()),
+        _ => super::pattern::domain_binding(pat),
     }
 }

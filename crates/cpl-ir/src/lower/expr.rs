@@ -3113,10 +3113,9 @@ impl<'a> Lowerer<'a> {
                     }
                     if let (Dim::Pos(d), Ty::Struct(sid)) = (dim, &value.ty) {
                         if self.structs[*sid].index_domain == Some(*d) {
-                            if let Some(to_idx) = self.structs[*sid].methods.get("to_idx").copied()
-                            {
+                            if let Some(ord) = self.structs[*sid].methods.get("ord").copied() {
                                 let ord = self.mk(
-                                    ExprKind::Call(to_idx, vec![Arg::Value(value)]),
+                                    ExprKind::Call(ord, vec![Arg::Value(value)]),
                                     Ty::Int,
                                     index.span,
                                 );
@@ -4661,16 +4660,15 @@ impl<'a> Lowerer<'a> {
                 )
             }
             ast::ExprKind::Name(name)
-                if self.lookup(name).is_none()
-                    && matches!(self.get_sym(name), Some(Sym::Struct(sid)) if self.structs[sid].index_domain.is_some()) =>
+                if self.lookup(name).is_none() && self.index_struct(name).is_some() =>
             {
-                let Some(Sym::Struct(sid)) = self.get_sym(name) else {
+                let Some(sid) = self.index_struct(name) else {
                     unreachable!()
                 };
                 let dom_id = self.structs[sid].index_domain.unwrap();
-                let from_idx = self.structs[sid].methods.get("from_idx").copied();
-                // Materialize `[S.from_idx(i) for i in 0..S.K]` as a sequence.
-                if let Some(from_fn) = from_idx {
+                let nth = self.structs[sid].methods.get("nth").copied();
+                // Materialize `[S.nth(i) for i in 0..S.count]` as a sequence.
+                if let Some(from_fn) = nth {
                     let list_ty = Ty::list(Ty::Struct(sid));
                     let seq = self.do_expr(Some(&list_ty), span, |lw, out| {
                         let acc = lw.temp(list_ty.clone());

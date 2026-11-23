@@ -1076,7 +1076,7 @@ impl<'a> Lowerer<'a> {
                 body,
                 ..
             } if matches!(&tn.kind, ast::TypeKind::Named { name, .. } if name.text == "Index") => {
-                // Freeze `let K = <expr>` for `impl Index for S`.
+                // Freeze `let count = <expr>` for `impl Index for S`.
                 if let ast::TypeKind::Named { name: tname, .. } = &target.kind {
                     if let Some(Sym::Struct(sid)) = self.get_sym(&tname.text) {
                         if let Some(dom_id) = self.structs[sid].index_domain {
@@ -1091,7 +1091,7 @@ impl<'a> Lowerer<'a> {
                                     ..
                                 } = &s.kind
                                 {
-                                    if n == "K" {
+                                    if n == "count" {
                                         let len = self.expect(init, &Ty::Int);
                                         let lo = self.int_lit(0, init.span);
                                         out.push(Stmt::DefDomain {
@@ -3227,7 +3227,7 @@ impl<'a> Lowerer<'a> {
             if let DimSpec::Pos(dom_id) = dim {
                 if let Some((sid, sc)) = self.structs.iter().enumerate().find_map(|(sid, s)| {
                     if s.index_domain == Some(*dom_id) {
-                        s.consts.get("K").cloned().map(|sc| (sid, sc))
+                        s.consts.get("count").cloned().map(|sc| (sid, sc))
                     } else {
                         None
                     }

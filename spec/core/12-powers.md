@@ -147,9 +147,11 @@ returns continue or stop. `Slice`, `Rev`, `Map`, `Filter`, `TakeWhile` and
 `Chain` are each a few lines like this, with no stdlib privilege.
 
 An index space is a domain: a declared or fresh finite type with `D.count`,
-`D.cuts` (its cuts) and `D.at(i)`. Generic code takes `D: Domain` and
-stores `[D]T`; runtime-sized domains read their declaration-site slot
-(decision 124 and the summary in `decisions.md`).
+`D.cuts` (its cuts) and `D.at(i)`, or a library type, std or user, that
+implements `Index` with `count`, `ord` and `nth` (R04.2.26). Generic code
+takes `D: Domain`, which both kinds meet, walks `for d in D` and stores
+`[D]T`; runtime-sized domains read their declaration-site slot (decision 124
+and the summary in `decisions.md`).
 
     pub struct Fenwick<D: Domain, T: Group>: tree: [D]T
     pub fn fold(self, r: Range<D>) -> T = ...       // a cut range converts here

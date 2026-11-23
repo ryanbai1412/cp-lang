@@ -2881,7 +2881,7 @@ impl<'a> Lowerer<'a> {
                 if let Some(Sym::Domain(id)) = self.get_sym(&name.text) {
                     return Some(DimSpec::Pos(id));
                 }
-                if let Some(Sym::Struct(sid)) = self.get_sym(&name.text) {
+                if let Some(sid) = self.index_struct(&name.text) {
                     if let Some(dom_id) = self.structs[sid].index_domain {
                         return Some(DimSpec::Pos(dom_id));
                     }

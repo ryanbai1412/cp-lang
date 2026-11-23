@@ -142,11 +142,21 @@ impl Checker<'_> {
             .map(String::as_str)
             .chain(has("range_first").then_some("range"));
         let suggestion = closest(&name.text, known);
+        let library_domain = match base_ty {
+            Ty::Named { name, .. } | Ty::TypeName(name) => self.has_impl(name, "Index"),
+            _ => false,
+        };
+        let core_only = library_domain && CORE_DOMAIN_ONLY.contains(&name.text.as_str());
         let message = format!("{base_ty} has no field or method `{}`", name.text);
         let Some(diag) = self.error(codes::UNKNOWN_FIELD, name.span, message) else {
             return;
         };
         match suggestion {
+            _ if core_only => {
+                diag.help = Some(format!(
+                    "{base_ty} is a library domain (`impl Index`): it walks in `ord` order, but neighbours, cuts, `at` and `wrap` belong to the ordered core domains; use `x.ord` and `{base_ty}.nth(k)`"
+                ));
+            }
             _ if empty_by_len => {
                 diag.help = Some(format!("a {base_ty} is empty when its `len` is 0"));
                 diag.fix("write `len == 0`".to_string(), name.span, "len == 0");
@@ -755,4 +765,42 @@ pub(crate) fn same_place(
         "compute the right side {first}: otherwise the order the two sides run in decides the result"
     );
     (message, help)
+}
+
+/// Members of an ordered core domain that a library domain does not derive.
+const CORE_DOMAIN_ONLY: [&str; 10] = [
+    "next", "prev", "l", "r", "before", "after", "cuts", "at", "wrap", "offset",
+];
+
+impl Checker<'_> {
+    /// R04.2.27: a type with `impl Index` has the domain members that need no
+    /// order: `T.count`, `T.first`, `T.last`, `T.rev`, and every `Seq` method
+    /// over its walk. Its own members (`nth`, constructors) come first.
+    pub(super) fn library_domain_member(
+        &mut self,
+        expr: &Expr,
+        type_name: &str,
+        name: &Name,
+    ) -> Option<Ty> {
+        if !self.has_impl(type_name, "Index") || CORE_DOMAIN_ONLY.contains(&name.text.as_str()) {
+            return None;
+        }
+        // `T.count(f)` is the `Seq` count; the impl's own `let count` is `T.count`.
+        let seq_count = name.text == "count" && self.in_call_callee;
+        let own = self
+            .members_of(type_name)
+            .is_some_and(|m| m.members.iter().any(|(m, _)| *m == name.text));
+        if own && !seq_count {
+            return None;
+        }
+        let elem = Ty::Named {
+            name: type_name.to_string(),
+            args: Vec::new(),
+        };
+        Some(match name.text.as_str() {
+            "count" if !seq_count => Ty::Int,
+            "first" | "last" => Ty::Optional(Box::new(elem)),
+            _ => self.member_ty(expr, name, Ty::list(elem)),
+        })
+    }
 }
