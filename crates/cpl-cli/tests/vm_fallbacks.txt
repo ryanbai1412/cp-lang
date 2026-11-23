@@ -57,13 +57,11 @@ traced stmt:Let(Unwrap)
 traced stmt:Return
 traced stmt:Trap
 traced stmt:While
-untraced fn:Deque_Int.items(feeding)
 untraced fn:SortedBag_Int.drain(part)
 untraced fn:SortedSet_Int.each(feeding)
 untraced fn:m1_get_or_insert_with_Int_Int(part)
 untraced fn:m1_get_or_insert_with_Str_D0_P(part)
 untraced fn:m1_get_or_insert_with_Str_D1_P(part)
-untraced fn:m3_cyclic_pairs_Lst_Int_Int(feeding)
 untraced fn:m7_find_all_Str_Str_Int(feeding)
 untraced stmt:Assert
 untraced stmt:Assign(Global,Binary(Add))

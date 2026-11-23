@@ -838,6 +838,21 @@ print(sum)
 }
 
 #[test]
+fn vm_fed_loop_inside_a_do_gives_after_the_loop() {
+    // `.filter(..).collect()` lowers to a `do` whose loop `upto` feeds.
+    let src = "\
+fn upto(n: Int) -> yields Int:
+    for i in 0..n: yield i
+
+fn evens(n: Int) -> List<Int> = upto(n).filter(q => q % 2 == 0).collect()
+print(evens(7))
+";
+    let (out, trap) = outcome(src, "");
+    assert!(trap.is_none(), "unexpected trap: {trap:?}");
+    assert_eq!(out, "0 2 4 6\n");
+}
+
+#[test]
 fn vm_one_int_struct_custom_ord_cmp() {
     let src = "\
 use std.heap.{MaxHeap}

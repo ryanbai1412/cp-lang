@@ -964,7 +964,6 @@ impl<'p, 'f> Compiler<'p, 'f> {
             || self.program.judge_fns.contains(&fn_id)
             || args.len() != f.params.len()
             || f.params.iter().any(|p| p.mutable)
-            || !self.give_targets.is_empty()
             || self.inline_ret.is_some()
             || Self::block_has_outer_loop_jump(body, id)
         {
