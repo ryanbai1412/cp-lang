@@ -22,6 +22,82 @@ impl<'a> Lowerer<'a> {
         self.mk(ExprKind::Some(Box::new(val)), ty, span)
     }
 
+    /// `V(x)`, `V(a, b)` of a product, `V((a, b))`: the position labelled `x`.
+    fn domain_call(&mut self, id: DomainId, name: &str, args: &[ast::Arg], span: Span) -> Expr {
+        if let Some(factors) = self.product_domains.get(&id).cloned() {
+            if args.len() == factors.len() {
+                let mut parts = Vec::with_capacity(factors.len());
+                let named = args.iter().any(|a| a.name.is_some());
+                if named {
+                    let mut slots: Vec<Option<Expr>> = vec![None; factors.len()];
+                    for (i, arg) in args.iter().enumerate() {
+                        let idx = arg
+                            .name
+                            .as_ref()
+                            .and_then(|n| {
+                                factors
+                                    .iter()
+                                    .position(|(fnm, _)| fnm.as_deref() == Some(n.text.as_str()))
+                            })
+                            .unwrap_or(i);
+                        let want = self.product_factor_ty(&factors[idx].1);
+                        slots[idx] = Some(self.expect(&arg.value, &want));
+                    }
+                    if slots.iter().all(|s| s.is_some()) {
+                        for s in slots {
+                            parts.push(s.unwrap());
+                        }
+                        return self.encode_product(id, parts, span);
+                    }
+                } else {
+                    for ((_, f), arg) in factors.iter().zip(args) {
+                        let want = self.product_factor_ty(f);
+                        parts.push(self.expect(&arg.value, &want));
+                    }
+                    return self.encode_product(id, parts, span);
+                }
+            }
+            if args.len() == 1 && args[0].name.is_none() {
+                let v = self.expr(&args[0].value, None);
+                if matches!(v.ty, Ty::Tuple(_) | Ty::Record(_)) {
+                    return self.product_from_tuple(id, v, span);
+                }
+                let value = if v.ty == Ty::Char {
+                    self.mk(
+                        ExprKind::Cast(Cast::CharToInt, Box::new(v)),
+                        Ty::Int,
+                        args[0].value.span,
+                    )
+                } else {
+                    self.coerce(v, &Ty::Int, args[0].value.span)
+                };
+                return self.mk(
+                    ExprKind::Cast(Cast::FromLabel(id), Box::new(value)),
+                    Ty::Pos(id),
+                    span,
+                );
+            }
+        }
+        let Some(exprs) = self.positional_any(name, args, 1, span) else {
+            return self.err_expr(span);
+        };
+        let v = self.expr(exprs[0], None);
+        let value = if v.ty == Ty::Char {
+            self.mk(
+                ExprKind::Cast(Cast::CharToInt, Box::new(v)),
+                Ty::Int,
+                exprs[0].span,
+            )
+        } else {
+            self.coerce(v, &Ty::Int, exprs[0].span)
+        };
+        self.mk(
+            ExprKind::Cast(Cast::FromLabel(id), Box::new(value)),
+            Ty::Pos(id),
+            span,
+        )
+    }
+
     /// The symbol `e` names, if it is a bare name no local hides.
     pub(in crate::lower) fn sym(&self, e: &ast::Expr) -> Option<Sym> {
         match &e.kind {
@@ -36,6 +112,7 @@ impl<'a> Lowerer<'a> {
                 }
                 self.get_sym(name)
             }
+            ast::ExprKind::Field { base, name } => self.rebased_sym(base, &name.text),
             _ => None,
         }
     }
@@ -146,6 +223,14 @@ impl<'a> Lowerer<'a> {
         let span = whole.span;
         match &callee.kind {
             ast::ExprKind::Paren(inner) => self.call(whole, inner, args, hint),
+            ast::ExprKind::Field { name, .. }
+                if matches!(self.sym(callee), Some(Sym::Domain(_))) =>
+            {
+                let Some(Sym::Domain(id)) = self.sym(callee) else {
+                    unreachable!()
+                };
+                self.domain_call(id, &name.text, args, span)
+            }
             ast::ExprKind::Name(name) => {
                 // `yes(ok)` under `with io(answers: ..)`. (R10.3.3)
                 if name == "yes"
@@ -346,80 +431,7 @@ impl<'a> Lowerer<'a> {
                             span,
                         )
                     }
-                    Some(Sym::Domain(id)) => {
-                        if let Some(factors) = self.product_domains.get(&id).cloned() {
-                            if args.len() == factors.len() {
-                                let mut parts = Vec::with_capacity(factors.len());
-                                let named = args.iter().any(|a| a.name.is_some());
-                                if named {
-                                    let mut slots: Vec<Option<Expr>> = vec![None; factors.len()];
-                                    for (i, arg) in args.iter().enumerate() {
-                                        let idx = arg
-                                            .name
-                                            .as_ref()
-                                            .and_then(|n| {
-                                                factors.iter().position(|(fnm, _)| {
-                                                    fnm.as_deref() == Some(n.text.as_str())
-                                                })
-                                            })
-                                            .unwrap_or(i);
-                                        let want = self.product_factor_ty(&factors[idx].1);
-                                        slots[idx] = Some(self.expect(&arg.value, &want));
-                                    }
-                                    if slots.iter().all(|s| s.is_some()) {
-                                        for s in slots {
-                                            parts.push(s.unwrap());
-                                        }
-                                        return self.encode_product(id, parts, span);
-                                    }
-                                } else {
-                                    for ((_, f), arg) in factors.iter().zip(args) {
-                                        let want = self.product_factor_ty(f);
-                                        parts.push(self.expect(&arg.value, &want));
-                                    }
-                                    return self.encode_product(id, parts, span);
-                                }
-                            }
-                            if args.len() == 1 && args[0].name.is_none() {
-                                let v = self.expr(&args[0].value, None);
-                                if matches!(v.ty, Ty::Tuple(_) | Ty::Record(_)) {
-                                    return self.product_from_tuple(id, v, span);
-                                }
-                                let value = if v.ty == Ty::Char {
-                                    self.mk(
-                                        ExprKind::Cast(Cast::CharToInt, Box::new(v)),
-                                        Ty::Int,
-                                        args[0].value.span,
-                                    )
-                                } else {
-                                    self.coerce(v, &Ty::Int, args[0].value.span)
-                                };
-                                return self.mk(
-                                    ExprKind::Cast(Cast::FromLabel(id), Box::new(value)),
-                                    Ty::Pos(id),
-                                    span,
-                                );
-                            }
-                        }
-                        let Some(exprs) = self.positional_any(name, args, 1, span) else {
-                            return self.err_expr(span);
-                        };
-                        let v = self.expr(exprs[0], None);
-                        let value = if v.ty == Ty::Char {
-                            self.mk(
-                                ExprKind::Cast(Cast::CharToInt, Box::new(v)),
-                                Ty::Int,
-                                exprs[0].span,
-                            )
-                        } else {
-                            self.coerce(v, &Ty::Int, exprs[0].span)
-                        };
-                        self.mk(
-                            ExprKind::Cast(Cast::FromLabel(id), Box::new(value)),
-                            Ty::Pos(id),
-                            span,
-                        )
-                    }
+                    Some(Sym::Domain(id)) => self.domain_call(id, name, args, span),
                     Some(Sym::Alias(aid)) => {
                         let (m, ty_ast, offset) = self.aliases[aid];
                         let sm = std::mem::replace(&mut self.cur_mod, m);

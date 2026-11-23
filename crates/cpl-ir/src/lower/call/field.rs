@@ -801,6 +801,10 @@ impl<'a> Lowerer<'a> {
                 )
             }
             (Ty::Range(_), "rev") => self.reversed_range(value, span),
+            (Ty::List(elem) | Ty::ListView(elem, _) | Ty::MutView(elem), "rebase") => {
+                let elem = (**elem).clone();
+                self.rebase(value, elem, span)
+            }
             (
                 Ty::List(_)
                 | Ty::ListView(_, _)

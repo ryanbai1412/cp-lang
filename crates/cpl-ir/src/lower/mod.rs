@@ -2886,15 +2886,15 @@ impl<'a> Lowerer<'a> {
         self.mk(ExprKind::Do(Block { stmts }), list_ty, span)
     }
 
-    /// The domain `rest` that the variable `prefix` holds: the `D` of
-    /// `let xs = compress(all)`.
+    /// The domain `rest` that `prefix` holds: `D` of `let xs = compress(all)`, `t.Idx` of a rebase.
     fn domain_of_value(&mut self, prefix: &str, rest: &str) -> Option<DomainId> {
         let owner = ast::Expr {
             kind: ast::ExprKind::Name(prefix.to_string()),
             span: Span::point(0),
         };
-        let Some(Ty::Struct(sid)) = self.probe_ty_silent(&owner) else {
-            return None;
+        let ty = self.probe_ty_silent(&owner)?;
+        let Ty::Struct(sid) = ty else {
+            return self.rebased_domain(&ty, rest);
         };
         match self.structs[sid].env.get(rest) {
             Some(GenArg::Domain(id)) | Some(GenArg::Ty(Ty::Pos(id))) => Some(*id),
