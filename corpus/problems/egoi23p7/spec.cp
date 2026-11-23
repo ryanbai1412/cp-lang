@@ -19,7 +19,7 @@ fn solve() -> ?List<(from: V, to: V)>:
         up[t.from] = Some(t.to)
     let forest = Rooted.try_from_parents(up) else: return None
     let (domain B, top) = compress(forest.roots)
-    let block = [V] v => top.at(forest.root_of(v))
+    let block = [V] v => top.index_of(forest.root_of(v))
     let members = block.buckets()
     let bans_from = banned.map(.from).buckets()
     var cannot: [B]List<B> = []

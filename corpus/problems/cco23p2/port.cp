@@ -30,7 +30,7 @@ let cap: [V]Int = [V] i => min(pref[i], suff[i])
 
 let (domain H, hs) = compress([h[i] for i in V])
 var by_h: [H]List<V> = []
-for i in V: by_h[hs.at(h[i])].push(i)
+for i in V: by_h[hs.index_of(h[i])].push(i)
 
 fn tri(x: Int) -> Z = Z(x) * Z(x + 1) * Z(500_002)
 fn sum_range(l: Int, r: Int) -> Z = tri(r) - tri(l - 1)

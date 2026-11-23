@@ -194,8 +194,8 @@ Three complementary patterns appear across contests:
 - **Offline coordinate compression (`std.seq.compress` -> `Compressed<D, T>`).**
   `let (domain C, comp) = compress(xs)` sorts values, deduplicates, and binds
   a fresh domain `C` with the table `comp` (R07.11.5). Today it has
-  `get`, `slice`, `len`, `at`, `first_ge`, `last_le`. It lacks `first_gt`,
-  `last_lt` (the rest of the 4-name sorted lookup family), `try_at(val) -> ?D`,
+  `get`, `slice`, `len`, `index_of`, `first_ge`, `last_le`. It lacks `first_gt`,
+  `last_lt` (the rest of the 4-name sorted lookup family), `try_index_of(val) -> ?D`,
   `contains(val) -> Bool`, and `range(lo, hi) -> Range<D>` (turning value bounds
   directly into a domain `Range<D>`).
 - **Online bidirectional interning (`std.marks.Interner<K>` or `std.seq`).**
@@ -527,7 +527,7 @@ struct Interner<K>                  // online key <-> 0..len id
     @get fn keys(self) -> List<K>   // O(1)
 
     // Additions to std.seq.Compressed<D, T>:
-    fn try_at(self, val: T) -> ?D             // O(log n)
+    fn try_index_of(self, val: T) -> ?D       // O(log n)
     fn contains(self, val: T) -> Bool         // O(log n)
     fn first_gt(self, val: T) -> ?D           // O(log n)
     fn last_lt(self, val: T) -> ?D            // O(log n)

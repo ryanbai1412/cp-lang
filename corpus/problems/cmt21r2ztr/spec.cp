@@ -11,7 +11,7 @@ domain Var = (P, Side)
 fn on(p: P, s: Side) -> Lit<Var> = Lit(Var((p, s)), true)
 var sat = TwoSat<Var>()
 for q in qs:
-    let ps = [pins.at((v:, x: q.x)) for v in [q.i, q.j, q.k]]
+    let ps = [pins.index_of((v:, x: q.x)) for v in [q.i, q.j, q.k]]
     for s in Side:
         sat.at_most_one([on(p, s) for p in ps])
 for p in P:

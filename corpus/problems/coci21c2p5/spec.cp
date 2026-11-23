@@ -5,7 +5,7 @@ let n = read<1..=200_000>()
 domain S = 1..=n
 let iv = read<[S](l: 1..=1_000_000_000, r: 1..=1_000_000_000)>()
 let (domain C, xs) = compress(chain(iv.map(x => x.l), iv.map(x => x.r)))
-fn heights(s: S) -> Range<C> = xs.at(iv[s].l)..=xs.at(iv[s].r)
+fn heights(s: S) -> Range<C> = xs.index_of(iv[s].l)..=xs.index_of(iv[s].r)
 
 var cover = SegTree(max, [C] c => 0, act: add)
 var after: [S]?S = None // the first suspect past the longest good group starting at s

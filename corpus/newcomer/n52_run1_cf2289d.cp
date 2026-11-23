@@ -15,7 +15,7 @@ else:
     var bit = Fenwick<C, Int>()  // expect: inversions_by_fenwick
     var inv = 0
     for i in I:
-        let id = comp.at(s[i])
+        let id = comp.index_of(s[i])
         inv += i.ord - bit.prefix(id.r)
         bit.add(id, 1)
     print(inv)

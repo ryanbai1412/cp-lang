@@ -546,7 +546,7 @@ The coherence pass over the area, against plan/STDLIB.md §2.
 | `sos` (math, `std.ntt`) | dreams spell `zeta` (`cf2178i`) | `sos(over:, inverse:)` is the name; no `zeta` |
 | `sos(inverse: true)` | `Sieve.mobius` (math, number-theoretic) | the subset form is never called `mobius` |
 | `Line` (`std.dp`) | a future geometry line | geometry keeps `HalfPlane`/`Vec`; a geometry line is not named `Line` |
-| `at` (evaluate: `Line`, `LiChao`, `Concave`) | `Compressed.at(val)` (seq, a position) | flagged to seq: `Compressed.at` reads as evaluation |
+| `at` (evaluate: `Line`, `LiChao`, `Concave`) | `Compressed.index_of(val)` (seq, a position) | resolved: renamed from `Compressed.at` (decision 439) |
 | `MonoDeque`, `WindowFold` (containers) | `sliding_min`/`sliding_max` (seq) | `sliding_*` for a fixed `k` in one call, `MonoDeque` for moving ends |
 | `Concave.max_convolve` | `max_plus_convolve` (new, lists) | the method on a treap-kept function, the free fn on sequences |
 | `compose` (seq, permutations) | `Action.compose` (algebra) | both kept: different receivers |

@@ -6,4 +6,4 @@ fn wrap(a: List<Int>):
 
 let (Dwa, wa) = wrap([100, 200, 300])
 let (Dwb, wb) = wrap([7])
-print(Dwa.len, Dwb.len, wa[wa.at(200)], wb[wb.at(7)])
+print(Dwa.len, Dwb.len, wa[wa.index_of(200)], wb[wb.index_of(7)])

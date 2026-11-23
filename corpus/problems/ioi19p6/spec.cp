@@ -51,8 +51,8 @@ for i in walks.keys:
     for (p, q) in on[i].deduped().adjacent:
         links.push(
             (
-                u: at.at((b: p, y: walks[i].y)),
-                v: at.at((b: q, y: walks[i].y)),
+                u: at.index_of((b: p, y: walks[i].y)),
+                v: at.index_of((b: q, y: walks[i].y)),
                 w: towers[q].x - towers[p].x,
             )
         )
@@ -61,4 +61,4 @@ for (p, q) in Stop.collect().adjacent if at.get(p).b == at.get(q).b:
 
 let edges = [links.keys] e => links[e]
 let net = Graph.undirected(edges)
-print(dijkstra(net, from: [(at.at((b: start, y: 0)), 0)]).get(at.at((b: goal, y: 0))) ?? -1)
+print(dijkstra(net, from: [(at.index_of((b: start, y: 0)), 0)]).get(at.index_of((b: goal, y: 0))) ?? -1)

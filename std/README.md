@@ -366,7 +366,7 @@ fn suffix_scan_in_place<T>(mut self: List<T>, f: (T, T) -> T)  // O(n), O(1) ext
 
 // Coordinate compression completeness
 fn Compressed.contains(self, val: T) -> Bool  // O(log n)
-fn Compressed.try_at(self, val: T) -> ?D      // O(log n)
+fn Compressed.try_index_of(self, val: T) -> ?D     // O(log n)
 fn Compressed.first_gt(self, val: T) -> ?D    // O(log n)
 fn Compressed.last_lt(self, val: T) -> ?D     // O(log n)
 

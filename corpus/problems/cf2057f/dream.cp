@@ -38,8 +38,8 @@ for l in 1..=31:
     var saved = IntervalMap<cuts.D, ?Int>.new(None)
     let windows = [(s, window.sum(s..=e)) for s in Pos if let e = s + (l - 1)].sorted(by: w => w.1)
     for (s, total) in windows:
-        let end = if let p = s.prev: cuts.at(2 * a[p]).l else: cuts.D.last.r
-        saved.assign(cuts.at(a[s]).l..end, total)
+        let end = if let p = s.prev: cuts.index_of(2 * a[p]).l else: cuts.D.last.r
+        saved.assign(cuts.index_of(a[s]).l..end, total)
     var waiting = by_k.clone()
     for (r, opt) in saved.each().rev:
         if let best = opt:

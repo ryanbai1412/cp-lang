@@ -17,7 +17,7 @@ domain Q = 0..q
 let qs: [Q](l: 1..=n, r: 1..=n) = read()
 
 let (domain C, vals) = compress(a)
-let id: [0..n]C = [0..n] i => vals.at(a[i])
+let id: [0..n]C = [0..n] i => vals.index_of(a[i])
 var ans: [Q]Int = 0
 
 if C.count <= HEAVY:

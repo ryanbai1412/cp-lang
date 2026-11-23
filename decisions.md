@@ -8448,3 +8448,10 @@ Revised (2026-11-23): a twentieth left the browser's 5 s limit at 250 ms a candi
 - **Call.** `std.heap.MeldHeaps<T>` is a pool of leftist heaps and `Meld<T>` a handle into it (`Meld<T>()` is the empty heap). `of`, `top`, `push`, `push_all`, `pop`, `meld`, `add_all` and `drain` are pool methods. `meld(a, b)` returns the union and uses both inputs up, like `MergeSegs.merge`. Each heap's root carries a stamp that its handle repeats, so using a handle copied before its heap changed traps instead of reading relinked nodes. `MeldHeap` stays for a few heaps that own their nodes.
 - **Why.** One `MeldHeap` per vertex is one list per vertex, and small-to-large melding copies nodes. cf2152h2's MeldHeap port ran 0.25 s / 81 MB against the hand-written arena's 0.15 s / 34 MB; with the pool it runs 0.19-0.20 s / 41 MB, with identical output. `meld` returns its result instead of taking `mut a, mut b` because `mut set[kept], set[merged]` cannot be lent from one array.
 - **Reverse.** Drop `MeldHeaps` and `Meld` from std/heap.cp; ports go back to `[V]MeldHeap<T>` and `a.meld(b.take())`.
+
+## 439. `Compressed.at(val)` is renamed `index_of` (stdlib, 2026-11-23)
+
+- **Call.** `Compressed<D, T>.index_of(val) -> D` (traps when `val` was not compressed) and `try_index_of(val) -> ?D` replace `at` and `try_at`. `xs[i]` and `get(i)` still read the value at index `i`.
+- **Why.** R12.4.13 makes `s[k]` mean `s.at(k)`, so `at` takes the same key as `[]`. `Compressed.at` took a value and returned an index, the inverse of `xs[i]`, and read as evaluation next to `Line.at(x)`. Every corpus and conformance caller is renamed in the same commit.
+- **Reverse.** Rename `index_of`/`try_index_of` back to `at`/`try_at` in std/seq.cp and their callers.
+

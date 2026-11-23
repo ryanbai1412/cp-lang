@@ -8,7 +8,7 @@
 //! - Reordering & selection: `reverse`, `rotate_left`/`rotate_right`, `dedup`/`deduped`, `partition`, `select`, `merge_sorted`.
 //! - Permutations: `next_permutation`, `prev_permutation`, `inverse`, `compose`, `perm_cycles`, `perm_pow`, `inversions`.
 //! - Nearest smaller: `prev_smaller`/`next_smaller` (larger with `by: desc`), `prev_same`/`next_same`, `MonoStack`; sliding windows fold with `a.windows(k).fold(op)` or `Window(op)` (`std.window`).
-//! - Coordinate compression: `let (domain C, xs) = compress(all)` -> `Compressed<C, T>` (`at`, `try_at`, `contains`, `first_ge`, `first_gt`, `last_le`, `last_lt`).
+//! - Coordinate compression: `let (domain C, xs) = compress(all)` -> `Compressed<C, T>` (`index_of`, `try_index_of`, `contains`, `first_ge`, `first_gt`, `last_le`, `last_lt`).
 
 use std.hashmap.{Counter}
 
@@ -759,7 +759,7 @@ pub fn runs<S: Indexed, T, K>(
 
 /// Bucket the keys of `self` by value: `b[k]` lists every `i` with `self[i] == k`, in key order.
 /// The result is keyed by the value domain, so group by any domain-valued key with
-/// `a.map(key).buckets()`; an optional table gives a `None` bucket (`b[Some(k)]`).
+/// `a.map(key).buckets()`.
 /// \(O(\lvert D \rvert + \lvert K \rvert)\) time and memory.
 ///
 /// cost: \(O(\lvert D \rvert + \lvert K \rvert)\) time and memory
@@ -773,7 +773,7 @@ pub fn buckets<D, K: Domain>(self: [D]K) -> [K]List<D>:
     out
 
 /// The distinct values of a coordinate compression, in increasing order, indexed by their
-/// own domain `D`. `xs[i]` is the value at index `i`, `xs.at(val)` the index of a value that
+/// own domain `D`. `xs[i]` is the value at index `i`, `xs.index_of(val)` the index of a value that
 /// was compressed, and `xs.first_ge(val)` / `xs.last_le(val)` the nearest index (`?D`) for any value.
 pub struct Compressed<D, T>(vals: [D]T):
     /// \(O(1)\). The value at index `i`; `slice` takes a `Range<D>`.
@@ -804,18 +804,18 @@ pub struct Compressed<D, T>(vals: [D]T):
     /// cost: \(O(\log n)\)
     /// ties: none: values are distinct
     /// traps: when `val` was not compressed
-    /// example: `let (domain C, xs) = compress([30, 10]); xs.at(30) == C.last!`
-    pub fn at(self, val: T) -> D:
+    /// example: `let (domain C, xs) = compress([30, 10]); xs.index_of(30) == C.last!`
+    pub fn index_of(self, val: T) -> D:
         let i = vals.first_ge(val)
-        assert i != None and vals[i!] == val  // `at` is for a value that was compressed
+        assert i != None and vals[i!] == val  // `index_of` is for a value that was compressed
         i!
 
     /// The index of `val` if it was compressed, or `None`.
     ///
     /// cost: \(O(\log n)\)
     /// traps: never
-    /// example: `compress([30, 10]).1.try_at(20) == None`
-    pub fn try_at(self, val: T) -> ?D:
+    /// example: `compress([30, 10]).1.try_index_of(20) == None`
+    pub fn try_index_of(self, val: T) -> ?D:
         if let i = vals.first_ge(val), vals[i] == val: i else: None
 
     /// Whether `val` is one of the compressed values.
@@ -823,7 +823,7 @@ pub struct Compressed<D, T>(vals: [D]T):
     /// cost: \(O(\log n)\)
     /// traps: never
     /// example: `compress([30, 10]).1.contains(10) == true`
-    pub fn contains(self, val: T) -> Bool = self.try_at(val) != None
+    pub fn contains(self, val: T) -> Bool = self.try_index_of(val) != None
 
     /// The first index whose value is `>= val`, or `None`.
     ///
@@ -865,7 +865,7 @@ pub struct Compressed<D, T>(vals: [D]T):
 /// empty: binds an empty domain `C`
 /// order: increasing values, indexed by the fresh domain `C`
 /// traps: never
-/// example: `let (domain C, xs) = compress([30, 10, 30]); xs.len == 2 and xs.at(30) == C.last!`
+/// example: `let (domain C, xs) = compress([30, 10, 30]); xs.len == 2 and xs.index_of(30) == C.last!`
 pub fn compress<S: Seq, T: Ord>(all: S) -> (domain C, Compressed<C, T>):
     with lint(unproven_list_index: allow)
     var raw: List<T> = all.collect()
@@ -2775,10 +2775,10 @@ fn compress_gives_the_values_their_own_domain():
     assert xs.len == 4 and xs.D.count == 4
     assert [xs[i] for i in xs.D] == [-7, 3, 40, 1_000_000_000]
     var cnt: [xs.D]Int = 0
-    for y in ys: cnt[xs.at(y)] += 1
+    for y in ys: cnt[xs.index_of(y)] += 1
     assert [cnt[i] for i in xs.D] == [1, 1, 2, 1]
-    assert xs.first_ge(4) == xs.at(40) and xs.first_ge(2_000_000_000) == None
-    assert xs.last_le(4) == xs.at(3) and xs.last_le(-100) == None
+    assert xs.first_ge(4) == xs.index_of(40) and xs.first_ge(2_000_000_000) == None
+    assert xs.last_le(4) == xs.index_of(3) and xs.last_le(-100) == None
     let other = compress([5, 6])
     assert other.D.count == 2 and xs.D.count == 4
     // Compressed range slicing

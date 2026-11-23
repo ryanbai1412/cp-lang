@@ -32,8 +32,8 @@ for l in 1..=31:
         (s, window.fold(s..=e)) for s in Pos if let e = s.offset(l - 1)
     ].sorted(by: w => w.1)
     for (s, total) in windows:
-        let end = if let p = s.prev: cuts.at(2 * a[p]).l else: C.last!.r
-        saved.assign(cuts.at(a[s]).l..end, Some(total))
+        let end = if let p = s.prev: cuts.index_of(2 * a[p]).l else: C.last!.r
+        saved.assign(cuts.index_of(a[s]).l..end, Some(total))
     var waiting = by_k.clone()
     for (r, opt) in saved.each().collect().rev:
         if let best = opt:

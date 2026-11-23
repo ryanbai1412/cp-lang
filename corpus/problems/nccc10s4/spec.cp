@@ -30,7 +30,7 @@ let ends = read<[W](a: (Coord, Coord), b: (Coord, Coord))>()
 let line = [W] w => Line(Pt(ends[w].a.0, ends[w].a.1), Pt(ends[w].b.0 - ends[w].a.0, ends[w].b.1 - ends[w].a.1))
 fn crossings(u: W) -> yields Corner = W.filter_map(v => crossing(line[u], line[v]))
 let (domain C, corner) = compress([p for u in W for p in crossings(u)])
-let along = [W] u => crossings(u).map(p => corner.at(p)).sorted().deduped()
+let along = [W] u => crossings(u).map(p => corner.index_of(p)).sorted().deduped()
 
 var used: [W]Bool = false
 var spent: [C]Bool = false
