@@ -15,31 +15,17 @@ Who owns what, who may decide what, and what comes to Ryan.
   reversible, so being wrong is cheap.
 - **Ryan's time is the scarcest resource.** Nothing waits for him.
 
-## Roles
+## In short
 
-| Role | Accountable for | Example |
-|---|---|---|
-| Domain owner | The long-term health of one domain: its code, its charter, its quality register, its metrics | The stdlib lane owns `std/` and `handbook/domains/stdlib.md` |
-| Milestone owner | A user-facing outcome that crosses domains: finds gaps and asks the right domains to close them | The coordinator owns Milestone 1 end to end; idioms runs its acceptance run |
-| Task owner | One bounded change, from start to landed | A helper agent porting ten solutions |
-| Document owner | Keeping one handbook document coherent | Infra owns `process/release.md` |
-
-The domains, what each owns and how they talk to each other are listed in
-`handbook/domains/README.md` and each domain's charter. Two domains never
-own the same path.
-
-## Who may do what
-
-| | Anyone | The owner | Needs the affected owner |
-|---|---|---|---|
-| Fix a bug, a stale doc line or a broken link anywhere | yes | | |
-| Change code or docs inside a domain | small fixes | yes | |
-| Change an interface another domain uses (a crate API, a std signature, a file format, a script's flags) | | proposes | yes: message them; no reply in 15 minutes counts as consent |
-| Change a principle, a domain's mission, or the language's character | | writes an RFC | flagged `Ryan to review` |
-
-If you need something from another domain and its owner is busy, make the
-change yourself, keep it small, and tell the owner in their worklog. Don't
-wait.
+Every domain has one owner: the lane that runs it. Within your domain you
+change code and docs and make ordinary decisions yourself, logging the
+reason. Anyone may fix an obvious bug, a stale line or a broken link
+anywhere. Changing something another domain depends on, such as a crate
+API, a std signature or a script's flags, needs that domain's owner, who
+has 15 minutes to object before silence counts as consent. Changing a
+principle, a domain's mission or the character of the language takes an
+RFC, which goes ahead and is flagged for Ryan to review afterwards. The
+exact roles and permissions are in the reference at the end.
 
 ## Making a decision
 
@@ -67,6 +53,36 @@ Ryan wants to review afterwards, not approve beforehand:
   reasonable choice.
 
 Everything else is an ordinary decision the owner makes.
+
+---
+
+# Reference
+
+## Roles
+
+| Role | Accountable for | Example |
+|---|---|---|
+| Domain owner | The long-term health of one domain: its code, its charter, its quality register, its metrics | The stdlib lane owns `std/` and `handbook/domains/stdlib.md` |
+| Milestone owner | A user-facing outcome that crosses domains: finds gaps and asks the right domains to close them | The coordinator owns Milestone 1 end to end; idioms runs its acceptance run |
+| Task owner | One bounded change, from start to landed | A helper agent porting ten solutions |
+| Document owner | Keeping one handbook document coherent | Infra owns `process/release.md` |
+
+The domains, what each owns and how they talk to each other are listed in
+`handbook/domains/README.md` and each domain's charter. Two domains never
+own the same path.
+
+## Who may do what
+
+| | Anyone | The owner | Needs the affected owner |
+|---|---|---|---|
+| Fix a bug, a stale doc line or a broken link anywhere | yes | | |
+| Change code or docs inside a domain | small fixes | yes | |
+| Change an interface another domain uses (a crate API, a std signature, a file format, a script's flags) | | proposes | yes: message them; no reply in 15 minutes counts as consent |
+| Change a principle, a domain's mission, or the language's character | | writes an RFC | flagged `Ryan to review` |
+
+If you need something from another domain and its owner is busy, make the
+change yourself, keep it small, and tell the owner in their worklog. Don't
+wait.
 
 ## Changes
 
