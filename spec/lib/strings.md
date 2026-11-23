@@ -160,12 +160,12 @@ Laws:
 
 <!-- spec-only: signatures and costs, not a program -->
 ```cp
-fn z_function<S: Indexed>(s: S) -> List<Int>                    // O(n)
-fn prefix_function<S: Indexed>(s: S) -> List<Int>               // O(n)
+fn z_function<S: Indexed<K, T>, K, T: Eq>(s: S) -> [K]Int       // O(n)
+fn prefix_function<S: Indexed<K, T>, K, T: Eq>(s: S) -> [K]Int  // O(n)
 fn find_all<S: Indexed, P: Indexed>(self: S, pat: P) -> yields Int // O(|self| + |pat|)
 fn period<S: Indexed>(s: S) -> Int                              // O(n)
 fn borders<S: Indexed>(s: S) -> yields Int                      // O(n); longest first
-fn prefix_matches<S: Indexed, P: Indexed>(self: S, pat: P) -> List<Int>
+fn prefix_matches<S: Indexed<K, T>, P: Indexed<J, T>, K, J, T: Eq>(self: S, pat: P) -> [K]Int
     // O(|self| + |pat|); entry i is the longest prefix of pat ending at self[i]
 fn overlap<A: Indexed, B: Indexed>(a: A, b: B) -> Int
     // O(|a| + |b|); longest suffix of a that is a prefix of b
