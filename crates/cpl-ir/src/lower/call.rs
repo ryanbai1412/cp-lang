@@ -14,6 +14,20 @@ pub(super) enum Reduce {
 }
 
 impl<'a> Lowerer<'a> {
+    /// `Some(e)`: `e` takes the wanted `?T`'s `T`, so `Some(3)` is a `?Mod<7>` where one is wanted.
+    fn some_of(&mut self, arg: &ast::Expr, hint: Option<&Ty>, span: Span) -> Expr {
+        let inner_h = match hint {
+            Some(Ty::Opt(inner)) => Some(&**inner),
+            other => other,
+        };
+        let mut val = self.expr(arg, inner_h);
+        if let Some(want) = inner_h.filter(|w| **w != val.ty) {
+            val = self.try_coerce(val, want).unwrap_or_else(|v| v);
+        }
+        let ty = Ty::opt(val.ty.clone());
+        self.mk(ExprKind::Some(Box::new(val)), ty, span)
+    }
+
     /// The symbol `e` names, if it is a bare name no local hides.
     pub(super) fn sym(&self, e: &ast::Expr) -> Option<Sym> {
         match &e.kind {
@@ -225,13 +239,7 @@ impl<'a> Lowerer<'a> {
                     && args[0].name.is_none()
                     && !args[0].mutable
                 {
-                    let inner_h = match hint {
-                        Some(Ty::Opt(inner)) => Some(&**inner),
-                        other => other,
-                    };
-                    let val = self.expr(&args[0].value, inner_h);
-                    let ty = Ty::opt(val.ty.clone());
-                    return self.mk(ExprKind::Some(Box::new(val)), ty, span);
+                    return self.some_of(&args[0].value, hint, span);
                 }
                 if name == "same" && args.len() == 2 {
                     let op_a = self.op_identity(&args[0].value);
@@ -2208,15 +2216,7 @@ impl<'a> Lowerer<'a> {
                 None => self.err_expr(span),
             },
             "some" | "Some" => match self.positional_any(name, args, 1, span) {
-                Some(exprs) => {
-                    let inner_h = match hint {
-                        Some(Ty::Opt(inner)) => Some(&**inner),
-                        other => other,
-                    };
-                    let val = self.expr(exprs[0], inner_h);
-                    let ty = Ty::opt(val.ty.clone());
-                    self.mk(ExprKind::Some(Box::new(val)), ty, span)
-                }
+                Some(exprs) => self.some_of(exprs[0], hint, span),
                 None => self.err_expr(span),
             },
             "laws_hold" => self.lower_laws_hold(args, span),
