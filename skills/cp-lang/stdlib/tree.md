@@ -188,7 +188,7 @@ Fields: `root: Node`, `kind: [Node]PermKind`, `l: [Node]Node`, `r: [Node]Node`, 
 
 The vertices of a `Rooted` tree by depth, each depth in preorder, over their own domain `B`: the descendants of a vertex at one depth are a contiguous range of `B`.
 
-Fields: `at: [B]V`, `slot: [V]B`, `start: List<Int>`.
+Fields: `at: [B]V`, `slot: [V]B`, `start: List<Int>`, `pre: [V]Int`, `sz: [V]Int`, `dep: [V]Int`.
 
 - `fn pos(self, v: V) -> B` — O(1); The position of `v` among the layers.
 - `fn level(self, d: Int) -> Range<B>` — O(1); Every vertex at depth `d`, in `t.Pre` order; empty past the deepest or below 0.
@@ -198,7 +198,7 @@ Fields: `at: [B]V`, `slot: [V]B`, `start: List<Int>`.
 
 The enter and exit events of a `Rooted` tree's `tour` over their own domain `P` of 2n members, for Mo's algorithm on trees.
 
-Fields: `at: [P]Visit<V, V>`.
+Fields: `at: [P]Visit<V, V>`, `ent: [V]P`, `ext: [V]P`, `jt: JumpTree<V>`.
 
 - `fn enter(self, v: V) -> P` — O(1); The event that enters `v`.
 - `fn exit(self, v: V) -> P` — O(1); The event that leaves `v`.

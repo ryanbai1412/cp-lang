@@ -15,7 +15,7 @@ use std.dp.{Step}
 use std.algebra.{Monoid, MaxSub, Action}
 use std.segtree.{SegTree}
 use std.algebra.{add}
-use std.seq.{dedup, first_true}
+use std.seq.{dedup, first_true, span}
 use std.rand.{Rng}
 use std.dsu.{Dsu}
 
@@ -504,13 +504,13 @@ pub struct Rooted<V, Pre>:
             while open.len > 0 and not self.is_anc(open[open.len - 1], v):
                 let u = open[open.len - 1]
                 open.pop()
-                yield Visit.Exit(u, via: par[u])
-            yield Visit.Enter(v, via: par[v])
+                yield Visit.Exit(u, par[u])
+            yield Visit.Enter(v, par[v])
             open.push(v)
         while open.len > 0:
             let u = open[open.len - 1]
             open.pop()
-            yield Visit.Exit(u, via: par[u])
+            yield Visit.Exit(u, par[u])
 
     /// The positions of `v`'s subtree, `v` first: one contiguous range of `t.Pre`.
     ///
@@ -945,7 +945,14 @@ pub struct Rooted<V, Pre>:
             order[slot[v]] = v
             fill[dep[v]] += 1
         domain Level = 0..V.count
-        Layers::<V, Level>([Level] b => order[b.to_idx], [V] v => Level.nth(slot[v]), start)
+        Layers::<V, Level>(
+            [Level] b => order[b.to_idx],
+            [V] v => Level.nth(slot[v]),
+            start,
+            [V] v => tin[v].to_idx,
+            [V] v => sz[v],
+            [V] v => dep[v],
+        )
 
     // blocked: `Rooted` resolves to a compiler built-in (GAPS.md tree `Rooted`)
     /// The 2n enter and exit events of `tour` over a fresh domain, for Mo's algorithm on paths and
@@ -956,7 +963,20 @@ pub struct Rooted<V, Pre>:
     /// order: `tour` order
     /// traps: never
     /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); let ev = t.events(); ev.sub(1).count() == 6`
-    pub fn events(self) -> Events<V, _> = todo
+    pub fn events(self) -> Events<V, _>:
+        domain Ev = 0..2 * V.count
+        var jt = JumpTree<V>()
+        for p in Pre:
+            if let u = par[at[p]]: jt.add(at[p], u)
+        var tour: List<Visit<V, V>> = []
+        for e in self.tour: tour.push(e)
+        let ent = [V] v => 2 * tin[v].to_idx - dep[v]
+        Events<V, Ev>(
+            [Ev] i => tour[i.to_idx],
+            [V] v => Ev.nth(ent[v]),
+            [V] v => Ev.nth(ent[v] + 2 * sz[v] - 1),
+            jt,
+        )
 
     // blocked: `Rooted` resolves to a compiler built-in (GAPS.md tree `Rooted`)
     /// The closed Euler walk: 2n - 1 visits from the root back to it, each pair of neighbours
@@ -2539,6 +2559,9 @@ pub struct Layers<V, B>:
     slot: [V]B
     /// The layer of depth `d` is `start[d]..start[d + 1]` as ordinals of `B`.
     start: List<Int>
+    pre: [V]Int
+    sz: [V]Int
+    dep: [V]Int
 
     /// The position of `v` among the layers.
     ///
@@ -2566,26 +2589,34 @@ pub struct Layers<V, B>:
     /// order: `t.Pre` order
     /// traps: never
     /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); let ly = t.layers(); ly.below(1, 2).map(b => ly.at[b]).collect() == [3, 4] and ly.below(2, 2).count() == 0`
-    pub fn below(self, v: V, d: Int) -> Range<B> = todo
+    pub fn below(self, v: V, d: Int) -> Range<B>:
+        if d < dep[v] or d + 1 >= start.len: return B.nth(0).l..B.nth(0).l
+        let hi = start[d + 1]
+        let i = (start[d]..hi).first_true(k => pre[at[B.nth(k)]] >= pre[v]) ?? hi
+        let j = (i..hi).first_true(k => pre[at[B.nth(k)]] >= pre[v] + sz[v]) ?? hi
+        span(B.cuts(i), B.cuts(j))
 
 /// The enter and exit events of a `Rooted` tree's `tour` over their own domain `P` of 2n
 /// members, for Mo's algorithm on trees.
 pub struct Events<V, P>:
     at: [P]Visit<V, V>
+    ent: [V]P
+    ext: [V]P
+    jt: JumpTree<V>
 
     /// The event that enters `v`.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); let ev = t.events(); ev.at[ev.enter(1)] == Enter(1, Some(0)) and ev.enter(1) < ev.enter(3)`
-    pub fn enter(self, v: V) -> P = todo
+    pub fn enter(self, v: V) -> P = ent[v]
 
     /// The event that leaves `v`.
     ///
     /// cost: O(1)
     /// traps: never
     /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); let ev = t.events(); ev.at[ev.exit(3)] == Exit(3, Some(1)) and ev.exit(3) < ev.exit(1)`
-    pub fn exit(self, v: V) -> P = todo
+    pub fn exit(self, v: V) -> P = ext[v]
 
     /// The events inside `v`'s subtree, `enter(v)` through `exit(v)`.
     ///
@@ -2594,7 +2625,7 @@ pub struct Events<V, P>:
     /// order: `tour` order
     /// traps: never
     /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); let ev = t.events(); ev.sub(1).map(p => ev.at[p]).collect() == [Enter(1, Some(0)), Enter(3, Some(1)), Exit(3, Some(1)), Enter(4, Some(1)), Exit(4, Some(1)), Exit(1, Some(0))]`
-    pub fn sub(self, v: V) -> Range<P> = todo
+    pub fn sub(self, v: V) -> Range<P> = ent[v].l..ext[v].r
 
     /// A range of events whose vertices met an odd number of times, plus `extra` when present, are
     /// exactly the vertices of the path from `a` to `b`.
@@ -2608,7 +2639,11 @@ pub struct Events<V, P>:
     /// order: `tour` order
     /// traps: when `a` and `b` are in different trees
     /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); let ev = t.events(); ev.path(3, 2).range.count() == 5 and ev.path(3, 2).extra == Some(0) and ev.path(1, 4).extra == None`
-    pub fn path(self, a: V, b: V) -> (range: Range<P>, extra: ?V) = todo
+    pub fn path(self, a: V, b: V) -> (range: Range<P>, extra: ?V):
+        let (x, y) = if ent[a] <= ent[b]: (a, b) else: (b, a)
+        let c = jt.lca(x, y)!
+        if c == x: (range: ent[x].l..ent[y].r, extra: None)
+        else: (range: ext[x].l..ent[y].r, extra: Some(c))
 
 /// The long-path decomposition of a `Rooted` tree: each vertex continues the path of its
 /// tallest child, so a DP indexed by depth below `v` lives in one shared buffer over `L`,
