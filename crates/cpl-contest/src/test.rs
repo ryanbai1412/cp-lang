@@ -11,7 +11,9 @@
 //!   2/3 passed
 //! ```
 
-use crate::problem::{cases_in, find_tests_dir, source_path, tests_dir, Limits, TestCase};
+use crate::problem::{
+    cases_in, find_checker, find_tests_dir, source_path, tests_dir, Limits, TestCase,
+};
 use cpl_diag::Shown;
 use cpl_stress::args::Args;
 use cpl_stress::cli::{select_judge, solution};
@@ -279,7 +281,14 @@ pub(crate) fn ready(source: &Path, src: &str, args: &Args) -> Result<Ready, Stri
     if path("--checker").is_some() && path("--interactor").is_some() {
         return Err("a problem has a checker or an interactor, not both".to_string());
     }
-    let judge = select_judge(src, &name, path("--checker"), path("--interactor"))?;
+    // The problem's `checker.py`, unless a flag or the file names a judge.
+    let found = (path("--checker").is_none()
+        && path("--interactor").is_none()
+        && cpl_stress::judge::declared(src).is_empty())
+    .then(|| find_checker(source))
+    .flatten();
+    let checker = path("--checker").or(found.as_deref());
+    let judge = select_judge(src, &name, checker, path("--interactor"))?;
     let mut limits = Limits::of(source, src);
     if let Some(ms) = args.number("--time-limit")? {
         limits.time = Duration::from_millis(ms);

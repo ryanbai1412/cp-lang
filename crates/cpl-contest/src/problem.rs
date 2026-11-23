@@ -129,6 +129,21 @@ pub fn find_tests_dir(source: &Path) -> PathBuf {
     own
 }
 
+/// The problem's own checker, `checker.py <input> <output> <answer>` (exit 0
+/// accepts): in the cases folder, or beside it when that is a sibling
+/// `tests/` (as in `corpus/problems/<id>/`).
+pub fn find_checker(source: &Path) -> Option<PathBuf> {
+    let cases = find_tests_dir(source);
+    let beside = match cases.file_name() {
+        Some(name) if name == "tests" => cases.parent().map(|p| p.join("checker.py")),
+        _ => None,
+    };
+    [Some(cases.join("checker.py")), beside]
+        .into_iter()
+        .flatten()
+        .find(|path| path.is_file())
+}
+
 /// The cases in `dir`: every `*.in` paired with `.out` or `.ans` if present,
 /// numbered samples first in order, then the rest by name.
 pub fn cases_in(dir: &Path) -> Vec<TestCase> {

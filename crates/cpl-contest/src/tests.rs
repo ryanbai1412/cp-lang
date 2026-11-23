@@ -1073,3 +1073,44 @@ fn fetch_says_where_the_name_goes_when_given_dash_o() {
         "{err}"
     );
 }
+
+#[test]
+fn a_problems_checker_py_judges_its_cases_unless_the_file_declares_one() {
+    if std::process::Command::new("python3")
+        .arg("--version")
+        .output()
+        .is_err()
+    {
+        return;
+    }
+    // The corpus layout: `port.cp`, `tests/` and `checker.py` side by side.
+    let dir = std::env::temp_dir().join(format!("cpl-checker-py-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(dir.join("tests")).unwrap();
+    std::fs::write(dir.join("tests/1.in"), "4\n").unwrap();
+    std::fs::write(dir.join("tests/1.out"), "1 3\n").unwrap();
+    // Any two numbers summing to n are a right answer.
+    std::fs::write(
+        dir.join("checker.py"),
+        "import sys\nn = int(open(sys.argv[1]).read())\n\
+         got = list(map(int, open(sys.argv[2]).read().split()))\n\
+         sys.exit(0 if len(got) == 2 and sum(got) == n else 1)\n",
+    )
+    .unwrap();
+    let port = dir.join("port.cp");
+    let port = port.to_str().unwrap();
+    std::fs::write(port, "let n: 2..=100 = read()\nprint(n - 2, 2)\n").unwrap();
+    let (code, out, _) = cli(test::run, &[port]);
+    assert_eq!(code, 0, "{out}");
+    assert!(out.ends_with("  1/1 passed\n"), "{out}");
+    // `@check` in the file wins: this one wants the sample's exact answer.
+    std::fs::write(
+        port,
+        "let n: 2..=100 = read()\nprint(n - 2, 2)\n\n\
+         @check\nfn check():\n    let a: Int = read_output()\n    assert a == 1\n",
+    )
+    .unwrap();
+    let (code, out, _) = cli(test::run, &[port]);
+    assert_eq!(code, 1, "{out}");
+    std::fs::remove_dir_all(&dir).unwrap();
+}
