@@ -1,0 +1,6 @@
+code = "L0582"
+level = "warn"
+group = "idiom"
+title = "Argsort through value-index pairs"
+summary = "`(a[i], i)` pairs sorted for their order: `(0..n).sorted(by: i => a[i])`"
+no_fix = "the loop over the sorted pairs reads both halves, and turning `(v, i)` into `i` and `a[i]` there has to be read"

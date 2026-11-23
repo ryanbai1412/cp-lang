@@ -1,0 +1,5 @@
+let n: 1..=200000 = read()
+let a: [0..n]Int = read()
+let b: [0..n]Int = read()
+let order = [(a[i], b[i]) for i in 0..n].sorted()
+print(order)
