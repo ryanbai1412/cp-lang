@@ -343,6 +343,11 @@ impl<'a> Lowerer<'a> {
                 let ord = self.cast(Cast::Ord, value, Ty::Int);
                 self.int_add(ord, 1)
             }
+            // The cuts on either side of a fieldless enum's variant, by number.
+            (Ty::Enum(e), "l" | "r") if self.unit_enum(*e) => {
+                let ord = self.cast(Cast::EnumOrd(*e), value, Ty::Int);
+                self.int_add(ord, i64::from(name.text == "r"))
+            }
             (Ty::Enum(e), "next" | "prev") if self.unit_enum(*e) => {
                 self.enum_step(*e, value, name.text == "next", span)
             }

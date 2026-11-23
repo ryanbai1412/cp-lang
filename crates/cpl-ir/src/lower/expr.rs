@@ -1868,27 +1868,6 @@ impl<'a> Lowerer<'a> {
         }
     }
 
-    /// A value to print. Everything prints except nothing.
-    pub(super) fn fmt_arg(&mut self, value: Expr, digits: u32, span: Span) -> Option<FmtArg> {
-        if value.ty == Ty::Unit {
-            self.no_value_to_print(span);
-            return None;
-        }
-        // `with io(base: 1)`: a counted domain's first position prints as `1`.
-        let value = match value.ty {
-            Ty::Pos(d) if self.base_one() && self.counted.contains(&d) => {
-                let label = self.mk(
-                    ExprKind::Cast(Cast::Label(d), Box::new(value)),
-                    Ty::Int,
-                    span,
-                );
-                self.int_add(label, 1)
-            }
-            _ => value,
-        };
-        Some(FmtArg { value, digits })
-    }
-
     /// A `Str` or a `Char` as a `Str`, for `+`.
     pub(super) fn as_str(&mut self, value: Expr, span: Span) -> Expr {
         match value.ty {

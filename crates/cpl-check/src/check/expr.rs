@@ -2434,6 +2434,7 @@ impl<'a> Checker<'a> {
                 if args.is_empty() && self.finite_index_enum_size(type_name).is_some() {
                     match name.text.as_str() {
                         "ord" | "idx" | "label" => return Ty::Int,
+                        "l" | "r" => return Ty::Pos(format!("{type_name}.cuts")),
                         "prev" | "next" => return Ty::Optional(Box::new(base_ty.clone())),
                         "offset" | "ahead" | "back" => {
                             return Ty::Fn {

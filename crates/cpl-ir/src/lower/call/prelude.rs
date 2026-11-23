@@ -1723,4 +1723,52 @@ impl<'a> Lowerer<'a> {
         self.io_base = saved_base;
         out
     }
+
+    /// A value to print. Everything prints except nothing.
+    pub(in crate::lower) fn fmt_arg(
+        &mut self,
+        value: Expr,
+        digits: u32,
+        span: Span,
+    ) -> Option<FmtArg> {
+        if value.ty == Ty::Unit {
+            self.no_value_to_print(span);
+            return None;
+        }
+        // `with io(base: 1)`: a counted domain's first position prints as `1`.
+        let value = match value.ty {
+            Ty::Pos(d) if self.base_one() && self.counted.contains(&d) => {
+                let label = self.mk(
+                    ExprKind::Cast(Cast::Label(d), Box::new(value)),
+                    Ty::Int,
+                    span,
+                );
+                self.int_add(label, 1)
+            }
+            Ty::Pos(d) if self.product_domains.contains_key(&d) => {
+                self.product_parts(d, value, span)
+            }
+            _ => value,
+        };
+        Some(FmtArg { value, digits })
+    }
+
+    /// A product position shows as the tuple of its parts: `D((1, 2))` is `1 2`.
+    fn product_parts(&mut self, d: DomainId, value: Expr, span: Span) -> Expr {
+        let factors = self.product_domains[&d].clone();
+        let ty = Ty::Tuple(
+            factors
+                .iter()
+                .map(|(_, f)| self.product_factor_ty(f))
+                .collect(),
+        );
+        self.do_expr(Some(&ty.clone()), span, |lw, out| {
+            let held = lw.hold(value, out);
+            let parts = (0..factors.len())
+                .map(|i| lw.decode_product_field(d, held.clone(), i, span))
+                .collect();
+            let tuple = lw.mk(ExprKind::Tuple(parts), ty, span);
+            out.push(Stmt::Give(tuple));
+        })
+    }
 }
