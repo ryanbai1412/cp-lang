@@ -243,7 +243,7 @@ jobs:
       # Each download gets 3 tries of 3 min: one hung for 9 min with no output.
       - name: Install Emacs, Helix and the tree-sitter CLI
         run: |
-          try() { for n in 1 2 3; do timeout 180 "$@" && return; echo "::warning::try $n failed: $*"; done; return 1; }
+          try() { for n in 1 2 3; do timeout 180 "$@" && return; echo "::warning::try $n failed: $*" >&2; done; return 1; }
           # man-db's trigger alone can take minutes on a hosted runner.
           sudo rm -f /var/lib/man-db/auto-update
           try sudo apt-get install -y -q --no-install-recommends -o DPkg::Lock::Timeout=60 emacs-nox >/dev/null
