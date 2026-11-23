@@ -280,7 +280,11 @@ impl<'p> Emitter<'p> {
         let feeds = cpl_ir::pushed::Feeds::of(program);
         emitter.summaries = feeds.summaries;
         emitter.pushers = feeds.pushers;
-        emitter.sinks = crate::sink::sinks(program, &emitter.devirt);
+        emitter.sinks = crate::sink::sinks(
+            program,
+            &emitter.devirt,
+            emitter.target.checks != crate::Checks::None,
+        );
         emitter
     }
 

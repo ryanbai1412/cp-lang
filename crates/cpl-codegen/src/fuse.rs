@@ -157,12 +157,15 @@ impl<'p> Emitter<'p> {
         }
         // Fused, the two bodies interleave: fine when neither has effects the
         // other sees, and one of them can neither trap nor stop early.
-        if !trap_free_block(inner_body, *vec_slot) && !trap_free_block(outer_body, usize::MAX) {
+        let traps = self.target.checks != crate::Checks::None;
+        if !trap_free_block(inner_body, *vec_slot, traps)
+            && !trap_free_block(outer_body, usize::MAX, traps)
+        {
             return false;
         }
         // A `break` of the consumer skips the rest of the producer: fine when
         // the rest can neither trap nor write anything but its own locals.
-        if stops && !(trap_free_block(inner_body, *vec_slot) && writes_own(inner_body)) {
+        if stops && !(trap_free_block(inner_body, *vec_slot, traps) && writes_own(inner_body)) {
             return false;
         }
         if stops {
@@ -403,14 +406,19 @@ fn writes_own(block: &Block) -> bool {
 /// True when running `block` can neither trap, stop early nor loop forever,
 /// so where it runs relative to other effect-free code cannot be seen.
 /// Pushes onto `vec` count as nothing; the fused consumer is checked apart.
-fn trap_free_block(block: &Block, vec: usize) -> bool {
-    trap_free_stmts(&block.stmts, vec, &|_| false)
+fn trap_free_block(block: &Block, vec: usize, traps: bool) -> bool {
+    trap_free_stmts(&block.stmts, vec, traps, &|_| false)
 }
 
 /// `trap_free_block` over `stmts`, where `call_ok` says which calls cannot trap.
-pub(crate) fn trap_free_stmts(stmts: &[Stmt], vec: usize, call_ok: &dyn Fn(&Expr) -> bool) -> bool {
-    let free = |e: &Expr| trap_free_with(e, call_ok);
-    let block_free = |b: &Block| trap_free_stmts(&b.stmts, vec, call_ok);
+pub(crate) fn trap_free_stmts(
+    stmts: &[Stmt],
+    vec: usize,
+    traps: bool,
+    call_ok: &dyn Fn(&Expr) -> bool,
+) -> bool {
+    let free = |e: &Expr| trap_free_with(e, traps, call_ok);
+    let block_free = |b: &Block| trap_free_stmts(&b.stmts, vec, traps, call_ok);
     stmts.iter().all(|stmt| match stmt {
         Stmt::Let(_, init) => init.as_ref().is_none_or(free),
         Stmt::Assign(place, _, val) => matches!(place.kind, PlaceKind::Local(_)) && free(val),
@@ -430,15 +438,19 @@ pub(crate) fn trap_free_stmts(stmts: &[Stmt], vec: usize, call_ok: &dyn Fn(&Expr
         Stmt::For(_, _, Iter::Seq(seq, _), body) => {
             matches!(seq.kind, ExprKind::Local(_)) && block_free(body)
         }
+        Stmt::For(_, _, Iter::Members(mask) | Iter::Subsets(mask), body) => {
+            free(mask) && block_free(body)
+        }
         Stmt::Continue(None) => true,
         _ => false,
     })
 }
 
 /// True when `e` cannot trap: no checked index, call, unwrap or division by
-/// what may be zero.
-pub(crate) fn trap_free_with(e: &Expr, call_ok: &dyn Fn(&Expr) -> bool) -> bool {
-    let free = |x: &Expr| trap_free_with(x, call_ok);
+/// what may be zero. A build without `traps` (`--checks none`) checks no
+/// index and gives 0 for `/ 0`, so only calls and unwraps are left.
+pub(crate) fn trap_free_with(e: &Expr, traps: bool, call_ok: &dyn Fn(&Expr) -> bool) -> bool {
+    let free = |x: &Expr| trap_free_with(x, traps, call_ok);
     match &e.kind {
         ExprKind::Unit
         | ExprKind::Int(_)
@@ -457,7 +469,7 @@ pub(crate) fn trap_free_with(e: &Expr, call_ok: &dyn Fn(&Expr) -> bool) -> bool 
         ExprKind::Unary(op, x) => *op != UnOp::Neg && free(x),
         ExprKind::Binary(op, l, r) => {
             let safe = match op {
-                BinOp::Div | BinOp::Rem => matches!(r.kind, ExprKind::Int(k) if k != 0),
+                BinOp::Div | BinOp::Rem => !traps || matches!(r.kind, ExprKind::Int(k) if k != 0),
                 BinOp::Pow | BinOp::Shl | BinOp::Shr => false,
                 _ => true,
             };
@@ -470,7 +482,7 @@ pub(crate) fn trap_free_with(e: &Expr, call_ok: &dyn Fn(&Expr) -> bool) -> bool 
             None => free(c) && free(t) && free(f),
         },
         ExprKind::Closure(_) => true,
-        ExprKind::Index(base, idxs) if crate::devirt::in_domain(&base.ty, idxs) => {
+        ExprKind::Index(base, idxs) if !traps || crate::devirt::in_domain(&base.ty, idxs) => {
             free(base) && idxs.iter().all(free)
         }
         _ => call_ok(e),

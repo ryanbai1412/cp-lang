@@ -16,15 +16,15 @@ use crate::fuse::{producer, trap_free_stmts, trap_free_with, FusedPush};
 use crate::walk;
 
 /// Each fn called with an inline list it can sink, and that list parameter.
-pub(crate) fn sinks(program: &Program, devirt: &Devirt) -> BTreeMap<usize, usize> {
-    let pure = pure_fns(program, devirt);
+pub(crate) fn sinks(program: &Program, devirt: &Devirt, traps: bool) -> BTreeMap<usize, usize> {
+    let pure = pure_fns(program, devirt, traps);
     let mut found = BTreeMap::new();
     let mut visit = |block| {
         walk::deep_exprs(block, &mut |e: &Expr| {
             let ExprKind::Call(fid, args) = &e.kind else {
                 return;
             };
-            if let Some(slot) = sink_param(program, devirt, &pure, *fid) {
+            if let Some(slot) = sink_param(program, devirt, &pure, traps, *fid) {
                 if sinkable_args(program, devirt, *fid, slot, args) {
                     found.insert(*fid, slot);
                 }
@@ -42,6 +42,7 @@ fn sink_param(
     program: &Program,
     devirt: &Devirt,
     pure: &BTreeSet<usize>,
+    traps: bool,
     fid: usize,
 ) -> Option<usize> {
     let f = &program.fns[fid];
@@ -69,7 +70,7 @@ fn sink_param(
         walk::deep_stmts(body, &mut |s| {
             escapes |= matches!(s, Stmt::Break(_) | Stmt::Continue(_) | Stmt::Return(_));
         });
-        let call_ok = |e: &Expr| pure_call(program, devirt, pure, Some(fid), e);
+        let call_ok = |e: &Expr| pure_call(program, devirt, pure, Some(fid), traps, e);
         let mut global = false;
         walk::deep_exprs(&f.body, &mut |e| {
             global |= matches!(e.kind, ExprKind::Global(_))
@@ -78,8 +79,8 @@ fn sink_param(
             && uses == 1
             && !escapes
             && !global
-            && trap_free_stmts(&f.body.stmts[..at], usize::MAX, &call_ok)
-            && trap_free_stmts(&body.stmts, usize::MAX, &call_ok)
+            && trap_free_stmts(&f.body.stmts[..at], usize::MAX, traps, &call_ok)
+            && trap_free_stmts(&body.stmts, usize::MAX, traps, &call_ok)
     })
 }
 
@@ -87,7 +88,7 @@ fn sink_param(
 /// parameter, no global read, and a body of trap-free statements whose only
 /// calls are to such fns or to closures that are. Built bottom-up, so a
 /// recursive fn is never in it.
-pub(crate) fn pure_fns(program: &Program, devirt: &Devirt) -> BTreeSet<usize> {
+pub(crate) fn pure_fns(program: &Program, devirt: &Devirt, traps: bool) -> BTreeSet<usize> {
     let mut pure = BTreeSet::new();
     loop {
         let found: Vec<usize> = (0..program.fns.len())
@@ -97,8 +98,8 @@ pub(crate) fn pure_fns(program: &Program, devirt: &Devirt) -> BTreeSet<usize> {
                 !f.params.iter().any(|p| p.mutable)
                     && !program.judge_fns.contains(&fid)
                     && !program.entry_fns.contains(&fid)
-                    && pure_body(&f.body, &|e| {
-                        pure_call(program, devirt, &pure, Some(fid), e)
+                    && pure_body(&f.body, traps, &|e| {
+                        pure_call(program, devirt, &pure, Some(fid), traps, e)
                     })
             })
             .collect();
@@ -111,33 +112,33 @@ pub(crate) fn pure_fns(program: &Program, devirt: &Devirt) -> BTreeSet<usize> {
 
 /// Trap-free statements up to a `return` of a trap-free value, reading no
 /// global; of an `if` decided at compile time only the branch taken counts.
-fn pure_body(body: &Block, call_ok: &dyn Fn(&Expr) -> bool) -> bool {
+fn pure_body(body: &Block, traps: bool, call_ok: &dyn Fn(&Expr) -> bool) -> bool {
     let mut global = false;
     walk::deep_exprs(body, &mut |e| {
         global |= matches!(e.kind, ExprKind::Global(_))
     });
-    !global && pure_stmts(&body.stmts, call_ok)
+    !global && pure_stmts(&body.stmts, traps, call_ok)
 }
 
-fn pure_stmts(stmts: &[Stmt], call_ok: &dyn Fn(&Expr) -> bool) -> bool {
+fn pure_stmts(stmts: &[Stmt], traps: bool, call_ok: &dyn Fn(&Expr) -> bool) -> bool {
     let Some((first, rest)) = stmts.split_first() else {
         return true;
     };
     match first {
-        Stmt::Return(Some(r)) => trap_free_with(r, call_ok),
+        Stmt::Return(Some(r)) => trap_free_with(r, traps, call_ok),
         Stmt::If(cond, then, otherwise) if crate::prune::known(cond).is_some() => {
             let taken = if crate::prune::known(cond) == Some(true) {
                 then
             } else {
                 otherwise
             };
-            pure_stmts(&taken.stmts, call_ok)
+            pure_stmts(&taken.stmts, traps, call_ok)
                 && (matches!(taken.stmts.last(), Some(Stmt::Return(_)))
-                    || pure_stmts(rest, call_ok))
+                    || pure_stmts(rest, traps, call_ok))
         }
         _ => {
-            trap_free_stmts(std::slice::from_ref(first), usize::MAX, call_ok)
-                && pure_stmts(rest, call_ok)
+            trap_free_stmts(std::slice::from_ref(first), usize::MAX, traps, call_ok)
+                && pure_stmts(rest, traps, call_ok)
         }
     }
 }
@@ -149,25 +150,26 @@ fn pure_call(
     devirt: &Devirt,
     pure: &BTreeSet<usize>,
     home: Option<usize>,
+    traps: bool,
     e: &Expr,
 ) -> bool {
-    let inner = |x: &Expr| pure_call(program, devirt, pure, None, x);
+    let inner = |x: &Expr| pure_call(program, devirt, pure, None, traps, x);
     let (known, args) = match &e.kind {
         ExprKind::Call(fid, args) => (pure.contains(fid), args),
         ExprKind::CallExpr(callee, args) => {
             let known = devirt.target(home, callee).is_some_and(|cid| {
                 let c = &program.closures[cid];
-                c.muts.is_empty() && c.captures.is_empty() && pure_body(&c.body, &inner)
+                c.muts.is_empty() && c.captures.is_empty() && pure_body(&c.body, traps, &inner)
             });
             (known, args)
         }
         _ => return false,
     };
-    let here = |x: &Expr| pure_call(program, devirt, pure, home, x);
+    let here = |x: &Expr| pure_call(program, devirt, pure, home, traps, x);
     known
         && args
             .iter()
-            .all(|a| matches!(a, Arg::Value(v) if trap_free_with(v, &here)))
+            .all(|a| matches!(a, Arg::Value(v) if trap_free_with(v, traps, &here)))
 }
 
 /// The list argument is a producer and every other argument a constant,

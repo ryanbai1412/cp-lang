@@ -65,3 +65,31 @@ fn a_producer_that_may_trap_is_not_cut_short() {
     let f = fn_text(&cpp, "ll first_over(");
     assert!(f.contains("std::vector<ll>"), "{f}");
 }
+
+fn build(source: &str, checks: crate::Checks) -> String {
+    let mut db = cpl_check::Database::new();
+    db.set_file("t.cp", source);
+    let program = cpl_ir::lower(&db.analyze("t.cp").expect("set")).expect("lowers");
+    let target = crate::Target {
+        checks,
+        ..crate::Target::default()
+    };
+    crate::emit_for(&program, "t.cp", None, &target)
+}
+
+#[test]
+fn a_build_without_traps_fuses_a_filter_whose_both_sides_index() {
+    let source = concat!(
+        "let n: 1..=1000 = read()\n",
+        "let xs: [n]Int = read()\n",
+        "var tot = 0\n",
+        "for i in 0..n:\n",
+        "    tot += (i..n).filter(j => xs[j] > xs[i]).map(j => xs[j] - xs[i]).min() ?? 0\n",
+        "print(tot)\n",
+    );
+    let solve = |cpp: &str| cpp[cpp.find("void solve()").expect("solve")..].to_string();
+    let traps = solve(&build(source, crate::Checks::Traps));
+    assert!(traps.contains("std::vector<ll>"), "{traps}");
+    let none = solve(&build(source, crate::Checks::None));
+    assert!(!none.contains("std::vector<ll> t"), "{none}");
+}
