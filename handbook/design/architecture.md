@@ -214,7 +214,7 @@ Crate names follow jobs; a crate whose job already matches keeps its name.
 | `cpl-codegen` | C++ emitter, runtime tree-shaking, judge profiles |
 | `cpl-diag` | diagnostic model and renderers; its JSON shape is printed with `cpl-json`. `plain` turns doc text's LaTeX math and intra-doc links into terminal text for hover, the CLI and lint (`cpl_doc::plain` re-exports it) |
 | `cpl-cli` | `cpl check/run/build/test/stress/doc/fmt/lint/explain/judge/dap` |
-| `cpl-fmt`, `cpl-lint`, `cpl-doc`, `cpl-stress`, `cpl-judge` | tools over `cpl-check` queries |
+| `cpl-fmt`, `cpl-lint`, `cpl-doc`, `cpl-stress`, `cpl-judge` | tools over `cpl-check` queries ; `cpl-stress` runs `cpl-lint` so a clean report can name the bound lints whose witnesses its small cases miss |
 | `cpl-lsp` | the language server. `lib.rs` only re-exports `Server` and `serve`; dispatch is in `server.rs`. Hover facts come from `cpl-check/src/hover.rs`; the LSP renders them as markdown. Uses `cpl-check`, `cpl-lint`, `cpl-fmt`, `cpl-judge`, `cpl-ir`, and `cpl-doc` for doc text without Markdown math or links (`cpl_doc::plain`). `transport` framing is shared with the DAP in `cpl-cli/src/dap.rs`. `build.rs` lists the std modules for `use std.` completion |
 | `cpl-conform` | one harness: conformance, corpus, doc examples, differential, fuzzing, rewrites (cpl-lint fixes and cpl-fmt keep output), scoreboard |
 | `cpl-contest` | the contest workflow behind `cpl new/test/bench/watch`; the corpus benchmark (perf owns `corpus_bench.rs`) |

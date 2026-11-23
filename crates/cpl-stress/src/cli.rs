@@ -827,6 +827,31 @@ pub fn run_with(
             ),
             false => writeln!(stdout, "  {ran} cases agree{skipped}"),
         };
+        // Small cases never reach the bounds; a lint that names an input
+        // there that fails is pointed at (use case stress/U28).
+        let lines = cpl_diag::LineIndex::new(&src);
+        let at_bounds: Vec<String> = (analysis.as_deref())
+            .filter(|_| args.fast.is_none())
+            .map(|analysis| cpl_lint::lint_analysis(analysis, &cpl_lint::Config::default()))
+            .unwrap_or_default()
+            .iter()
+            .filter(|d| !d.witness.is_empty())
+            .map(|d| {
+                format!(
+                    "{} at line {}",
+                    d.code.0,
+                    lines.line_col(d.span.start).line + 1
+                )
+            })
+            .collect();
+        if !at_bounds.is_empty() {
+            let _ = writeln!(
+                stdout,
+                "  cases reach size {}; `cpl lint` names inputs at the bounds that fail ({}): `cpl lint --save {name}` saves them for `cpl test`",
+                args.options.size,
+                at_bounds.join(", ")
+            );
+        }
         if report.discarded > 0 {
             let inputs = if report.discarded == 1 {
                 "1 input"

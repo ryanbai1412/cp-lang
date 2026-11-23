@@ -176,3 +176,41 @@ fn a_runtime_error_in_the_json_report_is_a_diagnostic() {
         assert!(report.contains(said), "no {said:?} in:\n{report}");
     }
 }
+
+/// Stress finds nothing at small sizes, and its report points at the
+/// lint that names an input at the bounds that traps (`stress/U28`).
+#[test]
+fn a_clean_stress_points_at_the_bound_lint_and_its_saved_witness() {
+    let file = scratch("bound_lint");
+    std::fs::write(
+        &file,
+        "let a: 0..=1000000000000 = read()\nlet b: 0..=1000000000 = read()\nprint(a * b)\n",
+    )
+    .unwrap();
+    let (code, text) = cpl(&[OsStr::new("stress"), file.as_os_str()]);
+    assert_eq!(code, Some(0), "{text}");
+    assert!(
+        text.contains(
+            "`cpl lint` names inputs at the bounds that fail (L0306 at line 3): `cpl lint --save"
+        ),
+        "{text}"
+    );
+    let (_, saved) = cpl(&[OsStr::new("lint"), OsStr::new("--save"), file.as_os_str()]);
+    let witness = file.with_extension("tests").join("lint-L0306-3.in");
+    let input = std::fs::read(&witness).unwrap_or_else(|e| panic!("{saved}: {e}"));
+    let ran = Command::new(env!("CARGO_BIN_EXE_cpl"))
+        .arg("run")
+        .arg(&file)
+        .stdin(std::process::Stdio::piped())
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped())
+        .spawn()
+        .and_then(|mut child| {
+            use std::io::Write;
+            child.stdin.take().unwrap().write_all(&input)?;
+            child.wait_with_output()
+        })
+        .unwrap();
+    let said = String::from_utf8_lossy(&ran.stderr);
+    assert!(said.contains("error[R0202]: integer overflow"), "{said}");
+}

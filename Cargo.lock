@@ -172,6 +172,7 @@ dependencies = [
  "cpl-ir",
  "cpl-json",
  "cpl-judge",
+ "cpl-lint",
  "cpl-syntax",
 ]
 

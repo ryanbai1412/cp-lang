@@ -94,6 +94,7 @@
     "cpl-stress -> cpl-ir",
     "cpl-stress -> cpl-json",
     "cpl-stress -> cpl-judge",
+    "cpl-stress -> cpl-lint",
     "cpl-stress -> cpl-syntax",
     "cpl-syntax -> cpl-diag",
     "cpl-wasm -> cpl-check",
