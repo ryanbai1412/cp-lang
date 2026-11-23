@@ -1215,13 +1215,16 @@ impl<'p> Emitter<'p> {
             return false;
         }
         let params = self.fn_id.map_or(0, |id| self.program.fns[id].params.len());
-        if !global && root >= params {
+        let named_local = !global && root >= params && !temp(root);
+        if !global && root >= params && !named_local {
             // A temporary set once is read only by the pattern that takes
             // it apart, and a reference it holds was checked for all the
             // statements after it, which cover this name.
-            return temp(root)
-                && !self.spent.contains(&root)
+            return !self.spent.contains(&root)
                 && self.facts.stores((self.fn_id, false, root)) == 1;
+        }
+        if named_local && self.spent.contains(&root) {
+            return false;
         }
         if !global && self.fn_id.is_some_and(|id| self.sunk[id].contains(&root)) {
             return false;
@@ -1241,7 +1244,9 @@ impl<'p> Emitter<'p> {
             };
             return stored == 0 && !Tail::of(self.program, &body.stmts).calls;
         };
-        if tail.opaque {
+        if tail.opaque
+            && !(named_local && !crate::lend::closure_writes(self.program, self.fn_id, root))
+        {
             return false;
         }
         let effects = &tail.effects;
@@ -1255,6 +1260,9 @@ impl<'p> Emitter<'p> {
                         .iter()
                         .any(|f| self.summaries[*f].writes.contains(&root))
             }
+            // No fn sees a local it isn't passed `mut`, and that is a store.
+            false if named_local => !effects.locals.contains(&root),
+            // A parameter may be another name for a global a call writes.
             false => !effects.locals.contains(&root) && !tail.calls,
         }
     }
@@ -1758,13 +1766,30 @@ fn expr_may_alias_root(e: &Expr, root: (bool, usize)) -> bool {
 }
 
 /// The variable a place reads from, looking through the unchecked unwrap
-/// that follows an `if let` test.
+/// that follows an `if let` test. Its indices run no code that can write
+/// anything, so reading them again gives the same cell.
 pub(crate) fn place_root(e: &Expr) -> Option<(bool, usize)> {
     match &e.kind {
         ExprKind::Unwrap(base, false) | ExprKind::Field(base, _) => place_root(base),
-        ExprKind::Index(base, indices) if indices.iter().all(walk::is_simple) => place_root(base),
+        ExprKind::Index(base, indices) if indices.iter().all(writes_nothing) => place_root(base),
         _ => walk::path_root(e),
     }
+}
+
+fn writes_nothing(e: &Expr) -> bool {
+    let mut quiet = true;
+    walk::deep_expr(e, &mut |sub| {
+        if matches!(
+            sub.kind,
+            ExprKind::Call(..)
+                | ExprKind::CallExpr(..)
+                | ExprKind::Mutate(..)
+                | ExprKind::Closure(_)
+        ) {
+            quiet = false;
+        }
+    });
+    quiet
 }
 
 /// For `if k in m:` whose body reads `m[k]` and can't change `m` or

@@ -106,6 +106,31 @@ fn closure_effects(c: &cpl_ir::ClosureDef, effects: &mut Effects, calls: &mut bo
     known
 }
 
+/// Whether a closure of fn `id` can write its local `root`: the only way
+/// code reached through a fn value changes a caller's local.
+pub(crate) fn closure_writes(program: &cpl_ir::Program, id: Option<usize>, root: usize) -> bool {
+    let Some(id) = id else {
+        return true;
+    };
+    let mut pending = Vec::new();
+    walk::deep_exprs(&program.fns[id].body, &mut |e| {
+        if let ExprKind::Closure(c) = e.kind {
+            pending.push(c);
+        }
+    });
+    pending.into_iter().any(|c| {
+        let c = &program.closures[c];
+        let mut nested = false;
+        walk::deep_exprs(&c.body, &mut |e| {
+            nested |= matches!(e.kind, ExprKind::Closure(_))
+        });
+        let stores = Effects::of_block(&c.body).locals;
+        c.captures.iter().any(|cap| {
+            !cap.is_global && cap.outer == root && (nested || stores.contains(&cap.inner))
+        })
+    })
+}
+
 /// Whether the temporary `slot` an `if let` tests is read only by that test
 /// and by copies of a scalar or a fn at the top of its branch: `t0.has_value()`,
 /// then `f = *t0`. A reference into a place is dead before anything else runs,

@@ -202,3 +202,20 @@ fn a_bitset_expression_counted_once_is_fused_into_one_popcount_loop() {
     assert!(cpp.contains("__builtin_popcountll("), "{cpp}");
     assert!(!cpp.contains("_bitand(a, b)"), "{cpp}");
 }
+
+#[test]
+fn a_let_of_a_local_list_element_is_a_lend() {
+    // R05.3.5: `let prev = ends[j % 2]` names the row; a copy costs the
+    // whole row on every iteration.
+    let cpp = cpp(concat!(
+        "fn f(n: Int) -> Int:\n",
+        "    var ends: List<List<Int>> = [[1, 2], [3]]\n",
+        "    var t = 0\n",
+        "    for j in 0..n:\n",
+        "        let prev = ends[j % 2]\n",
+        "        t += prev.len + (prev.find(x => x > j) ?? 0)\n",
+        "    t\n",
+        "print(f(3))\n",
+    ));
+    assert!(cpp.contains("const std::vector<ll>& prev = "), "{cpp}");
+}
