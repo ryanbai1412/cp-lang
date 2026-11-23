@@ -12,6 +12,7 @@
 #
 # --fast  1. nothing from dist/ and no secret is staged or in an unpushed commit
 #         2. cargo clippy --workspace --all-targets -- -D warnings
+#            and cargo check of cpl-wasm for wasm32 (the playground build)
 #         3. the workspace tests (cargo nextest when installed, else cargo
 #            test), without the tests listed under 8 and 9
 #            (--fast compiles C++ through scripts/cxx-cache.py, which reuses
@@ -34,7 +35,8 @@
 #            extension-host suite under a display or xvfb-run), then
 #            editors/smoke.sh: Neovim, Emacs and Helix when installed
 #
-# --commit  1, rustfmt, clippy of the touched crates, and the nextest tests
+# --commit  1, rustfmt, clippy of the touched crates (and the wasm32 check
+#           when cpl-wasm builds one of them), and the nextest tests
 #           of every crate that can reach them except the end-to-end suites
 #           (profile `commit` in .config/nextest.toml), plus the unit tests
 #           of touched scripts and the snippet gate for web/ and docs/. A
@@ -320,6 +322,15 @@ if [ "$mode" = commit ]; then
             || fail "Rust files are not formatted; run: cargo fmt $(printf -- '-p %s ' "${pkgs[@]}")"
         step "cargo clippy of the touched crates and nextest of the crates they reach"
         cargo clippy -q $(printf -- '-p %s ' "${pkgs[@]}") --all-targets -- -D warnings
+        wasm_deps=" $(cargo tree -q -p cpl-wasm --target wasm32-unknown-unknown -e normal --prefix none \
+            | cut -d' ' -f1 | sort -u | tr '\n' ' ')"
+        for p in "${pkgs[@]}"; do
+            if [[ "$wasm_deps" == *" $p "* ]]; then
+                step "cargo check -p cpl-wasm --target wasm32-unknown-unknown (the playground build)"
+                cargo check -q -p cpl-wasm --target wasm32-unknown-unknown
+                break
+            fi
+        done
         cargo nextest run --workspace --profile commit --no-fail-fast \
             -E "($sel_filter) & not ($slow_filter)"
     fi
@@ -350,6 +361,9 @@ else
     cargo clippy --workspace --all-targets -- -D warnings
     cache_save clippy
 fi
+
+step "cargo check -p cpl-wasm --target wasm32-unknown-unknown (the playground build)"
+cargo check -q -p cpl-wasm --target wasm32-unknown-unknown
 
 # Logs of the steps that run beside the workspace tests.
 cargo build -q -p cpl-cli -p cpl-conform

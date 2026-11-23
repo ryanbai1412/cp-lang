@@ -416,8 +416,10 @@ fn run_from<O: Observer>(
         vm_pool_v: Vec::new(),
         view_locals: Vec::new(),
         trap_frame: None,
+        #[cfg(not(target_arch = "wasm32"))]
         trace_indices: Vec::new(),
         trace_path: Vec::new(),
+        #[cfg(not(target_arch = "wasm32"))]
         trace_raw: Vec::new(),
         #[cfg(not(target_arch = "wasm32"))]
         vm_stats: vm::VmStats::from_env(),
@@ -647,9 +649,11 @@ struct Interp<'p, 'o, O: Observer> {
     view_locals: Vec<(&'static str, &'static Ty, &'static Value)>,
     /// The innermost call's locals when a traced run trapped, and its depth.
     trap_frame: Option<unwind::TrapFrame<'p>>,
+    #[cfg(not(target_arch = "wasm32"))]
     /// The indices of the place a trace point writes, kept between steps.
     trace_indices: Vec<Value>,
     trace_path: Vec<usize>,
+    #[cfg(not(target_arch = "wasm32"))]
     /// The named `Int` locals a raw trace step shows, kept between steps.
     trace_raw: Vec<(&'p str, i64)>,
     /// Optional fallback counter enabled via `CPL_VM_STATS`.

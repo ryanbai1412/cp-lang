@@ -16,8 +16,12 @@
 //! is the whole value of a `let`, an assignment to a local, a `return` or an
 //! expression statement, to a fn without `mut` parameters.
 
+// Recording runs on the VM, which wasm builds leave out.
+#![cfg_attr(target_arch = "wasm32", allow(dead_code))]
+
 use crate::observe::{Observer, Unobserved};
 use crate::value::Value;
+#[cfg(not(target_arch = "wasm32"))]
 use crate::vm::{Chunk, CompiledProgram, LoopReg};
 use crate::{trace, trap, Flow, Interp, Io, Limits, Observed, Res};
 use cpl_diag::Span;
@@ -300,6 +304,7 @@ pub fn resume_on_this_thread(
 }
 
 impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
+    #[cfg(not(target_arch = "wasm32"))]
     /// Before a VM call at `pc` of `chunk` to `fn_id`.
     #[inline(always)]
     pub(crate) fn suspend(
@@ -316,6 +321,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
         }
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     #[cold]
     #[inline(never)]
     fn suspend_recording(
@@ -343,6 +349,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
         });
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     /// After that call.
     #[inline(always)]
     pub(crate) fn unsuspend(&mut self) {
@@ -351,6 +358,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
         }
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     #[cold]
     #[inline(never)]
     fn unsuspend_recording(&mut self) {
@@ -386,6 +394,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
         }
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     fn checkpoint_here(
         &mut self,
         compiled: &CompiledProgram<'p>,
@@ -460,6 +469,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
     /// The frame of the `k`th VM caller waiting on its call, with the frames
     /// around it: what every checkpoint until that call returns shares, since
     /// a caller's locals stay as they are while it waits.
+    #[cfg(not(target_arch = "wasm32"))]
     fn snap_caller(&self, compiled: &CompiledProgram<'p>, vm_regs_i: &[i64], k: usize) -> Snap {
         let s = &self.ckpt.frames[k];
         let (caller, caller_fn, span, doms, up) = match k.checked_sub(1) {
@@ -510,6 +520,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
         }
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     /// One frame: `chunk`'s, run for `fn_id` (main for `None`) on the stack
     /// at `base`, in `loops`, waiting on `site` unless it is the innermost.
     #[allow(clippy::too_many_arguments)]
