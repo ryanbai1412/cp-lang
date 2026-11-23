@@ -38,7 +38,7 @@ enum Dir = N | E | S | W               // a fieldless enum is a domain too: [Dir
 | `let (r, c) = p`, `p.0` | a position of a product domain is a tuple of factor positions: tuple patterns and `.0`/`.1` work on it, named factors too | O(1) (R04.2.10) |
 | `v.after`, `v.before` | the pieces `v.r..` and `..v.l` of `v`'s domain, so `for j in v.after` walks the positions after `v` | O(1) (R04.2.19) |
 | `a[p]`, `a[x, y]` | for `P = (A, B)`, `[P]T` and `[A, B]T` are the same type: a `p: P` indexes it whole, its parts index it one by one, and `[P] p => f(p)` builds it | O(1) (R04.2.11) |
-| `Pair<V>` | the unordered pairs `{u, v}` of distinct positions, `V.count * (V.count - 1) / 2` of them, walked by `hi` then `lo` (lower-triangle order); `[Pair<V>]T` is packed, and `d[u, v] == d[v, u]` (decision 164) | O(1) (R04.2.12) |
+| `Pair<V>` | the unordered pairs `{u, v}` of distinct positions, `V.count * (V.count - 1) / 2` of them, walked by `hi` then `lo` (lower-triangle order); `[Pair<V>]T` is packed, and `d[u, v] == d[v, u]` (decision 164); `Int(p)` is its rank in that order (`{0, 1}` is 0) and `print(p)` writes the rank (decision 291) | O(1) (R04.2.12) |
 | `V.wrap(x)` | integer to position, mod `V.count`: rings and cyclic shifts | O(1) (R04.2.13) |
 | `if let V(j) = i - 10:` | the pattern form of `V.at`: matches only inside `V` | O(1) (R04.2.14) |
 | `Int(v)` | position to its integer (for `1..=n`, that's 1..n) | free (R04.2.15) |

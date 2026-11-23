@@ -117,7 +117,7 @@ print(dp[V.range])
 `B.subsets` (written `Subset<B>`) is the domain of subsets of a small
 domain `B` (at most 64 members, one `U64`): set algebra `s | t`, `s & t`, `s - t`,
 `b in s`, `s.len`, and generators `s.subsets` (submasks, `s` first, empty
-last) and `s.supersets`.
+last) and `s.supersets`. `Int(s)` is the mask and `print(s)` writes it (decision 291).
 
 ```python
 var best: [Group.subsets]?Int = None

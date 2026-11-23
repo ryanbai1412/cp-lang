@@ -40,6 +40,9 @@ n = 4
 show = "E"
 
 [index.row.subset]
+second = "Subset<B>.single(B(0))"
+k = 1
+show = "7"
 decl = "domain B = 0..3"
 D = "Subset<B>"
 p = "Subset<B>.full"
@@ -58,6 +61,9 @@ n = 3
 show = "2"
 
 [index.row.pair]
+second = "Pair<V>(V(0), V(2))"
+k = 1
+show = "5"
 decl = "domain V = 0..4"
 D = "Pair<V>"
 p = "Pair<V>.last!"
@@ -161,15 +167,11 @@ out = "$k"
 "subset--prev" = "not a range-backed domain: R04.3 neighbours, cuts and Int positions are defined on ranges"
 "subset--cuts_lr" = "not a range-backed domain: R04.3 neighbours, cuts and Int positions are defined on ranges"
 "subset--construct" = "not a range-backed domain: R04.3 neighbours, cuts and Int positions are defined on ranges"
-"subset--int" = "not a range-backed domain: R04.3 neighbours, cuts and Int positions are defined on ranges"
 "pair--next" = "not a range-backed domain: R04.3 neighbours, cuts and Int positions are defined on ranges"
 "pair--prev" = "not a range-backed domain: R04.3 neighbours, cuts and Int positions are defined on ranges"
 "pair--cuts_lr" = "not a range-backed domain: R04.3 neighbours, cuts and Int positions are defined on ranges"
 "pair--construct" = "not a range-backed domain: R04.3 neighbours, cuts and Int positions are defined on ranges"
-"pair--int" = "not a range-backed domain: R04.3 neighbours, cuts and Int positions are defined on ranges"
 "cuts--cuts_lr" = "a cut has positions beside it, not cuts (R04.3.2); cuts_lr is for positions"
-"subset--print" = "std.subset gives Subset no print form"
-"pair--print" = "R10 prints [Pair<V>]T, but names no form for one Pair position"
 "plain--step" = "grid steps take a (row, column) position; only product domains have one"
 "enum--step" = "grid steps take a (row, column) position; only product domains have one"
 "subset--step" = "grid steps take a (row, column) position; only product domains have one"

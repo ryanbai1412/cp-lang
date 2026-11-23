@@ -5,14 +5,14 @@ print(yes(a == [1, 2, 3]))
 var b = [(1, 'b'), (0, 'z'), (1, 'a')]
 b.sort(by: p => p.0)
 print(yes(b == [(0, 'z'), (1, 'b'), (1, 'a')]))
-print(yes([3, 1, 2].sorted() == [1, 2, 3]), yes([3, 1, 2].sorted(desc: true) == [3, 2, 1]))
+print(yes([3, 1, 2].sorted() == [1, 2, 3]), yes([3, 1, 2].sorted(by: x => desc(x)) == [3, 2, 1]))
 print(yes([4, 5].last == Some(5)), [4, 5][1..2].last ?? -1)
 fn g<S: IndexedMut>(mut s: S) = sort(mut s, by: x => -x)
 var c = [5, 9, 1, 7, 3, 3, 8]
 g(mut c)
 print(c)
 var d = [(2, 1), (1, 2), (2, 3), (1, 4), (0, 5)]
-sort(mut d, by: p => p.0, desc: true)
+sort(mut d, by: p => desc(p.0))
 print(d.map(p => p.1).collect())
 let e = sorted(d, by: p => p.1)
 print(e.map(p => p.1).collect())

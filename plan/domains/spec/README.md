@@ -92,9 +92,4 @@ Co-designer. Settles calls that change the language's character, from `plan/QUES
 
 ## Decisions for Ryan
 
-Each filed in `plan/QUESTIONS.md` with code; the lane works on the default meanwhile.
-
-1. **Descending sort: key only, or also a `desc:` flag?** Rec: key only (`sorted(by: x => desc(x))`), drop the flag. Default: chapter 7 wins.
-2. **`Subset<B>` and `Pair<V>` as domains: `Int(p)` and print?** Rec: yes to `Int(p)` (mask / rank) and print; no cuts or neighbours. Default: n/a in the matrix.
-3. **`V.count` property beside the Seq method `V.count(f)`?** Rec: keep both (arity tells them apart, both are the guessable name). Default: as ruled (R04.2.20 on the branch).
-
+None open. Range keys (Ryan, decision 289) and the lane's three questions (decided by their recommendations, decisions 290-292) are settled; a new call goes to `plan/QUESTIONS.md` only if it is important, uncertain and hard to reverse.

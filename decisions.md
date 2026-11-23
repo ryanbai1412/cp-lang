@@ -6614,3 +6614,34 @@ Reverse: `git push origin refs/archive/<name>:refs/heads/<name>`.
   `Range<V>` stays `Indexed<V, V>`. `nth` already means "k steps from the start".
 - **Reverse.** Change R04.4.31 and the three `Range` cases in
   `spec/conformance/traits.toml` and `core-04/range-key-*.cp` to positions.
+
+## 290. Descending order is a key, `desc(x)`; `sort`/`sorted` lose `desc: Bool` (2026-11-22)
+
+- **Decision.** One spelling: `xs.sorted(by: x => desc(x))`, and mixed orders
+  like `by: c => (c.start, desc(c.end))`. Decided by its recommendation under
+  Ryan's rule that reversible calls are ours. `std-seq/sort-sorted-last.cp`
+  now uses the key; stdlib drops the flag from `spec/std/seq.cp`.
+- **Why.** Chapter 7 already says descending is a key; a flag can't express
+  mixed orders, and 9 of the 100 hill-climb `spec.cp` files use `desc()`, none the flag.
+- **Reverse.** Re-add `desc: Bool = false` to `sort` and `sorted`.
+
+## 291. `Int(s)` of a `Subset<B>` is its mask, of a `Pair<V>` its rank; both print as it (2026-11-22)
+
+- **Decision.** `Int(s)` is the bitmask and `print(s)` writes it; `Int(p)` of a
+  `Pair<V>` is its lower-triangle rank (`{0, 1}` is 0, `{0, 2}` is 1) and
+  `print(p)` writes that rank. Neither gets neighbours, cuts or `D(k)`.
+  Decided by its recommendation.
+- **Why.** `Int(p)` means "the position's integer form" on every other domain,
+  so it is the guessable spelling for `print(Int(s))` in mask DP; neighbours on
+  subsets would invite `s + 1` loops that skip the submask generators.
+- **Reverse.** Drop the two `Int` members and restore the four `[index.na]`
+  cells in `spec/conformance/matrix.toml`.
+
+## 292. `V.count` (the number of positions) stays beside `V.count(f)` (2026-11-22)
+
+- **Decision.** R04.2.20 as written: a domain is a `Seq` of its positions, so
+  `V.count(v => deg[v] == 1)` counts matches, while `V.count` with no call is
+  the number of positions. Decided by its recommendation.
+- **Why.** Arity tells them apart and both are the name a contestant guesses;
+  renaming the property (`V.size`) is a corpus-wide edit that removes no bug class.
+- **Reverse.** Rename the property with a `cpl fix` codemod.

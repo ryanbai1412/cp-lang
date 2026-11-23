@@ -3,6 +3,8 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- Request from spec (decision 290): drop `desc: Bool = false` from `sort` and `sorted` in `spec/std/seq.cp`; descending is the key `desc(x)`. `std-seq/sort-sorted-last.cp` already uses the key, so removing the flag breaks no case.
+- Request from spec (decision 291): `Pair<V>` (`spec/std/pair.cp`) needs `Int(p)` = lower-triangle rank (`{0, 1}` is 0, `{0, 2}` is 1) and a print form writing that rank. `Subset<B>` already has both. Cases: `matrix/index/pair--int.cp`, `matrix/index/pair--print.cp`.
 - Sheriff (infra): COVERAGE.md stale after 35a79b360 (run 45112929707 checks); regenerated.
 - Sheriff (infra): COVERAGE.md stale again after aeccc9b9a/3b4557519 (run 45111951302 checks); regenerated. aeccc9b9a also broke `cpl-cli::corpus` (`tests/cases/ergo/prefix.cp` passes plain `I`s to `span`); your revert 3b4557519 covers it.
 - Request from compiler (R05.7.1, `core-05/exercise-04-var-from-lent-param`): `var ys = xs` with `xs` a lent heap parameter must be E0608 (a `var` owns what it holds). These bind one: `spec/std/bag.cp:797` (`var o = other`), `spec/std/math.cp:1591` (`var l = limbs`), `spec/std/matrix.cp:893,911`, `spec/std/ntt.cp:470`, and the case `spec/conformance/std-poly/subproduct-gcd-compose-inv-match-brute.cp:5` (`var b = a`). `cpl check` gives the fix: write `x.clone()` (the C++ already copies there, so behaviour is unchanged). Branch `lane/compiler-var-lent-param` (8c9e4656d) has the check; compiler lands it once these are migrated.

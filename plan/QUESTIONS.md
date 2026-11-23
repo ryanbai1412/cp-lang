@@ -111,32 +111,6 @@ Recommendation: (b) as the gate, (a) as a regression check.
 How to reverse it: gate on (a) only.
 Meanwhile: report both; gate on (a) until the first fresh set exists.
 
-### spec: descending sort, a key only or also a `desc:` flag?
-Chapter 7 (line 315) says "Descending is a key, not a flag: `by: x => desc(x.score)`", but `spec/std/seq.cp` gives `sort`/`sorted` a `desc: Bool = false`, and `spec/conformance/std-seq/sort-sorted-last.cp` uses it. Two spellings for one idea (rebuild round 2 hole H-SORT-DESC).
-- A, key only: `copies.sorted(by: c => (c.start, desc(c.end)))` (corpus/problems/btoi18p4/spec.cp); plain descending is `xs.sorted(by: x => desc(x))`.
-- B, both: `xs.sorted(desc: true)` for the whole order, `desc()` inside a key for one part.
-Recommendation: A. One spelling, and `desc()` already covers mixed orders, which a flag cannot; 9 of the 100 hill-climb `spec.cp` files use `desc()`, none use the flag.
-How to reverse: re-add the flag to the two signatures; no other spelling depends on it.
-Meanwhile: chapter 7 wins; new cases use `desc()`; the existing case stays (never weakened) until this is answered, then stdlib drops the flag and the case is fixed with a codemod.
-
-### spec: should `Subset<B>` and `Pair<V>` have `Int(p)` and a print form?
-Both are domains (`[Subset<B>]T`, `[Pair<V>]T` work), but R04.3's `Int(p)`, neighbours and cuts are defined only on range-backed domains, and neither prints. Bitmask DP wants the mask: `for s in Subset<B>: dp[s] = ...` then `print(Int(s))` or `s + 1` is natural to try.
-- A: `Int(s)` is the mask (`Subset<B>`) or the lower-triangle rank (`Pair<V>`), and both print as that integer form; no neighbours or cuts.
-- B: also neighbours and cuts in walk order (`s.next`, `Range<Subset<B>>`).
-- C: none; `s.mask` as a named member instead.
-Recommendation: A. `Int(p)` already means "the position's integer form" for every other domain, so it is the guessable spelling; neighbours on subsets invite `s + 1` loops that skip the submask idioms.
-How to reverse: remove the two `Int` members; the matrix marks the cells n/a again.
-Meanwhile: the matrix (`spec/conformance/matrix.toml`, `[index.na]`) marks these cells n/a with the reason.
-
-### spec: keep the `V.count` property beside the Seq method `V.count(f)`?
-A domain is a `Seq` of its positions, so every Seq method applies (`V.find(f)`, `V.min(by: f)`), including `count(p)` from `spec/std/seq.cp`. But `V.count` with no call is already the number of positions (`domain V = read(1..=n)` then `[V]Int` has `V.count` slots).
-- A, keep both: `let leaves = V.count(v => deg[v] == 1)` and `print(V.count)`.
-- B, rename the property: `V.size` or `V.len`; `V.count` is only the Seq method.
-- C, name the predicate: `V.count(where: f)`.
-Recommendation: A. Arity tells them apart, both are the name a contestant guesses, and `V.count` is used across every chapter and the corpus; B is a corpus-wide rename for no bug class.
-How to reverse: B with a `cpl fix` codemod.
-Meanwhile: as ruled in R04.2.20 (on `devin/wip-conformance-matrix`).
-
 ### perf: does the judge build trap on a bad index, `/ 0` and `assert`?
 Decision 240 (spec) says release has no checks unless kept: `xs[j]` with an unproven `j` is a raw load, `7 / d` with `d == 0` gives 0, `assert` is skipped (cases `spec/conformance/core-09/release-list-index-unchecked.cp`, `release-division-by-zero-fallback.cp`). AGENTS.md goal 5 says the interpreter and the C++ agree "including on input they reject", and the Trap Parity Gate (`crates/cpl-cli/tests/trap_parity.rs`) requires the `-O2`, no `-DLOCAL` judge build to stop on all 36 sites, among them `xs[three]` (site 1), `three / z` (13) and `assert z == 1` (25). Both cannot pass.
 Option A (today): the judge build keeps bounds, division and assert traps; range stores and overflow are checked only under `-DLOCAL`. Cost is a compare per unproven index; ahead-of-loop checks (decisions 242 and on) remove most in loops. Measured remaining cost where they stay: `math/comb` emitted C++ 98 ms -> 81-86 ms with the table checks removed by hand, matched C++ 72-75 ms; `containers/min_heap` 121 ms -> 108 ms, `std::priority_queue` 110 ms (worklog, 2026-11-22).

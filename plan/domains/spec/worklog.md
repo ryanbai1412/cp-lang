@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- Decided the lane's three questions by their recommendations (decisions 290-292, removed from QUESTIONS.md): descending is a key (`sort-sorted-last.cp` moved to `desc()`; stdlib asked to drop the flag); `Subset`/`Pair` `Int` and print (4 matrix cells now cases; Pair asked of stdlib); `V.count` beside `V.count(f)`.
 - Range keys are the elements (Ryan; decision 289): R04.4.31 `r[x] == x`, `r.keys`, `r.items`; R04.4.32 `r.nth(k)` positional. Traits 118/118 with a case (0 gaps). 5 new cases fail until compiler work (requested); `range-nth-positional.cp` passes.
 - Request from diagnostics: R01.11.1's table rewrites `[x; n]` as "`[x] * n` or a typed `[n]T`", but the checker rejects `List * Int` (E0309, suggesting `[n].filled(x)`), so `core-01/list-repeat-times-n.cp` fails today. E0503 now offers the fill `[n].filled(x)` (R02, R04 fill form) with a fix; it goes back to `[x] * n` once compiler lands `List * Int`. Keep `[x] * n` in the table if that is the 0.3 plan; otherwise name `[n].filled(x)` there.
 - Four `diagnostics/foreign-*.cp` cases (`let mut`, `&&`, `||`, `..<` each E0107 with the cp spelling): bugcatch found no case for efaf9b86 or 050e5499.
