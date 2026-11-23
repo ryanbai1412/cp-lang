@@ -1197,3 +1197,98 @@ pub(super) fn is_slice_writeback_loop(
 
     false
 }
+
+/// A running total stored at each step of a loop: `for x in a: run += x; out.push(run)`,
+/// `for i in I: run += a[i]; s[i] = run`, or `for x in a: ps.push(ps[ps.len - 1] + x)` (also
+/// `ps.last! + x`). Returns the table, the loop variable and the term added each step.
+pub(super) fn running_total_loop(stmt: &Stmt) -> Option<(&str, &str, &Expr)> {
+    let StmtKind::For { pat, body, .. } = &stmt.kind else {
+        return None;
+    };
+    let PatternKind::Name(var) = &pat.kind else {
+        return None;
+    };
+    let var = var.as_str();
+    match body.stmts.as_slice() {
+        [one] => {
+            let StmtKind::Expr(e) = &one.kind else {
+                return None;
+            };
+            let (table, value) = push_call(e)?;
+            let ExprKind::Binary {
+                op: BinOp::Add,
+                lhs,
+                rhs,
+                ..
+            } = &walk::unparen(value).kind
+            else {
+                return None;
+            };
+            if is_last_of(lhs, table) {
+                Some((table, var, rhs))
+            } else if is_last_of(rhs, table) {
+                Some((table, var, lhs))
+            } else {
+                None
+            }
+        }
+        [step, store] => {
+            let StmtKind::Assign {
+                target,
+                op: AssignOp::Binary(BinOp::Add),
+                value: added,
+            } = &step.kind
+            else {
+                return None;
+            };
+            let acc = expr_name(target)?;
+            let table = match &store.kind {
+                StmtKind::Expr(e) => {
+                    let (table, v) = push_call(e)?;
+                    (expr_name(v) == Some(acc)).then_some(table)?
+                }
+                StmtKind::Assign {
+                    target,
+                    op: AssignOp::Set,
+                    value,
+                } => {
+                    let (table, ix) = plain_index(target)?;
+                    (expr_name(ix) == Some(var) && expr_name(value) == Some(acc))
+                        .then_some(table)?
+                }
+                _ => return None,
+            };
+            (table != acc).then_some((table, var, added))
+        }
+        _ => None,
+    }
+}
+
+fn push_call(e: &Expr) -> Option<(&str, &Expr)> {
+    let ExprKind::Call { callee, args } = &e.kind else {
+        return None;
+    };
+    let ExprKind::Field { base, name } = &callee.kind else {
+        return None;
+    };
+    match args.as_slice() {
+        [arg] if name.text == "push" && arg.name.is_none() => Some((expr_name(base)?, &arg.value)),
+        _ => None,
+    }
+}
+
+/// `e` is `table[table.len - 1]` or `table.last!`.
+fn is_last_of(e: &Expr, table: &str) -> bool {
+    match &walk::unparen(e).kind {
+        ExprKind::Unwrap(inner) => is_field_of(inner, table, "last"),
+        ExprKind::Index { base, indices } => {
+            expr_name(base) == Some(table)
+                && matches!(indices.as_slice(), [i] if matches!(
+                    &walk::unparen(i).kind,
+                    ExprKind::Binary { op: BinOp::Sub, lhs, rhs, .. }
+                        if is_field_of(lhs, table, "len") && is_int_lit(rhs, 1)
+                ))
+        }
+        _ => false,
+    }
+}

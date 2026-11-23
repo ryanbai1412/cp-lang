@@ -1499,6 +1499,24 @@ fn dropping_leading_prelude_imports_leaves_no_leading_blank_line() {
     assert_eq!(fixed(src), "let x = 1\n");
 }
 #[test]
+fn running_totals_teach_prefix() {
+    let push = "let a: List<Int> = read()\nvar cur = 0\nvar out: List<Int> = []\nfor x in a:\n    cur += x\n    out.push(cur)\nprint(out)\n";
+    let store = "let n: 1..=9 = read()\ndomain I = 0..n\nlet a: [I]Int = read()\nvar s: [I]Int = 0\nvar run = 0\nfor i in I:\n    run += a[i]\n    s[i] = run\nprint(s)\n";
+    let last = "let a: List<Int> = read()\nvar ps: List<Int> = [0]\nfor x in a:\n    ps.push(ps.last! + x)\nprint(ps)\n";
+    for src in [push, store, last] {
+        assert!(
+            taste_codes(src).contains(&"L0521"),
+            "{src}: {:?}",
+            codes(src)
+        );
+        assert!(fix_tests::checker_errors(src).is_empty(), "{src}");
+    }
+    // A counter is not a running total of the loop's elements.
+    let count = "let a: List<Int> = read()\nvar k = 0\nvar out: List<Int> = []\nfor x in a:\n    k += 1\n    out.push(k)\nprint(out)\n";
+    assert!(!taste_codes(count).contains(&"L0521"), "{:?}", codes(count));
+}
+
+#[test]
 fn hand_rolled_prefix_sum_becomes_prefix() {
     // 1D List.filled + 0..a.len -> prefix(a) and p.prefix(...)
     let list_pref = "\

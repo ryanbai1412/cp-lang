@@ -372,6 +372,7 @@ impl<'a> Taste<'a> {
     fn prefix_sum(&mut self, stmts: &[(u32, &Stmt)], i: usize) {
         let (base, stmt) = stmts[i];
         let Some(found) = prefix_sum_loop(stmt) else {
+            self.running_total(base, stmt);
             return;
         };
         let at = |b: u32, span: Span| &self.src[(b + span.start) as usize..(b + span.end) as usize];
@@ -455,6 +456,27 @@ impl<'a> Taste<'a> {
                 }
             }
         }
+        self.push(&HAND_ROLLED_PREFIX_SUM, diag);
+    }
+
+    /// A running total stored each step (L0521, help only): the loop also does what the
+    /// table's reads need, so `cpl fix` leaves the rewrite to the contestant.
+    fn running_total(&mut self, base: u32, stmt: &Stmt) {
+        let Some((table, var, added)) = running_total_loop(stmt) else {
+            return;
+        };
+        let added = &self.src[(base + added.span.start) as usize..(base + added.span.end) as usize];
+        if !mentions(added, var) || has_try(stmt) {
+            return;
+        }
+        let diag = Diagnostic::warning(
+            HAND_ROLLED_PREFIX_SUM.code,
+            stmt.span,
+            format!("`{table}` is a running total built by hand: use `prefix(...)`"),
+        )
+        .with_help(
+            "`prefix(a)` (or `a.scan(+)`) builds every prefix sum in O(n); `.prefix(cut)` reads one and `.fold(range)` sums a range in O(1)",
+        );
         self.push(&HAND_ROLLED_PREFIX_SUM, diag);
     }
 
