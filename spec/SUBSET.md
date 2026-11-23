@@ -202,7 +202,6 @@ documented. The stdlib's own gaps are in `std/GAPS.md`.
 - core-04/table-one-cell-parameter.cp: compiler
 - core-04/range-type-binds-generic-domain.cp: compiler
 - core-05/at-assign-needs-var.cp: compiler
-- core-05/closure-capture-blocks-push.cp: compiler
 - core-05/exercise-04-var-from-lent-param.cp: compiler
 - core-05/exercise-13-disjoint-slices-meet.cp: compiler
 - core-05/exercise-20-segtree-lent-from-ws.cp: compiler

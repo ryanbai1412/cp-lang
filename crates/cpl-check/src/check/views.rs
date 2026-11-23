@@ -508,3 +508,83 @@ impl Checker<'_> {
             || matches!(&ty, Ty::Named { name, .. } if name == "List")
     }
 }
+
+impl Checker<'_> {
+    /// A closure argument borrows its captures for the call (R12.4.11), so
+    /// it can't capture what argument `k` lends `mut`.
+    pub(crate) fn no_capture_of_mut_arg(
+        &mut self,
+        args: &[ast::Arg],
+        k: usize,
+        root: &str,
+        name: &str,
+    ) {
+        if !args[k].mutable {
+            return;
+        }
+        for (j, other) in args.iter().enumerate() {
+            if j == k || !self.captures(&other.value).iter().any(|c| c == root) {
+                continue;
+            }
+            let message = format!(
+                "`{root}` can't be passed `mut` to `{name}`: `{}` captures it and uses it during the same call",
+                self.quote(other.value.span),
+            );
+            if let Some(diag) = self.error(codes::USED_WHILE_LENT, args[k].value.span, message) {
+                diag.help = Some(format!(
+                    "pass `{root}` to the closure as a parameter instead of capturing it"
+                ));
+            }
+        }
+    }
+
+    /// What a closure argument captures by reference: a lambda's own
+    /// captures, or those of the closure a name holds.
+    fn captures(&mut self, e: &Expr) -> Vec<String> {
+        if let ExprKind::Name(f) = &unparen(e).kind {
+            return self
+                .lends
+                .holds
+                .iter()
+                .filter(|h| h.is_capture && &h.name == f)
+                .map(|h| h.root.clone())
+                .collect();
+        }
+        self.lambda_ref_captures(e)
+    }
+
+    /// Variables captured by reference by a lambda: local `var`s, local heap
+    /// values, parameters, or top-level heap/`var` values (R05.10.1).
+    pub(crate) fn lambda_ref_captures(&mut self, expr: &Expr) -> Vec<String> {
+        let ExprKind::Lambda { params, body, .. } = &unparen(expr).kind else {
+            return Vec::new();
+        };
+        let mut bound = crate::fx::HashSet::default();
+        for p in params {
+            super::pattern::pattern_types(p, &Ty::Unknown, &mut |n, _| {
+                bound.insert(n.to_string());
+            });
+        }
+        let mut caps = Vec::new();
+        for n in super::lends::names_in(body) {
+            if bound.contains(&n) || caps.contains(&n) {
+                continue;
+            }
+            let by_ref = if let Some(local) = self.local(&n) {
+                let ty = local.ty.clone();
+                local.mutable || local.keyword == "param" || self.is_heap_type(&ty)
+            } else if let Some(def) = self.global(&n) {
+                match &*def {
+                    Def::Value { ty, mutable, .. } => *mutable || self.is_heap_type(ty),
+                    _ => false,
+                }
+            } else {
+                false
+            };
+            if by_ref {
+                caps.push(n);
+            }
+        }
+        caps
+    }
+}

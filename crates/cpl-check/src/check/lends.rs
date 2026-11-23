@@ -136,8 +136,8 @@ pub(crate) struct Lent {
 /// `let part = a[s]`: `a` stays lent until the last statement that names
 /// `part`.
 pub(crate) struct Hold {
-    name: String,
-    root: String,
+    pub(super) name: String,
+    pub(super) root: String,
     steps: Vec<Step>,
     mutable: bool,
     at: Span,
@@ -147,7 +147,7 @@ pub(crate) struct Hold {
     in_loop: bool,
     /// Closure capture hold: prevents moving `root` (E0607) while the closure
     /// lives, without blocking reads or writes between calls (R05.10.2).
-    is_capture: bool,
+    pub(super) is_capture: bool,
 }
 
 /// What a top-level statement leaves behind for the statements after it.
@@ -372,7 +372,7 @@ pub(crate) struct Lends {
     /// Top-level `let`-bound views from earlier statements, by name.
     pub(super) global_views: HashMap<String, Lent>,
     facts: Vec<Fact>,
-    holds: Vec<Hold>,
+    pub(super) holds: Vec<Hold>,
     /// Uses already reported as conflicting with a hold: `xs.push(x)` is
     /// one conflict, not one for `xs` and another for `xs.push`.
     pub(crate) conflicts: Vec<Span>,
@@ -1479,41 +1479,6 @@ impl<'a> Checker<'a> {
         }
     }
 
-    /// Variables captured by reference by a lambda: local `var`s, local heap
-    /// values, parameters, or top-level heap/`var` values (R05.10.1).
-    pub(crate) fn lambda_ref_captures(&mut self, expr: &Expr) -> Vec<String> {
-        let ExprKind::Lambda { params, body, .. } = &unparen(expr).kind else {
-            return Vec::new();
-        };
-        let mut bound = HashSet::default();
-        for p in params {
-            super::pattern::pattern_types(p, &Ty::Unknown, &mut |n, _| {
-                bound.insert(n.to_string());
-            });
-        }
-        let mut caps = Vec::new();
-        for n in names_in(body) {
-            if bound.contains(&n) || caps.contains(&n) {
-                continue;
-            }
-            let by_ref = if let Some(local) = self.local(&n) {
-                let ty = local.ty.clone();
-                local.mutable || local.keyword == "param" || self.is_heap_type(&ty)
-            } else if let Some(def) = self.global(&n) {
-                match &*def {
-                    Def::Value { ty, mutable, .. } => *mutable || self.is_heap_type(ty),
-                    _ => false,
-                }
-            } else {
-                false
-            };
-            if by_ref {
-                caps.push(n);
-            }
-        }
-        caps
-    }
-
     /// Generated struct constructors move owned heap arguments (R2, R02.6.3).
     pub(crate) fn move_ctor_args(&mut self, args: &[Arg]) {
         for arg in args {
@@ -2216,6 +2181,7 @@ impl<'a> Checker<'a> {
                     }
                 }
             }
+            self.no_capture_of_mut_arg(args, k, &root, name);
             // Another argument's own calls must not change what this one
             // lends.
             for (j, other) in args.iter().enumerate() {

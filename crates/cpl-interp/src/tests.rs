@@ -472,12 +472,13 @@ for i in 1..=5:
     bump(i)
 
 var ys: List<Int> = [10, 20]
-use_with_cb(mut ys, () => ys.len)
+var zs = [1, 2, 3]
+use_with_cb(mut ys, () => zs.len)
 print(acc, ys.len, ys[2])
 ";
     let (out, trap) = outcome(source, "");
     assert_eq!(trap, None);
-    assert_eq!(out, "15 3 2\n");
+    assert_eq!(out, "15 3 3\n");
 }
 
 #[test]
