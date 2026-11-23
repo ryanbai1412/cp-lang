@@ -1,5 +1,5 @@
 " `cpl lsp` in Vim through the vim-lsp `cpl setup vim` installs: a wrong file
-" gets the server's error and completion offers the file's names.
+" gets the server's error, and ^X^O completes the file's names.
 " smoke_vim.sh runs it with the setup's package on 'packpath'; it writes "ok"
 " or what went wrong to g:cpl_result, then quits.
 let s:tries = 0
@@ -19,19 +19,27 @@ function! s:Check(timer) abort
         return s:tries > 240 ? s:Finish('no diagnostic from cpl lsp in 60 s') : 0
     endif
     call timer_stop(a:timer)
+    if &omnifunc !=# 'lsp#complete' || maparg('gd', 'n') !~# 'lsp-definition' || maparg('K', 'n') !~# 'lsp-hover'
+        return s:Finish('omnifunc=' . &omnifunc . ' gd=' . maparg('gd', 'n') . ' K=' . maparg('K', 'n'))
+    endif
+    " ^X^O after `tot` in `print(tot)`, as a contestant types it.
     call cursor(4, 14)
-    call lsp#send_request('cpl', {
-        \ 'method': 'textDocument/completion',
-        \ 'params': {'textDocument': lsp#get_text_document_identifier(), 'position': lsp#get_position()},
-        \ 'on_notification': function('s:Completed')})
-    call timer_start(60000, {-> s:Finish('no completion from cpl lsp in 60 s')})
+    call feedkeys("i\<C-x>\<C-o>", 'nt')
+    let s:tries = 0
+    call timer_start(250, function('s:Menu'), {'repeat': -1})
 endfunction
 
-function! s:Completed(data) abort
-    let result = get(a:data.response, 'result', [])
-    let items = type(result) == v:t_dict ? get(result, 'items', []) : result
-    let labels = map(copy(items), {_, item -> item.label})
-    call s:Finish(index(labels, 'total') >= 0 ? 'ok' : 'completion offered ' . string(labels))
+function! s:Menu(timer) abort
+    let s:tries += 1
+    let labels = map(copy(complete_info(['items']).items), {_, item -> item.word})
+    if index(labels, 'total') >= 0
+        call timer_stop(a:timer)
+        return s:Finish('ok')
+    endif
+    if s:tries > 240
+        call timer_stop(a:timer)
+        call s:Finish('^X^O offered ' . string(labels) . ' in mode ' . mode())
+    endif
 endfunction
 
 call timer_start(250, function('s:Check'), {'repeat': -1})

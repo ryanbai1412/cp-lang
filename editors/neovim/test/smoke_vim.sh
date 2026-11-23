@@ -64,9 +64,14 @@ printf 'let x: Int = "a"\nprint(y)\nvar s = 0\nprint(s)\n' >"$tmp/c.cp"
 # and completion its names (lsp_vim.vim). Vim exits when stdin ends, so it
 # gets a pipe that stays open.
 [ -f "$tmp/pack/cpl/start/vim-lsp/autoload/lsp.vim" ] || { echo "vim smoke: cpl setup vim did not install vim-lsp" >&2; exit 9; }
-printf 'set nocompatible\nset packpath^=%s\nfiletype plugin indent on\nsyntax on\n' "$tmp" >"$tmp/vimrc"
+# A clean Vim: a home with an empty .vimrc (so no defaults.vim either) and
+# only what `cpl setup vim` wrote under ~/.vim.
+home="$tmp/home"
+mkdir -p "$home/.vim"
+cp -R "$tmp/pack" "$home/.vim/pack"
+: >"$home/.vimrc"
 printf 'fn main():\n    let total = 3\n    let y: Int = "text"\n    print(tot)\n' >"$tmp/bad.cp"
-(cd "$tmp" && "$vim_bin" -u "$tmp/vimrc" -i NONE --not-a-term \
+(cd "$tmp" && HOME="$home" "$vim_bin" -i NONE --not-a-term \
     --cmd "let g:cpl_path = '$cpl' | let g:cpl_result = '$tmp/lsp'" \
     bad.cp -S "$here/lsp_vim.vim" < <(exec sleep 90 2>/dev/null) >/dev/null 2>&1) || true
 [ "$(cat "$tmp/lsp" 2>/dev/null)" = ok ] || { echo "vim smoke: cpl lsp in vim-lsp: $(cat "$tmp/lsp" 2>/dev/null || echo 'no result')" >&2; exit 10; }
