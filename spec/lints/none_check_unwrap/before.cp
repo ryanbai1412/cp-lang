@@ -1,2 +1,2 @@
 fn hit(p: ?Int, v: Int) -> Bool = p != None and v == p!
-print(hit(None, 1))
+print(yes(hit(None, 1)))

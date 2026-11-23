@@ -6,4 +6,4 @@ for i in 2..=n:
         while j <= n:
             is_prime[j] = false
             j += i
-print(is_prime[7])
+print(yes(is_prime[7]))
