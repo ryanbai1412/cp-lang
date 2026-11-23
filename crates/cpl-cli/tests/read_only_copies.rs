@@ -39,9 +39,12 @@ fn block_copies(cpp: &str) -> usize {
         .count()
 }
 
+/// A copy kind: its name, its counter over a C++ file, and its bound.
+type Bound = (&'static str, fn(&str) -> usize, usize);
+
 /// The most copies of each kind the corpus may build to, with why the
 /// ones left are left.
-const BOUNDS: [(&str, fn(&str) -> usize, usize); 2] = [
+const BOUNDS: [Bound; 2] = [
     // `var cols = m.get(r) ?? []` then pushed to (a copy it needs) and
     // `m[k] = (m.get(k) ?? []) + [v]`, an append to a copy.
     ("map_get_copies", map_get_copies, 3),
