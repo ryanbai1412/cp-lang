@@ -241,7 +241,6 @@ documented. The stdlib's own gaps are in `std/GAPS.md`.
 - core-05/spec-block-segtree-of-ws.cp: compiler
 - core-05/file-body-var-holds-lent.cp: compiler
 - core-05/lent-var-reassigned-from-itself.cp: compiler
-- core-05/call-mut-element-and-read-maybe-same.cp: compiler
 - core-06/alt-main-is-removed.cp: compiler
 - core-06/brute-main-is-removed.cp: compiler
 - core-06/checker-is-removed.cp: compiler
@@ -275,7 +274,6 @@ documented. The stdlib's own gaps are in `std/GAPS.md`.
 - core-09/stress-finds-broken-law.cp: compiler
 - core-09/user-context-lexical-without-uses.cp: compiler
 - core-09/uses-not-inferred-top-level.cp: compiler
-- core-09/deep-recursion-trap.cp: compiler
 - core-10/print-list-of-pairs-one-line.cp: compiler
 - core-10/show-impl-enum.cp: compiler
 - core-10/test-position-stored-above-multitest.cp: compiler
