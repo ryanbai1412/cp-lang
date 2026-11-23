@@ -59,3 +59,26 @@ fn changed() -> Int:
     z[0] = [5]
     return (held ?? []).sum
 print(changed())
+var pm = Map<Int, List<Int>>()
+pm[0] = [1, 5, 9]
+var cut = 0
+for hi in [2, 6, 10]:
+    let l = pm.get(0) ?? []
+    cut += l.partition_point(x => x < hi)
+var keys: List<Int> = [3, 1, 2]
+keys.sort()
+print(cut, keys.partition_point(k => k < 3))
+var seen = 0
+for k in 0..2:
+    let l = pm.get(0) ?? [7]
+    let grow = (x: Int) => pm[x + 1] = [x]
+    grow(k)
+    seen += l.len + pm.len
+print(seen)
+var sh = [Map<Int, List<Int>>(), Map<Int, List<Int>>()]
+sh[1][3] = [4, 5]
+var t = 0
+for b in 0..2:
+    for i in sh[b].get(3) ?? [9]:
+        t += i
+print(t)

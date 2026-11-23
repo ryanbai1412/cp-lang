@@ -170,3 +170,39 @@ fn a_named_map_get_lends_when_every_read_takes_a_lent_entry() {
         "a read that needs the optional itself keeps the copy: {printed}"
     );
 }
+
+#[test]
+fn a_map_entry_read_through_a_closure_and_a_domain_block_is_never_copied() {
+    let lent = body(concat!(
+        "var m = Map<Int, List<Int>>()\n",
+        "m[0] = [1, 5, 9]\n",
+        "var s = 0\n",
+        "for hi in 0..4:\n",
+        "    let l = m.get(0) ?? []\n",
+        "    s += l.partition_point(x => x < hi)\n",
+        "print(s)\n",
+    ));
+    assert!(
+        lent.contains("cpl::map_lend(m, 0)") && !lent.contains("map_get("),
+        "a closure that writes nothing keeps the entry lent: {lent}"
+    );
+    assert!(
+        lent.contains("-> decltype(auto)") && !lent.contains("-> std::vector<ll> {"),
+        "the block that sizes the list's domain gives a reference: {lent}"
+    );
+    let copied = body(concat!(
+        "var m = Map<Int, List<Int>>()\n",
+        "m[0] = [1]\n",
+        "var s = 0\n",
+        "for k in 0..2:\n",
+        "    let l = m.get(0) ?? [7]\n",
+        "    let grow = (x: Int) => m[x + 1] = [x]\n",
+        "    grow(k)\n",
+        "    s += l.len + m.len\n",
+        "print(s)\n",
+    ));
+    assert!(
+        copied.contains("cpl::map_get(m, 0)"),
+        "a closure that writes the map keeps the copy: {copied}"
+    );
+}

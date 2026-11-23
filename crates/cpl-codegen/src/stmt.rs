@@ -61,7 +61,7 @@ impl<'p> Emitter<'p> {
                     Some(Tail {
                         tested,
                         lendable,
-                        ..Tail::of(rest)
+                        ..Tail::of(self.program, rest)
                     })
                 }
                 _ => None,
@@ -1265,7 +1265,7 @@ impl<'p> Emitter<'p> {
                 true => own.stores((None, true, root)),
                 false => own.stores((Some(id), false, root)),
             };
-            return stored == 0 && !Tail::of(&body.stmts).calls;
+            return stored == 0 && !Tail::of(self.program, &body.stmts).calls;
         };
         if tail.opaque {
             return false;
@@ -1700,6 +1700,9 @@ impl<'p> Emitter<'p> {
                         }
                     }
                     self.last_use_call = false;
+                    if self.give_ref && matches!(stmt, Stmt::Give(_)) {
+                        text = format!("({text})");
+                    }
                     self.line(out, &format!("return {text};"));
                 }
             }

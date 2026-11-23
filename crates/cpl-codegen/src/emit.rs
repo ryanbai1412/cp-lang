@@ -157,6 +157,9 @@ pub(crate) struct Emitter<'p> {
     /// Set while the call a `return` makes is written: its local arguments
     /// are at their last use.
     pub last_use_call: bool,
+    /// The `Do` block being written gives a place it does not own: its
+    /// lambda returns `decltype(auto)`, so each `give` is written `return (x);`.
+    pub give_ref: bool,
     /// The statement being written stores a local read for the last time.
     pub moves_last: bool,
     pub pushers: BTreeMap<usize, usize>,
@@ -261,6 +264,7 @@ impl<'p> Emitter<'p> {
             rows,
             sunk: crate::scope::sunk_params(program),
             last_use_call: false,
+            give_ref: false,
             moves_last: false,
             pushers: BTreeMap::new(),
             sinks: BTreeMap::new(),

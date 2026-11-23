@@ -546,7 +546,7 @@ impl<'p> Emitter<'p> {
             }
             ExprKind::Do(block) => {
                 let ret = self.ty_with_elem_layout(&e.ty, Some(l));
-                self.lambda(&ret, |this, out| this.block(block, out))
+                self.do_lambda(block, &e.ty, ret)
             }
             _ => self.expr(e),
         }
@@ -1158,7 +1158,7 @@ impl<'p> Emitter<'p> {
                 } else {
                     self.ty(&e.ty)
                 };
-                self.lambda(&ret, |this, out| this.block(block, out))
+                self.do_lambda(block, &e.ty, ret)
             }
             ExprKind::Call(id, args) => self.call(e, *id, args),
             ExprKind::CallExpr(callee, args) => {
@@ -1774,7 +1774,7 @@ impl<'p> Emitter<'p> {
                             texts.push(format!("std::move({})", code.text));
                             continue;
                         }
-                        let shared = match walk::path_root(value) {
+                        let shared = match crate::lend::given_root(value) {
                             Some(root) => {
                                 lent.contains(&root)
                                     || (root.0 && this.summaries[id].writes.contains(&root.1))

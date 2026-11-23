@@ -3,7 +3,7 @@
 //! from a temporary, `let v = chain([1, 3, 2], r).take(n)`, keeps the
 //! temporary alive as long as the view.
 
-use crate::emit::{Emitter, COND};
+use crate::emit::{Code, Emitter, COND};
 use crate::names::ident;
 use crate::walk::{self, Effects};
 use cpl_ir::{Arg, BinOp, Block, Expr, ExprKind, Stmt, Ty};
@@ -54,27 +54,57 @@ pub(crate) struct Tail {
 }
 
 impl Tail {
-    pub(crate) fn of(stmts: &[Stmt]) -> Tail {
+    pub(crate) fn of(program: &cpl_ir::Program, stmts: &[Stmt]) -> Tail {
         let block = Block {
             stmts: stmts.to_vec(),
         };
-        let (mut calls, mut opaque) = (false, false);
+        let (mut calls, mut opaque, mut closures) = (false, false, Vec::new());
         walk::deep_exprs(&block, &mut |e| match e.kind {
             ExprKind::Call(..) => calls = true,
-            ExprKind::CallExpr(..) | ExprKind::Closure(_) => {
+            ExprKind::CallExpr(..) => {
                 calls = true;
                 opaque = true;
             }
+            ExprKind::Closure(id) => closures.push(id),
             _ => {}
         });
+        let mut effects = Effects::of_block(&block);
+        for id in closures {
+            opaque |= !closure_effects(&program.closures[id], &mut effects, &mut calls);
+        }
         Tail {
-            effects: Effects::of_block(&block),
+            effects,
             calls,
             opaque,
             tested: false,
             lendable: false,
         }
     }
+}
+
+/// Adds what running closure `c` can change to `effects`, with its
+/// by-reference captures as the caller's variables. False when that is not
+/// known: it calls a fn value, makes a closure, or takes `mut` parameters.
+fn closure_effects(c: &cpl_ir::ClosureDef, effects: &mut Effects, calls: &mut bool) -> bool {
+    let mut known = c.muts.is_empty();
+    walk::deep_exprs(&c.body, &mut |e| {
+        known &= !matches!(e.kind, ExprKind::CallExpr(..) | ExprKind::Closure(_))
+    });
+    let inner = Effects::of_block(&c.body);
+    for cap in c
+        .captures
+        .iter()
+        .filter(|cap| inner.locals.contains(&cap.inner))
+    {
+        match cap.is_global {
+            true => effects.globals.insert(cap.outer),
+            false => effects.locals.insert(cap.outer),
+        };
+    }
+    *calls |= !inner.calls.is_empty();
+    effects.globals.extend(inner.globals);
+    effects.calls.extend(inner.calls);
+    known
 }
 
 /// Whether the temporary `slot` an `if let` tests is read only by that test
@@ -104,7 +134,78 @@ pub(crate) fn copied_at_test(slot: usize, rest: &[Stmt]) -> bool {
     !seen
 }
 
+/// Whether every value `block` gives is a variable declared outside it,
+/// of a type held on the heap: the block may give a reference to it.
+fn gives_outer_place(block: &cpl_ir::Block, ty: &Ty) -> bool {
+    fn gives(block: &cpl_ir::Block, own: &mut Vec<usize>, out: &mut Vec<Option<usize>>) {
+        for stmt in &block.stmts {
+            match stmt {
+                Stmt::Let(slot, _) => own.push(*slot),
+                Stmt::Give(value) => out.push(variable(value)),
+                _ => {}
+            }
+            walk::stmt_blocks(stmt, &mut |inner| gives(inner, own, out));
+        }
+    }
+    // The variable `e` names, `usize::MAX` for a global; a list given as an
+    // array over a domain is the same C++ value.
+    fn variable(e: &Expr) -> Option<usize> {
+        match &e.kind {
+            ExprKind::Local(slot) => Some(*slot),
+            ExprKind::Global(_) => Some(usize::MAX),
+            ExprKind::Builtin(cpl_ir::Builtin::ListToArray, of) => variable(of.first()?),
+            _ => None,
+        }
+    }
+    if !matches!(
+        ty,
+        Ty::List(_) | Ty::Array { .. } | Ty::Str | Ty::Map(..) | Ty::HashMap(..)
+    ) {
+        return false;
+    }
+    let (mut own, mut out) = (Vec::new(), Vec::new());
+    gives(block, &mut own, &mut out);
+    !out.is_empty()
+        && out
+            .iter()
+            .all(|g| g.is_some_and(|slot| !own.contains(&slot)))
+}
+
+/// The variable `value` reads in place: a path, or a `Do` block that gives
+/// one (see [`gives_outer_place`]).
+pub(crate) fn given_root(value: &Expr) -> Option<(bool, usize)> {
+    match &value.kind {
+        ExprKind::Do(block) if gives_outer_place(block, &value.ty) => {
+            let mut root = None;
+            walk::deep_stmts(block, &mut |s| {
+                if let Stmt::Give(g) = s {
+                    root = root.or_else(|| given_root(g));
+                }
+            });
+            root
+        }
+        ExprKind::Builtin(cpl_ir::Builtin::ListToArray, of) => given_root(of.first()?),
+        _ => walk::path_root(value),
+    }
+}
+
 impl<'p> Emitter<'p> {
+    /// A `Do` block as a lambda called on the spot. One that gives a
+    /// variable from outside it, `{ D_len = xs.len; xs }`, returns a
+    /// reference to it, never a copy.
+    pub(crate) fn do_lambda(&mut self, block: &cpl_ir::Block, ty: &Ty, ret: String) -> Code {
+        let by_ref = gives_outer_place(block, ty);
+        let ret = if by_ref {
+            "decltype(auto)".to_string()
+        } else {
+            ret
+        };
+        let outer = std::mem::replace(&mut self.give_ref, by_ref);
+        let code = self.lambda(&ret, |this, out| this.block(block, out));
+        self.give_ref = outer;
+        code
+    }
+
     /// The map and key of `let t = m.get(k)` when `t` is the temporary an
     /// `if let` or `while let` tests, the value is no scalar, and nothing
     /// can change `m` while `t` lives: `t` may then point into `m`.
@@ -336,10 +437,9 @@ impl<'p> Emitter<'p> {
                 if self.closure_id.is_none()
                     && !seq.ty.is_scalar()
                     && got.ty != seq.ty
-                    && matches!(
-                        args.first().map(|m| &m.kind),
-                        Some(ExprKind::Local(_) | ExprKind::Global(_))
-                    ) =>
+                    && args
+                        .first()
+                        .is_some_and(|m| crate::stmt::place_root(m).is_some()) =>
             {
                 Some((Lender::Get(&args[0], &args[1]), &**default))
             }
