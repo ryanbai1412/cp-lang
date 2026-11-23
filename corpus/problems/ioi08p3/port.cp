@@ -1,4 +1,13 @@
-// IOI '08 P3 - Fish (runnable on proto/cp.py lib-run today)
+// Source: IOI 2008 Day 1 (Fish), https://dmoj.ca/problem/ioi08p3
+// Problem: F <= 5e5 fish, each with a length <= 1e9 and one gem of kind 1..=K; a fish can eat
+//   any fish at most half its length (keeping its gems, its length unchanged). Count the distinct
+//   per-kind gem counts that can end up in one fish, mod M (2 <= M <= 30000).
+// Solution: a fish of length L can hold its own gem plus any subset of fish <= L/2. Rank kinds by
+//   their longest fish and credit each combination to the kind whose longest fish makes it. For
+//   kind r, a two-pointer adds fish <= max[r]/2 to per-kind counts c, a SegTree keeps products
+//   of (c + 1) mod M. Fewer than all c[r] + 1 of r's gems: c[r] * prod over lower kinds; all of
+//   them: also times prod over higher kinds whose longest fish is below twice r's next fish
+//   (`first_true` finds the bound). O((F + K) log).
 
 let f_cnt: Int = read()
 let k: Int = read()

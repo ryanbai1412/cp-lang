@@ -1,4 +1,14 @@
-// CCO '22 P2 — Rainy Markets (today form for proto/cpc)
+// Source: CCO 2022 P2 (Rainy Markets), https://dmoj.ca/problem/cco22p2
+// Problem: n <= 1e6 bus stops hold B_i <= 2e9 people; market i, between stops i and i + 1, has
+//   P_i <= 1e9 people and U_i <= 1e9 umbrellas at cost 1. Each person goes to stop i, to stop
+//   i + 1 or buys an umbrella. Print NO if someone gets wet, else YES, the least money spent and
+//   per market how many go left, buy, go right.
+// Solution: greedy left to right: market i fills what is left of stop i, then stop i + 1, and the
+//   rest buy umbrellas. If they run out, earlier markets with spare umbrellas buy instead and
+//   each market between shifts that many people from its right stop to its left, freeing room
+//   in stop i. A stack keeps the spare umbrellas, nearest on top, truncated to the right-goers z
+//   since every shifted unit passes through them; shifts go into a difference array over stops
+//   applied at the end. O(n) amortized.
 // original: corpus/submissions/4801882.cpp
 let n: 2..=1_000_000 = read()
 domain Bus = 0..n

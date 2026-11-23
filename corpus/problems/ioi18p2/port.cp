@@ -1,4 +1,13 @@
-// IOI 2018 Day 1 P2, Seats (buildable today-form)
+// Source: IOI 2018 Day 1 P2 (Seats), https://dmoj.ca/problem/ioi18p2
+// Problem: an h x w hall (h * w <= 1e6) seats contestants 0..h*w; a prefix 0..k is beautiful when
+//   its seats form a rectangle. After each of q <= 5e4 swaps of two contestants' seats, print the
+//   number of beautiful prefixes.
+// Solution: a prefix is a rectangle iff it has exactly one corner (a cell whose upper and left
+//   neighbours are outside) and no dent (an outside cell with 2+ inside neighbours). Each cell
+//   adds 1 over the range of prefixes where it is a corner or a dent; a segment tree with range
+//   add keeps the minimum and how many prefixes reach it; every prefix has a corner and the full
+//   hall scores 1, so the minimum is 1 and its count is the answer.
+//   A swap re-accounts the two seats and their neighbours: O(log(hw)) per swap.
 // original: corpus/submissions/4731161.cpp (grader functions give_initial_chart / swap_seats)
 // stdin: h w q, the h * w seats (row, column) of contestants 0.., then q
 // lines a b. stdout: the number of beautiful prefixes after each swap.

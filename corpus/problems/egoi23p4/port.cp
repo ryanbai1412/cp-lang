@@ -1,6 +1,13 @@
-// EGOI '23 P4 (Bikes vs. Cars): bottleneck graph reconstruction via Floyd-Warshall
-// + min/max Kruskal spanning trees.
-// Runnable on proto/cpc today.
+// Source: EGOI 2023 Day 1 P4 (Bikes vs Cars), https://dmoj.ca/problem/egoi23p4
+// Problem: build a connected network of at most 2023 streets on n <= 500 places; each street has
+//   width W <= 1e6, split into a bike lane b and a car lane W - b. For every pair i < j the widest
+//   car that can travel between them must be exactly C[i][j] and the widest bike B[i][j]. Print
+//   NO, or M and the streets u v b.
+// Solution: in bike-lane terms, B is a maximin and W - C a minimax bottleneck matrix. Both must be
+//   closed under Floyd-Warshall, and pair (i, j) can only get streets with b in
+//   [W - C[i][j], B[i][j]]; when that is non-empty, offer two streets with b at both ends. If the
+//   offered streets reproduce both matrices, the minimum and the maximum spanning trees of them
+//   by b (Kruskal both ways) keep both bottlenecks with <= 2(n - 1) streets. O(n^3).
 // original: corpus/submissions/5678052.cpp
 let n: 1..=500 = read()
 let kv: 1..=1e9 = read()

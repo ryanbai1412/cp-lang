@@ -1,14 +1,14 @@
-// CCO 2021 Weird Tour: a tree whose vertices each give their neighbors in a
-// cyclic order. A walk starts at vertex 1 and repeatedly takes the next
-// incident edge cyclically, inducing an Eulerian tour of the doubled tree
-// where edges activate on successive passes. Answer q queries asking which
-// vertex is visited at step x (1-based; 0 means vertex 1).
-//
-// Running the cyclic-order DFS computes the Eulerian tour of length 2(n - 1)
-// and the activation pass `born[step]` of each directed step. Prefix sums of
-// pass sizes locate which pass a query falls into; answering the x-th active
-// step offline uses `std.fenwick.Fenwick.lower_bound`, completely replacing
-// the original's `__gnu_pbds::tree` order-statistics tree (and dead `Bit`).
+// Source: CCO 2021 P3 (Through Another Maze Darkly), https://dmoj.ca/problem/cco21p3
+// Problem: a tree of n <= 8e5 rooms, each listing its neighbours clockwise, with a pointer at the
+//   first. A step turns the current room's pointer clockwise to the next corridor and walks it.
+//   For each of q <= 8e5 independent queries k <= 1e15, print the room reached after k steps
+//   starting from room 1.
+// Solution: the walk is a sequence of passes from room 1 back to room 1, each a sub-tour of one
+//   fixed Euler tour of the doubled tree; a step joins at the pass `born` given by the corridors
+//   before the parent one in its room's order, and after n passes every step is in. One DFS
+//   builds the tour and `born`; prefix sums of pass sizes binary-search a query's pass (past n,
+//   mod 2(n - 1)). Offline by pass, a Fenwick over tour steps gets each newly born step and
+//   `first_ge` finds the x-th active one: O((n + q) log n).
 // original: corpus/submissions/4552873.cpp
 
 let (n, q): (Int, Int) = read()
