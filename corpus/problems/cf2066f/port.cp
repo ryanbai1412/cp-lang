@@ -41,7 +41,7 @@ domain Seg = 0..spans.len
 let span = [Seg] s => spans[s.ord]
 let total = [Seg] s => a[span[s]].sum()
 
-var mss: [PosB.bounds, PosB.bounds]Int = 0
+var mss: [PosB.cuts, PosB.cuts]Int = 0
 for l in PosB:
     var acc = MaxSub.empty()
     for r in l..=PosB.last:
@@ -49,41 +49,41 @@ for l in PosB:
         mss[l.l, r.r] = acc.best
 
 // agree[i, j]: how long a from cut i and b from cut j run equal.
-var agree: [PosA.bounds, PosB.bounds]Int = 0
+var agree: [PosA.cuts, PosB.cuts]Int = 0
 for p in PosA.rev:
     for q in PosB.rev:
         if a[p] == b[q]: agree[p.l, q.l] = agree[p.r, q.r] + 1
 
-fn matches(j: PosB.bounds, s: Seg) -> ?PosB.bounds =
-    if agree[span[s].start, j] >= span[s].len: some(PosB.bounds.nth(j.ord + span[s].len)) else: none
+fn matches(j: PosB.cuts, s: Seg) -> ?PosB.cuts =
+    if agree[span[s].start, j] >= span[s].len: some(PosB.cuts.nth(j.ord + span[s].len)) else: none
 
-struct Back(from: PosB.bounds, spent: Bool)
+struct Back(from: PosB.cuts, spent: Bool)
 struct Plan(piece: [Seg]Range<PosB>, free: Seg)
 
 fn plan(x: Int) -> ?Plan:
-    var came: [Seg.bounds, PosB.bounds, Bool]?Back = none
-    fn fit(k: Seg.bounds, j: PosB.bounds, spent: Bool) -> Bool =
+    var came: [Seg.cuts, PosB.cuts, Bool]?Back = none
+    fn fit(k: Seg.cuts, j: PosB.cuts, spent: Bool) -> Bool =
         came[k, j, spent] != none or (
-            k == Seg.bounds.first and j == PosB.bounds.first and not spent
+            k == Seg.cuts.first and j == PosB.cuts.first and not spent
         )
     for s in Seg:
         if total[s] < x:
             for spent in [false, true]:
-                for j in PosB.bounds:
+                for j in PosB.cuts:
                     if let k = matches(j, s) and fit(s.l, j, spent):
                         came[s.r, k, spent] = Back(j, spent)
         else:
             for spent in [false, true]:
-                var latest: ?PosB.bounds = none
-                for j in PosB.bounds:
+                var latest: ?PosB.cuts = none
+                for j in PosB.cuts:
                     if let i = latest and mss[i, j] <= x: came[s.r, j, spent] = Back(i, spent)
                     if fit(s.l, j, spent): latest = j
-            if let i = PosB.bounds.first(j => fit(s.l, j, false)):
-                for j in PosB.bounds:
+            if let i = PosB.cuts.first(j => fit(s.l, j, false)):
+                for j in PosB.cuts:
                     if j > i: came[s.r, j, true] = Back(i, false)
-    var at = Back(PosB.bounds.last, true)
-    if not fit(Seg.bounds.last, at.from, true): return none
-    var piece: [Seg]Range<PosB> = PosB.bounds.first..PosB.bounds.first
+    var at = Back(PosB.cuts.last, true)
+    if not fit(Seg.cuts.last, at.from, true): return none
+    var piece: [Seg]Range<PosB> = PosB.cuts.first!..PosB.cuts.first!
     var free: ?Seg = none
     for s in Seg.rev:
         let back = came[s.r, at.from, at.spent]!
