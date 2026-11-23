@@ -253,6 +253,7 @@ wall_clock_tests=(
     the_checks_of_a_typical_function_fit_the_budget
     a_segment_tree_monoid_is_checked_within_the_budget
     ten_million_steps_fit_the_debugging_budgets
+    every_command_starts_cold_in_under_100_ms
 )
 wall_filter='binary(budget) or test(/(^|::)front_end_check_is_under_50_ms$/)'
 for t in "${wall_clock_tests[@]}"; do

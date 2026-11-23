@@ -220,6 +220,8 @@ jobs:
           shared-key: lsp-latency
       - name: LSP latency (release)
         run: cargo test --release -p cpl-lsp --test latency -- --nocapture
+      - name: Cold start of every command (release)
+        run: cargo test --release -p cpl-cli --test cold_start -- --nocapture
 
   # JetBrains: the plugin builds, and its tests run in a headless IDE against
   # the real `cpl` (file type, highlighting, the LSP server, run configurations).
