@@ -7,7 +7,10 @@
 A problem directory `problems/<id>/` has `tests/*.in` + `.ans` (the statement samples),
 `gen.py SEED` (a small random multitest input) and `brute.py` (an exhaustive solver for
 those sizes). `check.py IN OUT` replaces the answer comparison where answers are not
-unique. Verdict AC needs every sample and 200 generated cases to agree.
+unique. `max.py` writes one input at the statement's maximum constraints and `tl` holds
+the statement's time limit in seconds. Verdict AC needs every sample and 200 generated
+cases to agree, and the max input to finish within 2x `tl` (the slack covers this
+machine against the judge's).
 """
 import subprocess
 import sys
@@ -57,7 +60,18 @@ def judge(pid, cmd):
             return f"TLE on gen seed {seed}"
         if not ok(inp, out, ans):
             return f"WA on gen seed {seed}\n--- input\n{inp}--- expected\n{ans}--- got\n{out}"
-    return f"AC ({len(cases)} samples, {CASES} generated)"
+    note = ""
+    if (d / "max.py").exists() and cmd[0] != sys.executable:
+        import time
+        big = run(py + [str(d / "max.py")], "")
+        limit = 2 * float((d / "tl").read_text())
+        t0 = time.perf_counter()
+        try:
+            run(cmd, big, timeout=limit)
+        except subprocess.TimeoutExpired:
+            return f"TLE on max input (> {limit:g} s)"
+        note = f", max input {time.perf_counter() - t0:.2f} s"
+    return f"AC ({len(cases)} samples, {CASES} generated{note})"
 
 
 def main(argv):
