@@ -128,56 +128,14 @@ fn cli_within(
     input: &[u8],
     limit: u64,
 ) -> Result<(i32, String, String), String> {
-    use std::io::{Read, Write};
-    use std::process::{Command, Stdio};
-    use std::time::{Duration, Instant};
-    let mut child = Command::new(cpl)
-        .args(args)
-        .stdin(Stdio::piped())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()
-        .map_err(|e| format!("cannot run {}: {e}", cpl.display()))?;
-    if let Some(mut stdin) = child.stdin.take() {
-        let _ = stdin.write_all(input);
-    }
-    let drain = |pipe: Option<Box<dyn Read + Send>>| {
-        std::thread::spawn(move || {
-            let mut buf = Vec::new();
-            if let Some(mut p) = pipe {
-                let _ = p.read_to_end(&mut buf);
-            }
-            String::from_utf8_lossy(&buf).into_owned()
-        })
-    };
-    let out = drain(
-        child
-            .stdout
-            .take()
-            .map(|p| Box::new(p) as Box<dyn Read + Send>),
-    );
-    let err = drain(
-        child
-            .stderr
-            .take()
-            .map(|p| Box::new(p) as Box<dyn Read + Send>),
-    );
-    let deadline = Instant::now() + Duration::from_secs(limit);
-    let status = loop {
-        if let Some(status) = child.try_wait().map_err(|e| format!("cpl failed: {e}"))? {
-            break status;
-        }
-        if Instant::now() > deadline {
-            let _ = child.kill();
-            let _ = child.wait();
-            return Err(format!("`cpl {}` timed out after {limit}s", args.join(" ")));
-        }
-        std::thread::sleep(Duration::from_millis(5));
-    };
+    let mut cmd = std::process::Command::new(cpl);
+    cmd.args(args);
+    let out = runner::run_piped(cmd, input, limit)
+        .map_err(|e| format!("`cpl {}` {e}", args.join(" ")))?;
     Ok((
-        status.code().unwrap_or(-1),
-        out.join().unwrap_or_default(),
-        err.join().unwrap_or_default(),
+        out.status.code().unwrap_or(-1),
+        String::from_utf8_lossy(&out.stdout).into_owned(),
+        String::from_utf8_lossy(&out.stderr).into_owned(),
     ))
 }
 
@@ -251,8 +209,7 @@ pub(crate) struct ToolRun {
 /// blanks the `// has:`/`// lacks:`/`// rewritten:` lines so a tool that echoes the source
 /// (`build`) can't match them.
 fn run_tool(case: &ConformanceCase, text: &str, args: &str) -> Result<ToolRun, String> {
-    use std::io::Write;
-    use std::process::{Command, Stdio};
+    use std::process::Command;
     let cpl = match cli_override() {
         Some(cpl) => cpl,
         None => std::env::current_exe()
@@ -328,20 +285,10 @@ fn run_tool(case: &ConformanceCase, text: &str, args: &str) -> Result<ToolRun, S
         w.replace("{case}", &copy.to_string_lossy())
             .replace("{dir}", &dir.to_string_lossy())
     }));
-    let mut child = Command::new(&cpl)
-        .args(&argv)
-        .current_dir(&dir)
-        .stdin(Stdio::piped())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()
-        .map_err(|e| format!("cannot run cpl: {e}"))?;
-    if let Some(mut stdin) = child.stdin.take() {
-        let _ = stdin.write_all(&header_input(text));
-    }
-    let out = child
-        .wait_with_output()
-        .map_err(|e| format!("cpl failed: {e}"))?;
+    let mut cmd = Command::new(&cpl);
+    cmd.args(&argv).current_dir(&dir);
+    let out = runner::run_piped(cmd, &header_input(text), runner::case_timeout())
+        .map_err(|e| format!("cpl {e}"))?;
     let rewritten = std::fs::read_to_string(&copy).unwrap_or_default();
     let _ = std::fs::remove_dir_all(&dir);
     Ok(ToolRun {

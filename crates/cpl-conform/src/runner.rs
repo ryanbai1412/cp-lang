@@ -121,6 +121,63 @@ pub fn case_timeout() -> u64 {
         .unwrap_or(20)
 }
 
+/// Runs `cmd` with `input` on stdin and returns its output, or `Err` after
+/// `limit` seconds, killing it. The input is written and both outputs are
+/// read on their own threads, so a program that prints more than a pipe holds
+/// before it has read all its input can't deadlock against the harness.
+pub fn run_piped(
+    mut cmd: std::process::Command,
+    input: &[u8],
+    limit: u64,
+) -> Result<std::process::Output, String> {
+    use std::io::{Read, Write};
+    use std::process::Stdio;
+    use std::time::{Duration, Instant};
+    let name = cmd.get_program().to_string_lossy().into_owned();
+    let mut child = cmd
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .map_err(|e| format!("cannot run {name}: {e}"))?;
+    let stdin = child.stdin.take();
+    let input = input.to_vec();
+    let writer = std::thread::spawn(move || {
+        if let Some(mut s) = stdin {
+            let _ = s.write_all(&input);
+        }
+    });
+    fn drain<R: Read + Send + 'static>(pipe: Option<R>) -> std::thread::JoinHandle<Vec<u8>> {
+        std::thread::spawn(move || {
+            let mut buf = Vec::new();
+            if let Some(mut p) = pipe {
+                let _ = p.read_to_end(&mut buf);
+            }
+            buf
+        })
+    }
+    let out = drain(child.stdout.take());
+    let err = drain(child.stderr.take());
+    let deadline = Instant::now() + Duration::from_secs(limit);
+    let status = loop {
+        if let Some(status) = child.try_wait().map_err(|e| format!("{name} failed: {e}"))? {
+            break status;
+        }
+        if Instant::now() > deadline {
+            let _ = child.kill();
+            let _ = child.wait();
+            return Err(format!("timed out after {limit}s"));
+        }
+        std::thread::sleep(Duration::from_millis(5));
+    };
+    let _ = writer.join();
+    Ok(std::process::Output {
+        status,
+        stdout: out.join().unwrap_or_default(),
+        stderr: err.join().unwrap_or_default(),
+    })
+}
+
 /// `run_interp`, `Err` once it runs past `case_timeout()`: the run stops
 /// itself there (`cpl_interp::Stop`), so nothing is left running.
 pub fn run_interp_bounded(
@@ -246,4 +303,22 @@ pub static SHARD: std::sync::OnceLock<(usize, usize)> = std::sync::OnceLock::new
 
 pub fn in_shard(i: usize) -> bool {
     SHARD.get().is_none_or(|&(n, m)| i % m == n - 1)
+}
+
+#[cfg(test)]
+mod run_piped_tests {
+    #[test]
+    fn a_program_that_prints_before_reading_its_input_does_not_deadlock() {
+        let mut cmd = std::process::Command::new("sh");
+        cmd.args(["-c", "head -c 300000 /dev/zero; wc -c"]);
+        let out = super::run_piped(cmd, &vec![b'x'; 1 << 20], 20).unwrap();
+        assert_eq!(out.stdout.len(), 300000 + "1048576\n".len());
+    }
+
+    #[test]
+    fn a_run_past_its_limit_is_killed() {
+        let mut cmd = std::process::Command::new("sleep");
+        cmd.arg("30");
+        assert!(super::run_piped(cmd, b"", 1).is_err());
+    }
 }

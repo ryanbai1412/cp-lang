@@ -1,5 +1,5 @@
 use std::path::{Path, PathBuf};
-use std::process::{Command, Stdio};
+use std::process::Command;
 use std::sync::{Condvar, Mutex};
 use std::time::Duration;
 
@@ -254,19 +254,8 @@ fn compile_cpp(cpp: &str, cache_dir: &Path) -> Result<PathBuf, CppCompileError> 
 }
 
 fn run_binary(bin: &Path, input: &[u8]) -> Result<Vec<u8>, String> {
-    let mut child = Command::new(bin)
-        .stdin(Stdio::piped())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()
-        .map_err(|e| format!("cannot spawn {}: {e}", bin.display()))?;
-    if let Some(mut stdin) = child.stdin.take() {
-        use std::io::Write;
-        let _ = stdin.write_all(input);
-    }
-    let out = child
-        .wait_with_output()
-        .map_err(|e| format!("wait failed: {e}"))?;
+    let out = runner::run_piped(Command::new(bin), input, runner::case_timeout())
+        .map_err(|e| format!("{}: {e}", bin.display()))?;
     if !out.status.success() {
         let stderr = String::from_utf8_lossy(&out.stderr);
         return Err(format!(
