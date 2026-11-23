@@ -3,6 +3,52 @@
 use super::*;
 
 impl<'a> Parser<'a> {
+    /// `P { x: 1 }` after a type's name: Rust's struct literal.
+    pub(super) fn struct_literal_ahead(&self, callee: &Expr) -> bool {
+        let fields = self.peek_n(1) == T::RBrace
+            || (self.peek_n(1) == T::Ident && self.peek_n(2) == T::Colon);
+        fields
+            && matches!(&callee.kind, ExprKind::Name(n) if n.starts_with(|c: char| c.is_ascii_uppercase()))
+    }
+
+    /// `P { x: 1 }`, read as the call CP Lang builds a struct with, `P(x: 1)`.
+    pub(super) fn struct_literal(&mut self, callee: Expr) -> ExprKind {
+        let open = self.span();
+        self.bump();
+        let mut args = Vec::new();
+        while self.at(T::Ident) && self.peek_n(1) == T::Colon {
+            let name = self.name();
+            self.bump();
+            let value = self.expr();
+            args.push(Arg {
+                name: Some(name),
+                mutable: false,
+                value,
+            });
+            if !self.eat(T::Comma) {
+                break;
+            }
+        }
+        let close = self.span();
+        if self.expect(T::RBrace, "`}` after the struct's fields") {
+            let mut diag = Diagnostic::error(
+                codes::EXPECTED_TOKEN,
+                Span::new(open.start, close.end),
+                "CP Lang builds a struct by calling its type, not with `{ ... }`",
+            )
+            .with_help("write `P(x: 1, y: 2)`");
+            diag.fixes.push(cpl_diag::Fix {
+                title: "use parentheses".into(),
+                edits: vec![(open, "(".into()), (close, ")".into())],
+            });
+            self.recovered(diag);
+        }
+        ExprKind::Call {
+            callee: Box::new(callee),
+            args,
+        }
+    }
+
     /// `let [a, b] = xs`: a list has no pattern in CP Lang. One error,
     /// with the names still bound so their uses don't cascade.
     pub(super) fn list_pattern(&mut self) -> PatternKind {
