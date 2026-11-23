@@ -1214,7 +1214,7 @@ fn code_lenses_run_trace_test_and_stress_with_the_first_sample_when_asked() {
     let file = dir.join("sum two.cp");
     let path = file.display().to_string();
     let uri = format!("file://{}", path.replace(' ', "%20"));
-    let src = "let (a, b): (Int, Int) = read()\nprint(a + b)\n@brute(main)\nfn slow() = 0\n";
+    let src = "let (a, b): (Int, Int) = read()\nprint(a + b)\n@alt(program)\nfn slow() = 0\n";
     let lenses = |options: Value| -> Vec<(String, Vec<String>)> {
         let mut server = Server::new();
         server.handle(&request(

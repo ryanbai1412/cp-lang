@@ -1895,7 +1895,8 @@ fn code_lenses(path: &str, text: &str) -> Vec<(String, Vec<String>)> {
     if has_tests {
         lenses.push(("Test".into(), vec!["test".into(), path.into()]));
     }
-    if ["@brute", "@checker", "@interactor"]
+    // `@check` also matches the older `@checker`.
+    if ["@alt", "@brute", "@check", "@interactor"]
         .iter()
         .any(|d| text.contains(d))
     {
