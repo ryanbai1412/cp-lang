@@ -32,7 +32,11 @@ export function llmsIndex(): string {
 export function llmsFull(): string {
   return pages()
     .map((p) => {
-      const raw = readFileSync(join(process.cwd(), 'content/docs', p.path), 'utf8').replace(/^---[\s\S]*?---\n/, '');
+      const raw = readFileSync(join(process.cwd(), 'content/docs', p.path), 'utf8')
+        .replace(/^---[\s\S]*?---\n/, '')
+        // MDX cards read as a plain link list.
+        .replace(/^[ \t]*<\/?Cards>\n/gm, '')
+        .replace(/^[ \t]*<Card title="([^"]*)" href="([^"]*)" description="([^"]*)" \/>$/gm, '- [$1]($2): $3');
       return `# ${p.data.title}\n\nURL: ${p.url}\n\n${raw.trim()}\n`;
     })
     .join('\n---\n\n');
