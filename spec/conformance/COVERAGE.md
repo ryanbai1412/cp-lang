@@ -7,7 +7,7 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 2732 (995 passing). Rules: 573.
+Cases: 2737 (995 passing). Rules: 573.
 
 ## Summary per chapter
 
@@ -19,7 +19,7 @@ Cases: 2732 (995 passing). Rules: 573.
 - R04b (04b-keys.md): 27 rules, 66 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R05 (05-ownership.md): 43 rules, 162 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R06 (06-control-functions.md): 24 rules, 99 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R07 (07-sequences.md): 90 rules, 152 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R07 (07-sequences.md): 90 rules, 157 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R08 (08-traits-generics.md): 29 rules, 91 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R09 (09-contexts-checks.md): 26 rules, 56 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R10 (10-io.md): 19 rules, 106 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -53,7 +53,7 @@ negative case. Complete: rules with no gap in `rule-gaps.txt`.
 | R04b | 27 | 27 (100%) | 7 | 7 (100%) | 27 (100%) |
 | R05 | 43 | 43 (100%) | 21 | 21 (100%) | 43 (100%) |
 | R06 | 24 | 24 (100%) | 16 | 16 (100%) | 24 (100%) |
-| R07 | 90 | 90 (100%) | 26 | 26 (100%) | 90 (100%) |
+| R07 | 90 | 90 (100%) | 27 | 27 (100%) | 90 (100%) |
 | R08 | 29 | 29 (100%) | 12 | 12 (100%) | 29 (100%) |
 | R09 | 26 | 26 (100%) | 14 | 14 (100%) | 26 (100%) |
 | R10 | 19 | 19 (100%) | 9 | 9 (100%) | 19 (100%) |
@@ -67,7 +67,7 @@ negative case. Complete: rules with no gap in `rule-gaps.txt`.
 | Rlint | 2 | 2 (100%) | 2 | 2 (100%) | 2 (100%) |
 | Rlsp | 5 | 5 (100%) | 1 | 1 (100%) | 5 (100%) |
 | Rstress | 1 | 1 (100%) | 0 | 0 (0%) | 1 (100%) |
-| all | 573 | 572 (99%) | 227 | 227 (100%) | 572 (99%) |
+| all | 573 | 572 (99%) | 228 | 228 (100%) | 572 (99%) |
 
 ## Rules
 
@@ -465,13 +465,13 @@ Each rule: positive / negative case counts, then the gap if any.
 - R07.3.2 [3+ 0-]: | `Keyed<D, T>` | `Seq` + `s.items` walks `(key, x)`; keys survive `filter` | everything `...
 - R07.3.3 [2+ 0-]: | `Sized` | \(O(1)\) `s.len` | collections, ranges, `Indexed` views, sets, maps
 - R07.3.4 [1+ 0-]: | `Bidir<T>` | `s.rev` walks backwards; `s.last` is \(O(1)\) | everything `Indexed`, sorte...
-- R07.3.5 [2+ 0-]: | `Indexed<D, T>` | `Keyed` + `Sized` + `Bidir` + `s[i]` for `i: D` in \(O(1)\), `s.keys: ...
+- R07.3.5 [2+ 1-]: | `Indexed<D, T>` | `Keyed` + `Sized` + `Bidir` + `s[i]` for `i: D` in \(O(1)\), `s.keys: ...
 - R07.3.6 [1+ 0-]: | `IndexedMut<D, T>` | `Indexed` + `s[i]` is a place: `sort()`, `swap`, slice assignment |...
 - R07.4.1 [2+ 0-]: **Keys in, keys out.** Library functions answer in the keys they were given: `s[l..].searc...
 - R07.4.2 [1+ 0-]: **Combining two sequences pairs them by walk order**: `==`, `<`, `starts_with`, `+`, slice...
 - R07.4.3 [1+ 0-]: **`[s.keys]x`** is a table over exactly `s`'s keys; `t.rekey(r)` re-keys equal-length cell...
 - R07.4.4 [2+ 1-]: **Materializing counts from 0:** `.collect()`, `.sorted()`, `List(w)` and `Str(w)` build a...
-- R07.4.5 [1+ 3-]: **Lints:** a literal index into a slice (`w[0]`), and a 0-based counter used as a slice ke...
+- R07.4.5 [3+ 6-]: any other `x` is checked: out of `w.keys` traps R0101 naming the key and `w.keys`, and nev...
 - R07.4.6 [1+ 1-]: | `a[r]` (`r: Range<D>`; `a[j..i]` with cut ends is the piece) | `D`, only inside `r` | `r...
 - R07.4.7 [3+ 1-]: | `a.rev` | not indexable: it walks out of key order; `.nth(k)` reads by walk position, an...
 - R07.4.8 [1+ 0-]: | `a.items` | `D`, gives `(i, a[i])` | in order | \(O(1)\)
@@ -748,7 +748,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0302 Type mismatch: 42 case(s)
 - E0303 Wrong number of arguments: 10 case(s)
 - E0304 Value is not callable: 1 case(s)
-- E0305 Value is not indexable: 4 case(s)
+- E0305 Value is not indexable: 7 case(s)
 - E0306 Invalid arithmetic on domain position (reserved): exempt (reserved in the registry)
 - E0307 Condition is not `Bool`: 1 case(s)
 - E0308 Ordering comparison on optional: 2 case(s)
@@ -907,7 +907,7 @@ prepends it.
   - line 963: `var xs = [1, 2]`
 - 06-control-functions.md: 3 blocks, 0 with a case, 3 spec-only, 0 neither
 - 07-sequences.md: 7 blocks, 0 with a case, 6 spec-only, 1 neither
-  - line 201: `fn divisors(n: Int) -> yields Int:`
+  - line 217: `fn divisors(n: Int) -> yields Int:`
 - 08-traits-generics.md: 4 blocks, 0 with a case, 4 spec-only, 0 neither
 - 09-contexts-checks.md: 3 blocks, 0 with a case, 3 spec-only, 0 neither
 - 10-io.md: 3 blocks, 1 with a case, 2 spec-only, 0 neither
