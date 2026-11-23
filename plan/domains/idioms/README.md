@@ -71,7 +71,7 @@ What idiomatic v0.3 looks like, written down (skill, principles, idiom catalog) 
 | Tracked ports check on v0.3 | `cpl check corpus/problems/<id>/port.cp` x305 | 175/305 | 305/305 |
 | Dreams check on v0.3 | same, `dream.cp` | 145/305 | tracked |
 | Tracked ports judge-proven | `cargo test --release -p cpl-cli --test judges -- --include-ignored every_` | 223/305 (`corpus/sets/v03.txt`), all 8 judges, 0 fail | 305/305 |
-| Corpus suite | `cpl-conform corpus` | 12/100 (committed board says 7) | 100/100 |
+| Corpus suite | `cpl-conform corpus` | 96/100 (2026-11-23; btoi15p3, cmt21r2ztr wait on checker.py support, dmopc21c9p1, noi09p4 on compiler) | 100/100 |
 | Lint warnings on ports | `cpl lint` over the 175 | 23 (untriaged) | 0 false positives |
 | Taste reviews | `scripts/review-check.py` | median 4, 18 under 4 (pre-0.3 ports) | median >= 4, 0 under 3 on v0.3 |
 | Token ratio vs C++ | `scripts/ports-page.py --tokens` | port 0.52x median, max 1.10x (1 over); dream 0.49x, max 0.97x (n=294) | median <= 0.6x, max <= 1.0x |
