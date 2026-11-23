@@ -67,7 +67,9 @@ impl Server {
                 .iter()
                 .filter_map(Value::as_str)
                 .any(|kind| "source.fixAll".starts_with(kind) || kind.starts_with("source.fixAll"));
-        let fixed = fix_all.then(|| fix_file(uri, &analysis.text)).flatten();
+        let fixed = fix_all
+            .then(|| fix_file(&mut self.db, uri, &analysis.text))
+            .flatten();
         if let Some(text) = fixed {
             let whole = Span::new(0, analysis.text.len() as u32);
             actions.push(obj([

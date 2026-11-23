@@ -1378,18 +1378,16 @@ fn diagnostic_json(diag: &Diagnostic, uri: &str, text: &str, lines: &LineIndex) 
 /// site bundle's size cap.
 /// The buffer after `cpl fix`, if that changes it.
 #[cfg(target_arch = "wasm32")]
-fn fix_file(_uri: &str, _text: &str) -> Option<String> {
+fn fix_file(_db: &mut Database, _uri: &str, _text: &str) -> Option<String> {
     None
 }
 
+/// Fixed in the server's own database, which then gets the buffer back:
+/// the client hasn't applied the edit yet.
 #[cfg(not(target_arch = "wasm32"))]
-fn fix_file(uri: &str, text: &str) -> Option<String> {
-    let path = path_of_uri(uri);
-    let (fixed, applied) = cpl_lint::fix_at(
-        path.as_deref().map(std::path::Path::new),
-        text,
-        &lint_config(uri),
-    );
+fn fix_file(db: &mut Database, uri: &str, text: &str) -> Option<String> {
+    let (fixed, applied) = cpl_lint::fix_in(db, uri, text, &lint_config(uri));
+    db.set_file(uri, text);
     (applied > 0).then_some(fixed)
 }
 
