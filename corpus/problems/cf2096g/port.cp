@@ -1,7 +1,7 @@
 // Codeforces 2096 G (Wonderful Guessing Game): identify 1 fake coin among n
 // in q parallel weighings when at most 1 weighing answer may be erased ('?').
 //
-// Choose q = ceil_log3(n) + 1 so 3^(q - 1) >= n. Assign each pair (2p - 1, 2p)
+// Choose the least q with 3^(q - 1) >= n. Assign each pair (2p - 1, 2p)
 // a distinct balanced-ternary code of length q - 1 in {-1, 0, +1} and append a
 // checksum digit so the q digits sum to 0 (mod 3):
 //   - coin 2p - 1 gets +code (+1 => Left, -1 => Right, 0 => Off),
@@ -15,14 +15,6 @@
 
 enum Side: Left | Right | Off
 
-fn ceil_log3(n: Int) -> Int:
-    var p = 1
-    var k = 0
-    while p < n:
-        p *= 3
-        k += 1
-    k
-
 fn digit_to_side(d: Int) -> Side = match d:
     1 => Side.Left
     -1 => Side.Right
@@ -34,10 +26,10 @@ fn opposite(s: Side) -> Side = match s:
     Side.Off => Side.Off
 
 fn parse_side(ch: Char) -> ?Side = match ch:
-    'L' => some(Side.Left)
-    'R' => some(Side.Right)
-    'N' => some(Side.Off)
-    _ => none
+    'L' => Some(Side.Left)
+    'R' => Some(Side.Right)
+    'N' => Some(Side.Off)
+    _ => None
 
 fn balanced_sides(id: Int, len: Int) -> List<Side>:
     var v = id
@@ -54,7 +46,7 @@ fn balanced_sides(id: Int, len: Int) -> List<Side>:
 @!multitest
 let n: 2..=200_000 = read()
 domain Coin = 1..=n
-let q = ceil_log3(n) + 1
+let q = (1..).find(q => 3 ** (q - 1) >= n)!
 domain Round = 0..q
 
 var rounds: [Round, Side]List<Coin> = []
