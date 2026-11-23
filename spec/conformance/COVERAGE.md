@@ -7,7 +7,7 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 3007 (1061 passing). Rules: 582.
+Cases: 3010 (1064 passing). Rules: 582.
 
 ## Summary per chapter
 
@@ -17,9 +17,9 @@ Cases: 3007 (1061 passing). Rules: 582.
 - R04 (04-indices.md): 73 rules, 181 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04a (04a-identity-vs-offset.md): 39 rules, 54 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04b (04b-keys.md): 28 rules, 70 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R05 (05-ownership.md): 49 rules, 197 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R05 (05-ownership.md): 49 rules, 198 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R06 (06-control-functions.md): 24 rules, 107 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R07 (07-sequences.md): 90 rules, 192 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R07 (07-sequences.md): 90 rules, 195 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R08 (08-traits-generics.md): 29 rules, 92 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R09 (09-contexts-checks.md): 27 rules, 61 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R10 (10-io.md): 19 rules, 111 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -391,7 +391,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R05.7.5 [2+ 5-]: a closure or nested fn that captures a local `var`, a local heap value or a parameter (§10...
 - R05.7.6 [8+ 11-]: **Read lend:** the sources can be read, but not written, resized or moved.
 - R05.7.7 [1+ 3-]: **`mut` lend:** the sources can't be touched at all except through it.
-- R05.7.8 [4+ 4-]: returned, except from a fn declared `lends` (§6);
+- R05.7.8 [4+ 5-]: returned, except from a fn declared `lends` (§6);
 - R05.7.9 [1+ 1-]: stored into anything reached through a parameter (a `mut` parameter's storage belongs to t...
 - R05.7.10 [3+ 3-]: stored in a top-level `var` by a fn. The file body is itself a fn (§11), so its own statem...
 - R05.8.1 [1+ 3-]: Different fields never overlap: `f(mut s.left, mut s.right)` is fine.
@@ -496,7 +496,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R07.5.7 [1+ 0-]: | `w.keys`, `w.len` | `lo..hi`, `hi - lo`
 - R07.5.8 [1+ 0-]: | `List(w)` | the one allocation: a fresh 0-based copy
 - R07.5.9 [1+ 3-]: **Lending: the rules of `mut a[i]`, over a range.** Any number of read views coexist with ...
-- R07.5.10 [3+ 1-]: : in a `let`, `var`, field or container that dies no later than its sources, never in a gl...
+- R07.5.10 [5+ 2-]: : in a `let`, `var`, field or container that dies no later than its sources, never in a gl...
 - R07.5.11 [2+ 1-]: **Parameters.** A read-only `xs: [V]T` takes an array or any `Indexed` over `V` (a `mut` o...
 - R07.5.12 [2+ 1-]: **Walk-only views.** `filter`, `take_while` and generators are `Seq` only: the `if` or the...
 - R07.6.1 [2+ 0-]: **Push, not pull.** The generator runs and the `for` body runs at each `yield`, so a non-r...
@@ -785,7 +785,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0504 Planned syntax, not implemented yet: 1 case(s)
 - E0601 Aliased mutable lend: 14 case(s)
 - E0602 Variable mutated while lent: 42 case(s)
-- E0603 Lent value escapes its scope: 21 case(s)
+- E0603 Lent value escapes its scope: 22 case(s)
 - E0604 Invalid `lends` projection: 1 case(s)
 - E0605 Invalid `Index` implementation: 2 case(s)
 - E0606 Missing trait implementation for operator: 24 case(s)
