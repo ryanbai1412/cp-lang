@@ -1,0 +1,6 @@
+code = "L0596"
+level = "warn"
+group = "idiom"
+title = "Found flag beside a value"
+summary = "`var found = false` set to `true` only beside `best = x`: `var best: ?T = None`"
+no_fix = "the value's type and every read of the flag change together"

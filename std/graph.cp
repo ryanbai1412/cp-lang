@@ -2249,31 +2249,23 @@ pub fn min_mean_cycle<V>(g: WeightedNext<V, Int>) -> ?(sum: Int, len: Int):
                     if nxt[a.to] == None or nd < nxt[a.to]!:
                         nxt[a.to] = Some(nd)
         dp.push(nxt)
-    var has_best = false
-    var best_num = 0
-    var best_den = 1
+    var best: ?(num: Int, den: Int) = None
     for v in V:
         if let dn = dp[n][v]:
-            var has_v = false
-            var v_num = 0
-            var v_den = 1
+            var worst: ?(num: Int, den: Int) = None
             for k in 0..n:
                 if let dk = dp[k][v]:
                     let num = dn - dk
                     let den = n - k
-                    if not has_v or I128(num) * I128(v_den) > I128(v_num) * I128(den):
-                        has_v = true
-                        v_num = num
-                        v_den = den
-            if has_v:
-                if not has_best or I128(v_num) * I128(best_den) < I128(best_num) * I128(v_den):
-                    has_best = true
-                    best_num = v_num
-                    best_den = v_den
-    if not has_best: return None
-    let g_val = gcd(abs(best_num), best_den)
-    let p = best_num / g_val
-    let q = best_den / g_val
+                    if worst.is_none_or(w => I128(num) * I128(w.den) > I128(w.num) * I128(den)):
+                        worst = (num:, den:)
+            if let w = worst:
+                if best.is_none_or(b => I128(w.num) * I128(b.den) < I128(b.num) * I128(w.den)):
+                    best = w
+    let Some(b) = best else: return None
+    let g_val = gcd(abs(b.num), b.den)
+    let p = b.num / g_val
+    let q = b.den / g_val
     var best_len = n + 1
     for s in V:
         var cur: [V]?Int = None

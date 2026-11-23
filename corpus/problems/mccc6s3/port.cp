@@ -13,17 +13,11 @@ let n: Int = read()
 domain Pos = 1..=n
 let a: [Pos]Int = read()
 
-var best_set = false
-var best_d = 0
-var best_i1 = 0
-var best_i2 = -1
+var best: ?(d: Int, i1: Int, i2: Int) = None
 
 fn consider(d: Int, i1: Int, i2: Int):
-    if not best_set or (d, i1, i2) < (best_d, best_i1, best_i2):
-        best_set = true
-        best_d = d
-        best_i1 = i1
-        best_i2 = i2
+    if best.is_none_or(b => (d, i1, i2) < (b.d, b.i1, b.i2)):
+        best = (d:, i1:, i2:)
 
 // Compress distinct values once so DSU jump pointers work for arbitrary 64-bit values.
 var all_v: List<Int> = [a[p] for p in Pos]
@@ -106,5 +100,6 @@ sweep(a, true, false)
 let rev_a: [Pos]Int = [Pos] p => a[Pos.nth(n - 1 - p.to_idx)]
 sweep(rev_a, false, true)
 
-let out2 = if best_i2 < 0: -1 else: best_i2 + 1
-print(best_i1 + 1, out2)
+let b = best ?? (d: 0, i1: 0, i2: -1)
+let out2 = if b.i2 < 0: -1 else: b.i2 + 1
+print(b.i1 + 1, out2)

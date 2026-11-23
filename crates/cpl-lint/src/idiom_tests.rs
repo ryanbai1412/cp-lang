@@ -280,3 +280,28 @@ fn a_stand_in_test_then_unwrap_is_a_let_header() {
     let tuple = "let a = [(1, 2)]\nlet p = a.find(t => t.0 > 0)\nif (p ?? (0, 0)) > (0, 1):\n    let (x, y) = p!\n    print(x + y)\n";
     assert!(!codes(tuple).contains(&"L0595"), "{:?}", codes(tuple));
 }
+
+#[test]
+fn a_found_flag_beside_its_value_is_an_optional() {
+    // corpus/newcomer/n59_run1_cf2272d.cp: `found` only says `hub_tree` is set.
+    let src = "let a = [3, 4]\nvar found = false\nvar last = 0\nfor x in a:\n    if x % 2 == 0:\n        last = x\n        found = true\nif found: print(last)\n";
+    assert_eq!(codes(src), ["L0596"]);
+    let pair = "let a = [3, 4]\nvar seen = false\nvar num = 0\nvar den = 1\nfor x in a:\n    if not seen or x * den > num:\n        seen = true\n        num = x\n        den = 1\nif seen: print(num, den)\n";
+    let d = only(pair);
+    assert!(d.message.contains("`num`, `den` have"), "{}", d.message);
+}
+
+#[test]
+fn a_flag_that_says_more_than_a_value_is_set_stays_quiet() {
+    // std/graph.cp boruvka: the value changes by `-=`, so the flag counts merges.
+    let counted = "let a = [3, 4]\nvar left = 5\nvar merged = false\nfor x in a:\n    if x > 3:\n        left -= 1\n        merged = true\nprint(yes(merged), left)\n";
+    // corpus/problems/sac22cc1p3: the value lives in a narrower scope.
+    let narrower = "let a = [3, 4]\nvar changed = false\nfor x in a:\n    var at = 0\n    if x > 3:\n        at = x\n        changed = true\n    print(at)\nprint(yes(changed))\n";
+    // std/bag.cp: the value starts as real data, not a placeholder.
+    let data = "var a = [3, 4]\nvar small = a.clone()\nvar flip = false\nif a.len > 1:\n    small = [1]\n    flip = true\nprint(yes(flip), small)\n";
+    // The flag is cleared again.
+    let cleared = "let a = [3, 4]\nvar open = false\nvar last = 0\nfor x in a:\n    if x > 3:\n        last = x\n        open = true\n    else:\n        open = false\nprint(yes(open), last)\n";
+    for src in [counted, narrower, data, cleared] {
+        assert!(!codes(src).contains(&"L0596"), "{src}\n{:?}", codes(src));
+    }
+}

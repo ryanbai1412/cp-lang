@@ -14,6 +14,7 @@ mod extreme;
 mod fermat;
 mod fields;
 mod floats;
+mod found_flag;
 mod grid;
 mod grid_step;
 mod hand_ds;
@@ -80,6 +81,7 @@ pub(crate) fn run(file: &File, config: &Config) -> Vec<Finding> {
     findings.extend(isqrt::check(file));
     findings.extend(sentinel::check(file));
     findings.extend(sentinel_scalar::check(file));
+    findings.extend(found_flag::check(file));
     findings.extend(mod_reduce::check(file));
     findings.extend(grid::check(file));
     findings.extend(grid_step::check(file));

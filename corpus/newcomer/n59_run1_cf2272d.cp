@@ -3,7 +3,7 @@
 let k: 2..=2e5 = read()
 var hub_tree = 1
 var hub = 1
-var found = false  // expect: missing flag-for-first-match
+var found = false  // expect: found_flag_pair
 for t in 1..=k:
     let n: 1..=2e5 = read()
     var adj: [1..=n]List<Int> = []  // expect: manual_adjacency_list
