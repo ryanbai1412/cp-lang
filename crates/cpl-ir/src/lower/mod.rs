@@ -348,7 +348,10 @@ impl Lowerer<'_> {
         }
         if !lw.diags.is_empty() {
             lw.diags.sort_by_key(|d| (d.span.start, d.span.end));
-            lw.diags.dedup();
+            // One error per place, as `Sink::push` keeps for the checker.
+            lw.diags.dedup_by(|b, a| {
+                a.span == b.span && (a.code == b.code || a.severity == b.severity)
+            });
             return Err(lw.diags);
         }
         let (judge_fns, entry_fns) = lw.grader_fns(analysis);
