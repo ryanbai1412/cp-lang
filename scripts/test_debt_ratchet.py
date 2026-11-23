@@ -237,6 +237,23 @@ class DebtRatchetTest(unittest.TestCase):
                 "handbook/domains/x.md:17 missing: k",
             ])
 
+    def test_written_twice_counts_hand_kept_copies_of_a_sourced_list(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            names = [f"m{i}" for i in range(10)]
+            for n in names:
+                self._write(root, f"std/{n}.cp", "")
+            self._write(root, "gen.toml", '[[gen]]\nfiles = ["docs/gen.md"]\n')
+            mods = " ".join(f"std.{n}" for n in names)
+            self._write(root, "docs/copy.md", mods)
+            self._write(root, "docs/gen.md", mods)
+            self._write(root, "plan/notes.md", mods)
+            self._write(root, "docs/few.md", " ".join(f"std.{n}" for n in names[:4]))
+            self._write(root, "docs/words.md", " ".join(names))
+            subprocess.run(["git", "init", "-q", str(root)], check=True)
+            subprocess.run(["git", "-C", str(root), "add", "."], check=True)
+            self.assertEqual(dr.written_twice(root), ["docs/copy.md: 10 of 10 std modules"])
+
     def test_register_rows_by_domain_only_go_down(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

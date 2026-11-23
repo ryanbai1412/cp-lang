@@ -17,7 +17,7 @@ rows naming no existing check, from `scripts/debt-ratchet.json`; they only go do
 | [site](domains/site/README.md) | 16 | 19 | 3 |
 | [spec](domains/spec/README.md) | 21 | 21 | 0 |
 | [stdlib](domains/stdlib/README.md) | 19 | 43 | 3 |
-| [tech-debt](domains/tech-debt/README.md) | 30 | 2 | 3 |
+| [tech-debt](domains/tech-debt/README.md) | 30 | 1 | 3 |
 | [tools](domains/tools/README.md) | 18 | 38 | 0 |
 
 ## compiler

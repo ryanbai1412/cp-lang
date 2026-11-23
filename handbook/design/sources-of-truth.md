@@ -84,6 +84,7 @@ Each kind of duplicate and the counter that detects it.
 | One engine runs programs | A statement runs on the tree-walker instead of the VM | `scripts/debt-ratchet.py` (`vm_fallbacks`, `tree_walker`), `crates/cpl-cli/tests/vm_fallbacks.rs` |
 | The stdlib's behavior lives in the stdlib | The IR lowers a std method by its name | `scripts/debt-ratchet.py` (`ir_builtin_names`, `backend_std_names`, `lint_std_names`, `prelude_privilege`) |
 | Docs cite code that exists | An architecture doc names a deleted file | `scripts/debt-ratchet.py` (`stale_arch_paths`) |
+| A list of lints, crates or std modules is generated or points at its source | A guide lists 36 std modules and misses the six added after it | `scripts/debt-ratchet.py` (`written_twice`) |
 
 ## Changes
 

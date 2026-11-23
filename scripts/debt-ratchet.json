@@ -144,7 +144,8 @@
     "site": 19,
     "spec": 21,
     "stdlib": 43,
-    "tech-debt": 2,
+    "tech-debt": 1,
     "tools": 38
-  }
+  },
+  "written_twice": 11
 }

@@ -155,6 +155,54 @@ def external_crates(root: Path) -> list[str]:
                   for m in [re.search(r'name = "([^"]+)"\nversion = "([^"]+)"', block)] if m)
 
 
+# Where history and measured lists are kept, or the facts' own sources.
+WRITTEN_TWICE_SKIP = ("plan/", "research/", "corpus/", "spec/conformance/", "decisions.md", "Cargo.",
+                      "scripts/debt-ratchet.json", "scripts/test_debt_ratchet.py", "crates/cpl-cli/tests/")
+# Copies a gate already compares with the source: the crate map (`crate_edges`).
+WRITTEN_TWICE_CHECKED = {"handbook/design/architecture.md"}
+
+
+def written_twice(root: Path) -> list[str]:
+    """Hand-kept files that list most of a fact a source already lists.
+
+    Rule: handbook/design/sources-of-truth.md#never-written-twice. A fact is
+    the set of lints (`spec/lints/*/`), crates (`crates/*/Cargo.toml`) or std
+    modules (`std/*.cp`, named as `std.<m>` or `std/<m>`); a tracked file outside history, ratchet baselines and
+    gen.toml's outputs that names at least half of one (and at least 8) is a
+    second copy that goes stale. Generate it, or have it point at the source.
+    """
+    facts = {
+        "lints": {p.name for p in (root / "spec/lints").glob("*/") if p.is_dir()},
+        "crates": {p.parent.name for p in (root / "crates").glob("*/Cargo.toml")},
+        "std modules": {p.stem for p in (root / "std").glob("*.cp")},
+    }
+    gen = root / "gen.toml"
+    owned = {_rel(root, Path(g)) for e in (tomllib.loads(gen.read_text())["gen"] if gen.is_file() else [])
+             for pat in e["files"] for g in glob.glob(str(root / pat), recursive=True)}
+    try:
+        files = subprocess.run(["git", "-C", str(root), "ls-files"], capture_output=True, text=True,
+                               env=_git_env(), check=True).stdout.split()
+    except (OSError, subprocess.CalledProcessError):
+        files = []
+    found = []
+    for f in files:
+        if f.startswith(WRITTEN_TWICE_SKIP) or Path(f).name.startswith("Cargo.") or f in owned \
+                or f in WRITTEN_TWICE_CHECKED or "worklog" in f \
+                or not re.search(r"\.(md|mdx|rs|py|toml|txt|sh|json|ts|js|mjs)$", f):
+            continue
+        try:
+            text = (root / f).read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError):
+            continue
+        words = set(re.findall(r"[A-Za-z0-9_-]+", text))
+        modules = set(re.findall(r"\bstd[./]([a-z0-9_]+)", text))
+        for fact, names in facts.items():
+            n = len((modules if fact == "std modules" else words) & names)
+            if names and n >= max(8, (len(names) + 1) // 2):
+                found.append(f"{f}: {n} of {len(names)} {fact}")
+    return found
+
+
 def pending_tests(root: Path) -> list[str]:
     pending = root / "crates" / "cpl-cli" / "tests" / "pending"
     return sorted(_rel(root, Path(d) / f) for d, _, fs in os.walk(pending) for f in fs)
@@ -716,6 +764,7 @@ COUNTERS = {
     "pending_tests": ("crates/cpl-cli/tests/pending/ files", pending_tests, True),
     "dead_code_allows": ("allow(dead_code) attributes", dead_code_allows, True),
     "external_crates": ("third-party packages in Cargo.lock", external_crates, True),
+    "written_twice": ("hand-kept files listing most of a sourced fact", written_twice, True),
     "skip_lists": ("entries in skip, xfail, known-failure and gap lists", skip_lists, True),
     "corpus_test_files": ("files committed under corpus/problems/*/tests/", corpus_test_files, True),
     "edition_refs": ("dead 0.2 edition references", edition_refs, True),
