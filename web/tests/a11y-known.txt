@@ -1,3 +1,1 @@
 # `route rule` pairs axe-core flags today; delete a line once it passes.
-/ color-contrast
-/ scrollable-region-focusable
