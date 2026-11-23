@@ -1,9 +1,14 @@
+// Source: SDOI 2017 Round 2 Genius Hacker (Luogu P3783), https://dmoj.ca/problem/sdoi17r2p4
+// Problem: T <= 10 tests: a directed graph, n, m <= 5e4 (self-loops and multi-edges allowed), each
+//   edge with a cost c <= 2e4 and a word, a node of a trie of k <= 2e4 nodes. Taking an edge costs
+//   c plus the LCP length of its word and the previous edge's word (the empty word at the start,
+//   town 1). Print the cheapest cost from town 1 to every other town.
+// Solution: Dijkstra over edges, without an arc per pair of edges at a town: sort the edges at
+//   each town by DFS order of their words, so the LCP of two is the min LCP of neighbours between
+//   them. Four prefix/suffix chains along the sorted list (arrived-by, may-leave-by, each way)
+//   step between neighbours at cost 0, and cross from arrived to leave at their LCP (an LCA
+//   depth). O(m) nodes and arcs, O(m log m).
 // original: corpus/submissions/5515890.cpp
-// SDOI 2017 Genius Hacker: one-way roads between towns. Every road has a
-// cost and a word from a dictionary tree (a word is a vertex, its prefixes
-// are its ancestors). Driving one road straight after another also costs
-// the length of the longest common prefix of their two words. Print the
-// cheapest trip from town 1 to every other town.
 let tests: 1..=3 = read()
 for _ in 0..tests:
     let n: 2..=5e4 = read()

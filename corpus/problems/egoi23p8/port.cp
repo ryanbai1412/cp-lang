@@ -1,8 +1,12 @@
-// EGOI '23 P8 (Guessing Game): two-phase communication. Phase 1 labels n - 1
-// of n houses online; phase 2 sees the labels with two erased and names two
-// candidates for the unlabelled house. The (n - 13) houses labelled 1 carry
-// their index sum mod n, split into a composition of 11 over labels 2..=10
-// plus one parity bit. Runnable on proto/cpc today.
+// Source: EGOI 2023 Day 2 Problem 4 (Guessing Game), https://dmoj.ca/problem/egoi23p8
+// Problem: two runs, N = 1e5 houses. Run 1 prints K, then labels each of N - 1 houses, given in
+//   an adversarial order, with 1..=K; Emma labels the last house (hers) arbitrarily. Run 2 reads
+//   all N labels and prints two guesses, one of which must be her house. Smaller K scores more.
+// Solution: K = 16. The first N - 13 houses get 1, with index sum s mod N; s / 2 is sent as a
+//   composition of 11 into 9 parts (C(19, 8) >= N / 2) on the next 11 houses, labels 2..=10. The
+//   last one gets 11 + j / 2, j the slot of the unseen house among the other 12 non-1 houses.
+//   Run 2: if Emma wrote 1, her house is (sum of 1-houses - s) mod N for both parities of s; if
+//   she wrote 11..=16, guess both such houses; else the flag names her pair of slots. O(N).
 // original: corpus/submissions/5659039.cpp (91/100)
 const PARTS = 9
 const TOTAL = 11

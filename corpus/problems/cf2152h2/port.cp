@@ -1,16 +1,14 @@
-// Codeforces 2152 H2: Victorious Coloring (Hard Version).
-// For a set C of vertices let F_C(l) be the least x(C) such that every
-// nonempty S within C pays x(S) + w(boundary of S) >= l. F_C is convex and
-// piecewise linear with integer breakpoints: F_C(l) = sum over its multiset
-// B_C of max(0, l - b).
-// Join the tree's edges heaviest first, keeping the components. A vertex v
-// alone needs x(v) >= l - deg(v), so B = {deg v}. Joining A and A' keeps the
-// two sides' constraints independent (B_A plus B_A'), and adds one: the
-// whole component, with boundary D, needs x >= l - D. That raises F to
-// max(F, l - D) at the integers, which only matters when D < min B: walk
-// the breakpoints while F(b) < b - D, then re-enter F where the line l - D
-// meets it, splitting the slope jump across the two integers around the
-// crossing. The answer for l is F_V(l).
+// Source: Codeforces 2152H2 (Victorious Coloring, Hard Version),
+//   https://codeforces.com/contest/2152/problem/H2
+// Problem: a tree, n <= 2.5e5, edge weights <= 1e9. For vertex weights x >= 0 let f(x) be the min
+//   over nonempty vertex sets S of x(S) + w(edges leaving S). For each of q <= 2.5e5 queries
+//   l <= 1e9, print the least sum of x with f(x) >= l. Multitest, sums of n and q <= 2.5e5.
+// Solution: for a vertex set C, the least x(C) with every S in C paying >= l is convex piecewise
+//   linear, F_C(l) = sum of max(0, l - b) over a multiset B_C of breakpoints; B of one vertex is
+//   {its weighted degree}. Join edges heaviest first (DSU): melding two components adds their
+//   B's (skew heaps), and the whole component with boundary D lifts F to max(F, l - D); when
+//   D < min B, pop breakpoints while F lies below that line and push the crossing ones. The
+//   answer is l * k - (sum of the k breakpoints < l): O((n + q) log n).
 
 // Multisets of breakpoints as skew heaps in one arena; a set is its ?root.
 struct Breaks:

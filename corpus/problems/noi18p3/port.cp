@@ -1,16 +1,12 @@
-// NOI 2018 Your Name: a string s (up to 500000 lowercase letters) and q
-// questions, each a string t and a block l..=r of s, 1-based (the t's add up
-// to at most 1000000 letters). For each, print how many different blocks of
-// t do not occur anywhere inside s[l..=r].
-//
-// A suffix automaton of s, where every state also knows the set of places
-// its blocks end in s: a mergeable segment tree per state, merged up the
-// suffix links without destroying the children's trees. Feed t through it,
-// keeping the longest tail of t so far that occurs inside s[l..=r]; a step
-// is allowed only if the next state has an end place far enough right of l
-// and at most r. Then every state of t's own automaton stands for the tails
-// of one place of t with lengths in a range, and the ones longer than what
-// occurred at that place are new.
+// Source: NOI 2018 Your Name, https://dmoj.ca/problem/noi18p3
+// Problem: a lowercase string s, |s| <= 5e5, and q <= 1e5 queries (t, l, r) with total |t| <= 1e6.
+//   For each, print how many distinct substrings of t are not substrings of s[l..=r].
+// Solution: a suffix automaton of s whose states keep their end positions in s as persistent
+//   segment trees, merged up the suffix links without destroying the children. Feed t through it
+//   keeping the longest suffix of t's prefix that occurs inside s[l..=r]: a step to state v with
+//   current length len is allowed only if v has an end in l - 1 + len ..< r (0-based), else
+//   shorten. Each state of t's own automaton covers lengths (link len, len] ending at one
+//   position; the lengths above what matched there are new. O((|s| + sum |t|) log |s|).
 // original: corpus/submissions/6513115.cpp
 use std.strings.{SuffixAutomaton}
 

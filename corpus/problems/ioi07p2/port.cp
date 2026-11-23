@@ -1,16 +1,13 @@
-// IOI 2007 Flood: n points and m axis-parallel walls between them; walls
-// meet only at their end points, and a point has at most one wall in each
-// direction. Water rises from outside and a wall falls when exactly one of
-// its sides is wet; both sides then flood together. Print the walls left
-// standing: those whose two sides flood at the same moment.
-//
-// The plane is cut into faces. Each wall has two sides; walking round a
-// point, the left side of one wall and the right side of the next one are
-// the same face, so a DSU over wall sides names the faces. The outside
-// faces are found by sweeping points left to right: the first point of an
-// untouched group has outside on its lower-left side. BFS from there counts
-// the walls crossed, and a wall stands when both its faces are equally far.
-//
+// Source: IOI 2007 Flood, https://dmoj.ca/problem/ioi07p2
+// Problem: n <= 1e5 points (coordinates <= 1e6) and w <= 2n axis-parallel walls joining pairs of
+//   them, touching only at end points. At time 0 water floods the outside; every hour each wall
+//   with water on exactly one side breaks and the water spreads. Print how many walls are left
+//   standing, then their indices.
+// Solution: the walls cut the plane into faces, and a wall stands iff its two faces flood in the
+//   same hour. A DSU over wall sides names the faces: round each point, a wall's side joins the
+//   far side of the next wall counter-clockwise. Sweep points by (x, y): the first point of a
+//   still-dry group has the outside next to its north (else east) wall; BFS over faces from
+//   there, one hour per wall crossed. O((n + w) log n) for the sort and DSU.
 // original: corpus/submissions/5133897.cpp
 use std.dsu.{Dsu}
 use std.geometry.{Pt}

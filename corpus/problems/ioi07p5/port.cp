@@ -1,16 +1,13 @@
-// IOI 2007 Pairs: n animals live on a line, a grid or a cube of side m
-// (the first number of the input says which). Count the pairs that are at
-// most d apart in Manhattan distance.
-//
-// Turning the board 45 degrees makes a Manhattan ball a box: on the grid,
-// |dx| + |dy| <= d is |du| <= d and |dv| <= d for u = x + y, v = x - y.
-//   line: sort, and count each animal against the window of animals within d
-//         to its left.
-//   grid: the same window over u, with the v of everyone in the window in a
-//         Fenwick tree.
-//   cube: m <= 75, so each layer z is a small turned grid with 2D prefix
-//         sums. An animal asks every layer how many stand in its box there;
-//         that counts each pair twice and each animal with itself once.
+// Source: IOI 2007 Pairs, https://dmoj.ca/problem/ioi07p5
+// Problem: board type b in 1..=3 (a line, grid or cube with coordinates 1..=m), n <= 1e5
+//   animals, d <= 1e8. Count the pairs of animals at Manhattan distance <= d; m <= 7.5e7,
+//   75000, 75 for b = 1, 2, 3.
+// Solution: turning the board 45 degrees makes a Manhattan ball a box: on the grid,
+//   |dx| + |dy| <= d is |du| <= d and |dv| <= d for u = x + y, v = x - y.
+//   line: sort, and count each animal against the window within d to its left, O(n log n).
+//   grid: the same window over u, with the v's of the window in a Fenwick tree, O(n log m).
+//   cube: each layer z is a small turned grid with 2D prefix sums; an animal asks every layer
+//     how many stand in its box there, counting each pair twice and itself once, O(m^3 + n m).
 // original: corpus/submissions/3505539.cpp
 
 let dims: Int = read()

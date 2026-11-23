@@ -1,15 +1,12 @@
-// Codeforces 2096 G (Wonderful Guessing Game): identify 1 fake coin among n
-// in q parallel weighings when at most 1 weighing answer may be erased ('?').
-//
-// Choose the least q with 3^(q - 1) >= n. Assign each pair (2p - 1, 2p)
-// a distinct balanced-ternary code of length q - 1 in {-1, 0, +1} and append a
-// checksum digit so the q digits sum to 0 (mod 3):
-//   - coin 2p - 1 gets +code (+1 => Left, -1 => Right, 0 => Off),
-//   - coin 2p gets -code (opposite pans),
-//   - if n is odd, coin n gets the all-zero code (always Off).
-// Every two coins have distinct codes with zero digit sum mod 3, so they differ
-// in at least 2 rounds; after at most one '?' erasure, the unique coin matching
-// every known round is the fake.
+// Source: Codeforces 2096G (Wonderful Guessing Game),
+//   https://codeforces.com/contest/2096/problem/G
+// Problem: interactive, multitest, n <= 2e5 (sum n <= 2e5). Find a hidden x in 1..=n with the
+//   fewest possible q queries, all printed up front: each is an even-length list, answered L
+//   (x in first half), R (second half) or N (absent), and exactly one answer is erased to '?'.
+// Solution: q is the least with 3^(q - 1) >= n. Pair p = (2p - 1, 2p) gets p in balanced ternary
+//   (q - 1 digits) plus a check digit making the digit sum 0 mod 3; 2p - 1 takes the code
+//   (+1 Left, -1 Right, 0 Off), 2p its negation, and an odd n the zero code. Codes differ in >= 2
+//   digits, so the one number matching every known answer is x. O(n q).
 
 @!interactive
 

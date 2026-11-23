@@ -1,33 +1,13 @@
-// Codeforces 2124 G: Maximise Sum.
-// For each k in 0..n, maximise sum_t pref_min[t] after at most one operation
-// choosing i < pos with cost `pos - i >= k` (setting a[i] += a[pos], a[pos] = 0).
-// Storing each operation's total at `ans[pos - i]` and taking `suffix_fold(max, ...)`
-// propagates every cost >= k down to k.
-//
-// Invariants:
-// - Only a prefix-minimum position `i` (`a[i] == pref_min[i]`) can gain: any
-//   non-prefix-minimum is already capped by an earlier smaller element, so
-//   raising `a[i]` changes no prefix minimum.
-// - Only a strict suffix maximum `pos` (`a[pos] > max(a[pos + 1..])`) can be
-//   an optimal removal: if `pos' > pos` has `a[pos'] >= a[pos]`, removing `pos'`
-//   yields a larger distance `pos' - i`, at least as large an addition, and no
-//   larger a suffix loss (`orig_suff[pos'] <= orig_suff[pos]`).
-// - Raising `a[i]` lifts prefix minima on the block `[i, next_min)` (up to the
-//   next prefix minimum) to `min(lifted, cur_cap)` where `cur_cap = min(cap, a[i] + a[pos])`
-//   and `cap = pref_min[i - 1]` (uncapped at `i = 0`). Because `lifted` is
-//   non-increasing on the block, `first_uncapped` splits capped elements from
-//   the uncapped tail.
-// - Complexity proof: scanning `suffix_max_pos` in reverse (decreasing `pos`,
-//   strictly increasing `a[pos]`), once `ai + a[pos] >= cap` the first such
-//   `pos` has the smallest suffix loss `orig_suff[pos]` and largest distance
-//   `pos - i`, dominating all earlier `pos'` — so the inner loop breaks there.
-//   At `i = Pos.first` there are at most `n` iterations. For every later prefix
-//   minimum `i > Pos.first`, there is at most one breaking iteration plus the
-//   non-breaking iterations with `0 <= a[pos] < cap - ai`; because `a[pos]` is
-//   strictly increasing along `suffix_max_pos`, at most `cap - ai` suffix
-//   maxima satisfy `a[pos] < cap - ai`. Summing `cap - ai = pref_min[i - 1] - pref_min[i]`
-//   over all prefix minima telescopes to `a[0] - pref_min[n - 1] <= 2n`, so
-//   the inner loop runs O(n) times total (`O(n log n)` with binary search).
+// Source: Codeforces 2124G (Maximise Sum), https://codeforces.com/contest/2124/problem/G
+// Problem: an array a of n <= 1e6 values in 0..=n (sum n <= 1e6, multitest). At most once pick
+//   i < j, set a[i] += a[j] and a[j] = 0, at cost j - i (0 for no move). For each x in 0..n print
+//   the max over moves of cost >= x of the sum of prefix minima.
+// Solution: only a prefix-minimum i can gain and only a strict suffix maximum j is worth
+//   zeroing. Record each candidate's total at ans[j - i] and print suffix maxima of ans. Per
+//   prefix minimum i, its block up to the next one has lifted prefix minima with prefix sums;
+//   walk the suffix maxima j > i by rising a[j], getting the gain by binary search and the loss
+//   from suffix sums, and stop once a[i] + a[j] reaches the cap pref_min[i - 1]. The walks
+//   telescope to O(n) steps, O(n log n) in all.
 
 use std.prefix.{suffix_fold}
 

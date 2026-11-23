@@ -1,4 +1,12 @@
-// NOI 2023 P1, count the lattice cells covered by horizontal, vertical and diagonal strokes (buildable today-form)
+// Source: NOI 2023 Day 1 Square Coloring, https://dmoj.ca/problem/noi23p1
+// Problem: an n x m grid (n, m <= 1e9), q <= 1e5 strokes painting the cells of a horizontal,
+//   vertical or diagonal (x and y both rising) segment black; at most 5 strokes are diagonal.
+//   Print the number of black cells. The first input number is the test id.
+// Solution: merge overlapping or touching strokes on the same line and add up their lengths.
+//   Subtract the horizontal-vertical crossings with a sweep over y: vertical strokes enter and
+//   leave a Fenwick tree over their sorted x's, and each horizontal stroke counts the live x's in
+//   its range. Each of the <= 5 diagonals meets every other stroke in at most one cell: collect
+//   those x's, dedupe, subtract. O(q log q).
 // original: corpus/submissions/5723056.cpp
 // Strokes are (line, lo, hi) tuples in three lists, and the sweep carries a
 // hand-rolled Fenwick over the sorted vertical lines: the prototype has no
