@@ -64,13 +64,18 @@ const BUNDLED: &[(&str, &str)] = include!(concat!(env!("OUT_DIR"), "/std_modules
 
 /// The modules of `std`: those built in, or with `CPL_STD_DIR` set, those
 /// in that folder as they are now, so a std edit needs no rebuild of `cpl`.
-fn modules() -> &'static [(&'static str, &'static str)] {
+pub(crate) fn modules() -> &'static [(&'static str, &'static str)] {
     static FROM_DISK: std::sync::OnceLock<Option<Vec<(&'static str, &'static str)>>> =
         std::sync::OnceLock::new();
     FROM_DISK
         .get_or_init(|| std::env::var_os("CPL_STD_DIR").map(|dir| from_disk(Path::new(&dir))))
         .as_deref()
         .unwrap_or(BUNDLED)
+}
+
+/// Whether `modules()` reads `CPL_STD_DIR` rather than the built-in std.
+pub(crate) fn std_from_disk() -> bool {
+    !std::ptr::eq(modules(), BUNDLED)
 }
 
 fn from_disk(dir: &Path) -> Vec<(&'static str, &'static str)> {
@@ -274,6 +279,23 @@ mod tests {
                 ("x", "\n\n\npub fn f() -> Int: 1\n")
             ]
         );
+        let names = crate::std_files::public_names(found.iter().copied());
+        assert_eq!(
+            names,
+            [("f".into(), "x".into()), ("g".into(), "graph/y".into())]
+        );
+    }
+
+    /// The names a `CPL_STD_DIR` run reads off the files are the ones the
+    /// build put in, for the same std.
+    #[test]
+    fn std_names_read_at_run_time_match_the_built_in_table() {
+        let read: Vec<(String, String)> = crate::std_files::public_names(BUNDLED.iter().copied());
+        let built: Vec<(String, String)> = crate::prelude::std_names()
+            .iter()
+            .map(|(n, m)| (n.to_string(), m.to_string()))
+            .collect();
+        assert_eq!(read, built);
     }
 
     #[test]

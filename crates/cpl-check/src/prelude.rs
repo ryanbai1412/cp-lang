@@ -560,9 +560,21 @@ pub fn import_edit(text: &str, module: &str, name: &str) -> (Span, String) {
 }
 
 /// Every public name of the standard library and its module, sorted by
-/// name. `build.rs` reads it off the files.
+/// name. `build.rs` reads it off the files; with `CPL_STD_DIR` set, it is
+/// read off that folder's files instead.
 pub fn std_names() -> &'static [(&'static str, &'static str)] {
-    include!(concat!(env!("OUT_DIR"), "/std_names.rs"))
+    static FROM_DISK: std::sync::OnceLock<Vec<(&'static str, &'static str)>> =
+        std::sync::OnceLock::new();
+    if !crate::modules::std_from_disk() {
+        return include!(concat!(env!("OUT_DIR"), "/std_names.rs"));
+    }
+    FROM_DISK.get_or_init(|| {
+        let leak = |s: String| &*Box::leak(s.into_boxed_str());
+        crate::std_files::public_names(crate::modules::modules().iter().copied())
+            .into_iter()
+            .map(|(name, module)| (leak(name), leak(module)))
+            .collect()
+    })
 }
 
 #[cfg(test)]

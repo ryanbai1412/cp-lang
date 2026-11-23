@@ -47,3 +47,41 @@ pub fn without_tests(text: &str) -> String {
     }
     out
 }
+
+/// Every public name that exactly one module declares, with that module,
+/// sorted by name: what the hint for a missing `use` reads. It is read off
+/// the files, so a new `pub fn` needs no second edit.
+pub fn public_names<'a>(
+    modules: impl IntoIterator<Item = (&'a str, &'a str)>,
+) -> Vec<(String, String)> {
+    let mut found: std::collections::BTreeMap<String, Vec<&str>> = Default::default();
+    for (module, text) in modules {
+        for line in text.lines() {
+            let mut words = line.split_whitespace();
+            let public = !line.starts_with(' ') && words.next() == Some("pub");
+            let declares = matches!(
+                words.next(),
+                Some("fn" | "struct" | "enum" | "trait" | "type" | "const" | "domain")
+            );
+            if !public || !declares {
+                continue;
+            }
+            let name: String = words
+                .next()
+                .unwrap_or_default()
+                .chars()
+                .take_while(|c| c.is_alphanumeric() || *c == '_')
+                .collect();
+            if !name.starts_with('_') {
+                found.entry(name).or_default().push(module);
+            }
+        }
+    }
+    found
+        .into_iter()
+        .filter_map(|(name, modules)| match modules.as_slice() {
+            [module] => Some((name, module.to_string())),
+            _ => None,
+        })
+        .collect()
+}

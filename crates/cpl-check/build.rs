@@ -7,7 +7,7 @@ use std::path::{Path, PathBuf};
 
 #[path = "src/std_files.rs"]
 mod std_files;
-use std_files::{collect, without_tests};
+use std_files::{collect, public_names, without_tests};
 
 fn main() {
     let manifest = PathBuf::from(std::env::var_os("CARGO_MANIFEST_DIR").expect("set by cargo"));
@@ -70,40 +70,18 @@ fn without_comments(text: &str) -> String {
         .collect()
 }
 
-/// Every public name that exactly one `std` module declares, with
-/// that module, sorted by name: what the hint for a missing `use` reads.
-/// It is read off the files, so a new `pub fn` needs no second edit.
+/// The `public_names` table as Rust source.
 fn std_names(modules: &[(String, PathBuf)]) -> String {
-    let mut found: std::collections::BTreeMap<String, Vec<&str>> = Default::default();
-    for (module, path) in modules {
-        let text = std::fs::read_to_string(path).expect("a readable module");
-        for line in text.lines() {
-            let mut words = line.split_whitespace();
-            let public = !line.starts_with(' ') && words.next() == Some("pub");
-            let declares = matches!(
-                words.next(),
-                Some("fn" | "struct" | "enum" | "trait" | "type" | "const" | "domain")
-            );
-            if !public || !declares {
-                continue;
-            }
-            let name: String = words
-                .next()
-                .unwrap_or_default()
-                .chars()
-                .take_while(|c| c.is_alphanumeric() || *c == '_')
-                .collect();
-            if name.starts_with('_') {
-                continue;
-            }
-            found.entry(name).or_default().push(module);
-        }
-    }
+    let texts: Vec<(&str, String)> = modules
+        .iter()
+        .map(|(module, path)| {
+            let text = std::fs::read_to_string(path).expect("a readable module");
+            (module.as_str(), text)
+        })
+        .collect();
     let mut table = String::from("&[\n");
-    for (name, modules) in &found {
-        if let [module] = modules.as_slice() {
-            writeln!(table, "    ({name:?}, {module:?}),").expect("writing to a string");
-        }
+    for (name, module) in public_names(texts.iter().map(|(m, t)| (*m, t.as_str()))) {
+        writeln!(table, "    ({name:?}, {module:?}),").expect("writing to a string");
     }
     table.push_str("]\n");
     table
