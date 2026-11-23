@@ -1,4 +1,10 @@
-// COCI '21 Contest 1 #2 - Kamencici (runnable on proto/cp.py lib-run today)
+// Source: COCI 2021/2022 Contest 1 #2 (Kamencici), https://dmoj.ca/problem/coci21c1p2
+// Problem: n <= 350 pebbles in a row, red (C) or blue (P), at least 2k - 1 red. Two players
+//   alternately take a pebble from either end; whoever first holds k red loses. Print DA if the
+//   first player can force a win, else NE.
+// Solution: the pebbles left are a range l..r, so reds taken so far come from prefix sums and the
+//   state is (l, r, reds of the player to move); the other's reds follow. Memoized win/lose
+//   recursion over taking either end: O(n^2 k) states, O(1) each.
 let (n, k): (Int, Int) = read()
 let s: Str = read()
 

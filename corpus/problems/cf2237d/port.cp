@@ -1,18 +1,12 @@
-// Codeforces 2237 D — Binary Substring Reductions
-//
-// Assign weight `1` to `'0'` and `2` to `'1'` (i.e. `(c - '0') + 1`). A
-// non-empty binary substring is valid iff:
-// 1. Its weight sum is nonzero mod 3. Maintaining `cnt[r]` for prefix sums
-//    mod 3 (seeded with `cnt = [1, 0, 0]` for the empty prefix of sum 0),
-//    `i + 1 - cnt[pref]` counts all substrings ending at `i` with nonzero sum
-//    mod 3.
-// 2. It is not an alternating string (`010...` or `101...`) of length `>= 2`.
-//    Every even-length alternating string has pairs `(0, 1)` of weight `1 + 2
-//    = 3 == 0 (mod 3)`, so it is already excluded by `cnt[pref]`. Each
-//    odd-length alternating suffix of length `3, 5, ..., <= cur_len` has
-//    nonzero weight mod 3 and must be subtracted once; there are exactly
-//    `(cur_len - 1) / 2` such suffixes ending at `i`, where `cur_len` is the
-//    length of the maximal alternating run ending at `i`.
+// Source: Codeforces 2237D (Fullmetal Bitchemist), https://codeforces.com/contest/2237/problem/D
+// Problem: a binary string is beautiful if replacing two equal adjacent characters by one
+//   opposite character, repeatedly, can bring it to length 1. Count the beautiful non-empty
+//   substrings of s. Multitest, sum of n <= 1e6.
+// Solution: weigh '0' as 1 and '1' as 2; a move keeps the weight mod 3, and a substring is
+//   beautiful iff its weight is nonzero mod 3 and it is not alternating of length >= 2 (no move).
+//   For each end i, count earlier prefixes with another residue (cnt[r] of prefix sums mod 3),
+//   then drop the odd alternating suffixes of length >= 3 inside the alternating run ending at i,
+//   (run - 1) / 2 of them (even ones already weigh 0). O(n).
 
 @!multitest
 let n: 1..=1_000_000 = read()

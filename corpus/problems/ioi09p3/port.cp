@@ -1,4 +1,9 @@
-// IOI '09 P3, POI (buildable today-form)
+// Source: IOI 2009 P3 (POI), https://dmoj.ca/problem/ioi09p3
+// Problem: N <= 2000 contestants, T <= 2000 tasks, a 0/1 table of who solved what. A task is worth
+//   the number who did not solve it. Rank by score, then tasks solved (both descending), then ID.
+//   Print the score and the rank of contestant P.
+// Solution: count each task's worth in one pass over the table, then each contestant's score and
+//   solved count; sort the keys (-score, -solved, id) and find P. O(N T + N log N).
 // original: corpus/submissions/5106576.cpp
 let n: 1..=2000 = read()
 let tasks: 1..=2000 = read()

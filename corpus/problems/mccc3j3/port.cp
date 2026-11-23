@@ -1,4 +1,10 @@
-// Runnable port (proto/cp.py lib-run) of mccc3j3.cp
+// Source: Mock CCC '22 Contest 1 J3 (String Crossing Maximization),
+//   https://dmoj.ca/problem/mccc3j3
+// Problem: uppercase strings S and T, |S|, |T| <= 1e6. A crossing is a pair (i, j) with
+//   S_i = T_j. Change at most one character of T; print the most crossings.
+// Solution: crossings are sum over letters c of cntS[c] * cntT[c]. Changing a T letter x into y
+//   gains cntS[y] - cntS[x], so the best gain is max over all letters of cntS minus min over
+//   letters in T of cntS, if positive. O(|S| + |T|).
 // original: corpus/submissions/4223424.cpp
 
 let (n, m): (Int, Int) = read()

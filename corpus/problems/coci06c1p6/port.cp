@@ -1,6 +1,12 @@
-// COCI 2006 Debug, as it has to be written today: a 2-D hash built from
-// prefix sums of weighted cells. Builds; agrees with 4183051.cpp on 500
-// random grids fed by a script (the typed generator cannot make this input).
+// Source: COCI 2006/2007 Contest 1 #6 (Debug), https://dmoj.ca/problem/coci06c1p6
+// Problem: an R x C grid of 0/1, R, C <= 300. A square killer is a square submatrix of size >= 2
+//   equal to its own 180-degree rotation. Print the size of the largest killer, or -1.
+// Solution: 2-D polynomial hash: cell (r, c) weighs (digit + 1) * 131^r * 137^c mod 1e9+7, with
+//   prefix sums over the grid and over the grid rotated by 180 degrees. A square is a killer iff
+//   its hash equals that of the matching square of the rotated grid, both shifted to the same
+//   powers. Killers are not monotone in size, so test every size and corner: O(R C min(R, C)).
+// Agrees with 4183051.cpp on 500 random grids fed by a script (the typed generator
+//   cannot make this input).
 const P = 1000000007
 let rows: 1..=300 = read()
 let cols: 1..=300 = read()

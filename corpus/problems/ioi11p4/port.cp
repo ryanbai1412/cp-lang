@@ -1,10 +1,11 @@
-// IOI 2011 Crocodile: escape from chamber 0 to any exit through corridors
-// of known length. Each time you enter a chamber, the crocodile blocks one
-// corridor out of it. Print the time the escape takes in the worst case.
-//
-// The best way out of a chamber is always the one blocked, so a chamber is
-// worth its second-best way out. Run Dijkstra from the exits and settle a
-// chamber the second time it comes off the heap.
+// Source: IOI 2011 P4 (Crocodile's Underground City), https://dmoj.ca/problem/ioi11p4
+// Problem: N <= 1e5 chambers, M <= 1e6 corridors with lengths <= 1e9, K exit chambers, start at
+//   0. Each time she leaves a chamber the gatekeeper may block one corridor out of it. Print the
+//   smallest worst-case time to reach an exit. Grader task; here stdin is n m k, the corridors
+//   (u v len), then the exits.
+// Solution: the best way out of a chamber is always blocked, so a chamber is worth its
+//   second-best (neighbour's worth + corridor). Dijkstra from all exits, settling a chamber the
+//   second time it comes off the heap; stop when chamber 0 settles. O((N + M) log M).
 
 let (n, m, k): (Int, Int, Int) = read()
 domain Room = 0..n

@@ -1,13 +1,11 @@
-// Codeforces 2237 B — Minimum Adjacent Swaps to Dominate
-//
-// The target array `b` is sorted non-decreasingly, so each `x = a_in[i]` can
-// legally occupy any position `>= slot(x) = (0..n).first_true(j => b[j] >= x)`
-// (`none` if `x > b[n - 1]`).
-//
-// Filling positions `i = 0..n` left-to-right, any element whose slot is `<= i`
-// is legal at `i`; bubbling the earliest such element `j >= i` to `i` uses
-// `j - i` adjacent swaps and preserves the relative order of all remaining
-// elements, which is optimal by an exchange argument (`O(n^2)` for `n <= 5000`).
+// Source: Codeforces 2237B (Annoying the Ghost), https://codeforces.com/contest/2237/problem/B
+// Problem: piles a_1..a_n and a strictly increasing target b_1..b_n (values <= 1e9). Add any
+//   non-negative amount to each pile, then swap adjacent piles; print the fewest swaps that make
+//   the row exactly b, or -1. Multitest, sum of n <= 2000.
+// Solution: a pile of size x can end at position j iff b_j >= x, i.e. at any j >= slot(x), the
+//   first such j (none: -1). Fill positions left to right: bubble the nearest remaining pile with
+//   slot <= i to i, paying its distance; this keeps the others in order, and an exchange argument
+//   makes it optimal. O(n^2).
 
 @!multitest
 let n: 1..=5_000 = read()

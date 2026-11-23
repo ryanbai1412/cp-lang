@@ -1,11 +1,12 @@
-// NOI 2015 Package Manager: package 0 is the root and every other package
-// needs one earlier package. `install x` installs x and everything it
-// needs; `uninstall x` removes x and everything that needs it. Print how
-// many packages each command changes.
-//
-// install is "set the path from the root to x", uninstall is "clear the
-// subtree of x". In heavy-first preorder both are a few ranges of one
-// segment tree with range assignment that counts installed packages.
+// Source: NOI 2015 P2 (Software Package Manager), https://dmoj.ca/problem/noi15p2
+// Problem: n <= 1e5 packages; package 0 is the root and every other package depends on one
+//   package, forming a tree. q <= 1e5 commands `install x` (installs x and everything it depends
+//   on) or `uninstall x` (removes x and everything depending on it); print how many packages each
+//   command changes.
+// Solution: install sets the root-to-x path, uninstall clears the subtree of x. In heavy-first
+//   preorder the path is O(log n) chain ranges and the subtree one range, so a segment tree with
+//   range assignment and sum counts installed packages before each assignment: O(log^2 n) per
+//   command.
 
 let n: Int = read()
 domain Pkg = 0..n
