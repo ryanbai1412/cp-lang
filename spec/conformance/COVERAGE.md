@@ -830,7 +830,7 @@ prepends it.
 - 04b-keys.md: 13 blocks, 8 with a case, 4 spec-only, 1 neither
   - line 165: `let t = s[l..r].rebase`
 - 05-ownership.md: 56 blocks, 53 with a case, 2 spec-only, 1 neither
-  - line 980: `fn evens(xs: [V]Int) -> lends Filtered<[V]Int> = xs.filter(x`
+  - line 985: `fn evens(xs: [V]Int) -> lends Seq<Int> = xs.filter(x => x % `
 - 06-control-functions.md: 3 blocks, 0 with a case, 3 spec-only, 0 neither
 - 07-sequences.md: 7 blocks, 1 with a case, 6 spec-only, 0 neither
 - 08-traits-generics.md: 4 blocks, 0 with a case, 4 spec-only, 0 neither
