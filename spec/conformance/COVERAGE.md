@@ -7,7 +7,7 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 3088 (1092 passing). Rules: 583.
+Cases: 3090 (1092 passing). Rules: 583.
 
 ## Summary per chapter
 
@@ -22,7 +22,7 @@ Cases: 3088 (1092 passing). Rules: 583.
 - R07 (07-sequences.md): 90 rules, 208 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R08 (08-traits-generics.md): 29 rules, 92 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R09 (09-contexts-checks.md): 27 rules, 61 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R10 (10-io.md): 19 rules, 111 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R10 (10-io.md): 19 rules, 112 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R11 (11-modules-prelude.md): 16 rules, 52 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R12 (12-powers.md): 17 rules, 37 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R13 (13-lowering.md): 22 rules, 30 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -613,7 +613,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R10.2.7 [2+ 1-]: `read_all<T>()` reads every remaining `T` until the input ends, for statements that give n...
 - R10.2.8 [3+ 0-]: Input lines may end in `\n` or `\r\n` on every platform: `\r` is whitespace to a token rea...
 - R10.2.9 [1+ 0-]: Input the program doesn't need is still read and checked: `let _ = read<[n - 1]1..=n>()` c...
-- R10.3.1 [9+ 1-]: `print(x, y, ...)` joins by `io.sep` and ends the line; `print(xs)` prints a sequence on o...
+- R10.3.1 [10+ 1-]: `print(x, y, ...)` joins by `io.sep` and ends the line; `print(xs)` prints a sequence on o...
 - R10.3.2 [4+ 0-]: , any other as `Int(v)` (`1..=n` prints 1..n); `"{x:.9}"` sets float precision, `"{x:6}"` ...
 - R10.3.3 [1+ 3-]: `Bool` is not `Show`: `print(b)` is an error naming `print(yes(b))`. `yes(b)` is the word ...
 - R10.3.4 [3+ 0-]: `F64` uses `io.precision` or `print(x, precision: k)`; with neither it prints 10 decimals,...
@@ -944,7 +944,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - R0102 Value outside a domain: 6 case(s)
 - R0201 Range store out of range: 10 case(s)
 - R0202 Integer overflow: 46 case(s)
-- R0203 Division by zero: 3 case(s)
+- R0203 Division by zero: 4 case(s)
 - R0301 Unwrap of None: 7 case(s)
 - R0401 Assertion failed: 82 case(s)
 - R0402 todo reached: 2 case(s)
@@ -1091,6 +1091,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - core-04/literal-range-table-int-keys.cp
 - core-04/subset-type-walk-binds-subsets.cp
 - core-04/subset-walk-empty-domain.cp
+- core-04/trap-in-a-small-fn-names-its-frame.cp
 - core-04/tuple-with-subset-is-a-domain.cp
 - core-07/in-on-a-list-fixes-to-contains.cp
 - core-07/list-literal-of-range-is-one-element.cp
