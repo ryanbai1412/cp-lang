@@ -1,14 +1,14 @@
-// NOIP '19 P6 - Centroid of Tree (30pt): for every edge of a tree, cut it and
-// add up the labels of the centroids of the two parts (a part can have two).
-// Print the total, for each of several trees.
-// Root the tree at a centroid. Any other vertex x keeps every child subtree
-// at or below half of whatever part it lands in, so x is a centroid of its
-// part exactly when the part that was cut away has between n - 2*size(x)
-// and n - 2*heavy(x) vertices. Cutting above x removes n - size(a) for an
-// ancestor a; cutting elsewhere (never inside x's subtree, where x is too
-// light) removes size(v). Three counters over "vertices removed" answer it
-// in one walk. The root is a centroid unless the cut leaves its heaviest
-// remaining child above half.
+// Source: CSP-S 2019 Day 2 T3 (Centroid of Tree, DMOJ noip19p6; the DMOJ page is not public),
+//   https://www.luogu.com.cn/problem/P5666
+// Problem: T <= 5 trees of n <= 299995 vertices. A centroid leaves no part above floor(size / 2)
+//   when removed. For each tree print the sum, over every edge, of the labels of all centroids
+//   (one or two) of both halves left by cutting that edge.
+// Solution: root at a centroid c. Another vertex x keeps its children at most half of its part,
+//   so it is a centroid exactly when the cut-away part has between n - 2 size(x) and
+//   n - 2 heavy(x) vertices. Cutting above x removes n - size(a) for an ancestor a, cutting
+//   elsewhere outside x's subtree removes size(v): Fenwick counters over "vertices removed"
+//   (all, seen, chain, above) answer every x in one DFS. c counts unless the cut leaves its
+//   heaviest remaining child above half. O(n log n) per tree.
 // original: corpus/submissions/5148136.cpp
 
 let tests: 1..=5 = read()

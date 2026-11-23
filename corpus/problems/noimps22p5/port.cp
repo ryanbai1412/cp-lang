@@ -1,4 +1,14 @@
-// NOI MPS 2022 P5, emptying a bracket forest level by level under two swap costs (buildable today-form)
+// Source: NOI 2022 Multi-Provincial Team Selection P5 (Bracket),
+//   https://dmoj.ca/problem/noimps22p5
+// Problem: a balanced bracket string of length 2n (n <= 4e5), weights w_i <= 1e7 on the opening
+//   brackets, and x, y in {0, 1}. Turning p(A)(B)q into p(A()B)q costs x w_A + y w_B; pABq -> pBAq
+//   is free (weights move along). Print the least cost to leave no substring (A)(B).
+// Solution: the end is a chain, one bracket per depth, and free swaps let any bracket of a level
+//   host another. Sweep depths down with a bag (Set of (weight, serial)) of the level's brackets:
+//   one stays, the rest sink one level at x * host + y * itself. (0, 1): the heaviest stays, pay
+//   the rest; (1, 1): the lightest hosts all, the heaviest stays; (1, 0): the lightest hosts all
+//   but the second lightest, which stays and hosts it, and at size 2 one sweep keeps the heavier,
+//   one the lighter, the cheaper wins. O(n log n).
 // original: corpus/submissions/5448138.cpp
 // The sorted bag is a Set of (value, serial) pairs: the prototype has no SortedBag.
 let n: 1..=4e5 = read()
