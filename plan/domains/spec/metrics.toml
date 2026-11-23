@@ -13,7 +13,7 @@ target = "1711/1711 (pass count owned by compiler; the suite is spec's)"
 [[metric]]
 name = "conformance cases (ratchet up only)"
 command = "find spec/conformance -name '*.cp' | wc -l"
-today = "2030"
+today = "2262"
 target = "never decreases"
 
 [[metric]]
