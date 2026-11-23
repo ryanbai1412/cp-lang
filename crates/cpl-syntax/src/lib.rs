@@ -81,4 +81,6 @@ pub fn parse_file(src: &str) -> ParsedFile {
 #[cfg(test)]
 mod foreign_tests;
 #[cfg(test)]
+mod layout_tests;
+#[cfg(test)]
 mod tests;
