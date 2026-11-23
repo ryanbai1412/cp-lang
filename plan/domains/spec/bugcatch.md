@@ -84,3 +84,11 @@ So the release runner closed the harness blind spot but found no missed backend 
 | `23c34787` | check: walk Subset supersets upward, self first | caught | `std-subset/supersets-walk-up.cp` |
 | `34557320` | interp: run fns with mut params on the traced vm | missed at fix |  |
 | `54f06417` | check: a read beside a mut lend of the same storage is E0601 | caught | `core-05/call-mut-element-and-read-maybe-same.cp`, `core-05/mut-and-read-maybe-same.cp` |
+
+## Adversarial round A1 (2026-11-23, hourly)
+
+Walked the last 2 h of check/codegen/interp/stdlib commits (9ed9de9b7 lending, e4180a2bc heap-let move, a8ad883ce, 77dded681, 084b5e680, 845ce7572) and wrote 40 probes at their edges, each run through `cpl run` and the C++ build under ASan, UBSan and `_GLIBCXX_DEBUG`.
+
+- Bugs: 2. A walk over a view generator or lazy adapter (`chunks`, `windows`, `runs`, `filter`, `map`, `take`, `adjacent`, `with_prev`, `cyclic_pairs`) does not lend its source (compiler, P0; heap-use-after-free in C++). `List.step(k)` from R07.7.11 is missing from std (stdlib).
+- Held: element, field, closure-capture and map-entry lending reject every conflicting write tried (12 probes); heap-let moves under conditional and pushed-before-reassign fields agree; narrow-width arithmetic, multitest shared state with per-test domains, >64 KiB mixed output and domain comprehensions agree.
+- Cases added: 7 (4 known gaps, 3 regression guards for 9ed9de9b7/e4180a2bc).

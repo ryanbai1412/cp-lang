@@ -7,7 +7,7 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 2777 (995 passing). Rules: 573.
+Cases: 2780 (995 passing). Rules: 573.
 
 ## Summary per chapter
 
@@ -17,7 +17,7 @@ Cases: 2777 (995 passing). Rules: 573.
 - R04 (04-indices.md): 73 rules, 170 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04a (04a-identity-vs-offset.md): 39 rules, 54 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04b (04b-keys.md): 27 rules, 66 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R05 (05-ownership.md): 43 rules, 172 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R05 (05-ownership.md): 43 rules, 175 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R06 (06-control-functions.md): 24 rules, 103 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R07 (07-sequences.md): 90 rules, 167 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R08 (08-traits-generics.md): 29 rules, 92 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -370,7 +370,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R05.3.2 [2+ 0-]: `var x = e` binds a mutable variable: `x = e2`, `x.push(..)`, `x[i] = ..`.
 - R05.3.3 [1+ 0-]: A **place** is a variable, a field (`s.f`), an element (`a[i]`), a slice (`a[r]`) or any p...
 - R05.3.4 [1+ 1-]: `let p = mut a[i]` names a place: `p += 1` writes `a[i]`. `p` is a `mut` lend of `a` (R7).
-- R05.3.5 [6+ 10-]: Reading an element or field binds a lend of it, not a copy, when the value is heap (`let r...
+- R05.3.5 [9+ 10-]: Reading an element or field binds a lend of it, not a copy, when the value is heap (`let r...
 - R05.6.1 [1+ 2-]: **Meaning.** The result is a lent value whose sources are every non-plain parameter, or th...
 - R05.6.2 [2+ 1-]: **Desugaring.** A call passes the rest of the caller's block as a callback: `let w = windo...
 - R05.6.3 [2+ 1-]: **`lends mut T`** is a place: the caller can assign through it, `a[i] = 5` is `a.at(i) = 5...
@@ -378,7 +378,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R05.7.1 [1+ 2-]: a parameter (R4), and anything a `lends` fn returns (§6);
 - R05.7.2 [2+ 1-]: a struct, tuple or enum with a lent field (`Filter(self, keep)`);
 - R05.7.3 [2+ 1-]: a generator value with a lent argument (`dfs(g, from: [s])`, `dfs(g, from: [s], seen: mut ...
-- R05.7.4 [1+ 6-]: a loop item, for the iteration (§9);
+- R05.7.4 [2+ 6-]: a loop item, for the iteration (§9);
 - R05.7.5 [2+ 3-]: a closure or nested fn that captures a local `var`, a local heap value or a parameter (§10...
 - R05.7.6 [7+ 11-]: **Read lend:** the sources can be read, but not written, resized or moved.
 - R05.7.7 [1+ 3-]: **`mut` lend:** the sources can't be touched at all except through it.
