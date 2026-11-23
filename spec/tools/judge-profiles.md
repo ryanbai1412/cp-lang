@@ -12,7 +12,12 @@ stay in release.
 - Built in: `generic` (default), `codeforces`, `atcoder`, `cses`,
   `icpc`, `kattis`, `dmoj`, `usaco`; `ioi` (grader-style) is proposed.
 - Chosen by `--judge`, else a `// judge: name` line, else `cp.toml`.
-  `[judge.<name>]` tables override fields or `extends` a profile.
+  `[judge.<name>]` tables override fields or `extends` a profile. (Rjudge.1)
+- The C++ file's second line names the profile, its compiler command
+  and its stack, so the file says how it must be submitted:
+  `// For judge `codeforces`: g++ ... -Wl,--stack=268435456; 256 MB stack.`
+  `codeforces` is the Milestone 1 judge; local release runs use the same
+  command and stack. (Rjudge.2)
 
 ```toml
 [judge.school]

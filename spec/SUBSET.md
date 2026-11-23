@@ -114,6 +114,7 @@ they carry rule ids; the stdlib's own gaps are in `std/GAPS.md`.
 | Rbundle | Bundling and submission | supported | 3 pass |
 | Rcli | The `cpl` command | supported | 6 pass |
 | Rfmt | `cpl fmt` | supported | 2 pass |
+| Rjudge | Judge profiles | supported | 0 pass |
 | Rlint | `cpl lint` | supported | 3 pass |
 | Rstress | Stress, shrinking and laws | supported | 2 pass |
 

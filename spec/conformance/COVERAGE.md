@@ -7,7 +7,7 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 2367 (995 passing). Rules: 549.
+Cases: 2372 (995 passing). Rules: 552.
 
 ## Summary per chapter
 
@@ -22,13 +22,14 @@ Cases: 2367 (995 passing). Rules: 549.
 - R07 (07-sequences.md): 88 rules, 112 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R08 (08-traits-generics.md): 29 rules, 78 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R09 (09-contexts-checks.md): 26 rules, 55 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R10 (10-io.md): 17 rules, 71 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R10 (10-io.md): 18 rules, 73 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R11 (11-modules-prelude.md): 15 rules, 35 cases; 0 uncovered, 0 happy-path only, 1 negative only
 - R12 (12-powers.md): 17 rules, 36 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R13 (13-lowering.md): 22 rules, 27 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - Rbundle (bundle.md): 3 rules, 3 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - Rcli (cli.md): 2 rules, 6 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - Rfmt (fmt-lint.md): 1 rules, 2 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- Rjudge (judge-profiles.md): 2 rules, 3 cases; 0 uncovered, 1 happy-path only, 0 negative only
 - Rlint (fmt-lint.md): 2 rules, 3 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - Rstress (stress.md): 1 rules, 2 cases; 0 uncovered, 0 happy-path only, 0 negative only
 
@@ -54,16 +55,17 @@ negative case. Complete: rules with no gap in `rule-gaps.txt`.
 | R07 | 88 | 88 (100%) | 23 | 23 (100%) | 88 (100%) |
 | R08 | 29 | 29 (100%) | 13 | 13 (100%) | 29 (100%) |
 | R09 | 26 | 26 (100%) | 14 | 14 (100%) | 26 (100%) |
-| R10 | 17 | 17 (100%) | 8 | 8 (100%) | 17 (100%) |
+| R10 | 18 | 18 (100%) | 8 | 8 (100%) | 18 (100%) |
 | R11 | 15 | 14 (93%) | 9 | 9 (100%) | 14 (93%) |
 | R12 | 17 | 17 (100%) | 6 | 6 (100%) | 17 (100%) |
 | R13 | 22 | 22 (100%) | 5 | 5 (100%) | 22 (100%) |
 | Rbundle | 3 | 3 (100%) | 0 | 0 (0%) | 3 (100%) |
 | Rcli | 2 | 2 (100%) | 1 | 1 (100%) | 2 (100%) |
 | Rfmt | 1 | 1 (100%) | 1 | 1 (100%) | 1 (100%) |
+| Rjudge | 2 | 2 (100%) | 1 | 0 (0%) | 1 (50%) |
 | Rlint | 2 | 2 (100%) | 2 | 2 (100%) | 2 (100%) |
 | Rstress | 1 | 1 (100%) | 0 | 0 (0%) | 1 (100%) |
-| all | 549 | 548 (99%) | 211 | 211 (100%) | 548 (99%) |
+| all | 552 | 551 (99%) | 212 | 211 (99%) | 550 (99%) |
 
 ## Rules
 
@@ -583,6 +585,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R10.2.5 [1+ 1-]: Graphs are built from an edge list read as records, `read<[E](u: V, v: V)>()`, then `Graph...
 - R10.2.6 [1+ 4-]: A bad token traps with the input position and the expected type.
 - R10.2.7 [2+ 1-]: `read_all<T>()` reads every remaining `T` until the input ends, for statements that give n...
+- R10.2.8 [2+ 0-]: Input lines may end in `\n` or `\r\n` on every platform: `\r` is whitespace to a token rea...
 - R10.3.1 [2+ 1-]: `print(x, y, ...)` joins by `io.sep` and ends the line; `print(xs)` prints a sequence on o...
 - R10.3.2 [3+ 0-]: Interpolated strings format each piece through `Show`; positions print in the file's base;...
 - R10.3.3 [1+ 3-]: `Bool` is not `Show`: `print(b)` is an error naming `print(yes(b))`. `yes(b)` is the word ...
@@ -668,6 +671,11 @@ Each rule: positive / negative case counts, then the gap if any.
 ### Rfmt: fmt-lint.md
 
 - Rfmt.1 [2+ 1-]: One canonical layout, no options: 4-space indents, 100 columns, `with` lines first in thei...
+
+### Rjudge: judge-profiles.md
+
+- Rjudge.1 [3+ 1-]: Chosen by `--judge`, else a `// judge: name` line, else `cp.toml`. `[judge.<name>]` tables...
+- Rjudge.2 [1+ 0-] *happy-path only*: The C++ file's second line names the profile, its compiler command and its stack, so the f...
 
 ### Rlint: fmt-lint.md
 
