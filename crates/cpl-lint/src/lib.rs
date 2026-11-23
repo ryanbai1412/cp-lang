@@ -324,6 +324,16 @@ pub fn proven_loops_and_indexes_parsed(
     rules::proven_loops_and_indexes(&File { src, items })
 }
 
+/// The part of `proven_loops_and_indexes_parsed` inside `items[item]`,
+/// without proving the file's other fns: for an editor request in one fn.
+pub fn proven_loops_and_indexes_in_item(
+    src: &str,
+    items: &[(u32, &ParsedItem)],
+    item: usize,
+) -> (Vec<ProvenLoop>, Vec<ProvenIndex>) {
+    rules::proven_loops_and_indexes_in(&File { src, items }, item)
+}
+
 /// Each `for` over a bounded range or domain, with how often it runs.
 pub fn proven_loops(src: &str) -> Vec<ProvenLoop> {
     with_parsed(src, rules::proven_loops)

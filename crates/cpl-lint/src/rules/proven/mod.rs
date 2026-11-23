@@ -36,6 +36,27 @@ pub(crate) fn proven_loops_and_indexes(
     (p.loops, p.indexes)
 }
 
+/// The loops and indexes inside top-level item `item`, proved against the
+/// whole file: the same facts [`proven_loops_and_indexes`] gives there, without
+/// proving the other fns. Top-level statements still run, in order, for the
+/// ranges they bind.
+pub(crate) fn proven_loops_and_indexes_in(
+    file: &File,
+    item: usize,
+) -> (Vec<crate::ProvenLoop>, Vec<crate::ProvenIndex>) {
+    let start = file.items.get(item).map_or(u32::MAX, |(base, _)| *base);
+    let end = file.items.get(item + 1).map_or(u32::MAX, |(base, _)| *base);
+    let inside = |at: u32| start <= at && at < end;
+    let p = proven_in(file, Some(item));
+    (
+        p.loops.into_iter().filter(|l| inside(l.head.0)).collect(),
+        p.indexes
+            .into_iter()
+            .filter(|i| inside(i.access.0))
+            .collect(),
+    )
+}
+
 pub(crate) fn domain_sizes(file: &File) -> Vec<(String, u128)> {
     bounds::Bounds::of(file).domains()
 }
@@ -207,6 +228,12 @@ impl Default for Proven {
 }
 
 fn proven(file: &File) -> Proven {
+    proven_in(file, None)
+}
+
+/// [`proven`], skipping the fn, impl and struct bodies of every item but
+/// `only` when it is given.
+fn proven_in(file: &File, only: Option<usize>) -> Proven {
     let bounds = bounds::Bounds::of(file);
     let mut out = Proven::default();
     // A fn declared above a top-level `var` can assign it too.
@@ -214,14 +241,21 @@ fn proven(file: &File) -> Proven {
     // Top-level statements see the ranges of the names bound above them; a
     // fn body may run after any of them, so it sees only the declared ones.
     let mut above = bounds.clone();
-    for (base, stmt) in file.top_level() {
-        let scope = match stmt.kind {
-            cpl_syntax::ast::StmtKind::Fn(_)
-            | cpl_syntax::ast::StmtKind::Impl { .. }
-            | cpl_syntax::ast::StmtKind::Struct(_) => &mut bounds.clone(),
-            _ => &mut above,
-        };
-        ranges_in(base, std::slice::from_ref(stmt), &top, scope, &mut out);
+    for (index, (base, item)) in file.items.iter().enumerate() {
+        for stmt in &item.stmts {
+            let scope = match stmt.kind {
+                cpl_syntax::ast::StmtKind::Fn(_)
+                | cpl_syntax::ast::StmtKind::Impl { .. }
+                | cpl_syntax::ast::StmtKind::Struct(_) => {
+                    if only.is_some_and(|only| only != index) {
+                        continue;
+                    }
+                    &mut bounds.clone()
+                }
+                _ => &mut above,
+            };
+            ranges_in(*base, std::slice::from_ref(stmt), &top, scope, &mut out);
+        }
     }
     for (l, chain) in out.loops.iter_mut().zip(&out.loop_factors) {
         l.count = render_count(file, &chain[chain.len() - 1..]);

@@ -195,3 +195,38 @@ fn the_cli_and_the_editor_read_the_same_facts() {
         assert_eq!(editor, cli, "{}", path.display());
     }
 }
+
+/// Proving one item gives what proving the whole file gives inside it, on
+/// every corpus port and spec and every `spec/std` module.
+#[test]
+fn one_item_proves_what_the_whole_file_proves_there() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let mut paths = files(&root, crate::STD_DIR, "");
+    paths.extend(files(&root, "corpus/problems", "spec.cp"));
+    paths.extend(files(&root, "corpus/problems", "port.cp"));
+    let mut compared = 0;
+    for path in paths {
+        let src = std::fs::read_to_string(&path).unwrap();
+        let parsed = cpl_syntax::parse_file(&src);
+        if !parsed.diagnostics.is_empty() {
+            continue;
+        }
+        let items: Vec<(u32, &ParsedItem)> = parsed.items.iter().map(|(o, p)| (*o, p)).collect();
+        let (loops, indexes) = proven_loops_and_indexes_parsed(&src, &items);
+        for (i, (start, _)) in items.iter().enumerate() {
+            let end = items.get(i + 1).map_or(u32::MAX, |(b, _)| *b);
+            let inside = |at: u32| *start <= at && at < end;
+            let (one_loops, one_indexes) = proven_loops_and_indexes_in_item(&src, &items, i);
+            let want_loops: Vec<_> = loops.iter().filter(|l| inside(l.head.0)).cloned().collect();
+            let want_indexes: Vec<_> = indexes
+                .iter()
+                .filter(|x| inside(x.access.0))
+                .cloned()
+                .collect();
+            assert_eq!(one_loops, want_loops, "{} item {i}", path.display());
+            assert_eq!(one_indexes, want_indexes, "{} item {i}", path.display());
+            compared += 1;
+        }
+    }
+    assert!(compared > 1000, "compared {compared} items");
+}
