@@ -33,10 +33,10 @@ fn json_string_field(json: &str, key: &str) -> Option<String> {
 fn cpl_test_passes_on_corpus_in_and_ans_including_multitest() {
     let root = repo_root();
     let problems = [
-        ("ccc03s4", "corpus/problems/ccc03s4/spec.cp"),
+        ("noi15p1", "corpus/problems/noi15p1/spec.cp"),
         ("ccc18s4", "corpus/problems/ccc18s4/spec.cp"),
-        ("ccc19s2", "corpus/problems/ccc19s2/spec.cp"),
-        ("cco19p5", "corpus/problems/cco19p5/spec.cp"),
+        ("btoi20p3", "corpus/problems/btoi20p3/spec.cp"),
+        ("ccc04s5", "corpus/problems/ccc04s5/spec.cp"),
         ("ceoi19pp1", "corpus/problems/ceoi19pp1/spec.cp"),
         ("dmopc20c4p4", "corpus/problems/dmopc20c4p4/spec.cp"),
         ("dmopc21c4p2", "corpus/problems/dmopc21c4p2/spec.cp"),
@@ -71,14 +71,14 @@ fn cpl_test_passes_on_corpus_in_and_ans_including_multitest() {
         );
     }
 
-    // Auto-discovery of sibling `tests/*.in/.ans` with zero flags (multitest `ccc03s4`).
+    // Auto-discovery of sibling `tests/*.in/.ans` with zero flags (multitest `noi15p1`).
     let scratch = Path::new(env!("CARGO_TARGET_TMPDIR")).join("corpus_sibling_tests");
     let _ = std::fs::remove_dir_all(&scratch);
     let tests_copy = scratch.join("tests");
     std::fs::create_dir_all(&tests_copy).unwrap();
-    let sol = scratch.join("ccc03s4.cp");
-    std::fs::copy(root.join("corpus/problems/ccc03s4/spec.cp"), &sol).unwrap();
-    for entry in std::fs::read_dir(root.join("corpus/problems/ccc03s4/tests")).unwrap() {
+    let sol = scratch.join("noi15p1.cp");
+    std::fs::copy(root.join("corpus/problems/noi15p1/spec.cp"), &sol).unwrap();
+    for entry in std::fs::read_dir(root.join("corpus/problems/noi15p1/tests")).unwrap() {
         let path = entry.unwrap().path();
         std::fs::copy(&path, tests_copy.join(path.file_name().unwrap())).unwrap();
     }

@@ -19,23 +19,32 @@ fn repo_root() -> PathBuf {
 
 #[test]
 fn vm_hot_loop_fallback_ratchet_zero_on_covered_worst_ports() {
+    let file = |rel: &str| std::fs::read(repo_root().join(rel)).expect("read sample");
+    // ccc03s4's cases are a seed list (problem-packages/R9), so its input is built here: three
+    // strings of 1500 letters from a fixed LCG, the size of its old committed 01.in.
+    let mut x: u32 = 1;
+    let mut letters = || {
+        (0..1500)
+            .map(|_| {
+                x = x.wrapping_mul(1_103_515_245).wrapping_add(12_345);
+                (b'a' + (x >> 16) as u8 % 3) as char
+            })
+            .collect::<String>()
+    };
+    let strings = format!("3\n{}\n{}\n{}\n", letters(), letters(), letters());
     let cases = [
         (
             "corpus/problems/dmopc20c4p4/spec.cp",
-            "corpus/problems/dmopc20c4p4/tests/01.in",
+            file("corpus/problems/dmopc20c4p4/tests/01.in"),
         ),
-        (
-            "corpus/problems/ccc03s4/spec.cp",
-            "corpus/problems/ccc03s4/tests/01.in",
-        ),
+        ("corpus/problems/ccc03s4/spec.cp", strings.into_bytes()),
         (
             "corpus/problems/aac5p4/spec.cp",
-            "corpus/problems/aac5p4/tests/01.in",
+            file("corpus/problems/aac5p4/tests/01.in"),
         ),
     ];
-    for (port_rel, sample_rel) in cases {
+    for (port_rel, sample) in cases {
         let port = repo_root().join(port_rel);
-        let sample = std::fs::read(repo_root().join(sample_rel)).expect("read sample");
         let mut child = Command::new(env!("CARGO_BIN_EXE_cpl"))
             .args(["run"])
             .arg(&port)
