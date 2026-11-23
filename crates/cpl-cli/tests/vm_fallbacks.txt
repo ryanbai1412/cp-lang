@@ -1,31 +1,65 @@
 # (mode, tag) kinds of tree-walker fallback over tests/programs; shrink-only (tests/vm_fallbacks.rs)
-traced expr:Binary(Add)
-traced expr:Binary(Coalesce)
-traced expr:Binary(Mul)
-traced expr:Binary(Pow)
-traced expr:Binary(Sub)
-traced expr:Builtin(AxisLen)
-traced expr:Builtin(Contains)
-traced expr:Builtin(KeyLo)
-traced expr:Builtin(KeyPos)
-traced expr:Builtin(KeySlice)
-traced expr:Builtin(PosKey)
-traced expr:Builtin(Rekey)
-traced expr:Builtin(SymIdx)
-traced expr:Cast(EnumOrd(0))
-traced expr:Cast(EnumOrd(1))
-traced expr:Cast(FloatToInt)
-traced expr:Cast(IntToI128)
-traced expr:Cast(OrdToEnum(0))
-traced expr:Cast(StepToChar)
-traced expr:Cmp
-traced expr:DomainVal
-traced expr:Index
-traced expr:IsVariant
-traced expr:Payload
-traced expr:Read
-traced expr:Tuple
-traced expr:Variant
+expr:Binary(Add)
+expr:Binary(Coalesce)
+expr:Binary(Div)
+expr:Binary(Mul)
+expr:Binary(Pow)
+expr:Binary(Rem)
+expr:Binary(Shl)
+expr:Binary(Shr)
+expr:Binary(Sub)
+expr:Builtin(Abs)
+expr:Builtin(AxisLen)
+expr:Builtin(Ceil)
+expr:Builtin(Contains)
+expr:Builtin(Floor)
+expr:Builtin(Join)
+expr:Builtin(KeyLo)
+expr:Builtin(KeyPos)
+expr:Builtin(KeySlice)
+expr:Builtin(ListToArray)
+expr:Builtin(ListToStr)
+expr:Builtin(Max)
+expr:Builtin(Min)
+expr:Builtin(PosKey)
+expr:Builtin(Rekey)
+expr:Builtin(Reversed)
+expr:Builtin(Round)
+expr:Builtin(SeqGet)
+expr:Builtin(ShowStr)
+expr:Builtin(Sorted)
+expr:Builtin(SymIdx)
+expr:Call(SortedBag_D0_V_17.add_unique)
+expr:Call(SortedBag_Int_13.add_unique)
+expr:Call(SortedBag_Int_13.drain)
+expr:Call(SortedBag_Int_14.add_unique)
+expr:Call(SortedBag_Int_14.remove)
+expr:Call(SortedBag_Tup2_Int_P0_12.add)
+expr:Call(SortedBag_Tup2_Int_P0_12.remove)
+expr:Call(m1_get_or_insert_with_Int_Int_1_2)
+expr:Call(m1_get_or_insert_with_Int_Int_3)
+expr:Call(m1_get_or_insert_with_Str_D0_P_1)
+expr:Call(m1_get_or_insert_with_Str_D1_P_2)
+expr:CallExpr
+expr:Cast(EnumOrd(0))
+expr:Cast(EnumOrd(1))
+expr:Cast(FloatToInt)
+expr:Cast(I128ToInt)
+expr:Cast(IntToI128)
+expr:Cast(OrdToEnum(0))
+expr:Cast(StepToChar)
+expr:Cast(U64ToFloat)
+expr:Closure
+expr:Cmp
+expr:DomainVal
+expr:Index
+expr:IsVariant
+expr:Mutate(Insert)
+expr:Mutate(Remove)
+expr:Payload
+expr:Read
+expr:Tuple
+expr:Variant
 traced fn:SortedBag_D0_V_17.add_unique(part)
 traced fn:SortedBag_D0_V_17.insert_at(part)
 traced fn:SortedBag_D0_V_17.make_node(part)
@@ -108,67 +142,6 @@ traced stmt:Let(Unwrap)
 traced stmt:Return
 traced stmt:Trap
 traced stmt:While
-untraced expr:Binary(Add)
-untraced expr:Binary(Coalesce)
-untraced expr:Binary(Div)
-untraced expr:Binary(Mul)
-untraced expr:Binary(Pow)
-untraced expr:Binary(Rem)
-untraced expr:Binary(Shl)
-untraced expr:Binary(Shr)
-untraced expr:Binary(Sub)
-untraced expr:Builtin(Abs)
-untraced expr:Builtin(AxisLen)
-untraced expr:Builtin(Ceil)
-untraced expr:Builtin(Contains)
-untraced expr:Builtin(Floor)
-untraced expr:Builtin(Join)
-untraced expr:Builtin(KeyLo)
-untraced expr:Builtin(KeyPos)
-untraced expr:Builtin(KeySlice)
-untraced expr:Builtin(ListToArray)
-untraced expr:Builtin(ListToStr)
-untraced expr:Builtin(Max)
-untraced expr:Builtin(Min)
-untraced expr:Builtin(PosKey)
-untraced expr:Builtin(Rekey)
-untraced expr:Builtin(Reversed)
-untraced expr:Builtin(Round)
-untraced expr:Builtin(SeqGet)
-untraced expr:Builtin(ShowStr)
-untraced expr:Builtin(Sorted)
-untraced expr:Builtin(SymIdx)
-untraced expr:Call(SortedBag_D0_V_17.add_unique)
-untraced expr:Call(SortedBag_Int_13.add_unique)
-untraced expr:Call(SortedBag_Int_13.drain)
-untraced expr:Call(SortedBag_Int_14.add_unique)
-untraced expr:Call(SortedBag_Int_14.remove)
-untraced expr:Call(SortedBag_Tup2_Int_P0_12.add)
-untraced expr:Call(SortedBag_Tup2_Int_P0_12.remove)
-untraced expr:Call(m1_get_or_insert_with_Int_Int_1_2)
-untraced expr:Call(m1_get_or_insert_with_Int_Int_3)
-untraced expr:Call(m1_get_or_insert_with_Str_D0_P_1)
-untraced expr:Call(m1_get_or_insert_with_Str_D1_P_2)
-untraced expr:CallExpr
-untraced expr:Cast(EnumOrd(0))
-untraced expr:Cast(EnumOrd(1))
-untraced expr:Cast(FloatToInt)
-untraced expr:Cast(I128ToInt)
-untraced expr:Cast(IntToI128)
-untraced expr:Cast(OrdToEnum(0))
-untraced expr:Cast(StepToChar)
-untraced expr:Cast(U64ToFloat)
-untraced expr:Closure
-untraced expr:Cmp
-untraced expr:DomainVal
-untraced expr:Index
-untraced expr:IsVariant
-untraced expr:Mutate(Insert)
-untraced expr:Mutate(Remove)
-untraced expr:Payload
-untraced expr:Read
-untraced expr:Tuple
-untraced expr:Variant
 untraced fn:Deque_Int_3.items(feeding)
 untraced fn:SortedBag_D0_V_17.add_unique(part)
 untraced fn:SortedBag_D0_V_17.insert_at(part)

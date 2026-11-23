@@ -1105,7 +1105,19 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     .map(|&r| regs_v[r as usize].clone())
                     .collect();
                 let end = spec.end.map(|r| regs_v[r as usize].clone());
-                self.print_values(spec.args, &vals, end.as_ref(), spans[cur_pc])?;
+                let base = self.base;
+                // The tracer's view of a print reads the locals off the stack.
+                let shown = chunk.traced && self.observed();
+                if shown {
+                    sync_to_stack(&chunk.slot_map, regs_i, regs_v, &mut self.stack, base, true);
+                    self.show_lent();
+                }
+                let printed = self.print_values(spec.args, &vals, end.as_ref(), spans[cur_pc]);
+                if shown {
+                    self.hide_lent();
+                    take_back_values(&chunk.slot_map, regs_v, &mut self.stack, base);
+                }
+                printed?;
             }
             Op::Format { idx, dst } => {
                 let spec = &chunk.formats[idx as usize];

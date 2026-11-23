@@ -214,12 +214,23 @@ impl<'p, 'f> Compiler<'p, 'f> {
                     *s = skip;
                 }
             }
+            // `print_values` tells the tracer what it printed, as in the tree-walker.
+            Stmt::Expr(e) if Self::quiet_print(e) => self.compile_untraced_stmt(stmt),
             _ => {
                 self.emit_fallback_stmt(stmt);
                 self.emit_escapes();
             }
         }
         true
+    }
+
+    fn quiet_print(e: &Expr) -> bool {
+        match &e.kind {
+            ExprKind::Print(args, end) => {
+                args.iter().all(|a| quiet(&a.value)) && end.as_deref().is_none_or(quiet)
+            }
+            _ => false,
+        }
     }
 
     /// A `yield` of the `yields` fn this chunk is: its list, the place

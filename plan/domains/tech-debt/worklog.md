@@ -75,3 +75,8 @@ Newest first: what landed (commit), evidence, next, blocked, requests from other
 - 2026-11-22: split `cpl-stress/src/spec.rs` (2,911) into `spec.rs` + `spec/build.rs` + `spec/syntax.rs`, all under 2,000; `rs_over_cap` 12 -> 11.
 - 2026-11-23, from debugger: added `checkpoint::record_last_on_this_thread` (keeps only the last K checkpoints; `record_on_this_thread` is it with K unbounded) so `--last` on a big array stays at K copies of the state; test in `tests/checkpoint.rs`.
 - 2026-11-23 (Ryan's debt scan): scanned main since bfa28cf73 (2,045 commits in 14 h); ranked list sent to the coordinator and routed (compiler: lowering size, `ir_builtin_names` 89 -> 95, untraced fallbacks; lint-fmt: rule sprawl; spec: `delta/` notes, done 283 -> 5 files; infra: flaky CI, `mimalloc` done; diagnostics: std-line goldens, done 508fc29ae). New ratchets (decision 393): `vm_fallbacks` 242 kinds, `lint_dup_helpers` 13, `plan_delta_lines` 1,627, `decision_dup_numbers` 28 gated; a raised baseline needs a decisions.md line naming it. Full-corpus fallback baseline (`CPL_VM_STATS=json`, dynamic counts) — untraced: 3,835 programs / 15.65M corpus / 2.02M conformance; traced: 16.2k / 15.68M / 3.06M.
+
+## Traced statements on the VM: `print` (2026-11-23)
+
+- A traced chunk now runs a `print` whose arguments are quiet itself. `print_values` tells the tracer what was printed, as in the tree-walker; for that view, the `Print` op copies the registers onto the stack and back. Every saved `.trace` is unchanged.
+- `vm_fallbacks` keys `expr:` tags without the mode, because both engines compile an expression the same way. A print's argument that falls back is then the same debt the untraced run already has. 242 -> 215 kinds.

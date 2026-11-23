@@ -80,7 +80,11 @@ fn measure() -> BTreeSet<String> {
                     for (p, traced) in chunk {
                         let mode = if traced { "traced" } else { "untraced" };
                         for tag in fallbacks(&p, traced) {
-                            found.push(format!("{mode} {tag}"));
+                            // Both engines compile an expression alike.
+                            match tag.starts_with("expr:") {
+                                true => found.push(tag),
+                                false => found.push(format!("{mode} {tag}")),
+                            }
                         }
                     }
                     found
