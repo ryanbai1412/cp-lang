@@ -18,6 +18,7 @@ mod fn_value;
 mod input;
 mod io;
 mod read;
+mod show_hook;
 use io::draw_below;
 use io::Feed;
 pub use io::{Choices, Io};
@@ -3345,14 +3346,8 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
         digits: u32,
         span: Span,
     ) -> Res<()> {
-        if let Ty::Struct(id) = ty {
-            if let Some(show_fn) = self.program.structs[*id].show_fn {
-                let saved = self.call_direct(show_fn, vec![value.clone()], span)?;
-                if let Value::Str(bytes) = saved {
-                    out.extend_from_slice(&bytes);
-                    return Ok(());
-                }
-            }
+        if let Some((parts, ty)) = self.shown_parts(value, ty, span)? {
+            return self.show_val(out, &parts, &ty, digits, span);
         }
         if let Value::MutView(mv) = value {
             let items = Value::List(Rc::new(self.mut_view_to_vec(mv, span)?));

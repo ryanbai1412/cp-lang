@@ -159,6 +159,7 @@ impl<'a> Lowerer<'a> {
                         variants: Vec::new(),
                         values: Vec::new(),
                         tags: Vec::new(),
+                        show_fn: None,
                     });
                     self.enum_discriminants.push(Vec::new());
                     self.enum_decls.push((m, offset, decl));

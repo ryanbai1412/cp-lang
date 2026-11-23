@@ -1421,10 +1421,7 @@ pub(crate) fn name(cid: ClosureId) -> String {
 }
 
 fn is_hook_fn(program: &Program, id: FnId) -> bool {
-    program
-        .structs
-        .iter()
-        .any(|s| [s.eq_fn, s.lt_fn, s.show_fn].contains(&Some(id)))
+    program.is_hook(id)
 }
 
 fn recursive_fns(program: &Program) -> BTreeSet<FnId> {

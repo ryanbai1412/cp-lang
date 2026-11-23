@@ -836,14 +836,13 @@ impl<'p> Emitter<'p> {
             match ty {
                 Ty::Struct(sid) if !visited_structs.insert(*sid) => return,
                 Ty::Enum(eid) if !visited_enums.insert(*eid) => return,
-                Ty::Struct(sid) => {
-                    if let Some(show_fn) = program.structs[*sid].show_fn {
+                _ => {
+                    if let Some(show_fn) = program.show_fn(ty) {
                         if reachable.insert(show_fn) {
                             fn_work.push(show_fn);
                         }
                     }
                 }
-                _ => {}
             }
             let parts = match ty {
                 Ty::Range(t) | Ty::Mut(t) => vec![(**t).clone()],
@@ -1249,10 +1248,7 @@ impl<'p> Emitter<'p> {
             };
             self.enter(Some(id), &f.body, f.params.len());
             let signature = self.signature(f);
-            let hook = program
-                .structs
-                .iter()
-                .any(|s| [s.eq_fn, s.lt_fn, s.show_fn].contains(&Some(id)));
+            let hook = program.is_hook(id);
             protos.push(Proto {
                 name: fn_name(&f.name),
                 line: format!("{signature};\n"),

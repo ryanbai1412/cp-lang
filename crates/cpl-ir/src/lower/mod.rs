@@ -318,6 +318,7 @@ impl Lowerer<'_> {
                     newly_called.push(hook);
                 }
             }
+            newly_called.extend(lw.enums.iter().filter_map(|e| e.show_fn));
             let mut added = false;
             for fid in newly_called {
                 if lw.queued_set.insert(fid) {
@@ -1903,7 +1904,8 @@ impl<'a> Lowerer<'a> {
             let ast::TypeKind::Named { name, args } = &target.kind else {
                 continue;
             };
-            if !args.is_empty() || self.mod_syms[m].contains_key(&name.text) {
+            let user_ty = !matches!(self.mod_syms[m].get(&name.text), None | Some(Sym::Enum(_)));
+            if !args.is_empty() || user_ty {
                 continue;
             }
             let trait_name = self.impls[idx].trait_name.clone();
@@ -1929,6 +1931,11 @@ impl<'a> Lowerer<'a> {
                         self.prim_methods
                             .push((ty.clone(), f.name.text.clone(), fn_id));
                         self.resolve_fn_sig(fn_id, trait_name.as_deref());
+                        if let (Ty::Enum(e), Some("Show"), "show") =
+                            (&ty, trait_name.as_deref(), f.name.text.as_str())
+                        {
+                            self.enums[*e].show_fn = Some(fn_id);
+                        }
                     }
                 }
             }

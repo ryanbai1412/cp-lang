@@ -1291,6 +1291,8 @@ pub struct EnumDef {
     /// `@tag("Q") Ask`: the token a variant reads and prints as, when it
     /// is not the variant's name. (R02.7.2)
     pub tags: Vec<Option<String>>,
+    /// `impl Show for E`: how a value prints, in place of its variant's token.
+    pub show_fn: Option<FnId>,
 }
 
 impl EnumDef {
@@ -1659,5 +1661,25 @@ impl Program {
         let at = self.fns.iter().position(|f| f.name == name);
         at.and_then(|i| self.fn_display.get(i))
             .map_or(name, String::as_str)
+    }
+}
+
+impl Program {
+    /// The user's `impl Show` fn for `ty`, a struct or enum that has one.
+    pub fn show_fn(&self, ty: &Ty) -> Option<FnId> {
+        match ty {
+            Ty::Struct(id) => self.structs[*id].show_fn,
+            Ty::Enum(id) => self.enums[*id].show_fn,
+            _ => None,
+        }
+    }
+
+    /// Whether `id` is a struct's or enum's `Eq`, `Ord` or `Show` hook.
+    pub fn is_hook(&self, id: FnId) -> bool {
+        let hook = Some(id);
+        self.structs
+            .iter()
+            .any(|s| [s.eq_fn, s.lt_fn, s.show_fn].contains(&hook))
+            || self.enums.iter().any(|e| e.show_fn == hook)
     }
 }

@@ -1,0 +1,9 @@
+"variables":{"stdout":{"name":"stdout","type":"what the program printed, a line at a time","kind":"json"},"d":{"name":"d","type":"Dir","kind":"scalar"}},"runs":{"fast":{"label":"cpl run","steps":[{"id":0,"line":12,"label":"let d = Dir.Up","stage":"main","values":{"stdout":[],"d":"Up"},"locals":{},"frames":[{"fn":"main","line":12}]},
+{"id":1,"line":13,"label":"print → U D U","stage":"main","values":{"stdout":["U D U"],"d":"Up"},"locals":{},"checkpoint":"print 1","frames":[{"fn":"main","line":13}]},
+{"id":2,"line":14,"label":"print → D U","stage":"main","values":{"stdout":["U D U","D U"],"d":"Up"},"locals":{},"checkpoint":"print 2","frames":[{"fn":"main","line":14}]},
+{"id":3,"line":15,"label":"print → U D","stage":"main","values":{"stdout":["U D U","D U","U D"],"d":"Up"},"locals":{},"checkpoint":"print 3","frames":[{"fn":"main","line":15}]},
+{"id":4,"line":16,"label":"print → U 1","stage":"main","values":{"stdout":["U D U","D U","U D","U 1"],"d":"Up"},"locals":{},"checkpoint":"print 4","frames":[{"fn":"main","line":16}]},
+{"id":5,"line":21,"label":"print → P 1","stage":"main","values":{"stdout":["U D U","D U","U D","U 1","P 1"],"d":"Up"},"locals":{},"checkpoint":"print 5","frames":[{"fn":"main","line":21}]},
+{"id":6,"line":22,"label":"print → P","stage":"main","values":{"stdout":["U D U","D U","U D","U 1","P 1","P"],"d":"Up"},"locals":{},"checkpoint":"print 6","frames":[{"fn":"main","line":22}]},
+{"id":7,"line":22,"label":"the program ended","stage":"main","values":{"stdout":["U D U","D U","U D","U 1","P 1","P"],"d":"Up"},"locals":{},"checkpoint":"end","frames":[{"fn":"main","line":22}]}]}}}
+stderr:

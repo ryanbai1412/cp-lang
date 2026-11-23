@@ -171,6 +171,11 @@ impl<'p> Emitter<'p> {
                     b.push_str(&fields(self, items, "    "));
                 }
             }
+            Ty::Enum(_) if program.show_fn(ty).is_some() => {
+                let show_fn = program.show_fn(ty).expect("a Show impl");
+                let name = crate::names::fn_name(&program.fns[show_fn].name);
+                b.push_str(&format!("    cpl::put_str({name}(v));\n"));
+            }
             Ty::Enum(id) if is_plain_enum(program, *id) => {
                 let def = &program.enums[*id];
                 let names: Vec<String> = (0..def.variants.len())
@@ -602,6 +607,7 @@ pub(crate) fn parts(program: &cpl_ir::Program, ty: &Ty) -> Vec<Ty> {
                     .collect()
             }
         }
+        Ty::Enum(_) if program.show_fn(ty).is_some() => Vec::new(),
         Ty::Enum(id) => program.enums[*id]
             .variants
             .iter()

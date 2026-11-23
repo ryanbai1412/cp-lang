@@ -1170,6 +1170,7 @@ impl<'a> Lowerer<'a> {
             variants: Vec::new(),
             values: Vec::new(),
             tags: Vec::new(),
+            show_fn: None,
         });
         self.enum_insts.insert(key, id);
 
