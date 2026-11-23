@@ -2292,7 +2292,7 @@ pub struct PreferredPaths<V>:
             if let g = last:
                 var lost: ?V = None
                 if let c = rc[u]: lost = Some(hd[c])
-                yield (lost: lost, gained: hd[g])
+                yield (lost:, gained: hd[g])
             rc[u] = last
             self.pull(u)
             last = Some(u)
@@ -2909,7 +2909,7 @@ pub struct PermTree<I, V, Node>:
             st.push(x)
         assert st.len == 1
         domain N = 0..2 * I.count - 1
-        PermTree::<I, V, N>(
+        PermTree<I, V, N>(
             N(st[0]),
             [N] x => b.kind[x.ord],
             [N] x => N(b.l[x.ord]),
