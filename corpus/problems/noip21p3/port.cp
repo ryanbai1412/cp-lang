@@ -7,10 +7,12 @@
 // tall as all the gaps so far; put on the left it lifts every earlier value.
 // original: corpus/submissions/5445678.cpp
 
+use std.prefix.{prefix_fold}
+
 let n: 1..=10000 = read()
 let a: [n]1..=600 = read()
 let gaps = sorted([a[i + 1] - a[i] for i in 0..n - 1])
-let height = scan(gaps, +)  // height[i]: gaps 0..=i together
+let height = prefix_fold(+, gaps)  // height[k]: the first k gaps together
 let top = n * (a[n - 1] - a[0])
 
 // gaps i.. are still to place around i + 1 values that sum to s: n times
@@ -19,7 +21,7 @@ let top = n * (a[n - 1] - a[0])
 fn rest(i: 0..n, s: 0..=top) -> Int:
     if i == n - 1: return -s * s
     let d = gaps[i]
-    let tall = height[i]
+    let tall = height[i + 1]
     let lift = (i + 1) * d
     min(rest(i + 1, s + tall) + n * tall * tall, rest(i + 1, s + lift) + n * (2 * d * s + lift * d))
 
