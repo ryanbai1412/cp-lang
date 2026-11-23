@@ -7,13 +7,24 @@ const chains = [
   ['stamp', 'releases', 'practice', 'downloads', 'gen-ref', 'gen-tools', 'gen-debug', 'facts', 'gate'],
 ];
 
+// A stage that hangs fails by name instead of running into CI's job timeout
+// with no log; each stage's time is printed so slow ones show.
+const limit = Number(process.env.PREBUILD_STAGE_SECONDS ?? 600);
 const run = (name) =>
   new Promise((resolve, reject) => {
-    const p = spawn(process.execPath, [`scripts/${name}.mjs`], { stdio: 'inherit' });
+    const start = Date.now();
+    const p = spawn(process.execPath, [`scripts/${name}.mjs`], { stdio: 'inherit', detached: true });
+    const timer = setTimeout(() => {
+      console.error(`prebuild: ${name} ran over ${limit} s; killing it`);
+      process.kill(-p.pid, 'SIGKILL');
+    }, limit * 1000);
     p.on('error', reject);
-    p.on('exit', (code, signal) =>
-      code === 0 ? resolve() : reject(new Error(`prebuild: ${name} failed (${signal ?? code})`)),
-    );
+    p.on('exit', (code, signal) => {
+      clearTimeout(timer);
+      const took = ((Date.now() - start) / 1000).toFixed(1);
+      console.log(`prebuild: ${name} ${took} s`);
+      code === 0 ? resolve() : reject(new Error(`prebuild: ${name} failed (${signal ?? code}) after ${took} s`));
+    });
   });
 
 const results = await Promise.allSettled(
