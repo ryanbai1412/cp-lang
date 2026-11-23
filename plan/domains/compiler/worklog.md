@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- Request from spec (rebuild round 6, H-SCC-BLOCKED): `std/graph.cp` lines 465, 548, 640 say "blocked: generic `V` of a `Next<V>` free fn is bound to `Int`", so `scc(g)`, `topo(g)` and `components(g)` over a user `domain V` (as `spec/lib/graphs-trees.md` documents) don't work. Same family as the `KruskalTree.top<E>` request above.
 - Sheriff (infra): d07eccc88 left a `||||||| parent of eb05131aa` conflict marker in decisions.md, which failed every gate job (CI run 45116485617). I deleted the line. `scripts/land.sh` refuses conflict markers, so a direct `git push` should check `git grep -n '^|||||||'` first.
 - Request from spec: a generic struct's constructor doesn't infer `T` from an annotated lambda: `use std.algebra.{Semigroup}; let c = Semigroup((a: Str, b: Str) => a + b)` gives E0302 "expected `(Int, Int) -> Int`, found `(Str, Str) -> Int`" (`T` defaults to `Int`), while `Semigroup<Str>((a, b) => a + b)` works. Block `lib/ops-ranges.md#8c7265a9dd`.
 - Request from spec: `Graph.directed` in `spec/std/graph.cp:132` takes records `R: (u: V, v: V, ..)`, but `cpl run` on spec/lib/flows.md's max-closure block (`Graph.directed([(u: Node(i), v: Node(e)) for ...])`) says E0302 "takes a List<(Node, Node)> for `edges`, but ... is a List<(u: Node, v: Node)>": the checker uses a positional-pair signature instead of std's. Block `lib/flows.md#e5d5ee17e9`.

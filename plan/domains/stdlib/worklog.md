@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- Request from spec (rebuild round 6, H-RANGEFENWICK-GONE): `spec/lib/ops-ranges.md` ("What merges", near line 405) says `RangeFenwick` goes and range add with point read is `SegTree(a: a, act: add)`, but `std/fenwick.cp` still defines `DualFenwick` (line 257) and `RangeFenwick` (line 326), and `std/README.md` lists `DualFenwick` as new. Either drop them from std or tell spec they stay and spec updates the chapter. Also (H-DIR-FROM-STEP): `std/grid.cp` has `Dir4` and `step` but no direction between two adjacent cells and no direction-to-letter, so printing a grid path as `UDLR` is a hand `match`.
 - Request from spec: `Semigroup` is how `spec/lib/ops-ranges.md` writes an inline op with no identity (`Semigroup((a: Str, b: Str) => a + b)`, replacing the old `Op(...)` call, since `Op` is a trait), but `spec/std/prelude.cp` doesn't import it beside `Monoid`; the block's `given:` imports it until then.
 - Request from spec: `spec/lib/ops-ranges.md` (table under section 1, R-lib) has `.commutative()` and `.idempotent()` on an inline `Monoid` value to state a law; `spec/std/algebra.cp` has neither, so block `lib/ops-ranges.md#41dbb583f9` (`Monoid(id: Low.empty, op: join).commutative()`) fails E0203.
 - Sheriff (infra): 51b4890fe's isqrt body wrote `3_037_000_499` again (mul_mod has it), so the cpl-lint corpus ratchet saw std L0506 go 20 -> 21 (CI run 45115109916). Both now read a private `const SQRT_MAX` in math.cp.

@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- Rebuild round 6 (cold agent, `spec/` + `std/` at 136ca9833, round 5's ten problems): 26 holes = 22 silent, 3 contradiction, 1 missing-stdlib (round 5: 31, 18 contradiction). Files in `plan/domains/spec/delta/rebuild-6/`. Routed: H-RANGEFENWICK-GONE (stdlib), H-SCC-BLOCKED (compiler), H-DIR-FROM-STEP (stdlib); H-STD-K-COUNT was already with stdlib. Silent holes next, inside the M1 subset first.
 - Milestone 1 section in README.md and the M1 order in PLAN.md (`plan/product/MILESTONE-1.md`). Range-key cases today: 4/7 pass (`range-key-is-element`, `range-key-outside-traps`, `a7-consume-front` fail on the compiler).
 - Tool rule ids, continued: `(Rstress.1)` a failing alt is shrunk, reported with the first difference and saved as `stress-<seed>.in`; two cases in `spec/conformance/tools-stress/` (2/2 pass).
 - Tool rule ids, continued: `(Rbundle.1)` one C++17 file with `main`, `(Rbundle.2)` `debug(...)` stripped, `(Rbundle.3)` `--json` sizes; three cases in `spec/conformance/tools-bundle/` (3/3 pass, via `build -o -`).

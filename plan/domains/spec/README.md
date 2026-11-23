@@ -73,7 +73,7 @@ All values measured 2026-11-22 on `4b8f504f` with a release build; commands in [
 | Trait methods without a case | `conformance-traits.py --check` | 3 of 118 (held range triples) | 0 | M2 |
 | Named args in core/lib that std lacks | `conformance-sigs.py --check` | 5 (`sig-gaps.txt`) | 0 | M3 |
 | Chapter-table fns missing from the prelude (R11.3.2) | `conformance-prelude.py --check` | 106 (`prelude-gaps.txt`) | 0 | M3 |
-| Rebuild holes (cold agent) | probe P1 | 31 (round 5, ten new problems; 20 in round 4, 21 in round 3, 32 in round 2) | < 5 | M3 |
+| Rebuild holes (cold agent) | probe P1 | 26 (round 6, round 5's problems: contradictions 18 to 3; 31 in round 5, 20 in round 4, 32 in round 2) | < 5 | M3 |
 | Reverted compiler fixes caught | `conformance-bugcatch.py`, [bugcatch.md](bugcatch.md) | 23/25 measurable fixes (92%), 3 of 28 fix commits do not build| >= 90% | M3 |
 | Banned spellings in spec | `spec-vocab.py` | 0 | 0 | - |
 | Suite wall time (2 cores) | `time cpl-conform conformance spec-blocks` | 8.7 s | < 20 s | - |
