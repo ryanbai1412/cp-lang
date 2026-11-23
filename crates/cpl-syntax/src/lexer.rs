@@ -315,13 +315,27 @@ impl<'a> Lexer<'a> {
         ) {
             return false;
         }
-        let (saved, tabs) = (self.pos, self.tab_lines.len());
-        let continues = self
-            .measure_indent()
-            .is_some_and(|width| width > self.line_indent && self.line_starts_operator());
+        let (saved, tabs, comments) = (self.pos, self.tab_lines.len(), self.out.comments.len());
+        // Blank and comment-only lines in between are skipped, as in a block.
+        let continues = loop {
+            if let Some(width) = self.measure_indent() {
+                break width > self.line_indent && self.line_starts_operator();
+            }
+            if self.pos >= self.bytes.len() {
+                break false;
+            }
+            if self.peek() == b'/' {
+                self.comment();
+            }
+            while self.pos < self.bytes.len() && self.peek() != b'\n' {
+                self.pos += 1;
+            }
+            self.pos += 1;
+        };
         if !continues {
             self.pos = saved;
             self.tab_lines.truncate(tabs);
+            self.out.comments.truncate(comments);
         }
         continues
     }

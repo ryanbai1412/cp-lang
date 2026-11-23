@@ -23,3 +23,13 @@ fn a_semicolon_after_a_decorator_is_one_error_with_a_removal() {
     assert_eq!(diags[0].message, "no `;` after a decorator", "{diags:?}");
     assert_eq!(diags[0].fixes[0].edits[0].1, "", "{diags:?}");
 }
+
+#[test]
+fn a_leading_operator_continues_past_blank_and_comment_lines() {
+    let src = "let b = a\n    // note\n    - 3\nlet c = xs\n    .min()\n\n    ?? 0\n";
+    let parsed = parse_file(src);
+    assert!(parsed.diagnostics.is_empty(), "{:#?}", parsed.diagnostics);
+    assert_eq!(parsed.items.len(), 2);
+    let lexed = lexer::lex("let b = a\n    // note\n    - 3\n// after\nlet c = 1\n");
+    assert_eq!(lexed.comments.len(), 2);
+}
