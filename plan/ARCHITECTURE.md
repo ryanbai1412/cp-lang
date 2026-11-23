@@ -434,3 +434,103 @@ Dropped from the first plan, and why:
 - **Rewrite drag.** Steps 4, 5 and 8 replace large crates. Each runs both
   old and new on the corpus until the new one matches, then deletes the
   old one in the same step (B2.2).
+
+## B6. Re-architectures in flight
+
+Short-lived: each paragraph folds into Part A or the owning domain's
+ARCHITECTURE.md as its steps land, and goes when its ratchet reads 0.
+Each targets a bug class that recurred on 2026-11-23. The ratchets are in
+`scripts/debt-ratchet.py` and only go down.
+
+### 1. One engine (M1; tech-debt with compiler)
+
+B3 step 2. Every IR construct runs on the VM, traced or not, and the
+tree-walker is deleted. Ratchet: `vm_fallbacks`, the tree-walker fallback
+kinds over `crates/cpl-cli/tests/programs` (242 at the start, 149 today),
+to 0. Tech-debt moves traced statements, checkpoints and fed loops. Compiler
+moves the untraced fallbacks and the runs that bypass the VM.
+
+### 2. One analysis pipeline (M1)
+
+Bug class: tools that each re-derive what the checker knows, and drift
+apart. On 2026-11-23 there were two CLI/LSP divergence reds, and L0206 and
+L0513 guessed from syntax what E0304 and E0201/E0204 already report.
+
+- **Target.** `cpl-check` alone answers "what does this file mean": one
+  session API (`Database::analyze` plus `diagnostics`, each diagnostic with
+  its fixes as edits) and one facts API (types, ranges, effects, resolved
+  std items). Lints read only those facts and the lossless tree, and a lint
+  never reports what a checker code covers. The CLI, LSP, wasm, `cpl fix`,
+  stress and the contest loop open the same session through one entry per
+  job (below), never their own `Database::new()`.
+- **Steps.**
+  1. compiler: a `cpl_check::Session` (file set, loader, analyze,
+     diagnostics, facts) that the current `Database::new()` callers can take
+     as they are.
+  2. tools: `cpl-cli`, `cpl-lsp`, `cpl-contest` and `cpl-wasm` open sessions;
+     `apply_error_fixes_in` and `cpl_lsp::checked_fix` become one fix path.
+  3. lint-fmt: `cpl-lint` takes a session's facts instead of building its
+     own (`checker.rs`, `facts.rs`, `lib.rs`); each rule that restates a
+     checker code is retired for that code's fix, as L0206 and L0513 were.
+  4. diagnostics: a checker diagnostic carries its fixes, so `cpl fix`, the
+     editor's fix-all and the playground apply the same edits.
+  5. tools (stress, explain, trace, migrate) and perf (`checks.rs`): the
+     remaining sites.
+- **Ratchets.** `own_databases`: `Database::new()` outside tests and
+  `cpl-check` (36 in 22 files today), to 0. `lint_checker_overlap`: lint
+  findings on the lint fixtures and corpus at the span of a checker
+  diagnostic, to 0 (built with the detectors).
+
+### 3. Std semantics out of the compiler (M2; starts now)
+
+Bug class: the compiler deciding by name what a std fn means, so the std
+body is not what runs and each name needs its own case in the checker,
+lowering, interpreter and emitter.
+
+- **Target.** The compiler knows a fixed table of intrinsics (machine
+  operations with no CP Lang body), stated once as data and read by the
+  checker, lowering, the VM and the emitter. Everything else is a std body
+  with library mechanisms open to user code. Op values (`+`, `min`, a
+  closure given as a `Monoid` op) are monomorphized, so a std body costs
+  what the builtin did.
+- **Steps.**
+  1. compiler: the intrinsics table as data; the arms in
+     `lower/call.rs` and `lower/call/*.rs` that are intrinsics read it.
+  2. compiler: op values and fn-valued parameters monomorphized per known
+     closure, so step 3 meets the perf gate.
+  3. stdlib: each remaining name moves into its std body, in corpus-usage
+     order, behind the gate (interpreter and C++ within 1.1x of the builtin
+     on a matched kernel, same output).
+  4. lint-fmt: lint rules match std items by resolved path, not by name.
+  5. perf: the emitter's std-name cases (`backend_std_names`) go with the
+     builtins they served.
+  6. stdlib: the no-privilege test: a std module copied into a user
+     library runs the same.
+- **Ratchets.** `ir_builtin_names` (95 at the start, 94 today) to the
+  intrinsics count, then the intrinsics leave the measure;
+  `backend_std_names` 18, `prelude_privilege` 24 and `lint_std_names` 180,
+  each to 0.
+
+### 4. One copy and effect analysis in codegen (M2; starts now)
+
+Plan in `plan/domains/perf/ARCHITECTURE.md` ("Re-architecture #4"): one
+Effects table (compiler) and one Uses table (perf), lend by default, a copy
+only with a reason `cpl explain` prints, rewrites gated on proven purity.
+Ratchets: `cpp_deep_copies` 101 and `cpp_std_functions` 777, from
+`crates/cpl-cli/tests/read_only_copies.rs`, each to 0 or to the copies a
+reason requires.
+
+### One entry point per job
+
+Each job has one public entry, named in its owner's ARCHITECTURE.md. The
+CLI, LSP, wasm and the other tools call it and add only presentation.
+`crates/cpl-cli/tests/lsp_parity.rs` grows from check and lint to every
+row (owner tools).
+
+| Job | Entry (target) | Today | Owner |
+|---|---|---|---|
+| check | `cpl_check::Session::diagnostics` | 36 `Database::new()` sites | compiler |
+| lint | `cpl_lint::lint` on a session's facts | `lint`, `lint_parsed`, `lint_named` build their own | lint-fmt |
+| fix | one fix applier for checker and lint fixes | `apply_error_fixes_in` (cli), `checked_fix` (lsp), `fix_checked_removed_syntax`, `apply_fixes` (lint) | diagnostics |
+| run | `cpl_interp::run_with` | `run`, `run_with`, `run_observed`, `run_profiled` | compiler |
+| trace | `cpl_interp::observe_on_this_thread` | plus `checkpoint::record_*` | debugger |

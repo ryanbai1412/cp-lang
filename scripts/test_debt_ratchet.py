@@ -263,6 +263,21 @@ class DebtRatchetTest(unittest.TestCase):
             (tests / "vm_fallbacks.txt").write_text("# header\np untraced expr:Read\np traced stmt:Return\n")
             self.assertEqual(len(dr.vm_fallbacks(root)), 2)
 
+    def test_own_databases_and_copy_baselines(self) -> None:
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            for rel in ("crates/cpl-lsp/src/server.rs", "crates/cpl-lsp/src/fix_tests.rs",
+                        "crates/cpl-lsp/tests/a.rs", "crates/cpl-check/src/db.rs"):
+                (root / rel).parent.mkdir(parents=True, exist_ok=True)
+                (root / rel).write_text("let db = Database::new();\n")
+            self.assertEqual(dr.own_databases(root), ["crates/cpl-lsp/src/server.rs:1"])
+            tests = root / "crates/cpl-cli/tests"
+            tests.mkdir(parents=True)
+            (tests / "read_only_copies.rs").write_text(
+                '    ("deep_copies", deep_copies, 3),\n    ("std_functions", std_functions, 2),\n')
+            self.assertEqual(len(dr.cpp_deep_copies(root)), 3)
+            self.assertEqual(len(dr.cpp_std_functions(root)), 2)
+
     def test_a_raised_baseline_needs_a_decision_naming_it(self) -> None:
         with tempfile.TemporaryDirectory() as d:
             root = Path(d)

@@ -337,6 +337,33 @@ def vm_fallbacks(root: Path) -> list[str]:
     return [l for l in _lines(path) if l and not l.startswith("#")] if path.is_file() else []
 
 
+def own_databases(root: Path) -> list[str]:
+    """`Database::new()` outside tests and cpl-check: a tool re-deriving what one session answers."""
+    out = []
+    for p in _rs_files(root, "crates", tests=False):
+        rel = _rel(root, p)
+        if rel.startswith("crates/cpl-check/") or "/examples/" in rel or rel.endswith("_tests.rs"):
+            continue
+        out += [f"{rel}:{i}" for i, line in enumerate(_lines(p), 1) if "Database::new()" in line]
+    return out
+
+
+def _copy_baseline(root: Path, name: str) -> list[str]:
+    """The `read_only_copies` test's shrink-only count `name` over the corpus C++, one item per unit."""
+    path = root / "crates/cpl-cli/tests/read_only_copies.rs"
+    text = path.read_text() if path.is_file() else ""
+    m = re.search(rf'\("{name}",\s*\w+,\s*(\d+)\)', text)
+    return [f"{name} {i}" for i in range(int(m.group(1)))] if m else []
+
+
+def cpp_deep_copies(root: Path) -> list[str]:
+    return _copy_baseline(root, "deep_copies")
+
+
+def cpp_std_functions(root: Path) -> list[str]:
+    return _copy_baseline(root, "std_functions")
+
+
 def stale_arch_paths(root: Path) -> list[str]:
     """Backticked repo paths in ARCHITECTURE docs that do not exist.
 
@@ -380,6 +407,9 @@ COUNTERS = {
     "lint_dup_helpers": ("helper fns copied across lint rule files", lint_dup_helpers, True),
     "plan_delta_lines": ("lines of notes under plan/domains/*/delta", plan_delta_lines, True),
     "vm_fallbacks": ("tree-walker fallbacks over tests/programs", vm_fallbacks, True),
+    "own_databases": ("Database::new() outside tests and cpl-check", own_databases, True),
+    "cpp_deep_copies": ("deep copies in the corpus C++ (read_only_copies)", cpp_deep_copies, True),
+    "cpp_std_functions": ("std::function in the corpus C++ (read_only_copies)", cpp_std_functions, True),
     "rs_near_cap": ("rs files within 100 lines of the cap", rs_near_cap, False),
     "stale_arch_paths": ("missing paths cited by ARCHITECTURE docs", stale_arch_paths, False),
     "crate_edges": ("shipped crate edges", crate_edges, False),
