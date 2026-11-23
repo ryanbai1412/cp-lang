@@ -433,3 +433,6 @@ Landed since 23:10: four type/flow lints from `spec/idioms/lints.md`, L0571 `neg
   General fixes owed. #101 is stress deriving inputs for `[V]V`; the `Perm`
   import fix-it already exists. #184 is praise. README Milestone 2 section
   written as the maximal version with nine gated exit criteria.
+- M2 step 1: `every_golden_fix_names_something_that_exists` applies
+  `cpl fix` to every golden in tests/diagnostics and fails if a fix adds an
+  unknown or private name (E0201, E0203, E0207). Green on all goldens.
