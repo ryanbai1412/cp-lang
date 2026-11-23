@@ -224,7 +224,7 @@ fn binary(op: BinOp, lhs: Expr, rhs: Expr) -> Expr {
 pub type Env = HashMap<String, i128>;
 
 /// The value of a bound, when it only uses numbers, names in `env`, and
-/// `+ - * /`, `min` and `max`.
+/// `+ - * / % ** << >>`, `min` and `max`.
 pub fn eval(expr: &Expr, env: &Env) -> Option<i128> {
     match &expr.kind {
         ExprKind::Int(value) => Some(*value),
@@ -242,6 +242,10 @@ pub fn eval(expr: &Expr, env: &Env) -> Option<i128> {
                 BinOp::Sub => a.checked_sub(b),
                 BinOp::Mul => a.checked_mul(b),
                 BinOp::Div if b != 0 => Some(a.div_euclid(b)),
+                BinOp::Rem if b != 0 => Some(a.rem_euclid(b)),
+                BinOp::Pow => a.checked_pow(u32::try_from(b).ok()?),
+                BinOp::Shl if (0..127).contains(&b) => a.checked_mul(1 << b),
+                BinOp::Shr => Some(a >> u32::try_from(b).ok()?.min(127)),
                 _ => None,
             }
         }

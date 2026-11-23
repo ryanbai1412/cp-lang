@@ -1198,3 +1198,27 @@ fn judge(mut sol: Interactor):
     let per_case = spec.cases.as_ref().expect("multitest divider must be seen");
     assert_eq!(per_case.fields.len(), 2);
 }
+
+#[test]
+fn bounds_written_with_powers_and_shifts_are_generated() {
+    let src = "let n: 1..=10**12 = read()
+let k: 0..=4 = read()
+let w: [0..(1 << k)]Int = read()
+let r: 0..=(n % 7 + (8 >> 1)) = read()
+print(n + k + w.len + r)
+";
+    let spec = InputSpec::from_source(src).unwrap();
+    for seed in 0..30 {
+        let case = generate(&spec, &mut Rng::new(seed), Size::Small(8)).unwrap();
+        let tokens: Vec<i128> = case
+            .render()
+            .split_whitespace()
+            .map(|t| t.parse().unwrap())
+            .collect();
+        let (n, k) = (tokens[0], tokens[1]);
+        assert!((1..=10i128.pow(12)).contains(&n) && (0..=4).contains(&k));
+        let r = tokens[2 + (1usize << k)];
+        assert!((0..=n % 7 + 4).contains(&r), "{}", case.render());
+        assert_eq!(tokens.len(), 3 + (1 << k), "{}", case.render());
+    }
+}
