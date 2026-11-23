@@ -62,6 +62,9 @@ fn brute(): ...
   implementation's output, for problems with many valid answers. Pair it
   with a brute that compares feasibility, since a unary checker cannot
   catch a wrong "impossible".
+- A checker sees `input` and `out`, never the solution's bindings: a fact
+  it trusts (`let m = n - k + 1`) is restated from `input`, so a wrong
+  derivation in the solution cannot pass its own check (decision 374).
 - Floats compare with `close(a, b, abs:, rel:)`.
 
 ## Interactors

@@ -7826,3 +7826,14 @@ row-major (R10.2.1); a match arm names a variant bare, std enums included, and
 `()` is the arm that does nothing (R01.7.3). Confirmed with cases: annotated
 lambda parameters, a shared lambda capturing a shared `Comb` from each test.
 Reverse: edit R10.2.1 / R01.7.3 and their cases.
+
+## 374. A checker sees only the input; tuple reads bound by earlier parts (2026-11-23)
+
+Acceptance run 4 asked two spec questions. `checker-shares-only-input`: a
+`@check` cannot see the solution's `let m = n - k + 1`. Keep it so: a checker
+that trusted the solution's derived facts would pass the solution's own bug,
+so it restates them from `input` (spec/lib/random-stress.md). Reverse: let a
+checker name shared top-level bindings. `tuple-read-dependent-bound`:
+`let (n, k): (1..=2e5, 1..=n) = read()` already works and traps on `k > n`;
+R10.2.3 now says so and that the generator honours the order.
+`list-copy-is-move` needs nothing: E0608 already says to use `b.clone()`.

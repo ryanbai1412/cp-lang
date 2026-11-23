@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-23
+- Acceptance run 4 spec rows: decision 374 (checker sees only input, R10.2.3 dependent tuple bounds, 2 cases). `list-copy-is-move` already has the `.clone()` help.
 - Rebuild round 19 (rated 1600-2100): 15 holes before running (11 silent, 1 contradiction, 3 missing-stdlib), 16 live after (2 withdrawn, 3 found-late), all in the M1 subset; 10/10 pass check, run and C++ on samples, 1400 stress inputs agree, max-size C++ at most 0.08 s. Only implementation bug is the known `Str(len: n..=n)` gap. Decision 373; 4 cases, all pass. Found-late: closure as `Next<V>` and `Diff` are in spec/lib but not in the tables the reader opened.
 - Subset check: 6 failing cases from other lanes listed as known gaps so the check stays meaningful: core-02/move-into-ctor-receiver-then-use (E0608 reported at another line, compiler e12d74395), core-04/range-type-binds-generic-domain (E0302, compiler), std-dp/backtrack-* x3 and std-math/bigint-matches-int-arithmetic (stdlib). Owners drop the line when they pass. Dropped core-08/trait-assoc-type-bound (passes).
 - Rebuild round 18 (79b4db75d, rated 1900-2200, 200-input stress each): 19 holes, 11 silent, 3 contradiction, 3 missing-stdlib, 2 found-late; 7/10 clean, all 10 agree on stress after workarounds. Decision 371; 6 cases, 5 pass, 1 compiler known gap (`Heap(by: x => desc(x))`). `cpl-conform diff` (interpreter vs g++ over the corpus): 1915 pass, 0 mismatches, 1 interpreter timeout (core-07/range-folds-are-ranges-own).

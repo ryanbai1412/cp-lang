@@ -7,7 +7,7 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 2632 (995 passing). Rules: 568.
+Cases: 2634 (995 passing). Rules: 568.
 
 ## Summary per chapter
 
@@ -22,7 +22,7 @@ Cases: 2632 (995 passing). Rules: 568.
 - R07 (07-sequences.md): 90 rules, 144 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R08 (08-traits-generics.md): 29 rules, 89 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R09 (09-contexts-checks.md): 26 rules, 56 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R10 (10-io.md): 18 rules, 100 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R10 (10-io.md): 18 rules, 102 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R11 (11-modules-prelude.md): 16 rules, 46 cases; 0 uncovered, 0 happy-path only, 1 negative only
 - R12 (12-powers.md): 17 rules, 36 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R13 (13-lowering.md): 22 rules, 27 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -592,7 +592,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R10.1.3 [1+ 0-]: IOI-style tasks mark entry points with `@grader`, `@grader(interactive)` or `@grader(two_p...
 - R10.2.1 [7+ 1-]: `read<T>()` dispatches on the expected type, so `let n: 1..=2e5 = read()` and `read<[n]Int...
 - R10.2.2 [7+ 1-]: Range types read with their contract. A domain written with explicit ends (`1..=n`, `0..n`...
-- R10.2.3 [19+ 4-]: Arrays `[D]T` read `D.count` values; `[R, C]T` reads `R.count * C.count` tokens row-major,...
+- R10.2.3 [20+ 5-]: Arrays `[D]T` read `D.count` values; `[R, C]T` reads `R.count * C.count` tokens row-major,...
 - R10.2.4 [3+ 0-]: `s.parse<T>()` reads a `T` from a string by these same rules, `None` on a bad or leftover ...
 - R10.2.5 [1+ 1-]: Graphs are built from an edge list read as records, `read<[E](u: V, v: V)>()`, then `Graph...
 - R10.2.6 [1+ 4-]: A bad token traps with the input position and the expected type.
@@ -861,7 +861,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - R0401 Assertion failed: 72 case(s)
 - R0402 todo reached: 2 case(s)
 - R0501 Bad input token: 10 case(s)
-- R0502 Input outside its read contract: 3 case(s)
+- R0502 Input outside its read contract: 4 case(s)
 - R0601 Stack exhausted: 1 case(s)
 - W0101 Unused expression value: 1 case(s)
 - W0201 size_near_limit *(0.3)*: 1 case(s)
