@@ -316,6 +316,25 @@ pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u
         let _ = write!(stdout, "{USAGE}");
         return 0;
     }
+    // `-o NAME` is the guess other tools teach; say where the name goes.
+    if let Some(at) = args
+        .iter()
+        .position(|arg| matches!(arg.as_str(), "-o" | "--out" | "--output"))
+    {
+        let name = args
+            .get(at + 1)
+            .map_or("a", |name| name.trim_end_matches(".cp"));
+        let url = args
+            .iter()
+            .find(|arg| judge_of(arg).is_some())
+            .map_or("<url>", String::as_str);
+        let _ = writeln!(
+            stderr,
+            "cpl: `fetch` takes the name as its second argument, without `{}` or `.cp`: `cpl fetch {url} {name}`",
+            args[at]
+        );
+        return 2;
+    }
     let parsed = Args::parse(args, &["--html"], &["--json"]).and_then(|args| {
         let (url, name) = match args.positional.as_slice() {
             [url] => (url.clone(), None),

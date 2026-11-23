@@ -1011,3 +1011,21 @@ fn an_any_answer_problem_gets_a_check_to_finish() {
     );
     assert!(!Scaffold::default().source(None).contains("@check"));
 }
+
+#[test]
+fn fetch_says_where_the_name_goes_when_given_dash_o() {
+    let args: Vec<String> = [
+        "https://codeforces.com/contest/2272/problem/A",
+        "-o",
+        "cf2272A.cp",
+    ]
+    .map(String::from)
+    .to_vec();
+    let (mut out, mut err) = (Vec::new(), Vec::new());
+    assert_eq!(crate::fetch::run(&args, &mut out, &mut err), 2);
+    let err = String::from_utf8(err).unwrap();
+    assert!(
+        err.contains("`cpl fetch https://codeforces.com/contest/2272/problem/A cf2272A`"),
+        "{err}"
+    );
+}
