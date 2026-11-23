@@ -1430,6 +1430,10 @@ impl Checker<'_> {
         if matches!(name.text.as_str(), "max" | "min") && self.view_kind(base) == Some("slice") {
             return Some(Ty::Optional(Box::new(ret)));
         }
+        // A sum of `1..=1e9`s leaves that range, and may not hold its `0`.
+        if name.text == "sum" && matches!(ret, Ty::Range { .. }) {
+            return Some(ret.widen());
+        }
         Some(ret)
     }
 

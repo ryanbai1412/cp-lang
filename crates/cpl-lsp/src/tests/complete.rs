@@ -494,3 +494,25 @@ fn dot_completion_on_an_int_lists_the_fns_that_take_it_as_self() {
     let items = completions("let k: 1..=9 = read()\nprint(k.|)\n");
     assert!(labels(&items).contains(&"digits"), "{items:?}");
 }
+
+#[test]
+fn inlay_hints_show_a_sum_of_ranged_cells_as_int() {
+    let src = "let n: 1..=100 = read()\nlet a: [0..n]1..=1e9 = read()\nlet s = a.sum()\nprint(s)\n";
+    let (mut server, _) = open(src);
+    let reply = server.handle(&request(
+        34,
+        "textDocument/inlayHint",
+        obj([
+            ("textDocument", doc()),
+            ("range", obj([("start", pos(0, 0)), ("end", pos(4, 0))])),
+        ]),
+    ));
+    let labels: Vec<&str> = reply[0]
+        .at(&["result"])
+        .as_array()
+        .unwrap_or(&[])
+        .iter()
+        .map(|h| h.at(&["label"]).as_str().unwrap())
+        .collect();
+    assert_eq!(labels, [": Int"]);
+}
