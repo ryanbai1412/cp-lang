@@ -701,7 +701,7 @@ fn one_d_sums_match_brute():
             let want = sum(a[i] for i in V if l <= i.l and i.r <= r)
             assert p.fold(l..r) == want
             assert p.prefix(r) - p.prefix(l) == want
-    for i in V: assert p.get(i) == a[i]
+    for i in V: assert p.fold(i..=i) == a[i]
 
 @test
 fn two_d_sums_match_brute():
