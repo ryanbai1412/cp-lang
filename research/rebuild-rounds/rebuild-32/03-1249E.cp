@@ -14,5 +14,5 @@ fn moves(v: V, k: Mode) -> yields (to: (V, Mode), w: Int):
         let i = Int(v) - 1
         yield (to: (u, k), w: if k == Mode(0): a[i] else: b[i])
 
-let p = dijkstra((v, k) => moves(v, k), from: [((V.first!, Mode(0)), 0)])
+let p = dijkstra(s => moves(s.0, s.1), from: [((V.first!, Mode(0)), 0)])
 print([V] v => p.dist[(v, Mode(0))]!)

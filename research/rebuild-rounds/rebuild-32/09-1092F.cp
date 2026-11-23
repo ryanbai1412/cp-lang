@@ -10,4 +10,4 @@ let at = t.reroot(
     lift: (x, _, _) => (w: x.w, cost: x.cost + x.w),
     finish: (s, v) => (w: s.w + a[v], cost: s.cost),
 )
-print(max(r.cost for r in at)!)
+print(at.map(r => r.cost).max()!)

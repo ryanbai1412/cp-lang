@@ -7,13 +7,12 @@ let above = p.count(q => q.y > 0)
 if above != 0 and above != n:
     print(-1)
 else:
-    let radius = (x0: F64) => max(
+    let radius = (x0: F64) => p.map(q =>
         ((F64(q.x) - x0) * (F64(q.x) - x0) + F64(q.y) * F64(q.y)) / (2.0 * F64(abs(q.y)))
-        for q in p
-    )!
-    var lo: F64 = -1e7
-    var hi: F64 = 1e7
-    var best: F64 = 1e18
+    ).max()!
+    var lo: F64 = F64(-1e7)
+    var hi: F64 = F64(1e7)
+    var best: F64 = F64(1e18)
     for _ in 0..200:
         let m1 = lo + (hi - lo) / 3.0
         let m2 = hi - (hi - lo) / 3.0

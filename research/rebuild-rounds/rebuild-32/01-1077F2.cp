@@ -6,7 +6,7 @@ let k: 1..=n = read()
 let x: 1..=n = read()
 let a = read<[n]1..=1e9>()
 
-let NEG = -(1 << 60)
+const NEG = -(1 << 60)
 var prev: [0..=n]Int = NEG
 prev[0] = 0
 for _ in 1..=x:
@@ -18,5 +18,5 @@ for _ in 1..=x:
         if w.all! > NEG: cur[i] = w.all! + a[i - 1]
     prev = cur
 
-let best = max(prev[i] for i in n - k + 1..=n)!
+let best = (n - k + 1..=n).map(i => prev[i]).max()!
 print(if best > NEG: best else: -1)
