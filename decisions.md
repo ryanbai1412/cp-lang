@@ -8232,3 +8232,10 @@ tag move fatal again.
 
 - **Call.** `prefix1`/`prefix2`/`prefix_n`, `Prefix1`/`Prefix2`/`PrefixN` and `Diff1`/`Diff2` are E0201 (values, imports) or E0204 (types), "replaced by `prefix`/`Prefix`/`Diff`", and each carries the rename `cpl fix` applies. L0513 repeated those errors from syntax, so it is retired with its record, as L0206 was (decision 401).
 - **Reverse.** Restore `spec/lints/prefix_twin/` and the three `prefix_*twin` arms in `rules/taste/mod.rs`.
+
+## 403. `vm_fallbacks` gains finer kinds when a traced `do` moves onto the VM (tech-debt, 2026-11-23)
+
+- **Call.** A traced statement whose value holds a `do` block now runs on the VM when every `give` in the block compiles there; before, the whole statement went to the tree-walker. The block's own statements that still fall back are now reported by their own tags, so the kind list goes from 148 to 152: `traced stmt:Expr(Do)` and `traced stmt:Let(Builtin)` (traced) and `untraced stmt:Expr(Do)` leave, and seven inner kinds arrive (`Assign(Field,Set)`, `Assign(Global,Min)`, `Assign(Index2D,Set)`, `Assign(IndexND,Set)`, `Let(Cast)`, `Let(Format)`, `Let(Index)`, all traced). Fallbacks run over the traced test programs go from 4077 to 3745.
+- **Why the bump is right.** The list counts tags, not work, so moving the outer statement onto the VM reads as growth while the tree-walker runs less. A `give` left to a tree-walker statement would return from the enclosing fn, so blocks with one stay whole fallbacks.
+- **Follow-up.** The ratchet should count fallbacks run, not kinds, so a split like this one reads as the shrink it is.
+- **Reverse.** Return `false` for `ExprKind::Do` in `traced_quiet` (`crates/cpl-interp/src/vm/compile/stmt.rs`) and restore the 148-kind `vm_fallbacks.txt`.

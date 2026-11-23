@@ -144,13 +144,12 @@ impl<'p, 'f> Compiler<'p, 'f> {
     /// `Trace`, and anything else is left to the tree-walker, which
     /// reports it. Returns whether `stmt` was compiled.
     pub(super) fn compile_traced_stmt(&mut self, stmt: &'p Stmt) -> bool {
-        let fallbacks = self.fallback_stmts.len();
         match stmt {
             Stmt::Let(slot, Some(init))
                 if self.feed_acc != Some(*slot) && self.traced_quiet(init) =>
             {
                 self.compile_untraced_stmt(stmt);
-                if self.fallback_stmts.len() == fallbacks {
+                if !self.fell_back(stmt) {
                     self.emit_trace(TracePoint::Let(*slot, init), init.span);
                 }
             }
@@ -159,16 +158,15 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 if quiet_place(place, cpl_ir::walk::root(place)) && self.traced_quiet(value) =>
             {
                 self.compile_untraced_stmt(stmt);
-                if self.fallback_stmts.len() == fallbacks {
+                if !self.fell_back(stmt) {
                     let point = self.cell_point(place).unwrap_or(TracePoint::Assign(place));
                     self.emit_trace(point, place.span);
                 }
             }
-            Stmt::If(cond, ..) | Stmt::While(_, cond, _) | Stmt::Assert { cond, .. }
-                if quiet(cond) =>
-            {
+            Stmt::If(cond, ..) | Stmt::While(_, cond, _) if self.traced_quiet(cond) => {
                 return false
             }
+            Stmt::Assert { cond, .. } if quiet(cond) => return false,
             Stmt::Return(Some(value)) | Stmt::Give(value) if self.traced_quiet(value) => {
                 return false
             }
@@ -233,14 +231,18 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 && !self.yields_into(place)
                 && args.iter().all(|a| self.traced_quiet(a)) =>
             {
-                let exprs = self.fallback_exprs.len();
                 self.compile_untraced_stmt(stmt);
-                if self.fallback_stmts.len() == fallbacks && self.fallback_exprs.len() == exprs {
+                let whole = self
+                    .fallback_exprs
+                    .last()
+                    .is_some_and(|f| std::ptr::eq(*f, e));
+                if !self.fell_back(stmt) && !whole {
                     self.emit_trace(TracePoint::Mutated(place, e.span), e.span);
                 }
             }
             // `print_values` tells the tracer what it printed, as in the tree-walker.
             Stmt::Expr(e) if Self::quiet_print(e) => self.compile_untraced_stmt(stmt),
+            Stmt::Expr(e) if self.traced_quiet(e) => self.compile_untraced_stmt(stmt),
             _ => {
                 self.emit_fallback_stmt(stmt);
                 self.emit_escapes();
@@ -266,16 +268,41 @@ impl<'p, 'f> Compiler<'p, 'f> {
         ok.then_some((*fn_id, args.as_slice()))
     }
 
-    /// [`quiet`], but for the calls a traced chunk makes itself.
+    /// [`quiet`], but for the calls a traced chunk makes itself, and a
+    /// `do` block, whose statements each compile as traced statements.
     pub(super) fn traced_quiet(&self, e: &'p Expr) -> bool {
-        let mut ok = true;
-        cpl_ir::walk::deep_expr(e, &mut |e| {
-            ok &= match e.kind {
-                ExprKind::Call(..) => self.traced_call(e).is_some(),
-                _ => quiet_node(e),
-            };
-        });
-        ok
+        let ok = match &e.kind {
+            ExprKind::Call(..) => self.traced_call(e).is_some(),
+            ExprKind::Do(block) => self.gives_natively(&block.stmts),
+            _ => quiet_node(e),
+        };
+        let mut children = ok;
+        if !matches!(e.kind, ExprKind::Do(_)) {
+            cpl_ir::walk::children(e, &mut |child| children &= self.traced_quiet(child));
+        }
+        children
+    }
+
+    /// Whether each `give` in `stmts` compiles on the VM, so none is left
+    /// to a tree-walker statement, which could not reach the `do`'s end.
+    fn gives_natively(&self, stmts: &'p [Stmt]) -> bool {
+        stmts.iter().all(|stmt| match stmt {
+            Stmt::Give(value) => self.traced_quiet(value),
+            Stmt::If(cond, then, otherwise) => {
+                !cpl_ir::walk::has_give(std::slice::from_ref(stmt))
+                    || (self.traced_quiet(cond)
+                        && self.gives_natively(&then.stmts)
+                        && self.gives_natively(&otherwise.stmts))
+            }
+            _ => !cpl_ir::walk::has_give(std::slice::from_ref(stmt)),
+        })
+    }
+
+    /// Whether `stmt` itself was left to the tree-walker, which reports it.
+    fn fell_back(&self, stmt: &Stmt) -> bool {
+        self.fallback_stmts
+            .last()
+            .is_some_and(|f| std::ptr::eq(*f, stmt))
     }
 
     pub(super) fn emit_traced_call(
