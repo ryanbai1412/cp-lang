@@ -139,6 +139,13 @@ cache_save() {
 markers=$(git grep -nE '^(<{7}|>{7}|\|{7})( |$)' -- ':!*.png' ':!*.gz' || true)
 [ -z "$markers" ] || fail "merge conflict markers left in:
 $markers"
+# Every test program has its saved trace: trace_goldens fails without one,
+# and the commit tier can stop before it runs.
+untraced=$(git ls-files 'crates/cpl-cli/tests/programs/*.cp' |
+    while read -r f; do [ -e "${f%.cp}.trace" ] || echo "$f"; done)
+[ -z "$untraced" ] || fail "test programs with no saved trace; record them with
+CPL_BLESS=1 cargo nextest run -p cpl-cli --test trace_goldens, read the .trace, commit it:
+$untraced"
 need() { command -v "$1" >/dev/null || fail "\`$1\` is not installed; $2"; }
 # The playground build. CI's site job builds cpl-wasm itself, and a lane
 # box without the wasm32 target warns and skips.
