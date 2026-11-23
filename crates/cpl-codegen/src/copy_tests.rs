@@ -159,7 +159,7 @@ fn a_view_of_a_temporary_holds_the_temporary() {
         .lines()
         .find(|l| l.contains("std::vector<ll> t") && l.contains("chain"))
         .unwrap_or_else(|| panic!("{cpp}"));
-    let name = owner.trim().split_whitespace().nth(1).unwrap();
+    let name = owner.split_whitespace().nth(1).unwrap();
     assert!(cpp.contains(&format!("take_Lst_Int_2({name}, n)")), "{cpp}");
 }
 
