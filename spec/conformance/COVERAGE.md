@@ -7,14 +7,14 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 2625 (995 passing). Rules: 568.
+Cases: 2626 (995 passing). Rules: 568.
 
 ## Summary per chapter
 
 - R01 (01-lexical-grammar.md): 56 rules, 156 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R02 (02-values-types.md): 52 rules, 143 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R03 (03-numbers-layout.md): 24 rules, 67 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R04 (04-indices.md): 69 rules, 138 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R04 (04-indices.md): 69 rules, 139 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04a (04a-identity-vs-offset.md): 39 rules, 53 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04b (04b-keys.md): 27 rules, 66 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R05 (05-ownership.md): 43 rules, 155 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -259,7 +259,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R04.4.26 [2+ 0-]: **Cut range to piece:** a literal `j..i` whose ends are cuts, where a `Range<V>` is expect...
 - R04.4.27 [2+ 1-]: **Scalar to array fill:** a value `x: T` where `[D]T` is expected is the array over `D` wi...
 - R04.4.28 [4+ 0-]: **`Int` to `Mod<P>`:** an integer (a literal or any `Int` value) where a `Mod<P>` is expec...
-- R04.4.30 [6+ 0-]: **Integer ranges as domains.** An integer range `lo..hi` (or `lo..=hi`, or a counted `[n]`...
+- R04.4.30 [7+ 0-]: **Integer ranges as domains.** An integer range `lo..hi` (or `lo..=hi`, or a counted `[n]`...
 - R04.4.12 [1+ 0-]: | `r.len`, `r.is_empty`, `x in r` | count of positions; membership of a position | count o...
 - R04.4.31 [1+ 1-]: | `r[x]`, `r.keys`, `r.items` | a range's keys are its own elements: `r[x] == x` for `x in...
 - R04.4.32 [1+ 0-]: | same, over cuts | \(O(1)\)
