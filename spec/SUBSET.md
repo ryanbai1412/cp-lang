@@ -197,6 +197,7 @@ they carry rule ids; the stdlib's own gaps are in `std/GAPS.md`.
 - core-07/keys-survive-filter.cp: compiler
 - core-07/prefix-scan-cuts.cp: compiler
 - core-07/slice-past-source-traps.cp: compiler
+- core-07/fold-without-parens-warns.cp: compiler
 - core-07/spec-block-divisors-break.cp: compiler
 - core-08/const-param-arithmetic.cp: compiler
 - core-08/static-fn-default-param-mismatch.cp: compiler

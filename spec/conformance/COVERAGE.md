@@ -7,7 +7,7 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 2423 (995 passing). Rules: 560.
+Cases: 2429 (995 passing). Rules: 561.
 
 ## Summary per chapter
 
@@ -19,8 +19,8 @@ Cases: 2423 (995 passing). Rules: 560.
 - R04b (04b-keys.md): 27 rules, 64 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R05 (05-ownership.md): 43 rules, 149 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R06 (06-control-functions.md): 24 rules, 78 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R07 (07-sequences.md): 89 rules, 115 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R08 (08-traits-generics.md): 29 rules, 78 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R07 (07-sequences.md): 90 rules, 118 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R08 (08-traits-generics.md): 29 rules, 80 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R09 (09-contexts-checks.md): 26 rules, 55 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R10 (10-io.md): 18 rules, 79 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R11 (11-modules-prelude.md): 15 rules, 39 cases; 0 uncovered, 0 happy-path only, 1 negative only
@@ -53,8 +53,8 @@ negative case. Complete: rules with no gap in `rule-gaps.txt`.
 | R04b | 27 | 27 (100%) | 7 | 7 (100%) | 27 (100%) |
 | R05 | 43 | 43 (100%) | 21 | 21 (100%) | 43 (100%) |
 | R06 | 24 | 24 (100%) | 16 | 16 (100%) | 24 (100%) |
-| R07 | 89 | 89 (100%) | 23 | 23 (100%) | 89 (100%) |
-| R08 | 29 | 29 (100%) | 13 | 13 (100%) | 29 (100%) |
+| R07 | 90 | 90 (100%) | 24 | 24 (100%) | 90 (100%) |
+| R08 | 29 | 29 (100%) | 12 | 12 (100%) | 29 (100%) |
 | R09 | 26 | 26 (100%) | 14 | 14 (100%) | 26 (100%) |
 | R10 | 18 | 18 (100%) | 8 | 8 (100%) | 18 (100%) |
 | R11 | 15 | 14 (93%) | 9 | 9 (100%) | 14 (93%) |
@@ -67,7 +67,7 @@ negative case. Complete: rules with no gap in `rule-gaps.txt`.
 | Rlint | 2 | 2 (100%) | 2 | 2 (100%) | 2 (100%) |
 | Rlsp | 5 | 0 (0%) | 2 | 0 (0%) | 0 (0%) |
 | Rstress | 1 | 1 (100%) | 0 | 0 (0%) | 1 (100%) |
-| all | 560 | 554 (98%) | 217 | 213 (98%) | 552 (98%) |
+| all | 561 | 555 (98%) | 217 | 213 (98%) | 553 (98%) |
 
 ## Rules
 
@@ -502,6 +502,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R07.9.3 [1+ 1-]: | `s.min()`, `s.max()`, `s.min(by: k)` | `?T`, `None` when empty; first on ties | O(n)
 - R07.9.4 [1+ 0-]: | `s.count(p)`, `s.any(p)`, `s.all(p)` | `Int`, `Bool` | O(n)
 - R07.9.5 [2+ 0-]: | `s.find(p)`, `s.rfind(p)` | `?T`, linear scan (binary search is `r.first_true`) | O(n)
+- R07.9.6 [2+ 1-]: , generic code included, and the compiler never pattern matches a pipeline. User types get...
 - R07.11.1 [2+ 1-]: | `s.sort(by: k)`, `s.reverse()`, `s.dedup()`, `s.fill(x)` | in place: needs a `var` sourc...
 - R07.11.2 [1+ 0-]: | `s.sorted(by: k)`, `s.deduped()` | new `List` | same, allocates
 - R07.11.3 [2+ 0-]: | `s.group(by: k)` | `Map<K, List<T>>` | O(n) expected
@@ -519,10 +520,10 @@ Each rule: positive / negative case counts, then the gap if any.
 
 ### R08: 08-traits-generics.md
 
+- R08.1.4 [3+ 2-]: **A fold costs what the receiver's type says.** The costs above are the generic walks ever...
 - R08.1.1 [13+ 1-]: A trait declares methods (with optional default bodies), associated types, field requireme...
 - R08.1.2 [3+ 1-]: `impl Trait for T` implements it; `impl A + B for T` is shorthand for two impls. One impl ...
 - R08.1.3 [1+ 1-]: Inherent methods (`impl T:` or methods in a struct body) live in the type's module only.
-- R08.1.4 [2+ 1-]: Method lookup: inherent first, then traits in scope that the type implements; two candidat...
 - R08.1.5 [1+ 1-]: Operators are trait methods (`Add`, `Sub`, `Mul`, `Div`, `Rem` with `Rhs` and `Out`, `Neg`...
 - R08.1.6 [1+ 1-]: **Derived impls are structural**: tuples, records, structs and enums get `Eq`, `Ord` (lexi...
 - R08.1.7 [1+ 1-]: **Field traits**: a trait may require fields (`trait Target<V>: to: V`). Records satisfy f...
@@ -768,7 +769,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0606 Missing trait implementation for operator: 21 case(s)
 - E0607 Moved while captured by a closure: 3 case(s)
 - E0608 Use of moved value: 13 case(s)
-- E0701 Ambiguous trait method: 1 case(s)
+- E0701 Ambiguous trait method: 2 case(s)
 - E0702 Overload by type: 2 case(s)
 - E0703 Operator tuple: 1 case(s)
 - E0704 Record misses a row field: 2 case(s)
@@ -816,7 +817,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - L0605 Literal index into a slice that keeps source keys: 3 case(s)
 - L0606 Wide array of `Int`: 1 case(s)
 - L0607 Large array of padded elements: 1 case(s)
-- L0608 Parentheses do not match the cost: 1 case(s)
+- L0608 Parentheses do not match the cost: 2 case(s)
 - L0609 A `@cache` field written outside its type: 1 case(s)
 - R0001 Runtime trap: 5 case(s)
 - R0101 Index out of range: 23 case(s)
