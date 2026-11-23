@@ -8,7 +8,7 @@ on:
     types: [completed]
     branches: [main]
   push:
-    tags: ["v*", "edge-now-*"] # edge-now-*: edge from the newest green commit, on demand
+    tags: ["v*", "edge-now-*"] # edge-now-*: edge from the newest green commit, or edge-now-<sha> from that main commit
   schedule:
     - cron: "17 7 * * *" # nightly edge
   workflow_dispatch:
@@ -75,6 +75,15 @@ jobs:
               ;;
             stable-tag) sha=$GITHUB_SHA ;;
             *)
+              # edge-now-<sha>, pushed on a main tip, builds that main commit
+              # even if a known-failing job kept its CI red; the tag's
+              # message becomes a release note naming the failure.
+              if [[ "$GITHUB_REF_NAME" =~ ^edge-now-([0-9a-f]{7,40})$ ]]; then
+                sha=$(gh api "repos/$GITHUB_REPOSITORY/commits/${BASH_REMATCH[1]}" --jq .sha)
+                rel=$(gh api "repos/$GITHUB_REPOSITORY/compare/$sha...main" --jq .status)
+                [ "$rel" = ahead ] || [ "$rel" = identical ] || { echo "::error::$sha is not on main"; exit 1; }
+                echo "sha=$sha" >>"$GITHUB_OUTPUT"; echo "go=true" >>"$GITHUB_OUTPUT"; exit 0
+              fi
               sha=$(gh run list -R "$GITHUB_REPOSITORY" --workflow ci.yml --branch main --event push \
                 --status success -L 1 --json headSha --jq '.[0].headSha // empty')
               ;;
@@ -237,7 +246,15 @@ jobs:
           DATE: ${{ needs.plan.outputs.date }}
           TOOLCHAIN: ${{ needs.plan.outputs.toolchain }}
           TAGS: ${{ needs.plan.outputs.tags }}
-        run: scripts/release/publish.sh dist "$CHANNEL" "$VERSION" "$COMMIT" "$DATE" "$TOOLCHAIN" "$TAGS"
+        run: |
+          scripts/release/publish.sh dist "$CHANNEL" "$VERSION" "$COMMIT" "$DATE" "$TOOLCHAIN" "$TAGS"
+          if [[ "$GITHUB_REF_NAME" == edge-now-* ]]; then
+            obj=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$GITHUB_REF_NAME" --jq 'select(.object.type == "tag") | .object.sha')
+            if [ -n "$obj" ]; then
+              note=$(gh api "repos/$GITHUB_REPOSITORY/git/tags/$obj" --jq .message)
+              gh release edit edge --notes "$(gh release view edge --json body --jq .body)"$'\n\n'"Known issues: $note"
+            fi
+          fi
 
   # The one-line installers on clean runners of all three OSes, against what
   # publish just released: `cpl` installs, runs a program (CRLF too) and builds C++.
