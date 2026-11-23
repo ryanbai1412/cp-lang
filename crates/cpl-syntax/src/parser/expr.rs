@@ -1456,24 +1456,6 @@ impl<'a> Parser<'a> {
         ExprKind::List(items)
     }
 
-    /// At the `;` of Rust's `[x; n]`, which is `[x] * n` here (R01.11.1).
-    /// No fix yet: the checker rejects `List * Int` (compiler worklog).
-    fn rust_repeat(&mut self, items: Vec<Expr>) -> ExprKind {
-        let semi = self.span();
-        self.bump();
-        self.expr();
-        self.error(
-            Diagnostic::error(
-                codes::REMOVED_SYNTAX,
-                semi,
-                "repeat a list item with `[x] * n`, not `[x; n]`",
-            )
-            .with_help("write `[x] * n`, or a typed `[n]T`"),
-        );
-        self.eat(T::RBracket);
-        ExprKind::List(items)
-    }
-
     /// `name: value`, `name:` (the variable `name`) or `name: +` (an operator fn).
     fn record_field(&mut self) -> (Name, Expr) {
         let name = self.expect_name("a field name");

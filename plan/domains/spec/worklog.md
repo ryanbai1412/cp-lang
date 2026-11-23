@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- Request from diagnostics: R01.11.1's table rewrites `[x; n]` as "`[x] * n` or a typed `[n]T`", but the checker rejects `List * Int` (E0309, suggesting `[n].filled(x)`), so `core-01/list-repeat-times-n.cp` fails today. E0503 now offers the fill `[n].filled(x)` (R02, R04 fill form) with a fix; it goes back to `[x] * n` once compiler lands `List * Int`. Keep `[x] * n` in the table if that is the 0.3 plan; otherwise name `[n].filled(x)` there.
 - Four `diagnostics/foreign-*.cp` cases (`let mut`, `&&`, `||`, `..<` each E0107 with the cp spelling): bugcatch found no case for efaf9b86 or 050e5499.
 - `conformance-bugcatch.py` prunes a stale worktree before adding its own, and falls back to HEAD's runner over the CLI when a fix commit's own `cpl-conform` doesn't build. First CLI-mode result: d48a6fe1 measured (missed at fix; HEAD's cases pass 608 of 2316 on that compiler).
 - The CLI backend kills a `cpl` call after `CPL_CONFORM_CASE_TIMEOUT` seconds (default 20): the first bugcatch try on d48a6fe1 hung 10 minutes in `std-math/isqrt-prelude-at-int-max.cp`, the bug 152ffd38 later fixed.

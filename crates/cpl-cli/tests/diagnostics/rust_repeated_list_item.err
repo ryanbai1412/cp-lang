@@ -1,8 +1,8 @@
-error[E0503]: repeat a list item with `[x] * n`, not `[x; n]`
+error[E0503]: Rust's `[x; n]` is a fill here: `[n].filled(x)`
   --> rust_repeated_list_item.cp:2:11
   |
 2 | let a = [0; n]
   |           ^
-  = help: write `[x] * n`, or a typed `[n]T`
+  = help: write `[n].filled(x)`, a list of `n` copies of `x`
 
 rust_repeated_list_item.cp: 1 error

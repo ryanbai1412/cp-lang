@@ -99,6 +99,49 @@ impl<'a> Parser<'a> {
         (placed && count == values.len()).then(|| format!("print({})", values.join(", ")))
     }
 
+    /// At the `;` of Rust's `[x; n]`: a fill of the typed `[n]T`,
+    /// `[n].filled(x)` (R01.11.1). `[x] * n` is not offered while the
+    /// checker rejects `List * Int` (compiler worklog).
+    pub(super) fn rust_repeat(&mut self, items: Vec<Expr>) -> ExprKind {
+        let semi = self.span();
+        self.bump();
+        let count = self.expr();
+        let close = self.span();
+        let mut diag = Diagnostic::error(
+            codes::REMOVED_SYNTAX,
+            semi,
+            "Rust's `[x; n]` is a fill here: `[n].filled(x)`",
+        )
+        .with_help("write `[n].filled(x)`, a list of `n` copies of `x`");
+        if let ([item], true) = (items.as_slice(), self.at(T::RBracket)) {
+            let item_text = self.item_text(item.span);
+            if !item_text.contains(';') {
+                diag.fixes.push(cpl_diag::Fix {
+                    title: format!(
+                        "write `[{}].filled({item_text})`",
+                        self.item_text(count.span)
+                    ),
+                    edits: vec![
+                        (
+                            Span::new(item.span.start, count.span.end),
+                            self.item_text(count.span).into(),
+                        ),
+                        (Span::point(close.end), format!(".filled({item_text})")),
+                    ],
+                });
+            }
+        }
+        self.error(diag);
+        self.eat(T::RBracket);
+        ExprKind::List(items)
+    }
+
+    /// The source text of a span relative to the item.
+    fn item_text(&self, span: Span) -> String {
+        let at = |p: u32| (p as i64 - self.delta) as usize;
+        self.src[at(span.start)..at(span.end)].to_string()
+    }
+
     /// `[Str: Int]()`, Swift's empty dictionary.
     pub(super) fn swift_map_ahead(&self, callee: &Expr) -> bool {
         let type_name = |e: &Expr| matches!(&e.kind, ExprKind::Name(n) if n.starts_with(|c: char| c.is_ascii_uppercase()));

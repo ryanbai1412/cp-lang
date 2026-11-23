@@ -66,3 +66,11 @@ fn a_swift_empty_map_is_one_error_with_the_map_type() {
         .diagnostics
         .is_empty());
 }
+
+#[test]
+fn a_rust_repeat_is_fixed_to_a_fill() {
+    let d = parse_file("let n = 3\nvar a = [0; n + 1]\nprint(a)\n").diagnostics;
+    assert_eq!(d.len(), 1, "{d:?}");
+    let edits: Vec<_> = d[0].fixes[0].edits.iter().map(|e| e.1.as_str()).collect();
+    assert_eq!(edits, ["n + 1", ".filled(0)"]);
+}
