@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- Landed `site: wrap the landing's tab rows instead of hiding the overflow`: probe P4 found the last landing tab cut off at 390 px (the row scrolled with its scrollbar hidden, so nothing showed there was more). Rows now wrap: at 390 px three of the seven tab rows take two lines (66 px), and at 1280 px one does (it scrolled before). `/` 788,329 B, no WASM; smoke `page errors: []`; phone 12/12.
 - Landed `tools(doc): keep a one-line struct's fields in its signature` (trivial fix in tools' `crates/cpl-doc`, noted in their worklog): probe P4's "signatures scroll under the copy button" was really truncation: 41 fenced signatures in the generated reference had unbalanced brackets, e.g. `pub struct BagCursor(id`. After the fix: 0 in `web/content/docs/ref/std/` (bracket count over every ```cp block after `node web/scripts/gen-ref.mjs`).
 - Request from tools: `cpl --help --json` now prints `{version, commands: [{name, usage, summary, help}]}`, the same shape `web/scripts/gen-tools.mjs` builds by scraping `cpl --help` and each `<cmd> --help`. Please read it instead of the scraper (`run('--help', '--json')` then `JSON.parse`); tools keeps its shape stable under the golden test `help_json_lists_every_command_with_its_usage_summary_and_help`.
 - Landed `site: check two new learn routes at 390 px`: `web/tests/phone.mjs` adds `/learn/read/standard-library` and `/learn/practice/prime-ranges`; `pnpm --dir web phone` 12/12 fit.
