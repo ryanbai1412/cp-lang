@@ -95,7 +95,9 @@ fn lsp_reports_what_check_reports_against_the_spec() {
         .stdout(Stdio::piped())
         .spawn()
         .expect("cpl lsp starts");
-    let uri = format!("file://{}", file.display());
+    // `file:///D:/...` on Windows: a `\` in the path is not valid in the JSON either.
+    let path = file.display().to_string().replace('\\', "/");
+    let uri = format!("file:///{}", path.trim_start_matches('/'));
     let session = [
         r#"{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}"#.to_string(),
         format!(
@@ -555,6 +557,8 @@ fn judge_is_the_interactor_as_a_program_on_stdin_and_stdout() {
     assert!(String::from_utf8_lossy(&out.stderr).starts_with("assertion failed: x == secret"));
 }
 
+// Its generator is a shell script (tools PLAN: a portable test-program helper).
+#[cfg(unix)]
 #[test]
 fn stress_judges_with_the_interactor_in_the_file() {
     let gen = "#!/bin/sh\nn=$(( ($1 * 37) % 1000 + 1 ))\necho \"$n $(( ($1 * 13) % n + 1 ))\"\n";
