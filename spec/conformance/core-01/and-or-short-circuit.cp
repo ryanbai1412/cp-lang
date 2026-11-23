@@ -1,9 +1,6 @@
-// expect: ok, output "10"
-// rule: 01.5.7
-// The right side of `and`/`or` runs only when the left does not decide: no index trap.
+// expect: ok, output "or skips\nand skips"
+// rule: 01.5.9
 let a = [1, 2]
-let j = 2
-var c = 0
-if j < 2 and a[j] > 0: c += 1
-if j >= 2 or a[j] > 0: c += 10
-print(c)
+let i = 2
+if i >= a.len or a[i] > 0: print("or skips")
+if not (i < a.len and a[i] > 0): print("and skips")

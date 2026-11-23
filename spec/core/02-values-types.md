@@ -70,7 +70,8 @@ keep source positions, as for every sequence (`04b-keys.md`). (R02.3.1)
   and reads validate it. `Str(len: 1..=2e5)` bounds the length, checked
   on read like a range (decision 134); the bounds may be runtime values, so
   `read<Str(len: n..=n)>()` checks an exact length. (R02.3.2)
-- `+` concatenates (allocating; the cost is visible as a new value);
+- `+` concatenates (allocating; the cost is visible as a new value); either
+  side may be a slice, and the result is a new `Str`: `s[r..] + s[..r]`;
   `s.push(c)` appends in place. (R02.3.3)
 - Interpolation `"{x}"` formats through the `Show` trait (chapter 10).
 

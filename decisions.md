@@ -7673,3 +7673,19 @@ the call. Cases `core-05/file-body-var-holds-lent`,
 `core-05/fn-stores-lent-in-top-level-var`,
 `core-05/lent-var-reassigned-from-itself`. Reverse: restore the blanket ban
 and rewrite those examples with `.clone()`.
+
+## 363. Rebuild-12 rulings: short-circuit, Bool xor, array fill, lowercase `const` (2026-11-23)
+
+Round 12 of the cold rebuild guessed these; the compiler already did the first
+four, the spec now says so. `and`/`or` short-circuit (R01.5.9). `!=` is `Bool`
+exclusive or and `^ & |` stay integer-only, so there is one spelling (R01.5.9).
+A single value fills an array whose size is computed at run time (R01.6.1).
+`(a, b) => e` takes the fields of one tuple argument (R01.8.1). `+` joins `Str`
+slices into a new `Str` (R02.3.3).
+
+A lowercase `const` is E0208 like an uppercase `let`. The compiler accepted
+`const big = 5` and then `match x: big => ...` tested the constant, which
+contradicts R01.3.3 (a lowercase name in a pattern binds). Alternatives: let a
+lowercase const bind in patterns (a silent wrong answer when the reader means
+the constant), or look names up in patterns (loses "patterns read without
+lookup"). Reverse by allowing lowercase consts and making R01.3.3 do a lookup.

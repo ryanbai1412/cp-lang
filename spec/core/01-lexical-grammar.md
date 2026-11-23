@@ -83,7 +83,8 @@ Identifiers are `[A-Za-z_][A-Za-z0-9_]*`. Case is part of the grammar:
 - Values, functions, fields and modules are `snake_case` or lower camel;
   a `let` or `var` binding with an uppercase first letter is an error
   ("values are lowercase; `N` would read as a type"). A `const` is named
-  like a variant: `const P = 1e9 + 7`. (R01.3.2)
+  like a variant: `const P = 1e9 + 7`; a lowercase `const` is the same
+  error, since a pattern would read it as a binding (decision 363). (R01.3.2)
 - So a pattern needs no lookup to read: a capitalized name is a variant
   or constant, a lowercase name binds. `match h: Big => ...` tests the
   variant; `match h: big => ...` binds `big`. (R01.3.3)
@@ -181,13 +182,19 @@ Tightest first:
 10. ranges `..`, `..=` (and the one-sided forms)
 11. comparisons `< <= > >= == != in`, chainable in one direction only
 12. `not`
-13. `and`
-14. `or`
+13. `and` (lazy right side)
+14. `or` (lazy right side)
 15. `??` (right-associative, lazy right side)
 16. lambdas `=>`, inline `if ... else ...`
 
 So `-x ** 2` is `-(x ** 2)`, `not a == b` is `not (a == b)`, and
 `s & (s << 1) == 0` is `(s & (s << 1)) == 0`. (R01.5.1)
+
+- `and` and `or` short-circuit: the right side runs only when the left
+  doesn't decide the result, so `i == 0 or a[i - 1] < a[i]` never reads
+  `a[-1]`. On `Bool`, `!=` is exclusive or; `^`, `&` and `|` are integer
+  operators only, and on `Bool` the error names `!=`, `and` or `or`.
+  (R01.5.9)
 
 - `/` and `%` are Euclidean: `%` is never negative and
   `a == (a / b) * b + a % b`, so `7 / -2 == -3` and `7 % -2 == 1`. For a
@@ -214,7 +221,9 @@ So `-x ** 2` is `-(x ** 2)`, `not a == b` is `not (a == b)`, and
 - `let p = e` binds immutably; `var p = e` mutably; `const N = e` is a
   compile-time constant. `let p: T = e` annotates. Several names may
   share a type: `let n, m: 1..=2e5 = read()`; `var a, b: Int = 0` fills
-  each with the value. The initializer runs once per name, left to right,
+  each with the value. An array annotated with a single element value
+  fills every slot with it, also when its size is computed at run time:
+  `var c: [n + 1]Int = 0`. The initializer runs once per name, left to right,
   so the `read()` above reads two tokens. (R01.6.1)
 - `let p = e else: block` binds or runs the block, which must leave
   (`return`, `break`, `continue` or a trap); a block that can fall
@@ -282,7 +291,8 @@ match d: L => -1, R => 1            // one-line match
   and block lambdas: a line ending in `=>` opens an indented body whose
   value is its last expression. A lambda body may be an assignment,
   and then returns nothing. A `let`-bound lambda may call itself
-  (decision 127). (R01.8.1)
+  (decision 127). Given one tuple argument, `(a, b) => e` takes its
+  fields: `xs.adjacent.count((x, y) => x == y)`. (R01.8.1)
 - **Comprehensions** `[f(x) for x in xs if p(x)]` build a `List`, or an
   array when the expected type is `[D]T`. **Tables** `[D] i => e` build
   `[D]T` eagerly; `[(A, B)] (a, b) => e` and `[A, B]` are the same 2-D

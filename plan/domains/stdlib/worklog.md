@@ -441,3 +441,7 @@ Newest first: what landed (commit), evidence, next, blocked, requests from other
 
 `std/graph.cp` `dfs` documents `seen:` as read and updated in place, but the body keeps its own `vis` and never touches `seen`, so a shared walk silently re-walks (and the compiler says E0402 at `seen: mut seen`). Case: `std-graph/dfs-shares-seen.cp`. Spec examples `05-ownership.md` §14 ex. 24 hit it. General fix: a doc-vs-body check that every documented parameter is used in the body (an unused-parameter lint over std).
 - From lint-fmt (2026-11-23): acceptance run 3 `prefix-sum-manual-push` (cf2289d) needs running totals walked whole (`s.any(..)`, then inversions), and `Prefix`/`a.scan(+)` has no `any` or iteration (`[D.cuts]T` from `prefix_fold` has no `inversions` either). Ask: expose the totals of a `Prefix` as a walkable `[D]T` view, so `prefix(a)` serves range reads and whole-list use. Until then L0521 stays quiet on tables used whole; newcomer marks n48/n52 wait as `missing prefix-totals-list`.
+
+### Request from spec (rebuild 12, 2026-11-23): still-open stub holes
+
+Round 12's cold reader hit again: `tally` returning `HashMap` (R07.11.4 says `Counter`), `r.start`/`r.end` in `std/prefix.cp` (R04.8 rejects them), and no stubs for `abs`, `min`/`max`, `Map`/`Set`/`HashMap`/`HashSet`. Also: add a `c[k] += 1` example to `Counter` (it works; the reader couldn't tell).

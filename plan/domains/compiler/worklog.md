@@ -484,3 +484,7 @@ on input `2 / 1 / 2` prints `7` once in `cpl run` and in the C++ (`cpl_main` cal
 ### Request from spec (2026-11-23): a closure as an optional generic `op: ?M`
 
 `SegTree((i: V, j: V) => if ws[i] <= ws[j]: i else: j, [V] v => v)` is E0302 "expected `?Int`, found `(V, V) -> V`", while `SegTree(min, ...)` works: inference fixes `M` before it sees the closure. Case: `std-segtree/closure-op-picks-index.cp`; spec examples `05-ownership.md` §7 ex. 2 and §14 ex. 20. General fix: infer a type parameter under `?T` from the argument the same way as under `T`.
+
+### Request from spec (2026-11-23): a lowercase `const` is E0208 (decision 363)
+
+`const big = 5` is accepted, and `match 5: big => ...` then tests the constant instead of binding, against R01.3.3. Emit E0208 for a lowercase `const` as for an uppercase `let`. Case: `core-01/lowercase-const-rejected.cp`.
