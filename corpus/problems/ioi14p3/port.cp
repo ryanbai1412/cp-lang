@@ -1,4 +1,14 @@
-// IOI 2014 P3, Game (reversed callback interactive, stdio-adapted today-form)
+// Source: IOI 2014 Day 1 P3, Game, https://dmoj.ca/problem/ioi14p3
+// Problem: interactive: n cities (4 <= n <= 1500); every pair (u, v) is asked once, in an
+//   order you do not know, and hasEdge(u, v) must answer 1 or 0 at once. Answer so that
+//   whether the graph is connected stays undetermined until the last of the n(n-1)/2 pairs.
+// Solution: Say yes to a pair only when it is the last unasked pair between the two current
+//   components, then merge them; so components join only when forced and the graph becomes
+//   connected exactly on the last question. A DSU with path compression keeps the components;
+//   cnt[a, b] counts asked pairs between roots a and b and is merged row and column in O(n),
+//   so O(n^2) in total.
+// Reversed callback interactive, stdio-adapted today-form: print READY, then read each pair
+// and print the previous reply.
 // original: corpus/submissions/4683972.cpp
 let n: 2..=1500 = read()
 domain V = 0..n

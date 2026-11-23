@@ -1,7 +1,14 @@
-// IOI 1999 Day 2 P3, A Strip of Land (buildable today-form)
+// Source: IOI 1999 Day 2 P3 (IOI '99 P6), A Strip of Land, https://dmoj.ca/problem/ioi99p6
+// Problem: a U x V grid of heights (U, V <= 700, |h| <= 30000) and a limit C <= 10. Print the
+//   largest-area rectangle at most 100 squares wide (west-east) whose highest and lowest
+//   heights differ by at most C, as Xmin Ymin Xmax Ymax (y grows to the north, the first
+//   input row is y = V).
+// Solution: Fix the left column and widen right by up to 100 columns, keeping each row's min
+//   and max over the column span. For each span, two pointers over the rows with monotone
+//   queues for the max of row maxima and the min of row minima find, for every top row, the
+//   lowest bottom row that keeps the spread <= C. O(U * 100 * V).
+// Buildable today-form.
 // original: corpus/submissions/4899527.cpp
-// stdin: m n k, then n rows of m heights. stdout: the largest rectangle at
-// most 100 wide whose heights differ by at most k, as x1 y1 x2 y2 (y from the bottom).
 let m: 1..=700 = read()
 let n: 1..=700 = read()
 let k: 0..=10 = read()

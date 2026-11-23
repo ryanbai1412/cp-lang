@@ -1,13 +1,14 @@
-// NOI 2015 Wine Tasting: n glasses in a row, glass i has a letter s[i] and a
-// score a[i]. Two glasses are "r-alike" when the r letters starting at each
-// are the same. For every r in 0..n print how many pairs are r-alike and the
-// largest product of scores over those pairs (0 0 if there are none).
-//
-// Sort the suffixes. Two glasses are r-alike exactly when every adjacent pair
-// between them in sorted order shares r letters, so joining adjacent suffixes
-// from the longest shared prefix down grows the groups of r-alike glasses. A
-// group keeps its size and its lowest and highest score: the best product of
-// a pair across two groups is at one of the four corners.
+// Source: NOI 2015 Day 2 P2 (NOI '15 P5), Cocktail Party (Wine Tasting),
+//   https://dmoj.ca/problem/noi15p5
+// Problem: a string s of n lowercase labels (n <= 3e5) and scores a_i (|a_i| <= 1e9). Cups p != q
+//   are r-similar if the length-r substrings starting at p and q are equal (all pairs are
+//   0-similar). For each r = 0..n-1 print the number of r-similar pairs and the largest
+//   a_p * a_q over them (0 0 if none).
+// Solution: Build the suffix array and LCP array. Cups are r-similar iff every adjacent pair of
+//   suffixes between them in sorted order has LCP >= r, so for r from n-1 down to 0 unite
+//   adjacent suffixes (sorted by LCP descending) in a DSU. Each group keeps its size, lowest
+//   and highest score; a merge adds size(a) * size(b) pairs and the best of the four corner
+//   products. O(n log n).
 // original: corpus/submissions/3927929.cpp
 
 let n: Int = read()

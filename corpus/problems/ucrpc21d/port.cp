@@ -1,6 +1,10 @@
-// UCRPC 2021 D: an ASCII maze of n x m rooms drawn on a (2n+1) x (2m+1)
-// canvas with '+', '-', '|' walls. Print the sizes of the four largest
-// connected regions of rooms, largest first.
+// Source: UCRPC Fall 2021 D, Stake Your Claim, https://dmoj.ca/problem/ucrpc21d
+// Problem: an r x c board (r, c <= 1000) drawn as 2r+1 lines of 2c+1 characters: cells at
+//   even 1-based rows and columns, walls '+', '-', '|', open '.' elsewhere. The walls cut the
+//   board into four regions; print their areas (cell counts) in decreasing order.
+// Solution: Flood fill (explicit stack) from every unvisited cell, stepping two canvas
+//   characters to a neighbouring cell when the character between them is not a wall; sort
+//   the region sizes in decreasing order and print the first four. O(rc).
 // Runnable on proto/cpc today.
 // original: corpus/submissions/3944584.cpp
 let n: 1..=500 = read()

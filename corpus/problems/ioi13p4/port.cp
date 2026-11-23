@@ -1,6 +1,13 @@
-// IOI 2013 Cave: n switches, each up or down, each wired to one of n doors
-// in a row. try_combination(s) returns the first door still closed (or none).
-// Find every switch's open position and its door in at most 70 000 tries.
+// Source: IOI 2013 Day 2 P4, Cave, https://dmoj.ca/problem/ioi13p4
+// Problem: interactive: N switches (N <= 5000), each up or down, each wired to a different
+//   door of N doors in a row; a door is open iff its switch is in its hidden correct position.
+//   tryCombination(S) returns the first closed door (or -1); within 70 000 calls, find every
+//   switch's correct position and its door, then call answer(S, D).
+// Solution: Settle doors 0, 1, ... in order, holding settled switches in their open position.
+//   For door d, one query with every free switch up shows which position opens d; then binary
+//   search on k, setting the first k free switches to that position and the rest to the other,
+//   for the smallest k that opens d: its k-th free switch is d's. At most 1 + 13 queries per
+//   door, O(N^2 log N) time.
 //
 // IDEAL SKETCH, not run: the prototype has no `protocol` / `@interactor`.
 // original: corpus/submissions/4687973.cpp

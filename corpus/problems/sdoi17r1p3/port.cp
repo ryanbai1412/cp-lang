@@ -1,7 +1,10 @@
-// SDOI 2017 Round 1 P3, Sequence Counting: sequences of n numbers from
-// 1..=m whose sum is a multiple of k and that contain at least one prime.
-// Count all sequences, subtract those with no prime; each count is the
-// n-th power of a vector of residue counts under cyclic convolution.
+// Source: SDOI 2017 Round 1, Sequence Counting (Luogu P3702), https://dmoj.ca/problem/sdoi17r1p3
+// Problem: count length-n sequences of integers in 1..m whose sum is a multiple of p and that
+//   contain at least one prime, modulo 20170408 (n <= 1e9, m <= 2e7, p <= 100).
+// Solution: Count all sequences with sum = 0 mod p and subtract those with no prime. Each
+//   count is entry 0 of the n-th power of the vector of residue counts (of 1..m, or of the
+//   non-primes, found by a sieve) under cyclic convolution mod p: binary exponentiation in
+//   O(p^2 log n) after an O(m log log m) sieve. The port's own bounds are m <= 200, p <= 20.
 // original: corpus/submissions/5463991.cpp
 const P = 20170408
 type Z = Mod<P>
