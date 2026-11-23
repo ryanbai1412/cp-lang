@@ -1738,10 +1738,7 @@ impl<'p> CompiledProgram<'p> {
         let mut fns = Vec::with_capacity(program.fns.len());
         for (id, f) in program.fns.iter().enumerate() {
             let guarded_domains = program.fn_guarded_domains(&f.ret, &f.body);
-            // A traced `mut` parameter is the caller's variable, written in
-            // place, which the VM only writes back on return.
-            let traced_mut = traced && f.params.iter().any(|p| p.mutable);
-            if f.locals.len() > 512 || program.judge_fns.contains(&id) || traced_mut {
+            if f.locals.len() > 512 || program.judge_fns.contains(&id) {
                 fns.push(None);
             } else {
                 let mut c =

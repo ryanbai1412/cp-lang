@@ -416,6 +416,8 @@ fn run_from<O: Observer>(
         #[cfg(not(target_arch = "wasm32"))]
         vm_regs_i: Vec::new(),
         #[cfg(not(target_arch = "wasm32"))]
+        lent: Vec::new(),
+        #[cfg(not(target_arch = "wasm32"))]
         vm_pool_v: Vec::new(),
         view_locals: Vec::new(),
         trap_frame: None,
@@ -646,6 +648,10 @@ struct Interp<'p, 'o, O: Observer> {
     /// Shared unboxed `i64` register stack for the VM.
     #[cfg(not(target_arch = "wasm32"))]
     vm_regs_i: Vec<i64>,
+    /// The `mut` params of running traced VM calls: the stack slot holding
+    /// each one's value, and the caller's place it was lent from.
+    #[cfg(not(target_arch = "wasm32"))]
+    lent: Vec<(usize, bool, usize)>,
     /// Reusable pool of `Value` register frames for VM calls.
     #[cfg(not(target_arch = "wasm32"))]
     vm_pool_v: Vec<Vec<Value>>,

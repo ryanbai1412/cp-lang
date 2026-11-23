@@ -1136,7 +1136,9 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 );
                 let stmt = chunk.fallback_stmts[idx as usize];
                 let outer = self.enter_fallback(chunk, cur_pc, regs_i, regs_v);
+                self.show_lent();
                 let flow = self.stmt(stmt);
+                self.hide_lent();
                 self.leave_fallback(outer);
                 sync_from_stack(
                     &chunk.slot_map,
@@ -1170,7 +1172,9 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     chunk.traced,
                 );
                 let expr = chunk.fallback_exprs[idx as usize];
+                self.show_lent();
                 let val = self.eval(expr);
+                self.hide_lent();
                 sync_from_stack(
                     &chunk.slot_map,
                     regs_i,
@@ -1198,7 +1202,9 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     chunk.traced,
                 );
                 let expr = chunk.fallback_exprs[idx as usize];
+                self.show_lent();
                 let val = self.eval(expr);
+                self.hide_lent();
                 sync_from_stack(
                     &chunk.slot_map,
                     regs_i,

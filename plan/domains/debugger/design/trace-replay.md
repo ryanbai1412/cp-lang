@@ -284,9 +284,29 @@ on write, so a checkpoint copies main's locals and the globals, not the heap.
 - **Not taken:** in the body of a fed loop (it runs in the caller's frame
   inside the fn's), and in traced runs: the traced VM runs no fed loops, so
   a counted run and `Timeline` get no checkpoint in them. Both are owed:
-  the second with the traced chunks for fns with `mut` parameters (compile
-  traced chunks for every shape untraced compiles).
+  the second is to compile traced chunks for fed fns, as untraced ones
+  are.
 - **Tests:** fixture `FEED` (fed loops in main and in a fn, with a body
   loop) is in the run, traced-resume, window and tail tests; not yet in the
   `Timeline` and counted tests.
+
+## Traced fns with `var` parameters
+
+- **Before:** a traced run left every fn with a `mut` parameter to the
+  tree-walker, so a counted run took no checkpoint in it and cost 10x
+  untraced.
+- **Now:** the traced VM runs them. A traced call always comes from the
+  tree-walker, which lends the caller's place (`Value::Alias`); the VM
+  moves the value into the param and moves it back on return, as untraced.
+  While the tracer or a fallback looks at the frame, the param holds the
+  alias again and the caller's place the value (`show_lent`/`hide_lent`
+  around each `Trace` op and fallback), so both see what the tree-walker
+  would. A param lent on from a param follows the aliases to the place.
+- **Cost:** a counted run of a 1.6×10^7-round loop in `bump(mut s, n)`
+  takes 569 ms against 199 ms untraced (2.9x), from 2027 ms on the
+  tree-walker.
+- **Tests:** `trace_engines` (traced VM = tree-walker trace) covers the
+  `mut` programs in `tests/programs` (`dsu`, `functions` and 21 more, which
+  differed or trapped before the lending fix); fixture `MUT` is in the
+  counted and `Timeline` tests.
 

@@ -75,11 +75,51 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         self.base,
                         chunk.traced,
                     );
+                    self.show_lent();
                     self.trace_point(point);
+                    self.hide_lent();
                     take_back_values(&chunk.slot_map, regs_v, &mut self.stack, self.base);
                 }
             }
         }
+    }
+
+    /// Before the tracer or the tree-walker sees a traced call's frame:
+    /// each `mut` param holds an alias to the caller's place, which holds
+    /// the value, as when the tree-walker runs the call.
+    pub(super) fn show_lent(&mut self) {
+        for k in (0..self.lent.len()).rev() {
+            let (held, global, at) = self.lent[k];
+            if held < self.base {
+                break;
+            }
+            let value = std::mem::replace(&mut self.stack[held], Value::Alias(global, at));
+            match global {
+                true => self.globals[at] = value,
+                false => self.stack[at] = value,
+            }
+        }
+    }
+
+    /// After: the value is back in the param, the caller's place lent.
+    pub(super) fn hide_lent(&mut self) {
+        for k in (0..self.lent.len()).rev() {
+            let (held, global, at) = self.lent[k];
+            if held < self.base {
+                break;
+            }
+            let place = match global {
+                true => &mut self.globals[at],
+                false => &mut self.stack[at],
+            };
+            self.stack[held] = std::mem::replace(place, Value::Moved);
+        }
+    }
+
+    fn lends(&self) -> bool {
+        self.lent
+            .last()
+            .is_some_and(|&(held, ..)| held >= self.base)
     }
 
     fn trace_point(&mut self, point: &TracePoint<'p>) {
@@ -128,7 +168,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
         place: &'p Place,
         indices: &[u16],
     ) -> bool {
-        if !self.observed() || self.assignments() {
+        if !self.observed() || self.assignments() || self.lends() {
             return false;
         }
         let mut raw = std::mem::take(&mut self.trace_raw);

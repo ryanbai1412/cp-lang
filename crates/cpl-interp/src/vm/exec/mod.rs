@@ -48,7 +48,14 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
         let chunk = compiled.fns[fn_id].as_ref().unwrap();
         let mut aliases: Vec<(usize, bool, usize)> = Vec::new();
         for k in 0..chunk.param_count {
-            if let Value::Alias(is_global, at) = self.stack[self.base + k] {
+            if let Value::Alias(mut is_global, mut at) = self.stack[self.base + k] {
+                // A param lent on from a traced caller's `mut` param.
+                while let Value::Alias(g, a) = match is_global {
+                    true => &self.globals[at],
+                    false => &self.stack[at],
+                } {
+                    (is_global, at) = (*g, *a);
+                }
                 let val = if is_global {
                     std::mem::replace(&mut self.globals[at], Value::Moved)
                 } else {
@@ -57,6 +64,14 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 self.stack[self.base + k] = val;
                 aliases.push((k, is_global, at));
             }
+        }
+        let lent = self.lent.len();
+        if chunk.traced {
+            let base = self.base;
+            let held = aliases
+                .iter()
+                .map(|&(k, global, at)| (base + k, global, at));
+            self.lent.extend(held);
         }
         let mut vm_regs_i = std::mem::take(&mut self.vm_regs_i);
         let base_i = vm_regs_i.len();
@@ -71,8 +86,13 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
             chunk.traced,
         );
         let res = self.exec_chunk_inner(compiled, chunk, base_i, &mut vm_regs_i, &mut regs_v);
+        self.lent.truncate(lent);
         for (k, is_global, at) in aliases {
+            // A traced chunk leaves its locals on the stack.
             let val = match chunk.slot_map[k] {
+                _ if chunk.traced => {
+                    std::mem::replace(&mut self.stack[self.base + k], Value::Moved)
+                }
                 SlotLoc::I(r, kind) => kind.box_val(vm_regs_i[base_i + r as usize]),
                 SlotLoc::OptI { val, some, kind } => kind.box_opt(
                     vm_regs_i[base_i + val as usize],
