@@ -1854,8 +1854,8 @@ impl<'a> Checker<'a> {
         if self.private_member(&base_ty, name) {
             return Ty::Error;
         }
-
         let ty = self.member_ty(expr, name, base_ty.clone());
+        let base_ty = base_ty.rev_source().cloned().unwrap_or(base_ty);
         let built_in = matches!(
             &base_ty,
             Ty::Str | Ty::Range { .. } | Ty::Pos(_) | Ty::Domain(_) | Ty::Array { .. }
