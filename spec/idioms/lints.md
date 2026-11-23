@@ -156,7 +156,7 @@ One sub-family per module. Each says: you rebuilt something the library has.
 | dedup_adjacent_loop | skip if equal to previous | `xs.dedup()` | fix | #1 | loop | |
 | distinct_via_set | Set to drop repeats while keeping order | `xs.distinct(by:)` | fix | #1 | loop | |
 | prev_same_loop | `last[x]` table to find previous equal | `xs.prev_same()` / `next_same()` | fix? | #1 | loop | |
-| by_twin | `min_by`, `group_by`, `runs_by`, ... | base op with `by:` | fix | #13 | ty | ✓by_twin |
+| by_twin | `min_by`, `group_by`, `runs_by`, ... | base op with `by:` | fix | #13 | ty | ✓E0201/E0203 (checker, with fix) |
 
 ### S.search: binary and ternary search
 

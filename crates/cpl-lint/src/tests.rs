@@ -965,24 +965,6 @@ fn free_fold_becomes_a_method() {
 }
 
 #[test]
-fn by_twin_becomes_by_option() {
-    let src = "let xs = [\"bbb\", \"a\", \"cc\"]\nprint(min_by(xs, s => s.len), max_by(0..3, i => -i), xs.runs_by(s => s.len), xs.first_ge_by(2, s => s.len))\n";
-    assert_eq!(taste_codes(src), ["L0510"; 4]);
-    assert_eq!(
-        fixed(src),
-        "let xs = [\"bbb\", \"a\", \"cc\"]\nprint(xs.min(by: s => s.len), (0..3).max(by: i => -i), xs.runs(by: s => s.len), xs.first_ge(2, by: s => s.len))\n"
-    );
-    // Domain and comprehension free calls stay free with `by:`.
-    let dom = "domain V = 0..3\nprint(max_by(V, v => v.ord), xs.run_ranges_by(by: x => x))\n";
-    assert_eq!(
-        fixed(dom),
-        "domain V = 0..3\nprint(max(V, by: v => v.ord), xs.run_ranges(by: x => x))\n"
-    );
-    // `chunk_by` takes a binary predicate, not a `by:` key, so it is untouched.
-    let chunk = "let xs = [1, 1, 2]\nprint(xs.chunk_by((a, b) => a == b))\n";
-    assert_eq!(taste_codes(chunk), Vec::<&str>::new());
-}
-#[test]
 fn tree_order_becomes_preorder_array() {
     let src = "for v in t.preorder.rev: print(v)\nfor v in t.postorder: print(v)\nlet top = t.preorder[0]\n";
     assert_eq!(taste_codes(src), ["L0511"; 3]);
@@ -992,15 +974,14 @@ fn tree_order_becomes_preorder_array() {
     );
 }
 #[test]
-fn domain_spelling_and_group_by_codemods() {
+fn domain_spelling_codemods() {
     let src = "\
 domain V = 1..=3
 let w: [V]Int = [3, 1, 2]
 let a = V.sorted(by: w)
 let b = V.first(where: v => w[v] > 1)
-let c = V.group_by(v => Int(v) % 2)
 ";
-    assert_eq!(taste_codes(src), ["L0512", "L0512", "L0510"]);
+    assert_eq!(taste_codes(src), ["L0512", "L0512"]);
     assert_eq!(
         fixed(src),
         "\
@@ -1008,7 +989,6 @@ domain V = 1..=3
 let w: [V]Int = [3, 1, 2]
 let a = V.sort(by: w)
 let b = V.find(v => w[v] > 1)
-let c = V.group(by: v => Int(v) % 2)
 "
     );
 }

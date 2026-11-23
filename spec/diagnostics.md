@@ -111,7 +111,7 @@ redundant_arg_name, L0210 compound_self_ref, L0211 state_above_multitest, L0301 
 memo_key_space, L0414 unproven_list_index, L0415 loop_invariant_mod_div,
 L0501 search_loop, L0502 discarded_result, L0503 symmetric_write, L0504
 loop_reduction, L0505 index_only_loop, L0506 repeated_literal, L0507
-push_loop, L0508 none_check_unwrap, L0509 free_fold, L0510 by_twin,
+push_loop, L0508 none_check_unwrap, L0509 free_fold,
 L0511 tree_order, L0512 domain_spelling, L0514
 hand_rolled_range_tree, L0516-L0521
 hand_rolled_{string_algo, dsu, sieve, binary_lifting, answer_search,

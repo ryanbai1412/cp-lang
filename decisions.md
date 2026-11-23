@@ -8269,3 +8269,8 @@ tag move fatal again.
 - **Effect on B6 #3.** The target is unchanged: the intrinsics count, with every other name a std body.
 - **Reverse.** Drop `TUPLE_ARM_RE` from `ir_builtin_names` in `scripts/debt-ratchet.py` and restore 94.
 
+
+## 407. Retire L0510 `by_twin` for the checker's `by:` fix (lint-fmt, 2026-11-23)
+
+- **Call.** A `_by` twin (`min_by`, `max_by`, `argmax_by`, `sort(ed)_by`, `is_sorted_by`, `runs_by`, `group_by`, and `_by_key`), as a method or a free call, is E0203 or E0201 with the one fix `xs.base(by: f)`. L0510 matched the same names by syntax, so it only repeated the error; its `run_ranges_by` and `first_ge_by` rewrites named functions std no longer has. Retired with its record, as L0515 was (decision 406).
+- **Reverse.** Restore `spec/lints/by_twin/` and `by_twin` in `rules/taste/mod.rs`.

@@ -1,5 +1,0 @@
-code = "L0510"
-level = "warn"
-group = "idiom"
-title = "`_by` twin instead of a `by:` option"
-summary = "`min_by`, `max_by`, `argmax_by`, `runs_by`, `group_by`, `first_ge_by`: pass `by:` to the base operation"

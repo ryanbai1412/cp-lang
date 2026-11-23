@@ -1,1 +1,0 @@
-Keyed sequence operations take a `by:` named option on the base function rather than a `_by` twin: `xs.min(by: k)`, `xs.max(by: k)`, `xs.argmax(by: k)`, `xs.group(by: k)`, `xs.is_sorted(by: k)`, `xs.runs(by: k)`, `xs.run_ranges(by: k)`, `xs.first_ge(x, by: k)`. `cpl lint --fix` rewrites both method and free `_by` calls.
