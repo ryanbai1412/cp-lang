@@ -934,3 +934,29 @@ fn spaces_each_role_as_written() {
         assert_eq!(fmt(&format!("{src}\n")), format!("{want}\n"), "{src}");
     }
 }
+
+/// Layouts the line breaker and comment placement own: an operator chain
+/// and a broken condition inside blocks, a comma closing a block inside a
+/// call, own-line comments after nested blocks, aligned trailing comments,
+/// trailing commas kept or dropped, joined short lines, a call broken at
+/// two depths, and chains whose prefix `-` and `not` are not cut points. Rule: `lints/R22`.
+#[test]
+fn lays_out_blocks_breaks_and_comments() {
+    for (src, want) in [
+        ("fn f(a: Int, b: Int) -> Bool:\n    return aaaaaaaaaaaaaaaaaaaa + bbbbbbbbbbbbbbbbbbbbbbbb + cccccccccccccccccccccccc + dddddddddddddddddddddd + eeeeeeeeeeeeeeeee\n", "fn f(a: Int, b: Int) -> Bool:\n    return aaaaaaaaaaaaaaaaaaaa +\n        bbbbbbbbbbbbbbbbbbbbbbbb +\n        cccccccccccccccccccccccc +\n        dddddddddddddddddddddd +\n        eeeeeeeeeeeeeeeee\n"),
+        ("if x:\n    if aaaaaaaaaaaaaaaaaaaaaa and f(bbbbbbbbbbbbbbbbbbbbbbbbb, cccccccccccccccccccccccccc) and ddddddddddddddddddddddd > 0:\n        print(1)\n", "if x:\n    if aaaaaaaaaaaaaaaaaaaaaa and\n            f(bbbbbbbbbbbbbbbbbbbbbbbbb, cccccccccccccccccccccccccc) and\n            ddddddddddddddddddddddd > 0:\n        print(1)\n"),
+        ("let g = f(x =>\n    x + 1,\n)\nprint(h(a, match x:\n    1 => 2\n    _ => 3,\n))\n", "let g = f(x =>\n    x + 1,\n)\nprint(h(a, match x:\n        1 => 2\n        _ => 3,\n))\n"),
+        ("if a:\n    if b:\n        print(1)\n    // inner\n        // deep\n// top\nprint(2)\n", "if a:\n    if b:\n        print(1)\n    // inner\n        // deep\n// top\nprint(2)\n"),
+        ("let a = 1  // one\nlet bb = 22   // two\nlet ccc = 333 // three\n", "let a = 1      // one\nlet bb = 22    // two\nlet ccc = 333  // three\n"),
+        ("let a = [1, 2,]\nlet t = (1,)\nlet u = [1,]\n", "let a = [1, 2]\nlet t = (1,)\nlet u = [1,]\n"),
+        ("let a = [\n    1,\n    2\n]\nlet x = aaaa +\n    bbbb\n", "let a = [1, 2]\nlet x = aaaa + bbbb\n"),
+        ("let v = some_function_name(argument_number_one, argument_number_two, argument_number_three, argument_four)\nif x:\n    let w = some_function_name(argument_number_one, argument_number_two, argument_number_three, arg_4)\n", "let v = some_function_name(\n    argument_number_one,\n    argument_number_two,\n    argument_number_three,\n    argument_four,\n)\nif x:\n    let w = some_function_name(\n        argument_number_one,\n        argument_number_two,\n        argument_number_three,\n        arg_4,\n    )\n"),
+        ("if x:\n    let y = aaaaaaaaaaaaaaaaaaaaaaaaa * -bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb + ccccccccccccccccccccccccccccccccccccc * -ddddddddd\n", "if x:\n    let y = aaaaaaaaaaaaaaaaaaaaaaaaa * -bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb +\n        ccccccccccccccccccccccccccccccccccccc * -ddddddddd\n"),
+        ("if x:\n    let y = aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa and not bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb or not ccccccccccccccccccccccccccccc\n", "if x:\n    let y = aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa and not bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb or\n        not ccccccccccccccccccccccccccccc\n"),
+        ("if x:\n    if ffffffffffff(bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb, cccccccccccccccccccccccccccccccc) == not ddddddddddddddddddd:\n        print(1)\n", "if x:\n    if ffffffffffff(\n        bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb,\n        cccccccccccccccccccccccccccccccc,\n    ) == not ddddddddddddddddddd:\n        print(1)\n"),
+        ("if x:\n    if ffffffffffff(bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb, cccccccccccccccccccccccccccccccc) - -ddddddddddddddddddddddd:\n        print(1)\n", "if x:\n    if ffffffffffff(\n        bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb,\n        cccccccccccccccccccccccccccccccc,\n    ) - -ddddddddddddddddddddddd:\n        print(1)\n"),
+        ("if x:\n    let y = aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa +\n        bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\n    let z = f(aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa) +\n        g(x)\n", "if x:\n    let y = aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa +\n        bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\n    let z = f(\n        aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n    ) + g(x)\n"),
+    ] {
+        assert_eq!(fmt(src), want, "{src}");
+    }
+}
