@@ -460,6 +460,17 @@ impl Checker<'_> {
                 "read_line()".to_string(),
                 "a line is read with `read_line` (a value with `read()`)",
             ),
+            ("memset" | "fill", [a, v]) => (
+                format!("{}.fill({})", operand(self, a), self.text(v.value.span)),
+                "a list is filled with its `fill`",
+            ),
+            ("make_pair" | "make_tuple" | "tuple", [_, _, ..]) => {
+                let items: Vec<&str> = args.iter().map(|a| self.text(a.value.span)).collect();
+                (
+                    format!("({})", items.join(", ")),
+                    "a tuple is written in parentheses",
+                )
+            }
             ("enumerate", [xs]) => (
                 format!("{}.items", operand(self, xs)),
                 "index-element pairs are a member",
@@ -919,6 +930,8 @@ pub(super) fn foreign_call(name: &str) -> Option<&'static str> {
         }
         "input" | "cin" | "scanf" => Some("read the input with `read`: `let n: Int = read()`"),
         "cout" | "printf" | "puts" => Some("write the output with `print`: `print(a, b)`"),
+        "memset" => Some("a list is filled with its `fill`: `a.fill(0)`"),
+        "make_pair" | "make_tuple" => Some("a tuple is written in parentheses: `(a, b)`"),
         "endl" => Some("`print` ends the line itself: `print(a, b)` writes `a b` and a newline"),
         "ord" => Some("a character's code is `Int(c)`"),
         "chr" => Some("the character with code `i` is `Char(i)`"),
