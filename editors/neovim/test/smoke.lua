@@ -14,12 +14,18 @@ local function check(ok, what)
 end
 
 -- The documented one step: `cpl setup neovim` puts the plugin in a start package.
+-- The real path, so the server and the client name files alike (macOS's /var is
+-- /private/var; Windows's temp folder may be a short 8.3 name).
 local dir = vim.fn.tempname()
 vim.fn.mkdir(dir, 'p')
-local setup = vim.system({ cpl, 'setup', 'neovim', '--dir', dir .. '/site/pack/cpl/start/cplang' }):wait()
+dir = vim.fs.normalize(vim.uv.fs_realpath(dir) or dir)
+local package = dir .. '/site/pack/cpl/start/cplang'
+local setup = vim.system({ cpl, 'setup', 'neovim', '--dir', package }):wait()
 check(setup.code == 0, 'cpl setup neovim: ' .. (setup.stderr or ''))
+-- Startup has already loaded the packages; add this one as `:packloadall`
+-- would and source what it would have.
 vim.opt.packpath:prepend(dir .. '/site')
--- Startup has already loaded the packages; source what it would have, from the package.
+vim.opt.runtimepath:prepend(package)
 vim.cmd('runtime! plugin/**/*.vim plugin/**/*.lua ftdetect/*.vim')
 check(#vim.api.nvim_get_runtime_file('plugin/cplang.lua', true) == 1, 'the package is not on the path')
 vim.cmd('filetype plugin on')
