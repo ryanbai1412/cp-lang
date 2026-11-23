@@ -66,6 +66,8 @@ struct Session {
     /// A run longer than one recording holds traces its other steps again from
     /// its checkpoints, a window at a time.
     pager: Option<Replay>,
+    /// The recording was cut by the time limit or a cancel, not by its end.
+    stopped: bool,
     /// How `recording` was traced.
     config: TraceConfig,
     /// 1-based line breakpoints for the launched file.
@@ -92,6 +94,7 @@ impl Session {
             cursor: 0,
             base: 0,
             pager: None,
+            stopped: false,
             config: TraceConfig::default(),
             breakpoints: HashSet::new(),
             stop_on_entry: true,
@@ -564,8 +567,10 @@ impl Session {
                 let place = self.recording.place(self.cursor);
                 let before = std::mem::take(&mut self.recording);
                 let (pager, config) = (self.pager.take(), self.config.clone());
+                let was_stopped = self.stopped;
                 if let Err(msg) = self.record(writer)? {
                     (self.recording, self.base, self.pager) = (before, base, pager);
+                    self.stopped = was_stopped;
                     let msg = format!("{msg}\nkept the last good recording");
                     self.send_response(writer, req_seq, command, false, Some(&msg), None)?;
                     return Ok(false);
@@ -581,8 +586,10 @@ impl Session {
                     }
                     _ => before,
                 };
-                // Two runs longer than what is kept compare over what both keep.
-                let same_steps = (before.truncated && self.recording.truncated)
+                // Two runs longer than what is kept, or a run the time limit
+                // cut, compare over what both keep.
+                let cut = was_stopped || self.stopped;
+                let same_steps = (cut || before.truncated && self.recording.truncated)
                     .then(|| before.len().min(self.recording.len()));
                 self.change = match same_steps {
                     Some(n) => first_change_in(&before, 0..n, &self.recording, 0..n),
@@ -773,6 +780,7 @@ impl Session {
         let ended = !observed.trap.as_ref().is_some_and(|t| {
             [cpl_interp::OUT_OF_TIME, cpl_interp::CANCELLED].contains(&t.message.as_str())
         });
+        self.stopped = !ended;
         self.pager = (self.recording.truncated && ended).then(|| {
             Replay::start(
                 compiled.program.clone(),
