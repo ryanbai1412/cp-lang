@@ -4,7 +4,8 @@ let (n, q) = read<(1..=1_000_000, 1..=1_000_000)>()
 domain I = 1..=n
 let a = read<[I]Int>()
 fn odd(i: I) -> Bool = Int(i) % 2 == 1
-var half = [Bool] p => Fenwick([I] i => if odd(i) == p: a[i] else: 0)
+fn half_of(p: Bool) -> Fenwick<I, Int> = Fenwick([I] i => if odd(i) == p: a[i] else: 0)
+var half: [Bool]Fenwick<I, Int> = [half_of(false), half_of(true)]
 enum Ask:
     @tag("1") Set(i: I, x: Int)
     @tag("2") Sum(l: I, r: I)
