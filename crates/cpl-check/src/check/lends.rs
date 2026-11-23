@@ -17,6 +17,8 @@
 //! facts*): never by a guess. When it can't be decided, the error says
 //! which condition to state.
 
+mod walk;
+
 use super::moves::{is_compound, nested_moves};
 use super::views::Keyed;
 use super::*;
@@ -1864,21 +1866,7 @@ impl<'a> Checker<'a> {
                 _ => break,
             };
         }
-        if matches!(iter_ty, Ty::Named { name, .. } if name == "Gen") {
-            for (_, place, _, force_mut) in self.extra_holds(iter) {
-                if force_mut || place.root_mutable {
-                    self.lends.holds.push(Hold {
-                        name: String::new(),
-                        root: place.root,
-                        steps: place.steps,
-                        mutable: force_mut,
-                        at: iter.span,
-                        until: stmt.span,
-                        in_loop: true,
-                        is_capture: false,
-                    });
-                }
-            }
+        if self.hold_walk(stmt, iter, iter_ty) {
             return;
         }
         if let ExprKind::Field { base, name } = &iter.kind {
