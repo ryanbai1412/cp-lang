@@ -17,7 +17,7 @@
 #            (--fast compiles C++ through scripts/cxx-cache.py, which reuses
 #            a binary built from the same source, flags and g++;
 #            CHECK_NO_CXX_CACHE=1 turns it off)
-#         4. spec/std/prelude.cp holds at most 80 names
+#         4. the spec/std/prelude.cp name count (decision 281: no budget)
 #            and every port in corpus/problems passes cpl check,
 #            cpl fmt --check and cpl lint with 0 warnings (under a second)
 #            and cpl build writes at most 65,536 bytes of C++ for each
@@ -429,10 +429,9 @@ else
     recovery_pid=$!
 fi
 
-step "spec/std/prelude.cp: at most 80 names"
+step "spec/std/prelude.cp: name count"
 prelude=$(sed 's://.*::' spec/std/prelude.cp | tr -d '\n' | grep -o '{[^}]*}' | tr ',' '\n' | grep -c '[A-Za-z_]')
 echo "prelude: $prelude names"
-[ "$prelude" -le 80 ] || echo "check: WARNING: spec/std/prelude.cp has $prelude names, over the target of 80" >&2
 
 step "cpl fmt is idempotent and keeps meaning on every .cp file"
 if [ "$fmt_cached" -eq 1 ]; then

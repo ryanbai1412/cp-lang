@@ -34,7 +34,7 @@ Not covered (owner instead):
 2. Every doc example passes `cpl-conform docs`; every std conformance case passes, in the interpreter and in C++ (`cpl-conform diff`).
 3. Every public fn has the required doc labels; `spec-stub.py --check` is clean.
 4. No stdlib privilege: no public std name is special-cased in the compiler, and a std module copied into a user library runs the same.
-5. Prelude matches the chapter tables (decision 150, see Q1); std modules acyclic.
+5. Prelude matches the chapter tables (decisions 150, 281); std modules acyclic.
 6. Probes: a cold agent writes unseen problems from the docs alone with std calls that compile first time.
 
 ## Milestones
@@ -56,12 +56,13 @@ All measured 2026-11-22 on main `4b8f504f` with fresh release binaries (`cargo b
 | Interp vs C++ on std cases | `cpl-conform diff std-` | 735/757 (22 skip) | 0 skip, 0 fail | M2 |
 | Pub fns missing a required doc label | `spec-stub.py --audit` | 32 of 2003 | 0 | M2 |
 | `spec-stub.py --check` problems | `spec-stub.py --check` | 13 | 0 | M2 |
-| Prelude names | `check.sh` prelude count | 192 | chapter tables (decision 150, Q1) | M3 |
+| Prelude names | `check.sh` prelude count | 192 | chapter tables (decisions 150, 281) | M3 |
 | Std names special-cased in the compiler | `measure.py privilege` (builtin count `ir_builtin_names`, agreed with tech-debt) | 89 builtins, 40 of them public std names | 0 std names | M3 |
 | Modules that pass standalone `cpl check` | loop in metrics.toml | 12/40 | 40 | M3 |
 | `GAPS.md` entries | `grep -c '^- ' spec/std/GAPS.md` | 88 | falling; 0 at M3 | M3 |
 | Import cycles (explicit `use`) | `measure.py cycles` | 0 | 0 | M1 |
 | Modules without conformance cases | `measure.py uncovered` | 1 (`opt`) | 0 | M3 |
+| Std C++ time vs optimized C++ | Library Checker benches (`cpl bench`, perf) | not measured | within 1.2x | M3 |
 | Banned spellings | `spec-vocab.py` | 0 | 0 | - |
 
 Not measured yet: implicit auto-import cycles (the `std_acyclic` test is on an unlanded branch); C++ time per std fn vs a matched library (perf owns `cpl bench`; no std-wide number exists); probe and rubric scores (no cold-agent run yet).
@@ -87,21 +88,19 @@ Probes (cold agent, docs only; pass/fail, time, files touched):
 
 1. Land the 4 in-flight branches: about 120 bodies, delaunay/voronoi/planar, the import-cycle guard.
 2. Make std bodies the ones that run: 40 of the 89 builtin names in `lower/call.rs` are public std names (`sort`, `sorted`, `first`, `sum`, `prefix`, ...), so a builtin can shadow the body. tree, flow, dsu, graph hold 306 of the 687 non-passing examples; flow and dsu pass 0. Classify, then contract tests + compiler requests.
-3. Unblock the 263 examples failing on two causes: a range where a domain is named (`Dsu<0..3>()`, 174, see Q2) and a list literal for `[D]T` (89, spec R04.8.10 already allows it: compiler gap).
+3. Unblock the 263 examples failing on two causes: a range where a domain is named (`Dsu<0..3>()`, 174, decision 255: done) and a list literal for `[D]T` (89, spec R04.8.10 already allows it: compiler gap).
 4. Write the 105 `@test` bodies and the 189 library bodies not blocked by GAPS.md.
-5. Cut the prelude from 192 toward the budget with a usage-driven rule (Q1).
+5. Make the prelude match the `lib/` chapter tables (decision 281), using the usage data in chapter reviews.
 6. Fix the 32 missing doc labels and the 13 `spec-stub --check` problems.
 7. Get all 40 modules through standalone `cpl check` (12 today; 418 errors, part of them false self-cycles).
-8. With tech-debt: one intrinsics boundary (Q3), the no-privilege test, `spec/std` -> `std/`.
+8. With tech-debt: the intrinsics floor (decision 266), one name at a time, the no-privilege test, `spec/std` -> `std/`.
 
 ## Ryan's role
 
 Co-designer, through `plan/QUESTIONS.md` only: API shape, naming, what belongs in std and in the prelude, decided on real ports. 2-3 samples per digest (a body, a doc page, a port diff). Everything else is decided here and logged in `decisions.md`.
 
-## Decisions needed from Ryan
+## Decisions (none open with Ryan)
 
-Each is in [plan/QUESTIONS.md](../../QUESTIONS.md) with options and a reversible default.
-
-- **Q1 Prelude: what earns a name.** Decision 150 already dropped the 80 budget for "the chapter tables, minus common locals". Usage ([prelude-usage.md](prelude-usage.md)): 5 of 192 names are used by >= 5% of 405 ports and hill-climb solutions, 77 by none. Recommend: keep decision 150 and retire the 80 warning. Default: keep 192.
-- **Q2 A range where a domain is named.** `Dsu<0..3>()`, `BeatsSegTree<0..3>(fill: 2)`: accept an int range as an anonymous domain argument? Recommend yes (decision 159 already makes `(V, V)` an inline domain). Default: leave the 174 examples as written.
-- **Q3 The compiler/std boundary.** Recommend: only storage, I/O, bit ops and numeric primitives stay intrinsics; `sort`, `min`, `sum`, `first`, ... become std bodies, guarded by a perf gate. Default: move nothing that costs speed; std bodies become the reference the builtins are tested against.
+- **Prelude: what earns a name.** The `lib/` chapter tables, no budget; the 80 warning is gone (decision 281). Usage data: [prelude-usage.md](prelude-usage.md).
+- **A range where a domain is named.** `Dsu<0..3>()` is an anonymous domain (decision 255).
+- **The compiler/std boundary.** Intrinsics only for storage, I/O, bits and numeric primitives; the rest moves one name at a time behind a matched perf gate (decision 266). Moved: `prod`, `Counter`'s type name (260). Held: `counts` (257, generator memory), `span` (259, hull form), `shuffle` (1.13-1.17x from per-swap bounds checks).

@@ -6528,3 +6528,20 @@ Reason: lanes push with a bare `git push`, which skipped every step in
 `land.sh`; stale generated files were main's most common red.
 Reverse: delete the `regen` job and call `scripts/regen.sh` from `land.sh`.
 
+||||||| parent of 64317391c (plan(stdlib): decide Q1-Q3 by their recommendations)
+||||||| parent of eb586424c (plan(stdlib): decide Q1-Q3 by their recommendations)
+
+## 281. The prelude is the `lib/` chapter tables; the 80-name warning goes (2026-11-22)
+
+- **Decision.** Former stdlib Q1 in `plan/QUESTIONS.md`, decided by its
+  recommendation. A name is in `spec/std/prelude.cp` exactly when a `lib/`
+  chapter's main table lists it (decision 150). `scripts/check.sh` prints
+  the count and no longer warns above 80. The usage table
+  (`plan/domains/stdlib/prelude-usage.md`) informs reviews of what a
+  chapter's main table lists; it is not a cut-off.
+- **Why.** A rule a contestant can guess from the docs beats a cut that
+  moves with the corpus: of 405 ports and hill-climb solutions only 5 names
+  reach 5% use (`measure.py prelude-usage`), so usage alone would leave a
+  prelude too small to write the guide's examples. 80 was never derived.
+- **Reverse.** Restore the warning in `scripts/check.sh` and cut names by
+  usage or a budget; each cut is one line in `spec/std/prelude.cp`.

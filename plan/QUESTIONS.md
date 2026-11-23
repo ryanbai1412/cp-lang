@@ -107,6 +107,18 @@ Recommendation: (a), the "no privileged stdlib" rule in AGENTS.md; the perf gate
 How to reverse it: a moved name goes back into the builtin table; its std body stays as the reference.
 Meanwhile: move nothing; std bodies become the reference the builtins are tested against, and the list is classified with tech-debt.
 
+### idioms: the re-port bar for the 305 tracked ports
+Options: (a) rethink each from `dream.cp` to the EXEMPLARS bar (slow, defines idiomatic); (b) migrate `port.cp` mechanically to v0.3 (fast, gives judge proof and the lint FP corpus, keeps C++ shape).
+Recommendation: (b) first for all 305, then (a) in review-score order; only (a) counts toward the taste and token targets.
+How to reverse it: stop migrating and go straight to (a); migrated ports stay as baselines.
+Meanwhile: (b) then (a).
+
+### idioms: what gates the skill
+Options: (a) the 20 dry-run problems (known to skill writers, can overfit); (b) a fresh unseen 20 each release, written to the dry-run shape.
+Recommendation: (b) as the gate, (a) as a regression check.
+How to reverse it: gate on (a) only.
+Meanwhile: report both; gate on (a) until the first fresh set exists.
+
 ### spec: descending sort, a key only or also a `desc:` flag?
 Chapter 7 (line 315) says "Descending is a key, not a flag: `by: x => desc(x.score)`", but `spec/std/seq.cp` gives `sort`/`sorted` a `desc: Bool = false`, and `spec/conformance/std-seq/sort-sorted-last.cp` uses it. Two spellings for one idea (rebuild round 2 hole H-SORT-DESC).
 - A, key only: `copies.sorted(by: c => (c.start, desc(c.end)))` (corpus/problems/btoi18p4/spec.cp); plain descending is `xs.sorted(by: x => desc(x))`.

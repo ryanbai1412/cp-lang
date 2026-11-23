@@ -70,21 +70,21 @@ milestone = "M2"
 name = "prelude_names_used_5pct"
 command = "python3 plan/domains/stdlib/measure.py prelude-usage"
 value = 5
-target = "informational (data for plan/QUESTIONS.md stdlib Q1); 77 names used by no port or hill-climb solution"
+target = "informational (decision 281); 77 names used by no port or hill-climb solution"
 milestone = "M3"
 
 [[metric]]
 name = "prelude_names"
 command = "scripts/check.sh --fast  # prints 'prelude: N names'"
 value = 192
-target = "the lib/ chapter tables (decision 150; plan/QUESTIONS.md stdlib Q1)"
+target = "the lib/ chapter tables (decisions 150, 281)"
 milestone = "M3"
 
 [[metric]]
 name = "ir_builtin_names"
 command = "python3 scripts/debt-ratchet.py --list ir_builtin_names"
 value = 89
-target = "the intrinsics floor (plan/QUESTIONS.md stdlib Q3, tech-debt Q1; proposed about 30)"
+target = "the intrinsics floor (decision 266; 66 floor names)"
 milestone = "M3"
 
 [[metric]]
@@ -128,6 +128,13 @@ command = "python3 scripts/spec-vocab.py"
 value = 0
 target = 0
 milestone = "-"
+
+[[metric]]
+name = "std_cpp_time_vs_optimized_cpp"
+command = "cpl bench on Library Checker problems (perf lane; no std-wide run exists)"
+value = "not measured"
+target = "within 1.2x of optimized C++ (Ryan, 2026-11-22)"
+milestone = "M3"
 
 # Not measured yet (no command exists): implicit auto-import cycles
 # (cpl-check/tests/std_acyclic.rs is on devin/wip-std-import-cycles), C++ time

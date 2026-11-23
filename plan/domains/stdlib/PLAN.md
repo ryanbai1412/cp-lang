@@ -25,8 +25,8 @@ The detail behind [README.md](README.md). Numbers are from the runs in [metrics.
 2. **W2 Classify every failing example and case** (M2). `cpl-conform docs --causes` and `conformance std-` failures, each labelled: *std bug* (fix here), *compiler gap* (GAPS.md line + request in `plan/domains/compiler/worklog.md` + a contract test in `spec/conformance/std-*`), or *open question* (QUESTIONS.md). Ranked by examples unblocked. This is what turns 687 into a worklist instead of a number.
 3. **W3 Write bodies** (M2). `@test` bodies first (105, cheap, they test the rest), then library bodies by module, largest unblocked count first. Each body: plain CP Lang, `cost:` checked against it, example runs.
 4. **W4 Doc labels and `spec-stub --check`** (M2). Mechanical: 32 labels, 13 problems. One commit per module.
-5. **W5 Prelude budget** (M3, needs Q1). Count use of each prelude name across gold ports (`corpus/`) and hill-climb solutions; cut by the rule; `cpl fix` migrates `use` lines (lint L0208 `redundant_prelude_import` in `cpl-lint` already knows the list).
-6. **W6 No privilege** (M3, with tech-debt and compiler). One definition of "privileged" (Q3); the metric in `measure.py privilege` sharpened to it; a no-privilege test: copy a std module into a temp user library and run its conformance cases there; then the per-name moves.
+5. **W5 Prelude budget** (M3, decision 281). Count use of each prelude name across gold ports (`corpus/`) and hill-climb solutions; cut by the rule; `cpl fix` migrates `use` lines (lint L0208 `redundant_prelude_import` in `cpl-lint` already knows the list).
+6. **W6 No privilege** (M3, with tech-debt and compiler). One definition of "privileged" (decision 266); the metric in `measure.py privilege` sharpened to it; a no-privilege test: copy a std module into a temp user library and run its conformance cases there; then the per-name moves.
 7. **W7 `spec/std` -> `std/`** (M3, run by tech-debt). The stdlib side: path updates in `spec/std/README.md`, `GAPS.md`, conformance case headers.
 
 W2 runs before W3 because writing bodies whose examples fail for a compiler reason wastes the body's test.
@@ -35,13 +35,13 @@ W2 runs before W3 because writing bodies whose examples fail for a compiler reas
 
 - **M1** banks work already done (about 120 stubs) and puts the cycle guard in the gate before more bodies add `use` edges. Cheapest big move.
 - **M2** is "the library is real": every name that exists runs, documents its cost and is tested in both backends. Everything a cold agent can be probed on depends on it.
-- **M3** is "the library is coherent": the small prelude, no privilege, one home. These need Ryan's calls (Q1-Q3) and other lanes, so they go last; defaults keep M2 unblocked.
+- **M3** is "the library is coherent": the small prelude, no privilege, one home. These needed Q1-Q3 (now decisions 281, 255, 266) and other lanes, so they go last; defaults keep M2 unblocked.
 
 ## Alternatives considered
 
 - **Cut unimplementable names from v0.3 instead of writing them.** Faster to zero `todo`, but each name was chosen on real ports; cutting loses designed surface. Kept as the fallback for GAPS entries the compiler lane can't close by the v0.3 date, decided per name and logged.
-- **Rewrite the 263 examples to today's compiler** (a declared `domain D = 0..3` and `Dsu<D>()`). Turns the metric green in a day, but the examples show what contestants should write, and Q2/R04.8.10 say they are right. Rejected unless Q2 is answered no.
-- **Keep fast builtins and make std bodies documentation only.** Zero perf risk, but a body that never runs is untested and a user library can't match it: that is privilege. Rejected; Q3 sets the floor.
+- **Rewrite the 263 examples to today's compiler** (a declared `domain D = 0..3` and `Dsu<D>()`). Turns the metric green in a day, but the examples show what contestants should write, and Q2/R04.8.10 say they are right. Rejected (decision 255).
+- **Keep fast builtins and make std bodies documentation only.** Zero perf risk, but a body that never runs is untested and a user library can't match it: that is privilege. Rejected; decision 266 sets the floor.
 - **One monolithic "stdlib done" milestone.** Rejected: M1 is hours, M2 weeks, M3 depends on Ryan; one milestone would hide all three.
 
 ## Risks
