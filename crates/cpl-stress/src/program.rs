@@ -243,8 +243,14 @@ fn compile_with(
                 shown.join("\n")
             )));
         }
-        std::fs::rename(&partial, &binary)
-            .map_err(|e| BuildError(format!("can't write {}: {e}", binary.shown())))?;
+        // A raced build may have renamed the same bytes into place first,
+        // and Windows refuses to replace a binary that is running.
+        if let Err(e) = std::fs::rename(&partial, &binary) {
+            let _ = std::fs::remove_file(&partial);
+            if !binary.is_file() {
+                return Err(BuildError(format!("can't write {}: {e}", binary.shown())));
+            }
+        }
     }
     Ok(binary.display().to_string())
 }
