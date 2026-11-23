@@ -511,3 +511,23 @@ fn ten_million_steps_fit_the_debugging_budgets() {
     }
     assert!(over.is_empty(), "over budget: {over:?}");
 }
+
+#[test]
+fn a_step_inside_an_imported_fn_is_shown_at_the_call_running_it() {
+    // `MinHeap.push` is lowered once, with the span of its first call:
+    // the second call's writes are still shown at the second call.
+    let source = "\
+use std.heap.{MinHeap}
+var heap = MinHeap<Int>()
+heap.push(3)
+let k: Int = read()
+heap.push(k)
+print(heap.len)
+";
+    let recording = record(source, "5", TraceConfig::default());
+    let lines: Vec<u32> = (0..recording.len())
+        .filter_map(|step| recording.line(step))
+        .collect();
+    assert!(lines.contains(&3), "{lines:?}");
+    assert!(lines.contains(&5), "{lines:?}");
+}

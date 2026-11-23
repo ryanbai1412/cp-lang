@@ -10,10 +10,11 @@
 use crate::value::{OptVal, TupleVal, Value};
 use cpl_diag::{LineIndex, Span};
 use cpl_ir::{Dim, Program, Ty};
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{BTreeMap, HashMap, HashSet};
 use std::fmt::Write as _;
 use std::sync::Arc;
 
+mod lines;
 mod log;
 mod raw;
 mod trap;
@@ -426,6 +427,8 @@ pub(crate) struct Tracer {
     /// The last span start looked up and its line: a step's span is
     /// looked up more than once.
     last_line: std::cell::Cell<(u32, u32)>,
+    /// The names of the imported modules' fns (see [`Tracer::step_line`]).
+    library: HashSet<String>,
     /// No option drops or filters steps: every write is a step.
     unfiltered: bool,
     source: String,
@@ -547,6 +550,10 @@ impl Tracer {
         let mut tracer = Tracer {
             lines: LineIndex::new(&config.source),
             last_line: std::cell::Cell::new((u32::MAX, 0)),
+            library: (program.fns.iter().zip(&program.library_fns))
+                .filter(|(_, &library)| library)
+                .map(|(f, _)| f.name.clone())
+                .collect(),
             unfiltered: false,
             source: config.source.clone(),
             include_fns,
@@ -713,16 +720,6 @@ impl Tracer {
 
     fn watched(&self, name: &str) -> bool {
         self.watch.is_empty() || self.watch.iter().any(|w| w == name)
-    }
-
-    pub fn line(&self, span: Span) -> u32 {
-        let (start, line) = self.last_line.get();
-        if start == span.start {
-            return line;
-        }
-        let line = self.lines.line_of(span.start) + 1;
-        self.last_line.set((span.start, line));
-        line
     }
 
     fn stage_id(&mut self) -> u32 {
@@ -934,7 +931,7 @@ impl Tracer {
         checkpoint: Option<&str>,
         focus: Option<(usize, &[usize])>,
     ) {
-        let line = self.line(span).max(1);
+        let line = self.step_line(view, span);
         let focus = focus.and_then(|(global, path)| {
             let var = self.of_global[global]?;
             let fits = match self.kinds[var] {
@@ -1068,7 +1065,7 @@ impl Tracer {
         if !self.watched(&view.program.globals[id].name) || !self.recording(view.depth) {
             return;
         }
-        let line = self.line(span).max(1);
+        let line = self.step_line(view, span);
         let stage = self.stage_id();
         let same = self.rec.log.last().is_some_and(|(last, note, at)| {
             last == line && note.is_none_or(|note| note.checkpoint.is_none()) && at == stage
@@ -1130,7 +1127,7 @@ impl Tracer {
         } else {
             render(&mut text, value, ty, view, Mode::Text);
         }
-        let line = self.line(span).max(1);
+        let line = self.step_line(view, span);
         self.rec.assigned.push(Assigned {
             line,
             name: name.to_string(),
@@ -1161,7 +1158,7 @@ impl Tracer {
     /// `debug(...)` ran: `name` is its label or its arguments as written,
     /// `text` what it shows, and `json` the values as one JSON value.
     pub fn debugged(&mut self, view: &View, span: Span, name: &str, text: String, json: String) {
-        let line = self.line(span).max(1);
+        let line = self.step_line(view, span);
         if !self.recording(view.depth) {
             return;
         }
