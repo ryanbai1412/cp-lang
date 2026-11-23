@@ -11,7 +11,7 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::time::{Duration, Instant};
 
-const SHARDS: usize = 8;
+const SHARDS: usize = 16;
 
 fn root() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("../..")
@@ -200,35 +200,32 @@ fn shard(n: usize) {
     );
 }
 
-#[test]
-fn fixes_keep_behaviour_0() {
-    shard(0);
+macro_rules! shards {
+    ($($name:ident = $n:expr),* $(,)?) => {
+        $(
+            #[test]
+            fn $name() {
+                shard($n);
+            }
+        )*
+    };
 }
-#[test]
-fn fixes_keep_behaviour_1() {
-    shard(1);
-}
-#[test]
-fn fixes_keep_behaviour_2() {
-    shard(2);
-}
-#[test]
-fn fixes_keep_behaviour_3() {
-    shard(3);
-}
-#[test]
-fn fixes_keep_behaviour_4() {
-    shard(4);
-}
-#[test]
-fn fixes_keep_behaviour_5() {
-    shard(5);
-}
-#[test]
-fn fixes_keep_behaviour_6() {
-    shard(6);
-}
-#[test]
-fn fixes_keep_behaviour_7() {
-    shard(7);
+
+shards! {
+    fixes_keep_behaviour_0 = 0,
+    fixes_keep_behaviour_1 = 1,
+    fixes_keep_behaviour_2 = 2,
+    fixes_keep_behaviour_3 = 3,
+    fixes_keep_behaviour_4 = 4,
+    fixes_keep_behaviour_5 = 5,
+    fixes_keep_behaviour_6 = 6,
+    fixes_keep_behaviour_7 = 7,
+    fixes_keep_behaviour_8 = 8,
+    fixes_keep_behaviour_9 = 9,
+    fixes_keep_behaviour_10 = 10,
+    fixes_keep_behaviour_11 = 11,
+    fixes_keep_behaviour_12 = 12,
+    fixes_keep_behaviour_13 = 13,
+    fixes_keep_behaviour_14 = 14,
+    fixes_keep_behaviour_15 = 15,
 }
