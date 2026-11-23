@@ -70,3 +70,41 @@ What codegen needs from the shared core (`cpl-ir`): the typed `Program`, `Narrow
 - IR-shape recognizers (`map_remove_do` in `src/expr.rs`) pattern-match lowered blocks; a lowering change silently loses the fast path. They need contract tests in `cpl-ir` or an explicit IR node.
 - Benchmarks are scattered across two Rust runners and four Python scripts in `bench/` with different suites and bars; none runs in `scripts/check.sh`, so perf and size can regress silently.
 - `research/perf/corpus-p95-report.md` is a 0.2 run at `6145b0b`; nothing current replaces it.
+
+## Re-architecture #4: one copy and effect analysis
+
+Today five places each answer part of "may this be read in place, moved,
+dropped or reordered": `lend.rs` (per-shape `may_lend`), `devirt.rs`
+(escapes, `pure_path`), `sink.rs` (`pure_fns`), the move-before-overwrite
+check in `stmt.rs`, and `effect_free_lambda` in IR lowering (on the AST).
+Each new shape needed its own fix. The target is one analysis with two
+tables, computed once per program and read by every client.
+
+- **Effects** (`cpl_ir::effects`, owner compiler): per fn and closure, what
+  a call can do that a program can observe: writes (mutable parameters,
+  globals, captured `var`s), I/O, traps (under the build's trap profile),
+  and calls through fn values it cannot pin down. Bottom-up fixpoint;
+  recursion and unknown callees are effectful. It replaces `pure_fns`,
+  `pure_path`, `effect_free_lambda` and `index_set::pure`.
+- **Uses** (`cpl-codegen`, owner perf): for every non-scalar local,
+  parameter, capture, loop binding and element read, whether it is
+  mutated, moved, escapes (stored, returned, captured by a closure that
+  escapes), or its source can change while it is live (a write to the same
+  root, directly or through a callee's effects). The same table holds the
+  closures each fn-valued home can hold (today's `Held`).
+- **One decision:** lend (`const&`) by default; copy only when Uses names a
+  reason, and `cpl explain` prints that reason; move when the source's next
+  use is an overwrite. A fn value with one known closure calls it directly;
+  a struct whose fn fields hold known closures is specialized per closure,
+  like `Window(+)`.
+- **Gate:** a rewrite that can change how often or when code runs
+  (materializing a view, hoisting, sinking, dropping a call) needs
+  `effects(e)` to be unobservable, and lands with parity plus conformance.
+
+Steps, each landing with ratchets that only go down (`deep_copies` 101,
+`std_functions` 777 in `read_only_copies.rs`):
+1. compiler: `cpl_ir::effects`; the mapped-let materialization moves behind it.
+2. perf: `sink.rs` and `devirt.rs` read Effects; drop their own purity checks.
+3. perf: Uses table; `lend.rs` and the `stmt.rs` move check read it, and
+   the per-shape `may_lend` cases go.
+4. perf: per-closure struct specialization (`Heap.lt`, `Monoid.op`).
