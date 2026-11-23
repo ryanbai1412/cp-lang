@@ -1,15 +1,13 @@
-// NOI 2007 Cash: two kinds of coupon, A and B, have a price each day.
-// Any day you may sell all your coupons, and may spend all your money on
-// coupons, which come as rate[day] of A for every one of B. Starting with
-// `money`, print the most money you can hold after the last day.
-//
-// It never pays to trade a part. Money f spent on day j buys
-// f / (a_j rate_j + b_j) of B and rate_j times that of A, and is worth
-// (A's * a_i + B's * b_i) on day i: a line in a_i / b_i, scaled by b_i. So
-// each day asks for the highest line at its own price ratio, then adds its
-// line. The ratios are known up front, so the lines live in a Li Chao tree
-// over the days in order of ratio, and no two reals are ever compared for
-// equality. (The original runs the days backwards with a dynamic hull.)
+// Source: NOI 2007 P2 (Cash Exchange), https://dmoj.ca/problem/noi07p2
+// Problem: over n <= 1e5 days vouchers A and B are worth a_k and b_k (in (0, 10]); cash spent
+//   on day k buys A and B in the amount ratio rate_k. Any day you may sell the same share of both
+//   and buy with any cash. Starting with s dollars, print the most cash after day n (3 decimals).
+// Solution: all-in trades suffice (the statement's hint). Cash f on day j buys
+//   B = f / (a_j rate_j + b_j) and A = rate_j B, worth b_i (A x + B) on day i at x = a_i / b_i:
+//   a line per day. best_i = max(best_(i-1), b_i * highest line at x_i), then add day i's line.
+//   The ratios are known up front, so a Li Chao tree over the days sorted by ratio holds the
+//   lines and no two reals are compared for equality: O(n log n). (The original runs the days
+//   backwards with a dynamic hull.)
 // original: corpus/submissions/3767248.cpp
 
 let n: Int = read()

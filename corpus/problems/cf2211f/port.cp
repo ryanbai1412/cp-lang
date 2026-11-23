@@ -1,17 +1,13 @@
-// Codeforces 2211 F.
-// Repeatedly halving a segment of length L splits it into `upper_half = L / 2`
-// and `lower_half = (L - 1) / 2`. At every depth `cost`, all segments have at
-// most two consecutive lengths `big` and `small = big - 1`, stored as
-// `Layer(big: Part, small: Part)`.
-// `ways(a) = C(n - a + m, m - 1)` counts non-decreasing length-m arrays in
-// `1..=n` whose span covers at least `a` elements. Depth 1 contributes
-// `ways(1)` for the whole array. At each deeper depth `cost >= 2`:
-//   - When `small.cnt == 0`, all segments have equal length `big.len`; moving
-//     one segment into `small` at length `big.len` preserves the multiset while
-//     splitting the `cnt - 1` gap terms into the same two-part formula.
-//   - Each part contributes `cnt * (ways(1) - ways(inner + 2)) +
-//     (cnt - 1) * (ways(len + 2) - ways(outer + 2))`, where `big` uses
-//     `(inner, outer) = (lower_half, upper_half)` and `small` swaps them.
+// Source: Codeforces 2211F (Learning Binary Search), https://codeforces.com/contest/2211/problem/F
+// Problem: f(a, k) counts the calls of the given recursive binary search for k on a sorted
+//   a[1..=n] (0 if k is absent). Over all nondecreasing a of length n with values in 1..=m, print
+//   the sum of f(a, k) for k in 1..=m, mod 676767677. n, m <= 1e6; multitest, sums <= 1e6.
+// Solution: k's copies form a block and the search stops at the first mid inside it, so f counts
+//   the depths whose segment still holds the whole block. Sum, over depths and segments, the
+//   pairs (a, k) whose block lies in the segment, by inclusion-exclusion over windows with
+//   ways(w) = C(n - w + m, m - 1), the arrays constant on a fixed window of w cells. Halving
+//   leaves at most two segment lengths per depth (`Layer`), so each of the O(log n) depths costs
+//   O(1) with factorials: O(n + m) per test.
 
 type Z = Mod<676_767_677>
 

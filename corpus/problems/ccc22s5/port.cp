@@ -1,4 +1,12 @@
-// Runnable port (proto/cp.py lib-run) of statement-first ccc22s5.cp
+// Source: CCC 2022 Senior S5 (Good Influencers), https://dmoj.ca/problem/ccc22s5
+// Problem: a tree of n <= 2e5 students, each initially Y or N (at least one of each), with costs
+//   c_i <= 1000. Paying a Y student c_i turns all their friends Y. Print the least total cost
+//   to make every student Y.
+// Solution: tree DP from the leaves, three costs per subtree (None if impossible): push[u], u
+//   pays (an N u first needs one child that pays); done[u], the subtree ends all Y without the
+//   parent; need[u], the same once the parent's seminar has reached u. Each child adds the
+//   cheapest state its parent allows, and an N vertex upgrades the one child whose push costs
+//   least extra. O(n); the answer is min(done, push) at the root.
 // original: corpus/submissions/4371349.cpp
 
 let n: Int = read()

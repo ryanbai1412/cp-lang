@@ -1,16 +1,14 @@
-// Codeforces 2207 F: Hanabi.
-// Scan the n * m cards (rank, color) in order. For each color, keep its
-// current maximal contiguous increasing run [lo..=hi] (ignoring ranks <= hi
-// already covered). Any rank skipped before a color's first card, strictly
-// between two consecutive runs of the same color, or after its last run cannot
-// be merged across turns (`must_rank[r] = true`).
-//
-// Each closed run [lo..=hi] is an interval contributing 1 to `total_intervals`.
-// Over the cut space `Rank.cuts`, `seg` maximizes the number of saved turns
-// (non-forced ranks plus absorbed runs): at rank r, placing a cut at r.r gains
-// `Int(not must_rank[r])` over the best previous cut, and every run [lo..=r]
-// ending at r adds 1 to all cuts <= lo.l. The minimum number of turns is
-// `n + total_intervals - seg.all - 1`.
+// Source: Codeforces 2207F (Hanabi), https://codeforces.com/contest/2207/problem/F
+// Problem: Zuko holds all n m cards (rank 1..n, colour 1..m; n m <= 2e5) in a given order. Each
+//   turn Iroh clues a rank or a colour (it must highlight a card left) and Zuko plays the leftmost
+//   highlighted card; rank r needs rank r - 1 of its colour played first. Print the least number
+//   of clue changes that plays every card validly. Multitest, sum n m <= 2e5.
+// Solution: per colour, scan its cards in hand order and cut them into runs lo..=hi where each
+//   card is the next rank (a lower rank seen later is skipped); a rank a colour jumps over before,
+//   between or after its runs is forced (`must_rank`). A DP over the cuts between ranks then
+//   maximises the saved clues: cut r scores the best earlier cut plus 1 if rank r is not forced,
+//   and each run lo..=r adds 1 to every cut <= lo.l. A max SegTree with range add holds it; the
+//   answer is n + runs - best - 1, O(n m + n log n).
 
 @!multitest
 let (n, m): (1..=200_000, 1..=200_000) = read()

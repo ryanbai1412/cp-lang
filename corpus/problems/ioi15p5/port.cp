@@ -1,4 +1,11 @@
-// IOI 2015 Day 2 P2, Sorting (buildable today-form)
+// Source: IOI 2015 Day 2 P2 (Sorting), https://dmoj.ca/problem/ioi15p5
+// Problem: a permutation S of 0..n-1 (n <= 2e5) and Ermek's m = 3n planned swaps (X[i], Y[i]).
+//   Each round Ermek makes his next swap, then Aizhan swaps any two positions; she stops once S
+//   is sorted. Print the least number of rounds R that sorts S, then Aizhan's R swaps.
+// Solution: after Ermek's first t swaps the row needs n - cycles swaps, and swaps chosen as pairs
+//   of values commute with his, so R is the least t with n - cycles(t) <= t: a binary search on
+//   t, O(n + t) each. Sort the row Ermek alone leaves by value swaps, then replay the rounds: in
+//   round r swap wherever those two values now sit. O((n + m) log m).
 // original: corpus/submissions/5723358.cpp (grader function findSwapPairs)
 // stdin: n, the permutation, m, then Ermek's m swaps. stdout: the number of
 // rounds r, then our r swaps.

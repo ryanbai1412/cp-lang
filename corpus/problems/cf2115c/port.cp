@@ -1,18 +1,13 @@
-// Codeforces 2115 C: Gellyfish and Eternal Violet.
-//
-// Track (s, k): s shines still needed and k single hits still needed. At the
-// start s = min(h) - 1, the layers every monster loses together, and
-// k = sum(h) - n * min(h), the hits that level the taller monsters. A shine
-// lowers s and a miss is spent on a single hit, lowering k. A shine with
-// s = 0 needed changes nothing. The one real choice is a miss at k = 0 with
-// s > 0: start a new layer by hitting one monster (s - 1, and the other n - 1
-// now need a hit each), or wait for a shine.
-//
-// While s > 0 and k > 0 every round makes progress, so with
-// slack = m - (s0 + k0) spare rounds the rounds left are slack + s + k and
-// need no dimension: `win(k, s)` is a plain recurrence. It leaves that region
-// at k = 0 (`level[s]`) or s = 0 (`flat[k]`), where rounds can be wasted. Each
-// edge is a DP over r rounds left, read off at r = slack + s or slack + k.
+// Source: Codeforces 2115C (Eternal Violet), https://codeforces.com/contest/2115/problem/C
+// Problem: n <= 20 monsters with hp h_i <= 400 and m <= 4000 rounds. Each round the sword shines
+//   with chance p, seen before acting; attacking hits every monster for 1 if it shines, else one
+//   chosen monster. Print the best chance to bring every hp to exactly 1. Multitest, sum n <= 100.
+// Solution: track (s, k): s = min(h) - 1 shines still needed, k = sum(h) - n min(h) single hits
+//   that level the rest. While s, k > 0 every round makes progress, so rounds left is
+//   slack + s + k (slack = m - s0 - k0) and win(k, s) is a plain memo recurrence. It exits at
+//   k = 0, where a miss opens a new layer (s - 1, n - 1) or waits for a shine, or at s = 0, where
+//   only k misses are needed: two DPs over rounds left, read off on their diagonals, cost
+//   O(m (s0 n + k0)).
 @!multitest
 let n: 1..=20 = read()
 let m: 1..=4_000 = read()
