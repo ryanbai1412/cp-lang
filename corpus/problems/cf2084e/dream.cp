@@ -12,6 +12,8 @@
 // grows the span only widens; when a value at p widens it to lo2..=hi2, the
 // segments that stop covering it start in (lo2, lo] or end in [hi, hi2).
 // Each segment leaves once, so the whole walk is O(n^2) per test.
+use std.mod.{Comb, Mod}
+
 type Z = Mod<1e9 + 7>
 
 @!multitest
@@ -19,9 +21,9 @@ domain Pos = read(1..=5000)
 let a: [Pos]?(0..Pos.count) = read(none: -1)
 let at = a.inverse()
 let blanks = a.map(x => Int(x == None)).scan(+)
-fn blank(l: Pos, r: Pos) -> Int = blanks[r.after] - blanks[l.before]
-let m = blanks.last
-let comb = Z.comb(Pos.count)
+fn blank(l: Pos, r: Pos) -> Int = blanks[r.r] - blanks[l.l]
+let m = blanks.prefix(Pos.last!.r)
+let comb = Comb<Z>(Pos.count)
 
 var covering: [0..=m]Int = 0
 fn tally(ls: Range<Pos>, rs: Range<Pos>, w: Int):
@@ -30,14 +32,14 @@ fn tally(ls: Range<Pos>, rs: Range<Pos>, w: Int):
             covering[blank(l, r)] += w
 
 tally(Pos, Pos, 1)
-var (lo, hi) = (Pos.last, Pos.first)                   // no value placed yet: every segment covers
+var (lo, hi) = (Pos.last!, Pos.first!)                   // no value placed yet: every segment covers
 var need = 0
 var answer: Z = 0
 for v in 0..Pos.count:
     if let p = at[v]:
         let (lo2, hi2) = (min(lo, p), max(hi, p))
-        tally((lo2..=lo).drop(1), hi..=Pos.last, -1)
-        tally(Pos.first..=lo2, hi..hi2, -1)
+        if let s = lo2.next: tally(s..=lo, hi..=Pos.last!, -1)
+        tally(Pos.first!..=lo2, hi..hi2, -1)
         (lo, hi) = (lo2, hi2)
     else:
         need += 1

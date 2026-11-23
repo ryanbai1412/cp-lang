@@ -19,11 +19,11 @@ struct Op(x: Slot, y: Slot, z: Slot)
 let b: [Slot]Int = read()
 let ops: [Step]Op = read()
 
-var cur: [Slot]V = [Slot] i => V.of(i)
+var cur: [Slot]V = [Slot] i => V.nth(i.ord)
 var edges: List<(V, V)> = []
 for t in Step:
     let op = ops[t]
-    let v = V.of(t)
+    let v = V.nth(n + t.ord)
     edges.push((cur[op.x], v))
     edges.push((cur[op.y], v))
     cur[op.z] = v
@@ -52,4 +52,4 @@ for (val, st) in targets:
                 indeg[w] -= 1
                 if indeg[w] == 0: fix(w, val)
 
-print([val_of[V.of(i)] ?? 0 for i in Slot])
+print([val_of[V.nth(i.ord)] ?? 0 for i in Slot])
