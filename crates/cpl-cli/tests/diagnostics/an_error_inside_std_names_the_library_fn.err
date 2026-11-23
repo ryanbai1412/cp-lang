@@ -1,10 +1,10 @@
-error[E0302]: `SuffixArray` (`std.strings`) does not work on the types it was given here: expected `Pos`, found `Int`
+error[E0302]: `SuffixArray.new` (`std.strings`) does not work on the types it was given here: expected `Pos`, found `Int`
   --> an_error_inside_std_names_the_library_fn.cp:6:10
   |
 4 | domain Pos = 0..n
   |        --- `Pos` is declared here
 6 | let sa = SuffixArray(s)
   |          ^^^^^^^^^^^^^^
-  = note: std/strings.cp:_: inside `SuffixArray`; the gap is in `std.strings`, not in your code
+  = note: std/strings.cp:_: inside `SuffixArray.new`; the gap is in `std.strings`, not in your code
 
 an_error_inside_std_names_the_library_fn.cp: 1 error
