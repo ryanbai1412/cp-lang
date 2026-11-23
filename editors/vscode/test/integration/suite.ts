@@ -64,7 +64,10 @@ const tests: [string, () => Promise<void>][] = [
                 const found = vscode.languages.getDiagnostics(document.uri);
                 return found.length > 0 ? found : undefined;
             });
-            assert.equal(diagnostic.code, 'E0101');
+            // The code links to its page on the site, as the server sends it.
+            const code = diagnostic.code as { value: string; target: vscode.Uri };
+            assert.equal(code.value, 'E0101');
+            assert.equal(code.target.toString(), 'https://cp-lang.org/errors/E0101');
             assert.equal(diagnostic.source, 'cpl');
             assert.equal(diagnostic.severity, vscode.DiagnosticSeverity.Error);
             assert.equal(diagnostic.range.start.line, 3);

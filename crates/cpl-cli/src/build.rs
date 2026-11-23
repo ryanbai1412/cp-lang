@@ -253,22 +253,50 @@ fn build_checked(
         "-D_GLIBCXX_ASSERTIONS",
         "-DLOCAL",
     ];
+    // MinGW (Windows' g++) has no sanitizer runtime to link: there the
+    // undefined-behaviour checks trap in place, with no address checks.
+    const TRAPPING: [&str; 7] = [
+        "-std=c++17",
+        "-O1",
+        "-g",
+        "-fsanitize=undefined",
+        "-fsanitize-undefined-trap-on-error",
+        "-D_GLIBCXX_ASSERTIONS",
+        "-DLOCAL",
+    ];
     let binary = cpp.with_extension("checked");
     let compiler = std::env::var("CXX").unwrap_or_else(|_| "g++".into());
-    let built = std::process::Command::new(&compiler)
-        .args(FLAGS)
-        .arg("-o")
-        .arg(&binary)
-        .arg(cpp)
-        .output();
+    let build = |flags: &[&str]| {
+        std::process::Command::new(&compiler)
+            .args(flags)
+            .arg("-o")
+            .arg(&binary)
+            .arg(cpp)
+            .output()
+    };
+    let mut flags = &FLAGS;
+    let mut built = build(flags);
+    if let Ok(output) = &built {
+        if !output.status.success()
+            && no_sanitizer_runtime(&String::from_utf8_lossy(&output.stderr))
+        {
+            flags = &TRAPPING;
+            built = build(flags);
+        }
+    }
     match built {
         Ok(output) if output.status.success() => {
             let _ = writeln!(
                 stdout,
                 "built {} ({compiler} {})",
                 binary.display(),
-                FLAGS.join(" ")
+                flags.join(" ")
             );
+            if flags == &TRAPPING {
+                *stderr += &format!(
+                    "cpl: note: {compiler} has no sanitizer runtime, so this build traps on undefined behaviour but has no address checks\n"
+                );
+            }
             0
         }
         Ok(output) => {
@@ -287,5 +315,25 @@ fn build_checked(
             );
             EXIT_USAGE
         }
+    }
+}
+
+/// Whether a failed sanitized build failed only because the compiler has
+/// no sanitizer runtime to link (`cannot find -lasan` on MinGW).
+fn no_sanitizer_runtime(errors: &str) -> bool {
+    ["-lasan", "-lubsan", "libasan", "libubsan"]
+        .iter()
+        .any(|lib| errors.contains(lib))
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn a_missing_sanitizer_runtime_is_told_from_a_compile_error() {
+        let mingw = "ld.exe: cannot find -lasan: No such file or directory\nld.exe: cannot find -lubsan: No such file or directory\ncollect2.exe: error: ld returned 1 exit status\n";
+        assert!(super::no_sanitizer_runtime(mingw));
+        assert!(!super::no_sanitizer_runtime(
+            "a.cpp:3:5: error: 'x' was not declared in this scope\n"
+        ));
     }
 }
