@@ -1532,6 +1532,7 @@ impl<'p> Emitter<'p> {
                 } else if auto {
                     self.line(out, &format!("auto {name} = {text};"));
                 } else {
+                    self.note_let_copy(*slot, init, &text);
                     self.line(out, &format!("{cpp} {name} = {text};"));
                 }
             }

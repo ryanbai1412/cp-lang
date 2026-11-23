@@ -60,6 +60,11 @@ impl<'p> Emitter<'p> {
                         };
                         global_ref_aliases.push(format!("{constant}auto& {inner} = {gname};"));
                     } else {
+                        self.note_capture_copy(
+                            cid,
+                            non_scalar,
+                            &self.program.globals[cap.outer].name,
+                        );
                         cap_parts.push(format!("{inner} = {gname}"));
                     }
                 } else {
@@ -68,6 +73,8 @@ impl<'p> Emitter<'p> {
                         cap_parts.push(format!("&{inner} = {outer}"));
                     } else {
                         cap_parts.push(format!("{inner} = {outer}"));
+                        let name = self.locals()[cap.outer].name.clone();
+                        self.note_capture_copy(cid, non_scalar, &name);
                     }
                 }
             }

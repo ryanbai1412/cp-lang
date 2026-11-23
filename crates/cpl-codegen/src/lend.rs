@@ -914,3 +914,87 @@ pub(crate) fn entry_binding(ty: &Ty, cpp: &str, var: &str, e: &str) -> String {
         false => format!("{cpp} {var}({e}first, {e}second);"),
     }
 }
+
+/// A non-scalar value the C++ copies: a `let` of a place (at the span of
+/// what it reads) or a closure's by-value capture (closure id, name).
+pub(crate) enum Copied {
+    Let(cpl_diag::Span, &'static str),
+    Capture(usize, String, &'static str),
+}
+
+const KEPT: &str = "the closure may be kept (stored, returned or passed where it is kept), so it owns what it reads";
+const IN_CLOSURE: &str = "a `let` inside a closure owns its value";
+const CHANGED: &str = "the name is changed later, so it owns its value";
+const WHOLE: &str = "a `let` of a whole variable is a second value, not a second name";
+const PLACE_CHANGES: &str = "what it reads may change while the name lives";
+
+impl Emitter<'_> {
+    /// Records the copy a `let slot = init` emitted as `T name = text;`
+    /// makes, when `init` names a place holding a heap value.
+    pub(crate) fn note_let_copy(&mut self, slot: usize, init: &Expr, text: &str) {
+        let place = matches!(
+            init.kind,
+            ExprKind::Field(..) | ExprKind::Index(..) | ExprKind::Unwrap(_, false)
+        );
+        let whole = matches!(init.kind, ExprKind::Local(s) if !self.locals()[s].name.is_empty())
+            || matches!(init.kind, ExprKind::Global(_));
+        if init.ty.is_scalar()
+            || matches!(init.ty, Ty::Fn(..))
+            || !(place || whole)
+            || text.starts_with("std::move(")
+        {
+            return;
+        }
+        let why = if self.closure_id.is_some() {
+            IN_CLOSURE
+        } else if self.facts.stores((self.fn_id, false, slot)) > 1 {
+            CHANGED
+        } else if whole {
+            WHOLE
+        } else {
+            PLACE_CHANGES
+        };
+        self.copies.push(Copied::Let(init.span, why));
+    }
+
+    /// Records a closure capturing the heap value `name` by value.
+    pub(crate) fn note_capture_copy(&mut self, cid: usize, non_scalar: bool, name: &str) {
+        if non_scalar {
+            self.copies
+                .push(Copied::Capture(cid, name.to_string(), KEPT));
+        }
+    }
+}
+
+/// Each copy as the span of its source, what is copied and why.
+pub(crate) fn copy_sites(
+    program: &cpl_ir::Program,
+    copies: &[Copied],
+) -> Vec<(cpl_diag::Span, String, &'static str)> {
+    let mut at = std::collections::BTreeMap::new();
+    let mut visit = |e: &Expr| {
+        if let ExprKind::Closure(cid) = e.kind {
+            at.entry(cid).or_insert(e.span);
+        }
+    };
+    cpl_ir::walk::deep_exprs(&program.setup, &mut visit);
+    cpl_ir::walk::deep_exprs(&program.main, &mut visit);
+    for f in &program.fns {
+        cpl_ir::walk::deep_exprs(&f.body, &mut visit);
+    }
+    for c in &program.closures {
+        cpl_ir::walk::deep_exprs(&c.body, &mut visit);
+    }
+    let mut sites: Vec<_> = copies
+        .iter()
+        .filter_map(|c| match c {
+            Copied::Let(span, why) => Some((*span, String::new(), *why)),
+            Copied::Capture(cid, name, why) => {
+                Some((*at.get(cid)?, format!("`{name}` captured by value"), *why))
+            }
+        })
+        .collect();
+    sites.sort_by_key(|(span, what, _)| (span.start, what.clone()));
+    sites.dedup_by(|a, b| a.0 == b.0 && a.1 == b.1);
+    sites
+}

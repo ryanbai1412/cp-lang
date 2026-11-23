@@ -176,6 +176,14 @@ fn prepared(program: &cpl_ir::Program, target: &Target) -> cpl_ir::Program {
     program
 }
 
+/// Each heap value the judge build's C++ for `program` copies: the span
+/// of the source that is copied, what it is and why the copy must own it.
+pub fn explain_copies(program: &cpl_ir::Program) -> Vec<(cpl_diag::Span, String, &'static str)> {
+    let target = Target::default();
+    let program = prepared(program, &target);
+    emit::Emitter::new(&program, &target).copies()
+}
+
 /// [`emit`] for a judge.
 pub fn emit_for(
     program: &cpl_ir::Program,

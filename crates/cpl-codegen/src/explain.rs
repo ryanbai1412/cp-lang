@@ -17,6 +17,24 @@ pub fn report(path: &str, text: &str, program: &cpl_ir::Program) -> String {
     let view_ops = explain_views(text, program);
     let sunk = explain_sunk(text, program);
     let hashed = explain_hashed(program);
+    let copies = crate::explain_copies(program);
+    if !copies.is_empty() {
+        let _ = writeln!(
+            stdout,
+            "Copies for {path} (judge build; every other heap read is a reference):"
+        );
+        for (span, what, why) in &copies {
+            let (line, col) = line_col(text, *span);
+            let shown = match what.is_empty() {
+                true => text
+                    .get(span.start as usize..span.end as usize)
+                    .unwrap_or("")
+                    .to_string(),
+                false => what.clone(),
+            };
+            let _ = writeln!(stdout, "  [copy] {line}:{col}  {shown} -> {why}");
+        }
+    }
     if !hashed.is_empty() {
         let _ = writeln!(stdout, "Tables stored as hash tables for {path}:");
         for ty in &hashed {
@@ -36,7 +54,7 @@ pub fn report(path: &str, text: &str, program: &cpl_ir::Program) -> String {
         }
     }
     if entries.is_empty() && view_ops.is_empty() {
-        if dropped.is_empty() && sunk.is_empty() && hashed.is_empty() {
+        if dropped.is_empty() && sunk.is_empty() && hashed.is_empty() && copies.is_empty() {
             let _ = writeln!(stdout, "{path}: no closure or fn-typed sites");
         }
         not_shown_yet(stdout);

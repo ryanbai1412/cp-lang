@@ -344,3 +344,34 @@ fn walking_a_grouped_map_names_each_entry_without_copying() {
         "`out.get(k) == None` must not copy the entry: {out}"
     );
 }
+
+#[test]
+fn explain_names_each_copy_and_why_it_owns_its_value() {
+    let source = concat!(
+        "let rows = [[1, 2], [3, 4]]\n",
+        "fn f(rows: List<List<Int>>) -> Int:\n",
+        "    let row = rows[1]\n",
+        "    var own = rows[0]\n",
+        "    own.push(5)\n",
+        "    row.len + own.len\n",
+        "fn keep(xs: List<Int>) -> (Int -> Int):\n",
+        "    i => xs[i]\n",
+        "print(f(rows) + keep(rows[0])(1))\n",
+    );
+    let mut db = cpl_check::Database::new();
+    db.set_file("t.cp", source);
+    let program = cpl_ir::lower(&db.analyze("t.cp").expect("set")).expect("lowers");
+    let report = crate::explain::report("t.cp", source, &program);
+    assert!(
+        report.contains("[copy] 4:15  rows[0] -> the name is changed later"),
+        "{report}"
+    );
+    assert!(
+        report.contains("`xs` captured by value -> the closure may be kept"),
+        "{report}"
+    );
+    assert!(
+        !report.contains("[copy] 3:"),
+        "a lent `let row` is no copy: {report}"
+    );
+}

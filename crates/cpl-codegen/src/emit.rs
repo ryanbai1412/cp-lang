@@ -111,6 +111,8 @@ pub(crate) struct Emitter<'p> {
     /// Non-escaping closures passed to call-only parameters; immutable non-scalar
     /// captures can be borrowed by reference instead of deep-copied.
     pub borrow_closures: BTreeSet<usize>,
+    /// Each non-scalar value the C++ copies, for `cpl explain`.
+    pub copies: Vec<crate::lend::Copied>,
     /// Which of the packed optionals (`cpl::OptPos`, `cpl::OptInt`, ...)
     /// the file names, as bits.
     pub niche_types: std::cell::Cell<u8>,
@@ -245,6 +247,7 @@ impl<'p> Emitter<'p> {
             devirt: crate::devirt::Devirt::collect(program),
             direct: BTreeSet::new(),
             borrow_closures: BTreeSet::new(),
+            copies: Vec::new(),
             niche_types: std::cell::Cell::new(0),
             used: BTreeSet::new(),
             top_names,
@@ -626,6 +629,12 @@ impl<'p> Emitter<'p> {
     /// The whole file.
     pub fn file(mut self, name: &str, source: Option<&str>) -> String {
         self.write(name, source)
+    }
+
+    /// The copies [`Emitter::file`] writes, each with where and why.
+    pub fn copies(mut self) -> Vec<(cpl_diag::Span, String, &'static str)> {
+        self.write("", None);
+        crate::lend::copy_sites(self.program, &self.copies)
     }
 
     /// [`Emitter::file`], with the profiled statements' spans.
