@@ -1,0 +1,23 @@
+---
+title: Coin ways
+description: "Level B. Teaches counting DP over Mod<P>: unbounded coins, loop order and += on a modular table."
+level: B
+chapter: 10
+teaches: "`[0..=x]Z` table, `Mod<P>` `+=`, loop order"
+---
+
+You have n coin values (1 ≤ n ≤ 100, 1 ≤ cᵢ ≤ 10⁶, all different) and unlimited coins of each. Count the ways to make the sum x (1 ≤ x ≤ 10⁶), where the order of coins doesn't matter, modulo 10⁹ + 7.
+
+**Input:** n and x, then the n values. **Output:** one integer.
+
+| Input | Output |
+|---|---|
+| `3 5`<br/>`1 2 5` | `4` |
+
+<Judge id="coin-ways">
+
+- `ways[s]` counts the ways to make s. With `type Z = Mod<1_000_000_007>`, the table is `[0..=x]Z` and `+=` reduces for you; see [`Mod`](/docs/ref/std/mod).
+- Put the coin loop outside and the sum loop inside, going up: each way is then counted once, in coin order. With the loops swapped you'd count orderings, which is a different problem.
+- Compare [Knapsack](/learn/practice/knapsack), where the sum loop goes down because each item is used at most once.
+
+</Judge>

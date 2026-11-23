@@ -1,0 +1,22 @@
+---
+title: Ancestor jump
+description: "Level C. Teaches Rooted.ancestor: the k-th ancestor as ?V, with no binary-lifting table to write."
+level: C
+chapter: 9
+teaches: "`Rooted.ancestor(v, k)`, `?V`, `if let ... else`"
+---
+
+A tree has n vertices (1 ≤ n ≤ 2·10⁵), rooted at vertex 1. Answer q queries (1 ≤ q ≤ 2·10⁵): each gives a vertex v and k (0 ≤ k ≤ 2·10⁵); print the vertex k steps above v, or −1 if v has fewer than k ancestors. The 0th ancestor of v is v.
+
+**Input:** n and q, then n − 1 lines `u v`, then q lines `v k`. **Output:** q lines.
+
+| Input | Output |
+|---|---|
+| `5 3`<br/>`1 2`<br/>`1 3`<br/>`3 4`<br/>`4 5`<br/>`5 2`<br/>`5 4`<br/>`2 0` | `3`<br/>`-1`<br/>`2` |
+
+<Judge id="ancestor-jump">
+
+- Walking up k steps per query is O(nq) on a path. `Rooted.new(Graph.undirected(es), V(1))` builds the tree once, and `t.ancestor(v, k)` jumps; see [trees](/docs/ref/std/tree).
+- It returns a `?V`: `None` when the jump goes past the root. A `V` and `-1` are different types, so `?? -1` doesn't compile; print with `if let p = t.ancestor(v, k): print(p)` and `else: print(-1)`.
+
+</Judge>

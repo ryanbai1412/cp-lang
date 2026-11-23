@@ -28,12 +28,14 @@ Solve these in the editor on each page. Your code is judged in the browser again
 | [Budget window](/learn/practice/budget-window) | B | a sliding window | 7 |
 | [Window maximum](/learn/practice/window-max) | B | `Window(max)`, `push`, `pop`, `all` | 7 |
 | [Talk schedule](/learn/practice/talk-schedule) | B | `sorted(by:)` on records, greedy by earliest end | 7 |
+| [Few kinds](/learn/practice/few-kinds) | C | two pointers, `Counter`, `while` | 7 |
 | [Prime ranges](/learn/practice/prime-ranges) | B | `std.math.Sieve`, prefix counts | 8 |
 | [Range minimum with updates](/learn/practice/range-min) | C | `SegTree(min, a)`, `set`, `fold(l..=r)` | 8 |
 | [Zero-sum stretches](/learn/practice/zero-sum) | C | `a.scan(+)`, cuts, `Counter` | 8 |
 | [Inversions](/learn/practice/inversions) | C | `Fenwick<V, Int>`, `add`, `fold(x..)` | 8 |
 | [Choose](/learn/practice/choose) | B | `type Z = Mod<1_000_000_007>`, `Comb<Z>(limit)`, `choose` | 8 |
 | [Range add, range minimum](/learn/practice/range-add-min) | D | `SegTree(min, a, act: add)`, `apply(l..=r, x)`, `fold` | 8 |
+| [Xor stretches](/learn/practice/xor-stretches) | C | running `^=`, `Counter`, prefix trick | 8 |
 | [Fewest hops](/learn/practice/fewest-hops) | B | a vertex domain, reading edges, `bfs` | 9 |
 | [Maze walk](/learn/practice/maze-walk) | B | a grid as a graph, `adj4` | 9 |
 | [Friend groups](/learn/practice/friend-groups) | B | `Dsu<V>`, `unite` returning whether it merged, `size` | 9 |
@@ -44,6 +46,7 @@ Solve these in the editor on each page. Your code is judged in the browser again
 | [Strong groups](/learn/practice/strong-groups) | C | `scc(g)`, `let (domain C, comp) = ...`, `C.len` | 9 |
 | [Tree distance](/learn/practice/tree-distance) | C | `Rooted.new`, `lca`, `depth` | 9 |
 | [Two teams](/learn/practice/two-teams) | B | `two_color(g)`, `?[V]Bool`, `!= None` | 9 |
+| [Ancestor jump](/learn/practice/ancestor-jump) | C | `Rooted.ancestor(v, k)`, `?V`, `if let ... else` | 9 |
 | [Fewest coins](/learn/practice/fewest-coins) | B | a DP over `?Int` | 10 |
 | [Stepping stones](/learn/practice/stepping-stones) | B | a 1-D DP table, `min=` | 10 |
 | [Edit steps](/learn/practice/edit-steps) | C | a 2-D DP table over prefixes | 10 |
@@ -51,5 +54,6 @@ Solve these in the editor on each page. Your code is judged in the browser again
 | [Longest increasing subsequence](/learn/practice/increasing-run) | C | `a.lis()`, `strict:`, `.len` | 10 |
 | [Common subsequence](/learn/practice/common-subsequence) | B | 2D table `[0..=s.len, 0..=t.len]Int`, `if ... else` as a value | 10 |
 | [Round trip](/learn/practice/round-trip) | D | bitmask DP, `[0..1 << n, T]?Int`, `min=` on `None` | 10 |
+| [Coin ways](/learn/practice/coin-ways) | B | `[0..=x]Z` table, `Mod<P>` `+=`, loop order | 10 |
 | [Best stretch](/learn/practice/best-stretch) | B | a linear scan checked by stress | 11 |
 | [Parity pick](/learn/practice/parity-pick) | A | `@!multitest`, `any`, `yes` | 11 |

@@ -1,0 +1,23 @@
+---
+title: Xor stretches
+description: "Level C. Teaches prefix xor with a Counter: count stretches with a given xor in one pass."
+level: C
+chapter: 8
+teaches: "running `^=`, `Counter`, prefix trick"
+---
+
+You are given n numbers (1 ≤ n ≤ 2·10⁵, 0 ≤ aᵢ ≤ 10⁹) and k (0 ≤ k ≤ 10⁹). Count the non-empty stretches of consecutive numbers whose xor is k.
+
+**Input:** n and k, then the n numbers. **Output:** one integer.
+
+| Input | Output |
+|---|---|
+| `5 3`<br/>`1 2 3 0 3` | `6` |
+
+<Judge id="xor-stretches">
+
+- Let `acc` be the xor of everything read so far. The stretch ending here has xor k exactly when it starts after an earlier prefix whose xor was `acc ^ k`.
+- Count earlier prefixes in a `Counter<Int, Int>`, starting with the empty prefix: `seen[0] += 1`. Then for each x, `acc ^= x`, add `seen.get(acc ^ k)`, and record `acc`.
+- [Zero-sum stretches](/learn/practice/zero-sum) is the same idea with `+`.
+
+</Judge>
