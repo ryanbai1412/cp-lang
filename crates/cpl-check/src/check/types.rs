@@ -1,6 +1,6 @@
 //! Resolving written types, and building the `Def` of a declaration.
 
-use super::pattern::{domain_binding, pattern_types};
+use super::pattern::{domain_binding, typed_pattern};
 use super::*;
 use crate::def::DomainInfo;
 use crate::ty::{human_int, Param};
@@ -944,7 +944,11 @@ impl<'a> Checker<'a> {
                 match domain_binding(pat) {
                     // `let LIM = 100`: a capitalized name bound to a value.
                     Some(name) => value(name, value_ty.clone()),
-                    None => pattern_types(pat, &value_ty, &mut value),
+                    None => {
+                        let mut payload =
+                            |path: &[ast::Name], ty: &Ty| self.variant_payload(path, ty);
+                        typed_pattern(pat, &value_ty, &mut payload, &mut value)
+                    }
                 }
                 if let Some(ty) = ty {
                     own_domains(ty, &mut |name| {

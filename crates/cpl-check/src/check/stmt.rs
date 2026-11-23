@@ -467,20 +467,7 @@ impl<'a> Checker<'a> {
                 }
             }
             PatternKind::Variant { path, args } => {
-                if self.some_pattern(path) {
-                    let inner = match ty {
-                        Ty::Optional(inner) => (**inner).clone(),
-                        _ => Ty::Unknown,
-                    };
-                    if let Some(arg) = args.first() {
-                        self.bind(arg, &inner, mutable, keyword);
-                    }
-                    return;
-                }
-                let fields = match path.last().and_then(|n| self.global(&n.text)) {
-                    Some(def) => def.payload_at(ty),
-                    None => Vec::new(),
-                };
+                let fields = self.variant_payload(path, ty);
                 for (i, arg) in args.iter().enumerate() {
                     let ty = fields.get(i).cloned().unwrap_or(Ty::Unknown);
                     self.bind(arg, &ty, mutable, keyword);

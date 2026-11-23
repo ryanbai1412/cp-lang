@@ -5,11 +5,22 @@ use super::*;
 use cpl_syntax::ast::{self, Pattern, PatternKind};
 
 pub(crate) fn pattern_types(pat: &ast::Pattern, ty: &Ty, f: &mut dyn FnMut(&str, Ty)) {
+    typed_pattern(pat, ty, &mut |_, _| Vec::new(), f)
+}
+
+/// [`pattern_types`], with `payload` giving the types a variant pattern
+/// (`Some(y)`, `Node(l, r)`) matched against a value of type `ty` holds.
+pub(crate) fn typed_pattern(
+    pat: &ast::Pattern,
+    ty: &Ty,
+    payload: &mut dyn FnMut(&[ast::Name], &Ty) -> Vec<Ty>,
+    f: &mut dyn FnMut(&str, Ty),
+) {
     use ast::PatternKind as P;
     match &pat.kind {
         P::Name(name) => f(name, ty.clone()),
         P::Domain(name) => f(&name.text, Ty::Domain(name.text.clone())),
-        P::Var(inner) => pattern_types(inner, ty, f),
+        P::Var(inner) => typed_pattern(inner, ty, payload, f),
         P::Tuple(items) => {
             let mut renames: Vec<(String, String)> = Vec::new();
             for (i, item) in items.iter().enumerate() {
@@ -34,7 +45,7 @@ pub(crate) fn pattern_types(pat: &ast::Pattern, ty: &Ty, f: &mut dyn FnMut(&str,
                         }
                         f(name, Ty::Domain(name.to_string()));
                     }
-                    None => pattern_types(item, &item_ty, f),
+                    None => typed_pattern(item, &item_ty, payload, f),
                 }
             }
         }
@@ -48,7 +59,14 @@ pub(crate) fn pattern_types(pat: &ast::Pattern, ty: &Ty, f: &mut dyn FnMut(&str,
                     Ty::Error => Ty::Error,
                     _ => Ty::Unknown,
                 };
-                pattern_types(item, &item_ty, f);
+                typed_pattern(item, &item_ty, payload, f);
+            }
+        }
+        P::Variant { path, args } => {
+            let fields = payload(path, ty);
+            for (i, arg) in args.iter().enumerate() {
+                let ty = fields.get(i).cloned().unwrap_or(Ty::Unknown);
+                typed_pattern(arg, &ty, payload, f);
             }
         }
         _ => {}
@@ -97,6 +115,20 @@ pub(crate) fn name_spans(pat: &Pattern, is_var: bool, out: &mut Vec<(Span, bool)
 impl Checker<'_> {
     /// Binds the names a refutable pattern takes apart: `let ... else`, or an
     /// arm like `(Some(lo), Some(hi)) if lo < hi`.
+    /// The types the variant `path` holds when matched against a `ty`.
+    pub(crate) fn variant_payload(&mut self, path: &[ast::Name], ty: &Ty) -> Vec<Ty> {
+        if self.some_pattern(path) {
+            return vec![match ty {
+                Ty::Optional(inner) => (**inner).clone(),
+                _ => Ty::Unknown,
+            }];
+        }
+        match path.last().and_then(|n| self.global(&n.text)) {
+            Some(def) => def.payload_at(ty),
+            None => Vec::new(),
+        }
+    }
+
     pub(crate) fn bind_refutable(
         &mut self,
         pat: &Pattern,

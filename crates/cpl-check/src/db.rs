@@ -1560,7 +1560,10 @@ fn stmt_decls(stmt: &ast::Stmt, out: &mut Vec<Decl>) {
                     }
                 }
             }
-            ast::PatternKind::Record { .. } => pat.parts().for_each(|item| pattern(item, out)),
+            // `let Some(y) = x else: ...` and `let (var a, b) = ...` bind what they hold.
+            ast::PatternKind::Record { .. }
+            | ast::PatternKind::Variant { .. }
+            | ast::PatternKind::Var(_) => pat.parts().for_each(|item| pattern(item, out)),
             _ => {}
         }
     }
