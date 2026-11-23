@@ -777,6 +777,18 @@ fn symmetric_writes_from_noip18p4_and_noi07p1() {
 }
 
 #[test]
+fn test_count_loop_only_when_the_count_comes_first() {
+    // corpus/problems/coci20c6p2: queries after the graph are not test cases.
+    let queries = "let n: Int = read()\nlet q: Int = read()\nfor _ in 0..q:\n    let x: Int = read()\n    print(x + n)\n";
+    assert_eq!(taste_codes(queries), Vec::<&str>::new());
+    // A `return` inside would end one case under the divider, every case here.
+    let early = "let t: Int = read()\nfor _ in 0..t:\n    let k: Int = read()\n    if k == 0: return\n    print(k)\n";
+    assert_eq!(taste_codes(early), Vec::<&str>::new());
+    let solve = "let sieve = [1, 2]\nlet t: Int = read()\nfor _ in 1..=t:\n    solve()\nfn solve():\n    let k: Int = read()\n    print(k + sieve.len)\n";
+    assert_eq!(fixed(solve), "let sieve = [1, 2]\n@!multitest\nsolve()\nfn solve():\n    let k: Int = read()\n    print(k + sieve.len)\n");
+}
+
+#[test]
 fn prefix_fix_never_calls_the_fn_it_is_in() {
     // corpus/problems/ccc01s5: `starts_with` written by hand; `s.starts_with(head)`
     // inside it would call itself.

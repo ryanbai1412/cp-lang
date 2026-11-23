@@ -44,6 +44,7 @@ mod sentinel_scalar;
 mod shapes;
 mod spelled;
 mod taste;
+mod test_count;
 mod types;
 mod while_pop;
 
@@ -69,6 +70,7 @@ pub(crate) fn run(file: &File, config: &Config) -> Vec<Finding> {
     findings.extend(answers::check(file));
     findings.extend(pops::check(file));
     findings.extend(while_pop::check(file));
+    findings.extend(test_count::check(file));
     findings.extend(ceil::check(file));
     findings.extend(euclid::check(file));
     findings.extend(reverse::check(file));

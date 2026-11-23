@@ -1,0 +1,5 @@
+code = "L0593"
+level = "warn"
+group = "idiom"
+title = "Test cases looped by hand"
+summary = "`let t = read()` then `for _ in 0..t:` around the program: `@!multitest`"
