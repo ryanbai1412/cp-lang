@@ -594,7 +594,7 @@ uv run scripts/conformance-matrix.py --check || fail "matrix gate failed; see ab
 uv run scripts/conformance-widths.py --check || fail "spec/conformance/widths/ is stale; run scripts/conformance-widths.py"
 uv run scripts/spec-xref.py --check || fail "a rule id names no rule in spec/core; see above"
 uv run scripts/spec-std-signatures.py --check || fail "a spec/lib chapter and std disagree on a return type; see above"
-uv run scripts/spec-decisions-explained.py --max 14 || fail "a decision cited in spec/ has no handbook explanation; see above"
+uv run scripts/spec-decisions-explained.py --max 13 || fail "a decision cited in spec/ has no handbook explanation; see above"
 
 step "conformance traits: every claimed trait method has a case or a gap line"
 uv run scripts/conformance-traits.py --check || fail "trait gate failed; see above"

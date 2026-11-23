@@ -204,7 +204,7 @@ So `-x ** 2` is `-(x ** 2)`, `not a == b` is `not (a == b)`, and
 
 - `/` and `%` are Euclidean: `%` is never negative and
   `a == (a / b) * b + a % b`, so `7 / -2 == -3` and `7 % -2 == 1`. For a
-  positive divisor `/` is floor division (decision 24, decision 347). (R01.5.2)
+  positive divisor `/` is floor division (decision 347). (R01.5.2)
 - Chained comparisons keep Python's meaning, each operand evaluated
   once, but only when every link points the same way: `0 <= i < j <= n`
   is legal; `a < b > c` and any chain containing `==` or `!=` is an error
