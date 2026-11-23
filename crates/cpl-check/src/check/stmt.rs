@@ -1090,7 +1090,7 @@ impl<'a> Checker<'a> {
                     (&declared, &init_ty, init, fills)
                 {
                     let name = self.quote(pat.span);
-                    self.expect_fits(init_ty, declared, init, |c, got, want| {
+                    self.expect_moves(init_ty, declared, init, |c, got, want| {
                         format!(
                             "`{name}` is declared {}, but `{}` is {}",
                             want.with_article(),
@@ -1700,7 +1700,7 @@ impl<'a> Checker<'a> {
                         self.error(codes::TYPE_MISMATCH, value.span, message);
                     }
                 } else if *op == AssignOp::Set && !not_assignable {
-                    self.expect_fits(&value_ty, &target_ty, value, |c, got, want| {
+                    self.expect_moves(&value_ty, &target_ty, value, |c, got, want| {
                         format!(
                             "`{}` is {}, but `{}` is {}",
                             c.quote(target.span),

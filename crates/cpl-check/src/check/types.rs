@@ -1605,25 +1605,8 @@ impl<'a> Checker<'a> {
             Ty::Str => Some("Str"),
             _ => None,
         };
-        if let Some(name) = impl_key {
-            if self
-                .global(&crate::def::impl_name(Some(trait_name), name))
-                .is_some()
-            {
-                return true;
-            }
-            let impl_traits: Vec<String> = self
-                .env
-                .impls(name)
-                .into_iter()
-                .filter_map(|(t, _)| t)
-                .collect();
-            if impl_traits
-                .iter()
-                .any(|t| t.split('<').next().unwrap_or(t) == trait_name)
-            {
-                return true;
-            }
+        if impl_key.is_some_and(|name| self.has_impl(name, trait_name)) {
+            return true;
         }
         match trait_name {
             "Eq" | "Ord" | "Hash" => self.derives_structural(ty, trait_name, seen),
@@ -1754,7 +1737,45 @@ impl<'a> Checker<'a> {
         }
     }
 
-    /// True when `ty` can be passed to `print(...)`.
+    /// `expect_fits` for a move into a binding or place: an array's range
+    /// elements don't widen, as that rewrites every cell (R04.4.24).
+    pub(crate) fn expect_moves(
+        &mut self,
+        got: &Ty,
+        want: &Ty,
+        at: &Expr,
+        message: impl FnOnce(&Self, &Ty, &Ty) -> String,
+    ) -> bool {
+        if let (Ty::Array { elem: ge, .. }, Ty::Array { elem: we, .. }) = (got, want) {
+            if matches!(**ge, Ty::Range { .. }) && we.is_int() && ge != we {
+                let msg = message(self, got, want);
+                let help = format!(
+                    "convert each cell: `{}.map(x => {we}(x))`",
+                    self.quote(at.span)
+                );
+                if let Some(diag) = self.error(codes::TYPE_MISMATCH, at.span, msg) {
+                    diag.help = Some(help);
+                }
+                return false;
+            }
+        }
+        self.expect_fits(got, want, at, message)
+    }
+
+    /// Is there a written `impl trait_name for name`?
+    fn has_impl(&mut self, name: &str, trait_name: &str) -> bool {
+        self.global(&crate::def::impl_name(Some(trait_name), name))
+            .is_some()
+            || self
+                .env
+                .impls(name)
+                .into_iter()
+                .filter_map(|(t, _)| t)
+                .any(|t| t.split('<').next().unwrap_or(&t) == trait_name)
+    }
+
+    /// True when `ty` can be passed to `print(...)`: a written `impl Show`
+    /// is its print hook, else it prints field by field.
     /// When `allow_none` is true (`print(x, none: "...")`), `?T` is printable if `T` is.
     pub(crate) fn implements_print(&mut self, ty: &Ty, allow_none: bool) -> bool {
         let mut seen = Vec::new();
@@ -1792,7 +1813,7 @@ impl<'a> Checker<'a> {
                 .all(|(_, t)| self.derives_print(t, allow_none, seen)),
             Ty::Array { elem, .. } => self.derives_print(elem, allow_none, seen),
             Ty::Named { name, args } => {
-                if seen.iter().any(|s| s == name) {
+                if seen.iter().any(|s| s == name) || self.has_impl(name, "Show") {
                     return true;
                 }
                 if name == "List" && args.len() == 1 {

@@ -208,3 +208,24 @@ fn reversing_a_let_offers_the_view() {
     assert!(d[0].help.as_deref().unwrap().ends_with("`s.rev`"), "{d:?}");
     assert!(d[0].fixes.iter().any(|f| f.edits[0].1 == "var"), "{d:?}");
 }
+
+#[test]
+fn a_written_show_is_the_print_hook_whatever_the_fields() {
+    let src = "struct B(neg: Bool, v: Int)\nimpl Show for B:\n    fn show(a) = if a.neg: \"-{a.v}\" else: \"{a.v}\"\nprint(B(neg: true, v: 3))\n";
+    let d = check(src);
+    assert!(d.is_empty(), "{:?}", messages(&d));
+}
+
+#[test]
+fn an_arrays_range_elements_do_not_widen_on_a_move() {
+    let d = one("let xs: [3]1..=9 = [1, 2, 3]\nvar d: [3]Int = xs\nprint(d)\n");
+    assert_eq!(
+        d.message,
+        "`d` is declared a [3]Int, but `xs` is a [3]1..=9"
+    );
+    assert_eq!(
+        d.help.as_deref(),
+        Some("convert each cell: `xs.map(x => Int(x))`")
+    );
+    assert!(check("var a: [3]0..=9 = [3].filled(0)\nprint(a)\n").is_empty());
+}
