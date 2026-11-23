@@ -145,7 +145,7 @@ const BOUNDS: [Bound; 4] = [
     ("entry_copies", entry_copies, 0),
     // Measured when the ratchet began: snapshots taken before a change
     // (`old_s = self.state`) and temporaries copied out of places.
-    ("deep_copies", deep_copies, 157),
+    ("deep_copies", deep_copies, 111),
 ];
 
 /// The `.cp` files one directory down from each root: the corpus

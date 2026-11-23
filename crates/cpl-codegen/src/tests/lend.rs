@@ -375,3 +375,35 @@ fn explain_names_each_copy_and_why_it_owns_its_value() {
         "a lent `let row` is no copy: {report}"
     );
 }
+
+#[test]
+fn a_let_of_a_list_set_again_before_any_read_takes_it() {
+    let taken = cpp(concat!(
+        "struct S:\n",
+        "    var ks: List<Int>\n",
+        "    var vs: List<Int>\n",
+        "fn grow(mut s: S):\n",
+        "    let old_k = s.ks\n",
+        "    let old_v = s.vs\n",
+        "    s.ks = List.filled(4, 0)\n",
+        "    s.vs = List.filled(4, 0)\n",
+        "    for i in 0..old_k.len: s.ks[i] = old_k[i] + old_v[i]\n",
+        "var s = S(ks: [1, 2], vs: [3, 4])\n",
+        "grow(mut s)\n",
+        "print(s.ks)\n",
+    ));
+    assert!(taken.contains("old_k = std::move("), "{taken}");
+    assert!(taken.contains("old_v = std::move("), "{taken}");
+    let read_first = cpp(concat!(
+        "struct S:\n",
+        "    var ks: List<Int>\n",
+        "fn grow(mut s: S):\n",
+        "    let old_k = s.ks\n",
+        "    print(s.ks.len)\n",
+        "    s.ks = List.filled(4, 0)\n",
+        "    print(old_k)\n",
+        "var s = S(ks: [1, 2])\n",
+        "grow(mut s)\n",
+    ));
+    assert!(!read_first.contains("old_k = std::move("), "{read_first}");
+}

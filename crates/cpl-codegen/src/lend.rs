@@ -998,3 +998,90 @@ pub(crate) fn copy_sites(
     sites.dedup_by(|a, b| a.0 == b.0 && a.1 == b.1);
     sites
 }
+
+impl Emitter<'_> {
+    /// `std::move(text)` for a `let` of a heap variable (or a field path on
+    /// one) the statements after it set again before anything reads it:
+    /// `let old_k = ks; ks = List.filled(..)` takes the list, not a copy.
+    pub(crate) fn take_if_overwritten(&mut self, init: &Expr, text: String) -> String {
+        let taken = std::mem::take(&mut self.moves_last);
+        match taken && !init.ty.is_scalar() && !text.starts_with("std::move(") {
+            true => format!("std::move({text})"),
+            false => text,
+        }
+    }
+}
+
+/// A variable and the fields read on it, outermost first: `self.ks`.
+fn path_of(e: &Expr) -> Option<((bool, usize), Vec<usize>)> {
+    match &e.kind {
+        ExprKind::Local(s) => Some(((false, *s), Vec::new())),
+        ExprKind::Global(g) => Some(((true, *g), Vec::new())),
+        ExprKind::Field(base, f) => path_of(base).map(|(root, mut fields)| {
+            fields.push(*f);
+            (root, fields)
+        }),
+        _ => None,
+    }
+}
+
+fn place_path(p: &Place) -> Option<((bool, usize), Vec<usize>)> {
+    match &p.kind {
+        PlaceKind::Local(s) => Some(((false, *s), Vec::new())),
+        PlaceKind::Global(g) => Some(((true, *g), Vec::new())),
+        PlaceKind::Field(base, f) => place_path(base).map(|(root, mut fields)| {
+            fields.push(*f);
+            (root, fields)
+        }),
+        _ => None,
+    }
+}
+
+/// Whether `stmt` may read or change the variable path `path`, or leave
+/// the block early: anything but `let`s and stores that stay off it.
+fn touches(stmt: &Stmt, (root, fields): &((bool, usize), Vec<usize>)) -> bool {
+    let block = Block {
+        stmts: vec![stmt.clone()],
+    };
+    let (mut uses, mut elsewhere, mut opaque) = (0usize, 0usize, false);
+    walk::deep_exprs(&block, &mut |e| match &e.kind {
+        ExprKind::Local(s) if (false, *s) == *root => uses += 1,
+        ExprKind::Global(g) if (true, *g) == *root => uses += 1,
+        ExprKind::Field(base, f) if fields.first().is_some_and(|f0| f0 != f) => {
+            elsewhere +=
+                usize::from(path_of(base).is_some_and(|(r, fs)| r == *root && fs.is_empty()));
+        }
+        ExprKind::Call(..) | ExprKind::CallExpr(..) | ExprKind::Closure(_) => opaque = true,
+        _ => {}
+    });
+    let stored = match stmt {
+        Stmt::Let(..) | Stmt::Expr(_) => false,
+        Stmt::Assign(place, _, _) => place_path(place)
+            .map_or(walk::root(place) == *root, |(r, fs)| {
+                r == *root && fs.iter().zip(fields).all(|(a, b)| a == b)
+            }),
+        _ => true,
+    };
+    opaque || stored || uses != elsewhere
+}
+
+/// Whether the variable path `init` names is set whole by one of the
+/// statements after its `let` before any of them reads it, changes it or
+/// leaves: the `let` may take its value instead of copying it.
+pub(crate) fn overwritten_before_read(init: &Expr, rest: &[Stmt]) -> bool {
+    let Some(path) = path_of(init) else {
+        return false;
+    };
+    for stmt in rest {
+        if let Stmt::Assign(place, AssignOp::Set, value) = stmt {
+            if place_path(place).as_ref() == Some(&path) {
+                let value = Stmt::Expr(value.clone());
+                return !touches(&value, &path);
+            }
+        }
+        if touches(stmt, &path) {
+            return false;
+        }
+    }
+    false
+}

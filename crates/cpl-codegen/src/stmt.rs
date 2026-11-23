@@ -1492,6 +1492,7 @@ impl<'p> Emitter<'p> {
                         }
                     }
                 };
+                let text = self.take_if_overwritten(init, text);
                 // A kept comprehension's list stays in its buffer: name it.
                 if let ExprKind::Local(built) = init.kind {
                     if reused && self.reused.contains(&built) && built_in(whole, built) {
@@ -1838,6 +1839,9 @@ fn found_entry<'p>(cond: &'p Expr, then: &Block) -> Option<(&'p Expr, &'p Expr)>
 /// block declared and never mentions again. The next pass of a loop
 /// declares `y` afresh, so nothing can read it after the store.
 fn last_read(block: &Block, k: usize) -> bool {
+    if let Stmt::Let(_, Some(init)) = &block.stmts[k] {
+        return crate::lend::overwritten_before_read(init, &block.stmts[k + 1..]);
+    }
     let Stmt::Assign(place, AssignOp::Set, value) = &block.stmts[k] else {
         return false;
     };

@@ -170,7 +170,8 @@ pub(crate) struct Emitter<'p> {
     /// Copies of a map entry that is stored straight back (see
     /// [`Emitter::mark_moved_entry`]): the entry is moved out instead.
     pub moved_entry: BTreeSet<usize>,
-    /// The statement being written stores a local read for the last time.
+    /// The statement being written stores a local read for the last time,
+    /// or `let`s a variable the next statements set before reading it.
     pub moves_last: bool,
     pub pushers: BTreeMap<usize, usize>,
     /// Set while the `cpl_each_f` form of a fn is written: the slot of its list.
