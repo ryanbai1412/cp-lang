@@ -345,6 +345,8 @@ impl Playground {
             stamp: Some(profile.stamp()),
             thread_stack: profile.thread_stack,
             windows: profile.os == cpl_judge::Os::Windows,
+            // `cpl build`'s default: a judge build checks what hand-written C++ does.
+            checks: cpl_codegen::Checks::None,
             ..cpl_codegen::Target::default()
         };
         let aim = profile.aim();
