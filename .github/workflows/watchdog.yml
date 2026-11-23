@@ -1,0 +1,31 @@
+name: watchdog
+# Alerts when main's CI queue or edge stops moving (scripts/ci-watchdog.sh).
+# Any ci run ending, superseded ones included, wakes it, so it runs even when
+# GitHub drops the cron.
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_run:
+    workflows: [ci]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+  issues: write
+concurrency:
+  group: watchdog
+  cancel-in-progress: false
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: scripts
+      - name: Check main CI and edge are moving
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: scripts/ci-watchdog.sh

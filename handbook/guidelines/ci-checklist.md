@@ -165,3 +165,12 @@ The browser build matches the native compiler.
 ## Changes
 
 - 2026-11-23: first version, from the infra charter and landing process.
+
+### ci/R23
+
+An open "main CI stalled" issue exists exactly while no main run has
+finished in 30 min or edge is over 2 hours old.
+*Why:* a stuck queue or a stale edge is silent otherwise, and every lane
+lands blind until someone notices. *Example:* a hung job holds main's run
+slot for 40 min; the issue opens at 30 and closes when the next run ends.
+*Enforced by:* `scripts/ci-watchdog.sh`, `.github/workflows/watchdog.yml`.
