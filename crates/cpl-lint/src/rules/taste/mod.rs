@@ -20,11 +20,13 @@ mod range_tree;
 mod search;
 mod stdlib_algo;
 mod string_algo;
+mod text;
 use forms::{AccLoop, Form};
 use range_tree::*;
 use search::*;
 use stdlib_algo::*;
 use string_algo::*;
+use text::*;
 
 pub(crate) fn check(file: &File) -> Vec<Finding> {
     let mut rule = Taste {
@@ -837,7 +839,14 @@ impl<'a> Taste<'a> {
                 format!("a search loop: only the first write to `{name}` counts")
             },
         )
-        .with_help(if sentinel {
+        .with_help(if let Some(text) = &fix {
+            let keep = if sentinel {
+                format!(", or keep the `?Int` `first` returns instead of the sentinel `{init_text}`")
+            } else {
+                String::new()
+            };
+            format!("write `{text}`; one call says the search, with no flag to set or `break` to forget{keep}")
+        } else if sentinel {
             format!(
                 "say the search: `first(.. for .. in .. if ..) ?? {init_text}`, or keep the `?Int` it returns instead of the sentinel `{init_text}`"
             )
@@ -892,7 +901,11 @@ impl<'a> Taste<'a> {
                 )
             }
             ("false", "true") => ("any", format!("{}.any({p} => {c})", receiver(&it))),
-            ("true", "false") => ("all", format!("{}.all({p} => not ({c}))", receiver(&it))),
+            ("true", "false") => {
+                let holds =
+                    negated(cond, |e| self.ntext(e.span)).unwrap_or_else(|| format!("not ({c})"));
+                ("all", format!("{}.all({p} => {holds})", receiver(&it)))
+            }
             _ => return None,
         })
     }
@@ -1755,9 +1768,17 @@ impl Visitor for Uses<'_> {
     }
 }
 
-/// `a < b` as `a >= b`, and so on for one comparison.
+/// `a < b` as `a >= b`, and so on for one comparison; `not x` as `x`.
 fn negated<'e>(pred: &'e Expr, text: impl Fn(&'e Expr) -> &'e str) -> Option<String> {
-    let ExprKind::Compare { first, rest } = &walk::unparen(pred).kind else {
+    let pred = walk::unparen(pred);
+    if let ExprKind::Unary {
+        op: UnOp::Not,
+        expr,
+    } = &pred.kind
+    {
+        return Some(text(expr).to_string());
+    }
+    let ExprKind::Compare { first, rest } = &pred.kind else {
         return None;
     };
     let [(op, rhs)] = rest.as_slice() else {
@@ -1901,74 +1922,6 @@ fn has_try(stmt: &Stmt) -> bool {
     let mut tries = Tries(false);
     walk::walk_stmt(&mut tries, stmt);
     tries.0
-}
-
-/// `0..` as `(0..)`, so a following `if` is not read as its end.
-fn iter_text<'s>(iter: &Expr, text: &'s str) -> std::borrow::Cow<'s, str> {
-    match &iter.kind {
-        ExprKind::Range { hi: None, .. } => format!("({text})").into(),
-        _ => text.into(),
-    }
-}
-
-/// A start value no element beats: `Int.MAX`, `INF`, `1_000_000_000`, `-1e18`.
-fn sentinel(init: &str) -> bool {
-    let digits: String = init.chars().filter(|c| c.is_ascii_digit()).collect();
-    ["MAX", "MIN", "INF", "inf", "e18", "e9", "**"]
-        .iter()
-        .any(|w| init.contains(w))
-        || (digits.len() >= 9
-            && init
-                .trim_start_matches('-')
-                .chars()
-                .all(|c| c.is_ascii_digit() || c == '_'))
-}
-
-/// `it` as the receiver of a method call.
-fn receiver(it: &str) -> std::borrow::Cow<'_, str> {
-    let plain = !it.contains("..")
-        && it
-            .chars()
-            .all(|c| c.is_ascii_alphanumeric() || "_.".contains(c));
-    if it.starts_with('(') || plain {
-        it.into()
-    } else {
-        format!("({it})").into()
-    }
-}
-
-/// The values a `for p in it` loop visits: `it`, mapped and filtered as written.
-fn sequence(it: &str, p: &str, v: &str, cond: Option<&str>) -> String {
-    let mut seq = receiver(it).into_owned();
-    if let Some(c) = cond {
-        seq = format!("{seq}.filter({p} => {c})");
-    }
-    if v != p {
-        seq = format!("{seq}.map({p} => {v})");
-    }
-    seq
-}
-
-/// An initial value `sum` can start from: a number or a `.zero`.
-fn numeric(init: &str) -> bool {
-    init.ends_with(".zero")
-        || init
-            .trim_start_matches('-')
-            .starts_with(|c: char| c.is_ascii_digit())
-}
-
-/// `text` mentions the identifier `name`.
-fn mentions(text: &str, name: &str) -> bool {
-    words(text).any(|w| w == name)
-}
-
-fn words(text: &str) -> impl Iterator<Item = &str> {
-    text.split(|c: char| !(c.is_alphanumeric() || c == '_'))
-        .filter(|w| !w.is_empty())
-}
-
-fn idents(src: &str) -> HashSet<&str> {
-    words(src).collect()
 }
 
 /// A test passed to a fold: a one-parameter lambda or a name.

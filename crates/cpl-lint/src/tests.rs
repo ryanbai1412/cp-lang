@@ -738,7 +738,7 @@ fn search_loop_with_a_flag_becomes_any_or_all_from_noi09p1() {
     assert_eq!(taste_codes(src), ["L0501"]);
     assert!(fixed(src).contains("let moved = adj.any(a => a > 1)"));
     let all = "let grp = [1, 2]\nvar ok = true\nfor m in grp:\n    if m < 0:\n        ok = false\n        break\nprint(ok)\n";
-    assert!(fixed(all).contains("let ok = grp.all(m => not (m < 0))"));
+    assert!(fixed(all).contains("let ok = grp.all(m => m >= 0)"));
     // A loop that does more than search is flagged without a rewrite.
     let more = "let grp = [1, 2]\nvar ok = true\nfor m in grp:\n    print(m)\n    if m < 0:\n        ok = false\n        break\nprint(ok)\n";
     let found = only(more);
@@ -1782,7 +1782,7 @@ fn newcomer_fixes_still_check() {
         let out = fixed(src);
         assert!(crate::fix_tests::checker_errors(&out).is_empty(), "{out}");
     }
-    assert!(fixed(all).contains("(0..n / 2).all(i => not (s[i] != s[i + 1]))"));
+    assert!(fixed(all).contains("(0..n / 2).all(i => s[i] == s[i + 1])"));
     assert!(fixed(any).contains("let ok = a.any(x => x > 1)"));
 }
 
@@ -1799,7 +1799,7 @@ fn search_loops_newcomers_write_from_corpus_newcomer() {
     // n03: a flag with no `break` is still `all`.
     let flag = "let a = [1, 2]\nvar ok = true\nfor i in 0..1:\n    if a[i] > a[i + 1]:\n        ok = false\nprint(yes(ok))\n";
     assert!(
-        fixed(flag).contains("let ok = (0..1).all(i => not (a[i] > a[i + 1]))"),
+        fixed(flag).contains("let ok = (0..1).all(i => a[i] <= a[i + 1])"),
         "{}",
         fixed(flag)
     );
@@ -1922,4 +1922,25 @@ fn a_push_loop_that_walks_backwards_is_rev() {
     // Any other index is a plain comprehension.
     let other = "let n: 1..=100 = read()\nlet a: [0..n]Int = read()\nvar b: List<Int> = []\nfor i in 0..n - 1:\n    b.push(a[n - 2 - i])\nprint(b)\n";
     assert!(!fixed(other).contains("rev"), "{}", fixed(other));
+}
+
+#[test]
+fn search_loop_help_is_the_exact_call_from_ports() {
+    // corpus/problems/cco24p2: the help names the call the fix writes, with the test flipped.
+    let flipped = "let a = [1, 2]\nlet b = [2, 1]\nvar same = true\nfor i in 0..2:\n    if a[i] != b[1 - i]: same = false\nprint(same)\n";
+    let helps: Vec<String> = lint(flipped, &Config::default())
+        .into_iter()
+        .filter_map(|d| d.help)
+        .collect();
+    assert!(
+        helps
+            .iter()
+            .any(|h| h.starts_with("write `(0..2).all(i => a[i] == b[1 - i])`")),
+        "{helps:?}"
+    );
+    // A postfix receiver takes the method bare; `not not x` is `x`.
+    let src = "let adj = [[1], [0]]\nlet vis = [true, false]\nvar has = false\nfor w in adj[0]:\n    if w == 1: has = true\nvar seen = true\nfor u in 0..2:\n    if not vis[u]: seen = false\nprint(has, seen)\n";
+    let fixed = fixed(src);
+    assert!(fixed.contains("adj[0].any(w => w == 1)"), "{fixed}");
+    assert!(fixed.contains("(0..2).all(u => vis[u])"), "{fixed}");
 }
