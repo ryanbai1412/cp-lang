@@ -1,0 +1,49 @@
+# The builtin floor: classifying `ir_builtin_names`
+
+2026-11-22. Rule (Q1/Q3 default): the compiler keeps intrinsics only for
+storage, I/O, bits and numeric primitives; everything else is a std body
+any user library could have written. `python3 scripts/debt-ratchet.py
+--list ir_builtin_names` lists the names string-matched in
+`crates/cpl-ir/src/lower/call.rs` (receiver arms included). A name leaves
+the count only when no arm matches it, so a name shared by two arms
+(`count` with `len`, `all` with `range`) needs both gone.
+
+Measured 89 before this note; 88 after `choose2` moved (below).
+
+| Class | Stays? | Names |
+|---|---|---|
+| Storage: types and constructors | intrinsic | `Bool` `Char` `F64` `I128` `Int` `U64` `Str` `List` `Map` `Set` `HashMap` `HashSet` `Some` `some` `MAX` `MIN` `zero` `one` `K` |
+| Storage: access to lists, ranges, positions | intrinsic | `len` `size` `is_empty` `at` `try_at` `from_idx` `nth` `first` `last` `swap` `copy` `keys` `values` `start` `end` `bounds` `cuts` `before` `after` `wrap` `range` `count` |
+| I/O | intrinsic | `print` `read` `read_line` `read_output` `debug` `flush` `ask` `rand` |
+| Bits | intrinsic | `popcount` `ctz` `clz` `bit_width` `bit_ceil` `bit` |
+| Numeric primitives | intrinsic | `abs` `min` `max` `sqrt` `floor` `ceil` `round` `trunc` `atan2` |
+| Derived: std body exists | move | `isqrt` (math) `sum` `prod` `all` `any` `sort` `sorted` `pairs` `runs` `span` `first_ge` `first_gt` `last_le` (seq) `rev` `prefix` `adjacency` `AddAction` (algebra, prefix, graph) |
+| Derived: std body missing | move, body first | `minmax` `counts` `shuffle` `laws_hold` `AffineAction` `AssignAction` `FlipAction` |
+| Moved | done | `choose2` |
+
+Totals: 64 intrinsic, 25 derived (1 moved). Floor target for v0.3: 64.
+
+## How a name moves
+
+`choose2` is the template. Delete its arms in `cpl-check`
+(`check/known.rs`, `prelude.rs` `value`/`value_doc`/`VALUE_NAMES`) and in
+`cpl-ir/src/lower/call.rs`; add the name to `spec/std/prelude.cp` so
+programs that used it without a `use` still compile; add a conformance
+case; run conformance before and after. Interpreter and C++ then run the
+same std body. The builtin had drifted from it: `choose2(-3)` was 6, the
+documented answer is 0.
+
+## Order and the perf gate
+
+1. `isqrt`, `minmax`: O(1), no loop; check one generated C++ file.
+2. `sum` `prod` `all` `any` `rev` `pairs`: loops; `just bench-zero-cost`
+   before and after, same machine, and the corpus suite (`just
+   bench-corpus`) for p50/max.
+3. `sort` `sorted` `first_ge` `first_gt` `last_le` `runs` `span`
+   `prefix` `counts` `adjacency`: hot in ports; move only with a bench
+   row showing no regression over the builtin.
+4. The `*Action` types and `laws_hold`: owned by stdlib's algebra work;
+   the body must exist in `spec/std/algebra.cp` first.
+
+A move that regresses the gate stays a builtin and is logged as debt
+here with the measured ratio.
