@@ -82,3 +82,13 @@ for b in 0..2:
     for i in sh[b].get(3) ?? [9]:
         walked += i
 print(walked)
+fn summed(xs: List<Int>) -> Int:
+    var s = 0
+    for x in xs: s += x
+    s
+var by_key = Map<Int, List<Int>>()
+by_key[1] = [2, 3]
+print(summed(by_key.get(1) ?? []), summed(by_key.get(5) ?? [7]))
+var sorted_in = Map<Int, List<Int>>()
+for v in 0..4: sorted_in[v % 2] = (sorted_in.get(v % 2) ?? []) + [v]
+print(summed(sorted_in.get(0) ?? []), summed(sorted_in.get(1) ?? []), sorted_in.len)

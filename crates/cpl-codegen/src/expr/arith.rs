@@ -50,6 +50,14 @@ impl<'p> Emitter<'p> {
                 )
             }
             BinOp::Coalesce => {
+                if self.read_in_place.remove(&(e as *const Expr as usize)) {
+                    if let ExprKind::Builtin(Builtin::MapGet, got) = &l.kind {
+                        self.need("map_or");
+                        let (m, k) = (self.expr(&got[0]).text, self.expr(&got[1]).text);
+                        let d = self.expr(r).text;
+                        return Code::primary(format!("cpl::map_or({m}, {k}, {d})"));
+                    }
+                }
                 // An optional default keeps the result optional: `a` itself.
                 // A plain default gives what is inside `a`, which is still
                 // an optional when `a` is an optional of optionals.

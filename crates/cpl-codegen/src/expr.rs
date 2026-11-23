@@ -1210,6 +1210,9 @@ impl<'p> Emitter<'p> {
             }
             ExprKind::Builtin(op, args) => {
                 let operands: Vec<&Expr> = args.iter().collect();
+                if *op == Builtin::ListConcat {
+                    self.mark_read_in_place(&operands, None, &[]);
+                }
                 self.sequence(&operands, &e.ty, |this, codes| {
                     let code = this.builtin(e, *op, args, codes);
                     match op {
@@ -1740,6 +1743,7 @@ impl<'p> Emitter<'p> {
                 }
             }
         }
+        let marked = self.mark_read_in_place(&operands, Some(id), &lent);
         let result = self.sequence(&operands, &e.ty, |this, codes| {
             let mut codes = codes.into_iter();
             let mut texts = Vec::with_capacity(args.len());
@@ -1819,6 +1823,7 @@ impl<'p> Emitter<'p> {
         for cid in borrowed {
             self.borrow_closures.remove(&cid);
         }
+        marked.iter().for_each(|m| _ = self.read_in_place.remove(m));
         result
     }
 

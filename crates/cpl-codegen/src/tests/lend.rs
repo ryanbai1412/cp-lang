@@ -206,3 +206,32 @@ fn a_map_entry_read_through_a_closure_and_a_domain_block_is_never_copied() {
         "a closure that writes the map keeps the copy: {copied}"
     );
 }
+
+#[test]
+fn a_map_entry_passed_to_a_fn_is_read_in_place_unless_the_fn_writes_the_map() {
+    let read = body(concat!(
+        "fn summed(xs: List<Int>) -> Int:\n",
+        "    var s = 0\n",
+        "    for x in xs: s += x\n",
+        "    s\n",
+        "var m = Map<Int, List<Int>>()\n",
+        "m[1] = [2]\n",
+        "print(summed(m.get(1) ?? []))\n",
+    ));
+    assert!(
+        read.contains("cpl::map_or(m, 1, ") && !read.contains("map_get("),
+        "the entry or the default is passed by reference: {read}"
+    );
+    let written = body(concat!(
+        "var m = Map<Int, List<Int>>()\n",
+        "fn bumped(xs: List<Int>) -> Int:\n",
+        "    m[9] = [1]\n",
+        "    xs.len\n",
+        "m[1] = [2]\n",
+        "print(bumped(m.get(1) ?? []))\n",
+    ));
+    assert!(
+        written.contains("cpl::map_get(m, 1)") && !written.contains("map_or("),
+        "a fn that writes the map gets a copy: {written}"
+    );
+}

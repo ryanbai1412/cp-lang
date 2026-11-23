@@ -1439,6 +1439,15 @@ template <class M, class Q> Lent<typename M::mapped_type> map_lend(const M& m, c
 ",
     },
     Piece {
+        name: "map_or",
+        needs: &[],
+        code: "\
+template <class M, class Q> const typename M::mapped_type& map_or(const M& m, const Q& k, const typename M::mapped_type& d) {
+    auto it = m.find(k); return it == m.end() ? d : it->second;
+}
+",
+    },
+    Piece {
         name: "map_take",
         needs: &[],
         code: "\

@@ -160,6 +160,9 @@ pub(crate) struct Emitter<'p> {
     /// The `Do` block being written gives a place it does not own: its
     /// lambda returns `decltype(auto)`, so each `give` is written `return (x);`.
     pub give_ref: bool,
+    /// `m.get(k) ?? d` expressions read only within their full expression,
+    /// written as `cpl::map_or` (see [`Emitter::mark_read_in_place`]).
+    pub read_in_place: BTreeSet<usize>,
     /// The statement being written stores a local read for the last time.
     pub moves_last: bool,
     pub pushers: BTreeMap<usize, usize>,
@@ -265,6 +268,7 @@ impl<'p> Emitter<'p> {
             sunk: crate::scope::sunk_params(program),
             last_use_call: false,
             give_ref: false,
+            read_in_place: BTreeSet::new(),
             moves_last: false,
             pushers: BTreeMap::new(),
             sinks: BTreeMap::new(),

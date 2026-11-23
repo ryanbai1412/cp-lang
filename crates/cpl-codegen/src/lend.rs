@@ -206,6 +206,62 @@ impl<'p> Emitter<'p> {
         code
     }
 
+    /// Marks each `m.get(k) ?? d` among `operands` to be written
+    /// `cpl::map_or(m, k, d)`: a reference to the entry, or to the default
+    /// temporary, that lives to the end of the full expression. Only when
+    /// nothing the expression runs can change `m`: no operand stores to it,
+    /// calls a fn value or makes a closure, and `callee` and the places
+    /// passed `mut` leave it alone. Gives the marks it made.
+    pub(crate) fn mark_read_in_place(
+        &mut self,
+        operands: &[&Expr],
+        callee: Option<usize>,
+        muts: &[(bool, usize)],
+    ) -> Vec<usize> {
+        let leaves = |this: &Self, e: &Expr, root: (bool, usize)| {
+            let effects = Effects::of_expr(e);
+            let mut opaque = false;
+            walk::deep_expr(e, &mut |x| {
+                opaque |= matches!(x.kind, ExprKind::Closure(_) | ExprKind::CallExpr(..))
+            });
+            let writes = |f: &usize| root.0 && this.summaries[*f].writes.contains(&root.1);
+            !opaque
+                && !effects.calls.iter().any(writes)
+                && !if root.0 {
+                    &effects.globals
+                } else {
+                    &effects.locals
+                }
+                .contains(&root.1)
+        };
+        let mut marked = Vec::new();
+        for &value in operands {
+            let ExprKind::Binary(BinOp::Coalesce, got, _) = &value.kind else {
+                continue;
+            };
+            let ExprKind::Builtin(cpl_ir::Builtin::MapGet, args) = &got.kind else {
+                continue;
+            };
+            let Some(root) = args.first().and_then(crate::stmt::place_root) else {
+                continue;
+            };
+            let callee_writes =
+                callee.is_some_and(|f| root.0 && self.summaries[f].writes.contains(&root.1));
+            if value.ty.is_scalar()
+                || got.ty == value.ty
+                || muts.contains(&root)
+                || callee_writes
+                || !operands.iter().all(|e| leaves(self, e, root))
+            {
+                continue;
+            }
+            let key = value as *const Expr as usize;
+            self.read_in_place.insert(key);
+            marked.push(key);
+        }
+        marked
+    }
+
     /// The map and key of `let t = m.get(k)` when `t` is the temporary an
     /// `if let` or `while let` tests, the value is no scalar, and nothing
     /// can change `m` while `t` lives: `t` may then point into `m`.

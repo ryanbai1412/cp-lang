@@ -42,9 +42,9 @@ fn block_copies(cpp: &str) -> usize {
 /// The most copies of each kind the corpus may build to, with why the
 /// ones left are left.
 const BOUNDS: [(&str, fn(&str) -> usize, usize); 2] = [
-    // `var cols = m.get(r) ?? []` then pushed to (a copy it needs);
-    // `m[k] = (m.get(k) ?? []) + [v]`; and `?? []` passed to a fn.
-    ("map_get_copies", map_get_copies, 5),
+    // `var cols = m.get(r) ?? []` then pushed to (a copy it needs) and
+    // `m[k] = (m.get(k) ?? []) + [v]`, an append to a copy.
+    ("map_get_copies", map_get_copies, 3),
     ("block_copies", block_copies, 0),
 ];
 
