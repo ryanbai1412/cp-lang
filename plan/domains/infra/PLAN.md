@@ -47,3 +47,5 @@ The detail behind [README.md](README.md). Dated 2026-11-22.
 | regen never ran skill-gen in CI (no `cpl` built) and one failing step stopped the rest | Done: regen builds `cpl`, runs every step, refreshes `pnpm-lock.yaml` | infra |
 | `os` and `debugger-loop` held the runners on every push; a hung job held main for 90 min | Done: `os` hourly, superseded runs cancel, 20 min job timeouts | infra |
 | Core-gate reds wait on a sheriff | An auto-revert job: a commit that turns the core gate red and stays red 15 min is reverted, with a note to its owner | infra |
+| A skill source changed without regenerating the bundled skill (stale `seq.md`, red checks) | Done on main by regen; owed: the pre-commit hook regenerates skill pages when `std/` or skill sources are staged | infra |
+| cf1943b stopped checking and nothing caught it | Done: `scripts/port-check.sh` ratchet over every port | infra |
