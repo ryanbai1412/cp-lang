@@ -16,13 +16,14 @@ impl<'a> Parser<'a> {
             return false;
         }
         let colon = self.span();
+        let ty = self.tokens[self.pos + 1].span.text(self.src);
         self.recovered(
             Diagnostic::error(
                 codes::EXPECTED_TOKEN,
                 colon,
                 "a return type follows `->` in CP Lang, not `:`",
             )
-            .with_help("write `fn f(x: Int) -> Int = x`")
+            .with_help(format!("the `:` becomes `->`: `-> {ty}`"))
             .with_fix("write `->`", colon, " ->"),
         );
         self.bump();
