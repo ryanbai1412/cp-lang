@@ -118,6 +118,8 @@ struct Capture {
         needs: &["out"],
         code: "\
 [[noreturn]] inline void fail(const char* why) { flush(); fputs(why, stderr); fputc('\\n', stderr); exit(3); }
+// A key outside a view's keys never reads the parent around it (R07.4.5).
+[[noreturn]] inline void key_fail(ll k, ll lo, ll n) { char why[96]; snprintf(why, sizeof why, \"key %lld is not one of the view's keys %lld..%lld\", k, lo, lo + n); fail(why); }
 ",
     },
     Piece {
@@ -1631,7 +1633,7 @@ struct StrView {
 inline StrView str_slice(StrView s, ll lo, ll hi) { return s.slice(lo, hi); }
 inline StrView str_rev(StrView s) noexcept { return s.reversed(); }
 inline ll key_lo(StrView s) noexcept { return s.k0; }
-inline ll key_pos(StrView s, ll k) noexcept { ll i = k - s.k0, n = (ll)s.size(); return i < 0 || i >= n ? -1 : (s.rev ? n - 1 - i : i); }
+inline ll key_pos(StrView s, ll k) { ll i = k - s.k0, n = (ll)s.size(); if (i < 0 || i >= n) key_fail(k, s.k0, n); return s.rev ? n - 1 - i : i; }
 inline ll pos_key(StrView s, ll p) noexcept { return s.k0 + (s.rev ? (ll)s.size() - 1 - p : p); }
 inline StrView key_slice(StrView s, ll lo, ll hi) { if (lo < s.k0 || hi < lo || hi > s.k0 + (ll)s.size()) fail(\"slice outside the string's keys\"); return StrView(s.sv.substr((size_t)(lo - s.k0), (size_t)(hi - lo)), s.rev, lo); }
 inline std::string to_str(StrView s) { return s.to_str(); }
@@ -1697,7 +1699,7 @@ template <class T> struct ListView {
 };
 template <class T> ListView<T> list_slice(ListView<T> v, ll lo, ll hi) { if (lo < 0 || hi < lo || (size_t)hi > v.n) fail(\"slice outside the list\"); size_t off = v.rev ? v.n - (size_t)hi : (size_t)lo; return ListView<T>(v.ptr + off, (size_t)(hi - lo), v.rev, v.k0 + (ll)off); }
 template <class T> ll key_lo(ListView<T> v) noexcept { return v.k0; }
-template <class T> ll key_pos(ListView<T> v, ll k) noexcept { ll i = k - v.k0, n = (ll)v.n; return i < 0 || i >= n ? -1 : (v.rev ? n - 1 - i : i); }
+template <class T> ll key_pos(ListView<T> v, ll k) { ll i = k - v.k0, n = (ll)v.n; if (i < 0 || i >= n) key_fail(k, v.k0, n); return v.rev ? n - 1 - i : i; }
 template <class T> ll pos_key(ListView<T> v, ll p) noexcept { return v.k0 + (v.rev ? (ll)v.n - 1 - p : p); }
 template <class T> ListView<T> key_slice(ListView<T> v, ll lo, ll hi) { if (lo < v.k0 || hi < lo || hi > v.k0 + (ll)v.n) fail(\"slice outside the list's keys\"); return ListView<T>(v.ptr + (lo - v.k0), (size_t)(hi - lo), v.rev, lo); }
 template <class T> ListView<T> list_slice(const std::vector<T>& v, ll lo, ll hi) { return list_slice(ListView<T>(v), lo, hi); }

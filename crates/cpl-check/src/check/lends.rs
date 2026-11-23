@@ -18,6 +18,7 @@
 //! which condition to state.
 
 use super::moves::{is_compound, nested_moves};
+use super::views::Keyed;
 use super::*;
 use crate::fx::HashSet;
 use cpl_syntax::ast::{self, Arg, BinOp, Block, CmpOp, Cond, Expr, ExprKind, Stmt, StmtKind};
@@ -119,10 +120,10 @@ pub(crate) struct Place {
 /// What a `let`-bound slice or row stands for.
 #[derive(Clone)]
 pub(crate) struct Lent {
-    kind: &'static str,
+    pub(super) kind: &'static str,
     root: String,
     root_mutable: bool,
-    read_only: bool,
+    pub(super) read_only: bool,
     steps: Vec<Step>,
 }
 
@@ -363,7 +364,7 @@ const ELSEWHERE: Span = Span {
 #[derive(Default)]
 pub(crate) struct Lends {
     /// Top-level `let`-bound views from earlier statements, by name.
-    global_views: HashMap<String, Lent>,
+    pub(super) global_views: HashMap<String, Lent>,
     facts: Vec<Fact>,
     holds: Vec<Hold>,
     /// Uses already reported as conflicting with a hold: `xs.push(x)` is
@@ -373,13 +374,18 @@ pub(crate) struct Lends {
     /// also a use of all of `a`.
     covered: HashSet<Span>,
     /// Expressions that made a lent view, with its kind: `slice`, `row`, or `reverse view`.
-    view_exprs: HashMap<Span, &'static str>,
+    pub(super) view_exprs: HashMap<Span, &'static str>,
     /// Expressions whose lent view is strictly read-only (`Str`/`List` slices and `.rev`).
-    view_readonly: HashSet<Span>,
+    pub(super) view_readonly: HashSet<Span>,
     /// Calls to projections, by the call's span.
     proj_calls: HashMap<Span, ProjCall>,
     /// `let`-bound views, by where the name is declared.
-    views: HashMap<Span, Lent>,
+    pub(super) views: HashMap<Span, Lent>,
+    /// Locals holding a slice or a run/window/chunk, by where the name is
+    /// declared (R07.4.5).
+    pub(super) keyed: HashMap<Span, Keyed>,
+    /// The same for top-level `let`s, by name.
+    pub(super) global_keyed: HashMap<String, Keyed>,
     /// The one statement where `lend` may stand: the `lend` of the
     /// projection being checked.
     lend_at: Option<Span>,
@@ -1343,44 +1349,6 @@ impl<'a> Checker<'a> {
 
     // --- lends bound by `let` ------------------------------------------------
 
-    /// The kind of lent view an expression is, if it is one.
-    pub(crate) fn view_kind(&self, e: &Expr) -> Option<&'static str> {
-        let e = unparen(e);
-        if let Some(kind) = self.lends.view_exprs.get(&e.span) {
-            return Some(kind);
-        }
-        match &e.kind {
-            ExprKind::Name(name) => match self.local(name) {
-                Some(local) => self.lends.views.get(&local.span).map(|lent| lent.kind),
-                None => self.lends.global_views.get(name).map(|lent| lent.kind),
-            },
-            _ => None,
-        }
-    }
-
-    /// True if `e` is a read-only lent view (`Str`/`List` slice or `.rev`).
-    pub(crate) fn is_readonly_view(&self, e: &Expr) -> bool {
-        let e = unparen(e);
-        if self.lends.view_readonly.contains(&e.span) {
-            return true;
-        }
-        match &e.kind {
-            ExprKind::Name(name) => match self.local(name) {
-                Some(local) => self
-                    .lends
-                    .views
-                    .get(&local.span)
-                    .is_some_and(|lent| lent.read_only),
-                None => self
-                    .lends
-                    .global_views
-                    .get(name)
-                    .is_some_and(|lent| lent.read_only),
-            },
-            _ => false,
-        }
-    }
-
     /// Brings the effect of an earlier top-level statement into the item
     /// about to be checked, `current`.
     pub(crate) fn replay(&mut self, replay: &Replay, current: &[Stmt]) {
@@ -1447,15 +1415,21 @@ impl<'a> Checker<'a> {
                 },
             ) => {
                 // The statement was checked, and reported, as its own item.
-                let found = self.quietly(|c| {
+                let (found, keyed) = self.quietly(|c| {
                     c.infer(init);
                     let ro = c.is_readonly_view(init);
-                    if let Some((k, p)) = c.view_kind(init).zip(c.place(init)) {
+                    let keyed = c.keyed_or_rev(init);
+                    let found = if let Some((k, p)) = c.view_kind(init).zip(c.place(init)) {
                         vec![(k, p, ro, false)]
                     } else {
                         c.extra_holds(init)
-                    }
+                    };
+                    (found, keyed)
                 });
+                match keyed {
+                    Some(keyed) => self.lends.global_keyed.insert(name.clone(), keyed),
+                    None => self.lends.global_keyed.remove(name),
+                };
                 // Its spans are positions in another item's text.
                 self.lends.view_exprs.clear();
                 self.lends.view_readonly.clear();
@@ -1816,6 +1790,11 @@ impl<'a> Checker<'a> {
             }
             return;
         };
+        if let Some(keyed) = self.keyed_or_rev(value) {
+            if let Some(decl) = self.local(name).map(|local| local.span) {
+                self.lends.keyed.insert(decl, keyed);
+            }
+        }
         let Some(place) = self.place(value) else {
             return;
         };

@@ -20,7 +20,7 @@ fn social_engineering(n: Int, edges: List<(Int, Int)>):
             chain(if friend[u]: [List<V>()] else: [], forest.children(u).filter_map(pair_up))
         )
         for pair in open.chunks(2) if pair.len == 2:
-            let path = pair[0] + [u] + pair[1].rev
+            let path = pair.first! + [u] + pair.last!.rev
             route[path.first!] = path
             route[path.last!] = path.rev
         open.len.is_odd().then(open.last! + [u])

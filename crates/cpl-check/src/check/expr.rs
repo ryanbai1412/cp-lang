@@ -2889,7 +2889,7 @@ impl<'a> Checker<'a> {
         if self.double_index(base, indices) {
             return Ty::Error;
         }
-        self.literal_slice_index(base, indices);
+        self.keyed_view_index(base, indices);
         if self.walked_not_indexed(base) {
             for index in indices {
                 self.infer(index);
@@ -4061,41 +4061,6 @@ impl Checker<'_> {
 }
 
 impl Checker<'_> {
-    /// R07.4.5: `w[0]` on a slice reads source key 0, not its first element.
-    fn literal_slice_index(&mut self, base: &Expr, indices: &[Expr]) {
-        let [index] = indices else {
-            return;
-        };
-        let ExprKind::Int(v) = crate::check::lends::unparen(index).kind else {
-            return;
-        };
-        if self.view_kind(base) != Some("slice") {
-            return;
-        }
-        let w = self.quote(base.span);
-        if let Ty::Array { index, .. } = self.quietly(|c| c.infer(base)) {
-            if let [Ty::Domain(d) | Ty::Pos(d)] = index.as_slice() {
-                let message = format!(
-                    "`{w}` is a slice of a `{d}` table, so it is indexed by `{d}`, not by the raw `Int` {v}"
-                );
-                if let Some(diag) = self.error(codes::WRONG_DOMAIN, indices[0].span, message) {
-                    diag.help = Some(format!(
-                        "index it with a `{d}`: `{w}[{d}({v})]`, or use `{w}.nth({v})!`"
-                    ));
-                }
-                return;
-            }
-        }
-        let message = format!(
-            "`{w}[{v}]` reads source key {v}: a slice keeps its source's keys, so this is not its element {v}"
-        );
-        self.sink.push(
-            Diagnostic::warning(codes::LITERAL_SLICE_INDEX, index.span, message).with_help(format!(
-                "write `{w}.nth({v})` (or `{w}.first!`) for the element by position, or `{w}.rebase` to count from 0"
-            )),
-        );
-    }
-
     /// R07.4.5: `for k in 0..w.len: w[k]` counts from 0 over a slice's keys.
     pub(crate) fn counter_over_slice(&mut self, iter: &Expr, span: cpl_diag::Span) {
         let ExprKind::Range {

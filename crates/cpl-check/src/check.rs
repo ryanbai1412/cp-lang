@@ -19,6 +19,7 @@ mod pattern;
 mod spelling;
 mod steps;
 mod stmt;
+mod views;
 pub(crate) use stmt::runs;
 mod types;
 

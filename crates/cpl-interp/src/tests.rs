@@ -663,7 +663,7 @@ var dp: [0..2](Int, Int) = (0, 0)
 for i in 0..2:
     dp[i] max= if i == 0: (5, 2) else: (3, 9)
 
-print(run_with_ref(), v[5], v[0], dp[0].0, dp[1].1)
+print(run_with_ref(), v.nth(0), v.nth(5), dp[0].0, dp[1].1)
 ";
     let (out, trap) = outcome(source, "");
     assert_eq!(trap, None);

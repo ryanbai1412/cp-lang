@@ -485,7 +485,7 @@ fn a_reversed_list_pays_only_for_the_view_parts_it_uses() {
     assert!(backward <= forward + 256, "{forward} -> {backward}");
     let plain = size("let ys = xs\nvar s = 0\nfor x in ys: s = s * 31 + x\nprint(s, ys[0])\n");
     let view = cpp(&format!(
-        "{read}let ys = xs.rev\nvar s = 0\nfor x in ys: s = s * 31 + x\nprint(s, ys[0])\n"
+        "{read}let ys = xs.rev\nvar s = 0\nfor x in ys: s = s * 31 + x\nprint(s, ys.nth(0))\n"
     ));
     assert!(view.len() <= plain + 3200, "{plain} -> {}", view.len());
     assert!(

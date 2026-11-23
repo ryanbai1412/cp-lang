@@ -104,7 +104,9 @@ impl Trap {
             codes::TODO_REACHED
         } else if m.contains(" is not in `") {
             codes::DOMAIN_CAST
-        } else if m.starts_with("index ") && m.contains("outside") {
+        } else if (m.starts_with("index ") && m.contains("outside"))
+            || (m.starts_with("key ") && m.contains("is not one of the view's keys"))
+        {
             codes::INDEX_OUT_OF_RANGE
         } else {
             codes::RUNTIME
@@ -4225,7 +4227,13 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 Value::Int(if op == Builtin::KeyPos {
                     let i = at - lo;
                     if i < 0 || i >= len {
-                        -1
+                        return trap(
+                            span,
+                            format!(
+                                "key {at} is not one of the view's keys {lo}..{}: `.nth(k)` reads by position",
+                                lo + len
+                            ),
+                        );
                     } else if rev {
                         len - 1 - i
                     } else {

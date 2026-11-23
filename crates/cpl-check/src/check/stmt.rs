@@ -1788,6 +1788,7 @@ impl<'a> Checker<'a> {
                 self.push_scope();
                 self.drop_facts_written(body, Some(pat));
                 self.bind(pat, &elem, steerable, "for");
+                self.note_pieces(pat, iter);
                 let mark = self.lend_mark();
                 self.hold_iterated(stmt, iter, &iter_ty);
                 let before = self.moved.clone();

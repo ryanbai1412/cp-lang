@@ -144,11 +144,11 @@ fn slice_and_reverse_views_are_readonly_and_cannot_outlive_mutated_base() {
     );
     assert_eq!(codes("var xs = [1, 2, 3, 4]\nxs.rev.sort()\n"), ["E0401"]);
     assert_eq!(
-        codes("let xs = [1, 2, 3, 4]\nxs[1..3][0] = 9\n"),
+        codes("let xs = [1, 2, 3, 4]\nxs[1..3][1] = 9\n"),
         ["E0401", "L0605"]
     );
     assert_eq!(
-        codes("var s = \"abcdef\"\ns[1..4][0] = 'x'\n"),
+        codes("var s = \"abcdef\"\ns[1..4][1] = 'x'\n"),
         ["E0401", "L0605"]
     );
 
@@ -175,7 +175,7 @@ fn slice_and_reverse_views_are_readonly_and_cannot_outlive_mutated_base() {
             "let a: [Node]Int = [Node] i => i.ord\n",
             "let t = Tree(a)\n",
             "let post = t.at.rev\n",
-            "print(post.len, post[1])\n",
+            "print(post.len, post.nth(1))\n",
         )),
         Vec::<&str>::new()
     );
@@ -185,7 +185,7 @@ fn slice_and_reverse_views_are_readonly_and_cannot_outlive_mutated_base() {
             "var a: [Node]Int = [Node] i => i.ord\n",
             "let v = a.rev\n",
             "a[Node.first!] = 9\n",
-            "print(v[1])\n",
+            "print(v.nth(1))\n",
         )),
         ["E0602"]
     );
@@ -714,7 +714,7 @@ fn a_failed_import_drops_only_its_names_from_the_prelude() {
 fn mutable_slice_views_lend_and_reject_aliasing() {
     // In-place mutation through a mutable slice of a `var` list or `[D]T` succeeds.
     assert_eq!(
-        codes("var xs = [4, 3, 2, 1]\nxs[1..3].sort()\nxs[1..3][0] = 9\nprint(xs)\n"),
+        codes("var xs = [4, 3, 2, 1]\nxs[1..3].sort()\nxs[1..3][1] = 9\nprint(xs)\n"),
         ["L0605"]
     );
     assert_eq!(
