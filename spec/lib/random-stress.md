@@ -79,8 +79,9 @@ fn brute(): ...
 for an interactive problem. Its `read()` reads the hidden test,
 `sol.send(x)` prints to the program and `sol.recv()` reads the program's
 next token at the expected type; a failing `assert` rejects the run.
-Under `@!multitest` it runs once per test, and the harness, not the
-interactor, sends the program the test count (R10.4). `cpl run` runs both sides with
+Under `@!multitest` the hidden test starts with the test count, which the
+harness, not the interactor, reads and sends the program (R10.4); the
+interactor then runs once per test and reads that test only. `cpl run` runs both sides with
 its input as the hidden test, and `cpl stress` generates the hidden test
 from the interactor's reads. The program side is ordinary I/O with
 `Wire()` (R10.4) (decision 375).

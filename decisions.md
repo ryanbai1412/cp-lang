@@ -8081,3 +8081,17 @@ tag move fatal again.
   mechanism; both needs are met by one trait and one existing context, and
   user libraries get the same powers as std.
 - **Reverse.** Drop `Into`, and give `Int(x)` a fixed list of core types.
+
+## 391. Rebuild round 28: interactive tests and checker slices (spec, 2026-11-23)
+
+- **Decision.** No new rule. Two silent holes get a sentence where the reader
+  looked: a multitest hidden test starts with the test count, which the harness
+  reads (H11), and `cpl test` on an `@interactor` file needs no `N.out` (H12).
+  A checker's `read()` follows its own reads over its test's slice of the
+  input, whatever shape the solution read it in (F02 is a tools bug against
+  R06.4.3, not a rule change). `position`/`find_map` (H05, H18) stay
+  unadded: `a.keys.find(i => a[i] == x)` (R07.8) and
+  `first_some(d => f(d).map(v => (d, v)))` compose from what exists.
+- **Why.** Adding a helper per search shape is what the design rules forbid
+  when two existing names already compose to it.
+- **Reverse.** Add `position` to std.seq if three more rounds reach for it.
