@@ -56,12 +56,8 @@ R09.5.3 no reject case
 R09.5.4 no reject case
 R10.3.6 no reject case
 R11.2.2 no accept case
-R11.2.4 no reject case
 R11.3.1 no reject case
 R11.4.3 no accept case
 R13.1.4 no reject case
 R13.2.9 no reject case
-R13.3.1 no reject case
-R13.3.2 no reject case
-R13.3.3 no reject case
 R13.3.5 no reject case
