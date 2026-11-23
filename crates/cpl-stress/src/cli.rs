@@ -399,6 +399,42 @@ pub fn report_json(
 }
 
 /// `1st`, `2nd`, `3rd`, `11th`.
+/// Where the solution and its alt part ways, as `cpl stress` and
+/// `cpl locate` print it.
+pub fn print_divergence(stdout: &mut dyn Write, d: &cpl_interp::trace::Divergence) {
+    let ordinal = ordinal(d.nth);
+    let _ = match d.name.split_once('(').filter(|_| d.call) {
+        Some((f, _)) => writeln!(
+            stdout,
+            "  first wrong call: `{}`, the {ordinal} call of `{f}`",
+            d.name
+        ),
+        None => writeln!(
+            stdout,
+            "  first differing value: `{}`, its {ordinal} value",
+            d.name
+        ),
+    };
+    for (who, side) in [("solution", &d.fast), ("brute", &d.brute)] {
+        let _ = match side {
+            Some((line, value)) => {
+                writeln!(stdout, "    {who:<8} {} = {value} at line {line}", d.name)
+            }
+            None => writeln!(
+                stdout,
+                "    {who:<8} never gives `{}` a {ordinal} value",
+                d.name
+            ),
+        };
+    }
+    if !d.inside.is_empty() {
+        let _ = writeln!(stdout, "    the solution's last steps in it:");
+        for (line, locals) in &d.inside {
+            let _ = writeln!(stdout, "      line {line}: {locals}");
+        }
+    }
+}
+
 fn ordinal(n: usize) -> String {
     let suffix = match (n % 10, n % 100) {
         (_, 11..=13) => "th",
@@ -804,39 +840,7 @@ pub fn run_with(
         }
     }
     match &explained {
-        Some(Ok(Some(d))) => {
-            let ordinal = ordinal(d.nth);
-            let _ = match d.name.split_once('(').filter(|_| d.call) {
-                Some((f, _)) => writeln!(
-                    stdout,
-                    "  first wrong call: `{}`, the {ordinal} call of `{f}`",
-                    d.name
-                ),
-                None => writeln!(
-                    stdout,
-                    "  first differing value: `{}`, its {ordinal} value",
-                    d.name
-                ),
-            };
-            for (who, side) in [("solution", &d.fast), ("brute", &d.brute)] {
-                let _ = match side {
-                    Some((line, value)) => {
-                        writeln!(stdout, "    {who:<8} {} = {value} at line {line}", d.name)
-                    }
-                    None => writeln!(
-                        stdout,
-                        "    {who:<8} never gives `{}` a {ordinal} value",
-                        d.name
-                    ),
-                };
-            }
-            if !d.inside.is_empty() {
-                let _ = writeln!(stdout, "    the solution's last steps in it:");
-                for (line, locals) in &d.inside {
-                    let _ = writeln!(stdout, "      line {line}: {locals}");
-                }
-            }
-        }
+        Some(Ok(Some(d))) => print_divergence(stdout, d),
         Some(Ok(None)) => {
             let _ = writeln!(
                 stdout,

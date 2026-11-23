@@ -35,6 +35,16 @@ pub struct Located {
 }
 
 pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u8 {
+    run_with(args, stdout, stderr, None)
+}
+
+/// [`run`], naming the wrong call of the part with `tracer` when given.
+pub fn run_with(
+    args: &[String],
+    stdout: &mut dyn Write,
+    stderr: &mut dyn Write,
+    tracer: Option<crate::cli::Tracer>,
+) -> u8 {
     let json = args.iter().any(|a| a == "--json");
     let rest: Vec<&str> = args
         .iter()
@@ -99,6 +109,10 @@ pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u
                     "`{}` disagrees with its alt `{}` on {shown}: line {line} is {ours:?}, with `{}` swapped in it is {theirs:?}",
                     l.part, l.alt, l.alt
                 );
+                let traced = tracer.and_then(|trace| trace(file, &text, false).ok());
+                if let Some(d) = traced.and_then(|traced| traced.divergence) {
+                    crate::cli::print_divergence(stdout, &d);
+                }
             }
         }
     }

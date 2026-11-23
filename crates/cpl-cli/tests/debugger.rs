@@ -579,3 +579,24 @@ fn with_no_cpp_compiler_the_loop_runs_in_the_interpreter() {
         "{report}"
     );
 }
+
+#[test]
+fn locate_names_the_wrong_call_of_the_part_that_disagrees() {
+    let path = program("locate-part", "part_planted.cp");
+    let input = path.with_file_name("one.in");
+    std::fs::write(&input, "1\n").unwrap();
+    let out = cpl(
+        &["locate".as_ref(), path.as_os_str(), input.as_os_str()],
+        b"",
+    );
+    let report = text(&out.stdout);
+    assert_eq!(out.status.code(), Some(1), "{report}{}", text(&out.stderr));
+    assert!(
+        report.contains("`tri` disagrees with its alt `tri_slow`"),
+        "{report}"
+    );
+    assert!(
+        report.contains("first wrong call: `tri(k: 1)`, the 1st call of `tri`"),
+        "{report}"
+    );
+}

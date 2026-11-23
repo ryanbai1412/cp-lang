@@ -95,3 +95,4 @@ Newest first: what landed (commit), evidence, next, blocked, requests from other
 - 2026-11-22: traced runs stop at `TraceConfig::time_limit` (VM trace ops, clock read every 4096): DAP and the stress rerun give up after 10 s instead of hanging (test `a_traced_run_that_never_ends_stops_at_its_time_limit`). Trace overhead not re-measured for this change.
 - 2026-11-22: a wrong `@alt(f)` call now shows the solution's last own steps in it (line and locals, up to 6), in text and as `explain.divergence.inside` in JSON (only when non-empty).
 - 2026-11-22: the trace time limit also covers the tree-walker (every block) and traced `while` loops that write nothing (a `Tick` trace point at the back edge). `trace_budget` now times each mode as the least of 7 runs.
+- 2026-11-22: `cpl locate` names the wrong call of the disagreeing part too (same printer as `cpl stress`; test `locate_names_the_wrong_call_of_the_part_that_disagrees`).
