@@ -448,10 +448,10 @@ fn check_json_reports_each_file_and_its_diagnostics() {
     assert_eq!(first.at(&["severity"]).as_str(), Some("error"));
     assert_eq!(first.at(&["start", "line"]).as_i64(), Some(2));
     assert_eq!(first.at(&["start", "col"]).as_i64(), Some(12));
-    assert_eq!(
-        cpl(&dir, &["check", "--json"]).status.code(),
-        Some(EXIT_USAGE.into())
-    );
+    // With no file named, the newest `.cp` file in the folder is checked.
+    let newest = cpl(&dir, &["check", "--json"]);
+    let json = cpl_json::parse(&text(&newest.stdout)).expect("JSON");
+    assert_eq!(json.at(&["files"]).as_array().unwrap().len(), 1);
 }
 
 #[test]
@@ -1058,4 +1058,32 @@ fn a_problem_name_without_cp_names_its_file() {
     assert_eq!(out.status.code(), Some(EXIT_USAGE.into()));
     assert!(text(&out.stderr)
         .starts_with("cpl: `a.cp` is a file, not a command: `cpl run a.cp` runs it"));
+}
+
+/// With no file named, a command reads the most recently edited `.cp` file
+/// in the folder (spec/tools/cli.md); with none there, it says what it needs.
+#[test]
+fn no_file_named_reads_the_newest_cp_file() {
+    let dir = scratch("newest");
+    let out = cpl(&dir, &["check"]);
+    assert_eq!(out.status.code(), Some(EXIT_USAGE.into()));
+    assert!(
+        text(&out.stderr).contains("needs a file"),
+        "{}",
+        text(&out.stderr)
+    );
+    std::fs::write(dir.join("a.cp"), "print(1)\n").unwrap();
+    std::thread::sleep(std::time::Duration::from_millis(20));
+    std::fs::write(dir.join("b.cp"), "print(2)\n").unwrap();
+    let out = cpl(&dir, &["check"]);
+    assert_eq!(
+        text(&out.stdout),
+        "b.cp: no errors\n",
+        "{}",
+        text(&out.stderr)
+    );
+    let out = cpl(&dir, &["run"]);
+    assert_eq!(text(&out.stdout), "2\n", "{}", text(&out.stderr));
+    let out = cpl(&dir, &["run", "--help"]);
+    assert!(text(&out.stdout).starts_with("usage: cpl run"));
 }

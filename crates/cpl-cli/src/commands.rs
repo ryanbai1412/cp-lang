@@ -553,7 +553,19 @@ pub(crate) fn file_names<'a>(command: &str, args: Vec<&'a str>) -> Vec<std::borr
             false => Cow::Borrowed(arg),
         }
     };
-    args.into_iter()
+    let takes_file = shape.starts_with("<file") || shape == "<problem>";
+    let names_file = |arg: &&str| {
+        let path = std::path::Path::new(arg);
+        !arg.starts_with('-')
+            && (arg.ends_with(".cp") || path.exists() || path.with_extension("cp").is_file())
+    };
+    let asks_help = args.iter().any(|arg| matches!(*arg, "-h" | "--help"));
+    let newest = match takes_file && !asks_help && !args.iter().any(names_file) {
+        true => newest_source(std::path::Path::new(".")),
+        false => None,
+    };
+    let named: Vec<Cow<'a, str>> = args
+        .into_iter()
         .enumerate()
         .map(|(i, arg)| {
             match shape.starts_with("<file") && !arg.starts_with('-') && (i == 0 || many) {
@@ -561,7 +573,20 @@ pub(crate) fn file_names<'a>(command: &str, args: Vec<&'a str>) -> Vec<std::borr
                 false => Cow::Borrowed(arg),
             }
         })
-        .collect()
+        .collect();
+    newest.map(Cow::Owned).into_iter().chain(named).collect()
+}
+
+/// The most recently edited `.cp` file in `dir`, the file a command that
+/// takes one reads when none is named (spec/tools/cli.md).
+pub(crate) fn newest_source(dir: &std::path::Path) -> Option<String> {
+    std::fs::read_dir(dir)
+        .ok()?
+        .filter_map(Result::ok)
+        .filter(|entry| entry.path().extension().is_some_and(|e| e == "cp"))
+        .filter_map(|entry| Some((entry.metadata().ok()?.modified().ok()?, entry.file_name())))
+        .max()
+        .map(|(_, name)| name.to_string_lossy().into_owned())
 }
 
 /// The first argument that looks like an option (`-x`, `--x`; a lone `-` is
