@@ -1,13 +1,12 @@
-// Codeforces 2152 B — Catching the Krug
-//
-// On `[0..=n] x [0..=n]`, the evader `(rk, ck)` moves orthogonally (L1 <= 1)
-// while the pursuer `(rd, cd)` moves in Chebyshev metric (Linf <= 1). Because
-// Chebyshev distance decouples across axes, the evader maximizes survival time
-// by fleeing to the far boundary on each axis where it leads the pursuer:
-// - If `rk < rd`, flee to `0` (pursuer needs `rd` steps to reach row `0`).
-// - If `rk > rd`, flee to `n` (pursuer needs `n - rd` steps to reach row `n`).
-// - If `rk == rd`, the pursuer matches every step on that axis (`dx = 0`).
-// The column axis is symmetric, and capture takes `max(dx, dy)` turns.
+// Source: Codeforces 2152B (Catching the Krug), https://codeforces.com/contest/2152/problem/B
+// Problem: on the (n+1) x (n+1) grid of cells 0..=n, n <= 1e9, the Krug (moves to a side
+//   neighbour or stays) starts at (rK, cK) and Doran (king moves or stays) at (rD, cD); the Krug
+//   moves first. Print the number of Doran's turns until he catches her under optimal play,
+//   or -1 if she survives forever. Multitest, t <= 1e4.
+// Solution: king distance splits by axis, so the Krug can only gain by running straight away
+//   from Doran on an axis where she is not level with him: to row 0 when rK < rD (Doran needs
+//   rD turns to get there), to row n when rK > rD (n - rD turns), 0 when level; columns
+//   likewise. The answer is the larger of the two axes, O(1); -1 is never printed.
 
 @!multitest
 let n: 1..=10 ** 9 = read()

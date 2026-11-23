@@ -1,10 +1,13 @@
-// Codeforces 2261 B — Adjacent Bitwise OR Raise
-//
-// An adjacent pair `(x, y)` that first differs at bit `d = bit_width(x ^ y) - 1`
-// can set all bits `0..=d` on the larger side, reaching `x | ((1 << (d + 1)) - 1)`.
-// Because `a[i] < 2^30`, `bit_width(x ^ y) <= 30`, so `1 << bit_width(...)`
-// never overflows. When all elements are equal (`x == y` everywhere), no pair
-// differs and the fallback `?? a[0]` returns the sole value.
+// Source: Codeforces 2261B (What's the Capital of France?),
+//   https://codeforces.com/contest/2261/problem/B
+// Problem: n <= 2e5 ratings 0 <= a_i <= 1e9 in a line; an operation on two adjacent unequal
+//   ratings raises the lower by 1. Print the largest bitwise OR of all ratings reachable.
+//   Multitest, sum n <= 2e5.
+// Solution: ratings stay within [min, max], so they keep the bits above d, the top bit where
+//   min and max differ, and the OR is at most those bits with every bit <= d set. Some adjacent
+//   pair differs at bit d, and raising its lower one to the shared high bits, 0 at d and all
+//   ones below reaches that bound. So take, over unequal adjacent (x, y), the max of
+//   x | (2^bit_width(x ^ y) - 1), or a[0] when all are equal; O(n).
 
 @!multitest
 let n: 1..=200_000 = read()

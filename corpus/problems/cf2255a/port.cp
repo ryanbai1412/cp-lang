@@ -1,10 +1,14 @@
-// Codeforces 2255 A — Circular Adjacent Pairs
-//
-// On a circle of `m = 2 * n` cells, a cell `i` counts when it is `'1'`
-// followed by `'1'` or `'0'` preceded by `'1'`. The input parameter `_k` is
-// read and unused because the parity counts of valid cells are invariant under
-// the shift parameter `k`. `(i - 1) % m` uses floor modulo, so `(0 - 1) % m == m - 1`
-// wraps cleanly around the circle.
+// Source: Codeforces 2255A (Hot Potatoes at the Fairy Warehouse),
+//   https://codeforces.com/contest/2255/problem/A
+// Problem: 2n leprechauns sit in a circle (n <= 1e5), odd numbers Red, even Blue; s marks who
+//   holds a potato. For k <= 1e9 rounds each holder keeps it or passes it clockwise if the next
+//   one held none at the round's start. Each team scores the other team's holders at the end;
+//   print both scores under optimal play. Multitest, sum n <= 1e5.
+// Solution: the optimal result does not depend on k (the code ignores it): it is the board
+//   after one round in which every free potato is passed on. A cell ends with a potato when it
+//   holds one and the next cell does too (blocked), or holds none and the previous one holds
+//   one. Count those cells by team, Red's score first (even leprechauns, odd 0-based indices),
+//   with indices taken mod 2n; O(n).
 
 @!multitest
 let (n, _k): (1..=200_000, 1..=10 ** 9) = read()

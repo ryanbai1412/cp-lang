@@ -1,11 +1,10 @@
-// Codeforces 2084 B — MIN = GCD
-//
-// Rearrange `a` so some prefix has `min == gcd` of the complementary suffix.
-// The global minimum `mn = a[p]` must sit in the prefix, so the suffix must
-// have `gcd == mn` — meaning every element in the suffix is a multiple of `mn`.
-// Including more multiples of `mn` can only decrease the `gcd` toward `mn`, so
-// a valid split exists iff the `gcd` of all multiples of `mn` other than `a[p]`
-// equals `mn`.
+// Source: Codeforces 2084B (MIN = GCD), https://codeforces.com/contest/2084/problem/B
+// Problem: given n <= 1e5 positive a_i <= 1e18, can a be rearranged so some split 1 <= i < n has
+//   min(a_1..a_i) = gcd(a_{i+1}..a_n)? Print Yes or No. Multitest, sum n <= 1e5.
+// Solution: the global minimum mn must be in the prefix (it is <= the suffix gcd), so the
+//   suffix must have gcd mn: all its elements are multiples of mn, and adding more multiples
+//   only pulls the gcd down toward mn. So the answer is Yes iff the gcd of every multiple of mn
+//   other than one copy of mn equals mn. One pass, O(n log a).
 
 @!multitest
 let n: 2..=100_000 = read()

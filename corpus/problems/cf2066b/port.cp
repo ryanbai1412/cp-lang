@@ -1,6 +1,11 @@
-// With no zero the whole sequence is magical. Otherwise at most one zero can
-// stay, and the leftmost is the best one to keep: that subsequence is magical
-// exactly when every prefix minimum is at least the MEX of what follows it.
+// Source: Codeforces 2066B (White Magic), https://codeforces.com/contest/2066/problem/B
+// Problem: a sequence is magical if min(a_1..a_i) >= mex(a_{i+1}..a_n) for every 1 <= i < n.
+//   Given n <= 2e5 values 0 <= a_i <= 1e9, print the length of the longest magical subsequence.
+//   Multitest, sum n <= 2e5.
+// Solution: without zeros every suffix has mex 0, so all n values work. Two zeros never do
+//   (a prefix min of 0 against a mex >= 1), so the answer is n - zeros or one more; the best one
+//   to keep is the leftmost. Build that subsequence b and test it with prefix minima and suffix
+//   mexes computed right to left over a seen array capped at |b|; O(n).
 @!multitest
 let n: 1..=2e5 = read()
 let a = read<[n]0..=1e9>()

@@ -1,12 +1,11 @@
-// Codeforces 2187 A — Restricted Sorting
-//
-// Swaps are allowed between values `u, v` with `|u - v| >= k`. Any misplaced
-// element `x` can be routed to its sorted slot via the global minimum `lo` or
-// global maximum `hi` iff `k <= max(x - lo, hi - x)`, because `lo` and `hi`
-// maximize the distance from `x` (so if `x` cannot swap with either extreme,
-// it cannot move at all). Thus the maximum feasible `k` is the minimum of
-// `max(x - lo, hi - x)` over all misplaced elements (`j != i` in sorted
-// `(value, index)` order), or `-1` when `a` is already sorted.
+// Source: Codeforces 2187A (Restricted Sorting), https://codeforces.com/contest/2187/problem/A
+// Problem: k is piggy if a (n <= 2e5, a_i <= 1e9) can be sorted by swaps of a_i, a_j with
+//   |a_i - a_j| >= k. Print the largest piggy k, or -1 if there is none (a already sorted, so
+//   every k works). Multitest, sum n <= 2e5.
+// Solution: the farthest partner of x is the minimum lo or the maximum hi, so x can move at all
+//   iff k <= max(x - lo, hi - x); then it can reach any slot by swaps through lo or hi. So the
+//   answer is the minimum of max(x - lo, hi - x) over the elements whose slot in the stable
+//   sort of (value, index) is not their own index, or -1 if none; O(n log n).
 
 @!multitest
 let n: 1..=200_000 = read()

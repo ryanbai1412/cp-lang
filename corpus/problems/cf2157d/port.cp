@@ -1,14 +1,12 @@
-// Codeforces 2157 D — Billion Players Game
-//
-// Maximize `min_{p in [l, r]} sum_i |p - a[i]|` by pairing sorted elements from
-// outside in (`a[i]` with `a[n - 1 - i]`), clamping the upper endpoint to
-// `max(l, a[n - 1 - i])` and the lower endpoint to `min(r, a[i])`:
-// - If `a[i] <= a[n - 1 - i]` straddle `[l, r]`, the `i` term adds
-//   `a[n - 1 - i] - a[i]` (their combined distance to any `p` between them) and
-//   the mirrored `n - 1 - i` term clamps to `0`.
-// - If both lie below `l` (or both above `r`), BOTH orientations contribute
-//   their individual distances `l - a[i]` and `l - a[n - 1 - i]` (or
-//   `a[n - 1 - i] - r` and `a[i] - r`) to the clamped boundary `l` (or `r`).
+// Source: Codeforces 2157D (Billion Players Game), https://codeforces.com/contest/2157/problem/D
+// Problem: an unknown p lies in [l, r], r <= 1e9. Each of n <= 2e5 offers a_i <= 1e9 is ignored
+//   or accepted as "p <= a_i" or "p >= a_i", earning |p - a_i| if right and losing it if wrong.
+//   Print the most robocoins you can guarantee (minimum over p). Multitest, sum n <= 2e5.
+// Solution: claiming p >= x and p <= y for x <= y earns y - x whatever p is. So sort and pair
+//   the i-th smallest a with the i-th largest: a pair straddling [l, r] earns its gap; a pair
+//   entirely below l claims both ">=" (l - a each), entirely above r both "<=" (a - r each).
+//   The term max(0, max(l, a[n-1-i]) - min(r, a[i])) over all i gives exactly these amounts,
+//   the self-paired middle included. O(n log n) for the sort.
 
 @!multitest
 let (n, l, r): (1..=200_000, 1..=10 ** 9, 1..=10 ** 9) = read()
